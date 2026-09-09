@@ -1,0 +1,45 @@
+name: 기능
+description: 새로 만들거나 바꿀 것
+labels: ["feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 어떤 문제를 푸는가
+      description: 해결책이 아니라 문제를 먼저 적어 주세요. 사용자가 지금 무엇을 못 하고 있나요?
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 범위
+      description: 이번에 하는 것과 **의도적으로 하지 않는 것**을 나눠 적어 주세요.
+      placeholder: |
+        한다: 후보 목록 조회 API + lowCardWorth 규칙 판정
+        안 한다: 후보 확정 이후 카드 생성 (다음 이슈)
+    validations:
+      required: true
+
+  - type: textarea
+    id: contract
+    attributes:
+      label: 계약 변경
+      description: |
+        API 모양이 바뀌면 `frontend/docs/api-spec.md` 의 어느 절인지 적어 주세요.
+        DB 스키마가 바뀌면 새 Flyway 마이그레이션 번호를 적어 주세요.
+        둘 다 없으면 "없음".
+    validations:
+      required: true
+
+  - type: dropdown
+    id: decision
+    attributes:
+      label: 제품 결정이 필요한가
+      description: 스펙(gitory-docs)에 없거나 어긋나면 ADR 이 먼저입니다.
+      options:
+        - 아니오 — 스펙에 이미 정해져 있다
+        - 예 — 스펙에 없다. 논의 필요
+        - 예 — 스펙과 어긋난다. ADR 이 필요하다
+    validations:
+      required: true

@@ -1,0 +1,12 @@
+# 로컬 개발용. 비밀값은 여기 적지 않는다 — .env 또는 환경변수로 주입한다.
+# (.gitignore 가 .env 를 추적하지 않지만, 이 파일은 추적되므로 더 조심한다.)
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gitory
+    username: gitory
+    password: gitory
+
+logging:
+  level:
+    com.gitory.backend: DEBUG
+    org.hibernate.SQL: DEBUG

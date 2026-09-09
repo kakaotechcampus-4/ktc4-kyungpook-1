@@ -1,0 +1,4 @@
+# 루트 .gitignore 의 `!gradle/wrapper/gradle-wrapper.jar` 예외는 슬래시가 있어
+# 레포 루트에만 앵커된다 — backend/gradle/... 에는 안 먹는다.
+# wrapper jar 가 빠지면 ./gradlew 가 죽고 CI 도 같이 죽는다.
+!gradle/wrapper/gradle-wrapper.jar

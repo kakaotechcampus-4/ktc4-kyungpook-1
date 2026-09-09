@@ -1,0 +1,55 @@
+name: 버그
+description: 동작이 기대와 다를 때
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 무슨 일이 있었나
+      description: 관측한 동작과 기대한 동작을 나란히 적어 주세요. 오류 메시지가 짧으면 그대로 붙여 주세요.
+      placeholder: |
+        관측: 레포 분석이 3분 뒤 FAILED 로 끝난다
+        기대: DONE 또는 partial=true 로 끝난다
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 방법
+      description: 가장 짧은 재현 경로. 재현이 안 되면 "재현 안 됨" 이라고 적어 주세요 — 그것도 정보입니다.
+      placeholder: |
+        1. 커밋 60개짜리 레포를 선택
+        2. 분석 시작
+        3. Job 폴링이 RUNNING 에서 멈춤
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 근거
+      description: |
+        쫓아갈 수 있는 식별자를 적어 주세요 — Job ID, 요청 ID, 시각, 파일 경로, 커밋 sha.
+        **저장소 이름·카드 본문·인터뷰 답변 원문은 적지 마세요** (security-privacy.md).
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: 어디
+      options:
+        - backend / consent (연결·동의)
+        - backend / ingest (수집·정규화)
+        - backend / evidence (근거)
+        - backend / recommend (후보 추천)
+        - backend / agent (LLM)
+        - backend / interview (되묻기)
+        - backend / card (카드·확정)
+        - backend / matching (기업 매칭)
+        - backend / 공통·인프라
+        - frontend
+        - 모르겠음
+    validations:
+      required: true

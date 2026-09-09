@@ -1,0 +1,92 @@
+# 백엔드 CI — 팀이 추가한 워크플로다.
+#
+# CODEOWNERS 의 [운영진 영역] 3개 파일(assign-mentor · notify-discord · convention-check)은
+# 건드리지 않는다. 새 워크플로 추가는 CODEOWNERS 주석이 명시적으로 허용한 범위다.
+#
+# ⚠️ GitHub Free 조직의 Private 저장소에는 Branch protection 을 걸 수 없다
+#    (github-governance.md). 이 CI 의 성공은 **플랫폼이 강제하지 않는 팀 규칙**이다.
+#    빨간 체크를 무시하고 머지할 수 있다는 뜻이므로, 리뷰어가 눈으로 확인한다.
+
+name: backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  push:
+    branches: [develop, main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+# 같은 브랜치에 연속 push 하면 앞의 run 을 취소한다. 무료 러너 분을 아낀다.
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  build:
+    name: 빌드 · 테스트 · 경계 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 21 설치
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Gradle 준비 (캐시 포함)
+        uses: gradle/actions/setup-gradle@v4
+
+      # ArchUnit 모듈 경계 테스트가 여기 포함된다.
+      # 경계를 주석으로만 적어 두면 두 달 뒤에 없는 경계가 된다.
+      - name: build
+        run: ./gradlew build --no-daemon
+
+      - name: 테스트 리포트 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/build/reports/tests/test/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  migration-guard:
+    name: 마이그레이션 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 스키마의 단일 출처는 Flyway 다. 이미 머지된 마이그레이션을 고치면
+      # 이미 그 버전을 적용한 환경과 체크섬이 어긋나 배포가 멈춘다.
+      # 새 파일 추가는 통과, 기존 파일 수정은 실패다.
+      - name: 적용된 마이그레이션이 수정되지 않았는지
+        run: |
+          base="origin/${{ github.event.pull_request.base.ref }}"
+          changed=$(git diff --name-status "$base"...HEAD \
+            -- backend/src/main/resources/db/migration/ \
+            | awk '$1 != "A" { print $2 }')
+          if [ -n "$changed" ]; then
+            echo "::error::이미 머지된 마이그레이션을 수정했습니다. 새 V<n>__*.sql 을 추가하세요."
+            echo "$changed"
+            exit 1
+          fi
+          echo "마이그레이션 변경: 추가만 있음 (또는 없음)"

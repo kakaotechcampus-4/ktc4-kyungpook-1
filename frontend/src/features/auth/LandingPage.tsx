@@ -40,31 +40,27 @@ export function LandingPage() {
       </header>
 
       <section className="landing__hero">
-        <div className="stack" style={{ gap: 20 }}>
-          <h1 className="landing__h1">커밋은 쌓였는데,<br />자소서 앞에서 막히는 이유</h1>
+        <div className="landing__copy stack">
+          <span className="landing__eyebrow">GitHub 기록에서 꺼내는 나의 경험</span>
+          <h1 className="landing__h1">커밋과 PR을<br />자소서 경험으로</h1>
           <p className="landing__lead">
-            GitHub에 남아 있는 커밋과 PR을 대신 읽어서, 자소서에 쓸 경험을 카드로 정리해 드려요.
-            근거를 못 찾은 칸은 채우지 않고 그냥 비워 둡니다.
+            흩어진 개발 기록을 읽고, 내가 한 일과 근거가 연결된 경험 카드로 정리해 드려요.
+            확인할 수 없는 내용은 만들지 않습니다.
           </p>
 
           {error === 'access_denied' && <Note strong="GitHub에서 동의를 취소하셨네요" tone="inset">아무것도 저장되지 않았어요. 준비되면 다시 시작하시면 됩니다.</Note>}
           {error && error !== 'access_denied' && <Note strong="GitHub 연결이 안 됐어요" tone="danger">다시 시도해 보세요. 계속 안 되면 GitHub 쪽 앱 권한을 확인해야 합니다.</Note>}
           {reason === 'expired' && <Note strong="로그인이 만료됐어요" tone="inset">다시 로그인하면 보던 화면으로 돌아갑니다.</Note>}
 
-          <div>
+          <div className="landing__actions">
             <Button size="xl" onClick={() => setSp({ consent: '1' })}>GitHub으로 시작하기 <ArrowRight size={16} /></Button>
+            <span>공개 저장소 읽기 권한만 사용해요</span>
           </div>
 
-          <div className="perm">
-            <div className="perm__col">
-              <h3>이건 읽어요</h3>
-              {READS.map((r) => <div key={r} className="perm__row"><b>·</b><span>{r}</span></div>)}
-            </div>
-            <div className="perm__col perm__col--skip">
-              <h3>이건 안 읽어요</h3>
-              {SKIPS.map((r) => <div key={r} className="perm__row"><b>—</b><span>{r}</span></div>)}
-            </div>
-          </div>
+          <details className="landing__permissions" aria-label="GitHub 접근 범위 자세히 보기">
+            <summary>어떤 정보를 읽는지 자세히 보기</summary>
+            <PermissionGrid reads={READS} skips={SKIPS} compact />
+          </details>
         </div>
 
         {/* S-5 — 심사위원 머리에 남길 한 장면: T 칸이 비어 있는 카드 */}

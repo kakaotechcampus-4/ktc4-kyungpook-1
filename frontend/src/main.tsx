@@ -14,6 +14,7 @@ import './styles/shell.css';
 import './styles/pages.css';
 import './styles/design2.css';
 import './styles/layout-tio.css';
+import './styles/responsive.css';
 
 applyTheme(getTheme());
 installDemoApi(); // VITE_API_MOCK=false 면 아무것도 하지 않는다 (fetch 가 그대로 /api 로 나간다)

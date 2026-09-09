@@ -23,6 +23,12 @@ export const Wordmark = ({ height = 22, className }: { height?: number; classNam
 const Mark = () => <img src="/gitory-mark.png" alt="Gitory" width={28} height={28} style={{ borderRadius: 7 }} draggable={false} />;
 
 const RAIL_KEY = 'gitory.rail';
+const MOBILE_MENU = [
+  { to: '/', label: '홈', icon: Home, end: true },
+  { to: '/repos', label: '레포', icon: FolderGit2 },
+  { to: '/cards', label: '카드', icon: Layers },
+  { to: '/settings', label: '설정', icon: Settings },
+];
 
 /** 앱 셸 — 접히는 레일 사이드바(브랜드 · 메뉴 그룹 · 최근 카드 · 프로필). 접힘 상태는 기억한다. */
 export function AppShell() {
@@ -35,6 +41,10 @@ export function AppShell() {
   return (
     <div className={`shell ${rail ? 'shell--rail' : ''}`}>
       <a href="#main" className="skip-link">본문으로 건너뛰기</a>
+      <header className="mobile-brand">
+        <Link to="/" aria-label="Gitory 홈"><Wordmark height={22} /></Link>
+        <span>{me.data?.login ?? '내 경험 정리'}</span>
+      </header>
       <aside className="sidebar" aria-label="주 메뉴">
         <div className="sidebar__top">
           <Link to="/" className="brand" aria-label="Gitory 홈">{rail ? <Mark /> : <Wordmark height={22} />}</Link>
@@ -67,6 +77,14 @@ export function AppShell() {
         </div>
       </aside>
       <div id="main" className="shell__main"><Outlet /></div>
+      <nav className="mobile-nav" aria-label="모바일 주 메뉴">
+        {MOBILE_MENU.map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.end}>
+            <item.icon size={20} aria-hidden="true" />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
       <JobWatcher />
     </div>
   );

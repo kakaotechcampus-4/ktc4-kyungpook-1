@@ -22,8 +22,8 @@ export const CARD_STATUS_LABEL = {
 };
 
 export const CARD_STATUS_BADGE = {
-  [CARD_STATUS.DRAFT]: "bg-white text-slate-500 ring-1 ring-inset ring-slate-200",
-  [CARD_STATUS.CONFIRMED]: "bg-slate-900 text-white",
+  [CARD_STATUS.DRAFT]: "bg-white text-ink-500 ring-1 ring-inset ring-ink-200",
+  [CARD_STATUS.CONFIRMED]: "bg-ink-900 text-white",
 };
 
 // 카드의 근거 출처. COMMIT_CLUSTER는 화면에 "커밋 묶음"으로만 표기하고 PR이라 부르지 않습니다.

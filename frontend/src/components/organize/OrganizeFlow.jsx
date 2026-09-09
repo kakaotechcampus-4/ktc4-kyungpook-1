@@ -38,7 +38,7 @@ export default function OrganizeFlow({ onExit }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-slate-100 px-8 py-3 text-xs text-slate-400">
+      <div className="border-b border-ink-100 px-8 py-3 text-xs text-ink-400">
         경험정리/홈
         {repo && (
           <>

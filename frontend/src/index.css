@@ -6,8 +6,10 @@
 html, body, #root { height: 100%; margin: 0; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 5px; }
-::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+::-webkit-scrollbar-thumb { background: #D1CBC0; border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: #A79D8D; }
+
+::selection { background: #DEE4FB; color: #212959; }
 
 @keyframes fade-in {
   from { opacity: 0; }

@@ -48,7 +48,7 @@ export default function Sidebar({ active, onNavigate }) {
 
   return (
     <aside
-      className={`relative flex shrink-0 flex-col border-r border-slate-200 bg-white transition-all duration-200 ease-in-out ${
+      className={`relative flex shrink-0 flex-col border-r border-ink-200 bg-white transition-all duration-200 ease-in-out ${
         collapsed ? "w-16" : "w-56"
       }`}
     >
@@ -56,7 +56,7 @@ export default function Sidebar({ active, onNavigate }) {
       <button
         onClick={toggleCollapsed}
         title={collapsed ? "사이드바 펼치기" : "사이드바 접기"}
-        className="absolute -right-3 top-6 z-10 grid h-6 w-6 place-items-center rounded-full border border-slate-200 bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-600"
+        className="absolute -right-3 top-6 z-10 grid h-6 w-6 place-items-center rounded-full border border-ink-200 bg-white text-ink-400 shadow-sm transition-colors hover:bg-ink-50 hover:text-ink-600"
       >
         {collapsed ? (
           <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
@@ -68,20 +68,22 @@ export default function Sidebar({ active, onNavigate }) {
       <div className="flex h-full flex-col overflow-hidden">
         {/* 로고 */}
         <div className={`flex items-center gap-2.5 px-5 py-5 ${collapsed ? "justify-center px-0" : ""}`}>
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-900 text-sm font-semibold text-white">
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-[7px] bg-accent-600 text-sm font-semibold text-white">
             G
           </div>
           {!collapsed && (
-            <span className="whitespace-nowrap text-lg font-semibold tracking-tight text-slate-900">Gitory</span>
+            <span className="whitespace-nowrap text-[15px] font-semibold tracking-tight text-ink-900">Gitory</span>
           )}
         </div>
 
         {/* 메뉴 */}
-        <nav className="flex flex-1 flex-col gap-5 px-3">
+        <nav className="flex flex-1 flex-col gap-6 px-3">
           {NAV_GROUPS.map((group) => (
             <div key={group.label}>
               {!collapsed && (
-                <div className="whitespace-nowrap px-2 pb-2 text-xs font-medium text-slate-400">{group.label}</div>
+                <div className="whitespace-nowrap px-2.5 pb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-400">
+                  {group.label}
+                </div>
               )}
               <div className="flex flex-col gap-0.5">
                 {group.items.map(({ key, label, icon: Icon }) => {
@@ -91,12 +93,15 @@ export default function Sidebar({ active, onNavigate }) {
                       key={key}
                       title={collapsed ? label : undefined}
                       onClick={() => onNavigate(key)}
-                      className={`flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors ${
-                        collapsed ? "justify-center px-0" : "px-3"
-                      } ${on ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+                      className={`flex items-center gap-3 rounded-lg py-2 text-[13px] font-medium transition-colors ${
+                        collapsed ? "justify-center px-0" : "px-2.5"
+                      } ${on ? "bg-accent-50 text-accent-700" : "text-ink-600 hover:bg-ink-100"}`}
                     >
-                      <Icon className={`h-[18px] w-[18px] shrink-0 ${on ? "text-white" : "text-slate-400"}`} strokeWidth={1.8} />
-                      {!collapsed && <span className="whitespace-nowrap">{label}</span>}
+                      <Icon
+                        className={`h-[17px] w-[17px] shrink-0 ${on ? "text-accent-600" : "text-ink-400"}`}
+                        strokeWidth={1.6}
+                      />
+                      {!collapsed && <span className={`whitespace-nowrap ${on ? "font-semibold" : ""}`}>{label}</span>}
                     </button>
                   );
                 })}
@@ -106,19 +111,19 @@ export default function Sidebar({ active, onNavigate }) {
         </nav>
 
         {/* 하단 프로필 */}
-        <div className={`border-t border-slate-100 p-3 ${collapsed ? "flex justify-center" : ""}`}>
+        <div className={`border-t border-ink-100 p-3 ${collapsed ? "flex justify-center" : ""}`}>
           <button
             onClick={() => onNavigate("mypage")}
             title={collapsed ? "마이페이지" : undefined}
-            className={`flex w-full items-center gap-3 rounded-lg py-2 text-left transition-colors hover:bg-slate-50 ${
+            className={`flex w-full items-center gap-3 rounded-lg py-2 text-left transition-colors hover:bg-ink-50 ${
               collapsed ? "justify-center px-0" : "px-2"
             }`}
           >
             <Avatar name={CURRENT_USER.name} />
             {!collapsed && (
               <div className="min-w-0 leading-tight">
-                <div className="truncate text-sm font-semibold text-slate-900">{CURRENT_USER.name}</div>
-                <div className="truncate text-xs text-slate-400">
+                <div className="truncate text-[13px] font-semibold text-ink-900">{CURRENT_USER.name}</div>
+                <div className="truncate text-xs text-ink-400">
                   {CURRENT_USER.plan} · 크레딧 {CURRENT_USER.credits}
                 </div>
               </div>

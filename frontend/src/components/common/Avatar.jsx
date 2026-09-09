@@ -1,10 +1,10 @@
 const PALETTE = [
-  { bg: "#E6F1FB", fg: "#0C447C" },
-  { bg: "#EEEDFE", fg: "#3C3489" },
-  { bg: "#E1F5EE", fg: "#085041" },
-  { bg: "#FAECE7", fg: "#712B13" },
-  { bg: "#FBEAF0", fg: "#72243E" },
-  { bg: "#FAEEDA", fg: "#633806" },
+  { bg: "#E7EFF6", fg: "#254A6B" },
+  { bg: "#ECEAF4", fg: "#443C7D" },
+  { bg: "#E4EFE9", fg: "#22543F" },
+  { bg: "#F3E8E2", fg: "#733E23" },
+  { bg: "#F4E5EA", fg: "#722C46" },
+  { bg: "#F3ECDD", fg: "#5C4419" },
 ];
 
 function pickTone(seed) {
@@ -20,7 +20,7 @@ export default function Avatar({ name, size = 9 }) {
 
   return (
     <div
-      className={`grid shrink-0 place-items-center rounded-full font-semibold ${sizeClass}`}
+      className={`grid shrink-0 place-items-center rounded-full font-semibold ring-1 ring-inset ring-black/[0.04] ${sizeClass}`}
       style={{ background: tone.bg, color: tone.fg }}
     >
       {initial}

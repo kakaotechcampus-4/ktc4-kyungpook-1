@@ -27,17 +27,17 @@ export default function HomePage({ onNavigate }) {
   const goOrganize = () => onNavigate?.("organize");
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-7">
+    <div className="mx-auto max-w-5xl px-8 py-9">
       {/* 헤더 */}
-      <div className="mb-5 flex items-start justify-between">
-        <h1 className="text-[22px] font-semibold tracking-tight text-slate-900">경험정리</h1>
-        <span className="text-xs text-slate-400">
+      <div className="mb-6 flex items-start justify-between">
+        <h1 className="text-[22px] font-semibold tracking-tight text-ink-900">경험정리</h1>
+        <span className="text-xs tabular-nums text-ink-400">
           확정 카드 {confirmedCount}장 · 정리한 레포 {repoCount}개
         </span>
       </div>
 
       {/* 레포 정리 유도 배너 */}
-      <div className="mb-5">
+      <div className="mb-6">
         <OrganizePromoBanner onPickRepo={goOrganize} />
       </div>
 
@@ -56,7 +56,7 @@ export default function HomePage({ onNavigate }) {
 
       {/* 그리드 */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <CardItemSkeleton key={i} />
           ))}

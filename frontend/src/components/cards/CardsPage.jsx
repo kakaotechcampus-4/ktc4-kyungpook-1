@@ -21,9 +21,9 @@ export default function CardsPage({ onNavigate }) {
   }, [cards, query, kindFilter, sortKey]);
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-7">
-      <h1 className="mb-1 text-[22px] font-semibold tracking-tight text-slate-900">경험 카드</h1>
-      <p className="mb-5 text-sm text-slate-500">지금까지 정리한 모든 경험 카드를 한곳에서 확인하세요.</p>
+    <div className="mx-auto max-w-5xl px-8 py-9">
+      <h1 className="mb-1.5 text-[22px] font-semibold tracking-tight text-ink-900">경험 카드</h1>
+      <p className="mb-6 text-sm text-ink-500">지금까지 정리한 모든 경험 카드를 한곳에서 확인하세요.</p>
 
       <CardToolbar
         count={cards.length}
@@ -38,7 +38,7 @@ export default function CardsPage({ onNavigate }) {
       />
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <CardItemSkeleton key={i} />
           ))}

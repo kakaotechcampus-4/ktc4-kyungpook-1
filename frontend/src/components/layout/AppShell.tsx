@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link } from 'react-router-dom';
 import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings } from 'lucide-react';
 import { useCards, useMe } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 const MENU = [
   { group: '커리어 관리', items: [
@@ -43,7 +44,7 @@ export function AppShell() {
       <a href="#main" className="skip-link">본문으로 건너뛰기</a>
       <header className="mobile-brand">
         <Link to="/" aria-label="Gitory 홈"><Wordmark height={22} /></Link>
-        <span>{me.data?.login ?? '내 경험 정리'}</span>
+        <span className="mobile-brand__profile"><UserAvatar src={me.data?.avatarUrl} login={me.data?.login ?? '사용자'} size={28} />{me.data?.login ?? '내 경험 정리'}</span>
       </header>
       <aside className="sidebar" aria-label="주 메뉴">
         <div className="sidebar__top">
@@ -68,7 +69,7 @@ export function AppShell() {
         </div>
         <div style={{ marginTop: 'auto' }} />
         <div className="sidebar__profile">
-          <span className="sidebar__avatar">{me.data?.avatarUrl && <img src={me.data.avatarUrl} alt="" />}</span>
+          <UserAvatar src={me.data?.avatarUrl} login={me.data?.login ?? '사용자'} size={36} />
           <div className="row grow" style={{ gap: 6, minWidth: 0 }}>
             <span className="sidebar__name">{me.data?.login ?? '…'}</span>
             <span className="sidebar__plan">Free</span>

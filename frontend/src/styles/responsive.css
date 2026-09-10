@@ -99,7 +99,7 @@ body { overflow-x: hidden; }
     background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
     backdrop-filter: blur(12px);
   }
-  .mobile-brand > span { max-width: 48%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-tertiary); font-size: 11px; }
+  .mobile-brand__profile { display: flex; align-items: center; gap: 8px; max-width: 55%; overflow: hidden; white-space: nowrap; color: var(--text-tertiary); font-size: 11px; }
   .mobile-nav {
     position: fixed;
     inset: auto 0 0;
@@ -116,12 +116,27 @@ body { overflow-x: hidden; }
   .main { --main-px: 16px; --main-pb: 24px; gap: 16px; padding: 20px var(--main-px) var(--main-pb); }
   .main--footer { padding-bottom: 0; }
   .grid-2,
+  .experience-list,
   .two-col,
   .two-col--340,
   .iv,
   .cmp,
   .found,
   .stat-grid { grid-template-columns: minmax(0, 1fr); }
+  .experience-item.gcard { min-height: 0; padding: 22px 18px; }
+  .experience-item:nth-child(even) { border-left: 0; }
+  .experience-item:nth-child(n + 2) { border-top: 1px solid var(--border-default); }
+  .experience-item .stardots--labeled { max-width: none; }
+  .status-tabs { gap: 20px; overflow-x: auto; }
+  .settings-page { gap: 28px; }
+  .profile-summary { gap: 16px; min-height: 68px; padding: 0; }
+  .settings-section { padding: 20px; }
+  .settings-row { align-items: flex-start; flex-wrap: wrap; }
+  .settings-section.stat-grid { grid-template-columns: repeat(2, 1fr); padding: 0; }
+  .settings-section .stat { padding: 20px; }
+  .settings-section .stat + .stat { border-left: 0; }
+  .settings-section .stat:nth-child(even) { border-left: 1px solid var(--border-default); }
+  .settings-section .stat:nth-child(n + 3) { border-top: 1px solid var(--border-default); }
   .iv__panel { position: static; padding: 14px; }
   .iv__canvas { min-height: 0; }
   .page-title { align-items: flex-start; }

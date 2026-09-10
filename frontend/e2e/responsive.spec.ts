@@ -104,4 +104,49 @@ test.describe('반응형 레이아웃', () => {
     expect(geometry.rightDelta).toBeLessThanOrEqual(1);
     expect(geometry.heightDelta).toBeLessThanOrEqual(1);
   });
+
+  test('홈과 카드 목록은 하나의 여유 있는 경험 목록과 정렬된 STAR를 쓴다', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await loginAsDemo(page);
+
+    for (const path of ['/', '/cards']) {
+      await page.goto(path);
+      await expect(page.locator('.experience-list')).toHaveCount(1);
+      await expect(page.locator('.experience-item').first()).toBeVisible();
+      const itemShadow = await page.locator('.experience-item').first().evaluate((el) => getComputedStyle(el).boxShadow);
+      expect(itemShadow).toBe('none');
+      const widths = await page.locator('.experience-item').first().locator('.stardot').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+      expect(new Set(widths.map((width) => Math.round(width))).size).toBe(1);
+      await expect(page.locator('.experience-item').first().locator('.stardot__label')).toHaveCount(4);
+    }
+  });
+
+  test('설정은 관련 정보를 큰 섹션으로 묶고 선택 경계는 유지한다', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await loginAsDemo(page);
+    await page.goto('/settings');
+
+    await expect(page.locator('.settings-section')).toHaveCount(4);
+    await expect(page.locator('.stat-grid > .card')).toHaveCount(0);
+    const shadows = await page.locator('.settings-section').evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));
+    expect(shadows.every((shadow) => shadow === 'none')).toBe(true);
+
+    await page.goto('/repos');
+    await page.getByRole('radio').first().click();
+    const selectedBorder = await page.locator('.card--selected').first().evaluate((el) => parseFloat(getComputedStyle(el).borderTopWidth));
+    expect(selectedBorder).toBeGreaterThanOrEqual(1);
+  });
+
+  test('저장소와 후보는 개별 카드 대신 하나의 행 목록으로 묶는다', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await loginAsDemo(page);
+    for (const path of ['/repos', '/repos/r_auth/candidates']) {
+      await page.goto(path);
+      await expect(page.locator('.record-list')).toHaveCount(1);
+      const children = page.locator('.record-list > .card');
+      expect(await children.count()).toBeGreaterThan(1);
+      const shadows = await children.evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));
+      expect(shadows.every((shadow) => shadow === 'none')).toBe(true);
+    }
+  });
 });

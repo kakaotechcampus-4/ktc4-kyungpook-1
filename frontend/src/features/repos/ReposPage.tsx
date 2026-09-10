@@ -70,7 +70,7 @@ export function ReposPage() {
 
       {repos.isPending && <div className="stack" style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Skeleton key={i} h={72} />)}</div>}
       {repos.isSuccess && list.length === 0 && <EmptyState title="맞는 레포가 없어요" desc="비공개 저장소는 목록에 나오지 않아요. 권한부터 요청하지 않기 때문입니다." />}
-      <div className="stack" style={{ gap: 8 }} role="radiogroup" aria-label="레포 선택">
+      <div className="record-list" role="radiogroup" aria-label="레포 선택">
         {list.map((r) => <RepoRow key={r.id} r={r} selected={r.id === selectedId} onSelect={() => select(r.id)} />)}
       </div>
 

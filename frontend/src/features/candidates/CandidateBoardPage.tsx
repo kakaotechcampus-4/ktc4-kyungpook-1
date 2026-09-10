@@ -114,7 +114,7 @@ export function CandidateBoardPage() {
         </span>
       } />
 
-      <div className="stack" style={{ gap: 10 }}>
+      <div className="record-list">
         {visible.map((c) => (
           <CandidateRow key={c.id} c={c} selected={selected.has(c.id)} onToggle={() => toggle(c.id)} onExclude={() => exclude(c)}
             expanded={expanded === c.id} onExpand={() => setExpanded(expanded === c.id ? null : c.id)}

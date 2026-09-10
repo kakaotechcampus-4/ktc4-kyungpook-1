@@ -115,7 +115,7 @@ export function HomePage() {
           </Toolbar>
           <SectionHead label={`${me.data?.login ?? '나'}의 경험 카드`} count={cards.data?.length} />
           {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
-          <div className="grid-2">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
+          <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
           {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}" 에 맞는 카드가 없습니다`} desc="다른 이름으로 찾아보세요." />}
         </>
       )}
@@ -148,21 +148,19 @@ export function CardGridItem({ c }: { c: CardSummary }) {
   const src = c.sourceType ? candidateRefLabel(c.sourceType, c.sourceLabel) : c.sourceLabel === 'INTERVIEW' ? '되묻기' : '직접 작성';
   const sub = c.hasDropped ? '빈 칸 있음' : c.userStatedCount && !c.evidenceCount ? `내가 말한 것 ${c.userStatedCount}건` : `근거 ${c.evidenceCount}건`;
   return (
-    <Link to={`/cards/${c.id}`} className={`card gcard ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
-      <div className="row" style={{ gap: 10 }}>
-        <KindIcon kind={c.kind} size={30} />
-        <Badge kind="NEUTRAL">{cardKindShort[c.kind]}</Badge>
-        <span className="right t-12 c-3">{src}</span>
+    <Link to={`/cards/${c.id}`} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
+      <div className="experience-item__meta">
+        <span>{cardKindShort[c.kind]} · {src}</span>
+        <span>{ym(c.period)}</span>
       </div>
       <h3 className="gcard__title">{c.title}</h3>
-      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+      <StarDots filled={filledOf(c)} showLabels />
+      <div className="experience-item__footer">
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <Badge kind={c.status}>{cardStatusLabel[c.status]}</Badge>
         {c.hasLowConfidence && c.status === 'DRAFT' && <Badge kind="CAUTION">⚑ 확인 필요</Badge>}
-        <span className="right"><StarDots filled={filledOf(c)} /></span>
-      </div>
-      <div className="row t-12 c-2" style={{ gap: 6 }}>
-        <span>{ym(c.period)}</span>
-        <span className="right">{sub}</span>
+        </div>
+        <span className="t-12 c-2">{sub}</span>
       </div>
     </Link>
   );

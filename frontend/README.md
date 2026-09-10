@@ -96,7 +96,7 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 
 ## 검증
 
-`npm run typecheck` · `npm test`(10) · `npm run e2e`(기능 10 + 반응형 4: 320/390/768/1024/1440/1920px) · `npm run e2e:static` · CI `.github/workflows/ci.yml`
+`npm run typecheck` · `npm test`(10) · `npm run e2e`(기능 10 + 반응형 5: 320/390/768/1024/1440/1920px 및 PC 정렬선) · `npm run e2e:static` · CI `.github/workflows/ci.yml`
 
 ## 아직 없는 것
 

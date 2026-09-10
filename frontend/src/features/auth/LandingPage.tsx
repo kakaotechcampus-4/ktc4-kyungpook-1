@@ -36,7 +36,7 @@ export function LandingPage() {
     <main className="landing">
       <header className="landing__top">
         <Wordmark height={26} />
-        <Button size="sm" variant="outline" onClick={() => setSp({ consent: '1' })}>GitHub으로 시작</Button>
+        <Button className="landing__top-action" size="sm" variant="outline" onClick={() => setSp({ consent: '1' })}>GitHub로 시작</Button>
       </header>
 
       <section className="landing__hero">
@@ -53,7 +53,7 @@ export function LandingPage() {
           {reason === 'expired' && <Note strong="로그인이 만료됐어요" tone="inset">다시 로그인하면 보던 화면으로 돌아갑니다.</Note>}
 
           <div className="landing__actions">
-            <Button size="xl" onClick={() => setSp({ consent: '1' })}>GitHub으로 시작하기 <ArrowRight size={16} /></Button>
+            <Button size="xl" onClick={() => setSp({ consent: '1' })}>GitHub로 시작 <ArrowRight size={16} /></Button>
             <span>공개 저장소 읽기 권한만 사용해요</span>
           </div>
 

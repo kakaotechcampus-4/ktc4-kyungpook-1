@@ -20,7 +20,8 @@ body { overflow-x: hidden; }
   padding: 28px clamp(24px, 5vw, 80px) 64px;
 }
 .landing__top,
-.landing__hero { width: min(100%, 1240px); max-width: none; }
+.landing__hero { width: min(100%, 1240px); max-width: none; margin-inline: auto; }
+.landing__top-action { height: 26px; min-height: 26px; padding: 0 11px; font-size: 11.5px; line-height: 24px; }
 .landing__hero {
   grid-template-columns: minmax(0, 1fr) minmax(420px, .9fr);
   gap: clamp(48px, 7vw, 108px);

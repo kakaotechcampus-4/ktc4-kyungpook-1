@@ -18,7 +18,7 @@ test.describe('반응형 레이아웃', () => {
     await page.goto('/login?reason=expired');
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'GitHub으로 시작하기' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'GitHub로 시작' })).toBeVisible();
     await expect(page.getByText('로그인이 만료됐어요')).toBeVisible();
     await expect(page.getByRole('group', { name: 'GitHub 접근 범위 자세히 보기' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '이건 읽어요' })).toBeHidden();
@@ -27,7 +27,7 @@ test.describe('반응형 레이아웃', () => {
     const columns = await page.locator('.landing__hero').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(1);
 
-    await page.getByRole('button', { name: 'GitHub으로 시작하기' }).click();
+    await page.getByRole('button', { name: 'GitHub로 시작' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     const box = await dialog.boundingBox();
@@ -76,5 +76,32 @@ test.describe('반응형 레이아웃', () => {
     const mainWidth = await page.locator('main').evaluate((el) => el.getBoundingClientRect().width);
     expect(mainWidth).toBeGreaterThan(1500);
     await expectNoHorizontalOverflow(page);
+  });
+
+  test('PC 로그인 헤더와 본문은 좌우 정렬선과 로고 높이를 맞춘다', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await freshSeed(page);
+    await page.goto('/login');
+
+    const buttons = page.getByRole('button', { name: 'GitHub로 시작', exact: true });
+    await expect(buttons).toHaveCount(2);
+    await expect(page.getByText(/GitHub으로 시작/)).toHaveCount(0);
+
+    const geometry = await page.evaluate(() => {
+      const header = document.querySelector<HTMLElement>('.landing__top')!;
+      const hero = document.querySelector<HTMLElement>('.landing__hero')!;
+      const logo = header.querySelector<HTMLImageElement>('img')!;
+      const button = header.querySelector<HTMLButtonElement>('button')!;
+      const h = header.getBoundingClientRect();
+      const content = hero.getBoundingClientRect();
+      return {
+        leftDelta: Math.abs(h.left - content.left),
+        rightDelta: Math.abs(h.right - content.right),
+        heightDelta: Math.abs(logo.getBoundingClientRect().height - button.getBoundingClientRect().height),
+      };
+    });
+    expect(geometry.leftDelta).toBeLessThanOrEqual(1);
+    expect(geometry.rightDelta).toBeLessThanOrEqual(1);
+    expect(geometry.heightDelta).toBeLessThanOrEqual(1);
   });
 });

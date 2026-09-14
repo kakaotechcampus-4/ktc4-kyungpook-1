@@ -99,6 +99,7 @@ ktc4-kyungpook-1/
 │  ├─ build.gradle                  Spring Boot 4.1.1 · Java 21(툴체인 자동 조달)
 │  ├─ compose.yaml                  로컬 PostgreSQL
 │  ├─ ARCHITECTURE.md               이 문서
+│  ├─ docs/schema-v2.sql            V1+V2 를 합친 최종 스키마 (대조용 · Flyway 밖)
 │  └─ src/
 │     ├─ main/java/com/gitory/backend/
 │     │  ├─ GitoryApplication.java
@@ -116,7 +117,9 @@ ktc4-kyungpook-1/
 │     │  └─ audit/                  정책·감사
 │     ├─ main/resources/
 │     │  ├─ application.yml
-│     │  └─ db/migration/V1__init.sql    ★ 팀 ERD 기준 · 15 테이블
+│     │  └─ db/migration/
+│     │     ├─ V1__init.sql         ★ 팀 ERD 기준 · 15 테이블
+│     │     └─ V2__erd_review.sql   ERD 리뷰 13건 반영 (2026-09-14)
 │     └─ test/java/.../architecture/ModuleBoundaryTest.java
 └─ .github/
    ├─ workflows/backend-ci.yml      팀 추가 (운영 3개는 건드리지 않음)
@@ -204,18 +207,54 @@ GET  /api/jobs/{jobId}               →  { state, steps, partial }   (폴링)
 ```
 
 - `steps` 는 화면의 4단계 체크리스트와 1:1 대응한다 —
-  `COMMITS → PR_REVIEW → COMPRESS → REASON`
-- `analysis_job.idempotency_key` 가 멱등성을 강제한다. 재시도가 중복 분석을 만들지 않는다.
+  `COMMITS → PR_REVIEW → COMPRESS → REASON`. 내부 모양은 V2 주석에 고정돼 있다
+- 상태는 5개다 — `QUEUED · RUNNING · SUCCEEDED · FAILED · CANCELED`.
+  **"부분 완료"는 상태가 아니라 `SUCCEEDED` + `partial = true`** 다. 별도 상태로 두면
+  성공 분기를 두 벌 쓰게 된다
 - 상한 초과·요청 한도 소진은 실패가 아니라 `partial: true` 다. 버리지 않고 표시한다.
+- **멱등성은 두 겹이다.** `UNIQUE (user_id, idempotency_key)` 가 같은 키의 재시도를 막고,
+  부분 유니크 인덱스 `uq_job_active` 가 **키가 달라도 같은 레포에 도는 Job 이 있으면** 막는다.
+  다른 탭에서 누르면 키가 다르기 때문이다. 어느 경우든 409 가 아니라 기존 `jobId` 를 돌려준다
+- `updated_at` 이 있어야 **"느린 것"과 "죽은 것"이 구별된다.** 한 번에 2~5분 걸리는 작업이라
+  `started_at`·`finished_at` 만으로는 멈춘 Job 을 폴링 화면이 영원히 돌린다
 
 > ⚠️ **`PR_REVIEW` 단계의 산출은 후보 추천용이고, 카드 초안 입력이 아니다.**
 > 실측에서 PR 리뷰 전문을 초안 입력에 넣자 토큰이 2.2배, 지연이 113초가 됐는데
 > 스택 적중률은 오히려 내려갔다. 리뷰는 정성 카드와 되묻기 재료로만 쓴다.
 
-## 데이터 모델 — 팀 ERD 기준 <!-- 2026-09-09 -->
+## 데이터 모델 — 팀 ERD 기준 <!-- 2026-09-09 · V2 반영 2026-09-14 -->
 
 `V1__init.sql` 은 팀 ERD 를 기준으로 삼는다. 테이블명·컬럼명·타입·`BIGINT` PK 는
 ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
+`V2__erd_review.sql` 이 그 위에 ERD 리뷰 13건을 얹는다.
+
+> **읽는 순서** — 지금 스키마가 뭔지만 알고 싶으면 `docs/schema-v2.sql` 하나만 보면 된다.
+> V1+V2 를 합친 최종 상태를 한 파일로 뒤집어 둔 것이고, 같은 스키마인지는 `pg_dump` 비교로
+> 확인한다(차이 0줄). **Flyway 는 이 파일을 읽지 않는다** — 실행되는 것은 `db/migration/` 둘뿐이고,
+> 마이그레이션을 고치면 이 파일도 같이 고쳐야 한다.
+
+### V2 — ERD 리뷰 13건 반영 <!-- 2026-09-14 -->
+
+리뷰 13건 중 **넷은 이미 V1 에 들어가 있었다.** ERD 툴(erdcloud)에만 빠져 있던 것이라
+스키마가 할 일이 없었다 — 활성 연결 UNIQUE · `audit_event` FK `SET NULL` ·
+카운트 6개 `DEFAULT 0` · `UNIQUE (user_id, idempotency_key)`.
+
+나머지가 V2 다.
+
+| 무엇 | 왜 |
+|---|---|
+| **enum 값 전부 대문자** | 스펙 「용어·enum 약속」이 *"코드·API·DB 의 값은 전부 영문 대문자"* 로 못 박았는데 V1 은 ERD 를 따르느라 소문자가 남아 있었다. 같은 개념이 두 표기로 갈라지면 **프론트가 문자열을 추측하게 된다.** 6개 테이블 14개 컬럼 |
+| **`evidence_type` 4개 → 3개** | `inferred`·`ai_suggested` 삭제. 아래 「신뢰 경계」 참고 |
+| **`user_written_has_turn` → `user_selected_has_turn`** | V1 제약이 **직접 작성 카드의 저장 자체를 막고 있었다.** 인터뷰를 안 거치니 턴이 없다 |
+| **Job 상태 3개 → 5개** | `QUEUED`·`CANCELED` 추가, `DONE` → `SUCCEEDED`. 화면 흐름에 `[취소]` 가 그려져 있는데 상태가 없었다 |
+| **`uq_job_active` 부분 유니크** | 키가 달라도 같은 레포에 도는 Job 을 막는다 (다른 탭 대응) |
+| **`analysis_job.updated_at`** | 멈춘 Job 과 느린 Job 을 구별한다 |
+| **폭 넓힘 3건** | `USER_SELECTED`(13자)가 `VARCHAR(12)` 에 안 들어갔다. `INSUFFICIENT`·`MEDIUM` 은 딱 맞아 있어서 같이 넓혔다 |
+| **코드 값 CHECK 2건** | `error_code` 5개 · `partial_reason` 3개. 허용 값이 어디에도 없으면 판정이 갈라진다 — 실측에서 이미 겪은 실패다 |
+
+**넣지 않은 것** — 스펙 테이블 목록에 있는 `raw_event` · `analysis_cache` · `event_log` 셋은
+보류했다. 쓰는 곳이 정해지기 전에 테이블부터 만들면 스키마만 늘고 검증이 안 된다.
+`event_log` 는 따로 봐야 한다(아래 「아직 정하지 않은 것」).
 
 ### 테이블은 모듈과 1:1 로 나뉜다
 
@@ -272,33 +311,66 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 - **`card.current_version`** — ERD 의 `version_no` 는 문장 단위인데 프론트 계약은
   카드 단위 버전(`GET /cards/{id}/versions`)을 요구한다. 카드 버전 N =
   각 `(star_slot, seq)` 에서 `version_no <= N` 인 최신 행의 집합.
-- **`evidence_type` 에 `inferred` 추가** — 스펙의 주장 4분류 중 하나가 빠져 있었다.
+- ~~**`evidence_type` 에 `inferred` 추가**~~ — V1 에서 더했다가 **V2 에서 되돌렸다.**
+  이유는 아래 「신뢰 경계」에 적었다.
 
 ### 고친 것
 
-`interview_turn.outcome` 의 `iunsufficient` → `insufficient` (오타로 판단).
+- `interview_turn.outcome` 의 `iunsufficient` → `INSUFFICIENT` (V1 에서 오타로 판단, V2 에서 대문자).
+- `analysis_job.type` 기본값 `REPO_ANALYSIS` → `ANALYZE` (V2). 프론트에 확정으로 보낸
+  응답 예시가 `"type": "ANALYZE"` 였다. DB 와 API 가 같은 문자열을 쓴다.
 
 ## 신뢰 경계 — ADR-0001 이 구현되는 자리
 
 카드의 **문장마다** 출처 분류가 붙는다. `card_statement.evidence_type` 이 `NOT NULL` 인 것이
 그 강제 지점이다 — **분류 없는 문장은 저장할 수 없다.**
 
-| `evidence_type` | 스펙의 분류 | 의미 |
-|---|---|---|
-| `commit` | 관측됨 | 선택 저장소 활동에서 직접 확인 |
-| `user_written` | 사용자 진술 | 되묻기로 사용자가 직접 확인 |
-| `ai_suggested` | AI 제안 | 확인 전 초안 |
-| `inferred` | 추론 | 여러 근거를 묶은 제한적 해석 |
+| `evidence_type` | 스펙의 분류 | 의미 | 근거 필수 | 근거 검사(linter) |
+|---|---|---|---|---|
+| `COMMIT` | 관측됨 | 선택 저장소 활동에서 직접 확인 | **1개 이상** | ⭕ |
+| `USER_STATED` | 사용자 진술 | 사용자가 직접 말했거나 쓴 문장 | 불필요 | ❌ |
+| `USER_SELECTED` | 사용자 선택 | AI 선택지 중 사용자가 고른 문장 | 불필요 | ❌ |
 
-여기에 제약 하나를 더 걸었다.
+### V1 의 네 분류를 셋으로 줄인 이유
+
+`inferred`(추론)와 `ai_suggested`(AI 제안)를 V2 에서 없앴다. **`inferred` 는 읽기에 따라
+근거 없이 쓴 문장을 합법화하는 칸이 된다.** 두 갈래로 읽히는데 어느 쪽이어도 새 유형이
+필요 없었다 —
+
+| 읽는 법 | 왜 유형이 아닌가 |
+|---|---|
+| *"커밋에서 추론했지만 직접 인용은 아님"* | 근거 커밋은 그대로 붙는다. 낮은 확신은 이미 있는 `confidence = 'LOW'` 가 표현한다 (프론트 칸 상태 `NEEDS_REVIEW` 와 1:1) |
+| *"근거 없이 모델이 채운 칸"* | 규칙 4(근거 0개 문장은 화면에 뜨지 않는다)에 정면으로 걸린다. 애초에 나오면 안 되는 문장이다 |
+
+`ai_suggested` 도 같다 — *확인 전 초안*이라는 뜻은 문장이 아니라 `card.status = 'DRAFT'` 가
+들고 있고, 초안 문장에도 근거 커밋은 붙는다.
+
+### 근거 필수 규칙은 「누가 썼나」로 갈린다
+
+근거 검사의 목적이 *"모델이 GitHub 을 안 읽고 지어냈는가"*(E-8)를 잡는 것이라,
+**사용자가 쓴 문장은 애초에 검사 대상이 아니다.** 그래서 linter 대상은
+`evidence_type = 'COMMIT'` 인 문장뿐이고, 이게 **linter 가 사용자 문장을 지워 버리는 사고**를
+구조로 막는다. 규칙 2(*"사용자가 쓴 문장은 윤문·병합하지 않는다"*)와도 맞는다.
+
+> 별도의 `authored_by` 컬럼을 두는 안이 있었는데 넣지 않았다. 작성 주체를
+> `evidence_type` 이 이미 담고 있어 중복이었다.
+
+제약은 한 칸 옮겼다.
 
 ```sql
+-- V1 — 직접 작성 카드의 저장 자체를 막고 있었다
 CONSTRAINT user_written_has_turn
   CHECK (evidence_type <> 'user_written' OR source_turn_id IS NOT NULL)
+
+-- V2
+CONSTRAINT user_selected_has_turn
+  CHECK (evidence_type <> 'USER_SELECTED' OR source_turn_id IS NOT NULL)
 ```
 
-**사용자 진술이라고 주장하는 문장은 어느 인터뷰 턴에서 왔는지 밝혀야 한다.**
-못 밝히면 출처 없는 주장이다.
+**선택지에서 고른 문장은 어느 턴의 선택지에서 왔는지 밝혀야 한다.** 못 밝히면 출처 없는
+주장이다. 반면 사용자가 직접 친 문장은 턴이 없을 수 있다 — `POST /api/cards/manual` 은
+S/T/A/R 텍스트만 받고 인터뷰를 안 거친다. V1 은 이 경로를 통째로 막고 있었다.
+**직접 입력 = `USER_STATED` + `source_turn_id` NULL + `statement_evidence` 행 없음.**
 
 ### 빈 칸은 행(row)이 없는 것으로 표현한다
 
@@ -312,11 +384,22 @@ CONSTRAINT user_written_has_turn
 
 ### 제약이 실제로 발동하는지 확인했다
 
-PostgreSQL 에 스키마를 올려 위반 데이터를 넣어 봤다. **12건 전부 차단, 정상 5건 전부 통과**
-(오탐 0). 확인한 것 — 확정 시각 없는 확정 카드 · `own > total` 커밋 수 ·
+**V1** — PostgreSQL 에 스키마를 올려 위반 데이터를 넣어 봤다. **12건 전부 차단, 정상 5건
+전부 통과**(오탐 0). 확인한 것 — 확정 시각 없는 확정 카드 · `own > total` 커밋 수 ·
 `commit_cluster` 에 PR 번호 · 이유 없는 후보 · 출처 없는 `user_written` ·
 철회됐는데 토큰 보유 · 사유 없는 배제/부분수집 · 같은 레포 sha 중복 ·
 기술 카드에 정성 주제 · 잘못된 `star_slot` · 근거로 쓰인 커밋 삭제(RESTRICT).
+
+**V2** — V1 을 올리고 **V1 시절 소문자 데이터를 넣은 뒤** V2 를 적용했다. 마이그레이션이
+기존 행을 안 깨고 올리는지까지 봐야 해서다. 경계 **22건 전부 기대대로**(실패 0) —
+직접 입력 문장 저장됨 · 턴 없는 `USER_SELECTED` 차단 · 활성 Job 중복 차단 ·
+끝난 레포엔 새 Job 허용 · 옛 `DONE` 차단 · 정의 안 된 `error_code` 차단 ·
+`steps` 에 객체 차단 · 소문자 값 차단 · V1 제약(확정 시각) 유지.
+데이터도 확인했다 — `inferred` → `COMMIT` + `LOW`, `user_written` → `USER_STATED`,
+`DONE` → `SUCCEEDED`. 빈 DB 신규 설치(V1→V2)도 통과.
+
+**통합본 대조** — `docs/schema-v2.sql` 을 올린 DB 와 V1+V2 를 올린 DB 를 `pg_dump` 로
+비교해 **차이 0줄**을 확인했다. 통합본이 낡으면 팀이 틀린 것을 보고 ERD 를 맞추게 된다.
 
 ## 프론트가 열어 둔 질문에 대한 답
 
@@ -398,6 +481,18 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
   그 결정을 강제한다. **`lowCardWorth` 와 같은 종류의 질문이고, 같은 이유로 규칙이 낫다.**
 - **카드 버전 복원의 정확한 의미.** `card.current_version` 으로 유도 규칙은 적었지만,
   "복원"이 새 버전을 만드는지 포인터만 옮기는지는 미정이다.
+- **지표 테이블이 없다.** 스펙 목록의 `event_log` 자리를 `audit_event` 가 대신하고 있는데
+  **둘은 목적이 다르다.** `audit_event.action` 은 `CONNECT`·`REVOKE`·`ANALYZE`·
+  `CONFIRM_CARD`·`DELETE_DATA` — 보안 감사다. 후보 편집 같은 **사용자 개입이 행으로 남지
+  않아서 오탐률·놓침률을 계산할 근거가 없다.** 3~4주차 게이트가 여기 걸려 있다.
+  (핵심 설계 결정 3 — *"사용자 개입을 행으로 남긴다"*)
+- **`analysis_cache` 를 Redis 에 둘지 DB 에 둘지.** 필요한 테이블이라는 데는 합의했고
+  초반엔 어느 쪽이든 성능 문제가 없다. `raw_event` 는 목적부터 정해야 한다.
+- **취소·임시 저장 엔드포인트가 아직 없다.** 스키마는 `CANCELED` 와 카드 버전을 이미
+  받을 수 있지만 `POST /api/jobs/{id}/cancel` · `PATCH /api/cards/{id}/draft` 는 구현 전이다.
+- **종료 상태의 무결성을 DB 가 안 잡는다.** `state` 가 `SUCCEEDED`/`FAILED`/`CANCELED` 인데
+  `finished_at` 이 비어 있거나, `FAILED` 인데 `error_code` 가 없는 행을 지금은 넣을 수 있다.
+  `card_confirmed_needs_time` 과 같은 종류의 제약인데 논의된 적이 없어 V2 에 넣지 않았다.
 - **모델 제공자.** `agent.port` 뒤에 있어 나중에 정해도 호출부가 안 바뀐다.
 - **Job 실행 방식.** 지금은 `@Async` 전제다. 인스턴스가 늘어나면 큐가 필요하다.
   `analysis_job` 이 이미 상태를 들고 있어 옮길 때 스키마는 안 바뀐다.

@@ -1,0 +1,58 @@
+// 레포 선택 화면(B1) mock 데이터.
+// 백엔드 연동 시 GitHub API(/user/repos 등) 응답으로 대체합니다.
+export const MOCK_REPOS = [
+  {
+    id: "auth-service",
+    owner: "hong-dev",
+    name: "auth-service",
+    language: "Java",
+    dateRange: "2024.03 - 2024.08",
+    myCommitCount: 214,
+    teamCommitCount: 402,
+    prCount: 31,
+    reviewCount: 88,
+    myContributionPct: null,
+    warning: null,
+  },
+  {
+    id: "web-client",
+    owner: "hong-dev",
+    name: "web-client",
+    language: "TypeScript",
+    dateRange: "2024.01 - 2024.05",
+    myCommitCount: 96,
+    teamCommitCount: 140,
+    prCount: 24,
+    reviewCount: 31,
+    myContributionPct: null,
+    warning: null,
+  },
+  {
+    id: "team-board",
+    owner: "kbu-capstone",
+    name: "team-board",
+    language: "Python",
+    dateRange: "2023.09 - 2023.12",
+    myCommitCount: 3,
+    teamCommitCount: 183,
+    prCount: 0,
+    reviewCount: 2,
+    myContributionPct: 2,
+    warning: "낮은 기여도 — 카드로 만들면 부풀리기로 보일 수 있어요",
+  },
+  {
+    id: "algorithm-study",
+    owner: "hong-dev",
+    name: "algorithm-study",
+    language: "Java",
+    dateRange: "2023.03 - 2023.07",
+    myCommitCount: 41,
+    teamCommitCount: 41,
+    prCount: 0,
+    reviewCount: 0,
+    myContributionPct: null,
+    warning: "PR 0건 — 커밋을 묶어서 후보를 만들어 드려요",
+  },
+];
+
+export const TOTAL_REPO_COUNT = 38;

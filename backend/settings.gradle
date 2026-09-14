@@ -1,0 +1,7 @@
+// 팀원마다 로컬 JDK 가 다르다. 툴체인 자동 조달을 켜서 build.gradle 의 Java 21 이
+// 각자 머신의 JDK 버전과 무관하게 재현되게 한다 (CI 도 같은 21 을 쓴다).
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
+}
+
+rootProject.name = 'gitory-backend'

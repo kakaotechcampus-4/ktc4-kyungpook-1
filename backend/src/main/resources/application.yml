@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: gitory-backend
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      # 스키마의 단일 출처는 Flyway 다. JPA 는 검증만 한다 —
+      # update 로 두면 운영에서 엔티티 수정이 곧 스키마 변경이 되어 되돌릴 수 없다.
+      ddl-auto: validate
+    # 뷰 렌더링 시점까지 영속성 컨텍스트를 열어 두지 않는다.
+    # 커넥션을 요청 전체 동안 물고 있는 것이 분석 Job 과 겹치면 풀이 마른다.
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+
+  session:
+    # 세션은 DB 에 둔다. 토큰을 클라이언트에 두지 않는다는 원칙상 세션 쿠키가
+    # 유일한 인증 수단이고, 인스턴스가 늘어나도 로그인이 유지돼야 한다.
+    store-type: jdbc
+
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            # 최소 권한. 저장소 쓰기 권한을 요청하지 않는다.
+            scope: read:user, public_repo
+
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: true
+        same-site: lax
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 헬스체크만 연다. env·configprops 는 비밀값이 새는 경로다.
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+gitory:
+  ingest:
+    # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.
+    max-commits: 1000
+    max-pull-requests: 50
+    max-issues: 50
+    max-diff-bytes: 1048576
+  retention:
+    # 임시 인터뷰 초안은 마지막 활동 후 30일 보관 후 자동 삭제
+    draft-days: 30
+    # 계정 삭제 요청 시 서비스 데이터에서 삭제까지
+    account-deletion-days: 7
+
+logging:
+  level:
+    root: INFO

@@ -91,5 +91,5 @@ test('동의 취소는 랜딩으로 돌아와 안내를 보여준다', async ({ 
   await freshSeed(page);
   await page.goto('/login?error=access_denied');
   await expect(page.getByText('GitHub에서 동의를 취소하셨네요')).toBeVisible();
-  await expect(page.getByRole('button', { name: /GitHub으로 시작하기/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'GitHub로 시작' })).toHaveCount(2);
 });

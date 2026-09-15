@@ -2,10 +2,17 @@
 .iconbox { display: inline-grid; place-items: center; border-radius: var(--radius-md); flex: 0 0 auto; color: var(--text-secondary); background: var(--bg-subtle); }
 .iconbox--ink { background: var(--bg-ink-solid); color: var(--text-on-ink); }
 .iconbox--paper { background: var(--bg-surface); border: 1px solid var(--border-default); color: var(--text-tertiary); }
-.stardots { display: inline-flex; gap: 3px; }
-.stardot { width: 18px; height: 18px; border-radius: 4px; display: grid; place-items: center; font-size: 9.5px; font-weight: 700; color: var(--text-tertiary); background: var(--bg-canvas); border: 1px dashed var(--border-strong); }
+.stardots { display: inline-grid; grid-template-columns: repeat(4, minmax(22px, 1fr)); gap: 4px; min-width: 100px; }
+.stardot { min-width: 0; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 9.5px; font-weight: 700; color: var(--text-tertiary); background: var(--bg-canvas); border: 1px dashed var(--border-strong); }
 .stardot--on { background: var(--bg-ink-solid); color: var(--text-on-ink); border: 1px solid var(--bg-ink-solid); }
 .stardot--low { background: var(--field-low-bg); color: var(--field-low-text); border: 1px solid var(--field-low-border); }
+.stardots--labeled { width: min(100%, 240px); min-width: 200px; gap: 6px; }
+.stardots--labeled .stardot { height: 38px; grid-template-rows: 22px 14px; align-content: center; border: 0; background: transparent; color: var(--text-tertiary); }
+.stardots--labeled .stardot__letter { width: 22px; height: 22px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; border: 1px dashed var(--border-strong); background: var(--bg-paper); }
+.stardots--labeled .stardot--on .stardot__letter { border-style: solid; border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
+.stardots--labeled .stardot--low .stardot__letter { border-style: solid; border-color: var(--field-low-border); background: var(--field-low-bg); color: var(--field-low-text); }
+.stardot__letter { line-height: 1; }
+.stardot__label { font-size: 8px; line-height: 12px; font-weight: 600; color: currentColor; opacity: .72; }
 .toolbar__clear { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--text-tertiary); }
 .toolbar__clear:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .chip--static { color: var(--text-tertiary); background: var(--bg-paper); cursor: default; }
@@ -13,10 +20,43 @@
 .evidence__icon { color: var(--evidence-commit-label); flex: 0 0 auto; }
 .evidence--user .evidence__icon { color: var(--text-tertiary); }
 .section-head h2 { letter-spacing: -.01em; }
+.user-avatar { display: inline-grid; place-items: center; flex: 0 0 auto; overflow: hidden; border-radius: 50%; background: var(--bg-inset); box-shadow: inset 0 0 0 1px var(--border-default); }
+.user-avatar img, .user-avatar__fallback { width: 100%; height: 100%; }
+.user-avatar img { display: block; object-fit: cover; }
+.user-avatar__fallback { display: grid; place-items: center; color: var(--text-secondary); font-size: 42%; font-weight: 800; text-transform: uppercase; }
 
 /* 카드 그리드 · 이어서 하기 · 히어로 */
-.gcard--draft { border-style: dashed; }
-.gcard:hover { border-color: var(--border-strong); box-shadow: 0 6px 20px rgba(0, 0, 0, .06); }
+.experience-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 20px; }
+.experience-item.gcard { min-height: 210px; gap: 18px; padding: 24px; border: 0; border-radius: 0; box-shadow: none; background: transparent; transform: none; }
+.experience-item:nth-child(even) { border-left: 1px solid var(--border-default); }
+.experience-item:nth-child(n + 3) { border-top: 1px solid var(--border-default); }
+.experience-item:hover, .experience-item:focus-visible { border-color: transparent; background: var(--bg-paper); box-shadow: none; transform: none; }
+.experience-item__meta, .experience-item__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-tertiary); font-size: 11.5px; line-height: 18px; }
+.experience-item__footer { margin-top: auto; }
+.experience-item .gcard__title { margin: 0; }
+.experience-item .stardots--labeled { width: 100%; max-width: 280px; }
+.status-tabs { display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--border-default); }
+.status-tab { position: relative; min-height: 44px; padding: 0 2px; color: var(--text-secondary); font-size: 13px; font-weight: 600; }
+.status-tab[aria-pressed="true"] { color: var(--text-primary); }
+.status-tab[aria-pressed="true"]::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--bg-ink-solid); }
+.status-tab:hover { color: var(--text-primary); }
+.settings-page { gap: 32px; }
+.profile-summary { display: flex; align-items: center; gap: 20px; min-height: 76px; padding: 4px 2px; }
+.settings-section { padding: 24px; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-surface); box-shadow: none; }
+.settings-row { display: flex; align-items: center; gap: 14px; padding: 15px 0; border-top: 1px solid var(--border-default); }
+.settings-row:first-of-type { border-top: 0; }
+.settings-row--muted { color: var(--text-tertiary); }
+.settings-links { padding-block: 6px; }
+.settings-section.stat-grid { gap: 0; padding: 0; overflow: hidden; }
+.settings-section .stat { min-width: 0; padding: 22px 24px; }
+.settings-section .stat + .stat { border-left: 1px solid var(--border-default); }
+.record-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-surface); }
+.record-list > .card { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.record-list > .card + .card { border-top: 1px solid var(--border-default); }
+.record-list > .repo-row { padding: 18px 20px; }
+.record-list > .cand { padding: 20px; }
+.record-list > .card:hover { background: var(--bg-paper); box-shadow: none; }
+.record-list > .card--selected { border: 1px solid var(--border-selected); background: var(--bg-selected); box-shadow: none; }
 .resume { display: flex; flex-direction: column; gap: 8px; }
 .resume__item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-default); transition: border-color .12s, transform .12s; }
 .resume__item:hover { border-color: var(--border-strong); transform: translateX(2px); }

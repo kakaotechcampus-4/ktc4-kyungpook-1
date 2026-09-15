@@ -7,6 +7,7 @@ import { ymd, ymdhm } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 const SCOPES = [
   { scope: 'public_repo', title: '공개 저장소 읽기', desc: '커밋 · PR · 리뷰 코멘트 · 이슈', granted: true },
@@ -25,11 +26,11 @@ export function GithubSettingsPage() {
   const analyzed = (repos.data ?? []).filter((r) => r.lastAnalyzedAt);
 
   return (
-    <main className="main main--tight">
+    <main className="main settings-page">
       <PageTitle right="읽기 전용">GitHub 연결</PageTitle>
       {!me.data ? <Skeleton h={90} /> : (
-        <div className="card row" style={{ gap: 18, padding: '20px 22px', flexWrap: 'wrap' }}>
-          <span className="sidebar__avatar" style={{ width: 48, height: 48 }}>{me.data.avatarUrl && <img src={me.data.avatarUrl} alt="" />}</span>
+        <div className="profile-summary" style={{ flexWrap: 'wrap' }}>
+          <UserAvatar src={me.data.avatarUrl} login={me.data.login} size={48} />
           <div className="stack grow" style={{ gap: 6 }}>
             <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 18 }}>{me.data.login}</span><Badge kind={gh?.connected ? 'CONFIRMED' : 'NEUTRAL'}>{gh?.connected ? '연결됨' : '연결 안 됨'}</Badge></div>
             <span className="t-12l c-2">{gh?.connectedAt ? `${ymd(gh.connectedAt)} 연결` : '연결되어 있지 않습니다 — 새 분석을 하려면 다시 연결하세요'}{gh?.lastCollectedAt ? ` · 마지막 수집 ${ymdhm(gh.lastCollectedAt)}` : ''}</span>
@@ -39,18 +40,18 @@ export function GithubSettingsPage() {
       )}
       {gh && !gh.connected && <Note strong="연결 해제됨 — 새 정리는 다시 연결 후" tone="inset" />}
 
-      <div className="card stack" style={{ gap: 12, padding: '18px 20px' }}>
+      <section className="settings-section stack" style={{ gap: 4 }}>
         <div className="row"><span className="w-700" style={{ fontSize: 14.5 }}>허용한 권한</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
         {SCOPES.map((s) => (
-          <div key={s.scope} className={`card row ${s.granted ? 'card--paper' : ''}`} style={{ gap: 14, padding: '12px 14px', borderRadius: 8, background: s.granted ? undefined : 'var(--bg-canvas)' }}>
+          <div key={s.scope} className={`settings-row ${s.granted ? '' : 'settings-row--muted'}`}>
             <Badge kind={s.granted ? 'PR' : 'NEUTRAL'}>{s.scope}</Badge>
             <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13, color: s.granted ? undefined : 'var(--text-tertiary)' }}>{s.title}</span><span className="t-12 c-2">{s.desc}</span></div>
             <Badge kind="NEUTRAL">{s.granted ? '허용' : '미요청'}</Badge>
           </div>
         ))}
-      </div>
+      </section>
 
-      <div className="card stack" style={{ padding: '18px 20px' }}>
+      <section className="settings-section stack">
         <span className="w-700" style={{ fontSize: 14.5, marginBottom: 6 }}>수집 이력</span>
         {analyzed.length === 0 && <span className="t-12l c-3">아직 정리한 레포가 없습니다.</span>}
         {analyzed.map((r) => (
@@ -61,7 +62,7 @@ export function GithubSettingsPage() {
             <span className="right t-12 w-500" style={{ color: 'var(--text-strong)' }}>{r.candidateCount === 0 ? '후보 0 (EMPTY)' : `후보 ${r.candidateCount ?? '-'} · 카드 ${r.cardCount}`}</span>
           </div>
         ))}
-      </div>
+      </section>
 
       <div className="row" style={{ gap: 14, padding: '18px 20px', borderRadius: 12, background: 'var(--state-failed-bg)', flexWrap: 'wrap' }}>
         <div className="stack grow" style={{ gap: 4 }}>

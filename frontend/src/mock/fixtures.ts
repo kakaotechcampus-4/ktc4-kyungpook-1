@@ -6,7 +6,7 @@ export const now = () => new Date().toISOString();
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400_000).toISOString();
 
 export const seedUser = {
-  id: 'u_01', login: 'hong-dev', avatarUrl: null, plan: 'FREE' as const,
+  id: 'u_01', login: 'hong-dev', avatarUrl: '/demo-avatar.svg', plan: 'FREE' as const,
   github: { connected: true, scopes: ['public_repo', 'read:user'], connectedAt: daysAgo(5), lastCollectedAt: daysAgo(1) },
 };
 

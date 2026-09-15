@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="데모 GitHub 프로필">
+  <rect width="96" height="96" rx="48" fill="#e8e6df"/>
+  <circle cx="48" cy="38" r="17" fill="#252523"/>
+  <path fill="#252523" d="M18 88c3-20 14-31 30-31s27 11 30 31H18Z"/>
+  <circle cx="42" cy="34" r="4" fill="#f5f4f0" opacity=".7"/>
+</svg>

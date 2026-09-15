@@ -3,13 +3,13 @@
 Gitory 프론트엔드. 와이어프레임 v3(27장) · 유저 플로우(29노드 · 경로 54개) · 테크스펙 인터페이스 명세를 그대로 코드로 옮겼습니다.
 **React 19 + TypeScript + Vite · TanStack Query · React Router · zod**. 백엔드 없이 목 API 로 전 화면이 돌고, Spring 이 뜨면 `.env` 두 줄로 붙습니다.
 
-**데모 배포**: https://gitory-prototypes.vercel.app — 백엔드 없이 브라우저 목으로 전 구간이 돕니다 (사이드바에 `데모 · 샘플 데이터` 표시).
+**데모 배포**: https://gitory-prototypes.vercel.app — 백엔드 없이 브라우저 목으로 전 구간이 돕니다.
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — 목 API 내장 (브라우저에서 구동)
 npm test           # 계약 계층 유닛 (vitest)
-npm run e2e        # E2E 10건 (playwright · 최초 1회 npx playwright install chromium)
+npm run e2e        # 기능 + 반응형 E2E (playwright · 최초 1회 npx playwright install chromium)
 npm run e2e:static # 같은 E2E 를 프로덕션 빌드에 — Vercel 이 서빙하는 산출물과 동일
 npm run build      # tsc -b && vite build
 ```
@@ -63,6 +63,28 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 
 `src/styles/tokens.css` 는 Figma 컬렉션(Primitives 84 · Semantic 39)과 이름 1:1. 웜 잉크 무채색 + 신호색 2계열(앰버 = ⚑ 확인 필요 · 브릭 = 실패). **기본 라이트 고정** — OS 다크를 따라가지 않고 마이페이지에서 켠 것만 기억합니다. 화면 코드는 원시 `--ink-*` 를 텍스트 색으로 쓰지 않습니다.
 
+## 반응형 레이아웃
+
+`src/styles/responsive.css`가 셸과 breakpoint의 최종 스타일을 담당하며 다른 CSS 파일보다 마지막에 로드됩니다.
+
+| 화면 폭 | 내비게이션과 레이아웃 |
+| --- | --- |
+| 320–767px | 상단 브랜드 + 이름이 표시되는 하단 메뉴, 단일 열, safe-area를 고려한 sticky 동작 |
+| 768–1199px | 아이콘 중심 축소 사이드바, 콘텐츠 성격에 따른 1–2열 |
+| 1200px 이상 | 펼침/접힘 사이드바와 가용 폭을 사용하는 작업 영역 |
+
+랜딩은 가치 제안과 CTA를 먼저 보여주고 세부 GitHub 접근 범위는 접어 둡니다. 모달, 검색·필터, 저장소 행, 후보 목록, 인터뷰, 설정 폼은 작은 화면에서 줄바꿈되며 가로 스크롤을 만들지 않습니다. 레이아웃 문제와 재발 방지는 [상위 트러블슈팅 문서](../docs/TROUBLESHOOTING.md)에 기록합니다.
+
+## 조용한 목록형 UI
+
+- 데모에서도 로컬 GitHub 프로필 샘플을 표시하며, 실제 이미지가 없거나 깨지면 동일 크기의 이니셜로 대체합니다.
+- 경험 카드의 STAR는 `S/T/A/R`과 `상황/과제/행동/결과`를 고정된 네 열로 정렬합니다.
+- 홈·카드·저장소·후보 목록은 항목마다 네모와 그림자를 반복하지 않고, 목록 표면 하나와 넉넉한 행 간격·구분선을 사용합니다.
+- 페이지 섹션은 32px, 목록 행과 관련 정보 묶음은 20–24px 간격을 기본으로 사용합니다.
+- 선택, 경고, 오류, 입력, 모달처럼 경계를 알아야 하는 요소의 테두리는 유지합니다.
+
+세부 기준과 검증 범위는 [조용한 목록형 UI 설계안](docs/superpowers/specs/2026-09-10-gitory-quiet-ui-design.md)을 참고하세요.
+
 ## 목 시나리오 (데모용)
 
 | 레포 | 시나리오 |
@@ -84,7 +106,7 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 
 ## 검증
 
-`npm run typecheck` · `npm test`(10) · `npm run e2e`(10: 핵심 경로 · EMPTY · E-1 · E-2 · 제외 실행취소 · 되묻기 · 편집→버전 · 마스킹 · 직접 작성→확정 · 동의 취소) · CI `.github/workflows/ci.yml`
+`npm run typecheck` · `npm test`(12) · `npm run e2e`(기능 10 + UI·반응형 8: 320/390/768/1024/1440/1920px, PC 정렬선, 목록·STAR·설정 구조) · `npm run e2e:static` · CI `.github/workflows/ci.yml`
 
 ## 아직 없는 것
 

@@ -173,3 +173,32 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - 목은 진행 중인 Job 을 sessionStorage 에 같이 담아 새로고침을 넘긴다. 실서버는 당연히 서버에 있다.
 - 목의 `E-7` 은 "카드감 낮음" 후보로 카드를 만들면 발생. 실서버는 3분 초과 시.
 - 목은 `/dedicated` 없음 — 전부 단일 프로세스 인메모리. 재시작하면 초기화.
+
+## 물려받은 초안(`api-spec.md`)에서 정리한 것
+
+2026-09-07 프론트 스캐폴드와 함께 들어온 `docs/api-spec.md` 는 화면을 만들며 프론트가 제안한 초안이었다.
+백엔드가 계약을 확정하면서 대부분이 대체됐고, 계약 문서가 둘이면 다음 사람이 어느 쪽을 믿을지 모르게 되므로
+**이 문서 하나로 합치고 초안은 지웠다** (2026-09-15). 지우면서 아래 둘만 옮겨 왔다.
+
+### 경로 표기가 갈렸던 것 — 지금 구현된 쪽이 기준이다
+
+| 초안 | 확정 · 구현됨 |
+|---|---|
+| `GET /auth/github/login` | `GET /auth/github/start` |
+| `GET /auth/session` | `GET /me` |
+| `GET /repositories` · `/repositories/{id}/...` | `GET /repos` · `/repos/{id}/...` |
+| `POST /cards/manual` | `POST /cards` (한 번에 저장) · `POST /cards/manual/draft` (빈 DRAFT 먼저) |
+| 목록 응답 커서 페이지네이션 `{ items, nextCursor }` | 평범한 배열. 레포·카드 모두 한 사용자 기준이라 아직 페이지네이션이 필요한 규모가 아니다 |
+
+초안의 §7(라우트 ↔ 훅 매핑)은 `.jsx` 파일 기준이라 통째로 무효다 — 그 구조는 TypeScript + React Router 로 바뀌었다.
+
+### 아직 안 정해진 것 (초안 §8 중 살아 있는 항목)
+
+| # | 항목 | 지금 상태 |
+|---|---|---|
+| 1 | 크레딧 개념이 유효한가 | **프론트에서 뺐다.** `Me` 에 `plan: 'FREE'` 만 있고 크레딧 필드는 없다. 되살릴 거면 알려 달라 |
+| 2 | `weak`(카드감 낮음) 판정 근거 | 규칙 기반인지 모델 점수인지 아직 모른다. 화면은 `weak: boolean` 만 쓰므로 어느 쪽이어도 돌아간다 |
+| 3 | 내 커밋 / 팀 커밋 / 리뷰 수를 GitHub 에서 어떻게 세는가 | 응답 모양(`contribution:{mine,team,ratio,level}` · `prCount` · `reviewCount`)은 확정. **세는 방법**은 백엔드 판단이다. 봇·머지 커밋을 빼는지에 따라 화면의 "내 기여 3%" 경고가 달라진다 |
+
+초안 §8 의 나머지는 해소됐다 — `needsReview` 는 서버가 `star` 로 판정하고, 버전 히스토리·복원 엔드포인트가 생겼고,
+"다른 작업 하러 가기" 이후 상태 유지는 `GET /jobs?active=true` 로 푼다.

@@ -30,7 +30,10 @@ dependencies {
 
     // 영속 — 스키마는 Flyway 가 단일 출처다. ddl-auto 는 validate 로 고정한다.
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.flywaydb:flyway-core'
+
+    // Boot 4 는 Flyway 자동 설정이 스타터에 있다. flyway-core 만 두면 마이그레이션이 실행되지 않는다.
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 

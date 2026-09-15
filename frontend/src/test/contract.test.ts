@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 import { ActiveJob, CardSummary, Job, StartedJob } from '@/api/schemas';
+import { pollInterval } from '@/lib/jobView';
 
 /**
  * 목이 실서버 계약을 실제로 지키는지 본다.
@@ -22,6 +23,14 @@ const advance = (sec: number) => {
 };
 
 beforeEach(() => resetDb());
+
+/** 폴링 간격 검사용 최소 Job — 상태와 pollAfterMs 만 바꿔 가며 쓴다. */
+const RUNNING: Job = {
+  jobId: 'job_x', type: 'ANALYZE', state: 'RUNNING', partial: false, steps: [],
+  errorCode: null, retryable: null, retryAfterSec: null,
+  startedAt: '2026-09-15T00:00:00Z', updatedAt: '2026-09-15T00:00:00Z', finishedAt: null,
+  result: null, pollAfterMs: 2000,
+};
 
 describe('분석 시작 — 중복 Job 을 만들지 않는다', () => {
   it('같은 Idempotency-Key 재요청은 같은 Job 을 돌려준다', () => {
@@ -170,5 +179,40 @@ describe('되묻기 — PR 이 없어도 돈다', () => {
   it('PR 카드는 PR 로 묻는다', () => {
     const turn = req('POST', '/cards/card_01/interview', { field: 'T' }).data as { sourceType: string };
     expect(turn.sourceType).toBe('PR');
+  });
+});
+
+describe('폴링 간격은 서버가 정한다', () => {
+  it('화면은 pollAfterMs 를 그대로 쓴다 — 자체 상수로 덮지 않는다', () => {
+    const started = parse(StartedJob, req('POST', '/repos/r_auth/analyze'));
+    const job = parse(Job, req('GET', `/jobs/${started.jobId}`));
+    expect(pollInterval(job)).toBe(job.pollAfterMs);
+  });
+
+  it('서버가 0 을 줘도 쉬지 않고 두드리지 않는다', () => {
+    expect(pollInterval({ ...RUNNING, pollAfterMs: 0 })).toBe(500);
+  });
+
+  it('끝난 Job 은 더 묻지 않는다', () => {
+    (['SUCCEEDED', 'FAILED', 'CANCELED'] as const).forEach((state) => {
+      expect(pollInterval({ ...RUNNING, state })).toBe(false);
+    });
+    expect(pollInterval(undefined)).toBe(false);
+  });
+});
+
+describe('되묻기 — 커밋 묶음 카드', () => {
+  it('PR 번호가 없는 커밋 묶음도 COMMIT_CLUSTER 로 되묻는다', () => {
+    // 커밋 묶음 후보로 카드를 만든다 (PR 0건 레포)
+    const started = parse(StartedJob, req('POST', '/repos/r_algo/analyze'));
+    const undo = advance(20);
+    req('GET', `/jobs/${started.jobId}`); // 후보 생성 확정
+    undo();
+    const board = req('GET', '/repos/r_algo/candidates').data as { candidates: { id: string; type: string }[] };
+    const cluster = board.candidates.find((c) => c.type === 'COMMIT_CLUSTER')!;
+    expect(cluster).toBeTruthy();
+    const made = req('POST', '/repos/r_algo/cards', { candidateIds: [cluster.id] }).data as { cardIds: string[] };
+    const turn = req('POST', `/cards/${made.cardIds[0]}/interview`, { field: 'T' }).data as { sourceType: string };
+    expect(turn.sourceType).toBe('COMMIT_CLUSTER');
   });
 });

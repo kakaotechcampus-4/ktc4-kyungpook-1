@@ -4,6 +4,7 @@ import { keys } from './keys';
 import { AuthError } from './client';
 import { isTerminal, type Card, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus } from './schemas';
 import { newIdempotencyKey } from '@/lib/uuid';
+import { pollInterval } from '@/lib/jobView';
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -39,11 +40,7 @@ export function useJob(jobId: string | undefined, opts?: Partial<UseQueryOptions
     queryKey: keys.job(jobId ?? ''),
     queryFn: () => endpoints.job(jobId!),
     enabled: !!jobId,
-    refetchInterval: (q) => {
-      const d = q.state.data;
-      if (!d || isTerminal(d.state)) return false;
-      return Math.max(500, d.pollAfterMs);
-    },
+    refetchInterval: (q) => pollInterval(q.state.data),
     refetchIntervalInBackground: true, // "화면을 떠나도 되고, 돌아오면 이어서 보인다"
     ...opts,
   });

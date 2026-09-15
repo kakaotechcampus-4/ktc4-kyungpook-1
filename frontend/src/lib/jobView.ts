@@ -1,4 +1,4 @@
-import type { Job, JobStep } from '@/api/schemas';
+import { isTerminal, type Job, type JobStep } from '@/api/schemas';
 
 /**
  * Job 단계를 화면 상태로 옮긴다.
@@ -16,3 +16,14 @@ export const stepProgress = (j: Job | undefined) => (j && j.steps.length ? doneS
 
 export const stepBadge = (s: JobStep) =>
   s.state === 'SKIPPED' ? '해당 없음' : stepView(s) === 'DONE' ? '완료' : stepView(s) === 'NOW' ? '진행 중' : '대기';
+
+/**
+ * 다음 폴링까지 기다릴 시간(ms). false 면 폴링을 멈춘다.
+ *
+ * 간격은 화면이 아니라 서버가 정한다 — 서버가 느려질 때 프론트가 더 자주 두드리면 상황만 나빠진다.
+ * 하한 500ms 만 둔다. 서버가 0 이나 음수를 주더라도 무한 루프로 돌지 않게 하는 안전장치다.
+ */
+export const pollInterval = (job: Job | undefined, floorMs = 500): number | false => {
+  if (!job || isTerminal(job.state)) return false;
+  return Math.max(floorMs, job.pollAfterMs);
+};

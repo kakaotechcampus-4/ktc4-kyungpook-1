@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 #: card_statement.star_slot — CHAR(1), S/T/A/R.
 StarSlot = Literal["S", "T", "A", "R"]
@@ -28,6 +28,9 @@ NextAction = Literal["ask_again", "complete"]
 #: 값이 없으면(evidence_hint=None) 증거 전무 → fallback/recall_aid 케이스.
 EvidenceKind = Literal["revert", "changes_requested", "issue_feedback"]
 
+#: 되묻기 대상의 출처. pr=PR 단위, commit_cluster=커밋 묶음, direct_card=카드 직접 지정.
+SourceType = Literal["pr", "commit_cluster", "direct_card"]
+
 
 class EvidenceHint(BaseModel):
     """빈 칸(missing slot)에 대해 코드에서 이미 찾아둔 정황 증거.
@@ -43,6 +46,11 @@ class EvidenceHint(BaseModel):
     )
     note: Optional[str] = Field(
         None, description="코드가 찾아낸 정황 메모(예: 'Revert 커밋 발견, 이유 없음')"
+    )
+    review_id: Optional[int] = Field(None, description="관련 PR 리뷰 ID(changes_requested 등)")
+    issue_number: Optional[int] = Field(None, description="관련 이슈 번호(issue_feedback 등)")
+    comment_excerpt: Optional[str] = Field(
+        None, description="리뷰/이슈 코멘트 발췌(자유 형식, 질문 생성 시 참고용)"
     )
 
 
@@ -66,6 +74,17 @@ class InterviewTurnRequest(BaseModel):
     existing_turn_count: int = Field(
         0, ge=0, description="이 카드에 대해 이미 생성된 interview_turn 수"
     )
+    source_type: SourceType = Field(..., description="되묻기 대상의 출처")
+    pr_number: Optional[int] = Field(
+        None, description="source_type='pr'일 때 필수. 그 외에는 null 허용"
+    )
+
+    @model_validator(mode="after")
+    def _validate_pr_number(self) -> "InterviewTurnRequest":
+        """source_type='pr'이면 pr_number가 반드시 있어야 한다."""
+        if self.source_type == "pr" and self.pr_number is None:
+            raise ValueError("source_type='pr'이면 pr_number가 필요합니다.")
+        return self
 
 
 class InterviewTurnResult(BaseModel):
@@ -73,11 +92,20 @@ class InterviewTurnResult(BaseModel):
 
     질문을 새로 생성하지 않는 경우(2회 상한 도달, 빈 칸 없음)에는
     `next_action="complete"`만 채우고 질문 관련 필드는 모두 null이 된다.
+
+    `turn_seq`(이 카드의 몇 번째 되묻기 턴인지)와 `target_statement_seq`
+    (STAR 카드 문장 순번, `missing_slots[].seq`에서 유래)는 의미가 다른
+    별개의 순번이므로 필드를 분리한다.
     """
 
     card_id: int
-    seq: Optional[int] = None
-    star_slot: Optional[StarSlot] = None
+    turn_seq: Optional[int] = Field(
+        None, description="이 카드에 대한 되묻기 턴 순번(1-based) = existing_turn_count + 1"
+    )
+    target_star_slot: Optional[StarSlot] = None
+    target_statement_seq: Optional[int] = Field(
+        None, description="질문 대상 STAR 문장 순번(card_statement.seq)"
+    )
     question_type: Optional[QuestionType] = None
     trigger_source: Optional[TriggerSource] = None
     parent_turn_id: Optional[int] = None

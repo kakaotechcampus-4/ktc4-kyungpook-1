@@ -67,8 +67,9 @@ class InterviewAgent:
 
         return InterviewTurnResult(
             card_id=request.card_id,
-            seq=slot.seq,
-            star_slot=slot.star_slot,
+            turn_seq=request.existing_turn_count + 1,
+            target_star_slot=slot.star_slot,
+            target_statement_seq=slot.seq,
             question_type=question_type,
             trigger_source="auto",
             parent_turn_id=None,

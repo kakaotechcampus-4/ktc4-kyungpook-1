@@ -43,10 +43,10 @@ function readCookie(name: string): string | null {
 export async function api<T extends z.ZodTypeAny>(
   schema: T,
   path: string,
-  init: { method?: Method; body?: unknown; signal?: AbortSignal } = {},
+  init: { method?: Method; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> } = {},
 ): Promise<z.infer<T>> {
   const method = init.method ?? 'GET';
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', ...init.headers };
   if (init.body !== undefined) headers['Content-Type'] = 'application/json';
   if (method !== 'GET') {
     const xsrf = readCookie('XSRF-TOKEN');

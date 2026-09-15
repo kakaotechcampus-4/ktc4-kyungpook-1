@@ -19,7 +19,6 @@
 .banner__btn { background: var(--ink-0); color: var(--ink-900); border-color: var(--ink-0); margin-left: auto; }
 .banner__btn:hover { background: var(--ink-100); }
 .gcard { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; transition: transform .12s, border-color .12s; }
-.gcard:hover { transform: translateY(-1px); border-color: var(--border-strong); }
 .gcard__title { font-size: 18px; line-height: 26px; font-weight: 600; }
 .mine-chip { display: inline-flex; gap: 5px; padding: 3px 8px; border-radius: var(--radius-xs); background: var(--bg-subtle); font-size: 10.5px; line-height: 16px; font-weight: 600; color: var(--text-strong); }
 .mine-chip span { font-weight: 400; color: var(--text-tertiary); }
@@ -28,7 +27,6 @@
 
 /* ───────── 레포 행 (B1) ───────── */
 .repo-row { gap: 12px; padding: 13px 14px; width: 100%; text-align: left; border-radius: 10px; }
-.repo-row:hover { border-color: var(--border-strong); }
 .repo-row--sel { background: var(--bg-selected); }
 
 /* ───────── 분석 진행 (B3) · 실패 (B4) ───────── */

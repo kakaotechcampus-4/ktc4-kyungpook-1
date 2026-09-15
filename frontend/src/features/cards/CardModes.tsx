@@ -1,62 +1,39 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Card, StarField } from '@/api/schemas';
-import { Badge, Button, Chip, EvidenceStrip, Input, Note, StarKey, StickyFooter, Textarea } from '@/components/ui';
+import { Badge, Button, Chip, EvidenceStrip, Input, StarKey, StickyFooter, Textarea } from '@/components/ui';
 import { STAR_FIELDS, fieldKey, starFieldName } from '@/lib/labels';
-import { useMask, useSaveVersion } from '@/api/queries';
-import { CONFIG } from '@/lib/config';
+import { useMask, useSaveDraft } from '@/api/queries';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
+import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
 import { applyMask } from './StarBlock';
 
-const draftKey = (c: Card) => `gitory.draft.${c.id}.v${c.version.versionNo}`;
 type Draft = Record<StarField, string>;
 const fromCard = (c: Card): Draft => ({ S: c.version.situation ?? '', T: c.version.task ?? '', A: c.version.action ?? '', R: c.version.result ?? '' });
 
 /**
- * D6 직접 수정 — 사용자 문장은 윤문·병합하지 않는다. 저장하면 v+1 (USER_EDIT). AI 초안 v1 은 그대로 남는다.
- * 편집 중 내용은 이 브라우저에 자동 저장돼 새로고침·이탈 후에도 복원된다. 서버 버전은 [저장]을 눌렀을 때만 생긴다.
+ * D6 직접 수정 — 사용자 문장은 윤문·병합하지 않는다.
+ *
+ * 입력은 멈춘 뒤 잠깐 있다가 서버에 임시 저장된다(PATCH /cards/:id/draft). 브라우저에는 아무것도 남기지 않는다 —
+ * 다른 기기에서 열어도 이어서 쓸 수 있어야 하고, 캐시를 지웠다고 쓰던 글이 날아가면 안 되기 때문이다.
+ * 임시 저장은 같은 버전을 덮어쓴다. AI 초안(v1)은 잠겨 있어 첫 수정 때 새 버전이 한 번 갈라지고, 그 뒤로는 그 버전을 계속 덮는다.
  */
 export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
-  const save = useSaveVersion(card.id);
+  const saveDraft = useSaveDraft(card.id);
+  const baseRef = useRef<Draft>(fromCard(card));           // 비교 기준은 들어올 때 한 번만 잡는다
   const [draft, setDraft] = useState<Draft>(() => fromCard(card));
-  const [restored, setRestored] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const timer = useRef<number | null>(null);
+  const { savedAt, failed, flush } = useDraftAutosave(toDraftFields(draft), saveDraft.mutateAsync);
 
-  // 복원
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(draftKey(card));
-      if (raw) {
-        const d = JSON.parse(raw) as Draft;
-        if (JSON.stringify(d) !== JSON.stringify(fromCard(card))) { setDraft(d); setRestored(true); }
-      }
-    } catch { /* noop */ }
-  }, [card]);
-  // 자동 저장 (디바운스)
-  useEffect(() => {
-    if (timer.current) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      const dirty = JSON.stringify(draft) !== JSON.stringify(fromCard(card));
-      try { if (dirty) { localStorage.setItem(draftKey(card), JSON.stringify(draft)); setSavedAt(Date.now()); } else localStorage.removeItem(draftKey(card)); } catch { /* noop */ }
-    }, CONFIG.AUTOSAVE_MS);
-    return () => { if (timer.current) window.clearTimeout(timer.current); };
-  }, [draft, card]);
-
-  const changed = STAR_FIELDS.filter((f) => (card.version[fieldKey[f]] ?? '') !== draft[f]);
-  const discard = () => { setDraft(fromCard(card)); setRestored(false); try { localStorage.removeItem(draftKey(card)); } catch { /* noop */ } };
-  const submit = async () => {
-    const body: Record<string, string | null> = {};
-    changed.forEach((f) => (body[fieldKey[f]] = draft[f].trim() || null));
-    await save.mutateAsync(body);
-    try { localStorage.removeItem(draftKey(card)); } catch { /* noop */ }
-    track('card_edited', { cardId: card.id, fields: changed.join('') });
-    toast(`v${card.version.versionNo + 1} 로 저장했습니다 — AI 초안 v1 은 그대로 남습니다`, { tone: 'success' });
+  const changed = STAR_FIELDS.filter((f) => baseRef.current[f] !== draft[f]);
+  const done = async () => {
+    await flush();
+    if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('저장했어요 — AI 초안은 그대로 남아 있어요', { tone: 'success' }); }
     onDone();
   };
+  const revert = () => setDraft(baseRef.current);
+
   return (
     <>
-      {restored && <Note strong="편집 중이던 내용을 복원했어요" tone="caution"><button type="button" className="w-600" style={{ textDecoration: 'underline', marginLeft: 6 }} onClick={discard}>버리고 원본으로</button></Note>}
       <div className="card star-read">
         {STAR_FIELDS.map((f) => {
           const ev = card.evidence.filter((e) => e.field === f);
@@ -67,12 +44,12 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
               <div className="stack grow" style={{ gap: 10 }}>
                 <div className="row" style={{ gap: 8 }}>
                   <span className="star__name">{starFieldName[f]}</span>
-                  {dirty && <Badge kind="CAUTION">편집 중</Badge>}
+                  {dirty && <Badge kind="CAUTION">고친 칸</Badge>}
                   <span className="right t-12 c-3">{draft[f].length}자</span>
-                  {dirty && <button type="button" className="t-12 w-500 c-2" onClick={() => setDraft((d) => ({ ...d, [f]: card.version[fieldKey[f]] ?? '' }))}>되돌리기</button>}
+                  {dirty && <button type="button" className="t-12 w-500 c-2" onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button>}
                 </div>
                 <Textarea className="input--lg" rows={3} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
-                  placeholder={ev.length ? '' : '이 칸은 근거가 없습니다. 쓰면 내가 말한 것(USER_STATED)으로 저장됩니다.'} aria-label={starFieldName[f]} />
+                  placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]} />
                 {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
                 {dirty && ev.some((e) => e.type === 'COMMIT') && (
                   <div className="star__why"><strong>커밋에 없는 내용은 근거가 뒷받침하지 못해요</strong></div>
@@ -82,9 +59,11 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
           );
         })}
       </div>
-      <StickyFooter strong={changed.length ? `${changed.length}칸 수정${savedAt ? ' · 임시 저장됨' : ''}` : '변경 없음'} sub="AI 초안 v1 은 그대로 남습니다">
-        <Button variant="text" onClick={() => { discard(); onDone(); }}>편집 취소</Button>
-        <Button size="lg" disabled={!changed.length} loading={save.isPending} onClick={submit}>v{card.version.versionNo + 1} 로 저장</Button>
+      <StickyFooter
+        strong={failed ? '저장이 안 됐어요' : savedAt ? '저장됨' : changed.length ? `${changed.length}칸 고침` : '고친 곳 없음'}
+        sub={failed ? '연결을 확인하고 다시 눌러 주세요' : '쓰는 동안 알아서 저장돼요'}>
+        <Button variant="text" onClick={() => { revert(); onDone(); }}>편집 취소</Button>
+        <Button size="lg" loading={saveDraft.isPending} onClick={done}>{failed ? '다시 저장' : '저장하고 닫기'}</Button>
       </StickyFooter>
     </>
   );

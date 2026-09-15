@@ -9,7 +9,7 @@
  */
 :root {
   /* 1. Primitives — 웜 뉴트럴 (파란 기미 없음) */
-  --ink-0: #ffffff; --ink-25: #fafaf8; --ink-50: #f2f2f0; --ink-100: #edede9; --ink-150: #e8e7e2;
+  --ink-0: #ffffff; --ink-25: #fcfcfa; --ink-50: #f8f8f5; --ink-100: #edede9; --ink-150: #e8e7e2;
   --ink-200: #d9d9d5; --ink-300: #bfc1bb; --ink-400: #999b96; --ink-500: #777a74; --ink-600: #5f625c;
   --ink-700: #3b3e3a; --ink-800: #292927; --ink-850: #202020; --ink-900: #171717;
   --ink-alpha-24: rgba(23, 23, 23, .24);

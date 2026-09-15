@@ -45,13 +45,16 @@ export function installDemoApi() {
     const path = url.pathname.slice(BASE.length) || '/';
     let body: Record<string, unknown> = {};
     if (init?.body && typeof init.body === 'string') { try { body = JSON.parse(init.body); } catch { body = {}; } }
+    // Idempotency-Key 를 라우터가 봐야 한다 — 이름은 소문자로 맞춰 둔다
+    const headers: Record<string, string> = {};
+    new Headers(init?.headers ?? (typeof input === 'object' && 'headers' in input ? (input as Request).headers : undefined)).forEach((v, k) => { headers[k.toLowerCase()] = v; });
 
     await new Promise((r) => setTimeout(r, LATENCY[0] + Math.random() * (LATENCY[1] - LATENCY[0])));
 
     if (path === '/auth/logout') demoLogout();
     if (path === '/__reset') { ss.del(DB_KEY); }
 
-    const r = handle(method, path, url.searchParams, body, hasDemoSession());
+    const r = handle(method, path, url.searchParams, body, hasDemoSession(), headers);
     if (r.status < 400) persist();
 
     return new Response(JSON.stringify({ data: r.data, error: r.error }), {

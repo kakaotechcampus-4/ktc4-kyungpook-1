@@ -6,6 +6,7 @@ export const keys = {
   candidates: (repoId: string) => ['repos', repoId, 'candidates'] as const,
   recall: (repoId: string) => ['repos', repoId, 'recall'] as const,
   job: (id: string) => ['jobs', id] as const,
+  activeJobs: ['jobs', 'active'] as const,
   cards: ['cards'] as const,
   card: (id: string) => ['cards', id] as const,
   versions: (id: string) => ['cards', id, 'versions'] as const,

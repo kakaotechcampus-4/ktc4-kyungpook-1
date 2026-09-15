@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link } from 'react-router-dom';
 import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings } from 'lucide-react';
 import { useCards, useMe } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 const MENU = [
   { group: '커리어 관리', items: [
@@ -17,12 +18,18 @@ const MENU = [
 ];
 
 /** 워드마크 — 사각 G 마크 + itory. 원본 PNG(투명 배경). 다크 서페이스 위에서는 invert. */
-export const Wordmark = ({ height = 22, className }: { height?: number; className?: string }) => (
+export const Wordmark = ({ height = 26, className }: { height?: number; className?: string }) => (
   <img src="/gitory-wordmark.png" alt="Gitory" height={height} className={className} style={{ height, width: 'auto', display: 'block' }} draggable={false} />
 );
-const Mark = () => <img src="/gitory-mark.png" alt="Gitory" width={28} height={28} style={{ borderRadius: 7 }} draggable={false} />;
+const Mark = () => <img src="/gitory-mark.png" alt="Gitory" width={32} height={32} style={{ borderRadius: 8 }} draggable={false} />;
 
 const RAIL_KEY = 'gitory.rail';
+const MOBILE_MENU = [
+  { to: '/', label: '홈', icon: Home, end: true },
+  { to: '/repos', label: '레포', icon: FolderGit2 },
+  { to: '/cards', label: '카드', icon: Layers },
+  { to: '/settings', label: '설정', icon: Settings },
+];
 
 /** 앱 셸 — 접히는 레일 사이드바(브랜드 · 메뉴 그룹 · 최근 카드 · 프로필). 접힘 상태는 기억한다. */
 export function AppShell() {
@@ -35,9 +42,13 @@ export function AppShell() {
   return (
     <div className={`shell ${rail ? 'shell--rail' : ''}`}>
       <a href="#main" className="skip-link">본문으로 건너뛰기</a>
+      <header className="mobile-brand">
+        <Link to="/" aria-label="Gitory 홈"><Wordmark height={25} /></Link>
+        <span className="mobile-brand__profile"><UserAvatar src={me.data?.avatarUrl} login={me.data?.login ?? '사용자'} size={28} />{me.data?.login ?? '내 경험 정리'}</span>
+      </header>
       <aside className="sidebar" aria-label="주 메뉴">
         <div className="sidebar__top">
-          <Link to="/" className="brand" aria-label="Gitory 홈">{rail ? <Mark /> : <Wordmark height={22} />}</Link>
+          <Link to="/" className="brand" aria-label="Gitory 홈">{rail ? <Mark /> : <Wordmark height={26} />}</Link>
           {!rail && <button type="button" className="sidebar__toggle" onClick={() => setRail(true)} aria-label="사이드바 접기" title="사이드바 접기"><PanelLeft size={16} /></button>}
         </div>
         {rail && <button type="button" className="sidebar__toggle" style={{ alignSelf: 'center' }} onClick={() => setRail(false)} aria-label="사이드바 펼치기" title="사이드바 펼치기"><PanelLeft size={16} /></button>}
@@ -58,7 +69,7 @@ export function AppShell() {
         </div>
         <div style={{ marginTop: 'auto' }} />
         <div className="sidebar__profile">
-          <span className="sidebar__avatar">{me.data?.avatarUrl && <img src={me.data.avatarUrl} alt="" />}</span>
+          <UserAvatar src={me.data?.avatarUrl} login={me.data?.login ?? '사용자'} size={36} />
           <div className="row grow" style={{ gap: 6, minWidth: 0 }}>
             <span className="sidebar__name">{me.data?.login ?? '…'}</span>
             <span className="sidebar__plan">Free</span>
@@ -67,6 +78,14 @@ export function AppShell() {
         </div>
       </aside>
       <div id="main" className="shell__main"><Outlet /></div>
+      <nav className="mobile-nav" aria-label="모바일 주 메뉴">
+        {MOBILE_MENU.map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.end}>
+            <item.icon size={20} aria-hidden="true" />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
       <JobWatcher />
     </div>
   );

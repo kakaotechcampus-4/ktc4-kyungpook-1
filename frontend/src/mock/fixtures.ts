@@ -6,7 +6,7 @@ export const now = () => new Date().toISOString();
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400_000).toISOString();
 
 export const seedUser = {
-  id: 'u_01', login: 'hong-dev', avatarUrl: null, plan: 'FREE' as const,
+  id: 'u_01', login: 'hong-dev', avatarUrl: '/demo-avatar.svg', plan: 'FREE' as const,
   github: { connected: true, scopes: ['public_repo', 'read:user'], connectedAt: daysAgo(5), lastCollectedAt: daysAgo(1) },
 };
 
@@ -167,9 +167,9 @@ filler.forEach(([type, ref, title, reason, score, codeRatio], i) => {
 });
 
 const ev = (field: string, sha: string, snippet: string, owner = 'hong-dev', repo = 'auth-service') => ({
-  field, type: 'COMMIT', sha, url: gh(owner, repo, sha), snippet, turnNo: null,
+  field, type: 'COMMIT', authoredBy: 'AI', sha, url: gh(owner, repo, sha), snippet, turnNo: null,
 });
-const said = (field: string, turnNo: number) => ({ field, type: 'USER_STATED', sha: null, url: null, snippet: null, turnNo });
+const said = (field: string, turnNo: number) => ({ field, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
 
 export const seedCards = [
   {
@@ -250,10 +250,10 @@ export const seedCards = [
 
 export const seedInterview: Record<string, unknown[]> = {
   card_02: [{
-    turnNo: 1, field: 'S', askedBy: 'USER_REQUEST',
+    turnNo: 1, field: 'S', askedBy: 'USER_REQUEST', sourceType: 'PR', questionType: 'EVIDENCE_GAP',
     found: ['Revert 커밋 2건 (4.02)', '결제 롤백 이슈 #31'], missing: ['그때 왜 되돌렸고, 어떻게 다시 붙였는지'],
     question: '그때 의견이 갈린 지점은 무엇이었나요?', options: [],
-    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 3,
+    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 3, maxTurns: 4,
   }],
 };
 

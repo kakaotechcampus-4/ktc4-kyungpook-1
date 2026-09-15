@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@ta
 import { endpoints } from './endpoints';
 import { keys } from './keys';
 import { AuthError } from './client';
-import { isTerminal, type Card, type Job, type StarField, type EvidenceType, type CandidateStatus } from './schemas';
+import { isTerminal, type Card, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus } from './schemas';
+import { newIdempotencyKey } from '@/lib/uuid';
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -29,9 +30,9 @@ export const useInterview = (id: string | undefined) =>
   useQuery({ queryKey: keys.interview(id ?? ''), queryFn: () => endpoints.interviewTurns(id!), enabled: !!id });
 
 /**
- * Job 폴링. 터미널 상태(SUCCEEDED/FAILED/PARTIAL)에 닿으면 멈춘다.
+ * Job 폴링. 터미널 상태(SUCCEEDED/FAILED/CANCELED)에 닿으면 멈춘다.
  * 폴링 응답 자체는 항상 200 — 실패는 본문의 state 다 (스펙 "에러가 아닌 것").
- * 1.5초 간격 · 30초 넘으면 3초로 완만하게 (E-7 3분 상한은 서버가 판단).
+ * 간격은 화면이 정하지 않는다. 서버가 응답마다 주는 pollAfterMs 를 그대로 쓴다.
  */
 export function useJob(jobId: string | undefined, opts?: Partial<UseQueryOptions<Job>>) {
   return useQuery<Job>({
@@ -41,11 +42,25 @@ export function useJob(jobId: string | undefined, opts?: Partial<UseQueryOptions
     refetchInterval: (q) => {
       const d = q.state.data;
       if (!d || isTerminal(d.state)) return false;
-      const age = Date.now() - new Date(d.startedAt).getTime();
-      return age > 30_000 ? 3000 : 1500;
+      return Math.max(500, d.pollAfterMs);
     },
     refetchIntervalInBackground: true, // "화면을 떠나도 되고, 돌아오면 이어서 보인다"
     ...opts,
+  });
+}
+
+/**
+ * 진행 중인 Job 복구. 새로고침하면 화면 상태는 날아가도 작업은 서버에서 계속 돈다.
+ * 그래서 Job ID 를 브라우저에 적어 두지 않고 매 진입마다 서버에 물어본다.
+ */
+export function useActiveJobs(enabled = true) {
+  return useQuery({
+    queryKey: keys.activeJobs,
+    queryFn: endpoints.activeJobs,
+    enabled,
+    refetchInterval: (q) => (q.state.data?.jobs.length ? Math.max(1000, q.state.data.jobs[0].pollAfterMs) : false),
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -63,14 +78,40 @@ export function useCard(id: string | undefined) {
 }
 
 // ───────────────────────────── 변경 ─────────────────────────────
+/**
+ * 분석 시작. 한 번의 사용자 행동 = 하나의 Idempotency-Key.
+ * 더블클릭·네트워크 재시도로 같은 키가 다시 가도 서버는 기존 Job 을 돌려준다.
+ */
 export function useStartAnalysis() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (repoId: string) => endpoints.startAnalysis(repoId),
-    onSuccess: (_, repoId) => {
-      void qc.invalidateQueries({ queryKey: keys.repo(repoId) });
-      void qc.invalidateQueries({ queryKey: keys.repos });
+    mutationFn: (v: string | { repoId: string; idempotencyKey?: string }) => {
+      const repoId = typeof v === 'string' ? v : v.repoId;
+      const key = (typeof v === 'string' ? undefined : v.idempotencyKey) ?? newIdempotencyKey();
+      return endpoints.startAnalysis(repoId, key);
     },
+    onSuccess: (_, v) => {
+      void qc.invalidateQueries({ queryKey: keys.repo(typeof v === 'string' ? v : v.repoId) });
+      void qc.invalidateQueries({ queryKey: keys.repos });
+      void qc.invalidateQueries({ queryKey: keys.activeJobs });
+    },
+  });
+}
+
+/** 임시 저장 — 서버에 보관한다. 성공해도 화면을 다시 그리지 않는다(입력 중이므로). */
+export function useSaveDraft(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fields: DraftFields) => endpoints.saveDraft(cardId, fields),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.cards, refetchType: 'none' }),
+  });
+}
+
+export function useCreateManualDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: endpoints.createManualDraft,
+    onSuccess: (card) => { qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards }); },
   });
 }
 

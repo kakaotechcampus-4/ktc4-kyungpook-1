@@ -7,16 +7,17 @@ test('E-1 수집 실패 — 정리 시작 자체를 막고 다음 행동 3개를
   await login(page);
   await page.goto('/repos?select=r_fail&disclose=1');
   await page.getByRole('button', { name: '정리 시작' }).click();
-  await expect(page.getByRole('heading', { name: '저장소를 읽지 못했습니다' })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('부분 수집분으로는 후보를 만들지 않습니다')).toBeVisible();
-  await expect(page.getByRole('button', { name: '다시 시도' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'GitHub에서 답이 오지 않았어요' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('읽은 데까지로는 후보를 만들지 않아요')).toBeVisible();
+  await expect(page.getByRole('button', { name: '다시 시도' }).first()).toBeEnabled(); // retryable: true
 });
 
 test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 보여준다', async ({ page }) => {
   await login(page);
   await page.goto('/repos?select=r_ratelimit&disclose=1');
   await page.getByRole('button', { name: '정리 시작' }).click();
-  await expect(page.getByRole('heading', { name: '부분 결과가 있습니다' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // RATE_LIMITED — 한도가 풀릴 때까지 막는다
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
   await expect(page.getByRole('heading', { name: /후보 \d+개 \(전체 아님\)/ })).toBeVisible();
   await expect(page.getByText('"이게 전부"가 아닙니다')).toBeVisible();
@@ -34,28 +35,62 @@ test('후보 제외는 실행 취소할 수 있다', async ({ page }) => {
   await expect(page.locator('.cand__title', { hasText: title! })).toBeVisible();
 });
 
-test('되묻기 — 보기 선택은 USER_SELECTED 로 저장되고 칸이 채워진다', async ({ page }) => {
+test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채워진다', async ({ page }) => {
   await login(page);
   await page.goto('/cards/card_01/interview?field=T');
   await expect(page.getByText('코드에서 찾은 것')).toBeVisible();
   await page.locator('.chip--option').first().click();
   await page.getByRole('button', { name: '다음으로' }).click();
   await expect(page.locator('.toast')).toContainText('다듬지 않고 그대로');
-  await expect(page.getByText(/USER_SELECTED · 그대로 저장됨/)).toBeVisible();
+  // 내부 enum 이 화면에 새지 않는다
+  await expect(page.getByText(/보기에서 고른 것 · 고치지 않고 그대로 넣었어요/)).toBeVisible();
+  await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
   await page.getByRole('button', { name: '카드로 돌아가기' }).click();
   await expect(page.locator('#star-T').locator('..').locator('..')).not.toContainText('근거를 찾지 못해');
 });
 
-test('직접 수정 — 저장하면 v+1 이 되고 AI 초안 v1 은 히스토리에 남는다', async ({ page }) => {
+test('직접 수정 — 쓰는 동안 서버에 저장되고 AI 초안은 히스토리에 남는다', async ({ page }) => {
   await login(page);
   await page.goto('/cards/card_01?mode=edit');
   const a = page.getByLabel('행동 (Action)');
-  await a.fill(`인증 모듈의 세션 처리를 담당했다. 리프레시 토큰을 쿠키에 두고 만료 시 자동 갱신되게 했다. (${Date.now()})`); // 목 상태가 남아도 항상 '변경'이 되도록
-  await page.getByRole('button', { name: /로 저장/ }).click();
-  await expect(page.locator('.toast')).toContainText('AI 초안 v1 은 그대로');
+  const typed = `인증 모듈의 세션 처리를 담당했다. 리프레시 토큰을 쿠키에 두고 만료 시 자동 갱신되게 했다. (${Date.now()})`;
+  await a.fill(typed);
+  await expect(page.getByText('저장됨')).toBeVisible({ timeout: 15_000 }); // 입력이 멈춘 뒤 한 번만 나간다
+  // 브라우저가 아니라 서버에 남았다는 증거 — 편집 화면을 떠났다 돌아와도 그대로다
+  await page.goto('/cards/card_01');
+  await expect(page.getByText(typed)).toBeVisible();
+  await page.goto('/cards/card_01?mode=edit');
+  await page.getByRole('button', { name: '저장하고 닫기' }).click();
   await page.getByRole('button', { name: '버전 히스토리' }).first().click();
   await expect(page.getByText('AI_DRAFT').first()).toBeVisible();
   await expect(page.getByText('USER_EDIT').first()).toBeVisible();
+});
+
+test('새로고침으로 job 이 빠져도 서버의 진행 중 작업으로 되돌아온다', async ({ page }) => {
+  await login(page);
+  await page.goto('/repos?select=r_auth&disclose=1');
+  await page.getByRole('button', { name: '정리 시작' }).click();
+  await expect(page).toHaveURL(/\/run\?job=/);
+  // 주소에서 job 을 떼고 다시 들어가도(= 새로고침으로 잃어도) 진행 화면으로 붙는다
+  await page.goto('/repos/r_auth/run');
+  await expect(page).toHaveURL(/\/run\?job=/, { timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: '읽고 있습니다' })).toBeVisible();
+});
+
+test('모바일 되묻기 — 질문과 입력칸이 카드 미리보기보다 먼저 보인다', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await login(page);
+  await page.goto('/cards/card_01/interview?field=T');
+  const panel = page.locator('.iv__panel');
+  const canvas = page.locator('.iv__canvas');
+  await expect(page.getByRole('heading', { level: 2 })).toBeVisible();
+  const panelTop = (await panel.boundingBox())!.y;
+  const canvasTop = (await canvas.boundingBox())!.y;
+  expect(panelTop).toBeLessThan(canvasTop);
+  // 미리보기는 접혀 있고, 눌러야 펴진다
+  await expect(canvas.locator('.star-read')).toBeHidden();
+  await page.getByRole('button', { name: '지금까지 쓴 카드 보기' }).click();
+  await expect(canvas.locator('.star-read')).toBeVisible();
 });
 
 test('마스킹 — 원문은 그대로, 표시만 바뀐다', async ({ page }) => {
@@ -91,5 +126,5 @@ test('동의 취소는 랜딩으로 돌아와 안내를 보여준다', async ({ 
   await freshSeed(page);
   await page.goto('/login?error=access_denied');
   await expect(page.getByText('GitHub에서 동의를 취소하셨네요')).toBeVisible();
-  await expect(page.getByRole('button', { name: /GitHub으로 시작하기/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'GitHub로 시작' })).toHaveCount(2);
 });

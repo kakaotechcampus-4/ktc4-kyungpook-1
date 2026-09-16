@@ -4,7 +4,7 @@
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, createJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, nextId, recallFor, resetDb } from './store';
+import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR } from './store';
 import { now } from './fixtures';
 
 type Any = Record<string, any>;
@@ -13,7 +13,7 @@ export type MockResult = { status: number; data: unknown; error: { code: string;
 const ok = (data: unknown): MockResult => ({ status: 200, data, error: null });
 const fail = (status: number, code: string, message: string): MockResult => ({ status, data: null, error: { code, message } });
 
-type Ctx = { params: string[]; body: Any; search: URLSearchParams };
+type Ctx = { params: string[]; body: Any; search: URLSearchParams; headers: Record<string, string> };
 type Handler = (c: Ctx) => MockResult;
 const routes: [string, RegExp, Handler][] = [];
 const on = (method: string, pattern: string, h: Handler) =>
@@ -42,10 +42,14 @@ on('GET', '/repos/:id', ({ params }) => {
   const r = db.repos.find((x) => x.id === params[0]);
   return r ? ok(r) : fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
 });
-on('POST', '/repos/:id/analyses', ({ params }) => {
+on('POST', '/repos/:id/analyze', ({ params, headers }) => {
   const r = db.repos.find((x) => x.id === params[0]);
   if (!r) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
-  return ok({ jobId: createJob('ANALYZE', { repoId: r.id }) });
+  const key = headers['idempotency-key'] ?? null;
+  const job = startAnalyze(r.id, key); // 같은 키·진행 중 Job 이면 기존 것을 그대로 돌려준다
+  if (!job) return fail(500, 'INTERNAL', '작업을 만들지 못했습니다');
+  const v = viewJob(job.id)!;
+  return ok({ jobId: job.id, state: v.state, pollAfterMs: v.pollAfterMs });
 });
 on('GET', '/repos/:id/candidates', ({ params }) => {
   const r = db.repos.find((x) => x.id === params[0]);
@@ -99,11 +103,16 @@ on('PATCH', '/candidates/:id', ({ params, body }) => {
 });
 
 // ───────────────────────────── Job ─────────────────────────────
+// 남의 Job 은 403 이 아니라 404 다 — 존재 여부조차 알려 주지 않는다
+on('GET', '/jobs', () => ok(activeJobs())); // ?active=true — 진행 중인 것만
 on('GET', '/jobs/:id', ({ params }) => {
   const j = viewJob(params[0]);
   return j ? ok(j) : fail(404, 'JOB_NOT_FOUND', '작업을 찾을 수 없습니다');
 });
-on('POST', '/jobs/:id/cancel', ({ params }) => { const j = db.jobs.get(params[0]); if (j) j.cancelled = true; return ok({ ok: true }); });
+on('POST', '/jobs/:id/cancel', ({ params }) => {
+  const j = cancelJob(params[0]);
+  return j ? ok(j) : fail(404, 'JOB_NOT_FOUND', '작업을 찾을 수 없습니다');
+});
 
 // ───────────────────────────── 카드 ─────────────────────────────
 const findCard = (id: string) => db.cards.find((c) => c.id === id);
@@ -115,11 +124,28 @@ on('POST', '/cards', ({ body }) => {
     id: nextId('card'), kind: 'QUALITATIVE', status: 'DRAFT', title: body.title || '제목 없음',
     repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
     versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: f.S ?? null, task: f.T ?? null, action: f.A ?? null, result: f.R ?? null }],
-    evidence: (['S', 'T', 'A', 'R'] as const).filter((k) => f[k]).map((k) => ({ field: k, type: 'USER_STATED', sha: null, url: null, snippet: null, turnNo: 0 })),
+    evidence: STAR.filter((k) => f[k]).map((k) => ({ field: k, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: 0 })),
     lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(),
   };
   db.cards.push(card);
   return ok(cardView(card));
+});
+on('POST', '/cards/manual/draft', ({ body }) => {
+  const repo = body.repoId ? db.repos.find((r) => r.id === body.repoId) : null;
+  const card: Any = {
+    id: nextId('card'), kind: 'QUALITATIVE', status: 'DRAFT', title: body.title || '제목 없음',
+    repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
+    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: null, task: null, action: null, result: null }],
+    evidence: [], lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(),
+  };
+  db.cards.push(card);
+  return ok(cardView(card));
+});
+on('PATCH', '/cards/:id/draft', ({ params, body }) => {
+  const c = findCard(params[0]);
+  if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
+  if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
+  return ok(patchDraft(c, body)); // 같은 버전을 덮어쓴다 — 확정할 때만 버전이 는다
 });
 on('GET', '/cards/:id', ({ params }) => {
   const c = findCard(params[0]);
@@ -137,12 +163,12 @@ on('POST', '/cards/:id/versions', ({ params, body }) => {
 on('POST', '/cards/:id/regenerate', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  const key = ({ S: 'situation', T: 'task', A: 'action', R: 'result' } as Any)[body.field];
+  const key = FIELD_KEY[body.field];
   const v = c.versions[c.versions.length - 1];
   // 재생성: 근거가 생기면 채우고, 없으면 그대로 비운다 (지어내지 않는다)
   if (body.field === 'R') {
     v[key] = `${c.candidate?.title ?? '작업'} 반영 이후 같은 영역의 수정 커밋이 이어지지 않았다`;
-    c.evidence.push({ field: 'R', type: 'COMMIT', sha: c.evidence[0]?.sha ?? 'a3f21c9', url: c.evidence[0]?.url ?? null, snippet: c.evidence[0]?.snippet ?? null, turnNo: null });
+    c.evidence.push({ field: 'R', type: 'COMMIT', authoredBy: 'AI', sha: c.evidence[0]?.sha ?? 'a3f21c9', url: c.evidence[0]?.url ?? null, snippet: c.evidence[0]?.snippet ?? null, turnNo: null });
     c.droppedFields = c.droppedFields.filter((d: Any) => d.field !== 'R');
     c.lowConfidenceFields.push({ field: 'R', why: '근거 커밋이 1건뿐입니다' });
   } else {
@@ -203,7 +229,7 @@ on('POST', '/cards/:id/interview', ({ params, body }) => {
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 되물을 수 있습니다');
   const answered = (db.interview[c.id] ?? []).filter((t: Any) => t.answer).length;
-  if (answered >= 4) return fail(409, 'INTERVIEW_CAP', '이 카드의 되묻기 상한(4턴)에 닿았습니다'); // Q6 — 서버도 같은 상한
+  if (answered >= INTERVIEW_MAX_TURNS) return fail(409, 'INTERVIEW_CAP', '이 카드의 되묻기 상한에 닿았습니다');
   if (!['S', 'T', 'A', 'R'].includes(body.field)) return fail(400, 'BAD_FIELD', 'field 는 S/T/A/R 중 하나여야 합니다');
   return ok(askTurn(c, body.field));
 });
@@ -215,11 +241,11 @@ on('POST', '/cards/:id/interview/:turn/answer', ({ params, body }) => {
 });
 
 /** 한 요청 처리. path 는 /api 접두사를 뗀 것. */
-export function handle(method: string, path: string, search: URLSearchParams, body: Any, hasSession: boolean): MockResult {
+export function handle(method: string, path: string, search: URLSearchParams, body: Any, hasSession: boolean, headers: Record<string, string> = {}): MockResult {
   const route = routes.find(([m, re]) => m === method && re.test(path));
   if (!route) return fail(404, 'NOT_FOUND', `${method} ${path}`);
   if (!isPublicPath(path) && !hasSession) return fail(401, 'UNAUTHENTICATED', '로그인이 필요합니다');
   const params = path.match(route[1])!.slice(1).map(decodeURIComponent);
-  try { return route[2]({ params, body, search }); }
+  try { return route[2]({ params, body, search, headers }); }
   catch (e) { console.error('[mock]', e); return fail(500, 'INTERNAL', String(e)); }
 }

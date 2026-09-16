@@ -38,7 +38,7 @@ describe('카드 스키마 — 스펙 §1 응답 예시가 그대로 통과한�
       id: 'card_01', kind: 'TECH', status: 'DRAFT', title: '로그인 세션 처리',
       repo: { id: 'r', owner: 'o', name: 'r' }, candidate: { id: 'c', type: 'PR', ref: '#42', title: 't' },
       version: { versionNo: 1, source: 'AI_DRAFT', createdAt: '2024-09-01T00:00:00Z', situation: '3인 팀', task: null, action: '세션 처리', result: null },
-      evidence: [{ field: 'A', type: 'COMMIT', sha: 'a3f21c', url: 'https://github.com/o/r/commit/a3f21c', snippet: '로그인 세션 처리 추가', turnNo: null }],
+      evidence: [{ field: 'A', type: 'COMMIT', authoredBy: 'AI', sha: 'a3f21c', url: 'https://github.com/o/r/commit/a3f21c', snippet: '로그인 세션 처리 추가', turnNo: null }],
       lowConfidenceFields: [{ field: 'R', why: '근거 1건' }], droppedFields: [{ field: 'T', reason: 'NO_EVIDENCE' }],
       maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: '2024-09-01T00:00:00Z',
     });

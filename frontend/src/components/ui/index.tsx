@@ -5,6 +5,7 @@ import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
 
 const cx = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
+const STAR_LABELS: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
 
 // ───────── Button ─────────
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -81,11 +82,14 @@ export const Track = ({ value, label }: { value: number; label?: string }) => (
 export const StarKey = ({ field, dropped, small }: { field: StarField; dropped?: boolean; small?: boolean }) => (
   <span className={cx('star-key', dropped && 'star-key--dropped', small && 'star-key--sm')} aria-hidden>{field}</span>
 );
-/** S·T·A·R 채움 상태를 네 칸으로 — 목록에서 카드 상태를 한눈에. 비어 있는 칸이 이 제품의 증거다. */
-export const StarDots = ({ filled, low }: { filled: StarField[]; low?: StarField[] }) => (
-  <span className="stardots" aria-label={`STAR 채움: ${filled.join('') || '없음'}`}>
+/** S·T·A·R 채움 상태를 고정된 네 칸으로 — 목록에서 카드 상태를 한눈에. */
+export const StarDots = ({ filled, low, showLabels }: { filled: StarField[]; low?: StarField[]; showLabels?: boolean }) => (
+  <span className={cx('stardots', showLabels && 'stardots--labeled')} aria-label={`STAR 채움: ${filled.join('') || '없음'}`}>
     {(['S', 'T', 'A', 'R'] as StarField[]).map((f) => (
-      <span key={f} className={cx('stardot', filled.includes(f) && 'stardot--on', low?.includes(f) && 'stardot--low')} title={`${f} ${filled.includes(f) ? (low?.includes(f) ? '확인 필요' : '채움') : '비어 있음'}`}>{f}</span>
+      <span key={f} className={cx('stardot', filled.includes(f) && 'stardot--on', low?.includes(f) && 'stardot--low')} title={`${f} ${filled.includes(f) ? (low?.includes(f) ? '확인 필요' : '채움') : '비어 있음'}`}>
+        <span className="stardot__letter">{f}</span>
+        {showLabels && <span className="stardot__label">{STAR_LABELS[f]}</span>}
+      </span>
     ))}
   </span>
 );

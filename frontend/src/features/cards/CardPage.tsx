@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StarKey, StickyFooter, Track } from '@/components/ui';
-import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, versionSourceLabel } from '@/lib/labels';
-import { eta, ymd } from '@/lib/format';
+import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, jobStepLabel, starFieldName, starFieldShort, versionSourceLabel } from '@/lib/labels';
+import { ymd } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
-import { unwatchJob } from '@/lib/jobWatcher';
+import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
+import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { cardToMarkdown, copyText } from '@/lib/exportCard';
 import { StarBlock, applyMask } from './StarBlock';
@@ -33,7 +34,8 @@ export function CardPage() {
   // 이 화면이 직접 보고 있는 Job 은 전역 알림에서 뺀다 · 끝나면 지표
   useEffect(() => {
     const jid = q.data?.generation?.jobId;
-    if (jid && job.data && isTerminal(job.data.state)) { unwatchJob(jid); track('draft_generated', { cardId, state: job.data.state }); }
+    if (jid) suppressJobToast(jid);
+    if (jid && job.data && isTerminal(job.data.state)) { releaseJobToast(jid); track('draft_generated', { cardId, state: job.data.state }); }
   }, [q.data?.generation?.jobId, job.data, cardId]);
 
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
@@ -61,19 +63,22 @@ export function CardPage() {
         <PageTitle right="2단 읽기의 두 번째 단계">고른 후보의 코드를 읽고 있습니다</PageTitle>
         <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
           <div className="row" style={{ gap: 12 }}>
-            <span className="w-700" style={{ fontSize: 15 }}>{j ? `카드 ${Math.min(j.stages.length, j.stages.filter((s) => s.status === 'DONE').length + 1)} / ${j.stages.length} 생성 중` : '준비 중'}</span>
-            <span className="right t-12 c-2">{j ? `${eta(j.etaSeconds)} · 3분 넘으면 채워진 칸까지 보여드립니다` : ''}</span>
+            <span className="w-700" style={{ fontSize: 15 }}>{j ? `${doneSteps(j)} / ${j.steps.length} 단계` : '준비 중'}</span>
+            <span className="right t-12 c-2">{j ? '오래 걸리면 채워진 칸까지 먼저 보여 드려요' : ''}</span>
           </div>
-          <Track value={j?.progress ?? 0.02} label="초안 생성 진행률" />
+          <Track value={j ? stepProgress(j) : 0.02} label="초안 생성 진행률" />
           <div className="stack" style={{ gap: 10 }}>
-            {(j?.stages ?? [{ key: cardId, label: card.title, detail: '대기 중', status: 'WAIT' as const }]).map((s) => (
-              <div key={s.key} className={`stage card ${s.status === 'NOW' ? 'card--paper' : ''}`} style={{ padding: '14px 16px', borderRadius: 10, borderTop: '1px solid var(--border-default)' }}>
-                <span className="stage__icon" style={s.status !== 'WAIT' ? { background: 'var(--bg-ink-solid)', borderColor: 'var(--bg-ink-solid)' } : undefined}>{s.status === 'DONE' ? '✓' : ''}</span>
-                <div className="stack grow" style={{ gap: 3 }}><span className="stage__label">{s.label}</span><span className="stage__detail">{s.detail}</span></div>
-                {s.status === 'NOW' && <div className="row" style={{ gap: 5 }}><StarKey field="S" small /><StarKey field="A" small /></div>}
-                <Badge kind={s.status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{s.status === 'DONE' ? '완료' : s.status === 'NOW' ? '진행 중' : '대기'}</Badge>
-              </div>
-            ))}
+            {(j?.steps ?? []).map((s) => {
+              const status = stepView(s);
+              return (
+                <div key={s.key} className={`stage card ${status === 'NOW' ? 'card--paper' : ''}`} style={{ padding: '14px 16px', borderRadius: 10, borderTop: '1px solid var(--border-default)' }}>
+                  <span className="stage__icon" style={status !== 'WAIT' ? { background: 'var(--bg-ink-solid)', borderColor: 'var(--bg-ink-solid)' } : undefined}>{status === 'DONE' ? '✓' : ''}</span>
+                  <div className="stack grow" style={{ gap: 3 }}><span className="stage__label">{jobStepLabel[s.key]}</span><span className="stage__detail">{s.state === 'SKIPPED' ? '해당 없음' : `${s.done} / ${s.total ?? '?'}`}</span></div>
+                  {status === 'NOW' && <div className="row" style={{ gap: 5 }}><StarKey field="S" small /><StarKey field="A" small /></div>}
+                  <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s)}</Badge>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>

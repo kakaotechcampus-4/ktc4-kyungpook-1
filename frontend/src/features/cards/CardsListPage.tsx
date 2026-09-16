@@ -33,9 +33,9 @@ export function CardsListPage() {
           <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 새 카드</Button>
         </div>
       </div>
-      <div className="row" style={{ gap: 8 }}>
+      <div className="status-tabs" aria-label="카드 상태 필터">
         {(['ALL', 'DRAFT', 'CONFIRMED'] as const).map((s) => (
-          <button key={s} type="button" className={`pill ${status === s ? 'pill--on' : ''}`} aria-pressed={status === s} onClick={() => setStatus(s)}>
+          <button key={s} type="button" className="status-tab" aria-pressed={status === s} onClick={() => setStatus(s)}>
             {s === 'ALL' ? '전체' : cardStatusLabel[s]} <span className="c-3">{counts[s]}</span>
           </button>
         ))}
@@ -49,7 +49,7 @@ export function CardsListPage() {
           <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 카드 만들기</Button>
         </div>
       )}
-      <div className="grid-2">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
+      <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
     </main>
   );
 }

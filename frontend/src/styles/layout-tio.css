@@ -49,7 +49,8 @@
 .main { max-width: 1180px; }
 
 /* ───────── 홈: 중앙 프롬프트 ───────── */
-.prompt { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 56px 16px 28px; text-align: center; background: radial-gradient(ellipse at 50% 0%, rgba(0, 0, 0, .05), transparent 60%); border-radius: 24px; }
+/* 배경 그라데이션 없음 — 중심이 섹션 맨 위라 글 뒤가 아니라 글 위에 얼룩으로 떴다. 무채색 바탕이 더 깨끗하다. */
+.prompt { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 48px 16px 28px; text-align: center; }
 .prompt__h { font-size: 30px; line-height: 40px; font-weight: 700; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .prompt__h svg { color: var(--text-tertiary); }
 .prompt__card { width: 100%; max-width: 620px; background: var(--bg-surface); border-radius: 20px; box-shadow: 0 14px 40px rgba(0, 0, 0, .08); border: 1px solid var(--border-default); display: flex; flex-direction: column; text-align: left; overflow: hidden; }
@@ -81,7 +82,7 @@
 .sources { width: 100%; max-width: 640px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 20px; box-shadow: var(--shadow-card); overflow: hidden; }
 .source { display: flex; align-items: center; gap: 16px; padding: 18px 20px; width: 100%; text-align: left; border-top: 1px solid var(--border-default); transition: background .12s; }
 .source:first-child { border-top: 0; }
-.source:hover { background: var(--bg-paper); }
+.source:hover { background: var(--bg-canvas); }
 .source__t { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
 .source__time { padding: 2px 8px; border-radius: 999px; background: var(--bg-subtle); color: var(--text-secondary); font-size: 11px; font-weight: 600; }
 .source__d { font-size: 12.5px; color: var(--text-secondary); line-height: 18px; }
@@ -115,10 +116,18 @@
 .iv__q { font-size: 16px; line-height: 24px; font-weight: 700; }
 .iv__qd { font-size: 12.5px; color: var(--text-secondary); line-height: 19px; }
 .star-read__row--now { outline: 2px solid var(--border-selected); outline-offset: -2px; border-radius: 12px; }
-@media (max-width: 1100px) { .iv { grid-template-columns: 1fr; } .iv__panel { position: static; } }
+.iv__fold { display: none; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-decoration: underline; }
+@media (max-width: 1100px) {
+  .iv { grid-template-columns: 1fr; }
+  /* 좁은 화면에서는 질문과 입력칸이 먼저다. 미리보기는 접어 두고 필요할 때만 편다. */
+  .iv__panel { position: static; order: -1; }
+  .iv__fold { display: inline; }
+  .iv__canvas--folded .star-read,
+  .iv__canvas--folded .iv__empty { display: none; }
+}
 
 /* 랜딩·히어로 */
-.landing { background: radial-gradient(ellipse at 30% 0%, rgba(0, 0, 0, .05), transparent 55%), var(--bg-paper); gap: 40px; }
+.landing { background: radial-gradient(ellipse at 30% 0%, rgba(0, 0, 0, .035), transparent 55%), var(--bg-paper); gap: 40px; }
 .prompt__sub { font-size: 14.5px; line-height: 23px; color: var(--text-secondary); margin-top: -8px; }
 /* 포커스 링은 입력창이 아니라 카드 전체에 — 카드 안에 박스가 또 생기지 않게 */
 .prompt__input:focus-visible { box-shadow: none; }

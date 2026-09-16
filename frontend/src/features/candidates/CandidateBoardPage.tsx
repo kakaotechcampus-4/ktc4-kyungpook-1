@@ -9,7 +9,6 @@ import { candidateRefLabel, candidateStatusLabel } from '@/lib/labels';
 import { minutes, shortSha, ymdhm } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
-import { watchJob } from '@/lib/jobWatcher';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
@@ -52,7 +51,6 @@ export function CandidateBoardPage() {
   const makeCards = async () => {
     const { cardIds, jobId } = await create.mutateAsync(chosen);
     track('candidates_confirmed', { repoId, count: chosen.length, jobId });
-    watchJob({ jobId, type: 'DRAFT', label: `카드 초안 ${cardIds.length}장`, href: `/cards/${cardIds[0]}` });
     setSelected(new Set());
     nav(`/cards/${cardIds[0]}`);
   };
@@ -114,7 +112,7 @@ export function CandidateBoardPage() {
         </span>
       } />
 
-      <div className="stack" style={{ gap: 10 }}>
+      <div className="record-list">
         {visible.map((c) => (
           <CandidateRow key={c.id} c={c} selected={selected.has(c.id)} onToggle={() => toggle(c.id)} onExclude={() => exclude(c)}
             expanded={expanded === c.id} onExpand={() => setExpanded(expanded === c.id ? null : c.id)}
@@ -206,7 +204,6 @@ function CriteriaDialog({ repoId, onClose }: { repoId: string; onClose: () => vo
   const again = async () => {
     const { jobId } = await start.mutateAsync(repoId);
     track('analysis_started', { repoId, jobId, again: true });
-    watchJob({ jobId, type: 'ANALYZE', label: `${r.name} 정리`, href: `/repos/${repoId}/candidates` });
     nav(`/repos/${repoId}/run?job=${jobId}`);
   };
   return (

@@ -4,7 +4,6 @@
 .btn--primary { background: var(--bg-ink-solid); color: var(--text-on-ink); border-color: var(--bg-ink-solid); }
 .btn--primary:hover:not(:disabled) { background: var(--bg-ink-hover); border-color: var(--bg-ink-hover); }
 .btn--outline { background: var(--bg-surface); color: var(--text-strong); border-color: var(--border-strong); }
-.btn--outline:hover:not(:disabled) { background: var(--bg-paper); }
 .btn--text { color: var(--text-secondary); padding-inline: 8px; }
 .btn--text:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-subtle); }
 .btn--danger { background: var(--bg-surface); color: var(--danger-600); border-color: var(--danger-300); }
@@ -37,7 +36,7 @@
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: var(--radius-md); font-size: 13px; line-height: 16px; color: var(--text-secondary); background: var(--bg-surface); border: 1px solid var(--border-default); }
 .chip--fill { background: var(--bg-subtle); }
 .chip--option { color: var(--text-strong); border-color: var(--border-strong); font-weight: 500; padding: 10px 12px; text-align: left; width: 100%; justify-content: flex-start; }
-.chip--option:hover { background: var(--bg-paper); }
+.chip--option:hover { background: var(--bg-canvas); }
 .chip--option[aria-pressed="true"] { border-color: var(--border-selected); box-shadow: inset 0 0 0 1px var(--border-selected); }
 .check { width: 18px; height: 18px; border-radius: var(--radius-xs); border: 1px solid var(--border-strong); background: var(--bg-surface); display: inline-grid; place-items: center; flex: 0 0 auto; color: var(--text-on-ink); font-size: 11px; font-weight: 700; }
 .check[aria-checked="true"] { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }

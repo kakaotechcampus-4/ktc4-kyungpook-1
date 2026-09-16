@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useAnswerInterview, useAskInterview, useCard, useInterview } from '@/api/queries';
 import { StarField as StarFieldSchema, type EvidenceType, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceStrip, Note, PageTitle, Skeleton, StarKey, Textarea } from '@/components/ui';
-import { STAR_FIELDS, fieldKey, starFieldName, starFieldShort } from '@/lib/labels';
+import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldName, starFieldShort } from '@/lib/labels';
 import { CONFIG } from '@/lib/config';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
@@ -25,6 +25,7 @@ export function InterviewPage() {
   const answer = useAnswerInterview(cardId);
   const [text, setText] = useState('');
   const [picked, setPicked] = useState<string | null>(null);
+  const [folded, setFolded] = useState(true); // 모바일에서는 미리보기를 접고 질문부터 보여준다
   const autoAsked = useRef(false);
   useDocumentTitle(q.data ? `되묻기 · ${q.data.title}` : '되묻기');
 
@@ -32,7 +33,9 @@ export function InterviewPage() {
   const field: StarField | null = parsedField.success ? parsedField.data : null;
   const open = turns.data?.find((t) => !t.answer) ?? null;
   const answered = (turns.data ?? []).filter((t) => t.answer);
-  const capReached = answered.length >= CONFIG.INTERVIEW_MAX_TURNS;
+  // 질문 상한은 서버 정책이다. 화면은 응답에 실려 온 값을 쓰고, 응답 전에만 기본값으로 버틴다.
+  const maxTurns = open?.maxTurns ?? answered[answered.length - 1]?.maxTurns ?? CONFIG.INTERVIEW_MAX_TURNS_FALLBACK;
+  const capReached = answered.length >= maxTurns;
 
   useEffect(() => {
     if (turns.isSuccess && !open && field && !autoAsked.current && !capReached) {
@@ -61,15 +64,17 @@ export function InterviewPage() {
   return (
     <main className="main main--tight">
       <Breadcrumb items={crumbs} />
-      <PageTitle right={`질문 ${total} / ${CONFIG.INTERVIEW_MAX_TURNS} · 매 턴 자동 저장`}>되묻기</PageTitle>
+      <PageTitle right={`질문 ${total} / ${maxTurns} · 답할 때마다 저장돼요`}>되묻기</PageTitle>
 
       <div className="iv">
         {/* 좌측 캔버스 — 답할수록 채워지는 카드 */}
-        <section className="card iv__canvas" aria-label="카드 미리보기">
+        <section className={`card iv__canvas ${folded ? 'iv__canvas--folded' : ''}`} aria-label="카드 미리보기">
           <div className="row" style={{ gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border-default)' }}>
             <span className="w-700" style={{ fontSize: 15 }}>{card.title}</span>
-            <Badge kind="DRAFT">v{card.version.versionNo}{open ? ` → v${card.version.versionNo + 1}` : ''}</Badge>
-            <span className="right t-12 c-3">그대로 저장</span>
+            <Badge kind="DRAFT">v{card.version.versionNo}</Badge>
+            <button type="button" className="iv__fold right" aria-expanded={!folded} onClick={() => setFolded((x) => !x)}>
+              {folded ? '지금까지 쓴 카드 보기' : '접기'}
+            </button>
           </div>
           {!anyFilled && <div className="iv__empty">이곳에 답변이 채워져요</div>}
           <div className="star-read">
@@ -95,15 +100,15 @@ export function InterviewPage() {
         <aside className="card iv__panel">
           <div className="row" style={{ gap: 8 }}>
             <Link to={`/cards/${cardId}`} className="btn btn--text btn--sm"><ArrowLeft size={14} /> 카드로</Link>
-            <span className="right t-12 c-3">{open ? `남은 질문 ${Math.max(0, CONFIG.INTERVIEW_MAX_TURNS - total)}개` : ''}</span>
+            <span className="right t-12 c-3">{open ? `남은 질문 ${Math.max(0, maxTurns - total)}개` : ''}</span>
           </div>
-          <div className="iv__greet"><span>코드에 없는 것만 한 줄씩 물을게요</span></div>
+          <div className="iv__greet"><span>코드에 없는 것만 한 줄씩 여쭤볼게요</span></div>
 
           {answered.map((t) => (
             <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--bg-paper)' }}>
               <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 10 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{t.field} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
               <span style={{ fontSize: 13, lineHeight: '20px' }}>{t.answer!.text}</span>
-              <span className="t-12 c-3">{t.answer!.source} · 그대로 저장됨</span>
+              <span className="t-12 c-3">{evidenceTypeLabel[t.answer!.source]} · 고치지 않고 그대로 넣었어요</span>
             </div>
           ))}
 
@@ -119,7 +124,7 @@ export function InterviewPage() {
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>
-                  <span className="t-12 w-600 c-3" style={{ fontSize: 10.5 }}>예시에서 고르기 · USER_SELECTED</span>
+                  <span className="t-12 w-600 c-3" style={{ fontSize: 10.5 }}>이 중에 고르셔도 돼요</span>
                   {open.options.map((o) => <button key={o} type="button" className="chip chip--option" aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
                 </div>
               )}
@@ -135,7 +140,7 @@ export function InterviewPage() {
           ) : ask.isPending ? <Skeleton h={200} /> : (
             <>
               {capReached ? (
-                <Note strong={`질문 ${CONFIG.INTERVIEW_MAX_TURNS}개를 다 썼어요`} tone="inset">남은 칸은 직접 수정으로</Note>
+                <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채우시면 돼요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
                   <span className="w-600" style={{ fontSize: 14 }}>{answered.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>

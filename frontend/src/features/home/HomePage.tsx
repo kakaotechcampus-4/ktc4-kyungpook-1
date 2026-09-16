@@ -85,9 +85,9 @@ export function HomePage() {
                 <KindIcon kind={c.kind} size={30} />
                 <div className="stack grow" style={{ gap: 3, minWidth: 0 }}>
                   <span className="resume__title">{c.title}</span>
-                  <span className="t-12 c-2">{c.hasDropped ? '빈 칸 있음' : c.hasLowConfidence ? '⚑ 확인 필요' : '확정 대기'}</span>
+                  <span className="t-12 c-2">{needsReviewOf(c).length ? '확인 필요' : filledOf(c).length < 4 ? `빈 칸 ${4 - filledOf(c).length}개` : '확정 대기'}</span>
                 </div>
-                <StarDots filled={filledOf(c)} />
+                <StarDots filled={filledOf(c)} low={needsReviewOf(c)} />
                 <ArrowRight size={16} className="c-3" />
               </Link>
             ))}
@@ -115,7 +115,7 @@ export function HomePage() {
           </Toolbar>
           <SectionHead label={`${me.data?.login ?? '나'}의 경험 카드`} count={cards.data?.length} />
           {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
-          <div className="grid-2">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
+          <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
           {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}" 에 맞는 카드가 없습니다`} desc="다른 이름으로 찾아보세요." />}
         </>
       )}
@@ -136,33 +136,29 @@ export function SourceRow({ icon, title, time, desc, onClick }: { icon: typeof F
   );
 }
 
-/** 목록 응답에는 칸 내용이 없으니 근거 수와 신호로 채움 상태를 추정한다. 상세에서 정확히 본다. */
-function filledOf(c: CardSummary): StarField[] {
-  const all: StarField[] = ['S', 'T', 'A', 'R'];
-  if (c.status === 'CONFIRMED' && !c.hasDropped) return all;
-  if (c.hasDropped) return all.slice(0, Math.max(1, Math.min(3, c.evidenceCount + c.userStatedCount > 3 ? 3 : 2)));
-  return all;
-}
+/** 서버가 현재 버전 기준으로 판정한 칸 상태를 그대로 쓴다. 추정하지 않는다. */
+const STAR_KEYS: StarField[] = ['S', 'T', 'A', 'R'];
+export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] !== 'EMPTY');
+export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
 
 export function CardGridItem({ c }: { c: CardSummary }) {
   const src = c.sourceType ? candidateRefLabel(c.sourceType, c.sourceLabel) : c.sourceLabel === 'INTERVIEW' ? '되묻기' : '직접 작성';
-  const sub = c.hasDropped ? '빈 칸 있음' : c.userStatedCount && !c.evidenceCount ? `내가 말한 것 ${c.userStatedCount}건` : `근거 ${c.evidenceCount}건`;
+  const empties = STAR_KEYS.filter((f) => c.star[f] === 'EMPTY').length;
+  const sub = empties ? `빈 칸 ${empties}개` : c.userStatedCount && !c.evidenceCount ? `내가 쓴 문장 ${c.userStatedCount}개` : `근거 ${c.evidenceCount}개`;
   return (
-    <Link to={`/cards/${c.id}`} className={`card gcard ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
-      <div className="row" style={{ gap: 10 }}>
-        <KindIcon kind={c.kind} size={30} />
-        <Badge kind="NEUTRAL">{cardKindShort[c.kind]}</Badge>
-        <span className="right t-12 c-3">{src}</span>
+    <Link to={`/cards/${c.id}`} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
+      <div className="experience-item__meta">
+        <span>{cardKindShort[c.kind]} · {src}</span>
+        <span>{ym(c.period)}</span>
       </div>
       <h3 className="gcard__title">{c.title}</h3>
-      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+      <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />
+      <div className="experience-item__footer">
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <Badge kind={c.status}>{cardStatusLabel[c.status]}</Badge>
-        {c.hasLowConfidence && c.status === 'DRAFT' && <Badge kind="CAUTION">⚑ 확인 필요</Badge>}
-        <span className="right"><StarDots filled={filledOf(c)} /></span>
-      </div>
-      <div className="row t-12 c-2" style={{ gap: 6 }}>
-        <span>{ym(c.period)}</span>
-        <span className="right">{sub}</span>
+        {needsReviewOf(c).length > 0 && c.status === 'DRAFT' && <Badge kind="CAUTION">확인 필요</Badge>}
+        </div>
+        <span className="t-12 c-2">{sub}</span>
       </div>
     </Link>
   );

@@ -40,8 +40,10 @@ public class AnalysisJob {
     private JobErrorCode errorCode;
 
     // DB 기본값 now() 에 맡기면 JPA 가 null 을 넣어 NOT NULL 제약 걸림
+    // start() 호출 시각이 아니라 접수(enqueue) 시각을 의미한다
     @CreationTimestamp
     private Instant startedAt;
+
     private Instant finishedAt;
 
     @UpdateTimestamp

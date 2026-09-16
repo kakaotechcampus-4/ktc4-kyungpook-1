@@ -21,12 +21,9 @@ def _post(payload: dict):
     return client.post(ENDPOINT, json=payload)
 
 
-def _candidate(
-    source_type: str = "COMMIT_CLUSTER", github_pr_number: int | None = None
-) -> dict:
+def _candidate(github_pr_number: int | None = None) -> dict:
     """카드 전체 커밋 문맥이 있는 후보 요청 값을 만든다."""
     return {
-        "source_type": source_type,
         "github_pr_number": github_pr_number,
         "commits": [
             {
@@ -52,6 +49,7 @@ def test_revert_question_cites_sha() -> None:
                 }
             ],
             "existing_turn_count": 0,
+            "source_type": "COMMIT_CLUSTER",
         }
     )
     assert response.status_code == 200
@@ -70,7 +68,7 @@ def test_preclassified_pr_cases_use_uppercase_enums() -> None:
         response = _post(
             {
                 "card_id": 102,
-                "candidate": _candidate("PR", 222),
+                "candidate": _candidate(222),
                 "missing_slots": [
                     {
                         "star_slot": "A",
@@ -79,6 +77,7 @@ def test_preclassified_pr_cases_use_uppercase_enums() -> None:
                     }
                 ],
                 "existing_turn_count": 0,
+                "source_type": "PR",
             }
         )
         data = response.json()["data"]
@@ -102,6 +101,7 @@ def test_card_commit_context_guides_question_when_slot_has_no_direct_commit() ->
                 }
             ],
             "existing_turn_count": 0,
+            "source_type": "COMMIT_CLUSTER",
         }
     )
     data = response.json()["data"]
@@ -118,6 +118,7 @@ def test_direct_card_without_candidate_uses_general_recall_aid() -> None:
             "candidate": None,
             "missing_slots": [{"star_slot": "R", "seq": 1, "linked_commits": []}],
             "existing_turn_count": 0,
+            "source_type": "DIRECT_CARD",
         }
     )
     data = response.json()["data"]
@@ -140,6 +141,7 @@ def test_all_generated_questions_include_escape_hatch_and_no_negative_assertion(
                 "candidate": _candidate(),
                 "missing_slots": [{"star_slot": "S", "seq": 1, "evidence_hint": hint}],
                 "existing_turn_count": 0,
+                "source_type": "COMMIT_CLUSTER",
             }
         )
         question = response.json()["data"]["question_text"]
@@ -155,6 +157,7 @@ def test_existing_turn_count_cap_returns_complete_without_turn_sequence() -> Non
             "candidate": _candidate(),
             "missing_slots": [{"star_slot": "T", "seq": 1}],
             "existing_turn_count": 2,
+            "source_type": "COMMIT_CLUSTER",
         }
     )
     data = response.json()["data"]
@@ -169,9 +172,10 @@ def test_pr_candidate_requires_github_pr_number() -> None:
     response = _post(
         {
             "card_id": 600,
-            "candidate": {"source_type": "PR", "commits": []},
+            "candidate": {"commits": []},
             "missing_slots": [],
             "existing_turn_count": 0,
+            "source_type": "PR",
         }
     )
     assert response.status_code == 400
@@ -183,9 +187,10 @@ def test_lowercase_enum_returns_invalid_payload() -> None:
     response = _post(
         {
             "card_id": 601,
-            "candidate": _candidate("commit_cluster"),
+            "candidate": _candidate(),
             "missing_slots": [],
             "existing_turn_count": 0,
+            "source_type": "commit_cluster",
         }
     )
     assert response.status_code == 400

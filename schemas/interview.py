@@ -43,27 +43,16 @@ class CommitContext(BaseModel):
 
 
 class CandidateContext(BaseModel):
-    """카드 후보의 출처와 카드 전체 작업 맥락.
+    """카드 후보의 카드 전체 작업 맥락.
 
     ``commits``는 카드 전체 경험을 설명하는 목록이다. 특정 STAR 문장의
     직접 근거 목록인 ``MissingSlot.linked_commits``와 구분한다.
     """
 
-    source_type: SourceType
-    github_pr_number: Optional[int] = Field(
-        None, description="source_type='PR'일 때 필수, 그 외에는 null 허용"
-    )
+    github_pr_number: Optional[int] = Field(None, description="관련 GitHub PR 번호")
     commits: list[CommitContext] = Field(
         default_factory=list, description="카드 전체와 관련된 커밋 목록"
     )
-
-    @model_validator(mode="after")
-    def _validate_pr_number(self) -> "CandidateContext":
-        """PR 후보는 GitHub PR 번호를 반드시 가진다."""
-        if self.source_type == "PR" and self.github_pr_number is None:
-            raise ValueError("source_type='PR'이면 github_pr_number가 필요합니다.")
-        return self
-
 
 class EvidenceHint(BaseModel):
     """빈 칸(missing slot)에 대해 코드에서 이미 찾아둔 정황 증거.
@@ -118,6 +107,19 @@ class InterviewTurnRequest(BaseModel):
     existing_turn_count: int = Field(
         0, ge=0, description="이 카드에 대해 이미 생성된 interview_turn 수"
     )
+    source_type: SourceType = Field(..., description="되묻기 대상 카드의 출처")
+
+    @model_validator(mode="after")
+    def _validate_candidate_context(self) -> "InterviewTurnRequest":
+        """출처별 후보 문맥의 필수 조건을 검증한다."""
+        if self.source_type == "PR":
+            if self.candidate is None or self.candidate.github_pr_number is None:
+                raise ValueError("source_type='PR'이면 candidate.github_pr_number가 필요합니다.")
+        elif self.source_type == "COMMIT_CLUSTER" and self.candidate is None:
+            raise ValueError("source_type='COMMIT_CLUSTER'이면 candidate가 필요합니다.")
+        elif self.source_type == "DIRECT_CARD" and self.candidate is not None:
+            raise ValueError("source_type='DIRECT_CARD'이면 candidate는 null이어야 합니다.")
+        return self
 
 
 class InterviewTurnResult(BaseModel):

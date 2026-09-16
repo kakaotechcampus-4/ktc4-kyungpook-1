@@ -67,7 +67,7 @@ class InterviewAgent:
         hint = self._build_evidence_hint(slot, request.candidate)
 
         if hint.kind == "REVERT":
-            question_text = self._ask_for_revert(slot, hint)
+            question_text = self._ask_for_revert(hint)
             question_type = "EVIDENCE_GAP"
         elif hint.kind == "LINKED_COMMIT":
             question_text = self._ask_for_linked_commit(slot, hint)
@@ -90,25 +90,36 @@ class InterviewAgent:
     def _build_evidence_hint(
         self, slot: MissingSlot, candidate: CandidateContext | None
     ) -> EvidenceHint:
-        """커밋 목록만으로 현재 MVP에서 가능한 질문 정황을 판단한다."""
-        commits = [*slot.linked_commits]
-        if candidate:
-            commits.extend(candidate.commits)
-
-        for commit in commits:
+        """직접 근거를 우선해 현재 MVP에서 가능한 질문 정황을 판단한다."""
+        for commit in slot.linked_commits:
             if commit.message.casefold().startswith("revert"):
                 return EvidenceHint(
                     kind="REVERT",
                     commit=commit,
-                    gap_reason="되돌린 이유와 실제 결과는 커밋만으로 확인되지 않음",
+                    gap_reason=(
+                        "되돌린 이유와 실제 결과는 커밋만으로 확인되지 않음"
+                    ),
                 )
 
         if slot.linked_commits:
             return EvidenceHint(
                 kind="LINKED_COMMIT",
                 commit=slot.linked_commits[0],
-                gap_reason="작업 근거는 있지만 STAR 문장에 필요한 결과 또는 맥락이 부족함",
+                gap_reason=(
+                    "작업 근거는 있지만 STAR 문장에 필요한 결과 또는 맥락이 부족함"
+                ),
             )
+
+        if candidate:
+            for commit in candidate.commits:
+                if commit.message.casefold().startswith("revert"):
+                    return EvidenceHint(
+                        kind="REVERT",
+                        commit=commit,
+                        gap_reason=(
+                            "되돌린 이유와 실제 결과는 커밋만으로 확인되지 않음"
+                        ),
+                    )
 
         return EvidenceHint(
             kind="NO_EVIDENCE",
@@ -116,19 +127,22 @@ class InterviewAgent:
             gap_reason="대상 STAR 문장에 직접 연결된 커밋 근거가 없음",
         )
 
-    def _ask_for_revert(self, slot: MissingSlot, hint: EvidenceHint) -> str:
+    def _ask_for_revert(self, hint: EvidenceHint) -> str:
         """revert 케이스: revert 커밋 SHA를 인용해 되돌린 이유를 묻는다."""
         sha = hint.commit.sha if hint.commit else "확인되지 않은 커밋"
         return (
-            f"Revert 커밋({sha})을 찾았는데 왜 되돌리셨는지는 코드에 없어요. "
+            f"Revert 커밋({sha})을 찾았지만 되돌린 이유는 "
+            "전달된 근거만으로 확인하기 어려워요. "
             f"혹시 어떤 상황이었나요? {_ESCAPE_HATCH}"
         )
 
     def _ask_for_linked_commit(self, slot: MissingSlot, hint: EvidenceHint) -> str:
         """직접 연결 커밋은 있으나 STAR 문장 보강이 필요한 경우를 묻는다."""
         message = hint.commit.message if hint.commit else "해당 작업"
+        sha = hint.commit.sha if hint.commit else "확인되지 않은 커밋"
         return (
-            f"‘{message}’ 작업과 관련해 {slot.star_slot} 부분에서 확인된 결과나 "
+            f"커밋 {sha}의 ‘{message}’ 작업과 관련해 "
+            f"{slot.star_slot} 부분에서 확인된 결과나 "
             f"판단 기준이 있었나요? {_ESCAPE_HATCH}"
         )
 
@@ -141,9 +155,19 @@ class InterviewAgent:
         """
         if candidate and candidate.commits:
             commit = candidate.commits[0]
+            pr_context = (
+                f"PR #{candidate.github_pr_number}의 "
+                if candidate.github_pr_number is not None
+                else ""
+            )
             return (
-                f"‘{commit.message}’ 작업 이후 {slot.star_slot} 부분에서 확인된 결과나 "
-                f"변화가 있었나요? {_ESCAPE_HATCH}"
+                f"{pr_context}커밋 {commit.sha}의 ‘{commit.message}’ 작업 이후 "
+                f"{slot.star_slot} 부분에서 확인된 결과나 변화가 있었나요? {_ESCAPE_HATCH}"
+            )
+        if candidate and candidate.github_pr_number is not None:
+            return (
+                f"PR #{candidate.github_pr_number} 작업에서 {slot.star_slot} 부분과 관련해 "
+                f"확인된 결과나 판단 기준이 있었나요? {_ESCAPE_HATCH}"
             )
         return (
             f"{slot.star_slot} 부분에 대한 근거를 아직 찾지 못했어요. "

@@ -7,9 +7,9 @@ snake_case이므로(백엔드도 동일 컨벤션) camelCase 별칭 변환은 �
 
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 #: card_statement.star_slot — CHAR(1), S/T/A/R.
 StarSlot = Literal["S", "T", "A", "R"]
@@ -23,40 +23,56 @@ TriggerSource = Literal["AUTO"]
 #: B-2 next_action 값 중 이번 PR(B-1)에서 실제로 쓰이는 두 가지.
 NextAction = Literal["ASK_AGAIN", "COMPLETE"]
 
-#: 되묻기 대상의 출처. pr=PR 단위, commit_cluster=커밋 묶음, direct_card=카드 직접 지정.
+#: 되묻기 대상의 출처.
+#: pr=PR 단위, commit_cluster=커밋 묶음, direct_card=카드 직접 지정.
 SourceType = Literal["PR", "COMMIT_CLUSTER", "DIRECT_CARD"]
 
 #: card_statement.confidence. DB/FE 계약의 대문자 enum을 따른다.
 Confidence = Literal["HIGH", "LOW"]
 
+PositiveId = Annotated[int, Field(strict=True, gt=0)]
+NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+CommitSha = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+]
 
-class CommitContext(BaseModel):
+
+class StrictRequestModel(BaseModel):
+    """알 수 없는 요청 필드를 조용히 버리지 않는 내부 API 입력 모델."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CommitContext(StrictRequestModel):
     """카드 전체 또는 STAR 문장에 연결된 Git 커밋의 읽기 전용 문맥."""
 
-    commit_id: int = Field(..., description="git_commit.id")
-    sha: str = Field(..., description="GitHub 커밋 SHA")
-    message: str = Field(..., description="커밋 메시지. 질문 맥락 선택에 사용")
+    commit_id: PositiveId = Field(..., description="git_commit.id")
+    sha: CommitSha = Field(..., description="GitHub 커밋 SHA")
+    message: NonBlankText = Field(
+        ..., description="커밋 메시지. 질문 맥락 선택에 사용"
+    )
 
 
-class CandidateContext(BaseModel):
+class CandidateContext(StrictRequestModel):
     """카드 후보의 카드 전체 작업 맥락.
 
     ``commits``는 카드 전체 경험을 설명하는 목록이다. 특정 STAR 문장의
     직접 근거 목록인 ``MissingSlot.linked_commits``와 구분한다.
     """
 
-    github_pr_number: Optional[int] = Field(None, description="관련 GitHub PR 번호")
+    github_pr_number: Optional[PositiveId] = Field(
+        None, description="관련 GitHub PR 번호"
+    )
     commits: list[CommitContext] = Field(
         default_factory=list, description="카드 전체와 관련된 커밋 목록"
     )
 
-class MissingSlot(BaseModel):
+
+class MissingSlot(StrictRequestModel):
     """STAR 카드에서 아직 채워지지 않은(confidence=low) 문장 슬롯 하나."""
 
-    model_config = ConfigDict(extra="forbid")
-
     star_slot: StarSlot
-    statement_seq: int = Field(..., ge=1, description="card_statement.seq")
+    statement_seq: int = Field(..., ge=1, strict=True, description="card_statement.seq")
     body: Optional[str] = Field(None, description="현재 STAR 문장. 비어 있으면 null")
     confidence: Confidence = Field("LOW", description="현재 문장 근거 신뢰도")
     linked_commits: list[CommitContext] = Field(
@@ -65,10 +81,10 @@ class MissingSlot(BaseModel):
     )
 
 
-class InterviewTurnRequest(BaseModel):
+class InterviewTurnRequest(StrictRequestModel):
     """`POST /internal/interview-turns` 요청 모델."""
 
-    card_id: int = Field(..., description="대상 STAR 카드 ID")
+    card_id: PositiveId = Field(..., description="대상 STAR 카드 ID")
     candidate: Optional[CandidateContext] = Field(
         None,
         description="카드 후보 정보. 직접 작성 카드 등 GitHub 출처가 없으면 null",
@@ -77,7 +93,7 @@ class InterviewTurnRequest(BaseModel):
         default_factory=list, description="아직 비어 있는 슬롯 목록(우선순위 순)"
     )
     existing_turn_count: int = Field(
-        0, ge=0, description="이 카드에 대해 이미 생성된 interview_turn 수"
+        0, ge=0, strict=True, description="이 카드에 대해 이미 생성된 interview_turn 수"
     )
     source_type: SourceType = Field(..., description="되묻기 대상 카드의 출처")
 
@@ -86,11 +102,15 @@ class InterviewTurnRequest(BaseModel):
         """출처별 후보 문맥의 필수 조건을 검증한다."""
         if self.source_type == "PR":
             if self.candidate is None or self.candidate.github_pr_number is None:
-                raise ValueError("source_type='PR'이면 candidate.github_pr_number가 필요합니다.")
+                raise ValueError(
+                    "source_type='PR'이면 candidate.github_pr_number가 필요합니다."
+                )
         elif self.source_type == "COMMIT_CLUSTER" and self.candidate is None:
             raise ValueError("source_type='COMMIT_CLUSTER'이면 candidate가 필요합니다.")
         elif self.source_type == "DIRECT_CARD" and self.candidate is not None:
-            raise ValueError("source_type='DIRECT_CARD'이면 candidate는 null이어야 합니다.")
+            raise ValueError(
+                "source_type='DIRECT_CARD'이면 candidate는 null이어야 합니다."
+            )
         return self
 
 

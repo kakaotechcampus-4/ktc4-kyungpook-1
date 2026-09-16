@@ -1,0 +1,50 @@
+name: AI CI
+
+on:
+  pull_request:
+    paths:
+      - "ai/**"
+      - ".github/workflows/ai-ci.yml"
+  push:
+    branches: [develop, main]
+    paths:
+      - "ai/**"
+      - ".github/workflows/ai-ci.yml"
+
+concurrency:
+  group: ai-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: ai
+
+jobs:
+  test:
+    name: 구문 검사 · 테스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python 3.11 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            ai/requirements.txt
+            ai/requirements-dev.txt
+
+      - name: 의존성 설치
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Python 구문 검사
+        run: python -m compileall -q api schemas services rag main.py tests
+
+      - name: 테스트
+        run: python -m pytest -q

@@ -119,7 +119,8 @@ ktc4-kyungpook-1/
 │     │  ├─ application.yml
 │     │  └─ db/migration/
 │     │     ├─ V1__init.sql         ★ 팀 ERD 기준 · 15 테이블
-│     │     └─ V2__erd_review.sql   ERD 리뷰 13건 반영 (2026-09-14)
+│     │     ├─ V2__erd_review.sql   ERD 리뷰 13건 반영 (2026-09-14)
+│     │     └─ V3__session_store.sql 세션 저장소 (spring-session-jdbc 원문)
 │     └─ test/java/.../architecture/ModuleBoundaryTest.java
 └─ .github/
    ├─ workflows/backend-ci.yml      팀 추가 (운영 3개는 건드리지 않음)

@@ -8,14 +8,13 @@
     - "실패" 등 부정적 결과를 단정하지 않는다.
     - 탈출구("기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요")를 반드시 포함한다.
     - 제공된 sha 또는 pr_number는 반드시 질문 본문에 인용한다.
-    - existing_turn_count >= 2 면 질문을 생성하지 않고 next_action="complete".
+    - existing_turn_count >= 2 면 질문을 생성하지 않고 next_action="COMPLETE".
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from schemas.interview import (
+    CandidateContext,
     EvidenceHint,
     InterviewTurnRequest,
     InterviewTurnResult,
@@ -40,42 +39,40 @@ class InterviewAgent:
             request: `/internal/interview-turns` 요청 모델.
 
         Returns:
-            새 질문 또는 `next_action="complete"`만 채워진 결과.
+            새 질문 또는 `next_action="COMPLETE"`만 채워진 결과.
         """
         if request.existing_turn_count >= MAX_INTERVIEW_TURNS or not request.missing_slots:
-            return InterviewTurnResult(card_id=request.card_id, next_action="complete")
+            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE")
 
         slot = request.missing_slots[0]
         hint = slot.evidence_hint
 
         if hint is None:
-            question_text = self._ask_fallback(slot)
-            question_type: QuestionType = "recall_aid"
-        elif hint.kind == "revert":
+            question_text = self._ask_fallback(slot, request.candidate)
+            question_type: QuestionType = "RECALL_AID"
+        elif hint.kind == "REVERT":
             question_text = self._ask_for_revert(slot, hint)
-            question_type = "evidence_gap"
-        elif hint.kind == "changes_requested":
+            question_type = "EVIDENCE_GAP"
+        elif hint.kind == "CHANGES_REQUESTED":
             question_text = self._ask_for_changes_requested(slot, hint)
-            question_type = "evidence_gap"
-        elif hint.kind == "issue_feedback":
+            question_type = "EVIDENCE_GAP"
+        elif hint.kind == "ISSUE_FEEDBACK":
             question_text = self._ask_for_issue_feedback(slot, hint)
-            question_type = "evidence_gap"
+            question_type = "EVIDENCE_GAP"
         else:
             # 알 수 없는 kind는 증거 전무와 동일하게 취급한다(백지 질문 금지).
-            question_text = self._ask_fallback(slot)
-            question_type = "recall_aid"
+            question_text = self._ask_fallback(slot, request.candidate)
+            question_type = "RECALL_AID"
 
         return InterviewTurnResult(
             card_id=request.card_id,
-            turn_seq=request.existing_turn_count + 1,
             target_star_slot=slot.star_slot,
             target_statement_seq=slot.seq,
             question_type=question_type,
-            trigger_source="auto",
+            trigger_source="AUTO",
             parent_turn_id=None,
             question_text=question_text,
-            asked_at=datetime.now(timezone.utc),
-            next_action="ask_again",
+            next_action="ASK_AGAIN",
         )
 
     def _ask_for_revert(self, slot: MissingSlot, hint: EvidenceHint) -> str:
@@ -102,8 +99,19 @@ class InterviewAgent:
             f"알기 어려워요. 어떤 조치를 하셨는지 알려주실 수 있나요? {_ESCAPE_HATCH}"
         )
 
-    def _ask_fallback(self, slot: MissingSlot) -> str:
-        """fallback 케이스: 증거가 전혀 없을 때 최소 맥락으로 회상을 유도한다."""
+    def _ask_fallback(self, slot: MissingSlot, candidate: CandidateContext | None) -> str:
+        """직접 근거가 없을 때 카드 전체 커밋 문맥으로 회상을 유도한다.
+
+        비어 있는 STAR 문장은 ``linked_commits``가 빈 배열인 것이 정상이다.
+        이때도 카드 전체 커밋이 있으면 작업명을 질문에 인용한다. 카드 커밋까지
+        없을 때만 완전히 일반적인 회상 질문을 생성한다.
+        """
+        if candidate and candidate.commits:
+            commit = candidate.commits[0]
+            return (
+                f"‘{commit.message}’ 작업 이후 {slot.star_slot} 부분에서 확인된 결과나 "
+                f"변화가 있었나요? {_ESCAPE_HATCH}"
+            )
         return (
             f"{slot.star_slot} 부분에 대한 근거를 아직 찾지 못했어요. "
             f"당시 상황을 간단히 설명해주실 수 있나요? {_ESCAPE_HATCH}"

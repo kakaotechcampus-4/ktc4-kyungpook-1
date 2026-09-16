@@ -23,7 +23,12 @@ spring:
   session:
     # 세션은 DB 에 둔다. 토큰을 클라이언트에 두지 않는다는 원칙상 세션 쿠키가
     # 유일한 인증 수단이고, 인스턴스가 늘어나도 로그인이 유지돼야 한다.
-    store-type: jdbc
+    # (Boot 3 의 store-type 키는 Boot 4 에서 사라졌다 — 클래스패스에 있는 스토어가
+    #  곧 저장소다. 그래서 spring-boot-starter-session-jdbc 가 build.gradle 에 있다.)
+    jdbc:
+      # SPRING_SESSION 두 테이블은 V3 마이그레이션이 만든다. 여기서 또 만들면
+      # 스키마 출처가 둘이 된다 (V3 머리말).
+      initialize-schema: never
 
   security:
     oauth2:
@@ -34,8 +39,15 @@ spring:
             client-secret: ${GITHUB_CLIENT_SECRET}
             # 최소 권한. 저장소 쓰기 권한을 요청하지 않는다.
             scope: read:user, public_repo
+            # 프론트 계약(BACKEND_CONTRACT.md)이 콜백 경로를 이 값으로 고정했다.
+            # GitHub OAuth App 의 Authorization callback URL 도 같은 값이어야 한다.
+            redirect-uri: "{baseUrl}/api/auth/github/callback"
 
 server:
+  # 리버스 프록시 뒤에 선다(HOSTING.md A안: / = 프론트, /api = Spring).
+  # 이걸 켜지 않으면 redirect-uri 의 {baseUrl} 이 프록시가 아니라 내부 주소(http://localhost:8080)
+  # 로 풀려 GitHub 이 redirect_uri 불일치로 거절한다.
+  forward-headers-strategy: framework
   servlet:
     session:
       cookie:
@@ -54,6 +66,14 @@ management:
       show-details: never
 
 gitory:
+  consent:
+    # GitHub 액세스 토큰 암호화 키·솔트. 코드·설정 파일에 값을 적지 않는다 —
+    # 배포 환경의 비밀 관리에서 환경변수로 주입한다(security-privacy.md).
+    # 솔트는 16진수 문자열이어야 한다(예: 5c0744940b5c369b).
+    # ⚠️ 키를 바꾸면 기존 token_enc 는 전부 복호화 불가가 된다. 교체하려면
+    #    연결을 철회시켜 재로그인으로 토큰을 다시 받아야 한다.
+    token-key: ${TOKEN_ENC_KEY}
+    token-salt: ${TOKEN_ENC_SALT}
   ingest:
     # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.
     max-commits: 1000

@@ -41,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GithubLoginServiceTest {
 
     private static final String PLAIN_TOKEN = "gho_PlainAccessTokenExample1234567890";
+    private static final Instant ISSUED_AT = Instant.parse("2026-09-16T02:00:00Z");
 
     @Container
     @ServiceConnection
@@ -70,6 +71,10 @@ class GithubLoginServiceTest {
 
     /** GitHub 은 scope 를 쉼표로 붙여 내려준다 — Spring 은 공백으로만 끊으므로 한 덩어리로 들어온다. */
     private static OAuth2UserRequest request(String rawScope) {
+        return request(rawScope, null);
+    }
+
+    private static OAuth2UserRequest request(String rawScope, Instant expiresAt) {
         ClientRegistration registration = ClientRegistration.withRegistrationId("github")
                 .clientId("client-id")
                 .clientSecret("client-secret")
@@ -82,7 +87,7 @@ class GithubLoginServiceTest {
                 .build();
 
         OAuth2AccessToken accessToken = new OAuth2AccessToken(
-                OAuth2AccessToken.TokenType.BEARER, PLAIN_TOKEN, Instant.now(), null, Set.of(rawScope));
+                OAuth2AccessToken.TokenType.BEARER, PLAIN_TOKEN, ISSUED_AT, expiresAt, Set.of(rawScope));
 
         return new OAuth2UserRequest(registration, accessToken);
     }
@@ -136,6 +141,30 @@ class GithubLoginServiceTest {
 
         assertThat(connections.findAll().getFirst().scopeList())
                 .containsExactlyInAnyOrder("public_repo", "read:user");
+    }
+
+    @Test
+    @DisplayName("만료 없는 토큰은 만료 시각이 비어 저장된다 — Spring 의 issuedAt+1초 자리표시를 그대로 믿지 않는다")
+    void placeholderExpiryIsStoredAsNull() {
+        GithubLoginService service = loginWithProfile(profile(4242L, "taehun0208", null));
+
+        // GitHub OAuth App 의 기본 토큰은 expires_in 이 없고, 그때 Spring 은 만료를
+        // issuedAt + 1초로 채운다. 이 값을 그대로 저장하면 발급 1초 뒤 만료된 연결이 된다.
+        service.loadUser(request("read:user", ISSUED_AT.plusSeconds(1)));
+
+        assertThat(connections.findAll().getFirst().getTokenExpiresAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("진짜 만료가 있는 토큰은 만료 시각을 그대로 저장한다")
+    void realExpiryIsKept() {
+        GithubLoginService service = loginWithProfile(profile(4242L, "taehun0208", null));
+
+        // Expire user access tokens 를 켠 앱은 8시간짜리 토큰을 준다.
+        Instant expiresAt = ISSUED_AT.plusSeconds(8 * 3600);
+        service.loadUser(request("read:user", expiresAt));
+
+        assertThat(connections.findAll().getFirst().getTokenExpiresAt()).isEqualTo(expiresAt);
     }
 
     @Test

@@ -95,6 +95,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint(unauthenticatedEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
 
+                // 401 을 낼 때 "원래 가려던 요청"을 세션에 저장하지 않는다.
+                // 기본 동작은 로그인 후 그 요청으로 되돌리려고 세션을 만드는데,
+                //   ① 로그인 성공 후 우리는 언제나 / 로만 보내므로 저장해도 쓰이지 않고
+                //   ② 세션이 DB 에 있어서 로그인 안 된 API 호출 한 번마다 SPRING_SESSION 행이
+                //      하나씩 쌓인다(실측: 익명 호출 3번 → 행 3개).
+                .requestCache(cache -> cache.disable())
+
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage(LOGIN_PAGE)
                         .authorizationEndpoint(endpoint -> endpoint

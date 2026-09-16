@@ -60,14 +60,20 @@ public class StubGithubConfig {
      * 인가 코드 → 액세스 토큰 교환. Spring 이 이 타입의 빈을 찾으면 기본 구현 대신 쓴다
      * ({@code OAuth2LoginConfigurer#getAccessTokenResponseClient}).
      *
-     * <p>scope 를 쉼표로 붙여 내려주는 것은 오타가 아니라 GitHub 의 실제 동작이다 —
-     * 이걸 쪼개는 코드가 {@code GithubLoginService#grantedScopes} 다.
+     * <p>실제 GitHub 응답을 두 가지 면에서 그대로 흉내 낸다. 둘 다 그냥 두면 DB 에
+     * 틀린 값이 들어가는 자리라 스텁을 "예쁘게" 만들면 안 된다.
+     * <ul>
+     *   <li>scope 를 공백이 아니라 <b>쉼표</b>로 붙여 보낸다 —
+     *       쪼개는 코드가 {@code GithubLoginService#grantedScopes} 다.</li>
+     *   <li>{@code expires_in} 을 <b>보내지 않는다</b>(만료 없는 토큰). 그러면 Spring 이
+     *       만료를 issuedAt + 1초 자리표시로 채우는데, 그걸 걸러내는 코드가
+     *       {@code GithubLoginService#realExpiry} 다.</li>
+     * </ul>
      */
     @Bean
     OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> stubbedTokenResponseClient() {
         return request -> OAuth2AccessTokenResponse.withToken(ACCESS_TOKEN)
                 .tokenType(OAuth2AccessToken.TokenType.BEARER)
-                .expiresIn(3600)
                 .scopes(Set.of("public_repo,read:user"))
                 .build();
     }

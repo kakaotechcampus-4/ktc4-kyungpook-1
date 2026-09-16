@@ -115,6 +115,9 @@ class AuthFlowTest {
         // 저장된 값은 평문이 아니고, 복호화하면 GitHub 이 준 토큰이 나온다.
         assertThat(connection.getTokenEnc()).isNotEqualTo(StubGithubConfig.ACCESS_TOKEN);
         assertThat(tokenCipher.decrypt(connection.getTokenEnc())).isEqualTo(StubGithubConfig.ACCESS_TOKEN);
+        // GitHub 이 expires_in 을 안 보냈으므로 만료 없음이다. Spring 의 issuedAt+1초
+        // 자리표시가 그대로 들어가면 발급 1초 뒤 만료된 연결이 된다.
+        assertThat(connection.getTokenExpiresAt()).isNull();
 
         // 세션 쿠키만으로 /api/me 가 열린다.
         perform(get("/api/me"))
@@ -206,6 +209,17 @@ class AuthFlowTest {
                 .andExpect(header().string("Content-Type", "application/json;charset=UTF-8"))
                 .andExpect(jsonPath("$.data").value(nullValue()))
                 .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+    }
+
+    @Test
+    @DisplayName("로그인 안 된 API 호출은 세션을 만들지 않는다 — 익명 호출로 세션 테이블이 불어나지 않는다")
+    void unauthenticatedCallsDoNotCreateSessions() throws Exception {
+        for (int i = 0; i < 3; i++) {
+            perform(get("/api/me")).andExpect(status().isUnauthorized());
+        }
+
+        assertThat(cookieJar).as("SESSION 쿠키가 나가면 서버에 세션 행이 생겼다는 뜻이다")
+                .doesNotContainKey("SESSION");
     }
 
     @Test

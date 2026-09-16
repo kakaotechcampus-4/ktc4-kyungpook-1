@@ -90,12 +90,36 @@ public class GithubLoginService implements OAuth2UserService<OAuth2UserRequest, 
         // 동의 범위를 먼저 검사한다 — 어차피 거절할 로그인이면 토큰을 암호화할 이유가 없다.
         String[] scopes = grantedScopes(accessToken);
         String tokenEnc = tokenCipher.encrypt(accessToken.getTokenValue());
-        Instant expiresAt = accessToken.getExpiresAt();
+        Instant expiresAt = realExpiry(accessToken);
 
         connections.findByUserIdAndRevokedAtIsNull(userId)
                 .ifPresentOrElse(
                         connection -> connection.renew(scopes, tokenEnc, expiresAt),
                         () -> connections.save(GithubConnection.grant(userId, scopes, tokenEnc, expiresAt)));
+    }
+
+    /**
+     * 진짜 만료 시각만 남긴다. 만료가 없으면 {@code null} 이다.
+     *
+     * <p>GitHub OAuth App 의 기본 토큰은 만료가 없어 토큰 응답에 {@code expires_in} 이 없다.
+     * 그런데 Spring 은 {@code expires_in} 이 없으면 만료를 <b>{@code issuedAt + 1초}</b> 라는
+     * 자리표시 값으로 채운다({@code OAuth2AccessTokenResponse.Builder#getExpiresAt} —
+     * {@code expiresIn > 0 ? issuedAt.plusSeconds(expiresIn) : issuedAt.plusSeconds(1)}).
+     *
+     * <p>그 값을 그대로 저장하면 발급 1초 뒤에 만료된 연결로 기록되고, 나중에 만료를 보는
+     * 코드가 멀쩡한 연결을 전부 죽은 것으로 판정한다. 실제 로그인으로 확인하다 발견했다 —
+     * {@code token_expires_at} 이 {@code granted_at} 보다 0.4초 뒤에 찍혀 있었다.
+     *
+     * <p>1초짜리 토큰은 현실에 없으므로, 그 이하는 "만료 정보 없음"으로 되돌린다.
+     */
+    private static Instant realExpiry(OAuth2AccessToken accessToken) {
+        Instant issuedAt = accessToken.getIssuedAt();
+        Instant expiresAt = accessToken.getExpiresAt();
+
+        if (issuedAt == null || expiresAt == null) {
+            return expiresAt;
+        }
+        return expiresAt.isAfter(issuedAt.plusSeconds(1)) ? expiresAt : null;
     }
 
     /**

@@ -1,8 +1,9 @@
 """되묻기(interview-turns) 질문 생성 Agent — B-1.
 
 이번 PR 범위에서는 실제 LLM/DB/GitHub API를 호출하지 않는다.
-증거 종류(evidence_hint.kind)별로 결정적인(deterministic) 템플릿 질문만
-생성한다. LLM 연동은 이후 PR에서 이 클래스의 핸들러 내부만 교체해 붙인다.
+Spring이 전달한 카드·STAR 문장·커밋 문맥으로 내부 EvidenceHint를 만든 뒤,
+결정적인(deterministic) 템플릿 질문을 생성한다. LLM 연동은 이후 PR에서 이
+클래스의 핸들러 내부만 교체해 붙인다.
 
 질문 생성 하드 규칙(명세서 gitory_api_spec_v2 346행):
     - "실패" 등 부정적 결과를 단정하지 않는다.
@@ -13,9 +14,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Literal
+
 from schemas.interview import (
     CandidateContext,
-    EvidenceHint,
+    CommitContext,
     InterviewTurnRequest,
     InterviewTurnResult,
     MissingSlot,
@@ -27,6 +31,21 @@ MAX_INTERVIEW_TURNS = 2
 
 #: 모든 질문에 반드시 들어가는 탈출구 문구.
 _ESCAPE_HATCH = "기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요."
+
+InternalEvidenceKind = Literal["REVERT", "LINKED_COMMIT", "NO_EVIDENCE"]
+
+
+@dataclass(frozen=True)
+class EvidenceHint:
+    """B가 카드 상태와 커밋 문맥에서 만드는 내부 질문 판단 모델.
+
+    Spring은 이 모델을 만들거나 전달하지 않는다. 리뷰·이슈 원본 정보가 아직
+    계약에 없으므로 현재 커밋 중심 MVP에서는 REVERT와 커밋/근거 부재만 판단한다.
+    """
+
+    kind: InternalEvidenceKind
+    commit: CommitContext | None
+    gap_reason: str
 
 
 class InterviewAgent:
@@ -45,29 +64,22 @@ class InterviewAgent:
             return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE")
 
         slot = request.missing_slots[0]
-        hint = slot.evidence_hint
+        hint = self._build_evidence_hint(slot, request.candidate)
 
-        if hint is None:
-            question_text = self._ask_fallback(slot, request.candidate)
-            question_type: QuestionType = "RECALL_AID"
-        elif hint.kind == "REVERT":
+        if hint.kind == "REVERT":
             question_text = self._ask_for_revert(slot, hint)
             question_type = "EVIDENCE_GAP"
-        elif hint.kind == "CHANGES_REQUESTED":
-            question_text = self._ask_for_changes_requested(slot, hint)
-            question_type = "EVIDENCE_GAP"
-        elif hint.kind == "ISSUE_FEEDBACK":
-            question_text = self._ask_for_issue_feedback(slot, hint)
+        elif hint.kind == "LINKED_COMMIT":
+            question_text = self._ask_for_linked_commit(slot, hint)
             question_type = "EVIDENCE_GAP"
         else:
-            # 알 수 없는 kind는 증거 전무와 동일하게 취급한다(백지 질문 금지).
             question_text = self._ask_fallback(slot, request.candidate)
             question_type = "RECALL_AID"
 
         return InterviewTurnResult(
             card_id=request.card_id,
             target_star_slot=slot.star_slot,
-            target_statement_seq=slot.seq,
+            target_statement_seq=slot.statement_seq,
             question_type=question_type,
             trigger_source="AUTO",
             parent_turn_id=None,
@@ -75,28 +87,49 @@ class InterviewAgent:
             next_action="ASK_AGAIN",
         )
 
+    def _build_evidence_hint(
+        self, slot: MissingSlot, candidate: CandidateContext | None
+    ) -> EvidenceHint:
+        """커밋 목록만으로 현재 MVP에서 가능한 질문 정황을 판단한다."""
+        commits = [*slot.linked_commits]
+        if candidate:
+            commits.extend(candidate.commits)
+
+        for commit in commits:
+            if commit.message.casefold().startswith("revert"):
+                return EvidenceHint(
+                    kind="REVERT",
+                    commit=commit,
+                    gap_reason="되돌린 이유와 실제 결과는 커밋만으로 확인되지 않음",
+                )
+
+        if slot.linked_commits:
+            return EvidenceHint(
+                kind="LINKED_COMMIT",
+                commit=slot.linked_commits[0],
+                gap_reason="작업 근거는 있지만 STAR 문장에 필요한 결과 또는 맥락이 부족함",
+            )
+
+        return EvidenceHint(
+            kind="NO_EVIDENCE",
+            commit=None,
+            gap_reason="대상 STAR 문장에 직접 연결된 커밋 근거가 없음",
+        )
+
     def _ask_for_revert(self, slot: MissingSlot, hint: EvidenceHint) -> str:
         """revert 케이스: revert 커밋 SHA를 인용해 되돌린 이유를 묻는다."""
-        sha = hint.sha or "확인되지 않은 커밋"
+        sha = hint.commit.sha if hint.commit else "확인되지 않은 커밋"
         return (
             f"Revert 커밋({sha})을 찾았는데 왜 되돌리셨는지는 코드에 없어요. "
             f"혹시 어떤 상황이었나요? {_ESCAPE_HATCH}"
         )
 
-    def _ask_for_changes_requested(self, slot: MissingSlot, hint: EvidenceHint) -> str:
-        """changes_requested 케이스: PR 번호를 인용해 반영 내용을 묻는다."""
-        pr_ref = f"PR #{hint.pr_number}" if hint.pr_number is not None else "해당 PR"
+    def _ask_for_linked_commit(self, slot: MissingSlot, hint: EvidenceHint) -> str:
+        """직접 연결 커밋은 있으나 STAR 문장 보강이 필요한 경우를 묻는다."""
+        message = hint.commit.message if hint.commit else "해당 작업"
         return (
-            f"{pr_ref}에서 변경 요청(CHANGES_REQUESTED)이 있었는데, 어떤 부분을 "
-            f"어떻게 반영하셨는지 궁금해요. {_ESCAPE_HATCH}"
-        )
-
-    def _ask_for_issue_feedback(self, slot: MissingSlot, hint: EvidenceHint) -> str:
-        """issue_feedback 케이스: PR 번호를 인용해 피드백 대응을 묻는다."""
-        pr_ref = f"PR #{hint.pr_number}" if hint.pr_number is not None else "해당 이슈"
-        return (
-            f"{pr_ref}에 달린 리뷰/이슈 피드백에 어떻게 대응하셨는지 코드만으로는 "
-            f"알기 어려워요. 어떤 조치를 하셨는지 알려주실 수 있나요? {_ESCAPE_HATCH}"
+            f"‘{message}’ 작업과 관련해 {slot.star_slot} 부분에서 확인된 결과나 "
+            f"판단 기준이 있었나요? {_ESCAPE_HATCH}"
         )
 
     def _ask_fallback(self, slot: MissingSlot, candidate: CandidateContext | None) -> str:

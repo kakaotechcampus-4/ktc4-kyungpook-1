@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 #: card_statement.star_slot — CHAR(1), S/T/A/R.
 StarSlot = Literal["S", "T", "A", "R"]
@@ -22,10 +22,6 @@ TriggerSource = Literal["AUTO"]
 
 #: B-2 next_action 값 중 이번 PR(B-1)에서 실제로 쓰이는 두 가지.
 NextAction = Literal["ASK_AGAIN", "COMPLETE"]
-
-#: missing_slots[].evidence_hint.kind — InterviewAgent 핸들러와 1:1 대응.
-#: 값이 없으면(evidence_hint=None) 증거 전무 → fallback/recall_aid 케이스.
-EvidenceKind = Literal["REVERT", "CHANGES_REQUESTED", "ISSUE_FEEDBACK"]
 
 #: 되묻기 대상의 출처. pr=PR 단위, commit_cluster=커밋 묶음, direct_card=카드 직접 지정.
 SourceType = Literal["PR", "COMMIT_CLUSTER", "DIRECT_CARD"]
@@ -54,42 +50,18 @@ class CandidateContext(BaseModel):
         default_factory=list, description="카드 전체와 관련된 커밋 목록"
     )
 
-class EvidenceHint(BaseModel):
-    """빈 칸(missing slot)에 대해 코드에서 이미 찾아둔 정황 증거.
-
-    질문 생성 하드 규칙(명세서 346행)에 따라 sha 또는 pr_number 중
-    제공된 값은 반드시 질문 본문에 인용해야 한다.
-    """
-
-    kind: EvidenceKind = Field(..., description="증거 종류(InterviewAgent 핸들러와 대응)")
-    sha: Optional[str] = Field(None, description="관련 커밋 SHA(revert 등)")
-    pr_number: Optional[int] = Field(
-        None, description="관련 PR 번호(changes_requested/issue_feedback 등)"
-    )
-    note: Optional[str] = Field(
-        None, description="코드가 찾아낸 정황 메모(예: 'Revert 커밋 발견, 이유 없음')"
-    )
-    review_id: Optional[int] = Field(None, description="관련 PR 리뷰 ID(changes_requested 등)")
-    issue_number: Optional[int] = Field(None, description="관련 이슈 번호(issue_feedback 등)")
-    comment_excerpt: Optional[str] = Field(
-        None, description="리뷰/이슈 코멘트 발췌(자유 형식, 질문 생성 시 참고용)"
-    )
-
-
 class MissingSlot(BaseModel):
     """STAR 카드에서 아직 채워지지 않은(confidence=low) 문장 슬롯 하나."""
 
+    model_config = ConfigDict(extra="forbid")
+
     star_slot: StarSlot
-    seq: int = Field(..., ge=1, description="card_statement.seq")
+    statement_seq: int = Field(..., ge=1, description="card_statement.seq")
     body: Optional[str] = Field(None, description="현재 STAR 문장. 비어 있으면 null")
     confidence: Confidence = Field("LOW", description="현재 문장 근거 신뢰도")
     linked_commits: list[CommitContext] = Field(
         default_factory=list,
         description="이 STAR 문장을 직접 뒷받침하는 커밋 목록. 없으면 빈 배열",
-    )
-    evidence_hint: Optional[EvidenceHint] = Field(
-        None,
-        description="사전 분석된 정황 증거. 없으면 카드 전체 커밋 문맥을 우선 활용한다.",
     )
 
 
@@ -133,7 +105,7 @@ class InterviewTurnResult(BaseModel):
     card_id: int
     target_star_slot: Optional[StarSlot] = None
     target_statement_seq: Optional[int] = Field(
-        None, description="질문 대상 STAR 문장 순번(card_statement.seq)"
+        None, description="질문 대상 STAR 문장 순번(missing_slots[].statement_seq)"
     )
     question_type: Optional[QuestionType] = None
     trigger_source: Optional[TriggerSource] = None

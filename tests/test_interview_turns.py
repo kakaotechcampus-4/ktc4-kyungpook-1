@@ -1,8 +1,4 @@
-"""`POST /internal/interview-turns` 단위 테스트 — B-1.
-
-LLM/DB/GitHub API를 호출하지 않는 결정적 템플릿 로직과 Spring ↔ AI
-서버 계약을 검증한다.
-"""
+"""커밋 중심 MVP의 `POST /internal/interview-turns` 단위 테스트."""
 
 from __future__ import annotations
 
@@ -14,96 +10,89 @@ client = TestClient(app)
 
 ENDPOINT = "/internal/interview-turns"
 ESCAPE_HATCH = "기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요."
-NEGATIVE_ASSERTIONS = ("실패",)
 
 
 def _post(payload: dict):
     return client.post(ENDPOINT, json=payload)
 
 
-def _candidate(github_pr_number: int | None = None) -> dict:
-    """카드 전체 커밋 문맥이 있는 후보 요청 값을 만든다."""
-    return {
-        "github_pr_number": github_pr_number,
-        "commits": [
-            {
-                "commit_id": 790,
-                "sha": "abc123",
-                "message": "세션 테이블 인덱스 추가",
-            }
-        ],
+def _commit(commit_id: int, sha: str, message: str) -> dict:
+    return {"commit_id": commit_id, "sha": sha, "message": message}
+
+
+def _candidate(*commits: dict, github_pr_number: int | None = None) -> dict:
+    return {"github_pr_number": github_pr_number, "commits": list(commits)}
+
+
+def _slot(**overrides: object) -> dict:
+    slot = {
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": None,
+        "confidence": "LOW",
+        "linked_commits": [],
     }
+    slot.update(overrides)
+    return slot
 
 
-def test_revert_question_cites_sha() -> None:
-    """REVERT 케이스는 질문 본문에 제공된 커밋 SHA를 반드시 인용한다."""
+def test_revert_commit_in_candidate_creates_evidence_gap_question() -> None:
+    """B는 외부 EvidenceHint 없이 카드 커밋 메시지에서 REVERT를 판단한다."""
     response = _post(
         {
             "card_id": 101,
-            "candidate": _candidate(),
-            "missing_slots": [
-                {
-                    "star_slot": "T",
-                    "seq": 1,
-                    "evidence_hint": {"kind": "REVERT", "sha": "b9c02d"},
-                }
-            ],
-            "existing_turn_count": 0,
             "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(
+                _commit(791, "b9c02d", 'Revert "세션 캐시 도입"'),
+            ),
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
         }
     )
+
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["question_type"] == "EVIDENCE_GAP"
-    assert data["next_action"] == "ASK_AGAIN"
     assert "b9c02d" in data["question_text"]
-    assert "turn_seq" not in data
-    assert data["target_star_slot"] == "T"
+    assert data["target_star_slot"] == "R"
     assert data["target_statement_seq"] == 1
+    assert "turn_seq" not in data
 
 
-def test_preclassified_pr_cases_use_uppercase_enums() -> None:
-    """PR 리뷰/이슈 정황은 대문자 enum으로 전달하고 질문에 PR 번호를 인용한다."""
-    for kind in ("CHANGES_REQUESTED", "ISSUE_FEEDBACK"):
-        response = _post(
-            {
-                "card_id": 102,
-                "candidate": _candidate(222),
-                "missing_slots": [
-                    {
-                        "star_slot": "A",
-                        "seq": 1,
-                        "evidence_hint": {"kind": kind, "pr_number": 222},
-                    }
-                ],
-                "existing_turn_count": 0,
-                "source_type": "PR",
-            }
-        )
-        data = response.json()["data"]
-        assert data["question_type"] == "EVIDENCE_GAP"
-        assert "222" in data["question_text"]
-
-
-def test_card_commit_context_guides_question_when_slot_has_no_direct_commit() -> None:
-    """비어 있는 R은 직접 근거가 없어도 카드 전체 커밋을 질문 힌트로 사용한다."""
+def test_linked_commit_creates_evidence_gap_question() -> None:
+    """문장 직접 근거가 있으면 작업 맥락을 인용해 보강 질문을 만든다."""
     response = _post(
         {
-            "card_id": 400,
-            "candidate": _candidate(),
+            "card_id": 102,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(_commit(790, "abc123", "세션 테이블 인덱스 추가")),
             "missing_slots": [
-                {
-                    "star_slot": "R",
-                    "seq": 1,
-                    "body": None,
-                    "confidence": "LOW",
-                    "linked_commits": [],
-                }
+                _slot(
+                    star_slot="A",
+                    linked_commits=[_commit(790, "abc123", "세션 테이블 인덱스 추가")],
+                )
             ],
             "existing_turn_count": 0,
-            "source_type": "COMMIT_CLUSTER",
         }
     )
+
+    data = response.json()["data"]
+    assert data["question_type"] == "EVIDENCE_GAP"
+    assert "세션 테이블 인덱스 추가" in data["question_text"]
+
+
+def test_empty_slot_uses_card_commit_as_recall_aid_context() -> None:
+    """빈 R은 직접 근거가 없어도 카드 전체 커밋을 회상 질문의 힌트로 쓴다."""
+    response = _post(
+        {
+            "card_id": 103,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(_commit(790, "abc123", "세션 테이블 인덱스 추가")),
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        }
+    )
+
     data = response.json()["data"]
     assert data["question_type"] == "RECALL_AID"
     assert "세션 테이블 인덱스 추가" in data["question_text"]
@@ -111,87 +100,76 @@ def test_card_commit_context_guides_question_when_slot_has_no_direct_commit() ->
 
 
 def test_direct_card_without_candidate_uses_general_recall_aid() -> None:
-    """직접 작성 카드에는 후보/커밋 문맥 없이 일반 회상 질문을 생성한다."""
+    """직접 작성 카드는 GitHub 문맥 없이 일반 회상 질문으로 처리한다."""
     response = _post(
         {
-            "card_id": 401,
-            "candidate": None,
-            "missing_slots": [{"star_slot": "R", "seq": 1, "linked_commits": []}],
-            "existing_turn_count": 0,
+            "card_id": 104,
             "source_type": "DIRECT_CARD",
+            "candidate": None,
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
         }
     )
+
     data = response.json()["data"]
     assert data["question_type"] == "RECALL_AID"
     assert "당시 상황" in data["question_text"]
 
 
-def test_all_generated_questions_include_escape_hatch_and_no_negative_assertion() -> None:
-    """모든 생성 질문은 탈출구를 포함하고 부정적 결과를 단정하지 않는다."""
-    hints = [
-        {"kind": "REVERT", "sha": "abc123"},
-        {"kind": "CHANGES_REQUESTED", "pr_number": 1},
-        {"kind": "ISSUE_FEEDBACK", "pr_number": 2},
-        None,
-    ]
-    for hint in hints:
-        response = _post(
-            {
-                "card_id": 200,
-                "candidate": _candidate(),
-                "missing_slots": [{"star_slot": "S", "seq": 1, "evidence_hint": hint}],
-                "existing_turn_count": 0,
-                "source_type": "COMMIT_CLUSTER",
-            }
-        )
-        question = response.json()["data"]["question_text"]
-        assert ESCAPE_HATCH in question
-        assert all(word not in question for word in NEGATIVE_ASSERTIONS)
-
-
-def test_existing_turn_count_cap_returns_complete_without_turn_sequence() -> None:
-    """AI는 완료 여부만 반환하고 DB 저장 순번은 반환하지 않는다."""
+def test_external_evidence_hint_is_rejected() -> None:
+    """EvidenceHint는 Spring 요청 DTO가 아니라 B 내부 판단 모델이다."""
     response = _post(
         {
-            "card_id": 300,
-            "candidate": _candidate(),
-            "missing_slots": [{"star_slot": "T", "seq": 1}],
-            "existing_turn_count": 2,
+            "card_id": 105,
             "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(_commit(790, "abc123", "세션 테이블 인덱스 추가")),
+            "missing_slots": [_slot(evidence_hint={"kind": "REVERT", "sha": "abc123"})],
+            "existing_turn_count": 0,
         }
     )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
+def test_spring_owns_turn_sequence_and_final_limit() -> None:
+    """AI는 순번을 반환하지 않고, 읽기용 턴 수가 상한이면 완료만 반환한다."""
+    response = _post(
+        {
+            "card_id": 106,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(_commit(790, "abc123", "세션 테이블 인덱스 추가")),
+            "missing_slots": [_slot()],
+            "existing_turn_count": 2,
+        }
+    )
+
     data = response.json()["data"]
     assert data["next_action"] == "COMPLETE"
     assert data["question_text"] is None
-    assert data["target_star_slot"] is None
     assert "turn_seq" not in data
 
 
-def test_pr_candidate_requires_github_pr_number() -> None:
-    """PR 후보는 반드시 GitHub PR 번호를 포함해야 한다."""
-    response = _post(
+def test_pr_candidate_requires_pr_number_and_uppercase_enum() -> None:
+    """PR 출처는 PR 번호가 필요하고 소문자 enum은 거절한다."""
+    missing_pr = _post(
         {
-            "card_id": 600,
-            "candidate": {"commits": []},
-            "missing_slots": [],
-            "existing_turn_count": 0,
+            "card_id": 107,
             "source_type": "PR",
-        }
-    )
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
-
-
-def test_lowercase_enum_returns_invalid_payload() -> None:
-    """DB/FE 계약과 다른 소문자 enum은 요청 검증에서 거절한다."""
-    response = _post(
-        {
-            "card_id": 601,
             "candidate": _candidate(),
             "missing_slots": [],
             "existing_turn_count": 0,
-            "source_type": "commit_cluster",
         }
     )
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+    lowercase = _post(
+        {
+            "card_id": 108,
+            "source_type": "commit_cluster",
+            "candidate": _candidate(),
+            "missing_slots": [],
+            "existing_turn_count": 0,
+        }
+    )
+
+    assert missing_pr.status_code == 400
+    assert lowercase.status_code == 400

@@ -14,7 +14,7 @@ ESCAPE_HATCH = "기억나지 않거나 단순 정리였다면 넘어가도 괜�
 
 
 def _post(payload: dict):
-    return client.post(ENDPOINT, json=payload)
+    return client.post(ENDPOINT, json={"max_turns": 2, **payload})
 
 
 def _commit(commit_id: int, sha: str, message: str) -> dict:
@@ -315,15 +315,16 @@ def test_invalid_identifiers_are_rejected(payload: dict) -> None:
     assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
 
 
-def test_spring_owns_turn_sequence_and_final_limit() -> None:
-    """AI는 순번을 반환하지 않고, 읽기용 턴 수가 상한이면 완료만 반환한다."""
+def test_spring_owns_turn_sequence_and_max_turns() -> None:
+    """AI는 순번을 반환하지 않고 Spring이 전달한 상한을 따른다."""
     response = _post(
         {
             "card_id": 106,
             "source_type": "COMMIT_CLUSTER",
             "candidate": _candidate(_commit(790, "abc123", "세션 테이블 인덱스 추가")),
             "missing_slots": [_slot()],
-            "existing_turn_count": 2,
+            "existing_turn_count": 1,
+            "max_turns": 1,
         }
     )
 
@@ -331,6 +332,45 @@ def test_spring_owns_turn_sequence_and_final_limit() -> None:
     assert data["next_action"] == "COMPLETE"
     assert data["question_text"] is None
     assert "turn_seq" not in data
+
+
+def test_question_is_created_below_spring_max_turns() -> None:
+    """기존 질문 수가 2여도 Spring 상한이 3이면 다음 질문을 만들 수 있다."""
+    response = _post(
+        {
+            "card_id": 123,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(
+                _commit(790, "abc123", "세션 테이블 인덱스 추가")
+            ),
+            "missing_slots": [_slot()],
+            "existing_turn_count": 2,
+            "max_turns": 3,
+        }
+    )
+
+    data = response.json()["data"]
+    assert data["next_action"] == "ASK_AGAIN"
+    assert data["parent_turn_id"] is None
+
+
+def test_max_turns_is_required_and_must_be_positive() -> None:
+    """질문 상한의 단일 출처인 Spring은 유효한 max_turns를 반드시 보낸다."""
+    base_payload = {
+        "card_id": 124,
+        "source_type": "DIRECT_CARD",
+        "candidate": None,
+        "missing_slots": [_slot()],
+        "existing_turn_count": 0,
+    }
+
+    missing = client.post(ENDPOINT, json=base_payload)
+    non_positive = _post({**base_payload, "max_turns": 0})
+
+    assert missing.status_code == 400
+    assert missing.json()["error"]["code"] == "INVALID_PAYLOAD"
+    assert non_positive.status_code == 400
+    assert non_positive.json()["error"]["code"] == "INVALID_PAYLOAD"
 
 
 def test_pr_candidate_requires_pr_number_and_uppercase_enum() -> None:

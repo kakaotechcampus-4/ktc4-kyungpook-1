@@ -9,7 +9,7 @@ Spring이 전달한 카드·STAR 문장·커밋 문맥으로 내부 EvidenceHint
     - "실패" 등 부정적 결과를 단정하지 않는다.
     - 탈출구("기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요")를 반드시 포함한다.
     - 제공된 sha 또는 pr_number는 반드시 질문 본문에 인용한다.
-    - existing_turn_count >= 2 면 질문을 생성하지 않고 next_action="COMPLETE".
+    - existing_turn_count >= max_turns 면 질문을 생성하지 않고 next_action="COMPLETE".
 """
 
 from __future__ import annotations
@@ -25,9 +25,6 @@ from schemas.interview import (
     MissingSlot,
     QuestionType,
 )
-
-#: 카드당 되묻기 질문 최대 횟수(명세서 0-5 전역 제약).
-MAX_INTERVIEW_TURNS = 2
 
 #: 모든 질문에 반드시 들어가는 탈출구 문구.
 _ESCAPE_HATCH = "기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요."
@@ -60,7 +57,10 @@ class InterviewAgent:
         Returns:
             새 질문 또는 `next_action="COMPLETE"`만 채워진 결과.
         """
-        if request.existing_turn_count >= MAX_INTERVIEW_TURNS or not request.missing_slots:
+        if (
+            request.existing_turn_count >= request.max_turns
+            or not request.missing_slots
+        ):
             return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE")
 
         slot = request.missing_slots[0]

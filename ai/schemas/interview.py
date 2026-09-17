@@ -95,6 +95,12 @@ class InterviewTurnRequest(StrictRequestModel):
     existing_turn_count: int = Field(
         0, ge=0, strict=True, description="이 카드에 대해 이미 생성된 interview_turn 수"
     )
+    max_turns: int = Field(
+        ...,
+        ge=1,
+        strict=True,
+        description="Spring이 결정한 카드별 최대 인터뷰 질문 수",
+    )
     source_type: SourceType = Field(..., description="되묻기 대상 카드의 출처")
 
     @model_validator(mode="after")

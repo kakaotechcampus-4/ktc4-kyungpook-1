@@ -1,0 +1,50 @@
+name: Daily PR digest
+on:
+  schedule:
+    - cron: '0 12 * * *'   # 매일 한국시간 21:00
+  workflow_dispatch:
+permissions:
+  pull-requests: read
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect PRs and send
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_KTC }}
+          REPO: ${{ github.repository }}
+        run: |
+          SINCE=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+
+          FMT='
+          def tag: ((.title | capture("^\\w+\\((?<s>[^)]+)\\)")? | .s) // "") as $s
+            | if ($s | test("^ai"; "i")) then "AI"
+              elif ($s | test("^(be|backend)"; "i")) then "BE"
+              elif ($s | test("^(fe|frontend)"; "i")) then "FE"
+              else "기타" end;
+          def clean: .title | sub("^\\w+(\\([^)]*\\))?:\\s*"; "");
+          def links: [ (.body // "")
+            | capture("## *(참고|작성) *문서[^\\n]*\\n(?<sec>[\\s\\S]*?)(?=\\n#|\\z)"; "g") | .sec
+            | scan("https?://[^\\s)>\\]]+") ] | unique;
+          def reviewers:
+            ([.reviewRequests[]? | "⏳" + (.login // .name)])
+            + ([.latestReviews[]?
+                | (if .state == "APPROVED" then "✅"
+                   elif .state == "CHANGES_REQUESTED" then "🔁"
+                   else "💬" end) + .author.login]);
+          .[] | "• [\(tag)] #\(.number) \(clean) (\(.author.login))"
+            + (if $rv then "\n　👀 리뷰어: " + (reviewers | if length > 0 then join(" ") else "미지정" end) else "" end)
+            + (links | if length > 0 then "\n　📎 관련문서: " + (map("<\(.)>") | join(" ")) else "" end)'
+
+          OPENED=$(gh pr list -R "$REPO" --state all --search "created:>=$SINCE -base:main" \
+            --json number,title,author,body,reviewRequests,latestReviews \
+            | jq -r --argjson rv true "$FMT")
+          MERGED=$(gh pr list -R "$REPO" --state merged --search "merged:>=$SINCE -base:main" \
+            --json number,title,author,body \
+            | jq -r --argjson rv false "$FMT")
+
+          [ -z "$OPENED$MERGED" ] && exit 0
+          MSG=$(printf '**📋 경북대 1팀 PeterFan 진행상황 (%s)**\n\n**🆕 새 PR**\n%s\n\n**✅ 머지됨**\n%s' \
+            "$(TZ=Asia/Seoul date +%m/%d)" "${OPENED:-없음}" "${MERGED:-없음}")
+          jq -n --arg c "$MSG" '{content: $c}' | curl -sS -H "Content-Type: application/json" -d @- "$WEBHOOK"

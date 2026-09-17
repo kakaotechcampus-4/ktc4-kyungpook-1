@@ -33,18 +33,23 @@ jobs:
                 | (if .state == "APPROVED" then "✅"
                    elif .state == "CHANGES_REQUESTED" then "🔁"
                    else "💬" end) + .author.login]);
-          .[] | "• [\(tag)] #\(.number) \(clean) (\(.author.login))"
+          .[] | select(($wait | not) or ((.isDraft | not) and (any(.latestReviews[]?; .state == "APPROVED") | not)))
+            | "• [\(tag)] #\(.number) \(clean) (\(.author.login))"
+            + (if $wait then " · " + (.createdAt | fromdateiso8601 + 32400 | gmtime | "\(.[1] + 1)/\(.[2])부터") else "" end)
             + (if $rv then "\n　👀 리뷰어: " + (reviewers | if length > 0 then join(" ") else "미지정" end) else "" end)
-            + (links | if length > 0 then "\n　📎 관련문서: " + (map("<\(.)>") | join(" ")) else "" end)'
+            + (if $wait then "" else (links | if length > 0 then "\n　📎 관련문서: " + (map("<\(.)>") | join(" ")) else "" end) end)'
 
           OPENED=$(gh pr list -R "$REPO" --state all --search "created:>=$SINCE -base:main" \
             --json number,title,author,body,reviewRequests,latestReviews \
-            | jq -r --argjson rv true "$FMT")
+            | jq -r --argjson rv true --argjson wait false "$FMT")
+          WAITING=$(gh pr list -R "$REPO" --state open --search "created:<$SINCE -base:main" \
+            --json number,title,author,createdAt,isDraft,reviewRequests,latestReviews \
+            | jq -r --argjson rv true --argjson wait true "$FMT")
           MERGED=$(gh pr list -R "$REPO" --state merged --search "merged:>=$SINCE -base:main" \
             --json number,title,author,body \
-            | jq -r --argjson rv false "$FMT")
+            | jq -r --argjson rv false --argjson wait false "$FMT")
 
-          [ -z "$OPENED$MERGED" ] && exit 0
-          MSG=$(printf '**📋 경북대 1팀 PeterFan 진행상황 (%s)**\n\n**🆕 새 PR**\n%s\n\n**✅ 머지됨**\n%s' \
-            "$(TZ=Asia/Seoul date +%m/%d)" "${OPENED:-없음}" "${MERGED:-없음}")
+          [ -z "$OPENED$WAITING$MERGED" ] && exit 0
+          MSG=$(printf '**📋 경북대 1팀 PeterFan 진행상황 (%s)**\n\n**🆕 새 PR**\n%s\n\n**🔔 리뷰 필요!**\n%s\n\n**✅ 머지됨**\n%s' \
+            "$(TZ=Asia/Seoul date +%m/%d)" "${OPENED:-없음}" "${WAITING:-없음}" "${MERGED:-없음}")
           jq -n --arg c "$MSG" '{content: $c}' | curl -sS -H "Content-Type: application/json" -d @- "$WEBHOOK"

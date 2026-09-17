@@ -1,7 +1,7 @@
 name: Daily PR digest
 on:
   schedule:
-    - cron: '0 12 * * *'   # 매일 한국시간 21:00
+    - cron: '47 11 * * *'   # 매일 한국시간 20:47 (정각은 GitHub 예약이 몰려 늦게 시작됨)
   workflow_dispatch:
 permissions:
   pull-requests: read

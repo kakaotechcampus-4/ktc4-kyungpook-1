@@ -25,11 +25,7 @@ public class MeQueryService {
                 .orElseThrow(() -> new NoSuchElementException("세션의 사용자를 찾을 수 없다: " + userId));
 
         GithubStatus github = connections.findByUserIdAndRevokedAtIsNull(userId)
-                .map(connection -> new GithubStatus(
-                        connection.isActive(),
-                        connection.scopeList(),
-                        connection.getGrantedAt(),
-                        null))
+                .map(GithubStatus::from)
                 .orElseGet(GithubStatus::notConnected);
 
         return new MeView(

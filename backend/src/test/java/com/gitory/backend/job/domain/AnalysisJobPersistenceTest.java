@@ -74,14 +74,14 @@ class AnalysisJobPersistenceTest {
         AnalysisJob job = AnalysisJob.enqueue(userId, userRepositoryId, KEY);
         em.persist(job);
         job.start();
-        job.fail(JobErrorCode.RATE_LIMITED);
+        job.fail(JobErrorCode.GITHUB_RATE_LIMITED);
         em.flush();
         em.clear();
 
         AnalysisJob loaded = em.find(AnalysisJob.class, job.getId());
 
         assertThat(loaded.getState()).isEqualTo(JobState.FAILED);
-        assertThat(loaded.getErrorCode()).isEqualTo(JobErrorCode.RATE_LIMITED);
+        assertThat(loaded.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
         assertThat(loaded.getStartedAt()).isNotNull();
         assertThat(loaded.getUpdatedAt()).isNotNull();
         assertThat(loaded.getFinishedAt()).isNotNull();

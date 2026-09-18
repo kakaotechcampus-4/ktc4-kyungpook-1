@@ -71,10 +71,10 @@ class AnalysisJobTest {
 
         AnalysisJob job = running();
 
-        job.fail(JobErrorCode.RATE_LIMITED);
+        job.fail(JobErrorCode.GITHUB_RATE_LIMITED);
 
         assertThat(job.getState()).isEqualTo(JobState.FAILED);
-        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.RATE_LIMITED);
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
         assertThat(job.isTerminal()).isTrue();
         assertThat(job.getFinishedAt()).isNotNull();
     }

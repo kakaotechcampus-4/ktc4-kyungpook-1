@@ -24,20 +24,10 @@ public class MeQueryService {
         User user = users.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("세션의 사용자를 찾을 수 없다: " + userId));
 
-        MeView.Github github = connections.findByUserIdAndRevokedAtIsNull(userId)
-                .map(connection -> new MeView.Github(
-                        connection.isActive(),
-                        connection.scopeList(),
-                        connection.getGrantedAt(),
-                        null))
-                .orElseGet(MeView.Github::notConnected);
+        GithubStatus github = connections.findByUserIdAndRevokedAtIsNull(userId)
+                .map(GithubStatus::from)
+                .orElseGet(GithubStatus::notConnected);
 
-        return new MeView(
-                String.valueOf(user.getId()),
-                user.getGithubLogin(),
-                avatarUrl,
-                MeView.Plan.FREE,
-                github,
-                MeView.Stats.none());
+        return MeView.of(user, github, avatarUrl);
     }
 }

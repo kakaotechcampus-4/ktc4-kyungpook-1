@@ -94,7 +94,7 @@
 ```
 ktc4-kyungpook-1/
 ├─ frontend/                        (feature/frontend-scaffold — Vite + React)
-│  └─ docs/BACKEND_CONTRACT.md      ★ 백엔드가 맞춰야 할 계약
+│  └─ docs/api-spec.md              ★ 백엔드가 맞춰야 할 계약
 ├─ backend/
 │  ├─ build.gradle                  Spring Boot 4.1.1 · Java 21(툴체인 자동 조달)
 │  ├─ compose.yaml                  로컬 PostgreSQL
@@ -295,7 +295,7 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 |---|---|
 | `github_connection` | 스펙의 **'연결 동의'** 엔터티가 없었다. 어떤 범위에 동의했고 언제 철회했는지가 없으면 "연결 범위 확인 / 연결 해제" 사용자 통제권을 만들 수 없다. `users.user_token_enc` 를 여기로 옮겼다 — 프로필을 읽는 모든 쿼리가 토큰을 함께 읽지 않게 |
 | `collection_run` | 스펙: *"분석 결과는 스냅샷에 연결한다. 이후 저장소 활동이 바뀌어도 생성 시점의 근거를 설명할 수 있어야 한다."* `last_collected_at` 의 의도를 테이블로 폈고, `partial` 과 `branches` 가 여기 붙는다 |
-| `analysis_job` | 프론트 계약(`BACKEND_CONTRACT.md` Job 절)이 요구한다. `idempotency_key` 가 멱등성을 강제한다 |
+| `analysis_job` | 프론트 계약(`api-spec.md` §3)이 요구한다. `idempotency_key` 가 멱등성을 강제한다 |
 | `audit_event` | 스펙의 '감사 이벤트'. **본문 컬럼이 없는 것이 설계다** — 요청 식별자와 완료 상태만 남긴다 |
 
 ### 컬럼 단위로 더한 것
@@ -404,7 +404,7 @@ S/T/A/R 텍스트만 받고 인터뷰를 안 거친다. V1 은 이 경로를 통
 
 ## 프론트가 열어 둔 질문에 대한 답
 
-프론트 초안(`api-spec.md` §8, 지금은 `BACKEND_CONTRACT.md` 「아직 안 정해진 것」으로 옮겨짐)의 미확정 6건 중 3건은 실측에 답이 있다.
+`frontend/docs/api-spec.md` §8 의 미확정 6건 중 3건은 실측에 답이 있다.
 
 | # | 질문 | 답 | 근거 |
 |---|---|---|---|
@@ -471,7 +471,7 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 ## 아직 정하지 않은 것
 
 - **기업 매칭 테이블이 없다.** PRD 7단계(기업 매칭)에 해당하는 테이블이 ERD 에도,
-  프론트 계약(`BACKEND_CONTRACT.md`)에도 없다. **팀이 범위에서 뺀 것으로 보고 V1 에 넣지 않았다.**
+  프론트 `api-spec.md` 라우트 맵에도 없다. **팀이 범위에서 뺀 것으로 보고 V1 에 넣지 않았다.**
   넣을 거면 `company_context`(공개 출처 URL · 직무 · 인재상 태그 · 확인일 필수, 만료 시 추천 제외)가
   스펙이 요구하는 모양이다.
 - **토큰 암호화 키 관리.** `github_connection.token_enc` 는 암호화된 값을 전제한다.

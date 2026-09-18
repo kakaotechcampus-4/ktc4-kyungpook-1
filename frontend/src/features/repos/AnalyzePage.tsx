@@ -12,9 +12,9 @@ import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
-/** 남은 대기 시간(초). RATE_LIMITED 일 때만 의미가 있다 — 그전까지 다시 시도를 막는다. */
+/** 남은 대기 시간(초). GITHUB_RATE_LIMITED 일 때만 의미가 있다 — 그전까지 다시 시도를 막는다. */
 function useRetryCountdown(job: Job | undefined) {
-  const until = job?.errorCode === 'RATE_LIMITED' && job.retryAfterSec != null
+  const until = job?.errorCode === 'GITHUB_RATE_LIMITED' && job.retryAfterSec != null
     ? new Date(job.finishedAt ?? job.updatedAt).getTime() + job.retryAfterSec * 1000
     : null;
   const [left, setLeft] = useState(0);
@@ -143,7 +143,7 @@ export function AnalyzePage() {
   }
 
   if (j?.state === 'SUCCEEDED' && j.partial) {
-    const code = j.errorCode ?? 'RATE_LIMITED';
+    const code = j.errorCode ?? 'GITHUB_RATE_LIMITED';
     return (
       <main className="main main--tight">
         <Breadcrumb items={[...crumbs, { label: '후보 보드' }]} />

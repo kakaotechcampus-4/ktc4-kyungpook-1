@@ -133,7 +133,7 @@ export function viewJob(id: string): Any | null {
       const steps = analyzeSteps(repo, progress, null);
       // 부분 완료는 별도 상태가 아니다 — SUCCEEDED + partial: true
       return ended(rateLimited
-        ? { state: 'SUCCEEDED', partial: true, steps, errorCode: 'RATE_LIMITED', retryable: true, retryAfterSec: 720,
+        ? { state: 'SUCCEEDED', partial: true, steps, errorCode: 'GITHUB_RATE_LIMITED', retryable: true, retryAfterSec: 720,
             result: { repoId: repo.id, verdict: 'PARTIAL', reasons: [] } }
         : { state: 'FAILED', partial: false, steps, errorCode: 'GITHUB_UNAVAILABLE', retryable: true, retryAfterSec: null,
             result: { repoId: repo.id } });
@@ -331,7 +331,7 @@ export function pushVersion(c: Any, source: string, fields: Any) {
 }
 
 /** 되묻기 턴 생성 — "코드에서 찾은 것"은 카드 근거에서 조립 */
-export const INTERVIEW_MAX_TURNS = 4; // 서버 정책. 화면은 응답의 maxTurns 만 본다
+export const INTERVIEW_MAX_TURNS = 2; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
 
 export function askTurn(c: Any, field: string) {
   const bank = interviewBank[field];

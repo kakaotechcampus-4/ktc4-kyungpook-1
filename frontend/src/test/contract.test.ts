@@ -88,7 +88,7 @@ describe('작업 결과는 HTTP 오류가 아니라 본문의 상태다', () => 
     undo();
     expect(job.state).toBe('SUCCEEDED');
     expect(job.partial).toBe(true);
-    expect(job.errorCode).toBe('RATE_LIMITED');
+    expect(job.errorCode).toBe('GITHUB_RATE_LIMITED');
     expect(job.retryAfterSec).toBeGreaterThan(0);
   });
 

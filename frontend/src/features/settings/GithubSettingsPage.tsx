@@ -10,7 +10,6 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
 const SCOPES = [
-  { scope: 'public_repo', title: '공개 저장소 읽기', desc: '커밋 · PR · 리뷰 코멘트 · 이슈', granted: true },
   { scope: 'read:user', title: '프로필 읽기', desc: '아이디 · 아바타', granted: true },
   { scope: 'repo (private 포함)', title: '비공개 저장소 읽기', desc: '요청하지 않음 — 스키마에서 저장 자체를 막습니다', granted: false },
 ];

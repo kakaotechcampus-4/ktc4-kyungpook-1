@@ -35,7 +35,7 @@ export const jobStepUnit: Record<JobStepKey, string> = { COMMITS: '개', PR_REVI
 
 export const jobErrorTitle: Record<JobErrorCode, string> = {
   GITHUB_UNAVAILABLE: 'GitHub에서 답이 오지 않았어요',
-  RATE_LIMITED: 'GitHub 요청 한도에 걸렸어요',
+  GITHUB_RATE_LIMITED: 'GitHub 요청 한도에 걸렸어요',
   DRAFT_TIMEOUT: '시간 안에 다 채우지 못했어요',
   EVIDENCE_MISSING: '근거가 없어서 채우지 않았어요',
   INTERNAL_ERROR: '저희 쪽에서 문제가 났어요',
@@ -43,7 +43,7 @@ export const jobErrorTitle: Record<JobErrorCode, string> = {
 /** 한 줄 설명. 왜 이렇게 됐는지와, 지금 눌러도 되는지까지만. */
 export const jobErrorHint: Record<JobErrorCode, string> = {
   GITHUB_UNAVAILABLE: '읽다가 연결이 끊겼어요. 읽은 데까지로는 후보를 만들지 않아요.',
-  RATE_LIMITED: '한도가 풀리면 읽던 데서 이어서 읽어요.',
+  GITHUB_RATE_LIMITED: '한도가 풀리면 읽던 데서 이어서 읽어요.',
   DRAFT_TIMEOUT: '채운 칸까지 보여 드려요. 나머지는 칸 하나씩 다시 해 볼 수 있어요.',
   EVIDENCE_MISSING: '없는 내용을 지어내지 않아요. 빈 칸은 직접 쓰거나 되묻기로 채우면 돼요.',
   INTERNAL_ERROR: '잠시 뒤에 다시 눌러 주세요.',

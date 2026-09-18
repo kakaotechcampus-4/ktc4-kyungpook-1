@@ -87,15 +87,15 @@ export function LandingPage() {
       {consent && (
         <Modal title="GitHub에서 동의만 하면 바로 시작해요" width={520}
           onClose={() => setSp({})}
-          footer={{ strong: '읽기 권한 두 개만 요청해요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button onClick={go}>GitHub으로 이동</Button></> }}>
+          footer={{ strong: '읽기 권한 한 개만 요청해요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button onClick={go}>GitHub으로 이동</Button></> }}>
           <div className="stack" style={{ gap: 8 }}>
-            {[['공개 저장소 읽기', '커밋과 PR을 읽어요'], ['프로필 읽기', '아이디와 프로필 사진만 써요']].map(([t, d]) => (
+            {[['프로필 읽기', '아이디와 프로필 사진만 써요']].map(([t, d]) => (
               <div key={t} className="card card--paper row" style={{ gap: 12, padding: '14px 16px' }}>
                 <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>{t}</span><span className="t-12 c-2">{d}</span></div>
               </div>
             ))}
           </div>
-          <Note strong="저장소에 쓰는 권한은 요청하지 않아요" />
+          <Note strong="저장소 접근은 별도 권한 없이 공개 데이터만 읽어요 — 쓰는 권한은 요청하지 않아요" />
         </Modal>
       )}
     </main>

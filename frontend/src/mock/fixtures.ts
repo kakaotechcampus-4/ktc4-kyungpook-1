@@ -7,7 +7,7 @@ const daysAgo = (d: number) => new Date(Date.now() - d * 86400_000).toISOString(
 
 export const seedUser = {
   id: 'u_01', login: 'hong-dev', avatarUrl: '/demo-avatar.svg', plan: 'FREE' as const,
-  github: { connected: true, scopes: ['public_repo', 'read:user'], connectedAt: daysAgo(5), lastCollectedAt: daysAgo(1) },
+  github: { connected: true, scopes: ['read:user'], connectedAt: daysAgo(5), lastCollectedAt: daysAgo(1) },
 };
 
 export const seedRepos = [
@@ -253,7 +253,7 @@ export const seedInterview: Record<string, unknown[]> = {
     turnNo: 1, field: 'S', askedBy: 'USER_REQUEST', sourceType: 'PR', questionType: 'EVIDENCE_GAP',
     found: ['Revert 커밋 2건 (4.02)', '결제 롤백 이슈 #31'], missing: ['그때 왜 되돌렸고, 어떻게 다시 붙였는지'],
     question: '그때 의견이 갈린 지점은 무엇이었나요?', options: [],
-    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 3, maxTurns: 4,
+    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 1, maxTurns: 2,
   }],
 };
 

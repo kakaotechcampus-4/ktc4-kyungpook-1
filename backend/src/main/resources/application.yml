@@ -85,6 +85,10 @@ gitory:
     draft-days: 30
     # 계정 삭제 요청 시 서비스 데이터에서 삭제까지
     account-deletion-days: 7
+  interview:
+    # 카드당 되묻기 질문 최대 횟수.
+    # AI 에는 요청의 max_turns, 프론트에는 응답의 maxTurns 로 내려준다.
+    max-turns: 2
 
 logging:
   level:

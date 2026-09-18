@@ -28,12 +28,6 @@ public class MeQueryService {
                 .map(GithubStatus::from)
                 .orElseGet(GithubStatus::notConnected);
 
-        return new MeView(
-                String.valueOf(user.getId()),
-                user.getGithubLogin(),
-                avatarUrl,
-                Plan.FREE,
-                github,
-                UserStats.none());
+        return MeView.of(user, github, avatarUrl);
     }
 }

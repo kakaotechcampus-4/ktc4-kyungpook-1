@@ -3,15 +3,11 @@ package com.gitory.backend.common.api;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
- * 모든 응답의 봉투. 프론트 계약({@code frontend/docs/api-spec.md} §0)이 요구하는 모양이다.
- *
- * <pre>{ "data": T, "error": null } | { "data": null, "error": { "code", "message" } }</pre>
- *
- * <p>실패를 전부 HTTP 4xx/5xx 로 내리지 않는다. {@code EMPTY}·{@code FAILED} 같은
- * <b>판정</b>은 200 + 상태값으로 내려간다 — "후보 0개"는 오류가 아니라 정상적인 결과다
- * (user-flow.md 예외 흐름: "역량 부족"으로 해석하지 않음).
- * 진짜 HTTP 오류는 인증 실패와 처리 자체가 불가능한 요청으로 한정한다.
+ * API 응답의 공통 형식 {@code { data, error }}.
+ * 후보 0개·부분 결과·작업 실패 같은 판정은 오류가 아니라 200 + 상태값으로 내린다.
+ * HTTP 오류는 인증 실패와 처리할 수 없는 요청에만 쓴다.
  */
+
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record ApiResponse<T>(T data, ApiError error) {
 

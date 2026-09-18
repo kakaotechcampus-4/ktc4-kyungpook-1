@@ -1,0 +1,73 @@
+/*
+ * Gitory 디자인 토큰 — Figma 컬렉션(1. Primitives / 2. Semantic)과 이름 1:1.
+ * 브랜드는 무채색이다. 색이 보이면 반드시 신호다: 앰버 = ⚑ 확인 필요 · 브릭 = 실패.
+ * 상태 토큰 이름은 스펙 enum 과 같다 (status/draft · candidate/used · field/dropped …).
+ *
+ * 테마: 기본은 라이트 고정. OS 다크모드를 자동으로 따라가지 않는다 (Figma 토큰도 Light 단일 모드).
+ * 다크는 <html data-theme="dark"> 로 명시적으로만 켠다. 화면 코드는 원시 --ink-* 를 텍스트 색으로 쓰지 않는다 —
+ * 항상 시맨틱(--text-*, --bg-*, --border-*)만 쓴다. 고정 다크 서페이스(근거 스트립 · 배너 · PR 배지)만 예외.
+ */
+:root {
+  /* 1. Primitives — 웜 뉴트럴 (파란 기미 없음) */
+  --ink-0: #ffffff; --ink-25: #fcfcfa; --ink-50: #f8f8f5; --ink-100: #edede9; --ink-150: #e8e7e2;
+  --ink-200: #d9d9d5; --ink-300: #bfc1bb; --ink-400: #999b96; --ink-500: #777a74; --ink-600: #5f625c;
+  --ink-700: #3b3e3a; --ink-800: #292927; --ink-850: #202020; --ink-900: #171717;
+  --ink-alpha-24: rgba(23, 23, 23, .24);
+  --caution-50: #fbf3e3; --caution-300: #debb77; --caution-500: #b4801f; --caution-600: #8e6414; --caution-900: #3a2707;
+  --danger-50: #f9edea; --danger-300: #d99b8c; --danger-500: #b5442e; --danger-600: #94341f; --danger-900: #3d1409;
+
+  --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-12: 12px; --space-16: 16px;
+  --space-20: 20px; --space-24: 24px; --space-32: 32px; --space-40: 40px; --space-48: 48px; --space-64: 64px; --space-80: 80px;
+  --radius-xs: 4px; --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-2xl: 24px; --radius-full: 999px;
+  --size-sidebar: 220px; --size-topbar: 72px; --size-content: 780px; --size-container: 1440px; --size-footer: 84px;
+
+  --font: 'Pretendard Variable', Pretendard, system-ui, -apple-system, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --shadow-dialog: 0 24px 80px rgba(0, 0, 0, .24);
+  --focus: 0 0 0 3px var(--ink-alpha-24);
+
+  /* 2. Semantic — Light (기본) */
+  color-scheme: light;
+  --bg-paper: var(--ink-25); --bg-canvas: var(--ink-50); --bg-surface: var(--ink-0); --bg-subtle: var(--ink-100);
+  --bg-inset: var(--ink-150); --bg-selected: var(--ink-150); --bg-console: var(--ink-850);
+  --bg-ink-solid: var(--ink-900); --bg-ink-hover: var(--ink-800);
+  --text-primary: var(--ink-900); --text-strong: var(--ink-700); --text-secondary: var(--ink-600); --text-tertiary: var(--ink-400);
+  --text-on-ink: var(--ink-0); --text-on-console: var(--ink-100);
+  --border-default: var(--ink-200); --border-strong: var(--ink-300); --border-selected: var(--ink-900);
+
+  --status-draft-bg: var(--ink-100); --status-draft-text: var(--ink-700);
+  --status-confirmed-bg: var(--ink-900); --status-confirmed-text: var(--ink-0);
+  --candidate-new-bg: var(--ink-0); --candidate-new-text: var(--ink-600); --candidate-new-border: var(--ink-200);
+  --candidate-used-bg: var(--ink-100); --candidate-used-text: var(--ink-400);
+  --candidate-excluded-bg: var(--ink-50); --candidate-excluded-text: var(--ink-300);
+  --field-low-bg: var(--caution-50); --field-low-text: var(--caution-600); --field-low-border: var(--caution-600);
+  --field-dropped-bg: var(--ink-50); --field-dropped-text: var(--ink-400);
+  --evidence-commit-bg: var(--ink-800); --evidence-commit-text: var(--ink-200); --evidence-commit-label: var(--ink-500);
+  --evidence-user-bg: var(--ink-0); --evidence-user-text: var(--ink-600);
+  --state-failed-bg: var(--danger-50); --state-failed-text: var(--danger-600);
+  --state-partial-bg: var(--ink-100); --state-partial-text: var(--ink-600);
+  --state-open-bg: var(--caution-50); --state-open-text: var(--caution-600);
+  --dim: rgba(23, 23, 23, .42);
+}
+
+/* Dark — 명시적 opt-in 만. (Figma 는 Starter 플랜 제한으로 Light 단일 모드; Dark 값은 변수 description 에 있음) */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-paper: var(--ink-850); --bg-canvas: var(--ink-900); --bg-surface: var(--ink-800); --bg-subtle: var(--ink-700);
+  --bg-inset: var(--ink-700); --bg-selected: var(--ink-700);
+  --bg-ink-solid: var(--ink-25); --bg-ink-hover: var(--ink-100);
+  --text-primary: var(--ink-25); --text-strong: var(--ink-200); --text-secondary: var(--ink-300); --text-tertiary: var(--ink-500);
+  --text-on-ink: var(--ink-900);
+  --border-default: var(--ink-700); --border-strong: var(--ink-600); --border-selected: var(--ink-25);
+  --status-draft-bg: var(--ink-700); --status-draft-text: var(--ink-200);
+  --status-confirmed-bg: var(--ink-25); --status-confirmed-text: var(--ink-900);
+  --candidate-new-bg: var(--ink-800); --candidate-new-text: var(--ink-300); --candidate-new-border: var(--ink-700);
+  --candidate-used-bg: var(--ink-700); --candidate-used-text: var(--ink-400);
+  --candidate-excluded-bg: var(--ink-850); --candidate-excluded-text: var(--ink-600);
+  --field-low-bg: var(--caution-900); --field-low-text: var(--caution-300); --field-low-border: var(--caution-300);
+  --field-dropped-bg: var(--ink-850); --field-dropped-text: var(--ink-500);
+  --evidence-user-bg: var(--ink-800); --evidence-user-text: var(--ink-300);
+  --state-failed-bg: var(--danger-900); --state-failed-text: var(--danger-300);
+  --state-partial-bg: var(--ink-700); --state-partial-text: var(--ink-300);
+  --state-open-bg: var(--caution-900); --state-open-text: var(--caution-300);
+  --dim: rgba(0, 0, 0, .6);
+}

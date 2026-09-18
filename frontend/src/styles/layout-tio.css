@@ -1,0 +1,134 @@
+/*
+ * 레퍼런스(tiokorea.com) 에서 가져온 건 "레이아웃 언어" 만이다 — 접히는 레일 · 중앙 프롬프트 · 소스 카드 · 좌 캔버스/우 패널 · 스텝 레일 위저드.
+ * 색은 가져오지 않는다. 브랜드는 무채색이다. 색이 보이면 반드시 신호다 (앰버 = ⚑ · 브릭 = 실패).
+ * 강조는 전부 잉크(--bg-ink-solid / --text-primary) 와 면(--bg-subtle / --bg-selected) 의 대비로만 낸다.
+ */
+:root { --radius-lg: 16px; --radius-xl: 20px; --shadow-card: 0 10px 30px rgba(0, 0, 0, .05); }
+.card { box-shadow: var(--shadow-card); }
+.card--paper { box-shadow: none; }
+.btn { border-radius: 10px; }
+.btn--outline { color: var(--text-strong); border-color: var(--border-default); }
+.btn--outline:hover:not(:disabled) { background: var(--bg-subtle); }
+.chip, .chip--option { border-radius: 999px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px; background: var(--bg-surface); border: 1px solid var(--border-default); font-size: 13px; font-weight: 600; color: var(--text-strong); box-shadow: 0 2px 8px rgba(0, 0, 0, .04); transition: border-color .12s, transform .12s; }
+.pill:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.pill--on { background: var(--bg-ink-solid); color: var(--text-on-ink); border-color: var(--bg-ink-solid); }
+.pill--on .c-3 { color: var(--ink-400); }
+.modal { border-radius: 20px; }
+.iconbox { border-radius: 12px; }
+.hl { color: var(--text-primary); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px; text-decoration-color: var(--border-strong); }
+
+/* ───────── 사이드바: 접히는 레일 ───────── */
+.shell { grid-template-columns: var(--sb, 240px) minmax(0, 1fr); transition: grid-template-columns .18s ease; }
+.shell--rail { --sb: 64px; }
+.sidebar { padding: 16px 12px; gap: 8px; background: var(--bg-surface); }
+.sidebar__top { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 12px; min-height: 44px; }
+.sidebar__toggle { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--text-tertiary); }
+.sidebar__toggle:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.menu-item { padding: 9px 12px; border-radius: 10px; font-weight: 500; color: var(--text-strong); gap: 10px; }
+.menu-item svg { color: var(--text-secondary); }
+.menu-item[aria-current="page"] { background: var(--bg-ink-solid); color: var(--text-on-ink); font-weight: 600; }
+.menu-item[aria-current="page"] svg { color: var(--ink-400); }
+.menu-group__title { padding: 10px 12px 6px; font-size: 11px; }
+.sidebar__recent { padding: 12px 12px 0; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border-default); margin-top: 6px; }
+.sidebar__recent-title { font-size: 11px; color: var(--text-tertiary); padding: 0 0 6px; }
+.sidebar__recent a { display: block; padding: 7px 8px; border-radius: 8px; font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar__recent a:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.sidebar__recent-empty { font-size: 11.5px; color: var(--text-tertiary); line-height: 17px; padding: 2px 0 8px; }
+.sidebar__profile { border: 0; padding: 10px 8px; gap: 10px; }
+.sidebar__email { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+.sidebar__plan { background: var(--bg-subtle); color: var(--text-secondary); }
+.sidebar__gear { margin-left: auto; color: var(--text-tertiary); width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; }
+.sidebar__gear:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.sidebar__status { display: flex; align-items: center; gap: 8px; margin: 4px 4px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-default); font-size: 12.5px; font-weight: 600; color: var(--text-strong); }
+.sidebar__status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-900); }
+.shell--rail .brand img, .shell--rail .menu-group__title, .shell--rail .menu-item span, .shell--rail .sidebar__recent, .shell--rail .sidebar__profile > div, .shell--rail .sidebar__gear, .shell--rail .sidebar__status { display: none; }
+.shell--rail .menu-item { justify-content: center; padding: 10px; }
+.shell--rail .sidebar__top { justify-content: center; }
+.shell--rail .sidebar__profile { justify-content: center; padding: 8px 0; }
+.main { max-width: 1180px; }
+
+/* ───────── 홈: 중앙 프롬프트 ───────── */
+/* 배경 그라데이션 없음 — 중심이 섹션 맨 위라 글 뒤가 아니라 글 위에 얼룩으로 떴다. 무채색 바탕이 더 깨끗하다. */
+.prompt { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 48px 16px 28px; text-align: center; }
+.prompt__h { font-size: 30px; line-height: 40px; font-weight: 700; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.prompt__h svg { color: var(--text-tertiary); }
+.prompt__card { width: 100%; max-width: 620px; background: var(--bg-surface); border-radius: 20px; box-shadow: 0 14px 40px rgba(0, 0, 0, .08); border: 1px solid var(--border-default); display: flex; flex-direction: column; text-align: left; overflow: hidden; }
+/* 입력과 제안 목록이 같은 왼쪽 시작선을 쓰도록 패딩을 한 값으로 묶는다 */
+.prompt__card { --pad: 18px; }
+.prompt__row { display: flex; align-items: center; gap: 10px; padding: 16px var(--pad); }
+.prompt__input { flex: 1; min-width: 0; border: 0; outline: 0; font-size: 15px; line-height: 24px; background: transparent; padding: 0; }
+.prompt__input::placeholder { color: var(--text-tertiary); }
+.prompt__go { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; transition: background .12s; }
+.prompt__go:hover:not(:disabled) { background: var(--bg-ink-hover); }
+.prompt__go:disabled { background: var(--bg-inset); color: var(--text-tertiary); }
+.prompt__list { border-top: 1px solid var(--border-default); padding: 6px; }
+.prompt__none { padding: 8px calc(var(--pad) - 6px); font-size: 13px; color: var(--text-tertiary); }
+.prompt__sugg { display: flex; flex-direction: column; }
+.prompt__sugg button {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  width: 100%; padding: 10px calc(var(--pad) - 6px); border-radius: 10px; text-align: left;
+}
+.prompt__sugg button:hover, .prompt__sugg button[aria-selected="true"] { background: var(--bg-selected); }
+.prompt__sugg-icon { color: var(--text-tertiary); }
+.prompt__sugg-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prompt__sugg-meta { font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.prompt__chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ───────── 소스 카드 (빈 상태) ───────── */
+.intro { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 40px 16px 8px; }
+.intro__h { font-size: 30px; line-height: 40px; font-weight: 700; letter-spacing: -.02em; }
+.intro__s { font-size: 14.5px; color: var(--text-secondary); }
+.sources { width: 100%; max-width: 640px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 20px; box-shadow: var(--shadow-card); overflow: hidden; }
+.source { display: flex; align-items: center; gap: 16px; padding: 18px 20px; width: 100%; text-align: left; border-top: 1px solid var(--border-default); transition: background .12s; }
+.source:first-child { border-top: 0; }
+.source:hover { background: var(--bg-canvas); }
+.source__t { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+.source__time { padding: 2px 8px; border-radius: 999px; background: var(--bg-subtle); color: var(--text-secondary); font-size: 11px; font-weight: 600; }
+.source__d { font-size: 12.5px; color: var(--text-secondary); line-height: 18px; }
+.source__chev { margin-left: auto; color: var(--text-tertiary); }
+
+/* ───────── 목록 헤더 ───────── */
+.list-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.list-head h1 { font-size: 20px; line-height: 28px; font-weight: 700; letter-spacing: -.01em; }
+.list-head .right { display: flex; gap: 8px; align-items: center; }
+.list-search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--bg-surface); width: 220px; }
+.list-search input { border: 0; outline: 0; background: none; width: 100%; font-size: 13px; }
+.illus { width: 84px; height: 84px; border-radius: 16px; background: var(--bg-surface); border: 1px solid var(--border-default); display: grid; place-items: center; color: var(--text-tertiary); position: relative; }
+.illus::after { content: '+'; position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; font-weight: 700; }
+
+/* ───────── 위저드 모달: 좌측 스텝 레일 ───────── */
+.wizard { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; }
+.wizard__steps { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+.wstep { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-tertiary); }
+.wstep__no { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: var(--bg-subtle); color: var(--text-tertiary); }
+.wstep--done .wstep__no { background: var(--bg-inset); color: var(--text-strong); }
+.wstep--now { color: var(--text-primary); font-weight: 600; }
+.wstep--now .wstep__no { background: var(--bg-ink-solid); color: var(--text-on-ink); }
+@media (max-width: 720px) { .wizard { grid-template-columns: 1fr; } .wizard__steps { flex-direction: row; } }
+
+/* ───────── 인터뷰: 좌 캔버스 + 우 패널 ───────── */
+.iv { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: start; }
+.iv__canvas { min-height: 420px; display: flex; flex-direction: column; gap: 0; }
+.iv__empty { flex: 1; display: grid; place-items: center; color: var(--text-tertiary); font-size: 14px; padding: 60px 0; }
+.iv__panel { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 14px; padding: 18px; }
+.iv__greet { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--bg-console); color: var(--text-on-console); font-size: 13px; line-height: 20px; }
+.iv__q { font-size: 16px; line-height: 24px; font-weight: 700; }
+.iv__qd { font-size: 12.5px; color: var(--text-secondary); line-height: 19px; }
+.star-read__row--now { outline: 2px solid var(--border-selected); outline-offset: -2px; border-radius: 12px; }
+.iv__fold { display: none; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-decoration: underline; }
+@media (max-width: 1100px) {
+  .iv { grid-template-columns: 1fr; }
+  /* 좁은 화면에서는 질문과 입력칸이 먼저다. 미리보기는 접어 두고 필요할 때만 편다. */
+  .iv__panel { position: static; order: -1; }
+  .iv__fold { display: inline; }
+  .iv__canvas--folded .star-read,
+  .iv__canvas--folded .iv__empty { display: none; }
+}
+
+/* 랜딩·히어로 */
+.landing { background: radial-gradient(ellipse at 30% 0%, rgba(0, 0, 0, .035), transparent 55%), var(--bg-paper); gap: 40px; }
+.prompt__sub { font-size: 14.5px; line-height: 23px; color: var(--text-secondary); margin-top: -8px; }
+/* 포커스 링은 입력창이 아니라 카드 전체에 — 카드 안에 박스가 또 생기지 않게 */
+.prompt__input:focus-visible { box-shadow: none; }
+.prompt__card:focus-within { border-color: var(--border-selected); }

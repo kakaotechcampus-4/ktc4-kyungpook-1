@@ -1,0 +1,113 @@
+/* ───────── 랜딩 (A1) ───────── */
+.landing { min-height: 100vh; background: var(--bg-paper); display: flex; flex-direction: column; align-items: center; gap: 28px; padding: 96px 40px 60px; }
+.landing__h1 { font-size: 34px; line-height: 46px; font-weight: 800; letter-spacing: -.03em; max-width: 860px; }
+.perm { display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 900px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
+.perm__col { padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.perm__col h3 { font-size: 14px; line-height: 20px; font-weight: 600; }
+.perm__col--skip { border-left: 1px solid var(--border-default); }
+.perm__col--skip h3, .perm__col--skip span { color: var(--text-tertiary); }
+.perm__col--skip b { color: var(--border-strong); }
+.perm__row { display: flex; gap: 8px; font-size: 12.5px; line-height: 19px; color: var(--text-secondary); }
+.perm__row b { color: var(--text-strong); font-weight: 700; flex: 0 0 auto; }
+.perm--compact .perm__col { padding: 18px 20px; }
+@media (max-width: 640px) { .perm { grid-template-columns: 1fr; } .perm__col--skip { border-left: 0; border-top: 1px solid var(--border-default); } .landing__h1 { font-size: 26px; line-height: 36px; } .landing { padding: 48px 18px; } }
+
+/* ───────── 홈 배너 · 카드 그리드 (E1) ───────── */
+.banner { display: flex; align-items: center; gap: 20px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--ink-900); color: var(--ink-0); flex-wrap: wrap; } /* 고정 다크 서페이스 — 양 테마 동일 */
+.banner__h { font-size: 20px; line-height: 29px; font-weight: 700; max-width: 660px; }
+.banner__s { font-size: 13px; line-height: 20px; color: var(--ink-200); }
+.banner__btn { background: var(--ink-0); color: var(--ink-900); border-color: var(--ink-0); margin-left: auto; }
+.banner__btn:hover { background: var(--ink-100); }
+.gcard { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; transition: transform .12s, border-color .12s; }
+.gcard__title { font-size: 18px; line-height: 26px; font-weight: 600; }
+.mine-chip { display: inline-flex; gap: 5px; padding: 3px 8px; border-radius: var(--radius-xs); background: var(--bg-subtle); font-size: 10.5px; line-height: 16px; font-weight: 600; color: var(--text-strong); }
+.mine-chip span { font-weight: 400; color: var(--text-tertiary); }
+.mine-chip--low { background: var(--field-low-bg); color: var(--field-low-text); }
+.mine-chip--low span { color: var(--field-low-text); }
+
+/* ───────── 레포 행 (B1) ───────── */
+.repo-row { gap: 12px; padding: 13px 14px; width: 100%; text-align: left; border-radius: 10px; }
+.repo-row--sel { background: var(--bg-selected); }
+
+/* ───────── 분석 진행 (B3) · 실패 (B4) ───────── */
+.stages { display: flex; flex-direction: column; }
+.stage { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--border-default); }
+.stage:first-child { border-top: 0; }
+.stage__icon { width: 26px; height: 26px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg-surface); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--text-on-ink); flex: 0 0 auto; }
+.stage--DONE .stage__icon { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }
+.stage--WAIT .stage__icon { border-color: var(--border-default); }
+.stage__label { font-size: 14px; line-height: 20px; font-weight: 600; }
+.stage__detail { font-size: 12px; line-height: 19px; color: var(--text-secondary); }
+.stage--WAIT .stage__label, .stage--WAIT .stage__detail { color: var(--text-tertiary); }
+.stage--NOW .stage__icon { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { border-color: var(--bg-ink-solid); } }
+.fail-card { display: flex; align-items: center; gap: 18px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--state-failed-bg); }
+.fail-card__bang { font-size: 22px; font-weight: 800; color: var(--state-failed-text); flex: 0 0 auto; }
+
+/* ───────── 후보 보드 (C1 · C3) ───────── */
+.cand { display: flex; gap: 14px; padding: 16px 18px; }
+.cand__title { font-size: 16px; line-height: 24px; font-weight: 600; }
+.cand--used .cand__title, .cand--used .cand__reason { color: var(--text-tertiary); }
+.cand__reason { font-size: 12.5px; line-height: 20px; color: var(--text-secondary); }
+.cand__meta { font-size: 11px; line-height: 16px; color: var(--text-tertiary); }
+.cand__warn { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: var(--radius-md); background: var(--bg-subtle); font-size: 11.5px; line-height: 17px; color: var(--text-secondary); flex-wrap: wrap; }
+.cand__warn strong { color: var(--text-strong); font-weight: 600; }
+.commit-row { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--bg-surface); }
+.commit-row--ex { background: var(--bg-canvas); }
+.commit-row--ex .commit-row__msg { color: var(--text-tertiary); }
+.commit-row__sha { font-family: ui-monospace, Consolas, monospace; font-size: 12px; font-weight: 700; color: var(--text-strong); width: 74px; flex: 0 0 auto; }
+.commit-row__msg { font-size: 13.5px; line-height: 20px; font-weight: 500; }
+.commit-row__path { font-size: 11px; line-height: 16px; color: var(--text-tertiary); }
+.verdict { display: flex; gap: 20px; padding: 18px; border-radius: 10px; background: var(--bg-paper); border: 1px solid var(--border-default); align-items: center; flex-wrap: wrap; }
+.verdict__reasons { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; line-height: 20px; color: var(--text-secondary); }
+
+/* ───────── 카드 STAR (D2 · D4 · D6 · D7 · E2) ───────── */
+.star { display: flex; flex-direction: column; gap: 10px; padding: 16px 18px; }
+.star__head { display: flex; align-items: center; gap: 10px; }
+.star__name { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-strong); }
+.star--dropped .star__name { color: var(--text-tertiary); }
+.star__text { font-size: 14.5px; line-height: 24px; }
+.star__dropped { display: flex; align-items: center; gap: 12px; font-size: 13px; line-height: 20px; font-weight: 500; color: var(--text-tertiary); flex-wrap: wrap; }
+.star__why { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: var(--radius-md); background: var(--field-low-bg); color: var(--field-low-text); font-size: 11.5px; line-height: 18px; font-weight: 500; flex-wrap: wrap; }
+.star-read { display: flex; flex-direction: column; }
+.star-read__row { display: flex; gap: 14px; padding: 18px 20px; border-top: 1px solid var(--border-default); }
+.star-read__row:first-child { border-top: 0; }
+.star-read__row--gap { background: var(--field-dropped-bg); }
+.qpanel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--bg-canvas); }
+.qpanel--caution { background: var(--field-low-bg); }
+.qpanel__q { font-size: 13px; line-height: 20px; font-weight: 600; }
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cmp__box { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--bg-paper); font-size: 13px; line-height: 21px; }
+.cmp__box--after { background: var(--bg-surface); border: 2px solid var(--border-selected); }
+.cmp__label { font-size: 10.5px; line-height: 14px; font-weight: 600; color: var(--text-tertiary); }
+.done-card { display: flex; align-items: center; gap: 18px; padding: 18px 20px; flex-wrap: wrap; }
+.done-card__ok { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; font-weight: 700; flex: 0 0 auto; }
+@media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } }
+
+/* ───────── 되묻기 (D5) ───────── */
+.turn { display: flex; gap: 13px; padding: 16px; }
+.turn--now { flex-direction: column; gap: 14px; padding: 18px; }
+.turn__no { width: 25px; height: 25px; border-radius: 50%; background: var(--bg-inset); color: var(--text-secondary); display: grid; place-items: center; font-size: 11px; font-weight: 600; flex: 0 0 auto; }
+.turn__no--now { background: var(--bg-ink-solid); color: var(--text-on-ink); }
+.turn__q { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-secondary); }
+.turn__a { font-size: 14px; line-height: 22px; }
+.turn__big { font-size: 18px; line-height: 27px; font-weight: 600; }
+.found { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.found__box { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--bg-subtle); font-size: 12px; line-height: 19px; color: var(--text-secondary); }
+.found__box--miss { background: var(--bg-paper); border: 1px solid var(--border-default); color: var(--text-tertiary); }
+.found__box h4 { font-size: 11px; line-height: 16px; font-weight: 600; color: var(--text-strong); }
+.found__box--miss h4 { color: var(--text-tertiary); }
+.preview-row { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-default); font-size: 11.5px; line-height: 18px; color: var(--text-secondary); }
+.preview-row:first-of-type { border-top: 0; }
+.preview-row b { width: 16px; flex: 0 0 auto; font-weight: 700; color: var(--text-strong); }
+.preview-row--pending, .preview-row--pending b { color: var(--text-tertiary); }
+@media (max-width: 640px) { .found { grid-template-columns: 1fr; } }
+
+/* ───────── 회상 (C4) · 설정 (F) ───────── */
+.dir-card { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; }
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.stat { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; }
+.stat b { font-size: 24px; line-height: 32px; font-weight: 700; }
+.kv { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-top: 1px solid var(--border-default); font-size: 13px; line-height: 20px; }
+.kv:first-child { border-top: 0; }
+@media (max-width: 820px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }

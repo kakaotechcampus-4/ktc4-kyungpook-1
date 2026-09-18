@@ -1,0 +1,63 @@
+name: Daily PR digest
+on:
+  schedule:
+    - cron: '47 11 * * *'   # 매일 한국시간 20:47 (정각은 GitHub 예약이 몰려 늦게 시작됨)
+  workflow_dispatch:
+permissions:
+  pull-requests: read
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect PRs and send
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_KTC }}
+          REPO: ${{ github.repository }}
+        run: |
+          SINCE=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+
+          DEFS='
+          def tag: ((.title | capture("^\\w+\\((?<s>[^)]+)\\)")? | .s) // "") as $s
+            | if ($s | test("^ai"; "i")) then "AI"
+              elif ($s | test("^(be|backend)"; "i")) then "BE"
+              elif ($s | test("^(fe|frontend)"; "i")) then "FE"
+              else "기타" end;
+          def clean: .title | sub("^\\w+(\\([^)]*\\))?:\\s*"; "");
+          def links: [ (.body // "")
+            | capture("## *(참고|작성) *문서[^\\n]*\\n(?<sec>[\\s\\S]*?)(?=\\n#|\\z)"; "g") | .sec
+            | scan("https?://[^\\s)>\\]]+") ] | unique;
+          def reviewers: .author.login as $a
+            | ([.reviewRequests[]? | .login // .name] + [.latestReviews[]? | .author.login])
+            | unique | map(select(. != $a));'
+          FMT="$DEFS"'
+          .[] | select(($wait | not) or ((.isDraft | not) and (any(.latestReviews[]?; .state == "APPROVED") | not)))
+            | "- [\(tag)] [#\(.number)](\(.url)) \(clean) (\(.author.login))"
+            + (if $rv then "\n  - 👀 " + (reviewers | if length > 0 then join(", ") else "미지정" end) else "" end)
+            + (if $wait then "" else (links | if length > 0 then "\n  - 📎 관련문서: " + (map("<\(.)>") | join(" ")) else "" end) end)'
+          MERGED_FMT="$DEFS"'
+          [.[] | {t: tag, n: .number, u: .url}] as $all
+          | if ($all | length) == 0 then empty else
+              "**✅ 24시간 동안 머지됨 (\($all | length)건)** — "
+              + (["AI", "BE", "FE", "기타"]
+                 | map(. as $p | [$all[] | select(.t == $p)] | sort_by(.n) | reverse
+                       | select(length > 0) | "\($p) \(length) (" + (map("[#\(.n)](\(.u))") | join(" ")) + ")")
+                 | join(" · "))
+            end'
+
+          OPENED=$(gh pr list -R "$REPO" --state open --search "created:>=$SINCE -base:main" \
+            --json number,url,title,author,body \
+            | jq -r --argjson rv false --argjson wait false "$FMT")
+          WAITING=$(gh pr list -R "$REPO" --state open --search "created:<$SINCE -base:main" \
+            --json number,url,title,author,isDraft,reviewRequests,latestReviews \
+            | jq -r --argjson rv true --argjson wait true "$FMT")
+          MERGED=$(gh pr list -R "$REPO" --state merged --search "merged:>=$SINCE -base:main" \
+            --json number,url,title \
+            | jq -r "$MERGED_FMT")
+
+          [ -z "$OPENED$WAITING$MERGED" ] && exit 0
+          [ -n "$MERGED" ] || MERGED=$(printf '**✅ 24시간 동안 머지됨**\n없음')
+          MSG=$(printf '**📋 경북대 1팀 PeterFan 진행상황 (%s)**\n\n**🆕 새 PR**\n%s\n\n**🔔 리뷰 필요! (24시간 넘게 대기 중)**\n%s\n\n%s' \
+            "$(TZ=Asia/Seoul date +%m/%d)" "${OPENED:-없음}" "${WAITING:-없음}" "$MERGED")
+          jq -n --arg c "$MSG" '{content: $c, username: "Gitory PR 요약", flags: 4}' \
+            | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK"

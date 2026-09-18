@@ -95,7 +95,7 @@ class AuthFlowTest {
         Map<String, String> query = queryOf(location);
         assertThat(query.get("client_id")).isEqualTo("test-client-id");
         assertThat(query.get("redirect_uri")).isEqualTo("http://localhost/api/auth/github/callback");
-        assertThat(query.get("scope")).isEqualTo("read:user public_repo");
+        assertThat(query.get("scope")).isEqualTo("read:user");
         assertThat(query.get("state")).isNotBlank();
     }
 
@@ -111,7 +111,7 @@ class AuthFlowTest {
         assertThat(saved.getGithubLogin()).isEqualTo(StubGithubConfig.LOGIN);
 
         GithubConnection connection = connections.findByUserIdAndRevokedAtIsNull(saved.getId()).orElseThrow();
-        assertThat(connection.scopeList()).containsExactlyInAnyOrder("public_repo", "read:user");
+        assertThat(connection.scopeList()).containsExactlyInAnyOrder("read:user");
         // 저장된 값은 평문이 아니고, 복호화하면 GitHub 이 준 토큰이 나온다.
         assertThat(connection.getTokenEnc()).isNotEqualTo(StubGithubConfig.ACCESS_TOKEN);
         assertThat(tokenCipher.decrypt(connection.getTokenEnc())).isEqualTo(StubGithubConfig.ACCESS_TOKEN);

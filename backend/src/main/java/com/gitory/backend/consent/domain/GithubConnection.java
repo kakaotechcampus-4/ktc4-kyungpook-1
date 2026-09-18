@@ -29,7 +29,6 @@ public class GithubConnection {
 
     private Long userId;
 
-    /** PostgreSQL {@code TEXT[]}. 최소 권한만 담긴다 — read:user, public_repo. */
     @JdbcTypeCode(SqlTypes.ARRAY)
     private String[] scopes;
 

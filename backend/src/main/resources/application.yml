@@ -37,8 +37,8 @@ spring:
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
-            # 최소 권한. 저장소 쓰기 권한을 요청하지 않는다.
-            scope: read:user, public_repo
+            # 최소 권한. 저장소 쓰기 권한은 요청하지 않는다.
+            scope: read:user
             # 프론트 계약(BACKEND_CONTRACT.md)이 콜백 경로를 이 값으로 고정했다.
             # GitHub OAuth App 의 Authorization callback URL 도 같은 값이어야 한다.
             redirect-uri: "{baseUrl}/api/auth/github/callback"
@@ -85,6 +85,10 @@ gitory:
     draft-days: 30
     # 계정 삭제 요청 시 서비스 데이터에서 삭제까지
     account-deletion-days: 7
+  interview:
+    # 카드당 되묻기 질문 최대 횟수.
+    # AI 에는 요청의 max_turns, 프론트에는 응답의 maxTurns 로 내려준다.
+    max-turns: 2
 
 logging:
   level:

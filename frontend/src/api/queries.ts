@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { endpoints } from './endpoints';
 import { keys } from './keys';
@@ -68,9 +69,11 @@ export function useCard(id: string | undefined) {
   const jobId = card.data?.generation?.jobId;
   const job = useJob(jobId);
   const done = job.data && isTerminal(job.data.state);
-  if (done && card.data?.generation && !card.isFetching) {
-    void qc.invalidateQueries({ queryKey: keys.card(id!) });
-  }
+  // 렌더 중에 바로 invalidateQueries 를 부르면 리렌더마다 다시 불릴 수 있다 —
+  // Job 이 "막 끝난" 전이(done · jobId 변화)에만 한 번 재조회하도록 effect 로 옮긴다.
+  useEffect(() => {
+    if (done && jobId && id) void qc.invalidateQueries({ queryKey: keys.card(id) });
+  }, [done, jobId, id, qc]);
   return { card, job };
 }
 

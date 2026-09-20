@@ -3,7 +3,7 @@ package com.gitory.backend.dependency;
 import com.gitory.backend.consent.domain.StubGithubConfig;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.UserRepository;
-import jakarta.servlet.http.Cookie;
+import com.gitory.backend.support.TestBrowser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,16 +14,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
-
-import java.net.URI;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -38,8 +31,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <b>세션이 어디 있는지 보는 테스트가 없었다.</b>
  *
  * <p>그래서 여기서는 로그인 성공 여부가 아니라 {@code SPRING_SESSION} 테이블의 행을 센다.
- * 왕복은 {@link com.gitory.backend.consent.api.AuthFlowTest} 와 같은 방식이다 —
- * {@code MockHttpSession} 을 넘기면 spring-session 이 무시하므로 쿠키를 들고 다닌다.
  */
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
@@ -68,14 +59,14 @@ class SessionStoreTest {
     @Autowired
     GithubConnectionRepository connections;
 
-    private final Map<String, Cookie> cookieJar = new LinkedHashMap<>();
+    private TestBrowser browser;
 
     @BeforeEach
     void clean() {
         jdbc.update("DELETE FROM SPRING_SESSION");
         connections.deleteAll();
         users.deleteAll();
-        cookieJar.clear();
+        browser = new TestBrowser(mvc);
     }
 
     @Test
@@ -88,8 +79,9 @@ class SessionStoreTest {
         assertThat(sessionCount())
                 .as("로그인했는데 DB 에 세션이 없다 — 세션이 메모리에 남아 있다는 뜻이다 (#17)")
                 .isEqualTo(1);
-        assertThat(cookieJar).as("세션 쿠키가 내려와야 브라우저가 다음 요청에 세션을 이어 붙인다")
-                .containsKey("SESSION");
+        assertThat(browser.hasCookie("SESSION"))
+                .as("세션 쿠키가 내려와야 브라우저가 다음 요청에 세션을 이어 붙인다")
+                .isTrue();
     }
 
     @Test
@@ -115,7 +107,7 @@ class SessionStoreTest {
         // 저장되지 않는 상태(#17)에서도 아래 0 == 0 이 통과한다.
         assertThat(sessionCount()).isEqualTo(1);
 
-        perform(post("/api/auth/logout").header("X-XSRF-TOKEN", csrfToken()));
+        browser.perform(post("/api/auth/logout").header("X-XSRF-TOKEN", browser.csrfToken()));
 
         assertThat(sessionCount()).isZero();
         assertThat(attributeCount()).as("SPRING_SESSION_ATTRIBUTES 는 FK ON DELETE CASCADE 로 함께 지워진다")
@@ -126,7 +118,7 @@ class SessionStoreTest {
     @DisplayName("두 브라우저가 각각 로그인하면 세션 행도 두 개가 된다 — 한 세션을 공유하지 않는다")
     void eachBrowserGetsItsOwnSessionRow() throws Exception {
         login();
-        cookieJar.clear(); // 새 브라우저처럼 처음부터 다시
+        browser.clearCookies();
         login();
 
         assertThat(sessionCount()).isEqualTo(2);
@@ -141,49 +133,12 @@ class SessionStoreTest {
         return jdbc.queryForObject("SELECT count(*) FROM SPRING_SESSION_ATTRIBUTES", Integer.class);
     }
 
-    // ───────────────────────────── 브라우저 흉내
-
     private void login() throws Exception {
-        String location = perform(get("/api/auth/github/start")).getResponse().getRedirectedUrl();
-        String state = stateOf(location);
+        String authorizeUrl = browser.perform(get("/api/auth/github/start"))
+                .andReturn().getResponse().getRedirectedUrl();
 
-        perform(get("/api/auth/github/callback")
+        browser.perform(get("/api/auth/github/callback")
                 .param("code", "stub-authorization-code")
-                .param("state", state));
-    }
-
-    private String csrfToken() {
-        Cookie cookie = cookieJar.get("XSRF-TOKEN");
-        assertThat(cookie).as("XSRF-TOKEN 쿠키가 있어야 로그아웃 요청을 만들 수 있다").isNotNull();
-        return cookie.getValue();
-    }
-
-    /** 쿠키를 실어 보내고, 응답으로 온 쿠키를 받아 적는다. */
-    private MvcResult perform(MockHttpServletRequestBuilder request) throws Exception {
-        if (!cookieJar.isEmpty()) {
-            request = request.cookie(cookieJar.values().toArray(new Cookie[0]));
-        }
-        MvcResult result = mvc.perform(request).andReturn();
-        for (Cookie cookie : result.getResponse().getCookies()) {
-            if (cookie.getMaxAge() == 0) {
-                cookieJar.remove(cookie.getName()); // 만료 지시 = 삭제
-            } else {
-                cookieJar.put(cookie.getName(), cookie);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * 인가 URL 에서 state 를 꺼낸다. {@code URI#getQuery} 가 퍼센트 인코딩을 이미 풀어 주므로
-     * 여기서 복원된 값을 그대로 콜백에 실어야 저장된 인가 요청을 찾는다.
-     */
-    private static String stateOf(String authorizeUrl) {
-        Map<String, String> params = new LinkedHashMap<>();
-        Arrays.stream(URI.create(authorizeUrl).getQuery().split("&")).forEach(pair -> {
-            String[] parts = pair.split("=", 2);
-            params.put(parts[0], parts.length > 1 ? parts[1] : "");
-        });
-        return params.get("state");
+                .param("state", TestBrowser.queryOf(authorizeUrl).get("state")));
     }
 }

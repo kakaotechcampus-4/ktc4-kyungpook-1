@@ -1,6 +1,6 @@
 """되묻기(interview-turns) API 엔드포인트 — B-1.
 
-`POST /internal/interview-turns`: STAR 카드의 빈 칸(confidence=low)에 대해
+`POST /internal/interview-turns`: STAR 카드의 보강 대상 칸에 대해
 결정적 템플릿 질문을 생성한다. 이번 PR에서는 LLM/DB/GitHub API를 호출하지
 않는다(services.interview_agent.InterviewAgent 참고).
 """

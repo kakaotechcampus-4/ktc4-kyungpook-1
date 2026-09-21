@@ -27,8 +27,17 @@ NextAction = Literal["ASK_AGAIN", "COMPLETE"]
 #: pr=PR 단위, commit_cluster=커밋 묶음, direct_card=카드 직접 지정.
 SourceType = Literal["PR", "COMMIT_CLUSTER", "DIRECT_CARD"]
 
-#: card_statement.confidence. DB/FE 계약의 대문자 enum을 따른다.
-Confidence = Literal["HIGH", "LOW"]
+#: card_statement.confidence. A/DB/FE 계약의 대문자 enum을 따른다.
+Confidence = Literal["HIGH", "MEDIUM", "LOW"]
+
+#: GitHub Pull Request review.state에서 B가 받는 값.
+ReviewState = Literal[
+    "APPROVED",
+    "CHANGES_REQUESTED",
+    "COMMENTED",
+    "DISMISSED",
+    "PENDING",
+]
 
 PositiveId = Annotated[int, Field(strict=True, gt=0)]
 NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -53,11 +62,32 @@ class CommitContext(StrictRequestModel):
     )
 
 
+class ReviewContext(StrictRequestModel):
+    """PR 리뷰에서 수집한 최소 질문 문맥."""
+
+    review_id: PositiveId = Field(..., description="GitHub Pull Request review ID")
+    pr_number: PositiveId = Field(..., description="리뷰가 작성된 GitHub PR 번호")
+    state: ReviewState = Field(..., description="GitHub PR 리뷰 상태")
+    summary: NonBlankText = Field(
+        ..., description="리뷰 원문 또는 A/Spring이 만든 짧은 리뷰 요약"
+    )
+
+
+class IssueContext(StrictRequestModel):
+    """GitHub Issue에서 수집한 최소 질문 문맥."""
+
+    issue_number: PositiveId = Field(..., description="GitHub Issue 번호")
+    title: NonBlankText = Field(..., description="GitHub Issue 제목")
+    summary: Optional[NonBlankText] = Field(
+        None, description="이슈 원문 또는 A/Spring이 만든 짧은 이슈 요약"
+    )
+
+
 class CandidateContext(StrictRequestModel):
     """카드 후보의 카드 전체 작업 맥락.
 
-    ``commits``는 카드 전체 경험을 설명하는 목록이다. 특정 STAR 문장의
-    직접 근거 목록인 ``MissingSlot.linked_commits``와 구분한다.
+    ``commits``·``reviews``·``issues``는 카드 전체 경험을 설명하는 목록이다.
+    특정 STAR 문장의 직접 근거인 ``MissingSlot.linked_commits``와 구분한다.
     """
 
     github_pr_number: Optional[PositiveId] = Field(
@@ -66,10 +96,18 @@ class CandidateContext(StrictRequestModel):
     commits: list[CommitContext] = Field(
         default_factory=list, description="카드 전체와 관련된 커밋 목록"
     )
+    reviews: list[ReviewContext] = Field(
+        default_factory=list,
+        description="카드와 관련된 PR 리뷰 목록. 수집 전에는 빈 배열",
+    )
+    issues: list[IssueContext] = Field(
+        default_factory=list,
+        description="카드와 관련된 GitHub 이슈 목록. 수집 전에는 빈 배열",
+    )
 
 
 class MissingSlot(StrictRequestModel):
-    """STAR 카드에서 아직 채워지지 않은(confidence=low) 문장 슬롯 하나."""
+    """STAR 카드에서 비어 있거나 신뢰도 보강이 필요한 문장 슬롯 하나."""
 
     star_slot: StarSlot
     statement_seq: int = Field(..., ge=1, strict=True, description="card_statement.seq")
@@ -135,7 +173,6 @@ class InterviewTurnResult(BaseModel):
     )
     question_type: Optional[QuestionType] = None
     trigger_source: Optional[TriggerSource] = None
-    parent_turn_id: Optional[int] = None
     question_text: Optional[str] = None
     next_action: NextAction = Field(
         ..., description="다음 행동. ASK_AGAIN=질문 생성됨 / COMPLETE=더 물을 것 없음"

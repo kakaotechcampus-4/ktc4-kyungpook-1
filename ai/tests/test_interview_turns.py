@@ -1,4 +1,4 @@
-"""커밋 중심 MVP의 `POST /internal/interview-turns` 단위 테스트."""
+"""근거 기반 `POST /internal/interview-turns` 단위 테스트."""
 
 from __future__ import annotations
 
@@ -21,8 +21,36 @@ def _commit(commit_id: int, sha: str, message: str) -> dict:
     return {"commit_id": commit_id, "sha": sha, "message": message}
 
 
-def _candidate(*commits: dict, github_pr_number: int | None = None) -> dict:
-    return {"github_pr_number": github_pr_number, "commits": list(commits)}
+def _review(
+    review_id: int,
+    pr_number: int,
+    summary: str,
+    state: str = "CHANGES_REQUESTED",
+) -> dict:
+    return {
+        "review_id": review_id,
+        "pr_number": pr_number,
+        "state": state,
+        "summary": summary,
+    }
+
+
+def _issue(issue_number: int, title: str, summary: str | None = None) -> dict:
+    return {"issue_number": issue_number, "title": title, "summary": summary}
+
+
+def _candidate(
+    *commits: dict,
+    github_pr_number: int | None = None,
+    reviews: list[dict] | None = None,
+    issues: list[dict] | None = None,
+) -> dict:
+    return {
+        "github_pr_number": github_pr_number,
+        "commits": list(commits),
+        "reviews": reviews or [],
+        "issues": issues or [],
+    }
 
 
 def _slot(**overrides: object) -> dict:
@@ -139,6 +167,132 @@ def test_direct_slot_commit_precedes_unrelated_candidate_revert() -> None:
     assert "dead111" not in question_text
 
 
+def test_changes_requested_review_creates_evidence_gap_question() -> None:
+    """변경 요청 리뷰가 전달되면 PR·리뷰 식별자와 요약을 인용한다."""
+    response = _post(
+        {
+            "card_id": 125,
+            "source_type": "PR",
+            "candidate": _candidate(
+                github_pr_number=222,
+                reviews=[
+                    _review(
+                        9001,
+                        222,
+                        "서비스와 저장소의 책임을 분리해 주세요.",
+                    )
+                ],
+            ),
+            "missing_slots": [_slot(star_slot="A")],
+            "existing_turn_count": 0,
+        }
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["question_type"] == "EVIDENCE_GAP"
+    assert "PR #222" in data["question_text"]
+    assert "리뷰 9001" in data["question_text"]
+    assert "책임을 분리" in data["question_text"]
+    assert ESCAPE_HATCH in data["question_text"]
+
+
+def test_non_changes_requested_review_does_not_use_changes_question() -> None:
+    """승인 리뷰는 CHANGES_REQUESTED 질문으로 오인하지 않는다."""
+    response = _post(
+        {
+            "card_id": 132,
+            "source_type": "PR",
+            "candidate": _candidate(
+                github_pr_number=222,
+                reviews=[
+                    _review(9002, 222, "전체 변경을 승인합니다.", state="APPROVED")
+                ],
+            ),
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        }
+    )
+
+    data = response.json()["data"]
+    assert data["question_type"] == "RECALL_AID"
+    assert "PR #222" in data["question_text"]
+    assert "리뷰 9002" not in data["question_text"]
+
+
+def test_issue_feedback_creates_evidence_gap_question() -> None:
+    """이슈가 전달되면 번호·제목·요약을 인용해 결과를 묻는다."""
+    response = _post(
+        {
+            "card_id": 126,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(
+                issues=[
+                    _issue(
+                        31,
+                        "로그인 세션 유지 문제",
+                        "새로고침하면 로그인이 해제됨",
+                    )
+                ]
+            ),
+            "missing_slots": [_slot(star_slot="R")],
+            "existing_turn_count": 0,
+        }
+    )
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["question_type"] == "EVIDENCE_GAP"
+    assert "이슈 #31" in data["question_text"]
+    assert "로그인 세션 유지 문제" in data["question_text"]
+    assert "새로고침하면 로그인이 해제됨" in data["question_text"]
+    assert ESCAPE_HATCH in data["question_text"]
+
+
+def test_direct_slot_commit_precedes_review_and_issue_context() -> None:
+    """카드 단위 리뷰·이슈가 있어도 슬롯 직접 근거를 먼저 사용한다."""
+    response = _post(
+        {
+            "card_id": 127,
+            "source_type": "PR",
+            "candidate": _candidate(
+                github_pr_number=222,
+                reviews=[_review(9001, 222, "다른 기능의 책임 분리 요청")],
+                issues=[_issue(31, "다른 기능 이슈")],
+            ),
+            "missing_slots": [
+                _slot(
+                    linked_commits=[
+                        _commit(790, "abc123", "세션 테이블 인덱스 추가")
+                    ]
+                )
+            ],
+            "existing_turn_count": 0,
+        }
+    )
+
+    question_text = response.json()["data"]["question_text"]
+    assert "abc123" in question_text
+    assert "리뷰 9001" not in question_text
+    assert "이슈 #31" not in question_text
+
+
+def test_medium_confidence_slot_is_accepted() -> None:
+    """A와 DB가 사용하는 MEDIUM confidence를 B도 같은 값으로 받는다."""
+    response = _post(
+        {
+            "card_id": 128,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(),
+            "missing_slots": [_slot(confidence="MEDIUM")],
+            "existing_turn_count": 0,
+        }
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["next_action"] == "ASK_AGAIN"
+
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -169,6 +323,23 @@ def test_direct_slot_commit_precedes_unrelated_candidate_revert() -> None:
             "card_id": 120,
             "source_type": "DIRECT_CARD",
             "candidate": None,
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        },
+        {
+            "card_id": 129,
+            "source_type": "PR",
+            "candidate": _candidate(
+                github_pr_number=222,
+                reviews=[_review(9001, 222, "책임을 분리해 주세요")],
+            ),
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        },
+        {
+            "card_id": 130,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(issues=[_issue(31, "세션 유지 문제")]),
             "missing_slots": [_slot()],
             "existing_turn_count": 0,
         },
@@ -248,6 +419,69 @@ def test_external_evidence_hint_is_rejected() -> None:
 def test_unknown_fields_are_rejected_at_every_request_level(payload: dict) -> None:
     """최상위·candidate·commit의 오타 필드는 조용히 무시하지 않는다."""
     response = _post(payload)
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    [
+        _candidate(
+            reviews=[
+                {
+                    **_review(9001, 222, "책임을 분리해 주세요"),
+                    "typo_field": "x",
+                }
+            ]
+        ),
+        _candidate(
+            issues=[
+                {
+                    **_issue(31, "세션 유지 문제"),
+                    "typo_field": "x",
+                }
+            ]
+        ),
+    ],
+)
+def test_unknown_review_and_issue_fields_are_rejected(candidate: dict) -> None:
+    """리뷰·이슈 DTO도 알 수 없는 필드를 조용히 무시하지 않는다."""
+    response = _post(
+        {
+            "card_id": 131,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": candidate,
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        }
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
+def test_review_state_requires_uppercase_enum() -> None:
+    """리뷰 상태도 A/DB/FE 계약처럼 대문자 enum만 허용한다."""
+    response = _post(
+        {
+            "card_id": 133,
+            "source_type": "PR",
+            "candidate": _candidate(
+                github_pr_number=222,
+                reviews=[
+                    _review(
+                        9001,
+                        222,
+                        "책임을 분리해 주세요",
+                        state="changes_requested",
+                    )
+                ],
+            ),
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        }
+    )
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
@@ -351,7 +585,7 @@ def test_question_is_created_below_spring_max_turns() -> None:
 
     data = response.json()["data"]
     assert data["next_action"] == "ASK_AGAIN"
-    assert data["parent_turn_id"] is None
+    assert "parent_turn_id" not in data
 
 
 def test_max_turns_is_required_and_must_be_positive() -> None:

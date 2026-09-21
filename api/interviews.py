@@ -1,25 +1,43 @@
-"""되묻기(interview) API 엔드포인트.
+"""되묻기(interview-turns) API 엔드포인트 — B-1.
 
-PR 리뷰 과정에서 발생하는 되묻기 요청을 받아 Agent에게 전달하고
-생성된 질문/답변/근거를 반환한다.
+`POST /internal/interview-turns`: STAR 카드의 빈 칸(confidence=low)에 대해
+결정적 템플릿 질문을 생성한다. 이번 PR에서는 LLM/DB/GitHub API를 호출하지
+않는다(services.interview_agent.InterviewAgent 참고).
 """
+
+from __future__ import annotations
+
+import time
 
 from fastapi import APIRouter
 
-from schemas.interview import InterviewRequest, InterviewResponse
+from schemas.common import Envelope, Meta
+from schemas.interview import InterviewTurnRequest, InterviewTurnResult
+from services.interview_agent import InterviewAgent
 
-router = APIRouter(prefix="/interviews", tags=["interviews"])
+router = APIRouter(prefix="/internal", tags=["interview-turns"])
+
+_agent = InterviewAgent()
 
 
-@router.post("", response_model=InterviewResponse)
-async def create_interview(request: InterviewRequest) -> InterviewResponse:
-    """되묻기 요청을 받아 Agent가 생성한 되묻기 결과를 반환한다.
+@router.post("/interview-turns", response_model=Envelope[InterviewTurnResult])
+async def create_interview_turn(request: InterviewTurnRequest) -> Envelope[InterviewTurnResult]:
+    """되묻기 질문을 생성하거나(신규 턴), 더 물을 것이 없으면 완료를 반환한다.
 
     Args:
-        request: 되묻기 대상 정보(PR, 커밋, 리뷰 케이스 등).
+        request: 대상 카드, 카드 전체 커밋 문맥, 보강 대상 STAR 문장.
 
     Returns:
-        생성된 되묻기 질문과 근거.
+        공통 응답 봉투(Envelope)로 감싼 `InterviewTurnResult`. 질문 저장 순번과
+        최종 횟수 제한은 Spring이 저장 시점에 관리한다.
     """
-    # TODO: InterviewAgent 호출 및 결과 매핑
-    raise NotImplementedError
+    started = time.perf_counter()
+    result = _agent.build_turn(request)
+    processing_ms = int((time.perf_counter() - started) * 1000)
+
+    return Envelope(
+        success=True,
+        data=result,
+        meta=Meta(model=None, tool_calls_made=0, processing_ms=processing_ms),
+        error=None,
+    )

@@ -30,14 +30,20 @@ dependencies {
 
     // 영속 — 스키마는 Flyway 가 단일 출처다. ddl-auto 는 validate 로 고정한다.
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.flywaydb:flyway-core'
+
+    // Boot 4 는 Flyway 자동 설정이 스타터에 있다. flyway-core 만 두면 마이그레이션이 실행되지 않는다.
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 
     // 인증 — GitHub OAuth. 토큰은 서버에만 둔다 (security-privacy.md)
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-    implementation 'org.springframework.session:spring-session-jdbc'
+    // Boot 4 는 세션 자동 설정도 스타터에 있다. spring-session-jdbc 만 두면
+    // application.yml 의 store-type: jdbc 가 조용히 무시되고 세션이 메모리에 남는다
+    // (#11 의 flyway-core 와 같은 유형). 인스턴스를 재시작하면 로그인이 전부 끊긴다.
+    implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
 
     // 운영
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -50,6 +56,18 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
     // 모듈 경계를 문서가 아니라 테스트로 강제한다 (ARCHITECTURE.md)
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
+
+    // Boot 4 는 테스트 자동 설정이 슬라이스별 모듈로 쪼개져 있다.
+    // MockMvc(@AutoConfigureMockMvc)는 이 스타터에 들어 있다 — 없으면 인증 필터를 거치는
+    // 실제 요청으로 401/200 을 확인할 방법이 없다.
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+    // DB 테스트는 실제 PostgreSQL 컨테이너로 돌린다. 스키마가 JSONB·부분 유니크 인덱스 같은 PostgreSQL 전용 기능을 쓴다.
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
+
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

@@ -6,6 +6,14 @@ spring:
     username: gitory
     password: gitory
 
+server:
+  servlet:
+    session:
+      cookie:
+        # ⚠️ 로컬에서만 끈다. secure=true 인 쿠키는 http://localhost 응답에서 브라우저가
+        # 저장하지 않아 로그인 왕복이 조용히 실패한다. 운영(application.yml)은 true 그대로다.
+        secure: false
+
 logging:
   level:
     com.gitory.backend: DEBUG

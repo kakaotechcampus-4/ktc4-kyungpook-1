@@ -30,3 +30,6 @@ Run baseline npm ci + test/typecheck; focused regression tests per fix, full uni
 
 ## Progress
 - Latest develop inspected; isolated branch codex/frontend-resilience created.
+- Task 1 complete: 7b0f4e7, 2883ce1, 3bd9153; independent reviews approved after cache corrections.
+- Tasks 2–3 complete: f9694a8, a3a4d19. Timeout/error handling, stable analysis request identity, selectable faults, modal focus and mobile writing polish.
+- Verification: 53 unit tests, typecheck/build, 31 static E2E passed. Whole-branch review approved. Source synchronized to personal repository; delivery in progress.

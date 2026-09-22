@@ -64,4 +64,6 @@ Focused regressions: `save-safety.test.tsx`, `save-navigation.test.tsx`, `analys
 
 ## Remaining integration boundaries
 
+Verification on 2026-09-23: typecheck and production build passed; 53 unit tests passed; 31 development-server E2E tests passed before final review fixes and the complete 31-test production-static suite passed after final fixes. Independent save and whole-branch reviews approved after fixing new-card/edit cache loss and retrying the wrong interview field. 390px mobile and 1440px desktop screenshots inspected; interview input begins at y=612px in an 844px viewport.
+
 Manual draft creation has no agreed Idempotency-Key behavior; lost create responses cannot yet be safely deduplicated by the frontend. Metadata update API, cross-device editing conflict policy, real auth/API deployment and account deletion policy remain server/team work. No backend/AI code, database migration or secrets are changed here.

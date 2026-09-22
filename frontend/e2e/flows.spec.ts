@@ -109,10 +109,10 @@ test('마스킹 — 원문은 그대로, 표시만 바뀐다', async ({ page }) 
 test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_STATED', async ({ page }) => {
   await login(page);
   await page.goto('/cards/new');
-  await page.getByPlaceholder('예) 팀원과 토큰 저장 위치로 갈린 경험').fill('E2E 직접 작성 카드');
+  await page.getByRole('textbox', { name: '카드 제목' }).fill('E2E 직접 작성 카드');
   await page.getByLabel('상황 (Situation)').fill('3인 팀에서 배포 담당이 없었다');
   await page.getByLabel('행동 (Action)').fill('GitHub Actions 로 배포 파이프라인을 직접 구성했다');
-  await page.getByRole('button', { name: '확정으로' }).click();
+  await page.getByRole('button', { name: '확정', exact: true }).click();
   await page.getByRole('checkbox', { name: '확인' }).click();
   await page.getByRole('button', { name: '확정하기' }).click();
   await expect(page.getByText('확정됨').first()).toBeVisible();
@@ -127,5 +127,5 @@ test('동의 취소는 랜딩으로 돌아와 안내를 보여준다', async ({ 
   await freshSeed(page);
   await page.goto('/login?error=access_denied');
   await expect(page.getByText('GitHub에서 동의를 취소하셨네요')).toBeVisible();
-  await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toHaveCount(2);
+  await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toHaveCount(1);
 });

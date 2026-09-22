@@ -46,7 +46,7 @@ export function HomePage() {
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
       <section className="prompt">
         <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>
-        <p className="prompt__sub">레포 하나만 고르면, 커밋을 읽어서 카드로 정리해 드려요.</p>
+        <p className="prompt__sub">레포를 고르면 경험 카드를 만들어 드려요.</p>
         <div className="prompt__card" role="search">
           <div className="prompt__row">
             <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); }} placeholder="레포 이름을 적어 보세요" aria-label="레포 검색"
@@ -74,8 +74,8 @@ export function HomePage() {
           )}
         </div>
         <div className="prompt__chips">
-          <Link to="/repos" className="pill"><FolderGit2 size={14} /> 전체 레포에서 고르기</Link>
-          <Link to="/cards/new" className="pill"><PenLine size={14} /> 코드에 없는 경험 직접 쓰기</Link>
+          <Link to="/repos" className="pill"><FolderGit2 size={14} /> 레포 고르기</Link>
+          <Link to="/cards/new" className="pill"><PenLine size={14} /> 직접 작성</Link>
         </div>
       </section>
 
@@ -100,10 +100,6 @@ export function HomePage() {
 
       {empty ? (
         <>
-          <section className="intro">
-            <h2 className="intro__h">경험부터 정리해 볼까요?</h2>
-            <p className="intro__s">한 레포에서 카드 여러 장이 나와요. 셋 중 아무거나 골라 시작하시면 됩니다.</p>
-          </section>
           <div className="sources">
             <SourceRow icon={FolderGit2} title="레포에서 정리하기" time="약 40초" desc="커밋과 PR을 읽어서 카드 초안까지 만들어 드려요" onClick={() => nav('/repos')} />
             <SourceRow icon={Search} title="파일 보면서 떠올리기" time="약 2분" desc="커밋 메시지가 부실해도, 만진 파일로 기억을 꺼내 드려요" onClick={() => nav('/repos?filter=nopr')} />

@@ -12,7 +12,7 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 test.describe('반응형 레이아웃', () => {
-  test('320px 로그인은 단일 열이고 상세 권한을 접어 둔다', async ({ page }) => {
+  test('320px 로그인은 단일 열에서 체험 버튼을 바로 보여준다', async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 740 });
     await freshSeed(page);
     await page.goto('/login?reason=expired');
@@ -20,18 +20,15 @@ test.describe('반응형 레이아웃', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
     await expect(page.getByText('로그인이 만료됐어요')).toBeVisible();
-    await expect(page.getByRole('group', { name: 'GitHub 접근 범위 자세히 보기' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: '이건 읽어요' })).toBeHidden();
+    await expect(page.getByText('샘플 데이터로 체험해요. 실제 GitHub 계정은 연결하지 않아요.')).toHaveCount(0);
+    await expect(page.locator('.demo-card')).toBeHidden();
     await expectNoHorizontalOverflow(page);
 
     const columns = await page.locator('.landing__hero').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(1);
 
     await page.getByRole('button', { name: '샘플로 체험하기' }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    const box = await dialog.boundingBox();
-    expect(box?.width).toBeLessThanOrEqual(296);
+    await expect(page.getByRole('navigation', { name: '모바일 주 메뉴' })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 
@@ -84,25 +81,24 @@ test.describe('반응형 레이아웃', () => {
     await page.goto('/login');
 
     const buttons = page.getByRole('button', { name: '샘플로 체험하기', exact: true });
-    await expect(buttons).toHaveCount(2);
+    await expect(buttons).toHaveCount(1);
     await expect(page.getByText(/GitHub으로 시작/)).toHaveCount(0);
 
     const geometry = await page.evaluate(() => {
       const header = document.querySelector<HTMLElement>('.landing__top')!;
       const hero = document.querySelector<HTMLElement>('.landing__hero')!;
       const logo = header.querySelector<HTMLImageElement>('img')!;
-      const button = header.querySelector<HTMLButtonElement>('button')!;
       const h = header.getBoundingClientRect();
       const content = hero.getBoundingClientRect();
       return {
         leftDelta: Math.abs(h.left - content.left),
         rightDelta: Math.abs(h.right - content.right),
-        heightDelta: Math.abs(logo.getBoundingClientRect().height - button.getBoundingClientRect().height),
+        logoHeight: logo.getBoundingClientRect().height,
       };
     });
     expect(geometry.leftDelta).toBeLessThanOrEqual(1);
     expect(geometry.rightDelta).toBeLessThanOrEqual(1);
-    expect(geometry.heightDelta).toBeLessThanOrEqual(1);
+    expect(geometry.logoHeight).toBe(34);
   });
 
   test('홈과 카드 목록은 하나의 여유 있는 경험 목록과 정렬된 STAR를 쓴다', async ({ page }) => {

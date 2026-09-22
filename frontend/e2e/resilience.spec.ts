@@ -1,18 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { loginAsDemo, freshSeed } from './helpers';
 
-test('demo login is explicit and dialog keeps keyboard focus', async ({ page }) => {
+test('demo starts in one action without repeating mode explanations', async ({ page }) => {
   await freshSeed(page); await page.goto('/login');
   const trigger = page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' });
   await trigger.click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('실제 계정과 연결되지 않는');
-  await dialog.getByRole('button', { name: '체험 시작', exact: true }).focus();
-  await page.keyboard.press('Tab');
-  await expect(dialog.getByRole('button', { name: '닫기', exact: true })).toBeFocused();
-  await page.keyboard.press('Shift+Tab');
-  await expect(dialog.getByRole('button', { name: '체험 시작', exact: true })).toBeFocused();
-  await page.keyboard.press('Escape'); await expect(dialog).toBeHidden(); await expect(trigger).toBeFocused();
+  await expect(page.getByRole('heading', { name: /정리해 볼까요/ })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
 test('failed list requests show a recovery action instead of empty results', async ({ page }) => {

@@ -7,7 +7,6 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login/);
   await page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' }).click();
-  await page.getByRole('button', { name: '체험 시작' }).click(); // 데모: 세션 세우고 홈으로 (실서버는 Spring 콜백)
   await expect(page.getByRole('heading', { name: /정리해 볼까요/ })).toBeVisible();
 
   await page.getByRole('button', { name: /레포 정리하기/ }).click();

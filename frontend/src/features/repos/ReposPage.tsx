@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
 import { FolderGit2 } from 'lucide-react';
-import { Badge, Button, IconBox, Radio, SectionHead, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
+import { Badge, Button, IconBox, Radio, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
 import { pct, ym } from '@/lib/format';
@@ -60,14 +60,13 @@ export function ReposPage() {
         <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
       </ol>
       <div className="list-head">
-        <h1>{repos.isSuccess ? `레포 ${repos.data.length}개 중에서 하나만 골라 주세요` : '레포 고르기'}</h1>
+        <h1>레포 고르기 <span className="c-3 t-14">{repos.data?.length ?? 0}</span></h1>
         <div className="right">
           <label className="list-search"><span className="c-3">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="레포 이름 검색" aria-label="레포 이름 검색" /></label>
           <label className="chip chip--select"><select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="정렬">{(Object.keys(SORT_LABEL) as Sort[]).map((k) => <option key={k} value={k}>{SORT_LABEL[k]}</option>)}</select></label>
           <label className="chip chip--select"><select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label="필터">{(Object.keys(FILTER_LABEL) as Filter[]).map((k) => <option key={k} value={k}>{FILTER_LABEL[k]}</option>)}</select></label>
         </div>
       </div>
-      <SectionHead label={FILTER_LABEL[filter]} count={list.length} />
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
 
       {repos.isPending && <div className="stack" style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Skeleton key={i} h={72} />)}</div>}

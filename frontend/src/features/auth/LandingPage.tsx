@@ -26,68 +26,55 @@ export function LandingPage() {
     <main className="landing">
       <header className="landing__top">
         <Wordmark height={34} />
-        <Button className="landing__top-action" size="sm" variant="outline" onClick={() => setSp({ consent: '1' })}>{login.label}</Button>
       </header>
 
       <section className="landing__hero">
         <div className="landing__copy stack">
-          <span className="landing__eyebrow">GitHub 기록에서 꺼내는 나의 경험</span>
           <h1 className="landing__h1">커밋과 PR을<br />자소서 경험으로</h1>
           <p className="landing__lead">
-            흩어진 개발 기록을 읽고, 내가 한 일과 근거가 연결된 경험 카드로 정리해 드려요.
-            확인할 수 없는 내용은 만들지 않습니다.
+            내가 한 일을 개발 기록에서 찾아 경험 카드로 정리해요.
           </p>
 
           {error === 'access_denied' && <Note strong="GitHub에서 동의를 취소하셨네요" tone="inset">아무것도 저장되지 않았어요. 준비되면 다시 시작하시면 됩니다.</Note>}
           {error && error !== 'access_denied' && <Note strong="GitHub 연결이 안 됐어요" tone="danger">다시 시도해 보세요. 계속 안 되면 GitHub 쪽 앱 권한을 확인해야 합니다.</Note>}
           {reason === 'expired' && <Note strong="로그인이 만료됐어요" tone="inset">다시 로그인하면 보던 화면으로 돌아갑니다.</Note>}
+          {login.failure && <Note strong="시작하지 못했어요" tone="danger">{login.failure}</Note>}
 
           <div className="landing__actions">
-            <Button size="xl" onClick={() => setSp({ consent: '1' })}>{login.label} <ArrowRight size={16} /></Button>
-            <span>{login.isDemo ? '샘플 데이터로 체험해요. 실제 GitHub 계정은 연결하지 않아요.' : '공개 저장소만 읽어요'}</span>
+            <Button size="xl" loading={login.pending} onClick={() => login.isDemo ? void login.start() : setSp({ consent: '1' })}>{login.label} <ArrowRight size={16} /></Button>
           </div>
 
-          <details className="landing__permissions" aria-label="GitHub 접근 범위 자세히 보기">
+          {!login.isDemo && <details className="landing__permissions" aria-label="GitHub 접근 범위 자세히 보기">
             <summary>어떤 정보를 읽는지 자세히 보기</summary>
             <PermissionGrid reads={READS} skips={SKIPS} compact />
-          </details>
+          </details>}
         </div>
 
         {/* S-5 — 심사위원 머리에 남길 한 장면: T 칸이 비어 있는 카드 */}
         <div className="demo-card" aria-label="예시 카드">
           <div className="row" style={{ gap: 8 }}><span className="w-700" style={{ fontSize: 15 }}>로그인 세션 처리</span><Badge kind="DRAFT">작성 중</Badge><span className="right t-12 c-3">PR #42</span></div>
           {[
-            { f: 'S' as const, t: '3인 팀 프로젝트에서 로그인 유지가 되지 않는 문제가 있었다', ev: 'a3f21c9' },
+            { f: 'S' as const, t: '로그인이 자꾸 풀렸어요', ev: 'a3f21c9' },
             { f: 'T' as const, t: null, ev: null },
-            { f: 'A' as const, t: '인증 모듈의 세션 처리를 담당했다', ev: '9c02de1' },
+            { f: 'A' as const, t: '세션 처리 코드를 고쳤어요', ev: '9c02de1' },
           ].map((r) => (
             <div key={r.f} className={`demo-card__row ${r.t ? '' : 'demo-card__row--gap'}`}>
               <StarKey field={r.f} dropped={!r.t} small />
               <div className="stack grow" style={{ gap: 6 }}>
-                {r.t ? <span style={{ fontSize: 13, lineHeight: '20px' }}>{r.t}</span> : <span className="c-3" style={{ fontSize: 12.5 }}>근거를 찾지 못해 비워 두었습니다</span>}
+                {r.t ? <span style={{ fontSize: 13, lineHeight: '20px' }}>{r.t}</span> : <span className="c-3" style={{ fontSize: 12.5 }}>근거가 없어 비워 뒀어요</span>}
                 {r.ev && <span className="evidence" style={{ padding: '5px 8px', fontSize: 11 }}><span className="evidence__label">근거</span><span className="evidence__sha">{r.ev}</span><span className="evidence__arrow">↗</span></span>}
-                {!r.t && <span className="btn btn--outline btn--sm" style={{ alignSelf: 'flex-start' }}>이 부분 다시 물어봐 주세요</span>}
               </div>
             </div>
           ))}
-          <p className="demo-card__note">이렇게 비어 있는 칸이 오히려 증거예요</p>
         </div>
       </section>
 
-      {consent && (
-        <Modal title={login.isDemo ? '샘플 계정으로 둘러보기' : 'GitHub에서 동의만 하면 바로 시작해요'} width={520}
+      {consent && !login.isDemo && (
+        <Modal title="GitHub 연결 권한 확인" width={520}
           onClose={() => setSp({})}
-          footer={{ strong: login.isDemo ? '체험 데이터는 이 탭에서만 유지돼요' : '프로필 읽기 권한을 요청해요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>{login.isDemo ? '체험 시작' : 'GitHub으로 이동'}</Button></> }}>
-          {login.isDemo && <Note strong="실제 계정과 연결되지 않는 체험 화면이에요">카드와 분석 결과는 예시예요. 작성한 데이터는 탭을 닫으면 사라질 수 있어요.</Note>}
+          footer={{ strong: '쓰기 권한은 요청하지 않아요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>GitHub으로 이동</Button></> }}>
           {login.failure && <Note strong="시작하지 못했어요" tone="danger">{login.failure}</Note>}
-          {!login.isDemo && <div className="stack" style={{ gap: 8 }}>
-            {[['프로필 읽기', '아이디와 프로필 사진만 써요']].map(([t, d]) => (
-              <div key={t} className="card card--paper row" style={{ gap: 12, padding: '14px 16px' }}>
-                <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>{t}</span><span className="t-12 c-2">{d}</span></div>
-              </div>
-            ))}
-          </div>}
-          {!login.isDemo && <Note strong="저장소 접근은 별도 권한 없이 공개 데이터만 읽어요 — 쓰는 권한은 요청하지 않아요" />}
+          <p className="t-14">프로필 정보와 공개 저장소만 읽어요.</p>
         </Modal>
       )}
     </main>

@@ -21,16 +21,18 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 세션이 메모리가 아니라 DB 에 저장되는지 본다.
  *
- * <p>#17 은 {@code spring-session-jdbc} 만 넣고 스타터를 빠뜨려 {@code store-type: jdbc} 가
+ * #17 은 spring-session-jdbc 만 넣고 스타터를 빠뜨려 store-type: jdbc 가
  * 조용히 무시된 사고였다. 로그인은 멀쩡히 됐다 — 세션이 메모리에 있었을 뿐이고,
  * 인스턴스를 재시작하면 전원이 로그아웃되는 상태였다. 그때도 테스트가 못 잡은 게 아니라
- * <b>세션이 어디 있는지 보는 테스트가 없었다.</b>
+ * 세션이 어디 있는지 보는 테스트가 없었다.
  *
- * <p>그래서 여기서는 로그인 성공 여부가 아니라 {@code SPRING_SESSION} 테이블의 행을 센다.
+ * 그래서 여기서는 로그인 성공 여부가 아니라 SPRING_SESSION 테이블의 행을 센다.
  */
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
@@ -102,9 +104,6 @@ class SessionStoreTest {
     @DisplayName("로그아웃하면 세션 행과 속성 행이 함께 지워진다")
     void logoutRemovesTheSessionRow() throws Exception {
         login();
-
-        // 지워진 것을 확인하려면 먼저 있었어야 한다. 이 단언이 없으면 세션이 아예
-        // 저장되지 않는 상태(#17)에서도 아래 0 == 0 이 통과한다.
         assertThat(sessionCount()).isEqualTo(1);
 
         browser.perform(post("/api/auth/logout").header("X-XSRF-TOKEN", browser.csrfToken()));
@@ -139,6 +138,8 @@ class SessionStoreTest {
 
         browser.perform(get("/api/auth/github/callback")
                 .param("code", "stub-authorization-code")
-                .param("state", TestBrowser.queryOf(authorizeUrl).get("state")));
+                .param("state", TestBrowser.queryOf(authorizeUrl).get("state")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
     }
 }

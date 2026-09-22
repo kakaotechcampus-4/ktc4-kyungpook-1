@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 브라우저 흉내. 응답으로 온 쿠키를 받아 적고 다음 요청에 그대로 실어 보낸다.
  *
- * <p>세션을 쓰는 왕복 테스트는 {@code MockHttpSession} 을 넘기는 방식으로 쓸 수 없다 —
+ * 세션을 쓰는 왕복 테스트는 MockHttpSession 을 넘기는 방식으로 쓸 수 없다 —
  * spring-session 이 그 객체를 무시하므로 세션이 실제로 이어지는지 확인하지 못한다.
  * 그래서 쿠키를 들고 다니는 이 방식이 필요하고, 그 로직이 두 테스트에 복사되어 있었다.
  */
@@ -67,7 +67,7 @@ public final class TestBrowser {
     /**
      * 리다이렉트 URL 의 쿼리 문자열을 푼다.
      *
-     * <p>{@code URI#getQuery} 는 퍼센트 인코딩을 이미 풀어 준다 — state 의 '=' 패딩(%3D)이
+     * URI#getQuery 는 퍼센트 인코딩을 이미 풀어 준다 — state 의 '=' 패딩(%3D)이
      * 여기서 복원된다. 인코딩된 채로 콜백에 실으면 저장된 인가 요청을 찾지 못해
      * access_denied 가 아니라 authorization_request_not_found 로 떨어진다.
      */

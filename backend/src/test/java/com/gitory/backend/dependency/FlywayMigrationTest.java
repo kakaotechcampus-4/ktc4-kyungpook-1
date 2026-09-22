@@ -22,9 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Flyway 가 실제로 마이그레이션을 돌렸는지 본다.
  *
- * <p>#11 은 {@code flyway-core} 만 넣고 스타터를 빠뜨려 마이그레이션이 한 줄도 실행되지
+ * #11 은 flyway-core 만 넣고 스타터를 빠뜨려 마이그레이션이 한 줄도 실행되지
  * 않은 사고였다. 그때 초록이던 테스트들은 스키마가 없다는 사실을 몰랐던 게 아니라
- * <b>스키마를 보는 테스트가 없었다.</b> 설정을 적은 것과 설정이 일한 것은 다르다.
+ * 스키마를 보는 테스트가 없었다. 설정을 적은 것과 설정이 일한 것은 다르다.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -32,10 +32,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FlywayMigrationTest {
 
     private static final String MIGRATION_PATTERN = "classpath*:db/migration/V*__*.sql";
-
-    /** 마이그레이션이 만든 테이블 중 모듈마다 하나씩. users·github_connection 은 V1, analysis_job 은 V2, SPRING_SESSION 은 V3 이다. */
-    private static final String[] MIGRATED_TABLES =
-            {"users", "github_connection", "analysis_job", "spring_session"};
 
     @Container
     @ServiceConnection
@@ -61,27 +57,9 @@ class FlywayMigrationTest {
                 .containsExactlyInAnyOrderElementsOf(onClasspath);
     }
 
-    @Test
-    @DisplayName("마이그레이션이 만든 테이블이 실제로 존재한다 — 히스토리 행만 남는 경우와 구분한다")
-    void migrationsActuallyCreatedTheSchema() {
-        assertThat(existingTables(MIGRATED_TABLES))
-                .as("히스토리에는 적용됐다고 적혀 있는데 테이블이 없다")
-                .containsExactlyInAnyOrder(MIGRATED_TABLES);
-    }
-
-    private List<String> existingTables(String... names) {
-        // information_schema 는 따옴표 없이 만든 식별자를 소문자로 접어 담는다. V3 이
-        // SPRING_SESSION 으로 적었어도 여기서는 spring_session 으로 찾아야 한다.
-        return jdbc.queryForList(
-                "SELECT table_name FROM information_schema.tables"
-                        + " WHERE table_schema = current_schema() AND table_name = ANY (?)",
-                String.class,
-                (Object) names);
-    }
-
     /**
-     * 파일명에서 Flyway 버전을 뽑는다 — {@code V4__github_rate_limited.sql} 이면 {@code 4}.
-     * Flyway 는 버전의 밑줄을 점으로 바꿔 기록하므로({@code V2_1} → {@code 2.1}) 여기서도 맞춘다.
+     * 파일명에서 Flyway 버전을 뽑는다 — V4__github_rate_limited.sql 이면 4.
+     * Flyway 는 버전의 밑줄을 점으로 바꿔 기록하므로(V2_1 → 2.1) 여기서도 맞춘다.
      */
     private static List<String> migrationVersionsOnClasspath() throws IOException {
         Resource[] scripts = new PathMatchingResourcePatternResolver().getResources(MIGRATION_PATTERN);

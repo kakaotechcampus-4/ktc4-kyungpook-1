@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 import { envelope, type ApiErrorBody } from './schemas';
+import { CONFIG } from '@/lib/config';
 
 /**
  * 봉투 규칙: { data, error }. HTTP 상태와 본문 상태를 분리한다.
@@ -43,7 +44,7 @@ function readCookie(name: string): string | null {
 export async function api<T extends z.ZodTypeAny>(
   schema: T,
   path: string,
-  init: { method?: Method; body?: unknown; signal?: AbortSignal; headers?: Record<string, string> } = {},
+  init: { method?: Method; body?: unknown; signal?: AbortSignal; headers?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<z.infer<T>> {
   const method = init.method ?? 'GET';
   const headers: Record<string, string> = { Accept: 'application/json', ...init.headers };
@@ -53,18 +54,29 @@ export async function api<T extends z.ZodTypeAny>(
     if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
   }
 
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort();
+  if (init.signal?.aborted) abort();
+  else init.signal?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, init.timeoutMs ?? CONFIG.API_TIMEOUT_MS);
   let res: Response;
+  let text: string;
   try {
-    res = await fetch(API_BASE + path, { method, credentials: 'include', headers, body: init.body !== undefined ? JSON.stringify(init.body) : undefined, signal: init.signal });
+    res = await fetch(API_BASE + path, { method, credentials: 'include', headers, body: init.body !== undefined ? JSON.stringify(init.body) : undefined, signal: controller.signal });
+    text = await res.text();
   } catch (e) {
+    if (timedOut) throw new ApiError('TIMEOUT', '서버 응답을 기다리는 시간이 초과됐어요.', 0);
     if ((e as Error).name === 'AbortError') throw e;
     throw new ApiError('NETWORK', '서버에 연결할 수 없습니다. 네트워크를 확인해 주세요.', 0);
+  } finally {
+    clearTimeout(timer);
+    init.signal?.removeEventListener('abort', abort);
   }
 
   if (res.status === 401) throw new AuthError();
 
   let json: unknown = null;
-  const text = await res.text();
   if (text) {
     try { json = JSON.parse(text); }
     catch { throw new ApiError(`HTTP_${res.status}`, '응답을 해석할 수 없습니다', res.status); }
@@ -77,7 +89,7 @@ export async function api<T extends z.ZodTypeAny>(
 
   const parsed = envelope(schema).safeParse(json);
   if (!parsed.success) {
-    if (import.meta.env.DEV) console.error('[contract]', path, parsed.error.issues, json);
+    // Avoid logging response bodies: they can contain user writing or repository data.
     throw new ContractError(path, parsed.error.issues);
   }
   if (parsed.data.error) {

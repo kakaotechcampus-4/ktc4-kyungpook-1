@@ -2,6 +2,36 @@
  * 최종 반응형 레이어.
  * 이전 스타일 파일의 화면별 규칙이 서로 덮어쓰지 않도록 반드시 마지막에 로드한다.
  */
+:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 3px; }
+.query-failure { display: grid; justify-items: start; gap: var(--space-12); padding: var(--space-24); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
+.query-failure h2 { font-size: 18px; line-height: 1.5; }
+.query-failure p { color: var(--text-secondary); max-width: 65ch; }
+.stardot__label { font-size: var(--text-meta-size); line-height: 18px; opacity: 1; }
+.stardots--labeled .stardot { height: 48px; grid-template-rows: 24px 20px; gap: 4px; }
+.stardots--labeled .stardot__letter { width: 24px; height: 24px; font-size: 12px; }
+.experience-item:focus-visible { outline-offset: -3px; }
+.home-page--returning .prompt { padding-block: var(--space-24); gap: var(--space-16); }
+.home-page--returning .prompt__h { font-size: 24px; line-height: 1.5; }
+.home-resume { margin-top: var(--space-16); }
+.home-page .toolbar.card { box-shadow: none; border: 0; background: transparent; padding-inline: 0; }
+.prompt__chips .pill { box-shadow: none; background: transparent; border-color: transparent; }
+.experience-list:empty, .record-list:empty { display: none; }
+.modal__close { flex-shrink: 0; min-width: var(--control-touch-size); min-height: var(--control-touch-size); }
+.modal__body { min-height: 0; }
+.modal__head, .modal__foot { flex-shrink: 0; }
+.skeleton { max-width: 100%; }
+.settings-section > .row { flex-wrap: wrap; gap: var(--space-8); }
+.user-avatar__fallback { font-size: 16px; }
+@media (max-width: 767px) {
+  .btn:not(.landing__top-action), .chip--option, .iv__fold { min-height: var(--control-touch-size); }
+  .input, .prompt__input, .list-search input, .toolbar__search input { font-size: 16px; }
+  .list-head .right { gap: var(--space-12); }
+  .experience-item__footer { flex-wrap: wrap; }
+  .experience-item .gcard__title { line-height: 1.65; }
+  .modal__foot .btn { white-space: normal; }
+  .iv__panel .row { flex-wrap: wrap; }
+  .iv__panel .input { scroll-margin-bottom: 160px; }
+}
 html, body, #root { width: 100%; min-width: 0; }
 body { overflow-x: hidden; }
 

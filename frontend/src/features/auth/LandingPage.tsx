@@ -1,11 +1,9 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Badge, Button, Note, StarKey } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { Wordmark } from '@/components/layout/AppShell';
-import { endpoints } from '@/api/endpoints';
-import { demoLogin, isDemo } from '@/mock/browser';
+import { useLogin } from './useLogin';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 const READS = ['내가 올린 커밋', '내가 만든 PR', '내가 남긴 리뷰 코멘트'];
@@ -22,21 +20,13 @@ export function LandingPage() {
   const consent = sp.get('consent') === '1';
   const error = sp.get('error');
   const reason = sp.get('reason');
-  const nav = useNavigate();
-  const qc = useQueryClient();
-  /** 데모(백엔드 없음)에서는 같은 자리에서 세션만 세우고 홈으로 — 그 뒤 흐름은 동일하다. */
-  const go = async () => {
-    if (!isDemo) { window.location.assign(endpoints.githubStartUrl()); return; }
-    demoLogin();
-    await qc.resetQueries();
-    nav('/', { replace: true });
-  };
+  const login = useLogin();
 
   return (
     <main className="landing">
       <header className="landing__top">
         <Wordmark height={34} />
-        <Button className="landing__top-action" size="sm" variant="outline" onClick={() => setSp({ consent: '1' })}>GitHub로 시작</Button>
+        <Button className="landing__top-action" size="sm" variant="outline" onClick={() => setSp({ consent: '1' })}>{login.label}</Button>
       </header>
 
       <section className="landing__hero">
@@ -53,8 +43,8 @@ export function LandingPage() {
           {reason === 'expired' && <Note strong="로그인이 만료됐어요" tone="inset">다시 로그인하면 보던 화면으로 돌아갑니다.</Note>}
 
           <div className="landing__actions">
-            <Button size="xl" onClick={() => setSp({ consent: '1' })}>GitHub로 시작 <ArrowRight size={16} /></Button>
-            <span>공개 저장소 읽기 권한만 사용해요</span>
+            <Button size="xl" onClick={() => setSp({ consent: '1' })}>{login.label} <ArrowRight size={16} /></Button>
+            <span>{login.isDemo ? '샘플 데이터로 체험해요. 실제 GitHub 계정은 연결하지 않아요.' : '공개 저장소만 읽어요'}</span>
           </div>
 
           <details className="landing__permissions" aria-label="GitHub 접근 범위 자세히 보기">
@@ -85,17 +75,19 @@ export function LandingPage() {
       </section>
 
       {consent && (
-        <Modal title="GitHub에서 동의만 하면 바로 시작해요" width={520}
+        <Modal title={login.isDemo ? '샘플 계정으로 둘러보기' : 'GitHub에서 동의만 하면 바로 시작해요'} width={520}
           onClose={() => setSp({})}
-          footer={{ strong: '읽기 권한 한 개만 요청해요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button onClick={go}>GitHub으로 이동</Button></> }}>
-          <div className="stack" style={{ gap: 8 }}>
+          footer={{ strong: login.isDemo ? '체험 데이터는 이 탭에서만 유지돼요' : '프로필 읽기 권한을 요청해요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>{login.isDemo ? '체험 시작' : 'GitHub으로 이동'}</Button></> }}>
+          {login.isDemo && <Note strong="실제 계정과 연결되지 않는 체험 화면이에요">카드와 분석 결과는 예시예요. 작성한 데이터는 탭을 닫으면 사라질 수 있어요.</Note>}
+          {login.failure && <Note strong="시작하지 못했어요" tone="danger">{login.failure}</Note>}
+          {!login.isDemo && <div className="stack" style={{ gap: 8 }}>
             {[['프로필 읽기', '아이디와 프로필 사진만 써요']].map(([t, d]) => (
               <div key={t} className="card card--paper row" style={{ gap: 12, padding: '14px 16px' }}>
                 <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>{t}</span><span className="t-12 c-2">{d}</span></div>
               </div>
             ))}
-          </div>
-          <Note strong="저장소 접근은 별도 권한 없이 공개 데이터만 읽어요 — 쓰는 권한은 요청하지 않아요" />
+          </div>}
+          {!login.isDemo && <Note strong="저장소 접근은 별도 권한 없이 공개 데이터만 읽어요 — 쓰는 권한은 요청하지 않아요" />}
         </Modal>
       )}
     </main>

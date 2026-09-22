@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useActiveJobs, useJob, useRepo, useStartAnalysis } from '@/api/queries';
-import { endpoints } from '@/api/endpoints';
-import { ApiError } from '@/api/client';
+import { useActiveJobs, useJob, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
+import { QueryFailure } from '@/components/ui/QueryFailure';
 import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton, Track } from '@/components/ui';
 import { minutes } from '@/lib/format';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
@@ -38,6 +37,7 @@ export function AnalyzePage() {
   const active = useActiveJobs(!jobId); // Job ID 가 URL 에 없을 때만 — 새로고침 복구
   const nav = useNavigate();
   const restart = useStartAnalysis();
+  const cancel = useCancelJob();
   useDocumentTitle(repo.data ? `${repo.data.name} 정리 중` : '정리 중');
 
   const j = job.data;
@@ -67,32 +67,31 @@ export function AnalyzePage() {
     if (j.state === 'CANCELED') nav('/repos', { replace: true });
   }, [j, jobId, nav, repoId]);
 
-  // 사라진 Job(404) 은 이미 끝난 것으로 보고 보드로. 네트워크가 끊긴 것과 구분한다
-  const netDown = job.isError && job.error instanceof ApiError && job.error.status === 0;
-  useEffect(() => { if (job.isError && !netDown) nav(`/repos/${repoId}/candidates`, { replace: true }); }, [job.isError, netDown, nav, repoId]);
 
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
   const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }];
   const retry = async () => {
+    try {
     const started = await restart.mutateAsync(repoId); // 새 Idempotency-Key — 새 시도다
     track('analysis_started', { repoId, jobId: started.jobId, retry: true });
     setSp({ job: started.jobId }, { replace: true });
+    } catch { /* Mutation error shown globally; preserve the action for a deliberate retry. */ }
   };
 
-  if (netDown) {
+  if (job.isError || (!jobId && active.isError)) {
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '연결 끊김' }]} />
-        <PageTitle>인터넷이 끊긴 것 같아요</PageTitle>
+        <PageTitle>작업 상태를 확인하지 못했어요</PageTitle>
+        <QueryFailure error={jobId ? job.error : active.error} retry={() => jobId ? job.refetch() : active.refetch()} pending={jobId ? job.isFetching : active.isFetching} />
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="w-600" style={{ fontSize: 17 }}>정리는 서버에서 계속 돌고 있어요</span>
-            <span className="c-2" style={{ fontSize: 13.5, lineHeight: '21px' }}>연결이 돌아오면 이어서 보여 드릴게요.</span>
+            <span className="w-600" style={{ fontSize: 17 }}>조회 실패는 분석 완료를 뜻하지 않아요</span>
+            <span className="c-2" style={{ fontSize: 13.5, lineHeight: '21px' }}>분석을 새로 실행하지 않고 기존 작업의 상태를 확인해 주세요.</span>
           </div>
         </div>
         <div className="row" style={{ gap: 8 }}>
-          <Button onClick={() => void job.refetch()} loading={job.isFetching}>다시 연결</Button>
           <Link to="/repos" className="btn btn--outline">레포 목록</Link>
         </div>
       </main>
@@ -113,7 +112,7 @@ export function AnalyzePage() {
   if (j?.state === 'FAILED') {
     const code = j.errorCode ?? 'INTERNAL_ERROR';
     const blocked = waitSec > 0;
-    const canRetry = j.retryable !== false && !blocked;
+    const canRetry = j.retryable === true && !blocked;
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '정리 실패' }]} />
@@ -128,7 +127,7 @@ export function AnalyzePage() {
         <div className="card stack" style={{ gap: 10, padding: '18px 20px' }}>
           <span className="w-700" style={{ fontSize: 14 }}>이렇게 해 보시겠어요</span>
           {[
-            ['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : canRetry ? '읽은 곳부터 이어서 시작해요' : '이 오류는 다시 눌러도 같아요',
+            ['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : canRetry ? '분석을 다시 요청해요' : '이 작업은 다시 시도할 수 없어요',
               <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>],
             ['다른 저장소 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">이동</Link>],
             ['직접 쓰기', 'GitHub 없이 바로 쓸 수 있어요', <Link key="c" to="/cards/new" className="btn btn--outline btn--sm">이동</Link>],
@@ -154,7 +153,7 @@ export function AnalyzePage() {
             <span className="w-600" style={{ fontSize: 15 }}>{jobErrorTitle[code]}</span>
             <span className="c-2" style={{ fontSize: 12.5, lineHeight: '20px' }}>{readNote(j)} {jobErrorHint[code]}</span>
           </div>
-          <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={waitSec > 0}>
+          <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={waitSec > 0 || j.retryable !== true}>
             {waitSec > 0 ? `${minutes(waitSec)} 뒤 이어 읽기` : '이어 읽기'}
           </Button>
         </div>
@@ -205,7 +204,7 @@ export function AnalyzePage() {
         <span className="c-2 t-14">끝나면 알려 드릴게요</span>
         <div className="right row" style={{ gap: 8 }}>
           <Link to="/" className="btn btn--outline">다른 작업 하러 가기</Link>
-          <Button variant="text" onClick={() => jobId && endpoints.cancelJob(jobId).then(() => nav('/repos'))}>분석 취소</Button>
+          <Button variant="text" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>분석 취소</Button>
         </div>
       </div>
     </main>

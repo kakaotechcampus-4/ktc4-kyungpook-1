@@ -8,6 +8,7 @@ import { cardKindShort, cardStatusLabel, candidateRefLabel } from '@/lib/labels'
 import { ym } from '@/lib/format';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { QueryFailure } from '@/components/ui/QueryFailure';
 
 /**
  * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 pill → 이어서 하기 → 카드.
@@ -40,7 +41,9 @@ export function HomePage() {
   };
 
   return (
-    <main className="main">
+    <main className={`main home-page ${drafts.length ? 'home-page--returning' : ''}`}>
+      {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
+      {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
       <section className="prompt">
         <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>
         <p className="prompt__sub">레포 하나만 고르면, 커밋을 읽어서 카드로 정리해 드려요.</p>
@@ -77,7 +80,7 @@ export function HomePage() {
       </section>
 
       {drafts.length > 0 && (
-        <section className="stack" style={{ gap: 10 }}>
+        <section className="stack home-resume" style={{ gap: 16 }}>
           <SectionHead label="이어서 하기" count={drafts.length}  />
           <div className="resume">
             {drafts.map((c) => (

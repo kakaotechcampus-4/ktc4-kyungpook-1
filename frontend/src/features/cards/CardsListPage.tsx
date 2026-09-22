@@ -7,6 +7,7 @@ import { Button, SectionHead, Skeleton } from '@/components/ui';
 import { CardGridItem } from '@/features/home/HomePage';
 import { cardStatusLabel } from '@/lib/labels';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { QueryFailure } from '@/components/ui/QueryFailure';
 
 /** 경험 카드 목록 — 레퍼런스(TIO 프로젝트) 헤더: "OO님의 …" + 검색 · 정렬 · 주 버튼. 상태 2단 필터. */
 export function CardsListPage() {
@@ -41,6 +42,7 @@ export function CardsListPage() {
         ))}
       </div>
       <SectionHead label={status === 'ALL' ? '전체' : cardStatusLabel[status]} count={list.length} />
+      {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
       {cards.isPending && <div className="grid-2">{[0, 1].map((i) => <Skeleton key={i} h={150} />)}</div>}
       {cards.isSuccess && list.length === 0 && (
         <div className="stack" style={{ alignItems: 'center', gap: 14, padding: '48px 0' }}>

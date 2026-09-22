@@ -15,7 +15,7 @@ export const endpoints = {
   repo: (id: string) => api(S.RepoDetail, `/repos/${id}`),
   /**
    * 분석 시작. Idempotency-Key 를 붙이므로 같은 키의 재요청은 새 Job 을 만들지 않고 기존 Job 을 돌려준다.
-   * 같은 저장소에 이미 진행 중인 Job 이 있어도 마찬가지 — 409 는 쓰지 않는다.
+   * 같은 저장소의 중복 요청은 기존 Job 반환. 같은 키를 다른 저장소에 사용하면 409.
    */
   startAnalysis: (repoId: string, idempotencyKey: string) =>
     api(S.StartedJob, `/repos/${repoId}/analyze`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey } }),

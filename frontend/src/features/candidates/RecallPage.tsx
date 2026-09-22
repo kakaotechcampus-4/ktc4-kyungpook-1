@@ -5,6 +5,7 @@ import { Breadcrumb, Button, Chip, Note, PageTitle, Skeleton, Textarea } from '@
 import { track } from '@/lib/track';
 import { toast } from '@/lib/toast';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { QueryFailure } from '@/components/ui/QueryFailure';
 
 /** C4 회상 도우미 — 후보 0개일 때의 우회 경로. 파일 기준으로 기억을 끌어낸다. 답변은 USER_STATED 근거가 된다. */
 export function RecallPage() {
@@ -35,6 +36,7 @@ export function RecallPage() {
       <PageTitle right="후보 0개일 때의 우회 경로">파일부터 되짚어 볼까요</PageTitle>
       {recall.data && <Note strong="커밋 메시지로는 못 찾았습니다">{recall.data.note}</Note>}
       {recall.isPending && <Skeleton h={200} />}
+      {recall.isError && <QueryFailure error={recall.error} retry={() => recall.refetch()} pending={recall.isFetching} />}
       <div className="stack" style={{ gap: 10 }}>
         {dirs.map((d, i) => {
           const active = i === open;

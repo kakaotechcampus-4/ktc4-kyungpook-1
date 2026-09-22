@@ -10,6 +10,7 @@ import { minutes, shortSha, ymdhm } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { QueryFailure } from '@/components/ui/QueryFailure';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
 const loadSel = (repoId: string): Set<string> => { try { return new Set(JSON.parse(sessionStorage.getItem(selKey(repoId)) ?? '[]')); } catch { return new Set(); } };
@@ -56,6 +57,7 @@ export function CandidateBoardPage() {
   };
 
   if (board.isPending) return <main className="main"><Breadcrumb items={crumbs} /><Skeleton h={40} w={240} /><Skeleton h={300} /></main>;
+  if (board.isError) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">저장소 목록</Link></main>;
   const b = board.data!;
 
   // C2 — 후보 0개: 에러가 아니라 판정. 판정 근거 3줄 + 다음 행동 3개.

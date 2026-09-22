@@ -6,9 +6,28 @@ import { Card, CandidateBoard } from '@/api/schemas';
 const respond = (status: number, body: unknown) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('api 봉투 규칙', () => {
+  it('times out the request and cancels the underlying fetch', async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, options) => new Promise((_resolve, reject) => {
+      signal = options?.signal as AbortSignal;
+      signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    const result = expect(api(z.any(), '/slow', { timeoutMs: 100 })).rejects.toMatchObject({ code: 'TIMEOUT', status: 0 });
+    await vi.advanceTimersByTimeAsync(100); await result;
+    expect(signal?.aborted).toBe(true);
+  });
+  it('preserves caller cancellation instead of reporting a network error', async () => {
+    const controller = new AbortController();
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_url, options) => new Promise((_resolve, reject) => {
+      options?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    const result = expect(api(z.any(), '/cancel', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+    controller.abort(); await result;
+  });
   it('2xx + error=null → data', async () => {
     respond(200, { data: { ok: true }, error: null });
     await expect(api(z.object({ ok: z.boolean() }), '/x')).resolves.toEqual({ ok: true });

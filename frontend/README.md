@@ -1,5 +1,15 @@
 # gitory-web
 
+## 2026-09-23 프론트 안정성 보완
+
+저장 직렬화, 실패 시 입력 유지·이탈 방지, 멱등키 409 대응, 조회 실패 화면, 키보드 모달, 읽기 쉬운 STAR 라벨을 보완했습니다. 실제 API 응답이 느리거나 실패해도 테스트할 수 있는 선택형 Mock 시나리오를 제공합니다.
+
+- 설계·시나리오·검증: [FRONTEND_RESILIENCE.md](docs/FRONTEND_RESILIENCE.md)
+- 첫 직접 작성은 `임시 저장 시작`으로 서버 DRAFT를 만든 후 본문을 자동 저장합니다. 저장 실패 시 이 화면에 머물러 재시도하세요.
+- 체험 모드는 `샘플로 체험하기`로 표시하며, 탭을 닫으면 데이터가 사라질 수 있습니다. 실제 계정 연결 및 서버 저장과 구분합니다.
+- `/cards?demoScenario=sparse`, `/cards?demoScenario=read-error`로 경계 상황을 확인하고 `?demoScenario=normal`로 복구합니다.
+
+
 Gitory 프론트엔드. 와이어프레임 v3(27장) · 유저 플로우(29노드 · 경로 54개) · 테크스펙 인터페이스 명세를 그대로 코드로 옮겼습니다.
 **React 19 + TypeScript + Vite · TanStack Query · React Router · zod**. 백엔드 없이 목 API 로 전 화면이 돌고, Spring 이 뜨면 `.env` 두 줄로 붙습니다.
 

@@ -39,7 +39,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 |---|---|---|
 | `GET /repos` | | `RepoSummary[]` — `{ id, owner, name, contribution:{mine, team, ratio, level:'NONE'|'PARTIAL'|'SHARED'|'MAJOR'}, prCount, reviewCount, language, activeFrom, activeTo, lastAnalyzedAt, candidateCount, cardCount, recommended }` |
 | `GET /repos/{id}` | | `RepoDetail` = `RepoSummary` + `disclosure:{ reads[], skips[], estimatedSeconds }` (B2 사전 고지 문구는 서버가 만든다) |
-| `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — ANALYZE Job 생성 (증분: ETag 기반). **같은 키 재요청 · 같은 저장소에 진행 중 Job 이 있으면 새로 만들지 말고 기존 Job 을 200 으로** (409 안 씀) |
+| `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 저장소의 활성 Job은 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409** (PR #50: `INVALID_REQUEST`, 제안된 `IDEMPOTENCY_KEY_MISMATCH`도 FE 수용). |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
 | `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개 |

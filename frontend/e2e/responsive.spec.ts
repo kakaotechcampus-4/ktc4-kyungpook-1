@@ -18,7 +18,7 @@ test.describe('반응형 레이아웃', () => {
     await page.goto('/login?reason=expired');
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'GitHub로 시작' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
     await expect(page.getByText('로그인이 만료됐어요')).toBeVisible();
     await expect(page.getByRole('group', { name: 'GitHub 접근 범위 자세히 보기' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '이건 읽어요' })).toBeHidden();
@@ -27,7 +27,7 @@ test.describe('반응형 레이아웃', () => {
     const columns = await page.locator('.landing__hero').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(1);
 
-    await page.getByRole('button', { name: 'GitHub로 시작' }).click();
+    await page.getByRole('button', { name: '샘플로 체험하기' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     const box = await dialog.boundingBox();
@@ -83,7 +83,7 @@ test.describe('반응형 레이아웃', () => {
     await freshSeed(page);
     await page.goto('/login');
 
-    const buttons = page.getByRole('button', { name: 'GitHub로 시작', exact: true });
+    const buttons = page.getByRole('button', { name: '샘플로 체험하기', exact: true });
     await expect(buttons).toHaveCount(2);
     await expect(page.getByText(/GitHub으로 시작/)).toHaveCount(0);
 

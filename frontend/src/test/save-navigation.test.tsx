@@ -30,6 +30,23 @@ function mount(element = <NewCardPage />) {
   return router;
 }
 describe('writing route save protection', () => {
+  it('opens a newly saved manual card and re-edits acknowledged fields when its detail GET fails', async () => {
+    const blank = { ...card, id: 'manual-cache', version: { ...card.version, situation: null, task: null, action: null, result: null } };
+    vi.spyOn(endpoints, 'createManualDraft').mockResolvedValue(blank);
+    vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ ...fields, cardId: id, savedAt: card.version.createdAt, versionNo: 2 }));
+    vi.spyOn(endpoints, 'card').mockRejectedValue(new Error('offline detail'));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: ['/new'] });
+    render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+    fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: 'Manual cache' } });
+    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Saved manual situation' } });
+    fireEvent.click(screen.getByRole('button', { name: '나중에 이어서' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/cards/manual-cache'));
+    await waitFor(() => expect(client.getQueryState(keys.card('manual-cache'))?.status).toBe('error'));
+    expect(screen.getByText('Saved manual situation')).toBeInTheDocument();
+    await act(async () => { await router.navigate('/cards/manual-cache?mode=edit'); });
+    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Saved manual situation');
+  });
   it.each(['guard', 'autosave'] as const)('keeps saved text across %s then Back and re-edit when detail refresh is unavailable', async (mode) => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
     client.setQueryData(keys.card(card.id), card);

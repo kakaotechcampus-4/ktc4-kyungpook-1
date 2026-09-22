@@ -11,6 +11,7 @@ import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
 import { applyMask } from './StarBlock';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 import { SaveStatus, UnsavedChangesDialog } from '@/components/SaveStatus';
+import { cacheSavedDraft } from '@/lib/cacheSavedDraft';
 
 type Draft = Record<StarField, string>;
 const fromCard = (c: Card): Draft => ({ S: c.version.situation ?? '', T: c.version.task ?? '', A: c.version.action ?? '', R: c.version.result ?? '' });
@@ -29,15 +30,9 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const [draft, setDraft] = useState<Draft>(() => fromCard(card));
   const save = useCallback(async (fields: DraftFields) => {
     const saved = await saveDraft.mutateAsync(fields);
-    // Acknowledged fields must survive every exit, including browser Back after autosave.
-    // Cancel older reads before merging so a late response cannot restore old writing.
-    await qc.cancelQueries({ queryKey: keys.card(card.id), exact: true });
-    qc.setQueryData<Card>(keys.card(card.id), (previous) => previous ? {
-      ...previous,
-      version: { ...previous.version, versionNo: saved.versionNo, situation: saved.situation, task: saved.task, action: saved.action, result: saved.result },
-    } : previous);
+    await cacheSavedDraft(qc, saved);
     return saved;
-  }, [saveDraft, qc, card.id]);
+  }, [saveDraft, qc]);
   const autosave = useDraftAutosave(toDraftFields(draft), save);
   const { failed, flush, saving } = autosave;
   const guard = useUnsavedChanges(autosave.dirty || saving);

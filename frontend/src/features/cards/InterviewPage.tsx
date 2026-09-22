@@ -112,7 +112,7 @@ export function InterviewPage() {
           </div>
           <div className="iv__greet"><span>코드에 없는 것만 한 줄씩 여쭤볼게요</span></div>
           {answer.isError && <Note strong="답변이 저장되지 않았어요" tone="danger">입력은 그대로 남아 있어요. 연결을 확인하고 다시 저장해 주세요.</Note>}
-          {ask.isError && <QueryFailure error={ask.error} retry={() => field && askMore(field)} pending={ask.isPending} />}
+          {ask.isError && <QueryFailure error={ask.error} retry={() => ask.variables && askMore(ask.variables)} pending={ask.isPending} />}
 
           {answered.map((t) => (
             <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--bg-paper)' }}>
@@ -126,16 +126,18 @@ export function InterviewPage() {
             <>
               <div className="stack" style={{ gap: 6 }}>
                 <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{open.field} 칸</Badge><span className="t-12 c-2">{starFieldName[open.field]}</span></div>
+                <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
+                <details className="interview-evidence"><summary>질문 근거 보기</summary>
                 <div className="found" style={{ gridTemplateColumns: '1fr' }}>
                   <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>· {f}</span>)}</div>
                   <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>· {m}</span>)}</div>
                 </div>
-                <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
+                </details>
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>
                   <span className="t-12 w-600 c-3" style={{ fontSize: 10.5 }}>이 중에 고르셔도 돼요</span>
-                  {open.options.map((o) => <button key={o} type="button" className="chip chip--option" aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
+                  {open.options.map((o) => <button key={o} type="button" className="chip chip--option" disabled={answer.isPending} aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
                 </div>
               )}
               <Textarea rows={4} value={text} disabled={answer.isPending} onChange={(e) => { setText(e.target.value); if (picked && e.target.value !== picked) setPicked(null); }}

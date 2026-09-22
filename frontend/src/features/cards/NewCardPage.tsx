@@ -13,6 +13,7 @@ import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 import { SaveStatus, UnsavedChangesDialog } from '@/components/SaveStatus';
+import { cacheSavedDraft } from '@/lib/cacheSavedDraft';
 
 const HINT: Record<StarField, string> = {
   S: '어떤 상황이었나요? 팀 규모와 맥락을 한 줄로.',
@@ -55,6 +56,7 @@ export function NewCardPage() {
       track('manual_card_created', { cardId: card.id });
     }
     const result = await endpoints.saveDraft(cardIdRef.current, body.fields);
+    await cacheSavedDraft(qc, result);
     void qc.invalidateQueries({ queryKey: keys.cards, refetchType: 'none' });
     void qc.invalidateQueries({ queryKey: keys.card(cardIdRef.current), refetchType: 'none' });
     return result;

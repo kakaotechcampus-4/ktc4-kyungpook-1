@@ -38,6 +38,7 @@ test('후보 제외는 실행 취소할 수 있다', async ({ page }) => {
 test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채워진다', async ({ page }) => {
   await login(page);
   await page.goto('/cards/card_01/interview?field=T');
+  await page.getByText('질문 근거 보기', { exact: true }).click();
   await expect(page.getByText('코드에서 찾은 것')).toBeVisible();
   await page.locator('.chip--option').first().click();
   await page.getByRole('button', { name: '다음으로' }).click();

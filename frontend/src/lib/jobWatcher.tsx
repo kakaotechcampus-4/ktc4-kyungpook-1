@@ -6,6 +6,7 @@ import { keys } from '@/api/keys';
 import { useActiveJobs } from '@/api/queries';
 import { isTerminal, type ActiveJob } from '@/api/schemas';
 import { toast } from './toast';
+import { ApiError } from '@/api/client';
 
 /**
  * "창을 닫아도 계속 분석됩니다. 끝나면 알려드릴게요."
@@ -24,6 +25,9 @@ export function JobWatcher() {
   const qc = useQueryClient();
   const active = useActiveJobs();
   const seen = useRef(new Map<string, ActiveJob>());
+  const fetching = useRef(new Set<string>());
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     const jobs = active.data?.jobs;
@@ -35,8 +39,11 @@ export function JobWatcher() {
 
     void (async () => {
       for (const w of gone) {
+        if (!mounted.current || fetching.current.has(w.jobId)) continue;
+        fetching.current.add(w.jobId);
         try {
           const j = await endpoints.job(w.jobId);
+          if (!mounted.current) return;
           if (!isTerminal(j.state)) continue;
           seen.current.delete(w.jobId);
           const repoId = j.result?.repoId ?? w.userRepositoryId;
@@ -52,7 +59,10 @@ export function JobWatcher() {
             : j.partial ? `${label} — 읽은 데까지 정리했어요`
             : `${label} — 다 됐어요`;
           toast(text, { tone: j.state === 'FAILED' ? 'danger' : 'success', action: { label: '보기', onClick: () => nav(href) } });
-        } catch { /* Keep it in seen; next successful active-list refresh tries status again. */ }
+        } catch (error) {
+          // Expired/inaccessible jobs cannot be recovered by repeated reads.
+          if (error instanceof ApiError && (error.status === 404 || error.status === 403)) seen.current.delete(w.jobId);
+        } finally { fetching.current.delete(w.jobId); }
       }
     })();
   }, [active.data, active.dataUpdatedAt, nav, qc]);

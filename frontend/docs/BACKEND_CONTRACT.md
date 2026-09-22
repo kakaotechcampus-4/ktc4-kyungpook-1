@@ -127,7 +127,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 **`evidence.authoredBy`**
 
 `AI` | `USER`. **AI 문장은 근거가 1개 이상 필요하고, USER 문장은 커밋·되묻기 근거가 없어도 허용된다.**
-DB 는 `card_statement.authored_by` 컬럼으로 갖는다. 이미 머지된 V1 마이그레이션은 건드리지 말고 새 Flyway migration 을 추가한다.
+`authoredBy`는 프론트 계약에 남아 있는 필드이며, DB 컬럼 추가는 확정된 요구가 아닙니다. 백엔드 V2/PR #8은 `evidence_type`과 `USER_SELECTED`의 턴 제약으로 직접 작성 출처를 구분했습니다. 실제 응답 매핑을 백엔드와 확인해야 하며, 이 프론트 작업에서 DB 변경을 요구하지 않습니다.
 API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `USER_SELECTED` 만 쓴다 —
 `user_written`, `inferred` 같은 소문자 내부값은 외부로 내보내지 않는다.
 

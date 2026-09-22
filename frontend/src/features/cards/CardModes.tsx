@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '@/api/keys';
-import type { Card, StarField } from '@/api/schemas';
+import type { Card, DraftFields, StarField } from '@/api/schemas';
 import { Badge, Button, Chip, EvidenceStrip, Input, StarKey, StickyFooter, Textarea } from '@/components/ui';
 import { STAR_FIELDS, fieldKey, starFieldName } from '@/lib/labels';
 import { useMask, useSaveDraft } from '@/api/queries';
@@ -27,7 +27,18 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const saveDraft = useSaveDraft(card.id);
   const baseRef = useRef<Draft>(fromCard(card));           // 비교 기준은 들어올 때 한 번만 잡는다
   const [draft, setDraft] = useState<Draft>(() => fromCard(card));
-  const autosave = useDraftAutosave(toDraftFields(draft), saveDraft.mutateAsync);
+  const save = useCallback(async (fields: DraftFields) => {
+    const saved = await saveDraft.mutateAsync(fields);
+    // Acknowledged fields must survive every exit, including browser Back after autosave.
+    // Cancel older reads before merging so a late response cannot restore old writing.
+    await qc.cancelQueries({ queryKey: keys.card(card.id), exact: true });
+    qc.setQueryData<Card>(keys.card(card.id), (previous) => previous ? {
+      ...previous,
+      version: { ...previous.version, versionNo: saved.versionNo, situation: saved.situation, task: saved.task, action: saved.action, result: saved.result },
+    } : previous);
+    return saved;
+  }, [saveDraft, qc, card.id]);
+  const autosave = useDraftAutosave(toDraftFields(draft), save);
   const { failed, flush, saving } = autosave;
   const guard = useUnsavedChanges(autosave.dirty || saving);
 

@@ -43,6 +43,7 @@ export function NewCardPage() {
 
   const filled = STAR_FIELDS.filter((k) => f[k].trim());
   const canConfirm = !!f.S.trim() && !!f.A.trim() && !!title.trim();
+  const missing = [!title.trim() && '제목', !f.S.trim() && '상황', !f.A.trim() && '행동'].filter(Boolean).join(' · ');
 
   const snapshot = { title, period, repoId, fields: toDraftFields(f) };
   const save = useCallback(async (body: typeof snapshot) => {
@@ -77,8 +78,8 @@ export function NewCardPage() {
 
       <div className="card row" style={{ gap: 16, padding: '16px 20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div className="grow" style={{ minWidth: 240 }}>
-          <Field label="카드 제목">
-            <Input autoFocus value={title} disabled={!!cardId || saving} onChange={(e) => setTitle(e.target.value)} placeholder="예) 팀원과 토큰 저장 위치로 갈린 경험" />
+          <Field label="카드 제목" hint="필수 · 제목을 입력하면 임시 저장을 시작할 수 있어요">
+            <Input autoFocus required aria-label="카드 제목" aria-describedby="manual-requirements" value={title} disabled={!!cardId || saving} onChange={(e) => setTitle(e.target.value)} placeholder="예) 팀원과 토큰 저장 위치로 갈린 경험" />
           </Field>
         </div>
         <div style={{ width: 160 }}><Field label="기간"><Input value={period} disabled={!!cardId || saving} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
@@ -93,6 +94,7 @@ export function NewCardPage() {
       </div>
 
       <p className="t-12 c-2">제목·기간·관련 레포는 처음 저장한 뒤에는 수정할 수 없어요. 확인 후 저장해 주세요. 이후 본문은 자동 저장돼요.</p>
+      <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정하려면 ${missing}을(를) 입력해 주세요. 제목만 있어도 임시 저장할 수 있어요.` : '제목·상황·행동이 준비됐어요. 확정으로 이동할 수 있어요.'}</p>
       <SaveStatus status={autosave.status} retry={flush} />
       {!cardId && <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
 
@@ -101,8 +103,8 @@ export function NewCardPage() {
           <div key={k} className="star-read__row">
             <StarKey field={k} dropped={i > 0 && !f[k]} />
             <div className="stack grow" style={{ gap: 9 }}>
-              <div className="row"><span className="star__name">{starFieldName[k]}</span><span className="right t-12 c-3">{f[k].length} / {MAX}자</span></div>
-              <Textarea className="input--lg" rows={3} maxLength={MAX} value={f[k]} onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))} placeholder={HINT[k]} aria-label={starFieldName[k]} />
+              <div className="row"><span className="star__name">{starFieldName[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 확정 시 필수</span>}</span><span className="right t-12 c-3">{f[k].length} / {MAX}자</span></div>
+              <Textarea className="input--lg" rows={3} maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements" value={f[k]} onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))} placeholder={HINT[k]} aria-label={starFieldName[k]} />
               <EvidenceStrip e={{ field: k, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: 0 }} turnText="이 칸은 내가 쓴 문장으로 저장돼요" />
             </div>
           </div>

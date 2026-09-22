@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +6,9 @@ import { endpoints } from '@/api/endpoints';
 import type { Card } from '@/api/schemas';
 import { NewCardPage } from '@/features/cards/NewCardPage';
 import { EditMode } from '@/features/cards/CardModes';
+import { CardPage } from '@/features/cards/CardPage';
+import { keys } from '@/api/keys';
+import { CONFIG } from '@/lib/config';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -16,7 +19,7 @@ beforeEach(() => {
   card = handle('GET', '/cards/card_01', new URLSearchParams(), {}, true).data as Card;
   vi.spyOn(endpoints, 'repos').mockResolvedValue([]);
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
 function mount(element = <NewCardPage />) {
   const router = createMemoryRouter([
     { path: '/new', element },
@@ -27,6 +30,29 @@ function mount(element = <NewCardPage />) {
   return router;
 }
 describe('writing route save protection', () => {
+  it.each(['guard', 'autosave'] as const)('keeps saved text across %s then Back and re-edit when detail refresh is unavailable', async (mode) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
+    client.setQueryData(keys.card(card.id), card);
+    vi.spyOn(endpoints, 'card').mockRejectedValue(new Error('offline refresh'));
+    vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ ...fields, cardId: id, savedAt: card.version.createdAt, versionNo: 2 }));
+    const router = createMemoryRouter([{ path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: [`/cards/${card.id}`, `/cards/${card.id}?mode=edit`], initialIndex: 1 });
+    render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+    vi.useFakeTimers();
+    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Latest acknowledged situation' } });
+    if (mode === 'autosave') await act(async () => { await vi.advanceTimersByTimeAsync(CONFIG.DRAFT_AUTOSAVE_MS + 1); });
+    await act(async () => { await router.navigate(-1); });
+    if (mode === 'guard') {
+      fireEvent.click(screen.getByRole('button', { name: '저장하고 이동' }));
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+    }
+    vi.useRealTimers();
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+    expect(screen.getByText('Latest acknowledged situation')).toBeInTheDocument();
+    await act(async () => { await client.invalidateQueries({ queryKey: keys.card(card.id), exact: true }); });
+    await act(async () => { await router.navigate(`/cards/${card.id}?mode=edit`); });
+    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Latest acknowledged situation');
+    expect(client.getQueryData<Card>(keys.card(card.id))?.version.versionNo).toBe(2);
+  });
   it('uses returned ID immediately and keeps failed first save on the page for retry', async () => {
     const create = vi.spyOn(endpoints, 'createManualDraft').mockResolvedValue({ ...card, id: 'returned-card' });
     const save = vi.spyOn(endpoints, 'saveDraft').mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ ...card.version, cardId: card.id, savedAt: card.version.createdAt });

@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { keys } from '@/api/keys';
 import type { Card, StarField } from '@/api/schemas';
 import { Badge, Button, Chip, EvidenceStrip, Input, StarKey, StickyFooter, Textarea } from '@/components/ui';
 import { STAR_FIELDS, fieldKey, starFieldName } from '@/lib/labels';
@@ -7,6 +9,8 @@ import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
 import { applyMask } from './StarBlock';
+import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
+import { SaveStatus, UnsavedChangesDialog } from '@/components/SaveStatus';
 
 type Draft = Record<StarField, string>;
 const fromCard = (c: Card): Draft => ({ S: c.version.situation ?? '', T: c.version.task ?? '', A: c.version.action ?? '', R: c.version.result ?? '' });
@@ -19,18 +23,22 @@ const fromCard = (c: Card): Draft => ({ S: c.version.situation ?? '', T: c.versi
  * 임시 저장은 같은 버전을 덮어쓴다. AI 초안(v1)은 잠겨 있어 첫 수정 때 새 버전이 한 번 갈라지고, 그 뒤로는 그 버전을 계속 덮는다.
  */
 export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
+  const qc = useQueryClient();
   const saveDraft = useSaveDraft(card.id);
   const baseRef = useRef<Draft>(fromCard(card));           // 비교 기준은 들어올 때 한 번만 잡는다
   const [draft, setDraft] = useState<Draft>(() => fromCard(card));
-  const { savedAt, failed, flush } = useDraftAutosave(toDraftFields(draft), saveDraft.mutateAsync);
+  const autosave = useDraftAutosave(toDraftFields(draft), saveDraft.mutateAsync);
+  const { failed, flush, saving } = autosave;
+  const guard = useUnsavedChanges(autosave.dirty || saving);
 
   const changed = STAR_FIELDS.filter((f) => baseRef.current[f] !== draft[f]);
   const done = async () => {
-    await flush();
+    if (!await flush()) return;
+    void qc.invalidateQueries({ queryKey: keys.card(card.id), exact: true });
+    guard.allowNavigation();
     if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('저장했어요 — AI 초안은 그대로 남아 있어요', { tone: 'success' }); }
     onDone();
   };
-  const revert = () => setDraft(baseRef.current);
 
   return (
     <>
@@ -59,12 +67,13 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
           );
         })}
       </div>
+      <SaveStatus status={autosave.status} retry={flush} />
       <StickyFooter
-        strong={failed ? '저장이 안 됐어요' : savedAt ? '저장됨' : changed.length ? `${changed.length}칸 고침` : '고친 곳 없음'}
+        strong={changed.length ? `${changed.length}칸 고침` : '고친 곳 없음'}
         sub={failed ? '연결을 확인하고 다시 눌러 주세요' : '쓰는 동안 알아서 저장돼요'}>
-        <Button variant="text" onClick={() => { revert(); onDone(); }}>편집 취소</Button>
-        <Button size="lg" loading={saveDraft.isPending} onClick={done}>{failed ? '다시 저장' : '저장하고 닫기'}</Button>
+        <Button size="lg" loading={saving} onClick={done}>{failed ? '다시 저장하고 닫기' : '저장하고 닫기'}</Button>
       </StickyFooter>
+      <UnsavedChangesDialog blocker={guard.blocker} saving={saving} flush={flush} />
     </>
   );
 }

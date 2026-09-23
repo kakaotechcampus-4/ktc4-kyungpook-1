@@ -24,6 +24,21 @@ ErrorCode = Literal[
     "INTERNAL_ERROR",
 ]
 
+#: 카드와 인터뷰에서 공통으로 사용하는 STAR 슬롯.
+StarSlot = Literal["S", "T", "A", "R"]
+
+#: 후보와 카드가 만들어진 출처. 프론트 확정 계약의 Candidate.type과 같다.
+SourceType = Literal["PR", "ISSUE", "COMMIT_CLUSTER", "MANUAL"]
+
+#: card_statement.confidence. 되묻기 트리거는 LOW 여부로 판단한다.
+Confidence = Literal["HIGH", "LOW"]
+
+#: 후보 보드 및 분석 Job 결과의 판정값.
+AnalysisVerdict = Literal["OK", "EMPTY", "PARTIAL"]
+
+#: 카드 목록과 상세에서 공통으로 사용하는 STAR 칸 상태.
+StarStatus = Literal["FILLED", "EMPTY", "NEEDS_REVIEW"]
+
 T = TypeVar("T")
 
 

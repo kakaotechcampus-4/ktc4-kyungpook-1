@@ -11,8 +11,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-#: card_statement.star_slot — CHAR(1), S/T/A/R.
-StarSlot = Literal["S", "T", "A", "R"]
+from schemas.common import Confidence, SourceType, StarSlot
 
 #: B-1 question_type 결정표(명세서 339행)의 값 그대로.
 QuestionType = Literal["EVIDENCE_GAP", "FOLLOWUP", "RECALL_AID"]
@@ -22,13 +21,6 @@ TriggerSource = Literal["AUTO"]
 
 #: B-2 next_action 값 중 이번 PR(B-1)에서 실제로 쓰이는 두 가지.
 NextAction = Literal["ASK_AGAIN", "COMPLETE"]
-
-#: 되묻기 대상의 출처. pr=PR 단위, commit_cluster=커밋 묶음, direct_card=카드 직접 지정.
-SourceType = Literal["PR", "COMMIT_CLUSTER", "DIRECT_CARD"]
-
-#: card_statement.confidence. DB/FE 계약의 대문자 enum을 따른다.
-Confidence = Literal["HIGH", "LOW"]
-
 
 class CommitContext(BaseModel):
     """카드 전체 또는 STAR 문장에 연결된 Git 커밋의 읽기 전용 문맥."""
@@ -87,10 +79,12 @@ class InterviewTurnRequest(BaseModel):
         if self.source_type == "PR":
             if self.candidate is None or self.candidate.github_pr_number is None:
                 raise ValueError("source_type='PR'이면 candidate.github_pr_number가 필요합니다.")
-        elif self.source_type == "COMMIT_CLUSTER" and self.candidate is None:
-            raise ValueError("source_type='COMMIT_CLUSTER'이면 candidate가 필요합니다.")
-        elif self.source_type == "DIRECT_CARD" and self.candidate is not None:
-            raise ValueError("source_type='DIRECT_CARD'이면 candidate는 null이어야 합니다.")
+        elif self.source_type in {"ISSUE", "COMMIT_CLUSTER"} and self.candidate is None:
+            raise ValueError(
+                "source_type='ISSUE' 또는 'COMMIT_CLUSTER'이면 candidate가 필요합니다."
+            )
+        elif self.source_type == "MANUAL" and self.candidate is not None:
+            raise ValueError("source_type='MANUAL'이면 candidate는 null이어야 합니다.")
         return self
 
 

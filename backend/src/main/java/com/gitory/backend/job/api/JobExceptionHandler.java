@@ -25,6 +25,6 @@ public class JobExceptionHandler {
     @ExceptionHandler(IdempotencyKeyMismatchException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiResponse<Void> handleIdempotencyKeyMismatch() {
-        return ApiResponse.fail(ErrorCode.INVALID_REQUEST, "이미 다른 레포 분석에 쓰인 요청 키입니다.");
+        return ApiResponse.fail(ErrorCode.IDEMPOTENCY_KEY_MISMATCH, "이미 다른 레포 분석에 쓰인 요청 키입니다.");
     }
 }

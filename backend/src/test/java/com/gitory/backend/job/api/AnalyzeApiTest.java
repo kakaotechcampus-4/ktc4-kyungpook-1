@@ -126,7 +126,7 @@ class AnalyzeApiTest {
         analyze(MY_OTHER_REPO, KEY_1)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.data").value(nullValue()))
-                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+                .andExpect(jsonPath("$.error.code").value("IDEMPOTENCY_KEY_MISMATCH"));
 
         assertThat(jobCount()).isEqualTo(1);
     }

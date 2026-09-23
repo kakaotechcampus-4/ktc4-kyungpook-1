@@ -56,7 +56,7 @@ export function AppShell() {
           <nav key={g.group} className="menu-group" aria-label={g.group}>
             <div className="menu-group__title">{g.group}</div>
             {g.items.map((it) => (
-              <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={rail ? it.label : undefined}>
+              <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.label}>
                 <it.icon size={16} /><span>{it.label}</span>
               </NavLink>
             ))}

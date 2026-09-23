@@ -99,12 +99,12 @@ def test_empty_slot_uses_card_commit_as_recall_aid_context() -> None:
     assert ESCAPE_HATCH in data["question_text"]
 
 
-def test_direct_card_without_candidate_uses_general_recall_aid() -> None:
+def test_manual_card_without_candidate_uses_general_recall_aid() -> None:
     """직접 작성 카드는 GitHub 문맥 없이 일반 회상 질문으로 처리한다."""
     response = _post(
         {
             "card_id": 104,
-            "source_type": "DIRECT_CARD",
+            "source_type": "MANUAL",
             "candidate": None,
             "missing_slots": [_slot()],
             "existing_turn_count": 0,

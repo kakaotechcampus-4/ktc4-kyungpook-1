@@ -14,6 +14,7 @@ import { cardToMarkdown, copyText } from '@/lib/exportCard';
 import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
+import { QueryFailure } from '@/components/ui/QueryFailure';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -39,6 +40,7 @@ export function CardPage() {
   }, [q.data?.generation?.jobId, job.data, cardId]);
 
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
+  if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   const card = q.data!;
   const mode = sp.get('mode');
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;

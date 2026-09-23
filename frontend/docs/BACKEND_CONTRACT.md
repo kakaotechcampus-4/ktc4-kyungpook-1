@@ -39,7 +39,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 |---|---|---|
 | `GET /repos` | | `RepoSummary[]` — `{ id, owner, name, contribution:{mine, team, ratio, level:'NONE'|'PARTIAL'|'SHARED'|'MAJOR'}, prCount, reviewCount, language, activeFrom, activeTo, lastAnalyzedAt, candidateCount, cardCount, recommended }` |
 | `GET /repos/{id}` | | `RepoDetail` = `RepoSummary` + `disclosure:{ reads[], skips[], estimatedSeconds }` (B2 사전 고지 문구는 서버가 만든다) |
-| `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — ANALYZE Job 생성 (증분: ETag 기반). **같은 키 재요청 · 같은 저장소에 진행 중 Job 이 있으면 새로 만들지 말고 기존 Job 을 200 으로** (409 안 씀) |
+| `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 저장소의 활성 Job은 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409** (PR #50: `INVALID_REQUEST`, 제안된 `IDEMPOTENCY_KEY_MISMATCH`도 FE 수용). |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
 | `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개 |
@@ -127,7 +127,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 **`evidence.authoredBy`**
 
 `AI` | `USER`. **AI 문장은 근거가 1개 이상 필요하고, USER 문장은 커밋·되묻기 근거가 없어도 허용된다.**
-DB 는 `card_statement.authored_by` 컬럼으로 갖는다. 이미 머지된 V1 마이그레이션은 건드리지 말고 새 Flyway migration 을 추가한다.
+`authoredBy`는 프론트 계약에 남아 있는 필드이며, DB 컬럼 추가는 확정된 요구가 아닙니다. 백엔드 V2/PR #8은 `evidence_type`과 `USER_SELECTED`의 턴 제약으로 직접 작성 출처를 구분했습니다. 실제 응답 매핑을 백엔드와 확인해야 하며, 이 프론트 작업에서 DB 변경을 요구하지 않습니다.
 API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `USER_SELECTED` 만 쓴다 —
 `user_written`, `inferred` 같은 소문자 내부값은 외부로 내보내지 않는다.
 

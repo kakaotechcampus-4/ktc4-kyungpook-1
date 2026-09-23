@@ -1,6 +1,7 @@
 package com.gitory.backend.job.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,22 +58,25 @@ class AnalyzeApiTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    private TestFixtures fixtures;
+
     private Long myUserId;
 
     @BeforeEach
     void setUp() {
 
-        jdbc.execute("TRUNCATE users, repository CASCADE");
+        fixtures = new TestFixtures(jdbc);
+        fixtures.clear();
 
-        myUserId = insertUser(1L, "grow22");
-        Long othersUserId = insertUser(2L, "someone-else");
+        myUserId = fixtures.insertUser(1L, "grow22");
+        Long othersUserId = fixtures.insertUser(2L, "someone-else");
 
-        Long repositoryId = insertRepository(1L, "gitory");
-        Long otherRepositoryId = insertRepository(2L, "gitory-docs");
+        Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
+        Long otherRepositoryId = fixtures.insertRepository(2L, "grow22", "gitory-docs");
 
-        connect(MY_REPO, myUserId, repositoryId);
-        connect(MY_OTHER_REPO, myUserId, otherRepositoryId);
-        connect(OTHERS_REPO, othersUserId, repositoryId);
+        fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
+        fixtures.insertUserRepository(MY_OTHER_REPO, myUserId, otherRepositoryId);
+        fixtures.insertUserRepository(OTHERS_REPO, othersUserId, repositoryId);
     }
 
     @Test
@@ -175,6 +180,24 @@ class AnalyzeApiTest {
         assertThat(jobCount()).isZero();
     }
 
+    @Test
+    @DisplayName("POST 전용 경로에 GET 하면 500 이 아니라 405 다")
+    void wrongMethodIsNotServerError() throws Exception {
+
+        mvc.perform(get("/api/repos/{id}/analyze", MY_REPO).with(loggedInAs(myUserId)))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("없는 경로를 부르면 500 이 아니라 404 다")
+    void unknownPathIsNotServerError() throws Exception {
+
+        mvc.perform(get("/api/does-not-exist").with(loggedInAs(myUserId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+    }
+
     private RequestPostProcessor loggedInAs(Long userId) {
         LoginUser principal = new LoginUser(userId, "grow22", null);
         return authentication(
@@ -199,22 +222,5 @@ class AnalyzeApiTest {
 
     private Integer jobCount() {
         return jdbc.queryForObject("SELECT count(*) FROM analysis_job", Integer.class);
-    }
-
-    private Long insertUser(Long githubUserId, String login) {
-        return jdbc.queryForObject(
-                "INSERT INTO users (github_user_id, github_login) VALUES (?, ?) RETURNING id",
-                Long.class, githubUserId, login);
-    }
-
-    private Long insertRepository(Long githubRepoId, String name) {
-        return jdbc.queryForObject(
-                "INSERT INTO repository (github_repo_id, owner_login, name, visibility) VALUES (?, 'grow22', ?, 'PUBLIC') RETURNING id",
-                Long.class, githubRepoId, name);
-    }
-
-    private void connect(UUID publicId, Long userId, Long repositoryId) {
-        jdbc.update("INSERT INTO user_repository (public_id, user_id, repository_id) VALUES (?, ?, ?)",
-                publicId, userId, repositoryId);
     }
 }

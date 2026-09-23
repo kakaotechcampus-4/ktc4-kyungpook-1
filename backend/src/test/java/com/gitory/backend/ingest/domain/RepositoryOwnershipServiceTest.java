@@ -2,6 +2,7 @@ package com.gitory.backend.ingest.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,18 +38,22 @@ class RepositoryOwnershipServiceTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    private TestFixtures fixtures;
+
     private Long myUserId;
     private Long myRepoId;
 
     @BeforeEach
     void setUp() {
 
-        myUserId = insertUser(1L, "grow22");
-        Long othersUserId = insertUser(2L, "taehun0208");
-        Long repositoryId = insertRepository(1L, "grow22", "gitory");
+        fixtures = new TestFixtures(jdbc);
 
-        myRepoId = insertUserRepository(MY_REPO, myUserId, repositoryId);
-        insertUserRepository(OTHERS_REPO, othersUserId, repositoryId);
+        myUserId = fixtures.insertUser(1L, "grow22");
+        Long othersUserId = fixtures.insertUser(2L, "taehun0208");
+        Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
+
+        myRepoId = fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
+        fixtures.insertUserRepository(OTHERS_REPO, othersUserId, repositoryId);
     }
 
     @Test
@@ -76,24 +81,6 @@ class RepositoryOwnershipServiceTest {
         Optional<Long> found = service.findOwnedRepository(UUID.randomUUID(), myUserId);
 
         assertThat(found).isEmpty();
-    }
-
-    private Long insertUser(Long githubUserId, String login) {
-        return jdbc.queryForObject(
-                "INSERT INTO users (github_user_id, github_login) VALUES (?, ?) RETURNING id",
-                Long.class, githubUserId, login);
-    }
-
-    private Long insertRepository(Long githubRepoId, String ownerLogin, String name) {
-        return jdbc.queryForObject(
-                "INSERT INTO repository (github_repo_id, owner_login, name, visibility) VALUES (?, ?, ?, 'PUBLIC') RETURNING id",
-                Long.class, githubRepoId, ownerLogin, name);
-    }
-
-    private Long insertUserRepository(UUID publicId, Long userId, Long repositoryId) {
-        return jdbc.queryForObject(
-                "INSERT INTO user_repository (public_id, user_id, repository_id) VALUES (?, ?, ?) RETURNING id",
-                Long.class, publicId, userId, repositoryId);
     }
 
 }

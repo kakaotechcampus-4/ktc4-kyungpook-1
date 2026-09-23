@@ -6,7 +6,7 @@ import com.gitory.backend.consent.domain.User;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.TokenCipher;
 import com.gitory.backend.consent.infra.UserRepository;
-import jakarta.servlet.http.Cookie;
+import com.gitory.backend.support.TestBrowser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,15 +16,10 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-import java.net.URI;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,14 +66,13 @@ class AuthFlowTest {
     @Autowired
     TokenCipher tokenCipher;
 
-    /** 브라우저 흉내. 응답으로 온 쿠키를 다음 요청에 그대로 실어 보낸다. */
-    private final Map<String, Cookie> cookieJar = new LinkedHashMap<>();
+    private TestBrowser browser;
 
     @BeforeEach
     void clean() {
         connections.deleteAll();
         users.deleteAll();
-        cookieJar.clear();
+        browser = new TestBrowser(mvc);
     }
 
     // ───────────────────────────── 시작
@@ -86,13 +80,13 @@ class AuthFlowTest {
     @Test
     @DisplayName("GET /api/auth/github/start 는 GitHub 인가 화면으로 보낸다 — 최소 권한만 요청한다")
     void startRedirectsToGithub() throws Exception {
-        String location = perform(get("/api/auth/github/start"))
+        String location = browser.perform(get("/api/auth/github/start"))
                 .andExpect(status().is3xxRedirection())
                 .andReturn().getResponse().getRedirectedUrl();
 
         assertThat(location).startsWith("https://github.com/login/oauth/authorize");
 
-        Map<String, String> query = queryOf(location);
+        Map<String, String> query = TestBrowser.queryOf(location);
         assertThat(query.get("client_id")).isEqualTo("test-client-id");
         assertThat(query.get("redirect_uri")).isEqualTo("http://localhost/api/auth/github/callback");
         assertThat(query.get("scope")).isEqualTo("read:user");
@@ -120,18 +114,18 @@ class AuthFlowTest {
         assertThat(connection.getTokenExpiresAt()).isNull();
 
         // 세션 쿠키만으로 /api/me 가 열린다.
-        perform(get("/api/me"))
+        browser.perform(get("/api/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.login").value(StubGithubConfig.LOGIN));
 
         // 로그아웃은 프론트와 같은 방식으로 CSRF 를 돌려준다 — XSRF-TOKEN 쿠키를 헤더로.
-        perform(post("/api/auth/logout").header("X-XSRF-TOKEN", csrfToken()))
+        browser.perform(post("/api/auth/logout").header("X-XSRF-TOKEN", browser.csrfToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.ok").value(true))
                 .andExpect(jsonPath("$.error").value(nullValue()));
 
         // 같은 쿠키를 들고 다시 와도 세션이 없다.
-        perform(get("/api/me"))
+        browser.perform(get("/api/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
     }
@@ -143,7 +137,7 @@ class AuthFlowTest {
 
         String userId = String.valueOf(users.findByGithubUserId(StubGithubConfig.GITHUB_USER_ID).orElseThrow().getId());
 
-        perform(get("/api/me"))
+        browser.perform(get("/api/me"))
                 .andExpect(status().isOk())
                 // 봉투 계약은 "error 키가 있고 값이 null" 이다. doesNotExist() 는 JSON null 도
                 // 통과시켜 키 누락과 구분하지 못하므로 값으로 단언한다.
@@ -168,7 +162,7 @@ class AuthFlowTest {
     void meNeverCarriesTheToken() throws Exception {
         login();
 
-        String body = perform(get("/api/me")).andReturn().getResponse().getContentAsString();
+        String body = browser.perform(get("/api/me")).andReturn().getResponse().getContentAsString();
 
         assertThat(body).doesNotContain(StubGithubConfig.ACCESS_TOKEN);
         assertThat(body).doesNotContain("token");
@@ -178,7 +172,7 @@ class AuthFlowTest {
     @DisplayName("두 번 로그인해도 사용자와 연결이 하나씩만 남는다")
     void loggingInTwiceDoesNotDuplicate() throws Exception {
         login();
-        cookieJar.clear(); // 새 브라우저처럼 처음부터 다시
+        browser.clearCookies(); // 새 브라우저처럼 처음부터 다시
         login();
 
         assertThat(users.count()).isEqualTo(1);
@@ -192,7 +186,7 @@ class AuthFlowTest {
     void deniedConsentRedirectsToLoginWithReason() throws Exception {
         String state = startAndReadState();
 
-        perform(get("/api/auth/github/callback")
+        browser.perform(get("/api/auth/github/callback")
                 .param("error", "access_denied")
                 .param("state", state))
                 .andExpect(status().is3xxRedirection())
@@ -204,7 +198,7 @@ class AuthFlowTest {
     @Test
     @DisplayName("로그인하지 않은 /api 요청은 401 + UNAUTHENTICATED 다 — 로그인 페이지로 리다이렉트하지 않는다")
     void apiWithoutSessionIsUnauthorized() throws Exception {
-        perform(get("/api/me"))
+        browser.perform(get("/api/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(header().string("Content-Type", "application/json;charset=UTF-8"))
                 .andExpect(jsonPath("$.data").value(nullValue()))
@@ -215,11 +209,12 @@ class AuthFlowTest {
     @DisplayName("로그인 안 된 API 호출은 세션을 만들지 않는다 — 익명 호출로 세션 테이블이 불어나지 않는다")
     void unauthenticatedCallsDoNotCreateSessions() throws Exception {
         for (int i = 0; i < 3; i++) {
-            perform(get("/api/me")).andExpect(status().isUnauthorized());
+            browser.perform(get("/api/me")).andExpect(status().isUnauthorized());
         }
 
-        assertThat(cookieJar).as("SESSION 쿠키가 나가면 서버에 세션 행이 생겼다는 뜻이다")
-                .doesNotContainKey("SESSION");
+        assertThat(browser.hasCookie("SESSION"))
+                .as("SESSION 쿠키가 나가면 서버에 세션 행이 생겼다는 뜻이다")
+                .isFalse();
     }
 
     @Test
@@ -227,12 +222,12 @@ class AuthFlowTest {
     void logoutWithoutCsrfIsRejected() throws Exception {
         login();
 
-        perform(post("/api/auth/logout"))
+        browser.perform(post("/api/auth/logout"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
         // 여전히 로그인 상태다.
-        perform(get("/api/me")).andExpect(status().isOk());
+        browser.perform(get("/api/me")).andExpect(status().isOk());
     }
 
     // ───────────────────────────── 브라우저 흉내
@@ -241,7 +236,7 @@ class AuthFlowTest {
     private void login() throws Exception {
         String state = startAndReadState();
 
-        perform(get("/api/auth/github/callback")
+        browser.perform(get("/api/auth/github/callback")
                 .param("code", "stub-authorization-code")
                 .param("state", state))
                 .andExpect(status().is3xxRedirection())
@@ -249,69 +244,10 @@ class AuthFlowTest {
     }
 
     private String startAndReadState() throws Exception {
-        String location = perform(get("/api/auth/github/start"))
+        String location = browser.perform(get("/api/auth/github/start"))
                 .andExpect(status().is3xxRedirection())
                 .andReturn().getResponse().getRedirectedUrl();
-        return queryOf(location).get("state");
+        return TestBrowser.queryOf(location).get("state");
     }
 
-    private String csrfToken() {
-        Cookie cookie = cookieJar.get("XSRF-TOKEN");
-        assertThat(cookie).as("XSRF-TOKEN 쿠키가 내려와야 프론트가 CSRF 헤더를 만들 수 있다").isNotNull();
-        return cookie.getValue();
-    }
-
-    /** 쿠키를 실어 보내고, 응답으로 온 쿠키를 받아 적는다. */
-    private org.springframework.test.web.servlet.ResultActions perform(MockHttpServletRequestBuilder request)
-            throws Exception {
-        if (!cookieJar.isEmpty()) {
-            request = request.cookie(cookieJar.values().toArray(new Cookie[0]));
-        }
-        MvcResult result = mvc.perform(request).andReturn();
-        for (Cookie cookie : result.getResponse().getCookies()) {
-            if (cookie.getMaxAge() == 0) {
-                cookieJar.remove(cookie.getName()); // 만료 지시 = 삭제
-            } else {
-                cookieJar.put(cookie.getName(), cookie);
-            }
-        }
-        return new StaticResultActions(result);
-    }
-
-    /** 이미 실행한 결과에 대해 단언만 이어 가려고 쓰는 얇은 래퍼. */
-    private record StaticResultActions(MvcResult result)
-            implements org.springframework.test.web.servlet.ResultActions {
-
-        @Override
-        public org.springframework.test.web.servlet.ResultActions andExpect(
-                org.springframework.test.web.servlet.ResultMatcher matcher) throws Exception {
-            matcher.match(result);
-            return this;
-        }
-
-        @Override
-        public org.springframework.test.web.servlet.ResultActions andDo(
-                org.springframework.test.web.servlet.ResultHandler handler) throws Exception {
-            handler.handle(result);
-            return this;
-        }
-
-        @Override
-        public MvcResult andReturn() {
-            return result;
-        }
-    }
-
-    private static Map<String, String> queryOf(String url) {
-        String query = URI.create(url).getQuery();
-        Map<String, String> params = new LinkedHashMap<>();
-        // URI#getQuery 는 퍼센트 인코딩을 이미 풀어 준다 — state 의 '=' 패딩(%3D)이 여기서 복원된다.
-        // 인코딩된 채로 콜백에 실으면 저장된 인가 요청을 찾지 못해 access_denied 가 아니라
-        // authorization_request_not_found 로 떨어진다.
-        Arrays.stream(query.split("&")).forEach(pair -> {
-            String[] parts = pair.split("=", 2);
-            params.put(parts[0], parts.length > 1 ? parts[1] : "");
-        });
-        return params;
-    }
 }

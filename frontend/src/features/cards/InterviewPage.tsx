@@ -9,6 +9,9 @@ import { CONFIG } from '@/lib/config';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { QueryFailure } from '@/components/ui/QueryFailure';
+import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
+import { UnsavedChangesDialog } from '@/components/SaveStatus';
 
 /**
  * D5 되묻기 — 레퍼런스(TIO 경험 정리) 구조: 좌측 캔버스에 카드가 채워지고, 우측 패널이 한 번에 하나씩 묻는다.
@@ -25,6 +28,7 @@ export function InterviewPage() {
   const answer = useAnswerInterview(cardId);
   const [text, setText] = useState('');
   const [picked, setPicked] = useState<string | null>(null);
+  const guard = useUnsavedChanges(!!text || answer.isPending);
   const [folded, setFolded] = useState(true); // 모바일에서는 미리보기를 접고 질문부터 보여준다
   const autoAsked = useRef(false);
   useDocumentTitle(q.data ? `되묻기 · ${q.data.title}` : '되묻기');
@@ -46,15 +50,19 @@ export function InterviewPage() {
 
   const card = q.data;
   const submit = async () => {
-    if (!open || !text.trim()) return;
+    if (!open || !text.trim() || answer.isPending) return false;
+    try {
     const source: EvidenceType = picked === text ? 'USER_SELECTED' : 'USER_STATED';
-    await answer.mutateAsync({ turnNo: open.turnNo, text: text.trim(), source });
+    await answer.mutateAsync({ turnNo: open.turnNo, text, source });
     track('interview_answered', { cardId, field: open.field, source, turnNo: open.turnNo });
     toast(`${starFieldShort[open.field]} 칸에 저장했습니다 — 다듬지 않고 그대로`, { tone: 'success' });
     setText(''); setPicked(null);
+    return true;
+    } catch { return false; }
   };
   const askMore = (f: StarField) => ask.mutate(f, { onSuccess: () => track('interview_asked', { cardId, field: f, followUp: true }) });
 
+  if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   if (!card || turns.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={300} /></main>;
   const total = answered.length + (open ? 1 : 0);
   const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}` }, { label: '되묻기' }];
@@ -87,7 +95,7 @@ export function InterviewPage() {
                   <StarKey field={f} dropped={!t} />
                   <div className="stack grow" style={{ gap: 8 }}>
                     <div className="row" style={{ gap: 8 }}><span className="star__name">{starFieldName[f]}</span>{pending && <Badge kind="PR">지금 채우는 칸</Badge>}</div>
-                    {t ? <p className="star__text">{t}</p> : <span className="c-3" style={{ fontSize: 13 }}>{pending ? '오른쪽 질문에 답하면 여기에 들어갑니다' : '비어 있음'}</span>}
+                    {t ? <p className="star__text">{t}</p> : <span className="c-3" style={{ fontSize: 13 }}>{pending ? '질문에 답하면 이 칸에 저장돼요' : '비어 있음'}</span>}
                     {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
                   </div>
                 </div>
@@ -103,6 +111,8 @@ export function InterviewPage() {
             <span className="right t-12 c-3">{open ? `남은 질문 ${Math.max(0, maxTurns - total)}개` : ''}</span>
           </div>
           <div className="iv__greet"><span>코드에 없는 것만 한 줄씩 여쭤볼게요</span></div>
+          {answer.isError && <Note strong="답변이 저장되지 않았어요" tone="danger">입력은 그대로 남아 있어요. 연결을 확인하고 다시 저장해 주세요.</Note>}
+          {ask.isError && <QueryFailure error={ask.error} retry={() => ask.variables && askMore(ask.variables)} pending={ask.isPending} />}
 
           {answered.map((t) => (
             <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--bg-paper)' }}>
@@ -116,19 +126,21 @@ export function InterviewPage() {
             <>
               <div className="stack" style={{ gap: 6 }}>
                 <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{open.field} 칸</Badge><span className="t-12 c-2">{starFieldName[open.field]}</span></div>
+                <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
+                <details className="interview-evidence"><summary>질문 근거 보기</summary>
                 <div className="found" style={{ gridTemplateColumns: '1fr' }}>
                   <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>· {f}</span>)}</div>
                   <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>· {m}</span>)}</div>
                 </div>
-                <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
+                </details>
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>
                   <span className="t-12 w-600 c-3" style={{ fontSize: 10.5 }}>이 중에 고르셔도 돼요</span>
-                  {open.options.map((o) => <button key={o} type="button" className="chip chip--option" aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
+                  {open.options.map((o) => <button key={o} type="button" className="chip chip--option" disabled={answer.isPending} aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
                 </div>
               )}
-              <Textarea rows={4} value={text} onChange={(e) => { setText(e.target.value); if (picked && e.target.value !== picked) setPicked(null); }}
+              <Textarea rows={4} value={text} disabled={answer.isPending} onChange={(e) => { setText(e.target.value); if (picked && e.target.value !== picked) setPicked(null); }}
                 onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submit(); }}
                 placeholder="한 문장으로" aria-label="답변" maxLength={500} />
               <div className="row" style={{ gap: 8 }}>
@@ -157,6 +169,7 @@ export function InterviewPage() {
           )}
         </aside>
       </div>
+      <UnsavedChangesDialog blocker={guard.blocker} saving={answer.isPending} flush={submit} />
     </main>
   );
 }

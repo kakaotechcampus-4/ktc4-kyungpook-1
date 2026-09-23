@@ -1,5 +1,21 @@
 # gitory-web
 
+브라우저 탭 아이콘은 흰 테두리를 제거한 `public/favicon-borderless.svg`를 사용합니다. 원인과 확인 방법은 [브랜딩 이미지 문서](docs/BRAND_ASSETS.md)에 기록했습니다.
+
+## 2026-09-23 모바일 UX 정리
+
+첫 화면의 샘플 체험은 버튼 한 번으로 시작합니다. 모바일에서는 긴 예시 카드를 숨기고 설명을 한 문장으로 줄였습니다. 홈·레포·카드 목록의 반복 제목과 직접 작성 화면의 반복 출처 문구를 걷어 냈으며, 좁은 화면에서 한글 단어가 과하게 쪼개지지 않도록 조정했습니다. 화면별 판단과 회귀 범위는 [모바일 UX 정리 문서](docs/MOBILE_UX_CLEANUP.md)에 기록했습니다.
+
+## 2026-09-23 프론트 안정성 보완
+
+저장 직렬화, 실패 시 입력 유지·이탈 방지, 멱등키 409 대응, 조회 실패 화면, 키보드 모달, 읽기 쉬운 STAR 라벨을 보완했습니다. 실제 API 응답이 느리거나 실패해도 테스트할 수 있는 선택형 Mock 시나리오를 제공합니다.
+
+- 설계·시나리오·검증: [FRONTEND_RESILIENCE.md](docs/FRONTEND_RESILIENCE.md)
+- 첫 직접 작성은 `임시 저장 시작`으로 서버 DRAFT를 만든 후 본문을 자동 저장합니다. 저장 실패 시 이 화면에 머물러 재시도하세요.
+- 체험 모드는 `샘플로 체험하기`로 표시하며, 탭을 닫으면 데이터가 사라질 수 있습니다. 실제 계정 연결 및 서버 저장과 구분합니다.
+- `/cards?demoScenario=sparse`, `/cards?demoScenario=read-error`로 경계 상황을 확인하고 `?demoScenario=normal`로 복구합니다.
+
+
 Gitory 프론트엔드. 와이어프레임 v3(27장) · 유저 플로우(29노드 · 경로 54개) · 테크스펙 인터페이스 명세를 그대로 코드로 옮겼습니다.
 **React 19 + TypeScript + Vite · TanStack Query · React Router · zod**. 백엔드 없이 목 API 로 전 화면이 돌고, Spring 이 뜨면 `.env` 두 줄로 붙습니다.
 
@@ -114,8 +130,8 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 2. `GET /jobs/{jobId}` 를 응답이 준 `pollAfterMs` 간격으로 읽는다. 간격을 화면이 정하지 않는다.
 3. 새로고침해서 주소의 `?job=` 을 잃으면 `GET /jobs?active=true` 로 서버에 다시 물어 붙는다.
 4. 끝난 이유는 네 갈래로 **각각 다른 화면**이다.
-   - 네트워크가 끊김 → "정리는 서버에서 계속 돌고 있어요" + 다시 연결
-   - `FAILED` + `errorCode` → 원인과 다음 행동 3개. `retryable: false` 면 다시 시도 버튼을 막고, `RATE_LIMITED` 면 `retryAfterSec` 이 지날 때까지 막는다
+   - 조회 실패 → 완료로 간주하지 않고 기존 Job 조회 재시도 또는 목록으로 이동
+   - `FAILED` + `errorCode` → 원인과 다음 행동. `retryable: true`인 경우만 재시도하고, `GITHUB_RATE_LIMITED` 면 `retryAfterSec` 이 지날 때까지 막는다
    - `SUCCEEDED` + `partial: true` → "읽은 데까지 정리했어요" + 이어 읽기
    - `SUCCEEDED` + `verdict: EMPTY` → 실패 화면이 아니라 후보 보드의 판정 화면 (근거 3줄)
 
@@ -123,13 +139,13 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 
 ```bash
 npm run typecheck
-npm test            # 28 — 계약 계층 + 목이 실서버 계약을 지키는지 (src/test/contract.test.ts)
-npm run e2e         # 20 — 기능 12 + UI·반응형 8 (320/390/768/1024/1440/1920px)
-npm run e2e:static  # 같은 20개를 프로덕션 빌드에 — Vercel 이 서빙하는 산출물과 동일
+npm test            # 계약·저장 경합·이탈 보호·전송 실패·Mock 시나리오
+npm run e2e         # 기능·오류 복구·UI·반응형 (320~1920px)
+npm run e2e:static  # 동일한 검사를 프로덕션 빌드 산출물에 실행
 ```
 
-마지막 실행(2026-09-15): typecheck 통과 · vitest 28/28 · e2e 20/20 · e2e:static 20/20.
-CI 는 `.github/workflows/ci.yml`.
+최신 검증 기록과 제한은 [FRONTEND_RESILIENCE.md](docs/FRONTEND_RESILIENCE.md)를 참고하세요.
+팀 모노레포 CI는 루트 `.github/workflows/frontend-ci.yml`입니다. 개인 프론트 저장소는 `.github/workflows/ci.yml`을 사용합니다.
 
 ## 아직 없는 것
 

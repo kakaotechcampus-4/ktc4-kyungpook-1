@@ -3,6 +3,7 @@ package com.gitory.backend.job.api;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.job.domain.AnalysisJob;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,6 +56,8 @@ class JobApiTest {
     @Autowired
     AnalysisJobRepository jobs;
 
+    private TestFixtures fixtures;
+
     private Long myUserId;
     private Long myRepoId;
     private Long othersUserId;
@@ -63,15 +66,16 @@ class JobApiTest {
     @BeforeEach
     void setUp() {
 
-        jdbc.execute("TRUNCATE users, repository CASCADE");
+        fixtures = new TestFixtures(jdbc);
+        fixtures.clear();
 
-        myUserId = insertUser(1L, "grow22");
-        othersUserId = insertUser(2L, "someone-else");
+        myUserId = fixtures.insertUser(1L, "grow22");
+        othersUserId = fixtures.insertUser(2L, "someone-else");
 
-        Long repositoryId = insertRepository(1L, "gitory");
+        Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
 
-        myRepoId = insertUserRepository(myUserId, repositoryId);
-        othersRepoId = insertUserRepository(othersUserId, repositoryId);
+        myRepoId = fixtures.insertUserRepository(myUserId, repositoryId);
+        othersRepoId = fixtures.insertUserRepository(othersUserId, repositoryId);
     }
 
     @Test
@@ -184,23 +188,5 @@ class JobApiTest {
         LoginUser principal = new LoginUser(userId, "grow22", null);
         return authentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
-    }
-
-    private Long insertUser(Long githubUserId, String login) {
-        return jdbc.queryForObject(
-                "INSERT INTO users (github_user_id, github_login) VALUES (?, ?) RETURNING id",
-                Long.class, githubUserId, login);
-    }
-
-    private Long insertRepository(Long githubRepoId, String name) {
-        return jdbc.queryForObject(
-                "INSERT INTO repository (github_repo_id, owner_login, name, visibility) VALUES (?, 'grow22', ?, 'PUBLIC') RETURNING id",
-                Long.class, githubRepoId, name);
-    }
-
-    private Long insertUserRepository(Long userId, Long repositoryId) {
-        return jdbc.queryForObject(
-                "INSERT INTO user_repository (user_id, repository_id) VALUES (?, ?) RETURNING id",
-                Long.class, userId, repositoryId);
     }
 }

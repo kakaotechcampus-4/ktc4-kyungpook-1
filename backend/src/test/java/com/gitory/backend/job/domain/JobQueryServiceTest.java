@@ -3,6 +3,7 @@ package com.gitory.backend.job.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.gitory.backend.support.TestFixtures;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,8 @@ class JobQueryServiceTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    private TestFixtures fixtures;
+
     private Long myUserId;
     private Long myRepoId;
     private Long othersUserId;
@@ -49,13 +52,15 @@ class JobQueryServiceTest {
     @BeforeEach
     void setUp() {
 
-        myUserId = insertUser(1L, "grow22");
-        othersUserId = insertUser(2L, "taehun0208");
+        fixtures = new TestFixtures(jdbc);
 
-        Long repositoryId = insertRepository(1L, "gitory");
+        myUserId = fixtures.insertUser(1L, "grow22");
+        othersUserId = fixtures.insertUser(2L, "taehun0208");
 
-        myRepoId = insertUserRepository(myUserId, repositoryId);
-        othersRepoId = insertUserRepository(othersUserId, repositoryId);
+        Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
+
+        myRepoId = fixtures.insertUserRepository(myUserId, repositoryId);
+        othersRepoId = fixtures.insertUserRepository(othersUserId, repositoryId);
     }
 
     @Test
@@ -141,23 +146,5 @@ class JobQueryServiceTest {
         em.flush();
 
         return job;
-    }
-
-    private Long insertUser(Long githubUserId, String login) {
-        return jdbc.queryForObject(
-                "INSERT INTO users (github_user_id, github_login) VALUES (?, ?) RETURNING id",
-                Long.class, githubUserId, login);
-    }
-
-    private Long insertRepository(Long githubRepoId, String name) {
-        return jdbc.queryForObject(
-                "INSERT INTO repository (github_repo_id, owner_login, name, visibility) VALUES (?, 'grow22', ?, 'PUBLIC') RETURNING id",
-                Long.class, githubRepoId, name);
-    }
-
-    private Long insertUserRepository(Long userId, Long repositoryId) {
-        return jdbc.queryForObject(
-                "INSERT INTO user_repository (user_id, repository_id) VALUES (?, ?) RETURNING id",
-                Long.class, userId, repositoryId);
     }
 }

@@ -69,7 +69,7 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
 
-        JobResponse found = service.load(job.getPublicId(), myUserId);
+        JobView found = service.load(job.getPublicId(), myUserId);
 
         assertThat(found.jobId()).isEqualTo(job.getPublicId().toString());
         assertThat(found.type()).isEqualTo(JobType.ANALYZE);
@@ -106,18 +106,18 @@ class JobQueryServiceTest {
     }
 
     @Test
-    @DisplayName("진행 중 Job 은 pollAfterMs 2000 을, 끝난 Job 은 0 을 돌려준다")
-    void pollAfterMsDependsOnState() {
+    @DisplayName("진행 중 Job 은 terminal 이 false, 끝난 Job 은 true 다")
+    void terminalFollowsState() {
 
         AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
 
-        assertThat(service.load(job.getPublicId(), myUserId).pollAfterMs()).isEqualTo(2000);
+        assertThat(service.load(job.getPublicId(), myUserId).terminal()).isFalse();
 
         job.start();
         job.succeed(false);
         em.flush();
 
-        assertThat(service.load(job.getPublicId(), myUserId).pollAfterMs()).isZero();
+        assertThat(service.load(job.getPublicId(), myUserId).terminal()).isTrue();
     }
 
     @Test

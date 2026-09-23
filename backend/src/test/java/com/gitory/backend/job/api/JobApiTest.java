@@ -102,6 +102,21 @@ class JobApiTest {
     }
 
     @Test
+    @DisplayName("끝난 Job 은 pollAfterMs 0 을 내려준다")
+    void terminalJobStopsPolling() throws Exception {
+
+        AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
+        job.start();
+        job.succeed(false);
+        jobs.save(job);
+
+        getJob(job.getPublicId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.state").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.data.pollAfterMs").value(0));
+    }
+
+    @Test
     @DisplayName("값이 비어 있어도 프론트가 요구하는 키 13개는 모두 내려간다")
     void keepsEveryContractKey() throws Exception {
 

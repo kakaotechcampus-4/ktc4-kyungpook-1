@@ -4,7 +4,6 @@ import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.job.domain.JobNotFoundException;
 import com.gitory.backend.job.domain.JobQueryService;
-import com.gitory.backend.job.domain.JobResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +23,7 @@ public class JobController {
             @AuthenticationPrincipal LoginUser loginUser,
             @PathVariable String id) {
 
-        return ApiResponse.ok(jobQuery.load(toUuid(id), loginUser.id()));
+        return ApiResponse.ok(JobResponse.from(jobQuery.load(toUuid(id), loginUser.id())));
     }
 
     private UUID toUuid(String id) {

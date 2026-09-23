@@ -3,7 +3,7 @@ package com.gitory.backend.job.domain;
 import java.time.Instant;
 import java.util.List;
 
-public record JobResponse(
+public record JobView(
         String jobId,
         JobType type,
         JobState state,
@@ -15,13 +15,11 @@ public record JobResponse(
         Instant startedAt,
         Instant updatedAt,
         Instant finishedAt,
-        JobResultResponse result,
-        int pollAfterMs) {
+        JobResult result,
+        boolean terminal) {
 
-    private static final int POLL_AFTER_MS = 2000;
-
-    static JobResponse from(AnalysisJob job) {
-        return new JobResponse(
+    static JobView from(AnalysisJob job) {
+        return new JobView(
                 job.getPublicId().toString(),
                 job.getType(),
                 job.getState(),
@@ -34,7 +32,7 @@ public record JobResponse(
                 job.getUpdatedAt(),
                 job.getFinishedAt(),
                 null,
-                job.isTerminal() ? 0 : POLL_AFTER_MS);
+                job.isTerminal());
     }
 
     private static Boolean retryable(JobErrorCode errorCode) {

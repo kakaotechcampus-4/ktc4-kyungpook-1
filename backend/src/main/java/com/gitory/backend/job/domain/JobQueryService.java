@@ -14,9 +14,9 @@ public class JobQueryService {
     private final AnalysisJobRepository jobs;
 
     @Transactional(readOnly = true)
-    public JobResponse load(UUID publicId, Long userId) {
+    public JobView load(UUID publicId, Long userId) {
         return jobs.findByPublicIdAndUserId(publicId, userId)
-                .map(JobResponse::from)
+                .map(JobView::from)
                 .orElseThrow(JobNotFoundException::new);
     }
 }

@@ -75,7 +75,6 @@ class InterviewAnswerService:
 
     def process_answer(
         self,
-        turn_id: int,
         request: InterviewAnswerRequest,
     ) -> InterviewAnswerResult:
         """답변 충분성, 남은 슬롯, 질문 상한을 조합해 B-2 결과를 만든다."""
@@ -96,7 +95,6 @@ class InterviewAnswerService:
                 statement_seq=current_target.statement_seq,
                 body=request.answer_text,
                 evidence_type=self._evidence_type(request),
-                source_turn_id=turn_id,
             )
             remaining_slots = other_targets
         else:
@@ -110,7 +108,6 @@ class InterviewAnswerService:
         )
         if not can_ask_again:
             return InterviewAnswerResult(
-                turn_id=turn_id,
                 outcome=outcome,
                 resulting_statement=resulting_statement,
                 remaining_slots=remaining_slots,
@@ -124,7 +121,6 @@ class InterviewAnswerService:
             next_turn = self._build_followup_question(request)
 
         return InterviewAnswerResult(
-            turn_id=turn_id,
             outcome=outcome,
             resulting_statement=resulting_statement,
             remaining_slots=remaining_slots,

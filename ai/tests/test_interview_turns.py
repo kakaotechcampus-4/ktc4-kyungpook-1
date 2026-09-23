@@ -371,6 +371,22 @@ def test_direct_card_without_candidate_uses_general_recall_aid() -> None:
     assert "당시 상황" in data["question_text"]
 
 
+def test_manual_candidate_type_is_rejected_as_interview_source() -> None:
+    """후보 출처 MANUAL은 Spring이 DIRECT_CARD로 변환해야 한다."""
+    response = _post(
+        {
+            "card_id": 105,
+            "source_type": "MANUAL",
+            "candidate": None,
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        }
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
 def test_external_evidence_hint_is_rejected() -> None:
     """EvidenceHint는 Spring 요청 DTO가 아니라 B 내부 판단 모델이다."""
     response = _post(

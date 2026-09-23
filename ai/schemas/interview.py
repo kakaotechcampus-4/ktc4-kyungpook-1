@@ -233,7 +233,7 @@ class CurrentTurnContext(StrictRequestModel):
 
 
 class InterviewAnswerRequest(StrictRequestModel):
-    """`PATCH /internal/interview-turns/{turn_id}` B-2 요청 모델.
+    """`POST /internal/interview-answer-evaluations` B-2 요청 모델.
 
     AI는 실제 제출된 답변만 받는다. 사용자의 SKIPPED/LATER 행동은
     Spring이 직접 처리하며, 해당 행동에서는 B-2 AI를 호출하지 않는다.
@@ -373,13 +373,6 @@ class ResultingStatement(BaseModel):
         description="사용자가 확인한 문장이므로 HIGH",
     )
 
-    # 어느 interview_turn의 답변으로 생성된 문장인지 연결한다.
-    source_turn_id: PositiveId = Field(
-        ...,
-        description="이 STAR 문장을 생성한 interview_turn ID",
-    )
-
-
 class NextInterviewTurn(BaseModel):
     """B-2 처리 후 추가로 생성할 다음 인터뷰 질문."""
 
@@ -413,16 +406,9 @@ class NextInterviewTurn(BaseModel):
 
 
 class InterviewAnswerResult(BaseModel):
-    """`PATCH /internal/interview-turns/{turn_id}` B-2 응답 모델."""
+    """`POST /internal/interview-answer-evaluations` B-2 응답 모델."""
 
     model_config = ConfigDict(extra="forbid")
-
-    # 처리한 기존 interview_turn의 ID다.
-    # PATCH URL의 turn_id를 응답에서도 반환한다.
-    turn_id: PositiveId = Field(
-        ...,
-        description="답변을 처리한 interview_turn ID",
-    )
 
     # 답변이 충분하면 ANSWERED,
     # 추가 정보가 필요하면 INSUFFICIENT다.

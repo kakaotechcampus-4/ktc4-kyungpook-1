@@ -8,9 +8,8 @@
 from __future__ import annotations
 
 import time
-from typing import Annotated
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter
 
 from schemas.common import Envelope, Meta
 from schemas.interview import (
@@ -51,17 +50,16 @@ async def create_interview_turn(request: InterviewTurnRequest) -> Envelope[Inter
     )
 
 
-@router.patch(
-    "/interview-turns/{turn_id}",
+@router.post(
+    "/interview-answer-evaluations",
     response_model=Envelope[InterviewAnswerResult],
 )
-async def answer_interview_turn(
-    turn_id: Annotated[int, Path(gt=0)],
+async def evaluate_interview_answer(
     request: InterviewAnswerRequest,
 ) -> Envelope[InterviewAnswerResult]:
     """사용자 답변을 평가해 STAR 문장과 다음 인터뷰 행동을 반환한다."""
     started = time.perf_counter()
-    result = _answer_service.process_answer(turn_id, request)
+    result = _answer_service.process_answer(request)
     processing_ms = int((time.perf_counter() - started) * 1000)
 
     return Envelope(

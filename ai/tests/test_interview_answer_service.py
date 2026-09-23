@@ -81,7 +81,7 @@ def test_sufficient_without_other_slot_completes(existing_turn_count: int) -> No
         )
     )
 
-    result = service_with_result(True).process_answer(501, request)
+    result = service_with_result(True).process_answer(request)
 
     assert result.outcome == "ANSWERED"
     assert result.resulting_statement is not None
@@ -97,7 +97,7 @@ def test_sufficient_with_other_slot_and_turn_budget_asks_other_slot() -> None:
         request_payload(with_other_slot=True)
     )
 
-    result = service_with_result(True).process_answer(501, request)
+    result = service_with_result(True).process_answer(request)
 
     assert result.outcome == "ANSWERED"
     assert result.resulting_statement is not None
@@ -118,7 +118,7 @@ def test_sufficient_with_other_slot_at_turn_cap_completes() -> None:
         )
     )
 
-    result = service_with_result(True).process_answer(501, request)
+    result = service_with_result(True).process_answer(request)
 
     assert result.outcome == "ANSWERED"
     assert result.remaining_slots[0].star_slot == "T"
@@ -132,7 +132,7 @@ def test_insufficient_without_other_slot_and_turn_budget_reasks_target() -> None
         request_payload(with_other_slot=False)
     )
 
-    result = service_with_result(False).process_answer(501, request)
+    result = service_with_result(False).process_answer(request)
 
     assert result.outcome == "INSUFFICIENT"
     assert result.resulting_statement is None
@@ -152,7 +152,7 @@ def test_insufficient_with_other_slot_and_turn_budget_preserves_all_slots() -> N
         request_payload(with_other_slot=True)
     )
 
-    result = service_with_result(False).process_answer(501, request)
+    result = service_with_result(False).process_answer(request)
 
     assert [(slot.star_slot, slot.statement_seq) for slot in result.remaining_slots] == [
         ("R", 1),
@@ -174,7 +174,7 @@ def test_insufficient_at_turn_cap_preserves_slots_and_completes(
         )
     )
 
-    result = service_with_result(False).process_answer(501, request)
+    result = service_with_result(False).process_answer(request)
 
     expected_slots = [("R", 1), ("T", 1)] if with_other_slot else [("R", 1)]
     assert [(slot.star_slot, slot.statement_seq) for slot in result.remaining_slots] == expected_slots
@@ -188,7 +188,7 @@ def test_selected_answer_maps_to_user_selected_evidence() -> None:
         request_payload(with_other_slot=False, answer_source="SELECTED")
     )
 
-    result = service_with_result(True).process_answer(501, request)
+    result = service_with_result(True).process_answer(request)
 
     assert result.resulting_statement is not None
     assert result.resulting_statement.evidence_type == "USER_SELECTED"
@@ -207,8 +207,8 @@ def test_rule_evaluator_rejects_short_or_vague_typed_answer() -> None:
         }
     )
 
-    assert service.process_answer(501, short_request).outcome == "INSUFFICIENT"
-    assert service.process_answer(501, vague_request).outcome == "INSUFFICIENT"
+    assert service.process_answer(short_request).outcome == "INSUFFICIENT"
+    assert service.process_answer(vague_request).outcome == "INSUFFICIENT"
 
 
 def test_rule_evaluator_accepts_concrete_typed_answer_without_rewriting() -> None:
@@ -218,7 +218,7 @@ def test_rule_evaluator_accepts_concrete_typed_answer_without_rewriting() -> Non
         request_payload(with_other_slot=False)
     )
 
-    result = service.process_answer(501, request)
+    result = service.process_answer(request)
 
     assert result.outcome == "ANSWERED"
     assert result.resulting_statement is not None
@@ -226,27 +226,17 @@ def test_rule_evaluator_accepts_concrete_typed_answer_without_rewriting() -> Non
     assert result.resulting_statement.evidence_type == "USER_STATED"
 
 
-def test_patch_endpoint_returns_common_envelope() -> None:
-    """PATCH API가 B-2 결과를 공통 응답 봉투로 반환한다."""
-    response = TestClient(app).patch(
-        "/internal/interview-turns/501",
+def test_answer_evaluation_endpoint_returns_common_envelope() -> None:
+    """답변 평가 API가 B-2 결과를 공통 응답 봉투로 반환한다."""
+    response = TestClient(app).post(
+        "/internal/interview-answer-evaluations",
         json=request_payload(with_other_slot=False),
     )
 
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
-    assert body["data"]["turn_id"] == 501
     assert body["data"]["outcome"] == "ANSWERED"
+    assert "turn_id" not in body["data"]
+    assert "source_turn_id" not in body["data"]["resulting_statement"]
     assert body["error"] is None
-
-
-def test_patch_endpoint_rejects_non_positive_turn_id() -> None:
-    """경로의 turn_id도 양수 DB ID 계약을 지킨다."""
-    response = TestClient(app).patch(
-        "/internal/interview-turns/0",
-        json=request_payload(with_other_slot=False),
-    )
-
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"

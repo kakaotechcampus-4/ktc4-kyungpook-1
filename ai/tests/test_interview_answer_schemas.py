@@ -49,7 +49,6 @@ def valid_request() -> dict:
 def valid_answered_result() -> dict:
     """충분한 답변을 반영하고 인터뷰를 종료하는 정상 응답."""
     return {
-        "turn_id": 501,
         "outcome": "ANSWERED",
         "resulting_statement": {
             "star_slot": "R",
@@ -57,7 +56,6 @@ def valid_answered_result() -> dict:
             "body": "응답 시간이 800ms에서 200ms로 줄었습니다.",
             "evidence_type": "USER_STATED",
             "confidence": "HIGH",
-            "source_turn_id": 501,
         },
         "remaining_slots": [],
         "next_action": "COMPLETE",
@@ -68,7 +66,6 @@ def valid_answered_result() -> dict:
 def valid_insufficient_result() -> dict:
     """답변이 부족해 현재 R 슬롯을 다시 질문하는 정상 응답."""
     return {
-        "turn_id": 501,
         "outcome": "INSUFFICIENT",
         "resulting_statement": None,
         "remaining_slots": [
@@ -115,6 +112,16 @@ def test_accepts_direct_card_without_candidate() -> None:
 
     assert request.source_type == "DIRECT_CARD"
     assert request.candidate is None
+
+
+def test_rejects_manual_candidate_type_as_interview_source() -> None:
+    """Spring이 변환하지 않은 후보 출처 MANUAL은 B-2 계약에서 거절한다."""
+    payload = valid_request()
+    payload["source_type"] = "MANUAL"
+    payload["candidate"] = None
+
+    with pytest.raises(ValidationError):
+        InterviewAnswerRequest.model_validate(payload)
 
 
 def test_accepts_turn_count_at_fixed_limit() -> None:
@@ -338,6 +345,22 @@ def test_rejects_camel_case_alias_instead_of_snake_case() -> None:
 
     with pytest.raises(ValidationError):
         InterviewAnswerRequest.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "removed_field",
+    ["turn_id", "source_turn_id"],
+)
+def test_rejects_removed_persistence_identifiers(removed_field: str) -> None:
+    """Spring 소유 DB 식별자를 B-2 응답 계약에 다시 넣지 않는다."""
+    payload = valid_answered_result()
+    if removed_field == "turn_id":
+        payload[removed_field] = 501
+    else:
+        payload["resulting_statement"][removed_field] = 501
+
+    with pytest.raises(ValidationError):
+        InterviewAnswerResult.model_validate(payload)
 
 
 # 응답 DTO의 조건부 필드 계약

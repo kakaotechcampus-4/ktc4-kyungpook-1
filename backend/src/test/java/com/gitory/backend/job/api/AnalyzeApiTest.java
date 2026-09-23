@@ -1,6 +1,7 @@
 package com.gitory.backend.job.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,22 +58,25 @@ class AnalyzeApiTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    private TestFixtures fixtures;
+
     private Long myUserId;
 
     @BeforeEach
     void setUp() {
 
-        jdbc.execute("TRUNCATE users, repository CASCADE");
+        fixtures = new TestFixtures(jdbc);
+        fixtures.clear();
 
-        myUserId = insertUser(1L, "grow22");
-        Long othersUserId = insertUser(2L, "someone-else");
+        myUserId = fixtures.insertUser(1L, "grow22");
+        Long othersUserId = fixtures.insertUser(2L, "someone-else");
 
-        Long repositoryId = insertRepository(1L, "gitory");
-        Long otherRepositoryId = insertRepository(2L, "gitory-docs");
+        Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
+        Long otherRepositoryId = fixtures.insertRepository(2L, "grow22", "gitory-docs");
 
-        connect(MY_REPO, myUserId, repositoryId);
-        connect(MY_OTHER_REPO, myUserId, otherRepositoryId);
-        connect(OTHERS_REPO, othersUserId, repositoryId);
+        fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
+        fixtures.insertUserRepository(MY_OTHER_REPO, myUserId, otherRepositoryId);
+        fixtures.insertUserRepository(OTHERS_REPO, othersUserId, repositoryId);
     }
 
     @Test
@@ -218,22 +222,5 @@ class AnalyzeApiTest {
 
     private Integer jobCount() {
         return jdbc.queryForObject("SELECT count(*) FROM analysis_job", Integer.class);
-    }
-
-    private Long insertUser(Long githubUserId, String login) {
-        return jdbc.queryForObject(
-                "INSERT INTO users (github_user_id, github_login) VALUES (?, ?) RETURNING id",
-                Long.class, githubUserId, login);
-    }
-
-    private Long insertRepository(Long githubRepoId, String name) {
-        return jdbc.queryForObject(
-                "INSERT INTO repository (github_repo_id, owner_login, name, visibility) VALUES (?, 'grow22', ?, 'PUBLIC') RETURNING id",
-                Long.class, githubRepoId, name);
-    }
-
-    private void connect(UUID publicId, Long userId, Long repositoryId) {
-        jdbc.update("INSERT INTO user_repository (public_id, user_id, repository_id) VALUES (?, ?, ?)",
-                publicId, userId, repositoryId);
     }
 }

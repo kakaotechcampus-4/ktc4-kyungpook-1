@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -173,6 +174,24 @@ class AnalyzeApiTest {
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
         assertThat(jobCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("POST 전용 경로에 GET 하면 500 이 아니라 405 다")
+    void wrongMethodIsNotServerError() throws Exception {
+
+        mvc.perform(get("/api/repos/{id}/analyze", MY_REPO).with(loggedInAs(myUserId)))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    @DisplayName("없는 경로를 부르면 500 이 아니라 404 다")
+    void unknownPathIsNotServerError() throws Exception {
+
+        mvc.perform(get("/api/does-not-exist").with(loggedInAs(myUserId)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
     }
 
     private RequestPostProcessor loggedInAs(Long userId) {

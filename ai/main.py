@@ -13,11 +13,13 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from api.analysis import router as analysis_router
+from api.github import router as github_router
 from api.interviews import router as interviews_router
 from schemas.common import Envelope, ErrorDetail, Meta
 
 app = FastAPI(title="Gitory AI Server")
 app.include_router(analysis_router)
+app.include_router(github_router)
 app.include_router(interviews_router)
 
 

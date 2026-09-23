@@ -112,7 +112,7 @@ export function AnalyzePage() {
   if (j?.state === 'FAILED') {
     const code = j.errorCode ?? 'INTERNAL_ERROR';
     const blocked = waitSec > 0;
-    const canRetry = j.retryable === true && !blocked;
+    const canRetry = j.retryable !== false && !blocked;
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '정리 실패' }]} />

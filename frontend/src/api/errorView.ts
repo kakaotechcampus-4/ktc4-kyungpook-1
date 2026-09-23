@@ -25,4 +25,5 @@ export function errorView(error: unknown): ErrorView {
   return { title: '요청을 처리하지 못했어요', message: '현재 화면의 내용을 확인하고 다시 시도해 주세요.', canRetry: true };
 }
 
-export const isUnknownOutcome = (error: unknown) => error instanceof ApiError && (error.status === 0 || error.status >= 500);
+export const isUnknownOutcome = (error: unknown) =>
+  error instanceof ContractError || (error instanceof ApiError && (error.status === 0 || error.status >= 500));

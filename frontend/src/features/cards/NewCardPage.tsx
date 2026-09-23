@@ -1,9 +1,11 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCreateManualDraft, useRepos } from '@/api/queries';
 import { keys } from '@/api/keys';
 import { useQueryClient } from '@tanstack/react-query';
 import { endpoints } from '@/api/endpoints';
+import { AuthError } from '@/api/client';
+import { redirectToLogin } from '@/app/queryClient';
 import type { StarField } from '@/api/schemas';
 import { Breadcrumb, Button, Field, Input, PageTitle, StarKey, StickyFooter, Textarea } from '@/components/ui';
 import { STAR_FIELDS, starFieldName } from '@/lib/labels';
@@ -37,6 +39,8 @@ export function NewCardPage() {
   const [cardId, setCardId] = useState<string | null>(null);
   const cardIdRef = useRef<string | null>(null);
   const qc = useQueryClient();
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
   const [title, setTitle] = useState('');
   const [period, setPeriod] = useState('');
   const [repoId, setRepoId] = useState<string>('');
@@ -54,7 +58,16 @@ export function NewCardPage() {
       setCardId(card.id);
       track('manual_card_created', { cardId: card.id });
     }
-    const result = await endpoints.saveDraft(cardIdRef.current, body.fields);
+    let result;
+    try {
+      result = await endpoints.saveDraft(cardIdRef.current, body.fields);
+    } catch (err) {
+      // endpoints.saveDraft is called directly (not through useMutation) so it never reaches
+      // the global mutationCache.onError -> redirectToLogin handler. Restore it here.
+      if (err instanceof AuthError) redirectToLogin();
+      throw err;
+    }
+    if (!mountedRef.current) return result; // page left before this resolved — don't write a stale card into the cache
     await cacheSavedDraft(qc, result);
     void qc.invalidateQueries({ queryKey: keys.cards, refetchType: 'none' });
     void qc.invalidateQueries({ queryKey: keys.card(cardIdRef.current), refetchType: 'none' });

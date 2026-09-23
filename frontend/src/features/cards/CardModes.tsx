@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '@/api/keys';
 import type { Card, DraftFields, StarField } from '@/api/schemas';
@@ -28,8 +28,17 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const saveDraft = useSaveDraft(card.id);
   const baseRef = useRef<Draft>(fromCard(card));           // 비교 기준은 들어올 때 한 번만 잡는다
   const [draft, setDraft] = useState<Draft>(() => fromCard(card));
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+  // 라우트가 리마운트 없이 재사용되면(카드 A → 카드 B) props 의 card 만 바뀐다 —
+  // 비교 기준과 입력값을 새 카드로 다시 잡지 않으면 A 의 수정 내용이 B 로 저장될 수 있다.
+  useEffect(() => {
+    baseRef.current = fromCard(card);
+    setDraft(fromCard(card));
+  }, [card.id]);
   const save = useCallback(async (fields: DraftFields) => {
     const saved = await saveDraft.mutateAsync(fields);
+    if (!mountedRef.current) return saved; // 화면을 떠난 뒤 도착한 저장 — 캐시에 반영하지 않는다
     await cacheSavedDraft(qc, saved);
     return saved;
   }, [saveDraft, qc]);

@@ -9,7 +9,12 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from schemas.common import Envelope, ErrorCode, ErrorDetail, Meta
-from schemas.github import GithubCollectionRequest, GithubCollectionResult
+from schemas.github import (
+    GithubCollectionRequest,
+    GithubCollectionResult,
+    GithubCommitDiffRequest,
+    GithubCommitDiffResult,
+)
 from services.github_collector import GithubCollectionError, GithubCollector, GithubRateLimited
 
 router = APIRouter(prefix="/internal/github", tags=["github-collection"])
@@ -57,6 +62,17 @@ async def collect_github_activity(
         ),
         error=None,
     )
+
+
+@router.post("/commits/diff", response_model=Envelope[GithubCommitDiffResult])
+async def collect_commit_diffs(
+    request: GithubCommitDiffRequest,
+    github_token: str = Header(..., alias="X-GitHub-Token", min_length=1),
+    collector: GithubCollector = Depends(get_github_collector),
+):
+    """사용자가 확정한 후보의 커밋 diff만 토큰을 요청 중에만 사용해 조회한다."""
+    # TODO: collector.collect_diffs() 호출 후 collect와 같은 Envelope·에러 코드 매핑 적용
+    raise NotImplementedError
 
 
 def _error_response(

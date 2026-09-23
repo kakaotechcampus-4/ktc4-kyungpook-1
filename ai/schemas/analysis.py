@@ -35,8 +35,12 @@ class CommitInput(BaseModel):
     author_login: Optional[str] = None
     authored_at: datetime
     parent_count: int = Field(ge=0)
-    additions: int = Field(ge=0)
-    deletions: int = Field(ge=0)
+    additions: Optional[int] = Field(
+        None, ge=0, description="그룹화 단계에서는 diff를 조회하지 않으므로 비어 있을 수 있다"
+    )
+    deletions: Optional[int] = Field(
+        None, ge=0, description="그룹화 단계에서는 diff를 조회하지 않으므로 비어 있을 수 있다"
+    )
     files: list[ChangedFile] = Field(default_factory=list)
     pull_request_number: Optional[int] = None
     issue_numbers: list[int] = Field(default_factory=list)

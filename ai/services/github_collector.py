@@ -12,6 +12,8 @@ from schemas.github import (
     GithubCollectionRequest,
     GithubCollectionResult,
     GithubCommit,
+    GithubCommitDiffRequest,
+    GithubCommitDiffResult,
     GithubIssue,
     GithubPullRequest,
     ReadCoverage,
@@ -95,6 +97,35 @@ class GithubCollector:
             transport=self._transport,
         ) as client:
             return await self._collect_with_client(client, request)
+
+    async def collect_diffs(
+        self, request: GithubCommitDiffRequest, github_token: str
+    ) -> GithubCommitDiffResult:
+        """확정 후보에 속한 커밋의 diff만 조회하고 토큰을 보관하지 않는다."""
+        # TODO: collect()와 같은 요청 전용 AsyncClient를 열어 SHA별로 GET /commits/{sha} 호출
+        # TODO: stats·files를 GithubCommitDiff로 정규화(상한 초과·바이너리 patch는 None)
+        # TODO: 404인 SHA는 missing_shas, rate limit이면 partial 결과로 반환
+        raise NotImplementedError
+
+    async def _link_pull_requests(
+        self,
+        client: httpx.AsyncClient,
+        repo_path: str,
+        commits: list[GithubCommit],
+        pulls: list[GithubPullRequest],
+    ) -> list[GithubCommit]:
+        """PR별 커밋 목록으로 커밋의 pull_request_number를 채운다."""
+        # TODO: PR마다 GET /pulls/{number}/commits를 페이지네이션해 SHA → PR 번호 매핑
+        # TODO: 여러 PR에 속한 커밋의 우선순위(merge된 PR 우선 등) 결정
+        # TODO: collect()에서 PR 수집 뒤 호출하도록 연결
+        raise NotImplementedError
+
+    @staticmethod
+    def _extract_issue_numbers(message: str) -> list[int]:
+        """커밋 메시지에서 같은 저장소의 Issue 번호를 추출한다."""
+        # TODO: "#12", "closes #12", "fixes #12" 같은 참조를 중복 없이 추출
+        # TODO: 다른 저장소 참조(owner/repo#12)와 PR 번호 구분 규칙 결정
+        raise NotImplementedError
 
     async def _collect_with_client(
         self, client: httpx.AsyncClient, request: GithubCollectionRequest

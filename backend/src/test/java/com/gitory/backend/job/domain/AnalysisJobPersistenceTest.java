@@ -86,4 +86,48 @@ class AnalysisJobPersistenceTest {
         assertThat(loaded.getUpdatedAt()).isNotNull();
         assertThat(loaded.getFinishedAt()).isNotNull();
     }
+
+    @Test
+    @DisplayName("접수한 Job 에는 단계 4개가 계약 순서대로 QUEUED 로 채워진다")
+    void enqueueFillsFourQueuedSteps() {
+
+        AnalysisJob job = AnalysisJob.enqueue(userId, userRepositoryId, KEY);
+        em.persist(job);
+        em.flush();
+        em.clear();
+
+        AnalysisJob loaded = em.find(AnalysisJob.class, job.getId());
+
+        assertThat(loaded.getSteps())
+                .extracting(JobStep::key)
+                .containsExactly(JobStepKey.COMMITS, JobStepKey.PR_REVIEW, JobStepKey.COMPRESS, JobStepKey.REASON);
+
+        for (JobStep step : loaded.getSteps()) {
+            assertThat(step.state()).isEqualTo(JobStepState.QUEUED);
+            assertThat(step.done()).isZero();
+            assertThat(step.total()).isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("type 은 문자열로, steps 는 JSON 배열로 DB 에 저장된다")
+    void typeAndStepsAreStoredAsDbValues() {
+
+        AnalysisJob job = AnalysisJob.enqueue(userId, userRepositoryId, KEY);
+        em.persist(job);
+        em.flush();
+
+        String type = jdbc.queryForObject(
+                "SELECT type FROM analysis_job WHERE id = ?", String.class, job.getId());
+
+        Integer stepCount = jdbc.queryForObject(
+                "SELECT jsonb_array_length(steps) FROM analysis_job WHERE id = ?", Integer.class, job.getId());
+
+        String firstKey = jdbc.queryForObject(
+                "SELECT steps -> 0 ->> 'key' FROM analysis_job WHERE id = ?", String.class, job.getId());
+
+        assertThat(type).isEqualTo("ANALYZE");
+        assertThat(stepCount).isEqualTo(4);
+        assertThat(firstKey).isEqualTo("COMMITS");
+    }
 }

@@ -1,0 +1,36 @@
+{
+  "case": "후보 없이 직접 작성한 카드의 T칸 되묻기",
+  "givenCard": {
+    "id": 104,
+    "publicId": "550e8400-e29b-41d4-a716-446655440000",
+    "userId": 7,
+    "origin": "MANUAL",
+    "candidateId": null
+  },
+  "frontendToSpring": {
+    "request": {
+      "method": "POST",
+      "path": "/api/cards/550e8400-e29b-41d4-a716-446655440000/interview",
+      "body": { "field": "T" }
+    },
+    "expectedResponseFields": {
+      "sourceType": "DIRECT_CARD"
+    }
+  },
+  "springToAi": {
+    "expectedRequest": {
+      "card_id": 104,
+      "source_type": "DIRECT_CARD",
+      "candidate": null,
+      "missing_slots": [{
+        "star_slot": "T",
+        "statement_seq": 1,
+        "body": null,
+        "confidence": "LOW",
+        "linked_commits": []
+      }],
+      "existing_turn_count": 0,
+      "max_turns": 2
+    }
+  }
+}

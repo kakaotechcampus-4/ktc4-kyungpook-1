@@ -8,12 +8,13 @@
  */
 import { handle } from './router';
 import { restore, snapshot } from './store';
+import { createScenario, parseScenario, waitForMock } from './scenarios';
 
 export const isDemo = import.meta.env.VITE_API_MOCK !== 'false';
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
 const SESSION_KEY = 'gitory.demo.session';
 const DB_KEY = 'gitory.demo.db';
-const LATENCY = [110, 260]; // 실제 네트워크처럼 보이게 (스켈레톤·로딩 상태가 실제로 보인다)
+const SCENARIO_KEY = 'gitory.demo.scenario';
 
 const ss = {
   get(k: string) { try { return sessionStorage.getItem(k); } catch { return null; } },
@@ -30,6 +31,9 @@ const persist = () => ss.set(DB_KEY, snapshot());
 
 export function installDemoApi() {
   if (!isDemo) return;
+  const requested = new URLSearchParams(location.search).get('demoScenario');
+  if (requested !== null) ss.set(SCENARIO_KEY, parseScenario(requested));
+  const scenario = createScenario(parseScenario(ss.get(SCENARIO_KEY)));
 
   // 새로고침해도 만든 카드가 남게 — 진행 중이던 초안은 완료 처리된다
   const saved = ss.get(DB_KEY);
@@ -39,7 +43,7 @@ export function installDemoApi() {
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const raw = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
     const url = new URL(raw, location.origin);
-    if (url.origin !== location.origin || !url.pathname.startsWith(BASE)) return realFetch(input as RequestInfo, init);
+    if (url.origin !== location.origin || !(url.pathname === BASE || url.pathname.startsWith(BASE + '/'))) return realFetch(input as RequestInfo, init);
 
     const method = (init?.method ?? (typeof input === 'object' && 'method' in input ? (input as Request).method : 'GET')).toUpperCase();
     const path = url.pathname.slice(BASE.length) || '/';
@@ -49,13 +53,16 @@ export function installDemoApi() {
     const headers: Record<string, string> = {};
     new Headers(init?.headers ?? (typeof input === 'object' && 'headers' in input ? (input as Request).headers : undefined)).forEach((v, k) => { headers[k.toLowerCase()] = v; });
 
-    await new Promise((r) => setTimeout(r, LATENCY[0] + Math.random() * (LATENCY[1] - LATENCY[0])));
+    const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+    await waitForMock(scenario.delayMs, signal);
 
     if (path === '/auth/logout') demoLogout();
     if (path === '/__reset') { ss.del(DB_KEY); }
 
-    const r = handle(method, path, url.searchParams, body, hasDemoSession(), headers);
-    if (r.status < 400) persist();
+    const before = hasDemoSession() ? scenario.before(method, path) : undefined;
+    const original = before ?? handle(method, path, url.searchParams, body, hasDemoSession(), headers);
+    if (original.status < 400) persist();
+    const r = scenario.after(method, path, original);
 
     return new Response(JSON.stringify({ data: r.data, error: r.error }), {
       status: r.status,

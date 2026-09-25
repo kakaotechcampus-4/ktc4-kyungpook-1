@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { endpoints } from './endpoints';
 import { keys } from './keys';
 import { AuthError } from './client';
 import { isTerminal, type Card, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus } from './schemas';
-import { newIdempotencyKey } from '@/lib/uuid';
+import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
+import { CONFIG } from '@/lib/config';
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -56,7 +57,9 @@ export function useActiveJobs(enabled = true) {
     queryKey: keys.activeJobs,
     queryFn: endpoints.activeJobs,
     enabled,
-    refetchInterval: (q) => (q.state.data?.jobs.length ? Math.max(1000, q.state.data.jobs[0].pollAfterMs) : false),
+    refetchInterval: (q) => q.state.data?.jobs.length
+      ? Math.max(CONFIG.POLL_MIN_MS, Math.min(...q.state.data.jobs.map((job) => job.pollAfterMs)))
+      : CONFIG.ACTIVE_JOB_IDLE_POLL_MS,
     refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   });
@@ -84,11 +87,11 @@ export function useCard(id: string | undefined) {
  */
 export function useStartAnalysis() {
   const qc = useQueryClient();
+  const request = useRef(createAnalysisRequest(endpoints.startAnalysis));
   return useMutation({
     mutationFn: (v: string | { repoId: string; idempotencyKey?: string }) => {
       const repoId = typeof v === 'string' ? v : v.repoId;
-      const key = (typeof v === 'string' ? undefined : v.idempotencyKey) ?? newIdempotencyKey();
-      return endpoints.startAnalysis(repoId, key);
+      return request.current(repoId, typeof v === 'string' ? undefined : v.idempotencyKey);
     },
     onSuccess: (_, v) => {
       void qc.invalidateQueries({ queryKey: keys.repo(typeof v === 'string' ? v : v.repoId) });
@@ -105,6 +108,14 @@ export function useSaveDraft(cardId: string) {
     mutationFn: (fields: DraftFields) => endpoints.saveDraft(cardId, fields),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.cards, refetchType: 'none' }),
   });
+}
+
+export function useCancelJob() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: endpoints.cancelJob, onSuccess: (job) => {
+    qc.setQueryData(keys.job(job.jobId), job);
+    void qc.invalidateQueries({ queryKey: keys.activeJobs });
+  } });
 }
 
 export function useCreateManualDraft() {

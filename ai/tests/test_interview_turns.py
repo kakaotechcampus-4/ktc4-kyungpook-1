@@ -14,7 +14,7 @@ ESCAPE_HATCH = "기억나지 않거나 단순 정리였다면 넘어가도 괜�
 
 
 def _post(payload: dict):
-    return client.post(ENDPOINT, json={"max_turns": 2, **payload})
+    return client.post(ENDPOINT, json=payload)
 
 
 def _commit(commit_id: int, sha: str, message: str) -> dict:
@@ -371,6 +371,22 @@ def test_direct_card_without_candidate_uses_general_recall_aid() -> None:
     assert "당시 상황" in data["question_text"]
 
 
+def test_manual_candidate_type_is_rejected_as_interview_source() -> None:
+    """후보 출처 MANUAL은 Spring이 DIRECT_CARD로 변환해야 한다."""
+    response = _post(
+        {
+            "card_id": 105,
+            "source_type": "MANUAL",
+            "candidate": None,
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        }
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
 def test_external_evidence_hint_is_rejected() -> None:
     """EvidenceHint는 Spring 요청 DTO가 아니라 B 내부 판단 모델이다."""
     response = _post(
@@ -549,16 +565,15 @@ def test_invalid_identifiers_are_rejected(payload: dict) -> None:
     assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
 
 
-def test_spring_owns_turn_sequence_and_max_turns() -> None:
-    """AI는 순번을 반환하지 않고 Spring이 전달한 상한을 따른다."""
+def test_question_is_not_created_at_fixed_turn_limit() -> None:
+    """백엔드에서 확정한 2회 상한에 도달하면 질문을 만들지 않는다."""
     response = _post(
         {
             "card_id": 106,
             "source_type": "COMMIT_CLUSTER",
             "candidate": _candidate(_commit(790, "abc123", "세션 테이블 인덱스 추가")),
             "missing_slots": [_slot()],
-            "existing_turn_count": 1,
-            "max_turns": 1,
+            "existing_turn_count": 2,
         }
     )
 
@@ -568,8 +583,8 @@ def test_spring_owns_turn_sequence_and_max_turns() -> None:
     assert "turn_seq" not in data
 
 
-def test_question_is_created_below_spring_max_turns() -> None:
-    """기존 질문 수가 2여도 Spring 상한이 3이면 다음 질문을 만들 수 있다."""
+def test_question_is_created_below_fixed_turn_limit() -> None:
+    """기존 질문 수가 2회 상한보다 작으면 다음 질문을 만들 수 있다."""
     response = _post(
         {
             "card_id": 123,
@@ -578,8 +593,7 @@ def test_question_is_created_below_spring_max_turns() -> None:
                 _commit(790, "abc123", "세션 테이블 인덱스 추가")
             ),
             "missing_slots": [_slot()],
-            "existing_turn_count": 2,
-            "max_turns": 3,
+            "existing_turn_count": 1,
         }
     )
 
@@ -588,23 +602,21 @@ def test_question_is_created_below_spring_max_turns() -> None:
     assert "parent_turn_id" not in data
 
 
-def test_max_turns_is_required_and_must_be_positive() -> None:
-    """질문 상한의 단일 출처인 Spring은 유효한 max_turns를 반드시 보낸다."""
-    base_payload = {
-        "card_id": 124,
-        "source_type": "DIRECT_CARD",
-        "candidate": None,
-        "missing_slots": [_slot()],
-        "existing_turn_count": 0,
-    }
+def test_max_turns_is_rejected_as_unknown_request_field() -> None:
+    """백엔드가 관리하는 max_turns를 AI 요청 계약에 다시 넣지 않는다."""
+    response = _post(
+        {
+            "card_id": 124,
+            "source_type": "DIRECT_CARD",
+            "candidate": None,
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+            "max_turns": 2,
+        }
+    )
 
-    missing = client.post(ENDPOINT, json=base_payload)
-    non_positive = _post({**base_payload, "max_turns": 0})
-
-    assert missing.status_code == 400
-    assert missing.json()["error"]["code"] == "INVALID_PAYLOAD"
-    assert non_positive.status_code == 400
-    assert non_positive.json()["error"]["code"] == "INVALID_PAYLOAD"
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
 
 
 def test_pr_candidate_requires_pr_number_and_uppercase_enum() -> None:

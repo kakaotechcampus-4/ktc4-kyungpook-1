@@ -3,6 +3,7 @@ import type { Card, ConfirmResult } from '@/api/schemas';
 import { Badge, Button, Check, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { useConfirm, useRestoreVersion, useVersions } from '@/api/queries';
+import { errorView } from '@/api/errorView';
 import { versionSourceLabel } from '@/lib/labels';
 import { ymdhm } from '@/lib/format';
 import { toast } from '@/lib/toast';
@@ -40,7 +41,7 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
         <Check checked={ack} onChange={setAck} label="확인" />
         <span className="w-500" style={{ fontSize: 12.5, lineHeight: '19px', color: 'var(--field-low-text)' }}>면접에서 내 말로 설명할 수 있습니다</span>
       </label>
-      {confirm.isError && <Note strong="확정하지 못했습니다" tone="danger">{(confirm.error as Error).message}</Note>}
+      {confirm.isError && <Note strong="확정하지 못했습니다" tone="danger">{errorView(confirm.error).message}</Note>}
     </Modal>
   );
 }

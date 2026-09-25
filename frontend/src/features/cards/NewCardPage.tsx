@@ -109,7 +109,7 @@ export function NewCardPage() {
 
       {!cardId && <p className="t-12 c-2">제목·기간·레포는 첫 저장 후 바꿀 수 없어요.</p>}
       <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
-      {cardId && <SaveStatus status={autosave.status} retry={flush} />}
+      {(cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
       {!cardId && <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
 
       <div className="card star-read">

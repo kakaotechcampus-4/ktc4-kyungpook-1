@@ -39,7 +39,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 |---|---|---|
 | `GET /repos` | | `RepoSummary[]` — `{ id, owner, name, contribution:{mine, team, ratio, level:'NONE'|'PARTIAL'|'SHARED'|'MAJOR'}, prCount, reviewCount, language, activeFrom, activeTo, lastAnalyzedAt, candidateCount, cardCount, recommended }` |
 | `GET /repos/{id}` | | `RepoDetail` = `RepoSummary` + `disclosure:{ reads[], skips[], estimatedSeconds }` (B2 사전 고지 문구는 서버가 만든다) |
-| `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 저장소의 활성 Job은 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409** (PR #50: `INVALID_REQUEST`, 제안된 `IDEMPOTENCY_KEY_MISMATCH`도 FE 수용). |
+| `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 사용자의 같은 연결 저장소에 활성 Job이 있으면 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409 + IDEMPOTENCY_KEY_MISMATCH** (확정). FE는 409에 새 키를 만들어 자동 재요청하지 않는다. |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
 | `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개 |
@@ -84,6 +84,9 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 - **남의 Job 은 403 이 아니라 404** — 존재 여부조차 알려 주지 않는다.
 - 자동 재시도는 없다. 사용자가 버튼을 눌렀을 때만 다시 시작한다.
   `GITHUB_RATE_LIMITED` 일 때만 `retryAfterSec` 을 쓰고, 그 시간이 지나기 전까지 프론트가 버튼을 막는다.
+- FAILED와 SUCCEEDED + partial 모두 **retryable === true**일 때만 재시도한다. false/null은 허용으로 추정하지 않는다. 오류 코드 이름만으로 재시도 여부를 추정하지 않는다.
+- 2026-09-26 develop의 JobView는 GITHUB_UNAVAILABLE/GITHUB_RATE_LIMITED만 true이며 retryAfterSec/result는 아직 null이다. 향후 실제 대기 시간이 내려오면 finishedAt(없으면 updatedAt)부터 계산한다.
+- 활성 Job 중복 제약은 user_repository_id 기준이다. 동일 GitHub 저장소라도 사용자 A/B의 연결 행은 달라 서로 분석을 막지 않는다.
 
 `GET /jobs?active=true` → `{ "jobs": [{ jobId, state, userRepositoryId, repoName, startedAt, pollAfterMs }] }`
 

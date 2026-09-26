@@ -232,13 +232,13 @@ export function CardPage() {
 
 function CardHeader({ card, right, statusOverride, note }: { card: Card; right?: React.ReactNode; statusOverride?: React.ReactNode; note?: string }) {
   return (
-    <div className="row" style={{ gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+    <div className="card-page-header">
       <PageTitle sub={<>
         <Badge kind="NEUTRAL">{cardKindLabel[card.kind]}</Badge>
         {statusOverride ?? <Badge kind={card.status}>{cardStatusLabel[card.status]}</Badge>}
         <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `v${card.version.versionNo} · ${ymd(card.confirmedAt)} 확정 · 근거 ${card.evidence.length}건` : `${versionSourceLabel[card.version.source]} v${card.version.versionNo} · 자동 저장됨`)}</span>
       </>}>{card.title}</PageTitle>
-      {right && <div className="right row" style={{ gap: 8, flexWrap: 'wrap' }}>{right}</div>}
+      {right && <div className="card-page-header__actions">{right}</div>}
     </div>
   );
 }

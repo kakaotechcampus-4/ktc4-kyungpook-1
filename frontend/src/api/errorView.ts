@@ -7,7 +7,7 @@ export function errorView(error: unknown): ErrorView {
   if (error instanceof AuthError) return { title: '다시 로그인해 주세요', message: '로그인 시간이 만료됐어요.', canRetry: false };
   if (error instanceof ContractError) return { title: '응답을 확인하지 못했어요', message: '서버 응답을 표시할 수 없어요. 잠시 후 다시 방문해 주세요.', canRetry: false };
   if (error instanceof ApiError) {
-    if (error.code === 'IDEMPOTENCY_KEY_MISMATCH' || (error.status === 409 && error.code === 'INVALID_REQUEST')) {
+    if (error.code === 'IDEMPOTENCY_KEY_MISMATCH') {
       return { title: '분석 요청이 충돌했어요', message: '다른 저장소에 사용된 요청이에요. 저장소 목록에서 대상을 다시 선택해 주세요.', canRetry: false };
     }
     if (error.status === 404) return { title: '요청한 항목을 찾을 수 없어요', message: '삭제되었거나 접근할 수 없는 항목이에요. 목록에서 다시 확인해 주세요.', canRetry: false };

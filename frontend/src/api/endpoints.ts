@@ -32,7 +32,7 @@ export const endpoints = {
   addCandidate: (repoId: string, body: { title: string; summary: string; shas: string[] }) =>
     api(S.Candidate, `/repos/${repoId}/candidates`, { method: 'POST', body }),
   createCardsFromCandidates: (repoId: string, candidateIds: string[]) =>
-    api(z.object({ jobId: z.string(), cardIds: z.array(z.string()) }), `/repos/${repoId}/cards`, { method: 'POST', body: { candidateIds } }),
+    api(z.object({ jobId: z.string(), cardIds: z.array(z.string()).min(1) }), `/repos/${repoId}/cards`, { method: 'POST', body: { candidateIds } }),
   commits: (repoId: string, q: string) => api(z.array(S.RepoCommit), `/repos/${repoId}/commits?q=${encodeURIComponent(q)}`),
   recall: (repoId: string) => api(S.Recall, `/repos/${repoId}/recall`),
   answerRecall: (repoId: string, body: { path: string; text: string }) =>

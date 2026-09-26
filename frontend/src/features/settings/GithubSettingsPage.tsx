@@ -13,7 +13,7 @@ import { useLogin } from '@/features/auth/useLogin';
 
 const SCOPES = [
   { scope: 'read:user', title: '프로필 읽기', desc: '아이디 · 아바타', granted: true },
-  { scope: 'repo (private 포함)', title: '비공개 저장소 읽기', desc: '요청하지 않음 — 스키마에서 저장 자체를 막습니다', granted: false },
+  { scope: 'repo', title: '비공개 저장소 읽기', desc: '비공개 저장소에는 접근하지 않아요', granted: false },
 ];
 
 /** F1 GitHub 연결 관리 — 스코프 표시 · 재연동 · 해제. 쓰기 권한은 요청하지 않는다. */
@@ -45,10 +45,10 @@ export function GithubSettingsPage() {
       <section className="settings-section stack" style={{ gap: 4 }}>
         <div className="row"><span className="w-700" style={{ fontSize: 14.5 }}>허용한 권한</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
         {SCOPES.map((s) => (
-          <div key={s.scope} className={`settings-row ${s.granted ? '' : 'settings-row--muted'}`}>
-            <Badge kind={s.granted ? 'PR' : 'NEUTRAL'}>{s.scope}</Badge>
-            <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13, color: s.granted ? undefined : 'var(--text-tertiary)' }}>{s.title}</span><span className="t-12 c-2">{s.desc}</span></div>
-            <Badge kind="NEUTRAL">{s.granted ? '허용' : '미요청'}</Badge>
+          <div key={s.scope} className={`settings-row settings-permission ${s.granted ? '' : 'settings-row--muted'}`}>
+            <span className="settings-permission__scope"><Badge kind={s.granted ? 'PR' : 'NEUTRAL'}>{s.scope}</Badge></span>
+            <div className="stack settings-permission__copy" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13, color: s.granted ? undefined : 'var(--text-tertiary)' }}>{s.title}</span><span className="t-12 c-2">{s.desc}</span></div>
+            <span className="settings-permission__state"><Badge kind="NEUTRAL">{s.granted ? '허용' : '미요청'}</Badge></span>
           </div>
         ))}
       </section>
@@ -58,11 +58,11 @@ export function GithubSettingsPage() {
         {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
         {repos.isSuccess && analyzed.length === 0 && <span className="t-12l c-3">아직 정리한 레포가 없습니다.</span>}
         {analyzed.map((r) => (
-          <div key={r.id} className="kv">
-            <span className="w-600" style={{ width: 160 }}>{r.name}</span>
-            <span className="t-12 c-2" style={{ width: 280 }}>커밋 {r.contribution.mine} · PR {r.prCount} · 리뷰 {r.reviewCount}</span>
-            <span className="t-12 c-3">{r.lastAnalyzedAt && ymdhm(r.lastAnalyzedAt)}</span>
-            <span className="right t-12 w-500" style={{ color: 'var(--text-strong)' }}>{r.candidateCount === 0 ? '후보 0 (EMPTY)' : `후보 ${r.candidateCount ?? '-'} · 카드 ${r.cardCount}`}</span>
+          <div key={r.id} className="kv collection-row">
+            <span className="w-600 collection-row__name">{r.name}</span>
+            <span className="t-12 c-2 collection-row__metrics">커밋 {r.contribution.mine} · PR {r.prCount} · 리뷰 {r.reviewCount}</span>
+            <span className="t-12 c-3 collection-row__date">{r.lastAnalyzedAt && ymdhm(r.lastAnalyzedAt)}</span>
+            <span className="t-12 w-500 collection-row__result">후보 {r.candidateCount ?? '-'} · 카드 {r.cardCount}</span>
           </div>
         ))}
       </section>

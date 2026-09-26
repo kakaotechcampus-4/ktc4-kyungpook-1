@@ -8,7 +8,7 @@ import { AuthError } from '@/api/client';
 import { redirectToLogin } from '@/app/queryClient';
 import type { StarField } from '@/api/schemas';
 import { Breadcrumb, Button, Field, Input, PageTitle, StarKey, StickyFooter, Textarea } from '@/components/ui';
-import { STAR_FIELDS, starFieldName } from '@/lib/labels';
+import { STAR_FIELDS, starFieldName, starFieldShort } from '@/lib/labels';
 import { CONFIG } from '@/lib/config';
 import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
 import { track } from '@/lib/track';
@@ -86,18 +86,18 @@ export function NewCardPage() {
   };
 
   return (
-    <main className="main main--footer main--tight">
+    <main className="main main--footer main--tight manual-card-page">
       <Breadcrumb items={[{ label: '경험정리/홈', to: '/' }, { label: '경험 카드', to: '/cards' }, { label: '직접 작성' }]} />
       <PageTitle>직접 작성</PageTitle>
 
-      <div className="card row" style={{ gap: 16, padding: '16px 20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div className="grow" style={{ minWidth: 240 }}>
+      <div className="card manual-metadata">
+        <div className="manual-metadata__title">
           <Field label="카드 제목 *">
             <Input autoFocus required aria-label="카드 제목" aria-describedby="manual-requirements" value={title} disabled={!!cardId || saving} onChange={(e) => setTitle(e.target.value)} placeholder="예) 로그인 세션 개선" />
           </Field>
         </div>
-        <div style={{ width: 160 }}><Field label="기간"><Input value={period} disabled={!!cardId || saving} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
-        <div style={{ width: 220 }}>
+        <div><Field label="기간"><Input value={period} disabled={!!cardId || saving} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
+        <div>
           <Field label="관련 레포 (선택)">
             <select className="input" value={repoId} onChange={(e) => setRepoId(e.target.value)} aria-label="관련 레포" disabled={!!cardId || saving}>
               <option value="">없음</option>
@@ -105,19 +105,21 @@ export function NewCardPage() {
             </select>
           </Field>
         </div>
+        {!cardId && <p className="manual-metadata__hint t-12 c-2">제목·기간·레포는 첫 저장 후 바꿀 수 없어요.</p>}
       </div>
 
-      {!cardId && <p className="t-12 c-2">제목·기간·레포는 첫 저장 후 바꿀 수 없어요.</p>}
-      <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
-      {cardId && <SaveStatus status={autosave.status} retry={flush} />}
-      {!cardId && <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
+      <div className="manual-save-row">
+        <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
+        {cardId && <SaveStatus status={autosave.status} retry={flush} />}
+        {!cardId && <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
+      </div>
 
       <div className="card star-read">
         {STAR_FIELDS.map((k, i) => (
           <div key={k} className="star-read__row">
             <StarKey field={k} dropped={i > 0 && !f[k]} />
             <div className="stack grow" style={{ gap: 9 }}>
-              <div className="row"><span className="star__name">{starFieldName[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 확정 시 필수</span>}</span><span className="right t-12 c-3">{f[k].length} / {MAX}자</span></div>
+              <div className="manual-field-heading"><span className="star__name">{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 필수</span>}</span><span className="t-12 c-3">{f[k].length} / {MAX}자</span></div>
               <Textarea className="input--lg" rows={3} maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements" value={f[k]} onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))} placeholder={HINT[k]} aria-label={starFieldName[k]} />
             </div>
           </div>

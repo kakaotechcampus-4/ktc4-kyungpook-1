@@ -47,7 +47,7 @@ on('POST', '/repos/:id/analyze', ({ params, headers }) => {
   if (!r) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
   const key = headers['idempotency-key'] ?? null;
   const previous = key ? db.jobs.get(db.idem.get(key) ?? '') : undefined;
-  if (previous && previous.payload.repoId !== r.id) return fail(409, 'INVALID_REQUEST', '이미 다른 레포 분석에 쓰인 요청 키입니다.');
+  if (previous && previous.payload.repoId !== r.id) return fail(409, 'IDEMPOTENCY_KEY_MISMATCH', '이미 다른 레포 분석에 쓰인 요청 키입니다.');
   const job = startAnalyze(r.id, key); // 같은 키·진행 중 Job 이면 기존 것을 그대로 돌려준다
   if (!job) return fail(500, 'INTERNAL', '작업을 만들지 못했습니다');
   const v = viewJob(job.id)!;

@@ -31,9 +31,9 @@ export function RecallPage() {
   };
 
   return (
-    <main className="main main--tight">
+    <main className="main main--tight recall-page">
       <Breadcrumb items={[{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: `/repos/${repoId}/candidates` }, { label: '회상 도우미' }]} />
-      <PageTitle right="후보 0개일 때의 우회 경로">파일부터 되짚어 볼까요</PageTitle>
+      <PageTitle>파일부터 되짚어 볼까요</PageTitle>
       {recall.data && <Note strong="커밋 메시지로는 못 찾았습니다">{recall.data.note}</Note>}
       {recall.isPending && <Skeleton h={200} />}
       {recall.isError && <QueryFailure error={recall.error} retry={() => recall.refetch()} pending={recall.isFetching} />}
@@ -55,9 +55,9 @@ export function RecallPage() {
                   <span className="t-12 c-2">기억나는 만큼만 한 줄로</span>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{d.options.map((o) => <Chip key={o} onClick={() => setText(o)}>{o}</Chip>)}</div>
                   <Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="직접 입력 — 보기를 누르면 채워지고, 그대로 고칠 수 있습니다" />
-                  <div className="row" style={{ gap: 10 }}>
+                  <div className="recall-actions">
                     <span className="t-12l c-2">디렉터리 {i + 1} / {dirs.length}</span>
-                    <div className="right row" style={{ gap: 8 }}>
+                    <div className="recall-actions__buttons">
                       <Button variant="text" onClick={() => (i < dirs.length - 1 ? setOpen(i + 1) : nav(`/repos/${repoId}/candidates`))}>건너뛰기</Button>
                       <Button disabled={!text.trim()} loading={answer.isPending} onClick={submit}>후보로 만들기</Button>
                     </div>

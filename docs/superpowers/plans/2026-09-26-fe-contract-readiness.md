@@ -10,7 +10,15 @@
 - [x] 후보 화면: 실패 시 선택 보존, 중복 제출/변경 방지, 제외 성공 후 실행 취소, 검색 초기화·모바일 동작. 랭킹 순서는 서버 배열 그대로 유지.
 - [x] #57 리뷰: Job DTO/DB 변경, MeView 미확정, #55/#58 내부 AI 계약과 FE 경계, #60 중복 범위 기록.
 - [x] Node 22 빌드·단위·정적 E2E·화면 검증. README/트러블슈팅 갱신. 70개 단위·35개 E2E·최종 반응형 12개 통과, 별도 읽기 전용 리뷰에서 중요 회귀 없음.
-- [ ] develop 대상 새 PR, 본인 assignee와 FE/BE 리뷰어 지정. 개인 저장소 동기화·PR 및 Vercel 배포.
+- [x] develop 대상 PR #61 생성. TaeHuiKKIM 담당자 / ganggang-0605, taehun0208, Grow22 리뷰어 지정 확인. 개인 PR #1 동기화 및 Vercel Ready 확인.
+
+## 완료 기록
+- 팀 구현 커밋 c2055af, 개인 배포 커밋 4c21e4b.
+- #57에 FE 영향 검토 COMMENTED 리뷰 등록.
+- 필수 Node 22 CI 통과: https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/runs/36225907648
+- 운영: https://gitory-prototypes.vercel.app
+- 아티팩트: https://gitory-prototypes-b30ka17ij-kim-tae-huis-projects.vercel.app
+- Node 24는 기존 비차단 AbortSignal 실패. 개인 Actions는 계정 결제/사용 한도 차단이며 로컬 검증·Vercel 빌드는 통과.
 
 ## 경계
 기존 #60의 저장/취소 변경은 가져오지 않는다. 실제 후보 랭킹·수집, MeView 응답 분리, B-2 Spring 엔드포인트는 담당 파트 구현·계약 확정 후 연결한다. 환경변수/키/세션은 커밋하지 않는다.

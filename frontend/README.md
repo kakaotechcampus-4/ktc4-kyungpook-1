@@ -1,5 +1,9 @@
 # gitory-web
 
+## 2026-09-26 모바일·PC 배치 개선
+
+작성 메타데이터·STAR 입력, 홈 이어쓰기, 설정 정보/상태, 상세 헤더와 공통 하단 행동의 배치를 화면 폭에 맞게 정리했습니다. 짧은 가로 화면에서도 모달 본문만 스크롤되고 하단 행동은 보입니다. [화면 점검과 검증 기준](docs/RESPONSIVE_LAYOUT_AUDIT.md)을 참고하세요.
+
 ## 2026-09-26 계약 동기화·후보 보드 보완
 
 Node 버전은 `.nvmrc`의 22를 사용합니다. 확정 오류 코드 `GITHUB_RATE_LIMITED`, `IDEMPOTENCY_KEY_MISMATCH`와 서버 `retryable === true` 조건을 적용했습니다. 후보 제외·생성 실패 시 선택과 입력을 유지하고, 공통 DIRECT_CARD 사례를 테스트합니다. `?demoScenario=candidate-error`로 재현할 수 있습니다.

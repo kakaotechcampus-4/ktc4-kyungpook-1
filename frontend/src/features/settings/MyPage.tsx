@@ -25,7 +25,7 @@ export function MyPage() {
   const pick = (t: Theme) => { setTheme(t); setT(t); };
   return (
     <main className="main settings-page">
-      <PageTitle right="Free Plan">마이페이지</PageTitle>
+      <PageTitle>마이페이지</PageTitle>
       {!me.data ? <Skeleton h={90} /> : (
         <div className="profile-summary">
           <UserAvatar src={me.data.avatarUrl} login={me.data.login} size={64} />
@@ -38,10 +38,9 @@ export function MyPage() {
       <section className="settings-section stack">
         <div className="row" style={{ marginBottom: 6 }}><span className="w-700" style={{ fontSize: 14.5 }}>우리가 가지고 있는 것</span><span className="right t-12 c-3">전화번호·학번·실명은 받지 않아요</span></div>
         {COLLECTED.map(([name, why, keep]) => (
-          <div key={name} className="kv">
-            <span className="w-500" style={{ width: 340 }}>{name}</span>
-            <span className="t-12 c-2" style={{ width: 260 }}>{why}</span>
-            <span className="right"><Badge kind={keep === '보관' ? 'NEUTRAL' : 'CAUTION'}>{keep}</Badge></span>
+          <div key={name} className="kv settings-data-row">
+            <div className="settings-data-copy"><span className="w-500">{name}</span><span className="t-12 c-2">{why}</span></div>
+            <Badge kind={keep === '보관' ? 'NEUTRAL' : 'CAUTION'}>{keep}</Badge>
           </div>
         ))}
       </section>
@@ -51,7 +50,7 @@ export function MyPage() {
         ))}
       </section>
       <section className="settings-section stack" style={{ gap: 14 }}>
-        <div className="row"><span className="w-700" style={{ fontSize: 14.5 }}>화면 테마</span><span className="right t-12 c-3">기본은 라이트 · OS 설정을 따라가지 않습니다</span></div>
+        <div className="row"><span className="w-700" style={{ fontSize: 14.5 }}>화면 테마</span></div>
         <div className="row" style={{ gap: 8 }} role="radiogroup" aria-label="테마">
           {(['light', 'dark'] as Theme[]).map((t) => (
             <Button key={t} variant={theme === t ? 'primary' : 'outline'} size="sm" role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>

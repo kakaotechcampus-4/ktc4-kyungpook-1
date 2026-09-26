@@ -172,7 +172,7 @@ export const RepoContext = ({ name, note, right }: { name: string; note: string;
 export const StickyFooter = ({ strong, sub, children }: { strong: string; sub?: string; children: ReactNode }) => (
   <div className="sticky-footer">
     <div className="sticky-footer__text"><strong>{strong}</strong>{sub && <span>{sub}</span>}</div>
-    {children}
+    <div className="sticky-footer__actions">{children}</div>
   </div>
 );
 export const Spinner = () => <span className="spinner" role="status" aria-label="불러오는 중" />;

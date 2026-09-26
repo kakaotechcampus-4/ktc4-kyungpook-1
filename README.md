@@ -1,5 +1,7 @@
 # ktc4-team-05
 
+모바일·PC 화면 배치와 가로 화면 모달 검증은 [반응형 배치 점검](frontend/docs/RESPONSIVE_LAYOUT_AUDIT.md)에 정리했습니다.
+
 2026-09-26 FE 오류 계약·후보 보드 변경과 #57 영향은 [프론트 연동 검토](frontend/docs/FE_INTEGRATION_REVIEW_2026-09-26.md)에 정리했습니다.
 카카오테크 캠퍼스 4기 2단계 팀 프로젝트 — 경북대 1팀
 

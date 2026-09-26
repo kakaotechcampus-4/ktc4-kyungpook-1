@@ -110,7 +110,6 @@ export function InterviewPage() {
             <Link to={`/cards/${cardId}`} className="btn btn--text btn--sm"><ArrowLeft size={14} /> 카드로</Link>
             <span className="right t-12 c-3">{open ? `남은 질문 ${Math.max(0, maxTurns - total)}개` : ''}</span>
           </div>
-          <div className="iv__greet"><span>코드에 없는 것만 한 줄씩 여쭤볼게요</span></div>
           {answer.isError && <Note strong="답변이 저장되지 않았어요" tone="danger">입력은 그대로 남아 있어요. 연결을 확인하고 다시 저장해 주세요.</Note>}
           {ask.isError && <QueryFailure error={ask.error} retry={() => ask.variables && askMore(ask.variables)} pending={ask.isPending} />}
 

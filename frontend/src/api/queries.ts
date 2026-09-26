@@ -131,7 +131,7 @@ export function usePatchCandidate(repoId: string) {
   return useMutation({
     mutationFn: (v: { id: string; status?: CandidateStatus; excludedShas?: string[] }) =>
       endpoints.patchCandidate(v.id, { status: v.status, excludedShas: v.excludedShas }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.candidates(repoId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.candidates(repoId) }),
   });
 }
 

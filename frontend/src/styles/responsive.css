@@ -24,7 +24,18 @@
 .skeleton { max-width: 100%; }
 .settings-section > .row { flex-wrap: wrap; gap: var(--space-8); }
 .user-avatar__fallback { font-size: 16px; }
+.candidate-board__actions { gap: 8px; flex-wrap: wrap; }
+.candidate-board .toolbar.card { border: 0; box-shadow: none; background: transparent; padding: 0; }
 @media (max-width: 767px) {
+  .candidate-board .repo-ctx { padding: 12px; gap: 12px; }
+  .candidate-board .repo-ctx > .iconbox { display: none; }
+  .candidate-board .repo-ctx > .grow { min-width: 0; }
+  .candidate-board .repo-ctx > .btn { flex-shrink: 0; white-space: nowrap; }
+  .candidate-board .cand__exclude { opacity: 1; }
+  .candidate-board .section-head { flex-wrap: wrap; gap: 8px; }
+  .candidate-board__actions { width: 100%; }
+  .candidate-board .cand > .grow { min-width: 0; }
+  .candidate-board .cand__warn { flex-wrap: wrap; gap: 8px; }
   .btn:not(.landing__top-action), .chip--option, .iv__fold { min-height: var(--control-touch-size); }
   .input, .prompt__input, .list-search input, .toolbar__search input { font-size: 16px; }
   .list-head .right { gap: var(--space-12); }

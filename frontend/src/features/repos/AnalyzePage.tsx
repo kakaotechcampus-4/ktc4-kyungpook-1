@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useActiveJobs, useJob, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -10,22 +10,7 @@ import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-
-/** 남은 대기 시간(초). GITHUB_RATE_LIMITED 일 때만 의미가 있다 — 그전까지 다시 시도를 막는다. */
-function useRetryCountdown(job: Job | undefined) {
-  const until = job?.errorCode === 'GITHUB_RATE_LIMITED' && job.retryAfterSec != null
-    ? new Date(job.finishedAt ?? job.updatedAt).getTime() + job.retryAfterSec * 1000
-    : null;
-  const [left, setLeft] = useState(0);
-  useEffect(() => {
-    if (!until) { setLeft(0); return; }
-    const tick = () => setLeft(Math.max(0, Math.ceil((until - Date.now()) / 1000)));
-    tick();
-    const t = window.setInterval(tick, 1000);
-    return () => window.clearInterval(t);
-  }, [until]);
-  return left;
-}
+import { jobRetryState, useJobRetry } from '@/lib/useJobRetry';
 
 /** B3 분석 진행 · B4 수집 실패 · B5 부분 결과(SUCCEEDED + partial) */
 export function AnalyzePage() {
@@ -41,7 +26,7 @@ export function AnalyzePage() {
   useDocumentTitle(repo.data ? `${repo.data.name} 정리 중` : '정리 중');
 
   const j = job.data;
-  const waitSec = useRetryCountdown(j);
+  const { waitSec, canRetry } = useJobRetry(j);
 
   // 새로고침으로 ?job= 을 잃어도 서버가 진행 중인 작업을 안다 — 그걸 다시 붙인다
   useEffect(() => {
@@ -71,6 +56,7 @@ export function AnalyzePage() {
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
   const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }];
   const retry = async () => {
+    if (restart.isPending || (jobId && !jobRetryState(j).canRetry)) return;
     try {
     const started = await restart.mutateAsync(repoId); // 새 Idempotency-Key — 새 시도다
     track('analysis_started', { repoId, jobId: started.jobId, retry: true });
@@ -112,7 +98,6 @@ export function AnalyzePage() {
   if (j?.state === 'FAILED') {
     const code = j.errorCode ?? 'INTERNAL_ERROR';
     const blocked = waitSec > 0;
-    const canRetry = j.retryable !== false && !blocked;
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '정리 실패' }]} />
@@ -142,7 +127,7 @@ export function AnalyzePage() {
   }
 
   if (j?.state === 'SUCCEEDED' && j.partial) {
-    const code = j.errorCode ?? 'GITHUB_RATE_LIMITED';
+    const code = j.errorCode;
     return (
       <main className="main main--tight">
         <Breadcrumb items={[...crumbs, { label: '후보 보드' }]} />
@@ -150,15 +135,15 @@ export function AnalyzePage() {
         <div className="card row" style={{ gap: 16, padding: '18px 20px', background: 'var(--state-partial-bg)', border: 0 }}>
           <Badge kind="NEUTRAL">부분 결과</Badge>
           <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 15 }}>{jobErrorTitle[code]}</span>
-            <span className="c-2" style={{ fontSize: 12.5, lineHeight: '20px' }}>{readNote(j)} {jobErrorHint[code]}</span>
+            <span className="w-600" style={{ fontSize: 15 }}>{code ? jobErrorTitle[code] : '일부 기록만 분석했어요'}</span>
+            <span className="c-2" style={{ fontSize: 12.5, lineHeight: '20px' }}>{readNote(j)} {code && jobErrorHint[code]}</span>
           </div>
-          <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={waitSec > 0 || j.retryable !== true}>
+          <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
             {waitSec > 0 ? `${minutes(waitSec)} 뒤 이어 읽기` : '이어 읽기'}
           </Button>
         </div>
         <div className="row" style={{ gap: 8 }}>
-          <Button onClick={() => nav(`/repos/${repoId}/candidates`)}>읽은 범위의 후보 보기</Button>
+          <Button onClick={() => nav(`/repos/${repoId}/candidates?job=${encodeURIComponent(jobId)}`)}>읽은 범위의 후보 보기</Button>
           <Link to="/repos" className="btn btn--outline">다른 저장소</Link>
         </div>
       </main>

@@ -15,7 +15,7 @@ describe('analysis request identity', () => {
     expect(send.mock.calls[3][1]).not.toBe(send.mock.calls[0][1]);
   });
   it('does not auto-retry conflicts and shares an in-flight double click', async () => {
-    const send = vi.fn().mockRejectedValue(new ApiError('INVALID_REQUEST', '', 409));
+    const send = vi.fn().mockRejectedValue(new ApiError('IDEMPOTENCY_KEY_MISMATCH', '', 409));
     const start = createAnalysisRequest(send);
     const first = start('a');
     expect(start('a')).toBe(first);

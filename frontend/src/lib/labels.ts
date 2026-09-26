@@ -46,7 +46,7 @@ export const jobErrorHint: Record<JobErrorCode, string> = {
   GITHUB_RATE_LIMITED: '한도가 풀리면 읽던 데서 이어서 읽어요.',
   DRAFT_TIMEOUT: '채운 칸까지 보여 드려요. 나머지는 칸 하나씩 다시 해 볼 수 있어요.',
   EVIDENCE_MISSING: '없는 내용을 지어내지 않아요. 빈 칸은 직접 쓰거나 되묻기로 채우면 돼요.',
-  INTERNAL_ERROR: '잠시 뒤에 다시 눌러 주세요.',
+  INTERNAL_ERROR: '작업을 처리하지 못했어요. 다른 저장소를 고르거나 직접 작성해 주세요.',
 };
 
 /** 후보 라벨 — "PR #42" / "커밋 묶음" / "이슈 #31". COMMIT_CLUSTER 를 PR 로 부르지 않는다. */

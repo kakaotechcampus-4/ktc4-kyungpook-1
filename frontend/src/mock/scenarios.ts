@@ -9,6 +9,7 @@ export const SCENARIOS = {
   'save-error': { label: '첫 저장 실패', delayMs: 160 },
   'lost-response': { label: '분석 접수 후 응답 유실', delayMs: 160 },
   conflict: { label: '분석 요청 충돌', delayMs: 160 },
+  'candidate-error': { label: '첫 후보 변경·카드 생성 실패', delayMs: 160 },
 } as const;
 export type Scenario = keyof typeof SCENARIOS;
 export function parseScenario(value: string | null): Scenario {
@@ -19,10 +20,18 @@ export function parseScenario(value: string | null): Scenario {
 export function createScenario(scenario: Scenario) {
   let failedSave = false;
   let lostResponse = false;
+  const failedCandidateRequests = new Set<string>();
   const fault = (code: string, status = 503): MockResult => ({ status, data: null, error: { code, message: '테스트 시나리오 응답' } });
   return {
     delayMs: SCENARIOS[scenario].delayMs,
     before(method: string, path: string): MockResult | undefined {
+      if (scenario === 'candidate-error' && ((method === 'PATCH' && path.startsWith('/candidates/')) || (method === 'POST' && /^\/repos\/[^/]+\/(cards|candidates)$/.test(path)))) {
+        const key = method + path;
+        if (!failedCandidateRequests.has(key)) {
+          failedCandidateRequests.add(key);
+          return fault('INTERNAL_ERROR');
+        }
+      }
       if (scenario === 'read-error' && method === 'GET' && path !== '/me' && !path.startsWith('/jobs')) return fault('INTERNAL_ERROR');
       if (scenario === 'save-error' && method === 'PATCH' && path.endsWith('/draft') && !failedSave) {
         failedSave = true; return fault('INTERNAL_ERROR');

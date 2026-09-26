@@ -28,8 +28,8 @@ export const Badge = ({ kind, children, title }: { kind: BadgeKind; children: Re
 );
 
 // ───────── Chip · Check · Radio ─────────
-export const Chip = ({ children, fill, onClick }: { children: ReactNode; fill?: boolean; onClick?: () => void }) =>
-  onClick ? <button type="button" className={cx('chip', fill && 'chip--fill')} onClick={onClick}>{children}</button>
+export const Chip = ({ children, fill, onClick, disabled }: { children: ReactNode; fill?: boolean; onClick?: () => void; disabled?: boolean }) =>
+  onClick ? <button type="button" className={cx('chip', fill && 'chip--fill')} disabled={disabled} onClick={onClick}>{children}</button>
           : <span className={cx('chip', fill && 'chip--fill')}>{children}</span>;
 
 export const Check = ({ checked, onChange, label, disabled }: { checked: boolean; onChange?: (v: boolean) => void; label: string; disabled?: boolean }) => (

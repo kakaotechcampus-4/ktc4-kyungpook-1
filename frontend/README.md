@@ -1,5 +1,11 @@
 # gitory-web
 
+## 2026-09-26 계약 동기화·후보 보드 보완
+
+Node 버전은 `.nvmrc`의 22를 사용합니다. 확정 오류 코드 `GITHUB_RATE_LIMITED`, `IDEMPOTENCY_KEY_MISMATCH`와 서버 `retryable === true` 조건을 적용했습니다. 후보 제외·생성 실패 시 선택과 입력을 유지하고, 공통 DIRECT_CARD 사례를 테스트합니다. `?demoScenario=candidate-error`로 재현할 수 있습니다.
+
+[#57 영향·담당별 반영·실제 연동 대기 항목](docs/FE_INTEGRATION_REVIEW_2026-09-26.md)을 확인하세요. 후보 랭킹/인터뷰의 실제 백엔드 연동은 아직 대기 중이며 배포는 Mock 체험 모드를 유지합니다.
+
 브라우저 탭 아이콘은 흰 테두리를 제거한 `public/favicon-borderless.svg`를 사용합니다. 원인과 확인 방법은 [브랜딩 이미지 문서](docs/BRAND_ASSETS.md)에 기록했습니다.
 
 ## 2026-09-23 모바일 UX 정리

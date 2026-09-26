@@ -17,10 +17,15 @@ test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 
   await page.goto('/repos?select=r_ratelimit&disclose=1');
   await page.getByRole('button', { name: '정리 시작' }).click();
   await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // RATE_LIMITED — 한도가 풀릴 때까지 막는다
+  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // GITHUB_RATE_LIMITED
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
-  await expect(page.getByRole('heading', { name: /후보 \d+개 \(전체 아님\)/ })).toBeVisible();
-  await expect(page.getByText('"이게 전부"가 아닙니다')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /후보 \d+개 \(부분 결과\)/ })).toBeVisible();
+  await expect(page.getByText('읽은 기록에서 찾은 후보예요')).toBeVisible();
+  await page.getByRole('button', { name: '분석 기준' }).click();
+  await expect(page.getByRole('button', { name: '다시 정리하기' })).toBeDisabled();
+  await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).last().click();
+  await page.getByRole('link', { name: '작업 상태 보기' }).click();
+  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
 });
 
 test('후보 제외는 실행 취소할 수 있다', async ({ page }) => {

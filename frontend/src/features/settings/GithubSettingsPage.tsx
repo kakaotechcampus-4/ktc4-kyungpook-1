@@ -8,6 +8,8 @@ import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { QueryFailure } from '@/components/ui/QueryFailure';
+import { useLogin } from '@/features/auth/useLogin';
 
 const SCOPES = [
   { scope: 'read:user', title: '프로필 읽기', desc: '아이디 · 아바타', granted: true },
@@ -18,6 +20,7 @@ const SCOPES = [
 export function GithubSettingsPage() {
   useDocumentTitle('GitHub 연결');
   const me = useMe();
+  const login = useLogin();
   const repos = useRepos();
   const disconnect = useDisconnectGithub();
   const [asking, setAsking] = useState(false);
@@ -34,7 +37,7 @@ export function GithubSettingsPage() {
             <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 18 }}>{me.data.login}</span><Badge kind={gh?.connected ? 'CONFIRMED' : 'NEUTRAL'}>{gh?.connected ? '연결됨' : '연결 안 됨'}</Badge></div>
             <span className="t-12l c-2">{gh?.connectedAt ? `${ymd(gh.connectedAt)} 연결` : '연결되어 있지 않습니다 — 새 분석을 하려면 다시 연결하세요'}{gh?.lastCollectedAt ? ` · 마지막 수집 ${ymdhm(gh.lastCollectedAt)}` : ''}</span>
           </div>
-          <a href={endpoints.githubStartUrl()} className={`btn ${gh?.connected ? 'btn--outline' : 'btn--primary'}`}>{gh?.connected ? '재연동' : '연결하기'}</a>
+          {login.isDemo ? <span className="t-12 c-2">샘플 계정 · 실제 GitHub 연결 없음</span> : <a href={endpoints.githubStartUrl()} className={`btn ${gh?.connected ? 'btn--outline' : 'btn--primary'}`}>{gh?.connected ? '재연동' : '연결하기'}</a>}
         </div>
       )}
       {gh && !gh.connected && <Note strong="연결 해제됨 — 새 정리는 다시 연결 후" tone="inset" />}
@@ -52,7 +55,8 @@ export function GithubSettingsPage() {
 
       <section className="settings-section stack">
         <span className="w-700" style={{ fontSize: 14.5, marginBottom: 6 }}>수집 이력</span>
-        {analyzed.length === 0 && <span className="t-12l c-3">아직 정리한 레포가 없습니다.</span>}
+        {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
+        {repos.isSuccess && analyzed.length === 0 && <span className="t-12l c-3">아직 정리한 레포가 없습니다.</span>}
         {analyzed.map((r) => (
           <div key={r.id} className="kv">
             <span className="w-600" style={{ width: 160 }}>{r.name}</span>

@@ -3,12 +3,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
 import { FolderGit2 } from 'lucide-react';
-import { Badge, Button, IconBox, Radio, SectionHead, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
+import { Badge, Button, IconBox, Radio, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
 import { pct, ym } from '@/lib/format';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { QueryFailure } from '@/components/ui/QueryFailure';
 
 type Sort = 'activity' | 'recent' | 'name';
 type Filter = 'all' | 'pr' | 'nopr' | 'fresh';
@@ -44,9 +45,11 @@ export function ReposPage() {
   const closeDisclose = () => selectedId && setSp({ select: selectedId });
   const begin = async () => {
     if (!selected) return;
+    try {
     const { jobId } = await start.mutateAsync(selected.id);
     track('analysis_started', { repoId: selected.id, jobId });
     nav(`/repos/${selected.id}/run?job=${jobId}`);
+    } catch { /* Preserve the action identity for retry; error notification is global. */ }
   };
 
   return (
@@ -57,14 +60,14 @@ export function ReposPage() {
         <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
       </ol>
       <div className="list-head">
-        <h1>{repos.isSuccess ? `레포 ${repos.data.length}개 중에서 하나만 골라 주세요` : '레포 고르기'}</h1>
+        <h1>레포 고르기 <span className="c-3 t-14">{repos.data?.length ?? 0}</span></h1>
         <div className="right">
           <label className="list-search"><span className="c-3">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="레포 이름 검색" aria-label="레포 이름 검색" /></label>
           <label className="chip chip--select"><select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="정렬">{(Object.keys(SORT_LABEL) as Sort[]).map((k) => <option key={k} value={k}>{SORT_LABEL[k]}</option>)}</select></label>
           <label className="chip chip--select"><select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label="필터">{(Object.keys(FILTER_LABEL) as Filter[]).map((k) => <option key={k} value={k}>{FILTER_LABEL[k]}</option>)}</select></label>
         </div>
       </div>
-      <SectionHead label={FILTER_LABEL[filter]} count={list.length} />
+      {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
 
       {repos.isPending && <div className="stack" style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Skeleton key={i} h={72} />)}</div>}
       {repos.isSuccess && list.length === 0 && <EmptyState title="맞는 레포가 없어요" desc="비공개 저장소는 목록에 나오지 않아요. 권한부터 요청하지 않기 때문입니다." />}
@@ -97,6 +100,7 @@ export function ReposPage() {
                 <Badge kind="NEUTRAL">READ ONLY</Badge>
               </div>
               {detail.isPending ? <Skeleton h={160} /> : detail.data && <PermissionGrid compact reads={detail.data.disclosure.reads} skips={detail.data.disclosure.skips} />}
+              {detail.isError && <QueryFailure error={detail.error} retry={() => detail.refetch()} pending={detail.isFetching} />}
               {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">이번엔 새로 올라온 커밋만 이어서 읽습니다.</Note>}
             </div>
           </div>

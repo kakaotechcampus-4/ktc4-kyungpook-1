@@ -5,7 +5,7 @@ const PRINCIPLES = [
   ['탈퇴는 즉시, 삭제는 유예', '탈퇴하면 즉시 로그인이 차단됩니다. 데이터 삭제는 유예를 둡니다.', '확정'],
   ['GitHub 토큰은 유예 없이 즉시 파기', '토큰은 되돌릴 여지 없이 바로 폐기합니다.', '확정'],
   ['타인의 데이터는 지우지 않습니다', '팀 레포의 커밋은 다른 사용자의 근거이기도 합니다.', '확정'],
-  ['유예 기간', '30일? 데모 기간에는 더 짧게? — 미정', '미정'],
+  ['유예 기간', '확정 후 안내해 드릴 예정이에요', '미정'],
   ['마지막 사용자가 탈퇴한 레포의 원본', '언제 지울지 — 미정', '미정'],
 ] as const;
 
@@ -14,11 +14,11 @@ export function LeavePage() {
   return (
     <main className="main main--tight">
       <Breadcrumb items={[{ label: '마이페이지', to: '/settings' }, { label: '탈퇴 · 데이터 삭제' }]} />
-      <PageTitle right="요청사항 Q5 · 정책 확정 전">탈퇴 · 데이터 삭제</PageTitle>
+      <PageTitle right="준비 중">탈퇴 · 데이터 삭제</PageTitle>
       <div className="row" style={{ gap: 14, padding: '18px 20px', borderRadius: 12, background: 'var(--state-open-bg)' }}>
         <div className="stack" style={{ gap: 5 }}>
-          <span className="w-600" style={{ fontSize: 15, color: 'var(--state-open-text)' }}>이 화면은 정책이 확정되면 확정됩니다</span>
-          <span className="t-12l c-2">유예 기간 30일을 10주 프로젝트에서 검증할 시간이 없습니다. 아래 3원칙은 합의된 것이고, 기간·범위는 미정입니다.</span>
+          <span className="w-600" style={{ fontSize: 15, color: 'var(--state-open-text)' }}>탈퇴 기능을 준비하고 있어요</span>
+          <span className="t-12l c-2">현재는 탈퇴를 진행할 수 없어요. 삭제 범위와 보관 기간이 확정되면 안내해 드릴게요.</span>
         </div>
       </div>
       <div className="card stack" style={{ gap: 12, padding: '18px 20px' }}>

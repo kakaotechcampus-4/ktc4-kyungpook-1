@@ -1,6 +1,8 @@
 import { MutationCache, QueryCache, QueryClient } from '@tanstack/react-query';
 import { ApiError, AuthError, ContractError } from '@/api/client';
 import { toast } from '@/lib/toast';
+import { errorView } from '@/api/errorView';
+import { CONFIG } from '@/lib/config';
 
 /** 세션이 끊기면 어디서든 랜딩으로 — 돌아올 위치를 들고 간다. */
 export function redirectToLogin() {
@@ -17,14 +19,12 @@ export const queryClient = new QueryClient({
   mutationCache: new MutationCache({
     onError: (err) => {
       if (err instanceof AuthError) return redirectToLogin();
-      if (err instanceof ContractError) return toast('서버 응답 형식이 계약과 다릅니다 (개발자에게 알려주세요)', { tone: 'danger' });
-      if (err instanceof ApiError) return toast(err.message, { tone: 'danger' });
-      toast('요청을 처리하지 못했습니다', { tone: 'danger' });
+      toast(errorView(err).message, { tone: 'danger' });
     },
   }),
   defaultOptions: {
     queries: {
-      staleTime: 15_000,
+      staleTime: CONFIG.QUERY_STALE_MS,
       retry: (count, err) => {
         if (err instanceof AuthError || err instanceof ContractError) return false;
         if (err instanceof ApiError && err.status >= 400 && err.status < 500) return false;

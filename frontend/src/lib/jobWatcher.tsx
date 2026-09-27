@@ -4,7 +4,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import { useActiveJobs } from '@/api/queries';
-import type { ActiveJob } from '@/api/schemas';
+import { isTerminal, type ActiveJob } from '@/api/schemas';
+import { toast } from './toast';
+import { ApiError } from '@/api/client';
 
 /**
  * "창을 닫아도 계속 분석됩니다. 끝나면 알려드릴게요."
@@ -23,6 +25,9 @@ export function JobWatcher() {
   const qc = useQueryClient();
   const active = useActiveJobs();
   const seen = useRef(new Map<string, ActiveJob>());
+  const fetching = useRef(new Set<string>());
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
 
   useEffect(() => {
     const jobs = active.data?.jobs;
@@ -30,16 +35,20 @@ export function JobWatcher() {
     const live = new Set(jobs.map((j) => j.jobId));
     const gone = [...seen.current.values()].filter((j) => !live.has(j.jobId));
     jobs.forEach((j) => seen.current.set(j.jobId, j));
-    gone.forEach((w) => seen.current.delete(w.jobId));
     if (!gone.length) return;
 
     void (async () => {
-      const { toast } = await import('./toast');
       for (const w of gone) {
+        if (!mounted.current || fetching.current.has(w.jobId)) continue;
+        fetching.current.add(w.jobId);
         try {
           const j = await endpoints.job(w.jobId);
+          if (!mounted.current) return;
+          if (!isTerminal(j.state)) continue;
+          seen.current.delete(w.jobId);
           const repoId = j.result?.repoId ?? w.userRepositoryId;
-          const href = j.type === 'DRAFT' && j.result?.cardIds?.length ? `/cards/${j.result.cardIds[0]}` : repoId ? `/repos/${repoId}/candidates` : '/cards';
+          const href = j.type === 'DRAFT' && j.result?.cardIds?.length ? `/cards/${j.result.cardIds[0]}`
+            : repoId ? (j.state === 'FAILED' || j.partial ? `/repos/${repoId}/run?job=${j.jobId}` : `/repos/${repoId}/candidates`) : '/cards';
           if (repoId) { void qc.invalidateQueries({ queryKey: keys.candidates(repoId) }); void qc.invalidateQueries({ queryKey: keys.repos }); }
           j.result?.cardIds?.forEach((id) => void qc.invalidateQueries({ queryKey: keys.card(id) }));
           void qc.invalidateQueries({ queryKey: keys.cards });
@@ -50,10 +59,13 @@ export function JobWatcher() {
             : j.partial ? `${label} — 읽은 데까지 정리했어요`
             : `${label} — 다 됐어요`;
           toast(text, { tone: j.state === 'FAILED' ? 'danger' : 'success', action: { label: '보기', onClick: () => nav(href) } });
-        } catch { /* 다음 진입에 다시 확인된다 */ }
+        } catch (error) {
+          // Expired/inaccessible jobs cannot be recovered by repeated reads.
+          if (error instanceof ApiError && (error.status === 404 || error.status === 403)) seen.current.delete(w.jobId);
+        } finally { fetching.current.delete(w.jobId); }
       }
     })();
-  }, [active.data, nav, qc]);
+  }, [active.data, active.dataUpdatedAt, nav, qc]);
 
   return null;
 }

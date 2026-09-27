@@ -161,6 +161,7 @@ export const ActiveJob = z.object({
 });
 export type ActiveJob = z.infer<typeof ActiveJob>;
 export const StartedJob = z.object({ jobId: z.string(), state: JobState, pollAfterMs: z.number() });
+export type StartedJob = z.infer<typeof StartedJob>;
 
 export const isTerminal = (s: JobState) => s === 'SUCCEEDED' || s === 'FAILED' || s === 'CANCELED';
 

@@ -1,4 +1,4 @@
-fastapi
-pydantic
-openai
-chromadb
+fastapi>=0.115,<1.0
+pydantic>=2.10,<3.0
+openai>=1.0,<3.0
+chromadb>=0.5,<2.0

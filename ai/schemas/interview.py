@@ -11,7 +11,13 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from schemas.common import Confidence, SourceType, StarSlot
+from schemas.common import StarSlot
+
+#: 프론트 InterviewSourceType. 후보 출처(CandidateSourceType)와 의도적으로 분리한다.
+SourceType = Literal["PR", "COMMIT_CLUSTER", "DIRECT_CARD"]
+
+#: missing_slots는 되묻기 여부를 결정하는 입력이라 HIGH/LOW 두 값만 사용한다.
+Confidence = Literal["HIGH", "LOW"]
 
 #: B-1 question_type 결정표(명세서 339행)의 값 그대로.
 QuestionType = Literal["EVIDENCE_GAP", "FOLLOWUP", "RECALL_AID"]
@@ -79,12 +85,10 @@ class InterviewTurnRequest(BaseModel):
         if self.source_type == "PR":
             if self.candidate is None or self.candidate.github_pr_number is None:
                 raise ValueError("source_type='PR'이면 candidate.github_pr_number가 필요합니다.")
-        elif self.source_type in {"ISSUE", "COMMIT_CLUSTER"} and self.candidate is None:
-            raise ValueError(
-                "source_type='ISSUE' 또는 'COMMIT_CLUSTER'이면 candidate가 필요합니다."
-            )
-        elif self.source_type == "MANUAL" and self.candidate is not None:
-            raise ValueError("source_type='MANUAL'이면 candidate는 null이어야 합니다.")
+        elif self.source_type == "COMMIT_CLUSTER" and self.candidate is None:
+            raise ValueError("source_type='COMMIT_CLUSTER'이면 candidate가 필요합니다.")
+        elif self.source_type == "DIRECT_CARD" and self.candidate is not None:
+            raise ValueError("source_type='DIRECT_CARD'이면 candidate는 null이어야 합니다.")
         return self
 
 

@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
 from schemas.common import (
     AnalysisVerdict,
-    Confidence,
-    SourceType,
+    CandidateSourceType,
     StarSlot,
     StarStatus,
+    StatementConfidence,
 )
 
 
@@ -22,7 +21,7 @@ class ChangedFile(BaseModel):
     path: str
     additions: int = Field(ge=0)
     deletions: int = Field(ge=0)
-    patch: Optional[str] = Field(
+    patch: str | None = Field(
         None, description="상한을 넘거나 바이너리인 경우 본문 없이 전달"
     )
 
@@ -32,13 +31,13 @@ class CommitInput(BaseModel):
 
     sha: str = Field(..., min_length=7, max_length=40)
     message: str
-    author_login: Optional[str] = None
+    author_login: str | None = None
     authored_at: datetime
     parent_count: int = Field(ge=0)
     additions: int = Field(ge=0)
     deletions: int = Field(ge=0)
     files: list[ChangedFile] = Field(default_factory=list)
-    pull_request_number: Optional[int] = None
+    pull_request_number: int | None = None
     issue_numbers: list[int] = Field(default_factory=list)
 
 
@@ -54,8 +53,8 @@ class ExperienceCandidate(BaseModel):
     """같은 기능의 커밋을 묶은 경험 후보."""
 
     group_key: str
-    source_type: SourceType
-    source_ref: Optional[str] = None
+    source_type: CandidateSourceType
+    source_ref: str | None = None
     title: str
     reason: str
     score: float = Field(ge=0.0, le=1.0)
@@ -76,10 +75,10 @@ class DiffEvidence(BaseModel):
 
     sha: str = Field(..., min_length=7, max_length=40)
     message: str
-    author_login: Optional[str] = None
+    author_login: str | None = None
     churn: str = Field(description="예: +71/-0")
     summary: str = Field(description="diff에서 직접 확인한 변경 요약")
-    url: Optional[str] = None
+    url: str | None = None
 
 
 class DependencyFile(BaseModel):
@@ -95,8 +94,8 @@ class StarAnalysisRequest(BaseModel):
     candidate_id: str
     target_login: str
     title: str
-    source_type: SourceType
-    source_ref: Optional[str] = None
+    source_type: CandidateSourceType
+    source_ref: str | None = None
     evidence: list[DiffEvidence]
     dependency_files: list[DependencyFile] = Field(default_factory=list)
     confirmed_answers: list[str] = Field(default_factory=list)
@@ -107,18 +106,18 @@ class EvidenceReference(BaseModel):
 
     sha: str = Field(..., min_length=7, max_length=40)
     message: str
-    url: Optional[str] = None
+    url: str | None = None
 
 
 class StarFieldResult(BaseModel):
     """STAR 한 영역의 분석 결과."""
 
-    text: Optional[str] = None
+    text: str | None = None
     status: StarStatus
-    confidence: Optional[Confidence] = None
+    confidence: StatementConfidence | None = None
     evidence: list[EvidenceReference] = Field(default_factory=list)
-    insufficient_reason: Optional[str] = None
-    review_reason: Optional[str] = None
+    insufficient_reason: str | None = None
+    review_reason: str | None = None
 
 
 class StarAnalysisResponse(BaseModel):
@@ -127,5 +126,5 @@ class StarAnalysisResponse(BaseModel):
     title: str
     star: dict[StarSlot, StarFieldResult]
     missing_fields: list[StarSlot] = Field(default_factory=list)
-    shared_with: Optional[str] = None
+    shared_with: str | None = None
     removed_claims: list[str] = Field(default_factory=list)

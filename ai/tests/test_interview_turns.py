@@ -99,12 +99,12 @@ def test_empty_slot_uses_card_commit_as_recall_aid_context() -> None:
     assert ESCAPE_HATCH in data["question_text"]
 
 
-def test_manual_card_without_candidate_uses_general_recall_aid() -> None:
+def test_direct_card_without_candidate_uses_general_recall_aid() -> None:
     """직접 작성 카드는 GitHub 문맥 없이 일반 회상 질문으로 처리한다."""
     response = _post(
         {
             "card_id": 104,
-            "source_type": "MANUAL",
+            "source_type": "DIRECT_CARD",
             "candidate": None,
             "missing_slots": [_slot()],
             "existing_turn_count": 0,
@@ -170,6 +170,19 @@ def test_pr_candidate_requires_pr_number_and_uppercase_enum() -> None:
             "existing_turn_count": 0,
         }
     )
+    candidate_only_types = [
+        _post(
+            {
+                "card_id": 109,
+                "source_type": source_type,
+                "candidate": None,
+                "missing_slots": [],
+                "existing_turn_count": 0,
+            }
+        )
+        for source_type in ("ISSUE", "MANUAL")
+    ]
 
     assert missing_pr.status_code == 400
     assert lowercase.status_code == 400
+    assert all(response.status_code == 400 for response in candidate_only_types)

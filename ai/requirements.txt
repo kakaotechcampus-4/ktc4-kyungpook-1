@@ -1,5 +1,4 @@
 fastapi
-httpx
 pydantic
 openai
 chromadb

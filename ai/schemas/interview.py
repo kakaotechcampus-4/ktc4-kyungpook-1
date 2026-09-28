@@ -39,9 +39,6 @@ AnswerOutcome = Literal["ANSWERED", "INSUFFICIENT"]
 #: 사용자 답변으로 생성한 STAR 문장의 근거 유형. 선택했는지 직접 적었는지
 StatementEvidenceType = Literal["USER_STATED", "USER_SELECTED"]
 
-#: 백엔드에서 확정한 카드별 최대 인터뷰 질문 수.
-MAX_INTERVIEW_TURNS = 2
-
 #: GitHub Pull Request review.state에서 B가 받는 값.
 ReviewState = Literal[
     "APPROVED",
@@ -145,9 +142,14 @@ class InterviewTurnRequest(StrictRequestModel):
     existing_turn_count: int = Field(
         0,
         ge=0,
-        le=MAX_INTERVIEW_TURNS,
         strict=True,
         description="이 카드에 대해 이미 생성된 interview_turn 수",
+    )
+    max_turns: int = Field(
+        ...,
+        ge=1,
+        strict=True,
+        description="Spring이 결정한 카드별 최대 질문 수",
     )
 
     source_type: SourceType = Field(..., description="되묻기 대상 카드의 출처")
@@ -155,6 +157,11 @@ class InterviewTurnRequest(StrictRequestModel):
     @model_validator(mode="after")
     def _validate_candidate_context(self) -> "InterviewTurnRequest":
         """출처별 후보 문맥의 필수 조건을 검증한다."""
+        if self.existing_turn_count > self.max_turns:
+            raise ValueError(
+                "existing_turn_count는 max_turns보다 클 수 없습니다."
+            )
+
         if self.source_type == "PR":
             if self.candidate is None or self.candidate.github_pr_number is None:
                 raise ValueError(
@@ -245,11 +252,11 @@ class InterviewAnswerRequest(StrictRequestModel):
         description="답변이 속한 STAR 카드 ID",
     )
 
-    # 카드가 PR, 커밋 묶음, 직접 작성 중 어디에서 만들어졌는지 나타낸다.
-    # 다음 질문을 만들 때 어떤 근거를 사용할 수 있는지 판단하는 데 사용한다.
+    # PR, 커밋 묶음, 직접 작성 카드 중 어느 대상에 되묻는지 나타낸다.
+    # Candidate의 origin(MANUAL 포함)과는 서로 다른 필드다.
     source_type: SourceType = Field(
         ...,
-        description="카드 후보의 출처",
+        description="되묻기 대상의 출처",
     )
 
     # 카드 전체의 커밋, PR, 리뷰, 이슈 문맥이다.
@@ -291,14 +298,27 @@ class InterviewAnswerRequest(StrictRequestModel):
     existing_turn_count: int = Field(
         ...,
         ge=1,
-        le=MAX_INTERVIEW_TURNS,
         strict=True,
         description="현재 질문을 포함해 이미 생성된 인터뷰 턴 수",
+    )
+
+    # 질문 상한의 단일 출처는 Spring 설정이다.
+    # AI는 이 값을 저장하지 않고 해당 요청의 상한 판단에만 사용한다.
+    max_turns: int = Field(
+        ...,
+        ge=1,
+        strict=True,
+        description="Spring이 결정한 카드별 최대 질문 수",
     )
 
     @model_validator(mode="after")
     def _validate_answer_context(self) -> "InterviewAnswerRequest":
         """출처·질문 횟수·부족한 슬롯 사이의 계약을 검증한다."""
+        if self.existing_turn_count > self.max_turns:
+            raise ValueError(
+                "existing_turn_count는 max_turns보다 클 수 없습니다."
+            )
+
         if self.source_type == "PR":
             if self.candidate is None or self.candidate.github_pr_number is None:
                 raise ValueError(

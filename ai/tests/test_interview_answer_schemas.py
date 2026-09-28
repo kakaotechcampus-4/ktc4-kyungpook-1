@@ -43,6 +43,7 @@ def valid_request() -> dict:
             }
         ],
         "existing_turn_count": 1,
+        "max_turns": 2,
     }
 
 
@@ -115,7 +116,7 @@ def test_accepts_direct_card_without_candidate() -> None:
 
 
 def test_rejects_manual_candidate_type_as_interview_source() -> None:
-    """Spring이 변환하지 않은 후보 출처 MANUAL은 B-2 계약에서 거절한다."""
+    """후보 origin인 MANUAL은 B-2 source_type 계약에서 거절한다."""
     payload = valid_request()
     payload["source_type"] = "MANUAL"
     payload["candidate"] = None
@@ -124,8 +125,8 @@ def test_rejects_manual_candidate_type_as_interview_source() -> None:
         InterviewAnswerRequest.model_validate(payload)
 
 
-def test_accepts_turn_count_at_fixed_limit() -> None:
-    """이미 생성된 질문 수가 확정 상한 2와 같아도 요청 자체는 유효하다."""
+def test_accepts_turn_count_at_spring_limit() -> None:
+    """이미 생성된 질문 수가 Spring 상한과 같아도 요청 자체는 유효하다."""
     payload = valid_request()
     payload["existing_turn_count"] = 2
 
@@ -201,8 +202,8 @@ def test_rejects_zero_turn_count() -> None:
         InterviewAnswerRequest.model_validate(payload)
 
 
-def test_rejects_turn_count_above_fixed_limit() -> None:
-    """이미 생성된 질문 수가 확정 상한 2보다 크면 거절한다."""
+def test_rejects_turn_count_above_spring_limit() -> None:
+    """이미 생성된 질문 수가 Spring 상한보다 크면 거절한다."""
     payload = valid_request()
     payload["existing_turn_count"] = 3
 
@@ -210,10 +211,16 @@ def test_rejects_turn_count_above_fixed_limit() -> None:
         InterviewAnswerRequest.model_validate(payload)
 
 
-def test_rejects_external_max_turns_field() -> None:
-    """백엔드 소유 정책인 max_turns는 B-2 요청에 포함하지 않는다."""
+def test_requires_positive_max_turns() -> None:
+    """Spring이 전달하는 max_turns는 필수이며 1 이상이어야 한다."""
     payload = valid_request()
-    payload["max_turns"] = 2
+    del payload["max_turns"]
+
+    with pytest.raises(ValidationError):
+        InterviewAnswerRequest.model_validate(payload)
+
+    payload = valid_request()
+    payload["max_turns"] = 0
 
     with pytest.raises(ValidationError):
         InterviewAnswerRequest.model_validate(payload)

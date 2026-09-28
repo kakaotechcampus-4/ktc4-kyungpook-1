@@ -24,6 +24,7 @@ def request_payload(
     *,
     with_other_slot: bool,
     existing_turn_count: int = 1,
+    max_turns: int = 2,
     answer_source: str = "TYPED",
 ) -> dict:
     """B-2 서비스 판단표에서 공통으로 사용할 정상 요청 payload."""
@@ -63,6 +64,7 @@ def request_payload(
         "answer_source": answer_source,
         "other_missing_slots": other_missing_slots,
         "existing_turn_count": existing_turn_count,
+        "max_turns": max_turns,
     }
 
 
@@ -124,6 +126,23 @@ def test_sufficient_with_other_slot_at_turn_cap_completes() -> None:
     assert result.remaining_slots[0].star_slot == "T"
     assert result.next_action == "COMPLETE"
     assert result.next_turn is None
+
+
+def test_sufficient_with_other_slot_uses_spring_turn_budget() -> None:
+    """AI 내부 상수가 아니라 Spring이 보낸 상한으로 다음 질문을 판단한다."""
+    request = InterviewAnswerRequest.model_validate(
+        request_payload(
+            with_other_slot=True,
+            existing_turn_count=2,
+            max_turns=3,
+        )
+    )
+
+    result = service_with_result(True).process_answer(request)
+
+    assert result.next_action == "ASK_AGAIN"
+    assert result.next_turn is not None
+    assert result.next_turn.target.star_slot == "T"
 
 
 def test_insufficient_without_other_slot_and_turn_budget_reasks_target() -> None:

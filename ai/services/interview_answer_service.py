@@ -13,7 +13,6 @@ from schemas.interview import (
     InterviewAnswerRequest,
     InterviewAnswerResult,
     InterviewTurnRequest,
-    MAX_INTERVIEW_TURNS,
     NextInterviewTurn,
     ResultingStatement,
     StatementEvidenceType,
@@ -104,7 +103,7 @@ class InterviewAnswerService:
 
         can_ask_again = (
             bool(remaining_slots)
-            and request.existing_turn_count < MAX_INTERVIEW_TURNS
+            and request.existing_turn_count < request.max_turns
         )
         if not can_ask_again:
             return InterviewAnswerResult(
@@ -147,6 +146,7 @@ class InterviewAnswerService:
                 candidate=request.candidate,
                 missing_slots=request.other_missing_slots,
                 existing_turn_count=request.existing_turn_count,
+                max_turns=request.max_turns,
             )
         )
         if (

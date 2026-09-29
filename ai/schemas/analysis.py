@@ -1,6 +1,9 @@
 """커밋 선별·경험 그룹화·diff 분석·STAR 생성 모델."""
 
+from __future__ import annotations
+
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -36,7 +39,7 @@ class ChangedFile(BaseModel):
     path: str
     additions: int = Field(ge=0)
     deletions: int = Field(ge=0)
-    patch: str | None = Field(
+    patch: Optional[str] = Field(
         None, description="상한을 넘거나 바이너리인 경우 본문 없이 전달"
     )
 
@@ -46,13 +49,13 @@ class CommitInput(BaseModel):
 
     sha: str = Field(..., min_length=7, max_length=40)
     message: str
-    author_login: str | None = None
+    author_login: Optional[str] = None
     authored_at: str
     parent_count: int = Field(ge=0)
     additions: int = Field(ge=0)
     deletions: int = Field(ge=0)
     files: list[ChangedFile] = Field(default_factory=list)
-    pull_request_number: int | None = None
+    pull_request_number: Optional[int] = None
     issue_numbers: list[int] = Field(default_factory=list)
 
 
@@ -69,7 +72,7 @@ class ExperienceCandidate(BaseModel):
 
     group_key: str
     source_type: ExperienceSource
-    source_ref: str | None = None
+    source_ref: Optional[str] = None
     title: str
     reason: str
     score: float = Field(ge=0.0, le=1.0)
@@ -90,10 +93,10 @@ class DiffEvidence(BaseModel):
 
     sha: str = Field(..., min_length=7, max_length=40)
     message: str
-    author_login: str | None = None
+    author_login: Optional[str] = None
     churn: str = Field(description="예: +71/-0")
     summary: str = Field(description="diff에서 직접 확인한 변경 요약")
-    url: str | None = None
+    url: Optional[str] = None
 
 
 class DependencyFile(BaseModel):
@@ -110,7 +113,7 @@ class StarAnalysisRequest(BaseModel):
     target_login: str
     title: str
     source_type: ExperienceSource
-    source_ref: str | None = None
+    source_ref: Optional[str] = None
     evidence: list[DiffEvidence]
     dependency_files: list[DependencyFile] = Field(default_factory=list)
     confirmed_answers: list[str] = Field(default_factory=list)
@@ -121,18 +124,18 @@ class EvidenceReference(BaseModel):
 
     sha: str
     message: str
-    url: str | None = None
+    url: Optional[str] = None
 
 
 class StarFieldResult(BaseModel):
     """STAR 한 영역의 분석 결과."""
 
-    text: str | None = None
+    text: Optional[str] = None
     status: StarStatus
-    confidence: str | None = Field(None, description="LOW, MEDIUM, HIGH")
+    confidence: Optional[str] = Field(None, description="LOW, MEDIUM, HIGH")
     evidence: list[EvidenceReference] = Field(default_factory=list)
-    insufficient_reason: str | None = None
-    review_reason: str | None = None
+    insufficient_reason: Optional[str] = None
+    review_reason: Optional[str] = None
 
 
 class StarAnalysisResponse(BaseModel):
@@ -141,5 +144,5 @@ class StarAnalysisResponse(BaseModel):
     title: str
     star: dict[StarSlot, StarFieldResult]
     missing_fields: list[StarSlot] = Field(default_factory=list)
-    shared_with: str | None = None
+    shared_with: Optional[str] = None
     removed_claims: list[str] = Field(default_factory=list)

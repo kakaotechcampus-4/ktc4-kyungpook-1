@@ -45,6 +45,8 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const autosave = useDraftAutosave(toDraftFields(draft), save);
   const { failed, flush, saving, savedAt } = autosave;
   const guard = useUnsavedChanges(autosave.dirty || saving);
+  // 취소가 flush()를 기다리는 동안 칸이 계속 열려 있으면, 그사이 타이핑한 내용이 되돌리기로 조용히 사라진다.
+  const [canceling, setCanceling] = useState(false);
 
   const changed = STAR_FIELDS.filter((f) => baseRef.current[f] !== draft[f]);
   const done = async () => {
@@ -56,13 +58,18 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
   };
   // 자동저장이 이미 서버에 반영됐을 수 있다 — 로컬 상태만 되돌리면 취소해도 서버엔 고친 내용이 남는다.
   const cancel = async () => {
-    await flush(); // 밀린 디바운스 타이머를 비우고, 아직 안 보낸 변경이 있으면 먼저 보낸다
-    setDraft(baseRef.current);
-    if (savedAt) {
-      try { await saveDraft.mutateAsync(toDraftFields(baseRef.current)); } catch { /* 로컬은 이미 되돌렸다 — 서버 복구는 최선 노력 */ }
+    setCanceling(true);
+    try {
+      await flush(); // 밀린 디바운스 타이머를 비우고, 아직 안 보낸 변경이 있으면 먼저 보낸다
+      setDraft(baseRef.current);
+      if (savedAt) {
+        try { await saveDraft.mutateAsync(toDraftFields(baseRef.current)); } catch { /* 로컬은 이미 되돌렸다 — 서버 복구는 최선 노력 */ }
+      }
+      guard.allowNavigation();
+      onDone();
+    } finally {
+      if (mountedRef.current) setCanceling(false);
     }
-    guard.allowNavigation();
-    onDone();
   };
 
   return (
@@ -79,9 +86,9 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
                   <span className="star__name">{starFieldName[f]}</span>
                   {dirty && <Badge kind="CAUTION">고친 칸</Badge>}
                   <span className="right t-12 c-3">{draft[f].length}자</span>
-                  {dirty && <button type="button" className="t-12 w-500 c-2" onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button>}
+                  {dirty && <button type="button" className="t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button>}
                 </div>
-                <Textarea className="input--lg" rows={3} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
+                <Textarea className="input--lg" rows={3} value={draft[f]} disabled={canceling} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
                   placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]} />
                 {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
                 {dirty && ev.some((e) => e.type === 'COMMIT') && (
@@ -96,8 +103,8 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
       <StickyFooter
         strong={changed.length ? `${changed.length}칸 고침` : '고친 곳 없음'}
         sub={failed ? '연결을 확인하고 다시 눌러 주세요' : '쓰는 동안 알아서 저장돼요'}>
-        <Button variant="text" disabled={saving} onClick={() => void cancel()}>편집 취소</Button>
-        <Button size="lg" loading={saving} onClick={done}>{failed ? '다시 저장하고 닫기' : '저장하고 닫기'}</Button>
+        <Button variant="text" disabled={saving || canceling} loading={canceling} onClick={() => void cancel()}>편집 취소</Button>
+        <Button size="lg" disabled={canceling} loading={saving} onClick={done}>{failed ? '다시 저장하고 닫기' : '저장하고 닫기'}</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={saving} flush={flush} />
     </>
@@ -107,8 +114,11 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
 /** D7 마스킹 — 원문은 DB 에 그대로. 표시·내보내기에만 적용. */
 export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const mask = useMask(card.id);
-  const initialRules = card.maskRules.length ? card.maskRules : [{ from: '', to: '' }];
-  const [rules, setRules] = useState<{ from: string; to: string }[]>(initialRules);
+  // EditMode의 baseRef와 같은 이유 — card.maskRules 를 매 렌더 그대로 기준으로 삼으면, 순서만 다르게 돌아온
+  // 백그라운드 리페치에도 JSON.stringify 비교가 달라져 아무것도 안 고쳤는데 dirty 로 뜬다. 진입 시 한 번만 고정한다.
+  const initialRulesRef = useRef(card.maskRules.length ? card.maskRules : [{ from: '', to: '' }]);
+  const [rules, setRules] = useState<{ from: string; to: string }[]>(initialRulesRef.current);
+  const initialRules = initialRulesRef.current;
   const valid = rules.filter((r) => r.from.trim());
   const set = (i: number, k: 'from' | 'to', v: string) => setRules((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
   const hits = STAR_FIELDS.filter((f) => { const t = card.version[fieldKey[f]]; return t && applyMask(t, valid) !== t; });

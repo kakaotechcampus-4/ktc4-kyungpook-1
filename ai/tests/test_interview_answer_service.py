@@ -201,8 +201,8 @@ def test_insufficient_at_turn_cap_preserves_slots_and_completes(
     assert result.next_turn is None
 
 
-def test_selected_answer_maps_to_user_selected_evidence() -> None:
-    """AI 선택지를 고른 답변은 USER_SELECTED 근거 유형으로 반환한다."""
+def test_selected_answer_does_not_round_trip_spring_evidence_type() -> None:
+    """SELECTED의 저장용 근거 유형은 Spring이 결정하고 AI는 반환하지 않는다."""
     request = InterviewAnswerRequest.model_validate(
         request_payload(with_other_slot=False, answer_source="SELECTED")
     )
@@ -210,7 +210,7 @@ def test_selected_answer_maps_to_user_selected_evidence() -> None:
     result = service_with_result(True).process_answer(request)
 
     assert result.resulting_statement is not None
-    assert result.resulting_statement.evidence_type == "USER_SELECTED"
+    assert "evidence_type" not in result.resulting_statement.model_dump()
 
 
 def test_rule_evaluator_rejects_short_or_vague_typed_answer() -> None:
@@ -242,7 +242,7 @@ def test_rule_evaluator_accepts_concrete_typed_answer_without_rewriting() -> Non
     assert result.outcome == "ANSWERED"
     assert result.resulting_statement is not None
     assert result.resulting_statement.body == request.answer_text
-    assert result.resulting_statement.evidence_type == "USER_STATED"
+    assert "evidence_type" not in result.resulting_statement.model_dump()
 
 
 def test_answer_evaluation_endpoint_returns_common_envelope() -> None:

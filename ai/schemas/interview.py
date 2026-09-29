@@ -36,9 +36,6 @@ AnswerSource = Literal["TYPED", "SELECTED"]
 #: B-2가 판단한 사용자 답변 결과.
 AnswerOutcome = Literal["ANSWERED", "INSUFFICIENT"]
 
-#: 사용자 답변으로 생성한 STAR 문장의 근거 유형. 선택했는지 직접 적었는지
-StatementEvidenceType = Literal["USER_STATED", "USER_SELECTED"]
-
 #: GitHub Pull Request review.state에서 B가 받는 값.
 ReviewState = Literal[
     "APPROVED",
@@ -378,13 +375,6 @@ class ResultingStatement(BaseModel):
     body: NonBlankText = Field(
         ...,
         description="사용자 답변 원문",
-    )
-
-    # 직접 작성 답변이면 USER_STATED,
-    # AI 선택지를 선택한 답변이면 USER_SELECTED다.
-    evidence_type: StatementEvidenceType = Field(
-        ...,
-        description="생성된 STAR 문장의 사용자 답변 출처",
     )
 
     # 사용자가 직접 제출하거나 선택해 확인한 내용이므로 HIGH로 반환한다.

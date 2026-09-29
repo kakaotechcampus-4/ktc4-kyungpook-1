@@ -24,6 +24,22 @@ ErrorCode = Literal[
     "INTERNAL_ERROR",
 ]
 
+#: 카드와 인터뷰에서 공통으로 사용하는 STAR 슬롯.
+StarSlot = Literal["S", "T", "A", "R"]
+
+#: 후보와 카드가 만들어진 출처. 프론트 확정 계약의 CandidateType과 같다.
+CandidateSourceType = Literal["PR", "ISSUE", "COMMIT_CLUSTER", "MANUAL"]
+
+#: card_statement.confidence 및 DB CHECK 제약과 같은 세 값.
+StatementConfidence = Literal["HIGH", "MEDIUM", "LOW"]
+
+#: 후보 보드 및 분석 Job 결과의 판정값.
+AnalysisVerdict = Literal["OK", "EMPTY", "PARTIAL"]
+
+#: Spring이 AI 결과를 카드에 저장할 때 그대로 사용할 STAR 칸 상태.
+#: 프론트 StarFieldState와 같게 두어 별도 문자열 번역을 만들지 않는다.
+StarStatus = Literal["FILLED", "EMPTY", "NEEDS_REVIEW"]
+
 T = TypeVar("T")
 
 

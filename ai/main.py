@@ -1,4 +1,4 @@
-"""Gitory AI 서버(B파트) FastAPI 진입점.
+"""Gitory AI 서버(A/B 파트) FastAPI 진입점.
 
 명세서(gitory_api_spec_v2) 0-1 기준 AI 서버는 stateless로 판단·생성만
 담당하고 저장·검증은 백엔드가 한다. 이 파일은 라우터 등록과 공통 에러
@@ -12,10 +12,12 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from api.analysis import router as analysis_router
 from api.interviews import router as interviews_router
 from schemas.common import Envelope, ErrorDetail, Meta
 
 app = FastAPI(title="Gitory AI Server")
+app.include_router(analysis_router)
 app.include_router(interviews_router)
 
 

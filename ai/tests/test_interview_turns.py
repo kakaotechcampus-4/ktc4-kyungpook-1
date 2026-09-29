@@ -627,6 +627,19 @@ def test_pr_candidate_requires_pr_number_and_uppercase_enum() -> None:
             "existing_turn_count": 0,
         }
     )
+    candidate_only_types = [
+        _post(
+            {
+                "card_id": 109,
+                "source_type": source_type,
+                "candidate": None,
+                "missing_slots": [],
+                "existing_turn_count": 0,
+            }
+        )
+        for source_type in ("ISSUE", "MANUAL")
+    ]
 
     assert missing_pr.status_code == 400
     assert lowercase.status_code == 400
+    assert all(response.status_code == 400 for response in candidate_only_types)

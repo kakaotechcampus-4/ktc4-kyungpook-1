@@ -26,6 +26,12 @@ public class JobController {
         return ApiResponse.ok(JobResponse.from(jobQuery.load(toUuid(id), loginUser.id())));
     }
 
+    @GetMapping("/api/jobs")
+    public ApiResponse<ActiveJobListResponse> activeJobs(@AuthenticationPrincipal LoginUser loginUser) {
+
+        return ApiResponse.ok(ActiveJobListResponse.from(jobQuery.loadActive(loginUser.id())));
+    }
+
     private UUID toUuid(String id) {
 
         try {

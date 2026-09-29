@@ -25,7 +25,7 @@ public record JobResponse(
         JobResult result,
         int pollAfterMs) {
 
-    private static final int POLL_AFTER_MS = 2000;
+    static final int POLL_AFTER_MS = 2000;
 
     static JobResponse from(JobView job) {
         return new JobResponse(

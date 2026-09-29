@@ -55,7 +55,6 @@ def valid_answered_result() -> dict:
             "star_slot": "R",
             "statement_seq": 1,
             "body": "응답 시간이 800ms에서 200ms로 줄었습니다.",
-            "evidence_type": "USER_STATED",
             "confidence": "HIGH",
         },
         "remaining_slots": [],

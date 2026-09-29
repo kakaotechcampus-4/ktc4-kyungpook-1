@@ -15,7 +15,6 @@ from schemas.interview import (
     InterviewTurnRequest,
     NextInterviewTurn,
     ResultingStatement,
-    StatementEvidenceType,
     StatementTarget,
 )
 from services.interview_agent import InterviewAgent
@@ -93,7 +92,6 @@ class InterviewAnswerService:
                 star_slot=current_target.star_slot,
                 statement_seq=current_target.statement_seq,
                 body=request.answer_text,
-                evidence_type=self._evidence_type(request),
             )
             remaining_slots = other_targets
         else:
@@ -126,13 +124,6 @@ class InterviewAnswerService:
             next_action="ASK_AGAIN",
             next_turn=next_turn,
         )
-
-    @staticmethod
-    def _evidence_type(request: InterviewAnswerRequest) -> StatementEvidenceType:
-        """사용자 입력 방식을 DB의 STAR 문장 근거 유형으로 변환한다."""
-        if request.answer_source == "SELECTED":
-            return "USER_SELECTED"
-        return "USER_STATED"
 
     def _build_next_missing_slot_question(
         self,

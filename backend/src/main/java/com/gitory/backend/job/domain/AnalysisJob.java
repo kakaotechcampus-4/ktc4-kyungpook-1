@@ -4,9 +4,13 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static lombok.AccessLevel.*;
@@ -33,7 +37,14 @@ public class AnalysisJob {
     private String idempotencyKey;
 
     @Enumerated(EnumType.STRING)
+    private JobType type;
+
+    @Enumerated(EnumType.STRING)
     private JobState state;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<JobStep> steps;
+
     private boolean partial;
 
     @Enumerated(EnumType.STRING)
@@ -54,7 +65,9 @@ public class AnalysisJob {
         this.userId = userId;
         this.userRepositoryId = userRepositoryId;
         this.idempotencyKey = idempotencyKey;
+        this.type = JobType.ANALYZE;
         this.state = JobState.QUEUED;
+        this.steps = queuedSteps();
         this.partial = false;
     }
 
@@ -111,6 +124,17 @@ public class AnalysisJob {
         if (state != expected) {
             throw new IllegalStateException("Job 상태가 " + expected + " 가 아니다: " + state);
         }
+    }
+
+    private static List<JobStep> queuedSteps() {
+
+        List<JobStep> steps = new ArrayList<>();
+
+        for (JobStepKey key : JobStepKey.values()) {
+            steps.add(new JobStep(key, JobStepState.QUEUED, 0, null));
+        }
+
+        return steps;
     }
 
 }

@@ -71,9 +71,9 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
   "partial": false,                                   // 부분 완료는 별도 상태가 아니다 → SUCCEEDED + partial:true
   "steps": [{ "key": "COMMITS|PR_REVIEW|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
               "done": 0, "total": 0 }],               // 늘 이 4개가 이 순서. 총량을 모르면 total: null
-  "errorCode": "GITHUB_UNAVAILABLE|RATE_LIMITED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
+  "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
   "retryable": bool | null,
-  "retryAfterSec": n | null,                          // RATE_LIMITED 에서만 의미가 있다
+  "retryAfterSec": n | null,                          // GITHUB_RATE_LIMITED 에서만 의미가 있다
   "startedAt", "updatedAt", "finishedAt": null,
   "result": { "repoId"?, "cardIds"?, "verdict": "OK|EMPTY|PARTIAL", "reasons": [] } | null,
   "pollAfterMs": 2000 }                               // 다음 폴링까지 기다릴 시간. 간격은 서버가 정한다
@@ -83,7 +83,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 - **후보 0개도 실패가 아니다.** `SUCCEEDED` + `result.verdict: "EMPTY"` + `reasons` 3줄.
 - **남의 Job 은 403 이 아니라 404** — 존재 여부조차 알려 주지 않는다.
 - 자동 재시도는 없다. 사용자가 버튼을 눌렀을 때만 다시 시작한다.
-  `RATE_LIMITED` 일 때만 `retryAfterSec` 을 쓰고, 그 시간이 지나기 전까지 프론트가 버튼을 막는다.
+  `GITHUB_RATE_LIMITED` 일 때만 `retryAfterSec` 을 쓰고, 그 시간이 지나기 전까지 프론트가 버튼을 막는다.
 
 `GET /jobs?active=true` → `{ "jobs": [{ jobId, state, userRepositoryId, repoName, startedAt, pollAfterMs }] }`
 

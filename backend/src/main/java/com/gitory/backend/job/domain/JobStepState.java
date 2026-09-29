@@ -1,9 +1,9 @@
 package com.gitory.backend.job.domain;
 
-public enum JobState {
+public enum JobStepState {
+
     QUEUED,
     RUNNING,
-    SUCCEEDED,
-    FAILED,
-    CANCELED
+    DONE,
+    SKIPPED
 }

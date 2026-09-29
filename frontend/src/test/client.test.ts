@@ -49,6 +49,14 @@ describe('api 봉투 규칙', () => {
     await api(z.array(z.any()), '/cards');
     expect(f.mock.calls[0][1]).toMatchObject({ credentials: 'include' });
   });
+  it('2xx + data=null + error=null → ContractError (성공인데 아무것도 없는 건 계약 위반)', async () => {
+    respond(200, { data: null, error: null });
+    await expect(api(z.object({ ok: z.boolean() }), '/x')).rejects.toBeInstanceOf(ContractError);
+  });
+  it('non-2xx 에서 error 바디 형태가 어긋나도 폴백 코드로 안전하게 떨어진다', async () => {
+    respond(500, { data: null, error: { code: 123, message: null } });
+    await expect(api(z.any(), '/x')).rejects.toMatchObject({ code: 'HTTP_500' });
+  });
 });
 
 describe('카드 스키마 — 스펙 §1 응답 예시가 그대로 통과한다', () => {

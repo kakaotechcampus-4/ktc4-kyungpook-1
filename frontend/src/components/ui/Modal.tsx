@@ -1,6 +1,10 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
+// 동시에 열린 모달들이 같은 document keydown 을 전부 받는다 — 맨 위(가장 나중에 열린) 모달만
+// ESC/Tab 을 처리하도록 열린 순서를 기록해 둔다. 안 그러면 중첩 확인창에서 ESC 한 번에 둘 다 닫힌다.
+const openModalStack: string[] = [];
+
 /** 원본 모달: 제목 + ✕ · 구분선 · 본문 · 하단(회색) 좌측 설명 + 우측 버튼. ESC/딤 클릭으로 닫힘. */
 export function Modal({ title, sub, width = 660, onClose, children, footer }: {
   title: string; sub?: string; width?: number; onClose: () => void; children: ReactNode;
@@ -12,10 +16,13 @@ export function Modal({ title, sub, width = 660, onClose, children, footer }: {
   closeRef.current = onClose;
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
+    openModalStack.push(titleId);
+    const isTopmost = () => openModalStack.at(-1) === titleId;
     const focusable = () => Array.from(ref.current?.querySelectorAll<HTMLElement>(
       'button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex="0"]',
     ) ?? []).filter((el) => !el.closest('[hidden], [inert]') && getComputedStyle(el).display !== 'none');
     const onKey = (e: KeyboardEvent) => {
+      if (!isTopmost()) return;
       if (e.key === 'Escape') { e.preventDefault(); closeRef.current(); }
       if (e.key !== 'Tab') return;
       const els = focusable();
@@ -33,6 +40,7 @@ export function Modal({ title, sub, width = 660, onClose, children, footer }: {
     (focusable()[0] ?? ref.current)?.focus();
     return () => {
       document.removeEventListener('keydown', onKey); document.body.style.overflow = prev;
+      const i = openModalStack.indexOf(titleId); if (i !== -1) openModalStack.splice(i, 1);
       if (previousFocus?.isConnected) previousFocus.focus();
     };
   }, []);

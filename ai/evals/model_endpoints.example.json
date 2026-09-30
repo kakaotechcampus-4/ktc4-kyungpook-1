@@ -1,0 +1,9 @@
+[
+  {"name":"Claude Opus 5","model":"claude-opus-5","reasoning_effort":"medium","base_url_env":"GITORY_LLM_BASE_URL","api_key_env":"GITORY_LLM_API_KEY","input_cost_per_million":7612,"output_cost_per_million":38062},
+  {"name":"Claude Sonnet 5","model":"claude-sonnet-5","reasoning_effort":"medium","base_url_env":"GITORY_CLAUDE_SONNET_5_BASE_URL","api_key_env":"GITORY_CLAUDE_SONNET_5_API_KEY","input_cost_per_million":3045,"output_cost_per_million":15225},
+  {"name":"GPT-5.6 Terra","model":"gpt-5.6-terra","reasoning_effort":"medium","base_url_env":"GITORY_GPT_56_TERRA_BASE_URL","api_key_env":"GITORY_GPT_56_TERRA_API_KEY","input_cost_per_million":3045,"output_cost_per_million":18270},
+  {"name":"GPT-5.6 Sol","model":"gpt-5.6-sol","reasoning_effort":"medium","base_url_env":"GITORY_GPT_56_SOL_BASE_URL","api_key_env":"GITORY_GPT_56_SOL_API_KEY","input_cost_per_million":6090,"output_cost_per_million":30450},
+  {"name":"GPT-5.6 Luna","model":"gpt-5.6-luna","reasoning_effort":"medium","base_url_env":"GITORY_GPT_56_LUNA_BASE_URL","api_key_env":"GITORY_GPT_56_LUNA_API_KEY","input_cost_per_million":304,"output_cost_per_million":1827},
+  {"name":"Claude Fable 5","model":"claude-fable-5","reasoning_effort":"medium","base_url_env":"GITORY_CLAUDE_FABLE_5_BASE_URL","api_key_env":"GITORY_CLAUDE_FABLE_5_API_KEY","input_cost_per_million":15225,"output_cost_per_million":76125}
+]
+

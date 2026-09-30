@@ -57,7 +57,13 @@ export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unkn
   }, [clearTimer]);
   useEffect(() => {
     clearTimer();
-    if (enabled && !failedRef.current && json !== lastSaved.current) {
+    if (json === lastSaved.current) {
+      // 실패 이후 사용자가 직접 원래 내용으로 되돌렸다 — 서버 값과 이미 같으니 다시 보낼 것도, 에러로
+      // 보일 이유도 없다. failed 를 그대로 두면 dirty/status 가 '되돌리기 전' 상태에 영원히 갇힌다.
+      if (failedRef.current) { failedRef.current = false; setFailed(false); }
+      return clearTimer;
+    }
+    if (enabled && !failedRef.current) {
       timer.current = setTimeout(() => { if (!failedRef.current) void flush(); }, CONFIG.DRAFT_AUTOSAVE_MS);
     }
     return clearTimer;

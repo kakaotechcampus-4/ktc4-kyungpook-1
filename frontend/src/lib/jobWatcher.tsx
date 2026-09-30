@@ -52,7 +52,8 @@ export function JobWatcher() {
           if (repoId) { void qc.invalidateQueries({ queryKey: keys.candidates(repoId) }); void qc.invalidateQueries({ queryKey: keys.repos }); }
           j.result?.cardIds?.forEach((id) => void qc.invalidateQueries({ queryKey: keys.card(id) }));
           void qc.invalidateQueries({ queryKey: keys.cards });
-          if (suppressed.has(w.jobId) || location.pathname === href) continue;
+          // href 는 실패/부분완료 분기에서 ?job= 쿼리를 포함한다 — pathname만 비교하면 절대 못 맞는다.
+          if (suppressed.has(w.jobId) || location.pathname + location.search === href) continue;
           const label = w.repoName ?? '정리';
           const text = j.state === 'FAILED' ? `${label} — 끝내지 못했어요`
             : j.state === 'CANCELED' ? `${label} — 취소했어요`

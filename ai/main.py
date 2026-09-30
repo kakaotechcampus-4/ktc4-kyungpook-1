@@ -12,12 +12,14 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from api.collection import router as collection_router
 from api.analysis import router as analysis_router
 from api.interviews import router as interviews_router
 from schemas.common import Envelope, ErrorDetail, Meta
 
 app = FastAPI(title="Gitory AI Server")
 app.include_router(analysis_router)
+app.include_router(collection_router)
 app.include_router(interviews_router)
 
 

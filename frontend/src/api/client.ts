@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { envelope, type ApiErrorBody } from './schemas';
+import { envelope, ApiErrorBody } from './schemas';
 import { CONFIG } from '@/lib/config';
 
 /**
@@ -83,7 +83,10 @@ export async function api<T extends z.ZodTypeAny>(
   }
 
   if (!res.ok) {
-    const err = (json as { error?: ApiErrorBody } | null)?.error;
+    // error 바디도 성공 경로(envelope)처럼 zod 로 검증한다 — 형태가 어긋나면(code 가 문자열이 아니거나 등)
+    // 그대로 캐스팅해 잘못된 모양의 ApiError 를 조용히 만드는 대신, 정해진 폴백으로 떨어진다.
+    const parsedErr = ApiErrorBody.safeParse((json as { error?: unknown } | null)?.error);
+    const err = parsedErr.success ? parsedErr.data : undefined;
     throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? (res.status >= 500 ? '서버 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.' : res.statusText), res.status, err?.details);
   }
 

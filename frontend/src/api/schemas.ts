@@ -60,7 +60,10 @@ export const ApiErrorBody = z.object({
 export type ApiErrorBody = z.infer<typeof ApiErrorBody>;
 
 export const envelope = <T extends z.ZodTypeAny>(data: T) =>
-  z.object({ data: data.nullable(), error: ApiErrorBody.nullable() });
+  z.object({ data: data.nullable(), error: ApiErrorBody.nullable() })
+    // data·error 가 둘 다 null이면 2xx 성공 규칙("data 반환")을 어긴 것이다 — 통과시키면 호출부가
+    // null을 T로 오인해 조용히 깨진다. 계약 위반은 ContractError 로 즉시 드러나야 한다.
+    .refine((v) => v.error != null || v.data !== null, { message: '2xx 응답의 data·error 가 모두 null입니다' });
 
 // ───────────────────────────── 사용자 ─────────────────────────────
 export const Me = z.object({

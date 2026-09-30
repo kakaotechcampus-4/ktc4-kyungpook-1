@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 수집기가 돌려준 결과를 수집 이력 한 건과 커밋 여러 건으로 저장한다
+ * AI 가 돌려준 수집 결과를 수집 이력 한 건과 커밋 여러 건으로 저장한다
  * 커밋은 GitHub 에 이미 일어난 사실이라 이미 저장한 sha 는 다시 저장하지 않는다
  */
 @Service

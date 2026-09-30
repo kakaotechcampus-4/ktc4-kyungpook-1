@@ -13,11 +13,13 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'contracts/ingest/**'
       - '.github/workflows/backend-ci.yml'
   push:
     branches: [develop, main]
     paths:
       - 'backend/**'
+      - 'contracts/ingest/**'
       - '.github/workflows/backend-ci.yml'
 
 # 같은 브랜치에 연속 push 하면 앞의 run 을 취소한다. 무료 러너 분을 아낀다.

@@ -51,7 +51,7 @@ def override_analysis_pipeline():
 
 
 def test_analysis_routes_are_registered_under_internal_prefix() -> None:
-    paths = {route.path for route in app.routes}
+    paths = set(app.openapi()["paths"])
 
     assert "/internal/analysis/groups" in paths
     assert "/internal/analysis/star" in paths
@@ -72,7 +72,7 @@ def test_grouping_response_uses_envelope_and_allows_partial() -> None:
     assert body["meta"]["processing_ms"] >= 0
 
 
-def test_star_response_uses_filled_and_two_confidence_values() -> None:
+def test_star_response_uses_filled_and_db_confidence_values() -> None:
     response = client.post(
         "/internal/analysis/star",
         json={
@@ -93,13 +93,19 @@ def test_star_response_uses_filled_and_two_confidence_values() -> None:
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("status", "GENERATED"), ("confidence", "MEDIUM")],
+    [("status", "GENERATED"), ("confidence", "UNKNOWN")],
 )
 def test_invalid_star_contract_values_are_rejected(field: str, value: str) -> None:
     payload = {"status": "FILLED", field: value}
 
     with pytest.raises(ValidationError):
         StarFieldResult.model_validate(payload)
+
+
+def test_medium_confidence_matches_card_statement_constraint() -> None:
+    result = StarFieldResult(status="NEEDS_REVIEW", confidence="MEDIUM")
+
+    assert result.confidence == "MEDIUM"
 
 
 def test_invalid_verdict_is_rejected() -> None:

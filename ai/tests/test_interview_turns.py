@@ -371,6 +371,22 @@ def test_direct_card_without_candidate_uses_general_recall_aid() -> None:
     assert "당시 상황" in data["question_text"]
 
 
+def test_manual_candidate_type_is_rejected_as_interview_source() -> None:
+    """후보 origin인 MANUAL은 되묻기 source_type으로 받지 않는다."""
+    response = _post(
+        {
+            "card_id": 105,
+            "source_type": "MANUAL",
+            "candidate": None,
+            "missing_slots": [_slot()],
+            "existing_turn_count": 0,
+        }
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
 def test_external_evidence_hint_is_rejected() -> None:
     """EvidenceHint는 Spring 요청 DTO가 아니라 B 내부 판단 모델이다."""
     response = _post(
@@ -549,16 +565,16 @@ def test_invalid_identifiers_are_rejected(payload: dict) -> None:
     assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
 
 
-def test_spring_owns_turn_sequence_and_max_turns() -> None:
-    """AI는 순번을 반환하지 않고 Spring이 전달한 상한을 따른다."""
+def test_question_is_not_created_at_spring_turn_limit() -> None:
+    """Spring이 전달한 상한에 도달하면 질문을 만들지 않는다."""
     response = _post(
         {
             "card_id": 106,
             "source_type": "COMMIT_CLUSTER",
             "candidate": _candidate(_commit(790, "abc123", "세션 테이블 인덱스 추가")),
             "missing_slots": [_slot()],
-            "existing_turn_count": 1,
-            "max_turns": 1,
+            "existing_turn_count": 2,
+            "max_turns": 2,
         }
     )
 
@@ -568,8 +584,8 @@ def test_spring_owns_turn_sequence_and_max_turns() -> None:
     assert "turn_seq" not in data
 
 
-def test_question_is_created_below_spring_max_turns() -> None:
-    """기존 질문 수가 2여도 Spring 상한이 3이면 다음 질문을 만들 수 있다."""
+def test_question_is_created_below_spring_turn_limit() -> None:
+    """기존 질문 수가 Spring 상한보다 작으면 다음 질문을 만들 수 있다."""
     response = _post(
         {
             "card_id": 123,
@@ -589,8 +605,8 @@ def test_question_is_created_below_spring_max_turns() -> None:
 
 
 def test_max_turns_is_required_and_must_be_positive() -> None:
-    """질문 상한의 단일 출처인 Spring은 유효한 max_turns를 반드시 보낸다."""
-    base_payload = {
+    """질문 상한의 단일 출처인 Spring은 유효한 max_turns를 보낸다."""
+    payload = {
         "card_id": 124,
         "source_type": "DIRECT_CARD",
         "candidate": None,
@@ -598,13 +614,30 @@ def test_max_turns_is_required_and_must_be_positive() -> None:
         "existing_turn_count": 0,
     }
 
-    missing = client.post(ENDPOINT, json=base_payload)
-    non_positive = _post({**base_payload, "max_turns": 0})
+    missing = client.post(ENDPOINT, json=payload)
+    non_positive = _post({**payload, "max_turns": 0})
 
     assert missing.status_code == 400
     assert missing.json()["error"]["code"] == "INVALID_PAYLOAD"
     assert non_positive.status_code == 400
     assert non_positive.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
+def test_existing_turn_count_cannot_exceed_spring_limit() -> None:
+    """이미 생성된 질문 수는 Spring이 전달한 상한을 넘을 수 없다."""
+    response = _post(
+        {
+            "card_id": 134,
+            "source_type": "DIRECT_CARD",
+            "candidate": None,
+            "missing_slots": [_slot()],
+            "existing_turn_count": 3,
+            "max_turns": 2,
+        }
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
 
 
 def test_pr_candidate_requires_pr_number_and_uppercase_enum() -> None:
@@ -627,6 +660,19 @@ def test_pr_candidate_requires_pr_number_and_uppercase_enum() -> None:
             "existing_turn_count": 0,
         }
     )
+    candidate_only_types = [
+        _post(
+            {
+                "card_id": 109,
+                "source_type": source_type,
+                "candidate": None,
+                "missing_slots": [],
+                "existing_turn_count": 0,
+            }
+        )
+        for source_type in ("ISSUE", "MANUAL")
+    ]
 
     assert missing_pr.status_code == 400
     assert lowercase.status_code == 400
+    assert all(response.status_code == 400 for response in candidate_only_types)

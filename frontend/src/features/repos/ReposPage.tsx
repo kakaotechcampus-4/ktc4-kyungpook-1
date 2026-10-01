@@ -40,9 +40,11 @@ export function ReposPage() {
   const selected = (repos.data ?? []).find((r) => r.id === selectedId) ?? null;
   const detail = useRepo(disclose ? selectedId ?? undefined : undefined);
 
-  const select = (id: string) => { setSp({ select: id }); track('repo_selected', { repoId: id }); };
-  const openDisclose = () => selectedId && setSp({ select: selectedId, disclose: '1' });
-  const closeDisclose = () => selectedId && setSp({ select: selectedId });
+  // setSp({...}) 는 쿼리스트링 전체를 교체한다 — filter 처럼 URL 에만 남아 있던 값이 select/disclose 조작 한 번에 사라져,
+  // 그 상태에서 새로고침하면 필터가 조용히 '전체'로 되돌아간다. 기존 파라미터를 남기고 필요한 키만 바꾼다.
+  const select = (id: string) => { setSp((current) => { current.set('select', id); return current; }); track('repo_selected', { repoId: id }); };
+  const openDisclose = () => selectedId && setSp((current) => { current.set('select', selectedId); current.set('disclose', '1'); return current; });
+  const closeDisclose = () => selectedId && setSp((current) => { current.set('select', selectedId); current.delete('disclose'); return current; });
   const begin = async () => {
     if (!selected) return;
     try {

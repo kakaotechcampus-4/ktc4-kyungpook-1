@@ -1,0 +1,56 @@
+{
+  "case": "A가 선택한 후보의 commit diff만 제한된 크기로 조회한다",
+  "required_headers": [
+    "X-GitHub-Token"
+  ],
+  "spring_to_ai": {
+    "request": {
+      "user_repository_id": 123,
+      "repository": {
+        "github_repo_id": 456789,
+        "owner_login": "grow22",
+        "name": "gitory",
+        "default_branch": "develop"
+      },
+      "commit_shas": ["abc1234567890"],
+      "github_pr_number": 17
+    }
+  },
+  "ai_to_spring": {
+    "data": {
+      "user_repository_id": 123,
+      "github_pr_number": 17,
+      "commits": [
+        {
+          "sha": "abc1234567890",
+          "message": "feat: 세션 인덱스 추가 (#42)",
+          "author_login": "grow22",
+          "authored_at": "2026-09-20T09:00:00Z",
+          "html_url": "https://github.com/grow22/gitory/commit/abc1234567890",
+          "additions": 12,
+          "deletions": 3,
+          "files": [
+            {
+              "path": "backend/session.sql",
+              "status": "MODIFIED",
+              "additions": 10,
+              "deletions": 3,
+              "patch": "@@ -1,3 +1,4 @@\n+CREATE INDEX idx_session_user ON session(user_id);",
+              "patch_truncated": false
+            },
+            {
+              "path": "docs/index.png",
+              "status": "ADDED",
+              "additions": 0,
+              "deletions": 0,
+              "patch": null,
+              "patch_truncated": false
+            }
+          ]
+        }
+      ],
+      "partial": false,
+      "partial_reason": null
+    }
+  }
+}

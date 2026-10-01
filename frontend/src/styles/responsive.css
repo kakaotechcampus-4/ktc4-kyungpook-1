@@ -212,7 +212,7 @@ body { overflow-x: hidden; }
     backdrop-filter: blur(16px);
   }
   .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 10.5px; font-weight: 600; }
-  .mobile-nav a[aria-current="page"] { background: var(--bg-subtle); color: var(--text-primary); }
+  .mobile-nav a[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
   .main { --main-px: 16px; --main-pb: 24px; gap: 16px; padding: 20px var(--main-px) var(--main-pb); }
   .main--footer { padding-bottom: 0; }
   .note { flex-direction: column; gap: 6px; }

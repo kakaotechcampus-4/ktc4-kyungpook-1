@@ -4,7 +4,7 @@
 .brand-logo > .brand-logo__dark { display: none; }
 :root[data-theme="dark"] .brand-logo > .brand-logo__light { display: none; }
 :root[data-theme="dark"] .brand-logo > .brand-logo__dark { display: block; }
-.hl { text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.hl { color: var(--text-accent); text-decoration-color: var(--accent-decoration); text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .chip:disabled { opacity: .5; cursor: wait; }
 .scope-code { display: inline-block; padding: 5px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-paper); color: var(--text-secondary); font-size: 11px; line-height: 16px; }
 .repo-row__status { display: inline-flex; gap: 6px; flex-wrap: wrap; }

@@ -1,5 +1,7 @@
 # ktc4-team-05
 
+2026-10-01 라이트·다크 말차 색감과 공통 테마 대비 기준은 [팔레트 문서](frontend/docs/MATCHA_THEME.md)에 정리했습니다.
+
 2026-10-01 제품 UX·선택 테두리·다크 로고와 PR 리뷰 반영은 [프론트 작업 문서](frontend/docs/2026-10-01-UX_PLAN.md)를 참고하세요.
 
 모바일·PC 화면 배치와 가로 화면 모달 검증은 [반응형 배치 점검](frontend/docs/RESPONSIVE_LAYOUT_AUDIT.md)에 정리했습니다.

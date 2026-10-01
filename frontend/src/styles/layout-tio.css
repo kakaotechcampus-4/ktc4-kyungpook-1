@@ -1,19 +1,18 @@
 /*
  * 레퍼런스(tiokorea.com) 에서 가져온 건 "레이아웃 언어" 만이다 — 접히는 레일 · 중앙 프롬프트 · 소스 카드 · 좌 캔버스/우 패널 · 스텝 레일 위저드.
- * 색은 가져오지 않는다. 브랜드는 무채색이다. 색이 보이면 반드시 신호다 (앰버 = ⚑ · 브릭 = 실패).
- * 강조는 전부 잉크(--bg-ink-solid / --text-primary) 와 면(--bg-subtle / --bg-selected) 의 대비로만 낸다.
+ * 색은 의미 토큰을 사용한다. 말차 강조색과 앰버(주의)·브릭(실패)를 구분한다.
  */
 :root { --radius-lg: 16px; --radius-xl: 20px; --shadow-card: 0 10px 30px rgba(0, 0, 0, .05); }
 .card { box-shadow: var(--shadow-card); }
 .card--paper { box-shadow: none; }
 .btn { border-radius: 10px; }
-.btn--outline { color: var(--text-strong); border-color: var(--border-default); }
+.btn--outline { color: var(--text-strong); border-color: var(--border-strong); }
 .btn--outline:hover:not(:disabled) { background: var(--bg-subtle); }
 .chip, .chip--option { border-radius: 999px; }
 .pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px; background: var(--bg-surface); border: 1px solid var(--border-default); font-size: 13px; font-weight: 600; color: var(--text-strong); box-shadow: 0 2px 8px rgba(0, 0, 0, .04); transition: border-color .12s, transform .12s; }
 .pill:hover { border-color: var(--border-strong); transform: translateY(-1px); }
 .pill--on { background: var(--bg-ink-solid); color: var(--text-on-ink); border-color: var(--bg-ink-solid); }
-.pill--on .c-3 { color: var(--ink-400); }
+.pill--on .c-3 { color: var(--text-on-ink); }
 .modal { border-radius: 20px; }
 .iconbox { border-radius: 12px; }
 .hl { color: var(--text-primary); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px; text-decoration-color: var(--border-strong); }
@@ -27,8 +26,8 @@
 .sidebar__toggle:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .menu-item { padding: 9px 12px; border-radius: 10px; font-weight: 500; color: var(--text-strong); gap: 10px; }
 .menu-item svg { color: var(--text-secondary); }
-.menu-item[aria-current="page"] { background: var(--bg-ink-solid); color: var(--text-on-ink); font-weight: 600; }
-.menu-item[aria-current="page"] svg { color: var(--ink-400); }
+.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); font-weight: 600; }
+.menu-item[aria-current="page"] svg { color: currentColor; }
 .menu-group__title { padding: 10px 12px 6px; font-size: 11px; }
 .sidebar__recent { padding: 12px 12px 0; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border-default); margin-top: 6px; }
 .sidebar__recent-title { font-size: 11px; color: var(--text-tertiary); padding: 0 0 6px; }
@@ -41,7 +40,7 @@
 .sidebar__gear { margin-left: auto; color: var(--text-tertiary); width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; }
 .sidebar__gear:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .sidebar__status { display: flex; align-items: center; gap: 8px; margin: 4px 4px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-default); font-size: 12.5px; font-weight: 600; color: var(--text-strong); }
-.sidebar__status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-900); }
+.sidebar__status i { width: 7px; height: 7px; border-radius: 50%; background: var(--bg-ink-solid); }
 .shell--rail .brand .brand-logo--wordmark, .shell--rail .menu-group__title, .shell--rail .menu-item span, .shell--rail .sidebar__recent, .shell--rail .sidebar__profile > div, .shell--rail .sidebar__gear, .shell--rail .sidebar__status { display: none; }
 .shell--rail .menu-item { justify-content: center; padding: 10px; }
 .shell--rail .sidebar__top { justify-content: center; }
@@ -92,7 +91,7 @@
 .list-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .list-head h1 { font-size: 20px; line-height: 28px; font-weight: 700; letter-spacing: -.01em; }
 .list-head .right { display: flex; gap: 8px; align-items: center; }
-.list-search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-default); background: var(--bg-surface); width: 220px; }
+.list-search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--bg-surface); width: 220px; }
 .list-search input { border: 0; outline: 0; background: none; width: 100%; font-size: 13px; }
 .illus { width: 84px; height: 84px; border-radius: 16px; background: var(--bg-surface); border: 1px solid var(--border-default); display: grid; place-items: center; color: var(--text-tertiary); position: relative; }
 .illus::after { content: '+'; position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; font-weight: 700; }

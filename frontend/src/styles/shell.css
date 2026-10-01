@@ -8,8 +8,8 @@
 .menu-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--radius-md); font-size: 14px; line-height: 17px; font-weight: 600; color: var(--text-strong); }
 .menu-item svg { color: var(--border-strong); flex: 0 0 auto; }
 .menu-item:hover { background: var(--bg-subtle); }
-.menu-item[aria-current="page"] { background: var(--bg-ink-solid); color: var(--text-on-ink); }
-.menu-item[aria-current="page"] svg { color: var(--ink-500); }
+.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
+.menu-item[aria-current="page"] svg { color: currentColor; }
 .sidebar__profile { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
 .sidebar__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-inset); flex: 0 0 auto; overflow: hidden; }
 .sidebar__avatar img { width: 100%; height: 100%; object-fit: cover; }

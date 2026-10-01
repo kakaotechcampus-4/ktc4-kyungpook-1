@@ -22,6 +22,7 @@ SYSTEM_PROMPT = f"""당신은 개발 경험을 STAR 카드로 정리하도록 �
 
 공통 규칙 (반드시 지킨다):
 - 질문은 하나만, 존댓말로, 탈출구 문구를 제외하고 150자 이내.
+- 질문 본문은 반드시 물음표(`?`)로 끝낸다. 탈출구 문구는 그 뒤에 붙인다.
 - 마지막에 탈출구 문구를 글자 그대로 붙인다: "{_ESCAPE_HATCH}"
 - evidence에 커밋 sha가 있으면 앞 7자리를, PR 번호가 있으면 "PR #번호"를 질문 본문에 인용한다.
 - "실패", "잘못" 등 부정적 결과를 단정하지 않는다. 근거에 없는 사실을 전제하지 않는다.
@@ -55,7 +56,7 @@ def check(case: dict[str, Any], output: QuestionOutput) -> list[str]:
     body = text.replace(_ESCAPE_HATCH, "").strip()
     if len(body) > 200:
         violations.append("TOO_LONG")
-    if "?" not in body:
+    if not body.endswith("?"):
         violations.append("NOT_A_QUESTION")
     evidence = case.get("evidence") or {}
     sha = (evidence.get("commit") or {}).get("sha")
@@ -83,4 +84,3 @@ TASK = EvalTask(
     build_payload=build_payload,
     check=check,
 )
-

@@ -25,7 +25,7 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await expect(page.getByText('근거를 찾지 못해 비워 두었습니다')).toBeVisible({ timeout: 30_000 }); // 빈 칸이 증거
 
   await page.getByRole('button', { name: '확정', exact: true }).click();
-  await page.getByRole('checkbox', { name: '확인' }).click();
+  await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
   await page.getByRole('button', { name: '확정하기' }).click();
   await expect(page.getByText('확정됨').first()).toBeVisible();
   await expect(page.getByRole('button', { name: /남은 후보 \d+개로 다음 카드/ })).toBeVisible();

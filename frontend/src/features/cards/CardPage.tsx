@@ -15,6 +15,7 @@ import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { canConfirmCard } from '@/lib/cardRules';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -161,7 +162,7 @@ export function CardPage() {
   const partial = card.generation?.partial;
   const emptyR = !card.version.result && !!card.droppedFields.find((d) => d.field === 'R' && d.reason === 'NO_EVIDENCE');
   const e6 = emptyR && !partial && card.candidate;
-  const canConfirm = !!card.version.situation && !!card.version.action;
+  const canConfirm = canConfirmCard(card);
   const questions = card.droppedFields.map((d) => ({ f: d.field, why: '근거를 못 찾은 칸', q: askText(d.field), caution: false }))
     .concat(card.lowConfidenceFields.map((l) => ({ f: l.field, why: '⚑ 확인 필요', q: askText(l.field), caution: true })));
   const regenerate = (f: StarField) => regen.mutate(f, { onSuccess: () => { track('field_regenerated', { cardId, field: f }); toast(`${starFieldShort[f]} 칸을 다시 생성했습니다 — 근거가 없으면 그대로 비어 있습니다`); } });

@@ -1,17 +1,16 @@
-import { useState } from 'react';
 import type { Card, ConfirmResult } from '@/api/schemas';
-import { Badge, Button, Check, Note } from '@/components/ui';
+import { Badge, Button, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { useConfirm, useRestoreVersion, useVersions } from '@/api/queries';
 import { versionSourceLabel } from '@/lib/labels';
 import { ymdhm } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
+import { canConfirmCard } from '@/lib/cardRules';
 
-/** D8 확정 확인 〔게이트 2〕 — 이 흐름에서 유일하게 되돌릴 수 없는 동작. */
+/** D8 확정 확인 — 내용을 검토한 뒤 명시적인 버튼으로 확정한다. */
 export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onClose: () => void; onConfirmed: (r: ConfirmResult) => void }) {
   const confirm = useConfirm(card.id);
-  const [ack, setAck] = useState(false);
   const commits = card.evidence.filter((e) => e.type === 'COMMIT').length;
   const dropped = card.droppedFields.length;
   const edited = card.version.source !== 'AI_DRAFT';
@@ -20,15 +19,18 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
     return t && card.maskRules.some((r) => r.from && t.includes(r.from));
   }) : [];
   const go = async () => {
-    const r = await confirm.mutateAsync({ edited, maskedFields });
-    track('card_confirmed', { cardId: card.id, edited, dropped, masked: maskedFields.length, remaining: r.remainingCandidates });
-    toast('카드를 확정했습니다', { tone: 'success' });
-    onConfirmed(r);
+    if (!canConfirmCard(card) || confirm.isPending) return;
+    try {
+      const r = await confirm.mutateAsync({ edited, maskedFields });
+      track('card_confirmed', { cardId: card.id, edited, dropped, masked: maskedFields.length, remaining: r.remainingCandidates });
+      toast('카드를 확정했습니다', { tone: 'success' });
+      onConfirmed(r);
+    } catch { /* Keep the dialog open; mutation errors remain visible below. */ }
   };
   return (
     <Modal title="이 카드를 확정할까요?" width={620} onClose={onClose}
       footer={{ strong: '현재 내용으로 확정합니다',
-        actions: <><Button variant="outline" onClick={onClose}>취소</Button><Button disabled={!ack} loading={confirm.isPending} onClick={go}>확정하기</Button></> }}>
+        actions: <><Button variant="outline" onClick={onClose}>취소</Button><Button disabled={!canConfirmCard(card)} loading={confirm.isPending} onClick={go}>확정하기</Button></> }}>
       <div className="card card--paper stack" style={{ gap: 10, padding: '16px 18px', borderRadius: 10 }}>
         <span className="w-600" style={{ fontSize: 16 }}>{card.title}</span>
         {[['근거 커밋', `${commits}건`], ['빈 칸', dropped ? `${dropped}칸 — 빈 채로 확정됩니다` : '없음'], ['마스킹', maskedFields.length ? `${maskedFields.length}칸` : '없음'], ['버전', `v${card.version.versionNo} → 확정 시 v${card.version.versionNo + 1}`]].map(([k, v]) => (
@@ -36,10 +38,6 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
         ))}
       </div>
       {dropped > 0 && <Note strong="빈 칸은 빈 채로 확정됩니다" tone="inset" />}
-      <label className="row" style={{ gap: 12, padding: '14px 16px', borderRadius: 10, background: 'var(--field-low-bg)', cursor: 'pointer' }}>
-        <Check checked={ack} onChange={setAck} label="확인" />
-        <span className="w-500" style={{ fontSize: 12.5, lineHeight: '19px', color: 'var(--field-low-text)' }}>면접에서 내 말로 설명할 수 있습니다</span>
-      </label>
       {confirm.isError && <Note strong="확정하지 못했습니다" tone="danger">{(confirm.error as Error).message}</Note>}
     </Modal>
   );

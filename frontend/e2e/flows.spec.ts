@@ -124,7 +124,7 @@ test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_S
   await page.getByLabel('상황 (Situation)').fill('3인 팀에서 배포 담당이 없었다');
   await page.getByLabel('행동 (Action)').fill('GitHub Actions 로 배포 파이프라인을 직접 구성했다');
   await page.getByRole('button', { name: '확정', exact: true }).click();
-  await page.getByRole('checkbox', { name: '확인' }).click();
+  await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
   await page.getByRole('button', { name: '확정하기' }).click();
   await expect(page.getByText('확정됨').first()).toBeVisible();
   await expect(page.getByText('내가 말한 것').first()).toBeVisible();

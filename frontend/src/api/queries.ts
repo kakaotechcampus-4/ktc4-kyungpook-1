@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@ta
 import { endpoints } from './endpoints';
 import { keys } from './keys';
 import { AuthError } from './client';
-import { isTerminal, type Card, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus } from './schemas';
+import { isTerminal, type Card, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard } from './schemas';
 import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
@@ -131,7 +131,12 @@ export function usePatchCandidate(repoId: string) {
   return useMutation({
     mutationFn: (v: { id: string; status?: CandidateStatus; excludedShas?: string[] }) =>
       endpoints.patchCandidate(v.id, { status: v.status, excludedShas: v.excludedShas }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.candidates(repoId) }),
+    onSuccess: (updated) => {
+      qc.setQueryData<CandidateBoard>(keys.candidates(repoId), (board) => board ? {
+        ...board, candidates: board.candidates.map((candidate) => candidate.id === updated.id ? updated : candidate),
+      } : board);
+      void qc.invalidateQueries({ queryKey: keys.candidates(repoId) });
+    },
   });
 }
 

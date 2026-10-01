@@ -10,8 +10,14 @@ export const cardKindLabel: Record<CardKind, string> = { TECH: '기술 카드', 
 export const cardKindShort: Record<CardKind, string> = { TECH: '기술', QUALITATIVE: '정성' };
 export const cardStatusLabel: Record<CardStatus, string> = { DRAFT: '작성 중', CONFIRMED: '확정됨' };
 export const versionSourceLabel: Record<VersionSource, string> = {
-  AI_DRAFT: 'AI 초안', USER_EDIT: '내가 수정', INTERVIEW: '되묻기 반영', MASK: '마스킹', RESTORE: '되돌림',
+  AI_DRAFT: '첫 초안', USER_EDIT: '직접 수정', INTERVIEW: '답변 반영', MASK: '정보 가림', RESTORE: '이전 내용 복원',
 };
+export const cardContentLabel: Record<VersionSource, string> = {
+  AI_DRAFT: 'GitHub 기록에서 정리한 초안', USER_EDIT: '직접 작성한 내용', INTERVIEW: '답변을 반영한 내용',
+  MASK: '공유할 정보를 가린 내용', RESTORE: '이전 내용에서 이어서 작성',
+};
+export const interviewActionLabel = '답변하기';
+export const historyActionLabel = '작성 이력';
 export const evidenceTypeLabel: Record<EvidenceType, string> = { COMMIT: '근거', USER_STATED: '내가 말한 것', USER_SELECTED: '보기에서 고른 것' };
 export const starFieldName: Record<StarField, string> = { S: '상황 (Situation)', T: '과제 (Task)', A: '행동 (Action)', R: '결과 (Result)' };
 export const starFieldShort: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };

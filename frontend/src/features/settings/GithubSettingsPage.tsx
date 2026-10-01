@@ -46,7 +46,7 @@ export function GithubSettingsPage() {
         <div className="row"><span className="w-700" style={{ fontSize: 14.5 }}>허용한 권한</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
         {SCOPES.map((s) => (
           <div key={s.scope} className={`settings-row settings-permission ${s.granted ? '' : 'settings-row--muted'}`}>
-            <span className="settings-permission__scope"><Badge kind={s.granted ? 'PR' : 'NEUTRAL'}>{s.scope}</Badge></span>
+            <span className="settings-permission__scope"><code className="scope-code">{s.scope}</code></span>
             <div className="stack settings-permission__copy" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13, color: s.granted ? undefined : 'var(--text-tertiary)' }}>{s.title}</span><span className="t-12 c-2">{s.desc}</span></div>
             <span className="settings-permission__state"><Badge kind="NEUTRAL">{s.granted ? '허용' : '미요청'}</Badge></span>
           </div>

@@ -125,7 +125,7 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
           {r.recommended && !r.lastAnalyzedAt && <Badge kind="PR">추천</Badge>}
           {low && <Badge kind="CAUTION">내 기여 {pct(r.contribution.ratio)}</Badge>}
           {r.prCount === 0 && <Badge kind="NEUTRAL">PR 0건</Badge>}
-          {r.lastAnalyzedAt && <Badge kind="NEUTRAL">정리함 · 카드 {r.cardCount}</Badge>}
+          {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}건</Badge></span>}
         </div>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></span>

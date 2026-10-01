@@ -31,7 +31,7 @@ export function InterviewPage() {
   const guard = useUnsavedChanges(!!text || answer.isPending);
   const [folded, setFolded] = useState(true); // 모바일에서는 미리보기를 접고 질문부터 보여준다
   const autoAsked = useRef(false);
-  useDocumentTitle(q.data ? `되묻기 · ${q.data.title}` : '되묻기');
+  useDocumentTitle(q.data ? `답변 작성 · ${q.data.title}` : '답변 작성');
 
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
   const field: StarField | null = parsedField.success ? parsedField.data : null;
@@ -58,7 +58,7 @@ export function InterviewPage() {
     const source: EvidenceType = picked === text ? 'USER_SELECTED' : 'USER_STATED';
     await answer.mutateAsync({ turnNo: open.turnNo, text, source });
     track('interview_answered', { cardId, field: open.field, source, turnNo: open.turnNo });
-    toast(`${starFieldShort[open.field]} 칸에 저장했습니다 — 다듬지 않고 그대로`, { tone: 'success' });
+    toast(`${starFieldShort[open.field]} 답변을 저장했어요`, { tone: 'success' });
     setText(''); setPicked(null);
     return true;
     } catch { return false; }
@@ -68,14 +68,14 @@ export function InterviewPage() {
   if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   if (!card || turns.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={300} /></main>;
   const total = answered.length + (open ? 1 : 0);
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}` }, { label: '되묻기' }];
+  const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}` }, { label: '답변 작성' }];
   const weakFields = STAR_FIELDS.filter((f) => !card.version[fieldKey[f]] || card.lowConfidenceFields.some((l) => l.field === f));
   const anyFilled = STAR_FIELDS.some((f) => card.version[fieldKey[f]]);
 
   return (
     <main className="main main--tight">
       <Breadcrumb items={crumbs} />
-      <PageTitle right={`질문 ${total} / ${maxTurns} · 답할 때마다 저장돼요`}>되묻기</PageTitle>
+      <PageTitle right={`질문 ${total} / ${maxTurns}`}>답변 작성</PageTitle>
 
       <div className="iv">
         {/* 좌측 캔버스 — 답할수록 채워지는 카드 */}

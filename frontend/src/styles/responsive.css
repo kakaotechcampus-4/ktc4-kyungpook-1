@@ -123,8 +123,8 @@ body { overflow-x: hidden; }
 /* 헤더 버튼은 로고와 키를 맞춘다 — 둘이 어긋나면 상단 줄이 흔들려 보인다 */
 .landing__top-action { height: 34px; min-height: 34px; padding: 0 15px; font-size: 12.5px; line-height: 32px; }
 .landing__hero {
-  grid-template-columns: minmax(0, 1fr) minmax(420px, .9fr);
-  gap: clamp(48px, 7vw, 108px);
+  grid-template-columns: minmax(280px, .75fr) minmax(0, 1.45fr);
+  gap: 40px;
   align-items: center;
   margin: 0;
 }
@@ -177,7 +177,7 @@ body { overflow-x: hidden; }
   .menu-item { justify-content: center; min-height: 44px; padding: 10px; }
   .sidebar__profile { justify-content: center; margin-top: auto; padding: 8px 0; }
   .main { --main-px: 24px; padding-top: 24px; }
-  .landing__hero { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .landing__hero { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   .landing__h1 { font-size: 38px; }
   .landing__lead { font-size: 14px; line-height: 24px; }
 }
@@ -253,8 +253,6 @@ body { overflow-x: hidden; }
   .found,
   .stat-grid { grid-template-columns: minmax(0, 1fr); }
   .experience-item.gcard { min-height: 0; padding: 22px 18px; }
-  .experience-item:nth-child(even) { border-left: 0; }
-  .experience-item:nth-child(n + 2) { border-top: 1px solid var(--border-default); }
   .experience-item .stardots--labeled { max-width: none; }
   .status-tabs { gap: 20px; overflow-x: auto; }
   .settings-page { gap: 28px; }

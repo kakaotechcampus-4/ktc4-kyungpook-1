@@ -11,6 +11,7 @@ import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { useActionGate } from '@/lib/useActionGate';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
 const loadSel = (repoId: string): Set<string> => {
@@ -32,6 +33,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const board = useCandidates(repoId);
   const patch = usePatchCandidate(repoId);
   const create = useCreateCards(repoId);
+  const actions = useActionGate();
   const nav = useNavigate();
   const [q, setQ] = useState('');
   const [hideUsed, setHideUsed] = useState(false);
@@ -48,34 +50,43 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const excluded = cands.filter((c) => c.status === 'EXCLUDED');
   const selectable = new Set(cands.filter((c) => c.status === 'NEW').map((c) => c.id));
   const chosen = [...selected].filter((id) => selectable.has(id));
-  const busy = patch.isPending || create.isPending;
+  const busy = actions.running || patch.isPending || create.isPending;
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
   const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }, { label: '후보 보드' }];
 
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const exclude = (c: Candidate) => {
-    if (busy) return;
-    patch.mutate({ id: c.id, status: 'EXCLUDED' }, { onSuccess: () => {
+    void actions.run(async () => {
+      await patch.mutateAsync({ id: c.id, status: 'EXCLUDED' });
       setSelected((s) => { const n = new Set(s); n.delete(c.id); return n; });
       track('candidate_excluded', { candidateId: c.id, type: c.type });
       toast(`"${c.title}" 을 제외했습니다`, { action: { label: '실행 취소', onClick: () => {
-        patch.mutate({ id: c.id, status: 'NEW' }, { onSuccess: () => track('candidate_restored', { candidateId: c.id }) });
+        if (actions.isLocked()) {
+          toast('진행 중인 작업이 끝난 뒤 실행 취소를 눌러 주세요.');
+          return false;
+        }
+        void actions.run(async () => {
+          await patch.mutateAsync({ id: c.id, status: 'NEW' });
+          track('candidate_restored', { candidateId: c.id });
+        });
       } } });
-    } });
+    });
   };
   const restoreExcluded = async () => {
-    if (busy) return;
-    try { for (const c of excluded) await patch.mutateAsync({ id: c.id, status: 'NEW' }); }
-    catch { /* Global error notification; un-restored rows remain excluded. */ }
+    await actions.run(async () => {
+      const results = await Promise.allSettled(excluded.map((c) => patch.mutateAsync({ id: c.id, status: 'NEW' })));
+      const failures = results.filter((result) => result.status === 'rejected').length;
+      if (failures) toast(`${results.length - failures}개 복원 · ${failures}개는 다시 시도해 주세요`, { tone: 'danger' });
+    });
   };
   const makeCards = async () => {
-    if (busy || chosen.length === 0) return;
-    try {
+    if (chosen.length === 0) return;
+    await actions.run(async () => {
     const { cardIds, jobId } = await create.mutateAsync(chosen);
     track('candidates_confirmed', { repoId, count: chosen.length, jobId });
     setSelected(new Set());
     nav(`/cards/${cardIds[0]}`);
-    } catch { /* Keep selection and show the shared mutation error. */ }
+    });
   };
 
   if (board.isPending) return <main className="main"><Breadcrumb items={crumbs} /><Skeleton h={40} w={240} /><Skeleton h={300} /></main>;
@@ -128,10 +139,10 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <Button variant="text" size="sm" onClick={() => setHideUsed((v) => !v)} aria-pressed={hideUsed}>{hideUsed ? '사용됨 보이기' : '사용됨 숨기기'}</Button>
         <Button disabled={busy} onClick={() => setSp((current) => { current.set('add', '1'); return current; })}>+ 직접 추가</Button>
       </Toolbar>
-      <SectionHead label="후보 선택" right={
+      <SectionHead label="후보 선택" count={visible.length} right={
         <span className="row candidate-board__actions">
           {excluded.length > 0 && <Button variant="text" size="sm" disabled={busy} onClick={() => void restoreExcluded()}>제외 {excluded.length}개 복원</Button>}
-          <Button variant="text" size="sm" disabled={busy || !visible.some((c) => c.status === 'NEW' && !c.weak)} onClick={() => setSelected(new Set(visible.filter((c) => c.status === 'NEW' && !c.weak).map((c) => c.id)))} title="카드감 낮음을 뺀 나머지를 전부 선택">추천 후보 선택</Button>
+          <Button variant="text" size="sm" disabled={busy || !visible.some((c) => c.status === 'NEW' && !c.weak)} onClick={() => setSelected((current) => new Set([...current, ...visible.filter((c) => c.status === 'NEW' && !c.weak).map((c) => c.id)]))} title="검색 결과의 추천 후보를 기존 선택에 추가">추천 후보 선택</Button>
           {chosen.length > 0 && <Button variant="text" size="sm" disabled={busy} onClick={() => setSelected(new Set())}>선택 해제</Button>}
         </span>
       } />
@@ -140,7 +151,10 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         {visible.map((c) => (
           <CandidateRow key={c.id} c={c} disabled={busy} selected={selected.has(c.id)} onToggle={() => toggle(c.id)} onExclude={() => exclude(c)}
             expanded={expanded === c.id} onExpand={() => setExpanded(expanded === c.id ? null : c.id)}
-            onCommitToggle={(shas) => { patch.mutate({ id: c.id, excludedShas: shas }); track('cluster_commit_excluded', { candidateId: c.id, excluded: shas.length }); }} />
+            onCommitToggle={(shas) => { void actions.run(async () => {
+              await patch.mutateAsync({ id: c.id, excludedShas: shas });
+              track('cluster_commit_excluded', { candidateId: c.id, excluded: shas.length });
+            }); }} />
         ))}
         {visible.length === 0 && <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="검색 조건에 맞는 후보가 없어요" tone="inset" /><Button variant="outline" onClick={() => { setQ(''); setHideUsed(false); }}>검색 초기화</Button></div>}
       </div>
@@ -223,15 +237,16 @@ function ClusterCommits({ c, disabled, onChange }: { c: Candidate; disabled: boo
 function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial: boolean; onClose: () => void }) {
   const repo = useRepo(repoId);
   const start = useStartAnalysis();
+  const actions = useActionGate();
   const nav = useNavigate();
   const r = repo.data!;
   const again = async () => {
-    if (partial || start.isPending) return;
-    try {
+    if (partial) return;
+    await actions.run(async () => {
     const { jobId } = await start.mutateAsync(repoId);
     track('analysis_started', { repoId, jobId, again: true });
     nav(`/repos/${repoId}/run?job=${jobId}`);
-    } catch { /* Keep the dialog open; shared mutation error is shown. */ }
+    });
   };
   return (
     <Modal title="이 보드의 분석 기준" width={720} onClose={onClose}
@@ -246,19 +261,20 @@ function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial:
 /** C5 — GitHub 에 없는 작업 덩어리. 커밋을 붙이면 COMMIT, 안 붙이면 USER_STATED 근거. */
 function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () => void }) {
   const add = useAddCandidate(repoId);
+  const actions = useActionGate();
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [cq, setCq] = useState('');
   const [shas, setShas] = useState<{ sha: string; message: string }[]>([]);
   const search = useRepoCommits(repoId, cq);
   const submit = async () => {
-    if (add.isPending || !title.trim() || !summary.trim()) return;
-    try {
+    if (!title.trim() || !summary.trim()) return;
+    await actions.run(async () => {
     const c = await add.mutateAsync({ title: title.trim(), summary: summary.trim(), shas: shas.map((s) => s.sha) });
     track('candidate_added_manually', { repoId, withCommits: shas.length });
     toast(`"${c.title}" 을 후보에 추가했습니다`, { tone: 'success' });
     onClose();
-    } catch { /* Preserve the entered candidate on failure. */ }
+    });
   };
   return (
     <Modal title="후보 직접 추가" onClose={() => { if (!add.isPending) onClose(); }}

@@ -1,0 +1,43 @@
+/* Product-specific presentation. Breakpoints and shell geometry remain in responsive.css. */
+.brand-logo { display: block; width: max-content; }
+.brand-logo > img { display: block; height: 100%; width: auto; max-width: none; }
+.brand-logo > .brand-logo__dark { display: none; }
+:root[data-theme="dark"] .brand-logo > .brand-logo__light { display: none; }
+:root[data-theme="dark"] .brand-logo > .brand-logo__dark { display: block; }
+.hl { text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.chip:disabled { opacity: .5; cursor: wait; }
+.scope-code { display: inline-block; padding: 5px 8px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--bg-paper); color: var(--text-secondary); font-size: 11px; line-height: 16px; }
+.repo-row__status { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.landing-notice { margin-top: -10px; color: var(--text-secondary); font-size: 12px; line-height: 20px; }
+.landing-notice--error { color: var(--state-failed-text); }
+.landing-example { display: grid; grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1.12fr); align-items: stretch; gap: 12px; min-width: 0; }
+.github-snapshot, .landing-card { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-surface); }
+.example-heading { display: flex; align-items: center; gap: 8px; padding: 16px; border-bottom: 1px solid var(--border-default); font-size: 12px; }
+.example-heading > span { margin-left: auto; color: var(--text-tertiary); font-size: 11px; }
+.github-snapshot__repo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 16px 8px; font-size: 12px; }
+.github-snapshot__repo > span:last-child { display: flex; gap: 5px; align-items: center; color: var(--text-tertiary); font-size: 11px; }
+.github-snapshot__title { padding: 0 16px 16px; font-weight: 600; font-size: 13px; }
+.github-snapshot__title > span { color: var(--text-tertiary); font-weight: 400; }
+.github-snapshot__commits { margin: 0 12px; border: 1px solid var(--border-default); border-radius: 10px; overflow: hidden; }
+.github-snapshot__commits li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px 8px; padding: 12px; }
+.github-snapshot__commits li + li { border-top: 1px solid var(--border-default); }
+.github-snapshot__commits li > svg { color: var(--text-tertiary); }
+.github-snapshot__commits li > div { display: grid; gap: 3px; min-width: 0; }
+.github-snapshot__commits strong { font-size: 12px; font-weight: 600; }
+.github-snapshot__commits div > span { font-size: 10px; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.github-snapshot__commits code { grid-column: 2; font-size: 10px; color: var(--text-secondary); }
+.github-snapshot__diff { display: grid; gap: 4px; margin: 12px; padding: 10px 12px; background: var(--bg-subtle); border-radius: 8px; color: var(--text-secondary); font-size: 11px; }
+.landing-example__connector { color: var(--text-tertiary); align-self: center; }
+.landing-card { display: flex; flex-direction: column; box-shadow: 0 16px 36px rgba(0,0,0,.06); }
+.landing-card h2 { padding: 16px; font-size: 16px; line-height: 24px; }
+.landing-card__fields { flex: 1; display: flex; flex-direction: column; padding-inline: 16px; }
+.landing-card__field { display: flex; align-items: start; gap: 10px; padding: 12px 0; border-top: 1px solid var(--border-default); }
+.landing-card__field > div { min-width: 0; }
+.landing-card__field strong { font-size: 11px; color: var(--text-secondary); }
+.landing-card__field p { margin-top: 4px; font-size: 13px; line-height: 21px; }
+.landing-card__field--empty p { color: var(--text-tertiary); }
+.landing-card__evidence { display: block; margin-top: auto; padding: 12px 16px; color: var(--text-secondary); font-size: 11px; border-top: 1px solid var(--border-default); background: var(--bg-paper); }
+@media (max-width: 600px) {
+  .landing-example { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .landing-example__connector { justify-self: center; transform: rotate(90deg); }
+}

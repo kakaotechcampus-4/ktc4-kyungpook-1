@@ -51,7 +51,7 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
     if (!await flush()) return;
     void qc.invalidateQueries({ queryKey: keys.card(card.id), exact: true });
     guard.allowNavigation();
-    if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('저장했어요 — AI 초안은 그대로 남아 있어요', { tone: 'success' }); }
+    if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('변경한 내용을 저장했어요', { tone: 'success' }); }
     onDone();
   };
 

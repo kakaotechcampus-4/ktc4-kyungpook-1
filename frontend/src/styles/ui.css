@@ -41,7 +41,7 @@
 .check { width: 18px; height: 18px; border-radius: var(--radius-xs); border: 1px solid var(--border-strong); background: var(--bg-surface); display: inline-grid; place-items: center; flex: 0 0 auto; color: var(--text-on-ink); font-size: 11px; font-weight: 700; }
 .check[aria-checked="true"] { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }
 .radio { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--bg-surface); flex: 0 0 auto; }
-.radio[aria-checked="true"] { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); box-shadow: inset 0 0 0 3px var(--bg-surface); }
+.radio--checked { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); box-shadow: inset 0 0 0 3px var(--bg-surface); }
 
 /* ───────── 카드 · 노트 · 빈 상태 · 구분선 ───────── */
 .card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }

@@ -10,7 +10,7 @@ import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { jobRetryState, useJobRetry } from '@/lib/useJobRetry';
+import { jobRetryState, useJobRetry, requiresRetryRefresh } from '@/lib/useJobRetry';
 
 /** B3 분석 진행 · B4 수집 실패 · B5 부분 결과(SUCCEEDED + partial) */
 export function AnalyzePage() {
@@ -109,6 +109,7 @@ export function AnalyzePage() {
             <span className="c-2" style={{ fontSize: 13.5, lineHeight: '21px' }}>{readNote(j)}</span>
           </div>
         </div>
+        {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
         <div className="card stack" style={{ gap: 10, padding: '18px 20px' }}>
           <span className="w-700" style={{ fontSize: 14 }}>이렇게 해 보시겠어요</span>
           {[
@@ -132,6 +133,7 @@ export function AnalyzePage() {
       <main className="main main--tight">
         <Breadcrumb items={[...crumbs, { label: '후보 보드' }]} />
         <PageTitle>읽은 데까지 정리했어요</PageTitle>
+        {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
         <div className="card row" style={{ gap: 16, padding: '18px 20px', background: 'var(--state-partial-bg)', border: 0 }}>
           <Badge kind="NEUTRAL">부분 결과</Badge>
           <div className="stack grow" style={{ gap: 5 }}>
@@ -197,6 +199,10 @@ export function AnalyzePage() {
 }
 
 /** total 을 모르면(null) 분모를 지어내지 않는다 — "82개 읽음"으로만 쓴다. */
+function RetryTimeNotice({ refresh, pending }: { refresh: () => Promise<unknown>; pending: boolean }) {
+  return <div className="query-failure" role="alert"><p>대기 시간을 확인하지 못했어요. 작업 상태를 다시 불러와 주세요.</p>
+    <Button variant="outline" loading={pending} onClick={() => void refresh()}>작업 상태 새로고침</Button></div>;
+}
 function stepDetail(done: number, total: number | null, unit: string, state: string) {
   if (state === 'SKIPPED') return '읽을 게 없어 건너뛰었어요';
   if (state === 'QUEUED') return '대기 중';

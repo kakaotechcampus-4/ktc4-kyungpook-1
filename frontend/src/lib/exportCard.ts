@@ -17,7 +17,7 @@ export function cardToMarkdown(card: Card, mask: (t: string) => string): string 
     }
     lines.push('');
   }
-  lines.push('---', '근거 없는 문장은 이 카드에 없습니다. Gitory 로 정리함.');
+  lines.push('---', 'Gitory에서 정리한 경험');
   return lines.join('\n');
 }
 

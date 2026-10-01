@@ -4,6 +4,7 @@ import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings } from
 import { useCards, useMe } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 
 const MENU = [
   { group: '커리어 관리', items: [
@@ -19,9 +20,9 @@ const MENU = [
 
 /** 워드마크 — 사각 G 마크 + itory. 원본 PNG(투명 배경). 다크 서페이스 위에서는 invert. */
 export const Wordmark = ({ height = 26, className }: { height?: number; className?: string }) => (
-  <img src="/gitory-wordmark.png" alt="Gitory" height={height} className={className} style={{ height, width: 'auto', display: 'block' }} draggable={false} />
+  <BrandLogo height={height} className={className} />
 );
-const Mark = () => <img src="/gitory-mark.png" alt="Gitory" width={32} height={32} style={{ borderRadius: 8 }} draggable={false} />;
+const Mark = () => <BrandLogo height={32} mark />;
 
 const RAIL_KEY = 'gitory.rail';
 const MOBILE_MENU = [

@@ -127,7 +127,7 @@ export function NewCardPage() {
       </div>
 
       <StickyFooter
-        strong={cardId ? '자동 저장 중' : '제목부터 저장해 주세요'}>
+        strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장됩니다' : '제목부터 저장해 주세요'}>
         <Link to="/" className="btn btn--text">나가기</Link>
         <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
         <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave(true)}>확정</Button>

@@ -27,7 +27,7 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
   };
   return (
     <Modal title="이 카드를 확정할까요?" width={620} onClose={onClose}
-      footer={{ strong: '확정은 되돌릴 수 없습니다',
+      footer={{ strong: '현재 내용으로 확정합니다',
         actions: <><Button variant="outline" onClick={onClose}>취소</Button><Button disabled={!ack} loading={confirm.isPending} onClick={go}>확정하기</Button></> }}>
       <div className="card card--paper stack" style={{ gap: 10, padding: '16px 18px', borderRadius: 10 }}>
         <span className="w-600" style={{ fontSize: 16 }}>{card.title}</span>
@@ -50,7 +50,7 @@ export function VersionsDialog({ card, onClose }: { card: Card; onClose: () => v
   const versions = useVersions(card.id);
   const restore = useRestoreVersion(card.id);
   return (
-    <Modal title="버전 히스토리" onClose={onClose}
+    <Modal title="작성 이력" onClose={onClose}
       footer={{ strong: '되돌리면 새 버전이 생깁니다', actions: <Button variant="outline" onClick={onClose}>닫기</Button> }}>
       <div className="stack" style={{ gap: 10 }}>
         {(versions.data ?? []).map((v) => (
@@ -58,7 +58,6 @@ export function VersionsDialog({ card, onClose }: { card: Card; onClose: () => v
             <span className="w-800" style={{ fontSize: 14, width: 34 }}>v{v.versionNo}</span>
             <div className="stack grow" style={{ gap: 4 }}>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                <Badge kind={v.source === 'AI_DRAFT' ? 'PR' : 'NEUTRAL'}>{v.source}</Badge>
                 <span className="w-600" style={{ fontSize: 13 }}>{versionSourceLabel[v.source]}</span>
                 <span className="t-12 c-3">{ymdhm(v.createdAt)}</span>
               </div>

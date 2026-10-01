@@ -37,7 +37,7 @@ export const Check = ({ checked, onChange, label, disabled }: { checked: boolean
     {checked ? '✓' : ''}
   </button>
 );
-export const Radio = ({ checked }: { checked: boolean }) => <span className="radio" role="radio" aria-checked={checked} />;
+export const Radio = ({ checked }: { checked: boolean }) => <span className={cx('radio', checked && 'radio--checked')} aria-hidden />;
 
 // ───────── 아이콘 박스 · Note · Empty · Divider ─────────
 export const IconBox = ({ icon: Icon, size = 32, tone = 'subtle' }: { icon: LucideIcon; size?: number; tone?: 'subtle' | 'ink' | 'paper' }) => (
@@ -111,7 +111,7 @@ export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string
     <div className="evidence evidence--user">
       <MessageSquareQuote size={13} className="evidence__icon" aria-hidden />
       <span className="evidence__label">{evidenceTypeLabel[e.type]}</span>
-      <span className="grow" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{turnText ?? (e.turnNo ? `되묻기 ${e.turnNo}턴 · 다듬지 않고 그대로 저장됨` : '내가 쓴 문장입니다')}</span>
+      <span className="grow" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{turnText ?? (e.turnNo ? `${e.turnNo}번째 답변` : '직접 작성한 내용')}</span>
     </div>
   );
 }

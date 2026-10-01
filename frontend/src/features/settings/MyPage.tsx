@@ -36,7 +36,7 @@ export function MyPage() {
         </div>
       )}
       <section className="settings-section stack">
-        <div className="row" style={{ marginBottom: 6 }}><span className="w-700" style={{ fontSize: 14.5 }}>우리가 가지고 있는 것</span><span className="right t-12 c-3">전화번호·학번·실명은 받지 않아요</span></div>
+        <div className="row" style={{ marginBottom: 6 }}><span className="w-700" style={{ fontSize: 14.5 }}>저장된 정보</span></div>
         {COLLECTED.map(([name, why, keep]) => (
           <div key={name} className="kv settings-data-row">
             <div className="settings-data-copy"><span className="w-500">{name}</span><span className="t-12 c-2">{why}</span></div>
@@ -45,7 +45,7 @@ export function MyPage() {
         ))}
       </section>
       <section className="settings-section stat-grid">
-        {[['확정한 카드', s ? `${s.confirmedCards}장` : '-'], ['정리한 레포', s ? `${s.analyzedRepos}개` : '-'], ['되묻기 턴', s ? `${s.interviewTurns}회` : '-'], ['남은 후보', s ? `${s.remainingCandidates}개` : '-']].map(([k, v]) => (
+        {[['확정한 카드', s ? `${s.confirmedCards}장` : '-'], ['정리한 레포', s ? `${s.analyzedRepos}개` : '-'], ['작성한 답변', s ? `${s.interviewTurns}개` : '-'], ['남은 후보', s ? `${s.remainingCandidates}개` : '-']].map(([k, v]) => (
           <div key={k} className="stat"><span className="t-12 c-2">{k}</span><b>{v}</b></div>
         ))}
       </section>

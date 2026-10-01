@@ -45,9 +45,13 @@ test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채
   await page.goto('/cards/card_01/interview?field=T');
   await page.getByText('질문 근거 보기', { exact: true }).click();
   await expect(page.getByText('코드에서 찾은 것')).toBeVisible();
+  const selectedAnswer = (await page.locator('.chip--option').first().textContent())!;
   await page.locator('.chip--option').first().click();
   await page.getByRole('button', { name: '다음으로' }).click();
-  await expect(page.locator('.toast')).toContainText('다듬지 않고 그대로');
+  await expect(page.locator('.toast')).toContainText('답변을 저장했어요');
+  const savedCard = await page.evaluate(async () => (await (await fetch('/api/cards/card_01')).json()).data);
+  expect(savedCard.version.task).toBe(selectedAnswer);
+  expect(savedCard.evidence.some((entry: { field: string; type: string }) => entry.field === 'T' && entry.type === 'USER_SELECTED')).toBe(true);
   // 내부 enum 이 화면에 새지 않는다
   await expect(page.getByText(/보기에서 고른 것 · 고치지 않고 그대로 넣었어요/)).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
@@ -67,9 +71,11 @@ test('직접 수정 — 쓰는 동안 서버에 저장되고 AI 초안은 히스
   await expect(page.getByText(typed)).toBeVisible();
   await page.goto('/cards/card_01?mode=edit');
   await page.getByRole('button', { name: '저장하고 닫기' }).click();
-  await page.getByRole('button', { name: '버전 히스토리' }).first().click();
-  await expect(page.getByText('AI_DRAFT').first()).toBeVisible();
-  await expect(page.getByText('USER_EDIT').first()).toBeVisible();
+  await page.getByRole('button', { name: '작성 이력' }).first().click();
+  await expect(page.getByText('첫 초안', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('직접 수정', { exact: true }).first()).toBeVisible();
+  const versions = await page.evaluate(async () => (await (await fetch('/api/cards/card_01/versions')).json()).data);
+  expect(versions.map((version: { source: string }) => version.source)).toEqual(expect.arrayContaining(['AI_DRAFT', 'USER_EDIT']));
 });
 
 test('새로고침으로 job 이 빠져도 서버의 진행 중 작업으로 되돌아온다', async ({ page }) => {

@@ -45,7 +45,6 @@
 }
 
 /* 워드마크는 검은 PNG — 다크 테마(opt-in)에서는 반전 */
-:root[data-theme="dark"] .brand img, :root[data-theme="dark"] .landing > img { filter: invert(1); }
 
 .shell__main { min-width: 0; display: flex; flex-direction: column; }
 .shell__main > .main { flex: 1; }

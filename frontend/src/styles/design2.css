@@ -26,12 +26,9 @@
 .user-avatar__fallback { display: grid; place-items: center; color: var(--text-secondary); font-size: 42%; font-weight: 800; text-transform: uppercase; }
 
 /* 카드 그리드 · 이어서 하기 · 히어로 */
-.experience-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: 20px; }
-.experience-item.gcard { min-height: 210px; gap: 18px; padding: 24px; border: 0; border-radius: 0; box-shadow: none; background: transparent; transform: none; }
-.experience-item:nth-child(even) { border-left: 1px solid var(--border-default); }
-.experience-item:nth-child(n + 3) { border-top: 1px solid var(--border-default); }
+.experience-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.experience-item.gcard { min-height: 220px; gap: 18px; padding: 24px; border: 1px solid var(--border-default); border-radius: 18px; box-shadow: none; background: var(--bg-surface); transform: none; }
 /* 개수가 홀수면 마지막 칸이 반만 차서 오른쪽이 빈 채로 남는다 — 한 줄을 다 쓰게 한다 */
-.experience-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
 /* hover 에서 border-color 를 건드리지 않는다. 여기 테두리는 카드 테두리가 아니라 칸 사이 격자선이라
    투명하게 만들면 마우스를 올린 칸 둘레의 선이 통째로 사라진다 (칸이 따로 놀던 시절의 잔재였다). */
 .experience-item:hover, .experience-item:focus-visible { background: var(--bg-canvas); box-shadow: none; transform: none; }
@@ -61,11 +58,17 @@
  */
 .record-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-surface); }
 .record-list > .card { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.record-list > .card { position: relative; }
+.record-list > .card:first-child { border-top-left-radius: 17px; border-top-right-radius: 17px; }
+.record-list > .card:last-child { border-bottom-left-radius: 17px; border-bottom-right-radius: 17px; }
+.record-list > .card::before { content: ''; position: absolute; inset: 0; border: 2px solid transparent; border-radius: inherit; pointer-events: none; }
 .record-list > .card + .card { border-top: 1px solid var(--border-default); }
 .record-list > .repo-row { padding: 18px 20px; }
 .record-list > .cand { padding: 20px; }
 .record-list > .card:hover { background: var(--bg-canvas); box-shadow: none; }
-.record-list > .card--selected { border: 1px solid var(--border-selected); background: var(--bg-selected); box-shadow: none; }
+.record-list > .card--selected, .record-list > .card--selected:hover { background: var(--bg-selected); }
+.record-list > .card--selected::before { border-color: var(--border-selected); }
+.record-list > .card:focus-visible { outline-offset: -4px; }
 .resume { display: flex; flex-direction: column; gap: 8px; }
 .resume__item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-default); transition: border-color .12s, transform .12s; }
 .resume__item:hover { border-color: var(--border-strong); transform: translateX(2px); }

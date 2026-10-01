@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Job } from '@/api/schemas';
-import { jobRetryState, useJobRetry } from '@/lib/useJobRetry';
+import { jobRetryState, useJobRetry, requiresRetryRefresh } from '@/lib/useJobRetry';
 
 const now = Date.parse('2026-09-26T00:00:00Z');
 const job: Job = {
@@ -13,6 +13,12 @@ const job: Job = {
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
 describe('server-controlled Job retry', () => {
+  it('requires state refresh for an invalid retry deadline instead of inventing permission', () => {
+    const invalid = { ...job, finishedAt: 'not-a-date' };
+    expect(requiresRetryRefresh(invalid)).toBe(true);
+    expect(jobRetryState(invalid, now).canRetry).toBe(false);
+    expect(requiresRetryRefresh(job)).toBe(false);
+  });
   it.each([false, null])('does not infer permission from retryable=%s', (retryable) => {
     expect(jobRetryState({ ...job, errorCode: 'INTERNAL_ERROR', retryable }, now).canRetry).toBe(false);
   });

@@ -42,7 +42,7 @@
 .sidebar__gear:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .sidebar__status { display: flex; align-items: center; gap: 8px; margin: 4px 4px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-default); font-size: 12.5px; font-weight: 600; color: var(--text-strong); }
 .sidebar__status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-900); }
-.shell--rail .brand img, .shell--rail .menu-group__title, .shell--rail .menu-item span, .shell--rail .sidebar__recent, .shell--rail .sidebar__profile > div, .shell--rail .sidebar__gear, .shell--rail .sidebar__status { display: none; }
+.shell--rail .brand .brand-logo--wordmark, .shell--rail .menu-group__title, .shell--rail .menu-item span, .shell--rail .sidebar__recent, .shell--rail .sidebar__profile > div, .shell--rail .sidebar__gear, .shell--rail .sidebar__status { display: none; }
 .shell--rail .menu-item { justify-content: center; padding: 10px; }
 .shell--rail .sidebar__top { justify-content: center; }
 .shell--rail .sidebar__profile { justify-content: center; padding: 8px 0; }

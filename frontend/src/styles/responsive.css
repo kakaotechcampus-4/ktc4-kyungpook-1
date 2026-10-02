@@ -77,9 +77,6 @@
   .collection-row__result { grid-column: 2; grid-row: 1; text-align: right; }
   .collection-row__metrics, .collection-row__date { grid-column: 1 / -1; }
 }
-@media (max-height: 500px) {
-  .modal__head, .modal__foot { padding: 12px 16px; }
-}
 .candidate-board__actions { gap: 8px; flex-wrap: wrap; }
 .candidate-board .toolbar.card { border: 0; box-shadow: none; background: transparent; padding: 0; }
 @media (max-width: 767px) {
@@ -333,4 +330,10 @@ body { overflow-x: hidden; }
 @media print {
   .mobile-brand, .mobile-nav { display: none !important; }
   .shell { padding-bottom: 0; }
+}
+
+/* 가로 폰(폭 ≤767px 이면서 낮은 화면)에서도 모달 압축이 먹도록 모바일 블록 뒤에 둔다 — 앞에 두면 같은 특이도의 모바일 padding 이 덮어쓴다. */
+@media (max-height: 500px) {
+  .modal__head { padding: 12px 16px; }
+  .modal__foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
 }

@@ -59,7 +59,9 @@
   --dim: rgba(23, 23, 23, .42);
 }
 
-/* Matcha Night — explicit opt-in; the user's selected theme remains persistent. */
+/* Matcha Night — explicit opt-in; the user's selected theme remains persistent.
+ * 화면에만 적용한다: 인쇄는 흰 종이라, 다크 토큰이 남으면 밝은 글씨가 흰 종이에 찍혀 읽을 수 없다(면접 직전 복습용 인쇄). */
+@media screen {
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg-paper: var(--matcha-night); --bg-canvas: var(--matcha-night); --bg-surface: var(--matcha-surface); --bg-subtle: var(--matcha-inset);
@@ -87,4 +89,5 @@
   --focus: 0 0 0 3px rgba(168, 196, 124, .3);
   --state-open-bg: var(--caution-900); --state-open-text: var(--caution-300);
   --dim: rgba(0, 0, 0, .6);
+}
 }

@@ -190,7 +190,8 @@ on('POST', '/cards/:id/confirm', ({ params }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   const v = c.versions[c.versions.length - 1];
-  if (!v.situation && !v.action) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
+  // 계약: "S·A 없으면 422" — 클라이언트 규칙(canConfirmCard)과 같게 둘 다 있어야 한다. 하나만 있어도 통과하던 건 어긋남이었다.
+  if (!v.situation?.trim() || !v.action?.trim()) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
   c.status = 'CONFIRMED'; c.confirmedAt = now();
   pushVersion(c, c.versions.length === 1 ? 'AI_DRAFT' : v.source, {}); // 확정 시점 버전 고정
   const used = c.candidate ? [c.candidate.id] : [];

@@ -11,8 +11,9 @@
 .btn--sm { padding: 7px 12px; font-size: 12px; line-height: 16px; }
 .btn--lg { padding: 12px 22px; }
 .btn--xl { padding: 15px 28px; font-size: 14px; }
-.btn--loading { position: relative; color: transparent !important; }
-.btn--loading::after { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; color: var(--text-on-ink); animation: spin .7s linear infinite; }
+/* .btn:disabled 의 !important 색(0,2,0)이 .btn--loading(0,1,0)을 이기면 로딩 중에 회색 글씨가 그대로 보인다 — 같은 특이도로 올리고 뒤에 둔다. */
+.btn--loading, .btn--loading:disabled { position: relative; color: transparent !important; }
+.btn--loading::after { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; color: var(--text-secondary); animation: spin .7s linear infinite; } /* 로딩 중 버튼은 항상 disabled(회색 inset 배경)라 흰 스피너는 안 보인다 */
 .btn--outline.btn--loading::after, .btn--text.btn--loading::after { color: var(--text-secondary); }
 @keyframes spin { to { transform: rotate(360deg); } }
 

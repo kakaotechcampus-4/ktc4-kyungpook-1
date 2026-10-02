@@ -217,11 +217,12 @@ export function useConfirm(cardId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: { edited: boolean; maskedFields: StarField[] }) => endpoints.confirm(cardId, body),
-    onSuccess: (r) => {
-      void qc.invalidateQueries({ queryKey: keys.card(cardId) });
-      void qc.invalidateQueries({ queryKey: keys.cards });
+    onSuccess: async (r) => {
       void qc.invalidateQueries({ queryKey: keys.me });
       if (r.repoId) void qc.invalidateQueries({ queryKey: keys.candidates(r.repoId) });
+      // ['cards'] 접두라 이 카드의 상세 쿼리도 포함된다. 갱신이 끝나기 전에 mutation 이 끝나면 방금 확정한 카드가
+      // 잠깐 낡은 DRAFT 로 보이고 확정 버튼이 다시 살아 있어, 그 사이 한 번 더 눌러 두 번 확정될 수 있다.
+      await qc.invalidateQueries({ queryKey: keys.cards });
     },
   });
 }

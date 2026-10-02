@@ -90,7 +90,8 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   };
 
   if (board.isPending) return <main className="main"><Breadcrumb items={crumbs} /><Skeleton h={40} w={240} /><Skeleton h={300} /></main>;
-  if (board.isError) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">저장소 목록</Link></main>;
+  // 백그라운드 리페치만 실패했고 캐시에 보드가 있으면(방금 PATCH 응답을 합쳐 둔 상태) 보드를 그대로 보여준다.
+  if (board.isError && !board.data) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">저장소 목록</Link></main>;
   const b = board.data!;
 
   // C2 — 후보 0개: 에러가 아니라 판정. 판정 근거 3줄 + 다음 행동 3개.
@@ -249,9 +250,9 @@ function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial:
     });
   };
   return (
-    <Modal title="이 보드의 분석 기준" width={720} onClose={onClose}
+    <Modal title="이 보드의 분석 기준" width={720} onClose={() => { if (!start.isPending) onClose(); }}
       sub={r.lastAnalyzedAt ? `${ymdhm(r.lastAnalyzedAt)} 에 읽은 결과입니다.` : '아직 정리 기록이 없습니다.'}
-      footer={{ strong: partial ? '재시도 가능 여부는 작업 상태에서 확인하세요' : '후보의 추천 이유와 근거를 확인하세요', actions: <><Button variant="outline" onClick={onClose}>닫기</Button><Button onClick={again} disabled={partial} loading={start.isPending}>다시 정리하기</Button></> }}>
+      footer={{ strong: partial ? '재시도 가능 여부는 작업 상태에서 확인하세요' : '후보의 추천 이유와 근거를 확인하세요', actions: <><Button variant="outline" disabled={start.isPending} onClick={onClose}>닫기</Button><Button onClick={again} disabled={partial} loading={start.isPending}>다시 정리하기</Button></> }}>
       <PermissionGrid compact reads={r.disclosure.reads} skips={r.disclosure.skips} />
       <p className="t-12l c-2">추천 이유와 연결된 커밋을 확인한 후 카드로 만들 후보를 선택하세요.</p>
     </Modal>

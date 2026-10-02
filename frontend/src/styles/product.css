@@ -41,3 +41,8 @@
   .landing-example { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .landing-example__connector { justify-self: center; transform: rotate(90deg); }
 }
+
+/* 검색창은 input 의 outline 을 끄므로(특이도가 전역 :focus-visible 보다 높다) 감싼 쪽에 포커스 링을 둔다. */
+.list-search:focus-within, .toolbar__search:focus-within { outline: 2px solid var(--border-selected); outline-offset: 2px; }
+/* 토스트는 어두운 배경이라 전역 포커스 링 색이 거의 안 보인다. */
+.toast__action:focus-visible, .toast__close:focus-visible { outline: 2px solid var(--text-on-toast); outline-offset: 2px; }

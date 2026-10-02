@@ -15,7 +15,7 @@ import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { canConfirmCard } from '@/lib/cardRules';
+import { canConfirmCard, emptyStarFields } from '@/lib/cardRules';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -105,7 +105,7 @@ export function CardPage() {
             <span className="done-card__ok" aria-hidden>✓</span>
             <div className="stack grow" style={{ gap: 5 }}>
               <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 16 }}>{card.title}</span><Badge kind="CONFIRMED">확정됨</Badge></div>
-              <span className="t-12l c-2">근거 {card.evidence.length}건 · {card.droppedFields.length ? `비어 있는 항목 ${card.droppedFields.length}개` : '모든 항목 작성 완료'}</span>
+              <span className="t-12l c-2">근거 {card.evidence.length}건 · {emptyStarFields(card).length ? `비어 있는 항목 ${emptyStarFields(card).length}개` : '모든 항목 작성 완료'}</span>
             </div>
             <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
             {justConfirmed.repoId && justConfirmed.remainingCandidates > 0
@@ -197,7 +197,9 @@ export function CardPage() {
         </div>
         <aside className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <span className="w-700" style={{ fontSize: 13.5 }}>답변으로 보완하기</span>
-          {questions.length === 0 && <span className="t-12l c-3">추가로 작성할 항목이 없어요</span>}
+          {questions.length === 0 && (emptyStarFields(card).length === 0
+            ? <span className="t-12l c-3">추가로 작성할 항목이 없어요</span>
+            : <span className="t-12l c-3">비어 있는 칸: {emptyStarFields(card).join(' · ')} — 직접 수정에서 채울 수 있어요</span>)}
           {questions.map((qq) => (
             <div key={qq.f + qq.why} className={`qpanel ${qq.caution ? 'qpanel--caution' : ''}`}>
               <div className="row" style={{ gap: 8 }}><Badge kind={qq.caution ? 'CAUTION' : 'NEUTRAL'}>{qq.f} 칸</Badge><span className="t-12" style={{ color: qq.caution ? 'var(--field-low-text)' : 'var(--text-tertiary)' }}>{qq.why}</span></div>

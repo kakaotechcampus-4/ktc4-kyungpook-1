@@ -37,6 +37,7 @@ export function CardPage() {
     const jid = q.data?.generation?.jobId;
     if (jid) suppressJobToast(jid);
     if (jid && job.data && isTerminal(job.data.state)) { releaseJobToast(jid); track('draft_generated', { cardId, state: job.data.state }); }
+    return () => { if (jid) releaseJobToast(jid); }; // 화면을 떠나면 억제도 같이 풀어야 전역 알림이 계속 죽어있지 않는다
   }, [q.data?.generation?.jobId, job.data, cardId]);
 
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;

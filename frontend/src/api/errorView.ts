@@ -19,6 +19,9 @@ export function errorView(error: unknown): ErrorView {
     const messages: Record<string, string> = {
       CARD_CONFIRMED: '확정된 카드는 다시 열어야 수정할 수 있어요.',
       INTERVIEW_CAP: '질문 횟수를 모두 사용했어요. 남은 내용은 직접 수정해 주세요.',
+      NOT_CONFIRMABLE: '확정하려면 최소 S · A 가 필요해요.',
+      BAD_FIELD: '선택한 칸이 올바르지 않아요.',
+      NO_CANDIDATES: '후보를 하나 이상 선택해야 해요.',
     };
     return { title: '요청을 처리하지 못했어요', message: messages[error.code] ?? '입력 내용과 현재 상태를 확인해 주세요.', canRetry: false };
   }

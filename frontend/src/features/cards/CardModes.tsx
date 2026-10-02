@@ -36,8 +36,12 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
     baseRef.current = fromCard(card);
     setDraft(fromCard(card));
   }, [card.id]);
+  // 서버가 임시 저장을 한 번이라도 받았는지 — 렌더 시점 값(savedAt)이 아니라 ref 로 본다.
+  // cancel() 이 기다리는 flush() 가 바로 그 첫 저장을 보낼 수 있어서, 클로저에 잡힌 savedAt 은 항상 한 박자 늦다.
+  const serverTouchedRef = useRef(false);
   const save = useCallback(async (fields: DraftFields) => {
     const saved = await saveDraft.mutateAsync(fields);
+    serverTouchedRef.current = true;
     if (!mountedRef.current) return saved; // 화면을 떠난 뒤 도착한 저장 — 캐시에 반영하지 않는다
     await cacheSavedDraft(qc, saved);
     return saved;
@@ -45,6 +49,8 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const autosave = useDraftAutosave(toDraftFields(draft), save);
   const { failed, flush, saving } = autosave;
   const guard = useUnsavedChanges(autosave.dirty || saving);
+  // 취소가 flush()를 기다리는 동안 칸이 계속 열려 있으면, 그사이 타이핑한 내용이 되돌리기로 조용히 사라진다.
+  const [canceling, setCanceling] = useState(false);
 
   const changed = STAR_FIELDS.filter((f) => baseRef.current[f] !== draft[f]);
   const done = async () => {
@@ -53,6 +59,22 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
     guard.allowNavigation();
     if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('저장했어요 — AI 초안은 그대로 남아 있어요', { tone: 'success' }); }
     onDone();
+  };
+  // 자동저장이 이미 서버에 반영됐을 수 있다 — 로컬 상태만 되돌리면 취소해도 서버엔 고친 내용이 남는다.
+  const cancel = async () => {
+    setCanceling(true);
+    try {
+      await flush(); // 밀린 디바운스 타이머를 비우고, 아직 안 보낸 변경이 있으면 먼저 보낸다
+      setDraft(baseRef.current);
+      // 서버에 아무것도 안 나갔으면 원복할 것도 없다. 무조건 저장하면 잠긴 AI 초안(v1)에서 가짜 USER_EDIT 버전이 갈라진다.
+      if (serverTouchedRef.current) {
+        try { await saveDraft.mutateAsync(toDraftFields(baseRef.current)); } catch { /* 로컬은 이미 되돌렸다 — 서버 복구는 최선 노력 */ }
+      }
+      guard.allowNavigation();
+      onDone();
+    } finally {
+      if (mountedRef.current) setCanceling(false);
+    }
   };
 
   return (
@@ -69,9 +91,9 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
                   <span className="star__name">{starFieldName[f]}</span>
                   {dirty && <Badge kind="CAUTION">고친 칸</Badge>}
                   <span className="right t-12 c-3">{draft[f].length}자</span>
-                  {dirty && <button type="button" className="t-12 w-500 c-2" onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button>}
+                  {dirty && <button type="button" className="t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button>}
                 </div>
-                <Textarea className="input--lg" rows={3} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
+                <Textarea className="input--lg" rows={3} value={draft[f]} disabled={canceling} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
                   placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]} />
                 {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
                 {dirty && ev.some((e) => e.type === 'COMMIT') && (
@@ -86,7 +108,8 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
       <StickyFooter
         strong={changed.length ? `${changed.length}칸 고침` : '고친 곳 없음'}
         sub={failed ? '연결을 확인하고 다시 눌러 주세요' : '쓰는 동안 알아서 저장돼요'}>
-        <Button size="lg" loading={saving} onClick={done}>{failed ? '다시 저장하고 닫기' : '저장하고 닫기'}</Button>
+        <Button variant="text" disabled={saving || canceling} loading={canceling} onClick={() => void cancel()}>편집 취소</Button>
+        <Button size="lg" disabled={canceling} loading={saving} onClick={done}>{failed ? '다시 저장하고 닫기' : '저장하고 닫기'}</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={saving} flush={flush} />
     </>
@@ -96,10 +119,30 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
 /** D7 마스킹 — 원문은 DB 에 그대로. 표시·내보내기에만 적용. */
 export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const mask = useMask(card.id);
-  const [rules, setRules] = useState<{ from: string; to: string }[]>(card.maskRules.length ? card.maskRules : [{ from: '', to: '' }]);
+  // EditMode의 baseRef와 같은 이유 — card.maskRules 를 매 렌더 그대로 기준으로 삼으면, 순서만 다르게 돌아온
+  // 백그라운드 리페치에도 JSON.stringify 비교가 달라져 아무것도 안 고쳤는데 dirty 로 뜬다. 진입 시 한 번만 고정한다.
+  const initialRulesRef = useRef(card.maskRules.length ? card.maskRules : [{ from: '', to: '' }]);
+  const [rules, setRules] = useState<{ from: string; to: string }[]>(initialRulesRef.current);
+  const initialRules = initialRulesRef.current;
   const valid = rules.filter((r) => r.from.trim());
   const set = (i: number, k: 'from' | 'to', v: string) => setRules((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
   const hits = STAR_FIELDS.filter((f) => { const t = card.version[fieldKey[f]]; return t && applyMask(t, valid) !== t; });
+  // EditMode·InterviewPage 와 같은 이유 — 규칙을 쓰다가 그냥 나가면 아무 경고 없이 사라진다.
+  const dirty = JSON.stringify(rules) !== JSON.stringify(initialRules);
+  const guard = useUnsavedChanges(dirty && !mask.isPending);
+  const saveMask = async () => {
+    try {
+      await mask.mutateAsync(valid);
+      track('card_masked', { cardId: card.id, rules: valid.length });
+      return true;
+    } catch { return false; }
+  };
+  const apply = async () => {
+    if (!await saveMask()) return;
+    toast(valid.length ? `마스킹 규칙 ${valid.length}개를 저장했습니다` : '마스킹을 해제했습니다', { tone: 'success' });
+    guard.allowNavigation();
+    onDone();
+  };
   return (
     <>
       <div className="card stack" style={{ gap: 10, padding: '16px 20px' }}>
@@ -140,8 +183,9 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
       </div>
       <StickyFooter strong={hits.length ? `${hits.length}칸에 적용` : '적용되는 칸 없음'} sub="원문은 그대로 · 표시할 때만 가림">
         <Button variant="outline" onClick={onDone}>카드로 돌아가기</Button>
-        <Button loading={mask.isPending} onClick={async () => { await mask.mutateAsync(valid); track('card_masked', { cardId: card.id, rules: valid.length }); toast(valid.length ? `마스킹 규칙 ${valid.length}개를 저장했습니다` : '마스킹을 해제했습니다', { tone: 'success' }); onDone(); }}>마스킹 적용</Button>
+        <Button loading={mask.isPending} onClick={() => void apply()}>마스킹 적용</Button>
       </StickyFooter>
+      <UnsavedChangesDialog blocker={guard.blocker} saving={mask.isPending} flush={saveMask} />
     </>
   );
 }

@@ -28,7 +28,7 @@ export function InterviewPage() {
   const answer = useAnswerInterview(cardId);
   const [text, setText] = useState('');
   const [picked, setPicked] = useState<string | null>(null);
-  const guard = useUnsavedChanges(!!text || answer.isPending);
+  const guard = useUnsavedChanges(!!text.trim() || answer.isPending);
   const [folded, setFolded] = useState(true); // 모바일에서는 미리보기를 접고 질문부터 보여준다
   const autoAsked = useRef(false);
   useDocumentTitle(q.data ? `되묻기 · ${q.data.title}` : '되묻기');

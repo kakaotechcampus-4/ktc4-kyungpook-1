@@ -36,14 +36,18 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
     baseRef.current = fromCard(card);
     setDraft(fromCard(card));
   }, [card.id]);
+  // 서버가 임시 저장을 한 번이라도 받았는지 — 렌더 시점 값(savedAt)이 아니라 ref 로 본다.
+  // cancel() 이 기다리는 flush() 가 바로 그 첫 저장을 보낼 수 있어서, 클로저에 잡힌 savedAt 은 항상 한 박자 늦다.
+  const serverTouchedRef = useRef(false);
   const save = useCallback(async (fields: DraftFields) => {
     const saved = await saveDraft.mutateAsync(fields);
+    serverTouchedRef.current = true;
     if (!mountedRef.current) return saved; // 화면을 떠난 뒤 도착한 저장 — 캐시에 반영하지 않는다
     await cacheSavedDraft(qc, saved);
     return saved;
   }, [saveDraft, qc]);
   const autosave = useDraftAutosave(toDraftFields(draft), save);
-  const { failed, flush, saving, savedAt } = autosave;
+  const { failed, flush, saving } = autosave;
   const guard = useUnsavedChanges(autosave.dirty || saving);
   // 취소가 flush()를 기다리는 동안 칸이 계속 열려 있으면, 그사이 타이핑한 내용이 되돌리기로 조용히 사라진다.
   const [canceling, setCanceling] = useState(false);
@@ -62,7 +66,8 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
     try {
       await flush(); // 밀린 디바운스 타이머를 비우고, 아직 안 보낸 변경이 있으면 먼저 보낸다
       setDraft(baseRef.current);
-      if (savedAt) {
+      // 서버에 아무것도 안 나갔으면 원복할 것도 없다. 무조건 저장하면 잠긴 AI 초안(v1)에서 가짜 USER_EDIT 버전이 갈라진다.
+      if (serverTouchedRef.current) {
         try { await saveDraft.mutateAsync(toDraftFields(baseRef.current)); } catch { /* 로컬은 이미 되돌렸다 — 서버 복구는 최선 노력 */ }
       }
       guard.allowNavigation();

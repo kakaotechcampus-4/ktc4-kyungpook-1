@@ -123,4 +123,22 @@ describe('writing route save protection', () => {
     fireEvent.click(screen.getByRole('button', { name: '다시 저장하고 닫기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
   });
+
+  it('cancel clicked before the first autosave still restores the original on the server', async () => {
+    const done = vi.fn();
+    const save = vi.spyOn(endpoints, 'saveDraft').mockResolvedValue({ ...card.version, cardId: card.id, savedAt: card.version.createdAt });
+    mount(<EditMode card={card} onDone={done} />);
+    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Typed right before cancel' } });
+    fireEvent.click(screen.getByRole('button', { name: '편집 취소' })); // 디바운스 전 — cancel() 안의 flush() 가 곧 첫 저장이다
+    await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls.map(([, fields]) => fields.situation)).toEqual(['Typed right before cancel', card.version.situation ?? null]);
+  });
+  it('cancel without any edit never touches the server (no spurious version fork)', async () => {
+    const done = vi.fn();
+    const save = vi.spyOn(endpoints, 'saveDraft').mockResolvedValue({ ...card.version, cardId: card.id, savedAt: card.version.createdAt });
+    mount(<EditMode card={card} onDone={done} />);
+    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
+    expect(save).not.toHaveBeenCalled();
+  });
 });

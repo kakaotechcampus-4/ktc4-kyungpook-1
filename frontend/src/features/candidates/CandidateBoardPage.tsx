@@ -99,15 +99,15 @@ function CandidateBoard({ repoId }: { repoId: string }) {
     return (
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
-        <PageTitle>찾지 못했습니다</PageTitle>
+        <PageTitle>자동으로 찾은 경험이 없어요</PageTitle>
         <RepoContext name={name} note="후보 0개" />
         <div className="verdict">
           <div className="stack grow" style={{ gap: 8 }}>
-            <span className="w-600" style={{ fontSize: 15 }}>카드로 만들 덩어리가 없어요</span>
+            <span className="w-600" style={{ fontSize: 15 }}>파일을 보며 경험을 떠올려 보세요</span>
             <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>· {r}</span>)}</div>
           </div>
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
-            <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 기준으로 회상 도와주기</Link>
+            <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>
             <div className="row" style={{ gap: 8 }}>
               <Link to="/cards/new" className="btn btn--outline btn--sm">직접 입력</Link>
               <Link to="/repos" className="btn btn--outline btn--sm">다른 저장소</Link>

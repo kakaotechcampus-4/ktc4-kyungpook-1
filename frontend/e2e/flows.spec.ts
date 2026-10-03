@@ -47,13 +47,13 @@ test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채
   await expect(page.getByText('코드에서 찾은 것')).toBeVisible();
   const selectedAnswer = (await page.locator('.chip--option').first().textContent())!;
   await page.locator('.chip--option').first().click();
-  await page.getByRole('button', { name: '다음으로' }).click();
+  await page.getByRole('button', { name: '답변 저장', exact: true }).click();
   await expect(page.locator('.toast')).toContainText('답변을 저장했어요');
   const savedCard = await page.evaluate(async () => (await (await fetch('/api/cards/card_01')).json()).data);
   expect(savedCard.version.task).toBe(selectedAnswer);
   expect(savedCard.evidence.some((entry: { field: string; type: string }) => entry.field === 'T' && entry.type === 'USER_SELECTED')).toBe(true);
   // 내부 enum 이 화면에 새지 않는다
-  await expect(page.getByText(/보기에서 고른 것 · 고치지 않고 그대로 넣었어요/)).toBeVisible();
+  await expect(page.getByText('선택한 답변 · 답변 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
   await page.getByRole('button', { name: '카드로 돌아가기' }).click();
   await expect(page.locator('#star-T').locator('..').locator('..')).not.toContainText('근거를 찾지 못해');

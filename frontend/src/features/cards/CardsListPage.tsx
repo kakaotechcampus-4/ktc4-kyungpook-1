@@ -20,12 +20,12 @@ export function CardsListPage() {
   const list = useMemo(() => (cards.data ?? [])
     .filter((c) => c.title.toLowerCase().includes(q.toLowerCase()) && (status === 'ALL' || c.status === status))
     .sort((a, b) => (sort === 'title' ? a.title.localeCompare(b.title) : b.updatedAt.localeCompare(a.updatedAt))), [cards.data, q, status, sort]);
-  const counts = { ALL: cards.data?.length ?? 0, DRAFT: cards.data?.filter((c) => c.status === 'DRAFT').length ?? 0, CONFIRMED: cards.data?.filter((c) => c.status === 'CONFIRMED').length ?? 0 };
+  const counts = { ALL: cards.data?.length, DRAFT: cards.data?.filter((c) => c.status === 'DRAFT').length, CONFIRMED: cards.data?.filter((c) => c.status === 'CONFIRMED').length };
 
   return (
     <main className="main cards-list">
       <div className="list-head">
-        <h1>경험 카드 <span className="c-3 t-14">{cards.data?.length ?? 0}</span></h1>
+        <h1>경험 카드 <span className="c-3 t-14">{counts.ALL ?? '—'}</span></h1>
         <div className="right">
           <label className="list-search"><span className="c-3">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="카드 검색" aria-label="카드 이름으로 검색" /></label>
           <label className="chip chip--select"><select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'title')} aria-label="정렬"><option value="recent">최신순</option><option value="title">이름순</option></select></label>
@@ -36,7 +36,7 @@ export function CardsListPage() {
       <div className="status-tabs" aria-label="카드 상태 필터">
         {(['ALL', 'DRAFT', 'CONFIRMED'] as const).map((s) => (
           <button key={s} type="button" className="status-tab" aria-pressed={status === s} onClick={() => setStatus(s)}>
-            {s === 'ALL' ? '전체' : cardStatusLabel[s]} <span className="c-3">{counts[s]}</span>
+            {s === 'ALL' ? '전체' : cardStatusLabel[s]} <span className="c-3">{counts[s] ?? '—'}</span>
           </button>
         ))}
       </div>

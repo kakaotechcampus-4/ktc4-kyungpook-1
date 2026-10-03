@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@ta
 import { endpoints } from './endpoints';
 import { keys } from './keys';
 import { AuthError } from './client';
-import { isTerminal, type Card, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard } from './schemas';
+import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard } from './schemas';
 import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
@@ -218,10 +218,15 @@ export function useConfirm(cardId: string) {
   return useMutation({
     mutationFn: (body: { edited: boolean; maskedFields: StarField[] }) => endpoints.confirm(cardId, body),
     onSuccess: async (r) => {
+      // The POST acknowledgement is authoritative even if the following GET fails.
+      await qc.cancelQueries({ queryKey: keys.card(cardId), exact: true });
+      qc.setQueryData<Card>(keys.card(cardId), (card) => card ? {
+        ...card, status: r.status, version: { ...card.version, versionNo: r.versionNo },
+      } : card);
+      qc.setQueryData<CardSummary[]>(keys.cards, (cards) => cards?.map((card) => card.id === cardId ? { ...card, status: r.status, versionNo: r.versionNo } : card));
       void qc.invalidateQueries({ queryKey: keys.me });
       if (r.repoId) void qc.invalidateQueries({ queryKey: keys.candidates(r.repoId) });
-      // ['cards'] 접두라 이 카드의 상세 쿼리도 포함된다. 갱신이 끝나기 전에 mutation 이 끝나면 방금 확정한 카드가
-      // 잠깐 낡은 DRAFT 로 보이고 확정 버튼이 다시 살아 있어, 그 사이 한 번 더 눌러 두 번 확정될 수 있다.
+      // Refresh the remaining metadata; the acknowledged status stays available on failure.
       await qc.invalidateQueries({ queryKey: keys.cards });
     },
   });

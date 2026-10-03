@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowUp, ChevronRight, FolderGit2, MessageSquareQuote, PenLine, Search } from 'lucide-react';
 import { useCards, useMe, useRepos } from '@/api/queries';
 import type { CardSummary, StarField } from '@/api/schemas';
-import { Badge, Button, EmptyState, IconBox, KindIcon, SectionHead, Skeleton, StarDots, Toolbar } from '@/components/ui';
+import { Badge, EmptyState, IconBox, KindIcon, PageTitle, SectionHead, Skeleton, StarDots, Toolbar } from '@/components/ui';
 import { cardKindShort, cardStatusLabel, candidateRefLabel } from '@/lib/labels';
 import { ym } from '@/lib/format';
 import { track } from '@/lib/track';
@@ -27,12 +27,14 @@ export function HomePage() {
   const list = useMemo(() => (cards.data ?? []).filter((c) => c.title.toLowerCase().includes(q.toLowerCase())), [cards.data, q]);
   const drafts = (cards.data ?? []).filter((c) => c.status === 'DRAFT').slice(0, 3);
   const empty = cards.isSuccess && cards.data.length === 0;
+  const returning = !!cards.data?.length;
   const sugg = useMemo(() => {
     const xs = repos.data ?? [];
     const t = rq.trim().toLowerCase();
+    if (returning && !t) return [];
     const pool = t ? xs.filter((r) => `${r.owner}/${r.name}`.toLowerCase().includes(t)) : xs.filter((r) => r.recommended && !r.lastAnalyzedAt);
     return pool.slice(0, 5);
-  }, [repos.data, rq]);
+  }, [repos.data, rq, returning]);
   const go = (id?: string) => {
     const target = id ?? sugg[hi]?.id;
     if (!target) { nav('/repos'); return; }
@@ -41,12 +43,31 @@ export function HomePage() {
   };
 
   return (
-    <main className={`main home-page ${drafts.length ? 'home-page--returning' : ''}`}>
+    <main className={`main home-page ${returning ? 'home-page--returning' : ''}`}>
       {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
+      {returning && <PageTitle>경험 정리</PageTitle>}
+      {drafts.length > 0 && (
+        <section className="stack home-resume" style={{ gap: 16 }}>
+          <SectionHead label="이어서 하기" count={drafts.length} />
+          <div className="resume">
+            {drafts.map((c) => (
+              <Link key={c.id} to={`/cards/${c.id}`} className="resume__item">
+                <KindIcon kind={c.kind} size={30} />
+                <div className="stack grow" style={{ gap: 3, minWidth: 0 }}>
+                  <span className="resume__title">{c.title}</span>
+                  <span className="t-12 c-2">{needsReviewOf(c).length ? '확인 필요' : filledOf(c).length < 4 ? `빈 칸 ${4 - filledOf(c).length}개` : '확정 대기'}</span>
+                </div>
+                <StarDots filled={filledOf(c)} low={needsReviewOf(c)} />
+                <ArrowRight size={16} className="c-3" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="prompt">
-        <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>
-        <p className="prompt__sub">레포를 고르면 경험 카드를 만들어 드려요.</p>
+        {returning ? <h2 className="prompt__h">새 경험 정리</h2> : <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>}
+        {!returning && <p className="prompt__sub">레포를 고르면 경험 카드를 만들어 드려요.</p>}
         <div className="prompt__card" role="search">
           <div className="prompt__row">
             <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); }} placeholder="레포 이름을 적어 보세요" aria-label="레포 검색"
@@ -79,39 +100,17 @@ export function HomePage() {
         </div>
       </section>
 
-      {drafts.length > 0 && (
-        <section className="stack home-resume" style={{ gap: 16 }}>
-          <SectionHead label="이어서 하기" count={drafts.length}  />
-          <div className="resume">
-            {drafts.map((c) => (
-              <Link key={c.id} to={`/cards/${c.id}`} className="resume__item">
-                <KindIcon kind={c.kind} size={30} />
-                <div className="stack grow" style={{ gap: 3, minWidth: 0 }}>
-                  <span className="resume__title">{c.title}</span>
-                  <span className="t-12 c-2">{needsReviewOf(c).length ? '확인 필요' : filledOf(c).length < 4 ? `빈 칸 ${4 - filledOf(c).length}개` : '확정 대기'}</span>
-                </div>
-                <StarDots filled={filledOf(c)} low={needsReviewOf(c)} />
-                <ArrowRight size={16} className="c-3" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
       {empty ? (
         <>
           <div className="sources">
-            <SourceRow icon={FolderGit2} title="레포에서 정리하기" time="약 40초" desc="커밋과 PR을 읽어서 카드 초안까지 만들어 드려요" onClick={() => nav('/repos')} />
-            <SourceRow icon={Search} title="파일 보면서 떠올리기" time="약 2분" desc="커밋 메시지가 부실해도, 만진 파일로 기억을 꺼내 드려요" onClick={() => nav('/repos?filter=nopr')} />
-            <SourceRow icon={MessageSquareQuote} title="질문에 답하면서 직접 쓰기" time="약 3분" desc="팀을 설득한 일처럼 코드에 안 남는 경험은 여기서 씁니다" onClick={() => nav('/cards/new')} />
+            <SourceRow icon={FolderGit2} title="레포에서 정리하기" desc="커밋과 PR에서 경험을 찾습니다" onClick={() => nav('/repos')} />
+            <SourceRow icon={Search} title="파일 보며 찾기" desc="수정한 파일을 보며 경험을 떠올립니다" onClick={() => nav('/repos?filter=nopr')} />
+            <SourceRow icon={MessageSquareQuote} title="직접 작성" desc="코드에 남지 않은 경험을 적습니다" onClick={() => nav('/cards/new')} />
           </div>
         </>
       ) : (
         <>
-          <Toolbar placeholder="카드 이름으로 검색" value={q} onChange={setQ}>
-            <Link to="/cards/new" className="btn btn--text"><PenLine size={14} /> 직접 작성</Link>
-            <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포 정리하기</Button>
-          </Toolbar>
+          <Toolbar placeholder="카드 이름으로 검색" value={q} onChange={setQ} />
           <SectionHead label={`${me.data?.login ?? '나'}의 경험 카드`} count={cards.data?.length} />
           {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
           <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
@@ -122,12 +121,12 @@ export function HomePage() {
   );
 }
 
-export function SourceRow({ icon, title, time, desc, onClick }: { icon: typeof FolderGit2; title: string; time: string; desc: string; onClick: () => void }) {
+export function SourceRow({ icon, title, desc, onClick }: { icon: typeof FolderGit2; title: string; desc: string; onClick: () => void }) {
   return (
     <button type="button" className="source" onClick={onClick}>
       <IconBox icon={icon} size={44} />
       <div className="stack" style={{ gap: 4, minWidth: 0 }}>
-        <span className="source__t">{title}<span className="source__time">{time}</span></span>
+        <span className="source__t">{title}</span>
         <span className="source__d">{desc}</span>
       </div>
       <ChevronRight size={18} className="source__chev" />
@@ -141,7 +140,7 @@ export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) =>
 export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
 
 export function CardGridItem({ c }: { c: CardSummary }) {
-  const src = c.sourceType ? candidateRefLabel(c.sourceType, c.sourceLabel) : c.sourceLabel === 'INTERVIEW' ? '되묻기' : '직접 작성';
+  const src = c.sourceType ? candidateRefLabel(c.sourceType, c.sourceLabel) : c.sourceLabel === 'INTERVIEW' ? '질문 답변' : '직접 작성';
   const empties = STAR_KEYS.filter((f) => c.star[f] === 'EMPTY').length;
   const sub = empties ? `빈 칸 ${empties}개` : c.userStatedCount && !c.evidenceCount ? `내가 쓴 문장 ${c.userStatedCount}개` : `근거 ${c.evidenceCount}개`;
   return (

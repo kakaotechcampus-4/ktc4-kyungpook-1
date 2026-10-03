@@ -73,7 +73,6 @@ export function AppShell() {
           <UserAvatar src={me.data?.avatarUrl} login={me.data?.login ?? '사용자'} size={36} />
           <div className="row grow" style={{ gap: 6, minWidth: 0 }}>
             <span className="sidebar__name">{me.data?.login ?? '…'}</span>
-            <span className="sidebar__plan">Free</span>
           </div>
           <Link to="/settings" className="sidebar__gear" aria-label="마이페이지"><Settings size={15} /></Link>
         </div>

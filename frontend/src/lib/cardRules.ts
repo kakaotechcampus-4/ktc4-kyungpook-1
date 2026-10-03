@@ -13,3 +13,9 @@ export const canConfirmCard = (card: Pick<Card, 'version'>) =>
  */
 export const emptyStarFields = (card: Pick<Card, 'version'>): StarField[] =>
   STAR_FIELDS.filter((f) => !filled(card.version[fieldKey[f]]));
+
+/** Current detail fields and server review flags decide the next action; confirmation rules stay separate. */
+export const starFieldsToReview = (card: Pick<Card, 'version' | 'lowConfidenceFields'>): StarField[] => {
+  const empty = new Set(emptyStarFields(card));
+  return STAR_FIELDS.filter((f) => empty.has(f) || card.lowConfidenceFields.some((flag) => flag.field === f));
+};

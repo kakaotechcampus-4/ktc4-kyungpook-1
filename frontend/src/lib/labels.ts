@@ -18,7 +18,7 @@ export const cardContentLabel: Record<VersionSource, string> = {
 };
 export const interviewActionLabel = '답변하기';
 export const historyActionLabel = '작성 이력';
-export const evidenceTypeLabel: Record<EvidenceType, string> = { COMMIT: '근거', USER_STATED: '내가 말한 것', USER_SELECTED: '보기에서 고른 것' };
+export const evidenceTypeLabel: Record<EvidenceType, string> = { COMMIT: '근거', USER_STATED: '직접 쓴 답변', USER_SELECTED: '선택한 답변' };
 export const starFieldName: Record<StarField, string> = { S: '상황 (Situation)', T: '과제 (Task)', A: '행동 (Action)', R: '결과 (Result)' };
 export const starFieldShort: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
 export const dropReasonLabel: Record<DropReason, string> = {
@@ -51,7 +51,7 @@ export const jobErrorHint: Record<JobErrorCode, string> = {
   GITHUB_UNAVAILABLE: '읽다가 연결이 끊겼어요. 읽은 데까지로는 후보를 만들지 않아요.',
   GITHUB_RATE_LIMITED: '한도가 풀리면 읽던 데서 이어서 읽어요.',
   DRAFT_TIMEOUT: '채운 칸까지 보여 드려요. 나머지는 칸 하나씩 다시 해 볼 수 있어요.',
-  EVIDENCE_MISSING: '없는 내용을 지어내지 않아요. 빈 칸은 직접 쓰거나 되묻기로 채우면 돼요.',
+  EVIDENCE_MISSING: '근거를 찾지 못한 칸은 직접 쓰거나 질문에 답해 채울 수 있어요.',
   INTERNAL_ERROR: '작업을 처리하지 못했어요. 다른 저장소를 고르거나 직접 작성해 주세요.',
 };
 

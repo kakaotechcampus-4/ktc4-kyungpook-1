@@ -22,7 +22,7 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
         <StarKey field={field} dropped={isDropped} />
         <span className="star__name" id={`star-${field}`}>{starFieldName[field]}</span>
         {low && !isDropped && <Badge kind="CAUTION">⚑ 확인 필요</Badge>}
-        {!isDropped && onEdit && <button type="button" className="right t-12 w-500 c-2" onClick={onEdit}>직접 수정</button>}
+        {!isDropped && onEdit && <Button variant="text" size="sm" className="star__edit right" aria-label={`${starFieldShort[field]} 수정`} onClick={onEdit}>수정</Button>}
       </div>
       {isDropped ? (
         <>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
-import { isTerminal, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
+import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StarKey, StickyFooter, Track } from '@/components/ui';
 import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, jobStepLabel, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
@@ -15,7 +15,7 @@ import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { canConfirmCard, emptyStarFields } from '@/lib/cardRules';
+import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -31,6 +31,8 @@ export function CardPage() {
   const regen = useRegenerateField(cardId);
   const reopen = useReopen(cardId);
   const [justConfirmed, setJustConfirmed] = useState<ConfirmResult | null>(null);
+  const parsedField = StarFieldSchema.safeParse(sp.get('field'));
+  const editField = parsedField.success ? parsedField.data : undefined;
   useDocumentTitle(q.data?.title);
 
   // 이 화면이 직접 보고 있는 Job 은 전역 알림에서 뺀다 · 끝나면 지표
@@ -109,7 +111,7 @@ export function CardPage() {
             </div>
             <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
             {justConfirmed.repoId && justConfirmed.remainingCandidates > 0
-              ? <Button onClick={() => nav(`/repos/${justConfirmed.repoId}/candidates`)}>남은 후보 {justConfirmed.remainingCandidates}개로 다음 카드</Button>
+              ? <Button onClick={() => nav(`/repos/${justConfirmed.repoId}/candidates`)}>남은 후보 {justConfirmed.remainingCandidates}개 보기</Button>
               : <Link to="/" className="btn btn--primary">홈으로</Link>}
           </div>
         )}
@@ -155,7 +157,7 @@ export function CardPage() {
   }
 
   // ── D6 · D7 모드
-  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode card={card} onDone={close} /></main>;
+  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode card={card} onDone={close} initialField={editField} /></main>;
   if (mode === 'mask') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '정보 가리기' }]} /><PageTitle>공유할 정보 가리기</PageTitle><MaskMode card={card} onDone={close} /></main>;
 
   // ── D2 초안 · D3 (E-7 부분) · D4 (E-6 소재 부족)
@@ -163,14 +165,14 @@ export function CardPage() {
   const emptyR = !card.version.result && !!card.droppedFields.find((d) => d.field === 'R' && d.reason === 'NO_EVIDENCE');
   const e6 = emptyR && !partial && card.candidate;
   const canConfirm = canConfirmCard(card);
-  const questions = card.droppedFields.map((d) => ({ f: d.field, why: '근거를 못 찾은 칸', q: askText(d.field), caution: false }))
-    .concat(card.lowConfidenceFields.map((l) => ({ f: l.field, why: '⚑ 확인 필요', q: askText(l.field), caution: true })));
+  const reviewFields = starFieldsToReview(card);
+  const questions = reviewFields.map((f) => ({ f, why: card.lowConfidenceFields.some((l) => l.field === f) ? '확인 필요' : '빈 칸', q: askText(f), caution: card.lowConfidenceFields.some((l) => l.field === f) }));
   const regenerate = (f: StarField) => regen.mutate(f, { onSuccess: () => { track('field_regenerated', { cardId, field: f }); toast(`${starFieldShort[f]} 칸을 다시 생성했습니다 — 근거가 없으면 그대로 비어 있습니다`); } });
 
   return (
     <main className="main main--footer main--tight">
       <Breadcrumb items={crumbs} />
-      <CardHeader card={card} right={card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="t-14 w-600 c-2">다음 카드 ›</Link>} />
+      <CardHeader card={card} right={card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="t-14 w-600 c-2">후보 목록 ›</Link>} />
       {partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">E-7</Badge>
@@ -193,7 +195,7 @@ export function CardPage() {
 
       <div className="two-col">
         <div className="stack" style={{ gap: 12 }}>
-          {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit' })} onRegenerate={() => regenerate(f)} />)}
+          {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={() => regenerate(f)} />)}
         </div>
         <aside className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <span className="w-700" style={{ fontSize: 13.5 }}>답변으로 보완하기</span>
@@ -219,10 +221,11 @@ export function CardPage() {
         </aside>
       </div>
 
-      <StickyFooter strong={canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'}>
-        {card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>}
+      <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(' · ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'}>
+        {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
         <Button variant="outline" onClick={() => setSp({ mode: 'edit' })}>직접 수정</Button>
-        <Button size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} style={{ paddingInline: 26 }} title={canConfirm ? undefined : 'S 와 A 가 채워져야 확정할 수 있습니다'}>확정</Button>
+        <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
+        {reviewFields.length > 0 && <Button size="lg" onClick={() => ask(reviewFields[0])}>답변으로 보완</Button>}
       </StickyFooter>
 
       {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={(r) => { setJustConfirmed(r); close(); }} />}
@@ -245,7 +248,7 @@ function CardHeader({ card, right, statusOverride, note }: { card: Card; right?:
 }
 
 function askText(f: StarField) {
-  return { S: '이 작업을 시작하게 된 계기가 무엇이었나요?', T: '그때 무엇을 해내야 하는 상황이었나요?', A: '가장 오래 붙잡았던 부분은 무엇이었나요?', R: '되돌린 뒤 어떤 방법으로 다시 붙였나요?' }[f];
+  return { S: '어떤 상황에서 시작한 작업인가요?', T: '내가 맡은 목표는 무엇이었나요?', A: '어떤 방법으로 해결했나요?', R: '작업 후 무엇이 달라졌나요?' }[f];
 }
 function interviewQuestions(card: Card): string[] {
   const qs: string[] = [];

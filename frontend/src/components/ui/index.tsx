@@ -1,4 +1,4 @@
-import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, ComponentPropsWithRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, Search, X, type LucideIcon } from 'lucide-react';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
@@ -71,7 +71,7 @@ export function Field({ label, hint, right, children }: { label: string; hint?: 
   );
 }
 export const Input = ({ className, ...p }: InputHTMLAttributes<HTMLInputElement>) => <input className={cx('input', className)} {...p} />;
-export const Textarea = ({ className, ...p }: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea className={cx('input', className)} {...p} />;
+export const Textarea = ({ className, ...p }: ComponentPropsWithRef<'textarea'>) => <textarea className={cx('input', className)} {...p} />;
 
 // ───────── Progress · StarKey · StarDots · Evidence ─────────
 export const Track = ({ value, label }: { value: number; label?: string }) => (

@@ -337,3 +337,34 @@ body { overflow-x: hidden; }
   .modal__head { padding: 12px 16px; }
   .modal__foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
 }
+
+/* Follow-up composition shares the existing spacing and control tokens. */
+.star__edit.btn { min-height: var(--control-touch-size); }
+.home-page--returning .home-resume { margin-top: 0; }
+.home-page--returning .prompt { align-items: flex-start; padding-block: var(--space-20); gap: var(--space-12); }
+.home-page--returning .prompt__h { font-size: 18px; line-height: 26px; }
+.home-page--returning .prompt__card { width: 100%; max-width: 620px; }
+.home-page--returning .prompt__chips { justify-content: flex-start; margin-top: 0; gap: var(--space-12); }
+.settings-storage summary { cursor: pointer; min-height: var(--control-touch-size); display: flex; align-items: center; gap: var(--space-8); font-size: 14px; font-weight: 600; }
+.settings-storage summary::after { content: '+'; margin-left: auto; }
+.settings-storage[open] summary::after { content: '−'; }
+.landing-example-wrap { min-width: 0; }
+.landing-card__preview, .landing-example__toggle.btn { display: none; }
+@media (max-width: 767px) {
+  .landing-example__toggle.btn { display: flex; margin: var(--space-8) auto 0; }
+  .landing-example:not(.landing-example--expanded) { gap: var(--space-8); }
+  .landing-example:not(.landing-example--expanded) .github-snapshot__repo,
+  .landing-example:not(.landing-example--expanded) .github-snapshot__title,
+  .landing-example:not(.landing-example--expanded) .github-snapshot__diff,
+  .landing-example:not(.landing-example--expanded) .github-snapshot__commits li:nth-child(n + 2),
+  .landing-example:not(.landing-example--expanded) .github-snapshot__commits li > div > span,
+  .landing-example:not(.landing-example--expanded) .landing-card__field[data-slot=T],
+  .landing-example:not(.landing-example--expanded) .landing-card__full { display: none; }
+  .landing-example:not(.landing-example--expanded) .landing-card__preview { display: inline; }
+  .landing-example:not(.landing-example--expanded) .github-snapshot__commits { margin-block: 0 var(--space-8); }
+  .landing-example:not(.landing-example--expanded) .github-snapshot__commits li { padding: var(--space-8); }
+  .landing-example:not(.landing-example--expanded) .landing-card__field { padding-block: var(--space-8); }
+  .landing-example:not(.landing-example--expanded) .landing-card__field p { font-size: 12px; line-height: 18px; margin-top: 2px; }
+  .landing-example:not(.landing-example--expanded) .landing-card h2 { margin-block: var(--space-12); }
+  .landing-example:not(.landing-example--expanded) .landing-card__evidence { padding-block: var(--space-8); }
+}

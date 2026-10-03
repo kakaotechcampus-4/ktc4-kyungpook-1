@@ -16,10 +16,10 @@ beforeEach(() => {
   result = ConfirmResult.parse(handle('POST', '/cards/card_01/confirm', new URLSearchParams(), { edited: false, maskedFields: [] }, true).data);
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
-function mount(value = card) {
+function mount(value = card, close = vi.fn()) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   const confirmed = vi.fn();
-  render(<QueryClientProvider client={client}><ConfirmDialog card={value} onClose={vi.fn()} onConfirmed={confirmed} /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><ConfirmDialog card={value} onClose={close} onConfirmed={confirmed} /></QueryClientProvider>);
   return confirmed;
 }
 it('confirms directly without a self-attestation checkbox and keeps the API payload', async () => {
@@ -63,4 +63,31 @@ it('keeps the confirmation open on a failed request', async () => {
   await screen.findByText('확정하지 못했습니다');
   expect(screen.getByRole('dialog')).toBeInTheDocument();
   expect(confirmed).not.toHaveBeenCalled();
+});
+
+it('keeps the acknowledged status and version when the detail refetch fails', async () => {
+  vi.spyOn(endpoints, 'confirm').mockResolvedValue(result);
+  vi.spyOn(endpoints, 'card').mockRejectedValue(new Error('offline detail'));
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
+  client.setQueryData(keys.card(card.id), card);
+  const confirmed = vi.fn();
+  function Observer() { useQuery({ queryKey: keys.card(card.id), queryFn: () => endpoints.card(card.id) }); return <ConfirmDialog card={card} onClose={vi.fn()} onConfirmed={confirmed} />; }
+  render(<QueryClientProvider client={client}><Observer /></QueryClientProvider>);
+  fireEvent.click(screen.getByRole('button', { name: '확정하기' }));
+  await waitFor(() => expect(confirmed).toHaveBeenCalledTimes(1));
+  expect(client.getQueryData<Card>(keys.card(card.id))?.status).toBe(result.status);
+  expect(client.getQueryData<Card>(keys.card(card.id))?.version.versionNo).toBe(result.versionNo);
+});
+
+it('blocks cancel, escape and backdrop while the confirmation is in flight', async () => {
+  let accept!: (value: ConfirmResult) => void;
+  vi.spyOn(endpoints, 'confirm').mockImplementation(() => new Promise((resolve) => { accept = resolve; }));
+  const close = vi.fn(); const confirmed = mount(card, close);
+  fireEvent.click(screen.getByRole('button', { name: '확정하기' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '확정하기' })).toHaveAttribute('aria-busy', 'true'));
+  expect(screen.getByRole('button', { name: '취소' })).toBeDisabled();
+  fireEvent.keyDown(document, { key: 'Escape' });
+  fireEvent.click(screen.getByRole('dialog').parentElement!);
+  expect(close).not.toHaveBeenCalled();
+  accept(result); await waitFor(() => expect(confirmed).toHaveBeenCalledTimes(1));
 });

@@ -120,7 +120,7 @@ export function InterviewPage() {
             <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--bg-paper)' }}>
               <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 10 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{t.field} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
               <span style={{ fontSize: 13, lineHeight: '20px' }}>{t.answer!.text}</span>
-              <span className="t-12 c-3">{evidenceTypeLabel[t.answer!.source]} · 고치지 않고 그대로 넣었어요</span>
+              <span className="t-12 c-3">{evidenceTypeLabel[t.answer!.source]} · 답변 저장됨</span>
             </div>
           ))}
 
@@ -148,7 +148,7 @@ export function InterviewPage() {
               <div className="row" style={{ gap: 8 }}>
                 <span className="t-12 c-3 grow">{text ? `${text.length}/500` : ''}</span>
                 <Link to={`/cards/${cardId}`} className="btn btn--text btn--sm">건너뛰기</Link>
-                <Button size="lg" disabled={!text.trim()} loading={answer.isPending} onClick={submit}>다음으로 →</Button>
+                <Button size="lg" disabled={!text.trim()} loading={answer.isPending} onClick={submit}>답변 저장</Button>
               </div>
             </>
           ) : ask.isPending ? <Skeleton h={200} /> : (

@@ -227,22 +227,21 @@ export function starStates(c: Any) {
   const out: Any = {};
   STAR.forEach((f) => {
     const text = v[FIELD_KEY[f]];
-    out[f] = !text ? 'EMPTY' : c.lowConfidenceFields.some((l: Any) => l.field === f) ? 'NEEDS_REVIEW' : 'FILLED';
+    out[f] = !text?.trim() ? 'EMPTY' : c.lowConfidenceFields.some((l: Any) => l.field === f) ? 'NEEDS_REVIEW' : 'FILLED';
   });
   return out;
 }
 
 export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
-  const period = c.repo ? (db.repos.find((r) => r.id === c.repo.id)?.activeFrom ?? c.createdAt) : c.createdAt;
   return {
     id: c.id, kind: c.kind, status: c.status, title: c.title,
     versionNo: v.versionNo, star: starStates(c),
-    sourceLabel: c.candidate ? c.candidate.ref : c.kind === 'QUALITATIVE' ? 'INTERVIEW' : 'MANUAL',
-    sourceType: c.candidate?.type ?? null, period,
+    sourceLabel: c.candidate ? c.candidate.ref : c.interviewTurns > 0 ? 'INTERVIEW' : 'MANUAL',
+    sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
-    updatedAt: v.createdAt,
+    updatedAt: c.metadataUpdatedAt && c.metadataUpdatedAt > v.createdAt ? c.metadataUpdatedAt : v.createdAt,
   };
 }
 

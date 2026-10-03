@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings } from 'lucide-react';
-import { useCards, useMe } from '@/api/queries';
+import { useActiveJobs, useCards, useMe } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { BrandLogo } from '@/components/ui/BrandLogo';
@@ -36,6 +36,7 @@ const MOBILE_MENU = [
 export function AppShell() {
   const me = useMe();
   const cards = useCards();
+  const active = useActiveJobs();
   const [rail, setRail] = useState<boolean>(() => { try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem(RAIL_KEY, rail ? '1' : '0'); } catch { /* noop */ } }, [rail]);
   const recent = [...(cards.data ?? [])].sort((a, b) => (a.status === 'DRAFT' ? -1 : 1) - (b.status === 'DRAFT' ? -1 : 1) || b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5);
@@ -77,7 +78,7 @@ export function AppShell() {
           <Link to="/settings" className="sidebar__gear" aria-label="마이페이지"><Settings size={15} /></Link>
         </div>
       </aside>
-      <div id="main" className="shell__main"><Outlet /></div>
+      <div id="main" className="shell__main"><Outlet context={active} /></div>
       <nav className="mobile-nav" aria-label="모바일 주 메뉴">
         {MOBILE_MENU.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end}>
@@ -86,7 +87,7 @@ export function AppShell() {
           </NavLink>
         ))}
       </nav>
-      <JobWatcher />
+      <JobWatcher active={active} />
     </div>
   );
 }

@@ -80,8 +80,8 @@ describe('writing route save protection', () => {
     await screen.findByRole('button', { name: '다시 저장' });
     expect(router.state.location.pathname).toBe('/new');
     expect(save).toHaveBeenCalledWith('returned-card', expect.objectContaining({ situation: '  original\n' }));
-    expect(screen.getByLabelText('카드 제목')).toBeDisabled();
-    expect(screen.getByLabelText('기간')).toBeDisabled();
+    expect(screen.getByLabelText('카드 제목')).toBeEnabled();
+    expect(screen.getByLabelText('기간')).toBeEnabled();
     expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('  original\n');
     fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
     await screen.findByText('Card destination');

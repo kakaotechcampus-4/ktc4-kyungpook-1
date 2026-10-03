@@ -22,6 +22,7 @@ export function errorView(error: unknown, context: 'read' | 'write' = 'write'): 
       NOT_CONFIRMABLE: '상황과 행동을 작성한 뒤 확정해 주세요.',
       BAD_FIELD: '보완할 항목을 다시 선택해 주세요.',
       NO_CANDIDATES: '카드로 만들 경험을 먼저 선택해 주세요.',
+      FEATURE_UNAVAILABLE: '현재는 제목·기간을 수정할 수 없어요.',
     };
     return { title: '요청을 처리하지 못했어요', message: messages[error.code] ?? '입력 내용과 현재 상태를 확인해 주세요.', canRetry: false };
   }

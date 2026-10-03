@@ -7,6 +7,7 @@ import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, ty
 import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
+import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -124,6 +125,12 @@ export function useCreateManualDraft() {
     mutationFn: endpoints.createManualDraft,
     onSuccess: (card) => { qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards }); },
   });
+}
+
+export function useSaveMetadata(cardId: string) {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (body: import('./schemas').CardMetadataPatch) => endpoints.saveMetadata(cardId, body),
+    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); } });
 }
 
 export function usePatchCandidate(repoId: string) {

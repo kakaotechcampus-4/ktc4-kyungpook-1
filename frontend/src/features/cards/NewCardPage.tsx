@@ -16,6 +16,9 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 import { SaveStatus, UnsavedChangesDialog } from '@/components/SaveStatus';
 import { cacheSavedDraft } from '@/lib/cacheSavedDraft';
+import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
+import { cardMetadataSupported } from '@/api/capabilities';
+import { ApiError } from '@/api/client';
 
 const HINT: Record<StarField, string> = {
   S: '어떤 상황이었나요?',
@@ -38,6 +41,9 @@ export function NewCardPage() {
   const createDraft = useCreateManualDraft();
   const [cardId, setCardId] = useState<string | null>(null);
   const cardIdRef = useRef<string | null>(null);
+  const savedMetadata = useRef<{ title: string; period: string } | undefined>(undefined);
+  const savedFields = useRef<string | undefined>(undefined);
+  const canEditMetadata = cardMetadataSupported();
   const qc = useQueryClient();
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
@@ -55,12 +61,29 @@ export function NewCardPage() {
     if (!cardIdRef.current) {
       const card = await createDraft.mutateAsync({ title: body.title, period: body.period, repoId: body.repoId || null });
       cardIdRef.current = card.id;
+      savedMetadata.current = { title: body.title, period: body.period };
       setCardId(card.id);
       track('manual_card_created', { cardId: card.id });
     }
     let result;
     try {
-      result = await endpoints.saveDraft(cardIdRef.current, body.fields);
+      const metadata = { ...(savedMetadata.current?.title !== body.title ? { title: body.title } : {}), ...(savedMetadata.current?.period !== body.period ? { period: body.period } : {}) };
+      if (Object.keys(metadata).length) {
+        if (!canEditMetadata) throw new ApiError('FEATURE_UNAVAILABLE', '', 400);
+        const acknowledged = await endpoints.saveMetadata(cardIdRef.current, metadata);
+        if (!mountedRef.current) return acknowledged;
+        await cacheCardMetadata(qc, acknowledged);
+        savedMetadata.current = { title: body.title, period: body.period };
+        result = acknowledged;
+      }
+      const fieldSnapshot = JSON.stringify(body.fields);
+      if (savedFields.current !== fieldSnapshot) {
+        const acknowledged = await endpoints.saveDraft(cardIdRef.current, body.fields);
+        if (!mountedRef.current) return acknowledged;
+        await cacheSavedDraft(qc, acknowledged);
+        savedFields.current = fieldSnapshot;
+        result = acknowledged;
+      }
     } catch (err) {
       // endpoints.saveDraft is called directly (not through useMutation) so it never reaches
       // the global mutationCache.onError -> redirectToLogin handler. Restore it here.
@@ -68,11 +91,10 @@ export function NewCardPage() {
       throw err;
     }
     if (!mountedRef.current) return result; // page left before this resolved — don't write a stale card into the cache
-    await cacheSavedDraft(qc, result);
     void qc.invalidateQueries({ queryKey: keys.cards, refetchType: 'none' });
     void qc.invalidateQueries({ queryKey: keys.card(cardIdRef.current), refetchType: 'none' });
     return result;
-  }, [createDraft, qc]);
+  }, [createDraft, qc, canEditMetadata]);
   const autosave = useDraftAutosave(snapshot, save, { enabled: !!cardId });
   const { flush, saving } = autosave;
   const guard = useUnsavedChanges(autosave.dirty || saving);
@@ -93,10 +115,10 @@ export function NewCardPage() {
       <div className="card manual-metadata">
         <div className="manual-metadata__title">
           <Field label="카드 제목 *">
-            <Input autoFocus required aria-label="카드 제목" aria-describedby="manual-requirements" value={title} disabled={!!cardId || saving} onChange={(e) => setTitle(e.target.value)} placeholder="예) 로그인 세션 개선" />
+            <Input autoFocus required aria-label="카드 제목" aria-describedby="manual-requirements" value={title} disabled={saving || (!!cardId && !canEditMetadata)} onChange={(e) => setTitle(e.target.value)} placeholder="예) 로그인 세션 개선" />
           </Field>
         </div>
-        <div><Field label="기간"><Input value={period} disabled={!!cardId || saving} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
+        <div><Field label="기간"><Input value={period} disabled={saving || (!!cardId && !canEditMetadata)} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
         <div>
           <Field label="관련 레포 (선택)">
             <select className="input" value={repoId} onChange={(e) => setRepoId(e.target.value)} aria-label="관련 레포" disabled={!!cardId || saving}>
@@ -105,7 +127,7 @@ export function NewCardPage() {
             </select>
           </Field>
         </div>
-        {!cardId && <p className="manual-metadata__hint t-12 c-2">제목·기간·레포는 첫 저장 후 바꿀 수 없어요.</p>}
+        {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목·기간·레포는 첫 저장 후 바꿀 수 없어요.'}</p>}
       </div>
 
       <div className="manual-save-row">

@@ -10,7 +10,9 @@ import { track } from '@/lib/track';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { cardToMarkdown, copyText } from '@/lib/exportCard';
+import { CardCopyDialog } from './CardCopyDialog';
+import { CardMetadataDialog } from './CardMetadataDialog';
+import { cardMetadataSupported } from '@/api/capabilities';
 import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
@@ -31,6 +33,9 @@ export function CardPage() {
   const regen = useRegenerateField(cardId);
   const reopen = useReopen(cardId);
   const [justConfirmed, setJustConfirmed] = useState<ConfirmResult | null>(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
+  useEffect(() => { setCopyOpen(false); setMetadataOpen(false); }, [cardId]);
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
   const editField = parsedField.success ? parsedField.data : undefined;
   useDocumentTitle(q.data?.title);
@@ -52,11 +57,9 @@ export function CardPage() {
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`);
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
-  const exportMd = async () => {
-    const ok = await copyText(cardToMarkdown(card, masked));
-    track('card_exported', { cardId, format: 'markdown' });
-    toast(ok ? '마크다운으로 복사했습니다 — 마스킹이 적용된 표시값입니다' : '복사하지 못했습니다', { tone: ok ? 'success' : 'danger' });
-  };
+  const metadataAction = card.status === 'DRAFT' && cardMetadataSupported() ? <Button variant="outline" size="sm" onClick={() => setMetadataOpen(true)}>기본 정보 수정</Button> : null;
+  const metadataDialog = metadataOpen && card.status === 'DRAFT' ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
+  const exportMd = () => setCopyOpen(true);
   const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
 
   // ── D1 · D3 생성 중
@@ -152,12 +155,13 @@ export function CardPage() {
           </aside>
         </div>
         {sp.get('versions') === '1' && <VersionsDialog card={card} onClose={close} />}
+        {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
       </main>
     );
   }
 
   // ── D6 · D7 모드
-  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode card={card} onDone={close} initialField={editField} /></main>;
+  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} right={metadataAction} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode card={card} onDone={close} initialField={editField} />{metadataDialog}</main>;
   if (mode === 'mask') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '정보 가리기' }]} /><PageTitle>공유할 정보 가리기</PageTitle><MaskMode card={card} onDone={close} /></main>;
 
   // ── D2 초안 · D3 (E-7 부분) · D4 (E-6 소재 부족)
@@ -172,7 +176,7 @@ export function CardPage() {
   return (
     <main className="main main--footer main--tight">
       <Breadcrumb items={crumbs} />
-      <CardHeader card={card} right={card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="t-14 w-600 c-2">후보 목록 ›</Link>} />
+      <CardHeader card={card} right={<>{metadataAction}{card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="t-14 w-600 c-2">후보 목록 ›</Link>}</>} />
       {partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">E-7</Badge>
@@ -230,6 +234,8 @@ export function CardPage() {
 
       {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={(r) => { setJustConfirmed(r); close(); }} />}
       {sp.get('versions') === '1' && <VersionsDialog card={card} onClose={close} />}
+      {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
+      {metadataDialog}
     </main>
   );
 }

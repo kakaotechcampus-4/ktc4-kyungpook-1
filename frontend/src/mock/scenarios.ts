@@ -5,6 +5,7 @@ export const SCENARIOS = {
   slow: { label: '느린 응답', delayMs: 3500 },
   empty: { label: '빈 목록', delayMs: 160 },
   sparse: { label: '긴 제목과 빈 값', delayMs: 160 },
+  'minimal-summary': { label: '목록 부가 정보 생략', delayMs: 160 },
   'read-error': { label: '조회 실패', delayMs: 160 },
   'save-error': { label: '첫 저장 실패', delayMs: 160 },
   'lost-response': { label: '분석 접수 후 응답 유실', delayMs: 160 },
@@ -46,6 +47,7 @@ export function createScenario(scenario: Scenario) {
       }
       if (method !== 'GET') return result;
       if (scenario === 'empty' && (path === '/cards' || path === '/repos')) return { ...result, data: [] };
+      if (scenario === 'minimal-summary' && path === '/cards' && Array.isArray(result.data)) return { ...result, data: result.data.map(({ id, kind, status, title, versionNo, star, updatedAt }) => ({ id, kind, status, title, versionNo, star, updatedAt })) };
       if (scenario !== 'sparse') return result;
       if (path === '/me' && result.data && typeof result.data === 'object') return { ...result, data: { ...result.data, avatarUrl: null } };
       if ((path === '/cards' || path === '/repos') && Array.isArray(result.data)) return { ...result, data: result.data.map((item, i) => {

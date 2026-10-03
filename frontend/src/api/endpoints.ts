@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { api } from './client';
 import * as S from './schemas';
+import { cardMetadataSupported } from './capabilities';
+import { ApiError, ContractError } from './client';
 
 /** 엔드포인트 함수 — 화면은 이 파일 밖의 URL 을 모른다. */
 export const endpoints = {
@@ -48,6 +50,14 @@ export const endpoints = {
     api(S.Card, '/cards/manual/draft', { method: 'POST', body }),
   /** 임시 저장 — 같은 버전을 덮어쓴다. 브라우저에 남기지 않는다. */
   saveDraft: (id: string, fields: S.DraftFields) => api(S.CardDraft, `/cards/${id}/draft`, { method: 'PATCH', body: fields }),
+  saveMetadata: (id: string, body: S.CardMetadataPatch) => {
+    if (!cardMetadataSupported()) return Promise.reject(new ApiError('FEATURE_UNAVAILABLE', '', 400));
+    const path = `/cards/${id}/metadata`;
+    return api(S.CardMetadata, path, { method: 'PATCH', body: S.CardMetadataPatch.parse(body) }).then((metadata) => {
+      if (metadata.cardId !== id) throw new ContractError(path, [{ path: ['cardId'], message: 'Mismatched card acknowledgement' }]);
+      return metadata;
+    });
+  },
   saveVersion: (id: string, fields: Partial<Record<'situation' | 'task' | 'action' | 'result', string | null>>) =>
     api(S.Card, `/cards/${id}/versions`, { method: 'POST', body: fields }),
   regenerateField: (id: string, field: S.StarField) =>

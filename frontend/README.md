@@ -1,5 +1,9 @@
 # gitory-web
 
+## 2026-10-03 카드 작업·활용 흐름
+
+홈에서 진행 중인 서버 작업을 다시 열고, 카드 목록을 빈칸/확인 필요로 필터링하며, 본문만·STAR 형식·근거 포함 복사를 선택할 수 있습니다. 생략/null 부가 정보는 임의 출처나 0건으로 표시하지 않습니다. DRAFT 제목·기간 수정과 첫 저장 후 수정은 Mock에서 동작하며 실제 API 모드는 백엔드 확인 전 기본 비활성입니다. [구현·검증·백엔드 요청](docs/2026-10-03-CARD_WORKFLOW.md)을 참고하세요.
+
 ## 2026-10-03 UX 8가지·PR 리뷰 보완
 
 모바일 예시·수정 버튼과 칸별 포커스, 이어쓰기 우선 홈, 자주 쓰는 설정, 조회 실패 건수, 답변/후보 문구와 카드 보완 행동을 정리했습니다. #76의 프론트 보완을 통합했고 확정 성공 뒤 재조회 실패 및 요청 중 모달 닫기로 생길 수 있는 중복 확정도 막습니다. [범위·리뷰 판단·검증 기록](docs/2026-10-03-UX_IMPROVEMENTS.md)을 참고하세요.
@@ -65,6 +69,7 @@ npm run build      # tsc -b && vite build
 | 계약 | **[docs/BACKEND_CONTRACT.md](docs/BACKEND_CONTRACT.md)** ← BE 는 이걸 보고 DTO 를 맞춘다. 단일 출처는 `src/api/schemas.ts` | 문서화 |
 | Job | `POST /repos/{id}/analyze` + `Idempotency-Key` → 폴링은 응답의 `pollAfterMs` 간격 → 복구는 `GET /jobs?active=true` | 완료 (2026-09 계약 반영) |
 | 임시 저장 | `POST /cards/manual/draft` 로 DRAFT 를 먼저 만들고 `PATCH /cards/{id}/draft` 로 2.5초 디바운스 저장 | 완료 — 브라우저에 카드 입력을 남기지 않습니다 |
+| 제목·기간 | 제안 `PATCH /cards/{id}/metadata` 및 상세 period | Mock·프론트 준비, 백엔드 확인 대기. 실제 모드에서 `VITE_CARD_METADATA_ENABLED=true` 명시 전 호출 차단 |
 | 지표 | `POST /events` (퍼널 이벤트, `src/lib/track.ts`) | 프론트 완료 |
 
 **R-10 (교차 출처 쿠키)**: 개발은 프록시라 같은 오리진입니다. 배포도 같은 오리진 뒤에 `/api` 를 리버스 프록시로 붙이는 걸 전제로 했습니다. API 가 다른 오리진이면 서버가 `SameSite=None; Secure` + `Access-Control-Allow-Credentials` 를 줘야 합니다.
@@ -93,12 +98,13 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 | `/` | E1 · A3 | 홈 카드 그리드 · 첫 진입(이력 0) |
 | `/repos` | B1 · B2 | 레포 선택(정렬·필터) · 사전 고지(모달, `?select=&disclose=1`) |
 | `/repos/:id/run` | B3 · B4 · B5 | 분석 진행 · 수집 실패(E-1) · 요청 한도(E-2) |
+| `/jobs/:jobId` | — | 홈 활성 작업의 상세 상태·결과 연결 (새로고침 가능) |
 | `/repos/:id/candidates` | C1 · C2 · C3 · C5 | 후보 보드〔게이트 1〕· EMPTY · 커밋 묶음 펼치기(E-4) · 직접 추가+커밋 찾기(`?add=1`) · 분석 기준(`?criteria=1`) · 제외 실행취소 |
 | `/repos/:id/recall` | C4 | 회상 도우미 |
 | `/cards/:id` | D1~D4 · D6~D9 · E2 · E3 | 생성 중 → 초안 STAR → (편집·자동저장 `?mode=edit` · 마스킹 `?mode=mask` · 확정 `?confirm=1` · 버전 `?versions=1`) → 확정 읽기 · 복사 · 인쇄 |
 | `/cards/:id/interview` | D5 | 답변 작성 — 다중 턴 · 서버 `maxTurns` 기준 |
 | `/cards/new` | E4 | 정성 카드 직접 작성 |
-| `/cards` | — | 카드 목록 (상태 2단 필터) |
+| `/cards` | — | 카드 목록 (작성 상태·빈칸/확인 필요 필터) |
 | `/settings` `/settings/github` `/settings/leave` | F2 · F1 · F3 | 마이페이지(테마) · GitHub 연결 · 탈퇴(정책 미정, 비활성) |
 
 ## 디자인 토큰

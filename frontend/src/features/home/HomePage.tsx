@@ -4,11 +4,13 @@ import { ArrowRight, ArrowUp, ChevronRight, FolderGit2, MessageSquareQuote, PenL
 import { useCards, useMe, useRepos } from '@/api/queries';
 import type { CardSummary, StarField } from '@/api/schemas';
 import { Badge, EmptyState, IconBox, KindIcon, PageTitle, SectionHead, Skeleton, StarDots, Toolbar } from '@/components/ui';
-import { cardKindShort, cardStatusLabel, candidateRefLabel } from '@/lib/labels';
-import { ym } from '@/lib/format';
+import { cardKindShort, cardStatusLabel } from '@/lib/labels';
+import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
+import { periodLabel } from '@/lib/format';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
 
 /**
  * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 pill → 이어서 하기 → 카드.
@@ -47,6 +49,7 @@ export function HomePage() {
       {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
       {returning && <PageTitle>경험 정리</PageTitle>}
+      <ActiveJobsList />
       {drafts.length > 0 && (
         <section className="stack home-resume" style={{ gap: 16 }}>
           <SectionHead label="이어서 하기" count={drafts.length} />
@@ -140,14 +143,13 @@ export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) =>
 export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
 
 export function CardGridItem({ c }: { c: CardSummary }) {
-  const src = c.sourceType ? candidateRefLabel(c.sourceType, c.sourceLabel) : c.sourceLabel === 'INTERVIEW' ? '질문 답변' : '직접 작성';
-  const empties = STAR_KEYS.filter((f) => c.star[f] === 'EMPTY').length;
-  const sub = empties ? `빈 칸 ${empties}개` : c.userStatedCount && !c.evidenceCount ? `내가 쓴 문장 ${c.userStatedCount}개` : `근거 ${c.evidenceCount}개`;
+  const src = summarySource(c);
+  const sub = summaryDetail(c);
   return (
     <Link to={`/cards/${c.id}`} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
       <div className="experience-item__meta">
-        <span>{cardKindShort[c.kind]} · {src}</span>
-        <span>{ym(c.period)}</span>
+        <span>{cardKindShort[c.kind]}{src ? ` · ${src}` : ''}</span>
+        {c.period && <span>{periodLabel(c.period)}</span>}
       </div>
       <h3 className="gcard__title">{c.title}</h3>
       <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />

@@ -2,7 +2,10 @@
  * enum → 화면 문구. 한국어는 이 파일 밖으로 새지 않는다.
  * 로직은 절대 여기 문자열을 비교하지 않는다 — 문구를 다듬어도 로직이 깨지지 않게.
  */
-import type { AuthoredBy, CandidateStatus, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
+import type { AuthoredBy, CandidateStatus, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobState, JobType, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
+
+export const jobStateLabel: Record<JobState, string> = { QUEUED: '대기 중', RUNNING: '진행 중', SUCCEEDED: '완료', FAILED: '실패', CANCELED: '취소됨' };
+export const jobTypeLabel: Record<JobType, string> = { ANALYZE: '저장소 분석', DRAFT: '카드 초안 생성' };
 
 export const candidateStatusLabel: Record<CandidateStatus, string> = { NEW: '후보', USED: '사용됨', EXCLUDED: '제외됨' };
 export const candidateTypeLabel: Record<CandidateType, string> = { PR: 'PR', ISSUE: '이슈', COMMIT_CLUSTER: '커밋 묶음', MANUAL: '직접 추가' };

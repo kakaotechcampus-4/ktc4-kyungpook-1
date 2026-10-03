@@ -46,7 +46,7 @@ export function NewCardPage() {
   const canEditMetadata = cardMetadataSupported();
   const qc = useQueryClient();
   const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const [title, setTitle] = useState('');
   const [period, setPeriod] = useState('');
   const [repoId, setRepoId] = useState<string>('');

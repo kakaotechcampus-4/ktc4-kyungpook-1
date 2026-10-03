@@ -34,7 +34,7 @@ export function EditMode({ card, onDone, initialField }: { card: Card; onDone: (
     if (target) { target.focus({ preventScroll: true }); target.scrollIntoView?.({ block: 'center' }); }
   }, [card.id, initialField]);
   const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   // 라우트가 리마운트 없이 재사용되면(카드 A → 카드 B) props 의 card 만 바뀐다 —
   // 비교 기준과 입력값을 새 카드로 다시 잡지 않으면 A 의 수정 내용이 B 로 저장될 수 있다.
   useEffect(() => {

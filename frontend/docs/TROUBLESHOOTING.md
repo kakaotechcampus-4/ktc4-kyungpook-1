@@ -1,5 +1,11 @@
 # 프론트엔드 트러블슈팅
 
+## 2026-10-04 — Node 24 Checks와 테스트 타입 환경
+
+기존 Vitest/jsdom의 AbortSignal과 Node 24의 Request 타입이 달라 라우터 이동 검사 6개가 실패했다. 공식 호환성 수정이 포함된 Vitest 4.1.11과 실제 요청/DOM 취소 회귀 검사를 적용한다. Node 22·24 전체 단위 108개가 각각 통과했다. 애플리케이션에 임의 Request 구현을 추가하지 않는다.
+
+도구 업데이트 뒤 파일을 읽는 공유 계약 검사의 Node 타입이 암묵적으로 포함되지 않아 빌드가 실패했다. 테스트 전용 tsconfig가 앱 설정을 재사용하며 테스트에 Node 타입을 명시하고, tsc 빌드 references에서 테스트도 검사한다. 브라우저 앱에 Node 타입을 넓히지 않는다. 설치 중 npm 10 peer 해석 오류와 포트 충돌 재현·처리도 [상세 기록](2026-10-04-NODE24_CHECKS.md)에 남겼다.
+
 ## 2026-10-04 — 개발 StrictMode에서 저장 캐시가 옛 값으로 남음
 
 개인 CI의 개발 E2E는 제목·기간 수정 후 이전 기간을 표시했고, 팀의 정적 E2E는 통과했다. NewCardPage의 mountedRef는 효과 cleanup에서 false로 바뀌지만 setup에서 true로 복원되지 않았다. 개발 StrictMode의 setup→cleanup→setup 뒤에는 저장 요청이 성공해도 캐시 갱신과 무효화를 건너뛰었다. 서버 저장 성공 표시와 상세의 옛 캐시가 어긋나는 문제였다.

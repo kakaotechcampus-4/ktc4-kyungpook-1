@@ -13,11 +13,11 @@
 @media (max-width: 640px) { .perm { grid-template-columns: 1fr; } .perm__col--skip { border-left: 0; border-top: 1px solid var(--border-default); } .landing__h1 { font-size: 26px; line-height: 36px; } .landing { padding: 48px 18px; } }
 
 /* ───────── 홈 배너 · 카드 그리드 (E1) ───────── */
-.banner { display: flex; align-items: center; gap: 20px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--ink-900); color: var(--ink-0); flex-wrap: wrap; } /* 고정 다크 서페이스 — 양 테마 동일 */
+.banner { display: flex; align-items: center; gap: 20px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--bg-feature); color: var(--text-on-feature); flex-wrap: wrap; }
 .banner__h { font-size: 20px; line-height: 29px; font-weight: 700; max-width: 660px; }
-.banner__s { font-size: 13px; line-height: 20px; color: var(--ink-200); }
-.banner__btn { background: var(--ink-0); color: var(--ink-900); border-color: var(--ink-0); margin-left: auto; }
-.banner__btn:hover { background: var(--ink-100); }
+.banner__s { font-size: 13px; line-height: 20px; color: var(--text-on-feature-muted); }
+.banner__btn { background: var(--feature-button-bg); color: var(--feature-button-text); border-color: var(--feature-button-bg); margin-left: auto; }
+.banner__btn:hover { background: var(--feature-button-hover); }
 .gcard { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; transition: transform .12s, border-color .12s; }
 .gcard__title { font-size: 18px; line-height: 26px; font-weight: 600; }
 .mine-chip { display: inline-flex; gap: 5px; padding: 3px 8px; border-radius: var(--radius-xs); background: var(--bg-subtle); font-size: 10.5px; line-height: 16px; font-weight: 600; color: var(--text-strong); }

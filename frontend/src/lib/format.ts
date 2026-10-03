@@ -5,6 +5,10 @@ export function ym(iso: string): string {
   if (Number.isNaN(d.getTime())) return ''; // 빈/기록 없는 period 등 파싱 불가한 값은 'NaN.NaN' 대신 빈 문자열로
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
+/** Periods may be a user-entered range or description, rather than an ISO date. */
+export function periodLabel(value: string): string {
+  return /^\d{4}-\d{2}(?:-\d{2}(?:T.*)?)?$/.test(value) ? ym(value) || value : value;
+}
 export function ymd(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';

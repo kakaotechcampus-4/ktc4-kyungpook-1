@@ -8,13 +8,12 @@
 .menu-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--radius-md); font-size: 14px; line-height: 17px; font-weight: 600; color: var(--text-strong); }
 .menu-item svg { color: var(--border-strong); flex: 0 0 auto; }
 .menu-item:hover { background: var(--bg-subtle); }
-.menu-item[aria-current="page"] { background: var(--bg-ink-solid); color: var(--text-on-ink); }
-.menu-item[aria-current="page"] svg { color: var(--ink-500); }
+.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
+.menu-item[aria-current="page"] svg { color: currentColor; }
 .sidebar__profile { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
 .sidebar__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-inset); flex: 0 0 auto; overflow: hidden; }
 .sidebar__avatar img { width: 100%; height: 100%; object-fit: cover; }
 .sidebar__name { font-size: 14px; line-height: 20px; font-weight: 600; }
-.sidebar__plan { display: inline-block; margin-top: 2px; padding: 1px 6px; border-radius: var(--radius-xs); background: var(--bg-subtle); font-size: 10px; line-height: 14px; font-weight: 700; color: var(--text-secondary); }
 
 .main { --main-px: 32px; --main-pb: 32px; padding: 28px var(--main-px) var(--main-pb); display: flex; flex-direction: column; gap: 20px; min-width: 0; max-width: 1220px; }
 .main--tight { gap: 18px; }
@@ -45,7 +44,6 @@
 }
 
 /* 워드마크는 검은 PNG — 다크 테마(opt-in)에서는 반전 */
-:root[data-theme="dark"] .brand img, :root[data-theme="dark"] .landing > img { filter: invert(1); }
 
 .shell__main { min-width: 0; display: flex; flex-direction: column; }
 .shell__main > .main { flex: 1; }

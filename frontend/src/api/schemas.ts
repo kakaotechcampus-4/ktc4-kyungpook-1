@@ -156,7 +156,7 @@ export type Job = z.infer<typeof Job>;
 export const ActiveJob = z.object({
   jobId: z.string(),
   state: JobState,
-  type: JobType.default('ANALYZE'),
+  type: JobType.nullish(),
   userRepositoryId: z.string().nullable(),
   repoName: z.string().nullable(),
   startedAt: z.string(),
@@ -241,6 +241,7 @@ export const Card = z.object({
   kind: CardKind,
   status: CardStatus,
   title: z.string(),
+  period: z.string().nullish(),
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullable(),
   candidate: z.object({ id: z.string(), type: CandidateType, ref: z.string(), title: z.string() }).nullable(),
   version: CardVersion,
@@ -267,14 +268,21 @@ export const CardSummary = z.object({
   versionNo: z.number(),
   star: StarStates,
   updatedAt: z.string(),
-  // 아래는 목록을 읽기 좋게 하는 부가 정보. 서버가 빼고 줘도 화면이 깨지지 않게 기본값을 둔다.
-  sourceLabel: z.string().default('MANUAL'), // "PR #42" · "커밋 묶음" — 화면에서 조립
-  sourceType: CandidateType.nullish().default(null),
-  period: z.string().default(''),
-  evidenceCount: z.number().default(0),
-  userStatedCount: z.number().default(0),
+  // Missing/null enrichment is unknown, not a manual source or an actual zero.
+  sourceLabel: z.string().nullish(),
+  sourceType: CandidateType.nullish(),
+  period: z.string().nullish(),
+  evidenceCount: z.number().nonnegative().nullish(),
+  userStatedCount: z.number().nonnegative().nullish(),
 });
 export type CardSummary = z.infer<typeof CardSummary>;
+
+/** Proposed server contract: disabled for real API mode until confirmed by BE. */
+export const CardMetadataPatch = z.object({ title: z.string().refine((value) => !!value.trim()).optional(), period: z.string().optional() })
+  .refine((value) => value.title !== undefined || value.period !== undefined);
+export type CardMetadataPatch = z.infer<typeof CardMetadataPatch>;
+export const CardMetadata = z.object({ cardId: z.string(), title: z.string(), period: z.string().nullable(), updatedAt: z.string().datetime({ offset: true }) });
+export type CardMetadata = z.infer<typeof CardMetadata>;
 
 export const VersionListItem = z.object({
   versionNo: z.number(),

@@ -124,6 +124,20 @@ class RepositorySyncServiceTest {
     }
 
     @Test
+    @DisplayName("이름이 같아도 GitHub id 가 다르면 다른 저장소로 저장된다")
+    void savesRecreatedRepositoryWithSameName() {
+
+        githubReturns(repo(100L, "reborn"));
+        service.sync(userId);
+
+        githubReturns(repo(200L, "reborn"));
+        service.sync(userId);
+
+        assertThat(countOf("repository")).isEqualTo(2);
+        assertThat(connectionStatusOf(userId, 200L)).isEqualTo("CONNECTED");
+    }
+
+    @Test
     @DisplayName("여러 사용자가 같은 저장소를 동기화하면 저장소는 하나만 저장되고 사용자마다 자기 목록에 추가된다")
     void sharesRepositoryAcrossUsers() {
 

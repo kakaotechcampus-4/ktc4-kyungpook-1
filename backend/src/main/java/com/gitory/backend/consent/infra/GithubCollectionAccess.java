@@ -9,8 +9,6 @@ import com.gitory.backend.consent.port.GithubCollectionTarget;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.PropertyNamingStrategies;
-import tools.jackson.databind.annotation.JsonNaming;
 
 import java.time.Instant;
 import java.util.List;
@@ -40,19 +38,12 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
             // 암호문·키·외부 암호화 예외를 로그로 넘기지 않는다.
             throw unavailable();
         }
-        CollectionRequest request = new CollectionRequest(target.userRepositoryId(), target.repository(),
-                new Actor(user.getGithubLogin(), List.of()), target.branches());
+        AiCollectRequest request = new AiCollectRequest(target.userRepositoryId(), target.repository(),
+                new AiCollectActor(user.getGithubLogin(), List.of()), target.branches());
         return ai.collect(request, token);
     }
 
     private static AiClientException unavailable() {
         return new AiClientException("GITHUB_CONNECTION_UNAVAILABLE", false, null);
     }
-
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    private record CollectionRequest(Long userRepositoryId, GithubCollectionTarget.Repository repository,
-                                     Actor actor, List<String> branches) { }
-
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    private record Actor(String githubLogin, List<String> knownEmails) { }
 }

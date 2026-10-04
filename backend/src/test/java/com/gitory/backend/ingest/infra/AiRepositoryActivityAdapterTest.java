@@ -9,6 +9,7 @@ import com.gitory.backend.consent.infra.GithubCollectionAccess;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.TokenCipher;
 import com.gitory.backend.consent.infra.UserRepository;
+import com.gitory.backend.consent.port.GithubCollectionRepo;
 import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.ingest.domain.ExclusionReason;
 import com.gitory.backend.ingest.domain.PartialReason;
@@ -108,7 +109,7 @@ class AiRepositoryActivityAdapterTest {
         when(targets.find(eq(USER_REPOSITORY_ID), anyList())).thenAnswer(invocation ->
                 new CollectionTargetLookup.Target(USER_ID,
                         new GithubCollectionTarget(USER_REPOSITORY_ID,
-                                new GithubCollectionTarget.Repository(456789L, "grow22", "gitory", "develop"),
+                                new GithubCollectionRepo(456789L, "grow22", "gitory", "develop"),
                                 invocation.getArgument(1))));
         adapter = new AiRepositoryActivityAdapter(targets,
                 new GithubCollectionAccess(users, connections, cipher, http));

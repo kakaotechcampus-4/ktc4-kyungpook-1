@@ -68,3 +68,11 @@ class Envelope(BaseModel, Generic[T]):
     data: Optional[T] = None
     meta: Meta
     error: Optional[ErrorDetail] = None
+
+
+class ErrorEnvelope(Envelope[None]):
+    """실패 응답의 실제 필드 관계를 OpenAPI에 표현한다."""
+
+    success: Literal[False] = False
+    data: None = None
+    error: ErrorDetail

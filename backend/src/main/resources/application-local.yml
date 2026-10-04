@@ -18,3 +18,9 @@ logging:
   level:
     com.gitory.backend: DEBUG
     org.hibernate.SQL: DEBUG
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:true}

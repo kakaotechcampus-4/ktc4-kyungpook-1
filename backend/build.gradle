@@ -27,6 +27,8 @@ dependencies {
     // 웹·검증
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // Boot 4 / Spring 7 지원 버전. 현재 구현된 컨트롤러에서 OpenAPI 와 Swagger UI 를 생성한다.
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
 
     // 영속 — 스키마는 Flyway 가 단일 출처다. ddl-auto 는 validate 로 고정한다.
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

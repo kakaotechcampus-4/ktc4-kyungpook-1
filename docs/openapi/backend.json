@@ -1,0 +1,666 @@
+{
+  "components": {
+    "schemas": {
+      "ActiveJobListResponse": {
+        "properties": {
+          "jobs": {
+            "description": "활성 Job 목록. 없으면 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/ActiveJobResponse"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "ActiveJobResponse": {
+        "description": "QUEUED 또는 RUNNING인 본인의 Job 요약",
+        "properties": {
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "pollAfterMs": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "repoName": {
+            "type": "string"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED",
+              "CANCELED"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "ANALYZE",
+              "DRAFT"
+            ],
+            "type": "string"
+          },
+          "userRepositoryId": {
+            "description": "선택한 저장소의 공개 UUID",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ApiError": {
+        "description": "사용자에게 노출 가능한 오류 코드와 안내 문구",
+        "properties": {
+          "code": {
+            "example": "UNAUTHENTICATED",
+            "type": "string"
+          },
+          "message": {
+            "example": "로그인이 필요합니다.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ApiResponse": {
+        "description": "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties": {
+          "data": {
+            "description": "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ApiError",
+            "description": "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type": "object"
+      },
+      "ApiResponseActiveJobListResponse": {
+        "description": "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ActiveJobListResponse",
+            "description": "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ApiError",
+            "description": "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type": "object"
+      },
+      "ApiResponseJobResponse": {
+        "description": "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/JobResponse",
+            "description": "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ApiError",
+            "description": "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type": "object"
+      },
+      "ApiResponseMeView": {
+        "description": "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MeView",
+            "description": "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ApiError",
+            "description": "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type": "object"
+      },
+      "ApiResponseStartedResponse": {
+        "description": "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/StartedResponse",
+            "description": "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ApiError",
+            "description": "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type": "object"
+      },
+      "ApiResponseVoid": {
+        "description": "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties": {
+          "data": {
+            "description": "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ApiError",
+            "description": "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type": "object"
+      },
+      "GithubStatus": {
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "connectedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "lastCollectedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "JobResponse": {
+        "description": "Job 상세. 부분 결과는 별도 상태가 아니라 partial로 표시합니다.",
+        "properties": {
+          "errorCode": {
+            "enum": [
+              "GITHUB_UNAVAILABLE",
+              "GITHUB_RATE_LIMITED",
+              "DRAFT_TIMEOUT",
+              "EVIDENCE_MISSING",
+              "INTERNAL_ERROR"
+            ],
+            "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "partial": {
+            "description": "상한·요청 제한 등에 따른 부분 결과 여부",
+            "type": "boolean"
+          },
+          "pollAfterMs": {
+            "description": "다음 조회 간격(밀리초). 종료 상태는 0",
+            "example": 2000,
+            "format": "int32",
+            "type": "integer"
+          },
+          "result": {
+            "$ref": "#/components/schemas/JobResult"
+          },
+          "retryAfterSec": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED",
+              "CANCELED"
+            ],
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/JobStep"
+            },
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "ANALYZE",
+              "DRAFT"
+            ],
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "JobResult": {
+        "properties": {
+          "cardIds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "repoId": {
+            "type": "string"
+          },
+          "verdict": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "JobStep": {
+        "properties": {
+          "done": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "key": {
+            "enum": [
+              "COMMITS",
+              "PR_REVIEW",
+              "COMPRESS",
+              "REASON"
+            ],
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "DONE",
+              "SKIPPED"
+            ],
+            "type": "string"
+          },
+          "total": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "MeView": {
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "github": {
+            "$ref": "#/components/schemas/GithubStatus"
+          },
+          "id": {
+            "type": "string"
+          },
+          "login": {
+            "type": "string"
+          },
+          "plan": {
+            "enum": [
+              "FREE"
+            ],
+            "type": "string"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/UserStats"
+          }
+        },
+        "type": "object"
+      },
+      "StartedResponse": {
+        "description": "분석 Job 접수 결과. 기존 Job을 돌려주면 그 Job의 현재 상태가 담깁니다.",
+        "properties": {
+          "jobId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "pollAfterMs": {
+            "description": "권장 다음 조회 간격(밀리초)",
+            "example": 2000,
+            "format": "int32",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "SUCCEEDED",
+              "FAILED",
+              "CANCELED"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UserStats": {
+        "properties": {
+          "analyzedRepos": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "confirmedCards": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "interviewTurns": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "remainingCandidates": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "sessionCookie": {
+        "description": "GitHub OAuth 로그인 후 브라우저가 자동으로 보내는 HttpOnly 세션 쿠키",
+        "in": "cookie",
+        "name": "SESSION",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "현재 구현된 BE API의 문서입니다. 성공·실패 응답은 `{data, error}` 형식입니다.\n\n인증은 GitHub OAuth 후 발급되는 HttpOnly `SESSION` 쿠키를 사용합니다.\n같은 브라우저에서 `/api/auth/github/start`로 로그인한 뒤 Swagger로 돌아오세요.\n브라우저는 세션 쿠키를 자동으로 전송하므로 Authorize에 토큰을 입력하지 않습니다.\nPOST 등 변경 요청에는 `XSRF-TOKEN` 쿠키 값이 `X-XSRF-TOKEN` 헤더로 필요하며,\nSwagger UI가 이 값을 자동으로 전달합니다. CSRF 검증은 문서에서도 유지됩니다.\n\nAI 계약은 [AI API 읽기 전용 문서](/api/ai-docs.html)에서 확인하세요.\n해당 화면은 실행 버튼을 제공하지 않으며, AI 내부 API를 공개 프록시하지 않습니다.\n\n분석 요청 API는 Job 접수까지 구현되어 있습니다. 현재 실행 워커가 없어\n접수 성공이 수집·분석 완료를 의미하지 않으며 Job이 QUEUED에 머무를 수 있습니다.\n",
+    "title": "Gitory Backend API",
+    "version": "0.0.1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/jobs": {
+      "get": {
+        "description": "본인의 QUEUED·RUNNING Job을 반환합니다. 종료된 Job은 목록에서 제외됩니다.",
+        "operationId": "activeJobs",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseActiveJobListResponse"
+                }
+              }
+            },
+            "description": "활성 Job 배열. 없으면 jobs=[]"
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "로그인 세션 없음"
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "활성 Job 목록 조회",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/api/jobs/{id}": {
+      "get": {
+        "description": "본인 Job만 조회할 수 있습니다. 종료 상태이면 pollAfterMs=0이며 폴링을 멈춥니다.",
+        "operationId": "job",
+        "parameters": [
+          {
+            "description": "분석 접수 응답의 jobId",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJobResponse"
+                }
+              }
+            },
+            "description": "Job 상태·단계·결과"
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "로그인 세션 없음"
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "잘못된 UUID 또는 본인 Job 없음"
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "summary": "Job 상세 조회",
+        "tags": [
+          "Jobs"
+        ]
+      }
+    },
+    "/api/me": {
+      "get": {
+        "description": "사용자 ID는 요청으로 받지 않고 로그인 세션에서 확인합니다.",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMeView"
+                }
+              }
+            },
+            "description": "현재 사용자·GitHub 연결·통계"
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "example": {
+                  "data": null,
+                  "error": {
+                    "code": "UNAUTHENTICATED",
+                    "message": "로그인이 필요합니다."
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "로그인 세션 없음"
+          }
+        },
+        "summary": "내 정보 조회",
+        "tags": [
+          "Session"
+        ]
+      }
+    },
+    "/api/repos/{id}/analyze": {
+      "post": {
+        "description": "본인 소유의 userRepositoryId로 분석 Job을 접수합니다. 같은 요청 키 또는 실행 중인\n같은 저장소 Job이 있으면 기존 jobId를 돌려줍니다. Idempotency-Key 생략 시 서버가 생성합니다.\n응답은 완료 결과가 아닌 접수 결과이며, 이후 GET /api/jobs/{id}로 상태를 조회합니다.\n현재 실행 워커는 미구현입니다. 변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId": "analyze",
+        "parameters": [
+          {
+            "description": "본인이 선택한 저장소의 공개 UUID (GitHub repository ID가 아님)",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "재시도 시 동일하게 보내는 요청 키. 다른 저장소에 재사용하면 409",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseStartedResponse"
+                }
+              }
+            },
+            "description": "새 Job 또는 기존 Job 접수 결과"
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "로그인 세션 없음"
+          },
+          "403": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "CSRF 토큰 없음 또는 불일치"
+          },
+          "404": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "잘못된 UUID 또는 본인 소유 저장소 없음"
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "example": {
+                  "data": null,
+                  "error": {
+                    "code": "IDEMPOTENCY_KEY_MISMATCH",
+                    "message": "이미 다른 레포 분석에 쓰인 요청 키입니다."
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description": "같은 요청 키가 다른 저장소 분석에 사용됨"
+          }
+        },
+        "summary": "저장소 분석 요청 접수",
+        "tags": [
+          "Repositories"
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "sessionCookie": []
+    }
+  ],
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "tags": [
+    {
+      "description": "GitHub 로그인 세션의 사용자 정보",
+      "name": "Session"
+    },
+    {
+      "description": "본인의 분석 Job 상태와 활성 작업 조회",
+      "name": "Jobs"
+    },
+    {
+      "description": "선택한 저장소의 분석 Job 접수",
+      "name": "Repositories"
+    }
+  ]
+}

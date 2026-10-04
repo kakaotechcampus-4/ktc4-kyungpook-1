@@ -1,0 +1,3019 @@
+{
+  "components": {
+    "schemas": {
+      "CandidateCommitDetail": {
+        "additionalProperties": false,
+        "description": "A의 diff 해석에 필요한 선택 commit 상세.",
+        "properties": {
+          "additions": {
+            "minimum": 0.0,
+            "title": "Additions",
+            "type": "integer"
+          },
+          "author_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Login"
+          },
+          "authored_at": {
+            "format": "date-time",
+            "title": "Authored At",
+            "type": "string"
+          },
+          "deletions": {
+            "minimum": 0.0,
+            "title": "Deletions",
+            "type": "integer"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateFileDiff"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "html_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Html Url"
+          },
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "sha": {
+            "maxLength": 40,
+            "minLength": 7,
+            "pattern": "^[0-9a-fA-F]+$",
+            "title": "Sha",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha",
+          "message",
+          "authored_at",
+          "additions",
+          "deletions"
+        ],
+        "title": "CandidateCommitDetail",
+        "type": "object"
+      },
+      "CandidateContext": {
+        "additionalProperties": false,
+        "description": "카드 후보의 카드 전체 작업 맥락.\n\n``commits``·``reviews``·``issues``는 카드 전체 경험을 설명하는 목록이다.\n특정 STAR 문장의 직접 근거인 ``MissingSlot.linked_commits``와 구분한다.",
+        "properties": {
+          "commits": {
+            "description": "카드 전체와 관련된 커밋 목록",
+            "items": {
+              "$ref": "#/components/schemas/CommitContext"
+            },
+            "title": "Commits",
+            "type": "array"
+          },
+          "github_pr_number": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "관련 GitHub PR 번호",
+            "title": "Github Pr Number"
+          },
+          "issues": {
+            "description": "카드와 관련된 GitHub 이슈 목록. 수집 전에는 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/IssueContext"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "reviews": {
+            "description": "카드와 관련된 PR 리뷰 목록. 수집 전에는 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/ReviewContext"
+            },
+            "title": "Reviews",
+            "type": "array"
+          }
+        },
+        "title": "CandidateContext",
+        "type": "object"
+      },
+      "CandidateDetailRequest": {
+        "additionalProperties": false,
+        "description": "A가 선택한 후보의 상세 diff를 조회하는 요청.",
+        "properties": {
+          "commit_shas": {
+            "description": "선택된 후보에 포함된 commit SHA. PR 전체면 빈 배열 가능",
+            "items": {
+              "maxLength": 40,
+              "minLength": 7,
+              "pattern": "^[0-9a-fA-F]+$",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Commit Shas",
+            "type": "array"
+          },
+          "github_pr_number": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "PR 기반 후보의 GitHub PR 번호",
+            "title": "Github Pr Number"
+          },
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryTarget"
+          },
+          "user_repository_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "User Repository Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_repository_id",
+          "repository"
+        ],
+        "title": "CandidateDetailRequest",
+        "type": "object"
+      },
+      "CandidateDetailResult": {
+        "additionalProperties": false,
+        "description": "A가 STAR 행동 근거를 해석할 선택 후보 상세.",
+        "properties": {
+          "commits": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateCommitDetail"
+            },
+            "title": "Commits",
+            "type": "array"
+          },
+          "github_pr_number": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Pr Number"
+          },
+          "partial": {
+            "default": false,
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "partial_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartialReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_repository_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "User Repository Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_repository_id"
+        ],
+        "title": "CandidateDetailResult",
+        "type": "object"
+      },
+      "CandidateFileDiff": {
+        "additionalProperties": false,
+        "description": "선택된 후보에서만 읽은 제한된 diff patch.",
+        "properties": {
+          "additions": {
+            "minimum": 0.0,
+            "title": "Additions",
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0.0,
+            "title": "Deletions",
+            "type": "integer"
+          },
+          "patch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "GitHub이 제공한 diff patch. 바이너리·과대 파일은 null",
+            "title": "Patch"
+          },
+          "patch_truncated": {
+            "default": false,
+            "description": "개별 또는 전체 patch 상한으로 잘렸는지 여부",
+            "title": "Patch Truncated",
+            "type": "boolean"
+          },
+          "path": {
+            "minLength": 1,
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FileChangeStatus"
+          }
+        },
+        "required": [
+          "path",
+          "status",
+          "additions",
+          "deletions"
+        ],
+        "title": "CandidateFileDiff",
+        "type": "object"
+      },
+      "ChangedFile": {
+        "description": "커밋에 포함된 파일 변경 메타데이터.",
+        "properties": {
+          "additions": {
+            "minimum": 0.0,
+            "title": "Additions",
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0.0,
+            "title": "Deletions",
+            "type": "integer"
+          },
+          "patch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "상한을 넘거나 바이너리인 경우 본문 없이 전달",
+            "title": "Patch"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "additions",
+          "deletions"
+        ],
+        "title": "ChangedFile",
+        "type": "object"
+      },
+      "CollectedCommit": {
+        "additionalProperties": false,
+        "description": "GitHub commit 상세 응답을 저장·분석 가능한 형태로 정규화한 값.",
+        "properties": {
+          "additions": {
+            "minimum": 0.0,
+            "title": "Additions",
+            "type": "integer"
+          },
+          "author_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Email"
+          },
+          "author_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Login"
+          },
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "authored_at": {
+            "format": "date-time",
+            "title": "Authored At",
+            "type": "string"
+          },
+          "changed_files": {
+            "minimum": 0.0,
+            "title": "Changed Files",
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0.0,
+            "title": "Deletions",
+            "type": "integer"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExclusionReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/CollectedFileChange"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "is_excluded": {
+            "default": false,
+            "title": "Is Excluded",
+            "type": "boolean"
+          },
+          "issue_numbers": {
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "title": "Issue Numbers",
+            "type": "array"
+          },
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "parent_count": {
+            "minimum": 0.0,
+            "title": "Parent Count",
+            "type": "integer"
+          },
+          "pull_request_number": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Request Number"
+          },
+          "repository_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Repository Id",
+            "type": "integer"
+          },
+          "sha": {
+            "maxLength": 40,
+            "minLength": 7,
+            "title": "Sha",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha",
+          "repository_id",
+          "message",
+          "authored_at",
+          "additions",
+          "deletions",
+          "changed_files",
+          "parent_count"
+        ],
+        "title": "CollectedCommit",
+        "type": "object"
+      },
+      "CollectedFileChange": {
+        "additionalProperties": false,
+        "description": "후보 그룹화에 필요한 변경 파일 메타데이터.",
+        "properties": {
+          "additions": {
+            "minimum": 0.0,
+            "title": "Additions",
+            "type": "integer"
+          },
+          "deletions": {
+            "minimum": 0.0,
+            "title": "Deletions",
+            "type": "integer"
+          },
+          "path": {
+            "minLength": 1,
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FileChangeStatus"
+          }
+        },
+        "required": [
+          "path",
+          "status",
+          "additions",
+          "deletions"
+        ],
+        "title": "CollectedFileChange",
+        "type": "object"
+      },
+      "CollectedIssue": {
+        "additionalProperties": false,
+        "description": "PR을 제외한 GitHub issue 문맥.",
+        "properties": {
+          "author_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Login"
+          },
+          "body_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Excerpt"
+          },
+          "body_truncated": {
+            "default": false,
+            "title": "Body Truncated",
+            "type": "boolean"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "issue_number": {
+            "exclusiveMinimum": 0.0,
+            "title": "Issue Number",
+            "type": "integer"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "state": {
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_number",
+          "title",
+          "state",
+          "created_at"
+        ],
+        "title": "CollectedIssue",
+        "type": "object"
+      },
+      "CollectedPullRequest": {
+        "additionalProperties": false,
+        "description": "커밋과 리뷰가 연결된 PR 문맥.",
+        "properties": {
+          "author_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Login"
+          },
+          "base_branch": {
+            "minLength": 1,
+            "title": "Base Branch",
+            "type": "string"
+          },
+          "body_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Excerpt"
+          },
+          "body_truncated": {
+            "default": false,
+            "title": "Body Truncated",
+            "type": "boolean"
+          },
+          "commit_shas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Commit Shas",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "head_branch": {
+            "minLength": 1,
+            "title": "Head Branch",
+            "type": "string"
+          },
+          "linked_issue_numbers": {
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "title": "Linked Issue Numbers",
+            "type": "array"
+          },
+          "merged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged At"
+          },
+          "number": {
+            "exclusiveMinimum": 0.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/CollectedReview"
+            },
+            "title": "Reviews",
+            "type": "array"
+          },
+          "state": {
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "title",
+          "state",
+          "base_branch",
+          "head_branch",
+          "created_at"
+        ],
+        "title": "CollectedPullRequest",
+        "type": "object"
+      },
+      "CollectedReview": {
+        "additionalProperties": false,
+        "description": "A가 후보와 STAR 근거를 분석할 PR review 문맥.",
+        "properties": {
+          "author_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Login"
+          },
+          "body_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Excerpt"
+          },
+          "body_truncated": {
+            "default": false,
+            "title": "Body Truncated",
+            "type": "boolean"
+          },
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/CollectedReviewComment"
+            },
+            "title": "Comments",
+            "type": "array"
+          },
+          "pr_number": {
+            "exclusiveMinimum": 0.0,
+            "title": "Pr Number",
+            "type": "integer"
+          },
+          "review_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Review Id",
+            "type": "integer"
+          },
+          "state": {
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          }
+        },
+        "required": [
+          "review_id",
+          "pr_number",
+          "state"
+        ],
+        "title": "CollectedReview",
+        "type": "object"
+      },
+      "CollectedReviewComment": {
+        "additionalProperties": false,
+        "description": "A가 리뷰 맥락을 판단하는 데 필요한 제한된 코드 리뷰 문맥.",
+        "properties": {
+          "author_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Login"
+          },
+          "body_excerpt": {
+            "minLength": 1,
+            "title": "Body Excerpt",
+            "type": "string"
+          },
+          "body_truncated": {
+            "default": false,
+            "title": "Body Truncated",
+            "type": "boolean"
+          },
+          "comment_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Comment Id",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "pr_number": {
+            "exclusiveMinimum": 0.0,
+            "title": "Pr Number",
+            "type": "integer"
+          },
+          "review_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Id"
+          }
+        },
+        "required": [
+          "comment_id",
+          "pr_number",
+          "body_excerpt",
+          "created_at"
+        ],
+        "title": "CollectedReviewComment",
+        "type": "object"
+      },
+      "CollectionActor": {
+        "additionalProperties": false,
+        "description": "본인 기여 판별에 사용하는 GitHub 사용자 정보.",
+        "properties": {
+          "github_login": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Github Login",
+            "type": "string"
+          },
+          "known_emails": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Known Emails",
+            "type": "array"
+          }
+        },
+        "required": [
+          "github_login"
+        ],
+        "title": "CollectionActor",
+        "type": "object"
+      },
+      "CommitContext": {
+        "additionalProperties": false,
+        "description": "카드 전체 또는 STAR 문장에 연결된 Git 커밋의 읽기 전용 문맥.",
+        "properties": {
+          "commit_id": {
+            "description": "git_commit.id",
+            "exclusiveMinimum": 0.0,
+            "title": "Commit Id",
+            "type": "integer"
+          },
+          "message": {
+            "description": "커밋 메시지. 질문 맥락 선택에 사용",
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "sha": {
+            "description": "GitHub 커밋 SHA",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Sha",
+            "type": "string"
+          }
+        },
+        "required": [
+          "commit_id",
+          "sha",
+          "message"
+        ],
+        "title": "CommitContext",
+        "type": "object"
+      },
+      "CommitInput": {
+        "description": "Spring이 GitHub에서 수집해 전달하는 정규화 커밋.",
+        "properties": {
+          "additions": {
+            "minimum": 0.0,
+            "title": "Additions",
+            "type": "integer"
+          },
+          "author_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Login"
+          },
+          "authored_at": {
+            "format": "date-time",
+            "title": "Authored At",
+            "type": "string"
+          },
+          "deletions": {
+            "minimum": 0.0,
+            "title": "Deletions",
+            "type": "integer"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/ChangedFile"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "issue_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Issue Numbers",
+            "type": "array"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "parent_count": {
+            "minimum": 0.0,
+            "title": "Parent Count",
+            "type": "integer"
+          },
+          "pull_request_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pull Request Number"
+          },
+          "sha": {
+            "maxLength": 40,
+            "minLength": 7,
+            "title": "Sha",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha",
+          "message",
+          "authored_at",
+          "parent_count",
+          "additions",
+          "deletions"
+        ],
+        "title": "CommitInput",
+        "type": "object"
+      },
+      "ContributionConfirmation": {
+        "additionalProperties": false,
+        "description": "로그인·이메일만으로 본인 여부를 확정하지 못한 커밋.",
+        "properties": {
+          "author_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Email"
+          },
+          "sha": {
+            "maxLength": 40,
+            "minLength": 7,
+            "title": "Sha",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sha"
+        ],
+        "title": "ContributionConfirmation",
+        "type": "object"
+      },
+      "CurrentTurnContext": {
+        "additionalProperties": false,
+        "description": "사용자가 지금 답변한 기존 인터뷰 질문의 문맥.",
+        "properties": {
+          "question_text": {
+            "description": "사용자가 답변한 기존 질문 원문",
+            "minLength": 1,
+            "title": "Question Text",
+            "type": "string"
+          },
+          "question_type": {
+            "description": "사용자가 답변한 기존 질문의 유형",
+            "enum": [
+              "EVIDENCE_GAP",
+              "FOLLOWUP",
+              "RECALL_AID"
+            ],
+            "title": "Question Type",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/StatementTarget",
+            "description": "현재 답변을 반영할 STAR 문장 위치"
+          }
+        },
+        "required": [
+          "target",
+          "question_type",
+          "question_text"
+        ],
+        "title": "CurrentTurnContext",
+        "type": "object"
+      },
+      "DependencyFile": {
+        "description": "기술 스택 판별에 필요한 의존성·설정 파일.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "content"
+        ],
+        "title": "DependencyFile",
+        "type": "object"
+      },
+      "DiffEvidence": {
+        "description": "확정 경험에서 추출한 최소 diff 근거.",
+        "properties": {
+          "author_login": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Login"
+          },
+          "churn": {
+            "description": "예: +71/-0",
+            "title": "Churn",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "sha": {
+            "maxLength": 40,
+            "minLength": 7,
+            "title": "Sha",
+            "type": "string"
+          },
+          "summary": {
+            "description": "diff에서 직접 확인한 변경 요약",
+            "title": "Summary",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "sha",
+          "message",
+          "churn",
+          "summary"
+        ],
+        "title": "DiffEvidence",
+        "type": "object"
+      },
+      "Envelope_CandidateDetailResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateDetailResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[CandidateDetailResult]",
+        "type": "object"
+      },
+      "Envelope_ExperienceGroupingResponse_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExperienceGroupingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[ExperienceGroupingResponse]",
+        "type": "object"
+      },
+      "Envelope_InterviewAnswerResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterviewAnswerResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[InterviewAnswerResult]",
+        "type": "object"
+      },
+      "Envelope_InterviewTurnResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterviewTurnResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[InterviewTurnResult]",
+        "type": "object"
+      },
+      "Envelope_RepositoryCollectionResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepositoryCollectionResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[RepositoryCollectionResult]",
+        "type": "object"
+      },
+      "Envelope_StarAnalysisResponse_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StarAnalysisResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[StarAnalysisResponse]",
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "description": "공통 에러 형식(0-3)의 error 필드.",
+        "properties": {
+          "code": {
+            "description": "에러 코드(0-4 표 기준)",
+            "enum": [
+              "INVALID_PAYLOAD",
+              "UNAUTHORIZED",
+              "RESOURCE_NOT_FOUND",
+              "NO_TOOL_CALL",
+              "EVIDENCE_MISMATCH",
+              "LLM_RATE_LIMIT",
+              "GITHUB_API_ERROR",
+              "LLM_UNAVAILABLE",
+              "INTERNAL_ERROR"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "description": "사람이 읽을 에러 메시지",
+            "title": "Message",
+            "type": "string"
+          },
+          "retryable": {
+            "description": "재시도로 해결 가능한지 여부",
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "title": "ErrorDetail",
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "description": "실패 응답의 실제 필드 관계를 OpenAPI에 표현한다.",
+        "properties": {
+          "data": {
+            "title": "Data",
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "const": false,
+            "default": false,
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "meta",
+          "error"
+        ],
+        "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "EvidenceReference": {
+        "description": "STAR 문장에 연결된 커밋 근거.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "sha": {
+            "maxLength": 40,
+            "minLength": 7,
+            "title": "Sha",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "sha",
+          "message"
+        ],
+        "title": "EvidenceReference",
+        "type": "object"
+      },
+      "ExclusionReason": {
+        "description": "본인 기여 후보에서 제외한 결정적 이유.",
+        "enum": [
+          "BOT",
+          "MERGE_COMMIT",
+          "LOCKFILE_ONLY",
+          "NOT_OWN"
+        ],
+        "title": "ExclusionReason",
+        "type": "string"
+      },
+      "ExperienceCandidate": {
+        "description": "같은 기능의 커밋을 묶은 경험 후보.",
+        "properties": {
+          "commit_shas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Commit Shas",
+            "type": "array"
+          },
+          "group_key": {
+            "title": "Group Key",
+            "type": "string"
+          },
+          "low_card_worth": {
+            "default": false,
+            "title": "Low Card Worth",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
+          },
+          "source_type": {
+            "enum": [
+              "PR",
+              "ISSUE",
+              "COMMIT_CLUSTER",
+              "MANUAL"
+            ],
+            "title": "Source Type",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_key",
+          "source_type",
+          "title",
+          "reason",
+          "score",
+          "commit_shas"
+        ],
+        "title": "ExperienceCandidate",
+        "type": "object"
+      },
+      "ExperienceGroupingRequest": {
+        "description": "커밋 선별과 경험 그룹화를 요청한다.",
+        "properties": {
+          "commits": {
+            "items": {
+              "$ref": "#/components/schemas/CommitInput"
+            },
+            "title": "Commits",
+            "type": "array"
+          },
+          "repository_id": {
+            "title": "Repository Id",
+            "type": "string"
+          },
+          "target_login": {
+            "title": "Target Login",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repository_id",
+          "target_login",
+          "commits"
+        ],
+        "title": "ExperienceGroupingRequest",
+        "type": "object"
+      },
+      "ExperienceGroupingResponse": {
+        "description": "사용자가 확정할 수 있는 경험 후보 목록.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ExperienceCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "excluded_commit_shas": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Excluded Commit Shas",
+            "type": "array"
+          },
+          "verdict": {
+            "enum": [
+              "OK",
+              "EMPTY",
+              "PARTIAL"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict"
+        ],
+        "title": "ExperienceGroupingResponse",
+        "type": "object"
+      },
+      "FileChangeStatus": {
+        "description": "GitHub 파일 변경 상태.",
+        "enum": [
+          "ADDED",
+          "MODIFIED",
+          "REMOVED",
+          "RENAMED",
+          "COPIED",
+          "CHANGED",
+          "UNCHANGED",
+          "UNKNOWN"
+        ],
+        "title": "FileChangeStatus",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "service": {
+            "const": "gitory-ai",
+            "default": "gitory-ai",
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "default": "0.0.1",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "InterviewAnswerRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/interview-answer-evaluations` B-2 요청 모델.\n\nAI는 실제 제출된 답변만 받는다. 사용자의 SKIPPED/LATER 행동은\nSpring이 직접 처리하며, 해당 행동에서는 B-2 AI를 호출하지 않는다.",
+        "properties": {
+          "answer_source": {
+            "description": "사용자 답변 입력 방식",
+            "enum": [
+              "TYPED",
+              "SELECTED"
+            ],
+            "title": "Answer Source",
+            "type": "string"
+          },
+          "answer_text": {
+            "description": "사용자가 제출한 답변 원문",
+            "minLength": 1,
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "candidate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateContext"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 전체 GitHub 근거. 직접 작성 카드이면 null"
+          },
+          "card_id": {
+            "description": "답변이 속한 STAR 카드 ID",
+            "exclusiveMinimum": 0.0,
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "current_turn": {
+            "$ref": "#/components/schemas/CurrentTurnContext",
+            "description": "현재 답변이 연결되는 기존 인터뷰 질문 문맥"
+          },
+          "existing_turn_count": {
+            "description": "현재 질문을 포함해 이미 생성된 인터뷰 턴 수",
+            "minimum": 1.0,
+            "title": "Existing Turn Count",
+            "type": "integer"
+          },
+          "max_turns": {
+            "description": "Spring이 결정한 카드별 최대 질문 수",
+            "minimum": 1.0,
+            "title": "Max Turns",
+            "type": "integer"
+          },
+          "other_missing_slots": {
+            "description": "현재 질문 대상을 제외한 다른 부족한 STAR 문장 목록",
+            "items": {
+              "$ref": "#/components/schemas/MissingSlot"
+            },
+            "title": "Other Missing Slots",
+            "type": "array"
+          },
+          "source_type": {
+            "description": "되묻기 대상의 출처",
+            "enum": [
+              "PR",
+              "COMMIT_CLUSTER",
+              "DIRECT_CARD"
+            ],
+            "title": "Source Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "source_type",
+          "current_turn",
+          "answer_text",
+          "answer_source",
+          "existing_turn_count",
+          "max_turns"
+        ],
+        "title": "InterviewAnswerRequest",
+        "type": "object"
+      },
+      "InterviewAnswerResult": {
+        "additionalProperties": false,
+        "description": "`POST /internal/interview-answer-evaluations` B-2 응답 모델.",
+        "properties": {
+          "next_action": {
+            "description": "다음 질문 생성 또는 인터뷰 종료 여부",
+            "enum": [
+              "ASK_AGAIN",
+              "COMPLETE"
+            ],
+            "title": "Next Action",
+            "type": "string"
+          },
+          "next_turn": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NextInterviewTurn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "추가 질문이 필요한 경우 생성된 다음 인터뷰 질문"
+          },
+          "outcome": {
+            "description": "사용자 답변의 충분성 판단 결과",
+            "enum": [
+              "ANSWERED",
+              "INSUFFICIENT"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "remaining_slots": {
+            "description": "답변 처리 후에도 부족한 전체 STAR 문장 목록",
+            "items": {
+              "$ref": "#/components/schemas/StatementTarget"
+            },
+            "title": "Remaining Slots",
+            "type": "array"
+          },
+          "resulting_statement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultingStatement"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "충분한 답변으로 생성한 STAR 문장"
+          }
+        },
+        "required": [
+          "outcome",
+          "next_action"
+        ],
+        "title": "InterviewAnswerResult",
+        "type": "object"
+      },
+      "InterviewTurnRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/interview-turns` 요청 모델.",
+        "properties": {
+          "candidate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CandidateContext"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 후보 정보. 직접 작성 카드 등 GitHub 출처가 없으면 null"
+          },
+          "card_id": {
+            "description": "대상 STAR 카드 ID",
+            "exclusiveMinimum": 0.0,
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "existing_turn_count": {
+            "default": 0,
+            "description": "이 카드에 대해 이미 생성된 interview_turn 수",
+            "minimum": 0.0,
+            "title": "Existing Turn Count",
+            "type": "integer"
+          },
+          "max_turns": {
+            "description": "Spring이 결정한 카드별 최대 질문 수",
+            "minimum": 1.0,
+            "title": "Max Turns",
+            "type": "integer"
+          },
+          "missing_slots": {
+            "description": "아직 비어 있는 슬롯 목록(우선순위 순)",
+            "items": {
+              "$ref": "#/components/schemas/MissingSlot"
+            },
+            "title": "Missing Slots",
+            "type": "array"
+          },
+          "source_type": {
+            "description": "되묻기 대상 카드의 출처",
+            "enum": [
+              "PR",
+              "COMMIT_CLUSTER",
+              "DIRECT_CARD"
+            ],
+            "title": "Source Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "max_turns",
+          "source_type"
+        ],
+        "title": "InterviewTurnRequest",
+        "type": "object"
+      },
+      "InterviewTurnResult": {
+        "description": "`POST /internal/interview-turns` 응답 `data` 모델.\n\n질문을 새로 생성하지 않는 경우에는 `next_action=\"COMPLETE\"`만 채우고\n질문 관련 필드는 모두 null이 된다. 질문 저장 순번(`interview_turn.seq`)은\n동시성 안전을 위해 AI가 아닌 Spring이 저장 시점에 부여한다.",
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "next_action": {
+            "description": "다음 행동. ASK_AGAIN=질문 생성됨 / COMPLETE=더 물을 것 없음",
+            "enum": [
+              "ASK_AGAIN",
+              "COMPLETE"
+            ],
+            "title": "Next Action",
+            "type": "string"
+          },
+          "question_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Text"
+          },
+          "question_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "EVIDENCE_GAP",
+                  "FOLLOWUP",
+                  "RECALL_AID"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Type"
+          },
+          "target_star_slot": {
+            "anyOf": [
+              {
+                "enum": [
+                  "S",
+                  "T",
+                  "A",
+                  "R"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Star Slot"
+          },
+          "target_statement_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "질문 대상 STAR 문장 순번(missing_slots[].statement_seq)",
+            "title": "Target Statement Seq"
+          },
+          "trigger_source": {
+            "anyOf": [
+              {
+                "const": "AUTO",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Source"
+          }
+        },
+        "required": [
+          "card_id",
+          "next_action"
+        ],
+        "title": "InterviewTurnResult",
+        "type": "object"
+      },
+      "IssueContext": {
+        "additionalProperties": false,
+        "description": "GitHub Issue에서 수집한 최소 질문 문맥.",
+        "properties": {
+          "issue_number": {
+            "description": "GitHub Issue 번호",
+            "exclusiveMinimum": 0.0,
+            "title": "Issue Number",
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "이슈 원문 또는 A/Spring이 만든 짧은 이슈 요약",
+            "title": "Summary"
+          },
+          "title": {
+            "description": "GitHub Issue 제목",
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_number",
+          "title"
+        ],
+        "title": "IssueContext",
+        "type": "object"
+      },
+      "Meta": {
+        "description": "요청 처리 메타데이터(로깅/추적용).",
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "실제 사용된 모델(LLM 미사용 응답은 null 또는 처리 방식 이름)",
+            "title": "Model"
+          },
+          "processing_ms": {
+            "default": 0,
+            "description": "처리 소요 시간(ms)",
+            "title": "Processing Ms",
+            "type": "integer"
+          },
+          "tool_calls_made": {
+            "default": 0,
+            "description": "이번 처리에서 실제 도구 호출 횟수",
+            "title": "Tool Calls Made",
+            "type": "integer"
+          }
+        },
+        "title": "Meta",
+        "type": "object"
+      },
+      "MissingSlot": {
+        "additionalProperties": false,
+        "description": "STAR 카드에서 비어 있거나 신뢰도 보강이 필요한 문장 슬롯 하나.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "현재 STAR 문장. 비어 있으면 null",
+            "title": "Body"
+          },
+          "confidence": {
+            "default": "LOW",
+            "description": "현재 문장 근거 신뢰도",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "linked_commits": {
+            "description": "이 STAR 문장을 직접 뒷받침하는 커밋 목록. 없으면 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/CommitContext"
+            },
+            "title": "Linked Commits",
+            "type": "array"
+          },
+          "star_slot": {
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          },
+          "statement_seq": {
+            "description": "card_statement.seq",
+            "minimum": 1.0,
+            "title": "Statement Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "star_slot",
+          "statement_seq"
+        ],
+        "title": "MissingSlot",
+        "type": "object"
+      },
+      "NextInterviewTurn": {
+        "additionalProperties": false,
+        "description": "B-2 처리 후 추가로 생성할 다음 인터뷰 질문.",
+        "properties": {
+          "question_text": {
+            "description": "사용자에게 표시할 다음 질문",
+            "minLength": 1,
+            "title": "Question Text",
+            "type": "string"
+          },
+          "question_type": {
+            "description": "다음 질문 유형",
+            "enum": [
+              "EVIDENCE_GAP",
+              "FOLLOWUP",
+              "RECALL_AID"
+            ],
+            "title": "Question Type",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/StatementTarget",
+            "description": "다음 질문의 대상 STAR 문장 위치"
+          },
+          "trigger_source": {
+            "const": "AUTO",
+            "default": "AUTO",
+            "description": "질문 생성 주체. B-2 자동 질문은 AUTO",
+            "title": "Trigger Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "question_type",
+          "question_text"
+        ],
+        "title": "NextInterviewTurn",
+        "type": "object"
+      },
+      "PartialReason": {
+        "description": "수집 결과가 일부만 반환된 이유.",
+        "enum": [
+          "GITHUB_RATE_LIMITED",
+          "CAP_EXCEEDED"
+        ],
+        "title": "PartialReason",
+        "type": "string"
+      },
+      "RepositoryCollectionRequest": {
+        "additionalProperties": false,
+        "description": "``POST /internal/collect`` 요청 본문.",
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/CollectionActor"
+          },
+          "branches": {
+            "description": "비어 있으면 repository.default_branch만 수집한다.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Branches",
+            "type": "array"
+          },
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryTarget"
+          },
+          "user_repository_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "User Repository Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_repository_id",
+          "repository",
+          "actor"
+        ],
+        "title": "RepositoryCollectionRequest",
+        "type": "object"
+      },
+      "RepositoryCollectionResult": {
+        "additionalProperties": false,
+        "description": "Spring을 거쳐 A의 후보 그룹화·STAR 분석으로 전달할 수집 결과.",
+        "properties": {
+          "commits": {
+            "items": {
+              "$ref": "#/components/schemas/CollectedCommit"
+            },
+            "title": "Commits",
+            "type": "array"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/CollectedIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "needs_confirmation": {
+            "items": {
+              "$ref": "#/components/schemas/ContributionConfirmation"
+            },
+            "title": "Needs Confirmation",
+            "type": "array"
+          },
+          "partial": {
+            "default": false,
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "partial_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartialReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pull_requests": {
+            "items": {
+              "$ref": "#/components/schemas/CollectedPullRequest"
+            },
+            "title": "Pull Requests",
+            "type": "array"
+          },
+          "user_repository_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "User Repository Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_repository_id"
+        ],
+        "title": "RepositoryCollectionResult",
+        "type": "object"
+      },
+      "RepositoryTarget": {
+        "additionalProperties": false,
+        "description": "Spring이 소유권 검증을 마친 수집 대상 저장소.",
+        "properties": {
+          "default_branch": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Default Branch",
+            "type": "string"
+          },
+          "github_repo_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Github Repo Id",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_login": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Owner Login",
+            "type": "string"
+          }
+        },
+        "required": [
+          "github_repo_id",
+          "owner_login",
+          "name",
+          "default_branch"
+        ],
+        "title": "RepositoryTarget",
+        "type": "object"
+      },
+      "ResultingStatement": {
+        "additionalProperties": false,
+        "description": "충분한 사용자 답변으로 생성할 STAR 문장.",
+        "properties": {
+          "body": {
+            "description": "사용자 답변 원문",
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "confidence": {
+            "const": "HIGH",
+            "default": "HIGH",
+            "description": "사용자가 확인한 문장이므로 HIGH",
+            "title": "Confidence",
+            "type": "string"
+          },
+          "star_slot": {
+            "description": "사용자 답변을 반영할 STAR 슬롯",
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          },
+          "statement_seq": {
+            "description": "해당 STAR 슬롯 내부 문장 순번",
+            "minimum": 1.0,
+            "title": "Statement Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "star_slot",
+          "statement_seq",
+          "body"
+        ],
+        "title": "ResultingStatement",
+        "type": "object"
+      },
+      "ReviewContext": {
+        "additionalProperties": false,
+        "description": "PR 리뷰에서 수집한 최소 질문 문맥.",
+        "properties": {
+          "pr_number": {
+            "description": "리뷰가 작성된 GitHub PR 번호",
+            "exclusiveMinimum": 0.0,
+            "title": "Pr Number",
+            "type": "integer"
+          },
+          "review_id": {
+            "description": "GitHub Pull Request review ID",
+            "exclusiveMinimum": 0.0,
+            "title": "Review Id",
+            "type": "integer"
+          },
+          "state": {
+            "description": "GitHub PR 리뷰 상태",
+            "enum": [
+              "APPROVED",
+              "CHANGES_REQUESTED",
+              "COMMENTED",
+              "DISMISSED",
+              "PENDING"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "description": "리뷰 원문 또는 A/Spring이 만든 짧은 리뷰 요약",
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "pr_number",
+          "state",
+          "summary"
+        ],
+        "title": "ReviewContext",
+        "type": "object"
+      },
+      "StarAnalysisRequest": {
+        "description": "확정된 경험의 STAR 분석을 요청한다.",
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "confirmed_answers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Confirmed Answers",
+            "type": "array"
+          },
+          "dependency_files": {
+            "items": {
+              "$ref": "#/components/schemas/DependencyFile"
+            },
+            "title": "Dependency Files",
+            "type": "array"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/DiffEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
+          },
+          "source_type": {
+            "enum": [
+              "PR",
+              "ISSUE",
+              "COMMIT_CLUSTER",
+              "MANUAL"
+            ],
+            "title": "Source Type",
+            "type": "string"
+          },
+          "target_login": {
+            "title": "Target Login",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "target_login",
+          "title",
+          "source_type",
+          "evidence"
+        ],
+        "title": "StarAnalysisRequest",
+        "type": "object"
+      },
+      "StarAnalysisResponse": {
+        "description": "근거 검증을 마친 STAR 분석 결과.",
+        "properties": {
+          "missing_fields": {
+            "items": {
+              "enum": [
+                "S",
+                "T",
+                "A",
+                "R"
+              ],
+              "type": "string"
+            },
+            "title": "Missing Fields",
+            "type": "array"
+          },
+          "removed_claims": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed Claims",
+            "type": "array"
+          },
+          "shared_with": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shared With"
+          },
+          "star": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/StarFieldResult"
+            },
+            "propertyNames": {
+              "enum": [
+                "S",
+                "T",
+                "A",
+                "R"
+              ]
+            },
+            "title": "Star",
+            "type": "object"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "star"
+        ],
+        "title": "StarAnalysisResponse",
+        "type": "object"
+      },
+      "StarFieldResult": {
+        "description": "STAR 한 영역의 분석 결과.",
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "enum": [
+                  "HIGH",
+                  "MEDIUM",
+                  "LOW"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceReference"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "insufficient_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insufficient Reason"
+          },
+          "review_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Review Reason"
+          },
+          "status": {
+            "enum": [
+              "FILLED",
+              "EMPTY",
+              "NEEDS_REVIEW"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "StarFieldResult",
+        "type": "object"
+      },
+      "StatementTarget": {
+        "additionalProperties": false,
+        "description": "답변을 반영하거나 다음 질문을 생성할 STAR 문장 위치.",
+        "properties": {
+          "star_slot": {
+            "description": "답변 또는 질문 대상 STAR 슬롯",
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          },
+          "statement_seq": {
+            "description": "대상 STAR 슬롯 내부 문장 순번",
+            "minimum": 1.0,
+            "title": "Statement Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "star_slot",
+          "statement_seq"
+        ],
+        "title": "StatementTarget",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "AI는 판단·생성만 수행하며 인증·소유권 검증·영속 저장은 Spring이 담당합니다. `/internal/*` 응답은 공통 `Envelope`이고 스키마 검증 실패는 422 대신 400입니다.\n\n**현재 구현 범위:** GitHub 수집과 템플릿/규칙 기반 B-1/B-2가 구현되어 있습니다. A 경험 그룹화·STAR 생성은 아직 미구현이며, 기본 파이프라인 호출은 500으로 끝납니다. `/health`는 프로세스 생존 확인이며 LLM 또는 A 기능 readiness 검사가 아닙니다. 이 API는 내부 서버 간 호출용이고 인터넷에 공개하는 인증 API가 아닙니다.",
+    "summary": "Spring 백엔드에서 호출하는 stateless 수집·분석·되묻기 API",
+    "title": "Gitory AI Internal API",
+    "version": "0.0.1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "GitHub·LLM·DB를 호출하지 않고 FastAPI 프로세스의 응답 가능 여부만 확인합니다. 200 응답은 모델 연결 또는 미구현 A 분석 파이프라인의 준비 완료를 보장하지 않습니다.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "AI 프로세스 생존 확인",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/internal/analysis/groups": {
+      "post": {
+        "description": "수집된 커밋을 선별하고 경험 후보로 묶는 계약입니다. 기본 서비스는 미구현으로 500을 반환합니다. 200 스키마는 구현 대상 계약입니다.",
+        "operationId": "group_experiences_internal_analysis_groups_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExperienceGroupingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ExperienceGroupingResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "example": "Internal Server Error",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "기본 AnalysisPipeline은 아직 미구현입니다. 현재 유효한 요청도 500으로 실패합니다."
+          }
+        },
+        "summary": "A 경험 후보 그룹화 (미구현)",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/internal/analysis/star": {
+      "post": {
+        "description": "선택 후보의 diff 근거로 STAR를 생성하는 계약입니다. 기본 서비스는 미구현으로 500을 반환합니다. 200 스키마는 구현 대상 계약입니다.",
+        "operationId": "analyze_star_internal_analysis_star_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StarAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_StarAnalysisResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "example": "Internal Server Error",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "기본 AnalysisPipeline은 아직 미구현입니다. 현재 유효한 요청도 500으로 실패합니다."
+          }
+        },
+        "summary": "A 확정 경험의 STAR 생성 (미구현)",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/internal/collect": {
+      "post": {
+        "description": "Spring이 전달한 저장소·사용자 문맥으로 commit·PR·review·issue를 수집합니다. 복구 가능한 일부 수집 실패와 상한 초과는 HTTP 200의 partial=true 및 partial_reason으로 표시합니다. 원본 전체 diff는 반환하지 않으며 본문은 제한된 excerpt만 반환합니다. GitHub 토큰은 헤더로만 전달하고 본문·응답·DB에 저장하지 않습니다.",
+        "operationId": "collect_repository_activity_internal_collect_post",
+        "parameters": [
+          {
+            "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryCollectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RepositoryCollectionResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "RESOURCE_NOT_FOUND: GitHub 리소스가 없거나 토큰 권한으로 읽을 수 없음."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 재시도 가능."
+          }
+        },
+        "summary": "A-1 GitHub 저장소 활동 수집",
+        "tags": [
+          "collection"
+        ]
+      }
+    },
+    "/internal/collect/candidate-details": {
+      "post": {
+        "description": "commit_shas 또는 github_pr_number로 지정한 후보만 다시 조회합니다. 개별 patch 20,000자·전체 100,000자 상한을 넘으면 절단과 partial=true를 표시하고, 바이너리 또는 GitHub이 patch를 제공하지 않은 파일은 patch=null입니다. 선택 후보의 원본 patch는 이 응답 처리 중에만 사용하고 DB에 영속 저장하지 않습니다.",
+        "operationId": "collect_candidate_details_internal_collect_candidate_details_post",
+        "parameters": [
+          {
+            "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CandidateDetailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CandidateDetailResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "RESOURCE_NOT_FOUND: GitHub 리소스가 없거나 토큰 권한으로 읽을 수 없음."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 재시도 가능."
+          }
+        },
+        "summary": "A-1 선택된 후보의 제한된 diff 수집",
+        "tags": [
+          "collection"
+        ]
+      }
+    },
+    "/internal/interview-answer-evaluations": {
+      "post": {
+        "description": "현재 최소 정보량·회피성 표현 규칙으로 답변 충분성을 판단하며 LLM 판정기는 연결되지 않았습니다. ANSWERED이면 사용자 답변 원문을 resulting_statement로 반환합니다. SKIPPED/LATER는 Spring이 직접 처리하고 이 API를 호출하지 않습니다.",
+        "operationId": "evaluate_interview_answer_internal_interview_answer_evaluations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewAnswerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_InterviewAnswerResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "B-2 사용자 답변 평가와 다음 행동 계산",
+        "tags": [
+          "interview-turns"
+        ]
+      }
+    },
+    "/internal/interview-turns": {
+      "post": {
+        "description": "현재 결정적 템플릿으로 보강 질문 또는 COMPLETE를 반환합니다. LLM·DB·GitHub를 호출하지 않습니다. DIRECT_CARD는 candidate=null이어야 합니다. 질문 순번·최종 횟수 제한·영속 저장은 Spring이 관리합니다.",
+        "operationId": "create_interview_turn_internal_interview_turns_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewTurnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_InterviewTurnResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "B-1 STAR 보강 질문 생성",
+        "tags": [
+          "interview-turns"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "외부 의존성을 호출하지 않는 프로세스 생존 확인",
+      "name": "health"
+    },
+    {
+      "description": "A-1 GitHub 활동 및 선택 후보 diff 수집. X-GitHub-Token 필수",
+      "name": "collection"
+    },
+    {
+      "description": "A 경험 후보 그룹화·STAR 생성 계약. 현재 기본 구현은 미완성",
+      "name": "analysis"
+    },
+    {
+      "description": "B-1 질문 생성 / B-2 답변 평가. 현재 템플릿·규칙 기반이며 저장은 Spring 담당",
+      "name": "interview-turns"
+    }
+  ]
+}

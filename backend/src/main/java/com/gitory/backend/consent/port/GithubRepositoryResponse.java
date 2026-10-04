@@ -1,4 +1,4 @@
-package com.gitory.backend.ingest.infra;
+package com.gitory.backend.consent.port;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import tools.jackson.databind.PropertyNamingStrategies;

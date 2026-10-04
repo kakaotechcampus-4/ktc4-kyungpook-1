@@ -1,10 +1,9 @@
 package com.gitory.backend.ingest.domain;
 
-import com.gitory.backend.consent.domain.GithubTokenService;
+import com.gitory.backend.consent.port.GithubCollectionAccessPort;
+import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import com.gitory.backend.ingest.infra.ConnectedRepositoryRepository;
 import com.gitory.backend.ingest.infra.GithubRepoRepository;
-import com.gitory.backend.ingest.infra.GithubRepositoryClient;
-import com.gitory.backend.ingest.infra.GithubRepositoryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -19,18 +18,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RepositorySyncService {
 
-    private final GithubTokenService githubTokens;
-    private final GithubRepositoryClient githubClient;
+    private final GithubCollectionAccessPort github;
     private final GithubRepoRepository repositories;
     private final ConnectedRepositoryRepository connections;
     private final TransactionTemplate transaction;
 
     public void sync(Long userId) {
 
-        String token = githubTokens.activeTokenOf(userId);
-        List<GithubRepositoryResponse> fetched = githubClient.fetchRepositories(token);
+        List<GithubRepositoryResponse> fetched = github.repositories(userId);
 
         transaction.executeWithoutResult(status -> fetched.forEach(repository -> save(userId, repository)));
+
     }
 
     private void save(Long userId, GithubRepositoryResponse repository) {
@@ -39,5 +37,6 @@ public class RepositorySyncService {
                 RepositoryVisibility.of(repository.privateRepository()).name(),
                 repository.language(), repository.defaultBranch());
         connections.connectIfAbsent(userId, repository.id());
+
     }
 }

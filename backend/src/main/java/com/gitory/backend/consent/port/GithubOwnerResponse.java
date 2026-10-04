@@ -1,4 +1,4 @@
-package com.gitory.backend.ingest.infra;
+package com.gitory.backend.consent.port;
 
 public record GithubOwnerResponse(String login) {
 }

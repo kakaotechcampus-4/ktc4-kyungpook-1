@@ -112,7 +112,7 @@ class AiRepositoryActivityAdapterTest {
                                 new GithubCollectionRepo(456789L, "grow22", "gitory", "develop"),
                                 invocation.getArgument(1))));
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, http));
+                new GithubCollectionAccess(users, connections, cipher, http, null));
     }
 
     @AfterEach
@@ -300,7 +300,7 @@ class AiRepositoryActivityAdapterTest {
                 URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
                 Duration.ofSeconds(1), Duration.ofMillis(50)), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, shortTimeout));
+                new GithubCollectionAccess(users, connections, cipher, shortTimeout, null));
         assertThatThrownBy(() -> adapter.collect(request(List.of())))
                 .isInstanceOfSatisfying(AiClientException.class, error -> {
                     assertThat(error.errorCode()).isEqualTo("AI_UNAVAILABLE");

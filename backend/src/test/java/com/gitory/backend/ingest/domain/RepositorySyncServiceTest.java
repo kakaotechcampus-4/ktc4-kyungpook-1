@@ -6,10 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 
-import com.gitory.backend.consent.domain.GithubTokenService;
-import com.gitory.backend.ingest.infra.GithubOwnerResponse;
-import com.gitory.backend.ingest.infra.GithubRepositoryClient;
-import com.gitory.backend.ingest.infra.GithubRepositoryResponse;
+import com.gitory.backend.consent.port.GithubCollectionAccessPort;
+import com.gitory.backend.consent.port.GithubOwnerResponse;
+import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,8 +42,6 @@ import java.util.concurrent.TimeUnit;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class RepositorySyncServiceTest {
 
-    private static final String TOKEN = "gho_test";
-
     @Container
     @ServiceConnection
     static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
@@ -56,10 +53,7 @@ class RepositorySyncServiceTest {
     JdbcTemplate jdbc;
 
     @MockitoBean
-    GithubTokenService githubTokens;
-
-    @MockitoBean
-    GithubRepositoryClient githubClient;
+    GithubCollectionAccessPort github;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -70,7 +64,6 @@ class RepositorySyncServiceTest {
         fixtures = new TestFixtures(jdbc);
         fixtures.clear();
         userId = fixtures.insertUser(1L, "grow22");
-        given(githubTokens.activeTokenOf(anyLong())).willReturn(TOKEN);
     }
 
     @Test
@@ -197,7 +190,7 @@ class RepositorySyncServiceTest {
 
     private void githubReturns(GithubRepositoryResponse... repositories) {
 
-        given(githubClient.fetchRepositories(TOKEN)).willReturn(List.of(repositories));
+        given(github.repositories(anyLong())).willReturn(List.of(repositories));
     }
 
     private static GithubRepositoryResponse repo(long githubRepoId, String name) {

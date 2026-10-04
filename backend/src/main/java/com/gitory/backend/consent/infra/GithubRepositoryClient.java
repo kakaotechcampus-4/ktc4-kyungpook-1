@@ -1,5 +1,6 @@
-package com.gitory.backend.ingest.infra;
+package com.gitory.backend.consent.infra;
 
+import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -7,10 +8,7 @@ import org.springframework.web.client.RestClient;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * GitHub 에서 사용자가 접근할 수 있는 저장소 목록을 마지막 페이지까지 받아 온다
- * 모든 페이지를 받은 뒤에 돌려주므로 중간 페이지에서 실패하면 예외만 남고 일부 목록은 나가지 않는다
- */
+/** GitHub 에서 사용자가 접근할 수 있는 저장소 목록을 마지막 페이지까지 받아 온다 */
 @Component
 public class GithubRepositoryClient {
 

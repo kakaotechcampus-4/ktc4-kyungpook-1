@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +21,18 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
     Optional<AnalysisJob> findByUserRepositoryIdAndStateIn(Long userRepositoryId, List<JobState> states);
 
     Optional<AnalysisJob> findByPublicIdAndUserId(UUID publicId, Long userId);
+
+    // 다른 워커가 잡고 있는 행은 건너뛰어 같은 Job 을 두 번 꺼내지 않는다
+    @Query(value = """
+            SELECT * FROM analysis_job
+            WHERE state = 'QUEUED'
+            ORDER BY started_at
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    Optional<AnalysisJob> findNextQueuedForUpdate();
+
+    List<AnalysisJob> findByStateAndUpdatedAtBefore(JobState state, Instant before);
 
     @Query(value = """
             SELECT j.public_id                      AS jobId,

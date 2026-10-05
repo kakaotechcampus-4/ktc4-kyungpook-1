@@ -117,7 +117,7 @@ class JobQueryServiceTest {
         assertThat(service.load(job.getPublicId(), myUserId).terminal()).isFalse();
 
         job.start();
-        job.succeed(false);
+        job.succeed(false, null);
         em.flush();
 
         assertThat(service.load(job.getPublicId(), myUserId).terminal()).isTrue();
@@ -160,7 +160,7 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
         job.start();
-        job.succeed(false);
+        job.succeed(false, null);
         em.flush();
 
         assertThat(service.loadActive(myUserId)).isEmpty();

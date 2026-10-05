@@ -103,6 +103,10 @@ gitory:
     #    연결을 철회시켜 재로그인으로 토큰을 다시 받아야 한다.
     token-key: ${TOKEN_ENC_KEY}
     token-salt: ${TOKEN_ENC_SALT}
+  job:
+    worker:
+      # 끄면 접수된 Job 이 실행되지 않는다. 테스트는 test 리소스의 config/application.yml 에서 끈다
+      enabled: ${JOB_WORKER_ENABLED:true}
   ingest:
     # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.
     max-commits: 1000

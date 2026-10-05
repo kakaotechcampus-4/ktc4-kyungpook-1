@@ -47,7 +47,7 @@ on('POST', '/repos/:id/analyze', ({ params, headers }) => {
   if (!r) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
   const key = headers['idempotency-key'] ?? null;
   const previous = key ? db.jobs.get(db.idem.get(key) ?? '') : undefined;
-  if (previous && previous.payload.repoId !== r.id) return fail(409, 'INVALID_REQUEST', '이미 다른 레포 분석에 쓰인 요청 키입니다.');
+  if (previous && previous.payload.repoId !== r.id) return fail(409, 'IDEMPOTENCY_KEY_MISMATCH', '이미 다른 레포 분석에 쓰인 요청 키입니다.');
   const job = startAnalyze(r.id, key); // 같은 키·진행 중 Job 이면 기존 것을 그대로 돌려준다
   if (!job) return fail(500, 'INTERNAL', '작업을 만들지 못했습니다');
   const v = viewJob(job.id)!;
@@ -123,7 +123,7 @@ on('POST', '/cards', ({ body }) => {
   const f = body.fields ?? {};
   const repo = body.repoId ? db.repos.find((r) => r.id === body.repoId) : null;
   const card: Any = {
-    id: nextId('card'), kind: 'QUALITATIVE', status: 'DRAFT', title: body.title || '제목 없음',
+    id: nextId('card'), kind: 'QUALITATIVE', status: 'DRAFT', title: body.title || '제목 없음', period: body.period ?? '',
     repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
     versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: f.S ?? null, task: f.T ?? null, action: f.A ?? null, result: f.R ?? null }],
     evidence: STAR.filter((k) => f[k]).map((k) => ({ field: k, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: 0 })),
@@ -135,7 +135,7 @@ on('POST', '/cards', ({ body }) => {
 on('POST', '/cards/manual/draft', ({ body }) => {
   const repo = body.repoId ? db.repos.find((r) => r.id === body.repoId) : null;
   const card: Any = {
-    id: nextId('card'), kind: 'QUALITATIVE', status: 'DRAFT', title: body.title || '제목 없음',
+    id: nextId('card'), kind: 'QUALITATIVE', status: 'DRAFT', title: body.title || '제목 없음', period: body.period ?? '',
     repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
     versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: null, task: null, action: null, result: null }],
     evidence: [], lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(),
@@ -148,6 +148,17 @@ on('PATCH', '/cards/:id/draft', ({ params, body }) => {
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
   return ok(patchDraft(c, body)); // 같은 버전을 덮어쓴다 — 확정할 때만 버전이 는다
+});
+on('PATCH', '/cards/:id/metadata', ({ params, body }) => {
+  const card = findCard(params[0]);
+  if (!card) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
+  if (card.status !== 'DRAFT') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
+  const titleProvided = Object.hasOwn(body, 'title'), periodProvided = Object.hasOwn(body, 'period');
+  if ((!titleProvided && !periodProvided) || (titleProvided && (typeof body.title !== 'string' || !body.title.trim())) || (periodProvided && typeof body.period !== 'string')) return fail(422, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
+  if (titleProvided) card.title = body.title;
+  if (periodProvided) card.period = body.period;
+  card.metadataUpdatedAt = now();
+  return ok({ cardId: card.id, title: card.title, period: card.period ?? null, updatedAt: card.metadataUpdatedAt });
 });
 on('GET', '/cards/:id', ({ params }) => {
   const c = findCard(params[0]);
@@ -190,7 +201,8 @@ on('POST', '/cards/:id/confirm', ({ params }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   const v = c.versions[c.versions.length - 1];
-  if (!v.situation && !v.action) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
+  // 계약: "S·A 없으면 422" — 클라이언트 규칙(canConfirmCard)과 같게 둘 다 있어야 한다. 하나만 있어도 통과하던 건 어긋남이었다.
+  if (!v.situation?.trim() || !v.action?.trim()) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
   c.status = 'CONFIRMED'; c.confirmedAt = now();
   pushVersion(c, c.versions.length === 1 ? 'AI_DRAFT' : v.source, {}); // 확정 시점 버전 고정
   const used = c.candidate ? [c.candidate.id] : [];

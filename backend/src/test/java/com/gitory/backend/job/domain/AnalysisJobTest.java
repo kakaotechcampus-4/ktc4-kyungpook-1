@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+
 class AnalysisJobTest {
 
     private static final String KEY = "11111111-1111-4111-8111-111111111111";
@@ -45,7 +47,7 @@ class AnalysisJobTest {
     @Test
     @DisplayName("RUNNING(아직 실행이 되지 않은) 이 아닌 Job 은 succeed · fail 할 수 없다")
     void finishFromNonRunningIsRejected() {
-        assertThatThrownBy(() -> queued().succeed(false)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> queued().succeed(false, null)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> queued().fail(JobErrorCode.INTERNAL_ERROR)).isInstanceOf(IllegalStateException.class);
     }
 
@@ -55,7 +57,7 @@ class AnalysisJobTest {
 
         AnalysisJob job = running();
 
-        job.succeed(true);
+        job.succeed(true, null);
 
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.isPartial()).isTrue();
@@ -96,8 +98,93 @@ class AnalysisJobTest {
         AnalysisJob job = running();
         job.fail(JobErrorCode.INTERNAL_ERROR);
 
-        assertThatThrownBy(() -> job.succeed(false)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> job.succeed(false, null)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(job::start).isInstanceOf(IllegalStateException.class);
         assertThat(job.getState()).isEqualTo(JobState.FAILED);
+    }
+
+    @Test
+    @DisplayName("start 는 Job 상태와 COMMITS 단계를 RUNNING 으로 바꾼다")
+    void startMarksCommitStepRunning() {
+
+        AnalysisJob job = running();
+
+        assertThat(job.getSteps()).extracting(JobStep::state)
+                .containsExactly(JobStepState.RUNNING, JobStepState.QUEUED, JobStepState.QUEUED, JobStepState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("수집 기록을 남기면 커밋·PR 읽기 단계는 읽은 개수로 완료되고, 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
+    void recordCollectionFinishesCollectionSteps() {
+
+        AnalysisJob job = running();
+
+        job.recordCollection(5L, 12, 3);
+
+        assertThat(job.getCollectionRunId()).isEqualTo(5L);
+        assertThat(job.getSteps()).containsExactly(
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("부분 완료에는 일부만 읽은 이유를 에러 코드로 남길 수 있다")
+    void partialSuccessKeepsReason() {
+
+        AnalysisJob job = running();
+
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED);
+
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+
+    }
+
+    @Test
+    @DisplayName("부분 완료가 아닌데 에러 코드를 남기면 거절되고 상태는 그대로 유지된다")
+    void fullSuccessWithErrorCodeIsRejected() {
+
+        AnalysisJob job = running();
+
+        assertThatThrownBy(() -> job.succeed(false, JobErrorCode.GITHUB_RATE_LIMITED))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(job.getState()).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("cancel 은 QUEUED·RUNNING Job 을 CANCELED 로 바꾸고 끝난 시각을 남긴다")
+    void cancelEndsActiveJob() {
+
+        AnalysisJob queued = queued();
+        AnalysisJob running = running();
+
+        queued.cancel();
+        running.cancel();
+
+        assertThat(queued.getState()).isEqualTo(JobState.CANCELED);
+        assertThat(running.getState()).isEqualTo(JobState.CANCELED);
+        assertThat(running.getFinishedAt()).isNotNull();
+
+    }
+
+    @Test
+    @DisplayName("cancel 은 이미 끝난 Job 을 바꾸지 않는다")
+    void cancelKeepsFinishedJob() {
+
+        AnalysisJob job = running();
+        job.succeed(false, null);
+        Instant finishedAt = job.getFinishedAt();
+
+        job.cancel();
+
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.getFinishedAt()).isEqualTo(finishedAt);
+
     }
 }

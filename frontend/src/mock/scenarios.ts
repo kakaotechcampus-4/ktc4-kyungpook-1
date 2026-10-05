@@ -5,10 +5,12 @@ export const SCENARIOS = {
   slow: { label: '느린 응답', delayMs: 3500 },
   empty: { label: '빈 목록', delayMs: 160 },
   sparse: { label: '긴 제목과 빈 값', delayMs: 160 },
+  'minimal-summary': { label: '목록 부가 정보 생략', delayMs: 160 },
   'read-error': { label: '조회 실패', delayMs: 160 },
   'save-error': { label: '첫 저장 실패', delayMs: 160 },
   'lost-response': { label: '분석 접수 후 응답 유실', delayMs: 160 },
   conflict: { label: '분석 요청 충돌', delayMs: 160 },
+  'candidate-error': { label: '첫 후보 변경·카드 생성 실패', delayMs: 160 },
 } as const;
 export type Scenario = keyof typeof SCENARIOS;
 export function parseScenario(value: string | null): Scenario {
@@ -19,10 +21,18 @@ export function parseScenario(value: string | null): Scenario {
 export function createScenario(scenario: Scenario) {
   let failedSave = false;
   let lostResponse = false;
+  const failedCandidateRequests = new Set<string>();
   const fault = (code: string, status = 503): MockResult => ({ status, data: null, error: { code, message: '테스트 시나리오 응답' } });
   return {
     delayMs: SCENARIOS[scenario].delayMs,
     before(method: string, path: string): MockResult | undefined {
+      if (scenario === 'candidate-error' && ((method === 'PATCH' && path.startsWith('/candidates/')) || (method === 'POST' && /^\/repos\/[^/]+\/(cards|candidates)$/.test(path)))) {
+        const key = method + path;
+        if (!failedCandidateRequests.has(key)) {
+          failedCandidateRequests.add(key);
+          return fault('INTERNAL_ERROR');
+        }
+      }
       if (scenario === 'read-error' && method === 'GET' && path !== '/me' && !path.startsWith('/jobs')) return fault('INTERNAL_ERROR');
       if (scenario === 'save-error' && method === 'PATCH' && path.endsWith('/draft') && !failedSave) {
         failedSave = true; return fault('INTERNAL_ERROR');
@@ -37,6 +47,7 @@ export function createScenario(scenario: Scenario) {
       }
       if (method !== 'GET') return result;
       if (scenario === 'empty' && (path === '/cards' || path === '/repos')) return { ...result, data: [] };
+      if (scenario === 'minimal-summary' && path === '/cards' && Array.isArray(result.data)) return { ...result, data: result.data.map(({ id, kind, status, title, versionNo, star, updatedAt }) => ({ id, kind, status, title, versionNo, star, updatedAt })) };
       if (scenario !== 'sparse') return result;
       if (path === '/me' && result.data && typeof result.data === 'object') return { ...result, data: { ...result.data, avatarUrl: null } };
       if ((path === '/cards' || path === '/repos') && Array.isArray(result.data)) return { ...result, data: result.data.map((item, i) => {

@@ -35,18 +35,16 @@ public class RepositoryContributionService {
         }
 
         Instant countedAt = Instant.now();
-        List<GithubRepositoryCount> counts;
         try {
-            counts = github.countActivity(userId, targets.stream().map(ContributionTarget::toCountTarget).toList());
+            List<GithubRepositoryCount> counts =
+                    github.countActivity(userId, targets.stream().map(ContributionTarget::toCountTarget).toList());
+            Map<Long, Long> connectionIds = targets.stream()
+                    .collect(Collectors.toMap(ContributionTarget::githubRepoId, ContributionTarget::userRepositoryId));
+            transaction.executeWithoutResult(status -> counts.forEach(
+                    count -> record(connectionIds.get(count.githubRepoId()), count, countedAt)));
         } catch (RuntimeException failed) {
             log.warn("사용자 {} 의 저장소 기여 개수를 세지 못해 다음 조회 때 다시 센다", userId, failed);
-            return;
         }
-
-        Map<Long, Long> connectionIds = targets.stream()
-                .collect(Collectors.toMap(ContributionTarget::githubRepoId, ContributionTarget::userRepositoryId));
-        transaction.executeWithoutResult(status -> counts.forEach(
-                count -> record(connectionIds.get(count.githubRepoId()), count, countedAt)));
 
     }
 

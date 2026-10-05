@@ -152,6 +152,20 @@ class RepositoryContributionServiceTest {
     }
 
     @Test
+    @DisplayName("개수 저장을 DB 가 거절해도 예외를 밖으로 던지지 않고, 그 조회의 개수는 저장하지 않는다")
+    void swallowsRejectedSave() {
+
+        given(github.countActivity(eq(userId), any())).willReturn(List.of(
+                count(100L), new GithubRepositoryCount(200L, 5, 9, 0, 0, 0)));
+
+        assertThatCode(() -> service.refresh(userId, GITHUB_IDS)).doesNotThrowAnyException();
+
+        assertThat(countedAtOf(gitory)).isNull();
+        assertThat(countedAtOf(algo)).isNull();
+
+    }
+
+    @Test
     @DisplayName("센 시각은 GitHub 에 묻기 시작한 시각이라, 세는 사이에 생긴 push 는 다음 조회 때 다시 센다")
     void pushDuringCountIsCountedNextTime() {
 

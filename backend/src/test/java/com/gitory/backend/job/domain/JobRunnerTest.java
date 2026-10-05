@@ -1,6 +1,7 @@
 package com.gitory.backend.job.domain;
 
 import static java.util.concurrent.Executors.newFixedThreadPool;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -50,7 +51,7 @@ import java.util.concurrent.locks.LockSupport;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobRunner.class, ActivityStoreService.class})
+@Import({JobRunner.class, JobCancelService.class, ActivityStoreService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JobRunnerTest {
 
@@ -67,6 +68,9 @@ class JobRunnerTest {
 
     @Autowired
     AnalysisJobRepository jobs;
+
+    @Autowired
+    JobCancelService cancelService;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -342,6 +346,97 @@ class JobRunnerTest {
         runner.failStuckJobs();
 
         assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("취소된 QUEUED Job 은 워커가 꺼내지 않는다")
+    void doesNotRunCanceledJob() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        cancel(jobId);
+
+        assertThat(runner.runNext()).isFalse();
+        verifyNoInteractions(activities);
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 취소되면 수집 결과를 저장하지 않고 CANCELED 로 둔다")
+    void discardsResultWhenCanceledDuringCall() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willAnswer(invocation -> {
+            cancel(jobId);
+            return activity(null);
+        });
+
+        runner.runNext();
+
+        assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.CANCELED);
+        assertThat(countOf("collection_run")).isZero();
+        assertThat(countOf("git_commit")).isZero();
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 취소되면 AI 가 실패해도 FAILED 로 덮어쓰지 않는다")
+    void keepsCanceledWhenCallFailsAfterCancel() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willAnswer(invocation -> {
+            cancel(jobId);
+            throw new AiClientException("AI_UNAVAILABLE", true, null);
+        });
+
+        runner.runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.CANCELED);
+        assertThat(job.getErrorCode()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("취소와 워커 마무리가 겹치면 워커는 취소가 끝날 때까지 기다렸다가 결과를 버린다")
+    void workerWaitsForCancelToFinish() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        CountDownLatch cancelHoldsLock = new CountDownLatch(1);
+        ExecutorService canceller = newSingleThreadExecutor();
+        given(activities.collect(any())).willAnswer(invocation -> {
+            canceller.submit(() -> transaction.executeWithoutResult(status -> {
+                jdbc.queryForObject("SELECT id FROM analysis_job WHERE id = ? FOR UPDATE", Long.class, jobId);
+                cancelHoldsLock.countDown();
+                pause(300);
+                jdbc.update("UPDATE analysis_job SET state = 'CANCELED', finished_at = now() WHERE id = ?", jobId);
+            }));
+            cancelHoldsLock.await(5, TimeUnit.SECONDS);
+            return activity(null);
+        });
+
+        runner.runNext();
+        canceller.shutdown();
+
+        assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.CANCELED);
+        assertThat(countOf("collection_run")).isZero();
+
+    }
+
+    private void cancel(Long jobId) {
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        cancelService.cancel(job.getPublicId(), job.getUserId());
+
+    }
+
+    private static void pause(long millis) {
+
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
 
     }
 

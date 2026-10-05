@@ -4,7 +4,9 @@ package com.gitory.backend.job.infra;
 import com.gitory.backend.job.domain.ActiveJobRow;
 import com.gitory.backend.job.domain.AnalysisJob;
 import com.gitory.backend.job.domain.JobState;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -39,6 +41,13 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
     List<AnalysisJob> findStuckForUpdate(@Param("before") Instant before);
+
+    // 취소와 워커 마무리가 겹쳐도 한쪽이 바꾼 상태를 다른 쪽이 보고 판단하도록 행을 잠근다
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<AnalysisJob> findWithLockByPublicIdAndUserId(UUID publicId, Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<AnalysisJob> findWithLockById(Long id);
 
     @Query(value = """
             SELECT j.public_id                      AS jobId,

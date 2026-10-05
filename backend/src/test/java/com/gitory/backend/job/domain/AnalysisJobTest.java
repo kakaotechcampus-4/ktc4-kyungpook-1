@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+
 class AnalysisJobTest {
 
     private static final String KEY = "11111111-1111-4111-8111-111111111111";
@@ -152,6 +154,37 @@ class AnalysisJobTest {
         assertThatThrownBy(() -> job.succeed(false, JobErrorCode.GITHUB_RATE_LIMITED))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(job.getState()).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("cancel 은 QUEUED·RUNNING Job 을 CANCELED 로 바꾸고 끝난 시각을 남긴다")
+    void cancelEndsActiveJob() {
+
+        AnalysisJob queued = queued();
+        AnalysisJob running = running();
+
+        queued.cancel();
+        running.cancel();
+
+        assertThat(queued.getState()).isEqualTo(JobState.CANCELED);
+        assertThat(running.getState()).isEqualTo(JobState.CANCELED);
+        assertThat(running.getFinishedAt()).isNotNull();
+
+    }
+
+    @Test
+    @DisplayName("cancel 은 이미 끝난 Job 을 바꾸지 않는다")
+    void cancelKeepsFinishedJob() {
+
+        AnalysisJob job = running();
+        job.succeed(false, null);
+        Instant finishedAt = job.getFinishedAt();
+
+        job.cancel();
+
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.getFinishedAt()).isEqualTo(finishedAt);
 
     }
 }

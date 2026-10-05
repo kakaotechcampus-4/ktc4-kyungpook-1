@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
 
 /** GitHub 에서 저장소의 커밋·PR 개수를 센다 */
 @Component
@@ -90,21 +91,16 @@ public class GithubCountClient {
     /** 검색에 걸린 PR 을 저장소 이름(nameKey)별로 센다 */
     Map<String, Integer> countPullRequests(String token, String query) {
 
-        Map<String, Integer> counts = new HashMap<>();
-        int page = 1;
-        int fetched;
-        do {
-            JsonNode items = restClient.get()
-                    .uri("/search/issues?q={q}&per_page={size}&page={page}", query, SEARCH_PAGE_SIZE, page++)
-                    .headers(headers -> headers.setBearerAuth(token))
-                    .retrieve()
-                    .body(JsonNode.class)
-                    .path("items");
-            fetched = items.size();
-            items.forEach(item -> counts.merge(nameOf(item.path("repository_url").asString()), 1, Integer::sum));
-        } while (fetched == SEARCH_PAGE_SIZE && page <= SEARCH_MAX_PAGES);
+        return countSearchResults(token, "/search/issues", query,
+                item -> nameOf(item.path("repository_url").asString()));
 
-        return counts;
+    }
+
+    /** 검색에 걸린 커밋을 저장소 이름(nameKey)별로 센다 */
+    Map<String, Integer> countSearchedCommits(String token, String query) {
+
+        return countSearchResults(token, "/search/commits", query,
+                item -> item.path("repository").path("full_name").asString().toLowerCase(Locale.ROOT));
 
     }
 
@@ -125,6 +121,27 @@ public class GithubCountClient {
                 .retrieve()
                 .body(JsonNode.class)
                 .path("data");
+
+    }
+
+    private Map<String, Integer> countSearchResults(String token, String path, String query,
+                                                    Function<JsonNode, String> repositoryOf) {
+
+        Map<String, Integer> counts = new HashMap<>();
+        int page = 1;
+        int fetched;
+        do {
+            JsonNode items = restClient.get()
+                    .uri(path + "?q={q}&per_page={size}&page={page}", query, SEARCH_PAGE_SIZE, page++)
+                    .headers(headers -> headers.setBearerAuth(token))
+                    .retrieve()
+                    .body(JsonNode.class)
+                    .path("items");
+            fetched = items.size();
+            items.forEach(item -> counts.merge(repositoryOf.apply(item), 1, Integer::sum));
+        } while (fetched == SEARCH_PAGE_SIZE && page <= SEARCH_MAX_PAGES);
+
+        return counts;
 
     }
 

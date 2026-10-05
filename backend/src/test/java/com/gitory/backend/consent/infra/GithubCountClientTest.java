@@ -113,6 +113,29 @@ class GithubCountClientTest {
 
     }
 
+    @Test
+    @DisplayName("커밋 검색은 /search/commits 를 부르고, 걸린 커밋을 저장소 이름별로 센다")
+    void countsSearchedCommitsByRepository() {
+
+        server.expect(requestTo(allOf(containsString("/search/commits?q="), containsString("page=1"))))
+                .andExpect(header("Authorization", "Bearer " + TOKEN))
+                .andRespond(withSuccess("""
+                        {"items": [
+                          {"repository": {"full_name": "kakaotechcampus-4/ktc4-kyungpook-1"}},
+                          {"repository": {"full_name": "kakaotechcampus-4/ktc4-kyungpook-1"}},
+                          {"repository": {"full_name": "Grow22/Algo"}}
+                        ]}
+                        """, MediaType.APPLICATION_JSON));
+
+        Map<String, Integer> counts = client.countSearchedCommits(TOKEN, "author:Grow22 merge:true");
+
+        assertThat(counts).containsExactlyInAnyOrderEntriesOf(Map.of(
+                "kakaotechcampus-4/ktc4-kyungpook-1", 2,
+                "grow22/algo", 1));
+        server.verify();
+
+    }
+
     private static String itemsOf(String repository, int count) {
 
         return IntStream.range(0, count)

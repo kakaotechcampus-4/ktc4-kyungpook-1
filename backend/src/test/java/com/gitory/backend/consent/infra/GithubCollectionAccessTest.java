@@ -169,6 +169,27 @@ class GithubCollectionAccessTest {
 
     }
 
+    @Test
+    @DisplayName("내 머지 커밋은 내 커밋과 전체 커밋에서 같이 빼고, 검색 개수가 더 커도 내 커밋이 0 밑으로 내려가지 않는다")
+    void subtractsOwnMergeCommits() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countSearchedCommits(TOKEN, "author:grow22 merge:true"))
+                .thenReturn(Map.of("kakao/gitory", 9, "grow22/algo", 7));
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenReturn(Map.of(
+                100L, new GithubRepositoryTotals(197, 52, 58),
+                200L, new GithubRepositoryTotals(10, 5, 0)));
+
+        List<GithubRepositoryCount> counts = access.countActivity(USER_ID, List.of(
+                new GithubCountTarget(100L, "kakao", "gitory"), new GithubCountTarget(200L, "grow22", "algo")));
+
+        assertThat(counts).containsExactly(
+                new GithubRepositoryCount(100L, 188, 43, 58, 0, 0),
+                new GithubRepositoryCount(200L, 5, 0, 0, 0, 0));
+
+    }
+
     private void searchesReturn(Map<String, Integer> authored, Map<String, Integer> reviewed) {
 
         when(counter.viewerId(TOKEN)).thenReturn(VIEWER_ID);

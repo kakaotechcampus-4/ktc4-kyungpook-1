@@ -70,14 +70,17 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         User user = activeUser(userId).orElseThrow(GithubNotConnectedException::new);
         String token = activeToken(userId).orElseThrow(GithubNotConnectedException::new);
 
+        String login = user.getGithubLogin();
         String viewerId = counter.viewerId(token);
-        Map<String, Integer> authored = counter.countPullRequests(token, "is:pr author:" + user.getGithubLogin());
-        Map<String, Integer> reviewed = counter.countPullRequests(token, "is:pr reviewed-by:" + user.getGithubLogin());
+        GithubSearchCounts searches = new GithubSearchCounts(
+                counter.countPullRequests(token, "is:pr author:" + login),
+                counter.countPullRequests(token, "is:pr reviewed-by:" + login),
+                counter.countSearchedCommits(token, "author:" + login + " merge:true"));
 
         List<GithubRepositoryCount> counts = new ArrayList<>();
         for (int from = 0; from < targets.size(); from += COUNT_BATCH_SIZE) {
             List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, targets.size()));
-            counts.addAll(countBatch(token, viewerId, batch, authored, reviewed));
+            counts.addAll(countBatch(token, viewerId, batch, searches));
         }
 
         return counts;
@@ -86,7 +89,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     /** 한 묶음이 실패해도 나머지 묶음은 센다 */
     private List<GithubRepositoryCount> countBatch(String token, String viewerId, List<GithubCountTarget> batch,
-                                                   Map<String, Integer> authored, Map<String, Integer> reviewed) {
+                                                   GithubSearchCounts searches) {
 
         Map<Long, GithubRepositoryTotals> totals;
         try {
@@ -100,7 +103,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         for (GithubCountTarget target : batch) {
             GithubRepositoryTotals total = totals.get(target.githubRepoId());
             if (total != null) {
-                counts.add(countOf(target, total, authored, reviewed));
+                counts.add(countOf(target, total, searches));
             }
         }
 
@@ -108,15 +111,18 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     }
 
+    /** 검색과 GraphQL 은 반영 시점이 달라, 검색 개수가 GraphQL 개수를 넘으면 GraphQL 개수에 맞춘다 */
     private static GithubRepositoryCount countOf(GithubCountTarget target, GithubRepositoryTotals total,
-                                                 Map<String, Integer> authored, Map<String, Integer> reviewed) {
+                                                 GithubSearchCounts searches) {
 
         String key = GithubCountClient.nameKey(target.owner(), target.name());
-        // 검색과 GraphQL 은 반영 시점이 달라 내 PR 이 전체 PR 보다 많게 나올 수 있는데, 그러면 DB 규칙(own_pr_count <= pr_count)에 걸린다
-        int ownPullRequests = Math.min(authored.getOrDefault(key, 0), total.pullRequestCount());
+        // 머지 커밋은 머지 버튼을 누른 사람 것으로 세져 내 몫을 부풀리므로 내 것만 뺀다, 남의 머지·봇 커밋은 팀 쪽이라 내 몫을 키우지 않는다
+        int ownMerges = Math.min(searches.ownMergeCommits().getOrDefault(key, 0), total.ownCommitCount());
+        int ownPullRequests = Math.min(searches.authoredPullRequests().getOrDefault(key, 0), total.pullRequestCount());
 
-        return new GithubRepositoryCount(target.githubRepoId(), total.commitCount(), total.ownCommitCount(),
-                total.pullRequestCount(), ownPullRequests, reviewed.getOrDefault(key, 0));
+        return new GithubRepositoryCount(target.githubRepoId(), total.commitCount() - ownMerges,
+                total.ownCommitCount() - ownMerges, total.pullRequestCount(), ownPullRequests,
+                searches.reviewedPullRequests().getOrDefault(key, 0));
 
     }
 

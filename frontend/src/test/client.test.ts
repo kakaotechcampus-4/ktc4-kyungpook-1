@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { z } from 'zod';
 import { api, ApiError, AuthError, ContractError } from '@/api/client';
 import { Card, CandidateBoard } from '@/api/schemas';
+import { endpoints } from '@/api/endpoints';
 
 const respond = (status: number, body: unknown) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
@@ -9,6 +10,10 @@ const respond = (status: number, body: unknown) =>
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('api 봉투 규칙', () => {
+  it('rejects an empty card creation response instead of navigating to undefined', async () => {
+    respond(200, { data: { jobId: 'job', cardIds: [] }, error: null });
+    await expect(endpoints.createCardsFromCandidates('repo', ['candidate'])).rejects.toBeInstanceOf(ContractError);
+  });
   it('times out the request and cancels the underlying fetch', async () => {
     vi.useFakeTimers();
     let signal: AbortSignal | undefined;
@@ -48,6 +53,14 @@ describe('api 봉투 규칙', () => {
     const f = respond(200, { data: [], error: null });
     await api(z.array(z.any()), '/cards');
     expect(f.mock.calls[0][1]).toMatchObject({ credentials: 'include' });
+  });
+  it('2xx + data=null + error=null → ContractError (성공인데 아무것도 없는 건 계약 위반)', async () => {
+    respond(200, { data: null, error: null });
+    await expect(api(z.object({ ok: z.boolean() }), '/x')).rejects.toBeInstanceOf(ContractError);
+  });
+  it('non-2xx 에서 error 바디 형태가 어긋나도 폴백 코드로 안전하게 떨어진다', async () => {
+    respond(500, { data: null, error: { code: 123, message: null } });
+    await expect(api(z.any(), '/x')).rejects.toMatchObject({ code: 'HTTP_500' });
   });
 });
 

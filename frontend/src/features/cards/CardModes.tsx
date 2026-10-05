@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '@/api/keys';
 import type { Card, DraftFields, StarField } from '@/api/schemas';
@@ -23,25 +24,22 @@ const fromCard = (c: Card): Draft => ({ S: c.version.situation ?? '', T: c.versi
  * 다른 기기에서 열어도 이어서 쓸 수 있어야 하고, 캐시를 지웠다고 쓰던 글이 날아가면 안 되기 때문이다.
  * 임시 저장은 같은 버전을 덮어쓴다. AI 초안(v1)은 잠겨 있어 첫 수정 때 새 버전이 한 번 갈라지고, 그 뒤로는 그 버전을 계속 덮는다.
  */
-export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
+export function EditMode({ card, onDone, initialField }: { card: Card; onDone: () => void; initialField?: StarField }) {
   const qc = useQueryClient();
   const saveDraft = useSaveDraft(card.id);
   const baseRef = useRef<Draft>(fromCard(card));           // 비교 기준은 들어올 때 한 번만 잡는다
   const [draft, setDraft] = useState<Draft>(() => fromCard(card));
-  const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
-  // 라우트가 리마운트 없이 재사용되면(카드 A → 카드 B) props 의 card 만 바뀐다 —
-  // 비교 기준과 입력값을 새 카드로 다시 잡지 않으면 A 의 수정 내용이 B 로 저장될 수 있다.
+  const fields = useRef<Partial<Record<StarField, HTMLTextAreaElement | null>>>({});
   useEffect(() => {
-    baseRef.current = fromCard(card);
-    setDraft(fromCard(card));
-  }, [card.id]);
-  // 서버가 임시 저장을 한 번이라도 받았는지 — 렌더 시점 값(savedAt)이 아니라 ref 로 본다.
-  // cancel() 이 기다리는 flush() 가 바로 그 첫 저장을 보낼 수 있어서, 클로저에 잡힌 savedAt 은 항상 한 박자 늦다.
-  const serverTouchedRef = useRef(false);
+    const target = initialField && fields.current[initialField];
+    if (target) { target.focus({ preventScroll: true }); target.scrollIntoView?.({ block: 'center' }); }
+  }, [card.id, initialField]);
+  const mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+  // 카드가 바뀌면(A → B) CardPage 가 key={card.id} 로 이 컴포넌트를 새로 마운트한다 — 비교 기준·자동저장 상태·취소 세션이
+  // 카드마다 따로여야 A 의 저장 기록이 B 의 취소에 새어 나가지 않는다.
   const save = useCallback(async (fields: DraftFields) => {
     const saved = await saveDraft.mutateAsync(fields);
-    serverTouchedRef.current = true;
     if (!mountedRef.current) return saved; // 화면을 떠난 뒤 도착한 저장 — 캐시에 반영하지 않는다
     await cacheSavedDraft(qc, saved);
     return saved;
@@ -57,24 +55,22 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
     if (!await flush()) return;
     void qc.invalidateQueries({ queryKey: keys.card(card.id), exact: true });
     guard.allowNavigation();
-    if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('저장했어요 — AI 초안은 그대로 남아 있어요', { tone: 'success' }); }
+    if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('변경한 내용을 저장했어요', { tone: 'success' }); }
     onDone();
   };
-  // 자동저장이 이미 서버에 반영됐을 수 있다 — 로컬 상태만 되돌리면 취소해도 서버엔 고친 내용이 남는다.
+  // 취소 = 입력을 원문으로 되돌린 상태를 "저장된 것"으로 맞추는 일이다. 되돌린 값을 자동저장 훅이 보게 한 뒤(flushSync)
+  // 같은 저장 경로(flush)로 보낸다 — 서버에 고친 내용이 이미 나갔으면 원문으로 복원하고(응답은 카드 캐시에 반영, 실패하면
+  // 훅이 에러와 '다시 저장'을 보여 줘 화면을 유지한다), 아무것도 안 나갔으면 보낼 게 없어 요청 자체가 없다
+  // (잠긴 AI 초안에 가짜 버전도 안 생긴다). 복원이 끝난 걸 확인한 뒤에만 닫는다.
   const cancel = async () => {
     setCanceling(true);
-    try {
-      await flush(); // 밀린 디바운스 타이머를 비우고, 아직 안 보낸 변경이 있으면 먼저 보낸다
-      setDraft(baseRef.current);
-      // 서버에 아무것도 안 나갔으면 원복할 것도 없다. 무조건 저장하면 잠긴 AI 초안(v1)에서 가짜 USER_EDIT 버전이 갈라진다.
-      if (serverTouchedRef.current) {
-        try { await saveDraft.mutateAsync(toDraftFields(baseRef.current)); } catch { /* 로컬은 이미 되돌렸다 — 서버 복구는 최선 노력 */ }
-      }
-      guard.allowNavigation();
-      onDone();
-    } finally {
-      if (mountedRef.current) setCanceling(false);
-    }
+    flushSync(() => setDraft(baseRef.current));
+    const restored = await flush();
+    if (!mountedRef.current) return;
+    setCanceling(false);
+    if (!restored) return;
+    guard.allowNavigation();
+    onDone();
   };
 
   return (
@@ -93,7 +89,7 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
                   <span className="right t-12 c-3">{draft[f].length}자</span>
                   {dirty && <button type="button" className="t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button>}
                 </div>
-                <Textarea className="input--lg" rows={3} value={draft[f]} disabled={canceling} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
+                <Textarea ref={(element) => { fields.current[f] = element; }} className="input--lg" rows={3} value={draft[f]} disabled={canceling} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
                   placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]} />
                 {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
                 {dirty && ev.some((e) => e.type === 'COMMIT') && (
@@ -129,10 +125,11 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const hits = STAR_FIELDS.filter((f) => { const t = card.version[fieldKey[f]]; return t && applyMask(t, valid) !== t; });
   // EditMode·InterviewPage 와 같은 이유 — 규칙을 쓰다가 그냥 나가면 아무 경고 없이 사라진다.
   const dirty = JSON.stringify(rules) !== JSON.stringify(initialRules);
-  const guard = useUnsavedChanges(dirty && !mask.isPending);
+  const guard = useUnsavedChanges(dirty || mask.isPending); // 저장 요청이 진행되는 동안에도 이탈·새로고침을 막는다
   const saveMask = async () => {
     try {
       await mask.mutateAsync(valid);
+      initialRulesRef.current = rules; // 서버가 받은 걸 확인한 뒤에야 '저장된 상태'가 된다
       track('card_masked', { cardId: card.id, rules: valid.length });
       return true;
     } catch { return false; }

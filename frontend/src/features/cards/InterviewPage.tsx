@@ -31,12 +31,15 @@ export function InterviewPage() {
   const guard = useUnsavedChanges(!!text.trim() || answer.isPending);
   const [folded, setFolded] = useState(true); // 모바일에서는 미리보기를 접고 질문부터 보여준다
   const autoAsked = useRef(false);
-  useDocumentTitle(q.data ? `되묻기 · ${q.data.title}` : '되묻기');
+  useDocumentTitle(q.data ? `답변 작성 · ${q.data.title}` : '답변 작성');
 
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
   const field: StarField | null = parsedField.success ? parsedField.data : null;
   const open = turns.data?.find((t) => !t.answer) ?? null;
   const answered = (turns.data ?? []).filter((t) => t.answer);
+  // 열린 턴이 이 화면의 submit() 이 아니라 백그라운드 리페치(다른 탭·기기가 먼저 답함, 포커스 복귀)로 바뀌면
+  // 입력칸의 옛 텍스트가 새 질문 아래 그대로 남아, 엉뚱한 turnNo/field 에 제출될 수 있다 — 턴이 바뀌면 비운다.
+  useEffect(() => { setText(''); setPicked(null); }, [open?.turnNo]);
   // 질문 상한은 서버 정책이다. 화면은 응답에 실려 온 값을 쓰고, 응답 전에만 기본값으로 버틴다.
   const maxTurns = open?.maxTurns ?? answered[answered.length - 1]?.maxTurns ?? CONFIG.INTERVIEW_MAX_TURNS_FALLBACK;
   const capReached = answered.length >= maxTurns;
@@ -55,7 +58,7 @@ export function InterviewPage() {
     const source: EvidenceType = picked === text ? 'USER_SELECTED' : 'USER_STATED';
     await answer.mutateAsync({ turnNo: open.turnNo, text, source });
     track('interview_answered', { cardId, field: open.field, source, turnNo: open.turnNo });
-    toast(`${starFieldShort[open.field]} 칸에 저장했습니다 — 다듬지 않고 그대로`, { tone: 'success' });
+    toast(`${starFieldShort[open.field]} 답변을 저장했어요`, { tone: 'success' });
     setText(''); setPicked(null);
     return true;
     } catch { return false; }
@@ -65,14 +68,14 @@ export function InterviewPage() {
   if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   if (!card || turns.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={300} /></main>;
   const total = answered.length + (open ? 1 : 0);
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}` }, { label: '되묻기' }];
+  const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}` }, { label: '답변 작성' }];
   const weakFields = STAR_FIELDS.filter((f) => !card.version[fieldKey[f]] || card.lowConfidenceFields.some((l) => l.field === f));
   const anyFilled = STAR_FIELDS.some((f) => card.version[fieldKey[f]]);
 
   return (
     <main className="main main--tight">
       <Breadcrumb items={crumbs} />
-      <PageTitle right={`질문 ${total} / ${maxTurns} · 답할 때마다 저장돼요`}>되묻기</PageTitle>
+      <PageTitle right={`질문 ${total} / ${maxTurns}`}>답변 작성</PageTitle>
 
       <div className="iv">
         {/* 좌측 캔버스 — 답할수록 채워지는 카드 */}
@@ -110,7 +113,6 @@ export function InterviewPage() {
             <Link to={`/cards/${cardId}`} className="btn btn--text btn--sm"><ArrowLeft size={14} /> 카드로</Link>
             <span className="right t-12 c-3">{open ? `남은 질문 ${Math.max(0, maxTurns - total)}개` : ''}</span>
           </div>
-          <div className="iv__greet"><span>코드에 없는 것만 한 줄씩 여쭤볼게요</span></div>
           {answer.isError && <Note strong="답변이 저장되지 않았어요" tone="danger">입력은 그대로 남아 있어요. 연결을 확인하고 다시 저장해 주세요.</Note>}
           {ask.isError && <QueryFailure error={ask.error} retry={() => ask.variables && askMore(ask.variables)} pending={ask.isPending} />}
 
@@ -118,7 +120,7 @@ export function InterviewPage() {
             <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--bg-paper)' }}>
               <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 10 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{t.field} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
               <span style={{ fontSize: 13, lineHeight: '20px' }}>{t.answer!.text}</span>
-              <span className="t-12 c-3">{evidenceTypeLabel[t.answer!.source]} · 고치지 않고 그대로 넣었어요</span>
+              <span className="t-12 c-3">{evidenceTypeLabel[t.answer!.source]} · 답변 저장됨</span>
             </div>
           ))}
 
@@ -146,7 +148,7 @@ export function InterviewPage() {
               <div className="row" style={{ gap: 8 }}>
                 <span className="t-12 c-3 grow">{text ? `${text.length}/500` : ''}</span>
                 <Link to={`/cards/${cardId}`} className="btn btn--text btn--sm">건너뛰기</Link>
-                <Button size="lg" disabled={!text.trim()} loading={answer.isPending} onClick={submit}>다음으로 →</Button>
+                <Button size="lg" disabled={!text.trim()} loading={answer.isPending} onClick={submit}>답변 저장</Button>
               </div>
             </>
           ) : ask.isPending ? <Skeleton h={200} /> : (

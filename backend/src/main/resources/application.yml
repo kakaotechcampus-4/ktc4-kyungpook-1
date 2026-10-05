@@ -64,8 +64,31 @@ management:
   endpoint:
     health:
       show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db,ai
+
+# 운영은 명시적으로 켰을 때만 문서를 제공한다. local 프로필에서는 기본으로 켠다.
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /api/docs
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+    path: /api/swagger-ui.html
+    csrf:
+      enabled: true
+      cookie-name: XSRF-TOKEN
+      header-name: X-XSRF-TOKEN
 
 gitory:
+  ai:
+    # Compose에서는 http://ai:8000. 토큰은 서버 설정이나 URL에 넣지 않는다.
+    base-url: ${AI_BASE_URL:http://localhost:8000}
+    connect-timeout: ${AI_CONNECT_TIMEOUT:3s}
+    read-timeout: ${AI_READ_TIMEOUT:180s}
   consent:
     # GitHub 액세스 토큰 암호화 키·솔트. 코드·설정 파일에 값을 적지 않는다 —
     # 배포 환경의 비밀 관리에서 환경변수로 주입한다(security-privacy.md).
@@ -74,6 +97,10 @@ gitory:
     #    연결을 철회시켜 재로그인으로 토큰을 다시 받아야 한다.
     token-key: ${TOKEN_ENC_KEY}
     token-salt: ${TOKEN_ENC_SALT}
+  job:
+    worker:
+      # 끄면 접수된 Job 이 실행되지 않는다. 테스트는 test 리소스의 config/application.yml 에서 끈다
+      enabled: ${JOB_WORKER_ENABLED:true}
   ingest:
     # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.
     max-commits: 1000

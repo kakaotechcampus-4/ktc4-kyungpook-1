@@ -1,5 +1,5 @@
 import { defineConfig } from '@playwright/test';
-import base from './playwright.config';
+import base, { testPort } from './playwright.config';
 
 /**
  * 같은 E2E 를 프로덕션 빌드 + vite preview 에 돌린다 — Vercel 이 서빙하는 것과 동일한 산출물.
@@ -8,8 +8,8 @@ import base from './playwright.config';
 export default defineConfig({
   ...base,
   webServer: {
-    command: 'npm run build && npx vite preview --port 5173 --strictPort',
-    url: 'http://localhost:5173',
+    command: `npm run build && npx vite preview --port ${testPort} --strictPort`,
+    url: `http://localhost:${testPort}`,
     reuseExistingServer: false,
     timeout: 180_000,
   },

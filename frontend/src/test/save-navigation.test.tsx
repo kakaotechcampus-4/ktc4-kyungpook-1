@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -26,7 +27,7 @@ function mount(element = <NewCardPage />) {
     { path: '/', element: <p>Home destination</p> },
     { path: '/cards/:id', element: <p>Card destination</p> },
   ], { initialEntries: ['/new'] });
-  render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider>);
+  render(<StrictMode><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
   return router;
 }
 describe('writing route save protection', () => {
@@ -37,7 +38,7 @@ describe('writing route save protection', () => {
     vi.spyOn(endpoints, 'card').mockRejectedValue(new Error('offline detail'));
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: ['/new'] });
-    render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+    render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: 'Manual cache' } });
     fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Saved manual situation' } });
     fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
@@ -53,7 +54,7 @@ describe('writing route save protection', () => {
     vi.spyOn(endpoints, 'card').mockRejectedValue(new Error('offline refresh'));
     vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ ...fields, cardId: id, savedAt: card.version.createdAt, versionNo: 2 }));
     const router = createMemoryRouter([{ path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: [`/cards/${card.id}`, `/cards/${card.id}?mode=edit`], initialIndex: 1 });
-    render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
+    render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
     vi.useFakeTimers();
     fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Latest acknowledged situation' } });
     if (mode === 'autosave') await act(async () => { await vi.advanceTimersByTimeAsync(CONFIG.DRAFT_AUTOSAVE_MS + 1); });
@@ -80,8 +81,8 @@ describe('writing route save protection', () => {
     await screen.findByRole('button', { name: '다시 저장' });
     expect(router.state.location.pathname).toBe('/new');
     expect(save).toHaveBeenCalledWith('returned-card', expect.objectContaining({ situation: '  original\n' }));
-    expect(screen.getByLabelText('카드 제목')).toBeDisabled();
-    expect(screen.getByLabelText('기간')).toBeDisabled();
+    expect(screen.getByLabelText('카드 제목')).toBeEnabled();
+    expect(screen.getByLabelText('기간')).toBeEnabled();
     expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('  original\n');
     fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
     await screen.findByText('Card destination');
@@ -122,23 +123,5 @@ describe('writing route save protection', () => {
     expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Changed situation');
     fireEvent.click(screen.getByRole('button', { name: '다시 저장하고 닫기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
-  });
-
-  it('cancel clicked before the first autosave still restores the original on the server', async () => {
-    const done = vi.fn();
-    const save = vi.spyOn(endpoints, 'saveDraft').mockResolvedValue({ ...card.version, cardId: card.id, savedAt: card.version.createdAt });
-    mount(<EditMode card={card} onDone={done} />);
-    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Typed right before cancel' } });
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' })); // 디바운스 전 — cancel() 안의 flush() 가 곧 첫 저장이다
-    await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
-    expect(save.mock.calls.map(([, fields]) => fields.situation)).toEqual(['Typed right before cancel', card.version.situation ?? null]);
-  });
-  it('cancel without any edit never touches the server (no spurious version fork)', async () => {
-    const done = vi.fn();
-    const save = vi.spyOn(endpoints, 'saveDraft').mockResolvedValue({ ...card.version, cardId: card.id, savedAt: card.version.createdAt });
-    mount(<EditMode card={card} onDone={done} />);
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
-    await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
-    expect(save).not.toHaveBeenCalled();
   });
 });

@@ -82,15 +82,75 @@ class GithubCountClientTest {
     }
 
     @Test
-    @DisplayName("GitHub 이 null 로 돌려준 저장소(지워짐·권한 잃음)는 결과에서 빠진다")
+    @DisplayName("GitHub 이 NOT_FOUND 오류와 함께 null 로 돌려준 저장소(지워짐·권한 잃음)는 결과에서 빠진다")
     void skipsRepositoryReturnedAsNull() {
 
         server.expect(requestTo(GRAPHQL_URL))
-                .andRespond(withSuccess("{\"data\": {\"r0\": null}, \"errors\": [{\"type\": \"NOT_FOUND\"}]}",
+                .andRespond(withSuccess("{\"data\": {\"r0\": null}, \"errors\": [{\"type\": \"NOT_FOUND\", \"path\": [\"r0\"]}]}",
                         MediaType.APPLICATION_JSON));
 
         assertThat(client.countCommits(TOKEN, VIEWER_ID, List.of(new GithubCountTarget(100L, "grow22", "gone"))))
                 .isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 오류를 알린 저장소는 결과에서 빼고, 오류 없이 커밋이 0개인 빈 저장소는 0 으로 남긴다")
+    void skipsRepositoryReportedInErrors() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess("""
+                        {"data": {
+                          "r0": {"pullRequests": {"totalCount": 58},
+                                 "defaultBranchRef": {"target": {"all": {"totalCount": 197}, "mine": {"totalCount": 52}}}},
+                          "r1": {"pullRequests": {"totalCount": 3}, "defaultBranchRef": {"target": null}},
+                          "r2": {"pullRequests": {"totalCount": 0}, "defaultBranchRef": null}
+                        },
+                        "errors": [{"message": "timeout", "path": ["r1", "defaultBranchRef", "target", "mine"]}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID, List.of(
+                new GithubCountTarget(100L, "grow22", "gitory"),
+                new GithubCountTarget(200L, "grow22", "failed"),
+                new GithubCountTarget(300L, "grow22", "empty")));
+
+        assertThat(totals).containsOnlyKeys(100L, 300L)
+                .containsEntry(100L, new GithubRepositoryTotals(197, 52, 58))
+                .containsEntry(300L, new GithubRepositoryTotals(0, 0, 0));
+
+    }
+
+    @Test
+    @DisplayName("어느 저장소인지 적히지 않은 오류가 오면 같이 물은 저장소 전체를 실패로 던진다")
+    void failsWholeBatchOnErrorWithoutPath() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess("""
+                        {"data": null, "errors": [{"type": "RATE_LIMITED", "message": "API rate limit exceeded"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        List<GithubCountTarget> batch = List.of(new GithubCountTarget(100L, "grow22", "gitory"));
+        assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, batch)).isInstanceOf(IllegalStateException.class);
+
+    }
+
+    @Test
+    @DisplayName("검색 결과가 덜 왔거나(incomplete_results) 목록이 없으면 센 만큼을 돌려주지 않고 예외를 던진다")
+    void failsOnIncompleteSearch() {
+
+        server.expect(requestTo(containsString("/search/issues?q=")))
+                .andRespond(withSuccess("""
+                        {"total_count": 250, "incomplete_results": true,
+                         "items": [{"repository_url": "https://api.github.com/repos/grow22/gitory"}]}
+                        """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(containsString("/search/commits?q=")))
+                .andRespond(withSuccess("{\"total_count\": 3, \"incomplete_results\": false}", MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.countPullRequests(TOKEN, "is:pr author:Grow22"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> client.countSearchedCommits(TOKEN, "author:Grow22 merge:true"))
+                .isInstanceOf(IllegalStateException.class);
+        server.verify();
 
     }
 

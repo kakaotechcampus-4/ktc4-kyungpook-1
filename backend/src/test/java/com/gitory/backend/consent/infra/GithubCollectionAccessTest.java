@@ -190,6 +190,20 @@ class GithubCollectionAccessTest {
 
     }
 
+    @Test
+    @DisplayName("검색 결과를 다 받지 못하면 어느 저장소의 개수도 돌려주지 않고 예외를 그대로 던진다")
+    void passesThroughIncompleteSearch() {
+
+        connectionExpiringAt(null);
+        when(counter.viewerId(TOKEN)).thenReturn(VIEWER_ID);
+        when(counter.countPullRequests(TOKEN, "is:pr author:grow22"))
+                .thenThrow(new IllegalStateException("GitHub 검색 결과를 다 받지 못했다: is:pr author:grow22"));
+
+        List<GithubCountTarget> targets = List.of(new GithubCountTarget(100L, "kakao", "gitory"));
+        assertThatThrownBy(() -> access.countActivity(USER_ID, targets)).isInstanceOf(IllegalStateException.class);
+
+    }
+
     private void searchesReturn(Map<String, Integer> authored, Map<String, Integer> reviewed) {
 
         when(counter.viewerId(TOKEN)).thenReturn(VIEWER_ID);

@@ -10,5 +10,16 @@ public record RepositorySummary(
         String language,
         Instant activeFrom,
         Instant activeTo,
-        Instant lastAnalyzedAt) {
+        Instant lastAnalyzedAt,
+        Instant countedAt,
+        int commitCount,
+        int ownCommitCount,
+        int ownPrCount,
+        int reviewedPrCount) {
+
+    public Contribution contribution() {
+
+        return Contribution.of(ownCommitCount, commitCount);
+
+    }
 }

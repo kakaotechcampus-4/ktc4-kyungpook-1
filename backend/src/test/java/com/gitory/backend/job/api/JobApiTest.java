@@ -107,7 +107,7 @@ class JobApiTest {
 
         AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
         job.start();
-        job.succeed(false);
+        job.succeed(false, null);
         jobs.save(job);
 
         getJob(job.getPublicId())

@@ -9,7 +9,8 @@ Spring이 전달한 카드·STAR 문장·커밋·리뷰·이슈 문맥으로 내
     - "실패" 등 부정적 결과를 단정하지 않는다.
     - 탈출구("기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요")를 반드시 포함한다.
     - 제공된 sha 또는 pr_number는 반드시 질문 본문에 인용한다.
-    - existing_turn_count >= max_turns 면 질문을 생성하지 않고 next_action="COMPLETE".
+    - existing_turn_count >= max_turns면 질문을 생성하지 않고
+      next_action="COMPLETE".
 """
 
 from __future__ import annotations

@@ -37,6 +37,9 @@ export function InterviewPage() {
   const field: StarField | null = parsedField.success ? parsedField.data : null;
   const open = turns.data?.find((t) => !t.answer) ?? null;
   const answered = (turns.data ?? []).filter((t) => t.answer);
+  // 열린 턴이 이 화면의 submit() 이 아니라 백그라운드 리페치(다른 탭·기기가 먼저 답함, 포커스 복귀)로 바뀌면
+  // 입력칸의 옛 텍스트가 새 질문 아래 그대로 남아, 엉뚱한 turnNo/field 에 제출될 수 있다 — 턴이 바뀌면 비운다.
+  useEffect(() => { setText(''); setPicked(null); }, [open?.turnNo]);
   // 질문 상한은 서버 정책이다. 화면은 응답에 실려 온 값을 쓰고, 응답 전에만 기본값으로 버틴다.
   const maxTurns = open?.maxTurns ?? answered[answered.length - 1]?.maxTurns ?? CONFIG.INTERVIEW_MAX_TURNS_FALLBACK;
   const capReached = answered.length >= maxTurns;

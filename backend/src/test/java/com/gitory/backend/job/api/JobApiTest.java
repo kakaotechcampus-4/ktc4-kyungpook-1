@@ -187,6 +187,71 @@ class JobApiTest {
                 .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
     }
 
+    @Test
+    @DisplayName("진행 중 Job 의 필드마다 맞는 값이 담긴다")
+    void returnsActiveJobs() throws Exception {
+
+        UUID jobId = newJob(myUserId, myRepoId);
+
+        getActiveJobs()
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value(nullValue()))
+                .andExpect(jsonPath("$.data.jobs.length()").value(1))
+                .andExpect(jsonPath("$.data.jobs[0].jobId").value(jobId.toString()))
+                .andExpect(jsonPath("$.data.jobs[0].state").value("QUEUED"))
+                .andExpect(jsonPath("$.data.jobs[0].type").value("ANALYZE"))
+                .andExpect(jsonPath("$.data.jobs[0].userRepositoryId").isString())
+                .andExpect(jsonPath("$.data.jobs[0].repoName").value("grow22/gitory"))
+                .andExpect(jsonPath("$.data.jobs[0].startedAt").isString())
+                .andExpect(jsonPath("$.data.jobs[0].pollAfterMs").value(2000));
+    }
+
+    @Test
+    @DisplayName("진행 중 Job 응답은 필드 7개로만 이루어진다")
+    void hasNoFieldBeyondContract() throws Exception {
+
+        newJob(myUserId, myRepoId);
+
+        Map<String, Object> job = JsonPath.read(bodyOf(getActiveJobs()), "$.data.jobs[0]");
+
+        assertThat(job).containsOnlyKeys(
+                "jobId", "state", "type", "userRepositoryId", "repoName", "startedAt", "pollAfterMs");
+    }
+
+    @Test
+    @DisplayName("진행 중 Job 이 없으면 빈 배열이 내려온다")
+    void returnsEmptyArrayWhenNothingIsRunning() throws Exception {
+
+        getActiveJobs()
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value(nullValue()))
+                .andExpect(jsonPath("$.data.jobs.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("active 파라미터가 없어도 진행 중 Job 만 내려온다")
+    void ignoresActiveParameter() throws Exception {
+
+        newJob(myUserId, myRepoId);
+
+        mvc.perform(get("/api/jobs").with(loggedInAs(myUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.jobs.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("로그인하지 않은 진행 중 Job 조회는 401 에러 코드로 처리된다")
+    void activeJobsRequireLogin() throws Exception {
+
+        mvc.perform(get("/api/jobs"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+    }
+
+    private ResultActions getActiveJobs() throws Exception {
+        return mvc.perform(get("/api/jobs").param("active", "true").with(loggedInAs(myUserId)));
+    }
+
     private UUID newJob(Long userId, Long userRepositoryId) {
         return jobs.save(AnalysisJob.enqueue(userId, userRepositoryId, KEY)).getPublicId();
     }

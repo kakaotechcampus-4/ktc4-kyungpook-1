@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "ai/**"
+      - "contracts/ingest/**"
       - ".github/workflows/ai-ci.yml"
   push:
     branches: [develop, main]
     paths:
       - "ai/**"
+      - "contracts/ingest/**"
       - ".github/workflows/ai-ci.yml"
 
 concurrency:
@@ -44,7 +46,7 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
 
       - name: Python 구문 검사
-        run: python -m compileall -q api schemas services rag main.py tests
+        run: python -m compileall -q api ports schemas services rag main.py tests
 
       - name: 테스트
         run: python -m pytest -q

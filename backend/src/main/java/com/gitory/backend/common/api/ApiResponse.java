@@ -1,6 +1,7 @@
 package com.gitory.backend.common.api;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
  * API 응답의 공통 형식 {@code { data, error }}.
@@ -9,7 +10,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
  */
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
-public record ApiResponse<T>(T data, ApiError error) {
+@Schema(description = "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.")
+public record ApiResponse<T>(
+        @Schema(description = "성공 응답 데이터. 오류 응답에서는 null") T data,
+        @Schema(description = "오류 정보. 성공 응답에서는 null") ApiError error) {
 
     public static <T> ApiResponse<T> ok(T data) {
         return new ApiResponse<>(data, null);

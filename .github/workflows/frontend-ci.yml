@@ -1,10 +1,10 @@
 name: frontend
 on:
   pull_request:
-    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
+    paths: ['frontend/**', 'contracts/**', '.github/workflows/frontend-ci.yml']
   push:
     branches: [develop, main]
-    paths: ['frontend/**', '.github/workflows/frontend-ci.yml']
+    paths: ['frontend/**', 'contracts/**', '.github/workflows/frontend-ci.yml']
 permissions:
   contents: read
 concurrency:

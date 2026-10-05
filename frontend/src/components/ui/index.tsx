@@ -1,4 +1,4 @@
-import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, ComponentPropsWithRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, Search, X, type LucideIcon } from 'lucide-react';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
@@ -28,8 +28,8 @@ export const Badge = ({ kind, children, title }: { kind: BadgeKind; children: Re
 );
 
 // ───────── Chip · Check · Radio ─────────
-export const Chip = ({ children, fill, onClick }: { children: ReactNode; fill?: boolean; onClick?: () => void }) =>
-  onClick ? <button type="button" className={cx('chip', fill && 'chip--fill')} onClick={onClick}>{children}</button>
+export const Chip = ({ children, fill, onClick, disabled }: { children: ReactNode; fill?: boolean; onClick?: () => void; disabled?: boolean }) =>
+  onClick ? <button type="button" className={cx('chip', fill && 'chip--fill')} disabled={disabled} onClick={onClick}>{children}</button>
           : <span className={cx('chip', fill && 'chip--fill')}>{children}</span>;
 
 export const Check = ({ checked, onChange, label, disabled }: { checked: boolean; onChange?: (v: boolean) => void; label: string; disabled?: boolean }) => (
@@ -37,7 +37,7 @@ export const Check = ({ checked, onChange, label, disabled }: { checked: boolean
     {checked ? '✓' : ''}
   </button>
 );
-export const Radio = ({ checked }: { checked: boolean }) => <span className="radio" role="radio" aria-checked={checked} />;
+export const Radio = ({ checked }: { checked: boolean }) => <span className={cx('radio', checked && 'radio--checked')} aria-hidden />;
 
 // ───────── 아이콘 박스 · Note · Empty · Divider ─────────
 export const IconBox = ({ icon: Icon, size = 32, tone = 'subtle' }: { icon: LucideIcon; size?: number; tone?: 'subtle' | 'ink' | 'paper' }) => (
@@ -71,7 +71,7 @@ export function Field({ label, hint, right, children }: { label: string; hint?: 
   );
 }
 export const Input = ({ className, ...p }: InputHTMLAttributes<HTMLInputElement>) => <input className={cx('input', className)} {...p} />;
-export const Textarea = ({ className, ...p }: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea className={cx('input', className)} {...p} />;
+export const Textarea = ({ className, ...p }: ComponentPropsWithRef<'textarea'>) => <textarea className={cx('input', className)} {...p} />;
 
 // ───────── Progress · StarKey · StarDots · Evidence ─────────
 export const Track = ({ value, label }: { value: number; label?: string }) => (
@@ -111,7 +111,7 @@ export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string
     <div className="evidence evidence--user">
       <MessageSquareQuote size={13} className="evidence__icon" aria-hidden />
       <span className="evidence__label">{evidenceTypeLabel[e.type]}</span>
-      <span className="grow" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{turnText ?? (e.turnNo ? `되묻기 ${e.turnNo}턴 · 다듬지 않고 그대로 저장됨` : '내가 쓴 문장입니다')}</span>
+      <span className="grow" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{turnText ?? (e.turnNo ? `${e.turnNo}번째 답변` : '직접 작성한 내용')}</span>
     </div>
   );
 }
@@ -172,7 +172,7 @@ export const RepoContext = ({ name, note, right }: { name: string; note: string;
 export const StickyFooter = ({ strong, sub, children }: { strong: string; sub?: string; children: ReactNode }) => (
   <div className="sticky-footer">
     <div className="sticky-footer__text"><strong>{strong}</strong>{sub && <span>{sub}</span>}</div>
-    {children}
+    <div className="sticky-footer__actions">{children}</div>
   </div>
 );
 export const Spinner = () => <span className="spinner" role="status" aria-label="불러오는 중" />;

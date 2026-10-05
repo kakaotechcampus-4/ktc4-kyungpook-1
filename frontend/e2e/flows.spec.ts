@@ -17,10 +17,15 @@ test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 
   await page.goto('/repos?select=r_ratelimit&disclose=1');
   await page.getByRole('button', { name: '정리 시작' }).click();
   await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // RATE_LIMITED — 한도가 풀릴 때까지 막는다
+  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // GITHUB_RATE_LIMITED
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
-  await expect(page.getByRole('heading', { name: /후보 \d+개 \(전체 아님\)/ })).toBeVisible();
-  await expect(page.getByText('"이게 전부"가 아닙니다')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /후보 \d+개 \(부분 결과\)/ })).toBeVisible();
+  await expect(page.getByText('읽은 기록에서 찾은 후보예요')).toBeVisible();
+  await page.getByRole('button', { name: '분석 기준' }).click();
+  await expect(page.getByRole('button', { name: '다시 정리하기' })).toBeDisabled();
+  await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).last().click();
+  await page.getByRole('link', { name: '작업 상태 보기' }).click();
+  await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
 });
 
 test('후보 제외는 실행 취소할 수 있다', async ({ page }) => {
@@ -40,11 +45,15 @@ test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채
   await page.goto('/cards/card_01/interview?field=T');
   await page.getByText('질문 근거 보기', { exact: true }).click();
   await expect(page.getByText('코드에서 찾은 것')).toBeVisible();
+  const selectedAnswer = (await page.locator('.chip--option').first().textContent())!;
   await page.locator('.chip--option').first().click();
-  await page.getByRole('button', { name: '다음으로' }).click();
-  await expect(page.locator('.toast')).toContainText('다듬지 않고 그대로');
+  await page.getByRole('button', { name: '답변 저장', exact: true }).click();
+  await expect(page.locator('.toast')).toContainText('답변을 저장했어요');
+  const savedCard = await page.evaluate(async () => (await (await fetch('/api/cards/card_01')).json()).data);
+  expect(savedCard.version.task).toBe(selectedAnswer);
+  expect(savedCard.evidence.some((entry: { field: string; type: string }) => entry.field === 'T' && entry.type === 'USER_SELECTED')).toBe(true);
   // 내부 enum 이 화면에 새지 않는다
-  await expect(page.getByText(/보기에서 고른 것 · 고치지 않고 그대로 넣었어요/)).toBeVisible();
+  await expect(page.getByText('선택한 답변 · 답변 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
   await page.getByRole('button', { name: '카드로 돌아가기' }).click();
   await expect(page.locator('#star-T').locator('..').locator('..')).not.toContainText('근거를 찾지 못해');
@@ -62,9 +71,11 @@ test('직접 수정 — 쓰는 동안 서버에 저장되고 AI 초안은 히스
   await expect(page.getByText(typed)).toBeVisible();
   await page.goto('/cards/card_01?mode=edit');
   await page.getByRole('button', { name: '저장하고 닫기' }).click();
-  await page.getByRole('button', { name: '버전 히스토리' }).first().click();
-  await expect(page.getByText('AI_DRAFT').first()).toBeVisible();
-  await expect(page.getByText('USER_EDIT').first()).toBeVisible();
+  await page.getByRole('button', { name: '작성 이력' }).first().click();
+  await expect(page.getByText('첫 초안', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('직접 수정', { exact: true }).first()).toBeVisible();
+  const versions = await page.evaluate(async () => (await (await fetch('/api/cards/card_01/versions')).json()).data);
+  expect(versions.map((version: { source: string }) => version.source)).toEqual(expect.arrayContaining(['AI_DRAFT', 'USER_EDIT']));
 });
 
 test('새로고침으로 job 이 빠져도 서버의 진행 중 작업으로 되돌아온다', async ({ page }) => {
@@ -113,7 +124,7 @@ test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_S
   await page.getByLabel('상황 (Situation)').fill('3인 팀에서 배포 담당이 없었다');
   await page.getByLabel('행동 (Action)').fill('GitHub Actions 로 배포 파이프라인을 직접 구성했다');
   await page.getByRole('button', { name: '확정', exact: true }).click();
-  await page.getByRole('checkbox', { name: '확인' }).click();
+  await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
   await page.getByRole('button', { name: '확정하기' }).click();
   await expect(page.getByText('확정됨').first()).toBeVisible();
   await expect(page.getByText('내가 말한 것').first()).toBeVisible();

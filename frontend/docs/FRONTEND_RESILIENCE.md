@@ -23,7 +23,7 @@ Interview text is submitted verbatim on the existing answer endpoint. Unsubmitte
 
 - Same key + same repository: return existing Job.
 - Different keys + same active repository: return existing Job.
-- Same key + different repository: 409. Current backend PR uses INVALID_REQUEST; frontend also recognizes proposed IDEMPOTENCY_KEY_MISMATCH, without assuming it has been approved.
+- Same key + different repository: 409 + IDEMPOTENCY_KEY_MISMATCH (confirmed in develop, 2026-09-26). No automatic request with a new key. Other INVALID_REQUEST errors use the generic input-error message.
 - Unknown response: explicit retry keeps UUID. A 409 does not generate another request or silently rotate a key.
 - Job lookup 404, 5xx, timeout, or contract failure stays on a recovery screen; none is treated as successful analysis.
 - Active list uses the earliest server interval while work exists and a named idle discovery interval to find jobs from other tabs. No browser-persisted job registry.

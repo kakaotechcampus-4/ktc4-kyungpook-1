@@ -23,13 +23,18 @@ const fromCard = (c: Card): Draft => ({ S: c.version.situation ?? '', T: c.versi
  * 다른 기기에서 열어도 이어서 쓸 수 있어야 하고, 캐시를 지웠다고 쓰던 글이 날아가면 안 되기 때문이다.
  * 임시 저장은 같은 버전을 덮어쓴다. AI 초안(v1)은 잠겨 있어 첫 수정 때 새 버전이 한 번 갈라지고, 그 뒤로는 그 버전을 계속 덮는다.
  */
-export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
+export function EditMode({ card, onDone, initialField }: { card: Card; onDone: () => void; initialField?: StarField }) {
   const qc = useQueryClient();
   const saveDraft = useSaveDraft(card.id);
   const baseRef = useRef<Draft>(fromCard(card));           // 비교 기준은 들어올 때 한 번만 잡는다
   const [draft, setDraft] = useState<Draft>(() => fromCard(card));
+  const fields = useRef<Partial<Record<StarField, HTMLTextAreaElement | null>>>({});
+  useEffect(() => {
+    const target = initialField && fields.current[initialField];
+    if (target) { target.focus({ preventScroll: true }); target.scrollIntoView?.({ block: 'center' }); }
+  }, [card.id, initialField]);
   const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   // 라우트가 리마운트 없이 재사용되면(카드 A → 카드 B) props 의 card 만 바뀐다 —
   // 비교 기준과 입력값을 새 카드로 다시 잡지 않으면 A 의 수정 내용이 B 로 저장될 수 있다.
   useEffect(() => {
@@ -51,7 +56,7 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
     if (!await flush()) return;
     void qc.invalidateQueries({ queryKey: keys.card(card.id), exact: true });
     guard.allowNavigation();
-    if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('저장했어요 — AI 초안은 그대로 남아 있어요', { tone: 'success' }); }
+    if (changed.length) { track('card_edited', { cardId: card.id, fields: changed.join('') }); toast('변경한 내용을 저장했어요', { tone: 'success' }); }
     onDone();
   };
 
@@ -71,7 +76,7 @@ export function EditMode({ card, onDone }: { card: Card; onDone: () => void }) {
                   <span className="right t-12 c-3">{draft[f].length}자</span>
                   {dirty && <button type="button" className="t-12 w-500 c-2" onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button>}
                 </div>
-                <Textarea className="input--lg" rows={3} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
+                <Textarea ref={(element) => { fields.current[f] = element; }} className="input--lg" rows={3} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
                   placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]} />
                 {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
                 {dirty && ev.some((e) => e.type === 'COMMIT') && (

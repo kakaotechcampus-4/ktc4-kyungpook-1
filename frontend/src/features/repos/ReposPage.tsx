@@ -125,11 +125,11 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
           {r.recommended && !r.lastAnalyzedAt && <Badge kind="PR">추천</Badge>}
           {low && <Badge kind="CAUTION">내 기여 {pct(r.contribution.ratio)}</Badge>}
           {r.prCount === 0 && <Badge kind="NEUTRAL">PR 0건</Badge>}
-          {r.lastAnalyzedAt && <Badge kind="NEUTRAL">정리함 · 카드 {r.cardCount}</Badge>}
+          {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}건</Badge></span>}
         </div>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></span>
-          <span className="t-12 c-3">PR {r.prCount} · 리뷰 {r.reviewCount} · {r.language ?? '-'} · {ym(r.activeFrom)} - {ym(r.activeTo)}</span>
+          <span className="repo-row__stats t-12 c-3"><span>PR {r.prCount} · 리뷰 {r.reviewCount}</span><span>{r.language ?? '-'}</span><span>{ym(r.activeFrom)} – {ym(r.activeTo)}</span></span>
         </div>
         {/* 배지만 두면 왜 조심해야 하는지 안 읽힌다 — 한 줄로 풀어 쓴다 */}
         {low && <span className="repo-row__warn">내 몫이 적어서, 카드로 만들면 부풀린 것처럼 보일 수 있어요</span>}

@@ -23,11 +23,14 @@ public class RepositorySyncService {
     private final ConnectedRepositoryRepository connections;
     private final TransactionTemplate transaction;
 
-    public void sync(Long userId) {
+    /** 이번에 GitHub 이 돌려준 저장소들의 GitHub id 를 돌려준다 */
+    public List<Long> sync(Long userId) {
 
         List<GithubRepositoryResponse> fetched = github.repositories(userId);
 
         transaction.executeWithoutResult(status -> fetched.forEach(repository -> save(userId, repository)));
+
+        return fetched.stream().map(GithubRepositoryResponse::id).toList();
 
     }
 
@@ -35,7 +38,8 @@ public class RepositorySyncService {
 
         repositories.upsert(repository.id(), repository.owner().login(), repository.name(),
                 RepositoryVisibility.of(repository.privateRepository()).name(),
-                repository.language(), repository.defaultBranch());
+                repository.language(), repository.defaultBranch(),
+                repository.createdAt(), repository.pushedAt());
         connections.connectIfAbsent(userId, repository.id());
 
     }

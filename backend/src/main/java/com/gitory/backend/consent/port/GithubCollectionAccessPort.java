@@ -9,6 +9,6 @@ public interface GithubCollectionAccessPort {
 
     JsonNode collect(Long userId, GithubCollectionTarget target);
 
-    /** 쓸 수 있는 GitHub 연결이 없으면 GithubNotConnectedException 을 던진다 */
+    /** 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰을 거절하면 GithubNotConnectedException 을 던진다 */
     List<GithubRepositoryResponse> repositories(Long userId);
 }

@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.HttpServerErrorException;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -42,13 +43,15 @@ class GithubRepositoryClientTest {
                 .andExpect(header("X-GitHub-Api-Version", "2022-11-28"))
                 .andRespond(withSuccess("""
                         [{"id": 123, "name": "gitory", "owner": {"login": "grow22"},
-                          "private": true, "language": null, "default_branch": "develop", "fork": false}]
+                          "private": true, "language": null, "default_branch": "develop", "fork": false,
+                          "created_at": "2026-09-10T03:00:00Z", "pushed_at": "2026-10-05T01:00:00Z"}]
                         """, MediaType.APPLICATION_JSON));
 
         List<GithubRepositoryResponse> repositories = client.fetchRepositories(TOKEN);
 
         assertThat(repositories).containsExactly(new GithubRepositoryResponse(
-                123L, "gitory", new GithubOwnerResponse("grow22"), true, null, "develop"));
+                123L, "gitory", new GithubOwnerResponse("grow22"), true, null, "develop",
+                Instant.parse("2026-09-10T03:00:00Z"), Instant.parse("2026-10-05T01:00:00Z")));
         server.verify();
     }
 

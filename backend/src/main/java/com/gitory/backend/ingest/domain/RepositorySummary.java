@@ -11,6 +11,7 @@ public record RepositorySummary(
         Instant activeFrom,
         Instant activeTo,
         Instant lastAnalyzedAt,
+        Instant countedAt,
         int commitCount,
         int ownCommitCount,
         int ownPrCount,

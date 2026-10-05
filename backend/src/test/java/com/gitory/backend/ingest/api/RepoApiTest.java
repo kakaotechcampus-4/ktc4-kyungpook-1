@@ -169,7 +169,7 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("값이 비어 있어도 프론트가 요구하는 키 13개는 모두 내려간다")
+    @DisplayName("값이 비어 있어도 프론트가 요구하는 키 13개와 countedAt 은 모두 내려간다")
     void keepsEveryContractKey() throws Exception {
 
         githubReturns(repo(100L, "grow22", "gitory"));
@@ -178,7 +178,7 @@ class RepoApiTest {
 
         assertThat(repo).containsOnlyKeys(
                 "id", "owner", "name", "contribution", "prCount", "reviewCount", "language",
-                "activeFrom", "activeTo", "lastAnalyzedAt", "candidateCount", "cardCount", "recommended");
+                "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended");
 
     }
 
@@ -209,7 +209,7 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("센 개수가 응답의 기여 칸·PR 수·리뷰 수·추천에 담긴다")
+    @DisplayName("센 개수가 응답의 기여 칸·PR 수·리뷰 수·추천에 담기고, 센 시각이 countedAt 으로 내려온다")
     void returnsCountedContribution() throws Exception {
 
         githubReturns(repo(100L, "grow22", "gitory"));
@@ -223,12 +223,13 @@ class RepoApiTest {
                 .andExpect(jsonPath("$.data[0].contribution.level").value("SHARED"))
                 .andExpect(jsonPath("$.data[0].prCount").value(23))
                 .andExpect(jsonPath("$.data[0].reviewCount").value(11))
-                .andExpect(jsonPath("$.data[0].recommended").value(true));
+                .andExpect(jsonPath("$.data[0].recommended").value(true))
+                .andExpect(jsonPath("$.data[0].countedAt").isString());
 
     }
 
     @Test
-    @DisplayName("개수를 세지 못해도 목록은 200 으로 내려온다")
+    @DisplayName("개수를 세지 못해도 목록은 200 으로 내려오고, 실제 0 과 구분되게 countedAt 은 null 이다")
     void listsEvenWhenCountFails() throws Exception {
 
         githubReturns(repo(100L, "grow22", "gitory"));
@@ -237,7 +238,8 @@ class RepoApiTest {
         repos(myUserId)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].name").value("gitory"))
-                .andExpect(jsonPath("$.data[0].contribution.mine").value(0));
+                .andExpect(jsonPath("$.data[0].contribution.mine").value(0))
+                .andExpect(jsonPath("$.data[0].countedAt").value(nullValue()));
 
     }
 

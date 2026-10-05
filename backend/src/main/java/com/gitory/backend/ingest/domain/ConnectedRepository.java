@@ -29,9 +29,30 @@ public class ConnectedRepository {
 
     private Instant lastAnalyzedAt;
 
+    private int commitCount;
+    private int ownCommitCount;
+    private int prCount;
+    private int ownPrCount;
+    private int reviewedPrCount;
+
+    private Instant countedAt;
+
     public void markAnalyzed() {
 
         this.lastAnalyzedAt = Instant.now();
+
+    }
+
+    /** countedAt 은 GitHub 에 묻기 시작한 시각을 넣어, 세는 사이에 생긴 push 가 다음 조회 때 다시 세지게 한다 */
+    public void recordCounts(int commitCount, int ownCommitCount, int prCount, int ownPrCount, int reviewedPrCount,
+                             Instant countedAt) {
+
+        this.commitCount = commitCount;
+        this.ownCommitCount = ownCommitCount;
+        this.prCount = prCount;
+        this.ownPrCount = ownPrCount;
+        this.reviewedPrCount = reviewedPrCount;
+        this.countedAt = countedAt;
 
     }
 }

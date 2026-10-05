@@ -1,6 +1,7 @@
 package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.ingest.domain.ConnectedRepository;
+import com.gitory.backend.ingest.domain.ContributionTarget;
 import com.gitory.backend.ingest.domain.RepositorySummary;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -27,11 +28,21 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
                 c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
-                r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt)
+                r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt,
+                c.commitCount, c.ownCommitCount, c.ownPrCount, c.reviewedPrCount)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId AND r.githubRepoId IN :githubRepoIds
             ORDER BY r.ownerLogin, r.name
             """)
     List<RepositorySummary> findSummaries(@Param("userId") Long userId,
                                           @Param("githubRepoIds") Collection<Long> githubRepoIds);
+
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.ContributionTarget(c.id, r.githubRepoId, r.ownerLogin, r.name)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.userId = :userId AND r.githubRepoId IN :githubRepoIds
+              AND (c.countedAt IS NULL OR c.countedAt < r.githubPushedAt)
+            """)
+    List<ContributionTarget> findUncounted(@Param("userId") Long userId,
+                                           @Param("githubRepoIds") Collection<Long> githubRepoIds);
 }

@@ -4,6 +4,7 @@ import com.gitory.backend.consent.domain.GithubNotConnectedException;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.consent.port.GithubOwnerResponse;
+import com.gitory.backend.consent.port.GithubRepositoryCount;
 import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
@@ -32,9 +33,11 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -180,7 +183,7 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("GitHub 값과 날짜가 담기고, 아직 세지 않는 개수는 0 · 후보는 null · 카드는 0 · 추천은 false 다")
+    @DisplayName("GitHub 값과 날짜가 담기고, 아직 못 센 개수는 0 · 후보는 null · 카드는 0 · 추천은 false 다")
     void fillsSummaryFields() throws Exception {
 
         githubReturns(repo(100L, "grow22", "gitory"));
@@ -202,6 +205,39 @@ class RepoApiTest {
                 .andExpect(jsonPath("$.data[0].candidateCount").value(nullValue()))
                 .andExpect(jsonPath("$.data[0].cardCount").value(0))
                 .andExpect(jsonPath("$.data[0].recommended").value(false));
+
+    }
+
+    @Test
+    @DisplayName("센 개수가 응답의 기여 칸·PR 수·리뷰 수·추천에 담긴다")
+    void returnsCountedContribution() throws Exception {
+
+        githubReturns(repo(100L, "grow22", "gitory"));
+        given(github.countActivity(anyLong(), any()))
+                .willReturn(List.of(new GithubRepositoryCount(100L, 197, 52, 58, 23, 11)));
+
+        repos(myUserId)
+                .andExpect(jsonPath("$.data[0].contribution.mine").value(52))
+                .andExpect(jsonPath("$.data[0].contribution.team").value(145))
+                .andExpect(jsonPath("$.data[0].contribution.ratio").value(closeTo(0.264, 0.001)))
+                .andExpect(jsonPath("$.data[0].contribution.level").value("SHARED"))
+                .andExpect(jsonPath("$.data[0].prCount").value(23))
+                .andExpect(jsonPath("$.data[0].reviewCount").value(11))
+                .andExpect(jsonPath("$.data[0].recommended").value(true));
+
+    }
+
+    @Test
+    @DisplayName("개수를 세지 못해도 목록은 200 으로 내려온다")
+    void listsEvenWhenCountFails() throws Exception {
+
+        githubReturns(repo(100L, "grow22", "gitory"));
+        given(github.countActivity(anyLong(), any())).willThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY));
+
+        repos(myUserId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].name").value("gitory"))
+                .andExpect(jsonPath("$.data[0].contribution.mine").value(0));
 
     }
 

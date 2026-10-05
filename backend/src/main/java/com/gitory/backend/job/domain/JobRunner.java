@@ -54,7 +54,7 @@ public class JobRunner {
     public void failStuckJobs() {
 
         Instant before = Instant.now().minus(STUCK_AFTER);
-        transaction.executeWithoutResult(status -> jobs.findByStateAndUpdatedAtBefore(JobState.RUNNING, before)
+        transaction.executeWithoutResult(status -> jobs.findStuckForUpdate(before)
                 .forEach(job -> job.fail(JobErrorCode.INTERNAL_ERROR)));
 
     }

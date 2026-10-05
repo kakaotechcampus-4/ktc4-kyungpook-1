@@ -46,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -304,6 +305,35 @@ class JobRunnerTest {
         runner.failStuckJobs();
 
         assertFailed(jobId, JobErrorCode.INTERNAL_ERROR);
+
+    }
+
+    @Test
+    @DisplayName("워커가 Job 을 성공으로 마무리하는 사이에 정리가 돌아도 성공 결과를 덮어쓰지 않는다")
+    void stuckSweepDoesNotOverwriteFinishingJob() throws Exception {
+
+        Long jobId = runningSince(userRepositoryId, "11 minutes");
+        Long collectionRunId = jdbc.queryForObject(
+                "INSERT INTO collection_run (user_repository_id) VALUES (?) RETURNING id", Long.class, userRepositoryId);
+        CountDownLatch locked = new CountDownLatch(1);
+
+        ExecutorService worker = newFixedThreadPool(1);
+        Future<?> finishing = worker.submit(() -> transaction.executeWithoutResult(status -> {
+            jdbc.update("UPDATE analysis_job SET state = 'SUCCEEDED', collection_run_id = ?, finished_at = now() WHERE id = ?",
+                    collectionRunId, jobId);
+            locked.countDown();
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(300));
+        }));
+        locked.await(5, TimeUnit.SECONDS);
+
+        runner.failStuckJobs();
+
+        finishing.get(10, TimeUnit.SECONDS);
+        worker.shutdown();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.getCollectionRunId()).isEqualTo(collectionRunId);
 
     }
 

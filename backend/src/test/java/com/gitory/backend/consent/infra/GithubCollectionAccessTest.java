@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -191,6 +192,20 @@ class GithubCollectionAccessTest {
     }
 
     @Test
+    @DisplayName("리뷰한 PR 은 내가 쓴 PR 을 빼고 검색한다")
+    void searchesReviewedPullRequestsWithoutMine() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenReturn(Map.of());
+
+        access.countActivity(USER_ID, List.of(new GithubCountTarget(100L, "kakao", "gitory")));
+
+        verify(counter).countPullRequests(TOKEN, "is:pr reviewed-by:grow22 -author:grow22");
+
+    }
+
+    @Test
     @DisplayName("검색 결과를 다 받지 못하면 어느 저장소의 개수도 돌려주지 않고 예외를 그대로 던진다")
     void passesThroughIncompleteSearch() {
 
@@ -208,7 +223,7 @@ class GithubCollectionAccessTest {
 
         when(counter.viewerId(TOKEN)).thenReturn(VIEWER_ID);
         when(counter.countPullRequests(TOKEN, "is:pr author:grow22")).thenReturn(authored);
-        when(counter.countPullRequests(TOKEN, "is:pr reviewed-by:grow22")).thenReturn(reviewed);
+        when(counter.countPullRequests(TOKEN, "is:pr reviewed-by:grow22 -author:grow22")).thenReturn(reviewed);
 
     }
 

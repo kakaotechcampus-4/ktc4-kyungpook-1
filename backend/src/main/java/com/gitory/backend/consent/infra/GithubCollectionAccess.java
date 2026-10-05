@@ -72,9 +72,11 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
         String login = user.getGithubLogin();
         String viewerId = counter.viewerId(token);
+        // 내 PR 에 달린 리뷰 댓글에 답글만 달아도 GitHub 이 내 리뷰로 기록해 내 PR 이 섞이므로 내가 쓴 PR 은 뺀다
+        String reviewedQuery = "is:pr reviewed-by:" + login + " -author:" + login;
         GithubSearchCounts searches = new GithubSearchCounts(
                 counter.countPullRequests(token, "is:pr author:" + login),
-                counter.countPullRequests(token, "is:pr reviewed-by:" + login),
+                counter.countPullRequests(token, reviewedQuery),
                 counter.countSearchedCommits(token, "author:" + login + " merge:true"));
 
         List<GithubRepositoryCount> counts = new ArrayList<>();

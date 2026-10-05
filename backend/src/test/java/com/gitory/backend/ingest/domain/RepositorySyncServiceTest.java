@@ -27,6 +27,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +73,7 @@ class RepositorySyncServiceTest {
     void savesRepositoryAndConnection() {
 
         githubReturns(new GithubRepositoryResponse(
-                100L, "gitory", new GithubOwnerResponse("grow22"), true, null, "develop"));
+                100L, "gitory", new GithubOwnerResponse("grow22"), true, null, "develop", null, null));
 
         service.sync(userId);
 
@@ -100,6 +102,22 @@ class RepositorySyncServiceTest {
                 .isEqualTo("new-name");
         assertThat(countOf("repository")).isEqualTo(1);
         assertThat(connectionStatusOf(userId, 100L)).isEqualTo("ANALYZED");
+    }
+
+    @Test
+    @DisplayName("저장소를 만든 시각과 마지막 push 시각이 저장되고, 다시 동기화하면 push 시각이 새 값으로 바뀐다")
+    void savesAndUpdatesGithubDates() {
+
+        Instant created = Instant.parse("2026-09-10T03:00:00Z");
+        githubReturns(repoPushedAt(created, Instant.parse("2026-10-01T00:00:00Z")));
+        service.sync(userId);
+
+        githubReturns(repoPushedAt(created, Instant.parse("2026-10-05T01:00:00Z")));
+        service.sync(userId);
+
+        assertThat(timeOf("github_created_at")).isEqualTo(created);
+        assertThat(timeOf("github_pushed_at")).isEqualTo(Instant.parse("2026-10-05T01:00:00Z"));
+
     }
 
     @Test
@@ -195,7 +213,20 @@ class RepositorySyncServiceTest {
 
     private static GithubRepositoryResponse repo(long githubRepoId, String name) {
 
-        return new GithubRepositoryResponse(githubRepoId, name, new GithubOwnerResponse("grow22"), false, "Java", "main");
+        return new GithubRepositoryResponse(githubRepoId, name, new GithubOwnerResponse("grow22"), false, "Java", "main", null, null);
+    }
+
+    private static GithubRepositoryResponse repoPushedAt(Instant createdAt, Instant pushedAt) {
+
+        return new GithubRepositoryResponse(100L, "gitory", new GithubOwnerResponse("grow22"), false, "Java", "main", createdAt, pushedAt);
+
+    }
+
+    private Instant timeOf(String column) {
+
+        return jdbc.queryForObject("SELECT " + column + " FROM repository WHERE github_repo_id = 100", Timestamp.class)
+                .toInstant();
+
     }
 
     private String connectionStatusOf(Long userId, long githubRepoId) {

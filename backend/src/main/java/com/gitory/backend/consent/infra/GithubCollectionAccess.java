@@ -10,6 +10,7 @@ import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Instant;
@@ -44,7 +45,12 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
         activeUser(userId).orElseThrow(GithubNotConnectedException::new);
         String token = activeToken(userId).orElseThrow(GithubNotConnectedException::new);
-        return github.fetchRepositories(token);
+
+        try {
+            return github.fetchRepositories(token);
+        } catch (HttpClientErrorException.Unauthorized rejected) {
+            throw new GithubNotConnectedException();
+        }
 
     }
 

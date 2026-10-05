@@ -14,6 +14,10 @@ import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 
 import java.time.Instant;
 import java.util.List;
@@ -44,7 +48,7 @@ class GithubCollectionAccessTest {
 
         connectionExpiringAt(null);
         List<GithubRepositoryResponse> fetched = List.of(new GithubRepositoryResponse(
-                100L, "gitory", new GithubOwnerResponse("grow22"), false, "Java", "main"));
+                100L, "gitory", new GithubOwnerResponse("grow22"), false, "Java", "main", null, null));
         when(github.fetchRepositories(TOKEN)).thenReturn(fetched);
 
         assertThat(access.repositories(USER_ID)).isEqualTo(fetched);
@@ -91,6 +95,29 @@ class GithubCollectionAccessTest {
         connectionExpiringAt(null);
 
         assertNotConnected();
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 토큰을 거절하면(401) 연결이 없는 것과 같은 예외가 난다")
+    void rejectedTokenIsNotConnected() {
+
+        connectionExpiringAt(null);
+        when(github.fetchRepositories(TOKEN)).thenThrow(HttpClientErrorException.create(
+                HttpStatus.UNAUTHORIZED, "Unauthorized", new HttpHeaders(), new byte[0], null));
+
+        assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(GithubNotConnectedException.class);
+
+    }
+
+    @Test
+    @DisplayName("그 밖의 GitHub 실패는 바꾸지 않고 그대로 던진다")
+    void passesThroughOtherGithubFailure() {
+
+        connectionExpiringAt(null);
+        when(github.fetchRepositories(TOKEN)).thenThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY));
+
+        assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(HttpServerErrorException.class);
 
     }
 

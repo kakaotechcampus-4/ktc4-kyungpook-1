@@ -47,6 +47,8 @@ dependencies {
     // (#11 의 flyway-core 와 같은 유형). 인스턴스를 재시작하면 로그인이 전부 끊긴다.
     implementation 'org.springframework.boot:spring-boot-starter-session-jdbc'
 
+    implementation 'org.springframework.boot:spring-boot-starter-restclient'
+
     // 운영
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
@@ -63,6 +65,8 @@ dependencies {
     // MockMvc(@AutoConfigureMockMvc)는 이 스타터에 들어 있다 — 없으면 인증 필터를 거치는
     // 실제 요청으로 401/200 을 확인할 방법이 없다.
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-restclient-test'
 
     // DB 테스트는 실제 PostgreSQL 컨테이너로 돌린다. 스키마가 JSONB·부분 유니크 인덱스 같은 PostgreSQL 전용 기능을 쓴다.
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'

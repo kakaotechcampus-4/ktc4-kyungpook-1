@@ -1,0 +1,68 @@
+# 자동 배포 — develop 에 머지되면 EC2 에서 deploy/compose.yaml 을 다시 빌드·기동한다.
+#
+# 러너: EC2 에 설치한 self-hosted runner (라벨 gitory-deploy).
+#   22 포트·IAM 액세스 키를 쓸 수 없어서(카테캠 제약) 서버가 GitHub 에 바깥으로 접속해
+#   작업을 받아 오는 방식을 쓴다. 설치 방법은 docs/DEPLOYMENT.md 「자동 배포」 절.
+#
+# 🚨 public 레포에서 self-hosted runner 를 쓴다. 아래를 지킨다.
+#   - 트리거는 push(develop)·수동 실행뿐이다. pull_request 를 추가하지 않는다 —
+#     fork PR 의 코드가 서버에서 돈다.
+#   - Settings → Actions → General → Fork pull request workflows 를
+#     "Require approval for all external contributors" 로 둔다.
+#   - Actions 로그는 누구나 본다. 앱 로그(docker compose logs)·.env 를 여기서 출력하지 않는다.
+#     실패 원인은 서버에서 docker compose logs 로 본다.
+
+name: deploy
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'backend/**'
+      - 'ai/**'
+      - 'frontend/**'
+      - 'deploy/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+# 배포는 줄 세운다. 진행 중인 배포를 취소하면 컨테이너가 반쯤 바뀐 채 남을 수 있다.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # fork 에서는 돌지 않게, 수동 실행도 develop 에서만 (머지 전 브랜치가 운영에 올라가지 않게)
+    if: github.repository == 'kakaotechcampus-4/ktc4-kyungpook-1' && github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, gitory-deploy]
+    timeout-minutes: 30
+    env:
+      # 서버의 운영 체크아웃. deploy/.env(비밀값)가 여기에만 있다.
+      DEPLOY_DIR: /home/ubuntu/gitory
+    steps:
+      - name: 코드를 이 커밋으로 맞추기
+        run: |
+          cd "$DEPLOY_DIR"
+          git fetch --prune origin
+          git checkout --force --detach "$GITHUB_SHA"
+          git log --oneline -1
+
+      - name: 빌드·재기동 (모든 서비스 healthy 까지 대기)
+        run: |
+          cd "$DEPLOY_DIR/deploy"
+          docker compose up -d --build --wait --wait-timeout 300
+
+      - name: 컨테이너 상태
+        if: always()
+        run: |
+          cd "$DEPLOY_DIR/deploy"
+          docker compose ps --format 'table {{.Service}}\t{{.Status}}'
+
+      - name: 오래된 이미지·빌드 캐시 정리 (디스크 50GB)
+        if: success()
+        run: |
+          docker image prune -f
+          docker builder prune -f --filter until=72h

@@ -14,6 +14,7 @@ import './styles/shell.css';
 import './styles/pages.css';
 import './styles/design2.css';
 import './styles/layout-tio.css';
+import './styles/product.css';
 import './styles/responsive.css';
 
 applyTheme(getTheme());

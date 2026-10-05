@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { z } from 'zod';
 import { api, ApiError, AuthError, ContractError } from '@/api/client';
 import { Card, CandidateBoard } from '@/api/schemas';
+import { endpoints } from '@/api/endpoints';
 
 const respond = (status: number, body: unknown) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
@@ -9,6 +10,10 @@ const respond = (status: number, body: unknown) =>
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('api 봉투 규칙', () => {
+  it('rejects an empty card creation response instead of navigating to undefined', async () => {
+    respond(200, { data: { jobId: 'job', cardIds: [] }, error: null });
+    await expect(endpoints.createCardsFromCandidates('repo', ['candidate'])).rejects.toBeInstanceOf(ContractError);
+  });
   it('times out the request and cancels the underlying fetch', async () => {
     vi.useFakeTimers();
     let signal: AbortSignal | undefined;

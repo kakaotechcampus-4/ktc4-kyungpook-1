@@ -39,7 +39,7 @@ export function LeavePage() {
       <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
         <span className="t-12l c-2">내보내기를 먼저 하시는 걸 권합니다</span>
         <div className="right row" style={{ gap: 8 }}>
-          <Link to="/cards" className="btn btn--outline">내 카드 내보내기</Link>
+          <Link to="/cards" className="btn btn--outline">카드 목록</Link>
           <Button disabled title="정책 확정 전에는 실행할 수 없습니다">탈퇴 진행</Button>
         </div>
       </div>

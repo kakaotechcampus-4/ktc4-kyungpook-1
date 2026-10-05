@@ -2,7 +2,10 @@
  * enum → 화면 문구. 한국어는 이 파일 밖으로 새지 않는다.
  * 로직은 절대 여기 문자열을 비교하지 않는다 — 문구를 다듬어도 로직이 깨지지 않게.
  */
-import type { AuthoredBy, CandidateStatus, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
+import type { AuthoredBy, CandidateStatus, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobState, JobType, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
+
+export const jobStateLabel: Record<JobState, string> = { QUEUED: '대기 중', RUNNING: '진행 중', SUCCEEDED: '완료', FAILED: '실패', CANCELED: '취소됨' };
+export const jobTypeLabel: Record<JobType, string> = { ANALYZE: '저장소 분석', DRAFT: '카드 초안 생성' };
 
 export const candidateStatusLabel: Record<CandidateStatus, string> = { NEW: '후보', USED: '사용됨', EXCLUDED: '제외됨' };
 export const candidateTypeLabel: Record<CandidateType, string> = { PR: 'PR', ISSUE: '이슈', COMMIT_CLUSTER: '커밋 묶음', MANUAL: '직접 추가' };
@@ -10,9 +13,15 @@ export const cardKindLabel: Record<CardKind, string> = { TECH: '기술 카드', 
 export const cardKindShort: Record<CardKind, string> = { TECH: '기술', QUALITATIVE: '정성' };
 export const cardStatusLabel: Record<CardStatus, string> = { DRAFT: '작성 중', CONFIRMED: '확정됨' };
 export const versionSourceLabel: Record<VersionSource, string> = {
-  AI_DRAFT: 'AI 초안', USER_EDIT: '내가 수정', INTERVIEW: '되묻기 반영', MASK: '마스킹', RESTORE: '되돌림',
+  AI_DRAFT: '첫 초안', USER_EDIT: '직접 수정', INTERVIEW: '답변 반영', MASK: '정보 가림', RESTORE: '이전 내용 복원',
 };
-export const evidenceTypeLabel: Record<EvidenceType, string> = { COMMIT: '근거', USER_STATED: '내가 말한 것', USER_SELECTED: '보기에서 고른 것' };
+export const cardContentLabel: Record<VersionSource, string> = {
+  AI_DRAFT: 'GitHub 기록에서 정리한 초안', USER_EDIT: '직접 작성한 내용', INTERVIEW: '답변을 반영한 내용',
+  MASK: '공유할 정보를 가린 내용', RESTORE: '이전 내용에서 이어서 작성',
+};
+export const interviewActionLabel = '답변하기';
+export const historyActionLabel = '작성 이력';
+export const evidenceTypeLabel: Record<EvidenceType, string> = { COMMIT: '근거', USER_STATED: '직접 쓴 답변', USER_SELECTED: '선택한 답변' };
 export const starFieldName: Record<StarField, string> = { S: '상황 (Situation)', T: '과제 (Task)', A: '행동 (Action)', R: '결과 (Result)' };
 export const starFieldShort: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
 export const dropReasonLabel: Record<DropReason, string> = {
@@ -45,8 +54,8 @@ export const jobErrorHint: Record<JobErrorCode, string> = {
   GITHUB_UNAVAILABLE: '읽다가 연결이 끊겼어요. 읽은 데까지로는 후보를 만들지 않아요.',
   GITHUB_RATE_LIMITED: '한도가 풀리면 읽던 데서 이어서 읽어요.',
   DRAFT_TIMEOUT: '채운 칸까지 보여 드려요. 나머지는 칸 하나씩 다시 해 볼 수 있어요.',
-  EVIDENCE_MISSING: '없는 내용을 지어내지 않아요. 빈 칸은 직접 쓰거나 되묻기로 채우면 돼요.',
-  INTERNAL_ERROR: '잠시 뒤에 다시 눌러 주세요.',
+  EVIDENCE_MISSING: '근거를 찾지 못한 칸은 직접 쓰거나 질문에 답해 채울 수 있어요.',
+  INTERNAL_ERROR: '작업을 처리하지 못했어요. 다른 저장소를 고르거나 직접 작성해 주세요.',
 };
 
 /** 후보 라벨 — "PR #42" / "커밋 묶음" / "이슈 #31". COMMIT_CLUSTER 를 PR 로 부르지 않는다. */

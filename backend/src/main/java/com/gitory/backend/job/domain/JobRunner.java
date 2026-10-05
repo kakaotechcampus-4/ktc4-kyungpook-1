@@ -77,18 +77,31 @@ public class JobRunner {
         } catch (RuntimeException failure) {
             JobErrorCode errorCode = errorCodeOf(failure);
             log.warn("분석 Job {} 을 {} 로 끝낸다", job.getId(), errorCode, failure);
-            transaction.executeWithoutResult(status -> jobs.findById(job.getId()).orElseThrow().fail(errorCode));
+            transaction.executeWithoutResult(status -> fail(job.getId(), errorCode));
         }
 
     }
 
+    /** AI 를 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 수집 결과를 저장하지 않는다 */
     private void succeed(Long jobId, IngestRequest request, CollectedActivity activity) {
 
-        Long collectionRunId = activityStore.store(request, activity);
+        AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
+        if (job.getState() != JobState.RUNNING) {
+            return;
+        }
 
-        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        Long collectionRunId = activityStore.store(request, activity);
         job.recordCollection(collectionRunId, activity.commits().size(), activity.pullRequests().size());
         job.succeed(activity.partialReason() != null, partialErrorCodeOf(activity.partialReason()));
+
+    }
+
+    private void fail(Long jobId, JobErrorCode errorCode) {
+
+        AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
+        if (job.getState() == JobState.RUNNING) {
+            job.fail(errorCode);
+        }
 
     }
 

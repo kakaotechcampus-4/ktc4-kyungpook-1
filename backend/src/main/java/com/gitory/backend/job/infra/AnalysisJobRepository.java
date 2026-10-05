@@ -32,7 +32,13 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
             """, nativeQuery = true)
     Optional<AnalysisJob> findNextQueuedForUpdate();
 
-    List<AnalysisJob> findByStateAndUpdatedAtBefore(JobState state, Instant before);
+    // 워커가 마무리 중인 행은 건너뛰어, 워커가 성공으로 끝낸 Job 을 실패로 덮어쓰지 않는다
+    @Query(value = """
+            SELECT * FROM analysis_job
+            WHERE state = 'RUNNING' AND updated_at < :before
+            FOR UPDATE SKIP LOCKED
+            """, nativeQuery = true)
+    List<AnalysisJob> findStuckForUpdate(@Param("before") Instant before);
 
     @Query(value = """
             SELECT j.public_id                      AS jobId,

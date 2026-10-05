@@ -143,6 +143,21 @@ public class AnalysisJob {
     }
 
     /**
+     * QUEUED·RUNNING -> CANCELED, 끝난 시각 기록
+     * 이미 끝난 Job 은 그대로 둔다 — 화면이 2초마다 갱신돼 끝난 직후에 취소가 올 수 있다
+     */
+    public void cancel() {
+
+        if (isTerminal()) {
+            return;
+        }
+
+        this.state = JobState.CANCELED;
+        this.finishedAt = Instant.now();
+
+    }
+
+    /**
      * 이미 끝난 작업(SUCCEEDED/FAILED/CANCELED)인지 검사
      */
     public boolean isTerminal() {

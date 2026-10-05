@@ -4,7 +4,7 @@
 
 ## 1. 결론
 
-운영 모델은 GPT-5.6 Luna 하나, 모든 작업 `reasoning_effort=medium`을 권장한다.
+GPT-5.6 Luna `medium`을 운영 기본 **후보**로 권장한다. Sonnet·Opus를 포함한 최종 운영 모델 선택은 팀이 품질·비용·지연·구조화 출력 안정성의 우선순위를 논의한 뒤 확정한다.
 
 | 작업 | 모델 · 강도 | 호출당 비용 | 근거 |
 |---|---|---|---|
@@ -15,7 +15,7 @@
 
 - 모든 작업에서 Luna가 Terra와 같거나 약간 나았고, 비용은 Terra의 약 1/7~1/10이다.
 - "많은 데이터를 읽는 작업은 high"라는 초기 가설은 확인되지 않았다. diff 분석에서 high는 medium보다 포인트 언급률이 2%p 높았지만, 지연이 2배(12.7초 대 6.8초)였고 SHA 복사 오류가 1건 있었다.
-- 이번 결과로 말할 수 있는 범위는 "Luna가 Terra만큼 한다", "최신 STAR·질문 생성 사례에서 Sonnet보다 높은 계약 통과율을 보였다", "Opus는 복잡한 STAR 구조화 출력의 신뢰성이 부족했다"까지다. 차이가 작거나 Luna가 우세하므로 더 싼 쪽을 선택했다.
+- 이번 결과로 말할 수 있는 범위는 "Luna가 Terra만큼 한다", "최신 STAR·질문 생성 사례에서 Sonnet보다 높은 계약 통과율을 보였다", "Opus는 복잡한 STAR 구조화 출력의 신뢰성이 부족했다"까지다. Luna를 기본 후보로 두되, 운영 선택은 팀 논의 후 확정한다.
 
 ## 2. 비교 대상과 공통 조건
 
@@ -201,7 +201,7 @@ Opus는 질문 생성에서는 29/30건이 자동 검사를 통과했지만, `FO
 - 이번 최신 비교는 각 사례를 1회만 실행했다. Luna 지연의 p50·p95 안정성은 동일 endpoint에서 3회 반복 측정 후 확정해야 한다.
 - Sonnet은 네이티브 Messages API, Luna는 OpenAI 호환 endpoint로 호출했다. 따라서 지연에는 모델 성능뿐 아니라 provider gateway·transport 차이도 포함된다. 이는 실제 운영 경로의 비교라는 의미는 있지만, 순수 모델 추론 속도만의 비교는 아니다.
 
-결론적으로 Sonnet은 질문 생성 속도에서 유의미한 우위를 보이지 못했고, 비용은 약 11~15배 높으며 근거·형식 계약 위반도 더 많았다. Opus는 질문 생성 품질은 높았지만 비용이 약 37배 높고 STAR 구조화 출력 신뢰성이 낮았다. 운영 기본 모델은 Luna로 유지한다.
+결론적으로 Sonnet은 질문 생성 속도에서 유의미한 우위를 보이지 못했고, 비용은 약 11~15배 높으며 근거·형식 계약 위반도 더 많았다. Opus는 질문 생성 품질은 높았지만 비용이 약 37배 높고 STAR 구조화 출력 신뢰성이 낮았다. 따라서 Luna를 운영 기본 후보로 권장하며, 최종 모델 선택은 팀 논의 후 확정한다.
 
 ## 5. 운영 적용 시 필요한 코드 보완
 
@@ -268,8 +268,11 @@ Opus는 질문 생성에서는 29/30건이 자동 검사를 통과했지만, `FO
 | `scripts/evaluate_answer_sufficiency_models.py` | B-2 모델 비교 실행기 |
 | `scripts/build_repo_eval_fixtures.py` | 로컬 git으로 작업 입력 생성 |
 | `scripts/evaluate_llm_tasks.py` | 작업별 모델 비교 실행기 (예산 상한 지원) |
+| `scripts/evaluate_claude_messages_tasks.py` | Claude 네이티브 Messages API 작업 비교 실행기 (강제 tool schema) |
+| `evals/claude_messages_endpoints.example.json` | Sonnet·Opus 네이티브 Messages API 모델 식별자·환경변수·요청 파라미터 예시 |
 | `scripts/judge_llm_task_outputs.py` | LLM 채점기 (이번에는 사용하지 않음) |
-| `evals/results/` | 원본 결과 (git 제외) |
+| `evals/results/latest/comparison_manifest.json` | 4-5절 최신 비교의 모델·파라미터·사례 목록·집계 결과를 고정한 공유 artifact |
+| `evals/results/latest/README.md` | 원본 JSON 결과 생성·공유 규칙 |
 
 재현 방법:
 
@@ -282,8 +285,52 @@ python scripts/evaluate_llm_tasks.py --task diff_summary --case-ids PR46 PR11 PR
   --model-names "GPT-5.6 Luna" --reasoning-effort medium --budget 100 --output evals/results/tasks/diff.json
 ```
 
+### 9-1. 4-5절 STAR·질문 비교 재현
+
+4-5절은 아래 고정 입력으로 실행했다. 사례 전체 목록·집계값·모델 식별자는 `evals/results/latest/comparison_manifest.json`에서 함께 확인한다.
+
+- STAR 10건: `PR58`, `PR50`, `PR21`, `PR52`, `PR46`, `PR35`, `PR17`, `PR15`, `PR12`, `PR11`
+- 질문 30건: 위 PR별 R·S 근거 질문 20건 + `FOLLOWUP_*` 후속 질문 10건
+- Luna: `gpt-5.6-luna`, OpenAI 호환 endpoint, `reasoning_effort=medium`
+- Sonnet: `claude-sonnet-5`, 네이티브 Messages API, 강제 `emit_structured_output` tool schema, 평가 설정 `reasoning_effort=medium`
+- Opus: `claude-opus-5`, 네이티브 Messages API, 강제 `emit_structured_output` tool schema, 평가 설정 `reasoning_effort=medium`
+
+실제 URL·API 키를 적지 않은 로컬 설정 파일을 만든다. 키와 endpoint는 환경변수로만 둔다.
+
+```bash
+cd ai
+cp evals/model_endpoints.example.json evals/model_endpoints.json
+cp evals/claude_messages_endpoints.example.json evals/claude_messages_endpoints.json
+set -a; source .env; set +a
+
+# origin/develop 기준으로 입력 fixture를 다시 고정
+python scripts/build_repo_eval_fixtures.py --out evals/fixtures/generated
+
+# Luna: OpenAI 호환 구조화 출력 경로
+python scripts/evaluate_llm_tasks.py --task star_draft \
+  --case-ids PR58 PR50 PR21 PR52 PR46 PR35 PR17 PR15 PR12 PR11 \
+  --model-names "GPT-5.6 Luna" --reasoning-effort medium --repeats 1 \
+  --output evals/results/latest/luna_star_draft.json
+python scripts/evaluate_llm_tasks.py --task question_gen \
+  --case-ids PR58_R_LINKED_COMMIT PR58_S_NO_EVIDENCE PR50_R_LINKED_COMMIT PR50_S_NO_EVIDENCE PR21_R_LINKED_COMMIT PR21_S_NO_EVIDENCE PR52_R_LINKED_COMMIT PR52_S_NO_EVIDENCE PR46_R_LINKED_COMMIT PR46_S_NO_EVIDENCE PR35_R_LINKED_COMMIT PR35_S_NO_EVIDENCE PR17_R_LINKED_COMMIT PR17_S_NO_EVIDENCE PR15_R_LINKED_COMMIT PR15_S_NO_EVIDENCE PR12_R_LINKED_COMMIT PR12_S_NO_EVIDENCE PR11_R_LINKED_COMMIT PR11_S_NO_EVIDENCE FOLLOWUP_R_VAGUE_RESPONSE FOLLOWUP_S_OFF_TOPIC FOLLOWUP_T_UNCLEAR_RESPONSIBILITY FOLLOWUP_A_ACTION_WITHOUT_REASON FOLLOWUP_PROMPT_INJECTION_NOT_A_ANSWER FOLLOWUP_R_SUBJECTIVE_FEELING_ONLY FOLLOWUP_R_FUTURE_PLAN_NOT_RESULT FOLLOWUP_R_ANSWERED_WITH_ACTION FOLLOWUP_R_OTHER_PROJECT FOLLOWUP_A_GENERIC_PLATITUDE \
+  --model-names "GPT-5.6 Luna" --reasoning-effort medium --repeats 1 \
+  --output evals/results/latest/luna_question_gen.json
+
+# Sonnet·Opus: 네이티브 Messages API + 강제 tool schema 경로
+python scripts/evaluate_claude_messages_tasks.py --task star_draft \
+  --case-ids PR58 PR50 PR21 PR52 PR46 PR35 PR17 PR15 PR12 PR11 \
+  --model-names "Claude Sonnet 5" "Claude Opus 5" \
+  --output evals/results/latest/claude_star_draft.json
+python scripts/evaluate_claude_messages_tasks.py --task question_gen \
+  --case-ids PR58_R_LINKED_COMMIT PR58_S_NO_EVIDENCE PR50_R_LINKED_COMMIT PR50_S_NO_EVIDENCE PR21_R_LINKED_COMMIT PR21_S_NO_EVIDENCE PR52_R_LINKED_COMMIT PR52_S_NO_EVIDENCE PR46_R_LINKED_COMMIT PR46_S_NO_EVIDENCE PR35_R_LINKED_COMMIT PR35_S_NO_EVIDENCE PR17_R_LINKED_COMMIT PR17_S_NO_EVIDENCE PR15_R_LINKED_COMMIT PR15_S_NO_EVIDENCE PR12_R_LINKED_COMMIT PR12_S_NO_EVIDENCE PR11_R_LINKED_COMMIT PR11_S_NO_EVIDENCE FOLLOWUP_R_VAGUE_RESPONSE FOLLOWUP_S_OFF_TOPIC FOLLOWUP_T_UNCLEAR_RESPONSIBILITY FOLLOWUP_A_ACTION_WITHOUT_REASON FOLLOWUP_PROMPT_INJECTION_NOT_A_ANSWER FOLLOWUP_R_SUBJECTIVE_FEELING_ONLY FOLLOWUP_R_FUTURE_PLAN_NOT_RESULT FOLLOWUP_R_ANSWERED_WITH_ACTION FOLLOWUP_R_OTHER_PROJECT FOLLOWUP_A_GENERIC_PLATITUDE \
+  --model-names "Claude Sonnet 5" "Claude Opus 5" \
+  --output evals/results/latest/claude_question_gen.json
+```
+
+`comparison_manifest.json`은 이번 PR에 커밋하는 공유 artifact다. 실행에서 생성되는 상세 JSON은 모델 원문·저장소 맥락을 포함할 수 있으므로 키 없이 팀의 제한된 공유 공간에 보관하고, PR에는 manifest의 집계·사례 목록만 남긴다.
+
 ## 10. 남은 일
 
-1. 5절의 코드 보완을 넣어 운영 API에 Luna를 연결한다. 인수인계 문서에 따라 별도 PR로 진행한다.
+1. 팀 논의로 운영 모델을 확정한 뒤, 5절의 코드 보완과 선택 모델 연결을 별도 PR로 진행한다.
 2. 비교용 키 `gitory-eval-b2`를 삭제하고, 운영 키를 새로 발급해 배포 환경변수에만 저장한다.
 3. 운영 초기에 실제 답변 로그로 판정 결과를 표본 검수하고, 형식 오류 비율을 모니터링한다.

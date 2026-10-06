@@ -76,8 +76,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         String reviewedQuery = "is:pr reviewed-by:" + login + " -author:" + login;
         GithubSearchCounts searches = new GithubSearchCounts(
                 counter.countPullRequests(token, "is:pr author:" + login),
-                counter.countPullRequests(token, reviewedQuery),
-                counter.countSearchedCommits(token, "author:" + login + " merge:true"));
+                counter.countPullRequests(token, reviewedQuery));
 
         List<GithubRepositoryCount> counts = new ArrayList<>();
         for (int from = 0; from < targets.size(); from += COUNT_BATCH_SIZE) {
@@ -113,13 +112,13 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     }
 
-    /** 검색과 GraphQL 은 반영 시점이 달라, 검색 개수가 GraphQL 개수를 넘으면 GraphQL 개수에 맞춘다 */
+    /** 검색과 GraphQL 은 반영 시점이 달라, 검색한 내 PR 수가 GraphQL 의 전체 PR 수를 넘으면 전체 PR 수에 맞춘다 */
     private static GithubRepositoryCount countOf(GithubCountTarget target, GithubRepositoryTotals total,
                                                  GithubSearchCounts searches) {
 
         String key = GithubCountClient.nameKey(target.owner(), target.name());
         // 머지 커밋은 머지 버튼을 누른 사람 것으로 세져 내 몫을 부풀리므로 내 것만 뺀다, 남의 머지·봇 커밋은 팀 쪽이라 내 몫을 키우지 않는다
-        int ownMerges = Math.min(searches.ownMergeCommits().getOrDefault(key, 0), total.ownCommitCount());
+        int ownMerges = total.ownMergeCommitCount();
         int ownPullRequests = Math.min(searches.authoredPullRequests().getOrDefault(key, 0), total.pullRequestCount());
 
         return new GithubRepositoryCount(target.githubRepoId(), total.commitCount() - ownMerges,

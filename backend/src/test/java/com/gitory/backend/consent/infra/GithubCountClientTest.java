@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.restclient.test.autoconfigure.RestClientTest;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 
@@ -22,6 +23,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 @RestClientTest(GithubCountClient.class)
@@ -30,6 +32,16 @@ class GithubCountClientTest {
     private static final String TOKEN = "gho_test";
     private static final String VIEWER_ID = "U_kgDOCa4RLw";
     private static final String GRAPHQL_URL = "https://api.github.com/graphql";
+    private static final List<GithubCountTarget> BIG_AND_SMALL_TARGETS = List.of(
+            new GithubCountTarget(100L, "grow22", "big"), new GithubCountTarget(200L, "grow22", "small"));
+    private static final String BIG_AND_SMALL = """
+            {"data": {
+              "r0": {"pullRequests": {"totalCount": 0},
+                     "defaultBranchRef": {"target": {"all": {"totalCount": 150}, "mine": %s}}},
+              "r1": {"pullRequests": {"totalCount": 0},
+                     "defaultBranchRef": {"target": {"all": {"totalCount": 9}, "mine": %s}}}
+            }}
+            """.formatted(mine(100, 1, true, "big-100"), mine(1, 0, false, "small-1"));
 
     @Autowired
     GithubCountClient client;
@@ -66,17 +78,17 @@ class GithubCountClientTest {
                 .andRespond(withSuccess("""
                         {"data": {
                           "r0": {"pullRequests": {"totalCount": 58},
-                                 "defaultBranchRef": {"target": {"all": {"totalCount": 197}, "mine": {"totalCount": 52}}}},
+                                 "defaultBranchRef": {"target": {"all": {"totalCount": 197}, "mine": %s}}},
                           "r1": {"pullRequests": {"totalCount": 0}, "defaultBranchRef": null}
                         }}
-                        """, MediaType.APPLICATION_JSON));
+                        """.formatted(mine(52, 0, false, "c52")), MediaType.APPLICATION_JSON));
 
         Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID, List.of(
                 new GithubCountTarget(100L, "grow22", "gitory"), new GithubCountTarget(200L, "grow22", "empty")));
 
         assertThat(totals)
-                .containsEntry(100L, new GithubRepositoryTotals(197, 52, 58))
-                .containsEntry(200L, new GithubRepositoryTotals(0, 0, 0));
+                .containsEntry(100L, new GithubRepositoryTotals(197, 52, 58, 0))
+                .containsEntry(200L, new GithubRepositoryTotals(0, 0, 0, 0));
         server.verify();
 
     }
@@ -102,12 +114,12 @@ class GithubCountClientTest {
                 .andRespond(withSuccess("""
                         {"data": {
                           "r0": {"pullRequests": {"totalCount": 58},
-                                 "defaultBranchRef": {"target": {"all": {"totalCount": 197}, "mine": {"totalCount": 52}}}},
+                                 "defaultBranchRef": {"target": {"all": {"totalCount": 197}, "mine": %s}}},
                           "r1": {"pullRequests": {"totalCount": 3}, "defaultBranchRef": {"target": null}},
                           "r2": {"pullRequests": {"totalCount": 0}, "defaultBranchRef": null}
                         },
                         "errors": [{"message": "timeout", "path": ["r1", "defaultBranchRef", "target", "mine"]}]}
-                        """, MediaType.APPLICATION_JSON));
+                        """.formatted(mine(52, 0, false, "c52")), MediaType.APPLICATION_JSON));
 
         Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID, List.of(
                 new GithubCountTarget(100L, "grow22", "gitory"),
@@ -115,8 +127,8 @@ class GithubCountClientTest {
                 new GithubCountTarget(300L, "grow22", "empty")));
 
         assertThat(totals).containsOnlyKeys(100L, 300L)
-                .containsEntry(100L, new GithubRepositoryTotals(197, 52, 58))
-                .containsEntry(300L, new GithubRepositoryTotals(0, 0, 0));
+                .containsEntry(100L, new GithubRepositoryTotals(197, 52, 58, 0))
+                .containsEntry(300L, new GithubRepositoryTotals(0, 0, 0, 0));
 
     }
 
@@ -143,14 +155,129 @@ class GithubCountClientTest {
                         {"total_count": 250, "incomplete_results": true,
                          "items": [{"repository_url": "https://api.github.com/repos/grow22/gitory"}]}
                         """, MediaType.APPLICATION_JSON));
-        server.expect(requestTo(containsString("/search/commits?q=")))
+        server.expect(requestTo(containsString("/search/issues?q=")))
                 .andRespond(withSuccess("{\"total_count\": 3, \"incomplete_results\": false}", MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> client.countPullRequests(TOKEN, "is:pr author:Grow22"))
                 .isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> client.countSearchedCommits(TOKEN, "author:Grow22 merge:true"))
+        assertThatThrownBy(() -> client.countPullRequests(TOKEN, "is:pr reviewed-by:Grow22 -author:Grow22"))
                 .isInstanceOf(IllegalStateException.class);
         server.verify();
+
+    }
+
+    @Test
+    @DisplayName("내 커밋 목록에서 부모가 2개 이상인 커밋을 내가 누른 머지 커밋으로 센다")
+    void countsMergeCommitsFromMyCommitList() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andExpect(jsonPath("$.query").value(allOf(
+                        containsString("mine: history(author: {id: $me}, first: 100)"),
+                        containsString("nodes { parents { totalCount } }"))))
+                .andRespond(withSuccess("""
+                        {"data": {"r0": {"pullRequests": {"totalCount": 2},
+                          "defaultBranchRef": {"target": {"all": {"totalCount": 10}, "mine": {
+                            "nodes": [{"parents": {"totalCount": 1}}, {"parents": {"totalCount": 2}},
+                                      {"parents": {"totalCount": 1}}, {"parents": {"totalCount": 3}}],
+                            "pageInfo": {"hasNextPage": false, "endCursor": "c4"}}}}}}}
+                        """, MediaType.APPLICATION_JSON));
+
+        Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID,
+                List.of(new GithubCountTarget(100L, "taehun0208", "SnapCal-be")));
+
+        assertThat(totals).containsEntry(100L, new GithubRepositoryTotals(10, 4, 2, 2));
+
+    }
+
+    @Test
+    @DisplayName("묶음 질의는 내 커밋 수(totalCount)를 묻지 않고 내 커밋 목록만 받는다")
+    void batchQueryDoesNotAskOwnCommitTotal() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andExpect(jsonPath("$.query").value(containsString("first: 100) {\n      nodes { parents { totalCount } }")))
+                .andRespond(withSuccess("{\"data\": {}}", MediaType.APPLICATION_JSON));
+
+        client.countCommits(TOKEN, VIEWER_ID, List.of(new GithubCountTarget(100L, "grow22", "gitory")));
+        server.verify();
+
+    }
+
+    @Test
+    @DisplayName("내 커밋이 100개를 넘는 저장소는 그 저장소만 이어서 받아 머지 커밋을 센다")
+    void continuesOnlyRepositoryWithMoreCommits() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess(BIG_AND_SMALL, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(GRAPHQL_URL))
+                .andExpect(jsonPath("$.query").value(allOf(
+                        containsString("history(author: {id: $me}, first: 100, after: $after)"),
+                        containsString("nodes { parents { totalCount } }"))))
+                .andExpect(jsonPath("$.variables.me").value(VIEWER_ID))
+                .andExpect(jsonPath("$.variables.owner").value("grow22"))
+                .andExpect(jsonPath("$.variables.name").value("big"))
+                .andExpect(jsonPath("$.variables.after").value("big-100"))
+                .andRespond(withSuccess(historyPage(mine(50, 1, false, "big-150")), MediaType.APPLICATION_JSON));
+
+        Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS);
+
+        assertThat(totals)
+                .containsEntry(100L, new GithubRepositoryTotals(150, 150, 0, 2))
+                .containsEntry(200L, new GithubRepositoryTotals(9, 1, 0, 0));
+        server.verify();
+
+    }
+
+    @Test
+    @DisplayName("내 커밋 목록은 저장소마다 10번(최근 1000개)까지만 받아 그 안의 머지 커밋만 빼고, 내 커밋 수는 따로 묻는다")
+    void stopsAtHistoryPageLimit() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess("""
+                        {"data": {"r0": {"pullRequests": {"totalCount": 0},
+                          "defaultBranchRef": {"target": {"all": {"totalCount": 5000}, "mine": %s}}}}}
+                        """.formatted(mine(100, 1, true, "page-1")), MediaType.APPLICATION_JSON));
+        for (int page = 2; page <= 10; page++) {
+            server.expect(requestTo(GRAPHQL_URL))
+                    .andExpect(jsonPath("$.variables.after").value("page-" + (page - 1)))
+                    .andRespond(withSuccess(historyPage(mine(100, 1, true, "page-" + page)), MediaType.APPLICATION_JSON));
+        }
+        server.expect(requestTo(GRAPHQL_URL))
+                .andExpect(jsonPath("$.query").value(containsString("mine: history(author: {id: $me}) { totalCount }")))
+                .andRespond(withSuccess(historyPage("{\"totalCount\": 5000}"), MediaType.APPLICATION_JSON));
+
+        Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID,
+                List.of(new GithubCountTarget(100L, "grow22", "huge")));
+
+        assertThat(totals).containsEntry(100L, new GithubRepositoryTotals(5000, 5000, 0, 10));
+        server.verify();
+
+    }
+
+    @Test
+    @DisplayName("내 커밋 목록을 이어 받지 못한 저장소는 결과에서 빼고, 같이 물은 다른 저장소는 남긴다")
+    void skipsRepositoryWhoseNextPageFailed() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess(BIG_AND_SMALL, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess("""
+                        {"data": {"repository": null}, "errors": [{"type": "SERVICE_UNAVAILABLE", "path": ["repository"]}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS)).containsOnlyKeys(200L);
+
+    }
+
+    @Test
+    @DisplayName("내 커밋 목록을 이어 받다 GitHub 이 오류 상태(502)로 답해도 그 저장소만 결과에서 뺀다")
+    void skipsRepositoryWhoseNextPageReturnedServerError() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess(BIG_AND_SMALL, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withStatus(HttpStatus.BAD_GATEWAY));
+
+        assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS)).containsOnlyKeys(200L);
 
     }
 
@@ -173,26 +300,27 @@ class GithubCountClientTest {
 
     }
 
-    @Test
-    @DisplayName("커밋 검색은 /search/commits 를 부르고, 걸린 커밋을 저장소 이름별로 센다")
-    void countsSearchedCommitsByRepository() {
+    private static String historyPage(String mine) {
 
-        server.expect(requestTo(allOf(containsString("/search/commits?q="), containsString("page=1"))))
-                .andExpect(header("Authorization", "Bearer " + TOKEN))
-                .andRespond(withSuccess("""
-                        {"items": [
-                          {"repository": {"full_name": "kakaotechcampus-4/ktc4-kyungpook-1"}},
-                          {"repository": {"full_name": "kakaotechcampus-4/ktc4-kyungpook-1"}},
-                          {"repository": {"full_name": "Grow22/Algo"}}
-                        ]}
-                        """, MediaType.APPLICATION_JSON));
+        return """
+                {"data": {"repository": {"defaultBranchRef": {"target": {"mine": %s}}}}}
+                """.formatted(mine);
 
-        Map<String, Integer> counts = client.countSearchedCommits(TOKEN, "author:Grow22 merge:true");
+    }
 
-        assertThat(counts).containsExactlyInAnyOrderEntriesOf(Map.of(
-                "kakaotechcampus-4/ktc4-kyungpook-1", 2,
-                "grow22/algo", 1));
-        server.verify();
+    private static String mine(int commits, int mergeCommits, boolean hasNextPage, String endCursor) {
+
+        return """
+                {"nodes": %s, "pageInfo": {"hasNextPage": %s, "endCursor": "%s"}}
+                """.formatted(commits(commits, mergeCommits), hasNextPage, endCursor);
+
+    }
+
+    private static String commits(int count, int mergeCommits) {
+
+        return IntStream.range(0, count)
+                .mapToObj(i -> "{\"parents\": {\"totalCount\": " + (i < mergeCommits ? 2 : 1) + "}}")
+                .collect(Collectors.joining(",", "[", "]"));
 
     }
 

@@ -4,12 +4,12 @@
 .brand { display: flex; align-items: center; gap: 8px; font-size: 18px; line-height: 24px; font-weight: 800; letter-spacing: -.02em; padding: 0 4px; }
 .brand svg { flex: 0 0 auto; }
 .menu-group { display: flex; flex-direction: column; gap: 2px; }
-.menu-group__title { font-size: 11px; line-height: 16px; font-weight: 700; color: var(--text-tertiary); padding: 0 4px 8px; }
-.menu-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--radius-md); font-size: 14px; line-height: 17px; font-weight: 600; color: var(--text-strong); }
+.menu-group__title { font-size: 11px; line-height: 16px; font-weight: 700; color: var(--sidebar-text); padding: 0 4px 8px; }
+.menu-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-radius: var(--radius-md); font-size: 14px; line-height: 17px; font-weight: 600; color: var(--sidebar-text); }
 .menu-item svg { color: var(--border-strong); flex: 0 0 auto; }
 .menu-item:hover { background: var(--bg-subtle); }
-.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
-.menu-item[aria-current="page"] svg { color: currentColor; }
+.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--sidebar-text); }
+.menu-item[aria-current="page"] svg { color: var(--nav-active-text); }
 .sidebar__profile { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
 .sidebar__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--bg-inset); flex: 0 0 auto; overflow: hidden; }
 .sidebar__avatar img { width: 100%; height: 100%; object-fit: cover; }

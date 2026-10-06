@@ -50,6 +50,7 @@
   --text-accent: var(--matcha-green); --accent-decoration: var(--matcha-sage);
   --border-default: #D5E2D9; --border-strong: #7C9081; --border-selected: var(--matcha-green);
   --nav-active-bg: var(--bg-selected); --nav-active-text: var(--matcha-deep);
+  --sidebar-text: var(--ink-900);
   --bg-feature: var(--matcha-deep); --text-on-feature: var(--matcha-mist); --text-on-feature-muted: #D7E6DB;
   --feature-button-bg: var(--matcha-mist); --feature-button-hover: var(--ink-0); --feature-button-text: var(--matcha-deep);
   --toast-bg: var(--matcha-deep); --toast-success-bg: var(--matcha-deep); --text-on-toast: var(--ink-0); --toast-muted: #DDEAE1;
@@ -82,6 +83,7 @@
   --text-accent: var(--matcha-highlight); --accent-decoration: var(--matcha-highlight);
   --border-default: #343D2A; --border-strong: #65734F; --border-selected: var(--matcha-highlight);
   --nav-active-bg: var(--matcha-inset); --nav-active-text: var(--matcha-highlight);
+  --sidebar-text: var(--text-primary);
   --bg-feature: var(--matcha-inset); --text-on-feature: #EDF2E4; --text-on-feature-muted: #C1D2A8;
   --feature-button-bg: var(--matcha-highlight); --feature-button-hover: #B8D18F; --feature-button-text: var(--matcha-night);
   --toast-bg: #26351E; --toast-success-bg: var(--matcha-night-deep); --text-on-toast: #EDF2E4; --toast-muted: #D8E5C4;

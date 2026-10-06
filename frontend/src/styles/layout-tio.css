@@ -18,15 +18,15 @@
 .sidebar__top { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 12px; min-height: 44px; }
 .sidebar__toggle { width: var(--control-touch-size); height: var(--control-touch-size); flex-shrink: 0; border-radius: var(--control-radius); display: grid; place-items: center; color: var(--text-tertiary); }
 .sidebar__toggle:hover { background: var(--bg-subtle); color: var(--text-primary); }
-.menu-item { padding: 9px 12px; border-radius: 10px; font-weight: 500; color: var(--text-strong); gap: 10px; }
+.menu-item { padding: 9px 12px; border-radius: 10px; font-weight: 500; color: var(--sidebar-text); gap: 10px; }
 .menu-item svg { color: var(--text-secondary); }
-.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); font-weight: 600; }
-.menu-item[aria-current="page"] svg { color: currentColor; }
+.menu-item[aria-current="page"] { background: var(--nav-active-bg); color: var(--sidebar-text); font-weight: 600; }
+.menu-item[aria-current="page"] svg { color: var(--nav-active-text); }
 .menu-group__title { padding: 10px 12px 6px; font-size: 11px; }
 .sidebar__recent { padding: 12px 12px 0; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border-default); margin-top: 6px; }
-.sidebar__recent-title { font-size: 11px; color: var(--text-tertiary); padding: 0 0 6px; }
-.sidebar__recent a { display: block; padding: 7px 8px; border-radius: 8px; font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sidebar__recent a:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.sidebar__recent-title { font-size: 11px; color: var(--sidebar-text); padding: 0 0 6px; }
+.sidebar__recent a { display: block; padding: 7px 8px; border-radius: 8px; font-size: 12.5px; color: var(--sidebar-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar__recent a:hover { background: var(--bg-subtle); color: var(--sidebar-text); }
 .sidebar__recent-empty { font-size: 11.5px; color: var(--text-tertiary); line-height: 17px; padding: 2px 0 8px; }
 .sidebar__profile { border: 0; padding: 10px 8px; gap: 10px; }
 .sidebar__email { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }

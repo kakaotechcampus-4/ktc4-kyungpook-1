@@ -2,7 +2,6 @@
  * 최종 반응형 레이어.
  * 이전 스타일 파일의 화면별 규칙이 서로 덮어쓰지 않도록 반드시 마지막에 로드한다.
  */
-:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 3px; }
 .query-failure { display: grid; justify-items: start; gap: var(--space-12); padding: var(--space-24); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
 .query-failure h2 { font-size: 18px; line-height: 1.5; }
 .query-failure p { color: var(--text-secondary); max-width: 65ch; }
@@ -29,11 +28,6 @@
 .sidebar { overflow-y: auto; overscroll-behavior: contain; }
 .sidebar__profile { flex-shrink: 0; }
 .list-head h1 { font-size: 28px; line-height: 1.4; }
-.list-search, .toolbar__search { min-height: var(--control-touch-size); }
-.list-search input, .toolbar__search input { min-width: 0; }
-.chip--select { min-height: var(--control-touch-size); }
-.chip--select select { min-width: 0; max-width: 100%; min-height: 32px; }
-.chip--select:focus-within { outline: 2px solid var(--border-selected); outline-offset: 2px; }
 .prompt__h { display: block; text-wrap: balance; }
 .resume { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .resume__item { min-width: 0; }
@@ -90,7 +84,7 @@
   .candidate-board .cand > .grow { min-width: 0; }
   .candidate-board .cand__warn { flex-wrap: wrap; gap: 8px; }
   .btn:not(.landing__top-action), .chip--option, .iv__fold { min-height: var(--control-touch-size); }
-  .input, .prompt__input, .list-search input, .toolbar__search input { font-size: 16px; }
+  .input, .prompt__input, .search-field input, .select-trigger, .select-menu__option { font-size: 16px; }
   .list-head .right { gap: var(--space-12); }
   .experience-item__footer { flex-wrap: wrap; }
   .experience-item .gcard__title { line-height: 1.65; }
@@ -216,7 +210,6 @@ body { overflow-x: hidden; }
   .note strong, .note span { max-width: 100%; min-width: 0; }
   .list-head h1 { font-size: 23px; }
   .manual-metadata { padding: 16px; gap: 16px 12px; }
-  .manual-metadata select { text-overflow: ellipsis; }
   .manual-save-row { align-items: flex-start; }
   .manual-save-row > p { flex: 1 1 120px; padding-block: 12px; }
   .star-read__row { padding: 18px 16px; gap: 10px; }

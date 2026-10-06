@@ -5,10 +5,8 @@
 :root { --radius-lg: 16px; --radius-xl: 20px; --shadow-card: 0 10px 30px rgba(0, 0, 0, .05); }
 .card { box-shadow: var(--shadow-card); }
 .card--paper { box-shadow: none; }
-.btn { border-radius: 10px; }
 .btn--outline { color: var(--text-strong); border-color: var(--border-strong); }
 .btn--outline:hover:not(:disabled) { background: var(--bg-subtle); }
-.chip, .chip--option { border-radius: 999px; }
 .pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px; background: var(--bg-surface); border: 1px solid var(--border-default); font-size: 13px; font-weight: 600; color: var(--text-strong); box-shadow: 0 2px 8px rgba(0, 0, 0, .04); transition: border-color .12s, transform .12s; }
 .pill:hover { border-color: var(--border-strong); transform: translateY(-1px); }
 .pill--on { background: var(--bg-ink-solid); color: var(--text-on-ink); border-color: var(--bg-ink-solid); }
@@ -89,8 +87,6 @@
 .list-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .list-head h1 { font-size: 20px; line-height: 28px; font-weight: 700; letter-spacing: -.01em; }
 .list-head .right { display: flex; gap: 8px; align-items: center; }
-.list-search { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--bg-surface); width: 220px; }
-.list-search input { border: 0; outline: 0; background: none; width: 100%; font-size: 13px; }
 .illus { width: 84px; height: 84px; border-radius: 16px; background: var(--bg-surface); border: 1px solid var(--border-default); display: grid; place-items: center; color: var(--text-tertiary); position: relative; }
 .illus::after { content: '+'; position: absolute; right: -8px; bottom: -8px; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; font-weight: 700; }
 

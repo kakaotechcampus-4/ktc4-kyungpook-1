@@ -13,8 +13,6 @@
 .stardots--labeled .stardot--low .stardot__letter { border-style: solid; border-color: var(--field-low-border); background: var(--field-low-bg); color: var(--field-low-text); }
 .stardot__letter { line-height: 1; }
 .stardot__label { font-size: 8px; line-height: 12px; font-weight: 600; color: currentColor; opacity: .72; }
-.toolbar__clear { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--text-tertiary); }
-.toolbar__clear:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .chip--static { color: var(--text-tertiary); background: var(--bg-paper); cursor: default; }
 .page-lead { font-size: 14px; line-height: 22px; color: var(--text-secondary); max-width: 720px; }
 .evidence__icon { color: var(--evidence-commit-label); flex: 0 0 auto; }

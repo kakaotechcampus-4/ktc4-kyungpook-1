@@ -4,6 +4,8 @@ import { FolderGit2, Layers, PenLine } from 'lucide-react';
 import { useCards } from '@/api/queries';
 import type { CardStatus } from '@/api/schemas';
 import { Button, Skeleton } from '@/components/ui';
+import { SearchField } from '@/components/ui/SearchField';
+import { Select } from '@/components/ui/Select';
 import { CardGridItem } from '@/features/home/HomePage';
 import { cardStatusLabel } from '@/lib/labels';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -29,9 +31,9 @@ export function CardsListPage() {
       <div className="list-head">
         <h1>경험 카드 <span className="c-3 t-14">{counts.ALL ?? '—'}</span></h1>
         <div className="right">
-          <label className="list-search"><span className="c-3">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="카드 검색" aria-label="카드 이름으로 검색" /></label>
-          <label className="chip chip--select"><select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'title')} aria-label="정렬"><option value="recent">최신순</option><option value="title">이름순</option></select></label>
-          <label className="chip chip--select"><select value={completion} onChange={(e) => setCompletion(e.target.value as CompletionFilter)} aria-label="보완 상태"><option value="ALL">모든 항목</option><option value="MISSING">빈칸 있음</option><option value="REVIEW">확인 필요</option></select></label>
+          <SearchField className="list-search" value={q} onChange={setQ} placeholder="카드 검색" label="카드 이름으로 검색" />
+          <Select value={sort} onChange={setSort} label="정렬" options={[{ value: 'recent', label: '최신순' }, { value: 'title', label: '이름순' }]} />
+          <Select value={completion} onChange={setCompletion} label="보완 상태" options={[{ value: 'ALL', label: '모든 항목' }, { value: 'MISSING', label: '빈칸 있음' }, { value: 'REVIEW', label: '확인 필요' }]} />
           <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
           <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 만들기</Button>
         </div>

@@ -10,6 +10,8 @@ import { pct, ym } from '@/lib/format';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { SearchField } from '@/components/ui/SearchField';
+import { Select } from '@/components/ui/Select';
 
 type Sort = 'activity' | 'recent' | 'name';
 type Filter = 'all' | 'pr' | 'nopr' | 'fresh';
@@ -64,9 +66,9 @@ export function ReposPage() {
       <div className="list-head">
         <h1>레포 고르기 <span className="c-3 t-14">{repos.data?.length ?? 0}</span></h1>
         <div className="right">
-          <label className="list-search"><span className="c-3">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="레포 이름 검색" aria-label="레포 이름 검색" /></label>
-          <label className="chip chip--select"><select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="정렬">{(Object.keys(SORT_LABEL) as Sort[]).map((k) => <option key={k} value={k}>{SORT_LABEL[k]}</option>)}</select></label>
-          <label className="chip chip--select"><select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label="필터">{(Object.keys(FILTER_LABEL) as Filter[]).map((k) => <option key={k} value={k}>{FILTER_LABEL[k]}</option>)}</select></label>
+          <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
+          <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />
+          <Select value={filter} onChange={setFilter} label="필터" options={(Object.keys(FILTER_LABEL) as Filter[]).map((value) => ({ value, label: FILTER_LABEL[value] }))} />
         </div>
       </div>
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}

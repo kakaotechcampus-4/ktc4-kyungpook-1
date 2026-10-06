@@ -19,6 +19,7 @@ import { cacheSavedDraft } from '@/lib/cacheSavedDraft';
 import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
 import { cardMetadataSupported } from '@/api/capabilities';
 import { ApiError } from '@/api/client';
+import { Select } from '@/components/ui/Select';
 
 const HINT: Record<StarField, string> = {
   S: '어떤 상황이었나요?',
@@ -121,10 +122,8 @@ export function NewCardPage() {
         <div><Field label="기간"><Input value={period} disabled={saving || (!!cardId && !canEditMetadata)} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
         <div>
           <Field label="관련 레포 (선택)">
-            <select className="input" value={repoId} onChange={(e) => setRepoId(e.target.value)} aria-label="관련 레포" disabled={!!cardId || saving}>
-              <option value="">없음</option>
-              {(repos.data ?? []).map((r) => <option key={r.id} value={r.id}>{r.owner} / {r.name}</option>)}
-            </select>
+            <Select className="select-trigger--field" value={repoId} onChange={setRepoId} label="관련 레포" disabled={!!cardId || saving}
+              options={[{ value: '', label: '없음' }, ...(repos.data ?? []).map((r) => ({ value: r.id, label: `${r.owner}/${r.name}` }))]} />
           </Field>
         </div>
         {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목·기간·레포는 첫 저장 후 바꿀 수 없어요.'}</p>}

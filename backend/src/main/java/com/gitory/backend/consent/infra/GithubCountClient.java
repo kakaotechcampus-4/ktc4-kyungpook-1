@@ -33,6 +33,7 @@ public class GithubCountClient {
             fragment counts on Repository {
               pullRequests { totalCount }
               defaultBranchRef { target { ... on Commit {
+                oid
                 all: history { totalCount }
                 mine: history(author: {id: $me}, first: 100) {
                   nodes { parents { totalCount } }
@@ -43,24 +44,24 @@ public class GithubCountClient {
             """;
 
     private static final String NEXT_HISTORY_PAGE = """
-            query($me: ID!, $owner: String!, $name: String!, $after: String!) {
+            query($me: ID!, $owner: String!, $name: String!, $oid: GitObjectID!, $after: String!) {
               repository(owner: $owner, name: $name) {
-                defaultBranchRef { target { ... on Commit {
+                object(oid: $oid) { ... on Commit {
                   mine: history(author: {id: $me}, first: 100, after: $after) {
                     nodes { parents { totalCount } }
                     pageInfo { hasNextPage endCursor }
                   }
-                } } }
+                } }
               }
             }
             """;
 
     private static final String OWN_COMMIT_TOTAL = """
-            query($me: ID!, $owner: String!, $name: String!) {
+            query($me: ID!, $owner: String!, $name: String!, $oid: GitObjectID!) {
               repository(owner: $owner, name: $name) {
-                defaultBranchRef { target { ... on Commit {
+                object(oid: $oid) { ... on Commit {
                   mine: history(author: {id: $me}) { totalCount }
-                } } }
+                } }
               }
             }
             """;
@@ -114,7 +115,7 @@ public class GithubCountClient {
             }
             GithubCountTarget target = targets.get(i);
             JsonNode history = repository.path("defaultBranchRef").path("target");
-            Optional<GithubOwnCommits> own = ownCommits(token, viewerId, target, history.path("mine"));
+            Optional<GithubOwnCommits> own = ownCommits(token, viewerId, target, history);
             if (own.isEmpty()) {
                 continue;
             }
@@ -164,9 +165,12 @@ public class GithubCountClient {
     /**
      * 내 커밋 수는 받은 목록을 세서 구한다, 같은 질의에서 totalCount 까지 물으면 GitHub 이 기록을 두 번 훑어 긴 저장소에서 시간 초과(502)가 난다
      * 목록이 100개를 넘는 저장소만 이어 받고 10번을 넘기면 개수만 따로 물으며, 이어 받기에 실패한 저장소는 이번 결과에서 빼 다음 조회 때 다시 센다
+     * 이어 받기와 개수는 첫 질의 때의 맨 위 커밋(oid) 기준으로 물어, 그 사이 push 가 전체 수에는 없고 내 커밋 수에만 들어가지 않게 한다
      */
-    private Optional<GithubOwnCommits> ownCommits(String token, String viewerId, GithubCountTarget target, JsonNode mine) {
+    private Optional<GithubOwnCommits> ownCommits(String token, String viewerId, GithubCountTarget target, JsonNode history) {
 
+        String oid = history.path("oid").asString();
+        JsonNode mine = history.path("mine");
         int commits = mine.path("nodes").size();
         int merges = mergeCommitsIn(mine);
         JsonNode page = mine;
@@ -174,9 +178,9 @@ public class GithubCountClient {
             for (int fetched = 1; page.path("pageInfo").path("hasNextPage").asBoolean(false); fetched++) {
                 if (fetched == MAX_HISTORY_PAGES) {
                     log.info("저장소 {}/{} 의 내 커밋이 많아 최근 커밋 안의 머지만 뺀다", target.owner(), target.name());
-                    return Optional.of(new GithubOwnCommits(ownCommitTotal(token, viewerId, target), merges));
+                    return Optional.of(new GithubOwnCommits(ownCommitTotal(token, viewerId, target, oid), merges));
                 }
-                page = nextHistoryPage(token, viewerId, target, page.path("pageInfo").path("endCursor").asString());
+                page = nextHistoryPage(token, viewerId, target, oid, page.path("pageInfo").path("endCursor").asString());
                 commits += page.path("nodes").size();
                 merges += mergeCommitsIn(page);
             }
@@ -189,11 +193,11 @@ public class GithubCountClient {
 
     }
 
-    private JsonNode nextHistoryPage(String token, String viewerId, GithubCountTarget target, String after) {
+    private JsonNode nextHistoryPage(String token, String viewerId, GithubCountTarget target, String oid, String after) {
 
         JsonNode response = graphql(token, NEXT_HISTORY_PAGE,
-                Map.of("me", viewerId, "owner", target.owner(), "name", target.name(), "after", after));
-        JsonNode mine = response.path("data").path("repository").path("defaultBranchRef").path("target").path("mine");
+                Map.of("me", viewerId, "owner", target.owner(), "name", target.name(), "oid", oid, "after", after));
+        JsonNode mine = response.path("data").path("repository").path("object").path("mine");
         if (!response.path("errors").isEmpty() || !mine.path("nodes").isArray()) {
             throw new IllegalStateException("GitHub 내 커밋 목록을 이어 받지 못했다");
         }
@@ -202,12 +206,11 @@ public class GithubCountClient {
 
     }
 
-    private int ownCommitTotal(String token, String viewerId, GithubCountTarget target) {
+    private int ownCommitTotal(String token, String viewerId, GithubCountTarget target, String oid) {
 
         JsonNode response = graphql(token, OWN_COMMIT_TOTAL,
-                Map.of("me", viewerId, "owner", target.owner(), "name", target.name()));
-        JsonNode total = response.path("data").path("repository").path("defaultBranchRef").path("target")
-                .path("mine").path("totalCount");
+                Map.of("me", viewerId, "owner", target.owner(), "name", target.name(), "oid", oid));
+        JsonNode total = response.path("data").path("repository").path("object").path("mine").path("totalCount");
         if (!response.path("errors").isEmpty() || !total.isNumber()) {
             throw new IllegalStateException("GitHub 내 커밋 수를 받지 못했다");
         }

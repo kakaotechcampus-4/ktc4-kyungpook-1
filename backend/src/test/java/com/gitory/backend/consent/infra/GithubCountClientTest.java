@@ -37,9 +37,9 @@ class GithubCountClientTest {
     private static final String BIG_AND_SMALL = """
             {"data": {
               "r0": {"pullRequests": {"totalCount": 0},
-                     "defaultBranchRef": {"target": {"all": {"totalCount": 150}, "mine": %s}}},
+                     "defaultBranchRef": {"target": {"oid": "big-head", "all": {"totalCount": 150}, "mine": %s}}},
               "r1": {"pullRequests": {"totalCount": 0},
-                     "defaultBranchRef": {"target": {"all": {"totalCount": 9}, "mine": %s}}}
+                     "defaultBranchRef": {"target": {"oid": "small-head", "all": {"totalCount": 9}, "mine": %s}}}
             }}
             """.formatted(mine(100, 1, true, "big-100"), mine(1, 0, false, "small-1"));
 
@@ -234,7 +234,7 @@ class GithubCountClientTest {
         server.expect(requestTo(GRAPHQL_URL))
                 .andRespond(withSuccess("""
                         {"data": {"r0": {"pullRequests": {"totalCount": 0},
-                          "defaultBranchRef": {"target": {"all": {"totalCount": 5000}, "mine": %s}}}}}
+                          "defaultBranchRef": {"target": {"oid": "huge-head", "all": {"totalCount": 5000}, "mine": %s}}}}}
                         """.formatted(mine(100, 1, true, "page-1")), MediaType.APPLICATION_JSON));
         for (int page = 2; page <= 10; page++) {
             server.expect(requestTo(GRAPHQL_URL))
@@ -249,6 +249,37 @@ class GithubCountClientTest {
                 List.of(new GithubCountTarget(100L, "grow22", "huge")));
 
         assertThat(totals).containsEntry(100L, new GithubRepositoryTotals(5000, 5000, 0, 10));
+        server.verify();
+
+    }
+
+    @Test
+    @DisplayName("이어 받기와 내 커밋 수는 첫 질의 때의 맨 위 커밋(oid) 기준으로 물어, 그 사이 push 가 내 커밋 수에만 들어가지 않는다")
+    void pinsFollowUpQueriesToFirstHeadCommit() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andExpect(jsonPath("$.query").value(containsString("... on Commit {\n    oid\n")))
+                .andRespond(withSuccess("""
+                        {"data": {"r0": {"pullRequests": {"totalCount": 0},
+                          "defaultBranchRef": {"target": {"oid": "head-at-first", "all": {"totalCount": 1500}, "mine": %s}}}}}
+                        """.formatted(mine(100, 0, true, "page-1")), MediaType.APPLICATION_JSON));
+        for (int page = 2; page <= 10; page++) {
+            server.expect(requestTo(GRAPHQL_URL))
+                    .andExpect(jsonPath("$.query").value(containsString("object(oid: $oid)")))
+                    .andExpect(jsonPath("$.variables.oid").value("head-at-first"))
+                    .andRespond(withSuccess(historyPage(mine(100, 0, true, "page-" + page)), MediaType.APPLICATION_JSON));
+        }
+        server.expect(requestTo(GRAPHQL_URL))
+                .andExpect(jsonPath("$.query").value(allOf(
+                        containsString("object(oid: $oid)"),
+                        containsString("mine: history(author: {id: $me}) { totalCount }"))))
+                .andExpect(jsonPath("$.variables.oid").value("head-at-first"))
+                .andRespond(withSuccess(historyPage("{\"totalCount\": 1500}"), MediaType.APPLICATION_JSON));
+
+        Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID,
+                List.of(new GithubCountTarget(100L, "grow22", "solo")));
+
+        assertThat(totals).containsEntry(100L, new GithubRepositoryTotals(1500, 1500, 0, 0));
         server.verify();
 
     }
@@ -303,7 +334,7 @@ class GithubCountClientTest {
     private static String historyPage(String mine) {
 
         return """
-                {"data": {"repository": {"defaultBranchRef": {"target": {"mine": %s}}}}}
+                {"data": {"repository": {"object": {"mine": %s}}}}
                 """.formatted(mine);
 
     }

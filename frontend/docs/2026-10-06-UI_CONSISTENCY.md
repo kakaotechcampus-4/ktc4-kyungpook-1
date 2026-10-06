@@ -31,7 +31,14 @@
 | 시각 점검 | 라이트/다크, 320·390·768·1440·1920px 및 메뉴/모달/인터뷰/마스킹/로그인 126개 캡처. 마지막 제목 정리 후 설정·GitHub 연결·탈퇴를 포함한 390/1440px 60개를 추가 확인했다. 가로 넘침·화면 경계 잘림·콘솔 오류·폰트 로드 실패가 없었다. |
 | 코드 리뷰 | 검색 IME와 남은 제목 굵기 지적을 수정하고 재리뷰를 통과했다. |
 
-PR·운영 배포 확인은 완료 시 아래에 기록한다.
+### PR·운영 확인 — 2026-10-07
+
+- 팀 [PR #106](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/106): develop 대상, 본인 담당 지정, ganggang-0605·taehun0208·Grow22 리뷰 요청.
+- 개인 [PR #1](https://github.com/TaeHuiKKIM/gitory-web/pull/1): 팀 프론트와 파일 내용이 일치하도록 동기화하며 기존 PR을 갱신한다.
+- [운영 주소](https://gitory-prototypes.vercel.app)와 [Ready production 배포](https://gitory-prototypes-mzl9e40l8-kim-tae-huis-projects.vercel.app)를 확인했다.
+- 운영에서 샘플 진입·PC 좌우 경계·검색 지우기/Escape 포커스·키보드 선택/외부 클릭·모바일 메뉴 범위·레포 빈 값·STAR 정렬·첫 저장 후 disabled·원문/줄바꿈의 저장 및 새로고침 유지가 통과했다.
+- 운영 라이트/다크 × 390/1440px 주요 화면·설정·열린 메뉴·모달 등 60개 캡처를 추가 확인했다. 콘솔/실행 오류·가로 넘침·메뉴/행동 잘림·폰트 실패 0건.
+- 배포는 기존 Mock 체험 모드다. UI 개선으로 실제 백엔드 연동이 추가 완료된 것으로 표시하지 않는다. 최종 GitHub CI의 개별 Node 결과는 각 PR의 Checks와 본문에 기록한다.
 
 ### 검사 준비 상태
 
@@ -47,4 +54,8 @@ Radix는 키보드 선택 포커스와 외부 pointer listener를 예약해서 �
 6. 두 테마에서 설정·목록·작성의 제목 굵기와 얇은 스크롤바를 확인한다.
 
 ## 범위 보호
-기존 그린/다크·API enum·서버 임시 저장·Job 폴링/복구·멱등키·선택/확정/이탈 보호를 유지한다. 새 직접 의존성은 선택 메뉴의 접근성과 조작을 맡는 Radix Select 하나다. 기존 패키지 버전은 바꾸지 않는다. 환경 파일·API 키는 커밋/푸시하지 않는다.
+기존 그린/다크·API enum·서버 임시 저장·Job 폴링/복구·멱등키·선택/확정/이탈 보호를 유지한다. 새 직접 의존성은 선택 메뉴의 접근성과 조작을 맡는 Radix Select 하나다. 배포 설치 검사에서 발견한 개발 전이 의존성 source-map-js만 1.2.1→1.2.2로 보안 패치하고 다른 기존 패키지 버전은 유지한다. 환경 파일·API 키는 커밋/푸시하지 않는다.
+
+### 배포 전 의존성 검사
+
+2026-10-07 설치에서 npm audit가 source-map-js의 높은 심각도 1건을 반환했다. [공식 보안 공지](https://github.com/advisories/GHSA-68fv-2mgg-jv7q)의 영향 범위는 1.2.2 미만이다. lockfile에서 해당 개발 전이 패키지의 version/resolved/integrity 3개 항목만 패치 버전으로 변경했다. UI 코드·직접 의존성·Vite/jsdom/Vitest 버전은 바꾸지 않았다. 새 npm ci/audit의 취약점 0건과 Node 22·24 단위 각각 108개, 타입·빌드·정적 E2E 76개 통과를 다시 확인했다. 개인 배포 저장소의 새 설치/audit·Vercel production build도 통과했다.

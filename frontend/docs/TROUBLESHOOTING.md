@@ -10,6 +10,8 @@ PC 홈의 prompt에는 이어쓰기와 다른 16px padding·620px 최대 폭이 
 
 body 자간만 바꾸면 브라우저 기본 input/button 자간은 normal로 남는다. 공통 control에도 tracking을 명시하고 실제 computed style로 -0.03em을 확인한다. 설정·오류·모바일 안내 제목에 남은 700/800 예외도 공통 600으로 맞췄다. 자세한 화면 점검과 회귀 범위는 [UI 검증 기록](2026-10-06-UI_CONSISTENCY.md)을 참고한다.
 
+배포 전 새 설치에서는 source-map-js 1.2.1의 보안 공지가 audit에 반영됐다. 개발 전이 패키지 하나만 1.2.2로 패치하고 나머지 설치 버전은 유지한다. npm 명령은 package.json이 있는 frontend 폴더에서 수행하며 프로젝트 경로를 확인한다. 실제 설치·타입·단위·정적 빌드를 재검증한다.
+
 ## 2026-10-04 — Node 24 Checks와 테스트 타입 환경
 
 기존 Vitest/jsdom의 AbortSignal과 Node 24의 Request 타입이 달라 라우터 이동 검사 6개가 실패했다. 공식 호환성 수정이 포함된 Vitest 4.1.11과 실제 요청/DOM 취소 회귀 검사를 적용한다. Node 22·24 전체 단위 108개가 각각 통과했다. 애플리케이션에 임의 Request 구현을 추가하지 않는다.

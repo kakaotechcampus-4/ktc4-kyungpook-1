@@ -38,10 +38,10 @@ services:
     build: ../backend
     image: gitory-backend
     restart: unless-stopped
+    # ai 는 기다리지 않는다. AI 가 안 떠도 로그인·저장소 목록은 열려야 한다.
+    # 분석 요청은 AI 연결이 실패하면 Job 이 실패로 끝난다.
     depends_on:
       db:
-        condition: service_healthy
-      ai:
         condition: service_healthy
     environment:
       DB_URL: jdbc:postgresql://db:5432/gitory
@@ -53,7 +53,7 @@ services:
       TOKEN_ENC_SALT: ${TOKEN_ENC_SALT:?deploy/.env 에 TOKEN_ENC_SALT 가 필요하다}
       AI_BASE_URL: http://ai:8000
     healthcheck:
-      # readiness 그룹은 db·ai 연결까지 본다 (application.yml management 절)
+      # readiness 그룹은 db 연결까지 본다. ai 는 넣지 않는다 (application.yml management 절)
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
       interval: 10s
       timeout: 5s

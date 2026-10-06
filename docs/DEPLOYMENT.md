@@ -57,7 +57,7 @@ web (Caddy) ──  /       → 프론트 빌드 산출물 (SPA)
 | `backend/Dockerfile` | JDK 로 bootJar 빌드 → JRE 이미지. 테스트는 CI 가 돌린다(`-x test`) |
 | `ai/Dockerfile` | python 3.11-slim + uvicorn. `AI_DOCS_ENABLED=false` |
 | `frontend/Dockerfile` | `VITE_API_MOCK=false` 로 빌드 → Caddy 이미지에 담는다 |
-| `deploy/compose.yaml` | db · ai · backend · web. backend 는 db·ai 가 healthy 여야 뜨고, web 은 backend 가 healthy 여야 뜬다 |
+| `deploy/compose.yaml` | db · ai · backend · web. backend 는 db 가 healthy 여야 뜨고, web 은 backend 가 healthy 여야 뜬다. ai 가 안 떠도 backend·web 은 뜬다 (분석 Job 만 실패) |
 | `deploy/Caddyfile` | 경로 분기, HTTPS, 보안 헤더. `/actuator` 는 프록시하지 않는다 |
 | `deploy/.env.example` | 필요한 비밀값 목록과 생성 방법. 서버의 `deploy/.env` 는 gitignore 대상 |
 
@@ -101,13 +101,14 @@ Spring 이 복호화한 GitHub 토큰을 `X-GitHub-Token` 헤더로 AI 서버에
 
 ## 6. 자동 배포
 
-`develop` 에 `backend/` · `ai/` · `frontend/` · `deploy/` 변경이 머지되면 `.github/workflows/deploy.yml` 이 서버에서 돈다.
+`develop` 에 머지된 커밋의 CI(backend CI · AI CI · frontend)가 **모두 성공하면** `.github/workflows/deploy.yml` 이 서버에서 돈다. 이미지 빌드는 테스트를 건너뛰므로(`-x test`) CI 가 실패한 커밋은 배포하지 않는다.
 
-1. 서버의 `~/gitory` 를 그 커밋으로 맞춘다 (`git checkout --force --detach <sha>` — `deploy/.env` 는 gitignore 라 남는다)
+0. gate job 이 그 커밋의 CI 를 모두 확인한다. 아직 도는 CI 가 있으면 넘기고 마지막 CI 가 끝날 때 배포한다. 실패한 CI 가 있으면 배포 워크플로도 실패로 표시된다
+1. 서버의 `~/gitory` 를 그 커밋으로 맞춘다 (`git checkout --force --detach <sha>` — `deploy/.env` 는 gitignore 라 남는다). 서버에 이미 같거나 더 새 커밋이 있으면 되돌리지 않고 넘긴다
 2. `docker compose up -d --build --wait` — 모든 서비스가 healthy 가 될 때까지 기다린다. 5분 안에 안 되면 실패
 3. 컨테이너 상태를 출력하고, 성공하면 오래된 이미지·빌드 캐시를 정리한다
 
-Actions 탭 → deploy → **Run workflow** 로 수동 실행도 된다 (develop 에서만).
+Actions 탭 → deploy → **Run workflow** 로 수동 실행도 된다 (develop 에서만, CI 확인 없이 develop 최신 커밋). `deploy/` 만 바뀐 커밋은 CI 가 없어 자동 배포되지 않으므로 수동 실행한다.
 
 ### 왜 self-hosted runner 인가
 
@@ -131,7 +132,7 @@ Actions 탭 → deploy → **Run workflow** 로 수동 실행도 된다 (develop
 
 fork PR 이 워크플로를 바꿔 `runs-on: self-hosted` 로 실행하면 그 코드가 우리 서버에서 돈다. runner 사용자는 docker 그룹이라 사실상 서버 root 권한이다.
 
-- `deploy.yml` 의 트리거는 `push`(develop) 와 `workflow_dispatch` 뿐이다. **`pull_request` 를 추가하지 않는다.**
+- `deploy.yml` 의 트리거는 `workflow_run`(CI 완료) 과 `workflow_dispatch` 뿐이다. **`pull_request` 를 추가하지 않는다.** `workflow_run` 도 같은 레포 develop 에 push 된 커밋의 CI 만 받는다 (gate job 조건).
 - Settings → Actions → General → Fork pull request workflows 를 **"Require approval for all external contributors"** 로 둔다. 외부 PR 의 워크플로는 메인테이너가 승인해야 돈다.
 - Actions 로그는 공개다. 워크플로에서 `docker compose logs` 나 `.env` 를 출력하지 않는다. 실패 원인은 서버에서 본다.
 

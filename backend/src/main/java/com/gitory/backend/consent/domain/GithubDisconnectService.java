@@ -42,7 +42,7 @@ public class GithubDisconnectService {
     /** 이미 해제돼 지울 연결이 없거나 토큰을 풀 수 없으면 null 을 돌려준다 */
     private String revoke(Long userId) {
 
-        Optional<GithubConnection> connection = connections.findByUserIdAndRevokedAtIsNull(userId);
+        Optional<GithubConnection> connection = connections.findWithLockByUserIdAndRevokedAtIsNull(userId);
         if (connection.isEmpty()) {
             return null;
         }

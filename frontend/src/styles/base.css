@@ -1,7 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { font-family: var(--font); color: var(--text-primary); background: var(--bg-canvas); font-synthesis: none; -webkit-font-smoothing: antialiased; text-size-adjust: 100%; }
 body { margin: 0; min-height: 100vh; font-size: 14px; line-height: 20px; font-weight: var(--body-weight); letter-spacing: var(--text-tracking); word-break: keep-all; overflow-wrap: anywhere; }
-button, input, textarea, select { font: inherit; color: inherit; }
+button, input, textarea, select { font: inherit; color: inherit; letter-spacing: var(--text-tracking); }
 button { cursor: pointer; border: 0; background: none; padding: 0; }
 button:disabled { cursor: not-allowed; }
 a { color: inherit; text-decoration: none; }

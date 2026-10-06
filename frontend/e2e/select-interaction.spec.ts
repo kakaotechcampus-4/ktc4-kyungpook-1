@@ -10,7 +10,13 @@ test('repository menus support keyboard selection and outside dismissal without 
   await expect(page.getByRole('option', { name: '이름 순', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(sort).toContainText('이름 순');
+  await expect(page.getByRole('listbox', { name: '정렬', exact: true })).toHaveCount(0);
+  await expect(sort).toBeFocused();
   await sort.click();
+  await expect(page.getByRole('listbox', { name: '정렬', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: '이름 순', exact: true })).toBeFocused();
+  // Reach the next animation frame before exercising an outside pointer action.
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
   await page.mouse.click(10, 10);
   await expect(page.getByRole('listbox', { name: '정렬', exact: true })).toHaveCount(0);
   await expect(sort).toContainText('이름 순');

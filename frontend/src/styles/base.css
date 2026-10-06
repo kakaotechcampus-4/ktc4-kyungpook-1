@@ -1,6 +1,6 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { font-family: var(--font); color: var(--text-primary); background: var(--bg-canvas); font-synthesis: none; -webkit-font-smoothing: antialiased; text-size-adjust: 100%; }
-body { margin: 0; min-height: 100vh; font-size: 14px; line-height: 20px; word-break: keep-all; overflow-wrap: anywhere; }
+body { margin: 0; min-height: 100vh; font-size: 14px; line-height: 20px; font-weight: var(--body-weight); letter-spacing: var(--text-tracking); word-break: keep-all; overflow-wrap: anywhere; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; padding: 0; }
 button:disabled { cursor: not-allowed; }
@@ -18,9 +18,17 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .t-18 { font-size: 18px; line-height: 28px; }
 .t-20 { font-size: 20px; line-height: 28px; }
 .t-24 { font-size: 24px; line-height: 32px; }
-.t-28 { font-size: 28px; line-height: 40px; letter-spacing: -.025em; }
-.t-40 { font-size: 40px; line-height: 52px; letter-spacing: -.03em; }
+.t-28 { font-size: 28px; line-height: 40px; letter-spacing: var(--text-tracking); }
+.t-40 { font-size: 40px; line-height: 52px; letter-spacing: var(--text-tracking); }
 .w-500 { font-weight: 500; } .w-600 { font-weight: 600; } .w-700 { font-weight: 700; } .w-800 { font-weight: 800; }
 .c-2 { color: var(--text-secondary); } .c-3 { color: var(--text-tertiary); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Theme-aware scrollbars retain every scrollable surface's native behavior. */
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border: 2px solid var(--scrollbar-track); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+code, pre, kbd, .kbd, .evidence__sha, .commit-row__sha, .star-key, .stardot__letter { letter-spacing: 0; }

@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
 import { FolderGit2 } from 'lucide-react';
-import { Badge, Button, IconBox, Radio, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
+import { Badge, Button, IconBox, Radio, PageTitle, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
 import { pct, ym } from '@/lib/format';
@@ -64,7 +64,7 @@ export function ReposPage() {
         <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
       </ol>
       <div className="list-head">
-        <h1>레포 고르기 <span className="c-3 t-14">{repos.data?.length ?? 0}</span></h1>
+        <PageTitle>레포 고르기 <span className="c-3 t-14">{repos.data?.length ?? 0}</span></PageTitle>
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />

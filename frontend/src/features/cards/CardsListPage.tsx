@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FolderGit2, Layers, PenLine } from 'lucide-react';
 import { useCards } from '@/api/queries';
 import type { CardStatus } from '@/api/schemas';
-import { Button, Skeleton } from '@/components/ui';
+import { Button, PageTitle, Skeleton } from '@/components/ui';
 import { SearchField } from '@/components/ui/SearchField';
 import { Select } from '@/components/ui/Select';
 import { CardGridItem } from '@/features/home/HomePage';
@@ -29,7 +29,7 @@ export function CardsListPage() {
   return (
     <main className="main cards-list">
       <div className="list-head">
-        <h1>경험 카드 <span className="c-3 t-14">{counts.ALL ?? '—'}</span></h1>
+        <PageTitle>경험 카드 <span className="c-3 t-14">{counts.ALL ?? '—'}</span></PageTitle>
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="카드 검색" label="카드 이름으로 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={[{ value: 'recent', label: '최신순' }, { value: 'title', label: '이름순' }]} />

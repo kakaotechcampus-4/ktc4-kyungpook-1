@@ -26,9 +26,17 @@
   --control-touch-size: 44px;
   --control-radius: 10px;
   --control-weight: 500;
+  --body-weight: 400;
+  --heading-weight: 600;
+  --text-tracking: -.03em;
+  --page-title-size: 28px;
+  --page-title-leading: 40px;
   --text-meta-size: 12px;
 
   --font: 'Pretendard Variable', Pretendard, system-ui, -apple-system, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --shadow-menu: 0 6px 20px rgba(0, 0, 0, .12);
+  --scrollbar-thumb: color-mix(in srgb, var(--border-strong) 72%, var(--bg-canvas));
+  --scrollbar-track: var(--bg-subtle);
   --shadow-dialog: 0 24px 80px rgba(0, 0, 0, .24);
   --focus: 0 0 0 3px rgba(70, 112, 78, .24);
 

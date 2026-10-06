@@ -7,7 +7,7 @@ import { endpoints } from '@/api/endpoints';
 import { AuthError } from '@/api/client';
 import { redirectToLogin } from '@/app/queryClient';
 import type { StarField } from '@/api/schemas';
-import { Breadcrumb, Button, Field, Input, PageTitle, StarKey, StickyFooter, Textarea } from '@/components/ui';
+import { Breadcrumb, Button, Field, Input, PageTitle, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, starFieldName, starFieldShort } from '@/lib/labels';
 import { CONFIG } from '@/lib/config';
 import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
@@ -20,6 +20,7 @@ import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
 import { cardMetadataSupported } from '@/api/capabilities';
 import { ApiError } from '@/api/client';
 import { Select } from '@/components/ui/Select';
+import { StarEditorField } from '@/components/ui/StarEditorField';
 
 const HINT: Record<StarField, string> = {
   S: '어떤 상황이었나요?',
@@ -137,13 +138,10 @@ export function NewCardPage() {
 
       <div className="card star-read">
         {STAR_FIELDS.map((k, i) => (
-          <div key={k} className="star-read__row">
-            <StarKey field={k} dropped={i > 0 && !f[k]} />
-            <div className="stack grow" style={{ gap: 9 }}>
-              <div className="manual-field-heading"><span className="star__name">{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 필수</span>}</span><span className="t-12 c-3">{f[k].length} / {MAX}자</span></div>
-              <Textarea className="input--lg" rows={3} maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements" value={f[k]} onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))} placeholder={HINT[k]} aria-label={starFieldName[k]} />
-            </div>
-          </div>
+          <StarEditorField key={k} field={k} dropped={i > 0 && !f[k]}
+            label={<>{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 필수</span>}</>}
+            maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements"
+            value={f[k]} onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))} placeholder={HINT[k]} aria-label={starFieldName[k]} />
         ))}
       </div>
 

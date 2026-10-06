@@ -17,6 +17,7 @@ export function SearchField({ value, onChange, placeholder, label = placeholder,
       <Search size={16} className="c-3" aria-hidden />
       <input ref={input} type="text" inputMode="search" value={value} onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder} aria-label={label} onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
           if (event.key === 'Escape' && value) { event.preventDefault(); clear(); }
         }} />
       {value && <button type="button" className="search-field__clear" onClick={clear} aria-label="검색 지우기"><X size={16} aria-hidden /></button>}

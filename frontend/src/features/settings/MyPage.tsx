@@ -35,7 +35,7 @@ export function MyPage() {
         </div>
       )}
       <section className="settings-section stack" style={{ gap: 14 }}>
-        <div className="row"><span className="w-700" style={{ fontSize: 14.5 }}>화면 테마</span></div>
+        <div className="row"><span className="w-600" style={{ fontSize: 14.5 }}>화면 테마</span></div>
         <div className="row" style={{ gap: 8 }} role="radiogroup" aria-label="테마">
           {(['light', 'dark'] as Theme[]).map((t) => (
             <Button key={t} variant={theme === t ? 'primary' : 'outline'} size="sm" role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>

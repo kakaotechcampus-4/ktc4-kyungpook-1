@@ -98,7 +98,7 @@ export function ReposPage() {
               <div className="card card--paper repo-ctx" style={{ padding: '14px 16px' }}>
                 <IconBox icon={FolderGit2} size={36} />
                 <div className="stack grow" style={{ gap: 3 }}>
-                  <span className="w-700" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
+                  <span className="w-600" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
                   <span className="t-12 c-2">내 커밋 {selected.contribution.mine} / 팀 {selected.contribution.team} · PR {selected.prCount} · 리뷰 {selected.reviewCount}</span>
                 </div>
                 <Badge kind="NEUTRAL">READ ONLY</Badge>

@@ -3,7 +3,7 @@
  * 이전 스타일 파일의 화면별 규칙이 서로 덮어쓰지 않도록 반드시 마지막에 로드한다.
  */
 .query-failure { display: grid; justify-items: start; gap: var(--space-12); padding: var(--space-24); border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); }
-.query-failure h2 { font-size: 18px; line-height: 1.5; }
+.query-failure h2 { font-size: 18px; line-height: 1.5; font-weight: var(--heading-weight); }
 .query-failure p { color: var(--text-secondary); max-width: 65ch; }
 .stardot__label { font-size: var(--text-meta-size); line-height: 18px; opacity: 1; }
 .stardots--labeled .stardot { height: 48px; grid-template-rows: 24px 20px; gap: 4px; }

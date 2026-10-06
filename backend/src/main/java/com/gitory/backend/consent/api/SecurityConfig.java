@@ -3,6 +3,7 @@ package com.gitory.backend.consent.api;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -56,15 +57,22 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             ClientRegistrationRepository clientRegistrations,
-            OAuth2UserService<OAuth2UserRequest, OAuth2User> githubLoginService) throws Exception {
+            OAuth2UserService<OAuth2UserRequest, OAuth2User> githubLoginService,
+            @Value("${springdoc.api-docs.enabled:false}") boolean apiDocsEnabled) throws Exception {
 
         http
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                        .requestMatchers("/api/**").authenticated()
-
-                        .anyRequest().permitAll())
+                .authorizeHttpRequests(authorize -> {
+                    // 문서를 켠 환경에서만 문서와 UI assets 를 공개한다. 실제 API 인증은 그대로다.
+                    if (apiDocsEnabled) {
+                        authorize.requestMatchers("/api/docs", "/api/docs/**",
+                                "/api/swagger-ui.html", "/api/swagger-ui/**", "/api/ai-docs.html").permitAll();
+                    }
+                    authorize
+                            .requestMatchers("/api/auth/**").permitAll()
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                            .requestMatchers("/api/**").authenticated()
+                            .anyRequest().permitAll();
+                })
 
                 .csrf(csrf -> csrf.spa())
 

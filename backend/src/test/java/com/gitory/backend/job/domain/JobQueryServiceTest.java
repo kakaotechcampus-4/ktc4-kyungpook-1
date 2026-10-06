@@ -18,6 +18,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @DataJpaTest
@@ -114,7 +117,7 @@ class JobQueryServiceTest {
         assertThat(service.load(job.getPublicId(), myUserId).terminal()).isFalse();
 
         job.start();
-        job.succeed(false);
+        job.succeed(false, null);
         em.flush();
 
         assertThat(service.load(job.getPublicId(), myUserId).terminal()).isTrue();
@@ -137,6 +140,80 @@ class JobQueryServiceTest {
         em.flush();
 
         assertThat(service.load(internalError.getPublicId(), myUserId).retryable()).isFalse();
+    }
+
+    @Test
+    @DisplayName("진행 중 목록에는 내 Job 만 나온다")
+    void listsOnlyMyActiveJobs() {
+
+        AnalysisJob mine = persistJob(myUserId, myRepoId, KEY_1);
+        persistJob(othersUserId, othersRepoId, KEY_2);
+
+        assertThat(service.loadActive(myUserId))
+                .extracting(ActiveJobRow::jobId)
+                .containsExactly(mine.getPublicId());
+    }
+
+    @Test
+    @DisplayName("끝난 Job 은 진행 중 목록에 나오지 않는다")
+    void hidesFinishedJobs() {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        job.start();
+        job.succeed(false, null);
+        em.flush();
+
+        assertThat(service.loadActive(myUserId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("진행 중 Job 이 하나도 없으면 빈 목록이 나온다")
+    void returnsEmptyListWhenNothingIsRunning() {
+
+        assertThat(service.loadActive(myUserId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("각 행의 필드마다 맞는 값이 담긴다")
+    void fillsEveryFieldOfARow() {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+
+        UUID userRepositoryPublicId = jdbc.queryForObject(
+                "SELECT public_id FROM user_repository WHERE id = ?", UUID.class, myRepoId);
+
+        ActiveJobRow row = service.loadActive(myUserId).get(0);
+
+        assertThat(row.jobId()).isEqualTo(job.getPublicId());
+        assertThat(row.state()).isEqualTo("QUEUED");
+        assertThat(row.type()).isEqualTo("ANALYZE");
+        assertThat(row.userRepositoryId()).isEqualTo(userRepositoryPublicId);
+        assertThat(row.repoName()).isEqualTo("grow22/gitory");
+        assertThat(row.startedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("최근에 시작한 Job 이 먼저 나온다")
+    void newestJobComesFirst() {
+
+        AnalysisJob older = persistJob(myUserId, myRepoId, KEY_1);
+
+        Long secondRepositoryId = fixtures.insertRepository(2L, "grow22", "geojero");
+        Long secondRepoId = fixtures.insertUserRepository(myUserId, secondRepositoryId);
+        AnalysisJob newer = persistJob(myUserId, secondRepoId, KEY_2);
+
+        setStartedAt(older, Instant.parse("2026-09-29T10:00:00Z"));
+        setStartedAt(newer, Instant.parse("2026-09-29T11:00:00Z"));
+
+        assertThat(service.loadActive(myUserId))
+                .extracting(ActiveJobRow::jobId)
+                .containsExactly(newer.getPublicId(), older.getPublicId());
+    }
+
+    private void setStartedAt(AnalysisJob job, Instant startedAt) {
+
+        jdbc.update("UPDATE analysis_job SET started_at = ? WHERE public_id = ?",
+                Timestamp.from(startedAt), job.getPublicId());
     }
 
     private AnalysisJob persistJob(Long userId, Long userRepositoryId, String idempotencyKey) {

@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,8 +17,6 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class JobIntakeService {
-
-    private static final List<JobState> ACTIVE_STATES = List.of(JobState.QUEUED, JobState.RUNNING);
 
     private final AnalysisJobRepository jobRepository;
 
@@ -53,7 +50,7 @@ public class JobIntakeService {
         Optional<AnalysisJob> sameKey = jobRepository.findByUserIdAndIdempotencyKey(userId, key);
 
         if (sameKey.isEmpty()) {
-            return jobRepository.findByUserRepositoryIdAndStateIn(userRepositoryId, ACTIVE_STATES)
+            return jobRepository.findByUserRepositoryIdAndStateIn(userRepositoryId, JobState.ACTIVE)
                     .map(JobIntakeResult::existingJob);
         }
 

@@ -11,6 +11,7 @@ import time
 
 from fastapi import APIRouter
 
+from api.openapi import INVALID_PAYLOAD_RESPONSE
 from schemas.common import Envelope, Meta
 from schemas.interview import (
     InterviewAnswerRequest,
@@ -21,13 +22,24 @@ from schemas.interview import (
 from services.interview_answer_service import InterviewAnswerService
 from services.interview_agent import InterviewAgent
 
-router = APIRouter(prefix="/internal", tags=["interview-turns"])
+router = APIRouter(
+    prefix="/internal", tags=["interview-turns"],
+    responses={400: INVALID_PAYLOAD_RESPONSE},
+)
 
 _agent = InterviewAgent()
 _answer_service = InterviewAnswerService(question_agent=_agent)
 
 
-@router.post("/interview-turns", response_model=Envelope[InterviewTurnResult])
+@router.post(
+    "/interview-turns", response_model=Envelope[InterviewTurnResult],
+    summary="B-1 STAR 보강 질문 생성",
+    description=(
+        "현재 결정적 템플릿으로 보강 질문 또는 COMPLETE를 반환합니다. "
+        "LLM·DB·GitHub를 호출하지 않습니다. DIRECT_CARD는 candidate=null이어야 합니다. "
+        "질문 순번·최종 횟수 제한·영속 저장은 Spring이 관리합니다."
+    ),
+)
 async def create_interview_turn(request: InterviewTurnRequest) -> Envelope[InterviewTurnResult]:
     """되묻기 질문을 생성하거나(신규 턴), 더 물을 것이 없으면 완료를 반환한다.
 
@@ -53,6 +65,12 @@ async def create_interview_turn(request: InterviewTurnRequest) -> Envelope[Inter
 @router.post(
     "/interview-answer-evaluations",
     response_model=Envelope[InterviewAnswerResult],
+    summary="B-2 사용자 답변 평가와 다음 행동 계산",
+    description=(
+        "현재 최소 정보량·회피성 표현 규칙으로 답변 충분성을 판단하며 LLM 판정기는 연결되지 않았습니다. "
+        "ANSWERED이면 사용자 답변 원문을 resulting_statement로 반환합니다. "
+        "SKIPPED/LATER는 Spring이 직접 처리하고 이 API를 호출하지 않습니다."
+    ),
 )
 async def evaluate_interview_answer(
     request: InterviewAnswerRequest,

@@ -206,6 +206,26 @@ class AuthFlowTest {
     }
 
     @Test
+    @DisplayName("문서를 끈 기본 환경에서는 익명 문서 조회를 허용하지 않는다")
+    void apiDocumentationIsNotPublicByDefault() throws Exception {
+        browser.perform(get("/api/docs"))
+                .andExpect(status().isUnauthorized());
+        browser.perform(get("/api/swagger-ui.html"))
+                .andExpect(status().isUnauthorized());
+        browser.perform(get("/api/ai-docs.html"))
+                .andExpect(status().isUnauthorized());
+        browser.perform(get("/api/docs/ai"))
+                .andExpect(status().isUnauthorized());
+
+        login();
+        // docs off 는 공개 여부만 바꾸는 것이 아니라 컨트롤러 자체를 등록하지 않는다.
+        browser.perform(get("/api/ai-docs.html"))
+                .andExpect(status().isNotFound());
+        browser.perform(get("/api/docs/ai"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("로그인 안 된 API 호출은 세션을 만들지 않는다 — 익명 호출로 세션 테이블이 불어나지 않는다")
     void unauthenticatedCallsDoNotCreateSessions() throws Exception {
         for (int i = 0; i < 3; i++) {

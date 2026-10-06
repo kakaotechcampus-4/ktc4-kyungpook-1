@@ -40,9 +40,11 @@ export function ReposPage() {
   const selected = (repos.data ?? []).find((r) => r.id === selectedId) ?? null;
   const detail = useRepo(disclose ? selectedId ?? undefined : undefined);
 
-  const select = (id: string) => { setSp({ select: id }); track('repo_selected', { repoId: id }); };
-  const openDisclose = () => selectedId && setSp({ select: selectedId, disclose: '1' });
-  const closeDisclose = () => selectedId && setSp({ select: selectedId });
+  // setSp({...}) 는 쿼리스트링 전체를 교체한다 — filter 처럼 URL 에만 남아 있던 값이 select/disclose 조작 한 번에 사라져,
+  // 그 상태에서 새로고침하면 필터가 조용히 '전체'로 되돌아간다. 기존 파라미터를 남기고 필요한 키만 바꾼다.
+  const select = (id: string) => { setSp((current) => { current.set('select', id); return current; }); track('repo_selected', { repoId: id }); };
+  const openDisclose = () => selectedId && setSp((current) => { current.set('select', selectedId); current.set('disclose', '1'); return current; });
+  const closeDisclose = () => selectedId && setSp((current) => { current.set('select', selectedId); current.delete('disclose'); return current; });
   const begin = async () => {
     if (!selected) return;
     try {
@@ -123,11 +125,11 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
           {r.recommended && !r.lastAnalyzedAt && <Badge kind="PR">추천</Badge>}
           {low && <Badge kind="CAUTION">내 기여 {pct(r.contribution.ratio)}</Badge>}
           {r.prCount === 0 && <Badge kind="NEUTRAL">PR 0건</Badge>}
-          {r.lastAnalyzedAt && <Badge kind="NEUTRAL">정리함 · 카드 {r.cardCount}</Badge>}
+          {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}건</Badge></span>}
         </div>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></span>
-          <span className="t-12 c-3">PR {r.prCount} · 리뷰 {r.reviewCount} · {r.language ?? '-'} · {ym(r.activeFrom)} - {ym(r.activeTo)}</span>
+          <span className="repo-row__stats t-12 c-3"><span>PR {r.prCount} · 리뷰 {r.reviewCount}</span><span>{r.language ?? '-'}</span><span>{ym(r.activeFrom)} – {ym(r.activeTo)}</span></span>
         </div>
         {/* 배지만 두면 왜 조심해야 하는지 안 읽힌다 — 한 줄로 풀어 쓴다 */}
         {low && <span className="repo-row__warn">내 몫이 적어서, 카드로 만들면 부풀린 것처럼 보일 수 있어요</span>}

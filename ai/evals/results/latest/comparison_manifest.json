@@ -1,0 +1,36 @@
+{
+  "report_section": "MODEL_SELECTION_REPORT.md 4-5",
+  "purpose": "최신 프롬프트에서 Luna·Sonnet·Opus의 STAR 초안과 질문 생성을 재현·검토하기 위한 공유 manifest",
+  "run_parameters": {
+    "repeats": 1,
+    "star_task": "star_draft",
+    "question_task": "question_gen",
+    "luna_transport": "OpenAI-compatible structured output",
+    "claude_transport": "native Messages API with forced emit_structured_output tool"
+  },
+  "models": [
+    {"name": "GPT-5.6 Luna", "model_id": "gpt-5.6-luna", "reasoning_effort": "medium"},
+    {"name": "Claude Sonnet 5", "model_id": "claude-sonnet-5", "reasoning_effort": "medium"},
+    {"name": "Claude Opus 5", "model_id": "claude-opus-5", "reasoning_effort": "medium"}
+  ],
+  "star_case_ids": ["PR58", "PR50", "PR21", "PR52", "PR46", "PR35", "PR17", "PR15", "PR12", "PR11"],
+  "question_case_ids": [
+    "PR58_R_LINKED_COMMIT", "PR58_S_NO_EVIDENCE", "PR50_R_LINKED_COMMIT", "PR50_S_NO_EVIDENCE", "PR21_R_LINKED_COMMIT", "PR21_S_NO_EVIDENCE", "PR52_R_LINKED_COMMIT", "PR52_S_NO_EVIDENCE", "PR46_R_LINKED_COMMIT", "PR46_S_NO_EVIDENCE", "PR35_R_LINKED_COMMIT", "PR35_S_NO_EVIDENCE", "PR17_R_LINKED_COMMIT", "PR17_S_NO_EVIDENCE", "PR15_R_LINKED_COMMIT", "PR15_S_NO_EVIDENCE", "PR12_R_LINKED_COMMIT", "PR12_S_NO_EVIDENCE", "PR11_R_LINKED_COMMIT", "PR11_S_NO_EVIDENCE", "FOLLOWUP_R_VAGUE_RESPONSE", "FOLLOWUP_S_OFF_TOPIC", "FOLLOWUP_T_UNCLEAR_RESPONSIBILITY", "FOLLOWUP_A_ACTION_WITHOUT_REASON", "FOLLOWUP_PROMPT_INJECTION_NOT_A_ANSWER", "FOLLOWUP_R_SUBJECTIVE_FEELING_ONLY", "FOLLOWUP_R_FUTURE_PLAN_NOT_RESULT", "FOLLOWUP_R_ANSWERED_WITH_ACTION", "FOLLOWUP_R_OTHER_PROJECT", "FOLLOWUP_A_GENERIC_PLATITUDE"
+  ],
+  "reported_summary": {
+    "star_draft": {
+      "GPT-5.6 Luna": {"passed": 10, "total": 10, "average_latency_seconds": 6.67, "estimated_cost_krw": 16.18},
+      "Claude Sonnet 5": {"passed": 9, "total": 10, "average_latency_seconds": 7.18, "estimated_cost_krw_per_call": 17.65},
+      "Claude Opus 5": {"passed": 4, "total": 10, "average_latency_seconds_success_only": 9.93, "estimated_cost_krw_per_successful_call": 54.0}
+    },
+    "question_gen": {
+      "GPT-5.6 Luna": {"passed": 28, "total": 30, "average_latency_seconds": 2.72, "estimated_cost_krw": 13.78},
+      "Claude Sonnet 5": {"passed": 24, "total": 30, "average_latency_seconds": 2.66, "estimated_cost_krw_per_call": 6.91},
+      "Claude Opus 5": {"passed": 29, "total": 30, "average_latency_seconds": 3.3, "estimated_cost_krw_per_call": 17.13}
+    }
+  },
+  "raw_artifacts": {
+    "repository_path": "ai/evals/results/latest/",
+    "policy": "상세 원문 출력 JSON은 API 키를 포함하지 않더라도 저장소·사용자 맥락을 담을 수 있으므로 PR에는 커밋하지 않는다. 팀 제한 공유 공간에서 동일 파일명으로 보관한다."
+  }
+}

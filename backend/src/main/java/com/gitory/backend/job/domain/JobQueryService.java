@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -18,5 +19,10 @@ public class JobQueryService {
         return jobs.findByPublicIdAndUserId(publicId, userId)
                 .map(JobView::from)
                 .orElseThrow(JobNotFoundException::new);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ActiveJobRow> loadActive(Long userId) {
+        return jobs.findActiveRowsByUserId(userId, JobState.ACTIVE_NAMES);
     }
 }

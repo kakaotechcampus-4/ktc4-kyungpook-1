@@ -11,7 +11,6 @@ from ports.repository_activity import RepositoryActivityPort
 from schemas.collection import (
     CandidateDetailRequest,
     CollectedFileChange,
-    CollectedPullRequest,
     ExclusionReason,
     FileChangeStatus,
     PartialReason,
@@ -23,7 +22,6 @@ from services.github_collector import (
     GithubCollector,
     GithubResourceNotFound,
     _contribution_decision,
-    _primary_pull_by_sha,
 )
 
 
@@ -636,25 +634,3 @@ def test_similar_author_name_is_left_for_user_confirmation() -> None:
     assert reason == ExclusionReason.NOT_OWN
     assert confirmation is not None
     assert confirmation.sha == "abc1234567890"
-
-
-def test_commit_in_feature_and_release_pr_maps_to_narrowest_pr() -> None:
-    def pull(number: int, shas: list[str], base: str) -> CollectedPullRequest:
-        return CollectedPullRequest(
-            number=number,
-            title=f"PR {number}",
-            state="CLOSED",
-            base_branch=base,
-            head_branch=f"branch-{number}",
-            created_at="2026-09-20T10:00:00Z",
-            commit_shas=shas,
-        )
-
-    feature_a = pull(17, ["a" * 40, "b" * 40], "develop")
-    feature_b = pull(18, ["c" * 40], "develop")
-    # 최근 갱신순으로 먼저 오는 develop → main 릴리스 PR이 모든 커밋을 다시 담는다.
-    release = pull(30, ["a" * 40, "b" * 40, "c" * 40, "d" * 40], "main")
-
-    mapping = _primary_pull_by_sha([release, feature_a, feature_b])
-
-    assert mapping == {"a" * 40: 17, "b" * 40: 17, "c" * 40: 18, "d" * 40: 30}

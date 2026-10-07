@@ -15,6 +15,7 @@ from services.commit_grouper import CommitGroup
 from services.llm_structured_client import (
     LLMSettings,
     LLMStructuredCallError,
+    LLMStructuredOutputTooLongError,
     StructuredLLMClient,
 )
 
@@ -22,7 +23,10 @@ DEFAULT_MODEL = "gpt-5.6-luna"
 #: 한 번에 묶을 수 있는 작업 단위 상한. 출력은 SHA가 아닌 짧은 번호라 크게 잡을 수 있다.
 #: 셀렉터를 거친 본인 작업은 대부분 이 안에 들어가 배치 경계가 생기지 않는다.
 DEFAULT_BATCH_SIZE = 250
-DEFAULT_DESCRIPTION_BATCH_SIZE = 30
+# 제목·이유는 그룹별 문자열 출력이라 30개를 한 번에 요청하면 게이트웨이의
+# 비스트리밍 2,000토큰 상한을 넘기기 쉽다. 평소에는 작게 보내고, 실제 출력이
+# 길면 아래의 길이 전용 재시도로 더 잘게 나눈다.
+DEFAULT_DESCRIPTION_BATCH_SIZE = 8
 #: Elice 비스트리밍 게이트웨이의 응답 토큰 상한.
 MAX_COMPLETION_TOKENS = 2_000
 #: 작업 단위 하나에서 LLM에 보여줄 커밋·파일 수. 큰 PR이 입력 토큰을 독차지하지 않게 한다.
@@ -64,6 +68,10 @@ class GroupingLlmConfigError(GroupingLlmError):
     """LLM 연결 환경변수가 없거나 잘못된 경우. 재시도로 해결되지 않는다."""
 
 
+class GroupingLlmOutputTooLongError(GroupingLlmError):
+    """후보 설명 출력이 게이트웨이 토큰 상한을 넘긴 경우."""
+
+
 class GroupingModelClient(Protocol):
     """테스트에서 실제 모델 호출을 대체할 수 있는 비동기 경계."""
 
@@ -101,6 +109,8 @@ class EnvironmentGroupingModelClient:
                 output_model,
                 max_completion_tokens,
             )
+        except LLMStructuredOutputTooLongError as exc:
+            raise GroupingLlmOutputTooLongError(str(exc)) from exc
         except LLMStructuredCallError as exc:
             raise GroupingLlmError(str(exc)) from exc
         return result.output
@@ -217,6 +227,19 @@ class GroupingLlm:
         output: dict[str, tuple[str, str]] = {}
         for offset in range(0, len(groups), self._description_batch_size):
             batch = groups[offset : offset + self._description_batch_size]
+            output.update(
+                await self._describe_batch(batch, pull_by_number, issue_by_number)
+            )
+        return output
+
+    async def _describe_batch(
+        self,
+        batch: list[CommitGroup],
+        pull_by_number: dict[int, PullRequestContext],
+        issue_by_number: dict[int, IssueContext],
+    ) -> dict[str, tuple[str, str]]:
+        """설명 출력이 길면 배치만 절반으로 나눠 순서대로 다시 요청한다."""
+        try:
             result = await self._client.structured_call(
                 system_prompt=_DESCRIPTION_SYSTEM_PROMPT,
                 payload={
@@ -237,21 +260,31 @@ class GroupingLlm:
                     ]
                 },
                 output_model=GroupDescriptionsOutput,
-                max_completion_tokens=min(
-                    MAX_COMPLETION_TOKENS,
-                    max(1_000, len(batch) * 180),
-                ),
+                max_completion_tokens=MAX_COMPLETION_TOKENS,
             )
-            expected = {group.group_key for group in batch}
-            for item in result.descriptions:
-                if item.group_key not in expected or item.group_key in output:
-                    continue
-                output[item.group_key] = (item.title.strip(), item.reason.strip())
-            missing = expected - output.keys()
-            if missing:
-                raise GroupingLlmError(
-                    f"후보 설명이 누락되었습니다: {', '.join(sorted(missing))}"
-                )
+        except GroupingLlmOutputTooLongError:
+            if len(batch) == 1:
+                raise
+            middle = len(batch) // 2
+            left = await self._describe_batch(
+                batch[:middle], pull_by_number, issue_by_number
+            )
+            right = await self._describe_batch(
+                batch[middle:], pull_by_number, issue_by_number
+            )
+            return {**left, **right}
+
+        expected = {group.group_key for group in batch}
+        output: dict[str, tuple[str, str]] = {}
+        for item in result.descriptions:
+            if item.group_key not in expected or item.group_key in output:
+                continue
+            output[item.group_key] = (item.title.strip(), item.reason.strip())
+        missing = expected - output.keys()
+        if missing:
+            raise GroupingLlmError(
+                f"후보 설명이 누락되었습니다: {', '.join(sorted(missing))}"
+            )
         return output
 
     @staticmethod

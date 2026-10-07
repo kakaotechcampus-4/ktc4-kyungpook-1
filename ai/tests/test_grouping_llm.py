@@ -10,6 +10,7 @@ from services.grouping_llm import (
     GroupDescriptionsOutput,
     GroupingLlm,
     GroupingLlmError,
+    GroupingLlmOutputTooLongError,
     MAX_COMPLETION_TOKENS,
 )
 
@@ -185,6 +186,64 @@ def test_describe_batches_requests() -> None:
         call["max_completion_tokens"] <= MAX_COMPLETION_TOKENS
         for call in fake.calls
     )
+
+
+class LengthLimitedModelClient:
+    def __init__(self, max_groups: int) -> None:
+        self.max_groups = max_groups
+        self.calls: list[dict] = []
+
+    async def structured_call(self, **kwargs):
+        self.calls.append(kwargs)
+        groups = kwargs["payload"]["groups"]
+        if len(groups) > self.max_groups:
+            raise GroupingLlmOutputTooLongError("응답 토큰 상한 초과")
+        return GroupDescriptionsOutput.model_validate(
+            {
+                "descriptions": [
+                    {
+                        "group_key": group["group_key"],
+                        "title": "기능",
+                        "reason": "근거",
+                    }
+                    for group in groups
+                ]
+            }
+        )
+
+
+def test_describe_splits_only_too_long_batches_and_keeps_every_group() -> None:
+    groups = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 6)]
+    fake = LengthLimitedModelClient(max_groups=2)
+
+    result = asyncio.run(
+        GroupingLlm(fake, description_batch_size=5).describe(groups)
+    )
+
+    assert [len(call["payload"]["groups"]) for call in fake.calls] == [5, 2, 3, 1, 2]
+    assert set(result) == {group.group_key for group in groups}
+    assert all(
+        call["max_completion_tokens"] == MAX_COMPLETION_TOKENS
+        for call in fake.calls
+    )
+
+
+def test_describe_does_not_retry_unrelated_llm_errors() -> None:
+    class FailingModelClient:
+        def __init__(self) -> None:
+            self.call_count = 0
+
+        async def structured_call(self, **kwargs):
+            self.call_count += 1
+            raise GroupingLlmError("네트워크 오류")
+
+    fake = FailingModelClient()
+    groups = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 4)]
+
+    with pytest.raises(GroupingLlmError, match="네트워크"):
+        asyncio.run(GroupingLlm(fake).describe(groups))
+
+    assert fake.call_count == 1
 
 
 def test_describe_sends_every_pr_and_issue_of_the_experience_as_reference() -> None:

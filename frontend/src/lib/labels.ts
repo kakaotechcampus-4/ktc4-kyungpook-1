@@ -2,7 +2,7 @@
  * enum → 화면 문구. 한국어는 이 파일 밖으로 새지 않는다.
  * 로직은 절대 여기 문자열을 비교하지 않는다 — 문구를 다듬어도 로직이 깨지지 않게.
  */
-import type { AuthoredBy, CandidateStatus, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobState, JobType, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
+import type { FitGrade, CoverLetterQuestion, AuthoredBy, CandidateStatus, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobState, JobType, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
 
 export const jobStateLabel: Record<JobState, string> = { QUEUED: '대기 중', RUNNING: '진행 중', SUCCEEDED: '완료', FAILED: '실패', CANCELED: '취소됨' };
 export const jobTypeLabel: Record<JobType, string> = { ANALYZE: '저장소 분석', DRAFT: '카드 초안 생성' };
@@ -70,3 +70,9 @@ export function candidateRefLabel(type: CandidateType, ref: string): string {
 
 export const STAR_FIELDS: StarField[] = ['S', 'T', 'A', 'R'];
 export const fieldKey: Record<StarField, 'situation' | 'task' | 'action' | 'result'> = { S: 'situation', T: 'task', A: 'action', R: 'result' };
+
+/** 매칭 등급 — 합격 가능성이 아니라 "확정 카드 근거가 인재상을 얼마나 뒷받침하는가". */
+export const fitGradeLabel: Record<FitGrade, string> = { A: '근거 충분', B: '근거 보통', C: '근거 적음', D: '근거 부족' };
+export const coverLetterQuestionLabel: Record<CoverLetterQuestion, string> = {
+  MOTIVATION: '지원 동기와 직무 역량', COLLABORATION: '협업·갈등 해결 경험', PROBLEM_SOLVING: '문제 해결 경험', GROWTH: '성장 경험',
+};

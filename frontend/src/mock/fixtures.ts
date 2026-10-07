@@ -274,3 +274,67 @@ export const seedRecall = {
     { path: '/docs/', filesChanged: 2, myCommits: 0, files: ['api-spec.md'], question: '문서만 만졌다면, 누구를 위해 쓴 문서였나요?', options: ['팀원 온보딩용', '발표 자료용'] },
   ],
 };
+
+// ───────────── 기업·직무 매칭 (제안 계약 · 목 전용) ─────────────
+// 실서비스의 company_context 모양을 따른다: 공개 출처 URL · 직무 · 인재상 태그 · 확인일 필수, 만료되면 추천에서 제외.
+// 체험 모드라 전부 가상 기업이다 — 실제 기업의 채용 정보를 지어내지 않는다.
+const daysFromNow = (d: number) => new Date(Date.now() + d * 86400_000).toISOString();
+export const seedCompanies = [
+  {
+    id: 'co_pay', company: '블루오션페이(예시)', role: '백엔드 개발자', summary: '결제·정산 플랫폼의 서버 개발',
+    tags: [
+      { tag: '안정적인 서비스 운영', keywords: ['만료', '재발급', '롤백', '장애'] },
+      { tag: '보안 의식', keywords: ['XSS', 'HttpOnly', '쿠키', '보안'] },
+      { tag: '팀과 합의하는 협업', keywords: ['합의', '팀원', '의견', '제안'] },
+      { tag: '지표로 확인하는 개선', keywords: ['측정', '응답 속도', '지표', '벤치마크'] },
+    ],
+    source: { url: 'https://example.com/careers/blueocean-pay', verifiedAt: daysAgo(12), expiresAt: daysFromNow(78) },
+  },
+  {
+    id: 'co_game', company: '그린웨이브 게임즈(예시)', role: '클라이언트 개발자(Unity)', summary: '모바일 게임의 연출·최적화',
+    tags: [
+      { tag: '실시간 연출 구현', keywords: ['씬', '코루틴', '연출', '시퀀스', '글리치'] },
+      { tag: '런타임 성능 최적화', keywords: ['풀링', '최적화'] },
+      { tag: '기획 문서화 습관', keywords: ['문서', 'docs', '계획'] },
+      { tag: '동료와의 페어 협업', keywords: ['페어', '코드 리뷰어'] },
+    ],
+    source: { url: 'https://example.com/careers/greenwave-games', verifiedAt: daysAgo(5), expiresAt: daysFromNow(55) },
+  },
+  {
+    id: 'co_sec', company: '코어시큐어(예시)', role: '보안 엔지니어(인증)', summary: '인증·세션 보안과 위협 대응',
+    tags: [
+      { tag: '인증·세션 설계', keywords: ['세션', '리프레시', '인터셉터'] },
+      { tag: '위협 시나리오 재현', keywords: ['XSS', '시나리오', '재현'] },
+      { tag: '보안 의사결정 설득', keywords: ['합의', '제안', '쿠키'] },
+      { tag: '모니터링·탐지', keywords: ['모니터링', '탐지', '알림'] },
+      { tag: '침투 테스트', keywords: ['침투', '취약점 점검'] },
+    ],
+    source: { url: 'https://example.com/careers/coresecure', verifiedAt: daysAgo(20), expiresAt: daysFromNow(40) },
+  },
+  {
+    id: 'co_front', company: '모아코드(예시)', role: '프론트엔드 개발자', summary: '웹 서비스의 사용자 경험 개발',
+    tags: [
+      { tag: '사용자 경험 개선', keywords: ['사용자', '재로그인'] },
+      { tag: '디자인 시스템 운영', keywords: ['디자인 시스템', '컴포넌트 라이브러리'] },
+      { tag: '웹 접근성', keywords: ['접근성', '스크린리더'] },
+      { tag: '상태 관리 설계', keywords: ['상태 관리', '리덕스'] },
+    ],
+    source: { url: 'https://example.com/careers/moacode', verifiedAt: daysAgo(9), expiresAt: daysFromNow(21) },
+  },
+  {
+    id: 'co_data', company: '스택플로우랩(예시)', role: '데이터 엔지니어', summary: '대용량 데이터 파이프라인 운영',
+    tags: [
+      { tag: '대용량 배치 처리', keywords: ['배치', '대용량'] },
+      { tag: 'SQL 최적화', keywords: ['쿼리 튜닝', '인덱스'] },
+      { tag: '데이터 품질 검증', keywords: ['데이터 품질', '검증 규칙'] },
+      { tag: '파이프라인 운영', keywords: ['파이프라인', '스케줄러'] },
+    ],
+    source: { url: 'https://example.com/careers/stackflow-lab', verifiedAt: daysAgo(30), expiresAt: daysFromNow(10) },
+  },
+  {
+    // 만료된 공고 — 확인일이 지났으므로 추천에서 빠져야 한다 (E2E/단위 검사용)
+    id: 'co_old', company: '해든소프트(예시)', role: '프론트엔드 개발자', summary: '확인일이 지나 추천에서 제외되는 예시',
+    tags: [{ tag: '사용자 경험 개선', keywords: ['사용자'] }],
+    source: { url: 'https://example.com/careers/headen-soft', verifiedAt: daysAgo(120), expiresAt: daysAgo(3) },
+  },
+];

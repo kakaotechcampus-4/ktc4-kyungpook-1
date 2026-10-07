@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { endpoints } from './endpoints';
 import { keys } from './keys';
 import { AuthError } from './client';
@@ -8,6 +8,17 @@ import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
 import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
+import { matchSupported } from './capabilities';
+import type { CoverLetter, CoverLetterQuestion } from './schemas';
+
+/**
+ * 카드(확정 여부·내용·마스킹)가 바뀌면 기업 매칭의 근거와 자소서 초안의 stale 표시가 달라진다.
+ * 곧바로 다시 받을 필요는 없다 — 낡음 표시만 해 두면 다음에 화면을 열 때 새로 받는다.
+ */
+const cardsChanged = (qc: QueryClient) => {
+  void qc.invalidateQueries({ queryKey: keys.matches, refetchType: 'none' });
+  void qc.invalidateQueries({ queryKey: keys.coverLetters, refetchType: 'none' });
+};
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -130,7 +141,7 @@ export function useCreateManualDraft() {
 export function useSaveMetadata(cardId: string) {
   const client = useQueryClient();
   return useMutation({ mutationFn: (body: import('./schemas').CardMetadataPatch) => endpoints.saveMetadata(cardId, body),
-    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); } });
+    onSuccess: async (metadata) => { cardsChanged(client); await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); } });
 }
 
 export function usePatchCandidate(repoId: string) {
@@ -180,6 +191,7 @@ function useCardMutation<V>(id: string, fn: (v: V) => Promise<Card>) {
     mutationFn: fn,
     onSuccess: (card) => {
       qc.setQueryData(keys.card(id), card);
+      cardsChanged(qc);
       void qc.invalidateQueries({ queryKey: keys.versions(id) });
       void qc.invalidateQueries({ queryKey: keys.cards });
     },
@@ -225,6 +237,7 @@ export function useConfirm(cardId: string) {
   return useMutation({
     mutationFn: (body: { edited: boolean; maskedFields: StarField[] }) => endpoints.confirm(cardId, body),
     onSuccess: async (r) => {
+      cardsChanged(qc);
       // The POST acknowledgement is authoritative even if the following GET fails.
       await qc.cancelQueries({ queryKey: keys.card(cardId), exact: true });
       qc.setQueryData<Card>(keys.card(cardId), (card) => card ? {
@@ -254,4 +267,29 @@ export function useDisconnectGithub() {
 export function useLogout() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: endpoints.logout, onSuccess: () => qc.clear() });
+}
+
+// ───────────────────── 기업·직무 매칭 · 자소서 초안 (제안 계약 — 서버 확정 전에는 목에서만) ─────────────────────
+export const useMatches = () => useQuery({ queryKey: keys.matches, queryFn: endpoints.matches, staleTime: 60_000, enabled: matchSupported() });
+export const useMatch = (id: string | undefined) =>
+  useQuery({ queryKey: keys.match(id ?? ''), queryFn: () => endpoints.match(id!), enabled: !!id && matchSupported() });
+export const useCoverLetters = () => useQuery({ queryKey: keys.coverLetters, queryFn: endpoints.coverLetters, enabled: matchSupported() });
+export const useCoverLetter = (id: string | undefined) =>
+  useQuery({ queryKey: keys.coverLetter(id ?? ''), queryFn: () => endpoints.coverLetter(id!), enabled: !!id && matchSupported() });
+export function useCreateCoverLetter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { matchId: string | null; question: CoverLetterQuestion; cardIds: string[] }) => endpoints.createCoverLetter(body),
+    onSuccess: (letter) => { qc.setQueryData(keys.coverLetter(letter.id), letter); void qc.invalidateQueries({ queryKey: keys.coverLetters }); },
+  });
+}
+export function useSaveCoverLetter(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (text: string) => endpoints.saveCoverLetter(id, text),
+    onSuccess: (saved) => {
+      qc.setQueryData<CoverLetter>(keys.coverLetter(id), (letter) => letter ? { ...letter, text: saved.text, edited: saved.edited, updatedAt: saved.updatedAt } : letter);
+      void qc.invalidateQueries({ queryKey: keys.coverLetters, refetchType: 'none' });
+    },
+  });
 }

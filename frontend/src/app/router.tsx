@@ -11,6 +11,7 @@ import { Spinner } from '@/components/ui';
  *  B1 /repos · B3 /repos/:id/run · C1 /repos/:id/candidates · C4 /repos/:id/recall
  *  D1~D9·E2·E3 /cards/:id (모드는 쿼리) · D5 /cards/:id/interview · E4 /cards/new · E1 /
  *  F1 /settings/github · F2 /settings · F3 /settings/leave
+ *  G1 /match · G2 /match/:id (기업·직무 매칭) · H1 /cover-letter · H2 /cover-letter/:id (자소서 초안) — 제안 계약, 목에서만 켠다
  */
 const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() => f().then((m) => ({ default: m[name] as React.ComponentType })));
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
@@ -27,6 +28,10 @@ const NewCardPage = L(() => import('@/features/cards/NewCardPage'), 'NewCardPage
 const GithubSettingsPage = L(() => import('@/features/settings/GithubSettingsPage'), 'GithubSettingsPage');
 const MyPage = L(() => import('@/features/settings/MyPage'), 'MyPage');
 const LeavePage = L(() => import('@/features/settings/LeavePage'), 'LeavePage');
+const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
+const MatchDetailPage = L(() => import('@/features/match/MatchDetailPage'), 'MatchDetailPage');
+const CoverLetterSetupPage = L(() => import('@/features/coverLetter/CoverLetterSetupPage'), 'CoverLetterSetupPage');
+const CoverLetterDraftPage = L(() => import('@/features/coverLetter/CoverLetterDraftPage'), 'CoverLetterDraftPage');
 const NotFoundPage = L(() => import('@/features/NotFoundPage'), 'NotFoundPage');
 
 const S = ({ children }: { children: ReactNode }) => <Suspense fallback={<main className="main" style={{ alignItems: 'center', paddingTop: 96 }}><Spinner /></main>}>{children}</Suspense>;
@@ -48,6 +53,10 @@ export const router = createBrowserRouter([
       { path: '/cards/new', element: <S><NewCardPage /></S> },
       { path: '/cards/:cardId', element: <S><CardPage /></S> },
       { path: '/cards/:cardId/interview', element: <S><InterviewPage /></S> },
+      { path: '/match', element: <S><MatchListPage /></S> },
+      { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },
+      { path: '/cover-letter', element: <S><CoverLetterSetupPage /></S> },
+      { path: '/cover-letter/:letterId', element: <S><CoverLetterDraftPage /></S> },
       { path: '/settings', element: <S><MyPage /></S> },
       { path: '/settings/github', element: <S><GithubSettingsPage /></S> },
       { path: '/settings/leave', element: <S><LeavePage /></S> },

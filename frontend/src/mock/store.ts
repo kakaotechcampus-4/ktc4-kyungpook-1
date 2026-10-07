@@ -3,7 +3,8 @@
  * Job 진행률은 타이머가 아니라 "읽는 순간의 경과 시간"으로 계산한다 — 결정적이고 폴링 간격과 무관.
  * 데모 속도: ANALYZE 12초 · DRAFT 8초 (스펙 목표 30초/3분보다 빠르게).
  */
-import { seedCards, seedCandidates, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
+import { seedCards, seedCandidates, seedCompanies, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
+import { applyMask } from '../lib/mask';
 
 type Any = Record<string, any>;
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -14,6 +15,7 @@ export const db = {
   candidates: clone(seedCandidates) as Any[],
   cards: clone(seedCards) as Any[],
   interview: clone(seedInterview) as Record<string, Any[]>,
+  coverLetters: [] as Any[],
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   seq: 100,
@@ -28,6 +30,7 @@ export const FIELD_KEY: Record<string, string> = { S: 'situation', T: 'task', A:
 export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
+  db.coverLetters = [];
   db.jobs.clear(); db.idem.clear(); db.seq = 100;
 }
 
@@ -384,7 +387,7 @@ export function settlePending() {
  */
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, coverLetters: db.coverLetters,
     jobs: [...db.jobs.values()], idem: [...db.idem.entries()], seq: db.seq,
   });
 }
@@ -393,11 +396,130 @@ export function restore(raw: string): boolean {
     const s = JSON.parse(raw);
     if (!s?.cards || !s?.repos) return false;
     db.user = s.user; db.repos = s.repos; db.candidates = s.candidates;
-    db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
+    db.cards = s.cards; db.interview = s.interview ?? {}; db.coverLetters = s.coverLetters ?? []; db.seq = s.seq ?? 100;
     db.jobs.clear();
     (s.jobs ?? []).forEach((j: Any) => db.jobs.set(j.id, j));
     db.idem = new Map(s.idem ?? []);
     settlePending();
     return true;
   } catch { return false; }
+}
+
+// ───────────────────── 기업·직무 매칭 · 자소서 초안 (제안 계약 · 목 전용) ─────────────────────
+// 실서버에서는 등급을 "규칙"이 매기고(수치·점수를 화면에 내지 않는다), 인재상 키워드는 AI(/matching)가 뽑는다.
+// 목은 키워드 포함 여부만 본다 — 화면의 상태(근거 있음/빈 칸/등급)를 확인하려는 용도다.
+type Support = { cardId: string; cardTitle: string; cardKind: string; field: string; sentence: string };
+const confirmedCards = () => db.cards.filter((c) => c.status === 'CONFIRMED');
+const latestOf = (c: Any) => c.versions[c.versions.length - 1];
+const maskedText = (c: Any, text: string) => applyMask(text, c.maskRules ?? []);
+
+const supportsFor = (c: Any, keywords: string[]): Support | null => {
+  const v = latestOf(c);
+  for (const f of STAR) {
+    const text = String(v[FIELD_KEY[f]] ?? '');
+    if (text.trim() && keywords.some((k) => text.toLowerCase().includes(k.toLowerCase()))) {
+      return { cardId: c.id, cardTitle: c.title, cardKind: c.kind, field: f, sentence: maskedText(c, text) };
+    }
+  }
+  return null;
+};
+
+/** 규칙 등급 — 합격 가능성이 아니라 "확정 카드 근거가 인재상을 얼마나 뒷받침하는가". */
+export const fitGrade = (tagCount: number, supported: number, cards: number) =>
+  supported === 0 ? 'D' : supported * 4 >= tagCount * 3 && cards >= 2 ? 'A' : supported * 2 >= tagCount ? 'B' : 'C';
+
+const liveCompanies = () => seedCompanies.filter((co) => Date.parse(co.source.expiresAt) > Date.now()); // 만료는 추천에서 제외
+
+function analyze(co: (typeof seedCompanies)[number], cards = confirmedCards()) {
+  const tags = co.tags.map((t) => ({ tag: t.tag, supports: cards.map((c) => supportsFor(c, t.keywords)).filter((x): x is Support => !!x) }));
+  const supported = tags.filter((t) => t.supports.length > 0);
+  const cardIds = new Set(supported.flatMap((t) => t.supports.map((s) => s.cardId)));
+  return {
+    tags,
+    summary: {
+      id: co.id, company: co.company, role: co.role, summary: co.summary,
+      fit: fitGrade(tags.length, supported.length, cardIds.size),
+      tagCount: tags.length, supportedTagCount: supported.length, supportingCardCount: cardIds.size,
+      matchedTags: supported.map((t) => t.tag), source: co.source,
+    },
+  };
+}
+
+export function matchTargets() {
+  const order: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
+  return liveCompanies().map((co) => analyze(co).summary)
+    .sort((a, b) => order[a.fit] - order[b.fit] || b.supportedTagCount - a.supportedTagCount || a.company.localeCompare(b.company));
+}
+export function matchDetail(id: string) {
+  const co = liveCompanies().find((x) => x.id === id);
+  if (!co) return null;
+  const { tags, summary } = analyze(co);
+  return { ...summary, tags };
+}
+
+export const COVER_QUESTIONS = ['MOTIVATION', 'COLLABORATION', 'PROBLEM_SOLVING', 'GROWTH'] as const;
+const QUESTION_NAME: Record<string, string> = { MOTIVATION: '지원 동기와 직무 역량', COLLABORATION: '협업·갈등 해결 경험', PROBLEM_SOLVING: '문제 해결 경험', GROWTH: '성장 경험' };
+const tagList = (tags: string[]) => tags.map((t) => `'${t}'`).join(', ');
+
+/**
+ * 초안 = 사용자가 확정한 카드 문장(마스킹 적용) + 짧은 연결 문장.
+ * 연결 문장은 문항·지원 대상에서 이미 알려진 사실만 말하고 새 경험·수치를 만들지 않는다. 화면은 둘을 구분해 보여준다.
+ */
+export function createCoverLetter(input: { matchId: string | null; question: string; cardIds: string[] }) {
+  const cards = input.cardIds.map((id) => confirmedCards().find((c) => c.id === id)!);
+  const target = input.matchId ? matchDetail(input.matchId) : null;
+  const company = target ? liveCompanies().find((x) => x.id === target.id)! : null;
+  const used = company ? analyze(company, cards) : null;
+  const everything = company ? analyze(company) : null; // 확정한 카드 전부 기준
+  const matched = used ? used.tags.filter((t) => t.supports.length > 0).map((t) => t.tag) : [];
+  // 진짜 근거 빈 칸(확정 카드 어디에도 없음) 과, 근거 카드가 있는데 이번에 안 고른 인재상을 나눈다 — 문구가 달라야 한다.
+  const gaps = everything ? everything.tags.filter((t) => t.supports.length === 0).map((t) => t.tag) : [];
+  const notUsed = used && everything ? used.tags.filter((t, i) => t.supports.length === 0 && everything.tags[i].supports.length > 0).map((t) => t.tag) : [];
+
+  const paragraphs: Any[] = [{
+    kind: 'CONNECTIVE', cardId: null, cardTitle: null,
+    text: `${target ? `${target.company}의 ${target.role} 직무에 지원합니다. ` : ''}${QUESTION_NAME[input.question]}에 대한 경험을 말씀드리겠습니다.`,
+  }];
+  for (const c of cards) {
+    const v = latestOf(c);
+    // 카드 문장은 끝맺음 없이 저장된 경우가 많아, 이어 붙이면 한 문장처럼 읽힌다 — 끝에 마침표가 없을 때만 보정한다.
+    const stop = (t: string) => (/[.!?。…]$/.test(t) ? t : `${t}.`);
+    const text = STAR.map((f) => String(v[FIELD_KEY[f]] ?? '').trim()).filter(Boolean).map((t) => stop(maskedText(c, t))).join(' ');
+    paragraphs.push({ kind: 'EVIDENCE', text, cardId: c.id, cardTitle: c.title });
+  }
+  if (target && matched.length) paragraphs.push({ kind: 'CONNECTIVE', cardId: null, cardTitle: null, text: `이상의 경험은 ${tagList(matched)} 역량과 관련이 있습니다.` });
+
+  const at = now();
+  const letter = {
+    id: nextId('cl'), matchId: target?.id ?? null, company: target?.company ?? null, role: target?.role ?? null,
+    question: input.question, paragraphs, text: paragraphs.map((p) => p.text).join('\n\n'), edited: false, gaps, notUsed,
+    cardIds: cards.map((c) => c.id), createdAt: at, updatedAt: at,
+    // 만든 시점의 마스킹 규칙 — 이후 카드가 바뀌었는지(stale) 알려 주려고 남긴다. 응답에는 싣지 않는다.
+    maskSignature: Object.fromEntries(cards.map((c) => [c.id, JSON.stringify(c.maskRules ?? [])])),
+  };
+  db.coverLetters.push(letter);
+  return letter;
+}
+
+export const coverLetterSummary = ({ paragraphs, text, gaps, notUsed, cardIds, maskSignature, ...rest }: Any) => {
+  void paragraphs; void text; void gaps; void notUsed; void cardIds; void maskSignature;
+  return rest;
+};
+
+/**
+ * 초안은 만든 시점의 스냅샷이다. 쓴 카드가 그 뒤에 바뀌었으면(확정 해제·내용 수정·마스킹 변경) stale 로 알려
+ * 화면이 "다시 만들어 주세요"라고 안내하게 한다 — 특히 마스킹을 새로 걸었는데 옛 초안을 복사하는 일을 막는다.
+ */
+export function coverLetterView({ maskSignature, ...letter }: Any) {
+  const stale = (letter.cardIds as string[]).some((id) => {
+    const card = db.cards.find((c) => c.id === id);
+    return !card || card.status !== 'CONFIRMED' || latestOf(card).createdAt > letter.createdAt || JSON.stringify(card.maskRules ?? []) !== maskSignature?.[id];
+  });
+  return { ...letter, stale };
+}
+
+export function saveCoverLetterText(letter: Any, text: string) {
+  const generated = (letter.paragraphs as Any[]).map((p) => p.text).join('\n\n');
+  letter.text = text; letter.edited = text !== generated; letter.updatedAt = now();
+  return { id: letter.id, text: letter.text, edited: letter.edited, updatedAt: letter.updatedAt };
 }

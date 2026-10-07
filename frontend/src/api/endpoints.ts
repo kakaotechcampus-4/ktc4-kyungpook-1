@@ -1,8 +1,11 @@
 import { z } from 'zod';
 import { api } from './client';
 import * as S from './schemas';
-import { cardMetadataSupported } from './capabilities';
+import { cardMetadataSupported, matchSupported } from './capabilities';
 import { ApiError, ContractError } from './client';
+
+/** 제안 계약 엔드포인트의 방어선 — 화면이 게이트를 놓쳐도 없는 서버 경로를 부르지 않는다. */
+const gated = <T>(call: () => Promise<T>): Promise<T> => (matchSupported() ? call() : Promise.reject(new ApiError('FEATURE_UNAVAILABLE', '', 400)));
 
 /** 엔드포인트 함수 — 화면은 이 파일 밖의 URL 을 모른다. */
 export const endpoints = {
@@ -21,6 +24,15 @@ export const endpoints = {
    */
   startAnalysis: (repoId: string, idempotencyKey: string) =>
     api(S.StartedJob, `/repos/${repoId}/analyze`, { method: 'POST', headers: { 'Idempotency-Key': idempotencyKey } }),
+
+  // 기업·직무 매칭 · 자소서 초안 (제안 계약) — 서버 계약이 확정되기 전의 실서버 모드에서는 요청 자체를 보내지 않는다.
+  matches: () => gated(() => api(z.array(S.MatchTarget), '/matches')),
+  match: (id: string) => gated(() => api(S.MatchDetail, `/matches/${id}`)),
+  coverLetters: () => gated(() => api(z.array(S.CoverLetterSummary), '/cover-letters')),
+  coverLetter: (id: string) => gated(() => api(S.CoverLetter, `/cover-letters/${id}`)),
+  createCoverLetter: (body: { matchId: string | null; question: S.CoverLetterQuestion; cardIds: string[] }) =>
+    gated(() => api(S.CoverLetter, '/cover-letters', { method: 'POST', body })),
+  saveCoverLetter: (id: string, text: string) => gated(() => api(S.CoverLetterSaved, `/cover-letters/${id}`, { method: 'PATCH', body: { text } })),
 
   // Job
   job: (id: string) => api(S.Job, `/jobs/${id}`),

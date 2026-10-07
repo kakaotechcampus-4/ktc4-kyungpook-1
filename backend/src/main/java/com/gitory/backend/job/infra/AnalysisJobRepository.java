@@ -24,6 +24,9 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
 
     Optional<AnalysisJob> findByPublicIdAndUserId(UUID publicId, Long userId);
 
+    @Query(value = "SELECT public_id FROM user_repository WHERE id = :id", nativeQuery = true)
+    UUID findUserRepositoryPublicId(@Param("id") Long userRepositoryId);
+
     // 다른 워커가 잡고 있는 행은 건너뛰어 같은 Job 을 두 번 꺼내지 않는다
     @Query(value = """
             SELECT * FROM analysis_job

@@ -17,6 +17,7 @@ import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 
 /**
@@ -72,7 +73,7 @@ export function CardPage() {
         <PageTitle right="2단 읽기의 두 번째 단계">고른 후보의 코드를 읽고 있습니다</PageTitle>
         <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
           <div className="row" style={{ gap: 12 }}>
-            <span className="w-700" style={{ fontSize: 15 }}>{j ? `${doneSteps(j)} / ${j.steps.length} 단계` : '준비 중'}</span>
+            <span className="w-600" style={{ fontSize: 15 }}>{j ? `${doneSteps(j)} / ${j.steps.length} 단계` : '준비 중'}</span>
             <span className="right t-12 c-2">{j ? '오래 걸리면 채워진 칸까지 먼저 보여 드려요' : ''}</span>
           </div>
           <Track value={j ? stepProgress(j) : 0.02} label="초안 생성 진행률" />
@@ -131,24 +132,20 @@ export function CardPage() {
               const t = card.version[fieldKey[f]];
               const ev = card.evidence.filter((e) => e.field === f);
               return (
-                <div key={f} className={`star-read__row ${t ? '' : 'star-read__row--gap'}`}>
-                  <StarKey field={f} dropped={!t} />
-                  <div className="stack grow" style={{ gap: 9 }}>
-                    <span className="star__name">{starFieldShort[f]}</span>
-                    {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했습니다</span>}
-                    {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
-                  </div>
-                </div>
+                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'}>
+                  {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했습니다</span>}
+                  {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
+                </StarRow>
               );
             })}
           </div>
           <aside className="stack" style={{ gap: 16 }}>
             <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
-              <span className="w-700" style={{ fontSize: 13.5 }}>이 카드로 받을 수 있는 질문</span>
+              <span className="w-600" style={{ fontSize: 13.5 }}>이 카드로 받을 수 있는 질문</span>
               {interviewQuestions(card).map((qq) => <div key={qq} className="row" style={{ gap: 8, alignItems: 'flex-start' }}><span className="c-3">·</span><span className="t-12l c-2">{qq}</span></div>)}
             </div>
             <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
-              <span className="w-700" style={{ fontSize: 13.5 }}>출처</span>
+              <span className="w-600" style={{ fontSize: 13.5 }}>출처</span>
               {[['후보', srcLabel], ['레포', repoName ?? '—'], ['커밋 근거', `${card.evidence.filter((e) => e.type === 'COMMIT').length}건`], ['내가 말한 것', `${card.evidence.filter((e) => e.type !== 'COMMIT').length}건`], ['마스킹', card.maskRules.length ? `규칙 ${card.maskRules.length}개` : '없음'], ['확정', card.confirmedAt ? ymd(card.confirmedAt) : '—']].map(([k, v]) => (
                 <div key={k} className="row t-12"><span className="c-2">{k}</span><span className="right w-600">{v}</span></div>
               ))}
@@ -203,7 +200,7 @@ export function CardPage() {
           {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={() => regenerate(f)} />)}
         </div>
         <aside className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
-          <span className="w-700" style={{ fontSize: 13.5 }}>답변으로 보완하기</span>
+          <span className="w-600" style={{ fontSize: 13.5 }}>답변으로 보완하기</span>
           {questions.length === 0 && (emptyStarFields(card).length === 0
             ? <span className="t-12l c-3">추가로 작성할 항목이 없어요</span>
             : <span className="t-12l c-3">비어 있는 칸: {emptyStarFields(card).join(' · ')} — 직접 수정에서 채울 수 있어요</span>)}
@@ -216,7 +213,7 @@ export function CardPage() {
           ))}
           <div className="divider" />
           <div className="stack" style={{ gap: 6 }}>
-            <span className="t-12 w-700 c-3">카드 관리</span>
+            <span className="t-12 w-600 c-3">카드 관리</span>
             <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
               <Button variant="text" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
               <Button variant="text" size="sm" onClick={() => setSp({ mode: 'mask' })}>정보 가리기{card.maskRules.length ? ` (${card.maskRules.length})` : ''}</Button>

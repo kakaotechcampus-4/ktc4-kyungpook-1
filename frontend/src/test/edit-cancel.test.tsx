@@ -84,6 +84,46 @@ describe('편집 취소', () => {
     expect(save).toHaveBeenCalledTimes(1);
   });
 
+  it('자동저장이 서버에 반영된 뒤 응답만 유실돼도 취소는 원문 복원을 확인한 뒤에 닫힌다', async () => {
+    let server = card.version.situation;
+    let lost = true;
+    const save = vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => {
+      server = fields.situation; // 서버에는 반영됐는데
+      if (lost) { lost = false; throw new Error('response lost'); } // 응답이 유실된다
+      return ack(id, fields);
+    });
+    const { done } = mountEdit();
+    await typeAndAutosave('Edited text');
+    expect(server).toBe('Edited text');
+    await screen.findByRole('button', { name: '다시 저장' }); // 자동저장은 실패로 보인다
+    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
+    expect(server).toBe(card.version.situation);
+    expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it('응답이 유실된 뒤 복원마저 실패하면 닫지 않고 재시도 상태를 유지한다', async () => {
+    let server = card.version.situation;
+    let calls = 0;
+    const save = vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => {
+      calls += 1;
+      if (calls <= 2) { server = calls === 1 ? fields.situation : server; throw new Error('offline'); } // 1: 반영 후 유실, 2: 복원 실패
+      server = fields.situation;
+      return ack(id, fields);
+    });
+    const { done } = mountEdit();
+    await typeAndAutosave('Edited text');
+    await screen.findByRole('button', { name: '다시 저장' });
+    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(done).not.toHaveBeenCalled();
+    expect(server).toBe('Edited text');
+    fireEvent.click(screen.getByRole('button', { name: '다시 저장' }));
+    await waitFor(() => expect(server).toBe(card.version.situation));
+    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
+  });
+
   it('수정 없이 취소하면 서버에 아무것도 보내지 않는다 (잠긴 AI 초안에 가짜 버전이 안 생긴다)', async () => {
     const save = vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ack(id, fields));
     const { done } = mountEdit();

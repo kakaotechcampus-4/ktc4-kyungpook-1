@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '@/api/keys';
 import type { Card, DraftFields, StarField } from '@/api/schemas';
-import { Badge, Button, Chip, EvidenceStrip, Input, StarKey, StickyFooter, Textarea } from '@/components/ui';
+import { Badge, Button, Chip, EvidenceStrip, Input, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, fieldKey, starFieldName } from '@/lib/labels';
 import { useMask, useSaveDraft } from '@/api/queries';
 import { toast } from '@/lib/toast';
@@ -13,6 +13,8 @@ import { applyMask } from './StarBlock';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 import { SaveStatus, UnsavedChangesDialog } from '@/components/SaveStatus';
 import { cacheSavedDraft } from '@/lib/cacheSavedDraft';
+import { StarRow } from '@/components/ui/StarRow';
+import { StarEditorField } from '@/components/ui/StarEditorField';
 
 type Draft = Record<StarField, string>;
 const fromCard = (c: Card): Draft => ({ S: c.version.situation ?? '', T: c.version.task ?? '', A: c.version.action ?? '', R: c.version.result ?? '' });
@@ -80,23 +82,15 @@ export function EditMode({ card, onDone, initialField }: { card: Card; onDone: (
           const ev = card.evidence.filter((e) => e.field === f);
           const dirty = changed.includes(f);
           return (
-            <div key={f} className="star-read__row">
-              <StarKey field={f} dropped={!draft[f]} />
-              <div className="stack grow" style={{ gap: 10 }}>
-                <div className="row" style={{ gap: 8 }}>
-                  <span className="star__name">{starFieldName[f]}</span>
-                  {dirty && <Badge kind="CAUTION">고친 칸</Badge>}
-                  <span className="right t-12 c-3">{draft[f].length}자</span>
-                  {dirty && <button type="button" className="t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button>}
-                </div>
-                <Textarea ref={(element) => { fields.current[f] = element; }} className="input--lg" rows={3} value={draft[f]} disabled={canceling} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
-                  placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]} />
-                {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
-                {dirty && ev.some((e) => e.type === 'COMMIT') && (
-                  <div className="star__why"><strong>커밋에 없는 내용은 근거가 뒷받침하지 못해요</strong></div>
-                )}
-              </div>
-            </div>
+            <StarEditorField key={f} field={f} label={starFieldName[f]} dropped={!draft[f]}
+              metadata={dirty && <><Badge kind="CAUTION">고친 칸</Badge><button type="button" className="star-row__undo t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button></>}
+              ref={(element) => { fields.current[f] = element; }} disabled={canceling} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
+              placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]}>
+              {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
+              {dirty && ev.some((e) => e.type === 'COMMIT') && (
+                <div className="star__why"><strong>커밋에 없는 내용은 근거가 뒷받침하지 못해요</strong></div>
+              )}
+            </StarEditorField>
           );
         })}
       </div>
@@ -165,16 +159,12 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
           const after = applyMask(text, valid);
           const hit = after !== text;
           return (
-            <div key={f} className="star-read__row">
-              <StarKey field={f} />
-              <div className="stack grow" style={{ gap: 12 }}>
-                <div className="row" style={{ gap: 8 }}><span className="star__name">{starFieldName[f]}</span>{hit && <Badge kind="CAUTION">마스킹 적용</Badge>}</div>
-                <div className="cmp">
-                  <div className="cmp__box"><span className="cmp__label">원문 (저장된 값)</span><span className="c-2">{text}</span></div>
-                  <div className="cmp__box cmp__box--after"><span className="cmp__label">내보낼 때 (마스킹 적용)</span><span>{after}</span></div>
-                </div>
+            <StarRow key={f} field={f} label={starFieldName[f]} metadata={hit && <Badge kind="CAUTION">마스킹 적용</Badge>}>
+              <div className="cmp">
+                <div className="cmp__box"><span className="cmp__label">원문 (저장된 값)</span><span className="c-2">{text}</span></div>
+                <div className="cmp__box cmp__box--after"><span className="cmp__label">내보낼 때 (마스킹 적용)</span><span>{after}</span></div>
               </div>
-            </div>
+            </StarRow>
           );
         })}
       </div>

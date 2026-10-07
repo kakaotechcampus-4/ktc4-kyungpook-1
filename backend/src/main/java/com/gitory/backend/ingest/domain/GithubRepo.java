@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 import static lombok.AccessLevel.PROTECTED;
 
 /**
@@ -30,4 +32,7 @@ public class GithubRepo {
 
     private String primaryLanguage;
     private String defaultBranch;
+
+    private Instant githubCreatedAt;
+    private Instant githubPushedAt;
 }

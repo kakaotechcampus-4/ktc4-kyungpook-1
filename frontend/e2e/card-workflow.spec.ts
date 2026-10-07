@@ -24,10 +24,10 @@ test('active analysis is visible on home and can be reopened after refresh', asy
 test('review and missing-field filters use the current server STAR states', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards');
   const filter = page.getByRole('combobox', { name: '보완 상태', exact: true });
-  await filter.selectOption('REVIEW');
+  await filter.click(); await page.getByRole('option', { name: '확인 필요', exact: true }).click();
   await expect(page.getByRole('heading', { name: '로그인 세션 처리', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: '결제 롤백 대응 경험', exact: true })).toHaveCount(0);
-  await filter.selectOption('MISSING');
+  await filter.click(); await page.getByRole('option', { name: '빈칸 있음', exact: true }).click();
   await expect(page.locator('.experience-item')).toHaveCount(2);
 });
 

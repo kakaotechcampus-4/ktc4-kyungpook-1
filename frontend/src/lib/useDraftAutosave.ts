@@ -8,7 +8,9 @@ export type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unknown>, opts: { enabled?: boolean } = {}) {
   const enabled = opts.enabled ?? true;
   const json = JSON.stringify(fields);
-  const lastSaved = useRef(json);
+  // 서버가 확인해 준 마지막 본문. 저장 요청이 실패하면 null — 요청이 서버에 반영됐는지(응답만 유실) 알 수 없으므로
+  // 이 값으로 '이미 저장된 상태'라고 단정하지 않는다. 다음 저장 성공(acknowledgement)이 와야 다시 알려진 값이 된다.
+  const lastSaved = useRef<string | null>(json);
   const latest = useRef(fields);
   const saveRef = useRef(save);
   latest.current = fields;
@@ -40,6 +42,7 @@ export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unkn
         return true;
       } catch {
         failedRef.current = true;
+        lastSaved.current = null;
         if (mounted.current) setFailed(true);
         return false;
       } finally {
@@ -57,13 +60,7 @@ export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unkn
   }, [clearTimer]);
   useEffect(() => {
     clearTimer();
-    if (json === lastSaved.current) {
-      // 실패 이후 사용자가 직접 원래 내용으로 되돌렸다 — 서버 값과 이미 같으니 다시 보낼 것도, 에러로
-      // 보일 이유도 없다. failed 를 그대로 두면 dirty/status 가 '되돌리기 전' 상태에 영원히 갇힌다.
-      if (failedRef.current) { failedRef.current = false; setFailed(false); }
-      return clearTimer;
-    }
-    if (enabled && !failedRef.current) {
+    if (enabled && !failedRef.current && json !== lastSaved.current) {
       timer.current = setTimeout(() => { if (!failedRef.current) void flush(); }, CONFIG.DRAFT_AUTOSAVE_MS);
     }
     return clearTimer;

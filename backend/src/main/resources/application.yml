@@ -20,6 +20,12 @@ spring:
     enabled: true
     baseline-on-migrate: false
 
+  http:
+    clients:
+      # GitHub 호출 하나가 오래 멈춰도 저장소 목록 요청이 프론트 제한(30초) 안에 끝나게 한다.
+      connect-timeout: 3s
+      read-timeout: 10s
+
   session:
     # 세션은 DB 에 둔다. 토큰을 클라이언트에 두지 않는다는 원칙상 세션 쿠키가
     # 유일한 인증 수단이고, 인스턴스가 늘어나도 로그인이 유지돼야 한다.
@@ -67,8 +73,10 @@ management:
       probes:
         enabled: true
       group:
+        # ai 는 넣지 않는다. AI 가 꺼져도 로그인·저장소 목록은 받아야 한다 (분석 Job 만 실패한다).
+        # AI 상태는 /actuator/health 전체 응답에 그대로 반영된다.
         readiness:
-          include: readinessState,db,ai
+          include: readinessState,db
 
 # 운영은 명시적으로 켰을 때만 문서를 제공한다. local 프로필에서는 기본으로 켠다.
 springdoc:

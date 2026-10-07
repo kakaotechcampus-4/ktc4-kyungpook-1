@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, PositiveInt, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    StringConstraints,
+    model_validator,
+)
 
-from schemas.collection import ExclusionReason
+from schemas.collection import ExclusionReason, FileChangeStatus
 from schemas.common import (
     AnalysisVerdict,
     CandidateSourceType,
@@ -21,12 +28,20 @@ CANDIDATE_TITLE_MAX_LENGTH = 200
 CANDIDATE_REASON_MAX_LENGTH = 300
 
 NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+ExperienceSourceType = Literal["PR", "COMMIT_CLUSTER"]
 
 
-class ChangedFile(BaseModel):
+class StrictRequestModel(BaseModel):
+    """알 수 없는 필드를 조용히 버리지 않는 내부 분석 API 입력 모델."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class ChangedFile(StrictRequestModel):
     """커밋에 포함된 파일 변경 메타데이터."""
 
     path: str
+    status: FileChangeStatus | None = None
     additions: int = Field(ge=0)
     deletions: int = Field(ge=0)
     patch: str | None = Field(
@@ -34,16 +49,18 @@ class ChangedFile(BaseModel):
     )
 
 
-class CommitInput(BaseModel):
+class CommitInput(StrictRequestModel):
     """Spring이 GitHub에서 수집해 전달하는 정규화 커밋."""
 
     sha: str = Field(..., min_length=7, max_length=40)
+    repository_id: PositiveInt | None = None
     message: str
     author_login: str | None = None
     author_name: str | None = Field(
         None,
         description="GitHub 계정이 연결되지 않은 커밋의 작성자 이름",
     )
+    author_email: str | None = None
     authored_at: datetime
     parent_count: int = Field(ge=0)
     additions: int | None = Field(
@@ -76,7 +93,7 @@ class CommitInput(BaseModel):
         return self
 
 
-class PullRequestContext(BaseModel):
+class PullRequestContext(StrictRequestModel):
     """PR 후보의 제목·설명과 Issue 연결에 쓰는 PR 문맥(Spring ``pull_request`` 행)."""
 
     number: PositiveInt
@@ -87,7 +104,7 @@ class PullRequestContext(BaseModel):
     )
 
 
-class IssueContext(BaseModel):
+class IssueContext(StrictRequestModel):
     """Issue 후보의 제목·설명에 쓰는 Issue 문맥(Spring ``issue`` 행)."""
 
     number: PositiveInt
@@ -95,7 +112,7 @@ class IssueContext(BaseModel):
     body_excerpt: str | None = None
 
 
-class ExperienceGroupingRequest(BaseModel):
+class ExperienceGroupingRequest(StrictRequestModel):
     """커밋 선별과 경험 그룹화를 요청한다."""
 
     repository_id: str
@@ -118,7 +135,7 @@ class ExperienceCandidate(BaseModel):
     """
 
     group_key: str
-    source_type: CandidateSourceType
+    source_type: ExperienceSourceType
     source_ref: str | None = None
     pull_request_number: PositiveInt | None = Field(
         None,
@@ -145,7 +162,7 @@ class ExperienceGroupingResponse(BaseModel):
     excluded_commit_shas: list[str] = Field(default_factory=list)
 
 
-class DiffEvidence(BaseModel):
+class DiffEvidence(StrictRequestModel):
     """확정 경험에서 추출한 최소 diff 근거."""
 
     sha: str = Field(..., min_length=7, max_length=40)
@@ -156,14 +173,14 @@ class DiffEvidence(BaseModel):
     url: str | None = None
 
 
-class DependencyFile(BaseModel):
+class DependencyFile(StrictRequestModel):
     """기술 스택 판별에 필요한 의존성·설정 파일."""
 
     path: str
     content: str
 
 
-class StarAnalysisRequest(BaseModel):
+class StarAnalysisRequest(StrictRequestModel):
     """확정된 경험의 STAR 분석을 요청한다."""
 
     candidate_id: str

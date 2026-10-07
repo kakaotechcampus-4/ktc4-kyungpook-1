@@ -263,6 +263,7 @@
         "type": "object"
       },
       "ChangedFile": {
+        "additionalProperties": false,
         "description": "커밋에 포함된 파일 변경 메타데이터.",
         "properties": {
           "additions": {
@@ -290,6 +291,16 @@
           "path": {
             "title": "Path",
             "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileChangeStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -869,6 +880,7 @@
         "type": "object"
       },
       "CommitInput": {
+        "additionalProperties": false,
         "description": "Spring이 GitHub에서 수집해 전달하는 정규화 커밋.",
         "properties": {
           "additions": {
@@ -883,6 +895,17 @@
             ],
             "description": "그룹화 단계에서는 diff를 조회하지 않으므로 비어 있을 수 있다",
             "title": "Additions"
+          },
+          "author_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Email"
           },
           "author_login": {
             "anyOf": [
@@ -996,6 +1019,18 @@
             ],
             "title": "Pull Request Number"
           },
+          "repository_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Id"
+          },
           "sha": {
             "maxLength": 40,
             "minLength": 7,
@@ -1074,6 +1109,7 @@
         "type": "object"
       },
       "DependencyFile": {
+        "additionalProperties": false,
         "description": "기술 스택 판별에 필요한 의존성·설정 파일.",
         "properties": {
           "content": {
@@ -1093,6 +1129,7 @@
         "type": "object"
       },
       "DiffEvidence": {
+        "additionalProperties": false,
         "description": "확정 경험에서 추출한 최소 diff 근거.",
         "properties": {
           "author_login": {
@@ -1553,9 +1590,7 @@
           "source_type": {
             "enum": [
               "PR",
-              "ISSUE",
-              "COMMIT_CLUSTER",
-              "MANUAL"
+              "COMMIT_CLUSTER"
             ],
             "title": "Source Type",
             "type": "string"
@@ -1579,6 +1614,7 @@
         "type": "object"
       },
       "ExperienceGroupingRequest": {
+        "additionalProperties": false,
         "description": "커밋 선별과 경험 그룹화를 요청한다.",
         "properties": {
           "collection_partial": {
@@ -2146,6 +2182,7 @@
         "type": "string"
       },
       "PullRequestContext": {
+        "additionalProperties": false,
         "description": "PR 후보의 제목·설명과 Issue 연결에 쓰는 PR 문맥(Spring ``pull_request`` 행).",
         "properties": {
           "body_excerpt": {
@@ -2402,6 +2439,7 @@
         "type": "object"
       },
       "StarAnalysisRequest": {
+        "additionalProperties": false,
         "description": "확정된 경험의 STAR 분석을 요청한다.",
         "properties": {
           "candidate_id": {
@@ -2675,6 +2713,7 @@
         "type": "object"
       },
       "schemas__analysis__IssueContext": {
+        "additionalProperties": false,
         "description": "Issue 후보의 제목·설명에 쓰는 Issue 문맥(Spring ``issue`` 행).",
         "properties": {
           "body_excerpt": {

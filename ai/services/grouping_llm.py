@@ -23,6 +23,8 @@ DEFAULT_MODEL = "gpt-5.6-luna"
 #: 셀렉터를 거친 본인 작업은 대부분 이 안에 들어가 배치 경계가 생기지 않는다.
 DEFAULT_BATCH_SIZE = 250
 DEFAULT_DESCRIPTION_BATCH_SIZE = 30
+#: Elice 비스트리밍 게이트웨이의 응답 토큰 상한.
+MAX_COMPLETION_TOKENS = 2_000
 #: 작업 단위 하나에서 LLM에 보여줄 커밋·파일 수. 큰 PR이 입력 토큰을 독차지하지 않게 한다.
 UNIT_COMMIT_SAMPLE = 8
 COMMIT_FILE_SAMPLE = 10
@@ -191,7 +193,10 @@ class GroupingLlm:
                     ]
                 },
                 output_model=ExperienceGroupingOutput,
-                max_completion_tokens=max(4_000, len(batch) * 20),
+                max_completion_tokens=min(
+                    MAX_COMPLETION_TOKENS,
+                    max(1_000, len(batch) * 8),
+                ),
             )
             for indexes in self._partition(
                 [item.item_ids for item in result.experiences], len(batch)
@@ -232,7 +237,10 @@ class GroupingLlm:
                     ]
                 },
                 output_model=GroupDescriptionsOutput,
-                max_completion_tokens=max(1_000, len(batch) * 180),
+                max_completion_tokens=min(
+                    MAX_COMPLETION_TOKENS,
+                    max(1_000, len(batch) * 180),
+                ),
             )
             expected = {group.group_key for group in batch}
             for item in result.descriptions:

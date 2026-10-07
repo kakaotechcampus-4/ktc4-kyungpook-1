@@ -14,9 +14,9 @@ from schemas.analysis import (
     CANDIDATE_TITLE_MAX_LENGTH,
     CommitInput,
     ExperienceCandidate,
+    ExperienceSourceType,
     PullRequestContext,
 )
-from schemas.common import CandidateSourceType
 
 #: LLM이 점수 규칙을 보조하려고 주는 카드감 판단.
 CardWorthHint = Literal["HIGH", "LOW"]
@@ -47,7 +47,7 @@ class CommitGroup:
     """
 
     group_key: str
-    source_type: CandidateSourceType
+    source_type: ExperienceSourceType
     source_ref: str
     members: list[CommitInput]
     pull_request_numbers: list[int] = field(default_factory=list)

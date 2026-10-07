@@ -5,10 +5,16 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from api.analysis import get_analysis_pipeline
 from main import create_app
-from schemas.analysis import CommitInput, ExperienceGroupingRequest, PullRequestContext
+from schemas.analysis import (
+    CommitInput,
+    ExperienceCandidate,
+    ExperienceGroupingRequest,
+    PullRequestContext,
+)
 from services.analysis_pipeline import AnalysisPipeline
 from services.commit_grouper import CommitGroup
 from services.grouping_llm import GroupingLlmConfigError, GroupingLlmError
@@ -109,6 +115,46 @@ def test_partial_collection_marks_verdict_partial() -> None:
 
     assert result.verdict == "PARTIAL"
     assert len(result.candidates) == 1
+
+
+def test_partial_collection_without_selected_commits_stays_partial() -> None:
+    request = ExperienceGroupingRequest(
+        repository_id="repo-1",
+        target_login="minseo",
+        commits=[commit("c" * 40, excluded=True)],
+        collection_partial=True,
+    )
+
+    result = asyncio.run(
+        AnalysisPipeline(grouping_llm=FakeGroupingLlm()).group_experiences(request)
+    )
+
+    assert result.verdict == "PARTIAL"
+    assert result.candidates == []
+
+
+def test_grouping_request_rejects_unknown_or_camel_case_fields() -> None:
+    with pytest.raises(ValidationError):
+        ExperienceGroupingRequest(
+            repository_id="repo-1",
+            target_login="minseo",
+            commits=[],
+            collectionPartial=True,
+            typo_field="x",
+        )
+
+
+@pytest.mark.parametrize("source_type", ["ISSUE", "MANUAL"])
+def test_experience_candidate_rejects_non_persistable_source_type(source_type: str) -> None:
+    with pytest.raises(ValidationError):
+        ExperienceCandidate(
+            group_key="cluster:2026-09-01:aaaaaaaa",
+            source_type=source_type,
+            title="후보",
+            reason="커밋 근거",
+            score=0.5,
+            commit_shas=["a" * 40],
+        )
 
 
 def test_pr_and_follow_up_commit_become_one_experience_candidate() -> None:

@@ -44,7 +44,8 @@ class AnalysisPipeline:
         )
         if not selected:
             return ExperienceGroupingResponse(
-                verdict="EMPTY", excluded_commit_shas=excluded_shas
+                verdict="PARTIAL" if request.collection_partial else "EMPTY",
+                excluded_commit_shas=excluded_shas,
             )
 
         units = self.commit_grouper.work_units(selected, request.pull_requests)

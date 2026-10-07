@@ -10,6 +10,7 @@ from services.grouping_llm import (
     GroupDescriptionsOutput,
     GroupingLlm,
     GroupingLlmError,
+    MAX_COMPLETION_TOKENS,
 )
 
 
@@ -119,6 +120,7 @@ def test_units_within_default_limit_are_grouped_in_one_call() -> None:
 
     assert len(fake.calls) == 1
     assert len(experiences) == 1
+    assert fake.calls[0]["max_completion_tokens"] <= MAX_COMPLETION_TOKENS
 
 
 def test_partition_drops_unknown_dedupes_and_keeps_missing_items() -> None:
@@ -179,6 +181,10 @@ def test_describe_batches_requests() -> None:
 
     assert len(fake.calls) == 2
     assert set(result) == {group.group_key for group in groups}
+    assert all(
+        call["max_completion_tokens"] <= MAX_COMPLETION_TOKENS
+        for call in fake.calls
+    )
 
 
 def test_describe_sends_every_pr_and_issue_of_the_experience_as_reference() -> None:

@@ -113,7 +113,7 @@ jobs:
         run: |
           base="origin/${{ github.event.pull_request.base.ref }}"
           changed=$(git diff --name-status "$base"...HEAD \
-            -- backend/src/main/resources/db/migration/ \
+            -- src/main/resources/db/migration/ \
             | awk '$1 != "A" { print $2 }')
           if [ -n "$changed" ]; then
             echo "::error::이미 머지된 마이그레이션을 수정했습니다. 새 V<n>__*.sql 을 추가하세요."

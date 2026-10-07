@@ -22,6 +22,13 @@
 - 두 테마의 1440×960/280·768×600·390×844 레포 화면·rail·단계 확인 모달 및 고대비 등 15개 화면을 확인했다. 가로 넘침·콘솔/실행 오류 0건.
 - 읽기 리뷰의 tablet 방향·완료 단계 경계·rail 포커스 지적을 수정하고 재검토에서 Critical/Important 없음 확인.
 
+## PR·운영 확인
+
+- 팀 [#115](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/115): develop 대상, 본인 담당, ganggang-0605·taehun0208·Grow22 리뷰 요청. 구현 커밋 95362d4의 Node 22/24 CI에서 단위 117개·정적 E2E 84개씩 통과했다.
+- 개인 [#1](https://github.com/TaeHuiKKIM/gitory-web/pull/1): 최신 develop의 프론트 변경을 포함해 같은 파일로 동기화한다. 배포는 기존 Mock 체험 모드다.
+- [Ready production 배포](https://gitory-prototypes-6901he7gv-kim-tae-huis-projects.vercel.app)와 [운영 주소](https://gitory-prototypes.vercel.app)를 확인했다.
+- 운영에서 native scrollbar 표시를 켠 두 테마의 15개 화면을 확인했다. 짧은 창에서도 clientWidth 55px/scrollWidth 55px로 가로 넘침이 없고, 휠·키보드 설정 이동과 단계 모달을 확인했다. 고대비 모드도 가로 넘침이 없으며 native 색을 사용한다. 콘솔/실행 오류 0건.
+
 ## 적용 위치
 
 `tokens.css`: 단계/스크롤 의미 토큰. `base.css`: 브라우저별 scrollbar 표현. `layout-tio.css`: rail 조작/포커스·단계 모양. `responsive.css`: 데스크톱/태블릿 배치와 스크롤 방향. `e2e/sidebar-scroll.spec.ts`: 실제 사용 경계와 탐색 검사. 수정 전후 메모에는 환경 파일·API 키·OAuth 토큰을 넣지 않는다.

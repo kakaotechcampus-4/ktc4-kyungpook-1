@@ -361,3 +361,50 @@ export const DraftFields = z.object({
   result: z.string().nullable(),
 });
 export type DraftFields = z.infer<typeof DraftFields>;
+
+// ───────────────────── 기업·직무 매칭 · 자소서 초안 (제안 계약 — 서버 확정 전, 목에서만 켠다) ─────────────────────
+/** 확정 카드 근거가 인재상을 얼마나 뒷받침하는가. 합격 가능성·점수·퍼센트가 아니다. */
+export const FitGrade = z.enum(['A', 'B', 'C', 'D']);
+/** 공개 출처·확인일은 필수다. 만료된(expiresAt 이 지난) 기업은 서버가 목록에서 뺀다. */
+export const MatchSource = z.object({ url: z.string().min(1), verifiedAt: z.string().datetime({ offset: true }), expiresAt: z.string().datetime({ offset: true }) });
+export const MatchTarget = z.object({
+  id: z.string(), company: z.string(), role: z.string(), summary: z.string(),
+  fit: FitGrade,
+  tagCount: z.number().int().nonnegative(), supportedTagCount: z.number().int().nonnegative(), supportingCardCount: z.number().int().nonnegative(),
+  matchedTags: z.array(z.string()),
+  source: MatchSource,
+});
+export const MatchSupport = z.object({ cardId: z.string(), cardTitle: z.string(), cardKind: CardKind, field: StarField, sentence: z.string() });
+/** supports 가 비어 있으면 근거가 없는 인재상(빈 칸)이다 — 숨기지 않고 그대로 보여준다. */
+export const MatchTag = z.object({ tag: z.string(), supports: z.array(MatchSupport) });
+export const MatchDetail = MatchTarget.extend({ tags: z.array(MatchTag) });
+export type FitGrade = z.infer<typeof FitGrade>;
+export type MatchTarget = z.infer<typeof MatchTarget>;
+export type MatchSupport = z.infer<typeof MatchSupport>;
+export type MatchTag = z.infer<typeof MatchTag>;
+export type MatchDetail = z.infer<typeof MatchDetail>;
+
+export const CoverLetterQuestion = z.enum(['MOTIVATION', 'COLLABORATION', 'PROBLEM_SOLVING', 'GROWTH']);
+/** EVIDENCE = 사용자가 확정한 카드 문장(마스킹 적용) · CONNECTIVE = 문항·대상에서 아는 사실만 잇는 연결 문장. */
+export const CoverLetterParagraph = z.object({ kind: z.enum(['EVIDENCE', 'CONNECTIVE']), text: z.string(), cardId: z.string().nullable(), cardTitle: z.string().nullable() })
+  // 카드 문장인데 어느 카드인지 모르면 "확정한 카드 문장"이라는 표시가 거짓이 된다 — 계약 위반으로 본다.
+  .refine((p) => p.kind !== 'EVIDENCE' || (!!p.cardId && !!p.cardTitle), { message: 'EVIDENCE 문단에는 cardId·cardTitle 이 있어야 합니다' });
+export const CoverLetterSummary = z.object({
+  id: z.string(), matchId: z.string().nullable(), company: z.string().nullable(), role: z.string().nullable(),
+  question: CoverLetterQuestion, edited: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+});
+export const CoverLetter = CoverLetterSummary.extend({
+  paragraphs: z.array(CoverLetterParagraph), text: z.string(), cardIds: z.array(z.string()),
+  /** 확정한 카드 어디에도 근거가 없는 인재상 — 지어내지 않고 뺐다. */
+  gaps: z.array(z.string()),
+  /** 근거 카드는 있는데 이번에 고르지 않아 초안에 안 들어간 인재상. */
+  notUsed: z.array(z.string()),
+  /** 쓴 카드가 초안을 만든 뒤 바뀌었다(확정 해제·내용·마스킹) — 다시 만들어야 한다. */
+  stale: z.boolean(),
+});
+export const CoverLetterSaved = z.object({ id: z.string(), text: z.string(), edited: z.boolean(), updatedAt: z.string() });
+export type CoverLetterQuestion = z.infer<typeof CoverLetterQuestion>;
+export type CoverLetterParagraph = z.infer<typeof CoverLetterParagraph>;
+export type CoverLetterSummary = z.infer<typeof CoverLetterSummary>;
+export type CoverLetter = z.infer<typeof CoverLetter>;
+export type CoverLetterSaved = z.infer<typeof CoverLetterSaved>;

@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings } from 'lucide-react';
+import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings, Target, FileText } from 'lucide-react';
+import { matchSupported } from '@/api/capabilities';
 import { useActiveJobs, useCards, useMe } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 
-const MENU = [
+type MenuItem = { to: string; label: string; icon: typeof Home; end?: boolean; feature?: 'match' };
+const MENU: { group: string; items: MenuItem[] }[] = [
   { group: '커리어 관리', items: [
     { to: '/', label: '경험정리/홈', icon: Home, end: true },
     { to: '/repos', label: '레포 정리', icon: FolderGit2 },
     { to: '/cards', label: '경험 카드', icon: Layers },
+    { to: '/match', label: '기업·직무 매칭', icon: Target, feature: 'match' },
+    { to: '/cover-letter', label: '자소서 초안', icon: FileText, feature: 'match' },
   ] },
   { group: '설정', items: [
     { to: '/settings/github', label: 'GitHub 연결', icon: Github },
@@ -25,10 +29,13 @@ export const Wordmark = ({ height = 26, className }: { height?: number; classNam
 const Mark = () => <BrandLogo height={32} mark />;
 
 const RAIL_KEY = 'gitory.rail';
-const MOBILE_MENU = [
+/** 서버 계약이 확정되기 전(실서버 모드)에는 없는 기능의 메뉴를 보여주지 않는다. */
+const visible = (item: { feature?: 'match' }) => item.feature !== 'match' || matchSupported();
+const MOBILE_MENU: MenuItem[] = [
   { to: '/', label: '홈', icon: Home, end: true },
   { to: '/repos', label: '레포', icon: FolderGit2 },
   { to: '/cards', label: '카드', icon: Layers },
+  { to: '/match', label: '매칭', icon: Target, feature: 'match' },
   { to: '/settings', label: '설정', icon: Settings },
 ];
 
@@ -57,7 +64,7 @@ export function AppShell() {
         {MENU.map((g) => (
           <nav key={g.group} className="menu-group" aria-label={g.group}>
             <div className="menu-group__title">{g.group}</div>
-            {g.items.map((it) => (
+            {g.items.filter(visible).map((it) => (
               <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.label}>
                 <it.icon size={16} /><span>{it.label}</span>
               </NavLink>
@@ -80,7 +87,7 @@ export function AppShell() {
       </aside>
       <div id="main" className="shell__main"><Outlet context={active} /></div>
       <nav className="mobile-nav" aria-label="모바일 주 메뉴">
-        {MOBILE_MENU.map((item) => (
+        {MOBILE_MENU.filter(visible).map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end}>
             <item.icon size={20} aria-hidden="true" />
             <span>{item.label}</span>

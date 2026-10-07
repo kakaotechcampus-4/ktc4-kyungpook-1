@@ -8,7 +8,8 @@ export type EventName =
   | 'cluster_commit_excluded' | 'candidate_added_manually' | 'candidates_confirmed'
   | 'draft_generated' | 'interview_asked' | 'interview_answered' | 'card_edited' | 'card_masked'
   | 'card_confirmed' | 'card_reopened' | 'version_restored' | 'manual_card_created' | 'field_regenerated'
-  | 'recall_answered' | 'github_disconnected' | 'card_exported';
+  | 'recall_answered' | 'github_disconnected' | 'card_exported'
+  | 'match_opened' | 'cover_letter_created' | 'cover_letter_copied' | 'cover_letter_edited';
 
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
 

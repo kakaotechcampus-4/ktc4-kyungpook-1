@@ -11,4 +11,8 @@ export const keys = {
   card: (id: string) => ['cards', id] as const,
   versions: (id: string) => ['cards', id, 'versions'] as const,
   interview: (id: string) => ['cards', id, 'interview'] as const,
+  matches: ['matches'] as const,
+  match: (id: string) => ['matches', id] as const,
+  coverLetters: ['cover-letters'] as const,
+  coverLetter: (id: string) => ['cover-letters', id] as const,
 };

@@ -211,7 +211,7 @@ Opus는 질문 생성에서는 29/30건이 자동 검사를 통과했지만, `FO
 | 2 | 입력에 없는 SHA는 출력에서 제거 | `star_generator`, `diff_analyzer` |
 | 3 | 형식 오류와 5xx 게이트웨이 오류는 1회 재시도하고, 그래도 실패하면 B-2는 INSUFFICIENT로 처리 | 공통 호출기 |
 | 4 | 외부 모델로 보내기 전에 diff의 비밀값 가리기 (저장소 테스트 코드에 `gho_…` 형태 문자열 존재) | `diff_analyzer` |
-| 5 | 출력 한도 6,000토큰 이하로 설정하거나 스트리밍 사용 | 공통 호출기 |
+| 5 | 비스트리밍 출력 한도를 2,000토큰 이하로 제한 | 공통 호출기 **완료** |
 | 6 | 질문 프롬프트에 "한 문장에 두 가지를 묻지 않는다"와 "질문 본문은 `?`로 끝낸다" 추가 | 질문 생성 (`?` 규칙 완료) |
 | 7 | B-2는 판정 결과만 쓰고 판정 이유는 로그로만 남김 | B-2 |
 | 8 | 부족한 요소를 짚는 후속 질문으로 교체 (현재는 고정 문구) | `interview_answer_service` |
@@ -227,7 +227,7 @@ Opus는 질문 생성에서는 29/30건이 자동 검사를 통과했지만, `FO
    - Opus는 네이티브 Messages API의 강제 tool schema 호출에서도 STAR 초안 10건 중 6건을 스키마와 다른 형태로 반환했다. 복잡한 중첩 스키마에 대해서는 네이티브 경로만으로 신뢰성이 확보되지 않았다.
    - 결론: Claude 모델을 운영 후보로 유지하려면 네이티브 Messages API 경로가 따로 필요하지만, 현재 평가만으로는 Luna를 대체할 품질·비용·구조화 출력 신뢰성 이점이 확인되지 않았다.
 2. **GPT-5.6 계열은 `temperature=0`을 지원하지 않는다.** 기본값 1만 허용한다.
-3. **스트리밍이 아닌 요청은 출력 한도가 6,000토큰까지다.** 그보다 크게 요청하면 400으로 거절된다.
+3. **2026-10-06 기준 스트리밍이 아닌 요청은 출력 한도가 2,000토큰까지다.** 기존 6,000토큰 설정은 400으로 거절되어 운영·평가 호출을 모두 2,000 이하로 맞췄다.
 4. **목록에 없는 매개변수는 무시되지 않고 400으로 거절된다.** 허용되는 매개변수와 `reasoning_effort` 값은 모델 문서에 나와 있다.
    - Claude 계열: low / medium / high / xhigh / max
    - GPT-5.6 계열: none / low / medium / high / xhigh
@@ -253,7 +253,12 @@ Opus는 질문 생성에서는 29/30건이 자동 검사를 통과했지만, `FO
 | 소규모 테스트, 기록되지 않은 호출(중단된 실행, 형식 오류 응답, 원인 확인용 호출) | 약 ₩1,500 |
 | **합계** | **약 ₩20,000 이상** |
 
-운영 비용 참고: Luna medium 기준으로 PR 하나를 처리하면 약 ₩7이 든다(diff 분석 ₩3.2 + STAR 초안 ₩1.4 + 질문 3개 ₩1.2 + 답변 판정 3회 ₩1.0).
+2026-10-07에 같은 `PR58` fixture로 후보 1건을 카드 1장으로 완성하는 흐름(diff 요약
+1회 + STAR 초안 1회 + 질문 3회 + 답변 판정 3회)을 모델별로 다시 측정했다. PR 후보
+기준 Luna ₩8.31, Terra ₩73.01, Sonnet ₩120.34, Sol ₩159.47이었다. Opus와 Fable은
+네이티브 Messages API 호출 자체는 성공했지만 strict 구조화 출력 계약을 지키지 못해
+완료 비용을 기록하지 않았다. 상세 토큰·Claude 캐시 토큰 계산·실패 원인·재현 방법은
+`evals/REPOSITORY_COST_MEASUREMENT.md`에 기록했다.
 
 ## 9. 파일
 
@@ -261,6 +266,7 @@ Opus는 질문 생성에서는 29/30건이 자동 검사를 통과했지만, `FO
 |---|---|
 | `evals/ANSWER_SUFFICIENCY_CRITERIA.md` | B-2 판정 기준 (공통 기준, 슬롯별 최소 요소, 확정 정책) |
 | `evals/answer_sufficiency_cases.json` | B-2 사례 50건 (기존 11, 경계 25, 확인용 14) |
+| `evals/REPOSITORY_COST_MEASUREMENT.md` | PR 유무별 카드 1장 완성 비용 실측 |
 | `evals/fixtures/task_gold.json` | PR 10건의 정답 포인트 |
 | `evals/tasks/` | 작업별 후보 프롬프트, 출력 스키마, 자동 검사 |
 | `services/llm_answer_sufficiency_evaluator.py` | B-2 LLM 판정기 |
@@ -270,6 +276,7 @@ Opus는 질문 생성에서는 29/30건이 자동 검사를 통과했지만, `FO
 | `scripts/evaluate_llm_tasks.py` | 작업별 모델 비교 실행기 (예산 상한 지원) |
 | `scripts/evaluate_claude_messages_tasks.py` | Claude 네이티브 Messages API 작업 비교 실행기 (강제 tool schema) |
 | `evals/claude_messages_endpoints.example.json` | Sonnet·Opus 네이티브 Messages API 모델 식별자·환경변수·요청 파라미터 예시 |
+| `scripts/measure_repository_model_cost.py` | 저장소 1건의 카드 완성 흐름 비용 측정기 |
 | `scripts/judge_llm_task_outputs.py` | LLM 채점기 (이번에는 사용하지 않음) |
 | `evals/results/latest/comparison_manifest.json` | 4-5절 최신 비교의 모델·파라미터·사례 목록·집계 결과를 고정한 공유 artifact |
 | `evals/results/latest/README.md` | 원본 JSON 결과 생성·공유 규칙 |
@@ -283,6 +290,8 @@ python scripts/evaluate_answer_sufficiency_models.py --repeats 3 --output evals/
 python scripts/build_repo_eval_fixtures.py
 python scripts/evaluate_llm_tasks.py --task diff_summary --case-ids PR46 PR11 PR35 PR15 PR12 PR21 PR58 PR50 PR17 PR52 \
   --model-names "GPT-5.6 Luna" --reasoning-effort medium --budget 100 --output evals/results/tasks/diff.json
+python scripts/measure_repository_model_cost.py --model-name "GPT-5.6 Luna" --case-id PR58 \
+  --output evals/results/repository-cost.json
 ```
 
 ### 9-1. 4-5절 STAR·질문 비교 재현

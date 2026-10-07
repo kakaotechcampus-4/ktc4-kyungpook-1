@@ -1,0 +1,72 @@
+{
+  "measured_at": "2026-10-07",
+  "fixture": "PR58",
+  "scope": {
+    "candidate_count": 1,
+    "calls_per_scenario": 8,
+    "tasks": {
+      "diff_summary": 1,
+      "star_draft": 1,
+      "question_gen": 3,
+      "answer_sufficiency": 3
+    },
+    "github_collection_model_calls": 0
+  },
+  "models": [
+    {
+      "name": "GPT-5.6 Luna",
+      "reasoning": "medium",
+      "transport": "openai_compatible",
+      "status": "COMPLETED",
+      "pr_cost_krw": 8.31,
+      "commit_cluster_cost_krw": 8.37
+    },
+    {
+      "name": "GPT-5.6 Terra",
+      "reasoning": "medium",
+      "transport": "openai_compatible",
+      "status": "COMPLETED",
+      "pr_cost_krw": 73.01,
+      "commit_cluster_cost_krw": 74.33
+    },
+    {
+      "name": "Claude Sonnet 5",
+      "reasoning": "provider_default",
+      "transport": "anthropic_messages",
+      "status": "COMPLETED",
+      "pr_cost_krw": 120.34,
+      "commit_cluster_cost_krw": 120.83
+    },
+    {
+      "name": "GPT-5.6 Sol",
+      "reasoning": "medium",
+      "transport": "openai_compatible",
+      "status": "COMPLETED",
+      "pr_cost_krw": 159.47,
+      "commit_cluster_cost_krw": 148.73
+    },
+    {
+      "name": "Claude Opus 5",
+      "reasoning": "provider_default",
+      "transport": "anthropic_messages",
+      "status": "FAILED_SCHEMA",
+      "failure": "extra field: parameter",
+      "same_token_projection_pr_krw": 300.83,
+      "same_token_projection_commit_cluster_krw": 302.06
+    },
+    {
+      "name": "Claude Fable 5",
+      "reasoning": "provider_default",
+      "transport": "anthropic_messages",
+      "status": "FAILED_SCHEMA",
+      "failure": "latest two runs added an empty key or status_note",
+      "same_token_projection_pr_krw": 601.69,
+      "same_token_projection_commit_cluster_krw": 604.16
+    }
+  ],
+  "notes": [
+    "Claude native Messages API rejects reasoning_effort, so provider defaults were used.",
+    "Claude prompt tokens include input, cache creation, and cache read tokens.",
+    "Opus and Fable projections are not completed-run measurements."
+  ]
+}

@@ -1,11 +1,12 @@
+# develop 의 필수 체크다 (「구문 검사 · 테스트」).
+#   pull_request 에 paths 필터를 걸면 ai 를 안 바꾼 PR 에서 필수 체크가 계속 "대기 중"으로 남아
+#   머지가 막힌다. 그래서 PR 에서는 항상 돌고, changes job 이 ai 와 상관없는 PR 이면 test 를 건너뛴다.
+#   job 조건으로 건너뛴 체크는 GitHub 이 통과로 친다. job 이름을 바꾸면 필수 체크 설정도 바꿔야 한다.
+
 name: AI CI
 
 on:
   pull_request:
-    paths:
-      - "ai/**"
-      - "contracts/ingest/**"
-      - ".github/workflows/ai-ci.yml"
   push:
     branches: [develop, main]
     paths:
@@ -25,8 +26,38 @@ defaults:
     working-directory: ai
 
 jobs:
+  changes:
+    name: 변경 범위 확인
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ai: ${{ steps.scope.outputs.ai }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      # PR 의 체크아웃은 base 와 합친 merge 커밋이라 첫 부모(HEAD^1)가 base 다.
+      # push 는 위 paths 필터를 이미 통과했으므로 항상 돈다.
+      - name: ai 관련 변경인지
+        id: scope
+        working-directory: .
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ] \
+            || git diff --name-only HEAD^1 HEAD \
+               | grep -qE '^(ai/|contracts/ingest/|\.github/workflows/ai-ci\.yml$)'; then
+            echo "ai=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ai 변경 없음 — 테스트를 건너뛴다"
+            echo "ai=false" >> "$GITHUB_OUTPUT"
+          fi
+
   test:
     name: 구문 검사 · 테스트
+    needs: changes
+    if: needs.changes.outputs.ai == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

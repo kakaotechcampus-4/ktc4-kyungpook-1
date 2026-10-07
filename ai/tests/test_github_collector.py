@@ -11,6 +11,7 @@ from ports.repository_activity import RepositoryActivityPort
 from schemas.collection import (
     CandidateDetailRequest,
     CollectedFileChange,
+    CollectedPullRequest,
     ExclusionReason,
     FileChangeStatus,
     PartialReason,
@@ -22,6 +23,7 @@ from services.github_collector import (
     GithubCollector,
     GithubResourceNotFound,
     _contribution_decision,
+    _primary_pull_by_sha,
 )
 
 
@@ -119,6 +121,11 @@ def _success_handler(request: httpx.Request) -> httpx.Response:
                 }
             ],
         )
+    if path == "/repos/grow22/gitory/branches/develop":
+        return httpx.Response(
+            200,
+            json={"name": "develop", "commit": {"sha": "abc1234567890"}},
+        )
     if path == "/repos/grow22/gitory/commits/abc1234567890":
         return httpx.Response(
             200,
@@ -187,7 +194,7 @@ def test_collects_commit_diff_pull_review_and_issue() -> None:
     execution = asyncio.run(collector.collect(_request(), "live-secret"))
     result = execution.result
 
-    assert execution.api_calls == 7
+    assert execution.api_calls == 8
     assert result.partial is False
     assert len(result.commits) == 1
     assert len(result.pull_requests) == 1
@@ -206,6 +213,220 @@ def test_collects_commit_diff_pull_review_and_issue() -> None:
     )
     assert result.issues[0].body_excerpt == "응답 시간이 오래 걸립니다."
     assert not hasattr(result.commits[0].files[0], "patch")
+    assert result.head_sha == "abc1234567890"
+
+
+def test_collects_only_commits_after_since_and_records_default_branch_head() -> None:
+    """재수집은 GitHub 목록 API의 since로 상세 커밋 조회 대상을 줄인다."""
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return _success_handler(request)
+
+    payload = _request().model_dump(mode="json")
+    payload["branches"] = ["develop"]
+    payload["since"] = "2026-09-20T00:00:00Z"
+    request = RepositoryCollectionRequest.model_validate(payload)
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = asyncio.run(collector.collect(request, "live-secret")).result
+
+    commit_list_call = next(
+        call for call in calls if call.url.path == "/repos/grow22/gitory/commits"
+    )
+    assert commit_list_call.url.params["since"] == "2026-09-20T00:00:00Z"
+    assert result.head_sha == "abc1234567890"
+
+
+def test_incremental_collection_keeps_head_and_skips_old_commit_details() -> None:
+    """변경 없는 재수집은 head를 보존하면서 commit 상세 호출을 생략한다."""
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        path = request.url.path
+        if path == "/repos/grow22/gitory/pulls":
+            return httpx.Response(200, json=[])
+        if path == "/repos/grow22/gitory/branches/develop":
+            return httpx.Response(
+                200,
+                json={"name": "develop", "commit": {"sha": "dead1234567890"}},
+            )
+        if path == "/repos/grow22/gitory/commits":
+            assert request.url.params["since"] == "2026-09-21T00:00:00Z"
+            return httpx.Response(200, json=[])
+        if path == "/repos/grow22/gitory/issues":
+            return httpx.Response(200, json=[])
+        return httpx.Response(500, json={"unexpected": str(request.url)})
+
+    payload = _request().model_dump(mode="json")
+    payload["branches"] = ["develop"]
+    payload["since"] = "2026-09-21T00:00:00Z"
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    execution = asyncio.run(
+        collector.collect(
+            RepositoryCollectionRequest.model_validate(payload),
+            "live-secret",
+        )
+    )
+
+    assert execution.result.head_sha == "dead1234567890"
+    assert execution.result.commits == []
+    assert execution.api_calls == 4
+    assert not any(
+        request.url.path.startswith("/repos/grow22/gitory/commits/")
+        for request in calls
+    )
+
+
+def test_incremental_collection_fetches_detail_only_for_new_commit() -> None:
+    """새 커밋 한 건만 생기면 그 SHA의 상세 diff만 다시 조회한다."""
+    calls: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        path = request.url.path
+        if path == "/repos/grow22/gitory/pulls":
+            return httpx.Response(200, json=[])
+        if path == "/repos/grow22/gitory/branches/develop":
+            return httpx.Response(
+                200,
+                json={"name": "develop", "commit": {"sha": "def1234567890"}},
+            )
+        if path == "/repos/grow22/gitory/commits":
+            return httpx.Response(200, json=[{"sha": "def1234567890"}])
+        if path == "/repos/grow22/gitory/commits/def1234567890":
+            return httpx.Response(
+                200,
+                json={
+                    "sha": "def1234567890",
+                    "author": {"login": "grow22", "type": "User"},
+                    "commit": {
+                        "message": "feat: 새 커밋",
+                        "author": {
+                            "name": "Grow",
+                            "email": "grow22@example.com",
+                            "date": "2026-09-21T01:00:00Z",
+                        },
+                    },
+                    "parents": [{"sha": "parent"}],
+                    "stats": {"additions": 1, "deletions": 0},
+                    "files": [],
+                },
+            )
+        if path == "/repos/grow22/gitory/issues":
+            return httpx.Response(200, json=[])
+        return httpx.Response(500, json={"unexpected": str(request.url)})
+
+    payload = _request().model_dump(mode="json")
+    payload["branches"] = ["develop"]
+    payload["since"] = "2026-09-21T00:00:00Z"
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    execution = asyncio.run(
+        collector.collect(
+            RepositoryCollectionRequest.model_validate(payload),
+            "live-secret",
+        )
+    )
+
+    detail_calls = [
+        request
+        for request in calls
+        if request.url.path.startswith("/repos/grow22/gitory/commits/")
+    ]
+    assert [request.url.path for request in detail_calls] == [
+        "/repos/grow22/gitory/commits/def1234567890"
+    ]
+    assert [commit.sha for commit in execution.result.commits] == [
+        "def1234567890"
+    ]
+    assert execution.api_calls == 5
+
+
+def test_recollection_call_count_drops_when_repository_is_unchanged() -> None:
+    """같은 저장소의 최초/무변경/1건 추가 수집 호출 수를 비교한다."""
+    commit_shas = ["aaa1111111111", "bbb2222222222", "ccc3333333333"]
+
+    def execution_for(*, listed_shas: list[str], since: str | None):
+        def handler(request: httpx.Request) -> httpx.Response:
+            path = request.url.path
+            if path == "/repos/grow22/gitory/pulls":
+                return httpx.Response(200, json=[])
+            if path == "/repos/grow22/gitory/branches/develop":
+                return httpx.Response(
+                    200,
+                    json={"commit": {"sha": commit_shas[-1]}},
+                )
+            if path == "/repos/grow22/gitory/commits":
+                return httpx.Response(
+                    200,
+                    json=[{"sha": sha} for sha in listed_shas],
+                )
+            if path.startswith("/repos/grow22/gitory/commits/"):
+                sha = path.rsplit("/", 1)[-1]
+                return httpx.Response(
+                    200,
+                    json={
+                        "sha": sha,
+                        "author": {"login": "grow22", "type": "User"},
+                        "commit": {
+                            "message": f"feat: {sha}",
+                            "author": {
+                                "name": "Grow",
+                                "email": "grow22@example.com",
+                                "date": "2026-09-21T01:00:00Z",
+                            },
+                        },
+                        "parents": [{"sha": "parent"}],
+                        "stats": {"additions": 1, "deletions": 0},
+                        "files": [],
+                    },
+                )
+            if path == "/repos/grow22/gitory/issues":
+                return httpx.Response(200, json=[])
+            return httpx.Response(500, json={"unexpected": str(request.url)})
+
+        payload = _request().model_dump(mode="json")
+        payload["branches"] = ["develop"]
+        payload["since"] = since
+        collector = GithubCollector(
+            base_url="https://api.github.test",
+            transport=httpx.MockTransport(handler),
+        )
+        return asyncio.run(
+            collector.collect(
+                RepositoryCollectionRequest.model_validate(payload),
+                "live-secret",
+            )
+        )
+
+    initial = execution_for(listed_shas=commit_shas, since=None)
+    unchanged = execution_for(
+        listed_shas=[],
+        since="2026-09-21T02:00:00Z",
+    )
+    one_new_commit = execution_for(
+        listed_shas=[commit_shas[-1]],
+        since="2026-09-21T00:30:00Z",
+    )
+
+    assert initial.api_calls == 7
+    assert unchanged.api_calls == 4
+    assert one_new_commit.api_calls == 5
+    assert unchanged.result.head_sha == commit_shas[-1]
+    assert one_new_commit.result.head_sha == commit_shas[-1]
 
 
 def test_github_collector_satisfies_repository_activity_port() -> None:
@@ -415,3 +636,25 @@ def test_similar_author_name_is_left_for_user_confirmation() -> None:
     assert reason == ExclusionReason.NOT_OWN
     assert confirmation is not None
     assert confirmation.sha == "abc1234567890"
+
+
+def test_commit_in_feature_and_release_pr_maps_to_narrowest_pr() -> None:
+    def pull(number: int, shas: list[str], base: str) -> CollectedPullRequest:
+        return CollectedPullRequest(
+            number=number,
+            title=f"PR {number}",
+            state="CLOSED",
+            base_branch=base,
+            head_branch=f"branch-{number}",
+            created_at="2026-09-20T10:00:00Z",
+            commit_shas=shas,
+        )
+
+    feature_a = pull(17, ["a" * 40, "b" * 40], "develop")
+    feature_b = pull(18, ["c" * 40], "develop")
+    # 최근 갱신순으로 먼저 오는 develop → main 릴리스 PR이 모든 커밋을 다시 담는다.
+    release = pull(30, ["a" * 40, "b" * 40, "c" * 40, "d" * 40], "main")
+
+    mapping = _primary_pull_by_sha([release, feature_a, feature_b])
+
+    assert mapping == {"a" * 40: 17, "b" * 40: 17, "c" * 40: 18, "d" * 40: 30}

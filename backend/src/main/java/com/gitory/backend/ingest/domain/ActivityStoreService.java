@@ -10,8 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -25,6 +27,15 @@ public class ActivityStoreService {
     private final ConnectedRepositoryRepository connectedRepositories;
     private final CollectionRunRepository runs;
     private final GitCommitRepository commits;
+
+    /** 부분 수집은 누락 가능성이 있으므로 마지막 완전 수집 시각만 증분 기준으로 제공한다. */
+    @Transactional(readOnly = true)
+    public Optional<Instant> latestCompleteCollectedAt(Long userRepositoryId) {
+
+        return runs.findFirstByUserRepositoryIdAndPartialFalseOrderByCollectedAtDesc(userRepositoryId)
+                .map(CollectionRun::getCollectedAt);
+
+    }
 
     @Transactional
     public Long store(IngestRequest request, CollectedActivity activity) {
@@ -46,7 +57,7 @@ public class ActivityStoreService {
 
     private CollectionRun runOf(IngestRequest request, CollectedActivity activity) {
 
-        return CollectionRun.recorded(request.userRepositoryId(), request.branches(), request.since(), null,
+        return CollectionRun.recorded(request.userRepositoryId(), request.branches(), request.since(), activity.headSha(),
                 activity.commits().size(), activity.pullRequests().size(), activity.issues().size(),
                 activity.partialReason());
     }

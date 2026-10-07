@@ -31,12 +31,9 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
         if (request == null || request.userRepositoryId() == null || request.userRepositoryId() <= 0) {
             throw new IllegalArgumentException("수집할 연결 저장소 ID가 필요하다");
         }
-        if (request.since() != null) {
-            throw new AiClientException("INCREMENTAL_COLLECTION_UNSUPPORTED", false, null);
-        }
         List<String> branches = normalizedBranches(request.branches());
         CollectionTargetLookup.Target target = targets.find(request.userRepositoryId(), branches);
-        JsonNode result = access.collect(target.userId(), target.collection());
+        JsonNode result = access.collect(target.userId(), target.collection(), request.since());
         try {
             return activity(result, request.userRepositoryId(), target.collection().repository().githubRepoId());
         } catch (AiClientException safe) {
@@ -56,6 +53,10 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
             throw AiClientException.invalidResponse();
         }
         PartialReason partialReason = reason == null ? null : PartialReason.valueOf(reason);
+        String headSha = optionalText(result, "head_sha");
+        if (headSha != null && !headSha.matches("[0-9a-fA-F]{7,40}")) {
+            throw AiClientException.invalidResponse();
+        }
         // AI 계약에는 TIMEOUT 부분 응답이 없다. 전송 timeout은 재시도 가능한 호출 오류다.
         if (partialReason == PartialReason.TIMEOUT) {
             throw AiClientException.invalidResponse();
@@ -91,7 +92,7 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
         for (JsonNode issue : array(result, "issues")) {
             issues.add(new CollectedIssue(positiveInt(issue, "issue_number")));
         }
-        return new CollectedActivity(List.copyOf(commits), List.copyOf(prs), List.copyOf(issues), partialReason);
+        return new CollectedActivity(List.copyOf(commits), List.copyOf(prs), List.copyOf(issues), headSha, partialReason);
     }
 
     private static List<String> normalizedBranches(List<String> branches) {

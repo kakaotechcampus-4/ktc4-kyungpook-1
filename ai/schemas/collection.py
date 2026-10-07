@@ -92,6 +92,10 @@ class RepositoryCollectionRequest(StrictModel):
         default_factory=list,
         description="비어 있으면 repository.default_branch만 수집한다.",
     )
+    since: Optional[datetime] = Field(
+        None,
+        description="이 시각 이후 새로 작성된 커밋만 수집한다. 이전 완전 수집 시각은 Spring이 제공한다.",
+    )
 
     @model_validator(mode="after")
     def normalize_branches(self) -> "RepositoryCollectionRequest":
@@ -104,6 +108,8 @@ class RepositoryCollectionRequest(StrictModel):
             if value not in normalized:
                 normalized.append(value)
         self.branches = normalized
+        if self.since is not None and self.since.tzinfo is None:
+            raise ValueError("since는 시간대 정보가 있는 ISO-8601 시각이어야 합니다.")
         return self
 
     @property
@@ -264,6 +270,10 @@ class RepositoryCollectionResult(StrictModel):
     """Spring을 거쳐 A의 후보 그룹화·STAR 분석으로 전달할 수집 결과."""
 
     user_repository_id: PositiveInt
+    head_sha: Optional[CommitSha] = Field(
+        None,
+        description="기본 브랜치(없으면 첫 수집 브랜치)에서 이번 수집이 확인한 최신 커밋 SHA.",
+    )
     commits: list[CollectedCommit] = Field(default_factory=list)
     pull_requests: list[CollectedPullRequest] = Field(default_factory=list)
     issues: list[CollectedIssue] = Field(default_factory=list)

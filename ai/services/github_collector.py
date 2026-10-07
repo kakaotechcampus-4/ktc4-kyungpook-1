@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import PurePosixPath
 from typing import Any, Optional, Union
+from urllib.parse import quote
 
 import httpx
 
@@ -48,6 +49,7 @@ LOCKFILES = {
     "cargo.lock",
     "composer.lock",
     "gemfile.lock",
+    "gradle.lockfile",
 }
 
 
@@ -88,6 +90,7 @@ class _CollectionState:
     needs_confirmation: list[ContributionConfirmation] = field(default_factory=list)
     partial_reason: Optional[PartialReason] = None
     api_calls: int = 0
+    head_sha: Optional[str] = None
 
     def mark_partial(self, reason: PartialReason) -> None:
         if self.partial_reason != PartialReason.GITHUB_RATE_LIMITED:
@@ -143,6 +146,7 @@ class GithubCollector:
 
         result = RepositoryCollectionResult(
             user_repository_id=request.user_repository_id,
+            head_sha=state.head_sha,
             commits=state.commits,
             pull_requests=state.pull_requests,
             issues=state.issues,
@@ -433,14 +437,30 @@ class GithubCollector:
         repository = request.repository
         summaries_by_sha: dict[str, dict[str, Any]] = {}
 
+        # ``since`` 이후 새 커밋이 하나도 없어도 현재 기본 브랜치의 head는
+        # Spring이 다음 수집 기준과 저장소 상태를 유지하는 데 필요하다.
+        # 목록 응답의 첫 항목에 기대면 빈 증분 응답에서 head_sha가 사라지고,
+        # 기본 브랜치가 수집 목록에 없을 때 다른 브랜치 SHA를 잘못 기록한다.
+        branch = quote(repository.default_branch, safe="")
+        branch_info = await self._get_dict(
+            client,
+            state,
+            f"/repos/{repository.owner_login}/{repository.name}/branches/{branch}",
+            params={},
+        )
+        state.head_sha = _nested_required_text(branch_info, "commit", "sha")
+
         for branch in request.collection_branches:
             page = 1
             while len(summaries_by_sha) <= self._limits.max_commits:
+                params: dict[str, Any] = {"sha": branch, "per_page": 100, "page": page}
+                if request.since is not None:
+                    params["since"] = request.since.isoformat().replace("+00:00", "Z")
                 items = await self._get_list(
                     client,
                     state,
                     f"/repos/{repository.owner_login}/{repository.name}/commits",
-                    params={"sha": branch, "per_page": 100, "page": page},
+                    params=params,
                 )
                 for item in items:
                     summaries_by_sha.setdefault(_required_text(item, "sha"), item)
@@ -451,11 +471,7 @@ class GithubCollector:
                     break
                 page += 1
 
-        pull_by_sha = {
-            sha: pull.number
-            for pull in state.pull_requests
-            for sha in pull.commit_shas
-        }
+        pull_by_sha = _primary_pull_by_sha(state.pull_requests)
         selected_shas = list(summaries_by_sha)[: self._limits.max_commits]
         for sha in selected_shas:
             detail, files = await self._collect_commit_detail(
@@ -764,6 +780,20 @@ def _contribution_decision(
             ContributionConfirmation(sha=sha, author_email=author_email),
         )
     return ExclusionReason.NOT_OWN, None
+
+
+def _primary_pull_by_sha(pulls: list[CollectedPullRequest]) -> dict[str, int]:
+    """커밋마다 대표 PR 하나를 고른다. 여러 PR에 속하면 커밋 수가 가장 적은 PR을 쓴다.
+
+    ``develop → main`` 같은 릴리스 PR은 기능 PR의 커밋을 모두 다시 담는다. 수집 순서
+    (최근 갱신순)에 맡기면 릴리스 PR이 기능 PR을 덮어 모든 커밋이 한 후보로 합쳐질 수
+    있으므로, 가장 좁은 범위의 PR을 고르고 같으면 번호가 작은 PR을 고른다.
+    """
+    primary: dict[str, int] = {}
+    for pull in sorted(pulls, key=lambda item: (len(item.commit_shas), item.number)):
+        for sha in pull.commit_shas:
+            primary.setdefault(sha, pull.number)
+    return primary
 
 
 def _identity_text(value: str) -> str:

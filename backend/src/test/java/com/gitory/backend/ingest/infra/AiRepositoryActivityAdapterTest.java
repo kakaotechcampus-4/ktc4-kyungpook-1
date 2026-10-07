@@ -136,6 +136,7 @@ class AiRepositoryActivityAdapterTest {
         assertThat(sent.path("branches").size()).isEqualTo(1);
         assertThat(sent.path("branches").path(0).asString()).isEqualTo("feature/session-index");
         assertThat(sent.has("since")).isFalse();
+        assertThat(activity.headSha()).isEqualTo("abc1234567890");
         assertThat(activity.commits()).hasSize(1);
         assertThat(activity.commits().getFirst().sha()).isEqualTo("abc1234567890");
         assertThat(activity.commits().getFirst().authoredAt()).isEqualTo(Instant.parse("2026-09-20T09:00:00Z"));
@@ -270,12 +271,15 @@ class AiRepositoryActivityAdapterTest {
     }
 
     @Test
-    @DisplayName("증분 수집을 지원하지 않는 AI로 since를 조용히 버리지 않는다")
-    void rejectsUnsupportedIncrementalCollection() {
-        assertThatThrownBy(() -> adapter.collect(new IngestRequest(USER_REPOSITORY_ID, List.of(), Instant.now())))
-                .isInstanceOfSatisfying(AiClientException.class,
-                        error -> assertThat(error.errorCode()).isEqualTo("INCREMENTAL_COLLECTION_UNSUPPORTED"));
-        assertThat(calls).hasValue(0);
+    @DisplayName("증분 수집 기준 since를 AI 요청에 그대로 전달한다")
+    void forwardsIncrementalCollectionSince() throws Exception {
+        Instant since = Instant.parse("2026-09-20T00:00:00Z");
+
+        adapter.collect(new IngestRequest(USER_REPOSITORY_ID, List.of(), since));
+
+        JsonNode sent = mapper.readTree(requestBody);
+        assertThat(sent.path("since").asString()).isEqualTo("2026-09-20T00:00:00Z");
+        assertThat(calls).hasValue(1);
     }
 
     @Test

@@ -84,12 +84,12 @@ class ActivityStoreServiceTest {
 
         Long runId = service.store(request(), new CollectedActivity(List.of(commit(SHA_1)),
                 List.of(new CollectedPullRequest(17)), List.of(new CollectedIssue(42)),
-                PartialReason.CAP_EXCEEDED));
+                "a".repeat(40), PartialReason.CAP_EXCEEDED));
 
         CollectionRun run = runs.findById(runId).orElseThrow();
         assertThat(run.getBranches()).containsExactly("develop", "feature/session-index");
         assertThat(run.getSince()).isEqualTo(SINCE);
-        assertThat(run.getHeadSha()).isNull();
+        assertThat(run.getHeadSha()).isEqualTo("a".repeat(40));
         assertThat(run.getCommitsCollected()).isEqualTo(1);
         assertThat(run.getPrsCollected()).isEqualTo(1);
         assertThat(run.getIssuesCollected()).isEqualTo(1);
@@ -183,7 +183,7 @@ class ActivityStoreServiceTest {
     }
 
     private CollectedActivity activityOf(CollectedCommit... collected) {
-        return new CollectedActivity(List.of(collected), List.of(), List.of(), null);
+        return new CollectedActivity(List.of(collected), List.of(), List.of(), null, null);
     }
 
     private CollectedCommit commit(String sha) {

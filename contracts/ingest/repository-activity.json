@@ -16,12 +16,14 @@
         "github_login": "grow22",
         "known_emails": ["grow22@example.com"]
       },
-      "branches": ["feature/session-index"]
+      "branches": ["feature/session-index"],
+      "since": "2026-09-20T00:00:00Z"
     }
   },
   "ai_to_spring": {
     "data": {
       "user_repository_id": 123,
+      "head_sha": "abc1234567890",
       "commits": [
         {
           "sha": "abc1234567890",

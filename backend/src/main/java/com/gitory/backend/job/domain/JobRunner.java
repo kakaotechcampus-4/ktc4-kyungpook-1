@@ -69,7 +69,8 @@ public class JobRunner {
 
     private void run(AnalysisJob job) {
 
-        IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(), null);
+        IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
+                activityStore.latestCompleteCollectedAt(job.getUserRepositoryId()).orElse(null));
 
         try {
             CollectedActivity activity = activities.collect(request);

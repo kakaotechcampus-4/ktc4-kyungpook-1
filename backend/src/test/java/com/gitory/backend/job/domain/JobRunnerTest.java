@@ -38,6 +38,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +69,9 @@ class JobRunnerTest {
 
     @Autowired
     AnalysisJobRepository jobs;
+
+    @Autowired
+    ActivityStoreService activityStore;
 
     @Autowired
     JobCancelService cancelService;
@@ -185,6 +189,26 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("재수집은 부분 수집을 건너뛰고 마지막 완전 수집 시각을 since 로 전달한다")
+    void requestsSinceLatestCompleteCollection() {
+
+        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), null);
+        Long completeRunId = activityStore.store(initial, activity(null));
+        activityStore.store(initial, activity(PartialReason.CAP_EXCEEDED));
+
+        Instant completeAt = jdbc.queryForObject(
+                "SELECT collected_at FROM collection_run WHERE id = ?", Timestamp.class, completeRunId).toInstant();
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runner.runNext();
+
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), completeAt));
+
+    }
+
+    @Test
     @DisplayName("수집에 성공하면 결과를 저장하고 Job 을 그 수집 기록과 연결해 SUCCEEDED 로 끝낸다")
     void storesActivityAndSucceeds() {
 
@@ -286,7 +310,7 @@ class JobRunnerTest {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(new CollectedActivity(
-                List.of(commit("a".repeat(41))), List.of(), List.of(), null));
+                List.of(commit("a".repeat(41))), List.of(), List.of(), null, null));
 
         runner.runNext();
 
@@ -473,7 +497,7 @@ class JobRunnerTest {
     private static CollectedActivity activity(PartialReason partialReason) {
 
         return new CollectedActivity(List.of(commit(SHA)), List.of(new CollectedPullRequest(7)), List.of(),
-                partialReason);
+                null, partialReason);
 
     }
 

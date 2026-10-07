@@ -35,8 +35,13 @@
 
   --font: 'Pretendard Variable', Pretendard, system-ui, -apple-system, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
   --shadow-menu: 0 6px 20px rgba(0, 0, 0, .12);
-  --scrollbar-thumb: color-mix(in srgb, var(--border-strong) 72%, var(--bg-canvas));
-  --scrollbar-track: var(--bg-subtle);
+  --scrollbar-size: 8px;
+  --scrollbar-thumb: var(--border-strong);
+  --scrollbar-thumb-hover: var(--text-secondary);
+  --scrollbar-track: transparent;
+  --step-idle-bg: var(--border-default);
+  --step-idle-text: var(--text-strong);
+  --step-idle-border: var(--border-strong);
   --shadow-dialog: 0 24px 80px rgba(0, 0, 0, .24);
   --focus: 0 0 0 3px rgba(70, 112, 78, .24);
 

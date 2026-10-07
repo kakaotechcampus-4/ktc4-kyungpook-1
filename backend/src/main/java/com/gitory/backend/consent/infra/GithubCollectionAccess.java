@@ -21,6 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** consent 안에서 연결 상태를 확인하고, 복호화한 토큰은 HTTP 헤더에만 쓴다. */
 @Slf4j
@@ -30,6 +33,9 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     // GitHub GraphQL 은 저장소 100개를 한 번에 세면 시간 초과(502)가 나서 나눠 묻는다
     private static final int COUNT_BATCH_SIZE = 20;
+
+    // GitHub 은 같은 토큰의 동시 요청이 많으면 2차 한도로 막으므로 묶음은 3개까지만 동시에 묻는다
+    private static final int COUNT_CONCURRENCY = 3;
 
     private final UserRepository users;
     private final GithubConnectionRepository connections;
@@ -79,9 +85,14 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
                 counter.countPullRequests(token, reviewedQuery));
 
         List<GithubRepositoryCount> counts = new ArrayList<>();
-        for (int from = 0; from < targets.size(); from += COUNT_BATCH_SIZE) {
-            List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, targets.size()));
-            counts.addAll(countBatch(token, viewerId, batch, searches));
+        // 실행기를 요청마다 만들어 다른 사용자의 개수 세기를 기다리지 않게 하고, 응답 전에 닫아 스레드를 남기지 않는다
+        try (ExecutorService pool = Executors.newFixedThreadPool(COUNT_CONCURRENCY)) {
+            List<CompletableFuture<List<GithubRepositoryCount>>> batchCounts = new ArrayList<>();
+            for (int from = 0; from < targets.size(); from += COUNT_BATCH_SIZE) {
+                List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, targets.size()));
+                batchCounts.add(CompletableFuture.supplyAsync(() -> countBatch(token, viewerId, batch, searches), pool));
+            }
+            batchCounts.forEach(batchCount -> counts.addAll(batchCount.join()));
         }
 
         return counts;

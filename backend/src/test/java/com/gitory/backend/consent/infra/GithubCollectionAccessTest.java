@@ -1,5 +1,6 @@
 package com.gitory.backend.consent.infra;
 
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,6 +30,13 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 class GithubCollectionAccessTest {
@@ -152,6 +160,77 @@ class GithubCollectionAccessTest {
     }
 
     @Test
+    @DisplayName("저장소 20개 묶음을 3개까지 동시에 묻고, 4번째 묶음은 앞 묶음이 끝난 뒤에 묻는다")
+    void asksUpToThreeBatchesAtOnce() throws Exception {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        CountDownLatch threeAsked = new CountDownLatch(3);
+        CountDownLatch fourAsked = new CountDownLatch(4);
+        CountDownLatch respond = new CountDownLatch(1);
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenAnswer(invocation -> {
+            threeAsked.countDown();
+            fourAsked.countDown();
+            respond.await(5, TimeUnit.SECONDS);
+            return totalsOf(invocation.getArgument(2));
+        });
+
+        ExecutorService request = newSingleThreadExecutor();
+        Future<List<GithubRepositoryCount>> counted = request.submit(() -> access.countActivity(USER_ID, targets(61)));
+
+        assertThat(threeAsked.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(fourAsked.await(500, TimeUnit.MILLISECONDS)).isFalse();
+        respond.countDown();
+        assertThat(counted.get(5, TimeUnit.SECONDS))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactlyElementsOf(LongStream.rangeClosed(1, 61).boxed().toList());
+        request.shutdown();
+
+    }
+
+    @Test
+    @DisplayName("동시에 묻는 묶음 하나가 실패하면 그 묶음의 저장소만 빠지고, 나머지 묶음의 결과는 저장소 순서대로 합친다")
+    void dropsOnlyFailedBatchAmongConcurrentBatches() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenAnswer(invocation -> {
+            List<GithubCountTarget> batch = invocation.getArgument(2);
+            if (batch.get(0).githubRepoId() == 21L) {
+                throw new HttpServerErrorException(HttpStatus.BAD_GATEWAY);
+            }
+            return totalsOf(batch);
+        });
+
+        assertThat(access.countActivity(USER_ID, targets(41)))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactlyElementsOf(LongStream.concat(LongStream.rangeClosed(1, 20), LongStream.of(41)).boxed().toList());
+
+    }
+
+    @Test
+    @DisplayName("개수 세기가 끝나면 묶음을 묻던 스레드도 모두 끝난다")
+    void endsBatchThreadsWhenCountingEnds() throws InterruptedException {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        Set<Thread> askers = ConcurrentHashMap.newKeySet();
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenAnswer(invocation -> {
+            askers.add(Thread.currentThread());
+            return totalsOf(invocation.getArgument(2));
+        });
+
+        access.countActivity(USER_ID, targets(61));
+
+        assertThat(askers).isNotEmpty().doesNotContain(Thread.currentThread());
+        for (Thread asker : askers) {
+            asker.join(5000);
+        }
+        assertThat(askers).noneMatch(Thread::isAlive);
+
+    }
+
+    @Test
     @DisplayName("내 PR·리뷰한 PR 수는 저장소 이름으로 대소문자 없이 붙이고, 내 PR 이 전체 PR 보다 많으면 전체 PR 수로 맞춘다")
     void attachesPullRequestCountsByName() {
 
@@ -214,6 +293,21 @@ class GithubCollectionAccessTest {
 
         List<GithubCountTarget> targets = List.of(new GithubCountTarget(100L, "kakao", "gitory"));
         assertThatThrownBy(() -> access.countActivity(USER_ID, targets)).isInstanceOf(IllegalStateException.class);
+
+    }
+
+    private static List<GithubCountTarget> targets(int count) {
+
+        return LongStream.rangeClosed(1, count)
+                .mapToObj(id -> new GithubCountTarget(id, "grow22", "repo-" + id))
+                .toList();
+
+    }
+
+    private static Map<Long, GithubRepositoryTotals> totalsOf(List<GithubCountTarget> batch) {
+
+        return batch.stream()
+                .collect(Collectors.toMap(GithubCountTarget::githubRepoId, target -> new GithubRepositoryTotals(5, 5, 0, 0)));
 
     }
 

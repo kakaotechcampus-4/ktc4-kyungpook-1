@@ -143,7 +143,7 @@ class GithubCollectionAccessTest {
         when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), argThat((List<GithubCountTarget> batch) -> batch.size() == 20)))
                 .thenThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY));
         when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), argThat((List<GithubCountTarget> batch) -> batch.size() == 1)))
-                .thenReturn(Map.of(21L, new GithubRepositoryTotals(5, 5, 0)));
+                .thenReturn(Map.of(21L, new GithubRepositoryTotals(5, 5, 0, 0)));
 
         assertThat(access.countActivity(USER_ID, targets))
                 .extracting(GithubRepositoryCount::githubRepoId)
@@ -158,8 +158,8 @@ class GithubCollectionAccessTest {
         connectionExpiringAt(null);
         searchesReturn(Map.of("kakao/gitory", 23, "grow22/algo", 9), Map.of("kakao/gitory", 11));
         when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenReturn(Map.of(
-                100L, new GithubRepositoryTotals(197, 52, 58),
-                200L, new GithubRepositoryTotals(30, 30, 5)));
+                100L, new GithubRepositoryTotals(197, 52, 58, 0),
+                200L, new GithubRepositoryTotals(30, 30, 5, 0)));
 
         List<GithubRepositoryCount> counts = access.countActivity(USER_ID, List.of(
                 new GithubCountTarget(100L, "Kakao", "Gitory"), new GithubCountTarget(200L, "grow22", "algo")));
@@ -171,16 +171,14 @@ class GithubCollectionAccessTest {
     }
 
     @Test
-    @DisplayName("내 머지 커밋은 내 커밋과 전체 커밋에서 같이 빼고, 검색 개수가 더 커도 내 커밋이 0 밑으로 내려가지 않는다")
+    @DisplayName("GraphQL 에서 센 내 머지 커밋을 내 커밋과 전체 커밋에서 같이 뺀다")
     void subtractsOwnMergeCommits() {
 
         connectionExpiringAt(null);
         searchesReturn(Map.of(), Map.of());
-        when(counter.countSearchedCommits(TOKEN, "author:grow22 merge:true"))
-                .thenReturn(Map.of("kakao/gitory", 9, "grow22/algo", 7));
         when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenReturn(Map.of(
-                100L, new GithubRepositoryTotals(197, 52, 58),
-                200L, new GithubRepositoryTotals(10, 5, 0)));
+                100L, new GithubRepositoryTotals(197, 52, 58, 9),
+                200L, new GithubRepositoryTotals(10, 5, 0, 5)));
 
         List<GithubRepositoryCount> counts = access.countActivity(USER_ID, List.of(
                 new GithubCountTarget(100L, "kakao", "gitory"), new GithubCountTarget(200L, "grow22", "algo")));

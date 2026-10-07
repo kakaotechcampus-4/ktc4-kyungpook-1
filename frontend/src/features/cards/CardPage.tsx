@@ -46,6 +46,7 @@ export function CardPage() {
     const jid = q.data?.generation?.jobId;
     if (jid) suppressJobToast(jid);
     if (jid && job.data && isTerminal(job.data.state)) { releaseJobToast(jid); track('draft_generated', { cardId, state: job.data.state }); }
+    return () => { if (jid) releaseJobToast(jid); }; // 화면을 떠나면 억제도 같이 풀어야 전역 알림이 계속 죽어있지 않는다
   }, [q.data?.generation?.jobId, job.data, cardId]);
 
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
@@ -158,8 +159,8 @@ export function CardPage() {
   }
 
   // ── D6 · D7 모드
-  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} right={metadataAction} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode card={card} onDone={close} initialField={editField} />{metadataDialog}</main>;
-  if (mode === 'mask') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '정보 가리기' }]} /><PageTitle>공유할 정보 가리기</PageTitle><MaskMode card={card} onDone={close} /></main>;
+  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} right={metadataAction} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode key={card.id} card={card} onDone={close} initialField={editField} />{metadataDialog}</main>;
+  if (mode === 'mask') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '정보 가리기' }]} /><PageTitle>공유할 정보 가리기</PageTitle><MaskMode key={card.id} card={card} onDone={close} /></main>;
 
   // ── D2 초안 · D3 (E-7 부분) · D4 (E-6 소재 부족)
   const partial = card.generation?.partial;

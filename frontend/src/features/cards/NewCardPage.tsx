@@ -132,7 +132,7 @@ export function NewCardPage() {
 
       <div className="manual-save-row">
         <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
-        {cardId && <SaveStatus status={autosave.status} retry={flush} />}
+        {(cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
         {!cardId && <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
       </div>
 

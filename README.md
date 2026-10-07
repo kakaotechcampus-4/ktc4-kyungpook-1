@@ -1,5 +1,7 @@
 # ktc4-team-05
 
+2026-10-06 검색·선택 메뉴, PC 홈 정렬, STAR 작성과 Pretendard 글자 규칙 통일은 [프론트 UI 개선·검증 기록](frontend/docs/2026-10-06-UI_CONSISTENCY.md)에 정리했습니다.
+
 2026-10-04 Node 24 GitHub Checks의 AbortSignal 호환성 수정과 테스트 타입 환경·검증 기록은 [프론트 CI 수정 문서](frontend/docs/2026-10-04-NODE24_CHECKS.md)에 정리했습니다.
 
 2026-10-03 카드 부가 정보·진행 중 작업 복구·보완 필터·복사 형식·제목/기간 수정 준비와 백엔드 확인 요청은 [카드 작업 문서](frontend/docs/2026-10-03-CARD_WORKFLOW.md)를 참고하세요.

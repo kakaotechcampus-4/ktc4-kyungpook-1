@@ -1,5 +1,6 @@
 package com.gitory.backend.consent.domain;
 
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.TokenCipher;
 import com.gitory.backend.consent.infra.UserRepository;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
@@ -38,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
+@Import(AuditLog.class)
 class GithubLoginServiceTest {
 
     private static final String PLAIN_TOKEN = "gho_PlainAccessTokenExample1234567890";
@@ -53,12 +56,15 @@ class GithubLoginServiceTest {
     @Autowired
     GithubConnectionRepository connections;
 
+    @Autowired
+    AuditLog auditLog;
+
     private final TokenCipher tokenCipher = new TokenCipher("test-encryption-key", "5c0744940b5c369b");
 
     private GithubLoginService loginWithProfile(Map<String, Object> profile) {
         OAuth2User githubUser = new DefaultOAuth2User(
                 AuthorityUtils.createAuthorityList("ROLE_USER"), profile, "id");
-        return new GithubLoginService(users, connections, tokenCipher, request -> githubUser);
+        return new GithubLoginService(users, connections, tokenCipher, auditLog, request -> githubUser);
     }
 
     private static Map<String, Object> profile(long id, String login, String avatarUrl) {

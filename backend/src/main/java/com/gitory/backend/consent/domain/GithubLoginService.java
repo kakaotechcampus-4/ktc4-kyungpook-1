@@ -1,5 +1,7 @@
 package com.gitory.backend.consent.domain;
 
+import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.TokenCipher;
 import com.gitory.backend.consent.infra.UserRepository;
@@ -27,21 +29,25 @@ public class GithubLoginService implements OAuth2UserService<OAuth2UserRequest, 
     private final UserRepository users;
     private final GithubConnectionRepository connections;
     private final TokenCipher tokenCipher;
+    private final AuditLog auditLog;
 
     @Autowired
     public GithubLoginService(UserRepository users,
                               GithubConnectionRepository connections,
-                              TokenCipher tokenCipher) {
-        this(users, connections, tokenCipher, new DefaultOAuth2UserService());
+                              TokenCipher tokenCipher,
+                              AuditLog auditLog) {
+        this(users, connections, tokenCipher, auditLog, new DefaultOAuth2UserService());
     }
 
     GithubLoginService(UserRepository users,
                        GithubConnectionRepository connections,
                        TokenCipher tokenCipher,
+                       AuditLog auditLog,
                        OAuth2UserService<OAuth2UserRequest, OAuth2User> githubProfile) {
         this.users = users;
         this.connections = connections;
         this.tokenCipher = tokenCipher;
+        this.auditLog = auditLog;
         this.githubProfile = githubProfile;
     }
 
@@ -71,10 +77,14 @@ public class GithubLoginService implements OAuth2UserService<OAuth2UserRequest, 
         String tokenEnc = tokenCipher.encrypt(accessToken.getTokenValue());
         Instant expiresAt = realExpiry(accessToken);
 
-        connections.findByUserIdAndRevokedAtIsNull(userId)
-                .ifPresentOrElse(
-                        connection -> connection.renew(scopes, tokenEnc, expiresAt),
-                        () -> connections.save(GithubConnection.grant(userId, scopes, tokenEnc, expiresAt)));
+        GithubConnection connection = connections.findByUserIdAndRevokedAtIsNull(userId)
+                .map(existing -> {
+                    existing.renew(scopes, tokenEnc, expiresAt);
+                    return existing;
+                })
+                .orElseGet(() -> connections.save(GithubConnection.grant(userId, scopes, tokenEnc, expiresAt)));
+
+        auditLog.ok(userId, AuditAction.CONNECT, connection.getId());
     }
 
     /** Spring 은 만료 없는 토큰도 발급 1초 뒤를 만료로 채우므로 그 값은 null 로 되돌린다 */

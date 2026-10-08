@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.PartialReason;
@@ -80,6 +81,9 @@ class JobRunnerTest {
 
     @MockitoBean
     RepositoryActivityPort activities;
+
+    @MockitoBean
+    AuditLog auditLog;
 
     private TestFixtures fixtures;
     private Long userId;

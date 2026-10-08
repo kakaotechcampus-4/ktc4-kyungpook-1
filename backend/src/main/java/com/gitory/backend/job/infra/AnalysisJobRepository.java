@@ -64,4 +64,7 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
             ORDER BY j.started_at DESC
             """, nativeQuery = true)
     List<ActiveJobRow> findActiveRowsByUserId(@Param("userId") Long userId, @Param("states") List<String> states);
+
+    // 소유자를 보지 않으므로 남의 Job 인지 가려 거절 기록을 남길 때만 쓴다
+    Optional<AnalysisJob> findByPublicId(UUID publicId);
 }

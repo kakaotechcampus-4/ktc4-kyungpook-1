@@ -386,6 +386,23 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("먼저 기다리던 카드 초안 Job 은 워커가 건너뛰고 분석 Job 만 꺼낸다")
+    void skipsQueuedDraftJob() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+        jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", draftJobId);
+        Long analyzeJobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        assertThat(jobs.findById(analyzeJobId).orElseThrow().getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(jobs.findById(draftJobId).orElseThrow().getState()).isEqualTo(JobState.QUEUED);
+        assertThat(runNext()).isFalse();
+
+    }
+
+    @Test
     @DisplayName("AI 를 기다리는 사이 취소되면 수집 결과를 저장하지 않고 CANCELED 로 둔다")
     void discardsResultWhenCanceledDuringCall() {
 
@@ -587,6 +604,14 @@ class JobRunnerTest {
         jdbc.update("UPDATE analysis_job SET state = 'RUNNING', updated_at = now() - ?::interval WHERE id = ?",
                 elapsed, jobId);
         return jobId;
+
+    }
+
+    private Long insertQueuedDraftJob(Long connectedRepositoryId) {
+
+        return jdbc.queryForObject(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, type, state) VALUES (?, ?, ?, 'DRAFT', 'QUEUED') RETURNING id",
+                Long.class, userId, connectedRepositoryId, KEY_2);
 
     }
 

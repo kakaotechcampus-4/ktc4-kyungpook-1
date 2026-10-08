@@ -72,6 +72,9 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
 
+        UUID userRepositoryPublicId = jdbc.queryForObject(
+                "SELECT public_id FROM user_repository WHERE id = ?", UUID.class, myRepoId);
+
         JobView found = service.load(job.getPublicId(), myUserId);
 
         assertThat(found.jobId()).isEqualTo(job.getPublicId().toString());
@@ -84,10 +87,23 @@ class JobQueryServiceTest {
         assertThat(found.errorCode()).isNull();
         assertThat(found.retryable()).isNull();
         assertThat(found.retryAfterSec()).isNull();
-        assertThat(found.result()).isNull();
+        assertThat(found.result()).isEqualTo(new JobResult(userRepositoryPublicId.toString(), null, null, null));
         assertThat(found.startedAt()).isNotNull();
         assertThat(found.updatedAt()).isNotNull();
         assertThat(found.finishedAt()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("초안(DRAFT) Job 은 result 를 비워 둔다")
+    void leavesDraftJobResultEmpty() {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        jdbc.update("UPDATE analysis_job SET type = 'DRAFT' WHERE public_id = ?", job.getPublicId());
+        em.clear();
+
+        assertThat(service.load(job.getPublicId(), myUserId).result()).isNull();
+
     }
 
     @Test

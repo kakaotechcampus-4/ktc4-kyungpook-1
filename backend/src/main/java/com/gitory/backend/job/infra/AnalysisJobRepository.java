@@ -25,6 +25,9 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
 
     Optional<AnalysisJob> findByPublicIdAndUserId(UUID publicId, Long userId);
 
+    @Query(value = "SELECT public_id FROM user_repository WHERE id = :id", nativeQuery = true)
+    UUID findUserRepositoryPublicId(@Param("id") Long userRepositoryId);
+
     // 다른 워커가 잡고 있는 행은 건너뛰어 같은 Job 을 두 번 꺼내지 않는다
     // 실행 중인 Job 이 있는 사용자의 Job 도 건너뛰어, 한 사용자의 토큰으로 GitHub 를 동시에 부르지 않는다
     // 워커는 분석(수집)만 실행하므로 카드 초안 Job 은 꺼내지 않는다

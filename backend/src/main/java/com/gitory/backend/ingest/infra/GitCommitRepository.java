@@ -1,6 +1,7 @@
 package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.ingest.domain.GitCommit;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -33,4 +34,17 @@ public interface GitCommitRepository extends JpaRepository<GitCommit, Long> {
             ON CONFLICT (repository_id, sha) DO NOTHING
             """, nativeQuery = true)
     void insertIfAbsent(@Param("commit") GitCommit commit);
+
+    @Query("""
+            SELECT c FROM GitCommit c
+            WHERE c.repositoryId = :repositoryId
+              AND LOWER(c.authorLogin) = LOWER(:login)
+              AND (c.exclusionReason IS NULL
+                   OR c.exclusionReason = com.gitory.backend.ingest.domain.ExclusionReason.NOT_OWN)
+              AND (LOWER(c.message) LIKE :messagePattern ESCAPE '\\' OR c.sha LIKE :shaPrefix ESCAPE '\\')
+            ORDER BY c.authoredAt DESC
+            """)
+    List<GitCommit> searchOwn(@Param("repositoryId") Long repositoryId, @Param("login") String login,
+                              @Param("messagePattern") String messagePattern, @Param("shaPrefix") String shaPrefix,
+                              Limit limit);
 }

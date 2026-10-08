@@ -35,7 +35,8 @@
 .sidebar__status { display: flex; align-items: center; gap: 8px; margin: 4px 4px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-default); font-size: 12.5px; font-weight: 600; color: var(--text-strong); }
 .sidebar__status i { width: 7px; height: 7px; border-radius: 50%; background: var(--bg-ink-solid); }
 .shell--rail .brand .brand-logo--wordmark, .shell--rail .menu-group__title, .shell--rail .menu-item span, .shell--rail .sidebar__recent, .shell--rail .sidebar__profile > div, .shell--rail .sidebar__gear, .shell--rail .sidebar__status { display: none; }
-.shell--rail .menu-item { justify-content: center; padding: 10px; }
+.shell--rail .menu-item { justify-content: center; min-height: var(--control-touch-size); padding: 10px; }
+.shell--rail .menu-item:focus-visible, .shell--rail .sidebar__toggle:focus-visible { outline-offset: -2px; }
 .shell--rail .sidebar__top { justify-content: center; padding-inline: 0; margin-inline: -2px; }
 .shell--rail .sidebar__profile { justify-content: center; padding: 8px 0; }
 .main { max-width: 1180px; }
@@ -89,10 +90,10 @@
 .wizard { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 20px; }
 .wizard__steps { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
 .wstep { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-tertiary); }
-.wstep__no { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: var(--bg-subtle); color: var(--text-tertiary); }
-.wstep--done .wstep__no { background: var(--bg-inset); color: var(--text-strong); }
+.wstep__no { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--step-idle-border); display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: var(--step-idle-bg); color: var(--step-idle-text); }
+.wstep--done .wstep__no { border-color: transparent; background: var(--bg-inset); color: var(--text-strong); }
 .wstep--now { color: var(--text-primary); font-weight: 600; }
-.wstep--now .wstep__no { background: var(--bg-ink-solid); color: var(--text-on-ink); }
+.wstep--now .wstep__no { border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
 @media (max-width: 720px) { .wizard { grid-template-columns: 1fr; } .wizard__steps { flex-direction: row; } }
 
 /* ───────── 인터뷰: 좌 캔버스 + 우 패널 ───────── */

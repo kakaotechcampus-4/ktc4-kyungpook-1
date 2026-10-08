@@ -96,7 +96,7 @@ class GithubConnectionConcurrencyTest {
         loginService = new GithubLoginService(users, connections, cipher, mock(AuditLog.class), request -> new DefaultOAuth2User(
                 AuthorityUtils.createAuthorityList("ROLE_USER"),
                 Map.of("id", GITHUB_USER_ID, "login", "grow22", "avatar_url", "https://avatars/1"), "id"));
-        disconnectService = new GithubDisconnectService(connections, cipher, grants, transaction);
+        disconnectService = new GithubDisconnectService(connections, cipher, grants, transaction, mock(AuditLog.class));
         pool = newFixedThreadPool(2);
 
     }

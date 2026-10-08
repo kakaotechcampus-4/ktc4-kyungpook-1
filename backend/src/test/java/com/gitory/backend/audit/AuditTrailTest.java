@@ -2,6 +2,7 @@ package com.gitory.backend.audit;
 
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.consent.domain.StubGithubConfig;
+import com.gitory.backend.consent.infra.GithubGrantClient;
 import com.gitory.backend.job.domain.AnalysisJob;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
 import com.gitory.backend.support.TestBrowser;
@@ -14,11 +15,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.web.client.HttpClientErrorException;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -28,6 +32,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -62,6 +69,9 @@ class AuditTrailTest {
 
     @Autowired
     AnalysisJobRepository jobs;
+
+    @MockitoBean
+    GithubGrantClient grants;
 
     private Long myUserId;
     private Long myRepoId;
@@ -107,6 +117,51 @@ class AuditTrailTest {
         Long userId = loggedInUserId();
         AuditRow connect = new AuditRow(userId, "CONNECT", connectionIdOf(userId), "OK");
         assertThat(events()).containsExactly(connect, connect);
+
+    }
+
+    @Test
+    @DisplayName("GitHub 연결을 해제하면 그 연결로 REVOKE 성공 기록이 남는다")
+    void recordsRevokeOnDisconnect() throws Exception {
+
+        login(new TestBrowser(mvc));
+        Long userId = loggedInUserId();
+
+        disconnect(userId).andExpect(status().isOk());
+
+        Long connectionId = connectionIdOf(userId);
+        assertThat(events()).containsExactly(
+                new AuditRow(userId, "CONNECT", connectionId, "OK"),
+                new AuditRow(userId, "REVOKE", connectionId, "OK"));
+
+    }
+
+    @Test
+    @DisplayName("이미 해제된 상태에서 또 해제하면 200 이고 REVOKE 기록이 더 남지 않는다")
+    void doesNotRecordRevokeTwice() throws Exception {
+
+        login(new TestBrowser(mvc));
+        Long userId = loggedInUserId();
+
+        disconnect(userId).andExpect(status().isOk());
+        disconnect(userId).andExpect(status().isOk());
+
+        assertThat(events()).extracting(AuditRow::action).containsExactly("CONNECT", "REVOKE");
+
+    }
+
+    @Test
+    @DisplayName("GitHub 앱 권한 삭제가 실패해도 우리 DB 의 해제는 끝났으므로 REVOKE 성공 기록이 남는다")
+    void recordsRevokeEvenWhenGithubFails() throws Exception {
+
+        login(new TestBrowser(mvc));
+        Long userId = loggedInUserId();
+        willThrow(new HttpClientErrorException(HttpStatus.UNPROCESSABLE_ENTITY)).given(grants).deleteGrant(anyString());
+
+        disconnect(userId).andExpect(status().isOk());
+
+        verify(grants).deleteGrant(anyString());
+        assertThat(events()).extracting(AuditRow::action).containsExactly("CONNECT", "REVOKE");
 
     }
 
@@ -237,6 +292,12 @@ class AuditTrailTest {
                         .param("code", "stub-authorization-code")
                         .param("state", TestBrowser.queryOf(location).get("state")))
                 .andExpect(redirectedUrl("/"));
+
+    }
+
+    private ResultActions disconnect(Long userId) throws Exception {
+
+        return mvc.perform(post("/api/github/disconnect").with(loggedInAs(userId)).with(csrf()));
 
     }
 

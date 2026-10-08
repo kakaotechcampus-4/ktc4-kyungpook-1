@@ -24,9 +24,24 @@
   --radius-xs: 4px; --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-2xl: 24px; --radius-full: 999px;
   --size-sidebar: 220px; --size-topbar: 72px; --size-content: 780px; --size-container: 1440px; --size-footer: 84px;
   --control-touch-size: 44px;
+  --control-radius: 10px;
+  --control-weight: 500;
+  --body-weight: 400;
+  --heading-weight: 600;
+  --text-tracking: -.03em;
+  --page-title-size: 28px;
+  --page-title-leading: 40px;
   --text-meta-size: 12px;
 
   --font: 'Pretendard Variable', Pretendard, system-ui, -apple-system, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --shadow-menu: 0 6px 20px rgba(0, 0, 0, .12);
+  --scrollbar-size: 8px;
+  --scrollbar-thumb: var(--border-strong);
+  --scrollbar-thumb-hover: var(--text-secondary);
+  --scrollbar-track: transparent;
+  --step-idle-bg: var(--border-default);
+  --step-idle-text: var(--text-strong);
+  --step-idle-border: var(--border-strong);
   --shadow-dialog: 0 24px 80px rgba(0, 0, 0, .24);
   --focus: 0 0 0 3px rgba(70, 112, 78, .24);
 
@@ -40,6 +55,7 @@
   --text-accent: var(--matcha-green); --accent-decoration: var(--matcha-sage);
   --border-default: #D5E2D9; --border-strong: #7C9081; --border-selected: var(--matcha-green);
   --nav-active-bg: var(--bg-selected); --nav-active-text: var(--matcha-deep);
+  --sidebar-text: var(--ink-900);
   --bg-feature: var(--matcha-deep); --text-on-feature: var(--matcha-mist); --text-on-feature-muted: #D7E6DB;
   --feature-button-bg: var(--matcha-mist); --feature-button-hover: var(--ink-0); --feature-button-text: var(--matcha-deep);
   --toast-bg: var(--matcha-deep); --toast-success-bg: var(--matcha-deep); --text-on-toast: var(--ink-0); --toast-muted: #DDEAE1;
@@ -72,6 +88,7 @@
   --text-accent: var(--matcha-highlight); --accent-decoration: var(--matcha-highlight);
   --border-default: #343D2A; --border-strong: #65734F; --border-selected: var(--matcha-highlight);
   --nav-active-bg: var(--matcha-inset); --nav-active-text: var(--matcha-highlight);
+  --sidebar-text: var(--text-primary);
   --bg-feature: var(--matcha-inset); --text-on-feature: #EDF2E4; --text-on-feature-muted: #C1D2A8;
   --feature-button-bg: var(--matcha-highlight); --feature-button-hover: #B8D18F; --feature-button-text: var(--matcha-night);
   --toast-bg: #26351E; --toast-success-bg: var(--matcha-night-deep); --text-on-toast: #EDF2E4; --toast-muted: #D8E5C4;

@@ -21,6 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** consent 안에서 연결 상태를 확인하고, 복호화한 토큰은 HTTP 헤더에만 쓴다. */
 @Slf4j
@@ -30,6 +33,9 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     // GitHub GraphQL 은 저장소 100개를 한 번에 세면 시간 초과(502)가 나서 나눠 묻는다
     private static final int COUNT_BATCH_SIZE = 20;
+
+    // GitHub 은 같은 토큰의 동시 요청이 많으면 2차 한도로 막으므로 묶음은 3개까지만 동시에 묻는다
+    private static final int COUNT_CONCURRENCY = 3;
 
     private final UserRepository users;
     private final GithubConnectionRepository connections;
@@ -76,13 +82,17 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         String reviewedQuery = "is:pr reviewed-by:" + login + " -author:" + login;
         GithubSearchCounts searches = new GithubSearchCounts(
                 counter.countPullRequests(token, "is:pr author:" + login),
-                counter.countPullRequests(token, reviewedQuery),
-                counter.countSearchedCommits(token, "author:" + login + " merge:true"));
+                counter.countPullRequests(token, reviewedQuery));
 
         List<GithubRepositoryCount> counts = new ArrayList<>();
-        for (int from = 0; from < targets.size(); from += COUNT_BATCH_SIZE) {
-            List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, targets.size()));
-            counts.addAll(countBatch(token, viewerId, batch, searches));
+        // 실행기를 요청마다 만들어 다른 사용자의 개수 세기를 기다리지 않게 하고, 응답 전에 닫아 스레드를 남기지 않는다
+        try (ExecutorService pool = Executors.newFixedThreadPool(COUNT_CONCURRENCY)) {
+            List<CompletableFuture<List<GithubRepositoryCount>>> batchCounts = new ArrayList<>();
+            for (int from = 0; from < targets.size(); from += COUNT_BATCH_SIZE) {
+                List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, targets.size()));
+                batchCounts.add(CompletableFuture.supplyAsync(() -> countBatch(token, viewerId, batch, searches), pool));
+            }
+            batchCounts.forEach(batchCount -> counts.addAll(batchCount.join()));
         }
 
         return counts;
@@ -113,13 +123,13 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     }
 
-    /** 검색과 GraphQL 은 반영 시점이 달라, 검색 개수가 GraphQL 개수를 넘으면 GraphQL 개수에 맞춘다 */
+    /** 검색과 GraphQL 은 반영 시점이 달라, 검색한 내 PR 수가 GraphQL 의 전체 PR 수를 넘으면 전체 PR 수에 맞춘다 */
     private static GithubRepositoryCount countOf(GithubCountTarget target, GithubRepositoryTotals total,
                                                  GithubSearchCounts searches) {
 
         String key = GithubCountClient.nameKey(target.owner(), target.name());
         // 머지 커밋은 머지 버튼을 누른 사람 것으로 세져 내 몫을 부풀리므로 내 것만 뺀다, 남의 머지·봇 커밋은 팀 쪽이라 내 몫을 키우지 않는다
-        int ownMerges = Math.min(searches.ownMergeCommits().getOrDefault(key, 0), total.ownCommitCount());
+        int ownMerges = total.ownMergeCommitCount();
         int ownPullRequests = Math.min(searches.authoredPullRequests().getOrDefault(key, 0), total.pullRequestCount());
 
         return new GithubRepositoryCount(target.githubRepoId(), total.commitCount() - ownMerges,

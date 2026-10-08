@@ -32,13 +32,23 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
                 c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
-                c.commitCount, c.ownCommitCount, c.ownPrCount, c.reviewedPrCount)
+                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId AND r.githubRepoId IN :githubRepoIds
             ORDER BY r.ownerLogin, r.name
             """)
     List<RepositorySummary> findSummaries(@Param("userId") Long userId,
                                           @Param("githubRepoIds") Collection<Long> githubRepoIds);
+
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
+                c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
+                r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
+                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.publicId = :publicId AND c.userId = :userId
+            """)
+    Optional<RepositorySummary> findSummary(@Param("publicId") UUID publicId, @Param("userId") Long userId);
 
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.ContributionTarget(c.id, r.githubRepoId, r.ownerLogin, r.name)

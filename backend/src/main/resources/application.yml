@@ -73,8 +73,10 @@ management:
       probes:
         enabled: true
       group:
+        # ai 는 넣지 않는다. AI 가 꺼져도 로그인·저장소 목록은 받아야 한다 (분석 Job 만 실패한다).
+        # AI 상태는 /actuator/health 전체 응답에 그대로 반영된다.
         readiness:
-          include: readinessState,db,ai
+          include: readinessState,db
 
 # 운영은 명시적으로 켰을 때만 문서를 제공한다. local 프로필에서는 기본으로 켠다.
 springdoc:

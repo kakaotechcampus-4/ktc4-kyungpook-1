@@ -1,0 +1,85 @@
+# 운영 구성: 단일 VM 에 서비스 4개 (docs/DEPLOYMENT.md 4절).
+#   cp .env.example .env   # 값 채우기
+#   docker compose up -d --build
+#
+# 공개 포트는 web(Caddy)의 80/443 뿐이다. backend·ai·db 는 내부 네트워크에만 있다 —
+# 특히 ai 는 X-GitHub-Token 을 받으므로 포트를 열지 않는다.
+name: gitory
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gitory
+      POSTGRES_USER: gitory
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?deploy/.env 에 DB_PASSWORD 가 필요하다}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitory"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ai:
+    build: ../ai
+    image: gitory-ai
+    restart: unless-stopped
+    environment:
+      AI_DOCS_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  backend:
+    build: ../backend
+    image: gitory-backend
+    restart: unless-stopped
+    # ai 는 기다리지 않는다. AI 가 안 떠도 로그인·저장소 목록은 열려야 한다.
+    # 분석 요청은 AI 연결이 실패하면 Job 이 실패로 끝난다.
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/gitory
+      DB_USERNAME: gitory
+      DB_PASSWORD: ${DB_PASSWORD}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:?deploy/.env 에 GITHUB_CLIENT_ID 가 필요하다}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:?deploy/.env 에 GITHUB_CLIENT_SECRET 이 필요하다}
+      TOKEN_ENC_KEY: ${TOKEN_ENC_KEY:?deploy/.env 에 TOKEN_ENC_KEY 가 필요하다}
+      TOKEN_ENC_SALT: ${TOKEN_ENC_SALT:?deploy/.env 에 TOKEN_ENC_SALT 가 필요하다}
+      AI_BASE_URL: http://ai:8000
+    healthcheck:
+      # readiness 그룹은 db 연결까지 본다. ai 는 넣지 않는다 (application.yml management 절)
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 6
+
+  web:
+    build: ../frontend
+    image: gitory-web
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?deploy/.env 에 SITE_ADDRESS 가 필요하다}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # 인증서를 보관한다. 지우면 재발급하는데, Let's Encrypt 발급 횟수 제한에 걸릴 수 있다.
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

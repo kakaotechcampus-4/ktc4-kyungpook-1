@@ -24,6 +24,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** consent 안에서 연결 상태를 확인하고, 복호화한 토큰은 HTTP 헤더에만 쓴다. */
 @Slf4j
@@ -36,6 +38,9 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     // GitHub 은 같은 토큰의 동시 요청이 많으면 2차 한도로 막으므로 묶음은 3개까지만 동시에 묻는다
     private static final int COUNT_CONCURRENCY = 3;
+
+    // GitHub 은 GraphQL 처리 시간이 60초 동안 60초를 넘으면 거절하므로, 조회 한 번에 세는 묶음 수를 막고 나머지는 다음 조회로 미룬다
+    private static final int COUNT_BATCH_LIMIT = 15;
 
     private final UserRepository users;
     private final GithubConnectionRepository connections;
@@ -84,29 +89,53 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
                 counter.countPullRequests(token, "is:pr author:" + login),
                 counter.countPullRequests(token, reviewedQuery));
 
+        int countable = Math.min(targets.size(), COUNT_BATCH_SIZE * COUNT_BATCH_LIMIT);
+        if (countable < targets.size()) {
+            log.info("저장소 {}개 중 {}개만 세고 나머지는 다음 조회 때 센다", targets.size(), countable);
+        }
+
         List<GithubRepositoryCount> counts = new ArrayList<>();
+        AtomicBoolean rejected = new AtomicBoolean();
+        AtomicInteger skipped = new AtomicInteger();
         // 실행기를 요청마다 만들어 다른 사용자의 개수 세기를 기다리지 않게 하고, 응답 전에 닫아 스레드를 남기지 않는다
         try (ExecutorService pool = Executors.newFixedThreadPool(COUNT_CONCURRENCY)) {
             List<CompletableFuture<List<GithubRepositoryCount>>> batchCounts = new ArrayList<>();
-            for (int from = 0; from < targets.size(); from += COUNT_BATCH_SIZE) {
-                List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, targets.size()));
-                batchCounts.add(CompletableFuture.supplyAsync(() -> countBatch(token, viewerId, batch, searches), pool));
+            for (int from = 0; from < countable; from += COUNT_BATCH_SIZE) {
+                List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, countable));
+                batchCounts.add(CompletableFuture.supplyAsync(
+                        () -> countBatch(token, viewerId, batch, searches, rejected, skipped), pool));
             }
             batchCounts.forEach(batchCount -> counts.addAll(batchCount.join()));
+        }
+
+        if (rejected.get()) {
+            log.warn("GitHub 이 개수 세기를 한도로 거절해 저장소 {}개는 다음 조회 때 센다", skipped.get());
         }
 
         return counts;
 
     }
 
-    /** 한 묶음이 실패해도 나머지 묶음은 센다 */
+    /** 한 묶음이 실패해도 나머지 묶음은 세지만, GitHub 이 한도로 거절하면 아직 보내지 않은 묶음은 보내지 않는다 */
     private List<GithubRepositoryCount> countBatch(String token, String viewerId, List<GithubCountTarget> batch,
-                                                   GithubSearchCounts searches) {
+                                                   GithubSearchCounts searches, AtomicBoolean rejected,
+                                                   AtomicInteger skipped) {
+
+        if (rejected.get()) {
+            skipped.addAndGet(batch.size());
+            return List.of();
+        }
 
         Map<Long, GithubRepositoryTotals> totals;
         try {
             totals = counter.countCommits(token, viewerId, batch);
         } catch (RuntimeException failed) {
+            if (GithubCountClient.isRateLimited(failed)) {
+                rejected.set(true);
+                skipped.addAndGet(batch.size());
+                log.warn("GitHub 이 저장소 {}개의 개수 세기를 한도로 거절했다", batch.size(), failed);
+                return List.of();
+            }
             log.warn("GitHub 저장소 {}개의 개수를 세지 못했다", batch.size(), failed);
             return List.of();
         }

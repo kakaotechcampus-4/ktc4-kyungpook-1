@@ -61,7 +61,7 @@ public class ActivityStoreService {
                 continue;
             }
             stored.add(commit.sha());
-            commits.save(commitOf(repositoryId, collectionRunId, commit));
+            commits.insertIfAbsent(commitOf(repositoryId, collectionRunId, commit));
         }
     }
 

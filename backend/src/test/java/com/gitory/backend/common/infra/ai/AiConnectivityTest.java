@@ -44,7 +44,7 @@ class AiConnectivityTest {
         server.start();
         client = new AiHttpClient(new AiClientProperties(
                 URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
-                Duration.ofSeconds(1), Duration.ofSeconds(1)), JsonMapper.builder().build());
+                Duration.ofSeconds(1), Duration.ofSeconds(1), Duration.ofSeconds(1)), JsonMapper.builder().build());
     }
 
     @AfterEach

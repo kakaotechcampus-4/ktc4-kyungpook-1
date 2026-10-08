@@ -95,6 +95,9 @@ gitory:
     base-url: ${AI_BASE_URL:http://localhost:8000}
     connect-timeout: ${AI_CONNECT_TIMEOUT:3s}
     read-timeout: ${AI_READ_TIMEOUT:180s}
+    # AI 가 커밋마다 GitHub 를 차례로 불러 커밋 1000개 저장소는 180초를 넘기므로 수집만 따로 길게 둔다
+    # 멈춘 Job 판정은 이 값에 여유를 더해 계산하므로, 이 값을 늘리면 판정도 같이 늦춰진다
+    collect-read-timeout: ${AI_COLLECT_READ_TIMEOUT:600s}
   consent:
     # GitHub 액세스 토큰 암호화 키·솔트. 코드·설정 파일에 값을 적지 않는다 —
     # 배포 환경의 비밀 관리에서 환경변수로 주입한다(security-privacy.md).
@@ -107,6 +110,8 @@ gitory:
     worker:
       # 끄면 접수된 Job 이 실행되지 않는다. 테스트는 test 리소스의 config/application.yml 에서 끈다
       enabled: ${JOB_WORKER_ENABLED:true}
+      # 동시에 실행하는 분석 Job 수, 같은 사용자의 Job 은 이 수와 상관없이 하나씩 실행한다
+      concurrency: ${JOB_WORKER_CONCURRENCY:3}
   ingest:
     # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.
     max-commits: 1000

@@ -1,0 +1,31 @@
+# 같은 오리진에서 / = 프론트, /api = Spring 으로 나눈다 (R-10: SameSite=Lax 세션 쿠키가 그대로 실린다).
+# SITE_ADDRESS 가 도메인이면 Caddy 가 Let's Encrypt 인증서를 자동으로 받고 갱신한다.
+# 로컬 확인은 SITE_ADDRESS=localhost (Caddy 내부 CA 인증서).
+#
+# /actuator 는 프록시하지 않는다 — 헬스체크는 내부 네트워크에서만 본다.
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		-Server
+	}
+
+	# reverse_proxy 가 X-Forwarded-Proto/Host 를 붙인다.
+	# Spring 의 forward-headers-strategy: framework 가 이걸 읽어 OAuth redirect-uri 를 https://<도메인> 으로 만든다.
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		root * /srv
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		# SPA 라우팅: 없는 경로는 index.html 로 (vercel.json rewrites 와 같은 동작)
+		try_files {path} /index.html
+		file_server
+	}
+}

@@ -3,18 +3,16 @@
 # CODEOWNERS 의 [운영진 영역] 3개 파일(assign-mentor · notify-discord · convention-check)은
 # 건드리지 않는다. 새 워크플로 추가는 CODEOWNERS 주석이 명시적으로 허용한 범위다.
 #
-# ⚠️ GitHub Free 조직의 Private 저장소에는 Branch protection 을 걸 수 없다
-#    (github-governance.md). 이 CI 의 성공은 **플랫폼이 강제하지 않는 팀 규칙**이다.
-#    빨간 체크를 무시하고 머지할 수 있다는 뜻이므로, 리뷰어가 눈으로 확인한다.
+# develop 의 필수 체크다 (「빌드 · 테스트 · 경계 검사」·「마이그레이션 검사」).
+#   pull_request 에 paths 필터를 걸면 backend 를 안 바꾼 PR 에서 워크플로가 아예 안 돌고,
+#   GitHub 은 그 필수 체크를 계속 "대기 중"으로 둬서 머지가 막힌다.
+#   그래서 PR 에서는 항상 돌고, changes job 이 backend 와 상관없는 PR 이면 build 를 건너뛴다.
+#   job 조건으로 건너뛴 체크는 GitHub 이 통과로 친다. job 이름을 바꾸면 필수 체크 설정도 바꿔야 한다.
 
 name: backend CI
 
 on:
   pull_request:
-    paths:
-      - 'backend/**'
-      - 'contracts/ingest/**'
-      - '.github/workflows/backend-ci.yml'
   push:
     branches: [develop, main]
     paths:
@@ -35,8 +33,38 @@ defaults:
     working-directory: backend
 
 jobs:
+  changes:
+    name: 변경 범위 확인
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.scope.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      # PR 의 체크아웃은 base 와 합친 merge 커밋이라 첫 부모(HEAD^1)가 base 다.
+      # push 는 위 paths 필터를 이미 통과했으므로 항상 돈다.
+      - name: backend 관련 변경인지
+        id: scope
+        working-directory: .
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ] \
+            || git diff --name-only HEAD^1 HEAD \
+               | grep -qE '^(backend/|contracts/ingest/|\.github/workflows/backend-ci\.yml$)'; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend 변경 없음 — 빌드를 건너뛴다"
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
     name: 빌드 · 테스트 · 경계 검사
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -66,6 +94,7 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # 모든 PR 에서 돈다. 마이그레이션을 안 건드린 PR 은 바로 통과한다.
   migration-guard:
     name: 마이그레이션 검사
     runs-on: ubuntu-latest

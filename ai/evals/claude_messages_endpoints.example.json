@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Claude Sonnet 5",
+    "model": "claude-sonnet-5",
+    "messages_url_env": "GITORY_CLAUDE_SONNET_5_MESSAGES_URL",
+    "api_key_env": "GITORY_CLAUDE_SONNET_5_API_KEY",
+    "anthropic_version": "2023-06-01",
+    "request_extra": {"reasoning_effort": "medium"},
+    "input_cost_per_million": 3045,
+    "output_cost_per_million": 15225
+  },
+  {
+    "name": "Claude Opus 5",
+    "model": "claude-opus-5",
+    "messages_url_env": "GITORY_CLAUDE_OPUS_5_MESSAGES_URL",
+    "api_key_env": "GITORY_CLAUDE_OPUS_5_API_KEY",
+    "anthropic_version": "2023-06-01",
+    "request_extra": {"reasoning_effort": "medium"},
+    "input_cost_per_million": 7612,
+    "output_cost_per_million": 38062
+  }
+]

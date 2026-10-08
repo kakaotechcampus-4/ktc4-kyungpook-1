@@ -7,7 +7,7 @@ import { endpoints } from '@/api/endpoints';
 import { AuthError } from '@/api/client';
 import { redirectToLogin } from '@/app/queryClient';
 import type { StarField } from '@/api/schemas';
-import { Breadcrumb, Button, Field, Input, PageTitle, StarKey, StickyFooter, Textarea } from '@/components/ui';
+import { Breadcrumb, Button, Field, Input, PageTitle, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, starFieldName, starFieldShort } from '@/lib/labels';
 import { CONFIG } from '@/lib/config';
 import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
@@ -19,6 +19,8 @@ import { cacheSavedDraft } from '@/lib/cacheSavedDraft';
 import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
 import { cardMetadataSupported } from '@/api/capabilities';
 import { ApiError } from '@/api/client';
+import { Select } from '@/components/ui/Select';
+import { StarEditorField } from '@/components/ui/StarEditorField';
 
 const HINT: Record<StarField, string> = {
   S: '어떤 상황이었나요?',
@@ -121,10 +123,8 @@ export function NewCardPage() {
         <div><Field label="기간"><Input value={period} disabled={saving || (!!cardId && !canEditMetadata)} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
         <div>
           <Field label="관련 레포 (선택)">
-            <select className="input" value={repoId} onChange={(e) => setRepoId(e.target.value)} aria-label="관련 레포" disabled={!!cardId || saving}>
-              <option value="">없음</option>
-              {(repos.data ?? []).map((r) => <option key={r.id} value={r.id}>{r.owner} / {r.name}</option>)}
-            </select>
+            <Select className="select-trigger--field" value={repoId} onChange={setRepoId} label="관련 레포" disabled={!!cardId || saving}
+              options={[{ value: '', label: '없음' }, ...(repos.data ?? []).map((r) => ({ value: r.id, label: `${r.owner}/${r.name}` }))]} />
           </Field>
         </div>
         {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목·기간·레포는 첫 저장 후 바꿀 수 없어요.'}</p>}
@@ -132,19 +132,16 @@ export function NewCardPage() {
 
       <div className="manual-save-row">
         <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
-        {cardId && <SaveStatus status={autosave.status} retry={flush} />}
+        {(cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
         {!cardId && <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
       </div>
 
       <div className="card star-read">
         {STAR_FIELDS.map((k, i) => (
-          <div key={k} className="star-read__row">
-            <StarKey field={k} dropped={i > 0 && !f[k]} />
-            <div className="stack grow" style={{ gap: 9 }}>
-              <div className="manual-field-heading"><span className="star__name">{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 필수</span>}</span><span className="t-12 c-3">{f[k].length} / {MAX}자</span></div>
-              <Textarea className="input--lg" rows={3} maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements" value={f[k]} onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))} placeholder={HINT[k]} aria-label={starFieldName[k]} />
-            </div>
-          </div>
+          <StarEditorField key={k} field={k} dropped={i > 0 && !f[k]}
+            label={<>{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 필수</span>}</>}
+            maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements"
+            value={f[k]} onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))} placeholder={HINT[k]} aria-label={starFieldName[k]} />
         ))}
       </div>
 

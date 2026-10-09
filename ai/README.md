@@ -56,8 +56,8 @@ GitHub 수집을 직접 호출할 때 실제 토큰을 예시·스크린샷·exp
 
 `GET /health` 응답은 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`입니다.
 이는 FastAPI 프로세스 생존만 뜻합니다. GitHub 연결, LLM 설정, 카드 생성 준비 상태를
-보장하지 않습니다. 현재 A 그룹화·STAR 파이프라인은 미구현으로 유효한 요청도 500으로
-실패합니다. B 질문 생성은 템플릿, 답변 평가는 규칙 기반이며 LLM 판정기는 연결되지
+보장하지 않습니다. A 그룹화·diff 근거·STAR 초안은 LLM 환경변수가 없거나 호출에
+실패하면 503 `LLM_UNAVAILABLE`입니다. B 질문 생성은 템플릿, 답변 평가는 규칙 기반이며 LLM 판정기는 연결되지
 않았습니다. 등록되지 않은 matching/RAG stub은 API 문서에 나타나지 않습니다.
 
 서버·DB·GitHub·LLM 없이 문서 JSON을 내보낼 수 있습니다. 저장소 루트에서 실행합니다.
@@ -73,8 +73,8 @@ python ai/scripts/export_openapi.py --output docs/openapi/ai.json
 내부 API의 성공·실패 응답은 `Envelope`이며 요청 검증 실패는 HTTP **400**과
 `INVALID_PAYLOAD`입니다. FastAPI 기본 422 문서는 실제 400 핸들러에 맞게 제거했습니다.
 수집의 404(`RESOURCE_NOT_FOUND`)·502(`GITHUB_API_ERROR`)도 공통 오류 봉투로
-문서화했습니다. 미구현 A 경로의 500은 현재 기본 서버 오류(text/plain)이며,
-Swagger의 200 응답 스키마는 앞으로 구현할 계약입니다.
+문서화했습니다. 분석 API의 LLM 실패는 503 `LLM_UNAVAILABLE` 봉투이고, 처리하지 못한
+내부 예외만 기본 서버 오류(500, text/plain)입니다.
 
 문서 설정과 추가 응답 정의는 FastAPI 공식 문서의
 [Metadata and Docs URLs](https://fastapi.tiangolo.com/tutorial/metadata/),
@@ -116,3 +116,30 @@ unset GITORY_GITHUB_LIVE_TOKEN
 ```
 
 실제 토큰 값은 `.env`, 테스트 fixture, 명령 기록 또는 Git에 저장하지 않습니다.
+
+## diff 근거·STAR 초안(A)
+
+사용자가 확정한 후보를 인터뷰 전 STAR 초안으로 만듭니다. Spring 연동 계약은
+[A 파트 diff 근거·STAR 초안 연동](../docs/AI_DIFF_STAR_INTEGRATION.md)에 정리했습니다.
+
+1. `POST /internal/analysis/diff-evidence`: 후보 커밋의 diff를 GitHub에서 다시 읽고
+   (`X-GitHub-Token`), 비밀값을 가린 뒤 커밋별 요약·기술 포인트로 정리합니다.
+   patch 원문은 응답에 싣지 않습니다. (`services/diff_analyzer.py`)
+2. `POST /internal/analysis/star`: 1의 `evidence`로 STAR 초안을 만들고, 근거 SHA 실재·
+   지어낸 수치를 코드로 검증해 근거 없는 문장은 비웁니다. 비운 칸은 `missing_fields`로
+   B 인터뷰에 넘깁니다. (`services/star_generator.py`)
+
+LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 읽습니다. 연결 정보는
+공유하고 모델·추론 강도만 작업별로 바꿉니다. 설정이 없어도 서버는 기동하고 해당 API만
+503을 반환합니다.
+
+| 변수 | 기본값 |
+|---|---|
+| `GITORY_LLM_BASE_URL`, `GITORY_LLM_API_KEY` | 필수 |
+| `GITORY_LLM_TIMEOUT_SECONDS` | `120` |
+| `GITORY_GROUPING_MODEL`, `GITORY_GROUPING_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
+| `GITORY_DIFF_MODEL`, `GITORY_DIFF_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
+| `GITORY_STAR_MODEL`, `GITORY_STAR_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
+
+프롬프트와 출력 스키마는 `evals/tasks/diff_summary.py`·`star_draft.py` 모델 비교에서
+검증한 것과 같은 코드를 공유합니다.

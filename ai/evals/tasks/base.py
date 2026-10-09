@@ -14,18 +14,8 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 from services.llm_structured_client import ReasoningEffort
-
-#: 출력에 옮겨지면 안 되는 비밀값 패턴.
-_SECRET_PATTERNS = (
-    re.compile(r"AKIA[0-9A-Z]{16}"),
-    re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}"),
-    re.compile(r"sk-[A-Za-z0-9_-]{20,}"),
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
-    re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\."),
-)
-
-#: 성능·결과 수치처럼 보이는 표현. 입력에 없는데 출력에 있으면 지어낸 것으로 본다.
-_METRIC_PATTERN = re.compile(r"\d+(?:\.\d+)?\s*(?:ms|밀리초|초|분|%|퍼센트|배|건|회|MB|GB|KB)")
+from services.evidence_checks import METRIC_PATTERN as _METRIC_PATTERN
+from services.secret_redaction import find_secrets, redact_secrets  # noqa: F401  (작업 모듈 재사용)
 
 
 @dataclass(frozen=True)
@@ -39,18 +29,6 @@ class EvalTask:
     max_completion_tokens: int
     build_payload: Callable[[dict[str, Any]], dict[str, Any]]
     check: Callable[[dict[str, Any], BaseModel], list[str]]
-
-
-def find_secrets(text: str) -> list[str]:
-    """출력에 포함된 비밀값 패턴 이름을 반환한다."""
-    return [pattern.pattern[:20] for pattern in _SECRET_PATTERNS if pattern.search(text)]
-
-
-def redact_secrets(text: str) -> str:
-    """외부 모델로 보내기 전에 비밀값처럼 보이는 문자열을 가린다."""
-    for pattern in _SECRET_PATTERNS:
-        text = pattern.sub("[REDACTED]", text)
-    return text
 
 
 def invented_metrics(output_text: str, source_text: str) -> list[str]:

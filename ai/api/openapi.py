@@ -33,3 +33,11 @@ COLLECTION_ERROR_RESPONSES = {
         "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 재시도 가능.",
     },
 }
+
+LLM_UNAVAILABLE_RESPONSE = {
+    "model": ErrorEnvelope,
+    "description": (
+        "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패(retryable=true) "
+        "또는 LLM 환경 설정 누락(retryable=false)."
+    ),
+}

@@ -30,6 +30,18 @@ class LLMStructuredCallError(RuntimeError):
     """모델 응답을 구조화된 결과로 사용할 수 없을 때 발생하는 공통 오류."""
 
 
+class LLMInvalidOutputError(LLMStructuredCallError):
+    """응답이 스키마에 맞지 않았다. 같은 요청을 다시 보내면 나아질 수 있는 경우다.
+
+    호출 한도·연결 오류는 SDK가 이미 재시도했고, 콘텐츠 필터는 다시 보내도 같은
+    결과이므로 기본 오류로 남긴다.
+    """
+
+
+class LLMStructuredOutputTooLongError(LLMStructuredCallError):
+    """응답 토큰 상한 때문에 구조화 출력이 끝까지 생성되지 못한 경우."""
+
+
 @dataclass(frozen=True)
 class LLMSettings:
     """한 모델을 호출하기 위한 연결 설정."""
@@ -88,12 +100,18 @@ class StructuredLLMClient:
             raise LLMStructuredCallError("LLM 호출 한도를 초과했습니다.") from exc
         except (APIConnectionError, APITimeoutError, APIError) as exc:
             raise LLMStructuredCallError("LLM 요청을 처리하지 못했습니다.") from exc
-        except (ValidationError, LengthFinishReasonError, ContentFilterFinishReasonError) as exc:
-            raise LLMStructuredCallError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.") from exc
+        except ValidationError as exc:
+            raise LLMInvalidOutputError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.") from exc
+        except LengthFinishReasonError as exc:
+            raise LLMStructuredOutputTooLongError(
+                "LLM 구조화 출력이 응답 토큰 상한을 초과했습니다."
+            ) from exc
+        except ContentFilterFinishReasonError as exc:
+            raise LLMStructuredCallError("LLM 출력이 콘텐츠 제한으로 중단됐습니다.") from exc
 
         output = getattr(completion.choices[0].message, "parsed", None)
         if not isinstance(output, output_model):
-            raise LLMStructuredCallError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.")
+            raise LLMInvalidOutputError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.")
 
         usage = getattr(completion, "usage", None)
         return StructuredCallResult(
@@ -102,4 +120,3 @@ class StructuredLLMClient:
             completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started_at) * 1000),
         )
-

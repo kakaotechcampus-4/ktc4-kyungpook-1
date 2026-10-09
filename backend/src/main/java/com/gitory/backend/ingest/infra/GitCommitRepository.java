@@ -16,6 +16,13 @@ public interface GitCommitRepository extends JpaRepository<GitCommit, Long> {
 
     List<GitCommit> findByCollectionRunIdAndExcludedFalse(Long collectionRunId);
 
+    @Query("""
+            SELECT c.sha FROM GitCommit c, CollectionRun r
+            WHERE c.collectionRunId = r.id AND r.userRepositoryId = :userRepositoryId
+            ORDER BY c.id
+            """)
+    List<String> findAllShasByUserRepositoryId(@Param("userRepositoryId") Long userRepositoryId);
+
     @Query("SELECT c.sha FROM GitCommit c WHERE c.repositoryId = :repositoryId AND c.sha IN :shas")
     List<String> findStoredShas(@Param("repositoryId") Long repositoryId, @Param("shas") Collection<String> shas);
 

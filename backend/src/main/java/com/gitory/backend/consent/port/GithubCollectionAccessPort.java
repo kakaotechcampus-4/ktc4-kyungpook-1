@@ -7,7 +7,7 @@ import java.util.List;
 /** 토큰 대신 범위가 고정된 수집 호출 권한을 제공한다. */
 public interface GithubCollectionAccessPort {
 
-    JsonNode collect(Long userId, GithubCollectionTarget target);
+    JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas);
 
     /** 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰을 거절하면 GithubNotConnectedException 을 던진다 */
     List<GithubRepositoryResponse> repositories(Long userId);

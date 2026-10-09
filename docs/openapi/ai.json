@@ -2081,6 +2081,18 @@
           "repository": {
             "$ref": "#/components/schemas/RepositoryTarget"
           },
+          "known_commit_shas": {
+            "description": "Spring이 이 연결 저장소에서 이미 수집한 commit SHA. AI는 상세 조회를 생략한다.",
+            "items": {
+              "maxLength": 40,
+              "minLength": 7,
+              "pattern": "^[0-9a-fA-F]+$",
+              "type": "string"
+            },
+            "maxItems": 10000,
+            "title": "Known Commit Shas",
+            "type": "array"
+          },
           "user_repository_id": {
             "exclusiveMinimum": 0.0,
             "title": "User Repository Id",
@@ -2105,6 +2117,21 @@
             },
             "title": "Commits",
             "type": "array"
+          },
+          "head_sha": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 7,
+                "pattern": "^[0-9a-fA-F]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "기본 브랜치(없으면 첫 수집 브랜치)에서 이번 수집이 확인한 최신 커밋 SHA.",
+            "title": "Head Sha"
           },
           "issues": {
             "items": {

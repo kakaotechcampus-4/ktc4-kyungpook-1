@@ -112,7 +112,7 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 | AI B | 템플릿 질문·규칙 기반 답변 평가. LLM 판정기 연결은 별도 작업 |
 | 인프라 | 내부 AI 주소·문서 토글·readiness 설정 추가. EC2·Dockerfile·운영 Compose·nginx 배포는 이번 변경 범위 밖 |
 
-현재 AI 수집 계약에는 `since`가 없어 증분 요청은 `INCREMENTAL_COLLECTION_UNSUPPORTED`로 거절한다. 기존 BE의 수집 상한 설정도 AI 요청에 전달하는 필드가 없어 아직 적용되지 않는다. 검증된 사용자 이메일이 없어 `known_emails=[]`로 보내며, DB의 기본 브랜치가 없으면 `main`을 추측하지 않고 실패한다. 기존 BE 저장 DTO는 commit·PR/Issue 번호·부분 수집 사유만 담으므로 AI의 files·reviews·`needs_confirmation`은 보존되지 않는다.
+증분 수집은 작성 시각 기반 `since`를 사용하지 않는다. Spring이 이미 저장한 `known_commit_shas`를 보내면, AI는 commit 목록을 다시 확인하되 저장된 commit의 상세 조회를 생략한다. AI 응답의 `head_sha`는 Spring이 저장소 상태로 보관한다. 기존 BE의 수집 상한 설정은 AI 요청에 전달하는 필드가 없어 아직 적용되지 않는다. 검증된 사용자 이메일이 없어 `known_emails=[]`로 보내며, DB의 기본 브랜치가 없으면 `main`을 추측하지 않고 실패한다. 기존 BE 저장 DTO는 commit·PR/Issue 번호·부분 수집 사유만 담으므로 AI의 files·reviews·`needs_confirmation`은 보존되지 않는다.
 
 다음 통합은 ① Job 워커에서 소유권 검증 → 수집 → 결과 저장 → 상태 전이 연결, ② A 그룹화·STAR 구현과 필요한 근거 보존, ③ B·카드 컨트롤러 연결 순서다. 워커 연결 시 기존 공유 commit의 사용자별 제외 판정 저장 문제와 실제 수집 브랜치 기록도 함께 해결해야 한다. 부분 응답을 완료로 오인하지 않도록 `partialReason`과 오류 재시도 정책을 사용한다.
 

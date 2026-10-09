@@ -8,5 +8,5 @@ import java.util.List;
 
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record CollectedActivity(List<CollectedCommit> commits, List<CollectedPullRequest> pullRequests,
-                                List<CollectedIssue> issues, PartialReason partialReason) {
+                                List<CollectedIssue> issues, String headSha, PartialReason partialReason) {
 }

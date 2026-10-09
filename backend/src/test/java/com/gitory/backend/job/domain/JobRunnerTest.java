@@ -70,6 +70,9 @@ class JobRunnerTest {
     AnalysisJobRepository jobs;
 
     @Autowired
+    ActivityStoreService activityStore;
+
+    @Autowired
     JobCancelService cancelService;
 
     @Autowired
@@ -180,7 +183,24 @@ class JobRunnerTest {
 
         runner.runNext();
 
-        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), null));
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of()));
+
+    }
+
+    @Test
+    @DisplayName("재수집은 저장된 commit SHA를 전달한다")
+    void requestsKnownCommits() {
+
+        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), List.of());
+        activityStore.store(initial, activity(null));
+        activityStore.store(initial, activity(PartialReason.CAP_EXCEEDED));
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runner.runNext();
+
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of(SHA)));
 
     }
 
@@ -286,7 +306,7 @@ class JobRunnerTest {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(new CollectedActivity(
-                List.of(commit("a".repeat(41))), List.of(), List.of(), null));
+                List.of(commit("a".repeat(41))), List.of(), List.of(), null, null));
 
         runner.runNext();
 
@@ -473,7 +493,7 @@ class JobRunnerTest {
     private static CollectedActivity activity(PartialReason partialReason) {
 
         return new CollectedActivity(List.of(commit(SHA)), List.of(new CollectedPullRequest(7)), List.of(),
-                partialReason);
+                null, partialReason);
 
     }
 

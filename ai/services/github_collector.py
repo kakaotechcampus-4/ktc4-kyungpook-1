@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import PurePosixPath
 from typing import Any, Optional, Union
+from urllib.parse import quote
 
 import httpx
 
@@ -88,6 +89,7 @@ class _CollectionState:
     needs_confirmation: list[ContributionConfirmation] = field(default_factory=list)
     partial_reason: Optional[PartialReason] = None
     api_calls: int = 0
+    head_sha: Optional[str] = None
 
     def mark_partial(self, reason: PartialReason) -> None:
         if self.partial_reason != PartialReason.GITHUB_RATE_LIMITED:
@@ -143,6 +145,7 @@ class GithubCollector:
 
         result = RepositoryCollectionResult(
             user_repository_id=request.user_repository_id,
+            head_sha=state.head_sha,
             commits=state.commits,
             pull_requests=state.pull_requests,
             issues=state.issues,
@@ -433,21 +436,47 @@ class GithubCollector:
         repository = request.repository
         summaries_by_sha: dict[str, dict[str, Any]] = {}
 
+        # 새 커밋이 하나도 없어도 현재 기본 브랜치의 head는 Spring이 다음
+        # 수집 기준과 저장소 상태를 유지하는 데 필요하다. 목록 응답의 첫
+        # 항목에 기대면 빈 저장소에서 head_sha가 사라지거나, 다른 브랜치
+        # SHA를 기본 브랜치 head로 잘못 기록할 수 있다.
+        branch = quote(repository.default_branch, safe="")
+        branch_info = await self._get_dict(
+            client,
+            state,
+            f"/repos/{repository.owner_login}/{repository.name}/branches/{branch}",
+            params={},
+        )
+        state.head_sha = _nested_required_text(branch_info, "commit", "sha")
+
+        known_shas = {sha.casefold() for sha in request.known_commit_shas}
+        scanned_shas: set[str] = set()
+
         for branch in request.collection_branches:
             page = 1
-            while len(summaries_by_sha) <= self._limits.max_commits:
+            while len(scanned_shas) <= self._limits.max_commits:
+                params: dict[str, Any] = {"sha": branch, "per_page": 100, "page": page}
                 items = await self._get_list(
                     client,
                     state,
                     f"/repos/{repository.owner_login}/{repository.name}/commits",
-                    params={"sha": branch, "per_page": 100, "page": page},
+                    params=params,
                 )
                 for item in items:
-                    summaries_by_sha.setdefault(_required_text(item, "sha"), item)
-                    if len(summaries_by_sha) > self._limits.max_commits:
+                    sha = _required_text(item, "sha")
+                    key = sha.casefold()
+                    if key in scanned_shas:
+                        continue
+                    scanned_shas.add(key)
+                    if len(scanned_shas) > self._limits.max_commits:
                         state.mark_partial(PartialReason.CAP_EXCEEDED)
                         break
-                if len(items) < 100 or len(summaries_by_sha) > self._limits.max_commits:
+                    if key not in known_shas:
+                        summaries_by_sha.setdefault(sha, item)
+                if (
+                    len(items) < 100
+                    or len(scanned_shas) > self._limits.max_commits
+                ):
                     break
                 page += 1
 

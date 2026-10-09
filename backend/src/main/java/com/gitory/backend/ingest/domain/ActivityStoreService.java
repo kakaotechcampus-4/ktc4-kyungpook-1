@@ -26,6 +26,15 @@ public class ActivityStoreService {
     private final CollectionRunRepository runs;
     private final GitCommitRepository commits;
 
+    /** AI가 재수집에서 상세 조회를 생략할 수 있도록 이미 저장한 SHA를 제공한다. */
+    @Transactional(readOnly = true)
+    public List<String> knownCommitShas(Long userRepositoryId) {
+
+        connectedRepositoryOf(userRepositoryId);
+        return commits.findAllShasByUserRepositoryId(userRepositoryId);
+
+    }
+
     @Transactional
     public Long store(IngestRequest request, CollectedActivity activity) {
 
@@ -46,7 +55,7 @@ public class ActivityStoreService {
 
     private CollectionRun runOf(IngestRequest request, CollectedActivity activity) {
 
-        return CollectionRun.recorded(request.userRepositoryId(), request.branches(), request.since(), null,
+        return CollectionRun.recorded(request.userRepositoryId(), request.branches(), null, activity.headSha(),
                 activity.commits().size(), activity.pullRequests().size(), activity.issues().size(),
                 activity.partialReason());
     }

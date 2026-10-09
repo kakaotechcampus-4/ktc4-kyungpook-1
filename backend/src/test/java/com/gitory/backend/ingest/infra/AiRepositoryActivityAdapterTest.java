@@ -136,6 +136,7 @@ class AiRepositoryActivityAdapterTest {
         assertThat(sent.path("branches").size()).isEqualTo(1);
         assertThat(sent.path("branches").path(0).asString()).isEqualTo("feature/session-index");
         assertThat(sent.has("since")).isFalse();
+        assertThat(activity.headSha()).isEqualTo("abc1234567890");
         assertThat(activity.commits()).hasSize(1);
         assertThat(activity.commits().getFirst().sha()).isEqualTo("abc1234567890");
         assertThat(activity.commits().getFirst().authoredAt()).isEqualTo(Instant.parse("2026-09-20T09:00:00Z"));
@@ -270,12 +271,16 @@ class AiRepositoryActivityAdapterTest {
     }
 
     @Test
-    @DisplayName("증분 수집을 지원하지 않는 AI로 since를 조용히 버리지 않는다")
-    void rejectsUnsupportedIncrementalCollection() {
-        assertThatThrownBy(() -> adapter.collect(new IngestRequest(USER_REPOSITORY_ID, List.of(), Instant.now())))
-                .isInstanceOfSatisfying(AiClientException.class,
-                        error -> assertThat(error.errorCode()).isEqualTo("INCREMENTAL_COLLECTION_UNSUPPORTED"));
-        assertThat(calls).hasValue(0);
+    @DisplayName("저장된 commit SHA를 AI 요청에 그대로 전달한다")
+    void forwardsKnownCommitShas() throws Exception {
+        List<String> knownShas = List.of("a".repeat(40), "b".repeat(40));
+
+        adapter.collect(new IngestRequest(USER_REPOSITORY_ID, List.of(), knownShas));
+
+        JsonNode sent = mapper.readTree(requestBody);
+        assertThat(sent.has("since")).isFalse();
+        assertThat(sent.path("known_commit_shas")).hasSize(2);
+        assertThat(calls).hasValue(1);
     }
 
     @Test
@@ -326,7 +331,7 @@ class AiRepositoryActivityAdapterTest {
     }
 
     private IngestRequest request(List<String> branches) {
-        return new IngestRequest(USER_REPOSITORY_ID, branches, null);
+        return new IngestRequest(USER_REPOSITORY_ID, branches, List.of());
     }
 
     private String success(ObjectNode result) {

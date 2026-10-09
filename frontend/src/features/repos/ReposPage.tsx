@@ -3,13 +3,15 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
 import { FolderGit2 } from 'lucide-react';
-import { Badge, Button, IconBox, Radio, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
+import { Badge, Button, IconBox, Radio, PageTitle, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
 import { pct, ym } from '@/lib/format';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { SearchField } from '@/components/ui/SearchField';
+import { Select } from '@/components/ui/Select';
 
 type Sort = 'activity' | 'recent' | 'name';
 type Filter = 'all' | 'pr' | 'nopr' | 'fresh';
@@ -62,11 +64,11 @@ export function ReposPage() {
         <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
       </ol>
       <div className="list-head">
-        <h1>레포 고르기 <span className="c-3 t-14">{repos.data?.length ?? 0}</span></h1>
+        <PageTitle>레포 고르기 <span className="c-3 t-14">{repos.data?.length ?? 0}</span></PageTitle>
         <div className="right">
-          <label className="list-search"><span className="c-3">⌕</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="레포 이름 검색" aria-label="레포 이름 검색" /></label>
-          <label className="chip chip--select"><select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="정렬">{(Object.keys(SORT_LABEL) as Sort[]).map((k) => <option key={k} value={k}>{SORT_LABEL[k]}</option>)}</select></label>
-          <label className="chip chip--select"><select value={filter} onChange={(e) => setFilter(e.target.value as Filter)} aria-label="필터">{(Object.keys(FILTER_LABEL) as Filter[]).map((k) => <option key={k} value={k}>{FILTER_LABEL[k]}</option>)}</select></label>
+          <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
+          <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />
+          <Select value={filter} onChange={setFilter} label="필터" options={(Object.keys(FILTER_LABEL) as Filter[]).map((value) => ({ value, label: FILTER_LABEL[value] }))} />
         </div>
       </div>
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
@@ -96,7 +98,7 @@ export function ReposPage() {
               <div className="card card--paper repo-ctx" style={{ padding: '14px 16px' }}>
                 <IconBox icon={FolderGit2} size={36} />
                 <div className="stack grow" style={{ gap: 3 }}>
-                  <span className="w-700" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
+                  <span className="w-600" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
                   <span className="t-12 c-2">내 커밋 {selected.contribution.mine} / 팀 {selected.contribution.team} · PR {selected.prCount} · 리뷰 {selected.reviewCount}</span>
                 </div>
                 <Badge kind="NEUTRAL">READ ONLY</Badge>
@@ -125,11 +127,11 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
           {r.recommended && !r.lastAnalyzedAt && <Badge kind="PR">추천</Badge>}
           {low && <Badge kind="CAUTION">내 기여 {pct(r.contribution.ratio)}</Badge>}
           {r.prCount === 0 && <Badge kind="NEUTRAL">PR 0건</Badge>}
-          {r.lastAnalyzedAt && <Badge kind="NEUTRAL">정리함 · 카드 {r.cardCount}</Badge>}
+          {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}건</Badge></span>}
         </div>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></span>
-          <span className="t-12 c-3">PR {r.prCount} · 리뷰 {r.reviewCount} · {r.language ?? '-'} · {ym(r.activeFrom)} - {ym(r.activeTo)}</span>
+          <span className="repo-row__stats t-12 c-3"><span>PR {r.prCount} · 리뷰 {r.reviewCount}</span><span>{r.language ?? '-'}</span><span>{ym(r.activeFrom)} – {ym(r.activeTo)}</span></span>
         </div>
         {/* 배지만 두면 왜 조심해야 하는지 안 읽힌다 — 한 줄로 풀어 쓴다 */}
         {low && <span className="repo-row__warn">내 몫이 적어서, 카드로 만들면 부풀린 것처럼 보일 수 있어요</span>}

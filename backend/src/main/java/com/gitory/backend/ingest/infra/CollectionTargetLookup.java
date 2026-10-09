@@ -1,6 +1,7 @@
 package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.common.infra.ai.AiClientException;
+import com.gitory.backend.consent.port.GithubCollectionRepo;
 import com.gitory.backend.consent.port.GithubCollectionTarget;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,7 +25,7 @@ public class CollectionTargetLookup {
                  WHERE ur.id = ? AND u.deleted_at IS NULL
                 """, (row, number) -> new Target(row.getLong("user_id"),
                 new GithubCollectionTarget(userRepositoryId,
-                        new GithubCollectionTarget.Repository(row.getLong("github_repo_id"),
+                        new GithubCollectionRepo(row.getLong("github_repo_id"),
                                 row.getString("owner_login"), row.getString("name"),
                                 row.getString("default_branch")), branches)), userRepositoryId);
         if (targets.size() != 1) {

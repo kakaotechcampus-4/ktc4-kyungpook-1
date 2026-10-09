@@ -9,6 +9,7 @@ import com.gitory.backend.consent.infra.GithubCollectionAccess;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.TokenCipher;
 import com.gitory.backend.consent.infra.UserRepository;
+import com.gitory.backend.consent.port.GithubCollectionRepo;
 import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.ingest.domain.ExclusionReason;
 import com.gitory.backend.ingest.domain.PartialReason;
@@ -108,10 +109,10 @@ class AiRepositoryActivityAdapterTest {
         when(targets.find(eq(USER_REPOSITORY_ID), anyList())).thenAnswer(invocation ->
                 new CollectionTargetLookup.Target(USER_ID,
                         new GithubCollectionTarget(USER_REPOSITORY_ID,
-                                new GithubCollectionTarget.Repository(456789L, "grow22", "gitory", "develop"),
+                                new GithubCollectionRepo(456789L, "grow22", "gitory", "develop"),
                                 invocation.getArgument(1))));
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, http));
+                new GithubCollectionAccess(users, connections, cipher, http, null, null));
     }
 
     @AfterEach
@@ -299,7 +300,7 @@ class AiRepositoryActivityAdapterTest {
                 URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
                 Duration.ofSeconds(1), Duration.ofMillis(50)), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, shortTimeout));
+                new GithubCollectionAccess(users, connections, cipher, shortTimeout, null, null));
         assertThatThrownBy(() -> adapter.collect(request(List.of())))
                 .isInstanceOfSatisfying(AiClientException.class, error -> {
                     assertThat(error.errorCode()).isEqualTo("AI_UNAVAILABLE");

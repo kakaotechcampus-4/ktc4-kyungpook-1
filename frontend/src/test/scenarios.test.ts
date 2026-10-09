@@ -23,7 +23,7 @@ describe('realistic deterministic demo', () => {
   it('rejects same key on another repository without creating another job', () => {
     const start = (id: string) => handle('POST', `/repos/${id}/analyze`, new URLSearchParams(), {}, true, { 'idempotency-key': 'same-key' });
     expect(start('r_auth').status).toBe(200);
-    expect(start('r_algo')).toMatchObject({ status: 409, error: { code: 'INVALID_REQUEST' } });
+    expect(start('r_algo')).toMatchObject({ status: 409, error: { code: 'IDEMPOTENCY_KEY_MISMATCH' } });
     expect(db.jobs.size).toBe(1);
   });
   it('aborts simulated latency and rejects unknown scenario names', async () => {

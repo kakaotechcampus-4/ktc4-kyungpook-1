@@ -136,7 +136,7 @@ class JobIntakeServiceTest {
 
         AnalysisJob job = jobRepository.findByUserIdAndIdempotencyKey(userId, KEY_1).orElseThrow();
         job.start();
-        job.succeed(false);
+        job.succeed(false, null);
         jobRepository.save(job);
 
         JobIntakeResult second = service.intake(userId, repoA, KEY_2);

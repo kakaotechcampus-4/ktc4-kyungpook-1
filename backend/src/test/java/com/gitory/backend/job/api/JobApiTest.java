@@ -2,6 +2,7 @@ package com.gitory.backend.job.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.job.domain.AnalysisJob;
+import com.gitory.backend.job.domain.JobState;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
@@ -27,7 +28,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -42,6 +45,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class JobApiTest {
 
     private static final String KEY = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    private static final UUID MY_REPO = UUID.fromString("11111111-1111-4111-8111-111111111111");
+    private static final UUID MY_OTHER_REPO = UUID.fromString("22222222-2222-4222-8222-222222222222");
 
     @Container
     @ServiceConnection
@@ -60,6 +65,7 @@ class JobApiTest {
 
     private Long myUserId;
     private Long myRepoId;
+    private Long myOtherRepoId;
     private Long othersUserId;
     private Long othersRepoId;
 
@@ -73,9 +79,14 @@ class JobApiTest {
         othersUserId = fixtures.insertUser(2L, "someone-else");
 
         Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
+        Long otherRepositoryId = fixtures.insertRepository(2L, "grow22", "gitory-docs");
 
-        myRepoId = fixtures.insertUserRepository(myUserId, repositoryId);
+        myRepoId = fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
         othersRepoId = fixtures.insertUserRepository(othersUserId, repositoryId);
+        // 첫 행인 MY_REPO 는 id 가 내 사용자 id 와 같아질 수 있어, 저장소 id 자리에 사용자 id 를 넘기는
+        // 실수는 맨 뒤에 넣은 이 저장소의 Job 으로 확인한다
+        myOtherRepoId = fixtures.insertUserRepository(MY_OTHER_REPO, myUserId, otherRepositoryId);
+
     }
 
     @Test
@@ -95,10 +106,11 @@ class JobApiTest {
                 .andExpect(jsonPath("$.data.retryable").value(nullValue()))
                 .andExpect(jsonPath("$.data.retryAfterSec").value(nullValue()))
                 .andExpect(jsonPath("$.data.finishedAt").value(nullValue()))
-                .andExpect(jsonPath("$.data.result").value(nullValue()))
+                .andExpect(jsonPath("$.data.result.repoId").value(MY_REPO.toString()))
                 .andExpect(jsonPath("$.data.startedAt").isString())
                 .andExpect(jsonPath("$.data.updatedAt").isString())
                 .andExpect(jsonPath("$.data.pollAfterMs").value(2000));
+
     }
 
     @Test
@@ -107,13 +119,31 @@ class JobApiTest {
 
         AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
         job.start();
-        job.succeed(false);
+        job.succeed(false, null);
         jobs.save(job);
 
         getJob(job.getPublicId())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.state").value("SUCCEEDED"))
                 .andExpect(jsonPath("$.data.pollAfterMs").value(0));
+    }
+
+    @Test
+    @DisplayName("분석 Job 은 진행 중이든 끝났든 result.repoId 에 그 Job 의 연결 저장소 id 를 담고 나머지 결과 칸은 비워 둔다")
+    void resultHasRepoIdInEveryState() throws Exception {
+
+        AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myOtherRepoId, KEY));
+
+        expectResultHasOnlyRepoId(MY_OTHER_REPO, getJob(job.getPublicId())
+                .andExpect(jsonPath("$.data.state").value("QUEUED")));
+
+        job.start();
+        job.succeed(false, null);
+        jobs.save(job);
+
+        expectResultHasOnlyRepoId(MY_OTHER_REPO, getJob(job.getPublicId())
+                .andExpect(jsonPath("$.data.state").value("SUCCEEDED")));
+
     }
 
     @Test
@@ -248,6 +278,87 @@ class JobApiTest {
                 .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
     }
 
+    @Test
+    @DisplayName("내 QUEUED Job 을 취소하면 CANCELED 로 바뀌고, 응답은 Job 조회 API 와 같은 13개 칸으로 내려온다")
+    void cancelsMyQueuedJob() throws Exception {
+
+        UUID jobId = newJob(myUserId, myRepoId);
+
+        ResultActions response = cancelJob(jobId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value(nullValue()))
+                .andExpect(jsonPath("$.data.jobId").value(jobId.toString()))
+                .andExpect(jsonPath("$.data.state").value("CANCELED"))
+                .andExpect(jsonPath("$.data.finishedAt").isString())
+                .andExpect(jsonPath("$.data.pollAfterMs").value(0));
+
+        Map<String, Object> data = JsonPath.read(bodyOf(response), "$.data");
+        assertThat(data).containsOnlyKeys(
+                "jobId", "type", "state", "partial", "steps", "errorCode", "retryable",
+                "retryAfterSec", "startedAt", "updatedAt", "finishedAt", "result", "pollAfterMs");
+
+    }
+
+    @Test
+    @DisplayName("내 RUNNING Job 을 취소해도 CANCELED 가 된다")
+    void cancelsMyRunningJob() throws Exception {
+
+        AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
+        job.start();
+        jobs.save(job);
+
+        cancelJob(job.getPublicId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.state").value("CANCELED"));
+
+    }
+
+    @Test
+    @DisplayName("이미 끝난 Job 을 취소하면 바꾸지 않고 현재 상태를 200 으로 돌려준다")
+    void cancelingFinishedJobReturnsCurrentState() throws Exception {
+
+        AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
+        job.start();
+        job.succeed(false, null);
+        jobs.save(job);
+
+        cancelJob(job.getPublicId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value(nullValue()))
+                .andExpect(jsonPath("$.data.state").value("SUCCEEDED"));
+
+    }
+
+    @Test
+    @DisplayName("취소 응답에도 Job 조회와 같은 모양으로 result.repoId 가 담긴다")
+    void cancelResponseHasRepoId() throws Exception {
+
+        UUID jobId = newJob(myUserId, myOtherRepoId);
+
+        expectResultHasOnlyRepoId(MY_OTHER_REPO, cancelJob(jobId)
+                .andExpect(jsonPath("$.data.state").value("CANCELED")));
+
+    }
+
+    @Test
+    @DisplayName("남의 Job 을 취소하면 404 이고 그 Job 은 그대로다")
+    void cannotCancelOthersJob() throws Exception {
+
+        UUID jobId = newJob(othersUserId, othersRepoId);
+
+        cancelJob(jobId)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        assertThat(jobs.findAll()).singleElement()
+                .extracting(AnalysisJob::getState).isEqualTo(JobState.QUEUED);
+
+    }
+
+    private ResultActions cancelJob(UUID publicId) throws Exception {
+        return mvc.perform(post("/api/jobs/{id}/cancel", publicId).with(loggedInAs(myUserId)).with(csrf()));
+    }
+
     private ResultActions getActiveJobs() throws Exception {
         return mvc.perform(get("/api/jobs").param("active", "true").with(loggedInAs(myUserId)));
     }
@@ -258,6 +369,16 @@ class JobApiTest {
 
     private ResultActions getJob(UUID publicId) throws Exception {
         return mvc.perform(get("/api/jobs/{id}", publicId).with(loggedInAs(myUserId)));
+    }
+
+    private void expectResultHasOnlyRepoId(UUID repoId, ResultActions response) throws Exception {
+
+        response
+                .andExpect(jsonPath("$.data.result.repoId").value(repoId.toString()))
+                .andExpect(jsonPath("$.data.result.cardIds").value(nullValue()))
+                .andExpect(jsonPath("$.data.result.verdict").value(nullValue()))
+                .andExpect(jsonPath("$.data.result.reasons").value(nullValue()));
+
     }
 
     private String bodyOf(ResultActions actions) throws Exception {

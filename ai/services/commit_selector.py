@@ -34,9 +34,9 @@ class CommitSelector:
     ) -> tuple[list[CommitInput], list[str]]:
         """분석할 커밋과 제외된 SHA를 입력 순서대로 반환한다.
 
-        ``author_login``이 없는 커밋은 Spring의 ``git_commit.author_name``과
-        동일한 ``author_name``을 보조 신호로 사용한다. 로그인과 이름 어느 쪽도
-        대상 사용자가 아니라고 확정할 수 없으면 기여를 잃지 않도록 포함한다.
+        ``author_login``이 있으면 대상 로그인과 비교한다. ``author_login``이 없는
+        커밋은 ``author_name``만으로 대상 사용자가 아니라고 확정할 수 없으므로,
+        기여를 잃지 않도록 포함한다.
         빈 ``target_login``은 요청 스키마(``ExperienceGroupingRequest``)가 거절한다.
         """
         normalized_target = target_login.strip().casefold()
@@ -81,9 +81,8 @@ class CommitSelector:
     def _belongs_to_target(commit: CommitInput, target_login: str) -> bool:
         if commit.author_login:
             return commit.author_login.strip().casefold() == target_login
-        if commit.author_name:
-            # author_name은 GitHub 로그인과 완전히 같은 경우에만 확정적으로 사용한다.
-            return commit.author_name.strip().casefold() == target_login
+        # Git author name은 GitHub 로그인과 별개다. 로그인이 연결되지 않은 경우
+        # 이름 차이만으로 다른 사용자의 커밋이라고 확정하지 않는다.
         return True
 
     @classmethod

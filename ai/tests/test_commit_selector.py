@@ -53,13 +53,33 @@ def test_select_keeps_unknown_author_and_docs_changes_and_deduplicates_sha() -> 
     assert excluded == []
 
 
-def test_select_uses_author_name_only_when_login_is_missing() -> None:
+def test_select_keeps_commits_when_login_is_missing_regardless_of_author_name() -> None:
     mine = commit("a" * 40, author_login=None, author_name="MinSeo")
-    theirs = commit("b" * 40, author_login=None, author_name="other")
+    different_display_name = commit(
+        "b" * 40,
+        author_login=None,
+        author_name="Taehun",
+    )
 
-    selected, excluded = CommitSelector().select([mine, theirs], "minseo")
+    selected, excluded = CommitSelector().select(
+        [mine, different_display_name],
+        "minseo",
+    )
 
-    assert selected == [mine]
+    assert selected == [mine, different_display_name]
+    assert excluded == []
+
+
+def test_select_excludes_other_user_when_github_login_is_known() -> None:
+    theirs = commit(
+        "a" * 40,
+        author_login="taehun0208",
+        author_name="MinSeo",
+    )
+
+    selected, excluded = CommitSelector().select([theirs], "minseo")
+
+    assert selected == []
     assert excluded == [theirs.sha]
 
 

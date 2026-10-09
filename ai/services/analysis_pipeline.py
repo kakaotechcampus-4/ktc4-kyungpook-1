@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from ports.repository_activity import RepositoryActivityExecution, RepositoryActivityPort
 from schemas.analysis import (
+    DiffEvidenceRequest,
+    DiffEvidenceResult,
     ExperienceGroupingRequest,
     ExperienceGroupingResponse,
     StarAnalysisRequest,
@@ -12,6 +15,7 @@ from services.commit_grouper import CommitGrouper
 from services.commit_selector import CommitSelector
 from services.diff_analyzer import DiffAnalyzer
 from services.grouping_llm import GroupingLlm
+from services.llm_settings import EnvironmentLLMClient
 from services.star_generator import StarGenerator
 
 
@@ -24,12 +28,14 @@ class AnalysisPipeline:
         commit_selector: CommitSelector | None = None,
         commit_grouper: CommitGrouper | None = None,
         grouping_llm: GroupingLlm | None = None,
+        diff_analyzer: DiffAnalyzer | None = None,
+        star_generator: StarGenerator | None = None,
     ) -> None:
         self.commit_selector = commit_selector or CommitSelector()
         self.commit_grouper = commit_grouper or CommitGrouper()
         self.grouping_llm = grouping_llm or GroupingLlm()
-        self.diff_analyzer = DiffAnalyzer()
-        self.star_generator = StarGenerator()
+        self.diff_analyzer = diff_analyzer or DiffAnalyzer(EnvironmentLLMClient("DIFF"))
+        self.star_generator = star_generator or StarGenerator(EnvironmentLLMClient("STAR"))
 
     async def group_experiences(
         self, request: ExperienceGroupingRequest
@@ -79,9 +85,29 @@ class AnalysisPipeline:
             excluded_commit_shas=excluded_shas,
         )
 
+    async def collect_diff_evidence(
+        self,
+        request: DiffEvidenceRequest,
+        github_token: str,
+        activity_port: RepositoryActivityPort,
+    ) -> RepositoryActivityExecution[DiffEvidenceResult]:
+        """선택 후보의 diff를 조회하고 커밋별 근거로 요약한다. 원본 patch는 반환하지 않는다."""
+        execution = await activity_port.fetch_candidate_details(request, github_token)
+        detail = execution.result
+        evidence = await self.diff_analyzer.analyze(detail, request.title)
+        return RepositoryActivityExecution(
+            result=DiffEvidenceResult(
+                user_repository_id=detail.user_repository_id,
+                github_pr_number=detail.github_pr_number,
+                evidence=evidence,
+                partial=detail.partial,
+                partial_reason=detail.partial_reason,
+            ),
+            api_calls=execution.api_calls,
+        )
+
     async def analyze_star(
         self, request: StarAnalysisRequest
     ) -> StarAnalysisResponse:
-        """확정 경험의 diff를 분석하고 STAR를 생성한다."""
-        # TODO: diff analyzer -> star generator 결과 연결
-        raise NotImplementedError
+        """확정 경험의 diff 근거로 STAR를 생성한다."""
+        return await self.star_generator.generate(request)

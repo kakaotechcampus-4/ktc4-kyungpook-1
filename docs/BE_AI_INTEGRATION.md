@@ -108,7 +108,7 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 | BE 수집 연결 | HTTP 어댑터 구현. 아직 Job 실행 경로가 이를 호출하지 않음 |
 | BE API | 내 정보, 분석 Job 접수, 진행 중 Job 목록, Job 상태 조회의 4개 API를 문서화. 카드·인터뷰 컨트롤러는 구현 후 추가 |
 | AI API | 수집 2개, 분석 A 계약 2개, 인터뷰 B 2개와 health를 문서화 |
-| AI A | 그룹화·STAR 생성 미구현. 유효 요청도 현재 500; 200 스키마는 구현할 계약 |
+| AI A | 경험 그룹화(#109)와 diff 근거·STAR 초안 구현. diff·STAR 연동은 [연동 문서](AI_DIFF_STAR_INTEGRATION.md) 참고 |
 | AI B | 템플릿 질문·규칙 기반 답변 평가. LLM 판정기 연결은 별도 작업 |
 | 인프라 | 내부 AI 주소·문서 토글·readiness 설정 추가. EC2·Dockerfile·운영 Compose·nginx 배포는 이번 변경 범위 밖 |
 

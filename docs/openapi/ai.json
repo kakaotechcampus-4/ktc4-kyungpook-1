@@ -1163,6 +1163,25 @@
             "title": "Summary",
             "type": "string"
           },
+          "summary_source": {
+            "default": "DIFF",
+            "description": "DIFF: 모델이 diff를 읽고 쓴 요약. COMMIT_MESSAGE: 모델 요약이 없거나 근거 없는 수치가 있어 커밋 메시지 첫 줄로 대신한 값",
+            "enum": [
+              "DIFF",
+              "COMMIT_MESSAGE"
+            ],
+            "title": "Summary Source",
+            "type": "string"
+          },
+          "technical_points": {
+            "description": "patch에서 확인한 기술적 선택·패턴. 근거가 없으면 빈 배열",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Technical Points",
+            "type": "array"
+          },
           "url": {
             "anyOf": [
               {
@@ -1182,6 +1201,110 @@
           "summary"
         ],
         "title": "DiffEvidence",
+        "type": "object"
+      },
+      "DiffEvidenceRequest": {
+        "additionalProperties": false,
+        "description": "선택된 후보의 diff를 조회해 커밋별 근거로 요약하도록 요청한다.\n\n후보 지정 방식은 ``/internal/collect/candidate-details``와 같고, 경험 제목만 더한다.",
+        "properties": {
+          "commit_shas": {
+            "description": "선택된 후보에 포함된 commit SHA. PR 전체면 빈 배열 가능",
+            "items": {
+              "maxLength": 40,
+              "minLength": 7,
+              "pattern": "^[0-9a-fA-F]+$",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Commit Shas",
+            "type": "array"
+          },
+          "github_pr_number": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "PR 기반 후보의 GitHub PR 번호",
+            "title": "Github Pr Number"
+          },
+          "repository": {
+            "$ref": "#/components/schemas/RepositoryTarget"
+          },
+          "title": {
+            "description": "경험 후보 제목. 모델이 커밋을 어떤 경험의 일부로 읽을지 정하는 문맥",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "user_repository_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "User Repository Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_repository_id",
+          "repository",
+          "title"
+        ],
+        "title": "DiffEvidenceRequest",
+        "type": "object"
+      },
+      "DiffEvidenceResult": {
+        "description": "후보의 커밋별 diff 근거. 그대로 ``/internal/analysis/star``의 evidence로 넘긴다.",
+        "properties": {
+          "evidence": {
+            "description": "입력 커밋 순서(PR이면 PR 커밋 순서)의 커밋별 근거",
+            "items": {
+              "$ref": "#/components/schemas/DiffEvidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "github_pr_number": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Pr Number"
+          },
+          "partial": {
+            "default": false,
+            "description": "diff 수집이 상한·rate limit으로 일부만 됐는지. 요약은 받은 범위만 다룬다",
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "partial_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartialReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "user_repository_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "User Repository Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_repository_id"
+        ],
+        "title": "DiffEvidenceResult",
         "type": "object"
       },
       "Envelope_CandidateDetailResult_": {
@@ -1219,6 +1342,43 @@
           "meta"
         ],
         "title": "Envelope[CandidateDetailResult]",
+        "type": "object"
+      },
+      "Envelope_DiffEvidenceResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiffEvidenceResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[DiffEvidenceResult]",
         "type": "object"
       },
       "Envelope_ExperienceGroupingResponse_": {
@@ -2814,6 +2974,115 @@
         ]
       }
     },
+    "/internal/analysis/diff-evidence": {
+      "post": {
+        "description": "선택된 후보의 diff를 GitHub에서 다시 조회해 커밋별 변경 요약·기술 포인트로 정리합니다. 응답의 evidence는 그대로 /internal/analysis/star 요청의 evidence로 넘깁니다. 원본 patch는 AI 안에서만 쓰고 응답·로그·DB에 남기지 않습니다. 비밀값은 모델로 보내기 전에 가립니다. diff 수집이 상한이나 rate limit으로 일부만 되면 200의 partial=true로 표시합니다. GitHub 토큰은 헤더로만 전달합니다.",
+        "operationId": "collect_diff_evidence_internal_analysis_diff_evidence_post",
+        "parameters": [
+          {
+            "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiffEvidenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DiffEvidenceResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "RESOURCE_NOT_FOUND: GitHub 리소스가 없거나 토큰 권한으로 읽을 수 없음."
+          },
+          "500": {
+            "content": {
+              "text/plain": {
+                "example": "Internal Server Error",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "분석 처리 중 내부 오류 또는 LLM 호출 실패"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 재시도 가능."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패(retryable=true) 또는 LLM 환경 설정 누락(retryable=false)."
+          }
+        },
+        "summary": "A 선택 후보의 커밋별 diff 근거 생성",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
     "/internal/analysis/groups": {
       "post": {
         "description": "수집된 커밋을 선별하고 PR·Issue 연결 및 LLM 분석으로 경험 후보를 묶습니다.",
@@ -2891,7 +3160,7 @@
     },
     "/internal/analysis/star": {
       "post": {
-        "description": "선택 후보의 diff 근거로 STAR를 생성하는 계약입니다. 기본 서비스는 미구현으로 500을 반환합니다. 200 스키마는 구현 대상 계약입니다.",
+        "description": "/internal/analysis/diff-evidence가 만든 커밋별 근거로 인터뷰 전 STAR 초안을 생성합니다. 근거 커밋이 없거나 입력에 없는 수치를 쓴 문장은 비우고 removed_claims에 남깁니다. 비운 칸은 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다.",
         "operationId": "analyze_star_internal_analysis_star_post",
         "requestBody": {
           "content": {
@@ -2946,9 +3215,19 @@
               }
             },
             "description": "분석 처리 중 내부 오류 또는 LLM 호출 실패"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패(retryable=true) 또는 LLM 환경 설정 누락(retryable=false)."
           }
         },
-        "summary": "A 확정 경험의 STAR 생성 (미구현)",
+        "summary": "A 확정 경험의 STAR 초안 생성",
         "tags": [
           "analysis"
         ]

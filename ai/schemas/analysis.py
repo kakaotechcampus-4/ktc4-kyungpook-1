@@ -14,10 +14,16 @@ from pydantic import (
     model_validator,
 )
 
-from schemas.collection import ExclusionReason, FileChangeStatus
+from schemas.collection import (
+    CandidateDetailRequest,
+    ExclusionReason,
+    FileChangeStatus,
+    PartialReason,
+)
 from schemas.common import (
     AnalysisVerdict,
     CandidateSourceType,
+    EvidenceSummarySource,
     StarSlot,
     StarStatus,
     StatementConfidence,
@@ -170,7 +176,43 @@ class DiffEvidence(StrictRequestModel):
     author_login: str | None = None
     churn: str = Field(description="예: +71/-0")
     summary: str = Field(description="diff에서 직접 확인한 변경 요약")
+    summary_source: EvidenceSummarySource = Field(
+        "DIFF",
+        description="DIFF: 모델이 diff를 읽고 쓴 요약. COMMIT_MESSAGE: 모델 요약이 없거나 "
+        "근거 없는 수치가 있어 커밋 메시지 첫 줄로 대신한 값",
+    )
+    technical_points: list[str] = Field(
+        default_factory=list,
+        max_length=3,
+        description="patch에서 확인한 기술적 선택·패턴. 근거가 없으면 빈 배열",
+    )
     url: str | None = None
+
+
+class DiffEvidenceRequest(CandidateDetailRequest):
+    """선택된 후보의 diff를 조회해 커밋별 근거로 요약하도록 요청한다.
+
+    후보 지정 방식은 ``/internal/collect/candidate-details``와 같고, 경험 제목만 더한다.
+    """
+
+    title: str = Field(
+        ..., min_length=1, max_length=200,
+        description="경험 후보 제목. 모델이 커밋을 어떤 경험의 일부로 읽을지 정하는 문맥",
+    )
+
+
+class DiffEvidenceResult(BaseModel):
+    """후보의 커밋별 diff 근거. 그대로 ``/internal/analysis/star``의 evidence로 넘긴다."""
+
+    user_repository_id: PositiveInt
+    github_pr_number: PositiveInt | None = None
+    evidence: list[DiffEvidence] = Field(
+        default_factory=list, description="입력 커밋 순서(PR이면 PR 커밋 순서)의 커밋별 근거"
+    )
+    partial: bool = Field(
+        False, description="diff 수집이 상한·rate limit으로 일부만 됐는지. 요약은 받은 범위만 다룬다"
+    )
+    partial_reason: PartialReason | None = None
 
 
 class DependencyFile(StrictRequestModel):

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import os
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any, Protocol, TypeVar
@@ -12,14 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.analysis import CommitInput, IssueContext, PullRequestContext
 from services.commit_grouper import CommitGroup
+from services.llm_settings import LLMConfigError, load_llm_settings
 from services.llm_structured_client import (
-    LLMSettings,
     LLMStructuredCallError,
     LLMStructuredOutputTooLongError,
     StructuredLLMClient,
 )
 
-DEFAULT_MODEL = "gpt-5.6-luna"
 #: 한 번에 묶을 수 있는 작업 단위 상한. 출력은 SHA가 아닌 짧은 번호라 크게 잡을 수 있다.
 #: 셀렉터를 거친 본인 작업은 대부분 이 안에 들어가 배치 경계가 생기지 않는다.
 DEFAULT_BATCH_SIZE = 250
@@ -117,45 +115,11 @@ class EnvironmentGroupingModelClient:
 
     @staticmethod
     def _build_client() -> StructuredLLMClient:
-        base_url = os.getenv("GITORY_LLM_BASE_URL", "").strip()
-        api_key = os.getenv("GITORY_LLM_API_KEY", "").strip()
-        missing = [
-            name
-            for name, value in (
-                ("GITORY_LLM_BASE_URL", base_url),
-                ("GITORY_LLM_API_KEY", api_key),
-            )
-            if not value
-        ]
-        if missing:
-            raise GroupingLlmConfigError(
-                "그룹화 LLM 환경변수가 없습니다: " + ", ".join(missing)
-            )
-
-        effort = os.getenv("GITORY_GROUPING_REASONING_EFFORT", "medium").strip()
-        if effort not in {"none", "low", "medium", "high"}:
-            raise GroupingLlmConfigError(
-                "GITORY_GROUPING_REASONING_EFFORT는 none/low/medium/high 중 하나여야 합니다"
-            )
-        timeout = os.getenv("GITORY_LLM_TIMEOUT_SECONDS", "120").strip()
+        # 연결·모델 환경변수 해석은 diff 분석·STAR와 같은 규칙(services/llm_settings.py)을 쓴다.
         try:
-            timeout_seconds = float(timeout)
-        except ValueError as exc:
-            raise GroupingLlmConfigError("GITORY_LLM_TIMEOUT_SECONDS가 숫자가 아닙니다") from exc
-        if timeout_seconds <= 0:
-            raise GroupingLlmConfigError("GITORY_LLM_TIMEOUT_SECONDS는 0보다 커야 합니다")
-
-        return StructuredLLMClient(
-            LLMSettings(
-                base_url=base_url,
-                api_key=api_key,
-                model=os.getenv("GITORY_GROUPING_MODEL", DEFAULT_MODEL).strip()
-                or DEFAULT_MODEL,
-                reasoning_effort=effort,  # type: ignore[arg-type]
-                timeout_seconds=timeout_seconds,
-            )
-        )
-
+            return StructuredLLMClient(load_llm_settings("GROUPING"))
+        except LLMConfigError as exc:
+            raise GroupingLlmConfigError(str(exc)) from exc
 
 class GroupingLlm:
     """작업 단위를 같은 기능 경험끼리 묶고, 경험마다 제목·선정 이유를 쓴다.

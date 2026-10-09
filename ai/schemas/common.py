@@ -30,6 +30,9 @@ StarSlot = Literal["S", "T", "A", "R"]
 #: 후보와 카드가 만들어진 출처. 프론트 확정 계약의 CandidateType과 같다.
 CandidateSourceType = Literal["PR", "ISSUE", "COMMIT_CLUSTER", "MANUAL"]
 
+#: DiffEvidence.summary를 만든 근거. 모델 요약을 쓸 수 없으면 커밋 메시지 첫 줄로 대신한다.
+EvidenceSummarySource = Literal["DIFF", "COMMIT_MESSAGE"]
+
 #: card_statement.confidence 및 DB CHECK 제약과 같은 세 값.
 StatementConfidence = Literal["HIGH", "MEDIUM", "LOW"]
 

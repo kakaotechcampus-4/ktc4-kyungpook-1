@@ -187,4 +187,30 @@ class AnalysisJobTest {
         assertThat(job.getFinishedAt()).isEqualTo(finishedAt);
 
     }
+
+    @Test
+    @DisplayName("requeue 는 RUNNING Job 을 QUEUED 로 되돌리고 진행 단계도 접수했을 때처럼 모두 QUEUED 로 돌린다")
+    void requeueReturnsRunningJobToQueue() {
+
+        AnalysisJob job = running();
+
+        job.requeue();
+
+        assertThat(job.getState()).isEqualTo(JobState.QUEUED);
+        assertThat(job.getSteps()).isEqualTo(queued().getSteps());
+
+    }
+
+    @Test
+    @DisplayName("RUNNING 이 아닌 Job 은 requeue 할 수 없다")
+    void requeueFromNonRunningIsRejected() {
+
+        AnalysisJob finished = running();
+        finished.succeed(false, null);
+
+        assertThatThrownBy(() -> queued().requeue()).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(finished::requeue).isInstanceOf(IllegalStateException.class);
+        assertThat(finished.getState()).isEqualTo(JobState.SUCCEEDED);
+
+    }
 }

@@ -93,6 +93,18 @@ public class AnalysisJob {
     }
 
     /**
+     * RUNNING -> QUEUED, 진행 단계를 접수했을 때처럼 모두 QUEUED 로 되돌린다
+     * 접수 시각은 그대로 둬 대기열에서 원래 순서를 지킨다
+     */
+    public void requeue() {
+
+        requireState(JobState.RUNNING);
+        this.state = JobState.QUEUED;
+        this.steps = queuedSteps();
+
+    }
+
+    /**
      * 수집 기록을 연결하고 수집 두 단계는 읽은 개수로 끝낸다
      * 후보 추리기·추천 이유는 AI 기능이 아직 없어 SKIPPED 로 둔다
      */

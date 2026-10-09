@@ -50,7 +50,7 @@ public class JobIntakeService {
         Optional<AnalysisJob> sameKey = jobRepository.findByUserIdAndIdempotencyKey(userId, key);
 
         if (sameKey.isEmpty()) {
-            return jobRepository.findByUserRepositoryIdAndStateIn(userRepositoryId, JobState.ACTIVE)
+            return jobRepository.findByUserRepositoryIdAndTypeAndStateIn(userRepositoryId, JobType.ANALYZE, JobState.ACTIVE)
                     .map(JobIntakeResult::existingJob);
         }
 
@@ -59,5 +59,6 @@ public class JobIntakeService {
         }
 
         return Optional.of(JobIntakeResult.existingJob(sameKey.get()));
+
     }
 }

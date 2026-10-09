@@ -1,6 +1,7 @@
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, ComponentPropsWithRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, Search, X, type LucideIcon } from 'lucide-react';
+import { FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, type LucideIcon } from 'lucide-react';
+import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
 
@@ -149,11 +150,7 @@ export const SectionHead = ({ label, count, right }: { label: string; count?: nu
 export function Toolbar({ placeholder, value, onChange, sort, children }: { placeholder: string; value: string; onChange: (v: string) => void; sort?: string; children?: ReactNode }) {
   return (
     <div className="card toolbar">
-      <label className="toolbar__search">
-        <Search size={14} className="c-3" aria-hidden />
-        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={placeholder} />
-        {value && <button type="button" className="toolbar__clear" onClick={() => onChange('')} aria-label="검색 지우기"><X size={13} /></button>}
-      </label>
+      <SearchField className="toolbar__search" value={value} onChange={onChange} placeholder={placeholder} />
       {sort && <span className="chip chip--static">{sort}</span>}
       <div className="right row" style={{ gap: 8, flexWrap: 'wrap' }}>{children}</div>
     </div>

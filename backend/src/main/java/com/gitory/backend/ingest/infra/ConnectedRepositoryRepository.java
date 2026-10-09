@@ -17,6 +17,9 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
 
     Optional<ConnectedRepository> findByPublicIdAndUserId(UUID publicId, Long userId);
 
+    // 소유자를 보지 않으므로 남의 저장소인지 가려 거절 기록을 남길 때만 쓴다
+    Optional<ConnectedRepository> findByPublicId(UUID publicId);
+
     @Modifying
     @Query(value = """
             INSERT INTO user_repository (user_id, repository_id)

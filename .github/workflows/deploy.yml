@@ -114,13 +114,33 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # 새 컨테이너가 뜨지 못하면 이 커밋으로 되돌린다
+          echo "prev=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           git checkout --force --detach "$DEPLOY_SHA"
           git log --oneline -1
 
       - name: 빌드·재기동 (모든 서비스 healthy 까지 대기)
+        id: up
         if: steps.checkout.outputs.skip != 'true'
         run: |
           cd "$DEPLOY_DIR/deploy"
+          docker compose up -d --build --wait --wait-timeout 300
+
+      # 새 컨테이너가 healthy 가 못 되면 기존 컨테이너는 이미 내려가 있어 사이트가 멈춘 채로 남는다.
+      # 코드만 되돌리므로 이미 적용된 새 마이그레이션은 DB 에 남고, 워크플로는 실패로 남는다.
+      - name: 실패하면 직전 커밋으로 되돌리기
+        if: failure() && steps.up.outcome == 'failure' && steps.checkout.outputs.prev != ''
+        env:
+          PREV_SHA: ${{ steps.checkout.outputs.prev }}
+        run: |
+          cd "$DEPLOY_DIR"
+          if [ "$PREV_SHA" = "$(git rev-parse HEAD)" ]; then
+            echo "::notice::직전 커밋과 같은 커밋이라 되돌릴 것이 없다."
+            exit 0
+          fi
+          echo "::warning::$DEPLOY_SHA 를 올리지 못해 직전 커밋 $PREV_SHA 로 되돌린다."
+          git checkout --force --detach "$PREV_SHA"
+          cd deploy
           docker compose up -d --build --wait --wait-timeout 300
 
       - name: 컨테이너 상태

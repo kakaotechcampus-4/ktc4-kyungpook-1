@@ -17,7 +17,7 @@
         "known_emails": ["grow22@example.com"]
       },
       "branches": ["feature/session-index"],
-      "since": "2026-09-20T00:00:00Z"
+      "known_commit_shas": ["def1234567890", "fed1234567890"]
     }
   },
   "ai_to_spring": {

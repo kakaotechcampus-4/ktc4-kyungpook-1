@@ -120,8 +120,8 @@ def test_collect_endpoint_rejects_unknown_request_field() -> None:
     assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
 
 
-def test_collect_endpoint_rejects_since_without_timezone() -> None:
-    payload = {**_payload(), "since": "2026-09-20T09:00:00"}
+def test_collect_endpoint_rejects_removed_since_field() -> None:
+    payload = {**_payload(), "since": "2026-09-20T09:00:00Z"}
 
     response = TestClient(app).post(
         "/internal/collect",

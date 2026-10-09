@@ -33,7 +33,7 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
         }
         List<String> branches = normalizedBranches(request.branches());
         CollectionTargetLookup.Target target = targets.find(request.userRepositoryId(), branches);
-        JsonNode result = access.collect(target.userId(), target.collection(), request.since());
+        JsonNode result = access.collect(target.userId(), target.collection(), request.knownCommitShas());
         try {
             return activity(result, request.userRepositoryId(), target.collection().repository().githubRepoId());
         } catch (AiClientException safe) {

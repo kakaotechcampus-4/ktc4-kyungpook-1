@@ -271,14 +271,15 @@ class AiRepositoryActivityAdapterTest {
     }
 
     @Test
-    @DisplayName("증분 수집 기준 since를 AI 요청에 그대로 전달한다")
-    void forwardsIncrementalCollectionSince() throws Exception {
-        Instant since = Instant.parse("2026-09-20T00:00:00Z");
+    @DisplayName("저장된 commit SHA를 AI 요청에 그대로 전달한다")
+    void forwardsKnownCommitShas() throws Exception {
+        List<String> knownShas = List.of("a".repeat(40), "b".repeat(40));
 
-        adapter.collect(new IngestRequest(USER_REPOSITORY_ID, List.of(), since));
+        adapter.collect(new IngestRequest(USER_REPOSITORY_ID, List.of(), knownShas));
 
         JsonNode sent = mapper.readTree(requestBody);
-        assertThat(sent.path("since").asString()).isEqualTo("2026-09-20T00:00:00Z");
+        assertThat(sent.has("since")).isFalse();
+        assertThat(sent.path("known_commit_shas")).hasSize(2);
         assertThat(calls).hasValue(1);
     }
 
@@ -330,7 +331,7 @@ class AiRepositoryActivityAdapterTest {
     }
 
     private IngestRequest request(List<String> branches) {
-        return new IngestRequest(USER_REPOSITORY_ID, branches, null);
+        return new IngestRequest(USER_REPOSITORY_ID, branches, List.of());
     }
 
     private String success(ObjectNode result) {

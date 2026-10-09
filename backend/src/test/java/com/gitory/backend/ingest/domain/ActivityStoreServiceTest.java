@@ -41,7 +41,6 @@ class ActivityStoreServiceTest {
     private static final String SHA_1 = "1111111111111111111111111111111111111111";
     private static final String SHA_2 = "2222222222222222222222222222222222222222";
     private static final List<String> BRANCHES = List.of("develop", "feature/session-index");
-    private static final Instant SINCE = Instant.parse("2026-09-28T00:00:00Z");
 
     @Container
     @ServiceConnection
@@ -88,7 +87,7 @@ class ActivityStoreServiceTest {
 
         CollectionRun run = runs.findById(runId).orElseThrow();
         assertThat(run.getBranches()).containsExactly("develop", "feature/session-index");
-        assertThat(run.getSince()).isEqualTo(SINCE);
+        assertThat(run.getSince()).isNull();
         assertThat(run.getHeadSha()).isEqualTo("a".repeat(40));
         assertThat(run.getCommitsCollected()).isEqualTo(1);
         assertThat(run.getPrsCollected()).isEqualTo(1);
@@ -132,6 +131,17 @@ class ActivityStoreServiceTest {
     }
 
     @Test
+    @DisplayName("재수집 요청에는 이 연결 저장소에서 이미 수집한 commit SHA를 제공한다")
+    void providesKnownCommitShas() {
+
+        assertThat(service.knownCommitShas(userRepositoryId)).isEmpty();
+
+        service.store(request(), activityOf(commit(SHA_1), commit(SHA_2)));
+
+        assertThat(service.knownCommitShas(userRepositoryId)).containsExactly(SHA_1, SHA_2);
+    }
+
+    @Test
     @DisplayName("한 응답에 같은 커밋이 두 번 있으면 한 번만 저장된다")
     void skipsDuplicateShaInOneResponse() {
 
@@ -169,7 +179,7 @@ class ActivityStoreServiceTest {
     @DisplayName("연결 저장소가 없으면 아무것도 저장되지 않는다")
     void rejectsUnknownUserRepository() {
 
-        IngestRequest unknown = new IngestRequest(userRepositoryId + 1000, BRANCHES, SINCE);
+        IngestRequest unknown = new IngestRequest(userRepositoryId + 1000, BRANCHES, List.of());
 
         assertThatThrownBy(() -> service.store(unknown, activityOf(commit(SHA_1))))
                 .isInstanceOf(IllegalStateException.class);
@@ -179,7 +189,7 @@ class ActivityStoreServiceTest {
     }
 
     private IngestRequest request() {
-        return new IngestRequest(userRepositoryId, BRANCHES, SINCE);
+        return new IngestRequest(userRepositoryId, BRANCHES, List.of());
     }
 
     private CollectedActivity activityOf(CollectedCommit... collected) {

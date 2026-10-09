@@ -69,10 +69,9 @@ public class JobRunner {
 
     private void run(AnalysisJob job) {
 
-        IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
-                activityStore.latestCompleteCollectedAt(job.getUserRepositoryId()).orElse(null));
-
         try {
+            IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
+                    activityStore.knownCommitShas(job.getUserRepositoryId()));
             CollectedActivity activity = activities.collect(request);
             transaction.executeWithoutResult(status -> succeed(job.getId(), request, activity));
         } catch (RuntimeException failure) {

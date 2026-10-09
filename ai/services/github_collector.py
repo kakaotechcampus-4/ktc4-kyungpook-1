@@ -436,10 +436,10 @@ class GithubCollector:
         repository = request.repository
         summaries_by_sha: dict[str, dict[str, Any]] = {}
 
-        # ``since`` 이후 새 커밋이 하나도 없어도 현재 기본 브랜치의 head는
-        # Spring이 다음 수집 기준과 저장소 상태를 유지하는 데 필요하다.
-        # 목록 응답의 첫 항목에 기대면 빈 증분 응답에서 head_sha가 사라지고,
-        # 기본 브랜치가 수집 목록에 없을 때 다른 브랜치 SHA를 잘못 기록한다.
+        # 새 커밋이 하나도 없어도 현재 기본 브랜치의 head는 Spring이 다음
+        # 수집 기준과 저장소 상태를 유지하는 데 필요하다. 목록 응답의 첫
+        # 항목에 기대면 빈 저장소에서 head_sha가 사라지거나, 다른 브랜치
+        # SHA를 기본 브랜치 head로 잘못 기록할 수 있다.
         branch = quote(repository.default_branch, safe="")
         branch_info = await self._get_dict(
             client,
@@ -449,12 +449,13 @@ class GithubCollector:
         )
         state.head_sha = _nested_required_text(branch_info, "commit", "sha")
 
+        known_shas = {sha.casefold() for sha in request.known_commit_shas}
+        scanned_shas: set[str] = set()
+
         for branch in request.collection_branches:
             page = 1
-            while len(summaries_by_sha) <= self._limits.max_commits:
+            while len(scanned_shas) <= self._limits.max_commits:
                 params: dict[str, Any] = {"sha": branch, "per_page": 100, "page": page}
-                if request.since is not None:
-                    params["since"] = request.since.isoformat().replace("+00:00", "Z")
                 items = await self._get_list(
                     client,
                     state,
@@ -462,11 +463,20 @@ class GithubCollector:
                     params=params,
                 )
                 for item in items:
-                    summaries_by_sha.setdefault(_required_text(item, "sha"), item)
-                    if len(summaries_by_sha) > self._limits.max_commits:
+                    sha = _required_text(item, "sha")
+                    key = sha.casefold()
+                    if key in scanned_shas:
+                        continue
+                    scanned_shas.add(key)
+                    if len(scanned_shas) > self._limits.max_commits:
                         state.mark_partial(PartialReason.CAP_EXCEEDED)
                         break
-                if len(items) < 100 or len(summaries_by_sha) > self._limits.max_commits:
+                    if key not in known_shas:
+                        summaries_by_sha.setdefault(sha, item)
+                if (
+                    len(items) < 100
+                    or len(scanned_shas) > self._limits.max_commits
+                ):
                     break
                 page += 1
 

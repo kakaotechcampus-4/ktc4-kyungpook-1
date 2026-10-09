@@ -2081,18 +2081,17 @@
           "repository": {
             "$ref": "#/components/schemas/RepositoryTarget"
           },
-          "since": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "이 시각 이후 새로 작성된 커밋만 수집한다. 이전 완전 수집 시각은 Spring이 제공한다.",
-            "title": "Since"
+          "known_commit_shas": {
+            "description": "Spring이 이 연결 저장소에서 이미 수집한 commit SHA. AI는 상세 조회를 생략한다.",
+            "items": {
+              "maxLength": 40,
+              "minLength": 7,
+              "pattern": "^[0-9a-fA-F]+$",
+              "type": "string"
+            },
+            "maxItems": 10000,
+            "title": "Known Commit Shas",
+            "type": "array"
           },
           "user_repository_id": {
             "exclusiveMinimum": 0.0,

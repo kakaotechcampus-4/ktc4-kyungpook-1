@@ -92,9 +92,10 @@ class RepositoryCollectionRequest(StrictModel):
         default_factory=list,
         description="비어 있으면 repository.default_branch만 수집한다.",
     )
-    since: Optional[datetime] = Field(
-        None,
-        description="이 시각 이후 새로 작성된 커밋만 수집한다. 이전 완전 수집 시각은 Spring이 제공한다.",
+    known_commit_shas: list[CommitSha] = Field(
+        default_factory=list,
+        max_length=10_000,
+        description="Spring이 이 연결 저장소에서 이미 수집한 commit SHA. AI는 상세 조회를 생략한다.",
     )
 
     @model_validator(mode="after")
@@ -108,8 +109,14 @@ class RepositoryCollectionRequest(StrictModel):
             if value not in normalized:
                 normalized.append(value)
         self.branches = normalized
-        if self.since is not None and self.since.tzinfo is None:
-            raise ValueError("since는 시간대 정보가 있는 ISO-8601 시각이어야 합니다.")
+        unique_shas: list[str] = []
+        seen: set[str] = set()
+        for sha in self.known_commit_shas:
+            key = sha.casefold()
+            if key not in seen:
+                seen.add(key)
+                unique_shas.append(sha)
+        self.known_commit_shas = unique_shas
         return self
 
     @property

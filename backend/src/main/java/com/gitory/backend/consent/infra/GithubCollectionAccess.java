@@ -39,12 +39,12 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     private final GithubCountClient counter;
 
     @Override
-    public JsonNode collect(Long userId, GithubCollectionTarget target, Instant since) {
+    public JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas) {
 
         User user = activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
         String token = activeToken(userId).orElseThrow(GithubCollectionAccess::unavailable);
         AiCollectRequest request = new AiCollectRequest(target.userRepositoryId(), target.repository(),
-                new AiCollectActor(user.getGithubLogin(), List.of()), target.branches(), since);
+                new AiCollectActor(user.getGithubLogin(), List.of()), target.branches(), knownCommitShas);
 
         return ai.collect(request, token);
 

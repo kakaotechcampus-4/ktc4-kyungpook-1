@@ -10,10 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -28,12 +26,12 @@ public class ActivityStoreService {
     private final CollectionRunRepository runs;
     private final GitCommitRepository commits;
 
-    /** 부분 수집은 누락 가능성이 있으므로 마지막 완전 수집 시각만 증분 기준으로 제공한다. */
+    /** AI가 재수집에서 상세 조회를 생략할 수 있도록 이미 저장한 SHA를 제공한다. */
     @Transactional(readOnly = true)
-    public Optional<Instant> latestCompleteCollectedAt(Long userRepositoryId) {
+    public List<String> knownCommitShas(Long userRepositoryId) {
 
-        return runs.findFirstByUserRepositoryIdAndPartialFalseOrderByCollectedAtDesc(userRepositoryId)
-                .map(CollectionRun::getCollectedAt);
+        connectedRepositoryOf(userRepositoryId);
+        return commits.findAllShasByUserRepositoryId(userRepositoryId);
 
     }
 
@@ -57,7 +55,7 @@ public class ActivityStoreService {
 
     private CollectionRun runOf(IngestRequest request, CollectedActivity activity) {
 
-        return CollectionRun.recorded(request.userRepositoryId(), request.branches(), request.since(), activity.headSha(),
+        return CollectionRun.recorded(request.userRepositoryId(), request.branches(), null, activity.headSha(),
                 activity.commits().size(), activity.pullRequests().size(), activity.issues().size(),
                 activity.partialReason());
     }

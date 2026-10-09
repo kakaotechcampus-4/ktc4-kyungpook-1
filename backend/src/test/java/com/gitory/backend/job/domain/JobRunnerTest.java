@@ -38,7 +38,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
-import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -184,27 +183,24 @@ class JobRunnerTest {
 
         runner.runNext();
 
-        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), null));
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of()));
 
     }
 
     @Test
-    @DisplayName("재수집은 부분 수집을 건너뛰고 마지막 완전 수집 시각을 since 로 전달한다")
-    void requestsSinceLatestCompleteCollection() {
+    @DisplayName("재수집은 저장된 commit SHA를 전달한다")
+    void requestsKnownCommits() {
 
-        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), null);
-        Long completeRunId = activityStore.store(initial, activity(null));
+        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), List.of());
+        activityStore.store(initial, activity(null));
         activityStore.store(initial, activity(PartialReason.CAP_EXCEEDED));
-
-        Instant completeAt = jdbc.queryForObject(
-                "SELECT collected_at FROM collection_run WHERE id = ?", Timestamp.class, completeRunId).toInstant();
 
         enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(activity(null));
 
         runner.runNext();
 
-        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), completeAt));
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of(SHA)));
 
     }
 

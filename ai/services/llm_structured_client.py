@@ -30,6 +30,10 @@ class LLMStructuredCallError(RuntimeError):
     """모델 응답을 구조화된 결과로 사용할 수 없을 때 발생하는 공통 오류."""
 
 
+class LLMStructuredOutputTooLongError(LLMStructuredCallError):
+    """응답 토큰 상한 때문에 구조화 출력이 끝까지 생성되지 못한 경우."""
+
+
 @dataclass(frozen=True)
 class LLMSettings:
     """한 모델을 호출하기 위한 연결 설정."""
@@ -88,7 +92,11 @@ class StructuredLLMClient:
             raise LLMStructuredCallError("LLM 호출 한도를 초과했습니다.") from exc
         except (APIConnectionError, APITimeoutError, APIError) as exc:
             raise LLMStructuredCallError("LLM 요청을 처리하지 못했습니다.") from exc
-        except (ValidationError, LengthFinishReasonError, ContentFilterFinishReasonError) as exc:
+        except LengthFinishReasonError as exc:
+            raise LLMStructuredOutputTooLongError(
+                "LLM 구조화 출력이 응답 토큰 상한을 초과했습니다."
+            ) from exc
+        except (ValidationError, ContentFilterFinishReasonError) as exc:
             raise LLMStructuredCallError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.") from exc
 
         output = getattr(completion.choices[0].message, "parsed", None)
@@ -102,4 +110,3 @@ class StructuredLLMClient:
             completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started_at) * 1000),
         )
-

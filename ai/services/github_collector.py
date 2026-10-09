@@ -48,6 +48,7 @@ LOCKFILES = {
     "cargo.lock",
     "composer.lock",
     "gemfile.lock",
+    "gradle.lockfile",
 }
 
 
@@ -451,11 +452,7 @@ class GithubCollector:
                     break
                 page += 1
 
-        pull_by_sha = {
-            sha: pull.number
-            for pull in state.pull_requests
-            for sha in pull.commit_shas
-        }
+        pull_by_sha = _primary_pull_by_sha(state.pull_requests)
         selected_shas = list(summaries_by_sha)[: self._limits.max_commits]
         for sha in selected_shas:
             detail, files = await self._collect_commit_detail(
@@ -764,6 +761,20 @@ def _contribution_decision(
             ContributionConfirmation(sha=sha, author_email=author_email),
         )
     return ExclusionReason.NOT_OWN, None
+
+
+def _primary_pull_by_sha(pulls: list[CollectedPullRequest]) -> dict[str, int]:
+    """커밋마다 대표 PR 하나를 고른다. 여러 PR에 속하면 커밋 수가 가장 적은 PR을 쓴다.
+
+    ``develop → main`` 같은 릴리스 PR은 기능 PR의 커밋을 모두 다시 담는다. 수집 순서
+    (최근 갱신순)에 맡기면 릴리스 PR이 기능 PR을 덮어 모든 커밋이 한 후보로 합쳐질 수
+    있으므로, 가장 좁은 범위의 PR을 고르고 같으면 번호가 작은 PR을 고른다.
+    """
+    primary: dict[str, int] = {}
+    for pull in sorted(pulls, key=lambda item: (len(item.commit_shas), item.number)):
+        for sha in pull.commit_shas:
+            primary.setdefault(sha, pull.number)
+    return primary
 
 
 def _identity_text(value: str) -> str:

@@ -47,11 +47,14 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """)
     Optional<RepositorySummary> findSummary(@Param("publicId") UUID publicId, @Param("userId") Long userId);
 
+    // 한 번에 다 세지 못할 때 안 센 저장소가 0 으로 남지 않게 먼저 세고, 그다음 최근에 활동한 저장소를 센다
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.ContributionTarget(c.id, r.githubRepoId, r.ownerLogin, r.name)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId AND r.githubRepoId IN :githubRepoIds
               AND (c.countedAt IS NULL OR c.countedAt < r.githubPushedAt)
+            ORDER BY CASE WHEN c.countedAt IS NULL THEN 0 ELSE 1 END,
+                     COALESCE(r.githubPushedAt, r.githubCreatedAt) DESC NULLS LAST, c.id
             """)
     List<ContributionTarget> findUncounted(@Param("userId") Long userId,
                                            @Param("githubRepoIds") Collection<Long> githubRepoIds);

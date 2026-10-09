@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -21,6 +23,8 @@ import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
@@ -205,6 +209,37 @@ class GithubCollectionAccessTest {
         assertThat(access.countActivity(USER_ID, targets(41)))
                 .extracting(GithubRepositoryCount::githubRepoId)
                 .containsExactlyElementsOf(LongStream.concat(LongStream.rangeClosed(1, 20), LongStream.of(41)).boxed().toList());
+
+    }
+
+    @Test
+    @DisplayName("저장소가 300개를 넘으면 앞의 15묶음(300개)만 GitHub 에 묻고 나머지는 다음 조회로 미룬다")
+    void asksAtMostFifteenBatchesAtOnce() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any()))
+                .thenAnswer(invocation -> totalsOf(invocation.getArgument(2)));
+
+        assertThat(access.countActivity(USER_ID, targets(321)))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactlyElementsOf(LongStream.rangeClosed(1, 300).boxed().toList());
+        verify(counter, times(15)).countCommits(eq(TOKEN), eq(VIEWER_ID), any());
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {403, 429})
+    @DisplayName("한 묶음이 GitHub 한도로 거절되면(403·429) 아직 묻지 않은 묶음은 묻지 않는다")
+    void stopsAskingAfterRateLimited(int status) {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenThrow(HttpClientErrorException.create(
+                HttpStatus.valueOf(status), "rate limited", new HttpHeaders(), new byte[0], null));
+
+        assertThat(access.countActivity(USER_ID, targets(200))).isEmpty();
+        verify(counter, atMost(3)).countCommits(eq(TOKEN), eq(VIEWER_ID), any());
 
     }
 

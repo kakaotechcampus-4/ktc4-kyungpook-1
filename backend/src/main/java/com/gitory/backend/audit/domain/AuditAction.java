@@ -5,5 +5,9 @@ public enum AuditAction {
     REVOKE,
     ANALYZE,
     VIEW_JOB,
-    CANCEL_JOB
+    CANCEL_JOB,
+    CREATE_CARD,
+    VIEW_CARD,
+    EDIT_CARD,
+    CONFIRM_CARD
 }

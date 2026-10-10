@@ -2,6 +2,7 @@ package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.ingest.domain.ConnectedRepository;
 import com.gitory.backend.ingest.domain.ContributionTarget;
+import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositorySummary;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -19,6 +20,13 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
 
     // 소유자를 보지 않으므로 남의 저장소인지 가려 거절 기록을 남길 때만 쓴다
     Optional<ConnectedRepository> findByPublicId(UUID publicId);
+
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.RepositoryReference(c.publicId, r.ownerLogin, r.name)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.id = :id
+            """)
+    Optional<RepositoryReference> findReference(@Param("id") Long id);
 
     @Modifying
     @Query(value = """

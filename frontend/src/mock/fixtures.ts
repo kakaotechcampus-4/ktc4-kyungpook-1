@@ -291,6 +291,17 @@ export const seedCompanies = [
     source: { url: 'https://example.com/careers/blueocean-pay', verifiedAt: daysAgo(12), expiresAt: daysFromNow(78) },
   },
   {
+    // 확정 카드 3장이 서로 다른 인재상을 뒷받침하는 경우 — 등급 A(근거 충분)가 나오는 유일한 예시
+    id: 'co_full', company: '오로라테크(예시)', role: '풀스택 개발자', summary: '소규모 팀의 웹·클라이언트 전반 개발',
+    tags: [
+      { tag: '인증·세션 안정화', keywords: ['재발급', '인터셉터', '만료'] },
+      { tag: '팀 합의로 기술 선택', keywords: ['합의', '제안'] },
+      { tag: '성능 병목 개선', keywords: ['풀링', '최적화'] },
+      { tag: '개발 문서화', keywords: ['문서', '계획'] },
+    ],
+    source: { url: 'https://example.com/careers/aurora-tech', verifiedAt: daysAgo(7), expiresAt: daysFromNow(64) },
+  },
+  {
     id: 'co_game', company: '그린웨이브 게임즈(예시)', role: '클라이언트 개발자(Unity)', summary: '모바일 게임의 연출·최적화',
     tags: [
       { tag: '실시간 연출 구현', keywords: ['씬', '코루틴', '연출', '시퀀스', '글리치'] },
@@ -314,7 +325,7 @@ export const seedCompanies = [
   {
     id: 'co_front', company: '모아코드(예시)', role: '프론트엔드 개발자', summary: '웹 서비스의 사용자 경험 개발',
     tags: [
-      { tag: '사용자 경험 개선', keywords: ['사용자', '재로그인'] },
+      { tag: '사용자 경험 개선', keywords: ['사용자', '재로그인', '문의'] },
       { tag: '디자인 시스템 운영', keywords: ['디자인 시스템', '컴포넌트 라이브러리'] },
       { tag: '웹 접근성', keywords: ['접근성', '스크린리더'] },
       { tag: '상태 관리 설계', keywords: ['상태 관리', '리덕스'] },

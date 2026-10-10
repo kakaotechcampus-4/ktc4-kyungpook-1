@@ -8,7 +8,15 @@ test('매칭 목록에서 상세를 거쳐 자소서 초안을 만들고 고치�
   await page.goto('/');
   await page.getByRole('link', { name: '기업·직무 매칭', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: /기업·직무 매칭/ })).toBeVisible();
-  await expect(page.getByRole('link', { name: /블루오션페이/ })).toContainText('근거 충분');
+  await expect(page.getByRole('link', { name: /오로라테크/ })).toContainText('근거 충분');   // 서로 다른 카드 3장이 받쳐 줄 때만
+  await expect(page.getByRole('link', { name: /블루오션페이/ })).toContainText('근거 보통'); // 같은 카드가 두 인재상을 채워도 한 번만 센다
+  const chip = (name: string) => page.getByRole('listitem').filter({ hasText: name });
+  await expect(chip('지표로 확인하는 개선')).toBeVisible();                 // 빈 칸이 목록에서 보인다
+  await expect(chip('지표로 확인하는 개선')).toHaveClass(/chip--gap/);
+  await expect(chip('지표로 확인하는 개선')).toContainText('근거 없음');   // 점선만이 아니라 글자로도 상태가 있다
+  await expect(chip('보안 의식')).toHaveClass(/chip--fill/);
+  await expect(chip('보안 의식')).toContainText('근거 있음');
+  await expect(page.getByRole('link', { name: '일반 자소서 만들기' })).toBeVisible();
   await expect(page.getByText('해든소프트(예시)')).toHaveCount(0); // 확인일이 지난 기업은 빠진다
   await expect(page.getByText(/\d+\s*%/)).toHaveCount(0);
 
@@ -25,6 +33,8 @@ test('매칭 목록에서 상세를 거쳐 자소서 초안을 만들고 고치�
   await expect(page.getByText('AI가 이은 문장')).toHaveCount(2);
   await expect(page.getByText('확정한 카드 문장')).toHaveCount(2);
   await expect(page.getByText('근거가 없어 초안에 넣지 않은 인재상 1개')).toBeVisible();
+  await expect(page.getByText('직접 쓸 칸 · 지원 동기')).toBeVisible(); // 지원 동기는 AI 가 쓰지 않는다
+  await expect(page.getByText('지원 동기 칸이 아직 비어 있어요')).toBeVisible();
 
   await page.getByRole('button', { name: '초안 고치기' }).click();
   await page.getByRole('textbox', { name: '자소서 초안' }).fill('제가 직접 다듬은 자소서입니다.');
@@ -36,6 +46,35 @@ test('매칭 목록에서 상세를 거쳐 자소서 초안을 만들고 고치�
   await page.goto('/cover-letter');
   await expect(page.getByRole('link', { name: /블루오션페이.*지원 동기/ })).toContainText('직접 고침');
   expect(errors).toEqual([]);
+});
+
+test('글자 수 제한을 넘으면 알려 주고, 지원 동기 칸을 직접 채우면 안내가 사라진다', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.goto('/cover-letter');
+  await expect(page.getByRole('checkbox', { name: '토큰 만료 자동 재발급 사용' })).toBeVisible();
+  const limit = page.getByRole('combobox', { name: '글자 수 제한', exact: true });
+  await expect(limit).toContainText('제한 없음');
+  await limit.click();
+  await page.getByRole('option', { name: '500자', exact: true }).click();
+  await expect(limit).toContainText('500자');
+  await page.getByRole('button', { name: '초안 만들기' }).click();
+  await expect(page).toHaveURL(/\/cover-letter\/cl_/);
+  await expect(page.getByText(/자 \/ 500자/).first()).toBeVisible();
+  await expect(page.getByText(/글자 수 제한을 [\d,]+자 넘었어요/)).toBeVisible();
+
+  await page.getByRole('button', { name: '직접 쓰러 가기' }).click();
+  const box = page.getByRole('textbox', { name: '자소서 초안' });
+  await expect(page.getByText('지원 동기 칸이 아직 비어 있어요')).toBeVisible();
+  await box.fill('인증 흐름을 끝까지 책임져 보고 싶어 지원했습니다.');       // 표식을 지우고 직접 쓰면서 제한 안으로 줄인다
+  await expect(page.getByText('지원 동기 칸이 아직 비어 있어요')).toHaveCount(0);
+  await expect(page.getByText(/글자 수 제한을 [\d,]+자 넘었어요/)).toHaveCount(0);
+  await expect(page.getByText('28자 / 500자')).toBeVisible();
+  await page.getByRole('button', { name: '저장하고 닫기' }).click();
+  await expect(page.getByText('직접 고침').first()).toBeVisible(); // 저장이 끝나 편집이 닫힌 뒤에 새로고침한다
+  await page.reload();
+  await expect(page.getByText('인증 흐름을 끝까지 책임져 보고 싶어 지원했습니다.')).toBeVisible();
+  await expect(page.getByText('28자 / 500자')).toBeVisible();
+  await expect(page.getByText('지원 동기 칸이 아직 비어 있어요')).toHaveCount(0);
 });
 
 test('확정한 카드가 없으면 근거를 지어내지 않고 카드 정리로 안내한다', async ({ page }) => {

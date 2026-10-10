@@ -4,17 +4,17 @@ import { Building2 } from 'lucide-react';
 import { matchSupported } from '@/api/capabilities';
 import { useCards, useMatches } from '@/api/queries';
 import type { MatchTarget } from '@/api/schemas';
-import { Badge, Chip, EmptyState, IconBox, Note, PageTitle, Skeleton } from '@/components/ui';
+import { Badge, EmptyState, IconBox, Note, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { SearchField } from '@/components/ui/SearchField';
 import { Select } from '@/components/ui/Select';
 import { ymd } from '@/lib/format';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { FeaturePending, FitBadge, NeedsConfirmedCards, SampleDataNote, daysUntil } from './shared';
+import { FeaturePending, FitBadge, NeedsConfirmedCards, SampleDataNote, TagChip, daysUntil } from './shared';
 
 type Sort = 'fit' | 'recent' | 'name';
-const SORT_LABEL: Record<Sort, string> = { fit: '근거 많은 순', recent: '확인일 최신 순', name: '회사 이름 순' };
+const SORT_LABEL: Record<Sort, string> = { fit: '근거 많은 순', recent: '기업 정보 확인일 최신 순', name: '회사 이름 순' };
 const ALL_ROLES = 'all';
 
 /** 기업·직무 매칭 — 확정한 카드 근거가 각 기업의 인재상을 얼마나 뒷받침하는지 보여준다. */
@@ -31,10 +31,10 @@ export function MatchListPage() {
   const roles = useMemo(() => [...new Set((matches.data ?? []).map((match) => match.role))], [matches.data]);
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    // 서버가 확인일이 지난 기업을 빼 주지만, 화면을 열어 둔 사이 만료된 기업까지 방어한다.
+    // 서버가 기업 정보 확인일이 지난 기업을 빼 주지만, 화면을 열어 둔 사이 만료된 기업까지 방어한다.
     const found = (matches.data ?? []).filter((match) =>
       Date.parse(match.source.expiresAt) > Date.now() && (role === ALL_ROLES || match.role === role)
-      && (!needle || [match.company, match.role, match.summary, ...match.matchedTags].some((text) => text.toLowerCase().includes(needle))));
+      && (!needle || [match.company, match.role, match.summary, ...match.matchedTags, ...match.gapTags].some((text) => text.toLowerCase().includes(needle))));
     // 서버가 이미 근거 등급 순으로 준다 — 'fit' 은 그 순서를 그대로 쓴다.
     if (sort === 'recent') return [...found].sort((a, b) => b.source.verifiedAt.localeCompare(a.source.verifiedAt));
     if (sort === 'name') return [...found].sort((a, b) => a.company.localeCompare(b.company));
@@ -56,7 +56,7 @@ export function MatchListPage() {
         </div>
       </div>
       <Note strong="내가 확정한 카드로만 비교해요" tone="inset">
-        등급은 합격 가능성이 아니라 확정한 카드 근거가 인재상을 뒷받침하는 정도예요. 근거가 없는 인재상은 지어내지 않고 빈 칸으로 보여줘요.
+        등급은 합격 가능성이 아니라 확정한 카드 근거가 인재상을 뒷받침하는 정도예요. 근거는 카드의 행동·결과 문장에서만 가져오고, 근거가 없는 인재상(점선 칩)은 지어내지 않고 빈 칸으로 보여줘요.
       </Note>
       {matches.isError && <QueryFailure error={matches.error} retry={() => matches.refetch()} pending={matches.isFetching} />}
       {cards.isError && !matches.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
@@ -70,8 +70,9 @@ export function MatchListPage() {
       )}
       <SampleDataNote />
       {confirmed > 0 && (
-        <div className="row">
-          <Link to="/cover-letter" className="btn btn--outline">자소서 초안 만들기</Link>
+        <div className="stack" style={{ gap: 8, alignItems: 'flex-start' }}>
+          <Link to="/cover-letter" className="btn btn--outline">일반 자소서 만들기</Link>
+          <span className="t-12 c-3">특정 기업 없이 만들어요. 기업 기준으로 만들려면 기업을 열어 주세요.</span>
         </div>
       )}
     </main>
@@ -80,7 +81,6 @@ export function MatchListPage() {
 
 function MatchRow({ match }: { match: MatchTarget }) {
   const left = daysUntil(match.source.expiresAt);
-  const extra = Math.max(0, match.matchedTags.length - 3);
   return (
     <Link to={`/match/${match.id}`} className="card row repo-row" onClick={() => track('match_opened', { matchId: match.id, fit: match.fit })}>
       <IconBox icon={Building2} size={34} />
@@ -91,15 +91,16 @@ function MatchRow({ match }: { match: MatchTarget }) {
           <FitBadge fit={match.fit} />
           {left <= 14 && <Badge kind="CAUTION">곧 만료 · {Math.max(left, 0)}일 남음</Badge>}
         </div>
-        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-          {match.matchedTags.slice(0, 3).map((tag) => <Chip key={tag} fill>{tag}</Chip>)}
-          {extra > 0 && <span className="t-12 c-3">+{extra}</span>}
-          {match.matchedTags.length === 0 && <span className="repo-row__warn">아직 맞닿는 인재상 근거가 없어요</span>}
+        <div className="row" role="list" style={{ gap: 6, flexWrap: 'wrap' }}>
+          {match.matchedTags.map((tag) => <TagChip key={tag} tag={tag} />)}
+          {match.gapTags.map((tag) => <TagChip key={tag} tag={tag} gap />)}
         </div>
+        {match.matchedTags.length === 0 && <span className="repo-row__warn">아직 맞닿는 인재상 근거가 없어요</span>}
         <span className="repo-row__stats t-12 c-3">
           <span>인재상 {match.supportedTagCount}/{match.tagCount} 근거 확보</span>
+          {match.independentTagCount < match.supportedTagCount && <span>서로 다른 카드 기준 {match.independentTagCount}/{match.tagCount}</span>}
           <span>근거 카드 {match.supportingCardCount}장</span>
-          <span>확인일 {ymd(match.source.verifiedAt)}</span>
+          <span>기업 정보 확인일 {ymd(match.source.verifiedAt)}</span>
         </span>
       </div>
     </Link>

@@ -371,11 +371,15 @@ export const MatchTarget = z.object({
   id: z.string(), company: z.string(), role: z.string(), summary: z.string(),
   fit: FitGrade,
   tagCount: z.number().int().nonnegative(), supportedTagCount: z.number().int().nonnegative(), supportingCardCount: z.number().int().nonnegative(),
+  /** 서로 다른 카드로 각각 뒷받침되는 인재상 수 — 카드 한 장은 인재상 하나의 근거로만 센다. 등급은 이 값으로 매긴다. */
+  independentTagCount: z.number().int().nonnegative(),
   matchedTags: z.array(z.string()),
+  /** 근거가 없는 인재상 — 목록에서도 빈 칸을 알아볼 수 있게 함께 내려준다. */
+  gapTags: z.array(z.string()),
   source: MatchSource,
 });
 export const MatchSupport = z.object({ cardId: z.string(), cardTitle: z.string(), cardKind: CardKind, field: StarField, sentence: z.string() });
-/** supports 가 비어 있으면 근거가 없는 인재상(빈 칸)이다 — 숨기지 않고 그대로 보여준다. */
+/** supports 가 비어 있으면 근거가 없는 인재상(빈 칸)이다 — 숨기지 않고 그대로 보여준다. 근거는 카드의 행동(A)·결과(R) 칸에서만 가져온다. */
 export const MatchTag = z.object({ tag: z.string(), supports: z.array(MatchSupport) });
 export const MatchDetail = MatchTarget.extend({ tags: z.array(MatchTag) });
 export type FitGrade = z.infer<typeof FitGrade>;
@@ -385,13 +389,18 @@ export type MatchTag = z.infer<typeof MatchTag>;
 export type MatchDetail = z.infer<typeof MatchDetail>;
 
 export const CoverLetterQuestion = z.enum(['MOTIVATION', 'COLLABORATION', 'PROBLEM_SOLVING', 'GROWTH']);
-/** EVIDENCE = 사용자가 확정한 카드 문장(마스킹 적용) · CONNECTIVE = 문항·대상에서 아는 사실만 잇는 연결 문장. */
-export const CoverLetterParagraph = z.object({ kind: z.enum(['EVIDENCE', 'CONNECTIVE']), text: z.string(), cardId: z.string().nullable(), cardTitle: z.string().nullable() })
+/**
+ * EVIDENCE = 사용자가 확정한 카드 문장(마스킹 적용) · CONNECTIVE = 문항·대상에서 아는 사실만 잇는 연결 문장 ·
+ * SLOT = 사용자가 직접 써야 하는 칸(지원 동기). SLOT 의 text 는 SLOT_MARK 표식이다.
+ */
+export const CoverLetterParagraph = z.object({ kind: z.enum(['EVIDENCE', 'CONNECTIVE', 'SLOT']), text: z.string(), cardId: z.string().nullable(), cardTitle: z.string().nullable() })
   // 카드 문장인데 어느 카드인지 모르면 "확정한 카드 문장"이라는 표시가 거짓이 된다 — 계약 위반으로 본다.
   .refine((p) => p.kind !== 'EVIDENCE' || (!!p.cardId && !!p.cardTitle), { message: 'EVIDENCE 문단에는 cardId·cardTitle 이 있어야 합니다' });
 export const CoverLetterSummary = z.object({
   id: z.string(), matchId: z.string().nullable(), company: z.string().nullable(), role: z.string().nullable(),
   question: CoverLetterQuestion, edited: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+  /** 문항의 글자 수 제한(공백 포함). null 이면 제한 없음. 글자 수는 화면이 현재 본문으로 센다. */
+  charLimit: z.number().int().positive().nullable(),
 });
 export const CoverLetter = CoverLetterSummary.extend({
   paragraphs: z.array(CoverLetterParagraph), text: z.string(), cardIds: z.array(z.string()),

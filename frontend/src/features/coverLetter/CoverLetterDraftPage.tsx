@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Sparkles, UserRound } from 'lucide-react';
+import { PenLine, Sparkles, UserRound } from 'lucide-react';
 import { matchSupported } from '@/api/capabilities';
 import { ApiError } from '@/api/client';
 import { useCoverLetter, useSaveCoverLetter } from '@/api/queries';
@@ -9,6 +9,7 @@ import { SaveStatus, UnsavedChangesDialog } from '@/components/SaveStatus';
 import { Badge, Breadcrumb, Button, EmptyState, IconBox, Note, PageTitle, Skeleton, StickyFooter, Textarea } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { FeaturePending } from '@/features/match/shared';
+import { charCount, hasEmptySlot } from '@/lib/coverLetter';
 import { copyText } from '@/lib/exportCard';
 import { coverLetterQuestionLabel } from '@/lib/labels';
 import { toast } from '@/lib/toast';
@@ -18,6 +19,32 @@ import { useDraftAutosave } from '@/lib/useDraftAutosave';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 
 const titleOf = (letter: CoverLetter) => `${letter.company ?? '지원 대상 없음'} · ${coverLetterQuestionLabel[letter.question]}`;
+
+/** 글자 수(공백 포함) — 제한이 있으면 `현재 / 제한`. */
+const countLabel = (text: string, limit: number | null) => `${charCount(text).toLocaleString()}자${limit !== null ? ` / ${limit.toLocaleString()}자` : ''}`;
+const isOver = (text: string, limit: number | null) => limit !== null && charCount(text) > limit;
+function CharCount({ text, limit }: { text: string; limit: number | null }) {
+  return <Badge kind={isOver(text, limit) ? 'CAUTION' : 'NEUTRAL'}>{countLabel(text, limit)}</Badge>;
+}
+
+/** 직접 쓸 칸이 비어 있거나 글자 수 제한을 넘었을 때의 안내 — 읽기 화면은 저장된 본문, 편집 중에는 지금 쓰는 글 기준이다. */
+function LengthNotes({ text, limit }: { text: string; limit: number | null }) {
+  const count = charCount(text);
+  return (
+    <>
+      {hasEmptySlot(text) && (
+        <Note strong="지원 동기 칸이 아직 비어 있어요" tone="caution">
+          지원 동기는 AI가 대신 쓰지 않았어요. 표식 자리에 지원하는 이유를 직접 써 주세요.
+        </Note>
+      )}
+      {limit !== null && count > limit && (
+        <Note strong={`글자 수 제한을 ${(count - limit).toLocaleString()}자 넘었어요`} tone="caution">
+          공백 포함 {count.toLocaleString()}자예요(제한 {limit.toLocaleString()}자). 카드 문장을 줄이거나 직접 고쳐서 맞춰 주세요.
+        </Note>
+      )}
+    </>
+  );
+}
 
 /** 자소서 초안 — 문장마다 출처(내 카드 / AI 연결 문장)를 보여주고, 직접 고치면 자동 저장한다. */
 export function CoverLetterDraftPage() {
@@ -45,15 +72,18 @@ export function CoverLetterDraftPage() {
   const editing = sp.get('mode') === 'edit';
   const closeEditor = () => setSp((current) => { current.delete('mode'); return current; });
   const copy = async () => {
-    if (await copyText(letter.text)) { track('cover_letter_copied', { letterId: letter.id }); toast('자소서 초안을 복사했어요', { tone: 'success' }); }
+    if (await copyText(letter.text)) {
+      track('cover_letter_copied', { letterId: letter.id });
+      toast(hasEmptySlot(letter.text) ? '복사했어요. 지원 동기 칸은 아직 비어 있어요' : '자소서 초안을 복사했어요', { tone: 'success' });
+    }
     else toast('복사하지 못했어요. 직접 선택해서 복사해 주세요.', { tone: 'danger' });
   };
-  const retry = `/cover-letter?${new URLSearchParams({ ...(letter.matchId ? { match: letter.matchId } : {}), question: letter.question })}`;
+  const retry = `/cover-letter?${new URLSearchParams({ ...(letter.matchId ? { match: letter.matchId } : {}), question: letter.question, ...(letter.charLimit ? { limit: String(letter.charLimit) } : {}) })}`;
 
   return (
     <main className={`main main--tight ${editing ? 'main--footer' : ''}`}>
       <Breadcrumb items={crumbs} />
-      <PageTitle sub={<><Badge kind="DRAFT">{letter.edited ? '직접 고침' : 'AI 초안'}</Badge><span className="t-12 c-3">{letter.role ?? '지원 직무 없음'}</span></>}
+      <PageTitle sub={<><Badge kind="DRAFT">{letter.edited ? '직접 고침' : 'AI 초안'}</Badge><span className="t-12 c-3">{letter.role ?? '지원 직무 없음'}</span>{!editing && <CharCount text={letter.text} limit={letter.charLimit} />}</>}
         right={!editing && (
           <span className="row" style={{ gap: 8 }}>
             <Button variant="outline" size="sm" onClick={() => void copy()}>복사</Button>
@@ -75,14 +105,15 @@ export function CoverLetterDraftPage() {
           {letter.notUsed.join(' · ')} — <Link to={retry} className="w-600" style={{ textDecoration: 'underline' }}>카드를 골라 다시 만들기</Link>
         </Note>
       )}
+      {!editing && <LengthNotes text={letter.text} limit={letter.charLimit} />}
       {editing
         ? <Editor key={letter.id} letter={letter} onDone={closeEditor} />
-        : <ReadView letter={letter} retry={retry} />}
+        : <ReadView letter={letter} retry={retry} onEdit={() => setSp({ mode: 'edit' })} />}
     </main>
   );
 }
 
-function ReadView({ letter, retry }: { letter: CoverLetter; retry: string }) {
+function ReadView({ letter, retry, onEdit }: { letter: CoverLetter; retry: string; onEdit: () => void }) {
   return (
     <>
       {letter.edited ? (
@@ -91,20 +122,33 @@ function ReadView({ letter, retry }: { letter: CoverLetter; retry: string }) {
         </div>
       ) : (
         <div className="card star-read">
-          {letter.paragraphs.map((paragraph, index) => (
-            <div key={index} className="star-read__row">
-              <div className="star-row__heading">
-                <div className="star-row__label">
-                  <IconBox icon={paragraph.kind === 'EVIDENCE' ? UserRound : Sparkles} size={28} tone={paragraph.kind === 'EVIDENCE' ? 'ink' : 'subtle'} />
-                  {paragraph.kind === 'EVIDENCE' && paragraph.cardId
-                    ? <Link to={`/cards/${paragraph.cardId}`} className="star__name">내 경험 · {paragraph.cardTitle}</Link>
-                    : <span className="star__name">연결 문장</span>}
+          {letter.paragraphs.map((paragraph, index) => {
+            const slot = paragraph.kind === 'SLOT';
+            const evidence = paragraph.kind === 'EVIDENCE';
+            return (
+              <div key={index} className={`star-read__row ${slot ? 'star-read__row--gap' : ''}`}>
+                <div className="star-row__heading">
+                  <div className="star-row__label">
+                    <IconBox icon={slot ? PenLine : evidence ? UserRound : Sparkles} size={28} tone={evidence ? 'ink' : 'subtle'} />
+                    {evidence && paragraph.cardId
+                      ? <Link to={`/cards/${paragraph.cardId}`} className="star__name">내 경험 · {paragraph.cardTitle}</Link>
+                      : <span className="star__name">{slot ? '직접 쓸 칸 · 지원 동기' : '연결 문장'}</span>}
+                  </div>
+                  <div className="star-row__meta"><Badge kind={slot ? 'CAUTION' : 'NEUTRAL'}>{slot ? '아직 비어 있어요' : evidence ? '확정한 카드 문장' : 'AI가 이은 문장'}</Badge></div>
                 </div>
-                <div className="star-row__meta"><Badge kind="NEUTRAL">{paragraph.kind === 'EVIDENCE' ? '확정한 카드 문장' : 'AI가 이은 문장'}</Badge></div>
+                <div className="star-row__body">
+                  {slot
+                    ? (
+                      <>
+                        <p className="t-12l c-2">지원 동기는 AI가 대신 쓰지 않아요. {paragraph.text} 자리에 직접 써 주세요.</p>
+                        <div><Button variant="outline" size="sm" onClick={onEdit}>직접 쓰러 가기</Button></div>
+                      </>
+                    )
+                    : <p className="star__text">{paragraph.text}</p>}
+                </div>
               </div>
-              <div className="star-row__body"><p className="star__text">{paragraph.text}</p></div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       {letter.edited && (
@@ -135,9 +179,12 @@ function Editor({ letter, onDone }: { letter: CoverLetter; onDone: () => void })
   };
   return (
     <>
+      <LengthNotes text={text} limit={letter.charLimit} />
+      <span className="sr-only" role="status">{[hasEmptySlot(text) && '지원 동기 칸이 아직 비어 있어요', isOver(text, letter.charLimit) && '글자 수 제한을 넘었어요'].filter(Boolean).join('. ')}</span>
       <Textarea className="input--lg" rows={16} maxLength={10_000} value={text} aria-label="자소서 초안" onChange={(event) => setText(event.target.value)} />
       <SaveStatus status={autosave.status} retry={flush} />
-      <StickyFooter strong={`${text.length.toLocaleString()}자`} sub={failed ? '연결을 확인하고 다시 눌러 주세요' : '쓰는 동안 알아서 저장돼요'}>
+      <StickyFooter strong={countLabel(text, letter.charLimit)}
+        sub={failed ? '연결을 확인하고 다시 눌러 주세요' : isOver(text, letter.charLimit) ? '글자 수 제한을 넘었어요 · 쓰는 동안 알아서 저장돼요' : '쓰는 동안 알아서 저장돼요'}>
         <Button size="lg" loading={saving} onClick={done}>{failed ? '다시 저장하고 닫기' : '저장하고 닫기'}</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={saving} flush={flush} />

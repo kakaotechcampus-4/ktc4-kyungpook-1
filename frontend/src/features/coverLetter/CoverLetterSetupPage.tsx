@@ -8,6 +8,7 @@ import { Badge, Breadcrumb, Button, Check, Field, IconBox, Note, PageTitle, Sect
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { Select } from '@/components/ui/Select';
 import { FeaturePending, NeedsConfirmedCards } from '@/features/match/shared';
+import { CHAR_LIMITS } from '@/lib/coverLetter';
 import { ymdhm } from '@/lib/format';
 import { cardKindLabel, coverLetterQuestionLabel } from '@/lib/labels';
 import { track } from '@/lib/track';
@@ -29,6 +30,8 @@ export function CoverLetterSetupPage() {
   const [matchChoice, setMatchChoice] = useState(sp.get('match') ?? NONE);
   const parsed = CoverLetterQuestion.safeParse(sp.get('question'));
   const [question, setQuestion] = useState<CoverLetterQuestion>(parsed.success ? parsed.data : 'MOTIVATION');
+  const limitParam = sp.get('limit'); // 다시 만들기 링크가 이어 주는 이전 글자 수 제한
+  const [limit, setLimit] = useState(CHAR_LIMITS.some((value) => String(value) === limitParam) ? limitParam! : NONE); // 글자 수 제한(자) — NONE 이면 제한 없음
   const [picked, setPicked] = useState<string[] | null>(null); // null = 지원 대상에 맞춰 자동 추천
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -45,8 +48,9 @@ export function CoverLetterSetupPage() {
   const toggle = (id: string) => setPicked(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
   const submit = () => void actions.run(async () => {
     if (!selected.length) return;
-    const letter = await create.mutateAsync({ matchId: matchId === NONE ? null : matchId, question, cardIds: selected });
-    track('cover_letter_created', { letterId: letter.id, cards: selected.length, withTarget: matchId !== NONE });
+    const charLimit = limit === NONE ? null : Number(limit);
+    const letter = await create.mutateAsync({ matchId: matchId === NONE ? null : matchId, question, cardIds: selected, charLimit });
+    track('cover_letter_created', { letterId: letter.id, cards: selected.length, withTarget: matchId !== NONE, charLimit });
     if (mounted.current) nav(`/cover-letter/${letter.id}`); // 응답을 기다리는 동안 다른 화면으로 갔다면 끌고 오지 않는다
   });
   const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: '자소서 초안' }];
@@ -71,9 +75,13 @@ export function CoverLetterSetupPage() {
               <Select value={matchId} label="지원 대상" onChange={(value) => { setMatchChoice(value); setPicked(null); }}
                 options={[{ value: NONE, label: '지원 대상 없음 (일반 자소서)' }, ...(matches.data ?? []).map((match) => ({ value: match.id, label: `${match.company} · ${match.role}` }))]} />
             </Field>
-            <Field label="문항">
+            <Field label="문항" hint={question === 'MOTIVATION' ? '지원 동기는 내가 가장 잘 아는 이야기라 AI가 대신 쓰지 않고, 직접 쓸 빈 칸으로 남겨요' : undefined}>
               <Select value={question} label="문항" onChange={setQuestion}
                 options={CoverLetterQuestion.options.map((value) => ({ value, label: coverLetterQuestionLabel[value] }))} />
+            </Field>
+            <Field label="글자 수 제한" hint="공백 포함이에요. 카드 문장을 그대로 쓰기 때문에, 제한을 넘으면 초안에서 알려 드려요">
+              <Select value={limit} label="글자 수 제한" onChange={setLimit}
+                options={[{ value: NONE, label: '제한 없음' }, ...CHAR_LIMITS.map((value) => ({ value: String(value), label: `${value.toLocaleString()}자` }))]} />
             </Field>
           </div>
           <section className="stack" style={{ gap: 10 }}>

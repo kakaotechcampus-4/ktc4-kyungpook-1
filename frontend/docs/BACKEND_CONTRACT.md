@@ -180,26 +180,32 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 | 엔드포인트 | 요청 | 응답 |
 |---|---|---|
-| `GET /matches` | | `MatchTarget[]` — 근거 등급 순. 기업마다 공개 출처 `source:{ url, verifiedAt(확인일), expiresAt(만료일) }` 가 필수이고, **만료일이 지난 기업은 서버가 뺀다** |
-| `GET /matches/{id}` | | `MatchDetail` = `MatchTarget` + `tags:[{ tag, supports:[{ cardId, cardTitle, cardKind, field, sentence }] }]`. `supports` 가 비면 근거 없는 인재상(빈 칸) |
+| `GET /matches` | | `MatchTarget[]` — 근거 등급 순. 기업마다 공개 출처 `source:{ url, verifiedAt(기업 정보 확인일), expiresAt(만료일) }` 가 필수이고, **만료일이 지난 기업은 서버가 뺀다**. 인재상은 `matchedTags[]`(근거 있음) · `gapTags[]`(근거 없음)로 나눠 내려 목록에서도 빈 칸을 보여 준다. `supportedTagCount`(근거가 보이는 인재상 수)와 `independentTagCount`(서로 다른 카드 기준, 등급은 이 값으로 매긴다)는 다를 수 있다 |
+| `GET /matches/{id}` | | `MatchDetail` = `MatchTarget` + `tags:[{ tag, supports:[{ cardId, cardTitle, cardKind, field, sentence }] }]`. `field` 는 `A`·`R` 만 온다. 같은 카드의 행동·결과가 둘 다 근거면 `supports` 에 둘 다 담는다. `supports` 가 비면 근거 없는 인재상(빈 칸) |
 | `GET /cover-letters` | | `CoverLetterSummary[]` 최근 수정 순 (본문 없음) |
-| `POST /cover-letters` | `{ matchId \| null, question, cardIds[] }` | `CoverLetter`. `question` = `MOTIVATION` · `COLLABORATION` · `PROBLEM_SOLVING` · `GROWTH` |
+| `POST /cover-letters` | `{ matchId \| null, question, cardIds[], charLimit \| null }` | `CoverLetter`. `question` = `MOTIVATION` · `COLLABORATION` · `PROBLEM_SOLVING` · `GROWTH`. `charLimit` = 공백 포함 글자 수 제한(100~5000 정수), 제한 없으면 `null` |
 | `GET /cover-letters/{id}` | | `CoverLetter` = 요약 + `paragraphs[]` · `text` · `cardIds[]` · `gaps[]`(확정 카드 어디에도 근거가 없는 인재상) · `notUsed[]`(근거 카드는 있는데 이번에 안 고른 인재상) · `stale`(아래 7) |
 | `PATCH /cover-letters/{id}` | `{ text }` (≤10,000자) | `{ id, text, edited, updatedAt }` — 임시 저장. 처음 생성된 문장과 달라지면 `edited:true` |
 
-오류: `400 BAD_QUESTION`/`BAD_TEXT` · `404 MATCH_NOT_FOUND`(만료 포함)/`COVER_LETTER_NOT_FOUND` · `422 NO_EVIDENCE`(카드 미선택)/`CARD_NOT_CONFIRMED`(확정하지 않은 카드).
+오류: `400 BAD_QUESTION`/`BAD_TEXT`/`BAD_LIMIT`(글자 수 제한이 정수가 아니거나 범위 밖) · `404 MATCH_NOT_FOUND`(만료 포함)/`COVER_LETTER_NOT_FOUND` · `422 NO_EVIDENCE`(카드 미선택)/`CARD_NOT_CONFIRMED`(확정하지 않은 카드).
 
 **제품 원칙 — 서버가 지켜야 하는 것** (프론트 화면과 목은 이미 이 전제로 만들었다)
 
-1. **확정한(`CONFIRMED`) 카드만 근거다.** 초안 카드는 키워드가 맞아도 세지 않는다.
-2. **등급(`fit` A~D)은 규칙이 매긴다.** 합격 가능성·점수·퍼센트는 응답에도 화면에도 없다 ("92% 기여" 류 수치화된 자기 주장을 만들지 않는 기존 결정과 같다). 목의 규칙: 뒷받침된 인재상 ≥75% 이고 근거 카드 ≥2장이면 A, ≥50% 면 B, 1개 이상이면 C, 0개면 D.
+1. **확정한(`CONFIRMED`) 카드만 근거이고, 카드 안에서는 행동(A)·결과(R) 칸 문장만 근거다.** 초안 카드는 키워드가 맞아도 세지 않는다.
+   상황(S)·과제(T)는 "무슨 일이 있었는가"일 뿐 그 역량을 보여 준 증거가 아니라서(예: "의견이 갈렸다"는 협업의 증거가 아니다) 근거로 쓰지 않는다.
+2. **등급(`fit` A~D)은 규칙이 매긴다.** 합격 가능성·점수·퍼센트는 응답에도 화면에도 없다 ("92% 기여" 류 수치화된 자기 주장을 만들지 않는 기존 결정과 같다).
+   **카드 한 장은 인재상 하나의 근거로만 센다**(카드↔인재상 최대 매칭). 같은 카드·문장이 여러 인재상에 걸려 보여도 등급에는 한 번만 들어가, 카드 한두 장으로 "충분"이 나오지 않는다.
+   서로 다른 카드로 뒷받침되는 인재상 수(`independentTagCount`)가 전체의 ≥75% 이고 **3개 이상**이면 A, ≥50% 면 B, 1개 이상이면 C, 0개면 D. 화면에는 둘 다 보여 주고(근거가 보이는 인재상 / 서로 다른 카드 기준) 같은 카드가 여러 인재상에 쓰였다는 사실도 알려 준다.
    AI `/matching`(`score`/`matched_keywords`/`rationale`)은 인재상 키워드를 뽑는 데 쓰고, 등급은 그 위에서 규칙으로 계산하길 제안한다.
 3. **기업 정보는 `company_context` 모양을 따른다** — 공개 출처 URL · 직무 · 인재상 태그 · 확인일 필수, 만료되면 추천에서 제외. 출처 URL 은 `http(s)` 만 링크로 렌더링한다.
 4. **근거가 없는 인재상은 지어내지 않는다.** 상세는 빈 칸으로 보여주고, 자소서 초안은 `gaps[]` 로 "넣지 않은 인재상"을 돌려준다.
 5. **초안 = 확정한 카드 문장(마스킹 적용) + 연결 문장.** 연결 문장은 문항·지원 대상에서 이미 아는 사실만 잇고 새 경험·수치를 만들지 않는다. `paragraphs[].kind` 가 `EVIDENCE`/`CONNECTIVE` 로 둘을 구분해, 화면이 "내 카드 문장"과 "AI가 이은 문장"을 다르게 표시한다. 카드의 `maskRules` 는 서버가 적용한다(밖으로 나가는 글이다).
 6. 사용자가 고치면 `paragraphs` 는 처음 생성 시점의 근거 구성으로 남고, 화면은 `edited:true` 일 때 문장별 출처 표시를 숨긴다.
 7. **초안은 만든 시점의 스냅샷이다.** 쓴 카드가 그 뒤에 바뀌면(확정 해제 · 내용 수정 · **마스킹 변경**) 서버가 `stale:true` 로 돌려주고, 화면은 "다시 만들어 주세요"라고 알린다. 마스킹을 새로 걸었는데 옛 초안이 그대로 복사되는 일을 막으려는 것이다. 서버는 생성 시점의 마스킹 규칙을 보관해 비교한다.
-8. `paragraphs[].kind == EVIDENCE` 이면 `cardId`·`cardTitle` 이 반드시 있다(없으면 "확정한 카드 문장"이라는 표시가 거짓이 된다). 밖으로 나가는 `text` 의 연결 문장에는 앱 용어·의견을 넣지 않는다.
+8. **지원 동기는 지어내지 않고 직접 쓸 칸으로 남긴다.** `question == MOTIVATION` 이면 연결 문장 뒤에 `kind: SLOT` 문단(`cardId`·`cardTitle` 은 null, `text` 는 표식 `[지원 동기를 직접 적어 주세요]`)을 하나 넣는다.
+   사용자가 표식을 지우고 직접 쓰면 칸이 채워진 것이고, 화면은 본문에 표식이 남아 있는 동안 "칸이 비어 있어요"라고 알린다. 다른 문항에는 SLOT 이 없다.
+9. **글자 수 제한(`charLimit`)은 저장하고 돌려줄 뿐 본문을 자르지 않는다.** 글자 수(공백·줄바꿈 포함)는 화면이 현재 본문으로 세어 `현재 / 제한` 으로 보여 주고, 넘으면 몇 자 넘었는지 알린다. 카드 문장을 그대로 쓰기 때문에 제한보다 길게 나올 수 있다.
+10. `paragraphs[].kind == EVIDENCE` 이면 `cardId`·`cardTitle` 이 반드시 있다(없으면 "확정한 카드 문장"이라는 표시가 거짓이 된다). 밖으로 나가는 `text` 의 연결 문장에는 앱 용어·의견을 넣지 않는다.
 
 ### 아직 서버 쪽에 남은 일 (프론트는 계약대로 이미 붙어 있음)
 - 단계별 마지막 완료 지점을 Job 에 저장해, 재시도 때 처음부터 다시 돌리지 않고 이어서 처리하기.

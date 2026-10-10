@@ -5,6 +5,7 @@
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
 import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, matchTargets, matchDetail, createCoverLetter, coverLetterSummary, coverLetterView, saveCoverLetterText, COVER_QUESTIONS } from './store';
+import { CHAR_LIMIT_RANGE } from '../lib/coverLetter';
 import { now } from './fixtures';
 
 type Any = Record<string, any>;
@@ -258,7 +259,7 @@ on('POST', '/cards/:id/interview/:turn/answer', ({ params, body }) => {
 on('GET', '/matches', () => ok(matchTargets()));
 on('GET', '/matches/:id', ({ params }) => {
   const m = matchDetail(params[0]);
-  return m ? ok(m) : fail(404, 'MATCH_NOT_FOUND', '기업 정보를 찾을 수 없거나 확인일이 지났습니다');
+  return m ? ok(m) : fail(404, 'MATCH_NOT_FOUND', '기업 정보를 찾을 수 없거나 기업 정보 확인일이 지났습니다');
 });
 // 같은 시각이면 나중에 만든 초안이 먼저 — 비교 함수가 동률에서도 일관돼야 정렬이 흔들리지 않는다.
 on('GET', '/cover-letters', () => ok([...db.coverLetters]
@@ -267,13 +268,17 @@ on('GET', '/cover-letters', () => ok([...db.coverLetters]
 on('POST', '/cover-letters', ({ body }) => {
   const question = String(body.question ?? '');
   if (!(COVER_QUESTIONS as readonly string[]).includes(question)) return fail(400, 'BAD_QUESTION', '문항이 올바르지 않습니다');
+  const limit = body.charLimit ?? null; // null = 제한 없음
+  if (limit !== null && !(typeof limit === 'number' && Number.isInteger(limit) && limit >= CHAR_LIMIT_RANGE.min && limit <= CHAR_LIMIT_RANGE.max)) {
+    return fail(400, 'BAD_LIMIT', `글자 수 제한은 ${CHAR_LIMIT_RANGE.min}~${CHAR_LIMIT_RANGE.max}자의 정수이거나 비워 두어야 합니다`);
+  }
   const cardIds = Array.isArray(body.cardIds) ? body.cardIds.map(String) : [];
   if (!cardIds.length) return fail(422, 'NO_EVIDENCE', '확정한 카드를 하나 이상 골라야 합니다');
   const confirmed = new Set(db.cards.filter((c) => c.status === 'CONFIRMED').map((c) => c.id));
   if (cardIds.some((id: string) => !confirmed.has(id))) return fail(422, 'CARD_NOT_CONFIRMED', '확정한 카드만 자소서 초안에 쓸 수 있습니다');
   const matchId = body.matchId == null ? null : String(body.matchId);
-  if (matchId && !matchDetail(matchId)) return fail(404, 'MATCH_NOT_FOUND', '기업 정보를 찾을 수 없거나 확인일이 지났습니다');
-  return ok(coverLetterView(createCoverLetter({ matchId, question, cardIds: [...new Set<string>(cardIds)] })));
+  if (matchId && !matchDetail(matchId)) return fail(404, 'MATCH_NOT_FOUND', '기업 정보를 찾을 수 없거나 기업 정보 확인일이 지났습니다');
+  return ok(coverLetterView(createCoverLetter({ matchId, question, charLimit: limit, cardIds: [...new Set<string>(cardIds)] })));
 });
 on('GET', '/cover-letters/:id', ({ params }) => {
   const l = db.coverLetters.find((x) => x.id === params[0]);

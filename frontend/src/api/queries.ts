@@ -279,7 +279,7 @@ export const useCoverLetter = (id: string | undefined) =>
 export function useCreateCoverLetter() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { matchId: string | null; question: CoverLetterQuestion; cardIds: string[] }) => endpoints.createCoverLetter(body),
+    mutationFn: (body: { matchId: string | null; question: CoverLetterQuestion; cardIds: string[]; charLimit: number | null }) => endpoints.createCoverLetter(body),
     onSuccess: (letter) => { qc.setQueryData(keys.coverLetter(letter.id), letter); void qc.invalidateQueries({ queryKey: keys.coverLetters }); },
   });
 }

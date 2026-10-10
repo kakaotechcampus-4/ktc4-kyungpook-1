@@ -4,6 +4,7 @@
  * 데모 속도: ANALYZE 12초 · DRAFT 8초 (스펙 목표 30초/3분보다 빠르게).
  */
 import { seedCards, seedCandidates, seedCompanies, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
+import { SLOT_MARK } from '../lib/coverLetter';
 import { applyMask } from '../lib/mask';
 
 type Any = Record<string, any>;
@@ -396,7 +397,7 @@ export function restore(raw: string): boolean {
     const s = JSON.parse(raw);
     if (!s?.cards || !s?.repos) return false;
     db.user = s.user; db.repos = s.repos; db.candidates = s.candidates;
-    db.cards = s.cards; db.interview = s.interview ?? {}; db.coverLetters = s.coverLetters ?? []; db.seq = s.seq ?? 100;
+    db.cards = s.cards; db.interview = s.interview ?? {}; db.coverLetters = (s.coverLetters ?? []).map((letter: Any) => ({ charLimit: null, ...letter })); // 글자 수 제한이 생기기 전에 만든 초안은 제한 없음 db.seq = s.seq ?? 100;
     db.jobs.clear();
     (s.jobs ?? []).forEach((j: Any) => db.jobs.set(j.id, j));
     db.idem = new Map(s.idem ?? []);
@@ -413,34 +414,59 @@ const confirmedCards = () => db.cards.filter((c) => c.status === 'CONFIRMED');
 const latestOf = (c: Any) => c.versions[c.versions.length - 1];
 const maskedText = (c: Any, text: string) => applyMask(text, c.maskRules ?? []);
 
-const supportsFor = (c: Any, keywords: string[]): Support | null => {
+/** 인재상의 근거는 행동(A)·결과(R) 칸에서만 가져온다 — 상황(S)·과제(T)는 "무슨 일이 있었는가"일 뿐 그 역량을 보여 준 증거가 아니다. */
+const EVIDENCE_FIELDS = ['A', 'R'] as const;
+const supportsFor = (c: Any, keywords: string[]): Support[] => {
   const v = latestOf(c);
-  for (const f of STAR) {
+  const found: Support[] = [];
+  for (const f of EVIDENCE_FIELDS) {
     const text = String(v[FIELD_KEY[f]] ?? '');
     if (text.trim() && keywords.some((k) => text.toLowerCase().includes(k.toLowerCase()))) {
-      return { cardId: c.id, cardTitle: c.title, cardKind: c.kind, field: f, sentence: maskedText(c, text) };
+      found.push({ cardId: c.id, cardTitle: c.title, cardKind: c.kind, field: f, sentence: maskedText(c, text) });
     }
   }
-  return null;
+  return found;
 };
 
-/** 규칙 등급 — 합격 가능성이 아니라 "확정 카드 근거가 인재상을 얼마나 뒷받침하는가". */
-export const fitGrade = (tagCount: number, supported: number, cards: number) =>
-  supported === 0 ? 'D' : supported * 4 >= tagCount * 3 && cards >= 2 ? 'A' : supported * 2 >= tagCount ? 'B' : 'C';
+/**
+ * 서로 다른 카드로 각각 뒷받침되는 인재상 수 — 카드 한 장은 인재상 하나의 근거로만 센다(최대 매칭).
+ * 같은 카드·문장이 여러 인재상에 걸려도 등급에서는 한 번만 세어, 카드 한두 장으로 "충분"이 나오지 않게 한다.
+ */
+export function independentTagCount(tags: { supports: { cardId: string }[] }[]) {
+  const owner = new Map<string, number>(); // cardId → 그 카드를 근거로 쓰는 인재상 index
+  const assign = (i: number, seen: Set<string>): boolean => {
+    for (const { cardId } of tags[i].supports) {
+      if (seen.has(cardId)) continue;
+      seen.add(cardId);
+      const holder = owner.get(cardId);
+      if (holder === undefined || assign(holder, seen)) { owner.set(cardId, i); return true; }
+    }
+    return false;
+  };
+  return tags.reduce((count, _tag, i) => count + (assign(i, new Set()) ? 1 : 0), 0);
+}
+
+/**
+ * 규칙 등급 — 합격 가능성이 아니라 "확정 카드 근거가 인재상을 얼마나 뒷받침하는가".
+ * independent 는 서로 다른 카드로 뒷받침되는 인재상 수다. 충분(A)은 그중 75% 이상이면서 최소 3개일 때만 준다.
+ */
+export const fitGrade = (tagCount: number, independent: number) =>
+  independent === 0 ? 'D' : independent * 4 >= tagCount * 3 && independent >= 3 ? 'A' : independent * 2 >= tagCount ? 'B' : 'C';
 
 const liveCompanies = () => seedCompanies.filter((co) => Date.parse(co.source.expiresAt) > Date.now()); // 만료는 추천에서 제외
 
 function analyze(co: (typeof seedCompanies)[number], cards = confirmedCards()) {
-  const tags = co.tags.map((t) => ({ tag: t.tag, supports: cards.map((c) => supportsFor(c, t.keywords)).filter((x): x is Support => !!x) }));
+  const tags = co.tags.map((t) => ({ tag: t.tag, supports: cards.flatMap((c) => supportsFor(c, t.keywords)) }));
   const supported = tags.filter((t) => t.supports.length > 0);
   const cardIds = new Set(supported.flatMap((t) => t.supports.map((s) => s.cardId)));
+  const independent = independentTagCount(tags);
   return {
     tags,
     summary: {
       id: co.id, company: co.company, role: co.role, summary: co.summary,
-      fit: fitGrade(tags.length, supported.length, cardIds.size),
-      tagCount: tags.length, supportedTagCount: supported.length, supportingCardCount: cardIds.size,
-      matchedTags: supported.map((t) => t.tag), source: co.source,
+      fit: fitGrade(tags.length, independent),
+      tagCount: tags.length, supportedTagCount: supported.length, supportingCardCount: cardIds.size, independentTagCount: independent,
+      matchedTags: supported.map((t) => t.tag), gapTags: tags.filter((t) => t.supports.length === 0).map((t) => t.tag), source: co.source,
     },
   };
 }
@@ -448,7 +474,7 @@ function analyze(co: (typeof seedCompanies)[number], cards = confirmedCards()) {
 export function matchTargets() {
   const order: Record<string, number> = { A: 0, B: 1, C: 2, D: 3 };
   return liveCompanies().map((co) => analyze(co).summary)
-    .sort((a, b) => order[a.fit] - order[b.fit] || b.supportedTagCount - a.supportedTagCount || a.company.localeCompare(b.company));
+    .sort((a, b) => order[a.fit] - order[b.fit] || b.independentTagCount - a.independentTagCount || b.supportedTagCount - a.supportedTagCount || a.company.localeCompare(b.company));
 }
 export function matchDetail(id: string) {
   const co = liveCompanies().find((x) => x.id === id);
@@ -464,8 +490,9 @@ const tagList = (tags: string[]) => tags.map((t) => `'${t}'`).join(', ');
 /**
  * 초안 = 사용자가 확정한 카드 문장(마스킹 적용) + 짧은 연결 문장.
  * 연결 문장은 문항·지원 대상에서 이미 알려진 사실만 말하고 새 경험·수치를 만들지 않는다. 화면은 둘을 구분해 보여준다.
+ * 지원 동기 문항은 동기를 지어내지 않고, 사용자가 직접 쓸 칸(SLOT)을 남긴다. 글자 수 제한은 저장만 하고 본문을 줄이지 않는다.
  */
-export function createCoverLetter(input: { matchId: string | null; question: string; cardIds: string[] }) {
+export function createCoverLetter(input: { matchId: string | null; question: string; cardIds: string[]; charLimit: number | null }) {
   const cards = input.cardIds.map((id) => confirmedCards().find((c) => c.id === id)!);
   const target = input.matchId ? matchDetail(input.matchId) : null;
   const company = target ? liveCompanies().find((x) => x.id === target.id)! : null;
@@ -480,6 +507,7 @@ export function createCoverLetter(input: { matchId: string | null; question: str
     kind: 'CONNECTIVE', cardId: null, cardTitle: null,
     text: `${target ? `${target.company}의 ${target.role} 직무에 지원합니다. ` : ''}${QUESTION_NAME[input.question]}에 대한 경험을 말씀드리겠습니다.`,
   }];
+  if (input.question === 'MOTIVATION') paragraphs.push({ kind: 'SLOT', cardId: null, cardTitle: null, text: SLOT_MARK });
   for (const c of cards) {
     const v = latestOf(c);
     // 카드 문장은 끝맺음 없이 저장된 경우가 많아, 이어 붙이면 한 문장처럼 읽힌다 — 끝에 마침표가 없을 때만 보정한다.
@@ -492,7 +520,7 @@ export function createCoverLetter(input: { matchId: string | null; question: str
   const at = now();
   const letter = {
     id: nextId('cl'), matchId: target?.id ?? null, company: target?.company ?? null, role: target?.role ?? null,
-    question: input.question, paragraphs, text: paragraphs.map((p) => p.text).join('\n\n'), edited: false, gaps, notUsed,
+    question: input.question, charLimit: input.charLimit, paragraphs, text: paragraphs.map((p) => p.text).join('\n\n'), edited: false, gaps, notUsed,
     cardIds: cards.map((c) => c.id), createdAt: at, updatedAt: at,
     // 만든 시점의 마스킹 규칙 — 이후 카드가 바뀌었는지(stale) 알려 주려고 남긴다. 응답에는 싣지 않는다.
     maskSignature: Object.fromEntries(cards.map((c) => [c.id, JSON.stringify(c.maskRules ?? [])])),

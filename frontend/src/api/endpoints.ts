@@ -30,7 +30,7 @@ export const endpoints = {
   match: (id: string) => gated(() => api(S.MatchDetail, `/matches/${id}`)),
   coverLetters: () => gated(() => api(z.array(S.CoverLetterSummary), '/cover-letters')),
   coverLetter: (id: string) => gated(() => api(S.CoverLetter, `/cover-letters/${id}`)),
-  createCoverLetter: (body: { matchId: string | null; question: S.CoverLetterQuestion; cardIds: string[] }) =>
+  createCoverLetter: (body: { matchId: string | null; question: S.CoverLetterQuestion; cardIds: string[]; charLimit: number | null }) =>
     gated(() => api(S.CoverLetter, '/cover-letters', { method: 'POST', body })),
   saveCoverLetter: (id: string, text: string) => gated(() => api(S.CoverLetterSaved, `/cover-letters/${id}`, { method: 'PATCH', body: { text } })),
 

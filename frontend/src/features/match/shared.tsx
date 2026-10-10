@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { CircleDashed } from 'lucide-react';
 import type { FitGrade } from '@/api/schemas';
 import { Badge, EmptyState, Note, type BadgeKind } from '@/components/ui';
 import { fitGradeLabel } from '@/lib/labels';
@@ -11,9 +12,16 @@ export const FitBadge = ({ fit }: { fit: FitGrade }) => (
   <Badge kind={fitBadgeKind[fit]} title="합격 가능성이 아니라, 확정한 카드 근거가 인재상을 뒷받침하는 정도예요">{fitGradeLabel[fit]}</Badge>
 );
 
+/** 인재상 칩 — 근거가 있으면 채운 칩, 없으면 점선 칩. 스크린리더에는 상태를 글자로 같이 읽어 준다(링크 이름에도 남는다). */
+export const TagChip = ({ tag, gap }: { tag: string; gap?: boolean }) => (
+  <span role="listitem" className={`chip ${gap ? 'chip--gap' : 'chip--fill'}`}>
+    {gap && <CircleDashed size={12} aria-hidden />}{tag}<span className="sr-only">{gap ? ', 근거 없음' : ', 근거 있음'}</span>
+  </span>
+);
+
 export const SampleDataNote = () => (
   <Note strong="체험 모드의 가상 기업이에요" tone="inset">
-    실제 서비스에서는 공개 출처와 확인일이 있는 기업 정보만 보여주고, 확인일이 지난 정보는 추천에서 빼요.
+    실제 서비스에서는 공개 출처와 기업 정보 확인일이 있는 정보만 보여주고, 확인일이 지난 정보는 추천에서 빼요.
   </Note>
 );
 

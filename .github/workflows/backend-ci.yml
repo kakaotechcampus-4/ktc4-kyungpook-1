@@ -121,3 +121,33 @@ jobs:
             exit 1
           fi
           echo "마이그레이션 변경: 추가만 있음 (또는 없음)"
+
+  migration-order:
+    name: 마이그레이션 번호 순서 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 서버 DB 에 적용된 가장 큰 번호보다 작거나 같은 V 파일이 들어오면 Flyway 검증이 실패해 서버가 뜨지 않는다
+      # develop·main push 에서도 직전 커밋과 비교해 PR 검사 뒤에 다른 PR 이 먼저 머지된 경우까지 잡는다
+      - name: 새 마이그레이션 번호가 기존 번호보다 큰지
+        env:
+          BASE: ${{ github.base_ref && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: |
+          if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "비교할 직전 커밋이 없어 건너뜁니다."; exit 0
+          fi
+          git rev-parse --verify -q "$BASE^{commit}" > /dev/null || { echo "::error::비교할 커밋($BASE)을 찾지 못했습니다."; exit 1; }
+          dir=src/main/resources/db/migration
+          version() { sed -n 's|.*/V\([0-9._]*\)__.*|\1|p'; }
+          max=$(git ls-tree --name-only "$BASE" "$dir/" | version | sort -n | tail -1)
+          for v in $(git diff --name-only --no-renames --diff-filter=A "$BASE"...HEAD -- "$dir" | version); do
+            if ! [ "$v" -gt "${max:-0}" ]; then
+              echo "::error::새 마이그레이션 번호(V$v)는 정수이고 $BASE 의 가장 큰 번호(V$max)보다 커야 합니다. 파일 이름의 번호를 올리세요."; exit 1
+            fi
+          done
+          echo "새 마이그레이션 번호: 모두 V${max:-0} 보다 큼 (또는 추가 없음)"

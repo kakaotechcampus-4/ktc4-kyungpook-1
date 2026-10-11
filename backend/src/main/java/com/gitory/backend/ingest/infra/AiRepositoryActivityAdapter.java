@@ -5,10 +5,13 @@ import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ExclusionReason;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.domain.ReviewState;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
 import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
+import com.gitory.backend.ingest.port.CollectedReview;
+import com.gitory.backend.ingest.port.CollectedReviewComment;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +20,10 @@ import tools.jackson.databind.JsonNode;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /** Spring의 내부 저장소 ID를 수집 계약으로 변환하고 기존 저장 DTO로 투영한다. */
 @Component
@@ -132,6 +138,40 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
         return value;
     }
 
+    private static Integer optionalPositiveInt(JsonNode node, String field) {
+
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+
+        return positiveInt(node, field);
+
+    }
+
+    /** GitHub 의 리뷰·댓글 id 는 INT 를 넘으므로 long 으로 읽는다 */
+    private static long positiveLong(JsonNode node, String field) {
+
+        long value = integer(node, field);
+        if (value <= 0) {
+            throw AiClientException.invalidResponse();
+        }
+
+        return value;
+
+    }
+
+    private static Long optionalPositiveLong(JsonNode node, String field) {
+
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+
+        return positiveLong(node, field);
+
+    }
+
     private static boolean bool(JsonNode node, String field) {
         JsonNode value = node.path(field);
         if (!value.isBoolean()) { throw AiClientException.invalidResponse(); }
@@ -157,7 +197,72 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
                 withoutNul(optionalText(pr, "body_excerpt")), GithubState.valueOf(text(pr, "state")),
                 optionalText(pr, "author_login"), text(pr, "base_branch"), text(pr, "head_branch"),
                 Instant.parse(text(pr, "created_at")), optionalInstant(pr, "merged_at"), shas(pr, "commit_shas"),
-                issueNumbers(pr, "linked_issue_numbers"));
+                issueNumbers(pr, "linked_issue_numbers"), reviews(pr));
+
+    }
+
+    /**
+     * 제출하지 않은 PENDING 리뷰는 작성자에게만 보이는 초안이라, 사용자끼리 함께 쓰는 표에 남지 않게 그 리뷰와 그 리뷰 id 를 가진 줄 댓글을 넘기지 않는다
+     * 다른 리뷰와 같은 검사를 거치도록 다 읽은 뒤에 빼고, 제출되면 다음 수집이 같은 GitHub id 로 가져온다
+     */
+    private static List<CollectedReview> reviews(JsonNode pr) {
+
+        Set<Long> pendingIds = pendingReviewIds(pr);
+        List<CollectedReview> reviews = new ArrayList<>();
+        for (JsonNode review : array(pr, "reviews")) {
+            CollectedReview collected = new CollectedReview(positiveLong(review, "review_id"),
+                    reviewState(text(review, "state")), optionalText(review, "author_login"),
+                    withoutNul(optionalText(review, "body_excerpt")), optionalInstant(review, "submitted_at"),
+                    reviewComments(review, pendingIds));
+            if (!pendingIds.contains(collected.reviewId())) {
+                reviews.add(collected);
+            }
+        }
+
+        return List.copyOf(reviews);
+
+    }
+
+    private static Set<Long> pendingReviewIds(JsonNode pr) {
+
+        Set<Long> ids = new HashSet<>();
+        for (JsonNode review : array(pr, "reviews")) {
+            if (text(review, "state").equals("PENDING")) {
+                ids.add(positiveLong(review, "review_id"));
+            }
+        }
+
+        return ids;
+
+    }
+
+    /**
+     * AI 는 GitHub 리뷰 상태를 대문자로만 바꿔 그대로 보내므로 모르는 상태가 올 수 있다
+     * 그런 리뷰를 저장하면 CHECK 에 걸려 같은 수집 전체가 되돌아가므로 null 로 넘겨 그 리뷰 행만 건너뛰게 한다
+     */
+    private static ReviewState reviewState(String state) {
+
+        return Arrays.stream(ReviewState.values())
+                .filter(known -> known.name().equals(state))
+                .findFirst()
+                .orElse(null);
+
+    }
+
+    private static List<CollectedReviewComment> reviewComments(JsonNode review, Set<Long> pendingIds) {
+
+        List<CollectedReviewComment> comments = new ArrayList<>();
+        for (JsonNode comment : array(review, "comments")) {
+            CollectedReviewComment collected = new CollectedReviewComment(positiveLong(comment, "comment_id"),
+                    optionalPositiveLong(comment, "review_id"), optionalText(comment, "author_login"),
+                    withoutNul(text(comment, "body_excerpt")), optionalText(comment, "path"),
+                    optionalPositiveInt(comment, "line"), Instant.parse(text(comment, "created_at")));
+            if (!pendingIds.contains(collected.reviewId())) {
+                comments.add(collected);
+            }
+        }
+
+        return List.copyOf(comments);
 
     }
 
@@ -205,7 +310,7 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
 
     }
 
-    /** PostgreSQL 문자 칸은 U+0000 을 저장하지 못해, 사람이 쓴 PR·이슈 글에 섞여 오면 저장 전체가 실패하지 않게 지운다 */
+    /** PostgreSQL 문자 칸은 U+0000 을 저장하지 못해, 사람이 쓴 PR·이슈·리뷰 글에 섞여 오면 저장 전체가 실패하지 않게 지운다 */
     private static String withoutNul(String value) {
 
         return value == null ? null : value.replace("\0", "");

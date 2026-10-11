@@ -7,11 +7,15 @@ import static org.awaitility.Awaitility.await;
 import com.gitory.backend.ingest.infra.CollectionRunRepository;
 import com.gitory.backend.ingest.infra.GitCommitRepository;
 import com.gitory.backend.ingest.infra.IssueRepository;
+import com.gitory.backend.ingest.infra.PrReviewCommentRepository;
+import com.gitory.backend.ingest.infra.PrReviewRepository;
 import com.gitory.backend.ingest.infra.PullRequestRepository;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
 import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
+import com.gitory.backend.ingest.port.CollectedReview;
+import com.gitory.backend.ingest.port.CollectedReviewComment;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +57,11 @@ class ActivityStoreServiceTest {
     private static final List<String> BRANCHES = List.of("develop", "feature/session-index");
     private static final Instant PR_OPENED_AT = Instant.parse("2026-09-20T10:00:00Z");
     private static final Instant ISSUE_OPENED_AT = Instant.parse("2026-09-19T08:00:00Z");
+    // 실제 GitHub 리뷰·댓글 id 처럼 INT 를 넘는 값
+    private static final long REVIEW_ID = 5_417_303_905L;
+    private static final long COMMENT_ID = 5_417_303_906L;
+    private static final Instant REVIEWED_AT = Instant.parse("2026-09-20T12:00:00Z");
+    private static final Instant COMMENTED_AT = Instant.parse("2026-09-20T11:50:00Z");
 
     @Container
     @ServiceConnection
@@ -72,6 +81,12 @@ class ActivityStoreServiceTest {
 
     @Autowired
     IssueRepository issues;
+
+    @Autowired
+    PrReviewRepository reviews;
+
+    @Autowired
+    PrReviewCommentRepository reviewComments;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -104,7 +119,7 @@ class ActivityStoreServiceTest {
 
         CollectedPullRequest pr = new CollectedPullRequest(17, "세션 조회 성능 개선", null, GithubState.CLOSED, "grow22",
                 "develop", "feature/session-index", Instant.parse("2026-09-20T10:00:00Z"),
-                Instant.parse("2026-09-21T11:00:00Z"), List.of(SHA_1), List.of(42));
+                Instant.parse("2026-09-21T11:00:00Z"), List.of(SHA_1), List.of(42), List.of());
         CollectedIssue issue = new CollectedIssue(42, "세션 조회가 느립니다", null, GithubState.CLOSED, "reporter",
                 List.of(), Instant.parse("2026-09-19T08:00:00Z"), Instant.parse("2026-09-21T11:00:00Z"));
         Long runId = service.store(request(), new CollectedActivity(List.of(commit(SHA_1)), List.of(pr),
@@ -260,7 +275,7 @@ class ActivityStoreServiceTest {
     void savesPullRequestAndIssueWithoutOptionalValues() {
 
         CollectedPullRequest pr = new CollectedPullRequest(17, "세션 조회 성능 개선", null, GithubState.OPEN, null,
-                "develop", "feature/session-index", PR_OPENED_AT, null, List.of(), List.of());
+                "develop", "feature/session-index", PR_OPENED_AT, null, List.of(), List.of(), List.of());
         CollectedIssue issue = new CollectedIssue(42, "세션 조회가 느립니다", null, GithubState.OPEN, null, List.of(),
                 ISSUE_OPENED_AT, null);
 
@@ -322,7 +337,7 @@ class ActivityStoreServiceTest {
     void storesNothingWhenPullRequestCannotBeStored() {
 
         CollectedPullRequest tooLongTitle = new CollectedPullRequest(18, "가".repeat(257), null, GithubState.OPEN,
-                "grow22", "develop", "feature/too-long", PR_OPENED_AT, null, List.of(), List.of());
+                "grow22", "develop", "feature/too-long", PR_OPENED_AT, null, List.of(), List.of(), List.of());
         CollectedActivity activity = new CollectedActivity(List.of(commit(SHA_1)),
                 List.of(openPullRequest(17), tooLongTitle), List.of(openIssue(42)), null, null);
 
@@ -399,6 +414,227 @@ class ActivityStoreServiceTest {
     }
 
     @Test
+    @DisplayName("처음 수집한 PR 의 리뷰·줄 댓글이 같은 저장에서 칸마다 받은 값으로 저장되고 이번 수집 이력과 저장소가 연결된다")
+    void savesReviewsAndCommentsOfNewPullRequest() {
+
+        CollectedReviewComment comment = comment(COMMENT_ID, REVIEW_ID);
+        CollectedReview review = review(REVIEW_ID, comment);
+
+        Long runId = service.store(request(), detailsOf(List.of(reviewedPullRequest(17, review)), List.of()));
+
+        assertReviewStored(REVIEW_ID, 17, review, runId);
+        assertCommentStored(COMMENT_ID, 17, comment, runId);
+
+    }
+
+    @Test
+    @DisplayName("본문·제출 시각·작성자가 없는 리뷰와 리뷰 id·작성자·파일·줄이 없는 줄 댓글도 그 칸을 비운 채 저장된다")
+    void savesReviewAndCommentWithoutOptionalValues() {
+
+        CollectedReviewComment comment = new CollectedReviewComment(COMMENT_ID, null, null, "본문만 있는 댓글", null, null,
+                COMMENTED_AT);
+        CollectedReview review = new CollectedReview(REVIEW_ID, ReviewState.COMMENTED, null, null, null,
+                List.of(comment));
+
+        Long runId = service.store(request(), detailsOf(List.of(reviewedPullRequest(17, review)), List.of()));
+
+        assertReviewStored(REVIEW_ID, 17, review, runId);
+        assertCommentStored(COMMENT_ID, 17, comment, runId);
+
+    }
+
+    @Test
+    @DisplayName("상태를 모르는 리뷰는 리뷰 행만 저장하지 않고 그 리뷰에 달린 줄 댓글은 저장한다")
+    void skipsUnknownStateReviewButStoresItsComments() {
+
+        CollectedReviewComment comment = comment(COMMENT_ID, REVIEW_ID);
+        CollectedReview unknownState = new CollectedReview(REVIEW_ID, null, "reviewer", "책임 분리를 명확히 해주세요.",
+                REVIEWED_AT, List.of(comment));
+
+        Long runId = service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, unknownState, review(REVIEW_ID + 1))), List.of()));
+
+        assertThat(jdbc.queryForList("SELECT github_review_id FROM pr_review", Long.class))
+                .containsExactly(REVIEW_ID + 1);
+        assertCommentStored(COMMENT_ID, 17, comment, runId);
+
+    }
+
+    @Test
+    @DisplayName("줄 댓글 하나를 저장하지 못하면 먼저 저장한 수집 이력·커밋·PR·리뷰·줄 댓글까지 모두 되돌린다")
+    void storesNothingWhenReviewCommentCannotBeStored() {
+
+        CollectedReviewComment tooLongAuthor = new CollectedReviewComment(COMMENT_ID + 1, REVIEW_ID, "a".repeat(40),
+                "인덱스 책임을 repository 계층으로 옮겨주세요.", "backend/session.sql", 12, COMMENTED_AT);
+        CollectedActivity activity = new CollectedActivity(List.of(commit(SHA_1)),
+                List.of(reviewedPullRequest(17, review(REVIEW_ID, comment(COMMENT_ID, REVIEW_ID), tooLongAuthor))),
+                List.of(), null, null);
+
+        assertThatThrownBy(() -> service.store(request(), activity)).isInstanceOf(DataAccessException.class);
+
+        assertThat(runs.count()).isZero();
+        assertThat(countCommits()).isZero();
+        assertThat(countPullRequests()).isZero();
+        assertThat(countReviews()).isZero();
+        assertThat(countComments()).isZero();
+
+    }
+
+    @Test
+    @DisplayName("같은 리뷰를 다시 수집하면 같은 행의 상태·작성자·본문·제출 시각이 이번 값과 이번 수집 이력으로 바뀐다")
+    void overwritesReviewCollectedAgain() {
+
+        service.store(request(), detailsOf(List.of(reviewedPullRequest(17, review(REVIEW_ID))), List.of()));
+        Long firstId = storedReview(REVIEW_ID).getId();
+
+        Long secondRunId = service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, revisedReview(REVIEW_ID))), List.of()));
+
+        assertThat(countReviews()).isEqualTo(1);
+        assertThat(storedReview(REVIEW_ID).getId()).isEqualTo(firstId);
+        assertReviewStored(REVIEW_ID, 17, revisedReview(REVIEW_ID), secondRunId);
+
+    }
+
+    @Test
+    @DisplayName("같은 줄 댓글을 다시 수집하면 같은 행의 본문·파일·줄·작성자·리뷰 id 가 이번 값과 이번 수집 이력으로 바뀌고 작성 시각은 처음 값 그대로 남는다")
+    void overwritesCommentCollectedAgain() {
+
+        service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, review(REVIEW_ID, comment(COMMENT_ID, REVIEW_ID)))), List.of()));
+        Long firstId = storedComment(COMMENT_ID).getId();
+
+        CollectedReviewComment revised = revisedComment(COMMENT_ID, REVIEW_ID + 1);
+        Long secondRunId = service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, review(REVIEW_ID + 1, revised))), List.of()));
+
+        PrReviewComment stored = storedComment(COMMENT_ID);
+        assertThat(countComments()).isEqualTo(1);
+        assertThat(stored.getId()).isEqualTo(firstId);
+        assertThat(stored.getCollectionRunId()).isEqualTo(secondRunId);
+        assertThat(stored.getGithubReviewId()).isEqualTo(REVIEW_ID + 1);
+        assertThat(stored.getAuthorLogin()).isEqualTo(revised.authorLogin());
+        assertThat(stored.getBodyExcerpt()).isEqualTo(revised.bodyExcerpt());
+        assertThat(stored.getPath()).isEqualTo(revised.path());
+        assertThat(stored.getLine()).isEqualTo(revised.line());
+        assertThat(stored.getCommentedAt()).isEqualTo(COMMENTED_AT);
+
+    }
+
+    @Test
+    @DisplayName("다시 수집한 줄 댓글의 줄 번호가 비어 오면 저장된 줄 번호를 그대로 둔다")
+    void keepsStoredLineWhenCollectedAgainWithoutLine() {
+
+        service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, review(REVIEW_ID, commentOnLine(12)))), List.of()));
+
+        Long secondRunId = service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, review(REVIEW_ID, commentOnLine(null)))), List.of()));
+
+        assertThat(storedComment(COMMENT_ID).getLine()).isEqualTo(12);
+        assertThat(storedComment(COMMENT_ID).getCollectionRunId()).isEqualTo(secondRunId);
+
+    }
+
+    @Test
+    @DisplayName("다시 수집한 줄 댓글에 새 줄 번호가 오면 새 번호로 바꾼다")
+    void replacesStoredLineWithNewLine() {
+
+        service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, review(REVIEW_ID, commentOnLine(12)))), List.of()));
+
+        service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, review(REVIEW_ID, commentOnLine(30)))), List.of()));
+
+        assertThat(storedComment(COMMENT_ID).getLine()).isEqualTo(30);
+
+    }
+
+    @Test
+    @DisplayName("같은 리뷰·줄 댓글이 다른 저장소의 다른 PR 에 실려 와도 처음 저장한 저장소·PR 번호는 그대로 둔다")
+    void keepsPullRequestOfReviewAndCommentCollectedUnderAnotherPullRequest() {
+
+        service.store(request(),
+                detailsOf(List.of(reviewedPullRequest(17, review(REVIEW_ID, comment(COMMENT_ID, REVIEW_ID)))), List.of()));
+
+        service.store(new IngestRequest(connectOtherRepository(), BRANCHES, List.of()),
+                detailsOf(List.of(reviewedPullRequest(18, review(REVIEW_ID, comment(COMMENT_ID, REVIEW_ID)))), List.of()));
+
+        assertThat(storedReview(REVIEW_ID).getRepositoryId()).isEqualTo(repositoryId);
+        assertThat(storedReview(REVIEW_ID).getGithubPrNumber()).isEqualTo(17);
+        assertThat(storedComment(COMMENT_ID).getRepositoryId()).isEqualTo(repositoryId);
+        assertThat(storedComment(COMMENT_ID).getGithubPrNumber()).isEqualTo(17);
+
+    }
+
+    @Test
+    @DisplayName("다음 수집 응답에 없는 리뷰·줄 댓글은 지우지 않고 앞서 저장한 값 그대로 둔다")
+    void keepsReviewsAndCommentsMissingFromLaterCollection() {
+
+        Long firstRunId = service.store(request(), detailsOf(List.of(reviewedPullRequest(17,
+                review(REVIEW_ID, comment(COMMENT_ID, REVIEW_ID)),
+                review(REVIEW_ID + 1, comment(COMMENT_ID + 1, REVIEW_ID + 1)))), List.of()));
+
+        service.store(request(), detailsOf(List.of(reviewedPullRequest(17,
+                revisedReview(REVIEW_ID, revisedComment(COMMENT_ID, REVIEW_ID)))), List.of()));
+
+        assertThat(countReviews()).isEqualTo(2);
+        assertThat(countComments()).isEqualTo(2);
+        assertReviewStored(REVIEW_ID + 1, 17, review(REVIEW_ID + 1), firstRunId);
+        assertCommentStored(COMMENT_ID + 1, 17, comment(COMMENT_ID + 1, REVIEW_ID + 1), firstRunId);
+
+    }
+
+    @Test
+    @DisplayName("리뷰·줄 댓글은 받은 순서와 상관없이 GitHub id 가 작은 것부터 저장한다")
+    void storesReviewsAndCommentsInIdOrder() {
+
+        service.store(request(), detailsOf(List.of(
+                reviewedPullRequest(17, review(30, comment(300, 30L)), review(10, comment(100, 10L))),
+                reviewedPullRequest(9, review(20, comment(200, 20L)))), List.of()));
+
+        assertThat(jdbc.queryForList("SELECT github_review_id FROM pr_review ORDER BY id", Long.class))
+                .containsExactly(10L, 20L, 30L);
+        assertThat(jdbc.queryForList("SELECT github_comment_id FROM pr_review_comment ORDER BY id", Long.class))
+                .containsExactly(100L, 200L, 300L);
+
+    }
+
+    @Test
+    @DisplayName("두 Job 이 같은 리뷰·줄 댓글을 동시에 저장해도 둘 다 성공하고, 행은 하나씩 남아 나중에 저장한 값이 된다")
+    void concurrentStoresOfSameReviewAndCommentBothSucceed() throws Exception {
+
+        Long teammateRepositoryId = connectTeammate();
+        CollectedReviewComment revised = revisedComment(COMMENT_ID, REVIEW_ID);
+        CountDownLatch firstStoredBeforeCommit = new CountDownLatch(1);
+        ExecutorService firstJob = Executors.newSingleThreadExecutor();
+
+        try {
+            Future<Long> first = firstJob.submit(() -> transaction.execute(status -> {
+                Long runId = service.store(request(), detailsOf(
+                        List.of(reviewedPullRequest(17, review(REVIEW_ID, comment(COMMENT_ID, REVIEW_ID)))), List.of()));
+                firstStoredBeforeCommit.countDown();
+                await().atMost(5, TimeUnit.SECONDS).until(this::anotherStoreIsWaiting);
+                return runId;
+            }));
+            firstStoredBeforeCommit.await(5, TimeUnit.SECONDS);
+
+            Long secondRunId = service.store(new IngestRequest(teammateRepositoryId, BRANCHES, List.of()),
+                    detailsOf(List.of(reviewedPullRequest(17, revisedReview(REVIEW_ID, revised))), List.of()));
+
+            assertThat(first.get(10, TimeUnit.SECONDS)).isNotNull();
+            assertThat(countReviews()).isEqualTo(1);
+            assertThat(countComments()).isEqualTo(1);
+            assertReviewStored(REVIEW_ID, 17, revisedReview(REVIEW_ID), secondRunId);
+            assertThat(storedComment(COMMENT_ID).getBodyExcerpt()).isEqualTo(revised.bodyExcerpt());
+            assertThat(storedComment(COMMENT_ID).getCollectionRunId()).isEqualTo(secondRunId);
+        } finally {
+            firstJob.shutdown();
+        }
+
+    }
+
+    @Test
     @DisplayName("연결 저장소가 없으면 아무것도 저장되지 않는다")
     void rejectsUnknownUserRepository() {
 
@@ -453,7 +689,7 @@ class ActivityStoreServiceTest {
     private CollectedPullRequest openPullRequest(int number) {
 
         return new CollectedPullRequest(number, "세션 조회 성능 개선", "인덱스를 추가합니다.", GithubState.OPEN, "grow22",
-                "develop", "feature/session-index", PR_OPENED_AT, null, List.of(SHA_1), List.of(42));
+                "develop", "feature/session-index", PR_OPENED_AT, null, List.of(SHA_1), List.of(42), List.of());
 
     }
 
@@ -462,7 +698,7 @@ class ActivityStoreServiceTest {
 
         return new CollectedPullRequest(number, "세션 조회 성능 개선 (리뷰 반영)", "인덱스와 캐시를 추가합니다.",
                 GithubState.CLOSED, "grow-22", "main", "feature/session-cache", PR_OPENED_AT.plusSeconds(300),
-                Instant.parse("2026-09-21T11:00:00Z"), List.of(SHA_1, SHA_2), List.of(42, 43));
+                Instant.parse("2026-09-21T11:00:00Z"), List.of(SHA_1, SHA_2), List.of(42, 43), List.of());
 
     }
 
@@ -542,6 +778,118 @@ class ActivityStoreServiceTest {
     private int countIssues() {
 
         return jdbc.queryForObject("SELECT count(*) FROM issue", Integer.class);
+
+    }
+
+    // setUp 이 만든 다른 저장소(other)를 같은 사용자에게 연결한다
+    private Long connectOtherRepository() {
+
+        Long userId = jdbc.queryForObject("SELECT id FROM users WHERE github_login = 'grow22'", Long.class);
+        Long otherRepositoryId = jdbc.queryForObject("SELECT id FROM repository WHERE name = 'other'", Long.class);
+        return new TestFixtures(jdbc).insertUserRepository(userId, otherRepositoryId);
+
+    }
+
+    private CollectedPullRequest reviewedPullRequest(int number, CollectedReview... reviewed) {
+
+        return new CollectedPullRequest(number, "세션 조회 성능 개선", "인덱스를 추가합니다.", GithubState.OPEN, "grow22",
+                "develop", "feature/session-index", PR_OPENED_AT, null, List.of(SHA_1), List.of(42), List.of(reviewed));
+
+    }
+
+    private CollectedReview review(long reviewId, CollectedReviewComment... comments) {
+
+        return new CollectedReview(reviewId, ReviewState.CHANGES_REQUESTED, "reviewer", "책임 분리를 명확히 해주세요.",
+                REVIEWED_AT, List.of(comments));
+
+    }
+
+    // 다시 수집했을 때 바뀌어야 할 칸이 모두 바뀌는지 보도록 review 와 칸마다 다른 값을 둔다
+    private CollectedReview revisedReview(long reviewId, CollectedReviewComment... comments) {
+
+        return new CollectedReview(reviewId, ReviewState.DISMISSED, "reviewer-2", "책임 분리 반영을 확인했습니다.",
+                REVIEWED_AT.plusSeconds(600), List.of(comments));
+
+    }
+
+    private CollectedReviewComment comment(long commentId, Long reviewId) {
+
+        return new CollectedReviewComment(commentId, reviewId, "reviewer", "인덱스 책임을 repository 계층으로 옮겨주세요.",
+                "backend/session.sql", 12, COMMENTED_AT);
+
+    }
+
+    // 다시 수집했을 때 바뀌어야 할 칸은 모두 바뀌고 작성 시각은 남는지 보도록 comment 와 칸마다 다른 값을 둔다
+    private CollectedReviewComment revisedComment(long commentId, Long reviewId) {
+
+        return new CollectedReviewComment(commentId, reviewId, "reviewer-2", "계층 이동을 확인했습니다.",
+                "backend/session_index.sql", 30, COMMENTED_AT.plusSeconds(600));
+
+    }
+
+    // 줄 번호만 다르게 같은 댓글을 다시 수집한 것처럼 만든다
+    private CollectedReviewComment commentOnLine(Integer line) {
+
+        return new CollectedReviewComment(COMMENT_ID, REVIEW_ID, "reviewer", "인덱스 책임을 repository 계층으로 옮겨주세요.",
+                "backend/session.sql", line, COMMENTED_AT);
+
+    }
+
+    private PrReview storedReview(long githubReviewId) {
+
+        return reviews.findAll().stream()
+                .filter(review -> review.getGithubReviewId() == githubReviewId)
+                .findFirst()
+                .orElseThrow();
+
+    }
+
+    private PrReviewComment storedComment(long githubCommentId) {
+
+        return reviewComments.findAll().stream()
+                .filter(comment -> comment.getGithubCommentId() == githubCommentId)
+                .findFirst()
+                .orElseThrow();
+
+    }
+
+    private void assertReviewStored(long githubReviewId, int prNumber, CollectedReview expected, Long runId) {
+
+        PrReview stored = storedReview(githubReviewId);
+        assertThat(stored.getRepositoryId()).isEqualTo(repositoryId);
+        assertThat(stored.getGithubPrNumber()).isEqualTo(prNumber);
+        assertThat(stored.getCollectionRunId()).isEqualTo(runId);
+        assertThat(stored.getState()).isEqualTo(expected.state());
+        assertThat(stored.getAuthorLogin()).isEqualTo(expected.authorLogin());
+        assertThat(stored.getBodyExcerpt()).isEqualTo(expected.bodyExcerpt());
+        assertThat(stored.getSubmittedAt()).isEqualTo(expected.submittedAt());
+
+    }
+
+    private void assertCommentStored(long githubCommentId, int prNumber, CollectedReviewComment expected, Long runId) {
+
+        PrReviewComment stored = storedComment(githubCommentId);
+        assertThat(stored.getRepositoryId()).isEqualTo(repositoryId);
+        assertThat(stored.getGithubPrNumber()).isEqualTo(prNumber);
+        assertThat(stored.getCollectionRunId()).isEqualTo(runId);
+        assertThat(stored.getGithubReviewId()).isEqualTo(expected.reviewId());
+        assertThat(stored.getAuthorLogin()).isEqualTo(expected.authorLogin());
+        assertThat(stored.getBodyExcerpt()).isEqualTo(expected.bodyExcerpt());
+        assertThat(stored.getPath()).isEqualTo(expected.path());
+        assertThat(stored.getLine()).isEqualTo(expected.line());
+        assertThat(stored.getCommentedAt()).isEqualTo(expected.commentedAt());
+
+    }
+
+    private int countReviews() {
+
+        return jdbc.queryForObject("SELECT count(*) FROM pr_review", Integer.class);
+
+    }
+
+    private int countComments() {
+
+        return jdbc.queryForObject("SELECT count(*) FROM pr_review_comment", Integer.class);
 
     }
 }

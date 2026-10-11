@@ -649,7 +649,7 @@ class JobRunnerTest {
 
         CollectedPullRequest pr = new CollectedPullRequest(7, "feat: 워커 추가", null, GithubState.CLOSED, "grow22",
                 "develop", "feature/job-worker", Instant.parse("2026-10-01T00:00:00Z"),
-                Instant.parse("2026-10-01T01:00:00Z"), List.of(SHA), List.of());
+                Instant.parse("2026-10-01T01:00:00Z"), List.of(SHA), List.of(), List.of());
         return new CollectedActivity(List.of(commit(SHA)), List.of(pr), List.of(), null, partialReason);
 
     }

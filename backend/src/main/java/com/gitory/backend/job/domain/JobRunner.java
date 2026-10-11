@@ -1,6 +1,7 @@
 package com.gitory.backend.job.domain;
 
 import com.gitory.backend.common.infra.ai.AiClientException;
+import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.PartialReason;
 import com.gitory.backend.ingest.port.CollectedActivity;
@@ -27,8 +28,9 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class JobRunner {
 
-    // AI 응답 대기 한도(180초)보다 넉넉하게 잡아, 실행 중에 서버가 꺼져 남은 Job 만 걸리게 한다
-    static final Duration STUCK_AFTER = Duration.ofMinutes(10);
+    // 멈춘 Job 판정은 수집 응답 대기 한도에 이 여유를 더한 시간이다
+    // 한도를 늘려도 AI 응답을 기다리는 중인 Job 을 멈춘 것으로 보지 않도록 한도에서 계산한다
+    private static final Duration STUCK_MARGIN = Duration.ofMinutes(5);
 
     private static final Set<String> GITHUB_FAILURES =
             Set.of("GITHUB_API_ERROR", "RESOURCE_NOT_FOUND", "GITHUB_CONNECTION_UNAVAILABLE");
@@ -37,29 +39,35 @@ public class JobRunner {
     private final RepositoryActivityPort activities;
     private final ActivityStoreService activityStore;
     private final TransactionTemplate transaction;
+    private final AiClientProperties aiProperties;
 
-    /** 꺼낼 Job 이 없으면 false 를 돌려준다 */
-    public boolean runNext() {
+    /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
+    public Optional<AnalysisJob> claimNext() {
 
-        Optional<AnalysisJob> claimed = transaction.execute(status -> claimNext());
-        if (claimed.isEmpty()) {
-            return false;
-        }
-
-        run(claimed.get());
-        return true;
+        return transaction.execute(status -> startNext());
 
     }
 
     public void failStuckJobs() {
 
-        Instant before = Instant.now().minus(STUCK_AFTER);
+        Instant before = Instant.now().minus(aiProperties.collectReadTimeout()).minus(STUCK_MARGIN);
         transaction.executeWithoutResult(status -> jobs.findStuckForUpdate(before)
                 .forEach(job -> job.fail(JobErrorCode.INTERNAL_ERROR)));
 
     }
 
-    private Optional<AnalysisJob> claimNext() {
+    /**
+     * 서버가 꺼질 때 실행 중이던 Job 을 다시 대기열에 넣는다
+     * 서버가 1대라는 전제다 — 2대면 다른 서버가 실행 중인 Job 까지 되돌리므로 그때는 하트비트 방식으로 바꾼다
+     */
+    public void requeueRunningJobs() {
+
+        transaction.executeWithoutResult(status -> jobs.findWithLockByState(JobState.RUNNING)
+                .forEach(AnalysisJob::requeue));
+
+    }
+
+    private Optional<AnalysisJob> startNext() {
 
         Optional<AnalysisJob> next = jobs.findNextQueuedForUpdate();
         next.ifPresent(AnalysisJob::start);
@@ -67,7 +75,8 @@ public class JobRunner {
 
     }
 
-    private void run(AnalysisJob job) {
+    /** {@link #claimNext()} 로 꺼낸 Job 을 받아 AI 수집 결과대로 끝낸다 */
+    public void run(AnalysisJob job) {
 
         IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(), null);
 

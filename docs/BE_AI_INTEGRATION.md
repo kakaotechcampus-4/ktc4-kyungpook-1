@@ -24,7 +24,8 @@ flowchart LR
 |---|---|
 | `AI_BASE_URL` | `http://localhost:8000`; Compose에서는 `http://ai:8000` |
 | `AI_CONNECT_TIMEOUT` | `3s`; 연결 제한 |
-| `AI_READ_TIMEOUT` | `180s`; GitHub 수집 응답 대기 제한 |
+| `AI_READ_TIMEOUT` | `180s`; 수집을 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
+| `AI_COLLECT_READ_TIMEOUT` | `600s`; GitHub 수집 응답 대기 제한. 멈춘 분석 Job 판정은 이 값 + 5분 |
 | `API_DOCS_ENABLED` | BE 운영 기본 `false`, `local` 프로필 기본 `true` |
 | `AI_DOCS_ENABLED` | AI 기본 `true`; 운영에서 문서가 필요 없으면 `false` |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | BE 기본 프로필의 PostgreSQL 접속 정보 |

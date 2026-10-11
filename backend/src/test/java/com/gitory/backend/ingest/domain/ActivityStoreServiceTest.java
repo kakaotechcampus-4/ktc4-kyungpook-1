@@ -2,6 +2,7 @@ package com.gitory.backend.ingest.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import com.gitory.backend.ingest.infra.CollectionRunRepository;
 import com.gitory.backend.ingest.infra.GitCommitRepository;
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -30,6 +32,11 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -58,6 +65,9 @@ class ActivityStoreServiceTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    TransactionTemplate transaction;
 
     private Long userRepositoryId;
     private Long repositoryId;
@@ -166,6 +176,50 @@ class ActivityStoreServiceTest {
     }
 
     @Test
+    @DisplayName("작성자 로그인이 없고 제외 사유가 있는 커밋도 받은 값 그대로 저장된다")
+    void savesExcludedCommitWithoutLogin() {
+
+        service.store(request(), activityOf(new CollectedCommit(SHA_1, null, "dependabot", "chore: 의존성 올림",
+                Instant.parse("2026-09-20T09:00:00Z"), 1, 1, 1, (short) 1, ExclusionReason.BOT)));
+
+        GitCommit stored = commits.findByRepositoryIdAndSha(repositoryId, SHA_1).orElseThrow();
+        assertThat(stored.getAuthorLogin()).isNull();
+        assertThat(stored.isExcluded()).isTrue();
+        assertThat(stored.getExclusionReason()).isEqualTo(ExclusionReason.BOT);
+
+    }
+
+    @Test
+    @DisplayName("같은 저장소의 수집 결과를 두 Job 이 동시에 저장해도 둘 다 성공하고 커밋은 한 번씩만 저장된다")
+    void concurrentStoresOfSameRepositoryBothSucceed() throws Exception {
+
+        Long teammateRepositoryId = connectTeammate();
+        CountDownLatch firstStoredBeforeCommit = new CountDownLatch(1);
+        ExecutorService firstJob = Executors.newSingleThreadExecutor();
+
+        try {
+            Future<Long> first = firstJob.submit(() -> transaction.execute(status -> {
+                Long runId = service.store(request(), activityOf(commit(SHA_1), commit(SHA_2)));
+                firstStoredBeforeCommit.countDown();
+                await().atMost(5, TimeUnit.SECONDS).until(this::anotherStoreIsWaiting);
+                return runId;
+            }));
+            firstStoredBeforeCommit.await(5, TimeUnit.SECONDS);
+
+            Long secondRunId = service.store(new IngestRequest(teammateRepositoryId, BRANCHES, SINCE),
+                    activityOf(commit(SHA_1), commit(SHA_2)));
+
+            assertThat(first.get(10, TimeUnit.SECONDS)).isNotNull();
+            assertThat(secondRunId).isNotNull();
+            assertThat(runs.count()).isEqualTo(2);
+            assertThat(countCommits()).isEqualTo(2);
+        } finally {
+            firstJob.shutdown();
+        }
+
+    }
+
+    @Test
     @DisplayName("연결 저장소가 없으면 아무것도 저장되지 않는다")
     void rejectsUnknownUserRepository() {
 
@@ -180,6 +234,22 @@ class ActivityStoreServiceTest {
 
     private IngestRequest request() {
         return new IngestRequest(userRepositoryId, BRANCHES, SINCE);
+    }
+
+    private Long connectTeammate() {
+
+        TestFixtures fixtures = new TestFixtures(jdbc);
+        Long teammateId = fixtures.insertUser(2L, "teammate");
+        return fixtures.insertUserRepository(teammateId, repositoryId);
+
+    }
+
+    // 두 번째 저장이 첫 저장의 아직 확정되지 않은 행을 기다리는 중인지 본다 — 그때 첫 저장을 확정해야 두 저장이 반드시 겹친다
+    private boolean anotherStoreIsWaiting() {
+
+        return jdbc.queryForObject("SELECT count(*) FROM pg_locks WHERE locktype = 'transactionid' AND NOT granted",
+                Integer.class) > 0;
+
     }
 
     private CollectedActivity activityOf(CollectedCommit... collected) {

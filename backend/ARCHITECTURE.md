@@ -214,7 +214,7 @@ GET  /api/jobs/{jobId}               →  { state, steps, partial }   (폴링)
   성공 분기를 두 벌 쓰게 된다
 - 상한 초과·요청 한도 소진은 실패가 아니라 `partial: true` 다. 버리지 않고 표시한다.
 - **멱등성은 두 겹이다.** `UNIQUE (user_id, idempotency_key)` 가 같은 키의 재시도를 막고,
-  부분 유니크 인덱스 `uq_job_active` 가 **키가 달라도 같은 레포에 도는 Job 이 있으면** 막는다.
+  부분 유니크 인덱스 `uq_job_active` 가 **키가 달라도 같은 레포에 도는 분석 Job 이 있으면** 막는다.
   다른 탭에서 누르면 키가 다르기 때문이다. 어느 경우든 409 가 아니라 기존 `jobId` 를 돌려준다
 - `updated_at` 이 있어야 **"느린 것"과 "죽은 것"이 구별된다.** 한 번에 2~5분 걸리는 작업이라
   `started_at`·`finished_at` 만으로는 멈춘 Job 을 폴링 화면이 영원히 돌린다

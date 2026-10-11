@@ -81,6 +81,14 @@ class JobIntakeServiceTest {
                 Long.class, userId, repositoryId);
     }
 
+    private UUID insertRunningDraftJob(Long connectedRepositoryId) {
+
+        return jdbc.queryForObject(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, type, state) VALUES (?, ?, ?, 'DRAFT', 'RUNNING') RETURNING public_id",
+                UUID.class, userId, connectedRepositoryId, UUID.randomUUID().toString());
+
+    }
+
     @Test
     @DisplayName("처음 온 요청인 경우 QUEUED Job 을 새로 만든다")
     void firstRequestCreatesQueuedJob() {
@@ -126,6 +134,34 @@ class JobIntakeServiceTest {
         assertThat(second.created()).isFalse();
         assertThat(second.jobId()).isEqualTo(first.jobId());
         assertThat(jobRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("같은 레포에 진행 중인 카드 초안 Job 은 기존 Job 으로 돌려주지 않고 새 분석 Job 을 만든다")
+    void activeDraftJobIsNotReturnedAsExistingJob() {
+
+        UUID draftJobId = insertRunningDraftJob(repoA);
+
+        JobIntakeResult result = service.intake(userId, repoA, KEY_1);
+
+        assertThat(result.created()).isTrue();
+        assertThat(result.jobId()).isNotEqualTo(draftJobId);
+        assertThat(jobRepository.count()).isEqualTo(2);
+
+    }
+
+    @Test
+    @DisplayName("같은 레포에 분석 Job 과 카드 초안 Job 이 함께 진행 중이면 분석 Job 을 돌려준다")
+    void activeAnalyzeJobIsReturnedWhileDraftJobRuns() {
+
+        JobIntakeResult first = service.intake(userId, repoA, KEY_1);
+        insertRunningDraftJob(repoA);
+
+        JobIntakeResult second = service.intake(userId, repoA, KEY_2);
+
+        assertThat(second.created()).isFalse();
+        assertThat(second.jobId()).isEqualTo(first.jobId());
+
     }
 
     @Test

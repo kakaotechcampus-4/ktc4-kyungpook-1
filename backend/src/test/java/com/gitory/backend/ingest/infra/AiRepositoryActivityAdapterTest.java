@@ -103,7 +103,7 @@ class AiRepositoryActivityAdapterTest {
         server.start();
         http = new AiHttpClient(new AiClientProperties(
                 URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
-                Duration.ofSeconds(1), Duration.ofSeconds(2)), mapper);
+                Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(2)), mapper);
         when(users.findById(USER_ID)).thenReturn(Optional.of(User.register(42L, "grow22")));
         activeConnection(null);
         when(targets.find(eq(USER_REPOSITORY_ID), anyList())).thenAnswer(invocation ->
@@ -298,7 +298,7 @@ class AiRepositoryActivityAdapterTest {
         responseHeadersFirst = headersFirst;
         AiHttpClient shortTimeout = new AiHttpClient(new AiClientProperties(
                 URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
-                Duration.ofSeconds(1), Duration.ofMillis(50)), mapper);
+                Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofMillis(50)), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
                 new GithubCollectionAccess(users, connections, cipher, shortTimeout, null, null));
         assertThatThrownBy(() -> adapter.collect(request(List.of())))
@@ -307,6 +307,21 @@ class AiRepositoryActivityAdapterTest {
                     assertThat(error.retryable()).isTrue();
                     assertThat(error.getCause()).isNull();
                 });
+    }
+
+    @Test
+    @DisplayName("수집은 다른 AI 호출의 응답 대기 한도가 짧아도 수집 전용 한도까지 기다린다")
+    void collectionWaitsForItsOwnReadTimeout() {
+
+        responseDelayMs = 500;
+        AiHttpClient shortDefaultTimeout = new AiHttpClient(new AiClientProperties(
+                URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
+                Duration.ofSeconds(1), Duration.ofMillis(50), Duration.ofSeconds(2)), mapper);
+        adapter = new AiRepositoryActivityAdapter(targets,
+                new GithubCollectionAccess(users, connections, cipher, shortDefaultTimeout, null, null));
+
+        assertThat(adapter.collect(request(List.of())).commits()).hasSize(1);
+
     }
 
     @Test

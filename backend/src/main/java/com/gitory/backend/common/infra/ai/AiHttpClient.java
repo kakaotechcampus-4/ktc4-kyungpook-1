@@ -30,7 +30,7 @@ public class AiHttpClient {
 
     public AiHttpClient(AiClientProperties properties, ObjectMapper mapper) {
         this.mapper = mapper;
-        this.collectionClient = client(properties, properties.readTimeout());
+        this.collectionClient = client(properties, properties.collectReadTimeout());
         // health·OpenAPI 조회가 긴 수집 요청 제한 때문에 정체되지 않게 한다.
         this.queryClient = client(properties, Duration.ofSeconds(5));
     }

@@ -29,19 +29,19 @@ public class ActivityStoreService {
     @Transactional
     public Long store(IngestRequest request, CollectedActivity activity) {
 
-        Long repositoryId = repositoryIdOf(request.userRepositoryId());
+        ConnectedRepository connected = connectedRepositoryOf(request.userRepositoryId());
         CollectionRun run = runs.save(runOf(request, activity));
 
-        storeNewCommits(repositoryId, run.getId(), activity.commits());
+        storeNewCommits(connected.getRepositoryId(), run.getId(), activity.commits());
+        connected.markAnalyzed();
 
         return run.getId();
     }
 
-    private Long repositoryIdOf(Long userRepositoryId) {
+    private ConnectedRepository connectedRepositoryOf(Long userRepositoryId) {
 
         return connectedRepositories.findById(userRepositoryId)
-                .orElseThrow(() -> new IllegalStateException("연결된 저장소가 없다: " + userRepositoryId))
-                .getRepositoryId();
+                .orElseThrow(() -> new IllegalStateException("연결된 저장소가 없다: " + userRepositoryId));
     }
 
     private CollectionRun runOf(IngestRequest request, CollectedActivity activity) {

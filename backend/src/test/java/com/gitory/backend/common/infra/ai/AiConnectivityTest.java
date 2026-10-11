@@ -4,6 +4,7 @@ import com.gitory.backend.common.api.AiDocumentationController;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.health.contributor.Status;
 import org.springframework.test.web.servlet.MockMvc;
@@ -14,6 +15,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,6 +100,30 @@ class AiConnectivityTest {
                 .andExpect(jsonPath("$.error.code").value("INTERNAL_ERROR"))
                 .andReturn();
         assertThat(result.getResponse().getContentAsString()).doesNotContain("private upstream message");
+    }
+
+    @Test
+    @DisplayName("AI 수집 요청은 HTTP/2 업그레이드 표시 없이 본문을 그대로 보낸다")
+    void collectSendsBodyWithoutHttp2Upgrade() {
+
+        AtomicReference<String> upgrade = new AtomicReference<>("not-called");
+        AtomicReference<String> body = new AtomicReference<>();
+        server.createContext("/internal/collect", exchange -> {
+            upgrade.set(exchange.getRequestHeaders().getFirst("Upgrade"));
+            body.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] envelope = "{\"success\":true,\"data\":{},\"error\":null}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, envelope.length);
+            try (var output = exchange.getResponseBody()) {
+                output.write(envelope);
+            }
+        });
+
+        client.collect(Map.of("user_repository_id", 1), "ghp_dummy");
+
+        assertThat(upgrade.get()).isNull();
+        assertThat(body.get()).contains("\"user_repository_id\"");
+
     }
 
     private MockMvc documentMvc() {

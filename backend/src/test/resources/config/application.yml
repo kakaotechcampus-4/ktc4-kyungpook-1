@@ -1,0 +1,5 @@
+# 테스트에서는 워커를 끈다 — 켜 두면 다른 테스트가 만든 QUEUED Job 을 집어 떠 있지 않은 AI 를 부른다
+gitory:
+  job:
+    worker:
+      enabled: false

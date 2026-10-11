@@ -26,7 +26,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @DataJpaTest
@@ -147,6 +149,20 @@ class ActivityStoreServiceTest {
 
         assertThat(runs.findById(runId)).isPresent();
         assertThat(countCommits()).isZero();
+    }
+
+    @Test
+    @DisplayName("수집 결과를 저장하면 그 시각이 연결 저장소의 마지막 분석 시각으로 남는다")
+    void marksLastAnalyzedAt() {
+
+        Instant before = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+
+        service.store(request(), activityOf(commit(SHA_1)));
+
+        Timestamp analyzedAt = jdbc.queryForObject(
+                "SELECT last_analyzed_at FROM user_repository WHERE id = ?", Timestamp.class, userRepositoryId);
+        assertThat(analyzedAt.toInstant()).isAfterOrEqualTo(before);
+
     }
 
     @Test

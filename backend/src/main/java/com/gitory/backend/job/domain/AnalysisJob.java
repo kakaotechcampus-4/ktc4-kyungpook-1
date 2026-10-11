@@ -47,6 +47,8 @@ public class AnalysisJob {
 
     private boolean partial;
 
+    private Long collectionRunId;
+
     @Enumerated(EnumType.STRING)
     private JobErrorCode errorCode;
 
@@ -76,22 +78,52 @@ public class AnalysisJob {
     }
 
     /**
-     * QUEUED -> RUNNING
+     * QUEUED -> RUNNING, 첫 단계인 커밋 읽기를 진행 중으로 표시
      */
     public void start() {
+
         requireState(JobState.QUEUED);
         this.state = JobState.RUNNING;
+        this.steps = steps.stream()
+                .map(step -> step.key() == JobStepKey.COMMITS
+                        ? new JobStep(JobStepKey.COMMITS, JobStepState.RUNNING, 0, null)
+                        : step)
+                .toList();
+
     }
 
     /**
-     * RUNNING -> SUCCEEDED
-     * partial 과 끝난 시각 기록
-     * */
-    public void succeed(boolean partial) {
+     * 수집 기록을 연결하고 수집 두 단계는 읽은 개수로 끝낸다
+     * 후보 추리기·추천 이유는 AI 기능이 아직 없어 SKIPPED 로 둔다
+     */
+    public void recordCollection(Long collectionRunId, int commitCount, int pullRequestCount) {
+
+        requireState(JobState.RUNNING);
+        this.collectionRunId = collectionRunId;
+        this.steps = List.of(
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, commitCount, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, pullRequestCount, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    /**
+     * RUNNING -> SUCCEEDED, partial 과 끝난 시각 기록
+     * 에러 코드는 일부만 읽은 이유(예: GitHub 한도)를 남길 때만 받는다
+     */
+    public void succeed(boolean partial, JobErrorCode errorCode) {
+
+        if (errorCode != null && !partial) {
+            throw new IllegalArgumentException("에러 코드는 부분 완료에만 남긴다");
+        }
+
         requireState(JobState.RUNNING);
         this.state = JobState.SUCCEEDED;
         this.partial = partial;
+        this.errorCode = errorCode;
         this.finishedAt = Instant.now();
+
     }
 
     /**
@@ -108,6 +140,21 @@ public class AnalysisJob {
         this.state = JobState.FAILED;
         this.errorCode = errorCode;
         this.finishedAt = Instant.now();
+    }
+
+    /**
+     * QUEUED·RUNNING -> CANCELED, 끝난 시각 기록
+     * 이미 끝난 Job 은 그대로 둔다 — 화면이 2초마다 갱신돼 끝난 직후에 취소가 올 수 있다
+     */
+    public void cancel() {
+
+        if (isTerminal()) {
+            return;
+        }
+
+        this.state = JobState.CANCELED;
+        this.finishedAt = Instant.now();
+
     }
 
     /**

@@ -60,7 +60,7 @@ test('목록 행에 마우스를 올리면 배경만 바뀐다 — 칸막이선�
   expect(after.bg).not.toBe(before.bg);      // 배경은 눈에 띄게 바뀐다
 });
 
-test('경험 카드가 홀수 개여도 마지막 칸이 한 줄을 다 쓴다', async ({ page }) => {
+test('홀수 경험 카드도 다른 카드와 같은 폭을 유지한다', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await loginAsDemo(page);
   await page.goto('/cards');
@@ -68,8 +68,8 @@ test('경험 카드가 홀수 개여도 마지막 칸이 한 줄을 다 쓴다',
   const geo = await page.evaluate(() => {
     const list = document.querySelector('.experience-list')!;
     const kids = Array.from(list.children);
-    return { count: kids.length, lastW: kids[kids.length - 1].getBoundingClientRect().width, listW: list.getBoundingClientRect().width };
+    return { count: kids.length, lastW: kids[kids.length - 1].getBoundingClientRect().width, firstW: kids[0].getBoundingClientRect().width };
   });
   expect(geo.count % 2).toBe(1);                       // 시드가 홀수여야 이 검사가 의미 있다
-  expect(geo.lastW).toBeGreaterThan(geo.listW - 4);    // 오른쪽이 비지 않는다
+  expect(Math.abs(geo.lastW - geo.firstW)).toBeLessThanOrEqual(1);
 });

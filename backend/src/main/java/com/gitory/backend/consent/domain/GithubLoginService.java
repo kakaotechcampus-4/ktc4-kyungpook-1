@@ -71,7 +71,7 @@ public class GithubLoginService implements OAuth2UserService<OAuth2UserRequest, 
         String tokenEnc = tokenCipher.encrypt(accessToken.getTokenValue());
         Instant expiresAt = realExpiry(accessToken);
 
-        connections.findByUserIdAndRevokedAtIsNull(userId)
+        connections.findWithLockByUserIdAndRevokedAtIsNull(userId)
                 .ifPresentOrElse(
                         connection -> connection.renew(scopes, tokenEnc, expiresAt),
                         () -> connections.save(GithubConnection.grant(userId, scopes, tokenEnc, expiresAt)));

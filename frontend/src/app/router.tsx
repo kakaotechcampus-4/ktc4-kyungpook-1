@@ -17,6 +17,7 @@ const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage'
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
 const ReposPage = L(() => import('@/features/repos/ReposPage'), 'ReposPage');
 const AnalyzePage = L(() => import('@/features/repos/AnalyzePage'), 'AnalyzePage');
+const JobStatusPage = L(() => import('@/features/jobs/JobStatusPage'), 'JobStatusPage');
 const CandidateBoardPage = L(() => import('@/features/candidates/CandidateBoardPage'), 'CandidateBoardPage');
 const RecallPage = L(() => import('@/features/candidates/RecallPage'), 'RecallPage');
 const CardsListPage = L(() => import('@/features/cards/CardsListPage'), 'CardsListPage');
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: '/', element: <S><HomePage /></S> },
       { path: '/repos', element: <S><ReposPage /></S> },
       { path: '/repos/:repoId/run', element: <S><AnalyzePage /></S> },
+      { path: '/jobs/:jobId', element: <S><JobStatusPage /></S> },
       { path: '/repos/:repoId/candidates', element: <S><CandidateBoardPage /></S> },
       { path: '/repos/:repoId/recall', element: <S><RecallPage /></S> },
       { path: '/cards', element: <S><CardsListPage /></S> },

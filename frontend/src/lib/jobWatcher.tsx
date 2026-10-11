@@ -7,6 +7,8 @@ import { useActiveJobs } from '@/api/queries';
 import { isTerminal, type ActiveJob } from '@/api/schemas';
 import { toast } from './toast';
 import { ApiError } from '@/api/client';
+import type { ActiveJobFeed } from './activeJobFeed';
+import { jobResultLink } from './jobLinks';
 
 /**
  * "창을 닫아도 계속 분석됩니다. 끝나면 알려드릴게요."
@@ -20,10 +22,11 @@ const suppressed = new Set<string>();
 export function suppressJobToast(jobId: string) { suppressed.add(jobId); }
 export function releaseJobToast(jobId: string) { suppressed.delete(jobId); }
 
-export function JobWatcher() {
+export function JobWatcher({ active: shared }: { active?: ActiveJobFeed } = {}) {
   const nav = useNavigate();
   const qc = useQueryClient();
-  const active = useActiveJobs();
+  const fallback = useActiveJobs(!shared);
+  const active = shared ?? fallback;
   const seen = useRef(new Map<string, ActiveJob>());
   const fetching = useRef(new Set<string>());
   const mounted = useRef(true);
@@ -47,8 +50,7 @@ export function JobWatcher() {
           if (!isTerminal(j.state)) continue;
           seen.current.delete(w.jobId);
           const repoId = j.result?.repoId ?? w.userRepositoryId;
-          const href = j.type === 'DRAFT' && j.result?.cardIds?.length ? `/cards/${j.result.cardIds[0]}`
-            : repoId ? (j.state === 'FAILED' || j.partial ? `/repos/${repoId}/run?job=${j.jobId}` : `/repos/${repoId}/candidates`) : '/cards';
+          const href = jobResultLink(j, repoId) ?? `/jobs/${encodeURIComponent(j.jobId)}`;
           if (repoId) { void qc.invalidateQueries({ queryKey: keys.candidates(repoId) }); void qc.invalidateQueries({ queryKey: keys.repos }); }
           j.result?.cardIds?.forEach((id) => void qc.invalidateQueries({ queryKey: keys.card(id) }));
           void qc.invalidateQueries({ queryKey: keys.cards });

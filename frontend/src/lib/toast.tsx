@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 /** 전역 토스트. React 밖(쿼리 캐시 onError 등)에서도 부를 수 있게 모듈 상태로 둔다. */
-export type Toast = { id: number; text: string; tone: 'default' | 'danger' | 'success'; action?: { label: string; onClick: () => void }; ttl: number };
+export type Toast = { id: number; text: string; tone: 'default' | 'danger' | 'success'; action?: { label: string; onClick: () => unknown }; ttl: number };
 let toasts: Toast[] = [];
 let seq = 0;
 const listeners = new Set<(t: Toast[]) => void>();
@@ -25,7 +25,7 @@ export function Toaster() {
       {list.map((t) => (
         <div key={t.id} className={`toast toast--${t.tone}`}>
           <span className="grow">{t.text}</span>
-          {t.action && <button type="button" className="toast__action" onClick={() => { t.action!.onClick(); dismiss(t.id); }}>{t.action.label}</button>}
+          {t.action && <button type="button" className="toast__action" onClick={() => { if (t.action!.onClick() !== false) dismiss(t.id); }}>{t.action.label}</button>}
           <button type="button" className="toast__close" onClick={() => dismiss(t.id)} aria-label="닫기">✕</button>
         </div>
       ))}

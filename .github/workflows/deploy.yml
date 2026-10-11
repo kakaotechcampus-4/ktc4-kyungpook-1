@@ -1,0 +1,156 @@
+# 자동 배포 — develop 의 CI 가 모두 성공한 커밋을 EC2 에서 deploy/compose.yaml 로 다시 빌드·기동한다.
+#
+# 러너: EC2 에 설치한 self-hosted runner (라벨 gitory-deploy).
+#   22 포트·IAM 액세스 키를 쓸 수 없어서(카테캠 제약) 서버가 GitHub 에 바깥으로 접속해
+#   작업을 받아 오는 방식을 쓴다. 설치 방법은 docs/DEPLOYMENT.md 「자동 배포」 절.
+#
+# 왜 push 가 아니라 workflow_run 인가:
+#   이미지 빌드는 테스트를 건너뛴다(-x test). push 로 CI 와 동시에 돌면 CI 가 실패한 커밋도 배포된다.
+#   그래서 CI 가 끝난 뒤에 돌고, gate job 이 그 커밋의 CI 가 모두 성공했는지 확인한다.
+#   - 한 커밋이 CI 여러 개를 돌리면 CI 마다 이 워크플로가 깨어난다. 아직 도는 CI 가 있으면 넘기고,
+#     마지막 CI 가 끝났을 때 배포한다.
+#   - deploy/ 만 바뀐 커밋은 CI 가 없어 자동 배포되지 않는다. Actions 에서 수동 실행한다.
+#
+# 🚨 public 레포에서 self-hosted runner 를 쓴다. 아래를 지킨다.
+#   - 트리거는 workflow_run(develop push 의 CI)·수동 실행뿐이다. pull_request 를 추가하지 않는다 —
+#     fork PR 의 코드가 서버에서 돈다. workflow_run 도 develop 에 push 된 커밋만 받는다 (gate 조건).
+#   - Settings → Actions → General → Fork pull request workflows 를
+#     "Require approval for all external contributors" 로 둔다.
+#   - Actions 로그는 누구나 본다. 앱 로그(docker compose logs)·.env 를 여기서 출력하지 않는다.
+#     실패 원인은 서버에서 docker compose logs 로 본다.
+
+name: deploy
+
+on:
+  workflow_run:
+    # 각 CI 워크플로의 name: 과 같아야 한다
+    workflows: ["backend CI", "AI CI", "frontend"]
+    types: [completed]
+    branches: [develop]
+  workflow_dispatch:
+
+# 배포는 줄 세운다. 진행 중인 배포를 취소하면 컨테이너가 반쯤 바뀐 채 남을 수 있다.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    # fork 에서는 돌지 않게. 수동 실행은 develop 에서만 (머지 전 브랜치가 운영에 올라가지 않게).
+    # workflow_run 은 같은 레포 develop 에 push 된 커밋의 CI 가 성공했을 때만.
+    if: >-
+      github.repository == 'kakaotechcampus-4/ktc4-kyungpook-1' && (
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop') ||
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.event == 'push' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_repository.full_name == github.repository)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+    steps:
+      - name: 이 커밋의 CI 가 모두 성공했는지 확인
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            echo "수동 실행 — CI 확인 없이 develop 최신 커밋을 배포한다"
+            echo "go=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # CI 워크플로마다 가장 최근 실행(재실행 포함)만 본다
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&event=push&per_page=100" \
+            --jq '[.workflow_runs[]
+                   | select(.name == "backend CI" or .name == "AI CI" or .name == "frontend")]
+                  | group_by(.workflow_id)
+                  | map(max_by(.id))
+                  | .[] | "\(.name)\t\(.status)\t\(.conclusion)"')
+          echo "$runs"
+
+          if echo "$runs" | awk -F'\t' '$2 != "completed"' | grep -q .; then
+            echo "::notice::아직 도는 CI 가 있다. 마지막 CI 가 끝나면 배포한다."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          elif echo "$runs" | awk -F'\t' '$3 == "cancelled"' | grep -q .; then
+            echo "::notice::취소된 CI 가 있다 (더 새 커밋이 올라옴). 이 커밋은 배포하지 않는다."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          elif echo "$runs" | awk -F'\t' '$3 != "success"' | grep -q .; then
+            echo "::error::실패한 CI 가 있어 배포하지 않는다."
+            exit 1
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: gate
+    if: needs.gate.outputs.go == 'true'
+    runs-on: [self-hosted, gitory-deploy]
+    timeout-minutes: 30
+    env:
+      # 서버의 운영 체크아웃. deploy/.env(비밀값)가 여기에만 있다.
+      DEPLOY_DIR: /home/ubuntu/gitory
+      # workflow_run 에서 github.sha 는 develop 최신 커밋이라 CI 가 검사한 커밋을 따로 받는다
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      EVENT: ${{ github.event_name }}
+    steps:
+      - name: 코드를 이 커밋으로 맞추기
+        id: checkout
+        run: |
+          cd "$DEPLOY_DIR"
+          git fetch --prune origin
+          # CI 는 끝나는 순서가 뒤섞인다. 이미 같은 커밋이나 더 새 커밋이 올라가 있으면 되돌리지 않는다.
+          if [ "$EVENT" = workflow_run ] && git merge-base --is-ancestor "$DEPLOY_SHA" HEAD; then
+            echo "::notice::서버가 이미 $(git rev-parse --short HEAD) 이다. $DEPLOY_SHA 는 배포하지 않는다."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # 새 컨테이너가 뜨지 못하면 이 커밋으로 되돌린다
+          echo "prev=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          git checkout --force --detach "$DEPLOY_SHA"
+          git log --oneline -1
+
+      - name: 빌드·재기동 (모든 서비스 healthy 까지 대기)
+        id: up
+        if: steps.checkout.outputs.skip != 'true'
+        run: |
+          cd "$DEPLOY_DIR/deploy"
+          docker compose up -d --build --wait --wait-timeout 300
+
+      # 새 컨테이너가 healthy 가 못 되면 기존 컨테이너는 이미 내려가 있어 사이트가 멈춘 채로 남는다.
+      # 코드만 되돌리므로 이미 적용된 새 마이그레이션은 DB 에 남고, 워크플로는 실패로 남는다.
+      - name: 실패하면 직전 커밋으로 되돌리기
+        if: failure() && steps.up.outcome == 'failure' && steps.checkout.outputs.prev != ''
+        env:
+          PREV_SHA: ${{ steps.checkout.outputs.prev }}
+        run: |
+          cd "$DEPLOY_DIR"
+          if [ "$PREV_SHA" = "$(git rev-parse HEAD)" ]; then
+            echo "::notice::직전 커밋과 같은 커밋이라 되돌릴 것이 없다."
+            exit 0
+          fi
+          echo "::warning::$DEPLOY_SHA 를 올리지 못해 직전 커밋 $PREV_SHA 로 되돌린다."
+          git checkout --force --detach "$PREV_SHA"
+          cd deploy
+          docker compose up -d --build --wait --wait-timeout 300
+
+      - name: 컨테이너 상태
+        if: always()
+        run: |
+          cd "$DEPLOY_DIR/deploy"
+          docker compose ps --format 'table {{.Service}}\t{{.Status}}'
+
+      - name: 오래된 이미지·빌드 캐시 정리 (디스크 50GB)
+        if: success() && steps.checkout.outputs.skip != 'true'
+        run: |
+          docker image prune -f
+          docker builder prune -f --filter until=72h

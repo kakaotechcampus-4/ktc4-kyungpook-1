@@ -39,7 +39,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 |---|---|---|
 | `GET /repos` | | `RepoSummary[]` — `{ id, owner, name, contribution:{mine, team, ratio, level:'NONE'|'PARTIAL'|'SHARED'|'MAJOR'}, prCount, reviewCount, language, activeFrom, activeTo, lastAnalyzedAt, candidateCount, cardCount, recommended }` |
 | `GET /repos/{id}` | | `RepoDetail` = `RepoSummary` + `disclosure:{ reads[], skips[], estimatedSeconds }` (B2 사전 고지 문구는 서버가 만든다) |
-| `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 저장소의 활성 Job은 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409** (PR #50: `INVALID_REQUEST`, 제안된 `IDEMPOTENCY_KEY_MISMATCH`도 FE 수용). |
+| `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 사용자의 같은 연결 저장소에 활성 Job이 있으면 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409 + IDEMPOTENCY_KEY_MISMATCH** (확정). FE는 409에 새 키를 만들어 자동 재요청하지 않는다. |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
 | `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개 |
@@ -84,10 +84,14 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 - **남의 Job 은 403 이 아니라 404** — 존재 여부조차 알려 주지 않는다.
 - 자동 재시도는 없다. 사용자가 버튼을 눌렀을 때만 다시 시작한다.
   `GITHUB_RATE_LIMITED` 일 때만 `retryAfterSec` 을 쓰고, 그 시간이 지나기 전까지 프론트가 버튼을 막는다.
+- FAILED와 SUCCEEDED + partial 모두 **retryable === true**일 때만 재시도한다. false/null은 허용으로 추정하지 않는다. 오류 코드 이름만으로 재시도 여부를 추정하지 않는다.
+- 2026-09-26 develop의 JobView는 GITHUB_UNAVAILABLE/GITHUB_RATE_LIMITED만 true이며 retryAfterSec/result는 아직 null이다. 향후 실제 대기 시간이 내려오면 finishedAt(없으면 updatedAt)부터 계산한다.
+- 활성 Job 중복 제약은 user_repository_id 기준이다. 동일 GitHub 저장소라도 사용자 A/B의 연결 행은 달라 서로 분석을 막지 않는다.
 
-`GET /jobs?active=true` → `{ "jobs": [{ jobId, state, userRepositoryId, repoName, startedAt, pollAfterMs }] }`
+`GET /jobs?active=true` → `{ "jobs": [{ jobId, type, state, userRepositoryId, repoName, startedAt, pollAfterMs }] }`
 
 진행 중(`QUEUED`·`RUNNING`)인 현재 사용자의 Job. 없으면 빈 배열 + 200.
+백엔드 ActiveJobResponse의 `type`은 기존 응답에 포함돼 있다. 호환 응답에서 생략/null이면 프론트는 유형을 추정하지 않고 Job 상세 조회로 확인한다. 홈의 작업 목록과 `/jobs/{jobId}`는 같은 활성 Job 조회와 서버 `pollAfterMs`를 사용한다.
 **프론트는 Job ID 를 브라우저에 저장하지 않는다.** 새로고침 복구는 URL 쿼리(`?job=`) 아니면 이 목록이다 —
 그래야 다른 기기·다른 탭에서 시작한 작업도 잡히고, 캐시를 지웠다고 진행 중인 작업을 잃지 않는다.
 
@@ -113,6 +117,13 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 
 `FILLED` · `EMPTY` · `NEEDS_REVIEW` 세 값. **현재 카드 버전의 실제 칸 상태를 서버가 판정해서 내려준다.**
 프론트에 있던 "근거 수로 되짚어 추정하는" 로직은 지웠다 — 목록과 상세가 어긋나는 원인이었다.
+목록의 sourceLabel/sourceType/period/evidenceCount/userStatedCount는 부가 정보다. 생략/null은 모름으로 보존하고 숨긴다. `MANUAL`이나 0을 기본값으로 넣지 않는다. 서버가 명시한 0만 실제 0건이다. 빈칸·확인 필요 필터는 `star`만 사용한다. 이 누락/0 기준은 [백엔드 확인 요청](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/61#issuecomment-5969111285)에 함께 정리했다.
+
+**제목·기간 수정 제안 — 백엔드 확인 대기 (2026-10-03)**
+
+기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 제안 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string }`에서 전달한 필드만 수정한다. period는 자유 문자열이고 `""`는 삭제다. 응답 제안은 `{ cardId, title, period: string | null, updatedAt }`이며 상세 `GET /cards/{id}`에도 실제 period 반환을 요청한다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
+
+Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드에서는 `VITE_CARD_METADATA_ENABLED=true`를 명시하기 전 호출하지 않으며, 계약과 서버 구현 확인 후 활성화한다. 이 경로는 아직 확정된 서버 API가 아니다. 기존 기간이 누락돼도 제목만 수정하면 기간 삭제를 전송하지 않는다. 자유 입력 기간을 날짜로 억지 변환하지 않는다. [요청 댓글](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/61#issuecomment-5969111285)과 [작업 문서](2026-10-03-CARD_WORKFLOW.md)를 참고한다.
 
 **임시 저장 (`PATCH /cards/{id}/draft`)**
 

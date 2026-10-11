@@ -27,7 +27,8 @@ export const queryClient = new QueryClient({
       staleTime: CONFIG.QUERY_STALE_MS,
       retry: (count, err) => {
         if (err instanceof AuthError || err instanceof ContractError) return false;
-        if (err instanceof ApiError && err.status >= 400 && err.status < 500) return false;
+        // ApiError 는 서버가 명시한 실패다(2xx+error 포함) — 네트워크 단절(0)·서버 오류(5xx)만 재시도할 값어치가 있다.
+        if (err instanceof ApiError) return (err.status === 0 || err.status >= 500) && count < 2;
         return count < 2;
       },
       refetchOnWindowFocus: true,

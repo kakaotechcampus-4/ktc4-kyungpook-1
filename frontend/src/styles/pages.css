@@ -1,6 +1,6 @@
 /* ───────── 랜딩 (A1) ───────── */
 .landing { min-height: 100vh; background: var(--bg-paper); display: flex; flex-direction: column; align-items: center; gap: 28px; padding: 96px 40px 60px; }
-.landing__h1 { font-size: 34px; line-height: 46px; font-weight: 800; letter-spacing: -.03em; max-width: 860px; }
+.landing__h1 { font-size: 34px; line-height: 46px; font-weight: var(--heading-weight); letter-spacing: var(--text-tracking); max-width: 860px; }
 .perm { display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 900px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); overflow: hidden; }
 .perm__col { padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
 .perm__col h3 { font-size: 14px; line-height: 20px; font-weight: 600; }
@@ -13,11 +13,11 @@
 @media (max-width: 640px) { .perm { grid-template-columns: 1fr; } .perm__col--skip { border-left: 0; border-top: 1px solid var(--border-default); } .landing__h1 { font-size: 26px; line-height: 36px; } .landing { padding: 48px 18px; } }
 
 /* ───────── 홈 배너 · 카드 그리드 (E1) ───────── */
-.banner { display: flex; align-items: center; gap: 20px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--ink-900); color: var(--ink-0); flex-wrap: wrap; } /* 고정 다크 서페이스 — 양 테마 동일 */
-.banner__h { font-size: 20px; line-height: 29px; font-weight: 700; max-width: 660px; }
-.banner__s { font-size: 13px; line-height: 20px; color: var(--ink-200); }
-.banner__btn { background: var(--ink-0); color: var(--ink-900); border-color: var(--ink-0); margin-left: auto; }
-.banner__btn:hover { background: var(--ink-100); }
+.banner { display: flex; align-items: center; gap: 20px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--bg-feature); color: var(--text-on-feature); flex-wrap: wrap; }
+.banner__h { font-size: 20px; line-height: 29px; font-weight: var(--heading-weight); max-width: 660px; }
+.banner__s { font-size: 13px; line-height: 20px; color: var(--text-on-feature-muted); }
+.banner__btn { background: var(--feature-button-bg); color: var(--feature-button-text); border-color: var(--feature-button-bg); margin-left: auto; }
+.banner__btn:hover { background: var(--feature-button-hover); }
 .gcard { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; transition: transform .12s, border-color .12s; }
 .gcard__title { font-size: 18px; line-height: 26px; font-weight: 600; }
 .mine-chip { display: inline-flex; gap: 5px; padding: 3px 8px; border-radius: var(--radius-xs); background: var(--bg-subtle); font-size: 10.5px; line-height: 16px; font-weight: 600; color: var(--text-strong); }
@@ -70,7 +70,14 @@
 .star__dropped { display: flex; align-items: center; gap: 12px; font-size: 13px; line-height: 20px; font-weight: 500; color: var(--text-tertiary); flex-wrap: wrap; }
 .star__why { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: var(--radius-md); background: var(--field-low-bg); color: var(--field-low-text); font-size: 11.5px; line-height: 18px; font-weight: 500; flex-wrap: wrap; }
 .star-read { display: flex; flex-direction: column; }
-.star-read__row { display: flex; gap: 14px; padding: 18px 20px; border-top: 1px solid var(--border-default); }
+.star-read__row { display: flex; flex-direction: column; gap: var(--space-12); padding: 24px 20px; border-top: 1px solid var(--border-default); }
+.star-row__heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
+.star-row__label { display: flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
+.star-row__meta { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-left: auto; min-width: 0; max-width: 100%; }
+.star-row__count { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.star-row__undo { min-height: var(--control-touch-size); padding-inline: 8px; border-radius: var(--control-radius); }
+.star-row__undo:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.star-row__body { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
 .star-read__row:first-child { border-top: 0; }
 .star-read__row--gap { background: var(--field-dropped-bg); }
 .qpanel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--bg-canvas); }

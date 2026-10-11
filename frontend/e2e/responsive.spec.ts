@@ -19,9 +19,9 @@ test.describe('반응형 레이아웃', () => {
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
-    await expect(page.getByText('로그인이 만료됐어요')).toBeVisible();
+    await expect(page.getByRole('status')).toContainText('로그인이 만료됐어요');
     await expect(page.getByText('샘플 데이터로 체험해요. 실제 GitHub 계정은 연결하지 않아요.')).toHaveCount(0);
-    await expect(page.locator('.demo-card')).toBeHidden();
+    await expect(page.getByLabel('경험 카드 예시')).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     const columns = await page.locator('.landing__hero').evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
@@ -129,7 +129,7 @@ test.describe('반응형 레이아웃', () => {
 
     await page.goto('/repos');
     await page.getByRole('radio').first().click();
-    const selectedBorder = await page.locator('.card--selected').first().evaluate((el) => parseFloat(getComputedStyle(el).borderTopWidth));
+    const selectedBorder = await page.locator('.card--selected').first().evaluate((el) => parseFloat(getComputedStyle(el, '::before').borderTopWidth));
     expect(selectedBorder).toBeGreaterThanOrEqual(1);
   });
 

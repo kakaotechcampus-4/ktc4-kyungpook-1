@@ -1,6 +1,6 @@
 import type { Card, StarField } from '@/api/schemas';
 import { Badge, Button, EvidenceStrip, StarKey } from '@/components/ui';
-import { dropReasonLabel, fieldKey, starFieldName } from '@/lib/labels';
+import { dropReasonLabel, fieldKey, starFieldName, starFieldShort, interviewActionLabel } from '@/lib/labels';
 
 /**
  * STAR 한 칸. 빈 칸은 버그가 아니라 결과다 — 근거를 못 붙인 문장은 애초에 나오지 않는다.
@@ -22,7 +22,7 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
         <StarKey field={field} dropped={isDropped} />
         <span className="star__name" id={`star-${field}`}>{starFieldName[field]}</span>
         {low && !isDropped && <Badge kind="CAUTION">⚑ 확인 필요</Badge>}
-        {!isDropped && onEdit && <button type="button" className="right t-12 w-500 c-2" onClick={onEdit}>직접 수정</button>}
+        {!isDropped && onEdit && <Button variant="text" size="sm" className="star__edit right" aria-label={`${starFieldShort[field]} 수정`} onClick={onEdit}>수정</Button>}
       </div>
       {isDropped ? (
         <>
@@ -31,7 +31,7 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
             <span>{dropReasonLabel[dropped?.reason ?? 'NO_EVIDENCE']}</span>
             <span className="right row" style={{ gap: 8 }}>
               {dropped?.reason === 'TIMEOUT' && onRegenerate && <Button variant="outline" size="sm" onClick={onRegenerate}>{field} 칸만 다시 생성</Button>}
-              {onAsk && <Button variant="outline" size="sm" onClick={onAsk}>이 부분 다시 물어봐 주세요</Button>}
+              {onAsk && <Button variant="outline" size="sm" aria-label={`${starFieldShort[field]} 답변하기`} onClick={onAsk}>{interviewActionLabel}</Button>}
             </span>
           </div>
         </>
@@ -41,7 +41,7 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
           {low && (
             <div className="star__why">
               <span>{low.why}</span>
-              {onAsk && <Button variant="outline" size="sm" className="right" onClick={onAsk}>다시 물어보기</Button>}
+              {onAsk && <Button variant="outline" size="sm" className="right" aria-label={`${starFieldShort[field]} 답변하기`} onClick={onAsk}>{interviewActionLabel}</Button>}
             </div>
           )}
           {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}

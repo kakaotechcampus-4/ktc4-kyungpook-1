@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings } from 'lucide-react';
-import { useCards, useMe } from '@/api/queries';
+import { useActiveJobs, useCards, useMe } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { BrandLogo } from '@/components/ui/BrandLogo';
 
 const MENU = [
   { group: '커리어 관리', items: [
@@ -19,9 +20,9 @@ const MENU = [
 
 /** 워드마크 — 사각 G 마크 + itory. 원본 PNG(투명 배경). 다크 서페이스 위에서는 invert. */
 export const Wordmark = ({ height = 26, className }: { height?: number; className?: string }) => (
-  <img src="/gitory-wordmark.png" alt="Gitory" height={height} className={className} style={{ height, width: 'auto', display: 'block' }} draggable={false} />
+  <BrandLogo height={height} className={className} />
 );
-const Mark = () => <img src="/gitory-mark.png" alt="Gitory" width={32} height={32} style={{ borderRadius: 8 }} draggable={false} />;
+const Mark = () => <BrandLogo height={32} mark />;
 
 const RAIL_KEY = 'gitory.rail';
 const MOBILE_MENU = [
@@ -35,6 +36,7 @@ const MOBILE_MENU = [
 export function AppShell() {
   const me = useMe();
   const cards = useCards();
+  const active = useActiveJobs();
   const [rail, setRail] = useState<boolean>(() => { try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem(RAIL_KEY, rail ? '1' : '0'); } catch { /* noop */ } }, [rail]);
   const recent = [...(cards.data ?? [])].sort((a, b) => (a.status === 'DRAFT' ? -1 : 1) - (b.status === 'DRAFT' ? -1 : 1) || b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5);
@@ -72,12 +74,11 @@ export function AppShell() {
           <UserAvatar src={me.data?.avatarUrl} login={me.data?.login ?? '사용자'} size={36} />
           <div className="row grow" style={{ gap: 6, minWidth: 0 }}>
             <span className="sidebar__name">{me.data?.login ?? '…'}</span>
-            <span className="sidebar__plan">Free</span>
           </div>
           <Link to="/settings" className="sidebar__gear" aria-label="마이페이지"><Settings size={15} /></Link>
         </div>
       </aside>
-      <div id="main" className="shell__main"><Outlet /></div>
+      <div id="main" className="shell__main"><Outlet context={active} /></div>
       <nav className="mobile-nav" aria-label="모바일 주 메뉴">
         {MOBILE_MENU.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end}>
@@ -86,7 +87,7 @@ export function AppShell() {
           </NavLink>
         ))}
       </nav>
-      <JobWatcher />
+      <JobWatcher active={active} />
     </div>
   );
 }

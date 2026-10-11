@@ -3,10 +3,11 @@ import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@ta
 import { endpoints } from './endpoints';
 import { keys } from './keys';
 import { AuthError } from './client';
-import { isTerminal, type Card, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus } from './schemas';
+import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard } from './schemas';
 import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
+import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -126,12 +127,23 @@ export function useCreateManualDraft() {
   });
 }
 
+export function useSaveMetadata(cardId: string) {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (body: import('./schemas').CardMetadataPatch) => endpoints.saveMetadata(cardId, body),
+    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); } });
+}
+
 export function usePatchCandidate(repoId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (v: { id: string; status?: CandidateStatus; excludedShas?: string[] }) =>
       endpoints.patchCandidate(v.id, { status: v.status, excludedShas: v.excludedShas }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.candidates(repoId) }),
+    onSuccess: (updated) => {
+      qc.setQueryData<CandidateBoard>(keys.candidates(repoId), (board) => board ? {
+        ...board, candidates: board.candidates.map((candidate) => candidate.id === updated.id ? updated : candidate),
+      } : board);
+      void qc.invalidateQueries({ queryKey: keys.candidates(repoId) });
+    },
   });
 }
 
@@ -212,11 +224,17 @@ export function useConfirm(cardId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: { edited: boolean; maskedFields: StarField[] }) => endpoints.confirm(cardId, body),
-    onSuccess: (r) => {
-      void qc.invalidateQueries({ queryKey: keys.card(cardId) });
-      void qc.invalidateQueries({ queryKey: keys.cards });
+    onSuccess: async (r) => {
+      // The POST acknowledgement is authoritative even if the following GET fails.
+      await qc.cancelQueries({ queryKey: keys.card(cardId), exact: true });
+      qc.setQueryData<Card>(keys.card(cardId), (card) => card ? {
+        ...card, status: r.status, version: { ...card.version, versionNo: r.versionNo },
+      } : card);
+      qc.setQueryData<CardSummary[]>(keys.cards, (cards) => cards?.map((card) => card.id === cardId ? { ...card, status: r.status, versionNo: r.versionNo } : card));
       void qc.invalidateQueries({ queryKey: keys.me });
       if (r.repoId) void qc.invalidateQueries({ queryKey: keys.candidates(r.repoId) });
+      // Refresh the remaining metadata; the acknowledged status stays available on failure.
+      await qc.invalidateQueries({ queryKey: keys.cards });
     },
   });
 }

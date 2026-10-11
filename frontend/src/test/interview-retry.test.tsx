@@ -45,7 +45,7 @@ describe('interview retry and pending answer', () => {
     if (suffix) {
       await screen.findByRole('textbox', { name: '답변' });
       fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
-      fireEvent.click(screen.getByRole('button', { name: '다음으로 →' }));
+      fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
       await screen.findByText('이어서 물을까요?');
     }
     fireEvent.click(screen.getByRole('button', { name: /결과 · 비어 있음/ }));
@@ -62,7 +62,7 @@ describe('interview retry and pending answer', () => {
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue([]);
     mount([{ ...template, options: ['First option', 'Second option'], answer: null }]);
     fireEvent.click(screen.getByRole('button', { name: 'First option' }));
-    fireEvent.click(screen.getByRole('button', { name: '다음으로 →' }));
+    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
     await waitFor(() => expect(screen.getByRole('textbox', { name: '답변' })).toBeDisabled());
     expect(screen.getByRole('button', { name: 'Second option' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Second option' }));

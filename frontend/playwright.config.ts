@@ -1,4 +1,6 @@
 import { defineConfig } from '@playwright/test';
+export const testPort = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
+const baseURL = `http://localhost:${testPort}`;
 
 /**
  *   npm run e2e         개발 서버 (빠른 피드백)
@@ -7,10 +9,10 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
-  use: { baseURL: 'http://localhost:5173', locale: 'ko-KR', viewport: { width: 1440, height: 1024 } },
+  use: { baseURL, locale: 'ko-KR', viewport: { width: 1440, height: 1024 } },
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+    command: `npx vite --port ${testPort} --strictPort`,
+    url: baseURL,
     reuseExistingServer: true,
     timeout: 120_000,
   },

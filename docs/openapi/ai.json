@@ -100,7 +100,7 @@
           "issues": {
             "description": "카드와 관련된 GitHub 이슈 목록. 수집 전에는 빈 배열",
             "items": {
-              "$ref": "#/components/schemas/IssueContext"
+              "$ref": "#/components/schemas/schemas__interview__IssueContext"
             },
             "title": "Issues",
             "type": "array"
@@ -263,6 +263,7 @@
         "type": "object"
       },
       "ChangedFile": {
+        "additionalProperties": false,
         "description": "커밋에 포함된 파일 변경 메타데이터.",
         "properties": {
           "additions": {
@@ -290,6 +291,16 @@
           "path": {
             "title": "Path",
             "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FileChangeStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -869,12 +880,32 @@
         "type": "object"
       },
       "CommitInput": {
+        "additionalProperties": false,
         "description": "Spring이 GitHub에서 수집해 전달하는 정규화 커밋.",
         "properties": {
           "additions": {
-            "minimum": 0.0,
-            "title": "Additions",
-            "type": "integer"
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "그룹화 단계에서는 diff를 조회하지 않으므로 비어 있을 수 있다",
+            "title": "Additions"
+          },
+          "author_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Email"
           },
           "author_login": {
             "anyOf": [
@@ -887,15 +918,58 @@
             ],
             "title": "Author Login"
           },
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "GitHub 계정이 연결되지 않은 커밋의 작성자 이름",
+            "title": "Author Name"
+          },
           "authored_at": {
             "format": "date-time",
             "title": "Authored At",
             "type": "string"
           },
+          "changed_files": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "변경 파일 수. files가 비어 있을 때 점수에 사용한다",
+            "title": "Changed Files"
+          },
           "deletions": {
-            "minimum": 0.0,
-            "title": "Deletions",
-            "type": "integer"
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "그룹화 단계에서는 diff를 조회하지 않으므로 비어 있을 수 있다",
+            "title": "Deletions"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExclusionReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "files": {
             "items": {
@@ -904,8 +978,21 @@
             "title": "Files",
             "type": "array"
           },
+          "is_excluded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "수집기가 판정한 제외 여부. null이면 셀렉터가 규칙으로 판정한다",
+            "title": "Is Excluded"
+          },
           "issue_numbers": {
             "items": {
+              "exclusiveMinimum": 0.0,
               "type": "integer"
             },
             "title": "Issue Numbers",
@@ -923,6 +1010,7 @@
           "pull_request_number": {
             "anyOf": [
               {
+                "exclusiveMinimum": 0.0,
                 "type": "integer"
               },
               {
@@ -930,6 +1018,18 @@
               }
             ],
             "title": "Pull Request Number"
+          },
+          "repository_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repository Id"
           },
           "sha": {
             "maxLength": 40,
@@ -942,9 +1042,7 @@
           "sha",
           "message",
           "authored_at",
-          "parent_count",
-          "additions",
-          "deletions"
+          "parent_count"
         ],
         "title": "CommitInput",
         "type": "object"
@@ -1011,6 +1109,7 @@
         "type": "object"
       },
       "DependencyFile": {
+        "additionalProperties": false,
         "description": "기술 스택 판별에 필요한 의존성·설정 파일.",
         "properties": {
           "content": {
@@ -1030,6 +1129,7 @@
         "type": "object"
       },
       "DiffEvidence": {
+        "additionalProperties": false,
         "description": "확정 경험에서 추출한 최소 diff 근거.",
         "properties": {
           "author_login": {
@@ -1415,7 +1515,7 @@
         "type": "string"
       },
       "ExperienceCandidate": {
-        "description": "같은 기능의 커밋을 묶은 경험 후보.",
+        "description": "같은 기능을 위한 작업을 하나로 묶은 경험 후보.\n\nPR·Issue·커밋 단위로 나누지 않고, 같은 경험이면 여러 PR·Issue·커밋을 한 후보에 담는다.\n``source_type``은 대표 출처(PR이 있으면 PR, 없으면 COMMIT_CLUSTER)다.",
         "properties": {
           "commit_shas": {
             "items": {
@@ -1428,12 +1528,45 @@
             "title": "Group Key",
             "type": "string"
           },
+          "issue_numbers": {
+            "description": "이 경험에 연결된 모든 Issue 번호",
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "title": "Issue Numbers",
+            "type": "array"
+          },
           "low_card_worth": {
             "default": false,
             "title": "Low Card Worth",
             "type": "boolean"
           },
+          "pull_request_number": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "대표 PR 번호(내 커밋이 가장 많은 PR). Spring candidate.github_pr_number",
+            "title": "Pull Request Number"
+          },
+          "pull_request_numbers": {
+            "description": "이 경험에 포함된 모든 PR 번호",
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "title": "Pull Request Numbers",
+            "type": "array"
+          },
           "reason": {
+            "maxLength": 300,
+            "minLength": 1,
             "title": "Reason",
             "type": "string"
           },
@@ -1457,14 +1590,14 @@
           "source_type": {
             "enum": [
               "PR",
-              "ISSUE",
-              "COMMIT_CLUSTER",
-              "MANUAL"
+              "COMMIT_CLUSTER"
             ],
             "title": "Source Type",
             "type": "string"
           },
           "title": {
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Title",
             "type": "string"
           }
@@ -1481,8 +1614,15 @@
         "type": "object"
       },
       "ExperienceGroupingRequest": {
+        "additionalProperties": false,
         "description": "커밋 선별과 경험 그룹화를 요청한다.",
         "properties": {
+          "collection_partial": {
+            "default": false,
+            "description": "수집 결과(RepositoryCollectionResult.partial)가 일부만 반환됐는지. true면 후보가 있어도 verdict는 PARTIAL",
+            "title": "Collection Partial",
+            "type": "boolean"
+          },
           "commits": {
             "items": {
               "$ref": "#/components/schemas/CommitInput"
@@ -1490,11 +1630,26 @@
             "title": "Commits",
             "type": "array"
           },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/schemas__analysis__IssueContext"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "pull_requests": {
+            "items": {
+              "$ref": "#/components/schemas/PullRequestContext"
+            },
+            "title": "Pull Requests",
+            "type": "array"
+          },
           "repository_id": {
             "title": "Repository Id",
             "type": "string"
           },
           "target_login": {
+            "minLength": 1,
             "title": "Target Login",
             "type": "string"
           }
@@ -1887,43 +2042,6 @@
         "title": "InterviewTurnResult",
         "type": "object"
       },
-      "IssueContext": {
-        "additionalProperties": false,
-        "description": "GitHub Issue에서 수집한 최소 질문 문맥.",
-        "properties": {
-          "issue_number": {
-            "description": "GitHub Issue 번호",
-            "exclusiveMinimum": 0.0,
-            "title": "Issue Number",
-            "type": "integer"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "이슈 원문 또는 A/Spring이 만든 짧은 이슈 요약",
-            "title": "Summary"
-          },
-          "title": {
-            "description": "GitHub Issue 제목",
-            "minLength": 1,
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "issue_number",
-          "title"
-        ],
-        "title": "IssueContext",
-        "type": "object"
-      },
       "Meta": {
         "description": "요청 처리 메타데이터(로깅/추적용).",
         "properties": {
@@ -2062,6 +2180,48 @@
         ],
         "title": "PartialReason",
         "type": "string"
+      },
+      "PullRequestContext": {
+        "additionalProperties": false,
+        "description": "PR 후보의 제목·설명과 Issue 연결에 쓰는 PR 문맥(Spring ``pull_request`` 행).",
+        "properties": {
+          "body_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Excerpt"
+          },
+          "linked_issue_numbers": {
+            "description": "PR 본문의 Resolves #n 등으로 연결된 Issue",
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "title": "Linked Issue Numbers",
+            "type": "array"
+          },
+          "number": {
+            "exclusiveMinimum": 0.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "title"
+        ],
+        "title": "PullRequestContext",
+        "type": "object"
       },
       "RepositoryCollectionRequest": {
         "additionalProperties": false,
@@ -2279,6 +2439,7 @@
         "type": "object"
       },
       "StarAnalysisRequest": {
+        "additionalProperties": false,
         "description": "확정된 경험의 STAR 분석을 요청한다.",
         "properties": {
           "candidate_id": {
@@ -2550,6 +2711,76 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "schemas__analysis__IssueContext": {
+        "additionalProperties": false,
+        "description": "Issue 후보의 제목·설명에 쓰는 Issue 문맥(Spring ``issue`` 행).",
+        "properties": {
+          "body_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Excerpt"
+          },
+          "number": {
+            "exclusiveMinimum": 0.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "title"
+        ],
+        "title": "IssueContext",
+        "type": "object"
+      },
+      "schemas__interview__IssueContext": {
+        "additionalProperties": false,
+        "description": "GitHub Issue에서 수집한 최소 질문 문맥.",
+        "properties": {
+          "issue_number": {
+            "description": "GitHub Issue 번호",
+            "exclusiveMinimum": 0.0,
+            "title": "Issue Number",
+            "type": "integer"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "이슈 원문 또는 A/Spring이 만든 짧은 이슈 요약",
+            "title": "Summary"
+          },
+          "title": {
+            "description": "GitHub Issue 제목",
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issue_number",
+          "title"
+        ],
+        "title": "IssueContext",
+        "type": "object"
       }
     }
   },
@@ -2585,7 +2816,7 @@
     },
     "/internal/analysis/groups": {
       "post": {
-        "description": "수집된 커밋을 선별하고 경험 후보로 묶는 계약입니다. 기본 서비스는 미구현으로 500을 반환합니다. 200 스키마는 구현 대상 계약입니다.",
+        "description": "수집된 커밋을 선별하고 PR·Issue 연결 및 LLM 분석으로 경험 후보를 묶습니다.",
         "operationId": "group_experiences_internal_analysis_groups_post",
         "requestBody": {
           "content": {
@@ -2639,10 +2870,20 @@
                 }
               }
             },
-            "description": "기본 AnalysisPipeline은 아직 미구현입니다. 현재 유효한 요청도 500으로 실패합니다."
+            "description": "분석 처리 중 내부 오류 또는 LLM 호출 실패"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: 그룹화 LLM 호출·출력 검증 실패(retryable=true) 또는 LLM 설정 누락(retryable=false)."
           }
         },
-        "summary": "A 경험 후보 그룹화 (미구현)",
+        "summary": "A 경험 후보 그룹화",
         "tags": [
           "analysis"
         ]
@@ -2704,7 +2945,7 @@
                 }
               }
             },
-            "description": "기본 AnalysisPipeline은 아직 미구현입니다. 현재 유효한 요청도 500으로 실패합니다."
+            "description": "분석 처리 중 내부 오류 또는 LLM 호출 실패"
           }
         },
         "summary": "A 확정 경험의 STAR 생성 (미구현)",

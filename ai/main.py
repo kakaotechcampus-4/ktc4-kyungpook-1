@@ -18,7 +18,10 @@ from api.collection import router as collection_router
 from api.analysis import router as analysis_router
 from api.interviews import router as interviews_router
 from api.health import SERVICE_VERSION, router as health_router
+from api.job_postings import router as job_postings_router
+from api.matching import router as matching_router
 from schemas.common import Envelope, ErrorDetail, Meta
+
 
 async def handle_request_validation_error(
     request: Request, exc: RequestValidationError
@@ -61,6 +64,8 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
             {"name": "collection", "description": "A-1 GitHub 활동 및 선택 후보 diff 수집. X-GitHub-Token 필수"},
             {"name": "analysis", "description": "A 경험 후보 그룹화·diff 근거·STAR 초안 생성"},
             {"name": "interview-turns", "description": "B-1 질문 생성 / B-2 답변 평가. 현재 템플릿·규칙 기반이며 저장은 Spring 담당"},
+            {"name": "job-postings", "description": "공식 채용공고 메타데이터 수집과 상세 조건 추출"},
+            {"name": "matching", "description": "공고 조건 인덱싱과 확정 STAR 기반 직무 검색"},
         ],
         openapi_url="/openapi.json" if docs_enabled else None,
         docs_url="/docs" if docs_enabled else None,
@@ -71,6 +76,8 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
     application.include_router(analysis_router)
     application.include_router(collection_router)
     application.include_router(interviews_router)
+    application.include_router(job_postings_router)
+    application.include_router(matching_router)
     application.add_exception_handler(
         RequestValidationError, handle_request_validation_error
     )

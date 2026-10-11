@@ -54,4 +54,26 @@ class CandidateGroupingTest {
         assertThat(grouping.hasSameInput(OTHER_FINGERPRINT, 2)).isTrue();
 
     }
+
+    @Test
+    @DisplayName("지문은 묶기 버전·줄바꿈·요청을 이은 글의 SHA-256 을 16진수 64자로 쓴 값이다")
+    void fingerprintIsSha256OfVersionAndRequest() {
+
+        assertThat(CandidateGrouping.fingerprintOf("{\"commits\":[]}", 1))
+                .isEqualTo("8f11b58ad3ed3eb1504ec3333a9b3c7c2a365253c0e7e9c7a802251964f76e34");
+
+    }
+
+    @Test
+    @DisplayName("요청과 묶기 버전이 같으면 지문이 같고, 요청이 한 글자라도 다르거나 묶기 버전이 다르면 지문이 다르다")
+    void fingerprintFollowsRequestAndVersion() {
+
+        String request = "{\"commits\":[\"a\"]}";
+        String fingerprint = CandidateGrouping.fingerprintOf(request, 1);
+
+        assertThat(CandidateGrouping.fingerprintOf(new String(request), 1)).isEqualTo(fingerprint);
+        assertThat(CandidateGrouping.fingerprintOf("{\"commits\":[\"b\"]}", 1)).isNotEqualTo(fingerprint);
+        assertThat(CandidateGrouping.fingerprintOf(request, 2)).isNotEqualTo(fingerprint);
+
+    }
 }

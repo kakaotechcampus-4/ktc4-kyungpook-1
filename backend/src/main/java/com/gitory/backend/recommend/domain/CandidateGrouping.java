@@ -4,7 +4,11 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -36,6 +40,19 @@ public class CandidateGrouping {
     public static CandidateGrouping of(Long userRepositoryId, String inputFingerprint, int groupingVersion) {
 
         return new CandidateGrouping(userRepositoryId, inputFingerprint, groupingVersion);
+
+    }
+
+    /** 요청과 묶기 버전이 같으면 늘 같은 SHA-256 16진수 64자이고, 버전을 넣어 AI 규칙이 바뀌면 요청이 같아도 지문이 바뀐다 */
+    public static String fingerprintOf(String request, int groupingVersion) {
+
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest((groupingVersion + "\n" + request).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException missing) {
+            throw new IllegalStateException(missing);
+        }
 
     }
 

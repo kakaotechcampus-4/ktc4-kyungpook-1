@@ -17,7 +17,7 @@ on:
     branches: [develop, main]
     paths:
       - 'backend/**'
-      - 'contracts/ingest/**'
+      - 'contracts/**'
       - '.github/workflows/backend-ci.yml'
 
 # 같은 브랜치에 연속 push 하면 앞의 run 을 취소한다. 무료 러너 분을 아낀다.
@@ -54,7 +54,7 @@ jobs:
         run: |
           if [ "$EVENT" != pull_request ] \
             || git diff --name-only HEAD^1 HEAD \
-               | grep -qE '^(backend/|contracts/ingest/|\.github/workflows/backend-ci\.yml$)'; then
+               | grep -qE '^(backend/|contracts/|\.github/workflows/backend-ci\.yml$)'; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
           else
             echo "backend 변경 없음 — 빌드를 건너뛴다"

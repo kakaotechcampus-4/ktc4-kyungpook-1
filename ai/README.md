@@ -91,6 +91,12 @@ Swagger의 200 응답 스키마는 앞으로 구현할 계약입니다.
 선택된 후보의 상세 diff 분석은 후속 단계에서 별도로 수행합니다.
 토큰은 요청 본문·응답·로그·DB에 남기지 않고 호출 중 메모리에서만 사용합니다.
 
+재수집에서는 작성 시각 기반 `since`를 사용하지 않습니다. Spring이 DB에
+저장된 `known_commit_shas`를 보내면, AI는 기본 브랜치의 commit 목록을 다시
+확인하되 저장된 SHA의 상세 조회를 생략합니다. 따라서 개인 브랜치에서 과거에
+작성됐다가 나중에 기본 브랜치에 합쳐진 commit도 누락되지 않습니다. 응답에는
+현재 기본 브랜치의 `head_sha`를 포함하며 Spring이 저장소 상태로 보관합니다.
+
 `POST /internal/collect/candidate-details`는 A가 선택한 `commit_shas`
 또는 `github_pr_number`만 다시 조회해 제한된 diff patch를 반환합니다.
 개별 patch는 20,000자, 후보 전체는 100,000자까지며, 상한 초과 시

@@ -78,9 +78,9 @@ public class JobRunner {
     /** {@link #claimNext()} 로 꺼낸 Job 을 받아 AI 수집 결과대로 끝낸다 */
     public void run(AnalysisJob job) {
 
-        IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(), null);
-
         try {
+            IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
+                    activityStore.knownCommitShas(job.getUserRepositoryId()));
             CollectedActivity activity = activities.collect(request);
             transaction.executeWithoutResult(status -> succeed(job.getId(), request, activity));
         } catch (RuntimeException failure) {

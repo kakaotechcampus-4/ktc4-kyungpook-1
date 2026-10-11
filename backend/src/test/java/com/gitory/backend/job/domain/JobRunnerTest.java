@@ -79,10 +79,10 @@ class JobRunnerTest {
     AnalysisJobRepository jobs;
 
     @Autowired
-    JobCancelService cancelService;
+    ActivityStoreService activityStore;
 
     @Autowired
-    ActivityStoreService activityStore;
+    JobCancelService cancelService;
 
     @Autowired
     JdbcTemplate jdbc;
@@ -195,7 +195,24 @@ class JobRunnerTest {
 
         runNext();
 
-        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), null));
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of()));
+
+    }
+
+    @Test
+    @DisplayName("재수집은 저장된 commit SHA를 전달한다")
+    void requestsKnownCommits() {
+
+        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), List.of());
+        activityStore.store(initial, activity(null));
+        activityStore.store(initial, activity(PartialReason.CAP_EXCEEDED));
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of(SHA)));
 
     }
 
@@ -301,7 +318,7 @@ class JobRunnerTest {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(new CollectedActivity(
-                List.of(commit("a".repeat(41))), List.of(), List.of(), null));
+                List.of(commit("a".repeat(41))), List.of(), List.of(), null, null));
 
         runNext();
 
@@ -633,7 +650,7 @@ class JobRunnerTest {
         CollectedPullRequest pr = new CollectedPullRequest(7, "feat: 워커 추가", null, GithubState.CLOSED, "grow22",
                 "develop", "feature/job-worker", Instant.parse("2026-10-01T00:00:00Z"),
                 Instant.parse("2026-10-01T01:00:00Z"), List.of(SHA), List.of());
-        return new CollectedActivity(List.of(commit(SHA)), List.of(pr), List.of(), partialReason);
+        return new CollectedActivity(List.of(commit(SHA)), List.of(pr), List.of(), null, partialReason);
 
     }
 

@@ -51,7 +51,6 @@ class ActivityStoreServiceTest {
     private static final String SHA_1 = "1111111111111111111111111111111111111111";
     private static final String SHA_2 = "2222222222222222222222222222222222222222";
     private static final List<String> BRANCHES = List.of("develop", "feature/session-index");
-    private static final Instant SINCE = Instant.parse("2026-09-28T00:00:00Z");
     private static final Instant PR_OPENED_AT = Instant.parse("2026-09-20T10:00:00Z");
     private static final Instant ISSUE_OPENED_AT = Instant.parse("2026-09-19T08:00:00Z");
 
@@ -109,12 +108,12 @@ class ActivityStoreServiceTest {
         CollectedIssue issue = new CollectedIssue(42, "세션 조회가 느립니다", null, GithubState.CLOSED, "reporter",
                 List.of(), Instant.parse("2026-09-19T08:00:00Z"), Instant.parse("2026-09-21T11:00:00Z"));
         Long runId = service.store(request(), new CollectedActivity(List.of(commit(SHA_1)), List.of(pr),
-                List.of(issue), PartialReason.CAP_EXCEEDED));
+                List.of(issue), "a".repeat(40), PartialReason.CAP_EXCEEDED));
 
         CollectionRun run = runs.findById(runId).orElseThrow();
         assertThat(run.getBranches()).containsExactly("develop", "feature/session-index");
-        assertThat(run.getSince()).isEqualTo(SINCE);
-        assertThat(run.getHeadSha()).isNull();
+        assertThat(run.getSince()).isNull();
+        assertThat(run.getHeadSha()).isEqualTo("a".repeat(40));
         assertThat(run.getCommitsCollected()).isEqualTo(1);
         assertThat(run.getPrsCollected()).isEqualTo(1);
         assertThat(run.getIssuesCollected()).isEqualTo(1);
@@ -154,6 +153,17 @@ class ActivityStoreServiceTest {
 
         assertThat(countCommits()).isEqualTo(2);
         assertThat(runs.findById(secondRunId).orElseThrow().getCommitsCollected()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("재수집 요청에는 이 연결 저장소에서 이미 수집한 commit SHA를 제공한다")
+    void providesKnownCommitShas() {
+
+        assertThat(service.knownCommitShas(userRepositoryId)).isEmpty();
+
+        service.store(request(), activityOf(commit(SHA_1), commit(SHA_2)));
+
+        assertThat(service.knownCommitShas(userRepositoryId)).containsExactly(SHA_1, SHA_2);
     }
 
     @Test
@@ -221,7 +231,7 @@ class ActivityStoreServiceTest {
             }));
             firstStoredBeforeCommit.await(5, TimeUnit.SECONDS);
 
-            Long secondRunId = service.store(new IngestRequest(teammateRepositoryId, BRANCHES, SINCE),
+            Long secondRunId = service.store(new IngestRequest(teammateRepositoryId, BRANCHES, List.of()),
                     activityOf(commit(SHA_1), commit(SHA_2)));
 
             assertThat(first.get(10, TimeUnit.SECONDS)).isNotNull();
@@ -314,7 +324,7 @@ class ActivityStoreServiceTest {
         CollectedPullRequest tooLongTitle = new CollectedPullRequest(18, "가".repeat(257), null, GithubState.OPEN,
                 "grow22", "develop", "feature/too-long", PR_OPENED_AT, null, List.of(), List.of());
         CollectedActivity activity = new CollectedActivity(List.of(commit(SHA_1)),
-                List.of(openPullRequest(17), tooLongTitle), List.of(openIssue(42)), null);
+                List.of(openPullRequest(17), tooLongTitle), List.of(openIssue(42)), null, null);
 
         assertThatThrownBy(() -> service.store(request(), activity)).isInstanceOf(DataAccessException.class);
 
@@ -332,7 +342,7 @@ class ActivityStoreServiceTest {
         CollectedIssue tooLongTitle = new CollectedIssue(43, "가".repeat(257), null, GithubState.OPEN, "reporter",
                 List.of(), ISSUE_OPENED_AT, null);
         CollectedActivity activity = new CollectedActivity(List.of(commit(SHA_1)), List.of(openPullRequest(17)),
-                List.of(openIssue(42), tooLongTitle), null);
+                List.of(openIssue(42), tooLongTitle), null, null);
 
         assertThatThrownBy(() -> service.store(request(), activity)).isInstanceOf(DataAccessException.class);
 
@@ -360,7 +370,7 @@ class ActivityStoreServiceTest {
             }));
             firstStoredBeforeCommit.await(5, TimeUnit.SECONDS);
 
-            Long secondRunId = service.store(new IngestRequest(teammateRepositoryId, BRANCHES, SINCE),
+            Long secondRunId = service.store(new IngestRequest(teammateRepositoryId, BRANCHES, List.of()),
                     detailsOf(List.of(mergedPullRequest(17)), List.of(closedIssue(42))));
 
             assertThat(first.get(10, TimeUnit.SECONDS)).isNotNull();
@@ -392,7 +402,7 @@ class ActivityStoreServiceTest {
     @DisplayName("연결 저장소가 없으면 아무것도 저장되지 않는다")
     void rejectsUnknownUserRepository() {
 
-        IngestRequest unknown = new IngestRequest(userRepositoryId + 1000, BRANCHES, SINCE);
+        IngestRequest unknown = new IngestRequest(userRepositoryId + 1000, BRANCHES, List.of());
 
         assertThatThrownBy(() -> service.store(unknown, activityOf(commit(SHA_1))))
                 .isInstanceOf(IllegalStateException.class);
@@ -402,7 +412,7 @@ class ActivityStoreServiceTest {
     }
 
     private IngestRequest request() {
-        return new IngestRequest(userRepositoryId, BRANCHES, SINCE);
+        return new IngestRequest(userRepositoryId, BRANCHES, List.of());
     }
 
     private Long connectTeammate() {
@@ -422,7 +432,7 @@ class ActivityStoreServiceTest {
     }
 
     private CollectedActivity activityOf(CollectedCommit... collected) {
-        return new CollectedActivity(List.of(collected), List.of(), List.of(), null);
+        return new CollectedActivity(List.of(collected), List.of(), List.of(), null, null);
     }
 
     private CollectedCommit commit(String sha) {
@@ -436,7 +446,7 @@ class ActivityStoreServiceTest {
 
     private CollectedActivity detailsOf(List<CollectedPullRequest> pullRequests, List<CollectedIssue> issues) {
 
-        return new CollectedActivity(List.of(), pullRequests, issues, null);
+        return new CollectedActivity(List.of(), pullRequests, issues, null, null);
 
     }
 

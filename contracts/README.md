@@ -12,6 +12,9 @@ FE·BE·AI 세 파트가 같은 사례를 보고 있는지 테스트로 고정�
   - BE: 선택 저장소·사용자 문맥을 요청하고 확정된 MVP 필드만 DB에 저장
   - AI: 요청 범위에서만 OAuth 토큰을 사용해 commit/PR/review/comment/issue를 수집
   - A: commit 메시지·변경 파일·PR 연결·리뷰 상태·본문 excerpt로 후보를 그룹화
+  - 재수집: Spring은 DB에 저장된 `known_commit_shas`를 보내고, AI는 commit
+    목록을 다시 확인하되 저장된 SHA의 상세 조회를 생략한다.
+  - AI는 현재 기본 브랜치의 `head_sha`를 응답하고 Spring이 이를 저장한다.
   - OAuth 토큰 값은 JSON 계약·응답·로그에 포함하지 않는다.
 
 - `ingest/candidate-details.json` — A가 선택한 후보의 SHA·PR만

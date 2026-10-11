@@ -22,6 +22,7 @@ import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.support.AiTestProperties;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -387,7 +388,7 @@ class JobRunnerTest {
 
         Long jobId = runningSince(userRepositoryId, "16 minutes");
         JobRunner longerWait = new JobRunner(jobs, activities, activityStore, transaction,
-                new AiClientProperties(null, null, null, Duration.ofMinutes(20)));
+                AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(20)).build());
 
         longerWait.failStuckJobs();
 

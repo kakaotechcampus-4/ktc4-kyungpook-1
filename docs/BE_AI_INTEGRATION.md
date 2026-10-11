@@ -24,15 +24,16 @@ flowchart LR
 |---|---|
 | `AI_BASE_URL` | `http://localhost:8000`; Compose에서는 `http://ai:8000` |
 | `AI_CONNECT_TIMEOUT` | `3s`; 연결 제한 |
-| `AI_READ_TIMEOUT` | `180s`; 수집을 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
+| `AI_READ_TIMEOUT` | `180s`; 수집·묶기·되묻기를 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
 | `AI_COLLECT_READ_TIMEOUT` | `600s`; GitHub 수집 응답 대기 제한. 멈춘 분석 Job 판정은 이 값 + 5분 |
+| `AI_GROUPS_READ_TIMEOUT` | `600s`; 후보 묶기(`/internal/analysis/groups`) 응답 대기 제한(후보 묶기 연동부터 사용) |
 | `API_DOCS_ENABLED` | BE 운영 기본 `false`, `local` 프로필 기본 `true` |
 | `AI_DOCS_ENABLED` | AI 기본 `true`; 운영에서 문서가 필요 없으면 `false` |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | BE 기본 프로필의 PostgreSQL 접속 정보 |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | BE GitHub OAuth App 설정 |
 | `TOKEN_ENC_KEY`, `TOKEN_ENC_SALT` | 기존 BE 토큰 암호화 설정; salt는 16진수 |
 
-헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
+헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. 되묻기는 프론트가 요청을 30초에 끊으므로 그보다 짧은 `gitory.ai.interview-read-timeout`(기본 20초)을 응답 대기 제한으로 사용한다(되묻기 연동부터 사용). `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
 
 ## 로컬 실행
 

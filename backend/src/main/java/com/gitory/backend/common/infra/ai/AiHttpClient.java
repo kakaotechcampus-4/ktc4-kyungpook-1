@@ -13,7 +13,9 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** 내부 AI HTTP 경계. 원문 에러와 HTTP 예외의 cause를 밖으로 전달하지 않는다. */
 @Component
@@ -24,11 +26,15 @@ public class AiHttpClient {
             "RESOURCE_NOT_FOUND", "NO_TOOL_CALL", "EVIDENCE_MISMATCH", "LLM_RATE_LIMIT",
             "GITHUB_API_ERROR", "LLM_UNAVAILABLE", "INTERNAL_ERROR");
 
+    private final AiClientProperties properties;
     private final RestClient collectionClient;
     private final RestClient queryClient;
+    // JDK HttpClient 는 만들 때마다 스레드를 하나 띄우므로 대기 시간마다 한 번만 만들어 다시 쓴다
+    private final Map<Duration, RestClient> postClients = new ConcurrentHashMap<>();
     private final ObjectMapper mapper;
 
     public AiHttpClient(AiClientProperties properties, ObjectMapper mapper) {
+        this.properties = properties;
         this.mapper = mapper;
         this.collectionClient = client(properties, properties.collectReadTimeout());
         // health·OpenAPI 조회가 긴 수집 요청 제한 때문에 정체되지 않게 한다.
@@ -52,6 +58,17 @@ public class AiHttpClient {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
                 .body(request), true);
+    }
+
+    /** 토큰이 필요 없는 AI 호출로, 묶기·되묻기처럼 호출마다 기다릴 시간이 달라 대기 시간을 함께 받는다 */
+    public JsonNode post(String path, Object request, Duration readTimeout) {
+
+        requireInternalPath(path);
+        RestClient postClient = postClients.computeIfAbsent(readTimeout, timeout -> client(properties, timeout));
+        return exchange(postClient.post().uri(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request), true);
+
     }
 
     private JsonNode exchange(RestClient.RequestHeadersSpec<?> request, boolean envelope) {

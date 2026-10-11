@@ -100,6 +100,10 @@ gitory:
     # AI 가 커밋마다 GitHub 를 차례로 불러 커밋 1000개 저장소는 180초를 넘기므로 수집만 따로 길게 둔다
     # 멈춘 Job 판정은 이 값에 여유를 더해 계산하므로, 이 값을 늘리면 판정도 같이 늦춰진다
     collect-read-timeout: ${AI_COLLECT_READ_TIMEOUT:600s}
+    # 후보 묶기는 AI 가 LLM 을 여러 번 차례로 불러 오래 걸리므로 따로 길게 둔다
+    groups-read-timeout: ${AI_GROUPS_READ_TIMEOUT:600s}
+    # 프론트가 요청을 30초에 끊으므로 되묻기는 그 전에 AI 응답을 받아야 한다
+    interview-read-timeout: 20s
   consent:
     # GitHub 액세스 토큰 암호화 키·솔트. 코드·설정 파일에 값을 적지 않는다 —
     # 배포 환경의 비밀 관리에서 환경변수로 주입한다(security-privacy.md).

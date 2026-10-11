@@ -1,7 +1,6 @@
 package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.common.infra.ai.AiClientException;
-import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
 import com.gitory.backend.consent.domain.GithubConnection;
 import com.gitory.backend.consent.domain.User;
@@ -17,6 +16,7 @@ import com.gitory.backend.ingest.domain.PartialReason;
 import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
+import com.gitory.backend.support.AiTestProperties;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -105,9 +105,10 @@ class AiRepositoryActivityAdapterTest {
             exchange.close();
         });
         server.start();
-        http = new AiHttpClient(new AiClientProperties(
-                URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
-                Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofSeconds(2)), mapper);
+        http = new AiHttpClient(AiTestProperties.defaults()
+                .baseUrl(URI.create("http://127.0.0.1:" + server.getAddress().getPort()))
+                .connectTimeout(Duration.ofSeconds(1)).readTimeout(Duration.ofSeconds(2))
+                .collectReadTimeout(Duration.ofSeconds(2)).build(), mapper);
         when(users.findById(USER_ID)).thenReturn(Optional.of(User.register(42L, "grow22")));
         activeConnection(null);
         when(targets.find(eq(USER_REPOSITORY_ID), anyList())).thenAnswer(invocation ->
@@ -421,9 +422,10 @@ class AiRepositoryActivityAdapterTest {
     void appliesCollectionReadTimeout(boolean headersFirst) {
         responseDelayMs = 500;
         responseHeadersFirst = headersFirst;
-        AiHttpClient shortTimeout = new AiHttpClient(new AiClientProperties(
-                URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
-                Duration.ofSeconds(1), Duration.ofSeconds(2), Duration.ofMillis(50)), mapper);
+        AiHttpClient shortTimeout = new AiHttpClient(AiTestProperties.defaults()
+                .baseUrl(URI.create("http://127.0.0.1:" + server.getAddress().getPort()))
+                .connectTimeout(Duration.ofSeconds(1)).readTimeout(Duration.ofSeconds(2))
+                .collectReadTimeout(Duration.ofMillis(50)).build(), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
                 new GithubCollectionAccess(users, connections, cipher, shortTimeout, null, null));
         assertThatThrownBy(() -> adapter.collect(request(List.of())))
@@ -439,9 +441,10 @@ class AiRepositoryActivityAdapterTest {
     void collectionWaitsForItsOwnReadTimeout() {
 
         responseDelayMs = 500;
-        AiHttpClient shortDefaultTimeout = new AiHttpClient(new AiClientProperties(
-                URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
-                Duration.ofSeconds(1), Duration.ofMillis(50), Duration.ofSeconds(2)), mapper);
+        AiHttpClient shortDefaultTimeout = new AiHttpClient(AiTestProperties.defaults()
+                .baseUrl(URI.create("http://127.0.0.1:" + server.getAddress().getPort()))
+                .connectTimeout(Duration.ofSeconds(1)).readTimeout(Duration.ofMillis(50))
+                .collectReadTimeout(Duration.ofSeconds(2)).build(), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
                 new GithubCollectionAccess(users, connections, cipher, shortDefaultTimeout, null, null));
 

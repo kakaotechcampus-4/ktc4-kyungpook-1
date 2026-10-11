@@ -8,13 +8,16 @@ import java.time.Duration;
 /** AI 주소와 시간 제한. 인증 토큰은 설정에 보관하지 않는다. */
 @ConfigurationProperties("gitory.ai")
 public record AiClientProperties(URI baseUrl, Duration connectTimeout, Duration readTimeout,
-                                 Duration collectReadTimeout) {
+                                 Duration collectReadTimeout, Duration groupsReadTimeout,
+                                 Duration interviewReadTimeout) {
 
     public AiClientProperties {
         baseUrl = baseUrl == null ? URI.create("http://localhost:8000") : baseUrl;
         connectTimeout = connectTimeout == null ? Duration.ofSeconds(3) : connectTimeout;
         readTimeout = readTimeout == null ? Duration.ofSeconds(180) : readTimeout;
         collectReadTimeout = collectReadTimeout == null ? Duration.ofSeconds(600) : collectReadTimeout;
+        groupsReadTimeout = groupsReadTimeout == null ? Duration.ofSeconds(600) : groupsReadTimeout;
+        interviewReadTimeout = interviewReadTimeout == null ? Duration.ofSeconds(20) : interviewReadTimeout;
         if ((!"http".equals(baseUrl.getScheme()) && !"https".equals(baseUrl.getScheme()))
                 || baseUrl.getHost() == null || baseUrl.getUserInfo() != null
                 || baseUrl.getQuery() != null || baseUrl.getFragment() != null) {
@@ -22,7 +25,9 @@ public record AiClientProperties(URI baseUrl, Duration connectTimeout, Duration 
         }
         if (connectTimeout.isNegative() || connectTimeout.isZero()
                 || readTimeout.isNegative() || readTimeout.isZero()
-                || collectReadTimeout.isNegative() || collectReadTimeout.isZero()) {
+                || collectReadTimeout.isNegative() || collectReadTimeout.isZero()
+                || groupsReadTimeout.isNegative() || groupsReadTimeout.isZero()
+                || interviewReadTimeout.isNegative() || interviewReadTimeout.isZero()) {
             throw new IllegalArgumentException("AI 시간 제한은 양수여야 한다");
         }
     }

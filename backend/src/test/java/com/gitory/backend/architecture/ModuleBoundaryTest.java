@@ -1,6 +1,7 @@
 package com.gitory.backend.architecture;
 
 import com.gitory.backend.GitoryApplication;
+import com.gitory.backend.common.infra.ai.AiHttpClient;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -81,6 +82,36 @@ class ModuleBoundaryTest {
                 .as("근거 검증은 결정적이어야 한다 — 모델에 되묻지 않는다")
                 .allowEmptyShould(true)
                 .check(classes);
+    }
+
+    @Test
+    @DisplayName("agent 는 다른 업무 모듈을 참조하지 않는다 — 포트 요청·응답은 agent 의 record 로만 주고받는다")
+    void agentDependsOnNoOtherModule() {
+
+        for (String module : Modules.ALL) {
+            if (module.equals("agent")) {
+                continue;
+            }
+            noClasses()
+                    .that().resideInAPackage(ROOT + ".agent..")
+                    .should().dependOnClassesThat().resideInAPackage(ROOT + "." + module + "..")
+                    .as("agent 는 %s 모듈을 참조할 수 없다".formatted(module))
+                    .allowEmptyShould(true)
+                    .check(classes);
+        }
+
+    }
+
+    @Test
+    @DisplayName("AiHttpClient 는 common·consent·agent 만 쓴다 — 다른 모듈이 agent 포트를 건너뛰고 AI 를 부르지 못한다")
+    void onlyBoundaryModulesUseAiHttpClient() {
+
+        noClasses()
+                .that().resideOutsideOfPackages(ROOT + ".common..", ROOT + ".consent..", ROOT + ".agent..")
+                .should().dependOnClassesThat().belongToAnyOf(AiHttpClient.class)
+                .allowEmptyShould(true)
+                .check(classes);
+
     }
 
     @Test

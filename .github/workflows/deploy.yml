@@ -10,6 +10,7 @@
 #   - 한 커밋이 CI 여러 개를 돌리면 CI 마다 이 워크플로가 깨어난다. 아직 도는 CI 가 있으면 넘기고,
 #     마지막 CI 가 끝났을 때 배포한다.
 #   - deploy/ 만 바뀐 커밋은 CI 가 없어 자동 배포되지 않는다. Actions 에서 수동 실행한다.
+#   - 수동 실행도 CI 를 확인한다. CI 워크플로마다 develop 의 가장 최근 실행이 모두 성공했을 때만 배포한다.
 #
 # 🚨 public 레포에서 self-hosted runner 를 쓴다. 아래를 지킨다.
 #   - 트리거는 workflow_run(develop push 의 CI)·수동 실행뿐이다. pull_request 를 추가하지 않는다 —
@@ -63,8 +64,20 @@ jobs:
           EVENT: ${{ github.event_name }}
           SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
+          # 수동 실행은 develop 최신 커밋을 배포한다. 그 커밋만 보면 CI 가 없는 커밋(deploy/ 만 바뀜)이
+          # 바로 앞의 CI 실패 커밋을 덮어 함께 올라가므로, CI 워크플로마다 develop 의 가장 최근 실행을 본다.
+          # 다시 깨워 줄 CI 가 없으므로 넘기지 않고, 모두 끝나서 성공했을 때만 배포한다.
           if [ "$EVENT" = workflow_dispatch ]; then
-            echo "수동 실행 — CI 확인 없이 develop 최신 커밋을 배포한다"
+            latest=$(for wf in backend-ci.yml ai-ci.yml frontend-ci.yml; do
+              gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$wf/runs?branch=develop&event=push&per_page=1" \
+                --jq '.workflow_runs[] | "\(.name)\t\(.status)\t\(.conclusion)\t\(.head_sha[0:7])"'
+            done)
+            echo "$latest"
+            if echo "$latest" | awk -F'\t' 'NF && ($2 != "completed" || $3 != "success")' | grep -q .; then
+              echo "::error::develop 의 최근 CI 가 모두 성공하지 않아 배포하지 않는다. CI 가 끝나거나 고쳐진 뒤 다시 실행한다."
+              exit 1
+            fi
+            echo "수동 실행 — develop 의 최근 CI 가 모두 성공해 최신 커밋을 배포한다"
             echo "go=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi

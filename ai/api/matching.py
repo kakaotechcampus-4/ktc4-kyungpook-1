@@ -7,6 +7,7 @@ import time
 
 from fastapi import APIRouter, Depends
 
+from api.openapi import INVALID_PAYLOAD_RESPONSE
 from rag.embedding import create_text_embedder, embedding_model_name
 from rag.vector_store import ChromaJobCriterionStore
 from schemas.common import Envelope, Meta
@@ -36,7 +37,11 @@ def get_talent_matcher() -> TalentMatcher:
     )
 
 
-@router.post("/postings/index", response_model=Envelope[JobPostingIndexResult])
+@router.post(
+    "/postings/index",
+    response_model=Envelope[JobPostingIndexResult],
+    responses={400: INVALID_PAYLOAD_RESPONSE},
+)
 async def index_job_postings(
     request: JobPostingIndexRequest,
     matcher: TalentMatcher = Depends(get_talent_matcher),
@@ -56,7 +61,11 @@ async def index_job_postings(
     )
 
 
-@router.post("/search", response_model=Envelope[MatchingResponse])
+@router.post(
+    "/search",
+    response_model=Envelope[MatchingResponse],
+    responses={400: INVALID_PAYLOAD_RESPONSE},
+)
 async def search_job_matches(
     request: MatchingRequest,
     matcher: TalentMatcher = Depends(get_talent_matcher),

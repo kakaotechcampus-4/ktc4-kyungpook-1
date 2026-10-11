@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
+from api.openapi import INVALID_PAYLOAD_RESPONSE
 from ports.job_posting_source import JobPostingSourcePort
-from schemas.common import Envelope, ErrorDetail, Meta
+from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
 from schemas.matching import (
     ExtractionOutcome,
     JobPostingDetailExtractionRequest,
@@ -38,7 +39,14 @@ def get_job_posting_extractor() -> JobPostingDetailExtractor:
     return JobPostingDetailExtractor(LunaJobPostingExtractionModel())
 
 
-@router.post("/discover", response_model=Envelope[JobPostingDiscoveryResult])
+@router.post(
+    "/discover",
+    response_model=Envelope[JobPostingDiscoveryResult],
+    responses={
+        400: INVALID_PAYLOAD_RESPONSE,
+        502: {"model": ErrorEnvelope, "description": "채용공고 제공자 호출 실패. 재시도 가능."},
+    },
+)
 async def discover_job_postings(
     request: JobPostingDiscoveryRequest,
     source: JobPostingSourcePort = Depends(get_job_posting_source),
@@ -76,7 +84,15 @@ async def discover_job_postings(
     )
 
 
-@router.post("/extract", response_model=Envelope[JobPostingDetailExtractionResult])
+@router.post(
+    "/extract",
+    response_model=Envelope[JobPostingDetailExtractionResult],
+    responses={
+        400: INVALID_PAYLOAD_RESPONSE,
+        422: {"model": ErrorEnvelope, "description": "추출 근거를 공고 원문에서 확인할 수 없음."},
+        503: {"model": ErrorEnvelope, "description": "LLM 상세 조건 추출 실패. 재시도 가능."},
+    },
+)
 async def extract_job_posting_detail(
     request: JobPostingDetailExtractionRequest,
     extractor: JobPostingDetailExtractor = Depends(get_job_posting_extractor),

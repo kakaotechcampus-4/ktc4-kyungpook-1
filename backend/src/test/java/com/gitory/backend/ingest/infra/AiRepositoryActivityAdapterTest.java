@@ -12,7 +12,10 @@ import com.gitory.backend.consent.infra.UserRepository;
 import com.gitory.backend.consent.port.GithubCollectionRepo;
 import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.ingest.domain.ExclusionReason;
+import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.port.CollectedIssue;
+import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -26,6 +29,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -189,6 +193,127 @@ class AiRepositoryActivityAdapterTest {
     }
 
     @Test
+    @DisplayName("AI 가 보낸 PR·이슈의 상세 값을 칸마다 받은 그대로 읽는다")
+    void readsPullRequestAndIssueDetails() {
+
+        var activity = adapter.collect(request(List.of()));
+
+        CollectedPullRequest pr = activity.pullRequests().getFirst();
+        assertThat(pr.number()).isEqualTo(17);
+        assertThat(pr.title()).isEqualTo("세션 조회 성능 개선");
+        assertThat(pr.bodyExcerpt()).isEqualTo("인덱스를 추가합니다. Resolves #42");
+        assertThat(pr.state()).isEqualTo(GithubState.CLOSED);
+        assertThat(pr.authorLogin()).isEqualTo("grow22");
+        assertThat(pr.baseBranch()).isEqualTo("develop");
+        assertThat(pr.headBranch()).isEqualTo("feature/session-index");
+        assertThat(pr.openedAt()).isEqualTo(Instant.parse("2026-09-20T10:00:00Z"));
+        assertThat(pr.mergedAt()).isEqualTo(Instant.parse("2026-09-21T11:00:00Z"));
+        assertThat(pr.commitShas()).containsExactly("abc1234567890");
+        assertThat(pr.linkedIssueNumbers()).containsExactly(42);
+
+        CollectedIssue issue = activity.issues().getFirst();
+        assertThat(issue.issueNumber()).isEqualTo(42);
+        assertThat(issue.title()).isEqualTo("세션 조회가 느립니다");
+        assertThat(issue.bodyExcerpt()).isEqualTo("응답 시간이 오래 걸립니다.");
+        assertThat(issue.state()).isEqualTo(GithubState.CLOSED);
+        assertThat(issue.authorLogin()).isEqualTo("reporter");
+        assertThat(issue.labels()).containsExactly("performance");
+        assertThat(issue.openedAt()).isEqualTo(Instant.parse("2026-09-19T08:00:00Z"));
+        assertThat(issue.closedAt()).isEqualTo(Instant.parse("2026-09-21T11:00:00Z"));
+
+    }
+
+    @Test
+    @DisplayName("열려 있는 PR·이슈의 본문·작성자·머지 시각·닫힌 시각이 null 이면 그 값을 비운 채 읽는다")
+    void readsOpenPullRequestAndIssueWithoutOptionalValues() {
+
+        firstPullRequest().put("state", "OPEN").putNull("body_excerpt").putNull("author_login").putNull("merged_at");
+        firstPullRequest().putArray("commit_shas");
+        firstPullRequest().putArray("linked_issue_numbers");
+        firstIssue().put("state", "OPEN").putNull("body_excerpt").putNull("author_login").putNull("closed_at");
+        firstIssue().putArray("labels");
+        responseBody = success(data);
+
+        var activity = adapter.collect(request(List.of()));
+
+        CollectedPullRequest pr = activity.pullRequests().getFirst();
+        assertThat(pr.state()).isEqualTo(GithubState.OPEN);
+        assertThat(pr.bodyExcerpt()).isNull();
+        assertThat(pr.authorLogin()).isNull();
+        assertThat(pr.mergedAt()).isNull();
+        assertThat(pr.commitShas()).isEmpty();
+        assertThat(pr.linkedIssueNumbers()).isEmpty();
+
+        CollectedIssue issue = activity.issues().getFirst();
+        assertThat(issue.state()).isEqualTo(GithubState.OPEN);
+        assertThat(issue.bodyExcerpt()).isNull();
+        assertThat(issue.authorLogin()).isNull();
+        assertThat(issue.closedAt()).isNull();
+        assertThat(issue.labels()).isEmpty();
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"pull_requests", "issues"})
+    @DisplayName("PR·이슈 상태가 OPEN·CLOSED 가 아니면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsUnknownState(String field) {
+
+        ((ObjectNode) data.path(field).path(0)).put("state", "MERGED");
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @Test
+    @DisplayName("PR 의 연결 이슈 번호 중 양의 int 에 들지 않는 번호는 그 번호만 버리고 나머지는 읽는다")
+    void dropsLinkedIssueNumbersOutsidePositiveInt() {
+
+        firstPullRequest().putArray("linked_issue_numbers")
+                .add(42).add(2_147_483_648L).add(0).add(-3).add(new BigInteger("99999999999999999999")).add(7);
+        responseBody = success(data);
+
+        var activity = adapter.collect(request(List.of()));
+
+        assertThat(activity.pullRequests().getFirst().linkedIssueNumbers()).containsExactly(42, 7);
+
+    }
+
+    @Test
+    @DisplayName("PR·이슈의 제목·본문·라벨에 섞인 U+0000 문자는 지우고 읽는다")
+    void removesNulFromPullRequestAndIssueText() {
+
+        firstPullRequest().put("title", "세션\0 조회").put("body_excerpt", "인덱스\0 추가");
+        firstIssue().put("title", "느린\0 조회").put("body_excerpt", "응답\0 지연");
+        firstIssue().putArray("labels").add("perf\0ormance");
+        responseBody = success(data);
+
+        var activity = adapter.collect(request(List.of()));
+
+        CollectedPullRequest pr = activity.pullRequests().getFirst();
+        assertThat(pr.title()).isEqualTo("세션 조회");
+        assertThat(pr.bodyExcerpt()).isEqualTo("인덱스 추가");
+
+        CollectedIssue issue = activity.issues().getFirst();
+        assertThat(issue.title()).isEqualTo("느린 조회");
+        assertThat(issue.bodyExcerpt()).isEqualTo("응답 지연");
+        assertThat(issue.labels()).containsExactly("performance");
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"not-a-sha", "abc12", "0123456789abcdef0123456789abcdef012345678"})
+    @DisplayName("PR 커밋 sha 가 7~40자리 16진수가 아니면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsMalformedPullRequestCommitSha(String sha) {
+
+        firstPullRequest().putArray("commit_shas").add("abc1234567890").add(sha);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @Test
     @DisplayName("HTTP 오류 봉투의 code·retryable만 보존하고 원문 오류는 버린다")
     void sanitizesHttpEnvelopeFailure() {
         responseStatus = 502;
@@ -342,6 +467,18 @@ class AiRepositoryActivityAdapterTest {
 
     private IngestRequest request(List<String> branches) {
         return new IngestRequest(USER_REPOSITORY_ID, branches, null);
+    }
+
+    private ObjectNode firstPullRequest() {
+
+        return (ObjectNode) data.path("pull_requests").path(0);
+
+    }
+
+    private ObjectNode firstIssue() {
+
+        return (ObjectNode) data.path("issues").path(0);
+
     }
 
     private String success(ObjectNode result) {

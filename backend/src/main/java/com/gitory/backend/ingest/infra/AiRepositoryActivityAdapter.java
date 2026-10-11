@@ -3,6 +3,7 @@ package com.gitory.backend.ingest.infra;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ExclusionReason;
+import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.PartialReason;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
@@ -85,11 +86,11 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
         }
         List<CollectedPullRequest> prs = new ArrayList<>();
         for (JsonNode pr : array(result, "pull_requests")) {
-            prs.add(new CollectedPullRequest(positiveInt(pr, "number")));
+            prs.add(pullRequest(pr));
         }
         List<CollectedIssue> issues = new ArrayList<>();
         for (JsonNode issue : array(result, "issues")) {
-            issues.add(new CollectedIssue(positiveInt(issue, "issue_number")));
+            issues.add(issue(issue));
         }
         return new CollectedActivity(List.copyOf(commits), List.copyOf(prs), List.copyOf(issues), partialReason);
     }
@@ -147,5 +148,83 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
         if (value.isMissingNode() || value.isNull()) { return null; }
         if (!value.isString()) { throw AiClientException.invalidResponse(); }
         return value.asString();
+    }
+
+    private static CollectedPullRequest pullRequest(JsonNode pr) {
+
+        return new CollectedPullRequest(positiveInt(pr, "number"), withoutNul(text(pr, "title")),
+                withoutNul(optionalText(pr, "body_excerpt")), GithubState.valueOf(text(pr, "state")),
+                optionalText(pr, "author_login"), text(pr, "base_branch"), text(pr, "head_branch"),
+                Instant.parse(text(pr, "created_at")), optionalInstant(pr, "merged_at"), shas(pr, "commit_shas"),
+                issueNumbers(pr, "linked_issue_numbers"));
+
+    }
+
+    private static CollectedIssue issue(JsonNode issue) {
+
+        return new CollectedIssue(positiveInt(issue, "issue_number"), withoutNul(text(issue, "title")),
+                withoutNul(optionalText(issue, "body_excerpt")), GithubState.valueOf(text(issue, "state")),
+                optionalText(issue, "author_login"), texts(issue, "labels"), Instant.parse(text(issue, "created_at")),
+                optionalInstant(issue, "closed_at"));
+
+    }
+
+    private static Instant optionalInstant(JsonNode node, String field) {
+
+        String value = optionalText(node, field);
+        return value == null ? null : Instant.parse(value);
+
+    }
+
+    private static List<String> shas(JsonNode node, String field) {
+
+        List<String> shas = new ArrayList<>();
+        for (JsonNode sha : array(node, field)) {
+            if (!sha.isString() || !sha.asString().matches("[0-9a-fA-F]{7,40}")) {
+                throw AiClientException.invalidResponse();
+            }
+            shas.add(sha.asString());
+        }
+
+        return List.copyOf(shas);
+
+    }
+
+    private static List<String> texts(JsonNode node, String field) {
+
+        List<String> texts = new ArrayList<>();
+        for (JsonNode text : array(node, field)) {
+            if (!text.isString()) {
+                throw AiClientException.invalidResponse();
+            }
+            texts.add(withoutNul(text.asString()));
+        }
+
+        return List.copyOf(texts);
+
+    }
+
+    /** PostgreSQL 문자 칸은 U+0000 을 저장하지 못해, 사람이 쓴 PR·이슈 글에 섞여 오면 저장 전체가 실패하지 않게 지운다 */
+    private static String withoutNul(String value) {
+
+        return value == null ? null : value.replace("\0", "");
+
+    }
+
+    /** PR 제목·본문에 적힌 #n 에서 뽑은 번호라 INT 를 넘는 값이 올 수 있어, 그런 번호만 버리고 응답 전체는 살린다 */
+    private static List<Integer> issueNumbers(JsonNode node, String field) {
+
+        List<Integer> numbers = new ArrayList<>();
+        for (JsonNode number : array(node, field)) {
+            if (!number.isIntegralNumber()) {
+                throw AiClientException.invalidResponse();
+            }
+            if (number.canConvertToInt() && number.intValue() > 0) {
+                numbers.add(number.intValue());
+            }
+        }
+
+        return List.copyOf(numbers);
+
     }
 }

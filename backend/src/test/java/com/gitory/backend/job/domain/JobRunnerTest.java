@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
+import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.PartialReason;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
@@ -625,8 +626,10 @@ class JobRunnerTest {
 
     private static CollectedActivity activity(PartialReason partialReason) {
 
-        return new CollectedActivity(List.of(commit(SHA)), List.of(new CollectedPullRequest(7)), List.of(),
-                partialReason);
+        CollectedPullRequest pr = new CollectedPullRequest(7, "feat: 워커 추가", null, GithubState.CLOSED, "grow22",
+                "develop", "feature/job-worker", Instant.parse("2026-10-01T00:00:00Z"),
+                Instant.parse("2026-10-01T01:00:00Z"), List.of(SHA), List.of());
+        return new CollectedActivity(List.of(commit(SHA)), List.of(pr), List.of(), partialReason);
 
     }
 

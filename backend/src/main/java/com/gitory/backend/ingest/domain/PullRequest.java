@@ -13,7 +13,7 @@ import static lombok.AccessLevel.PROTECTED;
 
 /**
  * GitHub 에서 수집한 PR 한 개를 담는다
- * 이미 일어난 일이라 저장한 뒤에는 값을 바꾸지 않는다
+ * 열림에서 머지·닫힘으로 바뀌므로 다시 수집하면 저장된 행을 이번 수집 값으로 덮어쓴다
  */
 @Entity
 @Getter

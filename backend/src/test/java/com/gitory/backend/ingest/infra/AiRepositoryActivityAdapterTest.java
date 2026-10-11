@@ -12,9 +12,12 @@ import com.gitory.backend.consent.infra.UserRepository;
 import com.gitory.backend.consent.port.GithubCollectionRepo;
 import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.ingest.domain.ExclusionReason;
+import com.gitory.backend.ingest.domain.FileChangeStatus;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.PartialReason;
 import com.gitory.backend.ingest.domain.ReviewState;
+import com.gitory.backend.ingest.port.CollectedCommit;
+import com.gitory.backend.ingest.port.CollectedFile;
 import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.CollectedReview;
@@ -161,11 +164,11 @@ class AiRepositoryActivityAdapterTest {
     @DisplayName("부분 수집도 활동과 정확한 사유를 보존한다")
     void keepsPartialCollection(String reason) {
         data.put("partial", true).put("partial_reason", reason);
-        ((ObjectNode) data.path("commits").path(0)).put("is_excluded", true).put("exclusion_reason", "NOT_OWN");
+        ((ObjectNode) data.path("commits").path(0)).put("is_excluded", true).put("exclusion_reason", "BOT");
         responseBody = success(data);
         var activity = adapter.collect(request(List.of()));
         assertThat(activity.partialReason()).isEqualTo(PartialReason.valueOf(reason));
-        assertThat(activity.commits().getFirst().exclusionReason()).isEqualTo(ExclusionReason.NOT_OWN);
+        assertThat(activity.commits().getFirst().exclusionReason()).isEqualTo(ExclusionReason.BOT);
     }
 
     @Test
@@ -198,6 +201,120 @@ class AiRepositoryActivityAdapterTest {
         ((ObjectNode) data.path("commits").path(0)).put("parent_count", 40000);
         responseBody = success(data);
         assertError("AI_INVALID_RESPONSE");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true,", "false, BOT", "false, NOT_OWN"})
+    @DisplayName("커밋의 제외 여부와 제외 사유가 어긋나면 사유가 NOT_OWN 이어도 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsMismatchedExclusion(boolean excluded, String reason) {
+
+        firstCommit().put("is_excluded", excluded).put("exclusion_reason", reason);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @Test
+    @DisplayName("AI 가 NOT_OWN 으로 제외한 커밋은 제외하지 않은 커밋으로 읽는다")
+    void readsNotOwnCommitAsNotExcluded() {
+
+        firstCommit().put("is_excluded", true).put("exclusion_reason", "NOT_OWN");
+        responseBody = success(data);
+
+        assertThat(collectFirstCommit().exclusionReason()).isNull();
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"BOT", "MERGE_COMMIT", "LOCKFILE_ONLY"})
+    @DisplayName("NOT_OWN 이 아닌 제외 사유 세 가지는 그 사유 그대로 읽는다")
+    void readsOtherExclusionReasonsAsSent(String reason) {
+
+        firstCommit().put("is_excluded", true).put("exclusion_reason", reason);
+        responseBody = success(data);
+
+        assertThat(collectFirstCommit().exclusionReason()).isEqualTo(ExclusionReason.valueOf(reason));
+
+    }
+
+    @Test
+    @DisplayName("AI 가 커밋마다 보낸 바뀐 파일과 이슈 번호를 받은 그대로 읽는다")
+    void readsCommitFilesAndIssueNumbers() {
+
+        CollectedCommit commit = collectFirstCommit();
+
+        assertThat(commit.files()).containsExactly(
+                new CollectedFile("backend/session.sql", FileChangeStatus.MODIFIED, 10, 3),
+                new CollectedFile("docs/index.png", FileChangeStatus.ADDED, 0, 0));
+        assertThat(commit.issueNumbers()).containsExactly(42);
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ADDED", "MODIFIED", "REMOVED", "RENAMED", "COPIED", "CHANGED", "UNCHANGED", "UNKNOWN"})
+    @DisplayName("파일 상태 여덟 가지는 그 상태 그대로 읽는다")
+    void readsEveryFileStatus(String status) {
+
+        firstFile().put("status", status);
+        responseBody = success(data);
+
+        assertThat(collectFirstCommit().files().getFirst().status()).isEqualTo(FileChangeStatus.valueOf(status));
+
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"null", "{}", "\"[]\"", "3"})
+    @DisplayName("커밋의 files 가 없거나 배열이 아니면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsMissingOrNonArrayFiles(String json) {
+
+        replace(firstCommit(), "files", json);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "path,", "path, null", "path, \"\"", "path, \"   \"", "path, 3",
+            "status,", "status, null", "status, \"RESOLVED\"", "status, 3",
+            "additions, -1", "additions, 2147483648", "additions, 1.5", "additions, \"10\"",
+            "deletions, -1", "deletions, 2147483648", "deletions, 1.5", "deletions, \"3\""})
+    @DisplayName("바뀐 파일의 경로가 비었거나 상태가 여덟 가지 밖이거나 줄 수가 음수·INT 초과·정수가 아니면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsInvalidFile(String field, String json) {
+
+        replace(firstFile(), field, json);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @Test
+    @DisplayName("커밋의 이슈 번호 중 양의 int 에 들지 않는 번호는 그 번호만 버리고 나머지는 읽는다")
+    void dropsCommitIssueNumbersOutsidePositiveInt() {
+
+        firstCommit().putArray("issue_numbers")
+                .add(42).add(2_147_483_648L).add(0).add(-3).add(new BigInteger("99999999999999999999")).add(7);
+        responseBody = success(data);
+
+        assertThat(collectFirstCommit().issueNumbers()).containsExactly(42, 7);
+
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "null")
+    @DisplayName("커밋의 pull_request_number 는 읽지 않아 없거나 null 이어도 커밋을 그대로 읽는다")
+    void ignoresCommitPullRequestNumber(String json) {
+
+        replace(firstCommit(), "pull_request_number", json);
+        responseBody = success(data);
+
+        assertThat(collectFirstCommit().sha()).isEqualTo("abc1234567890");
+
     }
 
     @Test
@@ -716,6 +833,24 @@ class AiRepositoryActivityAdapterTest {
 
     private IngestRequest request(List<String> branches) {
         return new IngestRequest(USER_REPOSITORY_ID, branches, List.of());
+    }
+
+    private ObjectNode firstCommit() {
+
+        return (ObjectNode) data.path("commits").path(0);
+
+    }
+
+    private ObjectNode firstFile() {
+
+        return (ObjectNode) firstCommit().path("files").path(0);
+
+    }
+
+    private CollectedCommit collectFirstCommit() {
+
+        return adapter.collect(request(List.of())).commits().getFirst();
+
     }
 
     private ObjectNode firstPullRequest() {

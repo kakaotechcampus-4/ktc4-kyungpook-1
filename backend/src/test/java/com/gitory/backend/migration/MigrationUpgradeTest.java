@@ -14,6 +14,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 이전 버전 데이터가 들어 있는 DB 에 다음 마이그레이션을 적용해도 실패하지 않고 값이 새 이름으로 바뀌는지 본다
@@ -91,6 +92,32 @@ class MigrationUpgradeTest {
 
         assertThat(jdbc.queryForList("SELECT exclusion_reason FROM git_commit", String.class))
                 .containsExactlyInAnyOrder("MERGE_COMMIT", "BOT");
+    }
+
+    @Test
+    @DisplayName("V12 는 저장된 NOT_OWN 커밋만 제외하지 않은 커밋으로 되돌리고 다른 제외 사유는 그대로 두며 옛 커밋의 이슈 번호는 NULL 로 남긴다")
+    void v12ClearsNotOwnAndLeavesIssueNumbersUnfilled() {
+
+        migrateTo("11");
+        Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
+        List<String> reasons = List.of("BOT", "MERGE_COMMIT", "LOCKFILE_ONLY", "NOT_OWN");
+        for (int i = 0; i < reasons.size(); i++) {
+            jdbc.update(
+                    "INSERT INTO git_commit (repository_id, sha, is_excluded, exclusion_reason) VALUES (?, ?, TRUE, ?)",
+                    repositoryId, String.valueOf(i).repeat(40), reasons.get(i));
+        }
+        jdbc.update("INSERT INTO git_commit (repository_id, sha) VALUES (?, ?)", repositoryId, "9".repeat(40));
+
+        migrateTo("12");
+
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT exclusion_reason, is_excluded, issue_numbers IS NULL AS unfilled FROM git_commit ORDER BY sha");
+        assertThat(rows).extracting(row -> row.get("exclusion_reason"))
+                .containsExactly("BOT", "MERGE_COMMIT", "LOCKFILE_ONLY", null, null);
+        assertThat(rows).extracting(row -> row.get("is_excluded"))
+                .containsExactly(true, true, true, false, false);
+        assertThat(rows).extracting(row -> row.get("unfilled")).containsOnly(true);
+
     }
 
     private void migrateTo(String version) {

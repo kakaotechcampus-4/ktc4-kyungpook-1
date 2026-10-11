@@ -12,11 +12,13 @@ import com.gitory.backend.ingest.infra.PrReviewRepository;
 import com.gitory.backend.ingest.infra.PullRequestRepository;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
+import com.gitory.backend.ingest.port.CollectedFile;
 import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.CollectedReview;
 import com.gitory.backend.ingest.port.CollectedReviewComment;
 import com.gitory.backend.ingest.port.IngestRequest;
+import com.gitory.backend.support.SqlRecorder;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,17 +37,23 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.sql.Array;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
-@DataJpaTest
+@DataJpaTest(properties = "spring.jpa.properties.hibernate.session_factory.statement_inspector="
+        + "com.gitory.backend.support.SqlRecorder")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import(ActivityStoreService.class)
@@ -54,6 +62,12 @@ class ActivityStoreServiceTest {
 
     private static final String SHA_1 = "1111111111111111111111111111111111111111";
     private static final String SHA_2 = "2222222222222222222222222222222222222222";
+    private static final String SHA_3 = "3333333333333333333333333333333333333333";
+    // 공유 계약 예시처럼 40자보다 짧은 sha
+    private static final String SHORT_SHA = "abc1234567890";
+    private static final CollectedFile SESSION_SQL = new CollectedFile("backend/session.sql", FileChangeStatus.MODIFIED,
+            10, 3);
+    private static final CollectedFile INDEX_PNG = new CollectedFile("docs/index.png", FileChangeStatus.ADDED, 0, 0);
     private static final List<String> BRANCHES = List.of("develop", "feature/session-index");
     private static final Instant PR_OPENED_AT = Instant.parse("2026-09-20T10:00:00Z");
     private static final Instant ISSUE_OPENED_AT = Instant.parse("2026-09-19T08:00:00Z");
@@ -171,14 +185,56 @@ class ActivityStoreServiceTest {
     }
 
     @Test
-    @DisplayName("재수집 요청에는 이 연결 저장소에서 이미 수집한 commit SHA를 제공한다")
+    @DisplayName("재수집 요청에는 이 저장소에 이미 저장한 commit SHA 를 최근에 저장한 것부터 제공한다")
     void providesKnownCommitShas() {
 
         assertThat(service.knownCommitShas(userRepositoryId)).isEmpty();
 
         service.store(request(), activityOf(commit(SHA_1), commit(SHA_2)));
 
-        assertThat(service.knownCommitShas(userRepositoryId)).containsExactly(SHA_1, SHA_2);
+        assertThat(service.knownCommitShas(userRepositoryId)).containsExactly(SHA_2, SHA_1);
+
+    }
+
+    @Test
+    @DisplayName("같은 저장소를 연결한 다른 사용자가 먼저 저장한 커밋도 제공한다")
+    void providesShasStoredByAnotherUserOfSameRepository() {
+
+        Long teammateRepositoryId = connectTeammate();
+        service.store(new IngestRequest(teammateRepositoryId, BRANCHES, List.of()), activityOf(commit(SHA_1)));
+        service.store(request(), activityOf(commit(SHA_2)));
+
+        assertThat(service.knownCommitShas(userRepositoryId)).containsExactly(SHA_2, SHA_1);
+
+    }
+
+    @Test
+    @DisplayName("파일과 이슈 번호를 아직 채우지 않은 커밋은 AI 가 상세를 다시 보내도록 제공하지 않는다")
+    void excludesCommitsWithoutFilledDetails() {
+
+        insertOldCommit(SHA_1);
+        service.store(request(), activityOf(commit(SHA_2)));
+
+        assertThat(service.knownCommitShas(userRepositoryId)).containsExactly(SHA_2);
+
+    }
+
+    @Test
+    @DisplayName("AI 요청이 받는 최대 개수를 넘으면 최근에 저장한 만큼만 제공한다")
+    void providesOnlyLatestShasUpToLimit() {
+
+        jdbc.update("""
+                INSERT INTO git_commit (repository_id, sha, author_login, message, issue_numbers)
+                SELECT ?, lpad((20000 - i)::text, 40, '0'), 'grow22', 'feat: 세션 인덱스 추가', '{}'
+                FROM generate_series(1, ?) AS i ORDER BY i
+                """, repositoryId, ActivityStoreService.KNOWN_COMMIT_LIMIT + 1);
+
+        List<String> known = service.knownCommitShas(userRepositoryId);
+
+        assertThat(known).hasSize(ActivityStoreService.KNOWN_COMMIT_LIMIT);
+        assertThat(known.get(0)).isEqualTo("0".repeat(36) + "9999");
+        assertThat(known).doesNotContain("0".repeat(35) + "19999");
+
     }
 
     @Test
@@ -220,7 +276,7 @@ class ActivityStoreServiceTest {
     void savesExcludedCommitWithoutLogin() {
 
         service.store(request(), activityOf(new CollectedCommit(SHA_1, null, "dependabot", "chore: 의존성 올림",
-                Instant.parse("2026-09-20T09:00:00Z"), 1, 1, 1, (short) 1, ExclusionReason.BOT)));
+                Instant.parse("2026-09-20T09:00:00Z"), 1, 1, 1, (short) 1, ExclusionReason.BOT, List.of(), List.of())));
 
         GitCommit stored = commits.findByRepositoryIdAndSha(repositoryId, SHA_1).orElseThrow();
         assertThat(stored.getAuthorLogin()).isNull();
@@ -256,6 +312,265 @@ class ActivityStoreServiceTest {
         } finally {
             firstJob.shutdown();
         }
+
+    }
+
+    @Test
+    @DisplayName("처음 수집한 커밋은 같은 저장에서 이슈 번호와 바뀐 파일이 받은 값 그대로 채워진다")
+    void fillsIssueNumbersAndFilesOfNewCommit() {
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(42, 7), List.of(SESSION_SQL, INDEX_PNG))));
+
+        assertThat(issueNumbersOf(SHA_1)).containsExactly(42, 7);
+        assertThat(filesOf(SHA_1)).containsExactly(SESSION_SQL, INDEX_PNG);
+
+    }
+
+    @Test
+    @DisplayName("이슈 번호가 비어 있는 옛 커밋은 다음 수집 때 이슈 번호와 바뀐 파일이 채워진다")
+    void fillsOldCommitStoredWithoutDetails() {
+
+        insertOldCommit(SHA_1);
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(42), List.of(SESSION_SQL))));
+
+        assertThat(countCommits()).isEqualTo(1);
+        assertThat(issueNumbersOf(SHA_1)).containsExactly(42);
+        assertThat(filesOf(SHA_1)).containsExactly(SESSION_SQL);
+
+    }
+
+    @Test
+    @DisplayName("이미 채운 커밋은 다음 수집에서 다른 값이 와도 처음 채운 이슈 번호와 바뀐 파일을 그대로 둔다")
+    void keepsDetailsOfCommitFilledBefore() {
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(42), List.of(SESSION_SQL))));
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(99), List.of(INDEX_PNG))));
+
+        assertThat(issueNumbersOf(SHA_1)).containsExactly(42);
+        assertThat(filesOf(SHA_1)).containsExactly(SESSION_SQL);
+
+    }
+
+    @Test
+    @DisplayName("이슈 번호가 없는 커밋은 빈 목록으로 채워져 다음 수집 때 다시 채우지 않는다")
+    void fillsCommitWithoutIssueNumbersOnlyOnce() {
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(), List.of(SESSION_SQL))));
+        assertThat(issueNumbersOf(SHA_1)).isNotNull().isEmpty();
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(5), List.of(INDEX_PNG))));
+
+        assertThat(issueNumbersOf(SHA_1)).isNotNull().isEmpty();
+        assertThat(filesOf(SHA_1)).containsExactly(SESSION_SQL);
+
+    }
+
+    @Test
+    @DisplayName("남의 커밋과 제외한 커밋도 이슈 번호와 바뀐 파일을 채운다")
+    void fillsCommitsOfOthersAndExcludedCommits() {
+
+        CollectedCommit teammates = new CollectedCommit(SHA_1, "taehun0208", "Taehun", "feat: 세션 설정",
+                Instant.parse("2026-09-20T09:00:00Z"), 10, 3, 1, (short) 1, null, List.of(SESSION_SQL), List.of(42));
+        CollectedCommit bot = new CollectedCommit(SHA_2, null, "dependabot", "chore: 의존성 올림",
+                Instant.parse("2026-09-20T09:00:00Z"), 0, 0, 1, (short) 1, ExclusionReason.BOT, List.of(INDEX_PNG),
+                List.of(7));
+
+        service.store(request(), activityOf(teammates, bot));
+
+        assertThat(issueNumbersOf(SHA_1)).containsExactly(42);
+        assertThat(filesOf(SHA_1)).containsExactly(SESSION_SQL);
+        assertThat(issueNumbersOf(SHA_2)).containsExactly(7);
+        assertThat(filesOf(SHA_2)).containsExactly(INDEX_PNG);
+
+    }
+
+    @Test
+    @DisplayName("바뀐 파일이 300개를 넘으면 AI 가 보낸 순서로 앞 300개만 저장한다")
+    void storesOnlyFirstThreeHundredFilesInReceivedOrder() {
+
+        List<CollectedFile> files = IntStream.range(0, 305)
+                .mapToObj(i -> new CollectedFile("src/file" + (304 - i) + ".java", FileChangeStatus.MODIFIED, i, 0))
+                .toList();
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(), files)));
+
+        assertThat(filesOf(SHA_1)).containsExactlyElementsOf(files.subList(0, 300));
+
+    }
+
+    @Test
+    @DisplayName("한 커밋의 파일 목록에 같은 경로가 두 번 오면 먼저 온 것만 저장하고 나머지 저장은 이어간다")
+    void keepsFirstOfDuplicatePathsInOneCommit() {
+
+        CollectedFile samePathAgain = new CollectedFile(SESSION_SQL.path(), FileChangeStatus.RENAMED, 1, 1);
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(42), List.of(SESSION_SQL, samePathAgain,
+                INDEX_PNG))));
+
+        assertThat(filesOf(SHA_1)).containsExactly(SESSION_SQL, INDEX_PNG);
+        assertThat(issueNumbersOf(SHA_1)).containsExactly(42);
+
+    }
+
+    @Test
+    @DisplayName("경로가 UTF-8 로 2,048바이트인 파일은 저장하고 2,049바이트인 파일은 건너뛴다")
+    void storesPathUpTo2048Bytes() {
+
+        CollectedFile fits = new CollectedFile(randomPath(2048), FileChangeStatus.ADDED, 1, 0);
+        CollectedFile tooLong = new CollectedFile(randomPath(2049), FileChangeStatus.ADDED, 1, 0);
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(), List.of(fits, tooLong))));
+
+        assertThat(filesOf(SHA_1)).containsExactly(fits);
+
+    }
+
+    @Test
+    @DisplayName("경로 길이는 글자 수가 아니라 UTF-8 바이트로 재서 한글 682자(2,046바이트) 경로는 저장하고 683자(2,049바이트) 경로는 건너뛴다")
+    void measuresPathLengthInUtf8Bytes() {
+
+        CollectedFile fits = new CollectedFile("한".repeat(682), FileChangeStatus.ADDED, 1, 0);
+        CollectedFile tooLong = new CollectedFile("한".repeat(683), FileChangeStatus.ADDED, 1, 0);
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(), List.of(fits, tooLong))));
+
+        assertThat(filesOf(SHA_1)).containsExactly(fits);
+
+    }
+
+    @Test
+    @DisplayName("인덱스 한도를 넘는 긴 경로의 파일이 오면 그 파일만 건너뛰고 나머지 파일·이슈 번호·바뀐 파일 수는 받은 그대로 저장한다")
+    void skipsOnlyFileWhosePathExceedsIndexLimit() {
+
+        CollectedFile overIndexLimit = new CollectedFile(randomPath(3000), FileChangeStatus.ADDED, 1, 0);
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(42), List.of(SESSION_SQL, overIndexLimit,
+                INDEX_PNG))));
+
+        assertThat(filesOf(SHA_1)).containsExactly(SESSION_SQL, INDEX_PNG);
+        assertThat(issueNumbersOf(SHA_1)).containsExactly(42);
+        assertThat(changedFilesOf(SHA_1)).isEqualTo(3);
+
+    }
+
+    @Test
+    @DisplayName("긴 경로를 건너뛰어도 나머지 파일은 300개까지 저장한다")
+    void skippedLongPathsDoNotCountTowardThreeHundredFiles() {
+
+        CollectedFile tooLong = new CollectedFile(randomPath(2049), FileChangeStatus.ADDED, 1, 0);
+        List<CollectedFile> others = IntStream.range(0, 301)
+                .mapToObj(i -> new CollectedFile("src/file" + (300 - i) + ".java", FileChangeStatus.MODIFIED, i, 0))
+                .toList();
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(),
+                Stream.concat(Stream.of(tooLong), others.stream()).toList())));
+
+        assertThat(filesOf(SHA_1)).containsExactlyElementsOf(others.subList(0, 300));
+
+    }
+
+    @Test
+    @DisplayName("이번에 받은 커밋 중 이슈 번호가 빈 커밋은 몇 개든 한 번의 조회로 찾고 커밋마다 한 번씩 채운다")
+    void findsUnfilledCommitsWithOneQuery() {
+
+        SqlRecorder.clear();
+
+        service.store(request(), activityOf(commitWith(SHA_1, List.of(1), List.of(SESSION_SQL)),
+                commitWith(SHA_2, List.of(2), List.of()), commitWith(SHA_3, List.of(), List.of(INDEX_PNG))));
+
+        assertThat(SqlRecorder.count("select", "issue_numbers is null")).isEqualTo(1);
+        assertThat(SqlRecorder.count("update git_commit", "issue_numbers")).isEqualTo(3);
+
+    }
+
+    @Test
+    @DisplayName("이미 채운 커밋만 다시 받으면 빈 커밋을 찾는 조회 한 번만 더 나가고 이슈 번호를 채우는 UPDATE 와 파일 저장은 나가지 않는다")
+    void onlyLooksUpWhenEveryCommitIsFilled() {
+
+        CollectedActivity activity = activityOf(commitWith(SHA_1, List.of(42), List.of(SESSION_SQL)),
+                commitWith(SHA_2, List.of(), List.of(INDEX_PNG)));
+        service.store(request(), activity);
+        SqlRecorder.clear();
+
+        service.store(request(), activity);
+
+        assertThat(SqlRecorder.count("select", "issue_numbers is null")).isEqualTo(1);
+        assertThat(SqlRecorder.count("update git_commit", "issue_numbers")).isZero();
+        assertThat(SqlRecorder.count("insert into commit_file", "")).isZero();
+
+    }
+
+    @Test
+    @DisplayName("같은 수집 결과를 두 번 저장해도 커밋·이슈 번호·바뀐 파일 행은 처음 저장한 그대로다")
+    void storingSameActivityTwiceKeepsSameRows() {
+
+        CollectedActivity activity = activityOf(commitWith(SHA_1, List.of(42), List.of(SESSION_SQL, INDEX_PNG)),
+                commitWith(SHA_2, List.of(), List.of()));
+        service.store(request(), activity);
+        List<Map<String, Object>> commitsBefore = commitRows();
+        List<Map<String, Object>> filesBefore = fileRows();
+
+        service.store(request(), activity);
+
+        assertThat(commitRows()).isEqualTo(commitsBefore);
+        assertThat(fileRows()).isEqualTo(filesBefore);
+
+    }
+
+    @Test
+    @DisplayName("커밋의 이슈 번호와 바뀐 파일은 받은 순서와 상관없이 sha 순으로 채운다")
+    void fillsCommitsInShaOrder() {
+
+        service.store(request(), activityOf(commitWith(SHA_2, List.of(), List.of(INDEX_PNG)),
+                commitWith(SHA_1, List.of(), List.of(SESSION_SQL))));
+
+        assertThat(jdbc.queryForList(
+                "SELECT c.sha FROM commit_file f JOIN git_commit c ON c.id = f.commit_id ORDER BY f.id", String.class))
+                .containsExactly(SHA_1, SHA_2);
+
+    }
+
+    @Test
+    @DisplayName("두 Job 이 이슈 번호가 빈 같은 커밋을 동시에 채워도 둘 다 성공하고, 먼저 채운 Job 의 이슈 번호와 바뀐 파일만 한 번 남는다")
+    void concurrentFillsOfSameCommitStoreFilesOnce() throws Exception {
+
+        insertOldCommit(SHA_1);
+        Long teammateRepositoryId = connectTeammate();
+        CountDownLatch firstFilledBeforeCommit = new CountDownLatch(1);
+        ExecutorService firstJob = Executors.newSingleThreadExecutor();
+
+        try {
+            Future<Long> first = firstJob.submit(() -> transaction.execute(status -> {
+                Long runId = service.store(request(), activityOf(commitWith(SHA_1, List.of(1), List.of(SESSION_SQL))));
+                firstFilledBeforeCommit.countDown();
+                await().atMost(5, TimeUnit.SECONDS).until(this::anotherStoreIsWaiting);
+                return runId;
+            }));
+            firstFilledBeforeCommit.await(5, TimeUnit.SECONDS);
+
+            Long secondRunId = service.store(new IngestRequest(teammateRepositoryId, BRANCHES, List.of()),
+                    activityOf(commitWith(SHA_1, List.of(2), List.of(INDEX_PNG))));
+
+            assertThat(first.get(10, TimeUnit.SECONDS)).isNotNull();
+            assertThat(secondRunId).isNotNull();
+            assertThat(issueNumbersOf(SHA_1)).containsExactly(1);
+            assertThat(filesOf(SHA_1)).containsExactly(SESSION_SQL);
+        } finally {
+            firstJob.shutdown();
+        }
+
+    }
+
+    @Test
+    @DisplayName("40자보다 짧은 sha 로 온 커밋도 이슈 번호와 바뀐 파일을 채운다")
+    void fillsCommitWithShortSha() {
+
+        service.store(request(), activityOf(commitWith(SHORT_SHA, List.of(42), List.of(SESSION_SQL))));
+
+        assertThat(issueNumbersOf(SHORT_SHA)).containsExactly(42);
+        assertThat(filesOf(SHORT_SHA)).containsExactly(SESSION_SQL);
 
     }
 
@@ -673,11 +988,76 @@ class ActivityStoreServiceTest {
 
     private CollectedCommit commit(String sha) {
         return new CollectedCommit(sha, "grow22", "Grow", "feat: 세션 인덱스 추가",
-                Instant.parse("2026-09-20T09:00:00Z"), 11, 22, 33, (short) 1, null);
+                Instant.parse("2026-09-20T09:00:00Z"), 11, 22, 33, (short) 1, null, List.of(), List.of());
     }
 
     private int countCommits() {
         return jdbc.queryForObject("SELECT count(*) FROM git_commit", Integer.class);
+    }
+
+    private CollectedCommit commitWith(String sha, List<Integer> issueNumbers, List<CollectedFile> files) {
+
+        return new CollectedCommit(sha, "grow22", "Grow", "feat: 세션 인덱스 추가",
+                Instant.parse("2026-09-20T09:00:00Z"), 11, 22, files.size(), (short) 1, null, files, issueNumbers);
+
+    }
+
+    // 이슈 번호 칸이 생기기 전에 저장돼 이슈 번호와 바뀐 파일이 비어 있는 커밋을 넣는다
+    private void insertOldCommit(String sha) {
+
+        jdbc.update("INSERT INTO git_commit (repository_id, sha, author_login, message) VALUES (?, ?, 'grow22', ?)",
+                repositoryId, sha, "feat: 세션 인덱스 추가");
+
+    }
+
+    // 아직 채우지 않은 커밋은 null 이고, 채웠지만 이슈 번호가 없는 커밋은 빈 목록이다
+    private List<Integer> issueNumbersOf(String sha) {
+
+        return jdbc.queryForObject("SELECT issue_numbers FROM git_commit WHERE sha = ?", (rs, row) -> {
+            Array numbers = rs.getArray("issue_numbers");
+            return numbers == null ? null : List.of((Integer[]) numbers.getArray());
+        }, sha);
+
+    }
+
+    private Integer changedFilesOf(String sha) {
+
+        return jdbc.queryForObject("SELECT changed_files FROM git_commit WHERE sha = ?", Integer.class, sha);
+
+    }
+
+    // 반복 문자열은 PostgreSQL 이 압축해 인덱스 한도를 넘지 않으므로, 바이트 수만큼 무작위 영숫자로 경로를 만든다
+    private String randomPath(int bytes) {
+
+        String letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder path = new StringBuilder();
+        new Random(bytes).ints(bytes, 0, letters.length()).forEach(i -> path.append(letters.charAt(i)));
+        return path.toString();
+
+    }
+
+    private List<CollectedFile> filesOf(String sha) {
+
+        return jdbc.query("""
+                SELECT f.path, f.status, f.additions, f.deletions
+                FROM commit_file f JOIN git_commit c ON c.id = f.commit_id
+                WHERE c.sha = ? ORDER BY f.id
+                """, (rs, row) -> new CollectedFile(rs.getString("path"), FileChangeStatus.valueOf(rs.getString("status")),
+                rs.getInt("additions"), rs.getInt("deletions")), sha);
+
+    }
+
+    private List<Map<String, Object>> commitRows() {
+
+        return jdbc.queryForList(
+                "SELECT id, sha, collection_run_id, issue_numbers::text AS issue_numbers FROM git_commit ORDER BY id");
+
+    }
+
+    private List<Map<String, Object>> fileRows() {
+
+        return jdbc.queryForList("SELECT * FROM commit_file ORDER BY id");
+
     }
 
     private CollectedActivity detailsOf(List<CollectedPullRequest> pullRequests, List<CollectedIssue> issues) {

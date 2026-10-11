@@ -76,7 +76,7 @@ class GitCommitPersistenceTest {
     }
 
     @Test
-    @DisplayName("제외 사유 네 가지가 모두 저장된다")
+    @DisplayName("제외 사유 세 가지가 모두 저장된다")
     void savesEveryExclusionReason() {
 
         String prefix = "1234567890abc1234567890abc1234567890abc";
@@ -95,6 +95,35 @@ class GitCommitPersistenceTest {
                 "INSERT INTO git_commit (repository_id, sha, is_excluded, exclusion_reason) VALUES (?, ?, TRUE, NULL)",
                 repositoryId, SHA))
                 .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    @DisplayName("제외 사유 NOT_OWN 은 저장되지 않는다")
+    void rejectsNotOwnReason() {
+
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO git_commit (repository_id, sha, is_excluded, exclusion_reason) VALUES (?, ?, TRUE, 'NOT_OWN')",
+                repositoryId, SHA))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    @Test
+    @DisplayName("이슈 번호는 채우기 전에는 null 로, 채운 뒤에는 번호 목록으로, 이슈 번호가 없으면 빈 목록으로 읽힌다")
+    void readsIssueNumbers() {
+
+        GitCommit commit = persist(null);
+        em.clear();
+        assertThat(em.find(GitCommit.class, commit.getId()).getIssueNumbers()).isNull();
+
+        jdbc.update("UPDATE git_commit SET issue_numbers = '{42,7}' WHERE id = ?", commit.getId());
+        em.clear();
+        assertThat(em.find(GitCommit.class, commit.getId()).getIssueNumbers()).containsExactly(42, 7);
+
+        jdbc.update("UPDATE git_commit SET issue_numbers = '{}' WHERE id = ?", commit.getId());
+        em.clear();
+        assertThat(em.find(GitCommit.class, commit.getId()).getIssueNumbers()).isNotNull().isEmpty();
+
     }
 
     @Test

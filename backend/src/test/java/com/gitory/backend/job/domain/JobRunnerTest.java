@@ -67,6 +67,7 @@ class JobRunnerTest {
     private static final String KEY_2 = "22222222-2222-4222-8222-222222222222";
     private static final String KEY_3 = "33333333-3333-4333-8333-333333333333";
     private static final String SHA = "a".repeat(40);
+    private static final String OTHER_SHA = "b".repeat(40);
 
     @Container
     @ServiceConnection
@@ -205,14 +206,14 @@ class JobRunnerTest {
 
         IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), List.of());
         activityStore.store(initial, activity(null));
-        activityStore.store(initial, activity(PartialReason.CAP_EXCEEDED));
+        activityStore.store(initial, partialActivityOf(OTHER_SHA));
 
         enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(activity(null));
 
         runNext();
 
-        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of(SHA)));
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of(OTHER_SHA, SHA)));
 
     }
 
@@ -654,10 +655,16 @@ class JobRunnerTest {
 
     }
 
+    private static CollectedActivity partialActivityOf(String sha) {
+
+        return new CollectedActivity(List.of(commit(sha)), List.of(), List.of(), null, PartialReason.CAP_EXCEEDED);
+
+    }
+
     private static CollectedCommit commit(String sha) {
 
         return new CollectedCommit(sha, "grow22", "Grow22", "feat: 워커 추가", Instant.parse("2026-10-01T00:00:00Z"),
-                10, 2, 1, (short) 1, null);
+                10, 2, 1, (short) 1, null, List.of(), List.of());
 
     }
 

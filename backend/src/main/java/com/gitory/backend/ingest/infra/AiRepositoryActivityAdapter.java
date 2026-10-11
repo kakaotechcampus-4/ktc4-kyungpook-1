@@ -3,11 +3,13 @@ package com.gitory.backend.ingest.infra;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ExclusionReason;
+import com.gitory.backend.ingest.domain.FileChangeStatus;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.PartialReason;
 import com.gitory.backend.ingest.domain.ReviewState;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
+import com.gitory.backend.ingest.port.CollectedFile;
 import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.CollectedReview;
@@ -89,7 +91,8 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
                     optionalText(commit, "author_name"), text(commit, "message"),
                     Instant.parse(text(commit, "authored_at")), nonNegativeInt(commit, "additions"),
                     nonNegativeInt(commit, "deletions"), nonNegativeInt(commit, "changed_files"),
-                    (short) parents, exclusion == null ? null : ExclusionReason.valueOf(exclusion)));
+                    (short) parents, exclusionReason(exclusion), files(commit),
+                    issueNumbers(commit, "issue_numbers")));
         }
         List<CollectedPullRequest> prs = new ArrayList<>();
         for (JsonNode pr : array(result, "pull_requests")) {
@@ -189,6 +192,29 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
         if (value.isMissingNode() || value.isNull()) { return null; }
         if (!value.isString()) { throw AiClientException.invalidResponse(); }
         return value.asString();
+    }
+
+    /** 커밋 행은 사용자끼리 함께 쓰는데 AI 의 NOT_OWN 은 요청한 사람 기준이라, 제외하지 않은 커밋으로 읽는다 */
+    private static ExclusionReason exclusionReason(String reason) {
+
+        if (reason == null || reason.equals("NOT_OWN")) {
+            return null;
+        }
+
+        return ExclusionReason.valueOf(reason);
+
+    }
+
+    private static List<CollectedFile> files(JsonNode commit) {
+
+        List<CollectedFile> files = new ArrayList<>();
+        for (JsonNode file : array(commit, "files")) {
+            files.add(new CollectedFile(text(file, "path"), FileChangeStatus.valueOf(text(file, "status")),
+                    nonNegativeInt(file, "additions"), nonNegativeInt(file, "deletions")));
+        }
+
+        return List.copyOf(files);
+
     }
 
     private static CollectedPullRequest pullRequest(JsonNode pr) {
@@ -317,7 +343,7 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
 
     }
 
-    /** PR 제목·본문에 적힌 #n 에서 뽑은 번호라 INT 를 넘는 값이 올 수 있어, 그런 번호만 버리고 응답 전체는 살린다 */
+    /** PR 제목·본문과 커밋 메시지에 적힌 #n 에서 뽑은 번호라 INT 를 넘는 값이 올 수 있어, 그런 번호만 버리고 응답 전체는 살린다 */
     private static List<Integer> issueNumbers(JsonNode node, String field) {
 
         List<Integer> numbers = new ArrayList<>();

@@ -122,12 +122,12 @@ class CommitSearchApiTest {
     }
 
     @Test
-    @DisplayName("내 커밋만 찾는다 — 남의 커밋·봇·머지·lock 파일만 바꾼 커밋은 빼고, 남이 먼저 분석해 NOT_OWN 이 붙은 내 커밋은 찾는다")
+    @DisplayName("내 커밋만 찾는다 — 남의 커밋·봇·머지·lock 파일만 바꾼 커밋은 빼고, 작성자 로그인은 대소문자를 가리지 않는다")
     void findsOnlyMyCommits() throws Exception {
 
         commit("01", "grow22", "feat: 캐시 도입", MONDAY, null);
-        commit("02", "Grow22", "feat: 캐시 만료 추가", MONDAY, "NOT_OWN");
-        commit("03", "taehun0208", "feat: 캐시 설정", MONDAY, "NOT_OWN");
+        commit("02", "Grow22", "feat: 캐시 만료 추가", MONDAY, null);
+        commit("03", "taehun0208", "feat: 캐시 설정", MONDAY, null);
         commit("04", "grow22", "Merge: 캐시 브랜치", MONDAY, "MERGE_COMMIT");
         commit("05", "grow22", "chore: 캐시 lock 갱신", MONDAY, "LOCKFILE_ONLY");
         commit("06", "dependabot[bot]", "build: 캐시 라이브러리 올림", MONDAY, "BOT");

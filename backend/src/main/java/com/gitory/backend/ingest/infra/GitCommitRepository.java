@@ -17,12 +17,13 @@ public interface GitCommitRepository extends JpaRepository<GitCommit, Long> {
 
     List<GitCommit> findByCollectionRunIdAndExcludedFalse(Long collectionRunId);
 
+    // sha 칸은 CHAR(40) 이라 짧은 sha 는 뒤에 공백이 붙어 나오므로 지운다
     @Query("""
-            SELECT c.sha FROM GitCommit c, CollectionRun r
-            WHERE c.collectionRunId = r.id AND r.userRepositoryId = :userRepositoryId
-            ORDER BY c.id
+            SELECT TRIM(TRAILING FROM c.sha) FROM GitCommit c
+            WHERE c.repositoryId = :repositoryId AND c.issueNumbers IS NOT NULL
+            ORDER BY c.id DESC
             """)
-    List<String> findAllShasByUserRepositoryId(@Param("userRepositoryId") Long userRepositoryId);
+    List<String> findKnownShas(@Param("repositoryId") Long repositoryId, Limit limit);
 
     @Query("SELECT c.sha FROM GitCommit c WHERE c.repositoryId = :repositoryId AND c.sha IN :shas")
     List<String> findStoredShas(@Param("repositoryId") Long repositoryId, @Param("shas") Collection<String> shas);
@@ -42,12 +43,27 @@ public interface GitCommitRepository extends JpaRepository<GitCommit, Long> {
             """, nativeQuery = true)
     void insertIfAbsent(@Param("commit") GitCommit commit);
 
+    // sha 칸은 CHAR(40) 이라 40자보다 짧은 sha 는 뒤에 공백이 붙어 나오므로, 수집 결과의 sha 와 같게 비교되도록 지운다
+    @Query("""
+            SELECT TRIM(TRAILING FROM c.sha) FROM GitCommit c
+            WHERE c.repositoryId = :repositoryId AND c.sha IN :shas AND c.issueNumbers IS NULL
+            """)
+    List<String> findUnfilledShas(@Param("repositoryId") Long repositoryId, @Param("shas") Collection<String> shas);
+
+    // 다른 Job 이 먼저 채운 커밋은 고치지 않고 id 도 돌려주지 않아, 바뀐 파일은 채운 Job 한 곳에서만 저장된다
+    @Query(value = """
+            UPDATE git_commit SET issue_numbers = :issueNumbers
+            WHERE repository_id = :repositoryId AND sha = :sha AND issue_numbers IS NULL
+            RETURNING id
+            """, nativeQuery = true)
+    Optional<Long> fillIssueNumbers(@Param("repositoryId") Long repositoryId, @Param("sha") String sha,
+                                    @Param("issueNumbers") Integer[] issueNumbers);
+
     @Query("""
             SELECT c FROM GitCommit c
             WHERE c.repositoryId = :repositoryId
               AND LOWER(c.authorLogin) = LOWER(:login)
-              AND (c.exclusionReason IS NULL
-                   OR c.exclusionReason = com.gitory.backend.ingest.domain.ExclusionReason.NOT_OWN)
+              AND c.exclusionReason IS NULL
               AND (LOWER(c.message) LIKE :messagePattern ESCAPE '\\' OR c.sha LIKE :shaPrefix ESCAPE '\\')
             ORDER BY c.authoredAt DESC
             """)

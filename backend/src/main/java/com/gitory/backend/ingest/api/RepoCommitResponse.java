@@ -5,7 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 
-@Schema(description = "커밋 찾기 결과 한 줄. 파일 경로는 저장하지 않고 후보 기능은 아직 없어 path·candidateId 는 null 입니다.")
+@Schema(description = "커밋 찾기 결과 한 줄. 파일 경로는 응답에 아직 넣지 않고 후보 기능은 아직 없어 path·candidateId 는 null 입니다.")
 public record RepoCommitResponse(
         String sha,
         String message,

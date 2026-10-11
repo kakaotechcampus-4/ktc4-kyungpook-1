@@ -22,7 +22,7 @@ public class JobCancelService {
         job.cancel();
         jobs.flush();
 
-        return JobView.from(job);
+        return JobView.from(job, jobs.findUserRepositoryPublicId(job.getUserRepositoryId()));
 
     }
 }

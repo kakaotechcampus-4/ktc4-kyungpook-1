@@ -2,6 +2,7 @@ package com.gitory.backend.job.domain;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 public record JobView(
         String jobId,
@@ -18,7 +19,8 @@ public record JobView(
         JobResult result,
         boolean terminal) {
 
-    static JobView from(AnalysisJob job) {
+    static JobView from(AnalysisJob job, UUID repoId) {
+
         return new JobView(
                 job.getPublicId().toString(),
                 job.getType(),
@@ -31,8 +33,9 @@ public record JobView(
                 job.getStartedAt(),
                 job.getUpdatedAt(),
                 job.getFinishedAt(),
-                null,
+                result(job.getType(), repoId),
                 job.isTerminal());
+
     }
 
     private static Boolean retryable(JobErrorCode errorCode) {
@@ -42,5 +45,15 @@ public record JobView(
         }
 
         return errorCode == JobErrorCode.GITHUB_UNAVAILABLE || errorCode == JobErrorCode.GITHUB_RATE_LIMITED;
+    }
+
+    private static JobResult result(JobType type, UUID repoId) {
+
+        if (type != JobType.ANALYZE) {
+            return null;
+        }
+
+        return new JobResult(repoId.toString(), null, null, null);
+
     }
 }

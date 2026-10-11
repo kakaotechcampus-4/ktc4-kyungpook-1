@@ -15,10 +15,12 @@ test('repository menus support keyboard selection and outside dismissal without 
   await sort.click();
   await expect(page.getByRole('listbox', { name: '정렬', exact: true })).toBeVisible();
   await expect(page.getByRole('option', { name: '이름 순', exact: true })).toBeFocused();
-  // Reach the next animation frame before exercising an outside pointer action.
-  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
-  await page.mouse.click(10, 10);
-  await expect(page.getByRole('listbox', { name: '정렬', exact: true })).toHaveCount(0);
+  // Radix defers its outside-pointerdown listener, so on a loaded runner a click right after the menu opens can
+  // land first and be ignored. The click is idempotent: retry it until the menu actually closes.
+  await expect(async () => {
+    await page.mouse.click(10, 10);
+    await expect(page.getByRole('listbox', { name: '정렬', exact: true })).toHaveCount(0, { timeout: 500 });
+  }).toPass({ timeout: 5000 });
   await expect(sort).toContainText('이름 순');
   await expect(sort).toBeFocused();
   const filter = page.getByRole('combobox', { name: '필터', exact: true });

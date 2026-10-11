@@ -30,7 +30,7 @@ public class AiHttpClient {
 
     public AiHttpClient(AiClientProperties properties, ObjectMapper mapper) {
         this.mapper = mapper;
-        this.collectionClient = client(properties, properties.readTimeout());
+        this.collectionClient = client(properties, properties.collectReadTimeout());
         // health·OpenAPI 조회가 긴 수집 요청 제한 때문에 정체되지 않게 한다.
         this.queryClient = client(properties, Duration.ofSeconds(5));
     }
@@ -121,8 +121,13 @@ public class AiHttpClient {
         return new AiClientException(code, error.path("retryable").booleanValue(), status);
     }
 
+    /**
+     * HTTP 버전을 1.1 로 고정한다
+     * 정하지 않으면 요청마다 HTTP/2 업그레이드(Upgrade: h2c)를 붙이는데, AI 의 uvicorn 이 이런 요청의 본문을 버려 모든 수집이 400 이 된다
+     */
     private static RestClient client(AiClientProperties properties, Duration readTimeout) {
         HttpClient http = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(properties.connectTimeout())
                 .followRedirects(HttpClient.Redirect.NEVER)
                 .build();

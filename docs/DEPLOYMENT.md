@@ -104,9 +104,10 @@ Spring 이 복호화한 GitHub 토큰을 `X-GitHub-Token` 헤더로 AI 서버에
 `develop` 에 머지된 커밋의 CI(backend CI · AI CI · frontend)가 **모두 성공하면** `.github/workflows/deploy.yml` 이 서버에서 돈다. 이미지 빌드는 테스트를 건너뛰므로(`-x test`) CI 가 실패한 커밋은 배포하지 않는다.
 
 0. gate job 이 그 커밋의 CI 를 모두 확인한다. 아직 도는 CI 가 있으면 넘기고 마지막 CI 가 끝날 때 배포한다. 실패한 CI 가 있으면 배포 워크플로도 실패로 표시된다
-1. 서버의 `~/gitory` 를 그 커밋으로 맞춘다 (`git checkout --force --detach <sha>` — `deploy/.env` 는 gitignore 라 남는다). 서버에 이미 같거나 더 새 커밋이 있으면 되돌리지 않고 넘긴다
+1. 서버의 `~/gitory` 를 그 커밋으로 맞춘다 (`git checkout --force --detach <sha>` — `deploy/.env` 는 gitignore 라 남는다). 바꾸기 전에 지금 돌던 커밋을 적어 둔다. 서버에 이미 같거나 더 새 커밋이 있으면 되돌리지 않고 넘긴다
 2. `docker compose up -d --build --wait` — 모든 서비스가 healthy 가 될 때까지 기다린다. 5분 안에 안 되면 실패
-3. 컨테이너 상태를 출력하고, 성공하면 오래된 이미지·빌드 캐시를 정리한다
+3. 2 가 실패하면 1 에서 적어 둔 직전 커밋으로 되돌려 같은 방식으로 다시 올린다. 배포 워크플로는 실패로 남는다. 코드만 되돌리므로 이미 적용된 새 마이그레이션은 DB 에 그대로 남고, 칸을 지우거나 이름을 바꾼 마이그레이션이었다면 직전 코드도 뜨지 못할 수 있다
+4. 컨테이너 상태를 출력하고, 성공하면 오래된 이미지·빌드 캐시를 정리한다
 
 Actions 탭 → deploy → **Run workflow** 로 수동 실행도 된다 (develop 에서만, CI 확인 없이 develop 최신 커밋). `deploy/` 만 바뀐 커밋은 CI 가 없어 자동 배포되지 않으므로 수동 실행한다.
 

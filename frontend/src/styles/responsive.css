@@ -22,7 +22,7 @@
 .user-avatar__fallback { font-size: 16px; }
 /* Content composition: shared alignment without fixed field widths. */
 :root { --mobile-nav-height: 62px; }
-.sidebar { overflow-y: auto; overscroll-behavior: contain; }
+.sidebar { overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .sidebar__profile { flex-shrink: 0; }
 .prompt__h { display: block; text-wrap: balance; }
 .resume { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -49,6 +49,7 @@
 .modal__body { overflow-y: auto; overscroll-behavior: contain; }
 .modal__title > span { min-width: 0; }
 @media (min-width: 1200px) {
+  .shell--rail .sidebar { padding-inline: 4px; }
   .manual-card-page .star-read { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .manual-card-page .star-read__row:nth-child(2) { border-top: 0; }
   .manual-card-page .star-read__row:nth-child(even) { border-left: 1px solid var(--border-default); }
@@ -148,7 +149,8 @@ body { overflow-x: hidden; }
 
 @media (min-width: 768px) and (max-width: 1199px) {
   .shell, .shell.shell--rail { --sb: 76px; grid-template-columns: 76px minmax(0, 1fr); }
-  .sidebar { position: sticky; top: 0; height: 100vh; padding: 16px 10px; gap: 8px; }
+  .sidebar { position: sticky; top: 0; height: 100vh; flex-direction: column; padding: 16px 10px; gap: 8px; }
+  .menu-group { flex-direction: column; }
   .sidebar__top { justify-content: center; padding-inline: 0; }
   .sidebar .brand { width: 32px; overflow: hidden; padding: 0; }
   .sidebar .brand img { width: auto; max-width: none; }

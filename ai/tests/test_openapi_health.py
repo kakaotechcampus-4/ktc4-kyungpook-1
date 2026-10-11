@@ -61,10 +61,9 @@ def test_openapi_documents_actual_validation_and_collection_errors() -> None:
         assert header["in"] == "header"
         assert header["required"] is True
 
-    for path in ("/internal/analysis/groups", "/internal/analysis/star"):
-        operation = document["paths"][path]["post"]
-        assert "미구현" in operation["summary"]
-        assert "text/plain" in operation["responses"]["500"]["content"]
+    assert "미구현" not in document["paths"]["/internal/analysis/groups"]["post"]["summary"]
+    assert "미구현" in document["paths"]["/internal/analysis/star"]["post"]["summary"]
+    assert "text/plain" in document["paths"]["/internal/analysis/star"]["post"]["responses"]["500"]["content"]
 
 
 @pytest.mark.parametrize("setting", ["false", "0", "off"])
@@ -132,15 +131,19 @@ def test_documented_collection_failure_envelopes_match_runtime(
     assert "test-only-secret" not in response.text
 
 
-def test_analysis_stub_failure_is_documented_without_claiming_readiness() -> None:
+def test_empty_grouping_request_returns_empty_without_calling_llm() -> None:
     response = TestClient(create_app(), raise_server_exceptions=False).post(
         "/internal/analysis/groups",
         json={"repository_id": "repo-1", "target_login": "example", "commits": []},
     )
 
-    assert response.status_code == 500
-    assert response.headers["content-type"].startswith("text/plain")
-    assert response.text == "Internal Server Error"
+    assert response.status_code == 200
+    assert response.json()["data"] == {
+        "verdict": "EMPTY",
+        "candidates": [],
+        "excluded_commit_shas": [],
+    }
+    assert response.json()["success"] is True
 
 
 def test_offline_export_matches_running_schema_when_docs_are_disabled(tmp_path) -> None:

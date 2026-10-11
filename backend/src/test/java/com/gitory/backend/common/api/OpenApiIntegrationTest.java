@@ -10,11 +10,15 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -61,7 +65,7 @@ class OpenApiIntegrationTest {
                 .andExpect(jsonPath("$.paths['/api/jobs/{id}'].get.parameters[0].schema.format").value("uuid"))
                 .andExpect(jsonPath("$.paths['/api/repos/{id}/analyze'].post.parameters.length()").value(2))
                 .andExpect(jsonPath("$.paths['/api/repos/{id}/analyze'].post.responses['409']").exists())
-                .andExpect(jsonPath("$.paths['/api/cards']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/cards'].get.summary").value("카드 목록 조회"))
                 .andExpect(jsonPath("$.components.securitySchemes.sessionCookie.in").value("cookie"))
                 .andExpect(jsonPath("$.components.securitySchemes.sessionCookie.name").value("SESSION"))
                 .andExpect(jsonPath("$.security[0].sessionCookie").isArray())
@@ -70,6 +74,24 @@ class OpenApiIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(document).doesNotContain("LoginUser", "test-client-secret", StubGithubConfig.ACCESS_TOKEN);
+    }
+
+    @Test
+    @DisplayName("카드 임시 저장 본문 문서는 네 키를 모두 필수로 두고 값은 글 또는 null 로 보여 준다")
+    void draftBodyRequiresFourNullableKeys() throws Exception {
+
+        ResultActions docs = mvc.perform(get("/api/docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/cards/{id}/draft'].patch.requestBody.content['application/json'].schema['$ref']")
+                        .value("#/components/schemas/DraftFieldsRequest"))
+                .andExpect(jsonPath("$.components.schemas.DraftFieldsRequest.required",
+                        containsInAnyOrder("situation", "task", "action", "result")));
+
+        for (String key : List.of("situation", "task", "action", "result")) {
+            docs.andExpect(jsonPath("$.components.schemas.DraftFieldsRequest.properties." + key + ".type",
+                    containsInAnyOrder("string", "null")));
+        }
+
     }
 
     @Test

@@ -492,8 +492,6 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
   (핵심 설계 결정 3 — *"사용자 개입을 행으로 남긴다"*)
 - **`analysis_cache` 를 Redis 에 둘지 DB 에 둘지.** 필요한 테이블이라는 데는 합의했고
   초반엔 어느 쪽이든 성능 문제가 없다. `raw_event` 는 목적부터 정해야 한다.
-- **취소·임시 저장 엔드포인트가 아직 없다.** 스키마는 `CANCELED` 와 카드 버전을 이미
-  받을 수 있지만 `POST /api/jobs/{id}/cancel` · `PATCH /api/cards/{id}/draft` 는 구현 전이다.
 - **종료 상태의 무결성을 DB 가 안 잡는다.** `state` 가 `SUCCEEDED`/`FAILED`/`CANCELED` 인데
   `finished_at` 이 비어 있거나, `FAILED` 인데 `error_code` 가 없는 행을 지금은 넣을 수 있다.
   `card_confirmed_needs_time` 과 같은 종류의 제약인데 논의된 적이 없어 V2 에 넣지 않았다.

@@ -4,6 +4,7 @@ import com.gitory.backend.consent.port.GithubCountTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 
@@ -185,6 +186,9 @@ public class GithubCountClient {
                 merges += mergeCommitsIn(page);
             }
         } catch (RuntimeException failed) {
+            if (isRateLimited(failed)) {
+                throw failed;
+            }
             log.warn("저장소 {}/{} 의 내 커밋을 이어 받지 못해 다음 조회 때 다시 센다", target.owner(), target.name(), failed);
             return Optional.empty();
         }
@@ -266,6 +270,14 @@ public class GithubCountClient {
     private static String nameOf(String repositoryUrl) {
 
         return repositoryUrl.substring(repositoryUrl.indexOf("/repos/") + "/repos/".length()).toLowerCase(Locale.ROOT);
+
+    }
+
+    /** GitHub 은 2차 한도를 넘으면 403 이나 429 로 거절하고, 거절된 채로 계속 물으면 막히는 시간이 길어진다 */
+    static boolean isRateLimited(RuntimeException failed) {
+
+        return failed instanceof HttpClientErrorException.Forbidden
+                || failed instanceof HttpClientErrorException.TooManyRequests;
 
     }
 }

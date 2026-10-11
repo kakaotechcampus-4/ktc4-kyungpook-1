@@ -3,12 +3,15 @@ package com.gitory.backend.consent.infra;
 import com.gitory.backend.consent.port.GithubCountTarget;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.restclient.test.autoconfigure.RestClientTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.List;
 import java.util.Map;
@@ -309,6 +312,22 @@ class GithubCountClientTest {
                 .andRespond(withStatus(HttpStatus.BAD_GATEWAY));
 
         assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS)).containsOnlyKeys(200L);
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {403, 429})
+    @DisplayName("내 커밋 목록을 이어 받다 GitHub 이 한도로 거절하면(403·429) 그 저장소만 빼지 않고 거절을 그대로 던진다")
+    void passesThroughRateLimitedNextPage(int status) {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess(BIG_AND_SMALL, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withStatus(HttpStatus.valueOf(status)));
+
+        assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS))
+                .isInstanceOfSatisfying(HttpClientErrorException.class,
+                        rejected -> assertThat(rejected.getStatusCode().value()).isEqualTo(status));
 
     }
 

@@ -19,7 +19,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +47,7 @@ class ConnectedRepositoryPersistenceTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    private Long userId;
     private Long connectionId;
 
     @BeforeEach
@@ -52,7 +55,7 @@ class ConnectedRepositoryPersistenceTest {
 
         TestFixtures fixtures = new TestFixtures(jdbc);
         fixtures.clear();
-        Long userId = fixtures.insertUser(1L, "grow22");
+        userId = fixtures.insertUser(1L, "grow22");
         Long repositoryId = fixtures.insertRepository(100L, "grow22", "gitory");
         connectionId = fixtures.insertUserRepository(userId, repositoryId);
 
@@ -89,6 +92,36 @@ class ConnectedRepositoryPersistenceTest {
         assertThat(row.get("commit_count")).isEqualTo(197);
         assertThat(row.get("counted_at")).isNotNull();
         assertThat(row.get("last_analyzed_at")).isNotNull();
+
+    }
+
+    @Test
+    @DisplayName("셀 저장소는 한 번도 안 센 저장소가 먼저 오고, 같은 쪽 안에서는 최근에 push 한 저장소가 먼저 온다")
+    void ordersUncountedFirstThenRecentlyPushed() {
+
+        Instant longAgo = Instant.parse("2026-09-01T00:00:00Z");
+        Instant recently = Instant.parse("2026-10-07T00:00:00Z");
+        connect(101L, recently, COUNTED_AT);
+        connect(102L, longAgo, null);
+        connect(103L, recently, null);
+        connect(104L, longAgo, COUNTED_AT);
+        connect(105L, recently.plusSeconds(60), COUNTED_AT);
+
+        assertThat(connections.findUncounted(userId, List.of(101L, 102L, 103L, 104L, 105L)))
+                .extracting(ContributionTarget::githubRepoId)
+                .containsExactly(103L, 102L, 105L, 101L);
+
+    }
+
+    private void connect(long githubRepoId, Instant pushedAt, Instant countedAt) {
+
+        TestFixtures fixtures = new TestFixtures(jdbc);
+        Long repositoryId = fixtures.insertRepository(githubRepoId, "grow22", "repo-" + githubRepoId);
+        jdbc.update("UPDATE repository SET github_pushed_at = ? WHERE id = ?", Timestamp.from(pushedAt), repositoryId);
+        Long id = fixtures.insertUserRepository(userId, repositoryId);
+        if (countedAt != null) {
+            jdbc.update("UPDATE user_repository SET counted_at = ? WHERE id = ?", Timestamp.from(countedAt), id);
+        }
 
     }
 

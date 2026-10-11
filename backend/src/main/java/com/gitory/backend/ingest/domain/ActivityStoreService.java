@@ -4,11 +4,15 @@ import com.gitory.backend.ingest.infra.CollectionRunRepository;
 import com.gitory.backend.ingest.infra.ConnectedRepositoryRepository;
 import com.gitory.backend.ingest.infra.GitCommitRepository;
 import com.gitory.backend.ingest.infra.IssueRepository;
+import com.gitory.backend.ingest.infra.PrReviewCommentRepository;
+import com.gitory.backend.ingest.infra.PrReviewRepository;
 import com.gitory.backend.ingest.infra.PullRequestRepository;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
 import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
+import com.gitory.backend.ingest.port.CollectedReview;
+import com.gitory.backend.ingest.port.CollectedReviewComment;
 import com.gitory.backend.ingest.port.IngestRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,9 +24,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * AI 가 돌려준 수집 결과를 수집 이력 한 건과 커밋·PR·이슈로 저장한다
- * 커밋은 GitHub 에 이미 일어난 사실이라 이미 저장한 sha 는 다시 저장하지 않고, PR·이슈는 열림에서 닫힘으로 바뀌므로 이번 수집 값으로 덮어쓴다
- * 이번 응답에 없는 PR·이슈는 최근 것만 받아 빠졌을 뿐이라 지우지 않는다
+ * AI 가 돌려준 수집 결과를 수집 이력 한 건과 커밋·PR·이슈·리뷰·리뷰 댓글로 저장한다
+ * 커밋은 GitHub 에 이미 일어난 사실이라 이미 저장한 sha 는 다시 저장하지 않고, PR·이슈·리뷰·댓글은 닫히거나 고쳐지므로 이번 수집 값으로 덮어쓴다
+ * 이번 응답에 없는 PR·이슈는 최근 것만 받아 빠졌을 수 있어 지우지 않고, 리뷰·댓글도 지우지 않아 GitHub 에서 지운 줄 댓글은 남는다
  */
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,8 @@ public class ActivityStoreService {
     private final CollectionRunRepository runs;
     private final GitCommitRepository commits;
     private final PullRequestRepository pullRequests;
+    private final PrReviewRepository reviews;
+    private final PrReviewCommentRepository reviewComments;
     private final IssueRepository issues;
 
     /** AI가 재수집에서 상세 조회를 생략할 수 있도록 이미 저장한 SHA를 제공한다. */
@@ -51,6 +57,8 @@ public class ActivityStoreService {
 
         storeNewCommits(connected.getRepositoryId(), run.getId(), activity.commits());
         storePullRequests(connected.getRepositoryId(), run.getId(), activity.pullRequests());
+        storeReviews(connected.getRepositoryId(), run.getId(), activity.pullRequests());
+        storeReviewComments(connected.getRepositoryId(), run.getId(), activity.pullRequests());
         storeIssues(connected.getRepositoryId(), run.getId(), activity.issues());
         connected.markAnalyzed();
 
@@ -99,6 +107,36 @@ public class ActivityStoreService {
 
     }
 
+    /**
+     * 리뷰 행은 PR 행을 참조하므로 PR 을 저장한 뒤에 저장하고, PR 과 같은 이유로 GitHub 리뷰 id 순으로 저장한다
+     * 상태를 몰라 null 로 온 리뷰는 CHECK 에 걸리지 않게 리뷰 행만 건너뛴다
+     */
+    private void storeReviews(Long repositoryId, Long collectionRunId, List<CollectedPullRequest> collected) {
+
+        collected.stream()
+                .flatMap(pr -> pr.reviews().stream()
+                        .filter(review -> review.state() != null)
+                        .map(review -> reviewOf(repositoryId, collectionRunId, pr.number(), review)))
+                .sorted(Comparator.comparingLong(PrReview::getGithubReviewId))
+                .forEach(reviews::upsert);
+
+    }
+
+    /**
+     * 줄 댓글의 내용은 리뷰 상태와 상관없이 쓸 수 있어, 리뷰 행을 건너뛴 리뷰의 댓글도 저장한다
+     * 리뷰와 같은 이유로 PR 을 저장한 뒤 GitHub 댓글 id 순으로 저장한다
+     */
+    private void storeReviewComments(Long repositoryId, Long collectionRunId, List<CollectedPullRequest> collected) {
+
+        collected.stream()
+                .flatMap(pr -> pr.reviews().stream()
+                        .flatMap(review -> review.comments().stream())
+                        .map(comment -> commentOf(repositoryId, collectionRunId, pr.number(), comment)))
+                .sorted(Comparator.comparingLong(PrReviewComment::getGithubCommentId))
+                .forEach(reviewComments::upsert);
+
+    }
+
     /** PR 과 같은 이유로 번호순으로 저장한다 */
     private void storeIssues(Long repositoryId, Long collectionRunId, List<CollectedIssue> collected) {
 
@@ -115,5 +153,21 @@ public class ActivityStoreService {
         return GitCommit.collected(repositoryId, collectionRunId, commit.sha(), commit.authorLogin(),
                 commit.authorName(), commit.message(), commit.authoredAt(), commit.additions(),
                 commit.deletions(), commit.changedFiles(), commit.parentCount(), commit.exclusionReason());
+    }
+
+    private PrReview reviewOf(Long repositoryId, Long collectionRunId, int prNumber, CollectedReview review) {
+
+        return PrReview.collected(repositoryId, prNumber, collectionRunId, review.reviewId(), review.state(),
+                review.authorLogin(), review.bodyExcerpt(), review.submittedAt());
+
+    }
+
+    private PrReviewComment commentOf(Long repositoryId, Long collectionRunId, int prNumber,
+                                      CollectedReviewComment comment) {
+
+        return PrReviewComment.collected(repositoryId, prNumber, collectionRunId, comment.commentId(),
+                comment.reviewId(), comment.authorLogin(), comment.bodyExcerpt(), comment.path(), comment.line(),
+                comment.commentedAt());
+
     }
 }

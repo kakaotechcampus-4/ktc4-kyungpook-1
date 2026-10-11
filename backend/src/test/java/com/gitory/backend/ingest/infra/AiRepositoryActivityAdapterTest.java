@@ -14,8 +14,11 @@ import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.ingest.domain.ExclusionReason;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.domain.ReviewState;
 import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
+import com.gitory.backend.ingest.port.CollectedReview;
+import com.gitory.backend.ingest.port.CollectedReviewComment;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -23,10 +26,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.math.BigInteger;
@@ -315,6 +322,243 @@ class AiRepositoryActivityAdapterTest {
     }
 
     @Test
+    @DisplayName("AI 가 PR 마다 보낸 리뷰와 리뷰마다 보낸 줄 댓글을 칸마다 받은 그대로 읽는다")
+    void readsReviewsAndComments() {
+
+        var activity = adapter.collect(request(List.of()));
+
+        assertThat(activity.pullRequests().getFirst().reviews()).hasSize(1);
+        CollectedReview review = activity.pullRequests().getFirst().reviews().getFirst();
+        assertThat(review.reviewId()).isEqualTo(9001L);
+        assertThat(review.state()).isEqualTo(ReviewState.CHANGES_REQUESTED);
+        assertThat(review.authorLogin()).isEqualTo("reviewer");
+        assertThat(review.bodyExcerpt()).isEqualTo("책임 분리를 명확히 해주세요.");
+        assertThat(review.submittedAt()).isEqualTo(Instant.parse("2026-09-20T12:00:00Z"));
+
+        assertThat(review.comments()).hasSize(1);
+        CollectedReviewComment comment = review.comments().getFirst();
+        assertThat(comment.commentId()).isEqualTo(9101L);
+        assertThat(comment.reviewId()).isEqualTo(9001L);
+        assertThat(comment.authorLogin()).isEqualTo("reviewer");
+        assertThat(comment.bodyExcerpt()).isEqualTo("인덱스 책임을 repository 계층으로 옮겨주세요.");
+        assertThat(comment.path()).isEqualTo("backend/session.sql");
+        assertThat(comment.line()).isEqualTo(12);
+        assertThat(comment.commentedAt()).isEqualTo(Instant.parse("2026-09-20T11:50:00Z"));
+
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"null", "{}", "\"[]\"", "3"})
+    @DisplayName("PR 의 reviews 가 없거나 배열이 아니면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsMissingOrNonArrayReviews(String json) {
+
+        replace(firstPullRequest(), "reviews", json);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"null", "{}", "\"[]\"", "3"})
+    @DisplayName("리뷰의 comments 가 없거나 배열이 아니면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsMissingOrNonArrayComments(String json) {
+
+        replace(firstReview(), "comments", json);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @Test
+    @DisplayName("INT 를 넘는 리뷰 id·줄 댓글 id 도 양의 long 그대로 읽는다")
+    void readsReviewAndCommentIdsAboveInt() {
+
+        firstReview().put("review_id", 5_417_303_905L);
+        firstComment().put("comment_id", 5_417_303_906L).put("review_id", 5_417_303_905L);
+        responseBody = success(data);
+
+        CollectedReview review = collectFirstReview();
+
+        assertThat(review.reviewId()).isEqualTo(5_417_303_905L);
+        assertThat(review.comments().getFirst().commentId()).isEqualTo(5_417_303_906L);
+        assertThat(review.comments().getFirst().reviewId()).isEqualTo(5_417_303_905L);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "review, review_id, 0", "review, review_id, -1", "review, review_id, 1.5", "review, review_id, \"9001\"",
+            "comment, comment_id, 0", "comment, comment_id, -1", "comment, comment_id, 1.5",
+            "comment, comment_id, \"9101\"",
+            "comment, review_id, 0", "comment, review_id, -1", "comment, review_id, 1.5",
+            "comment, review_id, \"9001\""})
+    @DisplayName("리뷰 id·줄 댓글 id·줄 댓글의 리뷰 id 가 0·음수·정수가 아니면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsNonPositiveOrNonIntegerReviewAndCommentIds(String owner, String field, String json) {
+
+        replace(owner.equals("review") ? firstReview() : firstComment(), field, json);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "null")
+    @DisplayName("줄 댓글의 review_id 가 없거나 null 이면 비운 채 읽는다")
+    void readsMissingCommentReviewIdAsNull(String json) {
+
+        replace(firstComment(), "review_id", json);
+        responseBody = success(data);
+
+        assertThat(collectFirstReview().comments().getFirst().reviewId()).isNull();
+
+    }
+
+    @ParameterizedTest
+    @EnumSource(ReviewState.class)
+    @DisplayName("리뷰 상태 네 가지는 그 상태 그대로 읽는다")
+    void readsEveryKnownReviewState(ReviewState state) {
+
+        firstReview().put("state", state.name());
+        responseBody = success(data);
+
+        assertThat(collectFirstReview().state()).isEqualTo(state);
+
+    }
+
+    @Test
+    @DisplayName("PENDING 이 아닌 모르는 리뷰 상태는 상태를 비운 채 읽고, 그 리뷰에 달린 줄 댓글은 그대로 읽는다")
+    void readsUnknownReviewStateAsNullAndKeepsItsComments() {
+
+        firstReview().put("state", "RESOLVED");
+        responseBody = success(data);
+
+        CollectedReview review = collectFirstReview();
+
+        assertThat(review.reviewId()).isEqualTo(9001L);
+        assertThat(review.state()).isNull();
+        assertThat(review.comments()).extracting(CollectedReviewComment::commentId).containsExactly(9101L);
+
+    }
+
+    @Test
+    @DisplayName("제출하지 않은 PENDING 리뷰와 그 리뷰에 달린 줄 댓글은 저장으로 넘기지 않는다")
+    void dropsPendingReviewWithItsComments() {
+
+        addComment(addReview(9002, "PENDING"), 9102, 9002);
+        responseBody = success(data);
+
+        List<CollectedReview> reviews = adapter.collect(request(List.of())).pullRequests().getFirst().reviews();
+
+        assertThat(reviews).extracting(CollectedReview::reviewId).containsExactly(9001L);
+        assertThat(reviews.getFirst().comments()).extracting(CollectedReviewComment::commentId)
+                .containsExactly(9101L);
+
+    }
+
+    @Test
+    @DisplayName("다른 리뷰에 실려 와도 PENDING 리뷰 id 를 가진 줄 댓글은 저장으로 넘기지 않는다")
+    void dropsCommentCarryingPendingReviewId() {
+
+        addReview(9002, "PENDING");
+        addComment(firstReview(), 9103, 9002);
+        responseBody = success(data);
+
+        assertThat(collectFirstReview().comments()).extracting(CollectedReviewComment::commentId)
+                .containsExactly(9101L);
+
+    }
+
+    @Test
+    @DisplayName("PENDING 리뷰도 같은 검사를 거쳐 그 리뷰의 줄 댓글 line 이 잘못되면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsPendingReviewWithInvalidComment() {
+
+        addComment(addReview(9002, "PENDING"), 9102, 9002).put("line", 0);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"null", "3", "\"\"", "\"   \""})
+    @DisplayName("리뷰 상태가 없거나 문자열이 아니거나 빈 글이면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsMissingOrBlankReviewState(String json) {
+
+        replace(firstReview(), "state", json);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @Test
+    @DisplayName("리뷰 본문과 줄 댓글 본문에 섞인 U+0000 문자는 지우고 읽는다")
+    void removesNulFromReviewAndCommentBodies() {
+
+        firstReview().put("body_excerpt", "책임\0 분리");
+        firstComment().put("body_excerpt", "계층\0 이동");
+        responseBody = success(data);
+
+        CollectedReview review = collectFirstReview();
+
+        assertThat(review.bodyExcerpt()).isEqualTo("책임 분리");
+        assertThat(review.comments().getFirst().bodyExcerpt()).isEqualTo("계층 이동");
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-1", "2147483648", "1.5", "\"12\""})
+    @DisplayName("줄 댓글의 line 이 0·음수·INT 초과·정수가 아니면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsInvalidCommentLine(String json) {
+
+        replace(firstComment(), "line", json);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @Test
+    @DisplayName("리뷰의 제출 시각·본문·작성자와 줄 댓글의 작성자·path·line 이 null 이면 그 값을 비운 채 읽는다")
+    void readsReviewAndCommentWithoutOptionalValues() {
+
+        firstReview().putNull("submitted_at").putNull("body_excerpt").putNull("author_login");
+        firstComment().putNull("author_login").putNull("path").putNull("line");
+        responseBody = success(data);
+
+        CollectedReview review = collectFirstReview();
+
+        assertThat(review.submittedAt()).isNull();
+        assertThat(review.bodyExcerpt()).isNull();
+        assertThat(review.authorLogin()).isNull();
+        CollectedReviewComment comment = review.comments().getFirst();
+        assertThat(comment.authorLogin()).isNull();
+        assertThat(comment.path()).isNull();
+        assertThat(comment.line()).isNull();
+        assertThat(comment.commentedAt()).isEqualTo(Instant.parse("2026-09-20T11:50:00Z"));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"body_excerpt", "created_at"})
+    @DisplayName("줄 댓글의 본문이나 작성 시각이 없으면 잘못된 AI 응답으로 보고 저장으로 넘기지 않는다")
+    void rejectsCommentWithoutBodyOrCreatedAt(String field) {
+
+        firstComment().remove(field);
+        responseBody = success(data);
+
+        assertError("AI_INVALID_RESPONSE");
+
+    }
+
+    @Test
     @DisplayName("HTTP 오류 봉투의 code·retryable만 보존하고 원문 오류는 버린다")
     void sanitizesHttpEnvelopeFailure() {
         responseStatus = 502;
@@ -483,6 +727,55 @@ class AiRepositoryActivityAdapterTest {
     private ObjectNode firstIssue() {
 
         return (ObjectNode) data.path("issues").path(0);
+
+    }
+
+    private ObjectNode firstReview() {
+
+        return (ObjectNode) firstPullRequest().path("reviews").path(0);
+
+    }
+
+    private ObjectNode firstComment() {
+
+        return (ObjectNode) firstReview().path("comments").path(0);
+
+    }
+
+    private CollectedReview collectFirstReview() {
+
+        return adapter.collect(request(List.of())).pullRequests().getFirst().reviews().getFirst();
+
+    }
+
+    // 첫 리뷰를 본떠 줄 댓글 없는 리뷰를 첫 PR 의 리뷰 끝에 더한다
+    private ObjectNode addReview(long reviewId, String state) {
+
+        ObjectNode review = firstReview().deepCopy();
+        review.put("review_id", reviewId).put("state", state).putArray("comments");
+        ((ArrayNode) firstPullRequest().path("reviews")).add(review);
+        return review;
+
+    }
+
+    // 첫 줄 댓글을 본떠 review 의 줄 댓글 끝에 더한다
+    private ObjectNode addComment(ObjectNode review, long commentId, long reviewId) {
+
+        ObjectNode comment = firstComment().deepCopy();
+        comment.put("comment_id", commentId).put("review_id", reviewId);
+        ((ArrayNode) review.path("comments")).add(comment);
+        return comment;
+
+    }
+
+    // json 이 null 이면 칸을 지우고, 아니면 그 JSON 값으로 바꾼다
+    private void replace(ObjectNode node, String field, String json) {
+
+        if (json == null) {
+            node.remove(field);
+            return;
+        }
+        node.set(field, mapper.readTree(json));
 
     }
 

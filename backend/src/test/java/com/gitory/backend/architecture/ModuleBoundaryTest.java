@@ -8,6 +8,8 @@ import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideOutsideOfPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
@@ -96,6 +98,19 @@ class ModuleBoundaryTest {
                     .allowEmptyShould(true)
                     .check(classes);
         }
+    }
+
+    @Test
+    @DisplayName("audit 은 다른 모듈을 참조하지 않는다 — 모든 모듈이 audit 을 부르므로 순환이 생기지 않는다")
+    void auditDependsOnNoOtherModule() {
+
+        noClasses()
+                .that().resideInAPackage(ROOT + ".audit..")
+                .should().dependOnClassesThat(
+                        resideInAPackage(ROOT + "..").and(resideOutsideOfPackage(ROOT + ".audit..")))
+                .allowEmptyShould(true)
+                .check(classes);
+
     }
 
     @Test

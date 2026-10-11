@@ -1,6 +1,7 @@
 package com.gitory.backend.job.domain;
 
 
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(JobIntakeService.class)
+@Import({JobIntakeService.class, AuditLog.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JobIntakeServiceTest {
 

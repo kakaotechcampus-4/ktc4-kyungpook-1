@@ -1,5 +1,7 @@
 package com.gitory.backend.consent.domain;
 
+import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.GithubGrantClient;
 import com.gitory.backend.consent.infra.TokenCipher;
@@ -23,6 +25,7 @@ public class GithubDisconnectService {
     private final TokenCipher cipher;
     private final GithubGrantClient grants;
     private final TransactionTemplate transaction;
+    private final AuditLog auditLog;
 
     public void disconnect(Long userId) {
 
@@ -49,6 +52,7 @@ public class GithubDisconnectService {
 
         String token = decryptOrNull(connection.get());
         connection.get().revoke();
+        auditLog.ok(userId, AuditAction.REVOKE, connection.get().getId());
 
         return token;
 

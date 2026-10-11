@@ -1,6 +1,8 @@
 package com.gitory.backend.job.domain;
 
 
+import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class JobIntakeService {
 
     private final AnalysisJobRepository jobRepository;
+    private final AuditLog auditLog;
 
     public JobIntakeResult intake(Long userId, Long userRepositoryId, String idempotencyKey) {
 
@@ -32,6 +35,7 @@ public class JobIntakeService {
 
         try {
             AnalysisJob job = jobRepository.save(AnalysisJob.enqueue(userId, userRepositoryId, key));
+            auditLog.ok(userId, AuditAction.ANALYZE, job.getId());
             return JobIntakeResult.newJob(job);
         }catch (DataIntegrityViolationException e) {
 
@@ -43,6 +47,7 @@ public class JobIntakeService {
             return findExisting(userId, userRepositoryId, key).orElseThrow(() -> e);
 
         }
+
     }
 
     private Optional<JobIntakeResult> findExisting(Long userId, Long userRepositoryId, String key) {

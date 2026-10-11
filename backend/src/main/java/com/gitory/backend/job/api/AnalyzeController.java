@@ -1,6 +1,7 @@
 package com.gitory.backend.job.api;
 
 
+import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.ingest.domain.RepositoryOwnershipService;
@@ -59,12 +60,13 @@ public class AnalyzeController {
             @Parameter(description = "재시도 시 동일하게 보내는 요청 키. 다른 저장소에 재사용하면 409")
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
 
-        Long userRepositoryId = ownership.findOwnedRepository(toUuid(id), loginUser.id())
+        Long userRepositoryId = ownership.findOwnedRepository(toUuid(id), loginUser.id(), AuditAction.ANALYZE)
                 .orElseThrow(RepositoryNotFoundException::new);
 
         JobIntakeResult result = jobIntake.intake(loginUser.id(), userRepositoryId, idempotencyKey);
 
         return ApiResponse.ok(new StartedResponse(result.jobId().toString(), result.state(), POLL_AFTER_MS));
+
     }
 
     private UUID toUuid(String id) {

@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.GithubGrantClient;
 import com.gitory.backend.consent.infra.TokenCipher;
@@ -92,10 +93,10 @@ class GithubConnectionConcurrencyTest {
         connections.save(GithubConnection.grant(userId, new String[]{"read:user"}, cipher.encrypt(OLD_TOKEN), null));
 
         transaction = new TransactionTemplate(transactionManager);
-        loginService = new GithubLoginService(users, connections, cipher, request -> new DefaultOAuth2User(
+        loginService = new GithubLoginService(users, connections, cipher, mock(AuditLog.class), request -> new DefaultOAuth2User(
                 AuthorityUtils.createAuthorityList("ROLE_USER"),
                 Map.of("id", GITHUB_USER_ID, "login", "grow22", "avatar_url", "https://avatars/1"), "id"));
-        disconnectService = new GithubDisconnectService(connections, cipher, grants, transaction);
+        disconnectService = new GithubDisconnectService(connections, cipher, grants, transaction, mock(AuditLog.class));
         pool = newFixedThreadPool(2);
 
     }

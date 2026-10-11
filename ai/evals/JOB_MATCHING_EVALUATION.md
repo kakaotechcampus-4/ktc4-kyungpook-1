@@ -70,4 +70,3 @@ python -m scripts.evaluate_job_matching \
 - `evals/results/job_matching-chroma-default-0.4.json`
 - `evals/results/job_matching-chroma-default-0.5.json`
 - `evals/results/job_matching-chroma-default-0.6.json`
-

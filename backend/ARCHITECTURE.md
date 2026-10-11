@@ -175,7 +175,7 @@ BUILD SUCCESSFUL
 동의·저장소 선택        consent
         │
         ▼
-      job  ─────────── 오케스트레이션. 여기서만 아래를 호출한다
+      job  ─────────── 오케스트레이션. 여기서만 아래를 호출한다 (읽기 전용 조회는 허용 — 아래 참고)
         ├─ 수집·정규화·기여 집계   ingest      (GitHub 을 보는 유일한 곳)
         └─ 후보 추천 · 순위        recommend   (결정적. LLM 없음)
         │
@@ -196,6 +196,8 @@ BUILD SUCCESSFUL
 
 의존 방향은 `job → ingest·recommend·card` 한 방향이다. 역방향은 경계 테스트가 막는다 —
 그게 뚫리면 분석 흐름을 바꿀 때마다 전 모듈이 흔들린다.
+읽기 전용 조회는 허용한다 — `card` 는 `ingest`·`recommend` 를 그 모듈 `domain` 의 조회 메서드로 읽기만 하고,
+다른 모듈의 표를 SQL 로 직접 읽지 않는다. Job 을 만드는 요청(후보로 카드 만들기·칸 다시 생성)은 `job.api` 에 둔다.
 
 ## 비동기 — 왜 Job 인가
 
@@ -267,7 +269,7 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 | `consent` | `users` · `github_connection` |
 | `ingest` | `repository` · `user_repository` · `collection_run` · `git_commit` |
 | `recommend` | `candidate` · `candidate_commit` |
-| `card` | `card` · `card_statement` · `statement_evidence` · `interview_turn` · `interview_option` |
+| `card` | `card` · `card_version` · `card_statement` · `statement_evidence` · `interview_turn` · `interview_option` |
 | `job` | `analysis_job` |
 | `audit` | `audit_event` |
 | `agent` | — (경계 모듈. 테이블이 없는 게 존재 이유다) |
@@ -280,7 +282,7 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 
 | 결정 | 왜 |
 |---|---|
-| `card_statement` 를 **문장 단위**로 쪼갬 | 칸 하나에 텍스트 한 덩어리를 넣으면 "이 문장의 근거가 뭐냐"에 답할 수 없다. `statement_evidence` 로 문장마다 커밋이 붙는다 |
+| `card_statement` 를 **문장 단위**로 쪼갬 | 칸 하나에 텍스트 한 덩어리를 넣으면 "이 문장의 근거가 뭐냐"에 답할 수 없다. `statement_evidence` 로 문장마다 커밋이 붙는다. 화면·AI·되묻기 답이 모두 칸마다 글 하나를 다뤄 지금은 **칸마다 문장 하나**(`seq` 1)이고, 버전마다 그 행을 통째로 복사한다(아래 `card_version`) |
 | `interview_turn` + `interview_option` | 되묻기를 턴 모델로 풀었다. `parent_turn_id` 로 꼬리질문이, `question_type` 으로 질문 종류가, `outcome` 으로 종료 사유가 남는다 |
 | `outcome` 에 `later`·`skipped` | 사용자가 모른다고 하면 **추정으로 채우지 않고** 보완 필요로 남긴다. 스펙의 적응형 인터뷰 정책 3이 여기서 지켜진다 |
 | `git_commit.parent_count` + `is_excluded` | 머지 커밋 배제. 기여도 집계 함정 셋 중 하나가 스키마에 이미 있었다 |
@@ -309,9 +311,12 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 - **`collection_run.branches`** — 기본 브랜치만 읽으면 기여가 사라진다
   (실측: `main` 기준 0개 / 본인 브랜치 기준 26개).
 - **`candidate.low_card_worth`** — 프론트의 "카드감 낮음" 배지. 규칙 판정이다.
-- **`card.current_version`** — ERD 의 `version_no` 는 문장 단위인데 프론트 계약은
-  카드 단위 버전(`GET /cards/{id}/versions`)을 요구한다. 카드 버전 N =
-  각 `(star_slot, seq)` 에서 `version_no <= N` 인 최신 행의 집합.
+- **`card.current_version` · `card_version`** — ERD 의 `version_no` 는 문장 단위인데 프론트 계약은
+  카드 단위 버전(`GET /cards/{id}/versions`)을 요구한다. 카드 버전 N = `card_version` 의 N 번 행(출처·확정본·시각)
+  + `version_no = N` 인 문장 행들이다. 새 버전은 네 칸 문장과 근거 커밋 연결을 통째로 복사해 만들고,
+  빈 칸은 그 버전에 행이 없다. `current_version` 은 늘 가장 큰 번호다.
+  V1 의 "`version_no <= N` 인 최신 행" 규칙은 지운 칸을 나타내지 못해(본문 `NOT NULL`) 지운 글이 되살아나므로 `card_version` 을 더한 마이그레이션에서 바꿨다.
+  임시 저장이 덮어쓰는 것은 확정본이 아닌 직접 수정(`USER_EDIT`) 현재 버전뿐이고, 복원은 그 버전을 복사한 `RESTORE` 새 버전이다.
 - ~~**`evidence_type` 에 `inferred` 추가**~~ — V1 에서 더했다가 **V2 에서 되돌렸다.**
   이유는 아래 「신뢰 경계」에 적었다.
 
@@ -480,8 +485,6 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 - **`fit_*` 등급을 무엇이 매기나.** ERD 주석은 "코드를 통해 매긴 등급"이라고만 한다.
   규칙인지 모델인지에 따라 `recommend` 냐 `agent` 냐가 갈리고, 모듈 경계 테스트가
   그 결정을 강제한다. **`lowCardWorth` 와 같은 종류의 질문이고, 같은 이유로 규칙이 낫다.**
-- **카드 버전 복원의 정확한 의미.** `card.current_version` 으로 유도 규칙은 적었지만,
-  "복원"이 새 버전을 만드는지 포인터만 옮기는지는 미정이다.
 - **지표 테이블이 없다.** 스펙 목록의 `event_log` 자리를 `audit_event` 가 대신하고 있는데
   **둘은 목적이 다르다.** `audit_event.action` 은 `CONNECT`·`REVOKE`·`ANALYZE`·
   `CONFIRM_CARD`·`DELETE_DATA` — 보안 감사다. 후보 편집 같은 **사용자 개입이 행으로 남지

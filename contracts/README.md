@@ -30,4 +30,10 @@ FE·BE·AI 세 파트가 같은 사례를 보고 있는지 테스트로 고정�
 저장한 뒤, Spring이 B 계약에 맞게 `missing_slots`와 필요한 근거 문맥만 조립한다.
 이후 화면 표시나 재사용 요구가 생기면 새 마이그레이션으로 ERD를 확장한다.
 
+- `analysis/experience-groups.json` — Spring이 AI `/internal/analysis/groups`에 내 커밋과
+  PR·이슈 문맥을 보내고, AI가 같은 기능 작업을 경험 후보로 묶어 돌려주는 대표 사례.
+  응답은 AI 코드가 이 요청으로 계산한 값이며, LLM이 맡는 작업 단위 합치기(합치지 않음)와 제목·이유만 정해 둔 값으로 바꿨다.
+  - BE: 요청을 이 칸 이름·값 그대로 보내고, 응답을 후보 목록으로 바꾸는지 (`backend/src/test/java/com/gitory/backend/agent/infra/`)
+  - AI: `spring_to_ai.request`를 라우터가 받아들이고 `ai_to_spring.data`가 응답 모델을 통과하는지 (아직 테스트 없음)
+
 이 파일을 바꾸면 세 파트 테스트가 동시에 깨질 수 있다. 바꾸기 전에 팀 채널에 알린다.

@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +22,11 @@ import static lombok.AccessLevel.PROTECTED;
 @NoArgsConstructor(access = PROTECTED)
 @Table(name = "candidate")
 public class Candidate {
+
+    /** 보드가 보여 줄 순서로, AI 가 준 순서대로 저장하므로 점수가 같으면 먼저 저장한 후보가 앞이고 점수가 없는 후보는 맨 뒤다 */
+    public static final Comparator<Candidate> BOARD_ORDER = Comparator
+            .comparing(Candidate::getScore, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(Candidate::getId);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

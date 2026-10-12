@@ -133,6 +133,10 @@ gitory:
     # 카드당 되묻기 질문 최대 횟수.
     # AI 에는 요청의 max_turns, 프론트에는 응답의 maxTurns 로 내려준다.
     max-turns: 2
+  analysis:
+    grouping:
+      # AI 의 묶기 규칙이 바뀌면 올려, 보낼 요청이 지난번과 같아도 모든 저장소를 다시 묶게 한다
+      version: 1
 
 logging:
   level:

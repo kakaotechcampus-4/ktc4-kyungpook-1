@@ -220,14 +220,13 @@ class CommitGrouper:
     ) -> ExperienceCandidate:
         """경험과 LLM 제목·설명으로 후보를 만든다. 점수는 규칙으로 계산한다.
 
-        DB 컬럼 길이를 넘는 제목·설명은 요청 전체를 실패시키지 않도록 잘라 담는다.
+        LLM이 제목·설명을 비우면 규칙으로 만든 대체 문장을 쓰고, DB 컬럼 길이를 넘으면
+        잘라 담는다. 후보 한 건 때문에 요청 전체가 실패하지 않게 하기 위해서다.
         """
         if not group.members:
             raise ValueError("빈 커밋 그룹은 후보로 만들 수 없습니다")
-        normalized_title = title.strip()
-        normalized_reason = reason.strip()
-        if not normalized_title or not normalized_reason:
-            raise ValueError("후보 제목과 선정 이유는 비어 있을 수 없습니다")
+        normalized_title = title.strip() or self._fallback_title(group)
+        normalized_reason = reason.strip() or self._fallback_reason(group)
 
         return ExperienceCandidate(
             group_key=group.group_key,
@@ -267,6 +266,23 @@ class CommitGrouper:
         if all(commit.changed_files is not None for commit in members):
             return sum(commit.changed_files for commit in members)
         return None
+
+    @staticmethod
+    def _fallback_title(group: CommitGroup) -> str:
+        """제목이 비었을 때의 대체 제목. 대표 PR이나 시작일만 쓴다."""
+        if group.pull_request_number is not None:
+            return f"PR #{group.pull_request_number} 작업"
+        if group.issue_numbers:
+            return f"Issue #{group.issue_numbers[0]} 작업"
+        return f"{group.members[0].authored_at.date().isoformat()} 커밋 작업"
+
+    @staticmethod
+    def _fallback_reason(group: CommitGroup) -> str:
+        """선정 이유가 비었을 때의 대체 문장. 입력에서 확인되는 개수와 참조만 쓴다."""
+        refs = [f"PR #{number}" for number in group.pull_request_numbers]
+        refs += [f"Issue #{number}" for number in group.issue_numbers]
+        basis = f"{', '.join(refs)}에 연결된 " if refs else ""
+        return f"{basis}커밋 {len(group.members)}건을 같은 작업으로 묶은 후보입니다."
 
     @staticmethod
     def _truncate(text: str, max_length: int) -> str:

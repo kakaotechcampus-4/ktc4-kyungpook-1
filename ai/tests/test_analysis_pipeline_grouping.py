@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
+import api.analysis as analysis_api
 from api.analysis import get_analysis_pipeline
 from main import create_app
 from schemas.analysis import (
@@ -222,3 +223,72 @@ def test_llm_failure_returns_llm_unavailable_envelope(error, retryable) -> None:
     assert body["error"]["retryable"] is retryable
     assert "secret-detail" not in response.text
     assert "GITORY_LLM_API_KEY" not in response.text
+
+
+class SlowGroupingLlm(FakeGroupingLlm):
+    """설명 단계에서 마감보다 오래 걸리는 LLM."""
+
+    async def describe(self, groups, **kwargs):
+        await asyncio.sleep(5)
+        return await super().describe(groups, **kwargs)
+
+
+def test_grouping_over_deadline_returns_retryable_llm_unavailable(monkeypatch) -> None:
+    monkeypatch.setattr(analysis_api, "GROUPING_DEADLINE_SECONDS", 0.05)
+    app = create_app()
+    app.dependency_overrides[get_analysis_pipeline] = lambda: AnalysisPipeline(
+        grouping_llm=SlowGroupingLlm()
+    )
+    response = TestClient(app).post(
+        "/internal/analysis/groups",
+        json={
+            "repository_id": "repo-1",
+            "target_login": "minseo",
+            "commits": [
+                {
+                    "sha": "a" * 40,
+                    "message": "feat: 기능",
+                    "author_login": "minseo",
+                    "authored_at": "2026-09-01T00:00:00Z",
+                    "parent_count": 1,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["error"]["code"] == "LLM_UNAVAILABLE"
+    assert body["error"]["retryable"] is True
+
+
+class DisconnectingRequest:
+    """두 번째 확인부터 연결이 끊긴 것으로 답하는 요청."""
+
+    def __init__(self) -> None:
+        self.checks = 0
+
+    async def is_disconnected(self) -> bool:
+        self.checks += 1
+        return self.checks > 1
+
+
+def test_client_disconnect_cancels_remaining_llm_calls(monkeypatch) -> None:
+    monkeypatch.setattr(analysis_api, "DISCONNECT_POLL_SECONDS", 0.01)
+    calls: list[int] = []
+
+    async def sequential_llm_calls() -> None:
+        for index in range(9):
+            calls.append(index)
+            await asyncio.sleep(0.05)
+
+    async def run() -> None:
+        with pytest.raises(analysis_api._ClientDisconnected):
+            await analysis_api._run_until_deadline_or_disconnect(
+                sequential_llm_calls(), DisconnectingRequest()
+            )
+        await asyncio.sleep(0.2)
+
+    asyncio.run(run())
+
+    assert calls == [0]

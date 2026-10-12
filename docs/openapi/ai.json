@@ -2907,7 +2907,7 @@
                 }
               }
             },
-            "description": "LLM_UNAVAILABLE: 그룹화 LLM 호출·출력 검증 실패(retryable=true) 또는 LLM 설정 누락(retryable=false)."
+            "description": "LLM_UNAVAILABLE: 그룹화 LLM 호출·출력 검증 실패 또는 요청 마감(540초) 초과(retryable=true), LLM 설정 누락(retryable=false)."
           }
         },
         "summary": "A 경험 후보 그룹화",

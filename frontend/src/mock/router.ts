@@ -133,9 +133,10 @@ on('POST', '/cards/manual/draft', ({ body, headers }) => {
   const scopedKey = key ? JSON.stringify([db.user.id, key]) : null;
   const existing = scopedKey ? findCard(db.manualIdem.get(scopedKey) ?? '') : null;
   if (existing) return ok(cardView(existing));
-  if (!validText(body.title, CONFIG.CARD_TITLE_MAX) || isCardBlank(body.title) || (body.period != null && !validText(body.period, CONFIG.CARD_PERIOD_MAX))) return invalid();
+  const period = body.period == null || (typeof body.period === 'string' && isCardBlank(body.period)) ? null : body.period;
+  if (!validText(body.title, CONFIG.CARD_TITLE_MAX) || isCardBlank(body.title) || (period != null && !validText(period, CONFIG.CARD_PERIOD_MAX))) return invalid();
   const card: Any = {
-    id: nextId('card'), userId: db.user.id, kind: 'QUALITATIVE', status: 'DRAFT', title: body.title, period: body.period == null || isCardBlank(body.period) ? null : body.period,
+    id: nextId('card'), userId: db.user.id, kind: 'QUALITATIVE', status: 'DRAFT', title: body.title, period,
     repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
     versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: null, task: null, action: null, result: null, _confirmed: false }],
     evidence: [], lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(), updatedAt: now(),

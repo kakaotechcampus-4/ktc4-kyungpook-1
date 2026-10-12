@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handle } from '@/mock/router';
-import { db, resetDb, restore, snapshot } from '@/mock/store';
+import { cardSummary, db, resetDb, restore, snapshot } from '@/mock/store';
 
 type Any = Record<string, any>;
 const req = (method: string, path: string, body: Any = {}, key?: string) => handle(method, path, new URLSearchParams(), body, true, key ? { 'idempotency-key': key } : {});
@@ -40,7 +40,16 @@ describe('manual startup matches #162', () => {
     expect(db.jobs.size).toBe(1);
   });
   it.each([{ title: '' }, { title: '\u001c' }, { title: 'x'.repeat(257) }, { title: 'x\0' }, { title: 'x', period: 'x'.repeat(51) }, { title: 'x', period: '\0' }])('rejects invalid startup metadata %j', body => {
+    const before = snapshot();
     expect(req('POST', '/cards/manual/draft', body).status).toBe(400);
+    expect(snapshot()).toBe(before);
+  });
+  it.each([' '.repeat(51), '\u00a0\u2007\u202f\ufeff\u001c\u001d\u001e\u001f'.repeat(10)])('normalizes oversized blank-only periods before checking length', period => {
+    expect(req('POST', '/cards/manual/draft', { title: '기간 없음', period })).toMatchObject({ status: 200, data: { period: null } });
+  });
+  it('preserves meaningful period whitespace up to 50 characters', () => {
+    const period = ' '.repeat(48) + 'x ';
+    expect(req('POST', '/cards/manual/draft', { title: '기간 있음', period })).toMatchObject({ status: 200, data: { period } });
   });
   it('removes unsupported write routes', () => {
     expect(req('POST', '/cards', {}).status).toBe(404);
@@ -107,9 +116,36 @@ describe('draft saves match #163', () => {
     vi.advanceTimersByTime(1000); req('PATCH', '/cards/card_01/metadata', { title: '최근 제목' });
     expect((req('GET', '/cards').data as Any[])[0].id).toBe('card_01');
   });
+  it.each(['summary', 'hydration'])('uses later confirmation for missing updatedAt through %s', mode => {
+    const legacy = JSON.parse(snapshot());
+    const card = legacy.cards.find((c: Any) => c.id === 'card_04');
+    delete card.updatedAt;
+    card.versions.at(-1).createdAt = '2026-01-01T00:00:00.000Z';
+    card.metadataUpdatedAt = '2026-02-01T00:00:00.000Z';
+    card.confirmedAt = '2026-03-01T00:00:00.000Z';
+    if (mode === 'hydration') {
+      expect(restore(JSON.stringify(legacy))).toBe(true);
+      expect((req('GET', '/cards').data as Any[]).find(c => c.id === card.id)!.updatedAt).toBe(card.confirmedAt);
+    } else {
+      expect(cardSummary(card).updatedAt).toBe(card.confirmedAt);
+    }
+  });
 });
 
 describe('history and mask match #175 and interview #172', () => {
+  it('keeps known current metadata without inferring historical provenance from identical text', () => {
+    const legacy = JSON.parse(snapshot());
+    const card = legacy.cards.find((c: Any) => c.id === 'card_03');
+    card.versions.at(-1).task = null;
+    card.evidence = [{ field: 'S', type: 'USER_SELECTED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: 2 }];
+    card.lowConfidenceFields = [{ field: 'S', why: '현재 버전에만 알려진 확인 필요 표시' }];
+    card.droppedFields = [{ field: 'T', reason: 'NO_EVIDENCE' }];
+    card.versions.forEach((v: Any) => { delete v._metadata; });
+    expect(restore(JSON.stringify(legacy))).toBe(true);
+    expect(detail(card.id)).toMatchObject({ evidence: card.evidence, lowConfidenceFields: card.lowConfidenceFields, droppedFields: card.droppedFields });
+    req('POST', `/cards/${card.id}/versions/1/restore`);
+    expect(detail(card.id)).toMatchObject({ evidence: [], lowConfidenceFields: [], droppedFields: [] });
+  });
   it.each([{ rules: Array.from({ length: 21 }, () => ({ from: 'x', to: '' })) }, { rules: [{ from: 'x'.repeat(101), to: '' }] }, { rules: [{ from: 'x', to: 'x'.repeat(101) }] }, { rules: [{ from: '\u001c', to: '' }] }, { rules: [{ from: 'x', to: '\0' }] }, { rules: [null] }, {}])('rejects invalid mask %j', body => {
     const before = snapshot(); expect(req('POST', '/cards/card_01/mask', body).status).toBe(400); expect(snapshot()).toBe(before);
   });

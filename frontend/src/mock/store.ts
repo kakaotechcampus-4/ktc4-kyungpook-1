@@ -35,7 +35,11 @@ export function restoreVersionMetadata(c: Any, version: Any) {
   const m = clone(version._metadata ?? { evidence: [], lowConfidenceFields: [], droppedFields: [] });
   c.evidence = m.evidence; c.lowConfidenceFields = m.lowConfidenceFields; c.droppedFields = m.droppedFields;
 }
-/** 오래된 데모 스냅샷에는 현재 근거만 있다. 글이 같은 칸의 알려진 근거만 과거에 복사한다. */
+const legacyUpdatedAt = (c: Any): string => [c.metadataUpdatedAt, c.confirmedAt].reduce(
+  (latest, timestamp) => timestamp && timestamp > latest ? timestamp : latest,
+  c.versions[c.versions.length - 1].createdAt,
+);
+/** 오래된 스냅샷의 현재 근거만 보존한다. 같은 글이어도 과거 버전의 출처는 추정하지 않는다. */
 function hydrateCards() {
   db.repos.forEach(r => { r.userId ??= db.user.id; });
   db.cards.forEach(c => {
@@ -43,13 +47,9 @@ function hydrateCards() {
     const current = c.versions[c.versions.length - 1];
     c.versions.forEach((v: Any) => {
       v._confirmed ??= c.status === 'CONFIRMED' && v === current;
-      v._metadata ??= {
-        evidence: clone(c.evidence.filter((e: Any) => v[FIELD_KEY[e.field]] != null && v[FIELD_KEY[e.field]] === current[FIELD_KEY[e.field]])),
-        lowConfidenceFields: clone(c.lowConfidenceFields.filter((e: Any) => v[FIELD_KEY[e.field]] != null && v[FIELD_KEY[e.field]] === current[FIELD_KEY[e.field]])),
-        droppedFields: clone(c.droppedFields.filter((e: Any) => !v[FIELD_KEY[e.field]] && !current[FIELD_KEY[e.field]])),
-      };
+      v._metadata ??= v === current ? metadataOf(c) : { evidence: [], lowConfidenceFields: [], droppedFields: [] };
     });
-    c.updatedAt ??= c.metadataUpdatedAt && c.metadataUpdatedAt > current.createdAt ? c.metadataUpdatedAt : current.createdAt;
+    c.updatedAt ??= legacyUpdatedAt(c);
   });
 }
 
@@ -273,7 +273,7 @@ export function cardSummary(c: Any) {
     sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
-    updatedAt: c.updatedAt ?? (c.metadataUpdatedAt && c.metadataUpdatedAt > v.createdAt ? c.metadataUpdatedAt : v.createdAt),
+    updatedAt: c.updatedAt ?? legacyUpdatedAt(c),
   };
 }
 

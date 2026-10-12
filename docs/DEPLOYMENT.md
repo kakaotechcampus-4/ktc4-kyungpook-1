@@ -90,6 +90,7 @@ echo "== 끝"
 - `TOKEN_ENC_KEY`/`TOKEN_ENC_SALT` 는 한 번 정하면 바꾸지 않는다. 바꾸면 저장된 GitHub 토큰을 복호화할 수 없다.
 - `DB_PASSWORD` 는 DB 볼륨이 처음 만들어질 때 고정된다. 나중에 `.env` 만 바꾸면 접속이 실패한다.
 - GitHub OAuth App 의 Authorization callback URL 은 `https://<도메인>/api/auth/github/callback` 과 정확히 같아야 한다.
+- `GITORY_LLM_BASE_URL`/`GITORY_LLM_API_KEY` 가 비어 있으면 AI 의 경험 그룹화·STAR 초안만 503(LLM 설정 없음)이고, 수집·되묻기는 동작한다. 값을 넣은 뒤 `ANALYSIS_GROUPING_ENABLED=true` 로 바꾸고 `docker compose up -d` 로 다시 띄운다. 켜기 전에 넣지 않으면 모든 분석이 그룹화 단계에서 실패한다.
 
 ## 5. Spring ↔ AI 토큰 경로 (멘토 확인 완료)
 

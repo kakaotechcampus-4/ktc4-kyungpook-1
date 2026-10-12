@@ -10,7 +10,9 @@ import pytest
 from schemas.analysis import StarAnalysisRequest
 from services.analysis_pipeline import AnalysisPipeline
 from services.llm_structured_client import (
+    LLMContentFilterError,
     LLMInvalidOutputError,
+    LLMNonRetryableError,
     LLMStructuredCallError,
     StructuredCallResult,
 )
@@ -19,6 +21,7 @@ from services.star_generator import (
     StarDraftOutput,
     StarField,
     StarGenerationError,
+    StarGenerationLimits,
     StarGenerator,
 )
 
@@ -34,12 +37,13 @@ class _FakeClient:
         self._responses = list(responses)
         self.calls: list[dict[str, Any]] = []
 
-    def call(self, system_prompt, payload, output_model, max_completion_tokens):
+    def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
         self.calls.append({
             "system_prompt": system_prompt,
             "payload": payload,
             "output_model": output_model,
             "max_completion_tokens": max_completion_tokens,
+            "timeout_seconds": timeout_seconds,
         })
         response = self._responses.pop(0)
         if isinstance(response, Exception):
@@ -67,6 +71,7 @@ def _evidence(sha: str, **extra: Any) -> dict[str, Any]:
         "author_login": "octo",
         "churn": "+10/-2",
         "summary": f"{sha[:7]} 커밋 요약",
+        "summary_source": "DIFF",
         "url": f"https://github.com/o/r/commit/{sha}",
         **extra,
     }
@@ -108,6 +113,8 @@ def test_builds_star_with_verified_evidence_and_missing_fields() -> None:
     assert result.star["R"].status == "EMPTY"
     assert result.star["R"].text is None
     assert result.star["R"].insufficient_reason == "결과를 확인할 근거가 없다."
+    assert result.star["R"].insufficient_reason_code == "NO_EVIDENCE"
+    assert result.star["A"].insufficient_reason_code is None
     assert result.missing_fields == ["T", "R"]
     assert result.shared_with is None
     assert result.removed_claims == []
@@ -128,6 +135,7 @@ def test_drops_unknown_shas_and_removes_claims_without_any_evidence() -> None:
     # 근거가 하나도 남지 않은 문장은 화면에 뜨면 안 되므로 비운다.
     assert result.star["S"].status == "EMPTY"
     assert result.star["S"].text is None
+    assert result.star["S"].insufficient_reason_code == "NO_EVIDENCE"
     assert "입력에 없는 커밋만 인용했다." in result.removed_claims
     assert [ref.sha for ref in result.star["A"].evidence] == [SHA_A]
     assert result.missing_fields == ["S", "T", "R"]
@@ -153,6 +161,7 @@ def test_removes_claim_with_invented_metric() -> None:
     result = _run(StarGenerator(client), request)
 
     assert result.star["R"].status == "EMPTY"
+    assert result.star["R"].insufficient_reason_code == "UNSOURCED_NUMBER"
     assert "응답 시간이 40% 줄었다." in result.removed_claims
     assert result.star["A"].status == "FILLED"
 
@@ -257,3 +266,47 @@ def test_pipeline_delegates_star_analysis_to_generator() -> None:
     result = asyncio.run(pipeline.analyze_star(_request(_evidence(SHA_A))))
 
     assert result.star["A"].status == "FILLED"
+
+
+def test_churn_numbers_do_not_support_invented_percentages() -> None:
+    client = _FakeClient(_output(R=_field("FILLED", "오류율을 30% 줄였다.", [SHA_A])))
+
+    result = _run(StarGenerator(client), _request(_evidence(SHA_A, churn="+30/-2")))
+
+    assert result.star["R"].status == "EMPTY"
+    assert result.star["R"].insufficient_reason_code == "UNSOURCED_NUMBER"
+
+
+def test_deadline_returns_all_slots_empty_with_timeout_code() -> None:
+    client = _FakeClient()
+
+    result = _run(StarGenerator(client, StarGenerationLimits(deadline_seconds=0)), _request(_evidence(SHA_A)))
+
+    assert client.calls == []
+    assert {slot: field.insufficient_reason_code for slot, field in result.star.items()} == {
+        "S": "TIMEOUT", "T": "TIMEOUT", "A": "TIMEOUT", "R": "TIMEOUT",
+    }
+    assert result.missing_fields == ["S", "T", "A", "R"]
+
+
+@pytest.mark.parametrize(
+    ("error", "retryable"),
+    [
+        (LLMStructuredCallError("5xx"), True),
+        (LLMNonRetryableError("bad key"), False),
+        (LLMContentFilterError("filtered"), False),
+    ],
+)
+def test_classifies_llm_errors(error: Exception, retryable: bool) -> None:
+    with pytest.raises(StarGenerationError) as raised:
+        _run(StarGenerator(_FakeClient(error)), _request(_evidence(SHA_A)))
+
+    assert raised.value.retryable is retryable
+
+
+def test_passes_remaining_deadline_as_call_timeout() -> None:
+    client = _FakeClient(_output())
+
+    _run(StarGenerator(client, StarGenerationLimits(deadline_seconds=60)), _request(_evidence(SHA_A)))
+
+    assert 50 < client.calls[0]["timeout_seconds"] <= 60

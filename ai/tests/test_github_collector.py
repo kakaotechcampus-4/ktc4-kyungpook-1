@@ -263,6 +263,33 @@ def test_candidate_detail_resolves_commit_shas_from_pr() -> None:
     assert [item.sha for item in execution.result.commits] == ["abc1234567890"]
 
 
+@pytest.mark.parametrize("skip", [False, True])
+def test_candidate_detail_unavailable_commit_is_skipped_only_when_requested(skip: bool) -> None:
+    """GitHub이 찾지 못한 SHA(422)는 skip_unavailable_commits일 때만 빼고 계속한다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/commits/deadbeef"):
+            return httpx.Response(422, json={"message": "No commit found for SHA: deadbeef"})
+        return _success_handler(request)
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+    request = _detail_request(commit_shas=["deadbeef", "abc1234567890"], github_pr_number=None)
+
+    if not skip:
+        with pytest.raises(GithubApiError) as raised:
+            asyncio.run(collector.fetch_candidate_details(request, "live-secret"))
+        assert raised.value.status_code == 422
+        return
+
+    execution = asyncio.run(
+        collector.fetch_candidate_details(request, "live-secret", skip_unavailable_commits=True)
+    )
+    assert [item.sha for item in execution.result.commits] == ["abc1234567890"]
+
+
 def test_candidate_detail_rate_limit_returns_partial_result() -> None:
     """상세 diff 조회도 호출 제한 시 수집된 분량만 부분 결과로 반환한다."""
     collector = GithubCollector(

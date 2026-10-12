@@ -69,15 +69,24 @@ class EnvironmentLLMClient:
         self._client: Optional[StructuredLLMClient] = None
         self._lock = threading.Lock()
 
+    def ensure_ready(self) -> None:
+        """환경 설정을 지금 확인한다. GitHub 조회처럼 비싼 일을 하기 전에 부른다."""
+        self._get_client()
+
     def call(
         self,
         system_prompt: str,
         payload: dict[str, Any],
         output_model: type,
         max_completion_tokens: int,
+        timeout_seconds: Optional[float] = None,
     ) -> StructuredCallResult:
+        return self._get_client().call(
+            system_prompt, payload, output_model, max_completion_tokens, timeout_seconds
+        )
+
+    def _get_client(self) -> StructuredLLMClient:
         with self._lock:
             if self._client is None:
                 self._client = StructuredLLMClient(load_llm_settings(self._task))
-            client = self._client
-        return client.call(system_prompt, payload, output_model, max_completion_tokens)
+            return self._client

@@ -15,14 +15,16 @@ from pydantic import (
 )
 
 from schemas.collection import (
-    CandidateDetailRequest,
+    CommitSha,
     ExclusionReason,
     FileChangeStatus,
-    PartialReason,
+    RepositoryTarget,
 )
 from schemas.common import (
     AnalysisVerdict,
     CandidateSourceType,
+    DiffEvidencePartialReason,
+    EmptyReasonCode,
     EvidenceSummarySource,
     StarSlot,
     StarStatus,
@@ -177,9 +179,9 @@ class DiffEvidence(StrictRequestModel):
     churn: str = Field(description="예: +71/-0")
     summary: str = Field(description="diff에서 직접 확인한 변경 요약")
     summary_source: EvidenceSummarySource = Field(
-        "DIFF",
+        ...,
         description="DIFF: 모델이 diff를 읽고 쓴 요약. COMMIT_MESSAGE: 모델 요약이 없거나 "
-        "근거 없는 수치가 있어 커밋 메시지 첫 줄로 대신한 값",
+        "근거 없는 수치가 있어 커밋 메시지 첫 줄로 대신한 값. 신뢰도 계산에 쓰므로 필수",
     )
     technical_points: list[str] = Field(
         default_factory=list,
@@ -189,16 +191,34 @@ class DiffEvidence(StrictRequestModel):
     url: str | None = None
 
 
-class DiffEvidenceRequest(CandidateDetailRequest):
-    """선택된 후보의 diff를 조회해 커밋별 근거로 요약하도록 요청한다.
+class DiffEvidenceRequest(StrictRequestModel):
+    """선택된 후보의 본인 커밋 diff를 조회해 커밋별 근거로 요약하도록 요청한다."""
 
-    후보 지정 방식은 ``/internal/collect/candidate-details``와 같고, 경험 제목만 더한다.
-    """
-
+    user_repository_id: PositiveInt
+    repository: RepositoryTarget
+    commit_shas: list[CommitSha] = Field(
+        ..., min_length=1,
+        description="후보에 속한 요청자 본인 커밋 SHA. 필수. 51개 이상이면 앞 50개만 분석하고 partial로 표시",
+    )
+    github_pr_number: PositiveInt | None = Field(
+        None, description="PR 후보면 PR 번호. 응답에 그대로 돌려주며 커밋 조회에는 쓰지 않는다",
+    )
     title: str = Field(
-        ..., min_length=1, max_length=200,
+        ..., min_length=1,
         description="경험 후보 제목. 모델이 커밋을 어떤 경험의 일부로 읽을지 정하는 문맥",
     )
+
+    @model_validator(mode="after")
+    def dedupe_commit_shas(self) -> "DiffEvidenceRequest":
+        """대소문자만 다른 SHA는 하나로 본다. 순서는 처음 나온 순서를 따른다."""
+        unique: list[str] = []
+        seen: set[str] = set()
+        for sha in self.commit_shas:
+            if sha.casefold() not in seen:
+                seen.add(sha.casefold())
+                unique.append(sha)
+        self.commit_shas = unique
+        return self
 
 
 class DiffEvidenceResult(BaseModel):
@@ -207,12 +227,26 @@ class DiffEvidenceResult(BaseModel):
     user_repository_id: PositiveInt
     github_pr_number: PositiveInt | None = None
     evidence: list[DiffEvidence] = Field(
-        default_factory=list, description="입력 커밋 순서(PR이면 PR 커밋 순서)의 커밋별 근거"
+        default_factory=list, description="요청한 커밋 순서의 커밋별 근거. 빠진 커밋은 없다"
     )
     partial: bool = Field(
-        False, description="diff 수집이 상한·rate limit으로 일부만 됐는지. 요약은 받은 범위만 다룬다"
+        False,
+        description="요청한 커밋 일부가 근거에서 빠졌는지. 파일 patch가 잘린 것은 partial이 아니다",
     )
-    partial_reason: PartialReason | None = None
+    partial_reason: DiffEvidencePartialReason | None = Field(
+        None,
+        description="CAP_EXCEEDED: 50개 초과분, GITHUB_RATE_LIMITED: 한도 소진, "
+        "COMMIT_UNAVAILABLE: GitHub이 커밋을 찾지 못함(422). 여러 이유면 앞의 것",
+    )
+    missing_commit_shas: list[str] = Field(
+        default_factory=list, description="요청했지만 근거에서 빠진 커밋 SHA"
+    )
+
+    @model_validator(mode="after")
+    def validate_partial(self) -> "DiffEvidenceResult":
+        if self.partial != bool(self.missing_commit_shas) or self.partial != (self.partial_reason is not None):
+            raise ValueError("partial·partial_reason·missing_commit_shas는 함께 설정되어야 합니다.")
+        return self
 
 
 class DependencyFile(StrictRequestModel):
@@ -230,7 +264,9 @@ class StarAnalysisRequest(StrictRequestModel):
     title: str
     source_type: CandidateSourceType
     source_ref: str | None = None
-    evidence: list[DiffEvidence]
+    evidence: list[DiffEvidence] = Field(
+        ..., min_length=1, description="diff-evidence 응답의 evidence. 비어 있으면 STAR를 만들지 않는다"
+    )
     dependency_files: list[DependencyFile] = Field(default_factory=list)
     confirmed_answers: list[str] = Field(default_factory=list)
 
@@ -251,6 +287,9 @@ class StarFieldResult(BaseModel):
     confidence: StatementConfidence | None = None
     evidence: list[EvidenceReference] = Field(default_factory=list)
     insufficient_reason: str | None = None
+    insufficient_reason_code: EmptyReasonCode | None = Field(
+        None, description="EMPTY 칸의 이유 코드. 화면 droppedFields.reason과 같은 값"
+    )
     review_reason: str | None = None
 
 

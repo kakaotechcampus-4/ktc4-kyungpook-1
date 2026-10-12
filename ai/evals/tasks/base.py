@@ -14,7 +14,7 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 from services.llm_structured_client import ReasoningEffort
-from services.evidence_checks import METRIC_PATTERN as _METRIC_PATTERN
+from services.evidence_checks import iter_metrics
 from services.secret_redaction import find_secrets, redact_secrets  # noqa: F401  (작업 모듈 재사용)
 
 
@@ -36,7 +36,7 @@ def invented_metrics(output_text: str, source_text: str) -> list[str]:
     normalized_source = re.sub(r"\s+", "", source_text)
     return sorted({
         match.group(0)
-        for match in _METRIC_PATTERN.finditer(output_text)
+        for match in iter_metrics(output_text)
         if re.sub(r"\s+", "", match.group(0)) not in normalized_source
     })
 

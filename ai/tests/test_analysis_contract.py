@@ -17,6 +17,13 @@ from schemas.analysis import (
 )
 
 client = TestClient(app)
+_EVIDENCE = {
+    "sha": "a" * 40,
+    "message": "feat: jwt",
+    "churn": "+1/-0",
+    "summary": "JWT 필터를 추가했다.",
+    "summary_source": "DIFF",
+}
 
 
 class _FakeAnalysisPipeline:
@@ -80,7 +87,7 @@ def test_star_response_uses_filled_and_db_confidence_values() -> None:
             "target_login": "user",
             "title": "JWT 인증 구현",
             "source_type": "COMMIT_CLUSTER",
-            "evidence": [],
+            "evidence": [_EVIDENCE],
         },
     )
 
@@ -89,6 +96,26 @@ def test_star_response_uses_filled_and_db_confidence_values() -> None:
     assert star["S"]["status"] == "FILLED"
     assert star["S"]["confidence"] == "HIGH"
     assert star["A"]["confidence"] == "LOW"
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    [[], [{key: value for key, value in _EVIDENCE.items() if key != "summary_source"}]],
+    ids=["empty-evidence", "missing-summary-source"],
+)
+def test_star_request_requires_evidence_with_summary_source(evidence: list) -> None:
+    response = client.post(
+        "/internal/analysis/star",
+        json={
+            "candidate_id": "candidate-1",
+            "target_login": "user",
+            "title": "JWT 인증 구현",
+            "source_type": "COMMIT_CLUSTER",
+            "evidence": evidence,
+        },
+    )
+
+    assert response.status_code == 400
 
 
 @pytest.mark.parametrize(

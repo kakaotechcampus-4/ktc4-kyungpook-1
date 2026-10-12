@@ -83,10 +83,11 @@ async def group_experiences(
     "/diff-evidence", response_model=Envelope[DiffEvidenceResult],
     summary="A 선택 후보의 커밋별 diff 근거 생성",
     description=(
-        "선택된 후보의 diff를 GitHub에서 다시 조회해 커밋별 변경 요약·기술 포인트로 정리합니다. "
+        "요청자 본인 커밋(commit_shas, 필수)의 diff를 GitHub에서 다시 조회해 커밋별 변경 요약·기술 포인트로 정리합니다. "
         "응답의 evidence는 그대로 /internal/analysis/star 요청의 evidence로 넘깁니다. "
         "원본 patch는 AI 안에서만 쓰고 응답·로그·DB에 남기지 않습니다. 비밀값은 모델로 보내기 전에 가립니다. "
-        "diff 수집이 상한이나 rate limit으로 일부만 되면 200의 partial=true로 표시합니다. "
+        "요청 전체는 240초 안에 끝나며, 시간·호출 수 상한에 닿은 커밋은 커밋 메시지 요약(summary_source=COMMIT_MESSAGE)으로 둡니다. "
+        "요청한 커밋이 근거에서 빠졌을 때만 partial=true이고 missing_commit_shas에 남깁니다. "
         "GitHub 토큰은 헤더로만 전달합니다."
     ),
     responses={**COLLECTION_ERROR_RESPONSES, 503: LLM_UNAVAILABLE_RESPONSE},
@@ -106,12 +107,15 @@ async def collect_diff_evidence(
         execution = await pipeline.collect_diff_evidence(request, x_github_token, activity_port)
     except GithubResourceNotFound:
         return _error(started, 404, "RESOURCE_NOT_FOUND", "저장소·PR·commit이 없거나 현재 권한으로 읽을 수 없습니다.", False)
-    except GithubApiError:
-        return _error(started, 502, "GITHUB_API_ERROR", "선택된 후보의 GitHub diff를 수집하지 못했습니다.", True)
+    except GithubApiError as exc:
+        return _error(
+            started, 502, "GITHUB_API_ERROR", "선택된 후보의 GitHub diff를 수집하지 못했습니다.",
+            exc.status_code not in _GITHUB_PERMANENT_STATUSES,
+        )
     except LLMConfigError:
         return _error(started, 503, "LLM_UNAVAILABLE", "diff 분석 LLM 설정이 없어 분석할 수 없습니다.", False)
-    except DiffAnalysisError:
-        return _error(started, 503, "LLM_UNAVAILABLE", "diff 분석 LLM 호출에 실패했습니다.", True)
+    except DiffAnalysisError as exc:
+        return _error(started, 503, "LLM_UNAVAILABLE", "diff 분석 LLM 호출에 실패했습니다.", exc.retryable)
 
     return Envelope(
         success=True,
@@ -125,9 +129,10 @@ async def collect_diff_evidence(
     "/star", response_model=Envelope[StarAnalysisResponse],
     summary="A 확정 경험의 STAR 초안 생성",
     description=(
-        "/internal/analysis/diff-evidence가 만든 커밋별 근거로 인터뷰 전 STAR 초안을 생성합니다. "
+        "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. "
         "근거 커밋이 없거나 입력에 없는 수치를 쓴 문장은 비우고 removed_claims에 남깁니다. "
-        "비운 칸은 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다."
+        "비운 칸은 insufficient_reason_code(NO_EVIDENCE·UNSOURCED_NUMBER·TIMEOUT)와 함께 missing_fields로 반환하며 "
+        "B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다."
     ),
     responses={503: LLM_UNAVAILABLE_RESPONSE},
 )
@@ -141,8 +146,8 @@ async def analyze_star(
         result = await pipeline.analyze_star(request)
     except LLMConfigError:
         return _error(started, 503, "LLM_UNAVAILABLE", "STAR LLM 설정이 없어 분석할 수 없습니다.", False)
-    except StarGenerationError:
-        return _error(started, 503, "LLM_UNAVAILABLE", "STAR LLM 호출에 실패했습니다.", True)
+    except StarGenerationError as exc:
+        return _error(started, 503, "LLM_UNAVAILABLE", "STAR LLM 호출에 실패했습니다.", exc.retryable)
 
     return Envelope(
         success=True,
@@ -150,6 +155,10 @@ async def analyze_star(
         meta=Meta(model=None, tool_calls_made=0, processing_ms=_elapsed_ms(started)),
         error=None,
     )
+
+
+#: 다시 보내도 같은 GitHub 응답. 토큰 만료·권한 없음·잘못된 요청은 재시도하지 않는다.
+_GITHUB_PERMANENT_STATUSES = frozenset({400, 401, 403, 422})
 
 
 def _llm_unavailable(started: float, message: str, retryable: bool) -> JSONResponse:

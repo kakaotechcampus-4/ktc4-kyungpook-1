@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from dataclasses import dataclass
 from typing import Any, Optional, Protocol
@@ -18,7 +19,9 @@ from schemas.analysis import DiffEvidence
 from schemas.collection import CandidateCommitDetail, CandidateDetailResult, CandidateFileDiff
 from services.evidence_checks import unsupported_metrics
 from services.llm_structured_client import (
+    LLMContentFilterError,
     LLMInvalidOutputError,
+    LLMNonRetryableError,
     LLMStructuredCallError,
     LLMStructuredOutputTooLongError,
     StructuredCallResult,
@@ -78,7 +81,11 @@ class DiffSummaryOutput(BaseModel):
 
 
 class DiffAnalysisError(RuntimeError):
-    """diff 분석 결과를 만들 수 없을 때 발생한다."""
+    """diff 분석 결과를 만들 수 없을 때 발생한다. ``retryable``은 다시 시도해 나아질 수 있는지다."""
+
+    def __init__(self, message: str, *, retryable: bool) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 class StructuredCaller(Protocol):
@@ -90,25 +97,61 @@ class StructuredCaller(Protocol):
         payload: dict[str, Any],
         output_model: type[DiffSummaryOutput],
         max_completion_tokens: int,
+        timeout_seconds: Optional[float] = None,
     ) -> StructuredCallResult[DiffSummaryOutput]: ...
 
 
 @dataclass(frozen=True)
 class DiffAnalysisLimits:
-    """모델 입력·출력 상한. 호출 하나의 patch 상한은 모델 비교 실험 조건과 같다."""
+    """모델 입력·출력·시간 상한. 호출 하나의 patch 상한은 모델 비교 실험 조건과 같다."""
 
     max_input_patch_chars: int = 24_000
+    #: 호출 하나에 보내는 JSON 전체 글자 수. patch 몫은 나머지를 채운 뒤 남는 만큼으로 줄인다.
+    max_input_chars_per_call: int = 64_000
     max_message_chars: int = 2_000
-    max_title_chars: int = 200
+    max_title_chars: int = 300
+    #: 커밋 하나에서 목록으로 보내는 파일 수. 넘는 파일과 생성 파일은 개수만 보낸다.
+    max_files_per_commit: int = 20
+    max_path_chars: int = 150
     # 한 호출의 커밋 수를 제한해 출력 한도를 넘지 않게 하고, 넘으면 절반씩 나눠 다시 부른다.
     max_commits_per_call: int = 8
     max_concurrent_calls: int = 3
+    #: 요청 하나의 LLM 호출 수(분할·재시도 포함). 넘으면 남은 커밋은 커밋 메시지 요약으로 둔다.
+    max_calls_per_request: int = 16
+    #: 요청 전체 마감(GitHub 조회 포함). Spring 대기(diff-evidence 300초 제안)보다 짧게 둔다.
+    deadline_seconds: float = 240.0
+    #: 남은 시간이 이보다 짧으면 새 호출을 시작하지 않는다.
+    min_call_seconds: float = 10.0
     max_summary_chars: int = 200
     max_technical_points: int = 3
     max_technical_point_chars: int = 80
     # Elice 비스트리밍 게이트웨이의 응답 토큰 상한(#109 실측). 넘으면 요청이 거절된다.
     max_completion_tokens: int = 2_000
     max_attempts: int = 2
+
+
+class _Stop(Exception):
+    """마감이나 호출 수 상한에 닿아 이 배치를 모델 없이 끝낸다."""
+
+
+class _RequestBudget:
+    """요청 하나가 쓸 수 있는 시간과 호출 수."""
+
+    def __init__(self, deadline: float, calls: int, min_call_seconds: float) -> None:
+        self.deadline = deadline
+        self.calls_left = calls
+        self.min_call_seconds = min_call_seconds
+
+    def remaining(self) -> float:
+        return self.deadline - asyncio.get_running_loop().time()
+
+    def take_call(self) -> float:
+        """호출 하나를 쓰고 그 호출에 줄 시간을 돌려준다."""
+        remaining = self.remaining()
+        if self.calls_left <= 0 or remaining < self.min_call_seconds:
+            raise _Stop
+        self.calls_left -= 1
+        return remaining
 
 
 class DiffAnalyzer:
@@ -122,16 +165,41 @@ class DiffAnalyzer:
         self._client = client
         self._limits = limits
 
+    @property
+    def limits(self) -> DiffAnalysisLimits:
+        return self._limits
+
+    def ensure_ready(self) -> None:
+        """LLM 설정을 미리 확인한다. 설정 오류(LLMConfigError)는 그대로 올린다."""
+        if self._client is None:
+            raise DiffAnalysisError("diff 분석에 사용할 LLM이 설정되지 않았습니다.", retryable=False)
+        ensure_ready = getattr(self._client, "ensure_ready", None)
+        if ensure_ready is not None:
+            ensure_ready()
+
     async def analyze(
-        self, detail: CandidateDetailResult, title: str
+        self,
+        detail: CandidateDetailResult,
+        title: str,
+        *,
+        deadline: Optional[float] = None,
     ) -> list[DiffEvidence]:
-        """비밀값과 불필요한 원문을 제외한 커밋별 근거 요약을 입력 순서대로 반환한다."""
+        """비밀값과 불필요한 원문을 제외한 커밋별 근거 요약을 입력 순서대로 반환한다.
+
+        ``deadline``(이벤트 루프 시각)을 넘기거나 호출 수 상한에 닿으면 남은 커밋은
+        실패시키지 않고 커밋 메시지 요약(``summary_source=COMMIT_MESSAGE``)으로 둔다.
+        """
         commits = _unique_commits(detail.commits)
         if not commits:
             return []
-        if self._client is None:
-            raise DiffAnalysisError("diff 분석에 사용할 LLM이 설정되지 않았습니다.")
+        self.ensure_ready()
 
+        loop = asyncio.get_running_loop()
+        budget = _RequestBudget(
+            deadline if deadline is not None else loop.time() + self._limits.deadline_seconds,
+            self._limits.max_calls_per_request,
+            self._limits.min_call_seconds,
+        )
         size = self._limits.max_commits_per_call
         batches = [commits[start:start + size] for start in range(0, len(commits), size)]
         semaphore = asyncio.Semaphore(self._limits.max_concurrent_calls)
@@ -140,11 +208,13 @@ class DiffAnalyzer:
             async with semaphore:
                 payload = self.build_payload(detail.github_pr_number, title, batch)
                 try:
-                    output = await self._call(payload)
-                except LLMStructuredOutputTooLongError as exc:
-                    # 출력이 상한을 넘으면 같은 요청을 다시 보내도 같으므로 커밋을 절반씩 나눈다.
+                    output = await self._call(payload, budget)
+                except (_Stop, LLMContentFilterError):
+                    # 시간·호출 수가 다했거나 이 입력이 콘텐츠 제한에 걸렸다. 다시 보내도 같다.
+                    return [self._fallback(commit, sent) for commit, sent in zip(batch, payload["commits"])]
+                except LLMStructuredOutputTooLongError:
                     if len(batch) == 1:
-                        raise DiffAnalysisError("diff 요약이 응답 토큰 상한을 넘었습니다.") from exc
+                        return [self._fallback(batch[0], payload["commits"][0])]
                     middle = len(batch) // 2
                     halves = [batch[:middle], batch[middle:]]
                 else:
@@ -164,52 +234,82 @@ class DiffAnalyzer:
     ) -> dict[str, Any]:
         """호출 하나에 보낼 입력.
 
-        patch 상한은 커밋마다 공평하게 나누되, patch가 작은 커밋이 남긴 몫은
-        큰 커밋이 이어서 쓴다.
+        파일 목록은 커밋당 상한까지만 보내고 생성 파일·초과 파일은 개수만 남긴다.
+        patch 몫은 나머지 입력을 채운 뒤 전체 글자 수 상한 안에서 정하고, 커밋마다
+        공평하게 나누되 patch가 작은 커밋이 남긴 몫은 큰 커밋이 이어서 쓴다.
         """
-        prepared = [_prepare_files(commit) for commit in commits]
-        budgets = _fair_shares(
-            [sum(len(patch or "") for _, patch in files) for files in prepared],
-            self._limits.max_input_patch_chars,
-        )
-        return {
+        limits = self._limits
+        prepared = [_prepare_files(commit, limits) for commit in commits]
+        base = {
             "pr_number": pr_number,
-            "title": _clip(redact_secrets(title), self._limits.max_title_chars),
+            "title": _clip(redact_secrets(title), limits.max_title_chars),
             "commits": [
                 {
                     "sha": commit.sha,
-                    "message": _clip(redact_secrets(commit.message), self._limits.max_message_chars),
-                    "files": _files_payload(files, budget),
+                    "message": _clip(redact_secrets(commit.message), limits.max_message_chars),
+                    "files": _files_payload(files, 0, limits.max_path_chars),
+                    "omitted_generated_files": omitted_generated,
+                    "omitted_other_files": omitted_other,
                 }
-                for commit, files, budget in zip(commits, prepared, budgets)
+                for commit, (files, omitted_generated, omitted_other) in zip(commits, prepared)
             ],
         }
+        patch_total = min(limits.max_input_patch_chars, limits.max_input_chars_per_call - _size(base))
+        while True:
+            budgets = _fair_shares(
+                [sum(len(patch or "") for _, patch in files) for files, _, _ in prepared],
+                max(patch_total, 0),
+            )
+            payload = {
+                **base,
+                "commits": [
+                    {**sent, "files": _files_payload(files, budget, limits.max_path_chars)}
+                    for sent, (files, _, _), budget in zip(base["commits"], prepared, budgets)
+                ],
+            }
+            # JSON 이스케이프로 patch가 늘어날 수 있어, 넘치면 넘친 만큼 patch 몫을 줄인다.
+            overflow = _size(payload) - limits.max_input_chars_per_call
+            if overflow <= 0 or patch_total <= 0:
+                return payload
+            patch_total -= overflow
 
-    async def _call(self, payload: dict[str, Any]) -> DiffSummaryOutput:
+    async def _call(self, payload: dict[str, Any], budget: _RequestBudget) -> DiffSummaryOutput:
         """스키마에 맞지 않는 응답만 다시 요청한다.
 
-        호출 한도·연결 오류는 SDK가 이미 한 번 재시도했고, 출력 길이 초과는 다시
-        보내도 같으므로 바로 실패시켜 지연이 겹겹이 늘지 않게 한다.
+        각 호출은 남은 마감 시간 안에서만 기다린다. 호출 한도·연결 오류는 다시 시도할 수
+        있는 실패로, 키·모델 이름 오류는 다시 시도할 수 없는 실패로 올린다.
         """
         for attempt in range(1, self._limits.max_attempts + 1):
+            timeout = budget.take_call()
             try:
-                result = await asyncio.to_thread(
-                    self._client.call,
-                    SYSTEM_PROMPT,
-                    payload,
-                    DiffSummaryOutput,
-                    self._limits.max_completion_tokens,
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self._client.call,
+                        SYSTEM_PROMPT,
+                        payload,
+                        DiffSummaryOutput,
+                        self._limits.max_completion_tokens,
+                        timeout,
+                    ),
+                    timeout=timeout + 1,
                 )
+            except asyncio.TimeoutError as exc:
+                raise _Stop from exc
             except LLMInvalidOutputError as exc:
                 if attempt == self._limits.max_attempts:
-                    raise DiffAnalysisError("diff 요약을 생성하지 못했습니다.") from exc
+                    raise DiffAnalysisError("diff 요약 형식이 계속 맞지 않습니다.", retryable=True) from exc
                 continue
-            except LLMStructuredOutputTooLongError:
+            except (LLMStructuredOutputTooLongError, LLMContentFilterError):
                 raise
+            except LLMNonRetryableError as exc:
+                raise DiffAnalysisError("diff 분석 LLM 설정이 잘못됐습니다.", retryable=False) from exc
             except LLMStructuredCallError as exc:
-                raise DiffAnalysisError("diff 요약을 생성하지 못했습니다.") from exc
+                if budget.remaining() < 1:
+                    # 마감에 맞춘 호출 시간이 다해 끊긴 것이다.
+                    raise _Stop from exc
+                raise DiffAnalysisError("diff 분석 LLM 호출에 실패했습니다.", retryable=True) from exc
             return result.output
-        raise DiffAnalysisError("diff 요약을 생성하지 못했습니다.")
+        raise DiffAnalysisError("diff 요약을 생성하지 못했습니다.", retryable=True)
 
     def _to_evidence(
         self,
@@ -227,23 +327,39 @@ class DiffAnalyzer:
             source = _source_text(payload["title"], sent)
             item = summaries.get(commit.sha.casefold())
             summary = self._clean_summary(item.summary) if item else None
-            # 입력에 없는 수치(성능·결과)를 지어낸 요약은 쓰지 않는다.
-            if summary and unsupported_metrics(summary, source):
-                summary = None
             points = self._clean_points(item.technical_points, source) if item else []
+            # 입력에 없는 수치(성능·결과)를 지어낸 요약은 쓰지 않는다. 검증된 포인트는 남긴다.
+            if not summary or unsupported_metrics(summary, source):
+                evidence.append(self._fallback(commit, sent, points))
+                continue
             evidence.append(
                 DiffEvidence(
                     sha=commit.sha,
                     message=sent["message"],
                     author_login=commit.author_login,
-                    churn=f"+{commit.additions}/-{commit.deletions}",
-                    summary=summary or _clip(_headline(sent["message"]), self._limits.max_summary_chars),
-                    summary_source="DIFF" if summary else "COMMIT_MESSAGE",
+                    churn=_churn(commit),
+                    summary=summary,
+                    summary_source="DIFF",
                     technical_points=points,
                     url=commit.html_url,
                 )
             )
         return evidence
+
+    def _fallback(
+        self, commit: CandidateCommitDetail, sent: dict[str, Any], points: Optional[list[str]] = None
+    ) -> DiffEvidence:
+        """모델 요약을 쓸 수 없는 커밋. 커밋 메시지 첫 줄을 요약으로 두고 출처를 표시한다."""
+        return DiffEvidence(
+            sha=commit.sha,
+            message=sent["message"],
+            author_login=commit.author_login,
+            churn=_churn(commit),
+            summary=_clip(_headline(sent["message"]), self._limits.max_summary_chars),
+            summary_source="COMMIT_MESSAGE",
+            technical_points=points or [],
+            url=commit.html_url,
+        )
 
     def _clean_summary(self, text: str) -> str:
         return _clip(redact_secrets(" ".join(text.split())), self._limits.max_summary_chars)
@@ -268,17 +384,31 @@ def _unique_commits(commits: list[CandidateCommitDetail]) -> list[CandidateCommi
     return unique
 
 
-def _prepare_files(commit: CandidateCommitDetail) -> list[tuple[CandidateFileDiff, Optional[str]]]:
-    """보낼 수 있는 patch만 비밀값을 가려 둔다. 보내지 않는 파일은 None."""
-    return [
+def _prepare_files(
+    commit: CandidateCommitDetail, limits: DiffAnalysisLimits
+) -> tuple[list[tuple[CandidateFileDiff, Optional[str]]], int, int]:
+    """보낼 파일과 비밀값을 가린 patch, 개수만 남길 생성 파일·초과 파일 수를 정한다.
+
+    생성 파일(lock·빌드 산출물·이미지)은 목록에서 빼고 개수만 남긴다. 나머지가 상한을
+    넘으면 변경량이 큰 파일을 남기되 원래 순서를 지킨다. 민감 파일은 경로만 보낸다.
+    """
+    generated = [file for file in commit.files if GENERATED_FILE_PATTERN.search(file.path)]
+    others = [file for file in commit.files if not GENERATED_FILE_PATTERN.search(file.path)]
+    kept = others
+    if len(others) > limits.max_files_per_commit:
+        largest = sorted(others, key=lambda file: file.additions + file.deletions, reverse=True)
+        chosen = {id(file) for file in largest[: limits.max_files_per_commit]}
+        kept = [file for file in others if id(file) in chosen]
+    files = [
         (
             file,
             redact_secrets(file.patch, file.path)
-            if file.patch is not None and not _skip_patch(file.path)
+            if file.patch is not None and not SENSITIVE_FILE_PATTERN.search(file.path)
             else None,
         )
-        for file in commit.files
+        for file in kept
     ]
+    return files, len(generated), len(others) - len(kept)
 
 
 def _fair_shares(needs: list[int], total: int) -> list[int]:
@@ -294,7 +424,7 @@ def _fair_shares(needs: list[int], total: int) -> list[int]:
 
 
 def _files_payload(
-    files: list[tuple[CandidateFileDiff, Optional[str]]], budget: int
+    files: list[tuple[CandidateFileDiff, Optional[str]]], budget: int, path_chars: int
 ) -> list[dict[str, Any]]:
     """파일 순서대로 budget을 소진하고, 넘친 patch는 자르고 truncated로 표시한다."""
     remaining = budget
@@ -307,7 +437,7 @@ def _files_payload(
         if patch is not None:
             remaining -= len(patch)
         entries.append({
-            "path": file.path,
+            "path": _clip(file.path, path_chars),
             "additions": file.additions,
             "deletions": file.deletions,
             "patch": patch,
@@ -316,8 +446,13 @@ def _files_payload(
     return entries
 
 
+def _size(payload: dict[str, Any]) -> int:
+    """모델에 실제로 보내는 JSON 글자 수."""
+    return len(json.dumps(payload, ensure_ascii=False))
+
+
 def _source_text(title: str, commit_payload: dict[str, Any]) -> str:
-    """모델이 실제로 본 근거. SHA는 숫자가 많아 수치 검사에서 뺀다."""
+    """모델이 실제로 본 근거. SHA와 변경 줄 수는 숫자가 많아 수치 검사에서 뺀다."""
     parts = [title, commit_payload["message"]]
     for file in commit_payload["files"]:
         parts.append(file["path"])
@@ -325,8 +460,8 @@ def _source_text(title: str, commit_payload: dict[str, Any]) -> str:
     return "\n".join(parts)
 
 
-def _skip_patch(path: str) -> bool:
-    return bool(GENERATED_FILE_PATTERN.search(path) or SENSITIVE_FILE_PATTERN.search(path))
+def _churn(commit: CandidateCommitDetail) -> str:
+    return f"+{commit.additions}/-{commit.deletions}"
 
 
 def _headline(message: str) -> str:

@@ -33,6 +33,13 @@ CandidateSourceType = Literal["PR", "ISSUE", "COMMIT_CLUSTER", "MANUAL"]
 #: DiffEvidence.summary를 만든 근거. 모델 요약을 쓸 수 없으면 커밋 메시지 첫 줄로 대신한다.
 EvidenceSummarySource = Literal["DIFF", "COMMIT_MESSAGE"]
 
+#: STAR 칸을 비운 이유 코드. 프론트 ``DropReason``과 같은 값이다.
+#: OVERCLAIM은 계약에만 있고 AI는 아직 내지 않는다(Spring이 본인 커밋만 보내므로).
+EmptyReasonCode = Literal["NO_EVIDENCE", "OVERCLAIM", "UNSOURCED_NUMBER", "TIMEOUT"]
+
+#: diff 근거에서 요청한 커밋 일부가 빠진 이유.
+DiffEvidencePartialReason = Literal["CAP_EXCEEDED", "GITHUB_RATE_LIMITED", "COMMIT_UNAVAILABLE"]
+
 #: card_statement.confidence 및 DB CHECK 제약과 같은 세 값.
 StatementConfidence = Literal["HIGH", "MEDIUM", "LOW"]
 

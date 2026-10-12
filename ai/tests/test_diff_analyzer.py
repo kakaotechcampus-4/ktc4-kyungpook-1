@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -18,7 +19,9 @@ from services.diff_analyzer import (
     DiffSummaryOutput,
 )
 from services.llm_structured_client import (
+    LLMContentFilterError,
     LLMInvalidOutputError,
+    LLMNonRetryableError,
     LLMStructuredCallError,
     LLMStructuredOutputTooLongError,
     StructuredCallResult,
@@ -36,12 +39,13 @@ class _FakeClient:
         self._responses = list(responses)
         self.calls: list[dict[str, Any]] = []
 
-    def call(self, system_prompt, payload, output_model, max_completion_tokens):
+    def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
         self.calls.append({
             "system_prompt": system_prompt,
             "payload": payload,
             "output_model": output_model,
             "max_completion_tokens": max_completion_tokens,
+            "timeout_seconds": timeout_seconds,
         })
         response = self._responses.pop(0)
         if isinstance(response, Exception):
@@ -147,7 +151,7 @@ def test_redacts_secrets_in_payload_and_output() -> None:
     assert FAKE_TOKEN not in evidence[0].model_dump_json()
 
 
-def test_excludes_generated_file_patches_but_keeps_metadata() -> None:
+def test_leaves_only_count_of_generated_files() -> None:
     client = _FakeClient(_output((SHA_A, "요약", [])))
     detail = _detail(_commit(SHA_A, "m", [
         _file("frontend/package-lock.json", "+lock", 900, 300),
@@ -157,9 +161,9 @@ def test_excludes_generated_file_patches_but_keeps_metadata() -> None:
 
     _run(DiffAnalyzer(client), detail)
 
-    files = client.calls[0]["payload"]["commits"][0]["files"]
-    assert [f["patch"] for f in files] == [None, None, "+code"]
-    assert files[0]["additions"] == 900
+    sent = client.calls[0]["payload"]["commits"][0]
+    assert [(f["path"], f["patch"]) for f in sent["files"]] == [("src/app.ts", "+code")]
+    assert (sent["omitted_generated_files"], sent["omitted_other_files"]) == (2, 0)
 
 
 def test_shares_unused_patch_budget_and_marks_truncation() -> None:
@@ -270,11 +274,13 @@ def test_excludes_sensitive_file_patches() -> None:
 
     _run(DiffAnalyzer(client), detail)
 
-    files = client.calls[0]["payload"]["commits"][0]["files"]
-    assert {f["path"]: f["patch"] for f in files} == {
+    sent = client.calls[0]["payload"]["commits"][0]
+    # 민감 파일은 경로만, 생성 파일(pnpm-lock)은 개수만 남는다.
+    assert {f["path"]: f["patch"] for f in sent["files"]} == {
         ".env": None, "backend/.env.prod": None, "certs/server.pem": None, "deploy/id_rsa": None,
-        ".env.example": "+X=1", "pnpm-lock.yaml": None,
+        ".env.example": "+X=1",
     }
+    assert sent["omitted_generated_files"] == 1
 
 
 def test_caps_commit_message_and_title() -> None:
@@ -285,7 +291,7 @@ def test_caps_commit_message_and_title() -> None:
 
     payload = client.calls[0]["payload"]
     assert len(payload["commits"][0]["message"]) == 2_000
-    assert len(payload["title"]) == 200
+    assert len(payload["title"]) == 300
     assert len(evidence[0].message) == 2_000
 
 
@@ -293,7 +299,7 @@ def test_splits_commits_into_batches_and_keeps_order() -> None:
     shas = [f"{index:07x}" + "0" * 33 for index in range(1, 20)]
 
     class _EchoClient(_FakeClient):
-        def call(self, system_prompt, payload, output_model, max_completion_tokens):
+        def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
             self.calls.append({"payload": payload})
             # 다른 호출의 SHA를 섞어 보내도 그 호출의 결과로 쓰지 않아야 한다.
             items = [(c["sha"], f"요약 {c['sha'][:7]}", []) for c in payload["commits"]]
@@ -350,7 +356,7 @@ def test_splits_batch_in_half_when_output_is_too_long() -> None:
     shas = [f"{index:07x}" + "0" * 33 for index in range(1, 6)]
 
     class _LengthLimitedClient(_FakeClient):
-        def call(self, system_prompt, payload, output_model, max_completion_tokens):
+        def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
             batch = [c["sha"] for c in payload["commits"]]
             self.calls.append({"payload": payload})
             if len(batch) > 2:
@@ -369,10 +375,85 @@ def test_splits_batch_in_half_when_output_is_too_long() -> None:
     assert all(item.summary_source == "DIFF" for item in evidence)
 
 
-def test_fails_when_single_commit_output_is_still_too_long() -> None:
+def test_single_commit_still_too_long_falls_back_instead_of_failing() -> None:
     client = _FakeClient(LLMStructuredOutputTooLongError("too long"))
 
-    with pytest.raises(DiffAnalysisError):
-        _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "m", [])))
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "feat: 큰 변경\n\n본문", [])))
 
     assert len(client.calls) == 1
+    assert (evidence[0].summary, evidence[0].summary_source) == ("feat: 큰 변경", "COMMIT_MESSAGE")
+
+
+def test_classifies_retryable_and_permanent_llm_errors() -> None:
+    with pytest.raises(DiffAnalysisError) as transient:
+        _run(DiffAnalyzer(_FakeClient(LLMStructuredCallError("5xx"))), _detail(_commit(SHA_A, "m", [])))
+    with pytest.raises(DiffAnalysisError) as permanent:
+        _run(DiffAnalyzer(_FakeClient(LLMNonRetryableError("bad key"))), _detail(_commit(SHA_A, "m", [])))
+
+    assert transient.value.retryable is True
+    assert permanent.value.retryable is False
+
+
+def test_content_filtered_batch_falls_back_to_commit_message() -> None:
+    client = _FakeClient(LLMContentFilterError("filtered"))
+
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "fix: 필터", [])))
+
+    assert len(client.calls) == 1
+    assert evidence[0].summary_source == "COMMIT_MESSAGE"
+
+
+def test_stops_calling_after_call_cap_and_falls_back() -> None:
+    shas = [f"{index:07x}" + "0" * 33 for index in range(1, 4)]
+    client = _FakeClient(*(_output((sha, f"요약 {sha[:7]}", [])) for sha in shas))
+    limits = DiffAnalysisLimits(max_commits_per_call=1, max_concurrent_calls=1, max_calls_per_request=2)
+
+    evidence = _run(DiffAnalyzer(client, limits), _detail(*(_commit(sha, f"m{sha[:7]}", []) for sha in shas)))
+
+    assert len(client.calls) == 2
+    assert [item.summary_source for item in evidence] == ["DIFF", "DIFF", "COMMIT_MESSAGE"]
+
+
+def test_deadline_reached_falls_back_without_calling() -> None:
+    client = _FakeClient()
+
+    evidence = _run(DiffAnalyzer(client, DiffAnalysisLimits(deadline_seconds=0)), _detail(_commit(SHA_A, "feat: a", [])))
+
+    assert client.calls == []
+    assert evidence[0].summary_source == "COMMIT_MESSAGE"
+
+
+def test_passes_remaining_deadline_as_call_timeout() -> None:
+    client = _FakeClient(_output((SHA_A, "요약", [])))
+
+    _run(DiffAnalyzer(client, DiffAnalysisLimits(deadline_seconds=60)), _detail(_commit(SHA_A, "m", [])))
+
+    assert 50 < client.calls[0]["timeout_seconds"] <= 60
+
+
+def test_caps_listed_files_per_commit_keeping_largest() -> None:
+    client = _FakeClient(_output((SHA_A, "요약", [])))
+    files = [_file(f"src/f{index}.py", "+x", additions=index) for index in range(1, 6)]
+    limits = DiffAnalysisLimits(max_files_per_commit=3)
+
+    _run(DiffAnalyzer(client, limits), _detail(_commit(SHA_A, "m", files)))
+
+    sent = client.calls[0]["payload"]["commits"][0]
+    # 변경량이 큰 3개를 원래 순서대로 남기고 나머지는 개수만 보낸다.
+    assert [f["path"] for f in sent["files"]] == ["src/f3.py", "src/f4.py", "src/f5.py"]
+    assert sent["omitted_other_files"] == 2
+
+
+def test_keeps_whole_call_input_under_char_cap() -> None:
+    client = _FakeClient(_output((SHA_A, "a", []), (SHA_B, "b", [])))
+    limits = DiffAnalysisLimits(max_input_chars_per_call=6_000)
+    detail = _detail(
+        _commit(SHA_A, "m" * 1_500, [_file("a.py", '+"' * 5_000)]),
+        _commit(SHA_B, "n" * 1_500, [_file("b.py", "+y" * 5_000)]),
+    )
+
+    _run(DiffAnalyzer(client, limits), detail)
+
+    payload = client.calls[0]["payload"]
+    assert len(json.dumps(payload, ensure_ascii=False)) <= 6_000
+    assert all(f["truncated"] for c in payload["commits"] for f in c["files"])

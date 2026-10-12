@@ -1164,8 +1164,7 @@
             "type": "string"
           },
           "summary_source": {
-            "default": "DIFF",
-            "description": "DIFF: 모델이 diff를 읽고 쓴 요약. COMMIT_MESSAGE: 모델 요약이 없거나 근거 없는 수치가 있어 커밋 메시지 첫 줄로 대신한 값",
+            "description": "DIFF: 모델이 diff를 읽고 쓴 요약. COMMIT_MESSAGE: 모델 요약이 없거나 근거 없는 수치가 있어 커밋 메시지 첫 줄로 대신한 값. 신뢰도 계산에 쓰므로 필수",
             "enum": [
               "DIFF",
               "COMMIT_MESSAGE"
@@ -1198,24 +1197,25 @@
           "sha",
           "message",
           "churn",
-          "summary"
+          "summary",
+          "summary_source"
         ],
         "title": "DiffEvidence",
         "type": "object"
       },
       "DiffEvidenceRequest": {
         "additionalProperties": false,
-        "description": "선택된 후보의 diff를 조회해 커밋별 근거로 요약하도록 요청한다.\n\n후보 지정 방식은 ``/internal/collect/candidate-details``와 같고, 경험 제목만 더한다.",
+        "description": "선택된 후보의 본인 커밋 diff를 조회해 커밋별 근거로 요약하도록 요청한다.",
         "properties": {
           "commit_shas": {
-            "description": "선택된 후보에 포함된 commit SHA. PR 전체면 빈 배열 가능",
+            "description": "후보에 속한 요청자 본인 커밋 SHA. 필수. 51개 이상이면 앞 50개만 분석하고 partial로 표시",
             "items": {
               "maxLength": 40,
               "minLength": 7,
               "pattern": "^[0-9a-fA-F]+$",
               "type": "string"
             },
-            "maxItems": 50,
+            "minItems": 1,
             "title": "Commit Shas",
             "type": "array"
           },
@@ -1229,7 +1229,7 @@
                 "type": "null"
               }
             ],
-            "description": "PR 기반 후보의 GitHub PR 번호",
+            "description": "PR 후보면 PR 번호. 응답에 그대로 돌려주며 커밋 조회에는 쓰지 않는다",
             "title": "Github Pr Number"
           },
           "repository": {
@@ -1237,7 +1237,6 @@
           },
           "title": {
             "description": "경험 후보 제목. 모델이 커밋을 어떤 경험의 일부로 읽을지 정하는 문맥",
-            "maxLength": 200,
             "minLength": 1,
             "title": "Title",
             "type": "string"
@@ -1251,6 +1250,7 @@
         "required": [
           "user_repository_id",
           "repository",
+          "commit_shas",
           "title"
         ],
         "title": "DiffEvidenceRequest",
@@ -1260,7 +1260,7 @@
         "description": "후보의 커밋별 diff 근거. 그대로 ``/internal/analysis/star``의 evidence로 넘긴다.",
         "properties": {
           "evidence": {
-            "description": "입력 커밋 순서(PR이면 PR 커밋 순서)의 커밋별 근거",
+            "description": "요청한 커밋 순서의 커밋별 근거. 빠진 커밋은 없다",
             "items": {
               "$ref": "#/components/schemas/DiffEvidence"
             },
@@ -1279,21 +1279,36 @@
             ],
             "title": "Github Pr Number"
           },
+          "missing_commit_shas": {
+            "description": "요청했지만 근거에서 빠진 커밋 SHA",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Commit Shas",
+            "type": "array"
+          },
           "partial": {
             "default": false,
-            "description": "diff 수집이 상한·rate limit으로 일부만 됐는지. 요약은 받은 범위만 다룬다",
+            "description": "요청한 커밋 일부가 근거에서 빠졌는지. 파일 patch가 잘린 것은 partial이 아니다",
             "title": "Partial",
             "type": "boolean"
           },
           "partial_reason": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/PartialReason"
+                "enum": [
+                  "CAP_EXCEEDED",
+                  "GITHUB_RATE_LIMITED",
+                  "COMMIT_UNAVAILABLE"
+                ],
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "CAP_EXCEEDED: 50개 초과분, GITHUB_RATE_LIMITED: 한도 소진, COMMIT_UNAVAILABLE: GitHub이 커밋을 찾지 못함(422). 여러 이유면 앞의 것",
+            "title": "Partial Reason"
           },
           "user_repository_id": {
             "exclusiveMinimum": 0.0,
@@ -2621,9 +2636,11 @@
             "type": "array"
           },
           "evidence": {
+            "description": "diff-evidence 응답의 evidence. 비어 있으면 STAR를 만들지 않는다",
             "items": {
               "$ref": "#/components/schemas/DiffEvidence"
             },
+            "minItems": 1,
             "title": "Evidence",
             "type": "array"
           },
@@ -2764,6 +2781,24 @@
               }
             ],
             "title": "Insufficient Reason"
+          },
+          "insufficient_reason_code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "NO_EVIDENCE",
+                  "OVERCLAIM",
+                  "UNSOURCED_NUMBER",
+                  "TIMEOUT"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "EMPTY 칸의 이유 코드. 화면 droppedFields.reason과 같은 값",
+            "title": "Insufficient Reason Code"
           },
           "review_reason": {
             "anyOf": [
@@ -2976,7 +3011,7 @@
     },
     "/internal/analysis/diff-evidence": {
       "post": {
-        "description": "선택된 후보의 diff를 GitHub에서 다시 조회해 커밋별 변경 요약·기술 포인트로 정리합니다. 응답의 evidence는 그대로 /internal/analysis/star 요청의 evidence로 넘깁니다. 원본 patch는 AI 안에서만 쓰고 응답·로그·DB에 남기지 않습니다. 비밀값은 모델로 보내기 전에 가립니다. diff 수집이 상한이나 rate limit으로 일부만 되면 200의 partial=true로 표시합니다. GitHub 토큰은 헤더로만 전달합니다.",
+        "description": "요청자 본인 커밋(commit_shas, 필수)의 diff를 GitHub에서 다시 조회해 커밋별 변경 요약·기술 포인트로 정리합니다. 응답의 evidence는 그대로 /internal/analysis/star 요청의 evidence로 넘깁니다. 원본 patch는 AI 안에서만 쓰고 응답·로그·DB에 남기지 않습니다. 비밀값은 모델로 보내기 전에 가립니다. 요청 전체는 240초 안에 끝나며, 시간·호출 수 상한에 닿은 커밋은 커밋 메시지 요약(summary_source=COMMIT_MESSAGE)으로 둡니다. 요청한 커밋이 근거에서 빠졌을 때만 partial=true이고 missing_commit_shas에 남깁니다. GitHub 토큰은 헤더로만 전달합니다.",
         "operationId": "collect_diff_evidence_internal_analysis_diff_evidence_post",
         "parameters": [
           {
@@ -3160,7 +3195,7 @@
     },
     "/internal/analysis/star": {
       "post": {
-        "description": "/internal/analysis/diff-evidence가 만든 커밋별 근거로 인터뷰 전 STAR 초안을 생성합니다. 근거 커밋이 없거나 입력에 없는 수치를 쓴 문장은 비우고 removed_claims에 남깁니다. 비운 칸은 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다.",
+        "description": "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. 근거 커밋이 없거나 입력에 없는 수치를 쓴 문장은 비우고 removed_claims에 남깁니다. 비운 칸은 insufficient_reason_code(NO_EVIDENCE·UNSOURCED_NUMBER·TIMEOUT)와 함께 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다.",
         "operationId": "analyze_star_internal_analysis_star_post",
         "requestBody": {
           "content": {

@@ -157,8 +157,14 @@ class GithubCollector:
         self,
         request: CandidateDetailRequest,
         github_token: str,
+        *,
+        skip_unavailable_commits: bool = False,
     ) -> RepositoryActivityExecution[CandidateDetailResult]:
-        """A가 선택한 SHA 또는 PR의 diff만 상한을 두고 조회한다."""
+        """A가 선택한 SHA 또는 PR의 diff만 상한을 두고 조회한다.
+
+        ``skip_unavailable_commits``이면 GitHub이 찾지 못한 커밋(422)은 빼고 나머지를
+        돌려준다. 빠진 커밋은 호출자가 요청 SHA와 결과를 비교해 알 수 있다.
+        """
         token = github_token.strip()
         if not token:
             raise ValueError("GitHub OAuth 토큰이 필요합니다.")
@@ -193,12 +199,17 @@ class GithubCollector:
                     shas = shas[: self._limits.max_candidate_commits]
 
                 for sha in shas:
-                    detail, files = await self._collect_commit_detail(
-                        client,
-                        request,
-                        state,
-                        sha,
-                    )
+                    try:
+                        detail, files = await self._collect_commit_detail(
+                            client,
+                            request,
+                            state,
+                            sha,
+                        )
+                    except GithubApiError as exc:
+                        if skip_unavailable_commits and exc.status_code == 422:
+                            continue
+                        raise
                     normalized, used_chars, was_truncated = (
                         self._to_candidate_commit_detail(
                             detail,

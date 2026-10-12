@@ -20,10 +20,11 @@ from schemas.analysis import (
     StarAnalysisResponse,
     StarFieldResult,
 )
-from schemas.common import StarSlot, StatementConfidence
+from schemas.common import EmptyReasonCode, StarSlot, StatementConfidence
 from services.evidence_checks import unsupported_metrics
 from services.llm_structured_client import (
     LLMInvalidOutputError,
+    LLMNonRetryableError,
     LLMStructuredCallError,
     StructuredCallResult,
 )
@@ -55,6 +56,7 @@ _REVIEW_REASON = "근거는 있으나 해석이 불확실해 사용자 확인이
 _NO_EVIDENCE_REASON = "입력에서 확인되는 근거 커밋이나 사용자 답변이 없어 비웠습니다."
 _INVENTED_METRIC_REASON = "입력에서 확인되지 않는 수치가 포함되어 비웠습니다."
 _DEFAULT_EMPTY_REASON = "이 칸을 뒷받침하는 근거를 찾지 못했습니다."
+_TIMEOUT_REASON = "초안 생성 시간이 초과되어 비웠습니다."
 
 
 class StarField(BaseModel):
@@ -80,7 +82,15 @@ class StarDraftOutput(BaseModel):
 
 
 class StarGenerationError(RuntimeError):
-    """STAR 초안을 만들 수 없을 때 발생한다."""
+    """STAR 초안을 만들 수 없을 때 발생한다. ``retryable``은 다시 시도해 나아질 수 있는지다."""
+
+    def __init__(self, message: str, *, retryable: bool) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+
+
+class _Timeout(Exception):
+    """요청 마감에 닿았다. 칸을 TIMEOUT으로 비운 응답을 돌려준다."""
 
 
 class StructuredCaller(Protocol):
@@ -92,6 +102,7 @@ class StructuredCaller(Protocol):
         payload: dict[str, Any],
         output_model: type[StarDraftOutput],
         max_completion_tokens: int,
+        timeout_seconds: Optional[float] = None,
     ) -> StructuredCallResult[StarDraftOutput]: ...
 
 
@@ -106,6 +117,10 @@ class StarGenerationLimits:
     # Elice 비스트리밍 게이트웨이의 응답 토큰 상한(#109 실측). 넘으면 요청이 거절된다.
     max_completion_tokens: int = 2_000
     max_attempts: int = 2
+    #: 요청 전체 마감. Spring 대기(star 180초 제안)보다 짧게 둔다.
+    deadline_seconds: float = 150.0
+    #: 남은 시간이 이보다 짧으면 새 호출을 시작하지 않는다.
+    min_call_seconds: float = 10.0
 
 
 class StarGenerator:
@@ -120,13 +135,20 @@ class StarGenerator:
         self._limits = limits
 
     async def generate(self, request: StarAnalysisRequest) -> StarAnalysisResponse:
-        """근거가 없는 영역은 비운 STAR 분석 결과를 반환한다."""
+        """근거가 없는 영역은 비운 STAR 분석 결과를 반환한다.
+
+        마감 안에 초안을 받지 못하면 실패 대신 네 칸을 TIMEOUT으로 비운 결과를 돌려준다.
+        """
         if self._client is None:
-            raise StarGenerationError("STAR 생성에 사용할 LLM이 설정되지 않았습니다.")
+            raise StarGenerationError("STAR 생성에 사용할 LLM이 설정되지 않았습니다.", retryable=False)
 
         evidence = _unique_evidence(request.evidence)
         payload = self.build_payload(request, evidence)
-        output = await self._call(payload)
+        deadline = asyncio.get_running_loop().time() + self._limits.deadline_seconds
+        try:
+            output = await self._call(payload, deadline)
+        except _Timeout:
+            return self._timed_out(request)
         return self._to_response(request, evidence, payload, output)
 
     def build_payload(
@@ -154,25 +176,49 @@ class StarGenerator:
             ],
         }
 
-    async def _call(self, payload: dict[str, Any]) -> StarDraftOutput:
-        """스키마에 맞지 않는 응답만 다시 요청한다. 나머지 오류는 SDK가 이미 재시도했다."""
+    async def _call(self, payload: dict[str, Any], deadline: float) -> StarDraftOutput:
+        """스키마에 맞지 않는 응답만 다시 요청한다. 각 호출은 남은 마감 시간 안에서만 기다린다.
+
+        키·모델 이름·콘텐츠 필터 오류는 다시 해도 같으므로 retryable=false로 올린다.
+        """
+        loop = asyncio.get_running_loop()
         for attempt in range(1, self._limits.max_attempts + 1):
+            timeout = deadline - loop.time()
+            if timeout < self._limits.min_call_seconds:
+                raise _Timeout
             try:
-                result = await asyncio.to_thread(
-                    self._client.call,
-                    SYSTEM_PROMPT,
-                    payload,
-                    StarDraftOutput,
-                    self._limits.max_completion_tokens,
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self._client.call,
+                        SYSTEM_PROMPT,
+                        payload,
+                        StarDraftOutput,
+                        self._limits.max_completion_tokens,
+                        timeout,
+                    ),
+                    timeout=timeout + 1,
                 )
+            except asyncio.TimeoutError as exc:
+                raise _Timeout from exc
             except LLMInvalidOutputError as exc:
                 if attempt == self._limits.max_attempts:
-                    raise StarGenerationError("STAR 초안을 생성하지 못했습니다.") from exc
+                    raise StarGenerationError("STAR 초안 형식이 계속 맞지 않습니다.", retryable=True) from exc
                 continue
+            except LLMNonRetryableError as exc:
+                raise StarGenerationError("STAR LLM 설정이나 입력이 거절됐습니다.", retryable=False) from exc
             except LLMStructuredCallError as exc:
-                raise StarGenerationError("STAR 초안을 생성하지 못했습니다.") from exc
+                if deadline - loop.time() < 1:
+                    raise _Timeout from exc
+                raise StarGenerationError("STAR LLM 호출에 실패했습니다.", retryable=True) from exc
             return result.output
-        raise StarGenerationError("STAR 초안을 생성하지 못했습니다.")
+        raise StarGenerationError("STAR 초안을 생성하지 못했습니다.", retryable=True)
+
+    def _timed_out(self, request: StarAnalysisRequest) -> StarAnalysisResponse:
+        return StarAnalysisResponse(
+            title=request.title,
+            star={slot: self._empty(_TIMEOUT_REASON, "TIMEOUT") for slot in SLOTS},
+            missing_fields=list(SLOTS),
+        )
 
     def _to_response(
         self,
@@ -195,16 +241,16 @@ class StarGenerator:
             cited = _cited_evidence(field.evidence_shas, by_sha)
 
             if field.status == "EMPTY" or not text:
-                star[slot] = self._empty(field.insufficient_reason)
+                star[slot] = self._empty(field.insufficient_reason, "NO_EVIDENCE")
                 continue
             if not cited and not has_answers:
                 # 근거 0개 문장은 화면에 뜨면 안 된다(규칙 4).
                 removed_claims.append(text)
-                star[slot] = self._empty(_NO_EVIDENCE_REASON)
+                star[slot] = self._empty(_NO_EVIDENCE_REASON, "NO_EVIDENCE")
                 continue
             if unsupported_metrics(text, source):
                 removed_claims.append(text)
-                star[slot] = self._empty(_INVENTED_METRIC_REASON)
+                star[slot] = self._empty(_INVENTED_METRIC_REASON, "UNSOURCED_NUMBER")
                 continue
 
             status = field.status
@@ -230,9 +276,13 @@ class StarGenerator:
             removed_claims=removed_claims,
         )
 
-    def _empty(self, reason: Optional[str]) -> StarFieldResult:
+    def _empty(self, reason: Optional[str], code: EmptyReasonCode) -> StarFieldResult:
         reason = _clip(redact_secrets(" ".join((reason or "").split())), self._limits.max_reason_chars)
-        return StarFieldResult(status="EMPTY", insufficient_reason=reason or _DEFAULT_EMPTY_REASON)
+        return StarFieldResult(
+            status="EMPTY",
+            insufficient_reason=reason or _DEFAULT_EMPTY_REASON,
+            insufficient_reason_code=code,
+        )
 
 
 def _unique_evidence(evidence: list[DiffEvidence]) -> list[DiffEvidence]:
@@ -279,10 +329,13 @@ def _shared_with(target_login: str, cited: list[DiffEvidence]) -> Optional[str]:
 
 
 def _source_text(payload: dict[str, Any]) -> str:
-    """모델이 실제로 본 근거. SHA는 숫자가 많아 수치 검사에서 뺀다."""
+    """모델이 실제로 본 근거 문장. SHA와 변경 줄 수(churn)는 숫자가 많아 수치 검사에서 뺀다.
+
+    churn을 넣으면 "+30/-2"의 30 때문에 지어낸 "30%"가 근거 있는 수치로 통과한다.
+    """
     parts = [payload["title"], *payload["confirmed_answers"]]
     for item in payload["evidence"]:
-        parts.extend([item["message"], item["churn"], item["summary"], *item["technical_points"]])
+        parts.extend([item["message"], item["summary"], *item["technical_points"]])
     return "\n".join(parts)
 
 

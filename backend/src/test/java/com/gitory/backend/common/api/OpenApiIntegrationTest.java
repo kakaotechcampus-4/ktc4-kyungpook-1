@@ -77,6 +77,18 @@ class OpenApiIntegrationTest {
     }
 
     @Test
+    @DisplayName("분석 요청의 403 설명에는 GITHUB_UNAUTHORIZED 가 있고 저장소 목록 문서에는 403 이 없다")
+    void documentsGithubConnectionOnlyOnAnalyze() throws Exception {
+
+        mvc.perform(get("/api/docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/repos/{id}/analyze'].post.responses['403'].description")
+                        .value(containsString("GITHUB_UNAUTHORIZED")))
+                .andExpect(jsonPath("$.paths['/api/repos'].get.responses['403']").doesNotExist());
+
+    }
+
+    @Test
     @DisplayName("카드 임시 저장 본문 문서는 네 키를 모두 필수로 두고 값은 글 또는 null 로 보여 준다")
     void draftBodyRequiresFourNullableKeys() throws Exception {
 

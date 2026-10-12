@@ -2,6 +2,7 @@ package com.gitory.backend.job.api;
 
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
+import com.gitory.backend.consent.domain.GithubNotConnectedException;
 import com.gitory.backend.job.domain.IdempotencyKeyMismatchException;
 import com.gitory.backend.job.domain.JobNotFoundException;
 import com.gitory.backend.job.domain.RepositoryNotFoundException;
@@ -26,6 +27,14 @@ public class JobExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiResponse<Void> handleIdempotencyKeyMismatch() {
         return ApiResponse.fail(ErrorCode.IDEMPOTENCY_KEY_MISMATCH, "이미 다른 레포 분석에 쓰인 요청 키입니다.");
+    }
+
+    @ExceptionHandler(GithubNotConnectedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiResponse<Void> handleGithubNotConnected() {
+
+        return ApiResponse.fail(ErrorCode.GITHUB_UNAUTHORIZED, "쓸 수 있는 GitHub 연결이 없습니다.");
+
     }
 
     @ExceptionHandler(JobNotFoundException.class)

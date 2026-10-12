@@ -6,6 +6,8 @@ import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -47,6 +49,7 @@ class AnalyzeApiTest {
 
     private static final String KEY_1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     private static final String KEY_2 = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    private static final String TOKEN = "gho_StubbedAccessTokenExample1234567";
 
     @Container
     @ServiceConnection
@@ -69,6 +72,7 @@ class AnalyzeApiTest {
         fixtures.clear();
 
         myUserId = fixtures.insertUser(1L, "grow22");
+        fixtures.insertGithubConnection(myUserId, TOKEN);
         Long othersUserId = fixtures.insertUser(2L, "someone-else");
 
         Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
@@ -77,6 +81,7 @@ class AnalyzeApiTest {
         fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
         fixtures.insertUserRepository(MY_OTHER_REPO, myUserId, otherRepositoryId);
         fixtures.insertUserRepository(OTHERS_REPO, othersUserId, repositoryId);
+
     }
 
     @Test
@@ -147,6 +152,54 @@ class AnalyzeApiTest {
         assertThat(jobCount()).isZero();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"NONE", "REVOKED", "EXPIRED", "UNDECRYPTABLE", "DELETION_REQUESTED"})
+    @DisplayName("쓸 수 있는 GitHub 연결이 없으면 403 GITHUB_UNAUTHORIZED 이고 Job 을 만들지 않는다")
+    void withoutUsableConnectionIsForbidden(String reason) throws Exception {
+
+        breakConnection(reason);
+
+        analyze(MY_REPO, KEY_1)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.error.code").value("GITHUB_UNAUTHORIZED"))
+                .andExpect(jsonPath("$.error.message").value("쓸 수 있는 GitHub 연결이 없습니다."));
+
+        assertThat(jobCount()).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_event", Integer.class)).isZero();
+
+    }
+
+    @Test
+    @DisplayName("연결이 없어도 남의 저장소면 403 이 아니라 404 이고 거절 기록이 남는다")
+    void othersRepoIsNotFoundEvenWithoutConnection() throws Exception {
+
+        breakConnection("NONE");
+
+        analyze(OTHERS_REPO, KEY_1)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM audit_event WHERE action = 'ANALYZE' AND outcome = 'DENIED'", Integer.class))
+                .isOne();
+
+    }
+
+    @Test
+    @DisplayName("연결이 없으면 같은 키·같은 저장소의 진행 중 Job 이 있어도 기존 Job 을 돌려주지 않고 403 이다")
+    void withoutConnectionExistingJobIsNotReturned() throws Exception {
+
+        analyze(MY_REPO, KEY_1).andExpect(status().isOk());
+        breakConnection("REVOKED");
+
+        analyze(MY_REPO, KEY_1).andExpect(status().isForbidden());
+        analyze(MY_REPO, KEY_2).andExpect(status().isForbidden());
+
+        assertThat(jobCount()).isEqualTo(1);
+
+    }
+
     @Test
     @DisplayName("레포 id 가 UUID 형식이 아니어도 500 이 아니라 404 에러다")
     void malformedRepoIdIsNotFound() throws Exception {
@@ -202,6 +255,19 @@ class AnalyzeApiTest {
         LoginUser principal = new LoginUser(userId, "grow22", null);
         return authentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
+    }
+
+    private void breakConnection(String reason) {
+
+        switch (reason) {
+            case "NONE" -> jdbc.update("DELETE FROM github_connection");
+            case "REVOKED" -> jdbc.update("UPDATE github_connection SET token_enc = NULL, revoked_at = now()");
+            case "EXPIRED" -> jdbc.update("UPDATE github_connection SET token_expires_at = now() - interval '1 minute'");
+            case "UNDECRYPTABLE" -> jdbc.update("UPDATE github_connection SET token_enc = 'not-encrypted'");
+            case "DELETION_REQUESTED" -> jdbc.update("UPDATE users SET deleted_at = now() WHERE id = ?", myUserId);
+            default -> throw new IllegalArgumentException(reason);
+        }
+
     }
 
     private ResultActions analyze(UUID repoPublicId, String idempotencyKey) throws Exception {

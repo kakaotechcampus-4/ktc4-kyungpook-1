@@ -4,6 +4,8 @@ public enum AuditAction {
     CONNECT,
     REVOKE,
     ANALYZE,
+    VIEW_REPO,
+    SEARCH_COMMITS,
     VIEW_JOB,
     CANCEL_JOB,
     CREATE_CARD,

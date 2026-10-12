@@ -17,13 +17,14 @@ public class RepositoryListService {
     private final RepositorySyncService sync;
     private final RepositoryContributionService contribution;
     private final ConnectedRepositoryRepository connections;
+    private final RepositoryWorkCounter workCounter;
 
     public List<RepositorySummary> list(Long userId) {
 
         List<Long> githubRepoIds = sync.sync(userId);
         contribution.refresh(userId, githubRepoIds);
 
-        return connections.findSummaries(userId, githubRepoIds);
+        return workCounter.fill(connections.findSummaries(userId, githubRepoIds));
 
     }
 }

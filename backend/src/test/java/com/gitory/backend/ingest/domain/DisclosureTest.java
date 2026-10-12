@@ -68,7 +68,7 @@ class DisclosureTest {
 
     private static RepositorySummary summary(Instant countedAt, int commitCount, int ownCommitCount, int prCount) {
 
-        return new RepositorySummary(UUID.randomUUID(), "grow22", "gitory", "Java", null, null, null, countedAt,
+        return new RepositorySummary(1L, UUID.randomUUID(), "grow22", "gitory", "Java", null, null, null, countedAt,
                 commitCount, ownCommitCount, prCount, 0, 0);
 
     }

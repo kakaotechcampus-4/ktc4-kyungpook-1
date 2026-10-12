@@ -7,6 +7,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.audit.domain.AuditLog;
+import com.gitory.backend.ingest.domain.CollectionStatsService;
+import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
 import com.gitory.backend.support.TestFixtures;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,9 +33,10 @@ import java.util.UUID;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(JobQueryService.class)
+@Import({JobQueryService.class, JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class})
 class JobQueryServiceTest {
 
+    private static final String LOGIN = "grow22";
     private static final String KEY_1 = "11111111-1111-4111-8111-111111111111";
     private static final String KEY_2 = "22222222-2222-4222-8222-222222222222";
 
@@ -83,7 +86,7 @@ class JobQueryServiceTest {
         UUID userRepositoryPublicId = jdbc.queryForObject(
                 "SELECT public_id FROM user_repository WHERE id = ?", UUID.class, myRepoId);
 
-        JobView found = service.load(job.getPublicId(), myUserId);
+        JobView found = service.load(job.getPublicId(), myUserId, LOGIN);
 
         assertThat(found.jobId()).isEqualTo(job.getPublicId().toString());
         assertThat(found.type()).isEqualTo(JobType.ANALYZE);
@@ -110,7 +113,7 @@ class JobQueryServiceTest {
         jdbc.update("UPDATE analysis_job SET type = 'DRAFT' WHERE public_id = ?", job.getPublicId());
         em.clear();
 
-        assertThat(service.load(job.getPublicId(), myUserId).result()).isNull();
+        assertThat(service.load(job.getPublicId(), myUserId, LOGIN).result()).isNull();
 
     }
 
@@ -120,16 +123,18 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(othersUserId, othersRepoId, KEY_1);
 
-        assertThatThrownBy(() -> service.load(job.getPublicId(), myUserId))
+        assertThatThrownBy(() -> service.load(job.getPublicId(), myUserId, LOGIN))
                 .isInstanceOf(JobNotFoundException.class);
+
     }
 
     @Test
     @DisplayName("없는 공개 id 로 찾으면 찾을 수 없다")
     void doesNotLoadUnknownJob() {
 
-        assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId))
+        assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId, LOGIN))
                 .isInstanceOf(JobNotFoundException.class);
+
     }
 
     @Test
@@ -138,7 +143,7 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(othersUserId, othersRepoId, KEY_1);
 
-        assertThatThrownBy(() -> service.load(job.getPublicId(), myUserId))
+        assertThatThrownBy(() -> service.load(job.getPublicId(), myUserId, LOGIN))
                 .isInstanceOf(JobNotFoundException.class);
 
         verify(auditLog).denied(myUserId, AuditAction.VIEW_JOB, job.getId());
@@ -151,8 +156,8 @@ class JobQueryServiceTest {
 
         AnalysisJob mine = persistJob(myUserId, myRepoId, KEY_1);
 
-        service.load(mine.getPublicId(), myUserId);
-        assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId))
+        service.load(mine.getPublicId(), myUserId, LOGIN);
+        assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId, LOGIN))
                 .isInstanceOf(JobNotFoundException.class);
 
         verifyNoInteractions(auditLog);
@@ -165,13 +170,14 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
 
-        assertThat(service.load(job.getPublicId(), myUserId).terminal()).isFalse();
+        assertThat(service.load(job.getPublicId(), myUserId, LOGIN).terminal()).isFalse();
 
         job.start();
         job.succeed(false, null);
         em.flush();
 
-        assertThat(service.load(job.getPublicId(), myUserId).terminal()).isTrue();
+        assertThat(service.load(job.getPublicId(), myUserId, LOGIN).terminal()).isTrue();
+
     }
 
     @Test
@@ -183,14 +189,15 @@ class JobQueryServiceTest {
         rateLimited.fail(JobErrorCode.GITHUB_RATE_LIMITED);
         em.flush();
 
-        assertThat(service.load(rateLimited.getPublicId(), myUserId).retryable()).isTrue();
+        assertThat(service.load(rateLimited.getPublicId(), myUserId, LOGIN).retryable()).isTrue();
 
         AnalysisJob internalError = persistJob(myUserId, myRepoId, KEY_2);
         internalError.start();
         internalError.fail(JobErrorCode.INTERNAL_ERROR);
         em.flush();
 
-        assertThat(service.load(internalError.getPublicId(), myUserId).retryable()).isFalse();
+        assertThat(service.load(internalError.getPublicId(), myUserId, LOGIN).retryable()).isFalse();
+
     }
 
     @Test

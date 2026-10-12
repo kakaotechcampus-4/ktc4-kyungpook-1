@@ -16,14 +16,15 @@ public class JobQueryService {
 
     private final AnalysisJobRepository jobs;
     private final AuditLog auditLog;
+    private final JobViewFactory views;
 
     @Transactional(readOnly = true)
-    public JobView load(UUID publicId, Long userId) {
+    public JobView load(UUID publicId, Long userId, String login) {
 
         AnalysisJob job = jobs.findByPublicIdAndUserId(publicId, userId)
                 .orElseThrow(() -> notFound(publicId, userId));
 
-        return JobView.from(job, jobs.findUserRepositoryPublicId(job.getUserRepositoryId()));
+        return views.of(job, login);
 
     }
 

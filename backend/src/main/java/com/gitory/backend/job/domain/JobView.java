@@ -5,6 +5,7 @@ import com.gitory.backend.recommend.domain.CandidateVerdict;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 public record JobView(
         String jobId,
@@ -21,7 +22,7 @@ public record JobView(
         JobResult result,
         boolean terminal) {
 
-    static JobView from(AnalysisJob job, UUID repoId) {
+    static JobView from(AnalysisJob job, UUID repoId, Supplier<List<String>> emptyReasons) {
 
         return new JobView(
                 job.getPublicId().toString(),
@@ -35,7 +36,7 @@ public record JobView(
                 job.getStartedAt(),
                 job.getUpdatedAt(),
                 job.getFinishedAt(),
-                result(job, repoId),
+                result(job, repoId, emptyReasons),
                 job.isTerminal());
 
     }
@@ -49,7 +50,7 @@ public record JobView(
         return errorCode == JobErrorCode.GITHUB_UNAVAILABLE || errorCode == JobErrorCode.GITHUB_RATE_LIMITED;
     }
 
-    private static JobResult result(AnalysisJob job, UUID repoId) {
+    private static JobResult result(AnalysisJob job, UUID repoId, Supplier<List<String>> emptyReasons) {
 
         if (job.getType() != JobType.ANALYZE) {
             return null;
@@ -60,8 +61,9 @@ public record JobView(
             return new JobResult(repoId.toString(), null, null, null);
         }
 
-        // 후보가 없는 이유 문장은 후보 보드가 같은 문장을 만들 때 함께 채운다
-        return new JobResult(repoId.toString(), null, verdict.name(), List.of());
+        List<String> reasons = verdict == CandidateVerdict.EMPTY ? emptyReasons.get() : List.of();
+
+        return new JobResult(repoId.toString(), null, verdict.name(), reasons);
 
     }
 

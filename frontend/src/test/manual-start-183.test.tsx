@@ -24,6 +24,28 @@ function mount() {
 const change = (name: string, value: string) => fireEvent.change(screen.getByLabelText(name), { target: { value } });
 
 describe('manual startup contract #183', () => {
+  it('drains text typed during creation and the first PATCH without restoring older input', async () => {
+    let resolveCreate!: (value: Card) => void;
+    let resolvePatch!: (value: Awaited<ReturnType<typeof endpoints.saveDraft>>) => void;
+    const returned = card({ version: { ...card().version, task: '서버 과제' } });
+    vi.spyOn(endpoints, 'createManualDraft').mockImplementation(() => new Promise(resolve => { resolveCreate = resolve; }));
+    const save = vi.spyOn(endpoints, 'saveDraft').mockImplementationOnce(() => new Promise(resolve => { resolvePatch = resolve; }))
+      .mockImplementation(async (id, fields) => ({ cardId: id, versionNo: 1, ...fields, savedAt: '2026-10-12T00:00:02Z' }));
+    mount(); change('카드 제목', '요청 제목'); change('상황 (Situation)', '첫 입력');
+    fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
+    await waitFor(() => expect(resolveCreate).toBeDefined());
+    change('상황 (Situation)', '생성 중 입력');
+    await act(async () => { resolveCreate(returned); });
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][1]).toMatchObject({ situation: '생성 중 입력', task: '서버 과제' });
+    change('상황 (Situation)', '최신 입력');
+    await act(async () => { resolvePatch({ cardId: returned.id, versionNo: 1, ...save.mock.calls[0][1], savedAt: '2026-10-12T00:00:01Z' }); });
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    expect(save.mock.calls[1][1]).toMatchObject({ situation: '최신 입력', task: '서버 과제' });
+    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('최신 입력');
+    expect(screen.getByLabelText('카드 제목')).toHaveValue('서버 제목');
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('저장됨'));
+  });
   it('reuses one entry UUID after lost response and accepts server metadata without an unsupported PATCH', async () => {
     const repo = seedRepos[0];
     const returned = card({ repo: { id: repo.id, owner: repo.owner, name: repo.name } });

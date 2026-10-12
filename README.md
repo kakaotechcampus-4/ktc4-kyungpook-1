@@ -1,5 +1,7 @@
 # ktc4-team-05
 
+2026-10-12 담당 #183의 직접 작성 멱등키·임시 저장·버전/근거 계약 및 실제 API 모드 검사는 [프론트 카드 계약 작업 기록](frontend/docs/2026-10-12-CARD_CONTRACT_183.md)에 정리했습니다.
+
 2026-10-07 접힌 메뉴의 가로 스크롤·스크롤바 표현·레포 대기 단계 대비 개선은 [프론트 스크롤/단계 검증 기록](frontend/docs/2026-10-07-SCROLLBAR_STEP_CONTRAST.md)을 참고하세요.
 
 2026-10-06 검색·선택 메뉴, PC 홈 정렬, STAR 작성과 Pretendard 글자 규칙 통일은 [프론트 UI 개선·검증 기록](frontend/docs/2026-10-06-UI_CONSISTENCY.md)에 정리했습니다.

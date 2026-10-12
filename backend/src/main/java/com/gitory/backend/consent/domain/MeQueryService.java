@@ -30,4 +30,14 @@ public class MeQueryService {
 
         return MeView.of(user, github, avatarUrl);
     }
+
+    /** 워커에는 로그인 세션이 없어 분석 Job 이 AI 에 보낼 사용자명도 수집 요청처럼 DB 에서 읽는다 */
+    @Transactional(readOnly = true)
+    public String loginOf(Long userId) {
+
+        return users.findById(userId)
+                .map(User::getGithubLogin)
+                .orElseThrow(() -> new NoSuchElementException("사용자를 찾을 수 없다: " + userId));
+
+    }
 }

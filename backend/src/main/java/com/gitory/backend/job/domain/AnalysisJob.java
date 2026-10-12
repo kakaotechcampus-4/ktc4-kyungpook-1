@@ -106,7 +106,7 @@ public class AnalysisJob {
 
     /**
      * 수집 기록을 연결하고 수집 두 단계는 읽은 개수로 끝낸다
-     * 후보 추리기·추천 이유는 AI 기능이 아직 없어 SKIPPED 로 둔다
+     * 후보 추리기·추천 이유는 묶기를 끈 채 끝나도록 SKIPPED 로 두고, 묶기를 하면 {@link #startGrouping()} 이 바꾼다
      */
     public void recordCollection(Long collectionRunId, int commitCount, int pullRequestCount) {
 
@@ -117,6 +117,29 @@ public class AnalysisJob {
                 new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, pullRequestCount, null),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    /**
+     * 후보 추리기를 진행 중으로, 추천 이유를 대기로 바꾼다
+     * 이 변경으로 갱신 시각이 새로 찍혀, 멈춘 Job 판정은 수집이 아니라 묶기를 기다린 시간부터 센다
+     */
+    public void startGrouping() {
+
+        requireState(JobState.RUNNING);
+        this.steps = withCandidateSteps(JobStepState.RUNNING, JobStepState.QUEUED, 0);
+
+    }
+
+    /**
+     * 후보 추리기·추천 이유를 저장소 후보 수로 끝내며, 받는 수는 상태와 상관없이 그 저장소 후보를 모두 센 값이다
+     * 후보가 없으면 이유를 붙일 후보가 없어 추천 이유만 SKIPPED 로 둔다
+     */
+    public void recordCandidates(int candidateCount) {
+
+        requireState(JobState.RUNNING);
+        JobStepState reason = candidateCount == 0 ? JobStepState.SKIPPED : JobStepState.DONE;
+        this.steps = withCandidateSteps(JobStepState.DONE, reason, candidateCount);
 
     }
 
@@ -194,6 +217,18 @@ public class AnalysisJob {
         }
 
         return steps;
+    }
+
+    private List<JobStep> withCandidateSteps(JobStepState compress, JobStepState reason, int done) {
+
+        return steps.stream()
+                .map(step -> switch (step.key()) {
+                    case COMPRESS -> new JobStep(JobStepKey.COMPRESS, compress, done, null);
+                    case REASON -> new JobStep(JobStepKey.REASON, reason, done, null);
+                    default -> step;
+                })
+                .toList();
+
     }
 
 }

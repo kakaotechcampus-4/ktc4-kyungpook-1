@@ -5,8 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
+import java.util.List;
 
 class AnalysisJobTest {
 
@@ -128,6 +131,77 @@ class AnalysisJobTest {
                 new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("묶기를 시작하면 후보 추리기는 진행 중, 추천 이유는 대기로 바뀌고 수집 두 단계는 그대로다")
+    void startGroupingMarksCompressRunning() {
+
+        AnalysisJob job = running();
+        job.recordCollection(5L, 12, 3);
+
+        job.startGrouping();
+
+        assertThat(job.getState()).isEqualTo(JobState.RUNNING);
+        assertThat(job.getSteps()).containsExactly(
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.RUNNING, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.QUEUED, 0, null));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 4})
+    @DisplayName("후보 수를 남기면 후보 추리기·추천 이유는 그 수로 완료되고 수집 두 단계는 그대로다")
+    void recordCandidatesFinishesCandidateSteps(int candidateCount) {
+
+        AnalysisJob job = running();
+        job.recordCollection(5L, 12, 3);
+        job.startGrouping();
+
+        job.recordCandidates(candidateCount);
+
+        assertThat(job.getSteps()).containsExactly(
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, candidateCount, null),
+                new JobStep(JobStepKey.REASON, JobStepState.DONE, candidateCount, null));
+
+    }
+
+    @Test
+    @DisplayName("후보가 하나도 없으면 후보 추리기는 0 으로 완료되고 추천 이유만 SKIPPED 로 둔다")
+    void noCandidateSkipsReasonStep() {
+
+        AnalysisJob job = running();
+        job.recordCollection(5L, 12, 3);
+        job.startGrouping();
+
+        job.recordCandidates(0);
+
+        assertThat(job.getSteps()).containsExactly(
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("RUNNING 이 아닌 Job 은 묶기를 시작하거나 후보 수를 남길 수 없다")
+    void groupingStepsRequireRunning() {
+
+        AnalysisJob finished = running();
+        finished.succeed(false, null);
+        List<JobStep> finishedSteps = finished.getSteps();
+
+        assertThatThrownBy(() -> queued().startGrouping()).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> queued().recordCandidates(1)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(finished::startGrouping).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> finished.recordCandidates(1)).isInstanceOf(IllegalStateException.class);
+        assertThat(finished.getSteps()).isEqualTo(finishedSteps);
 
     }
 

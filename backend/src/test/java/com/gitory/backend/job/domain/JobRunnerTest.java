@@ -3,6 +3,7 @@ package com.gitory.backend.job.domain;
 import static java.util.concurrent.Executors.newFixedThreadPool;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -10,18 +11,23 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
+import com.gitory.backend.consent.domain.MeQueryService;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.GithubState;
+import com.gitory.backend.ingest.domain.GroupingMaterialService;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.recommend.domain.CandidateStoreService;
 import com.gitory.backend.support.AiTestProperties;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,6 +55,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -56,10 +63,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
-@DataJpaTest(properties = "gitory.ai.collect-read-timeout=10m")
+@DataJpaTest(properties = {
+        "gitory.ai.collect-read-timeout=10m",
+        "gitory.ai.groups-read-timeout=10m",
+        "gitory.analysis.grouping.enabled=false"
+})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobRunner.class, JobCancelService.class, ActivityStoreService.class})
+@Import({JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
+        CandidateStoreService.class, StoredActivityService.class, MeQueryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JobRunnerTest {
@@ -92,11 +104,23 @@ class JobRunnerTest {
     @Autowired
     TransactionTemplate transaction;
 
+    @Autowired
+    MeQueryService users;
+
+    @Autowired
+    GroupingMaterialService materials;
+
+    @Autowired
+    CandidateStoreService candidates;
+
     @MockitoBean
     RepositoryActivityPort activities;
 
     @MockitoBean
     AuditLog auditLog;
+
+    @MockitoBean
+    ExperienceGroupingPort grouping;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -238,7 +262,7 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("성공하면 커밋·PR 읽기 단계는 읽은 개수로 완료되고, 아직 없는 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
+    @DisplayName("성공하면 커밋·PR 읽기 단계는 읽은 개수로 완료되고, 묶기를 꺼 두면 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
     void marksStepsAfterSuccess() {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
@@ -251,6 +275,25 @@ class JobRunnerTest {
                 new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 1, null),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("묶기를 꺼 두면 AI 묶기를 부르지 않고 후보 추리기·추천 이유를 SKIPPED 로 둔 채 끝내며 판정도 비운다")
+    void skipsGroupingWhenSwitchedOff() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        verifyNoInteractions(grouping);
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.getSteps()).extracting(JobStep::key, JobStep::state).endsWith(
+                tuple(JobStepKey.COMPRESS, JobStepState.SKIPPED), tuple(JobStepKey.REASON, JobStepState.SKIPPED));
+        assertThat(JobView.from(job, UUID.randomUUID()).result().verdict()).isNull();
+        assertThat(countOf("candidate_grouping")).isZero();
 
     }
 
@@ -331,7 +374,7 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("수집 응답 대기 한도보다 5분 넘게 RUNNING 인 Job 은 INTERNAL_ERROR 로 끝낸다")
+    @DisplayName("수집·묶기 응답 대기 한도 중 큰 값보다 5분 넘게 RUNNING 인 Job 은 INTERNAL_ERROR 로 끝낸다")
     void failsJobStuckInRunning() {
 
         Long jobId = runningSince(userRepositoryId, "16 minutes");
@@ -372,7 +415,7 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("RUNNING 인 시간이 수집 응답 대기 한도에 5분을 더한 시간보다 짧은 Job 은 그대로 둔다")
+    @DisplayName("RUNNING 인 시간이 수집·묶기 응답 대기 한도 중 큰 값에 5분을 더한 시간보다 짧은 Job 은 그대로 둔다")
     void keepsRecentlyRunningJob() {
 
         Long jobId = runningSince(userRepositoryId, "14 minutes");
@@ -388,8 +431,22 @@ class JobRunnerTest {
     void stuckJudgementFollowsCollectReadTimeout() {
 
         Long jobId = runningSince(userRepositoryId, "16 minutes");
-        JobRunner longerWait = new JobRunner(jobs, activities, activityStore, transaction,
-                AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(20)).build());
+        JobRunner longerWait = runnerWith(AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(20))
+                .groupsReadTimeout(Duration.ofMinutes(10)).build());
+
+        longerWait.failStuckJobs();
+
+        assertThat(stateOf(jobId)).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("묶기 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
+    void stuckJudgementFollowsGroupsReadTimeout() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+        JobRunner longerWait = runnerWith(AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(10))
+                .groupsReadTimeout(Duration.ofMinutes(20)).build());
 
         longerWait.failStuckJobs();
 
@@ -575,6 +632,13 @@ class JobRunnerTest {
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         cancelService.cancel(job.getPublicId(), job.getUserId());
+
+    }
+
+    private JobRunner runnerWith(AiClientProperties aiProperties) {
+
+        return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
+                new JobGroupingProperties(false), users, materials, candidates, grouping);
 
     }
 

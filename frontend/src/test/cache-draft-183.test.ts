@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { keys } from '@/api/keys';
 import type { Card, CardDraft, CardSummary } from '@/api/schemas';
 import { cacheSavedDraft } from '@/lib/cacheSavedDraft';
+import * as draftCache from '@/lib/cacheSavedDraft';
+import { Card as CardSchema } from '@/api/schemas';
 
 const oldTime = '2026-10-01T00:00:00Z'; const savedAt = '2026-10-12T00:00:00Z';
 const original: Card = { id: 'card', kind: 'TECH', status: 'DRAFT', title: '제목', repo: null, candidate: null,
@@ -14,10 +16,11 @@ const saved: CardDraft = { cardId: 'card', versionNo: 2, savedAt, situation: 'ne
 const makeClient = () => { const client = new QueryClient({ defaultOptions: { queries: { retry: false } } }); client.setQueryData(keys.card('card'), original); return client; };
 
 describe('acknowledged draft cache issue 183', () => {
-  it('updates authoritative writing, USER_EDIT version and server time, then marks detail stale', async () => {
+  it('updates proven writing, version number and version time without guessing its source', async () => {
     const client = makeClient();
     await cacheSavedDraft(client, saved);
-    expect(client.getQueryData<Card>(keys.card('card'))?.version).toEqual({ versionNo: 2, source: 'USER_EDIT', createdAt: savedAt, situation: 'new', task: 'same', action: 'added', result: null });
+    expect(client.getQueryData<Card>(keys.card('card'))?.version).toEqual({ versionNo: 2, source: 'AI_DRAFT', createdAt: savedAt, situation: 'new', task: 'same', action: 'added', result: null });
+    expect(draftCache.isDraftMetadataPending?.(client.getQueryData<Card>(keys.card('card')))).toBe(true);
     expect(client.getQueryState(keys.card('card'))?.isInvalidated).toBe(true);
     client.clear();
   });
@@ -39,10 +42,47 @@ describe('acknowledged draft cache issue 183', () => {
     expect(after.version.situation).toBe('old'); expect(after.evidence.some((e) => e.field === 'S')).toBe(false);
     expect(client.getQueryState(keys.card('card'))?.isInvalidated).toBe(true); client.clear();
   });
-  it('updates cached summary version and saved time without retaining unknown evidence counts', async () => {
+  it('leaves summary metadata unchanged until GET because ACK time is not card updatedAt', async () => {
     const client = makeClient(); const summary: CardSummary = { id: 'card', kind: 'TECH', status: 'DRAFT', title: '제목', versionNo: 1, star: { S: 'NEEDS_REVIEW', T: 'NEEDS_REVIEW', A: 'EMPTY', R: 'EMPTY' }, updatedAt: oldTime, evidenceCount: 2, userStatedCount: 0 };
     client.setQueryData(keys.cards, [summary]); await cacheSavedDraft(client, saved);
-    expect(client.getQueryData<CardSummary[]>(keys.cards)?.[0]).toMatchObject({ versionNo: 2, updatedAt: savedAt, star: { S: 'FILLED', T: 'NEEDS_REVIEW', A: 'FILLED', R: 'EMPTY' }, evidenceCount: null, userStatedCount: null }); client.clear();
+    expect(client.getQueryData<CardSummary[]>(keys.cards)).toEqual([summary]);
+    expect(client.getQueryState(keys.cards)?.isInvalidated).toBe(true); client.clear();
+  });
+  it.each(['INTERVIEW', 'MASK', 'AI_DRAFT'] as const)('does not label an external %s version as USER_EDIT on a same-content ACK', async (source) => {
+    const client = makeClient();
+    client.setQueryData(keys.card('card'), { ...original, version: { ...original.version, source } });
+    await cacheSavedDraft(client, { ...saved, ...original.version, versionNo: 4, savedAt });
+    const after = client.getQueryData<Card>(keys.card('card'))!;
+    expect(after.version).toMatchObject({ versionNo: 4, source, createdAt: savedAt, situation: 'old', action: null });
+    expect(draftCache.isDraftMetadataPending?.(after)).toBe(true);
+    client.clear();
+  });
+  it('keeps pending metadata across no-op ACKs and clears it on a full parsed detail response', async () => {
+    const client = makeClient(); await cacheSavedDraft(client, saved); await cacheSavedDraft(client, saved);
+    expect(draftCache.isDraftMetadataPending?.(client.getQueryData<Card>(keys.card('card')))).toBe(true);
+    const fresh = CardSchema.parse({ ...client.getQueryData<Card>(keys.card('card')), version: { ...original.version, versionNo: 2, createdAt: savedAt, source: 'USER_EDIT', situation: 'new', action: 'added' } });
+    client.setQueryData(keys.card('card'), fresh);
+    expect(draftCache.isDraftMetadataPending?.(client.getQueryData<Card>(keys.card('card')))).toBe(false);
+    expect(draftCache.isDraftMetadataPending?.(undefined)).toBe(false); client.clear();
+  });
+  it('does not roll back a newer cached version when an older ACK arrives late', async () => {
+    const client = makeClient();
+    const newer: Card = { ...original, version: { ...original.version, versionNo: 3, createdAt: savedAt, source: 'INTERVIEW', situation: 'newer' } };
+    client.setQueryData(keys.card('card'), newer); await cacheSavedDraft(client, saved);
+    expect(client.getQueryData<Card>(keys.card('card'))).toEqual(newer); client.clear();
+  });
+  it('does not roll back a newer save of the same version when an older ACK arrives late', async () => {
+    const client = makeClient();
+    const newer: Card = { ...original, version: { ...original.version, versionNo: 2, createdAt: '2026-10-12T00:00:01Z', source: 'USER_EDIT', situation: 'newer' } };
+    client.setQueryData(keys.card('card'), newer); await cacheSavedDraft(client, saved);
+    expect(client.getQueryData<Card>(keys.card('card'))).toEqual(newer); client.clear();
+  });
+  it('compares the nanosecond precision emitted by Java Instant for late ACKs', async () => {
+    const client = makeClient();
+    const newer: Card = { ...original, version: { ...original.version, versionNo: 2, createdAt: '2026-10-12T00:00:00.000000002Z', source: 'USER_EDIT', situation: 'newer' } };
+    client.setQueryData(keys.card('card'), newer);
+    await cacheSavedDraft(client, { ...saved, savedAt: '2026-10-12T00:00:00.000000001Z' });
+    expect(client.getQueryData<Card>(keys.card('card'))).toEqual(newer); client.clear();
   });
   it('retains acknowledged writing when a later full detail read fails', async () => {
     const client = makeClient();

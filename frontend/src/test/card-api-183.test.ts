@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { endpoints } from '@/api/endpoints';
 import { ContractError } from '@/api/client';
 import * as capabilities from '@/api/capabilities';
-import { DraftFields, type Card } from '@/api/schemas';
+import { DraftFields, ManualDraftInput, type Card } from '@/api/schemas';
 import { CONFIG } from '@/lib/config';
 import { toDraftFields } from '@/lib/useDraftAutosave';
 
@@ -65,6 +65,15 @@ describe('card API issue 183 contract', () => {
     expect(fetch).not.toHaveBeenCalled();
     await endpoints.createManualDraft({ ...input, title: 't'.repeat(256), period: 'p'.repeat(50) }, 'entry');
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+  it.each([' ', '\u001c', '\u001d', '\u001e', '\u001f', '\u00a0', '\u2007', '\u202f', '\ufeff'])('normalizes an over-limit blank period containing %j before checking its length', (blank) => {
+    expect(ManualDraftInput.parse({ ...input, period: blank.repeat(51) })).toEqual({ ...input, period: null });
+  });
+  it('rejects an over-limit meaningful period and NUL while preserving accepted period whitespace', () => {
+    expect(ManualDraftInput.safeParse({ ...input, period: ' '.repeat(50) + 'x' }).success).toBe(false);
+    expect(ManualDraftInput.safeParse({ ...input, period: '\u0000' }).success).toBe(false);
+    expect(ManualDraftInput.safeParse({ ...input, period: ' '.repeat(50) + '\u0000' }).success).toBe(false);
+    expect(ManualDraftInput.parse({ ...input, period: '  2024\u001c ' }).period).toBe('  2024\u001c ');
   });
   it('validates mask count, text limits, blank source and NUL before HTTP', async () => {
     const fetch = respond(card);

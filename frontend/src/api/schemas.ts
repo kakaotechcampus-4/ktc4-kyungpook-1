@@ -17,7 +17,9 @@ const nullableCardText = (max: number) => cardText(max).nullable().transform((te
 
 export const ManualDraftInput = z.object({
   title: nonBlankCardText(CONFIG.CARD_TITLE_MAX),
-  period: nullableCardText(CONFIG.CARD_PERIOD_MAX),
+  // Card.checkedPeriod normalizes blank input before applying the meaningful-text limit.
+  period: z.string().nullable().transform((text) => text === null || isBlankCardText(text) ? null : text)
+    .pipe(cardText(CONFIG.CARD_PERIOD_MAX).nullable()),
   repoId: z.string().nullable(),
 });
 export type ManualDraftInput = z.infer<typeof ManualDraftInput>;

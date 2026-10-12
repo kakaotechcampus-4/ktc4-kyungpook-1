@@ -24,11 +24,36 @@ describe('acknowledged draft cache issue 183', () => {
     expect(client.getQueryState(keys.card('card'))?.isInvalidated).toBe(true);
     client.clear();
   });
-  it('clears old evidence and warnings only for changed fields', async () => {
-    const client = makeClient(); await cacheSavedDraft(client, saved);
+  it('clears old evidence and warnings only for changed fields within the same version', async () => {
+    const client = makeClient(); await cacheSavedDraft(client, { ...saved, versionNo: original.version.versionNo });
     const after = client.getQueryData<Card>(keys.card('card'))!;
     expect(after.evidence).toEqual(original.evidence.filter((e) => e.field === 'T'));
     expect(after.lowConfidenceFields).toEqual([{ field: 'T', why: 'keep' }]); expect(after.droppedFields).toEqual([]);
+    client.clear();
+  });
+  it('withholds all metadata when a higher-version ACK has identical writing after other clients changed its provenance', async () => {
+    const client = makeClient();
+    // AI a/COMMIT v1 -> USER_EDIT b v2 -> MASK v3 -> USER_EDIT a v4.
+    // This client's no-op ACK proves the returned writing, but not v4's provenance.
+    await cacheSavedDraft(client, { ...saved, ...original.version, versionNo: 4, savedAt });
+    const after = client.getQueryData<Card>(keys.card('card'))!;
+    expect(after.version).toEqual({ ...original.version, versionNo: 4, createdAt: savedAt });
+    expect(after.evidence).toEqual([]);
+    expect(after.lowConfidenceFields).toEqual([]);
+    expect(after.droppedFields).toEqual([]);
+    expect(draftCache.isDraftMetadataPending(after)).toBe(true);
+    client.clear();
+  });
+  it('withholds unchanged-slot metadata too when the acknowledged version changes', async () => {
+    const client = makeClient();
+    client.setQueryData(keys.card('card'), { ...original, droppedFields: [{ field: 'R', reason: 'NO_EVIDENCE' }] });
+    await cacheSavedDraft(client, saved);
+    const after = client.getQueryData<Card>(keys.card('card'))!;
+    expect(after.version).toMatchObject({ versionNo: 2, situation: 'new', task: 'same', action: 'added', result: null });
+    expect(after.evidence).toEqual([]);
+    expect(after.lowConfidenceFields).toEqual([]);
+    expect(after.droppedFields).toEqual([]);
+    expect(draftCache.isDraftMetadataPending(after)).toBe(true);
     client.clear();
   });
   it('keeps the source and evidence for a no-op save of an immutable version', async () => {
@@ -76,6 +101,16 @@ describe('acknowledged draft cache issue 183', () => {
     const newer: Card = { ...original, version: { ...original.version, versionNo: 2, createdAt: '2026-10-12T00:00:01Z', source: 'USER_EDIT', situation: 'newer' } };
     client.setQueryData(keys.card('card'), newer); await cacheSavedDraft(client, saved);
     expect(client.getQueryData<Card>(keys.card('card'))).toEqual(newer); client.clear();
+  });
+  it('accepts a higher version even when its acknowledged time is older because of clock skew', async () => {
+    const client = makeClient();
+    const skewedTime = '2026-09-30T23:59:59Z';
+    await cacheSavedDraft(client, { ...saved, savedAt: skewedTime });
+    const after = client.getQueryData<Card>(keys.card('card'))!;
+    expect(after.version).toMatchObject({ versionNo: 2, createdAt: skewedTime, situation: 'new', action: 'added' });
+    expect(draftCache.isDraftMetadataPending(after)).toBe(true);
+    expect(client.getQueryState(keys.card('card'))?.isInvalidated).toBe(true);
+    client.clear();
   });
   it('compares the nanosecond precision emitted by Java Instant for late ACKs', async () => {
     const client = makeClient();

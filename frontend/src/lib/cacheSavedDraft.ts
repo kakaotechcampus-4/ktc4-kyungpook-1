@@ -16,7 +16,9 @@ function olderVersionTime(savedAt: string, currentAt: string) {
   return Number.isFinite(savedMs) && subMillis(savedAt) < subMillis(currentAt);
 }
 const isOlderAck = (saved: CardDraft, card: Card | undefined) => !!card && (
-  saved.versionNo < card.version.versionNo || olderVersionTime(saved.savedAt, card.version.createdAt)
+  saved.versionNo < card.version.versionNo || (
+    saved.versionNo === card.version.versionNo && olderVersionTime(saved.savedAt, card.version.createdAt)
+  )
 );
 
 /** Keep acknowledged writing available even if the next full detail read fails. */
@@ -26,18 +28,20 @@ export async function cacheSavedDraft(client: QueryClient, saved: CardDraft) {
   await client.cancelQueries({ queryKey: keys.card(saved.cardId), exact: true });
   const previous = client.getQueryData<Card>(keys.card(saved.cardId));
   if (isOlderAck(saved, previous)) return;
+  const versionChanged = !!previous && saved.versionNo !== previous.version.versionNo;
   const changed = new Set<StarField>((Object.keys(fields) as StarField[]).filter((field) =>
     !previous || previous.version[fields[field]] !== saved[fields[field]],
   ));
   client.setQueryData<CachedDraftCard>(keys.card(saved.cardId), (card) => card ? {
     ...card,
     // A no-op PATCH can acknowledge another tab's latest version. Its source is absent from ACK.
-    ...(isDraftMetadataPending(card) || changed.size || saved.versionNo !== card.version.versionNo ? { draftMetadataPending: true } : {}),
+    ...(isDraftMetadataPending(card) || changed.size || versionChanged ? { draftMetadataPending: true } : {}),
     version: { ...card.version, versionNo: saved.versionNo, createdAt: saved.savedAt,
       situation: saved.situation, task: saved.task, action: saved.action, result: saved.result },
-    evidence: card.evidence.filter((entry) => !changed.has(entry.field)),
-    lowConfidenceFields: card.lowConfidenceFields.filter((entry) => !changed.has(entry.field)),
-    droppedFields: card.droppedFields.filter((entry) => !changed.has(entry.field)),
+    // Another version can have different provenance even when every text field is identical.
+    evidence: versionChanged ? [] : card.evidence.filter((entry) => !changed.has(entry.field)),
+    lowConfidenceFields: versionChanged ? [] : card.lowConfidenceFields.filter((entry) => !changed.has(entry.field)),
+    droppedFields: versionChanged ? [] : card.droppedFields.filter((entry) => !changed.has(entry.field)),
   } : card);
   // The ACK cannot describe restored evidence. Keep writing available and fetch full detail at the next read.
   // No GET is awaited here: a failed refresh must never turn a successful PATCH into a failed save.

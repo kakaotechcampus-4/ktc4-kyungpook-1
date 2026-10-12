@@ -1,15 +1,21 @@
 package com.gitory.backend.consent.infra;
 
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.gitory.backend.consent.domain.GithubConnection;
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
 import com.gitory.backend.consent.domain.User;
@@ -20,16 +26,30 @@ import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 class GithubCollectionAccessTest {
 
@@ -43,12 +63,15 @@ class GithubCollectionAccessTest {
     private final TokenCipher cipher = new TokenCipher("test-encryption-key", "5c0744940b5c369b");
     private final GithubRepositoryClient github = mock(GithubRepositoryClient.class);
     private final GithubCountClient counter = mock(GithubCountClient.class);
-    private final GithubCollectionAccess access = new GithubCollectionAccess(users, connections, cipher, null, github, counter);
+    private final AtomicReference<Instant> now = new AtomicReference<>(Instant.parse("2026-10-12T00:00:00Z"));
+    private final Clock clock = mock(Clock.class);
+    private final GithubCollectionAccess access = new GithubCollectionAccess(users, connections, cipher, null, github, counter, clock);
 
     @BeforeEach
     void setUp() {
 
         when(users.findById(USER_ID)).thenReturn(Optional.of(User.register(42L, "grow22")));
+        when(clock.instant()).thenAnswer(invocation -> now.get());
 
     }
 
@@ -132,22 +155,364 @@ class GithubCollectionAccessTest {
     }
 
     @Test
-    @DisplayName("저장소를 20개씩 나눠 묻고, 한 묶음이 실패해도 나머지 묶음의 결과는 돌려준다")
+    @DisplayName("저장소를 20개씩 나눠 묻고, 한 묶음이 계속 실패해도 나머지 묶음의 결과는 돌려준다")
     void countsInBatchesAndSkipsFailedBatch() {
 
         connectionExpiringAt(null);
         searchesReturn(Map.of(), Map.of());
-        List<GithubCountTarget> targets = LongStream.rangeClosed(1, 21)
-                .mapToObj(id -> new GithubCountTarget(id, "grow22", "repo-" + id))
-                .toList();
-        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), argThat((List<GithubCountTarget> batch) -> batch.size() == 20)))
-                .thenThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY));
-        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), argThat((List<GithubCountTarget> batch) -> batch.size() == 1)))
-                .thenReturn(Map.of(21L, new GithubRepositoryTotals(5, 5, 0)));
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            List<GithubCountTarget> batch = invocation.getArgument(2);
+            if (batch.get(0).githubRepoId() <= 20L) {
+                throw new HttpServerErrorException(HttpStatus.BAD_GATEWAY);
+            }
+            return totalsOf(batch);
+        });
 
-        assertThat(access.countActivity(USER_ID, targets))
+        assertThat(access.countActivity(USER_ID, targets(21)))
                 .extracting(GithubRepositoryCount::githubRepoId)
                 .containsExactly(21L);
+        verify(counter).countCommits(eq(TOKEN), eq(VIEWER_ID), argThat((List<GithubCountTarget> batch) -> batch.size() == 20), any());
+
+    }
+
+    @Test
+    @DisplayName("한도 거절이 아닌 이유로 묶음이 통째로 실패하면 저장소 하나씩 다시 세어 문제 저장소만 빠진다")
+    void recountsFailedBatchOneByOne() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            List<GithubCountTarget> batch = invocation.getArgument(2);
+            if (batch.size() > 1 || batch.get(0).githubRepoId() == 7L) {
+                throw new HttpServerErrorException(HttpStatus.BAD_GATEWAY);
+            }
+            return totalsOf(batch);
+        });
+
+        assertThat(access.countActivity(USER_ID, targets(20)))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactlyElementsOf(LongStream.rangeClosed(1, 20).filter(id -> id != 7L).boxed().toList());
+        verify(counter, times(21)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
+
+    }
+
+    @Test
+    @DisplayName("하나씩 다시 세다가 GitHub 이 한도로 거절하면 남은 저장소는 더 묻지 않는다")
+    void stopsRecountingWhenRateLimited() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            List<GithubCountTarget> batch = invocation.getArgument(2);
+            if (batch.size() > 1) {
+                throw new HttpServerErrorException(HttpStatus.BAD_GATEWAY);
+            }
+            if (batch.get(0).githubRepoId() == 3L) {
+                throw HttpClientErrorException.create(
+                        HttpStatus.FORBIDDEN, "rate limited", new HttpHeaders(), new byte[0], null);
+            }
+            return totalsOf(batch);
+        });
+
+        assertThat(access.countActivity(USER_ID, targets(20)))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactly(1L, 2L);
+        verify(counter, times(4)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
+
+    }
+
+    @Test
+    @DisplayName("저장소 20개 묶음을 3개까지 동시에 묻고, 4번째 묶음은 앞 묶음이 끝난 뒤에 묻는다")
+    void asksUpToThreeBatchesAtOnce() throws Exception {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        CountDownLatch threeAsked = new CountDownLatch(3);
+        CountDownLatch fourAsked = new CountDownLatch(4);
+        CountDownLatch respond = new CountDownLatch(1);
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            threeAsked.countDown();
+            fourAsked.countDown();
+            respond.await(5, TimeUnit.SECONDS);
+            return totalsOf(invocation.getArgument(2));
+        });
+
+        ExecutorService request = newSingleThreadExecutor();
+        Future<List<GithubRepositoryCount>> counted = request.submit(() -> access.countActivity(USER_ID, targets(61)));
+
+        assertThat(threeAsked.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(fourAsked.await(500, TimeUnit.MILLISECONDS)).isFalse();
+        respond.countDown();
+        assertThat(counted.get(5, TimeUnit.SECONDS))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactlyElementsOf(LongStream.rangeClosed(1, 61).boxed().toList());
+        request.shutdown();
+
+    }
+
+    @Test
+    @DisplayName("동시에 묻는 묶음 하나가 계속 실패하면 그 묶음의 저장소만 빠지고, 나머지 묶음의 결과는 저장소 순서대로 합친다")
+    void dropsOnlyFailedBatchAmongConcurrentBatches() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            List<GithubCountTarget> batch = invocation.getArgument(2);
+            if (batch.get(0).githubRepoId() >= 21L && batch.get(0).githubRepoId() <= 40L) {
+                throw new HttpServerErrorException(HttpStatus.BAD_GATEWAY);
+            }
+            return totalsOf(batch);
+        });
+
+        assertThat(access.countActivity(USER_ID, targets(41)))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactlyElementsOf(LongStream.concat(LongStream.rangeClosed(1, 20), LongStream.of(41)).boxed().toList());
+
+    }
+
+    @Test
+    @DisplayName("저장소가 300개를 넘으면 앞의 15묶음(300개)만 GitHub 에 묻고 나머지는 다음 조회로 미룬다")
+    void asksAtMostFifteenBatchesAtOnce() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any()))
+                .thenAnswer(invocation -> totalsOf(invocation.getArgument(2)));
+
+        assertThat(access.countActivity(USER_ID, targets(321)))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactlyElementsOf(LongStream.rangeClosed(1, 300).boxed().toList());
+        verify(counter, times(15)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("stoppingFailures")
+    @DisplayName("한 묶음이 GitHub 한도로 거절되거나(403·429, 200 으로 알린 한도 초과) 토큰이 거절되면(401) 아직 묻지 않은 묶음은 묻지 않는다")
+    void stopsAskingAfterRateLimited(RuntimeException failure) {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenThrow(failure);
+
+        assertThat(access.countActivity(USER_ID, targets(200))).isEmpty();
+        verify(counter, atMost(3)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
+
+    }
+
+    static Stream<RuntimeException> stoppingFailures() {
+
+        return Stream.of(
+                HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "rate limited", new HttpHeaders(), new byte[0], null),
+                HttpClientErrorException.create(HttpStatus.FORBIDDEN, "rate limited", new HttpHeaders(), new byte[0], null),
+                HttpClientErrorException.create(HttpStatus.TOO_MANY_REQUESTS, "rate limited", new HttpHeaders(), new byte[0], null),
+                new GithubRateLimitedException("API rate limit exceeded"));
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 한도 초과를 200 으로 알리면 그 묶음은 하나씩 다시 세지 않고 멈춘다")
+    void stopsOnRateLimitReportedWithOk() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any()))
+                .thenThrow(new GithubRateLimitedException("API rate limit exceeded"));
+
+        assertThat(access.countActivity(USER_ID, targets(20))).isEmpty();
+        verify(counter, times(1)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
+
+    }
+
+    @Test
+    @DisplayName("토큰이 거절되면(401) 그 묶음은 하나씩 다시 세지 않고 멈춘다")
+    void stopsOnUnauthorized() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenThrow(HttpClientErrorException.create(
+                HttpStatus.UNAUTHORIZED, "Unauthorized", new HttpHeaders(), new byte[0], null));
+
+        assertThat(access.countActivity(USER_ID, targets(20))).isEmpty();
+        verify(counter, times(1)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
+
+    }
+
+    @Test
+    @DisplayName("15초가 지나면 하나씩 다시 세는 요청도 보내지 않고 그 전에 센 결과만 돌려준다")
+    void stopsRecountingAfterTimeLimit() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            List<GithubCountTarget> batch = invocation.getArgument(2);
+            if (batch.size() > 1) {
+                throw new HttpServerErrorException(HttpStatus.BAD_GATEWAY);
+            }
+            now.set(now.get().plusSeconds(16));
+            return totalsOf(batch);
+        });
+
+        assertThat(access.countActivity(USER_ID, targets(2)))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactly(1L);
+        verify(counter, times(2)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
+
+    }
+
+    @Test
+    @DisplayName("15초가 지나면 아직 묻지 않은 묶음은 보내지 않고 그 전에 센 결과만 돌려준다")
+    void stopsAskingBatchesAfterTimeLimit() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        CountDownLatch threeAsked = new CountDownLatch(3);
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            threeAsked.countDown();
+            threeAsked.await(5, TimeUnit.SECONDS);
+            now.set(now.get().plusSeconds(16));
+            return totalsOf(invocation.getArgument(2));
+        });
+
+        assertThat(access.countActivity(USER_ID, targets(61)))
+                .extracting(GithubRepositoryCount::githubRepoId)
+                .containsExactlyElementsOf(LongStream.rangeClosed(1, 60).boxed().toList());
+        verify(counter, times(3)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
+
+    }
+
+    @Test
+    @DisplayName("묶음에 넘기는 멈춤 확인은 15초가 지나기 전에는 거짓이고 지나면 참이다")
+    void passesTimeLimitCheckToCounter() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        AtomicReference<Boolean> before = new AtomicReference<>();
+        AtomicReference<Boolean> after = new AtomicReference<>();
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            BooleanSupplier mustStop = invocation.getArgument(3);
+            before.set(mustStop.getAsBoolean());
+            now.set(now.get().plusSeconds(16));
+            after.set(mustStop.getAsBoolean());
+            return totalsOf(invocation.getArgument(2));
+        });
+
+        access.countActivity(USER_ID, targets(1));
+
+        assertThat(before.get()).isFalse();
+        assertThat(after.get()).isTrue();
+
+    }
+
+    @Test
+    @DisplayName("다른 묶음이 한도로 거절되면 이미 묻는 중인 묶음에 넘긴 멈춤 확인도 참이 된다")
+    void sharesStopWithBatchesInFlight() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        AtomicReference<Boolean> stoppedInFlight = new AtomicReference<>();
+        CountDownLatch inFlight = new CountDownLatch(1);
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            List<GithubCountTarget> batch = invocation.getArgument(2);
+            if (batch.get(0).githubRepoId() > 20L) {
+                inFlight.await(5, TimeUnit.SECONDS);
+                throw HttpClientErrorException.create(
+                        HttpStatus.TOO_MANY_REQUESTS, "rate limited", new HttpHeaders(), new byte[0], null);
+            }
+            inFlight.countDown();
+            BooleanSupplier mustStop = invocation.getArgument(3);
+            long giveUp = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (!mustStop.getAsBoolean() && System.nanoTime() < giveUp) {
+                Thread.onSpinWait();
+            }
+            stoppedInFlight.set(mustStop.getAsBoolean());
+            return totalsOf(batch);
+        });
+
+        access.countActivity(USER_ID, targets(40));
+
+        assertThat(stoppedInFlight.get()).isTrue();
+
+    }
+
+    @Test
+    @DisplayName("내 커밋 이어 받기가 멈춰 결과에서 빠진 저장소도 마지막 로그의 건너뛴 수에 들어간다")
+    void countsPagingStoppedRepositoriesAsSkipped() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            BooleanSupplier mustStop = invocation.getArgument(3);
+            now.set(now.get().plusSeconds(16));
+            mustStop.getAsBoolean();
+            List<GithubCountTarget> batch = invocation.getArgument(2);
+            return totalsOf(batch.subList(0, 1));
+        });
+        Logger accessLog = (Logger) LoggerFactory.getLogger(GithubCollectionAccess.class);
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        accessLog.addAppender(logs);
+
+        try {
+            access.countActivity(USER_ID, targets(3));
+        } finally {
+            accessLog.detachAppender(logs);
+        }
+
+        assertThat(logs.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .contains("개수 세기에 시간이 오래 걸려 저장소 2개는 다음 조회 때 센다");
+
+    }
+
+    @Test
+    @DisplayName("15초 전에 보낸 묶음이 늦게 끝나도 다 셌으면 다음 조회로 미룬다는 경고를 남기지 않는다")
+    void doesNotWarnWhenLateBatchCountsEverything() {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            now.set(now.get().plusSeconds(16));
+            return totalsOf(invocation.getArgument(2));
+        });
+        Logger accessLog = (Logger) LoggerFactory.getLogger(GithubCollectionAccess.class);
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        accessLog.addAppender(logs);
+
+        List<GithubRepositoryCount> counts;
+        try {
+            counts = access.countActivity(USER_ID, targets(3));
+        } finally {
+            accessLog.detachAppender(logs);
+        }
+
+        assertThat(counts).hasSize(3);
+        assertThat(logs.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .noneMatch(message -> message.contains("다음 조회 때 센다"));
+
+    }
+
+    @Test
+    @DisplayName("개수 세기가 끝나면 묶음을 묻던 스레드도 모두 끝난다")
+    void endsBatchThreadsWhenCountingEnds() throws InterruptedException {
+
+        connectionExpiringAt(null);
+        searchesReturn(Map.of(), Map.of());
+        Set<Thread> askers = ConcurrentHashMap.newKeySet();
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            askers.add(Thread.currentThread());
+            return totalsOf(invocation.getArgument(2));
+        });
+
+        access.countActivity(USER_ID, targets(61));
+
+        assertThat(askers).isNotEmpty().doesNotContain(Thread.currentThread());
+        for (Thread asker : askers) {
+            asker.join(5000);
+        }
+        assertThat(askers).noneMatch(Thread::isAlive);
 
     }
 
@@ -157,9 +522,9 @@ class GithubCollectionAccessTest {
 
         connectionExpiringAt(null);
         searchesReturn(Map.of("kakao/gitory", 23, "grow22/algo", 9), Map.of("kakao/gitory", 11));
-        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenReturn(Map.of(
-                100L, new GithubRepositoryTotals(197, 52, 58),
-                200L, new GithubRepositoryTotals(30, 30, 5)));
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenReturn(Map.of(
+                100L, new GithubRepositoryTotals(197, 52, 58, 0),
+                200L, new GithubRepositoryTotals(30, 30, 5, 0)));
 
         List<GithubRepositoryCount> counts = access.countActivity(USER_ID, List.of(
                 new GithubCountTarget(100L, "Kakao", "Gitory"), new GithubCountTarget(200L, "grow22", "algo")));
@@ -171,16 +536,14 @@ class GithubCollectionAccessTest {
     }
 
     @Test
-    @DisplayName("내 머지 커밋은 내 커밋과 전체 커밋에서 같이 빼고, 검색 개수가 더 커도 내 커밋이 0 밑으로 내려가지 않는다")
+    @DisplayName("GraphQL 에서 센 내 머지 커밋을 내 커밋과 전체 커밋에서 같이 뺀다")
     void subtractsOwnMergeCommits() {
 
         connectionExpiringAt(null);
         searchesReturn(Map.of(), Map.of());
-        when(counter.countSearchedCommits(TOKEN, "author:grow22 merge:true"))
-                .thenReturn(Map.of("kakao/gitory", 9, "grow22/algo", 7));
-        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenReturn(Map.of(
-                100L, new GithubRepositoryTotals(197, 52, 58),
-                200L, new GithubRepositoryTotals(10, 5, 0)));
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenReturn(Map.of(
+                100L, new GithubRepositoryTotals(197, 52, 58, 9),
+                200L, new GithubRepositoryTotals(10, 5, 0, 5)));
 
         List<GithubRepositoryCount> counts = access.countActivity(USER_ID, List.of(
                 new GithubCountTarget(100L, "kakao", "gitory"), new GithubCountTarget(200L, "grow22", "algo")));
@@ -197,7 +560,7 @@ class GithubCollectionAccessTest {
 
         connectionExpiringAt(null);
         searchesReturn(Map.of(), Map.of());
-        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any())).thenReturn(Map.of());
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenReturn(Map.of());
 
         access.countActivity(USER_ID, List.of(new GithubCountTarget(100L, "kakao", "gitory")));
 
@@ -216,6 +579,21 @@ class GithubCollectionAccessTest {
 
         List<GithubCountTarget> targets = List.of(new GithubCountTarget(100L, "kakao", "gitory"));
         assertThatThrownBy(() -> access.countActivity(USER_ID, targets)).isInstanceOf(IllegalStateException.class);
+
+    }
+
+    private static List<GithubCountTarget> targets(int count) {
+
+        return LongStream.rangeClosed(1, count)
+                .mapToObj(id -> new GithubCountTarget(id, "grow22", "repo-" + id))
+                .toList();
+
+    }
+
+    private static Map<Long, GithubRepositoryTotals> totalsOf(List<GithubCountTarget> batch) {
+
+        return batch.stream()
+                .collect(Collectors.toMap(GithubCountTarget::githubRepoId, target -> new GithubRepositoryTotals(5, 5, 0, 0)));
 
     }
 

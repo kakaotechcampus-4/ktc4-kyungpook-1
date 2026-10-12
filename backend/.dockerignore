@@ -1,0 +1,5 @@
+.gradle
+build
+docs
+*.md
+compose.yaml

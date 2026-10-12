@@ -55,4 +55,16 @@ describe('draft save safety', () => {
     expect(save.mock.calls.map(([f]) => f.situation)).toEqual(['edit', 'original']);
     expect(result.current.dirty).toBe(false);
   });
+  it('does not treat a revert after an uncertain failure as saved', async () => {
+    const save = vi.fn().mockRejectedValueOnce(new Error('response lost')).mockResolvedValue(null);
+    const { result, rerender } = renderHook(({ value }) => useDraftAutosave(fields(value), save), { initialProps: { value: 'original' } });
+    rerender({ value: 'edit' });
+    await act(async () => { expect(await result.current.flush()).toBe(false); });
+    rerender({ value: 'original' }); // 요청이 서버에 반영됐는지 모르는 채로 사용자가 원문으로 되돌렸다
+    expect(result.current.status).toBe('error');
+    expect(result.current.dirty).toBe(true);
+    await act(async () => { expect(await result.current.flush()).toBe(true); }); // 원문을 보내 서버 상태를 확정한다
+    expect(save).toHaveBeenLastCalledWith(fields('original'));
+    expect(result.current.status).toBe('saved');
+  });
 });

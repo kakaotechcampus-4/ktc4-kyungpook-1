@@ -4,6 +4,7 @@ package com.gitory.backend.job.infra;
 import com.gitory.backend.job.domain.ActiveJobRow;
 import com.gitory.backend.job.domain.AnalysisJob;
 import com.gitory.backend.job.domain.JobState;
+import com.gitory.backend.job.domain.JobType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -19,16 +20,23 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
 
     Optional<AnalysisJob> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
-    // 한 레포에서 진행 중인 Job 은 오직 하나뿐이라(uq_job_active) 결과는 최대 1개 반환
-    Optional<AnalysisJob> findByUserRepositoryIdAndStateIn(Long userRepositoryId, List<JobState> states);
+    // 한 레포에서 진행 중인 분석 Job 은 오직 하나뿐이라(uq_job_active) 결과는 최대 1개 반환
+    Optional<AnalysisJob> findByUserRepositoryIdAndTypeAndStateIn(Long userRepositoryId, JobType type, List<JobState> states);
 
     Optional<AnalysisJob> findByPublicIdAndUserId(UUID publicId, Long userId);
 
+    @Query(value = "SELECT public_id FROM user_repository WHERE id = :id", nativeQuery = true)
+    UUID findUserRepositoryPublicId(@Param("id") Long userRepositoryId);
+
     // 다른 워커가 잡고 있는 행은 건너뛰어 같은 Job 을 두 번 꺼내지 않는다
+    // 실행 중인 Job 이 있는 사용자의 Job 도 건너뛰어, 한 사용자의 토큰으로 GitHub 를 동시에 부르지 않는다
+    // 워커는 분석(수집)만 실행하므로 카드 초안 Job 은 꺼내지 않는다
     @Query(value = """
-            SELECT * FROM analysis_job
-            WHERE state = 'QUEUED'
-            ORDER BY started_at
+            SELECT * FROM analysis_job j
+            WHERE j.state = 'QUEUED'
+              AND j.type = 'ANALYZE'
+              AND NOT EXISTS (SELECT 1 FROM analysis_job r WHERE r.user_id = j.user_id AND r.state = 'RUNNING')
+            ORDER BY j.started_at
             LIMIT 1
             FOR UPDATE SKIP LOCKED
             """, nativeQuery = true)
@@ -49,6 +57,9 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AnalysisJob> findWithLockById(Long id);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<AnalysisJob> findWithLockByState(JobState state);
+
     @Query(value = """
             SELECT j.public_id                      AS jobId,
                    j.state                          AS state,
@@ -64,4 +75,7 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
             ORDER BY j.started_at DESC
             """, nativeQuery = true)
     List<ActiveJobRow> findActiveRowsByUserId(@Param("userId") Long userId, @Param("states") List<String> states);
+
+    // 소유자를 보지 않으므로 남의 Job 인지 가려 거절 기록을 남길 때만 쓴다
+    Optional<AnalysisJob> findByPublicId(UUID publicId);
 }

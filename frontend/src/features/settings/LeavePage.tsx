@@ -22,7 +22,7 @@ export function LeavePage() {
         </div>
       </div>
       <div className="card stack" style={{ gap: 12, padding: '18px 20px' }}>
-        <span className="w-700" style={{ fontSize: 14.5 }}>합의된 3원칙</span>
+        <span className="w-600" style={{ fontSize: 14.5 }}>합의된 3원칙</span>
         {PRINCIPLES.map(([t, d, st]) => (
           <div key={t} className="card row" style={{ gap: 14, padding: '13px 14px', borderRadius: 8, background: st === '미정' ? 'var(--state-open-bg)' : 'var(--bg-paper)' }}>
             <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13, color: st === '미정' ? 'var(--state-open-text)' : undefined }}>{t}</span><span className="t-12 c-2">{d}</span></div>
@@ -31,7 +31,7 @@ export function LeavePage() {
         ))}
       </div>
       <div className="card stack" style={{ gap: 10, padding: '18px 20px' }}>
-        <span className="w-700" style={{ fontSize: 14.5 }}>탈퇴하면</span>
+        <span className="w-600" style={{ fontSize: 14.5 }}>탈퇴하면</span>
         {[['즉시', '로그인 차단 · GitHub 토큰 파기'], ['유예 기간 중', '카드·원본 보관 (복구 가능)'], ['유예 후', '내 카드·되묻기 답변 삭제 · 팀 레포 원본은 유지']].map(([k, v]) => (
           <div key={k} className="row" style={{ gap: 14 }}><Badge kind="NEUTRAL">{k}</Badge><span className="t-12l c-2">{v}</span></div>
         ))}

@@ -181,7 +181,7 @@ class DiffEvidence(StrictRequestModel):
     summary_source: EvidenceSummarySource = Field(
         ...,
         description="DIFF: 모델이 diff를 읽고 쓴 요약. COMMIT_MESSAGE: 모델 요약이 없거나 "
-        "근거 없는 수치가 있어 커밋 메시지 첫 줄로 대신한 값. 신뢰도 계산에 쓰므로 필수",
+        "사용할 수 없어 커밋 메시지 첫 줄로 대신한 값. 신뢰도 계산에 쓰므로 필수",
     )
     technical_points: list[str] = Field(
         default_factory=list,

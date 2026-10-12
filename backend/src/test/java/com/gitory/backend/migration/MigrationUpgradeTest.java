@@ -2,6 +2,7 @@ package com.gitory.backend.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.gitory.backend.support.CandidateFixtures;
 import com.gitory.backend.support.TestFixtures;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 이전 버전 데이터가 들어 있는 DB 에 다음 마이그레이션을 적용해도 실패하지 않고 값이 새 이름으로 바뀌는지 본다
@@ -91,6 +93,112 @@ class MigrationUpgradeTest {
 
         assertThat(jdbc.queryForList("SELECT exclusion_reason FROM git_commit", String.class))
                 .containsExactlyInAnyOrder("MERGE_COMMIT", "BOT");
+    }
+
+    @Test
+    @DisplayName("V12 는 저장된 NOT_OWN 커밋만 제외하지 않은 커밋으로 되돌리고 다른 제외 사유는 그대로 두며 옛 커밋의 이슈 번호는 NULL 로 남긴다")
+    void v12ClearsNotOwnAndLeavesIssueNumbersUnfilled() {
+
+        migrateTo("11");
+        Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
+        List<String> reasons = List.of("BOT", "MERGE_COMMIT", "LOCKFILE_ONLY", "NOT_OWN");
+        for (int i = 0; i < reasons.size(); i++) {
+            jdbc.update(
+                    "INSERT INTO git_commit (repository_id, sha, is_excluded, exclusion_reason) VALUES (?, ?, TRUE, ?)",
+                    repositoryId, String.valueOf(i).repeat(40), reasons.get(i));
+        }
+        jdbc.update("INSERT INTO git_commit (repository_id, sha) VALUES (?, ?)", repositoryId, "9".repeat(40));
+
+        migrateTo("12");
+
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT exclusion_reason, is_excluded, issue_numbers IS NULL AS unfilled FROM git_commit ORDER BY sha");
+        assertThat(rows).extracting(row -> row.get("exclusion_reason"))
+                .containsExactly("BOT", "MERGE_COMMIT", "LOCKFILE_ONLY", null, null);
+        assertThat(rows).extracting(row -> row.get("is_excluded"))
+                .containsExactly(true, true, true, false, false);
+        assertThat(rows).extracting(row -> row.get("unfilled")).containsOnly(true);
+
+    }
+
+    @Test
+    @DisplayName("V14 는 후보 상태 PROPOSED·CONFIRMED 를 NEW 로 바꾸고 USED·EXCLUDED 와 종류 PR·COMMIT_CLUSTER 는 그대로 둔다")
+    void v14MovesCandidateStatusToScreenValues() {
+
+        migrateTo("12");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        CandidateFixtures candidates = new CandidateFixtures(jdbc);
+        candidates.insertCandidate(userRepositoryId, "PR", 1, "PROPOSED");
+        candidates.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "CONFIRMED");
+        candidates.insertCandidate(userRepositoryId, "PR", 2, "USED");
+        candidates.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "EXCLUDED");
+
+        migrateTo("14");
+
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT source_type, status FROM candidate ORDER BY id");
+        assertThat(rows).extracting(row -> row.get("status"))
+                .containsExactly("NEW", "NEW", "USED", "EXCLUDED");
+        assertThat(rows).extracting(row -> row.get("source_type"))
+                .containsExactly("PR", "COMMIT_CLUSTER", "PR", "COMMIT_CLUSTER");
+
+    }
+
+    @Test
+    @DisplayName("V14 는 CONFIRMED 였던 후보만 손댄 표시를 켜고 나머지 후보의 표시는 그대로 둔다")
+    void v14MarksConfirmedCandidatesAsUserModified() {
+
+        migrateTo("12");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        CandidateFixtures candidates = new CandidateFixtures(jdbc);
+        for (String status : List.of("PROPOSED", "CONFIRMED", "USED", "EXCLUDED")) {
+            Long candidateId = candidates.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, status);
+            if (status.equals("USED")) {
+                jdbc.update("UPDATE candidate SET is_user_modified = TRUE WHERE id = ?", candidateId);
+            }
+        }
+        Long modifiedId = candidates.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "PROPOSED");
+        jdbc.update("UPDATE candidate SET is_user_modified = TRUE WHERE id = ?", modifiedId);
+
+        migrateTo("14");
+
+        List<Map<String, Object>> rows = jdbc.queryForList("SELECT status, is_user_modified FROM candidate ORDER BY id");
+        assertThat(rows).extracting(row -> row.get("status"))
+                .containsExactly("NEW", "NEW", "USED", "EXCLUDED", "NEW");
+        assertThat(rows).extracting(row -> row.get("is_user_modified"))
+                .containsExactly(false, true, true, false, true);
+
+    }
+
+    @Test
+    @DisplayName("V14 는 옛 후보의 PR·이슈 번호 목록을 빈 목록으로, 파일 수·리뷰 코멘트 수를 0 으로 두고 ref·기간·코드 비율은 비우며 옛 후보 커밋의 표시 경로는 빈 글자로 둔다")
+    void v14FillsNewColumnsOfOldRows() {
+
+        migrateTo("12");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, repositoryId);
+        CandidateFixtures candidates = new CandidateFixtures(jdbc);
+        Long candidateId = candidates.insertCandidate(userRepositoryId, "PR", 42, "PROPOSED");
+        Long commitId = jdbc.queryForObject("INSERT INTO git_commit (repository_id, sha) VALUES (?, ?) RETURNING id",
+                Long.class, repositoryId, "a".repeat(40));
+        candidates.insertCandidateCommit(candidateId, commitId);
+
+        migrateTo("14");
+
+        Map<String, Object> candidate = jdbc.queryForMap(
+                "SELECT cardinality(pull_request_numbers) AS prs, cardinality(issue_numbers) AS issues, file_count,"
+                        + " review_comment_count, source_ref, span_days, code_ratio FROM candidate");
+        assertThat(candidate.get("prs")).isEqualTo(0);
+        assertThat(candidate.get("issues")).isEqualTo(0);
+        assertThat(candidate.get("file_count")).isEqualTo(0);
+        assertThat(candidate.get("review_comment_count")).isEqualTo(0);
+        assertThat(candidate.get("source_ref")).isNull();
+        assertThat(candidate.get("span_days")).isNull();
+        assertThat(candidate.get("code_ratio")).isNull();
+        assertThat(jdbc.queryForObject("SELECT display_path FROM candidate_commit", String.class)).isEmpty();
+
     }
 
     private void migrateTo(String version) {

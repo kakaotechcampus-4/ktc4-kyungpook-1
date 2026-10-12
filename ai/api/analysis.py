@@ -130,8 +130,8 @@ async def collect_diff_evidence(
     summary="A 확정 경험의 STAR 초안 생성",
     description=(
         "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. "
-        "근거 커밋이 없거나 입력에 없는 수치를 쓴 문장은 비우고 removed_claims에 남깁니다. "
-        "비운 칸은 insufficient_reason_code(NO_EVIDENCE·UNSOURCED_NUMBER·TIMEOUT)와 함께 missing_fields로 반환하며 "
+        "근거 커밋과 확인 답변이 없는 문장은 비우고 removed_claims에 남깁니다. "
+        "비운 칸은 insufficient_reason_code(NO_EVIDENCE·TIMEOUT)와 함께 missing_fields로 반환하며 "
         "B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다."
     ),
     responses={503: LLM_UNAVAILABLE_RESPONSE},

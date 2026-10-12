@@ -2,7 +2,11 @@ package com.gitory.backend.job.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.support.TestFixtures;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +18,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -45,6 +50,9 @@ class JobQueryServiceTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @MockitoBean
+    AuditLog auditLog;
+
     private TestFixtures fixtures;
 
     private Long myUserId;
@@ -72,6 +80,9 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
 
+        UUID userRepositoryPublicId = jdbc.queryForObject(
+                "SELECT public_id FROM user_repository WHERE id = ?", UUID.class, myRepoId);
+
         JobView found = service.load(job.getPublicId(), myUserId);
 
         assertThat(found.jobId()).isEqualTo(job.getPublicId().toString());
@@ -84,10 +95,23 @@ class JobQueryServiceTest {
         assertThat(found.errorCode()).isNull();
         assertThat(found.retryable()).isNull();
         assertThat(found.retryAfterSec()).isNull();
-        assertThat(found.result()).isNull();
+        assertThat(found.result()).isEqualTo(new JobResult(userRepositoryPublicId.toString(), null, null, null));
         assertThat(found.startedAt()).isNotNull();
         assertThat(found.updatedAt()).isNotNull();
         assertThat(found.finishedAt()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("초안(DRAFT) Job 은 result 를 비워 둔다")
+    void leavesDraftJobResultEmpty() {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        jdbc.update("UPDATE analysis_job SET type = 'DRAFT' WHERE public_id = ?", job.getPublicId());
+        em.clear();
+
+        assertThat(service.load(job.getPublicId(), myUserId).result()).isNull();
+
     }
 
     @Test
@@ -106,6 +130,33 @@ class JobQueryServiceTest {
 
         assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId))
                 .isInstanceOf(JobNotFoundException.class);
+    }
+
+    @Test
+    @DisplayName("남의 Job 을 찾으면 요청한 사람과 그 Job 의 내부 id 로 VIEW_JOB 거절 기록을 남긴다")
+    void recordsDeniedViewOfOthersJob() {
+
+        AnalysisJob job = persistJob(othersUserId, othersRepoId, KEY_1);
+
+        assertThatThrownBy(() -> service.load(job.getPublicId(), myUserId))
+                .isInstanceOf(JobNotFoundException.class);
+
+        verify(auditLog).denied(myUserId, AuditAction.VIEW_JOB, job.getId());
+
+    }
+
+    @Test
+    @DisplayName("내 Job 이나 없는 공개 id 로 찾으면 거절 기록을 남기지 않는다")
+    void doesNotRecordMineOrUnknown() {
+
+        AnalysisJob mine = persistJob(myUserId, myRepoId, KEY_1);
+
+        service.load(mine.getPublicId(), myUserId);
+        assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId))
+                .isInstanceOf(JobNotFoundException.class);
+
+        verifyNoInteractions(auditLog);
+
     }
 
     @Test

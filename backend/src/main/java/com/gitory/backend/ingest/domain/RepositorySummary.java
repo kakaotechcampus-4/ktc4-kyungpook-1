@@ -14,6 +14,7 @@ public record RepositorySummary(
         Instant countedAt,
         int commitCount,
         int ownCommitCount,
+        int prCount,
         int ownPrCount,
         int reviewedPrCount) {
 

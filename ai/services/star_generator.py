@@ -21,7 +21,6 @@ from schemas.analysis import (
     StarFieldResult,
 )
 from schemas.common import EmptyReasonCode, StarSlot, StatementConfidence
-from services.evidence_checks import unsupported_metrics
 from services.llm_structured_client import (
     LLMInvalidOutputError,
     LLMNonRetryableError,
@@ -54,7 +53,6 @@ SLOTS: tuple[StarSlot, ...] = ("S", "T", "A", "R")
 
 _REVIEW_REASON = "근거는 있으나 해석이 불확실해 사용자 확인이 필요합니다."
 _NO_EVIDENCE_REASON = "입력에서 확인되는 근거 커밋이나 사용자 답변이 없어 비웠습니다."
-_INVENTED_METRIC_REASON = "입력에서 확인되지 않는 수치가 포함되어 비웠습니다."
 _DEFAULT_EMPTY_REASON = "이 칸을 뒷받침하는 근거를 찾지 못했습니다."
 _TIMEOUT_REASON = "초안 생성 시간이 초과되어 비웠습니다."
 
@@ -229,7 +227,6 @@ class StarGenerator:
     ) -> StarAnalysisResponse:
         by_sha = {item.sha.casefold(): item for item in evidence}
         has_answers = bool(payload["confirmed_answers"])
-        source = _source_text(payload)
         removed_claims: list[str] = []
         used_evidence: list[DiffEvidence] = []
         star: dict[StarSlot, StarFieldResult] = {}
@@ -248,11 +245,6 @@ class StarGenerator:
                 removed_claims.append(text)
                 star[slot] = self._empty(_NO_EVIDENCE_REASON, "NO_EVIDENCE")
                 continue
-            if unsupported_metrics(text, source):
-                removed_claims.append(text)
-                star[slot] = self._empty(_INVENTED_METRIC_REASON, "UNSOURCED_NUMBER")
-                continue
-
             status = field.status
             used_evidence.extend(cited)
             star[slot] = StarFieldResult(
@@ -326,17 +318,6 @@ def _shared_with(target_login: str, cited: list[DiffEvidence]) -> Optional[str]:
         if login and login.casefold() != target and login not in others:
             others.append(login)
     return ", ".join(others) or None
-
-
-def _source_text(payload: dict[str, Any]) -> str:
-    """모델이 실제로 본 근거 문장. SHA와 변경 줄 수(churn)는 숫자가 많아 수치 검사에서 뺀다.
-
-    churn을 넣으면 "+30/-2"의 30 때문에 지어낸 "30%"가 근거 있는 수치로 통과한다.
-    """
-    parts = [payload["title"], *payload["confirmed_answers"]]
-    for item in payload["evidence"]:
-        parts.extend([item["message"], item["summary"], *item["technical_points"]])
-    return "\n".join(parts)
 
 
 def _headline(message: str) -> str:

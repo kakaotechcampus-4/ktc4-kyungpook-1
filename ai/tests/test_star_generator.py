@@ -151,7 +151,7 @@ def test_allows_text_backed_only_by_confirmed_answers() -> None:
     assert result.removed_claims == []
 
 
-def test_removes_claim_with_invented_metric() -> None:
+def test_preserves_cited_numeric_draft_for_user_review() -> None:
     client = _FakeClient(_output(
         R=_field("FILLED", "응답 시간이 40% 줄었다.", [SHA_A]),
         A=_field("FILLED", "재시도를 3회로 제한했다.", [SHA_A]),
@@ -160,9 +160,9 @@ def test_removes_claim_with_invented_metric() -> None:
 
     result = _run(StarGenerator(client), request)
 
-    assert result.star["R"].status == "EMPTY"
-    assert result.star["R"].insufficient_reason_code == "UNSOURCED_NUMBER"
-    assert "응답 시간이 40% 줄었다." in result.removed_claims
+    assert result.star["R"].status == "FILLED"
+    assert result.star["R"].insufficient_reason_code is None
+    assert result.removed_claims == []
     assert result.star["A"].status == "FILLED"
 
 
@@ -268,13 +268,13 @@ def test_pipeline_delegates_star_analysis_to_generator() -> None:
     assert result.star["A"].status == "FILLED"
 
 
-def test_churn_numbers_do_not_support_invented_percentages() -> None:
+def test_does_not_classify_metrics_from_churn() -> None:
     client = _FakeClient(_output(R=_field("FILLED", "오류율을 30% 줄였다.", [SHA_A])))
 
     result = _run(StarGenerator(client), _request(_evidence(SHA_A, churn="+30/-2")))
 
-    assert result.star["R"].status == "EMPTY"
-    assert result.star["R"].insufficient_reason_code == "UNSOURCED_NUMBER"
+    assert result.star["R"].status == "FILLED"
+    assert result.star["R"].insufficient_reason_code is None
 
 
 def test_deadline_returns_all_slots_empty_with_timeout_code() -> None:

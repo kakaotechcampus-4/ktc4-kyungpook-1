@@ -111,7 +111,7 @@ export function AnalyzePage() {
         </div>
         {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
         <div className="card stack" style={{ gap: 10, padding: '18px 20px' }}>
-          <span className="w-700" style={{ fontSize: 14 }}>이렇게 해 보시겠어요</span>
+          <span className="w-600" style={{ fontSize: 14 }}>이렇게 해 보시겠어요</span>
           {[
             ['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : canRetry ? '분석을 다시 요청해요' : '이 작업은 다시 시도할 수 없어요',
               <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>],

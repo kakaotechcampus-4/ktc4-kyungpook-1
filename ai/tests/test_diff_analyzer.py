@@ -330,7 +330,7 @@ def test_fails_whole_analysis_when_a_batch_fails() -> None:
         _run(DiffAnalyzer(client, DiffAnalysisLimits(max_concurrent_calls=1)), detail)
 
 
-def test_replaces_summary_with_invented_metric_and_drops_such_points() -> None:
+def test_preserves_numeric_draft_for_user_review() -> None:
     client = _FakeClient(_output(
         (SHA_A, "캐시를 추가해 응답 시간을 30% 줄였다.", ["Redis 캐시 적용", "지연 100ms 감소"]),
         (SHA_B, "인터뷰 질문을 최대 2회로 제한했다.", ["턴 상한 상수 2회"]),
@@ -342,10 +342,10 @@ def test_replaces_summary_with_invented_metric_and_drops_such_points() -> None:
 
     evidence = _run(DiffAnalyzer(client), detail)
 
-    # hunk 헤더의 30은 근거가 아니므로 "30%"는 지어낸 수치로 본다.
-    assert evidence[0].summary == "feat: 조회 캐시 추가"
-    assert evidence[0].summary_source == "COMMIT_MESSAGE"
-    assert evidence[0].technical_points == ["Redis 캐시 적용"]
+    # 수치는 사용자 검토 대상으로 남긴다.
+    assert evidence[0].summary == "캐시를 추가해 응답 시간을 30% 줄였다."
+    assert evidence[0].summary_source == "DIFF"
+    assert evidence[0].technical_points == ["Redis 캐시 적용", "지연 100ms 감소"]
     # 입력의 상수 2에서 확인되는 "2회"는 유지한다.
     assert evidence[1].summary == "인터뷰 질문을 최대 2회로 제한했다."
     assert evidence[1].summary_source == "DIFF"

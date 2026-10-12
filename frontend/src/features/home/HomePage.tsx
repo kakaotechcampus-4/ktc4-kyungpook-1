@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowUp, ChevronRight, FolderGit2, MessageSquareQuote, PenLine, Search } from 'lucide-react';
 import { useCards, useMe, useRepos } from '@/api/queries';
@@ -13,7 +13,7 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
 
 /**
- * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 pill → 이어서 하기 → 카드.
+ * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 버튼 → 이어서 하기 → 카드.
  * 프롬프트는 "레포 이름을 치면 바로 그 레포의 사전 고지로" — 레포 고르기 페이지를 건너뛰는 빠른 길.
  */
 export function HomePage() {
@@ -24,6 +24,8 @@ export function HomePage() {
   const [q, setQ] = useState('');
   const [rq, setRq] = useState('');
   const [hi, setHi] = useState(0);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
+  const suggestionId = useId();
   const nav = useNavigate();
 
   const list = useMemo(() => (cards.data ?? []).filter((c) => c.title.toLowerCase().includes(q.toLowerCase())), [cards.data, q]);
@@ -37,8 +39,11 @@ export function HomePage() {
     const pool = t ? xs.filter((r) => `${r.owner}/${r.name}`.toLowerCase().includes(t)) : xs.filter((r) => r.recommended && !r.lastAnalyzedAt);
     return pool.slice(0, 5);
   }, [repos.data, rq, returning]);
+  const activeIndex = Math.max(0, Math.min(hi, sugg.length - 1));
+  const showSuggestions = suggestionsOpen && (!!rq.trim() || sugg.length > 0);
+  const optionId = (index: number) => `${suggestionId}-option-${index}`;
   const go = (id?: string) => {
-    const target = id ?? sugg[hi]?.id;
+    const target = id ?? sugg[activeIndex]?.id;
     if (!target) { nav('/repos'); return; }
     track('repo_selected', { repoId: target, via: 'prompt' });
     nav(`/repos?select=${target}&disclose=1`);
@@ -69,37 +74,48 @@ export function HomePage() {
         </section>
       )}
       <section className="prompt">
-        {returning ? <h2 className="prompt__h">새 경험 정리</h2> : <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>}
+        {returning ? <SectionHead label="새 경험 정리" /> : <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>}
         {!returning && <p className="prompt__sub">레포를 고르면 경험 카드를 만들어 드려요.</p>}
-        <div className="prompt__card" role="search">
+        <div className="prompt__card" role="search" onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setSuggestionsOpen(false);
+        }}>
           <div className="prompt__row">
-            <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); }} placeholder="레포 이름을 적어 보세요" aria-label="레포 검색"
-              onKeyDown={(e) => { if (e.key === 'ArrowDown') { e.preventDefault(); setHi((h) => Math.min(h + 1, sugg.length - 1)); } if (e.key === 'ArrowUp') { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); } if (e.key === 'Enter') void go(); }} />
+            <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); setSuggestionsOpen(true); }} placeholder="레포 이름을 적어 보세요" aria-label="레포 검색"
+              role="combobox" aria-autocomplete="list" aria-expanded={showSuggestions} aria-controls={suggestionId}
+              aria-activedescendant={showSuggestions && sugg.length ? optionId(activeIndex) : undefined}
+              onFocus={() => setSuggestionsOpen(true)}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
+                if (e.key === 'Escape') { e.preventDefault(); setSuggestionsOpen(false); }
+                if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && sugg.length) {
+                  e.preventDefault(); setSuggestionsOpen(true);
+                  setHi(e.key === 'ArrowDown' ? Math.min(activeIndex + 1, sugg.length - 1) : Math.max(activeIndex - 1, 0));
+                }
+                if (e.key === 'Enter') { e.preventDefault(); void go(); }
+              }} />
             <button type="button" className="prompt__go" onClick={() => void go()} aria-label="이 레포로 시작" disabled={!sugg.length}><ArrowUp size={18} /></button>
           </div>
-          {(rq.trim() || sugg.length > 0) && (
+          {showSuggestions && (
             <div className="prompt__list">
-              {sugg.length === 0
-                ? <p className="prompt__none">그런 이름의 레포가 없어요</p>
-                : (
-                  <ul className="prompt__sugg" role="listbox" aria-label="레포 제안">
-                    {sugg.map((r, i) => (
-                      <li key={r.id}>
-                        <button type="button" role="option" aria-selected={i === hi} onMouseEnter={() => setHi(i)} onClick={() => go(r.id)}>
-                          <FolderGit2 size={15} className="prompt__sugg-icon" />
-                          <span className="prompt__sugg-name">{r.owner} / {r.name}</span>
-                          <span className="prompt__sugg-meta">내 커밋 {r.contribution.mine} · 팀 {r.contribution.team}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              {sugg.length === 0 && <p className="prompt__none" role="status">{repos.isPending ? '레포를 불러오는 중이에요' : repos.isError ? '레포를 불러오지 못했어요' : '그런 이름의 레포가 없어요'}</p>}
+              <ul id={suggestionId} className="prompt__sugg" role="listbox" aria-label="레포 제안">
+                {sugg.map((r, i) => (
+                  <li key={r.id} role="presentation">
+                    <button id={optionId(i)} type="button" role="option" tabIndex={-1} aria-selected={i === activeIndex}
+                      onMouseEnter={() => setHi(i)} onPointerDown={(e) => e.preventDefault()} onClick={() => go(r.id)}>
+                      <FolderGit2 size={15} className="prompt__sugg-icon" />
+                      <span className="prompt__sugg-name">{r.owner} / {r.name}</span>
+                      <span className="prompt__sugg-meta">내 커밋 {r.contribution.mine} · 팀 {r.contribution.team}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>
         <div className="prompt__chips">
-          <Link to="/repos" className="pill"><FolderGit2 size={14} /> 레포 고르기</Link>
-          <Link to="/cards/new" className="pill"><PenLine size={14} /> 직접 작성</Link>
+          <Link to="/repos" className="btn btn--outline"><FolderGit2 size={14} /> 레포 고르기</Link>
+          <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
         </div>
       </section>
 

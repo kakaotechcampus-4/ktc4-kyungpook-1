@@ -1,0 +1,179 @@
+{
+  "case": "Spring이 내 커밋과 PR·이슈 문맥을 보내고 AI가 같은 기능 작업을 경험 후보로 묶는다",
+  "spring_to_ai": {
+    "request": {
+      "repository_id": "123",
+      "target_login": "grow22",
+      "commits": [
+        {
+          "sha": "3f2a9c1e7b4d58f60a1c2e3d4b5f6a7980b1c2d3",
+          "repository_id": 456789,
+          "message": "feat: 세션 테이블에 인덱스 추가 (#42)",
+          "author_login": "grow22",
+          "author_name": "Grow",
+          "author_email": null,
+          "authored_at": "2026-09-20T18:00:00+09:00",
+          "parent_count": 1,
+          "additions": 40,
+          "deletions": 3,
+          "changed_files": 2,
+          "files": [
+            {
+              "path": "backend/src/main/resources/db/migration/V3__session_index.sql",
+              "status": "ADDED",
+              "additions": 12,
+              "deletions": 0,
+              "patch": null
+            },
+            {
+              "path": "backend/src/main/java/com/gitory/session/SessionRepository.java",
+              "status": "MODIFIED",
+              "additions": 28,
+              "deletions": 3,
+              "patch": null
+            }
+          ],
+          "pull_request_number": 17,
+          "issue_numbers": [42],
+          "is_excluded": null,
+          "exclusion_reason": null
+        },
+        {
+          "sha": "8c41d07e2f9b3a6c5d1e0f2a4b6c8d0e1f3a5b7c",
+          "repository_id": 456789,
+          "message": "refactor: 세션 조회 쿼리를 리포지터리로 옮김",
+          "author_login": "grow22",
+          "author_name": "Grow",
+          "author_email": null,
+          "authored_at": "2026-09-21T10:30:00+09:00",
+          "parent_count": 1,
+          "additions": 25,
+          "deletions": 18,
+          "changed_files": 2,
+          "files": [
+            {
+              "path": "backend/src/main/java/com/gitory/session/SessionRepository.java",
+              "status": "MODIFIED",
+              "additions": 20,
+              "deletions": 2,
+              "patch": null
+            },
+            {
+              "path": "backend/src/main/java/com/gitory/session/SessionService.java",
+              "status": "MODIFIED",
+              "additions": 5,
+              "deletions": 16,
+              "patch": null
+            }
+          ],
+          "pull_request_number": 17,
+          "issue_numbers": [],
+          "is_excluded": null,
+          "exclusion_reason": null
+        },
+        {
+          "sha": "d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4",
+          "repository_id": 456789,
+          "message": "fix: 로그인 뒤 원래 페이지로 돌아가게 수정",
+          "author_login": "grow22",
+          "author_name": "Grow",
+          "author_email": null,
+          "authored_at": "2026-09-23T08:15:00+09:00",
+          "parent_count": 1,
+          "additions": 9,
+          "deletions": 2,
+          "changed_files": 1,
+          "files": [
+            {
+              "path": "frontend/src/features/auth/LoginCallback.tsx",
+              "status": "MODIFIED",
+              "additions": 9,
+              "deletions": 2,
+              "patch": null
+            }
+          ],
+          "pull_request_number": null,
+          "issue_numbers": [],
+          "is_excluded": null,
+          "exclusion_reason": null
+        },
+        {
+          "sha": "0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c",
+          "repository_id": 456789,
+          "message": "chore: 빌드 결과물 갱신",
+          "author_login": "grow22",
+          "author_name": "Grow",
+          "author_email": null,
+          "authored_at": "2026-09-23T09:00:00+09:00",
+          "parent_count": 1,
+          "additions": 1,
+          "deletions": 1,
+          "changed_files": 1,
+          "files": [
+            {
+              "path": "frontend/dist/assets/index.min.js",
+              "status": "MODIFIED",
+              "additions": 1,
+              "deletions": 1,
+              "patch": null
+            }
+          ],
+          "pull_request_number": null,
+          "issue_numbers": [],
+          "is_excluded": null,
+          "exclusion_reason": null
+        }
+      ],
+      "pull_requests": [
+        {
+          "number": 17,
+          "title": "세션 조회 성능 개선",
+          "body_excerpt": "세션 테이블에 인덱스를 추가하고 조회 쿼리를 정리합니다. Resolves #42",
+          "linked_issue_numbers": [42]
+        }
+      ],
+      "issues": [
+        {
+          "number": 42,
+          "title": "로그인 뒤 첫 화면이 느립니다",
+          "body_excerpt": "세션 조회에 3초 넘게 걸립니다."
+        }
+      ],
+      "collection_partial": false
+    }
+  },
+  "ai_to_spring": {
+    "data": {
+      "verdict": "OK",
+      "candidates": [
+        {
+          "group_key": "pr:17",
+          "source_type": "PR",
+          "source_ref": "#17",
+          "pull_request_number": 17,
+          "pull_request_numbers": [17],
+          "issue_numbers": [42],
+          "title": "세션 조회 인덱스 추가와 쿼리 정리",
+          "reason": "세션 테이블에 인덱스를 만들고 조회 쿼리를 리포지터리로 옮긴 커밋 2개가 있습니다.",
+          "score": 0.7037,
+          "low_card_worth": false,
+          "commit_shas": ["3f2a9c1e7b4d58f60a1c2e3d4b5f6a7980b1c2d3", "8c41d07e2f9b3a6c5d1e0f2a4b6c8d0e1f3a5b7c"]
+        },
+        {
+          "group_key": "cluster:2026-09-23:d5e6f7a8",
+          "source_type": "COMMIT_CLUSTER",
+          "source_ref": "2026-09-23",
+          "pull_request_number": null,
+          "pull_request_numbers": [],
+          "issue_numbers": [],
+          "title": "로그인 뒤 원래 페이지로 돌아가기",
+          "reason": "로그인 콜백에서 돌아갈 경로를 고친 커밋 1개가 있습니다.",
+          "score": 0.3799,
+          "low_card_worth": true,
+          "commit_shas": ["d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4"]
+        }
+      ],
+      "excluded_commit_shas": ["0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c"]
+    }
+  }
+}

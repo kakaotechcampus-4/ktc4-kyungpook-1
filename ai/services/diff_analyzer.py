@@ -1,7 +1,7 @@
 """확정된 경험의 diff를 LLM 입력용 근거로 압축한다.
 
 전처리(비밀값 가리기·생성·민감 파일 제외·patch 상한)와 후처리(입력에 없는 SHA 제거·
-근거 없는 수치 제거·누락 커밋 보충·길이 제한)는 코드로 확정하고, 변경 의도 요약만 LLM에 맡긴다.
+누락 커밋 보충·길이 제한)는 코드로 확정하고, 변경 의도 요약만 LLM에 맡긴다.
 프롬프트와 입력 형식은 ``evals/tasks/diff_summary.py`` 모델 비교에서 검증한 것과 같다.
 """
 
@@ -17,7 +17,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.analysis import DiffEvidence
 from schemas.collection import CandidateCommitDetail, CandidateDetailResult, CandidateFileDiff
-from services.evidence_checks import unsupported_metrics
 from services.llm_structured_client import (
     LLMContentFilterError,
     LLMInvalidOutputError,
@@ -324,12 +323,10 @@ class DiffAnalyzer:
 
         evidence = []
         for commit, sent in zip(commits, payload["commits"]):
-            source = _source_text(payload["title"], sent)
             item = summaries.get(commit.sha.casefold())
             summary = self._clean_summary(item.summary) if item else None
-            points = self._clean_points(item.technical_points, source) if item else []
-            # 입력에 없는 수치(성능·결과)를 지어낸 요약은 쓰지 않는다. 검증된 포인트는 남긴다.
-            if not summary or unsupported_metrics(summary, source):
+            points = self._clean_points(item.technical_points) if item else []
+            if not summary:
                 evidence.append(self._fallback(commit, sent, points))
                 continue
             evidence.append(
@@ -364,11 +361,11 @@ class DiffAnalyzer:
     def _clean_summary(self, text: str) -> str:
         return _clip(redact_secrets(" ".join(text.split())), self._limits.max_summary_chars)
 
-    def _clean_points(self, points: list[str], source: str) -> list[str]:
+    def _clean_points(self, points: list[str]) -> list[str]:
         cleaned: list[str] = []
         for point in points:
             text = _clip(redact_secrets(" ".join(point.split())), self._limits.max_technical_point_chars)
-            if text and text not in cleaned and not unsupported_metrics(text, source):
+            if text and text not in cleaned:
                 cleaned.append(text)
         return cleaned[: self._limits.max_technical_points]
 
@@ -449,15 +446,6 @@ def _files_payload(
 def _size(payload: dict[str, Any]) -> int:
     """모델에 실제로 보내는 JSON 글자 수."""
     return len(json.dumps(payload, ensure_ascii=False))
-
-
-def _source_text(title: str, commit_payload: dict[str, Any]) -> str:
-    """모델이 실제로 본 근거. SHA와 변경 줄 수는 숫자가 많아 수치 검사에서 뺀다."""
-    parts = [title, commit_payload["message"]]
-    for file in commit_payload["files"]:
-        parts.append(file["path"])
-        parts.append(file["patch"] or "")
-    return "\n".join(parts)
 
 
 def _churn(commit: CandidateCommitDetail) -> str:

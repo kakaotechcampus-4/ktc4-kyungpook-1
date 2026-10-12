@@ -92,6 +92,11 @@ class RepositoryCollectionRequest(StrictModel):
         default_factory=list,
         description="비어 있으면 repository.default_branch만 수집한다.",
     )
+    known_commit_shas: list[CommitSha] = Field(
+        default_factory=list,
+        max_length=10_000,
+        description="Spring이 이 연결 저장소에서 이미 수집한 commit SHA. AI는 상세 조회를 생략한다.",
+    )
 
     @model_validator(mode="after")
     def normalize_branches(self) -> "RepositoryCollectionRequest":
@@ -104,6 +109,14 @@ class RepositoryCollectionRequest(StrictModel):
             if value not in normalized:
                 normalized.append(value)
         self.branches = normalized
+        unique_shas: list[str] = []
+        seen: set[str] = set()
+        for sha in self.known_commit_shas:
+            key = sha.casefold()
+            if key not in seen:
+                seen.add(key)
+                unique_shas.append(sha)
+        self.known_commit_shas = unique_shas
         return self
 
     @property
@@ -264,6 +277,10 @@ class RepositoryCollectionResult(StrictModel):
     """Spring을 거쳐 A의 후보 그룹화·STAR 분석으로 전달할 수집 결과."""
 
     user_repository_id: PositiveInt
+    head_sha: Optional[CommitSha] = Field(
+        None,
+        description="기본 브랜치(없으면 첫 수집 브랜치)에서 이번 수집이 확인한 최신 커밋 SHA.",
+    )
     commits: list[CollectedCommit] = Field(default_factory=list)
     pull_requests: list[CollectedPullRequest] = Field(default_factory=list)
     issues: list[CollectedIssue] = Field(default_factory=list)

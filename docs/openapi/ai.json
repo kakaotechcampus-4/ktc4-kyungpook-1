@@ -1164,7 +1164,7 @@
             "type": "string"
           },
           "summary_source": {
-            "description": "DIFF: 모델이 diff를 읽고 쓴 요약. COMMIT_MESSAGE: 모델 요약이 없거나 근거 없는 수치가 있어 커밋 메시지 첫 줄로 대신한 값. 신뢰도 계산에 쓰므로 필수",
+            "description": "DIFF: 모델이 diff를 읽고 쓴 요약. COMMIT_MESSAGE: 모델 요약이 없거나 사용할 수 없어 커밋 메시지 첫 줄로 대신한 값. 신뢰도 계산에 쓰므로 필수",
             "enum": [
               "DIFF",
               "COMMIT_MESSAGE"
@@ -2413,6 +2413,18 @@
             "title": "Branches",
             "type": "array"
           },
+          "known_commit_shas": {
+            "description": "Spring이 이 연결 저장소에서 이미 수집한 commit SHA. AI는 상세 조회를 생략한다.",
+            "items": {
+              "maxLength": 40,
+              "minLength": 7,
+              "pattern": "^[0-9a-fA-F]+$",
+              "type": "string"
+            },
+            "maxItems": 10000,
+            "title": "Known Commit Shas",
+            "type": "array"
+          },
           "repository": {
             "$ref": "#/components/schemas/RepositoryTarget"
           },
@@ -2440,6 +2452,21 @@
             },
             "title": "Commits",
             "type": "array"
+          },
+          "head_sha": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 7,
+                "pattern": "^[0-9a-fA-F]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "기본 브랜치(없으면 첫 수집 브랜치)에서 이번 수집이 확인한 최신 커밋 SHA.",
+            "title": "Head Sha"
           },
           "issues": {
             "items": {
@@ -3195,7 +3222,7 @@
     },
     "/internal/analysis/star": {
       "post": {
-        "description": "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. 근거 커밋이 없거나 입력에 없는 수치를 쓴 문장은 비우고 removed_claims에 남깁니다. 비운 칸은 insufficient_reason_code(NO_EVIDENCE·UNSOURCED_NUMBER·TIMEOUT)와 함께 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다.",
+        "description": "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. 근거 커밋과 확인 답변이 없는 문장은 비우고 removed_claims에 남깁니다. 비운 칸은 insufficient_reason_code(NO_EVIDENCE·TIMEOUT)와 함께 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다.",
         "operationId": "analyze_star_internal_analysis_star_post",
         "requestBody": {
           "content": {

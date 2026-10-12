@@ -43,7 +43,7 @@ export function GithubSettingsPage() {
       {gh && !gh.connected && <Note strong="연결 해제됨 — 새 정리는 다시 연결 후" tone="inset" />}
 
       <section className="settings-section stack" style={{ gap: 4 }}>
-        <div className="row"><span className="w-700" style={{ fontSize: 14.5 }}>허용한 권한</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
+        <div className="row"><span className="w-600" style={{ fontSize: 14.5 }}>허용한 권한</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
         {SCOPES.map((s) => (
           <div key={s.scope} className={`settings-row settings-permission ${s.granted ? '' : 'settings-row--muted'}`}>
             <span className="settings-permission__scope"><code className="scope-code">{s.scope}</code></span>
@@ -54,7 +54,7 @@ export function GithubSettingsPage() {
       </section>
 
       <section className="settings-section stack">
-        <span className="w-700" style={{ fontSize: 14.5, marginBottom: 6 }}>수집 이력</span>
+        <span className="w-600" style={{ fontSize: 14.5, marginBottom: 6 }}>수집 이력</span>
         {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
         {repos.isSuccess && analyzed.length === 0 && <span className="t-12l c-3">아직 정리한 레포가 없습니다.</span>}
         {analyzed.map((r) => (

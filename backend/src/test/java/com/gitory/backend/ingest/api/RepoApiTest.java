@@ -300,6 +300,99 @@ class RepoApiTest {
 
     }
 
+    @Test
+    @DisplayName("로그인하지 않으면 저장소 상세도 401 이다")
+    void detailRequiresLogin() throws Exception {
+
+        mvc.perform(get("/api/repos/{id}", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+
+    }
+
+    @Test
+    @DisplayName("내 저장소 상세는 목록 한 줄과 같은 칸에 분석 전 안내(disclosure)를 더해 내려온다")
+    void detailAddsDisclosureToSummary() throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+
+        Map<String, Object> repo = JsonPath.read(bodyOf(detail(id)), "$.data");
+
+        assertThat(repo).containsOnlyKeys(
+                "id", "owner", "name", "contribution", "prCount", "reviewCount", "language",
+                "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended",
+                "disclosure");
+        detail(id)
+                .andExpect(jsonPath("$.data.id").value(id.toString()))
+                .andExpect(jsonPath("$.data.contribution.mine").value(43))
+                .andExpect(jsonPath("$.data.disclosure.reads[1]").value("카드에는 내 커밋 43개만 써요"))
+                .andExpect(jsonPath("$.data.disclosure.skips.length()").value(3))
+                .andExpect(jsonPath("$.data.disclosure.estimatedSeconds").value(73));
+
+    }
+
+    @Test
+    @DisplayName("상세는 GitHub 을 부르지 않고 DB 에 저장된 값만 읽어, GitHub 목록에서 빠진 저장소도 보여 준다")
+    void detailReadsOnlyDatabase() throws Exception {
+
+        UUID id = connectCounted(100L, "deleted-on-github");
+
+        detail(id)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("deleted-on-github"));
+        verifyNoInteractions(github);
+
+    }
+
+    @Test
+    @DisplayName("남의 저장소·없는 저장소·UUID 가 아닌 id 는 모두 404 NOT_FOUND 다")
+    void detailOfUnknownRepositoryIsNotFound() throws Exception {
+
+        Long otherUserId = fixtures.insertUser(2L, "taehun0208");
+        UUID othersId = UUID.randomUUID();
+        fixtures.insertUserRepository(othersId, otherUserId, fixtures.insertRepository(300L, "team", "team-repo"));
+
+        for (String id : List.of(othersId.toString(), UUID.randomUUID().toString(), "not-a-uuid")) {
+            mvc.perform(get("/api/repos/{id}", id).with(loggedInAs(myUserId)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+        }
+
+    }
+
+    @Test
+    @DisplayName("아직 기여 개수를 못 센 저장소는 내 커밋 수 없이 안내하고 예상 시간은 60초다")
+    void detailOfUncountedRepository() throws Exception {
+
+        UUID id = UUID.randomUUID();
+        fixtures.insertUserRepository(id, myUserId, fixtures.insertRepository(100L, "grow22", "gitory"));
+
+        detail(id)
+                .andExpect(jsonPath("$.data.countedAt").value(nullValue()))
+                .andExpect(jsonPath("$.data.disclosure.reads[1]").value("카드에는 내 커밋만 써요"))
+                .andExpect(jsonPath("$.data.disclosure.estimatedSeconds").value(60));
+
+    }
+
+    private UUID connectCounted(long githubRepoId, String name) {
+
+        UUID id = UUID.randomUUID();
+        fixtures.insertUserRepository(id, myUserId, fixtures.insertRepository(githubRepoId, "grow22", name));
+        jdbc.update("""
+                UPDATE user_repository SET commit_count = 188, own_commit_count = 43, pr_count = 50,
+                       own_pr_count = 23, reviewed_pr_count = 11, counted_at = now()
+                WHERE public_id = ?
+                """, id);
+        return id;
+
+    }
+
+    private ResultActions detail(UUID id) throws Exception {
+
+        return mvc.perform(get("/api/repos/{id}", id).with(loggedInAs(myUserId)));
+
+    }
+
     private static GithubRepositoryResponse repo(long githubRepoId, String owner, String name) {
 
         return new GithubRepositoryResponse(githubRepoId, name, new GithubOwnerResponse(owner),

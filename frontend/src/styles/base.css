@@ -1,11 +1,11 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { font-family: var(--font); color: var(--text-primary); background: var(--bg-canvas); font-synthesis: none; -webkit-font-smoothing: antialiased; text-size-adjust: 100%; }
-body { margin: 0; min-height: 100vh; font-size: 14px; line-height: 20px; word-break: keep-all; overflow-wrap: anywhere; }
-button, input, textarea, select { font: inherit; color: inherit; }
+body { margin: 0; min-height: 100vh; font-size: 14px; line-height: 20px; font-weight: var(--body-weight); letter-spacing: var(--text-tracking); word-break: keep-all; overflow-wrap: anywhere; }
+button, input, textarea, select { font: inherit; color: inherit; letter-spacing: var(--text-tracking); }
 button { cursor: pointer; border: 0; background: none; padding: 0; }
 button:disabled { cursor: not-allowed; }
 a { color: inherit; text-decoration: none; }
-:focus-visible { outline: 0; box-shadow: var(--focus); border-radius: var(--radius-md); }
+:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 3px; }
 h1, h2, h3, h4, p { margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -18,9 +18,25 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .t-18 { font-size: 18px; line-height: 28px; }
 .t-20 { font-size: 20px; line-height: 28px; }
 .t-24 { font-size: 24px; line-height: 32px; }
-.t-28 { font-size: 28px; line-height: 40px; letter-spacing: -.025em; }
-.t-40 { font-size: 40px; line-height: 52px; letter-spacing: -.03em; }
+.t-28 { font-size: 28px; line-height: 40px; letter-spacing: var(--text-tracking); }
+.t-40 { font-size: 40px; line-height: 52px; letter-spacing: var(--text-tracking); }
 .w-500 { font-weight: 500; } .w-600 { font-weight: 600; } .w-700 { font-weight: 700; } .w-800 { font-weight: 800; }
 .c-2 { color: var(--text-secondary); } .c-3 { color: var(--text-tertiary); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Theme-aware scrollbars retain every scrollable surface's native behavior. */
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); }
+/* Non-auto standard properties override the WebKit parts in modern Chromium. */
+@media (forced-colors: none) {
+  @supports selector(::-webkit-scrollbar) {
+    * { scrollbar-width: auto; scrollbar-color: auto; }
+    ::-webkit-scrollbar { width: var(--scrollbar-size); height: var(--scrollbar-size); }
+    ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: var(--scrollbar-track); }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border: 1px solid transparent; border-radius: var(--radius-full); background-clip: padding-box; }
+    ::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); }
+    ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+  }
+}
+@media (forced-colors: active) { * { scrollbar-color: auto; } }
+code, pre, kbd, .kbd, .evidence__sha, .commit-row__sha, .star-key, .stardot__letter { letter-spacing: 0; }

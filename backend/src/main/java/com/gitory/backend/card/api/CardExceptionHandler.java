@@ -7,6 +7,8 @@ import com.gitory.backend.card.domain.CardVersionNotFoundException;
 import com.gitory.backend.card.domain.InvalidCardInputException;
 import com.gitory.backend.card.domain.interview.InterviewAiUnavailableException;
 import com.gitory.backend.card.domain.interview.InterviewCapReachedException;
+import com.gitory.backend.card.domain.interview.InterviewTurnAnsweredException;
+import com.gitory.backend.card.domain.interview.InterviewTurnNotFoundException;
 import com.gitory.backend.card.domain.interview.InvalidInterviewFieldException;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
@@ -74,6 +76,22 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleInterviewAiUnavailable() {
 
         return ApiResponse.fail(ErrorCode.AI_UNAVAILABLE, "질문을 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+
+    }
+
+    @ExceptionHandler(InterviewTurnNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleInterviewTurnNotFound() {
+
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "질문을 찾을 수 없습니다.");
+
+    }
+
+    @ExceptionHandler(InterviewTurnAnsweredException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleInterviewTurnAnswered() {
+
+        return ApiResponse.fail(ErrorCode.INVALID_STATE, "이미 다른 답을 한 질문입니다.");
 
     }
 

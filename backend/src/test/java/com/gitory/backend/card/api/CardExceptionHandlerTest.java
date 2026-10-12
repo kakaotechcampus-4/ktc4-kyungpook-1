@@ -7,6 +7,8 @@ import com.gitory.backend.card.domain.CardVersionNotFoundException;
 import com.gitory.backend.card.domain.InvalidCardInputException;
 import com.gitory.backend.card.domain.interview.InterviewAiUnavailableException;
 import com.gitory.backend.card.domain.interview.InterviewCapReachedException;
+import com.gitory.backend.card.domain.interview.InterviewTurnAnsweredException;
+import com.gitory.backend.card.domain.interview.InterviewTurnNotFoundException;
 import com.gitory.backend.card.domain.interview.InvalidInterviewFieldException;
 import com.gitory.backend.card.domain.interview.InvalidInterviewResponseException;
 import com.gitory.backend.common.api.GlobalExceptionHandler;
@@ -66,6 +68,8 @@ class CardExceptionHandlerTest {
                         "INVALID_REQUEST"),
                 arguments(Named.of("질문 상한", new InterviewCapReachedException()), 409, "INTERVIEW_CAP"),
                 arguments(Named.of("질문할 칸이 잘못됨", new InvalidInterviewFieldException()), 400, "BAD_FIELD"),
+                arguments(Named.of("질문 없음", new InterviewTurnNotFoundException()), 404, "NOT_FOUND"),
+                arguments(Named.of("이미 다른 답을 한 질문", new InterviewTurnAnsweredException()), 409, "INVALID_STATE"),
                 arguments(Named.of("AI 잠시 응답 못 함", new InterviewAiUnavailableException(new RuntimeException())), 503,
                         "AI_UNAVAILABLE"),
                 arguments(Named.of("AI 응답을 쓸 수 없음", new InvalidInterviewResponseException("쓸 수 없는 응답")), 500,

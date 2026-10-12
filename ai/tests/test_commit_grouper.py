@@ -200,8 +200,28 @@ def test_to_candidate_carries_experience_references_and_truncates_text() -> None
     assert len(candidate.title) == 200 and candidate.title.endswith("…")
     assert len(candidate.reason) == 300
 
-    with pytest.raises(ValueError, match="비어"):
-        grouper.to_candidate(experience, "  ", "이유")
+
+
+def test_to_candidate_fills_blank_title_and_reason_with_fallback() -> None:
+    grouper = CommitGrouper()
+    with_pr = grouper.merge(
+        grouper.work_units(
+            [
+                commit("a" * 40, pull_request_number=17),
+                commit("b" * 40, 1, issue_numbers=[42]),
+            ]
+        )
+    )
+    candidate = grouper.to_candidate(with_pr, "  ", "\n\t")
+
+    assert candidate.title == "PR #17 작업"
+    assert candidate.reason == "PR #17, Issue #42에 연결된 커밋 2건을 같은 작업으로 묶은 후보입니다."
+
+    loose = grouper.merge(grouper.work_units([commit("c" * 40)]))
+    candidate = grouper.to_candidate(loose, "", "")
+
+    assert candidate.title == "2026-09-01 커밋 작업"
+    assert candidate.reason == "커밋 1건을 같은 작업으로 묶은 후보입니다."
 
 
 def test_commit_input_rejects_non_positive_pr_and_issue_numbers() -> None:

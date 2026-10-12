@@ -10,11 +10,18 @@ import org.springframework.boot.restclient.test.autoconfigure.RestClientTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.client.ExpectedCount;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.test.web.client.ResponseCreator;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -34,6 +41,7 @@ class GithubCountClientTest {
 
     private static final String TOKEN = "gho_test";
     private static final String VIEWER_ID = "U_kgDOCa4RLw";
+    private static final BooleanSupplier NEVER_STOP = () -> false;
     private static final String GRAPHQL_URL = "https://api.github.com/graphql";
     private static final List<GithubCountTarget> BIG_AND_SMALL_TARGETS = List.of(
             new GithubCountTarget(100L, "grow22", "big"), new GithubCountTarget(200L, "grow22", "small"));
@@ -87,7 +95,7 @@ class GithubCountClientTest {
                         """.formatted(mine(52, 0, false, "c52")), MediaType.APPLICATION_JSON));
 
         Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID, List.of(
-                new GithubCountTarget(100L, "grow22", "gitory"), new GithubCountTarget(200L, "grow22", "empty")));
+                new GithubCountTarget(100L, "grow22", "gitory"), new GithubCountTarget(200L, "grow22", "empty")), NEVER_STOP);
 
         assertThat(totals)
                 .containsEntry(100L, new GithubRepositoryTotals(197, 52, 58, 0))
@@ -104,7 +112,7 @@ class GithubCountClientTest {
                 .andRespond(withSuccess("{\"data\": {\"r0\": null}, \"errors\": [{\"type\": \"NOT_FOUND\", \"path\": [\"r0\"]}]}",
                         MediaType.APPLICATION_JSON));
 
-        assertThat(client.countCommits(TOKEN, VIEWER_ID, List.of(new GithubCountTarget(100L, "grow22", "gone"))))
+        assertThat(client.countCommits(TOKEN, VIEWER_ID, List.of(new GithubCountTarget(100L, "grow22", "gone")), NEVER_STOP))
                 .isEmpty();
 
     }
@@ -127,7 +135,7 @@ class GithubCountClientTest {
         Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID, List.of(
                 new GithubCountTarget(100L, "grow22", "gitory"),
                 new GithubCountTarget(200L, "grow22", "failed"),
-                new GithubCountTarget(300L, "grow22", "empty")));
+                new GithubCountTarget(300L, "grow22", "empty")), NEVER_STOP);
 
         assertThat(totals).containsOnlyKeys(100L, 300L)
                 .containsEntry(100L, new GithubRepositoryTotals(197, 52, 58, 0))
@@ -141,11 +149,43 @@ class GithubCountClientTest {
 
         server.expect(requestTo(GRAPHQL_URL))
                 .andRespond(withSuccess("""
+                        {"data": null, "errors": [{"type": "SERVICE_UNAVAILABLE", "message": "Something went wrong"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        List<GithubCountTarget> batch = List.of(new GithubCountTarget(100L, "grow22", "gitory"));
+        assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, batch, NEVER_STOP)).isInstanceOf(IllegalStateException.class);
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 한도 초과를 200 과 RATE_LIMITED 오류로 알리면 한도 거절 예외를 던지고 한도로 판정한다")
+    void throwsRateLimitedOnOkResponseWithRateLimitedError() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess("""
                         {"data": null, "errors": [{"type": "RATE_LIMITED", "message": "API rate limit exceeded"}]}
                         """, MediaType.APPLICATION_JSON));
 
         List<GithubCountTarget> batch = List.of(new GithubCountTarget(100L, "grow22", "gitory"));
-        assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, batch)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, batch, NEVER_STOP))
+                .isInstanceOfSatisfying(GithubRateLimitedException.class,
+                        rejected -> assertThat(GithubCountClient.isRateLimited(rejected)).isTrue());
+
+    }
+
+    @Test
+    @DisplayName("내 커밋 목록을 이어 받다 GitHub 이 한도 초과를 200 으로 알려도 그 저장소만 빼지 않고 거절을 그대로 던진다")
+    void passesThroughRateLimitedNextPageReportedWithOk() {
+
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess(BIG_AND_SMALL, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(GRAPHQL_URL))
+                .andRespond(withSuccess("""
+                        {"data": null, "errors": [{"type": "RATE_LIMITED", "message": "API rate limit exceeded"}]}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS, NEVER_STOP))
+                .isInstanceOf(GithubRateLimitedException.class);
 
     }
 
@@ -186,7 +226,7 @@ class GithubCountClientTest {
                         """, MediaType.APPLICATION_JSON));
 
         Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID,
-                List.of(new GithubCountTarget(100L, "taehun0208", "SnapCal-be")));
+                List.of(new GithubCountTarget(100L, "taehun0208", "SnapCal-be")), NEVER_STOP);
 
         assertThat(totals).containsEntry(100L, new GithubRepositoryTotals(10, 4, 2, 2));
 
@@ -200,7 +240,7 @@ class GithubCountClientTest {
                 .andExpect(jsonPath("$.query").value(containsString("first: 100) {\n      nodes { parents { totalCount } }")))
                 .andRespond(withSuccess("{\"data\": {}}", MediaType.APPLICATION_JSON));
 
-        client.countCommits(TOKEN, VIEWER_ID, List.of(new GithubCountTarget(100L, "grow22", "gitory")));
+        client.countCommits(TOKEN, VIEWER_ID, List.of(new GithubCountTarget(100L, "grow22", "gitory")), NEVER_STOP);
         server.verify();
 
     }
@@ -221,7 +261,7 @@ class GithubCountClientTest {
                 .andExpect(jsonPath("$.variables.after").value("big-100"))
                 .andRespond(withSuccess(historyPage(mine(50, 1, false, "big-150")), MediaType.APPLICATION_JSON));
 
-        Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS);
+        Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS, NEVER_STOP);
 
         assertThat(totals)
                 .containsEntry(100L, new GithubRepositoryTotals(150, 150, 0, 2))
@@ -249,7 +289,7 @@ class GithubCountClientTest {
                 .andRespond(withSuccess(historyPage("{\"totalCount\": 5000}"), MediaType.APPLICATION_JSON));
 
         Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID,
-                List.of(new GithubCountTarget(100L, "grow22", "huge")));
+                List.of(new GithubCountTarget(100L, "grow22", "huge")), NEVER_STOP);
 
         assertThat(totals).containsEntry(100L, new GithubRepositoryTotals(5000, 5000, 0, 10));
         server.verify();
@@ -280,7 +320,7 @@ class GithubCountClientTest {
                 .andRespond(withSuccess(historyPage("{\"totalCount\": 1500}"), MediaType.APPLICATION_JSON));
 
         Map<Long, GithubRepositoryTotals> totals = client.countCommits(TOKEN, VIEWER_ID,
-                List.of(new GithubCountTarget(100L, "grow22", "solo")));
+                List.of(new GithubCountTarget(100L, "grow22", "solo")), NEVER_STOP);
 
         assertThat(totals).containsEntry(100L, new GithubRepositoryTotals(1500, 1500, 0, 0));
         server.verify();
@@ -298,7 +338,7 @@ class GithubCountClientTest {
                         {"data": {"repository": null}, "errors": [{"type": "SERVICE_UNAVAILABLE", "path": ["repository"]}]}
                         """, MediaType.APPLICATION_JSON));
 
-        assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS)).containsOnlyKeys(200L);
+        assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS, NEVER_STOP)).containsOnlyKeys(200L);
 
     }
 
@@ -311,7 +351,60 @@ class GithubCountClientTest {
         server.expect(requestTo(GRAPHQL_URL))
                 .andRespond(withStatus(HttpStatus.BAD_GATEWAY));
 
-        assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS)).containsOnlyKeys(200L);
+        assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS, NEVER_STOP)).containsOnlyKeys(200L);
+
+    }
+
+    @Test
+    @DisplayName("첫 응답을 처리하는 사이 15초가 지나면 내 커밋을 이어 받는 요청을 보내지 않고 그 저장소만 결과에서 뺀다")
+    void stopsPagingWhenTimeLimitPassesAfterFirstAnswer() {
+
+        Instant start = Instant.parse("2026-10-12T00:00:00Z");
+        AtomicReference<Instant> now = new AtomicReference<>(start);
+        AtomicInteger asked = new AtomicInteger();
+        server.expect(ExpectedCount.manyTimes(), requestTo(GRAPHQL_URL))
+                .andRespond(answers(asked, 1, () -> now.set(start.plusSeconds(16)), BIG_AND_SMALL,
+                        historyPage(mine(50, 1, false, "big-150"))));
+        BooleanSupplier timeLimitPassed = () -> !now.get().isBefore(start.plusSeconds(15));
+
+        assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS, timeLimitPassed)).containsOnlyKeys(200L);
+        assertThat(asked.get()).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("다른 묶음이 이미 멈췄으면 묻는 중인 묶음도 내 커밋을 이어 받는 요청을 보내지 않고 그 저장소만 결과에서 뺀다")
+    void stopsPagingWhenAnotherBatchStopped() {
+
+        AtomicBoolean anotherBatchStopped = new AtomicBoolean();
+        AtomicInteger asked = new AtomicInteger();
+        server.expect(ExpectedCount.manyTimes(), requestTo(GRAPHQL_URL))
+                .andRespond(answers(asked, 1, () -> anotherBatchStopped.set(true), BIG_AND_SMALL,
+                        historyPage(mine(50, 1, false, "big-150"))));
+
+        assertThat(client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS, anotherBatchStopped::get))
+                .containsOnlyKeys(200L);
+        assertThat(asked.get()).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("내 커밋 목록을 10번 이어 받은 뒤 멈춰야 하면 내 커밋 수를 묻는 요청도 보내지 않고 그 저장소를 결과에서 뺀다")
+    void stopsBeforeOwnCommitTotalQuery() {
+
+        AtomicBoolean stopped = new AtomicBoolean();
+        AtomicInteger asked = new AtomicInteger();
+        String hugeFirst = """
+                {"data": {"r0": {"pullRequests": {"totalCount": 0},
+                  "defaultBranchRef": {"target": {"oid": "huge-head", "all": {"totalCount": 5000}, "mine": %s}}}}}
+                """.formatted(mine(100, 1, true, "page-1"));
+        server.expect(ExpectedCount.manyTimes(), requestTo(GRAPHQL_URL))
+                .andRespond(answers(asked, 10, () -> stopped.set(true), hugeFirst,
+                        historyPage(mine(100, 1, true, "page-next"))));
+
+        assertThat(client.countCommits(TOKEN, VIEWER_ID, List.of(new GithubCountTarget(100L, "grow22", "huge")), stopped::get))
+                .isEmpty();
+        assertThat(asked.get()).isEqualTo(10);
 
     }
 
@@ -325,7 +418,7 @@ class GithubCountClientTest {
         server.expect(requestTo(GRAPHQL_URL))
                 .andRespond(withStatus(HttpStatus.valueOf(status)));
 
-        assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS))
+        assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS, NEVER_STOP))
                 .isInstanceOfSatisfying(HttpClientErrorException.class,
                         rejected -> assertThat(rejected.getStatusCode().value()).isEqualTo(status));
 
@@ -347,6 +440,18 @@ class GithubCountClientTest {
                 "kakaotechcampus-4/ktc4-kyungpook-1", 100,
                 "grow22/algo", 3));
         server.verify();
+
+    }
+
+    private static ResponseCreator answers(AtomicInteger asked, int stopAt, Runnable stop, String first, String later) {
+
+        return request -> {
+            int number = asked.incrementAndGet();
+            if (number == stopAt) {
+                stop.run();
+            }
+            return withSuccess(number == 1 ? first : later, MediaType.APPLICATION_JSON).createResponse(request);
+        };
 
     }
 

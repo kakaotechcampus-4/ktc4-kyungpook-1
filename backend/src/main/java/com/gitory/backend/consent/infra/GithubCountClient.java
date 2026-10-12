@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 /** GitHub 에서 저장소의 커밋·PR 개수를 센다 */
 @Slf4j
@@ -89,8 +90,12 @@ public class GithubCountClient {
 
     }
 
-    /** 저장소를 한 번에 묻고, 실패했거나 null 로 돌아온 저장소(지워짐·권한 잃음)는 결과에서 빼 다음 조회 때 다시 세게 한다 */
-    Map<Long, GithubRepositoryTotals> countCommits(String token, String viewerId, List<GithubCountTarget> targets) {
+    /**
+     * 저장소를 한 번에 묻고, 실패했거나 null 로 돌아온 저장소(지워짐·권한 잃음)는 결과에서 빼 다음 조회 때 다시 세게 한다
+     * 내 커밋을 이어 받기 전에 mustStop 이 참이면 더 묻지 않고 그 저장소도 결과에서 뺀다
+     */
+    Map<Long, GithubRepositoryTotals> countCommits(String token, String viewerId, List<GithubCountTarget> targets,
+                                                   BooleanSupplier mustStop) {
 
         StringBuilder variables = new StringBuilder("$me: ID!");
         StringBuilder fields = new StringBuilder();
@@ -116,7 +121,7 @@ public class GithubCountClient {
             }
             GithubCountTarget target = targets.get(i);
             JsonNode history = repository.path("defaultBranchRef").path("target");
-            Optional<GithubOwnCommits> own = ownCommits(token, viewerId, target, history);
+            Optional<GithubOwnCommits> own = ownCommits(token, viewerId, target, history, mustStop);
             if (own.isEmpty()) {
                 continue;
             }
@@ -168,7 +173,8 @@ public class GithubCountClient {
      * 목록이 100개를 넘는 저장소만 이어 받고 10번을 넘기면 개수만 따로 물으며, 이어 받기에 실패한 저장소는 이번 결과에서 빼 다음 조회 때 다시 센다
      * 이어 받기와 개수는 첫 질의 때의 맨 위 커밋(oid) 기준으로 물어, 그 사이 push 가 전체 수에는 없고 내 커밋 수에만 들어가지 않게 한다
      */
-    private Optional<GithubOwnCommits> ownCommits(String token, String viewerId, GithubCountTarget target, JsonNode history) {
+    private Optional<GithubOwnCommits> ownCommits(String token, String viewerId, GithubCountTarget target, JsonNode history,
+                                                  BooleanSupplier mustStop) {
 
         String oid = history.path("oid").asString();
         JsonNode mine = history.path("mine");
@@ -177,6 +183,9 @@ public class GithubCountClient {
         JsonNode page = mine;
         try {
             for (int fetched = 1; page.path("pageInfo").path("hasNextPage").asBoolean(false); fetched++) {
+                if (mustStop.getAsBoolean()) {
+                    return Optional.empty();
+                }
                 if (fetched == MAX_HISTORY_PAGES) {
                     log.info("저장소 {}/{} 의 내 커밋이 많아 최근 커밋 안의 머지만 뺀다", target.owner(), target.name());
                     return Optional.of(new GithubOwnCommits(ownCommitTotal(token, viewerId, target, oid), merges));
@@ -236,15 +245,23 @@ public class GithubCountClient {
 
     }
 
+    /** GitHub GraphQL 은 한도 초과도 HTTP 200 과 errors 로 알리므로, 모든 질의가 지나는 이곳에서 한 번에 알아본다 */
     private JsonNode graphql(String token, String query, Map<String, Object> variables) {
 
-        return restClient.post()
+        JsonNode response = restClient.post()
                 .uri("/graphql")
                 .headers(headers -> headers.setBearerAuth(token))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("query", query, "variables", variables))
                 .retrieve()
                 .body(JsonNode.class);
+        for (JsonNode error : response.path("errors")) {
+            if ("RATE_LIMITED".equals(error.path("type").asString(""))) {
+                throw new GithubRateLimitedException("GitHub GraphQL 한도 초과: " + error.path("message").asString(""));
+            }
+        }
+
+        return response;
 
     }
 
@@ -273,11 +290,19 @@ public class GithubCountClient {
 
     }
 
-    /** GitHub 은 2차 한도를 넘으면 403 이나 429 로 거절하고, 거절된 채로 계속 물으면 막히는 시간이 길어진다 */
+    /** GitHub 은 2차 한도를 넘으면 403 이나 429 로 거절하고(GraphQL 은 200 으로도 알린다), 거절된 채로 계속 물으면 막히는 시간이 길어진다 */
     static boolean isRateLimited(RuntimeException failed) {
 
         return failed instanceof HttpClientErrorException.Forbidden
-                || failed instanceof HttpClientErrorException.TooManyRequests;
+                || failed instanceof HttpClientErrorException.TooManyRequests
+                || failed instanceof GithubRateLimitedException;
+
+    }
+
+    /** 토큰이 도중에 무효가 되면 계속 물어도 같은 거절만 받는다 */
+    static boolean isUnauthorized(RuntimeException failed) {
+
+        return failed instanceof HttpClientErrorException.Unauthorized;
 
     }
 }

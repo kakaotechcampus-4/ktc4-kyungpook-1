@@ -21,6 +21,7 @@ from schemas.analysis import (
     StarFieldResult,
 )
 from schemas.common import EmptyReasonCode, StarSlot, StatementConfidence
+from services.evidence_checks import unsupported_metrics
 from services.llm_structured_client import (
     LLMInvalidOutputError,
     LLMNonRetryableError,
@@ -52,6 +53,7 @@ SYSTEM_PROMPT = """당신은 개발자의 커밋 근거로 STAR(상황·책임·
 SLOTS: tuple[StarSlot, ...] = ("S", "T", "A", "R")
 
 _REVIEW_REASON = "근거는 있으나 해석이 불확실해 사용자 확인이 필요합니다."
+_UNSOURCED_NUMBER_REASON = "근거에서 확인되지 않는 수치({metrics})가 있어 사용자 확인이 필요합니다."
 _NO_EVIDENCE_REASON = "입력에서 확인되는 근거 커밋이나 사용자 답변이 없어 비웠습니다."
 _DEFAULT_EMPTY_REASON = "이 칸을 뒷받침하는 근거를 찾지 못했습니다."
 _TIMEOUT_REASON = "초안 생성 시간이 초과되어 비웠습니다."
@@ -246,6 +248,12 @@ class StarGenerator:
                 star[slot] = self._empty(_NO_EVIDENCE_REASON, "NO_EVIDENCE")
                 continue
             status = field.status
+            review_reason = _REVIEW_REASON if status == "NEEDS_REVIEW" else None
+            # 근거에 없는 수치는 지우지 않고 확인 필요로 내린다. 정규식 판정이라 틀려도 사용자가 확인하면 된다.
+            unsupported = unsupported_metrics(text, _metric_source(cited, payload["confirmed_answers"]))
+            if unsupported:
+                status = "NEEDS_REVIEW"
+                review_reason = _UNSOURCED_NUMBER_REASON.format(metrics=", ".join(unsupported))
             used_evidence.extend(cited)
             star[slot] = StarFieldResult(
                 text=text,
@@ -257,7 +265,7 @@ class StarGenerator:
                     )
                     for item in cited
                 ],
-                review_reason=_REVIEW_REASON if status == "NEEDS_REVIEW" else None,
+                review_reason=review_reason,
             )
 
         return StarAnalysisResponse(
@@ -295,6 +303,15 @@ def _cited_evidence(shas: list[str], by_sha: dict[str, DiffEvidence]) -> list[Di
         if item is not None and item not in cited:
             cited.append(item)
     return cited
+
+
+def _metric_source(cited: list[DiffEvidence], answers: list[str]) -> str:
+    """수치 근거로 볼 글. churn(+30/-2)은 변경 줄 수라 결과 수치의 근거로 치지 않는다."""
+    parts: list[str] = []
+    for item in cited:
+        parts.extend([item.message, item.summary, *item.technical_points])
+    parts.extend(answers)
+    return "\n".join(parts)
 
 
 def _confidence(status: str, cited: list[DiffEvidence]) -> StatementConfidence:

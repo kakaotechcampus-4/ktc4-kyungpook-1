@@ -132,7 +132,7 @@ unset GITORY_GITHUB_LIVE_TOKEN
    (`X-GitHub-Token`), 비밀값을 가린 뒤 커밋별 요약·기술 포인트로 정리합니다.
    patch 원문은 응답에 싣지 않습니다. (`services/diff_analyzer.py`)
 2. `POST /internal/analysis/star`: 1의 `evidence`로 STAR 초안을 만들고, 근거 SHA 실재·
-   지어낸 수치를 코드로 검증해 근거 없는 문장은 비웁니다. 비운 칸은 `missing_fields`로
+   근거 없는 문장은 비웁니다. 근거에 없는 수치가 든 문장은 비우지 않고 `NEEDS_REVIEW`로 내립니다. 비운 칸은 `missing_fields`로
    B 인터뷰에 넘깁니다. (`services/star_generator.py`)
 
 LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 읽습니다. 연결 정보는

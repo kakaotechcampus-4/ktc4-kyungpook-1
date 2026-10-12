@@ -151,7 +151,7 @@ def test_allows_text_backed_only_by_confirmed_answers() -> None:
     assert result.removed_claims == []
 
 
-def test_preserves_cited_numeric_draft_for_user_review() -> None:
+def test_marks_unsourced_numeric_draft_for_user_review_without_dropping_it() -> None:
     client = _FakeClient(_output(
         R=_field("FILLED", "응답 시간이 40% 줄었다.", [SHA_A]),
         A=_field("FILLED", "재시도를 3회로 제한했다.", [SHA_A]),
@@ -160,10 +160,42 @@ def test_preserves_cited_numeric_draft_for_user_review() -> None:
 
     result = _run(StarGenerator(client), request)
 
-    assert result.star["R"].status == "FILLED"
+    # 근거에 없는 40% 는 지우지 않고 확인 필요로 내린다.
+    assert result.star["R"].status == "NEEDS_REVIEW"
+    assert result.star["R"].text == "응답 시간이 40% 줄었다."
+    assert result.star["R"].confidence == "LOW"
+    assert "40%" in result.star["R"].review_reason
     assert result.star["R"].insufficient_reason_code is None
     assert result.removed_claims == []
+    assert "R" not in result.missing_fields
+    # 근거에 독립된 숫자 3 이 있어 "3회" 는 그대로 둔다.
     assert result.star["A"].status == "FILLED"
+    assert result.star["A"].review_reason is None
+
+
+@pytest.mark.parametrize(
+    ("text", "summary", "status"),
+    [
+        ("응답 시간을 5% 줄였다.", "응답 시간 15% 개선", "NEEDS_REVIEW"),
+        ("1000건을 한 번에 처리했다.", "배치 크기를 1,000 으로 늘림", "FILLED"),
+        ("OAuth2 배포 설정을 정리했다.", "oauth 설정 정리", "FILLED"),
+        ("v2.0 배포 전에 마이그레이션을 정리했다.", "release v2.0", "FILLED"),
+    ],
+)
+def test_numeric_check_boundaries(text: str, summary: str, status: str) -> None:
+    client = _FakeClient(_output(A=_field("FILLED", text, [SHA_A])))
+
+    result = _run(StarGenerator(client), _request(_evidence(SHA_A, summary=summary)))
+
+    assert result.star["A"].status == status
+
+
+def test_numbers_in_confirmed_answers_support_the_sentence() -> None:
+    client = _FakeClient(_output(R=_field("FILLED", "문의가 30건에서 0건으로 줄었다.", [SHA_A])))
+
+    result = _run(StarGenerator(client), _request(_evidence(SHA_A), answers=["문의가 30건에서 0건이 됐어요"]))
+
+    assert result.star["R"].status == "FILLED"
 
 
 def test_maps_confidence_from_status_and_summary_source() -> None:
@@ -268,12 +300,13 @@ def test_pipeline_delegates_star_analysis_to_generator() -> None:
     assert result.star["A"].status == "FILLED"
 
 
-def test_does_not_classify_metrics_from_churn() -> None:
+def test_churn_does_not_support_a_metric() -> None:
     client = _FakeClient(_output(R=_field("FILLED", "오류율을 30% 줄였다.", [SHA_A])))
 
     result = _run(StarGenerator(client), _request(_evidence(SHA_A, churn="+30/-2")))
 
-    assert result.star["R"].status == "FILLED"
+    # 변경 줄 수 +30 은 결과 수치 30% 의 근거가 아니다.
+    assert result.star["R"].status == "NEEDS_REVIEW"
     assert result.star["R"].insufficient_reason_code is None
 
 

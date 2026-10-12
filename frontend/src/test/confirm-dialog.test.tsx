@@ -31,6 +31,14 @@ it('confirms directly without a self-attestation checkbox and keeps the API payl
   await waitFor(() => expect(confirmed).toHaveBeenCalledWith(result));
   expect(send).toHaveBeenCalledWith(card.id, { edited: false, maskedFields: [] });
 });
+it('describes freezing the current version and matches the returned version number', async () => {
+  vi.spyOn(endpoints, 'confirm').mockResolvedValue(result);
+  const confirmed = mount();
+  expect(screen.getByText(`v${card.version.versionNo} · 현재 버전 확정`)).toBeInTheDocument();
+  expect(result.versionNo).toBe(card.version.versionNo);
+  fireEvent.click(screen.getByRole('button', { name: '확정하기' }));
+  await waitFor(() => expect(confirmed).toHaveBeenCalledWith(expect.objectContaining({ versionNo: card.version.versionNo })));
+});
 it('keeps required STAR fields enforced even when the modal is opened directly', () => {
   const send = vi.spyOn(endpoints, 'confirm');
   mount({ ...card, version: { ...card.version, situation: null } });

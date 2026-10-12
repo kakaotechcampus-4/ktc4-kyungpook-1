@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
@@ -32,6 +32,17 @@ export function CardPage() {
   const [sp, setSp] = useSearchParams();
   const nav = useNavigate();
   const { card: q, job } = useCard(cardId);
+  const mode = sp.get('mode');
+  const previousView = useRef({ cardId, mode });
+  useEffect(() => {
+    const previous = previousView.current;
+    previousView.current = { cardId, mode };
+    // Same observer survives edit → detail. Reconcile ACK-only metadata once on exit,
+    // without blocking navigation or replacing acknowledged writing when GET fails.
+    if (previous.cardId === cardId && previous.mode === 'edit' && mode !== 'edit' && mode !== 'mask' && isDraftMetadataPending(q.data)) {
+      void q.refetch({ cancelRefetch: false }); // Join the save-and-close refresh if already running.
+    }
+  }, [cardId, mode, q.data, q.refetch]);
   const regen = useRegenerateField(cardId);
   const reopen = useReopen(cardId);
   const [justConfirmed, setJustConfirmed] = useState<ConfirmResult | null>(null);
@@ -53,7 +64,6 @@ export function CardPage() {
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
   if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   const card = q.data!;
-  const mode = sp.get('mode');
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
   const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel }];

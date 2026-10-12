@@ -39,7 +39,7 @@ public class CandidateBoardController {
             @Parameter(description = "목록 응답의 저장소 id", schema = @Schema(type = "string", format = "uuid"))
             @PathVariable String id) {
 
-        return ApiResponse.ok(CandidateBoardResponse.from(boards.load(toUuid(id), loginUser.id())));
+        return ApiResponse.ok(CandidateBoardResponse.from(boards.load(toUuid(id), loginUser.id(), loginUser.login())));
 
     }
 

@@ -1,6 +1,8 @@
 package com.gitory.backend.recommend.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.ingest.domain.CollectionRunSummary;
+import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.CommitSummary;
 import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.LastAnalyzedService;
@@ -38,22 +40,31 @@ public class CandidateBoardService {
     private final RepositoryReferenceService repositories;
     private final LastAnalyzedService lastAnalyzed;
     private final CommitSummaryService commitSummaries;
+    private final CollectionStatsService collectionStats;
+    private final CandidateEmptyReasons groupedEmptyReasons;
     private final CandidateRepository candidates;
     private final CandidateBoardCommitRepository candidateCommits;
     private final CandidateGroupingRepository groupings;
     private final UsedCardPort usedCards;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
-    public CandidateBoard load(UUID repositoryId, Long userId) {
+    public CandidateBoard load(UUID repositoryId, Long userId, String login) {
 
         Long userRepositoryId = ownership.findOwnedRepository(repositoryId, userId, AuditAction.VIEW_CANDIDATES)
                 .orElseThrow(CandidateBoardNotFoundException::new);
         List<Candidate> stored = candidates.findByUserRepositoryId(userRepositoryId).stream()
                 .sorted(Candidate.BOARD_ORDER)
                 .toList();
-        CandidateVerdict verdict = CandidateVerdict.of(stored.size(), false);
+        Optional<CollectionRunSummary> latestRun = collectionStats.latestRun(repositoryId, userId);
+        boolean partial = latestRun.map(CollectionRunSummary::partial).orElse(false);
+        CandidateVerdict verdict = CandidateVerdict.of(stored.size(), partial);
+        ReadCoverage readCoverage = partial
+                ? ReadCoverage.of(latestRun.orElseThrow(), collectionStats.counts(repositoryId, userId),
+                        collectionStats.storedCommits(repositoryId, userId))
+                : null;
         if (stored.isEmpty()) {
-            return new CandidateBoard(repositoryId, verdict, emptyReasonsOf(userRepositoryId), List.of());
+            return new CandidateBoard(repositoryId, verdict, partial, readCoverage,
+                    emptyReasonsOf(userRepositoryId, repositoryId, userId, login), List.of());
         }
 
         Map<Long, List<CandidateCommit>> commitsByCandidate = candidateCommits
@@ -66,7 +77,7 @@ public class CandidateBoardService {
                 .toList());
         Optional<RepositoryReference> repository = repositories.find(userRepositoryId);
 
-        return new CandidateBoard(repositoryId, verdict, List.of(), stored.stream()
+        return new CandidateBoard(repositoryId, verdict, partial, readCoverage, List.of(), stored.stream()
                 .map(candidate -> boardCandidateOf(candidate,
                         commitsByCandidate.getOrDefault(candidate.getId(), List.of()), summaries, repository,
                         cardIds.get(candidate.getId())))
@@ -74,8 +85,8 @@ public class CandidateBoardService {
 
     }
 
-    /** 분석하지 않았거나 아직 못 묶은 빈 보드에만 이유를 한 줄 준다 */
-    private List<String> emptyReasonsOf(Long userRepositoryId) {
+    /** 후보가 하나도 없을 때만 이유를 주며, 아직 못 묶은 보드는 한 줄이고 묶었는데 0개인 보드는 분석 Job 과 같은 줄이다 */
+    private List<String> emptyReasonsOf(Long userRepositoryId, UUID repositoryId, Long userId, String login) {
 
         Optional<Instant> analyzedAt = lastAnalyzed.lastAnalyzedAt(userRepositoryId);
         if (analyzedAt.isEmpty()) {
@@ -85,7 +96,7 @@ public class CandidateBoardService {
                 .map(grouping -> !grouping.getGroupedAt().isBefore(analyzedAt.get()))
                 .orElse(false);
 
-        return groupedSince ? List.of() : List.of(NOT_GROUPED_YET);
+        return groupedSince ? groupedEmptyReasons.of(repositoryId, userId, login) : List.of(NOT_GROUPED_YET);
 
     }
 

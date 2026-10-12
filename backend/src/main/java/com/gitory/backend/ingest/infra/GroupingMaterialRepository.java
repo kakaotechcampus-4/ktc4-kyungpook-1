@@ -21,6 +21,7 @@ public interface GroupingMaterialRepository extends Repository<GitCommit, Long> 
             """)
     Optional<GithubRepo> findRepository(@Param("userRepositoryId") Long userRepositoryId);
 
+    // 작성자 로그인이 없는 커밋은 팀 저장소에서 내 것인지 팀원 것인지 알 수 없어 보내지 않고, 빠진 개수는 후보 보드의 이유 줄로 알린다
     // AI 요청은 작성 시각이 꼭 있어야 해서 작성 시각이 없는 커밋은 읽지 않는다
     // 저장된 값이 같으면 요청도 같아야 지난번 요청과 비교해 AI 를 다시 부르지 않을 수 있어 순서를 정해 읽는다
     @Query("""

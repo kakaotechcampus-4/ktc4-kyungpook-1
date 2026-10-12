@@ -31,7 +31,7 @@ public record CardResponse(
         List<Object> droppedFields,
         List<MaskRule> maskRules,
         @Schema(description = "초안을 만드는 중이면 그 Job 이고, 아니면 null") Object generation,
-        int interviewTurns,
+        @Schema(description = "답한 되묻기 질문 수이고, 답하지 않은 질문은 세지 않는다") int interviewTurns,
         Instant confirmedAt,
         Instant createdAt) {
 
@@ -46,29 +46,29 @@ public record CardResponse(
                 card.repository() == null ? null : CardRepoResponse.from(card.repository()),
                 null,
                 CardVersionResponse.from(card),
-                evidenceOf(card.slots()),
+                evidenceOf(card),
                 lowConfidenceOf(card.slots()),
                 List.of(),
                 card.maskRules(),
                 null,
-                0,
+                card.interviewTurns(),
                 card.confirmedAt(),
                 card.createdAt());
 
     }
 
-    private static List<EvidenceResponse> evidenceOf(VersionSlots slots) {
+    private static List<EvidenceResponse> evidenceOf(CardDetail card) {
 
         List<EvidenceResponse> evidence = new ArrayList<>();
         for (StarField field : StarField.values()) {
-            SlotContent slot = slots.slots().get(field);
+            SlotContent slot = card.slots().slots().get(field);
             if (slot == null) {
                 continue;
             }
             if (slot.evidenceType() == EvidenceType.COMMIT) {
                 evidence.addAll(Collections.nCopies(slot.commitIds().size(), EvidenceResponse.commit(field)));
             } else {
-                evidence.add(EvidenceResponse.user(field, slot.evidenceType()));
+                evidence.add(EvidenceResponse.user(field, slot.evidenceType(), card.turnNos().get(field)));
             }
         }
 

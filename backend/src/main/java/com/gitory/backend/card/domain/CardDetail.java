@@ -4,6 +4,7 @@ import com.gitory.backend.ingest.domain.RepositoryReference;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record CardDetail(
@@ -18,5 +19,7 @@ public record CardDetail(
         VersionSlots slots,
         List<MaskRule> maskRules,
         Instant confirmedAt,
-        Instant createdAt) {
+        Instant createdAt,
+        int interviewTurns,
+        Map<StarField, Integer> turnNos) {
 }

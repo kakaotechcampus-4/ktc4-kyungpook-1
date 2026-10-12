@@ -18,7 +18,7 @@ public record CardSummary(
         int evidenceCount,
         int userStatedCount) {
 
-    static CardSummary of(Card card, VersionSlots current) {
+    static CardSummary of(Card card, VersionSlots current, boolean interviewed) {
 
         Map<StarField, StarFieldState> star = new EnumMap<>(StarField.class);
         for (StarField field : StarField.values()) {
@@ -33,10 +33,20 @@ public record CardSummary(
                 card.getCurrentVersion(),
                 star,
                 card.getUpdatedAt(),
-                card.getOrigin() == CardOrigin.MANUAL ? "MANUAL" : null,
+                sourceLabelOf(card, interviewed),
                 card.getPeriod(),
                 evidenceCountOf(current),
                 userStatedCountOf(current));
+
+    }
+
+    private static String sourceLabelOf(Card card, boolean interviewed) {
+
+        if (card.getOrigin() != CardOrigin.MANUAL) {
+            return null;
+        }
+
+        return interviewed ? "INTERVIEW" : "MANUAL";
 
     }
 

@@ -1,7 +1,9 @@
 package com.gitory.backend.card.api;
 
 import com.gitory.backend.card.infra.CardStatementRepository;
+import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.support.InterviewFixtures;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,7 +40,11 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -68,7 +75,11 @@ class CardListApiTest {
     @MockitoSpyBean
     CardStatementRepository statements;
 
+    @MockitoSpyBean
+    InterviewTurnRepository turns;
+
     private TestFixtures fixtures;
+    private InterviewFixtures interviews;
 
     private Long myUserId;
     private Long othersUserId;
@@ -79,6 +90,7 @@ class CardListApiTest {
     void setUp() {
 
         fixtures = new TestFixtures(jdbc);
+        interviews = new InterviewFixtures(jdbc);
         fixtures.clear();
 
         myUserId = fixtures.insertUser(1L, "grow22");
@@ -228,6 +240,72 @@ class CardListApiTest {
     }
 
     @Test
+    @DisplayName("직접 작성 카드는 결과가 ANSWERED 인 질문이 하나라도 있으면 출처 이름이 INTERVIEW 이고, 답하지 않았거나 LATER·SKIPPED·INSUFFICIENT 인 질문뿐이면 MANUAL 이다")
+    void labelsManualCardsWithAnsweredTurnsAsInterview() throws Exception {
+
+        UUID answered = UUID.randomUUID();
+        UUID answeredTwice = UUID.randomUUID();
+        UUID openOnly = UUID.randomUUID();
+        UUID unfinished = UUID.randomUUID();
+        UUID noTurns = UUID.randomUUID();
+        Long answeredCard = fixtures.insertCard(answered, myUserId);
+        interviews.insertAnswered(answeredCard, 1, "S", "답", "TYPED");
+        Long answeredTwiceCard = fixtures.insertCard(answeredTwice, myUserId);
+        interviews.insertAnswered(answeredTwiceCard, 1, "S", "첫 답", "TYPED");
+        interviews.insertTurn(answeredTwiceCard, 2, "T", "FOLLOWUP", "USER", "질문", "ANSWERED", "고른 답", "SELECTED");
+        interviews.insertAsked(fixtures.insertCard(openOnly, myUserId), 1, "S", "EVIDENCE_GAP", "USER", "열린 질문");
+        Long unfinishedCard = fixtures.insertCard(unfinished, myUserId);
+        interviews.insertTurn(unfinishedCard, 1, "S", "EVIDENCE_GAP", "USER", "질문", "LATER", null, null);
+        interviews.insertTurn(unfinishedCard, 2, "T", "EVIDENCE_GAP", "USER", "질문", "SKIPPED", null, null);
+        interviews.insertTurn(unfinishedCard, 3, "A", "EVIDENCE_GAP", "USER", "질문", "INSUFFICIENT", "남은 답", "TYPED");
+        fixtures.insertCard(noTurns, myUserId);
+
+        Map<String, String> labels = labelsOf(bodyOf(getCards()));
+
+        assertThat(labels).containsEntry(answered.toString(), "INTERVIEW")
+                .containsEntry(answeredTwice.toString(), "INTERVIEW")
+                .containsEntry(openOnly.toString(), "MANUAL")
+                .containsEntry(unfinished.toString(), "MANUAL")
+                .containsEntry(noTurns.toString(), "MANUAL");
+
+    }
+
+    @Test
+    @DisplayName("직접 작성 카드가 아닌 카드는 답한 질문이 있어도 출처 이름이 null 이고, 다른 사람의 카드에 달린 답은 내 카드의 출처 이름에 영향을 주지 않는다")
+    void keepsNullLabelOfNonManualCardsAndIgnoresOthersAnswers() throws Exception {
+
+        UUID aiCardId = UUID.randomUUID();
+        UUID myCardId = UUID.randomUUID();
+        Long aiCard = fixtures.insertCard(aiCardId, myUserId);
+        jdbc.update("UPDATE card SET origin = 'AI' WHERE id = ?", aiCard);
+        interviews.insertAnswered(aiCard, 1, "S", "AI 카드에 한 답", "TYPED");
+        fixtures.insertCard(myCardId, myUserId);
+        interviews.insertAnswered(fixtures.insertCard(UUID.randomUUID(), othersUserId), 1, "S", "남의 카드에 한 답", "TYPED");
+
+        Map<String, String> labels = labelsOf(bodyOf(getCards()));
+
+        assertThat(labels).containsEntry(aiCardId.toString(), null).containsEntry(myCardId.toString(), "MANUAL");
+
+    }
+
+    @Test
+    @DisplayName("답한 질문은 카드가 몇 장이든 카드 id 를 묶은 질의 한 번으로 찾고 카드마다 질문을 따로 읽지 않는다")
+    void findsAnsweredTurnsOfEveryCardWithOneQuery() throws Exception {
+
+        for (int index = 1; index <= 4; index++) {
+            Long cardId = fixtures.insertCard(UUID.randomUUID(), myUserId);
+            interviews.insertAnswered(cardId, 1, "S", "답", "TYPED");
+        }
+        clearInvocations(turns);
+
+        getCards().andExpect(status().isOk());
+
+        verify(turns, times(1)).findCardIdsWithAnswer(any());
+        verify(turns, never()).findByCardIdOrderBySeqAsc(any());
+
+    }
+
+    @Test
     @DisplayName("목록 한 줄은 계약의 열두 키에 현재 버전 번호·기간(없으면 null)·카드를 고친 시각을 ISO 문자열로 담는다")
     void carriesVersionPeriodAndUpdatedAt() throws Exception {
 
@@ -340,6 +418,16 @@ class CardListApiTest {
                         .content("{\"situation\":\"" + situation + "\",\"task\":null,\"action\":null,\"result\":null}")
                         .with(loggedInAs(myUserId)).with(csrf()))
                 .andExpect(status().isOk());
+
+    }
+
+    private static Map<String, String> labelsOf(String body) {
+
+        Map<String, String> labels = new HashMap<>();
+        List<Map<String, Object>> cards = JsonPath.read(body, "$.data");
+        cards.forEach(card -> labels.put((String) card.get("id"), (String) card.get("sourceLabel")));
+
+        return labels;
 
     }
 

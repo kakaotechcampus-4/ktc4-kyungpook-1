@@ -168,7 +168,7 @@ class GithubCountClientTest {
 
         List<GithubCountTarget> batch = List.of(new GithubCountTarget(100L, "grow22", "gitory"));
         assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, batch, NEVER_STOP))
-                .isInstanceOfSatisfying(GithubRateLimitedException.class,
+                .isInstanceOfSatisfying(GraphqlRateLimitedException.class,
                         rejected -> assertThat(GithubCountClient.isRateLimited(rejected)).isTrue());
 
     }
@@ -185,7 +185,7 @@ class GithubCountClientTest {
                         """, MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> client.countCommits(TOKEN, VIEWER_ID, BIG_AND_SMALL_TARGETS, NEVER_STOP))
-                .isInstanceOf(GithubRateLimitedException.class);
+                .isInstanceOf(GraphqlRateLimitedException.class);
 
     }
 

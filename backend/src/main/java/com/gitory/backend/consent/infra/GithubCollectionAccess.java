@@ -3,7 +3,9 @@ package com.gitory.backend.consent.infra;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
 import com.gitory.backend.consent.domain.GithubConnection;
+import com.gitory.backend.consent.domain.GithubDisconnectService;
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
+import com.gitory.backend.consent.domain.GithubRateLimitedException;
 import com.gitory.backend.consent.domain.User;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.consent.port.GithubCollectionTarget;
@@ -55,6 +57,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     private final GithubRepositoryClient github;
     private final GithubCountClient counter;
     private final Clock clock;
+    private final GithubDisconnectService disconnects;
 
     @Override
     public JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas) {
@@ -69,15 +72,29 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     }
 
     @Override
+    public void requireUsableConnection(Long userId) {
+
+        activeUser(userId).orElseThrow(GithubNotConnectedException::new);
+        activeToken(userId).orElseThrow(GithubNotConnectedException::new);
+
+    }
+
+    @Override
     public List<GithubRepositoryResponse> repositories(Long userId) {
 
         activeUser(userId).orElseThrow(GithubNotConnectedException::new);
-        String token = activeToken(userId).orElseThrow(GithubNotConnectedException::new);
+        UsableToken token = activeUsableToken(userId).orElseThrow(GithubNotConnectedException::new);
 
         try {
-            return github.fetchRepositories(token);
+            return github.fetchRepositories(token.value());
         } catch (HttpClientErrorException.Unauthorized rejected) {
+            disconnects.revokeRejected(userId, token.encrypted());
             throw new GithubNotConnectedException();
+        } catch (HttpClientErrorException failed) {
+            if (GithubCountClient.isRateLimited(failed)) {
+                throw new GithubRateLimitedException();
+            }
+            throw failed;
         }
 
     }
@@ -209,10 +226,17 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     private Optional<String> activeToken(Long userId) {
 
+        return activeUsableToken(userId).map(UsableToken::value);
+
+    }
+
+    /** 거절받은 토큰이 그사이 재로그인으로 바뀌었는지 가리도록 풀기 전의 암호문을 함께 돌려준다 */
+    private Optional<UsableToken> activeUsableToken(Long userId) {
+
         return connections.findByUserIdAndRevokedAtIsNull(userId)
                 .filter(GithubConnection::isActive)
                 .filter(c -> c.getTokenExpiresAt() == null || c.getTokenExpiresAt().isAfter(Instant.now()))
-                .map(this::decryptOrNull);
+                .flatMap(c -> Optional.ofNullable(decryptOrNull(c)).map(value -> new UsableToken(value, c.getTokenEnc())));
 
     }
 

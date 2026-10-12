@@ -257,7 +257,7 @@ public class GithubCountClient {
                 .body(JsonNode.class);
         for (JsonNode error : response.path("errors")) {
             if ("RATE_LIMITED".equals(error.path("type").asString(""))) {
-                throw new GithubRateLimitedException("GitHub GraphQL 한도 초과: " + error.path("message").asString(""));
+                throw new GraphqlRateLimitedException("GitHub GraphQL 한도 초과: " + error.path("message").asString(""));
             }
         }
 
@@ -295,7 +295,7 @@ public class GithubCountClient {
 
         return failed instanceof HttpClientErrorException.Forbidden
                 || failed instanceof HttpClientErrorException.TooManyRequests
-                || failed instanceof GithubRateLimitedException;
+                || failed instanceof GraphqlRateLimitedException;
 
     }
 

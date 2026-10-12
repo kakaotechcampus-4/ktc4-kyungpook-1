@@ -13,7 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.Optional;
 
 /**
- * GitHub 연결을 해제한다 — 우리 DB 의 토큰을 지우고 GitHub 쪽 앱 권한도 지운다
+ * GitHub 연결을 해제하며, 사용자가 끊으면 우리 DB 의 토큰과 GitHub 쪽 앱 권한을 지우고 GitHub 이 토큰을 거절하면 우리 쪽 연결만 해제한다
  * 사용자가 끊어 달라고 한 것이라, GitHub 요청이 실패해도 DB 의 해제는 되돌리지 않는다
  */
 @Slf4j
@@ -39,6 +39,22 @@ public class GithubDisconnectService {
         } catch (RuntimeException failed) {
             log.warn("사용자 {} 의 GitHub 앱 권한을 지우지 못했다, 우리 쪽 토큰은 이미 지웠다", userId, failed);
         }
+
+    }
+
+    /**
+     * GitHub 이 토큰을 거절했을 때 그 토큰이 든 연결을 해제로 남긴다
+     * 거절받은 뒤 재로그인으로 같은 연결의 토큰이 바뀌었으면 새 토큰을 지우지 않도록 아무것도 하지 않는다
+     * 토큰은 GitHub 에서 이미 무효라 앱 권한 삭제는 부르지 않는다
+     */
+    public void revokeRejected(Long userId, String rejectedTokenEnc) {
+
+        transaction.executeWithoutResult(status -> connections.findWithLockByUserIdAndRevokedAtIsNull(userId)
+                .filter(connection -> rejectedTokenEnc.equals(connection.getTokenEnc()))
+                .ifPresent(connection -> {
+                    connection.revoke();
+                    auditLog.ok(userId, AuditAction.REVOKE, connection.getId());
+                }));
 
     }
 

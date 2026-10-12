@@ -2,6 +2,7 @@ package com.gitory.backend.consent.infra;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -17,7 +18,9 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.gitory.backend.consent.domain.GithubConnection;
+import com.gitory.backend.consent.domain.GithubDisconnectService;
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
+import com.gitory.backend.consent.domain.GithubRateLimitedException;
 import com.gitory.backend.consent.domain.User;
 import com.gitory.backend.consent.port.GithubCountTarget;
 import com.gitory.backend.consent.port.GithubOwnerResponse;
@@ -65,7 +68,9 @@ class GithubCollectionAccessTest {
     private final GithubCountClient counter = mock(GithubCountClient.class);
     private final AtomicReference<Instant> now = new AtomicReference<>(Instant.parse("2026-10-12T00:00:00Z"));
     private final Clock clock = mock(Clock.class);
-    private final GithubCollectionAccess access = new GithubCollectionAccess(users, connections, cipher, null, github, counter, clock);
+    private final GithubDisconnectService disconnects = mock(GithubDisconnectService.class);
+    private final GithubCollectionAccess access =
+            new GithubCollectionAccess(users, connections, cipher, null, github, counter, clock, disconnects);
 
     @BeforeEach
     void setUp() {
@@ -132,14 +137,63 @@ class GithubCollectionAccessTest {
     }
 
     @Test
-    @DisplayName("GitHub 이 토큰을 거절하면(401) 연결이 없는 것과 같은 예외가 난다")
-    void rejectedTokenIsNotConnected() {
+    @DisplayName("복호화할 수 없는 토큰이면 GitHub 을 부르지 않고 예외가 난다")
+    void rejectsUndecryptableToken() {
+
+        when(connections.findByUserIdAndRevokedAtIsNull(USER_ID))
+                .thenReturn(Optional.of(GithubConnection.grant(USER_ID, SCOPES, "not-encrypted", null)));
+
+        assertNotConnected();
+
+    }
+
+    @Test
+    @DisplayName("쓸 수 있는 연결이면 연결 확인은 GitHub 을 부르지 않고 그냥 지나간다")
+    void usableConnectionPassesCheckWithoutCallingGithub() {
 
         connectionExpiringAt(null);
-        when(github.fetchRepositories(TOKEN)).thenThrow(HttpClientErrorException.create(
-                HttpStatus.UNAUTHORIZED, "Unauthorized", new HttpHeaders(), new byte[0], null));
+
+        assertThatCode(() -> access.requireUsableConnection(USER_ID)).doesNotThrowAnyException();
+        verifyNoInteractions(github, counter);
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 토큰을 거절하면(401) 연결이 없는 것과 같은 예외가 나고, 거절받은 토큰의 암호문으로 연결 해제를 요청한다")
+    void rejectedTokenIsNotConnectedAndRevokesThatToken() {
+
+        GithubConnection connection = connectionExpiringAt(null);
+        when(github.fetchRepositories(TOKEN)).thenThrow(githubRejects(HttpStatus.UNAUTHORIZED));
 
         assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(GithubNotConnectedException.class);
+        verify(disconnects).revokeRejected(USER_ID, connection.getTokenEnc());
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 사용 한도로 거절하면(403·429) 한도 예외가 나고 연결은 해제하지 않는다")
+    void rateLimitedIsNotRevoked() {
+
+        connectionExpiringAt(null);
+        when(github.fetchRepositories(TOKEN))
+                .thenThrow(githubRejects(HttpStatus.FORBIDDEN))
+                .thenThrow(githubRejects(HttpStatus.TOO_MANY_REQUESTS));
+
+        assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(GithubRateLimitedException.class);
+        assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(GithubRateLimitedException.class);
+        verifyNoInteractions(disconnects);
+
+    }
+
+    @Test
+    @DisplayName("그 밖의 4xx 는 한도로 보지 않고 그대로 던지며 연결도 해제하지 않는다")
+    void otherClientErrorPassesThrough() {
+
+        connectionExpiringAt(null);
+        when(github.fetchRepositories(TOKEN)).thenThrow(githubRejects(HttpStatus.NOT_FOUND));
+
+        assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(HttpClientErrorException.NotFound.class);
+        verifyNoInteractions(disconnects);
 
     }
 
@@ -151,6 +205,19 @@ class GithubCollectionAccessTest {
         when(github.fetchRepositories(TOKEN)).thenThrow(new HttpServerErrorException(HttpStatus.BAD_GATEWAY));
 
         assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(HttpServerErrorException.class);
+
+    }
+
+    @Test
+    @DisplayName("개수를 세다가 GitHub 이 401 을 줘도 연결 해제는 요청하지 않는다")
+    void countRejectionDoesNotRevoke() {
+
+        connectionExpiringAt(null);
+        when(counter.viewerId(TOKEN)).thenThrow(githubRejects(HttpStatus.UNAUTHORIZED));
+
+        List<GithubCountTarget> targets = List.of(new GithubCountTarget(100L, "kakao", "gitory"));
+        assertThatThrownBy(() -> access.countActivity(USER_ID, targets)).isInstanceOf(HttpClientErrorException.class);
+        verifyNoInteractions(disconnects);
 
     }
 
@@ -306,7 +373,7 @@ class GithubCollectionAccessTest {
                 HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "rate limited", new HttpHeaders(), new byte[0], null),
                 HttpClientErrorException.create(HttpStatus.FORBIDDEN, "rate limited", new HttpHeaders(), new byte[0], null),
                 HttpClientErrorException.create(HttpStatus.TOO_MANY_REQUESTS, "rate limited", new HttpHeaders(), new byte[0], null),
-                new GithubRateLimitedException("API rate limit exceeded"));
+                new GraphqlRateLimitedException("API rate limit exceeded"));
 
     }
 
@@ -317,7 +384,7 @@ class GithubCollectionAccessTest {
         connectionExpiringAt(null);
         searchesReturn(Map.of(), Map.of());
         when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any()))
-                .thenThrow(new GithubRateLimitedException("API rate limit exceeded"));
+                .thenThrow(new GraphqlRateLimitedException("API rate limit exceeded"));
 
         assertThat(access.countActivity(USER_ID, targets(20))).isEmpty();
         verify(counter, times(1)).countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any());
@@ -613,9 +680,16 @@ class GithubCollectionAccessTest {
 
     }
 
+    private static HttpClientErrorException githubRejects(HttpStatus status) {
+
+        return HttpClientErrorException.create(status, status.getReasonPhrase(), new HttpHeaders(), new byte[0], null);
+
+    }
+
     private void assertNotConnected() {
 
         assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(GithubNotConnectedException.class);
+        assertThatThrownBy(() -> access.requireUsableConnection(USER_ID)).isInstanceOf(GithubNotConnectedException.class);
         verifyNoInteractions(github);
 
     }

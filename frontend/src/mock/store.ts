@@ -16,6 +16,7 @@ export const db = {
   interview: clone(seedInterview) as Record<string, Any[]>,
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
+  manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
   seq: 100,
 };
 export const nextId = (p: string) => `${p}_${++db.seq}`;
@@ -23,12 +24,41 @@ export const nextId = (p: string) => `${p}_${++db.seq}`;
 /** STAR 칸 ↔ 저장 필드명. 여기 한 곳에만 둔다 — 흩어지면 한쪽만 고쳐 놓고 조용히 어긋난다. */
 export const STAR = ['S', 'T', 'A', 'R'] as const;
 export const FIELD_KEY: Record<string, string> = { S: 'situation', T: 'task', A: 'action', R: 'result' };
+/** Java CardText의 공백 판정: JS 공백에 Java의 정보 구분자 U+001C–001F를 더한다. */
+export const isCardBlank = (text: string) => /^[\s\u001c-\u001f]*$/u.test(text);
+
+const metadataOf = (c: Any) => clone({ evidence: c.evidence, lowConfidenceFields: c.lowConfidenceFields, droppedFields: c.droppedFields });
+export function captureVersion(c: Any) {
+  c.versions[c.versions.length - 1]._metadata = metadataOf(c);
+}
+export function restoreVersionMetadata(c: Any, version: Any) {
+  const m = clone(version._metadata ?? { evidence: [], lowConfidenceFields: [], droppedFields: [] });
+  c.evidence = m.evidence; c.lowConfidenceFields = m.lowConfidenceFields; c.droppedFields = m.droppedFields;
+}
+/** 오래된 데모 스냅샷에는 현재 근거만 있다. 글이 같은 칸의 알려진 근거만 과거에 복사한다. */
+function hydrateCards() {
+  db.repos.forEach(r => { r.userId ??= db.user.id; });
+  db.cards.forEach(c => {
+    c.userId ??= db.user.id;
+    const current = c.versions[c.versions.length - 1];
+    c.versions.forEach((v: Any) => {
+      v._confirmed ??= c.status === 'CONFIRMED' && v === current;
+      v._metadata ??= {
+        evidence: clone(c.evidence.filter((e: Any) => v[FIELD_KEY[e.field]] != null && v[FIELD_KEY[e.field]] === current[FIELD_KEY[e.field]])),
+        lowConfidenceFields: clone(c.lowConfidenceFields.filter((e: Any) => v[FIELD_KEY[e.field]] != null && v[FIELD_KEY[e.field]] === current[FIELD_KEY[e.field]])),
+        droppedFields: clone(c.droppedFields.filter((e: Any) => !v[FIELD_KEY[e.field]] && !current[FIELD_KEY[e.field]])),
+      };
+    });
+    c.updatedAt ??= c.metadataUpdatedAt && c.metadataUpdatedAt > current.createdAt ? c.metadataUpdatedAt : current.createdAt;
+  });
+}
 
 /** 시드로 되돌린다 — E2E 는 매 실행 전에 부른다 (실서버에는 없는 엔드포인트). */
 export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
-  db.jobs.clear(); db.idem.clear(); db.seq = 100;
+  db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.seq = 100;
+  hydrateCards();
 }
 
 // ───────────────────────────── Job ─────────────────────────────
@@ -213,9 +243,11 @@ export function boardFor(repoId: string) {
 // ───────────────────────────── 카드 ─────────────────────────────
 export function cardView(c: Any) {
   const v = c.versions[c.versions.length - 1];
-  const { versions, ...rest } = c;
+  const { versions, userId, ...rest } = c;
+  const { _metadata, _confirmed, ...version } = v;
   void versions;
-  return { ...rest, version: v };
+  void userId; void _metadata; void _confirmed;
+  return clone({ ...rest, version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.
@@ -227,7 +259,7 @@ export function starStates(c: Any) {
   const out: Any = {};
   STAR.forEach((f) => {
     const text = v[FIELD_KEY[f]];
-    out[f] = !text?.trim() ? 'EMPTY' : c.lowConfidenceFields.some((l: Any) => l.field === f) ? 'NEEDS_REVIEW' : 'FILLED';
+    out[f] = text == null || isCardBlank(text) ? 'EMPTY' : c.lowConfidenceFields.some((l: Any) => l.field === f) ? 'NEEDS_REVIEW' : 'FILLED';
   });
   return out;
 }
@@ -241,31 +273,36 @@ export function cardSummary(c: Any) {
     sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
-    updatedAt: c.metadataUpdatedAt && c.metadataUpdatedAt > v.createdAt ? c.metadataUpdatedAt : v.createdAt,
+    updatedAt: c.updatedAt ?? (c.metadataUpdatedAt && c.metadataUpdatedAt > v.createdAt ? c.metadataUpdatedAt : v.createdAt),
   };
 }
 
 /**
- * 임시 저장 — DRAFT 는 새 버전을 쌓지 않고 같은 버전을 덮어쓴다.
- * 다만 AI 초안(v1)은 잠겨 있다. 처음 손대는 순간에만 USER_EDIT 버전이 한 번 갈라지고, 그 뒤로는 그 버전을 계속 덮는다.
+ * 같은 글은 no-op. 확정되지 않은 USER_EDIT만 덮어쓰며 다른 출처는 새 버전으로 갈라진다.
+ * 칸 글이 분기 직전 버전과 정확히 같으면 그 버전의 근거·턴·확인 표시를 복사한다.
  */
 export function patchDraft(c: Any, fields: Any) {
   let v = c.versions[c.versions.length - 1];
-  if (v.source === 'AI_DRAFT') v = pushVersion(c, 'USER_EDIT', {});
-  (['situation', 'task', 'action', 'result'] as const).forEach((k) => {
-    if (k in fields) v[k] = fields[k] ?? null;
-  });
-  v.createdAt = now();
-  // 사용자가 직접 쓴 칸은 근거가 없어도 된다. 대신 누가 썼는지는 남긴다.
-  STAR.forEach((f) => {
-    const filled = !!v[FIELD_KEY[f]];
-    const hasUser = c.evidence.some((e: Any) => e.field === f && e.authoredBy === 'USER');
-    const hasCommit = c.evidence.some((e: Any) => e.field === f && e.type === 'COMMIT');
-    if (filled && !hasUser && !hasCommit) c.evidence.push({ field: f, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: 0 });
-    if (!filled) c.evidence = c.evidence.filter((e: Any) => !(e.field === f && e.authoredBy === 'USER'));
-  });
-  c.droppedFields = c.droppedFields.filter((d: Any) => !v[FIELD_KEY[d.field]]);
-  return { cardId: c.id, versionNo: v.versionNo, situation: v.situation, task: v.task, action: v.action, result: v.result, savedAt: now() };
+  if (!STAR.every(f => v[FIELD_KEY[f]] === fields[FIELD_KEY[f]])) {
+    captureVersion(c);
+    const overwritable = v.source === 'USER_EDIT' && !v._confirmed;
+    const branch = overwritable ? c.versions[c.versions.length - 2] : v;
+    if (!overwritable) v = pushVersion(c, 'USER_EDIT', {});
+    const metadata: Any = { evidence: [], lowConfidenceFields: [], droppedFields: [] };
+    STAR.forEach(f => {
+      const k = FIELD_KEY[f], text = fields[k]; v[k] = text;
+      if (branch && text === branch[k]) {
+        ['evidence', 'lowConfidenceFields', 'droppedFields'].forEach(key => {
+          metadata[key].push(...clone((branch._metadata?.[key] ?? []).filter((entry: Any) => entry.field === f)));
+        });
+      } else if (text != null) {
+        metadata.evidence.push({ field: f, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: null });
+      }
+    });
+    c.evidence = metadata.evidence; c.lowConfidenceFields = metadata.lowConfidenceFields; c.droppedFields = metadata.droppedFields;
+    v.createdAt = now(); c.updatedAt = v.createdAt; captureVersion(c);
+  }
+  return { cardId: c.id, versionNo: v.versionNo, situation: v.situation, task: v.task, action: v.action, result: v.result, savedAt: v.createdAt };
 }
 
 export function createDraftCards(repoId: string, candidateIds: string[]) {
@@ -320,12 +357,17 @@ function fillDraft(cardId: string, timeout: boolean) {
     c.generation = null;
   }
   if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; }
+  c.updatedAt = v.createdAt; captureVersion(c);
 }
 
 export function pushVersion(c: Any, source: string, fields: Any) {
   const prev = c.versions[c.versions.length - 1];
-  const v = { ...prev, ...fields, versionNo: prev.versionNo + 1, source, createdAt: now() };
+  captureVersion(c);
+  const { _metadata, _confirmed, ...previous } = prev;
+  void _metadata; void _confirmed;
+  const v = { ...previous, ...fields, versionNo: prev.versionNo + 1, source, createdAt: now(), _confirmed: false, _metadata: metadataOf(c) };
   c.versions.push(v);
+  c.updatedAt = v.createdAt;
   return v;
 }
 
@@ -361,6 +403,7 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   c.lowConfidenceFields = c.lowConfidenceFields.filter((d: Any) => d.field !== turn.field);
   c.interviewTurns = db.interview[c.id].filter((t) => t.answer).length;
   if (c.generation?.partial) c.generation = null;
+  captureVersion(c);
   return c;
 }
 
@@ -385,7 +428,7 @@ export function settlePending() {
 export function snapshot(): string {
   return JSON.stringify({
     user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview,
-    jobs: [...db.jobs.values()], idem: [...db.idem.entries()], seq: db.seq,
+    jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], seq: db.seq,
   });
 }
 export function restore(raw: string): boolean {
@@ -397,7 +440,11 @@ export function restore(raw: string): boolean {
     db.jobs.clear();
     (s.jobs ?? []).forEach((j: Any) => db.jobs.set(j.id, j));
     db.idem = new Map(s.idem ?? []);
+    db.manualIdem = new Map(s.manualIdem ?? []);
+    hydrateCards();
     settlePending();
     return true;
   } catch { return false; }
 }
+
+hydrateCards();

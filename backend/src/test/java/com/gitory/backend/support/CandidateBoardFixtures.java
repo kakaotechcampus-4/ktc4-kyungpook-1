@@ -66,6 +66,23 @@ public final class CandidateBoardFixtures {
 
     }
 
+    /** 작성자 로그인과 제외 사유를 정한 커밋을 넣고, 제외 사유가 있으면 제외 표시도 켠다 */
+    public Long insertCommitBy(Long repositoryId, String sha, String authorLogin, String exclusionReason) {
+
+        return jdbc.queryForObject("""
+                INSERT INTO git_commit (repository_id, sha, author_login, authored_at, is_excluded, exclusion_reason)
+                VALUES (?, ?, ?, now(), ?, ?) RETURNING id
+                """, Long.class, repositoryId, sha, authorLogin, exclusionReason != null, exclusionReason);
+
+    }
+
+    public void insertFile(Long commitId, String path) {
+
+        jdbc.update("INSERT INTO commit_file (commit_id, path, status, additions, deletions) VALUES (?, ?, 'MODIFIED', 1, 0)",
+                commitId, path);
+
+    }
+
     public void setCommitMessage(Long commitId, String message) {
 
         jdbc.update("UPDATE git_commit SET message = ? WHERE id = ?", message, commitId);

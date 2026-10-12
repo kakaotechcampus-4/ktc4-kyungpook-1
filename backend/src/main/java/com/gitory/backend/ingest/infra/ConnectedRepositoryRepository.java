@@ -54,6 +54,17 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
                 c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.userId = :userId
+            ORDER BY r.ownerLogin, r.name
+            """)
+    List<RepositorySummary> findAllSummaries(@Param("userId") Long userId);
+
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
+                c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
+                r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
+                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.publicId = :publicId AND c.userId = :userId
             """)
     Optional<RepositorySummary> findSummary(@Param("publicId") UUID publicId, @Param("userId") Long userId);

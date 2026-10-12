@@ -1,5 +1,7 @@
 package com.gitory.backend.ingest.api;
 
+import com.gitory.backend.consent.domain.GithubNotConnectedException;
+import com.gitory.backend.consent.domain.GithubRateLimitedException;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.consent.port.GithubOwnerResponse;
@@ -334,6 +336,32 @@ class RepoCountsApiTest {
     }
 
     @Test
+    @DisplayName("쓸 수 있는 연결이 없어 저장된 목록을 줄 때도 후보 수와 카드 수를 채운다")
+    void storedListFillsCountsWithoutConnection() throws Exception {
+
+        storedListWithOneCandidateAndOneCard();
+        given(github.repositories(anyLong())).willThrow(new GithubNotConnectedException());
+
+        list()
+                .andExpect(jsonPath("$.data[0].candidateCount").value(1))
+                .andExpect(jsonPath("$.data[0].cardCount").value(1));
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 한도로 거절해 저장된 목록을 줄 때도 후보 수와 카드 수를 채운다")
+    void storedListFillsCountsWhenRateLimited() throws Exception {
+
+        storedListWithOneCandidateAndOneCard();
+        given(github.repositories(anyLong())).willThrow(new GithubRateLimitedException());
+
+        list()
+                .andExpect(jsonPath("$.data[0].candidateCount").value(1))
+                .andExpect(jsonPath("$.data[0].cardCount").value(1));
+
+    }
+
+    @Test
     @DisplayName("저장소가 하나도 없는 사용자는 빈 배열을 받고 후보 수·묶은 시각·카드 수 조회는 보내지 않는다")
     void userWithoutRepositoriesGetsEmptyList() throws Exception {
 
@@ -363,6 +391,15 @@ class RepoCountsApiTest {
         assertThat(SqlRecorder.count("select", "from candidate c1_0")).isEqualTo(1);
         assertThat(SqlRecorder.count("select", "from candidate_grouping")).isEqualTo(1);
         assertThat(SqlRecorder.count("select", "from card")).isEqualTo(1);
+
+    }
+
+    private void storedListWithOneCandidateAndOneCard() throws Exception {
+
+        githubReturns(repo(100L, "gitory"));
+        Long connection = connectionOf(listIds().get(0));
+        candidates.insertCandidate(connection, "PR", 7, "NEW");
+        card(connection, true);
 
     }
 

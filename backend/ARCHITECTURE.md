@@ -106,7 +106,7 @@ ktc4-kyungpook-1/
 │     │  ├─ common/api/             ApiResponse · ErrorCode · CursorPage
 │     │  ├─ consent/                연결·동의 경계
 │     │  ├─ ingest/                 수집·정규화·기여 집계   (+ port/)
-│     │  ├─ recommend/              후보 추천 (규칙)
+│     │  ├─ recommend/              후보 저장·보존 (경험 그룹화는 agent)
 │     │  ├─ agent/                  LLM 경계                (+ port/)
 │     │  ├─ card/                   카드·되묻기·근거
 │     │  │  └─ domain/
@@ -138,7 +138,7 @@ ktc4-kyungpook-1/
 
 ## 모듈 경계 — 테스트로 강제되는 것
 
-`ModuleBoundaryTest` 의 8개 규칙이다. 위반 클래스를 넣어 **실제로 발동하는 것까지 확인했다**
+`ModuleBoundaryTest` 의 11개 규칙이다. 위반 클래스를 넣어 **실제로 발동하는 것까지 확인했다**
 (규칙이 클래스가 없어서 조용히 통과하는 상태를 만들지 않는다).
 
 | 규칙 | 왜 |
@@ -147,14 +147,17 @@ ktc4-kyungpook-1/
 | `infra` 는 모듈 내부 전용 | GitHub 클라이언트와 LLM 클라이언트가 새어 나가지 않는다. 바꿀 때 손댈 곳이 한 곳 |
 | `ingest`·`recommend` → `agent` 금지 | 규칙 계층에 모델이 끼면 비용·지연만 늘고 재현성이 떨어진다. 기여 집계도 여기 포함이다 |
 | **`card.domain.evidence` → `agent` 금지** | sha 검증 옆에 모델이 있으면 "모델한테 다시 물어보자"가 자연스러운 수정이 된다. 유령 sha·오귀속이 나온 경로다 |
+| `agent` → 다른 업무 모듈 금지 | 포트 요청·응답을 agent 의 record 로만 주고받는다. agent 가 업무 모듈 타입을 몰라야 나중에 별도 서비스로 떼어도 호출부가 그대로다 |
+| `AiHttpClient` 는 `common`·`consent`·`agent` 만 | 다른 모듈이 agent 포트를 건너뛰고 AI 를 부르지 못한다. consent 는 GitHub 토큰을 모듈 밖으로 내보내지 않으려고 수집 호출을 직접 한다 |
 | **아무도 `job` 을 참조하지 않음** | 오케스트레이션 의존은 한 방향. 역방향이 생기면 job 이 순환의 중심이 된다 |
+| `audit` → 다른 모듈 금지 | 여러 모듈이 audit 을 부르므로, audit 이 다른 모듈을 보면 순환이 생기기 쉽다 |
 | `domain` → `api` 금지 | 도메인이 웹 모양에 끌려가지 않게 |
 | 컨트롤러는 `api` 에만 | 위 규칙이 우회되지 않게 |
 | `api` 가 `@Entity` 참조 금지 | 엔티티가 응답으로 새면 스키마 변경이 곧 계약 변경이 된다 |
 
 ```
 $ ./gradlew test --tests '*ModuleBoundaryTest' --rerun-tasks
-BUILD SUCCESSFUL       ModuleBoundaryTest: tests=8 failures=0 errors=0
+BUILD SUCCESSFUL       ModuleBoundaryTest: tests=11 failures=0 errors=0
 
 # 새 규칙 2개를 겨냥한 위반을 넣는다
 $ ./gradlew test --tests '*ModuleBoundaryTest' --rerun-tasks
@@ -177,7 +180,8 @@ BUILD SUCCESSFUL
         ▼
       job  ─────────── 오케스트레이션. 여기서만 아래를 호출한다 (읽기 전용 조회는 허용 — 아래 참고)
         ├─ 수집·정규화·기여 집계   ingest      (GitHub 을 보는 유일한 곳)
-        └─ 후보 추천 · 순위        recommend   (결정적. LLM 없음)
+        ├─ 경험 그룹화             agent       (LLM. AI 의 경험 그룹화 API 를 부른다)
+        └─ 후보 저장·보존          recommend   (결정적. 사용자가 손댄 후보는 다시 분석해도 지킨다)
         │
    [사람 개입 1] 후보 확정 ── 여기부터 코드 깊이 읽기 비용이 발생한다
         │
@@ -194,7 +198,7 @@ BUILD SUCCESSFUL
 
 **사람 개입이 두 번 있고, 둘 다 되돌리기 비싼 상태 전이다.**
 
-의존 방향은 `job → ingest·recommend·card` 한 방향이다. 역방향은 경계 테스트가 막는다 —
+의존 방향은 `job → ingest·agent·recommend·card` 한 방향이다. 역방향은 경계 테스트가 막는다 —
 그게 뚫리면 분석 흐름을 바꿀 때마다 전 모듈이 흔들린다.
 읽기 전용 조회는 허용한다 — `card` 는 `ingest`·`recommend` 를 그 모듈 `domain` 의 조회 메서드로 읽기만 하고,
 다른 모듈의 표를 SQL 로 직접 읽지 않는다. Job 을 만드는 요청(후보로 카드 만들기·칸 다시 생성)은 `job.api` 에 둔다.
@@ -262,13 +266,13 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 ### 테이블은 모듈과 1:1 로 나뉜다
 
 모듈 개수를 스펙의 "구성요소 9개"가 아니라 **ERD 의 애그리거트**에 맞췄다.
-15개 테이블이 빈틈없이 나뉜다.
+도메인 테이블이 빈틈없이 나뉜다.
 
 | 모듈 | 소유 테이블 |
 |---|---|
 | `consent` | `users` · `github_connection` |
-| `ingest` | `repository` · `user_repository` · `collection_run` · `git_commit` |
-| `recommend` | `candidate` · `candidate_commit` |
+| `ingest` | `repository` · `user_repository` · `collection_run` · `git_commit` · `commit_file` · `pull_request` · `issue` · `pr_review` · `pr_review_comment` |
+| `recommend` | `candidate` · `candidate_commit` · `candidate_grouping` |
 | `card` | `card` · `card_version` · `card_statement` · `statement_evidence` · `interview_turn` · `interview_option` |
 | `job` | `analysis_job` |
 | `audit` | `audit_event` |

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
@@ -12,13 +12,14 @@ import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
-import { cardMetadataSupported } from '@/api/capabilities';
+import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
 import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
+import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -31,6 +32,17 @@ export function CardPage() {
   const [sp, setSp] = useSearchParams();
   const nav = useNavigate();
   const { card: q, job } = useCard(cardId);
+  const mode = sp.get('mode');
+  const previousView = useRef({ cardId, mode });
+  useEffect(() => {
+    const previous = previousView.current;
+    previousView.current = { cardId, mode };
+    // Same observer survives edit → detail. Reconcile ACK-only metadata once on exit,
+    // without blocking navigation or replacing acknowledged writing when GET fails.
+    if (previous.cardId === cardId && previous.mode === 'edit' && mode !== 'edit' && mode !== 'mask' && isDraftMetadataPending(q.data)) {
+      void q.refetch({ cancelRefetch: false }); // Join the save-and-close refresh if already running.
+    }
+  }, [cardId, mode, q.data, q.refetch]);
   const regen = useRegenerateField(cardId);
   const reopen = useReopen(cardId);
   const [justConfirmed, setJustConfirmed] = useState<ConfirmResult | null>(null);
@@ -52,7 +64,6 @@ export function CardPage() {
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
   if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   const card = q.data!;
-  const mode = sp.get('mode');
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
   const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel }];
@@ -170,6 +181,7 @@ export function CardPage() {
   const reviewFields = starFieldsToReview(card);
   const questions = reviewFields.map((f) => ({ f, why: card.lowConfidenceFields.some((l) => l.field === f) ? '확인 필요' : '빈 칸', q: askText(f), caution: card.lowConfidenceFields.some((l) => l.field === f) }));
   const regenerate = (f: StarField) => regen.mutate(f, { onSuccess: () => { track('field_regenerated', { cardId, field: f }); toast(`${starFieldShort[f]} 칸을 다시 생성했습니다 — 근거가 없으면 그대로 비어 있습니다`); } });
+  const canRegenerate = cardRegenerationSupported();
 
   return (
     <main className="main main--footer main--tight">
@@ -180,9 +192,9 @@ export function CardPage() {
           <Badge kind="NEUTRAL">E-7</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
             <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).join(' · ')} 는 채워졌고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => d.field).join(' · ')} 은 아직입니다</span>
-            <span className="t-12l c-2">칸 단위로 다시 만들 수 있어요</span>
+            <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈칸은 답변하거나 직접 작성해 주세요.'}</span>
           </div>
-          {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{d.field} 칸만 다시 생성</Button>)}
+          {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{d.field} 칸만 다시 생성</Button>)}
         </div>
       )}
       {e6 && (
@@ -197,7 +209,7 @@ export function CardPage() {
 
       <div className="two-col">
         <div className="stack" style={{ gap: 12 }}>
-          {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={() => regenerate(f)} />)}
+          {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
         <aside className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <span className="w-600" style={{ fontSize: 13.5 }}>답변으로 보완하기</span>
@@ -244,7 +256,7 @@ function CardHeader({ card, right, statusOverride, note }: { card: Card; right?:
       <PageTitle sub={<>
         <Badge kind="NEUTRAL">{cardKindLabel[card.kind]}</Badge>
         {statusOverride ?? <Badge kind={card.status}>{cardStatusLabel[card.status]}</Badge>}
-        <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : cardContentLabel[card.version.source])}</span>
+        <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : isDraftMetadataPending(card) ? '본문 저장됨' : cardContentLabel[card.version.source])}</span>
       </>}>{card.title}</PageTitle>
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>

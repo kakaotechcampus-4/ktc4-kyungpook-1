@@ -122,7 +122,7 @@ export function useCancelJob() {
 export function useCreateManualDraft() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: endpoints.createManualDraft,
+    mutationFn: ({ input, idempotencyKey }: { input: Parameters<typeof endpoints.createManualDraft>[0]; idempotencyKey: string }) => endpoints.createManualDraft(input, idempotencyKey),
     onSuccess: (card) => { qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards }); },
   });
 }
@@ -185,8 +185,6 @@ function useCardMutation<V>(id: string, fn: (v: V) => Promise<Card>) {
     },
   });
 }
-export const useSaveVersion = (id: string) =>
-  useCardMutation(id, (fields: Parameters<typeof endpoints.saveVersion>[1]) => endpoints.saveVersion(id, fields));
 export const useMask = (id: string) => useCardMutation(id, (rules: { from: string; to: string }[]) => endpoints.mask(id, rules));
 export const useReopen = (id: string) => useCardMutation(id, () => endpoints.reopen(id));
 export const useRestoreVersion = (id: string) => useCardMutation(id, (versionNo: number) => endpoints.restoreVersion(id, versionNo));
@@ -236,14 +234,6 @@ export function useConfirm(cardId: string) {
       // Refresh the remaining metadata; the acknowledged status stays available on failure.
       await qc.invalidateQueries({ queryKey: keys.cards });
     },
-  });
-}
-
-export function useCreateManualCard() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: endpoints.createManualCard,
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.cards }),
   });
 }
 

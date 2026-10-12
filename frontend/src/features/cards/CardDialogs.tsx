@@ -35,7 +35,7 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
         actions: <><Button variant="outline" disabled={confirm.isPending} onClick={onClose}>취소</Button><Button disabled={!canConfirmCard(card)} loading={confirm.isPending} onClick={go}>확정하기</Button></> }}>
       <div className="card card--paper stack" style={{ gap: 10, padding: '16px 18px', borderRadius: 10 }}>
         <span className="w-600" style={{ fontSize: 16 }}>{card.title}</span>
-        {[['근거 커밋', `${commits}건`], ['빈 칸', empty ? `${empty}칸 — 빈 채로 확정됩니다` : '없음'], ['마스킹', maskedFields.length ? `${maskedFields.length}칸` : '없음'], ['버전', `v${card.version.versionNo} → 확정 시 v${card.version.versionNo + 1}`]].map(([k, v]) => (
+        {[['근거 커밋', `${commits}건`], ['빈 칸', empty ? `${empty}칸 — 빈 채로 확정됩니다` : '없음'], ['마스킹', maskedFields.length ? `${maskedFields.length}칸` : '없음'], ['버전', `v${card.version.versionNo} · 현재 버전 확정`]].map(([k, v]) => (
           <div key={k} className="row t-12"><span className="c-2">{k}</span><span className="right w-600">{v}</span></div>
         ))}
       </div>

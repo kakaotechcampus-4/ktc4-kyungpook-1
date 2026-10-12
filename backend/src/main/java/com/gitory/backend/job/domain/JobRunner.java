@@ -4,7 +4,7 @@ import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.ExperienceGroupingRequest;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
-import com.gitory.backend.consent.domain.MeQueryService;
+import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.GroupingMaterial;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
@@ -52,7 +52,7 @@ public class JobRunner {
     private final TransactionTemplate transaction;
     private final AiClientProperties aiProperties;
     private final JobGroupingProperties groupingProperties;
-    private final MeQueryService users;
+    private final UserLoginService users;
     private final GroupingMaterialService materials;
     private final CandidateStoreService candidates;
     private final ExperienceGroupingPort grouping;

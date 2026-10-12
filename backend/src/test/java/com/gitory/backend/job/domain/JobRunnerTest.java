@@ -15,7 +15,7 @@ import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
-import com.gitory.backend.consent.domain.MeQueryService;
+import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
@@ -71,7 +71,7 @@ import java.util.concurrent.locks.LockSupport;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
-        CandidateStoreService.class, StoredActivityService.class, MeQueryService.class})
+        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JobRunnerTest {
@@ -105,7 +105,7 @@ class JobRunnerTest {
     TransactionTemplate transaction;
 
     @Autowired
-    MeQueryService users;
+    UserLoginService users;
 
     @Autowired
     GroupingMaterialService materials;

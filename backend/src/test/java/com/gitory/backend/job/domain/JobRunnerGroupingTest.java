@@ -23,7 +23,7 @@ import com.gitory.backend.agent.port.GroupingPullRequest;
 import com.gitory.backend.agent.port.GroupingVerdict;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
-import com.gitory.backend.consent.domain.MeQueryService;
+import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.FileChangeStatus;
 import com.gitory.backend.ingest.domain.GithubState;
@@ -88,7 +88,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
 @Import({JobRunner.class, JobCancelService.class, JobQueryService.class, ActivityStoreService.class,
-        GroupingMaterialService.class, CandidateStoreService.class, StoredActivityService.class, MeQueryService.class})
+        GroupingMaterialService.class, CandidateStoreService.class, StoredActivityService.class, UserLoginService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JobRunnerGroupingTest {

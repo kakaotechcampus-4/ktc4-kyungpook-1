@@ -5,6 +5,9 @@ import com.gitory.backend.card.domain.CardNotConfirmableException;
 import com.gitory.backend.card.domain.CardNotFoundException;
 import com.gitory.backend.card.domain.CardVersionNotFoundException;
 import com.gitory.backend.card.domain.InvalidCardInputException;
+import com.gitory.backend.card.domain.interview.InterviewAiUnavailableException;
+import com.gitory.backend.card.domain.interview.InterviewCapReachedException;
+import com.gitory.backend.card.domain.interview.InvalidInterviewFieldException;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
 import org.springframework.core.Ordered;
@@ -47,6 +50,30 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleNotConfirmable() {
 
         return ApiResponse.fail(ErrorCode.NOT_CONFIRMABLE, "상황과 행동을 채워야 확정할 수 있습니다.");
+
+    }
+
+    @ExceptionHandler(InterviewCapReachedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleInterviewCap() {
+
+        return ApiResponse.fail(ErrorCode.INTERVIEW_CAP, "이 카드에서 받을 수 있는 질문을 모두 사용했습니다.");
+
+    }
+
+    @ExceptionHandler(InvalidInterviewFieldException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleInvalidInterviewField() {
+
+        return ApiResponse.fail(ErrorCode.BAD_FIELD, "field 는 S/T/A/R 중 하나여야 합니다.");
+
+    }
+
+    @ExceptionHandler(InterviewAiUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ApiResponse<Void> handleInterviewAiUnavailable() {
+
+        return ApiResponse.fail(ErrorCode.AI_UNAVAILABLE, "질문을 만들지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
 
     }
 

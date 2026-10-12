@@ -5,7 +5,7 @@ FE·BE·AI 세 파트가 같은 사례를 보고 있는지 테스트로 고정�
 - `interview/direct-card.json` — 후보 없이 직접 작성한 카드의 되묻기 사례.
   - FE: 목 응답의 `sourceType`이 파일 값과 같은지 (`frontend/src/test/`)
   - AI: `springToAi.expectedRequest`를 라우터가 받아들이는지 (`ai/tests/`)
-  - BE: `POST /api/cards/{id}/interview` 엔드포인트가 생기면, `givenCard`를 DB에 넣고 그 요청으로 실제로 이 값을 AI에 보내는지 (엔드포인트 미구현 — 아직 테스트 없음)
+  - BE: `givenCard`를 DB에 넣고 `POST /api/cards/{id}/interview` 요청으로 실제로 이 값을 AI에 보내는지 (`InterviewAskContractTest`)
 
 - `ingest/repository-activity.json` — Spring이 AI의 `/internal/collect`를 호출하고
   AI가 A의 후보 그룹화에 필요한 GitHub 활동을 정규화해 돌려주는 대표 사례.

@@ -11,6 +11,9 @@ from services.grouping_llm import (
     GroupingLlm,
     GroupingLlmError,
     GroupingLlmOutputTooLongError,
+    DESCRIPTION_COMMIT_SAMPLE,
+    DESCRIPTION_FILE_SAMPLE,
+    DESCRIPTION_MESSAGE_MAX_LENGTH,
     MAX_COMPLETION_TOKENS,
 )
 
@@ -167,6 +170,56 @@ def test_describe_accepts_only_expected_group_keys() -> None:
 
     assert result == {group.group_key: ("인증 개선", "커밋 근거")}
     assert fake.calls[0]["output_model"] is GroupDescriptionsOutput
+
+
+def test_describe_keeps_blank_or_too_long_text_for_rule_fallback() -> None:
+    blank = cluster("cluster:1", [commit("a" * 40, 0)])
+    long = cluster("cluster:2", [commit("b" * 40, 1)])
+    fake = FakeModelClient(
+        [
+            {
+                "descriptions": [
+                    {"group_key": blank.group_key, "title": "  ", "reason": ""},
+                    {"group_key": long.group_key, "title": "가" * 250, "reason": "나" * 400},
+                ]
+            }
+        ]
+    )
+
+    result = asyncio.run(GroupingLlm(fake).describe([blank, long]))
+
+    assert result[blank.group_key] == ("", "")
+    assert result[long.group_key] == ("가" * 250, "나" * 400)
+
+
+def test_describe_caps_commits_files_and_message_length() -> None:
+    many_files = [ChangedFile(path=f"src/f{n}.py", additions=1, deletions=0) for n in range(25)]
+    members = [
+        CommitInput(
+            sha=f"{n:040x}",
+            message="feat: 구현\n\n" + "본문" * 1_000,
+            author_login="minseo",
+            authored_at=datetime(2026, 9, 1, tzinfo=timezone.utc) + timedelta(minutes=n),
+            parent_count=1,
+            files=many_files,
+        )
+        for n in range(40)
+    ]
+    group = cluster("cluster:1", members)
+    fake = FakeModelClient(
+        [{"descriptions": [{"group_key": group.group_key, "title": "t", "reason": "r"}]}]
+    )
+
+    asyncio.run(GroupingLlm(fake).describe([group]))
+
+    sent = fake.calls[0]["payload"]["groups"][0]
+    assert sent["commit_count"] == 40
+    assert len(sent["commits"]) == DESCRIPTION_COMMIT_SAMPLE
+    for item in sent["commits"]:
+        assert item["file_count"] == 25
+        assert len(item["files"]) == DESCRIPTION_FILE_SAMPLE
+        assert len(item["message"]) == DESCRIPTION_MESSAGE_MAX_LENGTH
+        assert item["message"].endswith("…")
 
 
 def test_describe_batches_requests() -> None:

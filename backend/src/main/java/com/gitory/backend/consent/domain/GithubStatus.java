@@ -9,11 +9,15 @@ public record GithubStatus(
         Instant connectedAt,
         Instant lastCollectedAt) {
 
-    static GithubStatus from(GithubConnection connection) {
-        return new GithubStatus(connection.isActive(), connection.scopeList(), connection.getGrantedAt(), null);
+    static GithubStatus from(GithubConnection connection, Instant lastCollectedAt) {
+
+        return new GithubStatus(connection.isActive(), connection.scopeList(), connection.getGrantedAt(), lastCollectedAt);
+
     }
 
-    static GithubStatus notConnected() {
-        return new GithubStatus(false, List.of(), null, null);
+    static GithubStatus notConnected(Instant lastCollectedAt) {
+
+        return new GithubStatus(false, List.of(), null, lastCollectedAt);
+
     }
 }

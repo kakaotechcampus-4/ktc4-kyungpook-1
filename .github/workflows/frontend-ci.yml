@@ -64,11 +64,14 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e:static
+      - run: npm run e2e:real
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: frontend-test-results-node22
-          path: frontend/test-results/
+          path: |
+            frontend/test-results/
+            frontend/artifacts/playwright-real-api/
           retention-days: 7
 
   # 24 는 다음 버전 호환성만 미리 확인 — 실패해도 빌드는 안 막는다. 단계는 node22 와 같게 유지한다.
@@ -94,9 +97,12 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e:static
+      - run: npm run e2e:real
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: frontend-test-results-node24
-          path: frontend/test-results/
+          path: |
+            frontend/test-results/
+            frontend/artifacts/playwright-real-api/
           retention-days: 7

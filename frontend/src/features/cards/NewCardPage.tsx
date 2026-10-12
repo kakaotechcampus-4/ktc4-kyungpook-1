@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCreateManualDraft, useRepos } from '@/api/queries';
 import { keys } from '@/api/keys';
@@ -6,9 +7,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { endpoints } from '@/api/endpoints';
 import { AuthError } from '@/api/client';
 import { redirectToLogin } from '@/app/queryClient';
-import type { StarField } from '@/api/schemas';
+import { isBlankCardText, type Card, type StarField } from '@/api/schemas';
 import { Breadcrumb, Button, Field, Input, PageTitle, StickyFooter } from '@/components/ui';
-import { STAR_FIELDS, starFieldName, starFieldShort } from '@/lib/labels';
+import { STAR_FIELDS, fieldKey, starFieldName, starFieldShort } from '@/lib/labels';
 import { CONFIG } from '@/lib/config';
 import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
 import { track } from '@/lib/track';
@@ -41,10 +42,14 @@ export function NewCardPage() {
   const nav = useNavigate();
   const repos = useRepos();
   const createDraft = useCreateManualDraft();
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [cardId, setCardId] = useState<string | null>(null);
   const cardIdRef = useRef<string | null>(null);
   const savedMetadata = useRef<{ title: string; period: string } | undefined>(undefined);
   const savedFields = useRef<string | undefined>(undefined);
+  const confirmedReplay = useRef(false);
+  const [blockedCard, setBlockedCard] = useState<Card | null>(null);
+  const [acknowledgedRepo, setAcknowledgedRepo] = useState<Card['repo']>(null);
   const canEditMetadata = cardMetadataSupported();
   const qc = useQueryClient();
   const mountedRef = useRef(true);
@@ -53,37 +58,57 @@ export function NewCardPage() {
   const [period, setPeriod] = useState('');
   const [repoId, setRepoId] = useState<string>('');
   const [f, setF] = useState<Record<StarField, string>>({ S: '', T: '', A: '', R: '' });
+  const latestFields = useRef(f);
+  latestFields.current = f;
+  const editedFields = useRef(new Set<StarField>());
 
-  const canConfirm = !!f.S.trim() && !!f.A.trim() && !!title.trim();
-  const missing = [!title.trim() && '제목', !f.S.trim() && '상황', !f.A.trim() && '행동'].filter(Boolean).join(' · ');
+  const canConfirm = !blockedCard && !isBlankCardText(f.S) && !isBlankCardText(f.A) && !isBlankCardText(title);
+  const missing = [isBlankCardText(title) && '제목', isBlankCardText(f.S) && '상황', isBlankCardText(f.A) && '행동'].filter(Boolean).join(' · ');
 
   const snapshot = { title, period, repoId, fields: toDraftFields(f) };
+  const acknowledgedInput = useRef<typeof snapshot | null>(null);
   const save = useCallback(async (body: typeof snapshot) => {
-    if (!body.title.trim()) throw new Error('TITLE_REQUIRED');
+    if (confirmedReplay.current) throw new ApiError('CARD_CONFIRMED', '이미 확정된 카드입니다.', 409);
+    if (isBlankCardText(body.title)) throw new Error('TITLE_REQUIRED');
+    let effective = body;
+    let result: unknown;
     if (!cardIdRef.current) {
-      const card = await createDraft.mutateAsync({ title: body.title, period: body.period, repoId: body.repoId || null });
+      const card = await createDraft.mutateAsync({ input: { title: body.title, period: body.period, repoId: body.repoId || null }, idempotencyKey });
+      if (!mountedRef.current) return card;
       cardIdRef.current = card.id;
-      savedMetadata.current = { title: body.title, period: body.period };
-      setCardId(card.id);
+      const canonical = { title: card.title, period: card.period ?? '', repoId: card.repo?.id ?? '' };
+      savedMetadata.current = { title: canonical.title, period: canonical.period };
+      const returnedFields = Object.fromEntries(STAR_FIELDS.map(key => [key, card.version[fieldKey[key]] ?? ''])) as Record<StarField, string>;
+      const merged = Object.fromEntries(STAR_FIELDS.map(key => [key, editedFields.current.has(key) ? latestFields.current[key] : returnedFields[key]])) as Record<StarField, string>;
+      savedFields.current = JSON.stringify(toDraftFields(returnedFields));
+      flushSync(() => {
+        setCardId(card.id); setTitle(canonical.title); setPeriod(canonical.period); setRepoId(canonical.repoId); setAcknowledgedRepo(card.repo);
+        if (card.status === 'CONFIRMED') { confirmedReplay.current = true; setBlockedCard(card); }
+        else { latestFields.current = merged; setF(merged); }
+      });
+      if (card.status === 'CONFIRMED') throw new ApiError('CARD_CONFIRMED', '이미 확정된 카드입니다.', 409);
+      effective = { ...canonical, fields: toDraftFields(merged) };
+      result = card;
       track('manual_card_created', { cardId: card.id });
     }
-    let result;
+    let acknowledgedFields = effective.fields;
     try {
-      const metadata = { ...(savedMetadata.current?.title !== body.title ? { title: body.title } : {}), ...(savedMetadata.current?.period !== body.period ? { period: body.period } : {}) };
+      const metadata = { ...(savedMetadata.current?.title !== effective.title ? { title: effective.title } : {}), ...(savedMetadata.current?.period !== effective.period ? { period: effective.period } : {}) };
       if (Object.keys(metadata).length) {
         if (!canEditMetadata) throw new ApiError('FEATURE_UNAVAILABLE', '', 400);
         const acknowledged = await endpoints.saveMetadata(cardIdRef.current, metadata);
         if (!mountedRef.current) return acknowledged;
         await cacheCardMetadata(qc, acknowledged);
-        savedMetadata.current = { title: body.title, period: body.period };
+        savedMetadata.current = { title: acknowledged.title, period: acknowledged.period ?? '' };
         result = acknowledged;
       }
-      const fieldSnapshot = JSON.stringify(body.fields);
+      const fieldSnapshot = JSON.stringify(effective.fields);
       if (savedFields.current !== fieldSnapshot) {
-        const acknowledged = await endpoints.saveDraft(cardIdRef.current, body.fields);
+        const acknowledged = await endpoints.saveDraft(cardIdRef.current, effective.fields);
         if (!mountedRef.current) return acknowledged;
         await cacheSavedDraft(qc, acknowledged);
-        savedFields.current = fieldSnapshot;
+        acknowledgedFields = { situation: acknowledged.situation, task: acknowledged.task, action: acknowledged.action, result: acknowledged.result };
+        savedFields.current = JSON.stringify(acknowledgedFields);
         result = acknowledged;
       }
     } catch (err) {
@@ -93,11 +118,12 @@ export function NewCardPage() {
       throw err;
     }
     if (!mountedRef.current) return result; // page left before this resolved — don't write a stale card into the cache
+    acknowledgedInput.current = { ...effective, fields: acknowledgedFields };
     void qc.invalidateQueries({ queryKey: keys.cards, refetchType: 'none' });
     void qc.invalidateQueries({ queryKey: keys.card(cardIdRef.current), refetchType: 'none' });
     return result;
-  }, [createDraft, qc, canEditMetadata]);
-  const autosave = useDraftAutosave(snapshot, save, { enabled: !!cardId });
+  }, [createDraft, qc, canEditMetadata, idempotencyKey]);
+  const autosave = useDraftAutosave(snapshot, save, { enabled: !!cardId && !blockedCard, acknowledgedSnapshot: submitted => acknowledgedInput.current ?? submitted });
   const { flush, saving } = autosave;
   const guard = useUnsavedChanges(autosave.dirty || saving);
 
@@ -108,6 +134,8 @@ export function NewCardPage() {
     guard.allowNavigation();
     nav(`/cards/${id}${thenConfirm ? '?confirm=1' : ''}`);
   };
+  const repoOptions = [{ value: '', label: '없음' }, ...(repos.data ?? []).map(r => ({ value: r.id, label: `${r.owner}/${r.name}` }))];
+  if (acknowledgedRepo && !repoOptions.some(option => option.value === acknowledgedRepo.id)) repoOptions.push({ value: acknowledgedRepo.id, label: `${acknowledgedRepo.owner}/${acknowledgedRepo.name}` });
 
   return (
     <main className="main main--footer main--tight manual-card-page">
@@ -117,14 +145,14 @@ export function NewCardPage() {
       <div className="card manual-metadata">
         <div className="manual-metadata__title">
           <Field label="카드 제목 *">
-            <Input autoFocus required aria-label="카드 제목" aria-describedby="manual-requirements" value={title} disabled={saving || (!!cardId && !canEditMetadata)} onChange={(e) => setTitle(e.target.value)} placeholder="예) 로그인 세션 개선" />
+            <Input autoFocus required maxLength={CONFIG.CARD_TITLE_MAX} aria-label="카드 제목" aria-describedby="manual-requirements" value={title} disabled={saving || !!blockedCard || (!!cardId && !canEditMetadata)} onChange={(e) => setTitle(e.target.value)} placeholder="예) 로그인 세션 개선" />
           </Field>
         </div>
-        <div><Field label="기간"><Input value={period} disabled={saving || (!!cardId && !canEditMetadata)} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
+        <div><Field label="기간"><Input maxLength={CONFIG.CARD_PERIOD_MAX} value={period} disabled={saving || !!blockedCard || (!!cardId && !canEditMetadata)} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
         <div>
           <Field label="관련 레포 (선택)">
             <Select className="select-trigger--field" value={repoId} onChange={setRepoId} label="관련 레포" disabled={!!cardId || saving}
-              options={[{ value: '', label: '없음' }, ...(repos.data ?? []).map((r) => ({ value: r.id, label: `${r.owner}/${r.name}` }))]} />
+              options={repoOptions} />
           </Field>
         </div>
         {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목·기간·레포는 첫 저장 후 바꿀 수 없어요.'}</p>}
@@ -132,23 +160,24 @@ export function NewCardPage() {
 
       <div className="manual-save-row">
         <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
-        {(cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
-        {!cardId && <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
+        {!blockedCard && (cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
+        {!cardId && <Button variant="outline" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
       </div>
+      {blockedCard && <p role="alert">이미 확정된 카드입니다. 현재 입력은 이 화면에 남아 있습니다. <Link to={`/cards/${blockedCard.id}`}>기존 카드 보기</Link></p>}
 
       <div className="card star-read">
         {STAR_FIELDS.map((k, i) => (
           <StarEditorField key={k} field={k} dropped={i > 0 && !f[k]}
             label={<>{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 필수</span>}</>}
             maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements"
-            value={f[k]} onChange={(e) => setF((x) => ({ ...x, [k]: e.target.value }))} placeholder={HINT[k]} aria-label={starFieldName[k]} />
+            value={f[k]} onChange={(e) => { editedFields.current.add(k); const next = { ...latestFields.current, [k]: e.target.value }; latestFields.current = next; setF(next); }} placeholder={HINT[k]} aria-label={starFieldName[k]} />
         ))}
       </div>
 
       <StickyFooter
         strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장됩니다' : '제목부터 저장해 주세요'}>
         <Link to="/" className="btn btn--text">나가기</Link>
-        <Button variant="outline" disabled={!title.trim()} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
+        <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
         <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave(true)}>확정</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={saving} flush={flush} />

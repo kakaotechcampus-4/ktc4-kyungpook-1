@@ -5,6 +5,10 @@ import com.gitory.backend.card.domain.CardNotConfirmableException;
 import com.gitory.backend.card.domain.CardNotFoundException;
 import com.gitory.backend.card.domain.CardVersionNotFoundException;
 import com.gitory.backend.card.domain.InvalidCardInputException;
+import com.gitory.backend.card.domain.interview.InterviewAiUnavailableException;
+import com.gitory.backend.card.domain.interview.InterviewCapReachedException;
+import com.gitory.backend.card.domain.interview.InvalidInterviewFieldException;
+import com.gitory.backend.card.domain.interview.InvalidInterviewResponseException;
 import com.gitory.backend.common.api.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Named;
@@ -59,7 +63,13 @@ class CardExceptionHandlerTest {
                 arguments(Named.of("확정된 카드", new CardConfirmedException()), 409, "CARD_CONFIRMED"),
                 arguments(Named.of("확정할 수 없음", new CardNotConfirmableException()), 422, "NOT_CONFIRMABLE"),
                 arguments(Named.of("입력 규칙 위반", new InvalidCardInputException("제목을 입력해 주세요.")), 400,
-                        "INVALID_REQUEST"));
+                        "INVALID_REQUEST"),
+                arguments(Named.of("질문 상한", new InterviewCapReachedException()), 409, "INTERVIEW_CAP"),
+                arguments(Named.of("질문할 칸이 잘못됨", new InvalidInterviewFieldException()), 400, "BAD_FIELD"),
+                arguments(Named.of("AI 잠시 응답 못 함", new InterviewAiUnavailableException(new RuntimeException())), 503,
+                        "AI_UNAVAILABLE"),
+                arguments(Named.of("AI 응답을 쓸 수 없음", new InvalidInterviewResponseException("쓸 수 없는 응답")), 500,
+                        "INTERNAL_ERROR"));
 
     }
 

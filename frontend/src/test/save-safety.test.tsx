@@ -7,7 +7,7 @@ afterEach(() => vi.useRealTimers());
 describe('draft save safety', () => {
   it('preserves writing verbatim', () => {
     expect(fields('  text\n ').situation).toBe('  text\n ');
-    expect(fields(' ').situation).toBe(' ');
+    expect(fields(' ').situation).toBeNull();
   });
   it('returns failure and only retries explicitly', async () => {
     vi.useFakeTimers();

@@ -25,8 +25,9 @@ flowchart LR
 | `AI_BASE_URL` | `http://localhost:8000`; Compose에서는 `http://ai:8000` |
 | `AI_CONNECT_TIMEOUT` | `3s`; 연결 제한 |
 | `AI_READ_TIMEOUT` | `180s`; 수집·묶기·되묻기를 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
-| `AI_COLLECT_READ_TIMEOUT` | `600s`; GitHub 수집 응답 대기 제한. 멈춘 분석 Job 판정은 이 값 + 5분 |
+| `AI_COLLECT_READ_TIMEOUT` | `600s`; GitHub 수집 응답 대기 제한. 멈춘 분석 Job 판정은 이 값과 `AI_GROUPS_READ_TIMEOUT` 중 큰 값 + 5분 |
 | `AI_GROUPS_READ_TIMEOUT` | `600s`; 후보 묶기(`/internal/analysis/groups`) 응답 대기 제한(후보 묶기 연동부터 사용) |
+| `ANALYSIS_GROUPING_ENABLED` | `false`; 켜면 분석 Job 이 수집 뒤 후보 묶기를 부른다. 운영 AI 에 LLM 설정(`GITORY_LLM_BASE_URL`·`GITORY_LLM_API_KEY`)을 넣은 뒤 켠다. `deploy/compose.yaml` 은 서비스마다 `environment` 에 적힌 값만 넘기므로, ai 에 LLM 설정을, backend 에 `ANALYSIS_GROUPING_ENABLED: ${ANALYSIS_GROUPING_ENABLED:-false}` 를 더해야 `deploy/.env` 값이 들어간다 |
 | `API_DOCS_ENABLED` | BE 운영 기본 `false`, `local` 프로필 기본 `true` |
 | `AI_DOCS_ENABLED` | AI 기본 `true`; 운영에서 문서가 필요 없으면 `false` |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | BE 기본 프로필의 PostgreSQL 접속 정보 |

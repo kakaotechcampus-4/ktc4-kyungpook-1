@@ -12,5 +12,7 @@ public enum AuditAction {
     VIEW_CARD,
     EDIT_CARD,
     CONFIRM_CARD,
-    VIEW_CANDIDATES
+    VIEW_CANDIDATES,
+    VIEW_RECALL,
+    CREATE_CANDIDATE
 }

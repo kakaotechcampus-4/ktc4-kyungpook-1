@@ -100,9 +100,9 @@ public class CandidateBoardService {
 
     }
 
-    private static BoardCandidate boardCandidateOf(Candidate candidate, List<CandidateCommit> commits,
-                                                   Map<Long, CommitSummary> summaries,
-                                                   Optional<RepositoryReference> repository, UUID usedByCardId) {
+    static BoardCandidate boardCandidateOf(Candidate candidate, List<CandidateCommit> commits,
+                                           Map<Long, CommitSummary> summaries,
+                                           Optional<RepositoryReference> repository, UUID usedByCardId) {
 
         boolean cluster = candidate.getSourceType() == CandidateType.COMMIT_CLUSTER;
         List<BoardCommit> boardCommits = cluster

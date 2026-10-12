@@ -25,7 +25,7 @@ describe('card confirmation rules', () => {
     expect(emptyStarFields(withVersion({ situation: 'S', task: 'T', action: 'A', result: 'R' }))).toEqual([]);
   });
   it('mock server enforces the same rule as the client (contract: S·A required)', () => {
-    handle('PATCH', '/cards/card_01/draft', new URLSearchParams(), { situation: 'S only', action: null }, true);
+    handle('PATCH', '/cards/card_01/draft', new URLSearchParams(), { situation: 'S only', task: null, action: null, result: null }, true);
     const res = handle('POST', '/cards/card_01/confirm', new URLSearchParams(), { edited: true, maskedFields: [] }, true);
     expect(res).toMatchObject({ status: 422, error: { code: 'NOT_CONFIRMABLE' } });
   });

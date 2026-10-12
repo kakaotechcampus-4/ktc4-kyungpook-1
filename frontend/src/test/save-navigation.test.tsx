@@ -32,8 +32,8 @@ function mount(element = <NewCardPage />) {
 }
 describe('writing route save protection', () => {
   it('opens a newly saved manual card and re-edits acknowledged fields when its detail GET fails', async () => {
-    const blank = { ...card, id: 'manual-cache', version: { ...card.version, situation: null, task: null, action: null, result: null } };
-    vi.spyOn(endpoints, 'createManualDraft').mockResolvedValue(blank);
+    const blank = { ...card, id: 'manual-cache', version: { ...card.version, source: 'USER_EDIT' as const, situation: null, task: null, action: null, result: null } };
+    vi.spyOn(endpoints, 'createManualDraft').mockImplementation(async input => ({ ...blank, title: input.title, period: input.period ?? null }));
     vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ ...fields, cardId: id, savedAt: card.version.createdAt, versionNo: 2 }));
     vi.spyOn(endpoints, 'card').mockRejectedValue(new Error('offline detail'));
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -72,8 +72,8 @@ describe('writing route save protection', () => {
     expect(client.getQueryData<Card>(keys.card(card.id))?.version.versionNo).toBe(2);
   });
   it('uses returned ID immediately and keeps failed first save on the page for retry', async () => {
-    const create = vi.spyOn(endpoints, 'createManualDraft').mockResolvedValue({ ...card, id: 'returned-card' });
-    const save = vi.spyOn(endpoints, 'saveDraft').mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ ...card.version, cardId: card.id, savedAt: card.version.createdAt });
+    const create = vi.spyOn(endpoints, 'createManualDraft').mockImplementation(async input => ({ ...card, id: 'returned-card', title: input.title, period: input.period ?? null, version: { ...card.version, source: 'USER_EDIT', situation: null, task: null, action: null, result: null } }));
+    const save = vi.spyOn(endpoints, 'saveDraft').mockRejectedValueOnce(new Error('offline')).mockImplementation(async (id, fields) => ({ ...fields, cardId: id, versionNo: 1, savedAt: card.version.createdAt }));
     const router = mount();
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: '  Original title  ' } });
     fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: '  original\n' } });

@@ -12,13 +12,14 @@ import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
-import { cardMetadataSupported } from '@/api/capabilities';
+import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
 import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
+import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -170,6 +171,7 @@ export function CardPage() {
   const reviewFields = starFieldsToReview(card);
   const questions = reviewFields.map((f) => ({ f, why: card.lowConfidenceFields.some((l) => l.field === f) ? '확인 필요' : '빈 칸', q: askText(f), caution: card.lowConfidenceFields.some((l) => l.field === f) }));
   const regenerate = (f: StarField) => regen.mutate(f, { onSuccess: () => { track('field_regenerated', { cardId, field: f }); toast(`${starFieldShort[f]} 칸을 다시 생성했습니다 — 근거가 없으면 그대로 비어 있습니다`); } });
+  const canRegenerate = cardRegenerationSupported();
 
   return (
     <main className="main main--footer main--tight">
@@ -180,9 +182,9 @@ export function CardPage() {
           <Badge kind="NEUTRAL">E-7</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
             <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).join(' · ')} 는 채워졌고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => d.field).join(' · ')} 은 아직입니다</span>
-            <span className="t-12l c-2">칸 단위로 다시 만들 수 있어요</span>
+            <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈칸은 답변하거나 직접 작성해 주세요.'}</span>
           </div>
-          {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{d.field} 칸만 다시 생성</Button>)}
+          {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{d.field} 칸만 다시 생성</Button>)}
         </div>
       )}
       {e6 && (
@@ -197,7 +199,7 @@ export function CardPage() {
 
       <div className="two-col">
         <div className="stack" style={{ gap: 12 }}>
-          {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={() => regenerate(f)} />)}
+          {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
         <aside className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <span className="w-600" style={{ fontSize: 13.5 }}>답변으로 보완하기</span>
@@ -244,7 +246,7 @@ function CardHeader({ card, right, statusOverride, note }: { card: Card; right?:
       <PageTitle sub={<>
         <Badge kind="NEUTRAL">{cardKindLabel[card.kind]}</Badge>
         {statusOverride ?? <Badge kind={card.status}>{cardStatusLabel[card.status]}</Badge>}
-        <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : cardContentLabel[card.version.source])}</span>
+        <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : isDraftMetadataPending(card) ? '본문 저장됨' : cardContentLabel[card.version.source])}</span>
       </>}>{card.title}</PageTitle>
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>

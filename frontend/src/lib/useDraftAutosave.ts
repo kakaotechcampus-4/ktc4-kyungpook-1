@@ -5,7 +5,7 @@ import { CONFIG } from './config';
 export type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 /** Server-only autosave. One request at a time; flush drains the latest input. */
-export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unknown>, opts: { enabled?: boolean } = {}) {
+export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unknown>, opts: { enabled?: boolean; acknowledgedSnapshot?: (submitted: T) => T } = {}) {
   const enabled = opts.enabled ?? true;
   const json = JSON.stringify(fields);
   // 서버가 확인해 준 마지막 본문. 저장 요청이 실패하면 null — 요청이 서버에 반영됐는지(응답만 유실) 알 수 없으므로
@@ -13,8 +13,10 @@ export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unkn
   const lastSaved = useRef<string | null>(json);
   const latest = useRef(fields);
   const saveRef = useRef(save);
+  const acknowledgementRef = useRef(opts.acknowledgedSnapshot);
   latest.current = fields;
   saveRef.current = save;
+  acknowledgementRef.current = opts.acknowledgedSnapshot;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const active = useRef<Promise<boolean> | null>(null);
   const failedRef = useRef(false);
@@ -35,7 +37,7 @@ export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unkn
           const body = latest.current;
           const snapshot = JSON.stringify(body);
           await saveRef.current(body);
-          lastSaved.current = snapshot;
+          lastSaved.current = acknowledgementRef.current ? JSON.stringify(acknowledgementRef.current(body)) : snapshot;
           failedRef.current = false;
           if (mounted.current) { setSavedAt(Date.now()); setFailed(false); }
         } while (mounted.current && JSON.stringify(latest.current) !== lastSaved.current);

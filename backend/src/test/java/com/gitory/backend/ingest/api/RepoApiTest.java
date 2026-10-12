@@ -345,18 +345,33 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("남의 저장소·없는 저장소·UUID 가 아닌 id 는 모두 404 NOT_FOUND 다")
+    @DisplayName("남의 저장소·없는 저장소·UUID 가 아닌 id 는 모두 404 NOT_FOUND 이고, 남의 저장소만 거절 기록 한 줄을 남긴다")
     void detailOfUnknownRepositoryIsNotFound() throws Exception {
 
         Long otherUserId = fixtures.insertUser(2L, "taehun0208");
         UUID othersId = UUID.randomUUID();
-        fixtures.insertUserRepository(othersId, otherUserId, fixtures.insertRepository(300L, "team", "team-repo"));
+        Long othersConnection = fixtures.insertUserRepository(othersId, otherUserId,
+                fixtures.insertRepository(300L, "team", "team-repo"));
 
         for (String id : List.of(othersId.toString(), UUID.randomUUID().toString(), "not-a-uuid")) {
             mvc.perform(get("/api/repos/{id}", id).with(loggedInAs(myUserId)))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
         }
+
+        assertThat(auditRows()).containsExactly(myUserId + " VIEW_REPO " + othersConnection + " DENIED");
+
+    }
+
+    @Test
+    @DisplayName("내 저장소 상세를 읽으면 감사 기록은 남지 않는다")
+    void detailOfMyRepositoryLeavesNoAuditRow() throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+
+        detail(id).andExpect(status().isOk());
+
+        assertThat(auditRows()).isEmpty();
 
     }
 
@@ -422,6 +437,14 @@ class RepoApiTest {
     private UUID publicIdOf(Long userId) {
 
         return jdbc.queryForObject("SELECT public_id FROM user_repository WHERE user_id = ?", UUID.class, userId);
+
+    }
+
+    private List<String> auditRows() {
+
+        return jdbc.query("SELECT user_id, action, subject_id, outcome FROM audit_event ORDER BY id",
+                (row, rowNum) -> row.getLong("user_id") + " " + row.getString("action") + " "
+                        + row.getLong("subject_id") + " " + row.getString("outcome"));
 
     }
 

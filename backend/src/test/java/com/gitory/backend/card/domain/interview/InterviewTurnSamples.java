@@ -3,7 +3,7 @@ package com.gitory.backend.card.domain.interview;
 import com.gitory.backend.card.domain.StarField;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/** 질문 엔티티에는 답한 질문을 만드는 방법이 아직 없어서 테스트가 칸을 직접 채운다 */
+/** 결과·답·출처가 어떤 조합이든 질문을 만들어야 해서 테스트가 칸을 직접 채운다 */
 final class InterviewTurnSamples {
 
     private InterviewTurnSamples() {

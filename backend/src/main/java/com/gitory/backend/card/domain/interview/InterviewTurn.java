@@ -79,6 +79,23 @@ public class InterviewTurn {
 
     }
 
+    /**
+     * 사용자가 직접 쓴 답을 가공 없이 담아 답한 질문으로 바꾸고, 답한 시각도 질문 시각처럼 µs 까지만 남긴다
+     * 이미 답한 질문의 답은 바뀌지 않아야 하므로 어디서 불러도 예외를 던진다
+     */
+    public void answerTyped(String text) {
+
+        if (isAnswered()) {
+            throw new IllegalStateException("이미 답한 질문이다");
+        }
+
+        this.answerText = text;
+        this.answerSource = AnswerSource.TYPED;
+        this.outcome = TurnOutcome.ANSWERED;
+        this.answeredAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+
+    }
+
     public boolean isAnswered() {
 
         return outcome == TurnOutcome.ANSWERED;

@@ -30,6 +30,42 @@ class CardStatementTest {
 
     }
 
+    @Test
+    @DisplayName("되묻기 답으로 쓴 문장은 USER_STATED 이고 질문을 가리키며 확신도 없이 앞뒤 공백까지 그대로 만든다")
+    void answeredPointsAtTheTurnWithoutConfidence() {
+
+        CardStatement statement = CardStatement.answered(3L, (short) 2, StarField.R, "  응답이 절반이 됐다  \n", 17L);
+
+        assertThat(statement.getCardId()).isEqualTo(3L);
+        assertThat(statement.getVersionNo()).isEqualTo((short) 2);
+        assertThat(statement.getStarSlot()).isEqualTo(StarField.R);
+        assertThat(statement.getSeq()).isEqualTo((short) 1);
+        assertThat(statement.getBody()).isEqualTo("  응답이 절반이 됐다  \n");
+        assertThat(statement.getEvidenceType()).isEqualTo(EvidenceType.USER_STATED);
+        assertThat(statement.getConfidence()).isNull();
+        assertThat(statement.getSourceTurnId()).isEqualTo(17L);
+
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("blankTexts")
+    @DisplayName("빈 글이나 공백뿐인 글로는 되묻기 답 문장도 만들지 않는다")
+    void answeredRejectsBlankText(String body) {
+
+        assertThatThrownBy(() -> CardStatement.answered(3L, (short) 1, StarField.S, body, 17L))
+                .isInstanceOf(IllegalArgumentException.class);
+
+    }
+
+    @Test
+    @DisplayName("되묻기 답에 U+0000 이 있으면 InvalidCardInputException 이고 문장을 만들지 않는다")
+    void answeredRejectsNul() {
+
+        assertThatThrownBy(() -> CardStatement.answered(3L, (short) 1, StarField.A, "인덱스를\u0000추가했다", 17L))
+                .isInstanceOf(InvalidCardInputException.class);
+
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("blankTexts")
     @DisplayName("빈 글이나 공백뿐인 글(NBSP·U+2007·U+202F·BOM 포함)로는 문장을 만들지 않는다")

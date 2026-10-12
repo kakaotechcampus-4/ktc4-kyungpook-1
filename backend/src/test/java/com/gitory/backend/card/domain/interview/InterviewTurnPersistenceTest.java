@@ -4,6 +4,7 @@ import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.support.InterviewFixtures;
 import com.gitory.backend.support.TestFixtures;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,9 @@ class InterviewTurnPersistenceTest {
 
     @Autowired
     InterviewTurnRepository turns;
+
+    @Autowired
+    EntityManager entityManager;
 
     private TestFixtures fixtures;
     private InterviewFixtures interviews;
@@ -156,6 +160,79 @@ class InterviewTurnPersistenceTest {
         interviews.insertAsked(otherCardId, 1, "S", "EVIDENCE_GAP", "USER", "다른 카드 질문");
 
         assertThat(turns.findByCardIdOrderBySeqAsc(cardId)).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("카드와 질문 번호로 그 카드의 질문 하나를 읽고, 다른 카드의 같은 번호 질문이나 없는 번호는 읽지 않는다")
+    void readsOneTurnByCardAndSeq() {
+
+        Long otherCardId = fixtures.insertCard(UUID.randomUUID(), userId);
+        interviews.insertAsked(otherCardId, 2, "S", "EVIDENCE_GAP", "USER", "다른 카드의 둘째");
+        interviews.insertAsked(cardId, 1, "S", "EVIDENCE_GAP", "USER", "첫째");
+        interviews.insertAsked(cardId, 2, "T", "EVIDENCE_GAP", "USER", "둘째");
+
+        assertThat(turns.findByCardIdAndSeq(cardId, (short) 2)).get()
+                .extracting(InterviewTurn::getQuestionText).isEqualTo("둘째");
+        assertThat(turns.findByCardIdAndSeq(cardId, (short) 3)).isEmpty();
+        assertThat(turns.findByCardIdAndSeq(otherCardId, (short) 1)).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("답한 질문은 글·출처·결과·답한 시각이 저장되고 다시 읽어도 같으며 질문 쪽 칸은 그대로다")
+    void savesTheAnswerOfATurn() {
+
+        interviews.insertAsked(cardId, 1, "A", "FOLLOWUP", "AUTO", "  이어서 묻는 글  ");
+        InterviewTurn turn = turns.findByCardIdAndSeq(cardId, (short) 1).orElseThrow();
+        Instant askedAt = turn.getAskedAt();
+
+        turn.answerTyped("  쓴 그대로의 답  ");
+        entityManager.flush();
+        entityManager.clear();
+
+        InterviewTurn saved = turns.findByCardIdAndSeq(cardId, (short) 1).orElseThrow();
+        assertThat(saved.getAnswerText()).isEqualTo("  쓴 그대로의 답  ");
+        assertThat(saved.getAnswerSource()).isEqualTo(AnswerSource.TYPED);
+        assertThat(saved.getOutcome()).isEqualTo(TurnOutcome.ANSWERED);
+        assertThat(saved.getAnsweredAt()).isNotNull();
+        assertThat(saved.isAnswered()).isTrue();
+        assertThat(saved.getStarSlot()).isEqualTo(StarField.A);
+        assertThat(saved.getQuestionType()).isEqualTo(QuestionType.FOLLOWUP);
+        assertThat(saved.getTriggerSource()).isEqualTo(TriggerSource.AUTO);
+        assertThat(saved.getQuestionText()).isEqualTo("  이어서 묻는 글  ");
+        assertThat(saved.getAskedAt()).isEqualTo(askedAt);
+
+    }
+
+    @Test
+    @DisplayName("답한 질문이 있는 카드 id 는 물어본 카드 안에서만 한 번씩 돌려주고, 답하지 않았거나 LATER·SKIPPED·INSUFFICIENT 로 끝난 질문은 답으로 보지 않는다")
+    void findsCardIdsWithAnAnsweredTurn() {
+
+        Long answeredTwice = fixtures.insertCard(UUID.randomUUID(), userId);
+        interviews.insertAnswered(answeredTwice, 1, "S", "첫 답", "TYPED");
+        interviews.insertAnswered(answeredTwice, 2, "T", "둘째 답", "SELECTED");
+        Long answeredOnce = fixtures.insertCard(UUID.randomUUID(), userId);
+        interviews.insertAnswered(answeredOnce, 1, "S", "답", "TYPED");
+        Long unfinished = fixtures.insertCard(UUID.randomUUID(), userId);
+        interviews.insertAsked(unfinished, 1, "S", "EVIDENCE_GAP", "USER", "열린 질문");
+        interviews.insertTurn(unfinished, 2, "T", "EVIDENCE_GAP", "USER", "질문", "LATER", null, null);
+        interviews.insertTurn(unfinished, 3, "A", "EVIDENCE_GAP", "USER", "질문", "SKIPPED", null, null);
+        interviews.insertTurn(unfinished, 4, "R", "EVIDENCE_GAP", "USER", "질문", "INSUFFICIENT", "남은 답", "TYPED");
+        Long notAsked = fixtures.insertCard(UUID.randomUUID(), userId);
+        interviews.insertAnswered(notAsked, 1, "S", "묻지 않은 카드의 답", "TYPED");
+
+        List<Long> found = turns.findCardIdsWithAnswer(List.of(answeredTwice, answeredOnce, unfinished, cardId));
+
+        assertThat(found).containsExactlyInAnyOrder(answeredTwice, answeredOnce);
+
+    }
+
+    @Test
+    @DisplayName("카드 id 를 하나도 주지 않으면 빈 목록을 돌려준다")
+    void findsNothingForNoCardIds() {
+
+        assertThat(turns.findCardIdsWithAnswer(List.of())).isEmpty();
 
     }
 

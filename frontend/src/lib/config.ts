@@ -10,7 +10,11 @@ export const CONFIG = {
   BOARD_TARGET_SEC: 30,
   DRAFT_TARGET_SEC: 180,
   /** 직접 작성 칸당 글자 상한 */
-  MANUAL_FIELD_MAX: 300,
+  MANUAL_FIELD_MAX: 1000,
+  CARD_TITLE_MAX: 256,
+  CARD_PERIOD_MAX: 50,
+  MASK_RULE_MAX: 20,
+  MASK_TEXT_MAX: 100,
   /** 임시 저장 디바운스(ms) — 입력이 멈춘 뒤 한 번만 보낸다 */
   DRAFT_AUTOSAVE_MS: 2500,
 } as const;

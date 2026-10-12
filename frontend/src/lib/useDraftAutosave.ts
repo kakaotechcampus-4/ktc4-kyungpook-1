@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DraftFields } from '@/api/schemas';
+import { isBlankCardText, type DraftFields } from '@/api/schemas';
 import { CONFIG } from './config';
 
 export type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
@@ -71,7 +71,10 @@ export function useDraftAutosave<T>(fields: T, save: (fields: T) => Promise<unkn
   return { savedAt, failed, saving, dirty, status, flush };
 }
 
-/** Preserve all whitespace; only an actually empty field maps to null. */
+/** Preserve meaningful input verbatim; validation happens at the save request boundary. */
 export const toDraftFields = (d: Record<'S' | 'T' | 'A' | 'R', string>): DraftFields => ({
-  situation: d.S || null, task: d.T || null, action: d.A || null, result: d.R || null,
+  situation: isBlankCardText(d.S) ? null : d.S,
+  task: isBlankCardText(d.T) ? null : d.T,
+  action: isBlankCardText(d.A) ? null : d.A,
+  result: isBlankCardText(d.R) ? null : d.R,
 });

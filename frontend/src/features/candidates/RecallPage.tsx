@@ -28,7 +28,7 @@ export function RecallPage() {
     if (!cur || done.has(cur.path)) return;
     await answer.mutateAsync({ path: cur.path, text });
     track('recall_answered', { repoId, path: cur.path });
-    toast('후보로 추가했습니다 — 답변은 그대로 근거(USER_STATED)가 됩니다', { tone: 'success' });
+    toast('후보로 추가했습니다', { tone: 'success' });
     setDone((d) => new Set(d).add(cur.path));
     if (open < dirs.length - 1) goTo(open + 1); else nav(`/repos/${repoId}/candidates`);
   };

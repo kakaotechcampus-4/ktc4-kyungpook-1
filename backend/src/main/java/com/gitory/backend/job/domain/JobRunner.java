@@ -250,10 +250,14 @@ public class JobRunner {
 
     }
 
-    /** 우리 상한은 다시 읽어도 같은 결과라 이어 읽기가 열리지 않도록 에러 코드를 남기지 않는다 */
+    /** 우리 상한은 다시 읽어도 같은 결과라 GITHUB_RATE_LIMITED 와 달리 다시 시도를 열지 않는 코드로 알린다 */
     private static JobErrorCode partialErrorCodeOf(PartialReason reason) {
 
-        return reason == PartialReason.GITHUB_RATE_LIMITED ? JobErrorCode.GITHUB_RATE_LIMITED : null;
+        if (reason == PartialReason.GITHUB_RATE_LIMITED) {
+            return JobErrorCode.GITHUB_RATE_LIMITED;
+        }
+
+        return reason == PartialReason.CAP_EXCEEDED ? JobErrorCode.COLLECTION_CAPPED : null;
 
     }
 

@@ -469,8 +469,8 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("우리 상한까지만 읽으면 부분 완료로 끝내고 에러 코드는 남기지 않는다")
-    void cappedCollectionIsPartialWithoutReason() {
+    @DisplayName("우리 상한까지만 읽으면 부분 완료와 COLLECTION_CAPPED 를 남긴다")
+    void cappedCollectionIsPartialWithCappedCode() {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(activity(PartialReason.CAP_EXCEEDED));
@@ -480,7 +480,7 @@ class JobRunnerTest {
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.isPartial()).isTrue();
-        assertThat(job.getErrorCode()).isNull();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.COLLECTION_CAPPED);
 
     }
 

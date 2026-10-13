@@ -1,11 +1,15 @@
 package com.gitory.backend.job.api;
 
+import com.gitory.backend.card.domain.CandidateAlreadyUsedException;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
 import com.gitory.backend.job.domain.IdempotencyKeyMismatchException;
 import com.gitory.backend.job.domain.JobNotFoundException;
+import com.gitory.backend.job.domain.NoCandidatesException;
 import com.gitory.backend.job.domain.RepositoryNotFoundException;
+import com.gitory.backend.recommend.domain.CandidateNotFoundException;
+import com.gitory.backend.recommend.domain.CandidateNotUsableException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -41,5 +45,29 @@ public class JobExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiResponse<Void> handleJobNotFound() {
         return ApiResponse.fail(ErrorCode.NOT_FOUND, "Job 을 찾을 수 없습니다.");
+    }
+
+    @ExceptionHandler(NoCandidatesException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleNoCandidates() {
+
+        return ApiResponse.fail(ErrorCode.NO_CANDIDATES, "카드로 만들 후보를 하나 이상 골라 주세요.");
+
+    }
+
+    @ExceptionHandler(CandidateNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleCandidateNotFound() {
+
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "후보를 찾을 수 없습니다.");
+
+    }
+
+    @ExceptionHandler({CandidateNotUsableException.class, CandidateAlreadyUsedException.class})
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleCandidateNotUsable() {
+
+        return ApiResponse.fail(ErrorCode.INVALID_STATE, "이미 카드로 쓴 후보이거나 제외한 후보가 있습니다.");
+
     }
 }

@@ -32,4 +32,12 @@ public class RepositoryOwnershipService {
         return owned;
 
     }
+
+    /** 저장소 연결의 주인으로, 다른 모듈이 후보가 남의 것인지 가릴 때 쓴다 */
+    @Transactional(readOnly = true)
+    public Optional<Long> ownerOf(Long userRepositoryId) {
+
+        return repositories.findById(userRepositoryId).map(ConnectedRepository::getUserId);
+
+    }
 }

@@ -1,6 +1,7 @@
 package com.gitory.backend.card.api;
 
 import com.gitory.backend.card.domain.CardConfirmedException;
+import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardNotConfirmableException;
 import com.gitory.backend.card.domain.CardNotFoundException;
 import com.gitory.backend.card.domain.CardVersionNotFoundException;
@@ -44,6 +45,15 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleCardConfirmed() {
 
         return ApiResponse.fail(ErrorCode.CARD_CONFIRMED, "확정된 카드는 다시 열어야 수정할 수 있습니다.");
+
+    }
+
+    @ExceptionHandler(CardGeneratingException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleCardGenerating() {
+
+        return ApiResponse.fail(ErrorCode.INVALID_STATE,
+                "초안을 만드는 중인 카드는 초안이 만들어진 뒤에 질문하거나 답할 수 있습니다.");
 
     }
 

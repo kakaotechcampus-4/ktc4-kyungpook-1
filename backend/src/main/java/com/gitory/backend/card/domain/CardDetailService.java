@@ -4,8 +4,11 @@ import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.interview.InterviewTurn;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.card.port.CardGenerationPort;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositoryReferenceService;
+import com.gitory.backend.recommend.domain.CandidateReference;
+import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -30,6 +33,8 @@ public class CardDetailService {
     private final CardVersionRepository versions;
     private final CardVersionReader reader;
     private final RepositoryReferenceService repositories;
+    private final CandidateReferenceService candidates;
+    private final CardGenerationPort generationJobs;
     private final InterviewTurnRepository turns;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -43,10 +48,30 @@ public class CardDetailService {
         VersionSlots slots = reader.read(card.getId(), card.getCurrentVersion());
         List<InterviewTurn> asked = turns.findByCardIdOrderBySeqAsc(card.getId());
 
+        CandidateReference candidate = Optional.ofNullable(card.getCandidateId())
+                .flatMap(candidates::find)
+                .orElse(null);
+
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
                 card.getPeriod(), repository, current.getSource(), current.getUpdatedAt(), slots,
-                card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(), answeredCount(asked),
-                turnNosOf(slots, asked));
+                card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(), candidate, generationOf(card),
+                answeredCount(asked), turnNosOf(slots, asked));
+
+    }
+
+    /** 초안 Job 이 아직 돌거나 일부만 만들어졌을 때만 알리고, 그 밖에는 화면이 초안 대기를 멈추도록 비운다 */
+    private CardGeneration generationOf(Card card) {
+
+        UUID jobId = card.getGenerationJobId();
+        if (jobId == null) {
+            return null;
+        }
+
+        if (card.isGenerationPartial() || generationJobs.isRunning(jobId)) {
+            return new CardGeneration(jobId, card.isGenerationPartial());
+        }
+
+        return null;
 
     }
 

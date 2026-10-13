@@ -1,6 +1,7 @@
 package com.gitory.backend.card.domain;
 
 import com.gitory.backend.ingest.domain.RepositoryReference;
+import com.gitory.backend.recommend.domain.CandidateReference;
 
 import java.time.Instant;
 import java.util.List;
@@ -20,6 +21,8 @@ public record CardDetail(
         List<MaskRule> maskRules,
         Instant confirmedAt,
         Instant createdAt,
+        CandidateReference candidate,
+        CardGeneration generation,
         int interviewTurns,
         Map<StarField, Integer> turnNos) {
 }

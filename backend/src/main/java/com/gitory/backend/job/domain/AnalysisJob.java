@@ -11,6 +11,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -65,19 +66,28 @@ public class AnalysisJob {
     @UpdateTimestamp
     private Instant updatedAt;
 
-    private AnalysisJob(Long userId, Long userRepositoryId, String idempotencyKey) {
+    private AnalysisJob(Long userId, Long userRepositoryId, String idempotencyKey, JobType type) {
         this.publicId = UUID.randomUUID();
         this.userId = userId;
         this.userRepositoryId = userRepositoryId;
         this.idempotencyKey = idempotencyKey;
-        this.type = JobType.ANALYZE;
+        this.type = type;
         this.state = JobState.QUEUED;
         this.steps = queuedSteps();
         this.partial = false;
     }
 
     public static AnalysisJob enqueue(Long userId, Long userRepositoryId, String idempotencyKey) {
-        return new AnalysisJob(userId, userRepositoryId, idempotencyKey);
+
+        return new AnalysisJob(userId, userRepositoryId, idempotencyKey, JobType.ANALYZE);
+
+    }
+
+    /** 후보로 카드를 만들 때 접수하는 카드 초안 Job 이며, 한 저장소에 여럿 있을 수 있다 */
+    public static AnalysisJob enqueueDraft(Long userId, Long userRepositoryId, String idempotencyKey) {
+
+        return new AnalysisJob(userId, userRepositoryId, idempotencyKey, JobType.DRAFT);
+
     }
 
     /**
@@ -143,6 +153,24 @@ public class AnalysisJob {
         requireState(JobState.RUNNING);
         JobStepState reason = candidateCount == 0 ? JobStepState.SKIPPED : JobStepState.DONE;
         this.steps = withCandidateSteps(JobStepState.DONE, reason, candidateCount);
+
+    }
+
+    /**
+     * 카드 초안 Job 을 AI 없이 네 단계를 모두 SKIPPED 로 두고 부분 완료 없이 끝낸다
+     * 카드에 만들 때 1번 버전이 이미 있어서 이 Job 이 쓸 글이 없다
+     */
+    public void completeDraftWithoutWriting() {
+
+        requireState(JobState.RUNNING);
+        if (type != JobType.DRAFT) {
+            throw new IllegalStateException("카드 초안 Job 이 아니다: " + type);
+        }
+
+        this.steps = Arrays.stream(JobStepKey.values())
+                .map(key -> new JobStep(key, JobStepState.SKIPPED, 0, null))
+                .toList();
+        succeed(false, null);
 
     }
 

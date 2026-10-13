@@ -1,8 +1,10 @@
 package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditLog;
+import com.gitory.backend.card.port.CardGenerationPort;
 import com.gitory.backend.ingest.domain.RepositoryOwnershipService;
 import com.gitory.backend.ingest.domain.RepositoryReferenceService;
+import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +15,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -36,7 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({ManualCardService.class, CardDetailService.class, CardOwnershipService.class, CardVersionWriter.class,
-        CardVersionReader.class, RepositoryOwnershipService.class, RepositoryReferenceService.class, AuditLog.class})
+        CardVersionReader.class, RepositoryOwnershipService.class, RepositoryReferenceService.class, AuditLog.class,
+        CandidateReferenceService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class ManualCardServiceTest {
 
@@ -54,6 +58,9 @@ class ManualCardServiceTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @MockitoBean
+    CardGenerationPort generationJobs;
 
     private TestFixtures fixtures;
     private Long userId;

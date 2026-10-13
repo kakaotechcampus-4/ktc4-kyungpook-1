@@ -122,6 +122,17 @@ public class Candidate {
 
     }
 
+    /** 카드로 쓴 후보로 바꾸며, 새 후보가 아니면 이미 쓰였거나 제외된 후보라 바꾸지 않는다 */
+    public void use() {
+
+        if (status != CandidateStatus.NEW) {
+            throw new IllegalStateException("새 후보만 카드로 쓸 수 있다: " + status);
+        }
+
+        this.status = CandidateStatus.USED;
+
+    }
+
     /** NEW 가 아니거나 사용자가 한 번이라도 손댔거나 직접 추가한 후보면 손댄 후보다 */
     public boolean isTouched() {
 

@@ -128,7 +128,7 @@ class AiRepositoryActivityAdapterTest {
                                 new GithubCollectionRepo(456789L, "grow22", "gitory", "develop"),
                                 invocation.getArgument(1))));
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, http, null, null, Clock.systemUTC(), null, null));
+                new GithubCollectionAccess(users, connections, cipher, http, null, null, Clock.systemUTC(), null, null, null));
     }
 
     @AfterEach
@@ -794,7 +794,7 @@ class AiRepositoryActivityAdapterTest {
                 .connectTimeout(Duration.ofSeconds(1)).readTimeout(Duration.ofSeconds(2))
                 .collectReadTimeout(Duration.ofMillis(50)).build(), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, shortTimeout, null, null, Clock.systemUTC(), null, null));
+                new GithubCollectionAccess(users, connections, cipher, shortTimeout, null, null, Clock.systemUTC(), null, null, null));
         assertThatThrownBy(() -> adapter.collect(request(List.of())))
                 .isInstanceOfSatisfying(AiClientException.class, error -> {
                     assertThat(error.errorCode()).isEqualTo("AI_UNAVAILABLE");
@@ -813,7 +813,7 @@ class AiRepositoryActivityAdapterTest {
                 .connectTimeout(Duration.ofSeconds(1)).readTimeout(Duration.ofMillis(50))
                 .collectReadTimeout(Duration.ofSeconds(2)).build(), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, shortDefaultTimeout, null, null, Clock.systemUTC(), null, null));
+                new GithubCollectionAccess(users, connections, cipher, shortDefaultTimeout, null, null, Clock.systemUTC(), null, null, null));
 
         assertThat(adapter.collect(request(List.of())).commits()).hasSize(1);
 

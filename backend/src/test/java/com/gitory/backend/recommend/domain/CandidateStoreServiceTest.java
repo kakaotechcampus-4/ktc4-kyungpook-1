@@ -489,6 +489,33 @@ class CandidateStoreServiceTest {
     }
 
     @Test
+    @DisplayName("직접 추가해 USER 출처로 붙인 커밋은 다시 경험 그룹화를 해도 후보를 그대로 두고, 그 커밋이 든 묶음만 저장하지 않으며 경험 그룹화에서 뺄 커밋에 들고 PR 은 막지 않는다")
+    void keepsAttachedCommitsOfManualCandidateAndLocksOnlyThoseCommits() {
+
+        Long attached = commit(SHA_A);
+        commit(SHA_B);
+        commit(SHA_C);
+        Long manual = candidates.save(Candidate.manual(userRepositoryId, "MANUAL", "직접 추가", "요약",
+                CandidateMeta.of(List.of()))).getId();
+        candidateCommits.save(CandidateCommit.attached(manual, attached, "src/A.java"));
+
+        service.store(userRepositoryId, FINGERPRINT,
+                List.of(cluster("2026-09-01", 0.5, SHA_A, SHA_B), cluster("2026-09-02", 0.4, SHA_C)));
+
+        assertThat(storedCandidates()).hasSize(2);
+        assertThat(storedCandidates().getFirst().getId()).isEqualTo(manual);
+        assertThat(storedCandidates().getLast().getSourceRef()).isEqualTo("2026-09-02");
+        assertThat(linksOf(manual)).singleElement().satisfies(link -> {
+            assertThat(link.getOrigin()).isEqualTo(CandidateCommitOrigin.USER);
+            assertThat(link.getCommitId()).isEqualTo(attached);
+        });
+        LockedSources locked = service.lockedSources(userRepositoryId);
+        assertThat(locked.commitShas()).containsExactly(SHA_A);
+        assertThat(locked.pullRequestNumbers()).isEmpty();
+
+    }
+
+    @Test
     @DisplayName("손댄 후보가 없으면 묶기에서 뺄 커밋과 PR 이 없다")
     void lockedSourcesAreEmptyWithoutTouchedCandidates() {
 

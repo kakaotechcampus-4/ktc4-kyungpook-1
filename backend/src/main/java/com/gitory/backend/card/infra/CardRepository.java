@@ -4,6 +4,8 @@ import com.gitory.backend.card.domain.Card;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,4 +25,7 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     Optional<Card> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
     List<Card> findByUserIdOrderByUpdatedAtDescIdDesc(Long userId);
+
+    @Query("SELECT c.publicId FROM Card c WHERE c.generationJobId = :jobId ORDER BY c.id")
+    List<UUID> findPublicIdsByGenerationJobId(@Param("jobId") UUID jobId);
 }

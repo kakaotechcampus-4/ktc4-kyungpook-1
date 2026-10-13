@@ -1,6 +1,7 @@
 package com.gitory.backend.recommend.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,21 @@ class CandidateTest {
         assertThat(candidate.isUserModified()).isTrue();
         assertThat(candidate.isTouched()).isTrue();
         assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.NEW);
+
+    }
+
+    @Test
+    @DisplayName("새 후보를 카드로 쓰면 USED 가 되고, 새 후보가 아니면 상태를 바꾸지 않고 거절한다")
+    void useMovesNewCandidateToUsedOnly() {
+
+        Candidate candidate = grouped();
+
+        candidate.use();
+
+        assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.USED);
+        assertThat(candidate.isTouched()).isTrue();
+        assertThatThrownBy(candidate::use).isInstanceOf(IllegalStateException.class);
+        assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.USED);
 
     }
 }

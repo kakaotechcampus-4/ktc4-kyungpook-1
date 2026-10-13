@@ -1,6 +1,7 @@
 package com.gitory.backend.card.api;
 
 import com.gitory.backend.card.domain.CardConfirmedException;
+import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardNotConfirmableException;
 import com.gitory.backend.card.domain.CardNotFoundException;
 import com.gitory.backend.card.domain.CardVersionNotFoundException;
@@ -63,6 +64,7 @@ class CardExceptionHandlerTest {
                 arguments(Named.of("카드 없음", new CardNotFoundException()), 404, "NOT_FOUND"),
                 arguments(Named.of("버전 없음", new CardVersionNotFoundException()), 404, "NOT_FOUND"),
                 arguments(Named.of("확정된 카드", new CardConfirmedException()), 409, "CARD_CONFIRMED"),
+                arguments(Named.of("초안을 만드는 중인 카드", new CardGeneratingException()), 409, "INVALID_STATE"),
                 arguments(Named.of("확정할 수 없음", new CardNotConfirmableException()), 422, "NOT_CONFIRMABLE"),
                 arguments(Named.of("입력 규칙 위반", new InvalidCardInputException("제목을 입력해 주세요.")), 400,
                         "INVALID_REQUEST"),

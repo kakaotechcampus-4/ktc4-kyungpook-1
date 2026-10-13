@@ -12,6 +12,7 @@ import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActionGate } from '@/lib/useActionGate';
+import { Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
 const loadSel = (repoId: string): Set<string> => {
@@ -143,7 +144,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       <SectionHead label="후보 선택" count={visible.length} right={
         <span className="row candidate-board__actions">
           {excluded.length > 0 && <Button variant="text" size="sm" disabled={busy} onClick={() => void restoreExcluded()}>제외 {excluded.length}개 복원</Button>}
-          <Button variant="text" size="sm" disabled={busy || !visible.some((c) => c.status === 'NEW' && !c.weak)} onClick={() => setSelected((current) => new Set([...current, ...visible.filter((c) => c.status === 'NEW' && !c.weak).map((c) => c.id)]))} title="검색 결과의 추천 후보를 기존 선택에 추가">추천 후보 선택</Button>
+          <Button variant="outline" size="sm" disabled={busy || !visible.some((c) => c.status === 'NEW' && !c.weak)} onClick={() => setSelected((current) => new Set([...current, ...visible.filter((c) => c.status === 'NEW' && !c.weak).map((c) => c.id)]))} title="검색 결과의 추천 후보를 기존 선택에 추가"><CheckIcon size={16} aria-hidden />추천 후보 선택</Button>
           {chosen.length > 0 && <Button variant="text" size="sm" disabled={busy} onClick={() => setSelected(new Set())}>선택 해제</Button>}
         </span>
       } />
@@ -180,31 +181,32 @@ function CandidateRow({ c, disabled, selected, onToggle, onExclude, expanded, on
   const cluster = c.type === 'COMMIT_CLUSTER';
   const included = c.commits && c.commits.length > 0 ? c.commits.filter((x) => x.included).length : c.meta.commits;
   return (
-    <div className={`card cand ${used ? 'card--used cand--used' : 'cand--pick'} ${selected ? 'card--selected' : ''}`}
-      onClick={used || disabled ? undefined : (e) => { if ((e.target as HTMLElement).closest('button, a, input')) return; onToggle(); }}>
+    <div className={`card cand ${used ? 'card--used cand--used' : disabled ? '' : 'cand--pick'} ${selected ? 'card--selected' : ''}`}
+      onClick={used || disabled ? undefined : (e) => { if ((e.target as HTMLElement).closest('button, a, input, .cand__details')) return; onToggle(); }}>
       <Check checked={selected} onChange={onToggle} label={`${c.title} 선택`} disabled={used || disabled} />
-      <div className="stack grow" style={{ gap: 8 }}>
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <Badge kind={c.type}>{candidateRefLabel(c.type, c.ref)}</Badge>
-          <span className="cand__title">{c.title}</span>
-          {used && <Badge kind="USED">{candidateStatusLabel.USED}</Badge>}
-          {c.weak && !used && <Badge kind="NEUTRAL" title="문서·설정 변경 위주라 STAR 로 만들기엔 재료가 얇습니다">카드감 낮음</Badge>}
-          <span className="right row" style={{ gap: 12 }}>
-            {used && c.usedByCardId && <Link to={`/cards/${c.usedByCardId}`} className="t-12 w-600 c-2">카드 보기</Link>}
+      <div className="cand__body">
+        <div className="cand__heading">
+          <h3 className="cand__title">{c.title}</h3>
+          <div className="cand__actions">
+            {used && c.usedByCardId && <Link to={`/cards/${c.usedByCardId}`} className="btn btn--outline btn--sm">카드 보기</Link>}
             {!used && <button type="button" className="btn btn--text btn--sm cand__exclude" disabled={disabled} onClick={onExclude}>제외</button>}
-          </span>
+          </div>
         </div>
-        <p className="cand__reason">추천 이유 · {c.reason}</p>
+        <div className="cand__badges">
+          <Badge kind={c.type}>{candidateRefLabel(c.type, c.ref)}</Badge>
+          {used && <Badge kind="USED">{candidateStatusLabel.USED}</Badge>}
+          {c.weak && !used && <Badge kind="NEUTRAL">추천도 낮음</Badge>}
+        </div>
+        <p className="cand__reason">{c.reason}</p>
         <span className="cand__meta">커밋 {included}개 · 변경 파일 {c.meta.files}개{c.meta.reviewComments ? ` · 리뷰 코멘트 ${c.meta.reviewComments}건` : ''}{c.meta.codeRatio != null ? ` · 코드 비율 ${Math.round(c.meta.codeRatio * 100)}%` : ''}</span>
         {cluster && (
           <div className="cand__warn">
-            <strong>PR이 아닙니다</strong>
-            <span>시간대·디렉터리로 묶음</span>
-            {c.commits && c.commits.length > 0 && <button type="button" className="right w-600" style={{ fontSize: 11, color: 'var(--text-strong)' }} onClick={onExpand} aria-expanded={expanded}>{expanded ? '접기' : `커밋 ${c.commits.length}개 펼치기`}</button>}
+            <span>시간대·디렉터리로 묶은 커밋</span>
+            {c.commits && c.commits.length > 0 && <button type="button" className="btn btn--text btn--sm cand__expand" onClick={onExpand} aria-expanded={expanded}>{expanded ? '접기' : `커밋 ${c.commits.length}개 펼치기`}{expanded ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}</button>}
           </div>
         )}
-        {cluster && expanded && c.commits && <ClusterCommits c={c} disabled={used || disabled} onChange={onCommitToggle} />}
       </div>
+      {cluster && expanded && c.commits && <div className="cand__details"><ClusterCommits c={c} disabled={used || disabled} onChange={onCommitToggle} /></div>}
     </div>
   );
 }
@@ -217,17 +219,16 @@ function ClusterCommits({ c, disabled, onChange }: { c: Candidate; disabled: boo
     onChange(ex.includes(sha) ? ex.filter((s) => s !== sha) : [...ex, sha]);
   };
   return (
-    <div className="stack" style={{ gap: 8 }}>
+    <div className="cluster-commits">
       {commits.map((cm) => (
-        <div key={cm.sha} className={`commit-row ${cm.included ? '' : 'commit-row--ex'}`}>
+        <div key={cm.sha} className={`commit-row commit-row--cluster ${cm.included ? '' : 'commit-row--ex'}`}>
           <Check checked={cm.included} disabled={disabled} onChange={() => toggle(cm.sha)} label={`${shortSha(cm.sha)} 포함`} />
-          <span className="commit-row__sha">{shortSha(cm.sha)}</span>
-          <div className="stack grow" style={{ gap: 2 }}>
+          <div className="commit-row__body">
+            <div className="commit-row__heading"><span className="commit-row__sha">{shortSha(cm.sha)}</span>{!cm.included && <Badge kind="NEUTRAL">제외됨</Badge>}</div>
             <span className="commit-row__msg">{cm.message}</span>
             <span className="commit-row__path">{cm.path} · {cm.at.slice(5, 16).replace('T', ' ')}</span>
           </div>
-          {!cm.included && <Badge kind="NEUTRAL">제외됨</Badge>}
-          <a href={cm.url} target="_blank" rel="noreferrer" className="c-3" aria-label="GitHub에서 보기">↗</a>
+          <a href={cm.url} target="_blank" rel="noreferrer" className="commit-row__link" aria-label={`${shortSha(cm.sha)} GitHub에서 보기`}><ExternalLink size={16} aria-hidden /></a>
         </div>
       ))}
     </div>
@@ -279,7 +280,7 @@ function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () =
   };
   return (
     <Modal title="후보 직접 추가" onClose={() => { if (!add.isPending) onClose(); }}
-      footer={{ strong: shas.length ? '기술 카드로 생성됩니다' : '정성 카드로 생성됩니다', sub: shas.length ? `커밋 ${shas.length}건이 붙어 있습니다` : '근거는 내가 말한 것(USER_STATED)만 남습니다',
+      footer={{ strong: shas.length ? '기술 카드로 생성됩니다' : '정성 카드로 생성됩니다', sub: shas.length ? `커밋 ${shas.length}건이 붙어 있습니다` : undefined,
         actions: <><Button variant="outline" disabled={add.isPending} onClick={onClose}>취소</Button><Button disabled={!title.trim() || !summary.trim()} loading={add.isPending} onClick={submit}>후보 추가</Button></> }}>
       <Field label="후보 이름"><Input autoFocus disabled={add.isPending} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예) 배포 파이프라인 직접 구축" maxLength={80} /></Field>
       <Field label="무엇을 한 작업인가요"><Textarea disabled={add.isPending} rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="한 줄로 적어주세요." maxLength={300} /></Field>
@@ -294,11 +295,13 @@ function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () =
           {search.data?.map((cm) => {
             const on = shas.some((s) => s.sha === cm.sha);
             return (
-              <button key={cm.sha} type="button" disabled={add.isPending} className={`commit-row ${on ? 'card--selected' : ''}`} style={{ padding: '8px 12px', width: '100%', textAlign: 'left' }}
+              <button key={cm.sha} type="button" disabled={add.isPending} className={`commit-row commit-row--picker ${on ? 'card--selected' : ''}`}
                 onClick={() => setShas((xs) => on ? xs.filter((s) => s.sha !== cm.sha) : [...xs, { sha: cm.sha, message: cm.message }])} aria-pressed={on}>
-                <span className="commit-row__sha">{shortSha(cm.sha)}</span>
-                <span className="commit-row__msg grow" style={{ fontSize: 12.5 }}>{cm.message}</span>
-                {cm.candidateId && <Badge kind="NEUTRAL">다른 후보에 있음</Badge>}
+                <span className="commit-row__heading">
+                  <span className="commit-row__sha">{shortSha(cm.sha)}</span>
+                  {cm.candidateId && <Badge kind="NEUTRAL">다른 후보에 있음</Badge>}
+                </span>
+                <span className="commit-row__msg">{cm.message}</span>
               </button>
             );
           })}

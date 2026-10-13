@@ -8,6 +8,7 @@ import com.gitory.backend.agent.port.InterviewQuestionResult;
 import com.gitory.backend.agent.port.InterviewStarSlot;
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.Card;
+import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
@@ -36,6 +37,7 @@ import java.util.UUID;
 public class InterviewAskService {
 
     private final CardOwnershipService ownership;
+    private final CardGenerationGuard generation;
     private final InterviewTurnRepository turns;
     private final InterviewContextAssembler context;
     private final InterviewQuestionPort questions;
@@ -43,7 +45,7 @@ public class InterviewAskService {
     private final PlatformTransactionManager transactionManager;
 
     /**
-     * 확정 카드는 409, 답하지 않은 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409, 칸이 잘못되면 400 순서로 확인한다
+     * 초안을 만드는 중이거나 확정된 카드는 409, 답하지 않은 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409, 칸이 잘못되면 400 순서로 확인한다
      * 새 질문은 AI 를 다녀온 뒤 같은 확인을 한 번 더 하고 저장한다
      */
     public InterviewTurnView ask(UUID publicId, Long userId, String field) {
@@ -155,6 +157,7 @@ public class InterviewAskService {
     // 읽기와 저장 두 단계가 같은 순서로 확인하도록 한곳에 둔다
     private Optional<InterviewTurn> openTurnOrRefuse(Card card, List<InterviewTurn> asked) {
 
+        generation.requireNotGenerating(card);
         card.requireDraft();
 
         Optional<InterviewTurn> open = openTurnOf(asked);

@@ -12,6 +12,8 @@ import com.gitory.backend.agent.port.InterviewQuestionType;
 import com.gitory.backend.agent.port.InterviewStarSlot;
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.Card;
+import com.gitory.backend.card.domain.CardGeneratingException;
+import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
@@ -43,6 +45,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -59,6 +62,7 @@ class InterviewAskServiceTest {
     private static final Long CARD_ID = 5L;
 
     private final CardOwnershipService ownership = mock(CardOwnershipService.class);
+    private final CardGenerationGuard generation = mock(CardGenerationGuard.class);
     private final InterviewTurnRepository turns = mock(InterviewTurnRepository.class);
     private final InterviewContextAssembler assembler = mock(InterviewContextAssembler.class);
     private final InterviewQuestionPort port = mock(InterviewQuestionPort.class);
@@ -203,6 +207,20 @@ class InterviewAskServiceTest {
     }
 
     @Test
+    @DisplayName("초안을 만드는 중인 카드는 질문 상한에 닿았어도 CardGeneratingException 이고 AI 를 부르지 않는다")
+    void refusesGeneratingCardBeforeCapAndWithoutCallingAi() {
+
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(answered(1), answered(2)));
+        doThrow(new CardGeneratingException()).when(generation).requireNotGenerating(any(Card.class));
+
+        assertThatThrownBy(() -> service(2).ask(PUBLIC_ID, USER_ID, "T"))
+                .isInstanceOf(CardGeneratingException.class);
+
+        verifyNoInteractions(port);
+
+    }
+
+    @Test
     @DisplayName("돌려주는 질문의 상한과 남은 질문 수도 설정 값을 따른다")
     void viewFollowsConfiguredMaxTurns() {
 
@@ -301,7 +319,7 @@ class InterviewAskServiceTest {
 
     private InterviewAskService service(int maxTurns) {
 
-        return new InterviewAskService(ownership, turns, assembler, port, new InterviewLimits(maxTurns),
+        return new InterviewAskService(ownership, generation, turns, assembler, port, new InterviewLimits(maxTurns),
                 transactionManager);
 
     }

@@ -16,7 +16,7 @@ public record CardSummaryResponse(
         int versionNo,
         StarStatesResponse star,
         @Schema(description = "카드 내용을 마지막으로 바꾼 시각") Instant updatedAt,
-        @Schema(description = "직접 작성 카드는 MANUAL, 되묻기에 답한 질문이 있는 직접 작성 카드는 INTERVIEW") String sourceLabel,
+        @Schema(description = "직접 작성 카드는 MANUAL, 되묻기에 답한 질문이 있는 직접 작성 카드는 INTERVIEW, 후보로 만든 카드는 그 후보의 ref(PR 번호나 날짜 같은 참조 글자)") String sourceLabel,
         @Schema(description = "후보로 만든 카드의 후보 종류. 직접 작성 카드는 null") String sourceType,
         String period,
         @Schema(description = "현재 버전 문장에 붙은 근거 커밋 수") int evidenceCount,
@@ -33,7 +33,7 @@ public record CardSummaryResponse(
                 StarStatesResponse.from(card.star()),
                 card.updatedAt(),
                 card.sourceLabel(),
-                null,
+                card.sourceType(),
                 card.period(),
                 card.evidenceCount(),
                 card.userStatedCount());

@@ -358,4 +358,50 @@ class AnalysisJobTest {
         assertThat(finished.getState()).isEqualTo(JobState.SUCCEEDED);
 
     }
+
+    @Test
+    @DisplayName("카드 초안 Job 은 DRAFT 종류로 QUEUED 에서 시작하고 네 단계가 모두 QUEUED 다")
+    void draftJobStartsQueuedAsDraftType() {
+
+        AnalysisJob job = AnalysisJob.enqueueDraft(1L, 10L, KEY);
+
+        assertThat(job.getType()).isEqualTo(JobType.DRAFT);
+        assertThat(job.getState()).isEqualTo(JobState.QUEUED);
+        assertThat(job.getSteps()).isEqualTo(queued().getSteps());
+        assertThat(queued().getType()).isEqualTo(JobType.ANALYZE);
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 은 AI 없이 네 단계를 모두 SKIPPED 로 두고 부분 완료와 에러 코드 없이 SUCCEEDED 로 끝난다")
+    void draftJobCompletesWithoutWriting() {
+
+        AnalysisJob job = AnalysisJob.enqueueDraft(1L, 10L, KEY);
+        job.start();
+
+        job.completeDraftWithoutWriting();
+
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isFalse();
+        assertThat(job.getErrorCode()).isNull();
+        assertThat(job.getFinishedAt()).isNotNull();
+        assertThat(job.getSteps()).containsExactly(
+                new JobStep(JobStepKey.COMMITS, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("RUNNING 이 아닌 카드 초안 Job 이나 분석 Job 은 AI 없이 끝낼 수 없다")
+    void completingWithoutWritingNeedsRunningDraftJob() {
+
+        AnalysisJob queuedDraft = AnalysisJob.enqueueDraft(1L, 10L, KEY);
+
+        assertThatThrownBy(queuedDraft::completeDraftWithoutWriting).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> running().completeDraftWithoutWriting()).isInstanceOf(IllegalStateException.class);
+        assertThat(queuedDraft.getState()).isEqualTo(JobState.QUEUED);
+
+    }
 }

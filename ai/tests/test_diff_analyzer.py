@@ -133,7 +133,7 @@ def test_matches_sha_case_insensitively() -> None:
     upper = "ABCDEF1" + "0" * 33
     client = _FakeClient(_output((upper.lower(), "요약", [])))
 
-    evidence = _run(DiffAnalyzer(client), _detail(_commit(upper, "m", [])))
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(upper, "m", [_file("a.py", "+x")])))
 
     assert evidence[0].sha == upper
     assert evidence[0].summary == "요약"
@@ -190,7 +190,7 @@ def test_shares_unused_patch_budget_and_marks_truncation() -> None:
 def test_clips_long_summary_and_caps_points() -> None:
     client = _FakeClient(_output((SHA_A, "가" * 500, ["p1", "p2", "p3", "p4", "  "])))
 
-    evidence = _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "m", [])))
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "m", [_file("a.py", "+x")])))
 
     assert len(evidence[0].summary) == 200
     assert evidence[0].summary.endswith("…")
@@ -200,7 +200,7 @@ def test_clips_long_summary_and_caps_points() -> None:
 def test_retries_once_on_invalid_output() -> None:
     client = _FakeClient(LLMInvalidOutputError("형식 오류"), _output((SHA_A, "요약", [])))
 
-    evidence = _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "m", [])))
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "m", [_file("a.py", "+x")])))
 
     assert len(client.calls) == 2
     assert evidence[0].summary == "요약"
@@ -330,6 +330,66 @@ def test_fails_whole_analysis_when_a_batch_fails() -> None:
         _run(DiffAnalyzer(client, DiffAnalysisLimits(max_concurrent_calls=1)), detail)
 
 
+def test_failed_batch_stops_remaining_batches_from_calling_llm() -> None:
+    shas = [f"{index:07x}" + "0" * 33 for index in range(1, 18)]
+    client = _FakeClient(
+        LLMStructuredCallError("429"),
+        *(_output(*((sha, "요약", []) for sha in shas)) for _ in range(2)),
+    )
+    analyzer = DiffAnalyzer(client, DiffAnalysisLimits(max_concurrent_calls=1))
+    detail = _detail(*(_commit(sha, "m", [_file("a.py", "+x")]) for sha in shas))
+
+    async def scenario() -> None:
+        with pytest.raises(DiffAnalysisError):
+            await analyzer.analyze(detail, "로그인 개선")
+        # 실패를 답한 뒤에도 남은 배치(8개·1개)가 돈다면 이 사이에 LLM을 부른다.
+        await asyncio.sleep(0.2)
+
+    asyncio.run(scenario())
+
+    assert len(client.calls) == 1
+
+
+def test_summary_written_without_any_patch_falls_back_to_commit_message() -> None:
+    sha_c = "c" * 40
+    client = _FakeClient(_output(
+        (SHA_A, "필터를 추가했다.", ["필터 체인"]),
+        (SHA_B, "큰 리팩토링으로 성능을 높였다.", ["구조 개선"]),
+        (sha_c, "환경 설정을 바꿨다.", ["설정 키"]),
+    ))
+    detail = _detail(
+        _commit(SHA_A, "feat: 필터 추가", [_file("Filter.java", "+class Filter {}")]),
+        # 수집 단계 patch 상한을 앞 커밋이 다 써서 patch 없이 온 커밋
+        _commit(SHA_B, "refactor: 서비스 정리", [_file("Service.java", None, additions=500)]),
+        # 민감 파일은 patch를 보내지 않는다.
+        _commit(sha_c, "chore: 설정 변경", [_file(".env", "+MODE=dev")]),
+    )
+
+    evidence = _run(DiffAnalyzer(client), detail)
+
+    assert [(item.summary_source, item.summary) for item in evidence] == [
+        ("DIFF", "필터를 추가했다."),
+        ("COMMIT_MESSAGE", "refactor: 서비스 정리"),
+        ("COMMIT_MESSAGE", "chore: 설정 변경"),
+    ]
+    assert [item.technical_points for item in evidence] == [["필터 체인"], [], []]
+
+
+def test_commit_with_empty_message_still_becomes_evidence() -> None:
+    client = _FakeClient(_output((SHA_A, "필터를 추가했다.", [])))
+    detail = _detail(
+        _commit(SHA_A, "", [_file("Filter.java", "+class Filter {}")]),
+        _commit(SHA_B, "", []),
+    )
+
+    evidence = _run(DiffAnalyzer(client), detail)
+
+    assert [(item.message, item.summary, item.summary_source) for item in evidence] == [
+        ("", "필터를 추가했다.", "DIFF"),
+        ("", "", "COMMIT_MESSAGE"),
+    ]
+
+
 def test_preserves_numeric_draft_for_user_review() -> None:
     client = _FakeClient(_output(
         (SHA_A, "캐시를 추가해 응답 시간을 30% 줄였다.", ["Redis 캐시 적용", "지연 100ms 감소"]),
@@ -365,7 +425,7 @@ def test_splits_batch_in_half_when_output_is_too_long() -> None:
                                         prompt_tokens=1, completion_tokens=1, latency_ms=1)
 
     client = _LengthLimitedClient()
-    detail = _detail(*(_commit(sha, "m", []) for sha in shas))
+    detail = _detail(*(_commit(sha, "m", [_file("a.py", "+x")]) for sha in shas))
 
     evidence = _run(DiffAnalyzer(client, DiffAnalysisLimits(max_concurrent_calls=1)), detail)
 
@@ -408,7 +468,9 @@ def test_stops_calling_after_call_cap_and_falls_back() -> None:
     client = _FakeClient(*(_output((sha, f"요약 {sha[:7]}", [])) for sha in shas))
     limits = DiffAnalysisLimits(max_commits_per_call=1, max_concurrent_calls=1, max_calls_per_request=2)
 
-    evidence = _run(DiffAnalyzer(client, limits), _detail(*(_commit(sha, f"m{sha[:7]}", []) for sha in shas)))
+    detail = _detail(*(_commit(sha, f"m{sha[:7]}", [_file("a.py", "+x")]) for sha in shas))
+
+    evidence = _run(DiffAnalyzer(client, limits), detail)
 
     assert len(client.calls) == 2
     assert [item.summary_source for item in evidence] == ["DIFF", "DIFF", "COMMIT_MESSAGE"]

@@ -152,6 +152,10 @@ class _RequestBudget:
         self.calls_left -= 1
         return remaining
 
+    def close(self) -> None:
+        """요청이 실패로 끝났다. asyncio.gather는 첫 실패 뒤에도 남은 배치를 돌리므로 새 호출을 막는다."""
+        self.calls_left = 0
+
 
 class DiffAnalyzer:
     """원문 diff에서 변경 행동과 기술 근거만 추출한다."""
@@ -216,6 +220,10 @@ class DiffAnalyzer:
                         return [self._fallback(batch[0], payload["commits"][0])]
                     middle = len(batch) // 2
                     halves = [batch[:middle], batch[middle:]]
+                except DiffAnalysisError:
+                    # 요청 전체가 실패한다. 세마포어를 놓기 전에 닫아야 기다리던 배치도 새로 부르지 않는다.
+                    budget.close()
+                    raise
                 else:
                     return self._to_evidence(batch, payload, output)
             # 세마포어를 놓은 뒤 나눠 부른다. 쥔 채로 기다리면 동시 호출 상한에서 멈출 수 있다.
@@ -316,7 +324,7 @@ class DiffAnalyzer:
         payload: dict[str, Any],
         output: DiffSummaryOutput,
     ) -> list[DiffEvidence]:
-        """입력에 없는 SHA는 버리고, 쓸 수 없는 요약은 커밋 메시지로 대신한다."""
+        """입력에 없는 SHA는 버리고, 쓸 수 없는 요약과 patch를 보지 못한 요약은 커밋 메시지로 대신한다."""
         summaries: dict[str, CommitSummary] = {}
         for item in output.commits:
             summaries.setdefault(item.sha.strip().casefold(), item)
@@ -324,8 +332,12 @@ class DiffAnalyzer:
         evidence = []
         for commit, sent in zip(commits, payload["commits"]):
             item = summaries.get(commit.sha.casefold())
-            summary = self._clean_summary(item.summary) if item else None
-            points = self._clean_points(item.technical_points) if item else []
+            if item is None or not _has_patch(sent):
+                # patch 없이 쓴 요약은 diff 근거가 아니다. DIFF로 두면 STAR 신뢰도가 HIGH가 된다.
+                evidence.append(self._fallback(commit, sent))
+                continue
+            summary = self._clean_summary(item.summary)
+            points = self._clean_points(item.technical_points)
             if not summary:
                 evidence.append(self._fallback(commit, sent, points))
                 continue
@@ -379,6 +391,11 @@ def _unique_commits(commits: list[CandidateCommitDetail]) -> list[CandidateCommi
             seen.add(key)
             unique.append(commit)
     return unique
+
+
+def _has_patch(sent: dict[str, Any]) -> bool:
+    """모델에 보낸 입력에 patch가 한 글자라도 있는지."""
+    return any(file["patch"] for file in sent["files"])
 
 
 def _prepare_files(

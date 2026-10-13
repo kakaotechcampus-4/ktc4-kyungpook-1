@@ -30,9 +30,9 @@
    투명하게 만들면 마우스를 올린 칸 둘레의 선이 통째로 사라진다 (칸이 따로 놀던 시절의 잔재였다). */
 .experience-item:hover, .experience-item:focus-visible { background: var(--bg-canvas); box-shadow: none; transform: none; }
 .experience-item__meta, .experience-item__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-tertiary); font-size: 11.5px; line-height: 18px; }
-.experience-item__footer { margin-top: auto; }
+.experience-item__footer { margin-top: 0; }
 .experience-item .gcard__title { margin: 0; }
-.experience-item .stardots--labeled { width: 100%; max-width: 280px; }
+.experience-item .stardots--labeled { width: 100%; max-width: 280px; margin-top: auto; }
 .status-tabs { display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--border-default); }
 .status-tab { position: relative; min-height: 44px; padding: 0 2px; color: var(--text-secondary); font-size: 13px; font-weight: 600; }
 .status-tab[aria-pressed="true"] { color: var(--text-primary); }
@@ -81,8 +81,6 @@
 
 /* 후보 행 — 행 전체 클릭 */
 .cand--pick { cursor: pointer; transition: border-color .12s, background .12s; }
-.cand__exclude { opacity: .55; }
-.cand:hover .cand__exclude, .cand__exclude:focus-visible { opacity: 1; }
 
 /* ───────── 랜딩 v2 ───────── */
 .landing { gap: 44px; padding: 28px 40px 48px; align-items: center; justify-content: center; }

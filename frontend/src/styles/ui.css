@@ -40,8 +40,20 @@ button.chip { min-height: var(--control-touch-size); }
 .chip--option { color: var(--text-strong); border-color: var(--border-strong); font-weight: 500; padding: 10px 12px; text-align: left; width: 100%; justify-content: flex-start; }
 .chip--option:hover { background: var(--bg-canvas); }
 .chip--option[aria-pressed="true"] { border-color: var(--border-selected); box-shadow: inset 0 0 0 1px var(--border-selected); }
-.check { width: 18px; height: 18px; border-radius: var(--radius-xs); border: 1px solid var(--border-strong); background: var(--bg-surface); display: inline-grid; place-items: center; flex: 0 0 auto; color: var(--text-on-ink); font-size: 11px; font-weight: 700; }
-.check[aria-checked="true"] { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }
+.check { width: var(--control-touch-size); height: var(--control-touch-size); min-width: var(--control-touch-size); min-height: var(--control-touch-size); padding: 0; border: 0; border-radius: var(--control-radius); background: transparent; display: inline-grid; place-items: center; flex: 0 0 auto; }
+.check__box { width: 20px; height: 20px; border-radius: var(--radius-xs); border: 1px solid var(--border-strong); background: var(--bg-surface); display: grid; place-items: center; color: var(--text-on-ink); }
+.check[aria-checked="true"] .check__box { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }
+.check:hover:not(:disabled) { background: var(--bg-subtle); }
+.check:hover:not(:disabled) .check__box { border-color: var(--border-selected); }
+.check:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 2px; }
+.check:disabled .check__box { opacity: .5; }
+@media (forced-colors: active) {
+  .check__box { forced-color-adjust: none; background: Canvas; border-color: ButtonText; color: CanvasText; }
+  .check[aria-checked="true"] .check__box { background: Highlight; border-color: Highlight; color: HighlightText; }
+  .check:hover:not(:disabled) .check__box { border-color: Highlight; }
+  .check:focus-visible { outline-color: Highlight; }
+  .check:disabled .check__box { opacity: 1; background: Canvas; border-color: GrayText; color: GrayText; }
+}
 .radio { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--bg-surface); flex: 0 0 auto; }
 .radio--checked { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); box-shadow: inset 0 0 0 3px var(--bg-surface); }
 
@@ -83,9 +95,12 @@ button.chip { min-height: var(--control-touch-size); }
 .star-key--dropped { background: var(--bg-inset); color: var(--text-tertiary); }
 .star-key--sm { width: 22px; height: 22px; border-radius: 5px; font-size: 10.5px; }
 .evidence { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--evidence-commit-bg); color: var(--evidence-commit-text); font-size: 11.5px; line-height: 16px; font-weight: 500; text-decoration: none; }
+a.evidence { display: grid; grid-template-columns: 13px max-content minmax(0, 1fr) 16px; min-height: var(--control-touch-size); }
 .evidence__label { font-size: 10px; font-weight: 600; color: var(--evidence-commit-label); flex: 0 0 auto; }
-.evidence__sha { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-weight: 600; white-space: nowrap; flex: 0 0 auto; }
+.evidence__sha { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-weight: 600; white-space: normal; overflow-wrap: anywhere; min-width: 0; flex: 0 0 auto; }
 .evidence__snippet { color: var(--evidence-commit-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+a.evidence .evidence__snippet { grid-column: 2 / 4; grid-row: 2; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 20px; }
+a.evidence .evidence__arrow { grid-column: 4; grid-row: 1; margin-left: 0; }
 .evidence__arrow { margin-left: auto; color: var(--evidence-commit-muted); }
 a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .evidence--user { background: var(--evidence-user-bg); color: var(--evidence-user-text); border: 1px solid var(--border-default); }

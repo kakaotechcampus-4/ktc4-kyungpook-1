@@ -9,7 +9,9 @@ const fields = (card: Any) => Object.fromEntries(['situation', 'task', 'action',
 const manual = (key?: string) => req('POST', '/cards/manual/draft', { title: '직접 작성', period: '', repoId: null }, key).data as Any;
 const save = (id: string, body: Any) => req('PATCH', `/cards/${id}/draft`, body);
 
-beforeEach(() => { resetDb(); vi.useFakeTimers(); vi.setSystemTime(new Date('2026-10-12T00:00:00Z')); });
+// Fixtures are dated at module load; an older calendar-fixed clock makes new edits sort behind them.
+const seededClock = Date.now();
+beforeEach(() => { resetDb(); vi.useFakeTimers(); vi.setSystemTime(seededClock); });
 afterEach(() => vi.useRealTimers());
 
 describe('manual startup matches #162', () => {

@@ -221,7 +221,7 @@ function ClusterCommits({ c, disabled, onChange }: { c: Candidate; disabled: boo
   return (
     <div className="cluster-commits">
       {commits.map((cm) => (
-        <div key={cm.sha} className={`commit-row ${cm.included ? '' : 'commit-row--ex'}`}>
+        <div key={cm.sha} className={`commit-row commit-row--cluster ${cm.included ? '' : 'commit-row--ex'}`}>
           <Check checked={cm.included} disabled={disabled} onChange={() => toggle(cm.sha)} label={`${shortSha(cm.sha)} 포함`} />
           <div className="commit-row__body">
             <div className="commit-row__heading"><span className="commit-row__sha">{shortSha(cm.sha)}</span>{!cm.included && <Badge kind="NEUTRAL">제외됨</Badge>}</div>
@@ -295,11 +295,13 @@ function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () =
           {search.data?.map((cm) => {
             const on = shas.some((s) => s.sha === cm.sha);
             return (
-              <button key={cm.sha} type="button" disabled={add.isPending} className={`commit-row ${on ? 'card--selected' : ''}`} style={{ padding: '8px 12px', width: '100%', textAlign: 'left' }}
+              <button key={cm.sha} type="button" disabled={add.isPending} className={`commit-row commit-row--picker ${on ? 'card--selected' : ''}`}
                 onClick={() => setShas((xs) => on ? xs.filter((s) => s.sha !== cm.sha) : [...xs, { sha: cm.sha, message: cm.message }])} aria-pressed={on}>
-                <span className="commit-row__sha">{shortSha(cm.sha)}</span>
-                <span className="commit-row__msg grow" style={{ fontSize: 12.5 }}>{cm.message}</span>
-                {cm.candidateId && <Badge kind="NEUTRAL">다른 후보에 있음</Badge>}
+                <span className="commit-row__heading">
+                  <span className="commit-row__sha">{shortSha(cm.sha)}</span>
+                  {cm.candidateId && <Badge kind="NEUTRAL">다른 후보에 있음</Badge>}
+                </span>
+                <span className="commit-row__msg">{cm.message}</span>
               </button>
             );
           })}

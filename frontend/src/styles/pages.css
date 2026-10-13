@@ -45,10 +45,10 @@
 .fail-card__bang { font-size: 22px; font-weight: 800; color: var(--state-failed-text); flex: 0 0 auto; }
 
 /* ───────── 후보 보드 (C1 · C3) ───────── */
-.cand { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 20px; align-items: start; }
+.cand { display: grid; grid-template-columns: var(--control-touch-size) minmax(0, 1fr); gap: 12px; padding: 20px; align-items: start; }
 .cand__body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .cand__heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
-.cand__title { font-size: 16px; line-height: 24px; font-weight: 600; padding-block: 10px; }
+.cand__title { font-size: 16px; line-height: 24px; font-weight: 600; padding-block: calc((var(--control-touch-size) - 24px) / 2); }
 .cand__actions, .cand__badges { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .cand__details { grid-column: 1 / -1; min-width: 0; }
 .cluster-commits { display: flex; flex-direction: column; gap: 10px; }
@@ -57,10 +57,15 @@
 .cand__meta { font-size: 12px; line-height: 20px; color: var(--text-secondary); }
 .cand__warn { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: var(--radius-md); background: var(--bg-subtle); font-size: 11.5px; line-height: 17px; color: var(--text-secondary); flex-wrap: wrap; }
 .cand__warn strong { color: var(--text-strong); font-weight: 600; }
-.commit-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: start; gap: 12px; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--bg-surface); }
+.commit-row { display: grid; align-items: start; gap: 12px; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--bg-surface); }
+.commit-row--cluster { grid-template-columns: var(--control-touch-size) minmax(0, 1fr) var(--control-touch-size); }
+.commit-row--picker { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 8px 12px; width: 100%; min-height: var(--control-touch-size); flex-shrink: 0; text-align: left; cursor: pointer; }
+.commit-row--picker:disabled { cursor: default; }
+.commit-row--picker .commit-row__heading { min-width: 0; }
+.commit-row--picker .commit-row__msg { min-width: 0; font-size: 12.5px; overflow-wrap: anywhere; }
 .commit-row__body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .commit-row__heading { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 20px; }
-.commit-row__link { display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--radius-sm); color: var(--text-secondary); }
+.commit-row__link { display: grid; place-items: center; width: var(--control-touch-size); height: var(--control-touch-size); border-radius: var(--radius-sm); color: var(--text-secondary); }
 .commit-row__link:hover { background: var(--bg-subtle); color: var(--text-strong); }
 .commit-row--ex { background: var(--bg-canvas); }
 .commit-row--ex .commit-row__msg { color: var(--text-tertiary); }

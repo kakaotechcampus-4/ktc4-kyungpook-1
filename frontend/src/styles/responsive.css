@@ -86,7 +86,7 @@
   .candidate-board .cand__warn { flex-wrap: wrap; gap: 8px; }
   .candidate-board .record-list > .cand { padding: 16px; }
   .candidate-board .toolbar__search { flex-basis: auto; max-width: none; }
-  .candidate-board .commit-row { padding: 8px; gap: 8px; }
+  .candidate-board .commit-row--cluster { padding: 8px; gap: 8px; }
   .btn:not(.landing__top-action), .chip--option, .iv__fold { min-height: var(--control-touch-size); }
   .input, .prompt__input, .search-field input { font-size: 16px; }
   .list-head .right { gap: var(--space-12); }

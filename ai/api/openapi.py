@@ -30,14 +30,14 @@ COLLECTION_ERROR_RESPONSES = {
     },
     502: {
         "model": ErrorEnvelope,
-        "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 재시도 가능.",
+        "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 다시 시도할지는 retryable로 알린다.",
     },
 }
 
 LLM_UNAVAILABLE_RESPONSE = {
     "model": ErrorEnvelope,
     "description": (
-        "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패(retryable=true) "
-        "또는 LLM 환경 설정 누락(retryable=false)."
+        "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다"
+        "(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
     ),
 }

@@ -21,7 +21,7 @@ sequenceDiagram
     G->>A: POST /internal/analysis/star (evidence 그대로, 토큰 없음)
     A->>A: STAR 초안(LLM) → 근거 검증
     A-->>G: S/T/A/R + missing_fields
-    Note over J: 카드 저장 → missing_fields로 B 인터뷰
+    Note over J: 카드 문장 저장. 되묻기는 사용자가 칸을 골라 시작
 ```
 
 ## 왜 두 API로 나눴나
@@ -80,7 +80,7 @@ STAR 흐름에서 Spring이 `candidate-details`를 직접 부를 필요는 없�
 | `star.*.status` | **(없음)** | `FILLED`/`NEEDS_REVIEW`/`EMPTY`. 화면 칸 상태 |
 | `star.*.confidence` | **(없음)** | `card_statement.confidence` |
 | `star.*.insufficient_reason_code` | **(없음)** | 화면 `droppedFields.reason`(`NO_EVIDENCE`·`OVERCLAIM`·`UNSOURCED_NUMBER`·`TIMEOUT`) |
-| `missing_fields` | **(없음)** | **B 인터뷰의 `missing_slots` 입력. 없으면 인터뷰를 시작할 수 없다** |
+| `missing_fields` | **(없음)** | 확인용. Spring은 저장한 칸 문장이 없는 칸을 빈 칸으로 보고, 되묻기 때 사용자가 고른 칸을 `missing_slots`로 보낸다 |
 | `star.*.insufficient_reason`, `review_reason` | **(없음)** | 빈 칸·검토 필요 안내 문장 |
 
 ## 1. `POST /internal/analysis/diff-evidence` (`consent`가 호출)
@@ -123,13 +123,13 @@ PR 번호로 커밋을 고르지 않는다. PR에는 팀원 커밋과 기본 브
 
 | 필드 | 설명 |
 |---|---|
-| `sha`, `message`, `author_login`, `url` | 커밋 정보. `message`는 비밀값을 가리고 2,000자로 자른 값 |
+| `sha`, `message`, `author_login`, `url` | 커밋 정보. `message`는 비밀값을 가리고 2,000자로 자른 값. 메시지가 비었거나 공백뿐인 커밋은 실패하지 않고 빈 문자열 |
 | `churn` | `"+71/-0"` 형식의 변경량 |
 | `summary` | 이 커밋이 무엇을 어떻게, 왜 바꿨는지 한 문장(최대 200자) |
 | `summary_source` | **필수.** `DIFF`: 모델이 diff를 읽고 쓴 요약. `COMMIT_MESSAGE`: 모델 요약을 쓸 수 없어 커밋 메시지 첫 줄로 대신한 값(아래) |
 | `technical_points` | patch에서 확인한 기술적 선택 최대 3개. 없으면 `[]` |
 
-`summary_source=COMMIT_MESSAGE`가 되는 경우: 모델이 그 커밋을 빠뜨림, 요약이 비어 있음, 그 커밋 하나만으로도 출력 상한을 넘음, 콘텐츠 제한에 걸림, 요청 마감·호출 수 상한에 닿음. **실패하지 않고 커밋은 근거에 남는다.** STAR 단계는 이런 근거만으로 받친 문장의 신뢰도를 `MEDIUM`으로 낮춘다.
+`summary_source=COMMIT_MESSAGE`가 되는 경우: 모델이 그 커밋을 빠뜨림, 요약이 비어 있음, 그 커밋 하나만으로도 출력 상한을 넘음, 콘텐츠 제한에 걸림, 요청 마감·호출 수 상한에 닿음, 모델에 patch를 한 글자도 보내지 못함(생성·민감 파일뿐이거나 patch 상한을 앞 커밋이 다 씀). **실패하지 않고 커밋은 근거에 남는다.** STAR 단계는 이런 근거만으로 받친 문장의 신뢰도를 `MEDIUM`으로 낮춘다.
 
 `meta.tool_calls_made`는 GitHub API 호출 수다.
 
@@ -139,12 +139,14 @@ PR 번호로 커밋을 고르지 않는다. PR에는 팀원 커밋과 기본 브
 |---|---|---|---|
 | 400 | `INVALID_PAYLOAD` | false | 필드·헤더 누락, `commit_shas` 없음·빈 배열 |
 | 404 | `RESOURCE_NOT_FOUND` | false | 저장소가 없거나 토큰 권한으로 읽을 수 없음 |
-| 502 | `GITHUB_API_ERROR` | **false** | GitHub 400·401·403·422(토큰 만료·권한 없음 등, 다시 해도 같음) |
-| 502 | `GITHUB_API_ERROR` | true | GitHub 5xx·네트워크 오류·조회가 마감 안에 끝나지 않음 |
+| 502 | `GITHUB_API_ERROR` | **false** | GitHub 400·401·403·422(토큰 만료·권한 없음 등, 다시 해도 같음). 2차 한도 403은 제외 |
+| 502 | `GITHUB_API_ERROR` | true | GitHub 5xx·네트워크 오류·조회가 마감 안에 끝나지 않음, 2차 한도 403(`Retry-After` 헤더 또는 `secondary rate limit` 문구) |
 | 503 | `LLM_UNAVAILABLE` | **false** | AI 서버에 LLM 환경변수가 없음, LLM 키·권한·모델 이름 오류. **설정은 GitHub 조회 전에 확인한다** |
 | 503 | `LLM_UNAVAILABLE` | true | LLM 호출 한도·연결 오류, 출력 형식이 재시도 후에도 맞지 않음 |
 
 커밋 SHA 하나가 422면 요청 전체를 실패시키지 않고 그 커밋만 빼고 `partial`로 돌려준다.
+
+LLM 호출 하나가 실패해 503으로 끝나면 남은 배치는 LLM을 새로 부르지 않는다. 이미 나간 호출은 끝나도 결과를 버린다.
 
 ## 2. `POST /internal/analysis/star` (`agent`가 호출)
 
@@ -170,7 +172,7 @@ PR 번호로 커밋을 고르지 않는다. PR에는 팀원 커밋과 기본 브
 | `star.*.insufficient_reason_code` | EMPTY 칸의 이유 코드 | 화면 `droppedFields.reason` |
 | `star.*.insufficient_reason` | EMPTY인 이유 문장 | 로그·보조 안내 |
 | `star.*.review_reason` | NEEDS_REVIEW인 이유 | 화면 안내 |
-| `missing_fields` | EMPTY 칸 목록 | **B 인터뷰의 `missing_slots` 입력** |
+| `missing_fields` | EMPTY 칸 목록 | 확인용. Spring은 저장한 칸 문장으로 빈 칸을 판정한다 |
 | `shared_with` | 근거 커밋의 다른 작성자 로그인(쉼표 구분). 없으면 `null` | 공동 작업 표시. 커밋을 빼지는 않는다(ARCHITECTURE.md 기여 귀속 규칙) |
 | `removed_claims` | 근거 커밋과 확인 답변이 없어 AI가 지운 문장 | 저장·표시하지 않음. 품질 확인용 로그 |
 
@@ -190,7 +192,7 @@ PR 번호로 커밋을 고르지 않는다. PR에는 팀원 커밋과 기본 브
 | HTTP | `error.code` | `retryable` | 상황 |
 |---|---|---|---|
 | 400 | `INVALID_PAYLOAD` | false | 스키마 불일치, `evidence` 비어 있음, `summary_source` 없음 |
-| 503 | `LLM_UNAVAILABLE` | false | LLM 설정 없음, 키·권한·모델 이름 오류, 콘텐츠 제한 |
+| 503 | `LLM_UNAVAILABLE` | false | LLM 설정 없음, 키·권한·모델 이름 오류, 콘텐츠 제한, 출력 길이 초과(네 칸을 한 호출로 써서 나눠 부를 수 없음) |
 | 503 | `LLM_UNAVAILABLE` | true | LLM 호출 한도·연결 오류, 출력 형식이 재시도 후에도 맞지 않음 |
 
 ## 3. 처리 시간과 상한
@@ -236,9 +238,9 @@ diff-evidence의 그 밖의 상한
 - [ ] `agent`: star 호출 추가. `evidence`가 비면 부르지 않는다. `confirmed_answers`는 `[]`
 - [ ] `CardDraftPort` 확장: 요청은 evidence 구조를 그대로, 응답에 `status`·`confidence`·`insufficient_reason_code`·`missing_fields` 추가(「BE 포트와의 필드 대응」)
 - [ ] 분석 호출용 읽기 제한 분리(3절: diff-evidence 300초, star 180초)
-- [ ] Job 흐름: 후보 확정 → diff-evidence → star → 카드·`card_statement` 저장 → `missing_fields`로 인터뷰 시작
-- [ ] `retryable` 값에 따라 Job 재시도 또는 실패 처리(`retryable=false`는 재시도하지 않음)
-- [ ] `partial=true`이면 카드는 만들되 `missing_commit_shas`가 반영되지 않았다는 사실을 Job 결과에 남김
+- [ ] Job 흐름: 후보로 카드 만들기 → 카드 초안 Job이 diff-evidence → star → 카드 문장(`card_statement`) 저장. 되묻기는 사용자가 칸을 골라 시작한다
+- [ ] 실패하면 Job을 실패로 끝내고 AI의 `retryable`로 다시 시도 버튼을 열지 정한다. Spring이 자동으로 다시 부르지 않는다
+- [ ] `partial=true`이면 카드는 만들고 Job을 부분 결과로 끝낸다. `missing_commit_shas` 목록은 Job에 저장하지 않고 이유(`partial_reason`)만 남긴다
 - [ ] AI 컨테이너에 4절 환경변수 주입(키는 비밀값으로 관리)
 
 ## 6. 정할 것
@@ -271,7 +273,7 @@ diff-evidence의 그 밖의 상한
 
 정규식으로는 같은 숫자가 원문에 있어도 단위·대상·인과관계가 맞는지 확인하지 못하므로, 수치 검사 결과로 문장을 지우지 않습니다. 대신 STAR 문장(FILLED·NEEDS_REVIEW)에 근거에서 확인되지 않는 수치가 있으면 그 칸을 `NEEDS_REVIEW`(신뢰도 LOW)로 내리고 `review_reason` 에 그 수치를 적습니다. 오탐이어도 사용자가 확인만 하면 되고, 응답 모양은 그대로라 Spring·FE 변경이 없습니다.
 
-- 근거로 보는 글: 그 칸이 인용한 커밋의 메시지·요약·기술 포인트와 확정 답변. `churn`(변경 줄 수)은 결과 수치의 근거가 아니라 넣지 않습니다.
+- 근거로 보는 글: 그 칸이 인용한 커밋의 메시지와 확정 답변. 요약·기술 포인트는 diff 단계 모델이 쓴 글이라, 넣으면 모델이 지어낸 수치가 스스로를 받치게 되어 넣지 않습니다. patch의 상수에서 나온 수치도 STAR 단계에는 patch가 없어 확인 필요로 내려갑니다. `churn`(변경 줄 수)은 결과 수치의 근거가 아니라 넣지 않습니다.
 - 경계: 근거 "15%" 에 문장 "5%" 는 잡고, `OAuth2 배포`·`v2.0`·`1,000건`(근거 `1,000`)은 수치로 잡지 않습니다(`tests/test_star_generator.py`).
 - diff 요약·기술 포인트 단계에는 검사를 걸지 않습니다. 사용자에게 보이는 STAR 문장에서 한 번만 봅니다.
 - `UNSOURCED_NUMBER` 는 빈 칸 이유 코드라 이 경우에는 쓰지 않습니다(문장을 비우지 않으므로).

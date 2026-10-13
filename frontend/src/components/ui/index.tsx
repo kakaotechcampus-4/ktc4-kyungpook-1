@@ -1,6 +1,6 @@
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, ComponentPropsWithRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, type LucideIcon } from 'lucide-react';
+import { Check as CheckIcon, FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, type LucideIcon } from 'lucide-react';
 import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
@@ -35,7 +35,9 @@ export const Chip = ({ children, fill, onClick, disabled }: { children: ReactNod
 
 export const Check = ({ checked, onChange, label, disabled }: { checked: boolean; onChange?: (v: boolean) => void; label: string; disabled?: boolean }) => (
   <button type="button" role="checkbox" aria-checked={checked} aria-label={label} className="check" disabled={disabled} onClick={(e) => { e.stopPropagation(); onChange?.(!checked); }}>
-    {checked ? '✓' : ''}
+    <span className="check__box" aria-hidden="true">
+      {checked && <CheckIcon size={14} strokeWidth={2.5} aria-hidden="true" focusable="false" />}
+    </span>
   </button>
 );
 export const Radio = ({ checked }: { checked: boolean }) => <span className={cx('radio', checked && 'radio--checked')} aria-hidden />;

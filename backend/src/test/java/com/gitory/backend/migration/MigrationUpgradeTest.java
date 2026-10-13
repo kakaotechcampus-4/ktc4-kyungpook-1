@@ -263,6 +263,42 @@ class MigrationUpgradeTest {
 
     }
 
+    @Test
+    @DisplayName("V17 은 Job 에러 코드 5개를 그대로 두고 COLLECTION_CAPPED 를 허용하며 목록 밖 값은 계속 막고 제약은 같은 이름 하나로 다시 만든다")
+    void v17AllowsCollectionCapped() {
+
+        migrateTo("16");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        List<String> previous = List.of("GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING",
+                "INTERNAL_ERROR");
+        for (String errorCode : previous) {
+            insertJob(userId, userRepositoryId, errorCode);
+        }
+
+        migrateTo("17");
+
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM pg_constraint WHERE conname = 'analysis_job_error_code_check' AND conrelid = 'analysis_job'::regclass",
+                Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT error_code FROM analysis_job", String.class))
+                .containsExactlyInAnyOrderElementsOf(previous);
+        insertJob(userId, userRepositoryId, "COLLECTION_CAPPED");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM analysis_job WHERE error_code = 'COLLECTION_CAPPED'", Integer.class)).isEqualTo(1);
+        assertThatThrownBy(() -> insertJob(userId, userRepositoryId, "RATE_LIMITED"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    private void insertJob(Long userId, Long userRepositoryId, String errorCode) {
+
+        jdbc.update(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, state, error_code) VALUES (?, ?, ?, 'FAILED', ?)",
+                userId, userRepositoryId, errorCode, errorCode);
+
+    }
+
     private int updateRetryAfterSec(int seconds) {
 
         return jdbc.update("UPDATE analysis_job SET retry_after_sec = ?", seconds);

@@ -273,6 +273,25 @@ class JobQueryServiceTest {
     }
 
     @Test
+    @DisplayName("상한에 걸려 일부만 읽고 끝난 Job 은 다시 시도할 수 없고 기다릴 시간도 없다")
+    void cappedJobIsNotRetryable() {
+
+        AnalysisJob capped = persistJob(myUserId, myRepoId, KEY_1);
+        capped.start();
+        capped.succeed(true, JobErrorCode.COLLECTION_CAPPED);
+        em.flush();
+
+        JobView found = service.load(capped.getPublicId(), myUserId, LOGIN);
+
+        assertThat(found.state()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(found.partial()).isTrue();
+        assertThat(found.errorCode()).isEqualTo(JobErrorCode.COLLECTION_CAPPED);
+        assertThat(found.retryable()).isFalse();
+        assertThat(found.retryAfterSec()).isNull();
+
+    }
+
+    @Test
     @DisplayName("진행 중 목록에는 내 Job 만 나온다")
     void listsOnlyMyActiveJobs() {
 

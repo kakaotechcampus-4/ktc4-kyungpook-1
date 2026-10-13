@@ -2,6 +2,7 @@ package com.gitory.backend.job.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.job.domain.AnalysisJob;
+import com.gitory.backend.job.domain.JobErrorCode;
 import com.gitory.backend.job.domain.JobState;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
 import com.gitory.backend.support.BoardVerdictFixtures;
@@ -23,6 +24,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -127,6 +129,43 @@ class JobApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.state").value("SUCCEEDED"))
                 .andExpect(jsonPath("$.data.pollAfterMs").value(0));
+    }
+
+    @Test
+    @DisplayName("한도로 일부만 읽고 끝난 Job 은 조회와 취소 응답에 같은 retryAfterSec 정수가 실리고 retryable 은 true 다")
+    void rateLimitedJobShowsSameRetryAfterSecOnGetAndCancel() throws Exception {
+
+        AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
+        job.start();
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED, Instant.now().plusSeconds(120));
+        jobs.save(job);
+        int retryAfterSec = job.getRetryAfterSec();
+
+        getJob(job.getPublicId())
+                .andExpect(jsonPath("$.data.errorCode").value("GITHUB_RATE_LIMITED"))
+                .andExpect(jsonPath("$.data.retryable").value(true))
+                .andExpect(jsonPath("$.data.retryAfterSec").value(retryAfterSec));
+        cancelJob(job.getPublicId())
+                .andExpect(jsonPath("$.data.state").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.data.retryAfterSec").value(retryAfterSec));
+
+        assertThat(retryAfterSec).isBetween(119, 120);
+
+    }
+
+    @Test
+    @DisplayName("기다릴 시간을 모르는 한도 부분 완료 Job 은 retryAfterSec 키가 null 로 남는다")
+    void rateLimitedJobWithoutResetKeepsKeyAsNull() throws Exception {
+
+        AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
+        job.start();
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED);
+        jobs.save(job);
+
+        Map<String, Object> data = JsonPath.read(bodyOf(getJob(job.getPublicId())), "$.data");
+
+        assertThat(data).containsEntry("retryAfterSec", null).containsEntry("retryable", true);
+
     }
 
     @Test

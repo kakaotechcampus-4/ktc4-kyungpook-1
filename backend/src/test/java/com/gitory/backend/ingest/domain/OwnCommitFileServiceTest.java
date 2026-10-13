@@ -22,7 +22,7 @@ import java.util.List;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(OwnCommitFileService.class)
+@Import({OwnCommitFileService.class, StoredActivityService.class})
 class OwnCommitFileServiceTest {
 
     @Container
@@ -113,6 +113,38 @@ class OwnCommitFileServiceTest {
 
         assertThat(files).containsExactly(new OwnCommitFile(first, "A.java"), new OwnCommitFile(first, "B.java"),
                 new OwnCommitFile(second, "A.java"));
+
+    }
+
+    @Test
+    @DisplayName("내 저장소 연결 id 는 내 연결만 id 순으로 돌려주고 팀원의 연결은 넣지 않는다")
+    void returnsOnlyMyConnectionIds() {
+
+        Long userId = jdbc.queryForObject("SELECT id FROM users WHERE github_login = 'grow22'", Long.class);
+        List<Long> mine = jdbc.queryForList("SELECT id FROM user_repository WHERE user_id = ? ORDER BY id", Long.class, userId);
+
+        assertThat(service.connectionIdsOf(userId)).hasSize(2).containsExactlyElementsOf(mine);
+
+    }
+
+    @Test
+    @DisplayName("고른 sha 중 이 연결의 내 커밋만 바뀐 파일과 함께 돌려주고 팀원·봇 커밋과 다른 저장소 커밋은 뺀다")
+    void returnsOnlyOwnCommitsAmongGivenShas() {
+
+        Long mine = rows.insertCommitBy(repositoryId, "a".repeat(40), "GROW22", null);
+        rows.insertFile(mine, "src/App.java");
+        rows.insertCommitBy(repositoryId, "b".repeat(40), "teammate", null);
+        rows.insertCommitBy(repositoryId, "c".repeat(40), "grow22", "BOT");
+        rows.insertCommitBy(otherRepositoryId, "d".repeat(40), "grow22", null);
+
+        List<StoredCommit> found = service.findOwnCommits(userRepositoryId, "grow22",
+                List.of("a".repeat(40), "b".repeat(40), "c".repeat(40), "d".repeat(40)));
+
+        assertThat(found).singleElement().satisfies(commit -> {
+            assertThat(commit.id()).isEqualTo(mine);
+            assertThat(commit.sha()).isEqualTo("a".repeat(40));
+            assertThat(commit.files()).extracting(ChangedFile::path).containsExactly("src/App.java");
+        });
 
     }
 }

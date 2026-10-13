@@ -204,6 +204,26 @@ class MigrationUpgradeTest {
     }
 
     @Test
+    @DisplayName("V15 는 옛 Job 행의 남은 초를 NULL 로 두고, 0 이하 값은 CHECK 로 거절하며 양수는 받는다")
+    void v15AddsRetryAfterSecColumn() {
+
+        migrateTo("14");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        jdbc.update(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, state, error_code) VALUES (?, ?, ?, 'SUCCEEDED', 'GITHUB_RATE_LIMITED')",
+                userId, userRepositoryId, "old-job");
+
+        migrateTo("15");
+
+        assertThat(jdbc.queryForObject("SELECT retry_after_sec FROM analysis_job", Integer.class)).isNull();
+        assertThat(updateRetryAfterSec(60)).isEqualTo(1);
+        assertThatThrownBy(() -> updateRetryAfterSec(0)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> updateRetryAfterSec(-5)).isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    @Test
     @DisplayName("V16 은 옛 카드의 초안 Job 을 비우고 부분 생성 표시를 끄며, 후보 하나로 살아 있는 카드가 둘 생기지 않게 막되 지운 카드와 후보 없는 카드는 막지 않는다")
     void v16AddsGenerationColumnsAndCandidateUnique() {
 
@@ -240,6 +260,12 @@ class MigrationUpgradeTest {
         assertThat(definition)
                 .contains("(generation_job_id)")
                 .contains("WHERE (generation_job_id IS NOT NULL)");
+
+    }
+
+    private int updateRetryAfterSec(int seconds) {
+
+        return jdbc.update("UPDATE analysis_job SET retry_after_sec = ?", seconds);
 
     }
 

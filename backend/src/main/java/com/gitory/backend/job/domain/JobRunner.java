@@ -5,6 +5,7 @@ import com.gitory.backend.agent.port.ExperienceGroupingRequest;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
+import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.GroupingMaterial;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
@@ -56,6 +57,7 @@ public class JobRunner {
     private final GroupingMaterialService materials;
     private final CandidateStoreService candidates;
     private final ExperienceGroupingPort grouping;
+    private final GithubCollectionAccessPort githubAccess;
 
     /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
     public Optional<AnalysisJob> claimNext() {
@@ -108,9 +110,11 @@ public class JobRunner {
             IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
                     activityStore.knownCommitShas(job.getUserRepositoryId()));
             CollectedActivity activity = activities.collect(request);
-            Boolean startedGrouping = transaction.execute(status -> storeCollection(job.getId(), request, activity));
+            Instant limitResetAt = limitResetAtOf(job, activity.partialReason());
+            Boolean startedGrouping = transaction.execute(
+                    status -> storeCollection(job.getId(), request, activity, limitResetAt));
             if (Boolean.TRUE.equals(startedGrouping)) {
-                group(job, activity.partialReason());
+                group(job, activity.partialReason(), limitResetAt);
             }
         } catch (RuntimeException failure) {
             JobErrorCode errorCode = errorCodeOf(failure);
@@ -148,7 +152,8 @@ public class JobRunner {
      * 수집 결과를 저장하고, 묶기를 켰으면 Job 을 끝내지 않고 묶기를 시작한 뒤 true 를 돌려준다
      * AI 를 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 수집 결과를 저장하지 않는다
      */
-    private boolean storeCollection(Long jobId, IngestRequest request, CollectedActivity activity) {
+    private boolean storeCollection(Long jobId, IngestRequest request, CollectedActivity activity,
+                                    Instant limitResetAt) {
 
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() != JobState.RUNNING) {
@@ -156,13 +161,14 @@ public class JobRunner {
         }
 
         Long collectionRunId = activityStore.store(request, activity);
-        job.recordCollection(collectionRunId, activity.commits().size(), activity.pullRequests().size());
+        job.recordCollection(collectionRunId, activityStore.storedCommitCount(request.userRepositoryId()),
+                activity.pullRequests().size());
         if (groupingProperties.enabled()) {
             job.startGrouping();
             return true;
         }
 
-        job.succeed(activity.partialReason() != null, partialErrorCodeOf(activity.partialReason()));
+        job.succeed(activity.partialReason() != null, partialErrorCodeOf(activity.partialReason()), limitResetAt);
         return false;
 
     }
@@ -171,7 +177,7 @@ public class JobRunner {
      * 저장된 내 커밋에서 손댄 후보의 커밋·PR 을 빼고 AI 후보 묶기를 불러 묶은 후보를 저장한다
      * 보낼 요청이 지난번 묶었을 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다
      */
-    private void group(AnalysisJob job, PartialReason partialReason) {
+    private void group(AnalysisJob job, PartialReason partialReason, Instant limitResetAt) {
 
         Long userRepositoryId = job.getUserRepositoryId();
         String login = users.loginOf(job.getUserId());
@@ -183,28 +189,29 @@ public class JobRunner {
         String fingerprint = candidates.fingerprint(GroupingConverter.jsonOf(request));
 
         if (candidates.keepIfSameInput(userRepositoryId, fingerprint)) {
-            transaction.executeWithoutResult(status -> keepCandidates(job.getId(), partialReason));
+            transaction.executeWithoutResult(status -> keepCandidates(job.getId(), partialReason, limitResetAt));
             return;
         }
 
         List<GroupedCandidate> grouped = GroupingConverter.candidatesOf(grouping.group(request));
-        transaction.executeWithoutResult(status -> storeCandidates(job.getId(), fingerprint, grouped, partialReason));
+        transaction.executeWithoutResult(
+                status -> storeCandidates(job.getId(), fingerprint, grouped, partialReason, limitResetAt));
 
     }
 
     /** 지난 후보를 그대로 두고 Job 만 끝내며, 그사이 취소된 Job 이면 그대로 둔다 */
-    private void keepCandidates(Long jobId, PartialReason partialReason) {
+    private void keepCandidates(Long jobId, PartialReason partialReason, Instant limitResetAt) {
 
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() == JobState.RUNNING) {
-            finishGrouping(job, partialReason);
+            finishGrouping(job, partialReason, limitResetAt);
         }
 
     }
 
     /** AI 를 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 묶은 후보를 저장하지 않는다 */
     private void storeCandidates(Long jobId, String fingerprint, List<GroupedCandidate> grouped,
-                                 PartialReason partialReason) {
+                                 PartialReason partialReason, Instant limitResetAt) {
 
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() != JobState.RUNNING) {
@@ -212,14 +219,25 @@ public class JobRunner {
         }
 
         candidates.store(job.getUserRepositoryId(), fingerprint, grouped);
-        finishGrouping(job, partialReason);
+        finishGrouping(job, partialReason, limitResetAt);
 
     }
 
-    private void finishGrouping(AnalysisJob job, PartialReason partialReason) {
+    private void finishGrouping(AnalysisJob job, PartialReason partialReason, Instant limitResetAt) {
 
         job.recordCandidates(candidates.countCandidates(job.getUserRepositoryId()));
-        job.succeed(partialReason != null, partialErrorCodeOf(partialReason));
+        job.succeed(partialReason != null, partialErrorCodeOf(partialReason), limitResetAt);
+
+    }
+
+    /** 저장 트랜잭션과 Job 행 잠금 밖에서 GitHub 한도 부분 결과일 때만 풀리는 시각을 묻는다 */
+    private Instant limitResetAtOf(AnalysisJob job, PartialReason reason) {
+
+        if (reason != PartialReason.GITHUB_RATE_LIMITED) {
+            return null;
+        }
+
+        return githubAccess.rateLimitResetAt(job.getUserId()).orElse(null);
 
     }
 

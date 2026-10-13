@@ -209,6 +209,23 @@ class ActivityStoreServiceTest {
     }
 
     @Test
+    @DisplayName("저장된 커밋 수는 이 저장소의 커밋만 세며 다른 사용자가 저장한 것과 제외된 커밋도 센다")
+    void countsStoredCommitsOfThisRepositoryOnly() {
+
+        assertThat(service.storedCommitCount(userRepositoryId)).isZero();
+
+        Long teammateRepositoryId = connectTeammate();
+        service.store(new IngestRequest(teammateRepositoryId, BRANCHES, List.of()), activityOf(commit(SHA_1)));
+        service.store(request(), activityOf(commit(SHA_1), new CollectedCommit(SHA_2, null, "dependabot",
+                "chore: 의존성 올림", Instant.parse("2026-09-20T09:00:00Z"), 1, 1, 1, (short) 1, ExclusionReason.BOT,
+                List.of(), List.of())));
+        service.store(new IngestRequest(connectOtherRepository(), BRANCHES, List.of()), activityOf(commit(SHA_3)));
+
+        assertThat(service.storedCommitCount(userRepositoryId)).isEqualTo(2);
+
+    }
+
+    @Test
     @DisplayName("파일과 이슈 번호를 아직 채우지 않은 커밋은 AI 가 상세를 다시 보내도록 제공하지 않는다")
     void excludesCommitsWithoutFilledDetails() {
 

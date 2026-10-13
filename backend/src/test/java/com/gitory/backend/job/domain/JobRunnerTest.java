@@ -17,6 +17,7 @@ import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
+import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.GithubState;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -52,6 +54,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -91,6 +94,7 @@ class JobRunnerTest {
     private static final String KEY_3 = "33333333-3333-4333-8333-333333333333";
     private static final String SHA = "a".repeat(40);
     private static final String OTHER_SHA = "b".repeat(40);
+    private static final String NEW_SHA = "c".repeat(40);
 
     @Container
     @ServiceConnection
@@ -131,6 +135,9 @@ class JobRunnerTest {
 
     @MockitoBean
     ExperienceGroupingPort grouping;
+
+    @MockitoBean
+    GithubCollectionAccessPort githubAccess;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -289,6 +296,42 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("다시 분석하면 응답에 새 커밋만 있어도 커밋 단계는 저장소에 저장된 커밋 수로 완료된다")
+    void commitsStepCountsStoredCommitsOnReanalysis() {
+
+        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), List.of());
+        activityStore.store(initial, activity(null));
+        activityStore.store(initial, partialActivityOf(OTHER_SHA));
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(newCommitActivity(NEW_SHA, null));
+
+        runNext();
+
+        assertThat(jobs.findById(jobId).orElseThrow().getSteps()).containsExactly(
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 0, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("일부만 읽고 끝난 재분석도 커밋 단계는 저장소에 저장된 커밋 수로 완료된다")
+    void commitsStepCountsStoredCommitsOnPartialReanalysis() {
+
+        activityStore.store(new IngestRequest(userRepositoryId, List.of(), List.of()), activity(null));
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(newCommitActivity(NEW_SHA, PartialReason.CAP_EXCEEDED));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getSteps().get(0)).isEqualTo(new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 2, null));
+
+    }
+
+    @Test
     @DisplayName("묶기를 꺼 두면 AI 묶기를 부르지 않고 후보 추리기·추천 이유를 SKIPPED 로 둔 채 끝내며 판정도 비운다")
     void skipsGroupingWhenSwitchedOff() {
 
@@ -320,6 +363,108 @@ class JobRunnerTest {
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.isPartial()).isTrue();
         assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+
+    }
+
+    @Test
+    @DisplayName("GitHub 한도로 일부만 읽으면 그 Job 주인의 한도가 풀리는 시각까지 남은 초를 남기고 감사 기록은 남기지 않는다")
+    void rateLimitedCollectionKeepsRetryAfterSec() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusSeconds(600)));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+        assertThat(job.getRetryAfterSec()).isBetween(590, 600);
+        verifyNoInteractions(auditLog);
+
+    }
+
+    @Test
+    @DisplayName("한도가 풀리는 시각을 알아내지 못해도 부분 완료·GITHUB_RATE_LIMITED 는 그대로이고 남은 초만 비어 있다")
+    void rateLimitedCollectionWithoutResetKeepsResult() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.empty());
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+        assertThat(job.getRetryAfterSec()).isNull();
+        assertThat(countOf("collection_run")).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("한도가 풀리는 시각은 DB 트랜잭션 밖에서 묻는다")
+    void asksRateLimitOutsideTransaction() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        AtomicReference<Boolean> transactionActive = new AtomicReference<>();
+        given(githubAccess.rateLimitResetAt(userId)).willAnswer(invocation -> {
+            transactionActive.set(TransactionSynchronizationManager.isActualTransactionActive());
+            return Optional.empty();
+        });
+
+        runNext();
+
+        assertThat(transactionActive.get()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 취소된 Job 은 한도를 물었어도 남은 초 없이 CANCELED 로 두고 수집 결과도 저장하지 않는다")
+    void canceledJobKeepsNoRetryAfterSec() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willAnswer(invocation -> {
+            cancel(jobId);
+            return activity(PartialReason.GITHUB_RATE_LIMITED);
+        });
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusSeconds(600)));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.CANCELED);
+        assertThat(job.getRetryAfterSec()).isNull();
+        assertThat(countOf("collection_run")).isZero();
+
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PartialReason.class, names = {"CAP_EXCEEDED", "TIMEOUT"})
+    @DisplayName("GitHub 한도가 아닌 이유로 일부만 읽은 수집은 한도를 묻지 않는다")
+    void otherPartialReasonsDoNotAskRateLimit(PartialReason reason) {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(reason));
+
+        runNext();
+
+        verifyNoInteractions(githubAccess);
+        assertThat(jobs.findById(jobId).orElseThrow().getRetryAfterSec()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("끝까지 읽은 수집은 한도를 묻지 않는다")
+    void completeCollectionDoesNotAskRateLimit() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        verifyNoInteractions(githubAccess);
 
     }
 
@@ -760,7 +905,7 @@ class JobRunnerTest {
     private JobRunner runnerWith(AiClientProperties aiProperties) {
 
         return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
-                new JobGroupingProperties(false), users, materials, candidates, grouping);
+                new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess);
 
     }
 
@@ -846,6 +991,12 @@ class JobRunnerTest {
                 "develop", "feature/job-worker", Instant.parse("2026-10-01T00:00:00Z"),
                 Instant.parse("2026-10-01T01:00:00Z"), List.of(SHA), List.of(), List.of());
         return new CollectedActivity(List.of(commit(SHA)), List.of(pr), List.of(), null, partialReason);
+
+    }
+
+    private static CollectedActivity newCommitActivity(String sha, PartialReason partialReason) {
+
+        return new CollectedActivity(List.of(commit(sha)), List.of(), List.of(), null, partialReason);
 
     }
 

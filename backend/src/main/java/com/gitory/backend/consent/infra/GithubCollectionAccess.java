@@ -58,6 +58,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     private final GithubCountClient counter;
     private final Clock clock;
     private final GithubDisconnectService disconnects;
+    private final GithubRateLimitClient rateLimit;
 
     @Override
     public JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas) {
@@ -137,6 +138,25 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         }
 
         return counts;
+
+    }
+
+    /** 한도 조회가 실패해도 분석 결과는 그대로여야 해서 어떤 실패든 빈 값으로 돌려주고, 응답 본문이 로그에 남지 않게 예외 종류만 적는다 */
+    @Override
+    public Optional<Instant> rateLimitResetAt(Long userId) {
+
+        try {
+            Optional<String> token = activeUser(userId).flatMap(user -> activeToken(userId));
+            if (token.isEmpty()) {
+                log.warn("GitHub 연결이 없어 호출 한도를 조회하지 않았다: 사용자 {}", userId);
+                return Optional.empty();
+            }
+
+            return rateLimit.resetAt(token.get());
+        } catch (RuntimeException failed) {
+            log.warn("GitHub 호출 한도를 조회하지 못했다: 사용자 {}, {}", userId, failed.getClass().getSimpleName());
+            return Optional.empty();
+        }
 
     }
 

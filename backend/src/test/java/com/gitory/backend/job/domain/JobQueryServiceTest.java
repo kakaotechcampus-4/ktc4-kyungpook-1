@@ -16,6 +16,8 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
@@ -210,6 +212,63 @@ class JobQueryServiceTest {
         em.flush();
 
         assertThat(service.load(internalError.getPublicId(), myUserId, LOGIN).retryable()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("한도로 일부만 읽고 끝난 Job 은 다시 시도할 수 있고 저장된 남은 초가 그대로 나온다")
+    void rateLimitedPartialJobShowsRetryAfterSec() {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        job.start();
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED, Instant.now().plusSeconds(300));
+        em.flush();
+
+        JobView found = service.load(job.getPublicId(), myUserId, LOGIN);
+
+        assertThat(found.retryable()).isTrue();
+        assertThat(found.retryAfterSec()).isEqualTo(job.getRetryAfterSec()).isBetween(299, 300);
+
+    }
+
+    @Test
+    @DisplayName("한도로 일부만 읽었지만 기다릴 시간을 모르면 다시 시도할 수 있고 남은 초는 비어 있다")
+    void rateLimitedPartialJobWithoutResetStaysRetryable() {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        job.start();
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED);
+        em.flush();
+
+        JobView found = service.load(job.getPublicId(), myUserId, LOGIN);
+
+        assertThat(found.retryable()).isTrue();
+        assertThat(found.retryAfterSec()).isNull();
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"QUEUED", "RUNNING", "GITHUB_UNAVAILABLE", "CANCELED", "COMPLETE"})
+    @DisplayName("한도 부분 완료가 아닌 Job 의 남은 초는 늘 비어 있다")
+    void otherJobsHaveNoRetryAfterSec(String situation) {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        switch (situation) {
+            case "RUNNING" -> job.start();
+            case "GITHUB_UNAVAILABLE" -> {
+                job.start();
+                job.fail(JobErrorCode.GITHUB_UNAVAILABLE);
+            }
+            case "CANCELED" -> job.cancel();
+            case "COMPLETE" -> {
+                job.start();
+                job.succeed(false, null);
+            }
+            default -> { }
+        }
+        em.flush();
+
+        assertThat(service.load(job.getPublicId(), myUserId, LOGIN).retryAfterSec()).isNull();
 
     }
 

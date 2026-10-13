@@ -37,10 +37,10 @@ public class CandidateCommit {
     @UpdateTimestamp
     private Instant updatedAt;
 
-    private CandidateCommit(Long candidateId, Long commitId, String displayPath) {
+    private CandidateCommit(Long candidateId, Long commitId, CandidateCommitOrigin origin, String displayPath) {
         this.candidateId = candidateId;
         this.commitId = commitId;
-        this.origin = CandidateCommitOrigin.AI;
+        this.origin = origin;
         this.included = true;
         this.displayPath = displayPath;
     }
@@ -48,7 +48,26 @@ public class CandidateCommit {
     /** AI 가 후보에 넣은 커밋을 포함된 상태로 만든다 */
     public static CandidateCommit grouped(Long candidateId, Long commitId, String displayPath) {
 
-        return new CandidateCommit(candidateId, commitId, displayPath);
+        return new CandidateCommit(candidateId, commitId, CandidateCommitOrigin.AI, displayPath);
+
+    }
+
+    /** 사용자가 직접 붙인 커밋을 포함된 상태로 만든다 */
+    public static CandidateCommit attached(Long candidateId, Long commitId, String displayPath) {
+
+        return new CandidateCommit(candidateId, commitId, CandidateCommitOrigin.USER, displayPath);
+
+    }
+
+    public void include() {
+
+        this.included = true;
+
+    }
+
+    public void exclude() {
+
+        this.included = false;
 
     }
 }

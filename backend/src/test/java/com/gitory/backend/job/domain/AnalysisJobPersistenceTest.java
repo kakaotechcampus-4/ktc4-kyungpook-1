@@ -17,6 +17,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.time.Instant;
+
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
@@ -88,6 +90,27 @@ class AnalysisJobPersistenceTest {
         assertThat(loaded.getStartedAt()).isNotNull();
         assertThat(loaded.getUpdatedAt()).isNotNull();
         assertThat(loaded.getFinishedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("한도 부분 완료의 남은 초는 DB 에 저장됐다가 다시 읽히고, 남은 초가 없는 Job 은 NULL 로 저장된다")
+    void retryAfterSecIsStored() {
+
+        AnalysisJob limited = AnalysisJob.enqueue(userId, userRepositoryId, KEY);
+        AnalysisJob plain = AnalysisJob.enqueue(userId, userRepositoryId, OTHER_KEY);
+        em.persist(limited);
+        limited.start();
+        limited.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED, Instant.now().plusSeconds(120));
+        em.flush();
+        em.persist(plain);
+        em.flush();
+        em.clear();
+
+        assertThat(em.find(AnalysisJob.class, limited.getId()).getRetryAfterSec()).isEqualTo(120);
+        assertThat(em.find(AnalysisJob.class, plain.getId()).getRetryAfterSec()).isNull();
+        assertThat(jdbc.queryForObject("SELECT retry_after_sec FROM analysis_job WHERE id = ?", Integer.class,
+                limited.getId())).isEqualTo(120);
+
     }
 
     @Test

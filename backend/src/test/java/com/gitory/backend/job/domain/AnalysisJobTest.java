@@ -232,6 +232,77 @@ class AnalysisJobTest {
     }
 
     @Test
+    @DisplayName("GitHub 한도 부분 완료에 풀리는 시각을 주면 끝난 시각부터 남은 초를 올림해 남긴다")
+    void retryAfterSecIsRoundedUpFromFinishedAt() {
+
+        AnalysisJob job = running();
+
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED, Instant.now().plusMillis(600_500));
+
+        assertThat(job.getRetryAfterSec()).isEqualTo(601);
+
+    }
+
+    @Test
+    @DisplayName("풀리는 시각이 끝난 시각보다 이르면 남은 초를 비워 둔다")
+    void retryAfterSecIsEmptyWhenLimitAlreadyReset() {
+
+        AnalysisJob job = running();
+
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED, Instant.now().minusSeconds(1));
+
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.getRetryAfterSec()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("풀리는 시각을 모르면 GitHub 한도 부분 완료여도 남은 초는 비어 있다")
+    void retryAfterSecIsEmptyWhenResetUnknown() {
+
+        AnalysisJob job = running();
+
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED, null);
+
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+        assertThat(job.getRetryAfterSec()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("GitHub 한도 부분 완료가 아닌데 풀리는 시각을 주면 거절되고 상태는 그대로 유지된다")
+    void resetTimeWithoutRateLimitIsRejected() {
+
+        AnalysisJob job = running();
+        Instant resetAt = Instant.now().plusSeconds(60);
+
+        assertThatThrownBy(() -> job.succeed(true, null, resetAt)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> job.succeed(true, JobErrorCode.GITHUB_UNAVAILABLE, resetAt))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> job.succeed(false, null, resetAt)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(job.getState()).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("풀리는 시각을 받지 않는 succeed·fail·cancel 로 끝난 Job 의 남은 초는 비어 있다")
+    void otherEndingsLeaveRetryAfterSecEmpty() {
+
+        AnalysisJob succeeded = running();
+        AnalysisJob failed = running();
+        AnalysisJob canceled = running();
+
+        succeeded.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED);
+        failed.fail(JobErrorCode.GITHUB_UNAVAILABLE);
+        canceled.cancel();
+
+        assertThat(succeeded.getRetryAfterSec()).isNull();
+        assertThat(failed.getRetryAfterSec()).isNull();
+        assertThat(canceled.getRetryAfterSec()).isNull();
+
+    }
+
+    @Test
     @DisplayName("cancel 은 QUEUED·RUNNING Job 을 CANCELED 로 바꾸고 끝난 시각을 남긴다")
     void cancelEndsActiveJob() {
 

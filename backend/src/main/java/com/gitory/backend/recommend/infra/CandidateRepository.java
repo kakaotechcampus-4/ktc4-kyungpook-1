@@ -36,4 +36,16 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
     Optional<Candidate> findFirstByUserRepositoryIdAndSourceTypeAndSourceRefAndTitleAndReasonTextAndStatusOrderById(
             Long userRepositoryId, CandidateType sourceType, String sourceRef, String title, String reasonText,
             CandidateStatus status);
+
+    // 내 저장소 연결 안의 후보 한 개만 잠그므로 남의 후보 행은 잠그지 않고, 다시 분석 저장의 id 순 잠금과 서로 기다리며 멈추지 않는다
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Candidate> findWithLockByPublicIdAndUserRepositoryIdIn(UUID publicId, Collection<Long> userRepositoryIds);
+
+    // 저장소를 가리지 않으므로 남의 후보인지 가려 거절 기록을 남길 때만 쓴다
+    Optional<Candidate> findByPublicId(UUID publicId);
+
+    // 같은 글로 이미 직접 추가했는지 보는 조회로, 행을 잠그지 않아 다시 분석 저장과 서로 기다리지 않는다
+    List<Candidate> findByUserRepositoryIdAndSourceTypeAndSourceRefAndTitleAndReasonTextAndStatusOrderById(
+            Long userRepositoryId, CandidateType sourceType, String sourceRef, String title, String reasonText,
+            CandidateStatus status);
 }

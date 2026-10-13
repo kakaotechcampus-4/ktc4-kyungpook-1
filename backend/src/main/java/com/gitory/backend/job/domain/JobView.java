@@ -32,7 +32,7 @@ public record JobView(
                 job.getSteps(),
                 job.getErrorCode(),
                 retryable(job.getErrorCode()),
-                null,
+                job.getRetryAfterSec(),
                 job.getStartedAt(),
                 job.getUpdatedAt(),
                 job.getFinishedAt(),

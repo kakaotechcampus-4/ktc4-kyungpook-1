@@ -3,6 +3,8 @@ package com.gitory.backend.recommend.api;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
 import com.gitory.backend.recommend.domain.CandidateBoardNotFoundException;
+import com.gitory.backend.recommend.domain.CandidateNotEditableException;
+import com.gitory.backend.recommend.domain.CandidateNotFoundException;
 import com.gitory.backend.recommend.domain.InvalidCandidateInputException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -20,6 +22,22 @@ public class CandidateBoardExceptionHandler {
     public ApiResponse<Void> handleRepositoryNotFound() {
 
         return ApiResponse.fail(ErrorCode.NOT_FOUND, "저장소를 찾을 수 없습니다.");
+
+    }
+
+    @ExceptionHandler(CandidateNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleCandidateNotFound() {
+
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "후보를 찾을 수 없습니다.");
+
+    }
+
+    @ExceptionHandler(CandidateNotEditableException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleCandidateNotEditable() {
+
+        return ApiResponse.fail(ErrorCode.INVALID_STATE, "이미 카드로 쓴 후보는 고칠 수 없습니다.");
 
     }
 

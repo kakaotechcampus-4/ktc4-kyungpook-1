@@ -31,7 +31,7 @@ public class InterviewAnswerController {
             질문에 쓴 답을 가공 없이 그 질문의 칸 글로 저장하고, 그 칸만 바꾼 INTERVIEW 새 버전을 현재 버전으로 삼아 카드 전체를 돌려줍니다.
             답한 칸은 옛 글의 근거 커밋과 확인 필요 표시를 잃고 사용자가 쓴 글(USER_STATED)이 되며, 나머지 세 칸은 그대로입니다.
             이미 답한 질문에 같은 답이 다시 오면 아무것도 바꾸지 않고 지금 카드를 200 으로 돌려주고, 다른 답이면 409 INVALID_STATE 입니다.
-            확인 순서는 질문 번호(404), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.
+            확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.
             답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
@@ -45,7 +45,7 @@ public class InterviewAnswerController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID, 본인 카드 없음 또는 그 번호의 질문 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "CARD_CONFIRMED: 확정된 카드는 다시 열어야 답할 수 있음, INVALID_STATE: 이미 다른 답을 한 질문",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "CARD_CONFIRMED: 확정된 카드는 다시 열어야 답할 수 있음, INVALID_STATE: 이미 다른 답을 한 질문 또는 초안을 만드는 중인 카드",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<CardResponse> answer(

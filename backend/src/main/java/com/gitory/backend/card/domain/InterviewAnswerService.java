@@ -24,13 +24,14 @@ public class InterviewAnswerService {
     private static final String ACCEPTED_SOURCE = EvidenceType.USER_STATED.name();
 
     private final CardOwnershipService ownership;
+    private final CardGenerationGuard generation;
     private final InterviewTurnRepository turns;
     private final CardVersionWriter writer;
     private final CardStatementRepository statements;
     private final CardDetailService details;
 
     /**
-     * 카드 행을 잠근 뒤 질문 번호, 이미 한 답, 확정 여부, 답의 모양 순서로 확인하고, 이 순서가 응답 코드의 우선순위다
+     * 카드 행을 잠근 뒤 질문 번호, 초안을 만드는 중인지, 이미 한 답, 확정 여부, 답의 모양 순서로 확인하고, 이 순서가 응답 코드의 우선순위다
      * 답 글과 출처는 모양이 틀린 값도 여기까지 들어오므로 카드에 대한 확인을 끝낸 뒤에야 거절한다
      */
     @Transactional
@@ -38,6 +39,7 @@ public class InterviewAnswerService {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         InterviewTurn turn = turnOf(card, turnNo);
+        generation.requireNotGenerating(card);
 
         if (turn.isAnswered()) {
             if (!sameAnswer(turn, text, source)) {

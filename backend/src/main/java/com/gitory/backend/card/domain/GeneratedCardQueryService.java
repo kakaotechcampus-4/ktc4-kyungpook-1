@@ -20,4 +20,13 @@ public class GeneratedCardQueryService {
         return cards.findPublicIdsByGenerationJobId(generationJobId);
 
     }
+
+    /** Job 이 초안을 채울 카드를 만든 순서대로 돌려준다 */
+    public List<GeneratedCard> cardsOf(UUID generationJobId) {
+
+        return cards.findByGenerationJobIdOrderById(generationJobId).stream()
+                .map(card -> new GeneratedCard(card.getId(), card.getCandidateId(), card.getTitle()))
+                .toList();
+
+    }
 }

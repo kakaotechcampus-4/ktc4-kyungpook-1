@@ -4,6 +4,7 @@ import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.job.domain.AnalysisJob;
 import com.gitory.backend.job.domain.JobState;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.support.BoardVerdictFixtures;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
@@ -352,6 +353,28 @@ class JobApiTest {
 
         assertThat(jobs.findAll()).singleElement()
                 .extracting(AnalysisJob::getState).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("후보가 0개인 분석 Job 의 이유 줄은 로그인한 사용자 이름으로 센 내 커밋 메시지 평균을 담고, 조회와 취소 응답이 같다")
+    void emptyJobReasonsUseSessionLogin() throws Exception {
+
+        Long repositoryId = jdbc.queryForObject("SELECT repository_id FROM user_repository WHERE id = ?",
+                Long.class, myRepoId);
+        new BoardVerdictFixtures(jdbc).insertCommit(repositoryId, "a".repeat(40), "grow22", "abcd", null);
+        AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
+        job.start();
+        job.startGrouping();
+        job.recordCandidates(0);
+        job.succeed(false, null);
+        jobs.save(job);
+
+        getJob(job.getPublicId())
+                .andExpect(jsonPath("$.data.result.verdict").value("EMPTY"))
+                .andExpect(jsonPath("$.data.result.reasons[1]").value("커밋 메시지 평균 4글자"));
+        cancelJob(job.getPublicId())
+                .andExpect(jsonPath("$.data.result.reasons[1]").value("커밋 메시지 평균 4글자"));
 
     }
 

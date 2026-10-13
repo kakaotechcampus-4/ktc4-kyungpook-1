@@ -2,6 +2,7 @@ package com.gitory.backend.recommend.domain;
 
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CandidateCardQueryService;
+import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.LastAnalyzedService;
 import com.gitory.backend.ingest.domain.RepositoryOwnershipService;
@@ -42,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @Import({CandidateBoardService.class, RepositoryOwnershipService.class, RepositoryReferenceService.class,
         LastAnalyzedService.class, CommitSummaryService.class, UsedCardAdapter.class, CandidateCardQueryService.class,
-        AuditLog.class})
+        AuditLog.class, CollectionStatsService.class, CandidateEmptyReasons.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class CandidateBoardServiceTest {
 
@@ -93,7 +94,7 @@ class CandidateBoardServiceTest {
             // 후보 커밋 표를 잠가 보드가 후보까지 읽고 후보 커밋을 읽기 직전에 멈춘 사이에, 다시 분석처럼 후보를 지우고 새로 넣는다
             Future<CandidateBoard> loading = transaction.execute(status -> {
                 jdbc.execute("LOCK TABLE candidate_commit IN ACCESS EXCLUSIVE MODE");
-                Future<CandidateBoard> load = reader.submit(() -> service.load(MY_REPO, userId));
+                Future<CandidateBoard> load = reader.submit(() -> service.load(MY_REPO, userId, "grow22"));
                 awaitBlockedRead();
                 jdbc.update("DELETE FROM candidate WHERE id = ?", oldCluster);
                 Long newCluster = board.insertCandidate(myRepoId, "COMMIT_CLUSTER", null, "NEW", "새 묶음", "0.9");
@@ -125,7 +126,7 @@ class CandidateBoardServiceTest {
             // 카드 표를 잠가 보드가 후보까지 읽고 카드를 읽기 직전에 멈춘 사이에 그 카드를 지운다
             Future<CandidateBoard> loading = transaction.execute(status -> {
                 jdbc.execute("LOCK TABLE card IN ACCESS EXCLUSIVE MODE");
-                Future<CandidateBoard> load = reader.submit(() -> service.load(MY_REPO, userId));
+                Future<CandidateBoard> load = reader.submit(() -> service.load(MY_REPO, userId, "grow22"));
                 awaitBlockedRead();
                 jdbc.update("UPDATE card SET deleted_at = now() WHERE candidate_id = ?", used);
                 return load;

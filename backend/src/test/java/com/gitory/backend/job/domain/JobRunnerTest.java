@@ -17,6 +17,7 @@ import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
+import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
 import com.gitory.backend.ingest.domain.PartialReason;
@@ -27,6 +28,7 @@ import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
 import com.gitory.backend.recommend.domain.CandidateStoreService;
 import com.gitory.backend.support.AiTestProperties;
 import com.gitory.backend.support.TestFixtures;
@@ -71,11 +73,13 @@ import java.util.concurrent.locks.LockSupport;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
-        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class})
+        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class,
+        CandidateEmptyReasons.class, CollectionStatsService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JobRunnerTest {
 
+    private static final String LOGIN = "grow22";
     private static final String KEY_1 = "11111111-1111-4111-8111-111111111111";
     private static final String KEY_2 = "22222222-2222-4222-8222-222222222222";
     private static final String KEY_3 = "33333333-3333-4333-8333-333333333333";
@@ -292,7 +296,7 @@ class JobRunnerTest {
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.getSteps()).extracting(JobStep::key, JobStep::state).endsWith(
                 tuple(JobStepKey.COMPRESS, JobStepState.SKIPPED), tuple(JobStepKey.REASON, JobStepState.SKIPPED));
-        assertThat(JobView.from(job, UUID.randomUUID()).result().verdict()).isNull();
+        assertThat(JobView.from(job, UUID.randomUUID(), List::of).result().verdict()).isNull();
         assertThat(countOf("candidate_grouping")).isZero();
 
     }
@@ -631,7 +635,7 @@ class JobRunnerTest {
     private void cancel(Long jobId) {
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
-        cancelService.cancel(job.getPublicId(), job.getUserId());
+        cancelService.cancel(job.getPublicId(), job.getUserId(), LOGIN);
 
     }
 

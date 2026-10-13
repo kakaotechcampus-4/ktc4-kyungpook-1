@@ -291,28 +291,29 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("마지막 분석 뒤에 묶었는데 후보가 0개면 EMPTY 이고 이유 줄은 비어 있다")
-    void leavesReasonsEmptyWhenGroupedAfterLastAnalysis() throws Exception {
+    @DisplayName("마지막 분석 뒤에 묶었는데 후보가 0개면 EMPTY 이고 개수를 못 센 저장소의 이유 줄은 '내 커밋 수를 아직 세지 못했어요' 하나다")
+    void explainsUncountedRepositoryWhenGroupedAfterLastAnalysis() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
         board.insertGrouping(myRepoId, ANALYZED_AT.plusSeconds(1));
 
         board(myUserId, MY_REPO.toString())
                 .andExpect(jsonPath("$.data.verdict").value("EMPTY"))
-                .andExpect(jsonPath("$.data.emptyReasons", hasSize(0)));
+                .andExpect(jsonPath("$.data.emptyReasons", hasSize(1)))
+                .andExpect(jsonPath("$.data.emptyReasons[0]").value("내 커밋 수를 아직 세지 못했어요"));
 
     }
 
     @Test
-    @DisplayName("묶은 시각이 마지막 분석 시각과 같으면 이르지 않으므로 이유 줄은 비어 있다")
-    void leavesReasonsEmptyWhenGroupedAtTheSameInstantAsLastAnalysis() throws Exception {
+    @DisplayName("묶은 시각이 마지막 분석 시각과 같으면 이르지 않으므로 묶은 보드의 이유 줄을 준다")
+    void explainsGroupedBoardWhenGroupedAtTheSameInstantAsLastAnalysis() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
         board.insertGrouping(myRepoId, ANALYZED_AT);
 
         board(myUserId, MY_REPO.toString())
                 .andExpect(jsonPath("$.data.verdict").value("EMPTY"))
-                .andExpect(jsonPath("$.data.emptyReasons", hasSize(0)));
+                .andExpect(jsonPath("$.data.emptyReasons[0]").value("내 커밋 수를 아직 세지 못했어요"));
 
     }
 

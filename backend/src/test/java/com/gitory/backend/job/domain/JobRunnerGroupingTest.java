@@ -25,6 +25,7 @@ import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
+import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.FileChangeStatus;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
@@ -37,6 +38,7 @@ import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
 import com.gitory.backend.recommend.domain.CandidateStoreService;
 import com.gitory.backend.support.CandidateFixtures;
 import com.gitory.backend.support.StoredActivityFixtures;
@@ -88,11 +90,13 @@ import java.util.concurrent.atomic.AtomicReference;
 @Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
 @Import({JobRunner.class, JobCancelService.class, JobQueryService.class, ActivityStoreService.class,
-        GroupingMaterialService.class, CandidateStoreService.class, StoredActivityService.class, UserLoginService.class})
+        GroupingMaterialService.class, CandidateStoreService.class, StoredActivityService.class, UserLoginService.class,
+        JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JobRunnerGroupingTest {
 
+    private static final String LOGIN = "Grow22";
     private static final String KEY_1 = "11111111-1111-4111-8111-111111111111";
     private static final String KEY_2 = "22222222-2222-4222-8222-222222222222";
     private static final String SHA_A = "a".repeat(40);
@@ -305,7 +309,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("AI 가 후보를 하나도 만들지 않으면 후보 추리기는 0 으로 완료되고 추천 이유는 SKIPPED 이며 판정은 EMPTY 다")
+    @DisplayName("AI 가 후보를 하나도 만들지 않으면 후보 추리기는 0 으로 완료되고 추천 이유는 SKIPPED 이며 판정은 EMPTY 이고 이유 줄은 저장된 숫자로 만든다")
     void emptyGroupingSkipsReasonAndJudgesEmpty() {
 
         Long jobId = enqueue(KEY_1);
@@ -320,7 +324,8 @@ class JobRunnerGroupingTest {
         assertThat(job.getSteps()).endsWith(
                 new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
-        assertThat(resultOf(job)).isEqualTo(new JobResult(userRepositoryPublicId(), null, "EMPTY", List.of()));
+        assertThat(resultOf(job)).isEqualTo(new JobResult(userRepositoryPublicId(), null, "EMPTY",
+                List.of("내 커밋 수를 아직 세지 못했어요", "커밋 메시지 평균 11글자")));
 
     }
 
@@ -414,7 +419,7 @@ class JobRunnerGroupingTest {
         verify(grouping, times(1)).group(any());
         assertThat(job.getState()).isEqualTo(JobState.FAILED);
         assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
-        assertThat(jobQuery.load(job.getPublicId(), userId).retryable()).isFalse();
+        assertThat(jobQuery.load(job.getPublicId(), userId, LOGIN).retryable()).isFalse();
         assertThat(job.getCollectionRunId()).isNotNull();
         assertThat(countOf("collection_run")).isEqualTo(1);
         assertThat(countOf("git_commit")).isEqualTo(1);
@@ -521,7 +526,7 @@ class JobRunnerGroupingTest {
     private void cancel(Long jobId) {
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
-        cancelService.cancel(job.getPublicId(), job.getUserId());
+        cancelService.cancel(job.getPublicId(), job.getUserId(), LOGIN);
 
     }
 
@@ -533,7 +538,7 @@ class JobRunnerGroupingTest {
 
     private JobResult resultOf(AnalysisJob job) {
 
-        return jobQuery.load(job.getPublicId(), userId).result();
+        return jobQuery.load(job.getPublicId(), userId, LOGIN).result();
 
     }
 

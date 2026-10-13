@@ -16,16 +16,17 @@ public class JobCancelService {
 
     private final AnalysisJobRepository jobs;
     private final AuditLog auditLog;
+    private final JobViewFactory views;
 
     @Transactional
-    public JobView cancel(UUID publicId, Long userId) {
+    public JobView cancel(UUID publicId, Long userId, String login) {
 
         AnalysisJob job = jobs.findWithLockByPublicIdAndUserId(publicId, userId)
                 .orElseThrow(() -> notFound(publicId, userId));
         job.cancel();
         jobs.flush();
 
-        return JobView.from(job, jobs.findUserRepositoryPublicId(job.getUserRepositoryId()));
+        return views.of(job, login);
 
     }
 

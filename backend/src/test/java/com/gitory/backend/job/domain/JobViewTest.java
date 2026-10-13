@@ -9,11 +9,13 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 class JobViewTest {
 
     private static final String KEY = "11111111-1111-4111-8111-111111111111";
     private static final UUID REPO_ID = UUID.fromString("22222222-2222-4222-8222-222222222222");
+    private static final List<String> REASONS = List.of("내 커밋 52개 / 팀 145개", "PR 참여 없음");
 
     @ParameterizedTest
     @CsvSource({"3, false, OK", "1, true, PARTIAL", "0, false, EMPTY", "0, true, EMPTY"})
@@ -22,15 +24,45 @@ class JobViewTest {
 
         AnalysisJob job = groupedJob(candidateCount, partial);
 
-        assertThat(JobView.from(job, REPO_ID).result())
-                .isEqualTo(new JobResult(REPO_ID.toString(), null, verdict, List.of()));
+        assertThat(JobView.from(job, REPO_ID, () -> REASONS).result().verdict()).isEqualTo(verdict);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource({"3, false", "1, true"})
+    @DisplayName("판정이 OK 나 PARTIAL 이면 이유 줄은 빈 목록이고 이유를 만들지도 않는다")
+    void leavesReasonsEmptyUnlessEmpty(int candidateCount, boolean partial) {
+
+        AtomicInteger calls = new AtomicInteger();
+        AnalysisJob job = groupedJob(candidateCount, partial);
+
+        JobResult result = JobView.from(job, REPO_ID, () -> {
+            calls.incrementAndGet();
+            return REASONS;
+        }).result();
+
+        assertThat(result).isEqualTo(new JobResult(REPO_ID.toString(), null, result.verdict(), List.of()));
+        assertThat(calls).hasValue(0);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false", "true"})
+    @DisplayName("판정이 EMPTY 이면 이유 줄에 후보 보드와 같은 줄을 담는다")
+    void fillsReasonsWhenEmpty(boolean partial) {
+
+        AnalysisJob job = groupedJob(0, partial);
+
+        assertThat(JobView.from(job, REPO_ID, () -> REASONS).result())
+                .isEqualTo(new JobResult(REPO_ID.toString(), null, "EMPTY", REASONS));
 
     }
 
     @Test
-    @DisplayName("묶기를 건너뛰었거나 후보 추리기가 끝나지 않은 Job 은 판정과 이유를 비운다")
+    @DisplayName("묶기를 건너뛰었거나 후보 추리기가 끝나지 않은 Job 은 판정과 이유를 비우고 이유를 만들지도 않는다")
     void leavesVerdictEmptyUntilCandidatesAreStored() {
 
+        AtomicInteger calls = new AtomicInteger();
         AnalysisJob skipped = collectedJob();
         skipped.succeed(false, null);
         AnalysisJob failedWhileGrouping = collectedJob();
@@ -38,8 +70,18 @@ class JobViewTest {
         failedWhileGrouping.fail(JobErrorCode.INTERNAL_ERROR);
 
         JobResult noVerdict = new JobResult(REPO_ID.toString(), null, null, null);
-        assertThat(JobView.from(skipped, REPO_ID).result()).isEqualTo(noVerdict);
-        assertThat(JobView.from(failedWhileGrouping, REPO_ID).result()).isEqualTo(noVerdict);
+        assertThat(JobView.from(skipped, REPO_ID, () -> countedReasons(calls)).result()).isEqualTo(noVerdict);
+        assertThat(JobView.from(failedWhileGrouping, REPO_ID, () -> countedReasons(calls)).result())
+                .isEqualTo(noVerdict);
+        assertThat(calls).hasValue(0);
+
+    }
+
+    private static List<String> countedReasons(AtomicInteger calls) {
+
+        calls.incrementAndGet();
+
+        return REASONS;
 
     }
 

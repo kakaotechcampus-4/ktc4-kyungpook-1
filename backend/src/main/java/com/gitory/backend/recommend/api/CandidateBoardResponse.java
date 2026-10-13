@@ -10,9 +10,9 @@ import java.util.List;
 public record CandidateBoardResponse(
         @Schema(format = "uuid") String repoId,
         CandidateVerdict verdict,
-        boolean partial,
-        @Schema(description = "다시 시도할 때까지 기다릴 초. 아직 채우지 않아 null") Integer retryAfterSeconds,
-        @Schema(description = "어디까지 읽었는지. 아직 채우지 않아 null") ReadCoverageResponse readCoverage,
+        @Schema(description = "마지막 수집이 상한이나 요청 제한으로 일부만 읽었는지") boolean partial,
+        @Schema(description = "다시 시도할 때까지 기다릴 초. 기다릴 시간을 저장하지 않아 늘 null") Integer retryAfterSeconds,
+        @Schema(description = "부분 결과일 때 읽은 수와 전체 수. 작성자와 상관없이 센 숫자이고, 전체 개수를 세지 못했으면 null") ReadCoverageResponse readCoverage,
         @Schema(description = "후보가 하나도 없을 때 이유 문장") List<String> emptyReasons,
         List<CandidateResponse> candidates) {
 
@@ -20,7 +20,8 @@ public record CandidateBoardResponse(
 
         String repoId = board.repositoryId().toString();
 
-        return new CandidateBoardResponse(repoId, board.verdict(), false, null, null, board.emptyReasons(),
+        return new CandidateBoardResponse(repoId, board.verdict(), board.partial(), null,
+                ReadCoverageResponse.from(board.readCoverage()), board.emptyReasons(),
                 board.candidates().stream().map(candidate -> CandidateResponse.from(repoId, candidate)).toList());
 
     }

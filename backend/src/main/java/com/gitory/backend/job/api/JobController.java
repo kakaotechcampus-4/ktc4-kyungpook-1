@@ -42,7 +42,8 @@ public class JobController {
             @Parameter(description = "분석 접수 응답의 jobId", schema = @Schema(type = "string", format = "uuid"))
             @PathVariable String id) {
 
-        return ApiResponse.ok(JobResponse.from(jobQuery.load(toUuid(id), loginUser.id())));
+        return ApiResponse.ok(JobResponse.from(jobQuery.load(toUuid(id), loginUser.id(), loginUser.login())));
+
     }
 
     @GetMapping("/api/jobs")
@@ -73,7 +74,7 @@ public class JobController {
             @Parameter(description = "취소할 Job 의 jobId", schema = @Schema(type = "string", format = "uuid"))
             @PathVariable String id) {
 
-        return ApiResponse.ok(JobResponse.from(jobCancel.cancel(toUuid(id), loginUser.id())));
+        return ApiResponse.ok(JobResponse.from(jobCancel.cancel(toUuid(id), loginUser.id(), loginUser.login())));
 
     }
 

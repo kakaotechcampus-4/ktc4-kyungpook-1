@@ -66,6 +66,18 @@ public class ActivityStoreService {
 
     }
 
+    /**
+     * 이 저장소에 저장된 커밋 수이며, 다른 사용자가 먼저 저장한 것과 제외 사유가 있는 커밋도 센다
+     * 다시 분석하면 AI 가 이미 저장한 커밋은 돌려주지 않아 응답의 커밋 수는 새 커밋뿐이라, 읽어 둔 커밋은 저장된 행으로 센다
+     */
+    @Transactional(readOnly = true)
+    public int storedCommitCount(Long userRepositoryId) {
+
+        ConnectedRepository connected = connectedRepositoryOf(userRepositoryId);
+        return Math.toIntExact(commits.countByRepositoryId(connected.getRepositoryId()));
+
+    }
+
     @Transactional
     public Long store(IngestRequest request, CollectedActivity activity) {
 

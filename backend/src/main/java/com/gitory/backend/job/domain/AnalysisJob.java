@@ -105,7 +105,7 @@ public class AnalysisJob {
     }
 
     /**
-     * 수집 기록을 연결하고 수집 두 단계는 읽은 개수로 끝낸다
+     * 수집 기록을 연결하고 커밋 단계는 저장소에 저장된 커밋 수로, PR 단계는 이번에 읽은 PR 수로 끝낸다
      * 후보 추리기·추천 이유는 묶기를 끈 채 끝나도록 SKIPPED 로 두고, 묶기를 하면 {@link #startGrouping()} 이 바꾼다
      */
     public void recordCollection(Long collectionRunId, int commitCount, int pullRequestCount) {

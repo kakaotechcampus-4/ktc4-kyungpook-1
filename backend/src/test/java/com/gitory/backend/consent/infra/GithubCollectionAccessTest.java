@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -29,14 +30,20 @@ import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -54,6 +61,7 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
+@ExtendWith(OutputCaptureExtension.class)
 class GithubCollectionAccessTest {
 
     private static final long USER_ID = 7L;
@@ -69,8 +77,9 @@ class GithubCollectionAccessTest {
     private final AtomicReference<Instant> now = new AtomicReference<>(Instant.parse("2026-10-12T00:00:00Z"));
     private final Clock clock = mock(Clock.class);
     private final GithubDisconnectService disconnects = mock(GithubDisconnectService.class);
-    private final GithubCollectionAccess access =
-            new GithubCollectionAccess(users, connections, cipher, null, github, counter, clock, disconnects);
+    private final GithubRateLimitClient rateLimit = mock(GithubRateLimitClient.class);
+    private final GithubCollectionAccess access = new GithubCollectionAccess(
+            users, connections, cipher, null, github, counter, clock, disconnects, rateLimit);
 
     @BeforeEach
     void setUp() {
@@ -646,6 +655,84 @@ class GithubCollectionAccessTest {
 
         List<GithubCountTarget> targets = List.of(new GithubCountTarget(100L, "kakao", "gitory"));
         assertThatThrownBy(() -> access.countActivity(USER_ID, targets)).isInstanceOf(IllegalStateException.class);
+
+    }
+
+    @Test
+    @DisplayName("쓸 수 있는 연결이면 복호화한 토큰으로 한도를 묻고 풀리는 시각만 돌려준다")
+    void asksRateLimitWithDecryptedToken() {
+
+        connectionExpiringAt(null);
+        Instant resetAt = Instant.parse("2026-10-11T03:00:00Z");
+        when(rateLimit.resetAt(TOKEN)).thenReturn(Optional.of(resetAt));
+
+        assertThat(access.rateLimitResetAt(USER_ID)).contains(resetAt);
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"NO_CONNECTION", "REVOKED", "EXPIRED", "DELETION_REQUESTED", "UNDECRYPTABLE"})
+    @DisplayName("쓸 수 있는 연결이 없으면 GitHub 을 부르지 않고 예외 없이 빈 값을 돌려준다")
+    void returnsEmptyWithoutUsableConnection(String cause) {
+
+        switch (cause) {
+            case "NO_CONNECTION" -> when(connections.findByUserIdAndRevokedAtIsNull(USER_ID)).thenReturn(Optional.empty());
+            case "REVOKED" -> connectionExpiringAt(null).revoke();
+            case "EXPIRED" -> connectionExpiringAt(Instant.now().minusSeconds(1));
+            case "DELETION_REQUESTED" -> {
+                User leaving = mock(User.class);
+                when(leaving.isDeletionRequested()).thenReturn(true);
+                when(users.findById(USER_ID)).thenReturn(Optional.of(leaving));
+                connectionExpiringAt(null);
+            }
+            default -> when(connections.findByUserIdAndRevokedAtIsNull(USER_ID))
+                    .thenReturn(Optional.of(GithubConnection.grant(USER_ID, SCOPES, "not-encrypted", null)));
+        }
+
+        assertThat(access.rateLimitResetAt(USER_ID)).isEmpty();
+        verifyNoInteractions(rateLimit);
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 401·5xx 로 답하거나 시간이 초과되면 예외 없이 빈 값을 돌려주고 로그에 토큰과 응답 본문을 남기지 않는다")
+    void returnsEmptyWhenGithubFails(CapturedOutput output) {
+
+        connectionExpiringAt(null);
+        // RestClient 는 오류 메시지에 응답 본문 앞부분을 넣으므로 같은 모양으로 만든다
+        String message = "401 Unauthorized: \"{\"message\": \"secret-body " + TOKEN + "\"}\"";
+        byte[] body = new byte[0];
+        when(rateLimit.resetAt(TOKEN))
+                .thenThrow(new HttpClientErrorException(message, HttpStatus.UNAUTHORIZED, "Unauthorized",
+                        new HttpHeaders(), body, StandardCharsets.UTF_8))
+                .thenThrow(new HttpServerErrorException(message, HttpStatus.BAD_GATEWAY, "Bad Gateway",
+                        new HttpHeaders(), body, StandardCharsets.UTF_8))
+                .thenThrow(new ResourceAccessException("Read timed out"));
+
+        for (int i = 0; i < 3; i++) {
+            assertThat(access.rateLimitResetAt(USER_ID)).isEmpty();
+        }
+
+        assertThat(output.getOut() + output.getErr())
+                .contains("호출 한도를 조회하지 못했다")
+                .doesNotContain(TOKEN)
+                .doesNotContain("secret-body");
+
+    }
+
+    @Test
+    @DisplayName("한도 조회가 401 이어도 연결을 해제하지 않고 그대로 둔다")
+    void keepsConnectionWhenRateLimitIsRejected() {
+
+        GithubConnection connection = connectionExpiringAt(null);
+        when(rateLimit.resetAt(TOKEN)).thenThrow(HttpClientErrorException.create(
+                HttpStatus.UNAUTHORIZED, "Unauthorized", new HttpHeaders(), new byte[0], null));
+
+        assertThat(access.rateLimitResetAt(USER_ID)).isEmpty();
+
+        assertThat(connection.isActive()).isTrue();
+        verify(connections, never()).save(any());
+        verifyNoInteractions(disconnects);
 
     }
 

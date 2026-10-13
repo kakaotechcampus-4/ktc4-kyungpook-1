@@ -1,6 +1,7 @@
 package com.gitory.backend.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.gitory.backend.support.CandidateFixtures;
 import com.gitory.backend.support.TestFixtures;
@@ -8,6 +9,7 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.junit.jupiter.Container;
@@ -198,6 +200,32 @@ class MigrationUpgradeTest {
         assertThat(candidate.get("span_days")).isNull();
         assertThat(candidate.get("code_ratio")).isNull();
         assertThat(jdbc.queryForObject("SELECT display_path FROM candidate_commit", String.class)).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("V15 는 옛 Job 행의 남은 초를 NULL 로 두고, 0 이하 값은 CHECK 로 거절하며 양수는 받는다")
+    void v15AddsRetryAfterSecColumn() {
+
+        migrateTo("14");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        jdbc.update(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, state, error_code) VALUES (?, ?, ?, 'SUCCEEDED', 'GITHUB_RATE_LIMITED')",
+                userId, userRepositoryId, "old-job");
+
+        migrateTo("15");
+
+        assertThat(jdbc.queryForObject("SELECT retry_after_sec FROM analysis_job", Integer.class)).isNull();
+        assertThat(updateRetryAfterSec(60)).isEqualTo(1);
+        assertThatThrownBy(() -> updateRetryAfterSec(0)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> updateRetryAfterSec(-5)).isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    private int updateRetryAfterSec(int seconds) {
+
+        return jdbc.update("UPDATE analysis_job SET retry_after_sec = ?", seconds);
 
     }
 

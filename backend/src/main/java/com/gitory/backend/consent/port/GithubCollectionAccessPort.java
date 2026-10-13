@@ -2,7 +2,9 @@ package com.gitory.backend.consent.port;
 
 import tools.jackson.databind.JsonNode;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 /** 토큰 대신 범위가 고정된 수집 호출 권한을 제공한다. */
 public interface GithubCollectionAccessPort {
@@ -20,4 +22,7 @@ public interface GithubCollectionAccessPort {
 
     /** GitHub 이 세지 못한 저장소는 결과에서 빠진다 */
     List<GithubRepositoryCount> countActivity(Long userId, List<GithubCountTarget> targets);
+
+    /** 연결이 없거나 GitHub 에 묻지 못하면 예외 없이 빈 값을 돌려준다 */
+    Optional<Instant> rateLimitResetAt(Long userId);
 }

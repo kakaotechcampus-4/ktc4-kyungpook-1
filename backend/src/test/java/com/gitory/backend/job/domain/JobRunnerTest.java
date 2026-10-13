@@ -16,6 +16,7 @@ import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
+import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.GithubState;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -47,6 +49,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -126,6 +129,9 @@ class JobRunnerTest {
 
     @MockitoBean
     ExperienceGroupingPort grouping;
+
+    @MockitoBean
+    GithubCollectionAccessPort githubAccess;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -351,6 +357,108 @@ class JobRunnerTest {
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.isPartial()).isTrue();
         assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+
+    }
+
+    @Test
+    @DisplayName("GitHub 한도로 일부만 읽으면 그 Job 주인의 한도가 풀리는 시각까지 남은 초를 남기고 감사 기록은 남기지 않는다")
+    void rateLimitedCollectionKeepsRetryAfterSec() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusSeconds(600)));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+        assertThat(job.getRetryAfterSec()).isBetween(590, 600);
+        verifyNoInteractions(auditLog);
+
+    }
+
+    @Test
+    @DisplayName("한도가 풀리는 시각을 알아내지 못해도 부분 완료·GITHUB_RATE_LIMITED 는 그대로이고 남은 초만 비어 있다")
+    void rateLimitedCollectionWithoutResetKeepsResult() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.empty());
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+        assertThat(job.getRetryAfterSec()).isNull();
+        assertThat(countOf("collection_run")).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("한도가 풀리는 시각은 DB 트랜잭션 밖에서 묻는다")
+    void asksRateLimitOutsideTransaction() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        AtomicReference<Boolean> transactionActive = new AtomicReference<>();
+        given(githubAccess.rateLimitResetAt(userId)).willAnswer(invocation -> {
+            transactionActive.set(TransactionSynchronizationManager.isActualTransactionActive());
+            return Optional.empty();
+        });
+
+        runNext();
+
+        assertThat(transactionActive.get()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 취소된 Job 은 한도를 물었어도 남은 초 없이 CANCELED 로 두고 수집 결과도 저장하지 않는다")
+    void canceledJobKeepsNoRetryAfterSec() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willAnswer(invocation -> {
+            cancel(jobId);
+            return activity(PartialReason.GITHUB_RATE_LIMITED);
+        });
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusSeconds(600)));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.CANCELED);
+        assertThat(job.getRetryAfterSec()).isNull();
+        assertThat(countOf("collection_run")).isZero();
+
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PartialReason.class, names = {"CAP_EXCEEDED", "TIMEOUT"})
+    @DisplayName("GitHub 한도가 아닌 이유로 일부만 읽은 수집은 한도를 묻지 않는다")
+    void otherPartialReasonsDoNotAskRateLimit(PartialReason reason) {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(reason));
+
+        runNext();
+
+        verifyNoInteractions(githubAccess);
+        assertThat(jobs.findById(jobId).orElseThrow().getRetryAfterSec()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("끝까지 읽은 수집은 한도를 묻지 않는다")
+    void completeCollectionDoesNotAskRateLimit() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        verifyNoInteractions(githubAccess);
 
     }
 
@@ -679,7 +787,7 @@ class JobRunnerTest {
     private JobRunner runnerWith(AiClientProperties aiProperties) {
 
         return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
-                new JobGroupingProperties(false), users, materials, candidates, grouping);
+                new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess);
 
     }
 

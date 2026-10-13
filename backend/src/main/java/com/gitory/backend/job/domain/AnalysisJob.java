@@ -8,6 +8,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +52,8 @@ public class AnalysisJob {
 
     @Enumerated(EnumType.STRING)
     private JobErrorCode errorCode;
+
+    private Integer retryAfterSec;
 
     // DB 기본값 now() 에 맡기면 JPA 가 null 을 넣어 NOT NULL 제약 걸림
     // start() 호출 시각이 아니라 접수(enqueue) 시각을 의미한다
@@ -149,8 +152,22 @@ public class AnalysisJob {
      */
     public void succeed(boolean partial, JobErrorCode errorCode) {
 
+        succeed(partial, errorCode, null);
+
+    }
+
+    /**
+     * 끝난 시각부터 한도가 풀리는 시각까지 남은 초를 올림해 남기며, 이미 지났거나 모르면 비워 둔다
+     * 풀리는 시각은 GitHub 한도로 일부만 읽은 부분 완료에만 받는다
+     */
+    public void succeed(boolean partial, JobErrorCode errorCode, Instant limitResetAt) {
+
         if (errorCode != null && !partial) {
             throw new IllegalArgumentException("에러 코드는 부분 완료에만 남긴다");
+        }
+
+        if (limitResetAt != null && errorCode != JobErrorCode.GITHUB_RATE_LIMITED) {
+            throw new IllegalArgumentException("한도가 풀리는 시각은 GitHub 한도 부분 완료에만 남긴다");
         }
 
         requireState(JobState.RUNNING);
@@ -158,6 +175,7 @@ public class AnalysisJob {
         this.partial = partial;
         this.errorCode = errorCode;
         this.finishedAt = Instant.now();
+        this.retryAfterSec = secondsUntil(limitResetAt);
 
     }
 
@@ -206,6 +224,21 @@ public class AnalysisJob {
         if (state != expected) {
             throw new IllegalStateException("Job 상태가 " + expected + " 가 아니다: " + state);
         }
+    }
+
+    private Integer secondsUntil(Instant limitResetAt) {
+
+        if (limitResetAt == null) {
+            return null;
+        }
+
+        Duration wait = Duration.between(finishedAt, limitResetAt);
+        if (wait.isZero() || wait.isNegative()) {
+            return null;
+        }
+
+        return (int) Math.min(wait.getSeconds() + (wait.getNano() > 0 ? 1 : 0), Integer.MAX_VALUE);
+
     }
 
     private static List<JobStep> queuedSteps() {

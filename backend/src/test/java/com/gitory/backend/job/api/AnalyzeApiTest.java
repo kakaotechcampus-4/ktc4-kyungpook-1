@@ -119,6 +119,25 @@ class AnalyzeApiTest {
     }
 
     @Test
+    @DisplayName("기다리는 중인 한도 부분 결과 Job 이 있어도 같은 저장소의 새 분석 요청은 새 Job 으로 접수된다")
+    void waitingRateLimitedJobDoesNotBlockNewAnalysis() throws Exception {
+
+        Long userRepositoryId = jdbc.queryForObject(
+                "SELECT id FROM user_repository WHERE public_id = ?", Long.class, MY_REPO);
+        jdbc.update(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, state, partial, error_code,"
+                        + " retry_after_sec, finished_at) VALUES (?, ?, ?, 'SUCCEEDED', TRUE, 'GITHUB_RATE_LIMITED', 3000, now())",
+                myUserId, userRepositoryId, KEY_1);
+
+        analyze(MY_REPO, KEY_2)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.state").value("QUEUED"));
+
+        assertThat(jobCount()).isEqualTo(2);
+
+    }
+
+    @Test
     @DisplayName("Idempotency-Key 없이 요청해도 Job 이 만들어진다")
     void keyHeaderIsOptional() throws Exception {
 

@@ -59,5 +59,35 @@ jobs:
           [ -n "$MERGED" ] || MERGED=$(printf '**✅ 24시간 동안 머지됨**\n없음')
           MSG=$(printf '**📋 경북대 1팀 PeterFan 진행상황 (%s)**\n\n**🆕 새 PR**\n%s\n\n**🔔 리뷰 필요! (24시간 넘게 대기 중)**\n%s\n\n%s' \
             "$(TZ=Asia/Seoul date +%m/%d)" "${OPENED:-없음}" "${WAITING:-없음}" "$MERGED")
-          jq -n --arg c "$MSG" '{content: $c, username: "Gitory PR 요약", flags: 4}' \
-            | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK"
+          # 디스코드는 메시지 하나에 2,000자까지만 받아서, 넘으면 줄 단위로(한 줄이 넘치면 띄어쓰기 단위로) 나눠 차례대로 보낸다
+          set -o pipefail
+          printf '%s' "$MSG" | python3 -c '
+          import json, sys
+          LIMIT = 1900
+          chunks, cur = [], ""
+          for line in sys.stdin.read().split("\n"):
+              pieces = [line]
+              if len(line) > LIMIT:
+                  pieces, buf = [], ""
+                  for word in line.split(" "):
+                      if buf and len(buf) + 1 + len(word) > LIMIT:
+                          pieces.append(buf)
+                          buf = word
+                      else:
+                          buf = buf + " " + word if buf else word
+                  pieces.append(buf)
+              for piece in pieces:
+                  if cur and len(cur) + 1 + len(piece) > LIMIT:
+                      chunks.append(cur)
+                      cur = piece
+                  else:
+                      cur = cur + "\n" + piece if cur else piece
+          if cur:
+              chunks.append(cur)
+          for chunk in chunks:
+              print(json.dumps(chunk))
+          ' | while IFS= read -r chunk; do
+            jq -n --argjson c "$chunk" '{content: $c, username: "Gitory PR 요약", flags: 4}' \
+              | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK"
+            sleep 1
+          done

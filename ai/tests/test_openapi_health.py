@@ -20,6 +20,7 @@ INTERNAL_PATHS = {
     "/internal/collect",
     "/internal/collect/candidate-details",
     "/internal/analysis/groups",
+    "/internal/analysis/diff-evidence",
     "/internal/analysis/star",
     "/internal/interview-turns",
     "/internal/interview-answer-evaluations",
@@ -54,16 +55,17 @@ def test_openapi_documents_actual_validation_and_collection_errors() -> None:
         error_schema = operation["responses"]["400"]["content"]["application/json"]["schema"]
         assert error_schema["$ref"].endswith("/ErrorEnvelope")
 
-    for path in ("/internal/collect", "/internal/collect/candidate-details"):
+    for path in ("/internal/collect", "/internal/collect/candidate-details", "/internal/analysis/diff-evidence"):
         operation = document["paths"][path]["post"]
         assert {"404", "502"}.issubset(operation["responses"])
         header = next(p for p in operation["parameters"] if p["name"] == "X-GitHub-Token")
         assert header["in"] == "header"
         assert header["required"] is True
 
-    assert "미구현" not in document["paths"]["/internal/analysis/groups"]["post"]["summary"]
-    assert "미구현" in document["paths"]["/internal/analysis/star"]["post"]["summary"]
-    assert "text/plain" in document["paths"]["/internal/analysis/star"]["post"]["responses"]["500"]["content"]
+    for path in ("/internal/analysis/groups", "/internal/analysis/diff-evidence", "/internal/analysis/star"):
+        operation = document["paths"][path]["post"]
+        assert "미구현" not in operation["summary"]
+        assert "LLM_UNAVAILABLE" in operation["responses"]["503"]["description"]
 
 
 @pytest.mark.parametrize("setting", ["false", "0", "off"])

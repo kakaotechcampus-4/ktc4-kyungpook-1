@@ -51,15 +51,15 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
         description=(
             "AI는 판단·생성만 수행하며 인증·소유권 검증·영속 저장은 Spring이 담당합니다. "
             "`/internal/*` 응답은 공통 `Envelope`이고 스키마 검증 실패는 422 대신 400입니다.\n\n"
-            "**현재 구현 범위:** GitHub 수집과 템플릿/규칙 기반 B-1/B-2가 구현되어 있습니다. "
-            "A 경험 그룹화·STAR 생성은 아직 미구현이며, 기본 파이프라인 호출은 500으로 끝납니다. "
+            "**현재 구현 범위:** GitHub 수집, A 경험 그룹화·diff 근거·STAR 초안, 템플릿/규칙 기반 B-1/B-2가 "
+            "구현되어 있습니다. LLM 설정이 없으면 LLM을 쓰는 API만 503으로 끝납니다. "
             "`/health`는 프로세스 생존 확인이며 LLM 또는 A 기능 readiness 검사가 아닙니다. "
             "이 API는 내부 서버 간 호출용이고 인터넷에 공개하는 인증 API가 아닙니다."
         ),
         openapi_tags=[
             {"name": "health", "description": "외부 의존성을 호출하지 않는 프로세스 생존 확인"},
             {"name": "collection", "description": "A-1 GitHub 활동 및 선택 후보 diff 수집. X-GitHub-Token 필수"},
-            {"name": "analysis", "description": "A 경험 후보 그룹화·STAR 생성 계약. 현재 기본 구현은 미완성"},
+            {"name": "analysis", "description": "A 경험 후보 그룹화·diff 근거·STAR 초안 생성"},
             {"name": "interview-turns", "description": "B-1 질문 생성 / B-2 답변 평가. 현재 템플릿·규칙 기반이며 저장은 Spring 담당"},
         ],
         openapi_url="/openapi.json" if docs_enabled else None,

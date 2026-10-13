@@ -565,6 +565,33 @@ def test_candidate_detail_resolves_commit_shas_from_pr() -> None:
     assert [item.sha for item in execution.result.commits] == ["abc1234567890"]
 
 
+@pytest.mark.parametrize("skip", [False, True])
+def test_candidate_detail_unavailable_commit_is_skipped_only_when_requested(skip: bool) -> None:
+    """GitHub이 찾지 못한 SHA(422)는 skip_unavailable_commits일 때만 빼고 계속한다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/commits/deadbeef"):
+            return httpx.Response(422, json={"message": "No commit found for SHA: deadbeef"})
+        return _success_handler(request)
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+    request = _detail_request(commit_shas=["deadbeef", "abc1234567890"], github_pr_number=None)
+
+    if not skip:
+        with pytest.raises(GithubApiError) as raised:
+            asyncio.run(collector.fetch_candidate_details(request, "live-secret"))
+        assert raised.value.status_code == 422
+        return
+
+    execution = asyncio.run(
+        collector.fetch_candidate_details(request, "live-secret", skip_unavailable_commits=True)
+    )
+    assert [item.sha for item in execution.result.commits] == ["abc1234567890"]
+
+
 def test_candidate_detail_rate_limit_returns_partial_result() -> None:
     """상세 diff 조회도 호출 제한 시 수집된 분량만 부분 결과로 반환한다."""
     collector = GithubCollector(
@@ -587,6 +614,52 @@ def test_candidate_detail_rate_limit_returns_partial_result() -> None:
     assert execution.result.commits == []
     assert execution.result.partial is True
     assert execution.result.partial_reason == PartialReason.GITHUB_RATE_LIMITED
+
+
+@pytest.mark.parametrize(
+    ("headers", "body", "secondary"),
+    [
+        ({"X-RateLimit-Remaining": "4990", "Retry-After": "60"}, {"message": "Forbidden"}, True),
+        ({"X-RateLimit-Remaining": "4990"}, {"message": "You have exceeded a secondary rate limit."}, True),
+        ({"X-RateLimit-Remaining": "4990"}, {"message": "Resource not accessible by integration"}, False),
+    ],
+)
+def test_candidate_detail_marks_secondary_rate_limit_403(
+    headers: dict[str, str], body: dict[str, str], secondary: bool
+) -> None:
+    """남은 한도가 있는 403 중 2차 한도만 표시한다. 기다리면 풀려 diff-evidence가 다시 시도 가능으로 답한다."""
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(lambda _: httpx.Response(403, headers=headers, json=body)),
+    )
+
+    with pytest.raises(GithubApiError) as raised:
+        asyncio.run(collector.fetch_candidate_details(_detail_request(), "live-secret"))
+
+    assert raised.value.status_code == 403
+    assert raised.value.secondary_rate_limited is secondary
+
+
+@pytest.mark.parametrize("message", ["", "   \n"])
+def test_candidate_detail_keeps_commit_with_blank_message(message: str) -> None:
+    """메시지가 비었거나 공백뿐인 커밋 하나로 diff 조회 전체를 실패시키지 않고 빈 메시지로 받는다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        response = _success_handler(request)
+        if request.url.path.endswith("/commits/abc1234567890"):
+            detail = response.json()
+            detail["commit"]["message"] = message
+            return httpx.Response(200, json=detail)
+        return response
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    execution = asyncio.run(collector.fetch_candidate_details(_detail_request(), "live-secret"))
+
+    assert [(item.sha, item.message) for item in execution.result.commits] == [("abc1234567890", "")]
 
 
 def test_rate_limit_returns_partial_result() -> None:

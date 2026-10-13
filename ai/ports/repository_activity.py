@@ -39,5 +39,10 @@ class RepositoryActivityPort(Protocol):
         self,
         request: CandidateDetailRequest,
         github_token: str,
+        *,
+        skip_unavailable_commits: bool = False,
     ) -> RepositoryActivityExecution[CandidateDetailResult]:
-        """선택된 후보의 제한된 diff 상세를 조회한다."""
+        """선택된 후보의 제한된 diff 상세를 조회한다.
+
+        ``skip_unavailable_commits``이면 GitHub이 찾지 못한 커밋(422)만 빼고 계속한다.
+        """

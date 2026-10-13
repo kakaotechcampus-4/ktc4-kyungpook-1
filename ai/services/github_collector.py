@@ -54,11 +54,17 @@ LOCKFILES = {
 
 
 class GithubApiError(RuntimeError):
-    """GitHub API 호출 또는 응답 해석 실패."""
+    """GitHub API 호출 또는 응답 해석 실패.
 
-    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+    ``secondary_rate_limited``는 GitHub 2차 한도로 받은 403이다. 기다리면 풀려 영구 실패가 아니다.
+    """
+
+    def __init__(
+        self, message: str, status_code: Optional[int] = None, *, secondary_rate_limited: bool = False
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.secondary_rate_limited = secondary_rate_limited
 
 
 class GithubResourceNotFound(GithubApiError):
@@ -160,8 +166,14 @@ class GithubCollector:
         self,
         request: CandidateDetailRequest,
         github_token: str,
+        *,
+        skip_unavailable_commits: bool = False,
     ) -> RepositoryActivityExecution[CandidateDetailResult]:
-        """A가 선택한 SHA 또는 PR의 diff만 상한을 두고 조회한다."""
+        """A가 선택한 SHA 또는 PR의 diff만 상한을 두고 조회한다.
+
+        ``skip_unavailable_commits``이면 GitHub이 찾지 못한 커밋(422)은 빼고 나머지를
+        돌려준다. 빠진 커밋은 호출자가 요청 SHA와 결과를 비교해 알 수 있다.
+        """
         token = github_token.strip()
         if not token:
             raise ValueError("GitHub OAuth 토큰이 필요합니다.")
@@ -196,12 +208,17 @@ class GithubCollector:
                     shas = shas[: self._limits.max_candidate_commits]
 
                 for sha in shas:
-                    detail, files = await self._collect_commit_detail(
-                        client,
-                        request,
-                        state,
-                        sha,
-                    )
+                    try:
+                        detail, files = await self._collect_commit_detail(
+                            client,
+                            request,
+                            state,
+                            sha,
+                        )
+                    except GithubApiError as exc:
+                        if skip_unavailable_commits and exc.status_code == 422:
+                            continue
+                        raise
                     normalized, used_chars, was_truncated = (
                         self._to_candidate_commit_detail(
                             detail,
@@ -570,7 +587,7 @@ class GithubCollector:
         return (
             CandidateCommitDetail(
                 sha=_required_text(detail, "sha"),
-                message=_required_text(commit_node, "message"),
+                message=_text_or_empty(commit_node, "message"),
                 author_login=_nested_optional_text(detail, "author", "login"),
                 authored_at=_required_text(commit_author, "date"),
                 html_url=_optional_text(detail, "html_url"),
@@ -749,7 +766,8 @@ class GithubCollector:
                     "저장소가 없거나 현재 권한으로 읽을 수 없습니다.", status
                 ) from exc
             raise GithubApiError(
-                f"GitHub API 요청에 실패했습니다. status={status}", status
+                f"GitHub API 요청에 실패했습니다. status={status}", status,
+                secondary_rate_limited=status == 403 and _is_secondary_rate_limit(exc.response),
             ) from exc
         except (httpx.HTTPError, ValueError) as exc:
             raise GithubApiError("GitHub API 응답을 처리하지 못했습니다.") from exc
@@ -852,6 +870,17 @@ def _optional_list(node: dict[str, Any], field: str) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise GithubApiError(f"GitHub 응답의 {field}가 배열이 아닙니다.")
     return [_ensure_dict(item) for item in value]
+
+
+def _is_secondary_rate_limit(response: httpx.Response) -> bool:
+    """남은 한도가 있어도 몰린 요청을 막는 2차 한도. Retry-After 헤더나 본문 문구로 알 수 있다."""
+    return "Retry-After" in response.headers or "secondary rate limit" in response.text.lower()
+
+
+def _text_or_empty(node: dict[str, Any], field: str) -> str:
+    """비었거나 공백뿐인 글은 빈 문자열로 받는다. 커밋 하나 때문에 요청 전체를 실패시키지 않는다."""
+    value = node.get(field)
+    return value if isinstance(value, str) and value.strip() else ""
 
 
 def _required_text(node: dict[str, Any], field: str) -> str:

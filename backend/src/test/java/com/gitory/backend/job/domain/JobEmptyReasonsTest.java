@@ -2,6 +2,7 @@ package com.gitory.backend.job.domain;
 
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CandidateCardQueryService;
+import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.LastAnalyzedService;
@@ -42,7 +43,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import({JobQueryService.class, JobCancelService.class, JobViewFactory.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, CandidateBoardService.class,
         RepositoryOwnershipService.class, RepositoryReferenceService.class, LastAnalyzedService.class,
-        CommitSummaryService.class, UsedCardAdapter.class, CandidateCardQueryService.class})
+        CommitSummaryService.class, UsedCardAdapter.class, CandidateCardQueryService.class,
+        GeneratedCardQueryService.class})
 class JobEmptyReasonsTest {
 
     private static final String LOGIN = "grow22";

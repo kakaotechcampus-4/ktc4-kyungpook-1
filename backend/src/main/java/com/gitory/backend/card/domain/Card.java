@@ -56,23 +56,33 @@ public class Card {
 
     private String idempotencyKey;
 
+    private Long candidateId;
+
+    // 후보로 만든 카드의 초안 Job 이고, Job 이 끝나도 지우지 않아 Job 이 자기 카드를 찾을 수 있다
+    private UUID generationJobId;
+    private boolean generationPartial;
+
     private Instant createdAt;
     private Instant updatedAt;
     private Instant confirmedAt;
 
-    private Card(Long userId, Long userRepositoryId, String title, String period, String idempotencyKey) {
+    private Card(Long userId, Long userRepositoryId, CardKind kind, CardOrigin origin, String title, String period,
+                 String idempotencyKey, Long candidateId, UUID generationJobId) {
         Instant now = CardTime.now();
         this.publicId = UUID.randomUUID();
         this.userId = userId;
         this.userRepositoryId = userRepositoryId;
-        this.cardType = CardKind.QUALITATIVE;
-        this.origin = CardOrigin.MANUAL;
+        this.cardType = kind;
+        this.origin = origin;
         this.title = checkedTitle(title);
         this.period = checkedPeriod(period);
         this.status = CardStatus.DRAFT;
         this.currentVersion = 1;
         this.maskRules = List.of();
         this.idempotencyKey = idempotencyKey;
+        this.candidateId = candidateId;
+        this.generationJobId = generationJobId;
+        this.generationPartial = false;
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -81,7 +91,17 @@ public class Card {
     public static Card startManual(Long userId, Long userRepositoryId, String title, String period,
                                    String idempotencyKey) {
 
-        return new Card(userId, userRepositoryId, title, period, idempotencyKey);
+        return new Card(userId, userRepositoryId, CardKind.QUALITATIVE, CardOrigin.MANUAL, title, period,
+                idempotencyKey, null, null);
+
+    }
+
+    /** 후보로 만든 카드를 기간 없이 작성 중 상태로 만들고, 1번 버전 행은 {@link CardVersionWriter} 가 만든다 */
+    public static Card startFromCandidate(Long userId, Long userRepositoryId, Long candidateId, String title,
+                                          CardKind kind, UUID generationJobId) {
+
+        return new Card(userId, userRepositoryId, kind, CardOrigin.AI, title, null, null, candidateId,
+                generationJobId);
 
     }
 

@@ -1,5 +1,7 @@
 package com.gitory.backend.card.domain;
 
+import com.gitory.backend.recommend.domain.CandidateReference;
+
 import java.time.Instant;
 import java.util.EnumMap;
 import java.util.Map;
@@ -14,11 +16,12 @@ public record CardSummary(
         Map<StarField, StarFieldState> star,
         Instant updatedAt,
         String sourceLabel,
+        String sourceType,
         String period,
         int evidenceCount,
         int userStatedCount) {
 
-    static CardSummary of(Card card, VersionSlots current, boolean interviewed) {
+    static CardSummary of(Card card, VersionSlots current, CandidateReference candidate, boolean interviewed) {
 
         Map<StarField, StarFieldState> star = new EnumMap<>(StarField.class);
         for (StarField field : StarField.values()) {
@@ -33,20 +36,25 @@ public record CardSummary(
                 card.getCurrentVersion(),
                 star,
                 card.getUpdatedAt(),
-                sourceLabelOf(card, interviewed),
+                sourceLabelOf(card, candidate, interviewed),
+                candidate == null ? null : candidate.type().name(),
                 card.getPeriod(),
                 evidenceCountOf(current),
                 userStatedCountOf(current));
 
     }
 
-    private static String sourceLabelOf(Card card, boolean interviewed) {
+    private static String sourceLabelOf(Card card, CandidateReference candidate, boolean interviewed) {
 
-        if (card.getOrigin() != CardOrigin.MANUAL) {
-            return null;
+        if (card.getOrigin() == CardOrigin.MANUAL) {
+            return interviewed ? "INTERVIEW" : "MANUAL";
         }
 
-        return interviewed ? "INTERVIEW" : "MANUAL";
+        if (candidate != null) {
+            return candidate.ref();
+        }
+
+        return null;
 
     }
 

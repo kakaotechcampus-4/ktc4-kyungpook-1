@@ -24,7 +24,7 @@ class JobViewTest {
 
         AnalysisJob job = groupedJob(candidateCount, partial);
 
-        assertThat(JobView.from(job, REPO_ID, () -> REASONS).result().verdict()).isEqualTo(verdict);
+        assertThat(JobView.from(job, REPO_ID, List.of(), () -> REASONS).result().verdict()).isEqualTo(verdict);
 
     }
 
@@ -36,7 +36,7 @@ class JobViewTest {
         AtomicInteger calls = new AtomicInteger();
         AnalysisJob job = groupedJob(candidateCount, partial);
 
-        JobResult result = JobView.from(job, REPO_ID, () -> {
+        JobResult result = JobView.from(job, REPO_ID, List.of(), () -> {
             calls.incrementAndGet();
             return REASONS;
         }).result();
@@ -53,7 +53,7 @@ class JobViewTest {
 
         AnalysisJob job = groupedJob(0, partial);
 
-        assertThat(JobView.from(job, REPO_ID, () -> REASONS).result())
+        assertThat(JobView.from(job, REPO_ID, List.of(), () -> REASONS).result())
                 .isEqualTo(new JobResult(REPO_ID.toString(), null, "EMPTY", REASONS));
 
     }
@@ -70,8 +70,8 @@ class JobViewTest {
         failedWhileGrouping.fail(JobErrorCode.INTERNAL_ERROR);
 
         JobResult noVerdict = new JobResult(REPO_ID.toString(), null, null, null);
-        assertThat(JobView.from(skipped, REPO_ID, () -> countedReasons(calls)).result()).isEqualTo(noVerdict);
-        assertThat(JobView.from(failedWhileGrouping, REPO_ID, () -> countedReasons(calls)).result())
+        assertThat(JobView.from(skipped, REPO_ID, List.of(), () -> countedReasons(calls)).result()).isEqualTo(noVerdict);
+        assertThat(JobView.from(failedWhileGrouping, REPO_ID, List.of(), () -> countedReasons(calls)).result())
                 .isEqualTo(noVerdict);
         assertThat(calls).hasValue(0);
 
@@ -101,6 +101,30 @@ class JobViewTest {
         job.recordCandidates(candidateCount);
         job.succeed(partial, null);
         return job;
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 의 result 는 저장소 id 와 카드 id 를 담고 판정과 이유는 비운다")
+    void draftJobResultCarriesCardIds() {
+
+        AnalysisJob draft = AnalysisJob.enqueueDraft(1L, 10L, KEY);
+        UUID first = UUID.fromString("33333333-3333-4333-8333-333333333333");
+        UUID second = UUID.fromString("44444444-4444-4444-8444-444444444444");
+
+        assertThat(JobView.from(draft, REPO_ID, List.of(first, second), () -> REASONS).result())
+                .isEqualTo(new JobResult(REPO_ID.toString(), List.of(first.toString(), second.toString()), null, null));
+
+    }
+
+    @Test
+    @DisplayName("분석 Job 의 result 는 카드 id 를 담지 않는다")
+    void analyzeJobResultIgnoresCardIds() {
+
+        AnalysisJob skipped = collectedJob();
+        skipped.succeed(false, null);
+
+        assertThat(JobView.from(skipped, REPO_ID, List.of(UUID.randomUUID()), () -> REASONS).result().cardIds()).isNull();
 
     }
 }

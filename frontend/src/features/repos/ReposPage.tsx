@@ -58,7 +58,7 @@ export function ReposPage() {
 
   return (
     <main className="main main--footer main--tight">
-      <ol className="wizard__steps" style={{ flexDirection: 'row', gap: 22 }} aria-label="진행 단계">
+      <ol className="wizard__steps repo-picker__steps" aria-label="진행 단계">
         <li className="wstep wstep--now"><span className="wstep__no">1</span>레포 선택</li>
         <li className="wstep"><span className="wstep__no">2</span>읽는 범위 확인</li>
         <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>

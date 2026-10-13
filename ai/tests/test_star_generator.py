@@ -14,6 +14,7 @@ from services.llm_structured_client import (
     LLMInvalidOutputError,
     LLMNonRetryableError,
     LLMStructuredCallError,
+    LLMStructuredOutputTooLongError,
     StructuredCallResult,
 )
 from services.star_generator import (
@@ -156,7 +157,7 @@ def test_marks_unsourced_numeric_draft_for_user_review_without_dropping_it() -> 
         R=_field("FILLED", "응답 시간이 40% 줄었다.", [SHA_A]),
         A=_field("FILLED", "재시도를 3회로 제한했다.", [SHA_A]),
     ))
-    request = _request(_evidence(SHA_A, summary="재시도 상한 상수 MAX_RETRY = 3 추가"))
+    request = _request(_evidence(SHA_A, message="feat: 재시도 상한 상수 MAX_RETRY = 3 추가"))
 
     result = _run(StarGenerator(client), request)
 
@@ -174,20 +175,41 @@ def test_marks_unsourced_numeric_draft_for_user_review_without_dropping_it() -> 
 
 
 @pytest.mark.parametrize(
-    ("text", "summary", "status"),
+    ("text", "message", "status"),
     [
-        ("응답 시간을 5% 줄였다.", "응답 시간 15% 개선", "NEEDS_REVIEW"),
-        ("1000건을 한 번에 처리했다.", "배치 크기를 1,000 으로 늘림", "FILLED"),
-        ("OAuth2 배포 설정을 정리했다.", "oauth 설정 정리", "FILLED"),
-        ("v2.0 배포 전에 마이그레이션을 정리했다.", "release v2.0", "FILLED"),
+        ("응답 시간을 5% 줄였다.", "perf: 응답 시간 15% 개선", "NEEDS_REVIEW"),
+        ("1000건을 한 번에 처리했다.", "feat: 배치 크기를 1,000 으로 늘림", "FILLED"),
+        ("OAuth2 배포 설정을 정리했다.", "chore: oauth 설정 정리", "FILLED"),
+        ("v2.0 배포 전에 마이그레이션을 정리했다.", "chore: release v2.0", "FILLED"),
     ],
 )
-def test_numeric_check_boundaries(text: str, summary: str, status: str) -> None:
+def test_numeric_check_boundaries(text: str, message: str, status: str) -> None:
     client = _FakeClient(_output(A=_field("FILLED", text, [SHA_A])))
 
-    result = _run(StarGenerator(client), _request(_evidence(SHA_A, summary=summary)))
+    result = _run(StarGenerator(client), _request(_evidence(SHA_A, message=message)))
 
     assert result.star["A"].status == status
+
+
+def test_numbers_only_in_model_written_summary_do_not_support_the_sentence() -> None:
+    client = _FakeClient(_output(
+        R=_field("FILLED", "응답 시간을 40% 줄였다.", [SHA_A]),
+        A=_field("FILLED", "지연을 100ms 줄였다.", [SHA_A]),
+    ))
+    # 요약·기술 포인트는 diff 단계 모델이 쓴 글이라, 거기에만 있는 수치는 근거가 아니다.
+    request = _request(_evidence(
+        SHA_A,
+        message="feat: 조회 캐시 추가",
+        summary="캐시로 응답 시간을 40% 줄였다.",
+        technical_points=["지연 100ms 감소"],
+    ))
+
+    result = _run(StarGenerator(client), request)
+
+    assert (result.star["R"].status, result.star["R"].confidence) == ("NEEDS_REVIEW", "LOW")
+    assert "40%" in result.star["R"].review_reason
+    assert (result.star["A"].status, result.star["A"].confidence) == ("NEEDS_REVIEW", "LOW")
+    assert "100ms" in result.star["A"].review_reason
 
 
 def test_numbers_in_confirmed_answers_support_the_sentence() -> None:
@@ -328,6 +350,8 @@ def test_deadline_returns_all_slots_empty_with_timeout_code() -> None:
         (LLMStructuredCallError("5xx"), True),
         (LLMNonRetryableError("bad key"), False),
         (LLMContentFilterError("filtered"), False),
+        # 네 칸을 한 호출로 쓰므로 나눠 부를 수 없고, 같은 입력이면 다시 넘친다.
+        (LLMStructuredOutputTooLongError("too long"), False),
     ],
 )
 def test_classifies_llm_errors(error: Exception, retryable: bool) -> None:

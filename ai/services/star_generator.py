@@ -26,6 +26,7 @@ from services.llm_structured_client import (
     LLMInvalidOutputError,
     LLMNonRetryableError,
     LLMStructuredCallError,
+    LLMStructuredOutputTooLongError,
     StructuredCallResult,
 )
 from services.secret_redaction import redact_secrets
@@ -179,7 +180,7 @@ class StarGenerator:
     async def _call(self, payload: dict[str, Any], deadline: float) -> StarDraftOutput:
         """스키마에 맞지 않는 응답만 다시 요청한다. 각 호출은 남은 마감 시간 안에서만 기다린다.
 
-        키·모델 이름·콘텐츠 필터 오류는 다시 해도 같으므로 retryable=false로 올린다.
+        키·모델 이름·콘텐츠 필터 오류와 출력 길이 초과는 다시 해도 같으므로 retryable=false로 올린다.
         """
         loop = asyncio.get_running_loop()
         for attempt in range(1, self._limits.max_attempts + 1):
@@ -206,6 +207,9 @@ class StarGenerator:
                 continue
             except LLMNonRetryableError as exc:
                 raise StarGenerationError("STAR LLM 설정이나 입력이 거절됐습니다.", retryable=False) from exc
+            except LLMStructuredOutputTooLongError as exc:
+                # 네 칸을 한 호출로 쓰므로 diff처럼 나눠 부를 수 없고, 같은 입력이면 다시 넘친다.
+                raise StarGenerationError("STAR 초안이 출력 길이 상한을 넘었습니다.", retryable=False) from exc
             except LLMStructuredCallError as exc:
                 if deadline - loop.time() < 1:
                     raise _Timeout from exc
@@ -306,10 +310,12 @@ def _cited_evidence(shas: list[str], by_sha: dict[str, DiffEvidence]) -> list[Di
 
 
 def _metric_source(cited: list[DiffEvidence], answers: list[str]) -> str:
-    """수치 근거로 볼 글. churn(+30/-2)은 변경 줄 수라 결과 수치의 근거로 치지 않는다."""
-    parts: list[str] = []
-    for item in cited:
-        parts.extend([item.message, item.summary, *item.technical_points])
+    """수치 근거로 볼 글. 커밋 메시지와 확인 답변만 본다.
+
+    요약·기술 포인트는 모델이 쓴 글이라 지어낸 수치가 스스로를 받치게 되고,
+    churn(+30/-2)은 변경 줄 수라 결과 수치의 근거로 치지 않는다.
+    """
+    parts = [item.message for item in cited]
     parts.extend(answers)
     return "\n".join(parts)
 

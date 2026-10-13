@@ -1,6 +1,7 @@
 package com.gitory.backend.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.gitory.backend.support.CandidateFixtures;
 import com.gitory.backend.support.TestFixtures;
@@ -8,6 +9,7 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.junit.jupiter.Container;
@@ -198,6 +200,54 @@ class MigrationUpgradeTest {
         assertThat(candidate.get("span_days")).isNull();
         assertThat(candidate.get("code_ratio")).isNull();
         assertThat(jdbc.queryForObject("SELECT display_path FROM candidate_commit", String.class)).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("V16 은 옛 카드의 초안 Job 을 비우고 부분 생성 표시를 끄며, 후보 하나로 살아 있는 카드가 둘 생기지 않게 막되 지운 카드와 후보 없는 카드는 막지 않는다")
+    void v16AddsGenerationColumnsAndCandidateUnique() {
+
+        migrateTo("14");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        Long candidateId = new CandidateFixtures(jdbc).insertCandidate(userRepositoryId, "PR", 1, "NEW");
+        Long oldCard = insertCard(userId, userRepositoryId, candidateId);
+
+        migrateTo("16");
+
+        Map<String, Object> migrated = jdbc.queryForMap("SELECT generation_job_id, generation_partial FROM card");
+        assertThat(migrated.get("generation_job_id")).isNull();
+        assertThat(migrated.get("generation_partial")).isEqualTo(false);
+        assertThatThrownBy(() -> insertCard(userId, userRepositoryId, candidateId))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        jdbc.update("UPDATE card SET deleted_at = now() WHERE id = ?", oldCard);
+        insertCard(userId, userRepositoryId, candidateId);
+        insertCard(userId, userRepositoryId, null);
+        insertCard(userId, userRepositoryId, null);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM card", Integer.class)).isEqualTo(4);
+
+    }
+
+    @Test
+    @DisplayName("V16 은 카드를 초안 Job 으로 찾는 인덱스를 초안 Job 이 있는 카드에만 만든다")
+    void v16AddsPartialIndexOnGenerationJob() {
+
+        migrateTo("16");
+
+        String definition = jdbc.queryForObject(
+                "SELECT indexdef FROM pg_indexes WHERE tablename = 'card' AND indexname = 'idx_card_generation_job'",
+                String.class);
+        assertThat(definition)
+                .contains("(generation_job_id)")
+                .contains("WHERE (generation_job_id IS NOT NULL)");
+
+    }
+
+    private Long insertCard(Long userId, Long userRepositoryId, Long candidateId) {
+
+        return jdbc.queryForObject(
+                "INSERT INTO card (user_id, user_repository_id, candidate_id, card_type, origin, title) VALUES (?, ?, ?, 'TECH', 'AI', '카드') RETURNING id",
+                Long.class, userId, userRepositoryId, candidateId);
 
     }
 

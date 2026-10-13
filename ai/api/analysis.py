@@ -107,7 +107,8 @@ async def group_experiences(
         "요청자 본인 커밋(commit_shas, 필수)의 diff를 GitHub에서 다시 조회해 커밋별 변경 요약·기술 포인트로 정리합니다. "
         "응답의 evidence는 그대로 /internal/analysis/star 요청의 evidence로 넘깁니다. "
         "원본 patch는 AI 안에서만 쓰고 응답·로그·DB에 남기지 않습니다. 비밀값은 모델로 보내기 전에 가립니다. "
-        "요청 전체는 240초 안에 끝나며, 시간·호출 수 상한에 닿은 커밋은 커밋 메시지 요약(summary_source=COMMIT_MESSAGE)으로 둡니다. "
+        "요청 전체는 240초 안에 끝나며, 시간·호출 수 상한에 닿았거나 patch를 하나도 보내지 못한 커밋은 "
+        "커밋 메시지 요약(summary_source=COMMIT_MESSAGE)으로 둡니다. "
         "요청한 커밋이 근거에서 빠졌을 때만 partial=true이고 missing_commit_shas에 남깁니다. "
         "GitHub 토큰은 헤더로만 전달합니다."
     ),
@@ -131,7 +132,7 @@ async def collect_diff_evidence(
     except GithubApiError as exc:
         return _error(
             started, 502, "GITHUB_API_ERROR", "선택된 후보의 GitHub diff를 수집하지 못했습니다.",
-            exc.status_code not in _GITHUB_PERMANENT_STATUSES,
+            exc.secondary_rate_limited or exc.status_code not in _GITHUB_PERMANENT_STATUSES,
         )
     except LLMConfigError:
         return _error(started, 503, "LLM_UNAVAILABLE", "diff 분석 LLM 설정이 없어 분석할 수 없습니다.", False)
@@ -179,6 +180,7 @@ async def analyze_star(
 
 
 #: 다시 보내도 같은 GitHub 응답. 토큰 만료·권한 없음·잘못된 요청은 재시도하지 않는다.
+#: 다만 2차 한도로 받은 403은 기다리면 풀려서 다시 시도할 수 있다.
 _GITHUB_PERMANENT_STATUSES = frozenset({400, 401, 403, 422})
 
 

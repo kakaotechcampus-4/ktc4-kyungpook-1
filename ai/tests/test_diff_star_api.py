@@ -248,6 +248,8 @@ def test_diff_evidence_output_is_valid_star_input(override) -> None:
     [
         (GithubResourceNotFound("x"), 404, "RESOURCE_NOT_FOUND", False),
         (GithubApiError("x", 401), 502, "GITHUB_API_ERROR", False),
+        (GithubApiError("x", 403), 502, "GITHUB_API_ERROR", False),
+        (GithubApiError("x", 403, secondary_rate_limited=True), 502, "GITHUB_API_ERROR", True),
         (GithubApiError("x", 422), 502, "GITHUB_API_ERROR", False),
         (GithubApiError("x", 500), 502, "GITHUB_API_ERROR", True),
         (GithubApiError("x"), 502, "GITHUB_API_ERROR", True),

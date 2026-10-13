@@ -300,7 +300,7 @@ class CandidateCommitDetail(StrictModel):
     """A의 diff 해석에 필요한 선택 commit 상세."""
 
     sha: CommitSha
-    message: str = Field(min_length=1)
+    message: str
     author_login: Optional[str] = None
     authored_at: datetime
     html_url: Optional[str] = None

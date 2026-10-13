@@ -616,6 +616,52 @@ def test_candidate_detail_rate_limit_returns_partial_result() -> None:
     assert execution.result.partial_reason == PartialReason.GITHUB_RATE_LIMITED
 
 
+@pytest.mark.parametrize(
+    ("headers", "body", "secondary"),
+    [
+        ({"X-RateLimit-Remaining": "4990", "Retry-After": "60"}, {"message": "Forbidden"}, True),
+        ({"X-RateLimit-Remaining": "4990"}, {"message": "You have exceeded a secondary rate limit."}, True),
+        ({"X-RateLimit-Remaining": "4990"}, {"message": "Resource not accessible by integration"}, False),
+    ],
+)
+def test_candidate_detail_marks_secondary_rate_limit_403(
+    headers: dict[str, str], body: dict[str, str], secondary: bool
+) -> None:
+    """남은 한도가 있는 403 중 2차 한도만 표시한다. 기다리면 풀려 diff-evidence가 다시 시도 가능으로 답한다."""
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(lambda _: httpx.Response(403, headers=headers, json=body)),
+    )
+
+    with pytest.raises(GithubApiError) as raised:
+        asyncio.run(collector.fetch_candidate_details(_detail_request(), "live-secret"))
+
+    assert raised.value.status_code == 403
+    assert raised.value.secondary_rate_limited is secondary
+
+
+@pytest.mark.parametrize("message", ["", "   \n"])
+def test_candidate_detail_keeps_commit_with_blank_message(message: str) -> None:
+    """메시지가 비었거나 공백뿐인 커밋 하나로 diff 조회 전체를 실패시키지 않고 빈 메시지로 받는다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        response = _success_handler(request)
+        if request.url.path.endswith("/commits/abc1234567890"):
+            detail = response.json()
+            detail["commit"]["message"] = message
+            return httpx.Response(200, json=detail)
+        return response
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    execution = asyncio.run(collector.fetch_candidate_details(_detail_request(), "live-secret"))
+
+    assert [(item.sha, item.message) for item in execution.result.commits] == [("abc1234567890", "")]
+
+
 def test_rate_limit_returns_partial_result() -> None:
     def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(403, headers={"X-RateLimit-Remaining": "0"})

@@ -127,7 +127,8 @@ public class JobRunner {
         }
 
         Long collectionRunId = activityStore.store(request, activity);
-        job.recordCollection(collectionRunId, activity.commits().size(), activity.pullRequests().size());
+        job.recordCollection(collectionRunId, activityStore.storedCommitCount(request.userRepositoryId()),
+                activity.pullRequests().size());
         if (groupingProperties.enabled()) {
             job.startGrouping();
             return true;

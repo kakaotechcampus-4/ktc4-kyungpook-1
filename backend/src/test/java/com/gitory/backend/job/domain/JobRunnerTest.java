@@ -85,6 +85,7 @@ class JobRunnerTest {
     private static final String KEY_3 = "33333333-3333-4333-8333-333333333333";
     private static final String SHA = "a".repeat(40);
     private static final String OTHER_SHA = "b".repeat(40);
+    private static final String NEW_SHA = "c".repeat(40);
 
     @Container
     @ServiceConnection
@@ -279,6 +280,42 @@ class JobRunnerTest {
                 new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 1, null),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("다시 분석하면 응답에 새 커밋만 있어도 커밋 단계는 저장소에 저장된 커밋 수로 완료된다")
+    void commitsStepCountsStoredCommitsOnReanalysis() {
+
+        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), List.of());
+        activityStore.store(initial, activity(null));
+        activityStore.store(initial, partialActivityOf(OTHER_SHA));
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(newCommitActivity(NEW_SHA, null));
+
+        runNext();
+
+        assertThat(jobs.findById(jobId).orElseThrow().getSteps()).containsExactly(
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 0, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("일부만 읽고 끝난 재분석도 커밋 단계는 저장소에 저장된 커밋 수로 완료된다")
+    void commitsStepCountsStoredCommitsOnPartialReanalysis() {
+
+        activityStore.store(new IngestRequest(userRepositoryId, List.of(), List.of()), activity(null));
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(newCommitActivity(NEW_SHA, PartialReason.CAP_EXCEEDED));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getSteps().get(0)).isEqualTo(new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 2, null));
 
     }
 
@@ -721,6 +758,12 @@ class JobRunnerTest {
                 "develop", "feature/job-worker", Instant.parse("2026-10-01T00:00:00Z"),
                 Instant.parse("2026-10-01T01:00:00Z"), List.of(SHA), List.of(), List.of());
         return new CollectedActivity(List.of(commit(SHA)), List.of(pr), List.of(), null, partialReason);
+
+    }
+
+    private static CollectedActivity newCommitActivity(String sha, PartialReason partialReason) {
+
+        return new CollectedActivity(List.of(commit(sha)), List.of(), List.of(), null, partialReason);
 
     }
 

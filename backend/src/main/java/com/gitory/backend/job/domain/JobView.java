@@ -22,7 +22,7 @@ public record JobView(
         JobResult result,
         boolean terminal) {
 
-    static JobView from(AnalysisJob job, UUID repoId, Supplier<List<String>> emptyReasons) {
+    static JobView from(AnalysisJob job, UUID repoId, List<UUID> cardIds, Supplier<List<String>> emptyReasons) {
 
         return new JobView(
                 job.getPublicId().toString(),
@@ -36,7 +36,7 @@ public record JobView(
                 job.getStartedAt(),
                 job.getUpdatedAt(),
                 job.getFinishedAt(),
-                result(job, repoId, emptyReasons),
+                result(job, repoId, cardIds, emptyReasons),
                 job.isTerminal());
 
     }
@@ -50,10 +50,11 @@ public record JobView(
         return errorCode == JobErrorCode.GITHUB_UNAVAILABLE || errorCode == JobErrorCode.GITHUB_RATE_LIMITED;
     }
 
-    private static JobResult result(AnalysisJob job, UUID repoId, Supplier<List<String>> emptyReasons) {
+    private static JobResult result(AnalysisJob job, UUID repoId, List<UUID> cardIds,
+                                    Supplier<List<String>> emptyReasons) {
 
-        if (job.getType() != JobType.ANALYZE) {
-            return null;
+        if (job.getType() == JobType.DRAFT) {
+            return new JobResult(repoId.toString(), cardIds.stream().map(UUID::toString).toList(), null, null);
         }
 
         CandidateVerdict verdict = verdictOf(job);

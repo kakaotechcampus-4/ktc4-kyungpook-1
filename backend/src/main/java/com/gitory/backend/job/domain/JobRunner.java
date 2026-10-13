@@ -30,7 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 대기 중인 분석 Job 하나를 꺼내 AI 수집을 부르고, 묶기를 켰으면 저장한 수집 결과로 AI 후보 묶기까지 부른 뒤 결과에 따라 끝낸다
+ * 대기 중인 분석 Job 하나를 꺼내 AI 수집을 부르고, 경험 그룹화를 켰으면 저장한 수집 결과로 AI 경험 그룹화까지 부른 뒤 결과에 따라 끝내며, 카드 초안 Job 은 AI 를 부르지 않고 바로 끝낸다
  * Job 을 RUNNING 으로 확정한 뒤에 AI 를 불러, 응답을 기다리는 동안 DB 커넥션과 잠금을 붙잡지 않는다
  */
 @Slf4j
@@ -94,10 +94,15 @@ public class JobRunner {
     }
 
     /**
-     * {@link #claimNext()} 로 꺼낸 Job 을 받아 AI 수집·묶기 결과대로 끝낸다
-     * 묶기가 실패해도 먼저 저장한 수집 결과는 남기고, 다시 부르지 않고 실패로 끝낸다
+     * {@link #claimNext()} 로 꺼낸 Job 을 받아 끝내며, 카드 초안 Job 은 AI 를 부르지 않는 {@link #runDraft} 로 넘긴다
+     * 분석 Job 은 AI 수집·경험 그룹화 결과대로 끝내고, 경험 그룹화가 실패해도 먼저 저장한 수집 결과는 남기고 다시 부르지 않고 실패로 끝낸다
      */
     public void run(AnalysisJob job) {
+
+        if (job.getType() == JobType.DRAFT) {
+            runDraft(job);
+            return;
+        }
 
         try {
             IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
@@ -111,6 +116,30 @@ public class JobRunner {
             JobErrorCode errorCode = errorCodeOf(failure);
             log.warn("분석 Job {} 을 {} 로 끝낸다", job.getId(), errorCode, failure);
             transaction.executeWithoutResult(status -> fail(job.getId(), errorCode));
+        }
+
+    }
+
+    /**
+     * 카드 초안 Job 은 AI 를 부르지 않고 끝내며, 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 그대로 둔다
+     * 카드에는 만들 때 1번 버전이 이미 있다
+     */
+    private void runDraft(AnalysisJob job) {
+
+        try {
+            transaction.executeWithoutResult(status -> finishDraft(job.getId()));
+        } catch (RuntimeException failure) {
+            log.warn("카드 초안 Job {} 을 {} 로 끝낸다", job.getId(), JobErrorCode.INTERNAL_ERROR, failure);
+            transaction.executeWithoutResult(status -> fail(job.getId(), JobErrorCode.INTERNAL_ERROR));
+        }
+
+    }
+
+    private void finishDraft(Long jobId) {
+
+        AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
+        if (job.getState() == JobState.RUNNING) {
+            job.completeDraftWithoutWriting();
         }
 
     }

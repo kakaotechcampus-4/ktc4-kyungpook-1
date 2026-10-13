@@ -5,6 +5,8 @@ import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositoryReferenceService;
+import com.gitory.backend.recommend.domain.CandidateReference;
+import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,7 @@ public class CardConfirmService {
     private final CardVersionReader reader;
     private final CardVersionWriter writer;
     private final RepositoryReferenceService repositories;
+    private final CandidateReferenceService candidates;
     private final AuditLog auditLog;
 
     @Transactional
@@ -61,8 +64,15 @@ public class CardConfirmService {
                 .map(RepositoryReference::publicId)
                 .orElse(null);
 
-        // 아직 후보가 하나도 만들어지지 않아, 확정한 카드가 쓴 후보도 같은 저장소에 남은 후보도 없다
-        return new ConfirmResult(card.getPublicId(), card.getStatus(), card.getCurrentVersion(), List.of(), 0, repoId);
+        List<UUID> usedCandidateIds = Optional.ofNullable(card.getCandidateId())
+                .flatMap(candidates::find)
+                .map(CandidateReference::publicId)
+                .map(List::of)
+                .orElse(List.of());
+        int remaining = card.getUserRepositoryId() == null ? 0 : candidates.countNew(card.getUserRepositoryId());
+
+        return new ConfirmResult(card.getPublicId(), card.getStatus(), card.getCurrentVersion(), usedCandidateIds,
+                remaining, repoId);
 
     }
 }

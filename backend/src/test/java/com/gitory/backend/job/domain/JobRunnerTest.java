@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.audit.domain.AuditLog;
+import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
@@ -31,16 +32,20 @@ import com.gitory.backend.job.infra.AnalysisJobRepository;
 import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
 import com.gitory.backend.recommend.domain.CandidateStoreService;
 import com.gitory.backend.support.AiTestProperties;
+import com.gitory.backend.support.CandidateCardFixtures;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -74,9 +79,10 @@ import java.util.concurrent.locks.LockSupport;
 @Testcontainers
 @Import({JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
         CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class,
-        CandidateEmptyReasons.class, CollectionStatsService.class})
+        CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
+@ExtendWith(OutputCaptureExtension.class)
 class JobRunnerTest {
 
     private static final String LOGIN = "grow22";
@@ -296,7 +302,7 @@ class JobRunnerTest {
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.getSteps()).extracting(JobStep::key, JobStep::state).endsWith(
                 tuple(JobStepKey.COMPRESS, JobStepState.SKIPPED), tuple(JobStepKey.REASON, JobStepState.SKIPPED));
-        assertThat(JobView.from(job, UUID.randomUUID(), List::of).result().verdict()).isNull();
+        assertThat(JobView.from(job, UUID.randomUUID(), List.of(), List::of).result().verdict()).isNull();
         assertThat(countOf("candidate_grouping")).isZero();
 
     }
@@ -471,19 +477,131 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("먼저 기다리던 카드 초안 Job 은 워커가 건너뛰고 분석 Job 만 꺼낸다")
-    void skipsQueuedDraftJob() {
+    @DisplayName("먼저 기다리던 카드 초안 Job 은 분석 Job 보다 먼저, 오래된 순서대로 꺼낸다")
+    void claimsQueuedDraftJobInOrder() {
 
         Long draftJobId = insertQueuedDraftJob(userRepositoryId);
         jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", draftJobId);
         Long analyzeJobId = enqueue(userRepositoryId, KEY_1);
-        given(activities.collect(any())).willReturn(activity(null));
+
+        Optional<AnalysisJob> claimed = runner.claimNext();
+
+        assertThat(claimed).map(AnalysisJob::getId).contains(draftJobId);
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.RUNNING);
+        assertThat(stateOf(analyzeJobId)).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 은 AI 를 부르지 않고 네 단계를 SKIPPED 로 둔 채 부분 완료와 에러 코드 없이 SUCCEEDED 로 끝낸다")
+    void draftJobEndsWithoutCallingAi() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
 
         runNext();
 
-        assertThat(jobs.findById(analyzeJobId).orElseThrow().getState()).isEqualTo(JobState.SUCCEEDED);
-        assertThat(jobs.findById(draftJobId).orElseThrow().getState()).isEqualTo(JobState.QUEUED);
+        AnalysisJob job = jobs.findById(draftJobId).orElseThrow();
+        verifyNoInteractions(activities, grouping);
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isFalse();
+        assertThat(job.getErrorCode()).isNull();
+        assertThat(job.getFinishedAt()).isNotNull();
+        assertThat(job.getSteps()).extracting(JobStep::state).containsOnly(JobStepState.SKIPPED);
+        assertThat(job.getSteps()).hasSize(4);
+        assertThat(countOf("collection_run")).isZero();
+
+    }
+
+    @Test
+    @DisplayName("실행 중인 카드 초안 Job 은 같은 사용자의 분석 Job 을 막지 않는다")
+    void runningDraftJobDoesNotBlockAnalyzeJob() {
+
+        draftJob("RUNNING");
+        Long analyzeJobId = enqueue(userRepositoryId, KEY_1);
+
+        assertThat(runner.claimNext()).map(AnalysisJob::getId).contains(analyzeJobId);
+
+    }
+
+    @Test
+    @DisplayName("실행 중인 분석 Job 은 같은 사용자의 카드 초안 Job 을 막지 않는다")
+    void runningAnalyzeJobDoesNotBlockDraftJob() {
+
+        runningSince(userRepositoryId, "1 minute");
+        Long draftJobId = draftJob("QUEUED");
+
+        assertThat(runner.claimNext()).map(AnalysisJob::getId).contains(draftJobId);
+
+    }
+
+    @Test
+    @DisplayName("실행 중인 분석 Job 이 있으면 그 사용자의 다른 분석 Job 은 여전히 기다린다")
+    void runningAnalyzeJobStillBlocksSameUsersAnalyzeJob() {
+
+        runningSince(userRepositoryId, "1 minute");
+        enqueue(connectRepository(200L, "newer"), KEY_2);
+
+        assertThat(runner.claimNext()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("서버가 다시 뜨면서 QUEUED 로 되돌린 카드 초안 Job 은 다시 돌아도 같은 결과로 끝난다")
+    void requeuedDraftJobEndsWithSameResult() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+        runner.claimNext();
+        runner.requeueRunningJobs();
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.QUEUED);
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(draftJobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.getSteps()).extracting(JobStep::state).containsOnly(JobStepState.SKIPPED);
+        assertThat(job.getErrorCode()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("취소된 QUEUED 카드 초안 Job 은 워커가 꺼내지 않는다")
+    void doesNotRunCanceledDraftJob() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+        cancel(draftJobId);
+
         assertThat(runNext()).isFalse();
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.CANCELED);
+
+    }
+
+    @Test
+    @DisplayName("꺼낸 뒤 실행 전에 취소된 카드 초안 Job 은 SUCCEEDED 로 덮어쓰지 않고 CANCELED 로 둔다")
+    void keepsCanceledDraftJobCanceled(CapturedOutput output) {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+        AnalysisJob claimed = runner.claimNext().orElseThrow();
+        cancel(draftJobId);
+
+        runner.run(claimed);
+
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.CANCELED);
+        assertThat(jobs.findById(draftJobId).orElseThrow().getSteps()).extracting(JobStep::state)
+                .doesNotContain(JobStepState.DONE);
+        assertThat(output).doesNotContain("카드 초안 Job");
+
+    }
+
+    @Test
+    @DisplayName("멈춘 카드 초안 Job 도 분석 Job 과 같은 기준으로 INTERNAL_ERROR 로 끝낸다")
+    void failsStuckDraftJob() {
+
+        Long draftJobId = draftJob("RUNNING");
+        jdbc.update("UPDATE analysis_job SET updated_at = now() - interval '16 minutes' WHERE id = ?", draftJobId);
+
+        runner.failStuckJobs();
+
+        assertFailed(draftJobId, JobErrorCode.INTERNAL_ERROR);
 
     }
 
@@ -696,6 +814,13 @@ class JobRunnerTest {
         jdbc.update("UPDATE analysis_job SET state = 'RUNNING', updated_at = now() - ?::interval WHERE id = ?",
                 elapsed, jobId);
         return jobId;
+
+    }
+
+    private Long draftJob(String state) {
+
+        UUID publicId = new CandidateCardFixtures(jdbc).insertDraftJob(userId, userRepositoryId, state);
+        return jobs.findByPublicId(publicId).orElseThrow().getId();
 
     }
 

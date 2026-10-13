@@ -7,8 +7,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.audit.domain.AuditLog;
+import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
+import com.gitory.backend.support.CandidateCardFixtures;
 import com.gitory.backend.support.TestFixtures;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +35,8 @@ import java.util.UUID;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobQueryService.class, JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class})
+@Import({JobQueryService.class, JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class,
+        GeneratedCardQueryService.class})
 class JobQueryServiceTest {
 
     private static final String LOGIN = "grow22";
@@ -106,14 +109,24 @@ class JobQueryServiceTest {
     }
 
     @Test
-    @DisplayName("초안(DRAFT) Job 은 result 를 비워 둔다")
-    void leavesDraftJobResultEmpty() {
+    @DisplayName("초안(DRAFT) Job 의 result 는 저장소 id 와 Job 이 만든 카드 id 를 카드 만든 순서대로 담고, 대기 중일 때도 끝난 뒤에도 같으며 판정과 이유는 비운다")
+    void draftJobResultCarriesRepositoryAndCardIdsInOrder() {
 
-        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
-        jdbc.update("UPDATE analysis_job SET type = 'DRAFT' WHERE public_id = ?", job.getPublicId());
+        CandidateCardFixtures cards = new CandidateCardFixtures(jdbc);
+        UUID draftJobId = cards.insertDraftJob(myUserId, myRepoId, "QUEUED");
+        UUID otherJobId = cards.insertDraftJob(myUserId, myRepoId, "QUEUED");
+        UUID first = cards.cardPublicIdOf(cards.insertCandidateCard(myUserId, myRepoId, null, draftJobId, false));
+        cards.insertCandidateCard(myUserId, myRepoId, null, otherJobId, false);
+        UUID second = cards.cardPublicIdOf(cards.insertCandidateCard(myUserId, myRepoId, null, draftJobId, false));
+        UUID repoPublicId = jdbc.queryForObject("SELECT public_id FROM user_repository WHERE id = ?", UUID.class, myRepoId);
+        JobResult expected = new JobResult(repoPublicId.toString(), List.of(first.toString(), second.toString()), null, null);
+
+        assertThat(service.load(draftJobId, myUserId, LOGIN).result()).isEqualTo(expected);
+
+        jdbc.update("UPDATE analysis_job SET state = 'SUCCEEDED', finished_at = now() WHERE public_id = ?", draftJobId);
         em.clear();
 
-        assertThat(service.load(job.getPublicId(), myUserId, LOGIN).result()).isNull();
+        assertThat(service.load(draftJobId, myUserId, LOGIN).result()).isEqualTo(expected);
 
     }
 

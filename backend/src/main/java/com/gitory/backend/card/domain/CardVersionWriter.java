@@ -1,5 +1,6 @@
 package com.gitory.backend.card.domain;
 
+import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardStatementRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.StatementEvidenceRepository;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 카드 버전을 만들고 문장을 근거 커밋 연결까지 다른 버전으로 복사한다
+ * 카드 버전을 만들고 문장을 근거 커밋 연결과 칸 메모까지 다른 버전으로 복사한다
  * 새 버전 번호는 카드의 현재 번호에 1 을 더한 값이라, 카드 행을 잠근 요청 트랜잭션 안에서만 부를 수 있다
  */
 @Service
@@ -23,6 +24,7 @@ public class CardVersionWriter {
     private final CardVersionRepository versions;
     private final CardStatementRepository statements;
     private final StatementEvidenceRepository evidence;
+    private final CardSlotNoteRepository notes;
 
     /** 막 저장한 카드의 1번 버전을 빈 칸으로 만든다 */
     public CardVersion startFirst(Card card, VersionSource source) {
@@ -49,17 +51,20 @@ public class CardVersionWriter {
         }
 
         List<CardStatement> sources = statements.findByCardIdAndVersionNo(card.getId(), fromVersionNo);
+        List<CardSlotNote> sourceNotes = notes.findByCardIdAndVersionNo(card.getId(), fromVersionNo);
         CardVersion next = startNext(card, source);
         copy(sources, next.getVersionNo());
+        copyNotes(sourceNotes, next.getVersionNo());
 
         return next;
 
     }
 
-    /** from 버전의 그 칸에 문장이 없으면 아무것도 복사하지 않는다 */
+    /** from 버전의 그 칸에 문장이 없어도 비운 이유 메모가 있으면 메모는 복사한다 */
     public void copySlot(Long cardId, short fromVersionNo, StarField slot, short toVersionNo) {
 
         copy(statements.findByCardIdAndVersionNoAndStarSlot(cardId, fromVersionNo, slot), toVersionNo);
+        copyNotes(notes.findByCardIdAndVersionNoAndStarSlot(cardId, fromVersionNo, slot), toVersionNo);
 
     }
 
@@ -73,6 +78,14 @@ public class CardVersionWriter {
             for (Long commitId : commitIds.getOrDefault(source.getId(), List.of())) {
                 evidence.save(StatementEvidence.link(copied.getId(), commitId));
             }
+        }
+
+    }
+
+    private void copyNotes(List<CardSlotNote> sources, short toVersionNo) {
+
+        for (CardSlotNote source : sources) {
+            notes.save(source.copyTo(toVersionNo));
         }
 
     }

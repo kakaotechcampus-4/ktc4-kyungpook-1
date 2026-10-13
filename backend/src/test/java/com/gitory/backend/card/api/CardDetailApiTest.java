@@ -262,6 +262,62 @@ class CardDetailApiTest {
     }
 
     @Test
+    @DisplayName("확인 필요 칸의 why 는 그 칸 메모의 이유 문장이고, 메모가 없는 확인 필요 칸은 빈 글이다")
+    void fillsWhyFromReviewNote() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long situation = fixtures.insertStatement(cardId, 1, "S", "흐린 상황", "COMMIT", "LOW");
+        fixtures.insertStatementEvidence(situation, firstCommit);
+        fixtures.insertSlotNote(cardId, 1, "S", null, "근거에 없는 수치: 30%");
+        Long result = fixtures.insertStatement(cardId, 1, "R", "흐린 결과", "COMMIT", "LOW");
+        fixtures.insertStatementEvidence(result, secondCommit);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.lowConfidenceFields", hasSize(2)))
+                .andExpect(jsonPath("$.data.lowConfidenceFields[0].field").value("S"))
+                .andExpect(jsonPath("$.data.lowConfidenceFields[0].why").value("근거에 없는 수치: 30%"))
+                .andExpect(jsonPath("$.data.lowConfidenceFields[1].field").value("R"))
+                .andExpect(jsonPath("$.data.lowConfidenceFields[1].why").value(""));
+
+    }
+
+    @Test
+    @DisplayName("비운 이유 메모가 있는 빈 칸만 S·T·A·R 순서로 droppedFields 에 이유와 함께 실리고, 글이 있는 칸과 메모 없는 빈 칸은 싣지 않는다")
+    void listsDroppedFieldsFromNotes() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        fixtures.insertSlotNote(cardId, 1, "R", "TIMEOUT", null);
+        fixtures.insertSlotNote(cardId, 1, "S", "NO_EVIDENCE", null);
+        fixtures.insertStatement(cardId, 1, "T", "직접 쓴 과제", "USER_STATED", null);
+        fixtures.insertSlotNote(cardId, 1, "T", "NO_EVIDENCE", null);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.droppedFields", hasSize(2)))
+                .andExpect(jsonPath("$.data.droppedFields[0].field").value("S"))
+                .andExpect(jsonPath("$.data.droppedFields[0].reason").value("NO_EVIDENCE"))
+                .andExpect(jsonPath("$.data.droppedFields[1].field").value("R"))
+                .andExpect(jsonPath("$.data.droppedFields[1].reason").value("TIMEOUT"));
+
+    }
+
+    @Test
+    @DisplayName("칸 메모는 현재 버전의 것만 읽어, 앞 버전에서 비웠다 채운 칸의 이유는 싣지 않는다")
+    void readsNotesOfCurrentVersionOnly() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        fixtures.insertSlotNote(cardId, 1, "R", "NO_EVIDENCE", null);
+        fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version.versionNo").value(2))
+                .andExpect(jsonPath("$.data.droppedFields", hasSize(0)));
+
+    }
+
+    @Test
     @DisplayName("남의 카드를 조회하면 없는 카드와 똑같이 404 NOT_FOUND 이고 그 카드로 VIEW_CARD 거절 기록이 하나 남는다")
     void deniesOthersCard() throws Exception {
 

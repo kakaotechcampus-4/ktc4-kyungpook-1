@@ -128,4 +128,27 @@ public class Candidate {
         return status != CandidateStatus.NEW || userModified || sourceType == CandidateType.MANUAL;
 
     }
+
+    /** 카드로 쓴 후보는 카드가 가리키고 있어 어떤 수정도 받지 않는다 */
+    public void ensureEditable() {
+
+        if (status == CandidateStatus.USED) {
+            throw new CandidateNotEditableException();
+        }
+
+    }
+
+    public void exclude() {
+
+        ensureEditable();
+        this.status = CandidateStatus.EXCLUDED;
+
+    }
+
+    public void restore() {
+
+        ensureEditable();
+        this.status = CandidateStatus.NEW;
+
+    }
 }

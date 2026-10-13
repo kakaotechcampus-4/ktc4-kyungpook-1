@@ -83,6 +83,20 @@ public final class CandidateBoardFixtures {
 
     }
 
+    /** 바뀐 줄 수를 정한 파일을 넣어, 커밋의 표시 경로와 후보의 코드 비율이 어떤 파일로 정해지는지 보게 한다 */
+    public void insertFile(Long commitId, String path, int additions, int deletions) {
+
+        jdbc.update("INSERT INTO commit_file (commit_id, path, status, additions, deletions) VALUES (?, ?, 'MODIFIED', ?, ?)",
+                commitId, path, additions, deletions);
+
+    }
+
+    public void setAuthoredAt(Long commitId, Instant authoredAt) {
+
+        jdbc.update("UPDATE git_commit SET authored_at = ? WHERE id = ?", Timestamp.from(authoredAt), commitId);
+
+    }
+
     public void setCommitMessage(Long commitId, String message) {
 
         jdbc.update("UPDATE git_commit SET message = ? WHERE id = ?", message, commitId);

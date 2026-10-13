@@ -1,6 +1,7 @@
 package com.gitory.backend.recommend.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.support.BoardVerdictFixtures;
 import com.gitory.backend.support.CandidateBoardFixtures;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
@@ -519,6 +520,20 @@ class RecallApiTest {
                 .andExpect(jsonPath("$.data.verdict").value("OK"))
                 .andExpect(jsonPath("$.data.candidates[0].title").value("점수 있는 후보"))
                 .andExpect(jsonPath("$.data.candidates[1].title").value("/src/api/ 작업"));
+
+    }
+
+    @Test
+    @DisplayName("회상 후보만 있어도 마지막 수집이 부분 결과면 보드는 PARTIAL 이다")
+    void recallCandidateOnPartialCollectionIsPartial() throws Exception {
+
+        new BoardVerdictFixtures(jdbc).insertRun(myRepoId, "GITHUB_RATE_LIMITED", 3, 0, Instant.now());
+        answer(myUserId, MY_REPO.toString(), "/src/api/", "로그인을 맡았다").andExpect(status().isOk());
+
+        mvc.perform(get("/api/repos/{id}/candidates", MY_REPO).with(loggedInAs(myUserId)))
+                .andExpect(jsonPath("$.data.verdict").value("PARTIAL"))
+                .andExpect(jsonPath("$.data.partial").value(true))
+                .andExpect(jsonPath("$.data.candidates", hasSize(1)));
 
     }
 

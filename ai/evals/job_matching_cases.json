@@ -1,0 +1,1237 @@
+{
+  "description": "실제 기업·채용공고가 아닌 검색 품질 회귀 테스트 전용 합성 데이터입니다.",
+  "postings": [
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "backend-01",
+      "company_name": "평가기업 01",
+      "job_title": "Spring 백엔드 개발자",
+      "job_category": "BACKEND",
+      "responsibilities": [
+        "Spring Boot 기반 REST API 개발"
+      ],
+      "required_qualifications": [
+        "Java와 Spring 사용 경험"
+      ],
+      "preferred_qualifications": [
+        "API 성능 개선 경험"
+      ],
+      "skills": [
+        "Java",
+        "Spring Boot"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/backend-01",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-01"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "backend-02",
+      "company_name": "평가기업 02",
+      "job_title": "인증 플랫폼 개발자",
+      "job_category": "BACKEND",
+      "responsibilities": [
+        "OAuth2 및 JWT 인증 서비스 개발"
+      ],
+      "required_qualifications": [
+        "웹 인증과 인가 흐름 이해"
+      ],
+      "preferred_qualifications": [
+        "보안 취약점 대응 경험"
+      ],
+      "skills": [
+        "OAuth2",
+        "JWT"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/backend-02",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-02"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "backend-03",
+      "company_name": "평가기업 03",
+      "job_title": "메시징 백엔드 개발자",
+      "job_category": "BACKEND",
+      "responsibilities": [
+        "Kafka 기반 비동기 이벤트 처리"
+      ],
+      "required_qualifications": [
+        "분산 시스템 기본 이해"
+      ],
+      "preferred_qualifications": [
+        "대용량 메시지 처리 경험"
+      ],
+      "skills": [
+        "Kafka",
+        "Event Driven"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/backend-03",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-03"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "backend-04",
+      "company_name": "평가기업 04",
+      "job_title": "데이터베이스 백엔드 개발자",
+      "job_category": "BACKEND",
+      "responsibilities": [
+        "SQL 쿼리와 데이터 모델 최적화"
+      ],
+      "required_qualifications": [
+        "관계형 데이터베이스 사용 경험"
+      ],
+      "preferred_qualifications": [
+        "인덱스 튜닝 경험"
+      ],
+      "skills": [
+        "PostgreSQL",
+        "SQL"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/backend-04",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-04"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "backend-05",
+      "company_name": "평가기업 05",
+      "job_title": "결제 서버 개발자",
+      "job_category": "BACKEND",
+      "responsibilities": [
+        "결제 승인 및 취소 API 개발"
+      ],
+      "required_qualifications": [
+        "트랜잭션 처리 이해"
+      ],
+      "preferred_qualifications": [
+        "멱등성 키 설계 경험"
+      ],
+      "skills": [
+        "Transaction",
+        "Idempotency"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/backend-05",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-05"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "backend-06",
+      "company_name": "평가기업 06",
+      "job_title": "품질 중심 서버 개발자",
+      "job_category": "BACKEND",
+      "responsibilities": [
+        "서버 테스트 자동화와 품질 개선"
+      ],
+      "required_qualifications": [
+        "단위 테스트 작성 경험"
+      ],
+      "preferred_qualifications": [
+        "통합 테스트와 CI 운영 경험"
+      ],
+      "skills": [
+        "Pytest",
+        "CI"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/backend-06",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-06"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "frontend-01",
+      "company_name": "평가기업 07",
+      "job_title": "React 프론트엔드 개발자",
+      "job_category": "FRONTEND",
+      "responsibilities": [
+        "React 기반 사용자 화면 개발"
+      ],
+      "required_qualifications": [
+        "TypeScript 사용 경험"
+      ],
+      "preferred_qualifications": [
+        "디자인 시스템 구축 경험"
+      ],
+      "skills": [
+        "React",
+        "TypeScript"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/frontend-01",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-07"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "frontend-02",
+      "company_name": "평가기업 08",
+      "job_title": "웹 성능 개발자",
+      "job_category": "FRONTEND",
+      "responsibilities": [
+        "웹 렌더링 성능 개선"
+      ],
+      "required_qualifications": [
+        "브라우저 동작 원리 이해"
+      ],
+      "preferred_qualifications": [
+        "Core Web Vitals 개선 경험"
+      ],
+      "skills": [
+        "Web Performance",
+        "Vite"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/frontend-02",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-08"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "frontend-03",
+      "company_name": "평가기업 09",
+      "job_title": "접근성 프론트엔드 개발자",
+      "job_category": "FRONTEND",
+      "responsibilities": [
+        "웹 접근성을 고려한 UI 개발"
+      ],
+      "required_qualifications": [
+        "시맨틱 HTML 작성 경험"
+      ],
+      "preferred_qualifications": [
+        "스크린 리더 테스트 경험"
+      ],
+      "skills": [
+        "Accessibility",
+        "HTML"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/frontend-03",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-09"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "frontend-04",
+      "company_name": "평가기업 10",
+      "job_title": "상태 관리 프론트엔드 개발자",
+      "job_category": "FRONTEND",
+      "responsibilities": [
+        "서버 상태와 캐시 관리"
+      ],
+      "required_qualifications": [
+        "비동기 API 연동 경험"
+      ],
+      "preferred_qualifications": [
+        "TanStack Query 운영 경험"
+      ],
+      "skills": [
+        "TanStack Query",
+        "React"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/frontend-04",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-10"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "frontend-05",
+      "company_name": "평가기업 11",
+      "job_title": "프론트엔드 테스트 개발자",
+      "job_category": "FRONTEND",
+      "responsibilities": [
+        "사용자 흐름 E2E 테스트 자동화"
+      ],
+      "required_qualifications": [
+        "프론트엔드 단위 테스트 경험"
+      ],
+      "preferred_qualifications": [
+        "Playwright 사용 경험"
+      ],
+      "skills": [
+        "Playwright",
+        "Vitest"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/frontend-05",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-11"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "frontend-06",
+      "company_name": "평가기업 12",
+      "job_title": "모바일 웹 개발자",
+      "job_category": "FRONTEND",
+      "responsibilities": [
+        "반응형 모바일 웹 개발"
+      ],
+      "required_qualifications": [
+        "CSS 레이아웃 이해"
+      ],
+      "preferred_qualifications": [
+        "다양한 화면 크기 대응 경험"
+      ],
+      "skills": [
+        "Responsive Web",
+        "CSS"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/frontend-06",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-12"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "ai-01",
+      "company_name": "평가기업 13",
+      "job_title": "LLM 애플리케이션 개발자",
+      "job_category": "AI_ML",
+      "responsibilities": [
+        "LLM 기반 서비스와 프롬프트 개발"
+      ],
+      "required_qualifications": [
+        "Python 사용 경험"
+      ],
+      "preferred_qualifications": [
+        "구조화 출력 평가 경험"
+      ],
+      "skills": [
+        "LLM",
+        "Python"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/ai-01",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-13"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "ai-02",
+      "company_name": "평가기업 14",
+      "job_title": "RAG 엔지니어",
+      "job_category": "AI_ML",
+      "responsibilities": [
+        "검색 증강 생성 파이프라인 개발"
+      ],
+      "required_qualifications": [
+        "임베딩과 벡터 검색 이해"
+      ],
+      "preferred_qualifications": [
+        "ChromaDB 운영 경험"
+      ],
+      "skills": [
+        "RAG",
+        "ChromaDB"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/ai-02",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-14"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "ai-03",
+      "company_name": "평가기업 15",
+      "job_title": "머신러닝 평가 엔지니어",
+      "job_category": "AI_ML",
+      "responsibilities": [
+        "모델 품질 평가 데이터셋 구축"
+      ],
+      "required_qualifications": [
+        "정확도 지표 이해"
+      ],
+      "preferred_qualifications": [
+        "홀드아웃 평가 경험"
+      ],
+      "skills": [
+        "Evaluation",
+        "Machine Learning"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/ai-03",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-15"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "ai-04",
+      "company_name": "평가기업 16",
+      "job_title": "NLP 엔지니어",
+      "job_category": "AI_ML",
+      "responsibilities": [
+        "한국어 텍스트 분류 모델 개발"
+      ],
+      "required_qualifications": [
+        "자연어 처리 기본 이해"
+      ],
+      "preferred_qualifications": [
+        "텍스트 전처리 경험"
+      ],
+      "skills": [
+        "NLP",
+        "Text Classification"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/ai-04",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-16"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "ai-05",
+      "company_name": "평가기업 17",
+      "job_title": "추천 시스템 엔지니어",
+      "job_category": "AI_ML",
+      "responsibilities": [
+        "사용자와 콘텐츠 추천 모델 개발"
+      ],
+      "required_qualifications": [
+        "유사도와 랭킹 이해"
+      ],
+      "preferred_qualifications": [
+        "추천 품질 실험 경험"
+      ],
+      "skills": [
+        "Recommendation",
+        "Ranking"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/ai-05",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-17"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "ai-06",
+      "company_name": "평가기업 18",
+      "job_title": "AI 플랫폼 개발자",
+      "job_category": "AI_ML",
+      "responsibilities": [
+        "모델 추론 API와 배치 파이프라인 개발"
+      ],
+      "required_qualifications": [
+        "Python API 서버 경험"
+      ],
+      "preferred_qualifications": [
+        "모델 서빙 최적화 경험"
+      ],
+      "skills": [
+        "FastAPI",
+        "Model Serving"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/ai-06",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-18"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "data-01",
+      "company_name": "평가기업 19",
+      "job_title": "데이터 엔지니어",
+      "job_category": "DATA",
+      "responsibilities": [
+        "ETL 데이터 파이프라인 개발"
+      ],
+      "required_qualifications": [
+        "SQL과 Python 사용 경험"
+      ],
+      "preferred_qualifications": [
+        "Airflow 운영 경험"
+      ],
+      "skills": [
+        "ETL",
+        "Airflow"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/data-01",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-19"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "data-02",
+      "company_name": "평가기업 20",
+      "job_title": "분석 엔지니어",
+      "job_category": "DATA",
+      "responsibilities": [
+        "분석용 데이터 모델과 지표 설계"
+      ],
+      "required_qualifications": [
+        "SQL 분석 경험"
+      ],
+      "preferred_qualifications": [
+        "dbt 사용 경험"
+      ],
+      "skills": [
+        "dbt",
+        "Analytics"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/data-02",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-20"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "data-03",
+      "company_name": "평가기업 21",
+      "job_title": "데이터 품질 엔지니어",
+      "job_category": "DATA",
+      "responsibilities": [
+        "데이터 품질 규칙과 모니터링 개발"
+      ],
+      "required_qualifications": [
+        "데이터 검증 경험"
+      ],
+      "preferred_qualifications": [
+        "이상 데이터 탐지 경험"
+      ],
+      "skills": [
+        "Data Quality",
+        "Monitoring"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/data-03",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-21"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "data-04",
+      "company_name": "평가기업 22",
+      "job_title": "스트리밍 데이터 엔지니어",
+      "job_category": "DATA",
+      "responsibilities": [
+        "실시간 스트리밍 데이터 처리"
+      ],
+      "required_qualifications": [
+        "분산 처리 이해"
+      ],
+      "preferred_qualifications": [
+        "Flink 운영 경험"
+      ],
+      "skills": [
+        "Flink",
+        "Kafka"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/data-04",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-22"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "data-05",
+      "company_name": "평가기업 23",
+      "job_title": "BI 데이터 분석가",
+      "job_category": "DATA",
+      "responsibilities": [
+        "비즈니스 대시보드와 KPI 분석"
+      ],
+      "required_qualifications": [
+        "통계와 SQL 이해"
+      ],
+      "preferred_qualifications": [
+        "시각화 도구 사용 경험"
+      ],
+      "skills": [
+        "BI",
+        "Dashboard"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/data-05",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-23"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "data-06",
+      "company_name": "평가기업 24",
+      "job_title": "데이터 거버넌스 엔지니어",
+      "job_category": "DATA",
+      "responsibilities": [
+        "데이터 카탈로그와 계보 관리"
+      ],
+      "required_qualifications": [
+        "메타데이터 관리 이해"
+      ],
+      "preferred_qualifications": [
+        "개인정보 보호 경험"
+      ],
+      "skills": [
+        "Data Governance",
+        "Catalog"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/data-06",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-24"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "devops-01",
+      "company_name": "평가기업 25",
+      "job_title": "클라우드 인프라 엔지니어",
+      "job_category": "DEVOPS",
+      "responsibilities": [
+        "AWS 클라우드 인프라 구축"
+      ],
+      "required_qualifications": [
+        "Linux와 네트워크 이해"
+      ],
+      "preferred_qualifications": [
+        "Terraform 사용 경험"
+      ],
+      "skills": [
+        "AWS",
+        "Terraform"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/devops-01",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-25"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "devops-02",
+      "company_name": "평가기업 26",
+      "job_title": "쿠버네티스 플랫폼 엔지니어",
+      "job_category": "DEVOPS",
+      "responsibilities": [
+        "Kubernetes 기반 서비스 운영"
+      ],
+      "required_qualifications": [
+        "컨테이너 이해"
+      ],
+      "preferred_qualifications": [
+        "Helm 배포 경험"
+      ],
+      "skills": [
+        "Kubernetes",
+        "Helm"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/devops-02",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-26"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "devops-03",
+      "company_name": "평가기업 27",
+      "job_title": "CI/CD 엔지니어",
+      "job_category": "DEVOPS",
+      "responsibilities": [
+        "빌드 및 배포 파이프라인 자동화"
+      ],
+      "required_qualifications": [
+        "Git 사용 경험"
+      ],
+      "preferred_qualifications": [
+        "GitHub Actions 운영 경험"
+      ],
+      "skills": [
+        "CI/CD",
+        "GitHub Actions"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/devops-03",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-27"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "devops-04",
+      "company_name": "평가기업 28",
+      "job_title": "관측성 엔지니어",
+      "job_category": "DEVOPS",
+      "responsibilities": [
+        "로그 메트릭 추적 시스템 구축"
+      ],
+      "required_qualifications": [
+        "서비스 모니터링 이해"
+      ],
+      "preferred_qualifications": [
+        "Prometheus와 Grafana 경험"
+      ],
+      "skills": [
+        "Observability",
+        "Prometheus"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/devops-04",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-28"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "devops-05",
+      "company_name": "평가기업 29",
+      "job_title": "사이트 신뢰성 엔지니어",
+      "job_category": "DEVOPS",
+      "responsibilities": [
+        "장애 대응과 서비스 신뢰성 개선"
+      ],
+      "required_qualifications": [
+        "운영 자동화 경험"
+      ],
+      "preferred_qualifications": [
+        "SLO와 에러 버짓 운영 경험"
+      ],
+      "skills": [
+        "SRE",
+        "SLO"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/devops-05",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-29"
+    },
+    {
+      "source": "EVAL_FIXTURE",
+      "external_posting_id": "devops-06",
+      "company_name": "평가기업 30",
+      "job_title": "클라우드 보안 엔지니어",
+      "job_category": "DEVOPS",
+      "responsibilities": [
+        "클라우드 권한과 비밀정보 관리"
+      ],
+      "required_qualifications": [
+        "보안 원칙 이해"
+      ],
+      "preferred_qualifications": [
+        "IAM 정책 설계 경험"
+      ],
+      "skills": [
+        "Cloud Security",
+        "IAM"
+      ],
+      "experience": "신입 또는 경력 3년 이하",
+      "education": "무관",
+      "employment_type": "FULL_TIME",
+      "location": "대한민국",
+      "source_url": "https://example.com/gitory-eval/jobs/devops-06",
+      "published_at": "2026-10-01T00:00:00Z",
+      "updated_at": "2026-10-01T00:00:00Z",
+      "expires_at": "2026-12-31T23:59:59Z",
+      "collected_at": "2026-10-11T00:00:00Z",
+      "status": "ACTIVE",
+      "content_hash": "eval-fixture-30"
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "match-01",
+      "statement": {
+        "card_id": 1,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "Spring Boot API의 응답 시간을 개선하고 Java 서버를 개발했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:backend-01"
+    },
+    {
+      "case_id": "match-02",
+      "statement": {
+        "card_id": 2,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "OAuth2 로그인과 JWT 토큰 기반 인증 인가를 구현했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:backend-02"
+    },
+    {
+      "case_id": "match-03",
+      "statement": {
+        "card_id": 3,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "Kafka 이벤트를 사용해 비동기 메시지 처리 구조를 만들었습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:backend-03"
+    },
+    {
+      "case_id": "match-04",
+      "statement": {
+        "card_id": 4,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "PostgreSQL 쿼리를 분석하고 인덱스를 추가해 조회 성능을 개선했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:backend-04"
+    },
+    {
+      "case_id": "match-05",
+      "statement": {
+        "card_id": 5,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "결제 요청 중복을 막기 위해 멱등성 키와 트랜잭션을 설계했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:backend-05"
+    },
+    {
+      "case_id": "match-06",
+      "statement": {
+        "card_id": 6,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "pytest와 CI를 연결해 서버 단위 테스트와 통합 테스트를 자동화했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:backend-06"
+    },
+    {
+      "case_id": "match-07",
+      "statement": {
+        "card_id": 7,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "React와 TypeScript로 공통 컴포넌트 및 디자인 시스템을 만들었습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:frontend-01"
+    },
+    {
+      "case_id": "match-08",
+      "statement": {
+        "card_id": 8,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "Vite 번들 크기와 웹 렌더링 시간을 줄여 성능을 개선했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:frontend-02"
+    },
+    {
+      "case_id": "match-09",
+      "statement": {
+        "card_id": 9,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "시맨틱 HTML과 스크린 리더 검증으로 웹 접근성을 개선했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:frontend-03"
+    },
+    {
+      "case_id": "match-10",
+      "statement": {
+        "card_id": 10,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "TanStack Query로 서버 상태 캐시와 API 요청을 관리했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:frontend-04"
+    },
+    {
+      "case_id": "match-11",
+      "statement": {
+        "card_id": 11,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "Playwright E2E와 Vitest 단위 테스트를 구축했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:frontend-05"
+    },
+    {
+      "case_id": "match-12",
+      "statement": {
+        "card_id": 12,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "CSS 미디어 쿼리로 모바일과 데스크톱 반응형 화면을 구현했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:frontend-06"
+    },
+    {
+      "case_id": "match-13",
+      "statement": {
+        "card_id": 13,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "Python으로 LLM 구조화 출력 프롬프트와 평가 도구를 개발했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:ai-01"
+    },
+    {
+      "case_id": "match-14",
+      "statement": {
+        "card_id": 14,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "ChromaDB 임베딩 검색을 사용한 RAG 파이프라인을 구현했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:ai-02"
+    },
+    {
+      "case_id": "match-15",
+      "statement": {
+        "card_id": 15,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "모델 비교용 평가 데이터와 hold-out 정확도 지표를 설계했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:ai-03"
+    },
+    {
+      "case_id": "match-16",
+      "statement": {
+        "card_id": 16,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "한국어 문장을 전처리하고 NLP 텍스트 분류 기능을 만들었습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:ai-04"
+    },
+    {
+      "case_id": "match-17",
+      "statement": {
+        "card_id": 17,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "사용자 행동과 콘텐츠 유사도로 추천 랭킹을 구현했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:ai-05"
+    },
+    {
+      "case_id": "match-18",
+      "statement": {
+        "card_id": 18,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "FastAPI 모델 추론 API와 배치 처리 파이프라인을 만들었습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:ai-06"
+    },
+    {
+      "case_id": "match-19",
+      "statement": {
+        "card_id": 19,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "Python과 SQL로 ETL 파이프라인을 만들고 Airflow로 스케줄링했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:data-01"
+    },
+    {
+      "case_id": "match-20",
+      "statement": {
+        "card_id": 20,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "dbt로 분석 데이터 모델과 핵심 지표를 정의했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:data-02"
+    },
+    {
+      "case_id": "match-21",
+      "statement": {
+        "card_id": 21,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "데이터 검증 규칙과 이상치 모니터링 알림을 구현했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:data-03"
+    },
+    {
+      "case_id": "match-22",
+      "statement": {
+        "card_id": 22,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "Kafka와 Flink로 실시간 스트리밍 데이터를 처리했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:data-04"
+    },
+    {
+      "case_id": "match-23",
+      "statement": {
+        "card_id": 23,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "SQL 분석 결과를 BI 대시보드와 KPI로 시각화했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:data-05"
+    },
+    {
+      "case_id": "match-24",
+      "statement": {
+        "card_id": 24,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "데이터 카탈로그와 계보를 구축하고 개인정보 항목을 관리했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:data-06"
+    },
+    {
+      "case_id": "match-25",
+      "statement": {
+        "card_id": 25,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "Terraform으로 AWS 인프라를 코드화하고 네트워크를 구성했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:devops-01"
+    },
+    {
+      "case_id": "match-26",
+      "statement": {
+        "card_id": 26,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "Kubernetes와 Helm으로 컨테이너 서비스를 배포했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:devops-02"
+    },
+    {
+      "case_id": "match-27",
+      "statement": {
+        "card_id": 27,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "GitHub Actions로 빌드 테스트 배포 파이프라인을 자동화했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:devops-03"
+    },
+    {
+      "case_id": "match-28",
+      "statement": {
+        "card_id": 28,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "Prometheus와 Grafana로 로그 메트릭 모니터링을 구축했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:devops-04"
+    },
+    {
+      "case_id": "match-29",
+      "statement": {
+        "card_id": 29,
+        "star_slot": "A",
+        "statement_seq": 1,
+        "body": "SLO와 에러 버짓을 정의하고 장애 대응 자동화를 개선했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:devops-05"
+    },
+    {
+      "case_id": "match-30",
+      "statement": {
+        "card_id": 30,
+        "star_slot": "R",
+        "statement_seq": 1,
+        "body": "IAM 최소 권한 정책과 클라우드 비밀정보 관리를 구현했습니다."
+      },
+      "expected_posting_key": "EVAL_FIXTURE:devops-06"
+    }
+  ]
+}

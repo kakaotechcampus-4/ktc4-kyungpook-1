@@ -103,6 +103,18 @@ public class Candidate {
 
     }
 
+    /** 사용자가 직접 만든 후보를 PR·이슈·점수 없이 처음부터 손댄 후보로 만들며, 파일 수·기간·코드 비율은 붙인 커밋으로 계산한 값을 받는다 */
+    static Candidate manual(Long userRepositoryId, String sourceRef, String title, String reasonText,
+                            CandidateMeta meta) {
+
+        Candidate candidate = new Candidate(userRepositoryId, CandidateType.MANUAL, null, sourceRef, List.of(),
+                List.of(), title, reasonText, null, false, meta.fileCount(), 0, meta.spanDays(), meta.codeRatio());
+        candidate.markUserModified();
+
+        return candidate;
+
+    }
+
     /** 제외·복원·커밋 빼기처럼 사용자가 후보에 보낸 요청마다 부르며, 한 번 켜면 끄는 길이 없다 */
     public void markUserModified() {
 

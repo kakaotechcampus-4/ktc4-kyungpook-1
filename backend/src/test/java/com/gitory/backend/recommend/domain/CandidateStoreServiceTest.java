@@ -467,6 +467,28 @@ class CandidateStoreServiceTest {
     }
 
     @Test
+    @DisplayName("회상 도우미로 만든 후보는 커밋이 없어도 손댄 후보라 다시 묶어도 지우거나 바꾸지 않고, 묶기에서 뺄 커밋과 PR 도 늘리지 않는다")
+    void keepsRecallCandidateWithoutLockingAnything() {
+
+        Long recall = candidates.save(Candidate.manual(userRepositoryId, "RECALL", "/main/java/ 작업", "로그인을 맡았다", CandidateMeta.of(List.of()))).getId();
+        commit(SHA_A);
+
+        service.store(userRepositoryId, FINGERPRINT, List.of(cluster("2026-09-05", 0.4, SHA_A)));
+
+        assertThat(ids(storedCandidates())).contains(recall).hasSize(2);
+        assertThat(candidates.findById(recall).orElseThrow()).satisfies(candidate -> {
+            assertThat(candidate.getTitle()).isEqualTo("/main/java/ 작업");
+            assertThat(candidate.getReasonText()).isEqualTo("로그인을 맡았다");
+            assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.NEW);
+            assertThat(commitIdsOf(candidate.getId())).isEmpty();
+        });
+        LockedSources locked = service.lockedSources(userRepositoryId);
+        assertThat(locked.commitShas()).isEmpty();
+        assertThat(locked.pullRequestNumbers()).isEmpty();
+
+    }
+
+    @Test
     @DisplayName("손댄 후보가 없으면 묶기에서 뺄 커밋과 PR 이 없다")
     void lockedSourcesAreEmptyWithoutTouchedCandidates() {
 

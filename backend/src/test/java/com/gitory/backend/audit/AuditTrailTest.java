@@ -1,5 +1,6 @@
 package com.gitory.backend.audit;
 
+import com.gitory.backend.consent.domain.GithubDisconnectService;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.consent.domain.StubGithubConfig;
 import com.gitory.backend.consent.infra.GithubGrantClient;
@@ -35,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -70,10 +72,14 @@ class AuditTrailTest {
     @Autowired
     AnalysisJobRepository jobs;
 
+    @Autowired
+    GithubDisconnectService disconnects;
+
     @MockitoBean
     GithubGrantClient grants;
 
     private Long myUserId;
+    private Long myConnectionId;
     private Long myRepoId;
     private Long othersUserId;
     private Long othersRepoId;
@@ -85,6 +91,7 @@ class AuditTrailTest {
         fixtures.clear();
 
         myUserId = fixtures.insertUser(1L, "grow22");
+        myConnectionId = fixtures.insertGithubConnection(myUserId, "gho_StubbedAccessTokenExample1234567");
         othersUserId = fixtures.insertUser(2L, "someone-else");
 
         Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
@@ -162,6 +169,34 @@ class AuditTrailTest {
 
         verify(grants).deleteGrant(anyString());
         assertThat(events()).extracting(AuditRow::action).containsExactly("CONNECT", "REVOKE");
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 거절한 토큰의 연결을 해제하면 그 연결로 REVOKE 성공 기록이 하나 남고 GitHub 앱 권한 삭제는 요청하지 않는다")
+    void recordsRevokeOnRejectedToken() {
+
+        disconnects.revokeRejected(myUserId, tokenEncOf(myConnectionId));
+
+        assertThat(events()).containsExactly(new AuditRow(myUserId, "REVOKE", myConnectionId, "OK"));
+        verifyNoInteractions(grants);
+
+    }
+
+    @Test
+    @DisplayName("이미 해제됐거나 재로그인으로 토큰이 바뀐 연결이면 거절 해제는 아무것도 바꾸지 않고 기록도 남기지 않는다")
+    void rejectedRevokeDoesNothingWhenAlreadyRevokedOrRenewed() {
+
+        String rejected = tokenEncOf(myConnectionId);
+
+        disconnects.revokeRejected(myUserId, "enc-of-an-older-token");
+        assertThat(events()).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT revoked_at FROM github_connection WHERE id = ?", Object.class, myConnectionId))
+                .isNull();
+
+        disconnects.revokeRejected(myUserId, rejected);
+        disconnects.revokeRejected(myUserId, rejected);
+        assertThat(events()).hasSize(1);
 
     }
 
@@ -318,6 +353,12 @@ class AuditTrailTest {
 
         return jdbc.queryForObject("SELECT id FROM users WHERE github_user_id = ?", Long.class,
                 StubGithubConfig.GITHUB_USER_ID);
+
+    }
+
+    private String tokenEncOf(Long connectionId) {
+
+        return jdbc.queryForObject("SELECT token_enc FROM github_connection WHERE id = ?", String.class, connectionId);
 
     }
 

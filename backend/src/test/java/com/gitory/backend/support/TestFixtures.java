@@ -1,7 +1,10 @@
 package com.gitory.backend.support;
 
+import com.gitory.backend.consent.infra.TokenCipher;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -10,6 +13,7 @@ import java.util.UUID;
 public final class TestFixtures {
 
     private final JdbcTemplate jdbc;
+    private final TokenCipher cipher = new TokenCipher("test-encryption-key", "5c0744940b5c369b");
 
     public TestFixtures(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -23,6 +27,16 @@ public final class TestFixtures {
         return jdbc.queryForObject(
                 "INSERT INTO users (github_user_id, github_login) VALUES (?, ?) RETURNING id",
                 Long.class, githubUserId, login);
+    }
+
+    /** 테스트 키로 토큰을 암호화해 쓸 수 있는 GitHub 연결을 넣는다 */
+    public Long insertGithubConnection(Long userId, String token) {
+
+        // granted_at 을 DB 기본값(now())에 맡기면 Docker 시계가 자바 시계보다 조금 빠를 때 revoked_at 이 더 이르게 되어 CHECK 에 걸린다
+        return jdbc.queryForObject(
+                "INSERT INTO github_connection (user_id, scopes, token_enc, granted_at) VALUES (?, ARRAY['read:user'], ?, ?) RETURNING id",
+                Long.class, userId, cipher.encrypt(token), Timestamp.from(Instant.now().minusSeconds(60)));
+
     }
 
     public Long insertRepository(Long githubRepoId, String ownerLogin, String name) {

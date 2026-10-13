@@ -9,7 +9,13 @@ public interface GithubCollectionAccessPort {
 
     JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas);
 
-    /** 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰을 거절하면 GithubNotConnectedException 을 던진다 */
+    /** 쓸 수 있는 GitHub 연결이 없으면 GithubNotConnectedException 을 던지고, GitHub 은 부르지 않는다 */
+    void requireUsableConnection(Long userId);
+
+    /**
+     * 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰을 거절하면 GithubNotConnectedException 을 던지며 거절이면 연결도 해제로 남긴다
+     * GitHub 이 사용 한도 때문에 거절하면 연결은 두고 GithubRateLimitedException 을 던진다
+     */
     List<GithubRepositoryResponse> repositories(Long userId);
 
     /** GitHub 이 세지 못한 저장소는 결과에서 빠진다 */

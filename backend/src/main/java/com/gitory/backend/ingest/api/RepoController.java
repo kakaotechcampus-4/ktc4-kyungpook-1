@@ -29,12 +29,10 @@ public class RepoController {
     private final RepositoryDetailService repositoryDetail;
 
     @GetMapping("/api/repos")
-    @Operation(summary = "저장소 목록 조회", description = "부를 때마다 GitHub 에서 저장소 목록을 다시 받아 반영한 뒤, 이번에 GitHub 이 돌려준 저장소만 돌려줍니다.")
+    @Operation(summary = "저장소 목록 조회", description = "부를 때마다 GitHub 에서 저장소 목록을 다시 받아 반영한 뒤, 이번에 GitHub 이 돌려준 저장소만 돌려줍니다. 쓸 수 있는 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 모두 돌려줍니다.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "저장소 배열. 없으면 빈 배열"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "저장소 배열. 없으면 빈 배열. 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 모두 돌려줌"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
-                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "GITHUB_UNAUTHORIZED: 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰을 거절함",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "그 밖의 GitHub 호출 실패",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))

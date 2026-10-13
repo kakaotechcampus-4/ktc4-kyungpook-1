@@ -1,6 +1,7 @@
 package com.gitory.backend.card.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.support.InterviewFixtures;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +69,7 @@ class CardDetailApiTest {
     JdbcTemplate jdbc;
 
     private TestFixtures fixtures;
+    private InterviewFixtures interviews;
     private Long myUserId;
     private Long othersUserId;
     private Long myRepoId;
@@ -78,6 +80,7 @@ class CardDetailApiTest {
     void setUp() {
 
         fixtures = new TestFixtures(jdbc);
+        interviews = new InterviewFixtures(jdbc);
         fixtures.clear();
 
         myUserId = fixtures.insertUser(1L, "grow22");
@@ -155,7 +158,7 @@ class CardDetailApiTest {
     }
 
     @Test
-    @DisplayName("근거는 S·T·A·R 순서로, 사용자가 쓰거나 고른 문장은 칸마다 한 줄(USER, sha·url·snippet·turnNo 는 null)이고 커밋 문장은 연결된 커밋마다 한 줄(AI)이다")
+    @DisplayName("근거는 S·T·A·R 순서로, 사용자가 쓰거나 고른 문장은 칸마다 한 줄(USER, sha·url·snippet 은 null, turnNo 는 연결된 질문 번호)이고 커밋 문장은 연결된 커밋마다 한 줄(AI)이다")
     void listsEvidenceInFieldOrder() throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -182,8 +185,56 @@ class CardDetailApiTest {
                         tuple("R", "COMMIT", "AI"));
         assertThat(evidence).allSatisfy(row -> assertThat(row).containsOnlyKeys(EVIDENCE_KEYS));
         assertThat(evidence.subList(0, 2)).allSatisfy(row -> assertThat(row)
-                .containsEntry("sha", null).containsEntry("url", null)
-                .containsEntry("snippet", null).containsEntry("turnNo", null));
+                .containsEntry("sha", null).containsEntry("url", null).containsEntry("snippet", null));
+        assertThat(evidence).extracting(row -> row.get("turnNo")).containsExactly(null, 1, null, null, null);
+
+    }
+
+    @Test
+    @DisplayName("사용자 근거의 turnNo 는 그 칸 문장이 가리키는 질문의 번호이고, 질문과 이어지지 않은 글과 커밋 근거는 질문에 이어져 있어도 null 이다")
+    void evidenceCarriesTheNumberOfTheLinkedTurn() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long firstTurn = fixtures.insertInterviewTurn(cardId, 1, "S");
+        Long secondTurn = fixtures.insertInterviewTurn(cardId, 2, "T");
+        fixtures.insertInterviewTurn(cardId, 3, "R");
+        fixtures.insertStatement(cardId, 1, "S", "첫 질문에 답한 상황", "USER_STATED", null, firstTurn);
+        fixtures.insertStatement(cardId, 1, "T", "둘째 질문에서 고른 과제", "USER_SELECTED", null, secondTurn);
+        fixtures.insertStatement(cardId, 1, "A", "질문 없이 쓴 행동", "USER_STATED", null);
+        Long result = fixtures.insertStatement(cardId, 1, "R", "질문에 이어진 커밋 글", "COMMIT", "HIGH", firstTurn);
+        fixtures.insertStatementEvidence(result, firstCommit);
+
+        String body = card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        List<Map<String, Object>> evidence = JsonPath.read(body, "$.data.evidence");
+        assertThat(evidence).extracting(row -> row.get("field"), row -> row.get("type"), row -> row.get("turnNo"))
+                .containsExactly(
+                        tuple("S", "USER_STATED", 1),
+                        tuple("T", "USER_SELECTED", 2),
+                        tuple("A", "USER_STATED", null),
+                        tuple("R", "COMMIT", null));
+
+    }
+
+    @Test
+    @DisplayName("interviewTurns 는 결과가 ANSWERED 인 질문 수이고, 답하지 않았거나 LATER·SKIPPED·INSUFFICIENT 로 끝난 질문은 답 글이 남아 있어도 세지 않으며 다른 카드의 질문도 세지 않는다")
+    void countsOnlyAnsweredTurns() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertTurn(cardId, 1, "S", "EVIDENCE_GAP", "USER", "질문", "ANSWERED", "직접 쓴 답", "TYPED");
+        interviews.insertAsked(cardId, 2, "T", "EVIDENCE_GAP", "USER", "아직 답하지 않은 질문");
+        interviews.insertTurn(cardId, 3, "A", "EVIDENCE_GAP", "USER", "질문", "LATER", null, null);
+        interviews.insertTurn(cardId, 4, "R", "EVIDENCE_GAP", "USER", "질문", "SKIPPED", null, null);
+        interviews.insertTurn(cardId, 5, "S", "FOLLOWUP", "AUTO", "질문", "INSUFFICIENT", "남은 답", "TYPED");
+        interviews.insertTurn(cardId, 6, "T", "FOLLOWUP", "USER", "질문", "ANSWERED", "고른 답", "SELECTED");
+        Long otherCardId = fixtures.insertCard(UUID.randomUUID(), myUserId);
+        interviews.insertAnswered(otherCardId, 1, "S", "다른 카드의 답", "TYPED");
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.interviewTurns").value(2));
 
     }
 

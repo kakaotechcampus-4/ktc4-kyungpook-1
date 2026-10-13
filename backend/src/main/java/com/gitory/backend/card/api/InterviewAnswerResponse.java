@@ -10,16 +10,7 @@ public record InterviewAnswerResponse(
 
     static InterviewAnswerResponse from(InterviewAnswer answer) {
 
-        return new InterviewAnswerResponse(answer.text(), sourceOf(answer));
-
-    }
-
-    private static EvidenceType sourceOf(InterviewAnswer answer) {
-
-        return switch (answer.source()) {
-            case TYPED -> EvidenceType.USER_STATED;
-            case SELECTED -> EvidenceType.USER_SELECTED;
-        };
+        return new InterviewAnswerResponse(answer.text(), answer.source().evidenceType());
 
     }
 }

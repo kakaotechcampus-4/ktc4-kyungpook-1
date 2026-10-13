@@ -20,7 +20,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DraftSaveService {
 
-    private static final int SLOT_MAX_LENGTH = 1000;
+    static final int SLOT_MAX_LENGTH = 1000;
 
     private final CardOwnershipService ownership;
     private final CardVersionRepository versions;

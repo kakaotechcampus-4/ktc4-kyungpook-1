@@ -69,6 +69,14 @@ public class CardStatement {
 
     }
 
+    /** 되묻기에서 사용자가 쓴 답으로, 그 질문을 가리키고 근거 커밋·확신도는 없다 */
+    public static CardStatement answered(Long cardId, short versionNo, StarField starSlot, String body,
+                                         Long sourceTurnId) {
+
+        return new CardStatement(cardId, versionNo, starSlot, body, EvidenceType.USER_STATED, null, sourceTurnId);
+
+    }
+
     CardStatement copyTo(short versionNo) {
 
         return new CardStatement(cardId, versionNo, starSlot, body, evidenceType, confidence, sourceTurnId);

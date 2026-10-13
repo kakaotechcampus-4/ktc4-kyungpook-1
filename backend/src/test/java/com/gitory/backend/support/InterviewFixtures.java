@@ -48,18 +48,25 @@ public final class InterviewFixtures {
     public List<TurnRow> turnsOf(Long cardId) {
 
         return jdbc.query(
-                "SELECT seq, star_slot, question_type, trigger_source, parent_turn_id, question_text, answer_text, answer_source, outcome, asked_at FROM interview_turn WHERE card_id = ? ORDER BY seq",
+                "SELECT seq, star_slot, question_type, trigger_source, parent_turn_id, question_text, answer_text, answer_source, outcome, asked_at, answered_at FROM interview_turn WHERE card_id = ? ORDER BY seq",
                 (row, rowNum) -> new TurnRow(row.getInt("seq"), row.getString("star_slot"),
                         row.getString("question_type"), row.getString("trigger_source"),
                         row.getObject("parent_turn_id", Long.class), row.getString("question_text"),
                         row.getString("answer_text"), row.getString("answer_source"), row.getString("outcome"),
-                        row.getObject("asked_at", OffsetDateTime.class).toInstant()),
+                        row.getObject("asked_at", OffsetDateTime.class).toInstant(),
+                        instantOf(row.getObject("answered_at", OffsetDateTime.class))),
                 cardId);
+
+    }
+
+    private static Instant instantOf(OffsetDateTime time) {
+
+        return time == null ? null : time.toInstant();
 
     }
 
     public record TurnRow(int seq, String starSlot, String questionType, String triggerSource, Long parentTurnId,
                           String questionText, String answerText, String answerSource, String outcome,
-                          Instant askedAt) {
+                          Instant askedAt, Instant answeredAt) {
     }
 }

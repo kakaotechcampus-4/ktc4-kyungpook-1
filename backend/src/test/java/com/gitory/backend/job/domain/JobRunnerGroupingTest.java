@@ -24,6 +24,7 @@ import com.gitory.backend.agent.port.GroupingVerdict;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
+import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.FileChangeStatus;
@@ -131,6 +132,9 @@ class JobRunnerGroupingTest {
 
     @MockitoBean
     ExperienceGroupingPort grouping;
+
+    @MockitoBean
+    GithubCollectionAccessPort githubAccess;
 
     @MockitoSpyBean
     CandidateStoreService candidateStore;
@@ -349,6 +353,64 @@ class JobRunnerGroupingTest {
         assertThat(job.isPartial()).isTrue();
         assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
         assertThat(resultOf(job)).isEqualTo(new JobResult(userRepositoryPublicId(), null, "PARTIAL", List.of()));
+
+    }
+
+    @Test
+    @DisplayName("경험 그룹화를 마친 한도 부분 결과의 남은 초는 그룹화가 끝난 시각부터 풀리는 시각까지로 센다")
+    void countsRetryAfterSecFromEndOfGrouping() throws Exception {
+
+        Long jobId = enqueue(KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED, commit(SHA_A)));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusSeconds(3600)));
+        given(grouping.group(any())).willAnswer(invocation -> {
+            Thread.sleep(1100);
+            return groupedAsPullRequest(invocation.getArgument(0));
+        });
+
+        runNext();
+
+        assertThat(jobs.findById(jobId).orElseThrow().getRetryAfterSec()).isBetween(3590, 3599);
+
+    }
+
+    @Test
+    @DisplayName("지난 후보를 그대로 두고 끝내는 한도 부분 결과도 끝난 시각부터 남은 초를 센다")
+    void countsRetryAfterSecWhenKeepingCandidates() {
+
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED, commit(SHA_A)));
+        given(grouping.group(any())).willAnswer(invocation -> groupedAsPullRequest(invocation.getArgument(0)));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.empty());
+        enqueue(KEY_1);
+        runNext();
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusSeconds(600)));
+
+        Long secondJobId = enqueue(KEY_2);
+        runNext();
+
+        verify(grouping, times(1)).group(any());
+        assertThat(jobs.findById(secondJobId).orElseThrow().getRetryAfterSec()).isBetween(590, 600);
+
+    }
+
+    @Test
+    @DisplayName("경험 그룹화 사이 한도가 풀리는 시각이 지났으면 남은 초는 비어 있고 부분 완료·GITHUB_RATE_LIMITED 는 그대로다")
+    void leavesRetryAfterSecEmptyWhenResetPassedDuringGrouping() throws Exception {
+
+        Long jobId = enqueue(KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED, commit(SHA_A)));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusMillis(500)));
+        given(grouping.group(any())).willAnswer(invocation -> {
+            Thread.sleep(1000);
+            return groupedAsPullRequest(invocation.getArgument(0));
+        });
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+        assertThat(job.getRetryAfterSec()).isNull();
 
     }
 

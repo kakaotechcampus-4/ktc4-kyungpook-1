@@ -7,7 +7,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.UUID;
 
-/** 후보 보드가 읽는 후보·후보 커밋·묶은 기록·분석 시각·카드 행을 SQL 로 만든다 */
+/** 후보 보드가 읽는 후보·후보 커밋·경험 그룹화 기록·분석 시각·카드 행을 SQL 로 만든다 */
 public final class CandidateBoardFixtures {
 
     private final JdbcTemplate jdbc;
@@ -29,7 +29,7 @@ public final class CandidateBoardFixtures {
 
     }
 
-    /** 묶을 때 저장하는 화면 숫자와 ref 를 채운다 */
+    /** 경험 그룹화 때 저장하는 화면 숫자와 ref 를 채운다 */
     public void setDisplay(Long candidateId, String sourceRef, boolean lowCardWorth, int fileCount,
                            int reviewCommentCount, Integer spanDays, String codeRatio) {
 

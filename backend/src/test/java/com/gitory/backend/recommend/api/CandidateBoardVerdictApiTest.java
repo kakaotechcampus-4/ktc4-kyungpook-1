@@ -266,7 +266,7 @@ class CandidateBoardVerdictApiTest {
     }
 
     @Test
-    @DisplayName("분석했지만 묶은 기록이 없는 빈 보드는 계정 없는 커밋이 저장돼 있어도 한 줄뿐이다")
+    @DisplayName("분석했지만 경험 그룹화 기록이 없는 빈 보드는 계정 없는 커밋이 저장돼 있어도 한 줄뿐이다")
     void keepsNeverGroupedBoardToOneLine() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
@@ -277,7 +277,7 @@ class CandidateBoardVerdictApiTest {
     }
 
     @Test
-    @DisplayName("마지막 분석보다 이르게 묶은 빈 보드는 계정 없는 커밋이 저장돼 있어도 한 줄뿐이다")
+    @DisplayName("마지막 분석보다 이르게 경험 그룹화를 한 빈 보드는 계정 없는 커밋이 저장돼 있어도 한 줄뿐이다")
     void keepsStaleGroupingBoardToOneLine() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
@@ -289,7 +289,7 @@ class CandidateBoardVerdictApiTest {
     }
 
     @Test
-    @DisplayName("분석 뒤에 묶었는데 후보가 0개인 빈 보드는 개수를 못 센 저장소도 이유 줄을 준다")
+    @DisplayName("분석 뒤에 경험 그룹화를 했는데 후보가 0개인 빈 보드는 개수를 못 센 저장소도 이유 줄을 준다")
     void explainsGroupedEmptyBoardWithSharedLines() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
@@ -302,7 +302,7 @@ class CandidateBoardVerdictApiTest {
     }
 
     @Test
-    @DisplayName("분석 뒤에 묶었는데 후보가 0개인 빈 보드는 저장된 숫자로 만든 줄을 순서대로 준다")
+    @DisplayName("분석 뒤에 경험 그룹화를 했는데 후보가 0개인 빈 보드는 저장된 숫자로 만든 줄을 순서대로 준다")
     void explainsGroupedEmptyBoardWithRealNumbers() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);

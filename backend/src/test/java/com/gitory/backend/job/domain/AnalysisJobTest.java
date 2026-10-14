@@ -135,7 +135,7 @@ class AnalysisJobTest {
     }
 
     @Test
-    @DisplayName("묶기를 시작하면 후보 추리기는 진행 중, 추천 이유는 대기로 바뀌고 수집 두 단계는 그대로다")
+    @DisplayName("경험 그룹화를 시작하면 후보 추리기는 진행 중, 추천 이유는 대기로 바뀌고 수집 두 단계는 그대로다")
     void startGroupingMarksCompressRunning() {
 
         AnalysisJob job = running();
@@ -190,7 +190,7 @@ class AnalysisJobTest {
     }
 
     @Test
-    @DisplayName("RUNNING 이 아닌 Job 은 묶기를 시작하거나 후보 수를 남길 수 없다")
+    @DisplayName("RUNNING 이 아닌 Job 은 경험 그룹화를 시작하거나 후보 수를 남길 수 없다")
     void groupingStepsRequireRunning() {
 
         AnalysisJob finished = running();

@@ -216,7 +216,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("분석은 했지만 후보를 묶은 기록이 없으면 후보 수는 null 이다")
+    @DisplayName("분석은 했지만 경험 그룹화 기록이 없으면 후보 수는 null 이다")
     void candidateCountIsNullWhenAnalyzedButNeverGrouped() throws Exception {
 
         githubReturns(repo(100L, "gitory"));
@@ -229,7 +229,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("마지막 분석보다 이르게 묶었고 후보가 없으면 후보 수는 null 이다")
+    @DisplayName("마지막 분석보다 이르게 경험 그룹화를 했고 후보가 없으면 후보 수는 null 이다")
     void candidateCountIsNullWhenGroupedBeforeLastAnalysis() throws Exception {
 
         githubReturns(repo(100L, "gitory"));
@@ -244,7 +244,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("마지막 분석 뒤에 묶었는데 후보가 없으면 후보 수는 실제 0 이다")
+    @DisplayName("마지막 분석 뒤에 경험 그룹화를 했는데 후보가 없으면 후보 수는 실제 0 이다")
     void candidateCountIsZeroWhenGroupedAfterLastAnalysis() throws Exception {
 
         githubReturns(repo(100L, "gitory"));
@@ -259,7 +259,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("마지막 분석과 같은 시각에 묶었어도 묶은 것으로 보아 후보 수는 0 이다")
+    @DisplayName("마지막 분석과 같은 시각에 경험 그룹화를 했으면 분석 뒤에 한 것으로 보아 후보 수는 0 이다")
     void candidateCountIsZeroWhenGroupedAtTheLastAnalysisInstant() throws Exception {
 
         githubReturns(repo(100L, "gitory"));
@@ -274,7 +274,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("분석 시각이 없으면 묶은 기록이 있어도 후보가 없는 후보 수는 null 이다")
+    @DisplayName("분석 시각이 없으면 경험 그룹화 기록이 있어도 후보가 없는 후보 수는 null 이다")
     void candidateCountIsNullWithoutAnalysisTimeEvenIfGrouped() throws Exception {
 
         githubReturns(repo(100L, "gitory"));
@@ -287,7 +287,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("후보가 5개 있으면 마지막 분석보다 이르게 묶었어도 실제 후보 수가 내려온다")
+    @DisplayName("후보가 5개 있으면 마지막 분석보다 이르게 경험 그룹화를 했어도 실제 후보 수가 내려온다")
     void candidateCountIsRealWhenGroupedBeforeLastAnalysis() throws Exception {
 
         githubReturns(repo(100L, "gitory"));
@@ -305,7 +305,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("저장소마다 자기 묶은 시각으로 후보 수의 null 과 0 을 따로 가린다")
+    @DisplayName("저장소마다 자기 경험 그룹화 시각으로 후보 수의 null 과 0 을 따로 가린다")
     void judgesNullOrZeroPerRepository() throws Exception {
 
         githubReturns(repo(100L, "alpha"), repo(200L, "beta"));
@@ -362,7 +362,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("저장소가 하나도 없는 사용자는 빈 배열을 받고 후보 수·묶은 시각·카드 수 조회는 보내지 않는다")
+    @DisplayName("저장소가 하나도 없는 사용자는 빈 배열을 받고 후보 수·경험 그룹화 시각·카드 수 조회는 보내지 않는다")
     void userWithoutRepositoriesGetsEmptyList() throws Exception {
 
         githubReturns();
@@ -379,7 +379,7 @@ class RepoCountsApiTest {
     }
 
     @Test
-    @DisplayName("저장소가 여러 개여도 후보 수 조회와 묶은 시각 조회와 카드 수 조회는 각각 한 번이다")
+    @DisplayName("저장소가 여러 개여도 후보 수 조회와 경험 그룹화 시각 조회와 카드 수 조회는 각각 한 번이다")
     void countsWithOneStatementPerKind() throws Exception {
 
         githubReturns(repo(100L, "alpha"), repo(200L, "beta"), repo(300L, "gamma"));

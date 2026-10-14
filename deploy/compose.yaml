@@ -57,6 +57,8 @@ services:
       AI_BASE_URL: http://ai:8000
       # 분석 Job 이 수집 뒤 AI 경험 그룹화로 후보를 만든다. AI 에 LLM 설정을 넣고 확인한 뒤 true 로 켠다
       ANALYSIS_GROUPING_ENABLED: ${ANALYSIS_GROUPING_ENABLED:-false}
+      # 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채운다 (#212). 끄면 빈 카드로 끝난다
+      CARD_AI_DRAFT_ENABLED: ${CARD_AI_DRAFT_ENABLED:-false}
     healthcheck:
       # readiness 그룹은 db 연결까지 본다. ai 는 넣지 않는다 (application.yml management 절)
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]

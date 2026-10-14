@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 
 import pytest
@@ -193,7 +194,8 @@ class FailingGroupingLlm(FakeGroupingLlm):
         (GroupingLlmConfigError("GITORY_LLM_API_KEY 없음"), False),
     ],
 )
-def test_llm_failure_returns_llm_unavailable_envelope(error, retryable) -> None:
+def test_llm_failure_returns_llm_unavailable_envelope(error, retryable, caplog) -> None:
+    caplog.set_level(logging.WARNING, logger="api.analysis")
     app = create_app()
     app.dependency_overrides[get_analysis_pipeline] = lambda: AnalysisPipeline(
         grouping_llm=FailingGroupingLlm(error)
@@ -223,6 +225,8 @@ def test_llm_failure_returns_llm_unavailable_envelope(error, retryable) -> None:
     assert body["error"]["retryable"] is retryable
     assert "secret-detail" not in response.text
     assert "GITORY_LLM_API_KEY" not in response.text
+    # 응답에 싣지 않는 원인은 운영에서 찾을 수 있게 서버 로그에만 남긴다.
+    assert [record.exc_info[1] for record in caplog.records if record.name == "api.analysis"] == [error]
 
 
 class SlowGroupingLlm(FakeGroupingLlm):

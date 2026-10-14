@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from typing import Any, Awaitable
 
@@ -28,6 +29,8 @@ from services.github_collector import GithubApiError, GithubResourceNotFound
 from services.grouping_llm import GroupingLlmConfigError, GroupingLlmError
 from services.llm_settings import LLMConfigError
 from services.star_generator import StarGenerationError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/internal/analysis", tags=["analysis"],
@@ -83,13 +86,17 @@ async def group_experiences(
             pipeline.group_experiences(request), http_request
         )
     except asyncio.TimeoutError:
+        logger.warning("경험 그룹화 실패: 요청 마감 %s초 초과", GROUPING_DEADLINE_SECONDS)
         return _llm_unavailable(started, "그룹화 처리 시간이 초과되었습니다.", True)
     except _ClientDisconnected:
         # 받을 사람이 없지만 남은 LLM 호출은 이미 취소했다. 응답은 형식만 맞춘다.
         return _llm_unavailable(started, "호출자가 연결을 끊었습니다.", True)
     except GroupingLlmConfigError:
+        logger.warning("경험 그룹화 실패: LLM 설정 없음", exc_info=True)
         return _llm_unavailable(started, "그룹화 LLM 설정이 없어 분석할 수 없습니다.", False)
     except GroupingLlmError:
+        # 응답에는 내부 예외 문구를 싣지 않으므로, 운영에서 원인을 찾을 수 있게 여기서만 남긴다.
+        logger.warning("경험 그룹화 실패: LLM 호출·출력 검증", exc_info=True)
         return _llm_unavailable(started, "그룹화 LLM 호출에 실패했습니다.", True)
     processing_ms = int((time.perf_counter() - started) * 1000)
     return Envelope(

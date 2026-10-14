@@ -73,7 +73,7 @@ class GroupingLlmConfigError(GroupingLlmError):
 
 
 class GroupingLlmOutputTooLongError(GroupingLlmError):
-    """후보 설명 출력이 게이트웨이 토큰 상한을 넘긴 경우."""
+    """경험 묶기·후보 설명 출력이 게이트웨이 토큰 상한을 넘긴 경우."""
 
 
 class GroupingModelClient(Protocol):
@@ -163,7 +163,23 @@ class GroupingLlm:
         issue_by_number = {issue.number: issue for issue in issues}
         experiences: list[list[CommitGroup]] = []
         for batch in self._split_batches(ordered, self._batch_size, self._started_at):
+            experiences.extend(
+                await self._group_batch(batch, pull_by_number, issue_by_number)
+            )
+        return experiences
+
+    async def _group_batch(
+        self,
+        batch: list[CommitGroup],
+        pull_by_number: dict[int, PullRequestContext],
+        issue_by_number: dict[int, IssueContext],
+    ) -> list[list[CommitGroup]]:
+        """출력이 상한에 걸리면 배치를 작업 간격이 가장 긴 곳에서 둘로 나눠 다시 요청한다."""
+        if len(batch) == 1:
+            return [batch]
+        try:
             # 40자 SHA·group_key 대신 배치 안 번호(1부터)로 주고받아 출력 토큰과 오기를 줄인다.
+            # 추론 모델은 추론 토큰도 출력 상한에서 쓰므로 작은 배치도 상한을 낮추지 않는다.
             result = await self._client.structured_call(
                 system_prompt=_CLUSTER_SYSTEM_PROMPT,
                 payload={
@@ -173,16 +189,21 @@ class GroupingLlm:
                     ]
                 },
                 output_model=ExperienceGroupingOutput,
-                max_completion_tokens=min(
-                    MAX_COMPLETION_TOKENS,
-                    max(1_000, len(batch) * 8),
-                ),
+                max_completion_tokens=MAX_COMPLETION_TOKENS,
             )
+        except GroupingLlmOutputTooLongError:
+            experiences: list[list[CommitGroup]] = []
+            for half in self._split_batches(batch, (len(batch) + 1) // 2, self._started_at):
+                experiences.extend(
+                    await self._group_batch(half, pull_by_number, issue_by_number)
+                )
+            return experiences
+        return [
+            [batch[index - 1] for index in indexes]
             for indexes in self._partition(
                 [item.item_ids for item in result.experiences], len(batch)
-            ):
-                experiences.append([batch[index - 1] for index in indexes])
-        return experiences
+            )
+        ]
 
     async def describe(
         self,

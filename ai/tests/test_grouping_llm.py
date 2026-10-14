@@ -101,16 +101,12 @@ def test_group_units_limits_commits_sent_per_unit() -> None:
 
 def test_group_units_batches_without_losing_units() -> None:
     units = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 4)]
-    fake = FakeModelClient(
-        [
-            {"experiences": [{"item_ids": [1, 2]}]},
-            {"experiences": [{"item_ids": [1]}]},
-        ]
-    )
+    fake = FakeModelClient([{"experiences": [{"item_ids": [1, 2]}]}])
 
     experiences = asyncio.run(GroupingLlm(fake, batch_size=2).group_units(units))
 
-    assert len(fake.calls) == 2
+    # 배치는 [2개, 1개]로 나뉘고, 1개짜리 배치는 묶을 상대가 없어 LLM 없이 단독 경험이 된다.
+    assert len(fake.calls) == 1
     assert [unit.group_key for experience in experiences for unit in experience] == [
         unit.group_key for unit in units
     ]
@@ -125,6 +121,78 @@ def test_units_within_default_limit_are_grouped_in_one_call() -> None:
     assert len(fake.calls) == 1
     assert len(experiences) == 1
     assert fake.calls[0]["max_completion_tokens"] <= MAX_COMPLETION_TOKENS
+
+
+def test_group_units_requests_full_token_budget_for_small_batches() -> None:
+    # 추론 모델은 추론 토큰도 출력 상한에서 쓴다. 작은 배치라고 상한을 낮추면 답을 쓰기 전에 잘린다.
+    units = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 4)]
+    fake = FakeModelClient([{"experiences": [{"item_ids": [1, 2, 3]}]}])
+
+    asyncio.run(GroupingLlm(fake).group_units(units))
+
+    assert fake.calls[0]["max_completion_tokens"] == MAX_COMPLETION_TOKENS
+
+
+class LengthLimitedClusterClient:
+    def __init__(self, max_items: int) -> None:
+        self.max_items = max_items
+        self.calls: list[dict] = []
+
+    async def structured_call(self, **kwargs):
+        self.calls.append(kwargs)
+        items = kwargs["payload"]["items"]
+        if len(items) > self.max_items:
+            raise GroupingLlmOutputTooLongError("응답 토큰 상한 초과")
+        return ExperienceGroupingOutput.model_validate(
+            {"experiences": [{"item_ids": [item["id"] for item in items]}]}
+        )
+
+
+def test_group_units_splits_too_long_batch_and_keeps_every_unit() -> None:
+    units = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 6)]
+    fake = LengthLimitedClusterClient(max_items=2)
+
+    experiences = asyncio.run(GroupingLlm(fake).group_units(units))
+
+    assert [len(call["payload"]["items"]) for call in fake.calls][0] == 5
+    assert all(len(call["payload"]["items"]) <= 5 for call in fake.calls)
+    assert sorted(unit.group_key for experience in experiences for unit in experience) == sorted(
+        unit.group_key for unit in units
+    )
+    # 나눈 뒤에도 한 경험은 같은 배치 안의 단위로만 이루어진다.
+    assert all(len(experience) <= 2 for experience in experiences)
+
+
+def test_group_units_keeps_single_unit_alone_without_llm_after_split() -> None:
+    units = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 3)]
+    fake = LengthLimitedClusterClient(max_items=1)
+
+    experiences = asyncio.run(GroupingLlm(fake).group_units(units))
+
+    # 2개 배치가 잘리면 1개씩으로 나누고, 1개짜리는 LLM 없이 단독 경험이 된다.
+    assert len(fake.calls) == 1
+    assert [[unit.group_key for unit in experience] for experience in experiences] == [
+        ["cluster:1"],
+        ["cluster:2"],
+    ]
+
+
+def test_group_units_does_not_split_on_unrelated_llm_errors() -> None:
+    class FailingModelClient:
+        def __init__(self) -> None:
+            self.call_count = 0
+
+        async def structured_call(self, **kwargs):
+            self.call_count += 1
+            raise GroupingLlmError("네트워크 오류")
+
+    fake = FailingModelClient()
+    units = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 4)]
+
+    with pytest.raises(GroupingLlmError, match="네트워크"):
+        asyncio.run(GroupingLlm(fake).group_units(units))
+
+    assert fake.call_count == 1
 
 
 def test_partition_drops_unknown_dedupes_and_keeps_missing_items() -> None:

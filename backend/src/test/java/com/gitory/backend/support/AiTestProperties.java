@@ -17,6 +17,8 @@ public final class AiTestProperties {
     private Duration collectReadTimeout;
     private Duration groupsReadTimeout;
     private Duration interviewReadTimeout;
+    private Duration diffEvidenceReadTimeout;
+    private Duration starReadTimeout;
 
     private AiTestProperties() {
     }
@@ -69,10 +71,24 @@ public final class AiTestProperties {
 
     }
 
+    public AiTestProperties diffEvidenceReadTimeout(Duration diffEvidenceReadTimeout) {
+
+        this.diffEvidenceReadTimeout = diffEvidenceReadTimeout;
+        return this;
+
+    }
+
+    public AiTestProperties starReadTimeout(Duration starReadTimeout) {
+
+        this.starReadTimeout = starReadTimeout;
+        return this;
+
+    }
+
     public AiClientProperties build() {
 
         return new AiClientProperties(baseUrl, connectTimeout, readTimeout, collectReadTimeout, groupsReadTimeout,
-                interviewReadTimeout);
+                interviewReadTimeout, diffEvidenceReadTimeout, starReadTimeout);
 
     }
 }

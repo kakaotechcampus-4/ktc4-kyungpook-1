@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -25,6 +26,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AiHttpClientPostTest {
 
     private static final String GROUPS = "/internal/analysis/groups";
+    private static final String DIFF_EVIDENCE = "/internal/analysis/diff-evidence";
+    private static final String TOKEN = "gho_StubbedAccessTokenExample1234567";
     private static final Map<String, Object> REQUEST = Map.of("user_repository_id", 1);
 
     private final ObjectMapper mapper = JsonMapper.builder().build();
@@ -130,6 +133,69 @@ class AiHttpClientPostTest {
     void rejectsNonInternalPathBeforeSending(String path) {
 
         assertThatThrownBy(() -> client.post(path, REQUEST, Duration.ofSeconds(2)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(calls).hasValue(0);
+
+    }
+
+    @Test
+    @DisplayName("토큰이 필요한 호출은 토큰을 X-GitHub-Token 헤더에만 싣고 본문에는 넣지 않는다")
+    void postsTokenOnlyInHeader() {
+
+        JsonNode data = client.postWithGithubToken(DIFF_EVIDENCE, REQUEST, TOKEN, Duration.ofSeconds(2));
+
+        assertThat(requestMethod).isEqualTo("POST");
+        assertThat(requestPath).isEqualTo(DIFF_EVIDENCE);
+        assertThat(requestToken).isEqualTo(TOKEN);
+        assertThat(requestContentType).startsWith("application/json");
+        assertThat(requestBody).contains("\"user_repository_id\"").doesNotContain(TOKEN);
+        assertThat(data.has("candidates")).isTrue();
+
+    }
+
+    @Test
+    @DisplayName("토큰이 필요한 호출도 응답 대기 시간은 설정 값이 아니라 호출마다 넘긴 값을 쓴다")
+    void tokenCallWaitsForTheTimeoutOfEachCall() {
+
+        responseDelayMs = 300;
+        AiHttpClient shortSettings = new AiHttpClient(AiTestProperties.defaults().baseUrl(baseUrl())
+                .readTimeout(Duration.ofMillis(50)).collectReadTimeout(Duration.ofMillis(50))
+                .diffEvidenceReadTimeout(Duration.ofMillis(50)).build(), mapper);
+
+        assertThat(shortSettings.postWithGithubToken(DIFF_EVIDENCE, REQUEST, TOKEN, Duration.ofSeconds(3))
+                .has("candidates")).isTrue();
+        assertThatThrownBy(() -> shortSettings.postWithGithubToken(DIFF_EVIDENCE, REQUEST, TOKEN,
+                Duration.ofMillis(50)))
+                .isInstanceOfSatisfying(AiClientException.class, error -> {
+                    assertThat(error.errorCode()).isEqualTo("AI_UNAVAILABLE");
+                    assertThat(error.retryable()).isTrue();
+                });
+
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "   ", "gho_abc\r\nX-Injected: 1", "gho_토큰값"})
+    @DisplayName("헤더에 넣을 수 없는 토큰은 AI 에 보내기 전에 연결 없음으로 거절하고 예외 메시지에 토큰을 남기지 않는다")
+    void rejectsHeaderUnsafeTokenBeforeSending(String token) {
+
+        assertThatThrownBy(() -> client.postWithGithubToken(DIFF_EVIDENCE, REQUEST, token, Duration.ofSeconds(2)))
+                .isInstanceOfSatisfying(AiClientException.class, error -> {
+                    assertThat(error.errorCode()).isEqualTo("GITHUB_CONNECTION_UNAVAILABLE");
+                    assertThat(error.retryable()).isFalse();
+                    assertThat(error.getMessage()).doesNotContain("gho_");
+                });
+        assertThat(calls).hasValue(0);
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"http://127.0.0.1:1/internal/analysis/diff-evidence",
+            "//127.0.0.1:1/internal/analysis/diff-evidence", "/internal/analysis/diff-evidence?debug=true"})
+    @DisplayName("토큰이 필요한 호출도 내부 절대 경로가 아니면 토큰을 보내기 전에 거절한다")
+    void rejectsNonInternalPathBeforeSendingToken(String path) {
+
+        assertThatThrownBy(() -> client.postWithGithubToken(path, REQUEST, TOKEN, Duration.ofSeconds(2)))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(calls).hasValue(0);
 

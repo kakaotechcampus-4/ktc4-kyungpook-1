@@ -1,12 +1,15 @@
 package com.gitory.backend.consent.infra;
 
 import com.gitory.backend.common.infra.ai.AiClientException;
+import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
 import com.gitory.backend.consent.domain.GithubConnection;
 import com.gitory.backend.consent.domain.GithubDisconnectService;
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
 import com.gitory.backend.consent.domain.GithubRateLimitedException;
 import com.gitory.backend.consent.domain.User;
+import com.gitory.backend.consent.port.DiffEvidenceResult;
+import com.gitory.backend.consent.port.DiffEvidenceTarget;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.consent.port.GithubCountTarget;
@@ -50,6 +53,8 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     // 시작할 때의 PR 검색 두 번과 사용자 id 요청은 끊지 않고, 이미 보낸 요청은 읽기 제한(10초)까지 걸릴 수 있다
     private static final Duration COUNT_TIME_LIMIT = Duration.ofSeconds(15);
 
+    private static final String DIFF_EVIDENCE_PATH = "/internal/analysis/diff-evidence";
+
     private final UserRepository users;
     private final GithubConnectionRepository connections;
     private final TokenCipher cipher;
@@ -59,6 +64,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     private final Clock clock;
     private final GithubDisconnectService disconnects;
     private final GithubRateLimitClient rateLimit;
+    private final AiClientProperties aiProperties;
 
     @Override
     public JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas) {
@@ -69,6 +75,20 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
                 new AiCollectActor(user.getGithubLogin(), List.of()), target.branches(), knownCommitShas);
 
         return ai.collect(request, token);
+
+    }
+
+    @Override
+    public DiffEvidenceResult diffEvidence(Long userId, DiffEvidenceTarget target) {
+
+        activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
+        String token = activeToken(userId).orElseThrow(GithubCollectionAccess::unavailable);
+        AiDiffEvidenceRequest request = new AiDiffEvidenceRequest(target.userRepositoryId(), target.repository(),
+                target.commitShas(), target.githubPrNumber(), target.title());
+
+        JsonNode data = ai.postWithGithubToken(DIFF_EVIDENCE_PATH, request, token,
+                aiProperties.diffEvidenceReadTimeout());
+        return DiffEvidenceReader.read(data, target.userRepositoryId());
 
     }
 

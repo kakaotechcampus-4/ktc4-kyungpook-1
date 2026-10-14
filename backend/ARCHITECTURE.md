@@ -148,7 +148,7 @@ ktc4-kyungpook-1/
 | `ingest`·`recommend` → `agent` 금지 | 규칙 계층에 모델이 끼면 비용·지연만 늘고 재현성이 떨어진다. 기여 집계도 여기 포함이다 |
 | **`card.domain.evidence` → `agent` 금지** | sha 검증 옆에 모델이 있으면 "모델한테 다시 물어보자"가 자연스러운 수정이 된다. 유령 sha·오귀속이 나온 경로다 |
 | `agent` → 다른 업무 모듈 금지 | 포트 요청·응답을 agent 의 record 로만 주고받는다. agent 가 업무 모듈 타입을 몰라야 나중에 별도 서비스로 떼어도 호출부가 그대로다 |
-| `AiHttpClient` 는 `common`·`consent`·`agent` 만 | 다른 모듈이 agent 포트를 건너뛰고 AI 를 부르지 못한다. consent 는 GitHub 토큰을 모듈 밖으로 내보내지 않으려고 수집 호출을 직접 한다 |
+| `AiHttpClient` 는 `common`·`consent`·`agent` 만 | 다른 모듈이 agent 포트를 건너뛰고 AI 를 부르지 못한다. consent 는 GitHub 토큰을 모듈 밖으로 내보내지 않으려고 토큰이 필요한 수집·diff 근거 호출을 직접 한다 |
 | **아무도 `job` 을 참조하지 않음** | 오케스트레이션 의존은 한 방향. 역방향이 생기면 job 이 순환의 중심이 된다 |
 | `audit` → 다른 모듈 금지 | 여러 모듈이 audit 을 부르므로, audit 이 다른 모듈을 보면 순환이 생기기 쉽다 |
 | `domain` → `api` 금지 | 도메인이 웹 모양에 끌려가지 않게 |
@@ -460,8 +460,8 @@ cf192e03e1  {tgu0925}   SecurityConfig.java  +1/-0     ← 이걸 근거로 "오
 | 무엇 | 어디서 강제 |
 |---|---|
 | OAuth 토큰이 `consent` 밖으로 안 나감 | `ingest` 는 토큰이 아니라 범위가 걸린 클라이언트를 받는다 |
-| 모델에 비밀값이 안 감 | `DraftRequest` 타입에 그 필드가 없다 |
-| 저장소 텍스트 = 비신뢰 입력 | `agent` 만 모델을 부르고, 커밋·PR 본문을 지시문으로 취급하지 않는다 |
+| 모델에 비밀값이 안 감 | `StarDraftRequest` 타입에 그 필드가 없다 |
+| 저장소 텍스트 = 비신뢰 입력 | `agent` 가 모델을 부르고(토큰이 필요한 diff 근거만 `consent`), 커밋·PR 본문을 지시문으로 취급하지 않는다 |
 | 감사 로그에 원문 없음 | `audit_event` 에 본문 컬럼이 없다 |
 | 선택 안 한 저장소 미분석 | `analysis_scope` 를 거치지 않으면 `ingest` 를 부를 수 없다 |
 | actuator 노출 최소 | `include: health`, `show-details: never` |

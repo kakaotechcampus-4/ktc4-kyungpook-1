@@ -104,6 +104,9 @@ gitory:
     groups-read-timeout: ${AI_GROUPS_READ_TIMEOUT:600s}
     # 프론트가 요청을 30초에 끊으므로 되묻기는 그 전에 AI 응답을 받아야 한다
     interview-read-timeout: 20s
+    # 카드 초안의 diff 근거·STAR 초안은 AI 가 240초·150초 안에 정리해 답하므로, 그 답을 놓치지 않게 조금 더 기다린다
+    diff-evidence-read-timeout: ${AI_DIFF_EVIDENCE_READ_TIMEOUT:300s}
+    star-read-timeout: ${AI_STAR_READ_TIMEOUT:180s}
   consent:
     # GitHub 액세스 토큰 암호화 키·솔트. 코드·설정 파일에 값을 적지 않는다 —
     # 배포 환경의 비밀 관리에서 환경변수로 주입한다(security-privacy.md).

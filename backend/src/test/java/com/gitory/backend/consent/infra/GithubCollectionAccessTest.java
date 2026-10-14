@@ -79,7 +79,7 @@ class GithubCollectionAccessTest {
     private final GithubDisconnectService disconnects = mock(GithubDisconnectService.class);
     private final GithubRateLimitClient rateLimit = mock(GithubRateLimitClient.class);
     private final GithubCollectionAccess access = new GithubCollectionAccess(
-            users, connections, cipher, null, github, counter, clock, disconnects, rateLimit);
+            users, connections, cipher, null, github, counter, clock, disconnects, rateLimit, null);
 
     @BeforeEach
     void setUp() {

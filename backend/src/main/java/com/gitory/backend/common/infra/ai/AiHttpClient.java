@@ -49,15 +49,24 @@ public class AiHttpClient {
 
     /** consent 모듈만 토큰을 복호화하고 이 메서드의 헤더에 전달한다. */
     public JsonNode collect(Object request, String githubToken) {
-        if (githubToken == null || githubToken.isBlank()
-                || githubToken.chars().anyMatch(character -> character < 0x21 || character > 0x7e)) {
-            // JDK의 invalid header value 예외에는 원문이 포함된다. 헤더 생성 전에 거절한다.
-            throw new AiClientException("GITHUB_CONNECTION_UNAVAILABLE", false, null);
-        }
+        requireHeaderSafe(githubToken);
         return exchange(collectionClient.post().uri("/internal/collect")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
                 .body(request), true);
+    }
+
+    /** 수집 말고도 토큰이 필요한 AI 호출로, 호출마다 기다릴 시간이 달라 경로와 대기 시간을 함께 받는다 */
+    public JsonNode postWithGithubToken(String path, Object request, String githubToken, Duration readTimeout) {
+
+        requireInternalPath(path);
+        requireHeaderSafe(githubToken);
+        RestClient postClient = postClients.computeIfAbsent(readTimeout, timeout -> client(properties, timeout));
+        return exchange(postClient.post().uri(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-GitHub-Token", githubToken)
+                .body(request), true);
+
     }
 
     /** 토큰이 필요 없는 AI 호출로, 묶기·되묻기처럼 호출마다 기다릴 시간이 달라 대기 시간을 함께 받는다 */
@@ -152,6 +161,14 @@ public class AiHttpClient {
         factory.setReadTimeout(readTimeout);
         return RestClient.builder().baseUrl(properties.baseUrl().toString())
                 .requestFactory(factory).build();
+    }
+
+    // JDK의 invalid header value 예외에는 원문이 포함된다. 헤더 생성 전에 거절한다.
+    private static void requireHeaderSafe(String githubToken) {
+        if (githubToken == null || githubToken.isBlank()
+                || githubToken.chars().anyMatch(character -> character < 0x21 || character > 0x7e)) {
+            throw new AiClientException("GITHUB_CONNECTION_UNAVAILABLE", false, null);
+        }
     }
 
     private static void requireInternalPath(String path) {

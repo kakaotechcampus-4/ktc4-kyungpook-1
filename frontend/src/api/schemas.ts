@@ -43,7 +43,7 @@ export const JobStepKey = z.enum(['COMMITS', 'PR_REVIEW', 'COMPRESS', 'REASON'])
 export const StepState = z.enum(['QUEUED', 'RUNNING', 'DONE', 'SKIPPED']);
 export const Verdict = z.enum(['OK', 'EMPTY', 'PARTIAL']);
 export const DropReason = z.enum(['NO_EVIDENCE', 'OVERCLAIM', 'UNSOURCED_NUMBER', 'TIMEOUT']);
-export const JobErrorCode = z.enum(['GITHUB_UNAVAILABLE', 'GITHUB_RATE_LIMITED', 'DRAFT_TIMEOUT', 'EVIDENCE_MISSING', 'INTERNAL_ERROR']);
+export const JobErrorCode = z.enum(['GITHUB_UNAVAILABLE', 'GITHUB_RATE_LIMITED', 'COLLECTION_CAPPED', 'DRAFT_TIMEOUT', 'EVIDENCE_MISSING', 'INTERNAL_ERROR']);
 export const ContributionLevel = z.enum(['NONE', 'PARTIAL', 'SHARED', 'MAJOR']);
 /** 문장을 누가 썼는가. AI 문장은 근거가 1개 이상 필요하고, USER 문장은 근거 없이도 허용된다. */
 export const AuthoredBy = z.enum(['AI', 'USER']);
@@ -124,6 +124,8 @@ export const RepoSummary = z.object({
   activeFrom: z.string(),
   activeTo: z.string(),
   lastAnalyzedAt: z.string().nullable(),
+  /** 기여 개수(커밋·PR·리뷰)를 센 시각. null 이면 아직 한 번도 못 센 것이라 개수 0 이 실제 0 이 아니다. 생략된 응답은 센 것으로 본다 → lib/repoCounts. */
+  countedAt: z.string().nullish(),
   candidateCount: z.number().nullable(),
   cardCount: z.number(),
   recommended: z.boolean(),

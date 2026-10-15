@@ -1,3 +1,4 @@
+import { CardMetadataPatch } from '@/api/schemas';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
@@ -163,9 +164,10 @@ on('PATCH', '/cards/:id/metadata', ({ params, body }) => {
   if (!card) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (card.status !== 'DRAFT') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
   const titleProvided = Object.hasOwn(body, 'title'), periodProvided = Object.hasOwn(body, 'period');
-  if ((!titleProvided && !periodProvided) || (titleProvided && (typeof body.title !== 'string' || !body.title.trim())) || (periodProvided && typeof body.period !== 'string')) return fail(422, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
-  if (titleProvided) card.title = body.title;
-  if (periodProvided) card.period = body.period;
+  const parsed = CardMetadataPatch.safeParse(body);
+  if (!parsed.success) return fail(400, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
+  if (titleProvided) card.title = parsed.data.title!;
+  if (periodProvided) card.period = parsed.data.period!;
   card.metadataUpdatedAt = now();
   card.updatedAt = card.metadataUpdatedAt;
   return ok({ cardId: card.id, title: card.title, period: card.period ?? null, updatedAt: card.metadataUpdatedAt });

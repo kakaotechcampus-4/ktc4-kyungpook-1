@@ -297,8 +297,10 @@ export const CardSummary = z.object({
 });
 export type CardSummary = z.infer<typeof CardSummary>;
 
-/** Proposed server contract: disabled for real API mode until confirmed by BE. */
-export const CardMetadataPatch = z.object({ title: z.string().refine((value) => !!value.trim()).optional(), period: z.string().optional() })
+/** Shared by manual creation and metadata PATCH: blank periods clear to null. */
+export const CardPeriodInput = ManualDraftInput.shape.period;
+/** #186 confirmed contract: omitted fields stay unchanged; explicit null clears period. */
+export const CardMetadataPatch = z.object({ title: ManualDraftInput.shape.title.optional(), period: CardPeriodInput.optional() })
   .refine((value) => value.title !== undefined || value.period !== undefined);
 export type CardMetadataPatch = z.infer<typeof CardMetadataPatch>;
 export const CardMetadata = z.object({ cardId: z.string(), title: z.string(), period: z.string().nullable(), updatedAt: z.string().datetime({ offset: true }) });

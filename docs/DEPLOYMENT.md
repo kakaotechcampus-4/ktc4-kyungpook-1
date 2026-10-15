@@ -155,6 +155,18 @@ docker compose up -d --build --wait            # 수동 재배포 (자동 배포
 - 메모리: 4개 합계 약 650MB (backend 약 535MB). 빌드 중에는 더 쓰지만 swap 4GB 가 있다.
 - 인스턴스를 stop/start 해도 EIP 라 주소가 유지된다. 컨테이너는 `restart: unless-stopped` 라 Docker 가 뜨면 같이 뜬다.
 
+### 로그 모아 보기 (CloudWatch)
+
+컨테이너 4개의 로그는 Docker `awslogs` 드라이버로 CloudWatch 로그 그룹 `/gitory`(서울 리전)에 간다. 스트림은 컨테이너 이름(`gitory-backend-1` 등)이다. EC2 인스턴스 역할(`ktc-ec2-ssm-profile`, `CloudWatchAgentServerPolicy` 연결)로 보내므로 서버에 키를 두지 않는다. 서버의 `docker compose logs` 도 그대로 된다.
+
+- 보기: CloudWatch 콘솔 → 로그 그룹 → `/gitory` → 스트림 선택. 여러 컨테이너를 한 번에 찾을 때는 Logs Insights 에서 `/gitory` 를 고르고 `fields @timestamp, @logStream, @message | filter @message like /ERROR|Traceback/ | sort @timestamp desc` 를 실행한다.
+- 보관: 로그 그룹 `/gitory` → 작업 → 보존 설정 편집 → 7일 (한 번만).
+- 에러 알람 (한 번만):
+  1. `/gitory` → 지표 필터 생성 → 패턴 `?ERROR ?Traceback ?"INTERNAL_ERROR" ?"GITHUB_UNAVAILABLE"` → 같은 화면의 "패턴 테스트"로 실제 로그에 맞는지 확인 → 지표 이름 `GitoryErrors`, 지표 값 1, 기본값 0.
+  2. CloudWatch → 경보 생성 → 지표 `GitoryErrors` 합계, 5분, 1 이상 → SNS 주제를 새로 만들어 팀 이메일을 구독시키고 메일의 확인 링크를 누른다.
+- 알람을 받으면 Logs Insights 에서 그 시각 전후로 `@logStream` 별로 본다. backend 예외 스택은 날짜로 시작하지 않는 줄을 앞 줄에 묶어 한 이벤트로 보낸다.
+- CloudWatch 가 느리거나 끊겨도 서비스는 멈추지 않는다(`mode: non-blocking`). 대신 버퍼(4MB)가 차면 그 사이 로그는 CloudWatch 에 빠진다.
+
 ## 8. 팀과 정한 것
 
 - 배포는 곽태훈이 맡고, 나머지 작업(수집 연결·후보·카드·평가·프론트)은 파트별로 나눴다.

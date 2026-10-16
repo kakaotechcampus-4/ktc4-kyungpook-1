@@ -162,7 +162,13 @@ docker compose up -d --build --wait            # 수동 재배포 (자동 배포
 - 보기: CloudWatch 콘솔 → 로그 그룹 → `/gitory` → 스트림 선택. 여러 컨테이너를 한 번에 찾을 때는 Logs Insights 에서 `/gitory` 를 고르고 `fields @timestamp, @logStream, @message | filter @message like /ERROR|Traceback/ | sort @timestamp desc` 를 실행한다.
 - 보관: 로그 그룹 `/gitory` → 작업 → 보존 설정 편집 → 7일 (한 번만).
 - 에러 알람 (한 번만):
-  1. `/gitory` → 지표 필터 생성 → 패턴 `?ERROR ?Traceback ?"INTERNAL_ERROR" ?"GITHUB_UNAVAILABLE"` → 같은 화면의 "패턴 테스트"로 실제 로그에 맞는지 확인 → 지표 이름 `GitoryErrors`, 지표 값 1, 기본값 0.
+  1. `/gitory` → 지표 필터 생성을 아래 패턴 3개로 세 번 한다. 셋 다 지표 이름 `GitoryErrors`, 지표 값 1, 기본값 0 으로 같은 지표에 더한다. 만들 때마다 같은 화면의 "패턴 테스트"로 아래 예시 줄에 맞는지 확인한다.
+     - `ERROR -"duplicate key"`: 에러 줄. 동시 요청을 DB 유니크 제약으로 막는 정상 흐름(분석 접수 등 4곳)에서 db 와 backend 가 남기는 `ERROR: duplicate key ...` 는 뺀다.
+     - `Traceback`: ai 의 예외 스택.
+     - `?"INTERNAL_ERROR" ?"GITHUB_UNAVAILABLE"`: Job 이 실패로 끝날 때 backend 가 WARN 으로 남기는 에러 코드.
+     - CloudWatch 패턴은 `?`(또는)와 `-`(빼기)를 한 패턴에 같이 쓰면 `?` 항목이 무시되므로, 하나로 합치지 않고 나눈다. 한 줄이 여러 필터에 걸려 두 번 세어져도 경보는 1 이상이라 결과는 같다.
+     - 패턴 테스트에 넣을 줄 모양 (앞 날짜는 생략). 걸려야 하는 줄: `ERROR 1 --- [gitory-backend] [   scheduling-1] c.g.b.job.domain.JobRunner : ...`, `Traceback (most recent call last):`, `카드 초안 Job 12 을 INTERNAL_ERROR 로 끝낸다`
+     - 걸리면 안 되는 줄: `UTC [123] ERROR:  duplicate key value violates unique constraint "uq_job_active"`(db), `ERROR 1 --- [gitory-backend] [nio-8080-exec-3] o.h.engine.jdbc.spi.SqlExceptionHelper : ERROR: duplicate key value violates unique constraint "uq_job_active"`(backend)
   2. CloudWatch → 경보 생성 → 지표 `GitoryErrors` 합계, 5분, 1 이상 → SNS 주제를 새로 만들어 팀 이메일을 구독시키고 메일의 확인 링크를 누른다.
 - 알람을 받으면 Logs Insights 에서 그 시각 전후로 `@logStream` 별로 본다. backend 예외 스택은 날짜로 시작하지 않는 줄을 앞 줄에 묶어 한 이벤트로 보낸다.
 - CloudWatch 가 느리거나 끊겨도 서비스는 멈추지 않는다(`mode: non-blocking`). 대신 버퍼(4MB)가 차면 그 사이 로그는 CloudWatch 에 빠진다.

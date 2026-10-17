@@ -120,6 +120,19 @@ def test_collect_endpoint_rejects_unknown_request_field() -> None:
     assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
 
 
+def test_collect_endpoint_rejects_removed_since_field() -> None:
+    payload = {**_payload(), "since": "2026-09-20T09:00:00Z"}
+
+    response = TestClient(app).post(
+        "/internal/collect",
+        json=payload,
+        headers={"X-GitHub-Token": "header-token"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
 def test_candidate_detail_requires_sha_or_pr_number() -> None:
     payload = _detail_payload()
     payload["commit_shas"] = []

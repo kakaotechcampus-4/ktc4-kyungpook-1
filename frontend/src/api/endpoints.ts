@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { api } from './client';
 import * as S from './schemas';
-import { cardMetadataSupported } from './capabilities';
+import { cardMetadataSupported, cardRegenerationSupported } from './capabilities';
 import { ApiError, ContractError } from './client';
 
 /** 엔드포인트 함수 — 화면은 이 파일 밖의 URL 을 모른다. */
@@ -43,13 +43,16 @@ export const endpoints = {
   // 카드
   cards: () => api(z.array(S.CardSummary), '/cards'),
   card: (id: string) => api(S.Card, `/cards/${id}`),
-  createManualCard: (body: { title: string; period: string; repoId: string | null; fields: Partial<Record<S.StarField, string>> }) =>
-    api(S.Card, '/cards', { method: 'POST', body }),
   /** 직접 작성 첫 진입: 제목만으로 DRAFT 를 먼저 만들어 cardId 를 얻는다. 이후 입력은 PATCH 로만 간다. */
-  createManualDraft: (body: { title: string; period: string; repoId: string | null }) =>
-    api(S.Card, '/cards/manual/draft', { method: 'POST', body }),
-  /** 임시 저장 — 같은 버전을 덮어쓴다. 브라우저에 남기지 않는다. */
-  saveDraft: (id: string, fields: S.DraftFields) => api(S.CardDraft, `/cards/${id}/draft`, { method: 'PATCH', body: fields }),
+  createManualDraft: async (input: S.ManualDraftInput, idempotencyKey: string) =>
+    api(S.Card, '/cards/manual/draft', { method: 'POST', body: S.ManualDraftInput.parse(input), headers: { 'Idempotency-Key': S.ManualDraftKey.parse(idempotencyKey) } }),
+  /** 임시 저장 — 수정 가능한 USER_EDIT 버전만 덮어쓴다. 브라우저에 남기지 않는다. */
+  saveDraft: async (id: string, fields: S.DraftFields) => {
+    const path = `/cards/${id}/draft`;
+    const saved = await api(S.CardDraft, path, { method: 'PATCH', body: S.DraftFields.parse(fields) });
+    if (saved.cardId !== id) throw new ContractError(path, [{ path: ['cardId'], message: 'Mismatched card acknowledgement' }]);
+    return saved;
+  },
   saveMetadata: (id: string, body: S.CardMetadataPatch) => {
     if (!cardMetadataSupported()) return Promise.reject(new ApiError('FEATURE_UNAVAILABLE', '', 400));
     const path = `/cards/${id}/metadata`;
@@ -58,11 +61,11 @@ export const endpoints = {
       return metadata;
     });
   },
-  saveVersion: (id: string, fields: Partial<Record<'situation' | 'task' | 'action' | 'result', string | null>>) =>
-    api(S.Card, `/cards/${id}/versions`, { method: 'POST', body: fields }),
-  regenerateField: (id: string, field: S.StarField) =>
-    api(z.object({ jobId: z.string() }), `/cards/${id}/regenerate`, { method: 'POST', body: { field } }),
-  mask: (id: string, rules: { from: string; to: string }[]) => api(S.Card, `/cards/${id}/mask`, { method: 'POST', body: { rules } }),
+  regenerateField: (id: string, field: S.StarField) => {
+    if (!cardRegenerationSupported()) return Promise.reject(new ApiError('FEATURE_UNAVAILABLE', '', 400));
+    return api(z.object({ jobId: z.string() }), `/cards/${id}/regenerate`, { method: 'POST', body: { field } });
+  },
+  mask: async (id: string, rules: { from: string; to: string }[]) => api(S.Card, `/cards/${id}/mask`, { method: 'POST', body: { rules: S.MaskRules.parse(rules) } }),
   confirm: (id: string, body: { edited: boolean; maskedFields: S.StarField[] }) =>
     api(S.ConfirmResult, `/cards/${id}/confirm`, { method: 'POST', body }),
   reopen: (id: string) => api(S.Card, `/cards/${id}/reopen`, { method: 'POST' }),

@@ -1,6 +1,7 @@
 package com.gitory.backend.common.infra.ai;
 
 import com.gitory.backend.common.api.AiDocumentationController;
+import com.gitory.backend.support.AiTestProperties;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,9 +45,10 @@ class AiConnectivityTest {
             }
         });
         server.start();
-        client = new AiHttpClient(new AiClientProperties(
-                URI.create("http://127.0.0.1:" + server.getAddress().getPort()),
-                Duration.ofSeconds(1), Duration.ofSeconds(1)), JsonMapper.builder().build());
+        client = new AiHttpClient(AiTestProperties.defaults()
+                .baseUrl(URI.create("http://127.0.0.1:" + server.getAddress().getPort()))
+                .connectTimeout(Duration.ofSeconds(1)).readTimeout(Duration.ofSeconds(1))
+                .collectReadTimeout(Duration.ofSeconds(1)).build(), JsonMapper.builder().build());
     }
 
     @AfterEach

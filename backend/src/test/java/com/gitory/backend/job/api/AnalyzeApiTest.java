@@ -6,6 +6,8 @@ import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -47,6 +49,7 @@ class AnalyzeApiTest {
 
     private static final String KEY_1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     private static final String KEY_2 = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    private static final String TOKEN = "gho_StubbedAccessTokenExample1234567";
 
     @Container
     @ServiceConnection
@@ -69,6 +72,7 @@ class AnalyzeApiTest {
         fixtures.clear();
 
         myUserId = fixtures.insertUser(1L, "grow22");
+        fixtures.insertGithubConnection(myUserId, TOKEN);
         Long othersUserId = fixtures.insertUser(2L, "someone-else");
 
         Long repositoryId = fixtures.insertRepository(1L, "grow22", "gitory");
@@ -77,6 +81,7 @@ class AnalyzeApiTest {
         fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
         fixtures.insertUserRepository(MY_OTHER_REPO, myUserId, otherRepositoryId);
         fixtures.insertUserRepository(OTHERS_REPO, othersUserId, repositoryId);
+
     }
 
     @Test
@@ -114,6 +119,25 @@ class AnalyzeApiTest {
     }
 
     @Test
+    @DisplayName("기다리는 중인 한도 부분 결과 Job 이 있어도 같은 저장소의 새 분석 요청은 새 Job 으로 접수된다")
+    void waitingRateLimitedJobDoesNotBlockNewAnalysis() throws Exception {
+
+        Long userRepositoryId = jdbc.queryForObject(
+                "SELECT id FROM user_repository WHERE public_id = ?", Long.class, MY_REPO);
+        jdbc.update(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, state, partial, error_code,"
+                        + " retry_after_sec, finished_at) VALUES (?, ?, ?, 'SUCCEEDED', TRUE, 'GITHUB_RATE_LIMITED', 3000, now())",
+                myUserId, userRepositoryId, KEY_1);
+
+        analyze(MY_REPO, KEY_2)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.state").value("QUEUED"));
+
+        assertThat(jobCount()).isEqualTo(2);
+
+    }
+
+    @Test
     @DisplayName("Idempotency-Key 없이 요청해도 Job 이 만들어진다")
     void keyHeaderIsOptional() throws Exception {
 
@@ -145,6 +169,54 @@ class AnalyzeApiTest {
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
 
         assertThat(jobCount()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"NONE", "REVOKED", "EXPIRED", "UNDECRYPTABLE", "DELETION_REQUESTED"})
+    @DisplayName("쓸 수 있는 GitHub 연결이 없으면 403 GITHUB_UNAUTHORIZED 이고 Job 을 만들지 않는다")
+    void withoutUsableConnectionIsForbidden(String reason) throws Exception {
+
+        breakConnection(reason);
+
+        analyze(MY_REPO, KEY_1)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.error.code").value("GITHUB_UNAUTHORIZED"))
+                .andExpect(jsonPath("$.error.message").value("쓸 수 있는 GitHub 연결이 없습니다."));
+
+        assertThat(jobCount()).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM audit_event", Integer.class)).isZero();
+
+    }
+
+    @Test
+    @DisplayName("연결이 없어도 남의 저장소면 403 이 아니라 404 이고 거절 기록이 남는다")
+    void othersRepoIsNotFoundEvenWithoutConnection() throws Exception {
+
+        breakConnection("NONE");
+
+        analyze(OTHERS_REPO, KEY_1)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM audit_event WHERE action = 'ANALYZE' AND outcome = 'DENIED'", Integer.class))
+                .isOne();
+
+    }
+
+    @Test
+    @DisplayName("연결이 없으면 같은 키·같은 저장소의 진행 중 Job 이 있어도 기존 Job 을 돌려주지 않고 403 이다")
+    void withoutConnectionExistingJobIsNotReturned() throws Exception {
+
+        analyze(MY_REPO, KEY_1).andExpect(status().isOk());
+        breakConnection("REVOKED");
+
+        analyze(MY_REPO, KEY_1).andExpect(status().isForbidden());
+        analyze(MY_REPO, KEY_2).andExpect(status().isForbidden());
+
+        assertThat(jobCount()).isEqualTo(1);
+
     }
 
     @Test
@@ -202,6 +274,19 @@ class AnalyzeApiTest {
         LoginUser principal = new LoginUser(userId, "grow22", null);
         return authentication(
                 new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
+    }
+
+    private void breakConnection(String reason) {
+
+        switch (reason) {
+            case "NONE" -> jdbc.update("DELETE FROM github_connection");
+            case "REVOKED" -> jdbc.update("UPDATE github_connection SET token_enc = NULL, revoked_at = now()");
+            case "EXPIRED" -> jdbc.update("UPDATE github_connection SET token_expires_at = now() - interval '1 minute'");
+            case "UNDECRYPTABLE" -> jdbc.update("UPDATE github_connection SET token_enc = 'not-encrypted'");
+            case "DELETION_REQUESTED" -> jdbc.update("UPDATE users SET deleted_at = now() WHERE id = ?", myUserId);
+            default -> throw new IllegalArgumentException(reason);
+        }
+
     }
 
     private ResultActions analyze(UUID repoPublicId, String idempotencyKey) throws Exception {

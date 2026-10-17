@@ -1,6 +1,6 @@
 # BE–AI 연결 및 API 문서
 
-Spring의 수집 포트를 FastAPI `/internal/collect`에 연결하고, 실행 코드에서 BE·AI OpenAPI를 생성한다. 이 변경은 HTTP 연결과 문서화까지 구현한다. 현재 분석 Job은 접수 후 실행하는 워커가 없고 AI A 파이프라인도 미구현이므로, 분석 요청부터 카드 생성까지 완료된 상태는 아니다.
+Spring이 FastAPI 내부 API(수집·경험 그룹화·STAR 초안·되묻기)를 부르는 구조와, 실행 코드에서 BE·AI OpenAPI를 생성하는 방법을 정리한다. 현재 분석 Job은 `JobWorker`가 꺼내 수집 → 수집 결과 저장 → 경험 그룹화(`ANALYSIS_GROUPING_ENABLED=true`일 때) → 카드 후보 저장까지 실행한다. 카드 초안 Job은 같은 워커 자리를 쓰지만 아직 AI를 부르지 않고 끝나며, BE의 STAR 초안 어댑터(`AiStarDraftAdapter`)는 구현만 되어 있고 Job에 연결되지 않았다(#182).
 
 ## 연결 구조
 
@@ -16,7 +16,7 @@ flowchart LR
 
 `AiRepositoryActivityAdapter`가 DB의 내부 `user_repository.id`를 GitHub 저장소 정보로 바꾼다. `consent`는 활성 연결·토큰 만료·계정 삭제 요청을 확인하고 토큰을 복호화한다. 토큰을 반환하는 포트는 없으며, HTTP 전송 경계에서 `X-GitHub-Token` 헤더에만 사용한다. 외부 HTTP 오류 본문과 예외 cause는 호출자에게 전달하지 않는다. 리다이렉트도 따라가지 않는다.
 
-수집 응답은 성공 봉투, 연결 저장소 ID, GitHub 저장소 ID, SHA, 숫자 범위, 부분 수집·제외 판정을 검증한 뒤 기존 `CollectedActivity`로 변환한다. 현재 수집 포트는 내부 코드에서 호출하는 구성 요소이며, 새 공개 수집 API를 추가하지 않는다. 향후 워커는 요청자 소유권 확인과 저장 단계를 함께 연결해야 한다.
+수집 응답은 성공 봉투, 연결 저장소 ID, GitHub 저장소 ID, SHA, 숫자 범위, 부분 수집·제외 판정을 검증한 뒤 기존 `CollectedActivity`로 변환한다. 수집 포트는 분석 Job 워커(`JobRunner`)만 호출하며, 공개 수집 API는 없다.
 
 ## 설정
 
@@ -24,14 +24,17 @@ flowchart LR
 |---|---|
 | `AI_BASE_URL` | `http://localhost:8000`; Compose에서는 `http://ai:8000` |
 | `AI_CONNECT_TIMEOUT` | `3s`; 연결 제한 |
-| `AI_READ_TIMEOUT` | `180s`; GitHub 수집 응답 대기 제한 |
+| `AI_READ_TIMEOUT` | `180s`; 수집·묶기·되묻기를 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
+| `AI_COLLECT_READ_TIMEOUT` | `600s`; GitHub 수집 응답 대기 제한. 멈춘 분석 Job 판정은 이 값과 `AI_GROUPS_READ_TIMEOUT` 중 큰 값 + 5분 |
+| `AI_GROUPS_READ_TIMEOUT` | `600s`; 후보 묶기(`/internal/analysis/groups`) 응답 대기 제한(후보 묶기 연동부터 사용) |
+| `ANALYSIS_GROUPING_ENABLED` | `false`; 켜면 분석 Job 이 수집 뒤 후보 묶기를 부른다. 운영 AI 에 LLM 설정(`GITORY_LLM_BASE_URL`·`GITORY_LLM_API_KEY`)을 넣은 뒤 켠다. `deploy/compose.yaml` 은 서비스마다 `environment` 에 적힌 값만 넘기므로, ai 에 LLM 설정을, backend 에 `ANALYSIS_GROUPING_ENABLED: ${ANALYSIS_GROUPING_ENABLED:-false}` 를 더해야 `deploy/.env` 값이 들어간다 |
 | `API_DOCS_ENABLED` | BE 운영 기본 `false`, `local` 프로필 기본 `true` |
 | `AI_DOCS_ENABLED` | AI 기본 `true`; 운영에서 문서가 필요 없으면 `false` |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | BE 기본 프로필의 PostgreSQL 접속 정보 |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | BE GitHub OAuth App 설정 |
 | `TOKEN_ENC_KEY`, `TOKEN_ENC_SALT` | 기존 BE 토큰 암호화 설정; salt는 16진수 |
 
-헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
+헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. 되묻기는 프론트가 요청을 30초에 끊으므로 그보다 짧은 `gitory.ai.interview-read-timeout`(기본 20초)을 응답 대기 제한으로 사용한다(되묻기 연동부터 사용). `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
 
 ## 로컬 실행
 
@@ -99,22 +102,23 @@ curl --fail http://localhost:8080/actuator/health/liveness
 
 AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반환한다. BE readiness는 DB와 AI의 이 응답을 확인한다. AI 연결이 끊기거나 서비스 식별자가 다르면 readiness는 DOWN·HTTP 503이 된다. liveness는 BE 프로세스 상태를 검사하므로 AI 장애에 따라 BE를 재시작시키지 않는다. 헬스 상세 내용은 공개하지 않는다.
 
-이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 워커 구현 시 이를 Job 실패·재시도 정책에 연결해야 한다.
+이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 그 밖의 오류(경험 그룹화 실패 포함)를 `INTERNAL_ERROR`로 Job을 실패 처리한다. 그룹화 실패를 재시도 가능한 코드로 나누는 작업은 #217에서 진행한다.
 
 ## 구현 범위와 다음 개발 순서
 
-| 파트 | 이번 변경 / 남은 작업 |
+| 파트 | 현재 상태 / 남은 작업 |
 |---|---|
-| BE 수집 연결 | HTTP 어댑터 구현. 아직 Job 실행 경로가 이를 호출하지 않음 |
-| BE API | 내 정보, 분석 Job 접수, 진행 중 Job 목록, Job 상태 조회의 4개 API를 문서화. 카드·인터뷰 컨트롤러는 구현 후 추가 |
+| BE Job 워커 | `JobWorker`가 2초마다 대기 Job을 꺼내 실행(동시 실행 `JOB_WORKER_CONCURRENCY`, 기본 3, 카드 초안 Job과 같은 자리 사용). 분석 Job은 수집·저장·경험 그룹화·후보 저장까지 연결 |
+| BE AI 연결 | 수집·경험 그룹화·되묻기 어댑터는 실행 경로에 연결. STAR 초안 어댑터는 구현만 되어 있고 카드 초안 Job 연결은 #182 |
+| BE API | 내 정보·분석 Job·카드·인터뷰 API를 BE Swagger로 문서화 |
 | AI API | 수집 2개, 분석 A 계약 2개, 인터뷰 B 2개와 health를 문서화 |
-| AI A | 그룹화·STAR 생성 미구현. 유효 요청도 현재 500; 200 스키마는 구현할 계약 |
+| AI A | 경험 그룹화(#109)와 diff 근거·STAR 초안 구현. diff·STAR 연동은 [연동 문서](AI_DIFF_STAR_INTEGRATION.md) 참고 |
 | AI B | 템플릿 질문·규칙 기반 답변 평가. LLM 판정기 연결은 별도 작업 |
-| 인프라 | 내부 AI 주소·문서 토글·readiness 설정 추가. EC2·Dockerfile·운영 Compose·nginx 배포는 이번 변경 범위 밖 |
+| 인프라 | 내부 AI 주소·문서 토글·readiness 설정. EC2 배포(Dockerfile·`deploy/compose.yaml`·Caddy)는 [배포 문서](DEPLOYMENT.md) 참고 |
 
-현재 AI 수집 계약에는 `since`가 없어 증분 요청은 `INCREMENTAL_COLLECTION_UNSUPPORTED`로 거절한다. 기존 BE의 수집 상한 설정도 AI 요청에 전달하는 필드가 없어 아직 적용되지 않는다. 검증된 사용자 이메일이 없어 `known_emails=[]`로 보내며, DB의 기본 브랜치가 없으면 `main`을 추측하지 않고 실패한다. 기존 BE 저장 DTO는 commit·PR/Issue 번호·부분 수집 사유만 담으므로 AI의 files·reviews·`needs_confirmation`은 보존되지 않는다.
+증분 수집은 작성 시각 기반 `since`를 사용하지 않는다. Spring이 이미 저장한 `known_commit_shas`를 보내면, AI는 commit 목록을 다시 확인하되 저장된 commit의 상세 조회를 생략한다. AI 응답의 `head_sha`는 Spring이 저장소 상태로 보관한다. 기존 BE의 수집 상한 설정은 AI 요청에 전달하는 필드가 없어 아직 적용되지 않는다. 검증된 사용자 이메일이 없어 `known_emails=[]`로 보내며, DB의 기본 브랜치가 없으면 `main`을 추측하지 않고 실패한다. 기존 BE 저장 DTO는 commit(바뀐 파일·이슈 번호 포함)·PR/Issue 상세·PR 리뷰와 줄 댓글·부분 수집 사유만 담으므로 AI의 `needs_confirmation`은 보존되지 않는다.
 
-다음 통합은 ① Job 워커에서 소유권 검증 → 수집 → 결과 저장 → 상태 전이 연결, ② A 그룹화·STAR 구현과 필요한 근거 보존, ③ B·카드 컨트롤러 연결 순서다. 워커 연결 시 기존 공유 commit의 사용자별 제외 판정 저장 문제와 실제 수집 브랜치 기록도 함께 해결해야 한다. 부분 응답을 완료로 오인하지 않도록 `partialReason`과 오류 재시도 정책을 사용한다.
+남은 통합은 ① 카드 초안 Job에서 diff 근거·STAR 초안 호출(#182), ② 경험 그룹화 실패를 재시도 가능한 코드로 나누고 큰 저장소의 출력 상한 문제 해결(#217), ③ 수집 상한에 걸린 분석의 이유 알림(#147)이다. 부분 응답은 `partialReason`으로 완료와 구분한다.
 
 ## 검증
 

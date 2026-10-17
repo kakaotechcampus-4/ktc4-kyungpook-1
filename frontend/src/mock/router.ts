@@ -1,11 +1,13 @@
+import { CardMetadataPatch } from '@/api/schemas';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR } from './store';
+import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
 import { now } from './fixtures';
+import { CONFIG } from '@/lib/config';
 
 type Any = Record<string, any>;
 export type MockResult = { status: number; data: unknown; error: { code: string; message: string } | null };
@@ -36,11 +38,13 @@ on('GET', '/me', () => {
 on('POST', '/github/disconnect', () => { db.user.github.connected = false; db.user.github.connectedAt = null; return ok({ ok: true }); });
 
 // ───────────────────────────── 레포 ─────────────────────────────
-const stripDisclosure = ({ disclosure, ...r }: Any) => { void disclosure; return r; };
+const stripDisclosure = ({ disclosure, userId, ...r }: Any) => { void disclosure; void userId; return r; };
 on('GET', '/repos', () => ok(db.repos.map((r) => ({ ...stripDisclosure(r), cardCount: db.cards.filter((c) => c.repo?.id === r.id && c.status === 'CONFIRMED').length }))));
 on('GET', '/repos/:id', ({ params }) => {
   const r = db.repos.find((x) => x.id === params[0]);
-  return r ? ok(r) : fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
+  if (!r) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
+  const { userId, ...publicRepo } = r; void userId;
+  return ok(publicRepo);
 });
 on('POST', '/repos/:id/analyze', ({ params, headers }) => {
   const r = db.repos.find((x) => x.id === params[0]);
@@ -117,60 +121,61 @@ on('POST', '/jobs/:id/cancel', ({ params }) => {
 });
 
 // ───────────────────────────── 카드 ─────────────────────────────
-const findCard = (id: string) => db.cards.find((c) => c.id === id);
-on('GET', '/cards', () => ok([...db.cards].sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1)).map(cardSummary)));
-on('POST', '/cards', ({ body }) => {
-  const f = body.fields ?? {};
-  const repo = body.repoId ? db.repos.find((r) => r.id === body.repoId) : null;
+const findCard = (id: string) => db.cards.find((c) => c.id === id && (c.userId == null || c.userId === db.user.id));
+const invalid = () => fail(400, 'INVALID_REQUEST', '카드 입력을 확인해 주세요');
+const validText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max && !value.includes('\0');
+on('GET', '/cards', () => ok(db.cards.filter(c => c.userId == null || c.userId === db.user.id).map(cardSummary).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))));
+on('POST', '/cards/manual/draft', ({ body, headers }) => {
+  const repo = body.repoId == null ? null : db.repos.find((r) => r.id === body.repoId && r.userId === db.user.id);
+  if (body.repoId != null && !repo) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
+  const rawKey = headers['idempotency-key'];
+  const key = rawKey && !isCardBlank(rawKey) ? rawKey : null;
+  if (key && key.length > 255) return invalid();
+  const scopedKey = key ? JSON.stringify([db.user.id, key]) : null;
+  const existing = scopedKey ? findCard(db.manualIdem.get(scopedKey) ?? '') : null;
+  if (existing) return ok(cardView(existing));
+  const period = body.period == null || (typeof body.period === 'string' && isCardBlank(body.period)) ? null : body.period;
+  if (!validText(body.title, CONFIG.CARD_TITLE_MAX) || isCardBlank(body.title) || (period != null && !validText(period, CONFIG.CARD_PERIOD_MAX))) return invalid();
   const card: Any = {
-    id: nextId('card'), kind: 'QUALITATIVE', status: 'DRAFT', title: body.title || '제목 없음', period: body.period ?? '',
+    id: nextId('card'), userId: db.user.id, kind: 'QUALITATIVE', status: 'DRAFT', title: body.title, period,
     repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
-    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: f.S ?? null, task: f.T ?? null, action: f.A ?? null, result: f.R ?? null }],
-    evidence: STAR.filter((k) => f[k]).map((k) => ({ field: k, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: 0 })),
-    lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(),
+    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: null, task: null, action: null, result: null, _confirmed: false }],
+    evidence: [], lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(), updatedAt: now(),
   };
+  captureVersion(card);
   db.cards.push(card);
-  return ok(cardView(card));
-});
-on('POST', '/cards/manual/draft', ({ body }) => {
-  const repo = body.repoId ? db.repos.find((r) => r.id === body.repoId) : null;
-  const card: Any = {
-    id: nextId('card'), kind: 'QUALITATIVE', status: 'DRAFT', title: body.title || '제목 없음', period: body.period ?? '',
-    repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
-    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: null, task: null, action: null, result: null }],
-    evidence: [], lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(),
-  };
-  db.cards.push(card);
+  if (scopedKey) db.manualIdem.set(scopedKey, card.id);
   return ok(cardView(card));
 });
 on('PATCH', '/cards/:id/draft', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
-  return ok(patchDraft(c, body)); // 같은 버전을 덮어쓴다 — 확정할 때만 버전이 는다
+  const fields: Any = {};
+  for (const field of STAR) {
+    const key = FIELD_KEY[field], value = body[key];
+    if (!Object.hasOwn(body, key) || (value !== null && !validText(value, CONFIG.MANUAL_FIELD_MAX))) return invalid();
+    fields[key] = value === null || isCardBlank(value) ? null : value;
+  }
+  return ok(patchDraft(c, fields));
 });
 on('PATCH', '/cards/:id/metadata', ({ params, body }) => {
   const card = findCard(params[0]);
   if (!card) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (card.status !== 'DRAFT') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
   const titleProvided = Object.hasOwn(body, 'title'), periodProvided = Object.hasOwn(body, 'period');
-  if ((!titleProvided && !periodProvided) || (titleProvided && (typeof body.title !== 'string' || !body.title.trim())) || (periodProvided && typeof body.period !== 'string')) return fail(422, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
-  if (titleProvided) card.title = body.title;
-  if (periodProvided) card.period = body.period;
+  const parsed = CardMetadataPatch.safeParse(body);
+  if (!parsed.success) return fail(400, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
+  if (titleProvided) card.title = parsed.data.title!;
+  if (periodProvided) card.period = parsed.data.period!;
   card.metadataUpdatedAt = now();
+  card.updatedAt = card.metadataUpdatedAt;
   return ok({ cardId: card.id, title: card.title, period: card.period ?? null, updatedAt: card.metadataUpdatedAt });
 });
 on('GET', '/cards/:id', ({ params }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (c.generation) viewJob(c.generation.jobId); // 폴링 없이 열어도 시간이 지났으면 채워진다
-  return ok(cardView(c));
-});
-on('POST', '/cards/:id/versions', ({ params, body }) => {
-  const c = findCard(params[0]);
-  if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 수정하기 전에 다시 열어야 합니다');
-  pushVersion(c, 'USER_EDIT', body); // 윤문·병합 없음
   return ok(cardView(c));
 });
 on('POST', '/cards/:id/regenerate', ({ params, body }) => {
@@ -188,23 +193,29 @@ on('POST', '/cards/:id/regenerate', ({ params, body }) => {
     c.droppedFields = c.droppedFields.map((d: Any) => (d.field === body.field ? { field: d.field, reason: 'NO_EVIDENCE' } : d));
   }
   if (c.generation?.partial && c.droppedFields.every((d: Any) => d.reason !== 'TIMEOUT')) c.generation = null;
+  captureVersion(c);
   return ok({ jobId: c.generation?.jobId ?? 'job_inline' });
 });
 on('POST', '/cards/:id/mask', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  c.maskRules = body.rules ?? [];
+  if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
+  if (!Array.isArray(body.rules) || body.rules.length > CONFIG.MASK_RULE_MAX || body.rules.some((r: Any) => !r || !validText(r.from, CONFIG.MASK_TEXT_MAX) || isCardBlank(r.from) || !validText(r.to, CONFIG.MASK_TEXT_MAX))) return invalid();
+  const rules = body.rules.map((r: Any) => ({ from: r.from, to: r.to }));
+  if (JSON.stringify(c.maskRules) === JSON.stringify(rules)) return ok(cardView(c));
+  c.maskRules = rules;
   pushVersion(c, 'MASK', {}); // 원문은 그대로 — 표시·내보내기에만 적용
   return ok(cardView(c));
 });
 on('POST', '/cards/:id/confirm', ({ params }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
+  if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '이미 확정된 카드입니다');
   const v = c.versions[c.versions.length - 1];
   // 계약: "S·A 없으면 422" — 클라이언트 규칙(canConfirmCard)과 같게 둘 다 있어야 한다. 하나만 있어도 통과하던 건 어긋남이었다.
-  if (!v.situation?.trim() || !v.action?.trim()) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
-  c.status = 'CONFIRMED'; c.confirmedAt = now();
-  pushVersion(c, c.versions.length === 1 ? 'AI_DRAFT' : v.source, {}); // 확정 시점 버전 고정
+  if (v.situation == null || isCardBlank(v.situation) || v.action == null || isCardBlank(v.action)) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
+  c.status = 'CONFIRMED'; c.confirmedAt = now(); c.updatedAt = c.confirmedAt;
+  v._confirmed = true; // 현재 버전을 고정한다 — 같은 내용의 가짜 이력을 추가하지 않는다
   const used = c.candidate ? [c.candidate.id] : [];
   used.forEach((id) => { const cand = db.candidates.find((x) => x.id === id); if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; } });
   const remaining = c.repo ? db.candidates.filter((x) => x.repoId === c.repo.id && x.status === 'NEW').length : 0;
@@ -213,16 +224,17 @@ on('POST', '/cards/:id/confirm', ({ params }) => {
 on('POST', '/cards/:id/reopen', ({ params }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  c.status = 'DRAFT'; c.confirmedAt = null;
+  if (c.status === 'CONFIRMED') { c.status = 'DRAFT'; c.confirmedAt = null; c.updatedAt = now(); }
   return ok(cardView(c));
 });
 on('GET', '/cards/:id/versions', ({ params }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   const last = c.versions.length;
+  const aiOriginal = c.versions.find((v: Any) => v.source === 'AI_DRAFT');
   return ok([...c.versions].reverse().map((v: Any) => ({
     versionNo: v.versionNo, source: v.source, createdAt: v.createdAt, current: v.versionNo === last,
-    summary: [v.situation && 'S', v.task && 'T', v.action && 'A', v.result && 'R'].filter(Boolean).join(' · ') + ' 채움' + (v.source === 'AI_DRAFT' ? ' · 원본(잠김)' : ''),
+    summary: (STAR.filter(f => v[FIELD_KEY[f]] != null && !isCardBlank(v[FIELD_KEY[f]])).join(' · ') + ' 채움').replace(/^ 채움$/, '채운 칸 없음') + (v === aiOriginal ? ' · 원본(잠김)' : '') + (v._confirmed ? ' · 확정' : ''),
   })));
 });
 on('POST', '/cards/:id/versions/:no/restore', ({ params }) => {
@@ -230,14 +242,16 @@ on('POST', '/cards/:id/versions/:no/restore', ({ params }) => {
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   const target = c.versions.find((v: Any) => v.versionNo === Number(params[1]));
   if (!target) return fail(404, 'VERSION_NOT_FOUND', '버전을 찾을 수 없습니다');
-  const { versionNo, source, createdAt, ...fields } = target; void versionNo; void source; void createdAt;
+  if (target === c.versions[c.versions.length - 1]) return ok(cardView(c));
+  const fields = Object.fromEntries(STAR.map(f => [FIELD_KEY[f], target[FIELD_KEY[f]]]));
   pushVersion(c, 'RESTORE', fields); // 되돌려도 히스토리는 지워지지 않는다
+  restoreVersionMetadata(c, target); captureVersion(c);
   c.status = 'DRAFT'; c.confirmedAt = null;
   return ok(cardView(c));
 });
 
 // ───────────────────────────── 되묻기 ─────────────────────────────
-on('GET', '/cards/:id/interview', ({ params }) => ok(db.interview[params[0]] ?? []));
+on('GET', '/cards/:id/interview', ({ params }) => findCard(params[0]) ? ok([...(db.interview[params[0]] ?? [])].sort((a, b) => a.turnNo - b.turnNo)) : fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다'));
 on('POST', '/cards/:id/interview', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');

@@ -7,11 +7,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 import static lombok.AccessLevel.PROTECTED;
 
 /**
- * 수집한 커밋 한 개. GitHub 에 이미 일어난 사실이라 저장 뒤에는 바뀌지 않는다.
+ * 수집한 커밋 한 개를 담는다
+ * GitHub 에 이미 일어난 사실이라 저장 뒤에 바뀌지 않고, 비어 있는 이슈 번호만 한 번 채운다
  */
 @Entity
 @Getter
@@ -47,6 +49,10 @@ public class GitCommit {
 
     @Enumerated(EnumType.STRING)
     private ExclusionReason exclusionReason;
+
+    // null 이면 이 커밋의 이슈 번호와 바뀐 파일을 아직 채우지 않은 것이고, 빈 목록이면 채웠지만 이슈 번호가 없는 것이다
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<Integer> issueNumbers;
 
     private GitCommit(Long repositoryId, Long collectionRunId, String sha, String authorLogin, String authorName,
                       String message, Instant authoredAt, Integer additions, Integer deletions, Integer changedFiles,

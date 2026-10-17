@@ -1,10 +1,12 @@
 package com.gitory.backend.ingest.domain;
 
+import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.ingest.infra.ConnectedRepositoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -18,11 +20,16 @@ public class RepositoryDetailService {
 
     private final ConnectedRepositoryRepository connections;
     private final IngestLimits limits;
+    private final RepositoryWorkCounter workCounter;
+    private final RepositoryOwnershipService ownership;
 
     public RepositoryDetail detail(UUID publicId, Long userId) {
 
-        RepositorySummary summary = connections.findSummary(publicId, userId)
+        ownership.findOwnedRepository(publicId, userId, AuditAction.VIEW_REPO)
                 .orElseThrow(ConnectedRepositoryNotFoundException::new);
+        RepositorySummary found = connections.findSummary(publicId, userId)
+                .orElseThrow(ConnectedRepositoryNotFoundException::new);
+        RepositorySummary summary = workCounter.fill(List.of(found)).get(0);
 
         return new RepositoryDetail(summary, Disclosure.of(summary, limits));
 

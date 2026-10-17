@@ -7,6 +7,26 @@
  *  - Spring 의 Pydantic/DTO 와 갈라지면 여기 파싱이 깨진다. 그게 의도다 — 조용히 깨지지 않게.
  */
 import { z } from 'zod';
+import { CONFIG } from '@/lib/config';
+
+/** JS whitespace plus the control separators treated as whitespace by Java CardText. */
+export const isBlankCardText = (text: string) => /^[\s\u001c-\u001f]*$/u.test(text);
+const cardText = (max: number) => z.string().max(max).refine((text) => !text.includes('\u0000'), { message: 'U+0000 is not allowed' });
+const nonBlankCardText = (max: number) => cardText(max).refine((text) => !isBlankCardText(text), { message: 'Text is required' });
+const nullableCardText = (max: number) => cardText(max).nullable().transform((text) => text === null || isBlankCardText(text) ? null : text);
+
+export const ManualDraftInput = z.object({
+  title: nonBlankCardText(CONFIG.CARD_TITLE_MAX),
+  // Card.checkedPeriod normalizes blank input before applying the meaningful-text limit.
+  period: z.string().nullable().transform((text) => text === null || isBlankCardText(text) ? null : text)
+    .pipe(cardText(CONFIG.CARD_PERIOD_MAX).nullable()),
+  repoId: z.string().nullable(),
+});
+export type ManualDraftInput = z.infer<typeof ManualDraftInput>;
+export const ManualDraftKey = nonBlankCardText(255);
+export const MaskRules = z.array(z.object({
+  from: nonBlankCardText(CONFIG.MASK_TEXT_MAX), to: cardText(CONFIG.MASK_TEXT_MAX),
+})).max(CONFIG.MASK_RULE_MAX);
 
 // ───────────────────────────── enum ─────────────────────────────
 export const CandidateStatus = z.enum(['NEW', 'USED', 'EXCLUDED']);
@@ -277,8 +297,10 @@ export const CardSummary = z.object({
 });
 export type CardSummary = z.infer<typeof CardSummary>;
 
-/** Proposed server contract: disabled for real API mode until confirmed by BE. */
-export const CardMetadataPatch = z.object({ title: z.string().refine((value) => !!value.trim()).optional(), period: z.string().optional() })
+/** Shared by manual creation and metadata PATCH: blank periods clear to null. */
+export const CardPeriodInput = ManualDraftInput.shape.period;
+/** #186 confirmed contract: omitted fields stay unchanged; explicit null clears period. */
+export const CardMetadataPatch = z.object({ title: ManualDraftInput.shape.title.optional(), period: CardPeriodInput.optional() })
   .refine((value) => value.title !== undefined || value.period !== undefined);
 export type CardMetadataPatch = z.infer<typeof CardMetadataPatch>;
 export const CardMetadata = z.object({ cardId: z.string(), title: z.string(), period: z.string().nullable(), updatedAt: z.string().datetime({ offset: true }) });
@@ -343,7 +365,7 @@ export const Recall = z.object({ repoId: z.string(), note: z.string(), dirs: z.a
 export type Recall = z.infer<typeof Recall>;
 
 // ───────────────────── 임시 저장 (서버 보관) ─────────────────────
-/** DRAFT 는 같은 버전을 덮어쓴다. 새 버전은 확정·명시적 저장 시점에만 생긴다. */
+/** Only an unconfirmed USER_EDIT version is overwritten; unchanged writing is a no-op. */
 export const CardDraft = z.object({
   cardId: z.string(),
   versionNo: z.number(),
@@ -355,9 +377,9 @@ export const CardDraft = z.object({
 });
 export type CardDraft = z.infer<typeof CardDraft>;
 export const DraftFields = z.object({
-  situation: z.string().nullable(),
-  task: z.string().nullable(),
-  action: z.string().nullable(),
-  result: z.string().nullable(),
+  situation: nullableCardText(CONFIG.MANUAL_FIELD_MAX),
+  task: nullableCardText(CONFIG.MANUAL_FIELD_MAX),
+  action: nullableCardText(CONFIG.MANUAL_FIELD_MAX),
+  result: nullableCardText(CONFIG.MANUAL_FIELD_MAX),
 });
 export type DraftFields = z.infer<typeof DraftFields>;

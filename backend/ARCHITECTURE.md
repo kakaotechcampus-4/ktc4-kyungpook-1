@@ -106,7 +106,7 @@ ktc4-kyungpook-1/
 │     │  ├─ common/api/             ApiResponse · ErrorCode · CursorPage
 │     │  ├─ consent/                연결·동의 경계
 │     │  ├─ ingest/                 수집·정규화·기여 집계   (+ port/)
-│     │  ├─ recommend/              후보 추천 (규칙)
+│     │  ├─ recommend/              후보 저장·보존 (경험 그룹화는 agent)
 │     │  ├─ agent/                  LLM 경계                (+ port/)
 │     │  ├─ card/                   카드·되묻기·근거
 │     │  │  └─ domain/
@@ -138,7 +138,7 @@ ktc4-kyungpook-1/
 
 ## 모듈 경계 — 테스트로 강제되는 것
 
-`ModuleBoundaryTest` 의 8개 규칙이다. 위반 클래스를 넣어 **실제로 발동하는 것까지 확인했다**
+`ModuleBoundaryTest` 의 11개 규칙이다. 위반 클래스를 넣어 **실제로 발동하는 것까지 확인했다**
 (규칙이 클래스가 없어서 조용히 통과하는 상태를 만들지 않는다).
 
 | 규칙 | 왜 |
@@ -147,14 +147,17 @@ ktc4-kyungpook-1/
 | `infra` 는 모듈 내부 전용 | GitHub 클라이언트와 LLM 클라이언트가 새어 나가지 않는다. 바꿀 때 손댈 곳이 한 곳 |
 | `ingest`·`recommend` → `agent` 금지 | 규칙 계층에 모델이 끼면 비용·지연만 늘고 재현성이 떨어진다. 기여 집계도 여기 포함이다 |
 | **`card.domain.evidence` → `agent` 금지** | sha 검증 옆에 모델이 있으면 "모델한테 다시 물어보자"가 자연스러운 수정이 된다. 유령 sha·오귀속이 나온 경로다 |
+| `agent` → 다른 업무 모듈 금지 | 포트 요청·응답을 agent 의 record 로만 주고받는다. agent 가 업무 모듈 타입을 몰라야 나중에 별도 서비스로 떼어도 호출부가 그대로다 |
+| `AiHttpClient` 는 `common`·`consent`·`agent` 만 | 다른 모듈이 agent 포트를 건너뛰고 AI 를 부르지 못한다. consent 는 GitHub 토큰을 모듈 밖으로 내보내지 않으려고 토큰이 필요한 수집·diff 근거 호출을 직접 한다 |
 | **아무도 `job` 을 참조하지 않음** | 오케스트레이션 의존은 한 방향. 역방향이 생기면 job 이 순환의 중심이 된다 |
+| `audit` → 다른 모듈 금지 | 여러 모듈이 audit 을 부르므로, audit 이 다른 모듈을 보면 순환이 생기기 쉽다 |
 | `domain` → `api` 금지 | 도메인이 웹 모양에 끌려가지 않게 |
 | 컨트롤러는 `api` 에만 | 위 규칙이 우회되지 않게 |
 | `api` 가 `@Entity` 참조 금지 | 엔티티가 응답으로 새면 스키마 변경이 곧 계약 변경이 된다 |
 
 ```
 $ ./gradlew test --tests '*ModuleBoundaryTest' --rerun-tasks
-BUILD SUCCESSFUL       ModuleBoundaryTest: tests=8 failures=0 errors=0
+BUILD SUCCESSFUL       ModuleBoundaryTest: tests=11 failures=0 errors=0
 
 # 새 규칙 2개를 겨냥한 위반을 넣는다
 $ ./gradlew test --tests '*ModuleBoundaryTest' --rerun-tasks
@@ -175,9 +178,10 @@ BUILD SUCCESSFUL
 동의·저장소 선택        consent
         │
         ▼
-      job  ─────────── 오케스트레이션. 여기서만 아래를 호출한다
+      job  ─────────── 오케스트레이션. 여기서만 아래를 호출한다 (읽기 전용 조회는 허용 — 아래 참고)
         ├─ 수집·정규화·기여 집계   ingest      (GitHub 을 보는 유일한 곳)
-        └─ 후보 추천 · 순위        recommend   (결정적. LLM 없음)
+        ├─ 경험 그룹화             agent       (LLM. AI 의 경험 그룹화 API 를 부른다)
+        └─ 후보 저장·보존          recommend   (결정적. 사용자가 손댄 후보는 다시 분석해도 지킨다)
         │
    [사람 개입 1] 후보 확정 ── 여기부터 코드 깊이 읽기 비용이 발생한다
         │
@@ -194,8 +198,10 @@ BUILD SUCCESSFUL
 
 **사람 개입이 두 번 있고, 둘 다 되돌리기 비싼 상태 전이다.**
 
-의존 방향은 `job → ingest·recommend·card` 한 방향이다. 역방향은 경계 테스트가 막는다 —
+의존 방향은 `job → ingest·agent·recommend·card` 한 방향이다. 역방향은 경계 테스트가 막는다 —
 그게 뚫리면 분석 흐름을 바꿀 때마다 전 모듈이 흔들린다.
+읽기 전용 조회는 허용한다 — `card` 는 `ingest`·`recommend` 를 그 모듈 `domain` 의 조회 메서드로 읽기만 하고,
+다른 모듈의 표를 SQL 로 직접 읽지 않는다. Job 을 만드는 요청(후보로 카드 만들기·칸 다시 생성)은 `job.api` 에 둔다.
 
 ## 비동기 — 왜 Job 인가
 
@@ -214,7 +220,7 @@ GET  /api/jobs/{jobId}               →  { state, steps, partial }   (폴링)
   성공 분기를 두 벌 쓰게 된다
 - 상한 초과·요청 한도 소진은 실패가 아니라 `partial: true` 다. 버리지 않고 표시한다.
 - **멱등성은 두 겹이다.** `UNIQUE (user_id, idempotency_key)` 가 같은 키의 재시도를 막고,
-  부분 유니크 인덱스 `uq_job_active` 가 **키가 달라도 같은 레포에 도는 Job 이 있으면** 막는다.
+  부분 유니크 인덱스 `uq_job_active` 가 **키가 달라도 같은 레포에 도는 분석 Job 이 있으면** 막는다.
   다른 탭에서 누르면 키가 다르기 때문이다. 어느 경우든 409 가 아니라 기존 `jobId` 를 돌려준다
 - `updated_at` 이 있어야 **"느린 것"과 "죽은 것"이 구별된다.** 한 번에 2~5분 걸리는 작업이라
   `started_at`·`finished_at` 만으로는 멈춘 Job 을 폴링 화면이 영원히 돌린다
@@ -260,14 +266,14 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 ### 테이블은 모듈과 1:1 로 나뉜다
 
 모듈 개수를 스펙의 "구성요소 9개"가 아니라 **ERD 의 애그리거트**에 맞췄다.
-15개 테이블이 빈틈없이 나뉜다.
+도메인 테이블이 빈틈없이 나뉜다.
 
 | 모듈 | 소유 테이블 |
 |---|---|
 | `consent` | `users` · `github_connection` |
-| `ingest` | `repository` · `user_repository` · `collection_run` · `git_commit` |
-| `recommend` | `candidate` · `candidate_commit` |
-| `card` | `card` · `card_statement` · `statement_evidence` · `interview_turn` · `interview_option` |
+| `ingest` | `repository` · `user_repository` · `collection_run` · `git_commit` · `commit_file` · `pull_request` · `issue` · `pr_review` · `pr_review_comment` |
+| `recommend` | `candidate` · `candidate_commit` · `candidate_grouping` |
+| `card` | `card` · `card_version` · `card_statement` · `statement_evidence` · `interview_turn` · `interview_option` |
 | `job` | `analysis_job` |
 | `audit` | `audit_event` |
 | `agent` | — (경계 모듈. 테이블이 없는 게 존재 이유다) |
@@ -280,7 +286,7 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 
 | 결정 | 왜 |
 |---|---|
-| `card_statement` 를 **문장 단위**로 쪼갬 | 칸 하나에 텍스트 한 덩어리를 넣으면 "이 문장의 근거가 뭐냐"에 답할 수 없다. `statement_evidence` 로 문장마다 커밋이 붙는다 |
+| `card_statement` 를 **문장 단위**로 쪼갬 | 칸 하나에 텍스트 한 덩어리를 넣으면 "이 문장의 근거가 뭐냐"에 답할 수 없다. `statement_evidence` 로 문장마다 커밋이 붙는다. 화면·AI·되묻기 답이 모두 칸마다 글 하나를 다뤄 지금은 **칸마다 문장 하나**(`seq` 1)이고, 버전마다 그 행을 통째로 복사한다(아래 `card_version`) |
 | `interview_turn` + `interview_option` | 되묻기를 턴 모델로 풀었다. `parent_turn_id` 로 꼬리질문이, `question_type` 으로 질문 종류가, `outcome` 으로 종료 사유가 남는다 |
 | `outcome` 에 `later`·`skipped` | 사용자가 모른다고 하면 **추정으로 채우지 않고** 보완 필요로 남긴다. 스펙의 적응형 인터뷰 정책 3이 여기서 지켜진다 |
 | `git_commit.parent_count` + `is_excluded` | 머지 커밋 배제. 기여도 집계 함정 셋 중 하나가 스키마에 이미 있었다 |
@@ -309,9 +315,12 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 - **`collection_run.branches`** — 기본 브랜치만 읽으면 기여가 사라진다
   (실측: `main` 기준 0개 / 본인 브랜치 기준 26개).
 - **`candidate.low_card_worth`** — 프론트의 "카드감 낮음" 배지. 규칙 판정이다.
-- **`card.current_version`** — ERD 의 `version_no` 는 문장 단위인데 프론트 계약은
-  카드 단위 버전(`GET /cards/{id}/versions`)을 요구한다. 카드 버전 N =
-  각 `(star_slot, seq)` 에서 `version_no <= N` 인 최신 행의 집합.
+- **`card.current_version` · `card_version`** — ERD 의 `version_no` 는 문장 단위인데 프론트 계약은
+  카드 단위 버전(`GET /cards/{id}/versions`)을 요구한다. 카드 버전 N = `card_version` 의 N 번 행(출처·확정본·시각)
+  + `version_no = N` 인 문장 행들이다. 새 버전은 네 칸 문장과 근거 커밋 연결을 통째로 복사해 만들고,
+  빈 칸은 그 버전에 행이 없다. `current_version` 은 늘 가장 큰 번호다.
+  V1 의 "`version_no <= N` 인 최신 행" 규칙은 지운 칸을 나타내지 못해(본문 `NOT NULL`) 지운 글이 되살아나므로 `card_version` 을 더한 마이그레이션에서 바꿨다.
+  임시 저장이 덮어쓰는 것은 확정본이 아닌 직접 수정(`USER_EDIT`) 현재 버전뿐이고, 복원은 그 버전을 복사한 `RESTORE` 새 버전이다.
 - ~~**`evidence_type` 에 `inferred` 추가**~~ — V1 에서 더했다가 **V2 에서 되돌렸다.**
   이유는 아래 「신뢰 경계」에 적었다.
 
@@ -451,8 +460,8 @@ cf192e03e1  {tgu0925}   SecurityConfig.java  +1/-0     ← 이걸 근거로 "오
 | 무엇 | 어디서 강제 |
 |---|---|
 | OAuth 토큰이 `consent` 밖으로 안 나감 | `ingest` 는 토큰이 아니라 범위가 걸린 클라이언트를 받는다 |
-| 모델에 비밀값이 안 감 | `DraftRequest` 타입에 그 필드가 없다 |
-| 저장소 텍스트 = 비신뢰 입력 | `agent` 만 모델을 부르고, 커밋·PR 본문을 지시문으로 취급하지 않는다 |
+| 모델에 비밀값이 안 감 | `StarDraftRequest` 타입에 그 필드가 없다 |
+| 저장소 텍스트 = 비신뢰 입력 | `agent` 가 모델을 부르고(토큰이 필요한 diff 근거만 `consent`), 커밋·PR 본문을 지시문으로 취급하지 않는다 |
 | 감사 로그에 원문 없음 | `audit_event` 에 본문 컬럼이 없다 |
 | 선택 안 한 저장소 미분석 | `analysis_scope` 를 거치지 않으면 `ingest` 를 부를 수 없다 |
 | actuator 노출 최소 | `include: health`, `show-details: never` |
@@ -480,8 +489,6 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 - **`fit_*` 등급을 무엇이 매기나.** ERD 주석은 "코드를 통해 매긴 등급"이라고만 한다.
   규칙인지 모델인지에 따라 `recommend` 냐 `agent` 냐가 갈리고, 모듈 경계 테스트가
   그 결정을 강제한다. **`lowCardWorth` 와 같은 종류의 질문이고, 같은 이유로 규칙이 낫다.**
-- **카드 버전 복원의 정확한 의미.** `card.current_version` 으로 유도 규칙은 적었지만,
-  "복원"이 새 버전을 만드는지 포인터만 옮기는지는 미정이다.
 - **지표 테이블이 없다.** 스펙 목록의 `event_log` 자리를 `audit_event` 가 대신하고 있는데
   **둘은 목적이 다르다.** `audit_event.action` 은 `CONNECT`·`REVOKE`·`ANALYZE`·
   `CONFIRM_CARD`·`DELETE_DATA` — 보안 감사다. 후보 편집 같은 **사용자 개입이 행으로 남지
@@ -489,8 +496,6 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
   (핵심 설계 결정 3 — *"사용자 개입을 행으로 남긴다"*)
 - **`analysis_cache` 를 Redis 에 둘지 DB 에 둘지.** 필요한 테이블이라는 데는 합의했고
   초반엔 어느 쪽이든 성능 문제가 없다. `raw_event` 는 목적부터 정해야 한다.
-- **취소·임시 저장 엔드포인트가 아직 없다.** 스키마는 `CANCELED` 와 카드 버전을 이미
-  받을 수 있지만 `POST /api/jobs/{id}/cancel` · `PATCH /api/cards/{id}/draft` 는 구현 전이다.
 - **종료 상태의 무결성을 DB 가 안 잡는다.** `state` 가 `SUCCEEDED`/`FAILED`/`CANCELED` 인데
   `finished_at` 이 비어 있거나, `FAILED` 인데 `error_code` 가 없는 행을 지금은 넣을 수 있다.
   `card_confirmed_needs_time` 과 같은 종류의 제약인데 논의된 적이 없어 V2 에 넣지 않았다.

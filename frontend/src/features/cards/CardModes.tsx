@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '@/api/keys';
-import type { Card, DraftFields, StarField } from '@/api/schemas';
+import { isBlankCardText, type Card, type DraftFields, type StarField } from '@/api/schemas';
 import { Badge, Button, Chip, EvidenceStrip, Input, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, fieldKey, starFieldName } from '@/lib/labels';
 import { useMask, useSaveDraft } from '@/api/queries';
@@ -15,6 +15,7 @@ import { SaveStatus, UnsavedChangesDialog } from '@/components/SaveStatus';
 import { cacheSavedDraft } from '@/lib/cacheSavedDraft';
 import { StarRow } from '@/components/ui/StarRow';
 import { StarEditorField } from '@/components/ui/StarEditorField';
+import { CONFIG } from '@/lib/config';
 
 type Draft = Record<StarField, string>;
 const fromCard = (c: Card): Draft => ({ S: c.version.situation ?? '', T: c.version.task ?? '', A: c.version.action ?? '', R: c.version.result ?? '' });
@@ -84,7 +85,7 @@ export function EditMode({ card, onDone, initialField }: { card: Card; onDone: (
           return (
             <StarEditorField key={f} field={f} label={starFieldName[f]} dropped={!draft[f]}
               metadata={dirty && <><Badge kind="CAUTION">고친 칸</Badge><button type="button" className="star-row__undo t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button></>}
-              ref={(element) => { fields.current[f] = element; }} disabled={canceling} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
+              ref={(element) => { fields.current[f] = element; }} maxLength={CONFIG.MANUAL_FIELD_MAX} disabled={canceling} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
               placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]}>
               {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
               {dirty && ev.some((e) => e.type === 'COMMIT') && (
@@ -114,13 +115,17 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const initialRulesRef = useRef(card.maskRules.length ? card.maskRules : [{ from: '', to: '' }]);
   const [rules, setRules] = useState<{ from: string; to: string }[]>(initialRulesRef.current);
   const initialRules = initialRulesRef.current;
-  const valid = rules.filter((r) => r.from.trim());
+  const valid = rules.filter((r) => !isBlankCardText(r.from));
+  const locked = card.status === 'CONFIRMED';
+  const limitReached = rules.length >= CONFIG.MASK_RULE_MAX;
+  const invalidRules = valid.length > CONFIG.MASK_RULE_MAX || valid.some(rule => rule.from.length > CONFIG.MASK_TEXT_MAX || rule.to.length > CONFIG.MASK_TEXT_MAX || rule.from.includes('\0') || rule.to.includes('\0'));
   const set = (i: number, k: 'from' | 'to', v: string) => setRules((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
   const hits = STAR_FIELDS.filter((f) => { const t = card.version[fieldKey[f]]; return t && applyMask(t, valid) !== t; });
   // EditMode·InterviewPage 와 같은 이유 — 규칙을 쓰다가 그냥 나가면 아무 경고 없이 사라진다.
   const dirty = JSON.stringify(rules) !== JSON.stringify(initialRules);
   const guard = useUnsavedChanges(dirty || mask.isPending); // 저장 요청이 진행되는 동안에도 이탈·새로고침을 막는다
   const saveMask = async () => {
+    if (locked || invalidRules) return false;
     try {
       await mask.mutateAsync(valid);
       initialRulesRef.current = rules; // 서버가 받은 걸 확인한 뒤에야 '저장된 상태'가 된다
@@ -138,18 +143,19 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
     <>
       <div className="card stack" style={{ gap: 10, padding: '16px 20px' }}>
         <span className="t-12 w-600 c-3">치환 규칙</span>
+        {locked && <p role="alert">확정된 카드는 다시 열어 수정해 주세요.</p>}
         {rules.map((r, i) => (
           <div key={i} className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-            <Input style={{ flex: 1, minWidth: 140 }} value={r.from} onChange={(e) => set(i, 'from', e.target.value)} placeholder="원문 (예: 민수 선배)" aria-label="원문" />
+            <Input style={{ flex: 1, minWidth: 140 }} maxLength={CONFIG.MASK_TEXT_MAX} disabled={locked || mask.isPending} value={r.from} onChange={(e) => set(i, 'from', e.target.value)} placeholder="원문 (예: 민수 선배)" aria-label="원문" />
             <span className="c-3">→</span>
-            <Input style={{ flex: 1, minWidth: 140 }} value={r.to} onChange={(e) => set(i, 'to', e.target.value)} placeholder="치환 (예: 팀원A)" aria-label="치환" />
-            <Button variant="text" size="sm" onClick={() => setRules((rs) => rs.filter((_, j) => j !== i))} aria-label="규칙 삭제">✕</Button>
+            <Input style={{ flex: 1, minWidth: 140 }} maxLength={CONFIG.MASK_TEXT_MAX} disabled={locked || mask.isPending} value={r.to} onChange={(e) => set(i, 'to', e.target.value)} placeholder="치환 (예: 팀원A)" aria-label="치환" />
+            <Button variant="text" size="sm" disabled={locked || mask.isPending} onClick={() => setRules((rs) => rs.filter((_, j) => j !== i))} aria-label="규칙 삭제">✕</Button>
           </div>
         ))}
         <div className="row" style={{ gap: 8 }}>
-          <Chip onClick={() => setRules((rs) => [...rs, { from: '', to: '' }])}>+ 규칙 추가</Chip>
-          <Chip onClick={() => setRules((rs) => [...rs, { from: '', to: '팀원A' }])}>+ 팀원 익명화</Chip>
-          <Chip onClick={() => setRules((rs) => [...rs, { from: '', to: 'B사' }])}>+ 회사명 가리기</Chip>
+          <Chip disabled={locked || limitReached || mask.isPending} onClick={() => setRules((rs) => [...rs, { from: '', to: '' }])}>+ 규칙 추가</Chip>
+          <Chip disabled={locked || limitReached || mask.isPending} onClick={() => setRules((rs) => [...rs, { from: '', to: '팀원A' }])}>+ 팀원 익명화</Chip>
+          <Chip disabled={locked || limitReached || mask.isPending} onClick={() => setRules((rs) => [...rs, { from: '', to: 'B사' }])}>+ 회사명 가리기</Chip>
         </div>
       </div>
       <div className="card star-read">
@@ -170,7 +176,7 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
       </div>
       <StickyFooter strong={hits.length ? `${hits.length}칸에 적용` : '적용되는 칸 없음'} sub="원문은 그대로 · 표시할 때만 가림">
         <Button variant="outline" onClick={onDone}>카드로 돌아가기</Button>
-        <Button loading={mask.isPending} onClick={() => void apply()}>마스킹 적용</Button>
+        <Button disabled={locked || invalidRules} loading={mask.isPending} onClick={() => void apply()}>마스킹 적용</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={mask.isPending} flush={saveMask} />
     </>

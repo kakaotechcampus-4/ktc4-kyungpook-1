@@ -1,7 +1,10 @@
 package com.gitory.backend.support;
 
+import com.gitory.backend.consent.infra.TokenCipher;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -10,6 +13,7 @@ import java.util.UUID;
 public final class TestFixtures {
 
     private final JdbcTemplate jdbc;
+    private final TokenCipher cipher = new TokenCipher("test-encryption-key", "5c0744940b5c369b");
 
     public TestFixtures(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -23,6 +27,16 @@ public final class TestFixtures {
         return jdbc.queryForObject(
                 "INSERT INTO users (github_user_id, github_login) VALUES (?, ?) RETURNING id",
                 Long.class, githubUserId, login);
+    }
+
+    /** 테스트 키로 토큰을 암호화해 쓸 수 있는 GitHub 연결을 넣는다 */
+    public Long insertGithubConnection(Long userId, String token) {
+
+        // granted_at 을 DB 기본값(now())에 맡기면 Docker 시계가 자바 시계보다 조금 빠를 때 revoked_at 이 더 이르게 되어 CHECK 에 걸린다
+        return jdbc.queryForObject(
+                "INSERT INTO github_connection (user_id, scopes, token_enc, granted_at) VALUES (?, ARRAY['read:user'], ?, ?) RETURNING id",
+                Long.class, userId, cipher.encrypt(token), Timestamp.from(Instant.now().minusSeconds(60)));
+
     }
 
     public Long insertRepository(Long githubRepoId, String ownerLogin, String name) {
@@ -41,5 +55,79 @@ public final class TestFixtures {
         return jdbc.queryForObject(
                 "INSERT INTO user_repository (public_id, user_id, repository_id) VALUES (?, ?, ?) RETURNING id",
                 Long.class, publicId, userId, repositoryId);
+    }
+
+    public Long insertCommit(Long repositoryId, String sha) {
+
+        return jdbc.queryForObject(
+                "INSERT INTO git_commit (repository_id, sha) VALUES (?, ?) RETURNING id",
+                Long.class, repositoryId, sha);
+
+    }
+
+    /** 직접 작성한 작성 중 카드와 빈 1번 직접 수정 버전을 만든다 */
+    public Long insertCard(UUID publicId, Long userId) {
+
+        Long cardId = jdbc.queryForObject(
+                "INSERT INTO card (public_id, user_id, card_type, origin, title) VALUES (?, ?, 'QUALITATIVE', 'MANUAL', '카드') RETURNING id",
+                Long.class, publicId, userId);
+        insertCardVersion(cardId, 1, "USER_EDIT", false);
+
+        return cardId;
+
+    }
+
+    /** 버전을 더하고 카드의 현재 버전으로 삼는다 */
+    public void insertCardVersion(Long cardId, int versionNo, String source, boolean confirmed) {
+
+        jdbc.update("INSERT INTO card_version (card_id, version_no, source, is_confirmed) VALUES (?, ?, ?, ?)",
+                cardId, versionNo, source, confirmed);
+        jdbc.update("UPDATE card SET current_version = ? WHERE id = ?", versionNo, cardId);
+
+    }
+
+    /** 확정 상태와 시각만 바꾸므로, 현재 버전을 확정본으로 둘 때는 insertCardVersion 으로 그 버전을 만든다 */
+    public void confirmCard(Long cardId) {
+
+        jdbc.update("UPDATE card SET status = 'CONFIRMED', confirmed_at = now() WHERE id = ?", cardId);
+
+    }
+
+    public Long insertStatement(Long cardId, int versionNo, String slot, String body, String evidenceType,
+                                String confidence) {
+
+        return insertStatement(cardId, versionNo, slot, body, evidenceType, confidence, null);
+
+    }
+
+    public Long insertStatement(Long cardId, int versionNo, String slot, String body, String evidenceType,
+                                String confidence, Long sourceTurnId) {
+
+        return jdbc.queryForObject(
+                "INSERT INTO card_statement (card_id, version_no, star_slot, seq, body, evidence_type, confidence, source_turn_id) VALUES (?, ?, ?, 1, ?, ?, ?, ?) RETURNING id",
+                Long.class, cardId, versionNo, slot, body, evidenceType, confidence, sourceTurnId);
+
+    }
+
+    public Long insertInterviewTurn(Long cardId, int seq, String slot) {
+
+        return jdbc.queryForObject(
+                "INSERT INTO interview_turn (card_id, seq, star_slot, question_type, trigger_source, question_text) VALUES (?, ?, ?, 'EVIDENCE_GAP', 'USER', '질문') RETURNING id",
+                Long.class, cardId, seq, slot);
+
+    }
+
+    public void insertStatementEvidence(Long statementId, Long commitId) {
+
+        jdbc.update("INSERT INTO statement_evidence (statement_id, commit_id) VALUES (?, ?)", statementId, commitId);
+
+    }
+
+    /** 비운 이유 코드와 확인 필요 이유 중 하나만 준다 */
+    public void insertSlotNote(Long cardId, int versionNo, String slot, String dropReason, String reviewReason) {
+
+        jdbc.update("INSERT INTO card_slot_note (card_id, version_no, star_slot, drop_reason, review_reason) VALUES (?, ?, ?, ?, ?)",
+                cardId, versionNo, slot, dropReason, reviewReason);
+
     }
 }

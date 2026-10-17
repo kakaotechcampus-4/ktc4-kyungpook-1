@@ -15,10 +15,15 @@ from openai import (
     APIConnectionError,
     APIError,
     APITimeoutError,
+    AuthenticationError,
+    BadRequestError,
     ContentFilterFinishReasonError,
     LengthFinishReasonError,
+    NotFoundError,
     OpenAI,
+    PermissionDeniedError,
     RateLimitError,
+    UnprocessableEntityError,
 )
 from pydantic import BaseModel, ValidationError
 
@@ -28,6 +33,26 @@ OutputT = TypeVar("OutputT", bound=BaseModel)
 
 class LLMStructuredCallError(RuntimeError):
     """모델 응답을 구조화된 결과로 사용할 수 없을 때 발생하는 공통 오류."""
+
+
+class LLMInvalidOutputError(LLMStructuredCallError):
+    """응답이 스키마에 맞지 않았다. 같은 요청을 다시 보내면 나아질 수 있는 경우다.
+
+    호출 한도·연결 오류는 SDK가 이미 재시도했고, 콘텐츠 필터는 다시 보내도 같은
+    결과이므로 기본 오류로 남긴다.
+    """
+
+
+class LLMStructuredOutputTooLongError(LLMStructuredCallError):
+    """응답 토큰 상한 때문에 구조화 출력이 끝까지 생성되지 못한 경우."""
+
+
+class LLMNonRetryableError(LLMStructuredCallError):
+    """다시 보내도 같은 결과인 실패. 키·권한·모델 이름·요청 형식 오류와 콘텐츠 필터."""
+
+
+class LLMContentFilterError(LLMNonRetryableError):
+    """모델 출력이 콘텐츠 제한으로 중단됐다. 같은 입력이면 다시 걸린다."""
 
 
 @dataclass(frozen=True)
@@ -69,12 +94,22 @@ class StructuredLLMClient:
         payload: dict[str, Any],
         output_model: type[OutputT],
         max_completion_tokens: int,
+        timeout_seconds: Optional[float] = None,
     ) -> StructuredCallResult[OutputT]:
-        """입력은 지시가 아닌 데이터로 격리하기 위해 JSON 문자열로만 전달한다."""
+        """입력은 지시가 아닌 데이터로 격리하기 위해 JSON 문자열로만 전달한다.
+
+        ``timeout_seconds``를 주면 요청 전체 마감에 맞춰 이 호출만 그 시간 안에 끝내고,
+        SDK 재시도도 하지 않는다. 재시도까지 하면 마감을 넘기기 때문이다.
+        """
         started_at = time.perf_counter()
+        client = (
+            self._client
+            if timeout_seconds is None
+            else self._client.with_options(timeout=timeout_seconds, max_retries=0)
+        )
         try:
             # GPT-5.6 계열은 temperature=0을 거절하므로 모든 모델에서 기본값을 쓴다.
-            completion = self._client.chat.completions.parse(
+            completion = client.chat.completions.parse(
                 model=self._settings.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -86,14 +121,28 @@ class StructuredLLMClient:
             )
         except RateLimitError as exc:
             raise LLMStructuredCallError("LLM 호출 한도를 초과했습니다.") from exc
+        except (
+            AuthenticationError,
+            PermissionDeniedError,
+            NotFoundError,
+            BadRequestError,
+            UnprocessableEntityError,
+        ) as exc:
+            raise LLMNonRetryableError("LLM 키·권한·모델 이름 또는 요청 형식이 잘못됐습니다.") from exc
         except (APIConnectionError, APITimeoutError, APIError) as exc:
             raise LLMStructuredCallError("LLM 요청을 처리하지 못했습니다.") from exc
-        except (ValidationError, LengthFinishReasonError, ContentFilterFinishReasonError) as exc:
-            raise LLMStructuredCallError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.") from exc
+        except ValidationError as exc:
+            raise LLMInvalidOutputError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.") from exc
+        except LengthFinishReasonError as exc:
+            raise LLMStructuredOutputTooLongError(
+                "LLM 구조화 출력이 응답 토큰 상한을 초과했습니다."
+            ) from exc
+        except ContentFilterFinishReasonError as exc:
+            raise LLMContentFilterError("LLM 출력이 콘텐츠 제한으로 중단됐습니다.") from exc
 
         output = getattr(completion.choices[0].message, "parsed", None)
         if not isinstance(output, output_model):
-            raise LLMStructuredCallError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.")
+            raise LLMInvalidOutputError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.")
 
         usage = getattr(completion, "usage", None)
         return StructuredCallResult(
@@ -102,4 +151,3 @@ class StructuredLLMClient:
             completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started_at) * 1000),
         )
-

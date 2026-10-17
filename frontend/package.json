@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "e2e:static": "playwright test -c playwright.static.config.ts"
+    "e2e:static": "playwright test -c playwright.static.config.ts",
+    "e2e:real": "playwright test -c playwright.real-api.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-select": "2.3.8",

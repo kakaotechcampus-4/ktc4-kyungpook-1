@@ -1,6 +1,8 @@
 package com.gitory.backend.ingest.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.support.CandidateFixtures;
+import com.gitory.backend.support.SqlRecorder;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +25,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.nullValue;
@@ -35,7 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
         "spring.security.oauth2.client.registration.github.client-secret=test-client-secret",
         "gitory.consent.token-key=test-encryption-key",
-        "gitory.consent.token-salt=5c0744940b5c369b"
+        "gitory.consent.token-salt=5c0744940b5c369b",
+        "spring.jpa.properties.hibernate.session_factory.statement_inspector=com.gitory.backend.support.SqlRecorder"
 })
 @AutoConfigureMockMvc
 @Testcontainers
@@ -55,6 +59,7 @@ class CommitSearchApiTest {
     JdbcTemplate jdbc;
 
     private TestFixtures fixtures;
+    private CandidateFixtures candidates;
     private Long myUserId;
     private Long repositoryId;
 
@@ -62,6 +67,7 @@ class CommitSearchApiTest {
     void setUp() {
 
         fixtures = new TestFixtures(jdbc);
+        candidates = new CandidateFixtures(jdbc);
         fixtures.clear();
         myUserId = fixtures.insertUser(1L, "grow22");
         repositoryId = fixtures.insertRepository(100L, "grow22", "gitory");
@@ -80,18 +86,48 @@ class CommitSearchApiTest {
     }
 
     @Test
-    @DisplayName("남의 저장소·없는 저장소·UUID 가 아닌 id 는 모두 404 NOT_FOUND 다")
+    @DisplayName("남의 저장소·없는 저장소·UUID 가 아닌 id 는 모두 404 NOT_FOUND 이고, 남의 저장소만 거절 기록 한 줄을 남긴다")
     void unknownRepositoryIsNotFound() throws Exception {
 
         Long otherUserId = fixtures.insertUser(2L, "taehun0208");
         UUID othersRepo = UUID.randomUUID();
-        fixtures.insertUserRepository(othersRepo, otherUserId, repositoryId);
+        Long othersConnection = fixtures.insertUserRepository(othersRepo, otherUserId, repositoryId);
 
         for (String id : List.of(othersRepo.toString(), UUID.randomUUID().toString(), "not-a-uuid")) {
             mvc.perform(get("/api/repos/{id}/commits", id).param("q", "로그인").with(loggedIn()))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
         }
+
+        assertThat(auditRows()).containsExactly(myUserId + " SEARCH_COMMITS " + othersConnection + " DENIED");
+
+    }
+
+    @Test
+    @DisplayName("검색어가 비어 있어도 남의 저장소면 404 이고 거절 기록을 남긴다")
+    void othersRepositoryWithBlankQueryIsDenied() throws Exception {
+
+        Long otherUserId = fixtures.insertUser(2L, "taehun0208");
+        UUID othersRepo = UUID.randomUUID();
+        Long othersConnection = fixtures.insertUserRepository(othersRepo, otherUserId, repositoryId);
+
+        mvc.perform(get("/api/repos/{id}/commits", othersRepo).param("q", " ").with(loggedIn()))
+                .andExpect(status().isNotFound());
+
+        assertThat(auditRows()).containsExactly(myUserId + " SEARCH_COMMITS " + othersConnection + " DENIED");
+
+    }
+
+    @Test
+    @DisplayName("내 저장소를 검색하면 검색어가 비어 있어도 감사 기록은 남지 않는다")
+    void searchingMyRepositoryLeavesNoAuditRow() throws Exception {
+
+        commit("a1", "grow22", "feat: 로그인 추가", MONDAY, null);
+
+        search("로그인").andExpect(status().isOk());
+        search(" ").andExpect(jsonPath("$.data.length()").value(0));
+
+        assertThat(auditRows()).isEmpty();
 
     }
 
@@ -122,12 +158,12 @@ class CommitSearchApiTest {
     }
 
     @Test
-    @DisplayName("내 커밋만 찾는다 — 남의 커밋·봇·머지·lock 파일만 바꾼 커밋은 빼고, 남이 먼저 분석해 NOT_OWN 이 붙은 내 커밋은 찾는다")
+    @DisplayName("내 커밋만 찾는다 — 남의 커밋·봇·머지·lock 파일만 바꾼 커밋은 빼고, 작성자 로그인은 대소문자를 가리지 않는다")
     void findsOnlyMyCommits() throws Exception {
 
         commit("01", "grow22", "feat: 캐시 도입", MONDAY, null);
-        commit("02", "Grow22", "feat: 캐시 만료 추가", MONDAY, "NOT_OWN");
-        commit("03", "taehun0208", "feat: 캐시 설정", MONDAY, "NOT_OWN");
+        commit("02", "Grow22", "feat: 캐시 만료 추가", MONDAY, null);
+        commit("03", "taehun0208", "feat: 캐시 설정", MONDAY, null);
         commit("04", "grow22", "Merge: 캐시 브랜치", MONDAY, "MERGE_COMMIT");
         commit("05", "grow22", "chore: 캐시 lock 갱신", MONDAY, "LOCKFILE_ONLY");
         commit("06", "dependabot[bot]", "build: 캐시 라이브러리 올림", MONDAY, "BOT");
@@ -157,7 +193,7 @@ class CommitSearchApiTest {
     }
 
     @Test
-    @DisplayName("응답의 url 은 GitHub 커밋 주소이고, 파일 경로와 후보 id 는 아직 없어 null 이다")
+    @DisplayName("응답의 url 은 GitHub 커밋 주소이고, 파일 경로는 아직 없어 null 이며 어느 후보에도 없는 커밋의 후보 id 도 null 이다")
     void fillsCommitFields() throws Exception {
 
         commit("a1", "grow22", "feat: 로그인 추가", MONDAY, null);
@@ -172,12 +208,16 @@ class CommitSearchApiTest {
     }
 
     @Test
-    @DisplayName("분석 전이라 수집한 커밋이 없으면 빈 배열이다")
+    @DisplayName("분석 전이라 수집한 커밋이 없으면 빈 배열이고 후보 조회는 보내지 않는다")
     void returnsEmptyBeforeAnalysis() throws Exception {
+
+        SqlRecorder.clear();
 
         search("로그인")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
+
+        assertThat(SqlRecorder.count("select", "from candidate_commit")).isZero();
 
     }
 
@@ -194,12 +234,118 @@ class CommitSearchApiTest {
 
     }
 
-    private void commit(String shaPrefix, String authorLogin, String message, Instant authoredAt, String exclusionReason) {
+    @Test
+    @DisplayName("후보에 들어 있는 커밋은 그 후보의 공개 id 를 candidateId 로 받는다")
+    void includedCommitGetsCandidateId() throws Exception {
 
-        jdbc.update("""
+        Long commitId = commit("a1", "grow22", "feat: 로그인 추가", MONDAY, null);
+        Long candidateId = candidates.insertCandidate(connectionId(), "COMMIT_CLUSTER", null, "NEW");
+        candidates.insertCandidateCommit(candidateId, commitId);
+
+        search("로그인").andExpect(jsonPath("$.data[0].candidateId").value(publicIdOf(candidateId).toString()));
+
+    }
+
+    @Test
+    @DisplayName("사용자가 후보에서 뺀 커밋은 candidateId 가 null 이다")
+    void removedCommitHasNoCandidateId() throws Exception {
+
+        Long commitId = commit("a1", "grow22", "feat: 로그인 추가", MONDAY, null);
+        Long candidateId = candidates.insertCandidate(connectionId(), "COMMIT_CLUSTER", null, "NEW");
+        candidates.insertCandidateCommit(candidateId, commitId);
+        jdbc.update("UPDATE candidate_commit SET is_included = FALSE");
+
+        search("로그인").andExpect(jsonPath("$.data[0].candidateId").value(nullValue()));
+
+    }
+
+    @Test
+    @DisplayName("팀원의 후보에 들어 있는 같은 커밋은 내 candidateId 가 아니다")
+    void teammatesCandidateIsNotMine() throws Exception {
+
+        Long commitId = commit("a1", "grow22", "feat: 로그인 추가", MONDAY, null);
+        Long teammateId = fixtures.insertUser(2L, "taehun0208");
+        Long teammateConnection = fixtures.insertUserRepository(UUID.randomUUID(), teammateId, repositoryId);
+        Long candidateId = candidates.insertCandidate(teammateConnection, "COMMIT_CLUSTER", null, "NEW");
+        candidates.insertCandidateCommit(candidateId, commitId);
+
+        search("로그인").andExpect(jsonPath("$.data[0].candidateId").value(nullValue()));
+
+    }
+
+    @Test
+    @DisplayName("제외한 후보와 카드로 쓴 후보에 들어 있어도 candidateId 를 받는다")
+    void candidateOfAnyStatusCounts() throws Exception {
+
+        Long excludedCommit = commit("a1", "grow22", "feat: 로그인 추가", MONDAY, null);
+        Long usedCommit = commit("b2", "grow22", "feat: 로그아웃 추가", MONDAY.minusSeconds(60), null);
+        Long excluded = candidates.insertCandidate(connectionId(), "COMMIT_CLUSTER", null, "EXCLUDED");
+        Long used = candidates.insertCandidate(connectionId(), "PR", 7, "USED");
+        candidates.insertCandidateCommit(excluded, excludedCommit);
+        candidates.insertCandidateCommit(used, usedCommit);
+
+        search("로그")
+                .andExpect(jsonPath("$.data[0].candidateId").value(publicIdOf(excluded).toString()))
+                .andExpect(jsonPath("$.data[1].candidateId").value(publicIdOf(used).toString()));
+
+    }
+
+    @Test
+    @DisplayName("한 커밋이 후보 두 개에 들어 있으면 내부 id 가 작은 후보의 id 를 준다")
+    void smallerCandidateWins() throws Exception {
+
+        Long commitId = commit("a1", "grow22", "feat: 로그인 추가", MONDAY, null);
+        Long first = candidates.insertCandidate(connectionId(), "COMMIT_CLUSTER", null, "NEW");
+        Long second = candidates.insertCandidate(connectionId(), "PR", 7, "EXCLUDED");
+        candidates.insertCandidateCommit(second, commitId);
+        candidates.insertCandidateCommit(first, commitId);
+
+        search("로그인").andExpect(jsonPath("$.data[0].candidateId").value(publicIdOf(first).toString()));
+
+    }
+
+    @Test
+    @DisplayName("결과가 여러 개여도 후보 조회는 한 번이다")
+    void looksUpCandidatesOnce() throws Exception {
+
+        Long candidateId = candidates.insertCandidate(connectionId(), "COMMIT_CLUSTER", null, "NEW");
+        for (int i = 1; i <= 3; i++) {
+            candidates.insertCandidateCommit(candidateId, commit("0" + i, "grow22", "feat: 작업 " + i, MONDAY, null));
+        }
+        SqlRecorder.clear();
+
+        search("작업").andExpect(jsonPath("$.data.length()").value(3));
+
+        assertThat(SqlRecorder.count("select", "from candidate_commit")).isEqualTo(1);
+
+    }
+
+    private List<String> auditRows() {
+
+        return jdbc.query("SELECT user_id, action, subject_id, outcome FROM audit_event ORDER BY id",
+                (row, rowNum) -> row.getLong("user_id") + " " + row.getString("action") + " "
+                        + row.getLong("subject_id") + " " + row.getString("outcome"));
+
+    }
+
+    private Long connectionId() {
+
+        return jdbc.queryForObject("SELECT id FROM user_repository WHERE public_id = ?", Long.class, MY_REPO);
+
+    }
+
+    private UUID publicIdOf(Long candidateId) {
+
+        return jdbc.queryForObject("SELECT public_id FROM candidate WHERE id = ?", UUID.class, candidateId);
+
+    }
+
+    private Long commit(String shaPrefix, String authorLogin, String message, Instant authoredAt, String exclusionReason) {
+
+        return jdbc.queryForObject("""
                 INSERT INTO git_commit (repository_id, sha, author_login, message, authored_at, is_excluded, exclusion_reason)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, repositoryId, sha(shaPrefix), authorLogin, message, Timestamp.from(authoredAt),
+                VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id
+                """, Long.class, repositoryId, sha(shaPrefix), authorLogin, message, Timestamp.from(authoredAt),
                 exclusionReason != null, exclusionReason);
 
     }

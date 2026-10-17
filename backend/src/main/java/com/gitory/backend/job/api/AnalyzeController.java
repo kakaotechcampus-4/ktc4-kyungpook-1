@@ -1,8 +1,10 @@
 package com.gitory.backend.job.api;
 
 
+import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.RepositoryOwnershipService;
 import com.gitory.backend.job.domain.JobIntakeResult;
 import com.gitory.backend.job.domain.JobIntakeService;
@@ -31,6 +33,7 @@ public class AnalyzeController {
     private static final int POLL_AFTER_MS = 2000;
 
     private final RepositoryOwnershipService ownership;
+    private final GithubCollectionAccessPort githubAccess;
     private final JobIntakeService jobIntake;
 
     @PostMapping("/api/repos/{id}/analyze")
@@ -44,7 +47,7 @@ public class AnalyzeController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "새 Job 또는 기존 Job 접수 결과"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "CSRF 토큰 없음 또는 불일치",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "CSRF 토큰 없음 또는 불일치. 또는 GITHUB_UNAUTHORIZED: 쓸 수 있는 GitHub 연결이 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID 또는 본인 소유 저장소 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
@@ -59,12 +62,14 @@ public class AnalyzeController {
             @Parameter(description = "재시도 시 동일하게 보내는 요청 키. 다른 저장소에 재사용하면 409")
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
 
-        Long userRepositoryId = ownership.findOwnedRepository(toUuid(id), loginUser.id())
+        Long userRepositoryId = ownership.findOwnedRepository(toUuid(id), loginUser.id(), AuditAction.ANALYZE)
                 .orElseThrow(RepositoryNotFoundException::new);
+        githubAccess.requireUsableConnection(loginUser.id());
 
         JobIntakeResult result = jobIntake.intake(loginUser.id(), userRepositoryId, idempotencyKey);
 
         return ApiResponse.ok(new StartedResponse(result.jobId().toString(), result.state(), POLL_AFTER_MS));
+
     }
 
     private UUID toUuid(String id) {

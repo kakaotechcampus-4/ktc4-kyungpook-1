@@ -8,8 +8,10 @@ public record MeView(
         GithubStatus github,
         UserStats stats) {
 
-    static MeView of(User user, GithubStatus github, String avatarUrl) {
+    static MeView of(User user, GithubStatus github, UserStats stats, String avatarUrl) {
+
         return new MeView(String.valueOf(user.getId()), user.getGithubLogin(), avatarUrl,
-                Plan.FREE, github, UserStats.none());
+                Plan.FREE, github, stats);
+
     }
 }

@@ -13,7 +13,7 @@ import java.util.List;
 import static lombok.AccessLevel.PROTECTED;
 
 /**
- * 한 번의 수집 기록. 무엇을 얼마나 읽었는지 남겨 카드가 나중에도 근거를 설명할 수 있게 한다.
+ * 한 번의 수집 기록으로, 카드가 나중에도 근거를 설명할 수 있게 남기되 커밋 수는 이번 응답에 온 커밋만 센다.
  */
 @Entity
 @Getter

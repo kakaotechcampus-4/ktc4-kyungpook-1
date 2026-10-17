@@ -1,6 +1,7 @@
 package com.gitory.backend.ingest.api;
 
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
+import com.gitory.backend.consent.domain.GithubRateLimitedException;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.consent.port.GithubOwnerResponse;
@@ -40,6 +41,8 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -144,15 +147,67 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("GitHub 연결을 쓸 수 없으면 403 GITHUB_UNAUTHORIZED 다")
-    void unusableConnectionIsForbidden() throws Exception {
+    @DisplayName("쓸 수 있는 GitHub 연결이 없으면 200 으로 저장된 저장소를 모두 주인·이름순으로 주고, 저장된 개수와 센 시각 그대로이며 개수를 다시 세지 않는다")
+    void withoutConnectionListsStoredRepositories() throws Exception {
+
+        connectCounted(100L, "grow22", "gitory");
+        connectCounted(300L, "kakao", "board");
+        fixtures.insertUserRepository(myUserId, fixtures.insertRepository(400L, "grow22", "algo"));
+        given(github.repositories(anyLong())).willThrow(new GithubNotConnectedException());
+
+        repos(myUserId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value(nullValue()))
+                .andExpect(jsonPath("$.data[*].name", contains("algo", "gitory", "board")))
+                .andExpect(jsonPath("$.data[0].countedAt").value(nullValue()))
+                .andExpect(jsonPath("$.data[1].contribution.mine").value(43))
+                .andExpect(jsonPath("$.data[1].countedAt").isString())
+                .andExpect(jsonPath("$.data[1].cardCount").value(0));
+
+        verify(github, never()).countActivity(anyLong(), any());
+
+    }
+
+    @Test
+    @DisplayName("쓸 수 있는 연결이 없고 저장된 저장소도 없으면 200 빈 배열이다")
+    void withoutConnectionAndStoredRepositoriesListsNothing() throws Exception {
 
         given(github.repositories(anyLong())).willThrow(new GithubNotConnectedException());
 
         repos(myUserId)
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.data").value(nullValue()))
-                .andExpect(jsonPath("$.error.code").value("GITHUB_UNAUTHORIZED"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 저장소는 연결이 없는 사용자의 저장된 목록에 섞이지 않는다")
+    void storedListHoldsOnlyMyRepositories() throws Exception {
+
+        Long otherUserId = fixtures.insertUser(2L, "taehun0208");
+        fixtures.insertUserRepository(otherUserId, fixtures.insertRepository(300L, "team", "team-repo"));
+        connectCounted(100L, "grow22", "gitory");
+        given(github.repositories(anyLong())).willThrow(new GithubNotConnectedException());
+
+        repos(myUserId)
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].name").value("gitory"));
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 사용 한도로 거절해도 200 으로 저장된 저장소를 주고 개수를 다시 세지 않는다")
+    void rateLimitedListsStoredRepositories() throws Exception {
+
+        connectCounted(100L, "grow22", "gitory");
+        given(github.repositories(anyLong())).willThrow(new GithubRateLimitedException());
+
+        repos(myUserId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].name").value("gitory"))
+                .andExpect(jsonPath("$.data[0].contribution.mine").value(43));
+
+        verify(github, never()).countActivity(anyLong(), any());
 
     }
 
@@ -345,18 +400,33 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("남의 저장소·없는 저장소·UUID 가 아닌 id 는 모두 404 NOT_FOUND 다")
+    @DisplayName("남의 저장소·없는 저장소·UUID 가 아닌 id 는 모두 404 NOT_FOUND 이고, 남의 저장소만 거절 기록 한 줄을 남긴다")
     void detailOfUnknownRepositoryIsNotFound() throws Exception {
 
         Long otherUserId = fixtures.insertUser(2L, "taehun0208");
         UUID othersId = UUID.randomUUID();
-        fixtures.insertUserRepository(othersId, otherUserId, fixtures.insertRepository(300L, "team", "team-repo"));
+        Long othersConnection = fixtures.insertUserRepository(othersId, otherUserId,
+                fixtures.insertRepository(300L, "team", "team-repo"));
 
         for (String id : List.of(othersId.toString(), UUID.randomUUID().toString(), "not-a-uuid")) {
             mvc.perform(get("/api/repos/{id}", id).with(loggedInAs(myUserId)))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
         }
+
+        assertThat(auditRows()).containsExactly(myUserId + " VIEW_REPO " + othersConnection + " DENIED");
+
+    }
+
+    @Test
+    @DisplayName("내 저장소 상세를 읽으면 감사 기록은 남지 않는다")
+    void detailOfMyRepositoryLeavesNoAuditRow() throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+
+        detail(id).andExpect(status().isOk());
+
+        assertThat(auditRows()).isEmpty();
 
     }
 
@@ -376,8 +446,14 @@ class RepoApiTest {
 
     private UUID connectCounted(long githubRepoId, String name) {
 
+        return connectCounted(githubRepoId, "grow22", name);
+
+    }
+
+    private UUID connectCounted(long githubRepoId, String owner, String name) {
+
         UUID id = UUID.randomUUID();
-        fixtures.insertUserRepository(id, myUserId, fixtures.insertRepository(githubRepoId, "grow22", name));
+        fixtures.insertUserRepository(id, myUserId, fixtures.insertRepository(githubRepoId, owner, name));
         jdbc.update("""
                 UPDATE user_repository SET commit_count = 188, own_commit_count = 43, pr_count = 50,
                        own_pr_count = 23, reviewed_pr_count = 11, counted_at = now()
@@ -422,6 +498,14 @@ class RepoApiTest {
     private UUID publicIdOf(Long userId) {
 
         return jdbc.queryForObject("SELECT public_id FROM user_repository WHERE user_id = ?", UUID.class, userId);
+
+    }
+
+    private List<String> auditRows() {
+
+        return jdbc.query("SELECT user_id, action, subject_id, outcome FROM audit_event ORDER BY id",
+                (row, rowNum) -> row.getLong("user_id") + " " + row.getString("action") + " "
+                        + row.getLong("subject_id") + " " + row.getString("outcome"));
 
     }
 

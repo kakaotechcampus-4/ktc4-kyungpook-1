@@ -2,6 +2,7 @@ package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.ingest.domain.ConnectedRepository;
 import com.gitory.backend.ingest.domain.ContributionTarget;
+import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositorySummary;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -17,6 +18,16 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
 
     Optional<ConnectedRepository> findByPublicIdAndUserId(UUID publicId, Long userId);
 
+    // 소유자를 보지 않으므로 남의 저장소인지 가려 거절 기록을 남길 때만 쓴다
+    Optional<ConnectedRepository> findByPublicId(UUID publicId);
+
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.RepositoryReference(c.publicId, r.ownerLogin, r.name)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.id = :id
+            """)
+    Optional<RepositoryReference> findReference(@Param("id") Long id);
+
     @Modifying
     @Query(value = """
             INSERT INTO user_repository (user_id, repository_id)
@@ -27,7 +38,7 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
 
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
-                c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
+                c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
                 c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
@@ -39,7 +50,18 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
 
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
-                c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
+                c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
+                r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
+                c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.userId = :userId
+            ORDER BY r.ownerLogin, r.name
+            """)
+    List<RepositorySummary> findAllSummaries(@Param("userId") Long userId);
+
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
+                c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
                 c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
@@ -47,11 +69,14 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """)
     Optional<RepositorySummary> findSummary(@Param("publicId") UUID publicId, @Param("userId") Long userId);
 
+    // 한 번에 다 세지 못할 때 안 센 저장소가 0 으로 남지 않게 먼저 세고, 그다음 최근에 활동한 저장소를 센다
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.ContributionTarget(c.id, r.githubRepoId, r.ownerLogin, r.name)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId AND r.githubRepoId IN :githubRepoIds
               AND (c.countedAt IS NULL OR c.countedAt < r.githubPushedAt)
+            ORDER BY CASE WHEN c.countedAt IS NULL THEN 0 ELSE 1 END,
+                     COALESCE(r.githubPushedAt, r.githubCreatedAt) DESC NULLS LAST, c.id
             """)
     List<ContributionTarget> findUncounted(@Param("userId") Long userId,
                                            @Param("githubRepoIds") Collection<Long> githubRepoIds);

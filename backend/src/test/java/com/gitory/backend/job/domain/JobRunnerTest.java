@@ -3,44 +3,69 @@ package com.gitory.backend.job.domain;
 import static java.util.concurrent.Executors.newFixedThreadPool;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.agent.port.ExperienceGroupingPort;
+import com.gitory.backend.audit.domain.AuditLog;
+import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.common.infra.ai.AiClientException;
+import com.gitory.backend.common.infra.ai.AiClientProperties;
+import com.gitory.backend.consent.domain.UserLoginService;
+import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
+import com.gitory.backend.ingest.domain.CollectionStatsService;
+import com.gitory.backend.ingest.domain.GithubState;
+import com.gitory.backend.ingest.domain.GroupingMaterialService;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
+import com.gitory.backend.recommend.domain.CandidateStoreService;
+import com.gitory.backend.support.AiTestProperties;
+import com.gitory.backend.support.CandidateCardFixtures;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -48,16 +73,28 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
-@DataJpaTest
+@DataJpaTest(properties = {
+        "gitory.ai.collect-read-timeout=10m",
+        "gitory.ai.groups-read-timeout=10m",
+        "gitory.analysis.grouping.enabled=false"
+})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobRunner.class, JobCancelService.class, ActivityStoreService.class})
+@Import({JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
+        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class,
+        CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class})
+@EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
+@ExtendWith(OutputCaptureExtension.class)
 class JobRunnerTest {
 
+    private static final String LOGIN = "grow22";
     private static final String KEY_1 = "11111111-1111-4111-8111-111111111111";
     private static final String KEY_2 = "22222222-2222-4222-8222-222222222222";
+    private static final String KEY_3 = "33333333-3333-4333-8333-333333333333";
     private static final String SHA = "a".repeat(40);
+    private static final String OTHER_SHA = "b".repeat(40);
+    private static final String NEW_SHA = "c".repeat(40);
 
     @Container
     @ServiceConnection
@@ -70,6 +107,9 @@ class JobRunnerTest {
     AnalysisJobRepository jobs;
 
     @Autowired
+    ActivityStoreService activityStore;
+
+    @Autowired
     JobCancelService cancelService;
 
     @Autowired
@@ -78,8 +118,29 @@ class JobRunnerTest {
     @Autowired
     TransactionTemplate transaction;
 
+    @Autowired
+    UserLoginService users;
+
+    @Autowired
+    GroupingMaterialService materials;
+
+    @Autowired
+    CandidateStoreService candidates;
+
     @MockitoBean
     RepositoryActivityPort activities;
+
+    @MockitoBean
+    AuditLog auditLog;
+
+    @MockitoBean
+    ExperienceGroupingPort grouping;
+
+    @MockitoBean
+    GithubCollectionAccessPort githubAccess;
+
+    @MockitoBean
+    CardDraftRunner cardDrafts;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -104,7 +165,7 @@ class JobRunnerTest {
         jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", older);
         given(activities.collect(any())).willReturn(activity(null));
 
-        runner.runNext();
+        runNext();
 
         assertThat(jobs.findById(older).orElseThrow().getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(jobs.findById(newer).orElseThrow().getState()).isEqualTo(JobState.QUEUED);
@@ -125,7 +186,7 @@ class JobRunnerTest {
         for (int i = 0; i < workers; i++) {
             futures.add(pool.submit(() -> {
                 startLine.await();
-                runner.runNext();
+                runNext();
                 return null;
             }));
         }
@@ -145,7 +206,7 @@ class JobRunnerTest {
     @DisplayName("대기 중인 Job 이 없으면 아무것도 하지 않는다")
     void doesNothingWithoutQueuedJob() {
 
-        assertThat(runner.runNext()).isFalse();
+        assertThat(runNext()).isFalse();
         verifyNoInteractions(activities);
 
     }
@@ -164,7 +225,7 @@ class JobRunnerTest {
             return activity(null);
         });
 
-        runner.runNext();
+        runNext();
 
         assertThat(stateDuringCall.get()).isEqualTo("RUNNING");
         assertThat(firstStepDuringCall.get()).isEqualTo("RUNNING");
@@ -178,9 +239,26 @@ class JobRunnerTest {
         enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(activity(null));
 
-        runner.runNext();
+        runNext();
 
-        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), null));
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of()));
+
+    }
+
+    @Test
+    @DisplayName("재수집은 저장된 commit SHA를 전달한다")
+    void requestsKnownCommits() {
+
+        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), List.of());
+        activityStore.store(initial, activity(null));
+        activityStore.store(initial, partialActivityOf(OTHER_SHA));
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        verify(activities).collect(new IngestRequest(userRepositoryId, List.of(), List.of(OTHER_SHA, SHA)));
 
     }
 
@@ -191,7 +269,7 @@ class JobRunnerTest {
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(activity(null));
 
-        runner.runNext();
+        runNext();
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         Long collectionRunId = jdbc.queryForObject("SELECT id FROM collection_run", Long.class);
@@ -204,13 +282,13 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("성공하면 커밋·PR 읽기 단계는 읽은 개수로 완료되고, 아직 없는 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
+    @DisplayName("성공하면 커밋·PR 읽기 단계는 읽은 개수로 완료되고, 묶기를 꺼 두면 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
     void marksStepsAfterSuccess() {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(activity(null));
 
-        runner.runNext();
+        runNext();
 
         assertThat(jobs.findById(jobId).orElseThrow().getSteps()).containsExactly(
                 new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 1, null),
@@ -221,18 +299,175 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("다시 분석하면 응답에 새 커밋만 있어도 커밋 단계는 저장소에 저장된 커밋 수로 완료된다")
+    void commitsStepCountsStoredCommitsOnReanalysis() {
+
+        IngestRequest initial = new IngestRequest(userRepositoryId, List.of(), List.of());
+        activityStore.store(initial, activity(null));
+        activityStore.store(initial, partialActivityOf(OTHER_SHA));
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(newCommitActivity(NEW_SHA, null));
+
+        runNext();
+
+        assertThat(jobs.findById(jobId).orElseThrow().getSteps()).containsExactly(
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 0, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("일부만 읽고 끝난 재분석도 커밋 단계는 저장소에 저장된 커밋 수로 완료된다")
+    void commitsStepCountsStoredCommitsOnPartialReanalysis() {
+
+        activityStore.store(new IngestRequest(userRepositoryId, List.of(), List.of()), activity(null));
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(newCommitActivity(NEW_SHA, PartialReason.CAP_EXCEEDED));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getSteps().get(0)).isEqualTo(new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 2, null));
+
+    }
+
+    @Test
+    @DisplayName("묶기를 꺼 두면 AI 묶기를 부르지 않고 후보 추리기·추천 이유를 SKIPPED 로 둔 채 끝내며 판정도 비운다")
+    void skipsGroupingWhenSwitchedOff() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        verifyNoInteractions(grouping);
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.getSteps()).extracting(JobStep::key, JobStep::state).endsWith(
+                tuple(JobStepKey.COMPRESS, JobStepState.SKIPPED), tuple(JobStepKey.REASON, JobStepState.SKIPPED));
+        assertThat(JobView.from(job, UUID.randomUUID(), List.of(), List::of).result().verdict()).isNull();
+        assertThat(countOf("candidate_grouping")).isZero();
+
+    }
+
+    @Test
     @DisplayName("GitHub 한도로 일부만 읽으면 부분 완료와 GITHUB_RATE_LIMITED 를 남긴다")
     void rateLimitedCollectionIsPartialWithReason() {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
 
-        runner.runNext();
+        runNext();
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.isPartial()).isTrue();
         assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+
+    }
+
+    @Test
+    @DisplayName("GitHub 한도로 일부만 읽으면 그 Job 주인의 한도가 풀리는 시각까지 남은 초를 남기고 감사 기록은 남기지 않는다")
+    void rateLimitedCollectionKeepsRetryAfterSec() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusSeconds(600)));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+        assertThat(job.getRetryAfterSec()).isBetween(590, 600);
+        verifyNoInteractions(auditLog);
+
+    }
+
+    @Test
+    @DisplayName("한도가 풀리는 시각을 알아내지 못해도 부분 완료·GITHUB_RATE_LIMITED 는 그대로이고 남은 초만 비어 있다")
+    void rateLimitedCollectionWithoutResetKeepsResult() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.empty());
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
+        assertThat(job.getRetryAfterSec()).isNull();
+        assertThat(countOf("collection_run")).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("한도가 풀리는 시각은 DB 트랜잭션 밖에서 묻는다")
+    void asksRateLimitOutsideTransaction() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.GITHUB_RATE_LIMITED));
+        AtomicReference<Boolean> transactionActive = new AtomicReference<>();
+        given(githubAccess.rateLimitResetAt(userId)).willAnswer(invocation -> {
+            transactionActive.set(TransactionSynchronizationManager.isActualTransactionActive());
+            return Optional.empty();
+        });
+
+        runNext();
+
+        assertThat(transactionActive.get()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 취소된 Job 은 한도를 물었어도 남은 초 없이 CANCELED 로 두고 수집 결과도 저장하지 않는다")
+    void canceledJobKeepsNoRetryAfterSec() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willAnswer(invocation -> {
+            cancel(jobId);
+            return activity(PartialReason.GITHUB_RATE_LIMITED);
+        });
+        given(githubAccess.rateLimitResetAt(userId)).willReturn(Optional.of(Instant.now().plusSeconds(600)));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.CANCELED);
+        assertThat(job.getRetryAfterSec()).isNull();
+        assertThat(countOf("collection_run")).isZero();
+
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = PartialReason.class, names = {"CAP_EXCEEDED", "TIMEOUT"})
+    @DisplayName("GitHub 한도가 아닌 이유로 일부만 읽은 수집은 한도를 묻지 않는다")
+    void otherPartialReasonsDoNotAskRateLimit(PartialReason reason) {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(reason));
+
+        runNext();
+
+        verifyNoInteractions(githubAccess);
+        assertThat(jobs.findById(jobId).orElseThrow().getRetryAfterSec()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("끝까지 읽은 수집은 한도를 묻지 않는다")
+    void completeCollectionDoesNotAskRateLimit() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        verifyNoInteractions(githubAccess);
 
     }
 
@@ -243,7 +478,7 @@ class JobRunnerTest {
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(activity(PartialReason.CAP_EXCEEDED));
 
-        runner.runNext();
+        runNext();
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
@@ -260,7 +495,7 @@ class JobRunnerTest {
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willThrow(new AiClientException(cause, false, null));
 
-        runner.runNext();
+        runNext();
 
         assertFailed(jobId, JobErrorCode.GITHUB_UNAVAILABLE);
 
@@ -274,7 +509,7 @@ class JobRunnerTest {
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willThrow(new AiClientException(cause, true, null));
 
-        runner.runNext();
+        runNext();
 
         assertFailed(jobId, JobErrorCode.INTERNAL_ERROR);
 
@@ -286,9 +521,9 @@ class JobRunnerTest {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
         given(activities.collect(any())).willReturn(new CollectedActivity(
-                List.of(commit("a".repeat(41))), List.of(), List.of(), null));
+                List.of(commit("a".repeat(41))), List.of(), List.of(), null, null));
 
-        runner.runNext();
+        runNext();
 
         assertFailed(jobId, JobErrorCode.INTERNAL_ERROR);
         assertThat(countOf("collection_run")).isZero();
@@ -297,10 +532,10 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("RUNNING 이 된 지 10분이 넘은 Job 은 INTERNAL_ERROR 로 끝낸다")
+    @DisplayName("수집·묶기 응답 대기 한도 중 큰 값보다 5분 넘게 RUNNING 인 Job 은 INTERNAL_ERROR 로 끝낸다")
     void failsJobStuckInRunning() {
 
-        Long jobId = runningSince(userRepositoryId, "11 minutes");
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
 
         runner.failStuckJobs();
 
@@ -312,7 +547,7 @@ class JobRunnerTest {
     @DisplayName("워커가 Job 을 성공으로 마무리하는 사이에 정리가 돌아도 성공 결과를 덮어쓰지 않는다")
     void stuckSweepDoesNotOverwriteFinishingJob() throws Exception {
 
-        Long jobId = runningSince(userRepositoryId, "11 minutes");
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
         Long collectionRunId = jdbc.queryForObject(
                 "INSERT INTO collection_run (user_repository_id) VALUES (?) RETURNING id", Long.class, userRepositoryId);
         CountDownLatch locked = new CountDownLatch(1);
@@ -338,14 +573,70 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("RUNNING 이 된 지 10분이 안 된 Job 은 그대로 둔다")
+    @DisplayName("RUNNING 인 시간이 수집·묶기 응답 대기 한도 중 큰 값에 5분을 더한 시간보다 짧은 Job 은 그대로 둔다")
     void keepsRecentlyRunningJob() {
 
-        Long jobId = runningSince(userRepositoryId, "9 minutes");
+        Long jobId = runningSince(userRepositoryId, "14 minutes");
 
         runner.failStuckJobs();
 
         assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("수집 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
+    void stuckJudgementFollowsCollectReadTimeout() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+        JobRunner longerWait = runnerWith(AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(20))
+                .groupsReadTimeout(Duration.ofMinutes(10)).build());
+
+        longerWait.failStuckJobs();
+
+        assertThat(stateOf(jobId)).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("묶기 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
+    void stuckJudgementFollowsGroupsReadTimeout() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+        JobRunner longerWait = runnerWith(AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(10))
+                .groupsReadTimeout(Duration.ofMinutes(20)).build());
+
+        longerWait.failStuckJobs();
+
+        assertThat(stateOf(jobId)).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("카드 초안의 diff 근거 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
+    void stuckJudgementFollowsDiffEvidenceReadTimeout() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+        JobRunner longerWait = runnerWith(AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(10))
+                .groupsReadTimeout(Duration.ofMinutes(10)).diffEvidenceReadTimeout(Duration.ofMinutes(20)).build());
+
+        longerWait.failStuckJobs();
+
+        assertThat(stateOf(jobId)).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("카드 초안의 STAR 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
+    void stuckJudgementFollowsStarReadTimeout() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+        JobRunner longerWait = runnerWith(AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(10))
+                .groupsReadTimeout(Duration.ofMinutes(10)).starReadTimeout(Duration.ofMinutes(20)).build());
+
+        longerWait.failStuckJobs();
+
+        assertThat(stateOf(jobId)).isEqualTo(JobState.RUNNING);
 
     }
 
@@ -356,8 +647,150 @@ class JobRunnerTest {
         Long jobId = enqueue(userRepositoryId, KEY_1);
         cancel(jobId);
 
-        assertThat(runner.runNext()).isFalse();
+        assertThat(runNext()).isFalse();
         verifyNoInteractions(activities);
+
+    }
+
+    @Test
+    @DisplayName("먼저 기다리던 카드 초안 Job 은 분석 Job 보다 먼저, 오래된 순서대로 꺼낸다")
+    void claimsQueuedDraftJobInOrder() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+        jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", draftJobId);
+        Long analyzeJobId = enqueue(userRepositoryId, KEY_1);
+
+        Optional<AnalysisJob> claimed = runner.claimNext();
+
+        assertThat(claimed).map(AnalysisJob::getId).contains(draftJobId);
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.RUNNING);
+        assertThat(stateOf(analyzeJobId)).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("AI 초안을 꺼 두면 카드 초안 Job 은 카드를 채우는 러너를 부르지 않고 끝난다")
+    void draftSwitchOffSkipsCardDraftRunner() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+
+        runNext();
+
+        verifyNoInteractions(cardDrafts);
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.SUCCEEDED);
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 은 AI 를 부르지 않고 네 단계를 SKIPPED 로 둔 채 부분 완료와 에러 코드 없이 SUCCEEDED 로 끝낸다")
+    void draftJobEndsWithoutCallingAi() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(draftJobId).orElseThrow();
+        verifyNoInteractions(activities, grouping);
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isFalse();
+        assertThat(job.getErrorCode()).isNull();
+        assertThat(job.getFinishedAt()).isNotNull();
+        assertThat(job.getSteps()).extracting(JobStep::state).containsOnly(JobStepState.SKIPPED);
+        assertThat(job.getSteps()).hasSize(4);
+        assertThat(countOf("collection_run")).isZero();
+
+    }
+
+    @Test
+    @DisplayName("실행 중인 카드 초안 Job 은 같은 사용자의 분석 Job 을 막지 않는다")
+    void runningDraftJobDoesNotBlockAnalyzeJob() {
+
+        draftJob("RUNNING");
+        Long analyzeJobId = enqueue(userRepositoryId, KEY_1);
+
+        assertThat(runner.claimNext()).map(AnalysisJob::getId).contains(analyzeJobId);
+
+    }
+
+    @Test
+    @DisplayName("실행 중인 분석 Job 은 같은 사용자의 카드 초안 Job 을 막지 않는다")
+    void runningAnalyzeJobDoesNotBlockDraftJob() {
+
+        runningSince(userRepositoryId, "1 minute");
+        Long draftJobId = draftJob("QUEUED");
+
+        assertThat(runner.claimNext()).map(AnalysisJob::getId).contains(draftJobId);
+
+    }
+
+    @Test
+    @DisplayName("실행 중인 분석 Job 이 있으면 그 사용자의 다른 분석 Job 은 여전히 기다린다")
+    void runningAnalyzeJobStillBlocksSameUsersAnalyzeJob() {
+
+        runningSince(userRepositoryId, "1 minute");
+        enqueue(connectRepository(200L, "newer"), KEY_2);
+
+        assertThat(runner.claimNext()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("서버가 다시 뜨면서 QUEUED 로 되돌린 카드 초안 Job 은 다시 돌아도 같은 결과로 끝난다")
+    void requeuedDraftJobEndsWithSameResult() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+        runner.claimNext();
+        runner.requeueRunningJobs();
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.QUEUED);
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(draftJobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.getSteps()).extracting(JobStep::state).containsOnly(JobStepState.SKIPPED);
+        assertThat(job.getErrorCode()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("취소된 QUEUED 카드 초안 Job 은 워커가 꺼내지 않는다")
+    void doesNotRunCanceledDraftJob() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+        cancel(draftJobId);
+
+        assertThat(runNext()).isFalse();
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.CANCELED);
+
+    }
+
+    @Test
+    @DisplayName("꺼낸 뒤 실행 전에 취소된 카드 초안 Job 은 SUCCEEDED 로 덮어쓰지 않고 CANCELED 로 둔다")
+    void keepsCanceledDraftJobCanceled(CapturedOutput output) {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+        AnalysisJob claimed = runner.claimNext().orElseThrow();
+        cancel(draftJobId);
+
+        runner.run(claimed);
+
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.CANCELED);
+        assertThat(jobs.findById(draftJobId).orElseThrow().getSteps()).extracting(JobStep::state)
+                .doesNotContain(JobStepState.DONE);
+        assertThat(output).doesNotContain("카드 초안 Job");
+
+    }
+
+    @Test
+    @DisplayName("멈춘 카드 초안 Job 도 분석 Job 과 같은 기준으로 INTERNAL_ERROR 로 끝낸다")
+    void failsStuckDraftJob() {
+
+        Long draftJobId = draftJob("RUNNING");
+        jdbc.update("UPDATE analysis_job SET updated_at = now() - interval '16 minutes' WHERE id = ?", draftJobId);
+
+        runner.failStuckJobs();
+
+        assertFailed(draftJobId, JobErrorCode.INTERNAL_ERROR);
 
     }
 
@@ -371,7 +804,7 @@ class JobRunnerTest {
             return activity(null);
         });
 
-        runner.runNext();
+        runNext();
 
         assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.CANCELED);
         assertThat(countOf("collection_run")).isZero();
@@ -389,7 +822,7 @@ class JobRunnerTest {
             throw new AiClientException("AI_UNAVAILABLE", true, null);
         });
 
-        runner.runNext();
+        runNext();
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         assertThat(job.getState()).isEqualTo(JobState.CANCELED);
@@ -415,7 +848,7 @@ class JobRunnerTest {
             return activity(null);
         });
 
-        runner.runNext();
+        runNext();
         canceller.shutdown();
 
         assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.CANCELED);
@@ -423,10 +856,101 @@ class JobRunnerTest {
 
     }
 
+    @Test
+    @DisplayName("같은 사용자의 Job 이 실행 중이면 그 사용자의 대기 Job 은 건너뛰고 다른 사용자의 Job 을 꺼낸다")
+    void skipsUserWithRunningJob() {
+
+        runningSince(userRepositoryId, "1 minute");
+        Long sameUser = enqueue(connectRepository(200L, "same-user"), KEY_2);
+        jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", sameUser);
+        Long otherUser = enqueueForOtherUser();
+
+        Optional<AnalysisJob> claimed = runner.claimNext();
+
+        assertThat(claimed).map(AnalysisJob::getId).contains(otherUser);
+        assertThat(stateOf(sameUser)).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("같은 사용자의 앞 Job 이 끝나면 그 사용자의 다음 Job 을 꺼낸다")
+    void claimsSameUserJobAfterPreviousFinishes() {
+
+        enqueue(userRepositoryId, KEY_1);
+        enqueue(connectRepository(200L, "newer"), KEY_2);
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        assertThat(runner.claimNext()).isPresent();
+
+    }
+
+    @Test
+    @DisplayName("같은 사용자의 Job 둘이 대기 중이면 워커는 빈 자리가 남아도 하나만 RUNNING 으로 꺼낸다")
+    void workerRunsOneJobPerUserAtATime() {
+
+        Long first = enqueue(userRepositoryId, KEY_1);
+        Long second = enqueue(connectRepository(200L, "newer"), KEY_2);
+        CountDownLatch release = new CountDownLatch(1);
+        given(activities.collect(any())).willAnswer(invocation -> {
+            release.await(5, TimeUnit.SECONDS);
+            return activity(null);
+        });
+        JobWorker worker = new JobWorker(runner, new JobWorkerProperties(3));
+
+        try {
+            worker.work();
+
+            assertThat(List.of(stateOf(first), stateOf(second)))
+                    .containsExactlyInAnyOrder(JobState.RUNNING, JobState.QUEUED);
+        } finally {
+            release.countDown();
+            await().atMost(5, TimeUnit.SECONDS).until(() -> runningJobCount() == 0);
+        }
+
+    }
+
+    @Test
+    @DisplayName("서버가 뜰 때 남아 있던 RUNNING Job 만 QUEUED 로 되돌리고 접수 시각은 그대로 둔다")
+    void requeuesOnlyRunningJobs() {
+
+        Long running = enqueue(userRepositoryId, KEY_1);
+        runner.claimNext();
+        Long finished = enqueue(connectRepository(200L, "finished"), KEY_2);
+        jdbc.update("UPDATE analysis_job SET state = 'SUCCEEDED', finished_at = now() WHERE id = ?", finished);
+        Instant acceptedAt = jobs.findById(running).orElseThrow().getStartedAt();
+
+        runner.requeueRunningJobs();
+
+        AnalysisJob requeued = jobs.findById(running).orElseThrow();
+        assertThat(requeued.getState()).isEqualTo(JobState.QUEUED);
+        assertThat(requeued.getSteps()).extracting(JobStep::state).containsOnly(JobStepState.QUEUED);
+        assertThat(requeued.getStartedAt()).isEqualTo(acceptedAt);
+        assertThat(stateOf(finished)).isEqualTo(JobState.SUCCEEDED);
+
+    }
+
+    private boolean runNext() {
+
+        Optional<AnalysisJob> claimed = runner.claimNext();
+        claimed.ifPresent(runner::run);
+        return claimed.isPresent();
+
+    }
+
     private void cancel(Long jobId) {
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
-        cancelService.cancel(job.getPublicId(), job.getUserId());
+        cancelService.cancel(job.getPublicId(), job.getUserId(), LOGIN);
+
+    }
+
+    private JobRunner runnerWith(AiClientProperties aiProperties) {
+
+        return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
+                new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
+                new JobDraftProperties(false), null);
 
     }
 
@@ -453,12 +977,48 @@ class JobRunnerTest {
 
     }
 
+    private Long enqueueForOtherUser() {
+
+        Long otherUserId = fixtures.insertUser(2L, "teammate");
+        Long repositoryId = fixtures.insertRepository(300L, "teammate", "app");
+        Long connectedRepositoryId = fixtures.insertUserRepository(otherUserId, repositoryId);
+        return jobs.save(AnalysisJob.enqueue(otherUserId, connectedRepositoryId, KEY_3)).getId();
+
+    }
+
+    private JobState stateOf(Long jobId) {
+
+        return jobs.findById(jobId).orElseThrow().getState();
+
+    }
+
+    private int runningJobCount() {
+
+        return jdbc.queryForObject("SELECT count(*) FROM analysis_job WHERE state = 'RUNNING'", Integer.class);
+
+    }
+
     private Long runningSince(Long connectedRepositoryId, String elapsed) {
 
         Long jobId = enqueue(connectedRepositoryId, KEY_1);
         jdbc.update("UPDATE analysis_job SET state = 'RUNNING', updated_at = now() - ?::interval WHERE id = ?",
                 elapsed, jobId);
         return jobId;
+
+    }
+
+    private Long draftJob(String state) {
+
+        UUID publicId = new CandidateCardFixtures(jdbc).insertDraftJob(userId, userRepositoryId, state);
+        return jobs.findByPublicId(publicId).orElseThrow().getId();
+
+    }
+
+    private Long insertQueuedDraftJob(Long connectedRepositoryId) {
+
+        return jdbc.queryForObject(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, type, state) VALUES (?, ?, ?, 'DRAFT', 'QUEUED') RETURNING id",
+                Long.class, userId, connectedRepositoryId, KEY_2);
 
     }
 
@@ -472,15 +1032,29 @@ class JobRunnerTest {
 
     private static CollectedActivity activity(PartialReason partialReason) {
 
-        return new CollectedActivity(List.of(commit(SHA)), List.of(new CollectedPullRequest(7)), List.of(),
-                partialReason);
+        CollectedPullRequest pr = new CollectedPullRequest(7, "feat: 워커 추가", null, GithubState.CLOSED, "grow22",
+                "develop", "feature/job-worker", Instant.parse("2026-10-01T00:00:00Z"),
+                Instant.parse("2026-10-01T01:00:00Z"), List.of(SHA), List.of(), List.of());
+        return new CollectedActivity(List.of(commit(SHA)), List.of(pr), List.of(), null, partialReason);
+
+    }
+
+    private static CollectedActivity newCommitActivity(String sha, PartialReason partialReason) {
+
+        return new CollectedActivity(List.of(commit(sha)), List.of(), List.of(), null, partialReason);
+
+    }
+
+    private static CollectedActivity partialActivityOf(String sha) {
+
+        return new CollectedActivity(List.of(commit(sha)), List.of(), List.of(), null, PartialReason.CAP_EXCEEDED);
 
     }
 
     private static CollectedCommit commit(String sha) {
 
         return new CollectedCommit(sha, "grow22", "Grow22", "feat: 워커 추가", Instant.parse("2026-10-01T00:00:00Z"),
-                10, 2, 1, (short) 1, null);
+                10, 2, 1, (short) 1, null, List.of(), List.of());
 
     }
 

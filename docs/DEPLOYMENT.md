@@ -90,6 +90,7 @@ echo "== 끝"
 - `TOKEN_ENC_KEY`/`TOKEN_ENC_SALT` 는 한 번 정하면 바꾸지 않는다. 바꾸면 저장된 GitHub 토큰을 복호화할 수 없다.
 - `DB_PASSWORD` 는 DB 볼륨이 처음 만들어질 때 고정된다. 나중에 `.env` 만 바꾸면 접속이 실패한다.
 - GitHub OAuth App 의 Authorization callback URL 은 `https://<도메인>/api/auth/github/callback` 과 정확히 같아야 한다.
+- `GITORY_LLM_BASE_URL`/`GITORY_LLM_API_KEY` 가 비어 있으면 AI 의 경험 그룹화·STAR 초안만 503(LLM 설정 없음)이고, 수집·되묻기는 동작한다. 값을 넣은 뒤 `ANALYSIS_GROUPING_ENABLED=true` 로 바꾸고 `docker compose up -d` 로 다시 띄운다. 켜기 전에 넣지 않으면 모든 분석이 그룹화 단계에서 실패한다.
 
 ## 5. Spring ↔ AI 토큰 경로 (멘토 확인 완료)
 
@@ -109,7 +110,9 @@ Spring 이 복호화한 GitHub 토큰을 `X-GitHub-Token` 헤더로 AI 서버에
 3. 2 가 실패하면 1 에서 적어 둔 직전 커밋으로 되돌려 같은 방식으로 다시 올린다. 배포 워크플로는 실패로 남는다. 코드만 되돌리므로 이미 적용된 새 마이그레이션은 DB 에 그대로 남고, 칸을 지우거나 이름을 바꾼 마이그레이션이었다면 직전 코드도 뜨지 못할 수 있다
 4. 컨테이너 상태를 출력하고, 성공하면 오래된 이미지·빌드 캐시를 정리한다
 
-Actions 탭 → deploy → **Run workflow** 로 수동 실행도 된다 (develop 에서만, CI 확인 없이 develop 최신 커밋). `deploy/` 만 바뀐 커밋은 CI 가 없어 자동 배포되지 않으므로 수동 실행한다.
+Actions 탭 → deploy → **Run workflow** 로 수동 실행도 된다 (develop 에서만, develop 최신 커밋). `deploy/` 만 바뀐 커밋은 CI 가 없어 자동 배포되지 않으므로 수동 실행한다. 수동 실행도 CI 를 확인한다 (멘토 리뷰 #108). 최신 커밋만 보면 CI 가 없는 `deploy/` 커밋이 바로 앞의 CI 실패 커밋을 덮어 함께 올라가므로, backend CI · AI CI · frontend 마다 develop 의 가장 최근 실행을 보고 모두 성공했을 때만 배포한다. 실패했거나 아직 도는 CI 가 있으면 배포하지 않는다.
+
+마이그레이션에서 칸·표를 지우거나 이름을 바꿀 때는 두 번에 나눠 머지한다. 먼저 코드가 그 칸을 더 쓰지 않게 바꿔 배포하고, 그다음 PR 에서 지운다. 한 번에 넣으면 3 의 되돌리기로 올린 직전 코드가 없어진 칸을 찾다 뜨지 못한다.
 
 ### 왜 self-hosted runner 인가
 
@@ -151,6 +154,24 @@ docker compose up -d --build --wait            # 수동 재배포 (자동 배포
 - 여러 줄을 붙여넣으면 마지막 줄이 Enter 를 쳐야 실행돼 출력이 잘려 보인다. 블록 끝에 `echo "== 끝"` 을 두면 끝을 알 수 있다.
 - 메모리: 4개 합계 약 650MB (backend 약 535MB). 빌드 중에는 더 쓰지만 swap 4GB 가 있다.
 - 인스턴스를 stop/start 해도 EIP 라 주소가 유지된다. 컨테이너는 `restart: unless-stopped` 라 Docker 가 뜨면 같이 뜬다.
+
+### 로그 모아 보기 (CloudWatch)
+
+컨테이너 4개의 로그는 Docker `awslogs` 드라이버로 CloudWatch 로그 그룹 `/gitory`(서울 리전)에 간다. 스트림은 컨테이너 이름(`gitory-backend-1` 등)이다. EC2 인스턴스 역할(`ktc-ec2-ssm-profile`, `CloudWatchAgentServerPolicy` 연결)로 보내므로 서버에 키를 두지 않는다. 서버의 `docker compose logs` 도 그대로 된다.
+
+- 보기: CloudWatch 콘솔 → 로그 그룹 → `/gitory` → 스트림 선택. 여러 컨테이너를 한 번에 찾을 때는 Logs Insights 에서 `/gitory` 를 고르고 `fields @timestamp, @logStream, @message | filter @message like /ERROR|Traceback/ | sort @timestamp desc` 를 실행한다.
+- 보관: 로그 그룹 `/gitory` → 작업 → 보존 설정 편집 → 7일 (한 번만).
+- 에러 알람 (한 번만):
+  1. `/gitory` → 지표 필터 생성을 아래 패턴 3개로 세 번 한다. 셋 다 지표 이름 `GitoryErrors`, 지표 값 1, 기본값 0 으로 같은 지표에 더한다. 만들 때마다 같은 화면의 "패턴 테스트"로 아래 예시 줄에 맞는지 확인한다.
+     - `ERROR -"duplicate key"`: 에러 줄. 동시 요청을 DB 유니크 제약으로 막는 정상 흐름(분석 접수 등 4곳)에서 db 와 backend 가 남기는 `ERROR: duplicate key ...` 는 뺀다.
+     - `Traceback`: ai 의 예외 스택.
+     - `?"INTERNAL_ERROR" ?"GITHUB_UNAVAILABLE"`: Job 이 실패로 끝날 때 backend 가 WARN 으로 남기는 에러 코드.
+     - CloudWatch 패턴은 `?`(또는)와 `-`(빼기)를 한 패턴에 같이 쓰면 `?` 항목이 무시되므로, 하나로 합치지 않고 나눈다. 한 줄이 여러 필터에 걸려 두 번 세어져도 경보는 1 이상이라 결과는 같다.
+     - 패턴 테스트에 넣을 줄 모양 (앞 날짜는 생략). 걸려야 하는 줄: `ERROR 1 --- [gitory-backend] [   scheduling-1] c.g.b.job.domain.JobRunner : ...`, `Traceback (most recent call last):`, `카드 초안 Job 12 을 INTERNAL_ERROR 로 끝낸다`
+     - 걸리면 안 되는 줄: `UTC [123] ERROR:  duplicate key value violates unique constraint "uq_job_active"`(db), `ERROR 1 --- [gitory-backend] [nio-8080-exec-3] o.h.engine.jdbc.spi.SqlExceptionHelper : ERROR: duplicate key value violates unique constraint "uq_job_active"`(backend)
+  2. CloudWatch → 경보 생성 → 지표 `GitoryErrors` 합계, 5분, 1 이상 → SNS 주제를 새로 만들어 팀 이메일을 구독시키고 메일의 확인 링크를 누른다.
+- 알람을 받으면 Logs Insights 에서 그 시각 전후로 `@logStream` 별로 본다. backend 예외 스택은 날짜로 시작하지 않는 줄을 앞 줄에 묶어 한 이벤트로 보낸다.
+- CloudWatch 가 느리거나 끊겨도 서비스는 멈추지 않는다(`mode: non-blocking`). 대신 버퍼(4MB)가 차면 그 사이 로그는 CloudWatch 에 빠진다.
 
 ## 8. 팀과 정한 것
 

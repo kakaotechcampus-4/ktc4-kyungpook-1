@@ -1,5 +1,9 @@
 # ktc4-team-05
 
+2026-10-13 후보 선택의 조작 크기·제목/버튼 정렬, 모바일 커밋·단계·근거 표시와 카드 STAR 기준선 개선은 [프론트 UI 점검 기록](frontend/docs/2026-10-13-SELECTION_UI_POLISH.md)에 정리했습니다.
+
+2026-10-12 담당 #183의 직접 작성 멱등키·임시 저장·버전/근거 계약 및 실제 API 모드 검사는 [프론트 카드 계약 작업 기록](frontend/docs/2026-10-12-CARD_CONTRACT_183.md)에 정리했습니다.
+
 2026-10-07 접힌 메뉴의 가로 스크롤·스크롤바 표현·레포 대기 단계 대비 개선은 [프론트 스크롤/단계 검증 기록](frontend/docs/2026-10-07-SCROLLBAR_STEP_CONTRAST.md)을 참고하세요.
 
 2026-10-06 검색·선택 메뉴, PC 홈 정렬, STAR 작성과 Pretendard 글자 규칙 통일은 [프론트 UI 개선·검증 기록](frontend/docs/2026-10-06-UI_CONSISTENCY.md)에 정리했습니다.
@@ -26,3 +30,5 @@ BE–AI 실행 방법, Swagger 주소, OpenAPI export와 남은 통합 작업은
 모바일 문구·간격 정리와 화면별 회귀 범위는 [모바일 UX 정리 문서](frontend/docs/MOBILE_UX_CLEANUP.md)를 참고하세요.
 
 브라우저 favicon 수정 내역은 [브랜딩 이미지 문서](frontend/docs/BRAND_ASSETS.md)에 기록했습니다.
+
+프론트 카드 제목·기간 계약 보완: [#219 검증 기록](frontend/docs/2026-10-15-METADATA_219.md).

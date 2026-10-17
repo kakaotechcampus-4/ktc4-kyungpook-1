@@ -2,18 +2,29 @@ package com.gitory.backend.job.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.audit.domain.AuditLog;
+import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.ingest.domain.CollectionStatsService;
+import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
+import com.gitory.backend.support.CandidateCardFixtures;
 import com.gitory.backend.support.TestFixtures;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -26,9 +37,11 @@ import java.util.UUID;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import(JobQueryService.class)
+@Import({JobQueryService.class, JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class,
+        GeneratedCardQueryService.class})
 class JobQueryServiceTest {
 
+    private static final String LOGIN = "grow22";
     private static final String KEY_1 = "11111111-1111-4111-8111-111111111111";
     private static final String KEY_2 = "22222222-2222-4222-8222-222222222222";
 
@@ -44,6 +57,9 @@ class JobQueryServiceTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @MockitoBean
+    AuditLog auditLog;
 
     private TestFixtures fixtures;
 
@@ -75,7 +91,7 @@ class JobQueryServiceTest {
         UUID userRepositoryPublicId = jdbc.queryForObject(
                 "SELECT public_id FROM user_repository WHERE id = ?", UUID.class, myRepoId);
 
-        JobView found = service.load(job.getPublicId(), myUserId);
+        JobView found = service.load(job.getPublicId(), myUserId, LOGIN);
 
         assertThat(found.jobId()).isEqualTo(job.getPublicId().toString());
         assertThat(found.type()).isEqualTo(JobType.ANALYZE);
@@ -95,14 +111,24 @@ class JobQueryServiceTest {
     }
 
     @Test
-    @DisplayName("초안(DRAFT) Job 은 result 를 비워 둔다")
-    void leavesDraftJobResultEmpty() {
+    @DisplayName("초안(DRAFT) Job 의 result 는 저장소 id 와 Job 이 만든 카드 id 를 카드 만든 순서대로 담고, 대기 중일 때도 끝난 뒤에도 같으며 판정과 이유는 비운다")
+    void draftJobResultCarriesRepositoryAndCardIdsInOrder() {
 
-        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
-        jdbc.update("UPDATE analysis_job SET type = 'DRAFT' WHERE public_id = ?", job.getPublicId());
+        CandidateCardFixtures cards = new CandidateCardFixtures(jdbc);
+        UUID draftJobId = cards.insertDraftJob(myUserId, myRepoId, "QUEUED");
+        UUID otherJobId = cards.insertDraftJob(myUserId, myRepoId, "QUEUED");
+        UUID first = cards.cardPublicIdOf(cards.insertCandidateCard(myUserId, myRepoId, null, draftJobId, false));
+        cards.insertCandidateCard(myUserId, myRepoId, null, otherJobId, false);
+        UUID second = cards.cardPublicIdOf(cards.insertCandidateCard(myUserId, myRepoId, null, draftJobId, false));
+        UUID repoPublicId = jdbc.queryForObject("SELECT public_id FROM user_repository WHERE id = ?", UUID.class, myRepoId);
+        JobResult expected = new JobResult(repoPublicId.toString(), List.of(first.toString(), second.toString()), null, null);
+
+        assertThat(service.load(draftJobId, myUserId, LOGIN).result()).isEqualTo(expected);
+
+        jdbc.update("UPDATE analysis_job SET state = 'SUCCEEDED', finished_at = now() WHERE public_id = ?", draftJobId);
         em.clear();
 
-        assertThat(service.load(job.getPublicId(), myUserId).result()).isNull();
+        assertThat(service.load(draftJobId, myUserId, LOGIN).result()).isEqualTo(expected);
 
     }
 
@@ -112,16 +138,45 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(othersUserId, othersRepoId, KEY_1);
 
-        assertThatThrownBy(() -> service.load(job.getPublicId(), myUserId))
+        assertThatThrownBy(() -> service.load(job.getPublicId(), myUserId, LOGIN))
                 .isInstanceOf(JobNotFoundException.class);
+
     }
 
     @Test
     @DisplayName("없는 공개 id 로 찾으면 찾을 수 없다")
     void doesNotLoadUnknownJob() {
 
-        assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId))
+        assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId, LOGIN))
                 .isInstanceOf(JobNotFoundException.class);
+
+    }
+
+    @Test
+    @DisplayName("남의 Job 을 찾으면 요청한 사람과 그 Job 의 내부 id 로 VIEW_JOB 거절 기록을 남긴다")
+    void recordsDeniedViewOfOthersJob() {
+
+        AnalysisJob job = persistJob(othersUserId, othersRepoId, KEY_1);
+
+        assertThatThrownBy(() -> service.load(job.getPublicId(), myUserId, LOGIN))
+                .isInstanceOf(JobNotFoundException.class);
+
+        verify(auditLog).denied(myUserId, AuditAction.VIEW_JOB, job.getId());
+
+    }
+
+    @Test
+    @DisplayName("내 Job 이나 없는 공개 id 로 찾으면 거절 기록을 남기지 않는다")
+    void doesNotRecordMineOrUnknown() {
+
+        AnalysisJob mine = persistJob(myUserId, myRepoId, KEY_1);
+
+        service.load(mine.getPublicId(), myUserId, LOGIN);
+        assertThatThrownBy(() -> service.load(UUID.randomUUID(), myUserId, LOGIN))
+                .isInstanceOf(JobNotFoundException.class);
+
+        verifyNoInteractions(auditLog);
+
     }
 
     @Test
@@ -130,13 +185,14 @@ class JobQueryServiceTest {
 
         AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
 
-        assertThat(service.load(job.getPublicId(), myUserId).terminal()).isFalse();
+        assertThat(service.load(job.getPublicId(), myUserId, LOGIN).terminal()).isFalse();
 
         job.start();
         job.succeed(false, null);
         em.flush();
 
-        assertThat(service.load(job.getPublicId(), myUserId).terminal()).isTrue();
+        assertThat(service.load(job.getPublicId(), myUserId, LOGIN).terminal()).isTrue();
+
     }
 
     @Test
@@ -148,14 +204,72 @@ class JobQueryServiceTest {
         rateLimited.fail(JobErrorCode.GITHUB_RATE_LIMITED);
         em.flush();
 
-        assertThat(service.load(rateLimited.getPublicId(), myUserId).retryable()).isTrue();
+        assertThat(service.load(rateLimited.getPublicId(), myUserId, LOGIN).retryable()).isTrue();
 
         AnalysisJob internalError = persistJob(myUserId, myRepoId, KEY_2);
         internalError.start();
         internalError.fail(JobErrorCode.INTERNAL_ERROR);
         em.flush();
 
-        assertThat(service.load(internalError.getPublicId(), myUserId).retryable()).isFalse();
+        assertThat(service.load(internalError.getPublicId(), myUserId, LOGIN).retryable()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("한도로 일부만 읽고 끝난 Job 은 다시 시도할 수 있고 저장된 남은 초가 그대로 나온다")
+    void rateLimitedPartialJobShowsRetryAfterSec() {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        job.start();
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED, Instant.now().plusSeconds(300));
+        em.flush();
+
+        JobView found = service.load(job.getPublicId(), myUserId, LOGIN);
+
+        assertThat(found.retryable()).isTrue();
+        assertThat(found.retryAfterSec()).isEqualTo(job.getRetryAfterSec()).isBetween(299, 300);
+
+    }
+
+    @Test
+    @DisplayName("한도로 일부만 읽었지만 기다릴 시간을 모르면 다시 시도할 수 있고 남은 초는 비어 있다")
+    void rateLimitedPartialJobWithoutResetStaysRetryable() {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        job.start();
+        job.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED);
+        em.flush();
+
+        JobView found = service.load(job.getPublicId(), myUserId, LOGIN);
+
+        assertThat(found.retryable()).isTrue();
+        assertThat(found.retryAfterSec()).isNull();
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"QUEUED", "RUNNING", "GITHUB_UNAVAILABLE", "CANCELED", "COMPLETE"})
+    @DisplayName("한도 부분 완료가 아닌 Job 의 남은 초는 늘 비어 있다")
+    void otherJobsHaveNoRetryAfterSec(String situation) {
+
+        AnalysisJob job = persistJob(myUserId, myRepoId, KEY_1);
+        switch (situation) {
+            case "RUNNING" -> job.start();
+            case "GITHUB_UNAVAILABLE" -> {
+                job.start();
+                job.fail(JobErrorCode.GITHUB_UNAVAILABLE);
+            }
+            case "CANCELED" -> job.cancel();
+            case "COMPLETE" -> {
+                job.start();
+                job.succeed(false, null);
+            }
+            default -> { }
+        }
+        em.flush();
+
+        assertThat(service.load(job.getPublicId(), myUserId, LOGIN).retryAfterSec()).isNull();
+
     }
 
     @Test

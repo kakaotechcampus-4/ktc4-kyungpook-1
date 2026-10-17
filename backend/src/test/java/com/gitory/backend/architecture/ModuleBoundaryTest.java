@@ -1,6 +1,7 @@
 package com.gitory.backend.architecture;
 
 import com.gitory.backend.GitoryApplication;
+import com.gitory.backend.common.infra.ai.AiHttpClient;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -8,6 +9,8 @@ import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideOutsideOfPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
@@ -84,6 +87,36 @@ class ModuleBoundaryTest {
     }
 
     @Test
+    @DisplayName("agent 는 다른 업무 모듈을 참조하지 않는다 — 포트 요청·응답은 agent 의 record 로만 주고받는다")
+    void agentDependsOnNoOtherModule() {
+
+        for (String module : Modules.ALL) {
+            if (module.equals("agent")) {
+                continue;
+            }
+            noClasses()
+                    .that().resideInAPackage(ROOT + ".agent..")
+                    .should().dependOnClassesThat().resideInAPackage(ROOT + "." + module + "..")
+                    .as("agent 는 %s 모듈을 참조할 수 없다".formatted(module))
+                    .allowEmptyShould(true)
+                    .check(classes);
+        }
+
+    }
+
+    @Test
+    @DisplayName("AiHttpClient 는 common·consent·agent 만 쓴다 — 다른 모듈이 agent 포트를 건너뛰고 AI 를 부르지 못한다")
+    void onlyBoundaryModulesUseAiHttpClient() {
+
+        noClasses()
+                .that().resideOutsideOfPackages(ROOT + ".common..", ROOT + ".consent..", ROOT + ".agent..")
+                .should().dependOnClassesThat().belongToAnyOf(AiHttpClient.class)
+                .allowEmptyShould(true)
+                .check(classes);
+
+    }
+
+    @Test
     @DisplayName("오케스트레이션 의존은 한 방향이다 — 아무도 job 을 참조하지 않는다")
     void nobodyDependsOnJob() {
         // job -> ingest·recommend·card 는 되고, 반대는 안 된다.
@@ -96,6 +129,19 @@ class ModuleBoundaryTest {
                     .allowEmptyShould(true)
                     .check(classes);
         }
+    }
+
+    @Test
+    @DisplayName("audit 은 다른 모듈을 참조하지 않는다 — 모든 모듈이 audit 을 부르므로 순환이 생기지 않는다")
+    void auditDependsOnNoOtherModule() {
+
+        noClasses()
+                .that().resideInAPackage(ROOT + ".audit..")
+                .should().dependOnClassesThat(
+                        resideInAPackage(ROOT + "..").and(resideOutsideOfPackage(ROOT + ".audit..")))
+                .allowEmptyShould(true)
+                .check(classes);
+
     }
 
     @Test

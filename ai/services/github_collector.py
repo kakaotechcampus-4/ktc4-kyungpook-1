@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import PurePosixPath
 from typing import Any, Optional, Union
+from urllib.parse import quote
 
 import httpx
 
@@ -48,15 +49,22 @@ LOCKFILES = {
     "cargo.lock",
     "composer.lock",
     "gemfile.lock",
+    "gradle.lockfile",
 }
 
 
 class GithubApiError(RuntimeError):
-    """GitHub API 호출 또는 응답 해석 실패."""
+    """GitHub API 호출 또는 응답 해석 실패.
 
-    def __init__(self, message: str, status_code: Optional[int] = None) -> None:
+    ``secondary_rate_limited``는 GitHub 2차 한도로 받은 403이다. 기다리면 풀려 영구 실패가 아니다.
+    """
+
+    def __init__(
+        self, message: str, status_code: Optional[int] = None, *, secondary_rate_limited: bool = False
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.secondary_rate_limited = secondary_rate_limited
 
 
 class GithubResourceNotFound(GithubApiError):
@@ -88,6 +96,7 @@ class _CollectionState:
     needs_confirmation: list[ContributionConfirmation] = field(default_factory=list)
     partial_reason: Optional[PartialReason] = None
     api_calls: int = 0
+    head_sha: Optional[str] = None
 
     def mark_partial(self, reason: PartialReason) -> None:
         if self.partial_reason != PartialReason.GITHUB_RATE_LIMITED:
@@ -143,6 +152,7 @@ class GithubCollector:
 
         result = RepositoryCollectionResult(
             user_repository_id=request.user_repository_id,
+            head_sha=state.head_sha,
             commits=state.commits,
             pull_requests=state.pull_requests,
             issues=state.issues,
@@ -156,8 +166,14 @@ class GithubCollector:
         self,
         request: CandidateDetailRequest,
         github_token: str,
+        *,
+        skip_unavailable_commits: bool = False,
     ) -> RepositoryActivityExecution[CandidateDetailResult]:
-        """A가 선택한 SHA 또는 PR의 diff만 상한을 두고 조회한다."""
+        """A가 선택한 SHA 또는 PR의 diff만 상한을 두고 조회한다.
+
+        ``skip_unavailable_commits``이면 GitHub이 찾지 못한 커밋(422)은 빼고 나머지를
+        돌려준다. 빠진 커밋은 호출자가 요청 SHA와 결과를 비교해 알 수 있다.
+        """
         token = github_token.strip()
         if not token:
             raise ValueError("GitHub OAuth 토큰이 필요합니다.")
@@ -192,12 +208,17 @@ class GithubCollector:
                     shas = shas[: self._limits.max_candidate_commits]
 
                 for sha in shas:
-                    detail, files = await self._collect_commit_detail(
-                        client,
-                        request,
-                        state,
-                        sha,
-                    )
+                    try:
+                        detail, files = await self._collect_commit_detail(
+                            client,
+                            request,
+                            state,
+                            sha,
+                        )
+                    except GithubApiError as exc:
+                        if skip_unavailable_commits and exc.status_code == 422:
+                            continue
+                        raise
                     normalized, used_chars, was_truncated = (
                         self._to_candidate_commit_detail(
                             detail,
@@ -433,29 +454,51 @@ class GithubCollector:
         repository = request.repository
         summaries_by_sha: dict[str, dict[str, Any]] = {}
 
+        # 새 커밋이 하나도 없어도 현재 기본 브랜치의 head는 Spring이 다음
+        # 수집 기준과 저장소 상태를 유지하는 데 필요하다. 목록 응답의 첫
+        # 항목에 기대면 빈 저장소에서 head_sha가 사라지거나, 다른 브랜치
+        # SHA를 기본 브랜치 head로 잘못 기록할 수 있다.
+        branch = quote(repository.default_branch, safe="")
+        branch_info = await self._get_dict(
+            client,
+            state,
+            f"/repos/{repository.owner_login}/{repository.name}/branches/{branch}",
+            params={},
+        )
+        state.head_sha = _nested_required_text(branch_info, "commit", "sha")
+
+        known_shas = {sha.casefold() for sha in request.known_commit_shas}
+        scanned_shas: set[str] = set()
+
         for branch in request.collection_branches:
             page = 1
-            while len(summaries_by_sha) <= self._limits.max_commits:
+            while len(scanned_shas) <= self._limits.max_commits:
+                params: dict[str, Any] = {"sha": branch, "per_page": 100, "page": page}
                 items = await self._get_list(
                     client,
                     state,
                     f"/repos/{repository.owner_login}/{repository.name}/commits",
-                    params={"sha": branch, "per_page": 100, "page": page},
+                    params=params,
                 )
                 for item in items:
-                    summaries_by_sha.setdefault(_required_text(item, "sha"), item)
-                    if len(summaries_by_sha) > self._limits.max_commits:
+                    sha = _required_text(item, "sha")
+                    key = sha.casefold()
+                    if key in scanned_shas:
+                        continue
+                    scanned_shas.add(key)
+                    if len(scanned_shas) > self._limits.max_commits:
                         state.mark_partial(PartialReason.CAP_EXCEEDED)
                         break
-                if len(items) < 100 or len(summaries_by_sha) > self._limits.max_commits:
+                    if key not in known_shas:
+                        summaries_by_sha.setdefault(sha, item)
+                if (
+                    len(items) < 100
+                    or len(scanned_shas) > self._limits.max_commits
+                ):
                     break
                 page += 1
 
-        pull_by_sha = {
-            sha: pull.number
-            for pull in state.pull_requests
-            for sha in pull.commit_shas
-        }
+        pull_by_sha = _primary_pull_by_sha(state.pull_requests)
         selected_shas = list(summaries_by_sha)[: self._limits.max_commits]
         for sha in selected_shas:
             detail, files = await self._collect_commit_detail(
@@ -544,7 +587,7 @@ class GithubCollector:
         return (
             CandidateCommitDetail(
                 sha=_required_text(detail, "sha"),
-                message=_required_text(commit_node, "message"),
+                message=_text_or_empty(commit_node, "message"),
                 author_login=_nested_optional_text(detail, "author", "login"),
                 authored_at=_required_text(commit_author, "date"),
                 html_url=_optional_text(detail, "html_url"),
@@ -723,7 +766,8 @@ class GithubCollector:
                     "저장소가 없거나 현재 권한으로 읽을 수 없습니다.", status
                 ) from exc
             raise GithubApiError(
-                f"GitHub API 요청에 실패했습니다. status={status}", status
+                f"GitHub API 요청에 실패했습니다. status={status}", status,
+                secondary_rate_limited=status == 403 and _is_secondary_rate_limit(exc.response),
             ) from exc
         except (httpx.HTTPError, ValueError) as exc:
             raise GithubApiError("GitHub API 응답을 처리하지 못했습니다.") from exc
@@ -766,13 +810,31 @@ def _contribution_decision(
     return ExclusionReason.NOT_OWN, None
 
 
+def _primary_pull_by_sha(pulls: list[CollectedPullRequest]) -> dict[str, int]:
+    """커밋마다 대표 PR 하나를 고른다. 여러 PR에 속하면 커밋 수가 가장 적은 PR을 쓴다.
+
+    ``develop → main`` 같은 릴리스 PR은 기능 PR의 커밋을 모두 다시 담는다. 수집 순서
+    (최근 갱신순)에 맡기면 릴리스 PR이 기능 PR을 덮어 모든 커밋이 한 후보로 합쳐질 수
+    있으므로, 가장 좁은 범위의 PR을 고르고 같으면 번호가 작은 PR을 고른다.
+    """
+    primary: dict[str, int] = {}
+    for pull in sorted(pulls, key=lambda item: (len(item.commit_shas), item.number)):
+        for sha in pull.commit_shas:
+            primary.setdefault(sha, pull.number)
+    return primary
+
+
 def _identity_text(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.lower())
 
 
 def _issue_numbers(text: str) -> list[int]:
-    """등장 순서를 유지하면서 중복 issue 번호를 제거한다."""
-    return list(dict.fromkeys(int(value) for value in ISSUE_REFERENCE.findall(text)))
+    """등장 순서를 유지하면서 중복 issue 번호를 제거한다.
+
+    '#000' 같은 0은 issue 번호가 될 수 없고 응답 검증(PositiveInt)에서 수집 전체를 실패시키므로 버린다.
+    """
+    numbers = (int(value) for value in ISSUE_REFERENCE.findall(text))
+    return list(dict.fromkeys(number for number in numbers if number > 0))
 
 
 def _excerpt(
@@ -812,6 +874,17 @@ def _optional_list(node: dict[str, Any], field: str) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         raise GithubApiError(f"GitHub 응답의 {field}가 배열이 아닙니다.")
     return [_ensure_dict(item) for item in value]
+
+
+def _is_secondary_rate_limit(response: httpx.Response) -> bool:
+    """남은 한도가 있어도 몰린 요청을 막는 2차 한도. Retry-After 헤더나 본문 문구로 알 수 있다."""
+    return "Retry-After" in response.headers or "secondary rate limit" in response.text.lower()
+
+
+def _text_or_empty(node: dict[str, Any], field: str) -> str:
+    """비었거나 공백뿐인 글은 빈 문자열로 받는다. 커밋 하나 때문에 요청 전체를 실패시키지 않는다."""
+    value = node.get(field)
+    return value if isinstance(value, str) and value.strip() else ""
 
 
 def _required_text(node: dict[str, Any], field: str) -> str:

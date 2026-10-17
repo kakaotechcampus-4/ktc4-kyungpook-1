@@ -3,3 +3,8 @@ export const cardMetadataSupported = (env: { VITE_API_MOCK?: string; VITE_CARD_M
   VITE_API_MOCK: import.meta.env.VITE_API_MOCK, VITE_CARD_METADATA_ENABLED: import.meta.env.VITE_CARD_METADATA_ENABLED,
 }) =>
   env.VITE_API_MOCK !== 'false' || env.VITE_CARD_METADATA_ENABLED === 'true';
+
+/** Regeneration has no real server endpoint; it is available in the Mock demo only. */
+export const cardRegenerationSupported = (env: { VITE_API_MOCK?: string } = {
+  VITE_API_MOCK: import.meta.env.VITE_API_MOCK,
+}) => env.VITE_API_MOCK !== 'false';

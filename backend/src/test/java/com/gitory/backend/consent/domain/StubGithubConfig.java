@@ -1,5 +1,6 @@
 package com.gitory.backend.consent.domain;
 
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.TokenCipher;
 import com.gitory.backend.consent.infra.UserRepository;
@@ -44,7 +45,8 @@ public class StubGithubConfig {
     @Primary
     GithubLoginService stubbedGithubLoginService(UserRepository users,
                                                  GithubConnectionRepository connections,
-                                                 TokenCipher tokenCipher) {
+                                                 TokenCipher tokenCipher,
+                                                 AuditLog auditLog) {
         Map<String, Object> profile = new LinkedHashMap<>();
         profile.put("id", GITHUB_USER_ID);
         profile.put("login", LOGIN);
@@ -53,7 +55,7 @@ public class StubGithubConfig {
         OAuth2User githubUser = new DefaultOAuth2User(
                 AuthorityUtils.createAuthorityList("ROLE_USER"), profile, "id");
 
-        return new GithubLoginService(users, connections, tokenCipher, request -> githubUser);
+        return new GithubLoginService(users, connections, tokenCipher, auditLog, request -> githubUser);
     }
 
     @Bean

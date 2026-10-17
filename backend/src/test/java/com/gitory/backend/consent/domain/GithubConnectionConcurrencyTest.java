@@ -5,9 +5,15 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.GithubGrantClient;
 import com.gitory.backend.consent.infra.TokenCipher;
@@ -76,6 +82,7 @@ class GithubConnectionConcurrencyTest {
 
     private final TokenCipher cipher = new TokenCipher("test-encryption-key", "5c0744940b5c369b");
     private final GithubGrantClient grants = mock(GithubGrantClient.class);
+    private final AuditLog disconnectAudit = mock(AuditLog.class);
 
     private TransactionTemplate transaction;
     private GithubLoginService loginService;
@@ -92,10 +99,10 @@ class GithubConnectionConcurrencyTest {
         connections.save(GithubConnection.grant(userId, new String[]{"read:user"}, cipher.encrypt(OLD_TOKEN), null));
 
         transaction = new TransactionTemplate(transactionManager);
-        loginService = new GithubLoginService(users, connections, cipher, request -> new DefaultOAuth2User(
+        loginService = new GithubLoginService(users, connections, cipher, mock(AuditLog.class), request -> new DefaultOAuth2User(
                 AuthorityUtils.createAuthorityList("ROLE_USER"),
                 Map.of("id", GITHUB_USER_ID, "login", "grow22", "avatar_url", "https://avatars/1"), "id"));
-        disconnectService = new GithubDisconnectService(connections, cipher, grants, transaction);
+        disconnectService = new GithubDisconnectService(connections, cipher, grants, transaction, disconnectAudit);
         pool = newFixedThreadPool(2);
 
     }
@@ -161,6 +168,61 @@ class GithubConnectionConcurrencyTest {
         GithubConnection active = connections.findByUserIdAndRevokedAtIsNull(userId).orElseThrow();
         assertThat(cipher.decrypt(active.getTokenEnc())).isEqualTo(NEW_TOKEN);
         verify(grants).deleteGrant(OLD_TOKEN);
+
+    }
+
+    @Test
+    @DisplayName("거절받은 뒤 재로그인으로 같은 연결의 토큰이 바뀌었으면, 거절 해제는 새 토큰을 지우지 않는다")
+    void rejectedRevokeKeepsTokenRenewedByLogin() throws Exception {
+
+        String rejected = connections.findByUserIdAndRevokedAtIsNull(userId).orElseThrow().getTokenEnc();
+        CountDownLatch loginRead = new CountDownLatch(1);
+        CountDownLatch finishLogin = new CountDownLatch(1);
+        Future<?> login = pool.submit(() -> transaction.executeWithoutResult(status -> {
+            loginService.loadUser(loginRequest());
+            loginRead.countDown();
+            await(finishLogin);
+        }));
+        assertThat(loginRead.await(5, SECONDS)).isTrue();
+
+        Future<?> revoke = pool.submit(() -> disconnectService.revokeRejected(userId, rejected));
+        assertThatThrownBy(() -> revoke.get(500, MILLISECONDS)).isInstanceOf(TimeoutException.class);
+
+        finishLogin.countDown();
+        login.get(5, SECONDS);
+        revoke.get(5, SECONDS);
+
+        GithubConnection active = connections.findByUserIdAndRevokedAtIsNull(userId).orElseThrow();
+        assertThat(cipher.decrypt(active.getTokenEnc())).isEqualTo(NEW_TOKEN);
+        verifyNoInteractions(disconnectAudit);
+
+    }
+
+    @Test
+    @DisplayName("두 요청이 같은 토큰을 동시에 거절받아도 연결 해제와 REVOKE 기록은 한 번뿐이다")
+    void concurrentRejectedRevokesRevokeOnce() throws Exception {
+
+        String rejected = connections.findByUserIdAndRevokedAtIsNull(userId).orElseThrow().getTokenEnc();
+        CountDownLatch firstRevoked = new CountDownLatch(1);
+        CountDownLatch finishFirst = new CountDownLatch(1);
+        Future<?> first = pool.submit(() -> transaction.executeWithoutResult(status -> {
+            disconnectService.revokeRejected(userId, rejected);
+            firstRevoked.countDown();
+            await(finishFirst);
+        }));
+        assertThat(firstRevoked.await(5, SECONDS)).isTrue();
+
+        Future<?> second = pool.submit(() -> disconnectService.revokeRejected(userId, rejected));
+        assertThatThrownBy(() -> second.get(500, MILLISECONDS)).isInstanceOf(TimeoutException.class);
+
+        finishFirst.countDown();
+        first.get(5, SECONDS);
+        second.get(5, SECONDS);
+
+        verify(disconnectAudit, times(1)).ok(eq(userId), eq(AuditAction.REVOKE), any());
+        verifyNoInteractions(grants);
+        assertThat(connections.findAll()).singleElement().satisfies(
+                connection -> assertThat(connection.getRevokedAt()).isNotNull());
 
     }
 

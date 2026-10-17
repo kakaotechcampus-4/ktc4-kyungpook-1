@@ -1,6 +1,7 @@
 package com.gitory.backend.job.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,10 +11,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+
+import java.time.Instant;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -21,6 +25,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class AnalysisJobPersistenceTest {
 
     private static final String KEY = "11111111-1111-4111-8111-111111111111";
+    private static final String OTHER_KEY = "22222222-2222-4222-8222-222222222222";
 
     @Container
     @ServiceConnection
@@ -88,6 +93,27 @@ class AnalysisJobPersistenceTest {
     }
 
     @Test
+    @DisplayName("한도 부분 완료의 남은 초는 DB 에 저장됐다가 다시 읽히고, 남은 초가 없는 Job 은 NULL 로 저장된다")
+    void retryAfterSecIsStored() {
+
+        AnalysisJob limited = AnalysisJob.enqueue(userId, userRepositoryId, KEY);
+        AnalysisJob plain = AnalysisJob.enqueue(userId, userRepositoryId, OTHER_KEY);
+        em.persist(limited);
+        limited.start();
+        limited.succeed(true, JobErrorCode.GITHUB_RATE_LIMITED, Instant.now().plusSeconds(120));
+        em.flush();
+        em.persist(plain);
+        em.flush();
+        em.clear();
+
+        assertThat(em.find(AnalysisJob.class, limited.getId()).getRetryAfterSec()).isEqualTo(120);
+        assertThat(em.find(AnalysisJob.class, plain.getId()).getRetryAfterSec()).isNull();
+        assertThat(jdbc.queryForObject("SELECT retry_after_sec FROM analysis_job WHERE id = ?", Integer.class,
+                limited.getId())).isEqualTo(120);
+
+    }
+
+    @Test
     @DisplayName("접수한 Job 에는 단계 4개가 계약 순서대로 QUEUED 로 채워진다")
     void enqueueFillsFourQueuedSteps() {
 
@@ -129,5 +155,52 @@ class AnalysisJobPersistenceTest {
         assertThat(type).isEqualTo("ANALYZE");
         assertThat(stepCount).isEqualTo(4);
         assertThat(firstKey).isEqualTo("COMMITS");
+    }
+
+    @Test
+    @DisplayName("같은 저장소에 진행 중인 분석 Job 과 카드 초안 Job 은 함께 있을 수 있다")
+    void activeAnalyzeAndDraftJobsCanCoexist() {
+
+        em.persist(AnalysisJob.enqueue(userId, userRepositoryId, KEY));
+        em.flush();
+
+        insertRunningJob("DRAFT", OTHER_KEY);
+
+        assertThat(jdbc.queryForList("SELECT type FROM analysis_job", String.class))
+                .containsExactlyInAnyOrder("ANALYZE", "DRAFT");
+
+    }
+
+    @Test
+    @DisplayName("같은 저장소에 진행 중인 카드 초안 Job 은 여러 개 있을 수 있다")
+    void twoActiveDraftJobsCanCoexist() {
+
+        insertRunningJob("DRAFT", KEY);
+        insertRunningJob("DRAFT", OTHER_KEY);
+
+        assertThat(jdbc.queryForList("SELECT type FROM analysis_job", String.class))
+                .containsExactly("DRAFT", "DRAFT");
+
+    }
+
+    @Test
+    @DisplayName("같은 저장소에 진행 중인 분석 Job 두 개는 DB 가 막는다")
+    void twoActiveAnalyzeJobsAreRejected() {
+
+        em.persist(AnalysisJob.enqueue(userId, userRepositoryId, KEY));
+        em.flush();
+
+        assertThatThrownBy(() -> insertRunningJob("ANALYZE", OTHER_KEY))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("uq_job_active");
+
+    }
+
+    private void insertRunningJob(String type, String idempotencyKey) {
+
+        jdbc.update(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, type, state) VALUES (?, ?, ?, ?, 'RUNNING')",
+                userId, userRepositoryId, idempotencyKey, type);
+
     }
 }

@@ -175,6 +175,14 @@ public class Card {
 
     }
 
+    /** 초안 Job 이 시간이 모자라 일부 칸을 채우지 못했을 때 부르며, 화면은 이 카드에 채운 칸까지만 보여 준다 */
+    void markGenerationPartial() {
+
+        this.generationPartial = true;
+        changed();
+
+    }
+
     /** 임시 저장이 현재 버전을 덮어써 카드 행의 다른 칸이 그대로일 때 부른다 */
     public void markEdited() {
 

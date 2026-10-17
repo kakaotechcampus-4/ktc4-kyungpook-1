@@ -138,6 +138,9 @@ class JobRunnerGroupingTest {
     @MockitoBean
     GithubCollectionAccessPort githubAccess;
 
+    @MockitoBean
+    CardDraftRunner cardDrafts;
+
     @MockitoSpyBean
     CandidateStoreService candidateStore;
 

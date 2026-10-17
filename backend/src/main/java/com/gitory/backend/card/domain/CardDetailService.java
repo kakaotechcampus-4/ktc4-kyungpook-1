@@ -2,6 +2,7 @@ package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.interview.InterviewTurn;
+import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.card.port.CardGenerationPort;
@@ -22,7 +23,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * 내 카드 한 장을 현재 버전의 네 칸, 답한 되묻기 질문 수, 칸에 연결된 질문 번호와 함께 읽는다
+ * 내 카드 한 장을 현재 버전의 네 칸, 칸 메모, 답한 되묻기 질문 수, 칸에 연결된 질문 번호와 함께 읽는다
  * 임시 저장이 문장을 지우고 다시 넣는 사이에도 문장과 근거를 한 시점으로 읽도록 REPEATABLE READ 로 읽는다
  */
 @Service
@@ -36,6 +37,7 @@ public class CardDetailService {
     private final CandidateReferenceService candidates;
     private final CardGenerationPort generationJobs;
     private final InterviewTurnRepository turns;
+    private final CardSlotNoteRepository notes;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public CardDetail load(UUID publicId, Long userId) {
@@ -55,7 +57,7 @@ public class CardDetailService {
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
                 card.getPeriod(), repository, current.getSource(), current.getUpdatedAt(), slots,
                 card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(), candidate, generationOf(card),
-                answeredCount(asked), turnNosOf(slots, asked));
+                answeredCount(asked), turnNosOf(slots, asked), notesOf(card));
 
     }
 
@@ -72,6 +74,17 @@ public class CardDetailService {
         }
 
         return null;
+
+    }
+
+    private Map<StarField, SlotNote> notesOf(Card card) {
+
+        Map<StarField, SlotNote> notesBySlot = new EnumMap<>(StarField.class);
+        for (CardSlotNote note : notes.findByCardIdAndVersionNo(card.getId(), card.getCurrentVersion())) {
+            notesBySlot.put(note.getStarSlot(), new SlotNote(note.getDropReason(), note.getReviewReason()));
+        }
+
+        return notesBySlot;
 
     }
 

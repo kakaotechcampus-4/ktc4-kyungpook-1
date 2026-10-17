@@ -122,4 +122,12 @@ public final class TestFixtures {
         jdbc.update("INSERT INTO statement_evidence (statement_id, commit_id) VALUES (?, ?)", statementId, commitId);
 
     }
+
+    /** 비운 이유 코드와 확인 필요 이유 중 하나만 준다 */
+    public void insertSlotNote(Long cardId, int versionNo, String slot, String dropReason, String reviewReason) {
+
+        jdbc.update("INSERT INTO card_slot_note (card_id, version_no, star_slot, drop_reason, review_reason) VALUES (?, ?, ?, ?, ?)",
+                cardId, versionNo, slot, dropReason, reviewReason);
+
+    }
 }

@@ -24,5 +24,6 @@ public record CardDetail(
         CandidateReference candidate,
         CardGeneration generation,
         int interviewTurns,
-        Map<StarField, Integer> turnNos) {
+        Map<StarField, Integer> turnNos,
+        Map<StarField, SlotNote> notes) {
 }

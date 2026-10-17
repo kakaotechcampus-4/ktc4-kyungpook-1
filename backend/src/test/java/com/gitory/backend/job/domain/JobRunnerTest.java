@@ -735,6 +735,46 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("실행 중인 카드 초안 Job 이 있으면 그 사용자의 다른 카드 초안 Job 은 기다린다")
+    void runningDraftJobBlocksSameUsersDraftJob() {
+
+        draftJob("RUNNING");
+        Long queuedDraftJobId = draftJob(connectRepository(200L, "newer"), "QUEUED");
+
+        assertThat(runner.claimNext()).isEmpty();
+        assertThat(stateOf(queuedDraftJobId)).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("실행 중인 카드 초안 Job 때문에 기다리는 오래된 카드 초안 Job 은 건너뛰고 다른 사용자의 카드 초안 Job 을 꺼낸다")
+    void skipsBlockedDraftJobAndClaimsOtherUsersDraftJob() {
+
+        draftJob("RUNNING");
+        Long sameUser = draftJob(connectRepository(200L, "same-user"), "QUEUED");
+        jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", sameUser);
+        Long otherUser = draftJobForOtherUser();
+
+        Optional<AnalysisJob> claimed = runner.claimNext();
+
+        assertThat(claimed).map(AnalysisJob::getId).contains(otherUser);
+        assertThat(stateOf(sameUser)).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("같은 사용자의 카드 초안 Job 둘이 대기 중이면 먼저 접수된 것을 꺼낸다")
+    void claimsOlderDraftJobWhenSameUserHasTwoQueued() {
+
+        Long older = draftJob("QUEUED");
+        jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", older);
+        draftJob(connectRepository(200L, "newer"), "QUEUED");
+
+        assertThat(runner.claimNext()).map(AnalysisJob::getId).contains(older);
+
+    }
+
+    @Test
     @DisplayName("서버가 다시 뜨면서 QUEUED 로 되돌린 카드 초안 Job 은 다시 돌아도 같은 결과로 끝난다")
     void requeuedDraftJobEndsWithSameResult() {
 
@@ -1009,7 +1049,23 @@ class JobRunnerTest {
 
     private Long draftJob(String state) {
 
-        UUID publicId = new CandidateCardFixtures(jdbc).insertDraftJob(userId, userRepositoryId, state);
+        return draftJob(userRepositoryId, state);
+
+    }
+
+    private Long draftJob(Long connectedRepositoryId, String state) {
+
+        UUID publicId = new CandidateCardFixtures(jdbc).insertDraftJob(userId, connectedRepositoryId, state);
+        return jobs.findByPublicId(publicId).orElseThrow().getId();
+
+    }
+
+    private Long draftJobForOtherUser() {
+
+        Long otherUserId = fixtures.insertUser(2L, "teammate");
+        Long repositoryId = fixtures.insertRepository(300L, "teammate", "app");
+        Long connectedRepositoryId = fixtures.insertUserRepository(otherUserId, repositoryId);
+        UUID publicId = new CandidateCardFixtures(jdbc).insertDraftJob(otherUserId, connectedRepositoryId, "QUEUED");
         return jobs.findByPublicId(publicId).orElseThrow().getId();
 
     }

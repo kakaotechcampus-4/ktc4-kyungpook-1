@@ -8,6 +8,7 @@ import { cardKindShort, cardStatusLabel } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
 import { periodLabel } from '@/lib/format';
 import { track } from '@/lib/track';
+import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
@@ -105,7 +106,7 @@ export function HomePage() {
                       onMouseEnter={() => setHi(i)} onPointerDown={(e) => e.preventDefault()} onClick={() => go(r.id)}>
                       <FolderGit2 size={15} className="prompt__sugg-icon" />
                       <span className="prompt__sugg-name">{r.owner} / {r.name}</span>
-                      <span className="prompt__sugg-meta">내 커밋 {r.contribution.mine} · 팀 {r.contribution.team}</span>
+                      <span className="prompt__sugg-meta">{isCounting(r) ? `개수 ${COUNTING}` : `내 커밋 ${r.contribution.mine} · 팀 ${r.contribution.team}`}</span>
                     </button>
                   </li>
                 ))}

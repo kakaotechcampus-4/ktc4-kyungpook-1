@@ -57,7 +57,7 @@ class CandidateGroupingPersistenceTest {
     }
 
     @Test
-    @DisplayName("묶은 기록의 칸마다 맞는 값이 저장되고 다시 읽힌다")
+    @DisplayName("경험 그룹화 기록의 칸마다 맞는 값이 저장되고 다시 읽힌다")
     void savesEveryField() {
 
         CandidateGrouping grouping = CandidateGrouping.of(userRepositoryId, FINGERPRINT, 3);
@@ -74,7 +74,7 @@ class CandidateGroupingPersistenceTest {
     }
 
     @Test
-    @DisplayName("DB 에서 읽은 기록도 지문과 묶기 버전이 같으면 같은 입력이다")
+    @DisplayName("DB 에서 읽은 기록도 지문과 경험 그룹화 버전이 같으면 같은 입력이다")
     void storedGroupingHasSameInput() {
 
         insertGrouping(FINGERPRINT, 1, LAST_WEEK);
@@ -86,7 +86,7 @@ class CandidateGroupingPersistenceTest {
     }
 
     @Test
-    @DisplayName("저장된 기록을 다시 기록하면 지문·묶기 버전이 바뀌고 묶은 시각이 앞으로 간다")
+    @DisplayName("저장된 기록을 다시 기록하면 지문·경험 그룹화 버전이 바뀌고 경험 그룹화 시각이 앞으로 간다")
     void recordUpdatesStoredRow() {
 
         insertGrouping(FINGERPRINT, 1, LAST_WEEK);
@@ -105,7 +105,7 @@ class CandidateGroupingPersistenceTest {
     }
 
     @Test
-    @DisplayName("저장소 연결마다 묶은 기록은 하나다")
+    @DisplayName("저장소 연결마다 경험 그룹화 기록은 하나다")
     void keepsOneRowPerRepositoryLink() {
 
         insertGrouping(FINGERPRINT, 1, LAST_WEEK);
@@ -116,7 +116,7 @@ class CandidateGroupingPersistenceTest {
     }
 
     @Test
-    @DisplayName("저장소 연결이 지워지면 그 연결의 묶은 기록도 같이 지워진다")
+    @DisplayName("저장소 연결이 지워지면 그 연결의 경험 그룹화 기록도 같이 지워진다")
     void deletesWithRepositoryLink() {
 
         insertGrouping(FINGERPRINT, 1, LAST_WEEK);
@@ -129,7 +129,7 @@ class CandidateGroupingPersistenceTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"input_fingerprint", "grouping_version", "grouped_at"})
-    @DisplayName("지문·묶기 버전·묶은 시각 중 하나라도 비면 저장되지 않는다")
+    @DisplayName("지문·경험 그룹화 버전·경험 그룹화 시각 중 하나라도 비면 저장되지 않는다")
     void rejectsMissingValue(String column) {
 
         insertGrouping(FINGERPRINT, 1, LAST_WEEK);

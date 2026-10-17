@@ -146,7 +146,7 @@ class JobEmptyReasonsTest {
     }
 
     @Test
-    @DisplayName("묶기를 건너뛴 분석 Job 은 판정과 이유 줄이 그대로 null 이다")
+    @DisplayName("경험 그룹화를 건너뛴 분석 Job 은 판정과 이유 줄이 그대로 null 이다")
     void leavesNullVerdictUnchanged() {
 
         AnalysisJob job = jobs.ungroupedJob(userId, myRepoId, KEY_1, runId);

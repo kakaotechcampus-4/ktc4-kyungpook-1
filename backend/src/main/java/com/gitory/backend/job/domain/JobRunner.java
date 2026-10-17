@@ -64,7 +64,10 @@ public class JobRunner {
     /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
     public Optional<AnalysisJob> claimNext() {
 
-        return transaction.execute(status -> startNext());
+        Optional<AnalysisJob> claimed = transaction.execute(status -> startNext());
+        claimed.ifPresent(job -> log.info("{} Job {} 을 접수 {}초 뒤에 시작한다",
+                kindOf(job), job.getId(), secondsSince(job.getStartedAt())));
+        return claimed;
 
     }
 
@@ -75,7 +78,7 @@ public class JobRunner {
                 aiProperties.starReadTimeout()));
         Instant before = Instant.now().minus(longestWait).minus(STUCK_MARGIN);
         transaction.executeWithoutResult(status -> jobs.findStuckForUpdate(before)
-                .forEach(job -> job.fail(JobErrorCode.INTERNAL_ERROR)));
+                .forEach(this::failStuck));
 
     }
 
@@ -86,7 +89,23 @@ public class JobRunner {
     public void requeueRunningJobs() {
 
         transaction.executeWithoutResult(status -> jobs.findWithLockByState(JobState.RUNNING)
-                .forEach(AnalysisJob::requeue));
+                .forEach(this::requeue));
+
+    }
+
+    private void failStuck(AnalysisJob job) {
+
+        JobErrorCode errorCode = JobErrorCode.INTERNAL_ERROR;
+        log.warn("{} Job {} 을 {}{}초 동안 진행이 없어 {} 로 끝낸다",
+                kindOf(job), job.getId(), runningStepOf(job), secondsSince(job.getUpdatedAt()), errorCode);
+        job.fail(errorCode);
+
+    }
+
+    private void requeue(AnalysisJob job) {
+
+        log.info("서버가 다시 떠서 {} Job {} 을 대기열에 되돌린다", kindOf(job), job.getId());
+        job.requeue();
 
     }
 
@@ -254,6 +273,31 @@ public class JobRunner {
         if (job.getState() == JobState.RUNNING) {
             job.fail(errorCode);
         }
+
+    }
+
+    private static String kindOf(AnalysisJob job) {
+
+        return job.getType() == JobType.DRAFT ? "카드 초안" : "분석";
+
+    }
+
+    // 멈춘 Job 정리는 워커가 Job 을 꺼내기 전에 돌아서, 여기서 예외가 나면 그 뒤 Job 을 하나도 꺼내지 못한다
+    // 그래서 진행 중인 단계를 못 찾으면 단계 없이 남긴다
+    private static String runningStepOf(AnalysisJob job) {
+
+        return job.getSteps().stream()
+                .filter(step -> step != null && step.state() == JobStepState.RUNNING)
+                .findFirst()
+                .map(JobStep::key)
+                .map(key -> key + " 단계에서 ")
+                .orElse("");
+
+    }
+
+    private static long secondsSince(Instant from) {
+
+        return Duration.between(from, Instant.now()).toSeconds();
 
     }
 

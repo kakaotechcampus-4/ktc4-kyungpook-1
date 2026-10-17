@@ -27,7 +27,7 @@ public final class AnalyzeJobFixtures {
 
     }
 
-    /** 수집만 마치고 묶기를 건너뛰어 후보 판정이 없는 SUCCEEDED 분석 Job 이다 */
+    /** 수집만 마치고 경험 그룹화를 건너뛰어 후보 판정이 없는 SUCCEEDED 분석 Job 이다 */
     public AnalysisJob ungroupedJob(Long userId, Long userRepositoryId, String key, Long collectionRunId) {
 
         AnalysisJob job = startedJob(userId, userRepositoryId, key, collectionRunId);

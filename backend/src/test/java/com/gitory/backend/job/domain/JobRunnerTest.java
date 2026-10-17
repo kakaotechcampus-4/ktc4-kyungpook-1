@@ -62,6 +62,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -72,6 +74,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @DataJpaTest(properties = {
         "gitory.ai.collect-read-timeout=10m",
@@ -585,6 +589,73 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("Job 을 꺼내 시작하면 접수 뒤 기다린 초를 INFO 로그로 남긴다")
+    void logsWaitSecondsWhenClaimed(CapturedOutput output) {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        jdbc.update("UPDATE analysis_job SET started_at = ? WHERE id = ?", secondsAgo(100), jobId);
+
+        runner.claimNext();
+
+        String line = logLineOf(output, "분석 Job " + jobId + " 을 접수 ");
+        assertThat(line).contains("INFO");
+        assertThat(secondsIn(line, "접수 (\\d+)초 뒤에 시작한다")).isBetween(100L, 160L);
+
+    }
+
+    @Test
+    @DisplayName("멈춘 Job 을 정리하면 진행 중이던 단계와 진행이 없던 초를 WARN 로그로 남긴다")
+    void logsStepAndSecondsWhenFailingStuckJob(CapturedOutput output) {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        runner.claimNext();
+        jdbc.update("UPDATE analysis_job SET updated_at = ? WHERE id = ?", secondsAgo(960), jobId);
+
+        runner.failStuckJobs();
+
+        String line = logLineOf(output, "분석 Job " + jobId + " 을 COMMITS 단계에서 ");
+        assertThat(line).contains("WARN").contains("초 동안 진행이 없어 INTERNAL_ERROR 로 끝낸다");
+        assertThat(secondsIn(line, "단계에서 (\\d+)초 동안")).isBetween(960L, 1020L);
+        assertFailed(jobId, JobErrorCode.INTERNAL_ERROR);
+
+    }
+
+    @Test
+    @DisplayName("진행 중인 단계가 없는 멈춘 Job 도 예외 없이 정리하고 단계를 뺀 WARN 로그를 남긴다")
+    void logsWithoutStepWhenNoStepIsRunning(CapturedOutput output) {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+        assertThat(jobs.findById(jobId).orElseThrow().getSteps()).extracting(JobStep::state)
+                .doesNotContain(JobStepState.RUNNING);
+
+        runner.failStuckJobs();
+
+        String line = logLineOf(output, "분석 Job " + jobId + " 을 ");
+        assertThat(line).contains("WARN").doesNotContain("단계에서")
+                .contains("초 동안 진행이 없어 INTERNAL_ERROR 로 끝낸다");
+        assertFailed(jobId, JobErrorCode.INTERNAL_ERROR);
+
+    }
+
+    @Test
+    @DisplayName("여러 단계가 함께 진행 중인 멈춘 Job 은 그중 첫 단계를 WARN 로그에 남긴다")
+    void logsFirstRunningStepWhenSeveralAreRunning(CapturedOutput output) {
+
+        Long draftJobId = draftJob("RUNNING");
+        jdbc.update("UPDATE analysis_job SET steps = ?::jsonb, updated_at = ? WHERE id = ?", """
+                [{"key":"COMMITS","state":"RUNNING","done":1,"total":2},
+                 {"key":"PR_REVIEW","state":"QUEUED","done":0,"total":null},
+                 {"key":"COMPRESS","state":"RUNNING","done":0,"total":2},
+                 {"key":"REASON","state":"QUEUED","done":0,"total":null}]""", secondsAgo(960), draftJobId);
+
+        runner.failStuckJobs();
+
+        assertThat(logLineOf(output, "카드 초안 Job " + draftJobId + " 을 COMMITS 단계에서 ")).contains("WARN");
+        assertFailed(draftJobId, JobErrorCode.INTERNAL_ERROR);
+
+    }
+
+    @Test
     @DisplayName("수집 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
     void stuckJudgementFollowsCollectReadTimeout() {
 
@@ -735,6 +806,46 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("실행 중인 카드 초안 Job 이 있으면 그 사용자의 다른 카드 초안 Job 은 기다린다")
+    void runningDraftJobBlocksSameUsersDraftJob() {
+
+        draftJob("RUNNING");
+        Long queuedDraftJobId = draftJob(connectRepository(200L, "newer"), "QUEUED");
+
+        assertThat(runner.claimNext()).isEmpty();
+        assertThat(stateOf(queuedDraftJobId)).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("실행 중인 카드 초안 Job 때문에 기다리는 오래된 카드 초안 Job 은 건너뛰고 다른 사용자의 카드 초안 Job 을 꺼낸다")
+    void skipsBlockedDraftJobAndClaimsOtherUsersDraftJob() {
+
+        draftJob("RUNNING");
+        Long sameUser = draftJob(connectRepository(200L, "same-user"), "QUEUED");
+        jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", sameUser);
+        Long otherUser = draftJobForOtherUser();
+
+        Optional<AnalysisJob> claimed = runner.claimNext();
+
+        assertThat(claimed).map(AnalysisJob::getId).contains(otherUser);
+        assertThat(stateOf(sameUser)).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("같은 사용자의 카드 초안 Job 둘이 대기 중이면 먼저 접수된 것을 꺼낸다")
+    void claimsOlderDraftJobWhenSameUserHasTwoQueued() {
+
+        Long older = draftJob("QUEUED");
+        jdbc.update("UPDATE analysis_job SET started_at = now() - interval '1 minute' WHERE id = ?", older);
+        draftJob(connectRepository(200L, "newer"), "QUEUED");
+
+        assertThat(runner.claimNext()).map(AnalysisJob::getId).contains(older);
+
+    }
+
+    @Test
     @DisplayName("서버가 다시 뜨면서 QUEUED 로 되돌린 카드 초안 Job 은 다시 돌아도 같은 결과로 끝난다")
     void requeuedDraftJobEndsWithSameResult() {
 
@@ -777,7 +888,7 @@ class JobRunnerTest {
         assertThat(stateOf(draftJobId)).isEqualTo(JobState.CANCELED);
         assertThat(jobs.findById(draftJobId).orElseThrow().getSteps()).extracting(JobStep::state)
                 .doesNotContain(JobStepState.DONE);
-        assertThat(output).doesNotContain("카드 초안 Job");
+        assertThat(output).doesNotContain("로 끝낸다");
 
     }
 
@@ -931,6 +1042,20 @@ class JobRunnerTest {
 
     }
 
+    @Test
+    @DisplayName("서버가 다시 떠서 실행 중이던 카드 초안 Job 을 대기열에 되돌리면 INFO 로그를 남긴다")
+    void logsRequeuedDraftJob(CapturedOutput output) {
+
+        Long draftJobId = draftJob("RUNNING");
+
+        runner.requeueRunningJobs();
+
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.QUEUED);
+        assertThat(logLineOf(output, "서버가 다시 떠서 카드 초안 Job " + draftJobId + " 을 대기열에 되돌린다"))
+                .contains("INFO");
+
+    }
+
     private boolean runNext() {
 
         Optional<AnalysisJob> claimed = runner.claimNext();
@@ -1009,7 +1134,23 @@ class JobRunnerTest {
 
     private Long draftJob(String state) {
 
-        UUID publicId = new CandidateCardFixtures(jdbc).insertDraftJob(userId, userRepositoryId, state);
+        return draftJob(userRepositoryId, state);
+
+    }
+
+    private Long draftJob(Long connectedRepositoryId, String state) {
+
+        UUID publicId = new CandidateCardFixtures(jdbc).insertDraftJob(userId, connectedRepositoryId, state);
+        return jobs.findByPublicId(publicId).orElseThrow().getId();
+
+    }
+
+    private Long draftJobForOtherUser() {
+
+        Long otherUserId = fixtures.insertUser(2L, "teammate");
+        Long repositoryId = fixtures.insertRepository(300L, "teammate", "app");
+        Long connectedRepositoryId = fixtures.insertUserRepository(otherUserId, repositoryId);
+        UUID publicId = new CandidateCardFixtures(jdbc).insertDraftJob(otherUserId, connectedRepositoryId, "QUEUED");
         return jobs.findByPublicId(publicId).orElseThrow().getId();
 
     }
@@ -1027,6 +1168,26 @@ class JobRunnerTest {
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         assertThat(job.getState()).isEqualTo(JobState.FAILED);
         assertThat(job.getErrorCode()).isEqualTo(errorCode);
+
+    }
+
+    private static String logLineOf(CapturedOutput output, String message) {
+
+        return output.getAll().lines().filter(line -> line.contains(message)).findFirst().orElse("");
+
+    }
+
+    private static OffsetDateTime secondsAgo(long seconds) {
+
+        return OffsetDateTime.ofInstant(Instant.now().minusSeconds(seconds), ZoneOffset.UTC);
+
+    }
+
+    private static long secondsIn(String line, String regex) {
+
+        Matcher matcher = Pattern.compile(regex).matcher(line);
+        assertThat(matcher.find()).as(line).isTrue();
+        return Long.parseLong(matcher.group(1));
 
     }
 

@@ -180,7 +180,7 @@ class CardCreationServiceTest {
     }
 
     @Test
-    @DisplayName("AI 가 묶은 후보는 이유 글이 있어도 T 칸을 채우지 않고, 같이 고른 직접 추가 후보만 채운다")
+    @DisplayName("AI 경험 그룹화로 만든 후보는 이유 글이 있어도 T 칸을 채우지 않고, 같이 고른 직접 추가 후보만 채운다")
     void groupedCandidateLeavesTaskSlotEmpty() {
 
         Long grouped = candidateFixtures.insertNewCandidate(userRepositoryId, "묶음 후보");

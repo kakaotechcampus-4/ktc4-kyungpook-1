@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * 저장소 연결 하나에 저장된 수집 결과로 AI 후보 묶기에 보낼 내 커밋과, 그 커밋이 가리키는 PR·이슈의 제목·본문을 모은다
+ * 저장소 연결 하나에 저장된 수집 결과로 AI 경험 그룹화에 보낼 내 커밋과, 그 커밋이 가리키는 PR·이슈의 제목·본문을 모은다
  * ingest 는 후보를 모르므로 손댄 후보에 든 커밋 sha 와 손댄 후보가 담은 PR 번호는 부르는 쪽이 넘긴다
  */
 @Slf4j
@@ -79,7 +79,7 @@ public class GroupingMaterialService {
 
         List<MaterialPullRequest> pullRequestContexts = pullRequestContexts(commits, pullRequests, issues);
         List<MaterialIssue> issueContexts = issueContexts(commits, pullRequestContexts, issues);
-        log.info("저장소 연결 {} 의 후보 묶기 재료로 내 커밋 {}개, PR {}개, 이슈 {}개를 모았다", userRepositoryId,
+        log.info("저장소 연결 {} 의 경험 그룹화에 보낼 내 커밋 {}개, PR {}개, 이슈 {}개를 모았다", userRepositoryId,
                 commits.size(), pullRequestContexts.size(), issueContexts.size());
 
         return new GroupingMaterial(commits, pullRequestContexts, issueContexts);

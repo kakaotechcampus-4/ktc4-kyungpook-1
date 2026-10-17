@@ -18,7 +18,7 @@ import static org.mockito.Mockito.when;
 class RepositoryWorkCounterTest {
 
     @Test
-    @DisplayName("묶은 시각을 후보 수보다 먼저 읽어, 그 사이 새로 묶은 결과가 가짜 확정 0 으로 보이지 않게 한다")
+    @DisplayName("경험 그룹화 시각을 후보 수보다 먼저 읽어, 그 사이 새로 끝난 경험 그룹화 결과가 가짜 확정 0 으로 보이지 않게 한다")
     void readsGroupedAtBeforeCandidateCount() {
 
         RepositoryCandidateCardPort port = mock(RepositoryCandidateCardPort.class);

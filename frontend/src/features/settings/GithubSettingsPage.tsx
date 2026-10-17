@@ -6,6 +6,7 @@ import { ConfirmActionDialog } from '@/features/cards/CardDialogs';
 import { ymd, ymdhm } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
+import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -60,7 +61,7 @@ export function GithubSettingsPage() {
         {analyzed.map((r) => (
           <div key={r.id} className="kv collection-row">
             <span className="w-600 collection-row__name">{r.name}</span>
-            <span className="t-12 c-2 collection-row__metrics">커밋 {r.contribution.mine} · PR {r.prCount} · 리뷰 {r.reviewCount}</span>
+            <span className="t-12 c-2 collection-row__metrics">{isCounting(r) ? `개수 ${COUNTING}` : `커밋 ${r.contribution.mine} · PR ${r.prCount} · 리뷰 ${r.reviewCount}`}</span>
             <span className="t-12 c-3 collection-row__date">{r.lastAnalyzedAt && ymdhm(r.lastAnalyzedAt)}</span>
             <span className="t-12 w-500 collection-row__result">후보 {r.candidateCount ?? '-'} · 카드 {r.cardCount}</span>
           </div>

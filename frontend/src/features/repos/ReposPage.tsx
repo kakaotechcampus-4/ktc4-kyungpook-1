@@ -7,6 +7,7 @@ import { Badge, Button, IconBox, Radio, PageTitle, Skeleton, StickyFooter, Note,
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
 import { pct, ym } from '@/lib/format';
+import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -33,8 +34,8 @@ export function ReposPage() {
 
   const list = useMemo(() => {
     let xs = (repos.data ?? []).filter((r) => `${r.owner}/${r.name}`.toLowerCase().includes(q.toLowerCase()));
-    if (filter === 'pr') xs = xs.filter((r) => r.prCount > 0);
-    if (filter === 'nopr') xs = xs.filter((r) => r.prCount === 0);
+    if (filter === 'pr') xs = xs.filter((r) => !isCounting(r) && r.prCount > 0);
+    if (filter === 'nopr') xs = xs.filter((r) => !isCounting(r) && r.prCount === 0);
     if (filter === 'fresh') xs = xs.filter((r) => !r.lastAnalyzedAt);
     const score = (r: RepoSummary) => r.contribution.mine + r.prCount * 3 + r.reviewCount;
     return xs.sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name) : sort === 'recent' ? b.activeTo.localeCompare(a.activeTo) : score(b) - score(a));
@@ -99,7 +100,7 @@ export function ReposPage() {
                 <IconBox icon={FolderGit2} size={36} />
                 <div className="stack grow" style={{ gap: 3 }}>
                   <span className="w-600" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
-                  <span className="t-12 c-2">내 커밋 {selected.contribution.mine} / 팀 {selected.contribution.team} · PR {selected.prCount} · 리뷰 {selected.reviewCount}</span>
+                  <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요 — 0건이 아니라 집계 전이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team} · PR ${selected.prCount} · 리뷰 ${selected.reviewCount}`}</span>
                 </div>
                 <Badge kind="NEUTRAL">READ ONLY</Badge>
               </div>
@@ -115,7 +116,8 @@ export function ReposPage() {
 }
 
 function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean; onSelect: () => void }) {
-  const low = r.contribution.level === 'PARTIAL' || r.contribution.level === 'NONE';
+  const counting = isCounting(r); // 개수 0 이 실제 0 이 아니다 — 기여 경고·PR 0건 표시를 하지 않는다
+  const low = !counting && (r.contribution.level === 'PARTIAL' || r.contribution.level === 'NONE');
   return (
     <button type="button" role="radio" aria-checked={selected} onClick={onSelect}
       className={`card row repo-row ${selected ? 'card--selected repo-row--sel' : ''}`}>
@@ -126,16 +128,18 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
           <span className="w-600" style={{ fontSize: 14 }}>{r.owner} / {r.name}</span>
           {r.recommended && !r.lastAnalyzedAt && <Badge kind="PR">추천</Badge>}
           {low && <Badge kind="CAUTION">내 기여 {pct(r.contribution.ratio)}</Badge>}
-          {r.prCount === 0 && <Badge kind="NEUTRAL">PR 0건</Badge>}
+          {counting && <Badge kind="NEUTRAL">{COUNTING}</Badge>}
+          {!counting && r.prCount === 0 && <Badge kind="NEUTRAL">PR 0건</Badge>}
           {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}건</Badge></span>}
         </div>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-          <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></span>
-          <span className="repo-row__stats t-12 c-3"><span>PR {r.prCount} · 리뷰 {r.reviewCount}</span><span>{r.language ?? '-'}</span><span>{ym(r.activeFrom)} – {ym(r.activeTo)}</span></span>
+          <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}>{counting ? <>내 커밋 <span>{COUNTING}</span></> : <>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></>}</span>
+          <span className="repo-row__stats t-12 c-3"><span>{counting ? `PR · 리뷰 ${COUNTING}` : `PR ${r.prCount} · 리뷰 ${r.reviewCount}`}</span><span>{r.language ?? '-'}</span><span>{ym(r.activeFrom)} – {ym(r.activeTo)}</span></span>
         </div>
         {/* 배지만 두면 왜 조심해야 하는지 안 읽힌다 — 한 줄로 풀어 쓴다 */}
         {low && <span className="repo-row__warn">내 몫이 적어서, 카드로 만들면 부풀린 것처럼 보일 수 있어요</span>}
-        {!low && r.prCount === 0 && <span className="repo-row__warn">PR이 없어서 커밋을 묶어 후보를 만들어 드려요</span>}
+        {counting && <span className="t-12 c-3">아직 개수를 세지 못했어요. 0건이 아니라 집계 전이에요</span>}
+        {!counting && !low && r.prCount === 0 && <span className="repo-row__warn">PR이 없어서 커밋을 묶어 후보를 만들어 드려요</span>}
       </div>
     </button>
   );

@@ -11,7 +11,7 @@ import static lombok.AccessLevel.PROTECTED;
 
 /**
  * 후보에 든 커밋 한 개로, 사용자가 빼도 행을 지우지 않고 포함 여부만 바꾼다
- * 화면이 커밋마다 보여 줄 경로는 묶을 때 정해 displayPath 에 둔다
+ * 화면이 커밋마다 보여 줄 경로는 경험 그룹화 때 정해 displayPath 에 둔다
  */
 @Entity
 @Getter

@@ -119,7 +119,7 @@ gitory:
     worker:
       # 끄면 접수된 Job 이 실행되지 않는다. 테스트는 test 리소스의 config/application.yml 에서 끈다
       enabled: ${JOB_WORKER_ENABLED:true}
-      # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job 은 이 수와 상관없이 하나씩 실행한다
+      # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
   ingest:
     # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.

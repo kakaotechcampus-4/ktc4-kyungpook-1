@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/** 저장소 연결 하나에 저장된 커밋·바뀐 파일·PR 줄 댓글 수를 다른 모듈이 읽는 조회로, AI 가 묶은 후보를 저장하는 recommend 가 쓴다 */
+/** 저장소 연결 하나에 저장된 커밋·바뀐 파일·PR 줄 댓글 수를 다른 모듈이 읽는 조회로, AI 경험 그룹화로 만든 후보를 저장하는 recommend 가 쓴다 */
 @Service
 @RequiredArgsConstructor
 public class StoredActivityService {

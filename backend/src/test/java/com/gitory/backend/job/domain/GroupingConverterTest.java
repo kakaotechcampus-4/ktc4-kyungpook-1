@@ -118,7 +118,7 @@ class GroupingConverterTest {
     }
 
     @Test
-    @DisplayName("AI 가 묶은 후보는 열쇠를 빼고 받은 순서·값 그대로 저장할 후보로 바꾸고, 판정과 AI 가 뺀 커밋은 옮기지 않는다")
+    @DisplayName("AI 경험 그룹화가 준 후보는 열쇠를 빼고 받은 순서·값 그대로 저장할 후보로 바꾸고, 판정과 AI 가 뺀 커밋은 옮기지 않는다")
     void convertsCandidatesWithoutGroupKey() {
 
         ExperienceGroupingResponse response = new ExperienceGroupingResponse(GroupingVerdict.PARTIAL, List.of(

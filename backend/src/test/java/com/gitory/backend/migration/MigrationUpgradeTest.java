@@ -289,10 +289,10 @@ class MigrationUpgradeTest {
     }
 
     @Test
-    @DisplayName("V17 은 Job 에러 코드 5개를 그대로 두고 COLLECTION_CAPPED 를 허용하며 목록 밖 값은 계속 막고 제약은 같은 이름 하나로 다시 만든다")
-    void v17AllowsCollectionCapped() {
+    @DisplayName("V19 는 Job 에러 코드 5개를 그대로 두고 COLLECTION_CAPPED 를 허용하며 목록 밖 값은 계속 막고 제약은 같은 이름 하나로 다시 만든다")
+    void v19AllowsCollectionCapped() {
 
-        migrateTo("16");
+        migrateTo("18");
         Long userId = fixtures.insertUser(1L, "grow22");
         Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
         List<String> previous = List.of("GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING",
@@ -301,7 +301,7 @@ class MigrationUpgradeTest {
             insertJob(userId, userRepositoryId, errorCode);
         }
 
-        migrateTo("17");
+        migrateTo("19");
 
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM pg_constraint WHERE conname = 'analysis_job_error_code_check' AND conrelid = 'analysis_job'::regclass",

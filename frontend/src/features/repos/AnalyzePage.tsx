@@ -4,6 +4,7 @@ import { useActiveJobs, useJob, useRepo, useStartAnalysis, useCancelJob } from '
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton, Track } from '@/components/ui';
 import { minutes } from '@/lib/format';
+import { isCounting } from '@/lib/repoCounts';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
 import { isTerminal, type Job } from '@/api/schemas';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
@@ -140,9 +141,11 @@ export function AnalyzePage() {
             <span className="w-600" style={{ fontSize: 15 }}>{code ? jobErrorTitle[code] : '일부 기록만 분석했어요'}</span>
             <span className="c-2" style={{ fontSize: 12.5, lineHeight: '20px' }}>{readNote(j)} {code && jobErrorHint[code]}</span>
           </div>
-          <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
-            {waitSec > 0 ? `${minutes(waitSec)} 뒤 이어 읽기` : '이어 읽기'}
-          </Button>
+          {(code !== 'COLLECTION_CAPPED' || canRetry) && (
+            <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
+              {waitSec > 0 ? `${minutes(waitSec)} 뒤 이어 읽기` : '이어 읽기'}
+            </Button>
+          )}
         </div>
         <div className="row" style={{ gap: 8 }}>
           <Button onClick={() => nav(`/repos/${repoId}/candidates?job=${encodeURIComponent(jobId)}`)}>읽은 범위의 후보 보기</Button>
@@ -159,7 +162,7 @@ export function AnalyzePage() {
     <main className="main">
       <Breadcrumb items={[...crumbs, { label: '정리 중' }]} />
       <PageTitle right="떠나도 돼요">읽고 있습니다</PageTitle>
-      <RepoContext name={name} note={repo.data ? `커밋 ${repo.data.contribution.mine}개 · PR ${repo.data.prCount}건 · 리뷰 ${repo.data.reviewCount}건을 읽는 중이에요` : '…'}
+      <RepoContext name={name} note={repo.data ? (isCounting(repo.data) ? '커밋·PR·리뷰를 읽는 중이에요' : `커밋 ${repo.data.contribution.mine}개 · PR ${repo.data.prCount}건 · 리뷰 ${repo.data.reviewCount}건을 읽는 중이에요`) : '…'}
         right={<Badge kind={j?.state === 'SUCCEEDED' ? 'CONFIRMED' : 'NEUTRAL'}>{j?.state === 'SUCCEEDED' ? '완료' : '진행 중'}</Badge>} />
       <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
         {!j ? <Skeleton h={120} /> : (

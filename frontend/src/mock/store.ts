@@ -155,13 +155,19 @@ export function viewJob(id: string): Any | null {
       return ended({ state: 'CANCELED', partial: false, steps: analyzeSteps(repo, progress, null),
         errorCode: null, retryable: null, retryAfterSec: null, result: { repoId: repo.id } });
     }
-    const failAt = repo.id === 'r_fail' ? 0.45 : repo.id === 'r_ratelimit' ? 0.62 : null;
+    const failAt = repo.id === 'r_fail' ? 0.45 : repo.id === 'r_ratelimit' ? 0.62 : repo.id === 'r_capped' ? 0.4 : null; // 상한은 수집(PR 읽기) 도중에 걸린다
     if (failAt !== null && progress >= failAt) {
       progress = failAt;
       const rateLimited = repo.id === 'r_ratelimit';
-      settle(j, () => { if (rateLimited) materializeCandidates(repo, true); });
+      const capped = repo.id === 'r_capped';
+      settle(j, () => { if (rateLimited || capped) materializeCandidates(repo, true); });
       const steps = analyzeSteps(repo, progress, null);
-      // 부분 완료는 별도 상태가 아니다 — SUCCEEDED + partial: true
+      // 부분 완료는 별도 상태가 아니다 — SUCCEEDED + partial: true. 이유는 errorCode 로 구분한다
+      if (capped) {
+        // 수집 상한에 걸리면 다시 읽어도 같은 상한이라 서버가 재시도를 열지 않는다(retryable false)
+        return ended({ state: 'SUCCEEDED', partial: true, steps, errorCode: 'COLLECTION_CAPPED', retryable: false, retryAfterSec: null,
+          result: { repoId: repo.id, verdict: 'PARTIAL', reasons: [] } });
+      }
       return ended(rateLimited
         ? { state: 'SUCCEEDED', partial: true, steps, errorCode: 'GITHUB_RATE_LIMITED', retryable: true, retryAfterSec: 720,
             result: { repoId: repo.id, verdict: 'PARTIAL', reasons: [] } }
@@ -229,11 +235,11 @@ export function boardFor(repoId: string) {
   const repo = db.repos.find((r) => r.id === repoId)!;
   const cands = db.candidates.filter((c) => c.repoId === repoId).sort((a, b) => b.score - a.score);
   const lastJob = [...db.jobs.values()].filter((j) => j.type === 'ANALYZE' && j.payload.repoId === repoId).sort((a, b) => b.startedAt - a.startedAt)[0];
-  const partial = repoId === 'r_ratelimit' && !!lastJob;
+  const partial = (repoId === 'r_ratelimit' || repoId === 'r_capped') && !!lastJob; // 요청 한도 · 수집 상한
   const verdict = cands.length === 0 ? 'EMPTY' : partial ? 'PARTIAL' : 'OK';
   return {
     repoId, verdict, partial,
-    retryAfterSeconds: partial ? 720 : null,
+    retryAfterSeconds: partial && repoId === 'r_ratelimit' ? 720 : null, // 상한은 기다린다고 풀리지 않는다
     readCoverage: partial ? { commitsRead: 96, commitsTotal: repo.contribution.mine, prsRead: 12, prsTotal: repo.prCount } : null,
     emptyReasons: verdict === 'EMPTY' ? [`내 커밋 ${repo.contribution.mine}개 / 팀 전체 ${repo.contribution.team}개`, '커밋 메시지 평균 4글자', 'PR 참여 없음'] : [],
     candidates: cands,

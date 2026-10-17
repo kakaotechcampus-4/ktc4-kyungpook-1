@@ -15,7 +15,7 @@ export const seedRepos = [
     id: 'r_auth', owner: 'hong-dev', name: 'auth-service',
     contribution: { mine: 214, team: 402, ratio: 0.347, level: 'SHARED' },
     prCount: 31, reviewCount: 88, language: 'Java', activeFrom: '2024-03-02', activeTo: '2024-08-30',
-    lastAnalyzedAt: daysAgo(1), candidateCount: 20, cardCount: 2, recommended: true,
+    lastAnalyzedAt: daysAgo(1), countedAt: daysAgo(1), candidateCount: 20, cardCount: 2, recommended: true,
     disclosure: {
       reads: ['내 커밋 214개 — 봇·머지 커밋 제외', '내가 만든 PR 31건', '내가 남긴 리뷰 코멘트 88건', '연결된 이슈'],
       skips: ['다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '비공개 저장소 — 권한 자체를 요청하지 않습니다', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -26,7 +26,7 @@ export const seedRepos = [
     id: 'r_web', owner: 'hong-dev', name: 'web-client',
     contribution: { mine: 96, team: 140, ratio: 0.407, level: 'SHARED' },
     prCount: 24, reviewCount: 31, language: 'TypeScript', activeFrom: '2024-01-10', activeTo: '2024-05-22',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: true,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
     disclosure: {
       reads: ['내 커밋 96개 — 봇·머지 커밋 제외', '내가 만든 PR 24건', '내가 남긴 리뷰 코멘트 31건', '연결된 이슈'],
       skips: ['다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '비공개 저장소 — 권한 자체를 요청하지 않습니다', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -38,7 +38,7 @@ export const seedRepos = [
     id: 'r_fts', owner: 'TaeHuiKKIM', name: 'free-tier-sleep',
     contribution: { mine: 21, team: 118, ratio: 0.151, level: 'PARTIAL' },
     prCount: 1, reviewCount: 0, language: 'C#', activeFrom: '2026-05-20', activeTo: '2026-06-02',
-    lastAnalyzedAt: daysAgo(2), candidateCount: 4, cardCount: 1, recommended: false,
+    lastAnalyzedAt: daysAgo(2), countedAt: daysAgo(1), candidateCount: 4, cardCount: 1, recommended: false,
     disclosure: {
       reads: ['내 커밋 21개 — 머지 커밋 31개 제외', '내가 만든 PR 1건', '내가 남긴 리뷰 코멘트 0건'],
       skips: ['다른 사람 커밋 118개', 'Unity 메타·씬 바이너리 · 자동 생성 파일', '비공개 저장소 — 권한 자체를 요청하지 않습니다', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -50,7 +50,7 @@ export const seedRepos = [
     id: 'r_board', owner: 'kbu-capstone', name: 'team-board',
     contribution: { mine: 3, team: 183, ratio: 0.016, level: 'PARTIAL' },
     prCount: 0, reviewCount: 2, language: 'Python', activeFrom: '2023-09-04', activeTo: '2023-12-15',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
     disclosure: {
       reads: ['내 커밋 3개', '내가 남긴 리뷰 코멘트 2건'],
       skips: ['다른 사람 커밋 183개', '다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -62,7 +62,7 @@ export const seedRepos = [
     id: 'r_algo', owner: 'hong-dev', name: 'algorithm-study',
     contribution: { mine: 41, team: 0, ratio: 1, level: 'MAJOR' },
     prCount: 0, reviewCount: 0, language: 'Java', activeFrom: '2023-03-01', activeTo: '2023-07-20',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: true,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
     disclosure: {
       reads: ['내 커밋 41개'],
       skips: ['PR — 이 레포에는 없습니다. 커밋을 시간대·디렉터리로 묶습니다', 'lockfile · 자동 생성 파일', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -74,7 +74,7 @@ export const seedRepos = [
     id: 'r_fail', owner: 'hong-dev', name: 'legacy-monolith',
     contribution: { mine: 12, team: 340, ratio: 0.034, level: 'PARTIAL' },
     prCount: 4, reviewCount: 1, language: 'PHP', activeFrom: '2022-06-01', activeTo: '2022-11-30',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
     disclosure: { reads: ['내 커밋 12개', '내가 만든 PR 4건'], skips: ['다른 사람 커밋 340개', '코드 원문'], estimatedSeconds: 25 },
   },
   {
@@ -82,8 +82,24 @@ export const seedRepos = [
     id: 'r_ratelimit', owner: 'hong-dev', name: 'data-pipeline',
     contribution: { mine: 158, team: 220, ratio: 0.418, level: 'SHARED' },
     prCount: 19, reviewCount: 12, language: 'Python', activeFrom: '2024-06-01', activeTo: '2024-08-15',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
     disclosure: { reads: ['내 커밋 158개', '내가 만든 PR 19건', '리뷰 12건'], skips: ['다른 사람 커밋 220개', '코드 원문'], estimatedSeconds: 45 },
+  },
+  {
+    // 개수를 아직 못 센 레포 — countedAt 이 null 이라 개수 0 은 실제 0 이 아니다 ("내 기여 0%"·"PR 0건"을 띄우면 안 된다)
+    id: 'r_counting', owner: 'hong-dev', name: 'side-project-new',
+    contribution: { mine: 0, team: 0, ratio: 0, level: 'NONE' },
+    prCount: 0, reviewCount: 0, language: 'TypeScript', activeFrom: '2026-09-20', activeTo: '2026-10-08',
+    lastAnalyzedAt: null, countedAt: null, candidateCount: null, cardCount: 0, recommended: false,
+    disclosure: { reads: ['내 커밋 — 개수를 세는 중입니다'], skips: ['코드 원문 — 이 단계에서는 읽지 않습니다'], estimatedSeconds: 20 },
+  },
+  {
+    // 수집 상한에 걸리는 시나리오 — SUCCEEDED + partial + errorCode COLLECTION_CAPPED (재시도는 열지 않는다)
+    id: 'r_capped', owner: 'hong-dev', name: 'big-monorepo',
+    contribution: { mine: 480, team: 910, ratio: 0.527, level: 'MAJOR' },
+    prCount: 62, reviewCount: 140, language: 'Java', activeFrom: '2023-01-10', activeTo: '2026-09-30',
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
+    disclosure: { reads: ['내 커밋 480개 — 봇·머지 커밋 제외', '내가 만든 PR 62건', '내가 남긴 리뷰 코멘트 140건'], skips: ['다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '코드 원문 — 이 단계에서는 읽지 않습니다'], estimatedSeconds: 60 },
   },
 ];
 

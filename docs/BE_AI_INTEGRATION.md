@@ -29,7 +29,7 @@ flowchart LR
 | `AI_GROUPS_READ_TIMEOUT` | `600s`; 경험 그룹화(`/internal/analysis/groups`) 응답 대기 제한 |
 | `AI_DIFF_EVIDENCE_READ_TIMEOUT` | `300s`; 카드 초안의 diff 근거(`/internal/analysis/diff-evidence`) 응답 대기 제한 |
 | `AI_STAR_READ_TIMEOUT` | `180s`; 카드 초안의 STAR 초안(`/internal/analysis/star`) 응답 대기 제한 |
-| `ANALYSIS_GROUPING_ENABLED` | `false`; 켜면 분석 Job 이 수집 뒤 후보 묶기를 부른다. 운영 AI 에 LLM 설정(`GITORY_LLM_BASE_URL`·`GITORY_LLM_API_KEY`)을 넣은 뒤 켠다. `deploy/compose.yaml` 은 서비스마다 `environment` 에 적힌 값만 넘기므로, ai 에 LLM 설정을, backend 에 `ANALYSIS_GROUPING_ENABLED: ${ANALYSIS_GROUPING_ENABLED:-false}` 를 더해야 `deploy/.env` 값이 들어간다 |
+| `ANALYSIS_GROUPING_ENABLED` | `false`; 켜면 분석 Job 이 수집 뒤 경험 그룹화를 부른다. 운영 AI 에 LLM 설정(`GITORY_LLM_BASE_URL`·`GITORY_LLM_API_KEY`)을 넣은 뒤 켠다. `deploy/compose.yaml` 은 서비스마다 `environment` 에 적힌 값만 넘기므로, ai 에 LLM 설정을, backend 에 `ANALYSIS_GROUPING_ENABLED: ${ANALYSIS_GROUPING_ENABLED:-false}` 를 더해야 `deploy/.env` 값이 들어간다 |
 | `CARD_AI_DRAFT_ENABLED` | `false`; 켜면 후보로 만든 카드의 초안 Job 이 diff 근거·STAR 초안으로 칸을 채우고, 끄면 AI 를 부르지 않고 끝낸다. 운영 AI 에 LLM 설정을 넣은 뒤 켠다. `deploy/compose.yaml` 의 backend `environment` 에 `CARD_AI_DRAFT_ENABLED` 를 넘겨야 `deploy/.env` 값이 들어간다 |
 | `API_DOCS_ENABLED` | BE 운영 기본 `false`, `local` 프로필 기본 `true` |
 | `AI_DOCS_ENABLED` | AI 기본 `true`; 운영에서 문서가 필요 없으면 `false` |
@@ -37,7 +37,7 @@ flowchart LR
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | BE GitHub OAuth App 설정 |
 | `TOKEN_ENC_KEY`, `TOKEN_ENC_SALT` | 기존 BE 토큰 암호화 설정; salt는 16진수 |
 
-헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. 되묻기는 프론트가 요청을 30초에 끊으므로 그보다 짧은 `gitory.ai.interview-read-timeout`(기본 20초)을 응답 대기 제한으로 사용한다(되묻기 연동부터 사용). `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
+헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. 되묻기는 프론트가 요청을 30초에 끊으므로 그보다 짧은 `gitory.ai.interview-read-timeout`(기본 20초)을 응답 대기 제한으로 사용한다. `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
 
 ## 로컬 실행
 
@@ -114,14 +114,14 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 | BE Job 워커 | `JobWorker`가 2초마다 대기 Job을 꺼내 실행(동시 실행 `JOB_WORKER_CONCURRENCY`, 기본 3, 카드 초안 Job과 같은 자리 사용). 분석 Job은 수집·저장·경험 그룹화·후보 저장까지 연결 |
 | BE AI 연결 | 수집·경험 그룹화·되묻기·diff 근거·STAR 초안 어댑터는 실행 경로에 연결. diff 근거·STAR 초안은 카드 초안 Job이 `CARD_AI_DRAFT_ENABLED=true`일 때 부른다 |
 | BE API | 내 정보·분석 Job·카드·인터뷰 API를 BE Swagger로 문서화 |
-| AI API | 수집 2개, 분석 A 계약 2개, 인터뷰 B 2개와 health를 문서화 |
+| AI API | 수집 2개, 분석 A 계약 3개, 인터뷰 B 2개와 health를 문서화 |
 | AI A | 경험 그룹화(#109)와 diff 근거·STAR 초안 구현. diff·STAR 연동은 [연동 문서](AI_DIFF_STAR_INTEGRATION.md) 참고 |
 | AI B | 템플릿 질문·규칙 기반 답변 평가. LLM 판정기 연결은 별도 작업 |
 | 인프라 | 내부 AI 주소·문서 토글·readiness 설정. EC2 배포(Dockerfile·`deploy/compose.yaml`·Caddy)는 [배포 문서](DEPLOYMENT.md) 참고 |
 
 증분 수집은 작성 시각 기반 `since`를 사용하지 않는다. Spring이 이미 저장한 `known_commit_shas`를 보내면, AI는 commit 목록을 다시 확인하되 저장된 commit의 상세 조회를 생략한다. AI 응답의 `head_sha`는 Spring이 저장소 상태로 보관한다. 기존 BE의 수집 상한 설정은 AI 요청에 전달하는 필드가 없어 아직 적용되지 않는다. 검증된 사용자 이메일이 없어 `known_emails=[]`로 보내며, DB의 기본 브랜치가 없으면 `main`을 추측하지 않고 실패한다. 기존 BE 저장 DTO는 commit(바뀐 파일·이슈 번호 포함)·PR/Issue 상세·PR 리뷰와 줄 댓글·부분 수집 사유만 담으므로 AI의 `needs_confirmation`은 보존되지 않는다.
 
-남은 통합은 ① 경험 그룹화 실패를 재시도 가능한 코드로 나누기(#217), ② 수집 상한에 걸린 분석의 이유 알림(#147), ③ AI 초안을 켜면 카드 초안 Job이 같은 사용자 조건 없이 꺼내져 같은 토큰으로 GitHub를 동시에 부를 수 있는 문제(#231), ④ AI의 경험 그룹화·diff 근거·STAR 초안 LLM 호출이 같은 실행 자리를 나눠 쓰는 문제(#232)다. 부분 응답은 `partialReason`으로 완료와 구분한다.
+남은 통합은 경험 그룹화 실패를 재시도 가능한 코드로 나누기(#217)다. 부분 응답은 `partialReason`으로 완료와 구분한다.
 
 ## 검증
 

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any, Protocol, TypeVar
@@ -11,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 from schemas.analysis import CommitInput, IssueContext, PullRequestContext
 from services.commit_grouper import CommitGroup
+from services.llm_executors import GROUPING_EXECUTOR, run_llm_call
 from services.llm_settings import LLMConfigError, load_llm_settings
 from services.llm_structured_client import (
     LLMStructuredCallError,
@@ -106,7 +106,8 @@ class EnvironmentGroupingModelClient:
         client = self._client or self._build_client()
         self._client = client
         try:
-            result = await asyncio.to_thread(
+            result = await run_llm_call(
+                GROUPING_EXECUTOR,
                 client.call,
                 system_prompt,
                 payload,

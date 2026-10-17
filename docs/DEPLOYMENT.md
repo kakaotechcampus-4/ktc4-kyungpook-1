@@ -184,9 +184,9 @@ docker compose up -d --build --wait            # 수동 재배포 (자동 배포
 - 보관: 백업이 성공할 때마다 7일 가까이(6일 23시간) 지난 `gitory-*.dump` 를 지워 7개를 남긴다 (손으로 만든 백업도 같다). 실패가 이어지는 동안은 지우지 않는다. 다른 이름의 파일은 건드리지 않는다.
 - 실패: 임시 이름(`.gitory-….part`)으로 쓰고 성공해야 진짜 이름으로 바꾼다. 실패하면 임시 파일을 지우고 `DB 백업 실패: <원인>` 한 줄을 남긴 뒤 다음 날 다시 한다. 표 잠금은 10분까지만 기다린다. 성공은 `DB 백업 성공: <파일> (<크기>KB)`.
 - 확인: `ls -lh ~/gitory-backups` 로 날마다 하나씩 쌓이는지, `docker compose logs db-backup --tail 20` 또는 CloudWatch 스트림 `gitory-db-backup-1` 로 성공 줄을 본다. 실패는 위 에러 알람(`"DB 백업 실패"` 패턴)으로 온다. 처음 배포한 뒤에는 아래 손 백업을 한 번 돌려 접속·폴더를 확인한다.
-- 손으로 한 번 백업 (같은 스크립트로 지금 바로): `docker compose exec db-backup sh /usr/local/bin/db-backup.sh once </dev/null`. 결과 줄은 터미널에만 나오고 CloudWatch 에는 남지 않는다. 같은 분에 이미 백업이 있으면 덮어쓰지 않고 다음 분까지 기다린다.
+- 손으로 한 번 백업 (같은 스크립트로 지금 바로): `docker compose exec -T db-backup sh /usr/local/bin/db-backup.sh once </dev/null`. 결과 줄은 터미널에만 나오고 CloudWatch 에는 남지 않는다. 같은 분에 이미 백업이 있으면 덮어쓰지 않고 다음 분까지 기다린다.
 - `db-backup.sh` 를 바꿔 배포하면 `docker compose up -d --force-recreate db-backup` 을 한 번 한다. 파일 하나를 연결한 컨테이너는 git checkout 뒤에도 옛 내용을 본다.
-- 블록 안의 `docker compose exec` 에는 `</dev/null` 을 붙인다. 붙이지 않으면 붙여넣은 뒤 줄을 입력으로 가져가 실행되지 않는다.
+- 이 절의 `docker compose exec` 에는 `-T` 와 `</dev/null` 을 함께 붙인다. `-T` 가 없으면 서버 터미널에서 `cannot attach stdin to a TTY-enabled container` 로 실패하고, `</dev/null` 이 없으면 붙여넣은 뒤 줄을 입력으로 가져가 실행되지 않는다.
 
 #### 복원 확인
 
@@ -194,7 +194,7 @@ docker compose up -d --build --wait            # 수동 재배포 (자동 배포
 
 ```bash
 cd ~/gitory/deploy
-docker compose exec db-backup sh /usr/local/bin/db-backup.sh once </dev/null   # 비교가 맞도록 지금 상태로 백업
+docker compose exec -T db-backup sh /usr/local/bin/db-backup.sh once </dev/null   # 비교가 맞도록 지금 상태로 백업
 latest=$(ls -t ~/gitory-backups/gitory-*.dump | head -1) && echo "$latest"
 docker rm -f -v gitory-restore-check 2>/dev/null                               # 지난번에 끊겨 남은 것
 docker run -d --name gitory-restore-check -e POSTGRES_USER=gitory -e POSTGRES_DB=gitory -e POSTGRES_PASSWORD=check postgres:17-alpine
@@ -221,7 +221,7 @@ echo "== 끝"
 ```bash
 cd ~/gitory/deploy
 docker compose stop backend ai \
-  && docker compose exec db-backup sh /usr/local/bin/db-backup.sh once </dev/null \
+  && docker compose exec -T db-backup sh /usr/local/bin/db-backup.sh once </dev/null \
   && ls -lt ~/gitory-backups
 ```
 

@@ -21,3 +21,6 @@
 # 셸 스크립트·git hook 은 CRLF 면 실행이 실패하니 LF 로 고정하는 게 좋습니다:
 #   *.sh        text eol=lf
 #   .githooks/* text eol=lf
+
+# 서버의 db-backup 컨테이너가 이 스크립트를 sh 로 바로 돌린다. CRLF 가 섞이면 컨테이너가 재시작을 되풀이하고 배포가 되돌려진다
+deploy/*.sh text eol=lf

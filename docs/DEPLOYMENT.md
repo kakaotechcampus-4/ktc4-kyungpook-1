@@ -57,7 +57,8 @@ web (Caddy) ──  /       → 프론트 빌드 산출물 (SPA)
 | `backend/Dockerfile` | JDK 로 bootJar 빌드 → JRE 이미지. 테스트는 CI 가 돌린다(`-x test`) |
 | `ai/Dockerfile` | python 3.11-slim + uvicorn. `AI_DOCS_ENABLED=false` |
 | `frontend/Dockerfile` | `VITE_API_MOCK=false` 로 빌드 → Caddy 이미지에 담는다 |
-| `deploy/compose.yaml` | db · ai · backend · web. backend 는 db 가 healthy 여야 뜨고, web 은 backend 가 healthy 여야 뜬다. ai 가 안 떠도 backend·web 은 뜬다 (분석 Job 만 실패) |
+| `deploy/compose.yaml` | db · db-backup · ai · backend · web. backend 는 db 가 healthy 여야 뜨고, web 은 backend 가 healthy 여야 뜬다. ai 가 안 떠도 backend·web 은 뜬다 (분석 Job 만 실패) |
+| `deploy/db-backup.sh` | 매일 DB 백업 (7절 DB 백업·복구) |
 | `deploy/Caddyfile` | 경로 분기, HTTPS, 보안 헤더. `/actuator` 는 프록시하지 않는다 |
 | `deploy/.env.example` | 필요한 비밀값 목록과 생성 방법. 서버의 `deploy/.env` 는 gitignore 대상 |
 
@@ -83,6 +84,7 @@ sudo -iu ubuntu            # docker 그룹은 ubuntu 에만 있다 (Session Mana
 git clone https://github.com/kakaotechcampus-4/ktc4-kyungpook-1.git ~/gitory
 cd ~/gitory/deploy && cp .env.example .env && chmod 600 .env
 nano .env                  # 값 채우기 — 생성 방법은 .env.example 주석
+mkdir -p ~/gitory-backups  # DB 백업 폴더. 없으면 Docker 가 root 소유로 만든다 (7절 DB 백업·복구)
 docker compose up -d --build --wait && docker compose ps
 echo "== 끝"
 ```
@@ -157,21 +159,89 @@ docker compose up -d --build --wait            # 수동 재배포 (자동 배포
 
 ### 로그 모아 보기 (CloudWatch)
 
-컨테이너 4개의 로그는 Docker `awslogs` 드라이버로 CloudWatch 로그 그룹 `/gitory`(서울 리전)에 간다. 스트림은 컨테이너 이름(`gitory-backend-1` 등)이다. EC2 인스턴스 역할(`ktc-ec2-ssm-profile`, `CloudWatchAgentServerPolicy` 연결)로 보내므로 서버에 키를 두지 않는다. 서버의 `docker compose logs` 도 그대로 된다.
+컨테이너 5개의 로그는 Docker `awslogs` 드라이버로 CloudWatch 로그 그룹 `/gitory`(서울 리전)에 간다. 스트림은 컨테이너 이름(`gitory-backend-1` 등)이다. EC2 인스턴스 역할(`ktc-ec2-ssm-profile`, `CloudWatchAgentServerPolicy` 연결)로 보내므로 서버에 키를 두지 않는다. 서버의 `docker compose logs` 도 그대로 된다.
 
 - 보기: CloudWatch 콘솔 → 로그 그룹 → `/gitory` → 스트림 선택. 여러 컨테이너를 한 번에 찾을 때는 Logs Insights 에서 `/gitory` 를 고르고 `fields @timestamp, @logStream, @message | filter @message like /ERROR|Traceback/ | sort @timestamp desc` 를 실행한다.
 - 보관: 로그 그룹 `/gitory` → 작업 → 보존 설정 편집 → 7일 (한 번만).
 - 에러 알람 (한 번만):
-  1. `/gitory` → 지표 필터 생성을 아래 패턴 3개로 세 번 한다. 셋 다 지표 이름 `GitoryErrors`, 지표 값 1, 기본값 0 으로 같은 지표에 더한다. 만들 때마다 같은 화면의 "패턴 테스트"로 아래 예시 줄에 맞는지 확인한다.
+  1. `/gitory` → 지표 필터 생성을 아래 패턴 4개로 네 번 한다. 넷 다 지표 이름 `GitoryErrors`, 지표 값 1, 기본값 0 으로 같은 지표에 더한다. 만들 때마다 같은 화면의 "패턴 테스트"로 아래 예시 줄에 맞는지 확인한다.
      - `ERROR -"duplicate key"`: 에러 줄. 동시 요청을 DB 유니크 제약으로 막는 정상 흐름(분석 접수 등 4곳)에서 db 와 backend 가 남기는 `ERROR: duplicate key ...` 는 뺀다.
      - `Traceback`: ai 의 예외 스택.
      - `?"INTERNAL_ERROR" ?"GITHUB_UNAVAILABLE"`: Job 이 실패로 끝날 때 backend 가 WARN 으로 남기는 에러 코드.
+     - `"DB 백업 실패"`: db-backup 의 실패 줄 (아래 DB 백업·복구).
      - CloudWatch 패턴은 `?`(또는)와 `-`(빼기)를 한 패턴에 같이 쓰면 `?` 항목이 무시되므로, 하나로 합치지 않고 나눈다. 한 줄이 여러 필터에 걸려 두 번 세어져도 경보는 1 이상이라 결과는 같다.
-     - 패턴 테스트에 넣을 줄 모양 (앞 날짜는 생략). 걸려야 하는 줄: `ERROR 1 --- [gitory-backend] [   scheduling-1] c.g.b.job.domain.JobRunner : ...`, `Traceback (most recent call last):`, `카드 초안 Job 12 을 INTERNAL_ERROR 로 끝낸다`
+     - 패턴 테스트에 넣을 줄 모양 (앞 날짜는 생략). 걸려야 하는 줄: `ERROR 1 --- [gitory-backend] [   scheduling-1] c.g.b.job.domain.JobRunner : ...`, `Traceback (most recent call last):`, `카드 초안 Job 12 을 INTERNAL_ERROR 로 끝낸다`, `DB 백업 실패: pg_dump: error: connection to server at "db" (172.18.0.2), port 5432 failed: ...`
      - 걸리면 안 되는 줄: `UTC [123] ERROR:  duplicate key value violates unique constraint "uq_job_active"`(db), `ERROR 1 --- [gitory-backend] [nio-8080-exec-3] o.h.engine.jdbc.spi.SqlExceptionHelper : ERROR: duplicate key value violates unique constraint "uq_job_active"`(backend)
   2. CloudWatch → 경보 생성 → 지표 `GitoryErrors` 합계, 5분, 1 이상 → SNS 주제를 새로 만들어 팀 이메일을 구독시키고 메일의 확인 링크를 누른다.
 - 알람을 받으면 Logs Insights 에서 그 시각 전후로 `@logStream` 별로 본다. backend 예외 스택은 날짜로 시작하지 않는 줄을 앞 줄에 묶어 한 이벤트로 보낸다.
 - CloudWatch 가 느리거나 끊겨도 서비스는 멈추지 않는다(`mode: non-blocking`). 대신 버퍼(4MB)가 차면 그 사이 로그는 CloudWatch 에 빠진다.
+
+### DB 백업·복구
+
+운영 DB 는 Docker 볼륨 `db-data` 하나에만 있다. `db-backup` 컨테이너(`deploy/db-backup.sh`)가 매일 UTC 19:00(한국 04:00)에 `pg_dump -Fc` 로 백업한다.
+
+- 위치: 서버 `~/gitory-backups/gitory-YYYY-MM-DD-HHMM.dump` (시각은 UTC). 리포 밖이라 배포가 건드리지 않는다. 폴더가 없으면 Docker 가 root 소유로 만드니 4절처럼 먼저 만든다.
+- 보관: 백업이 성공할 때마다 7일 가까이(6일 23시간) 지난 `gitory-*.dump` 를 지워 7개를 남긴다 (손으로 만든 백업도 같다). 실패가 이어지는 동안은 지우지 않는다. 다른 이름의 파일은 건드리지 않는다.
+- 실패: 임시 이름(`.gitory-….part`)으로 쓰고 성공해야 진짜 이름으로 바꾼다. 실패하면 임시 파일을 지우고 `DB 백업 실패: <원인>` 한 줄을 남긴 뒤 다음 날 다시 한다. 표 잠금은 10분까지만 기다린다. 성공은 `DB 백업 성공: <파일> (<크기>KB)`.
+- 확인: `ls -lh ~/gitory-backups` 로 날마다 하나씩 쌓이는지, `docker compose logs db-backup --tail 20` 또는 CloudWatch 스트림 `gitory-db-backup-1` 로 성공 줄을 본다. 실패는 위 에러 알람(`"DB 백업 실패"` 패턴)으로 온다. 처음 배포한 뒤에는 아래 손 백업을 한 번 돌려 접속·폴더를 확인한다.
+- 손으로 한 번 백업 (같은 스크립트로 지금 바로): `docker compose exec db-backup sh /usr/local/bin/db-backup.sh once </dev/null`. 결과 줄은 터미널에만 나오고 CloudWatch 에는 남지 않는다. 같은 분에 이미 백업이 있으면 덮어쓰지 않고 다음 분까지 기다린다.
+- `db-backup.sh` 를 바꿔 배포하면 `docker compose up -d --force-recreate db-backup` 을 한 번 한다. 파일 하나를 연결한 컨테이너는 git checkout 뒤에도 옛 내용을 본다.
+- 블록 안의 `docker compose exec` 에는 `</dev/null` 을 붙인다. 붙이지 않으면 붙여넣은 뒤 줄을 입력으로 가져가 실행되지 않는다.
+
+#### 복원 확인
+
+백업이 실제로 되살아나는지 임시 DB 에 복원해 운영 DB 와 표마다 행 수를 비교한다. 운영 DB 는 건드리지 않는다.
+
+```bash
+cd ~/gitory/deploy
+docker compose exec db-backup sh /usr/local/bin/db-backup.sh once </dev/null   # 비교가 맞도록 지금 상태로 백업
+latest=$(ls -t ~/gitory-backups/gitory-*.dump | head -1) && echo "$latest"
+docker rm -f -v gitory-restore-check 2>/dev/null                               # 지난번에 끊겨 남은 것
+docker run -d --name gitory-restore-check -e POSTGRES_USER=gitory -e POSTGRES_DB=gitory -e POSTGRES_PASSWORD=check postgres:17-alpine
+for i in $(seq 60); do docker exec gitory-restore-check pg_isready -q -h 127.0.0.1 -U gitory && break; sleep 1; done
+docker exec -i gitory-restore-check pg_restore -U gitory -d gitory --exit-on-error < "$latest" && echo "== 복원 성공"
+count_rows() {
+  docker exec -i "$1" psql -U gitory -d gitory -At <<'SQL' | sort
+SELECT string_agg(format('SELECT %L, count(*) FROM public.%I', tablename, tablename), ' UNION ALL ')
+FROM pg_tables WHERE schemaname = 'public' \gexec
+SQL
+}
+diff <(count_rows gitory-db-1) <(count_rows gitory-restore-check) && echo "== 행 수 모두 같음"
+docker rm -f -v gitory-restore-check                                           # -v: 임시 DB 의 익명 볼륨까지 지운다
+echo "== 끝"
+```
+
+- `== 복원 성공` 과 `== 행 수 모두 같음` 이 둘 다 나와야 한다. 백업과 비교 사이에 사용자가 쓰면 그 표만 다를 수 있다 (로그인 세션 `spring_session*` 이 흔하다).
+- `pg_isready` 는 `-h 127.0.0.1` 로 본다. 첫 기동 때 잠깐 뜨는 초기화용 서버는 TCP 를 열지 않아 끝난 뒤에야 성공한다.
+
+#### 사고 때 운영 DB 되살리기
+
+되살리는 동안 develop 에 머지하지 않게 팀에 알린다 (자동 배포가 backend 를 다시 띄운다). 먼저 쓰기를 막고(backend·ai 멈춤, 그동안 화면은 에러) 지금 상태를 한 번 더 남긴 뒤 목록을 본다. 멈춘 뒤에 남겨야 멈추기 직전까지 저장된 것이 다 담긴다.
+
+```bash
+cd ~/gitory/deploy
+docker compose stop backend ai \
+  && docker compose exec db-backup sh /usr/local/bin/db-backup.sh once </dev/null \
+  && ls -lt ~/gitory-backups
+```
+
+`DB 백업 성공` 이 나와야 다음으로 간다. 목록 맨 위는 방금 만든 백업이니 되살릴 파일로 고르지 않는다. 되살리지 않기로 했으면 `docker compose up -d --wait` 로 다시 띄운다. 아래 `f` 를 되살릴 파일로 고친 뒤 실행한다. DB 를 지우고 다시 만들어 복원 → 다시 시작한다(backend·ai 를 한 번 더 멈추는 줄은 이 블록만 따로 돌려도 안전하게 하려는 것이다). 한 단계라도 실패하면 거기서 멈춘다.
+
+```bash
+cd ~/gitory/deploy
+f=~/gitory-backups/gitory-YYYY-MM-DD-HHMM.dump
+[ -s "$f" ] && echo "되살릴 파일: $f" \
+  && docker compose stop backend ai \
+  && docker compose exec -T db dropdb -U gitory --force gitory </dev/null \
+  && docker compose exec -T db createdb -U gitory gitory </dev/null \
+  && docker compose exec -T db pg_restore -U gitory -d gitory --exit-on-error < "$f" \
+  && docker compose up -d --wait && docker compose ps \
+  && echo "== 끝" || echo "== 멈춤: 파일 이름이나 위 에러를 고친 뒤 이 블록을 다시 실행한다 (backend·ai 는 멈춘 채일 수 있다)"
+```
+
+- `pg_restore --clean` 대신 DB 를 지우고 다시 만든다. `--clean` 은 백업에 있는 표만 지워서, 백업 뒤 마이그레이션으로 생긴 표가 남고 Flyway 가 그 표를 다시 만들다 실패한다.
+- 확인: `docker compose logs backend --tail 50` 에 Flyway 에러가 없고, 로그인해 저장소·카드가 보이면 된다. 백업 뒤 머지된 마이그레이션은 backend 가 뜰 때 다시 적용된다.
+- 이번에 하지 않은 것: 서버 밖(S3) 복사는 인스턴스 역할에 S3 권한이 없어 하지 않았다 (서버 자체를 잃는 경우는 나중에 AWS 스냅샷으로). 배포 직전 백업은 CI 변경이라 따로 한다.
 
 ## 8. 팀과 정한 것
 

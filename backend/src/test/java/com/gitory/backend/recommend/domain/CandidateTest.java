@@ -19,7 +19,7 @@ class CandidateTest {
     }
 
     @Test
-    @DisplayName("AI 가 묶은 후보는 사용자가 손대지 않은 NEW 후보로 만들어진다")
+    @DisplayName("AI 경험 그룹화로 만든 후보는 사용자가 손대지 않은 NEW 후보로 만들어진다")
     void groupedCandidateStartsNewAndUntouched() {
 
         Candidate candidate = grouped();

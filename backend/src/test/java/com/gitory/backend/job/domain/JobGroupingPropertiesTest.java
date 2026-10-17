@@ -15,7 +15,7 @@ class JobGroupingPropertiesTest {
             .withUserConfiguration(BindGroupingProperties.class);
 
     @Test
-    @DisplayName("설정 파일은 묶기를 꺼 둔다")
+    @DisplayName("설정 파일은 경험 그룹화를 꺼 둔다")
     void groupingIsOffByDefault() {
 
         configFile.run(context -> assertThat(context.getBean(JobGroupingProperties.class).enabled()).isFalse());
@@ -23,7 +23,7 @@ class JobGroupingPropertiesTest {
     }
 
     @Test
-    @DisplayName("묶기는 ANALYSIS_GROUPING_ENABLED 환경변수로 켠다")
+    @DisplayName("경험 그룹화는 ANALYSIS_GROUPING_ENABLED 환경변수로 켠다")
     void groupingFollowsEnvironmentVariable() {
 
         configFile.withPropertyValues("ANALYSIS_GROUPING_ENABLED=true")

@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * AI 후보 묶기를 부르고, 응답이 저장해도 되는 모양인지 확인한 뒤 돌려준다
+ * AI 경험 그룹화 API 를 부르고, 응답이 저장해도 되는 모양인지 확인한 뒤 돌려준다
  * 후보 커밋은 보낸 커밋에만 이어 저장하고 한 커밋은 한 후보에만 두므로, 이를 어긴 응답도 이상 응답으로 끝낸다
  */
 @Component
@@ -205,7 +205,7 @@ public class AiExperienceGroupingAdapter implements ExperienceGroupingPort {
     private static AgentUnavailableException unavailable(AiClientException failure) {
 
         boolean retryable = retryable(failure);
-        return new AgentUnavailableException("AI 후보 묶기 실패 (" + failure.errorCode() + ")", retryable,
+        return new AgentUnavailableException("AI 경험 그룹화 실패 (" + failure.errorCode() + ")", retryable,
                 !retryable, failure);
 
     }

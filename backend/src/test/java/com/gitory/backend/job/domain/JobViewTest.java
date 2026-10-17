@@ -59,7 +59,7 @@ class JobViewTest {
     }
 
     @Test
-    @DisplayName("묶기를 건너뛰었거나 후보 추리기가 끝나지 않은 Job 은 판정과 이유를 비우고 이유를 만들지도 않는다")
+    @DisplayName("경험 그룹화를 건너뛰었거나 후보 추리기가 끝나지 않은 Job 은 판정과 이유를 비우고 이유를 만들지도 않는다")
     void leavesVerdictEmptyUntilCandidatesAreStored() {
 
         AtomicInteger calls = new AtomicInteger();

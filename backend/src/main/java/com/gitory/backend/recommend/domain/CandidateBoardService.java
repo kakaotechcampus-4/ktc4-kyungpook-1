@@ -27,7 +27,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * 저장해 둔 후보를 보드로 읽을 뿐 열 때 묶지 않으며, 묶음 교체나 카드 만들기가 읽는 사이에 커밋돼도 한 시점으로 읽도록 REPEATABLE READ 로 읽는다
+ * 저장해 둔 후보를 보드로 읽을 뿐 열 때 경험 그룹화를 하지 않으며, 다시 분석의 후보 교체나 카드 만들기가 읽는 사이에 커밋돼도 한 시점으로 읽도록 REPEATABLE READ 로 읽는다
  */
 @Service
 @RequiredArgsConstructor
@@ -85,7 +85,7 @@ public class CandidateBoardService {
 
     }
 
-    /** 후보가 하나도 없을 때만 이유를 주며, 아직 못 묶은 보드는 한 줄이고 묶었는데 0개인 보드는 분석 Job 과 같은 줄이다 */
+    /** 후보가 하나도 없을 때만 이유를 주며, 아직 경험 그룹화를 못 한 보드는 한 줄이고 경험 그룹화를 했는데 0개인 보드는 분석 Job 과 같은 줄이다 */
     private List<String> emptyReasonsOf(Long userRepositoryId, UUID repositoryId, Long userId, String login) {
 
         Optional<Instant> analyzedAt = lastAnalyzed.lastAnalyzedAt(userRepositoryId);

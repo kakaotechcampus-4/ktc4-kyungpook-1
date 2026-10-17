@@ -13,7 +13,7 @@ class CandidateGroupingTest {
     private static final String OTHER_FINGERPRINT = "b".repeat(64);
 
     @Test
-    @DisplayName("처음 묶은 기록은 받은 지문·묶기 버전과 지금 시각을 남긴다")
+    @DisplayName("첫 경험 그룹화 기록은 받은 지문·경험 그룹화 버전과 지금 시각을 남긴다")
     void firstGroupingKeepsInputAndTime() {
 
         Instant before = Instant.now();
@@ -28,7 +28,7 @@ class CandidateGroupingTest {
     }
 
     @Test
-    @DisplayName("지문과 묶기 버전이 모두 지난번과 같을 때만 같은 입력이다")
+    @DisplayName("지문과 경험 그룹화 버전이 모두 지난번과 같을 때만 같은 입력이다")
     void sameInputNeedsSameFingerprintAndVersion() {
 
         CandidateGrouping grouping = CandidateGrouping.of(10L, FINGERPRINT, 1);
@@ -40,7 +40,7 @@ class CandidateGroupingTest {
     }
 
     @Test
-    @DisplayName("다시 기록하면 지문·묶기 버전을 이번 값으로 바꾸고 묶은 시각을 지금으로 바꾼다")
+    @DisplayName("다시 기록하면 지문·경험 그룹화 버전을 이번 값으로 바꾸고 경험 그룹화 시각을 지금으로 바꾼다")
     void recordReplacesInputAndTime() {
 
         CandidateGrouping grouping = CandidateGrouping.of(10L, FINGERPRINT, 1);
@@ -56,7 +56,7 @@ class CandidateGroupingTest {
     }
 
     @Test
-    @DisplayName("지문은 묶기 버전·줄바꿈·요청을 이은 글의 SHA-256 을 16진수 64자로 쓴 값이다")
+    @DisplayName("지문은 경험 그룹화 버전·줄바꿈·요청을 이은 글의 SHA-256 을 16진수 64자로 쓴 값이다")
     void fingerprintIsSha256OfVersionAndRequest() {
 
         assertThat(CandidateGrouping.fingerprintOf("{\"commits\":[]}", 1))
@@ -65,7 +65,7 @@ class CandidateGroupingTest {
     }
 
     @Test
-    @DisplayName("요청과 묶기 버전이 같으면 지문이 같고, 요청이 한 글자라도 다르거나 묶기 버전이 다르면 지문이 다르다")
+    @DisplayName("요청과 경험 그룹화 버전이 같으면 지문이 같고, 요청이 한 글자라도 다르거나 경험 그룹화 버전이 다르면 지문이 다르다")
     void fingerprintFollowsRequestAndVersion() {
 
         String request = "{\"commits\":[\"a\"]}";

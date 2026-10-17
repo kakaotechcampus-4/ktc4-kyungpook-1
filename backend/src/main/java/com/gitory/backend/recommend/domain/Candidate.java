@@ -91,7 +91,7 @@ public class Candidate {
         this.userModified = false;
     }
 
-    /** AI 가 묶은 후보를 사용자가 아직 손대지 않은 NEW 후보로 만든다 */
+    /** AI 경험 그룹화로 만든 후보를 사용자가 아직 손대지 않은 NEW 후보로 만든다 */
     public static Candidate grouped(Long userRepositoryId, CandidateType sourceType, Integer githubPrNumber,
                                     String sourceRef, List<Integer> pullRequestNumbers, List<Integer> issueNumbers,
                                     String title, String reasonText, BigDecimal score, boolean lowCardWorth,

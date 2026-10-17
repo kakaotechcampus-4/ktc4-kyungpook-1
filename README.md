@@ -30,3 +30,5 @@ BE–AI 실행 방법, Swagger 주소, OpenAPI export와 남은 통합 작업은
 모바일 문구·간격 정리와 화면별 회귀 범위는 [모바일 UX 정리 문서](frontend/docs/MOBILE_UX_CLEANUP.md)를 참고하세요.
 
 브라우저 favicon 수정 내역은 [브랜딩 이미지 문서](frontend/docs/BRAND_ASSETS.md)에 기록했습니다.
+
+프론트 카드 제목·기간 계약 보완: [#219 검증 기록](frontend/docs/2026-10-15-METADATA_219.md).

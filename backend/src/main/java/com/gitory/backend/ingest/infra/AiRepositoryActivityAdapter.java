@@ -1,6 +1,8 @@
 package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.common.infra.ai.AiClientException;
+import com.gitory.backend.consent.port.DiffEvidenceResult;
+import com.gitory.backend.consent.port.DiffEvidenceTarget;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ExclusionReason;
 import com.gitory.backend.ingest.domain.FileChangeStatus;
@@ -14,6 +16,7 @@ import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.CollectedReview;
 import com.gitory.backend.ingest.port.CollectedReviewComment;
+import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +53,15 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
         } catch (RuntimeException malformed) {
             throw AiClientException.invalidResponse();
         }
+    }
+
+    @Override
+    public DiffEvidenceResult diffEvidence(DiffEvidenceRequest request) {
+
+        CollectionTargetLookup.Target target = targets.find(request.userRepositoryId(), List.of());
+        return access.diffEvidence(target.userId(), new DiffEvidenceTarget(request.userRepositoryId(),
+                target.collection().repository(), request.commitShas(), request.githubPrNumber(), request.title()));
+
     }
 
     private static CollectedActivity activity(JsonNode result, long userRepositoryId, long githubRepoId) {

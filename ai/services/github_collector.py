@@ -829,8 +829,12 @@ def _identity_text(value: str) -> str:
 
 
 def _issue_numbers(text: str) -> list[int]:
-    """등장 순서를 유지하면서 중복 issue 번호를 제거한다."""
-    return list(dict.fromkeys(int(value) for value in ISSUE_REFERENCE.findall(text)))
+    """등장 순서를 유지하면서 중복 issue 번호를 제거한다.
+
+    '#000' 같은 0은 issue 번호가 될 수 없고 응답 검증(PositiveInt)에서 수집 전체를 실패시키므로 버린다.
+    """
+    numbers = (int(value) for value in ISSUE_REFERENCE.findall(text))
+    return list(dict.fromkeys(number for number in numbers if number > 0))
 
 
 def _excerpt(

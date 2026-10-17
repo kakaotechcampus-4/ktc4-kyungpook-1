@@ -19,6 +19,10 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Card> findWithLockByPublicIdAndUserId(UUID publicId, Long userId);
 
+    // 소유자를 보지 않으므로 사용자 요청이 아닌 초안 Job 만 쓴다
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Card> findWithLockById(Long id);
+
     // 소유자를 보지 않으므로 남의 카드인지 가려 거절 기록을 남길 때만 쓴다
     Optional<Card> findByPublicId(UUID publicId);
 
@@ -28,4 +32,6 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
     @Query("SELECT c.publicId FROM Card c WHERE c.generationJobId = :jobId ORDER BY c.id")
     List<UUID> findPublicIdsByGenerationJobId(@Param("jobId") UUID jobId);
+
+    List<Card> findByGenerationJobIdOrderById(UUID generationJobId);
 }

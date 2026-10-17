@@ -135,11 +135,11 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 프론트에 있던 "근거 수로 되짚어 추정하는" 로직은 지웠다 — 목록과 상세가 어긋나는 원인이었다.
 목록의 sourceLabel/sourceType/period/evidenceCount/userStatedCount는 부가 정보다. 생략/null은 모름으로 보존하고 숨긴다. `MANUAL`이나 0을 기본값으로 넣지 않는다. 서버가 명시한 0만 실제 0건이다. 빈칸·확인 필요 필터는 `star`만 사용한다. 이 누락/0 기준은 [백엔드 확인 요청](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/61#issuecomment-5969111285)에 함께 정리했다.
 
-**제목·기간 수정 제안 — 백엔드 확인 대기 (2026-10-03)**
+**제목·기간 수정 — #186 확정, #219 활성화 검증 (2026-10-15)**
 
-기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 제안 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string }`에서 전달한 필드만 수정한다. period는 자유 문자열이고 `""`는 삭제다. 응답 제안은 `{ cardId, title, period: string | null, updatedAt }`이며 상세 `GET /cards/{id}`에도 실제 period 반환을 요청한다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
+기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 확정 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string | null }`에서 전달한 필드만 수정한다. period는 자유 문자열이고 빈 입력은 FE에서 `null`로 정규화하여 삭제한다. 기간 생략은 기존 값 유지이고 검증 실패는 400 `INVALID_REQUEST`다. 응답은 `{ cardId, title, period: string | null, updatedAt }`이며 상세 `GET /cards/{id}`에도 period가 반환된다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
 
-Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드에서는 `VITE_CARD_METADATA_ENABLED=true`를 명시하기 전 호출하지 않으며, 계약과 서버 구현 확인 후 활성화한다. 이 경로는 아직 확정된 서버 API가 아니다. 기존 기간이 누락돼도 제목만 수정하면 기간 삭제를 전송하지 않는다. 자유 입력 기간을 날짜로 억지 변환하지 않는다. [요청 댓글](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/61#issuecomment-5969111285)과 [작업 문서](2026-10-03-CARD_WORKFLOW.md)를 참고한다.
+Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드에서는 `VITE_CARD_METADATA_ENABLED=true`를 명시하기 전 호출하지 않으며, 계약과 서버 구현 확인 후 활성화한다. 기존 기간이 누락돼도 제목만 수정하면 기간 삭제를 전송하지 않는다. 자유 입력 기간을 날짜로 억지 변환하지 않는다. [요청 댓글](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/61#issuecomment-5969111285)과 [작업 문서](2026-10-03-CARD_WORKFLOW.md)를 참고한다.
 
 **임시 저장 (`PATCH /cards/{id}/draft`)**
 

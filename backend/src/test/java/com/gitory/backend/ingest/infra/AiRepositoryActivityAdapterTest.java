@@ -8,6 +8,7 @@ import com.gitory.backend.consent.infra.GithubCollectionAccess;
 import com.gitory.backend.consent.infra.GithubConnectionRepository;
 import com.gitory.backend.consent.infra.TokenCipher;
 import com.gitory.backend.consent.infra.UserRepository;
+import com.gitory.backend.consent.port.DiffEvidenceResult;
 import com.gitory.backend.consent.port.GithubCollectionRepo;
 import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.ingest.domain.ExclusionReason;
@@ -21,6 +22,7 @@ import com.gitory.backend.ingest.port.CollectedIssue;
 import com.gitory.backend.ingest.port.CollectedPullRequest;
 import com.gitory.backend.ingest.port.CollectedReview;
 import com.gitory.backend.ingest.port.CollectedReviewComment;
+import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.support.AiTestProperties;
 import com.sun.net.httpserver.HttpServer;
@@ -128,7 +130,7 @@ class AiRepositoryActivityAdapterTest {
                                 new GithubCollectionRepo(456789L, "grow22", "gitory", "develop"),
                                 invocation.getArgument(1))));
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, http, null, null, Clock.systemUTC(), null, null));
+                new GithubCollectionAccess(users, connections, cipher, http, null, null, Clock.systemUTC(), null, null, null));
     }
 
     @AfterEach
@@ -159,6 +161,35 @@ class AiRepositoryActivityAdapterTest {
         assertThat(activity.pullRequests().getFirst().number()).isEqualTo(17);
         assertThat(activity.issues().getFirst().issueNumber()).isEqualTo(42);
         assertThat(activity.partialReason()).isNull();
+    }
+
+    @Test
+    @DisplayName("diff 근거 요청은 연결 저장소 id 로 DB 의 GitHub 저장소 정보를 찾아 만들고, 토큰은 헤더에만 싣는다")
+    void diffEvidenceUsesStoredRepositoryAndTokenHeader() {
+
+        ObjectNode result = mapper.createObjectNode().put("user_repository_id", USER_REPOSITORY_ID);
+        result.putArray("evidence");
+        result.put("partial", false).putNull("partial_reason").putArray("missing_commit_shas");
+        responseBody = success(result);
+        AiRepositoryActivityAdapter withDraftTimeouts = new AiRepositoryActivityAdapter(targets,
+                new GithubCollectionAccess(users, connections, cipher, http, null, null, Clock.systemUTC(), null, null,
+                        AiTestProperties.defaults().build()));
+
+        DiffEvidenceResult evidence = withDraftTimeouts.diffEvidence(
+                new DiffEvidenceRequest(USER_REPOSITORY_ID, List.of("abc1234567890"), 17, "세션 저장소를 DB 로 옮김"));
+
+        assertThat(requestPath).isEqualTo("/internal/analysis/diff-evidence");
+        assertThat(requestToken).isEqualTo(TOKEN);
+        assertThat(requestBody).doesNotContain(TOKEN);
+        JsonNode sent = mapper.readTree(requestBody);
+        assertThat(sent.path("user_repository_id").longValue()).isEqualTo(USER_REPOSITORY_ID);
+        assertThat(sent.path("repository").path("github_repo_id").longValue()).isEqualTo(456789L);
+        assertThat(sent.path("repository").path("owner_login").asString()).isEqualTo("grow22");
+        assertThat(sent.path("repository").path("default_branch").asString()).isEqualTo("develop");
+        assertThat(sent.path("commit_shas").path(0).asString()).isEqualTo("abc1234567890");
+        assertThat(sent.path("github_pr_number").intValue()).isEqualTo(17);
+        assertThat(evidence.evidence()).isEmpty();
+
     }
 
     @ParameterizedTest
@@ -794,7 +825,7 @@ class AiRepositoryActivityAdapterTest {
                 .connectTimeout(Duration.ofSeconds(1)).readTimeout(Duration.ofSeconds(2))
                 .collectReadTimeout(Duration.ofMillis(50)).build(), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, shortTimeout, null, null, Clock.systemUTC(), null, null));
+                new GithubCollectionAccess(users, connections, cipher, shortTimeout, null, null, Clock.systemUTC(), null, null, null));
         assertThatThrownBy(() -> adapter.collect(request(List.of())))
                 .isInstanceOfSatisfying(AiClientException.class, error -> {
                     assertThat(error.errorCode()).isEqualTo("AI_UNAVAILABLE");
@@ -813,7 +844,7 @@ class AiRepositoryActivityAdapterTest {
                 .connectTimeout(Duration.ofSeconds(1)).readTimeout(Duration.ofMillis(50))
                 .collectReadTimeout(Duration.ofSeconds(2)).build(), mapper);
         adapter = new AiRepositoryActivityAdapter(targets,
-                new GithubCollectionAccess(users, connections, cipher, shortDefaultTimeout, null, null, Clock.systemUTC(), null, null));
+                new GithubCollectionAccess(users, connections, cipher, shortDefaultTimeout, null, null, Clock.systemUTC(), null, null, null));
 
         assertThat(adapter.collect(request(List.of())).commits()).hasSize(1);
 

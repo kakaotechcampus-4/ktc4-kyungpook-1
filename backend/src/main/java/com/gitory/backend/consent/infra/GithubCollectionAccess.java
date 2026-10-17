@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Clock;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -106,8 +108,9 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         activeUser(userId).orElseThrow(GithubNotConnectedException::new);
         UsableToken token = activeUsableToken(userId).orElseThrow(GithubNotConnectedException::new);
 
+        List<GithubRepositoryResponse> listed;
         try {
-            return github.fetchRepositories(token.value());
+            listed = github.fetchRepositories(token.value());
         } catch (HttpClientErrorException.Unauthorized rejected) {
             disconnects.revokeRejected(userId, token.encrypted());
             throw new GithubNotConnectedException();
@@ -117,6 +120,8 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
             }
             throw failed;
         }
+
+        return withContributed(userId, token.value(), listed);
 
     }
 
@@ -177,6 +182,25 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
             log.warn("GitHub 호출 한도를 조회하지 못했다: 사용자 {}, {}", userId, failed.getClass().getSimpleName());
             return Optional.empty();
         }
+
+    }
+
+    /**
+     * '/user/repos' 에는 조직이 승인하지 않은 앱이면 조직 소유 저장소가 빠져 기여한 저장소를 더하고, 그 찾기가 실패하면 '/user/repos' 결과만 돌려준다
+     * 찾기 실패는 403 을 모두 한도로 보는 판정에 태우지 않아 연결 해제·한도 예외로 바꾸지 않는다
+     * 같은 저장소는 '/user/repos' 값을 쓰고, 여러 사용자가 같은 저장소 행을 저장하다 서로 막히지 않게 GitHub id 순으로 돌려준다
+     */
+    private List<GithubRepositoryResponse> withContributed(Long userId, String token, List<GithubRepositoryResponse> listed) {
+
+        Map<Long, GithubRepositoryResponse> merged = new TreeMap<>();
+        listed.forEach(repository -> merged.put(repository.id(), repository));
+        try {
+            github.fetchContributedRepositories(token).forEach(repository -> merged.putIfAbsent(repository.id(), repository));
+        } catch (RestClientException | GithubResponseShapeException failed) {
+            log.warn("GitHub 에서 기여한 저장소를 찾지 못해 접근할 수 있는 저장소만 돌려준다: 사용자 {}, {}", userId, failed.getClass().getSimpleName());
+        }
+
+        return List.copyOf(merged.values());
 
     }
 

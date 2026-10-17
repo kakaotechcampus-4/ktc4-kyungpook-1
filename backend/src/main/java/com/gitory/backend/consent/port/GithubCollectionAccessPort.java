@@ -18,6 +18,7 @@ public interface GithubCollectionAccessPort {
     void requireUsableConnection(Long userId);
 
     /**
+     * 접근할 수 있는 저장소에 내가 커밋한 남의 공개 저장소(조직 소유 포함)를 더해 GitHub id 순으로 돌려주며, 그 찾기가 실패하면 접근할 수 있는 저장소만 돌려준다
      * 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰을 거절하면 GithubNotConnectedException 을 던지며 거절이면 연결도 해제로 남긴다
      * GitHub 이 사용 한도 때문에 거절하면 연결은 두고 GithubRateLimitedException 을 던진다
      */

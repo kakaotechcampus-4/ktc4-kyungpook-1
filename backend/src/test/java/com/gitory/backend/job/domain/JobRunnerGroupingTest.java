@@ -362,6 +362,23 @@ class JobRunnerGroupingTest {
     }
 
     @Test
+    @DisplayName("우리 상한에 걸린 수집은 경험 그룹화를 마친 뒤에도 부분 완료와 COLLECTION_CAPPED 를 남긴다")
+    void keepsCappedCollectionThroughGrouping() {
+
+        Long jobId = enqueue(KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.CAP_EXCEEDED, commit(SHA_A)));
+        given(grouping.group(any())).willAnswer(invocation -> groupedAsPullRequest(invocation.getArgument(0)));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.COLLECTION_CAPPED);
+
+    }
+
+    @Test
     @DisplayName("경험 그룹화를 마친 한도 부분 결과의 남은 초는 그룹화가 끝난 시각부터 풀리는 시각까지로 센다")
     void countsRetryAfterSecFromEndOfGrouping() throws Exception {
 

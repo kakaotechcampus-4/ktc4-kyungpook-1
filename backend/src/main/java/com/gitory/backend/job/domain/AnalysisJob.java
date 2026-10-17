@@ -175,6 +175,36 @@ public class AnalysisJob {
     }
 
     /**
+     * 카드 초안 진행을 처리를 마친 카드 수로 남기며, 커밋 읽기는 diff 근거까지, 후보로 추리기·추천 이유 붙이기는 저장까지 마친 카드 수다
+     * 카드 한 장마다 부르면 갱신 시각이 새로 찍혀, 카드가 여러 장이어도 멈춘 Job 판정에 걸리지 않는다
+     */
+    public void recordDraftProgress(int read, int finished, int total) {
+
+        requireRunningDraft();
+        this.steps = draftSteps(read, finished, total);
+
+    }
+
+    /**
+     * 카드마다의 결과로 초안 Job 을 끝내며, 모든 카드가 실패면 실패이고 하나라도 덜 된 카드가 있으면 부분 완료다
+     * 이유가 여럿이면 AI 오류, 시간 초과, 근거 없음 순서로 하나만 남긴다
+     */
+    public void finishDraft(List<CardDraftResult> results) {
+
+        requireRunningDraft();
+        this.steps = draftSteps(results.size(), results.size(), results.size());
+
+        if (!results.isEmpty() && results.stream().allMatch(result -> result == CardDraftResult.FAILED)) {
+            fail(JobErrorCode.INTERNAL_ERROR);
+            return;
+        }
+
+        JobErrorCode errorCode = draftErrorCodeOf(results);
+        succeed(errorCode != null, errorCode);
+
+    }
+
+    /**
      * RUNNING -> SUCCEEDED, partial 과 끝난 시각 기록
      * 에러 코드는 일부만 읽은 이유(예: GitHub 한도)를 남길 때만 받는다
      */
@@ -266,6 +296,50 @@ public class AnalysisJob {
         }
 
         return (int) Math.min(wait.getSeconds() + (wait.getNano() > 0 ? 1 : 0), Integer.MAX_VALUE);
+
+    }
+
+    private void requireRunningDraft() {
+
+        requireState(JobState.RUNNING);
+        if (type != JobType.DRAFT) {
+            throw new IllegalStateException("카드 초안 Job 이 아니다: " + type);
+        }
+
+    }
+
+    // 초안 단계에서는 PR 을 다시 읽지 않는다
+    private static List<JobStep> draftSteps(int read, int finished, int total) {
+
+        return List.of(
+                new JobStep(JobStepKey.COMMITS, draftStepState(read, total, true), read, total),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.SKIPPED, 0, null),
+                new JobStep(JobStepKey.COMPRESS, draftStepState(finished, total, read > 0), finished, total),
+                new JobStep(JobStepKey.REASON, draftStepState(finished, total, finished > 0), finished, total));
+
+    }
+
+    private static JobStepState draftStepState(int done, int total, boolean started) {
+
+        if (done == total) {
+            return JobStepState.DONE;
+        }
+
+        return started ? JobStepState.RUNNING : JobStepState.QUEUED;
+
+    }
+
+    private static JobErrorCode draftErrorCodeOf(List<CardDraftResult> results) {
+
+        if (results.contains(CardDraftResult.FAILED)) {
+            return JobErrorCode.INTERNAL_ERROR;
+        }
+
+        if (results.contains(CardDraftResult.TIMED_OUT)) {
+            return JobErrorCode.DRAFT_TIMEOUT;
+        }
+
+        return results.contains(CardDraftResult.NO_EVIDENCE) ? JobErrorCode.EVIDENCE_MISSING : null;
 
     }
 

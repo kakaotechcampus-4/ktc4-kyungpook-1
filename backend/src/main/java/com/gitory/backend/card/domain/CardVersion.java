@@ -67,6 +67,21 @@ public class CardVersion {
 
     }
 
+    /**
+     * 후보로 만든 카드의 1번 버전에 AI 초안을 담았을 때 출처를 AI 초안으로 바꾼다
+     * 그러면 사용자의 첫 수정이 이 버전을 덮어쓰지 않고 새 버전이 되어 AI 원문이 남는다
+     */
+    void markAiDraft() {
+
+        if (versionNo != 1 || source != VersionSource.USER_EDIT || confirmed) {
+            throw new IllegalStateException("AI 초안을 담을 수 있는 1번 버전이 아니다: " + versionNo + " " + source);
+        }
+
+        this.source = VersionSource.AI_DRAFT;
+        this.updatedAt = CardTime.now();
+
+    }
+
     public void markConfirmed() {
 
         this.confirmed = true;

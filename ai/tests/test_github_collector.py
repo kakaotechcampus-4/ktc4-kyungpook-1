@@ -23,6 +23,7 @@ from services.github_collector import (
     GithubCollector,
     GithubResourceNotFound,
     _contribution_decision,
+    _issue_numbers,
     _primary_pull_by_sha,
 )
 
@@ -214,6 +215,55 @@ def test_collects_commit_diff_pull_review_and_issue() -> None:
     assert result.issues[0].body_excerpt == "응답 시간이 오래 걸립니다."
     assert not hasattr(result.commits[0].files[0], "patch")
     assert result.head_sha == "abc1234567890"
+
+
+def test_issue_numbers_drop_zero_references() -> None:
+    """'#000'·'#0'은 issue 번호가 아니므로 버리고 나머지 번호는 등장 순서대로 남긴다."""
+    assert _issue_numbers("fix: 색 #000 정리 (#12), #0 제외, #12 중복, #7, #1") == [12, 7, 1]
+
+
+def test_commit_message_with_zero_reference_is_collected() -> None:
+    """커밋 메시지에 '#000'이 있어도 수집 전체가 실패하지 않고 0은 issue 번호에서 빠진다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        response = _success_handler(request)
+        if request.url.path == "/repos/grow22/gitory/commits/abc1234567890":
+            detail = response.json()
+            detail["commit"]["message"] = "style: 글자색을 #000 으로 변경 (#42)"
+            return httpx.Response(200, json=detail)
+        return response
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert result.partial is False
+    assert result.commits[0].issue_numbers == [42]
+
+
+def test_pull_request_body_with_zero_reference_is_collected() -> None:
+    """PR 본문에 '#0'이 있어도 수집 전체가 실패하지 않고 0은 연결 issue 번호에서 빠진다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        response = _success_handler(request)
+        if request.url.path == "/repos/grow22/gitory/pulls":
+            pulls = response.json()
+            pulls[0]["body"] = "#0 단계 정리. Resolves #42"
+            return httpx.Response(200, json=pulls)
+        return response
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert result.partial is False
+    assert result.pull_requests[0].linked_issue_numbers == [42]
 
 
 def test_recollection_does_not_send_since_and_records_default_branch_head() -> None:

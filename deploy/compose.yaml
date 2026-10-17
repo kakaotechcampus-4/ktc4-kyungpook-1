@@ -6,10 +6,27 @@
 # 특히 ai 는 X-GitHub-Token 을 받으므로 포트를 열지 않는다.
 name: gitory
 
+# 컨테이너 로그를 CloudWatch 로그 그룹 /gitory 로 보낸다 (docs/DEPLOYMENT.md 7절).
+# EC2 인스턴스 역할(CloudWatchAgentServerPolicy)로 보내므로 키를 두지 않는다. 스트림 이름은 컨테이너 이름이다.
+# non-blocking: CloudWatch 가 느려도 서비스가 로그 쓰기에서 멈추지 않는다(버퍼가 차면 그 로그는 버린다).
+# docker compose logs 는 Docker 의 이중 로깅으로 그대로 된다.
+x-cloudwatch-options: &cloudwatch-options
+  awslogs-region: ap-northeast-2
+  awslogs-group: /gitory
+  awslogs-create-group: "true"
+  tag: "{{.Name}}"
+  mode: non-blocking
+  max-buffer-size: 4m
+
+x-cloudwatch: &cloudwatch
+  driver: awslogs
+  options: *cloudwatch-options
+
 services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    logging: *cloudwatch
     environment:
       POSTGRES_DB: gitory
       POSTGRES_USER: gitory
@@ -26,6 +43,7 @@ services:
     build: ../ai
     image: gitory-ai
     restart: unless-stopped
+    logging: *cloudwatch
     environment:
       AI_DOCS_ENABLED: "false"
       # 경험 그룹화·STAR 초안이 쓰는 LLM 게이트웨이. 비어 있으면 그 두 기능만 503 이고 수집·되묻기는 돈다
@@ -41,6 +59,12 @@ services:
     build: ../backend
     image: gitory-backend
     restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        <<: *cloudwatch-options
+        # 날짜로 시작하지 않는 줄(예외 스택)을 앞 줄과 한 이벤트로 묶어, 에러 하나가 알람 하나로 세어지게 한다
+        awslogs-multiline-pattern: '^\d{4}-\d{2}-\d{2}'
     # ai 는 기다리지 않는다. AI 가 안 떠도 로그인·저장소 목록은 열려야 한다.
     # 분석 요청은 AI 연결이 실패하면 Job 이 실패로 끝난다.
     depends_on:
@@ -71,6 +95,7 @@ services:
     build: ../frontend
     image: gitory-web
     restart: unless-stopped
+    logging: *cloudwatch
     depends_on:
       backend:
         condition: service_healthy

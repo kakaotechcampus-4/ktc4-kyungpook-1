@@ -31,16 +31,16 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * 대기 중인 분석 Job 하나를 꺼내 AI 수집을 부르고, 경험 그룹화를 켰으면 저장한 수집 결과로 AI 경험 그룹화까지 부른 뒤 결과에 따라 끝내며, 카드 초안 Job 은 AI 를 부르지 않고 바로 끝낸다
+ * 대기 중인 분석 Job 하나를 꺼내 AI 수집을 부르고, 경험 그룹화를 켰으면 저장한 수집 결과로 AI 경험 그룹화까지 부른 뒤 결과에 따라 끝내며, 카드 초안 Job 은 AI 초안을 켰을 때만 AI 를 불러 카드를 채운다
  * Job 을 RUNNING 으로 확정한 뒤에 AI 를 불러, 응답을 기다리는 동안 DB 커넥션과 잠금을 붙잡지 않는다
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@EnableConfigurationProperties(JobGroupingProperties.class)
+@EnableConfigurationProperties({JobGroupingProperties.class, JobDraftProperties.class})
 public class JobRunner {
 
-    // 멈춘 Job 판정은 수집·묶기 응답 대기 한도 중 큰 값에 이 여유를 더한 시간이다
+    // 멈춘 Job 판정은 수집·묶기·카드 초안의 응답 대기 한도 중 큰 값에 이 여유를 더한 시간이다
     // 묶기 직전에 갱신 시각을 새로 찍어 두 대기를 더하지 않아도 되고, 한도를 늘리면 판정도 같이 늦춰진다
     private static final Duration STUCK_MARGIN = Duration.ofMinutes(5);
 
@@ -58,6 +58,8 @@ public class JobRunner {
     private final CandidateStoreService candidates;
     private final ExperienceGroupingPort grouping;
     private final GithubCollectionAccessPort githubAccess;
+    private final JobDraftProperties draftProperties;
+    private final CardDraftRunner cardDrafts;
 
     /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
     public Optional<AnalysisJob> claimNext() {
@@ -69,7 +71,8 @@ public class JobRunner {
     public void failStuckJobs() {
 
         Duration longestWait = Collections.max(List.of(aiProperties.collectReadTimeout(),
-                aiProperties.groupsReadTimeout()));
+                aiProperties.groupsReadTimeout(), aiProperties.diffEvidenceReadTimeout(),
+                aiProperties.starReadTimeout()));
         Instant before = Instant.now().minus(longestWait).minus(STUCK_MARGIN);
         transaction.executeWithoutResult(status -> jobs.findStuckForUpdate(before)
                 .forEach(job -> job.fail(JobErrorCode.INTERNAL_ERROR)));
@@ -96,7 +99,7 @@ public class JobRunner {
     }
 
     /**
-     * {@link #claimNext()} 로 꺼낸 Job 을 받아 끝내며, 카드 초안 Job 은 AI 를 부르지 않는 {@link #runDraft} 로 넘긴다
+     * {@link #claimNext()} 로 꺼낸 Job 을 받아 끝내며, 카드 초안 Job 은 {@link #runDraft} 로 넘긴다
      * 분석 Job 은 AI 수집·경험 그룹화 결과대로 끝내고, 경험 그룹화가 실패해도 먼저 저장한 수집 결과는 남기고 다시 부르지 않고 실패로 끝낸다
      */
     public void run(AnalysisJob job) {
@@ -125,13 +128,17 @@ public class JobRunner {
     }
 
     /**
-     * 카드 초안 Job 은 AI 를 부르지 않고 끝내며, 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 그대로 둔다
+     * AI 초안을 켰으면 카드마다 AI 초안을 채우고, 끄면 AI 를 부르지 않고 끝내며, 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 그대로 둔다
      * 카드에는 만들 때 1번 버전이 이미 있다
      */
     private void runDraft(AnalysisJob job) {
 
         try {
-            transaction.executeWithoutResult(status -> finishDraft(job.getId()));
+            if (draftProperties.enabled()) {
+                cardDrafts.run(job);
+            } else {
+                transaction.executeWithoutResult(status -> finishDraft(job.getId()));
+            }
         } catch (RuntimeException failure) {
             log.warn("카드 초안 Job {} 을 {} 로 끝낸다", job.getId(), JobErrorCode.INTERNAL_ERROR, failure);
             transaction.executeWithoutResult(status -> fail(job.getId(), JobErrorCode.INTERNAL_ERROR));

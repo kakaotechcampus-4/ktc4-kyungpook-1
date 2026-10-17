@@ -69,6 +69,14 @@ public class CardStatement {
 
     }
 
+    /** AI 가 커밋 근거로 쓴 초안 문장으로, 근거 커밋은 문장을 저장한 뒤 따로 잇는다 */
+    static CardStatement drafted(Long cardId, short versionNo, StarField starSlot, String body,
+                                 Confidence confidence) {
+
+        return new CardStatement(cardId, versionNo, starSlot, body, EvidenceType.COMMIT, confidence, null);
+
+    }
+
     /** 되묻기에서 사용자가 쓴 답으로, 그 질문을 가리키고 근거 커밋·확신도는 없다 */
     public static CardStatement answered(Long cardId, short versionNo, StarField starSlot, String body,
                                          Long sourceTurnId) {

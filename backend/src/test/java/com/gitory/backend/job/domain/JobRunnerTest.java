@@ -139,6 +139,9 @@ class JobRunnerTest {
     @MockitoBean
     GithubCollectionAccessPort githubAccess;
 
+    @MockitoBean
+    CardDraftRunner cardDrafts;
+
     private TestFixtures fixtures;
     private Long userId;
     private Long userRepositoryId;
@@ -610,6 +613,34 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("카드 초안의 diff 근거 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
+    void stuckJudgementFollowsDiffEvidenceReadTimeout() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+        JobRunner longerWait = runnerWith(AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(10))
+                .groupsReadTimeout(Duration.ofMinutes(10)).diffEvidenceReadTimeout(Duration.ofMinutes(20)).build());
+
+        longerWait.failStuckJobs();
+
+        assertThat(stateOf(jobId)).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
+    @DisplayName("카드 초안의 STAR 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
+    void stuckJudgementFollowsStarReadTimeout() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+        JobRunner longerWait = runnerWith(AiTestProperties.defaults().collectReadTimeout(Duration.ofMinutes(10))
+                .groupsReadTimeout(Duration.ofMinutes(10)).starReadTimeout(Duration.ofMinutes(20)).build());
+
+        longerWait.failStuckJobs();
+
+        assertThat(stateOf(jobId)).isEqualTo(JobState.RUNNING);
+
+    }
+
+    @Test
     @DisplayName("취소된 QUEUED Job 은 워커가 꺼내지 않는다")
     void doesNotRunCanceledJob() {
 
@@ -634,6 +665,19 @@ class JobRunnerTest {
         assertThat(claimed).map(AnalysisJob::getId).contains(draftJobId);
         assertThat(stateOf(draftJobId)).isEqualTo(JobState.RUNNING);
         assertThat(stateOf(analyzeJobId)).isEqualTo(JobState.QUEUED);
+
+    }
+
+    @Test
+    @DisplayName("AI 초안을 꺼 두면 카드 초안 Job 은 카드를 채우는 러너를 부르지 않고 끝난다")
+    void draftSwitchOffSkipsCardDraftRunner() {
+
+        Long draftJobId = insertQueuedDraftJob(userRepositoryId);
+
+        runNext();
+
+        verifyNoInteractions(cardDrafts);
+        assertThat(stateOf(draftJobId)).isEqualTo(JobState.SUCCEEDED);
 
     }
 
@@ -905,7 +949,8 @@ class JobRunnerTest {
     private JobRunner runnerWith(AiClientProperties aiProperties) {
 
         return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
-                new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess);
+                new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
+                new JobDraftProperties(false), null);
 
     }
 

@@ -1,6 +1,7 @@
 package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardStatementRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * 임시 저장으로 카드의 네 칸을 저장하고, 칸마다 보낸 글이 갈라져 나온 직전 버전의 글과 같으면 그 문장을 근거째 복사한다
+ * 임시 저장으로 카드의 네 칸을 저장하고, 칸마다 보낸 글이 갈라져 나온 직전 버전의 글과 같으면 그 문장을 근거·칸 메모째 복사한다
  * 비교 기준을 직전 버전으로 둬야 편집 취소로 원문을 다시 보낼 때 커밋 근거와 확인 필요 표시가 함께 돌아온다
  */
 @Service
@@ -25,6 +26,7 @@ public class DraftSaveService {
     private final CardOwnershipService ownership;
     private final CardVersionRepository versions;
     private final CardStatementRepository statements;
+    private final CardSlotNoteRepository notes;
     private final CardVersionReader reader;
     private final CardVersionWriter writer;
 
@@ -62,6 +64,7 @@ public class DraftSaveService {
                 : reader.read(card.getId(), (short) (current.getVersionNo() - 1));
 
         statements.deleteAllOfVersion(card.getId(), current.getVersionNo());
+        notes.deleteAllOfVersion(card.getId(), current.getVersionNo());
         fill(card.getId(), branchedFrom, current.getVersionNo(), sent);
         current.markSaved();
         card.markEdited();
@@ -74,12 +77,10 @@ public class DraftSaveService {
 
         for (StarField field : StarField.values()) {
             String text = sent.get(field);
-            if (text == null) {
-                continue;
-            }
-            if (branchedFrom != null && text.equals(branchedFrom.textOf(field))) {
+            // 비운 칸을 그대로 비워 둔 것도 안 고친 칸이라, 문장은 없어도 비운 이유 메모가 따라온다
+            if (branchedFrom != null && Objects.equals(text, branchedFrom.textOf(field))) {
                 writer.copySlot(cardId, branchedFrom.versionNo(), field, versionNo);
-            } else {
+            } else if (text != null) {
                 statements.save(CardStatement.userStated(cardId, versionNo, field, text));
             }
         }

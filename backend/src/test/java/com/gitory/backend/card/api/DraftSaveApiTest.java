@@ -632,6 +632,42 @@ class DraftSaveApiTest {
 
     }
 
+    @Test
+    @DisplayName("AI 초안 위에서 저장하면 새 버전에 안 고친 칸(그대로 비워 둔 칸 포함)의 메모는 따라오고 고친 칸의 메모는 없어진다")
+    void carriesNotesOfUntouchedSlots() throws Exception {
+
+        Long cardId = aiCard(MY_CARD, myUserId);
+        Long situation = fixtures.insertStatement(cardId, 1, "S", "AI 상황", "COMMIT", "LOW");
+        fixtures.insertStatementEvidence(situation, firstCommit);
+        fixtures.insertSlotNote(cardId, 1, "S", null, "근거에 없는 수치");
+        fixtures.insertSlotNote(cardId, 1, "A", "TIMEOUT", null);
+        fixtures.insertSlotNote(cardId, 1, "R", "NO_EVIDENCE", null);
+
+        save(MY_CARD, "AI 상황", "직접 쓴 과제", "직접 쓴 행동", null).andExpect(status().isOk());
+
+        assertThat(notesOf(cardId, 2)).containsExactly(
+                new NoteRow("R", "NO_EVIDENCE", null),
+                new NoteRow("S", null, "근거에 없는 수치"));
+
+    }
+
+    @Test
+    @DisplayName("덮어쓰는 직접 수정 버전은 칸 메모를 다시 정해, 앞 저장에서 따라온 빈 칸 메모도 그 칸을 채우면 없어진다")
+    void overwriteRecomputesNotes() throws Exception {
+
+        Long cardId = aiCard(MY_CARD, myUserId);
+        fixtures.insertSlotNote(cardId, 1, "A", "OVERCLAIM", null);
+        fixtures.insertSlotNote(cardId, 1, "R", "NO_EVIDENCE", null);
+        save(MY_CARD, "직접 쓴 상황", null, null, null).andExpect(status().isOk());
+
+        save(MY_CARD, "직접 쓴 상황", null, null, "직접 쓴 결과").andExpect(status().isOk());
+
+        assertThat(notesOf(cardId, 2)).containsExactly(new NoteRow("A", "OVERCLAIM", null));
+        assertThat(jdbc.queryForObject("SELECT max(version_no) FROM card_version WHERE card_id = ?", Integer.class,
+                cardId)).isEqualTo(2);
+
+    }
+
     private Long confirmedCard() {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -831,6 +867,17 @@ class DraftSaveApiTest {
                                 List<Long> commitIds) {
     }
 
+    private List<NoteRow> notesOf(Long cardId, int versionNo) {
+
+        return jdbc.query("SELECT star_slot, drop_reason, review_reason FROM card_slot_note WHERE card_id = ? AND version_no = ? ORDER BY star_slot",
+                (row, rowNum) -> new NoteRow(row.getString("star_slot"), row.getString("drop_reason"),
+                        row.getString("review_reason")), cardId, versionNo);
+
+    }
+
     private record AuditRow(Long userId, String action, Long subjectId, String outcome) {
+    }
+
+    private record NoteRow(String slot, String dropReason, String reviewReason) {
     }
 }

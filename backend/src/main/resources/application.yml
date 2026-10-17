@@ -143,6 +143,11 @@ gitory:
       enabled: ${ANALYSIS_GROUPING_ENABLED:false}
       # AI 의 묶기 규칙이 바뀌면 올려, 보낼 요청이 지난번과 같아도 모든 저장소를 다시 묶게 한다
       version: 1
+  cards:
+    ai-draft:
+      # 켜면 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채우고, 끄면 빈 카드로 끝낸다
+      # 운영 AI 에 LLM 설정이 없으면 모든 초안이 실패하므로 그 설정을 넣고 한 번 확인한 뒤 켠다
+      enabled: ${CARD_AI_DRAFT_ENABLED:false}
 
 logging:
   level:

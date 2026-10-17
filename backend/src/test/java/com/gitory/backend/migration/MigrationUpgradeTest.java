@@ -18,6 +18,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 이전 버전 데이터가 들어 있는 DB 에 다음 마이그레이션을 적용해도 실패하지 않고 값이 새 이름으로 바뀌는지 본다
@@ -260,6 +261,30 @@ class MigrationUpgradeTest {
         assertThat(definition)
                 .contains("(generation_job_id)")
                 .contains("WHERE (generation_job_id IS NOT NULL)");
+
+    }
+
+    @Test
+    @DisplayName("V18 칸 메모는 비운 이유와 확인 필요 이유 중 하나만 받고, 목록 밖 이유 코드와 같은 칸의 두 번째 메모는 막는다")
+    void v18SlotNoteKeepsOneKnownReason() {
+
+        migrateTo("18");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long cardId = fixtures.insertCard(UUID.randomUUID(), userId);
+
+        fixtures.insertSlotNote(cardId, 1, "S", "NO_EVIDENCE", null);
+        fixtures.insertSlotNote(cardId, 1, "A", null, "근거에 없는 수치");
+
+        assertThatThrownBy(() -> fixtures.insertSlotNote(cardId, 1, "R", null, null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> fixtures.insertSlotNote(cardId, 1, "R", "TIMEOUT", "둘 다"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> fixtures.insertSlotNote(cardId, 1, "R", "LATER", null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> fixtures.insertSlotNote(cardId, 1, "S", "TIMEOUT", null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> fixtures.insertSlotNote(cardId, 2, "R", "TIMEOUT", null))
+                .isInstanceOf(DataIntegrityViolationException.class);
 
     }
 

@@ -217,6 +217,44 @@ class CardVersionWriterTest {
 
     }
 
+    @Test
+    @DisplayName("다음 버전으로 통째로 복사하면 칸 메모도 비운 이유와 확인 필요 이유 그대로 따라간다")
+    void copyToNextCopiesNotes() {
+
+        Long cardId = fixtures.insertCard(UUID.randomUUID(), userId);
+        Long situation = fixtures.insertStatement(cardId, 1, "S", "상황 글", "COMMIT", "LOW");
+        fixtures.insertStatementEvidence(situation, firstCommit);
+        fixtures.insertSlotNote(cardId, 1, "S", null, "근거에 없는 수치");
+        fixtures.insertSlotNote(cardId, 1, "R", "TIMEOUT", null);
+        Card card = em.find(Card.class, cardId);
+
+        writer.copyToNext(card, (short) 1, VersionSource.MASK);
+        em.flush();
+
+        assertThat(notesOf(cardId, 2)).containsExactly(
+                new NoteRow("R", "TIMEOUT", null),
+                new NoteRow("S", null, "근거에 없는 수치"));
+        assertThat(notesOf(cardId, 1)).hasSize(2);
+
+    }
+
+    @Test
+    @DisplayName("칸 하나를 복사하면 문장이 없는 빈 칸이어도 그 칸의 비운 이유 메모는 따라가고 다른 칸 메모는 따라가지 않는다")
+    void copySlotCopiesOnlyThatSlotNote() {
+
+        Long cardId = fixtures.insertCard(UUID.randomUUID(), userId);
+        fixtures.insertSlotNote(cardId, 1, "R", "NO_EVIDENCE", null);
+        fixtures.insertSlotNote(cardId, 1, "A", "OVERCLAIM", null);
+        fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
+
+        writer.copySlot(cardId, (short) 1, StarField.R, (short) 2);
+        em.flush();
+
+        assertThat(notesOf(cardId, 2)).containsExactly(new NoteRow("R", "NO_EVIDENCE", null));
+        assertThat(slotsOf(cardId, 2)).isEmpty();
+
+    }
+
     private List<VersionRow> versionsOf(Long cardId) {
 
         return jdbc.query("SELECT version_no, source, is_confirmed FROM card_version WHERE card_id = ? ORDER BY version_no",
@@ -258,7 +296,18 @@ class CardVersionWriterTest {
 
     }
 
+    private List<NoteRow> notesOf(Long cardId, int versionNo) {
+
+        return jdbc.query("SELECT star_slot, drop_reason, review_reason FROM card_slot_note WHERE card_id = ? AND version_no = ? ORDER BY star_slot",
+                (row, rowNum) -> new NoteRow(row.getString("star_slot"), row.getString("drop_reason"),
+                        row.getString("review_reason")), cardId, versionNo);
+
+    }
+
     private record VersionRow(int versionNo, String source, boolean confirmed) {
+    }
+
+    private record NoteRow(String slot, String dropReason, String reviewReason) {
     }
 
     private record SlotRow(String slot, int seq, String body, String evidenceType, String confidence, Long turnId,

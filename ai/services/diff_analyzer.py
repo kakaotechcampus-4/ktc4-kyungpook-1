@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.analysis import DiffEvidence
 from schemas.collection import CandidateCommitDetail, CandidateDetailResult, CandidateFileDiff
+from services.llm_executors import CARD_DRAFT_EXECUTOR, LLMCallSkipped, run_llm_call
 from services.llm_structured_client import (
     LLMContentFilterError,
     LLMInvalidOutputError,
@@ -290,17 +291,19 @@ class DiffAnalyzer:
             timeout = budget.take_call()
             try:
                 result = await asyncio.wait_for(
-                    asyncio.to_thread(
+                    run_llm_call(
+                        CARD_DRAFT_EXECUTOR,
                         self._client.call,
                         SYSTEM_PROMPT,
                         payload,
                         DiffSummaryOutput,
                         self._limits.max_completion_tokens,
-                        timeout,
+                        deadline=budget.deadline,
+                        min_seconds=self._limits.min_call_seconds,
                     ),
                     timeout=timeout + 1,
                 )
-            except asyncio.TimeoutError as exc:
+            except (asyncio.TimeoutError, LLMCallSkipped) as exc:
                 raise _Stop from exc
             except LLMInvalidOutputError as exc:
                 if attempt == self._limits.max_attempts:

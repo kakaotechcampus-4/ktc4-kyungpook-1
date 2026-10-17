@@ -777,7 +777,7 @@ class JobRunnerTest {
         assertThat(stateOf(draftJobId)).isEqualTo(JobState.CANCELED);
         assertThat(jobs.findById(draftJobId).orElseThrow().getSteps()).extracting(JobStep::state)
                 .doesNotContain(JobStepState.DONE);
-        assertThat(output).doesNotContain("카드 초안 Job");
+        assertThat(output).doesNotContain("로 끝낸다");
 
     }
 

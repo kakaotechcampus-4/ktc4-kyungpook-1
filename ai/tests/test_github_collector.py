@@ -762,7 +762,9 @@ def test_blank_token_is_rejected_before_network_call() -> None:
 def test_limit_marks_result_partial() -> None:
     collector = GithubCollector(
         base_url="https://api.github.test",
-        limits=CollectionLimits(max_pull_requests=0, max_commits=1, max_issues=1),
+        limits=CollectionLimits(
+            max_pull_requests=0, max_own_pull_requests=0, max_commits=1, max_issues=1
+        ),
         transport=httpx.MockTransport(_success_handler),
     )
 
@@ -770,6 +772,156 @@ def test_limit_marks_result_partial() -> None:
 
     assert execution.result.partial is True
     assert execution.result.partial_reason == PartialReason.CAP_EXCEEDED
+
+
+def _empty_repository_handler(request: httpx.Request) -> httpx.Response:
+    """GitHub 이 커밋이 하나도 없는 공개 저장소에 돌려주는 응답."""
+    path = request.url.path
+    if path in ("/repos/grow22/gitory/pulls", "/repos/grow22/gitory/issues"):
+        return httpx.Response(200, json=[])
+    if path == "/repos/grow22/gitory/branches/develop":
+        return httpx.Response(404, json={"message": "Branch not found"})
+    if path == "/repos/grow22/gitory/commits":
+        return httpx.Response(409, json={"message": "Git Repository is empty."})
+    return httpx.Response(500, json={"unexpected": str(request.url)})
+
+
+def _default_branch_request() -> RepositoryCollectionRequest:
+    payload = _request().model_dump(mode="json")
+    payload["branches"] = []
+    return RepositoryCollectionRequest.model_validate(payload)
+
+
+def test_empty_repository_is_collected_as_zero_commits() -> None:
+    """빈 저장소는 기본 브랜치 조회가 404 여도 실패가 아니라 커밋 0개 성공으로 돌려준다."""
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(_empty_repository_handler),
+    )
+
+    result = asyncio.run(collector.collect(_default_branch_request(), "live-secret")).result
+
+    assert result.partial is False
+    assert result.commits == []
+    assert result.pull_requests == []
+    assert result.head_sha is None
+
+
+def test_missing_default_branch_of_non_empty_repository_still_fails() -> None:
+    """기본 브랜치만 없고 커밋은 있는 저장소는 빈 저장소로 넘기지 않고 지금처럼 실패한다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/repos/grow22/gitory/commits":
+            return httpx.Response(200, json=[{"sha": "abc1234567890"}])
+        return _empty_repository_handler(request)
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(GithubResourceNotFound):
+        asyncio.run(collector.collect(_default_branch_request(), "live-secret"))
+
+
+def _pull(number: int, author: str) -> dict:
+    return {
+        "number": number,
+        "title": f"PR {number}",
+        "body": None,
+        "state": "closed",
+        "user": {"login": author},
+        "base": {"ref": "develop"},
+        "head": {"ref": f"feature/{number}"},
+        "created_at": "2026-09-20T10:00:00Z",
+        "merged_at": None,
+    }
+
+
+def _pull_list_handler(pages: list[list[dict]], calls: list[httpx.Request]):
+    """PR 목록을 쪽마다 돌려주고, PR 하나의 커밋·리뷰·줄 댓글은 비어 있다고 답한다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        path = request.url.path
+        if path == "/repos/grow22/gitory/pulls":
+            page = int(request.url.params.get("page", "1"))
+            return httpx.Response(200, json=pages[page - 1] if page <= len(pages) else [])
+        if path.startswith("/repos/grow22/gitory/pulls/"):
+            return httpx.Response(200, json=[])
+        if path == "/repos/grow22/gitory/commits":
+            return httpx.Response(200, json=[])
+        return _success_handler(request)
+
+    return handler
+
+
+def test_own_pull_requests_beyond_recent_cap_are_collected() -> None:
+    """최근 갱신 상한 밖이어도 내 PR 은 모으고, 남의 PR 만 빠졌으면 부분 수집이 아니다."""
+    calls: list[httpx.Request] = []
+    pages = [[_pull(30, "teammate"), _pull(29, "teammate"), _pull(17, "Grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, calls)),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [30, 17]
+    assert result.partial is False
+    assert not any(call.url.path.startswith("/repos/grow22/gitory/pulls/29/") for call in calls)
+
+
+def test_own_pull_requests_on_later_pages_are_collected() -> None:
+    """PR 목록을 마지막 쪽까지 읽어 뒤쪽에 있는 내 PR 도 모은다."""
+    calls: list[httpx.Request] = []
+    pages = [[_pull(200 - i, "teammate") for i in range(100)], [_pull(17, "grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, calls)),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [200, 17]
+    assert result.partial is False
+    list_calls = [call for call in calls if call.url.path == "/repos/grow22/gitory/pulls"]
+    assert [call.url.params["page"] for call in list_calls] == ["1", "2"]
+    assert {call.url.params["per_page"] for call in list_calls} == {"100"}
+
+
+def test_own_pull_requests_over_own_cap_mark_partial() -> None:
+    """내 PR 이 상한을 넘어 잘리면 부분 수집으로 알린다."""
+    pages = [[_pull(30, "teammate"), _pull(18, "grow22"), _pull(17, "grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=1, max_own_pull_requests=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, [])),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [30, 18]
+    assert result.partial_reason == PartialReason.CAP_EXCEEDED
+
+
+def test_pull_request_pages_over_page_cap_mark_partial() -> None:
+    """읽을 쪽 상한에 닿았는데 다음 쪽이 남았으면 내 PR 이 더 있을 수 있어 부분 수집으로 알린다."""
+    calls: list[httpx.Request] = []
+    pages = [[_pull(300 - i, "teammate") for i in range(100)], [_pull(17, "grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=1, max_pull_request_pages=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, calls)),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [300]
+    assert result.partial_reason == PartialReason.CAP_EXCEEDED
+    assert [call.url.params["page"] for call in calls if call.url.path == "/repos/grow22/gitory/pulls"] == ["1"]
 
 
 @pytest.mark.parametrize(

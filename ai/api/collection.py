@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import time
 
 from fastapi import APIRouter, Depends, Header
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
+from api.failure_log import log_failure
 from api.openapi import COLLECTION_ERROR_RESPONSES
 from ports.repository_activity import RepositoryActivityPort
 from schemas.collection import (
@@ -22,6 +24,8 @@ from services.github_collector import (
     GithubCollector,
     GithubResourceNotFound,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/internal", tags=["collection"])
 
@@ -60,7 +64,8 @@ async def collect_repository_activity(
     started = time.perf_counter()
     try:
         execution = await activity_port.collect(request, x_github_token)
-    except GithubResourceNotFound:
+    except GithubResourceNotFound as exc:
+        _log_collection_failure("GitHub 활동 수집", "/internal/collect", "RESOURCE_NOT_FOUND", False, exc, started, request)
         return _error_response(
             status_code=404,
             code="RESOURCE_NOT_FOUND",
@@ -68,7 +73,8 @@ async def collect_repository_activity(
             retryable=False,
             started=started,
         )
-    except GithubApiError:
+    except GithubApiError as exc:
+        _log_collection_failure("GitHub 활동 수집", "/internal/collect", "GITHUB_API_ERROR", True, exc, started, request)
         return _error_response(
             status_code=502,
             code="GITHUB_API_ERROR",
@@ -117,7 +123,10 @@ async def collect_candidate_details(
             request,
             x_github_token,
         )
-    except GithubResourceNotFound:
+    except GithubResourceNotFound as exc:
+        _log_collection_failure(
+            "후보 diff 수집", "/internal/collect/candidate-details", "RESOURCE_NOT_FOUND", False, exc, started, request
+        )
         return _error_response(
             status_code=404,
             code="RESOURCE_NOT_FOUND",
@@ -125,7 +134,10 @@ async def collect_candidate_details(
             retryable=False,
             started=started,
         )
-    except GithubApiError:
+    except GithubApiError as exc:
+        _log_collection_failure(
+            "후보 diff 수집", "/internal/collect/candidate-details", "GITHUB_API_ERROR", True, exc, started, request
+        )
         return _error_response(
             status_code=502,
             code="GITHUB_API_ERROR",
@@ -145,6 +157,21 @@ async def collect_candidate_details(
         ),
         error=None,
     )
+
+
+def _log_collection_failure(
+    feature: str,
+    path: str,
+    code: str,
+    retryable: bool,
+    exc: Exception,
+    started: float,
+    request: RepositoryCollectionRequest | CandidateDetailRequest,
+) -> None:
+    ids: dict[str, int] = {"user_repository_id": request.user_repository_id}
+    if isinstance(request, CandidateDetailRequest):
+        ids["commits"] = len(request.commit_shas)
+    log_failure(logger, feature, path=path, code=code, retryable=retryable, exc=exc, started=started, **ids)
 
 
 def _error_response(

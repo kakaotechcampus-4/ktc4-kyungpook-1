@@ -1,15 +1,19 @@
 package com.gitory.backend.card.domain.interview;
 
-import com.gitory.backend.card.domain.Card;
+import com.gitory.backend.recommend.domain.CandidateType;
 
 public enum InterviewSourceType {
     PR,
     COMMIT_CLUSTER,
     DIRECT_CARD;
 
-    public static InterviewSourceType of(Card card) {
+    public static InterviewSourceType of(CandidateType candidateType) {
 
-        return DIRECT_CARD;
+        if (candidateType == null) {
+            return DIRECT_CARD;
+        }
+
+        return candidateType == CandidateType.PR ? PR : COMMIT_CLUSTER;
 
     }
 }

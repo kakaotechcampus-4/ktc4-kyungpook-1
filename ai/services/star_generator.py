@@ -55,6 +55,7 @@ SYSTEM_PROMPT = """당신은 개발자의 커밋 근거로 STAR(상황·책임·
 SLOTS: tuple[StarSlot, ...] = ("S", "T", "A", "R")
 
 _REVIEW_REASON = "근거는 있으나 해석이 불확실해 사용자 확인이 필요합니다."
+_ANSWER_ONLY_REASON = "근거 커밋 없이 사용자 답변으로만 채워 사용자 확인이 필요합니다."
 _UNSOURCED_NUMBER_REASON = "근거에서 확인되지 않는 수치({metrics})가 있어 사용자 확인이 필요합니다."
 _NO_EVIDENCE_REASON = "입력에서 확인되는 근거 커밋이나 사용자 답변이 없어 비웠습니다."
 _DEFAULT_EMPTY_REASON = "이 칸을 뒷받침하는 근거를 찾지 못했습니다."
@@ -256,6 +257,10 @@ class StarGenerator:
                 continue
             status = field.status
             review_reason = _REVIEW_REASON if status == "NEEDS_REVIEW" else None
+            if not cited:
+                # 커밋으로 확인되지 않은 답변 문장이 HIGH 로 보이면 안 된다.
+                status = "NEEDS_REVIEW"
+                review_reason = _ANSWER_ONLY_REASON
             # 근거에 없는 수치는 지우지 않고 확인 필요로 내린다. 정규식 판정이라 틀려도 사용자가 확인하면 된다.
             unsupported = unsupported_metrics(text, _metric_source(cited, payload["confirmed_answers"]))
             if unsupported:

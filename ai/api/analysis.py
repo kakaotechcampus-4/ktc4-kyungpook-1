@@ -12,6 +12,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from api.collection import get_repository_activity_port
+from api.failure_log import log_failure
 from api.openapi import COLLECTION_ERROR_RESPONSES, INVALID_PAYLOAD_RESPONSE, LLM_UNAVAILABLE_RESPONSE
 from ports.repository_activity import RepositoryActivityPort
 from schemas.analysis import (
@@ -37,8 +38,8 @@ router = APIRouter(
     responses={
         400: INVALID_PAYLOAD_RESPONSE,
         500: {
-            "description": "분석 처리 중 내부 오류 또는 LLM 호출 실패",
-            "content": {"text/plain": {"schema": {"type": "string"}, "example": "Internal Server Error"}},
+            "model": ErrorEnvelope,
+            "description": "INTERNAL_ERROR: 처리하지 못한 내부 오류. 재시도 불가.",
         },
     },
 )
@@ -134,16 +135,20 @@ async def collect_diff_evidence(
     started = time.perf_counter()
     try:
         execution = await pipeline.collect_diff_evidence(request, x_github_token, activity_port)
-    except GithubResourceNotFound:
+    except GithubResourceNotFound as exc:
+        _log_diff_evidence_failure(request, "RESOURCE_NOT_FOUND", False, exc, started)
         return _error(started, 404, "RESOURCE_NOT_FOUND", "저장소·PR·commit이 없거나 현재 권한으로 읽을 수 없습니다.", False)
     except GithubApiError as exc:
+        retryable = exc.secondary_rate_limited or exc.status_code not in _GITHUB_PERMANENT_STATUSES
+        _log_diff_evidence_failure(request, "GITHUB_API_ERROR", retryable, exc, started)
         return _error(
-            started, 502, "GITHUB_API_ERROR", "선택된 후보의 GitHub diff를 수집하지 못했습니다.",
-            exc.secondary_rate_limited or exc.status_code not in _GITHUB_PERMANENT_STATUSES,
+            started, 502, "GITHUB_API_ERROR", "선택된 후보의 GitHub diff를 수집하지 못했습니다.", retryable,
         )
-    except LLMConfigError:
+    except LLMConfigError as exc:
+        _log_diff_evidence_failure(request, "LLM_UNAVAILABLE", False, exc, started)
         return _error(started, 503, "LLM_UNAVAILABLE", "diff 분석 LLM 설정이 없어 분석할 수 없습니다.", False)
     except DiffAnalysisError as exc:
+        _log_diff_evidence_failure(request, "LLM_UNAVAILABLE", exc.retryable, exc, started)
         return _error(started, 503, "LLM_UNAVAILABLE", "diff 분석 LLM 호출에 실패했습니다.", exc.retryable)
 
     return Envelope(
@@ -160,6 +165,7 @@ async def collect_diff_evidence(
     description=(
         "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. "
         "근거 커밋과 확인 답변이 없는 문장은 비우고 removed_claims에 남깁니다. "
+        "근거 커밋 없이 확인 답변만 있는 문장은 NEEDS_REVIEW(LOW)로 채웁니다. "
         "비운 칸은 insufficient_reason_code(NO_EVIDENCE·TIMEOUT)와 함께 missing_fields로 반환하며 "
         "B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다."
     ),
@@ -173,9 +179,11 @@ async def analyze_star(
     started = time.perf_counter()
     try:
         result = await pipeline.analyze_star(request)
-    except LLMConfigError:
+    except LLMConfigError as exc:
+        _log_star_failure(request, False, exc, started)
         return _error(started, 503, "LLM_UNAVAILABLE", "STAR LLM 설정이 없어 분석할 수 없습니다.", False)
     except StarGenerationError as exc:
+        _log_star_failure(request, exc.retryable, exc, started)
         return _error(started, 503, "LLM_UNAVAILABLE", "STAR LLM 호출에 실패했습니다.", exc.retryable)
 
     return Envelope(
@@ -232,6 +240,23 @@ async def _wait_for_disconnect(http_request: Request, stop: asyncio.Event) -> bo
         except asyncio.TimeoutError:
             pass
     return False
+
+
+def _log_diff_evidence_failure(
+    request: DiffEvidenceRequest, code: str, retryable: bool, exc: Exception, started: float
+) -> None:
+    log_failure(
+        logger, "diff 근거 생성", path="/internal/analysis/diff-evidence", code=code, retryable=retryable,
+        exc=exc, started=started, user_repository_id=request.user_repository_id,
+        commits=len(request.commit_shas),
+    )
+
+
+def _log_star_failure(request: StarAnalysisRequest, retryable: bool, exc: Exception, started: float) -> None:
+    log_failure(
+        logger, "STAR 초안 생성", path="/internal/analysis/star", code="LLM_UNAVAILABLE", retryable=retryable,
+        exc=exc, started=started, candidate_id=request.candidate_id, evidence=len(request.evidence),
+    )
 
 
 def _llm_unavailable(started: float, message: str, retryable: bool) -> JSONResponse:

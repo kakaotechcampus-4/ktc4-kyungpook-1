@@ -17,6 +17,7 @@ import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Named;
@@ -26,7 +27,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
-import org.mockito.MockedStatic;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -44,11 +44,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -64,6 +62,7 @@ class InterviewAskServiceTest {
     private final CardOwnershipService ownership = mock(CardOwnershipService.class);
     private final CardGenerationGuard generation = mock(CardGenerationGuard.class);
     private final InterviewTurnRepository turns = mock(InterviewTurnRepository.class);
+    private final CandidateReferenceService candidates = mock(CandidateReferenceService.class);
     private final InterviewContextAssembler assembler = mock(InterviewContextAssembler.class);
     private final InterviewQuestionPort port = mock(InterviewQuestionPort.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
@@ -232,20 +231,6 @@ class InterviewAskServiceTest {
     }
 
     @Test
-    @DisplayName("돌려주는 질문의 출처 종류는 InterviewSourceType.of 한 곳에서 받은 값이다")
-    void viewTakesSourceTypeFromTheSingleMethod() {
-
-        try (MockedStatic<InterviewSourceType> source = mockStatic(InterviewSourceType.class, CALLS_REAL_METHODS)) {
-            source.when(() -> InterviewSourceType.of(any(Card.class))).thenReturn(InterviewSourceType.PR);
-
-            InterviewTurnView view = service(2).ask(PUBLIC_ID, USER_ID, "T");
-
-            assertThat(view.sourceType()).isEqualTo(InterviewSourceType.PR);
-        }
-
-    }
-
-    @Test
     @DisplayName("AI 가 다시 시도해도 되는 실패를 주면 원인을 담은 InterviewAiUnavailableException 이고 저장 트랜잭션은 열지 않는다")
     void retryableFailureBecomesUnavailable() {
 
@@ -319,7 +304,7 @@ class InterviewAskServiceTest {
 
     private InterviewAskService service(int maxTurns) {
 
-        return new InterviewAskService(ownership, generation, turns, assembler, port, new InterviewLimits(maxTurns),
+        return new InterviewAskService(ownership, generation, turns, candidates, assembler, port, new InterviewLimits(maxTurns),
                 transactionManager);
 
     }

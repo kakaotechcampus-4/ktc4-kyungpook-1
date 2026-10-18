@@ -119,7 +119,7 @@ public class AnalysisJob {
 
     /**
      * 수집 기록을 연결하고 커밋 단계는 저장소에 저장된 커밋 수로, PR 단계는 이번에 읽은 PR 수로 끝낸다
-     * 후보 추리기·추천 이유는 묶기를 끈 채 끝나도록 SKIPPED 로 두고, 묶기를 하면 {@link #startGrouping()} 이 바꾼다
+     * 후보 추리기·추천 이유는 경험 그룹화를 끈 채 끝나도록 SKIPPED 로 두고, 경험 그룹화를 하면 {@link #startGrouping()} 이 바꾼다
      */
     public void recordCollection(Long collectionRunId, int commitCount, int pullRequestCount) {
 
@@ -135,7 +135,7 @@ public class AnalysisJob {
 
     /**
      * 후보 추리기를 진행 중으로, 추천 이유를 대기로 바꾼다
-     * 이 변경으로 갱신 시각이 새로 찍혀, 멈춘 Job 판정은 수집이 아니라 묶기를 기다린 시간부터 센다
+     * 이 변경으로 갱신 시각이 새로 찍혀, 멈춘 Job 판정은 수집이 아니라 경험 그룹화를 기다린 시간부터 센다
      */
     public void startGrouping() {
 

@@ -152,17 +152,10 @@ LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 
 
 ## 기업·직무 공고 RAG
 
-`POST /internal/job-postings/discover`는 사람인 공식 API에서 공고 ID·제목·
-직무코드·키워드·등록/수정/마감 시각을 수집합니다. 사람인 검색 API가 공고
-본문 전체를 제공하지 않으므로 이 응답을 필수·우대 조건으로 지어내거나 곧바로
-벡터화하지 않습니다. `SARAMIN_ACCESS_KEY`는 AI 서버 환경변수로만 주입합니다.
-
-상세 조건은 사람인 검색 키워드에서 추론하지 않습니다. V1은 사용 허용을 확인한
-공개 기업 채용 페이지 본문을 Spring이 `POST /internal/job-postings/extract`로
-전달합니다. AI는 원문에 그대로 존재하는 `source_quote`가 있는 담당업무·필수·
-우대·기술만 반환하고, Spring은 원문 전체 대신 정규화 조건과 SHA-256 본문 해시를
-저장합니다. 같은 해시면 LLM 추출을 생략합니다. 자동 HTML 크롤링은 V1 범위가
-아니며 출처별 이용 조건을 확정한 뒤 별도 어댑터로 추가합니다.
+`POST /internal/job-postings/extract`는 Spring이 전달한 공고 상세 본문에서 직무 조건을 뽑습니다.
+AI는 원문에 그대로 존재하는 `source_quote`가 있는 담당업무·필수·우대·기술만 반환하고,
+Spring은 원문 전체 대신 정규화 조건과 SHA-256 본문 해시를 저장합니다. 같은 해시면 LLM
+추출을 생략합니다. 공고를 어디서 어떻게 가져올지는 Spring이 정하며 AI는 본문만 받습니다.
 
 Spring이 상세 직무 조건과 출처를 저장한 뒤
 `POST /internal/matching/postings/index`로 활성 공고를 보내면 AI는 담당업무·
@@ -176,14 +169,10 @@ STAR 원문은 ChromaDB에 저장하지 않고 요청 동안만 임베딩하며,
 필요한 환경변수는 다음과 같습니다.
 
 ```bash
-export SARAMIN_ACCESS_KEY='사람인 Open API 키'
 export GITORY_EMBEDDING_PROVIDER='chroma-default'       # 운영 초기값
 export GITORY_LOCAL_EMBEDDING_CACHE='.chroma/models/all-MiniLM-L6-v2'
 export GITORY_CHROMA_PATH='.chroma'                     # 기본값
 export GITORY_MATCH_MAX_DISTANCE='0.4'                 # 평가 후 확정
-export GITORY_MATCH_GRADE_A_MIN='4'
-export GITORY_MATCH_GRADE_B_MIN='3'
-export GITORY_MATCH_GRADE_C_MIN='1'
 ```
 
 Elice의 Luna는 Text Generation 모델이라 임베딩 API를 제공하지 않는다. 따라서

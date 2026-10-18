@@ -64,7 +64,7 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
             {"name": "collection", "description": "A-1 GitHub 활동 및 선택 후보 diff 수집. X-GitHub-Token 필수"},
             {"name": "analysis", "description": "A 경험 후보 그룹화·diff 근거·STAR 초안 생성"},
             {"name": "interview-turns", "description": "B-1 질문 생성 / B-2 답변 평가. 현재 템플릿·규칙 기반이며 저장은 Spring 담당"},
-            {"name": "job-postings", "description": "공식 채용공고 메타데이터 수집과 상세 조건 추출"},
+            {"name": "job-postings", "description": "공고 상세 본문에서 원문 인용이 있는 직무 조건 추출"},
             {"name": "matching", "description": "공고 조건 인덱싱과 확정 STAR 기반 직무 검색"},
         ],
         openapi_url="/openapi.json" if docs_enabled else None,

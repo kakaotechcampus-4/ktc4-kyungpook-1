@@ -11,7 +11,6 @@ from rag.vector_store import JobCriterionStore
 from schemas.matching import (
     CriterionMatch,
     CriterionType,
-    FitGrade,
     JobPosting,
     JobPostingIndexRequest,
     JobPostingIndexResult,
@@ -30,25 +29,6 @@ class _Criterion:
     source_quote: str = ""
 
 
-@dataclass(frozen=True)
-class MatchGradePolicy:
-    """검색 평가 뒤 조정할 수 있는 설명 등급 기준."""
-
-    grade_a_min_evidence: int = 4
-    grade_b_min_evidence: int = 3
-    grade_c_min_evidence: int = 1
-    grade_a_requires_required: bool = True
-
-    def __post_init__(self) -> None:
-        if not (
-            self.grade_a_min_evidence
-            >= self.grade_b_min_evidence
-            >= self.grade_c_min_evidence
-            >= 1
-        ):
-            raise ValueError("등급 최소 근거 수는 A >= B >= C >= 1이어야 합니다.")
-
-
 class TalentMatcher:
     """원본 DB를 읽지 않고 전달받은 공고만 인덱싱하고 STAR를 검색한다."""
 
@@ -57,12 +37,10 @@ class TalentMatcher:
         embedder: TextEmbedder,
         store: JobCriterionStore,
         maximum_distance: float = 0.4,
-        grade_policy: MatchGradePolicy | None = None,
     ) -> None:
         self._embedder = embedder
         self._store = store
         self._maximum_distance = maximum_distance
-        self._grade_policy = grade_policy or MatchGradePolicy()
 
     def index(self, request: JobPostingIndexRequest) -> JobPostingIndexResult:
         """공고별 기존 벡터를 교체하고 비활성 공고는 인덱스에서 제거한다."""
@@ -184,7 +162,6 @@ class TalentMatcher:
                     job_title=metadata["job_title"],
                     job_category=metadata["job_category"],
                     source_url=metadata["source_url"],
-                    fit_grade=self._grade(evidence),
                     evidence=evidence,
                 )
             )
@@ -208,17 +185,3 @@ class TalentMatcher:
                 seen.add(key)
                 result.append(_Criterion(kind=kind, text=text, source_quote=source_quote))
         return result
-
-    def _grade(self, evidence: list[CriterionMatch]) -> FitGrade:
-        count = len(evidence)
-        has_required = any(item.criterion_type == CriterionType.REQUIRED for item in evidence)
-        policy = self._grade_policy
-        if count >= policy.grade_a_min_evidence and (
-            has_required or not policy.grade_a_requires_required
-        ):
-            return FitGrade.A
-        if count >= policy.grade_b_min_evidence:
-            return FitGrade.B
-        if count >= policy.grade_c_min_evidence:
-            return FitGrade.C
-        return FitGrade.D

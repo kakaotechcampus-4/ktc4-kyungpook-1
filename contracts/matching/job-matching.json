@@ -56,7 +56,6 @@
         "job_title": "백엔드 개발자",
         "job_category": "BACKEND",
         "source_url": "https://careers.example.com/jobs/backend-101",
-        "fit_grade": "C",
         "evidence": [{
           "criterion_type": "RESPONSIBILITY",
           "criterion_text": "Spring Boot 기반 REST API 개발",

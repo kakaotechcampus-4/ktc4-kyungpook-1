@@ -17,7 +17,7 @@ from schemas.matching import (
     MatchingRequest,
     MatchingResponse,
 )
-from services.talent_matcher import MatchGradePolicy, TalentMatcher
+from services.talent_matcher import TalentMatcher
 
 router = APIRouter(prefix="/internal/matching", tags=["matching"])
 
@@ -29,11 +29,6 @@ def get_talent_matcher() -> TalentMatcher:
         embedder=create_text_embedder(),
         store=ChromaJobCriterionStore(),
         maximum_distance=maximum_distance,
-        grade_policy=MatchGradePolicy(
-            grade_a_min_evidence=int(os.getenv("GITORY_MATCH_GRADE_A_MIN", "4")),
-            grade_b_min_evidence=int(os.getenv("GITORY_MATCH_GRADE_B_MIN", "3")),
-            grade_c_min_evidence=int(os.getenv("GITORY_MATCH_GRADE_C_MIN", "1")),
-        ),
     )
 
 

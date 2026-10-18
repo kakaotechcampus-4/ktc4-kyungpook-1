@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
 
@@ -47,13 +47,6 @@ class ExtractionOutcome(str, Enum):
 
     UPDATED = "UPDATED"
     UNCHANGED = "UNCHANGED"
-
-
-class FitGrade(str, Enum):
-    A = "A"
-    B = "B"
-    C = "C"
-    D = "D"
 
 
 class JobCriterion(StrictModel):
@@ -160,61 +153,11 @@ class MatchedJobPosting(StrictModel):
     job_title: str
     job_category: str
     source_url: AnyHttpUrl
-    fit_grade: FitGrade
     evidence: list[CriterionMatch] = Field(default_factory=list)
 
 
 class MatchingResponse(StrictModel):
     matches: list[MatchedJobPosting] = Field(default_factory=list)
-
-
-class JobPostingDiscoveryRequest(StrictModel):
-    """사람인에서 저장 후보 공고 메타데이터를 한 페이지 조회하는 요청."""
-
-    source: Literal["SARAMIN"] = "SARAMIN"
-    keywords: list[str] = Field(default_factory=list, max_length=20)
-    job_mid_codes: list[str] = Field(default_factory=list, max_length=20)
-    updated_min: Optional[datetime] = None
-    updated_max: Optional[datetime] = None
-    page: int = Field(default=0, ge=0, strict=True)
-    count: int = Field(default=100, ge=1, le=110, strict=True)
-
-    @model_validator(mode="after")
-    def validate_update_range(self) -> "JobPostingDiscoveryRequest":
-        if self.updated_min and self.updated_max and self.updated_min > self.updated_max:
-            raise ValueError("updated_min은 updated_max보다 늦을 수 없습니다.")
-        return self
-
-
-class DiscoveredJobPosting(StrictModel):
-    """공식 API가 제공하는 메타데이터. 상세 직무 조건으로 간주하지 않는다."""
-
-    source: Literal["SARAMIN"] = "SARAMIN"
-    external_posting_id: str = Field(min_length=1, max_length=255)
-    company_name: str = Field(min_length=1, max_length=255)
-    job_title: str = Field(min_length=1, max_length=255)
-    job_category: Optional[str] = None
-    job_codes: list[str] = Field(default_factory=list)
-    keywords: list[str] = Field(default_factory=list)
-    experience: Optional[str] = None
-    education: Optional[str] = None
-    employment_type: Optional[str] = None
-    location: Optional[str] = None
-    source_url: AnyHttpUrl
-    published_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    expires_at: Optional[datetime] = None
-    status: JobPostingStatus
-
-
-class JobPostingDiscoveryResult(StrictModel):
-    """Spring이 원본 저장·다음 페이지 요청을 결정할 수 있는 수집 결과."""
-
-    source: Literal["SARAMIN"] = "SARAMIN"
-    page: int = Field(ge=0)
-    count: int = Field(ge=0)
-    total: int = Field(ge=0)
-    postings: list[DiscoveredJobPosting] = Field(default_factory=list)
 
 
 class JobPostingDetailExtractionRequest(StrictModel):

@@ -21,7 +21,7 @@ from schemas.matching import (
     MatchingRequest,
     MatchingResponse,
 )
-from services.talent_matcher import MatchGradePolicy, TalentMatcher
+from services.talent_matcher import TalentMatcher
 from scripts.evaluate_job_matching import score_rankings
 
 
@@ -235,7 +235,6 @@ def test_match_returns_source_and_exact_star_evidence_without_storing_star() -> 
     assert len(result.matches) == 1
     match = result.matches[0]
     assert match.posting_key == "FIXTURE:backend-1"
-    assert match.fit_grade == "C"
     assert match.evidence[0].card_id == 11
     assert match.evidence[0].star_slot == "A"
 
@@ -330,44 +329,6 @@ def test_ranking_metrics_count_missing_expected_posting_as_zero() -> None:
     assert metrics["mrr"] == pytest.approx((1 + 1 / 3) / 3)
 
 
-def test_grade_thresholds_are_explicit_and_configurable() -> None:
-    embedder = FakeEmbedder()
-    store = FakeStore()
-    store.hits = [
-        {
-            "document": text,
-            "distance": 0.1 + index * 0.01,
-            "metadata": {
-                "posting_key": "FIXTURE:backend-1",
-                "company_name": "예시회사",
-                "job_title": "백엔드 개발자",
-                "job_category": "BACKEND",
-                "source_url": "https://example.com/jobs/backend-1",
-                "criterion_type": criterion_type,
-            },
-        }
-        for index, (criterion_type, text) in enumerate(
-            [
-                ("REQUIRED", "Java"),
-                ("RESPONSIBILITY", "API 개발"),
-            ]
-        )
-    ]
-    matcher = TalentMatcher(
-        embedder,
-        store,
-        grade_policy=MatchGradePolicy(
-            grade_a_min_evidence=2,
-            grade_b_min_evidence=2,
-            grade_c_min_evidence=1,
-        ),
-    )
-
-    result = matcher.match(MatchingRequest.model_validate(matching_payload()))
-
-    assert result.matches[0].fit_grade == "A"
-
-
 def test_matching_contract_examples_validate_against_ai_dtos() -> None:
     contract_path = Path(__file__).parents[2] / "contracts" / "matching" / "job-matching.json"
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
@@ -378,3 +339,26 @@ def test_matching_contract_examples_validate_against_ai_dtos() -> None:
     JobPostingIndexResult.model_validate(index["ai_to_spring"])
     MatchingRequest.model_validate(search["spring_to_ai"])
     MatchingResponse.model_validate(search["ai_to_spring"])
+
+
+def test_match_response_carries_no_grade() -> None:
+    store = FakeStore()
+    store.hits = [
+        {
+            "document": "Spring Boot 기반 API 개발",
+            "distance": 0.12,
+            "metadata": {
+                "posting_key": "FIXTURE:backend-1",
+                "company_name": "예시회사",
+                "job_title": "백엔드 개발자",
+                "job_category": "BACKEND",
+                "source_url": "https://example.com/jobs/backend-1",
+                "criterion_type": "RESPONSIBILITY",
+            },
+        }
+    ]
+    matcher = TalentMatcher(FakeEmbedder(), store)
+
+    result = matcher.match(MatchingRequest.model_validate(matching_payload()))
+
+    assert "fit_grade" not in result.matches[0].model_dump()

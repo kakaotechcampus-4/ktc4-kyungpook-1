@@ -105,7 +105,7 @@ curl --fail http://localhost:8080/actuator/health/liveness
 
 AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반환한다. BE readiness는 DB와 AI의 이 응답을 확인한다. AI 연결이 끊기거나 서비스 식별자가 다르면 readiness는 DOWN·HTTP 503이 된다. liveness는 BE 프로세스 상태를 검사하므로 AI 장애에 따라 BE를 재시작시키지 않는다. 헬스 상세 내용은 공개하지 않는다.
 
-이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 그 밖의 오류(경험 그룹화 실패 포함)를 `INTERNAL_ERROR`로 Job을 실패 처리한다. 그룹화 실패를 재시도 가능한 코드로 나누는 작업은 #217에서 진행한다.
+이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 연결 안 됨·시간 초과·AI가 다시 해 보라고 알린 실패(경험 그룹화 포함)를 다시 시도할 수 있는 `AI_UNAVAILABLE`, 그 밖의 오류를 `INTERNAL_ERROR`로 Job을 실패 처리한다.
 
 ## 구현 범위와 다음 개발 순서
 
@@ -121,7 +121,7 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 
 증분 수집은 작성 시각 기반 `since`를 사용하지 않는다. Spring이 이미 저장한 `known_commit_shas`를 보내면, AI는 commit 목록을 다시 확인하되 저장된 commit의 상세 조회를 생략한다. AI 응답의 `head_sha`는 Spring이 저장소 상태로 보관한다. 기존 BE의 수집 상한 설정은 AI 요청에 전달하는 필드가 없어 아직 적용되지 않는다. 검증된 사용자 이메일이 없어 `known_emails=[]`로 보내며, DB의 기본 브랜치가 없으면 `main`을 추측하지 않고 실패한다. 기존 BE 저장 DTO는 commit(바뀐 파일·이슈 번호 포함)·PR/Issue 상세·PR 리뷰와 줄 댓글·부분 수집 사유만 담으므로 AI의 `needs_confirmation`은 보존되지 않는다.
 
-남은 통합은 경험 그룹화 실패를 재시도 가능한 코드로 나누기(#217)다. 부분 응답은 `partialReason`으로 완료와 구분한다.
+부분 응답은 `partialReason`으로 완료와 구분한다.
 
 ## 검증
 

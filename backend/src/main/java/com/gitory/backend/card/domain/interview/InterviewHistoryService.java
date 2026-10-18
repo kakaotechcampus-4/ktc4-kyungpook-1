@@ -4,12 +4,16 @@ import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.recommend.domain.CandidateReference;
+import com.gitory.backend.recommend.domain.CandidateReferenceService;
+import com.gitory.backend.recommend.domain.CandidateType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -23,13 +27,18 @@ public class InterviewHistoryService {
 
     private final CardOwnershipService ownership;
     private final InterviewTurnRepository turns;
+    private final CandidateReferenceService candidates;
     private final InterviewLimits limits;
 
     @Transactional(readOnly = true)
     public List<InterviewTurnView> history(UUID publicId, Long userId) {
 
         Card card = ownership.findOwned(publicId, userId, AuditAction.VIEW_CARD);
-        InterviewSourceType sourceType = InterviewSourceType.of(card);
+        CandidateType candidateType = Optional.ofNullable(card.getCandidateId())
+                .flatMap(candidates::find)
+                .map(CandidateReference::type)
+                .orElse(null);
+        InterviewSourceType sourceType = InterviewSourceType.of(candidateType);
 
         return turns.findByCardIdOrderBySeqAsc(card.getId()).stream()
                 .map(turn -> InterviewTurnView.of(turn, sourceType, limits.maxTurns()))

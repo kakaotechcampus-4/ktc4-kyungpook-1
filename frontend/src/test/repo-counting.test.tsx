@@ -215,12 +215,13 @@ describe('분석 화면 — 수집 상한에 걸린 부분 결과', () => {
     expect(screen.getByRole('button', { name: '이어 읽기' })).toBeEnabled();
   });
 
-  it('이유를 모르는 부분 결과는 기존처럼 비활성 "이어 읽기"를 그대로 보인다 (회귀)', () => {
+  it('이유를 모르는 부분 결과도 서버가 재시도를 열지 않았으면 "이어 읽기"를 두지 않는다', () => {
     mount('/repos/r_auth/run?job=job', <AnalyzePage />, '/repos/:repoId/run', (client) => {
       seedRepos(client);
       client.setQueryData(keys.job('job'), job({ errorCode: null, retryable: false }));
     });
     expect(screen.getByText('일부 기록만 분석했어요')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '이어 읽기' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /이어 읽기/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
   });
 });

@@ -77,8 +77,8 @@ export const Input = ({ className, ...p }: InputHTMLAttributes<HTMLInputElement>
 export const Textarea = ({ className, ...p }: ComponentPropsWithRef<'textarea'>) => <textarea className={cx('input', className)} {...p} />;
 
 // ───────── Progress · StarKey · StarDots · Evidence ─────────
-export const Track = ({ value, label }: { value: number; label?: string }) => (
-  <div className="track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} aria-label={label}>
+export const Track = ({ value, label, live }: { value: number; label?: string; live?: boolean }) => (
+  <div className={cx('track', live && 'track--live')} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)} aria-label={label}>
     <span style={{ width: `${Math.max(2, value * 100)}%` }} />
   </div>
 );

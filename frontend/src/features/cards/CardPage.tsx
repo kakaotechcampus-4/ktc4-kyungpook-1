@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StarKey, StickyFooter, Track } from '@/components/ui';
+import { JobLiveness } from '@/components/JobLiveness';
 import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, jobStepLabel, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
 import { toast } from '@/lib/toast';
@@ -87,13 +88,14 @@ export function CardPage() {
             <span className="w-600" style={{ fontSize: 15 }}>{j ? `${doneSteps(j)} / ${j.steps.length} 단계` : '준비 중'}</span>
             <span className="right t-12 c-2">{j ? '오래 걸리면 채워진 칸까지 먼저 보여 드려요' : ''}</span>
           </div>
-          <Track value={j ? stepProgress(j) : 0.02} label="초안 생성 진행률" />
+          <Track value={j ? stepProgress(j) : 0.02} label="초안 생성 진행률" live={!!j && !isTerminal(j.state)} />
+          {j && <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />}
           <div className="stack" style={{ gap: 10 }}>
             {(j?.steps ?? []).map((s) => {
               const status = stepView(s);
               return (
                 <div key={s.key} className={`stage card ${status === 'NOW' ? 'card--paper' : ''}`} style={{ padding: '14px 16px', borderRadius: 10, borderTop: '1px solid var(--border-default)' }}>
-                  <span className="stage__icon" style={status !== 'WAIT' ? { background: 'var(--bg-ink-solid)', borderColor: 'var(--bg-ink-solid)' } : undefined}>{status === 'DONE' ? '✓' : ''}</span>
+                  <span className="stage__icon" style={status !== 'WAIT' ? { background: 'var(--bg-ink-solid)', borderColor: 'var(--bg-ink-solid)' } : undefined}>{status === 'DONE' ? '✓' : status === 'NOW' ? <span className="spinner spinner--sm" aria-hidden /> : ''}</span>
                   <div className="stack grow" style={{ gap: 3 }}><span className="stage__label">{jobStepLabel[s.key]}</span><span className="stage__detail">{s.state === 'SKIPPED' ? '해당 없음' : `${s.done} / ${s.total ?? '?'}`}</span></div>
                   {status === 'NOW' && <div className="row" style={{ gap: 5 }}><StarKey field="S" small /><StarKey field="A" small /></div>}
                   <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s)}</Badge>

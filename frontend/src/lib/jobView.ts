@@ -18,6 +18,16 @@ export const stepBadge = (s: JobStep) =>
   s.state === 'SKIPPED' ? '해당 없음' : stepView(s) === 'DONE' ? '완료' : stepView(s) === 'NOW' ? '진행 중' : '대기';
 
 /**
+ * 진행 화면이 "멈춘 게 아니다"를 보여 줄 두 값. 둘 다 사실이다 — 총량을 모르는 진행률을 지어내지 않는다.
+ * elapsedSec = 서버가 기록한 시작 시각부터 지금까지, sinceCheckSec = 마지막으로 서버에서 상태를 받아 온 뒤로.
+ * 서버·브라우저 시계가 어긋나도 음수가 되지 않게 0 으로 자른다.
+ */
+export const jobActivity = (job: Pick<Job, 'startedAt'>, checkedAt: number, now: number) => ({
+  elapsedSec: Math.max(0, Math.floor((now - Date.parse(job.startedAt)) / 1000)),
+  sinceCheckSec: Math.max(0, Math.floor((now - checkedAt) / 1000)),
+});
+
+/**
  * 다음 폴링까지 기다릴 시간(ms). false 면 폴링을 멈춘다.
  *
  * 간격은 화면이 아니라 서버가 정한다 — 서버가 느려질 때 프론트가 더 자주 두드리면 상황만 나빠진다.

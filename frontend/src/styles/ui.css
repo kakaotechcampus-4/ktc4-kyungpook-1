@@ -91,6 +91,12 @@ button.chip { min-height: var(--control-touch-size); }
 /* ───────── 진행바 · STAR 키 · 근거 스트립 ───────── */
 .track { height: 6px; border-radius: var(--radius-full); background: var(--border-default); overflow: hidden; width: 100%; }
 .track > span { display: block; height: 100%; background: var(--bg-ink-solid); border-radius: inherit; transition: width .5s ease; min-width: 4px; }
+/* 진행 중임을 보이는 움직임 — 값(너비)은 그대로 두고 빛만 흘려 보낸다 */
+.track--live > span { position: relative; overflow: hidden; }
+.track--live > span::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent); transform: translateX(-100%); animation: track-sheen 1.6s ease-in-out infinite; }
+@keyframes track-sheen { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .track--live > span::after { animation: none; } }
+.job-live { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
 .star-key { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--bg-ink-solid); color: var(--text-on-ink); display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; flex: 0 0 auto; }
 .star-key--dropped { background: var(--bg-inset); color: var(--text-tertiary); }
 .star-key--sm { width: 22px; height: 22px; border-radius: 5px; font-size: 10.5px; }
@@ -156,6 +162,7 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .repo-ctx__note { font-size: 12px; line-height: 19px; color: var(--text-secondary); }
 
 .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-default); border-top-color: var(--text-primary); animation: spin .8s linear infinite; }
+.spinner--sm { width: 12px; height: 12px; }
 .skeleton { background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-inset) 50%, var(--bg-subtle) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius-md); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 

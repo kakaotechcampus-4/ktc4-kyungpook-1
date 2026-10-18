@@ -139,7 +139,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
 
       <Toolbar placeholder="후보 검색 (제목·추천 이유)" value={q} onChange={setQ}>
         <Button variant="text" size="sm" onClick={() => setHideUsed((v) => !v)} aria-pressed={hideUsed}>{hideUsed ? '사용됨 보이기' : '사용됨 숨기기'}</Button>
-        <Button variant="outline" disabled={busy} onClick={() => setSp((current) => { current.set('add', '1'); return current; })}>+ 직접 추가</Button>
+        <Button disabled={busy} onClick={() => setSp((current) => { current.set('add', '1'); return current; })}>+ 직접 추가</Button>
       </Toolbar>
       <SectionHead label="후보 선택" count={visible.length} right={
         <span className="row candidate-board__actions">

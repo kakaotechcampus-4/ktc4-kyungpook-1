@@ -9,6 +9,9 @@ a.evidence:hover { border-color: var(--border-selected); }
 .home-page .toolbar { padding-inline: 0; }
 .cards-list .status-tabs { flex-wrap: wrap; row-gap: 0; }
 .cand__reason { line-height: 1.65; }
+/* #253 owns this toolbar's behavior; keep its optional add action visually secondary. */
+.candidate-board .toolbar .btn--primary { background: var(--bg-surface); color: var(--text-strong); border-color: var(--border-strong); }
+.candidate-board .toolbar .btn--primary:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--border-selected); }
 @media (max-width: 900px) {
   .card-detail-layout { grid-template-columns: minmax(0, 1fr); }
 }

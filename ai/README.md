@@ -154,11 +154,11 @@ LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 
 ## 기업·직무 공고 RAG
 
 `POST /internal/job-postings/extract`는 Spring이 전달한 공고 상세 본문에서 직무 조건을 뽑습니다.
-AI는 원문에 그대로 존재하는 `source_quote`가 있는 담당업무·필수·우대·기술만 반환하고,
+AI는 원문에 그대로 존재하는 `source_quote`가 있는 담당업무(`RESPONSIBILITY`)·필수(`REQUIRED`)·우대(`PREFERRED`) 조건만 반환하고(기술 항목은 속한 문단 기준으로 필수 또는 우대로 넣고, 문단을 알 수 없으면 뺍니다),
 Spring은 원문 전체 대신 정규화 조건과 SHA-256 본문 해시를 저장합니다. 같은 해시면 LLM
-추출을 생략합니다. 인용이 원문에 없는 조건은 필수(`REQUIRED`)이면 공고 전체를
-`EVIDENCE_MISMATCH`(422)로 거절하고, 담당업무·우대·기술이면 그 조건만 빼고 나머지를 돌려줍니다.
-`text`에 인용에 없는 낱말이 있으면 거절하지 않고 `text`를 원문 인용으로 바꿔 돌려줍니다(이때 `text`와 `source_quote`가 같습니다).
+추출을 생략하고 `criteria`는 빈 배열, 직무 분류·경력은 `null`로 보냅니다(`UNCHANGED`). Spring이 `previous_content_hash`를 비워 보내면 다시 뽑습니다. 직무 분류(`job_category`)는 9개 값 중 하나, 경력(`experience`)은 공고마다 하나(`ENTRY`·`EXPERIENCED`+`min_years`·`UNSPECIFIED`)입니다. 경력은 원문 인용으로 확인되지 않으면(인용이 원문에 없거나, 연차가 인용에 없는 경우) 공고를 거절하지 않고 그 경력만 `UNSPECIFIED`로 냅니다. 경력 0년 이상과 '1년 미만'처럼 상한만 있는 경력은 최소가 0년이라 `ENTRY`이고 `ENTRY`에는 `min_years`가 없습니다. 인용이 원문에 없는 조건은 필수(`REQUIRED`)이면 공고 전체를
+`EVIDENCE_MISMATCH`(422)로 거절하고, 담당업무·우대이면 그 조건만 빼고 나머지를 돌려줍니다.
+`text`에 인용에 없는 낱말이 있으면 거절하지 않고 `text`를 원문 인용으로 바꿔 돌려줍니다(이때 `text`와 `source_quote`가 같습니다). `text`에 '필수'·'우대' 같은 표시어를 넣지 말라는 지시는 LLM이 만든 요약에만 적용되고 원문 인용으로 바꾼 경우는 원문 그대로입니다.
 `text` 길이 상한(1000자)을 넘는 인용은 근거 없는 조건처럼 다루고, 모델이 조건을 냈는데 전부 빠지면 422로 거절합니다.
 공고를 어디서 어떻게 가져올지는 Spring이 정하며 AI는 본문만 받습니다.
 

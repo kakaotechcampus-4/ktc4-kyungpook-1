@@ -28,8 +28,11 @@ FE·BE·AI 세 파트가 같은 사례를 보고 있는지 테스트로 고정�
 
 - `matching/job-posting-detail.json` — 공개 채용공고 상세 본문을 직무 조건으로
   정규화하는 Spring → AI 계약.
-  - 사람인 공식 API는 공고 탐색용 메타데이터로만 사용한다.
-  - 상세 본문은 사용 허용을 확인한 기업 채용 페이지에서 Spring이 확보해 전달한다.
+  - 상세 본문은 공개 공고 API(Greenhouse 등)나 robots.txt와 사용 허용을 확인한 기업 채용 페이지에서 Spring이 가져와 전달한다.
+  - 조건 종류는 RESPONSIBILITY·REQUIRED·PREFERRED 3개이고, 경력(`experience`)과 직무 분류(`job_category`, 9개 값)는 공고마다 하나씩 따로 돌려준다.
+  - 본문 해시가 같으면(`UNCHANGED`) `criteria`는 빈 배열, `job_category`와 `experience`는 `null`로 보낸다.
+  - Spring이 `previous_content_hash`를 비워 보내면 AI가 다시 뽑는다.
+  - 경력은 원문 인용으로 확인되지 않으면 공고를 거절하지 않고 `UNSPECIFIED`로 돌려준다. `ENTRY`는 `min_years` 없이, `UNSPECIFIED`는 연차와 인용 없이 보낸다.
   - AI는 원문에 실제 존재하는 `source_quote`가 있는 조건만 반환한다.
   - Spring은 원문 전체가 아니라 정규화 조건·인용·본문 해시를 저장한다.
 

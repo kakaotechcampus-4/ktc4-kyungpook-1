@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
-/** 초안 Job 이 후보 표를 직접 읽지 않고, 후보를 AI 에 보낼 종류·PR 번호와 사용자가 빼지 않은 커밋을 얻게 한다 */
+/** 초안 Job 과 되묻기가 후보 표를 직접 읽지 않고, 후보를 AI 에 보낼 종류·PR 번호와 사용자가 빼지 않은 커밋을 얻게 한다(커밋을 고르는 규칙과 순서를 바꾸면 두 곳이 함께 바뀐다) */
 @Service
 @RequiredArgsConstructor
 public class CandidateDraftSourceService {

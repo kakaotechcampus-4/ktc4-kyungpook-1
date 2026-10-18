@@ -12,6 +12,9 @@ import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.recommend.domain.CandidateReference;
+import com.gitory.backend.recommend.domain.CandidateReferenceService;
+import com.gitory.backend.recommend.domain.CandidateType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -39,6 +42,7 @@ public class InterviewAskService {
     private final CardOwnershipService ownership;
     private final CardGenerationGuard generation;
     private final InterviewTurnRepository turns;
+    private final CandidateReferenceService candidates;
     private final InterviewContextAssembler context;
     private final InterviewQuestionPort questions;
     private final InterviewLimits limits;
@@ -62,7 +66,7 @@ public class InterviewAskService {
 
     }
 
-    // 카드·질문·문장을 한 시점으로 읽도록 REPEATABLE READ 로 열고, AI 를 부르기 전에 닫는다
+    // 카드·질문·문장·후보·커밋을 한 시점으로 읽도록 REPEATABLE READ 로 열고, AI 를 부르기 전에 닫는다
     private TransactionTemplate snapshot() {
 
         TransactionTemplate template = new TransactionTemplate(transactionManager);
@@ -80,12 +84,12 @@ public class InterviewAskService {
 
         Optional<InterviewTurn> open = openTurnOrRefuse(card, asked);
         if (open.isPresent()) {
-            return Prepared.open(viewOf(card, open.get()));
+            return Prepared.open(viewOf(open.get(), sourceTypeOf(card)));
         }
 
         StarField slot = slotOf(field);
 
-        return Prepared.toAsk(card, slot, context.assemble(card, slot, asked.size()));
+        return Prepared.toAsk(card, slot, sourceTypeOf(card), context.assemble(card, slot, asked.size()));
 
     }
 
@@ -127,30 +131,31 @@ public class InterviewAskService {
         try {
             // 기본 격리(READ COMMITTED)로 열어야 잠금을 기다린 뒤의 확인이 먼저 커밋된 질문을 본다
             return new TransactionTemplate(transactionManager)
-                    .execute(status -> saveQuestion(publicId, userId, prepared.slot(), question));
+                    .execute(status -> saveQuestion(publicId, userId, prepared.slot(), prepared.sourceType(), question));
         } catch (DataIntegrityViolationException raced) {
             // 카드 행 잠금 때문에 API 로는 닿지 않는 갈래이고, UNIQUE(card_id, seq) 가 마지막 방어선이다
             return openTurnOf(turns.findByCardIdOrderBySeqAsc(prepared.card().getId()))
-                    .map(turn -> viewOf(prepared.card(), turn))
+                    .map(turn -> viewOf(turn, prepared.sourceType()))
                     .orElseThrow(() -> raced);
         }
 
     }
 
-    private InterviewTurnView saveQuestion(UUID publicId, Long userId, StarField slot, InterviewQuestionResult question) {
+    private InterviewTurnView saveQuestion(UUID publicId, Long userId, StarField slot, InterviewSourceType sourceType,
+                                           InterviewQuestionResult question) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         List<InterviewTurn> asked = turns.findByCardIdOrderBySeqAsc(card.getId());
 
         Optional<InterviewTurn> open = openTurnOrRefuse(card, asked);
         if (open.isPresent()) {
-            return viewOf(card, open.get());
+            return viewOf(open.get(), sourceType);
         }
 
         InterviewTurn saved = turns.save(InterviewTurn.ask(card.getId(), nextSeq(asked), slot,
                 QuestionType.valueOf(question.questionType().name()), question.questionText()));
 
-        return viewOf(card, saved);
+        return viewOf(saved, sourceType);
 
     }
 
@@ -194,23 +199,36 @@ public class InterviewAskService {
 
     }
 
-    private InterviewTurnView viewOf(Card card, InterviewTurn turn) {
+    private InterviewSourceType sourceTypeOf(Card card) {
 
-        return InterviewTurnView.of(turn, InterviewSourceType.of(card), limits.maxTurns());
+        CandidateType type = Optional.ofNullable(card.getCandidateId())
+                .flatMap(candidates::find)
+                .map(CandidateReference::type)
+                .orElse(null);
+
+        return InterviewSourceType.of(type);
 
     }
 
-    private record Prepared(Card card, StarField slot, InterviewQuestionRequest request, InterviewTurnView openTurn) {
+    private InterviewTurnView viewOf(InterviewTurn turn, InterviewSourceType sourceType) {
+
+        return InterviewTurnView.of(turn, sourceType, limits.maxTurns());
+
+    }
+
+    private record Prepared(Card card, StarField slot, InterviewSourceType sourceType,
+                            InterviewQuestionRequest request, InterviewTurnView openTurn) {
 
         static Prepared open(InterviewTurnView turn) {
 
-            return new Prepared(null, null, null, turn);
+            return new Prepared(null, null, null, null, turn);
 
         }
 
-        static Prepared toAsk(Card card, StarField slot, InterviewQuestionRequest request) {
+        static Prepared toAsk(Card card, StarField slot, InterviewSourceType sourceType,
+                              InterviewQuestionRequest request) {
 
-            return new Prepared(card, slot, request, null);
+            return new Prepared(card, slot, sourceType, request, null);
 
         }
     }

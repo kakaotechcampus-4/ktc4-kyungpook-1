@@ -1,7 +1,9 @@
 package com.gitory.backend.card.api;
 
+import com.gitory.backend.card.domain.CardDetail;
 import com.gitory.backend.card.domain.CardNotFoundException;
 import com.gitory.backend.card.domain.InterviewAnswerService;
+import com.gitory.backend.card.domain.interview.InterviewAnswerReviewService;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.consent.domain.LoginUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class InterviewAnswerController {
 
     private final InterviewAnswerService interviewAnswer;
+    private final InterviewAnswerReviewService answerReview;
 
     @PostMapping("/api/cards/{id}/interview/{turnNo}/answer")
     @Operation(summary = "되묻기 답변 저장", description = """
@@ -33,6 +36,7 @@ public class InterviewAnswerController {
             이미 답한 질문에 같은 답이 다시 오면 아무것도 바꾸지 않고 지금 카드를 200 으로 돌려주고, 다른 답이면 409 INVALID_STATE 입니다.
             확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.
             답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다.
+            스위치(INTERVIEW_ANSWER_REVIEW_ENABLED)가 켜져 있으면 답을 저장한 뒤 AI 가 답을 평가하고, 모자랄 때 같은 칸의 후속 질문이 생깁니다. 이 응답의 카드는 그대로이고 후속 질문은 질문 목록 조회에 나타납니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
     @ApiResponses({
@@ -56,8 +60,12 @@ public class InterviewAnswerController {
             @PathVariable int turnNo,
             @RequestBody InterviewAnswerRequest request) {
 
-        return ApiResponse.ok(CardResponse.from(
-                interviewAnswer.answer(toUuid(id), loginUser.id(), turnNo, request.text(), request.source())));
+        UUID cardId = toUuid(id);
+        CardDetail saved = interviewAnswer.answer(cardId, loginUser.id(), turnNo, request.text(), request.source());
+        // 답은 위에서 이미 저장됐으므로 평가가 모자람을 알려도 응답 카드는 그대로이고, 다시 묻는 질문은 질문 목록 조회에 나타난다
+        answerReview.askAgainIfShort(cardId, loginUser.id(), turnNo);
+
+        return ApiResponse.ok(CardResponse.from(saved));
 
     }
 

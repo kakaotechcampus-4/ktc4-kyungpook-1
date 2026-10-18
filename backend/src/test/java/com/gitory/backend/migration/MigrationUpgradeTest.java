@@ -316,6 +316,34 @@ class MigrationUpgradeTest {
 
     }
 
+    @Test
+    @DisplayName("V21 은 Job 에러 코드 6개를 그대로 두고 AI_UNAVAILABLE 을 허용하며 목록 밖 값은 계속 막고 제약은 같은 이름 하나로 다시 만든다")
+    void v21AllowsAiUnavailable() {
+
+        migrateTo("19");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        List<String> previous = List.of("GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING",
+                "INTERNAL_ERROR", "COLLECTION_CAPPED");
+        for (String errorCode : previous) {
+            insertJob(userId, userRepositoryId, errorCode);
+        }
+
+        migrateTo("21");
+
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM pg_constraint WHERE conname = 'analysis_job_error_code_check' AND conrelid = 'analysis_job'::regclass",
+                Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT error_code FROM analysis_job", String.class))
+                .containsExactlyInAnyOrderElementsOf(previous);
+        insertJob(userId, userRepositoryId, "AI_UNAVAILABLE");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM analysis_job WHERE error_code = 'AI_UNAVAILABLE'", Integer.class)).isEqualTo(1);
+        assertThatThrownBy(() -> insertJob(userId, userRepositoryId, "RATE_LIMITED"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
     private void insertJob(Long userId, Long userRepositoryId, String errorCode) {
 
         jdbc.update(

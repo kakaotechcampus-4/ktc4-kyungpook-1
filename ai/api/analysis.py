@@ -82,9 +82,10 @@ async def group_experiences(
 ) -> Envelope[ExperienceGroupingResponse]:
     """수집된 커밋을 선별하고 기능 단위 경험 후보로 묶는다."""
     started = time.perf_counter()
+    deadline = asyncio.get_running_loop().time() + GROUPING_DEADLINE_SECONDS
     try:
         result = await _run_until_deadline_or_disconnect(
-            pipeline.group_experiences(request), http_request
+            pipeline.group_experiences(request, deadline=deadline), http_request
         )
     except asyncio.TimeoutError:
         logger.warning("경험 그룹화 실패: 요청 마감 %s초 초과", GROUPING_DEADLINE_SECONDS)

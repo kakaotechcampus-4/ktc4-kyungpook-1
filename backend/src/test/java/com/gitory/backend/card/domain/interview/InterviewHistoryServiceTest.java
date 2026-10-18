@@ -81,6 +81,22 @@ class InterviewHistoryServiceTest {
     }
 
     @Test
+    @DisplayName("직접 추가한 후보로 만든 카드의 질문 기록은 DIRECT_CARD 출처로 나간다")
+    void usesDirectCardForManualCandidate() {
+
+        Card candidateCard = Card.startFromCandidate(USER_ID, 11L, 9L, "카드", CardKind.TECH, null);
+        ReflectionTestUtils.setField(candidateCard, "id", CARD_ID);
+        when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.VIEW_CARD)).thenReturn(candidateCard);
+        when(candidates.find(9L)).thenReturn(Optional.of(
+                new CandidateReference(9L, UUID.randomUUID(), CandidateType.MANUAL, "manual", "제목")));
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(InterviewTurnSamples.open(1)));
+
+        assertThat(service(2).history(PUBLIC_ID, USER_ID)).extracting(InterviewTurnView::sourceType)
+                .containsOnly(InterviewSourceType.DIRECT_CARD);
+
+    }
+
+    @Test
     @DisplayName("질문이 없는 카드는 빈 목록이다")
     void returnsEmptyListWithoutTurns() {
 

@@ -143,6 +143,7 @@ LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 
 |---|---|
 | `GITORY_LLM_BASE_URL`, `GITORY_LLM_API_KEY` | 필수 |
 | `GITORY_LLM_TIMEOUT_SECONDS` | `120` |
+| `GITORY_GITHUB_API_BASE_URL` | `https://api.github.com` |
 | `GITORY_GROUPING_MODEL`, `GITORY_GROUPING_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_DIFF_MODEL`, `GITORY_DIFF_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_STAR_MODEL`, `GITORY_STAR_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |

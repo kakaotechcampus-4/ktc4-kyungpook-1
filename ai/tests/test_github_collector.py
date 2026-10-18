@@ -864,3 +864,33 @@ def test_commit_in_feature_and_release_pr_maps_to_narrowest_pr() -> None:
     mapping = _primary_pull_by_sha([release, feature_a, feature_b])
 
     assert mapping == {"a" * 40: 17, "b" * 40: 17, "c" * 40: 18, "d" * 40: 30}
+
+
+def test_github_api_base_url_env_is_used_for_requests(monkeypatch) -> None:
+    monkeypatch.setenv("GITORY_GITHUB_API_BASE_URL", "https://fake-github.test/")
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return _success_handler(request)
+
+    collector = GithubCollector(transport=httpx.MockTransport(handler))
+    asyncio.run(collector.collect(_request(), "live-secret"))
+
+    assert seen and all(url.startswith("https://fake-github.test/repos/") for url in seen)
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_github_api_base_url_defaults_when_env_missing_or_blank(monkeypatch, value) -> None:
+    if value is None:
+        monkeypatch.delenv("GITORY_GITHUB_API_BASE_URL", raising=False)
+    else:
+        monkeypatch.setenv("GITORY_GITHUB_API_BASE_URL", value)
+
+    assert GithubCollector()._base_url == "https://api.github.com"
+
+
+def test_github_api_base_url_ignores_trailing_slash(monkeypatch) -> None:
+    monkeypatch.setenv("GITORY_GITHUB_API_BASE_URL", "https://fake-github.test/gh/")
+
+    assert GithubCollector()._base_url == "https://fake-github.test/gh"

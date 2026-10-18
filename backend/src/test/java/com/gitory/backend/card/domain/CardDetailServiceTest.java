@@ -2,6 +2,7 @@ package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.port.CardGenerationPort;
+import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.RepositoryReferenceService;
 import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import com.gitory.backend.support.TestFixtures;
@@ -36,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({CardDetailService.class, CardOwnershipService.class, CardVersionReader.class,
-        RepositoryReferenceService.class, AuditLog.class, CandidateReferenceService.class})
+        RepositoryReferenceService.class, AuditLog.class, CandidateReferenceService.class, CommitSummaryService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class CardDetailServiceTest {
 

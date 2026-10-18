@@ -44,44 +44,46 @@ sequenceDiagram
 | 상세 diff는 분석 중에만 쓰고 DB에 저장하지 않는다. Spring은 결과 문장과 근거 sha만 있으면 된다 | PR #65 BE 답변 | 그대로. patch는 Spring에도 넘어가지 않는다 |
 | 후보 선정·그룹화·STAR 초안은 A가 만들고, Spring은 저장 후 B에 근거를 넘긴다 | PR #65, `contracts/README.md` | 그대로 |
 | 후보 확정 → `card.compose` → `agent`(LLM) | `backend/ARCHITECTURE.md` 데이터 흐름 | star는 `agent`가 부른다. 토큰이 필요한 diff-evidence는 `consent`가 부른다(#132 리뷰) |
-| STAR 입력은 diff 원문이 아니라 요약된 근거다 | AI `StarAnalysisRequest.evidence`, BE `DraftRequest.evidenceSummaries` | 그대로. 그 요약을 diff-evidence가 만든다 |
+| STAR 입력은 diff 원문이 아니라 요약된 근거다 | AI `StarAnalysisRequest.evidence`, BE `StarDraftRequest.evidence` | 그대로. 그 요약을 diff-evidence가 만든다 |
 
-**비어 있던 단계:** `candidate-details`는 patch를 Spring에 돌려주고 "A의 diff 해석용"이라고만 적혀 있었다. 그런데 `/star`와 `DraftRequest`는 이미 요약된 근거를 받아서, **patch를 읽어 요약을 만드는 주체가 없었다.** diff-evidence가 이 자리를 AI 안에서 채운다.
+**비어 있던 단계:** `candidate-details`는 patch를 Spring에 돌려주고 "A의 diff 해석용"이라고만 적혀 있었다. 그런데 `/star` 요청은 이미 요약된 근거를 받아서, **patch를 읽어 요약을 만드는 주체가 없었다.** diff-evidence가 이 자리를 AI 안에서 채운다.
 
 STAR 흐름에서 Spring이 `candidate-details`를 직접 부를 필요는 없어졌다. `candidate-details`는 그대로 두고, diff-evidence가 내부에서 같은 조회를 재사용한다.
 
 ## BE 포트(`agent.port`)와의 필드 대응
 
-현재 BE의 `CardDraftPort`는 AI 계약보다 정보가 적다. 특히 **결과 쪽에 칸 상태·빈 칸 목록이 없어서 B 인터뷰로 넘길 수 없으므로** 포트를 넓혀야 한다.
+BE의 `StarDraftPort`(#210)는 AI 응답의 칸을 빠짐없이 담는다. 옛 `CardDraftPort`는 결과에 칸 상태·빈 칸 목록이 없어 B 인터뷰로 넘길 수 없었고, 지우고 이 포트로 바꿨다.
 
-### `DraftRequest` → `/star` 요청
+### `StarDraftRequest` → `/star` 요청
 
-| BE `DraftRequest` | AI `StarAnalysisRequest` | 비고 |
+| BE `StarDraftRequest` | AI `StarAnalysisRequest` | 비고 |
 |---|---|---|
-| `analysisTargetLogin` | `target_login` | 같음 |
-| `evidenceSummaries: List<String>` | `evidence[].summary` | **문자열 목록으로 펴면 안 된다.** 문장 근거를 sha로 연결하려면 커밋별 구조가 필요하다 |
-| `churnLines: List<String>` | `evidence[].churn` | 커밋별 구조 안으로 들어간다 |
-| `dependencyFiles` | `dependency_files` | 아직 사용하지 않음. `[]` |
-| `answers` | `confirmed_answers` | 인터뷰 전이라 항상 `[]` |
-| (없음) | `candidate_id`, `title`, `source_type`, `source_ref` | 추가 필요 |
-| (없음) | `evidence[].sha`·`message`·`author_login`·`url`·`technical_points`·`summary_source` | diff-evidence 응답에 이미 들어 있다 |
+| `candidateId` | `candidate_id` | 후보의 공개 id |
+| `targetLogin` | `target_login` | 분석 대상 사용자의 GitHub 로그인 |
+| `title` | `title` | 카드 제목 |
+| `sourceType`, `sourceRef` | `source_type`, `source_ref` | `sourceRef`가 비어 있으면 null |
+| `evidence: List<StarEvidence>` | `evidence[]` | diff-evidence 응답의 항목을 `sha`·`message`·`authorLogin`·`churn`·`summary`·`summarySource`·`technicalPoints`·`url` 그대로 옮긴다 |
+| (보내지 않음) | `dependency_files` | 아직 사용하지 않아 AI 기본값 `[]` |
+| (보내지 않음) | `confirmed_answers` | 인터뷰 전이라 AI 기본값 `[]` |
 
-**제안:** `DraftRequest`가 evidence를 문자열로 바꾸지 말고, diff-evidence 응답의 `evidence`를 **그대로 담아 넘기게** 한다. 필드가 늘어나도 BE 포트를 다시 고칠 필요가 없다.
+`StarDraftRequest`는 evidence를 문자열로 바꾸지 않고 diff-evidence 응답의 항목을 `StarEvidence`로 그대로 옮긴다(`CardDraftRunner.starEvidenceOf`). 커밋별 구조를 그대로 넘기므로 STAR 문장의 근거 sha 를 커밋에 이을 수 있다. AI 가 근거 칸을 더하면 `DiffEvidenceReader`·`DiffEvidence`·`StarEvidence`·`starEvidenceOf` 를 같이 고쳐야 한다(AI 의 `/star` 입력은 모르는 칸을 받지 않는다).
 
-### `/star` 응답 → `CardDraft`
+### `/star` 응답 → `StarDraft`
 
-| AI `StarAnalysisResponse` | BE `CardDraft` | 비고 |
+| AI `StarAnalysisResponse` | BE `StarDraft` | 비고 |
 |---|---|---|
-| `title` | `title` | 같음 |
-| `star.*.text` | `starText` | 같음 |
-| `star.*.evidence[].sha` | `starEvidence` | sha만 옮기면 `message`·`url`은 버려진다(표시에 필요하면 추가) |
-| `shared_with` | `sharedWith` | 같음 |
-| `removed_claims` | `removed` | 같음 |
-| `star.*.status` | **(없음)** | `FILLED`/`NEEDS_REVIEW`/`EMPTY`. 화면 칸 상태 |
-| `star.*.confidence` | **(없음)** | `card_statement.confidence` |
-| `star.*.insufficient_reason_code` | **(없음)** | 화면 `droppedFields.reason`(`NO_EVIDENCE`·`OVERCLAIM`·`UNSOURCED_NUMBER`·`TIMEOUT`) |
-| `missing_fields` | **(없음)** | 확인용. Spring은 저장한 칸 문장이 없는 칸을 빈 칸으로 보고, 되묻기 때 사용자가 고른 칸을 `missing_slots`로 보낸다 |
-| `star.*.insufficient_reason`, `review_reason` | **(없음)** | 빈 칸·검토 필요 안내 문장 |
+| `title` | `title` | 받아 오지만 카드 저장에는 쓰지 않는다 |
+| `star.S·T·A·R` | `slots: Map<StarSlot, StarSlotDraft>` | 네 칸이 모두 있어야 한다 |
+| `star.*.text` | `slots[].text` | 채운 칸은 문장이 있다 |
+| `star.*.evidence[]` | `slots[].evidence`(`sha`·`message`·`url`) | 카드에는 sha로 찾은 커밋만 연결해 저장하고, 찾은 커밋이 하나도 없으면 그 칸 문장은 저장하지 않고 근거 없음으로 비운다 |
+| `star.*.status` | `slots[].status` | `FILLED`/`NEEDS_REVIEW`/`EMPTY` |
+| `star.*.confidence` | `slots[].confidence` | `LOW`가 곧 `NEEDS_REVIEW`인지 어댑터가 확인한다. 카드에는 `card_statement.confidence`로 저장 |
+| `star.*.insufficient_reason_code` | `slots[].emptyReason` | 화면 `droppedFields.reason`(`NO_EVIDENCE`·`OVERCLAIM`·`UNSOURCED_NUMBER`·`TIMEOUT`) |
+| `star.*.insufficient_reason` | `slots[].emptyReasonText` | 받아 오지만 저장하지 않는다 |
+| `star.*.review_reason` | `slots[].reviewReason` | 확인 필요 칸의 안내 문장으로 저장 |
+| `missing_fields` | `missingFields` | 빈 칸 목록과 같은지 어댑터가 확인한다. Spring은 저장한 칸 문장이 없는 칸을 빈 칸으로 보고, 되묻기 때 사용자가 고른 칸을 `missing_slots`로 보낸다 |
+| `shared_with` | `sharedWith` | 받아 오지만 아직 저장하지 않는다 |
+| `removed_claims` | `removedClaims` | 받아 오지만 아직 저장하지 않는다 |
 
 ## 1. `POST /internal/analysis/diff-evidence` (`consent`가 호출)
 
@@ -150,7 +152,7 @@ LLM 호출 하나가 실패해 503으로 끝나면 남은 배치는 LLM을 새�
 
 ## 2. `POST /internal/analysis/star` (`agent`가 호출)
 
-인터뷰 전에 호출하므로 `confirmed_answers`는 빈 배열로 보낸다. **diff-evidence의 `evidence`가 비면 호출하지 않는다**(AI도 `evidence`가 비면 400).
+인터뷰 전에 호출하므로 `confirmed_answers`는 보내지 않는다(AI 기본값 `[]`). **diff-evidence의 `evidence`가 비면 호출하지 않는다**(AI도 `evidence`가 비면 400).
 
 | 필드 | 보낼 값 |
 |---|---|
@@ -158,8 +160,8 @@ LLM 호출 하나가 실패해 503으로 끝나면 남은 배치는 LLM을 새�
 | `target_login` | 요청자 GitHub 로그인. 근거 커밋에 다른 작성자가 있으면 `shared_with`로 알려 준다 |
 | `title`, `source_type`, `source_ref` | 후보(카드) 제목(길이 상한 없음), `PR`/`COMMIT_CLUSTER`, 예: `"PR #111"` |
 | `evidence` | **diff-evidence 응답의 `evidence`를 그대로** 보낸다. 1개 이상 |
-| `dependency_files` | `[]` (아직 사용하지 않음) |
-| `confirmed_answers` | `[]` |
+| `dependency_files` | 보내지 않는다(아직 사용하지 않음, AI 기본값 `[]`) |
+| `confirmed_answers` | 보내지 않는다(AI 기본값 `[]`) |
 
 ### 응답 `data` (`StarAnalysisResponse`) → 카드 저장
 
@@ -234,20 +236,21 @@ diff-evidence의 그 밖의 상한
 
 ## 5. BE 작업 목록
 
-- [ ] `consent`: diff-evidence 호출 추가(`X-GitHub-Token` 헤더, 토큰 검증은 `collect`와 동일). `commit_shas`에 본인 커밋만 넣는다
-- [ ] `agent`: star 호출 추가. `evidence`가 비면 부르지 않는다. `confirmed_answers`는 `[]`
-- [ ] `CardDraftPort` 확장: 요청은 evidence 구조를 그대로, 응답에 `status`·`confidence`·`insufficient_reason_code`·`missing_fields` 추가(「BE 포트와의 필드 대응」)
-- [ ] 분석 호출용 읽기 제한 분리(3절: diff-evidence 300초, star 180초)
-- [ ] Job 흐름: 후보로 카드 만들기 → 카드 초안 Job이 diff-evidence → star → 카드 문장(`card_statement`) 저장. 되묻기는 사용자가 칸을 골라 시작한다
-- [ ] 실패하면 Job을 실패로 끝내고 AI의 `retryable`로 다시 시도 버튼을 열지 정한다. Spring이 자동으로 다시 부르지 않는다
-- [ ] `partial=true`이면 카드는 만들고 Job을 부분 결과로 끝낸다. `missing_commit_shas` 목록은 Job에 저장하지 않고 이유(`partial_reason`)만 남긴다
-- [ ] AI 컨테이너에 4절 환경변수 주입(키는 비밀값으로 관리)
+- [x] `consent`: diff-evidence 호출 추가(`X-GitHub-Token` 헤더, 토큰 검증은 `collect`와 동일). `commit_shas`에 후보에 담긴, 사용자가 빼지 않은 내 커밋을 변경량이 큰 순서로 50개까지 넣는다 (#210, #212)
+- [x] `agent`: star 호출 추가. `evidence`가 비면 부르지 않고 칸마다 근거 없음을 남긴다. `confirmed_answers`는 보내지 않는다 (#210, #212)
+- [x] `CardDraftPort`를 `StarDraftPort`로 바꿔 확장: 요청은 evidence 구조를 그대로, 응답에 `status`·`confidence`·`insufficient_reason_code`·`missing_fields` 추가(「BE 포트와의 필드 대응」) (#210)
+- [x] 분석 호출용 읽기 제한 분리(3절: diff-evidence 300초, star 180초) (#210). AI 안에서는 경험 그룹화와 카드 초안의 LLM 실행기도 나눴다 (#234)
+- [x] Job 흐름: 후보로 카드 만들기 → 카드 초안 Job이 diff-evidence → star → 카드 문장(`card_statement`) 저장. 되묻기는 사용자가 칸을 골라 시작한다 (#212). 같은 사용자의 초안 Job은 하나씩 실행한다 (#233). 운영에서는 `CARD_AI_DRAFT_ENABLED`를 켜야 AI를 부른다
+- [x] Spring이 자동으로 다시 부르지 않는다. 실패는 카드 한 장씩 세어 모든 카드가 실패하면 Job을 `INTERNAL_ERROR`로 끝내고, 일부만 실패하면 부분 완료로 끝낸다 (#212)
+- [ ] AI가 준 `retryable`로 화면의 다시 시도 버튼을 여는 것. 지금은 실패를 모두 다시 시도할 수 없는 `INTERNAL_ERROR`로 끝낸다
+- [ ] diff-evidence가 `partial=true`이면 카드는 만들되 Job을 부분 결과로 끝낸다. 지금은 `partial`을 받기만 하고 Job에 반영하지 않는다. 카드를 일부만 만든 카드로 표시하는 것은 star가 시간이 모자라 칸을 비운 경우(`TIMEOUT`)뿐이고, Job은 근거 없는 카드(`EVIDENCE_MISSING`)·시간 초과(`DRAFT_TIMEOUT`)·일부 카드 실패(`INTERNAL_ERROR`) 때 부분 완료로 끝난다 (#212)
+- [x] AI 컨테이너에 4절 환경변수 주입(키는 비밀값으로 관리): `deploy/compose.yaml`의 `ai`에 `GITORY_LLM_BASE_URL`·`GITORY_LLM_API_KEY`가 있다
 
 ## 6. 정할 것
 
 1. **evidence 저장 여부.** 저장하면 STAR 재생성과 B 인터뷰 질문(커밋 메시지 대신 diff 요약으로 질문)에 다시 쓸 수 있다. 저장하지 않으면 같은 Job 안에서만 쓴다.
 2. **`removed_claims`·`shared_with` 처리.** 로그만 남길지, 화면에 공동 작업 표시를 할지.
-3. **`CardDraftPort` 확장 방식.** AI 응답을 그대로 담는 DTO로 바꿀지, 필요한 필드만 추가할지.
+3. ~~**`CardDraftPort` 확장 방식.**~~ AI 응답을 그대로 담는 `StarDraft` DTO로 바꿨다 (#210).
 4. **`contracts/ingest/candidate-details.json` 설명 갱신.** STAR 흐름에서는 Spring이 직접 부르지 않는다는 점을 계약 설명에 남길지. 계약 파일은 바꾸면 세 파트 테스트가 함께 깨질 수 있어, 합의 후 바꾼다.
 
 ## 리뷰 반영(#132)

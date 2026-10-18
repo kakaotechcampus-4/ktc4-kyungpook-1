@@ -18,7 +18,8 @@ export function JobStatusPage() {
   const running = active.data?.jobs.find((job) => job.jobId === jobId);
   useEffect(() => { if (jobId && running?.userRepositoryId) remembered.current = { jobId, repoId: running.userRepositoryId }; }, [jobId, running?.userRepositoryId]);
   useEffect(() => { if (jobId) suppressJobToast(jobId); return () => { if (jobId) releaseJobToast(jobId); }; }, [jobId]);
-  useDocumentTitle('작업 진행');
+  const title = query.data?.state === 'SUCCEEDED' ? (query.data.partial ? '일부 분석 완료' : '작업 완료') : query.data?.state === 'FAILED' ? '작업 실패' : query.data?.state === 'CANCELED' ? '작업 취소됨' : '작업 진행';
+  useDocumentTitle(title);
   if (query.isError && !query.data) return <main className="main"><QueryFailure error={query.error} retry={() => query.refetch()} pending={query.isFetching} /><Link to="/" className="btn btn--outline">홈으로</Link></main>;
   if (!query.data) return <main className="main"><Skeleton h={32} /><Skeleton h={200} /></main>;
   const job = query.data; const done = isTerminal(job.state);
@@ -26,7 +27,7 @@ export function JobStatusPage() {
   const result = done ? jobResultLink(job, knownRepo) : undefined;
   return <main className="main main--tight">
     <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '작업 진행' }]} />
-    <PageTitle sub={<><span>{jobTypeLabel[job.type]}</span><Badge kind="NEUTRAL">{job.partial ? '부분 완료' : jobStateLabel[job.state]}</Badge></>}>작업 진행</PageTitle>
+    <PageTitle sub={<><span>{jobTypeLabel[job.type]}</span><Badge kind="NEUTRAL">{job.partial ? '부분 완료' : jobStateLabel[job.state]}</Badge></>}>{title}</PageTitle>
     {query.isError && <QueryFailure error={query.error} retry={() => query.refetch()} pending={query.isFetching} />}
     {job.errorCode && <Note strong={jobErrorTitle[job.errorCode]} tone={job.state === 'FAILED' ? 'danger' : 'inset'} />}
     {job.state === 'CANCELED' && <Note strong="작업이 취소됐어요" tone="inset" />}

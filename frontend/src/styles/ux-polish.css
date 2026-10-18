@@ -1,0 +1,20 @@
+/* Focus the reading surface on writing; supporting evidence remains discoverable. */
+a.evidence { border: 1px solid var(--border-default); }
+a.evidence:hover { border-color: var(--border-selected); }
+.star__text { font-size: 15px; line-height: 1.75; }
+.experience-item__meta, .experience-item__footer { font-size: 12px; line-height: 20px; }
+.card-detail-layout { grid-template-columns: minmax(0, 1fr) 220px; }
+.card-detail-layout > aside { align-self: start; }
+.home-page .section-head { min-width: 0; }
+.home-page .toolbar { padding-inline: 0; }
+.cards-list .status-tabs { flex-wrap: wrap; row-gap: 0; }
+.cand__reason { line-height: 1.65; }
+@media (max-width: 900px) {
+  .card-detail-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .home-page .prompt__card { margin-top: 0; }
+  .home-page .prompt { gap: 12px; }
+  .record-list > .cand { padding: 16px 12px; }
+  .card-page-header__actions { gap: 8px; }
+}

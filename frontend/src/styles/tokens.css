@@ -67,7 +67,7 @@
   --candidate-excluded-bg: var(--bg-paper); --candidate-excluded-text: var(--text-tertiary);
   --field-low-bg: var(--caution-50); --field-low-text: var(--caution-600); --field-low-border: var(--caution-600);
   --field-dropped-bg: var(--bg-paper); --field-dropped-text: var(--text-tertiary);
-  --evidence-commit-bg: var(--matcha-deep); --evidence-commit-text: var(--matcha-mist); --evidence-commit-label: #DFEBE2; --evidence-commit-muted: #D7E6DB;
+  --evidence-commit-bg: var(--bg-subtle); --evidence-commit-text: var(--text-strong); --evidence-commit-label: var(--text-secondary); --evidence-commit-muted: var(--text-secondary);
   --evidence-user-bg: var(--bg-surface); --evidence-user-text: var(--text-secondary);
   --state-failed-bg: var(--danger-50); --state-failed-text: var(--danger-600);
   --state-partial-bg: var(--bg-subtle); --state-partial-text: var(--text-secondary);

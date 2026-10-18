@@ -97,9 +97,9 @@ export function EditMode({ card, onDone, initialField }: { card: Card; onDone: (
       </div>
       <SaveStatus status={autosave.status} retry={flush} />
       <StickyFooter
-        strong={changed.length ? `${changed.length}칸 고침` : '고친 곳 없음'}
+        strong={changed.length ? `${changed.length}칸 고침` : '직접 수정'}
         sub={failed ? '연결을 확인하고 다시 눌러 주세요' : '쓰는 동안 알아서 저장돼요'}>
-        <Button variant="text" disabled={saving || canceling} loading={canceling} onClick={() => void cancel()}>편집 취소</Button>
+        <Button variant="text" disabled={saving || canceling} loading={canceling} onClick={() => void cancel()}>이번 수정 되돌리기</Button>
         <Button size="lg" disabled={canceling} loading={saving} onClick={done}>{failed ? '다시 저장하고 닫기' : '저장하고 닫기'}</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={saving} flush={flush} />
@@ -116,6 +116,7 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const [rules, setRules] = useState<{ from: string; to: string }[]>(initialRulesRef.current);
   const initialRules = initialRulesRef.current;
   const valid = rules.filter((r) => !isBlankCardText(r.from));
+  const changed = JSON.stringify(valid) !== JSON.stringify(initialRules.filter((r) => !isBlankCardText(r.from)));
   const locked = card.status === 'CONFIRMED';
   const limitReached = rules.length >= CONFIG.MASK_RULE_MAX;
   const invalidRules = valid.length > CONFIG.MASK_RULE_MAX || valid.some(rule => rule.from.length > CONFIG.MASK_TEXT_MAX || rule.to.length > CONFIG.MASK_TEXT_MAX || rule.from.includes('\0') || rule.to.includes('\0'));
@@ -125,7 +126,8 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
   const dirty = JSON.stringify(rules) !== JSON.stringify(initialRules);
   const guard = useUnsavedChanges(dirty || mask.isPending); // 저장 요청이 진행되는 동안에도 이탈·새로고침을 막는다
   const saveMask = async () => {
-    if (locked || invalidRules) return false;
+    if (locked || invalidRules || mask.isPending) return false;
+    if (!changed) return true;
     try {
       await mask.mutateAsync(valid);
       initialRulesRef.current = rules; // 서버가 받은 걸 확인한 뒤에야 '저장된 상태'가 된다
@@ -149,7 +151,7 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
             <Input style={{ flex: 1, minWidth: 140 }} maxLength={CONFIG.MASK_TEXT_MAX} disabled={locked || mask.isPending} value={r.from} onChange={(e) => set(i, 'from', e.target.value)} placeholder="원문 (예: 민수 선배)" aria-label="원문" />
             <span className="c-3">→</span>
             <Input style={{ flex: 1, minWidth: 140 }} maxLength={CONFIG.MASK_TEXT_MAX} disabled={locked || mask.isPending} value={r.to} onChange={(e) => set(i, 'to', e.target.value)} placeholder="치환 (예: 팀원A)" aria-label="치환" />
-            <Button variant="text" size="sm" disabled={locked || mask.isPending} onClick={() => setRules((rs) => rs.filter((_, j) => j !== i))} aria-label="규칙 삭제">✕</Button>
+            <Button variant="text" size="sm" style={{ minWidth: 44, minHeight: 44 }} disabled={locked || mask.isPending} onClick={() => setRules((rs) => rs.filter((_, j) => j !== i))} aria-label="규칙 삭제">✕</Button>
           </div>
         ))}
         <div className="row" style={{ gap: 8 }}>
@@ -174,9 +176,10 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
           );
         })}
       </div>
-      <StickyFooter strong={hits.length ? `${hits.length}칸에 적용` : '적용되는 칸 없음'} sub="원문은 그대로 · 표시할 때만 가림">
-        <Button variant="outline" onClick={onDone}>카드로 돌아가기</Button>
-        <Button disabled={locked || invalidRules} loading={mask.isPending} onClick={() => void apply()}>마스킹 적용</Button>
+      {mask.isError && <p role="alert">마스킹을 저장하지 못했습니다. 다시 시도해 주세요.</p>}
+      <StickyFooter strong={!changed ? '변경한 규칙 없음' : hits.length ? `${hits.length}칸에 적용` : valid.length ? '현재 본문과 일치하는 문구 없음' : '마스킹 해제'} sub={changed && valid.length && !hits.length ? '규칙은 저장되며, 일치하는 문구가 생기면 적용됩니다' : '원문은 그대로 · 표시할 때만 가림'}>
+        <Button variant="outline" disabled={mask.isPending} onClick={onDone}>카드로 돌아가기</Button>
+        <Button disabled={locked || invalidRules || !changed} loading={mask.isPending} onClick={() => void apply()}>마스킹 적용</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={mask.isPending} flush={saveMask} />
     </>

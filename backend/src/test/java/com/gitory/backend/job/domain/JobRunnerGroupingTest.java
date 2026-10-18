@@ -488,27 +488,43 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("AI 묶기가 실패하면 수집 결과와 전에 만든 후보는 남기고, 다시 부르지 않은 채 다시 시도할 수 없는 INTERNAL_ERROR 로 끝낸다")
-    void groupingFailureKeepsCollectionAndOldCandidates() {
+    @DisplayName("AI 경험 그룹화가 다시 해 볼 만한 이유로 실패하면 수집 결과와 전에 만든 후보는 남기고, 다시 부르지 않은 채 다시 시도할 수 있는 AI_UNAVAILABLE 로 끝낸다")
+    void temporaryGroupingFailureKeepsCollectionAndOldCandidates() {
 
         Long oldCandidate = candidateRows.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "NEW");
         Long jobId = enqueue(KEY_1);
         given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
         given(grouping.group(any())).willThrow(
-                new AgentUnavailableException("AI 후보 묶기 실패 (LLM_UNAVAILABLE)", true, false, null));
+                new AgentUnavailableException("AI 경험 그룹화 실패 (LLM_UNAVAILABLE)", true, false, null));
 
         runNext();
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         verify(grouping, times(1)).group(any());
         assertThat(job.getState()).isEqualTo(JobState.FAILED);
-        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
-        assertThat(jobQuery.load(job.getPublicId(), userId, LOGIN).retryable()).isFalse();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.AI_UNAVAILABLE);
+        assertThat(jobQuery.load(job.getPublicId(), userId, LOGIN).retryable()).isTrue();
         assertThat(job.getCollectionRunId()).isNotNull();
         assertThat(countOf("collection_run")).isEqualTo(1);
         assertThat(countOf("git_commit")).isEqualTo(1);
         assertThat(candidateIds()).containsExactly(oldCandidate);
         assertThat(countOf("candidate_grouping")).isZero();
+
+    }
+
+    @Test
+    @DisplayName("AI 가 이상한 응답을 줘서 경험 그룹화가 실패하면 다시 시도할 수 없는 INTERNAL_ERROR 로 끝낸다")
+    void invalidGroupingResponseEndsAsInternalError() {
+
+        Long jobId = enqueue(KEY_1);
+        given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
+        given(grouping.group(any())).willThrow(
+                new AgentUnavailableException("AI 경험 그룹화 실패 (AI_INVALID_RESPONSE)", false, true, null));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
 
     }
 

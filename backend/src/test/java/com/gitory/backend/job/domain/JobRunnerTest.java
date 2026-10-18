@@ -40,6 +40,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -492,12 +493,12 @@ class JobRunnerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"GITHUB_API_ERROR", "RESOURCE_NOT_FOUND", "GITHUB_CONNECTION_UNAVAILABLE"})
-    @DisplayName("GitHub 쪽 원인으로 수집에 실패하면 GITHUB_UNAVAILABLE 로 끝낸다")
-    void githubFailureEndsAsGithubUnavailable(String cause) {
+    @CsvSource({"GITHUB_API_ERROR, true, 502", "RESOURCE_NOT_FOUND, false, 404", "GITHUB_CONNECTION_UNAVAILABLE, false, "})
+    @DisplayName("GitHub 쪽 원인으로 수집에 실패하면 AI 가 다시 해 볼 만하다고 알려도 GITHUB_UNAVAILABLE 로 끝낸다")
+    void githubFailureEndsAsGithubUnavailable(String cause, boolean retryable, Integer status) {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
-        given(activities.collect(any())).willThrow(new AiClientException(cause, false, null));
+        given(activities.collect(any())).willThrow(new AiClientException(cause, retryable, status));
 
         runNext();
 
@@ -506,12 +507,27 @@ class JobRunnerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"AI_UNAVAILABLE", "AI_INVALID_RESPONSE", "COLLECTION_TARGET_NOT_FOUND"})
-    @DisplayName("AI 나 우리 쪽 원인으로 수집에 실패하면 INTERNAL_ERROR 로 끝낸다")
-    void otherFailureEndsAsInternalError(String cause) {
+    @CsvSource({"AI_UNAVAILABLE, true, ", "AI_UNAVAILABLE, true, 500", "LLM_UNAVAILABLE, true, 503", "AI_HTTP_ERROR, true, 502"})
+    @DisplayName("AI 와 연결이 안 되거나 시간이 지나거나 AI 가 잠시 못 한다고 알리면 수집 실패도 AI_UNAVAILABLE 로 끝낸다")
+    void temporaryAiFailureEndsAsAiUnavailable(String cause, boolean retryable, Integer status) {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
-        given(activities.collect(any())).willThrow(new AiClientException(cause, true, null));
+        given(activities.collect(any())).willThrow(new AiClientException(cause, retryable, status));
+
+        runNext();
+
+        assertFailed(jobId, JobErrorCode.AI_UNAVAILABLE);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource({"AI_INVALID_RESPONSE, false, ", "COLLECTION_TARGET_NOT_FOUND, false, ", "INVALID_PAYLOAD, true, 400",
+            "INTERNAL_ERROR, true, 500"})
+    @DisplayName("다시 해도 소용없는 AI 실패나 우리 쪽 원인의 수집 실패는 INTERNAL_ERROR 로 끝낸다")
+    void permanentFailureEndsAsInternalError(String cause, boolean retryable, Integer status) {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willThrow(new AiClientException(cause, retryable, status));
 
         runNext();
 

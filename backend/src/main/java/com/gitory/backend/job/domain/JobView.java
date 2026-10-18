@@ -47,7 +47,8 @@ public record JobView(
             return null;
         }
 
-        return errorCode == JobErrorCode.GITHUB_UNAVAILABLE || errorCode == JobErrorCode.GITHUB_RATE_LIMITED;
+        return errorCode == JobErrorCode.GITHUB_UNAVAILABLE || errorCode == JobErrorCode.GITHUB_RATE_LIMITED
+                || errorCode == JobErrorCode.AI_UNAVAILABLE;
     }
 
     private static JobResult result(AnalysisJob job, UUID repoId, List<UUID> cardIds,

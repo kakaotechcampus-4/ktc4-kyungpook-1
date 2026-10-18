@@ -19,6 +19,7 @@ from services.llm_structured_client import (
     LLMStructuredOutputTooLongError,
     StructuredLLMClient,
 )
+from services.secret_redaction import redact_secrets
 
 #: 한 번에 묶을 수 있는 작업 단위 상한. 출력은 SHA가 아닌 짧은 번호라 크게 잡을 수 있다.
 #: 셀렉터를 거친 본인 작업은 대부분 이 안에 들어가 배치 경계가 생기지 않는다.
@@ -448,11 +449,11 @@ class GroupingLlm:
             kind, context = "COMMIT", None
         return {
             "kind": kind,
-            "title": context.title if context else None,
+            "title": redact_secrets(context.title) if context else None,
             "commit_count": len(unit.members),
             "commits": [
                 {
-                    "message": commit.message.strip().splitlines()[0][:200] if commit.message.strip() else "",
+                    "message": _first_line(commit.message),
                     "authored_at": commit.authored_at.isoformat(),
                     "files": [changed.path for changed in commit.files[:COMMIT_FILE_SAMPLE]],
                 }
@@ -468,12 +469,20 @@ class GroupingLlm:
     ) -> dict[str, list[dict[str, Any]]] | None:
         """경험에 포함된 PR·Issue 원문 제목과 본문 발췌. 문맥이 하나도 없으면 None."""
         pulls = [
-            {"number": n, "title": pull_by_number[n].title, "body_excerpt": pull_by_number[n].body_excerpt}
+            {
+                "number": n,
+                "title": redact_secrets(pull_by_number[n].title),
+                "body_excerpt": _redact_optional(pull_by_number[n].body_excerpt),
+            }
             for n in group.pull_request_numbers
             if n in pull_by_number
         ]
         issues = [
-            {"number": n, "title": issue_by_number[n].title, "body_excerpt": issue_by_number[n].body_excerpt}
+            {
+                "number": n,
+                "title": redact_secrets(issue_by_number[n].title),
+                "body_excerpt": _redact_optional(issue_by_number[n].body_excerpt),
+            }
             for n in group.issue_numbers
             if n in issue_by_number
         ]
@@ -484,7 +493,8 @@ class GroupingLlm:
     @staticmethod
     def _commit_payload(commit: CommitInput) -> dict[str, Any]:
         """설명용 커밋 하나. 메시지·파일 목록은 상한까지만 보낸다."""
-        message = commit.message.strip()
+        # 자르기 전에 가려야 잘린 토큰 조각이 패턴을 벗어나 남지 않는다.
+        message = redact_secrets(commit.message).strip()
         if len(message) > DESCRIPTION_MESSAGE_MAX_LENGTH:
             message = message[: DESCRIPTION_MESSAGE_MAX_LENGTH - 1] + "…"
         return {
@@ -494,6 +504,16 @@ class GroupingLlm:
             "file_count": len(commit.files),
             "files": [changed.path for changed in commit.files[:DESCRIPTION_FILE_SAMPLE]],
         }
+
+
+def _first_line(message: str) -> str:
+    """첫 줄만 보낸다. 자르기 전에 가려 토큰이 200자 경계에서 반쯤 남지 않게 한다."""
+    lines = redact_secrets(message).strip().splitlines()
+    return lines[0][:200] if lines else ""
+
+
+def _redact_optional(text: str | None) -> str | None:
+    return None if text is None else redact_secrets(text)
 
 
 def _keys(groups: list[CommitGroup]) -> str:

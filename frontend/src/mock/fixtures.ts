@@ -295,9 +295,9 @@ export const interviewBank: Record<string, { question: string; missing: string; 
 
 export const seedRecall = {
   repoId: 'r_board',
-  note: '내 커밋 3개 · 메시지 평균 4글자. 대신 어떤 파일을 만졌는지로 기억을 끌어냅니다. 답한 내용은 그대로 정성 카드의 근거가 됩니다.',
+  note: '어떤 파일을 만졌는지 살펴보며 작업을 떠올려 보세요. 답한 내용은 그대로 정성 카드의 근거가 됩니다.',
   dirs: [
-    { path: '/src/api/', filesChanged: 6, myCommits: 2, files: ['user_router.py', 'auth.py', 'schema.py'], question: '이 파일들을 만졌을 때, 무엇을 해내려던 중이었나요?', options: ['로그인 기능을 맡았어요', '팀원 코드를 이어받았어요', '급하게 버그를 고쳤어요'] },
+    { path: '/src/api/', filesChanged: 6, myCommits: 2, files: ['user_router.py', 'auth.py', 'schema.py'], question: '이 파일들을 만졌을 때, 무엇을 해내려던 중이었나요?', options: ['로그인이 정상적으로 동작하게 하려 했어요', '기존 기능을 완성하려 했어요', '반복되는 오류를 해결하려 했어요'] },
     { path: '/src/ui/', filesChanged: 3, myCommits: 1, files: ['board.jsx', 'card.jsx'], question: '이 화면 파일을 고친 이유가 기억나시나요?', options: ['디자인 수정 요청이 있었어요', '버그를 고쳤어요'] },
     { path: '/docs/', filesChanged: 2, myCommits: 0, files: ['api-spec.md'], question: '문서만 만졌다면, 누구를 위해 쓴 문서였나요?', options: ['팀원 온보딩용', '발표 자료용'] },
   ],

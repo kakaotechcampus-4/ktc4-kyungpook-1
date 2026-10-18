@@ -10,7 +10,9 @@ import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
-beforeEach(resetDb);
+const auth = vi.hoisted(() => ({ isDemo: true }));
+vi.mock('@/features/auth/useLogin', () => ({ useLogin: () => ({ isDemo: auth.isDemo, start: vi.fn(), pending: false, failure: null, label: auth.isDemo ? '샘플로 체험하기' : 'GitHub로 시작' }) }));
+beforeEach(() => { resetDb(); auth.isDemo = true; });
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); });
 function mount(element: React.ReactElement, path = '/') {
   const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
@@ -42,4 +44,9 @@ it('does not tell sample visitors their actual login expired', () => {
   vi.stubEnv('VITE_API_MOCK', 'true');
   mount(<LandingPage />, '/login?reason=expired');
   expect(screen.queryByText(/로그인이 만료/)).not.toBeInTheDocument();
+});
+it('keeps the actual expired-session notice in real API mode', () => {
+  auth.isDemo = false;
+  mount(<LandingPage />, '/login?reason=expired');
+  expect(screen.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toBeInTheDocument();
 });

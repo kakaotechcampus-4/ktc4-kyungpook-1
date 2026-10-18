@@ -17,6 +17,15 @@ describe('sample interview and evidence consistency', () => {
     expect(interviewBank.R.options).toEqual(['오류가 줄었어요', '사용자가 작업을 더 빠르게 마칠 수 있게 됐어요', '아직 결과를 확인하지 못했어요']);
   });
 
+  it.each(['r_board', 'r_auth'])('offers recall goals without unsupported global counts for %s', (repoId) => {
+    resetDb();
+    const recall = handle('GET', `/repos/${repoId}/recall`, new URLSearchParams(), {}, true).data as { note: string; dirs: { path: string; question: string; options: string[] }[] };
+    const api = recall.dirs.find((dir) => dir.path === '/src/api/')!;
+    expect(api.question).toContain('무엇을 해내려던');
+    expect(api.options).toEqual(['로그인이 정상적으로 동작하게 하려 했어요', '기존 기능을 완성하려 했어요', '반복되는 오류를 해결하려 했어요']);
+    expect(recall.note).toBe('어떤 파일을 만졌는지 살펴보며 작업을 떠올려 보세요. 답한 내용은 그대로 정성 카드의 근거가 됩니다.');
+  });
+
   it.each(seedCandidates)('$id counts agree with explicit sample evidence', (candidate) => {
     const review = candidate.reason.match(/리뷰 코멘트 (\d+)건/);
     const files = candidate.reason.match(/(?:변경 파일 |문서 )(\d+)(?:개|파일)/);

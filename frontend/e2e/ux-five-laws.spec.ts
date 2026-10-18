@@ -19,6 +19,7 @@ for (const width of [320, 390, 1440]) {
     await expect(dialog.getByRole('list', { name: '진행 단계' })).toHaveCount(0);
     await dialog.getByRole('button', { name: '취소', exact: true }).click();
     await page.goto('/cards/new');
+    await expect(page.getByRole('heading', { name: '직접 작성', exact: true })).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: '임시 저장 시작' })).toHaveCount(1);
     await expect(page.getByRole('button', { name: '확정', exact: true })).toHaveCount(0);
     await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('UX 확인 카드');

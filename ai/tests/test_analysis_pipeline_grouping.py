@@ -29,6 +29,8 @@ class FakeGroupingLlm:
         self.merge_all = merge_all
         self.units: list[CommitGroup] = []
         self.described: list[CommitGroup] = []
+        self.describe_kwargs: dict = {}
+        self.describe_called_at = 0.0
 
     async def group_units(self, units: list[CommitGroup], **kwargs) -> list[list[CommitGroup]]:
         self.units = units
@@ -40,6 +42,8 @@ class FakeGroupingLlm:
 
     async def describe(self, groups, **kwargs):
         self.described = groups
+        self.describe_kwargs = kwargs
+        self.describe_called_at = asyncio.get_running_loop().time()
         return {
             group.group_key: (f"{group.source_type} 기능", "커밋 근거로 선정")
             for group in groups
@@ -227,6 +231,33 @@ def test_llm_failure_returns_llm_unavailable_envelope(error, retryable, caplog) 
     assert "GITORY_LLM_API_KEY" not in response.text
     # 응답에 싣지 않는 원인은 운영에서 찾을 수 있게 서버 로그에만 남긴다.
     assert [record.exc_info[1] for record in caplog.records if record.name == "api.analysis"] == [error]
+
+
+def test_grouping_request_deadline_reaches_description_step() -> None:
+    fake = FakeGroupingLlm()
+    app = create_app()
+    app.dependency_overrides[get_analysis_pipeline] = lambda: AnalysisPipeline(grouping_llm=fake)
+
+    response = TestClient(app).post(
+        "/internal/analysis/groups",
+        json={
+            "repository_id": "repo-1",
+            "target_login": "minseo",
+            "commits": [
+                {
+                    "sha": "a" * 40,
+                    "message": "feat: 기능",
+                    "author_login": "minseo",
+                    "authored_at": "2026-09-01T00:00:00Z",
+                    "parent_count": 1,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    seconds_left = fake.describe_kwargs["deadline"] - fake.describe_called_at
+    assert 0 < seconds_left <= analysis_api.GROUPING_DEADLINE_SECONDS
 
 
 class SlowGroupingLlm(FakeGroupingLlm):

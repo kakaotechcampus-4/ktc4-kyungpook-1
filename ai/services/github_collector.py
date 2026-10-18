@@ -80,7 +80,13 @@ class CollectionLimits:
     """한 번의 수집이 GitHub와 AI 서버를 과도하게 점유하지 않도록 하는 상한."""
 
     max_commits: int = 1_000
+    #: 누구 PR 이든 최근 갱신순으로 모으는 수. 이 밖의 PR 은 내 PR 만 더 모은다.
     max_pull_requests: int = 50
+    #: 최근 갱신 상한 밖에서 더 모으는 내 PR 수. 최근 상한 안의 내 PR 은 세지 않는다.
+    #: PR 마다 커밋·리뷰·줄 댓글로 3번 이상 부르므로, 커밋 상한과 합쳐도 Spring 의 수집 대기(600초) 안에 끝나게 잡는다.
+    max_own_pull_requests: int = 50
+    #: 내 PR 을 찾으려고 PR 목록(쪽당 100개)을 읽는 쪽 수.
+    max_pull_request_pages: int = 10
     max_issues: int = 50
     max_text_chars: int = 1_000
     max_candidate_commits: int = 50
@@ -251,22 +257,7 @@ class GithubCollector:
         request: RepositoryCollectionRequest,
         state: _CollectionState,
     ) -> None:
-        repository = request.repository
-        pulls = await self._get_list(
-            client,
-            state,
-            f"/repos/{repository.owner_login}/{repository.name}/pulls",
-            params={
-                "state": "all",
-                "sort": "updated",
-                "direction": "desc",
-                "per_page": min(self._limits.max_pull_requests + 1, 100),
-            },
-        )
-        if len(pulls) > self._limits.max_pull_requests:
-            state.mark_partial(PartialReason.CAP_EXCEEDED)
-
-        for pull in pulls[: self._limits.max_pull_requests]:
+        for pull in await self._select_pull_requests(client, request, state):
             number = _required_int(pull, "number")
             commit_shas = await self._collect_pull_commit_shas(
                 client, request, state, number
@@ -299,6 +290,55 @@ class GithubCollector:
                     reviews=reviews,
                 )
             )
+
+    async def _select_pull_requests(
+        self,
+        client: httpx.AsyncClient,
+        request: RepositoryCollectionRequest,
+        state: _CollectionState,
+    ) -> list[dict[str, Any]]:
+        """최근 갱신 PR 은 누구 것이든, 그 밖은 내 PR 만 고른다.
+
+        팀 저장소는 PR 이 많아 최근 몇 개만 읽으면 오래된 내 PR 이 빠진다. 남의 오래된 PR 이
+        빠진 것은 부분 수집으로 알리지 않고, 내 PR 이 잘렸을 수 있을 때만 알린다.
+        """
+        repository = request.repository
+        actor_login = request.actor.github_login.lower()
+        selected: list[dict[str, Any]] = []
+        seen = 0
+        older_own = 0
+        page = 1
+        while True:
+            pulls = await self._get_list(
+                client,
+                state,
+                f"/repos/{repository.owner_login}/{repository.name}/pulls",
+                params={
+                    "state": "all",
+                    "sort": "updated",
+                    "direction": "desc",
+                    "per_page": 100,
+                    "page": page,
+                },
+            )
+            for pull in pulls:
+                is_recent = seen < self._limits.max_pull_requests
+                is_own = (_nested_optional_text(pull, "user", "login") or "").lower() == actor_login
+                seen += 1
+                if not is_recent and not is_own:
+                    continue
+                if not is_recent:
+                    if older_own >= self._limits.max_own_pull_requests:
+                        state.mark_partial(PartialReason.CAP_EXCEEDED)
+                        continue
+                    older_own += 1
+                selected.append(pull)
+            if len(pulls) < 100:
+                return selected
+            if page >= self._limits.max_pull_request_pages:
+                state.mark_partial(PartialReason.CAP_EXCEEDED)
+                return selected
+            page += 1
 
     async def _collect_pull_commit_shas(
         self,
@@ -459,12 +499,18 @@ class GithubCollector:
         # 항목에 기대면 빈 저장소에서 head_sha가 사라지거나, 다른 브랜치
         # SHA를 기본 브랜치 head로 잘못 기록할 수 있다.
         branch = quote(repository.default_branch, safe="")
-        branch_info = await self._get_dict(
-            client,
-            state,
-            f"/repos/{repository.owner_login}/{repository.name}/branches/{branch}",
-            params={},
-        )
+        try:
+            branch_info = await self._get_dict(
+                client,
+                state,
+                f"/repos/{repository.owner_login}/{repository.name}/branches/{branch}",
+                params={},
+            )
+        except GithubResourceNotFound:
+            # 커밋이 없는 저장소는 기본 브랜치도 없어 404 가 온다. 실패 대신 커밋 0개로 끝낸다.
+            if await self._is_empty_repository(client, request, state):
+                return
+            raise
         state.head_sha = _nested_required_text(branch_info, "commit", "sha")
 
         known_shas = {sha.casefold() for sha in request.known_commit_shas}
@@ -513,6 +559,25 @@ class GithubCollector:
             state.commits.append(commit)
             if confirmation is not None:
                 state.needs_confirmation.append(confirmation)
+
+    async def _is_empty_repository(
+        self,
+        client: httpx.AsyncClient,
+        request: RepositoryCollectionRequest,
+        state: _CollectionState,
+    ) -> bool:
+        """GitHub 은 빈 저장소의 커밋 목록에 409 를 준다. 저장소가 없거나 못 읽는 404 와 가른다."""
+        repository = request.repository
+        try:
+            await self._get_list(
+                client,
+                state,
+                f"/repos/{repository.owner_login}/{repository.name}/commits",
+                params={"per_page": 1},
+            )
+        except GithubApiError as exc:
+            return exc.status_code == 409
+        return False
 
     async def _collect_commit_detail(
         self,

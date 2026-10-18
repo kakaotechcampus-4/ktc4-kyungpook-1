@@ -286,7 +286,7 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("성공하면 커밋·PR 읽기 단계는 읽은 개수로 완료되고, 묶기를 꺼 두면 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
+    @DisplayName("성공하면 커밋·PR 읽기 단계는 읽은 개수로 완료되고, 경험 그룹화를 꺼 두면 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
     void marksStepsAfterSuccess() {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
@@ -339,7 +339,7 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("묶기를 꺼 두면 AI 묶기를 부르지 않고 후보 추리기·추천 이유를 SKIPPED 로 둔 채 끝내며 판정도 비운다")
+    @DisplayName("경험 그룹화를 꺼 두면 AI 경험 그룹화를 부르지 않고 후보 추리기·추천 이유를 SKIPPED 로 둔 채 끝내며 판정도 비운다")
     void skipsGroupingWhenSwitchedOff() {
 
         Long jobId = enqueue(userRepositoryId, KEY_1);
@@ -536,7 +536,7 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("수집·묶기 응답 대기 한도 중 큰 값보다 5분 넘게 RUNNING 인 Job 은 INTERNAL_ERROR 로 끝낸다")
+    @DisplayName("수집·경험 그룹화·카드 초안 응답 대기 한도 중 큰 값보다 5분 넘게 RUNNING 인 Job 은 INTERNAL_ERROR 로 끝낸다")
     void failsJobStuckInRunning() {
 
         Long jobId = runningSince(userRepositoryId, "16 minutes");
@@ -577,7 +577,7 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("RUNNING 인 시간이 수집·묶기 응답 대기 한도 중 큰 값에 5분을 더한 시간보다 짧은 Job 은 그대로 둔다")
+    @DisplayName("RUNNING 인 시간이 수집·경험 그룹화·카드 초안 응답 대기 한도 중 큰 값에 5분을 더한 시간보다 짧은 Job 은 그대로 둔다")
     void keepsRecentlyRunningJob() {
 
         Long jobId = runningSince(userRepositoryId, "14 minutes");
@@ -670,7 +670,7 @@ class JobRunnerTest {
     }
 
     @Test
-    @DisplayName("묶기 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
+    @DisplayName("경험 그룹화 응답 대기 한도를 늘리면 멈춘 Job 판정도 그만큼 늦춰진다")
     void stuckJudgementFollowsGroupsReadTimeout() {
 
         Long jobId = runningSince(userRepositoryId, "16 minutes");

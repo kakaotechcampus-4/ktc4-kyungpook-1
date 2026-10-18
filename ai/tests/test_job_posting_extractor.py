@@ -8,15 +8,19 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from api.job_postings import get_job_posting_extractor
 from main import app
 from schemas.matching import (
     JobCriterion,
+    JobExperience,
     JobPostingDetailExtractionRequest,
     JobPostingDetailExtractionResult,
 )
 from services.job_posting_extractor import (
+    ExtractedExperience,
+    ExtractedPosting,
     JobPostingDetailExtractor,
     JobPostingEvidenceMismatch,
 )
@@ -30,15 +34,37 @@ Java 개발 경험이 필요합니다.
 대용량 트래픽 처리 경험이 있으신 분을 우대합니다.
 """
 
+UNCHANGED_RESULT = {
+    "source": "COMPANY_CAREER_PAGE",
+    "external_posting_id": "backend-101",
+    "source_url": "https://careers.example.com/jobs/backend-101",
+    "content_hash": "a" * 64,
+    "outcome": "UNCHANGED",
+    "content_status": "READY",
+}
+
+
+def experience(level="UNSPECIFIED", min_years=None, source_quote=None) -> ExtractedExperience:
+    return ExtractedExperience(level=level, min_years=min_years, source_quote=source_quote)
+
 
 class FakeExtractionModel:
-    def __init__(self, criteria: list[JobCriterion]) -> None:
+    def __init__(
+        self,
+        criteria: list[JobCriterion],
+        extracted_experience: ExtractedExperience | None = None,
+        job_category: str = "BACKEND",
+    ) -> None:
         self.criteria = criteria
+        self.experience = extracted_experience or experience()
+        self.job_category = job_category
         self.calls = 0
 
     def extract(self, request):
         self.calls += 1
-        return self.criteria
+        return ExtractedPosting(
+            criteria=self.criteria, experience=self.experience, job_category=self.job_category
+        )
 
 
 def request_payload(**overrides) -> dict:
@@ -173,7 +199,7 @@ def test_quote_longer_than_the_text_limit_is_treated_like_missing_evidence() -> 
     preferred = JobCriterion(criterion_type="PREFERRED", text="AWS", source_quote=quote)
     required = JobCriterion(criterion_type="REQUIRED", text="AWS", source_quote=quote)
     other = JobCriterion(
-        criterion_type="SKILL", text="Java", source_quote="Java 개발 경험이 필요합니다."
+        criterion_type="RESPONSIBILITY", text="Java", source_quote="Java 개발 경험이 필요합니다."
     )
 
     kept = JobPostingDetailExtractor(FakeExtractionModel([preferred, other])).extract(
@@ -182,7 +208,7 @@ def test_quote_longer_than_the_text_limit_is_treated_like_missing_evidence() -> 
         )
     )
 
-    assert [c.criterion_type for c in kept.criteria] == ["SKILL"]
+    assert [c.criterion_type for c in kept.criteria] == ["RESPONSIBILITY"]
     with pytest.raises(JobPostingEvidenceMismatch):
         run_with_body(required, quote)
 
@@ -277,6 +303,8 @@ def test_same_content_hash_skips_llm_call() -> None:
 
     assert result.outcome == "UNCHANGED"
     assert result.criteria == []
+    assert result.experience is None
+    assert result.job_category is None
     assert model.calls == 0
 
 
@@ -303,15 +331,15 @@ def test_duplicate_criteria_are_removed_after_quote_validation() -> None:
 
 def test_texts_that_become_equal_after_replacement_are_deduplicated() -> None:
     quote = "Java 개발 경험이 필요합니다."
-    first = JobCriterion(criterion_type="SKILL", text="AWS 경험", source_quote=quote)
-    second = JobCriterion(criterion_type="SKILL", text="Docker 경험", source_quote=quote)
+    first = JobCriterion(criterion_type="PREFERRED", text="AWS 경험", source_quote=quote)
+    second = JobCriterion(criterion_type="PREFERRED", text="Docker 경험", source_quote=quote)
 
     required = JobCriterion(criterion_type="REQUIRED", text="Python", source_quote=quote)
 
     result = extract_with([first, second, required])
 
     assert [(c.criterion_type, c.text) for c in result.criteria] == [
-        ("SKILL", quote),
+        ("PREFERRED", quote),
         ("REQUIRED", quote),
     ]
 
@@ -379,3 +407,216 @@ def test_job_posting_detail_contract_examples_validate_against_ai_dtos() -> None
 
     assert hashlib.sha256(request.raw_text.strip().encode("utf-8")).hexdigest() == result.content_hash
     assert all(item.source_quote in request.raw_text for item in result.criteria)
+    assert result.experience.source_quote in request.raw_text
+
+    unchanged = JobPostingDetailExtractionResult.model_validate(
+        contract["ai_to_spring_unchanged"]["data"]
+    )
+    assert unchanged.outcome == "UNCHANGED"
+    assert unchanged.content_hash == result.content_hash
+    assert contract["ai_to_spring_unchanged"]["request_previous_content_hash"] == result.content_hash
+    assert (unchanged.job_category, unchanged.experience) == (None, None)
+    assert contract["ai_to_spring_unchanged"]["data"]["job_category"] is None
+    assert contract["ai_to_spring_unchanged"]["data"]["experience"] is None
+
+
+def test_unknown_criterion_type_skill_is_rejected_by_model_output_schema() -> None:
+    payload = {
+        "criteria": [
+            {"criterion_type": "SKILL", "text": "Java", "source_quote": "Java 개발 경험이 필요합니다."}
+        ],
+        "experience": {"level": "UNSPECIFIED"},
+        "job_category": "BACKEND",
+    }
+
+    with pytest.raises(ValidationError):
+        ExtractedPosting.model_validate(payload)
+
+
+def test_unknown_job_category_is_rejected_by_model_output_schema() -> None:
+    with pytest.raises(ValidationError):
+        ExtractedPosting.model_validate(
+            {"criteria": [], "experience": {"level": "UNSPECIFIED"}, "job_category": "SALES"}
+        )
+
+
+def test_posting_with_entry_expression_is_entry_without_years() -> None:
+    quote = "신입 지원 가능"
+    model = FakeExtractionModel(
+        valid_criteria(), experience("ENTRY", 0, quote), job_category="DATA"
+    )
+
+    result = JobPostingDetailExtractor(model).extract(
+        JobPostingDetailExtractionRequest.model_validate(
+            request_payload(raw_text=RAW_TEXT + quote)
+        )
+    )
+
+    assert (result.experience.level, result.experience.min_years) == ("ENTRY", None)
+    assert result.experience.source_quote == quote
+    assert result.job_category == "DATA"
+
+
+def test_experienced_posting_keeps_min_years_and_quote() -> None:
+    quote = "경력 3년 이상"
+    model = FakeExtractionModel(valid_criteria(), experience("EXPERIENCED", 3, quote))
+
+    result = JobPostingDetailExtractor(model).extract(
+        JobPostingDetailExtractionRequest.model_validate(
+            request_payload(raw_text=RAW_TEXT + quote)
+        )
+    )
+
+    assert (result.experience.level, result.experience.min_years) == ("EXPERIENCED", 3)
+
+
+def test_posting_without_experience_is_unspecified_without_years_or_quote() -> None:
+    result = extract_with(valid_criteria())
+
+    assert result.experience.level == "UNSPECIFIED"
+    assert result.experience.min_years is None
+    assert result.experience.source_quote is None
+
+
+def extract_experience(extracted: ExtractedExperience, body_addition: str = ""):
+    model = FakeExtractionModel(valid_criteria(), extracted)
+    return JobPostingDetailExtractor(model).extract(
+        JobPostingDetailExtractionRequest.model_validate(
+            request_payload(raw_text=RAW_TEXT + body_addition)
+        )
+    )
+
+
+UNTRUSTED_EXPERIENCES = {
+    "인용이 원문에 없음": ("EXPERIENCED", 5, "경력 5년 이상", ""),
+    "ENTRY 인용이 원문에 없음": ("ENTRY", None, "신입 지원 가능", ""),
+    "인용 없음": ("EXPERIENCED", 3, None, ""),
+    "인용이 공백뿐": ("EXPERIENCED", 3, "   ", ""),
+    "인용이 원문과 공백만 다름": ("EXPERIENCED", 3, "경력  3년 이상", "경력 3년 이상"),
+    "인용이 1000자 초과": ("EXPERIENCED", 3, "경력 3년 이상 " + "가" * 1000, "경력 3년 이상 " + "가" * 1000),
+    "EXPERIENCED 연차 없음": ("EXPERIENCED", None, "경력 3년 이상", "경력 3년 이상"),
+    "연차 61": ("EXPERIENCED", 61, "경력 61년 이상", "경력 61년 이상"),
+    "연차가 인용에 없음": ("EXPERIENCED", 5, "경력 3년 이상", "경력 3년 이상"),
+    "연차 0 이고 인용에 0 이 없음": ("EXPERIENCED", 0, "경력 무관", "경력 무관"),
+}
+
+UPPER_BOUND_ONLY_EXPERIENCES = {
+    "미만": ("EXPERIENCED", 1, "경력 1년 미만"),
+    "이하": ("EXPERIENCED", 3, "경력 3년 이하"),
+    "up to": ("EXPERIENCED", 2, "up to 2 years of experience"),
+    "연차 없음": ("EXPERIENCED", None, "경력 1년 미만"),
+}
+
+
+@pytest.mark.parametrize(
+    ("level", "min_years", "quote", "body_addition"),
+    UNTRUSTED_EXPERIENCES.values(),
+    ids=UNTRUSTED_EXPERIENCES.keys(),
+)
+def test_untrusted_experience_degrades_to_unspecified_with_one_id_only_warning(
+    level, min_years, quote, body_addition, caplog
+) -> None:
+    with caplog.at_level("WARNING"):
+        result = extract_experience(experience(level, min_years, quote), body_addition)
+
+    assert result.experience == JobExperience(level="UNSPECIFIED")
+    assert len(result.criteria) == 3
+    assert [record.getMessage() for record in caplog.records] == [
+        "공고 경력 정보 제외: posting=backend-101"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("level", "min_years", "quote"),
+    UPPER_BOUND_ONLY_EXPERIENCES.values(),
+    ids=UPPER_BOUND_ONLY_EXPERIENCES.keys(),
+)
+def test_upper_bound_only_experience_is_entry_without_years(level, min_years, quote) -> None:
+    result = extract_experience(experience(level, min_years, quote), quote)
+
+    assert (result.experience.level, result.experience.min_years) == ("ENTRY", None)
+
+
+def test_experience_with_both_bounds_keeps_the_lower_bound() -> None:
+    quote = "경력 3년 이상 5년 이하"
+
+    result = extract_experience(experience("EXPERIENCED", 3, quote), quote)
+
+    assert (result.experience.level, result.experience.min_years) == ("EXPERIENCED", 3)
+
+
+def test_experience_quote_is_trimmed_before_it_is_found_in_the_body() -> None:
+    result = extract_experience(experience("EXPERIENCED", 3, "  경력 3년 이상\n"), "경력 3년 이상")
+
+    assert (result.experience.level, result.experience.source_quote) == ("EXPERIENCED", "경력 3년 이상")
+
+
+def test_zero_years_with_zero_in_the_quote_is_entry_without_years() -> None:
+    quote = "경력 0년 이상"
+
+    result = extract_experience(experience("EXPERIENCED", 0, quote), quote)
+
+    assert (result.experience.level, result.experience.min_years) == ("ENTRY", None)
+    assert result.experience.source_quote == quote
+
+
+def test_unspecified_from_the_model_is_not_logged_as_excluded(caplog) -> None:
+    with caplog.at_level("WARNING"):
+        result = extract_experience(experience())
+
+    assert result.experience == JobExperience(level="UNSPECIFIED")
+    assert caplog.records == []
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"level": "UNSPECIFIED", "min_years": 3},
+        {"level": "UNSPECIFIED", "source_quote": "경력 3년 이상"},
+        {"level": "ENTRY"},
+        {"level": "ENTRY", "min_years": 0, "source_quote": "신입 지원 가능"},
+        {"level": "ENTRY", "min_years": 2, "source_quote": "신입 지원 가능"},
+        {"level": "EXPERIENCED", "source_quote": "경력 3년 이상"},
+        {"level": "EXPERIENCED", "min_years": 0, "source_quote": "경력 0년 이상"},
+        {"level": "EXPERIENCED", "min_years": 3},
+        {"level": "EXPERIENCED", "min_years": 61, "source_quote": "경력 61년 이상"},
+    ],
+)
+def test_contract_experience_model_rejects_inconsistent_fields(fields) -> None:
+    with pytest.raises(ValidationError):
+        JobExperience.model_validate(fields)
+
+
+def test_contract_experience_model_accepts_the_largest_years() -> None:
+    assert JobExperience(level="EXPERIENCED", min_years=60, source_quote="경력 60년 이상").min_years == 60
+
+
+@pytest.mark.parametrize(
+    "present",
+    [{}, {"job_category": "BACKEND"}, {"experience": {"level": "UNSPECIFIED"}}],
+    ids=["둘 다 없음", "경력 없음", "분류 없음"],
+)
+def test_updated_result_requires_category_and_experience(present) -> None:
+    with pytest.raises(ValidationError):
+        JobPostingDetailExtractionResult.model_validate(
+            {**UNCHANGED_RESULT, "outcome": "UPDATED", "content_hash": "a" * 64, **present}
+        )
+
+
+def test_result_model_rejects_an_unknown_job_category() -> None:
+    with pytest.raises(ValidationError):
+        JobPostingDetailExtractionResult.model_validate(
+            {
+                **UNCHANGED_RESULT,
+                "outcome": "UPDATED",
+                "experience": {"level": "UNSPECIFIED"},
+                "job_category": "SALES",
+            }
+        )
+
+
+def test_unchanged_result_cannot_carry_conditions() -> None:
+    with pytest.raises(ValidationError):
+        JobPostingDetailExtractionResult.model_validate(
+            {**UNCHANGED_RESULT, "job_category": "BACKEND"}
+        )

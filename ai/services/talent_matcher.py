@@ -170,7 +170,10 @@ class TalentMatcher:
     @staticmethod
     def _criteria(posting: JobPosting) -> list[_Criterion]:
         pairs = (
-            [(item.criterion_type, item.text, item.source_quote) for item in posting.criteria]
+            [
+                (CriterionType(item.criterion_type.value), item.text, item.source_quote)
+                for item in posting.criteria
+            ]
             + [(CriterionType.RESPONSIBILITY, value, "") for value in posting.responsibilities]
             + [(CriterionType.REQUIRED, value, "") for value in posting.required_qualifications]
             + [(CriterionType.PREFERRED, value, "") for value in posting.preferred_qualifications]

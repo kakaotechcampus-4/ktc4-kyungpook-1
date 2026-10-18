@@ -107,6 +107,9 @@ gitory:
     # 카드 초안의 diff 근거·STAR 초안은 AI 가 240초·150초 안에 정리해 답하므로, 그 답을 놓치지 않게 조금 더 기다린다
     diff-evidence-read-timeout: ${AI_DIFF_EVIDENCE_READ_TIMEOUT:300s}
     star-read-timeout: ${AI_STAR_READ_TIMEOUT:180s}
+  github:
+    # E2E 시험에서 가짜 GitHub 서버로 바꿀 수 있게 둔 값이며 운영은 기본값을 쓴다
+    api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}
   consent:
     # GitHub 액세스 토큰 암호화 키·솔트. 코드·설정 파일에 값을 적지 않는다 —
     # 배포 환경의 비밀 관리에서 환경변수로 주입한다(security-privacy.md).

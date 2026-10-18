@@ -3,6 +3,7 @@ package com.gitory.backend.consent.infra;
 import com.gitory.backend.consent.port.GithubCountTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -21,6 +22,7 @@ import java.util.function.BooleanSupplier;
 /** GitHub 에서 저장소의 커밋·PR 개수를 센다 */
 @Slf4j
 @Component
+@EnableConfigurationProperties(GithubApiProperties.class)
 public class GithubCountClient {
 
     private static final int SEARCH_PAGE_SIZE = 100;
@@ -70,9 +72,9 @@ public class GithubCountClient {
 
     private final RestClient restClient;
 
-    public GithubCountClient(RestClient.Builder builder) {
+    public GithubCountClient(RestClient.Builder builder, GithubApiProperties properties) {
         this.restClient = builder
-                .baseUrl("https://api.github.com")
+                .baseUrl(properties.apiBaseUrl())
                 .defaultHeader("Accept", "application/vnd.github+json")
                 .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
                 .build();

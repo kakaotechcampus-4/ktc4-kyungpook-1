@@ -132,3 +132,10 @@
 .kv { display: flex; align-items: center; gap: 14px; padding: 11px 0; border-top: 1px solid var(--border-default); font-size: 13px; line-height: 20px; }
 .kv:first-child { border-top: 0; }
 @media (max-width: 820px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* 이미 카드로 만든 후보 — 목록 맨 아래의 한 행. 개수와 하는 일이 글자로 적혀 있고, 누르면 그 아래로 펼친다 */
+.record-list > .record-list__more { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: var(--control-touch-size); padding: 14px 20px; border: 0; border-top: 1px solid var(--border-default); background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; }
+.record-list > .record-list__more:first-child { border-top: 0; }
+.record-list > .record-list__more:hover { background: var(--bg-canvas); }
+.record-list > .record-list__more:focus-visible { outline: 2px solid var(--border-selected); outline-offset: -4px; }
+.record-list > .record-list__more + .card { border-top: 1px solid var(--border-default); }

@@ -29,6 +29,14 @@ export function eta(sec: number | null): string {
   const m = Math.floor(sec / 60), s = sec % 60;
   return s ? `약 ${m}분 ${s}초 남음` : `약 ${m}분 남음`;
 }
+/** 지나간 시간 — "8초" · "2분 14초" · "1시간 5분". 음수·소수는 0 이상 정수 초로 맞춘다. */
+export function elapsed(sec: number): string {
+  const total = Math.max(0, Math.floor(sec));
+  if (total < 60) return `${total}초`;
+  if (total < 3600) { const m = Math.floor(total / 60), s = total % 60; return s ? `${m}분 ${s}초` : `${m}분`; }
+  const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60);
+  return m ? `${h}시간 ${m}분` : `${h}시간`;
+}
 export function minutes(sec: number): string {
   return `${Math.max(1, Math.ceil(sec / 60))}분`;
 }

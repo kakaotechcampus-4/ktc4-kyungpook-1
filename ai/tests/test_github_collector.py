@@ -824,6 +824,23 @@ def test_missing_default_branch_of_non_empty_repository_still_fails() -> None:
         asyncio.run(collector.collect(_default_branch_request(), "live-secret"))
 
 
+def test_missing_repository_is_not_treated_as_empty() -> None:
+    """기본 브랜치 404 뒤 커밋 목록도 404 면(지워졌거나 권한 없음) 빈 저장소로 넘기지 않고 실패한다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/repos/grow22/gitory/commits":
+            return httpx.Response(404, json={"message": "Not Found"})
+        return _empty_repository_handler(request)
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(GithubResourceNotFound):
+        asyncio.run(collector.collect(_default_branch_request(), "live-secret"))
+
+
 def _pull(number: int, author: str) -> dict:
     return {
         "number": number,
@@ -905,6 +922,21 @@ def test_own_pull_requests_over_own_cap_mark_partial() -> None:
 
     assert [pull.number for pull in result.pull_requests] == [30, 18]
     assert result.partial_reason == PartialReason.CAP_EXCEEDED
+
+
+def test_own_pull_requests_within_recent_cap_do_not_use_own_cap() -> None:
+    """최근 상한 안의 내 PR 은 내 PR 상한에 세지 않고, 그 밖에서 내 PR 을 상한만큼 더 모은다."""
+    pages = [[_pull(30, "grow22"), _pull(29, "grow22"), _pull(18, "teammate"), _pull(17, "grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=2, max_own_pull_requests=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, [])),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [30, 29, 17]
+    assert result.partial is False
 
 
 def test_pull_request_pages_over_page_cap_mark_partial() -> None:

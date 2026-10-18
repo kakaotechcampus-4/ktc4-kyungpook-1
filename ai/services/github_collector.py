@@ -82,7 +82,9 @@ class CollectionLimits:
     max_commits: int = 1_000
     #: 누구 PR 이든 최근 갱신순으로 모으는 수. 이 밖의 PR 은 내 PR 만 더 모은다.
     max_pull_requests: int = 50
-    max_own_pull_requests: int = 200
+    #: 최근 갱신 상한 밖에서 더 모으는 내 PR 수. 최근 상한 안의 내 PR 은 세지 않는다.
+    #: PR 마다 커밋·리뷰·줄 댓글로 3번 이상 부르므로, 커밋 상한과 합쳐도 Spring 의 수집 대기(600초) 안에 끝나게 잡는다.
+    max_own_pull_requests: int = 50
     #: 내 PR 을 찾으려고 PR 목록(쪽당 100개)을 읽는 쪽 수.
     max_pull_request_pages: int = 10
     max_issues: int = 50
@@ -304,7 +306,7 @@ class GithubCollector:
         actor_login = request.actor.github_login.lower()
         selected: list[dict[str, Any]] = []
         seen = 0
-        own = 0
+        older_own = 0
         page = 1
         while True:
             pulls = await self._get_list(
@@ -325,11 +327,11 @@ class GithubCollector:
                 seen += 1
                 if not is_recent and not is_own:
                     continue
-                if not is_recent and own >= self._limits.max_own_pull_requests:
-                    state.mark_partial(PartialReason.CAP_EXCEEDED)
-                    continue
-                if is_own:
-                    own += 1
+                if not is_recent:
+                    if older_own >= self._limits.max_own_pull_requests:
+                        state.mark_partial(PartialReason.CAP_EXCEEDED)
+                        continue
+                    older_own += 1
                 selected.append(pull)
             if len(pulls) < 100:
                 return selected

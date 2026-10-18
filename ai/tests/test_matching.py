@@ -3,17 +3,33 @@
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
+from openai import (
+    APIConnectionError,
+    AuthenticationError,
+    BadRequestError,
+    NotFoundError,
+    PermissionDeniedError,
+    RateLimitError,
+)
 from pydantic import ValidationError
 
-from api.matching import get_talent_matcher
+from api.matching import get_talent_matcher_factory
 from main import app
-from rag.embedding import ChromaDefaultTextEmbedder, create_text_embedder
+from rag.embedding import (
+    ChromaDefaultTextEmbedder,
+    EmbeddingError,
+    OpenAITextEmbedder,
+    create_text_embedder,
+)
 from rag.vector_store import ChromaJobCriterionStore
+from schemas.common import ErrorEnvelope
 from schemas.matching import (
     JobPosting,
     JobPostingIndexRequest,
@@ -241,7 +257,7 @@ def test_match_returns_source_and_exact_star_evidence_without_storing_star() -> 
 
 def test_matching_routes_use_common_envelope() -> None:
     matcher = TalentMatcher(FakeEmbedder(), FakeStore())
-    app.dependency_overrides[get_talent_matcher] = lambda: matcher
+    app.dependency_overrides[get_talent_matcher_factory] = lambda: lambda: matcher
     try:
         response = TestClient(app).post("/internal/matching/search", json=matching_payload())
     finally:
@@ -259,9 +275,8 @@ def test_matching_api_returns_400_for_contract_violation() -> None:
     payload = matching_payload()
     payload["statements"][0]["star_slot"] = "X"
 
-    app.dependency_overrides[get_talent_matcher] = lambda: TalentMatcher(
-        FakeEmbedder(), FakeStore()
-    )
+    matcher = TalentMatcher(FakeEmbedder(), FakeStore())
+    app.dependency_overrides[get_talent_matcher_factory] = lambda: lambda: matcher
     try:
         response = TestClient(app).post("/internal/matching/search", json=payload)
     finally:
@@ -362,3 +377,157 @@ def test_match_response_carries_no_grade() -> None:
     result = matcher.match(MatchingRequest.model_validate(matching_payload()))
 
     assert "fit_grade" not in result.matches[0].model_dump()
+
+
+class ThreadRecordingEmbedder:
+    def __init__(self) -> None:
+        self.thread_names: list[str] = []
+
+    def embed(self, texts):
+        self.thread_names.append(threading.current_thread().name)
+        return [[1.0, 0.0] for _ in texts]
+
+
+class RaisingEmbedder:
+    def __init__(self, failure: Exception) -> None:
+        self._failure = failure
+
+    def embed(self, texts):
+        raise self._failure
+
+
+def post_matching(path: str, payload: dict, matcher: TalentMatcher | None = None):
+    if matcher is not None:
+        app.dependency_overrides[get_talent_matcher_factory] = lambda: lambda: matcher
+    try:
+        return TestClient(app).post(path, json=payload)
+    finally:
+        app.dependency_overrides.clear()
+
+
+INDEX_PATH = "/internal/matching/postings/index"
+SEARCH_PATH = "/internal/matching/search"
+
+
+def index_payload() -> dict:
+    return {"postings": [posting_payload()]}
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [(INDEX_PATH, index_payload()), (SEARCH_PATH, matching_payload())],
+)
+def test_embedding_runs_outside_the_event_loop(path, payload) -> None:
+    embedder = ThreadRecordingEmbedder()
+
+    response = post_matching(path, payload, TalentMatcher(embedder, FakeStore()))
+
+    assert response.status_code == 200
+    assert embedder.thread_names
+    assert all(name.startswith("matching-index") for name in embedder.thread_names)
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [(INDEX_PATH, index_payload()), (SEARCH_PATH, matching_payload())],
+)
+@pytest.mark.parametrize("retryable", [True, False])
+def test_embedding_failure_uses_error_envelope_with_its_retryable(path, payload, retryable) -> None:
+    failure = EmbeddingError("embedding down", retryable=retryable)
+
+    response = post_matching(path, payload, TalentMatcher(RaisingEmbedder(failure), FakeStore()))
+
+    assert response.status_code == 503
+    envelope = ErrorEnvelope.model_validate(response.json())
+    assert envelope.error.code == "LLM_UNAVAILABLE"
+    assert envelope.error.retryable is retryable
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [(INDEX_PATH, index_payload()), (SEARCH_PATH, matching_payload())],
+)
+@pytest.mark.parametrize("provider", ["openai", "unknown-provider"])
+def test_embedding_settings_error_returns_envelope_instead_of_bare_500(
+    monkeypatch, path, payload, provider
+) -> None:
+    monkeypatch.setenv("GITORY_EMBEDDING_PROVIDER", provider)
+    monkeypatch.delenv("GITORY_EMBEDDING_API_KEY", raising=False)
+
+    response = post_matching(path, payload)
+
+    assert response.status_code == 503
+    envelope = ErrorEnvelope.model_validate(response.json())
+    assert envelope.error.code == "LLM_UNAVAILABLE"
+    assert envelope.error.retryable is False
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [(INDEX_PATH, index_payload()), (SEARCH_PATH, matching_payload())],
+)
+def test_unexpected_failure_returns_internal_error_without_leaking_detail(path, payload) -> None:
+    failure = RuntimeError("secret internal detail")
+
+    response = post_matching(path, payload, TalentMatcher(RaisingEmbedder(failure), FakeStore()))
+
+    assert response.status_code == 500
+    envelope = ErrorEnvelope.model_validate(response.json())
+    assert envelope.error.code == "INTERNAL_ERROR"
+    assert envelope.error.retryable is False
+    assert "secret internal detail" not in response.text
+
+
+def _http_response(status: int) -> httpx.Response:
+    return httpx.Response(status, request=httpx.Request("POST", "https://embeddings.example.com"))
+
+
+@pytest.mark.parametrize(
+    ("failure", "retryable"),
+    [
+        (AuthenticationError("bad key", response=_http_response(401), body=None), False),
+        (PermissionDeniedError("no access", response=_http_response(403), body=None), False),
+        (NotFoundError("no model", response=_http_response(404), body=None), False),
+        (BadRequestError("bad input", response=_http_response(400), body=None), False),
+        (RateLimitError("slow down", response=_http_response(429), body=None), True),
+        (
+            RateLimitError(
+                "quota",
+                response=_http_response(429),
+                body={"code": "insufficient_quota", "message": "quota"},
+            ),
+            False,
+        ),
+        (APIConnectionError(request=httpx.Request("POST", "https://embeddings.example.com")), True),
+    ],
+)
+def test_openai_embedder_marks_only_permanent_failures_as_not_retryable(
+    monkeypatch, failure, retryable
+) -> None:
+    monkeypatch.setenv("GITORY_EMBEDDING_API_KEY", "test-only-key")
+    embedder = OpenAITextEmbedder()
+
+    def fail(**kwargs):
+        raise failure
+
+    monkeypatch.setattr(embedder._client.embeddings, "create", fail)
+
+    with pytest.raises(EmbeddingError) as raised:
+        embedder.embed(["Java"])
+
+    assert raised.value.retryable is retryable
+
+
+def test_openai_embedder_retries_when_response_count_differs_from_input(monkeypatch) -> None:
+    monkeypatch.setenv("GITORY_EMBEDDING_API_KEY", "test-only-key")
+    embedder = OpenAITextEmbedder()
+    monkeypatch.setattr(
+        embedder._client.embeddings,
+        "create",
+        lambda **kwargs: type("R", (), {"data": [type("I", (), {"index": 0, "embedding": [0.1]})()]})(),
+    )
+
+    with pytest.raises(EmbeddingError) as raised:
+        embedder.embed(["Java", "Spring"])
+
+    assert raised.value.retryable is True

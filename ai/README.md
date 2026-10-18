@@ -58,7 +58,7 @@ GitHub 수집을 직접 호출할 때 실제 토큰을 예시·스크린샷·exp
 이는 FastAPI 프로세스 생존만 뜻합니다. GitHub 연결, LLM 설정, 카드 생성 준비 상태를
 보장하지 않습니다. A 그룹화·diff 근거·STAR 초안은 LLM 환경변수가 없거나 호출에
 실패하면 503 `LLM_UNAVAILABLE`입니다. B 질문 생성은 템플릿, 답변 평가는 규칙 기반이며 LLM 판정기는 연결되지
-않았습니다. 등록되지 않은 matching/RAG stub은 API 문서에 나타나지 않습니다.
+않았습니다.
 
 서버·DB·GitHub·LLM 없이 문서 JSON을 내보낼 수 있습니다. 저장소 루트에서 실행합니다.
 
@@ -146,6 +146,7 @@ LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 
 | `GITORY_GROUPING_MODEL`, `GITORY_GROUPING_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_DIFF_MODEL`, `GITORY_DIFF_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_STAR_MODEL`, `GITORY_STAR_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
+| `GITORY_JOB_POSTING_MODEL`, `GITORY_JOB_POSTING_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 
 프롬프트와 출력 스키마는 `evals/tasks/diff_summary.py`·`star_draft.py` 모델 비교에서
 검증한 것과 같은 코드를 공유합니다.
@@ -155,7 +156,11 @@ LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 
 `POST /internal/job-postings/extract`는 Spring이 전달한 공고 상세 본문에서 직무 조건을 뽑습니다.
 AI는 원문에 그대로 존재하는 `source_quote`가 있는 담당업무·필수·우대·기술만 반환하고,
 Spring은 원문 전체 대신 정규화 조건과 SHA-256 본문 해시를 저장합니다. 같은 해시면 LLM
-추출을 생략합니다. 공고를 어디서 어떻게 가져올지는 Spring이 정하며 AI는 본문만 받습니다.
+추출을 생략합니다. 인용이 원문에 없는 조건은 필수(`REQUIRED`)이면 공고 전체를
+`EVIDENCE_MISMATCH`(422)로 거절하고, 담당업무·우대·기술이면 그 조건만 빼고 나머지를 돌려줍니다.
+`text`에 인용에 없는 낱말이 있으면 거절하지 않고 `text`를 원문 인용으로 바꿔 돌려줍니다(이때 `text`와 `source_quote`가 같습니다).
+`text` 길이 상한(1000자)을 넘는 인용은 근거 없는 조건처럼 다루고, 모델이 조건을 냈는데 전부 빠지면 422로 거절합니다.
+공고를 어디서 어떻게 가져올지는 Spring이 정하며 AI는 본문만 받습니다.
 
 Spring이 상세 직무 조건과 출처를 저장한 뒤
 `POST /internal/matching/postings/index`로 활성 공고를 보내면 AI는 담당업무·
@@ -165,6 +170,12 @@ Spring이 상세 직무 조건과 출처를 저장한 뒤
 `POST /internal/matching/search`는 Spring이 검증한 확정 STAR 문장만 받습니다.
 STAR 원문은 ChromaDB에 저장하지 않고 요청 동안만 임베딩하며, 응답에는 매칭된
 공고 조건과 `card_id`·STAR 슬롯을 함께 반환합니다.
+
+`extract`·`postings/index`·`search`의 실패는 모두 `success=false` 오류 봉투로 돌려줍니다.
+LLM·임베딩 설정 누락, 키·권한 오류, 임베딩 하루 한도는 503 `retryable=false`, 일시 실패는 503
+`retryable=true`, 예상하지 못한 오류는 500 `INTERNAL_ERROR`입니다. 임베딩 일시 실패의 503(`retryable=true`)은 OpenAI 호환
+임베딩을 쓸 때 나가고, 기본 로컬 임베딩(`chroma-default`, 첫 호출 때 모델을 내려받음)의 실패는
+500 `INTERNAL_ERROR`입니다.
 
 필요한 환경변수는 다음과 같습니다.
 

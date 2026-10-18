@@ -6,11 +6,31 @@ import os
 from pathlib import Path
 from typing import Protocol
 
-from openai import OpenAI
+from openai import (
+    AuthenticationError,
+    BadRequestError,
+    NotFoundError,
+    OpenAI,
+    OpenAIError,
+    PermissionDeniedError,
+    RateLimitError,
+    UnprocessableEntityError,
+)
 
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 LOCAL_EMBEDDING_MODEL = "all-MiniLM-L6-v2"
+
+
+class EmbeddingError(RuntimeError):
+    """임베딩을 만들 수 없을 때 발생한다.
+
+    ``retryable``은 다시 시도해 나아질 수 있는지다.
+    """
+
+    def __init__(self, message: str, *, retryable: bool) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 class TextEmbedder(Protocol):
@@ -26,7 +46,7 @@ class OpenAITextEmbedder:
     def __init__(self) -> None:
         api_key = os.getenv("GITORY_EMBEDDING_API_KEY", "").strip()
         if not api_key:
-            raise RuntimeError("GITORY_EMBEDDING_API_KEY가 필요합니다.")
+            raise EmbeddingError("GITORY_EMBEDDING_API_KEY가 필요합니다.", retryable=False)
         base_url = os.getenv("GITORY_EMBEDDING_BASE_URL", "").strip() or None
         self._model = os.getenv("GITORY_EMBEDDING_MODEL", EMBEDDING_MODEL)
         self._client = OpenAI(api_key=api_key, base_url=base_url)
@@ -34,10 +54,28 @@ class OpenAITextEmbedder:
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        response = self._client.embeddings.create(model=self._model, input=texts)
+        try:
+            response = self._client.embeddings.create(model=self._model, input=texts)
+        except (
+            AuthenticationError,
+            PermissionDeniedError,
+            NotFoundError,
+            BadRequestError,
+            UnprocessableEntityError,
+        ) as exc:
+            raise EmbeddingError(
+                "임베딩 키·권한·모델 이름 또는 요청 형식이 잘못됐습니다.", retryable=False
+            ) from exc
+        except RateLimitError as exc:
+            # 하루 한도(insufficient_quota)는 기다려도 풀리지 않고, 분당 한도만 다시 하면 나아진다.
+            raise EmbeddingError(
+                "임베딩 요청 한도에 걸렸습니다.", retryable=exc.code != "insufficient_quota"
+            ) from exc
+        except OpenAIError as exc:
+            raise EmbeddingError("임베딩 요청을 처리하지 못했습니다.", retryable=True) from exc
         ordered = sorted(response.data, key=lambda item: item.index)
         if len(ordered) != len(texts):
-            raise RuntimeError("임베딩 응답 개수가 입력과 다릅니다.")
+            raise EmbeddingError("임베딩 응답 개수가 입력과 다릅니다.", retryable=True)
         return [item.embedding for item in ordered]
 
 
@@ -73,8 +111,9 @@ def create_text_embedder() -> TextEmbedder:
         return ChromaDefaultTextEmbedder()
     if provider == "openai":
         return OpenAITextEmbedder()
-    raise RuntimeError(
-        "GITORY_EMBEDDING_PROVIDER는 chroma-default 또는 openai여야 합니다."
+    raise EmbeddingError(
+        "GITORY_EMBEDDING_PROVIDER는 chroma-default 또는 openai여야 합니다.",
+        retryable=False,
     )
 
 

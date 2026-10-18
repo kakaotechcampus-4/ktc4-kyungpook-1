@@ -156,7 +156,7 @@ Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드�
 **`evidence.authoredBy`**
 
 `AI` | `USER`. **AI 문장은 근거가 1개 이상 필요하고, USER 문장은 커밋·되묻기 근거가 없어도 허용된다.**
-실제 `EvidenceResponse`는 COMMIT이면 AI, USER_STATED/USER_SELECTED이면 USER로 authoredBy를 매핑합니다. 별도 DB 컬럼을 요구하지 않습니다. 현재 카드 응답의 COMMIT 근거는 수만큼 반환하지만 sha/url/snippet/turnNo는 null일 수 있으므로 FE는 근거 링크나 턴 번호를 만들어 내지 않습니다. Mock 시드의 알려진 링크·턴 정보는 데모 데이터입니다.
+실제 `EvidenceResponse`는 COMMIT이면 AI, USER_STATED/USER_SELECTED이면 USER로 authoredBy를 매핑합니다. 별도 DB 컬럼을 요구하지 않습니다. COMMIT 근거는 연결된 커밋마다 한 줄이고, `sha`는 앞 7자리, `url`은 카드 저장소의 GitHub 커밋 주소입니다. 저장소가 없는 카드나 커밋을 찾지 못한 근거는 `url`(또는 `sha`)이 null이고, snippet은 아직 늘 null입니다. FE는 null인 근거 링크나 턴 번호를 만들어 내지 않습니다. Mock 시드의 알려진 링크·턴 정보는 데모 데이터입니다.
 API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `USER_SELECTED` 만 쓴다 —
 `user_written`, `inferred` 같은 소문자 내부값은 외부로 내보내지 않는다.
 

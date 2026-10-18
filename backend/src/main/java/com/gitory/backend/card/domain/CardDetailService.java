@@ -6,6 +6,8 @@ import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.card.port.CardGenerationPort;
+import com.gitory.backend.ingest.domain.CommitSummary;
+import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositoryReferenceService;
 import com.gitory.backend.recommend.domain.CandidateReference;
@@ -17,9 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -38,6 +42,7 @@ public class CardDetailService {
     private final CardGenerationPort generationJobs;
     private final InterviewTurnRepository turns;
     private final CardSlotNoteRepository notes;
+    private final CommitSummaryService commitSummaries;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public CardDetail load(UUID publicId, Long userId) {
@@ -57,7 +62,17 @@ public class CardDetailService {
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
                 card.getPeriod(), repository, current.getSource(), current.getUpdatedAt(), slots,
                 card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(), candidate, generationOf(card),
-                answeredCount(asked), turnNosOf(slots, asked), notesOf(card));
+                answeredCount(asked), turnNosOf(slots, asked), notesOf(card), commitsOf(slots));
+
+    }
+
+    // 근거 커밋의 sha 로 화면이 GitHub 커밋 링크를 걸 수 있게, 네 칸의 커밋을 한 번에 읽는다
+    private Map<Long, CommitSummary> commitsOf(VersionSlots slots) {
+
+        Set<Long> commitIds = new LinkedHashSet<>();
+        slots.slots().values().forEach(slot -> commitIds.addAll(slot.commitIds()));
+
+        return commitIds.isEmpty() ? Map.of() : commitSummaries.findByIds(commitIds);
 
     }
 

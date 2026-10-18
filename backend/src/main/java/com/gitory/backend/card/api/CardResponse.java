@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -68,7 +67,8 @@ public record CardResponse(
                 continue;
             }
             if (slot.evidenceType() == EvidenceType.COMMIT) {
-                evidence.addAll(Collections.nCopies(slot.commitIds().size(), EvidenceResponse.commit(field)));
+                slot.commitIds().forEach(commitId ->
+                        evidence.add(EvidenceResponse.commit(field, card.commits().get(commitId), card.repository())));
             } else {
                 evidence.add(EvidenceResponse.user(field, slot.evidenceType(), card.turnNos().get(field)));
             }

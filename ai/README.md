@@ -74,7 +74,7 @@ python ai/scripts/export_openapi.py --output docs/openapi/ai.json
 `INVALID_PAYLOAD`입니다. FastAPI 기본 422 문서는 실제 400 핸들러에 맞게 제거했습니다.
 수집의 404(`RESOURCE_NOT_FOUND`)·502(`GITHUB_API_ERROR`)도 공통 오류 봉투로
 문서화했습니다. 분석 API의 LLM 실패는 503 `LLM_UNAVAILABLE` 봉투이고, 처리하지 못한
-내부 예외만 기본 서버 오류(500, text/plain)입니다.
+내부 예외도 500 `INTERNAL_ERROR`(재시도 불가) 봉투입니다.
 
 문서 설정과 추가 응답 정의는 FastAPI 공식 문서의
 [Metadata and Docs URLs](https://fastapi.tiangolo.com/tutorial/metadata/),

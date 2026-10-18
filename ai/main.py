@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 from fastapi import FastAPI, Request
@@ -22,11 +23,23 @@ from api.job_postings import router as job_postings_router
 from api.matching import router as matching_router
 from schemas.common import Envelope, ErrorDetail, Meta
 
+logger = logging.getLogger(__name__)
+
+MAX_LOGGED_VALIDATION_ERRORS = 5
+
 
 async def handle_request_validation_error(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
-    """Pydantic 요청 검증 실패를 공통 에러 봉투(INVALID_PAYLOAD, 0-3/0-4)로 변환한다."""
+    """Pydantic 요청 검증 실패를 공통 에러 봉투(INVALID_PAYLOAD, 0-3/0-4)로 변환한다.
+
+    틀린 입력값에는 요청 본문 조각이 실릴 수 있어 칸의 위치와 종류만 최대 5개 남긴다.
+    """
+    problems = ", ".join(
+        f"{'.'.join(str(part) for part in error['loc'])}:{error['type']}"
+        for error in exc.errors()[:MAX_LOGGED_VALIDATION_ERRORS]
+    )
+    logger.warning("AI 요청 검증 실패: path=%s errors=%s", request.url.path, problems)
     envelope = Envelope(
         success=False,
         data=None,
@@ -40,8 +53,33 @@ async def handle_request_validation_error(
     return JSONResponse(status_code=400, content=jsonable_encoder(envelope))
 
 
+async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+    """처리하지 못한 예외를 INTERNAL_ERROR 봉투 500으로 바꾼다.
+
+    traceback은 uvicorn이 이미 남기므로 경로와 예외 종류만 한 줄로 남긴다.
+    """
+    logger.error("AI 처리 못 한 예외: path=%s exc=%s", request.url.path, type(exc).__name__)
+    envelope = Envelope(
+        success=False,
+        data=None,
+        meta=Meta(model=None, tool_calls_made=0, processing_ms=0),
+        error=ErrorDetail(
+            code="INTERNAL_ERROR",
+            message="AI 내부 오류로 처리하지 못했습니다.",
+            retryable=False,
+        ),
+    )
+    return JSONResponse(status_code=500, content=jsonable_encoder(envelope))
+
+
+def configure_logging() -> None:
+    """레벨과 로거 이름이 보이게 루트 로거를 한 번 설정하고, 이미 설정돼 있으면 건드리지 않는다."""
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+
+
 def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
     """실행 앱과 오프라인 문서 export가 동일한 라우터·스키마를 사용한다."""
+    configure_logging()
     if docs_enabled is None:
         docs_enabled = os.getenv("AI_DOCS_ENABLED", "true").strip().lower() in {
             "true", "1", "yes", "on"
@@ -81,6 +119,7 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
     application.add_exception_handler(
         RequestValidationError, handle_request_validation_error
     )
+    application.add_exception_handler(Exception, handle_unexpected_error)
 
     default_openapi = application.openapi
 

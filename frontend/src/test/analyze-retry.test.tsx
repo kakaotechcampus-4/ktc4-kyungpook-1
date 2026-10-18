@@ -23,9 +23,14 @@ for (const state of ['FAILED', 'SUCCEEDED'] as const) {
     render(<QueryClientProvider client={client}><MemoryRouter initialEntries={['/repos/r_auth/run?job=job']}><Routes>
       <Route path="/repos/:repoId/run" element={<AnalyzePage />} />
     </Routes></MemoryRouter></QueryClientProvider>);
-    const retry = screen.getByRole('button', { name: state === 'FAILED' ? '다시 시도' : '이어 읽기' });
+    const retry = screen.queryByRole('button', { name: state === 'FAILED' ? '다시 시도' : '이어 읽기' });
     if (retryable === true) expect(retry).toBeEnabled();
-    else expect(retry).toBeDisabled();
+    else expect(retry).not.toBeInTheDocument(); // 서버가 열지 않은 재시도는 눌러 볼 수 있는 것처럼 보이지 않게 항목 자체를 두지 않는다
+    if (state === 'FAILED' && retryable !== true) {
+      expect(screen.queryByText('이 작업은 다시 시도할 수 없어요')).not.toBeInTheDocument();
+      expect(screen.getByText('다른 저장소 고르기')).toBeInTheDocument(); // 대신 할 수 있는 일은 그대로 있다
+      expect(screen.getByText('직접 쓰기')).toBeInTheDocument();
+    }
     client.clear();
   });
 }

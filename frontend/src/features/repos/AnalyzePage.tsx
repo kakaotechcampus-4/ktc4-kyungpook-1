@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useActiveJobs, useJob, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton, Track } from '@/components/ui';
+import { JobLiveness } from '@/components/JobLiveness';
 import { minutes } from '@/lib/format';
 import { isCounting } from '@/lib/repoCounts';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
@@ -114,8 +115,8 @@ export function AnalyzePage() {
         <div className="card stack" style={{ gap: 10, padding: '18px 20px' }}>
           <span className="w-600" style={{ fontSize: 14 }}>이렇게 해 보시겠어요</span>
           {[
-            ['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : canRetry ? '분석을 다시 요청해요' : '이 작업은 다시 시도할 수 없어요',
-              <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>],
+            ...(blocked || canRetry ? [['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : '분석을 다시 요청해요',
+              <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>]] : []),
             ['다른 저장소 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">이동</Link>],
             ['직접 쓰기', 'GitHub 없이 바로 쓸 수 있어요', <Link key="c" to="/cards/new" className="btn btn--outline btn--sm">이동</Link>],
           ].map(([t, d, b], i) => (
@@ -141,7 +142,7 @@ export function AnalyzePage() {
             <span className="w-600" style={{ fontSize: 15 }}>{code ? jobErrorTitle[code] : '일부 기록만 분석했어요'}</span>
             <span className="c-2" style={{ fontSize: 12.5, lineHeight: '20px' }}>{readNote(j)} {code && jobErrorHint[code]}</span>
           </div>
-          {(code !== 'COLLECTION_CAPPED' || canRetry) && (
+          {(canRetry || waitSec > 0) && (
             <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
               {waitSec > 0 ? `${minutes(waitSec)} 뒤 이어 읽기` : '이어 읽기'}
             </Button>
@@ -171,13 +172,14 @@ export function AnalyzePage() {
               <span className="w-700" style={{ fontSize: 14 }}>{doneCount} / {j.steps.length} 단계</span>
               <span className="right t-12l c-2">{j.state === 'SUCCEEDED' ? '완료 — 후보 보드로 갈게요' : '조금만 기다려 주세요'}</span>
             </div>
-            <Track value={progress} label="분석 진행률" />
+            <Track value={progress} label="분석 진행률" live={!isTerminal(j.state)} />
+            <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />
             <ol className="stages">
               {j.steps.map((s) => {
                 const status = stepView(s);
                 return (
                   <li key={s.key} className={`stage stage--${status}`}>
-                    <span className="stage__icon" aria-hidden>{status === 'DONE' ? '✓' : ''}</span>
+                    <span className="stage__icon" aria-hidden>{status === 'DONE' ? '✓' : status === 'NOW' ? <span className="spinner spinner--sm" /> : ''}</span>
                     <div className="stack grow" style={{ gap: 3 }}>
                       <span className="stage__label">{jobStepLabel[s.key]}</span>
                       <span className="stage__detail">{stepDetail(s.done, s.total, jobStepUnit[s.key], s.state)}</span>

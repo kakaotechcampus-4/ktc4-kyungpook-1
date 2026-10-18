@@ -69,6 +69,7 @@ def test_openapi_documents_actual_validation_and_collection_errors() -> None:
         operation = document["paths"][path]["post"]
         assert "미구현" not in operation["summary"]
         assert "LLM_UNAVAILABLE" in operation["responses"]["503"]["description"]
+        assert operation["responses"]["500"]["content"]["application/json"]["schema"]["$ref"].endswith("/ErrorEnvelope")
 
 
 @pytest.mark.parametrize("setting", ["false", "0", "off"])

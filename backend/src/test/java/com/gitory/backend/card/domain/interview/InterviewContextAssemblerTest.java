@@ -1,6 +1,8 @@
 package com.gitory.backend.card.domain.interview;
 
+import com.gitory.backend.agent.port.InterviewCandidate;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
+import com.gitory.backend.agent.port.InterviewCommit;
 import com.gitory.backend.agent.port.InterviewConfidence;
 import com.gitory.backend.agent.port.InterviewMissingSlot;
 import com.gitory.backend.agent.port.InterviewQuestionRequest;
@@ -12,24 +14,34 @@ import com.gitory.backend.card.domain.EvidenceType;
 import com.gitory.backend.card.domain.SlotContent;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.domain.VersionSlots;
+import com.gitory.backend.ingest.domain.CommitSummary;
+import com.gitory.backend.ingest.domain.CommitSummaryService;
+import com.gitory.backend.ingest.domain.DraftCommit;
+import com.gitory.backend.recommend.domain.CandidateDraftSource;
+import com.gitory.backend.recommend.domain.CandidateDraftSourceService;
+import com.gitory.backend.recommend.domain.CandidateType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.mockito.MockedStatic;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class InterviewContextAssemblerTest {
@@ -38,6 +50,8 @@ class InterviewContextAssemblerTest {
     private static final short CURRENT_VERSION = 3;
 
     private final CardVersionReader reader = mock(CardVersionReader.class);
+    private final CandidateDraftSourceService draftSources = mock(CandidateDraftSourceService.class);
+    private final CommitSummaryService commitSummaries = mock(CommitSummaryService.class);
     private Card card;
 
     @BeforeEach
@@ -128,28 +142,98 @@ class InterviewContextAssemblerTest {
     }
 
     @Test
-    @DisplayName("확신도가 비어 있는 커밋 근거 칸은 LOW 이고, 근거 커밋이 있어도 linked_commits 는 빈 배열이다")
-    void sendsLowAndNoLinkedCommitsForCommitSlotWithoutConfidence() {
+    @DisplayName("확신도가 비어 있는 커밋 근거 칸은 LOW 로 보낸다")
+    void sendsLowForCommitSlotWithoutConfidence() {
 
         slots(Map.of(StarField.T, slot(StarField.T, "글", EvidenceType.COMMIT, null, List.of(31L, 32L))));
 
-        InterviewMissingSlot sent = assembler(2).assemble(card, StarField.T, 0).missingSlots().get(0);
-
-        assertThat(sent.confidence()).isEqualTo(InterviewConfidence.LOW);
-        assertThat(sent.linkedCommits()).isEmpty();
+        assertThat(confidenceSent(StarField.T)).isEqualTo(InterviewConfidence.LOW);
 
     }
 
     @Test
-    @DisplayName("출처 종류는 InterviewSourceType.of 한 곳에서 받은 값을 그대로 쓴다")
-    void takesSourceTypeFromTheSingleMethod() {
+    @DisplayName("커밋이 없는 직접 만든 후보 카드도 후보를 null 로 두지 않고 빈 목록으로 COMMIT_CLUSTER 와 함께 보낸다")
+    void sendsEmptyCandidateForManualCandidateWithoutCommits() {
 
-        try (MockedStatic<InterviewSourceType> source = mockStatic(InterviewSourceType.class, CALLS_REAL_METHODS)) {
-            source.when(() -> InterviewSourceType.of(card)).thenReturn(InterviewSourceType.COMMIT_CLUSTER);
+        cardOfCandidate(9L, source(CandidateType.MANUAL, null));
 
-            assertThat(assembler(2).assemble(card, StarField.T, 0).sourceType())
-                    .isEqualTo(InterviewCardSourceType.COMMIT_CLUSTER);
-        }
+        InterviewQuestionRequest request = assembler(2).assemble(card, StarField.T, 0);
+
+        assertThat(request.candidate()).isEqualTo(new InterviewCandidate(null, List.of(), List.of(), List.of()));
+        assertThat(request.sourceType()).isEqualTo(InterviewCardSourceType.COMMIT_CLUSTER);
+        verifyNoInteractions(commitSummaries);
+
+    }
+
+    @Test
+    @DisplayName("후보 커밋은 초안과 같은 조회에 50개를 물어 받은 순서 그대로 보낸다")
+    void sendsCandidateCommitsInTheOrderOfTheDraftQuery() {
+
+        cardOfCandidate(9L, source(CandidateType.PR, 7, draft(2L, "b"), draft(1L, "a")));
+        summaries(summary(1L, "a", "첫째"), summary(2L, "b", "둘째"));
+
+        InterviewQuestionRequest request = assembler(2).assemble(card, StarField.T, 0);
+
+        assertThat(request.candidate().commits()).containsExactly(new InterviewCommit(2L, "b", "둘째"),
+                new InterviewCommit(1L, "a", "첫째"));
+        verify(draftSources).load(9L, 50);
+
+    }
+
+    @ParameterizedTest(name = "{index}")
+    @ValueSource(strings = {"\n  feat: 인덱스 추가  \n\n이유 본문\n\nCo-Authored-By: a <a@b>", "feat: 인덱스 추가\r본문",
+            "feat: 인덱스 추가\u2028본문", "feat: 인덱스 추가"})
+    @DisplayName("메시지는 빈 글이 아닌 첫 줄만 앞뒤 공백을 지워 보낸다")
+    void sendsOnlyTheFirstNonBlankLineOfTheMessage(String message) {
+
+        cardOfCandidate(9L, source(CandidateType.PR, 7, draft(1L, "a")));
+        summaries(summary(1L, "a", message));
+
+        assertThat(assembler(2).assemble(card, StarField.T, 0).candidate().commits())
+                .containsExactly(new InterviewCommit(1L, "a", "feat: 인덱스 추가"));
+
+    }
+
+    @ParameterizedTest(name = "{0}자")
+    @CsvSource({"200, 200, false", "201, 200, true"})
+    @DisplayName("첫 줄이 200 코드 포인트를 넘을 때만 앞 200 코드 포인트와 줄임표를 보내고, 이모지를 반으로 가르지 않는다")
+    void truncatesLongFirstLineByCodePoints(int length, int kept, boolean ellipsis) {
+
+        cardOfCandidate(9L, source(CandidateType.PR, 7, draft(1L, "a")));
+        summaries(summary(1L, "a", "😀".repeat(length)));
+
+        assertThat(assembler(2).assemble(card, StarField.T, 0).candidate().commits().get(0).message())
+                .isEqualTo("😀".repeat(kept) + (ellipsis ? "…" : ""));
+
+    }
+
+    @ParameterizedTest(name = "{index}")
+    @ValueSource(strings = {"", " \t\n", "\u00a0", "\u0085\u3000", "\ufeff"})
+    @DisplayName("메시지가 없거나 공백·NBSP·U+0085·U+FEFF 만 있는 커밋은 후보 커밋과 근거 커밋에서 모두 뺀다")
+    void dropsCommitsWithoutAMessageFromBothLists(String blank) {
+
+        cardOfCandidate(9L, source(CandidateType.PR, 7, draft(1L, "a"), draft(2L, "b"), draft(3L, "c")));
+        slots(Map.of(StarField.T, slot(StarField.T, "글", EvidenceType.COMMIT, null, List.of(1L, 3L))));
+        summaries(summary(1L, "a", blank), summary(2L, "b", "남는 커밋"), summary(3L, "c", null));
+
+        InterviewQuestionRequest request = assembler(2).assemble(card, StarField.T, 0);
+
+        assertThat(request.candidate().commits()).containsExactly(new InterviewCommit(2L, "b", "남는 커밋"));
+        assertThat(request.missingSlots().get(0).linkedCommits()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("칸에 이어진 근거 커밋을 저장된 순서대로 linked_commits 로 보내고, 조회되지 않은 커밋은 뺀다")
+    void sendsLinkedCommitsInStoredOrder() {
+
+        slots(Map.of(StarField.T, slot(StarField.T, "글", EvidenceType.COMMIT, null, List.of(32L, 31L, 33L))));
+        summaries(summary(31L, "x", "feat: 31"), summary(32L, "y", "feat: 32"));
+
+        InterviewMissingSlot sent = assembler(2).assemble(card, StarField.T, 0).missingSlots().get(0);
+
+        assertThat(sent.linkedCommits()).containsExactly(new InterviewCommit(32L, "y", "feat: 32"),
+                new InterviewCommit(31L, "x", "feat: 31"));
 
     }
 
@@ -172,9 +256,41 @@ class InterviewContextAssemblerTest {
 
     }
 
+    private void cardOfCandidate(Long candidateId, CandidateDraftSource source) {
+
+        ReflectionTestUtils.setField(card, "candidateId", candidateId);
+        when(draftSources.load(candidateId, 50)).thenReturn(Optional.of(source));
+
+    }
+
+    private static CandidateDraftSource source(CandidateType type, Integer prNumber, DraftCommit... commits) {
+
+        return new CandidateDraftSource(UUID.randomUUID(), type, prNumber, null, List.of(commits));
+
+    }
+
+    private static DraftCommit draft(Long id, String sha) {
+
+        return new DraftCommit(id, sha);
+
+    }
+
+    private static CommitSummary summary(Long id, String sha, String message) {
+
+        return new CommitSummary(id, sha, message, null);
+
+    }
+
+    private void summaries(CommitSummary... summaries) {
+
+        when(commitSummaries.findByIds(anyCollection())).thenReturn(Arrays.stream(summaries)
+                .collect(Collectors.toMap(CommitSummary::id, summary -> summary)));
+
+    }
+
     private InterviewContextAssembler assembler(int maxTurns) {
 
-        return new InterviewContextAssembler(reader, new InterviewLimits(maxTurns));
+        return new InterviewContextAssembler(reader, draftSources, commitSummaries, new InterviewLimits(maxTurns));
 
     }
 }

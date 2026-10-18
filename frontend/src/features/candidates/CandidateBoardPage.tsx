@@ -37,9 +37,9 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const actions = useActionGate();
   const nav = useNavigate();
   const [q, setQ] = useState('');
-  const [hideUsed, setHideUsed] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => loadSel(repoId));
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showUsed, setShowUsed] = useState(false); // 이미 카드로 만든 후보 행을 목록 아래에 펼칠지
   useDocumentTitle(repo.data ? `${repo.data.name} 후보 보드` : '후보 보드');
 
   // 선택은 새로고침·이탈 후 복귀에도 남는다 (되돌릴 수 있는 결정이라 서버엔 안 쓴다)
@@ -47,7 +47,11 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   useEffect(() => { if (board.data && board.data.verdict !== 'EMPTY') track('candidates_shown', { repoId, count: board.data.candidates.length, partial: board.data.partial }); }, [board.data, repoId]);
 
   const cands = board.data?.candidates ?? [];
-  const visible = useMemo(() => cands.filter((c) => c.status !== 'EXCLUDED' && (!hideUsed || c.status !== 'USED') && (c.title + c.reason).toLowerCase().includes(q.toLowerCase())), [cands, hideUsed, q]);
+  // 이미 카드로 만든(USED) 후보는 다시 고를 수 없으니 기본 목록에서 빼고, 아래 접힌 구역에 개수와 함께 둔다("카드 보기"로 가는 길은 남긴다)
+  const needle = q.toLowerCase();
+  const matches = (c: Candidate) => (c.title + c.reason).toLowerCase().includes(needle);
+  const visible = useMemo(() => cands.filter((c) => c.status !== 'EXCLUDED' && c.status !== 'USED' && (c.title + c.reason).toLowerCase().includes(needle)), [cands, needle]);
+  const usedList = cands.filter((c) => c.status === 'USED' && matches(c));
   const excluded = cands.filter((c) => c.status === 'EXCLUDED');
   const selectable = new Set(cands.filter((c) => c.status === 'NEW').map((c) => c.id));
   const chosen = [...selected].filter((id) => selectable.has(id));
@@ -80,6 +84,14 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       if (failures) toast(`${results.length - failures}개 복원 · ${failures}개는 다시 시도해 주세요`, { tone: 'danger' });
     });
   };
+  const row = (c: Candidate) => (
+    <CandidateRow key={c.id} c={c} disabled={busy} selected={selected.has(c.id)} onToggle={() => toggle(c.id)} onExclude={() => exclude(c)}
+      expanded={expanded === c.id} onExpand={() => setExpanded(expanded === c.id ? null : c.id)}
+      onCommitToggle={(shas) => { void actions.run(async () => {
+        await patch.mutateAsync({ id: c.id, excludedShas: shas });
+        track('cluster_commit_excluded', { candidateId: c.id, excluded: shas.length });
+      }); }} />
+  );
   const makeCards = async () => {
     if (chosen.length === 0) return;
     await actions.run(async () => {
@@ -138,7 +150,6 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       )}
 
       <Toolbar placeholder="후보 검색 (제목·추천 이유)" value={q} onChange={setQ}>
-        <Button variant="text" size="sm" onClick={() => setHideUsed((v) => !v)} aria-pressed={hideUsed}>{hideUsed ? '사용됨 보이기' : '사용됨 숨기기'}</Button>
         <Button disabled={busy} onClick={() => setSp((current) => { current.set('add', '1'); return current; })}>+ 직접 추가</Button>
       </Toolbar>
       <SectionHead label="후보 선택" count={visible.length} right={
@@ -150,15 +161,17 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       } />
 
       <div className="record-list">
-        {visible.map((c) => (
-          <CandidateRow key={c.id} c={c} disabled={busy} selected={selected.has(c.id)} onToggle={() => toggle(c.id)} onExclude={() => exclude(c)}
-            expanded={expanded === c.id} onExpand={() => setExpanded(expanded === c.id ? null : c.id)}
-            onCommitToggle={(shas) => { void actions.run(async () => {
-              await patch.mutateAsync({ id: c.id, excludedShas: shas });
-              track('cluster_commit_excluded', { candidateId: c.id, excluded: shas.length });
-            }); }} />
-        ))}
-        {visible.length === 0 && <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="검색 조건에 맞는 후보가 없어요" tone="inset" /><Button variant="outline" onClick={() => { setQ(''); setHideUsed(false); }}>검색 초기화</Button></div>}
+        {visible.map((c) => row(c))}
+        {visible.length === 0 && (q || usedList.length === 0
+          ? <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="검색 조건에 맞는 후보가 없어요" tone="inset" /><Button variant="outline" onClick={() => setQ('')}>검색 초기화</Button></div>
+          : <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="남은 후보가 없어요" tone="inset">후보를 모두 카드로 만들었어요. 아래에서 만든 카드를 볼 수 있어요.</Note></div>)}
+        {usedList.length > 0 && (
+          <button type="button" className="record-list__more" aria-expanded={showUsed} onClick={() => setShowUsed((open) => !open)}>
+            <span>이미 카드로 만든 후보 {usedList.length}개 · {showUsed ? '접기' : '보기'}</span>
+            {showUsed ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
+          </button>
+        )}
+        {showUsed && usedList.map((c) => row(c))}
       </div>
 
       <StickyFooter strong={`${chosen.length}개 선택`}>

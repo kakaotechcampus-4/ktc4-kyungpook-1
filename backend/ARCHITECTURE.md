@@ -23,7 +23,7 @@
 ```
 바깥  기능별 수직 분할 (모듈러 모놀리스)   consent · ingest · evidence · …
 안    3층 레이어드                        api · domain · infra
-문    포트/어댑터                         ingest.port · agent.port  — 두 곳만
+문    포트/어댑터                         agent·card·consent·ingest·recommend 의 port  — 필요한 곳만
 ```
 
 ### 최상위를 레이어드로 두지 않은 이유
@@ -59,12 +59,14 @@
 |---|---|---|
 | `agent.port` | **모델 제공자가 미확정이다.** 스펙은 `gpt-4.1-mini`, 실측은 `claude -p` 로 돌았고, 스펙은 "학습 사용 비활성화를 계약으로 확인 못 하는 제공자는 안 쓴다"고 못 박았다 | 비밀값·원문이 프롬프트로 새는 것 |
 | `ingest.port` | GitHub API 버전 · 증분 수집 전략 | **선택 안 한 저장소 접근**(ADR-0003). 범위 제한이 흩어지면 안 된다 |
+| `consent.port` | GitHub 에 접근하는 방식 | **GitHub 토큰이 consent 밖으로 나가는 것.** 토큰이 필요한 호출은 consent 안에서 하고 결과만 돌려준다 |
 
-나머지 일곱 모듈은 갈아끼울 대상이 없다. `card` 의 저장소를 PostgreSQL 말고 뭘로 바꾸겠나.
-거기 포트를 달면 코드만 늘고 얻는 게 없다.
+나머지 모듈은 갈아끼울 대상이 없다. `card` 의 저장소를 PostgreSQL 말고 뭘로 바꾸겠나.
+거기 포트를 달면 코드만 늘고 얻는 게 없다. `card.port`·`recommend.port` 와 `consent`·`ingest` 의 일부 포트(`MeStatsPort`·`RepositoryCandidateCardPort`)는
+갈아끼우려는 게 아니라, 다른 모듈 타입을 몰라야 해서 인터페이스만 두고 구현은 `job` 이 맡는 자리다.
 
 **한 줄 요약** — 모듈러 모놀리스 + 선택적 포트. 수직 경계는 도메인 결합을 막으려고,
-수평 3층은 각 모듈 안의 읽는 순서 때문에, 포트는 진짜 갈아끼울 두 곳에만.
+수평 3층은 각 모듈 안의 읽는 순서 때문에, 포트는 갈아끼울 곳과 모듈 의존 방향을 지켜야 하는 곳에만.
 `agent` 를 별도 서비스로 떼는 길은 이미 열려 있다 — **필요해지면 그때 옮기고,
 지금부터 그 비용을 내지는 않는다.**
 
@@ -104,11 +106,11 @@ ktc4-kyungpook-1/
 │     ├─ main/java/com/gitory/backend/
 │     │  ├─ GitoryApplication.java
 │     │  ├─ common/api/             ApiResponse · ErrorCode · CursorPage
-│     │  ├─ consent/                연결·동의 경계
+│     │  ├─ consent/                연결·동의 경계          (+ port/)
 │     │  ├─ ingest/                 수집·정규화·기여 집계   (+ port/)
-│     │  ├─ recommend/              후보 저장·보존 (경험 그룹화는 agent)
+│     │  ├─ recommend/              후보 저장·보존 (경험 그룹화는 agent) (+ port/)
 │     │  ├─ agent/                  LLM 경계                (+ port/)
-│     │  ├─ card/                   카드·되묻기·근거
+│     │  ├─ card/                   카드·되묻기·근거        (+ port/)
 │     │  │  └─ domain/
 │     │  │     ├─ compose/          초안 조립      — agent 호출
 │     │  │     ├─ interview/        되묻기 턴      — agent 호출
@@ -134,7 +136,7 @@ ktc4-kyungpook-1/
 | `api` | 컨트롤러 · 요청/응답 DTO | 엔티티를 직접 노출하지 않는다 |
 | `domain` | 엔티티 · 도메인 서비스 | `api` 를 참조하지 않는다 |
 | `infra` | 리포지토리 · 외부 클라이언트 | **같은 모듈 밖에서 참조 불가** |
-| `port` | 모듈 간 계약 인터페이스 | `agent`·`ingest` 에만 있다 |
+| `port` | 모듈 간 계약 인터페이스 | `agent`·`card`·`consent`·`ingest`·`recommend` 에만 있다 |
 
 ## 모듈 경계 — 테스트로 강제되는 것
 
@@ -179,7 +181,7 @@ BUILD SUCCESSFUL
         │
         ▼
       job  ─────────── 오케스트레이션. 여기서만 아래를 호출한다 (읽기 전용 조회는 허용 — 아래 참고)
-        ├─ 수집·정규화·기여 집계   ingest      (GitHub 을 보는 유일한 곳)
+        ├─ 수집·정규화·기여 집계   ingest      (GitHub 호출은 토큰을 가진 consent 의 포트를 거친다)
         ├─ 경험 그룹화             agent       (LLM. AI 의 경험 그룹화 API 를 부른다)
         └─ 후보 저장·보존          recommend   (결정적. 사용자가 손댄 후보는 다시 분석해도 지킨다)
         │
@@ -419,7 +421,7 @@ S/T/A/R 텍스트만 받고 인터뷰를 안 거친다. V1 은 이 경로를 통
 |---|---|---|---|
 | 2 | `needsReview` 계산 위치 | **서버.** 세 화면이 같은 규칙을 쓴다 | 프론트 제안대로 |
 | 3 | `lowCardWorth` 규칙 vs 모델 | **규칙.** 문서 전용 변경·변경량 임계·근거 1건은 전부 정수 비교 | 팀·개인 판정이 552토큰 메타데이터로 3/3 정답. 근거값이 전부 정수·문자열이었다 |
-| 4 | `myCommitCount`/`teamCommitCount` 세는 법 | `recommend` 모듈. 함정 셋을 밟아야 한다 | ↓ |
+| 4 | `myCommitCount`/`teamCommitCount` 세는 법 | `ingest`(`RepositoryContributionService`)가 셀 저장소를 고르고 결과를 저장한다. GitHub 질의와 머지 커밋 빼기는 토큰 때문에 `consent`(`GithubCountClient`·`GithubCollectionAccess`)에 있다. 함정 셋을 밟아야 한다 | ↓ |
 
 **#4 의 함정 셋** — 실측에서 전부 밟았다.
 

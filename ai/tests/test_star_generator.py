@@ -142,14 +142,16 @@ def test_drops_unknown_shas_and_removes_claims_without_any_evidence() -> None:
     assert result.missing_fields == ["S", "T", "R"]
 
 
-def test_allows_text_backed_only_by_confirmed_answers() -> None:
+def test_text_backed_only_by_confirmed_answers_is_kept_for_user_review() -> None:
     client = _FakeClient(_output(R=_field("FILLED", "배포 후 로그인 오류 문의가 사라졌다.", [])))
 
     result = _run(StarGenerator(client), _request(_evidence(SHA_A), answers=["배포 후 로그인 오류 문의가 사라졌어요"]))
 
-    assert result.star["R"].status == "FILLED"
+    assert (result.star["R"].status, result.star["R"].confidence) == ("NEEDS_REVIEW", "LOW")
+    assert "답변" in result.star["R"].review_reason
     assert result.star["R"].evidence == []
     assert result.removed_claims == []
+    assert "R" not in result.missing_fields
 
 
 def test_marks_unsourced_numeric_draft_for_user_review_without_dropping_it() -> None:

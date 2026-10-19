@@ -27,6 +27,13 @@ it('shows a bounded recent-card preview and a full collection link on home', () 
   expect(document.querySelectorAll('.experience-item')).toHaveLength(3);
   expect(screen.getByRole('link', { name: /모든 카드 보기/ })).toHaveAttribute('href', '/cards');
 });
+it('counts every card on home even though only three are previewed', () => {
+  mount(<HomePage />);
+  const total = (handle('GET', '/cards', new URLSearchParams(), {}, true).data as unknown[]).length;
+  expect(total).toBeGreaterThan(3);
+  const head = screen.getByRole('heading', { name: '최근 경험 카드' }).parentElement!;
+  expect(head.querySelector('.section-head__count')).toHaveTextContent(String(total));
+});
 it('explains search misses without claiming a private-repository permission problem', () => {
   mount(<ReposPage />, '/repos');
   fireEvent.change(screen.getByRole('textbox', { name: '레포 이름 검색' }), { target: { value: 'no-such-repo' } });

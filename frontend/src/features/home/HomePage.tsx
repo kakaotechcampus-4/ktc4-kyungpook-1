@@ -131,7 +131,7 @@ export function HomePage() {
       ) : (
         <>
           <Toolbar placeholder="카드 이름으로 검색" value={q} onChange={setQ} />
-          <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}><SectionHead label={q.trim() ? '카드 검색 결과' : '최근 경험 카드'} count={preview.length} /><Link to="/cards" className="btn btn--text right">모든 카드 보기</Link></div>
+          <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}><SectionHead label={q.trim() ? '카드 검색 결과' : '최근 경험 카드'} count={q.trim() ? list.length : cards.data?.length} /><Link to="/cards" className="btn btn--text right">모든 카드 보기</Link></div>
           {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
           <div className="experience-list">{preview.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
           {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}" 에 맞는 카드가 없습니다`} desc="다른 이름으로 찾아보세요." />}

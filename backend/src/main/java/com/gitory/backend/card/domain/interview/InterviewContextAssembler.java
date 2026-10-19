@@ -55,7 +55,8 @@ public class InterviewContextAssembler {
 
         SlotContent content = reader.read(card.getId(), card.getCurrentVersion()).slots().get(slot);
         Optional<CandidateDraftSource> source = Optional.ofNullable(card.getCandidateId())
-                .flatMap(candidateId -> draftSources.load(candidateId, COMMIT_LIMIT));
+                .flatMap(candidateId -> draftSources.load(candidateId, COMMIT_LIMIT))
+                .filter(found -> InterviewSourceType.of(found.type()) != InterviewSourceType.DIRECT_CARD);
         List<Long> candidateCommitIds = source.map(found -> found.commits().stream().map(DraftCommit::id).toList())
                 .orElse(List.of());
         List<Long> linkedCommitIds = content == null ? List.of() : content.commitIds();

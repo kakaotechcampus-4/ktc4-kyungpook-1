@@ -58,12 +58,13 @@ public class InterviewTurn {
     private Instant answeredAt;
 
     private InterviewTurn(Long cardId, short seq, StarField starSlot, QuestionType questionType,
-                          String questionText) {
+                          String questionText, TriggerSource triggerSource, Long parentTurnId) {
         this.cardId = cardId;
         this.seq = seq;
         this.starSlot = starSlot;
         this.questionType = questionType;
-        this.triggerSource = TriggerSource.USER;
+        this.triggerSource = triggerSource;
+        this.parentTurnId = parentTurnId;
         this.questionText = questionText;
         this.askedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
@@ -75,7 +76,16 @@ public class InterviewTurn {
     public static InterviewTurn ask(Long cardId, short seq, StarField starSlot, QuestionType questionType,
                                     String questionText) {
 
-        return new InterviewTurn(cardId, seq, starSlot, questionType, questionText);
+        return new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.USER, null);
+
+    }
+
+    /** 답이 모자라 AI 가 같은 칸에 다시 묻는 질문으로, 사용자가 요청한 것이 아니므로 AUTO 이고 어느 질문의 후속인지 남긴다 */
+    public static InterviewTurn followUp(Long cardId, short seq, StarField starSlot, QuestionType questionType,
+                                         String questionText, Long parentTurnId) {
+
+        return new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.AUTO,
+                parentTurnId);
 
     }
 

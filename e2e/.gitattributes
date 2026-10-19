@@ -1,0 +1,2 @@
+# bash 는 CRLF 로 체크아웃된 스크립트를 읽지 못한다
+*.sh text eol=lf

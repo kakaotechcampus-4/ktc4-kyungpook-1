@@ -6,6 +6,7 @@ DB 저장과 Job 상태 관리는 Spring의 책임이다.
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
@@ -37,6 +38,8 @@ from ports.repository_activity import RepositoryActivityExecution
 
 
 GITHUB_API_VERSION = "2022-11-28"
+GITHUB_API_BASE_URL_ENV = "GITORY_GITHUB_API_BASE_URL"
+DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com"
 GITHUB_ACCEPT = "application/vnd.github+json"
 ISSUE_REFERENCE = re.compile(r"(?<![\w/])#(\d+)")
 LOCKFILES = {
@@ -115,12 +118,14 @@ class GithubCollector:
     def __init__(
         self,
         *,
-        base_url: str = "https://api.github.com",
+        base_url: Optional[str] = None,
         limits: CollectionLimits = CollectionLimits(),
         transport: Optional[httpx.AsyncBaseTransport] = None,
         timeout_seconds: float = 30.0,
     ) -> None:
-        self._base_url = base_url
+        # E2E 시험이 가짜 GitHub 으로 바꿀 수 있게 환경변수를 생성 시점에 읽는다
+        configured = os.getenv(GITHUB_API_BASE_URL_ENV, "").strip()
+        self._base_url = (base_url or configured or DEFAULT_GITHUB_API_BASE_URL).rstrip("/")
         self._limits = limits
         self._transport = transport
         self._timeout_seconds = timeout_seconds

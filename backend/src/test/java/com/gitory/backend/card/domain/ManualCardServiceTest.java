@@ -2,6 +2,7 @@ package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.port.CardGenerationPort;
+import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.RepositoryOwnershipService;
 import com.gitory.backend.ingest.domain.RepositoryReferenceService;
 import com.gitory.backend.recommend.domain.CandidateReferenceService;
@@ -40,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @Import({ManualCardService.class, CardDetailService.class, CardOwnershipService.class, CardVersionWriter.class,
         CardVersionReader.class, RepositoryOwnershipService.class, RepositoryReferenceService.class, AuditLog.class,
-        CandidateReferenceService.class})
+        CandidateReferenceService.class, CommitSummaryService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class ManualCardServiceTest {
 

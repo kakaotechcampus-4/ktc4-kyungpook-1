@@ -96,6 +96,11 @@ python ai/scripts/export_openapi.py --output docs/openapi/ai.json
 확인하되 저장된 SHA의 상세 조회를 생략합니다. 따라서 개인 브랜치에서 과거에
 작성됐다가 나중에 기본 브랜치에 합쳐진 commit도 누락되지 않습니다. 응답에는
 현재 기본 브랜치의 `head_sha`를 포함하며 Spring이 저장소 상태로 보관합니다.
+커밋이 하나도 없는 빈 저장소는 실패가 아니라 `head_sha`가 null인 커밋 0개 응답입니다.
+
+PR은 누구 것이든 최근 갱신순 50개를 모으고, 그 밖에서는 내 PR만 50개까지 더 모읍니다.
+남의 오래된 PR이 빠진 것은 부분 수집으로 표시하지 않고, 내 PR이 잘렸을 수 있을 때만
+`partial_reason=CAP_EXCEEDED`로 표시합니다. 커밋·이슈 상한 초과는 지금처럼 부분 수집입니다.
 
 `POST /internal/collect/candidate-details`는 A가 선택한 `commit_shas`
 또는 `github_pr_number`만 다시 조회해 제한된 diff patch를 반환합니다.
@@ -143,6 +148,7 @@ LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 
 |---|---|
 | `GITORY_LLM_BASE_URL`, `GITORY_LLM_API_KEY` | 필수 |
 | `GITORY_LLM_TIMEOUT_SECONDS` | `120` |
+| `GITORY_GITHUB_API_BASE_URL` | `https://api.github.com` |
 | `GITORY_GROUPING_MODEL`, `GITORY_GROUPING_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_DIFF_MODEL`, `GITORY_DIFF_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_STAR_MODEL`, `GITORY_STAR_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |

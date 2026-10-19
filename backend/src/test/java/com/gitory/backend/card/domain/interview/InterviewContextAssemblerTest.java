@@ -1,6 +1,5 @@
 package com.gitory.backend.card.domain.interview;
 
-import com.gitory.backend.agent.port.InterviewCandidate;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
 import com.gitory.backend.agent.port.InterviewCommit;
 import com.gitory.backend.agent.port.InterviewConfidence;
@@ -152,15 +151,15 @@ class InterviewContextAssemblerTest {
     }
 
     @Test
-    @DisplayName("커밋이 없는 직접 만든 후보 카드도 후보를 null 로 두지 않고 빈 목록으로 COMMIT_CLUSTER 와 함께 보낸다")
-    void sendsEmptyCandidateForManualCandidateWithoutCommits() {
+    @DisplayName("직접 추가한 후보로 만든 카드는 후보 null 과 DIRECT_CARD 로 보내고 커밋 요약은 조회하지 않는다")
+    void sendsNullCandidateForManualCandidate() {
 
         cardOfCandidate(9L, source(CandidateType.MANUAL, null));
 
         InterviewQuestionRequest request = assembler(2).assemble(card, StarField.T, 0);
 
-        assertThat(request.candidate()).isEqualTo(new InterviewCandidate(null, List.of(), List.of(), List.of()));
-        assertThat(request.sourceType()).isEqualTo(InterviewCardSourceType.COMMIT_CLUSTER);
+        assertThat(request.candidate()).isNull();
+        assertThat(request.sourceType()).isEqualTo(InterviewCardSourceType.DIRECT_CARD);
         verifyNoInteractions(commitSummaries);
 
     }

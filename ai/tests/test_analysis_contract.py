@@ -29,7 +29,7 @@ _EVIDENCE = {
 class _FakeAnalysisPipeline:
     """라우터 봉투 계약만 검증하기 위한 테스트 대역."""
 
-    async def group_experiences(self, request) -> ExperienceGroupingResponse:
+    async def group_experiences(self, request, deadline=None) -> ExperienceGroupingResponse:
         return ExperienceGroupingResponse(verdict="PARTIAL")
 
     async def analyze_star(self, request) -> StarAnalysisResponse:

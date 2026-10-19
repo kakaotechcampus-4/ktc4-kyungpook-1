@@ -8,6 +8,8 @@ RUN npm ci
 COPY . .
 # 목 API 를 끄고 같은 오리진의 /api 로 요청한다 (R-10).
 ENV VITE_API_MOCK=false
+# 카드 제목·기간 수정 API(#186)가 서버에 있어 실서버에서도 켠다.
+ENV VITE_CARD_METADATA_ENABLED=true
 RUN npm run build
 
 FROM caddy:2-alpine

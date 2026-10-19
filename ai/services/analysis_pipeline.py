@@ -47,7 +47,7 @@ class AnalysisPipeline:
         self.star_generator = star_generator or StarGenerator(EnvironmentLLMClient("STAR"))
 
     async def group_experiences(
-        self, request: ExperienceGroupingRequest
+        self, request: ExperienceGroupingRequest, *, deadline: float | None = None
     ) -> ExperienceGroupingResponse:
         """커밋을 선별하고 같은 기능을 위한 작업을 경험 후보 하나로 묶는다.
 
@@ -72,6 +72,7 @@ class AnalysisPipeline:
             groups,
             pull_requests=request.pull_requests,
             issues=request.issues,
+            deadline=deadline,
         )
         candidates = [
             self.commit_grouper.to_candidate(

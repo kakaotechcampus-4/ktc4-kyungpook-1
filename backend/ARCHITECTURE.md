@@ -116,7 +116,8 @@ ktc4-kyungpook-1/
 │     │  │     ├─ interview/        되묻기 턴      — agent 호출
 │     │  │     └─ evidence/         sha 실재 검증  ★ agent 금지
 │     │  ├─ job/                    분석 오케스트레이터 (비동기)
-│     │  └─ audit/                  정책·감사
+│     │  ├─ audit/                  정책·감사
+│     │  └─ usage/                  화면 사용 지표
 │     ├─ main/resources/
 │     │  ├─ application.yml
 │     │  └─ db/migration/
@@ -278,6 +279,7 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 | `card` | `card` · `card_version` · `card_statement` · `statement_evidence` · `interview_turn` · `interview_option` |
 | `job` | `analysis_job` |
 | `audit` | `audit_event` |
+| `usage` | `usage_event` |
 | `agent` | — (경계 모듈. 테이블이 없는 게 존재 이유다) |
 | `common` | — |
 
@@ -491,11 +493,11 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 - **`fit_*` 등급을 무엇이 매기나.** ERD 주석은 "코드를 통해 매긴 등급"이라고만 한다.
   규칙인지 모델인지에 따라 `recommend` 냐 `agent` 냐가 갈리고, 모듈 경계 테스트가
   그 결정을 강제한다. **`lowCardWorth` 와 같은 종류의 질문이고, 같은 이유로 규칙이 낫다.**
-- **지표 테이블이 없다.** 스펙 목록의 `event_log` 자리를 `audit_event` 가 대신하고 있는데
-  **둘은 목적이 다르다.** `audit_event.action` 은 `CONNECT`·`REVOKE`·`ANALYZE`·
-  `CONFIRM_CARD`·`DELETE_DATA` — 보안 감사다. 후보 편집 같은 **사용자 개입이 행으로 남지
-  않아서 오탐률·놓침률을 계산할 근거가 없다.** 3~4주차 게이트가 여기 걸려 있다.
-  (핵심 설계 결정 3 — *"사용자 개입을 행으로 남긴다"*)
+- **퍼널 숫자는 아직 SQL 로만 센다.** 화면 사용 지표는 `usage` 모듈이 `POST /api/events` 로 받아
+  `usage_event`(V20)에 쌓는다. `audit_event` 는 보안 감사(`CONNECT`·`REVOKE`·`ANALYZE`·
+  `CONFIRM_CARD`·`DELETE_DATA`)라 목적이 다르다. 지표 이름은 자바 허용 목록에만 있어서 화면이
+  이름을 더하면 목록도 같이 고쳐야 한다(거절은 400·415 와 이유 코드만 담은 WARN 로그 한 줄이고, 모르는 이름은 이름도 함께 남는다). 오탐률·놓침률 같은
+  집계 화면은 만들지 않았다.
 - **`analysis_cache` 를 Redis 에 둘지 DB 에 둘지.** 필요한 테이블이라는 데는 합의했고
   초반엔 어느 쪽이든 성능 문제가 없다. `raw_event` 는 목적부터 정해야 한다.
 - **종료 상태의 무결성을 DB 가 안 잡는다.** `state` 가 `SUCCEEDED`/`FAILED`/`CANCELED` 인데

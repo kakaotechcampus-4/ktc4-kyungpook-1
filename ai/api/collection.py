@@ -44,6 +44,8 @@ def get_repository_activity_port() -> RepositoryActivityPort:
     description=(
         "Spring이 전달한 저장소·사용자 문맥으로 commit·PR·review·issue를 수집합니다. "
         "복구 가능한 일부 수집 실패와 상한 초과는 HTTP 200의 partial=true 및 partial_reason으로 표시합니다. "
+        "PR 은 최근 갱신순 상한 밖의 남의 PR 이 빠진 것은 부분 수집으로 표시하지 않고, 내 PR 이 잘렸을 수 있을 때만 표시합니다. "
+        "커밋이 없는 빈 저장소는 head_sha=null·커밋 0개로 반환합니다. "
         "원본 전체 diff는 반환하지 않으며 본문은 제한된 excerpt만 반환합니다. "
         "GitHub 토큰은 헤더로만 전달하고 본문·응답·DB에 저장하지 않습니다."
     ),

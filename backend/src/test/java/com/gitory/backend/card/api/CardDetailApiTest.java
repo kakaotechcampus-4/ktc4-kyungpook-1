@@ -191,6 +191,31 @@ class CardDetailApiTest {
     }
 
     @Test
+    @DisplayName("커밋 근거는 그 커밋의 앞 7자리 sha 와 카드 저장소의 GitHub 커밋 주소를 싣고, 저장소가 없는 카드는 sha 만 싣고 주소를 지어내지 않는다")
+    void commitEvidenceCarriesShortShaAndGithubUrl() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        jdbc.update("UPDATE card SET user_repository_id = ? WHERE id = ?", myRepoId, cardId);
+        Long action = fixtures.insertStatement(cardId, 1, "A", "커밋으로 쓴 행동", "COMMIT", "HIGH");
+        fixtures.insertStatementEvidence(action, firstCommit);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence", hasSize(1)))
+                .andExpect(jsonPath("$.data.evidence[0].sha").value("1111111"))
+                .andExpect(jsonPath("$.data.evidence[0].url")
+                        .value("https://github.com/grow22/gitory/commit/1111111111111111111111111111111111111111"));
+
+        jdbc.update("UPDATE card SET user_repository_id = NULL WHERE id = ?", cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence[0].sha").value("1111111"))
+                .andExpect(jsonPath("$.data.evidence[0].url").value(nullValue()));
+
+    }
+
+    @Test
     @DisplayName("사용자 근거의 turnNo 는 그 칸 문장이 가리키는 질문의 번호이고, 질문과 이어지지 않은 글과 커밋 근거는 질문에 이어져 있어도 null 이다")
     void evidenceCarriesTheNumberOfTheLinkedTurn() throws Exception {
 

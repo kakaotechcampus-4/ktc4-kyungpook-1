@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any, Protocol, TypeVar
@@ -36,6 +38,12 @@ COMMIT_FILE_SAMPLE = 10
 DESCRIPTION_COMMIT_SAMPLE = 12
 DESCRIPTION_FILE_SAMPLE = 10
 DESCRIPTION_MESSAGE_MAX_LENGTH = 500
+#: 후보 설명이 빠졌을 때 다시 묻기 위해 남아 있어야 하는 최소 시간(초). 끊기기 쉬운 호출을
+#: 시작하지 않게 diff 분석·STAR의 min_call_seconds와 같은 값을 쓴다.
+MIN_REDESCRIBE_SECONDS = 10.0
+#: 다시 묻는 호출은 바깥 마감보다 이만큼 먼저 포기한다. 같이 끊기면 받아 둔 설명까지 버려진다.
+REDESCRIBE_MARGIN_SECONDS = 2.0
+logger = logging.getLogger(__name__)
 OutputModelT = TypeVar("OutputModelT", bound=BaseModel)
 ItemT = TypeVar("ItemT")
 
@@ -212,15 +220,19 @@ class GroupingLlm:
         *,
         pull_requests: Sequence[PullRequestContext] = (),
         issues: Sequence[IssueContext] = (),
+        deadline: float | None = None,
     ) -> dict[str, tuple[str, str]]:
-        """경험마다 근거 범위 안에서 제목과 선정 이유를 생성한다."""
+        """경험마다 근거 범위 안에서 제목과 선정 이유를 생성한다.
+
+        ``deadline``(이벤트 루프 시각)은 빠진 설명을 다시 물을 수 있는지만 정한다.
+        """
         pull_by_number = {pull.number: pull for pull in pull_requests}
         issue_by_number = {issue.number: issue for issue in issues}
         output: dict[str, tuple[str, str]] = {}
         for offset in range(0, len(groups), self._description_batch_size):
             batch = groups[offset : offset + self._description_batch_size]
             output.update(
-                await self._describe_batch(batch, pull_by_number, issue_by_number)
+                await self._describe_batch(batch, pull_by_number, issue_by_number, deadline)
             )
         return output
 
@@ -229,55 +241,142 @@ class GroupingLlm:
         batch: list[CommitGroup],
         pull_by_number: dict[int, PullRequestContext],
         issue_by_number: dict[int, IssueContext],
+        deadline: float | None,
     ) -> dict[str, tuple[str, str]]:
         """설명 출력이 길면 배치만 절반으로 나눠 순서대로 다시 요청한다."""
         try:
-            result = await self._client.structured_call(
-                system_prompt=_DESCRIPTION_SYSTEM_PROMPT,
-                payload={
-                    "groups": [
-                        {
-                            "group_key": group.group_key,
-                            "source_type": group.source_type,
-                            "reference": self._reference_payload(
-                                group, pull_by_number, issue_by_number
-                            ),
-                            "commit_count": len(group.members),
-                            "commits": [
-                                self._commit_payload(commit)
-                                for commit in group.members[:DESCRIPTION_COMMIT_SAMPLE]
-                            ],
-                        }
-                        for group in batch
-                    ]
-                },
-                output_model=GroupDescriptionsOutput,
-                max_completion_tokens=MAX_COMPLETION_TOKENS,
-            )
+            result = await self._request_descriptions(batch, pull_by_number, issue_by_number)
         except GroupingLlmOutputTooLongError:
             if len(batch) == 1:
                 raise
             middle = len(batch) // 2
             left = await self._describe_batch(
-                batch[:middle], pull_by_number, issue_by_number
+                batch[:middle], pull_by_number, issue_by_number, deadline
             )
             right = await self._describe_batch(
-                batch[middle:], pull_by_number, issue_by_number
+                batch[middle:], pull_by_number, issue_by_number, deadline
             )
             return {**left, **right}
 
+        output = self._expected_descriptions(result, batch)
+        missing = [group for group in batch if group.group_key not in output]
+        if missing:
+            output.update(
+                await self._fill_missing(missing, pull_by_number, issue_by_number, deadline)
+            )
+        return output
+
+    async def _request_descriptions(
+        self,
+        batch: list[CommitGroup],
+        pull_by_number: dict[int, PullRequestContext],
+        issue_by_number: dict[int, IssueContext],
+    ) -> GroupDescriptionsOutput:
+        return await self._client.structured_call(
+            system_prompt=_DESCRIPTION_SYSTEM_PROMPT,
+            payload={
+                "groups": [
+                    {
+                        "group_key": group.group_key,
+                        "source_type": group.source_type,
+                        "reference": self._reference_payload(
+                            group, pull_by_number, issue_by_number
+                        ),
+                        "commit_count": len(group.members),
+                        "commits": [
+                            self._commit_payload(commit)
+                            for commit in group.members[:DESCRIPTION_COMMIT_SAMPLE]
+                        ],
+                    }
+                    for group in batch
+                ]
+            },
+            output_model=GroupDescriptionsOutput,
+            max_completion_tokens=MAX_COMPLETION_TOKENS,
+        )
+
+    @staticmethod
+    def _expected_descriptions(
+        result: GroupDescriptionsOutput, batch: list[CommitGroup]
+    ) -> dict[str, tuple[str, str]]:
+        """요청한 키의 설명만 남기고, 같은 키가 또 나오면 먼저 나온 것을 쓴다."""
         expected = {group.group_key for group in batch}
         output: dict[str, tuple[str, str]] = {}
         for item in result.descriptions:
             if item.group_key not in expected or item.group_key in output:
                 continue
             output[item.group_key] = (item.title.strip(), item.reason.strip())
-        missing = expected - output.keys()
-        if missing:
-            raise GroupingLlmError(
-                f"후보 설명이 누락되었습니다: {', '.join(sorted(missing))}"
-            )
         return output
+
+    async def _fill_missing(
+        self,
+        missing: list[CommitGroup],
+        pull_by_number: dict[int, PullRequestContext],
+        issue_by_number: dict[int, IssueContext],
+        deadline: float | None,
+    ) -> dict[str, tuple[str, str]]:
+        """빠진 후보만 한 번 더 묻고, 그래도 없거나 물을 수 없으면 기본 설명으로 채운다.
+
+        LLM이 가끔 한두 건을 빠뜨리는 일로 분석 전체를 실패시키지 않기 위해서다.
+        """
+        found: dict[str, tuple[str, str]] = {}
+        asked_again = False
+        remaining = None if deadline is None else deadline - asyncio.get_running_loop().time()
+        if remaining is not None and remaining < MIN_REDESCRIBE_SECONDS:
+            cause = "남은 시간 부족"
+        else:
+            asked_again = True
+            timeout = None if remaining is None else remaining - REDESCRIBE_MARGIN_SECONDS
+            try:
+                retry = await asyncio.wait_for(
+                    self._request_descriptions(missing, pull_by_number, issue_by_number),
+                    timeout,
+                )
+            except (GroupingLlmError, asyncio.TimeoutError):
+                cause = "다시 요청 실패"
+            else:
+                found = self._expected_descriptions(retry, missing)
+                cause = "다시 요청해도 누락"
+        still_missing = [group for group in missing if group.group_key not in found]
+        logger.warning(
+            "경험 그룹화 설명 누락: 빠진 %d건, 다시 요청 %s, 다시 요청으로 채움 %d건, "
+            "기본 설명으로 채움 %d건(%s), 후보 %s",
+            len(missing),
+            "함" if asked_again else "안 함",
+            len(found),
+            len(still_missing),
+            cause if still_missing else "없음",
+            _keys(missing),
+        )
+        for group in still_missing:
+            found[group.group_key] = self._default_description(group, pull_by_number)
+        return found
+
+    @staticmethod
+    def _default_description(
+        group: CommitGroup, pull_by_number: dict[int, PullRequestContext]
+    ) -> tuple[str, str]:
+        """LLM 설명이 없을 때의 결정적인 제목·이유. 입력에서 확인되는 사실만 쓴다.
+
+        제목은 대표 PR 제목, 없으면 메시지가 있는 첫 커밋의 첫 줄이다.
+        빈 값 대체와 길이 상한은 다른 설명과 같이 to_candidate가 맡는다.
+        """
+        number = group.pull_request_number
+        pull = pull_by_number.get(number) if number is not None else None
+        title = pull.title.strip() if pull else ""
+        if not title:
+            for commit in group.members:
+                lines = commit.message.strip().splitlines()
+                if lines:
+                    title = lines[0].strip()
+                    break
+        if number is not None:
+            basis = f"(대표 PR #{number})"
+        elif group.issue_numbers:
+            basis = f"(관련 Issue {', '.join(f'#{n}' for n in group.issue_numbers)})"
+        else:
+            basis = ""
+        return title, f"커밋 {len(group.members)}건을 근거로 한 경험 후보입니다{basis}."
 
     @staticmethod
     def _partition(experiences: list[list[int]], item_count: int) -> list[list[int]]:
@@ -395,6 +494,11 @@ class GroupingLlm:
             "file_count": len(commit.files),
             "files": [changed.path for changed in commit.files[:DESCRIPTION_FILE_SAMPLE]],
         }
+
+
+def _keys(groups: list[CommitGroup]) -> str:
+    """로그에는 원문 없이 후보 키만 남긴다."""
+    return ", ".join(sorted(group.group_key for group in groups))
 
 
 _CLUSTER_SYSTEM_PROMPT = """당신은 개발 작업을 "하나의 경험"으로 묶는 분류기다. 경험은 같은 기능을 위한 개발 묶음이다.

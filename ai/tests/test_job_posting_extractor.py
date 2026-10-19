@@ -505,6 +505,13 @@ UPPER_BOUND_ONLY_EXPERIENCES = {
     "이하": ("EXPERIENCED", 3, "경력 3년 이하"),
     "up to": ("EXPERIENCED", 2, "up to 2 years of experience"),
     "연차 없음": ("EXPERIENCED", None, "경력 1년 미만"),
+    "C++ 글자": ("EXPERIENCED", 2, "C++ 경력 2년 이하"),
+}
+
+BOTH_BOUND_EXPERIENCES = {
+    "이상": "경력 3년 이상 5년 이하",
+    "년+": "경력 3년+ 5년 이하",
+    "years+": "3+ years, up to 5 years",
 }
 
 
@@ -537,9 +544,12 @@ def test_upper_bound_only_experience_is_entry_without_years(level, min_years, qu
     assert (result.experience.level, result.experience.min_years) == ("ENTRY", None)
 
 
-def test_experience_with_both_bounds_keeps_the_lower_bound() -> None:
-    quote = "경력 3년 이상 5년 이하"
-
+@pytest.mark.parametrize(
+    "quote",
+    BOTH_BOUND_EXPERIENCES.values(),
+    ids=BOTH_BOUND_EXPERIENCES.keys(),
+)
+def test_experience_with_both_bounds_keeps_the_lower_bound(quote) -> None:
     result = extract_experience(experience("EXPERIENCED", 3, quote), quote)
 
     assert (result.experience.level, result.experience.min_years) == ("EXPERIENCED", 3)

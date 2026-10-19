@@ -63,7 +63,7 @@ _MAX_TEXT_CHARS = next(
 )
 _EDGE_PUNCTUATION = "()[]{}<>,.:;!?\"'`·•-–—*"
 _UPPER_BOUND = re.compile(r"미만|이하|\bunder\b|\bup to\b|\bless than\b", re.IGNORECASE)
-_LOWER_BOUND = re.compile(r"이상|\+|or more|at least|more than", re.IGNORECASE)
+_LOWER_BOUND = re.compile(r"이상|\d\s*(?:년|years?)?\s*\+|or more|at least|more than", re.IGNORECASE)
 
 
 class ExtractedExperience(BaseModel):

@@ -772,3 +772,18 @@ def test_redaction_keeps_group_key_and_sha_so_answers_still_match() -> None:
 
     assert result == {"cluster:1": ("제목", "근거")}
     assert fake.calls[0]["payload"]["groups"][0]["commits"][0]["sha"] == "c" * 40
+
+
+@pytest.mark.parametrize(
+    ("group", "pull_by_number", "secret"),
+    [
+        (pr_group(5, 0), {5: PullRequestContext(number=5, title=f"배포 {_AWS_KEY}")}, _AWS_KEY),
+        (cluster("cluster:1", [commit("a" * 40, 0, f"fix: 키 교체 {_TOKEN}\n\n본문")]), {}, _TOKEN),
+    ],
+    ids=["PR 제목", "커밋 메시지"],
+)
+def test_default_title_redacts_secrets(group, pull_by_number, secret) -> None:
+    title, _ = GroupingLlm._default_description(group, pull_by_number)
+
+    assert secret not in title
+    assert "[REDACTED]" in title

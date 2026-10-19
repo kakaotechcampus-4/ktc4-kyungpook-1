@@ -360,14 +360,15 @@ class GroupingLlm:
         """LLM 설명이 없을 때의 결정적인 제목·이유. 입력에서 확인되는 사실만 쓴다.
 
         제목은 대표 PR 제목, 없으면 메시지가 있는 첫 커밋의 첫 줄이다.
+        제목은 저장되어 화면과 카드 초안 입력으로 이어지므로 LLM 입력처럼 비밀값을 가린다.
         빈 값 대체와 길이 상한은 다른 설명과 같이 to_candidate가 맡는다.
         """
         number = group.pull_request_number
         pull = pull_by_number.get(number) if number is not None else None
-        title = pull.title.strip() if pull else ""
+        title = redact_secrets(pull.title).strip() if pull else ""
         if not title:
             for commit in group.members:
-                lines = commit.message.strip().splitlines()
+                lines = redact_secrets(commit.message).strip().splitlines()
                 if lines:
                     title = lines[0].strip()
                     break

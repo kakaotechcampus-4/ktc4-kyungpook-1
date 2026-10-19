@@ -9,6 +9,7 @@ import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
 import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
 import { matchKeys } from './matching';
+import { coverLetterKeys } from './coverLetter';
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -131,7 +132,7 @@ export function useCreateManualDraft() {
 export function useSaveMetadata(cardId: string) {
   const client = useQueryClient();
   return useMutation({ mutationFn: (body: import('./schemas').CardMetadataPatch) => endpoints.saveMetadata(cardId, body),
-    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); void client.resetQueries({ queryKey: matchKeys.all }); } });
+    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); void client.resetQueries({ queryKey: matchKeys.all }); void client.invalidateQueries({ queryKey: coverLetterKeys.all, refetchType: 'none' }); } });
 }
 
 export function usePatchCandidate(repoId: string) {
@@ -181,6 +182,7 @@ function useCardMutation<V>(id: string, fn: (v: V) => Promise<Card>) {
     mutationFn: fn,
     onSuccess: (card) => {
       void qc.resetQueries({ queryKey: matchKeys.all });
+      void qc.invalidateQueries({ queryKey: coverLetterKeys.all, refetchType: 'none' }); // 초안의 stale 표시가 달라진다
       qc.setQueryData(keys.card(id), card);
       void qc.invalidateQueries({ queryKey: keys.versions(id) });
       void qc.invalidateQueries({ queryKey: keys.cards });
@@ -226,6 +228,7 @@ export function useConfirm(cardId: string) {
     mutationFn: (body: { edited: boolean; maskedFields: StarField[] }) => endpoints.confirm(cardId, body),
     onSuccess: async (r) => {
       void qc.resetQueries({ queryKey: matchKeys.all });
+      void qc.invalidateQueries({ queryKey: coverLetterKeys.all, refetchType: 'none' }); // 초안의 stale 표시가 달라진다
       // The POST acknowledgement is authoritative even if the following GET fails.
       await qc.cancelQueries({ queryKey: keys.card(cardId), exact: true });
       qc.setQueryData<Card>(keys.card(cardId), (card) => card ? {

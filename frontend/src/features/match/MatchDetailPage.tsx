@@ -56,6 +56,12 @@ export function MatchDetailPage() {
             >
               공고 원문 보기 ↗
             </a>
+            <Link
+              to={`/cover-letter?match=${encodeURIComponent(detail.id)}`}
+              className="btn btn--outline"
+            >
+              이 공고로 자소서 초안 만들기
+            </Link>
             <span>수집 {dateLabel(detail.source.collectedAt)}</span>
           </div>
           {detail.fit === null && (

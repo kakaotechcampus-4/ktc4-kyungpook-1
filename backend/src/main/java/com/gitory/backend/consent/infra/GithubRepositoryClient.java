@@ -5,6 +5,7 @@ import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
@@ -21,6 +22,7 @@ import java.util.TreeSet;
 /** GitHub 에서 사용자가 접근할 수 있는 저장소 목록과 커밋을 남긴 남의 공개 저장소를 받아 온다 */
 @Slf4j
 @Component
+@EnableConfigurationProperties(GithubApiProperties.class)
 public class GithubRepositoryClient {
 
     private static final int PAGE_SIZE = 100;
@@ -45,9 +47,9 @@ public class GithubRepositoryClient {
 
     private final RestClient restClient;
 
-    public GithubRepositoryClient(RestClient.Builder builder) {
+    public GithubRepositoryClient(RestClient.Builder builder, GithubApiProperties properties) {
         this.restClient = builder
-                .baseUrl("https://api.github.com")
+                .baseUrl(properties.apiBaseUrl())
                 .defaultHeader("Accept", "application/vnd.github+json")
                 .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
                 .build();

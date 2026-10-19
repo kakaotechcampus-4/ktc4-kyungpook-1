@@ -69,7 +69,7 @@ public class AiHttpClient {
 
     }
 
-    /** 토큰이 필요 없는 AI 호출로, 묶기·되묻기처럼 호출마다 기다릴 시간이 달라 대기 시간을 함께 받는다 */
+    /** 토큰이 필요 없는 AI 호출로, 경험 그룹화·되묻기처럼 호출마다 기다릴 시간이 달라 대기 시간을 함께 받는다 */
     public JsonNode post(String path, Object request, Duration readTimeout) {
 
         requireInternalPath(path);

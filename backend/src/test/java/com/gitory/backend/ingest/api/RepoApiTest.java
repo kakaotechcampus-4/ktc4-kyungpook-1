@@ -55,7 +55,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
         "spring.security.oauth2.client.registration.github.client-secret=test-client-secret",
         "gitory.consent.token-key=test-encryption-key",
-        "gitory.consent.token-salt=5c0744940b5c369b"
+        "gitory.consent.token-salt=5c0744940b5c369b",
+        // 상세의 예상 시간이 경험 그룹화 설정을 따르는지 보려고 켠다
+        "gitory.analysis.grouping.enabled=true"
 })
 @AutoConfigureMockMvc
 @Testcontainers
@@ -366,7 +368,7 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("내 저장소 상세는 목록 한 줄과 같은 칸에 분석 전 안내(disclosure)를 더해 내려온다")
+    @DisplayName("내 저장소 상세는 목록 한 줄과 같은 칸에 분석 전 안내(disclosure)를 더하고, 경험 그룹화를 켠 서버의 예상 시간까지 담아 내려온다")
     void detailAddsDisclosureToSummary() throws Exception {
 
         UUID id = connectCounted(100L, "gitory");
@@ -382,7 +384,7 @@ class RepoApiTest {
                 .andExpect(jsonPath("$.data.contribution.mine").value(43))
                 .andExpect(jsonPath("$.data.disclosure.reads[1]").value("카드에는 내 커밋 43개만 써요"))
                 .andExpect(jsonPath("$.data.disclosure.skips.length()").value(3))
-                .andExpect(jsonPath("$.data.disclosure.estimatedSeconds").value(73));
+                .andExpect(jsonPath("$.data.disclosure.estimatedSeconds").value(217));
 
     }
 

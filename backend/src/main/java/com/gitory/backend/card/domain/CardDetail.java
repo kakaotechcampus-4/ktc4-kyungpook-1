@@ -1,5 +1,6 @@
 package com.gitory.backend.card.domain;
 
+import com.gitory.backend.ingest.domain.CommitSummary;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.recommend.domain.CandidateReference;
 
@@ -25,5 +26,6 @@ public record CardDetail(
         CardGeneration generation,
         int interviewTurns,
         Map<StarField, Integer> turnNos,
-        Map<StarField, SlotNote> notes) {
+        Map<StarField, SlotNote> notes,
+        Map<Long, CommitSummary> commits) {
 }

@@ -1,0 +1,12 @@
+
+User-agent: *
+Allow: /
+Disallow: /o/*/apply
+Disallow: /ko/o/*/apply
+Disallow: /en/o/*/apply
+Disallow: /m/*
+Disallow: /a/*
+Disallow: /ko/a/*
+Disallow: /en/a/*
+
+Sitemap: https://careers.kakaopay.com/sitemap.xml

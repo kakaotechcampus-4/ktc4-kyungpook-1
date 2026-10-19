@@ -21,7 +21,7 @@ class AiClientPropertiesTest {
             .withUserConfiguration(BindAiProperties.class);
 
     @Test
-    @DisplayName("설정이 없으면 묶기는 600초, 되묻기는 20초를 기다린다")
+    @DisplayName("설정이 없으면 경험 그룹화는 600초, 되묻기는 20초를 기다린다")
     void defaultsGroupsAndInterviewTimeouts() {
 
         AiClientProperties properties = AiTestProperties.defaults().build();
@@ -33,7 +33,7 @@ class AiClientPropertiesTest {
 
     @ParameterizedTest
     @ValueSource(longs = {0, -1})
-    @DisplayName("묶기 대기 시간이 0 이하이면 설정을 거절한다")
+    @DisplayName("경험 그룹화 대기 시간이 0 이하이면 설정을 거절한다")
     void rejectsNonPositiveGroupsTimeout(long seconds) {
 
         assertThatThrownBy(() -> AiTestProperties.defaults().groupsReadTimeout(Duration.ofSeconds(seconds)).build())
@@ -52,7 +52,7 @@ class AiClientPropertiesTest {
     }
 
     @Test
-    @DisplayName("설정 파일도 묶기는 600초, 되묻기는 20초를 기본으로 둔다")
+    @DisplayName("설정 파일도 경험 그룹화는 600초, 되묻기는 20초를 기본으로 둔다")
     void configFileKeepsTheSameDefaults() {
 
         configFile.run(context -> {
@@ -64,7 +64,7 @@ class AiClientPropertiesTest {
     }
 
     @Test
-    @DisplayName("묶기 대기 시간은 AI_GROUPS_READ_TIMEOUT 환경변수로 바꾼다")
+    @DisplayName("경험 그룹화 대기 시간은 AI_GROUPS_READ_TIMEOUT 환경변수로 바꾼다")
     void groupsTimeoutFollowsEnvironmentVariable() {
 
         configFile.withPropertyValues("AI_GROUPS_READ_TIMEOUT=7s")

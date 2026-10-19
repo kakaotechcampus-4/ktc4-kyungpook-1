@@ -110,6 +110,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `POST /cards/{id}/mask` | `{ rules:[{from,to}] }` | **구현됨.** `Card` — 원문 불변, 표시·내보내기용 |
 | `POST /cards/{id}/reopen` | | **구현됨.** `Card` (DRAFT로). 이미 DRAFT면 no-op |
 | `GET /cards/{id}/versions` | | **구현됨.** `[{ versionNo, source, createdAt, summary, current }]` 최신순 |
+| `GET /cards/{id}/versions/{no}` | | **구현됨.** `CardVersion` — 그 버전의 `{ versionNo, source, createdAt, situation, task, action, result }`(`Card.version` 과 같은 모양, 빈 칸 null, 가리기 없는 원문). 남의 카드·없는 버전 번호는 404 |
 | `POST /cards/{id}/versions/{no}/restore` | | **구현됨.** `Card` — 과거 버전을 복사한 RESTORE 새 버전. 현재 버전이면 no-op |
 | `POST /cards/{id}/regenerate` | `{ field }` | **Mock 체험 전용.** 실서버 controller 없음. FE는 실제 API 모드에서 화면과 endpoint 모두 차단 |
 | `POST /cards/{id}/confirm` | `{ edited, maskedFields[] }` | **FE 기대 계약·Mock. 실서버 controller 없음.** Mock `ConfirmResult` `{ cardId, status:'CONFIRMED', versionNo, usedCandidateIds[], remainingCandidates, repoId }`. S·A 없으면 422 `NOT_CONFIRMABLE`; 현재 버전을 확정 표시하고 같은 내용의 버전을 덧붙이지 않음 |
@@ -156,7 +157,7 @@ Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드�
 **`evidence.authoredBy`**
 
 `AI` | `USER`. **AI 문장은 근거가 1개 이상 필요하고, USER 문장은 커밋·되묻기 근거가 없어도 허용된다.**
-실제 `EvidenceResponse`는 COMMIT이면 AI, USER_STATED/USER_SELECTED이면 USER로 authoredBy를 매핑합니다. 별도 DB 컬럼을 요구하지 않습니다. 현재 카드 응답의 COMMIT 근거는 수만큼 반환하지만 sha/url/snippet/turnNo는 null일 수 있으므로 FE는 근거 링크나 턴 번호를 만들어 내지 않습니다. Mock 시드의 알려진 링크·턴 정보는 데모 데이터입니다.
+실제 `EvidenceResponse`는 COMMIT이면 AI, USER_STATED/USER_SELECTED이면 USER로 authoredBy를 매핑합니다. 별도 DB 컬럼을 요구하지 않습니다. COMMIT 근거는 연결된 커밋마다 한 줄이고, `sha`는 앞 7자리, `url`은 카드 저장소의 GitHub 커밋 주소입니다. 저장소가 없는 카드나 커밋을 찾지 못한 근거는 `url`(또는 `sha`)이 null이고, snippet은 아직 늘 null입니다. FE는 null인 근거 링크나 턴 번호를 만들어 내지 않습니다. Mock 시드의 알려진 링크·턴 정보는 데모 데이터입니다.
 API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `USER_SELECTED` 만 쓴다 —
 `user_written`, `inferred` 같은 소문자 내부값은 외부로 내보내지 않는다.
 
@@ -192,9 +193,48 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - 답변 출처는 세 가지로 구분한다: AI 가 준 보기 / 사용자가 그 보기를 고름(`USER_SELECTED`) / 사용자가 직접 씀(`USER_STATED`).
   **이 내부 이름은 화면에 노출하지 않는다** — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
 
+### 기업·직무 매칭 (계약 확정 · 서버 미구현)
+
+[#199](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/issues/199)에서 정한 기준이다. 서버 구현이 아직 없어서, FE 는 실제 API 모드에서 지금처럼 `VITE_MATCH_ENABLED` 로 화면을 막아 둔다.
+
+| | 응답 `data` |
+|---|---|
+| `GET /matches` | `MatchTarget[]` — 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다 |
+| `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote` · `conditions[]`. 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
+
+**MatchTarget**
+```jsonc
+{ "id", "company", "role",                        // role = 공고 원문의 직무명
+  "category": "BACKEND|FRONTEND|MOBILE|DEVOPS|DATA|AI_ML|SECURITY|QA|ETC",
+  "fit": "A|B|C|D" | null,                         // null = 확정 카드가 하나도 없음
+  "required": { "total", "met" }, "preferred": { "total", "met" },
+  "experience": { "level": "ENTRY|EXPERIENCED|UNSPECIFIED", "minYears": n | null },
+  "source": { "url", "collectedAt", "expiresAt": "ISO" | null } }   // expiresAt null = 상시 채용
+```
+
+**MatchDetail** 에 더하는 칸
+```jsonc
+{ "experience": { "level", "minYears", "quote": "경력 원문" | null },
+  "conditions": [{ "id", "type": "REQUIRED|PREFERRED|RESPONSIBILITY", "text", "quote",   // quote = 공고 원문 인용
+                   "supports": [{ "cardId", "cardTitle", "cardKind": "TECH|QUALITATIVE", "field": "A|R", "sentence" }] }] }
+```
+
+- **매칭 기준은 공고 조건이다.** 인재상 태그는 쓰지 않는다. 조건은 필수(REQUIRED) → 우대(PREFERRED) → 담당 업무(RESPONSIBILITY) 순이고, 같은 종류 안에서는 원문 순서다.
+- **근거는 확정 카드의 지금 확정 버전에서 행동(A)·결과(R) 칸 문장뿐이다.** 카드의 가리기를 적용한 문장을 보낸다. 같은 카드의 A·R 이 둘 다 맞으면 둘 다 담는다. `supports` 가 빈 조건은 근거가 없는 빈 칸이고, 숨기지 않는다.
+- **등급(`fit`)은 서버가 규칙으로 센다.** `met` 은 근거가 하나 이상 있는 조건 수다. 필수 조건 중 `met` 의 비율이 전부면 A · 절반 이상 B · 1개 이상 C · 0개 D 다. 필수가 없는 공고는 우대로 같은 규칙을 쓴다. 한 카드가 여러 조건을 채워도 된다. 우대는 등급에 넣지 않고 `preferred` 로 따로 보여 준다. 담당 업무와 경력은 등급에 넣지 않는다.
+- **확정 카드가 하나도 없으면 `fit` 은 null, `met` 은 0, `supports` 는 모두 빈 배열이다.** D 는 '카드는 있는데 맞는 근거가 없음' 이다. 화면은 null 이면 등급 대신 "카드를 확정하면 등급이 나와요" 같은 안내를 보여 준다.
+- **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 비슷한 내 카드 문장이 있으면 `supports` 로 함께 온다.
+- **경력은 원문에 적혀 있을 때만 나온다.** `ENTRY` = 신입·경력 무관·인턴·최소 0년(상한만 있는 '1년 미만'·'3년 이하' 도 포함), `EXPERIENCED` = 최소 N년(`minYears`), `UNSPECIFIED` = 경력 얘기가 없거나 원문으로 확인할 수 없을 때. 경력 조건은 `conditions` 에 넣지 않는다.
+- **정렬**: 서버는 `fit` A→D, 같으면 `expiresAt` 이 가까운 순, 상시 채용(null)은 뒤로 내려준다. `fit` 이 모두 null 이면 `expiresAt` 순만 본다. 화면의 '마감 순' 보기는 받은 목록을 다시 정렬한다 — `expiresAt` 이 가까운 순, 상시 채용은 뒤, 같으면 `fit` 순.
+- **필터(경력: 전체·신입 가능·경력, 직무 분류)도 화면에서 한다.** 서버 쿼리 파라미터는 없다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
+- **오류**: 401 `UNAUTHENTICATED` · 404 `NOT_FOUND` · 503 `AI_UNAVAILABLE`(근거를 찾는 AI 검색이 잠시 실패, 다시 시도할 수 있다).
+- **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급 A~D, 필수 조건이 없어 우대로 센 공고 포함) · `list-no-cards.json`(확정 카드가 없을 때) · `detail.json`(근거가 있는 조건과 빈 조건) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
+- 한 줄 소개(`summary`), 인재상 태그(`matchedTags`·`gapTags`), 카드 수 기준 칸(`supportedTagCount`·`independentTagCount`)은 없다. `source.verifiedAt` 대신 `source.collectedAt`(공고를 가져온 시각)이다.
+
 ### 아직 서버 쪽에 남은 일 (FE 기대 계약)
 - 단계별 마지막 완료 지점을 Job 에 저장해, 재시도 때 처음부터 다시 돌리지 않고 이어서 처리하기.
 - 카드 confirm·regenerate·metadata 및 되묻기 생성/답변 HTTP 경로. 이 문서에 기대 응답이 있다는 이유로 구현됨을 뜻하지 않습니다. regenerate와 metadata는 실제 모드에서 capability를 확인합니다.
+- 기업·직무 매칭 목록·상세 API. 위 매칭 절이 계약 기준이다.
 
 ### 지표
 `POST /events` `{ name, props, at, path }` → `{ ok }`. 이벤트 이름은 `src/lib/track.ts` 의 `EventName`. 실패해도 프론트는 무시한다(sendBeacon).

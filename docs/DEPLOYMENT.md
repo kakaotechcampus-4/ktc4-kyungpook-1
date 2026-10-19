@@ -93,6 +93,8 @@ echo "== 끝"
 - `DB_PASSWORD` 는 DB 볼륨이 처음 만들어질 때 고정된다. 나중에 `.env` 만 바꾸면 접속이 실패한다.
 - GitHub OAuth App 의 Authorization callback URL 은 `https://<도메인>/api/auth/github/callback` 과 정확히 같아야 한다.
 - `GITORY_LLM_BASE_URL`/`GITORY_LLM_API_KEY` 가 비어 있으면 AI 의 경험 그룹화·STAR 초안만 503(LLM 설정 없음)이고, 수집·되묻기는 동작한다. 값을 넣은 뒤 `ANALYSIS_GROUPING_ENABLED=true` 로 바꾸고 `docker compose up -d` 로 다시 띄운다. 켜기 전에 넣지 않으면 모든 분석이 그룹화 단계에서 실패한다.
+- `CARD_AI_DRAFT_ENABLED=true` 는 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채우게 한다. LLM 값이 없으면 모든 초안이 실패하므로 위 LLM 값을 넣고 확인한 뒤 켠다. 서버 `deploy/.env` 는 처음 만든 뒤 `.env.example` 에 생긴 줄이 자동으로 들어가지 않으니, 줄이 있는지 먼저 확인하고 없으면 더한다.
+- 카드 제목·기간 수정은 프론트 빌드 값 `VITE_CARD_METADATA_ENABLED`(`frontend/Dockerfile`)로 켠다. 서버 `.env` 가 아니라 이미지에 들어가므로 바꾸면 web 이미지를 다시 빌드해야 한다.
 
 ## 5. Spring ↔ AI 토큰 경로 (멘토 확인 완료)
 

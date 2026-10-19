@@ -8,7 +8,11 @@ import re
 _NUMBER = r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
 #: 영문·숫자에 붙은 숫자(OAuth2, v2.0, sha256)는 수치가 아니다. 한글 뒤(최대30%)는 수치로 본다.
 _NUMBER_START = r"(?<![A-Za-z0-9_.,])"
-_UNITS = "ms|밀리초|초|분|%|퍼센트|배|건|회|MB|GB|KB"
+#: x 뒤에 숫자가 이어지면(0x10, 5x5) 수치가 아니다.
+_UNITS = r"ms|밀리초|초|분|시간|%p|%|퍼센트|배|[xX](?!\d)|건|회|개(?!월)|만|MB|GB|KB"
+#: 횟수·개수 단위는 숫자만 맞으면 근거로 보고, 나머지 단위(만 포함)는 같은 단위로 적혀 있어야 한다.
+_COUNT_UNITS = {"건", "회", "개"}
+_UNIT_ALIASES = {"밀리초": "ms", "퍼센트": "%", "x": "배", "X": "배"}
 
 #: 성능·결과 수치처럼 보이는 표현.
 METRIC_PATTERN = re.compile(rf"{_NUMBER_START}({_NUMBER})(\s*)({_UNITS})(?![A-Za-z])")
@@ -17,21 +21,26 @@ METRIC_PATTERN = re.compile(rf"{_NUMBER_START}({_NUMBER})(\s*)({_UNITS})(?![A-Za
 _STANDALONE_NUMBER = re.compile(rf"{_NUMBER_START}({_NUMBER})(?![0-9])")
 #: diff hunk 헤더(@@ -30,7 +30,9 @@)의 줄 번호는 수치 근거로 보지 않는다.
 _HUNK_HEADER = re.compile(r"^[+\- ]?@@[^\n]*@@", re.MULTILINE)
+#: 이슈·PR 번호(#30), 날짜(2026-10-10), 시각(10:30)의 숫자도 수치 근거가 아니다.
+_REFERENCE_NUMBERS = re.compile(r"#\d+|\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}:\d{2}(?::\d{2})?")
 _HANGUL = re.compile(r"[가-힣]")
 
 
 def unsupported_metrics(text: str, source: str) -> list[str]:
     """입력에서 확인되지 않는 수치 표현을 반환한다.
 
-    수치의 숫자가 입력에 독립된 숫자로 있으면 근거가 있다고 본다
-    (``MAX_TURNS = 2`` → "2회", ``1,000`` → "1000건"). 숫자 일부만 겹치는 경우
-    (원문 15% 안의 5%)나 줄 번호는 근거가 아니다.
+    횟수·개수 단위(``MAX_TURNS = 2`` → "2회")는 입력에 독립된 숫자로 있으면 근거가 있다고 본다.
+    성능 단위와 만은 같은 숫자가 같은 단위로 있어야 한다("200 응답"은 "200ms"의 근거가 아니다).
+    숫자 일부만 겹치는 경우(15% 안의 5%)나 줄 번호·이슈 번호·날짜·시각은 근거가 아니다.
     """
-    source = _HUNK_HEADER.sub("", source)
+    source = _REFERENCE_NUMBERS.sub(" ", _HUNK_HEADER.sub("", source))
     source_numbers = {_normalize(match.group(1)) for match in _STANDALONE_NUMBER.finditer(source)}
+    source_metrics = {_metric_key(match) for match in iter_metrics(source)}
     unsupported = set()
     for match in iter_metrics(text):
-        if _normalize(match.group(1)) not in source_numbers:
+        number, unit = _metric_key(match)
+        supported = number in source_numbers if unit in _COUNT_UNITS else (number, unit) in source_metrics
+        if not supported:
             unsupported.add(match.group(0))
     return sorted(unsupported)
 
@@ -43,7 +52,14 @@ def iter_metrics(text: str):
         following = text[match.end():match.end() + 1]
         if spaced and _HANGUL.fullmatch(unit[-1]) and _HANGUL.fullmatch(following or " "):
             continue
+        if spaced and unit in ("x", "X"):
+            continue
         yield match
+
+
+def _metric_key(match: re.Match) -> tuple[str, str]:
+    unit = match.group(3)
+    return _normalize(match.group(1)), _UNIT_ALIASES.get(unit, unit)
 
 
 def _normalize(number: str) -> str:

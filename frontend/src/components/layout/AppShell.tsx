@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings } from 'lucide-react';
+import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings, BriefcaseBusiness } from 'lucide-react';
+import { matchSupported } from '@/api/matching';
 import { useActiveJobs, useCards, useMe } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { UserAvatar } from '@/components/ui/UserAvatar';
@@ -11,6 +12,7 @@ const MENU = [
     { to: '/', label: '경험정리/홈', icon: Home, end: true },
     { to: '/repos', label: '레포 정리', icon: FolderGit2 },
     { to: '/cards', label: '경험 카드', icon: Layers },
+    ...(matchSupported() ? [{ to: '/match', label: '공고 매칭', icon: BriefcaseBusiness }] : []),
   ] },
   { group: '설정', items: [
     { to: '/settings/github', label: 'GitHub 연결', icon: Github },
@@ -29,6 +31,7 @@ const MOBILE_MENU = [
   { to: '/', label: '홈', icon: Home, end: true },
   { to: '/repos', label: '레포', icon: FolderGit2 },
   { to: '/cards', label: '카드', icon: Layers },
+  ...(matchSupported() ? [{ to: '/match', label: '매칭', icon: BriefcaseBusiness }] : []),
   { to: '/settings', label: '설정', icon: Settings },
 ];
 
@@ -79,7 +82,7 @@ export function AppShell() {
         </div>
       </aside>
       <div id="main" className="shell__main"><Outlet context={active} /></div>
-      <nav className="mobile-nav" aria-label="모바일 주 메뉴">
+      <nav className="mobile-nav" aria-label="모바일 주 메뉴" style={{ gridTemplateColumns: `repeat(${MOBILE_MENU.length}, minmax(0, 1fr))` }}>
         {MOBILE_MENU.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end}>
             <item.icon size={20} aria-hidden="true" />

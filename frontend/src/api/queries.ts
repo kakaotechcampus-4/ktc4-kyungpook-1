@@ -8,6 +8,7 @@ import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
 import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
+import { matchKeys } from './matching';
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -130,7 +131,7 @@ export function useCreateManualDraft() {
 export function useSaveMetadata(cardId: string) {
   const client = useQueryClient();
   return useMutation({ mutationFn: (body: import('./schemas').CardMetadataPatch) => endpoints.saveMetadata(cardId, body),
-    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); } });
+    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); void client.resetQueries({ queryKey: matchKeys.all }); } });
 }
 
 export function usePatchCandidate(repoId: string) {
@@ -179,6 +180,7 @@ function useCardMutation<V>(id: string, fn: (v: V) => Promise<Card>) {
   return useMutation({
     mutationFn: fn,
     onSuccess: (card) => {
+      void qc.resetQueries({ queryKey: matchKeys.all });
       qc.setQueryData(keys.card(id), card);
       void qc.invalidateQueries({ queryKey: keys.versions(id) });
       void qc.invalidateQueries({ queryKey: keys.cards });
@@ -223,6 +225,7 @@ export function useConfirm(cardId: string) {
   return useMutation({
     mutationFn: (body: { edited: boolean; maskedFields: StarField[] }) => endpoints.confirm(cardId, body),
     onSuccess: async (r) => {
+      void qc.resetQueries({ queryKey: matchKeys.all });
       // The POST acknowledgement is authoritative even if the following GET fails.
       await qc.cancelQueries({ queryKey: keys.card(cardId), exact: true });
       qc.setQueryData<Card>(keys.card(cardId), (card) => card ? {

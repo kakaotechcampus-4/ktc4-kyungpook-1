@@ -200,9 +200,10 @@ describe('AI 일시 장애 계약', () => {
     });
     expect(screen.getByText('분석 도우미가 잠시 응답하지 않아요')).toBeInTheDocument();
     expect(screen.getByText('잠시 뒤 다시 시도해 주세요.')).toBeInTheDocument();
-    const retry = screen.getByRole('button', { name: '다시 시도' });
+    // 서버가 재시도를 열지 않았으면 "다시 시도" 줄 자체를 두지 않는다(#253).
+    const retry = screen.queryByRole('button', { name: '다시 시도' });
     if (retryable === true) expect(retry).toBeEnabled();
-    else expect(retry).toBeDisabled();
+    else expect(retry).not.toBeInTheDocument();
     // 화면 진입만으로 새 분석 요청을 만들지 않는다.
     expect(req('GET', '/jobs').data).toMatchObject({ jobs: [] });
   });

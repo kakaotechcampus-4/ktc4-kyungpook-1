@@ -1,0 +1,117 @@
+# E2E 시험용 스택: 운영과 같은 Dockerfile 로 db·ai·backend·web 을 띄우고 GitHub·LLM 만 fake 로 바꾼다.
+#   docker compose -f e2e/compose.yaml -p gitory-e2e up -d --build --wait
+#   docker compose -f e2e/compose.yaml -p gitory-e2e down -v
+# 운영 deploy/compose.yaml 은 CloudWatch 로그와 서버 폴더 마운트가 있어 덮어쓰지 않고 따로 둔다.
+# 값은 모두 시험용이라 진짜 키를 넣지 않는다.
+name: gitory-e2e
+
+services:
+  db:
+    image: postgres:17-alpine
+    networks: [inner]
+    # 매번 빈 DB 로 시작하고 down 에서 -v 를 빼먹어도 볼륨이 남지 않게 한다
+    tmpfs:
+      - /var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: gitory
+      POSTGRES_USER: gitory
+      POSTGRES_PASSWORD: e2e-db-password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitory"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  fake:
+    image: node:22-alpine
+    networks: [inner, outer]
+    # node 가 PID 1 이면 종료 신호를 무시해 멈출 때마다 10초가 걸린다
+    init: true
+    # 브라우저가 가짜 GitHub 로그인 주소(localhost:9000)로 가야 해서 호스트에 연다
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - ./fakes:/app:ro
+    working_dir: /app
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "9000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9000/__control/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  ai:
+    build: ../ai
+    networks: [inner]
+    depends_on:
+      fake:
+        condition: service_healthy
+    environment:
+      AI_DOCS_ENABLED: "false"
+      GITORY_LLM_BASE_URL: http://fake:9000/v1
+      GITORY_LLM_API_KEY: e2e-llm-key
+      GITORY_GITHUB_API_BASE_URL: http://fake:9000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ../backend
+    networks: [inner]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/gitory
+      DB_USERNAME: gitory
+      DB_PASSWORD: e2e-db-password
+      GITHUB_CLIENT_ID: e2e-client-id
+      GITHUB_CLIENT_SECRET: e2e-client-secret
+      TOKEN_ENC_KEY: e2e-token-enc-key
+      # 솔트는 16진수여야 기동된다
+      TOKEN_ENC_SALT: 5c0744940b5c369b
+      AI_BASE_URL: http://ai:8000
+      GITHUB_API_BASE_URL: http://fake:9000
+      # 브라우저가 여는 주소만 localhost, 컨테이너가 부르는 주소는 fake
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GITHUB_AUTHORIZATION_URI: http://localhost:9000/login/oauth/authorize
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GITHUB_TOKEN_URI: http://fake:9000/login/oauth/access_token
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_GITHUB_USER_INFO_URI: http://fake:9000/user
+      # http 로 띄우는 시험 스택이라 Secure 쿠키를 끈다
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "false"
+      ANALYSIS_GROUPING_ENABLED: "true"
+      CARD_AI_DRAFT_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
+      interval: 5s
+      timeout: 5s
+      start_period: 90s
+      retries: 30
+
+  web:
+    build: ../frontend
+    networks: [inner, outer]
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8088:80"
+    environment:
+      SITE_ADDRESS: ":80"
+    volumes:
+      - ../deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+# db·ai·backend 는 바깥 인터넷으로 나갈 수 없다
+# web·fake 만 호스트 포트 때문에 outer 에도 붙는다
+networks:
+  inner:
+    internal: true
+  outer: {}

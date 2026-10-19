@@ -52,6 +52,32 @@ public class CardHistoryController {
 
     }
 
+    @GetMapping("/api/cards/{id}/versions/{no}")
+    @Operation(summary = "예전 버전 내용 조회", description = """
+            고른 버전의 네 칸 글을 카드 상세의 version 과 같은 모양으로 돌려줍니다. 빈 칸은 null 이고, 글은 가리기 규칙과 상관없이 원문 그대로입니다.
+            되돌리기 전에 지금 버전과 비교하는 데 씁니다. 지금 버전 번호를 골라도 그대로 돌려줍니다.
+            남의 카드는 없는 카드와 똑같이 404 입니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "고른 버전의 네 칸"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "버전 번호가 정수가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID, 본인 카드 없음 또는 그 번호의 버전 없음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CardVersionResponse> version(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "카드 id", schema = @Schema(type = "string", format = "uuid"))
+            @PathVariable String id,
+            @Parameter(description = "볼 버전 번호(작성 이력의 versionNo)")
+            @PathVariable int no) {
+
+        return ApiResponse.ok(CardVersionResponse.from(cardHistory.version(toUuid(id), loginUser.id(), no)));
+
+    }
+
     @PostMapping("/api/cards/{id}/versions/{no}/restore")
     @Operation(summary = "예전 버전으로 되돌리기", description = """
             고른 버전의 네 칸을 근거째 그대로 복사한 RESTORE 새 버전을 현재 버전으로 삼고 카드 전체를 돌려줍니다. 고른 버전과 그 사이 버전은 이력에 그대로 남습니다.

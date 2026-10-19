@@ -265,6 +265,117 @@ class CardHistoryApiTest {
     }
 
     @Test
+    @DisplayName("예전 버전 내용을 보면 그 버전의 번호·출처·마지막 저장 시각과 네 칸 글(빈 칸은 null)을 카드 상세 version 과 같은 키로 싣고, 가리기 규칙이 있어도 원문 그대로이며 카드는 바뀌지 않는다")
+    void showsChosenVersionAsWritten() throws Exception {
+
+        Long cardId = aiCard(MY_CARD, myUserId);
+        fixtures.insertStatement(cardId, 1, "S", "AI 상황", "COMMIT", "HIGH");
+        fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
+        fixtures.insertStatement(cardId, 2, "S", "우리 팀 상황", "USER_STATED", null);
+        fixtures.insertStatement(cardId, 2, "A", "고친 행동", "USER_STATED", null);
+        fixtures.insertCardVersion(cardId, 3, "USER_EDIT", false);
+        fixtures.insertStatement(cardId, 3, "S", "지금 상황", "USER_STATED", null);
+        jdbc.update("UPDATE card SET mask_rules = ?::jsonb WHERE id = ?", "[{\"from\": \"우리 팀\", \"to\": \"팀\"}]", cardId);
+        age(cardId);
+        versionSavedAt(cardId, 2, "2026-02-02T02:02:02Z");
+        List<Map<String, Object>> before = stateOf(cardId);
+
+        String body = versionOf(myUserId, MY_CARD.toString(), "2")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value(nullValue()))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        Map<String, Object> version = JsonPath.read(body, "$.data");
+        assertThat(version).containsOnlyKeys(VERSION_KEYS);
+        assertThat(version)
+                .containsEntry("versionNo", 2)
+                .containsEntry("source", "USER_EDIT")
+                .containsEntry("createdAt", "2026-02-02T02:02:02Z")
+                .containsEntry("situation", "우리 팀 상황")
+                .containsEntry("task", null)
+                .containsEntry("action", "고친 행동")
+                .containsEntry("result", null);
+        assertThat(stateOf(cardId)).isEqualTo(before);
+
+    }
+
+    @Test
+    @DisplayName("지금 버전 번호를 골라도 막지 않고, 카드 상세 조회의 version 과 같은 값을 돌려준다")
+    void currentVersionMatchesCardDetail() throws Exception {
+
+        confirmedCard();
+
+        String body = versionOf(myUserId, MY_CARD.toString(), "2")
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        String detail = mvc.perform(get("/api/cards/{id}", MY_CARD).with(loggedInAs(myUserId)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        Map<String, Object> version = JsonPath.read(body, "$.data");
+        Map<String, Object> detailVersion = JsonPath.read(detail, "$.data.version");
+        assertThat(version).isEqualTo(detailVersion);
+
+    }
+
+    @Test
+    @DisplayName("남의 카드 버전을 보면 그 번호의 버전이 있어도 없는 카드와 똑같이 404 NOT_FOUND 이고 그 카드로 VIEW_CARD 거절 기록이 하나 남는다")
+    void othersVersionIsNotFoundAndRecorded() throws Exception {
+
+        // 남의 카드 id 가 사용자 id 와 겹치면 거절 기록에 어느 id 를 남겼는지 가려지지 않아 카드를 하나 더 만든다
+        fixtures.insertCard(UUID.randomUUID(), myUserId);
+        Long othersCardId = fixtures.insertCard(OTHERS_CARD, othersUserId);
+
+        versionOf(myUserId, OTHERS_CARD.toString(), "1")
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        assertThat(events()).containsExactly(new AuditRow(myUserId, "VIEW_CARD", othersCardId, "DENIED"));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"44444444-4444-4444-8444-444444444444", "not-a-uuid"})
+    @DisplayName("없는 카드나 UUID 가 아닌 id 의 버전을 보면 404 NOT_FOUND 이고 거절 기록은 남지 않는다")
+    void unknownCardVersionIsNotFound(String id) throws Exception {
+
+        versionOf(myUserId, id, "1")
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        assertThat(events()).isEmpty();
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1, 3, 32768, 65537})
+    @DisplayName("없는 버전 번호(0·음수·없는 번호·32768 이상)를 보면 404 NOT_FOUND 이고, short 로 바꾸면 1이 되는 65537 도 1번 버전을 돌려주지 않는다")
+    void unknownVersionNoIsNotFound(int versionNo) throws Exception {
+
+        confirmedCard();
+
+        versionOf(myUserId, MY_CARD.toString(), String.valueOf(versionNo))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"abc", "1.5"})
+    @DisplayName("버전 번호가 정수가 아니면 400 INVALID_REQUEST 이다")
+    void nonIntegerVersionNoIsBadRequestOnView(String versionNo) throws Exception {
+
+        confirmedCard();
+
+        versionOf(myUserId, MY_CARD.toString(), versionNo)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+    }
+
+    @Test
     @DisplayName("작성 중 카드에서 예전 버전을 고르면 그 버전의 네 칸(빈 칸은 빈 채로)과 근거 커밋 연결을 복사한 RESTORE 버전이 현재 번호+1 로 생겨 현재 버전이 되고, 예전 버전들은 그대로이며 카드 수정 시각이 바뀐다")
     void restoresChosenVersionAsNewVersion() throws Exception {
 
@@ -613,6 +724,12 @@ class CardHistoryApiTest {
     private ResultActions versions(Long userId, String id) throws Exception {
 
         return mvc.perform(get("/api/cards/{id}/versions", id).with(loggedInAs(userId)));
+
+    }
+
+    private ResultActions versionOf(Long userId, String id, String versionNo) throws Exception {
+
+        return mvc.perform(get("/api/cards/{id}/versions/{no}", id, versionNo).with(loggedInAs(userId)));
 
     }
 

@@ -1,5 +1,7 @@
 import { CardMetadataPatch } from '@/api/schemas';
 import { mockMatchDetail, mockMatchList } from './matching';
+import { COVER_QUESTIONS, coverLetterSummary, coverLetterView, createCoverLetter, saveCoverLetterText } from './coverLetter';
+import { CHAR_LIMIT_RANGE } from '../lib/coverLetter';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
@@ -32,6 +34,36 @@ on('GET', '/matches', () => ok(mockMatchList()));
 on('GET', '/matches/:id', ({ params }) => {
   const detail=mockMatchDetail(params[0]);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
+});
+// 자소서 초안 (제안 계약 — 서버 미구현, 목 전용)
+// 같은 시각이면 나중에 만든 초안이 먼저 — 동률에서도 정렬이 흔들리지 않게 한다.
+on('GET', '/cover-letters', () => ok([...db.coverLetters]
+  .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id, undefined, { numeric: true }))
+  .map(coverLetterSummary)));
+on('POST', '/cover-letters', ({ body }) => {
+  const question = String(body.question ?? '');
+  if (!(COVER_QUESTIONS as readonly string[]).includes(question)) return fail(400, 'BAD_QUESTION', '문항이 올바르지 않습니다');
+  const limit = body.charLimit ?? null; // null = 제한 없음
+  if (limit !== null && !(typeof limit === 'number' && Number.isInteger(limit) && limit >= CHAR_LIMIT_RANGE.min && limit <= CHAR_LIMIT_RANGE.max)) {
+    return fail(400, 'BAD_LIMIT', `글자 수 제한은 ${CHAR_LIMIT_RANGE.min}~${CHAR_LIMIT_RANGE.max}자의 정수이거나 비워 두어야 합니다`);
+  }
+  const cardIds = Array.isArray(body.cardIds) ? body.cardIds.map(String) : [];
+  if (!cardIds.length) return fail(422, 'NO_EVIDENCE', '확정한 카드를 하나 이상 골라야 합니다');
+  const confirmed = new Set(db.cards.filter((c) => c.status === 'CONFIRMED').map((c) => c.id));
+  if (cardIds.some((id: string) => !confirmed.has(id))) return fail(422, 'CARD_NOT_CONFIRMED', '확정한 카드만 자소서 초안에 쓸 수 있습니다');
+  const matchId = body.matchId == null ? null : String(body.matchId);
+  if (matchId && !mockMatchDetail(matchId)) return fail(404, 'NOT_FOUND', '공고를 찾을 수 없습니다.');
+  return ok(coverLetterView(createCoverLetter({ matchId, question, charLimit: limit, cardIds: [...new Set<string>(cardIds)] })));
+});
+on('GET', '/cover-letters/:id', ({ params }) => {
+  const l = db.coverLetters.find((x) => x.id === params[0]);
+  return l ? ok(coverLetterView(l)) : fail(404, 'NOT_FOUND', '자소서 초안을 찾을 수 없습니다');
+});
+on('PATCH', '/cover-letters/:id', ({ params, body }) => {
+  const l = db.coverLetters.find((x) => x.id === params[0]);
+  if (!l) return fail(404, 'NOT_FOUND', '자소서 초안을 찾을 수 없습니다');
+  if (typeof body.text !== 'string' || body.text.length > 10_000) return fail(400, 'BAD_TEXT', 'text 는 10,000자 이하의 문자열이어야 합니다');
+  return ok(saveCoverLetterText(l, body.text));
 });
 on('POST', '/auth/logout', () => ok({ ok: true }));
 on('GET', '/me', () => {

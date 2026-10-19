@@ -1,3 +1,4 @@
+import '@/styles/matching.css';
 import { Link } from "react-router-dom";
 import { ApiError } from "@/api/client";
 import { QueryFailure } from "@/components/ui/QueryFailure";

@@ -197,8 +197,8 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 | | 응답 `data` |
 |---|---|
-| `GET /matches` | `MatchTarget[]` — 아래 정렬 규칙대로. 마감이 지난 공고와 회사 채용 목록에서 사라진 공고는 넣지 않는다 |
-| `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote` · `conditions[]`. 없는 id · 마감이 지난 공고 · 사라진 공고는 404 `NOT_FOUND` |
+| `GET /matches` | `MatchTarget[]` — 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다 |
+| `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote` · `conditions[]`. 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
 
 **MatchTarget**
 ```jsonc

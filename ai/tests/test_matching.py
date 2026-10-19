@@ -167,6 +167,31 @@ def test_index_splits_criteria_and_removes_duplicates() -> None:
     )
 
 
+def test_index_keeps_the_type_of_each_extracted_criterion() -> None:
+    criteria = [
+        {"criterion_type": kind, "text": f"{kind} 조건", "source_quote": f"{kind} 조건"}
+        for kind in ("RESPONSIBILITY", "REQUIRED", "PREFERRED")
+    ]
+    payload = posting_payload(
+        criteria=criteria,
+        responsibilities=[],
+        required_qualifications=[],
+        preferred_qualifications=[],
+        skills=[],
+    )
+    store = FakeStore()
+
+    TalentMatcher(FakeEmbedder(), store).index(
+        JobPostingIndexRequest(postings=[JobPosting.model_validate(payload)])
+    )
+
+    assert [metadata["criterion_type"] for metadata in store.replaced[0]["metadatas"]] == [
+        "RESPONSIBILITY",
+        "REQUIRED",
+        "PREFERRED",
+    ]
+
+
 def test_inactive_posting_is_removed_without_embedding() -> None:
     embedder = FakeEmbedder()
     store = FakeStore()

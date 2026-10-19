@@ -1,0 +1,57 @@
+{
+  "case": "Spring이 공개 공고 상세 본문을 전달하고 AI가 원문 인용이 있는 조건만 추출한다",
+  "source_policy": {
+    "discovery": "SARAMIN_OFFICIAL_API",
+    "detail_v1": "PUBLIC_COMPANY_CAREER_PAGE_TEXT",
+    "automatic_html_crawling": false,
+    "note": "상세 본문은 사용 허용을 확인한 공개 기업 채용 페이지에서 Spring이 전달한다. 사람인 키워드를 필수·우대 조건으로 추론하지 않는다."
+  },
+  "spring_to_ai": {
+    "method": "POST",
+    "path": "/internal/job-postings/extract",
+    "request": {
+      "source": "COMPANY_CAREER_PAGE",
+      "external_posting_id": "backend-101",
+      "job_title": "백엔드 개발자",
+      "source_url": "https://careers.example.com/jobs/backend-101",
+      "raw_text": "담당 업무\nSpring Boot 기반 REST API를 설계하고 개발합니다.\n자격 요건\nJava 개발 경험이 필요합니다.",
+      "previous_content_hash": null,
+      "previous_content_status": "METADATA_ONLY"
+    }
+  },
+  "ai_to_spring": {
+    "data": {
+      "source": "COMPANY_CAREER_PAGE",
+      "external_posting_id": "backend-101",
+      "source_url": "https://careers.example.com/jobs/backend-101",
+      "content_hash": "d58672547fc7551543e342e9c71252041d7a03ab6371064c47287ca164ba2557",
+      "outcome": "UPDATED",
+      "content_status": "READY",
+      "criteria": [
+        {
+          "criterion_type": "RESPONSIBILITY",
+          "text": "Spring Boot 기반 REST API 개발",
+          "source_quote": "Spring Boot 기반 REST API를 설계하고 개발합니다."
+        },
+        {
+          "criterion_type": "REQUIRED",
+          "text": "Java 개발 경험",
+          "source_quote": "Java 개발 경험이 필요합니다."
+        }
+      ]
+    }
+  },
+  "spring_persistence": {
+    "posting_unique_key": ["source", "external_posting_id"],
+    "posting_fields": ["company_name", "job_title", "job_category", "source_url", "status", "content_status", "content_hash", "published_at", "updated_at", "expires_at", "collected_at", "last_seen_at"],
+    "criterion_fields": ["criterion_type", "text", "source_quote"],
+    "raw_text_persistence": false,
+    "transaction_rules": [
+      "UPDATED이면 공고를 upsert하고 기존 조건을 새 criteria로 한 트랜잭션에서 교체한다.",
+      "UNCHANGED이면 조건을 교체하지 않고 last_seen_at과 공고 상태만 갱신한다.",
+      "DB 커밋 성공 뒤 /internal/matching/postings/index를 호출한다.",
+      "EXPIRED 또는 INACTIVE가 되면 같은 index API로 상태를 보내 Chroma 파생 인덱스에서 제거한다.",
+      "AI 인덱싱 실패 시 DB 원본은 유지하고 재시도 가능한 동기화 실패로 기록한다."
+    ]
+  }
+}

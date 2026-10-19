@@ -26,6 +26,19 @@ FE·BE·AI 세 파트가 같은 사례를 보고 있는지 테스트로 고정�
     `patch_truncated: true`로 표시한다.
   - 이 응답은 A의 diff 해석용이며 원본 patch를 DB에 영속 저장하지 않는다.
 
+- `matching/job-posting-detail.json` — 공개 채용공고 상세 본문을 직무 조건으로
+  정규화하는 Spring → AI 계약.
+  - 사람인 공식 API는 공고 탐색용 메타데이터로만 사용한다.
+  - 상세 본문은 사용 허용을 확인한 기업 채용 페이지에서 Spring이 확보해 전달한다.
+  - AI는 원문에 실제 존재하는 `source_quote`가 있는 조건만 반환한다.
+  - Spring은 원문 전체가 아니라 정규화 조건·인용·본문 해시를 저장한다.
+
+- `matching/job-matching.json` — Spring이 저장한 공고를 Chroma 파생 인덱스에
+  반영하고, 사용자가 확정한 STAR 문장으로 검색하는 대표 사례.
+  - Spring DB가 공고와 상태의 단일 출처이고 ChromaDB는 재생성 가능한 검색 인덱스다.
+  - STAR 원문은 ChromaDB에 저장하지 않고 요청 동안만 임베딩한다.
+  - 등급은 AI가 아니라 Spring이 세므로 검색 응답에 등급 칸이 없다.
+
 이 JSON은 **AI → Spring 전송 계약**이며 모든 필드를 그대로 영속 저장하라는 DB
 스키마는 아니다. 초기 수집에서는 전체 본문과 diff patch를 보내지 않고 제한된
 `body_excerpt`만 전달한다. A가 만든 STAR 상태·근거 연결·부족 항목을 Spring이

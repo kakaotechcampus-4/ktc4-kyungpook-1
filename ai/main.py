@@ -19,6 +19,8 @@ from api.collection import router as collection_router
 from api.analysis import router as analysis_router
 from api.interviews import router as interviews_router
 from api.health import SERVICE_VERSION, router as health_router
+from api.job_postings import router as job_postings_router
+from api.matching import router as matching_router
 from schemas.common import Envelope, ErrorDetail, Meta
 
 logger = logging.getLogger(__name__)
@@ -90,8 +92,8 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
         description=(
             "AI는 판단·생성만 수행하며 인증·소유권 검증·영속 저장은 Spring이 담당합니다. "
             "`/internal/*` 응답은 공통 `Envelope`이고 스키마 검증 실패는 422 대신 400입니다.\n\n"
-            "**현재 구현 범위:** GitHub 수집, A 경험 그룹화·diff 근거·STAR 초안, 템플릿/규칙 기반 B-1/B-2가 "
-            "구현되어 있습니다. LLM 설정이 없으면 LLM을 쓰는 API만 503으로 끝납니다. "
+            "**현재 구현 범위:** GitHub 수집, A 경험 그룹화·diff 근거·STAR 초안, 템플릿/규칙 기반 B-1/B-2, "
+            "공고 조건 추출과 매칭 색인·검색이 구현되어 있습니다. LLM 설정이 없으면 LLM을 쓰는 API만 503으로 끝납니다. "
             "`/health`는 프로세스 생존 확인이며 LLM 또는 A 기능 readiness 검사가 아닙니다. "
             "이 API는 내부 서버 간 호출용이고 인터넷에 공개하는 인증 API가 아닙니다."
         ),
@@ -100,6 +102,8 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
             {"name": "collection", "description": "A-1 GitHub 활동 및 선택 후보 diff 수집. X-GitHub-Token 필수"},
             {"name": "analysis", "description": "A 경험 후보 그룹화·diff 근거·STAR 초안 생성"},
             {"name": "interview-turns", "description": "B-1 질문 생성 / B-2 답변 평가. 현재 템플릿·규칙 기반이며 저장은 Spring 담당"},
+            {"name": "job-postings", "description": "공고 상세 본문에서 원문 인용이 있는 직무 조건 추출"},
+            {"name": "matching", "description": "공고 조건 인덱싱과 확정 STAR 기반 직무 검색"},
         ],
         openapi_url="/openapi.json" if docs_enabled else None,
         docs_url="/docs" if docs_enabled else None,
@@ -110,6 +114,8 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
     application.include_router(analysis_router)
     application.include_router(collection_router)
     application.include_router(interviews_router)
+    application.include_router(job_postings_router)
+    application.include_router(matching_router)
     application.add_exception_handler(
         RequestValidationError, handle_request_validation_error
     )

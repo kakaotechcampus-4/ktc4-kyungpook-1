@@ -18,6 +18,10 @@
 .env
 .env.*
 !.env.example
+# 모델 비교용 실제 endpoint/키 설정. 예제 파일만 커밋한다.
+ai/evals/model_endpoints.json
+ai/evals/results/
+ai/evals/fixtures/generated/
 *.pem
 *.key
 *.p12
@@ -58,6 +62,7 @@ venv/
 *.egg-info/
 .pytest_cache/
 .ipynb_checkpoints/
+.chroma/
 
 # ── Java / Kotlin / Gradle ──────────────────────────
 target/

@@ -1,0 +1,70 @@
+{
+  "case": "Spring이 저장·확정한 STAR 문장을 보내고 AI가 활성 공고 조건 근거를 반환한다",
+  "index": {
+    "method": "POST",
+    "path": "/internal/matching/postings/index",
+    "rule": "Spring 저장 성공 후 호출한다. METADATA_ONLY·EXPIRED·INACTIVE 공고는 정밀 추천 인덱스에서 제거한다.",
+    "spring_to_ai": {
+      "postings": [{
+        "source": "COMPANY_CAREER_PAGE",
+        "external_posting_id": "backend-101",
+        "company_name": "예시회사",
+        "job_title": "백엔드 개발자",
+        "job_category": "BACKEND",
+        "content_status": "READY",
+        "criteria": [
+          {
+            "criterion_type": "RESPONSIBILITY",
+            "text": "Spring Boot 기반 REST API 개발",
+            "source_quote": "Spring Boot 기반 REST API를 설계하고 개발합니다."
+          },
+          {
+            "criterion_type": "REQUIRED",
+            "text": "Java 개발 경험",
+            "source_quote": "Java 개발 경험이 필요합니다."
+          }
+        ],
+        "responsibilities": [],
+        "required_qualifications": [],
+        "preferred_qualifications": [],
+        "skills": [],
+        "source_url": "https://careers.example.com/jobs/backend-101",
+        "collected_at": "2026-10-11T00:00:00Z",
+        "status": "ACTIVE",
+        "content_hash": "d58672547fc7551543e342e9c71252041d7a03ab6371064c47287ca164ba2557"
+      }]
+    },
+    "ai_to_spring": {
+      "indexed_postings": 1,
+      "indexed_criteria": 2,
+      "deactivated_postings": 0,
+      "skipped_metadata_only": 0
+    }
+  },
+  "search": {
+    "method": "POST",
+    "path": "/internal/matching/search",
+    "spring_to_ai": {
+      "statements": [{"card_id": 11, "star_slot": "A", "statement_seq": 1, "body": "Spring Boot API의 응답 시간을 개선했습니다."}],
+      "job_categories": ["BACKEND"],
+      "top_k": 10
+    },
+    "ai_to_spring": {
+      "matches": [{
+        "posting_key": "COMPANY_CAREER_PAGE:backend-101",
+        "company_name": "예시회사",
+        "job_title": "백엔드 개발자",
+        "job_category": "BACKEND",
+        "source_url": "https://careers.example.com/jobs/backend-101",
+        "evidence": [{
+          "criterion_type": "RESPONSIBILITY",
+          "criterion_text": "Spring Boot 기반 REST API 개발",
+          "source_quote": "Spring Boot 기반 REST API를 설계하고 개발합니다.",
+          "card_id": 11,
+          "star_slot": "A",
+          "statement_seq": 1
+        }]
+      }]
+    }
+  }
+}

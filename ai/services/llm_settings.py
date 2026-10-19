@@ -27,6 +27,11 @@ class LLMConfigError(RuntimeError):
     """LLM 환경 설정이 없거나 잘못됐다. 재시도로 해결되지 않는다."""
 
 
+def configured_model(task: str) -> str:
+    """``task``에 쓰는 모델 이름. 응답 meta에도 같은 값을 보낸다."""
+    return os.getenv(f"GITORY_{task}_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+
+
 def load_llm_settings(task: str) -> LLMSettings:
     """``task``(예: DIFF, STAR)에 해당하는 모델 설정을 환경변수에서 읽는다."""
     base_url = os.getenv("GITORY_LLM_BASE_URL", "").strip()
@@ -55,7 +60,7 @@ def load_llm_settings(task: str) -> LLMSettings:
     return LLMSettings(
         base_url=base_url,
         api_key=api_key,
-        model=os.getenv(f"GITORY_{task}_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL,
+        model=configured_model(task),
         reasoning_effort=effort,  # type: ignore[arg-type]
         timeout_seconds=timeout_seconds,
     )

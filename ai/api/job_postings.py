@@ -22,7 +22,7 @@ from services.job_posting_extractor import (
     LunaJobPostingExtractionModel,
 )
 from services.llm_executors import POSTING_EXTRACTION_EXECUTOR, run_llm_call
-from services.llm_settings import LLMConfigError
+from services.llm_settings import LLMConfigError, configured_model
 from services.llm_structured_client import (
     LLMNonRetryableError,
     LLMStructuredCallError,
@@ -99,7 +99,7 @@ async def extract_job_posting_detail(
         success=True,
         data=result,
         meta=Meta(
-            model="gpt-5.6-luna" if result.outcome == ExtractionOutcome.UPDATED else None,
+            model=configured_model("JOB_POSTING") if result.outcome == ExtractionOutcome.UPDATED else None,
             tool_calls_made=1 if result.outcome == ExtractionOutcome.UPDATED else 0,
             processing_ms=_elapsed_ms(started),
         ),

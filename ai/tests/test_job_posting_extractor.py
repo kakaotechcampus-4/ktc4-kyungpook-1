@@ -333,6 +333,21 @@ def test_detail_extraction_api_reports_model_usage() -> None:
     assert response.json()["meta"]["tool_calls_made"] == 1
 
 
+def test_detail_extraction_api_reports_the_configured_model(monkeypatch) -> None:
+    monkeypatch.setenv("GITORY_JOB_POSTING_MODEL", "other-model")
+    extractor = JobPostingDetailExtractor(FakeExtractionModel(valid_criteria()))
+    app.dependency_overrides[get_job_posting_extractor] = lambda: extractor
+    try:
+        response = TestClient(app).post(
+            "/internal/job-postings/extract",
+            json=request_payload(),
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.json()["meta"]["model"] == "other-model"
+
+
 def test_detail_extraction_api_maps_fabricated_required_quote_to_evidence_error(caplog) -> None:
     extractor = JobPostingDetailExtractor(
         FakeExtractionModel(

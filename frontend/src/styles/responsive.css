@@ -365,7 +365,7 @@ body { overflow-x: hidden; }
   .landing-example:not(.landing-example--expanded) .landing-card__field[data-slot=T],
   .landing-example:not(.landing-example--expanded) .landing-card__full { display: none; }
   .landing-example:not(.landing-example--expanded) .landing-card__preview { display: inline; }
-  .landing-example:not(.landing-example--expanded) .github-snapshot__commits { margin-block: 0 var(--space-8); }
+  .landing-example:not(.landing-example--expanded) .github-snapshot__commits { margin-block: var(--space-8); }
   .landing-example:not(.landing-example--expanded) .github-snapshot__commits li { padding: var(--space-8); }
   .landing-example:not(.landing-example--expanded) .landing-card__field { padding-block: var(--space-8); }
   .landing-example:not(.landing-example--expanded) .landing-card__field p { font-size: 12px; line-height: 18px; margin-top: 2px; }

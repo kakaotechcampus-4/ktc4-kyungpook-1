@@ -49,37 +49,39 @@
   },
   "spring_persistence": {
     "posting_unique_key": [
-      "source",
-      "external_posting_id"
+      "company_key",
+      "external_id"
     ],
     "posting_fields": [
       "company_name",
-      "job_title",
-      "job_category",
+      "title",
+      "source_url",
+      "category",
       "experience_level",
       "experience_min_years",
-      "experience_source_quote",
-      "source_url",
+      "experience_quote",
       "status",
       "content_status",
       "content_hash",
-      "published_at",
-      "updated_at",
+      "indexed_content_hash",
+      "source_updated_at",
       "expires_at",
-      "collected_at",
-      "last_seen_at"
+      "first_seen_at",
+      "last_seen_at",
+      "extracted_at"
     ],
     "criterion_fields": [
-      "criterion_type",
+      "type",
+      "seq",
       "text",
-      "source_quote"
+      "quote"
     ],
     "raw_text_persistence": false,
     "transaction_rules": [
-      "UPDATED이면 공고(job_category·experience 포함)를 upsert하고 기존 조건을 새 criteria로 한 트랜잭션에서 교체한다.",
+      "UPDATED이면 공고(job_category·experience 포함)를 upsert하고 기존 조건을 새 criteria(조건 id도 새로)로 한 트랜잭션에서 교체한다.",
       "UNCHANGED이면 조건을 교체하지 않고 last_seen_at과 공고 상태만 갱신한다.",
-      "DB 커밋 성공 뒤 /internal/matching/postings/index를 호출한다.",
-      "EXPIRED 또는 INACTIVE가 되면 같은 index API로 상태를 보내 Chroma 파생 인덱스에서 제거한다.",
+      "하루 한 번 실행 끝(조건 뽑기 다음)에 ACTIVE·READY 공고를 20개씩 나눠 posting_id·criterion_id와 함께 /internal/matching/postings/index로 보내고, 묶음이 성공한 공고만 indexed_content_hash를 보낸 때의 content_hash로 채운다.",
+      "모든 묶음을 보낸 뒤 지금 ACTIVE·READY 공고 id 전부(색인 묶음이 실패한 공고 포함)를 /internal/matching/postings/prune에 한 번 보내 목록 밖 공고의 벡터를 지운다. 목록이 비면 부르지 않는다.",
       "AI 인덱싱 실패 시 DB 원본은 유지하고 재시도 가능한 동기화 실패로 기록한다."
     ]
   },

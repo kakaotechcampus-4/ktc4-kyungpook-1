@@ -168,16 +168,22 @@ Spring은 원문 전체 대신 정규화 조건과 SHA-256 본문 해시를 저�
 `text` 길이 상한(1000자)을 넘는 인용은 근거 없는 조건처럼 다루고, 모델이 조건을 냈는데 전부 빠지면 422로 거절합니다.
 공고를 어디서 어떻게 가져올지는 Spring이 정하며 AI는 본문만 받습니다.
 
-Spring이 상세 직무 조건과 출처를 저장한 뒤
-`POST /internal/matching/postings/index`로 활성 공고를 보내면 AI는 담당업무·
-필수조건·우대조건·기술 단위로 임베딩해 ChromaDB 파생 인덱스를 갱신합니다.
-마감·비활성 공고는 같은 API로 전달하면 검색 인덱스에서 제거됩니다.
+Spring이 상세 직무 조건을 저장한 뒤 `POST /internal/matching/postings/index`로
+`posting_id`·`status`·`criteria[{criterion_id, criterion_type, text}]`를 보내면 AI는 조건 문장을
+임베딩해 조건 id와 벡터만 ChromaDB 파생 색인에 저장합니다. `ACTIVE`이고 `criteria`가 있으면 그 공고의
+벡터를 교체하고, `EXPIRED`·`REMOVED`이거나 `criteria`가 빈 배열이면 그 공고의 벡터를 지웁니다.
+색인 요청은 요청에 든 공고만 바꿉니다. 목록 밖 공고의 벡터는 `POST /internal/matching/postings/prune`에
+남길 공고 `keep_posting_ids`(1~10,000개)를 보내 지웁니다(응답 `kept_postings`·`removed_postings`). id는 모두 Spring이 정한 0보다 큰 정수이고 같은 요청 안에서 겹치면 400입니다.
 
-`POST /internal/matching/search`는 Spring이 검증한 확정 STAR 문장만 받습니다.
-STAR 원문은 ChromaDB에 저장하지 않고 요청 동안만 임베딩하며, 응답에는 매칭된
-공고 조건과 `card_id`·STAR 슬롯을 함께 반환합니다.
+`POST /internal/matching/search`는 Spring이 검증한 확정 STAR 문장 `statements[{statement_id, body}]`
+1~200개를 받습니다. STAR 원문은 ChromaDB에 저장하지 않고 요청 동안만 임베딩하며, 응답에는 거리 기준
+(`GITORY_MATCH_MAX_DISTANCE`) 안에 드는 `matches[{criterion_id, statement_id, distance}]`를 상한 없이
+모두 담고, 색인에 든 전체 조건 수 `collection_criteria`를 함께 보냅니다. 근사 검색은 가까운 조건을
+빠뜨릴 수 있어 저장된 벡터를 한 번 읽어 모든 거리를 계산합니다. 공고별 묶음과 등급은 Spring이 셉니다.
+색인 모음 이름에 임베딩 모델 이름이 들어가 모델을 바꾸면 새 모음에서 시작하고(옛 모음은 남아 있고
+쓰이지 않음), 임베딩 모델과 색인 연결은 처음 요청 때 한 번 만들어 재사용합니다.
 
-`extract`·`postings/index`·`search`의 실패는 모두 `success=false` 오류 봉투로 돌려줍니다.
+`extract`·`postings/index`·`postings/prune`·`search`의 실패는 모두 `success=false` 오류 응답으로 돌려줍니다.
 LLM·임베딩 설정 누락, 키·권한 오류, 임베딩 하루 한도는 503 `retryable=false`, 일시 실패는 503
 `retryable=true`, 예상하지 못한 오류는 500 `INTERNAL_ERROR`입니다. 임베딩 일시 실패의 503(`retryable=true`)은 OpenAI 호환
 임베딩을 쓸 때 나가고, 기본 로컬 임베딩(`chroma-default`, 첫 호출 때 모델을 내려받음)의 실패는

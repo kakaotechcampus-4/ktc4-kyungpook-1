@@ -21,7 +21,7 @@ from schemas.analysis import (
     StarFieldResult,
 )
 from schemas.common import EmptyReasonCode, StarSlot, StatementConfidence
-from services.evidence_checks import unsupported_metrics
+from services.evidence_checks import match_commit_sha, unsupported_metrics
 from services.llm_executors import CARD_DRAFT_EXECUTOR, LLMCallSkipped, run_llm_call
 from services.llm_structured_client import (
     LLMInvalidOutputError,
@@ -235,7 +235,7 @@ class StarGenerator:
         payload: dict[str, Any],
         output: StarDraftOutput,
     ) -> StarAnalysisResponse:
-        by_sha = {item.sha.casefold(): item for item in evidence}
+        by_sha = {item.sha: item for item in evidence}
         has_answers = bool(payload["confirmed_answers"])
         removed_claims: list[str] = []
         used_evidence: list[DiffEvidence] = []
@@ -244,12 +244,12 @@ class StarGenerator:
         for slot in SLOTS:
             field: StarField = getattr(output, slot)
             text = _clip(redact_secrets(" ".join((field.text or "").split())), self._limits.max_text_chars)
-            # 입력에 실재하는 SHA만 남긴다. 저자 일치는 배제 조건이 아니다(ARCHITECTURE.md 기여 귀속).
-            cited = _cited_evidence(field.evidence_shas, by_sha)
-
             if field.status == "EMPTY" or not text:
                 star[slot] = self._empty(field.insufficient_reason, "NO_EVIDENCE")
                 continue
+            # 모델이 적은 SHA를 입력 커밋에 맞춰 그 커밋만 남기고, 맞출 수 없는 SHA는 버린다.
+            # 저자 일치는 배제 조건이 아니다(ARCHITECTURE.md 기여 귀속).
+            cited = _cited_evidence(field.evidence_shas, by_sha)
             if not cited and not has_answers:
                 # 근거 0개 문장은 화면에 뜨면 안 된다(규칙 4).
                 removed_claims.append(text)
@@ -311,7 +311,8 @@ def _unique_evidence(evidence: list[DiffEvidence]) -> list[DiffEvidence]:
 def _cited_evidence(shas: list[str], by_sha: dict[str, DiffEvidence]) -> list[DiffEvidence]:
     cited: list[DiffEvidence] = []
     for sha in shas:
-        item = by_sha.get(sha.strip().casefold())
+        matched = match_commit_sha(sha, by_sha, "STAR 초안")
+        item = by_sha[matched] if matched is not None else None
         if item is not None and item not in cited:
             cited.append(item)
     return cited

@@ -142,6 +142,22 @@ def test_drops_unknown_shas_and_removes_claims_without_any_evidence() -> None:
     assert result.missing_fields == ["S", "T", "R"]
 
 
+def test_keeps_cells_whose_cited_sha_was_copied_with_a_typo() -> None:
+    real = "0409013fb1905a33719fd42efbe7b03f07c61c9b"
+    client = _FakeClient(_output(
+        S=_field("FILLED", "관계없는 시험이 메모리 부족으로 실패했다.", [real + "9"]),
+        A=_field("FILLED", "시험 JVM 의 최대 메모리를 올렸다.", [real, real + "9"]),
+    ))
+
+    result = _run(StarGenerator(client), _request(_evidence(real)))
+
+    # 응답에는 모델이 적은 글자가 아니라 입력의 40자 번호를 싣고, 같은 커밋으로 맞춰진 두 번호는 한 번만 싣는다.
+    assert [result.star[slot].status for slot in ("S", "A")] == ["FILLED", "FILLED"]
+    assert [ref.sha for ref in result.star["S"].evidence] == [real]
+    assert [ref.sha for ref in result.star["A"].evidence] == [real]
+    assert result.removed_claims == []
+
+
 def test_text_backed_only_by_confirmed_answers_is_kept_for_user_review() -> None:
     client = _FakeClient(_output(R=_field("FILLED", "배포 후 로그인 오류 문의가 사라졌다.", [])))
 

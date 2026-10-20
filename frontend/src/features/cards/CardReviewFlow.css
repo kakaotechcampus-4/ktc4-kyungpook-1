@@ -39,10 +39,6 @@
   min-height: 44px;
 }
 @media (max-width: 767px) {
-  .main--footer .card-review-aside {
-    /* Offset the mobile footer's negative bottom margin without changing the app shell. */
-    margin-bottom: var(--main-pb);
-  }
   .draft-progress {
     padding: 20px;
   }

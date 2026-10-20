@@ -83,6 +83,7 @@ npm run dev        # http://localhost:5173 — 목 API 내장 (브라우저에�
 npm test           # 계약 계층 유닛 (vitest)
 npm run e2e        # 기능 + 반응형 E2E (playwright · 최초 1회 npx playwright install chromium)
 npm run e2e:static # 같은 E2E 를 프로덕션 빌드에 — Vercel 이 서빙하는 산출물과 동일
+npm run e2e:mobile # 운영 빌드의 주요 기능 흐름을 390px 터치 뷰포트로 재검증
 npm run build      # tsc -b && vite build
 ```
 

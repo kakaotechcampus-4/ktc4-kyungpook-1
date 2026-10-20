@@ -23,3 +23,9 @@
 | --- | --- | --- |
 | 초안 생성 | ![초안 생성 PC](screenshots/pr-328/draft-progress-1440.png) | ![초안 생성 모바일](screenshots/pr-328/draft-progress-390.png) |
 | 카드 상세 | ![카드 상세 PC](screenshots/pr-328/card-detail-1440.png) | ![카드 상세 모바일 하단](screenshots/pr-328/card-detail-390.png) |
+
+## 리뷰 보완: 모바일 탐색 박스 하단 겹침
+- 320/390px 작성 중 카드의 최하단에서 탐색 박스와 하단 행동 줄의 간격이 -8px임을 회귀 테스트로 재현했다. 기존 검사는 버튼 중심의 hit test여서 박스 끝부분의 겹침을 놓쳤다.
+- 모바일의 `main--footer`는 실제 하단 padding이 0이지만 `--main-pb`는 24px이다. StickyFooter의 음수 margin-bottom과 본문 gap 16px이 만나 8px 겹쳤다.
+- 공통 셸/다른 페이지는 유지하고, 모바일 작성 화면의 `card-review-aside`에 동일한 하단 여백 변수를 적용해 상쇄한다. 결과적으로 탐색 박스와 하단 행동 줄 사이에 16px 간격을 확보한다. PC 정렬과 확정 카드 화면에는 적용하지 않는다.
+- 회귀 검사는 모바일 최하단에서 버튼뿐 아니라 탐색 박스 전체와 행동 줄의 실제 경계 간격을 측정한다.

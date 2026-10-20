@@ -1,5 +1,17 @@
 import { test, expect } from '@playwright/test';
 import { loginAsDemo } from './helpers';
+for (const width of [320, 390])
+  test(`draft navigation clears the bottom action row at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await loginAsDemo(page);
+    await page.goto('/cards/card_01');
+    const panel = page.getByRole('region', { name: '다른 카드 보기' });
+    await expect(panel).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const nav = await panel.boundingBox();
+    const footer = await page.locator('.sticky-footer').boundingBox();
+    expect(footer!.y - (nav!.y + nav!.height)).toBeGreaterThanOrEqual(16);
+  });
 for (const width of [320, 390, 1440])
   test(`card review navigation follows title order and fits ${width}px`, async ({
     page,

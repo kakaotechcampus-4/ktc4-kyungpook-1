@@ -89,4 +89,30 @@ public class JobPosting {
         return new JobPosting(companyKey, externalId, companyName, title, sourceUrl, sourceUpdatedAt, expiresAt, now);
 
     }
+
+    /** 활성으로 되돌려도 마감이 지난 공고는 실행 끝의 마감 처리가 다시 마감 상태로 바꾼다 */
+    public void seenAgain(String companyName, String title, String sourceUrl, Instant sourceUpdatedAt,
+                          Instant expiresAt, Instant now) {
+
+        this.companyName = companyName;
+        this.title = title;
+        this.sourceUrl = sourceUrl;
+        this.sourceUpdatedAt = sourceUpdatedAt;
+        this.expiresAt = expiresAt;
+        this.lastSeenAt = now;
+        this.status = JobPostingStatus.ACTIVE;
+
+    }
+
+    public void markRemoved() {
+
+        this.status = JobPostingStatus.REMOVED;
+
+    }
+
+    public void expire() {
+
+        this.status = JobPostingStatus.EXPIRED;
+
+    }
 }

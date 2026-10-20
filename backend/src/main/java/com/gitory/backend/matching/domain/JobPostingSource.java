@@ -34,4 +34,23 @@ public class JobPostingSource {
         return new JobPostingSource(companyKey, attemptedAt);
 
     }
+
+    public void attempt(Instant attemptedAt) {
+
+        this.lastAttemptAt = attemptedAt;
+
+    }
+
+    public void succeed(Instant succeededAt) {
+
+        this.lastSuccessAt = succeededAt;
+        this.lastErrorCode = null;
+
+    }
+
+    public void fail(String errorCode) {
+
+        this.lastErrorCode = errorCode;
+
+    }
 }

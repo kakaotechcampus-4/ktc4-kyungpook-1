@@ -6,7 +6,7 @@ import java.time.Duration;
 
 @ConfigurationProperties("gitory.matching.fetch")
 public record PoliteFetchProperties(Duration connectTimeout, Duration readTimeout, Long maxBodyBytes,
-                                    Duration minInterval, String userAgent) {
+                                    Duration minInterval, String userAgent, Duration maxCrawlDelay) {
 
     public PoliteFetchProperties {
         connectTimeout = connectTimeout == null ? Duration.ofSeconds(5) : connectTimeout;
@@ -15,10 +15,12 @@ public record PoliteFetchProperties(Duration connectTimeout, Duration readTimeou
         minInterval = minInterval == null ? Duration.ofSeconds(1) : minInterval;
         userAgent = userAgent == null
                 ? "Gitory/1.0 (+https://github.com/kakaotechcampus-4/ktc4-kyungpook-1)" : userAgent;
+        maxCrawlDelay = maxCrawlDelay == null ? Duration.ofSeconds(60) : maxCrawlDelay;
         if (connectTimeout.isNegative() || connectTimeout.isZero()
                 || readTimeout.isNegative() || readTimeout.isZero()
-                || minInterval.isNegative() || maxBodyBytes <= 0) {
-            throw new IllegalArgumentException("공고 가져오기 설정은 시간 제한과 크기 상한이 양수, 간격이 0 이상이어야 한다");
+                || minInterval.isNegative() || maxBodyBytes <= 0
+                || maxCrawlDelay.isNegative() || maxCrawlDelay.isZero()) {
+            throw new IllegalArgumentException("공고 가져오기 설정은 시간 제한과 크기 상한과 Crawl-delay 상한이 양수, 간격이 0 이상이어야 한다");
         }
     }
 }

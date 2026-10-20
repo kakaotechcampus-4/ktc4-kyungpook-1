@@ -83,6 +83,7 @@ npm run dev        # http://localhost:5173 — 목 API 내장 (브라우저에�
 npm test           # 계약 계층 유닛 (vitest)
 npm run e2e        # 기능 + 반응형 E2E (playwright · 최초 1회 npx playwright install chromium)
 npm run e2e:static # 같은 E2E 를 프로덕션 빌드에 — Vercel 이 서빙하는 산출물과 동일
+npm run e2e:mobile # 운영 빌드의 주요 기능 흐름을 390px 터치 뷰포트로 재검증
 npm run build      # tsc -b && vite build
 ```
 
@@ -181,6 +182,8 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 `src/mock/` — `router.ts`(순수 라우터) · `store.ts`(인메모리 상태 + Job 시뮬레이터) · `browser.ts`(fetch 패치).
 개발 서버 미들웨어가 아니라 **브라우저에서** 돕니다. 그래서 `vite build` 산출물만 올려도 데모가 그대로 동작합니다 (Vercel).
 `VITE_API_MOCK=false` 면 `browser.ts` 가 아무것도 하지 않습니다.
+
+카드 초안 진행·이전/다음 검토 개선(#326·#327): [설계·검증 기록](docs/2026-10-20-CARD_REVIEW_FLOW.md).
 
 ## Job 과 복구 흐름
 

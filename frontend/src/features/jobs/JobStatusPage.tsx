@@ -8,6 +8,7 @@ import { useActiveJobFeed } from '@/lib/activeJobFeed';
 import { jobResultLink } from '@/lib/jobLinks';
 import { jobErrorTitle, jobStateLabel, jobStepLabel, jobTypeLabel } from '@/lib/labels';
 import { stepBadge } from '@/lib/jobView';
+import { DraftProgress } from '@/features/cards/DraftProgress';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 
@@ -30,9 +31,9 @@ export function JobStatusPage() {
     {query.isError && <QueryFailure error={query.error} retry={() => query.refetch()} pending={query.isFetching} />}
     {job.errorCode && <Note strong={jobErrorTitle[job.errorCode]} tone={job.state === 'FAILED' ? 'danger' : 'inset'} />}
     {job.state === 'CANCELED' && <Note strong="작업이 취소됐어요" tone="inset" />}
-    <div className="stack job-status-steps">{job.steps.map((step) => <div className="card job-status-step" key={step.key}>
+    {job.type === 'DRAFT' ? <DraftProgress job={job} checkedAt={query.dataUpdatedAt} /> : <div className="stack job-status-steps">{job.steps.map((step) => <div className="card job-status-step" key={step.key}>
       <strong>{jobStepLabel[step.key]}</strong><span className="row t-12 c-2">{step.state === 'RUNNING' && step.total == null && <Spinner />}{step.state === 'SKIPPED' ? '해당 없음' : step.total == null ? `${step.done}개 처리` : `${step.done} / ${step.total}`}</span><Badge kind="NEUTRAL">{stepBadge(step)}</Badge>
-    </div>)}</div>
+    </div>)}</div>}
     <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
       <Link to="/" className="btn btn--outline">홈으로</Link>
       {result && <Link to={result} className="btn btn--primary">{job.state === 'FAILED' || job.partial || job.state === 'CANCELED' ? '상세 상태 보기' : '결과 보기'}</Link>}

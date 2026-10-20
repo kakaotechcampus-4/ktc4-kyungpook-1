@@ -79,7 +79,7 @@
 |---|---|
 | `interview` → `card` 로 합침 | `interview_turn.card_id → card.id` 로 종속되는데 거꾸로 `card_statement.source_turn_id → interview_turn.id` 로 돌아온다. **모듈로 가르면 양방향 의존이 되어 순환 참조 금지 규칙을 스스로 위반한다** |
 | `evidence` → `card` 로 합침 | 소유 테이블이 0개였다. `git_commit` 은 `ingest` 것, `candidate_commit` 은 `recommend` 것, `statement_evidence` 만 `card` 것이다. 가진 게 없는 모듈은 계층이다 |
-| `matching` 삭제 | ERD 에도 프론트 라우트 맵에도 없다. 빈 패키지를 미리 만들어 두는 건 비용만 있다. 기업 매칭까지 가면 그때 패키지 하나 + 테이블 하나면 된다 |
+| `matching` 삭제 → 기업 매칭을 하게 되어 다시 신설 | 처음에는 ERD 에도 프론트 라우트 맵에도 없어 빈 패키지를 미리 두지 않았다. 기업 매칭이 1차 출시 범위에 들어와 공고와 조건 표를 소유하는 모듈로 다시 만들었다 |
 | `job` 신설 | `analysis_job` 이 살 곳이 없었다. `ingest → recommend → card` 를 엮는 오케스트레이션은 그 자체로 책임이다 |
 
 `evidence` 를 합치면서 **그것이 지키던 규칙 하나가 최상위에서 사라진다.** `card` 는 초안을
@@ -117,7 +117,8 @@ ktc4-kyungpook-1/
 │     │  │     └─ evidence/         sha 실재 검증  ★ agent 금지
 │     │  ├─ job/                    분석 오케스트레이터 (비동기)
 │     │  ├─ audit/                  정책·감사
-│     │  └─ usage/                  화면 사용 지표
+│     │  ├─ usage/                  화면 사용 지표
+│     │  └─ matching/               기업 채용 공고·조건 저장과 매칭
 │     ├─ main/resources/
 │     │  ├─ application.yml
 │     │  └─ db/migration/
@@ -280,6 +281,7 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 | `job` | `analysis_job` |
 | `audit` | `audit_event` |
 | `usage` | `usage_event` |
+| `matching` | `job_posting` · `job_posting_criterion` · `job_posting_source` |
 | `agent` | — (경계 모듈. 테이블이 없는 게 존재 이유다) |
 | `common` | — |
 
@@ -483,9 +485,6 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 
 ## 아직 정하지 않은 것
 
-- **기업 매칭 테이블이 아직 없다.** PRD 7단계(기업 매칭)는 팀이 1차 출시 범위에 넣기로 했고(#199),
-  기준은 인재상이 아니라 공고 조건이다. 그래서 인재상 태그를 담는 `company_context` 모양은 쓰지 않는다.
-  FE↔BE 계약은 `BACKEND_CONTRACT.md` 매칭 절이 기준이고, 공고·조건 표와 모듈 위치는 구현 PR 에서 정한다.
 - **토큰 암호화 키 관리.** `github_connection.token_enc` 는 암호화된 값을 전제한다.
   키를 어디서 주입할지(배포 환경 비밀 관리) 아직 안 정했다. 스펙은 "장기 토큰을 별도
   데이터베이스에 평문 저장하지 않는다"고 못 박았다.

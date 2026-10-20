@@ -269,6 +269,9 @@ class StarAnalysisRequest(StrictRequestModel):
     )
     dependency_files: list[DependencyFile] = Field(default_factory=list)
     confirmed_answers: list[str] = Field(default_factory=list)
+    pull_request_body: str | None = Field(
+        None, description="카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다"
+    )
 
 
 class EvidenceReference(BaseModel):

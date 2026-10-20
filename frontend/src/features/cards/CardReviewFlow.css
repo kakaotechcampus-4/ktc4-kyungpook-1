@@ -1,0 +1,54 @@
+.draft-progress {
+  gap: 16px;
+  padding: 24px;
+}
+.draft-progress__count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.card-review-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-self: stretch;
+  min-width: 0;
+}
+.card-navigation {
+  margin-top: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.two-col > .card-review-aside { align-self: stretch; }
+.card-navigation h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.card-navigation__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.card-navigation__actions .btn {
+  min-width: 0;
+  min-height: 44px;
+}
+@media (max-width: 767px) {
+  .main--footer .card-review-aside {
+    /* Offset the mobile footer's negative bottom margin without changing the app shell. */
+    margin-bottom: var(--main-pb);
+  }
+  .draft-progress {
+    padding: 20px;
+  }
+}
+@media print {
+  .card-navigation {
+    display: none;
+  }
+}

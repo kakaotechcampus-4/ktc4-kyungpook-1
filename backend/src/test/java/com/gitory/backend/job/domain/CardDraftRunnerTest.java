@@ -42,6 +42,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -65,9 +68,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
@@ -267,7 +272,70 @@ class CardDraftRunnerTest {
         assertThat(sent.get()).isEqualTo(new StarDraftRequest(cardFixtures.publicIdOf(candidateId).toString(), LOGIN,
                 "후보 카드", StarSourceType.PR, "#17", List.of(new StarEvidence(SHA_A, "feat: 세션 DB 저장", LOGIN,
                 "+10/-0", "세션을 옮겼다", StarEvidenceSource.COMMIT_MESSAGE, List.of("JDBC"),
-                "https://github.com/grow22/gitory/commit/a"))));
+                "https://github.com/grow22/gitory/commit/a")), null));
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("pullRequestBodies")
+    @DisplayName("후보 PR 의 저장된 본문은 작성자가 카드 주인일 때만 STAR 요청에 싣고, 로그인 대소문자는 가리지 않는다")
+    void sendsPullRequestBodyOnlyWhenOwnerWroteIt(boolean stored, String author, String body, String expected) {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "PR", 17, "#17", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
+        cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        if (stored) {
+            jdbc.update("INSERT INTO pull_request (repository_id, github_pr_number, title, body_excerpt, state, author_login,"
+                    + " base_branch, head_branch, opened_at) VALUES (?, 17, 'PR', ?, 'CLOSED', ?, 'develop', 'feature', now())",
+                    repositoryId, body, author);
+        }
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
+        given(star.draft(any())).willAnswer(invocation -> {
+            sent.set(invocation.getArgument(0));
+            return allEmpty(StarEmptyReason.NO_EVIDENCE);
+        });
+
+        runNext();
+
+        assertThat(sent.get().pullRequestBody()).isEqualTo(expected);
+
+    }
+
+    @Test
+    @DisplayName("다른 저장소에 같은 번호의 PR 이 있어도 카드가 속한 저장소의 PR 본문만 싣는다")
+    void readsPullRequestOnlyFromCardRepository() {
+
+        Long otherRepositoryId = fixtures.insertRepository(101L, LOGIN, "other");
+        fixtures.insertUserRepository(userId, otherRepositoryId);
+        jdbc.update("INSERT INTO pull_request (repository_id, github_pr_number, title, body_excerpt, state, author_login,"
+                + " base_branch, head_branch, opened_at) VALUES (?, 17, 'PR', '다른 저장소 본문', 'CLOSED', ?, 'develop', 'feature', now())",
+                otherRepositoryId, LOGIN);
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "PR", 17, "#17", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
+        cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
+        given(star.draft(any())).willAnswer(invocation -> {
+            sent.set(invocation.getArgument(0));
+            return allEmpty(StarEmptyReason.NO_EVIDENCE);
+        });
+
+        runNext();
+
+        assertThat(sent.get().pullRequestBody()).isNull();
+
+    }
+
+    static Stream<Arguments> pullRequestBodies() {
+
+        return Stream.of(
+                argumentSet("카드 주인이 쓴 PR", true, LOGIN, "## 고민한 점 폴링을 골랐다", "## 고민한 점 폴링을 골랐다"),
+                argumentSet("로그인 대소문자만 다른 카드 주인", true, "Grow22", "본문", "본문"),
+                argumentSet("남이 쓴 PR", true, "taehun0208", "본문", null),
+                argumentSet("공백뿐인 본문", true, LOGIN, "   ", null),
+                argumentSet("본문 없는 PR", true, LOGIN, null, null),
+                argumentSet("저장되지 않은 PR", false, LOGIN, "본문", null));
 
     }
 

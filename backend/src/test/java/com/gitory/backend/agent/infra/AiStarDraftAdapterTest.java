@@ -172,6 +172,18 @@ class AiStarDraftAdapterTest {
 
     }
 
+    @Test
+    @DisplayName("PR 본문이 있으면 pull_request_body 로 싣는다(없으면 키를 싣지 않는 것은 위 시험의 JSON 이 확인한다)")
+    void sendsPullRequestBodyWhenPresent() {
+
+        StarDraftRequest base = request();
+        adapter.draft(new StarDraftRequest(base.candidateId(), base.targetLogin(), base.title(), base.sourceType(),
+                base.sourceRef(), base.evidence(), "## 고민한 점 폴링을 골랐다"));
+
+        assertThat(MAPPER.readTree(requestBody).path("pull_request_body").asString()).isEqualTo("## 고민한 점 폴링을 골랐다");
+
+    }
+
     @ParameterizedTest
     @MethodSource("acceptedVariants")
     @DisplayName("선택 칸이 없거나 null 이고 모르는 칸이 더 있어도 성공으로 받는다")
@@ -412,7 +424,7 @@ class AiStarDraftAdapterTest {
 
         return new StarDraftRequest("cand-1", "grow22", TITLE, StarSourceType.PR, "#17",
                 List.of(new StarEvidence(SHA, MESSAGE, "grow22", "+71/-0", REQUEST_TEXT, StarEvidenceSource.DIFF,
-                        List.of("Spring Session JDBC"), URL)));
+                        List.of("Spring Session JDBC"), URL)), null);
 
     }
 

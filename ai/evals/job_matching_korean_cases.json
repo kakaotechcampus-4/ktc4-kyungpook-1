@@ -1,0 +1,6918 @@
+{
+ "description": "한국어 카드 문장으로 실제 공고의 조건 문장을 찾는 임베딩 평가. 공고 원문은 저장소에 넣지 않고 공고 식별 정보·조건 순서·종류와 조건 문장의 SHA-256 해시만 둔다. 평가 스크립트가 실행할 때 Greenhouse 공개 API 에서 공고를 받아 해시가 같은 조건 문장만 쓴다. 카드 문장과 정답 판정은 AI 도구로 만든 초안이며 팀원 검토 전이다(표본 60쌍을 팀원이 검토할 예정).",
+ "collected_at": "2026-10-18T12:00:10Z",
+ "text_normalization": "조건 문장은 유니코드 NFC 로 바꾸고 공백 연속을 한 칸으로 줄여 앞뒤를 자른 뒤 UTF-8 로 SHA-256 을 낸다.",
+ "relevance_rule": "카드 문장이 조건의 핵심(같은 기술이나 같은 종류의 일)을 직접 보여 주면 정답이다. 연차·학위 같은 꼬리 조건은 보지 않는다. 기술 목록 조건은 카드가 그 기술 이름을 적었을 때만 정답이다. 서버 개발 경험·프론트엔드 개발 경험처럼 직무 경험을 묻는 일반 조건은 그 직무의 일을 적은 카드에 정답으로 둔다.",
+ "sources": [
+  {
+   "company": "당근",
+   "api": "https://boards-api.greenhouse.io/v1/boards/daangn/jobs?content=true"
+  },
+  {
+   "company": "퓨리오사AI",
+   "api": "https://boards-api.greenhouse.io/v1/boards/furiosaai/jobs?content=true"
+  },
+  {
+   "company": "몰로코",
+   "api": "https://boards-api.greenhouse.io/v1/boards/moloco/jobs?content=true"
+  }
+ ],
+ "posting_language": {
+  "GREENHOUSE:daangn-7791182003": "KO",
+  "GREENHOUSE:daangn-5004587003": "KO",
+  "GREENHOUSE:daangn-7655325003": "KO",
+  "GREENHOUSE:daangn-6043519003": "KO",
+  "GREENHOUSE:daangn-7990084003": "KO",
+  "GREENHOUSE:daangn-4496730003": "KO",
+  "GREENHOUSE:daangn-7980543003": "KO",
+  "GREENHOUSE:daangn-6640363003": "KO",
+  "GREENHOUSE:daangn-5046757003": "KO",
+  "GREENHOUSE:daangn-5781885003": "KO",
+  "GREENHOUSE:daangn-5296522003": "KO",
+  "GREENHOUSE:daangn-7644271003": "KO",
+  "GREENHOUSE:daangn-7762062003": "KO",
+  "GREENHOUSE:daangn-7995038003": "KO",
+  "GREENHOUSE:daangn-8014200003": "KO",
+  "GREENHOUSE:daangn-5046759003": "KO",
+  "GREENHOUSE:daangn-5823087003": "KO",
+  "GREENHOUSE:daangn-8034318003": "KO",
+  "GREENHOUSE:daangn-4300801003": "KO",
+  "GREENHOUSE:daangn-6081125003": "KO",
+  "GREENHOUSE:daangn-7689088003": "KO",
+  "GREENHOUSE:daangn-7668837003": "KO",
+  "GREENHOUSE:daangn-5282170003": "KO",
+  "GREENHOUSE:daangn-5248527003": "KO",
+  "GREENHOUSE:daangn-6610455003": "KO",
+  "GREENHOUSE:daangn-7498021003": "KO",
+  "GREENHOUSE:daangn-6285317003": "KO",
+  "GREENHOUSE:moloco-7711666003": "EN",
+  "GREENHOUSE:moloco-5820201003": "EN",
+  "GREENHOUSE:moloco-8003052003": "EN",
+  "GREENHOUSE:moloco-7452525003": "EN",
+  "GREENHOUSE:moloco-8007407003": "EN",
+  "GREENHOUSE:moloco-8002090003": "EN",
+  "GREENHOUSE:moloco-7982204003": "EN",
+  "GREENHOUSE:moloco-7717799003": "EN",
+  "GREENHOUSE:moloco-7519526003": "EN",
+  "GREENHOUSE:moloco-7790487003": "EN",
+  "GREENHOUSE:furiosaai-4006969201": "EN",
+  "GREENHOUSE:furiosaai-4006985201": "EN",
+  "GREENHOUSE:furiosaai-4006986201": "EN",
+  "GREENHOUSE:furiosaai-4006955201": "EN",
+  "GREENHOUSE:furiosaai-4005786201": "EN",
+  "GREENHOUSE:furiosaai-4005374201": "EN",
+  "GREENHOUSE:furiosaai-4005370201": "KO",
+  "GREENHOUSE:furiosaai-4005788201": "EN",
+  "GREENHOUSE:furiosaai-4005789201": "EN",
+  "GREENHOUSE:furiosaai-4005791201": "KO",
+  "GREENHOUSE:furiosaai-4007040201": "EN",
+  "GREENHOUSE:furiosaai-4005793201": "EN"
+ },
+ "postings": [
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7791182003",
+   "company_name": "당근",
+   "job_title": "Design Engineer - 디자인 시스템",
+   "job_category": "FRONTEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "542d2eca6690e18b3f6b9b8fbb39ba098ab98632b0b18ad11fa0de5d84e5db29"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "1ead6f61b4c0186e2cb30ba0f5ffa0d3be322184e95626e40c99e2700915e474"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "4ff8b7074027f6cef733441ca9cb4ea26b978423884f9e24ddb461f5b500140b"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "04e07e8351bb18532ed1a99724958c70de1acd1322bc40e05f53ee025ca71cf6"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "925cf4d582b4d97dc041ef8023b666c4803b79afac3f0944150c9140fce9cd11"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ae8e8a0b51b1102d102a196fa86a4619a144db1b9cd6f0e0cfc374e77e202118"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "16e4bb67ca832a21c753923c2fcf63d1e6ba30ad798d74e44c20ac5d004a5b14"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "82086bd587957c7ce0217bfa8c639495d4f1dd5ce7464e53d9b1bac8cc116cc6"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9375d46875a087617a0fdb440244d72acd0d01146f41c22d8eff7fd783b5d2d3"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "66169b23ee7fb9196c91e5febdd7c9db344718727b3e717f3b0643d0f5e523d1"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "42e877bd95d8c8ceec7a5cf3a929b477c1b9f56572e7ee55a4b6ea82c2044b87"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ea3f738da392027f0b502a93834c64a403921e48b507f04a37cfbaff6e984c9f"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e83f50a4b9267410a1c5cd2464276ccd282942ee8a5d8f2af32515fd50d73fd5"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "01d96e97151244c1bc53bdc006542e04482a4fad9ed745018f87aa45ac60540b"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "93b57d8616ee60eb0548dd6e124356fc028b32a092e98ca106b8423192280193"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "53612fe2fa7f0d25cc4d2e556b2989ace49a2cb1a2a63a28f661dc68e4b7bab1"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "5316b886527f7e9f292078149d341c0c1e65effe980c8d1be2ef8529c87ffac3"
+    },
+    {
+     "index": 17,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "9de9fd03687316d4fc8a6d7647857d9aaae4a5fb04621f7959dee102a15181bf"
+    },
+    {
+     "index": 18,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4f5e812d8b998acc68ea6327cb661783421e0138422749ccfeec78ed3e413cea"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-5004587003",
+   "company_name": "당근",
+   "job_title": "Network Engineer - 인프라 (네트워크, Cloud)",
+   "job_category": "DEVOPS",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "b5f56c305255549af73e582819803e56c8af8e4f61f1990dc088d0f531f642b7"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "30bd0d2af6f9ae35ae4f3a6c7d91f708751dec6c5df7c1dbbade51b5e1a387ef"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "464f266c2c9931cf8fc63c3f08eba30b2f6d3d0691ec5effd4780779447c4b30"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "284fc7bde03793237aeac077af09a8574e099dd177a70c4c060b7b7aedfb346e"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c21a8990d2266f710d83d974fec303ff223376b612c4c24eaaa0911dfc75f0b4"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "31b0b28bde57121ab64fff4f633931705eef8e726ea3d91e78df53d2092ac6af"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "675e754a6e8a19381a63a1c993948a196e8bf51db7b5e8740da126ec61dadf72"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b2cf31f5263c8e948c4101c6a377e6cff2816c4f08a03ca2e0ef3efad2064b8a"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3ea6fa832f2b0dbf623e016b7b7b23454eea8676750daed4c731b3ca58613111"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "cb426f5c1115657192859fe7694aace934868ff932bdd1563959c0afd60fb234"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "28f7add767f2411a3da2769935ba51cbe67d18d986769f79d5bbd303d5bc25d9"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e26b11887a1ecdb703c32bef4c27b3cf1c679bb9517b85e80f97023c69cf628d"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "9d173c200db02d8fe79d2756e8c90eda3c18df43de5e96cfa365ad75e9121124"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "8119d8baa966580ff5dbafeacf4cc4a51700079ebcfed690e5f438c9ad5a5bd9"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "0eaaa16df9db11b0cf66d8cdddd61c99d8d6ef49d7c654dd6b6d6740de21c063"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "20dadafee0cf6bf06194858309b049462194cd352924afa050108ae06d939700"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "7a84de259924040064d01a449bbcf229b66096ba026de37065c31e077b033656"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7655325003",
+   "company_name": "당근",
+   "job_title": "Security Engineer - 인프라 (보안, AI Security)",
+   "job_category": "SECURITY",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "3fb9d59cb0e1c9825763b232be2a0bca67d2076bb8a88dd50c531f1fff805c89"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "5bfb3525eec65c4310cd8fb0d1885dca1a74e53f0e0b7c875ab624f98ca4653e"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "b9a050dfe10b45a864a154354b2718d2d47cb7ab066b9572c7a8887402cff079"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "8d584ec35196562817265f30ce64a21dc3aaccb4a6020b2b3411202f0613c107"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ee5dcb556cf583eac7894ed04881140832e84058a44d9a1e3aa7cf5ab3f44954"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c3e7447af468b9265457feaefc4f6195698b1e04b6c28798375269ac3d378101"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "df5bdb825fa0fb63ffa34664225a8b956181978e2a5ae72484f34bf14e0b20f7"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c5ea9abd56b3f2c4bb110734c034b49432b02d8bd9f596799b6717f93bd9f650"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e25713e162dad257cd6c620cca36b5c624eec3f6dab2396733f586ebdb3bdad5"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "7492e2d9cfeba96f123fb8a809a61d7013cd71b6d1211732d7a620b7ea160db7"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "653576195e3fe47c922a05f985aa50d8c9efcd5fdabe973a98c7a07b2c2362f1"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4f1bc75a88e4b66f59c1e0266111a83d490544363d47c987583f8009a2dc5926"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2a770307ed1c6de6095c4ae56cc7128e7e4361e44c414496944257514dea2b44"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6f856cba34aad0a61e431b6f461fd5a34555f91f1110049a3d871f0ec49814f2"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-6043519003",
+   "company_name": "당근",
+   "job_title": "Security Engineer - 인프라 (보안, Detection & Response)",
+   "job_category": "SECURITY",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "fb6e1cb9c37fb5ddc165299480b601a77401ae26169dd27d6530206639353fa2"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "24cc04f018f2bbeb8198e37f7a59040b17de727ea9ac09d74e7011d77c7b5116"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ede6a2b2982e6832c26f6d0ef35aac55561f37e88b2dde5546386a42cea38a1a"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "25277c834f294f16e8a3e6a43f0e2feab788693b081b1e7985b20bd37058e666"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f46bb3b24c369c577824dfa8963cccdaeabacd01b3fc2ba944f8da13b7f8fd6b"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e061452916e93a73289f2c7f5d45ee0756c616068a3f3f8e5d12a858301dd502"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5ed29920cdeec0998e4207ea6f3ccad3e04ef1579835eb5047428610701b2ba2"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "66ddda085034c62c2159f86ea14f7b1c808167088b7001e991a6b24fc3facead"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "72d33dd1ba3a6b0144f11d3fd274f2435b312f16434b182fbf1d8539c139c68b"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "19bc149ecedf6a82541e122d0fb86bd9015a4cd3c995ea12e2bbfa9cbd39f5b6"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "a90342cab02addb5164710343d66bc2dad8d3c77108cc49976104d5103a19409"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e469ffeda30366bca756a299c708731f8848cec219f1d7dd67a72271614a95a0"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "77c122edd53d79ad833d1eb1777671598202657d9011f564a27ca5ae8beac405"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "0720e528b1b32c27c13db44e278c31d13f875fcaff23589379ad327965852e1f"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7990084003",
+   "company_name": "당근",
+   "job_title": "Software Engineer - 테크코어 (AI Platform)",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "e3a477cd77bd8ac35389defe0c87ef3905d56bbc09701e3680d2ac8439b0d43a"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f2b126a5b0b58bfe3ed3dae90c55a4f86ec69d34dbc3973719bc6e5fe52dac46"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "fae2a2c151d3f6cfc72f62c3371bb1a467936daabd649f8158f1df42993e6f0a"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "dbd5da0da84b98b5e7c4f354c92e29d976d266e5a571f1ed7630e57f3963dfe8"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "c9dae856c9035f42a995a68b0f18ecdcb5442e3774259a5e117bb610f1e23d30"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ecd9e94dedebd60ab1248e0590dea30b7e02a0858711a0e59b9b8fe44a78a775"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5c38cb12ed18a79f0bae60ed3a5addb3288f22dbf045239c0bd73d8462a7c740"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "bc12b0014f79020ea9b854b88ee448a65352d41ba621a66496b23d7c98799bc2"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "64b09a9ea7d5d00e67ebcfa764f4e3d33664f83994f57ffb497b9b0aaaddfe11"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c9b1d4d0a874303790802253d1bd17c2cfa9f5ad018679b36f251adf0763c008"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "02d3545ea2049a2386e8079a7bc08a9317b05d0f10b187959beb2cce8bcb9b92"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5bcc34f46a1aa23566a30a1ed073cd12d90f0b77ab14d0c2fb6d2e3c71afee65"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "105174a9c1b12f36d6f3d77942104ce4dcd489e792396930073442f9bd501dd8"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-4496730003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Android",
+   "job_category": "MOBILE",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "dfe5be752fe4b03a9e560233b4aafbaed5eb666581749dad63d9cbe1e7c15383"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "57cbecdf78faacc1dcbc75805727b56abaa2b3349ae9ffa60dad53eeea0ae0dd"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f67be7e7c6ed34999aa7987d163f5461ae48e67a2cd037f505a0899fcc065173"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "53c3600b58a40736951d613c1c6785c218cf278a6796251db876c325e515616b"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0720fb5d7287d9c0413f71d6699d99c6c5ccc665e2dae9379eee252721158cf5"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "dfe5b275c335774bdb06eeca8d9661806b569fed4311774efcfd2ffc78d2cf06"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0b85471a1676e4d882a52a8fa30a29084b66442c57e5751696a338f328f77e45"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "771daacd750b172064cdc8165cd0df1f50747a35d78b0561b955f1ff5a442a62"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "66b1cc28fe0c93b7dd93b17bd33a7deac7bda5599e3d5a45f8193425423691e0"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d20853e898a82c423eacf6b1e003c415368c0969f462460a79122da6a4e74d90"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9dd30bec906481106601e2bccdab5a192c3ad0294123ff7a41d710b6f925699d"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2da549c5d2b69d8d869c4251faec7b283994835fbd03cb08a8d49723e29f20b1"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "353f63f0e4435973826749c28222d026521d6ea46447cfbeff4f3c18531bfd61"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "3773298d1f23ae8141a964c0b98fad836a65d6a8ec739a480b051fe0f6963a84"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "79361ed078908e427ae62ee604a2d2f8e17f37b3de290fbfc8cdd4f3a66e0ac7"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2e551c7e0be10eee2e10e4a7f5689ea66121c67e8fa95e74ca666b84706e95e0"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "12dc412a23974a60fd7a6507e4942b41749d10245872393f565b2feeeddcae83"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7980543003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Android (인턴)",
+   "job_category": "MOBILE",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "dfe5be752fe4b03a9e560233b4aafbaed5eb666581749dad63d9cbe1e7c15383"
+    },
+    {
+     "index": 1,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a8d755de3cd76d0118fa1eecc588de9f3bd9559f2c01c1a8c162fa592f4bf174"
+    },
+    {
+     "index": 2,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d91cafbeb89e8dae2a8cb717295b35f1949aca9197333f7a40c8aa2db8f68830"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ac96afe4e36883b505a9b283880424ef5e00945697779cfaf7c9a54c06347aa1"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e7ae105673c1e1c2f33d0e4e5166b34cfcefb5d17824653332f7dd6faa10c07f"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ee6708d32c21b6fb9e8146c84695cec61b666e1f6d6a7992d1584723f6f768d3"
+    },
+    {
+     "index": 6,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "7a9ad3b7ad7dcfec0eeef0e7c810c80055c6ebacda0c4392d78c16d1ca1812f7"
+    },
+    {
+     "index": 7,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "62571a84e482210a32892a4c30487694071f2eccdd1b354ac1c9af32da0c5784"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2c802910ea2cfcd2897f0bcc7ccd32b62bb13bcb284def4f757d27c0fbdab167"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "5fb96ae59e7e9ceeadf2b2024d7a7fc385c95d18c20b8df86f4376ad2960f8b3"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "38e028ef070d37c95d4901ce96d2b13f38d9365f22eee6b25258d7b82acd6e63"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-6640363003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend - 광고",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "0f6c347bd76ca014dd96bc1e2fd671066550391bdfbda519476739e57fab702d"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "fb2dc83ef1ec5911bf52a67340a25e3185b73b1d77b8024272b70ef18a67f4c6"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "3d39dfd01c0ba33efa3dc0076ebf8e8606c093529ca7cdf090871dfca0d23b94"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "b9389f963f581e564ac8ad199b4d6d99ec0a4f7c25e5dcb44433f3b530c0c0b9"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4a0e34d3f66563c682a4e19ebac1ecee6da754991b75e30c001073c58e1795f2"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "2ef40b501475fae7a2768bd184beb601dbb3b1f92ce1048597e8ef768bb6b962"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "15d6ded4b2de2b3b16cefca8d176feae1c2ad54822cbbbcc9dd39c71a505f5e4"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9797165142234d43aebe4a7ddf664d51f3a02cfa7c40cf5fedf48f80a0971581"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4d67ef473184ebfae24c4a0939055e6868586c011ca4e03015cea3411ea0d484"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "dbc382a3c57b66bde561f2564a7025a2bf64abb5d4aaa91ca746d4b72b7deae2"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "74647ffb59bb66c7a88516b165c501641fafcf03fb17c2c28bc32d1f666c6d9f"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "b056969585ea2f10498f0e4e1d5d8ce85f1eb161cfcf40381ce1efe8c146a075"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "ed4249259acaad2d13131954bc9cdf7db90bc14d2fe2e698bd1f8d230113ec8c"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "ed18317778d44706584fa7b7a98adca8960248e1bf16a2eccb6c6a5b67fe30f4"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "7864121ff64caffb63b3dc2f45d9580e4a5fcd9ba5fe717bbe29dfd876ae2f29"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-5046757003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend - 피드 (피드 인프라)",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "fc70994706a10d890469f9ba6c27bb90230351073aa707f9d6c0476116d9dffa"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "b7b362c2c9ad53ceff15bd3d028e9b9ceb65f1167fd6982723cc471183f21cab"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "361234766b60cd2b59aff09299a7119726d4ceae222446d3eb9f90ab91f0d5a3"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "d6c5348cee48da9048e3b42cbcd7661a2e0e9b42f4a772c78ebfb7283be20859"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "585e736febdd210bb7a41532a42ecdbc5edf4a375ee0f830955d0d22415d9bdc"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "819028816766afe20cbc266b1b8d5b1e4d1c81683aea13e614f455fd35bd7128"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a352edd96861b7236309ebe0e84ddf39960902387e539d3eb332cde9ba1c0b8f"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "72b03121dc4a0cdcc205654c67e882e2891111b207b73a47ccccf79e70bbb243"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d6a7f6e49fa3a81751c183353eaa4dae86e5db94a866ad44d7e2cb532a2c6f4a"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "84f13bf01920a4192f94666f3e2bcc0262459e1f45bdf55a65cd5c88191e9995"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "da9e7eb2f142189af07d4ca01ba451fdc4b9a2b1d5095b3f5f9ed8ab2738ccfe"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6ffa353e214305e1438dc13e3b799697913ce6ea8d9c9fe2c7f0582d699306ff"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "1fdf860c584ace6135ff7bbb645be968e2e434444a9a5083657f3672b9f86cd1"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "f973f2c09fa7697698a21dc26bc310c93ba9cce9d2cbfbbf5f8c1433ea5a7813"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "df3d6765e54903fe08a47c4143a700f6e404210ad7c024d4f1cdb701e81dd040"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "1910ee04e05299d09875d693f39042f4ff2a0d08cf4da86b364484862a50c130"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-5781885003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend - 로컬 잡스",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ac04de8539524daca9ee70487ca07b5817f4cc8358af7ab7433dea27f4fa02dc"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "75446c9fb7103749bdc7d85d73285cb62abd6d01634c43b67b7e524a6330ce38"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "9eb9e517e949053846d8bcc0716b2573dbb78cc45feaf3624e2691b31427a6cb"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f663f93a4d274382f2a1ed4633d301b4f88d2f1b7ecb8ce7adcaa9c07e424455"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "04755192a40f0ee2076ccb5524fb0c4e004d2afaa3b586a6fc2b703c51750d77"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f41aed2b27b5c4623a6798117de147bb1bd8c4ecd16d2f03ce3f993bb2c0c11a"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b79e556735ff9504782f2e6a7e8df2804c4fc69d15ed05f04f65976959e67891"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "6a5ce6ffc29c090b7fdac0ec455e33a2ea519cd9ddf3ae12249a8584177bfd9b"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8d6513cc7774d7e9f1d90903a4574b1495f01c3d62d18a607c086a75190e3cfd"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "afbdbff83c6c04776ea211bb26856b45c520ab72c8b2611f6a7ef6e5a91a1374"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b41fda92a3b9df03ba99088014817c87eeafe2481001ec6078b72d9fa93b95e2"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ace7f7e0d87c0867b32f44150dcc26b5739dbc0b8927294f87b577f123a971c1"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "a823d032a3681fb6bbb4098695d930a4062b6a4f5e487a7caa1ca6be5482009c"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "603d90092f87d55fae5b6888e69b0cd5f074a95c28ab1072a9c3d127a7810a3c"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "b330c226ee31ae08b7985adba84d50f17b8471e24cc54ea606a6db430732e004"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-5296522003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend - 부동산",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "a8ffd81ce9824a1b689530c8eb28e3052357f9ea3670c92ad0dc41b82e22d5d4"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "8e5b16f213a46b9176d88b5ec471e0505936e4f974dec7fb610d0e8ee10a1648"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "32241e659eb255c59d9ff234cbe033d8785be78fd663562201f7c1c281473da0"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "cc540cdb1445052eca0a891a7bf2d9be78b24647716e12b83d068fcaa5ead15f"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b7ea1270a22a3b1855d720e5a635ec59163f5e2e9dfbae37aa3c41450449838c"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b79e556735ff9504782f2e6a7e8df2804c4fc69d15ed05f04f65976959e67891"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "712d1bdce3cb365ba6cbcdd73c54c8142c0efa65daa6276ee929df45b4de4e8e"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b6a7656d3ae92efa006548dbe933e6b9142716ac784c07b5aa8630f1414d22ae"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "eb7432a940c7e219f1b33ca89700b6d8d0027f574f90acd1d8c83c066bc692b5"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4d43ec42e3080445dcd7de2c6c81fa08b3fe965460b3eb13d9688a518e013ebc"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "92e4fe22f137347aa549877dc2b4a71a42d7cf88ee21a27316c8d9777b2923d0"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "dfd93908f26fda5ec1ded08e14f33e3215e15b8ce2e68dc8068dfd4ae124fd27"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "b330c226ee31ae08b7985adba84d50f17b8471e24cc54ea606a6db430732e004"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7644271003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend - 인프라 (공통 서비스 개발, 콘텐츠 서빙)",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "e144cd4e50a747887184eabfadf8e63084c2a4fe33183b59e4174e44dbcbb504"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "3c6a4f9de48131e0e98f8578114898e1bef3f37a9a40d1f0da999b72d1077e6e"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "46e63bdc5c22bb0bb9b13011c23c6b59d6e05565f56d49263e334501be9bcd6d"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f9c9a241529f7d8accf54ef460175c1709d435a11d293f9043c7e0a3511448a4"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "1774a54fa25781897bb0aa28d8ca8f2a62074f931f894fb77a6bbe65f50f32b2"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "88d49ee9b2daa02c2dc0de15eeefc4b7c85038b370b88c8c075ed24051dae345"
+    },
+    {
+     "index": 6,
+     "criterion_type": "SKILL",
+     "text_sha256": "43f65fc55b909296df1b39c7b7c8fd73bfdaff4dc3f3bc1ec935a74d07b3f6cd"
+    },
+    {
+     "index": 7,
+     "criterion_type": "SKILL",
+     "text_sha256": "029814318253d64476013984270f15ba87ccf96a59075ae50d46bc47471f8d4a"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4ac30933ba10b5294bad3655b318fccd8514cd69d1acfd698a6e83690a85e3de"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9ec9428ca0825c6fa2bceaf070924b85fd272567d48877fe0c5be0f0957babc1"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0e7257c07d93524a1c063a0ba802024172b73212aaf0d2fa99f9f18a018bd619"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ba19afe525736b13fad717d5d064bf41d01522a9f0ec71e1940ae2c87dfa887d"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "11ab0e55912a2c176f53eec4e0c653552437c45d5653aa2d20f394073e90d86c"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e6c8816373e17a73fe1dd33ec7e637318ff6dbdc60e8d9df996210fc20150474"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e418d756a11653322821b72b1089a1715b880c29f57d4af7eaf4f5477937cdae"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "867feda7b7e006e36e79aa08acc7c6629894712a4dbdbc12928be5e82c3c8843"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e7a89c7d4417ef5ab9c5ebbd9cde1cbbdc8a15c94ece7f4b38cdd2eb091c205d"
+    },
+    {
+     "index": 17,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "8ea4ea2bae584a2216e1d3622b667b90cd0778e885dbc1474ef5569c03f5a870"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7762062003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend - 커뮤니티",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "168f64b3c4a70d0ac7422a5333b7d7d7350e50a8b852109c5e9357ccaedae878"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "84bbdd78f28f3eb3b6954b26e68337ef0bffa76bee6be8970bb1c0077c274b11"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "1fa0e0f693900b9e5faa9e5ed56780149bbdba229ef16bbdead27f1a6772d37c"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "96e94ee8596f49e3416d1e67ebeb4e16b863a17fe9ac3a61ae67d336941ba499"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ea03aa55c3ab3bc79dc531ffc21dba34e8de25159c3f67a1137049a06292c8d4"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "c8cfb21b7ed6e37a798073fd74d11ff5c7840f3e82065c52c95557eb53b8909f"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f855fafda47e3844be2c9d3f47dd336b2af25d53b3ae451eb04269a4a561f44c"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3882af53a251d9911a4fa87a74a3f678d3f789a1e130581a2069ed422cd64229"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9f84f1907858b4fc345408c2e073c13b667585af45733cdb1e0c1e250f3b9dc4"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "92da3b992a12ec28518bd93a763edbab2ac8ffa73419a6730650c63fbf7923fc"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9218b4c42730d648058759693dc14f97cbff10cac1c2c948be41944f3c9ecc44"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "20e0c6bbcc953bef9b079c295d45a23a3850a78eb42f32a92ece756145d5abee"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "98c4bfadfa2f874eb8fbe64e2188e5f7cce1628b710e94af8df9d465ccaf2b7c"
+    },
+    {
+     "index": 13,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4ce457afeed688de32cabcc13b9ba665383822b344dbb0b65e139f2a118c2700"
+    },
+    {
+     "index": 14,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "7a7e073c4044e9e0d0ea6e3834d55f3bcb0f10e3601a5be46d4261e5f613a45f"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d211407bb32ff95e63b3814d51ff361c317bd72d587e81313416e730d4c392a6"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2007788af334c102862ed9605c1357e1f097bf023ee72013c9d273ded0829af1"
+    },
+    {
+     "index": 17,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2bb97420c869309ddce5ed99b6fadd0cd6b038e60b4e1d6332db1c5f18251978"
+    },
+    {
+     "index": 18,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "61f5e1c1af3f064c58513cbdad41e13b443623cdf813eecae0bcb975b1d80f27"
+    },
+    {
+     "index": 19,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6e95a9c360c4663745864ff29ba03d750c4ddcef319b3be0d51f540cc8a358fd"
+    },
+    {
+     "index": 20,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "ef5672241152b0fb1dc18b04e4293311dd2be518127dc6658cf4c951474f579c"
+    },
+    {
+     "index": 21,
+     "criterion_type": "SKILL",
+     "text_sha256": "4321f79c56cb2bda3c3e3f372dfa0135be853dd3323b6289648a2c6ad3dcca62"
+    },
+    {
+     "index": 22,
+     "criterion_type": "SKILL",
+     "text_sha256": "fa87ab25ade6fe77cb54ec51e35b12a7d973dc6cf4229fc7009ac9a50ef98318"
+    },
+    {
+     "index": 23,
+     "criterion_type": "SKILL",
+     "text_sha256": "185d0db3d684f3f015bcd5c06e7b791a2f8ba6af66652bdfd0ca3797fa4a038a"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7995038003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend - Content & User Understanding",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "53b76a704305599618c0b3b3dda5b32576eaaf15cab0ffe1b39996772b78c603"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "20cedfa3a2b5ba4e02b0244bb199cb8a7ecc61f63681057a96497cd3cf83f3ae"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "2cb3fcd6063be799130482b9bc9c850e3b7c1e953493efa8b0f9da475ec13d97"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "2eef034aa58eafe8218f72422a8b3821200729523a33356373e14129ef0f1808"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "fc63aaf7759bc8ea79a72bc8bdc8eef9f71225ccf5893d44248fb4111066dc9c"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "cb28b43c5efb0a3d74f888bc91d8e31c519ad623c935f598e7bbf814162d2234"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "762d5110e48093c0e78288f882ebdf677be994ae6d3cd433530a28ab96fda423"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b820c3c8522ad546ed1290219f540c7e66d51c3c050978cd2eaa2a63ef38a5e1"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3d5a98b608dbaee354ceaffe148353de0317c48f37b2f71ffd090f6084a4d150"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d9549d02da7e354f8e39753bbf7ca340b04f0cbe0ff8912162a9c48ff1de24b1"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "259df8749ef94b69f6229cb5697b997b220e0599a963a7d1eaf31b57355b6cd6"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "3305dea5ff26c9745c65813d7a0a7eb28e0a128a191d145f771f858995d4f267"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "5166925262f0bb1304aad6f6141745b82c491a392c7e10884c6a58daa8cec480"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "72941a6931bae882ba9caaa89114d9e9b8bd89f127fb102f34f43e732aa4e9b4"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "a9b8c4a270ac4b93a55cb9299d24ff3fb21e3d2654fd4623583d8377c9c629f3"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "afe3c11c2a1297d96ee0c946299d2f6b08b3e94d92025563db34039d351237aa"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-8014200003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend (인턴) - Cross Product Growth (Chatting)",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "73c8b20a32d7bfb6cd84df1cbb50e6a69c4df9f336fe001b21494c0c75cb31dc"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "13f449b211801e0969fc46ed6deb14b479864c899a8357cf7b22dd9f6ce4572e"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "44531f10da5e9f11005c0f0a5bf6932fc832b969eacfee638e04620fc1839099"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f663f93a4d274382f2a1ed4633d301b4f88d2f1b7ecb8ce7adcaa9c07e424455"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "04755192a40f0ee2076ccb5524fb0c4e004d2afaa3b586a6fc2b703c51750d77"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0b6625a9e815e4c2826a26645a62cba38504177ad756cc9dc28f3c21fb7c6a38"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "13491d2d6876d2bae0889ca2ffdec90d308a204de397123d87716569563e0fe0"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "fcad78e264aad28a5bce2aa418b26f981e4fd2a0b68b880859e7025f36266326"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "64ad1a20f8615bef6185b81fb3feae05fece960d0114703adee025f5fbad373f"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4e3661f82db9596222424dce8734e158deec865da1486f06833025d7574fba35"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "965913ab5ad2e42b749aeb3f30674c99330e2f7c8a2e100b9cd1b6ab95cc6f2f"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4983ce45fbcb02af00ce1a6f797a13482c6ff1ca87c51d37c623ba5e955e9d3d"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "a62f481a33d7815f01366f89a0f7f2abe82420ee3ed29c26d6ed8fdf994909c0"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-5046759003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend - 서비스 코어 (Identity Service)",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "SKILL",
+     "text_sha256": "009be582fc88bc98f7923495288b7004d8cda2a091950d867f1f0fac81c06cf1"
+    },
+    {
+     "index": 1,
+     "criterion_type": "SKILL",
+     "text_sha256": "9fe05692f77496026f8282796801e53367dd457f14b403fff2d3275cc0a1bb7d"
+    },
+    {
+     "index": 2,
+     "criterion_type": "SKILL",
+     "text_sha256": "ac57bd4f147fbc83637266d5b2fd70c9404b1cb4a1ffe3087ae5ede82f504f78"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "edfa095fa37a5099d4b11b0e73070e414bfe1e32800ce6fdf9598d5645d97fc2"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "0125c013401414f62445a0b80dd37a053775b47b8edc3360460c9d840f68be80"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f5553a7a6f56b8f7b73b5c7545028c88199c723999398fadb5a7b0b92f98f9b5"
+    },
+    {
+     "index": 6,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "cadca201e170cc080a76335ac5d8005eb2f93b2bddc430513319e064430e1db1"
+    },
+    {
+     "index": 7,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "97866dcfcbe6fc0a43a02ca27a3ab721060feda155a107237ebc7807811d1ad9"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9a5921149a9bb9b43696686584796c2134f947cd6f3cd1bfcbafdc96217de8d1"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e0eff58515da23b0aa22be0a9b6d7c1a092013d7a329d62f7b839cb8bde478d4"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ee00d5cd7689453a7e931236e741492d27d999788dc4b121b1ff28ea916892ac"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a8e36c1571f57c012008d7be576573b12008656828a3b74a3b6d46c7371819c8"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9ec9428ca0825c6fa2bceaf070924b85fd272567d48877fe0c5be0f0957babc1"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "ecaad765bea16b0aa897b2f4cd5957f5c2e3747d1eeb57b957d7e191d07c9a10"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "9c53dfd575f3e462d544ef64194690ec856b2baab4f688f0c0627bc9d1a73515"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "fda4a388b5e807ce791997e82a7c621afc126f834953a758dd602d0681c1bc68"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "81b42c8a5037954b1118d5f926b14af5f95252bd6aa22d495864c78f876a37e9"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-5823087003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Backend (신입) - 피드 (ML Data Platform)",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "bd4a3b63305401fb70ca4865391adf8077de74ab91030c869e2de06f4dfb7ada"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "c7d7065cce4d54f52409efbef5cae69a934dfa4feb4468f1a5ec59a0daee4f07"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "d4c8985b37f02246cc557972bf96c5cd4b5aa62a5bdae355a200729d3d209303"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "45d31bc3c5209a2d7dc1ae7dfa107bd48c5958ffdd37b7d159483daeabf94862"
+    },
+    {
+     "index": 4,
+     "criterion_type": "SKILL",
+     "text_sha256": "e8f84bf3e31526fe1a368bc904243376c570324f15995a964710bb6d7047afde"
+    },
+    {
+     "index": 5,
+     "criterion_type": "SKILL",
+     "text_sha256": "691429a3719b6702aa6941e17a89f085898b5bea4318806a61a944434e3ec333"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b6fa046c61afcf8cab2779588832b0bc9227a9eafa4681cb210d0c66b518abe6"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "01b89d61f6935d2be384d40ab197854e3e3b2a6961bbfca4da9dda2daa53537f"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "def345564ebb75c9c8b908be47475cf9e60289386b7ae85ed65dc1b527cccc57"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "7405659fc0c802a0c41cd78a7a01d8a16152402862531db2810f7370ebf5c2ef"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "a35e70e39271d755483207bedc881419e4d62db5ef0667150c440946704c9d31"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d0345aced3e850ecb915c7e306493bc2a8230ec75084952b2c53866ead14b717"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-8034318003",
+   "company_name": "당근",
+   "job_title": "Software Engineer (인턴) - Cross Product Growth (AI Productivity & Agents)",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "83405ea8d3fa02eb8c03543724b14a666e22fa5c15b2ffe83958b00f0d77d4da"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "90c14b9fa5248fb90c94c11d4cf088ff3ffc9c73b176e1b6f27eb0f2f9f96312"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "cd78ded6f5e0627dff9d41bdd476b4e3c8020865c511626aa3fa5e42ed4c9e86"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "e83dd0b4a1c23ad5e50b796c42ecdb7d5c56a3f034d8fad6e16aa0016ce50531"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "84434613794ed0762ab9ae838ba0854d610aba4d220f61fd31888b6218c6c80a"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8e6eb5d6aa2a61147b91f6a97c1854fddc589f617fd09452ea8f4f7abc5cd6a1"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8f62986e6089a7c2236ddc6841687970da228e97bc2e8dc999451020ec609423"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e01015ff63601d82effe80e85ea669b7a9f42f077ef23f126ded3b07ce2daf75"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-4300801003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Data - 데이터 가치화",
+   "job_category": "DATA",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "64ce8fd89ddb04283448c287fd5860b06cec4996e0d3fcd1fa6a020b8fed76d1"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "11a0eaa077679c585eda9e79c883939bb7f7619c9f4e0f7dad559f6a0bd5810b"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "e839e596f829a80818634a0a6b12bd2368d7a6725f99cc2f574396ef6cc06571"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "5e412b39d809ef1d7c8bbda523a4834ae9ab3ca5622c7c69c09f18bbff338755"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d8a5c8d04e280e9d64e8e606b0c5beffd9221e9fb13da4464cd8b2a07cae80dc"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "383ef259c3d896e1417027155c34a10c69a476d88a47bec3bb82f0a7f28aa603"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f2638246cc91e6d6eaacbf148c0a5e7bb30f21ddc6b0fbf1644b8a2f30ed1674"
+    },
+    {
+     "index": 7,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "0a0f75e0fe8b7b0c008c291ade6b4b687d8fe3fca3cf10dce1ee4d2e2774a5a6"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "3bd0fd78f742251ed2d58dadcb300e223c67f521197d597f5327aa356572bc8b"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "934a0c290019c63e194d1d297ce6e71002d495f14d68fb7d3c54c0e9fa18f870"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4d58cc88a02b5ed782e44d9633c4b09e656960c38332048aa775d22caa75052e"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-6081125003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Frontend - 로컬 잡스",
+   "job_category": "FRONTEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "78bfe62c259dd46906bfc3ffac4b5552a18eb599e029b1ede4e3b607f18ec163"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ecb2079704b6174b9278afb32c07b8e0cdf11ff75aa052b795da36c3e421e127"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "088394be3e38cd197d0298177b4c089369b62a07ba94243d786f8ce1e617fec3"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "5265fb9a956f64382e5f204752eca20d7244c81ad345e106444344916c55651d"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8a31db6d7b800c11cad7fcab9a975e9f512275f7e7dd054811cbd6fc9cc30887"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3747567db528e96ec8c024874f1693c6d0a9b23cce5507c2cc7fe5f91eb0670a"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "58a1ed9a0e00ee3ea33f948da476e6a2a4295c737a75946da1ae574c59ddd3cc"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b7d0e79bdc607d811cbd08fd868ff803fb73ff94e18aa9b5805fc6456f3b5239"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "13ab23a2a509374a44bc116b7df9f167c948d7cbfdfbbe4dfcccae6e4e96ccbc"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6d2a40797bc50d4537102b1eb3dbf1923866f63e898fabba8bb06f212a3ebaed"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "42f2fbd00b8ee1fcca45a600b83af78292a5f9ac41e2c395efb6bd240bbb2497"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e1b254d9d990cc3e8916fc51acd65c40ae29d39081bf173bf94e588e98a75aaf"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7689088003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Frontend - 커뮤니티",
+   "job_category": "FRONTEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "1d5fc8db7470d1fdc2ff1695a3505db39b51e822f4e7bca868d2e662ca3359ac"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "e54a421f93298007a31e3db42700269b9a5a5d5727563b5a4a6f3c7558f2bcb4"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "9f9a0bc9afe8e0c7ef9ae9e596178f847dfb55d01f0f4eee27078eaca26f5a4b"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "03b3861937127dbfc4851049efe7be754547dac1efdec25687f32e1dc091e9e2"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ea9dde3384754d00c558c6c2de123fd64205c2ff306552c17f29e99564870075"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "58e7323dafd83049fa7f24563c4709c87e01b4c47ab18ddd47691f56e3636522"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5ecadb0f3226f44cc2cef8e66c23bff0a96e5ca070741a6b36981c9f0183e285"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "fb51ad04873aca6f3f06ada5ac4810a9c51e6a40a1057fd1611abc93ad490eca"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "6b1c8013ee2c265ccd0fcc326e3e05c14f642b640cdaed613420bfe8d23b6db7"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "a018d1611c1c1e2cd60c0f4362bbd28a3e9d357c40ab439600b31bb0839db3af"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d211407bb32ff95e63b3814d51ff361c317bd72d587e81313416e730d4c392a6"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "b85a2b09c229b016afb6c06aeeed7c26ca3c3e5d6eaaa16bed2799561fc9fd8e"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "62a30c74208b4627b78423ebd73d6a3fbdcefd0f236cd3ddb8040a4f8fec3e29"
+    },
+    {
+     "index": 13,
+     "criterion_type": "SKILL",
+     "text_sha256": "4cd7637676d7990f046392516508c42908085d708164a6f54062fad6ac097ead"
+    },
+    {
+     "index": 14,
+     "criterion_type": "SKILL",
+     "text_sha256": "f327cd1a6dce17d7974219aa48b441a01c2a9f1ed4a46dfc1b51575aff5d82ab"
+    },
+    {
+     "index": 15,
+     "criterion_type": "SKILL",
+     "text_sha256": "ebab74a448422257dc6621131e275fb189ff62a7d5a6be75de5a5bc75f87d9c9"
+    },
+    {
+     "index": 16,
+     "criterion_type": "SKILL",
+     "text_sha256": "97de802266d206814f1cd61b810c79e48c9e0713b23ea6316944577d133e51a2"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7668837003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Frontend - Cross Product Growth (Engagement Part)",
+   "job_category": "FRONTEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "65f4dfbde8d433a89d2f8aad473ca3e43f381936c708561de845689f984ca27d"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "8a893dd0aee5bdbce7f5878fc391bae011ef5ca6d54cb2b21da7779420839071"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "7972ad17db12c1c2a38efca7fe476c0dca0169f576ee8adbc6a95d5d9d021141"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "9b91982152d7f9d2dcff95d38dc9dcd002fe2dc57f7061782dfbf9c3b9cf4866"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "5662255fd257c619bfc63dfcc10afbbf89a097e037ff98ac874131c28f3a5f63"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "22ace32b20a61da57010b87847c3babe075ffad39086dfc74ee2ddf84acbd4dc"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "32c1e38e02cfc28ee3e9ef13d6b1736278ed362cfe65e655290459393b5d4190"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "44c76f2ec720bb5348dbec6a47489da0d5f2cfa204316d93d8ceb4e9919e828c"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "58d9b909af70ea9d07d4958513d6abda46e1f4ee11f24694339e36fe728db70a"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "dd1994009935010b0c9c9c179b9561ba98dac8e1383512426ddbce92d4ee389d"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "92a7ce52893e4778fb2e0e74993fd111765a653814f9ab6575fffefc9324abca"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c9c1a629a7286cce29930752ced1c09d57a063ce4d55310e3cf6f73ea4d9395c"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "117918919aa4fdf9a10828fbf9523bd9fc63af19f6e5342e886068f284c7dc29"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "9baadbd637b6f354d275b005c01b3441f32753fb0d657fbff51abe8fd178bf75"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "c83cd96aa658a8e0b831521642fb2d816fb74dd12f8f8ea2938fd96c1cfb9919"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2191873b4bb7cfafe242cfdcbed5c940fb633abca6e5c782b1ff5ff15aee921e"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "11ccb73d184f5e066e519eacb67879319895b60226df3d5a9b29aebddee8d8cd"
+    },
+    {
+     "index": 17,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "fd56e1800390e5dd20fd681f17a9be66207d59079ea148691420a8dafc6ead07"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-5282170003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, iOS",
+   "job_category": "MOBILE",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "1ca42ba67685cd915edc631c0a1978a6c9001882a72558978d8e9887fc661131"
+    },
+    {
+     "index": 1,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "81fab4c4983b72a82737f74169c98b83beb558710fd64ddb5d34aa5927a96b03"
+    },
+    {
+     "index": 2,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "1448c127ea7adcf9a443be9a5ae7b8080deb196d0ad9c598370820da8e2321e0"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "364abd892ce4447845c7d9e5beeb9d8979f7564c99d6bde02f7bb084eb5aa7e8"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "6893c13705d6ca9937e53da6b49c36437f03a27f63e714f8edd3b6d947323139"
+    },
+    {
+     "index": 5,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d75a6737a605ac7043ba77c0f9b827958b1da5b0ef5223bdfcd41e6e7adfcc97"
+    },
+    {
+     "index": 6,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "7ea5ad9221f986eb8a5e12d779bb708792fc638295a56e91b99cf2903f841a63"
+    },
+    {
+     "index": 7,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "1dc3790a0b99735e946d6275193252896043031716df3d206a8a306326082c9b"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6c5ad7882687b604e01232c854165c72e593b4d0899c2dfd8645c7b71629b085"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-5248527003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Machine Learning",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "b2752c6e1565d543af776f7ffbd4b8e28d4fc02b81a46a56d09787b3418c60d3"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "e3c2d07cd75c372355bad45dfcc3bcd0b448abc6b2a3d624497ffec7f6828c22"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "3ab28164e954c976279720f6b3963b491634baaf7cad01bb4da768ead66ed8ba"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "a7b5d308d6a6e1e1cfb450620a14643f9808113f0544b79e81c61400322ae862"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9cc2cd5e97d8d6fb8c7a26448a2c48daeed7db9181d2871f8b00d4bef520ff89"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3b47ac49290adc9a3d7c051094194e63fe58745e1c99af228d57abbbe656bd09"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0e69f7c2b5e37d5b3eac81da43e083263764b306cc6317e22afb84499d7f261c"
+    },
+    {
+     "index": 7,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "f46075428e3087b828683f285799936fe98f17e71ffd9c7425840d29250d2053"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "87f7292ca92af4f73e653ad2fb9403adc38ffac54a73495d078b95135f3ce330"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "b8b731de1bee9c18fa0543059c82538d541c495b92763143a223dc41d5e19b00"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "8ca42a911e398c0c0b69350d02675119ef47c2ce424d158253c8fd0aec8fa3dd"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e8cfb5d04f32a70b9dbfb424fbaf081c343e635ac9220e284f98f29a9e644ad1"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-6610455003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Machine Learning - 검색 (품질)",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "0365b8433713e6a518b83da5d37ce3422b644ce6f294a842753452ec01f7355c"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "6901ef99b281d01889787fd280a999d29b634d3a3eb0791cc9a89a6227df3b71"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f049910c55a7b6169d0dedc6620889016682cbfa998535257b21f0c82268d339"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "c57460f7c2363389a1411ce86422dd1ea10c9d4f82cceb3f40d82cdbe5493ca7"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a6ff8a98932b6dd5dd4ed1adb91576e488c8f3963a74276a1e46addca960ec49"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ed9b17dc8de4ba5804254dcffe6ef3701f27af850696889dc043b34f664953fb"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e966800dd2d0dd5103a13efd6ecfdf236a7b464dc392636fc32fea2b1dc6e5cf"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "bf9e41b95653e613b6349a5a14cfde59b2e6db2ef56d7439a75e64add8e8ce38"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "43a3f4d33ce9cde2c15d36e274827321fa5c017b2c9f1f55156da03fda62041a"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4885462d4ca4f8b62bfbab41a58f0b3987446776b3a35e3b94742ad6889ea2f7"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "752b983653cd31f28f0f80a86151a847e34a26acfe01a9d11d11d4611734d80b"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "05591c3870b1920fa7134ae04471a0dec66f2c9d0cb5ba68966a1cf2dcd36b5f"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-7498021003",
+   "company_name": "당근",
+   "job_title": "Software Engineer, Machine Learning - ML 인프라",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f271aa2bd9addd8b92fd2c1cbd13f52dd49d54501d7e1fda525c8560c0f2978d"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "70c26d9ff24011b139563771059bdae7ada93279292b028ff5eb9d4fc4b6c6bc"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "d4e5d0b6ded0f46a5a114eddbafc693b4e3c31c4e8c888bd052944627f392d7f"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c0d2a0fc3bd83b8de212f01af9b13ef04e9fab871cece51369ac00430fbc831f"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e003be788da844fb74a4e8bf59bcf889ef7e39f642eecb102be159d0762ccd4e"
+    },
+    {
+     "index": 5,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d330a78cc18e8cfa2044495b9c5089d099b1f4075273a07c2bae9a9a9190bb04"
+    },
+    {
+     "index": 6,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "9ee76edf991cb583a01f1371ae17d0e8f5663782561a2e767fd6f4e02dd857a5"
+    },
+    {
+     "index": 7,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "bb602ca5b3c8b21fb0f41b61385e5d7f8fd9f9e623ba60fb70f338f61ac34785"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "06e93f8deda4624e4f9a0cb247198b1be475e84f3c36da96e58a2a440cc2f96a"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "f75310584855b4168f272e464369c25bef7142d49746bf3c760c1d7b4d6c2f46"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "daangn-6285317003",
+   "company_name": "당근",
+   "job_title": "Test Automation Engineer",
+   "job_category": "QA",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f559fe12aa1b3154300f19451cc1a1ad498e7fdb43a33cab1cd0fbe90bc1f3ff"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "3a624bfb75e02b6764c6c0e78fd36ae58a851e9c102872be4af2b1490bf4e236"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "07f16362d9b4f4fb28144dd72a8009de1b1731d608191d2469fc924c708839b7"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "fbdd41c814061a289d016d3c0a3fb726c4d7892c295239d48866d0dd94251776"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "97bd92f2a2203a76d0b3f421c0b3bf34f5e0ad5b72ab1d42fa472647a106e8f8"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9937fe7c612361ea22457a086c4b8769fd38f936d26f1bddc31c6266c47f6ac5"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0baff23f57fcb873911309d49fc3112c049b1ed4705c1a0a22f322b70992e858"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "da61a7e9c49583f24942990288242a9573121405e58216c7622b7b9d519e70f7"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "88ad3a814227bf1c6c6d1c3dc7c81c4579b5c243d2171cde3341db1f93e1eb91"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "0207263b50d32dd63e8f8be024c9d7cbd99a37a16d7b59b481726b2708866872"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "9a57360d340c531f4176fd41e247d3951103b51f306853625268bf0122db87f4"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e00a0c8d40b80c9671088f5029328cd43dd28a8f65f70e50d5c27890b3b09561"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "75d02c297dfa23a900445163bf8836639a94329e281455ecacb5f3b996170843"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6a607aad53848d2f1b88aac21960bd0dcfa4971919b60fa87f912ed4a49ec53f"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "df4c656d6e471418143ea03c36434f8c14f31cc63eb7dc1cd19e1bc4571cd8c4"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-7711666003",
+   "company_name": "몰로코",
+   "job_title": "Expression of Interest(채용관심등록): Software Engineer - Korea",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5974fd6e15676248c518598e1a21e7927c22bed354e33ba3b26bd86490e860fc"
+    },
+    {
+     "index": 1,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "13256b805aac86a868f97a36ce7215a9c91595bf7499fddb2f30da7d255af9ad"
+    },
+    {
+     "index": 2,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4f945af9eb26d3ce7ddf774f45bcd59daf968122b532eb93197ebbeb715ac8da"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8f82fad46edc40b05bb9b8e09533d31ecad01078b16281eeda3e05f081d96c5f"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d5c06de0fdcf0086a63abe8c115bb904f86f29f98103cf342e7997d4b0a04828"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "1050a77b5d51dd0dc31940d5efb0c2fe4265f6174137e572817e1021afbe5caf"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "89f11319c306427dc55171448dc2486aeafeaf4cf4f4562231e40c019d5101be"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "515720a2b1079559f0ac1a0875bf1260240e501389c81160222d963d9734f2a6"
+    },
+    {
+     "index": 8,
+     "criterion_type": "SKILL",
+     "text_sha256": "45c5ece45a46b66df24c70dc294057ac6d26f0cb377b5211e4946f064826c801"
+    },
+    {
+     "index": 9,
+     "criterion_type": "SKILL",
+     "text_sha256": "d022cef0100136e501f753cbea93cb40ced7bd79452b46f9a3652d1cb5151255"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-5820201003",
+   "company_name": "몰로코",
+   "job_title": "Machine Learning Engineer (머신러닝 엔지니어)",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f98fa3ec1102a1bb8b6402b2ee58fd941a06fdd78d5d8ac5e94e2cfecf7ecd96"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "4dfd2ad0743490d4bab3fe6dd612b0b970761fdc0fb0dc229e2e02661582bf68"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "b511c0d10f6c87331c3c69325a57204aa6ddc524d2b0ee35199eac54989be5c5"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "6035429cfabdd1a736fbd64e33d789d5115c986c5fa02324cf679684fb945931"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "fdef5fa19da1e09f1af7be77548e1864893b3732f95c072ed80a1ce22abf5ea3"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "03126640cd4abf233e7d03b1b6cb408d1c501380a531d7ed4fcc7978028e8530"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d2d1eeb8abd301464b9252e7d52f63d9129068a62367b79d01652c4c44300434"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "955b85469a3f2724017c4572597bcb073a0b1407eee3ee9a0c8874fac3de51e4"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a5fa7282ae57dc1e64a158a42143d5dbd0913a4fa95a1a15e35e2c4082eec4ae"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "08e94cc5e766e388e2a362c24ab68c1463e25a9f83583d2fb764c91fcfa84f38"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "070ada85273b34fa723bb25fb8a39cfaa92efa97334a570efbd5650322db2410"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "572ab0c12517c920d8c23da47e25c6a0f69d51abf429f6955bdb33b0dd41ede5"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "202dcc75e369f17de4e37d86f2e4ef07a5a87a1b8edcc55c3b7acaa7ac7603af"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "52b984df7900b3b9565405242a1539a3334ab217000412fd59f56cc121b6853a"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "40c76036a68f6a02ea41430671df4c47fee53dda6ddf49bce4124744e16b5cb5"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-8003052003",
+   "company_name": "몰로코",
+   "job_title": "QA Engineer (1-Year Contract)",
+   "job_category": "QA",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "6975fdf5ed62299161c35ab3256aa496242037cc8ddb7b95137ac00d81fc4124"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "182cdc65ad9be05a631a47dca000937345efba9d209a1a5f8f17955d848a297d"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "9d7747f03dbd00057b5f72dd33c1f7d273f3c2eba29233b76b3d0a33d823d223"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "8f4cb38125769ef49ee270865bc6ed321bf3f04ae584220bb52fc444b6ad264b"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ea7d4e7e1295d31116a11d27f8d7b8ecab7df3a157eba5f34f4cca9414ccbceb"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "d18a15a8094390b874f553dfab309cdeb0732016f1141d188db70b9a32236990"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "cd7ddb7e6c32b56bfdd3c1604b6b1b8698ba40dc4dea8cf01943f955b924ea24"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "083942bb2eaf05a07178d7c994c515d4d657192c6d2daf2a2e0f2a4eefc654b1"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "aa3b0af451ed051ca1039cb677ddd07339eb4c92f649d2782c410abb9ab19d59"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "6af2d1ed737ca5960df61c1f1d37f130dd7063e452bb9c23ab6b66e010736527"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "49c53fdd8517c6d803479463b70602c4b8891583e3256fe066fa6a935d14d683"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "c776d361ae18dfccc5aa9583491b6f37a480d98c509cef171f28e51c908c0ea2"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "bb8ebdbe21fad1f44970ec5bd037470bcbd7980196a2c5a76a975ad3187f0a8d"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "75c826cd6da6d0e789ba9666f0427eb27b78a89af9b2015fb7e8489b6397eab3"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-7452525003",
+   "company_name": "몰로코",
+   "job_title": "Senior/Staff Applied Scientist (시니어/스태프 응용 과학자)",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "1817b9c0772d7851bdd83538a1b2000496526c83d90438545c8eb38880797e6e"
+    },
+    {
+     "index": 1,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "48646b7bb4182bf93250be3add8a02285c65d018850e6851b3db2b24d76f722d"
+    },
+    {
+     "index": 2,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f6657eab86e5e409e918bec8102e4afa154ec68b1b7e9ed924d3a6b75c571eaf"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "6461ab34c13680568e803ce8bfad6ded145d53ae6752b069db6b07ab318249af"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "64ea8bf26435d5bc479b5305e0c38bbe011df5cfa94917cbea6c8d009ed612a9"
+    },
+    {
+     "index": 5,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "5c0cbbd7d11649417a1922b7e3d1b37f9ca7d8cc5929180c0cebf525932b5e3a"
+    },
+    {
+     "index": 6,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "8c5e8e8f45ce5df0b754a4983592d7c64128dd3c91d1e485eb384d75b54fb5b7"
+    },
+    {
+     "index": 7,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6ce98ea2f63076e9a9330817cb7bdaae81db3b02c8238c3bca96d1bad7b8ac3a"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "abf53ad7e4be5113a8ff2fe2c4e7f3245d77a70471b107ac229526b4c48c8fcb"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a3274d46c850e85ec00e683b6cab28bbde7cfc57e146b89614018fd448042a7f"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a9b87bf11f1bebf5063bfbfb287d7abf9075022d3e957c8f39088a4df416c5e7"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5072cf0869758738059d88b7575102a663e45be7e8dc5138cd55b7fdbb25d61a"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d13cde95197754cad232bcfb74a70369fd814afab6d2b338151e46afe3405f2c"
+    },
+    {
+     "index": 13,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a0fc0b19a8f7e31b4967c9eeb3bf0ddc5182a9a798b871183ddcc89ba2ca1925"
+    },
+    {
+     "index": 14,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ba53410591884a99c9a0183254f4faaba8d79d83248dfad62bc76665eff4acf0"
+    },
+    {
+     "index": 15,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ed1d6a1a89c1939c8d9517d7e551aa5daba2cd0809df99d7b4201c32a2ecd56a"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-8007407003",
+   "company_name": "몰로코",
+   "job_title": "Software Engineer Intern (3 months)",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "a639821c271e205ffccc50ab33a205d8b067202feceee686fa9baaf20b43a42d"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "3fad1e6a1c823bb9bad4413af9b9b1644a1103856e7ef290d2a3e6569183020e"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "0fd3bf7bd4507c40d593f64dddc14f5020c7fadd4620bcfa589e46b2070bbb5f"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "d52a55aeb4ae5df7ebc43820dd83ec532cf997ef2b996fb669001e8b594d096a"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "112ad169c239b31f4cf5d82d9b0b117c764d3c18cbac2a339b8184c698e6697e"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f7b01809031a0c9482757d0983ebd6aed8640d7e12393135f4bddbf492d4a97c"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a929670dcbc30a0c7766c760d80b3e8195263a9398c2770cd07654dc614efc5d"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3ed85ca788746724049619f3c2de72821c0d60438fd8d4bef2df3e8df633274b"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "f41dd4ed4cd659e424414561cf34de20d5eca18a06e5a2b09e6b98f82bf30c6a"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "fb7a55655a8a291df8ca86f0a911847ca2aec63914afe8572d6ae26ad90697ef"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-8002090003",
+   "company_name": "몰로코",
+   "job_title": "Staff Software Engineer (소프트웨어 엔지니어)",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "8fa98a0c5905c2b6e5d33a81d19fa6a9c3f82ed9cae363904949d02128ac7412"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "bfb1fccff484c9ff32c1dfd40ccd9b8062996d1ffbedb54382d959f011035203"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "4c479178af78bb5d2f9a504859a74e555a4be7da599b50444b5fde2a0d4e1f67"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "88726a9682eeab00400c000491405b8f99ea27ed410fd377a8c7f20d8f105766"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "0b99543e3a6934a703801dab8e8f8738a8b22e4ba760a9e8ce2396ee32e9308a"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "fa6261413b6ce3c1c2a99ecfde505d19a7828954ccc18f2f72999f76f1ed9b5a"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "a42f3d9eb0efa7ee59ca059e2a35333e295f32a317245aa186964619be24671c"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "7f54c93695802327596570a9bd98515f2b6e8a727ec6c06ba595879540dfc039"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "1e933e6f1de2d8175105b9a276f8c2da4c787ada5e95b5f12f5a9dddeb60d7a2"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "78055a671bc7b78bf044748b63c694d821bb9aedd746d3f4388c78542a0262f7"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0ef08e3223519643662ae585565e6396b0cb27cd9a648d6e51e15be8ac75b1db"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3b6020983268d0f7d62c14d7a6058366d9cdc9775c7d2fe0642c094e268958a2"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5186c224ad2e2793b7c9351631bd066021b19a6fa77f10201846412b76da6246"
+    },
+    {
+     "index": 13,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "096e204578cf9617656e21dc06e61fc5fa1344b7dd15ad21cb44632f8de6a180"
+    },
+    {
+     "index": 14,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "7c551816169f8c048a13c1a36f3b71909bbf43097ad1d0646f35b5cc989bfd5e"
+    },
+    {
+     "index": 15,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9bd2a78c91f3fa01a07feb228560a1ad956474fd6994280f6aa22d70356eff6f"
+    },
+    {
+     "index": 16,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "caa5c02e5032d02bd838cc62e93bf12a81033fa6b89c37da37e3a15140c05800"
+    },
+    {
+     "index": 17,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d2d0a8239081923befdd6c24dd6f8c8eb5dfc28d9ea6d05ed5a4b06667467a3a"
+    },
+    {
+     "index": 18,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2f932ed268e4948aa549b8ae6fad35ca309f0e127b14b6f7eada4abe5d1b3f0f"
+    },
+    {
+     "index": 19,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "214d6b99449ba473219211f443ac66b5ba28897cde622258b0b2bd132f5fd305"
+    },
+    {
+     "index": 20,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "ed9fdc350da38c6d7090fd97c1d8a67a18ada2a1e99eaec19b092824b72d77f5"
+    },
+    {
+     "index": 21,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "c10b68e8e02affe0985d8801f3b5d39a4b22fb112a67563dc1f1d6c01a3b4588"
+    },
+    {
+     "index": 22,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "efe2b2eb0e1e418327bfe658928e8ff24399d6d2c3446f713d64507934eb9a41"
+    },
+    {
+     "index": 23,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d6a0c90bede72b3e5d6c84159d65d14c07f642ba68dfd9517558c210238cfd6f"
+    },
+    {
+     "index": 24,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "1bd1a0333c6473b5159950c3c65a097cd40652418823bd8b7e3037d97069a158"
+    },
+    {
+     "index": 25,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4e05e7939aa02b2743638b63051f3e711adf503986a55050a09551b97a148df5"
+    },
+    {
+     "index": 26,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6c666f983ca48185fae9e8dad03eefe45e0a33e163089f32bf374dede09c2e31"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-7982204003",
+   "company_name": "몰로코",
+   "job_title": "Senior Software Engineer, Common Infrastructure",
+   "job_category": "DEVOPS",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f9d0fa32a21de52388645013d5332b0087a37fbf332fdff97fd9933dc8018410"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "b0cdd9abea7dfaae64b8e21852077069f754464632a6e2860d023e0fa802443f"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "515b8b0a27145729d9b8e88c2ced2f939fc0772b2ec8a9f76e18ac5fed17bb91"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "be1c6189c11abe2b2075cddbb5d61c867b6b8ffbc4e8dab92c87b482aedcebad"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b5ec5b51a7236036cd3a9470466ded23e97309b9a552ca5f2adac30557efea24"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "cd8da3f99d5060782b8d46a6178e4d066b0ca7692285814125af552bdf54f711"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "cf81a141589c53e496f6d2a8d58ff310c165abf1baa2a6df54ca1fa6d87bae63"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b3c2ce23329ee1b6db79ff866b44ab4e6e924024fdb59e53c8063ea5fba3c89b"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ede32e16f20d381fec1e5ee013993b86cfd78f3c71c01c8eec6136ca6773e818"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "badbfd0bc6d1929adf2f3480a525b7fa945f7ab64502ad1d4c62b6f8234b90b5"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "483e01cefc7d1fc7c4a45dc03ffc18edc52a23bb36ed61dd9b84a2df33839ad2"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ccb987cc41a060f5767c734336a29ce1191d098d702726f8759d46dd306b7591"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8e4b7a40e41a092dacd4205e80b531c35b4a1e0a7049ae5403d015b066293233"
+    },
+    {
+     "index": 13,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "593026a32ed60699f9061ca9a2ce0546f69962d1926abb7e33f6be6b8b45128a"
+    },
+    {
+     "index": 14,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "35182eb37ef4ac7ce4614cd34ad5add935aee28720810fcf709cf8921e647ade"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "87a2a24beec6ac972038f9b52403b36a1f04825ff9aa84673e475b309099bb0a"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e6c4b8323e9871336c1feb53939befb56e723b3455348b18987bfd132d49c170"
+    },
+    {
+     "index": 17,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "321e4f8231b00c48d85aad13ff4f4df5233644a9793b35946577b623d10aa67a"
+    },
+    {
+     "index": 18,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2111a06d50d8fd6f3cef42cd4656b1f39b72c6b8a2825d78ef1c78aecd1eb271"
+    },
+    {
+     "index": 19,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "3d810b0445902533cd2f7b3e873c051883693d284a9c959aac239a8a060a82c0"
+    },
+    {
+     "index": 20,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "fcaf34565d4ff49774a24a0fe149bee1033d079572985b176925d6ea7492bd40"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-7717799003",
+   "company_name": "몰로코",
+   "job_title": "Senior Software Engineer - Experiment Platform",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "46f40cdef780a427feb7bbe337d3c91cd028822e8a35e4efeda6aea11f03765b"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "5122b9c5a6ff64e41ff3c9f9ca13c9825636ad0c2724fd371eca3e6da1617a23"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "9fa2bb276463c51ee89206131bf71b619497f738cd25585cfd05efc6b789dd9e"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "7499e4145e8fdc79baef0680b797e27cda8881d72cfe89eee9cf2d0008300056"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "2b0aefe6e83a5ab6d764130eb55a64820777a59c7afa4b9debdfc9bffdc94fef"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e9af9036466070c7aba7aac61aa0be836d76536f33a2f7dc86343167323b2ef7"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "30ff4fe4c2ce1ac8744614621de3f45cbff5fe21124699b6fac6eba88978f4d5"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c06b90d1a899da563ef60c4758caa582d737f9b601dead3698bc61f456eec9ec"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "7d9234bb7af47526e371df8e25d9dca3b2ded0795a3e66fc14cec40dff4bffce"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d92c5c4d06b536ef19640492db4d9c456101a1fb37eda13a4906d37154c4ee30"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "77777f848ace91fa4fbac5bb0570bccfe7c41f1422ef74ef59b09a7872588e4e"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "bf932ac7723e653c0f63809c85095e161a4ffb46d285d1e723f5b246f7f3d7f2"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e0f0f95c24ede05f81b80b90ae04133f2bfc15c02c4fe6e316303deda3194fb6"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "7d897a4fde8fb6a5bc9d688094a4e43c7fcb805517a07d6f5a41d4c74a94ed59"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-7519526003",
+   "company_name": "몰로코",
+   "job_title": "Senior Software Engineer - Applied Data",
+   "job_category": "DATA",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "471731a636dfdd1d56cf791fd8de332b161519d98a81a8ba9f5ad3e966f9bbed"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "7b94d603d93b0c0378b50789633aea932f051e1365349c9ab4fab7bfa4eb1dbb"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "5911f2a8af873f575a9529d3a00dfb7fd3784fd450215883c1084ec5f0cf2165"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "c0ee46427a69cb76e66fa01bc0db0501f84ad98b1fef01c48a502721567fdea0"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "25f575585cf46f2efb159455ef10adc91cdcdc9009241c631f215d0ee0cfea28"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "52c108f239aa3869be777ca13ce8fdec1a9e6c9b00e805e79fefb3648db657ad"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "05e9cf942c27ea587a69bd5a3dcbee08b43991293a388e847c6630be12b3993d"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "06c25c45017be4ada0ebda37ba51a4b8846de6cac0bb634437a90a2cbc6f6bf8"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f5127030de644f937bdcc74a03968203b2a12110f88395f800fb692181c53437"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ff0494341858588c7e390055a64309a6401749b03e1b597db512a117448d982f"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "757a39b7063ca243489b6b3887217aa0de5c917c8c671c82ddecd32ec6918123"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "2086acf42ee26b21a8bb8d0bb8453405c1045a339a242dab869246383f01c7ca"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "dec946e7f764e4e713596f34685aa2be6e2526f45c203a03145fc3ef9e1aeaec"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "bb2c1822ea89c84ec6a3d382b222d0baafea8cf428500783612af6e984fc9136"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "063d519e473ff500aafdd4f891b90d29a80db5d6c1c0ec1ed2a29e5199841033"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "b46422da94e43cce786b33600e94947bc74af6ff677aebb2ab0c0ca3b99c068f"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "moloco-7790487003",
+   "company_name": "몰로코",
+   "job_title": "Senior Software Engineer, Ads Quality",
+   "job_category": "BACKEND",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "a1831f271ed0cd954e2527c67f6b6cbb58e4138e456e95837c5e434e55775893"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f01a2b31a912af56f261951b482d28fb0e08c1955f462f8f57662e650232edab"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "14d89f4f9521d88f4cdc011ebab991e14fde55766ab19f05b237c2907af5b32e"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "7e965c642dd6456d938203b02bae7642ca7d59429c2105886558e253ced29cb4"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "4db79005ce3b6068b0fb4ac2c209e6f3035571e2dbcd0a55c4e14d05d7279661"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "838592b8f126e091f0e663fe8e13a1027162a08d0c71ad80e1e26aafebbc4ed2"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0882e236aabe7d4ab44774cb2ab0aa72a2c9ab4fd499735c828d08d93c402080"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "769b1f642d1d169d42d635e34c1b5f6571a922240af872cc732fba7e730cfa39"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0d5af2d27aa6ed4bbef4f332ee61a0c2aa397dcbba43d0784d7bede673ccdc46"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8f9cafe2981e93d4a4dab6ab4d5aff6a57fcc40f59890fd8c870d95fab516aa3"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b2f7b5a6927ea6d0fe15f12911c96118b5f5d671dd7e9c7207871c91387016b4"
+    },
+    {
+     "index": 11,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "ebeb50e44d0833955cf8eb8fda886ab3977af0f383d2a584af79cc0380e428db"
+    },
+    {
+     "index": 12,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "206daf861f35e3ecc28dac622468735a9d4fd36b0dfb6e275c9830fd9085fb96"
+    },
+    {
+     "index": 13,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "20bb0958e10a55bb61ae6931513573dc4f02bc381a860b83f0e89de487053882"
+    },
+    {
+     "index": 14,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "7c8b5c548875133f3b6a3cef57efc590ff12b3dc18d1ded8a2a25b3f265c2cfc"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4006969201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Production Engineer, LLM Serving",
+   "job_category": "DEVOPS",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "58c4b875e2a8d0e4a31b92c1ed186726b08fdc5c07db577f26a70f5c60e5ef82"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "93d0cfe6e7a0ee33ce77c7455f3710bd09edc1eb9ae56d0e836ae55059c866de"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "e22a6c10394da5e51e329a44e05e690be5a6bbd1ceae98dc971d345016d3e6a1"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "77ff02cf0b7aad14d3db6f6ea03aabaf534bd6170ebd5099b15ba0410021a5fb"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "22fc92d9fce84f68ed4f2fa36e65164c43faf21ae7d7e2e0bd62262ebadc65f6"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "41a2440d43cedb0cea4e58de2449fdcbe6a3fb0c7d88b66439d0700fda8e9764"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "2de0287a3e5fa0691eb4c570b22b31ce4b6184bad694a28162c99c834a8e9a37"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4b478afa353d40a9e77c57874f33ca31e7ac26a074ab1e1888081763cca3d901"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c7f2d31d876f9825fc684d1ae47fc41ca0e8a16b207e45e688312fc9cd6e428e"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3fb2da11fcd8ee3a455c2e1d08b1d271ed51245397a8fbb971b4d488b4eca6fc"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d672e7b362a65d1a1fcef504caf7f3b97b306a46a8131308dd332b11d55c7d76"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "eff1c2953eab44b24e9342279e69c3f633a0a1c1b40717214c0c220cd86871d9"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "9fbe3bb3e907364e8c72606ec914b62e3be3616a3f9daf1c6e1382bd5357f5a7"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "201a8f7894c4308ef20ea8c055510b997d7fc6c1558dec0becee444745467d81"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "0902d9196a2ab0d8791cf5b0746b4e738ffbadad22d36f12fa0c17a7f30691f7"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "37e7a81d0dce1d3865ca185fdb180b1d9869c318ef2c01580c8406f5953cff67"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "fdc1ed859e72ab53b8eed60db53ef8f25f08093a0e5ad4ab71f8d010d909cf00"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4006985201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Software Engineer, AI Model Enablement & Inference",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "efd851298e0c9eecfa62c6c5f4d0f343c24208c26e15b0d91bfc1c7204a90b23"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "7f6a4686f7ce81e44bc80ca6497141b72bd1b19b22efd27eea38c42cf7cbc30c"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "c979e53274bacedf251b2986efdbeb85b431eb123e1c55eef0d009dfe902cb82"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "c8f085ac3d7c7e037e4f8537a786d79211e5103f10a2358a73096ecaa41dfcbd"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "a0eff37679eeca6ae793775d95e51a39e2eaf30d8a163c6d1e473e9ffacd9ea7"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "74626fe7f4c680939997d75afefc215a4fdd8e38bb3040392ebee5da8de82453"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "b9fc66cdf4e86b201bdbbeba7c3af41fcc4633272101e28892821c3d27eeb98c"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "93ddc14d06f348d619927c38f423feabe163cbb6023bc5e666893cb431c8ce32"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "7f6e09a4baa8da26547e5808a690e21ebe4ba0db7d735ee938d08e9a65fd1f59"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9a8a62436bd9fd240d6d0c9ea3d39e50d152bf76b995636c9cccf5fdc7f640d4"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "164efcca5fab2431b3be01715cc0af469a9a5acadd83b379a66602fc6cedf40a"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "1cfe285296cad673840094c3757c55db27eb7bb24b7bac0bdd68a02f63ba5e73"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "dfe0668338e535a3b64d2d9ee5bda9ea55c299bca606ac1ba7353f3cb72eacfb"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "48c6cb0d73a58d918745357a1a520e8dc773f010dc7abaafe3585d3cbc2331e4"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "9162cefcc0d6e7459224c0bf8bb8e3d879f0c45312998f8040802d902b125b5c"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "7475f02f527fed3eeacfbffd9773408b88615b53fd96831eb3f7b88d73c5c864"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4006986201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Software Engineer, Build Systems & Release Infrastructure",
+   "job_category": "DEVOPS",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "90f0edfdd5f3870b6ace129a3e0a24f9e16191ae82eac3d88c384e6e7b5b930a"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ebf4c8303f184e677120e762d052c882b643c0fa3f1b944c4865910a8e9c24d1"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "dbf197bff0bc380359700b3342c271c043d7089ec72a806dacd5a43dd7385ca8"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "4a458342125a0714541878f48ea41859e52c8e647d00206a351e89ca2866c89e"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d0012e042a5cbaeecdb3f9b1af889deff7ab9d022504629cf159982a39e5ebb0"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c0dc08f0e20d66c90b94a2f413f17b1fe01a9b1d7f69ad11b7500a129ea633aa"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8df40488b743c78ee447d4a4c0025d37292aaede6b936b63cb297039ec326e5e"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c91a1e9b8ef234ee0c49b06920f3d7a1609b8c2df7701ecc1b30c137ff0c3f69"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c07196d579103f8f14768df076730159f7e8a9a6df6991e1848fb5d05299b708"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "f704fe237447e33422bf937aba5aa984a56ffe5c3683f0da8b46c28c5fa36adc"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "ce898d7c348cb12a09b90bbaa4ae3e9b1158dbd8dacfc295cb3d4737f8490e70"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "1719bae79d3fa8c3462880d6dc77fedbf4067061396d1eeb7a566fd85d0d5b73"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d7a465ea617277da9ee2894b6b42a1ca1c2db02be1f282d9c1f69d4f86af5fd2"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "fc35e6e43d1e675539db398bf08544b0b0e875439a82bacb70589384a6a91879"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "8c9467d1d526cc8854833c4e217e43cca339f398d643bd1a8021e1918f79b8cc"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2f134bf1a5591839b454c359e7bd89f8354e81cc00ff6b1beb325ce841b1fa34"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6a57355dc753acc1892f457da4452cd56d57a5d3dfcd2515f4305e8d7d336b27"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4006955201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Software Engineer, LLM Performance & Evaluation",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "06026a007344ebeca6f2864bcb003cbf1c72808114251dc7d56bab067fcfd96e"
+    },
+    {
+     "index": 1,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f7191580d7343775c34d8d2912b0c51ef6fb6951de6a36250dca758c51a61e0b"
+    },
+    {
+     "index": 2,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "aa4ce2c288b6709f6c16cfed23a63fb29835d0733d00a0da63f1e542aaff71ac"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f3f4935832b4bf29532a83845c5be451fe2c586f8039d395c1af1bcd18ce54e1"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "000308302a505da67e9b123bc28cada340108588b312af9f86b9471827138104"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "61ee63ce40dc679eca7461c919def2f535ff8b249b1589c0acc6a8453fa44f1f"
+    },
+    {
+     "index": 6,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "05a8279dfd0f3c852efd3f3388ff137f8b3458a3e5cdd9431e85236ee7c64b67"
+    },
+    {
+     "index": 7,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "e97307be6323320f848b59bd8a4b24532d4defc55eaff26a32c73d0176d4e9b0"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "7fe7ae2b3aa692d958c9936c24535ee3d2630efeef3070c62a3025a9f69ad0e3"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "c11583f09b3002fa56617825bd20ee0d493fc0cd500acd732a8cdf9c074f7ab7"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "13bfa688ea7c68eed2a813289d66fcb9479f0bd86c78dbec4e1b0f92a69d3472"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "31868b3ef9135de0a54fc1ac360fd518ebe0ff20967c3e720cec88853b94c2df"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4005786201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Software Engineer, Site Reliability Engineer",
+   "job_category": "DEVOPS",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "07b61215615b30d60f58706e10a5bbd5b3e45bcb08bcfa97d863ef5898091e8d"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "eea117a6d15b528ac3605bed5600698fbf84d505063d703d702eef05106a3fa5"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "6489b9f5b22663cff29f3f37bf3a35dd0c8811e9a3b1d9b40bea4f639c19bcaf"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "294e3118f70231478aaebd81993474930adb4d2e2a1400e01f3c903fc9304d34"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "cbbc4169ce97f22bb95ebc7b43940fcbbe85a5e431f0bbc5ae3a915cf27994f8"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8a2af6ae1e51651739ecadfbed53e78586fcab2157f11ee631c2570deb33e1d9"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "59be7010dc3a4ab078ede5cef291fbe8d0a5b8777977809b64d620b3361f7e08"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "edfcec0c919124d9316eac17020a332db3f2d225bb450d588c95548c531c078d"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "fb5bd4243a35eeff542f31f6c067cffa6845efad5da51b747bee21a5209cc0b5"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "2fd5b2fa671b7297a8e06341f7e852b0be13742f7d539ee3a9fa073619689c21"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4c5991c32fc85fc739d8b750bba93e32cf5bea7c9d44ad947240eb12e7356e6a"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "cd3ca3e86319ec4b1cdfc9cc4381da658367a00ff3bda41028e9db361b72febb"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "986744b69cfd45e19bd6cd62198a57ca6af283dc9aae5540ec15449d0ba92d96"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4005374201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Software Engineer, AI Application",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "7a26284919db56e7cd4093d279e342e1da3a910c4c6d39272ba13c12695b9019"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "1628a342a46ec2ef8b468559eb25819812f9a4e47b8a38f0c39c78976c70cf51"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ed97a774d388feaa33860ec532d529f8a24a6745e0be613394cf122698c39323"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "4d2dbe29bd3164fc005d16a6670b78d9f7e49f4c00adadb9ab4d626541f36ff6"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "9f51c6e2438daee5a46bda24393b8d07119a322c5113fa4369fa992e694fb13b"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "52a538ced9c7f070f958d52b3c6634443dcb5e9334688d2fecfe362c31357162"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "755a2b7a2d569721997ac9085ca6ca5b3a3ed6a8e563ab9ffc9512de1a2d78a6"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "66ac7c0c72de5524be72eea2e8a9d164964fababa732fd031580640f61732843"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "32bd8c350638c14a5f13e8f34ac91cc0ad0818b8ed1213e305e925fd86c9eed9"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "252862b22f984ec52e7f59b70a77867af85b8e8d956760555bf947b08bf14291"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "0d20233e928644bbe5f5ad67a1be2c11d1e780ce0b714398f4fb61ba86e3ebc8"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4005370201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Software Engineer, Agent System Developer",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "8d82be990affe36d064ae075d36e1860dd647f73b82392771304527432c2116f"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "e0a6084d253b3f4b1fb834345deed5dc9c6e49e559a04f518a6e9a9280368b7a"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "54a0ead7f58ff86931ba66a117ed2065bf42624fbc4f86ecd189679390d23d23"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "84a2023f3ffe990a3e61848d3fd1234f44417adb4ba22a2270ac8a9a13b2e891"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5af654e53f0f1447060f3ed0d5fe1d7236fb8c5604ce337aad230adbe5940576"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "5d3c47555a015f38236acfd37025f5566fc2c3aa4d3cae5f43d45d0b85e92b7d"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4af866cd1b7e1f0d21e178da4846c5408e720431487b7b9e02afd5228335b7fd"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "83cd381c33f74d462361e2d7e304f221ab87f0cca9d91209a08d3cc89eb37ede"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e5318aedc8ec57765296ac9b02687368782592f34702277b3ba1b3d13f402daa"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "b673c78ab4c622a8b2b5d6601ad26d14cf9e0e66493422c42528e875ff35f2f3"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "4226fa49a71f01b830ea7a37726c5757a758ce10584fb2afb7efb27515fb2608"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "5de7a29a978acef64b167403736bcf3aebeb39964520eeaac134bf593ee74279"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "176013ac58e708021d8a7a73e0c4935d49f69676097ae92d3301ec0ad021ac3b"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4005788201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Senior Software Engineer, Inference Engine (Platform Software)",
+   "job_category": "AI_ML",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "32879a91a7a9533b8e8da4cd5aed51f01b94f703da05351f4da69953060d493f"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "81a409cbddec0f91aefb5868aa9541fa8d09cdacc9df9ee30c1ad88c849fee57"
+    },
+    {
+     "index": 2,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "879ba98243cc2c9795bcee9b34b020c41f6fbdb33ac7a1739689a135bf3b08dd"
+    },
+    {
+     "index": 3,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3119d8042e18d3e68277e6f749abe76cc42c204051d83668ef72a52fe8fff8d7"
+    },
+    {
+     "index": 4,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "8c20014fd24de34dc6902cdc7df9970b50ca5cee26aad444ce6097435ef54f82"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "c65c91b77e1352982e21d6b37b34d701a3ead3bd7366056bcf0c15ea0f6f5170"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f4d6d91dd77a3e3e0caed261e3aaac6d6e1875864a46cab88b76791e4edde63f"
+    },
+    {
+     "index": 7,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "425a6343bdb86ce9aed4a0fa68a75c90dc3686d6f0a84e91b2dba4c2763c225f"
+    },
+    {
+     "index": 8,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "cf18f400edd34691dd01fb67b3393cd0e589f57d3c36bc6353d37e56328c5d88"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "d85adaa328252abee480c033cab7c269171faa9a69dc74177b093a9ce3ab6d95"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "ff779e62384f10b83fa0617b10f673fd71a4e9ec9dc667000007963f9709f06a"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4005789201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Senior Software Engineer, Runtime",
+   "job_category": "ETC",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "c4751e2d6cd413f4043d24451916939a4f95205b6370b4d00b6b32cc87123e5a"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f5d610ab6635d8221ea5b0fa43f200d5f2e9f4cc98139358a2e94730d170a03c"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "bb369906a7483a8b2036000cdf4942cbb0e412093ca5490a1c85ea25acb47c0b"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "99d0d2e1bd4e8d201576ce51924bc5598966404ddb33dedc24f00f6c9aa6e15f"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "b35b0087a793f813ad7f01331c0a2e2876248bf9e4bc38eef000359eac6e3855"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f354ad5fc843208c2b1633d7088f7ca865c5a39d7970ae2fd723273fb2008f44"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "d37ec82e1c278fc10abbc3efd139137a11a7211522c7e40510015e5f95fe1c1a"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "2a2066b2caac126e816311f57386bbf881581a13530838fe7434e86b3e91c489"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e7e9f65a28594132d70503631d4d771492bac83df5cb0d6f17f99403ed8460f8"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "dd420bb7765be80334b74ae4abbccb536db830b809cd3925f003473458296bd7"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "c3717bbff29743d7dc130d7a346937ccacf0a52c4361acb9df70fcdcaf9c862e"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "742ac92dca01ed1ecd93d01b319294eaff6c211fdd38570936bb756a424afd08"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "ccb1589c3334824406cc26922b6a3733b0b0109dfa8038e76ce78b2fb98e180a"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "85fe9d118a5ae5f35461462b78af377f2cba3bcef20adbd449d1801ce60ac4e5"
+    },
+    {
+     "index": 14,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "32f796f3fa8f599b08ff630f05cfcbee643a62ab9e1e2d19507286e28822d997"
+    },
+    {
+     "index": 15,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "29c4a42130ba30c7d8723e456f3b79b86ccc75e7111b9044678d2a28d1dbd195"
+    },
+    {
+     "index": 16,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "b3ed1cfc6c229c244fb283d0a28336585a023fc1363155ae55ab33bc954310c5"
+    },
+    {
+     "index": 17,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "03ce618de8a82e780338c5932ee09c5ada62dbe20d90f1f35fa6cfef5a611bce"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4005791201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Security Engineer",
+   "job_category": "SECURITY",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "1c70928a368cd2ca54265ea648cb09813dff2c080de46d69c4cb5dd1e65e1b1e"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f3e59c5d51a853327eaa0a8920e01511e410f60580fc17e4f3cdb1516cb4aad6"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "045866fc09879721c69539bcf4f62b5f3aa8bba448e1eeaa2dd8c8576668fa9a"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "2cb89c39b4052a960b6705dd4508e33e507838b748aaf7b91c86ae2b0ecc248d"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "baaa1aaf699cdd869e2d814257ed4e0f533bb1a81ecc5bcd834ceb848b4e0ef1"
+    },
+    {
+     "index": 5,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ed5eb426c588c8410f72802d8254bfbef0bdff93d56ce9ed082ddfa3b932c7b5"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "703ca25f7570e3b62dd3e040eecff987286927135289c1574a61c35888a10018"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "0456cf938cf3e5a22aacdebba9901f41ca1885ea6db041ec2f99d895094ba7a2"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "e2ec005bdc8bb7566bf781d3951f03d2fbf30d09452acb9cca76f92da22390ef"
+    },
+    {
+     "index": 9,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "4903cbd6afa0b2d308887fdf7584cd7c986ce124a462cc80ff4bf7962f470443"
+    },
+    {
+     "index": 10,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9ca58d3c1eaf6785fc512f736b2141e361320c4e2a05ef70fba15684c6298c00"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4007040201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Software - Software Engineer, Compiler (Kernel Optimization)",
+   "job_category": "ETC",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "235e06bb46df62d9eebaaf576660187958629d49a964920ea930f88bf3ea3ff9"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "9346e9d892932bcabb72591064cd0c7823bdba5a73bdfacfaefc24fc1e2efa22"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "182387fd9bbd0a5a9d0b5dea136de7b7beff994bebe153103d18da52153cc4c4"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "8d56546e2b00e0535e07d1378446cccefb78494d6f4e032d1eae560b2b9c0f2e"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "8c9eece5020e857970db8e3a9218b94cfb5b2cd8c6b2fbc125b8c93857b909eb"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "402fce442b61af8985625f33f8b2b33204b4a1bd712f5a0bd8998b6c73fe281a"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "3a1f77834bf1f6a4c999f7755eac216efd464321270edbb379ee76ddd70ec188"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "867f2123fefdf31a90406c62a0d36a4b2cda2862c6bbac5b8b2e145f4c3b7bda"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "9a890249a94468107c831fd6de605bfae691a9b9966b6f14a54e97633c07b49c"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "62f0b1480cd30cce65a837d8880921b3d480db5a901556a1f986e092a7e5bdbd"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "65e4869ca76f880f8298b1c9603016ccf866d0a81a13e626e4dc88b7474df988"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "43ebb8441c1309c7034c91072a7935fc12ee8ab824ecaf44a1ecf3dbc730fe58"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "78e59c07d6c4e8a8dcb850483cdfe710cbe95da02c80c1be382091af104dde39"
+    },
+    {
+     "index": 13,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "a98fe1bc8afbb577239a8aa00d92821adbfbc684f5b3a073f90cc0d67e5b8c93"
+    }
+   ]
+  },
+  {
+   "source": "GREENHOUSE",
+   "external_posting_id": "furiosaai-4005793201",
+   "company_name": "퓨리오사AI",
+   "job_title": "Systems Software Engineer, PCIe Device Driver",
+   "job_category": "ETC",
+   "criteria": [
+    {
+     "index": 0,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "4e67d4966c114b3f87aceb1e41cd9dc845bab4d759c0275349dbcc0413de3c69"
+    },
+    {
+     "index": 1,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "ca4a26700f7136e9631fd6259d0c3b7944ce13562e7ad0195f07155618df0ee6"
+    },
+    {
+     "index": 2,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "31f31a95c8a25168a1b713b175ee6d9865be027a35a1b465cf322f5289ece21e"
+    },
+    {
+     "index": 3,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "f58463645e641e9244709536bd5a06e7f5eafe86f2d57ac8420bf0bbe4b92521"
+    },
+    {
+     "index": 4,
+     "criterion_type": "RESPONSIBILITY",
+     "text_sha256": "383579db04f46a9f373b36846808bade849725584ec8f4217c563261e1b82bba"
+    },
+    {
+     "index": 5,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "66c85b510adf76133cb7650b18eb67c374d71a682423cc16af08cf54e4fffa6d"
+    },
+    {
+     "index": 6,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "f9fa4f3758a9120cecbcbffc525f022078f39d782e9e2ee7f77660698fbaf6bc"
+    },
+    {
+     "index": 7,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "92ae8d9938d6f6ad38727f8a56ecb95360edf791ab3c415464d71ebb9ce93e95"
+    },
+    {
+     "index": 8,
+     "criterion_type": "REQUIRED",
+     "text_sha256": "fbad684a52e31c1bb26a33da5ea6f02d398fe009775ac7f4f6c984565c4d2b48"
+    },
+    {
+     "index": 9,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "805726335a6b05188bf07dd2f93a6fb58eee17a33de546f57d15e125a97927c9"
+    },
+    {
+     "index": 10,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "0f81ab5b1dc4cd6739d860c2d99d9a163d6c2f9c80b5d82765f897028db2fe63"
+    },
+    {
+     "index": 11,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "1c55647555859a620188f572011755f5fe04c4bd305649406ef2b8656d4f0c12"
+    },
+    {
+     "index": 12,
+     "criterion_type": "PREFERRED",
+     "text_sha256": "6ee30d723337d7cefc260be49ae7e4250c012d4f7d4882a0c678beb83db08f43"
+    }
+   ]
+  }
+ ],
+ "cases": [
+  {
+   "case_id": "ko-01",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 1,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "대용량 트래픽이 몰리는 서버의 응답 속도를 줄였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5282170003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7644271003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006955201",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 19
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8007407003",
+     "index": 0
+    }
+   ]
+  },
+  {
+   "case_id": "ko-02",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 2,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "자주 조회되는 데이터를 캐시에 올려 데이터베이스 부하를 줄였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 11
+    }
+   ]
+  },
+  {
+   "case_id": "ko-03",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 3,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "Spring Boot 와 JPA 로 게시판 REST API 를 설계하고 구현했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 21
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8007407003",
+     "index": 0
+    }
+   ]
+  },
+  {
+   "case_id": "ko-04",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 4,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "느린 조회 쿼리에 색인을 추가해 목록 화면의 응답 시간을 3초에서 0.3초로 줄였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 11
+    }
+   ]
+  },
+  {
+   "case_id": "ko-05",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 5,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "주문이 동시에 몰릴 때 재고가 음수가 되는 문제를 잠금으로 해결했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    }
+   ]
+  },
+  {
+   "case_id": "ko-06",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 6,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "알림 발송을 메시지 큐로 넘겨 비동기로 처리하게 바꿨습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    }
+   ]
+  },
+  {
+   "case_id": "ko-07",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 7,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "Kafka 로 주문 이벤트를 발행하고 소비하는 구조를 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 20
+    }
+   ]
+  },
+  {
+   "case_id": "ko-08",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 8,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "소셜 로그인과 토큰 기반 인증을 붙이고 사용자 권한을 나눴습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005791201",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 20
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    }
+   ]
+  },
+  {
+   "case_id": "ko-09",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 9,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "GitHub Actions 로 테스트와 배포를 자동화하는 CI/CD 파이프라인을 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-6081125003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 7
+    }
+   ]
+  },
+  {
+   "case_id": "ko-10",
+   "style": "KO_LOANWORD",
+   "statement": {
+    "card_id": 10,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "도커 이미지로 서비스를 묶고 쿠버네티스에 배포해 운영했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5004587003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 16
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7644271003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7655325003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 9
+    }
+   ]
+  },
+  {
+   "case_id": "ko-11",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 11,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "서버 지표를 대시보드로 모니터링하고 장애가 나면 알림이 오도록 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 17
+    }
+   ]
+  },
+  {
+   "case_id": "ko-12",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 12,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "장애가 났을 때 원인을 분석하고 재발 방지 대책을 정리해 같은 장애가 다시 나지 않게 했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 22
+    }
+   ]
+  },
+  {
+   "case_id": "ko-13",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 13,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "하나로 묶여 있던 서비스를 여러 개의 작은 서비스로 나누고 서비스끼리 통신하는 구조를 설계했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 19
+    }
+   ]
+  },
+  {
+   "case_id": "ko-14",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 14,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "단위 테스트와 통합 테스트를 작성해 테스트 커버리지를 80%까지 올렸습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5282170003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 9
+    }
+   ]
+  },
+  {
+   "case_id": "ko-15",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 15,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "Selenium 으로 화면 테스트를 자동화해 회귀 테스트 시간을 하루에서 한 시간으로 줄였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 9
+    }
+   ]
+  },
+  {
+   "case_id": "ko-16",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 16,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "코드 리뷰 규칙을 정하고 팀원들의 코드를 꼼꼼히 리뷰했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7452525003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 16
+    }
+   ]
+  },
+  {
+   "case_id": "ko-17",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 17,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "React 와 TypeScript 로 여러 화면에서 쓰는 공통 컴포넌트를 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6081125003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6081125003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 22
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7791182003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7791182003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7791182003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 9
+    }
+   ]
+  },
+  {
+   "case_id": "ko-18",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 18,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "첫 화면이 빨리 뜨도록 서버에서 화면을 미리 그려 보내는 방식으로 바꿨습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-6081125003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 16
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 22
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 9
+    }
+   ]
+  },
+  {
+   "case_id": "ko-19",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 19,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "접근성 기준에 맞게 화면을 고치고 화면 낭독기로 직접 확인했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-6081125003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7791182003",
+     "index": 17
+    }
+   ]
+  },
+  {
+   "case_id": "ko-20",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 20,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "앱 안의 웹 화면과 앱 화면이 서로 데이터를 주고받도록 연결했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 9
+    }
+   ]
+  },
+  {
+   "case_id": "ko-21",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 21,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "Kotlin 과 Jetpack Compose 로 안드로이드 앱 화면을 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7644271003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7644271003",
+     "index": 17
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7980543003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 8
+    }
+   ]
+  },
+  {
+   "case_id": "ko-22",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 22,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "아이폰 앱에 의존성 주입을 적용해 테스트하기 쉬운 구조로 바꿨습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5282170003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5282170003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5282170003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 13
+    }
+   ]
+  },
+  {
+   "case_id": "ko-23",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 23,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "앱이 갑자기 꺼지는 비율을 측정하고 원인을 고쳐 앱 안정성을 높였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 13
+    }
+   ]
+  },
+  {
+   "case_id": "ko-24",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 24,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "직접 만든 앱을 스토어에 출시하고 사용자 의견을 받아 개선했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7644271003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7980543003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7990084003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 13
+    }
+   ]
+  },
+  {
+   "case_id": "ko-25",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 25,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "매일 쌓이는 사용 기록을 모아 집계하는 배치 작업을 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006955201",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 19
+    }
+   ]
+  },
+  {
+   "case_id": "ko-26",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 26,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "BigQuery 와 Airflow 로 매일 도는 데이터 파이프라인을 구축했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006955201",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7452525003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 19
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 20
+    }
+   ]
+  },
+  {
+   "case_id": "ko-27",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 27,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "사용자 행동 기록으로 추천 모델을 학습시켜 클릭률을 높였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6610455003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6610455003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7452525003",
+     "index": 5
+    }
+   ]
+  },
+  {
+   "case_id": "ko-28",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 28,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "화면 두 가지 안을 나눠 보여 주는 실험으로 전환율 차이를 검증했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046759003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5781885003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6081125003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6610455003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 20
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005374201",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006955201",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7452525003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7790487003",
+     "index": 14
+    }
+   ]
+  },
+  {
+   "case_id": "ko-29",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 29,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "자연어 처리 모델로 상품 설명에서 카테고리를 자동으로 분류했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6610455003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 8
+    }
+   ]
+  },
+  {
+   "case_id": "ko-30",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 30,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "학습한 모델을 서버에 올려 실시간으로 예측 결과를 돌려주게 했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5248527003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6610455003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6610455003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6610455003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005788201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7452525003",
+     "index": 3
+    }
+   ]
+  },
+  {
+   "case_id": "ko-31",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 31,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "LLM API 를 서비스에 붙이고 프롬프트를 고쳐 답변 품질을 높였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6081125003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7498021003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7980543003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7990084003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7995038003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8034318003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005788201",
+     "index": 4
+    }
+   ]
+  },
+  {
+   "case_id": "ko-32",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 32,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "문서를 잘게 나눠 벡터로 바꾸고 질문과 비슷한 문서를 찾아 답변에 넣는 검색 기능을 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6610455003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7655325003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005374201",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005374201",
+     "index": 10
+    }
+   ]
+  },
+  {
+   "case_id": "ko-33",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 33,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "필요한 도구를 스스로 골라 호출하는 인공지능 에이전트를 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-7655325003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7990084003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7990084003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8034318003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8034318003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8034318003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005370201",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005374201",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005374201",
+     "index": 10
+    }
+   ]
+  },
+  {
+   "case_id": "ko-34",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 34,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "Claude Code 같은 AI 코딩 도구로 반복 작업을 자동화해 개발 속도를 높였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5046757003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5296522003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6081125003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7644271003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7791182003",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7980543003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 16
+    }
+   ]
+  },
+  {
+   "case_id": "ko-35",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 35,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "클라우드 비용을 분석해 쓰지 않는 서버를 정리하고 월 비용을 30% 줄였습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7644271003",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7655325003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 17
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 20
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 22
+    }
+   ]
+  },
+  {
+   "case_id": "ko-36",
+   "style": "KO_LOANWORD",
+   "statement": {
+    "card_id": 36,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "테라폼으로 클라우드 인프라를 코드로 관리했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5004587003",
+     "index": 16
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7655325003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 20
+    }
+   ]
+  },
+  {
+   "case_id": "ko-37",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 37,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "웹 서비스의 보안 취약점을 점검하고 입력값 검증을 추가해 막았습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-7655325003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005791201",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005791201",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 20
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 13
+    }
+   ]
+  },
+  {
+   "case_id": "ko-38",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 38,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "접속 기록을 분석해 비정상적인 로그인 시도를 찾아내고 차단했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5004587003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005791201",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 20
+    }
+   ]
+  },
+  {
+   "case_id": "ko-39",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 39,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "기획자, 디자이너와 매주 회의하며 요구사항을 정리하고 일정에 맞춰 기능을 출시했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5282170003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6640363003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7668837003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7689088003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-7762062003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 12
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005374201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005788201",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006985201",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7717799003",
+     "index": 3
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7790487003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8007407003",
+     "index": 3
+    }
+   ]
+  },
+  {
+   "case_id": "ko-40",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 40,
+    "star_slot": "R",
+    "statement_seq": 1,
+    "body": "반복되는 배포 작업을 스크립트로 자동화해 손으로 하던 일을 없앴습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4496730003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6043519003",
+     "index": 10
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-8014200003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006955201",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 13
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 16
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8003052003",
+     "index": 7
+    }
+   ]
+  },
+  {
+   "case_id": "ko-41",
+   "style": "KO_WITH_EN",
+   "statement": {
+    "card_id": 41,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "Python 으로 성능 측정 스크립트를 만들어 처리량과 지연 시간을 비교했습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-4300801003",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:daangn-6285317003",
+     "index": 14
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005786201",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006955201",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006955201",
+     "index": 1
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006955201",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 4
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006969201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006985201",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4006986201",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4007040201",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-5820201003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7452525003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7519526003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 8
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 8
+    }
+   ]
+  },
+  {
+   "case_id": "ko-42",
+   "style": "KO_LOANWORD",
+   "statement": {
+    "card_id": 42,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "리눅스 커널 모듈을 직접 작성해 장치 드라이버를 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005789201",
+     "index": 15
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005793201",
+     "index": 0
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005793201",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005793201",
+     "index": 6
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005793201",
+     "index": 9
+    }
+   ]
+  },
+  {
+   "case_id": "ko-43",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 43,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "자료구조와 알고리즘 문제를 꾸준히 풀어 문제 해결 능력을 길렀습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:daangn-5823087003",
+     "index": 7
+    },
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005788201",
+     "index": 5
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7711666003",
+     "index": 2
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-7982204003",
+     "index": 11
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8002090003",
+     "index": 9
+    },
+    {
+     "posting_key": "GREENHOUSE:moloco-8007407003",
+     "index": 5
+    }
+   ]
+  },
+  {
+   "case_id": "ko-44",
+   "style": "KO_LOANWORD",
+   "statement": {
+    "card_id": 44,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "유니티로 2D 퍼즐 게임의 레벨 편집기를 만들었습니다."
+   },
+   "relevant": []
+  },
+  {
+   "case_id": "ko-45",
+   "style": "KO_LOANWORD",
+   "statement": {
+    "card_id": 45,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "아두이노로 온도 센서 값을 읽어 화면에 보여 주는 장치를 만들었습니다."
+   },
+   "relevant": [
+    {
+     "posting_key": "GREENHOUSE:furiosaai-4005789201",
+     "index": 12
+    }
+   ]
+  },
+  {
+   "case_id": "ko-46",
+   "style": "KO_ONLY",
+   "statement": {
+    "card_id": 46,
+    "star_slot": "A",
+    "statement_seq": 1,
+    "body": "동아리 회계 장부를 정리하고 행사 예산을 관리했습니다."
+   },
+   "relevant": []
+  }
+ ]
+}

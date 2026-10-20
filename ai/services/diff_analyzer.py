@@ -1,6 +1,6 @@
 """확정된 경험의 diff를 LLM 입력용 근거로 압축한다.
 
-전처리(비밀값 가리기·생성·민감 파일 제외·patch 상한)와 후처리(입력에 없는 SHA 제거·
+전처리(비밀값 가리기·생성·민감 파일 제외·patch 상한)와 후처리(입력 커밋과 맞출 수 없는 SHA 제거·
 누락 커밋 보충·길이 제한)는 코드로 확정하고, 변경 의도 요약만 LLM에 맡긴다.
 프롬프트와 입력 형식은 ``evals/tasks/diff_summary.py`` 모델 비교에서 검증한 것과 같다.
 """
@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.analysis import DiffEvidence
 from schemas.collection import CandidateCommitDetail, CandidateDetailResult, CandidateFileDiff
+from services.evidence_checks import match_commit_sha
 from services.llm_executors import CARD_DRAFT_EXECUTOR, LLMCallSkipped, run_llm_call
 from services.llm_structured_client import (
     LLMContentFilterError,
@@ -327,14 +328,17 @@ class DiffAnalyzer:
         payload: dict[str, Any],
         output: DiffSummaryOutput,
     ) -> list[DiffEvidence]:
-        """입력에 없는 SHA는 버리고, 쓸 수 없는 요약과 patch를 보지 못한 요약은 커밋 메시지로 대신한다."""
+        """입력 커밋과 맞출 수 없는 SHA는 버리고, 쓸 수 없는 요약과 patch를 보지 못한 요약은 커밋 메시지로 대신한다."""
+        known = [commit.sha for commit in commits]
         summaries: dict[str, CommitSummary] = {}
         for item in output.commits:
-            summaries.setdefault(item.sha.strip().casefold(), item)
+            matched = match_commit_sha(item.sha, known, "diff 요약")
+            if matched is not None:
+                summaries.setdefault(matched, item)
 
         evidence = []
         for commit, sent in zip(commits, payload["commits"]):
-            item = summaries.get(commit.sha.casefold())
+            item = summaries.get(commit.sha)
             if item is None or not _has_patch(sent):
                 # patch 없이 쓴 요약은 diff 근거가 아니다. DIFF로 두면 STAR 신뢰도가 HIGH가 된다.
                 evidence.append(self._fallback(commit, sent))

@@ -21,7 +21,8 @@ public record Disclosure(List<String> reads, List<String> skips, int estimatedSe
         List<String> reads = List.of(
                 "기본 브랜치 커밋 기록 (다른 사람 커밋 포함, 최대 " + limits.maxCommits() + "개)",
                 counted ? "카드에는 내 커밋 " + repository.ownCommitCount() + "개만 써요" : "카드에는 내 커밋만 써요",
-                "최근 PR·이슈 " + limits.maxPullRequests() + "개씩과 리뷰의 제목·본문 앞부분",
+                "최근 PR " + limits.maxPullRequests() + "개·그보다 오래된 내 PR 최대 " + limits.maxOwnPullRequests()
+                        + "개·최근 이슈 " + limits.maxIssues() + "개와 리뷰의 제목·본문 앞부분",
                 "카드로 고른 커밋의 코드 변경 부분");
 
         return new Disclosure(reads, SKIPS,
@@ -32,12 +33,18 @@ public record Disclosure(List<String> reads, List<String> skips, int estimatedSe
     private static int estimatedSecondsOf(RepositorySummary repository, IngestLimits limits, boolean groupingEnabled) {
 
         int commits = Math.min(repository.commitCount(), limits.maxCommits());
-        int pullRequests = Math.min(repository.prCount(), limits.maxPullRequests());
+        int recentPullRequests = Math.min(repository.prCount(), limits.maxPullRequests());
+        int olderPullRequests = Math.max(repository.prCount() - limits.maxPullRequests(), 0);
+        // 내 PR 이 모두 최근 상한 밖에 있다고 보고 가장 많이 읽는 경우로 어림한다
+        int olderOwnPullRequests = Math.min(Math.min(repository.ownPrCount(), olderPullRequests),
+                limits.maxOwnPullRequests());
+        int pullRequests = recentPullRequests + olderOwnPullRequests;
         int githubCalls = commits + GITHUB_CALLS_PER_PULL_REQUEST * pullRequests;
         double seconds = BASE_SECONDS + SECONDS_PER_GITHUB_CALL * githubCalls;
 
         if (groupingEnabled) {
-            int ownPullRequests = Math.min(repository.ownPrCount(), limits.maxPullRequests());
+            int ownPullRequests = Math.min(repository.ownPrCount(),
+                    limits.maxPullRequests() + limits.maxOwnPullRequests());
 
             seconds += GROUPING_BASE_SECONDS + GROUPING_SECONDS_PER_OWN_PULL_REQUEST * ownPullRequests;
         }

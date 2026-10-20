@@ -125,9 +125,12 @@ gitory:
       # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
   ingest:
-    # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.
+    # 아래 수집 상한은 AI 에 보내지 않아 바꾸면 AI 의 CollectionLimits 기본값도 같은 값으로 바꾼다
+    # 커밋·이슈·최근 PR 밖의 내 PR 이 상한을 넘거나 PR 목록이 10쪽(1000개)을 채우면 partial=true 로 표시하고
+    # 최근 max-pull-requests 개 밖의 남의 PR 은 표시 없이 읽지 않는다
     max-commits: 1000
     max-pull-requests: 50
+    max-own-pull-requests: 50
     max-issues: 50
     max-diff-bytes: 1048576
   retention:

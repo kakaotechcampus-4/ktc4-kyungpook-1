@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DisclosureTest {
 
-    private static final IngestLimits LIMITS = new IngestLimits(1000, 50);
+    private static final IngestLimits LIMITS = new IngestLimits(1000, 50, 50, 50);
 
     @Test
     @DisplayName("센 저장소는 읽는 것 4줄에 내 커밋 수를 넣고, 안 읽는 것 3줄을 돌려준다")

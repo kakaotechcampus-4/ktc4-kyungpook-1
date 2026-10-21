@@ -16,6 +16,7 @@
 | CSRF | Spring Security `CookieCsrfTokenRepository.withHttpOnlyFalse()` 를 쓰면 프론트가 `XSRF-TOKEN` 쿠키를 읽어 `X-XSRF-TOKEN` 헤더로 자동 돌려줌 |
 | 날짜 | ISO 8601 문자열 |
 | id | 문자열 (숫자 PK 라면 문자열로 직렬화) |
+| 호출 제한 | LLM 을 부르는 요청(되묻기 질문 `POST /cards/{id}/interview`, 답 평가가 켜진 `POST /cards/{id}/interview/{turnNo}/answer`, 카드 초안이 켜진 `POST /repos/{id}/cards`)은 사용자별 1분·하루 한도를 넘으면 **429** `RATE_LIMITED`. `message` 는 "요청이 많아요. N분 뒤에 다시 시도해 주세요.", `details.retryAfterSec` 와 응답 헤더 `Retry-After` 에 기다릴 초가 같은 값으로 온다. 로그인·소유권·입력 검사(401·404·409·400)가 먼저이고, 거절된 요청은 아무것도 저장하지 않는다 |
 | **에러가 아닌 것** | 후보 0개 · 부분 결과 · 작업 실패는 **200** + 본문 상태 (`verdict`/`partial`/`state`). 4xx/5xx 는 진짜 실패에만 |
 
 ## OAuth (Spring 이 전부 처리)

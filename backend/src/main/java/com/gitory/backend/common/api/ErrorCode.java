@@ -18,5 +18,6 @@ public enum ErrorCode {
     INTERVIEW_CAP,
     BAD_FIELD,
     AI_UNAVAILABLE,
+    RATE_LIMITED,
     INTERNAL_ERROR
 }

@@ -1,11 +1,14 @@
 package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
+import com.gitory.backend.card.domain.interview.InterviewAnswerReviewProperties;
 import com.gitory.backend.card.domain.interview.InterviewTurn;
 import com.gitory.backend.card.domain.interview.InterviewTurnAnsweredException;
 import com.gitory.backend.card.domain.interview.InterviewTurnNotFoundException;
 import com.gitory.backend.card.infra.CardStatementRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
+import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +32,8 @@ public class InterviewAnswerService {
     private final CardVersionWriter writer;
     private final CardStatementRepository statements;
     private final CardDetailService details;
+    private final InterviewAnswerReviewProperties review;
+    private final UserRateLimiter rateLimiter;
 
     /**
      * 카드 행을 잠근 뒤 질문 번호, 초안을 만드는 중인지, 이미 한 답, 확정 여부, 답의 모양 순서로 확인하고, 이 순서가 응답 코드의 우선순위다
@@ -51,6 +56,10 @@ public class InterviewAnswerService {
 
         card.requireDraft();
         checkedAnswer(text, source);
+        // 답을 저장한 뒤의 평가가 LLM 을 부르지만, 거절된 답이 저장돼 남지 않도록 저장 전에 센다
+        if (review.enabled()) {
+            rateLimiter.acquire(RateLimitedAction.INTERVIEW_ANSWER, userId, 1);
+        }
 
         StarField slot = turn.getStarSlot();
         short previous = card.getCurrentVersion();

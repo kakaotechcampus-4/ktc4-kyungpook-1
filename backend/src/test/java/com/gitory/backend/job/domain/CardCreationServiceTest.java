@@ -4,6 +4,7 @@ import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CandidateAlreadyUsedException;
 import com.gitory.backend.card.domain.CandidateCardService;
 import com.gitory.backend.card.domain.CardVersionWriter;
+import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.ingest.domain.RepositoryOwnershipService;
 import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.recommend.domain.CandidateStoreService;
@@ -22,6 +23,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
@@ -57,6 +59,9 @@ class CardCreationServiceTest {
 
     @Autowired
     CardCreationService service;
+
+    @MockitoBean
+    UserRateLimiter rateLimiter;
 
     @Autowired
     CandidateStoreService store;

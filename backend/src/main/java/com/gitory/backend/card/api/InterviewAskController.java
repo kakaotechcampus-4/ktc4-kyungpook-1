@@ -34,6 +34,7 @@ public class InterviewAskController {
             만든 질문 수가 상한에 닿았으면 409 INTERVIEW_CAP, 확정된 카드는 409 CARD_CONFIRMED 이고, 이 둘이 field 검사보다 먼저입니다.
             새 질문을 만들어야 하는데 field 가 S, T, A, R 이 아니면 400 BAD_FIELD 이고 AI 도 부르지 않습니다.
             AI 가 잠시 응답하지 못하면 503 AI_UNAVAILABLE 이고 질문은 만들어지지 않으니 다시 요청하면 됩니다.
+            새 질문을 만들어야 하는데 사용자별 호출 한도를 넘었으면 위 확인을 모두 지난 뒤 429 RATE_LIMITED 이고 질문도 만들지 않고 AI 도 부르지 않습니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
     @ApiResponses({
@@ -49,6 +50,8 @@ public class InterviewAskController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: 초안을 만드는 중인 카드, CARD_CONFIRMED: 확정된 카드는 다시 열어야 질문할 수 있음, INTERVIEW_CAP: 만든 질문 수가 상한에 닿음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI_UNAVAILABLE: AI 가 잠시 응답하지 못해 질문을 만들지 못함",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 새 질문을 만들 사용자별 호출 한도를 넘음. details.retryAfterSec 와 Retry-After 헤더에 기다릴 초가 있음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<InterviewTurnResponse> ask(

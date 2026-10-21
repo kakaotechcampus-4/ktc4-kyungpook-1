@@ -2,6 +2,7 @@ import { DraftProgress } from './DraftProgress';
 import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { CardTags } from '@/components/cards/CardTags';
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
@@ -247,11 +248,12 @@ export function CardPage() {
 function CardHeader({ card, right, statusOverride, note }: { card: Card; right?: React.ReactNode; statusOverride?: React.ReactNode; note?: string }) {
   return (
     <div className="card-page-header">
-      <PageTitle sub={<>
+      <div className="card-page-header__identity"><PageTitle sub={<>
         <Badge kind="NEUTRAL">{cardKindLabel[card.kind]}</Badge>
         {statusOverride ?? <Badge kind={card.status}>{cardStatusLabel[card.status]}</Badge>}
         <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : isDraftMetadataPending(card) ? '본문 저장됨' : cardContentLabel[card.version.source])}</span>
       </>}>{card.title}</PageTitle>
+      <CardTags areas={card.areas} techs={card.techs} /></div>
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>
   );

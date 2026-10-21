@@ -1,10 +1,62 @@
-"""지어낸 수치 검사(unsupported_metrics)의 경계 사례를 고정한다."""
+"""지어낸 수치 검사(unsupported_metrics)와 커밋 번호 맞춤(match_commit_sha)의 경계 사례를 고정한다."""
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
-from services.evidence_checks import unsupported_metrics
+from services.evidence_checks import match_commit_sha, unsupported_metrics
+
+REAL_SHA = "0409013fb1905a33719fd42efbe7b03f07c61c9b"
+OTHER_SHA = "7430348" + "0" * 33
+SAME_PREFIX_SHA = REAL_SHA[:7] + "e" * 33
+
+
+@pytest.mark.parametrize(
+    "written",
+    [
+        REAL_SHA,
+        REAL_SHA.upper(),
+        f"  {REAL_SHA} ",
+        REAL_SHA + "9",  # 끝에 글자를 하나 더 붙였다
+        "0409013fb1905a33719fd42ef7be03f07c61c9b",  # 가운데 be7b 를 7be 로 적어 한 글자가 빠졌다(39자)
+        REAL_SHA[:7],
+    ],
+)
+def test_matches_written_sha_to_the_one_input_commit(written: str) -> None:
+    assert match_commit_sha(written, [OTHER_SHA, REAL_SHA], "시험") == REAL_SHA
+
+
+def test_returns_the_input_sha_as_written_in_the_input() -> None:
+    assert match_commit_sha(REAL_SHA + "9", [REAL_SHA.upper()], "시험") == REAL_SHA.upper()
+
+
+def test_exact_sha_wins_even_when_another_commit_shares_its_prefix() -> None:
+    assert match_commit_sha(REAL_SHA, [SAME_PREFIX_SHA, REAL_SHA], "시험") == REAL_SHA
+
+
+@pytest.mark.parametrize(
+    ("written", "known"),
+    [
+        (REAL_SHA[:6], [REAL_SHA]),  # 7자보다 짧으면 지어낸 번호일 수 있다
+        ("c" * 40, [REAL_SHA, OTHER_SHA]),
+        (REAL_SHA[:7] + "f" * 33, [REAL_SHA, SAME_PREFIX_SHA]),  # 앞 7자가 두 커밋과 맞는다
+    ],
+)
+def test_drops_written_sha_that_fits_no_single_input_commit(written: str, known: list[str]) -> None:
+    assert match_commit_sha(written, known, "시험") is None
+
+
+def test_logs_only_shas_matched_by_prefix(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING, logger="services.evidence_checks"):
+        match_commit_sha(REAL_SHA, [REAL_SHA], "STAR 초안")
+        match_commit_sha(REAL_SHA[:7] + "f" * 33, [REAL_SHA, SAME_PREFIX_SHA], "STAR 초안")
+        match_commit_sha(REAL_SHA + "9", [REAL_SHA], "STAR 초안")
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "STAR 초안 근거 커밋 번호 보정: 입력과 다른 41자 번호를 앞 7자로 0409013 에 맞춤"
+    ]
 
 
 @pytest.mark.parametrize(

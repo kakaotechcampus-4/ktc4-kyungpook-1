@@ -13,6 +13,8 @@ import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.consent.port.DiffEvidence;
 import com.gitory.backend.consent.port.DiffEvidenceResult;
 import com.gitory.backend.ingest.domain.DraftCommit;
+import com.gitory.backend.ingest.domain.StoredActivityService;
+import com.gitory.backend.ingest.domain.StoredPullRequest;
 import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
@@ -49,6 +51,7 @@ public class CardDraftRunner {
     private final CandidateDraftSourceService candidateSources;
     private final UserLoginService users;
     private final RepositoryActivityPort activities;
+    private final StoredActivityService storedActivity;
     private final StarDraftPort star;
     private final CardDraftWriter writer;
 
@@ -97,7 +100,8 @@ public class CardDraftRunner {
                 return finishCard(job.getId(), done, total, () -> noEvidence(card));
             }
 
-            StarDraft draft = star.draft(requestOf(source.get(), card, login, evidence));
+            String body = pullRequestBodyOf(job.getUserRepositoryId(), source.get(), login);
+            StarDraft draft = star.draft(requestOf(source.get(), card, login, evidence, body));
             return finishCard(job.getId(), done, total, () -> written(card, draft, commits));
         } catch (RuntimeException failure) {
             log.warn("카드 초안 Job {} 의 카드 {} 를 채우지 못했다", job.getId(), card.id(), failure);
@@ -177,14 +181,29 @@ public class CardDraftRunner {
 
     }
 
-    // 사용자가 쓴 확인 답변은 보내지 않아, AI 는 커밋 근거만으로 칸을 채운다
+    // 카드 주인이 쓴 PR 의 본문만 근거로 보내고, 남이 쓴 PR·저장되지 않은 PR·빈 본문은 보내지 않는다
+    private String pullRequestBodyOf(Long userRepositoryId, CandidateDraftSource source, String login) {
+
+        if (source.githubPrNumber() == null) {
+            return null;
+        }
+
+        return storedActivity.findPullRequest(userRepositoryId, source.githubPrNumber())
+                .filter(pullRequest -> login.equalsIgnoreCase(pullRequest.authorLogin()))
+                .map(StoredPullRequest::bodyExcerpt)
+                .filter(body -> !body.isBlank())
+                .orElse(null);
+
+    }
+
+    // 사용자가 쓴 확인 답변은 보내지 않아, AI 는 커밋 근거와 카드 주인이 쓴 PR 본문으로 칸을 채운다
     private static StarDraftRequest requestOf(CandidateDraftSource source, GeneratedCard card, String login,
-                                              DiffEvidenceResult evidence) {
+                                              DiffEvidenceResult evidence, String pullRequestBody) {
 
         String sourceRef = source.sourceRef() == null || source.sourceRef().isBlank() ? null : source.sourceRef();
         return new StarDraftRequest(source.publicId().toString(), login, card.title(),
                 StarSourceType.valueOf(source.type().name()), sourceRef,
-                evidence.evidence().stream().map(CardDraftRunner::starEvidenceOf).toList());
+                evidence.evidence().stream().map(CardDraftRunner::starEvidenceOf).toList(), pullRequestBody);
 
     }
 

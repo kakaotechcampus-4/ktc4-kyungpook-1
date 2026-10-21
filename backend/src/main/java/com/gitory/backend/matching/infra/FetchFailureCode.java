@@ -8,5 +8,7 @@ public enum FetchFailureCode {
     TOO_LARGE,
     ROBOTS_UNAVAILABLE,
     ROBOTS_DISALLOWED,
-    INTERRUPTED
+    CRAWL_DELAY_TOO_LONG,
+    INTERRUPTED,
+    PARSE
 }

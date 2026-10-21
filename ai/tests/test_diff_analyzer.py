@@ -139,6 +139,17 @@ def test_matches_sha_case_insensitively() -> None:
     assert evidence[0].summary == "요약"
 
 
+def test_keeps_summary_whose_sha_was_copied_with_a_typo() -> None:
+    real = "0409013fb1905a33719fd42efbe7b03f07c61c9b"
+    client = _FakeClient(_output((real + "9", "시험 JVM 의 최대 메모리를 올렸다.", [])))
+
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(real, "fix: 시험 메모리", [_file("build.gradle", "+x")])))
+
+    assert evidence[0].sha == real
+    assert evidence[0].summary == "시험 JVM 의 최대 메모리를 올렸다."
+    assert evidence[0].summary_source == "DIFF"
+
+
 def test_redacts_secrets_in_payload_and_output() -> None:
     client = _FakeClient(_output((SHA_A, f"토큰 {FAKE_TOKEN} 을 설정했다.", [f"키 {FAKE_TOKEN}"])))
     detail = _detail(_commit(SHA_A, f"chore: {FAKE_TOKEN}", [_file("conf.py", f'+TOKEN = "{FAKE_TOKEN}"')]))

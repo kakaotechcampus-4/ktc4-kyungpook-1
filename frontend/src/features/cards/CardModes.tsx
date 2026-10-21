@@ -152,7 +152,7 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
             <Button variant="text" size="sm" disabled={locked || mask.isPending} onClick={() => setRules((rs) => rs.filter((_, j) => j !== i))} aria-label="규칙 삭제">✕</Button>
           </div>
         ))}
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row mask-presets" style={{ gap: 8 }}>
           <Chip disabled={locked || limitReached || mask.isPending} onClick={() => setRules((rs) => [...rs, { from: '', to: '' }])}>+ 규칙 추가</Chip>
           <Chip disabled={locked || limitReached || mask.isPending} onClick={() => setRules((rs) => [...rs, { from: '', to: '팀원A' }])}>+ 팀원 익명화</Chip>
           <Chip disabled={locked || limitReached || mask.isPending} onClick={() => setRules((rs) => [...rs, { from: '', to: 'B사' }])}>+ 회사명 가리기</Chip>

@@ -65,6 +65,7 @@ BE의 `StarDraftPort`(#210)는 AI 응답의 칸을 빠짐없이 담는다. 옛 `
 | `evidence: List<StarEvidence>` | `evidence[]` | diff-evidence 응답의 항목을 `sha`·`message`·`authorLogin`·`churn`·`summary`·`summarySource`·`technicalPoints`·`url` 그대로 옮긴다 |
 | (보내지 않음) | `dependency_files` | 아직 사용하지 않아 AI 기본값 `[]` |
 | (보내지 않음) | `confirmed_answers` | 인터뷰 전이라 AI 기본값 `[]` |
+| `pullRequestBody` | `pull_request_body` | 후보 PR 의 저장된 본문(앞 1,000자). 작성자가 카드 주인일 때만 보내고, 없으면 키를 싣지 않는다 |
 
 `StarDraftRequest`는 evidence를 문자열로 바꾸지 않고 diff-evidence 응답의 항목을 `StarEvidence`로 그대로 옮긴다(`CardDraftRunner.starEvidenceOf`). 커밋별 구조를 그대로 넘기므로 STAR 문장의 근거 sha 를 커밋에 이을 수 있다. AI 가 근거 칸을 더하면 `DiffEvidenceReader`·`DiffEvidence`·`StarEvidence`·`starEvidenceOf` 를 같이 고쳐야 한다(AI 의 `/star` 입력은 모르는 칸을 받지 않는다).
 
@@ -162,6 +163,7 @@ LLM 호출 하나가 실패해 503으로 끝나면 남은 배치는 LLM을 새�
 | `evidence` | **diff-evidence 응답의 `evidence`를 그대로** 보낸다. 1개 이상 |
 | `dependency_files` | 보내지 않는다(아직 사용하지 않음, AI 기본값 `[]`) |
 | `confirmed_answers` | 보내지 않는다(AI 기본값 `[]`) |
+| `pull_request_body` | 후보 PR 의 저장된 본문(앞 1,000자). PR 작성자가 요청자와 같을 때만 보낸다(대소문자 무시). 남이 쓴 PR·저장되지 않은 PR·빈 본문이면 키를 싣지 않는다. AI 는 비밀값·이메일을 가린 뒤 STAR 근거와 수치 근거로 쓴다 |
 
 ### 응답 `data` (`StarAnalysisResponse`) → 카드 저장
 

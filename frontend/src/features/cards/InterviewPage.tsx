@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAnswerInterview, useAskInterview, useCard, useInterview } from '@/api/queries';
 import { StarField as StarFieldSchema, type EvidenceType, type StarField } from '@/api/schemas';
@@ -22,6 +22,7 @@ import { UnsavedChangesDialog } from '@/components/SaveStatus';
 export function InterviewPage() {
   const { cardId = '' } = useParams();
   const [sp] = useSearchParams();
+  const location = useLocation();
   const nav = useNavigate();
   const { card: q } = useCard(cardId);
   const turns = useInterview(cardId);
@@ -69,7 +70,7 @@ export function InterviewPage() {
   if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   if (!card || turns.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={300} /></main>;
   const total = answered.length + (open ? 1 : 0);
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}` }, { label: '답변 작성' }];
+  const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}`, state: location.state }, { label: '답변 작성' }];
   const weakFields = STAR_FIELDS.filter((f) => !card.version[fieldKey[f]] || card.lowConfidenceFields.some((l) => l.field === f));
   const anyFilled = STAR_FIELDS.some((f) => card.version[fieldKey[f]]);
 
@@ -109,7 +110,7 @@ export function InterviewPage() {
         {/* 우측 패널 — 한 번에 하나만 묻는다 */}
         <aside className="card iv__panel">
           <div className="row" style={{ gap: 8 }}>
-            <Link to={`/cards/${cardId}`} className="btn btn--text btn--sm"><ArrowLeft size={14} /> 카드로</Link>
+            <Link to={`/cards/${cardId}`} state={location.state} className="btn btn--text btn--sm"><ArrowLeft size={14} /> 카드로</Link>
             <span className="right t-12 c-3">{open ? `남은 질문 ${Math.max(0, maxTurns - total)}개` : ''}</span>
           </div>
           {answer.isError && <Note strong="답변이 저장되지 않았어요" tone="danger">입력은 그대로 남아 있어요. 연결을 확인하고 다시 저장해 주세요.</Note>}
@@ -146,7 +147,7 @@ export function InterviewPage() {
                 placeholder="한 문장으로" aria-label="답변" maxLength={500} />
               <div className="row" style={{ gap: 8 }}>
                 <span className="t-12 c-3 grow">{text ? `${text.length}/500` : ''}</span>
-                <Link to={`/cards/${cardId}`} className="btn btn--text btn--sm">건너뛰기</Link>
+                <Link to={`/cards/${cardId}`} state={location.state} className="btn btn--text btn--sm">건너뛰기</Link>
                 <Button size="lg" disabled={!text.trim()} loading={answer.isPending} onClick={submit}>답변 저장</Button>
               </div>
             </>
@@ -163,8 +164,8 @@ export function InterviewPage() {
                 </div>
               )}
               <div className="row" style={{ gap: 8 }}>
-                <Button onClick={() => nav(`/cards/${cardId}`)}>카드로 돌아가기</Button>
-                <Button variant="text" onClick={() => nav(`/cards/${cardId}?mode=edit`)}>직접 수정</Button>
+                <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>
+                <Button variant="text" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정</Button>
               </div>
             </>
           )}

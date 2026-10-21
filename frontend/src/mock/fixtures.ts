@@ -189,7 +189,7 @@ const said = (field: string, turnNo: number) => ({ field, type: 'USER_STATED', a
 
 export const seedCards = [
   {
-    id: 'card_01', kind: 'TECH', status: 'DRAFT', title: '로그인 세션 처리',
+    id: 'card_01', areas: ['BACKEND'], techs: ['JAVA'], kind: 'TECH', status: 'DRAFT', title: '로그인 세션 처리',
     repo: { id: 'r_auth', owner: 'hong-dev', name: 'auth-service' },
     candidate: { id: 'c_42', type: 'PR', ref: '#42', title: '로그인 세션 처리' },
     versions: [{

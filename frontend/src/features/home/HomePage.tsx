@@ -11,6 +11,7 @@ import { track } from '@/lib/track';
 import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { CardTags } from '@/components/cards/CardTags';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
 
 /**
@@ -169,6 +170,7 @@ export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: str
         {c.period && <span>{periodLabel(c.period)}</span>}
       </div>
       <h3 className="gcard__title">{c.title}</h3>
+      <CardTags areas={c.areas} techs={c.techs} />
       <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />
       <div className="experience-item__footer">
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>

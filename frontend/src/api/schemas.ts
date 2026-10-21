@@ -258,7 +258,16 @@ export type CardVersion = z.infer<typeof CardVersion>;
 export const DroppedField = z.object({ field: StarField, reason: DropReason });
 export const LowConfidence = z.object({ field: StarField, why: z.string() });
 
+export const CardArea = z.enum(['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'AI', 'DB', 'TEST', 'DOCS']);
+export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON', 'GO', 'RUST', 'SWIFT', 'DART', 'TYPESCRIPT', 'JAVASCRIPT', 'REACT', 'SQL', 'DOCKER', 'GITHUB_ACTIONS']);
+// Optional only for existing snapshots / rolling deployments; never infer absent tags.
+export const CardTagFields = {
+  areas: z.array(CardArea).max(2).optional(),
+  techs: z.array(CardTech).max(4).optional(),
+};
+
 export const Card = z.object({
+  ...CardTagFields,
   id: z.string(),
   kind: CardKind,
   status: CardStatus,
@@ -283,6 +292,7 @@ export const StarStates = z.object({ S: StarFieldState, T: StarFieldState, A: St
 export type StarStates = z.infer<typeof StarStates>;
 
 export const CardSummary = z.object({
+  ...CardTagFields,
   id: z.string(),
   kind: CardKind,
   status: CardStatus,

@@ -12,7 +12,7 @@ for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']
     // Untagged cards remain visible, without an invented tag or empty pill.
     await expect(cards.filter({ hasText: '팀원과 토큰 저장 위치로 갈린 경험' }).locator('.card-tags')).toHaveCount(0);
     await page.getByRole('combobox', { name: '분야', exact: true }).click();
-    await page.getByRole('option', { name: '백엔드', exact: true }).click();
+    await page.getByRole('option', { name: 'Backend', exact: true }).click();
     await expect(cards).toHaveCount(1);
     await page.getByRole('combobox', { name: '기술', exact: true }).click();
     await page.getByRole('option', { name: 'React', exact: true }).click();
@@ -20,12 +20,16 @@ for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']
     await page.getByRole('combobox', { name: '기술', exact: true }).click();
     await page.getByRole('option', { name: 'Java', exact: true }).click();
     await expect(cards).toHaveCount(1);
-    await expect(cards.locator('.card-tags')).toContainText('백엔드');
+    await expect(cards.locator('.card-tags')).toContainText('Backend');
     await expect(cards.locator('.card-tags')).toContainText('Java');
+    const taggedCard = cards.first();
+    const tagBox = await taggedCard.locator('.card-tags').boundingBox();
+    const titleBox = await taggedCard.locator('.gcard__title').boundingBox();
+    expect(tagBox!.y + tagBox!.height).toBeLessThanOrEqual(titleBox!.y);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: `docs/screenshots/2026-10-21-tags/list-${width}-${theme}.png`, fullPage: true });
     await cards.click();
-    await expect(page.locator('.card-page-header .card-tags')).toHaveText(['백엔드Java']);
+    await expect(page.locator('.card-page-header .card-tags')).toHaveText(['BackendJava']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: `docs/screenshots/2026-10-21-tags/detail-${width}-${theme}.png`, fullPage: true });
     await page.goBack();

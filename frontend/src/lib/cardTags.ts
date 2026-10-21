@@ -2,8 +2,8 @@ import { CardArea, CardTech } from '@/api/schemas';
 import type { z } from 'zod';
 
 export const areaLabels: Record<z.infer<typeof CardArea>, string> = {
-  BACKEND: '백엔드', FRONTEND: '프론트엔드', MOBILE: '모바일', DEVOPS: 'DevOps',
-  AI: 'AI', DB: '데이터베이스', TEST: '테스트', DOCS: '문서',
+  BACKEND: 'Backend', FRONTEND: 'Frontend', MOBILE: 'Mobile', DEVOPS: 'DevOps',
+  AI: 'AI', DB: 'Database', TEST: 'Testing', DOCS: 'Documentation',
 };
 export const techLabels: Record<z.infer<typeof CardTech>, string> = {
   C: 'C', CPP: 'C++', CSHARP: 'C#', JAVA: 'Java', KOTLIN: 'Kotlin', PYTHON: 'Python',

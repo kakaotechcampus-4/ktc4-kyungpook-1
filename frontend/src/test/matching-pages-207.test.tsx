@@ -196,3 +196,23 @@ it.each(["mask", "reopen", "confirm"] as const)(
     );
   },
 );
+
+it("uses the right particle for each empty condition section", async () => {
+  const only = (types: string[]) => MatchDetail.parse({
+    ...sampleDetail.data,
+    conditions: sampleDetail.data.conditions.filter((c) => types.includes(c.type)),
+  });
+  // 필수만 있을 때: 우대 조건이 · 담당 업무가
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(only(["REQUIRED"]));
+  mount(`/match/${sampleDetail.data.id}`);
+  expect(await screen.findByText("등록된 우대 조건이 없어요.")).toBeInTheDocument();
+  expect(screen.getByText("등록된 담당 업무가 없어요.")).toBeInTheDocument();
+  expect(screen.queryByText(/담당 업무이 없어요/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/등록된 필수 조건/)).not.toBeInTheDocument();
+  cleanup();
+  // 필수가 없을 때: 필수 조건이
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(only(["PREFERRED", "RESPONSIBILITY"]));
+  mount(`/match/${sampleDetail.data.id}`);
+  expect(await screen.findByText("등록된 필수 조건이 없어요.")).toBeInTheDocument();
+  expect(screen.queryByText(/우대 조건이 없어요|담당 업무가 없어요/)).not.toBeInTheDocument();
+});

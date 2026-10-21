@@ -126,15 +126,18 @@ public class JobPosting {
 
     }
 
+    // 활성을 벗어나면 색인에서 빠지므로 해시를 비워야 다시 나타났을 때 벡터 없이 목록에 들어가지 않는다
     public void markRemoved() {
 
         this.status = JobPostingStatus.REMOVED;
+        this.indexedContentHash = null;
 
     }
 
     public void expire() {
 
         this.status = JobPostingStatus.EXPIRED;
+        this.indexedContentHash = null;
 
     }
 }

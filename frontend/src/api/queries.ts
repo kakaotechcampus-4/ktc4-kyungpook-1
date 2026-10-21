@@ -223,6 +223,8 @@ export function useAnswerInterview(cardId: string) {
 export function useConfirm(cardId: string) {
   const qc = useQueryClient();
   return useMutation({
+    // ConfirmDialog owns errors; a global toast would cover and repeat its notice.
+    meta: { errorPresentation: 'inline' },
     mutationFn: (body: { edited: boolean; maskedFields: StarField[] }) => endpoints.confirm(cardId, body),
     onSuccess: async (r) => {
       void qc.resetQueries({ queryKey: matchKeys.all });

@@ -253,7 +253,7 @@ export function cardView(c: Any) {
   const { _metadata, _confirmed, ...version } = v;
   void versions;
   void userId; void _metadata; void _confirmed;
-  return clone({ ...rest, version });
+  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.
@@ -274,7 +274,7 @@ export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
   return {
     id: c.id, kind: c.kind, status: c.status, title: c.title,
-    versionNo: v.versionNo, star: starStates(c),
+    versionNo: v.versionNo, star: starStates(c), areas: c.areas ?? [], techs: c.techs ?? [],
     sourceLabel: c.candidate ? c.candidate.ref : c.interviewTurns > 0 ? 'INTERVIEW' : 'MANUAL',
     sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,

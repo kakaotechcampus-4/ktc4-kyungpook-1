@@ -8,7 +8,7 @@ import { isTerminal, type ActiveJob } from '@/api/schemas';
 import { toast } from './toast';
 import { ApiError } from '@/api/client';
 import type { ActiveJobFeed } from './activeJobFeed';
-import { jobResultLink } from './jobLinks';
+import { jobResultLink, jobResultState } from './jobLinks';
 
 /**
  * "창을 닫아도 계속 분석됩니다. 끝나면 알려드릴게요."
@@ -61,7 +61,7 @@ export function JobWatcher({ active: shared }: { active?: ActiveJobFeed } = {}) 
             : j.state === 'CANCELED' ? `${label} — 취소했어요`
             : j.partial ? `${label} — 읽은 데까지 정리했어요`
             : `${label} — 다 됐어요`;
-          toast(text, { tone: j.state === 'FAILED' ? 'danger' : 'success', action: { label: '보기', onClick: () => nav(href) } });
+          toast(text, { tone: j.state === 'FAILED' ? 'danger' : 'success', action: { label: '보기', onClick: () => nav(href, { state: jobResultState(j) }) } });
         } catch (error) {
           // Expired/inaccessible jobs cannot be recovered by repeated reads.
           if (error instanceof ApiError && (error.status === 404 || error.status === 403)) seen.current.delete(w.jobId);

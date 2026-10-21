@@ -137,6 +137,26 @@ class AiClientPropertiesTest {
 
     }
 
+    @Test
+    @DisplayName("설정이 없으면 매칭 검색은 25초를 기다리고 설정 파일도 같다")
+    void defaultsMatchingSearchTimeout() {
+
+        assertThat(AiTestProperties.defaults().build().matchingSearchReadTimeout()).isEqualTo(Duration.ofSeconds(25));
+        configFile.run(context -> assertThat(context.getBean(AiClientProperties.class).matchingSearchReadTimeout())
+                .isEqualTo(Duration.ofSeconds(25)));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, -1})
+    @DisplayName("매칭 검색 대기 시간이 0 이하이면 설정을 거절한다")
+    void rejectsNonPositiveMatchingSearchTimeout(long seconds) {
+
+        assertThatThrownBy(() -> AiTestProperties.defaults().matchingSearchReadTimeout(Duration.ofSeconds(seconds)).build())
+                .isInstanceOf(IllegalArgumentException.class);
+
+    }
+
     @EnableConfigurationProperties(AiClientProperties.class)
     static class BindAiProperties {
     }

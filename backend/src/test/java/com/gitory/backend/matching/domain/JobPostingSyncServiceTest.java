@@ -16,6 +16,7 @@ import com.gitory.backend.agent.port.PostingJobCategory;
 import com.gitory.backend.matching.infra.CompanySource;
 import com.gitory.backend.matching.infra.CompanySourceType;
 import com.gitory.backend.matching.infra.GreenhouseClient;
+import com.gitory.backend.matching.infra.GreetingClient;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
@@ -459,6 +460,29 @@ class JobPostingSyncServiceTest {
     }
 
     @Test
+    @DisplayName("그리팅 회사도 같은 흐름으로 개발 공고만 저장하고 상세 본문을 조건 뽑기에 넘긴다")
+    void greetingCompanyFollowsSameFlow() {
+
+        CompanySource greeting = new CompanySource("greet", "그리팅사", CompanySourceType.GREETING, base + "/ko/home");
+        boards.put("/ko/home", greetingPage("[{\"queryKey\":[\"openings\"],\"state\":{\"data\":["
+                + greetingOpening(7, "서버 개발자", "\"2026-11-30T14:59:59Z\"") + "," + greetingOpening(8, "마케팅 매니저", "null") + "]}}]"));
+        boards.put("/ko/o/7", greetingPage("[{\"queryKey\":[\"career\",\"getOpeningById\"],\"state\":{\"data\":"
+                + "{\"data\":{\"openingsInfo\":{\"detail\":\"<p>Java 경험</p>\"}}}}}]"));
+
+        service(greeting).sync();
+
+        assertThat(reload("greet")).singleElement().satisfies(posting -> {
+            assertThat(posting.getExternalId()).isEqualTo("7");
+            assertThat(posting.getStatus()).isEqualTo(JobPostingStatus.ACTIVE);
+        });
+        ArgumentCaptor<JobPostingExtractionRequest> request = ArgumentCaptor.forClass(JobPostingExtractionRequest.class);
+        verify(extractionPort).extract(request.capture());
+        assertThat(request.getValue().rawText()).isEqualTo("Java 경험");
+        assertThat(request.getValue().source()).isEqualTo("greet");
+
+    }
+
+    @Test
     @DisplayName("이번 실행에서 마감이 된 공고는 조건을 뽑지 않는다")
     void doesNotExtractPostingsExpiredInThisRun() {
 
@@ -517,7 +541,8 @@ class JobPostingSyncServiceTest {
         MatchingProperties properties = new MatchingProperties(List.of(companies), base);
         PoliteFetchProperties fetchProperties = new PoliteFetchProperties(null, null, null, Duration.ZERO, null, null);
         return new JobPostingSyncService(properties, new PoliteFetcher(fetchProperties, Clock.systemUTC()),
-                new GreenhouseClient(properties), postingRepository, sources, extraction(postingRepository),
+                new GreenhouseClient(properties), new GreetingClient(), postingRepository, sources,
+                extraction(postingRepository),
                 new JobPostingIndexService(indexPort, postingRepository, criteria, new TransactionTemplate(transactionManager)),
                 new TransactionTemplate(transactionManager), new SyncLock(dataSource), clock);
 
@@ -579,6 +604,20 @@ class JobPostingSyncServiceTest {
     private static String jobWithContent(long id, String title, String content) {
 
         return job(id, title, SEOUL, null, null).replaceFirst("}$", ",\"content\":\"" + content + "\"}");
+
+    }
+
+    private static String greetingPage(String queries) {
+
+        return "<html><script id=\"__NEXT_DATA__\" type=\"application/json\">"
+                + "{\"props\":{\"pageProps\":{\"dehydratedState\":{\"queries\":" + queries + "}}}}</script></html>";
+
+    }
+
+    private static String greetingOpening(long id, String title, String dueDate) {
+
+        return "{\"deploy\":true,\"openingId\":" + id + ",\"title\":\"" + title + "\",\"dueDate\":" + dueDate
+                + ",\"openingJobPosition\":{\"openingJobPositions\":[]}}";
 
     }
 

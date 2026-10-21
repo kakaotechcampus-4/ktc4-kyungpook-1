@@ -196,7 +196,7 @@ class JobQueryServiceTest {
     }
 
     @Test
-    @DisplayName("GitHub 문제로 실패한 Job 만 다시 시도할 수 있다")
+    @DisplayName("GitHub 한도로 실패한 Job 은 다시 시도할 수 있고 INTERNAL_ERROR 로 실패한 Job 은 없다")
     void retryableComesFromErrorCode() {
 
         AnalysisJob rateLimited = persistJob(myUserId, myRepoId, KEY_1);

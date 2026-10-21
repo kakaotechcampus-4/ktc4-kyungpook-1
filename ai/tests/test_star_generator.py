@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from schemas.analysis import StarAnalysisRequest
+from schemas.analysis import StarAnalysisRequest, StarAnalysisResponse
 from services.analysis_pipeline import AnalysisPipeline
 from services.llm_structured_client import (
     LLMContentFilterError,
@@ -457,3 +457,73 @@ def test_numbers_in_pull_request_body_support_the_sentence() -> None:
 
     assert with_body.star["R"].status == "FILLED"
     assert without_body.star["R"].status == "NEEDS_REVIEW"
+
+
+def _tagged(areas: list[str], techs: list[str]) -> StarDraftOutput:
+    return _output(A=_field("FILLED", "필터를 추가했다.", [SHA_A])).model_copy(update={"areas": areas, "techs": techs})
+
+
+def test_sends_changed_paths_to_the_model_clipped_and_leaves_them_out_when_empty() -> None:
+    client = _FakeClient(_output(), _output())
+    long_path = "src/" + "d" * 200 + "/Main.java"
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A, changed_paths=[long_path] + ["a.py"] * 59), _evidence(SHA_B)))
+
+    with_paths, without = client.calls[0]["payload"]["evidence"]
+    assert len(with_paths["changed_paths"]) == 50
+    assert len(with_paths["changed_paths"][0]) == 150
+    assert "changed_paths" not in without
+
+
+def test_tags_drop_duplicates_and_keep_the_leading_ones_up_to_the_limit() -> None:
+    client = _FakeClient(_tagged(
+        ["BACKEND", "BACKEND", "DB", "TEST"],
+        ["JAVA", "JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS", "PYTHON"],
+    ))
+
+    result = _run(StarGenerator(client), _request(_evidence(SHA_A)))
+
+    assert result.areas == ["BACKEND", "DB"]
+    assert result.techs == ["JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS"]
+
+
+def test_docs_area_is_dropped_when_a_code_area_comes_with_it() -> None:
+    mixed = _run(StarGenerator(_FakeClient(_tagged(["DOCS", "BACKEND", "FRONTEND"], []))), _request(_evidence(SHA_A)))
+    docs_only = _run(StarGenerator(_FakeClient(_tagged(["DOCS"], []))), _request(_evidence(SHA_A)))
+
+    assert mixed.areas == ["BACKEND", "FRONTEND"]
+    assert docs_only.areas == ["DOCS"]
+
+
+def test_tags_outside_the_allowed_lists_are_filtered_again_before_the_response() -> None:
+    client = _FakeClient(_tagged(["BACKEND", "GAMES"], ["JAVA", "SPRING"]))
+
+    result = _run(StarGenerator(client), _request(_evidence(SHA_A)))
+
+    assert (result.areas, result.techs) == (["BACKEND"], ["JAVA"])
+
+
+def test_model_output_schema_only_allows_listed_tags() -> None:
+    areas = ["BACKEND", "FRONTEND", "MOBILE", "DEVOPS", "AI", "DB", "TEST", "DOCS"]
+    techs = [
+        "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART",
+        "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS",
+    ]
+
+    for model in (StarDraftOutput, StarAnalysisResponse):
+        properties = model.model_json_schema()["properties"]
+        assert properties["areas"]["items"]["enum"] == areas
+        assert properties["techs"]["items"]["enum"] == techs
+
+
+def test_timed_out_response_has_no_tags() -> None:
+    result = _run(StarGenerator(_FakeClient(), StarGenerationLimits(deadline_seconds=0)), _request(_evidence(SHA_A)))
+
+    assert (result.areas, result.techs) == ([], [])
+
+
+def test_prompt_carries_the_tag_rules() -> None:
+    assert "분야·기술 태그 규칙:" in SYSTEM_PROMPT
+    assert "DOCS는 코드 분야가 하나도 없을 때만" in SYSTEM_PROMPT
+    assert "그 파일 이름으로 기술을 짐작하지 않는다" in SYSTEM_PROMPT
+    assert "기능 코드와 함께 더한 시험으로는 쓰지 않는다" in SYSTEM_PROMPT

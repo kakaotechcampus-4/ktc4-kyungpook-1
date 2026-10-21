@@ -83,6 +83,7 @@ npm run dev        # http://localhost:5173 — 목 API 내장 (브라우저에�
 npm test           # 계약 계층 유닛 (vitest)
 npm run e2e        # 기능 + 반응형 E2E (playwright · 최초 1회 npx playwright install chromium)
 npm run e2e:static # 같은 E2E 를 프로덕션 빌드에 — Vercel 이 서빙하는 산출물과 동일
+npm run e2e:mobile # 운영 빌드의 주요 기능 흐름을 390px 터치 뷰포트로 재검증
 npm run build      # tsc -b && vite build
 ```
 
@@ -188,6 +189,7 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 
 
 로그인 모바일 예시의 위아래 간격 조정: [수정 기록](docs/2026-10-19-LANDING_SPACING.md).
+카드 초안 진행·이전/다음 검토 개선(#326·#327): [설계·검증 기록](docs/2026-10-20-CARD_REVIEW_FLOW.md).
 
 ## Job 과 복구 흐름
 
@@ -223,3 +225,6 @@ npm run e2e:static  # 동일한 검사를 프로덕션 빌드 산출물에 실�
 - 오프라인/재연결 배너
 
 카드 제목·기간 수정의 null/400 계약 검증: [#219 보완 기록](docs/2026-10-15-METADATA_219.md).
+### 2026-10-21 검색 입력 안정화
+
+매칭 검색의 입력 상태·URL 복구 기준은 [매칭 검색 입력 안정화](docs/2026-10-21-MATCH_SEARCH.md)를 참고하세요.

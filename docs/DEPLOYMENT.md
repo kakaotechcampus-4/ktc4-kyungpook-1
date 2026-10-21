@@ -49,7 +49,8 @@ web (Caddy) ──  /       → 프론트 빌드 산출물 (SPA)
              └─ /api/*  → backend (Spring :8080)
                               │  내부 Docker 네트워크
                               ├─→ ai (FastAPI :8000)      ← 공개 포트 없음
-                              └─→ db (PostgreSQL 17)      ← 공개 포트 없음
+                              ├─→ db (PostgreSQL 17)      ← 공개 포트 없음
+                              └─→ redis (Redis 7)         ← 공개 포트 없음. 호출 제한 횟수만 센다
 ```
 
 | 파일 | 역할 |
@@ -57,7 +58,7 @@ web (Caddy) ──  /       → 프론트 빌드 산출물 (SPA)
 | `backend/Dockerfile` | JDK 로 bootJar 빌드 → JRE 이미지. 테스트는 CI 가 돌린다(`-x test`) |
 | `ai/Dockerfile` | python 3.11-slim + uvicorn. `AI_DOCS_ENABLED=false` |
 | `frontend/Dockerfile` | `VITE_API_MOCK=false` 로 빌드 → Caddy 이미지에 담는다 |
-| `deploy/compose.yaml` | db · db-backup · ai · backend · web. backend 는 db 가 healthy 여야 뜨고, web 은 backend 가 healthy 여야 뜬다. ai 가 안 떠도 backend·web 은 뜬다 (분석 Job 만 실패) |
+| `deploy/compose.yaml` | db · db-backup · ai · redis · backend · web. backend 는 db 가 healthy 여야 뜨고, web 은 backend 가 healthy 여야 뜬다. ai 가 안 떠도 backend·web 은 뜬다 (분석 Job 만 실패). redis 가 안 떠도 backend 는 뜨고 호출 제한만 건너뛴다 (아래 호출 제한) |
 | `deploy/db-backup.sh` | 매일 DB 백업 (7절 DB 백업·복구) |
 | `deploy/Caddyfile` | 경로 분기, HTTPS, 보안 헤더. `/actuator` 는 프록시하지 않는다 |
 | `deploy/.env.example` | 필요한 비밀값 목록과 생성 방법. 서버의 `deploy/.env` 는 gitignore 대상 |
@@ -73,6 +74,15 @@ web (Caddy) ──  /       → 프론트 빌드 산출물 (SPA)
 ### nginx 대신 Caddy 를 쓴 이유
 
 경로 분기는 nginx 와 같다. 차이는 Let's Encrypt 인증서 발급·갱신이 자동이라 certbot·cron 구성이 필요 없다는 점이다. 인증서는 `caddy-data` 볼륨에 보관한다 — 지우면 재발급하는데 발급 횟수 제한에 걸릴 수 있다.
+
+### 호출 제한 (Redis)
+
+되묻기 질문·답 평가·카드 초안은 버튼을 누를 때마다 LLM 을 불러, 사용자별 1분·하루 한도를 넘으면 429 `RATE_LIMITED` 로 거절한다. 한도 숫자는 `backend/src/main/resources/application.yml` 의 `gitory.rate-limit.*` 이고 하루는 서울 자정에 바뀐다.
+
+- 스위치는 서버 `deploy/.env` 의 `RATE_LIMIT_ENABLED` 다(기본 `false`). 429 안내 문구를 보여주는 프론트(#335)가 배포된 뒤 `true` 로 바꾸고 `docker compose up -d` 로 다시 띄운다. 서버 `.env` 에는 `.env.example` 의 새 줄이 자동으로 들어가지 않으니 줄을 직접 더한다. 백엔드 시험·로컬·E2E 는 꺼진 채 Redis 없이 돈다.
+- 켜졌는지는 backend 로그 첫머리의 `LLM 호출 제한이 켜져 있다` 한 줄로 확인한다.
+- redis 는 디스크에 저장하지 않는다(`--save "" --appendonly no`, `--maxmemory 64mb`). 다시 뜨면 숫자가 0 부터 시작해도 괜찮은 값이다.
+- Redis 에 붙지 못하면 막지 않고 통과시키며 backend 에 `Redis 에 붙지 못해 … 호출 제한을 건너뛴다` WARN 을 남긴다. Redis 상태는 health 에 넣지 않아(`management.health.redis.enabled: false`) Redis 때문에 배포 확인이 실패하지 않는다.
 
 ## 4. 처음 띄우기 (서버에서 한 번)
 

@@ -51,6 +51,8 @@ class ThreadRecordingExtractor:
             outcome="UPDATED",
             content_status="METADATA_ONLY",
             criteria=[],
+            job_category="ETC",
+            experience={"level": "UNSPECIFIED"},
         )
 
 

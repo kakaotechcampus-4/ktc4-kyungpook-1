@@ -1,4 +1,20 @@
 import { test, expect } from "@playwright/test";
+test('rapid typing retains every character and survives detail navigation', async ({ page }) => {
+  await page.goto('/match');
+  const search = page.getByPlaceholder('기업·직무 검색');
+  await expect(page.locator('.match-card').first()).toBeVisible();
+  for (const query of ['backend developer', '프론트엔드 개발자', '나래']) {
+    await search.fill('');
+    await search.pressSequentially(query, { delay: 0 });
+    await expect(search).toHaveValue(query);
+  }
+  await page.locator('.match-card').click();
+  await page.goBack();
+  await expect(search).toHaveValue('나래');
+  await search.press('Escape');
+  await expect(search).toHaveValue('');
+  await expect(page.locator('.match-card')).toHaveCount(5);
+});
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() =>
     sessionStorage.setItem("gitory.demo.session", "1"),

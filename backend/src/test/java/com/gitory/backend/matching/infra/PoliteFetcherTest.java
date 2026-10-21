@@ -106,6 +106,24 @@ class PoliteFetcherTest {
     }
 
     @Test
+    @DisplayName("Crawl-delay 가 상한 60초와 같으면 그만큼 기다리고 61초면 요청하지 않고 실패한다")
+    void crawlDelayAboveLimitSkipsHost() {
+
+        serve(ROBOTS, 200, "User-agent: *\nCrawl-delay: 60\n");
+        serve("/a", 200, "a");
+        session(null, null).get(URI.create(base + "/a"));
+        assertThat(sleeps).containsExactly(Duration.ofSeconds(60));
+        hits.clear();
+        serve(ROBOTS, 200, "User-agent: *\nCrawl-delay: 61\n");
+
+        FetchFailureCode code = failureOf(() -> session(null, null).get(URI.create(base + "/a")));
+
+        assertThat(code).isEqualTo(FetchFailureCode.CRAWL_DELAY_TOO_LONG);
+        assertThat(hits).containsExactly(ROBOTS);
+
+    }
+
+    @Test
     @DisplayName("robots.txt 는 호스트마다 실행 한 번에 한 번만 읽는다")
     void readsRobotsOncePerHost() {
 
@@ -350,7 +368,7 @@ class PoliteFetcherTest {
 
     private PoliteFetchSession session(Duration readTimeout, Long maxBodyBytes) {
 
-        PoliteFetchProperties properties = new PoliteFetchProperties(null, readTimeout, maxBodyBytes, null, null);
+        PoliteFetchProperties properties = new PoliteFetchProperties(null, readTimeout, maxBodyBytes, null, null, null);
         PoliteFetcher fetcher = new PoliteFetcher(properties, clock, duration -> {
             sleeps.add(duration);
             clock.advance(duration);

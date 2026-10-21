@@ -20,6 +20,14 @@ spring:
     enabled: true
     baseline-on-migrate: false
 
+  data:
+    redis:
+      # 호출 제한(gitory.rate-limit)만 쓴다. 스위치가 꺼져 있으면 붙지 않는다
+      host: ${REDIS_HOST:localhost}
+      # Redis 가 멈춰도 요청이 오래 붙들리지 않고 제한을 건너뛰어 통과하도록 짧게 둔다
+      connect-timeout: 500ms
+      timeout: 500ms
+
   http:
     clients:
       # GitHub 호출 하나가 오래 멈춰도 저장소 목록 요청이 프론트 제한(30초) 안에 끝나게 한다.
@@ -67,6 +75,10 @@ management:
       exposure:
         # 헬스체크만 연다. env·configprops 는 비밀값이 새는 경로다.
         include: health
+  health:
+    redis:
+      # Redis 는 호출 제한에만 쓰고 멈추면 제한을 건너뛴다. health 에 섞이면 compose --wait 와 배포 확인이 Redis 때문에 실패한다
+      enabled: false
   endpoint:
     health:
       show-details: never
@@ -107,6 +119,9 @@ gitory:
     # 카드 초안의 diff 근거·STAR 초안은 AI 가 240초·150초 안에 정리해 답하므로, 그 답을 놓치지 않게 조금 더 기다린다
     diff-evidence-read-timeout: ${AI_DIFF_EVIDENCE_READ_TIMEOUT:300s}
     star-read-timeout: ${AI_STAR_READ_TIMEOUT:180s}
+    # AI 는 LLM 대기 120초에 시간 초과 뒤 한 번 더 시도해 최악 약 240초가 걸린다
+    # 새벽 배치라 기다려도 되므로 그보다 길게 기다려, Spring 이 먼저 끊는 바람에 AI 가 계속 돌다 결과가 버려지는 일이 없게 한다
+    posting-extract-read-timeout: ${AI_POSTING_EXTRACT_READ_TIMEOUT:300s}
   github:
     # E2E 시험에서 가짜 GitHub 서버로 바꿀 수 있게 둔 값이며 운영은 기본값을 쓴다
     api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}
@@ -124,10 +139,25 @@ gitory:
       enabled: ${JOB_WORKER_ENABLED:true}
       # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
+  matching:
+    sync:
+      # 켜면 매일 새벽 5시(서울)에 회사 채용 공고를 가져오고 서버가 뜰 때 24시간 넘게 안 돌았으면 바로 한 번 돈다
+      # 켜기 전에 회사별 이용 조건을 확인하며 서버가 여러 대여도 DB 잠금으로 한 곳에서만 돈다
+      enabled: ${MATCHING_SYNC_ENABLED:false}
+    sources:
+      - { key: coupang, name: 쿠팡, type: GREENHOUSE, board: coupang }
+      - { key: daangn, name: 당근, type: GREENHOUSE, board: daangn }
+      - { key: krafton, name: 크래프톤, type: GREENHOUSE, board: krafton }
+      - { key: furiosaai, name: 퓨리오사AI, type: GREENHOUSE, board: furiosaai }
+      - { key: moloco, name: 몰로코, type: GREENHOUSE, board: moloco }
+      - { key: sendbird, name: 센드버드, type: GREENHOUSE, board: sendbird }
   ingest:
-    # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.
+    # 아래 수집 상한은 AI 에 보내지 않아 바꾸면 AI 의 CollectionLimits 기본값도 같은 값으로 바꾼다
+    # 커밋·이슈·최근 PR 밖의 내 PR 이 상한을 넘거나 PR 목록이 10쪽(1000개)을 채우면 partial=true 로 표시하고
+    # 최근 max-pull-requests 개 밖의 남의 PR 은 표시 없이 읽지 않는다
     max-commits: 1000
     max-pull-requests: 50
+    max-own-pull-requests: 50
     max-issues: 50
     max-diff-bytes: 1048576
   retention:
@@ -154,6 +184,21 @@ gitory:
       # 켜면 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채우고, 끄면 빈 카드로 끝낸다
       # 운영 AI 에 LLM 설정이 없으면 모든 초안이 실패하므로 그 설정을 넣고 한 번 확인한 뒤 켠다
       enabled: ${CARD_AI_DRAFT_ENABLED:false}
+  rate-limit:
+    # LLM 을 부르는 요청의 사용자별 호출 한도로, 하루는 서울 자정에 바뀐다. 숫자는 써 보며 조정한다
+    # Redis 가 있는 운영에서만 켜고, 시험·로컬·E2E 는 끈 채로 Redis 없이 돈다
+    enabled: ${RATE_LIMIT_ENABLED:false}
+    # 되묻기 질문. 남아 있던 질문을 돌려줄 때는 세지 않는다
+    interview-ask:
+      per-minute: 10
+      per-day: 100
+    # 답 평가. INTERVIEW_ANSWER_REVIEW_ENABLED 가 켜져 LLM 을 부를 때만 센다
+    interview-answer:
+      per-minute: 10
+      per-day: 100
+    # 카드 만들기. CARD_AI_DRAFT_ENABLED 가 켜졌을 때만 한 요청의 카드 수만큼 센다
+    card-draft:
+      per-day: 100
 
 logging:
   level:

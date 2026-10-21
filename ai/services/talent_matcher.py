@@ -1,36 +1,25 @@
-"""채용공고 조건 인덱싱과 확정 STAR 근거 검색 서비스."""
+"""공고 조건 색인과 확정 STAR 문장 검색 서비스."""
 
 from __future__ import annotations
 
-from collections import defaultdict
-from dataclasses import dataclass
-from typing import Any
+import numpy as np
 
 from rag.embedding import TextEmbedder
 from rag.vector_store import JobCriterionStore
 from schemas.matching import (
     CriterionMatch,
-    CriterionType,
-    JobPosting,
     JobPostingIndexRequest,
     JobPostingIndexResult,
-    JobPostingContentStatus,
+    JobPostingPruneRequest,
+    JobPostingPruneResult,
     JobPostingStatus,
-    MatchedJobPosting,
     MatchingRequest,
     MatchingResponse,
 )
 
 
-@dataclass(frozen=True)
-class _Criterion:
-    kind: CriterionType
-    text: str
-    source_quote: str = ""
-
-
 class TalentMatcher:
-    """원본 DB를 읽지 않고 전달받은 공고만 인덱싱하고 STAR를 검색한다."""
+    """원본 DB를 읽지 않고 전달받은 조건 id와 벡터만 다룬다."""
 
     def __init__(
         self,
@@ -43,145 +32,76 @@ class TalentMatcher:
         self._maximum_distance = maximum_distance
 
     def index(self, request: JobPostingIndexRequest) -> JobPostingIndexResult:
-        """공고별 기존 벡터를 교체하고 비활성 공고는 인덱스에서 제거한다."""
+        """공고별 벡터를 교체하고, 활성이 아니거나 조건이 없는 공고는 지운다."""
         indexed_postings = 0
         indexed_criteria = 0
         deactivated_postings = 0
-        skipped_metadata_only = 0
 
         for posting in request.postings:
-            if posting.status != JobPostingStatus.ACTIVE:
-                self._store.delete_posting(posting.posting_key)
+            if posting.status != JobPostingStatus.ACTIVE or not posting.criteria:
+                self._store.delete_posting(posting.posting_id)
                 deactivated_postings += 1
                 continue
-            if posting.content_status == JobPostingContentStatus.METADATA_ONLY:
-                self._store.delete_posting(posting.posting_key)
-                skipped_metadata_only += 1
-                continue
 
-            criteria = self._criteria(posting)
-            documents = [criterion.text for criterion in criteria]
-            embeddings = self._embedder.embed(documents)
-            ids = [
-                f"{posting.posting_key}:{posting.content_hash}:{criterion.kind.value}:{index}"
-                for index, criterion in enumerate(criteria)
-            ]
-            metadatas = [
-                {
-                    "posting_key": posting.posting_key,
-                    "company_name": posting.company_name,
-                    "job_title": posting.job_title,
-                    "job_category": posting.job_category,
-                    "source_url": str(posting.source_url),
-                    "criterion_type": criterion.kind.value,
-                    "content_hash": posting.content_hash,
-                    "source_quote": criterion.source_quote,
-                }
-                for criterion in criteria
-            ]
+            embeddings = self._embedder.embed([criterion.text for criterion in posting.criteria])
             self._store.replace_posting(
-                posting.posting_key,
-                ids,
+                posting.posting_id,
+                [criterion.criterion_id for criterion in posting.criteria],
                 embeddings,
-                documents,
-                metadatas,
             )
             indexed_postings += 1
-            indexed_criteria += len(criteria)
+            indexed_criteria += len(posting.criteria)
 
         return JobPostingIndexResult(
             indexed_postings=indexed_postings,
             indexed_criteria=indexed_criteria,
             deactivated_postings=deactivated_postings,
-            skipped_metadata_only=skipped_metadata_only,
         )
+
+    def prune(self, request: JobPostingPruneRequest) -> JobPostingPruneResult:
+        """남길 공고 목록에 없는 공고의 벡터를 모두 지운다.
+
+        색인 요청과 떼어, Spring이 색인을 나눠 보내도 전체 목록 기준으로 한 번에 지울 수 있다.
+        """
+        kept_postings, removed_postings = self._store.keep_only(set(request.keep_posting_ids))
+        return JobPostingPruneResult(kept_postings=kept_postings, removed_postings=removed_postings)
 
     def match(self, request: MatchingRequest) -> MatchingResponse:
-        """STAR는 저장하지 않고 요청 동안만 임베딩해 공고 조건과 연결한다."""
-        statement_vectors = self._embedder.embed(
-            [statement.body for statement in request.statements]
+        """문장마다 거리 기준 안에 드는 조건을 상한 없이 전부 돌려준다.
+
+        근사 검색은 가까운 조건을 빠뜨릴 수 있어, 저장된 벡터를 한 번 읽어 모든 거리를 계산한다.
+        """
+        collection_criteria = self._store.count()
+        if collection_criteria == 0:
+            return MatchingResponse(matches=[], collection_criteria=0)
+
+        criterion_ids, criterion_vectors = self._store.read_vectors()
+        statement_vectors = np.asarray(
+            self._embedder.embed([statement.body for statement in request.statements]),
+            dtype=np.float64,
         )
-        by_posting: dict[str, dict[str, Any]] = {}
-        evidence_keys: dict[str, set[tuple[str, int, str, int]]] = defaultdict(set)
+        distances = _cosine_distances(statement_vectors, criterion_vectors)
 
-        for statement, vector in zip(request.statements, statement_vectors):
-            for hit in self._store.query(vector, request.top_k):
-                distance = float(hit.get("distance", 1.0))
-                metadata = hit.get("metadata") or {}
-                if distance > self._maximum_distance:
-                    continue
-                if request.job_categories and metadata.get("job_category") not in request.job_categories:
-                    continue
-
-                posting_key = str(metadata["posting_key"])
-                criterion_type = CriterionType(str(metadata["criterion_type"]))
-                criterion_text = str(hit["document"])
-                source_quote = str(metadata.get("source_quote") or "") or None
-                key = (
-                    criterion_type.value,
-                    statement.card_id,
-                    statement.star_slot,
-                    statement.statement_seq,
-                )
-                if key in evidence_keys[posting_key]:
-                    continue
-                evidence_keys[posting_key].add(key)
-
-                bucket = by_posting.setdefault(
-                    posting_key,
-                    {
-                        "metadata": metadata,
-                        "evidence": [],
-                        "best_distance": distance,
-                    },
-                )
-                bucket["best_distance"] = min(bucket["best_distance"], distance)
-                bucket["evidence"].append(
+        matches = []
+        for row, statement in enumerate(request.statements):
+            close = np.flatnonzero(distances[row] <= self._maximum_distance)
+            for column in close:
+                matches.append(
                     CriterionMatch(
-                        criterion_type=criterion_type,
-                        criterion_text=criterion_text,
-                        source_quote=source_quote,
-                        card_id=statement.card_id,
-                        star_slot=statement.star_slot,
-                        statement_seq=statement.statement_seq,
+                        criterion_id=criterion_ids[column],
+                        statement_id=statement.statement_id,
+                        distance=float(distances[row][column]),
                     )
                 )
+        return MatchingResponse(matches=matches, collection_criteria=collection_criteria)
 
-        ranked = sorted(
-            by_posting.items(),
-            key=lambda item: (-len(item[1]["evidence"]), item[1]["best_distance"]),
-        )
-        matches = []
-        for posting_key, bucket in ranked[: request.top_k]:
-            metadata = bucket["metadata"]
-            evidence = bucket["evidence"]
-            matches.append(
-                MatchedJobPosting(
-                    posting_key=posting_key,
-                    company_name=metadata["company_name"],
-                    job_title=metadata["job_title"],
-                    job_category=metadata["job_category"],
-                    source_url=metadata["source_url"],
-                    evidence=evidence,
-                )
-            )
-        return MatchingResponse(matches=matches)
 
-    @staticmethod
-    def _criteria(posting: JobPosting) -> list[_Criterion]:
-        pairs = (
-            [(item.criterion_type, item.text, item.source_quote) for item in posting.criteria]
-            + [(CriterionType.RESPONSIBILITY, value, "") for value in posting.responsibilities]
-            + [(CriterionType.REQUIRED, value, "") for value in posting.required_qualifications]
-            + [(CriterionType.PREFERRED, value, "") for value in posting.preferred_qualifications]
-            + [(CriterionType.SKILL, value, "") for value in posting.skills]
-        )
-        result: list[_Criterion] = []
-        seen: set[tuple[CriterionType, str]] = set()
-        for kind, raw, source_quote in pairs:
-            text = raw.strip()
-            key = (kind, text.casefold())
-            if text and key not in seen:
-                seen.add(key)
-                result.append(_Criterion(kind=kind, text=text, source_quote=source_quote))
-        return result
+def _cosine_distances(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+    """Chroma cosine 공간과 같은 정의(1 - 코사인 유사도)로 모든 쌍의 거리를 계산한다."""
+    left_norms = np.linalg.norm(left, axis=1, keepdims=True)
+    right_norms = np.linalg.norm(right, axis=1, keepdims=True)
+    # 영벡터는 나눗셈을 피해 그대로 두면 유사도가 0이 되어 거리 1로 계산된다.
+    unit_left = left / np.where(left_norms == 0, 1, left_norms)
+    unit_right = right / np.where(right_norms == 0, 1, right_norms)
+    # 같은 벡터의 부동소수점 오차가 음수 거리로 나가지 않게 0 아래를 잘라낸다.
+    return np.maximum(0.0, 1.0 - unit_left @ unit_right.T)

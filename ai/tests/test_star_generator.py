@@ -142,6 +142,22 @@ def test_drops_unknown_shas_and_removes_claims_without_any_evidence() -> None:
     assert result.missing_fields == ["S", "T", "R"]
 
 
+def test_keeps_cells_whose_cited_sha_was_copied_with_a_typo() -> None:
+    real = "0409013fb1905a33719fd42efbe7b03f07c61c9b"
+    client = _FakeClient(_output(
+        S=_field("FILLED", "관계없는 시험이 메모리 부족으로 실패했다.", [real + "9"]),
+        A=_field("FILLED", "시험 JVM 의 최대 메모리를 올렸다.", [real, real + "9"]),
+    ))
+
+    result = _run(StarGenerator(client), _request(_evidence(real)))
+
+    # 응답에는 모델이 적은 글자가 아니라 입력의 40자 번호를 싣고, 같은 커밋으로 맞춰진 두 번호는 한 번만 싣는다.
+    assert [result.star[slot].status for slot in ("S", "A")] == ["FILLED", "FILLED"]
+    assert [ref.sha for ref in result.star["S"].evidence] == [real]
+    assert [ref.sha for ref in result.star["A"].evidence] == [real]
+    assert result.removed_claims == []
+
+
 def test_text_backed_only_by_confirmed_answers_is_kept_for_user_review() -> None:
     client = _FakeClient(_output(R=_field("FILLED", "배포 후 로그인 오류 문의가 사라졌다.", [])))
 
@@ -268,7 +284,7 @@ def test_filled_without_text_becomes_empty() -> None:
 
 
 def test_clips_long_text_and_redacts_secrets() -> None:
-    client = _FakeClient(_output(A=_field("FILLED", f"토큰 {FAKE_TOKEN} " + "가" * 400, [SHA_A])))
+    client = _FakeClient(_output(A=_field("FILLED", f"토큰 {FAKE_TOKEN} " + "가" * 1_200, [SHA_A])))
     request = _request(
         _evidence(SHA_A, message=f"chore: {FAKE_TOKEN}"),
         answers=[f"키는 {FAKE_TOKEN} 였어요"],
@@ -279,7 +295,8 @@ def test_clips_long_text_and_redacts_secrets() -> None:
     sent = repr(client.calls[0]["payload"])
     assert FAKE_TOKEN not in sent
     assert FAKE_TOKEN not in result.model_dump_json()
-    assert len(result.star["A"].text) == 200
+    # 칸 길이는 프롬프트가 정하고, 코드는 Spring 이 칸에 저장하는 상한(1,000자)에서만 자른다.
+    assert len(result.star["A"].text) == 1_000
 
 
 def test_dedupes_evidence_and_ignores_blank_answers() -> None:
@@ -369,3 +386,74 @@ def test_passes_remaining_deadline_as_call_timeout() -> None:
     _run(StarGenerator(client, StarGenerationLimits(deadline_seconds=60)), _request(_evidence(SHA_A)))
 
     assert 50 < client.calls[0]["timeout_seconds"] <= 60
+
+
+def test_prompt_carries_pr_body_writing_and_reinforcement_rules() -> None:
+    assert "S·T는 1~2문장(250자 이내), A·R은 2~3문장(450자 이내)" in SYSTEM_PROMPT
+    assert "150자 이내 한 문장" not in SYSTEM_PROMPT
+    for heading in ("PR 본문 활용:", "문장 쓰기 규칙:", "보강 규칙:"):
+        assert heading in SYSTEM_PROMPT
+    assert SYSTEM_PROMPT.endswith("반드시 제공된 구조화 출력 스키마로만 응답하세요.")
+
+
+def test_puts_cleaned_pull_request_body_right_after_source_ref() -> None:
+    client = _FakeClient(_output())
+    body = f"## 고민한 점\n\n- 폴링을   골랐다.\n키 {FAKE_TOKEN} · 문의 dev@example.com"
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A), pull_request_body=body))
+
+    payload = client.calls[0]["payload"]
+    assert list(payload) == ["title", "source_ref", "pull_request_body", "evidence", "confirmed_answers"]
+    assert payload["pull_request_body"] == "## 고민한 점 - 폴링을 골랐다. 키 [REDACTED] · 문의 [이메일]"
+
+
+@pytest.mark.parametrize("body", [None, "  \n "])
+def test_leaves_out_missing_or_blank_pull_request_body(body: str | None) -> None:
+    client = _FakeClient(_output())
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A), pull_request_body=body))
+
+    assert "pull_request_body" not in client.calls[0]["payload"]
+
+
+@pytest.mark.parametrize(
+    ("body", "sent"),
+    [
+        # 1,000자에서 'uuu1856@naver.' 로 잘려 이메일 모양이 깨지므로, '@' 가 든 끝 낱말을 지운다.
+        ("가" * 985 + " uuu1856@naver.com 로 연락", "가" * 985),
+        # 상한에 닿지 않은 본문의 멘션은 그대로 둔다.
+        ("리뷰어 @octo", "리뷰어 @octo"),
+    ],
+)
+def test_clips_pull_request_body_and_drops_a_cut_off_email(body: str, sent: str) -> None:
+    client = _FakeClient(_output())
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A), pull_request_body=body))
+
+    assert client.calls[0]["payload"]["pull_request_body"] == sent
+
+
+@pytest.mark.parametrize(("churn", "kind"), [("+71/-0", "새로 더함"), ("+10/-2", "기존 줄 바꿈"), ("71줄", None)])
+def test_marks_each_commit_new_or_edited_from_its_deleted_lines(churn: str, kind: str | None) -> None:
+    client = _FakeClient(_output())
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A, churn=churn)))
+
+    item = client.calls[0]["payload"]["evidence"][0]
+    assert item.get("change_kind") == kind
+    if kind is not None:
+        keys = list(item)
+        assert keys[keys.index("churn") + 1] == "change_kind"
+
+
+def test_numbers_in_pull_request_body_support_the_sentence() -> None:
+    text = "조회 시간을 30% 줄였다."
+
+    with_body = _run(
+        StarGenerator(_FakeClient(_output(R=_field("FILLED", text, [SHA_A])))),
+        _request(_evidence(SHA_A), pull_request_body="목록만 물어 조회 시간이 30% 줄었습니다."),
+    )
+    without_body = _run(StarGenerator(_FakeClient(_output(R=_field("FILLED", text, [SHA_A])))), _request(_evidence(SHA_A)))
+
+    assert with_body.star["R"].status == "FILLED"
+    assert without_body.star["R"].status == "NEEDS_REVIEW"

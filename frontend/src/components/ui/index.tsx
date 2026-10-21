@@ -120,13 +120,13 @@ export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string
 }
 
 // ───────── 페이지 구조 ─────────
-export const Breadcrumb = ({ items }: { items: { label: string; to?: string }[] }) => (
+export const Breadcrumb = ({ items }: { items: { label: string; to?: string; state?: unknown }[] }) => (
   <nav className="crumb" aria-label="breadcrumb">
     {items.map((it, i) => {
       const last = i === items.length - 1;
       return (
         <span key={i} className="row" style={{ gap: 8 }}>
-          {it.to && !last ? <Link to={it.to}>{it.label}</Link> : <span className={cx(last && 'crumb__cur')}>{it.label}</span>}
+          {it.to && !last ? <Link to={it.to} state={it.state}>{it.label}</Link> : <span className={cx(last && 'crumb__cur')}>{it.label}</span>}
           {!last && <span className="crumb__sep" aria-hidden>›</span>}
         </span>
       );

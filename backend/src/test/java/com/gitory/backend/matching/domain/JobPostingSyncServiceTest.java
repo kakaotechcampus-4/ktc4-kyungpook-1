@@ -1,8 +1,13 @@
 package com.gitory.backend.matching.domain;
 
+import com.gitory.backend.agent.port.JobPostingExtractionPort;
+import com.gitory.backend.agent.port.JobPostingExtractionRequest;
+import com.gitory.backend.agent.port.JobPostingExtractionResult;
+import com.gitory.backend.agent.port.PostingContentStatus;
 import com.gitory.backend.matching.infra.CompanySource;
 import com.gitory.backend.matching.infra.CompanySourceType;
 import com.gitory.backend.matching.infra.GreenhouseClient;
+import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
 import com.gitory.backend.matching.infra.MatchingProperties;
@@ -19,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.AdditionalAnswers;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
@@ -55,8 +61,12 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -90,9 +100,14 @@ class JobPostingSyncServiceTest {
     @Autowired
     JobPostingSourceRepository sources;
 
+    @Autowired
+    JobPostingCriterionRepository criteria;
+
     private final Map<String, String> boards = new ConcurrentHashMap<>();
     private final Map<String, Integer> statuses = new ConcurrentHashMap<>();
     private final List<String> hits = new CopyOnWriteArrayList<>();
+    private final List<String> queries = new CopyOnWriteArrayList<>();
+    private final JobPostingExtractionPort extractionPort = mock(JobPostingExtractionPort.class);
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private HttpServer server;
@@ -102,10 +117,15 @@ class JobPostingSyncServiceTest {
     void startServer() throws IOException {
 
         jdbc.execute("TRUNCATE job_posting, job_posting_source CASCADE");
+        when(extractionPort.extract(any()))
+                .thenReturn(JobPostingExtractionResult.unchanged("0".repeat(64), PostingContentStatus.READY));
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
             hits.add(path);
+            if (path.startsWith("/v1/")) {
+                queries.add(String.valueOf(exchange.getRequestURI().getRawQuery()));
+            }
             String board = path.replaceAll("^/v1/boards/([^/]+)/jobs$", "$1");
             int status = statuses.getOrDefault(board, boards.containsKey(board) ? 200 : 404);
             byte[] body = boards.getOrDefault(board, "").getBytes(StandardCharsets.UTF_8);
@@ -408,6 +428,38 @@ class JobPostingSyncServiceTest {
 
     }
 
+    @Test
+    @DisplayName("목록 요청에 content=true 를 붙이고, 받은 본문을 글로 바꿔 조건 뽑기에 넘긴다")
+    void passesConvertedContentToExtraction() {
+
+        boards.put("acme", jobs(jobWithContent(1, "Software Engineer, Backend",
+                "&lt;h3&gt;자격 요건&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;Java &amp;amp; Spring&lt;/li&gt;&lt;/ul&gt;")));
+
+        service(ACME).sync();
+
+        assertThat(queries).containsOnly("content=true");
+        ArgumentCaptor<JobPostingExtractionRequest> request = ArgumentCaptor.forClass(JobPostingExtractionRequest.class);
+        verify(extractionPort).extract(request.capture());
+        assertThat(request.getValue().rawText()).isEqualTo("자격 요건\nJava & Spring");
+        assertThat(request.getValue().source()).isEqualTo("acme");
+        assertThat(request.getValue().externalPostingId()).isEqualTo("1");
+
+    }
+
+    @Test
+    @DisplayName("이번 실행에서 마감이 된 공고는 조건을 뽑지 않는다")
+    void doesNotExtractPostingsExpiredInThisRun() {
+
+        boards.put("acme", jobs(job(1, "Software Engineer, Backend", SEOUL, null, "2026-10-10T00:00:00Z")
+                .replaceFirst("}$", ",\"content\":\"&lt;p&gt;Java&lt;/p&gt;\"}")));
+
+        service(ACME).sync();
+
+        assertThat(statusesOf("acme")).containsEntry("1", JobPostingStatus.EXPIRED);
+        verify(extractionPort, never()).extract(any());
+
+    }
+
     private static Stream<String> malformedBodies() {
 
         String valid = "\"title\":\"Software Engineer\",\"absolute_url\":\"https://jobs.example.com/1\"";
@@ -430,8 +482,15 @@ class JobPostingSyncServiceTest {
         MatchingProperties properties = new MatchingProperties(List.of(companies), base);
         PoliteFetchProperties fetchProperties = new PoliteFetchProperties(null, null, null, Duration.ZERO, null, null);
         return new JobPostingSyncService(properties, new PoliteFetcher(fetchProperties, Clock.systemUTC()),
-                new GreenhouseClient(properties), postingRepository, sources, new TransactionTemplate(transactionManager),
-                new SyncLock(dataSource), clock);
+                new GreenhouseClient(properties), postingRepository, sources, extraction(postingRepository),
+                new TransactionTemplate(transactionManager), new SyncLock(dataSource), clock);
+
+    }
+
+    private JobPostingExtractionService extraction(JobPostingRepository postingRepository) {
+
+        return new JobPostingExtractionService(extractionPort, postingRepository, criteria,
+                new TransactionTemplate(transactionManager), clock);
 
     }
 
@@ -478,6 +537,12 @@ class JobPostingSyncServiceTest {
         return "{\"id\":" + id + ",\"title\":\"" + title + "\",\"absolute_url\":\"https://jobs.example.com/" + id
                 + "\",\"location\":{\"name\":\"" + location + "\"},\"updated_at\":" + quoted(updatedAt)
                 + ",\"application_deadline\":" + quoted(deadline) + "}";
+
+    }
+
+    private static String jobWithContent(long id, String title, String content) {
+
+        return job(id, title, SEOUL, null, null).replaceFirst("}$", ",\"content\":\"" + content + "\"}");
 
     }
 

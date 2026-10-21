@@ -18,6 +18,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -26,7 +27,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 설정에 둔 회사들의 채용 공고를 가져와 저장하고, 사라졌거나 마감이 지난 공고의 상태를 바꾼다
+ * 설정에 둔 회사들의 채용 공고를 가져와 저장하고, 사라졌거나 마감이 지난 공고의 상태를 바꾼 뒤 본문을 받은 공고의 조건을 뽑게 넘긴다
  * 한 회사가 실패해도 공고 상태는 그대로 두고 다음 회사로 넘어가며, 가져오는 동안은 트랜잭션을 쥐지 않는다
  */
 @Slf4j
@@ -43,6 +44,7 @@ public class JobPostingSyncService {
     private final GreenhouseClient greenhouse;
     private final JobPostingRepository postings;
     private final JobPostingSourceRepository sources;
+    private final JobPostingExtractionService extraction;
     private final TransactionTemplate transaction;
     private final SyncLock lock;
     private final Clock clock;
@@ -62,13 +64,15 @@ public class JobPostingSyncService {
         log.info("공고 가져오기 시작: 회사 {}곳", properties.sources().size());
         removeUnconfiguredCompanies();
         PoliteFetchSession session = fetcher.open();
+        List<ExtractionTarget> targets = new ArrayList<>();
         for (CompanySource source : properties.sources()) {
             if (Thread.currentThread().isInterrupted()) {
                 break;
             }
-            syncCompany(session, source);
+            syncCompany(session, source, targets);
         }
         expireOverdue();
+        extraction.extractAll(targets);
         log.info("공고 가져오기 끝: {}초", secondsSince(started));
 
     }
@@ -82,7 +86,7 @@ public class JobPostingSyncService {
 
     }
 
-    private void syncCompany(PoliteFetchSession session, CompanySource source) {
+    private void syncCompany(PoliteFetchSession session, CompanySource source, List<ExtractionTarget> targets) {
 
         Instant started = clock.instant();
         transaction.executeWithoutResult(status -> sourceOf(source).attempt(started));
@@ -92,6 +96,7 @@ public class JobPostingSyncService {
             };
             List<FetchedPosting> development = fetched.stream().filter(DevelopmentPostingFilter::accepts).toList();
             Counts counts = transaction.execute(status -> store(source, fetched.size(), development));
+            development.forEach(posting -> targets.add(new ExtractionTarget(source.key(), posting.externalId(), posting.text())));
             log.info("공고 가져오기 {}: 목록 {}건 중 개발 {}건 · 새 {} · 사라짐 {} · {}초", source.name(), fetched.size(),
                     development.size(), counts.added(), counts.removed(), secondsSince(started));
         } catch (PoliteFetchException e) {

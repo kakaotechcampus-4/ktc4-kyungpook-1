@@ -74,24 +74,26 @@ class AiClientPropertiesTest {
     }
 
     @Test
-    @DisplayName("설정이 없으면 diff 근거는 300초, STAR 초안은 180초를 기다린다 — 설정 파일도 같다")
+    @DisplayName("설정이 없으면 diff 근거는 300초, STAR 초안은 180초, 공고 조건 뽑기는 300초를 기다린다 — 설정 파일도 같다")
     void defaultsCardDraftTimeouts() {
 
         AiClientProperties properties = AiTestProperties.defaults().build();
 
         assertThat(properties.diffEvidenceReadTimeout()).isEqualTo(Duration.ofSeconds(300));
         assertThat(properties.starReadTimeout()).isEqualTo(Duration.ofSeconds(180));
+        assertThat(properties.postingExtractReadTimeout()).isEqualTo(Duration.ofSeconds(300));
         configFile.run(context -> {
             AiClientProperties bound = context.getBean(AiClientProperties.class);
             assertThat(bound.diffEvidenceReadTimeout()).isEqualTo(Duration.ofSeconds(300));
             assertThat(bound.starReadTimeout()).isEqualTo(Duration.ofSeconds(180));
+            assertThat(bound.postingExtractReadTimeout()).isEqualTo(Duration.ofSeconds(300));
         });
 
     }
 
     @ParameterizedTest
     @ValueSource(longs = {0, -1})
-    @DisplayName("diff 근거·STAR 초안 대기 시간이 0 이하이면 설정을 거절한다")
+    @DisplayName("diff 근거·STAR 초안·공고 조건 뽑기 대기 시간이 0 이하이면 설정을 거절한다")
     void rejectsNonPositiveCardDraftTimeouts(long seconds) {
 
         Duration invalid = Duration.ofSeconds(seconds);
@@ -100,18 +102,22 @@ class AiClientPropertiesTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> AiTestProperties.defaults().starReadTimeout(invalid).build())
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> AiTestProperties.defaults().postingExtractReadTimeout(invalid).build())
+                .isInstanceOf(IllegalArgumentException.class);
 
     }
 
     @Test
-    @DisplayName("diff 근거·STAR 초안 대기 시간은 AI_DIFF_EVIDENCE_READ_TIMEOUT·AI_STAR_READ_TIMEOUT 환경변수로 바꾼다")
+    @DisplayName("diff 근거·STAR 초안·공고 조건 뽑기 대기 시간은 AI_DIFF_EVIDENCE_READ_TIMEOUT·AI_STAR_READ_TIMEOUT·AI_POSTING_EXTRACT_READ_TIMEOUT 환경변수로 바꾼다")
     void cardDraftTimeoutsFollowEnvironmentVariables() {
 
-        configFile.withPropertyValues("AI_DIFF_EVIDENCE_READ_TIMEOUT=7s", "AI_STAR_READ_TIMEOUT=8s")
+        configFile.withPropertyValues("AI_DIFF_EVIDENCE_READ_TIMEOUT=7s", "AI_STAR_READ_TIMEOUT=8s",
+                        "AI_POSTING_EXTRACT_READ_TIMEOUT=9s")
                 .run(context -> {
                     AiClientProperties bound = context.getBean(AiClientProperties.class);
                     assertThat(bound.diffEvidenceReadTimeout()).isEqualTo(Duration.ofSeconds(7));
                     assertThat(bound.starReadTimeout()).isEqualTo(Duration.ofSeconds(8));
+                    assertThat(bound.postingExtractReadTimeout()).isEqualTo(Duration.ofSeconds(9));
                 });
 
     }

@@ -20,6 +20,14 @@ spring:
     enabled: true
     baseline-on-migrate: false
 
+  data:
+    redis:
+      # 호출 제한(gitory.rate-limit)만 쓴다. 스위치가 꺼져 있으면 붙지 않는다
+      host: ${REDIS_HOST:localhost}
+      # Redis 가 멈춰도 요청이 오래 붙들리지 않고 제한을 건너뛰어 통과하도록 짧게 둔다
+      connect-timeout: 500ms
+      timeout: 500ms
+
   http:
     clients:
       # GitHub 호출 하나가 오래 멈춰도 저장소 목록 요청이 프론트 제한(30초) 안에 끝나게 한다.
@@ -67,6 +75,10 @@ management:
       exposure:
         # 헬스체크만 연다. env·configprops 는 비밀값이 새는 경로다.
         include: health
+  health:
+    redis:
+      # Redis 는 호출 제한에만 쓰고 멈추면 제한을 건너뛴다. health 에 섞이면 compose --wait 와 배포 확인이 Redis 때문에 실패한다
+      enabled: false
   endpoint:
     health:
       show-details: never
@@ -172,6 +184,21 @@ gitory:
       # 켜면 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채우고, 끄면 빈 카드로 끝낸다
       # 운영 AI 에 LLM 설정이 없으면 모든 초안이 실패하므로 그 설정을 넣고 한 번 확인한 뒤 켠다
       enabled: ${CARD_AI_DRAFT_ENABLED:false}
+  rate-limit:
+    # LLM 을 부르는 요청의 사용자별 호출 한도로, 하루는 서울 자정에 바뀐다. 숫자는 써 보며 조정한다
+    # Redis 가 있는 운영에서만 켜고, 시험·로컬·E2E 는 끈 채로 Redis 없이 돈다
+    enabled: ${RATE_LIMIT_ENABLED:false}
+    # 되묻기 질문. 남아 있던 질문을 돌려줄 때는 세지 않는다
+    interview-ask:
+      per-minute: 10
+      per-day: 100
+    # 답 평가. INTERVIEW_ANSWER_REVIEW_ENABLED 가 켜져 LLM 을 부를 때만 센다
+    interview-answer:
+      per-minute: 10
+      per-day: 100
+    # 카드 만들기. CARD_AI_DRAFT_ENABLED 가 켜졌을 때만 한 요청의 카드 수만큼 센다
+    card-draft:
+      per-day: 100
 
 logging:
   level:

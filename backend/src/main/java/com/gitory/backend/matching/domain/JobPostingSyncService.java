@@ -3,6 +3,7 @@ package com.gitory.backend.matching.domain;
 import com.gitory.backend.matching.infra.CompanySource;
 import com.gitory.backend.matching.infra.FetchFailureCode;
 import com.gitory.backend.matching.infra.GreenhouseClient;
+import com.gitory.backend.matching.infra.GreetingClient;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
 import com.gitory.backend.matching.infra.MatchingProperties;
@@ -42,6 +43,7 @@ public class JobPostingSyncService {
     private final MatchingProperties properties;
     private final PoliteFetcher fetcher;
     private final GreenhouseClient greenhouse;
+    private final GreetingClient greeting;
     private final JobPostingRepository postings;
     private final JobPostingSourceRepository sources;
     private final JobPostingExtractionService extraction;
@@ -93,6 +95,7 @@ public class JobPostingSyncService {
         try {
             List<FetchedPosting> fetched = switch (source.type()) {
                 case GREENHOUSE -> greenhouse.list(session, source);
+                case GREETING -> greeting.list(session, source);
             };
             List<FetchedPosting> development = fetched.stream().filter(DevelopmentPostingFilter::accepts).toList();
             Counts counts = transaction.execute(status -> store(source, fetched.size(), development));

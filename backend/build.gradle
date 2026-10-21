@@ -49,6 +49,9 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-restclient'
 
+    // LLM 을 부르는 요청의 사용자별 호출 횟수를 센다. 서버가 다시 떠도 숫자가 남고 만료가 저절로 된다
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
     // 운영
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 

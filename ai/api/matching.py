@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
-from typing import Callable
+from typing import Callable, Optional
 
 from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
@@ -18,6 +19,8 @@ from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
 from schemas.matching import (
     JobPostingIndexRequest,
     JobPostingIndexResult,
+    JobPostingPruneRequest,
+    JobPostingPruneResult,
     MatchingRequest,
     MatchingResponse,
 )
@@ -56,9 +59,26 @@ def build_talent_matcher() -> TalentMatcher:
     )
 
 
+_shared_matcher: Optional[TalentMatcher] = None
+_shared_matcher_lock = threading.Lock()
+
+
+def shared_talent_matcher() -> TalentMatcher:
+    """처음 요청 때 한 번 만들어 재사용한다.
+
+    임베딩 모델과 Chroma 연결을 요청마다 열면 느리다.
+    설정 오류로 만들기가 실패하면 저장하지 않아 설정을 고친 뒤 다음 요청에서 다시 만든다.
+    """
+    global _shared_matcher
+    with _shared_matcher_lock:
+        if _shared_matcher is None:
+            _shared_matcher = build_talent_matcher()
+        return _shared_matcher
+
+
 def get_talent_matcher_factory() -> MatcherFactory:
-    """설정 오류가 의존성 주입 단계의 봉투 없는 500이 되지 않도록 만들기는 호출 안에서 한다."""
-    return build_talent_matcher
+    """설정 오류가 의존성 주입 단계의 형식 없는 500이 되지 않도록 만들기는 호출 안에서 한다."""
+    return shared_talent_matcher
 
 
 @router.post(
@@ -70,13 +90,31 @@ async def index_job_postings(
     request: JobPostingIndexRequest,
     matcher_factory: MatcherFactory = Depends(get_talent_matcher_factory),
 ):
-    """Spring에 저장된 공고를 AI의 재생성 가능한 Chroma 인덱스에 반영한다."""
+    """Spring에 저장된 공고 조건을 AI의 재생성 가능한 Chroma 색인에 반영한다."""
     started = time.perf_counter()
     try:
         result = await run_llm_call(MATCHING_EXECUTOR, _index, matcher_factory, request)
     except Exception as exc:
         return _failure(started, "공고 색인", exc)
     return _success(started, result)
+
+
+@router.post(
+    "/postings/prune",
+    response_model=Envelope[JobPostingPruneResult],
+    responses=_MATCHING_ERROR_RESPONSES,
+)
+async def prune_job_postings(
+    request: JobPostingPruneRequest,
+    matcher_factory: MatcherFactory = Depends(get_talent_matcher_factory),
+):
+    """남길 공고 id 목록에 없는 공고의 벡터를 색인에서 모두 지운다."""
+    started = time.perf_counter()
+    try:
+        result = await run_llm_call(MATCHING_EXECUTOR, _prune, matcher_factory, request)
+    except Exception as exc:
+        return _failure(started, "공고 색인 정리", exc)
+    return _success(started, result, embedded=False)
 
 
 @router.post(
@@ -88,7 +126,7 @@ async def search_job_matches(
     request: MatchingRequest,
     matcher_factory: MatcherFactory = Depends(get_talent_matcher_factory),
 ):
-    """확정 STAR를 저장하지 않고 활성 공고 조건과 연결해 반환한다."""
+    """확정 STAR 문장을 저장하지 않고 거리 기준 안의 조건 id를 모두 반환한다."""
     started = time.perf_counter()
     try:
         result = await run_llm_call(MATCHING_EXECUTOR, _search, matcher_factory, request)
@@ -101,17 +139,21 @@ def _index(matcher_factory: MatcherFactory, request: JobPostingIndexRequest) -> 
     return matcher_factory().index(request)
 
 
+def _prune(matcher_factory: MatcherFactory, request: JobPostingPruneRequest) -> JobPostingPruneResult:
+    return matcher_factory().prune(request)
+
+
 def _search(matcher_factory: MatcherFactory, request: MatchingRequest) -> MatchingResponse:
     return matcher_factory().match(request)
 
 
-def _success(started: float, result) -> Envelope:
+def _success(started: float, result, embedded: bool = True) -> Envelope:
     return Envelope(
         success=True,
         data=result,
         meta=Meta(
-            model=embedding_model_name(),
-            tool_calls_made=1,
+            model=embedding_model_name() if embedded else None,
+            tool_calls_made=1 if embedded else 0,
             processing_ms=_elapsed_ms(started),
         ),
         error=None,
@@ -133,7 +175,7 @@ def _elapsed_ms(started: float) -> int:
 
 
 def _error(started: float, status_code: int, code: str, message: str, retryable: bool) -> JSONResponse:
-    """실패를 공통 에러 봉투로 반환한다.
+    """실패를 공통 응답 형식의 오류로 반환한다.
 
     내부 예외 문구는 응답에 싣지 않는다.
     """

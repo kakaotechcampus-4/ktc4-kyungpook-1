@@ -27,6 +27,13 @@ from rag.vector_store import ChromaJobCriterionStore
 from schemas.matching import JobPostingIndexRequest, MatchingRequest
 from services.talent_matcher import TalentMatcher
 
+_FIXTURE_CRITERION_FIELDS = (
+    ("responsibilities", "RESPONSIBILITY"),
+    ("required_qualifications", "REQUIRED"),
+    ("preferred_qualifications", "PREFERRED"),
+    ("skills", "REQUIRED"),
+)
+
 
 @dataclass(frozen=True)
 class LocalOnnxModel:
@@ -128,6 +135,40 @@ def _load_fixture(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def fixture_to_index_request(
+    fixture: dict[str, Any],
+) -> tuple[JobPostingIndexRequest, dict[int, str]]:
+    """합성 공고를 색인 요청으로 바꾸고 조건 id가 속한 공고 열쇠를 함께 돌려준다."""
+    postings = []
+    posting_key_of_criterion: dict[int, str] = {}
+    criterion_id = 0
+    for posting_id, posting in enumerate(fixture["postings"], start=1):
+        posting_key = f"{posting['source']}:{posting['external_posting_id']}"
+        criteria = []
+        for field, criterion_type in _FIXTURE_CRITERION_FIELDS:
+            for text in posting.get(field, []):
+                criterion_id += 1
+                criteria.append(
+                    {"criterion_id": criterion_id, "criterion_type": criterion_type, "text": text}
+                )
+                posting_key_of_criterion[criterion_id] = posting_key
+        postings.append({"posting_id": posting_id, "status": "ACTIVE", "criteria": criteria})
+    return JobPostingIndexRequest.model_validate({"postings": postings}), posting_key_of_criterion
+
+
+def rank_postings(
+    response_matches: list[Any], posting_key_of_criterion: dict[int, str], top_k: int
+) -> list[str]:
+    """맞은 조건이 많은 공고부터, 같으면 가장 가까운 거리가 작은 공고부터 늘어놓는다."""
+    count: dict[str, int] = {}
+    nearest: dict[str, float] = {}
+    for match in response_matches:
+        key = posting_key_of_criterion[match.criterion_id]
+        count[key] = count.get(key, 0) + 1
+        nearest[key] = min(nearest.get(key, match.distance), match.distance)
+    return sorted(count, key=lambda key: (-count[key], nearest[key]))[:top_k]
+
+
 def score_rankings(rankings: list[dict[str, Any]]) -> dict[str, float]:
     """각 사례의 기대 공고 순위로 Recall@K와 MRR을 계산한다."""
     total = len(rankings)
@@ -156,9 +197,8 @@ def run_evaluation(
     # Windows 에서는 Chroma 가 색인 파일을 연 채로 있어 임시 폴더를 지우다 실패하므로 그 오류는 무시한다.
     with tempfile.TemporaryDirectory(prefix="gitory-job-matching-", ignore_cleanup_errors=True) as directory:
         store = ChromaJobCriterionStore(persist_directory=directory)
-        index_result = TalentMatcher(embedder=passage_embedder, store=store).index(
-            JobPostingIndexRequest.model_validate({"postings": fixture["postings"]})
-        )
+        index_request, posting_key_of_criterion = fixture_to_index_request(fixture)
+        index_result = TalentMatcher(embedder=passage_embedder, store=store).index(index_request)
         matcher = TalentMatcher(
             embedder=query_embedder,
             store=store,
@@ -169,10 +209,14 @@ def run_evaluation(
         for case in fixture["cases"]:
             response = matcher.match(
                 MatchingRequest.model_validate(
-                    {"statements": [case["statement"]], "top_k": top_k}
+                    {
+                        "statements": [
+                            {"statement_id": 1, "body": case["statement"]["body"]}
+                        ]
+                    }
                 )
             )
-            keys = [match.posting_key for match in response.matches]
+            keys = rank_postings(response.matches, posting_key_of_criterion, top_k)
             expected = case["expected_posting_key"]
             rankings.append(
                 {

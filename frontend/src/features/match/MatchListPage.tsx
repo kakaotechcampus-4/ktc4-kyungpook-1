@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
 import { Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
@@ -27,17 +27,6 @@ export function MatchListPage() {
   useLayoutEffect(() => {
     if (navigationType !== 'REPLACE') setQuery(new URLSearchParams(location.search).get('q') ?? '');
   }, [location.key, location.search, navigationType]);
-  useEffect(() => {
-    if ((sp.get('q') ?? '') === query) return;
-    const timer = window.setTimeout(() => {
-      setSp(current => {
-        const next = new URLSearchParams(current);
-        if (query) next.set('q', query); else next.delete('q');
-        return next;
-      }, { replace: true });
-    }, 200);
-    return () => window.clearTimeout(timer);
-  }, [query, sp, setSp]);
   const search = new URLSearchParams(sp);
   if (query) search.set('q', query); else search.delete('q');
   const category = MatchCategory.safeParse(sp.get("category"));
@@ -82,7 +71,7 @@ export function MatchListPage() {
       <div className="match-controls">
         <SearchField
           value={filters.q}
-          onChange={setQuery}
+          onChange={(value) => { setQuery(value); update('q', value); }}
           placeholder="기업·직무 검색"
         />
         <Select

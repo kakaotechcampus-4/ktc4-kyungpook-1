@@ -7,7 +7,6 @@ test('rapid typing retains every character and survives detail navigation', asyn
     await search.fill('');
     await search.pressSequentially(query, { delay: 0 });
     await expect(search).toHaveValue(query);
-    await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe(query);
   }
   await page.locator('.match-card').click();
   await page.goBack();

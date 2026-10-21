@@ -317,8 +317,8 @@ class MigrationUpgradeTest {
     }
 
     @Test
-    @DisplayName("V22 는 Job 에러 코드 6개를 그대로 두고 AI_UNAVAILABLE 을 허용하며 목록 밖 값은 계속 막고 제약은 같은 이름 하나로 다시 만든다")
-    void v22AllowsAiUnavailable() {
+    @DisplayName("V24 는 Job 에러 코드 6개를 그대로 두고 AI_UNAVAILABLE 을 허용하며 목록 밖 값은 계속 막고 제약은 같은 이름 하나로 다시 만든다")
+    void v24AllowsAiUnavailable() {
 
         migrateTo("19");
         Long userId = fixtures.insertUser(1L, "grow22");
@@ -329,7 +329,7 @@ class MigrationUpgradeTest {
             insertJob(userId, userRepositoryId, errorCode);
         }
 
-        migrateTo("22");
+        migrateTo("24");
 
         assertThat(jdbc.queryForObject(
                 "SELECT count(*) FROM pg_constraint WHERE conname = 'analysis_job_error_code_check' AND conrelid = 'analysis_job'::regclass",

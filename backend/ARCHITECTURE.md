@@ -118,7 +118,7 @@ ktc4-kyungpook-1/
 │     │  ├─ job/                    분석 오케스트레이터 (비동기)
 │     │  ├─ audit/                  정책·감사
 │     │  ├─ usage/                  화면 사용 지표
-│     │  └─ matching/               기업 채용 공고·조건 저장과 매칭
+│     │  └─ matching/               기업 채용 공고·조건 저장과 매칭 (조건 뽑기는 agent)
 │     ├─ main/resources/
 │     │  ├─ application.yml
 │     │  └─ db/migration/

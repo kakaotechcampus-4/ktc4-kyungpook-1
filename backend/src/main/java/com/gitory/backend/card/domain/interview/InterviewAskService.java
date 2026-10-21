@@ -12,6 +12,8 @@ import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
+import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.recommend.domain.CandidateReference;
 import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import com.gitory.backend.recommend.domain.CandidateType;
@@ -47,6 +49,7 @@ public class InterviewAskService {
     private final InterviewQuestionPort questions;
     private final InterviewLimits limits;
     private final PlatformTransactionManager transactionManager;
+    private final UserRateLimiter rateLimiter;
 
     /**
      * 초안을 만드는 중이거나 확정된 카드는 409, 답하지 않은 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409, 칸이 잘못되면 400 순서로 확인한다
@@ -60,6 +63,8 @@ public class InterviewAskService {
             return prepared.openTurn();
         }
 
+        // 남아 있던 질문을 돌려줄 때는 AI 를 부르지 않으므로, 새 질문을 만들 때만 센다
+        rateLimiter.acquire(RateLimitedAction.INTERVIEW_ASK, userId, 1);
         InterviewQuestionResult question = fetchQuestion(prepared.request(), prepared.slot());
 
         return save(prepared, publicId, userId, question);

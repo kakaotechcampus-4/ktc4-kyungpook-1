@@ -207,10 +207,13 @@ public class CardDraftRunner {
 
     }
 
+    // 바뀐 파일 경로는 AI 가 기술 태그를 고를 재료라 저장하지 않고 넘기기만 한다
+    // 빈 목록이면 STAR 요청에서 칸을 빼서, 이 칸을 모르는 AI 가 모르는 칸으로 요청을 거절하지 않게 한다
     private static StarEvidence starEvidenceOf(DiffEvidence item) {
 
         return new StarEvidence(item.sha(), item.message(), item.authorLogin(), item.churn(), item.summary(),
-                StarEvidenceSource.valueOf(item.summarySource().name()), item.technicalPoints(), item.url());
+                StarEvidenceSource.valueOf(item.summarySource().name()), item.technicalPoints(), item.url(),
+                item.changedPaths());
 
     }
 }

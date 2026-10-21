@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
@@ -144,7 +145,39 @@ class AiStarDraftAdapterTest {
                         StarConfidence.LOW, List.of(ref), null, null, "근거에 없는 수치: 30%"),
                 StarSlot.R, new StarSlotDraft(StarSlotStatus.FILLED, "재시작해도 로그인이 유지됐다.",
                         StarConfidence.MEDIUM, List.of(ref), null, null, null)),
-                List.of(StarSlot.T), "teammate", List.of("근거 없는 문장")));
+                List.of(StarSlot.T), "teammate", List.of("근거 없는 문장"), List.of("BACKEND", "DB"), List.of("JAVA")));
+
+    }
+
+    @Test
+    @DisplayName("바뀐 파일 경로가 있으면 근거마다 changed_paths 로 싣고, 경로 목록이 비어 있으면 STAR 요청에 changed_paths 칸이 없다")
+    void sendsChangedPathsOnlyWhenPresent() {
+
+        StarEvidence base = request().evidence().getFirst();
+        StarEvidence withPaths = new StarEvidence(base.sha(), base.message(), base.authorLogin(), base.churn(),
+                base.summary(), base.summarySource(), base.technicalPoints(), base.url(),
+                List.of("src/main/java/SessionConfig.java"));
+        StarDraftRequest empty = request();
+        adapter.draft(new StarDraftRequest(empty.candidateId(), empty.targetLogin(), empty.title(), empty.sourceType(),
+                empty.sourceRef(), List.of(withPaths, base), null));
+
+        JsonNode evidence = MAPPER.readTree(requestBody).path("evidence");
+        assertThat(evidence.path(0).path("changed_paths").get(0).asString()).isEqualTo("src/main/java/SessionConfig.java");
+        assertThat(evidence.path(1).has("changed_paths")).isFalse();
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("withoutTags")
+    @DisplayName("태그를 보내기 전의 AI 가 areas·techs 칸을 빼거나 null 로 보내면 빈 목록으로 받는다")
+    void readsMissingTagsAsEmpty(ObjectNode data) {
+
+        responseBody = success(data);
+
+        StarDraft draft = adapter.draft(request());
+
+        assertThat(draft.areas()).isEmpty();
+        assertThat(draft.techs()).isEmpty();
 
     }
 
@@ -169,6 +202,18 @@ class AiStarDraftAdapterTest {
         });
         assertThat(draft.missingFields()).containsExactly(StarSlot.S, StarSlot.T, StarSlot.A, StarSlot.R);
         assertThat(draft.sharedWith()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("PR 본문이 있으면 pull_request_body 로 싣는다(없으면 키를 싣지 않는 것은 위 시험의 JSON 이 확인한다)")
+    void sendsPullRequestBodyWhenPresent() {
+
+        StarDraftRequest base = request();
+        adapter.draft(new StarDraftRequest(base.candidateId(), base.targetLogin(), base.title(), base.sourceType(),
+                base.sourceRef(), base.evidence(), "## 고민한 점 폴링을 골랐다"));
+
+        assertThat(MAPPER.readTree(requestBody).path("pull_request_body").asString()).isEqualTo("## 고민한 점 폴링을 골랐다");
 
     }
 
@@ -335,7 +380,20 @@ class AiStarDraftAdapterTest {
                 })),
                 argumentSet("shared_with 가 글이 아니다", draft(data -> data.put("shared_with", 1))),
                 argumentSet("removed_claims 가 없다", draft(data -> data.remove("removed_claims"))),
-                argumentSet("removed_claims 에 글이 아닌 값이 있다", draft(data -> data.putArray("removed_claims").add(1))));
+                argumentSet("removed_claims 에 글이 아닌 값이 있다", draft(data -> data.putArray("removed_claims").add(1))),
+                argumentSet("areas 가 배열이 아니다", draft(data -> data.put("areas", "BACKEND"))),
+                argumentSet("techs 에 글이 아닌 값이 있다", draft(data -> data.putArray("techs").add(1))));
+
+    }
+
+    static Stream<Arguments> withoutTags() {
+
+        return Stream.of(
+                argumentSet("areas·techs 가 없다", draft(data -> {
+                    data.remove("areas");
+                    data.remove("techs");
+                })),
+                argumentSet("areas·techs 가 null 이다", draft(data -> data.putNull("areas").putNull("techs"))));
 
     }
 
@@ -351,6 +409,8 @@ class AiStarDraftAdapterTest {
         data.putArray("missing_fields").add("T");
         data.put("shared_with", "teammate");
         data.putArray("removed_claims").add("근거 없는 문장");
+        data.putArray("areas").add("BACKEND").add("DB");
+        data.putArray("techs").add("JAVA");
         return data;
 
     }
@@ -412,7 +472,7 @@ class AiStarDraftAdapterTest {
 
         return new StarDraftRequest("cand-1", "grow22", TITLE, StarSourceType.PR, "#17",
                 List.of(new StarEvidence(SHA, MESSAGE, "grow22", "+71/-0", REQUEST_TEXT, StarEvidenceSource.DIFF,
-                        List.of("Spring Session JDBC"), URL)));
+                        List.of("Spring Session JDBC"), URL, List.of())), null);
 
     }
 

@@ -211,7 +211,13 @@ body { overflow-x: hidden; }
   .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 10.5px; font-weight: 600; }
   .mobile-nav a[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
   .main { --main-px: 16px; --main-pb: 24px; gap: 16px; padding: 20px var(--main-px) var(--main-pb); }
-  .main--footer { padding-bottom: 0; }
+  /* Match the actual padding so the shared footer cannot pull content under itself. */
+  .main--footer { --main-pb: 0px; padding-bottom: 0; }
+  .repo-ctx > .grow { min-width: 0; }
+  .repo-ctx__name { overflow-wrap: anywhere; }
+  .repo-ctx > .btn { flex-shrink: 0; white-space: nowrap; }
+  .mask-presets { flex-wrap: wrap; }
+  .mask-presets .chip { flex: 0 0 auto; min-height: 44px; white-space: nowrap; }
   .note { flex-direction: column; gap: 6px; }
   .note strong, .note span { max-width: 100%; min-width: 0; }
   .manual-metadata { padding: 16px; gap: 16px 12px; }
@@ -365,7 +371,7 @@ body { overflow-x: hidden; }
   .landing-example:not(.landing-example--expanded) .landing-card__field[data-slot=T],
   .landing-example:not(.landing-example--expanded) .landing-card__full { display: none; }
   .landing-example:not(.landing-example--expanded) .landing-card__preview { display: inline; }
-  .landing-example:not(.landing-example--expanded) .github-snapshot__commits { margin-block: 0 var(--space-8); }
+  .landing-example:not(.landing-example--expanded) .github-snapshot__commits { margin-block: var(--space-8); }
   .landing-example:not(.landing-example--expanded) .github-snapshot__commits li { padding: var(--space-8); }
   .landing-example:not(.landing-example--expanded) .landing-card__field { padding-block: var(--space-8); }
   .landing-example:not(.landing-example--expanded) .landing-card__field p { font-size: 12px; line-height: 18px; margin-top: 2px; }

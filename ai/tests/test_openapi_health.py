@@ -26,6 +26,7 @@ INTERNAL_PATHS = {
     "/internal/interview-answer-evaluations",
     "/internal/job-postings/extract",
     "/internal/matching/postings/index",
+    "/internal/matching/postings/prune",
     "/internal/matching/search",
 }
 

@@ -52,6 +52,11 @@ public final class PoliteFetchSession {
             throw new PoliteFetchException(FetchFailureCode.ROBOTS_UNAVAILABLE,
                     "robots.txt 를 읽지 못해 요청하지 않는다: " + hostLabel(url));
         }
+        if (host.robots.crawlDelay().compareTo(properties.maxCrawlDelay()) > 0) {
+            throw new PoliteFetchException(FetchFailureCode.CRAWL_DELAY_TOO_LONG,
+                    "robots.txt 의 Crawl-delay " + host.robots.crawlDelay().toSeconds() + "초가 상한 "
+                            + properties.maxCrawlDelay().toSeconds() + "초를 넘어 요청하지 않는다: " + hostLabel(url));
+        }
         String target = targetOf(url);
         if (!host.robots.isAllowed(target)) {
             log.info("robots.txt 가 막아 건너뜀: {}{}", hostLabel(url), target);

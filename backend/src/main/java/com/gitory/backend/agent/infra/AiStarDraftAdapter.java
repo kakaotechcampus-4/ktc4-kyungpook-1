@@ -78,7 +78,8 @@ public class AiStarDraftAdapter implements StarDraftPort {
             throw AiClientException.invalidResponse();
         }
         return new StarDraft(string(data, "title"), Map.copyOf(slots), List.copyOf(missingFields),
-                optionalString(data, "shared_with"), strings(data, "removed_claims"));
+                optionalString(data, "shared_with"), strings(data, "removed_claims"), optionalStrings(data, "areas"),
+                optionalStrings(data, "techs"));
 
     }
 
@@ -165,6 +166,17 @@ public class AiStarDraftAdapter implements StarDraftPort {
             values.add(value.asString());
         }
         return List.copyOf(values);
+
+    }
+
+    // 태그를 보내기 전의 AI 와도 같이 돌도록 칸이 없으면 빈 목록이다
+    private static List<String> optionalStrings(JsonNode node, String field) {
+
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return List.of();
+        }
+        return strings(node, field);
 
     }
 

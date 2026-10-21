@@ -104,6 +104,41 @@ class CardPersistenceTest {
     }
 
     @Test
+    @DisplayName("직접 작성 카드는 분야·기술 태그가 null 이 아닌 빈 배열로 저장된다")
+    void savesManualCardWithEmptyTags() {
+
+        Card card = Card.startManual(userId, repoLinkId, "카드 제목", null, "key-1");
+        em.persist(card);
+        em.flush();
+        em.clear();
+
+        assertThat(jdbc.queryForObject("SELECT areas = '{}' AND techs = '{}' FROM card WHERE id = ?", Boolean.class,
+                card.getId())).isTrue();
+        Card found = em.find(Card.class, card.getId());
+        assertThat(found.areaTags()).isEmpty();
+        assertThat(found.techTags()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("분야·기술 태그는 순번이 아니라 enum 이름으로 순서대로 저장되고 같은 enum 으로 다시 읽힌다")
+    void savesTagsByName() {
+
+        Card card = Card.startManual(userId, repoLinkId, "카드 제목", null, "key-1");
+        card.tag(List.of(CardArea.DB, CardArea.BACKEND), List.of(CardTech.GITHUB_ACTIONS, CardTech.JAVA));
+        em.persist(card);
+        em.flush();
+        em.clear();
+
+        assertThat(jdbc.queryForObject("SELECT array_to_string(areas, ',') || '|' || array_to_string(techs, ',') FROM card WHERE id = ?",
+                String.class, card.getId())).isEqualTo("DB,BACKEND|GITHUB_ACTIONS,JAVA");
+        Card found = em.find(Card.class, card.getId());
+        assertThat(found.areaTags()).containsExactly(CardArea.DB, CardArea.BACKEND);
+        assertThat(found.techTags()).containsExactly(CardTech.GITHUB_ACTIONS, CardTech.JAVA);
+
+    }
+
+    @Test
     @DisplayName("카드 버전의 칸마다 값이 시각까지 그대로 저장되고 다시 읽힌다")
     void savesCardVersionFields() {
 

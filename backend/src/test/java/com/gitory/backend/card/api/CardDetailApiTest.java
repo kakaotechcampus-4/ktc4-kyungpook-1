@@ -29,6 +29,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -51,9 +52,9 @@ class CardDetailApiTest {
     private static final UUID MY_REPO = UUID.fromString("33333333-3333-4333-8333-333333333333");
 
     // FE schemas.ts 의 Card·CardVersion·Evidence 가 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
-    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "period", "repo", "candidate",
-            "version", "evidence", "lowConfidenceFields", "droppedFields", "maskRules", "generation", "interviewTurns",
-            "confirmedAt", "createdAt"};
+    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "period", "repo",
+            "candidate", "version", "evidence", "lowConfidenceFields", "droppedFields", "maskRules", "generation",
+            "interviewTurns", "confirmedAt", "createdAt"};
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",
             "result"};
     private static final String[] EVIDENCE_KEYS = {"field", "type", "authoredBy", "sha", "url", "snippet", "turnNo"};
@@ -134,6 +135,35 @@ class CardDetailApiTest {
                 .andExpect(jsonPath("$.data.maskRules[1].to").value(""))
                 .andExpect(jsonPath("$.data.confirmedAt").value(nullValue()))
                 .andExpect(jsonPath("$.data.createdAt").value("2026-01-01T00:00:00Z"));
+
+    }
+
+    @Test
+    @DisplayName("카드에 저장된 분야·기술 태그를 순서대로 싣는다")
+    void sendsTags() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        jdbc.update("UPDATE card SET areas = '{DB,BACKEND}', techs = '{SQL,JAVA}' WHERE id = ?", cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.areas").value(contains("DB", "BACKEND")))
+                .andExpect(jsonPath("$.data.techs").value(contains("SQL", "JAVA")));
+
+    }
+
+    @Test
+    @DisplayName("태그가 없는 카드는 분야·기술을 null 이 아닌 빈 배열로 싣는다")
+    void sendsEmptyTags() throws Exception {
+
+        fixtures.insertCard(MY_CARD, myUserId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.areas").isArray())
+                .andExpect(jsonPath("$.data.areas").isEmpty())
+                .andExpect(jsonPath("$.data.techs").isArray())
+                .andExpect(jsonPath("$.data.techs").isEmpty());
 
     }
 

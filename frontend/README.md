@@ -83,6 +83,7 @@ npm run dev        # http://localhost:5173 — 목 API 내장 (브라우저에�
 npm test           # 계약 계층 유닛 (vitest)
 npm run e2e        # 기능 + 반응형 E2E (playwright · 최초 1회 npx playwright install chromium)
 npm run e2e:static # 같은 E2E 를 프로덕션 빌드에 — Vercel 이 서빙하는 산출물과 동일
+npm run e2e:mobile # 운영 빌드의 주요 기능 흐름을 390px 터치 뷰포트로 재검증
 npm run build      # tsc -b && vite build
 ```
 
@@ -191,6 +192,9 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 `/cover-letter`에서 지원할 공고·문항·글자 수 제한·확정 카드를 골라 카드 문장으로 초안을 만들고, `/cover-letter/:id`에서 문장 출처를 확인하며 직접 고칩니다. 추천 카드와 빈 칸은 #116 의 인재상 태그가 아니라 공고 매칭 상세의 필수·우대 조건 근거로 정합니다. 서버 구현 전이라 계약은 제안이며, 매칭과 같이 `VITE_MATCH_ENABLED`로 실서버 요청을 막습니다. [제안 계약·#116 과 달라진 점·검증 기록](docs/2026-10-19-COVER_LETTER.md)을 참고하세요.
 
 
+로그인 모바일 예시의 위아래 간격 조정: [수정 기록](docs/2026-10-19-LANDING_SPACING.md).
+카드 초안 진행·이전/다음 검토 개선(#326·#327): [설계·검증 기록](docs/2026-10-20-CARD_REVIEW_FLOW.md).
+
 ## Job 과 복구 흐름
 
 작업은 서버에서 돈다. 화면은 그 상태를 읽을 뿐이고, **진행 상황을 브라우저에 적어 두지 않는다.**
@@ -225,3 +229,6 @@ npm run e2e:static  # 동일한 검사를 프로덕션 빌드 산출물에 실�
 - 오프라인/재연결 배너
 
 카드 제목·기간 수정의 null/400 계약 검증: [#219 보완 기록](docs/2026-10-15-METADATA_219.md).
+### 2026-10-21 검색 입력 안정화
+
+매칭 검색의 입력 상태·URL 복구 기준은 [매칭 검색 입력 안정화](docs/2026-10-21-MATCH_SEARCH.md)를 참고하세요.

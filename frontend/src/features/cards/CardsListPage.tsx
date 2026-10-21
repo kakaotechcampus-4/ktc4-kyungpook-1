@@ -1,3 +1,4 @@
+import { sortCardSummaries } from '@/lib/cardListOrder';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FolderGit2, Layers, PenLine } from 'lucide-react';
@@ -21,9 +22,10 @@ export function CardsListPage() {
   const [status, setStatus] = useState<CardStatus | 'ALL'>('ALL');
   const [sort, setSort] = useState<'recent' | 'title'>('recent');
   const [completion, setCompletion] = useState<CompletionFilter>('ALL');
-  const list = useMemo(() => (cards.data ?? [])
+  const list = useMemo(() => sortCardSummaries((cards.data ?? [])
     .filter((c) => c.title.toLowerCase().includes(q.toLowerCase()) && (status === 'ALL' || c.status === status) && matchesCompletion(c, completion))
-    .sort((a, b) => (sort === 'title' ? a.title.localeCompare(b.title) : b.updatedAt.localeCompare(a.updatedAt))), [cards.data, q, status, sort, completion]);
+    , sort), [cards.data, q, status, sort, completion]);
+  const cardOrder = list.map(card => card.id);
   const counts = { ALL: cards.data?.length, DRAFT: cards.data?.filter((c) => c.status === 'DRAFT').length, CONFIRMED: cards.data?.filter((c) => c.status === 'CONFIRMED').length };
 
   return (
@@ -56,7 +58,7 @@ export function CardsListPage() {
           <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 카드 만들기</Button>
         </div>
       )}
-      <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
+      <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} cardOrder={cardOrder} />)}</div>
     </main>
   );
 }

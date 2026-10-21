@@ -104,7 +104,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ### 카드
 | | 요청 | 응답 |
 |---|---|---|
-| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount }`. 상태 필터는 FE에서 적용 |
+| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount }`. `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
 | `POST /cards/manual/draft` | `{ title, period, repoId|null }`, 헤더 `Idempotency-Key: <UUID v4>` | **구현됨.** `Card` — 빈 `USER_EDIT` v1 DRAFT. 같은 사용자·같은 키는 처음 만든 카드의 **현재** 상세를 반환 |
 | `PATCH /cards/{id}/draft` | `{ situation, task, action, result }` **네 키 필수**, string/null | **구현됨.** `{ cardId, versionNo, situation, task, action, result, savedAt }` — 임시 저장 |
 | `GET /cards/{id}` | | **구현됨.** `Card` (아래) |
@@ -164,7 +164,10 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 **Card**
 ```jsonc
-{ "id", "kind": "TECH|QUALITATIVE", "status": "DRAFT|CONFIRMED", "title", "period": "자유 글" | null,
+{ "id", "kind": "TECH|QUALITATIVE", "status": "DRAFT|CONFIRMED", "title",
+  "areas": ["BACKEND|FRONTEND|MOBILE|DEVOPS|AI|DB|TEST|DOCS"],  // 최대 2개, 없으면 []
+  "techs": ["C|CPP|CSHARP|JAVA|KOTLIN|PYTHON|GO|RUST|SWIFT|DART|TYPESCRIPT|JAVASCRIPT|REACT|SQL|DOCKER|GITHUB_ACTIONS"],  // 최대 4개, 없으면 []
+  "period": "자유 글" | null,
   "repo": { "id", "owner", "name" } | null, "candidate": { "id", "type", "ref", "title" } | null,
   "version": { "versionNo", "source": "AI_DRAFT|USER_EDIT|INTERVIEW|MASK|RESTORE", "createdAt", "situation", "task", "action", "result" },  // 칸은 null 가능 = 비운 칸
   "evidence": [{ "field": "S|T|A|R", "type": "COMMIT|USER_STATED|USER_SELECTED", "authoredBy": "AI|USER", "sha": "7자리" | null, "url": "링크" | null, "snippet": "글" | null, "turnNo": n | null }],

@@ -150,6 +150,19 @@ def test_keeps_summary_whose_sha_was_copied_with_a_typo() -> None:
     assert evidence[0].summary_source == "DIFF"
 
 
+@pytest.mark.parametrize("typo_first", [True, False])
+def test_exact_sha_summary_wins_over_typo_sha_written_for_same_commit(typo_first: bool) -> None:
+    real = "0409013fb1905a33719fd42efbe7b03f07c61c9b"
+    typo = ("틀린 번호의 요약", real + "9")
+    exact = ("정확한 번호의 요약", real)
+    items = (typo, exact) if typo_first else (exact, typo)
+    client = _FakeClient(_output(*((sha, summary, []) for summary, sha in items)))
+
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(real, "fix: 시험 메모리", [_file("build.gradle", "+x")])))
+
+    assert evidence[0].summary == "정확한 번호의 요약"
+
+
 def test_redacts_secrets_in_payload_and_output() -> None:
     client = _FakeClient(_output((SHA_A, f"토큰 {FAKE_TOKEN} 을 설정했다.", [f"키 {FAKE_TOKEN}"])))
     detail = _detail(_commit(SHA_A, f"chore: {FAKE_TOKEN}", [_file("conf.py", f'+TOKEN = "{FAKE_TOKEN}"')]))

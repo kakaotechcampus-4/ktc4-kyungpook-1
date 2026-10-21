@@ -330,8 +330,16 @@ class DiffAnalyzer:
     ) -> list[DiffEvidence]:
         """입력 커밋과 맞출 수 없는 SHA는 버리고, 쓸 수 없는 요약과 patch를 보지 못한 요약은 커밋 메시지로 대신한다."""
         known = [commit.sha for commit in commits]
+        exact = {sha.casefold(): sha for sha in known}
         summaries: dict[str, CommitSummary] = {}
+        # 같은 커밋을 두 번 적으면 글자까지 같은 번호의 요약이 이겨야 하므로 정확 일치를 먼저 붙인다.
         for item in output.commits:
+            matched = exact.get(item.sha.strip().casefold())
+            if matched is not None:
+                summaries.setdefault(matched, item)
+        for item in output.commits:
+            if item.sha.strip().casefold() in exact:
+                continue
             matched = match_commit_sha(item.sha, known, "diff 요약")
             if matched is not None:
                 summaries.setdefault(matched, item)

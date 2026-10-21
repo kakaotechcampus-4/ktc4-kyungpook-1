@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
 import { Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
@@ -19,10 +19,31 @@ export function MatchListPage() {
   useDocumentTitle("공고 매칭");
   const matches = useMatches();
   const [sp, setSp] = useSearchParams();
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const [query, setQuery] = useState(() => sp.get('q') ?? '');
+  // Router transitions must never be the source of the text currently being typed.
+  // POP/PUSH restore bookmarked searches; this page only writes REPLACE entries.
+  useLayoutEffect(() => {
+    if (navigationType !== 'REPLACE') setQuery(new URLSearchParams(location.search).get('q') ?? '');
+  }, [location.key, location.search, navigationType]);
+  useEffect(() => {
+    if ((sp.get('q') ?? '') === query) return;
+    const timer = window.setTimeout(() => {
+      setSp(current => {
+        const next = new URLSearchParams(current);
+        if (query) next.set('q', query); else next.delete('q');
+        return next;
+      }, { replace: true });
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [query, sp, setSp]);
+  const search = new URLSearchParams(sp);
+  if (query) search.set('q', query); else search.delete('q');
   const category = MatchCategory.safeParse(sp.get("category"));
   const exp = sp.get("experience");
   const filters: MatchFilters = {
-    q: sp.get("q") ?? "",
+    q: query,
     category: category.success ? category.data : "ALL",
     experience:
       exp === "ENTRY" || exp === "EXPERIENCED" || exp === "UNSPECIFIED"
@@ -44,6 +65,7 @@ export function MatchListPage() {
     setSp(
       (current) => {
         const next = new URLSearchParams(current);
+        if (query) next.set('q', query); else next.delete('q');
         if (value === "ALL" || !value) next.delete(key);
         else next.set(key, value);
         return next;
@@ -60,7 +82,7 @@ export function MatchListPage() {
       <div className="match-controls">
         <SearchField
           value={filters.q}
-          onChange={(q) => update("q", q)}
+          onChange={setQuery}
           placeholder="기업·직무 검색"
         />
         <Select
@@ -143,7 +165,7 @@ export function MatchListPage() {
                 }
               />
               {filtered && (
-                <Button variant="outline" onClick={() => setSp({})}>
+                <Button variant="outline" onClick={() => { setQuery(''); setSp({}); }}>
                   검색·필터 초기화
                 </Button>
               )}
@@ -154,7 +176,7 @@ export function MatchListPage() {
                 <Link
                   key={item.id}
                   className="match-card"
-                  to={`/match/${encodeURIComponent(item.id)}${sp.size ? `?${sp}` : ""}`}
+                  to={`/match/${encodeURIComponent(item.id)}${search.size ? `?${search}` : ""}`}
                 >
                   <div className="match-card__head">
                     <div>

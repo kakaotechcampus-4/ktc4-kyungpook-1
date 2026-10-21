@@ -10,6 +10,13 @@ import {
   experienceLabel,
 } from "./model";
 
+/** 비어 있을 때 쓰는 말 — 조사가 받침에 따라 달라서(필수 조건이 · 우대 조건이 · 담당 업무가) 조사까지 한 덩어리로 둔다. */
+const EMPTY_SECTION = {
+  REQUIRED: "필수 조건이",
+  PREFERRED: "우대 조건이",
+  RESPONSIBILITY: "담당 업무가",
+} as const;
+
 export function MatchDetailPage() {
   const { matchId = "" } = useParams();
   const [sp] = useSearchParams();
@@ -100,13 +107,7 @@ export function MatchDetailPage() {
                   </h2>
                   {conditions.length === 0 ? (
                     <p className="c-2">
-                      등록된{" "}
-                      {type === "REQUIRED"
-                        ? "필수 조건"
-                        : type === "PREFERRED"
-                          ? "우대 조건"
-                          : "담당 업무"}
-                      이 없어요.
+                      등록된 {EMPTY_SECTION[type]} 없어요.
                     </p>
                   ) : (
                     conditions.map((condition) => (

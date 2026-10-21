@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
 
@@ -37,4 +38,21 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
             ORDER BY p.id, c.seq
             """)
     List<MatchableCondition> findMatchableConditions(@Param("now") Instant now);
+
+    // 상세도 목록과 같은 공고 조건에 담당 업무 조건까지 한 쿼리로 읽어, 목록에 없는 공고는 한 줄도 나오지 않게 한다
+    @Query("""
+            SELECT new com.gitory.backend.matching.infra.PostingCondition(p, c)
+            FROM JobPosting p JOIN JobPostingCriterion c ON c.jobPostingId = p.id
+            WHERE p.publicId = :publicId
+              AND p.status = com.gitory.backend.matching.domain.JobPostingStatus.ACTIVE
+              AND p.contentStatus = com.gitory.backend.matching.domain.JobPostingContentStatus.READY
+              AND (p.expiresAt IS NULL OR p.expiresAt > :now)
+              AND p.indexedContentHash = p.contentHash
+              AND EXISTS (SELECT 1 FROM JobPostingCriterion g
+                          WHERE g.jobPostingId = p.id
+                            AND g.type IN (com.gitory.backend.matching.domain.CriterionType.REQUIRED,
+                                           com.gitory.backend.matching.domain.CriterionType.PREFERRED))
+            ORDER BY c.seq
+            """)
+    List<PostingCondition> findMatchableDetail(@Param("publicId") UUID publicId, @Param("now") Instant now);
 }

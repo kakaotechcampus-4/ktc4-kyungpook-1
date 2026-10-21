@@ -87,6 +87,28 @@ class JobPostingPersistenceTest {
 
     }
 
+    @ParameterizedTest
+    @EnumSource(value = JobPostingStatus.class, names = {"REMOVED", "EXPIRED"})
+    @DisplayName("활성을 벗어난 공고는 색인에 반영된 해시를 비운다")
+    void clearsIndexedHashWhenLeavingActive(JobPostingStatus status) {
+
+        JobPosting posting = persistPosting("acme", "1001");
+        jdbc.update("UPDATE job_posting SET indexed_content_hash = ? WHERE id = ?", "a".repeat(64), posting.getId());
+        em.clear();
+
+        JobPosting found = postings.findById(posting.getId()).orElseThrow();
+        if (status == JobPostingStatus.REMOVED) {
+            found.markRemoved();
+        } else {
+            found.expire();
+        }
+        em.flush();
+
+        assertThat(jdbc.queryForObject("SELECT indexed_content_hash FROM job_posting WHERE id = ?", String.class,
+                posting.getId())).isNull();
+
+    }
+
     @Test
     @DisplayName("같은 회사에 같은 원천 id 의 공고를 두 번 저장할 수 없고 다른 회사나 다른 id 는 저장된다")
     void rejectsDuplicateExternalIdInSameCompany() {

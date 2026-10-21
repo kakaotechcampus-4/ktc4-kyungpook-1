@@ -122,6 +122,8 @@ gitory:
     # AI 는 LLM 대기 120초에 시간 초과 뒤 한 번 더 시도해 최악 약 240초가 걸린다
     # 새벽 배치라 기다려도 되므로 그보다 길게 기다려, Spring 이 먼저 끊는 바람에 AI 가 계속 돌다 결과가 버려지는 일이 없게 한다
     posting-extract-read-timeout: ${AI_POSTING_EXTRACT_READ_TIMEOUT:300s}
+    # 매칭 목록은 프론트가 요청을 30초에 끊으므로 AI 검색은 그 전에 답을 받아야 한다
+    matching-search-read-timeout: 25s
   github:
     # E2E 시험에서 가짜 GitHub 서버로 바꿀 수 있게 둔 값이며 운영은 기본값을 쓴다
     api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}

@@ -205,7 +205,7 @@ BUILD SUCCESSFUL
 의존 방향은 `job → ingest·agent·recommend·card` 한 방향이다. 역방향은 경계 테스트가 막는다 —
 그게 뚫리면 분석 흐름을 바꿀 때마다 전 모듈이 흔들린다.
 읽기 전용 조회는 허용한다 — `card` 는 `ingest`·`recommend` 를 그 모듈 `domain` 의 조회 메서드로 읽기만 하고,
-다른 모듈의 표를 SQL 로 직접 읽지 않는다. Job 을 만드는 요청(후보로 카드 만들기·칸 다시 생성)은 `job.api` 에 둔다.
+다른 모듈의 표를 SQL 로 직접 읽지 않는다. `matching` 도 `card` 의 확정 문장 조회 서비스(`ConfirmedStatementReader`)로 읽기만 한다. Job 을 만드는 요청(후보로 카드 만들기·칸 다시 생성)은 `job.api` 에 둔다.
 
 ## 비동기 — 왜 Job 인가
 

@@ -1,6 +1,6 @@
 # BE–AI 연결 및 API 문서
 
-Spring이 FastAPI 내부 API(수집·경험 그룹화·diff 근거·STAR 초안·되묻기·공고 조건 뽑기)를 부르는 구조와, 실행 코드에서 BE·AI OpenAPI를 생성하는 방법을 정리한다. 현재 분석 Job은 `JobWorker`가 꺼내 수집 → 수집 결과 저장 → 경험 그룹화(`ANALYSIS_GROUPING_ENABLED=true`일 때) → 카드 후보 저장까지 실행한다. 카드 초안 Job은 같은 워커 자리를 쓰며, `CARD_AI_DRAFT_ENABLED=true`일 때 카드마다 diff 근거(`/internal/analysis/diff-evidence`) → STAR 초안(`/internal/analysis/star`) → 저장 순서로 칸을 채우고, 끄면 AI를 부르지 않고 끝낸다.
+Spring이 FastAPI 내부 API(수집·경험 그룹화·diff 근거·STAR 초안·되묻기·공고 조건 뽑기·매칭 검색)를 부르는 구조와, 실행 코드에서 BE·AI OpenAPI를 생성하는 방법을 정리한다. 현재 분석 Job은 `JobWorker`가 꺼내 수집 → 수집 결과 저장 → 경험 그룹화(`ANALYSIS_GROUPING_ENABLED=true`일 때) → 카드 후보 저장까지 실행한다. 카드 초안 Job은 같은 워커 자리를 쓰며, `CARD_AI_DRAFT_ENABLED=true`일 때 카드마다 diff 근거(`/internal/analysis/diff-evidence`) → STAR 초안(`/internal/analysis/star`) → 저장 순서로 칸을 채우고, 끄면 AI를 부르지 않고 끝낸다.
 
 ## 연결 구조
 
@@ -24,7 +24,7 @@ flowchart LR
 |---|---|
 | `AI_BASE_URL` | `http://localhost:8000`; Compose에서는 `http://ai:8000` |
 | `AI_CONNECT_TIMEOUT` | `3s`; 연결 제한 |
-| `AI_READ_TIMEOUT` | `180s`; 수집·경험 그룹화·되묻기·diff 근거·STAR 초안을 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
+| `AI_READ_TIMEOUT` | `180s`; 수집·경험 그룹화·되묻기·diff 근거·STAR 초안·공고 조건 뽑기·매칭 검색을 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
 | `AI_COLLECT_READ_TIMEOUT` | `600s`; GitHub 수집 응답 대기 제한. 멈춘 Job 판정(분석·카드 초안 Job 모두)은 마지막 진행 기록부터 이 값·`AI_GROUPS_READ_TIMEOUT`·`AI_DIFF_EVIDENCE_READ_TIMEOUT`·`AI_STAR_READ_TIMEOUT` 중 큰 값 + 5분 |
 | `AI_GROUPS_READ_TIMEOUT` | `600s`; 경험 그룹화(`/internal/analysis/groups`) 응답 대기 제한 |
 | `AI_DIFF_EVIDENCE_READ_TIMEOUT` | `300s`; 카드 초안의 diff 근거(`/internal/analysis/diff-evidence`) 응답 대기 제한 |
@@ -39,7 +39,7 @@ flowchart LR
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | BE GitHub OAuth App 설정 |
 | `TOKEN_ENC_KEY`, `TOKEN_ENC_SALT` | 기존 BE 토큰 암호화 설정; salt는 16진수 |
 
-헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. 되묻기는 프론트가 요청을 30초에 끊으므로 그보다 짧은 `gitory.ai.interview-read-timeout`(기본 20초)을 응답 대기 제한으로 사용한다. `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
+헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. 되묻기는 프론트가 요청을 30초에 끊으므로 그보다 짧은 `gitory.ai.interview-read-timeout`(기본 20초)을 응답 대기 제한으로 사용하고, 같은 이유로 매칭 검색(`/internal/matching/search`)은 `gitory.ai.matching-search-read-timeout`(기본 25초)을 사용한다. `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
 
 ## 로컬 실행
 
@@ -114,7 +114,7 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 | 파트 | 현재 상태 / 남은 작업 |
 |---|---|
 | BE Job 워커 | `JobWorker`가 2초마다 대기 Job을 꺼내 실행(동시 실행 `JOB_WORKER_CONCURRENCY`, 기본 3, 카드 초안 Job과 같은 자리 사용). 분석 Job은 수집·저장·경험 그룹화·후보 저장까지 연결 |
-| BE AI 연결 | 수집·경험 그룹화·되묻기·diff 근거·STAR 초안 어댑터는 실행 경로에 연결. diff 근거·STAR 초안은 카드 초안 Job이 `CARD_AI_DRAFT_ENABLED=true`일 때 부른다. 되묻기 답 평가(`/internal/interview-answer-evaluations`)도 연결돼 있고 `INTERVIEW_ANSWER_REVIEW_ENABLED=true`일 때 답을 저장한 뒤 부른다 |
+| BE AI 연결 | 수집·경험 그룹화·되묻기·diff 근거·STAR 초안·매칭 검색 어댑터는 실행 경로에 연결. diff 근거·STAR 초안은 카드 초안 Job이 `CARD_AI_DRAFT_ENABLED=true`일 때 부른다. 되묻기 답 평가(`/internal/interview-answer-evaluations`)도 연결돼 있고 `INTERVIEW_ANSWER_REVIEW_ENABLED=true`일 때 답을 저장한 뒤 부른다 |
 | BE API | 내 정보·분석 Job·카드·인터뷰 API를 BE Swagger로 문서화 |
 | AI API | 수집 2개, 분석 A 계약 3개, 인터뷰 B 2개와 health를 문서화 |
 | AI A | 경험 그룹화(#109)와 diff 근거·STAR 초안 구현. diff·STAR 연동은 [연동 문서](AI_DIFF_STAR_INTEGRATION.md) 참고 |

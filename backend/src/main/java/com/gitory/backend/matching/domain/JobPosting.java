@@ -104,6 +104,21 @@ public class JobPosting {
 
     }
 
+    /** 조건이 바뀐 결과를 반영하며, 본문 글은 받지 않고 AI 가 준 해시만 남긴다 */
+    public void extracted(JobCategory category, ExperienceLevel experienceLevel, Integer experienceMinYears,
+                          String experienceQuote, JobPostingContentStatus contentStatus, String contentHash,
+                          Instant now) {
+
+        this.category = category;
+        this.experienceLevel = experienceLevel;
+        this.experienceMinYears = experienceMinYears;
+        this.experienceQuote = experienceQuote;
+        this.contentStatus = contentStatus;
+        this.contentHash = contentHash;
+        this.extractedAt = now;
+
+    }
+
     public void markRemoved() {
 
         this.status = JobPostingStatus.REMOVED;

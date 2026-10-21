@@ -41,7 +41,7 @@ class DevelopmentPostingFilterTest {
     })
     void keepsKoreanDevelopmentPostingsOnly(String location, String title, boolean expected) {
 
-        FetchedPosting posting = new FetchedPosting("1", title, "https://jobs.example.com/1", location, null, null);
+        FetchedPosting posting = new FetchedPosting("1", title, "https://jobs.example.com/1", location, null, null, "");
 
         assertThat(DevelopmentPostingFilter.accepts(posting)).isEqualTo(expected);
 
@@ -71,7 +71,7 @@ class DevelopmentPostingFilterTest {
     })
     void dropsSeniorTitledPostings(String title, boolean expected) {
 
-        FetchedPosting posting = new FetchedPosting("1", title, "https://jobs.example.com/1", "Seoul, South Korea", null, null);
+        FetchedPosting posting = new FetchedPosting("1", title, "https://jobs.example.com/1", "Seoul, South Korea", null, null, "");
 
         assertThat(DevelopmentPostingFilter.accepts(posting)).isEqualTo(expected);
 

@@ -49,6 +49,9 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-restclient'
 
+    // 채용 공고 본문의 HTML 을 글로 바꾼다
+    implementation 'org.jsoup:jsoup:1.22.2'
+
     // 운영
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 

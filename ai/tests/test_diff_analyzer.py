@@ -530,3 +530,43 @@ def test_keeps_whole_call_input_under_char_cap() -> None:
     payload = client.calls[0]["payload"]
     assert len(json.dumps(payload, ensure_ascii=False)) <= 6_000
     assert all(f["truncated"] for c in payload["commits"] for f in c["files"])
+
+
+def test_evidence_lists_changed_paths_in_order_without_generated_files() -> None:
+    client = _FakeClient(_output((SHA_A, "요약", [])))
+    detail = _detail(_commit(SHA_A, "m", [
+        _file("src/app.ts", "+code"),
+        _file("frontend/package-lock.json", "+lock", 900, 300),
+        _file("README.md", None),
+        _file("assets/logo.PNG", "binary"),
+    ]))
+
+    evidence = _run(DiffAnalyzer(client), detail)
+
+    assert evidence[0].changed_paths == ["src/app.ts", "README.md"]
+
+
+def test_changed_paths_are_capped_at_50_per_commit_and_clipped_to_150_chars() -> None:
+    client = _FakeClient(_output((SHA_A, "요약", [])))
+    long_path = "src/" + "d" * 200 + "/Main.java"
+    locks = [_file(f"lock{index}/package-lock.json", "+lock", 900, 300) for index in range(3)]
+    files = locks + [_file(long_path, "+code")] + [_file(f"src/f{index}.py", None) for index in range(59)]
+
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "m", files)))
+
+    paths = evidence[0].changed_paths
+    # 앞쪽 생성 파일은 상한을 쓰지 않고, 모델에는 파일을 20개까지만 보내지만 경로는 50개까지 담는다.
+    assert evidence[0].summary_source == "DIFF"
+    assert len(paths) == 50
+    assert len(paths[0]) == 150 and paths[0].endswith("…")
+    assert paths[1] == "src/f0.py"
+
+
+def test_commit_message_fallback_evidence_also_carries_changed_paths() -> None:
+    client = _FakeClient(_output((SHA_A, "patch 없이 쓴 요약", [])))
+    detail = _detail(_commit(SHA_A, "chore: 설정 변경", [_file(".env", "+MODE=dev"), _file("Dockerfile", None)]))
+
+    evidence = _run(DiffAnalyzer(client), detail)
+
+    assert evidence[0].summary_source == "COMMIT_MESSAGE"
+    assert evidence[0].changed_paths == [".env", "Dockerfile"]

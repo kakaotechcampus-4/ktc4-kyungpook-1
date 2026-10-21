@@ -40,6 +40,13 @@ EmptyReasonCode = Literal["NO_EVIDENCE", "OVERCLAIM", "UNSOURCED_NUMBER", "TIMEO
 #: diff 근거에서 요청한 커밋 일부가 빠진 이유.
 DiffEvidencePartialReason = Literal["CAP_EXCEEDED", "GITHUB_RATE_LIMITED", "COMMIT_UNAVAILABLE"]
 
+#: 카드 목록에 보이는 분야·기술 태그로, 목록 밖의 값은 보내지 않는다.
+StarArea = Literal["BACKEND", "FRONTEND", "MOBILE", "DEVOPS", "AI", "DB", "TEST", "DOCS"]
+StarTech = Literal[
+    "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART",
+    "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS",
+]
+
 #: card_statement.confidence 및 DB CHECK 제약과 같은 세 값.
 StatementConfidence = Literal["HIGH", "MEDIUM", "LOW"]
 

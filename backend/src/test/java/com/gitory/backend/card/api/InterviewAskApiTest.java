@@ -781,7 +781,8 @@ class InterviewAskApiTest {
     private List<Map<String, Object>> cardState(Long cardId) {
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        rows.addAll(jdbc.queryForList("SELECT * FROM card WHERE id = ?", cardId));
+        // 배열 칸(areas·techs)은 JDBC 배열 객체로 읽혀 값이 같아도 같다고 비교되지 않으므로, 카드 행은 JSON 글로 읽는다
+        rows.addAll(jdbc.queryForList("SELECT to_jsonb(card)::text AS card FROM card WHERE id = ?", cardId));
         rows.addAll(jdbc.queryForList("SELECT * FROM card_version WHERE card_id = ? ORDER BY version_no", cardId));
         rows.addAll(jdbc.queryForList("SELECT * FROM card_statement WHERE card_id = ? ORDER BY id", cardId));
 

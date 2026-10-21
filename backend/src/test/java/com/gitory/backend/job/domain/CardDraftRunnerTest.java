@@ -259,7 +259,8 @@ class CardDraftRunnerTest {
         cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
         cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
         DiffEvidence evidence = new DiffEvidence(SHA_A, "feat: 세션 DB 저장", LOGIN, "+10/-0", "세션을 옮겼다",
-                DiffEvidenceSource.COMMIT_MESSAGE, List.of("JDBC"), "https://github.com/grow22/gitory/commit/a");
+                DiffEvidenceSource.COMMIT_MESSAGE, List.of("JDBC"), "https://github.com/grow22/gitory/commit/a",
+                List.of("src/main/java/SessionConfig.java"));
         given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(evidence), false, null, List.of()));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
         given(star.draft(any())).willAnswer(invocation -> {
@@ -272,7 +273,7 @@ class CardDraftRunnerTest {
         assertThat(sent.get()).isEqualTo(new StarDraftRequest(cardFixtures.publicIdOf(candidateId).toString(), LOGIN,
                 "후보 카드", StarSourceType.PR, "#17", List.of(new StarEvidence(SHA_A, "feat: 세션 DB 저장", LOGIN,
                 "+10/-0", "세션을 옮겼다", StarEvidenceSource.COMMIT_MESSAGE, List.of("JDBC"),
-                "https://github.com/grow22/gitory/commit/a")), null));
+                "https://github.com/grow22/gitory/commit/a", List.of("src/main/java/SessionConfig.java"))), null));
 
     }
 
@@ -622,6 +623,103 @@ class CardDraftRunnerTest {
 
     }
 
+    @Test
+    @DisplayName("AI 가 보낸 분야·기술 태그를 받은 순서대로 카드에 저장한다")
+    void savesTagsFromDraft() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("DB", "BACKEND"), List.of("SQL", "JAVA")));
+
+        runNext();
+
+        assertThat(areasOf(cardId)).containsExactly("DB", "BACKEND");
+        assertThat(techsOf(cardId)).containsExactly("SQL", "JAVA");
+
+    }
+
+    @Test
+    @DisplayName("목록 밖의 태그 값은 버리고 나머지만 저장하며, 버린 값을 WARN 로그 한 줄로 남긴다")
+    void dropsUnknownTags(CapturedOutput output) {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("backend", "BACKEND"), List.of("SPRING", "JAVA")));
+
+        runNext();
+
+        assertThat(areasOf(cardId)).containsExactly("BACKEND");
+        assertThat(techsOf(cardId)).containsExactly("JAVA");
+        assertThat(output.getAll()).contains("CardArea 목록 밖의 값 1개를 버린다: [backend]")
+                .contains("CardTech 목록 밖의 값 1개를 버린다: [SPRING]");
+        assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
+
+    }
+
+    @Test
+    @DisplayName("같은 태그가 두 번 오면 처음 나온 자리에 한 번만 저장한다")
+    void savesRepeatedTagOnce() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "BACKEND"),
+                List.of("JAVA", "SQL", "JAVA")));
+
+        runNext();
+
+        assertThat(areasOf(cardId)).containsExactly("BACKEND");
+        assertThat(techsOf(cardId)).containsExactly("JAVA", "SQL");
+
+    }
+
+    @Test
+    @DisplayName("분야가 2개, 기술이 4개를 넘으면 앞에서부터 그 개수만 남긴다")
+    void keepsTagsUpToLimit() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "DB", "DEVOPS"),
+                List.of("JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS", "PYTHON")));
+
+        runNext();
+
+        assertThat(areasOf(cardId)).containsExactly("BACKEND", "DB");
+        assertThat(techsOf(cardId)).containsExactly("JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS");
+
+    }
+
+    @Test
+    @DisplayName("AI 응답에 태그가 없으면 분야·기술을 빈 배열로 저장한다")
+    void savesEmptyTagsWhenDraftHasNone() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allFilled(SHA_A));
+
+        runNext();
+
+        assertThat(areasOf(cardId)).isEmpty();
+        assertThat(techsOf(cardId)).isEmpty();
+        assertThat(firstVersionSourceOf(cardId)).isEqualTo("AI_DRAFT");
+
+    }
+
+    @Test
+    @DisplayName("diff 근거가 없어 STAR 를 부르지 않은 카드는 태그가 빈 배열이다")
+    void leavesTagsEmptyWithoutEvidence() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willReturn(
+                new DiffEvidenceResult(List.of(), true, DiffEvidencePartialReason.COMMIT_UNAVAILABLE, List.of(SHA_A)));
+
+        runNext();
+
+        verifyNoInteractions(star);
+        assertThat(areasOf(cardId)).isEmpty();
+        assertThat(techsOf(cardId)).isEmpty();
+
+    }
+
     private void runNext() {
 
         runner.claimNext().ifPresent(runner::run);
@@ -697,7 +795,7 @@ class CardDraftRunnerTest {
         List<DiffEvidence> evidence = new ArrayList<>();
         for (String sha : shas) {
             evidence.add(new DiffEvidence(sha, "feat: " + sha.substring(0, 7), LOGIN, "+10/-0", "요약",
-                    DiffEvidenceSource.DIFF, List.of(), null));
+                    DiffEvidenceSource.DIFF, List.of(), null, List.of()));
         }
 
         return new DiffEvidenceResult(evidence, false, null, List.of());
@@ -726,11 +824,41 @@ class CardDraftRunnerTest {
 
     private static StarDraft draftOf(Map<StarSlot, StarSlotDraft> slots) {
 
+        return draftOf(slots, List.of(), List.of());
+
+    }
+
+    private static StarDraft draftOf(Map<StarSlot, StarSlotDraft> slots, List<String> areas, List<String> techs) {
+
         List<StarSlot> missing = Arrays.stream(StarSlot.values())
                 .filter(slot -> slots.get(slot).status() == StarSlotStatus.EMPTY)
                 .toList();
 
-        return new StarDraft("후보 카드", slots, missing, null, List.of());
+        return new StarDraft("후보 카드", slots, missing, null, List.of(), areas, techs);
+
+    }
+
+    private static StarDraft taggedDraft(String sha, List<String> areas, List<String> techs) {
+
+        return draftOf(Map.of(
+                StarSlot.S, filled(sha, "상황", StarConfidence.HIGH),
+                StarSlot.T, filled(sha, "과제", StarConfidence.HIGH),
+                StarSlot.A, filled(sha, "행동", StarConfidence.HIGH),
+                StarSlot.R, filled(sha, "결과", StarConfidence.HIGH)), areas, techs);
+
+    }
+
+    private List<String> areasOf(Long cardId) {
+
+        return jdbc.queryForList("SELECT t.tag FROM card, unnest(card.areas) WITH ORDINALITY AS t(tag, n) WHERE card.id = ? ORDER BY t.n",
+                String.class, cardId);
+
+    }
+
+    private List<String> techsOf(Long cardId) {
+
+        return jdbc.queryForList("SELECT t.tag FROM card, unnest(card.techs) WITH ORDINALITY AS t(tag, n) WHERE card.id = ? ORDER BY t.n",
+                String.class, cardId);
 
     }
 

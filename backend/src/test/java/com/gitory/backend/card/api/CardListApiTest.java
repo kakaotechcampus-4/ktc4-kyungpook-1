@@ -38,6 +38,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
@@ -220,6 +221,33 @@ class CardListApiTest {
     }
 
     @Test
+    @DisplayName("카드마다 저장된 분야·기술 태그를 순서대로 싣는다")
+    void sendsTags() throws Exception {
+
+        Long cardId = fixtures.insertCard(UUID.randomUUID(), myUserId);
+        jdbc.update("UPDATE card SET areas = '{DB,BACKEND}', techs = '{SQL,JAVA}' WHERE id = ?", cardId);
+
+        getCards()
+                .andExpect(jsonPath("$.data[0].areas").value(contains("DB", "BACKEND")))
+                .andExpect(jsonPath("$.data[0].techs").value(contains("SQL", "JAVA")));
+
+    }
+
+    @Test
+    @DisplayName("태그가 없는 카드는 분야·기술을 null 이 아닌 빈 배열로 싣는다")
+    void sendsEmptyTags() throws Exception {
+
+        fixtures.insertCard(UUID.randomUUID(), myUserId);
+
+        getCards()
+                .andExpect(jsonPath("$.data[0].areas").isArray())
+                .andExpect(jsonPath("$.data[0].areas").isEmpty())
+                .andExpect(jsonPath("$.data[0].techs").isArray())
+                .andExpect(jsonPath("$.data[0].techs").isEmpty());
+
+    }
+
+    @Test
     @DisplayName("직접 작성 카드는 출처 이름 MANUAL·후보 종류 null 이고, AI 카드는 둘 다 null 이다")
     void labelsOnlyManualCards() throws Exception {
 
@@ -306,7 +334,7 @@ class CardListApiTest {
     }
 
     @Test
-    @DisplayName("목록 한 줄은 계약의 열두 키에 현재 버전 번호·기간(없으면 null)·카드를 고친 시각을 ISO 문자열로 담는다")
+    @DisplayName("목록 한 줄은 계약의 열네 키에 현재 버전 번호·기간(없으면 null)·카드를 고친 시각을 ISO 문자열로 담는다")
     void carriesVersionPeriodAndUpdatedAt() throws Exception {
 
         UUID publicId = UUID.randomUUID();
@@ -320,8 +348,8 @@ class CardListApiTest {
         String body = bodyOf(getCards());
         Map<String, Object> card = JsonPath.read(body, "$.data[0]");
 
-        assertThat(card).containsOnlyKeys("id", "kind", "status", "title", "versionNo", "star", "updatedAt",
-                "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount");
+        assertThat(card).containsOnlyKeys("id", "kind", "status", "title", "areas", "techs", "versionNo", "star",
+                "updatedAt", "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount");
         assertThat(card).containsEntry("id", publicId.toString())
                 .containsEntry("kind", "QUALITATIVE")
                 .containsEntry("status", "DRAFT")

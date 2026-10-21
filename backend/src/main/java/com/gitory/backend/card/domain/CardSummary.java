@@ -4,6 +4,7 @@ import com.gitory.backend.recommend.domain.CandidateReference;
 
 import java.time.Instant;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -12,6 +13,8 @@ public record CardSummary(
         CardKind kind,
         CardStatus status,
         String title,
+        List<CardArea> areas,
+        List<CardTech> techs,
         short versionNo,
         Map<StarField, StarFieldState> star,
         Instant updatedAt,
@@ -33,6 +36,8 @@ public record CardSummary(
                 card.getCardType(),
                 card.getStatus(),
                 card.getTitle(),
+                card.areaTags(),
+                card.techTags(),
                 card.getCurrentVersion(),
                 star,
                 card.getUpdatedAt(),

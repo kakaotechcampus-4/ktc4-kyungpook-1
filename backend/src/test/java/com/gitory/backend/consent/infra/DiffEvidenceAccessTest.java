@@ -127,8 +127,19 @@ class DiffEvidenceAccessTest {
                 """));
         assertThat(result).isEqualTo(new DiffEvidenceResult(List.of(new DiffEvidence(SHA, "feat: 세션 DB 저장",
                 "grow22", "+71/-0", "세션을 JDBC 저장소로 옮겼다", DiffEvidenceSource.DIFF,
-                List.of("Spring Session JDBC"), "https://github.com/grow22/gitory/commit/abc1234567890")),
-                false, null, List.of()));
+                List.of("Spring Session JDBC"), "https://github.com/grow22/gitory/commit/abc1234567890",
+                List.of("src/main/java/SessionConfig.java"))), false, null, List.of()));
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("withoutChangedPaths")
+    @DisplayName("바뀐 파일 경로를 보내기 전의 AI 가 changed_paths 칸을 빼거나 null 로 보내면 빈 목록으로 받는다")
+    void readsMissingChangedPathsAsEmpty(ObjectNode data) {
+
+        responseBody = success(data);
+
+        assertThat(access.diffEvidence(USER_ID, target(17)).evidence().getFirst().changedPaths()).isEmpty();
 
     }
 
@@ -276,6 +287,8 @@ class DiffEvidenceAccessTest {
                 argumentSet("summary_source 가 모르는 값이다", evidence(item -> item.put("summary_source", "LLM"))),
                 argumentSet("technical_points 에 글이 아닌 값이 있다",
                         evidence(item -> item.putArray("technical_points").add(1))),
+                argumentSet("changed_paths 에 글이 아닌 값이 있다",
+                        evidence(item -> item.putArray("changed_paths").add(1))),
                 argumentSet("author_login 이 글이 아니다", evidence(item -> item.put("author_login", 42))),
                 argumentSet("partial 이 없다", result(data -> data.remove("partial"))),
                 argumentSet("partial 이 글이다", result(data -> data.put("partial", "false"))),
@@ -296,6 +309,14 @@ class DiffEvidenceAccessTest {
 
     }
 
+    static Stream<Arguments> withoutChangedPaths() {
+
+        return Stream.of(
+                argumentSet("changed_paths 가 없다", evidence(item -> item.remove("changed_paths"))),
+                argumentSet("changed_paths 가 null 이다", evidence(item -> item.putNull("changed_paths"))));
+
+    }
+
     private static ObjectNode resultData() {
 
         ObjectNode data = MAPPER.createObjectNode().put("user_repository_id", USER_REPOSITORY_ID)
@@ -304,6 +325,7 @@ class DiffEvidenceAccessTest {
                 .put("author_login", "grow22").put("churn", "+71/-0").put("summary", "세션을 JDBC 저장소로 옮겼다")
                 .put("summary_source", "DIFF").put("url", "https://github.com/grow22/gitory/commit/abc1234567890");
         item.putArray("technical_points").add("Spring Session JDBC");
+        item.putArray("changed_paths").add("src/main/java/SessionConfig.java");
         data.put("partial", false).putNull("partial_reason").putArray("missing_commit_shas");
         return data;
 

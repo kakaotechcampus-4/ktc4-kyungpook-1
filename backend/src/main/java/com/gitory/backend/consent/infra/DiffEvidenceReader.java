@@ -53,7 +53,7 @@ final class DiffEvidenceReader {
         return new DiffEvidence(sha, string(node, "message"), optionalString(node, "author_login"),
                 string(node, "churn"), string(node, "summary"),
                 DiffEvidenceSource.valueOf(string(node, "summary_source")), strings(node, "technical_points"),
-                optionalString(node, "url"));
+                optionalString(node, "url"), optionalStrings(node, "changed_paths"));
 
     }
 
@@ -97,6 +97,17 @@ final class DiffEvidenceReader {
             values.add(value.asString());
         }
         return List.copyOf(values);
+
+    }
+
+    // 바뀐 파일 경로를 보내기 전의 AI 와도 같이 돌도록 칸이 없으면 빈 목록이다
+    private static List<String> optionalStrings(JsonNode node, String field) {
+
+        JsonNode value = node.path(field);
+        if (value.isMissingNode() || value.isNull()) {
+            return List.of();
+        }
+        return strings(node, field);
 
     }
 

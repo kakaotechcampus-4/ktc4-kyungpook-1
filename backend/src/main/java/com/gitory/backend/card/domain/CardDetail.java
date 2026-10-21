@@ -14,6 +14,8 @@ public record CardDetail(
         CardKind kind,
         CardStatus status,
         String title,
+        List<CardArea> areas,
+        List<CardTech> techs,
         String period,
         RepositoryReference repository,
         VersionSource source,

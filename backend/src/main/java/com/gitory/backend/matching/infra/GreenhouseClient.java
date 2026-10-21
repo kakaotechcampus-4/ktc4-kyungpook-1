@@ -20,7 +20,7 @@ import java.util.Locale;
 
 /**
  * Greenhouse 공개 채용 API 에서 회사 한 곳의 공고 목록을 받아 온다
- * 본문(content)은 조건을 뽑는 쪽이 필요할 때 따로 받으므로 목록 요청에는 붙이지 않는다
+ * 조건을 뽑을 본문(content)을 목록과 함께 받아 글로 바꿔 넘기며, 본문은 저장하지 않고 실행 안에서만 쓴다
  */
 @Component
 @RequiredArgsConstructor
@@ -37,7 +37,7 @@ public class GreenhouseClient {
     /** 응답 모양이 다르면 PARSE 로 실패하고, 일부 공고만 건너뛰지 않는다 */
     public List<FetchedPosting> list(PoliteFetchSession session, CompanySource source) {
 
-        String body = session.get(URI.create(properties.greenhouseBaseUrl() + "/v1/boards/" + source.board() + "/jobs"));
+        String body = session.get(URI.create(properties.greenhouseBaseUrl() + "/v1/boards/" + source.board() + "/jobs?content=true"));
         JsonNode jobs = parse(body).path("jobs");
         if (!jobs.isArray()) {
             throw malformed(source, "jobs 배열이 없다");
@@ -71,7 +71,7 @@ public class GreenhouseClient {
         }
         return new FetchedPosting(externalId, title.length() > MAX_TITLE_LENGTH ? title.substring(0, MAX_TITLE_LENGTH) : title,
                 url, textOf(job.path("location").path("name")), instantOf(job.path("updated_at")),
-                instantOf(job.path("application_deadline")));
+                instantOf(job.path("application_deadline")), PostingTextConverter.fromHtml(textOf(job.path("content"))));
 
     }
 

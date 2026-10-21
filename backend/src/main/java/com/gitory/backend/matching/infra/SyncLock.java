@@ -11,7 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /**
- * 서버가 여러 대여도 공고 가져오기가 동시에 한 곳에서만 돌도록 DB 의 세션 잠금을 건다
+ * 서버가 여러 대여도 공고 가져오기와 색인 다시 보내기가 동시에 한 곳에서만 돌도록 DB 의 세션 잠금을 건다
  * 잠금은 연결에 묶이므로 잡은 연결로 풀어야 하고, 풀에 돌려주기 전에 풀지 못하면 그 연결이 잠금을 쥔 채 남는다
  */
 @Slf4j
@@ -37,7 +37,7 @@ public class SyncLock {
             }
             return true;
         } catch (SQLException e) {
-            throw new IllegalStateException("공고 가져오기 잠금을 다루지 못했다", e);
+            throw new IllegalStateException("공고 잠금을 다루지 못했다", e);
         }
 
     }
@@ -59,7 +59,7 @@ public class SyncLock {
             statement.setLong(1, KEY);
             statement.executeQuery().close();
         } catch (SQLException e) {
-            log.warn("공고 가져오기 잠금을 풀지 못했다", e);
+            log.warn("공고 잠금을 풀지 못했다", e);
         }
 
     }

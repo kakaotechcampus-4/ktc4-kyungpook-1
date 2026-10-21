@@ -119,6 +119,13 @@ public class JobPosting {
 
     }
 
+    /** 색인에 보낸 내용의 해시이며, content_hash 와 같아야 색인이 최신이다 */
+    public void indexed(String contentHash) {
+
+        this.indexedContentHash = contentHash;
+
+    }
+
     public void markRemoved() {
 
         this.status = JobPostingStatus.REMOVED;

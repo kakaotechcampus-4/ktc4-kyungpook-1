@@ -38,6 +38,7 @@ LLM 을 부르는 기능에서 "무엇을 어떤 장치가 막고, 그 장치를
 | 로그인 없이 쓰거나 다른 사이트가 대신 요청하는 것 | `/api/**` 는 로그인이 필요하고 상태를 바꾸는 요청은 CSRF 토큰이 필요하다(사용 지표 전송 한 곳만 제외) | `consent/api/SecurityConfig.java` | `CardConfirmApiTest`·`DraftSaveApiTest`·`InterviewAskApiTest` 등의 401·403 시험 |
 | AI 호출이 끝없이 기다리는 것 | AI 호출마다 연결·응답 대기 시간을 두고(기본값: 수집·경험 그룹화 600초, diff 근거 300초, STAR 180초, 되묻기 20초), 멈춘 Job 은 가장 긴 대기 시간에 5분을 더한 뒤 정리한다 | `common/infra/ai/AiClientProperties.java`, `AiHttpClient.java:post`, `job/domain/JobRunner.java:STUCK_MARGIN` | `AiClientPropertiesTest`, `AiHttpClientPostTest` ("응답 대기 시간은 설정 값이 아니라 호출마다 넘긴 값을 쓴다"), `JobRunnerTest` (멈춘 Job 정리), `JobWorkerTest` (서버를 다시 켤 때 남은 RUNNING Job 되돌리기) |
 | 한 사용자가 AI 호출을 한꺼번에 여러 개 돌리는 것 | 같은 사용자의 같은 종류 Job 이 실행 중이면 다음 Job 을 꺼내지 않고, 워커 동시 실행 수에 상한을 둔다 | `job/infra/AnalysisJobRepository.java:findNextQueuedForUpdate`, `job/domain/JobWorkerProperties.java` | `JobRunnerTest` ("같은 사용자의 Job 이 실행 중이면 …건너뛰고"), `JobWorkerTest` |
+| 한 사용자가 비용이 드는 LLM 호출을 반복하는 것 | 되묻기 질문·답 평가·카드 만들기 요청을 사용자별로 1분·하루 한도로 세고, 넘으면 429 `RATE_LIMITED` 와 `details.retryAfterSec` 로 답한다. 소유권 확인이 한도보다 먼저다. 운영은 `RATE_LIMIT_ENABLED` 스위치가 기본 꺼짐이다(429 안내 화면 배포 뒤 켬) | `common/infra/ratelimit/UserRateLimiter.java`·`RateLimitProperties.java` | `UserRateLimiterTest`, `RateLimitApiTest`, `RateLimitSwitchOffApiTest` |
 | 같은 카드에 되묻기 질문이 끝없이 쌓이는 것 | 카드마다 질문은 2번(`gitory.interview.max-turns`)까지이고, 상한에 닿으면 AI 를 부르기 전에 409 로 답한다. 초안 Job 이 도는 동안은 되묻기를 받지 않는다 | `card/domain/interview/InterviewAskService.java`, `card/domain/CardGenerationGuard.java`, `application.yml` | `InterviewAskApiTest` ("만든 질문이 상한(2)만큼이고 모두 답했으면 409 INTERVIEW_CAP 이고 AI 를 부르지 않으며 …") |
 | 새 AI 기능이 의도 없이 켜지는 것 | 경험 그룹화와 AI 카드 초안은 환경변수 스위치가 기본 꺼짐이다 | `deploy/compose.yaml` (`ANALYSIS_GROUPING_ENABLED`, `CARD_AI_DRAFT_ENABLED`), `job/domain/JobGroupingProperties.java`, `JobDraftProperties.java` | `JobGroupingPropertiesTest` |
 | 저장할 수 없거나 너무 긴 글 | 카드 칸은 1,000자까지이고 U+0000 이 든 글은 저장 전에 400 으로 거절한다 | `card/domain/DraftSaveService.java:SLOT_MAX_LENGTH`, `card/domain/CardText.java:requireNoNul` | `DraftSaveApiTest` (1,000자), `CardMetadataApiTest`·`CardMaskApiTest`·`InterviewAnswerApiTest` (U+0000) |
@@ -94,7 +95,6 @@ LLM 호출은 약 18번이며 비용은 수십 원 안팎으로 추정한다.
 
 | 장치 | 상태 |
 |---|---|
-| LLM 을 부르는 화면 요청의 사용자별 호출 제한 | 이슈 #323 (사용자 한 명이 비용이 드는 호출을 반복하는 것을 막는다) |
 | 지시 주입 실제 모델 평가 결과 | 3절의 표를 서버 실행 뒤 채운다 |
 | LLM 되묻기 질문과 LLM 답변 판정기 | 지금은 템플릿과 규칙 기반이다. 연결하면 3절의 두 줄을 다시 평가한다 |
 

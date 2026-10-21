@@ -11,9 +11,9 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import dataclass
-from typing import Any, Literal, Optional, Protocol
+from typing import Any, Literal, Optional, Protocol, get_args
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.analysis import (
     DiffEvidence,
@@ -22,7 +22,13 @@ from schemas.analysis import (
     StarAnalysisResponse,
     StarFieldResult,
 )
-from schemas.common import EmptyReasonCode, StarSlot, StatementConfidence
+from schemas.common import (
+    EmptyReasonCode,
+    StarArea,
+    StarSlot,
+    StarTech,
+    StatementConfidence,
+)
 from services.evidence_checks import match_commit_sha, unsupported_metrics
 from services.llm_executors import CARD_DRAFT_EXECUTOR, LLMCallSkipped, run_llm_call
 from services.llm_structured_client import (
@@ -76,6 +82,10 @@ PR 본문 활용:
 - 모든 칸은 '~다' 평서체(예: ~했다)로 끝낸다. PR 본문이 '~습니다' 체여도 '~습니다'를 쓰지 않는다.
 - S·R 에 문제·이전 상태를 쓸 때는 근거가 고치기 전 상태로 적은 문장에서만 가져온다. PR 본문 작업 요약처럼 고친 뒤의 동작을 적은 문장을 문제로 바꿔 쓰지 않는다. 원문에 없는 단계·상태(저장 등)를 더하지 않는다. 옮길 때 무엇이(주어) 어느 쪽으로(늘었다/줄었다, 크게/작게, 성공/실패) 바뀌었는지는 원문 낱말을 그대로 쓴다.
 
+분야·기술 태그 규칙:
+- areas(분야): evidence의 changed_paths(바뀐 파일 경로)와 요약으로 이 카드의 변경이 주로 어느 분야인지 고른다. 최대 2개이고 비중이 큰 것부터 적는다. AI는 모델·프롬프트·임베딩·LLM 호출을 다루는 변경일 때만 쓰고, AI 서비스의 일반 API 코드는 BACKEND다. DOCS는 코드 분야가 하나도 없을 때만 쓴다. TEST는 시험 코드·시험 설정·E2E가 이 변경의 중심일 때만 쓰고, 기능 코드와 함께 더한 시험으로는 쓰지 않는다.
+- techs(기술): changed_paths의 확장자·Dockerfile·.github/workflows 같은 경로와 요약에 직접 드러난 것만 최대 4개 고르고 중요한 것부터 적는다. 바뀐 파일이 의존성·빌드 설정 파일(build.gradle·package.json·requirements.txt·pyproject.toml·pom.xml 등)뿐이면 그 파일 이름으로 기술을 짐작하지 않는다. REACT는 .tsx·.jsx 화면 코드를 바꿨을 때 TYPESCRIPT나 JAVASCRIPT와 함께 쓸 수 있다. 근거로 판단할 수 없으면 빈 배열로 둔다.
+
 반드시 제공된 구조화 출력 스키마로만 응답하세요."""
 
 SLOTS: tuple[StarSlot, ...] = ("S", "T", "A", "R")
@@ -91,6 +101,12 @@ _TIMEOUT_REASON = "초안 생성 시간이 초과되어 비웠습니다."
 _CHANGE_KIND_NEW = "새로 더함"
 _CHANGE_KIND_EDIT = "기존 줄 바꿈"
 _CHURN = re.compile(r"\+(\d+)/-(\d+)")
+
+MAX_AREAS = 2
+MAX_TECHS = 4
+_AREAS = frozenset(get_args(StarArea))
+_TECHS = frozenset(get_args(StarTech))
+_NON_CODE_AREA = "DOCS"
 
 
 class StarField(BaseModel):
@@ -113,6 +129,8 @@ class StarDraftOutput(BaseModel):
     T: StarField
     A: StarField
     R: StarField
+    areas: list[StarArea] = Field(default_factory=list)
+    techs: list[StarTech] = Field(default_factory=list)
 
 
 class StarGenerationError(RuntimeError):
@@ -150,6 +168,9 @@ class StarGenerationLimits:
     max_answer_chars: int = 2_000
     max_evidence_message_chars: int = 500
     max_pull_request_body_chars: int = 1_000
+    #: 근거 하나에서 모델에 보내는 바뀐 파일 경로 수와 경로 길이(diff 요약의 상한과 같다).
+    max_changed_paths: int = 50
+    max_path_chars: int = 150
     # Elice 비스트리밍 게이트웨이의 응답 토큰 상한(#109 실측). 넘으면 요청이 거절된다.
     max_completion_tokens: int = 2_000
     max_attempts: int = 2
@@ -314,6 +335,8 @@ class StarGenerator:
             missing_fields=[slot for slot in SLOTS if star[slot].status == "EMPTY"],
             shared_with=_shared_with(request.target_login, used_evidence),
             removed_claims=removed_claims,
+            areas=_clean_tags(output.areas, _AREAS, MAX_AREAS, drop_docs=True),
+            techs=_clean_tags(output.techs, _TECHS, MAX_TECHS),
         )
 
     def _empty(self, reason: Optional[str], code: EmptyReasonCode) -> StarFieldResult:
@@ -334,6 +357,20 @@ def _unique_evidence(evidence: list[DiffEvidence]) -> list[DiffEvidence]:
             seen.add(key)
             unique.append(item)
     return unique
+
+
+def _clean_tags(values: list[str], allowed: frozenset[str], limit: int, drop_docs: bool = False) -> list[str]:
+    """모델이 고른 태그를 목록 안의 값만, 중복은 처음 것만, 개수 상한까지 앞에서부터 남긴다.
+
+    DOCS는 코드 분야가 하나도 없을 때만 허용하므로 코드 분야와 같이 오면 뺀다.
+    """
+    tags: list[str] = []
+    for value in values:
+        if value in allowed and value not in tags:
+            tags.append(value)
+    if drop_docs and any(tag != _NON_CODE_AREA for tag in tags):
+        tags = [tag for tag in tags if tag != _NON_CODE_AREA]
+    return tags[:limit]
 
 
 def _cited_evidence(shas: list[str], by_sha: dict[str, DiffEvidence]) -> list[DiffEvidence]:
@@ -395,6 +432,11 @@ def _evidence_input(item: DiffEvidence, limits: StarGenerationLimits) -> dict[st
         entry["change_kind"] = _CHANGE_KIND_NEW if int(match.group(2)) == 0 else _CHANGE_KIND_EDIT
     entry["summary"] = redact_secrets(item.summary)
     entry["technical_points"] = [redact_secrets(point) for point in item.technical_points]
+    if item.changed_paths:
+        entry["changed_paths"] = [
+            _clip(redact_secrets(path), limits.max_path_chars)
+            for path in item.changed_paths[: limits.max_changed_paths]
+        ]
     return entry
 
 

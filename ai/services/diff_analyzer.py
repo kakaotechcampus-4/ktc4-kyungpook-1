@@ -114,6 +114,8 @@ class DiffAnalysisLimits:
     #: 커밋 하나에서 목록으로 보내는 파일 수. 넘는 파일과 생성 파일은 개수만 보낸다.
     max_files_per_commit: int = 20
     max_path_chars: int = 150
+    #: 근거에 담아 STAR 태그 판단에 쓰는, 커밋당 바뀐 파일 경로 수.
+    max_changed_paths: int = 50
     # 한 호출의 커밋 수를 제한해 출력 한도를 넘지 않게 하고, 넘으면 절반씩 나눠 다시 부른다.
     max_commits_per_call: int = 8
     max_concurrent_calls: int = 3
@@ -365,6 +367,7 @@ class DiffAnalyzer:
                     summary=summary,
                     summary_source="DIFF",
                     technical_points=points,
+                    changed_paths=_changed_paths(commit, self._limits),
                     url=commit.html_url,
                 )
             )
@@ -382,6 +385,7 @@ class DiffAnalyzer:
             summary=_clip(_headline(sent["message"]), self._limits.max_summary_chars),
             summary_source="COMMIT_MESSAGE",
             technical_points=points or [],
+            changed_paths=_changed_paths(commit, self._limits),
             url=commit.html_url,
         )
 
@@ -406,6 +410,16 @@ def _unique_commits(commits: list[CandidateCommitDetail]) -> list[CandidateCommi
             seen.add(key)
             unique.append(commit)
     return unique
+
+
+def _changed_paths(commit: CandidateCommitDetail, limits: DiffAnalysisLimits) -> list[str]:
+    """GitHub 파일 목록에서 모델을 거치지 않고 뽑은 경로로, 요약에서도 빼는 생성 파일은 제외한다."""
+    paths = [
+        _clip(file.path, limits.max_path_chars)
+        for file in commit.files
+        if not GENERATED_FILE_PATTERN.search(file.path)
+    ]
+    return paths[: limits.max_changed_paths]
 
 
 def _has_patch(sent: dict[str, Any]) -> bool:

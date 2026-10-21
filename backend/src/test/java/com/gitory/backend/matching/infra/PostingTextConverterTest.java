@@ -13,7 +13,7 @@ class PostingTextConverterTest {
 
         String escaped = "&lt;div&gt;&lt;strong&gt;Java&lt;/strong&gt; 개발 경험&lt;/div&gt;";
 
-        assertThat(PostingTextConverter.fromHtml(escaped)).isEqualTo("Java 개발 경험");
+        assertThat(PostingTextConverter.fromEscapedHtml(escaped)).isEqualTo("Java 개발 경험");
 
     }
 
@@ -24,7 +24,7 @@ class PostingTextConverterTest {
         String escaped = "&lt;h3&gt;자격 요건&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;Java&lt;/li&gt;&lt;li&gt;Spring&lt;/li&gt;&lt;/ul&gt;"
                 + "&lt;p&gt;우대&lt;br&gt;AWS&lt;/p&gt;&lt;p&gt;&lt;/p&gt;";
 
-        assertThat(PostingTextConverter.fromHtml(escaped)).isEqualTo("자격 요건\nJava\nSpring\n우대\nAWS");
+        assertThat(PostingTextConverter.fromEscapedHtml(escaped)).isEqualTo("자격 요건\nJava\nSpring\n우대\nAWS");
 
     }
 
@@ -34,7 +34,7 @@ class PostingTextConverterTest {
 
         String escaped = "&lt;p&gt;Java &amp;amp; Spring&amp;nbsp;&amp;nbsp;경험&lt;/p&gt;";
 
-        assertThat(PostingTextConverter.fromHtml(escaped)).isEqualTo("Java & Spring 경험");
+        assertThat(PostingTextConverter.fromEscapedHtml(escaped)).isEqualTo("Java & Spring 경험");
 
     }
 
@@ -44,7 +44,7 @@ class PostingTextConverterTest {
 
         String escaped = "&lt;style&gt;p { color: red }&lt;/style&gt;&lt;p&gt;본문&lt;/p&gt;&lt;script&gt;alert(1)&lt;/script&gt;";
 
-        assertThat(PostingTextConverter.fromHtml(escaped)).isEqualTo("본문");
+        assertThat(PostingTextConverter.fromEscapedHtml(escaped)).isEqualTo("본문");
 
     }
 
@@ -52,8 +52,19 @@ class PostingTextConverterTest {
     @DisplayName("본문이 없거나 비어 있으면 빈 글을 돌려준다")
     void returnsEmptyForMissingContent() {
 
-        assertThat(PostingTextConverter.fromHtml(null)).isEmpty();
-        assertThat(PostingTextConverter.fromHtml("  ")).isEmpty();
+        assertThat(PostingTextConverter.fromEscapedHtml(null)).isEmpty();
+        assertThat(PostingTextConverter.fromEscapedHtml("  ")).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("한 번 감싸지 않은 HTML 은 엔티티로 적힌 꺾쇠 글을 태그로 읽지 않고 글로 남긴다")
+    void keepsEntityEncodedAngleTextInPlainHtml() {
+
+        String html = "<ul><li>웹 취약점(XSS, &lt;script&gt; 삽입) 진단 경험</li><li>Java 5년 이상</li></ul><p>&lt;Requirements&gt;</p>";
+
+        assertThat(PostingTextConverter.fromHtml(html))
+                .isEqualTo("웹 취약점(XSS, <script> 삽입) 진단 경험\nJava 5년 이상\n<Requirements>");
 
     }
 }

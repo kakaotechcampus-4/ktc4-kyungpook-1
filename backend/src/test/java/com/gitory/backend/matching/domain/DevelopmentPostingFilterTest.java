@@ -28,6 +28,14 @@ class DevelopmentPostingFilterTest {
             "Seoul | Platform S/W Engineer (5년 이상) | true",
             "Seoul, South Korea | Production Engineer, LLM Serving | true",
             "Menlo Park, California, United States; Seoul, Korea | Software Engineer, Runtime | true",
+            "대한민국 | 백엔드 엔지니어 | true",
+            "대한민국 | 클라우드 엔지니어 | true",
+            "서울특별시 강남구 대치동 | 데이터 엔지니어 - 데이터 플랫폼 | true",
+            "경기도 성남시 분당구 판교역로 166 | 프로덕트 엔지니어 - 사내 생산성 플랫폼 | true",
+            "대구광역시 수성구 알파시티1로 160 | 프론트엔드 개발자 | true",
+            "대한민국 | 프론트엔드 엔지니어 | true",
+            "대한민국 | 서버 엔지니어 | true",
+            "대한민국 | 데이터엔지니어 | true",
             "Seoul, South Korea | Hardware - Design Verification Engineer | false",
             "Seoul, South Korea | Senior Manager, Treasury | false",
             "Seoul, Korea | Marketing Manager - Advertiser & Agency | false",
@@ -36,6 +44,8 @@ class DevelopmentPostingFilterTest {
             "Seoul, South Korea | Research Scientist - Foundation Models | false",
             "Seoul, South Korea | 에이크미 이츠 사업개발 및 제휴 팀장 | false",
             "Seoul, South Korea | 설비 신뢰성 엔지니어 리드 | false",
+            "일본 도쿄도 | 서버 개발자 | false",
+            "대한민국 | 영업 담당자 | false",
             "Santa Clara, California | Senior Software Engineer, Runtime | false",
             "Menlo Park, California, United States | Software Engineer | false"
     })

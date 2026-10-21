@@ -71,7 +71,7 @@ public class GreenhouseClient {
         }
         return new FetchedPosting(externalId, title.length() > MAX_TITLE_LENGTH ? title.substring(0, MAX_TITLE_LENGTH) : title,
                 url, textOf(job.path("location").path("name")), instantOf(job.path("updated_at")),
-                instantOf(job.path("application_deadline")), PostingTextConverter.fromHtml(textOf(job.path("content"))));
+                instantOf(job.path("application_deadline")), PostingTextConverter.fromEscapedHtml(textOf(job.path("content"))));
 
     }
 

@@ -160,33 +160,17 @@ class JobPostingIndexServiceTest {
     }
 
     @Test
-    @DisplayName("색인에서 빠지는 공고의 색인 해시는 비우고, 실패한 묶음의 활성 공고는 옛 해시를 그대로 둔다")
-    void clearsHashOfPostingsLeavingIndexButKeepsActiveOnes() {
+    @DisplayName("실패한 묶음의 활성 공고는 옛 색인 해시를 그대로 둔다")
+    void keepsOldHashOfActivePostingInFailedBatch() {
 
         long active = seed("ready-1", JobPostingContentStatus.READY, JobPostingStatus.ACTIVE);
         seedCriterion(active, CriterionType.REQUIRED, 1, "Java 경험");
-        long removed = seed("removed", JobPostingContentStatus.READY, JobPostingStatus.REMOVED);
-        long pending = seed("pending", JobPostingContentStatus.PENDING, JobPostingStatus.ACTIVE);
         jdbc.update("update job_posting set indexed_content_hash = content_hash");
         when(port.index(any())).thenThrow(unavailable("AI_UNAVAILABLE"));
 
         service().indexAll();
 
-        assertThat(indexedHashes(List.of(removed, pending))).containsOnlyNulls();
         assertThat(indexedHashes(List.of(active))).allSatisfy(hash -> assertThat(hash).isNotNull());
-
-    }
-
-    @Test
-    @DisplayName("남길 공고가 하나도 없어도 색인에서 빠진 공고의 색인 해시는 비운다")
-    void clearsHashEvenWhenNothingToKeep() {
-
-        long expired = seed("expired", JobPostingContentStatus.READY, JobPostingStatus.EXPIRED);
-        jdbc.update("update job_posting set indexed_content_hash = content_hash");
-
-        service().indexAll();
-
-        assertThat(indexedHashes(List.of(expired))).containsOnlyNulls();
 
     }
 

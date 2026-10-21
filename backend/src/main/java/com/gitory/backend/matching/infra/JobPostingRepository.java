@@ -4,7 +4,6 @@ import com.gitory.backend.matching.domain.JobPosting;
 import com.gitory.backend.matching.domain.JobPostingContentStatus;
 import com.gitory.backend.matching.domain.JobPostingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,15 +25,6 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
     List<JobPosting> findByStatusAndCompanyKeyNotIn(JobPostingStatus status, Collection<String> companyKeys);
 
     List<JobPosting> findByStatusAndExpiresAtBefore(JobPostingStatus status, Instant now);
-
-    @Modifying
-    @Query("""
-            update JobPosting p set p.indexedContentHash = null
-            where p.indexedContentHash is not null
-              and (p.status <> :status or p.contentStatus <> :contentStatus)
-            """)
-    int clearIndexedContentHashExcept(@Param("status") JobPostingStatus status,
-                                      @Param("contentStatus") JobPostingContentStatus contentStatus);
 
     // 공고와 등급 조건을 한 쿼리로 읽어야 새벽 조건 뽑기가 커밋되는 사이에 둘이 어긋나지 않는다
     // 색인에 지금 글이 반영된 활성 공고 중 마감 전인 것만, 등급을 셀 필수·우대 조건을 한 줄씩 읽는다

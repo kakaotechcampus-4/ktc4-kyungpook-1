@@ -40,9 +40,10 @@ public class JobPostingIndexService {
     /** 잠금은 부르는 쪽이 쥐고 있어야 한다 */
     public void indexAll() {
 
-        clearHashOfPostingsLeavingIndex();
         List<JobPosting> targets = postings.findByStatusAndContentStatusOrderById(JobPostingStatus.ACTIVE,
                 JobPostingContentStatus.READY);
+        // AI 정리 API 는 남길 목록이 비면 색인이 통째로 지워지지 않게 거절해서, 활성 공고가 0개인 날은 부르지 않는다
+        // 그날 옛 벡터는 남지만 목록 API 가 DB 의 색인 해시로 거르므로 화면에는 나오지 않는다
         if (targets.isEmpty()) {
             log.info("공고 색인: 활성 공고가 없어 보내지 않았고 정리도 부르지 않았다");
             return;
@@ -58,14 +59,6 @@ public class JobPostingIndexService {
         int removed = prune(targets);
         log.info("공고 색인: 보냄 {}건(조건 {}) · 뺌 {}건 · 실패 {}묶음", sent.postings, sent.criteria, removed,
                 sent.failedBatches);
-
-    }
-
-    // 색인에서 빠지는 공고가 나중에 다시 활성이 될 때 지워진 벡터인데도 해시가 맞아 목록에 나오지 않게 미리 비운다
-    private void clearHashOfPostingsLeavingIndex() {
-
-        transaction.executeWithoutResult(status ->
-                postings.clearIndexedContentHashExcept(JobPostingStatus.ACTIVE, JobPostingContentStatus.READY));
 
     }
 

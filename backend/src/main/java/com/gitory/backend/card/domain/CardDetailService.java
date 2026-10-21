@@ -60,9 +60,10 @@ public class CardDetailService {
                 .orElse(null);
 
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
-                card.getPeriod(), repository, current.getSource(), current.getUpdatedAt(), slots,
-                card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(), candidate, generationOf(card),
-                answeredCount(asked), turnNosOf(slots, asked), notesOf(card), commitsOf(slots));
+                card.areaTags(), card.techTags(), card.getPeriod(), repository, current.getSource(),
+                current.getUpdatedAt(), slots, card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(),
+                candidate, generationOf(card), answeredCount(asked), turnNosOf(slots, asked), notesOf(card),
+                commitsOf(slots));
 
     }
 

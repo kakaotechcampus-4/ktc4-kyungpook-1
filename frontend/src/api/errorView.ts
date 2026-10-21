@@ -2,7 +2,7 @@ import { ApiError, AuthError, ContractError } from './client';
 
 export type ErrorView = { title: string; message: string; canRetry: boolean };
 
-export const isRateLimitError = (error: unknown): error is ApiError => error instanceof ApiError && error.code === 'RATE_LIMITED';
+export const isRateLimitError = (error: unknown): error is ApiError & { code: 'RATE_LIMITED' } => error instanceof ApiError && error.code === 'RATE_LIMITED';
 /** #335: minute quota waits are <=60s; longer waits are the Seoul daily quota. */
 export const isDailyRateLimit = (error: unknown): boolean => isRateLimitError(error)
   && typeof error.details?.retryAfterSec === 'number'

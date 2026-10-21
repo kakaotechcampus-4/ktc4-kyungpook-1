@@ -145,7 +145,7 @@ gitory:
       # 켜기 전에 회사별 이용 조건을 확인하며 서버가 여러 대여도 DB 잠금으로 한 곳에서만 돈다
       enabled: ${MATCHING_SYNC_ENABLED:false}
     sources:
-      - { key: coupang, name: 쿠팡, type: GREENHOUSE, board: coupang }
+      # 쿠팡은 회사 채용 사이트가 공고 경로에서 채용 집계 봇을 막고 있어 그 뜻을 따라 넣지 않는다
       - { key: daangn, name: 당근, type: GREENHOUSE, board: daangn }
       - { key: krafton, name: 크래프톤, type: GREENHOUSE, board: krafton }
       - { key: furiosaai, name: 퓨리오사AI, type: GREENHOUSE, board: furiosaai }

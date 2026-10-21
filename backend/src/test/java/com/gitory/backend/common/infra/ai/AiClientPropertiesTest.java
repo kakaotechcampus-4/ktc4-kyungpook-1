@@ -122,6 +122,21 @@ class AiClientPropertiesTest {
 
     }
 
+    @Test
+    @DisplayName("공고 색인 대기 시간은 기본 120초이고 설정 파일도 같으며 0 이하이면 거절하고 AI_MATCHING_INDEX_READ_TIMEOUT 으로 바꾼다")
+    void matchingIndexTimeout() {
+
+        assertThat(AiTestProperties.defaults().build().matchingIndexReadTimeout()).isEqualTo(Duration.ofSeconds(120));
+        assertThatThrownBy(() -> AiTestProperties.defaults().matchingIndexReadTimeout(Duration.ZERO).build())
+                .isInstanceOf(IllegalArgumentException.class);
+        configFile.run(context -> assertThat(context.getBean(AiClientProperties.class).matchingIndexReadTimeout())
+                .isEqualTo(Duration.ofSeconds(120)));
+        configFile.withPropertyValues("AI_MATCHING_INDEX_READ_TIMEOUT=7s")
+                .run(context -> assertThat(context.getBean(AiClientProperties.class).matchingIndexReadTimeout())
+                        .isEqualTo(Duration.ofSeconds(7)));
+
+    }
+
     @EnableConfigurationProperties(AiClientProperties.class)
     static class BindAiProperties {
     }

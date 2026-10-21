@@ -10,7 +10,8 @@ import java.time.Duration;
 public record AiClientProperties(URI baseUrl, Duration connectTimeout, Duration readTimeout,
                                  Duration collectReadTimeout, Duration groupsReadTimeout,
                                  Duration interviewReadTimeout, Duration diffEvidenceReadTimeout,
-                                 Duration starReadTimeout, Duration postingExtractReadTimeout) {
+                                 Duration starReadTimeout, Duration postingExtractReadTimeout,
+                                 Duration matchingIndexReadTimeout) {
 
     public AiClientProperties {
         baseUrl = baseUrl == null ? URI.create("http://localhost:8000") : baseUrl;
@@ -22,6 +23,7 @@ public record AiClientProperties(URI baseUrl, Duration connectTimeout, Duration 
         diffEvidenceReadTimeout = diffEvidenceReadTimeout == null ? Duration.ofSeconds(300) : diffEvidenceReadTimeout;
         starReadTimeout = starReadTimeout == null ? Duration.ofSeconds(180) : starReadTimeout;
         postingExtractReadTimeout = postingExtractReadTimeout == null ? Duration.ofSeconds(300) : postingExtractReadTimeout;
+        matchingIndexReadTimeout = matchingIndexReadTimeout == null ? Duration.ofSeconds(120) : matchingIndexReadTimeout;
         if ((!"http".equals(baseUrl.getScheme()) && !"https".equals(baseUrl.getScheme()))
                 || baseUrl.getHost() == null || baseUrl.getUserInfo() != null
                 || baseUrl.getQuery() != null || baseUrl.getFragment() != null) {
@@ -34,7 +36,8 @@ public record AiClientProperties(URI baseUrl, Duration connectTimeout, Duration 
                 || interviewReadTimeout.isNegative() || interviewReadTimeout.isZero()
                 || diffEvidenceReadTimeout.isNegative() || diffEvidenceReadTimeout.isZero()
                 || starReadTimeout.isNegative() || starReadTimeout.isZero()
-                || postingExtractReadTimeout.isNegative() || postingExtractReadTimeout.isZero()) {
+                || postingExtractReadTimeout.isNegative() || postingExtractReadTimeout.isZero()
+                || matchingIndexReadTimeout.isNegative() || matchingIndexReadTimeout.isZero()) {
             throw new IllegalArgumentException("AI 시간 제한은 양수여야 한다");
         }
     }

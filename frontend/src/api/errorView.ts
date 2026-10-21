@@ -7,6 +7,12 @@ export function errorView(error: unknown, context: 'read' | 'write' = 'write'): 
   if (error instanceof AuthError) return { title: '다시 로그인해 주세요', message: '로그인 시간이 만료됐어요.', canRetry: false };
   if (error instanceof ContractError) return { title: '응답을 확인하지 못했어요', message: '서버 응답을 표시할 수 없어요. 잠시 후 다시 방문해 주세요.', canRetry: false };
   if (error instanceof ApiError) {
+    if (error.code === 'RATE_LIMITED') {
+      const seconds = error.details?.retryAfterSec;
+      const wait = typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0
+        ? `${Math.ceil(seconds)}초 뒤` : '잠시 뒤';
+      return { title: '요청이 많아요', message: `${wait} 다시 시도해 주세요.${context === 'write' ? ' 입력한 내용은 그대로 남아 있어요.' : ''}`, canRetry: context === 'read' };
+    }
     if (error.code === 'IDEMPOTENCY_KEY_MISMATCH') {
       return { title: '분석 요청이 충돌했어요', message: '다른 저장소에 사용된 요청이에요. 저장소 목록에서 대상을 다시 선택해 주세요.', canRetry: false };
     }

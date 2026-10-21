@@ -5,7 +5,7 @@ import { isTerminal } from '@/api/schemas';
 import { Badge, Breadcrumb, Note, PageTitle, Skeleton, Spinner } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActiveJobFeed } from '@/lib/activeJobFeed';
-import { jobResultLink } from '@/lib/jobLinks';
+import { jobResultLink, jobResultState } from '@/lib/jobLinks';
 import { jobErrorTitle, jobStateLabel, jobStepLabel, jobTypeLabel } from '@/lib/labels';
 import { stepBadge } from '@/lib/jobView';
 import { DraftProgress } from '@/features/cards/DraftProgress';
@@ -36,7 +36,7 @@ export function JobStatusPage() {
     </div>)}</div>}
     <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
       <Link to="/" className="btn btn--outline">홈으로</Link>
-      {result && <Link to={result} className="btn btn--primary">{job.state === 'FAILED' || job.partial || job.state === 'CANCELED' ? '상세 상태 보기' : '결과 보기'}</Link>}
+      {result && <Link to={result} state={jobResultState(job)} className="btn btn--primary">{job.state === 'FAILED' || job.partial || job.state === 'CANCELED' ? '상세 상태 보기' : '결과 보기'}</Link>}
       {done && !result && <Link to="/repos" className="btn btn--outline">저장소 목록</Link>}
     </div>
   </main>;

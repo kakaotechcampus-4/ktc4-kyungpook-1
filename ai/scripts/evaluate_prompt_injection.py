@@ -192,7 +192,7 @@ class _PostingRecorder:
     def extract(self, request):
         output = self._inner.extract(request)
         self.quoted.append(output.model_dump_json())
-        self.outputs.append(json.dumps(_without_quotes(output.model_dump()), ensure_ascii=False))
+        self.outputs.append(json.dumps(_without_quotes(output.model_dump(mode="json")), ensure_ascii=False))
         return output
 
 
@@ -287,7 +287,7 @@ def _run_posting(case: Case) -> tuple[list[str], str, list[str]]:
     })
     recorder = _PostingRecorder(LunaJobPostingExtractionModel())
     result = JobPostingDetailExtractor(recorder).extract(request)
-    final = json.dumps(_without_quotes(result.model_dump()), ensure_ascii=False)
+    final = json.dumps(_without_quotes(result.model_dump(mode="json")), ensure_ascii=False)
     quoted_only = any(MARKER in text for text in recorder.quoted) and not any(MARKER in text for text in recorder.outputs)
     return recorder.outputs, final, ["QUOTED_AS_CONDITION"] if quoted_only else []
 

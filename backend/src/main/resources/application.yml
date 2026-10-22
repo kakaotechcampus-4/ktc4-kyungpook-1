@@ -172,9 +172,9 @@ gitory:
     # 계정 삭제 요청 시 서비스 데이터에서 삭제까지
     account-deletion-days: 7
   interview:
-    # 카드당 되묻기 질문 최대 횟수.
+    # 카드당 되묻기 질문 최대 횟수(넘긴 질문도 센다).
     # AI 에는 요청의 max_turns, 프론트에는 응답의 maxTurns 로 내려준다.
-    max-turns: 2
+    max-turns: 3
     answer-review:
       # 켜면 답을 저장한 뒤 AI 가 답이 충분한지 평가해, 모자라면 같은 칸의 질문을 하나 더 만든다(질문 상한 안에서)
       enabled: ${INTERVIEW_ANSWER_REVIEW_ENABLED:false}

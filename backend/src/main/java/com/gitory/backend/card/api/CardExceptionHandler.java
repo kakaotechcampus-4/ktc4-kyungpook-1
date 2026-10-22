@@ -8,6 +8,7 @@ import com.gitory.backend.card.domain.CardVersionNotFoundException;
 import com.gitory.backend.card.domain.InvalidCardInputException;
 import com.gitory.backend.card.domain.interview.InterviewAiUnavailableException;
 import com.gitory.backend.card.domain.interview.InterviewCapReachedException;
+import com.gitory.backend.card.domain.interview.InterviewFieldClosedException;
 import com.gitory.backend.card.domain.interview.InterviewTurnAnsweredException;
 import com.gitory.backend.card.domain.interview.InterviewTurnNotFoundException;
 import com.gitory.backend.card.domain.interview.InvalidInterviewFieldException;
@@ -62,6 +63,14 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleNotConfirmable() {
 
         return ApiResponse.fail(ErrorCode.NOT_CONFIRMABLE, "상황과 행동을 채워야 확정할 수 있습니다.");
+
+    }
+
+    @ExceptionHandler(InterviewFieldClosedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleInterviewFieldClosed() {
+
+        return ApiResponse.fail(ErrorCode.INTERVIEW_FIELD_CLOSED, "이 칸은 더 물을 수 없습니다. 칸 내용은 직접 고칠 수 있어요.");
 
     }
 

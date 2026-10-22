@@ -107,7 +107,7 @@ public class InterviewAnswerReviewService {
         }
 
         InterviewTurn turn = answered.get();
-        InterviewQuestionRequest base = context.assemble(card, turn.getStarSlot(), asked.size());
+        InterviewQuestionRequest base = context.assemble(card, List.of(turn.getStarSlot()), turn.getStarSlot(), asked);
         InterviewStarSlot slot = InterviewStarSlot.valueOf(turn.getStarSlot().name());
         int statementSeq = base.missingSlots().get(0).statementSeq();
 

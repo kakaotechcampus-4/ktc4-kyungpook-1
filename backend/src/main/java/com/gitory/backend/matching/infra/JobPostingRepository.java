@@ -1,6 +1,7 @@
 package com.gitory.backend.matching.infra;
 
 import com.gitory.backend.matching.domain.JobPosting;
+import com.gitory.backend.matching.domain.JobPostingContentStatus;
 import com.gitory.backend.matching.domain.JobPostingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,8 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
     List<JobPosting> findByCompanyKeyAndStatus(String companyKey, JobPostingStatus status);
 
     List<JobPosting> findByCompanyKey(String companyKey);
+
+    List<JobPosting> findByStatusAndContentStatusOrderById(JobPostingStatus status, JobPostingContentStatus contentStatus);
 
     Optional<JobPosting> findByCompanyKeyAndExternalId(String companyKey, String externalId);
 

@@ -21,6 +21,7 @@ public final class AiTestProperties {
     private Duration starReadTimeout;
     private Duration postingExtractReadTimeout;
     private Duration matchingSearchReadTimeout;
+    private Duration matchingIndexReadTimeout;
 
     private AiTestProperties() {
     }
@@ -101,11 +102,18 @@ public final class AiTestProperties {
 
     }
 
+    public AiTestProperties matchingIndexReadTimeout(Duration matchingIndexReadTimeout) {
+
+        this.matchingIndexReadTimeout = matchingIndexReadTimeout;
+        return this;
+
+    }
+
     public AiClientProperties build() {
 
         return new AiClientProperties(baseUrl, connectTimeout, readTimeout, collectReadTimeout, groupsReadTimeout,
                 interviewReadTimeout, diffEvidenceReadTimeout, starReadTimeout, postingExtractReadTimeout,
-                matchingSearchReadTimeout);
+                matchingSearchReadTimeout, matchingIndexReadTimeout);
 
     }
 }

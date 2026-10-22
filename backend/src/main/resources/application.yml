@@ -124,6 +124,8 @@ gitory:
     posting-extract-read-timeout: ${AI_POSTING_EXTRACT_READ_TIMEOUT:300s}
     # 매칭 목록은 프론트가 요청을 30초에 끊으므로 AI 검색은 그 전에 답을 받아야 한다
     matching-search-read-timeout: 25s
+    # 공고를 20개씩 임베딩해 색인하는 호출이라 새벽 배치에서 넉넉히 기다린다
+    matching-index-read-timeout: ${AI_MATCHING_INDEX_READ_TIMEOUT:120s}
   github:
     # E2E 시험에서 가짜 GitHub 서버로 바꿀 수 있게 둔 값이며 운영은 기본값을 쓴다
     api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}

@@ -16,7 +16,7 @@
 | CSRF | Spring Security `CookieCsrfTokenRepository.withHttpOnlyFalse()` 를 쓰면 프론트가 `XSRF-TOKEN` 쿠키를 읽어 `X-XSRF-TOKEN` 헤더로 자동 돌려줌 |
 | 날짜 | ISO 8601 문자열 |
 | id | 문자열 (숫자 PK 라면 문자열로 직렬화) |
-| 호출 제한 | LLM 을 부르는 요청(되묻기 질문 `POST /cards/{id}/interview`, 답 평가가 켜진 `POST /cards/{id}/interview/{turnNo}/answer`, 카드 초안이 켜진 `POST /repos/{id}/cards`)은 사용자별 1분·하루 한도를 넘으면 **429** `RATE_LIMITED`. `message` 는 "요청이 많아요. N분 뒤에 다시 시도해 주세요.", `details.retryAfterSec` 와 응답 헤더 `Retry-After` 에 기다릴 초가 같은 값으로 온다. 로그인·소유권·입력 검사(401·404·409·400)가 먼저이고, 거절된 요청은 아무것도 저장하지 않는다 |
+| 호출 제한 | LLM 을 부르는 요청(되묻기 질문 `POST /cards/{id}/interview`, 수치 문장 미리 보기 `POST /cards/{id}/interview/{turnNo}/measured-draft`, 답 평가가 켜진 `POST /cards/{id}/interview/{turnNo}/answer`, 카드 초안이 켜진 `POST /repos/{id}/cards`)은 사용자별 1분·하루 한도를 넘으면 **429** `RATE_LIMITED`. `message` 는 "요청이 많아요. N분 뒤에 다시 시도해 주세요.", `details.retryAfterSec` 와 응답 헤더 `Retry-After` 에 기다릴 초가 같은 값으로 온다. 로그인·소유권·입력 검사(401·404·409·400)가 먼저이고, 거절된 요청은 아무것도 저장하지 않는다 |
 | **에러가 아닌 것** | 후보 0개 · 부분 결과 · 작업 실패는 **200** + 본문 상태 (`verdict`/`partial`/`state`). 4xx/5xx 는 진짜 실패에만 |
 
 `RATE_LIMITED`의 `retryAfterSec`가 60초 이하이면 분당 한도, 60초보다 길면 서울 기준 자정까지의 하루 한도 안내를 사용합니다(#335). 하루 한도는 "오늘 사용 한도를 다 썼어요 · 내일 다시 시도해 주세요"로 표시하며 즉시 재시도를 제공하지 않습니다. 초 값이 없거나 유효하지 않으면 짧은 대기 안내로 처리합니다. 어느 경우에도 LLM 요청을 자동 재전송하지 않습니다.
@@ -179,25 +179,39 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 `task: null`은 비운 칸입니다. 현재 실서버 CardResponse는 candidate/generation을 null, droppedFields를 빈 배열, interviewTurns를 0으로 반환합니다. Mock은 데모의 실제 후보·생성 Job·되묻기 횟수·빈 칸 이유를 추가로 보존합니다. `generation != null`이면 프론트는 D1(생성 중)을 그리고 Job을 폴링합니다.
 
 ### 되묻기
+되묻기는 AI 가 물을 칸을 골라 이어서 묻는 흐름으로 바뀐다(#321, 계약은 #363). 아래 표의 '바뀔 것' 은 구현(#360·#361·#362) 뒤에 실서버에 들어간다.
+
 | | 요청 | 응답 |
 |---|---|---|
 | `GET /cards/{id}/interview` | | **구현됨(#172).** `InterviewTurn[]`, 질문 번호순. 없으면 빈 배열; 없는 카드·남의 카드·잘못된 UUID는 404 |
-| `POST /cards/{id}/interview` | `{ field }` | **FE 기대 계약·Mock. 실서버 controller 없음.** `InterviewTurn` — 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED` |
-| `POST /cards/{id}/interview/{turnNo}/answer` | `{ text, source:'USER_STATED'|'USER_SELECTED' }` | **FE 기대 계약·Mock. 실서버 controller 없음.** `Card` — 답변은 **가공 없이** 새 버전(INTERVIEW)에 반영 |
+| `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED` |
+| `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다 |
+| `POST /cards/{id}/interview/{turnNo}/measured-draft` | `{ text }` | **새로 만듦.** `{ sentence }` — '재 봤어요' 미리 보기. **아무것도 저장하지 않는다.** 입력에 수치(아라비아 숫자)가 없으면 AI 를 부르지 않고 `sentence: null` 이고, 화면은 "수치를 찾지 못했어요. 대략이라도 적어 주세요" 를 보인다. 질문 상한에 세지 않는다 |
+
+**답 종류 `kind`**
+| kind | 화면 | `text` · `source` | 카드 칸 |
+|---|---|---|---|
+| `TEXT` | 입력 칸 + [저장] | 필수 · `USER_SELECTED`(보기를 그대로) 또는 `USER_STATED`(고침) | 질문한 칸에만 새 버전(INTERVIEW)으로 반영 |
+| `MEASURED` | [재 봤어요] → 미리 보기 → 확정 | 필수(확정 문장) · 위와 같은 규칙 | R 칸에 반영. R 이 커밋으로 확인된 문장이었으면 저장 전에 화면이 "이 칸의 근거가 커밋에서 내 답으로 바뀝니다" 를 알린다 |
+| `NOT_MEASURED` | [측정 안 했어요] | 있어도 되고 없어도 됨(숫자 없는 R 문장 보기를 고르거나 고친 것) | R 이 커밋으로 확인된 문장이면 칸을 바꾸지 않고 기록만 한다. 빈 R·확인 필요 R 이면 `text` 가 있을 때 반영 |
+| `SKIP` | [넘기기] | 없음 | 바꾸지 않는다 |
 
 `InterviewTurn`
 `{ turnNo, field, askedBy:'USER_REQUEST'|'FOLLOW_UP', sourceType:'PR'|'COMMIT_CLUSTER'|'DIRECT_CARD',
    questionType:'EVIDENCE_GAP'|'FOLLOWUP'|'RECALL_AID', found[], missing[], question, options[],
+   answerMode:'TEXT'|'MEASURE', outcome:'ANSWERED'|'MEASURED'|'NOT_MEASURED'|'SKIPPED'|null,
    answer:{text, source}|null, remaining, maxTurns }`
 
-현재 실서버 GET 응답의 found/missing/options는 아직 생성되지 않아 빈 배열입니다. Mock의 질문 근거·보기는 데모 데이터이며 실서버의 누락 정보를 FE가 채워 넣지 않습니다.
+- `answerMode` 는 보일 버튼이다. `MEASURE`(R 수치 질문) = [재 봤어요] [측정 안 했어요] [넘기기], `TEXT` = 입력 칸 + [저장] [넘기기].
+- `outcome` 은 질문이 어떻게 끝났는지다(답 전 `null`). 지난 질문 목록에 '넘김'·'측정 안 함' 을 보일 때 쓴다.
+- `options` 는 AI 가 쓴 **예상 답변**이다. 지금처럼 누르면 입력 칸에 채우고, 그대로 보내면 `USER_SELECTED`, 고치면 `USER_STATED` 다. 앞 답에 다른 칸에 쓸 내용이 있으면 그 칸 질문의 예상 답변이 된다. 현재 실서버 GET 응답의 found/missing/options 는 아직 빈 배열이다.
 
 - **PR 번호가 없는 커밋 묶음과 직접 작성 카드도 되묻기 대상이다.** `sourceType` 이 어느 쪽인지 말한다.
-- S→T→A→R 순서대로 기계적으로 묻지 않는다. **근거가 있는데 비었거나 확인이 필요한 칸을 먼저** 묻는다.
-- **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고, 프론트는 그 값만 쓴다
-  (화면에 남아 있던 4회 상수는 응답 전 자리 지킴용 기본값으로만 남겼다).
-- 답변 출처는 세 가지로 구분한다: AI 가 준 보기 / 사용자가 그 보기를 고름(`USER_SELECTED`) / 사용자가 직접 씀(`USER_STATED`).
-  **이 내부 이름은 화면에 노출하지 않는다** — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
+- **물을 칸은 AI 가 고른다.** 첫 질문은 규칙(R 에 확인된 수치가 없으면 R)이고, 그 뒤는 앞 답·카드 상태를 읽은 AI 가 '같은 칸 다시 / 다른 칸 / 끝' 을 고른다. 답은 질문한 칸에만 들어간다.
+- **서버가 지키는 규칙:** 같은 칸은 2번까지 · `NOT_MEASURED`·`SKIP` 으로 끝난 칸은 다시 묻지 않는다 · 넘긴 질문도 상한에 센다.
+- **닫힌 칸:** 지난 질문 목록(`GET /cards/{id}/interview`)에서 같은 `field` 가 2번 있거나 `outcome` 이 `NOT_MEASURED`·`SKIPPED` 인 칸이다. 그 칸의 [이 칸 질문 받기]를 숨길지, 흐리게 하고 이유(넘김·측정 안 함·2번 물음)를 짧게 보일지는 화면 디자인을 고려해 FE 가 정한다. 서버는 닫힌 칸 지정을 409 `INTERVIEW_FIELD_CLOSED` 로 막는다(탭 두 개·오래 열어 둔 화면).
+- **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고(카드당 3 으로 바뀔 예정), 프론트는 그 값만 쓴다.
+- 답변 출처 이름(`USER_SELECTED`·`USER_STATED`)은 화면에 노출하지 않는다 — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
 
 ### 기업·직무 매칭 (계약 확정 · 서버 미구현)
 

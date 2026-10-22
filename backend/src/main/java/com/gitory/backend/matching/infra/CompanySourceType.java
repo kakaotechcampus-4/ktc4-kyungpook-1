@@ -5,5 +5,8 @@ public enum CompanySourceType {
     GREETING,
     TOSS,
     LINE,
-    KAKAO
+    KAKAO,
+    KT,
+    PEARL_ABYSS,
+    SMILEGATE
 }

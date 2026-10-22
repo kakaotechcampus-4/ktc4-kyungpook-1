@@ -47,6 +47,10 @@ public class KakaoCareersClient {
                 postings.add(postingOf(job, source));
             }
         }
+        // 목록을 끝까지 못 읽고 저장하면 빠진 공고가 사라짐으로 바뀌므로 회사 전체를 실패시킨다
+        if (totalPages > MAX_PAGES) {
+            throw malformed(source, "쪽 수 " + totalPages + " 가 상한 " + MAX_PAGES + " 을 넘는다");
+        }
         return postings;
 
     }

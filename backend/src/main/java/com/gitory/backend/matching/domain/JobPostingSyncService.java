@@ -6,11 +6,14 @@ import com.gitory.backend.matching.infra.GreenhouseClient;
 import com.gitory.backend.matching.infra.GreetingClient;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
+import com.gitory.backend.matching.infra.KakaoCareersClient;
+import com.gitory.backend.matching.infra.LineCareersClient;
 import com.gitory.backend.matching.infra.MatchingProperties;
 import com.gitory.backend.matching.infra.PoliteFetchException;
 import com.gitory.backend.matching.infra.PoliteFetchSession;
 import com.gitory.backend.matching.infra.PoliteFetcher;
 import com.gitory.backend.matching.infra.SyncLock;
+import com.gitory.backend.matching.infra.TossCareersClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +47,9 @@ public class JobPostingSyncService {
     private final PoliteFetcher fetcher;
     private final GreenhouseClient greenhouse;
     private final GreetingClient greeting;
+    private final TossCareersClient toss;
+    private final LineCareersClient line;
+    private final KakaoCareersClient kakao;
     private final JobPostingRepository postings;
     private final JobPostingSourceRepository sources;
     private final JobPostingExtractionService extraction;
@@ -98,6 +104,9 @@ public class JobPostingSyncService {
             List<FetchedPosting> fetched = switch (source.type()) {
                 case GREENHOUSE -> greenhouse.list(session, source);
                 case GREETING -> greeting.list(session, source);
+                case TOSS -> toss.list(session, source);
+                case LINE -> line.list(session, source);
+                case KAKAO -> kakao.list(session, source);
             };
             List<FetchedPosting> development = fetched.stream().filter(DevelopmentPostingFilter::accepts).toList();
             Counts counts = transaction.execute(status -> store(source, fetched.size(), development));

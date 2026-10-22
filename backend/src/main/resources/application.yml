@@ -159,6 +159,10 @@ gitory:
       - { key: upstage, name: 업스테이지, type: GREETING, board: 'https://careers.upstage.ai/ko/upstage' }
       - { key: kakaopay, name: 카카오페이, type: GREETING, board: 'https://careers.kakaopay.com/ko/main' }
       - { key: hyundai-autoever, name: 현대오토에버, type: GREETING, board: 'https://career.hyundai-autoever.com/ko/home' }
+      # 자체 채용 사이트는 회사마다 읽는 모양이 달라 회사 하나가 종류 하나이고, board 에는 목록 주소를 적는다(카카오는 page 를 뺀 주소)
+      - { key: toss, name: 토스, type: TOSS, board: 'https://api-public.toss.im/api/v3/ipd-eggnog/career/jobs' }
+      - { key: lineplus, name: 라인플러스, type: LINE, board: 'https://careers.linecorp.com/page-data/ko/jobs/page-data.json' }
+      - { key: kakao, name: 카카오, type: KAKAO, board: 'https://careers.kakao.com/public/api/job-list?part=TECHNOLOGY&company=KAKAO' }
   ingest:
     # 아래 수집 상한은 AI 에 보내지 않아 바꾸면 AI 의 CollectionLimits 기본값도 같은 값으로 바꾼다
     # 커밋·이슈·최근 PR 밖의 내 PR 이 상한을 넘거나 PR 목록이 10쪽(1000개)을 채우면 partial=true 로 표시하고

@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
 public final class DevelopmentPostingFilter {
 
     private static final List<String> KOREA_WORDS = List.of("korea", "seoul", "busan", "incheon", "daejeon",
-            "pangyo", "seongnam", "suwon", "hwaseong", "dongtan", "한국", "대한민국", "서울", "부산", "인천", "대전", "판교", "성남",
-            "수원", "화성", "광역시");
+            "pangyo", "seongnam", "suwon", "hwaseong", "dongtan", "bundang", "gwacheon", "한국", "대한민국", "서울", "부산",
+            "인천", "대전", "판교", "성남", "수원", "화성", "분당", "과천", "광역시");
 
     // 짧은 낱말(ios, sre, qa, ml)이 다른 낱말 안에 끼어 걸리지 않게 영문은 낱말 경계를 본다
     private static final Pattern DEVELOPMENT_ROLE = Pattern.compile("\\b(software|s/w|developer|back-?end|front-?end|"

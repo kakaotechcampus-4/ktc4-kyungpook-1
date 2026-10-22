@@ -110,6 +110,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `POST /cards/manual/draft` | `{ title, period, repoId|null }`, 헤더 `Idempotency-Key: <UUID v4>` | **구현됨.** `Card` — 빈 `USER_EDIT` v1 DRAFT. 같은 사용자·같은 키는 처음 만든 카드의 **현재** 상세를 반환 |
 | `PATCH /cards/{id}/draft` | `{ situation, task, action, result }` **네 키 필수**, string/null | **구현됨.** `{ cardId, versionNo, situation, task, action, result, savedAt }` — 임시 저장 |
 | `GET /cards/{id}` | | **구현됨.** `Card` (아래) |
+| `DELETE /cards/{id}` | | **구현됨(#350).** `{ ok: true }` — 작성 중·확정 카드 모두 버전·문장·근거·되묻기까지 완전 삭제. 후보로 만든 카드면 후보가 `NEW` 로 돌아가 다시 고를 수 있다. 오류는 401 → 403 → 404(잘못된 UUID·없는 카드·이미 지운 카드·남의 카드) → 409 `INVALID_STATE`(초안을 만드는 중) 순 |
 | `POST /cards/{id}/mask` | `{ rules:[{from,to}] }` | **구현됨.** `Card` — 원문 불변, 표시·내보내기용 |
 | `POST /cards/{id}/reopen` | | **구현됨.** `Card` (DRAFT로). 이미 DRAFT면 no-op |
 | `GET /cards/{id}/versions` | | **구현됨.** `[{ versionNo, source, createdAt, summary, current }]` 최신순 |

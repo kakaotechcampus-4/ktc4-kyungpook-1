@@ -27,6 +27,8 @@ import java.util.concurrent.TimeoutException;
 @Slf4j
 public final class PoliteFetchSession {
 
+    private static final int MAX_ROBOTS_REDIRECTS = 5;
+
     private final HttpClient client;
     private final PoliteFetchProperties properties;
     private final Clock clock;
@@ -79,8 +81,10 @@ public final class PoliteFetchSession {
 
         URI robotsUrl = URI.create(url.getScheme() + "://" + hostLabel(url) + "/robots.txt");
         try {
-            Reply reply = send(robotsUrl, host);
-            if (reply.status == 200) {
+            Reply reply = followRobotsRedirects(robotsUrl, host);
+            if (reply == null) {
+                host.robotsUnavailable = true;
+            } else if (reply.status == 200) {
                 host.robots = RobotsTxt.parse(reply.body);
             } else if (reply.status >= 400 && reply.status < 500) {
                 host.robots = RobotsTxt.allowAll();
@@ -96,6 +100,30 @@ public final class PoliteFetchSession {
 
     }
 
+    // RFC 9309 처럼 robots.txt 만 넘겨 주는 응답을 다섯 번까지 따라가 끝에서 받은 글을 robots.txt 로 읽는다
+    // 넘겨 줄 주소가 없거나 다섯 번을 넘기면 읽지 못한 것으로 보고 null 을 돌려준다
+    private Reply followRobotsRedirects(URI robotsUrl, Host host) {
+
+        URI target = robotsUrl;
+        for (int hop = 0; hop <= MAX_ROBOTS_REDIRECTS; hop++) {
+            Reply reply = send(target, host);
+            if (reply.status < 300 || reply.status >= 400) {
+                return reply;
+            }
+            if (reply.location == null) {
+                return null;
+            }
+            try {
+                target = target.resolve(reply.location);
+                requireWebUrl(target);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+        return null;
+
+    }
+
     private Reply send(URI url, Host host) {
 
         waitForTurn(host);
@@ -108,7 +136,8 @@ public final class PoliteFetchSession {
                 client.sendAsync(request, info -> new CappedBody(properties.maxBodyBytes()));
         try {
             HttpResponse<byte[]> response = pending.get(properties.readTimeout().toNanos(), TimeUnit.NANOSECONDS);
-            return new Reply(response.statusCode(), new String(response.body(), StandardCharsets.UTF_8));
+            return new Reply(response.statusCode(), new String(response.body(), StandardCharsets.UTF_8),
+                    response.headers().firstValue("Location").orElse(null));
         } catch (InterruptedException e) {
             pending.cancel(true);
             Thread.currentThread().interrupt();
@@ -197,7 +226,7 @@ public final class PoliteFetchSession {
         long lastFinishedMillis = -1;
     }
 
-    private record Reply(int status, String body) {
+    private record Reply(int status, String body, String location) {
     }
 
     private static final class BodyTooLargeException extends IOException {

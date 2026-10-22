@@ -77,11 +77,11 @@ public class CardStatement {
 
     }
 
-    /** 되묻기에서 사용자가 쓴 답으로, 그 질문을 가리키고 근거 커밋·확신도는 없다 */
+    /** 되묻기에서 사용자가 쓰거나(USER_STATED) 보기에서 고른(USER_SELECTED) 답으로, 그 질문을 가리키고 근거 커밋·확신도는 없다 */
     public static CardStatement answered(Long cardId, short versionNo, StarField starSlot, String body,
-                                         Long sourceTurnId) {
+                                         EvidenceType evidenceType, Long sourceTurnId) {
 
-        return new CardStatement(cardId, versionNo, starSlot, body, EvidenceType.USER_STATED, null, sourceTurnId);
+        return new CardStatement(cardId, versionNo, starSlot, body, evidenceType, null, sourceTurnId);
 
     }
 

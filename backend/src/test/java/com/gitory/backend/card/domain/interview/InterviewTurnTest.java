@@ -81,7 +81,7 @@ class InterviewTurnTest {
 
         InterviewTurn turn = InterviewTurn.ask(5L, (short) 2, StarField.A, QuestionType.FOLLOWUP, "묻는 글");
 
-        turn.answerTyped("  쓴 그대로의 답  ");
+        turn.answer("  쓴 그대로의 답  ", AnswerSource.TYPED);
 
         assertThat(turn.getAnswerText()).isEqualTo("  쓴 그대로의 답  ");
         assertThat(turn.getAnswerSource()).isEqualTo(AnswerSource.TYPED);
@@ -99,14 +99,14 @@ class InterviewTurnTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TurnOutcome.class, names = "ANSWERED", mode = EnumSource.Mode.EXCLUDE)
-    @DisplayName("결과가 LATER·SKIPPED·INSUFFICIENT 로 끝났던 질문도 답하면 남아 있던 글을 새 글로 바꾸고 ANSWERED 가 된다")
+    @EnumSource(value = TurnOutcome.class, names = {"LATER", "INSUFFICIENT"})
+    @DisplayName("결과가 LATER·INSUFFICIENT 로 남은 질문은 아직 열려 있어 답하면 남아 있던 글을 새 글로 바꾸고 ANSWERED 가 된다")
     void answersAnUnfinishedTurnOverItsLeftoverText(TurnOutcome outcome) {
 
         InterviewTurn turn = InterviewTurnSamples.turn(1, StarField.T, QuestionType.EVIDENCE_GAP, TriggerSource.USER,
                 "질문", outcome, "남아 있던 글", AnswerSource.SELECTED);
 
-        turn.answerTyped("새 답");
+        turn.answer("새 답", AnswerSource.TYPED);
 
         assertThat(turn.getAnswerText()).isEqualTo("새 답");
         assertThat(turn.getAnswerSource()).isEqualTo(AnswerSource.TYPED);
@@ -115,8 +115,8 @@ class InterviewTurnTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = TurnOutcome.class, names = "ANSWERED", mode = EnumSource.Mode.EXCLUDE)
-    @DisplayName("답한 시각이 남아 있어도 결과가 ANSWERED 가 아니면 답한 질문이 아니라서 답을 받고 답한 시각을 새로 남긴다")
+    @EnumSource(value = TurnOutcome.class, names = {"LATER", "INSUFFICIENT"})
+    @DisplayName("답한 시각이 남아 있어도 결과가 열린 질문이면 답을 받고 답한 시각을 새로 남긴다")
     void answersAnUnfinishedTurnThatKeepsAnAnsweredAt(TurnOutcome outcome) {
 
         InterviewTurn turn = InterviewTurnSamples.turn(1, StarField.T, QuestionType.EVIDENCE_GAP, TriggerSource.USER,
@@ -124,7 +124,7 @@ class InterviewTurnTest {
         Instant leftover = Instant.parse("2026-01-01T00:00:00Z");
         ReflectionTestUtils.setField(turn, "answeredAt", leftover);
 
-        turn.answerTyped("새 답");
+        turn.answer("새 답", AnswerSource.TYPED);
 
         assertThat(turn.getOutcome()).isEqualTo(TurnOutcome.ANSWERED);
         assertThat(turn.getAnswerText()).isEqualTo("새 답");
@@ -137,14 +137,59 @@ class InterviewTurnTest {
     void rejectsAnsweringAnAnsweredTurnAgain() {
 
         InterviewTurn turn = InterviewTurn.ask(5L, (short) 2, StarField.A, QuestionType.FOLLOWUP, "묻는 글");
-        turn.answerTyped("처음 답");
+        turn.answer("처음 답", AnswerSource.TYPED);
         Instant answeredAt = turn.getAnsweredAt();
 
-        assertThatThrownBy(() -> turn.answerTyped("처음 답")).isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> turn.answerTyped("바꾼 답")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> turn.answer("처음 답", AnswerSource.TYPED)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> turn.answer("바꾼 답", AnswerSource.TYPED)).isInstanceOf(IllegalStateException.class);
 
         assertThat(turn.getAnswerText()).isEqualTo("처음 답");
         assertThat(turn.getAnsweredAt()).isEqualTo(answeredAt);
+
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TurnOutcome.class, names = {"ANSWERED", "SKIPPED", "MEASURED", "NOT_MEASURED"})
+    @DisplayName("결과가 정해진 질문(답함·넘김·측정)은 답하거나 넘기려 하면 예외가 나고 결과가 그대로다")
+    void rejectsChangingAClosedTurn(TurnOutcome outcome) {
+
+        InterviewTurn turn = InterviewTurnSamples.turn(1, StarField.R, QuestionType.EVIDENCE_GAP, TriggerSource.USER,
+                "질문", outcome, "남은 답 글", AnswerSource.TYPED);
+
+        assertThatThrownBy(() -> turn.answer("새 답", AnswerSource.TYPED)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(turn::skip).isInstanceOf(IllegalStateException.class);
+
+        assertThat(turn.getOutcome()).isEqualTo(outcome);
+        assertThat(turn.getAnswerText()).isEqualTo("남은 답 글");
+
+    }
+
+    @Test
+    @DisplayName("넘기면 답 글·출처 없이 결과가 SKIPPED 가 되고 넘긴 시각이 남는다")
+    void skipLeavesNoAnswer() {
+
+        InterviewTurn turn = InterviewTurn.ask(5L, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+
+        turn.skip();
+
+        assertThat(turn.getOutcome()).isEqualTo(TurnOutcome.SKIPPED);
+        assertThat(turn.getAnswerText()).isNull();
+        assertThat(turn.getAnswerSource()).isNull();
+        assertThat(turn.getAnsweredAt()).isNotNull();
+        assertThat(turn.isClosed()).isTrue();
+
+    }
+
+    @Test
+    @DisplayName("보기에서 고른 답은 출처가 SELECTED 로 남는다")
+    void selectedAnswerKeepsSelectedSource() {
+
+        InterviewTurn turn = InterviewTurn.ask(5L, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+
+        turn.answer("고른 답", AnswerSource.SELECTED);
+
+        assertThat(turn.getAnswerSource()).isEqualTo(AnswerSource.SELECTED);
+        assertThat(turn.getOutcome()).isEqualTo(TurnOutcome.ANSWERED);
 
     }
 
@@ -158,7 +203,7 @@ class InterviewTurnTest {
         try (MockedStatic<Instant> clock = mockStatic(Instant.class, CALLS_REAL_METHODS)) {
             clock.when(Instant::now).thenReturn(NOW);
 
-            turn.answerTyped("답");
+            turn.answer("답", AnswerSource.TYPED);
 
             assertThat(turn.getAnsweredAt()).isEqualTo(NOW_IN_MICROS);
         }

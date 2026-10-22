@@ -309,7 +309,7 @@ class InterviewAskServiceTest {
     private static InterviewTurn answered(int seq, StarField slot) {
 
         InterviewTurn turn = InterviewTurn.ask(CARD_ID, (short) seq, slot, QuestionType.EVIDENCE_GAP, "질문");
-        turn.answerTyped("답");
+        turn.answer("답", AnswerSource.TYPED);
 
         return turn;
 

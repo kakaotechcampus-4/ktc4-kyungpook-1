@@ -392,8 +392,8 @@ class InterviewAnswerApiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"USER_SELECTED", "COMMIT", "TYPED", "user_stated", " USER_STATED", "USER_STATED ", ""})
-    @DisplayName("source 가 정확히 USER_STATED 가 아니면 400 INVALID_REQUEST 이고 질문과 카드는 그대로다")
+    @ValueSource(strings = {"COMMIT", "TYPED", "SELECTED", "user_stated", " USER_STATED", "USER_SELECTED ", ""})
+    @DisplayName("source 가 정확히 USER_STATED·USER_SELECTED 가 아니면 400 INVALID_REQUEST 이고 질문과 카드는 그대로다")
     void onlyUserStatedSourceIsAccepted(String source) throws Exception {
 
         Long cardId = cardWithOpenTurn();
@@ -634,8 +634,8 @@ class InterviewAnswerApiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"LATER", "SKIPPED", "INSUFFICIENT"})
-    @DisplayName("LATER·SKIPPED·INSUFFICIENT 로 끝나 답 글이 남아 있는 질문은 답한 질문이 아니라서 다른 글로 답하면 200 으로 새 답이 된다")
+    @ValueSource(strings = {"LATER", "INSUFFICIENT"})
+    @DisplayName("LATER·INSUFFICIENT 로 남아 답 글이 있는 질문은 아직 열린 질문이라서 다른 글로 답하면 200 으로 새 답이 된다")
     void turnThatEndedWithoutAnswerCanBeAnswered(String outcome) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -842,7 +842,7 @@ class InterviewAnswerApiTest {
     }
 
     @Test
-    @DisplayName("OpenAPI 문서는 답변 저장의 200·400·401·403·404·409 응답을 우리가 쓴 설명으로 적고 본문 두 칸을 필수로 두며 로그인 사용자는 요청 변수로 보이지 않는다")
+    @DisplayName("OpenAPI 문서는 답변 저장의 200·400·401·403·404·409 응답을 우리가 쓴 설명으로 적고, 본문 칸은 kind 에 따라 쓰임이 달라 필수로 두지 않으며 로그인 사용자는 요청 변수로 보이지 않는다")
     void documentsEveryStatus() throws Exception {
 
         // 오류 처리기의 상태 코드는 springdoc 이 설명 없이도 응답으로 올려서, 응답이 있는지가 아니라 우리가 쓴 설명이 실렸는지를 본다
@@ -860,8 +860,9 @@ class InterviewAnswerApiTest {
                 .andExpect(jsonPath(post + ".responses['404'].description").value(containsString("그 번호의 질문 없음")))
                 .andExpect(jsonPath(post + ".responses['409'].description").value(containsString("CARD_CONFIRMED")))
                 .andExpect(jsonPath(post + ".responses['409'].description").value(containsString("INVALID_STATE")))
-                .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.required",
-                        containsInAnyOrder("text", "source")))
+                .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.required").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.properties.kind.enum",
+                        containsInAnyOrder("TEXT", "SKIP")))
                 .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.properties.source.enum[0]")
                         .value(USER_STATED));
 
@@ -959,6 +960,158 @@ class InterviewAnswerApiTest {
     }
 
     // T 칸에 답하지 않은 1번 질문이 있는 작성 중인 직접 작성 카드
+    @Test
+    @DisplayName("넘기기는 200 이고 카드의 현재 버전·문장이 그대로이며 질문 결과만 답 글 없이 SKIPPED 가 된다")
+    void skipKeepsCardAndMarksTurnSkipped() throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+        fixtures.insertStatement(cardId, 1, "T", "원래 과제", "USER_STATED", null);
+        List<Long> before = statementIds(cardId, 1);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("SKIP", null, null))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version.task").value("원래 과제"));
+
+        assertThat(versions(cardId)).extracting(VersionRow::versionNo).containsExactly(1);
+        assertThat(statementIds(cardId, 1)).isEqualTo(before);
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome, TurnRow::answerText, TurnRow::answerSource)
+                .containsExactly(tuple("SKIPPED", null, null));
+
+    }
+
+    @Test
+    @DisplayName("넘기기는 text·source 를 보지 않아 모양이 틀린 값이 와도 넘긴다")
+    void skipIgnoresTextAndSource() throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("SKIP", " ", "COMMIT")).andExpect(status().isOk());
+
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome).containsExactly("SKIPPED");
+
+    }
+
+    @Test
+    @DisplayName("넘긴 질문에 넘기기를 다시 보내면 200 이고 질문·카드가 하나도 바뀌지 않는다")
+    void skipResentChangesNothing() throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+        send(myUserId, MY_CARD.toString(), "1", kindBody("SKIP", null, null)).andExpect(status().isOk());
+        List<Map<String, Object>> before = stateOf(cardId);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("SKIP", null, null)).andExpect(status().isOk());
+
+        assertThat(stateOf(cardId)).isEqualTo(before);
+
+    }
+
+    @Test
+    @DisplayName("넘긴 질문에 글 답을 보내거나 답한 질문에 넘기기를 보내면 409 INVALID_STATE 이고 아무것도 바뀌지 않는다")
+    void otherKindOnClosedTurnIsInvalidState() throws Exception {
+
+        Long skipped = cardWithOpenTurn();
+        send(myUserId, MY_CARD.toString(), "1", kindBody("SKIP", null, null)).andExpect(status().isOk());
+        List<Map<String, Object>> skippedBefore = stateOf(skipped);
+        UUID answeredCard = UUID.randomUUID();
+        Long answered = fixtures.insertCard(answeredCard, myUserId);
+        interviews.insertAsked(answered, 1, "T", "EVIDENCE_GAP", "USER", "과제는 무엇이었나요?");
+        answer(answeredCard, 1, "답", USER_STATED).andExpect(status().isOk());
+        List<Map<String, Object>> answeredBefore = stateOf(answered);
+
+        answer(MY_CARD, 1, "답", USER_STATED)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+        send(myUserId, answeredCard.toString(), "1", kindBody("SKIP", null, null))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+
+        assertThat(stateOf(skipped)).isEqualTo(skippedBefore);
+        assertThat(stateOf(answered)).isEqualTo(answeredBefore);
+
+    }
+
+    @Test
+    @DisplayName("kind 를 TEXT 로 보내도 kind 없이 보낸 답과 똑같이 저장된다")
+    void explicitTextKindIsTheSameAsMissingKind() throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("TEXT", "답", USER_STATED))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version.task").value("답"));
+
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome, TurnRow::answerSource)
+                .containsExactly(tuple("ANSWERED", "TYPED"));
+
+    }
+
+    @Test
+    @DisplayName("보기를 그대로 고른 답(USER_SELECTED)은 카드 문장의 근거 종류가 USER_SELECTED 이고 질문의 출처가 SELECTED 다")
+    void selectedAnswerIsStoredAsUserSelected() throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+
+        answer(MY_CARD, 1, "고른 답", "USER_SELECTED").andExpect(status().isOk());
+
+        assertThat(slotsOf(cardId, 2).get("T").evidenceType()).isEqualTo("USER_SELECTED");
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::answerSource).containsExactly("SELECTED");
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"MEASURED", "NOT_MEASURED", "skip", "ANSWER", ""})
+    @DisplayName("kind 가 TEXT·SKIP 이 아니면 400 INVALID_REQUEST 이고 질문과 카드는 그대로다")
+    void unknownKindIsBadRequest(String kind) throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+        List<Map<String, Object>> before = stateOf(cardId);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody(kind, "답", USER_STATED))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(stateOf(cardId)).isEqualTo(before);
+
+    }
+
+    @Test
+    @DisplayName("넘긴 질문도 질문 상한에 세어, 상한만큼 넘긴 카드는 새 질문을 요청하면 409 INTERVIEW_CAP 이다")
+    void skippedTurnsCountTowardTheCap() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertTurn(cardId, 1, "S", "EVIDENCE_GAP", "USER", "상황은요?", "SKIPPED", null, null);
+        interviews.insertTurn(cardId, 2, "T", "EVIDENCE_GAP", "USER", "과제는요?", "SKIPPED", null, null);
+        interviews.insertAsked(cardId, 3, "A", "EVIDENCE_GAP", "USER", "행동은요?");
+
+        send(myUserId, MY_CARD.toString(), "3", kindBody("SKIP", null, null)).andExpect(status().isOk());
+
+        mvc.perform(post("/api/cards/{id}/interview", MY_CARD).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"field\":\"R\"}").with(loggedInAs(myUserId)).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INTERVIEW_CAP"));
+
+    }
+
+    @Test
+    @DisplayName("질문 목록의 outcome 은 답한 질문이 ANSWERED, 넘긴 질문이 SKIPPED, 답 전 질문이 null 이다")
+    void historyShowsOutcomeOfEachTurn() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAsked(cardId, 1, "S", "EVIDENCE_GAP", "USER", "상황은요?");
+        interviews.insertAsked(cardId, 2, "T", "EVIDENCE_GAP", "USER", "과제는요?");
+        interviews.insertAsked(cardId, 3, "A", "EVIDENCE_GAP", "USER", "행동은요?");
+        answer(MY_CARD, 1, "답", USER_STATED).andExpect(status().isOk());
+        send(myUserId, MY_CARD.toString(), "2", kindBody("SKIP", null, null)).andExpect(status().isOk());
+
+        mvc.perform(get("/api/cards/{id}/interview", MY_CARD).with(loggedInAs(myUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].outcome").value("ANSWERED"))
+                .andExpect(jsonPath("$.data[1].outcome").value("SKIPPED"))
+                .andExpect(jsonPath("$.data[1].answer").value(nullValue()))
+                .andExpect(jsonPath("$.data[2].outcome").value(nullValue()));
+
+    }
+
     private Long cardWithOpenTurn() {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -1087,6 +1240,17 @@ class InterviewAnswerApiTest {
     private String body(String text, String source) {
 
         Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("text", text);
+        fields.put("source", source);
+
+        return mapper.writeValueAsString(fields);
+
+    }
+
+    private String kindBody(String kind, String text, String source) {
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("kind", kind);
         fields.put("text", text);
         fields.put("source", source);
 

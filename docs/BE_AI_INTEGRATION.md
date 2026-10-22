@@ -110,6 +110,20 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 
 이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 연결 안 됨·시간 초과·AI가 다시 해 보라고 알린 실패(경험 그룹화 포함)를 다시 시도할 수 있는 `AI_UNAVAILABLE`, 그 밖의 오류를 `INTERNAL_ERROR`로 Job을 실패 처리한다.
 
+## 되묻기 루프로 바뀌는 AI 계약 (#363 에서 정함, 구현은 #361·#362)
+
+- **질문 요청(`/internal/interview-turns`)에 더할 것**
+  - `target_star_slot`: 화면이 칸을 지정했을 때만 넣는다. 비면 AI 가 고른다.
+  - `allowed_slots`: 서버가 규칙(같은 칸 2번 · `NOT_MEASURED`·`SKIP` 으로 끝난 칸 제외 · 카드당 상한)으로 거른, 고를 수 있는 칸 목록. AI 는 이 안에서만 고른다.
+  - `previous_turns`: 지난 질문의 칸·질문·결과(`outcome`)·답. AI 가 '같은 칸 다시 / 다른 칸 / 끝' 을 판단하고 예상 답변을 만드는 재료다.
+- **질문 응답(`InterviewTurnResult`)에 더할 것** — 지금 모양을 그대로 쓴다. `next_action` 의 `ASK_AGAIN`·`COMPLETE` 가 '묻기·끝', `target_star_slot` 이 고른 칸이다.
+  - `answer_mode`: `TEXT`·`MEASURE`. R 이 아닌데 `MEASURE` 면 서버가 `TEXT` 로 고친다.
+  - `suggested_answers`: 예상 답변 목록. 서버가 화면의 `options` 로 옮긴다.
+  - `allowed_slots` 밖의 칸이 오면 서버가 받지 않고 규칙 틀 질문으로 대신한다.
+- **수치 문장 API 새로 만듦** — `POST /internal/interview-measured-sentence`. 요청은 지금 R 문장 · 사용자가 쓴 글 · 카드 제목, 응답은 R 문장 하나다. 서버는 문장에 든 숫자가 모두 사용자 글 안에 있는지 확인하고, 탈락·실패·마감 초과면 지금 R 문장 뒤에 사용자 글을 붙인 틀 문장을 쓴다.
+- **답 평가(`/internal/interview-answer-evaluations`)는 질문을 만들지 않는다.** 질문은 질문 요청에서만 만든다. 답이 모자라다는 판단은 다음 칸을 고를 때 재료로 쓴다(따로 부를지 질문 요청에 합칠지는 #361 에서 정한다).
+- 되묻기 질문·다음 칸 고르기·수치 문장 호출은 AI 의 되묻기 전용 실행기(스레드 6개)로 보낸다. 실행기를 얻었을 때 마감까지 시간이 모자라면 부르지 않고 틀 질문·틀 문장으로 대신한다.
+
 ## 구현 범위와 다음 개발 순서
 
 | 파트 | 현재 상태 / 남은 작업 |

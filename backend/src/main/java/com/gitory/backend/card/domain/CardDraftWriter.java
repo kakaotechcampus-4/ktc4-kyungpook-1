@@ -6,6 +6,7 @@ import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
+import com.gitory.backend.card.domain.evidence.EvidenceShaMatcher;
 import com.gitory.backend.card.infra.CardRepository;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardStatementRepository;
@@ -22,7 +23,6 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -115,7 +115,8 @@ public class CardDraftWriter {
 
     private void writeSentence(Long cardId, StarField field, StarSlotDraft slot, Map<String, Long> commitIdsBySha) {
 
-        List<Long> commitIds = commitIdsOf(slot.evidence(), commitIdsBySha);
+        List<Long> commitIds = EvidenceShaMatcher.commitIdsOf(
+                slot.evidence().stream().map(StarEvidenceRef::sha).toList(), commitIdsBySha);
         if (commitIds.isEmpty()) {
             notes.save(CardSlotNote.dropped(cardId, FIRST, field, DropReason.NO_EVIDENCE));
             return;
@@ -173,32 +174,6 @@ public class CardDraftWriter {
         }
 
         return written;
-
-    }
-
-    /** AI 가 짧게 준 sha 도 받되, 보낸 커밋 중 하나로만 맞는 sha 만 근거로 잇는다 */
-    private static List<Long> commitIdsOf(List<StarEvidenceRef> refs, Map<String, Long> commitIdsBySha) {
-
-        Set<Long> commitIds = new LinkedHashSet<>();
-        for (StarEvidenceRef ref : refs) {
-            String sha = ref.sha().toLowerCase(Locale.ROOT);
-            Long exact = commitIdsBySha.get(sha);
-            if (exact != null) {
-                commitIds.add(exact);
-                continue;
-            }
-            List<Long> matched = new ArrayList<>();
-            commitIdsBySha.forEach((full, commitId) -> {
-                if (full.startsWith(sha)) {
-                    matched.add(commitId);
-                }
-            });
-            if (matched.size() == 1) {
-                commitIds.add(matched.getFirst());
-            }
-        }
-
-        return List.copyOf(commitIds);
 
     }
 }

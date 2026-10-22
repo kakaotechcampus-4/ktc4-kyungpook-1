@@ -36,6 +36,12 @@ AnswerSource = Literal["TYPED", "SELECTED"]
 #: B-2가 판단한 사용자 답변 결과.
 AnswerOutcome = Literal["ANSWERED", "INSUFFICIENT"]
 
+#: 화면이 보일 답 버튼. MEASURE=R 수치 질문(재 봤어요·측정 안 했어요·넘기기), TEXT=그 밖.
+AnswerMode = Literal["TEXT", "MEASURE"]
+
+#: 지난 질문이 어떻게 끝났는지. Spring 의 interview_turn.outcome 을 화면 계약 이름으로 보낸다.
+PreviousTurnOutcome = Literal["ANSWERED", "MEASURED", "NOT_MEASURED", "SKIPPED"]
+
 #: GitHub Pull Request review.state에서 B가 받는 값.
 ReviewState = Literal[
     "APPROVED",
@@ -125,6 +131,17 @@ class MissingSlot(StrictRequestModel):
     )
 
 
+class PreviousTurn(StrictRequestModel):
+    """이 카드에서 이미 끝난 질문 하나. 다음 칸을 고르고 예상 답변을 만드는 재료다."""
+
+    star_slot: StarSlot
+    question_text: NonBlankText = Field(..., max_length=1_000)
+    outcome: PreviousTurnOutcome
+    answer_text: Optional[str] = Field(
+        None, max_length=1_000, description="넘긴 질문·측정 안 함이면 null 일 수 있다"
+    )
+
+
 class InterviewTurnRequest(StrictRequestModel):
     """`POST /internal/interview-turns` 요청 모델."""
 
@@ -150,6 +167,19 @@ class InterviewTurnRequest(StrictRequestModel):
     )
 
     source_type: SourceType = Field(..., description="되묻기 대상 카드의 출처")
+    target_star_slot: Optional[StarSlot] = Field(
+        None, description="화면에서 칸을 지정했을 때만 넣는다. 비면 AI 가 고른다"
+    )
+    allowed_slots: Optional[list[StarSlot]] = Field(
+        None,
+        description=(
+            "Spring 이 규칙(같은 칸 2번·측정 안 함/넘김 칸·상한)으로 거른 고를 수 있는 칸. "
+            "null 이면 missing_slots 의 칸 전부다. 모든 칸은 missing_slots 에 문장과 함께 있어야 한다"
+        ),
+    )
+    previous_turns: list[PreviousTurn] = Field(
+        default_factory=list, description="이 카드에서 이미 끝난 질문들(오래된 순)"
+    )
 
     @model_validator(mode="after")
     def _validate_candidate_context(self) -> "InterviewTurnRequest":
@@ -158,6 +188,15 @@ class InterviewTurnRequest(StrictRequestModel):
             raise ValueError(
                 "existing_turn_count는 max_turns보다 클 수 없습니다."
             )
+
+        missing = {slot.star_slot for slot in self.missing_slots}
+        if self.allowed_slots is not None:
+            if len(set(self.allowed_slots)) != len(self.allowed_slots):
+                raise ValueError("allowed_slots에 같은 칸이 두 번 있습니다.")
+            if not set(self.allowed_slots) <= missing:
+                raise ValueError("allowed_slots의 칸은 모두 missing_slots에 있어야 합니다.")
+        if self.target_star_slot is not None and self.target_star_slot not in self.choosable_slots():
+            raise ValueError("target_star_slot은 고를 수 있는 칸이어야 합니다.")
 
         if self.source_type == "PR":
             if self.candidate is None or self.candidate.github_pr_number is None:
@@ -171,6 +210,13 @@ class InterviewTurnRequest(StrictRequestModel):
                 "source_type='DIRECT_CARD'이면 candidate는 null이어야 합니다."
             )
         return self
+
+    def choosable_slots(self) -> list[StarSlot]:
+        """AI 가 고를 수 있는 칸을 missing_slots 순서대로 돌려준다."""
+        if self.allowed_slots is None:
+            return [slot.star_slot for slot in self.missing_slots]
+        allowed = set(self.allowed_slots)
+        return [slot.star_slot for slot in self.missing_slots if slot.star_slot in allowed]
 
 
 class InterviewTurnResult(BaseModel):
@@ -191,6 +237,12 @@ class InterviewTurnResult(BaseModel):
     question_text: Optional[str] = None
     next_action: NextAction = Field(
         ..., description="다음 행동. ASK_AGAIN=질문 생성됨 / COMPLETE=더 물을 것 없음"
+    )
+    answer_mode: Optional[AnswerMode] = Field(
+        None, description="화면이 보일 답 버튼. 질문이 없으면 null"
+    )
+    suggested_answers: list[str] = Field(
+        default_factory=list, description="그대로 고를 수 있는 그 칸의 문장 후보(최대 2개)"
     )
 
 
@@ -502,3 +554,23 @@ class InterviewAnswerResult(BaseModel):
             )
 
         return self
+
+
+class MeasuredSentenceRequest(StrictRequestModel):
+    """`POST /internal/interview-measured-sentence` 요청 모델."""
+
+    card_id: PositiveId = Field(..., description="대상 STAR 카드 ID")
+    card_title: NonBlankText = Field(..., max_length=256, description="카드 제목")
+    current_result: Optional[str] = Field(
+        None, max_length=1_000, description="지금 R 칸 문장. 비어 있으면 null"
+    )
+    user_text: NonBlankText = Field(
+        ..., max_length=1_000, description="사용자가 '재 봤어요' 에 자유롭게 쓴 측정 결과"
+    )
+
+
+class MeasuredSentenceResult(BaseModel):
+    """`POST /internal/interview-measured-sentence` 응답 `data` 모델."""
+
+    card_id: int
+    sentence: str = Field(..., description="수치를 넣어 다시 쓴 R 문장. 수치 확인은 Spring 이 한다")

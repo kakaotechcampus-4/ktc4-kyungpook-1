@@ -119,6 +119,13 @@ public class JobPosting {
 
     }
 
+    /** 색인에 보낸 내용의 해시이며, content_hash 와 같아야 색인이 최신이다 */
+    public void indexed(String contentHash) {
+
+        this.indexedContentHash = contentHash;
+
+    }
+
     // 활성을 벗어나면 색인에서 빠지므로 해시를 비워야 다시 나타났을 때 벡터 없이 목록에 들어가지 않는다
     public void markRemoved() {
 

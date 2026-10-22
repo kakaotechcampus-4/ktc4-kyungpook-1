@@ -1,6 +1,6 @@
 # BE–AI 연결 및 API 문서
 
-Spring이 FastAPI 내부 API(수집·경험 그룹화·diff 근거·STAR 초안·되묻기·공고 조건 뽑기·매칭 검색)를 부르는 구조와, 실행 코드에서 BE·AI OpenAPI를 생성하는 방법을 정리한다. 현재 분석 Job은 `JobWorker`가 꺼내 수집 → 수집 결과 저장 → 경험 그룹화(`ANALYSIS_GROUPING_ENABLED=true`일 때) → 카드 후보 저장까지 실행한다. 카드 초안 Job은 같은 워커 자리를 쓰며, `CARD_AI_DRAFT_ENABLED=true`일 때 카드마다 diff 근거(`/internal/analysis/diff-evidence`) → STAR 초안(`/internal/analysis/star`) → 저장 순서로 칸을 채우고, 끄면 AI를 부르지 않고 끝낸다.
+Spring이 FastAPI 내부 API(수집·경험 그룹화·diff 근거·STAR 초안·되묻기·공고 조건 뽑기·매칭 검색·공고 색인)를 부르는 구조와, 실행 코드에서 BE·AI OpenAPI를 생성하는 방법을 정리한다. 현재 분석 Job은 `JobWorker`가 꺼내 수집 → 수집 결과 저장 → 경험 그룹화(`ANALYSIS_GROUPING_ENABLED=true`일 때) → 카드 후보 저장까지 실행한다. 카드 초안 Job은 같은 워커 자리를 쓰며, `CARD_AI_DRAFT_ENABLED=true`일 때 카드마다 diff 근거(`/internal/analysis/diff-evidence`) → STAR 초안(`/internal/analysis/star`) → 저장 순서로 칸을 채우고, 끄면 AI를 부르지 않고 끝낸다.
 
 ## 연결 구조
 
@@ -30,6 +30,7 @@ flowchart LR
 | `AI_DIFF_EVIDENCE_READ_TIMEOUT` | `300s`; 카드 초안의 diff 근거(`/internal/analysis/diff-evidence`) 응답 대기 제한 |
 | `AI_STAR_READ_TIMEOUT` | `180s`; 카드 초안의 STAR 초안(`/internal/analysis/star`) 응답 대기 제한 |
 | `AI_POSTING_EXTRACT_READ_TIMEOUT` | `300s`; 채용 공고 조건 뽑기(`/internal/job-postings/extract`) 응답 대기 제한 |
+| `AI_MATCHING_INDEX_READ_TIMEOUT` | `120s`; 공고 색인(`/internal/matching/postings/index`)과 색인 정리(`/internal/matching/postings/prune`) 응답 대기 제한. 하루 한 번 공고 가져오기 끝에 활성 공고를 20개씩 보낸 뒤 남길 공고 목록으로 정리를 한 번 부른다 |
 | `ANALYSIS_GROUPING_ENABLED` | `false`; 켜면 분석 Job 이 수집 뒤 경험 그룹화를 부른다. 운영 AI 에 LLM 설정(`GITORY_LLM_BASE_URL`·`GITORY_LLM_API_KEY`)을 넣은 뒤 켠다. `deploy/compose.yaml` 이 ai 에 LLM 설정을, backend 에 이 값을 이미 넘기므로 `deploy/.env` 에 적으면 들어간다 |
 | `CARD_AI_DRAFT_ENABLED` | `false`; 켜면 후보로 만든 카드의 초안 Job 이 diff 근거·STAR 초안으로 칸을 채우고, 끄면 AI 를 부르지 않고 끝낸다. 운영 AI 에 LLM 설정을 넣은 뒤 켠다. `deploy/compose.yaml` 의 backend `environment` 에 `CARD_AI_DRAFT_ENABLED` 를 넘겨야 `deploy/.env` 값이 들어간다 |
 | `INTERVIEW_ANSWER_REVIEW_ENABLED` | `false`; 켜면 되묻기 답을 저장한 뒤 AI(`/internal/interview-answer-evaluations`)가 답을 평가하고, 모자라면 같은 칸의 질문을 하나 더 만든다(카드당 질문 상한 안에서). 평가가 실패하거나 20초를 넘겨도 답 저장은 성공한다. `deploy/compose.yaml` 의 backend `environment` 에 이 변수를 넘겨야 `deploy/.env` 값이 들어간다 |
@@ -108,6 +109,20 @@ curl --fail http://localhost:8080/actuator/health/liveness
 AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반환한다. BE readiness는 DB와 AI의 이 응답을 확인한다. AI 연결이 끊기거나 서비스 식별자가 다르면 readiness는 DOWN·HTTP 503이 된다. liveness는 BE 프로세스 상태를 검사하므로 AI 장애에 따라 BE를 재시작시키지 않는다. 헬스 상세 내용은 공개하지 않는다.
 
 이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 연결 안 됨·시간 초과·AI가 다시 해 보라고 알린 실패(경험 그룹화 포함)를 다시 시도할 수 있는 `AI_UNAVAILABLE`, 그 밖의 오류를 `INTERNAL_ERROR`로 Job을 실패 처리한다.
+
+## 되묻기 루프로 바뀌는 AI 계약 (#363 에서 정함, 구현은 #361·#362)
+
+- **질문 요청(`/internal/interview-turns`)에 더할 것**
+  - `target_star_slot`: 화면이 칸을 지정했을 때만 넣는다. 비면 AI 가 고른다.
+  - `allowed_slots`: 서버가 규칙(같은 칸 2번 · `NOT_MEASURED`·`SKIP` 으로 끝난 칸 제외 · 카드당 상한)으로 거른, 고를 수 있는 칸 목록. AI 는 이 안에서만 고른다.
+  - `previous_turns`: 지난 질문의 칸·질문·결과(`outcome`)·답. AI 가 '같은 칸 다시 / 다른 칸 / 끝' 을 판단하고 예상 답변을 만드는 재료다.
+- **질문 응답(`InterviewTurnResult`)에 더할 것** — 지금 모양을 그대로 쓴다. `next_action` 의 `ASK_AGAIN`·`COMPLETE` 가 '묻기·끝', `target_star_slot` 이 고른 칸이다.
+  - `answer_mode`: `TEXT`·`MEASURE`. R 이 아닌데 `MEASURE` 면 서버가 `TEXT` 로 고친다.
+  - `suggested_answers`: 예상 답변 목록. 서버가 화면의 `options` 로 옮긴다.
+  - `allowed_slots` 밖의 칸이 오면 서버가 받지 않고 규칙 틀 질문으로 대신한다.
+- **수치 문장 API 새로 만듦** — `POST /internal/interview-measured-sentence`. 요청은 지금 R 문장 · 사용자가 쓴 글 · 카드 제목, 응답은 R 문장 하나다. 서버는 문장에 든 숫자가 모두 사용자 글 안에 있는지 확인하고, 탈락·실패·마감 초과면 지금 R 문장 뒤에 사용자 글을 붙인 틀 문장을 쓴다.
+- **답 평가(`/internal/interview-answer-evaluations`)는 질문을 만들지 않는다.** 질문은 질문 요청에서만 만든다. 답이 모자라다는 판단은 다음 칸을 고를 때 재료로 쓴다(따로 부를지 질문 요청에 합칠지는 #361 에서 정한다).
+- 되묻기 질문·다음 칸 고르기·수치 문장 호출은 AI 의 되묻기 전용 실행기(스레드 6개)로 보낸다. 실행기를 얻었을 때 마감까지 시간이 모자라면 부르지 않고 틀 질문·틀 문장으로 대신한다.
 
 ## 구현 범위와 다음 개발 순서
 

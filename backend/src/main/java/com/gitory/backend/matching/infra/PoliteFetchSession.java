@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
@@ -45,6 +46,19 @@ public final class PoliteFetchSession {
 
     public String get(URI url) {
 
+        return fetch(url, null);
+
+    }
+
+    /** 목록을 조회용 POST 로만 주는 사이트를 위한 요청이며, robots.txt 는 POST 주소의 경로로 확인하고 간격·크기 규칙도 GET 과 같다 */
+    public String post(URI url, String jsonBody) {
+
+        return fetch(url, Objects.requireNonNull(jsonBody, "jsonBody"));
+
+    }
+
+    private String fetch(URI url, String jsonBody) {
+
         requireWebUrl(url);
         Host host = hosts.computeIfAbsent(originOf(url), origin -> new Host());
         if (host.robots == null && !host.robotsUnavailable) {
@@ -65,7 +79,7 @@ public final class PoliteFetchSession {
             throw new PoliteFetchException(FetchFailureCode.ROBOTS_DISALLOWED,
                     "robots.txt 가 막은 경로: " + hostLabel(url) + target);
         }
-        Reply reply = send(url, host);
+        Reply reply = send(url, host, jsonBody);
         if (reply.status == 429) {
             throw new PoliteFetchException(FetchFailureCode.HTTP_429, "요청이 너무 많다는 응답: " + hostLabel(url));
         }
@@ -106,7 +120,7 @@ public final class PoliteFetchSession {
 
         URI target = robotsUrl;
         for (int hop = 0; hop <= MAX_ROBOTS_REDIRECTS; hop++) {
-            Reply reply = send(target, host);
+            Reply reply = send(target, host, null);
             if (reply.status < 300 || reply.status >= 400) {
                 return reply;
             }
@@ -124,14 +138,15 @@ public final class PoliteFetchSession {
 
     }
 
-    private Reply send(URI url, Host host) {
+    private Reply send(URI url, Host host, String jsonBody) {
 
         waitForTurn(host);
-        HttpRequest request = HttpRequest.newBuilder(url)
+        HttpRequest.Builder builder = HttpRequest.newBuilder(url)
                 .timeout(properties.readTimeout())
-                .header("User-Agent", properties.userAgent())
-                .GET()
-                .build();
+                .header("User-Agent", properties.userAgent());
+        HttpRequest request = jsonBody == null ? builder.GET().build()
+                : builder.header("Content-Type", "application/json; charset=UTF-8")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8)).build();
         CompletableFuture<HttpResponse<byte[]>> pending =
                 client.sendAsync(request, info -> new CappedBody(properties.maxBodyBytes()));
         try {

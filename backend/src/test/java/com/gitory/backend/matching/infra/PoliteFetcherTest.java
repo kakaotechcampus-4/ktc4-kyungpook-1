@@ -324,6 +324,53 @@ class PoliteFetcherTest {
     }
 
     @Test
+    @DisplayName("POST 는 JSON 본문을 Content-Type 과 함께 보내고 응답 본문을 돌려준다")
+    void postSendsJsonBody() {
+
+        List<String> received = new CopyOnWriteArrayList<>();
+        routes.put("/api/list", exchange -> {
+            received.add(exchange.getRequestMethod() + " " + exchange.getRequestHeaders().getFirst("Content-Type") + " "
+                    + new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            write(exchange, 200, "{\"announce\":[]}");
+        });
+
+        String body = session(null, null).post(URI.create(base + "/api/list"), "{\"pageIndex\":1}");
+
+        assertThat(body).isEqualTo("{\"announce\":[]}");
+        assertThat(received).containsExactly("POST application/json; charset=UTF-8 {\"pageIndex\":1}");
+
+    }
+
+    @Test
+    @DisplayName("POST 도 robots.txt 가 막은 경로면 보내지 않는다")
+    void postToDisallowedPathIsNotSent() {
+
+        serve(ROBOTS, 200, "User-agent: *\nDisallow: /api/");
+        serve("/api/list", 200, "{}");
+
+        FetchFailureCode code = failureOf(() -> session(null, null).post(URI.create(base + "/api/list"), "{}"));
+
+        assertThat(code).isEqualTo(FetchFailureCode.ROBOTS_DISALLOWED);
+        assertThat(hits).containsExactly(ROBOTS);
+
+    }
+
+    @Test
+    @DisplayName("POST 와 GET 은 같은 호스트의 요청 간격을 함께 지킨다")
+    void postSharesIntervalWithGet() {
+
+        serve("/api/list", 200, "{}");
+        serve("/api/detail", 200, "{}");
+        PoliteFetchSession session = session(null, null);
+
+        session.post(URI.create(base + "/api/list"), "{}");
+        session.get(URI.create(base + "/api/detail"));
+
+        assertThat(sleeps).containsExactly(Duration.ofSeconds(1), Duration.ofSeconds(1));
+
+    }
+
+    @Test
     @DisplayName("넘겨 주는 응답은 따라가지 않고 실패한다")
     void redirectIsNotFollowed() {
 

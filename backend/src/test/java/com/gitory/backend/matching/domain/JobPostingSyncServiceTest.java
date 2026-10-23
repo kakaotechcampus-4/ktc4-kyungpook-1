@@ -81,6 +81,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -485,6 +486,40 @@ class JobPostingSyncServiceTest {
         verify(extractionPort).extract(request.capture());
         assertThat(request.getValue().rawText()).isEqualTo("Java 경험");
         assertThat(request.getValue().source()).isEqualTo("greet");
+
+    }
+
+    @Test
+    @DisplayName("그리팅 상세를 못 읽은 공고가 이미 저장돼 있으면 사라짐으로 바꾸지 않고 본문 해시와 조건도 그대로 둔다")
+    void keepsStoredGreetingPostingWhenDetailUnreadable() {
+
+        CompanySource greeting = new CompanySource("greet", "그리팅사", CompanySourceType.GREETING, base + "/ko/home");
+        boards.put("/ko/home", greetingPage("[{\"queryKey\":[\"openings\"],\"state\":{\"data\":["
+                + greetingOpening(7, "서버 개발자", "null") + "]}}]"));
+        boards.put("/ko/o/7", greetingPage("[{\"queryKey\":[\"career\",\"getOpeningById\"],\"state\":{\"data\":"
+                + "{\"data\":{\"openingsInfo\":{\"detail\":\"<p>Java 경험</p>\"}}}}}]"));
+        when(extractionPort.extract(any())).thenReturn(JobPostingExtractionResult.updated("1".repeat(64),
+                PostingContentStatus.READY,
+                List.of(new ExtractedCriterion(PostingCriterionType.REQUIRED, "Java 경험", "Java")),
+                PostingJobCategory.BACKEND, new ExtractedExperience(PostingExperienceLevel.UNSPECIFIED, null, null)));
+        service(greeting).sync();
+        statuses.put("/ko/o/7", 503);
+        boards.put("/ko/home", greetingPage("[{\"queryKey\":[\"openings\"],\"state\":{\"data\":["
+                + greetingOpening(7, "서버 개발자", "null") + "," + greetingOpening(8, "백엔드 개발자", "null") + "]}}]"));
+        boards.put("/ko/o/8", greetingPage("[{\"queryKey\":[\"career\",\"getOpeningById\"],\"state\":{\"data\":"
+                + "{\"data\":{\"openingsInfo\":{\"detail\":\"<p>Kotlin 경험</p>\"}}}}}]"));
+
+        service(greeting).sync();
+
+        assertThat(statusesOf("greet")).containsEntry("7", JobPostingStatus.ACTIVE).containsEntry("8", JobPostingStatus.ACTIVE);
+        assertThat(reloadSource("greet").getLastErrorCode()).isNull();
+        JobPosting posting = postings.findByCompanyKeyAndExternalId("greet", "7").orElseThrow();
+        assertThat(posting.getContentHash()).isEqualTo("1".repeat(64));
+        assertThat(criteria.findAll()).filteredOn(criterion -> criterion.getJobPostingId().equals(posting.getId()))
+                .extracting(JobPostingCriterion::getText).containsExactly("Java 경험");
+        ArgumentCaptor<JobPostingExtractionRequest> sent = ArgumentCaptor.forClass(JobPostingExtractionRequest.class);
+        verify(extractionPort, times(2)).extract(sent.capture());
+        assertThat(sent.getAllValues()).extracting(JobPostingExtractionRequest::externalPostingId).containsExactly("7", "8");
 
     }
 

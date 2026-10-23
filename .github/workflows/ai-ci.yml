@@ -12,6 +12,7 @@ on:
     paths:
       - "ai/**"
       - "contracts/**"
+      - "docs/openapi/**"
       - ".github/workflows/ai-ci.yml"
 
 concurrency:
@@ -47,7 +48,7 @@ jobs:
         run: |
           if [ "$EVENT" != pull_request ] \
             || git diff --name-only HEAD^1 HEAD \
-               | grep -qE '^(ai/|contracts/|\.github/workflows/ai-ci\.yml$)'; then
+               | grep -qE '^(ai/|contracts/|docs/openapi/|\.github/workflows/ai-ci\.yml$)'; then
             echo "ai=true" >> "$GITHUB_OUTPUT"
           else
             echo "ai 변경 없음 — 테스트를 건너뛴다"

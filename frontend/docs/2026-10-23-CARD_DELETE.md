@@ -32,9 +32,15 @@
 - 정적 빌드: 320/390/768/1440px × light/dark, 목록 취소·키보드 삭제, 확정 상세 삭제·목록 이동, 기존 카드 정렬/내비게이션.
 - Mock을 끈 HTTP 계약: 200/404/409/503, 실제 DELETE 경로, 요청 1회, 실패 시 내용 보존. 운영 Spring에 쓰는 검사가 아니다.
 
-## 이후 연동
+## CI 설치 지연
 
-진행 중인 되묻기 PR #367/#375는 후속 계약으로 분리한다. 아직 저장되지 않는 MEASURED/NOT_MEASURED 동작을 이 PR에서 운영에 노출하지 않는다. 자소서 #301도 별도 PR이며 향후 자소서 캐시가 추가되면 삭제 후 무효화를 함께 적용해야 한다.
+Node 24에서 타입·단위 검사가 끝난 뒤 Playwright의 APT 의존성 설치가 두 번 지연됐다. 첫 실행 로그에서 azure.archive.ubuntu.com의 폰트·라이브러리 다운로드가 수 분씩 걸리는 것을 확인했다. 코드 검사 실패와 구분해 기록한다.
+
+[GitHub 러너의 공식 미러 설정](https://github.com/actions/runner-images/blob/main/images/ubuntu/scripts/build/configure-apt-sources.sh)은 Azure를 priority:1, Ubuntu archive를 priority:2로 둔다. 프론트 CI의 공통 준비 스크립트에서 이 둘의 우선순위만 바꾼다. 기존 미러·서명·Playwright 의존성 설치·테스트를 제거하지 않는다. GitHub Actions가 아니거나 미러 목록 파일이 없으면 아무것도 바꾸지 않는다.
+
+## 후속 계약 연동
+
+병합된 되묻기 질문 PR #367과 진행 중인 답 저장 PR #375는 후속 계약으로 분리한다. 아직 저장되지 않는 MEASURED/NOT_MEASURED 동작을 이 PR에서 운영에 노출하지 않는다. 자소서 #301도 별도 PR이며 향후 자소서 캐시가 추가되면 삭제 후 무효화를 함께 적용해야 한다.
 
 ## 검증 결과
 

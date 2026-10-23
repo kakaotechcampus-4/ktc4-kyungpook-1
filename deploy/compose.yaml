@@ -133,7 +133,10 @@ services:
       retries: 6
 
   web:
-    build: ../frontend
+    build:
+      context: ../frontend
+      args:
+        VITE_SITE_URL: https://${SITE_ADDRESS:?deploy/.env 에 SITE_ADDRESS 가 필요하다}
     image: gitory-web
     restart: unless-stopped
     logging: *cloudwatch

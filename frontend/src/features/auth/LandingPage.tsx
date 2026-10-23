@@ -1,8 +1,9 @@
+import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
-import { Wordmark } from '@/components/layout/AppShell';
+import { LandingBrand, shouldPlayLandingIntro } from './LandingBrand';
 import { useLogin } from './useLogin';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { LandingExample } from './LandingExample';
@@ -22,14 +23,17 @@ export function LandingPage() {
   const error = sp.get('error');
   const reason = sp.get('reason');
   const login = useLogin();
+  const [introRequested, setIntroRequested] = useState(() => shouldPlayLandingIntro(sp));
+  const finishIntro = useCallback(() => setIntroRequested(false), []);
+  const introActive = introRequested && !reason && !error && !consent;
 
   return (
-    <main className="landing">
+    <main className="landing" data-intro={introActive ? 'playing' : 'done'}>
       <header className="landing__top">
-        <Wordmark height={34} />
+        <LandingBrand active={introActive} onComplete={finishIntro} />
       </header>
 
-      <section className="landing__hero">
+      <section className="landing__hero" inert={introActive}>
         <div className="landing__copy stack">
           <h1 className="landing__h1">커밋과 PR을<br />자소서 경험으로</h1>
           <p className="landing__lead">

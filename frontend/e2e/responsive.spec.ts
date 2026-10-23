@@ -83,6 +83,7 @@ test.describe('반응형 레이아웃', () => {
     const buttons = page.getByRole('button', { name: '샘플로 체험하기', exact: true });
     await expect(buttons).toHaveCount(1);
     await expect(page.getByText(/GitHub으로 시작/)).toHaveCount(0);
+    await expect(page.locator('.landing')).toHaveAttribute('data-intro', 'done');
 
     const geometry = await page.evaluate(() => {
       const header = document.querySelector<HTMLElement>('.landing__top')!;

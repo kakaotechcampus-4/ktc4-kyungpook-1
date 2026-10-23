@@ -1,0 +1,26 @@
+.landing-brand { position: relative; width: max-content; height: 34px; transform-origin: center; }
+.landing-brand__glyph { clip-path: inset(0 66.6% 0 0); transform-origin: 17% 50%; }
+.landing-brand__type { position: absolute; inset: 0; clip-path: inset(0 0 0 33.4%); }
+.landing-intro { position: fixed; inset: 0; z-index: 80; background: var(--bg-paper); touch-action: none; }
+.landing-intro__wash { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 48%, color-mix(in srgb, var(--border-selected) 10%, transparent), transparent 60%); }
+.landing-intro__skip { position: absolute; right: max(24px, env(safe-area-inset-right)); bottom: max(24px, env(safe-area-inset-bottom)); min-height: 44px; padding: 0 12px; display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-secondary); }
+.landing-intro__skip:hover { color: var(--text-strong); }
+.landing[data-intro="playing"] { height: 100svh; overflow: clip; }
+.landing[data-intro="playing"] .landing-brand { z-index: 81; opacity: 0; will-change: transform, opacity; }
+.landing[data-intro="playing"] .landing__h1,
+.landing[data-intro="playing"] .landing__lead,
+.landing[data-intro="playing"] .landing__actions,
+.landing[data-intro="playing"] .landing-example { animation: landing-content-in 500ms cubic-bezier(.16, 1, .3, 1) both; }
+.landing[data-intro="playing"] .landing__h1 { animation-delay: 950ms; }
+.landing[data-intro="playing"] .landing__lead { animation-delay: 1050ms; }
+.landing[data-intro="playing"] .landing__actions { animation-delay: 1150ms; }
+.landing[data-intro="playing"] .landing-example { animation-delay: 1050ms; }
+@keyframes landing-content-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media (max-width: 767px) {
+  .landing-intro__skip { right: 14px; bottom: max(18px, env(safe-area-inset-bottom)); }
+  @keyframes landing-content-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing[data-intro="playing"] .landing__hero > *,
+  .landing[data-intro="playing"] .landing__copy > * { animation: none; }
+}

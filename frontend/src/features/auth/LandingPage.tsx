@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
-import { LandingBrand, shouldPlayLandingIntro } from './LandingBrand';
+import { LANDING_HOLD_EXTENSION_MS, LandingBrand, shouldPlayLandingIntro } from './LandingBrand';
 import { useLogin } from './useLogin';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { LandingExample } from './LandingExample';
@@ -25,10 +25,10 @@ export function LandingPage() {
   const login = useLogin();
   const [introRequested, setIntroRequested] = useState(() => shouldPlayLandingIntro(sp));
   const finishIntro = useCallback(() => setIntroRequested(false), []);
-  const introActive = introRequested && !reason && !error && !consent;
+  const introActive = introRequested && !consent;
 
   return (
-    <main className="landing" data-intro={introActive ? 'playing' : 'done'}>
+    <main className="landing" data-intro={introActive ? 'playing' : 'done'} style={{ '--intro-hold-extension': `${LANDING_HOLD_EXTENSION_MS}ms` } as CSSProperties}>
       <header className="landing__top">
         <LandingBrand active={introActive} onComplete={finishIntro} />
       </header>

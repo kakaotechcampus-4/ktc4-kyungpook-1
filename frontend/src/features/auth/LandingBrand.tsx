@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Wordmark } from '@/components/layout/AppShell';
 
-const SEEN_KEY = 'gitory.brand-intro.v1';
+// Keep the 912ms docking movement; extend the original 688ms central reveal by 20%.
+export const LANDING_HOLD_EXTENSION_MS = 138;
+const INTRO_DURATION_MS = 1600 + LANDING_HOLD_EXTENSION_MS;
 
 export function shouldPlayLandingIntro(params: URLSearchParams): boolean {
-  if (params.has('reason') || params.has('error') || params.has('consent')) return false;
+  if (params.get('consent') === '1') return false;
   if (typeof window === 'undefined' || !window.matchMedia || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
-  try { return params.get('intro') === '1' || sessionStorage.getItem(SEEN_KEY) !== '1'; }
-  catch { return false; }
+  return true;
 }
 
 /** One wordmark travels to its real header slot; the two clipped parts retain the original artwork. */
@@ -15,7 +16,6 @@ export function LandingBrand({ active, onComplete }: { active: boolean; onComple
   const brand = useRef<HTMLDivElement>(null);
   const veil = useRef<HTMLDivElement>(null);
   const complete = useCallback(() => {
-    try { sessionStorage.setItem(SEEN_KEY, '1'); } catch { /* Storage is optional. */ }
     onComplete();
   }, [onComplete]);
 
@@ -30,7 +30,7 @@ export function LandingBrand({ active, onComplete }: { active: boolean; onComple
     const keydown = (event: KeyboardEvent) => { if (event.key === 'Escape') finish(); };
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const onMotionChange = () => { if (motion.matches) finish(); };
-    const fallback = window.setTimeout(finish, 2800);
+    const fallback = window.setTimeout(finish, 2800 + LANDING_HOLD_EXTENSION_MS);
     window.addEventListener('resize', finish);
     document.addEventListener('keydown', keydown);
     motion.addEventListener('change', onMotionChange);
@@ -48,10 +48,10 @@ export function LandingBrand({ active, onComplete }: { active: boolean; onComple
       const centered = `translate(${x}px, ${y}px) scale(${scale})`;
       const flight = node.animate([
         { transform: centered, opacity: 0, filter: 'blur(6px)', offset: 0, easing: 'cubic-bezier(.16, 1, .3, 1)' },
-        { transform: centered, opacity: 1, filter: 'blur(0px)', offset: .2 },
-        { transform: centered, opacity: 1, filter: 'blur(0px)', offset: .43, easing: 'cubic-bezier(.76, 0, .24, 1)' },
+        { transform: centered, opacity: 1, filter: 'blur(0px)', offset: 320 / INTRO_DURATION_MS },
+        { transform: centered, opacity: 1, filter: 'blur(0px)', offset: (688 + LANDING_HOLD_EXTENSION_MS) / INTRO_DURATION_MS, easing: 'cubic-bezier(.76, 0, .24, 1)' },
         { transform: 'translate(0, 0) scale(1)', opacity: 1, filter: 'blur(0px)', offset: 1 },
-      ], { duration: 1600, easing: 'linear', fill: 'both' });
+      ], { duration: INTRO_DURATION_MS, easing: 'linear', fill: 'both' });
       animations.push(flight);
       const glyph = node.querySelector<HTMLElement>('.landing-brand__glyph');
       if (glyph) animations.push(glyph.animate([
@@ -64,7 +64,7 @@ export function LandingBrand({ active, onComplete }: { active: boolean; onComple
       ], { duration: 600, delay: 180, easing: 'cubic-bezier(.16, 1, .3, 1)', fill: 'both' }));
       if (veil.current) animations.push(veil.current.animate([
         { opacity: 1 }, { opacity: 0 },
-      ], { duration: 650, delay: 850, fill: 'both', easing: 'ease-in-out' }));
+      ], { duration: 650, delay: 850 + LANDING_HOLD_EXTENSION_MS, fill: 'both', easing: 'ease-in-out' }));
       flight.finished.then(finish, finish);
     }
     void play().catch(finish);

@@ -11,10 +11,10 @@
 .landing[data-intro="playing"] .landing__lead,
 .landing[data-intro="playing"] .landing__actions,
 .landing[data-intro="playing"] .landing-example { animation: landing-content-in 500ms cubic-bezier(.16, 1, .3, 1) both; }
-.landing[data-intro="playing"] .landing__h1 { animation-delay: 950ms; }
-.landing[data-intro="playing"] .landing__lead { animation-delay: 1050ms; }
-.landing[data-intro="playing"] .landing__actions { animation-delay: 1150ms; }
-.landing[data-intro="playing"] .landing-example { animation-delay: 1050ms; }
+.landing[data-intro="playing"] .landing__h1 { animation-delay: calc(950ms + var(--intro-hold-extension, 0ms)); }
+.landing[data-intro="playing"] .landing__lead { animation-delay: calc(1050ms + var(--intro-hold-extension, 0ms)); }
+.landing[data-intro="playing"] .landing__actions { animation-delay: calc(1150ms + var(--intro-hold-extension, 0ms)); }
+.landing[data-intro="playing"] .landing-example { animation-delay: calc(1050ms + var(--intro-hold-extension, 0ms)); }
 @keyframes landing-content-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @media (max-width: 767px) {
   .landing-intro__skip { right: 14px; bottom: max(18px, env(safe-area-inset-bottom)); }

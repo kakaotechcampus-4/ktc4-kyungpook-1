@@ -149,7 +149,7 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("쓸 수 있는 GitHub 연결이 없으면 200 으로 저장된 저장소를 모두 주인·이름순으로 주고, 저장된 개수와 센 시각 그대로이며 개수를 다시 세지 않는다")
+    @DisplayName("쓸 수 있는 GitHub 연결이 없으면 200 으로 저장된 저장소를 주인·이름순으로 주고, 저장된 개수와 센 시각 그대로이며 개수를 다시 세지 않는다")
     void withoutConnectionListsStoredRepositories() throws Exception {
 
         connectCounted(100L, "grow22", "gitory");
@@ -348,6 +348,57 @@ class RepoApiTest {
         repos(myUserId)
                 .andExpect(jsonPath("$.data[*].owner", contains("grow22", "grow22", "kakao")))
                 .andExpect(jsonPath("$.data[*].name", contains("algo", "gitory", "board")));
+
+    }
+
+    @Test
+    @DisplayName("커밋이 하나도 없다고 센 빈 저장소는 목록에서 빠지고, 내 커밋만 없는 저장소는 남는다")
+    void hidesCountedEmptyRepository() throws Exception {
+
+        githubReturns(repo(100L, "grow22", "gitory"), repo(200L, "grow22", "empty"));
+        given(github.countActivity(anyLong(), any())).willReturn(List.of(
+                new GithubRepositoryCount(100L, 197, 0, 58, 23, 11),
+                new GithubRepositoryCount(200L, 0, 0, 0, 0, 0)));
+
+        repos(myUserId).andExpect(jsonPath("$.data[*].name", contains("gitory")));
+
+    }
+
+    @Test
+    @DisplayName("내 아이디와 이름이 같은 프로필 저장소는 대소문자가 달라도 목록에서 빠진다")
+    void hidesProfileRepository() throws Exception {
+
+        githubReturns(repo(100L, "Grow22", "Grow22"), repo(200L, "Grow22", "gitory"));
+
+        repos(myUserId).andExpect(jsonPath("$.data[*].name", contains("gitory")));
+
+    }
+
+    @Test
+    @DisplayName("남의 저장소는 이름이 주인 아이디나 내 아이디와 같아도 프로필 저장소가 아니라 목록에 남는다")
+    void keepsSameNamedRepositoryOfOthers() throws Exception {
+
+        githubReturns(repo(100L, "rails", "rails"), repo(200L, "other", "other"), repo(300L, "grow22", "gitory"), repo(400L, "study-org", "grow22"));
+
+        repos(myUserId).andExpect(jsonPath("$.data[*].name", contains("gitory", "other", "rails", "grow22")));
+
+    }
+
+    @Test
+    @DisplayName("연결이 없어 저장된 저장소를 줄 때도 빈 저장소와 내 프로필 저장소는 빠진다")
+    void storedListHidesEmptyAndProfileRepositories() throws Exception {
+
+        UUID visible = connectCounted(100L, "grow22", "gitory");
+        jdbc.update("UPDATE user_repository SET own_commit_count = 0 WHERE public_id = ?", visible);
+        UUID empty = UUID.randomUUID();
+        fixtures.insertUserRepository(empty, myUserId, fixtures.insertRepository(200L, "grow22", "empty"));
+        jdbc.update("UPDATE user_repository SET counted_at = now() WHERE public_id = ?", empty);
+        fixtures.insertUserRepository(myUserId, fixtures.insertRepository(300L, "grow22", "Grow22"));
+        fixtures.insertUserRepository(myUserId, fixtures.insertRepository(400L, "rails", "rails"));
+        fixtures.insertUserRepository(myUserId, fixtures.insertRepository(500L, "study-org", "grow22"));
+        given(github.repositories(anyLong())).willThrow(new GithubNotConnectedException());
+
+        repos(myUserId).andExpect(jsonPath("$.data[*].name", contains("gitory", "rails", "grow22")));
 
     }
 

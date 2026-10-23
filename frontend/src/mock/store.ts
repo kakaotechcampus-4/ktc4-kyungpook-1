@@ -14,6 +14,7 @@ export const db = {
   candidates: clone(seedCandidates) as Any[],
   cards: clone(seedCards) as Any[],
   interview: clone(seedInterview) as Record<string, Any[]>,
+  coverLetters: [] as Any[],
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
@@ -57,6 +58,7 @@ function hydrateCards() {
 export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
+  db.coverLetters = [];
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.seq = 100;
   hydrateCards();
 }
@@ -433,7 +435,7 @@ export function settlePending() {
  */
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, coverLetters: db.coverLetters,
     jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], seq: db.seq,
   });
 }
@@ -443,6 +445,7 @@ export function restore(raw: string): boolean {
     if (!s?.cards || !s?.repos) return false;
     db.user = s.user; db.repos = s.repos; db.candidates = s.candidates;
     db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
+    db.coverLetters = s.coverLetters ?? [];
     db.jobs.clear();
     (s.jobs ?? []).forEach((j: Any) => db.jobs.set(j.id, j));
     db.idem = new Map(s.idem ?? []);

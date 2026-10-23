@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings, BriefcaseBusiness } from 'lucide-react';
+import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings, BriefcaseBusiness, FileText } from 'lucide-react';
 import { matchSupported } from '@/api/matching';
 import { useActiveJobs, useCards, useMe } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
@@ -12,7 +12,7 @@ const MENU = [
     { to: '/', label: '경험정리/홈', icon: Home, end: true },
     { to: '/repos', label: '레포 정리', icon: FolderGit2 },
     { to: '/cards', label: '경험 카드', icon: Layers },
-    ...(matchSupported() ? [{ to: '/match', label: '공고 매칭', icon: BriefcaseBusiness }] : []),
+    ...(matchSupported() ? [{ to: '/match', label: '공고 매칭', icon: BriefcaseBusiness }, { to: '/cover-letter', label: '자소서 초안', icon: FileText }] : []),
   ] },
   { group: '설정', items: [
     { to: '/settings/github', label: 'GitHub 연결', icon: Github },

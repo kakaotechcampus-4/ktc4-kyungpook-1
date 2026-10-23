@@ -17,6 +17,8 @@ const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage'
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
 const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
 const MatchDetailPage = L(() => import('@/features/match/MatchDetailPage'), 'MatchDetailPage');
+const CoverLetterSetupPage = L(() => import('@/features/coverLetter/CoverLetterSetupPage'), 'CoverLetterSetupPage');
+const CoverLetterDraftPage = L(() => import('@/features/coverLetter/CoverLetterDraftPage'), 'CoverLetterDraftPage');
 const ReposPage = L(() => import('@/features/repos/ReposPage'), 'ReposPage');
 const AnalyzePage = L(() => import('@/features/repos/AnalyzePage'), 'AnalyzePage');
 const JobStatusPage = L(() => import('@/features/jobs/JobStatusPage'), 'JobStatusPage');
@@ -43,6 +45,8 @@ export const router = createBrowserRouter([
       { path: '/', element: <S><HomePage /></S> },
       { path: '/match', element: <S><MatchListPage /></S> },
       { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },
+      { path: '/cover-letter', element: <S><CoverLetterSetupPage /></S> },
+      { path: '/cover-letter/:letterId', element: <S><CoverLetterDraftPage /></S> },
       { path: '/repos', element: <S><ReposPage /></S> },
       { path: '/repos/:repoId/run', element: <S><AnalyzePage /></S> },
       { path: '/jobs/:jobId', element: <S><JobStatusPage /></S> },

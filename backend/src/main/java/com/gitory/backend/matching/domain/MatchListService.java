@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public class MatchListService {
     private static final Comparator<MatchTarget> BY_FIT_THEN_DEADLINE = Comparator
             .comparing(MatchTarget::fit, Comparator.nullsLast(Comparator.<MatchGrade>naturalOrder()))
             .thenComparing(MatchTarget::expiresAt, Comparator.nullsLast(Comparator.<Instant>naturalOrder()));
+    private static final Duration URGENT_WINDOW = Duration.ofDays(7);
 
     private final JobPostingRepository postings;
     private final MatchEvidenceSearch evidenceSearch;
@@ -37,7 +39,8 @@ public class MatchListService {
 
     public List<MatchTarget> list(Long userId) {
 
-        List<MatchableCondition> rows = postings.findMatchableConditions(Instant.now(clock));
+        Instant now = Instant.now(clock);
+        List<MatchableCondition> rows = postings.findMatchableConditions(now);
         if (rows.isEmpty()) {
             return List.of();
         }
@@ -52,15 +55,17 @@ public class MatchListService {
                 .map(conditions -> MatchTargets.of(conditions, metIds, evidence.confirmed().hasConfirmedCard()))
                 .sorted(BY_FIT_THEN_DEADLINE)
                 .toList();
-        return mixCompanies(sorted);
+        return mixCompanies(sorted, now);
 
     }
 
     /**
      * 한 회사의 공고가 위쪽을 덮지 않도록, 같은 등급 안에서 회사마다 한 건씩 돌아가며 놓는다
-     * 등급을 넘어서는 섞지 않고, 회사 순서와 회사 안의 공고 순서는 들어온 정렬 순서를 따른다
+     * 마감이 가까운 공고는 섞다가 묻히지 않도록 등급마다 맨 앞에 마감순으로 두고, 등급을 넘어서는 섞지 않는다
      */
-    static List<MatchTarget> mixCompanies(List<MatchTarget> sorted) {
+    static List<MatchTarget> mixCompanies(List<MatchTarget> sorted, Instant now) {
+
+        Instant urgentUntil = now.plus(URGENT_WINDOW);
 
         List<MatchTarget> mixed = new ArrayList<>(sorted.size());
         int start = 0;
@@ -70,10 +75,19 @@ public class MatchListService {
             while (end < sorted.size() && Objects.equals(sorted.get(end).fit(), fit)) {
                 end++;
             }
-            mixed.addAll(roundRobin(sorted.subList(start, end)));
+            Map<Boolean, List<MatchTarget>> byUrgency = sorted.subList(start, end).stream()
+                    .collect(Collectors.partitioningBy(target -> isUrgent(target, urgentUntil)));
+            mixed.addAll(byUrgency.get(true));
+            mixed.addAll(roundRobin(byUrgency.get(false)));
             start = end;
         }
         return mixed;
+
+    }
+
+    private static boolean isUrgent(MatchTarget target, Instant urgentUntil) {
+
+        return target.expiresAt() != null && !target.expiresAt().isAfter(urgentUntil);
 
     }
 

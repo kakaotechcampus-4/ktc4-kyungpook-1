@@ -25,6 +25,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.tuple;
 
 @Timeout(30)
 class GreetingClientTest {
@@ -178,13 +179,35 @@ class GreetingClientTest {
     }
 
     @Test
-    @DisplayName("상세 페이지에 본문 칸이 없으면 PARSE 로 실패한다")
-    void detailWithoutBodyFailsWithParse() {
+    @DisplayName("상세 하나의 모양이 다르면 그 공고만 본문 없이 넘기고 같은 회사의 다른 공고 본문은 그대로 읽는다")
+    void skipsOnlyTheDetailWithUnexpectedShape() {
 
-        pages.put(LIST_PATH, page(openingsQuery(opening(10, "서버 개발자", null, null))));
+        pages.put(LIST_PATH, page(openingsQuery(opening(10, "서버 개발자", null, null), opening(11, "백엔드 개발자", null, null))));
         pages.put("/ko/o/10", page("[{\"queryKey\":[\"career\",\"getOpeningById\"],\"state\":{\"data\":{\"data\":{}}}}]"));
+        pages.put("/ko/o/11", page(detailQuery("<p>Java 경험</p>")));
 
-        assertThat(failureCodeOf()).isEqualTo(FetchFailureCode.PARSE);
+        assertThat(client.list(session(), source)).extracting(FetchedPosting::externalId, FetchedPosting::text)
+                .containsExactly(tuple("10", ""), tuple("11", "Java 경험"));
+
+    }
+
+    @Test
+    @DisplayName("상세 하나가 200 이 아니면 그 공고만 본문 없이 넘기고 같은 회사의 다른 공고 본문은 그대로 읽는다")
+    void skipsOnlyTheDetailWithErrorStatus() {
+
+        pages.put(LIST_PATH, page(openingsQuery(opening(10, "서버 개발자", null, null), opening(11, "백엔드 개발자", null, null))));
+        pages.put("/ko/o/11", page(detailQuery("<p>Java 경험</p>")));
+
+        assertThat(client.list(session(), source)).extracting(FetchedPosting::externalId, FetchedPosting::text)
+                .containsExactly(tuple("10", ""), tuple("11", "Java 경험"));
+
+    }
+
+    @Test
+    @DisplayName("목록 페이지가 200 이 아니면 지금처럼 회사 전체를 실패시킨다")
+    void listWithErrorStatusFailsWholeCompany() {
+
+        assertThat(failureCodeOf()).isEqualTo(FetchFailureCode.HTTP_STATUS);
 
     }
 

@@ -60,4 +60,35 @@ class CandidateTest {
         assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.USED);
 
     }
+
+    @Test
+    @DisplayName("카드로 쓴 후보를 되돌리면 NEW 가 되어 다시 카드로 쓸 수 있다")
+    void releaseMovesUsedCandidateBackToNew() {
+
+        Candidate candidate = grouped();
+        candidate.use();
+
+        candidate.release();
+
+        assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.NEW);
+        candidate.use();
+        assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.USED);
+
+    }
+
+    @Test
+    @DisplayName("카드로 쓰지 않은 후보는 되돌려도 상태가 그대로다")
+    void releaseLeavesNewAndExcludedCandidateAsIs() {
+
+        Candidate fresh = grouped();
+        Candidate excluded = grouped();
+        excluded.exclude();
+
+        fresh.release();
+        excluded.release();
+
+        assertThat(fresh.getStatus()).isEqualTo(CandidateStatus.NEW);
+        assertThat(excluded.getStatus()).isEqualTo(CandidateStatus.EXCLUDED);
+
+    }
 }

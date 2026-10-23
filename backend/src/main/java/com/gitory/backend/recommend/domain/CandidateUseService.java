@@ -67,6 +67,13 @@ public class CandidateUseService {
 
     }
 
+    /** 카드를 지울 때 부르며, 카드 행을 먼저 잠근 뒤 후보 한 행만 잠그므로 다시 분석의 id 순 잠금과 서로 기다리며 멈추지 않는다 */
+    public void release(Long candidateId) {
+
+        candidates.findWithLockById(candidateId).ifPresent(Candidate::release);
+
+    }
+
     // 직접 추가하거나 회상으로 만든 후보만 사용자가 쓴 글이 이유 칸에 있어 과제(T) 칸에 옮긴다
     private static String taskTextOf(Candidate candidate) {
 

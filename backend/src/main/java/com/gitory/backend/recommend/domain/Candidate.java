@@ -133,6 +133,15 @@ public class Candidate {
 
     }
 
+    /** 이 후보로 만든 카드를 지웠을 때 후보 보드에 다시 나타나게 하며, 카드로 쓴 후보가 아니면 그대로 둔다 */
+    public void release() {
+
+        if (status == CandidateStatus.USED) {
+            this.status = CandidateStatus.NEW;
+        }
+
+    }
+
     /** NEW 가 아니거나 사용자가 한 번이라도 손댔거나 직접 추가한 후보면 손댄 후보다 */
     public boolean isTouched() {
 

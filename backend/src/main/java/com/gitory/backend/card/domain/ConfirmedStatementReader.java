@@ -43,13 +43,19 @@ public class ConfirmedStatementReader {
                 .filter(statement -> statement.getStarSlot() == StarField.A || statement.getStarSlot() == StarField.R)
                 .sorted(Comparator.comparing((CardStatement statement) -> order.get(statement.getCardId()))
                         .thenComparing(CardStatement::getStarSlot).thenComparing(CardStatement::getSeq))
-                .map(statement -> new ConfirmedStatement(statement.getId(), statement.getStarSlot(),
-                        MaskRule.apply(statement.getBody(), byId.get(statement.getCardId()).getMaskRules())))
+                .map(statement -> masked(statement, byId.get(statement.getCardId())))
                 .filter(statement -> !CardText.isBlank(statement.body()))
                 .limit(limit)
                 .toList();
 
         return new ConfirmedStatementSet(true, readable);
+
+    }
+
+    private static ConfirmedStatement masked(CardStatement statement, Card card) {
+
+        return new ConfirmedStatement(statement.getId(), card.getPublicId(), card.getTitle(), card.getCardType(),
+                statement.getStarSlot(), MaskRule.apply(statement.getBody(), card.getMaskRules()));
 
     }
 }

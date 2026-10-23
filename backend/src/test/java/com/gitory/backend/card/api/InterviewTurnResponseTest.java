@@ -2,16 +2,20 @@ package com.gitory.backend.card.api;
 
 import com.gitory.backend.card.domain.EvidenceType;
 import com.gitory.backend.card.domain.StarField;
+import com.gitory.backend.card.domain.interview.AnswerMode;
 import com.gitory.backend.card.domain.interview.AnswerSource;
 import com.gitory.backend.card.domain.interview.InterviewAnswer;
 import com.gitory.backend.card.domain.interview.InterviewSourceType;
 import com.gitory.backend.card.domain.interview.InterviewTurnView;
 import com.gitory.backend.card.domain.interview.QuestionType;
 import com.gitory.backend.card.domain.interview.TriggerSource;
+import com.gitory.backend.card.domain.interview.TurnOutcome;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,7 +26,7 @@ class InterviewTurnResponseTest {
     void copiesDomainValues() {
 
         InterviewTurnView view = new InterviewTurnView(2, StarField.R, TriggerSource.USER,
-                InterviewSourceType.COMMIT_CLUSTER, QuestionType.RECALL_AID, "  결과는 어땠나요?  ", null, 1, 3);
+                InterviewSourceType.COMMIT_CLUSTER, QuestionType.RECALL_AID, "  결과는 어땠나요?  ", AnswerMode.TEXT, List.of(), null, null, 1, 3);
 
         InterviewTurnResponse response = InterviewTurnResponse.from(view);
 
@@ -37,6 +41,7 @@ class InterviewTurnResponseTest {
         assertThat(response.missing()).isEmpty();
         assertThat(response.options()).isEmpty();
         assertThat(response.answer()).isNull();
+        assertThat(response.outcome()).isNull();
 
     }
 
@@ -46,7 +51,7 @@ class InterviewTurnResponseTest {
     void mapsTriggerSourceToAskedBy(TriggerSource source, AskedBy expected) {
 
         InterviewTurnView view = new InterviewTurnView(1, StarField.T, source, InterviewSourceType.DIRECT_CARD,
-                QuestionType.EVIDENCE_GAP, "질문", null, 1, 2);
+                QuestionType.EVIDENCE_GAP, "질문", AnswerMode.TEXT, List.of(), null, null, 1, 2);
 
         assertThat(InterviewTurnResponse.from(view).askedBy()).isEqualTo(expected);
 
@@ -59,12 +64,27 @@ class InterviewTurnResponseTest {
 
         InterviewTurnView view = new InterviewTurnView(1, StarField.T, TriggerSource.USER,
                 InterviewSourceType.DIRECT_CARD, QuestionType.EVIDENCE_GAP, "질문",
-                new InterviewAnswer("  답  ", stored), 1, 2);
+                AnswerMode.TEXT, List.of(), TurnOutcome.ANSWERED, new InterviewAnswer("  답  ", stored), 1, 2);
 
         InterviewAnswerResponse answer = InterviewTurnResponse.from(view).answer();
 
         assertThat(answer.text()).isEqualTo("  답  ");
         assertThat(answer.source()).isEqualTo(expected);
+
+    }
+
+    @Test
+    @DisplayName("넘긴 질문은 outcome 이 SKIPPED 이고 answer 는 null 이다")
+    void skippedTurnHasOutcomeWithoutAnswer() {
+
+        InterviewTurnView view = new InterviewTurnView(1, StarField.T, TriggerSource.USER,
+                InterviewSourceType.DIRECT_CARD, QuestionType.EVIDENCE_GAP, "질문",
+                AnswerMode.TEXT, List.of(), TurnOutcome.SKIPPED, null, 1, 3);
+
+        InterviewTurnResponse response = InterviewTurnResponse.from(view);
+
+        assertThat(response.outcome()).isEqualTo(TurnOutcome.SKIPPED);
+        assertThat(response.answer()).isNull();
 
     }
 }

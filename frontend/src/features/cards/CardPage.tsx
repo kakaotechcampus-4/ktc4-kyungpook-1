@@ -3,6 +3,7 @@ import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CardTags } from '@/components/cards/CardTags';
+import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
@@ -125,7 +126,7 @@ export function CardPage() {
           </div>
         )}
         <CardHeader card={card} right={<>
-          <Button variant="outline" size="sm" onClick={exportMd} title="마스킹 적용된 표시값을 마크다운으로 복사">복사</Button>
+          <Button size="sm" onClick={exportMd} title="마스킹 적용된 표시값을 마크다운으로 복사">복사</Button>
           <Button variant="outline" size="sm" onClick={print} title="면접 직전 복습용 인쇄">인쇄</Button>
           <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
           <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast('다시 편집할 수 있습니다. 확정 버전은 히스토리에 남습니다.'); } })}>수정하기</Button>
@@ -157,8 +158,9 @@ export function CardPage() {
             <CardNavigation cardId={cardId} />
           </aside>
         </div>
-        {sp.get('versions') === '1' && <VersionsDialog card={card} onClose={close} />}
+        {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
+        <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       </main>
     );
   }
@@ -173,7 +175,6 @@ export function CardPage() {
   const e6 = emptyR && !partial && card.candidate;
   const canConfirm = canConfirmCard(card);
   const reviewFields = starFieldsToReview(card);
-  const questions = reviewFields.map((f) => ({ f, why: card.lowConfidenceFields.some((l) => l.field === f) ? '확인 필요' : '빈 칸', q: askText(f), caution: card.lowConfidenceFields.some((l) => l.field === f) }));
   const regenerate = (f: StarField) => regen.mutate(f, { onSuccess: () => { track('field_regenerated', { cardId, field: f }); toast(`${starFieldShort[f]} 칸을 다시 생성했습니다 — 근거가 없으면 그대로 비어 있습니다`); } });
   const canRegenerate = cardRegenerationSupported();
 
@@ -201,23 +202,11 @@ export function CardPage() {
         </div>
       )}
 
-      <div className="two-col">
+      <div className="two-col card-detail-layout">
         <div className="stack" style={{ gap: 12 }}>
           {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
         <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
-          <span className="w-600" style={{ fontSize: 13.5 }}>답변으로 보완하기</span>
-          {questions.length === 0 && (emptyStarFields(card).length === 0
-            ? <span className="t-12l c-3">추가로 작성할 항목이 없어요</span>
-            : <span className="t-12l c-3">비어 있는 칸: {emptyStarFields(card).join(' · ')} — 직접 수정에서 채울 수 있어요</span>)}
-          {questions.map((qq) => (
-            <div key={qq.f + qq.why} className={`qpanel ${qq.caution ? 'qpanel--caution' : ''}`}>
-              <div className="row" style={{ gap: 8 }}><Badge kind={qq.caution ? 'CAUTION' : 'NEUTRAL'}>{qq.f} 칸</Badge><span className="t-12" style={{ color: qq.caution ? 'var(--field-low-text)' : 'var(--text-tertiary)' }}>{qq.why}</span></div>
-              <span className="qpanel__q">{qq.q}</span>
-              <div><Button variant="outline" size="sm" onClick={() => ask(qq.f)}>{interviewActionLabel}</Button></div>
-            </div>
-          ))}
-          <div className="divider" />
           <div className="stack" style={{ gap: 6 }}>
             <span className="t-12 w-600 c-3">카드 관리</span>
             <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
@@ -226,19 +215,21 @@ export function CardPage() {
               <Button variant="text" size="sm" onClick={exportMd}>복사</Button>
             </div>
           </div>
-        </div><CardNavigation cardId={cardId} />
+        </div>
+        <CardNavigation cardId={cardId} />
         </aside>
       </div>
 
+      <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(' · ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'}>
         {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
         <Button variant="outline" onClick={() => setSp({ mode: 'edit' })}>직접 수정</Button>
         <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
-        {reviewFields.length > 0 && <Button size="lg" onClick={() => ask(reviewFields[0])}>답변으로 보완</Button>}
+        {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변으로 보완</Button>}
       </StickyFooter>
 
       {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={(r) => { setJustConfirmed(r); close(); }} />}
-      {sp.get('versions') === '1' && <VersionsDialog card={card} onClose={close} />}
+      {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
       {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
       {metadataDialog}
     </main>
@@ -259,9 +250,6 @@ function CardHeader({ card, right, statusOverride, note }: { card: Card; right?:
   );
 }
 
-function askText(f: StarField) {
-  return { S: '어떤 상황에서 시작한 작업인가요?', T: '내가 맡은 목표는 무엇이었나요?', A: '어떤 방법으로 해결했나요?', R: '작업 후 무엇이 달라졌나요?' }[f];
-}
 function interviewQuestions(card: Card): string[] {
   const qs: string[] = [];
   if (card.version.action) qs.push(`왜 그 방식을 택했나요? — ${starFieldName.A}`);

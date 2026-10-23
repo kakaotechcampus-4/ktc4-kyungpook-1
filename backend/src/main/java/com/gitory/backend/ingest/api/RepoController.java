@@ -29,9 +29,9 @@ public class RepoController {
     private final RepositoryDetailService repositoryDetail;
 
     @GetMapping("/api/repos")
-    @Operation(summary = "저장소 목록 조회", description = "부를 때마다 GitHub 에서 접근할 수 있는 저장소와 최근에 커밋한 남의 공개 저장소(조직 소유 포함)를 다시 받아 반영한 뒤, 이번에 받은 저장소만 돌려줍니다. 커밋한 저장소를 찾지 못하면 접근할 수 있는 저장소만 돌려줍니다. 쓸 수 있는 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 모두 돌려줍니다.")
+    @Operation(summary = "저장소 목록 조회", description = "부를 때마다 GitHub 에서 접근할 수 있는 저장소와 최근에 커밋한 남의 공개 저장소(조직 소유 포함)를 다시 받아 반영한 뒤, 이번에 받은 저장소만 돌려줍니다. 커밋한 저장소를 찾지 못하면 접근할 수 있는 저장소만 돌려줍니다. 쓸 수 있는 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 돌려줍니다. 어느 경우든 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠집니다.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "저장소 배열. 없으면 빈 배열. 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 모두 돌려줌"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "저장소 배열. 없으면 빈 배열. 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 돌려줌. 어느 경우든 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠짐"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "그 밖의 GitHub 호출 실패",
@@ -39,7 +39,7 @@ public class RepoController {
     })
     public ApiResponse<List<RepoSummaryResponse>> repos(@Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser) {
 
-        return ApiResponse.ok(repositoryList.list(loginUser.id()).stream().map(RepoSummaryResponse::from).toList());
+        return ApiResponse.ok(repositoryList.list(loginUser.id(), loginUser.login()).stream().map(RepoSummaryResponse::from).toList());
 
     }
 

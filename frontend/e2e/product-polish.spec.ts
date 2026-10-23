@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { freshSeed, loginAsDemo } from './helpers';
 
-test('landing explains GitHub records and card output with a compact session notice', async ({ page }) => {
+test('sample landing explains GitHub records and card output without a false expired-session notice', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await freshSeed(page); await page.goto('/login?reason=expired');
   await expect(page.getByLabel('GitHub 기록 예시')).toBeVisible();
   await expect(page.getByLabel('경험 카드 예시')).toBeVisible();
-  const notice = await page.getByRole('status').boundingBox();
-  expect(notice!.height).toBeLessThan(55);
+  await expect(page.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '샘플로 체험하기', exact: true })).toBeVisible();
 });
 
 test('first, middle and last selected repository rows retain geometry and rounded end corners', async ({ page }) => {

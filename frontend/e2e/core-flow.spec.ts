@@ -9,7 +9,7 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' }).click();
   await expect(page.getByRole('heading', { name: '경험 정리', exact: true })).toBeVisible();
 
-  await page.getByRole('link', { name: '레포 고르기', exact: true }).click();
+  await page.getByRole('link', { name: '모든 레포 보기', exact: true }).click();
   await page.getByRole('radio', { name: /algorithm-study/ }).click(); // PR 0건 레포 — 커밋 묶음 경로
   await page.getByRole('button', { name: '다음' }).click();
   await expect(page.getByRole('heading', { name: '이건 안 읽어요' })).toBeVisible(); // 사전 고지

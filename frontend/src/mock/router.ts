@@ -33,6 +33,20 @@ on('GET', '/matches/:id', ({ params }) => {
   const detail=mockMatchDetail(params[0]);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
 });
+on('DELETE', '/cards/:id', ({ params }) => {
+  const index = db.cards.findIndex(card => card.id === params[0]);
+  if (index < 0) return fail(404, 'NOT_FOUND', '카드를 찾을 수 없습니다');
+  const card = db.cards[index];
+  const job = card.generation && db.jobs.get(card.generation.jobId);
+  if (job && ['QUEUED', 'RUNNING'].includes(job.state)) return fail(409, 'INVALID_STATE', '초안을 만드는 중입니다');
+  if (card.candidate) {
+    const candidate = db.candidates.find(candidate => candidate.id === card.candidate.id);
+    if (candidate) candidate.status = 'NEW';
+  }
+  db.cards.splice(index, 1);
+  delete db.interview[card.id];
+  return ok({ ok: true });
+});
 on('POST', '/auth/logout', () => ok({ ok: true }));
 on('GET', '/me', () => {
   const confirmed = db.cards.filter((c) => c.status === 'CONFIRMED').length;

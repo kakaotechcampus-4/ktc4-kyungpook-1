@@ -46,13 +46,13 @@ describe('편집 취소', () => {
       .mockImplementation(async (id, fields) => ack(id, fields));      // 다시 시도 성공
     const { done } = mountEdit();
     await typeAndAutosave('Edited text');
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await screen.findByRole('button', { name: '다시 저장' });
     expect(done).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '다시 저장' }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(3));
     expect(save.mock.calls.at(-1)![1].situation).toBe(card.version.situation);
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
     expect(save).toHaveBeenCalledTimes(3); // 이미 원본과 같으니 더 보내지 않는다
   });
@@ -62,7 +62,7 @@ describe('편집 취소', () => {
     const { client, done } = mountEdit();
     await typeAndAutosave('Edited text');
     expect(client.getQueryData<Card>(keys.card(card.id))!.version.situation).toBe('Edited text');
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
     expect(client.getQueryData<Card>(keys.card(card.id))!.version.situation).toBe(card.version.situation);
   });
@@ -79,7 +79,7 @@ describe('편집 취소', () => {
     expect(save).toHaveBeenCalledTimes(1);
     await act(async () => { await router.navigate(`/cards/${other.id}?mode=edit`); });
     await waitFor(() => expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Shared text'));
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(router.state.location.search).toBe(''));
     expect(save).toHaveBeenCalledTimes(1);
   });
@@ -96,7 +96,7 @@ describe('편집 취소', () => {
     await typeAndAutosave('Edited text');
     expect(server).toBe('Edited text');
     await screen.findByRole('button', { name: '다시 저장' }); // 자동저장은 실패로 보인다
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
     expect(server).toBe(card.version.situation);
     expect(save).toHaveBeenCalledTimes(2);
@@ -114,20 +114,20 @@ describe('편집 취소', () => {
     const { done } = mountEdit();
     await typeAndAutosave('Edited text');
     await screen.findByRole('button', { name: '다시 저장' });
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
     expect(done).not.toHaveBeenCalled();
     expect(server).toBe('Edited text');
     fireEvent.click(screen.getByRole('button', { name: '다시 저장' }));
     await waitFor(() => expect(server).toBe(card.version.situation));
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
   });
 
   it('수정 없이 취소하면 서버에 아무것도 보내지 않는다 (잠긴 AI 초안에 가짜 버전이 안 생긴다)', async () => {
     const save = vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ack(id, fields));
     const { done } = mountEdit();
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
     expect(save).not.toHaveBeenCalled();
   });
@@ -136,7 +136,7 @@ describe('편집 취소', () => {
     const save = vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ack(id, fields));
     const { done } = mountEdit();
     fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Typed right before cancel' } });
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
     expect(save.mock.calls.map(([, fields]) => fields.situation)).not.toContain('Typed right before cancel');
   });

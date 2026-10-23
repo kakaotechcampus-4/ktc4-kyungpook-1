@@ -41,7 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
         "spring.security.oauth2.client.registration.github.client-secret=test-client-secret",
         "gitory.consent.token-key=test-encryption-key",
-        "gitory.consent.token-salt=5c0744940b5c369b"
+        "gitory.consent.token-salt=5c0744940b5c369b",
+        "gitory.interview.max-turns=2"
 })
 @AutoConfigureMockMvc
 @Testcontainers
@@ -53,7 +54,7 @@ class InterviewHistoryApiTest {
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "found",
-            "missing", "question", "options", "answer", "remaining", "maxTurns"};
+            "missing", "question", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -177,7 +178,7 @@ class InterviewHistoryApiTest {
     }
 
     @Test
-    @DisplayName("질문 하나는 FE InterviewTurn 의 12개 키를 모두 담고, 질문 번호는 seq·질문 글은 저장된 그대로이며 출처는 DIRECT_CARD 이고 근거·보기는 빈 배열이다")
+    @DisplayName("질문 하나는 FE InterviewTurn 의 13개 키를 모두 담고, 질문 번호는 seq·질문 글은 저장된 그대로이며 출처는 DIRECT_CARD 이고 근거·보기는 빈 배열이다")
     void exposesTwelveKeysOfOneTurn() throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);

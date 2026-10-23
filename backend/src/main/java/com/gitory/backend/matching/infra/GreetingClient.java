@@ -24,11 +24,11 @@ import java.util.List;
 public class GreetingClient {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
-    // 설정에 있는 세 회사는 한국 회사라 근무지 칸이 비어 있으면 한국으로 본다
+    // 설정에 둔 그리팅 회사는 모두 한국 회사라 근무지 칸이 비어 있으면 한국으로 본다
     private static final String DEFAULT_LOCATION = "대한민국";
     private static final int MAX_TITLE_LENGTH = 255;
 
-    /** 페이지에 공고 데이터가 없거나 모양이 다르면 PARSE 로 실패하고, 일부 공고만 건너뛰지 않는다 */
+    /** 목록 페이지에 공고 데이터가 없거나 모양이 다르면 PARSE 로 회사 전체가 실패하고, 상세 하나를 못 읽으면 그 공고만 본문 없이 넘긴다 */
     public List<FetchedPosting> list(PoliteFetchSession session, CompanySource source) {
 
         URI listUrl = URI.create(source.board());
@@ -44,7 +44,9 @@ public class GreetingClient {
             }
             FetchedPosting listed = listedPosting(opening, origin, source);
             // 상세 페이지 요청은 한 건마다 1초 이상 걸리므로 개발 공고에만 쓴다
-            postings.add(DevelopmentPostingFilter.accepts(listed) ? withText(listed, detailText(session, listed, source)) : listed);
+            postings.add(DevelopmentPostingFilter.accepts(listed)
+                    ? PostingDetails.withText(listed, source, () -> detailText(session, listed, source))
+                    : listed);
         }
         return postings;
 
@@ -82,13 +84,6 @@ public class GreetingClient {
             throw malformed(source, "공고 " + listed.externalId() + " 의 본문 칸이 없다");
         }
         return PostingTextConverter.fromHtml(detail.asString());
-
-    }
-
-    private static FetchedPosting withText(FetchedPosting posting, String text) {
-
-        return new FetchedPosting(posting.externalId(), posting.title(), posting.sourceUrl(), posting.location(),
-                posting.sourceUpdatedAt(), posting.expiresAt(), text);
 
     }
 

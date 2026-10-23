@@ -53,7 +53,7 @@ test('returning home starts with drafts and keeps one entry for each new-card ac
   expect(resume.y).toBeLessThan(start.y);
   const main = page.locator('main');
   await expect(main.getByRole('link', { name: '직접 작성', exact: true })).toHaveCount(1);
-  await expect(main.getByRole('link', { name: '레포 고르기', exact: true })).toHaveCount(1);
+  await expect(main.getByRole('link', { name: '모든 레포 보기', exact: true })).toHaveCount(1);
 });
 
 test('settings prioritizes controls and keeps storage details available on demand', async ({ page }) => {

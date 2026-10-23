@@ -155,10 +155,54 @@ gitory:
       - { key: furiosaai, name: 퓨리오사AI, type: GREENHOUSE, board: furiosaai }
       - { key: moloco, name: 몰로코, type: GREENHOUSE, board: moloco }
       - { key: sendbird, name: 센드버드, type: GREENHOUSE, board: sendbird }
+      - { key: lgairesearch, name: LG AI연구원, type: GREENHOUSE, board: lgairesearch }
+      - { key: seoulrobotics, name: 서울로보틱스, type: GREENHOUSE, board: seoulrobotics }
+      - { key: commvault, name: Commvault, type: GREENHOUSE, board: commvault }
+      - { key: overdare, name: OVERDARE, type: GREENHOUSE, board: overdare }
+      - { key: bluehole, name: 블루홀스튜디오, type: GREENHOUSE, board: bluehole }
+      - { key: ujet, name: UJET, type: GREENHOUSE, board: ujet }
+      - { key: riotgames, name: Riot Games 코리아, type: GREENHOUSE, board: riotgames }
       # 그리팅은 board 에 목록 페이지 주소를 적으며 리다이렉트를 따르지 않아 이동이 끝난 주소여야 한다
       - { key: upstage, name: 업스테이지, type: GREETING, board: 'https://careers.upstage.ai/ko/upstage' }
       - { key: kakaopay, name: 카카오페이, type: GREETING, board: 'https://careers.kakaopay.com/ko/main' }
       - { key: hyundai-autoever, name: 현대오토에버, type: GREETING, board: 'https://career.hyundai-autoever.com/ko/home' }
+      - { key: stradvision, name: 스트라드비젼, type: GREETING, board: 'https://stradvision.career.greetinghr.com/ko/intro' }
+      - { key: deepx, name: 딥엑스, type: GREETING, board: 'https://deepx.career.greetinghr.com/ko/career' }
+      - { key: nextsecurities, name: 넥스트증권, type: GREETING, board: 'https://nextsecurities.career.greetinghr.com/ko/home' }
+      - { key: interxlab, name: 인터엑스, type: GREETING, board: 'https://interxlab.career.greetinghr.com/ko/interxlab' }
+      - { key: rebellions, name: 리벨리온, type: GREETING, board: 'https://rebellions.career.greetinghr.com/ko/accelerate-your-career' }
+      - { key: ex-em, name: 엑셈, type: GREETING, board: 'https://ex-em.career.greetinghr.com/ko/intro' }
+      - { key: realworld, name: 리얼월드, type: GREETING, board: 'https://realworld.career.greetinghr.com/ko/home' }
+      - { key: xcena, name: 엑시나, type: GREETING, board: 'https://xcena.career.greetinghr.com/en/intro' }
+      - { key: kurly, name: 컬리, type: GREETING, board: 'https://kurly.career.greetinghr.com/ko/home' }
+      - { key: kakaomobility, name: 카카오모빌리티, type: GREETING, board: 'https://kakaomobility.career.greetinghr.com/ko/guide' }
+      - { key: makinarocks, name: 마키나락스, type: GREETING, board: 'https://makinarocks.career.greetinghr.com/ko/home' }
+      - { key: supercent, name: 슈퍼센트, type: GREETING, board: 'https://supercent.career.greetinghr.com/ko/career' }
+      - { key: mangoboost, name: 망고부스트, type: GREETING, board: 'https://mangoboost.career.greetinghr.com/en/careers' }
+      - { key: healingpaper, name: 강남언니(힐링페이퍼), type: GREETING, board: 'https://career.gangnamunni.com/ko/home' }
+      - { key: autocrypt, name: 아우토크립트, type: GREETING, board: 'https://autocrypt.career.greetinghr.com/ko/home' }
+      - { key: wrtn, name: 뤼튼테크놀로지스, type: GREETING, board: 'https://career.wrtn.io/ko/career' }
+      - { key: pfct, name: PFCT, type: GREETING, board: 'https://pfct.career.greetinghr.com/ko/home' }
+      - { key: riibotics, name: 리보틱스, type: GREETING, board: 'https://riibotics.career.greetinghr.com/ko/intro' }
+      - { key: estfamily, name: 이스트소프트·이스트시큐리티, type: GREETING, board: 'https://estfamily.career.greetinghr.com/ko/home' }
+      - { key: gccompany, name: 여기어때컴퍼니, type: GREETING, board: 'https://gccompany.career.greetinghr.com/ko/apply' }
+      - { key: nuua, name: 누아, type: GREETING, board: 'https://nuua.career.greetinghr.com/ko/home' }
+      - { key: moreh, name: 모레, type: GREETING, board: 'https://moreh.career.greetinghr.com/ko/jobs' }
+      - { key: linqalpha, name: 링크알파, type: GREETING, board: 'https://linqalpha.career.greetinghr.com/en/intro' }
+      - { key: ezcaretech, name: 이지케어텍, type: GREETING, board: 'https://ezcaretech.career.greetinghr.com/ko/home' }
+      - { key: finda, name: 핀다, type: GREETING, board: 'https://finda.career.greetinghr.com/ko/career' }
+      - { key: sionicai, name: 사이오닉에이아이, type: GREETING, board: 'https://sionicai.career.greetinghr.com/en/career' }
+      - { key: mobilint, name: 모빌린트, type: GREETING, board: 'https://mobilinthire.career.greetinghr.com/ko/recruit' }
+      - { key: buzzvil, name: 버즈빌, type: GREETING, board: 'https://buzzvil.career.greetinghr.com/ko/home' }
+      - { key: featuring, name: 피처링, type: GREETING, board: 'https://featuring.career.greetinghr.com/ko/info' }
+      - { key: neubility, name: 뉴빌리티, type: GREETING, board: 'https://neubility.career.greetinghr.com/ko/about' }
+      - { key: ineeji, name: 이니지, type: GREETING, board: 'https://ineeji.career.greetinghr.com/ko/intro' }
+      - { key: lawcompany, name: 로앤컴퍼니, type: GREETING, board: 'https://lawcompany.career.greetinghr.com/ko/home' }
+      - { key: medistream, name: 메디스트림, type: GREETING, board: 'https://medistream.career.greetinghr.com/ko/career' }
+      - { key: masangsoft, name: 마상소프트, type: GREETING, board: 'https://masangsoft.career.greetinghr.com/ko/careers' }
+      - { key: shoplive, name: 샵라이브코리아, type: GREETING, board: 'https://shoplive.career.greetinghr.com/ko/intro' }
+      - { key: sianalytics, name: 에스아이에이, type: GREETING, board: 'https://sianalytics.career.greetinghr.com/ko/home' }
+      - { key: deepauto-ai, name: 딥오토에이아이, type: GREETING, board: 'https://deepauto-ai.career.greetinghr.com/ko/career' }
       # 자체 채용 사이트는 회사마다 읽는 모양이 달라 회사 하나가 종류 하나이고, board 에는 목록 주소를 적는다(카카오는 page 를 뺀 주소)
       - { key: toss, name: 토스, type: TOSS, board: 'https://api-public.toss.im/api/v3/ipd-eggnog/career/jobs' }
       - { key: lineplus, name: 라인플러스, type: LINE, board: 'https://careers.linecorp.com/page-data/ko/jobs/page-data.json' }
@@ -182,9 +226,9 @@ gitory:
     # 계정 삭제 요청 시 서비스 데이터에서 삭제까지
     account-deletion-days: 7
   interview:
-    # 카드당 되묻기 질문 최대 횟수.
+    # 카드당 되묻기 질문 최대 횟수(넘긴 질문도 센다).
     # AI 에는 요청의 max_turns, 프론트에는 응답의 maxTurns 로 내려준다.
-    max-turns: 2
+    max-turns: 3
     answer-review:
       # 켜면 답을 저장한 뒤 AI 가 답이 충분한지 평가해, 모자라면 같은 칸의 질문을 하나 더 만든다(질문 상한 안에서)
       enabled: ${INTERVIEW_ANSWER_REVIEW_ENABLED:false}

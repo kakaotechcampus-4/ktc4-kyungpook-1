@@ -92,6 +92,11 @@ const seedRepos = (client: QueryClient) => {
 };
 
 describe('레포 목록 화면', () => {
+  it('서버 목록이 비면 제외되는 저장소와 연결 확인 방법을 안내한다', () => {
+    mount('/repos', <ReposPage />, '/repos', (client) => client.setQueryData(keys.repos, []));
+    expect(screen.getByText(/커밋이 없는 저장소와 내 프로필 README 저장소/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'GitHub 연결 확인' })).toHaveAttribute('href', '/settings/github');
+  });
   const rowOf = (name: RegExp) => screen.getByRole('radio', { name });
 
   it('못 센 레포는 숫자 대신 "세는 중"을 보이고 "내 기여 0%"·"PR 0건"을 띄우지 않는다', () => {
@@ -183,6 +188,24 @@ describe('홈 · 설정 · 분석 화면', () => {
       client.setQueryData(keys.job('job'), job({ state: 'RUNNING', partial: false, finishedAt: null, pollAfterMs: 2000 }));
     });
     expect(screen.getByText('커밋 214개 · PR 31건 · 리뷰 88건을 읽는 중이에요')).toBeInTheDocument();
+  });
+});
+
+describe('AI 일시 장애 계약', () => {
+  it.each([true, false, null])('FAILED 응답을 수용하고 retryable=%s를 그대로 따른다', (retryable) => {
+    const failed = job({ state: 'FAILED', partial: false, errorCode: 'AI_UNAVAILABLE', retryable });
+    mount('/repos/r_auth/run?job=job', <AnalyzePage />, '/repos/:repoId/run', (client) => {
+      seedRepos(client);
+      client.setQueryData(keys.job('job'), failed);
+    });
+    expect(screen.getByText('분석 도우미가 잠시 응답하지 않아요')).toBeInTheDocument();
+    expect(screen.getByText('잠시 뒤 다시 시도해 주세요.')).toBeInTheDocument();
+    // 서버가 재시도를 열지 않았으면 "다시 시도" 줄 자체를 두지 않는다(#253).
+    const retry = screen.queryByRole('button', { name: '다시 시도' });
+    if (retryable === true) expect(retry).toBeEnabled();
+    else expect(retry).not.toBeInTheDocument();
+    // 화면 진입만으로 새 분석 요청을 만들지 않는다.
+    expect(req('GET', '/jobs').data).toMatchObject({ jobs: [] });
   });
 });
 

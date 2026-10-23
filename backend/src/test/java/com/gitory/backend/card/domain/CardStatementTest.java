@@ -34,7 +34,8 @@ class CardStatementTest {
     @DisplayName("되묻기 답으로 쓴 문장은 USER_STATED 이고 질문을 가리키며 확신도 없이 앞뒤 공백까지 그대로 만든다")
     void answeredPointsAtTheTurnWithoutConfidence() {
 
-        CardStatement statement = CardStatement.answered(3L, (short) 2, StarField.R, "  응답이 절반이 됐다  \n", 17L);
+        CardStatement statement = CardStatement.answered(3L, (short) 2, StarField.R, "  응답이 절반이 됐다  \n",
+                EvidenceType.USER_STATED, 17L);
 
         assertThat(statement.getCardId()).isEqualTo(3L);
         assertThat(statement.getVersionNo()).isEqualTo((short) 2);
@@ -52,7 +53,8 @@ class CardStatementTest {
     @DisplayName("빈 글이나 공백뿐인 글로는 되묻기 답 문장도 만들지 않는다")
     void answeredRejectsBlankText(String body) {
 
-        assertThatThrownBy(() -> CardStatement.answered(3L, (short) 1, StarField.S, body, 17L))
+        assertThatThrownBy(() -> CardStatement.answered(3L, (short) 1, StarField.S, body,
+                EvidenceType.USER_STATED, 17L))
                 .isInstanceOf(IllegalArgumentException.class);
 
     }
@@ -61,7 +63,8 @@ class CardStatementTest {
     @DisplayName("되묻기 답에 U+0000 이 있으면 InvalidCardInputException 이고 문장을 만들지 않는다")
     void answeredRejectsNul() {
 
-        assertThatThrownBy(() -> CardStatement.answered(3L, (short) 1, StarField.A, "인덱스를\u0000추가했다", 17L))
+        assertThatThrownBy(() -> CardStatement.answered(3L, (short) 1, StarField.A, "인덱스를\u0000추가했다",
+                EvidenceType.USER_STATED, 17L))
                 .isInstanceOf(InvalidCardInputException.class);
 
     }

@@ -1,0 +1,8 @@
+.experience-item-shell { position: relative; min-width: 0; display: flex; }
+.experience-item-shell > .experience-item { width: 100%; }
+.experience-item-shell .experience-item__meta { padding-right: 40px; }
+.card-delete-trigger.btn { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; padding: 0; color: var(--text-secondary); }
+.card-delete-trigger.btn:hover, .card-delete-text.btn:hover { color: var(--color-danger, var(--text-primary)); }
+.card-delete-text.btn { align-self: flex-start; }
+.card-delete-title { color: var(--text-primary); font-weight: 600; overflow-wrap: anywhere; }
+@media print { .card-delete-trigger.btn, .card-delete-text.btn { display: none; } }

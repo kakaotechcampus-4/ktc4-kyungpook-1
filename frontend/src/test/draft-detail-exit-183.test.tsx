@@ -61,7 +61,7 @@ describe('saved draft metadata when returning to card detail (#183)', () => {
     expect(detail).not.toHaveBeenCalled();
     expect(isDraftMetadataPending(client.getQueryData<Card>(keys.card(card.id)))).toBe(true);
     expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Acknowledged situation');
-    if (exit === 'cancel') fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    if (exit === 'cancel') fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     else {
       if (exit === 'guard') fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Guard acknowledged situation' } });
       await act(async () => { await router.navigate(-1); });
@@ -83,7 +83,7 @@ describe('saved draft metadata when returning to card detail (#183)', () => {
     let reject!: (error: Error) => void;
     detail.mockImplementation(() => new Promise<Card>((_resolve, fail) => { reject = fail; }));
     await typeAndAutosave('Acknowledged situation');
-    if (exit === 'cancel') fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    if (exit === 'cancel') fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     else {
       if (exit === 'guard') fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Guard acknowledged situation' } });
       await act(async () => { await router.navigate(-1); });
@@ -107,7 +107,7 @@ describe('saved draft metadata when returning to card detail (#183)', () => {
 
   it('does not read or write when canceling an untouched edit session', async () => {
     const { router, save, detail } = mount();
-    fireEvent.click(screen.getByRole('button', { name: '편집 취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(router.state.location.search).toBe(''));
     expect(save).not.toHaveBeenCalled();
     expect(detail).not.toHaveBeenCalled();

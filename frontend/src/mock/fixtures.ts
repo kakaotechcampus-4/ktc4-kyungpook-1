@@ -175,9 +175,21 @@ const filler = [
   ['PR', '#61', '로그 레벨 조정', '변경 파일 1개', 2.9, 1],
 ] as const;
 filler.forEach(([type, ref, title, reason, score, codeRatio], i) => {
+  // Explicit evidence in the sample copy is authoritative; keep the numeric
+  // summary in sync when that copy changes, rather than inventing another count.
+  const reviewCount = reason.match(/리뷰 코멘트 (\d+)건/);
+  const fileCount = reason.match(/변경 파일 (\d+)개/);
+  const commitCount = `${title} ${reason}`.match(/(\d+)커밋|커밋 (\d+)건/);
+  const dayCount = reason.match(/(\d+)일간/);
   seedCandidates.push({
     id: `c_f${i}`, repoId: 'r_auth', type, status: 'NEW', ref, title, reason,
-    meta: { commits: 2 + (i % 5), files: 1 + (i % 7), reviewComments: type === 'PR' ? (i % 9) : 0, days: i % 12, codeRatio },
+    meta: {
+      commits: commitCount ? Number(commitCount[1] ?? commitCount[2]) : 2 + (i % 5),
+      files: fileCount ? Number(fileCount[1]) : 1 + (i % 7),
+      reviewComments: reviewCount ? Number(reviewCount[1]) : type === 'PR' ? (i % 9) : 0,
+      days: dayCount ? Number(dayCount[1]) : i % 12,
+      codeRatio,
+    },
     weak: score < 7, score, commits: type === 'COMMIT_CLUSTER' ? [] : null, usedByCardId: null,
   });
 });
@@ -276,16 +288,16 @@ export const seedInterview: Record<string, unknown[]> = {
 // 되묻기 질문 은행 — 칸별 · "코드에서 찾은 것"은 카드의 근거에서 조립
 export const interviewBank: Record<string, { question: string; missing: string; options: string[] }> = {
   S: { question: '이 작업을 시작하게 된 계기가 무엇이었나요?', missing: '왜 이 작업이 필요했는지 (코드에는 계기가 남지 않습니다)', options: ['운영 중 버그 제보가 들어왔어요', '기획이 바뀌어서 새로 필요해졌어요', '리뷰에서 지적을 받았어요'] },
-  T: { question: '그때 무엇을 해내야 하는 상황이었나요?', missing: '팀 안에서 본인 범위가 어디까지였는지', options: ['이 기능을 처음부터 끝까지 맡았어요', '팀원 코드를 이어받아 마무리했어요', '특정 부분만 맡았어요'] },
-  A: { question: '가장 오래 붙잡았던 부분은 무엇이었나요?', missing: '구현 과정에서 막혔던 지점과 판단 근거', options: ['테스트를 먼저 붙이고 고쳤어요', '설계를 바꿔서 다시 짰어요', '문서와 로그를 보며 원인을 좁혔어요'] },
-  R: { question: '되돌린 뒤 어떤 방법으로 다시 붙였나요?', missing: '이 작업의 결과와 이후 변화', options: ['트랜잭션을 나눠 실패 지점만 재시도하게 했어요', '결제 검증을 별도 단계로 분리했어요', '되돌린 뒤 테스트를 먼저 붙였어요'] },
+  T: { question: '그때 무엇을 해내야 하는 상황이었나요?', missing: '본인이 달성해야 했던 목표와 제약', options: ['사용자가 다시 로그인하지 않도록 해야 했어요', '반복되는 오류를 해결해야 했어요', '정해진 기한 안에 기능을 완성해야 했어요'] },
+  A: { question: '문제를 해결하기 위해 어떤 방법을 썼나요?', missing: '구현 과정에서 막혔던 지점과 판단 근거', options: ['테스트를 먼저 붙이고 고쳤어요', '설계를 바꿔서 다시 짰어요', '문서와 로그를 보며 원인을 좁혔어요'] },
+  R: { question: '작업을 마친 뒤 무엇이 달라졌나요?', missing: '이 작업의 결과와 이후 변화', options: ['오류가 줄었어요', '사용자가 작업을 더 빠르게 마칠 수 있게 됐어요', '아직 결과를 확인하지 못했어요'] },
 };
 
 export const seedRecall = {
   repoId: 'r_board',
-  note: '내 커밋 3개 · 메시지 평균 4글자. 대신 어떤 파일을 만졌는지로 기억을 끌어냅니다. 답한 내용은 그대로 정성 카드의 근거가 됩니다.',
+  note: '어떤 파일을 만졌는지 살펴보며 작업을 떠올려 보세요. 답한 내용은 그대로 정성 카드의 근거가 됩니다.',
   dirs: [
-    { path: '/src/api/', filesChanged: 6, myCommits: 2, files: ['user_router.py', 'auth.py', 'schema.py'], question: '이 파일들을 만졌을 때, 무엇을 해내려던 중이었나요?', options: ['로그인 기능을 맡았어요', '팀원 코드를 이어받았어요', '급하게 버그를 고쳤어요'] },
+    { path: '/src/api/', filesChanged: 6, myCommits: 2, files: ['user_router.py', 'auth.py', 'schema.py'], question: '이 파일들을 만졌을 때, 무엇을 해내려던 중이었나요?', options: ['로그인이 정상적으로 동작하게 하려 했어요', '기존 기능을 완성하려 했어요', '반복되는 오류를 해결하려 했어요'] },
     { path: '/src/ui/', filesChanged: 3, myCommits: 1, files: ['board.jsx', 'card.jsx'], question: '이 화면 파일을 고친 이유가 기억나시나요?', options: ['디자인 수정 요청이 있었어요', '버그를 고쳤어요'] },
     { path: '/docs/', filesChanged: 2, myCommits: 0, files: ['api-spec.md'], question: '문서만 만졌다면, 누구를 위해 쓴 문서였나요?', options: ['팀원 온보딩용', '발표 자료용'] },
   ],

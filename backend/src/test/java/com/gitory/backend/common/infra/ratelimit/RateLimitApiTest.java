@@ -4,6 +4,7 @@ import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.support.CandidateCardFixtures;
 import com.gitory.backend.support.FakeInterviewAi;
 import com.gitory.backend.support.InterviewFixtures;
+import com.gitory.backend.support.InterviewFixtures.TurnRow;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterAll;
@@ -164,6 +165,29 @@ class RateLimitApiTest {
         ask(OTHERS_CARD, myUserId)
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+    }
+
+    @Test
+    @DisplayName("넘기기는 답 평가가 켜져 있어도 평가 AI 를 부르지 않고 답 한도도 쓰지 않아, 넘긴 뒤의 글 답이 한도 안에서 저장된다")
+    void skipNeitherCallsReviewNorUsesTheLimit() throws Exception {
+
+        Long first = fixtures.insertCard(FIRST_CARD, myUserId);
+        Long second = fixtures.insertCard(SECOND_CARD, myUserId);
+        interviews.insertAsked(first, 1, "A", "EVIDENCE_GAP", "USER", "무엇을 했나요?");
+        interviews.insertAsked(second, 1, "A", "EVIDENCE_GAP", "USER", "무엇을 했나요?");
+
+        mvc.perform(post("/api/cards/{id}/interview/{turnNo}/answer", FIRST_CARD, 1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"SKIP\"}")
+                        .with(loggedInAs(myUserId)).with(csrf()))
+                .andExpect(status().isOk());
+        assertThat(AI.requests()).isEmpty();
+
+        answer(SECOND_CARD).andExpect(status().isOk());
+
+        assertThat(interviews.turnsOf(first)).extracting(TurnRow::outcome).containsExactly("SKIPPED");
+        assertThat(interviews.turnsOf(second)).extracting(TurnRow::outcome).containsExactly("ANSWERED");
 
     }
 

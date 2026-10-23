@@ -1,11 +1,11 @@
 package com.gitory.backend.card.domain.interview;
 
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.InterviewAnswerMode;
 import com.gitory.backend.agent.port.InterviewNextAction;
 import com.gitory.backend.agent.port.InterviewQuestionPort;
 import com.gitory.backend.agent.port.InterviewQuestionRequest;
 import com.gitory.backend.agent.port.InterviewQuestionResult;
-import com.gitory.backend.agent.port.InterviewStarSlot;
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGenerationGuard;
@@ -27,12 +27,15 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * 사용자가 고른 칸에 대해 AI 에게 되묻기 질문을 받아 저장한다
+ * 되묻기 질문을 AI 에게 받아 저장하고, 칸을 지정하지 않으면 고를 수 있는 칸 중 AI 가 다음 칸을 고른다
+ * 같은 칸 2번·넘김·측정 안 함 같은 규칙은 이 서비스가 칸 목록으로 걸러 AI 에 주고, AI 답이 그 안에 있는지 다시 본다
  * AI 를 기다리는 동안 트랜잭션과 행 잠금을 쥐지 않도록 읽기, AI 호출, 짧은 저장을 따로 연다
  */
 @Slf4j
@@ -40,6 +43,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @EnableConfigurationProperties(InterviewLimits.class)
 public class InterviewAskService {
+
+    private static final int MAX_ASKS_PER_SLOT = 2;
+    private static final Set<TurnOutcome> CLOSING_OUTCOMES = EnumSet.of(TurnOutcome.SKIPPED, TurnOutcome.NOT_MEASURED);
 
     private final CardOwnershipService ownership;
     private final CardGenerationGuard generation;
@@ -52,7 +58,9 @@ public class InterviewAskService {
     private final UserRateLimiter rateLimiter;
 
     /**
-     * 초안을 만드는 중이거나 확정된 카드는 409, 답하지 않은 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409, 칸이 잘못되면 400 순서로 확인한다
+     * 초안을 만드는 중이거나 확정된 카드는 409, 답을 기다리는 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409,
+     * 칸이 잘못되면 400, 지정한 칸이 닫혔으면 409 순서로 확인한다
+     * 칸을 지정하지 않았는데 고를 칸이 없거나 AI 가 끝을 고르면 질문을 만들지 않고 null 을 돌려준다
      * 새 질문은 AI 를 다녀온 뒤 같은 확인을 한 번 더 하고 저장한다
      */
     public InterviewTurnView ask(UUID publicId, Long userId, String field) {
@@ -62,10 +70,16 @@ public class InterviewAskService {
         if (prepared.openTurn() != null) {
             return prepared.openTurn();
         }
+        if (prepared.request() == null) {
+            return null;
+        }
 
         // 남아 있던 질문을 돌려줄 때는 AI 를 부르지 않으므로, 새 질문을 만들 때만 센다
         rateLimiter.acquire(RateLimitedAction.INTERVIEW_ASK, userId, 1);
-        InterviewQuestionResult question = fetchQuestion(prepared.request(), prepared.slot());
+        InterviewQuestionResult question = fetchQuestion(prepared.request(), prepared.target(), prepared.allowed());
+        if (question == null) {
+            return null;
+        }
 
         return save(prepared, publicId, userId, question);
 
@@ -92,13 +106,21 @@ public class InterviewAskService {
             return Prepared.open(viewOf(open.get(), sourceTypeOf(card)));
         }
 
-        StarField slot = slotOf(field);
+        StarField target = field == null ? null : slotOf(field);
+        List<StarField> allowed = allowedSlots(asked);
+        if (target != null && !allowed.contains(target)) {
+            throw new InterviewFieldClosedException();
+        }
+        if (allowed.isEmpty()) {
+            return Prepared.done();
+        }
 
-        return Prepared.toAsk(card, slot, sourceTypeOf(card), context.assemble(card, slot, asked.size()));
+        return Prepared.toAsk(card, target, allowed, sourceTypeOf(card), context.assemble(card, allowed, target, asked));
 
     }
 
-    private InterviewQuestionResult fetchQuestion(InterviewQuestionRequest request, StarField slot) {
+    private InterviewQuestionResult fetchQuestion(InterviewQuestionRequest request, StarField target,
+                                                  List<StarField> allowed) {
 
         InterviewQuestionResult result;
         try {
@@ -107,13 +129,17 @@ public class InterviewAskService {
             throw failureOf(request, failure);
         }
 
-        // 질문 상한 안에서 요청했으므로 AI 의 COMPLETE 는 상한 409 가 아니라 이상한 응답이다
+        // 칸을 지정했으면 그 칸을 묻기로 했으므로 COMPLETE 는 이상한 응답이고, 지정하지 않았으면 더 물을 것이 없다는 판단이다
         if (result.nextAction() != InterviewNextAction.ASK_AGAIN) {
-            throw new InvalidInterviewResponseException("질문을 더 만들 수 있는데 AI 가 COMPLETE 를 돌려줬다");
+            if (target != null) {
+                throw new InvalidInterviewResponseException("칸을 지정했는데 AI 가 COMPLETE 를 돌려줬다");
+            }
+            return null;
         }
 
-        if (result.targetStarSlot() != InterviewStarSlot.valueOf(slot.name())) {
-            throw new InvalidInterviewResponseException("AI 가 요청하지 않은 칸의 질문을 돌려줬다");
+        StarField chosen = StarField.valueOf(result.targetStarSlot().name());
+        if (!allowed.contains(chosen) || (target != null && chosen != target)) {
+            throw new InvalidInterviewResponseException("AI 가 고를 수 없는 칸의 질문을 돌려줬다");
         }
 
         return result;
@@ -136,7 +162,7 @@ public class InterviewAskService {
         try {
             // 기본 격리(READ COMMITTED)로 열어야 잠금을 기다린 뒤의 확인이 먼저 커밋된 질문을 본다
             return new TransactionTemplate(transactionManager)
-                    .execute(status -> saveQuestion(publicId, userId, prepared.slot(), prepared.sourceType(), question));
+                    .execute(status -> saveQuestion(publicId, userId, prepared.target(), prepared.sourceType(), question));
         } catch (DataIntegrityViolationException raced) {
             // 카드 행 잠금 때문에 API 로는 닿지 않는 갈래이고, UNIQUE(card_id, seq) 가 마지막 방어선이다
             return openTurnOf(turns.findByCardIdOrderBySeqAsc(prepared.card().getId()))
@@ -146,7 +172,7 @@ public class InterviewAskService {
 
     }
 
-    private InterviewTurnView saveQuestion(UUID publicId, Long userId, StarField slot, InterviewSourceType sourceType,
+    private InterviewTurnView saveQuestion(UUID publicId, Long userId, StarField target, InterviewSourceType sourceType,
                                            InterviewQuestionResult question) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
@@ -157,8 +183,15 @@ public class InterviewAskService {
             return viewOf(open.get(), sourceType);
         }
 
-        InterviewTurn saved = turns.save(InterviewTurn.ask(card.getId(), nextSeq(asked), slot,
-                QuestionType.valueOf(question.questionType().name()), question.questionText()));
+        // AI 를 기다리는 사이 다른 창에서 그 칸을 넘기거나 두 번 물었으면 닫힌 칸이다
+        StarField slot = StarField.valueOf(question.targetStarSlot().name());
+        if (!allowedSlots(asked).contains(slot)) {
+            throw new InterviewFieldClosedException();
+        }
+
+        InterviewTurn saved = turns.save(InterviewTurn.asked(card.getId(), nextSeq(asked), slot,
+                QuestionType.valueOf(question.questionType().name()), question.questionText(), target != null,
+                lastTurnId(asked), answerModeOf(slot, question), question.suggestedAnswers()));
 
         return viewOf(saved, sourceType);
 
@@ -182,8 +215,34 @@ public class InterviewAskService {
     private static Optional<InterviewTurn> openTurnOf(List<InterviewTurn> asked) {
 
         return asked.stream()
-                .filter(turn -> !turn.isAnswered())
+                .filter(turn -> !turn.isClosed())
                 .findFirst();
+
+    }
+
+    // 같은 칸은 두 번까지 묻고, 측정 안 함·넘김으로 끝난 칸은 다시 묻지 않는다
+    private static List<StarField> allowedSlots(List<InterviewTurn> asked) {
+
+        return Arrays.stream(StarField.values())
+                .filter(slot -> asked.stream().filter(turn -> turn.getStarSlot() == slot).count() < MAX_ASKS_PER_SLOT)
+                .filter(slot -> asked.stream().noneMatch(turn -> turn.getStarSlot() == slot
+                        && CLOSING_OUTCOMES.contains(turn.getOutcome())))
+                .toList();
+
+    }
+
+    // 수치 버튼은 R 칸에만 맞으므로 다른 칸에 MEASURE 가 와도 글로 답하는 질문으로 둔다
+    private static AnswerMode answerModeOf(StarField slot, InterviewQuestionResult question) {
+
+        boolean measure = slot == StarField.R && question.answerMode() == InterviewAnswerMode.MEASURE;
+
+        return measure ? AnswerMode.MEASURE : AnswerMode.TEXT;
+
+    }
+
+    private static Long lastTurnId(List<InterviewTurn> asked) {
+
+        return asked.isEmpty() ? null : asked.get(asked.size() - 1).getId();
 
     }
 
@@ -221,19 +280,25 @@ public class InterviewAskService {
 
     }
 
-    private record Prepared(Card card, StarField slot, InterviewSourceType sourceType,
+    private record Prepared(Card card, StarField target, List<StarField> allowed, InterviewSourceType sourceType,
                             InterviewQuestionRequest request, InterviewTurnView openTurn) {
 
         static Prepared open(InterviewTurnView turn) {
 
-            return new Prepared(null, null, null, null, turn);
+            return new Prepared(null, null, List.of(), null, null, turn);
 
         }
 
-        static Prepared toAsk(Card card, StarField slot, InterviewSourceType sourceType,
+        static Prepared done() {
+
+            return new Prepared(null, null, List.of(), null, null, null);
+
+        }
+
+        static Prepared toAsk(Card card, StarField target, List<StarField> allowed, InterviewSourceType sourceType,
                               InterviewQuestionRequest request) {
 
-            return new Prepared(card, slot, sourceType, request, null);
+            return new Prepared(card, target, allowed, sourceType, request, null);
 
         }
     }

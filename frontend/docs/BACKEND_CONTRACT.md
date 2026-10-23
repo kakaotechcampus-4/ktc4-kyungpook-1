@@ -76,7 +76,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
   "partial": false,                                   // 부분 완료는 별도 상태가 아니다 → SUCCEEDED + partial:true
   "steps": [{ "key": "COMMITS|PR_REVIEW|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
               "done": 0, "total": 0 }],               // 늘 이 4개가 이 순서. 총량을 모르면 total: null
-  "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|COLLECTION_CAPPED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
+  "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|AI_UNAVAILABLE|COLLECTION_CAPPED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
   "retryable": bool | null,
   "retryAfterSec": n | null,                          // GITHUB_RATE_LIMITED 에서만 의미가 있다
   "startedAt", "updatedAt", "finishedAt": null,

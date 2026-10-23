@@ -70,10 +70,12 @@ describe('manual startup contract #183', () => {
   it('creates a fresh key for the next writing entry', async () => {
     const create = vi.spyOn(endpoints, 'createManualDraft').mockImplementation(async input => card({ title: input.title, period: input.period ?? null }));
     vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ cardId: id, versionNo: 1, ...fields, savedAt: '2026-10-12T00:00:01Z' }));
-    const router = mount(); change('카드 제목', '첫 카드'); fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
+    const router = mount(); change('카드 제목', '첫 카드'); fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
+    fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
     await screen.findByText('기존 카드 화면');
     await act(async () => { await router.navigate('/new'); });
-    change('카드 제목', '다음 카드'); fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
+    change('카드 제목', '다음 카드'); fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
+    fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
     await screen.findByText('기존 카드 화면');
     expect(create).toHaveBeenCalledTimes(2); expect(create.mock.calls[0][1]).not.toBe(create.mock.calls[1][1]);
   });

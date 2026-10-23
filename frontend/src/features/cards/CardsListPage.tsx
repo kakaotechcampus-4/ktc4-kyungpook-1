@@ -38,7 +38,7 @@ export function CardsListPage() {
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="카드 검색" label="카드 이름으로 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={[{ value: 'recent', label: '최신순' }, { value: 'title', label: '이름순' }]} />
-          <Select value={completion} onChange={setCompletion} label="보완 상태" options={[{ value: 'ALL', label: '모든 항목' }, { value: 'MISSING', label: '빈칸 있음' }, { value: 'REVIEW', label: '확인 필요' }]} />
+          <Select value={completion} onChange={setCompletion} label="보완 상태" options={[{ value: 'ALL', label: '모든 보완 상태' }, { value: 'MISSING', label: '빈칸 있음' }, { value: 'REVIEW', label: '확인 필요' }]} />
           <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
           <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 만들기</Button>
         </div>
@@ -49,7 +49,7 @@ export function CardsListPage() {
         <Select value={tech} onChange={setTech} label="기술" options={techOptions} />
         {(area !== 'ALL' || tech !== 'ALL') && <Button variant="text" onClick={() => { setArea('ALL'); setTech('ALL'); }}>태그 초기화</Button>}
       </div>
-      <div className="status-tabs" aria-label="카드 상태 필터">
+      <div className="status-tabs" aria-label="카드 작성 상태 필터">
         {(['ALL', 'DRAFT', 'CONFIRMED'] as const).map((s) => (
           <button key={s} type="button" className="status-tab" aria-pressed={status === s} onClick={() => setStatus(s)}>
             {s === 'ALL' ? '전체' : cardStatusLabel[s]} <span className="c-3">{counts[s] ?? '—'}</span>

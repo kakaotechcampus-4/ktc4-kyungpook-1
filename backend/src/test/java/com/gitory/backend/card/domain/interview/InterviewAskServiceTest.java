@@ -1,5 +1,6 @@
 package com.gitory.backend.card.domain.interview;
 
+import com.gitory.backend.agent.port.InterviewAnswerMode;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
 import com.gitory.backend.agent.port.InterviewConfidence;
@@ -44,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -81,8 +83,8 @@ class InterviewAskServiceTest {
 
         request = new InterviewQuestionRequest(CARD_ID, null,
                 List.of(new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of())),
-                0, 2, InterviewCardSourceType.DIRECT_CARD);
-        when(assembler.assemble(any(Card.class), any(StarField.class), anyInt())).thenReturn(request);
+                0, 2, InterviewCardSourceType.DIRECT_CARD, null, List.of(), List.of());
+        when(assembler.assemble(any(Card.class), anyList(), any(), anyList())).thenReturn(request);
         when(port.nextQuestion(request)).thenReturn(question(InterviewStarSlot.T));
 
         when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of());
@@ -106,7 +108,7 @@ class InterviewAskServiceTest {
         InOrder order = inOrder(transactionManager, ownership, assembler, port, turns);
         order.verify(transactionManager).getTransaction(definitions.capture());
         order.verify(ownership).findOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD);
-        order.verify(assembler).assemble(any(Card.class), any(StarField.class), anyInt());
+        order.verify(assembler).assemble(any(Card.class), anyList(), any(), anyList());
         order.verify(transactionManager).commit(statuses.get(0));
         order.verify(port).nextQuestion(request);
         order.verify(transactionManager).getTransaction(definitions.capture());
@@ -278,13 +280,49 @@ class InterviewAskServiceTest {
 
     }
 
+    @Test
+    @DisplayName("같은 칸을 이미 두 번 물었으면 상한이 남아도 그 칸을 지정하면 InterviewFieldClosedException 이고 AI 를 부르지 않는다")
+    void sameSlotTwiceIsClosed() {
+
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(answered(1, StarField.T), answered(2, StarField.T)));
+
+        assertThatThrownBy(() -> service(3).ask(PUBLIC_ID, USER_ID, "T"))
+                .isInstanceOf(InterviewFieldClosedException.class);
+        verifyNoInteractions(port);
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 그 칸이 넘김으로 닫혔으면 저장하지 않고 InterviewFieldClosedException 이다")
+    void slotClosedWhileWaitingForAi() {
+
+        InterviewTurn skipped = InterviewTurn.ask(CARD_ID, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+        ReflectionTestUtils.setField(skipped, "outcome", TurnOutcome.SKIPPED);
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(), List.of(skipped));
+
+        assertThatThrownBy(() -> service(3).ask(PUBLIC_ID, USER_ID, null))
+                .isInstanceOf(InterviewFieldClosedException.class);
+        verify(turns, never()).save(any(InterviewTurn.class));
+
+    }
+
+    private static InterviewTurn answered(int seq, StarField slot) {
+
+        InterviewTurn turn = InterviewTurn.ask(CARD_ID, (short) seq, slot, QuestionType.EVIDENCE_GAP, "질문");
+        turn.answer("답", AnswerSource.TYPED);
+
+        return turn;
+
+    }
+
     static Stream<Arguments> unusableResults() {
 
         return Stream.of(
                 arguments(Named.of("COMPLETE", new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null,
-                        null, null))),
+                        null, null, null, List.of()))),
                 arguments(Named.of("질문 칸이 차 있는 COMPLETE", new InterviewQuestionResult(
-                        InterviewNextAction.COMPLETE, InterviewStarSlot.T, 1, InterviewQuestionType.RECALL_AID, "글"))),
+                        InterviewNextAction.COMPLETE, InterviewStarSlot.T, 1, InterviewQuestionType.RECALL_AID, "글",
+                        InterviewAnswerMode.TEXT, List.of()))),
                 arguments(Named.of("다른 칸의 질문", question(InterviewStarSlot.A))));
 
     }
@@ -292,7 +330,7 @@ class InterviewAskServiceTest {
     private static InterviewQuestionResult question(InterviewStarSlot slot) {
 
         return new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN, slot, 1, InterviewQuestionType.RECALL_AID,
-                "묻는 글");
+                "묻는 글", InterviewAnswerMode.TEXT, List.of());
 
     }
 

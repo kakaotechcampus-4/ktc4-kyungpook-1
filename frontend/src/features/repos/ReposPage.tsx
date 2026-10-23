@@ -75,7 +75,10 @@ export function ReposPage() {
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
 
       {repos.isPending && <div className="stack" style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Skeleton key={i} h={72} />)}</div>}
-      {repos.isSuccess && list.length === 0 && <EmptyState title="맞는 레포가 없어요" desc="비공개 저장소는 목록에 나오지 않아요. 권한부터 요청하지 않기 때문입니다." />}
+      {repos.isSuccess && list.length === 0 && <div className="stack" style={{ gap: 12, alignItems: 'center' }}>
+        <EmptyState title={q.trim() ? '검색 결과가 없어요' : filter !== 'all' ? '조건에 맞는 레포가 없어요' : '아직 불러온 레포가 없어요'} desc={q.trim() ? '이름을 확인하거나 검색·필터를 초기화해 주세요.' : filter !== 'all' ? '필터를 바꿔 다른 레포를 확인해 보세요.' : '비공개 저장소, 커밋이 없는 저장소와 내 프로필 README 저장소는 목록에서 제외돼요. GitHub 연결 상태도 확인해 주세요.'} />
+        {(q || filter !== 'all') ? <Button variant="outline" onClick={() => { setQ(''); setFilter('all'); }}>검색·필터 초기화</Button> : <Link to="/settings/github" className="btn btn--outline">GitHub 연결 확인</Link>}
+      </div>}
       <div className="record-list" role="radiogroup" aria-label="레포 선택">
         {list.map((r) => <RepoRow key={r.id} r={r} selected={r.id === selectedId} onSelect={() => select(r.id)} />)}
       </div>
@@ -86,15 +89,9 @@ export function ReposPage() {
       </StickyFooter>
 
       {disclose && selected && (
-        <Modal title="읽기 전에 알려 드릴게요" width={720} onClose={closeDisclose}
+        <Modal title="읽는 범위 확인" width={720} onClose={closeDisclose}
           footer={{ strong: detail.data ? `약 ${detail.data.disclosure.estimatedSeconds}초` : '…',
             actions: <><Button variant="outline" onClick={closeDisclose}>취소</Button><Button onClick={begin} loading={start.isPending} disabled={!detail.data}>정리 시작</Button></> }}>
-          <div className="wizard">
-            <ol className="wizard__steps" aria-label="진행 단계">
-              <li className="wstep wstep--done"><span className="wstep__no">✓</span>레포 선택</li>
-              <li className="wstep wstep--now"><span className="wstep__no">2</span>읽는 범위 확인</li>
-              <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
-            </ol>
             <div className="stack" style={{ gap: 14 }}>
               <div className="card card--paper repo-ctx" style={{ padding: '14px 16px' }}>
                 <IconBox icon={FolderGit2} size={36} />
@@ -106,9 +103,8 @@ export function ReposPage() {
               </div>
               {detail.isPending ? <Skeleton h={160} /> : detail.data && <PermissionGrid compact reads={detail.data.disclosure.reads} skips={detail.data.disclosure.skips} />}
               {detail.isError && <QueryFailure error={detail.error} retry={() => detail.refetch()} pending={detail.isFetching} />}
-              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">이번엔 새로 올라온 커밋만 이어서 읽습니다.</Note>}
+              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 분석해 새 기록을 확인할 수 있어요.</Note>}
             </div>
-          </div>
         </Modal>
       )}
     </main>
@@ -137,7 +133,7 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
           <span className="repo-row__stats t-12 c-3"><span>{counting ? `PR · 리뷰 ${COUNTING}` : `PR ${r.prCount} · 리뷰 ${r.reviewCount}`}</span><span>{r.language ?? '-'}</span><span>{ym(r.activeFrom)} – {ym(r.activeTo)}</span></span>
         </div>
         {/* 배지만 두면 왜 조심해야 하는지 안 읽힌다 — 한 줄로 풀어 쓴다 */}
-        {low && <span className="repo-row__warn">내 몫이 적어서, 카드로 만들면 부풀린 것처럼 보일 수 있어요</span>}
+        {low && <span className="repo-row__warn">확인되는 기여가 적어요. 맡은 일은 답변으로 보완할 수 있어요.</span>}
         {counting && <span className="t-12 c-3">아직 개수를 세지 못했어요. 0건이 아니라 집계 전이에요</span>}
         {!counting && !low && r.prCount === 0 && <span className="repo-row__warn">PR이 없어서 커밋을 묶어 후보를 만들어 드려요</span>}
       </div>

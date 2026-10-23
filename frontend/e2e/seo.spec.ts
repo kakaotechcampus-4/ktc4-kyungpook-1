@@ -20,7 +20,7 @@ test('only the public landing is listed and the share image is a real PNG', asyn
   const xml = await sitemap.text();
   expect(xml).toContain('<loc>https://gitory-prototypes.vercel.app/login</loc>');
   expect(xml.match(/<loc>/g)).toHaveLength(1);
-  const image = await request.get('/og/gitory-social-v1.png');
+  const image = await request.get('/og/gitory-social-light-v2.png');
   expect(image.status()).toBe(200);
   expect(image.headers()['content-type']).toContain('image/png');
   const bytes = await image.body();

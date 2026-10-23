@@ -165,3 +165,26 @@ def test_offline_export_matches_running_schema_when_docs_are_disabled(tmp_path) 
     )
 
     assert json.loads(output.read_text(encoding="utf-8")) == create_app(docs_enabled=True).openapi()
+
+
+SNAPSHOT = Path(__file__).resolve().parents[2] / "docs" / "openapi" / "ai.json"
+UPDATE_HINT = (
+    "docs/openapi/ai.json 이 지금 코드의 문서와 다릅니다. ai 폴더에서 "
+    "UPDATE_OPENAPI=1 python -m pytest tests/test_openapi_health.py 로 다시 만든 뒤 커밋하세요 "
+    "(PowerShell: $env:UPDATE_OPENAPI=1; python -m pytest tests/test_openapi_health.py; Remove-Item Env:UPDATE_OPENAPI)"
+)
+
+
+def test_committed_snapshot_matches_running_schema() -> None:
+    document = create_app(docs_enabled=True).openapi()
+    if os.environ.get("UPDATE_OPENAPI") == "1":
+        # 스냅샷 형식은 export_openapi.py 한 곳에서만 정한다
+        script = Path(__file__).resolve().parents[1] / "scripts" / "export_openapi.py"
+        subprocess.run(
+            [sys.executable, str(script), "--output", str(SNAPSHOT)],
+            check=True, capture_output=True, text=True,
+        )
+        return
+
+    assert SNAPSHOT.exists(), UPDATE_HINT
+    assert json.loads(SNAPSHOT.read_text(encoding="utf-8")) == document, UPDATE_HINT

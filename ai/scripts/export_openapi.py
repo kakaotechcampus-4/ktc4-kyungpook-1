@@ -25,7 +25,8 @@ def main() -> None:
         sys.stdout.write(document)
     else:
         args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(document, encoding="utf-8")
+        # Windows 에서 만들어도 줄바꿈이 CRLF 로 바뀌지 않게 한다
+        args.output.write_text(document, encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":

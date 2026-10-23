@@ -3,6 +3,7 @@ package com.gitory.backend.matching.domain;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,7 +45,6 @@ class DevelopmentPostingFilterTest {
             "Seoul, Korea | Marketing Manager - Advertiser & Agency | false",
             "Seoul | Radios Engineer | false",
             "Seoul, South Korea | Design Engineer | false",
-            "Seoul, South Korea | Research Scientist - Foundation Models | false",
             "Seoul, South Korea | 에이크미 이츠 사업개발 및 제휴 팀장 | false",
             "Seoul, South Korea | 설비 신뢰성 엔지니어 리드 | false",
             "일본 도쿄도 | 서버 개발자 | false",
@@ -60,33 +60,55 @@ class DevelopmentPostingFilterTest {
 
     }
 
-    @ParameterizedTest(name = "{0} → {1}")
-    @DisplayName("제목에 시니어·관리자 표시가 있는 개발 공고는 남기지 않는다")
-    @CsvSource(delimiter = '|', value = {
-            "Senior Back-end Engineer | false",
-            "Sr. Backend Engineer | false",
-            "Staff Security Engineer | false",
-            "Principal Software Engineer | false",
-            "Engineering Manager, Backend | false",
-            "Tech Lead, Android | false",
-            "Director of Software Engineering | false",
-            "Head of Machine Learning | false",
-            "시니어 백엔드 개발자 | false",
-            "서버 개발자 (리드) | false",
-            "서버 개발자 (팀장) | false",
-            "Junior Backend Engineer | true",
-            "Backend Engineer | true",
-            "신입 서버 개발자 | true",
-            "Software Engineer Intern | true",
-            "Software Engineer, Leadership Program | true",
-            "Staffing Platform Software Engineer | true",
-            "그리드 컴퓨팅 개발자 | true"
-    })
-    void dropsSeniorTitledPostings(String title, boolean expected) {
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("제목에 시니어·관리자 표시가 있어도 개발 공고면 저장한다")
+    @ValueSource(strings = {"Senior Back-end Engineer", "Sr. Backend Engineer", "Staff Security Engineer",
+            "Principal Software Engineer", "Engineering Manager, Backend", "Tech Lead, Android",
+            "Director of Software Engineering", "Head of Machine Learning", "시니어 백엔드 개발자", "서버 개발자 (리드)",
+            "서버 개발자 (팀장)"})
+    void keepsSeniorTitledDevelopmentPostings(String title) {
 
-        FetchedPosting posting = new FetchedPosting("1", title, "https://jobs.example.com/1", "Seoul, South Korea", null, null, "");
+        assertThat(DevelopmentPostingFilter.accepts(posting("Seoul, South Korea", title))).isTrue();
 
-        assertThat(DevelopmentPostingFilter.accepts(posting)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("더한 근무지 낱말마다 그 근무지의 개발 공고를 남긴다")
+    @ValueSource(strings = {"Pohang, South Korea", "Jeju", "Changwon", "Ulsan, Korea", "Naju", "Goyang-si",
+            "경상북도 포항시 남구", "제주특별자치도 제주시", "경상남도 창원시", "울산 남구", "전라남도 나주시", "경기도 고양시 일산동구"})
+    void keepsDevelopmentPostingsInAddedPlaces(String location) {
+
+        assertThat(DevelopmentPostingFilter.accepts(posting(location, "Backend Engineer"))).isTrue();
+
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("더한 직무 낱말마다 그 제목의 공고를 남긴다")
+    @ValueSource(strings = {"머신러닝 엔지니어", "Research Scientist - Foundation Models", "Forward Deployed Engineer",
+            "Compiler Engineer", "Firmware Engineer", "펌웨어 엔지니어", "Robot Perception Engineer", "Robotics Engineer",
+            "2026 하반기 신입사원 채용 - SW Engineering", "2026 하반기 신입사원 채용 - Cloud/Infra Engineering",
+            "경력 채용 - AX개발", "경력 채용 - IT-IT개발", "경력 채용 - AI서비스개발-서울(수서)", "경력 채용 - 서울(서초)-앱개발",
+            "경력 채용 - 서울(서초)-미들웨어 개발", "경력 채용 - 서울(서초)-풀 스택 개발", "연구원 채용 - 데이터 AX 연구개발-KAIST",
+            "연구원 채용 - 코어·서비스 AI 연구개발-POSTECH"})
+    void keepsPostingsWithAddedRoleWords(String title) {
+
+        assertThat(DevelopmentPostingFilter.accepts(posting("대한민국", title))).isTrue();
+
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("고객 쪽 기술직과 개발이 아닌 '개발' 분야는 여전히 버린다")
+    @ValueSource(strings = {"Solutions Architect", "Senior Solutions Architect, Korea", "Cloud Architect",
+            "경력 채용 - 부동산개발", "경력 채용 - 서울(서초)-사업개발"})
+    void stillDropsCustomerFacingAndNonDevelopmentRoles(String title) {
+
+        assertThat(DevelopmentPostingFilter.accepts(posting("Seoul, South Korea", title))).isFalse();
+
+    }
+
+    private static FetchedPosting posting(String location, String title) {
+
+        return new FetchedPosting("1", title, "https://jobs.example.com/1", location, null, null, "");
 
     }
 }

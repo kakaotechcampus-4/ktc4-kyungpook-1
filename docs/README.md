@@ -37,6 +37,7 @@
 | --- | --- |
 | 2026-10-20 | [공통 푸터 작업 기록](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/frontend/docs/2026-10-20-MOBILE_FOOTER.md) |
 | 2026-10-20 | [카드 UI 검증 기록](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/frontend/docs/2026-10-20-CARD_REVIEW_FLOW.md) |
+| 2026-10-18 | [UX 개선 화면별 변경·계약 보존·검증 기록](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/frontend/docs/2026-10-18-UX_POLISH.md) |
 | 2026-10-15 | [#219 검증 기록](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/frontend/docs/2026-10-15-METADATA_219.md) |
 | 2026-10-13 | [프론트 UI 점검 기록](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/frontend/docs/2026-10-13-SELECTION_UI_POLISH.md) |
 | 2026-10-12 | [프론트 카드 계약 작업 기록](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/frontend/docs/2026-10-12-CARD_CONTRACT_183.md) |

@@ -122,3 +122,68 @@ def test_per_call_timeout_disables_sdk_retries() -> None:
     client.call("system", {}, _Output, 100, timeout_seconds=12.5)
 
     assert options == [{"timeout": 12.5, "max_retries": 0}]
+
+
+class _FakeStream:
+    def __init__(self, completion=None, error: Exception | None = None) -> None:
+        self._completion = completion
+        self._error = error
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def get_final_completion(self):
+        if self._error is not None:
+            raise self._error
+        return self._completion
+
+
+def _client_streaming(stream: _FakeStream, calls: dict) -> StructuredLLMClient:
+    client = StructuredLLMClient(LLMSettings(base_url="http://127.0.0.1:1", api_key="test", model="m"))
+
+    def parse(**kwargs):
+        calls["parse"] = kwargs
+        raise AssertionError("상한이 게이트웨이 한도를 넘으면 스트리밍으로 보내야 한다")
+
+    def open_stream(**kwargs):
+        calls["stream"] = kwargs
+        return stream
+
+    client._client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(parse=parse, stream=open_stream)))
+    return client
+
+
+def test_budget_above_gateway_ceiling_is_streamed_with_usage() -> None:
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(parsed=_Output(value="ok")))],
+        usage=SimpleNamespace(prompt_tokens=7, completion_tokens=5),
+    )
+    calls: dict = {}
+
+    result = _client_streaming(_FakeStream(completion), calls).call("system", {}, _Output, 6000)
+
+    assert result.output.value == "ok"
+    assert (result.prompt_tokens, result.completion_tokens) == (7, 5)
+    assert calls["stream"]["max_completion_tokens"] == 6000
+    assert calls["stream"]["stream_options"] == {"include_usage": True}
+    assert "parse" not in calls
+
+
+def test_budget_within_gateway_ceiling_is_not_streamed() -> None:
+    result = _client_returning(_Output(value="ok")).call("system", {}, _Output, 2000)
+
+    assert result.output.value == "ok"
+
+
+def test_streamed_reply_cut_at_budget_is_too_long_error() -> None:
+    from openai import LengthFinishReasonError
+
+    from services.llm_structured_client import LLMStructuredOutputTooLongError
+
+    error = LengthFinishReasonError(completion=SimpleNamespace(usage=None))
+
+    with pytest.raises(LLMStructuredOutputTooLongError):
+        _client_streaming(_FakeStream(error=error), {}).call("system", {}, _Output, 6000)

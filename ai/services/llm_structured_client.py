@@ -30,6 +30,10 @@ from pydantic import BaseModel, ValidationError
 ReasoningEffort = Literal["none", "low", "medium", "high"]
 OutputT = TypeVar("OutputT", bound=BaseModel)
 
+# 운영 게이트웨이는 스트리밍이 아닌 답을 이 토큰 수까지만 기다리고, 더 큰 상한은 400 으로 거절한다.
+# 그보다 긴 답이 필요한 호출(공고 조건 뽑기)만 스트리밍으로 받는다.
+NON_STREAMING_MAX_COMPLETION_TOKENS = 2_000
+
 
 class LLMStructuredCallError(RuntimeError):
     """모델 응답을 구조화된 결과로 사용할 수 없을 때 발생하는 공통 오류."""
@@ -109,7 +113,7 @@ class StructuredLLMClient:
         )
         try:
             # GPT-5.6 계열은 temperature=0을 거절하므로 모든 모델에서 기본값을 쓴다.
-            completion = client.chat.completions.parse(
+            request = dict(
                 model=self._settings.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -119,6 +123,11 @@ class StructuredLLMClient:
                 max_completion_tokens=max_completion_tokens,
                 reasoning_effort=self._settings.reasoning_effort,
             )
+            if max_completion_tokens <= NON_STREAMING_MAX_COMPLETION_TOKENS:
+                completion = client.chat.completions.parse(**request)
+            else:
+                with client.chat.completions.stream(**request, stream_options={"include_usage": True}) as stream:
+                    completion = stream.get_final_completion()
         except RateLimitError as exc:
             raise LLMStructuredCallError("LLM 호출 한도를 초과했습니다.") from exc
         except (

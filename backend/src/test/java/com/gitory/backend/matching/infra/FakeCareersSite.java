@@ -27,6 +27,7 @@ final class FakeCareersSite implements AutoCloseable {
     private final Map<String, Integer> statuses = new ConcurrentHashMap<>();
     private final List<String> hits = new CopyOnWriteArrayList<>();
     private final List<String> posted = new CopyOnWriteArrayList<>();
+    private final List<Map<String, List<String>>> requestHeaders = new CopyOnWriteArrayList<>();
     private final Map<String, Queue<String>> sequences = new ConcurrentHashMap<>();
     private final HttpServer server;
 
@@ -43,6 +44,9 @@ final class FakeCareersSite implements AutoCloseable {
                 String target = exchange.getRequestURI().getRawPath()
                         + (exchange.getRequestURI().getRawQuery() == null ? "" : "?" + exchange.getRequestURI().getRawQuery());
                 site.hits.add(exchange.getRequestMethod() + " " + target);
+                if (!target.endsWith("/robots.txt")) {
+                    site.requestHeaders.add(Map.copyOf(exchange.getRequestHeaders()));
+                }
                 if ("POST".equals(exchange.getRequestMethod())) {
                     site.posted.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
                 }
@@ -89,6 +93,16 @@ final class FakeCareersSite implements AutoCloseable {
     List<String> posted() {
 
         return List.copyOf(posted);
+
+    }
+
+    /** robots.txt 요청은 빼고, 받은 요청마다 그 헤더의 첫 값(없으면 빈 글)을 차례로 돌려준다 */
+    List<String> headerValues(String name) {
+
+        return requestHeaders.stream().map(headers -> headers.entrySet().stream()
+                        .filter(entry -> entry.getKey().equalsIgnoreCase(name))
+                        .map(entry -> entry.getValue().getFirst()).findFirst().orElse(""))
+                .toList();
 
     }
 

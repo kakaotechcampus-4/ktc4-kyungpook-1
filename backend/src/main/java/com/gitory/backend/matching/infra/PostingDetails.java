@@ -4,6 +4,7 @@ import com.gitory.backend.matching.domain.FetchedPosting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -23,18 +24,25 @@ final class PostingDetails {
 
     static FetchedPosting withText(FetchedPosting listed, CompanySource source, Supplier<String> detailText) {
 
-        String text;
+        return fromDetail(listed, source, () -> Optional.of(new FetchedPosting(listed.externalId(), listed.title(),
+                listed.sourceUrl(), listed.location(), listed.sourceUpdatedAt(), listed.expiresAt(), detailText.get(),
+                listed.imageUrls(), listed.companyName()))).orElseThrow();
+
+    }
+
+    /** 상세를 읽고 나서 모집이 끝났다고 확인한 공고처럼 목록에서 뺄 공고는 detail 이 빈 값을 돌려준다 */
+    static Optional<FetchedPosting> fromDetail(FetchedPosting listed, CompanySource source,
+                                               Supplier<Optional<FetchedPosting>> detail) {
+
         try {
-            text = detailText.get();
+            return detail.get();
         } catch (PoliteFetchException e) {
             if (COMPANY_WIDE.contains(e.code())) {
                 throw e;
             }
             log.warn("공고 상세를 건너뜀 {} {}: {}", source.name(), listed.externalId(), e.code());
-            text = "";
+            return Optional.of(listed);
         }
-        return new FetchedPosting(listed.externalId(), listed.title(), listed.sourceUrl(), listed.location(),
-                listed.sourceUpdatedAt(), listed.expiresAt(), text, listed.imageUrls());
 
     }
 }

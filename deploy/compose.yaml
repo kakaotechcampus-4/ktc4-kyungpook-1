@@ -124,6 +124,8 @@ services:
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
       # 매일 새벽 공고 가져오기 → 조건 뽑기 → AI 색인 보내기 (application.yml gitory.matching.sync)
       MATCHING_SYNC_ENABLED: ${MATCHING_SYNC_ENABLED:-false}
+      # 로켓펀치 Open API 키. 비어 있으면 로켓펀치 공고만 건너뛴다
+      ROCKETPUNCH_API_KEY: ${ROCKETPUNCH_API_KEY:-}
     healthcheck:
       # readiness 그룹은 db 연결까지 본다. ai 는 넣지 않는다 (application.yml management 절)
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]

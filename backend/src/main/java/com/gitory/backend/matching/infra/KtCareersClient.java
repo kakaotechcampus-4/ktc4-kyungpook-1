@@ -63,8 +63,10 @@ public class KtCareersClient {
         if (!id.isIntegralNumber() || id.asLong() <= 0 || name.isEmpty() || !url.toLowerCase(Locale.ROOT).startsWith("https://")) {
             throw malformed(source, "recruitNoticeSn·recruitNoticeName·recruitNoticeUrl 이 없거나 알맞지 않은 공고가 있다");
         }
-        // 본문 대부분이 이미지 한 장이라 글이 비어도 공고는 넘기고, 이미지 글 읽기는 다음 이슈에서 한다
-        String text = PostingTextConverter.fromHtml(textOf(notice.path("contents")));
+        // 본문 대부분이 이미지라 글이 비어도 공고는 넘기고, 이미지 글 읽기에 쓸 본문 이미지 주소를 함께 넘긴다
+        String contents = textOf(notice.path("contents"));
+        String text = PostingTextConverter.fromHtml(contents);
+        List<String> images = PostingImages.of(text, contents, url);
         Instant expiresAt = instantOf(notice.path("receiveEndDatetime"));
         List<FetchedPosting> postings = new ArrayList<>();
         for (JsonNode sector : notice.path("recruitSectorList")) {
@@ -74,10 +76,11 @@ public class KtCareersClient {
                 throw malformed(source, "공고 " + id.asLong() + " 의 모집 분야에 recruitSectorSn·recruitSectorName 이 없다");
             }
             postings.add(new FetchedPosting(id.asLong() + "-" + sectorId.asLong(), titleOf(name + " - " + sectorName), url,
-                    LOCATION, null, expiresAt, text));
+                    LOCATION, null, expiresAt, text, images));
         }
         if (postings.isEmpty()) {
-            postings.add(new FetchedPosting(String.valueOf(id.asLong()), titleOf(name), url, LOCATION, null, expiresAt, text));
+            postings.add(new FetchedPosting(String.valueOf(id.asLong()), titleOf(name), url, LOCATION, null, expiresAt, text,
+                    images));
         }
         return postings;
 

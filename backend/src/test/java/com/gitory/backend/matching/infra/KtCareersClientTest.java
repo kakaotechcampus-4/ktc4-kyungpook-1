@@ -76,14 +76,16 @@ class KtCareersClientTest {
     }
 
     @Test
-    @DisplayName("본문이 이미지뿐이라 글이 없어도 공고는 빈 본문으로 넘긴다")
+    @DisplayName("본문이 이미지뿐이라 글이 없어도 공고는 빈 본문으로 넘기고, 본문 이미지 주소를 함께 넘긴다")
     void keepsImageOnlyNotice() {
 
         site.put(LIST, list(notice(1, "[kt ds] 신입사원 채용", "<img src=\\\"https://kt.recruiter.co.kr/upload/a.jpg\\\"><br>",
                 sector(1, "백엔드 개발"))));
 
-        assertThat(client.list(FakeCareersSite.session(), source)).singleElement()
-                .satisfies(posting -> assertThat(posting.text()).isEmpty());
+        assertThat(client.list(FakeCareersSite.session(), source)).singleElement().satisfies(posting -> {
+            assertThat(posting.text()).isEmpty();
+            assertThat(posting.imageUrls()).containsExactly("https://kt.recruiter.co.kr/upload/a.jpg");
+        });
 
     }
 

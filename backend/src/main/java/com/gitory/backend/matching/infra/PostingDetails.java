@@ -34,7 +34,7 @@ final class PostingDetails {
             text = "";
         }
         return new FetchedPosting(listed.externalId(), listed.title(), listed.sourceUrl(), listed.location(),
-                listed.sourceUpdatedAt(), listed.expiresAt(), text);
+                listed.sourceUpdatedAt(), listed.expiresAt(), text, listed.imageUrls());
 
     }
 }

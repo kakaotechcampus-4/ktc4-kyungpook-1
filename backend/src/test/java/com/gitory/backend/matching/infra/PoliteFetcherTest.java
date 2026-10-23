@@ -171,6 +171,54 @@ class PoliteFetcherTest {
     }
 
     @Test
+    @DisplayName("robots.txt 가 넘겨 준 주소를 따라가 끝에서 받은 글을 robots.txt 로 읽는다")
+    void followsRobotsRedirectAndReadsFinalBody() {
+
+        redirect(ROBOTS, "/moved-robots.txt");
+        serve("/moved-robots.txt", 200, "User-agent: *\nDisallow: /private");
+        serve("/jobs", 200, "ok");
+        PoliteFetchSession session = session(null, null);
+
+        String body = session.get(URI.create(base + "/jobs"));
+        FetchFailureCode blocked = failureOf(() -> session.get(URI.create(base + "/private/1")));
+
+        assertThat(body).isEqualTo("ok");
+        assertThat(blocked).isEqualTo(FetchFailureCode.ROBOTS_DISALLOWED);
+        assertThat(hits).containsExactly(ROBOTS, "/moved-robots.txt", "/jobs");
+
+    }
+
+    @Test
+    @DisplayName("robots.txt 가 넘겨 준 끝이 규칙 없는 오류 페이지나 4xx 면 제한 없이 요청한다")
+    void robotsRedirectToErrorPageMeansNoRestriction() {
+
+        redirect(ROBOTS, "/error/404");
+        redirect("/error/404", "/error/404.html");
+        serve("/error/404.html", 200, "<html><body>페이지를 찾을 수 없어요</body></html>");
+        serve("/jobs", 200, "ok");
+
+        assertThat(session(null, null).get(URI.create(base + "/jobs"))).isEqualTo("ok");
+
+    }
+
+    @Test
+    @DisplayName("robots.txt 가 다섯 번 넘게 넘겨 주면 읽지 못한 것으로 보고 그 호스트에 요청하지 않는다")
+    void tooManyRobotsRedirectsFailHost() {
+
+        for (int hop = 0; hop < 6; hop++) {
+            redirect(hop == 0 ? ROBOTS : "/r" + hop, "/r" + (hop + 1));
+        }
+        serve("/r6", 200, "");
+        serve("/jobs", 200, "ok");
+
+        FetchFailureCode code = failureOf(() -> session(null, null).get(URI.create(base + "/jobs")));
+
+        assertThat(code).isEqualTo(FetchFailureCode.ROBOTS_UNAVAILABLE);
+        assertThat(hits).containsExactly(ROBOTS, "/r1", "/r2", "/r3", "/r4", "/r5");
+
+    }
+
+    @Test
     @DisplayName("robots.txt 에 연결하지 못해도 그 호스트는 실패한다")
     void robotsConnectionFailureFailsHost() throws IOException {
 
@@ -380,6 +428,15 @@ class PoliteFetcherTest {
     private void serve(String path, int status, String body) {
 
         routes.put(path, exchange -> write(exchange, status, body));
+
+    }
+
+    private void redirect(String path, String location) {
+
+        routes.put(path, exchange -> {
+            exchange.getResponseHeaders().add("Location", location);
+            write(exchange, 302, "");
+        });
 
     }
 

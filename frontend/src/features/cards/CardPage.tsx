@@ -159,7 +159,7 @@ export function CardPage() {
           </aside>
         </div>
         <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
-        {sp.get('versions') === '1' && <VersionsDialog card={card} onClose={close} />}
+        {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
       </main>
     );
@@ -242,7 +242,7 @@ export function CardPage() {
       </StickyFooter>
 
       {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={(r) => { setJustConfirmed(r); close(); }} />}
-      {sp.get('versions') === '1' && <VersionsDialog card={card} onClose={close} />}
+      {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
       {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
       {metadataDialog}
     </main>

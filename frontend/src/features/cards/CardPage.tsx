@@ -3,6 +3,7 @@ import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CardTags } from '@/components/cards/CardTags';
+import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
@@ -157,8 +158,9 @@ export function CardPage() {
             <CardNavigation cardId={cardId} />
           </aside>
         </div>
-        {sp.get('versions') === '1' && <VersionsDialog card={card} onClose={close} />}
+        {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
+        <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       </main>
     );
   }
@@ -226,10 +228,12 @@ export function CardPage() {
               <Button variant="text" size="sm" onClick={exportMd}>복사</Button>
             </div>
           </div>
-        </div><CardNavigation cardId={cardId} />
+        </div>
+        <CardNavigation cardId={cardId} />
         </aside>
       </div>
 
+      <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(' · ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'}>
         {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
         <Button variant="outline" onClick={() => setSp({ mode: 'edit' })}>직접 수정</Button>
@@ -238,7 +242,7 @@ export function CardPage() {
       </StickyFooter>
 
       {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={(r) => { setJustConfirmed(r); close(); }} />}
-      {sp.get('versions') === '1' && <VersionsDialog card={card} onClose={close} />}
+      {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
       {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
       {metadataDialog}
     </main>

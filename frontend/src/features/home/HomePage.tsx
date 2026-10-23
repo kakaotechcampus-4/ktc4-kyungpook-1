@@ -12,6 +12,7 @@ import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CardTags } from '@/components/cards/CardTags';
+import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
 
 /**
@@ -164,7 +165,7 @@ export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: str
   const src = summarySource(c);
   const sub = summaryDetail(c);
   return (
-    <Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
+    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
       <div className="experience-item__meta">
         <span>{cardKindShort[c.kind]}{src ? ` · ${src}` : ''}</span>
         {c.period && <span>{periodLabel(c.period)}</span>}
@@ -179,6 +180,6 @@ export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: str
         </div>
         <span className="t-12 c-2">{sub}</span>
       </div>
-    </Link>
+    </Link><CardDeleteAction card={c} icon /></div>
   );
 }

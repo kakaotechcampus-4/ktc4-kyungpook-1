@@ -100,6 +100,7 @@ test('real edit sends all four keys with null blanks, preserves writing, and enf
   const initial = cardFixture({ version: { ...cardFixture().version, situation: '기존 상황', task: '기존 과제', action: '기존 행동', result: '기존 결과' } });
   const http = await installContractFixture(page, { card: initial });
   await page.goto(`/cards/${CARD_ID}?mode=edit`);
+  await page.getByLabel(labels[0], { exact: true }).waitFor({ state: 'visible' });
   for (const label of labels) await expect(page.getByLabel(label, { exact: true })).toHaveAttribute('maxlength', '1000');
   const situation = '  의미 있는 공백\n줄바꿈도 유지합니다.  ';
   const action = '가'.repeat(1000);
@@ -133,6 +134,7 @@ test('real partial timeout card offers writing and blocks unsupported regenerati
   });
   const http = await installContractFixture(page, { card: partial });
   await page.goto(`/cards/${CARD_ID}`);
+  await page.getByRole('heading', { level: 1 }).waitFor({ state: 'visible' });
   await expect(page.getByText('빈칸은 답변하거나 직접 작성해 주세요.')).toBeVisible();
   await expect(page.getByRole('button', { name: /다시 생성/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '결과 답변하기', exact: true })).toBeVisible();

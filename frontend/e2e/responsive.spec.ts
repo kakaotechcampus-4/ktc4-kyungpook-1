@@ -19,7 +19,7 @@ test.describe('반응형 레이아웃', () => {
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toBeVisible();
-    await expect(page.getByRole('status')).toContainText('로그인이 만료됐어요');
+    await expect(page.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toHaveCount(0);
     await expect(page.getByText('샘플 데이터로 체험해요. 실제 GitHub 계정은 연결하지 않아요.')).toHaveCount(0);
     await expect(page.getByLabel('경험 카드 예시')).toBeVisible();
     await expectNoHorizontalOverflow(page);
@@ -140,7 +140,7 @@ test.describe('반응형 레이아웃', () => {
       await page.goto(path);
       await expect(page.locator('.record-list')).toHaveCount(1);
       const children = page.locator('.record-list > .card');
-      expect(await children.count()).toBeGreaterThan(1);
+      await expect.poll(() => children.count()).toBeGreaterThan(1);
       const shadows = await children.evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));
       expect(shadows.every((shadow) => shadow === 'none')).toBe(true);
     }

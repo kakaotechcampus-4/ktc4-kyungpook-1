@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowUp, ChevronRight, FolderGit2, MessageSquareQuote, PenLine, Search } from 'lucide-react';
-import { useCards, useMe, useRepos } from '@/api/queries';
+import { useCards, useRepos } from '@/api/queries';
 import type { CardSummary, StarField } from '@/api/schemas';
 import { Badge, EmptyState, IconBox, KindIcon, PageTitle, SectionHead, Skeleton, StarDots, Toolbar } from '@/components/ui';
 import { cardKindShort, cardStatusLabel } from '@/lib/labels';
@@ -21,7 +21,6 @@ import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
  */
 export function HomePage() {
   useDocumentTitle('경험정리');
-  const me = useMe();
   const cards = useCards();
   const repos = useRepos();
   const [q, setQ] = useState('');
@@ -32,6 +31,7 @@ export function HomePage() {
   const nav = useNavigate();
 
   const list = useMemo(() => (cards.data ?? []).filter((c) => c.title.toLowerCase().includes(q.toLowerCase())), [cards.data, q]);
+  const preview = q.trim() ? list : list.slice(0, 3);
   const drafts = (cards.data ?? []).filter((c) => c.status === 'DRAFT').slice(0, 3);
   const empty = cards.isSuccess && cards.data.length === 0;
   const returning = !!cards.data?.length;
@@ -117,7 +117,7 @@ export function HomePage() {
           )}
         </div>
         <div className="prompt__chips">
-          <Link to="/repos" className="btn btn--outline"><FolderGit2 size={14} /> 레포 고르기</Link>
+          <Link to="/repos" className="btn btn--outline"><FolderGit2 size={14} /> 모든 레포 보기</Link>
           <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
         </div>
       </section>
@@ -133,9 +133,9 @@ export function HomePage() {
       ) : (
         <>
           <Toolbar placeholder="카드 이름으로 검색" value={q} onChange={setQ} />
-          <SectionHead label={`${me.data?.login ?? '나'}의 경험 카드`} count={cards.data?.length} />
+          <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}><SectionHead label={q.trim() ? '카드 검색 결과' : '최근 경험 카드'} count={q.trim() ? list.length : cards.data?.length} /><Link to="/cards" className="btn btn--text right">모든 카드 보기</Link></div>
           {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
-          <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} cardOrder={list.map(card => card.id)} />)}</div>
+          <div className="experience-list">{preview.map((c) => <CardGridItem key={c.id} c={c} cardOrder={list.map(card => card.id)} />)}</div>
           {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}" 에 맞는 카드가 없습니다`} desc="다른 이름으로 찾아보세요." />}
         </>
       )}

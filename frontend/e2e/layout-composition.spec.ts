@@ -38,6 +38,7 @@ test('dialog actions stay visible on a short landscape viewport', async ({ page 
   await page.setViewportSize({ width: 844, height: 390 });
   await loginAsDemo(page); await page.goto('/repos?select=r_auth&disclose=1');
   const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 15000 });
   await expect(dialog.getByRole('button', { name: '정리 시작' })).toBeEnabled();
   const box = await dialog.boundingBox();
   expect(box!.y).toBeGreaterThanOrEqual(8);

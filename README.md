@@ -36,3 +36,5 @@ BE–AI 실행 방법, Swagger 주소, OpenAPI export와 남은 통합 작업은
 브라우저 favicon 수정 내역은 [브랜딩 이미지 문서](frontend/docs/BRAND_ASSETS.md)에 기록했습니다.
 
 프론트 카드 제목·기간 계약 보완: [#219 검증 기록](frontend/docs/2026-10-15-METADATA_219.md).
+
+2026-10-18 UX 개선: [화면별 변경·계약 보존·검증 기록](frontend/docs/2026-10-18-UX_POLISH.md).

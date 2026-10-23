@@ -161,7 +161,6 @@ export function NewCardPage() {
       <div className="manual-save-row">
         <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
         {!blockedCard && (cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
-        {!cardId && <Button variant="outline" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
       </div>
       {blockedCard && <p role="alert">이미 확정된 카드입니다. 현재 입력은 이 화면에 남아 있습니다. <Link to={`/cards/${blockedCard.id}`}>기존 카드 보기</Link></p>}
 
@@ -177,8 +176,10 @@ export function NewCardPage() {
       <StickyFooter
         strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장됩니다' : '제목부터 저장해 주세요'}>
         <Link to="/" className="btn btn--text">나가기</Link>
-        <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
-        <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave(true)}>확정</Button>
+        {!cardId ? <Button size="lg" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button> : <>
+          <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
+          <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave(true)}>확정</Button>
+        </>}
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={saving} flush={flush} />
     </main>

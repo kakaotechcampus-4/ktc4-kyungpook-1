@@ -19,4 +19,5 @@ def test_interview_contract_request_matches_ai_model(name: str) -> None:
     expected = contract["springToAi"]["expectedRequest"]
     request = InterviewTurnRequest.model_validate(expected)
 
-    assert request.model_dump(mode="json") == expected
+    # 되묻기 루프 칸(allowed_slots 등)은 기본값이 있어 Spring 이 보내기 전에도 같은 요청을 받는다
+    assert request.model_dump(mode="json", exclude_unset=True) == expected

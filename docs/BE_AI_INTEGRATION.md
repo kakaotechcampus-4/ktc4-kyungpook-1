@@ -1,6 +1,6 @@
 # BE–AI 연결 및 API 문서
 
-Spring이 FastAPI 내부 API(수집·경험 그룹화·diff 근거·STAR 초안·되묻기)를 부르는 구조와, 실행 코드에서 BE·AI OpenAPI를 생성하는 방법을 정리한다. 현재 분석 Job은 `JobWorker`가 꺼내 수집 → 수집 결과 저장 → 경험 그룹화(`ANALYSIS_GROUPING_ENABLED=true`일 때) → 카드 후보 저장까지 실행한다. 카드 초안 Job은 같은 워커 자리를 쓰며, `CARD_AI_DRAFT_ENABLED=true`일 때 카드마다 diff 근거(`/internal/analysis/diff-evidence`) → STAR 초안(`/internal/analysis/star`) → 저장 순서로 칸을 채우고, 끄면 AI를 부르지 않고 끝낸다.
+Spring이 FastAPI 내부 API(수집·경험 그룹화·diff 근거·STAR 초안·되묻기·공고 조건 뽑기·매칭 검색·공고 색인)를 부르는 구조와, 실행 코드에서 BE·AI OpenAPI를 생성하는 방법을 정리한다. 현재 분석 Job은 `JobWorker`가 꺼내 수집 → 수집 결과 저장 → 경험 그룹화(`ANALYSIS_GROUPING_ENABLED=true`일 때) → 카드 후보 저장까지 실행한다. 카드 초안 Job은 같은 워커 자리를 쓰며, `CARD_AI_DRAFT_ENABLED=true`일 때 카드마다 diff 근거(`/internal/analysis/diff-evidence`) → STAR 초안(`/internal/analysis/star`) → 저장 순서로 칸을 채우고, 끄면 AI를 부르지 않고 끝낸다.
 
 ## 연결 구조
 
@@ -24,11 +24,13 @@ flowchart LR
 |---|---|
 | `AI_BASE_URL` | `http://localhost:8000`; Compose에서는 `http://ai:8000` |
 | `AI_CONNECT_TIMEOUT` | `3s`; 연결 제한 |
-| `AI_READ_TIMEOUT` | `180s`; 수집·경험 그룹화·되묻기·diff 근거·STAR 초안을 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
+| `AI_READ_TIMEOUT` | `180s`; 수집·경험 그룹화·되묻기·diff 근거·STAR 초안·공고 조건 뽑기·매칭 검색을 뺀 AI 호출의 응답 대기 제한(지금은 쓰는 호출 없음) |
 | `AI_COLLECT_READ_TIMEOUT` | `600s`; GitHub 수집 응답 대기 제한. 멈춘 Job 판정(분석·카드 초안 Job 모두)은 마지막 진행 기록부터 이 값·`AI_GROUPS_READ_TIMEOUT`·`AI_DIFF_EVIDENCE_READ_TIMEOUT`·`AI_STAR_READ_TIMEOUT` 중 큰 값 + 5분 |
 | `AI_GROUPS_READ_TIMEOUT` | `600s`; 경험 그룹화(`/internal/analysis/groups`) 응답 대기 제한 |
 | `AI_DIFF_EVIDENCE_READ_TIMEOUT` | `300s`; 카드 초안의 diff 근거(`/internal/analysis/diff-evidence`) 응답 대기 제한 |
 | `AI_STAR_READ_TIMEOUT` | `180s`; 카드 초안의 STAR 초안(`/internal/analysis/star`) 응답 대기 제한 |
+| `AI_POSTING_EXTRACT_READ_TIMEOUT` | `300s`; 채용 공고 조건 뽑기(`/internal/job-postings/extract`) 응답 대기 제한 |
+| `AI_MATCHING_INDEX_READ_TIMEOUT` | `120s`; 공고 색인(`/internal/matching/postings/index`)과 색인 정리(`/internal/matching/postings/prune`) 응답 대기 제한. 하루 한 번 공고 가져오기 끝에 활성 공고를 20개씩 보낸 뒤 남길 공고 목록으로 정리를 한 번 부른다 |
 | `ANALYSIS_GROUPING_ENABLED` | `false`; 켜면 분석 Job 이 수집 뒤 경험 그룹화를 부른다. 운영 AI 에 LLM 설정(`GITORY_LLM_BASE_URL`·`GITORY_LLM_API_KEY`)을 넣은 뒤 켠다. `deploy/compose.yaml` 이 ai 에 LLM 설정을, backend 에 이 값을 이미 넘기므로 `deploy/.env` 에 적으면 들어간다 |
 | `CARD_AI_DRAFT_ENABLED` | `false`; 켜면 후보로 만든 카드의 초안 Job 이 diff 근거·STAR 초안으로 칸을 채우고, 끄면 AI 를 부르지 않고 끝낸다. 운영 AI 에 LLM 설정을 넣은 뒤 켠다. `deploy/compose.yaml` 의 backend `environment` 에 `CARD_AI_DRAFT_ENABLED` 를 넘겨야 `deploy/.env` 값이 들어간다 |
 | `INTERVIEW_ANSWER_REVIEW_ENABLED` | `false`; 켜면 되묻기 답을 저장한 뒤 AI(`/internal/interview-answer-evaluations`)가 답을 평가하고, 모자라면 같은 칸의 질문을 하나 더 만든다(카드당 질문 상한 안에서). 평가가 실패하거나 20초를 넘겨도 답 저장은 성공한다. `deploy/compose.yaml` 의 backend `environment` 에 이 변수를 넘겨야 `deploy/.env` 값이 들어간다 |
@@ -38,7 +40,7 @@ flowchart LR
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | BE GitHub OAuth App 설정 |
 | `TOKEN_ENC_KEY`, `TOKEN_ENC_SALT` | 기존 BE 토큰 암호화 설정; salt는 16진수 |
 
-헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. 되묻기는 프론트가 요청을 30초에 끊으므로 그보다 짧은 `gitory.ai.interview-read-timeout`(기본 20초)을 응답 대기 제한으로 사용한다. `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
+헬스·문서 조회는 수집과 별도로 응답 대기 제한 5초를 사용한다. 되묻기는 프론트가 요청을 30초에 끊으므로 그보다 짧은 `gitory.ai.interview-read-timeout`(기본 20초)을 응답 대기 제한으로 사용하고, 같은 이유로 매칭 검색(`/internal/matching/search`)은 `gitory.ai.matching-search-read-timeout`(기본 25초)을 사용한다. `AI_BASE_URL`에 인증 정보·쿼리·토큰을 넣지 않는다. Spring이 `.env` 파일을 자동으로 읽는 구성은 없으므로 환경변수를 실행 프로세스에 주입한다. 토큰 암호화 키를 바꾸면 기존 연결의 암호문을 읽을 수 없으므로 기존 키를 유지한다.
 
 ## 로컬 실행
 
@@ -106,14 +108,28 @@ curl --fail http://localhost:8080/actuator/health/liveness
 
 AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반환한다. BE readiness는 DB와 AI의 이 응답을 확인한다. AI 연결이 끊기거나 서비스 식별자가 다르면 readiness는 DOWN·HTTP 503이 된다. liveness는 BE 프로세스 상태를 검사하므로 AI 장애에 따라 BE를 재시작시키지 않는다. 헬스 상세 내용은 공개하지 않는다.
 
-이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 그 밖의 오류(경험 그룹화 실패 포함)를 `INTERNAL_ERROR`로 Job을 실패 처리한다. 그룹화 실패를 재시도 가능한 코드로 나누는 작업은 #217에서 진행한다.
+이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 연결 안 됨·시간 초과·AI가 다시 해 보라고 알린 실패(경험 그룹화 포함)를 다시 시도할 수 있는 `AI_UNAVAILABLE`, 그 밖의 오류를 `INTERNAL_ERROR`로 Job을 실패 처리한다.
+
+## 되묻기 루프로 바뀌는 AI 계약 (#363 에서 정함, 구현은 #361·#362)
+
+- **질문 요청(`/internal/interview-turns`)에 더할 것**
+  - `target_star_slot`: 화면이 칸을 지정했을 때만 넣는다. 비면 AI 가 고른다.
+  - `allowed_slots`: 서버가 규칙(같은 칸 2번 · `NOT_MEASURED`·`SKIP` 으로 끝난 칸 제외 · 카드당 상한)으로 거른, 고를 수 있는 칸 목록. AI 는 이 안에서만 고른다.
+  - `previous_turns`: 지난 질문의 칸·질문·결과(`outcome`)·답. AI 가 '같은 칸 다시 / 다른 칸 / 끝' 을 판단하고 예상 답변을 만드는 재료다.
+- **질문 응답(`InterviewTurnResult`)에 더할 것** — 지금 모양을 그대로 쓴다. `next_action` 의 `ASK_AGAIN`·`COMPLETE` 가 '묻기·끝', `target_star_slot` 이 고른 칸이다.
+  - `answer_mode`: `TEXT`·`MEASURE`. R 이 아닌데 `MEASURE` 면 서버가 `TEXT` 로 고친다.
+  - `suggested_answers`: 예상 답변 목록. 서버가 화면의 `options` 로 옮긴다.
+  - `allowed_slots` 밖의 칸이 오면 서버가 받지 않고 규칙 틀 질문으로 대신한다.
+- **수치 문장 API 새로 만듦** — `POST /internal/interview-measured-sentence`. 요청은 지금 R 문장 · 사용자가 쓴 글 · 카드 제목, 응답은 R 문장 하나다. 서버는 문장에 든 숫자가 모두 사용자 글 안에 있는지 확인하고, 탈락·실패·마감 초과면 지금 R 문장 뒤에 사용자 글을 붙인 틀 문장을 쓴다.
+- **답 평가(`/internal/interview-answer-evaluations`)는 질문을 만들지 않는다.** 질문은 질문 요청에서만 만든다. 답이 모자라다는 판단은 다음 칸을 고를 때 재료로 쓴다(따로 부를지 질문 요청에 합칠지는 #361 에서 정한다).
+- 되묻기 질문·다음 칸 고르기·수치 문장 호출은 AI 의 되묻기 전용 실행기(스레드 6개)로 보낸다. 실행기를 얻었을 때 마감까지 시간이 모자라면 부르지 않고 틀 질문·틀 문장으로 대신한다.
 
 ## 구현 범위와 다음 개발 순서
 
 | 파트 | 현재 상태 / 남은 작업 |
 |---|---|
 | BE Job 워커 | `JobWorker`가 2초마다 대기 Job을 꺼내 실행(동시 실행 `JOB_WORKER_CONCURRENCY`, 기본 3, 카드 초안 Job과 같은 자리 사용). 분석 Job은 수집·저장·경험 그룹화·후보 저장까지 연결 |
-| BE AI 연결 | 수집·경험 그룹화·되묻기·diff 근거·STAR 초안 어댑터는 실행 경로에 연결. diff 근거·STAR 초안은 카드 초안 Job이 `CARD_AI_DRAFT_ENABLED=true`일 때 부른다. 되묻기 답 평가(`/internal/interview-answer-evaluations`)도 연결돼 있고 `INTERVIEW_ANSWER_REVIEW_ENABLED=true`일 때 답을 저장한 뒤 부른다 |
+| BE AI 연결 | 수집·경험 그룹화·되묻기·diff 근거·STAR 초안·매칭 검색 어댑터는 실행 경로에 연결. diff 근거·STAR 초안은 카드 초안 Job이 `CARD_AI_DRAFT_ENABLED=true`일 때 부른다. 되묻기 답 평가(`/internal/interview-answer-evaluations`)도 연결돼 있고 `INTERVIEW_ANSWER_REVIEW_ENABLED=true`일 때 답을 저장한 뒤 부른다 |
 | BE API | 내 정보·분석 Job·카드·인터뷰 API를 BE Swagger로 문서화 |
 | AI API | 수집 2개, 분석 A 계약 3개, 인터뷰 B 2개와 health를 문서화 |
 | AI A | 경험 그룹화(#109)와 diff 근거·STAR 초안 구현. diff·STAR 연동은 [연동 문서](AI_DIFF_STAR_INTEGRATION.md) 참고 |
@@ -122,7 +138,7 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 
 증분 수집은 작성 시각 기반 `since`를 사용하지 않는다. Spring이 이미 저장한 `known_commit_shas`를 보내면, AI는 commit 목록을 다시 확인하되 저장된 commit의 상세 조회를 생략한다. AI 응답의 `head_sha`는 Spring이 저장소 상태로 보관한다. 기존 BE의 수집 상한 설정은 AI 요청에 전달하는 필드가 없어 아직 적용되지 않는다. 검증된 사용자 이메일이 없어 `known_emails=[]`로 보내며, DB의 기본 브랜치가 없으면 `main`을 추측하지 않고 실패한다. 기존 BE 저장 DTO는 commit(바뀐 파일·이슈 번호 포함)·PR/Issue 상세·PR 리뷰와 줄 댓글·부분 수집 사유만 담으므로 AI의 `needs_confirmation`은 보존되지 않는다.
 
-남은 통합은 경험 그룹화 실패를 재시도 가능한 코드로 나누기(#217)다. 부분 응답은 `partialReason`으로 완료와 구분한다.
+부분 응답은 `partialReason`으로 완료와 구분한다.
 
 ## 검증
 

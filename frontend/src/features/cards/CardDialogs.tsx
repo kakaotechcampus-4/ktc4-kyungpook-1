@@ -8,11 +8,13 @@ import { ymdhm } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { canConfirmCard, emptyStarFields } from '@/lib/cardRules';
-import { errorView } from '@/api/errorView';
+import { errorView, isDailyRateLimit, isRateLimitError } from '@/api/errorView';
 
 /** D8 확정 확인 — 내용을 검토한 뒤 명시적인 버튼으로 확정한다. */
 export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onClose: () => void; onConfirmed: (r: ConfirmResult) => void }) {
   const confirm = useConfirm(card.id);
+  const failure = confirm.isError ? errorView(confirm.error) : null;
+  const dailyLimit = isDailyRateLimit(confirm.error);
   const commits = card.evidence.filter((e) => e.type === 'COMMIT').length;
   const dropped = card.droppedFields.length;
   const empty = emptyStarFields(card).length; // droppedFields 는 '근거를 못 찾아 버린 칸'만 — 안 쓴 칸까지 세야 문구가 맞다
@@ -22,7 +24,7 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
     return t && card.maskRules.some((r) => r.from && t.includes(r.from));
   }) : [];
   const go = async () => {
-    if (!canConfirmCard(card) || confirm.isPending) return;
+    if (!canConfirmCard(card) || confirm.isPending || dailyLimit) return;
     try {
       const r = await confirm.mutateAsync({ edited, maskedFields });
       track('card_confirmed', { cardId: card.id, edited, dropped, masked: maskedFields.length, remaining: r.remainingCandidates });
@@ -33,7 +35,7 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
   return (
     <Modal title="이 카드를 확정할까요?" width={620} onClose={() => { if (!confirm.isPending) onClose(); }}
       footer={{ strong: '현재 내용으로 확정합니다',
-        actions: <><Button variant="outline" disabled={confirm.isPending} onClick={onClose}>취소</Button><Button disabled={!canConfirmCard(card)} loading={confirm.isPending} onClick={go}>확정하기</Button></> }}>
+        actions: <><Button variant="outline" disabled={confirm.isPending} onClick={onClose}>취소</Button><Button disabled={!canConfirmCard(card) || dailyLimit} loading={confirm.isPending} onClick={go}>확정하기</Button></> }}>
       <div className="card card--paper stack" style={{ gap: 10, padding: '16px 18px', borderRadius: 10 }}>
         <span className="w-600" style={{ fontSize: 16 }}>{card.title}</span>
         {[['근거 커밋', `${commits}건`], ['빈 칸', empty ? `${empty}칸 — 빈 채로 확정됩니다` : '없음'], ['마스킹', maskedFields.length ? `${maskedFields.length}칸` : '없음'], ['버전', `v${card.version.versionNo} · 현재 버전 확정`]].map(([k, v]) => (
@@ -41,7 +43,7 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
         ))}
       </div>
       {empty > 0 && <Note strong="빈 칸은 빈 채로 확정됩니다" tone="inset" />}
-      {confirm.isError && <Note strong="확정하지 못했습니다" tone="danger">{errorView(confirm.error).message}</Note>}
+      {failure && <Note strong={isRateLimitError(confirm.error) ? failure.title : '확정하지 못했습니다'} tone="danger">{failure.message}</Note>}
     </Modal>
   );
 }

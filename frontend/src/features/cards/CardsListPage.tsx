@@ -1,3 +1,5 @@
+import { areaOptions, techOptions, matchesTags } from '@/lib/cardTags';
+import { sortCardSummaries } from '@/lib/cardListOrder';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FolderGit2, Layers, PenLine } from 'lucide-react';
@@ -18,12 +20,15 @@ export function CardsListPage() {
   const cards = useCards();
   const nav = useNavigate();
   const [q, setQ] = useState('');
+  const [area, setArea] = useState('ALL');
+  const [tech, setTech] = useState('ALL');
   const [status, setStatus] = useState<CardStatus | 'ALL'>('ALL');
   const [sort, setSort] = useState<'recent' | 'title'>('recent');
   const [completion, setCompletion] = useState<CompletionFilter>('ALL');
-  const list = useMemo(() => (cards.data ?? [])
-    .filter((c) => c.title.toLowerCase().includes(q.toLowerCase()) && (status === 'ALL' || c.status === status) && matchesCompletion(c, completion))
-    .sort((a, b) => (sort === 'title' ? a.title.localeCompare(b.title) : b.updatedAt.localeCompare(a.updatedAt))), [cards.data, q, status, sort, completion]);
+  const list = useMemo(() => sortCardSummaries((cards.data ?? [])
+    .filter((c) => c.title.toLowerCase().includes(q.toLowerCase()) && (status === 'ALL' || c.status === status) && matchesCompletion(c, completion) && matchesTags(c, area, tech))
+    , sort), [cards.data, q, status, sort, completion, area, tech]);
+  const cardOrder = list.map(card => card.id);
   const counts = { ALL: cards.data?.length, DRAFT: cards.data?.filter((c) => c.status === 'DRAFT').length, CONFIRMED: cards.data?.filter((c) => c.status === 'CONFIRMED').length };
 
   return (
@@ -38,7 +43,12 @@ export function CardsListPage() {
           <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 만들기</Button>
         </div>
       </div>
-      {cards.data && (q || status !== 'ALL' || completion !== 'ALL') && <span className="t-12 c-2" role="status">{list.length}개 · {status === 'ALL' ? '전체 상태' : cardStatusLabel[status]} · {completion === 'ALL' ? '모든 보완 상태' : completion === 'MISSING' ? '빈칸 있음' : '확인 필요'}{q && ` · 검색: ${q}`}</span>}
+      {cards.data && (q || status !== 'ALL' || completion !== 'ALL' || area !== 'ALL' || tech !== 'ALL') && <span className="t-12 c-2" role="status">{list.length}개 보기</span>}
+      <div className="card-tag-filters" aria-label="카드 태그 필터">
+        <Select value={area} onChange={setArea} label="분야" options={areaOptions} />
+        <Select value={tech} onChange={setTech} label="기술" options={techOptions} />
+        {(area !== 'ALL' || tech !== 'ALL') && <Button variant="text" onClick={() => { setArea('ALL'); setTech('ALL'); }}>태그 초기화</Button>}
+      </div>
       <div className="status-tabs" aria-label="카드 작성 상태 필터">
         {(['ALL', 'DRAFT', 'CONFIRMED'] as const).map((s) => (
           <button key={s} type="button" className="status-tab" aria-pressed={status === s} onClick={() => setStatus(s)}>
@@ -52,11 +62,11 @@ export function CardsListPage() {
         <div className="stack" style={{ alignItems: 'center', gap: 14, padding: '48px 0' }}>
           <span className="illus"><Layers size={34} /></span>
           <span className="c-2 t-14">{cards.data?.length ? '조건에 맞는 카드가 없어요' : '아직 카드가 없어요'}</span>
-          {!!cards.data?.length && <Button variant="outline" onClick={() => { setQ(''); setStatus('ALL'); setCompletion('ALL'); }}>필터 초기화</Button>}
+          {!!cards.data?.length && <Button variant="outline" onClick={() => { setQ(''); setStatus('ALL'); setCompletion('ALL'); setArea('ALL'); setTech('ALL'); }}>필터 초기화</Button>}
           <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 카드 만들기</Button>
         </div>
       )}
-      <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
+      <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} cardOrder={cardOrder} />)}</div>
     </main>
   );
 }

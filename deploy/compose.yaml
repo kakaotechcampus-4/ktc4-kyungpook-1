@@ -1,8 +1,8 @@
-# 운영 구성: 단일 VM 에 서비스 5개 (docs/DEPLOYMENT.md 4절).
+# 운영 구성: 단일 VM 에 서비스 6개 (docs/DEPLOYMENT.md 4절).
 #   cp .env.example .env   # 값 채우기
 #   docker compose up -d --build
 #
-# 공개 포트는 web(Caddy)의 80/443 뿐이다. backend·ai·db 는 내부 네트워크에만 있다 —
+# 공개 포트는 web(Caddy)의 80/443 뿐이다. backend·ai·db·redis 는 내부 네트워크에만 있다 —
 # 특히 ai 는 X-GitHub-Token 을 받으므로 포트를 열지 않는다.
 name: gitory
 
@@ -69,11 +69,26 @@ services:
       # 경험 그룹화·STAR 초안이 쓰는 LLM 게이트웨이. 비어 있으면 그 두 기능만 503 이고 수집·되묻기는 돈다
       GITORY_LLM_BASE_URL: ${GITORY_LLM_BASE_URL:-}
       GITORY_LLM_API_KEY: ${GITORY_LLM_API_KEY:-}
+    # 공고 색인(Chroma)과 임베딩 모델 파일을 서버 디스크에 둬서, 배포로 컨테이너를 새로 만들어도 색인이 남는다
+    volumes:
+      - ai-index:/app/.chroma
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 6
+
+  # LLM 을 부르는 요청의 사용자별 호출 횟수만 센다. 숫자는 잃어도 되는 값이라 디스크에 남기지 않는다
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    logging: *cloudwatch
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build: ../backend
@@ -87,6 +102,7 @@ services:
         awslogs-multiline-pattern: '^\d{4}-\d{2}-\d{2}'
     # ai 는 기다리지 않는다. AI 가 안 떠도 로그인·저장소 목록은 열려야 한다.
     # 분석 요청은 AI 연결이 실패하면 Job 이 실패로 끝난다.
+    # redis 도 기다리지 않는다. 붙지 못하면 호출 제한만 건너뛰고 요청은 통과한다.
     depends_on:
       db:
         condition: service_healthy
@@ -103,6 +119,11 @@ services:
       ANALYSIS_GROUPING_ENABLED: ${ANALYSIS_GROUPING_ENABLED:-false}
       # 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채운다 (#212). 끄면 빈 카드로 끝난다
       CARD_AI_DRAFT_ENABLED: ${CARD_AI_DRAFT_ENABLED:-false}
+      # 되묻기 질문·답 평가·카드 초안의 사용자별 호출 한도 (application.yml gitory.rate-limit). 서버 로그 첫머리에 켜졌는지 남는다
+      REDIS_HOST: redis
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
+      # 매일 새벽 공고 가져오기 → 조건 뽑기 → AI 색인 보내기 (application.yml gitory.matching.sync)
+      MATCHING_SYNC_ENABLED: ${MATCHING_SYNC_ENABLED:-false}
     healthcheck:
       # readiness 그룹은 db 연결까지 본다. ai 는 넣지 않는다 (application.yml management 절)
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
@@ -133,5 +154,6 @@ services:
 
 volumes:
   db-data:
+  ai-index:
   caddy-data:
   caddy-config:

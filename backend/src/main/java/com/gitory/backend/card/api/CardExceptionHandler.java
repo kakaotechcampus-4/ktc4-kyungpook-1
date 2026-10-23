@@ -53,7 +53,7 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleCardGenerating() {
 
         return ApiResponse.fail(ErrorCode.INVALID_STATE,
-                "초안을 만드는 중인 카드는 초안이 만들어진 뒤에 질문하거나 답할 수 있습니다.");
+                "초안을 만드는 중인 카드입니다. 초안이 만들어진 뒤에 다시 시도해 주세요.");
 
     }
 

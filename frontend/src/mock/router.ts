@@ -1,4 +1,5 @@
 import { CardMetadataPatch } from '@/api/schemas';
+import { mockMatchDetail, mockMatchList } from './matching';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
@@ -27,6 +28,11 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 // ───────────────────────────── 인증 ─────────────────────────────
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
+on('GET', '/matches', () => ok(mockMatchList()));
+on('GET', '/matches/:id', ({ params }) => {
+  const detail=mockMatchDetail(params[0]);
+  return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
+});
 on('POST', '/auth/logout', () => ok({ ok: true }));
 on('GET', '/me', () => {
   const confirmed = db.cards.filter((c) => c.status === 'CONFIRMED').length;

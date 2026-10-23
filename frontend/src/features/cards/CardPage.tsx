@@ -1,15 +1,16 @@
+import { DraftProgress } from './DraftProgress';
+import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { CardTags } from '@/components/cards/CardTags';
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
-import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StarKey, StickyFooter, Track } from '@/components/ui';
-import { JobLiveness } from '@/components/JobLiveness';
-import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, jobStepLabel, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
+import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
+import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
-import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
@@ -30,10 +31,19 @@ import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
  */
 export function CardPage() {
   const { cardId = '' } = useParams();
-  const [sp, setSp] = useSearchParams();
+  const [sp, updateSp] = useSearchParams();
+  const location = useLocation();
+  const setSp = (next: Parameters<typeof updateSp>[0]) => updateSp(next, { state: location.state });
   const nav = useNavigate();
   const { card: q, job } = useCard(cardId);
   const mode = sp.get('mode');
+  const viewedCard = useRef(cardId);
+  useEffect(() => {
+    if (viewedCard.current !== cardId && q.data?.id === cardId) {
+      viewedCard.current = cardId;
+      document.querySelector('main')?.scrollIntoView?.({ block: 'start' });
+    }
+  }, [cardId, q.data?.id]);
   const previousView = useRef({ cardId, mode });
   useEffect(() => {
     const previous = previousView.current;
@@ -49,7 +59,7 @@ export function CardPage() {
   const [justConfirmed, setJustConfirmed] = useState<ConfirmResult | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
-  useEffect(() => { setCopyOpen(false); setMetadataOpen(false); }, [cardId]);
+  useEffect(() => { setCopyOpen(false); setMetadataOpen(false); setJustConfirmed(null); }, [cardId]);
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
   const editField = parsedField.success ? parsedField.data : undefined;
   useDocumentTitle(q.data?.title);
@@ -68,7 +78,7 @@ export function CardPage() {
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
   const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel }];
-  const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`);
+  const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
   const metadataAction = card.status === 'DRAFT' && cardMetadataSupported() ? <Button variant="outline" size="sm" onClick={() => setMetadataOpen(true)}>기본 정보 수정</Button> : null;
@@ -82,28 +92,9 @@ export function CardPage() {
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs.slice(0, -1), { label: '초안 생성 중' }]} />
-        <PageTitle right="2단 읽기의 두 번째 단계">고른 후보의 코드를 읽고 있습니다</PageTitle>
-        <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
-          <div className="row" style={{ gap: 12 }}>
-            <span className="w-600" style={{ fontSize: 15 }}>{j ? `${doneSteps(j)} / ${j.steps.length} 단계` : '준비 중'}</span>
-            <span className="right t-12 c-2">{j ? '오래 걸리면 채워진 칸까지 먼저 보여 드려요' : ''}</span>
-          </div>
-          <Track value={j ? stepProgress(j) : 0.02} label="초안 생성 진행률" live={!!j && !isTerminal(j.state)} />
-          {j && <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />}
-          <div className="stack" style={{ gap: 10 }}>
-            {(j?.steps ?? []).map((s) => {
-              const status = stepView(s);
-              return (
-                <div key={s.key} className={`stage card ${status === 'NOW' ? 'card--paper' : ''}`} style={{ padding: '14px 16px', borderRadius: 10, borderTop: '1px solid var(--border-default)' }}>
-                  <span className="stage__icon" style={status !== 'WAIT' ? { background: 'var(--bg-ink-solid)', borderColor: 'var(--bg-ink-solid)' } : undefined}>{status === 'DONE' ? '✓' : status === 'NOW' ? <span className="spinner spinner--sm" aria-hidden /> : ''}</span>
-                  <div className="stack grow" style={{ gap: 3 }}><span className="stage__label">{jobStepLabel[s.key]}</span><span className="stage__detail">{s.state === 'SKIPPED' ? '해당 없음' : `${s.done} / ${s.total ?? '?'}`}</span></div>
-                  {status === 'NOW' && <div className="row" style={{ gap: 5 }}><StarKey field="S" small /><StarKey field="A" small /></div>}
-                  <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s)}</Badge>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <PageTitle>고른 후보의 카드 초안을 쓰고 있어요</PageTitle>
+        {job.isError && <QueryFailure error={job.error} retry={() => job.refetch()} pending={job.isFetching} />}
+        <DraftProgress job={j} checkedAt={job.dataUpdatedAt} />
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
           <span className="c-2 t-14">끝나면 알려드릴게요</span>
           <div className="right row" style={{ gap: 8 }}>
@@ -152,7 +143,7 @@ export function CardPage() {
               );
             })}
           </div>
-          <aside className="stack" style={{ gap: 16 }}>
+          <aside className="stack card-review-aside" style={{ gap: 16 }}>
             <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
               <span className="w-600" style={{ fontSize: 13.5 }}>이 카드로 받을 수 있는 질문</span>
               {interviewQuestions(card).map((qq) => <div key={qq} className="row" style={{ gap: 8, alignItems: 'flex-start' }}><span className="c-3">·</span><span className="t-12l c-2">{qq}</span></div>)}
@@ -163,6 +154,7 @@ export function CardPage() {
                 <div key={k} className="row t-12"><span className="c-2">{k}</span><span className="right w-600">{v}</span></div>
               ))}
             </div>
+            <CardNavigation cardId={cardId} />
           </aside>
         </div>
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
@@ -212,7 +204,7 @@ export function CardPage() {
         <div className="stack" style={{ gap: 12 }}>
           {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
-        <aside className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
+        <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <div className="stack" style={{ gap: 6 }}>
             <span className="t-12 w-600 c-3">카드 관리</span>
             <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
@@ -221,6 +213,7 @@ export function CardPage() {
               <Button variant="text" size="sm" onClick={exportMd}>복사</Button>
             </div>
           </div>
+        </div><CardNavigation cardId={cardId} />
         </aside>
       </div>
 
@@ -242,11 +235,12 @@ export function CardPage() {
 function CardHeader({ card, right, statusOverride, note }: { card: Card; right?: React.ReactNode; statusOverride?: React.ReactNode; note?: string }) {
   return (
     <div className="card-page-header">
-      <PageTitle sub={<>
+      <div className="card-page-header__identity"><PageTitle sub={<>
         <Badge kind="NEUTRAL">{cardKindLabel[card.kind]}</Badge>
         {statusOverride ?? <Badge kind={card.status}>{cardStatusLabel[card.status]}</Badge>}
         <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : isDraftMetadataPending(card) ? '본문 저장됨' : cardContentLabel[card.version.source])}</span>
       </>}>{card.title}</PageTitle>
+      <CardTags areas={card.areas} techs={card.techs} /></div>
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>
   );

@@ -62,6 +62,14 @@ public class Card {
     private UUID generationJobId;
     private boolean generationPartial;
 
+    // enum 순번이 아니라 이름으로 저장해, 목록 가운데에 값을 더해도 저장된 태그의 뜻이 바뀌지 않게 한다
+    // Hibernate 가 INSERT 에 이 칸을 넣어 DB 기본값이 쓰이지 않으므로 빈 목록으로 시작한다
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<String> areas;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<String> techs;
+
     private Instant createdAt;
     private Instant updatedAt;
     private Instant confirmedAt;
@@ -83,6 +91,8 @@ public class Card {
         this.candidateId = candidateId;
         this.generationJobId = generationJobId;
         this.generationPartial = false;
+        this.areas = List.of();
+        this.techs = List.of();
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -180,6 +190,26 @@ public class Card {
 
         this.generationPartial = true;
         changed();
+
+    }
+
+    /** 초안 Job 이 1번 버전을 쓸 때 한 번만 부르며, 태그는 카드 내용이 아니라 목록을 거르는 표시라 updatedAt 을 바꾸지 않는다 */
+    void tag(List<CardArea> areas, List<CardTech> techs) {
+
+        this.areas = areas.stream().map(Enum::name).toList();
+        this.techs = techs.stream().map(Enum::name).toList();
+
+    }
+
+    public List<CardArea> areaTags() {
+
+        return areas.stream().map(CardArea::valueOf).toList();
+
+    }
+
+    public List<CardTech> techTags() {
+
+        return techs.stream().map(CardTech::valueOf).toList();
 
     }
 

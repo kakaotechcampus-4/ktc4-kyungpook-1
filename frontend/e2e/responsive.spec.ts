@@ -140,7 +140,7 @@ test.describe('반응형 레이아웃', () => {
       await page.goto(path);
       await expect(page.locator('.record-list')).toHaveCount(1);
       const children = page.locator('.record-list > .card');
-      expect(await children.count()).toBeGreaterThan(1);
+      await expect.poll(() => children.count()).toBeGreaterThan(1);
       const shadows = await children.evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));
       expect(shadows.every((shadow) => shadow === 'none')).toBe(true);
     }

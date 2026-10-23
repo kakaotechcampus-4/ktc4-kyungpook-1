@@ -49,6 +49,12 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-restclient'
 
+    // LLM 을 부르는 요청의 사용자별 호출 횟수를 센다. 서버가 다시 떠도 숫자가 남고 만료가 저절로 된다
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // 채용 공고 본문의 HTML 을 글로 바꾼다
+    implementation 'org.jsoup:jsoup:1.22.2'
+
     // 운영
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 

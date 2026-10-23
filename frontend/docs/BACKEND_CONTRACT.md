@@ -16,7 +16,10 @@
 | CSRF | Spring Security `CookieCsrfTokenRepository.withHttpOnlyFalse()` 를 쓰면 프론트가 `XSRF-TOKEN` 쿠키를 읽어 `X-XSRF-TOKEN` 헤더로 자동 돌려줌 |
 | 날짜 | ISO 8601 문자열 |
 | id | 문자열 (숫자 PK 라면 문자열로 직렬화) |
+| 호출 제한 | LLM 을 부르는 요청(되묻기 질문 `POST /cards/{id}/interview`, 수치 문장 미리 보기 `POST /cards/{id}/interview/{turnNo}/measured-draft`, 답 평가가 켜진 `POST /cards/{id}/interview/{turnNo}/answer`, 카드 초안이 켜진 `POST /repos/{id}/cards`)은 사용자별 1분·하루 한도를 넘으면 **429** `RATE_LIMITED`. `message` 는 "요청이 많아요. N분 뒤에 다시 시도해 주세요.", `details.retryAfterSec` 와 응답 헤더 `Retry-After` 에 기다릴 초가 같은 값으로 온다. 로그인·소유권·입력 검사(401·404·409·400)가 먼저이고, 거절된 요청은 아무것도 저장하지 않는다 |
 | **에러가 아닌 것** | 후보 0개 · 부분 결과 · 작업 실패는 **200** + 본문 상태 (`verdict`/`partial`/`state`). 4xx/5xx 는 진짜 실패에만 |
+
+`RATE_LIMITED`의 `retryAfterSec`가 60초 이하이면 분당 한도, 60초보다 길면 서울 기준 자정까지의 하루 한도 안내를 사용합니다(#335). 하루 한도는 "오늘 사용 한도를 다 썼어요 · 내일 다시 시도해 주세요"로 표시하며 즉시 재시도를 제공하지 않습니다. 초 값이 없거나 유효하지 않으면 짧은 대기 안내로 처리합니다. 어느 경우에도 LLM 요청을 자동 재전송하지 않습니다.
 
 ## OAuth (Spring 이 전부 처리)
 
@@ -103,10 +106,11 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ### 카드
 | | 요청 | 응답 |
 |---|---|---|
-| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount }`. 상태 필터는 FE에서 적용 |
+| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount }`. `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
 | `POST /cards/manual/draft` | `{ title, period, repoId|null }`, 헤더 `Idempotency-Key: <UUID v4>` | **구현됨.** `Card` — 빈 `USER_EDIT` v1 DRAFT. 같은 사용자·같은 키는 처음 만든 카드의 **현재** 상세를 반환 |
 | `PATCH /cards/{id}/draft` | `{ situation, task, action, result }` **네 키 필수**, string/null | **구현됨.** `{ cardId, versionNo, situation, task, action, result, savedAt }` — 임시 저장 |
 | `GET /cards/{id}` | | **구현됨.** `Card` (아래) |
+| `DELETE /cards/{id}` | | **구현됨(#350).** `{ ok: true }` — 작성 중·확정 카드 모두 버전·문장·근거·되묻기까지 완전 삭제. 후보로 만든 카드면 후보가 `NEW` 로 돌아가 다시 고를 수 있다. 오류는 401 → 403 → 404(잘못된 UUID·없는 카드·이미 지운 카드·남의 카드) → 409 `INVALID_STATE`(초안을 만드는 중) 순 |
 | `POST /cards/{id}/mask` | `{ rules:[{from,to}] }` | **구현됨.** `Card` — 원문 불변, 표시·내보내기용 |
 | `POST /cards/{id}/reopen` | | **구현됨.** `Card` (DRAFT로). 이미 DRAFT면 no-op |
 | `GET /cards/{id}/versions` | | **구현됨.** `[{ versionNo, source, createdAt, summary, current }]` 최신순 |
@@ -163,7 +167,10 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 **Card**
 ```jsonc
-{ "id", "kind": "TECH|QUALITATIVE", "status": "DRAFT|CONFIRMED", "title", "period": "자유 글" | null,
+{ "id", "kind": "TECH|QUALITATIVE", "status": "DRAFT|CONFIRMED", "title",
+  "areas": ["BACKEND|FRONTEND|MOBILE|DEVOPS|AI|DB|TEST|DOCS"],  // 최대 2개, 없으면 []
+  "techs": ["C|CPP|CSHARP|JAVA|KOTLIN|PYTHON|GO|RUST|SWIFT|DART|TYPESCRIPT|JAVASCRIPT|REACT|SQL|DOCKER|GITHUB_ACTIONS"],  // 최대 4개, 없으면 []
+  "period": "자유 글" | null,
   "repo": { "id", "owner", "name" } | null, "candidate": { "id", "type", "ref", "title" } | null,
   "version": { "versionNo", "source": "AI_DRAFT|USER_EDIT|INTERVIEW|MASK|RESTORE", "createdAt", "situation", "task", "action", "result" },  // 칸은 null 가능 = 비운 칸
   "evidence": [{ "field": "S|T|A|R", "type": "COMMIT|USER_STATED|USER_SELECTED", "authoredBy": "AI|USER", "sha": "7자리" | null, "url": "링크" | null, "snippet": "글" | null, "turnNo": n | null }],
@@ -173,25 +180,46 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 `task: null`은 비운 칸입니다. 현재 실서버 CardResponse는 candidate/generation을 null, droppedFields를 빈 배열, interviewTurns를 0으로 반환합니다. Mock은 데모의 실제 후보·생성 Job·되묻기 횟수·빈 칸 이유를 추가로 보존합니다. `generation != null`이면 프론트는 D1(생성 중)을 그리고 Job을 폴링합니다.
 
 ### 되묻기
+되묻기는 AI 가 물을 칸을 골라 이어서 묻는 흐름으로 바뀐다(#321, 계약은 #363). 아래 표의 '바뀔 것' 은 구현(#360·#361·#362) 뒤에 실서버에 들어간다.
+
 | | 요청 | 응답 |
 |---|---|---|
 | `GET /cards/{id}/interview` | | **구현됨(#172).** `InterviewTurn[]`, 질문 번호순. 없으면 빈 배열; 없는 카드·남의 카드·잘못된 UUID는 404 |
-| `POST /cards/{id}/interview` | `{ field }` | **FE 기대 계약·Mock. 실서버 controller 없음.** `InterviewTurn` — 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED` |
-| `POST /cards/{id}/interview/{turnNo}/answer` | `{ text, source:'USER_STATED'|'USER_SELECTED' }` | **FE 기대 계약·Mock. 실서버 controller 없음.** `Card` — 답변은 **가공 없이** 새 버전(INTERVIEW)에 반영 |
+| `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED` |
+| `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다 |
+| `POST /cards/{id}/interview/{turnNo}/measured-draft` | `{ text }` | **새로 만듦.** `{ sentence }` — '재 봤어요' 미리 보기. **아무것도 저장하지 않는다.** 입력에 수치(아라비아 숫자)가 없으면 AI 를 부르지 않고 `sentence: null` 이고, 화면은 "수치를 찾지 못했어요. 대략이라도 적어 주세요" 를 보인다. 질문 상한에 세지 않는다 |
+
+**답 종류 `kind`**
+| kind | 화면 | `text` · `source` | 카드 칸 |
+|---|---|---|---|
+| `TEXT` | 입력 칸 + [저장] | 필수 · `USER_SELECTED`(보기를 그대로) 또는 `USER_STATED`(고침) | 질문한 칸에만 새 버전(INTERVIEW)으로 반영 |
+| `MEASURED` | [재 봤어요] → 미리 보기 → 확정 | 필수(확정 문장) · 위와 같은 규칙 | R 칸에 반영. R 이 커밋으로 확인된 문장이었으면 저장 전에 화면이 "이 칸의 근거가 커밋에서 내 답으로 바뀝니다" 를 알린다 |
+| `NOT_MEASURED` | [측정 안 했어요] | 있어도 되고 없어도 됨(숫자 없는 R 문장 보기를 고르거나 고친 것) | R 이 커밋으로 확인된 문장이면 칸을 바꾸지 않고 기록만 한다. 빈 R·확인 필요 R 이면 `text` 가 있을 때 반영 |
+| `SKIP` | [넘기기] | 없음 | 바꾸지 않는다 |
+
+- `kind` 를 보내지 않으면 `TEXT` 로 본다(FE 가 바꾸는 동안의 하위 호환).
+- `kind` 가 질문의 버튼과 맞지 않으면(`answerMode: TEXT` 질문에 `MEASURED`·`NOT_MEASURED`) 400 `INVALID_REQUEST` 이고 아무것도 저장하지 않는다.
+
+**오류 순서**
+- `POST /cards/{id}/interview`: 404(카드 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `CARD_CONFIRMED` → 답을 기다리는 질문이 있으면 그 질문을 200 으로 돌려준다 → 409 `INTERVIEW_CAP` → 400 `BAD_FIELD` → 409 `INTERVIEW_FIELD_CLOSED`.
+- `POST /cards/{id}/interview/{turnNo}/measured-draft`: 404(카드·질문 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `CARD_CONFIRMED` → 409 `INVALID_STATE`(이미 결과가 정해진 질문) → 400 `BAD_FIELD`(R 수치 질문이 아님) → 400 `INVALID_REQUEST`(빈 글·너무 긴 글) → 429 `RATE_LIMITED`.
 
 `InterviewTurn`
 `{ turnNo, field, askedBy:'USER_REQUEST'|'FOLLOW_UP', sourceType:'PR'|'COMMIT_CLUSTER'|'DIRECT_CARD',
    questionType:'EVIDENCE_GAP'|'FOLLOWUP'|'RECALL_AID', found[], missing[], question, options[],
+   answerMode:'TEXT'|'MEASURE', outcome:'ANSWERED'|'MEASURED'|'NOT_MEASURED'|'SKIPPED'|null,
    answer:{text, source}|null, remaining, maxTurns }`
 
-현재 실서버 GET 응답의 found/missing/options는 아직 생성되지 않아 빈 배열입니다. Mock의 질문 근거·보기는 데모 데이터이며 실서버의 누락 정보를 FE가 채워 넣지 않습니다.
+- `answerMode` 는 보일 버튼이다. `MEASURE`(R 수치 질문) = [재 봤어요] [측정 안 했어요] [넘기기], `TEXT` = 입력 칸 + [저장] [넘기기].
+- `outcome` 은 질문이 어떻게 끝났는지다(답 전 `null`). 지난 질문 목록에 '넘김'·'측정 안 함' 을 보일 때 쓴다.
+- `options` 는 AI 가 쓴 **예상 답변**이다. 지금처럼 누르면 입력 칸에 채우고, 그대로 보내면 `USER_SELECTED`, 고치면 `USER_STATED` 다. 앞 답에 다른 칸에 쓸 내용이 있으면 그 칸 질문의 예상 답변이 된다. 현재 실서버 GET 응답의 found/missing/options 는 아직 빈 배열이다.
 
 - **PR 번호가 없는 커밋 묶음과 직접 작성 카드도 되묻기 대상이다.** `sourceType` 이 어느 쪽인지 말한다.
-- S→T→A→R 순서대로 기계적으로 묻지 않는다. **근거가 있는데 비었거나 확인이 필요한 칸을 먼저** 묻는다.
-- **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고, 프론트는 그 값만 쓴다
-  (화면에 남아 있던 4회 상수는 응답 전 자리 지킴용 기본값으로만 남겼다).
-- 답변 출처는 세 가지로 구분한다: AI 가 준 보기 / 사용자가 그 보기를 고름(`USER_SELECTED`) / 사용자가 직접 씀(`USER_STATED`).
-  **이 내부 이름은 화면에 노출하지 않는다** — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
+- **물을 칸은 AI 가 고른다.** 첫 질문은 규칙(R 에 확인된 수치가 없으면 R)이고, 그 뒤는 앞 답·카드 상태를 읽은 AI 가 '같은 칸 다시 / 다른 칸 / 끝' 을 고른다. 답은 질문한 칸에만 들어간다.
+- **서버가 지키는 규칙:** 같은 칸은 2번까지 · `NOT_MEASURED`·`SKIP` 으로 끝난 칸은 다시 묻지 않는다 · 넘긴 질문도 상한에 센다.
+- **닫힌 칸:** 지난 질문 목록(`GET /cards/{id}/interview`)에서 같은 `field` 가 2번 있거나 `outcome` 이 `NOT_MEASURED`·`SKIPPED` 인 칸이다. 그 칸의 [이 칸 질문 받기]를 숨길지, 흐리게 하고 이유(넘김·측정 안 함·2번 물음)를 짧게 보일지는 화면 디자인을 고려해 FE 가 정한다. 서버는 닫힌 칸 지정을 409 `INTERVIEW_FIELD_CLOSED` 로 막는다(탭 두 개·오래 열어 둔 화면).
+- **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고(카드당 3 으로 바뀔 예정), 프론트는 그 값만 쓴다.
+- 답변 출처 이름(`USER_SELECTED`·`USER_STATED`)은 화면에 노출하지 않는다 — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
 
 ### 기업·직무 매칭 (계약 확정 · 서버 미구현)
 
@@ -226,7 +254,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 비슷한 내 카드 문장이 있으면 `supports` 로 함께 온다.
 - **경력은 원문에 적혀 있을 때만 나온다.** `ENTRY` = 신입·경력 무관·인턴·최소 0년(상한만 있는 '1년 미만'·'3년 이하' 도 포함), `EXPERIENCED` = 최소 N년(`minYears`), `UNSPECIFIED` = 경력 얘기가 없거나 원문으로 확인할 수 없을 때. 경력 조건은 `conditions` 에 넣지 않는다.
 - **정렬**: 서버는 `fit` A→D, 같으면 `expiresAt` 이 가까운 순, 상시 채용(null)은 뒤로 내려준다. `fit` 이 모두 null 이면 `expiresAt` 순만 본다. 화면의 '마감 순' 보기는 받은 목록을 다시 정렬한다 — `expiresAt` 이 가까운 순, 상시 채용은 뒤, 같으면 `fit` 순.
-- **필터(경력: 전체·신입 가능·경력, 직무 분류)도 화면에서 한다.** 서버 쿼리 파라미터는 없다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
+- **필터(경력: 전체·신입 가능·경력·경력 표시 없음, 직무 분류)도 화면에서 한다.** '경력 표시 없음'은 `experience.level` 이 `UNSPECIFIED` 인 공고라, 경력 조건을 알 수 없는 공고를 따로 걸러 볼 수 있게 한다. 서버 쿼리 파라미터는 없다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
 - **오류**: 401 `UNAUTHENTICATED` · 404 `NOT_FOUND` · 503 `AI_UNAVAILABLE`(근거를 찾는 AI 검색이 잠시 실패, 다시 시도할 수 있다).
 - **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급 A~D, 필수 조건이 없어 우대로 센 공고 포함) · `list-no-cards.json`(확정 카드가 없을 때) · `detail.json`(근거가 있는 조건과 빈 조건) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
 - 한 줄 소개(`summary`), 인재상 태그(`matchedTags`·`gapTags`), 카드 수 기준 칸(`supportedTagCount`·`independentTagCount`)은 없다. `source.verifiedAt` 대신 `source.collectedAt`(공고를 가져온 시각)이다.
@@ -275,3 +303,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 초안 §8 의 나머지는 해소됐다 — `needsReview` 는 서버가 `star` 로 판정하고, 버전 히스토리·복원 엔드포인트가 생겼고,
 "다른 작업 하러 가기" 이후 상태 유지는 `GET /jobs?active=true` 로 푼다.
+
+## 카드 분야·기술 태그 (#338 → #339, 선행 구현 대기)
+
+카드 목록·상세는 `areas: string[]`(최대 2), `techs: string[]`(최대 4)를 반환합니다. 허용 enum과 배포 전환 처리는 [태그 계약](2026-10-21-CARD_TAGS.md)을 따릅니다. 태그는 읽기 전용 카드 메타데이터이며 수정 요청에 포함하지 않습니다. FE 태그 PR은 BE #338 이후 머지합니다.

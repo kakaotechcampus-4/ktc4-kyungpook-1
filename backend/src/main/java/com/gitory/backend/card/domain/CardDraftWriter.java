@@ -6,21 +6,23 @@ import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
+import com.gitory.backend.card.domain.evidence.EvidenceShaMatcher;
 import com.gitory.backend.card.infra.CardRepository;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardStatementRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.StatementEvidenceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -29,12 +31,15 @@ import java.util.Set;
  * 초안 Job 이 받은 AI 초안을 후보 카드의 1번 버전에 저장하며, Job 행을 잠근 초안 Job 트랜잭션 안에서만 부른다
  * 사용자가 이미 쓴 칸은 그대로 두고, 근거 커밋을 하나도 이을 수 없는 문장은 화면에 뜨지 않게 저장하지 않고 근거 없음으로 비운다
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(propagation = Propagation.MANDATORY)
 public class CardDraftWriter {
 
     private static final short FIRST = 1;
+    private static final int MAX_AREAS = 2;
+    private static final int MAX_TECHS = 4;
 
     private final CardRepository cards;
     private final CardVersionRepository versions;
@@ -63,6 +68,7 @@ public class CardDraftWriter {
             return false;
         }
 
+        card.tag(tagsOf(draft.areas(), CardArea.class, MAX_AREAS), tagsOf(draft.techs(), CardTech.class, MAX_TECHS));
         boolean timedOut = false;
         Set<StarField> written = userWrittenSlots(cardId);
         for (StarField field : StarField.values()) {
@@ -109,7 +115,8 @@ public class CardDraftWriter {
 
     private void writeSentence(Long cardId, StarField field, StarSlotDraft slot, Map<String, Long> commitIdsBySha) {
 
-        List<Long> commitIds = commitIdsOf(slot.evidence(), commitIdsBySha);
+        List<Long> commitIds = EvidenceShaMatcher.commitIdsOf(
+                slot.evidence().stream().map(StarEvidenceRef::sha).toList(), commitIdsBySha);
         if (commitIds.isEmpty()) {
             notes.save(CardSlotNote.dropped(cardId, FIRST, field, DropReason.NO_EVIDENCE));
             return;
@@ -125,6 +132,25 @@ public class CardDraftWriter {
                 && !CardText.isBlank(slot.reviewReason())) {
             notes.save(CardSlotNote.review(cardId, FIRST, field, slot.reviewReason()));
         }
+
+    }
+
+    // AI 가 고른 순서가 중요한 순서라, 목록 밖의 값만 빼고 처음 나온 순서대로 상한까지 남긴다
+    // 목록 밖의 값은 카드 초안을 실패시킬 일이 아니어서 버리고 WARN 으로만 알린다
+    private static <E extends Enum<E>> List<E> tagsOf(List<String> values, Class<E> type, int max) {
+
+        Set<E> kept = new LinkedHashSet<>();
+        List<String> unknown = new ArrayList<>();
+        for (String value : values) {
+            Optional<E> tag = Arrays.stream(type.getEnumConstants()).filter(known -> known.name().equals(value))
+                    .findFirst();
+            tag.ifPresentOrElse(kept::add, () -> unknown.add(value));
+        }
+        if (!unknown.isEmpty()) {
+            log.warn("AI 가 준 카드 태그 중 {} 목록 밖의 값 {}개를 버린다: {}", type.getSimpleName(), unknown.size(), unknown);
+        }
+
+        return kept.stream().limit(max).toList();
 
     }
 
@@ -148,32 +174,6 @@ public class CardDraftWriter {
         }
 
         return written;
-
-    }
-
-    /** AI 가 짧게 준 sha 도 받되, 보낸 커밋 중 하나로만 맞는 sha 만 근거로 잇는다 */
-    private static List<Long> commitIdsOf(List<StarEvidenceRef> refs, Map<String, Long> commitIdsBySha) {
-
-        Set<Long> commitIds = new LinkedHashSet<>();
-        for (StarEvidenceRef ref : refs) {
-            String sha = ref.sha().toLowerCase(Locale.ROOT);
-            Long exact = commitIdsBySha.get(sha);
-            if (exact != null) {
-                commitIds.add(exact);
-                continue;
-            }
-            List<Long> matched = new ArrayList<>();
-            commitIdsBySha.forEach((full, commitId) -> {
-                if (full.startsWith(sha)) {
-                    matched.add(commitId);
-                }
-            });
-            if (matched.size() == 1) {
-                commitIds.add(matched.getFirst());
-            }
-        }
-
-        return List.copyOf(commitIds);
 
     }
 }

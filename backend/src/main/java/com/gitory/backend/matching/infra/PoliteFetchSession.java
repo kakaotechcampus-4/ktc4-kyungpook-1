@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
@@ -26,6 +27,8 @@ import java.util.concurrent.TimeoutException;
 /** 실행 한 번 동안 robots.txt 와 호스트별 마지막 요청 시각을 기억하며, 한 스레드에서만 쓴다 */
 @Slf4j
 public final class PoliteFetchSession {
+
+    private static final int MAX_ROBOTS_REDIRECTS = 5;
 
     private final HttpClient client;
     private final PoliteFetchProperties properties;
@@ -43,6 +46,19 @@ public final class PoliteFetchSession {
 
     public String get(URI url) {
 
+        return fetch(url, null);
+
+    }
+
+    /** 목록을 조회용 POST 로만 주는 사이트를 위한 요청이며, robots.txt 는 POST 주소의 경로로 확인하고 간격·크기 규칙도 GET 과 같다 */
+    public String post(URI url, String jsonBody) {
+
+        return fetch(url, Objects.requireNonNull(jsonBody, "jsonBody"));
+
+    }
+
+    private String fetch(URI url, String jsonBody) {
+
         requireWebUrl(url);
         Host host = hosts.computeIfAbsent(originOf(url), origin -> new Host());
         if (host.robots == null && !host.robotsUnavailable) {
@@ -52,13 +68,18 @@ public final class PoliteFetchSession {
             throw new PoliteFetchException(FetchFailureCode.ROBOTS_UNAVAILABLE,
                     "robots.txt 를 읽지 못해 요청하지 않는다: " + hostLabel(url));
         }
+        if (host.robots.crawlDelay().compareTo(properties.maxCrawlDelay()) > 0) {
+            throw new PoliteFetchException(FetchFailureCode.CRAWL_DELAY_TOO_LONG,
+                    "robots.txt 의 Crawl-delay " + host.robots.crawlDelay().toSeconds() + "초가 상한 "
+                            + properties.maxCrawlDelay().toSeconds() + "초를 넘어 요청하지 않는다: " + hostLabel(url));
+        }
         String target = targetOf(url);
         if (!host.robots.isAllowed(target)) {
             log.info("robots.txt 가 막아 건너뜀: {}{}", hostLabel(url), target);
             throw new PoliteFetchException(FetchFailureCode.ROBOTS_DISALLOWED,
                     "robots.txt 가 막은 경로: " + hostLabel(url) + target);
         }
-        Reply reply = send(url, host);
+        Reply reply = send(url, host, jsonBody);
         if (reply.status == 429) {
             throw new PoliteFetchException(FetchFailureCode.HTTP_429, "요청이 너무 많다는 응답: " + hostLabel(url));
         }
@@ -74,8 +95,10 @@ public final class PoliteFetchSession {
 
         URI robotsUrl = URI.create(url.getScheme() + "://" + hostLabel(url) + "/robots.txt");
         try {
-            Reply reply = send(robotsUrl, host);
-            if (reply.status == 200) {
+            Reply reply = followRobotsRedirects(robotsUrl, host);
+            if (reply == null) {
+                host.robotsUnavailable = true;
+            } else if (reply.status == 200) {
                 host.robots = RobotsTxt.parse(reply.body);
             } else if (reply.status >= 400 && reply.status < 500) {
                 host.robots = RobotsTxt.allowAll();
@@ -91,19 +114,45 @@ public final class PoliteFetchSession {
 
     }
 
-    private Reply send(URI url, Host host) {
+    // RFC 9309 처럼 robots.txt 만 넘겨 주는 응답을 다섯 번까지 따라가 끝에서 받은 글을 robots.txt 로 읽는다
+    // 넘겨 줄 주소가 없거나 다섯 번을 넘기면 읽지 못한 것으로 보고 null 을 돌려준다
+    private Reply followRobotsRedirects(URI robotsUrl, Host host) {
+
+        URI target = robotsUrl;
+        for (int hop = 0; hop <= MAX_ROBOTS_REDIRECTS; hop++) {
+            Reply reply = send(target, host, null);
+            if (reply.status < 300 || reply.status >= 400) {
+                return reply;
+            }
+            if (reply.location == null) {
+                return null;
+            }
+            try {
+                target = target.resolve(reply.location);
+                requireWebUrl(target);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+        return null;
+
+    }
+
+    private Reply send(URI url, Host host, String jsonBody) {
 
         waitForTurn(host);
-        HttpRequest request = HttpRequest.newBuilder(url)
+        HttpRequest.Builder builder = HttpRequest.newBuilder(url)
                 .timeout(properties.readTimeout())
-                .header("User-Agent", properties.userAgent())
-                .GET()
-                .build();
+                .header("User-Agent", properties.userAgent());
+        HttpRequest request = jsonBody == null ? builder.GET().build()
+                : builder.header("Content-Type", "application/json; charset=UTF-8")
+                        .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8)).build();
         CompletableFuture<HttpResponse<byte[]>> pending =
                 client.sendAsync(request, info -> new CappedBody(properties.maxBodyBytes()));
         try {
             HttpResponse<byte[]> response = pending.get(properties.readTimeout().toNanos(), TimeUnit.NANOSECONDS);
-            return new Reply(response.statusCode(), new String(response.body(), StandardCharsets.UTF_8));
+            return new Reply(response.statusCode(), new String(response.body(), StandardCharsets.UTF_8),
+                    response.headers().firstValue("Location").orElse(null));
         } catch (InterruptedException e) {
             pending.cancel(true);
             Thread.currentThread().interrupt();
@@ -192,7 +241,7 @@ public final class PoliteFetchSession {
         long lastFinishedMillis = -1;
     }
 
-    private record Reply(int status, String body) {
+    private record Reply(int status, String body, String location) {
     }
 
     private static final class BodyTooLargeException extends IOException {

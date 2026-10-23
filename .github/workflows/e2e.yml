@@ -1,0 +1,75 @@
+name: e2e
+# 브라우저로 로그인부터 카드 확정까지 한 흐름을 실제 스택(db·ai·backend·web)에 돌린다.
+#   GitHub 와 LLM 만 e2e/fakes 가짜로 바꾼다. 필수 체크도 배포 조건(deploy.yml 의 gate)도 아니다 —
+#   오래 걸리거나 흔들릴 때 머지와 배포가 같이 막히지 않게 하려는 것이다.
+#   필수 체크로 올릴 때는 backend-ci.yml 처럼 항상 돌고 job 으로 건너뛰는 구조로 바꾼다.
+#   self-hosted 러너(gitory-deploy)는 쓰지 않는다. 바깥 PR 코드가 운영 서버에서 돌면 안 된다.
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'ai/**'
+      - 'frontend/**'
+      - 'e2e/**'
+      - 'deploy/Caddyfile'
+      - 'contracts/**'
+      - '.github/workflows/e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 같은 브랜치에 연속 push 하면 앞의 run 을 취소한다. 스택이 8088·9000 포트를 쓰므로 겹쳐 돌지 않게 한다.
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: E2E 시험
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: 의존성 설치
+        working-directory: e2e
+        run: npm ci
+
+      - name: Playwright 브라우저 설치
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      # --wait 는 healthcheck 가 있는 서비스가 모두 healthy 일 때까지 기다린다.
+      - name: 스택 띄우기
+        run: docker compose -f e2e/compose.yaml -p gitory-e2e up -d --build --wait
+
+      - name: 시험 실행
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: 컨테이너 로그 저장
+        if: failure()
+        run: docker compose -f e2e/compose.yaml -p gitory-e2e logs --no-color > e2e/compose-logs.txt
+
+      - name: 실패 기록 올리기
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure
+          path: |
+            e2e/test-results/
+            e2e/compose-logs.txt
+          if-no-files-found: ignore
+          retention-days: 7
+
+      # 실패해도 취소돼도 8088·9000 포트와 컨테이너를 남기지 않는다.
+      - name: 스택 내리기
+        if: always()
+        run: docker compose -f e2e/compose.yaml -p gitory-e2e down -v

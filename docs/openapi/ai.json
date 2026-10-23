@@ -1143,6 +1143,14 @@
             ],
             "title": "Author Login"
           },
+          "changed_paths": {
+            "description": "커밋이 바꾼 파일 경로. GitHub 파일 목록에서 그대로 뽑으며 lock 파일 같은 생성 파일은 뺀다. 카드 분야·기술 태그의 근거이고, 없으면 빈 배열",
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed Paths",
+            "type": "array"
+          },
           "churn": {
             "description": "예: +71/-0",
             "title": "Churn",
@@ -2699,6 +2707,18 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "pull_request_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다",
+            "title": "Pull Request Body"
           }
         },
         "required": [
@@ -2714,6 +2734,24 @@
       "StarAnalysisResponse": {
         "description": "근거 검증을 마친 STAR 분석 결과.",
         "properties": {
+          "areas": {
+            "description": "카드 분야 태그. 최대 2개, 중요한 것부터. STAR를 만들지 못했으면 빈 배열",
+            "items": {
+              "enum": [
+                "BACKEND",
+                "FRONTEND",
+                "MOBILE",
+                "DEVOPS",
+                "AI",
+                "DB",
+                "TEST",
+                "DOCS"
+              ],
+              "type": "string"
+            },
+            "title": "Areas",
+            "type": "array"
+          },
           "missing_fields": {
             "items": {
               "enum": [
@@ -2759,6 +2797,32 @@
             },
             "title": "Star",
             "type": "object"
+          },
+          "techs": {
+            "description": "카드 기술 태그. 최대 4개, 중요한 것부터. 판단할 수 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "REACT",
+                "SQL",
+                "DOCKER",
+                "GITHUB_ACTIONS"
+              ],
+              "type": "string"
+            },
+            "title": "Techs",
+            "type": "array"
           },
           "title": {
             "title": "Title",

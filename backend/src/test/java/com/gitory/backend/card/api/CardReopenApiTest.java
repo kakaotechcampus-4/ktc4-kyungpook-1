@@ -64,9 +64,9 @@ class CardReopenApiTest {
     private static final Instant OLD = Instant.parse("2026-01-01T00:00:00Z");
 
     // FE schemas.ts 의 Card·CardVersion 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
-    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "period", "repo", "candidate",
-            "version", "evidence", "lowConfidenceFields", "droppedFields", "maskRules", "generation", "interviewTurns",
-            "confirmedAt", "createdAt"};
+    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "period", "repo",
+            "candidate", "version", "evidence", "lowConfidenceFields", "droppedFields", "maskRules", "generation",
+            "interviewTurns", "confirmedAt", "createdAt"};
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",
             "result"};
 

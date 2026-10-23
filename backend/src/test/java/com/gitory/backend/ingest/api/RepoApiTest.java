@@ -383,6 +383,8 @@ class RepoApiTest {
                 .andExpect(jsonPath("$.data.id").value(id.toString()))
                 .andExpect(jsonPath("$.data.contribution.mine").value(43))
                 .andExpect(jsonPath("$.data.disclosure.reads[1]").value("카드에는 내 커밋 43개만 써요"))
+                .andExpect(jsonPath("$.data.disclosure.reads[2]")
+                        .value("최근 PR 50개·그보다 오래된 내 PR 최대 50개·최근 이슈 50개와 리뷰의 제목·본문 앞부분"))
                 .andExpect(jsonPath("$.data.disclosure.skips.length()").value(3))
                 .andExpect(jsonPath("$.data.disclosure.estimatedSeconds").value(217));
 

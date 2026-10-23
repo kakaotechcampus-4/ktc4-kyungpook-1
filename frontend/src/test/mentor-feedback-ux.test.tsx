@@ -145,7 +145,13 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
     const toggle = screen.getByRole('button', { name: `이미 카드로 만든 후보 ${used.length}개 · 보기` });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     for (const candidate of used) expect(screen.queryByText(candidate.title)).not.toBeInTheDocument();   // 기본은 안 보인다
-    for (const candidate of board.candidates.filter((c) => c.status === 'NEW')) expect(screen.getByText(candidate.title)).toBeInTheDocument();
+    for (const candidate of board.candidates.filter((c) => c.status === 'NEW' && !c.weak)) expect(screen.getByText(candidate.title)).toBeInTheDocument();
+    const weak = board.candidates.filter(c => c.status === 'NEW' && c.weak);
+    for (const candidate of weak) expect(screen.queryByText(candidate.title)).not.toBeInTheDocument();
+    const weakToggle = screen.getByRole('button', { name: /추천도 낮은 후보 \d+개/ });
+    fireEvent.click(weakToggle);
+    for (const candidate of weak) expect(screen.getByText(candidate.title)).toBeInTheDocument();
+    fireEvent.click(weakToggle);
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(toggle).toHaveTextContent('접기');

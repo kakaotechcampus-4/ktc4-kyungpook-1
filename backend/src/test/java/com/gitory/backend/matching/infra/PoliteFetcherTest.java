@@ -106,6 +106,24 @@ class PoliteFetcherTest {
     }
 
     @Test
+    @DisplayName("Crawl-delay 가 상한 60초와 같으면 그만큼 기다리고 61초면 요청하지 않고 실패한다")
+    void crawlDelayAboveLimitSkipsHost() {
+
+        serve(ROBOTS, 200, "User-agent: *\nCrawl-delay: 60\n");
+        serve("/a", 200, "a");
+        session(null, null).get(URI.create(base + "/a"));
+        assertThat(sleeps).containsExactly(Duration.ofSeconds(60));
+        hits.clear();
+        serve(ROBOTS, 200, "User-agent: *\nCrawl-delay: 61\n");
+
+        FetchFailureCode code = failureOf(() -> session(null, null).get(URI.create(base + "/a")));
+
+        assertThat(code).isEqualTo(FetchFailureCode.CRAWL_DELAY_TOO_LONG);
+        assertThat(hits).containsExactly(ROBOTS);
+
+    }
+
+    @Test
     @DisplayName("robots.txt 는 호스트마다 실행 한 번에 한 번만 읽는다")
     void readsRobotsOncePerHost() {
 
@@ -149,6 +167,54 @@ class PoliteFetcherTest {
         assertThat(first).isEqualTo(FetchFailureCode.ROBOTS_UNAVAILABLE);
         assertThat(second).isEqualTo(FetchFailureCode.ROBOTS_UNAVAILABLE);
         assertThat(hits).containsExactly(ROBOTS);
+
+    }
+
+    @Test
+    @DisplayName("robots.txt 가 넘겨 준 주소를 따라가 끝에서 받은 글을 robots.txt 로 읽는다")
+    void followsRobotsRedirectAndReadsFinalBody() {
+
+        redirect(ROBOTS, "/moved-robots.txt");
+        serve("/moved-robots.txt", 200, "User-agent: *\nDisallow: /private");
+        serve("/jobs", 200, "ok");
+        PoliteFetchSession session = session(null, null);
+
+        String body = session.get(URI.create(base + "/jobs"));
+        FetchFailureCode blocked = failureOf(() -> session.get(URI.create(base + "/private/1")));
+
+        assertThat(body).isEqualTo("ok");
+        assertThat(blocked).isEqualTo(FetchFailureCode.ROBOTS_DISALLOWED);
+        assertThat(hits).containsExactly(ROBOTS, "/moved-robots.txt", "/jobs");
+
+    }
+
+    @Test
+    @DisplayName("robots.txt 가 넘겨 준 끝이 규칙 없는 오류 페이지나 4xx 면 제한 없이 요청한다")
+    void robotsRedirectToErrorPageMeansNoRestriction() {
+
+        redirect(ROBOTS, "/error/404");
+        redirect("/error/404", "/error/404.html");
+        serve("/error/404.html", 200, "<html><body>페이지를 찾을 수 없어요</body></html>");
+        serve("/jobs", 200, "ok");
+
+        assertThat(session(null, null).get(URI.create(base + "/jobs"))).isEqualTo("ok");
+
+    }
+
+    @Test
+    @DisplayName("robots.txt 가 다섯 번 넘게 넘겨 주면 읽지 못한 것으로 보고 그 호스트에 요청하지 않는다")
+    void tooManyRobotsRedirectsFailHost() {
+
+        for (int hop = 0; hop < 6; hop++) {
+            redirect(hop == 0 ? ROBOTS : "/r" + hop, "/r" + (hop + 1));
+        }
+        serve("/r6", 200, "");
+        serve("/jobs", 200, "ok");
+
+        FetchFailureCode code = failureOf(() -> session(null, null).get(URI.create(base + "/jobs")));
+
+        assertThat(code).isEqualTo(FetchFailureCode.ROBOTS_UNAVAILABLE);
+        assertThat(hits).containsExactly(ROBOTS, "/r1", "/r2", "/r3", "/r4", "/r5");
 
     }
 
@@ -258,6 +324,53 @@ class PoliteFetcherTest {
     }
 
     @Test
+    @DisplayName("POST 는 JSON 본문을 Content-Type 과 함께 보내고 응답 본문을 돌려준다")
+    void postSendsJsonBody() {
+
+        List<String> received = new CopyOnWriteArrayList<>();
+        routes.put("/api/list", exchange -> {
+            received.add(exchange.getRequestMethod() + " " + exchange.getRequestHeaders().getFirst("Content-Type") + " "
+                    + new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            write(exchange, 200, "{\"announce\":[]}");
+        });
+
+        String body = session(null, null).post(URI.create(base + "/api/list"), "{\"pageIndex\":1}");
+
+        assertThat(body).isEqualTo("{\"announce\":[]}");
+        assertThat(received).containsExactly("POST application/json; charset=UTF-8 {\"pageIndex\":1}");
+
+    }
+
+    @Test
+    @DisplayName("POST 도 robots.txt 가 막은 경로면 보내지 않는다")
+    void postToDisallowedPathIsNotSent() {
+
+        serve(ROBOTS, 200, "User-agent: *\nDisallow: /api/");
+        serve("/api/list", 200, "{}");
+
+        FetchFailureCode code = failureOf(() -> session(null, null).post(URI.create(base + "/api/list"), "{}"));
+
+        assertThat(code).isEqualTo(FetchFailureCode.ROBOTS_DISALLOWED);
+        assertThat(hits).containsExactly(ROBOTS);
+
+    }
+
+    @Test
+    @DisplayName("POST 와 GET 은 같은 호스트의 요청 간격을 함께 지킨다")
+    void postSharesIntervalWithGet() {
+
+        serve("/api/list", 200, "{}");
+        serve("/api/detail", 200, "{}");
+        PoliteFetchSession session = session(null, null);
+
+        session.post(URI.create(base + "/api/list"), "{}");
+        session.get(URI.create(base + "/api/detail"));
+
+        assertThat(sleeps).containsExactly(Duration.ofSeconds(1), Duration.ofSeconds(1));
+
+    }
+
+    @Test
     @DisplayName("넘겨 주는 응답은 따라가지 않고 실패한다")
     void redirectIsNotFollowed() {
 
@@ -350,7 +463,7 @@ class PoliteFetcherTest {
 
     private PoliteFetchSession session(Duration readTimeout, Long maxBodyBytes) {
 
-        PoliteFetchProperties properties = new PoliteFetchProperties(null, readTimeout, maxBodyBytes, null, null);
+        PoliteFetchProperties properties = new PoliteFetchProperties(null, readTimeout, maxBodyBytes, null, null, null);
         PoliteFetcher fetcher = new PoliteFetcher(properties, clock, duration -> {
             sleeps.add(duration);
             clock.advance(duration);
@@ -362,6 +475,15 @@ class PoliteFetcherTest {
     private void serve(String path, int status, String body) {
 
         routes.put(path, exchange -> write(exchange, status, body));
+
+    }
+
+    private void redirect(String path, String location) {
+
+        routes.put(path, exchange -> {
+            exchange.getResponseHeaders().add("Location", location);
+            write(exchange, 302, "");
+        });
 
     }
 

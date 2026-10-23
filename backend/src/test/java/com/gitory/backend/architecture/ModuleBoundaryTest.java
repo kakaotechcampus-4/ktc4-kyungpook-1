@@ -82,7 +82,6 @@ class ModuleBoundaryTest {
                 .that().resideInAPackage(ROOT + ".card.domain.evidence..")
                 .should().dependOnClassesThat().resideInAPackage(ROOT + ".agent..")
                 .as("근거 검증은 결정적이어야 한다 — 모델에 되묻지 않는다")
-                .allowEmptyShould(true)
                 .check(classes);
     }
 

@@ -1,4 +1,4 @@
-"""외부 모델 입출력에서 비밀값처럼 보이는 문자열을 찾고 가린다."""
+"""외부 모델 입출력에서 비밀값처럼 보이는 문자열과 이메일 주소를 찾고 가린다."""
 
 from __future__ import annotations
 
@@ -57,3 +57,39 @@ def redact_secrets(text: str, path: str | None = None) -> str:
     if path is not None and _CONFIG_FILE.search(path):
         text = _BARE_ASSIGNMENT.sub(rf"\1{REDACTED}", text)
     return text
+
+
+#: 이메일 주소. @아이디 멘션·react@18.3.1 같은 버전 표기는 가리지 않는다.
+_EMAIL = re.compile(
+    r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![A-Za-z0-9-])"
+)
+#: 이메일 모양이어도 끝말이 파일 확장자면 파일 이름이다(icon@2x.png). md·sh·py 는 나라 도메인과 겹쳐 넣지 않았다.
+_FILE_ENDINGS = frozenset({
+    "png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp", "pdf", "json", "yml", "yaml", "xml", "txt", "csv",
+    "js", "mjs", "ts", "tsx", "jsx", "java", "kt", "kts", "css", "scss", "html", "gradle", "toml", "lock",
+})
+_PATH_CHAR = re.compile(r"[A-Za-z0-9_./~-]")
+EMAIL_MASK = "[이메일]"
+
+
+def mask_emails(text: str) -> str:
+    """사람이 쓴 글(PR 본문)의 이메일 주소를 가린다."""
+    return _EMAIL.sub(_mask_email, text)
+
+
+def _mask_email(match: re.Match[str]) -> str:
+    """파일 이름 · SSH 주소(git@github.com:owner/repo) · 코드 칸 안의 호출(`app@router.get(…)`)은 그대로 둔다.
+
+    코드 칸(` `) 밖에서 '(' 가 바로 붙은 것('a@b.com(이름)')과 주소 안 계정(https://user:pw@host)은 가린다.
+    계정 자리에는 비밀번호가 들 수 있어서다.
+    """
+    text, found = match.string, match.group(0)
+    following = text[match.end():match.end() + 2]
+    in_code = text.count("`", 0, match.start()) % 2 == 1
+    if found.rsplit(".", 1)[-1].lower() in _FILE_ENDINGS:
+        return found
+    if following[:1] == ":" and _PATH_CHAR.match(following[1:2]):
+        return found
+    if following[:1] == "(" and in_code:
+        return found
+    return EMAIL_MASK

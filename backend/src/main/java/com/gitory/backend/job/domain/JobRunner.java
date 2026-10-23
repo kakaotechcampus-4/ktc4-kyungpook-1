@@ -1,5 +1,6 @@
 package com.gitory.backend.job.domain;
 
+import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.ExperienceGroupingRequest;
 import com.gitory.backend.common.infra.ai.AiClientException;
@@ -314,8 +315,17 @@ public class JobRunner {
 
     private static JobErrorCode errorCodeOf(RuntimeException failure) {
 
+        // AI 는 GitHub 쪽 실패에도 다시 해 보라고 알리므로 GitHub 코드를 먼저 가른다
         if (failure instanceof AiClientException ai && GITHUB_FAILURES.contains(ai.errorCode())) {
             return JobErrorCode.GITHUB_UNAVAILABLE;
+        }
+
+        if (failure instanceof AiClientException ai && ai.temporary()) {
+            return JobErrorCode.AI_UNAVAILABLE;
+        }
+
+        if (failure instanceof AgentUnavailableException agent && agent.isRetryable()) {
+            return JobErrorCode.AI_UNAVAILABLE;
         }
 
         return JobErrorCode.INTERNAL_ERROR;

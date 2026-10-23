@@ -158,9 +158,9 @@ export function CardPage() {
             <CardNavigation cardId={cardId} />
           </aside>
         </div>
-        <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
+        <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       </main>
     );
   }

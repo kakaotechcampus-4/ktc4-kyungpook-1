@@ -21,10 +21,13 @@ import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
 import com.gitory.backend.matching.infra.KakaoCareersClient;
+import com.gitory.backend.matching.infra.KtCareersClient;
 import com.gitory.backend.matching.infra.LineCareersClient;
 import com.gitory.backend.matching.infra.MatchingProperties;
+import com.gitory.backend.matching.infra.PearlAbyssCareersClient;
 import com.gitory.backend.matching.infra.PoliteFetchProperties;
 import com.gitory.backend.matching.infra.PoliteFetcher;
+import com.gitory.backend.matching.infra.SmilegateCareersClient;
 import com.gitory.backend.matching.infra.SyncLock;
 import com.gitory.backend.matching.infra.TossCareersClient;
 import com.sun.net.httpserver.HttpServer;
@@ -545,7 +548,8 @@ class JobPostingSyncServiceTest {
         PoliteFetchProperties fetchProperties = new PoliteFetchProperties(null, null, null, Duration.ZERO, null, null);
         return new JobPostingSyncService(properties, new PoliteFetcher(fetchProperties, Clock.systemUTC()),
                 new GreenhouseClient(properties), new GreetingClient(), new TossCareersClient(), new LineCareersClient(),
-                new KakaoCareersClient(), postingRepository, sources,
+                new KakaoCareersClient(), new KtCareersClient(), new PearlAbyssCareersClient(), new SmilegateCareersClient(),
+                postingRepository, sources,
                 extraction(postingRepository),
                 new JobPostingIndexService(indexPort, postingRepository, criteria, new TransactionTemplate(transactionManager)),
                 new TransactionTemplate(transactionManager), new SyncLock(dataSource), clock);

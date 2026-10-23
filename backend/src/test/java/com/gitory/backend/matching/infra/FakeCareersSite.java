@@ -12,7 +12,9 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -24,6 +26,8 @@ final class FakeCareersSite implements AutoCloseable {
     private final Map<String, String> bodies = new ConcurrentHashMap<>();
     private final Map<String, Integer> statuses = new ConcurrentHashMap<>();
     private final List<String> hits = new CopyOnWriteArrayList<>();
+    private final List<String> posted = new CopyOnWriteArrayList<>();
+    private final Map<String, Queue<String>> sequences = new ConcurrentHashMap<>();
     private final HttpServer server;
 
     private FakeCareersSite(HttpServer server) {
@@ -39,8 +43,14 @@ final class FakeCareersSite implements AutoCloseable {
                 String target = exchange.getRequestURI().getRawPath()
                         + (exchange.getRequestURI().getRawQuery() == null ? "" : "?" + exchange.getRequestURI().getRawQuery());
                 site.hits.add(exchange.getRequestMethod() + " " + target);
-                byte[] body = site.bodies.getOrDefault(target, "").getBytes(StandardCharsets.UTF_8);
-                int status = site.statuses.getOrDefault(target, site.bodies.containsKey(target) ? 200 : 404);
+                if ("POST".equals(exchange.getRequestMethod())) {
+                    site.posted.add(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                }
+                Queue<String> sequence = site.sequences.get(target);
+                String next = sequence == null ? null : sequence.poll();
+                String text = next != null ? next : site.bodies.getOrDefault(target, "");
+                byte[] body = text.getBytes(StandardCharsets.UTF_8);
+                int status = site.statuses.getOrDefault(target, next != null || site.bodies.containsKey(target) ? 200 : 404);
                 exchange.sendResponseHeaders(status, body.length == 0 ? -1 : body.length);
                 if (body.length > 0) {
                     try (OutputStream out = exchange.getResponseBody()) {
@@ -66,6 +76,19 @@ final class FakeCareersSite implements AutoCloseable {
     void put(String target, String body) {
 
         bodies.put(target, body);
+
+    }
+
+    /** 같은 주소에 온 요청마다 차례로 다른 응답을 주고, 다 쓰면 put 으로 정한 응답이나 404 를 준다 */
+    void putInOrder(String target, String... responses) {
+
+        sequences.put(target, new ConcurrentLinkedQueue<>(List.of(responses)));
+
+    }
+
+    List<String> posted() {
+
+        return List.copyOf(posted);
 
     }
 

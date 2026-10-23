@@ -77,6 +77,22 @@ class KakaoCareersClientTest {
 
     }
 
+    @Test
+    @DisplayName("쪽 수가 상한 20쪽을 넘으면 뒤 쪽 공고가 사라짐으로 바뀌지 않게 PARSE 로 실패한다")
+    void tooManyPagesFailsWithParse() {
+
+        for (int page = 1; page <= 20; page++) {
+            site.put(LIST + "&page=" + page, page(21, job("P-" + page, "Server Developer", null)));
+        }
+
+        Throwable thrown = catchThrowable(() -> client.list(FakeCareersSite.session(), source));
+
+        assertThat(thrown).isInstanceOfSatisfying(PoliteFetchException.class,
+                e -> assertThat(e.code()).isEqualTo(FetchFailureCode.PARSE));
+        assertThat(site.hits()).hasSize(20);
+
+    }
+
     @ParameterizedTest(name = "{0}")
     @DisplayName("목록 모양이 다르면 일부만 건너뛰지 않고 회사 전체를 PARSE 로 실패시킨다")
     @ValueSource(strings = {

@@ -4,5 +4,7 @@ public enum TurnOutcome {
     ANSWERED,
     LATER,
     SKIPPED,
-    INSUFFICIENT
+    INSUFFICIENT,
+    MEASURED,
+    NOT_MEASURED
 }

@@ -1,5 +1,6 @@
 package com.gitory.backend.agent.infra;
 
+import com.gitory.backend.agent.port.InterviewAnswerMode;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.InterviewCandidate;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
@@ -9,6 +10,8 @@ import com.gitory.backend.agent.port.InterviewIssue;
 import com.gitory.backend.agent.port.InterviewMissingSlot;
 import com.gitory.backend.agent.port.InterviewNextAction;
 import com.gitory.backend.agent.port.InterviewQuestionRequest;
+import com.gitory.backend.agent.port.InterviewTurnOutcome;
+import com.gitory.backend.agent.port.InterviewPreviousTurn;
 import com.gitory.backend.agent.port.InterviewQuestionResult;
 import com.gitory.backend.agent.port.InterviewQuestionType;
 import com.gitory.backend.agent.port.InterviewReview;
@@ -117,7 +120,7 @@ class AiInterviewQuestionAdapterTest {
         assertThat(requestPath).isEqualTo(PATH);
         assertThat(requestContentType).startsWith("application/json");
         assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN,
-                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION));
+                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of()));
 
     }
 
@@ -130,7 +133,7 @@ class AiInterviewQuestionAdapterTest {
 
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
-        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null));
+        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of()));
 
     }
 
@@ -144,7 +147,7 @@ class AiInterviewQuestionAdapterTest {
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
         assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN,
-                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION));
+                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of()));
 
     }
 
@@ -157,7 +160,7 @@ class AiInterviewQuestionAdapterTest {
 
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
-        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null));
+        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of()));
 
     }
 
@@ -319,8 +322,12 @@ class AiInterviewQuestionAdapterTest {
                 .path("springToAi").path("expectedRequest");
         responseBody = success(askAgain(data -> data.put("target_star_slot", "T").put("target_statement_seq", 1)));
         InterviewQuestionRequest request = new InterviewQuestionRequest(104, null,
-                List.of(new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of())),
-                0, 2, InterviewCardSourceType.DIRECT_CARD);
+                List.of(new InterviewMissingSlot(InterviewStarSlot.S, 1, "S 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.A, 1, "A 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.R, 1, "R 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of())),
+                0, 3, InterviewCardSourceType.DIRECT_CARD, InterviewStarSlot.T,
+                List.of(InterviewStarSlot.S, InterviewStarSlot.T, InterviewStarSlot.A, InterviewStarSlot.R), List.of());
 
         adapter.nextQuestion(request);
 
@@ -329,7 +336,7 @@ class AiInterviewQuestionAdapterTest {
     }
 
     @Test
-    @DisplayName("후보 문맥을 채우면 AI 요청 스키마의 키 이름과 중첩 그대로 보낸다")
+    @DisplayName("후보 문맥·지정 칸·고를 수 있는 칸·지난 질문을 채우면 AI 요청 스키마의 키 이름과 중첩 그대로 보낸다")
     void sendsFilledCandidateWithTheAiKeys() {
 
         InterviewCandidate candidate = new InterviewCandidate(null,
@@ -340,7 +347,8 @@ class AiInterviewQuestionAdapterTest {
                 InterviewConfidence.MEDIUM, List.of(new InterviewCommit(12, "def5678", "perf: 캐시 추가")));
 
         adapter.nextQuestion(new InterviewQuestionRequest(CARD_ID, candidate, List.of(slot), 1, 2,
-                InterviewCardSourceType.COMMIT_CLUSTER));
+                InterviewCardSourceType.COMMIT_CLUSTER, InterviewStarSlot.R, List.of(InterviewStarSlot.R),
+                List.of(new InterviewPreviousTurn(InterviewStarSlot.S, "상황은요?", InterviewTurnOutcome.ANSWERED, "느렸다"))));
 
         assertThat((Object) MAPPER.readTree(requestBody)).isEqualTo(MAPPER.readTree("""
                 {
@@ -361,7 +369,11 @@ class AiInterviewQuestionAdapterTest {
                   }],
                   "existing_turn_count": 1,
                   "max_turns": 2,
-                  "source_type": "COMMIT_CLUSTER"
+                  "source_type": "COMMIT_CLUSTER",
+                  "target_star_slot": "R",
+                  "allowed_slots": ["R"],
+                  "previous_turns": [{"star_slot": "S", "question_text": "상황은요?", "outcome": "ANSWERED",
+                                      "answer_text": "느렸다"}]
                 }
                 """));
 
@@ -378,7 +390,7 @@ class AiInterviewQuestionAdapterTest {
                 List.of(new InterviewReview(7_000_000_000L, 7, InterviewReviewState.COMMENTED, "리뷰")), List.of());
 
         adapter.nextQuestion(new InterviewQuestionRequest(cardId, candidate, List.of(), 0, 2,
-                InterviewCardSourceType.COMMIT_CLUSTER));
+                InterviewCardSourceType.COMMIT_CLUSTER, null, List.of(), List.of()));
 
         JsonNode sent = MAPPER.readTree(requestBody);
         assertThat(sent.path("card_id").longValue()).isEqualTo(cardId);
@@ -541,7 +553,7 @@ class AiInterviewQuestionAdapterTest {
         return new InterviewQuestionRequest(CARD_ID, null,
                 List.of(new InterviewMissingSlot(InterviewStarSlot.R, 2, REQUEST_TEXT, InterviewConfidence.MEDIUM,
                         List.of())),
-                0, 2, InterviewCardSourceType.DIRECT_CARD);
+                0, 2, InterviewCardSourceType.DIRECT_CARD, null, List.of(), List.of());
 
     }
 

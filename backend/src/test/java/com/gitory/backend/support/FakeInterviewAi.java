@@ -117,12 +117,15 @@ public final class FakeInterviewAi implements AutoCloseable {
 
     }
 
-    /** 요청의 첫 부족한 칸에 질문하는 ASK_AGAIN 응답 */
+    /** 지정한 칸이 있으면 그 칸, 없으면 요청의 첫 고를 수 있는 칸에 질문하는 ASK_AGAIN 응답 */
     public static Reply askAgain(JsonNode request) {
 
-        return askAgain(request.path("card_id").longValue(),
-                request.path("missing_slots").path(0).path("star_slot").asString(), "EVIDENCE_GAP",
-                "AUTO", "이 칸에서 확인된 결과가 있었나요?");
+        JsonNode target = request.path("target_star_slot");
+        String slot = target.isString() ? target.asString()
+                : request.path("missing_slots").path(0).path("star_slot").asString();
+
+        return askAgain(request.path("card_id").longValue(), slot, "EVIDENCE_GAP", "AUTO",
+                "이 칸에서 확인된 결과가 있었나요?");
 
     }
 

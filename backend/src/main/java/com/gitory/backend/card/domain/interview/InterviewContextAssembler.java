@@ -5,8 +5,10 @@ import com.gitory.backend.agent.port.InterviewCardSourceType;
 import com.gitory.backend.agent.port.InterviewCommit;
 import com.gitory.backend.agent.port.InterviewConfidence;
 import com.gitory.backend.agent.port.InterviewMissingSlot;
+import com.gitory.backend.agent.port.InterviewPreviousTurn;
 import com.gitory.backend.agent.port.InterviewQuestionRequest;
 import com.gitory.backend.agent.port.InterviewStarSlot;
+import com.gitory.backend.agent.port.InterviewTurnOutcome;
 import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.EvidenceType;
@@ -25,6 +27,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -50,32 +53,88 @@ public class InterviewContextAssembler {
     private final CommitSummaryService commitSummaries;
     private final InterviewLimits limits;
 
-    /** 지금 버전의 글과 후보를 읽으므로 카드와 같은 읽기 트랜잭션 안에서 불러야 한다 */
-    public InterviewQuestionRequest assemble(Card card, StarField slot, int existingTurnCount) {
+    /**
+     * 지금 버전의 글과 후보를 읽으므로 카드와 같은 읽기 트랜잭션 안에서 불러야 한다
+     * 고를 수 있는 칸마다 지금 글을 싣고, 지정한 칸과 이미 끝난 질문을 함께 보내 AI 가 다음 칸을 고르게 한다
+     */
+    public InterviewQuestionRequest assemble(Card card, List<StarField> allowed, StarField target,
+                                             List<InterviewTurn> asked) {
 
-        SlotContent content = reader.read(card.getId(), card.getCurrentVersion()).slots().get(slot);
+        Map<StarField, SlotContent> slots = reader.read(card.getId(), card.getCurrentVersion()).slots();
         Optional<CandidateDraftSource> source = Optional.ofNullable(card.getCandidateId())
                 .flatMap(candidateId -> draftSources.load(candidateId, COMMIT_LIMIT))
                 .filter(found -> InterviewSourceType.of(found.type()) != InterviewSourceType.DIRECT_CARD);
+
         List<Long> candidateCommitIds = source.map(found -> found.commits().stream().map(DraftCommit::id).toList())
                 .orElse(List.of());
-        List<Long> linkedCommitIds = content == null ? List.of() : content.commitIds();
+        List<Long> linkedCommitIds = allowed.stream()
+                .map(slots::get)
+                .filter(Objects::nonNull)
+                .flatMap(content -> content.commitIds().stream())
+                .toList();
         Map<Long, CommitSummary> summaries = summariesOf(candidateCommitIds, linkedCommitIds);
 
-        InterviewMissingSlot missingSlot = new InterviewMissingSlot(InterviewStarSlot.valueOf(slot.name()),
-                ONLY_STATEMENT_SEQ, bodyOf(content), confidenceOf(content), commitsOf(linkedCommitIds, summaries));
+        List<InterviewMissingSlot> missingSlots = allowed.stream()
+                .map(slot -> missingSlotOf(slot, slots.get(slot), summaries))
+                .toList();
+        List<InterviewStarSlot> allowedSlots = allowed.stream().map(slot -> InterviewStarSlot.valueOf(slot.name())).toList();
+        InterviewStarSlot targetSlot = target == null ? null : InterviewStarSlot.valueOf(target.name());
+        List<InterviewPreviousTurn> previousTurns = previousTurnsOf(asked);
 
         if (source.isEmpty()) {
-            return new InterviewQuestionRequest(card.getId(), null, List.of(missingSlot), existingTurnCount,
-                    limits.maxTurns(), InterviewCardSourceType.DIRECT_CARD);
+            return new InterviewQuestionRequest(card.getId(), null, missingSlots, asked.size(), limits.maxTurns(),
+                    InterviewCardSourceType.DIRECT_CARD, targetSlot, allowedSlots, previousTurns);
         }
 
         CandidateDraftSource found = source.get();
         InterviewCandidate candidate = new InterviewCandidate(found.githubPrNumber(),
                 commitsOf(candidateCommitIds, summaries), List.of(), List.of());
 
-        return new InterviewQuestionRequest(card.getId(), candidate, List.of(missingSlot), existingTurnCount,
-                limits.maxTurns(), InterviewCardSourceType.valueOf(InterviewSourceType.of(found.type()).name()));
+        return new InterviewQuestionRequest(card.getId(), candidate, missingSlots, asked.size(), limits.maxTurns(),
+                InterviewCardSourceType.valueOf(InterviewSourceType.of(found.type()).name()), targetSlot, allowedSlots,
+                previousTurns);
+
+    }
+
+    private static InterviewMissingSlot missingSlotOf(StarField slot, SlotContent content,
+                                                      Map<Long, CommitSummary> summaries) {
+
+        List<Long> linked = content == null ? List.of() : content.commitIds();
+
+        return new InterviewMissingSlot(InterviewStarSlot.valueOf(slot.name()), ONLY_STATEMENT_SEQ, bodyOf(content),
+                confidenceOf(content), commitsOf(linked, summaries));
+
+    }
+
+    // 결과가 정해진 질문만 보내고, 지금 쓰지 않는 LATER·INSUFFICIENT 는 AI 계약에 없어 뺀다
+    private static List<InterviewPreviousTurn> previousTurnsOf(List<InterviewTurn> asked) {
+
+        List<InterviewPreviousTurn> previous = new ArrayList<>();
+        for (InterviewTurn turn : asked) {
+            InterviewTurnOutcome outcome = outcomeOf(turn.getOutcome());
+            if (outcome != null) {
+                previous.add(new InterviewPreviousTurn(InterviewStarSlot.valueOf(turn.getStarSlot().name()),
+                        turn.getQuestionText(), outcome, turn.getAnswerText()));
+            }
+        }
+
+        return previous;
+
+    }
+
+    private static InterviewTurnOutcome outcomeOf(TurnOutcome outcome) {
+
+        if (outcome == null) {
+            return null;
+        }
+
+        return switch (outcome) {
+            case ANSWERED -> InterviewTurnOutcome.ANSWERED;
+            case MEASURED -> InterviewTurnOutcome.MEASURED;
+            case NOT_MEASURED -> InterviewTurnOutcome.NOT_MEASURED;
+            case SKIPPED -> InterviewTurnOutcome.SKIPPED;
+            case LATER, INSUFFICIENT -> null;
+        };
 
     }
 

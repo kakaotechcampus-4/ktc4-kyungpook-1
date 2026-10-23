@@ -5,7 +5,10 @@
     "publicId": "6f1c8d52-3a7e-4b49-9c0d-2e5a7b1f8c36",
     "userId": 7,
     "origin": "AI",
-    "candidate": { "sourceType": "PR", "githubPrNumber": 7 },
+    "candidate": {
+      "sourceType": "PR",
+      "githubPrNumber": 7
+    },
     "commits": [
       {
         "id": 11,
@@ -26,14 +29,18 @@
       "body": "세션 조회 쿼리에 인덱스를 추가했다",
       "evidenceType": "COMMIT",
       "confidence": "LOW",
-      "evidenceCommitIds": [11]
+      "evidenceCommitIds": [
+        11
+      ]
     }
   },
   "frontendToSpring": {
     "request": {
       "method": "POST",
       "path": "/api/cards/6f1c8d52-3a7e-4b49-9c0d-2e5a7b1f8c36/interview",
-      "body": { "field": "A" }
+      "body": {
+        "field": "A"
+      }
     },
     "expectedResponseFields": {
       "sourceType": "PR"
@@ -42,7 +49,6 @@
   "springToAi": {
     "expectedRequest": {
       "card_id": 105,
-      "source_type": "PR",
       "candidate": {
         "github_pr_number": 7,
         "commits": [
@@ -60,19 +66,53 @@
         "reviews": [],
         "issues": []
       },
-      "missing_slots": [{
-        "star_slot": "A",
-        "statement_seq": 1,
-        "body": "세션 조회 쿼리에 인덱스를 추가했다",
-        "confidence": "LOW",
-        "linked_commits": [{
-          "commit_id": 11,
-          "sha": "3f9c2a1b7d4e5f60718293a4b5c6d7e8f9012345",
-          "message": "feat: 세션 조회에 인덱스 추가"
-        }]
-      }],
+      "missing_slots": [
+        {
+          "star_slot": "S",
+          "statement_seq": 1,
+          "body": null,
+          "confidence": "LOW",
+          "linked_commits": []
+        },
+        {
+          "star_slot": "T",
+          "statement_seq": 1,
+          "body": null,
+          "confidence": "LOW",
+          "linked_commits": []
+        },
+        {
+          "star_slot": "A",
+          "statement_seq": 1,
+          "body": "세션 조회 쿼리에 인덱스를 추가했다",
+          "confidence": "LOW",
+          "linked_commits": [
+            {
+              "commit_id": 11,
+              "sha": "3f9c2a1b7d4e5f60718293a4b5c6d7e8f9012345",
+              "message": "feat: 세션 조회에 인덱스 추가"
+            }
+          ]
+        },
+        {
+          "star_slot": "R",
+          "statement_seq": 1,
+          "body": null,
+          "confidence": "LOW",
+          "linked_commits": []
+        }
+      ],
       "existing_turn_count": 0,
-      "max_turns": 2
+      "max_turns": 3,
+      "source_type": "PR",
+      "target_star_slot": "A",
+      "allowed_slots": [
+        "S",
+        "T",
+        "A",
+        "R"
+      ],
+      "previous_turns": []
     }
   }
 }

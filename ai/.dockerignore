@@ -7,3 +7,4 @@ tests
 evals
 scripts
 .env
+.chroma

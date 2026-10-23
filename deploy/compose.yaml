@@ -69,6 +69,9 @@ services:
       # 경험 그룹화·STAR 초안이 쓰는 LLM 게이트웨이. 비어 있으면 그 두 기능만 503 이고 수집·되묻기는 돈다
       GITORY_LLM_BASE_URL: ${GITORY_LLM_BASE_URL:-}
       GITORY_LLM_API_KEY: ${GITORY_LLM_API_KEY:-}
+    # 공고 색인(Chroma)과 임베딩 모델 파일을 서버 디스크에 둬서, 배포로 컨테이너를 새로 만들어도 색인이 남는다
+    volumes:
+      - ai-index:/app/.chroma
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 10s
@@ -119,6 +122,8 @@ services:
       # 되묻기 질문·답 평가·카드 초안의 사용자별 호출 한도 (application.yml gitory.rate-limit). 서버 로그 첫머리에 켜졌는지 남는다
       REDIS_HOST: redis
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
+      # 매일 새벽 공고 가져오기 → 조건 뽑기 → AI 색인 보내기 (application.yml gitory.matching.sync)
+      MATCHING_SYNC_ENABLED: ${MATCHING_SYNC_ENABLED:-false}
     healthcheck:
       # readiness 그룹은 db 연결까지 본다. ai 는 넣지 않는다 (application.yml management 절)
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]
@@ -149,5 +154,6 @@ services:
 
 volumes:
   db-data:
+  ai-index:
   caddy-data:
   caddy-config:

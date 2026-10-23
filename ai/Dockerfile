@@ -11,6 +11,8 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY . .
 RUN useradd --system --no-create-home app
+# 색인 볼륨은 처음 붙을 때 이 폴더의 소유자를 따라가므로, app 사용자가 쓸 수 있게 미리 만든다
+RUN mkdir -p /app/.chroma && chown app /app/.chroma
 USER app
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

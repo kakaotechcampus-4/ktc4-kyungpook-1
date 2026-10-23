@@ -171,7 +171,9 @@ SNAPSHOT = Path(__file__).resolve().parents[2] / "docs" / "openapi" / "ai.json"
 UPDATE_HINT = (
     "docs/openapi/ai.json 이 지금 코드의 문서와 다릅니다. ai 폴더에서 "
     "UPDATE_OPENAPI=1 python -m pytest tests/test_openapi_health.py 로 다시 만든 뒤 커밋하세요 "
-    "(PowerShell: $env:UPDATE_OPENAPI=1; python -m pytest tests/test_openapi_health.py; Remove-Item Env:UPDATE_OPENAPI)"
+    "(PowerShell: $env:UPDATE_OPENAPI=1; python -m pytest tests/test_openapi_health.py; Remove-Item Env:UPDATE_OPENAPI). "
+    "다시 만들었는데도 CI 에서 다르면 설치된 FastAPI·Pydantic 버전이 다른 것이니 "
+    "pip install -r requirements.txt 를 다시 한 뒤 만드세요"
 )
 
 

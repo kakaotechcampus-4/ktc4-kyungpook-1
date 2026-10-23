@@ -54,7 +54,7 @@ class InterviewHistoryApiTest {
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "found",
-            "missing", "question", "options", "answerMode", "answer", "remaining", "maxTurns"};
+            "missing", "question", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection

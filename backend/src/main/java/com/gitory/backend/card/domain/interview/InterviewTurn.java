@@ -122,19 +122,33 @@ public class InterviewTurn {
     }
 
     /**
-     * 사용자가 직접 쓴 답을 가공 없이 담아 답한 질문으로 바꾸고, 답한 시각도 질문 시각처럼 µs 까지만 남긴다
-     * 이미 답한 질문의 답은 바뀌지 않아야 하므로 어디서 불러도 예외를 던진다
+     * 사용자가 쓰거나 보기에서 고른 답을 가공 없이 담아 답한 질문으로 바꾸고, 답한 시각도 질문 시각처럼 µs 까지만 남긴다
+     * 결과가 정해진 질문(답함·넘김 등)은 바뀌지 않아야 하므로 어디서 불러도 예외를 던진다
      */
-    public void answerTyped(String text) {
+    public void answer(String text, AnswerSource source) {
 
-        if (isAnswered()) {
-            throw new IllegalStateException("이미 답한 질문이다");
-        }
-
+        requireOpen();
         this.answerText = text;
-        this.answerSource = AnswerSource.TYPED;
+        this.answerSource = source;
         this.outcome = TurnOutcome.ANSWERED;
         this.answeredAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+
+    }
+
+    /** 답 글과 출처 없이 넘긴 질문으로 바꾸며, 넘긴 질문도 이미 만든 질문이라 질문 상한에 그대로 센다 */
+    public void skip() {
+
+        requireOpen();
+        this.outcome = TurnOutcome.SKIPPED;
+        this.answeredAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+
+    }
+
+    private void requireOpen() {
+
+        if (isClosed()) {
+            throw new IllegalStateException("이미 결과가 정해진 질문이다: " + outcome);
+        }
 
     }
 

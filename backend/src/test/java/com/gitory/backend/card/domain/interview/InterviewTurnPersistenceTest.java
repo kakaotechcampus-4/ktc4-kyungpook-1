@@ -189,7 +189,7 @@ class InterviewTurnPersistenceTest {
         InterviewTurn turn = turns.findByCardIdAndSeq(cardId, (short) 1).orElseThrow();
         Instant askedAt = turn.getAskedAt();
 
-        turn.answerTyped("  쓴 그대로의 답  ");
+        turn.answer("  쓴 그대로의 답  ", AnswerSource.TYPED);
         entityManager.flush();
         entityManager.clear();
 

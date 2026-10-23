@@ -17,6 +17,7 @@ import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -305,7 +306,7 @@ class InterviewAskServiceTest {
     private InterviewAskService service(int maxTurns) {
 
         return new InterviewAskService(ownership, generation, turns, candidates, assembler, port, new InterviewLimits(maxTurns),
-                transactionManager);
+                transactionManager, mock(UserRateLimiter.class));
 
     }
 }

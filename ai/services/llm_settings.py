@@ -27,7 +27,12 @@ class LLMConfigError(RuntimeError):
     """LLM 환경 설정이 없거나 잘못됐다. 재시도로 해결되지 않는다."""
 
 
-def load_llm_settings(task: str) -> LLMSettings:
+def configured_model(task: str) -> str:
+    """``task``에 쓰는 모델 이름. 응답 meta에도 같은 값을 보낸다."""
+    return os.getenv(f"GITORY_{task}_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+
+
+def load_llm_settings(task: str, default_reasoning_effort: str = DEFAULT_REASONING_EFFORT) -> LLMSettings:
     """``task``(예: DIFF, STAR)에 해당하는 모델 설정을 환경변수에서 읽는다."""
     base_url = os.getenv("GITORY_LLM_BASE_URL", "").strip()
     api_key = os.getenv("GITORY_LLM_API_KEY", "").strip()
@@ -40,7 +45,7 @@ def load_llm_settings(task: str) -> LLMSettings:
         raise LLMConfigError("LLM 환경변수가 없습니다: " + ", ".join(missing))
 
     effort_name = f"GITORY_{task}_REASONING_EFFORT"
-    effort = os.getenv(effort_name, DEFAULT_REASONING_EFFORT).strip() or DEFAULT_REASONING_EFFORT
+    effort = os.getenv(effort_name, default_reasoning_effort).strip() or default_reasoning_effort
     if effort not in _EFFORTS:
         raise LLMConfigError(f"{effort_name}는 {'/'.join(_EFFORTS)} 중 하나여야 합니다")
 
@@ -55,7 +60,7 @@ def load_llm_settings(task: str) -> LLMSettings:
     return LLMSettings(
         base_url=base_url,
         api_key=api_key,
-        model=os.getenv(f"GITORY_{task}_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL,
+        model=configured_model(task),
         reasoning_effort=effort,  # type: ignore[arg-type]
         timeout_seconds=timeout_seconds,
     )
@@ -64,8 +69,9 @@ def load_llm_settings(task: str) -> LLMSettings:
 class EnvironmentLLMClient:
     """첫 호출 때 환경변수로 호출기를 만든다. 설정이 없어도 앱 시작은 막지 않는다."""
 
-    def __init__(self, task: str) -> None:
+    def __init__(self, task: str, default_reasoning_effort: str = DEFAULT_REASONING_EFFORT) -> None:
         self._task = task
+        self._default_reasoning_effort = default_reasoning_effort
         self._client: Optional[StructuredLLMClient] = None
         self._lock = threading.Lock()
 
@@ -88,5 +94,5 @@ class EnvironmentLLMClient:
     def _get_client(self) -> StructuredLLMClient:
         with self._lock:
             if self._client is None:
-                self._client = StructuredLLMClient(load_llm_settings(self._task))
+                self._client = StructuredLLMClient(load_llm_settings(self._task, self._default_reasoning_effort))
             return self._client

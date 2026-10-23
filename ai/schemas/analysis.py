@@ -26,8 +26,10 @@ from schemas.common import (
     DiffEvidencePartialReason,
     EmptyReasonCode,
     EvidenceSummarySource,
+    StarArea,
     StarSlot,
     StarStatus,
+    StarTech,
     StatementConfidence,
 )
 
@@ -188,6 +190,11 @@ class DiffEvidence(StrictRequestModel):
         max_length=3,
         description="patch에서 확인한 기술적 선택·패턴. 근거가 없으면 빈 배열",
     )
+    changed_paths: list[str] = Field(
+        default_factory=list,
+        description="커밋이 바꾼 파일 경로. GitHub 파일 목록에서 그대로 뽑으며 lock 파일 같은 생성 파일은 뺀다. "
+        "카드 분야·기술 태그의 근거이고, 없으면 빈 배열",
+    )
     url: str | None = None
 
 
@@ -269,6 +276,9 @@ class StarAnalysisRequest(StrictRequestModel):
     )
     dependency_files: list[DependencyFile] = Field(default_factory=list)
     confirmed_answers: list[str] = Field(default_factory=list)
+    pull_request_body: str | None = Field(
+        None, description="카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다"
+    )
 
 
 class EvidenceReference(BaseModel):
@@ -301,3 +311,9 @@ class StarAnalysisResponse(BaseModel):
     missing_fields: list[StarSlot] = Field(default_factory=list)
     shared_with: str | None = None
     removed_claims: list[str] = Field(default_factory=list)
+    areas: list[StarArea] = Field(
+        default_factory=list, description="카드 분야 태그. 최대 2개, 중요한 것부터. STAR를 만들지 못했으면 빈 배열"
+    )
+    techs: list[StarTech] = Field(
+        default_factory=list, description="카드 기술 태그. 최대 4개, 중요한 것부터. 판단할 수 없으면 빈 배열"
+    )

@@ -82,7 +82,6 @@ class ModuleBoundaryTest {
                 .that().resideInAPackage(ROOT + ".card.domain.evidence..")
                 .should().dependOnClassesThat().resideInAPackage(ROOT + ".agent..")
                 .as("근거 검증은 결정적이어야 한다 — 모델에 되묻지 않는다")
-                .allowEmptyShould(true)
                 .check(classes);
     }
 
@@ -183,12 +182,12 @@ class ModuleBoundaryTest {
      */
     static final class Modules {
         static final String[] ALL = {
-                "consent", "ingest", "recommend", "agent", "card", "job", "audit", "usage"
+                "consent", "ingest", "recommend", "agent", "card", "job", "audit", "usage", "matching"
         };
 
         /** {@code job} 을 참조하면 안 되는 모듈들. 오케스트레이션 의존은 한 방향이다. */
         static final String[] BELOW_JOB = {
-                "consent", "ingest", "recommend", "card", "audit", "usage"
+                "consent", "ingest", "recommend", "card", "audit", "usage", "matching"
         };
 
         private Modules() {

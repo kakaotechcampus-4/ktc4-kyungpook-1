@@ -1,0 +1,170 @@
+[
+  {
+    "name": "repos",
+    "width": 320,
+    "theme": "light",
+    "path": "/repos"
+  },
+  {
+    "name": "candidates",
+    "width": 320,
+    "theme": "light",
+    "path": "/repos/r_auth/candidates"
+  },
+  {
+    "name": "new",
+    "width": 320,
+    "theme": "light",
+    "path": "/cards/new"
+  },
+  {
+    "name": "edit",
+    "width": 320,
+    "theme": "light",
+    "path": "/cards/card_01?mode=edit"
+  },
+  {
+    "name": "mask",
+    "width": 320,
+    "theme": "light",
+    "path": "/cards/card_01?mode=mask"
+  },
+  {
+    "name": "analysis",
+    "width": 320,
+    "theme": "light",
+    "path": "/repos/r_auth/run"
+  },
+  {
+    "name": "draft",
+    "width": 320,
+    "theme": "light",
+    "path": "/cards/card_01"
+  },
+  {
+    "name": "repos",
+    "width": 390,
+    "theme": "light",
+    "path": "/repos"
+  },
+  {
+    "name": "candidates",
+    "width": 390,
+    "theme": "light",
+    "path": "/repos/r_auth/candidates"
+  },
+  {
+    "name": "new",
+    "width": 390,
+    "theme": "light",
+    "path": "/cards/new"
+  },
+  {
+    "name": "edit",
+    "width": 390,
+    "theme": "light",
+    "path": "/cards/card_01?mode=edit"
+  },
+  {
+    "name": "mask",
+    "width": 390,
+    "theme": "light",
+    "path": "/cards/card_01?mode=mask"
+  },
+  {
+    "name": "analysis",
+    "width": 390,
+    "theme": "light",
+    "path": "/repos/r_auth/run"
+  },
+  {
+    "name": "draft",
+    "width": 390,
+    "theme": "light",
+    "path": "/cards/card_01"
+  },
+  {
+    "name": "repos",
+    "width": 390,
+    "theme": "dark",
+    "path": "/repos"
+  },
+  {
+    "name": "candidates",
+    "width": 390,
+    "theme": "dark",
+    "path": "/repos/r_auth/candidates"
+  },
+  {
+    "name": "new",
+    "width": 390,
+    "theme": "dark",
+    "path": "/cards/new"
+  },
+  {
+    "name": "edit",
+    "width": 390,
+    "theme": "dark",
+    "path": "/cards/card_01?mode=edit"
+  },
+  {
+    "name": "mask",
+    "width": 390,
+    "theme": "dark",
+    "path": "/cards/card_01?mode=mask"
+  },
+  {
+    "name": "analysis",
+    "width": 390,
+    "theme": "dark",
+    "path": "/repos/r_auth/run"
+  },
+  {
+    "name": "draft",
+    "width": 390,
+    "theme": "dark",
+    "path": "/cards/card_01"
+  },
+  {
+    "name": "repos",
+    "width": 1440,
+    "theme": "light",
+    "path": "/repos"
+  },
+  {
+    "name": "candidates",
+    "width": 1440,
+    "theme": "light",
+    "path": "/repos/r_auth/candidates"
+  },
+  {
+    "name": "new",
+    "width": 1440,
+    "theme": "light",
+    "path": "/cards/new"
+  },
+  {
+    "name": "edit",
+    "width": 1440,
+    "theme": "light",
+    "path": "/cards/card_01?mode=edit"
+  },
+  {
+    "name": "mask",
+    "width": 1440,
+    "theme": "light",
+    "path": "/cards/card_01?mode=mask"
+  },
+  {
+    "name": "analysis",
+    "width": 1440,
+    "theme": "light",
+    "path": "/repos/r_auth/run"
+  },
+  {
+    "name": "draft",
+    "width": 1440,
+    "theme": "light",
+    "path": "/cards/card_01"
+  }
+]

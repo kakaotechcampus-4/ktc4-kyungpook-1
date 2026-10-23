@@ -1,5 +1,6 @@
 package com.gitory.backend.common.api;
 
+import com.gitory.backend.common.infra.ratelimit.RateLimitExceededException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -12,10 +13,26 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import java.util.Map;
+
 @Slf4j
 @Order(Ordered.LOWEST_PRECEDENCE)
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    // 한도는 어느 모듈의 요청에서나 걸리므로 모듈별 처리기가 아니라 여기서 한 번에 429 로 바꾼다
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRateLimited(RateLimitExceededException e) {
+
+        long retryAfterSec = e.retryAfterSec();
+        long minutes = (retryAfterSec + 59) / 60;
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSec))
+                .body(ApiResponse.fail(ErrorCode.RATE_LIMITED, "요청이 많아요. " + minutes + "분 뒤에 다시 시도해 주세요.",
+                        Map.of("retryAfterSec", retryAfterSec)));
+
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleUnexpected(Exception e, WebRequest request) {

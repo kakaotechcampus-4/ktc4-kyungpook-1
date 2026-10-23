@@ -1,11 +1,14 @@
 package com.gitory.backend.card.api;
 
+import com.gitory.backend.card.domain.CardArea;
 import com.gitory.backend.card.domain.CardKind;
 import com.gitory.backend.card.domain.CardStatus;
 import com.gitory.backend.card.domain.CardSummary;
+import com.gitory.backend.card.domain.CardTech;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
+import java.util.List;
 
 @Schema(description = "카드 목록의 한 줄. 칸 상태(star)는 현재 버전 글로 서버가 판정합니다.")
 public record CardSummaryResponse(
@@ -13,6 +16,8 @@ public record CardSummaryResponse(
         CardKind kind,
         CardStatus status,
         String title,
+        @Schema(description = "AI 초안이 고른 분야를 중요한 순서로 최대 2개. 태그가 없는 카드는 빈 배열") List<CardArea> areas,
+        @Schema(description = "AI 초안이 고른 기술을 중요한 순서로 최대 4개. 태그가 없는 카드는 빈 배열") List<CardTech> techs,
         int versionNo,
         StarStatesResponse star,
         @Schema(description = "카드 내용을 마지막으로 바꾼 시각") Instant updatedAt,
@@ -29,6 +34,8 @@ public record CardSummaryResponse(
                 card.kind(),
                 card.status(),
                 card.title(),
+                card.areas(),
+                card.techs(),
                 card.versionNo(),
                 StarStatesResponse.from(card.star()),
                 card.updatedAt(),

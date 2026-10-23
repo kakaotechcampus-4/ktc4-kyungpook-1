@@ -17,8 +17,9 @@ export const queryClient = new QueryClient({
     onError: (err) => { if (err instanceof AuthError) redirectToLogin(); },
   }),
   mutationCache: new MutationCache({
-    onError: (err) => {
+    onError: (err, _variables, _context, mutation) => {
       if (err instanceof AuthError) return redirectToLogin();
+      if (mutation.meta?.errorPresentation === 'inline') return;
       toast(errorView(err).message, { tone: 'danger' });
     },
   }),

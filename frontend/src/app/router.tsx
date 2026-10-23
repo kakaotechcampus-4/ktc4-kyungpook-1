@@ -15,6 +15,8 @@ import { Spinner } from '@/components/ui';
 const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() => f().then((m) => ({ default: m[name] as React.ComponentType })));
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
+const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
+const MatchDetailPage = L(() => import('@/features/match/MatchDetailPage'), 'MatchDetailPage');
 const ReposPage = L(() => import('@/features/repos/ReposPage'), 'ReposPage');
 const AnalyzePage = L(() => import('@/features/repos/AnalyzePage'), 'AnalyzePage');
 const JobStatusPage = L(() => import('@/features/jobs/JobStatusPage'), 'JobStatusPage');
@@ -39,6 +41,8 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary />,
     children: [
       { path: '/', element: <S><HomePage /></S> },
+      { path: '/match', element: <S><MatchListPage /></S> },
+      { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },
       { path: '/repos', element: <S><ReposPage /></S> },
       { path: '/repos/:repoId/run', element: <S><AnalyzePage /></S> },
       { path: '/jobs/:jobId', element: <S><JobStatusPage /></S> },

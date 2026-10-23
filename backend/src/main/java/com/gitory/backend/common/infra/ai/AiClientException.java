@@ -18,6 +18,22 @@ public final class AiClientException extends RuntimeException {
     public boolean retryable() { return retryable; }
     public Integer httpStatus() { return httpStatus; }
 
+    // 연결이 안 되거나 시간이 지난 실패는 응답 상태와 상관없이 다시 해 볼 만하다
+    // 400 은 우리 요청이 틀렸고 500 은 AI 가 고장 난 것이라 다시 불러도 같은 결과다
+    public boolean temporary() {
+
+        if ("AI_UNAVAILABLE".equals(errorCode)) {
+            return true;
+        }
+
+        if (httpStatus != null && (httpStatus == 400 || httpStatus == 500)) {
+            return false;
+        }
+
+        return retryable;
+
+    }
+
     public static AiClientException invalidResponse() {
         return new AiClientException("AI_INVALID_RESPONSE", false, null);
     }

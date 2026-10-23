@@ -65,6 +65,7 @@ BE의 `StarDraftPort`(#210)는 AI 응답의 칸을 빠짐없이 담는다. 옛 `
 | `evidence: List<StarEvidence>` | `evidence[]` | diff-evidence 응답의 항목을 `sha`·`message`·`authorLogin`·`churn`·`summary`·`summarySource`·`technicalPoints`·`url` 그대로 옮긴다 |
 | (보내지 않음) | `dependency_files` | 아직 사용하지 않아 AI 기본값 `[]` |
 | (보내지 않음) | `confirmed_answers` | 인터뷰 전이라 AI 기본값 `[]` |
+| `pullRequestBody` | `pull_request_body` | 후보 PR 의 저장된 본문(앞 1,000자). 작성자가 카드 주인일 때만 보내고, 없으면 키를 싣지 않는다 |
 
 `StarDraftRequest`는 evidence를 문자열로 바꾸지 않고 diff-evidence 응답의 항목을 `StarEvidence`로 그대로 옮긴다(`CardDraftRunner.starEvidenceOf`). 커밋별 구조를 그대로 넘기므로 STAR 문장의 근거 sha 를 커밋에 이을 수 있다. AI 가 근거 칸을 더하면 `DiffEvidenceReader`·`DiffEvidence`·`StarEvidence`·`starEvidenceOf` 를 같이 고쳐야 한다(AI 의 `/star` 입력은 모르는 칸을 받지 않는다).
 
@@ -130,6 +131,7 @@ PR 번호로 커밋을 고르지 않는다. PR에는 팀원 커밋과 기본 브
 | `summary` | 이 커밋이 무엇을 어떻게, 왜 바꿨는지 한 문장(최대 200자) |
 | `summary_source` | **필수.** `DIFF`: 모델이 diff를 읽고 쓴 요약. `COMMIT_MESSAGE`: 모델 요약을 쓸 수 없어 커밋 메시지 첫 줄로 대신한 값(아래) |
 | `technical_points` | patch에서 확인한 기술적 선택 최대 3개. 없으면 `[]` |
+| `changed_paths` | 그 커밋이 바꾼 파일 경로. GitHub 파일 목록에서 그대로 뽑고(모델을 거치지 않음) 생성 파일(lock 파일 등)은 뺀다. 커밋당 최대 50개, 경로는 150자로 자른다. `summary_source`가 `COMMIT_MESSAGE`여도 파일 목록을 알면 채운다. 없으면 `[]` |
 
 `summary_source=COMMIT_MESSAGE`가 되는 경우: 모델이 그 커밋을 빠뜨림, 요약이 비어 있음, 그 커밋 하나만으로도 출력 상한을 넘음, 콘텐츠 제한에 걸림, 요청 마감·호출 수 상한에 닿음, 모델에 patch를 한 글자도 보내지 못함(생성·민감 파일뿐이거나 patch 상한을 앞 커밋이 다 씀). **실패하지 않고 커밋은 근거에 남는다.** STAR 단계는 이런 근거만으로 받친 문장의 신뢰도를 `MEDIUM`으로 낮춘다.
 
@@ -159,9 +161,10 @@ LLM 호출 하나가 실패해 503으로 끝나면 남은 배치는 LLM을 새�
 | `candidate_id` | 후보 ID(문자열) |
 | `target_login` | 요청자 GitHub 로그인. 근거 커밋에 다른 작성자가 있으면 `shared_with`로 알려 준다 |
 | `title`, `source_type`, `source_ref` | 후보(카드) 제목(길이 상한 없음), `PR`/`COMMIT_CLUSTER`, 예: `"PR #111"` |
-| `evidence` | **diff-evidence 응답의 `evidence`를 그대로** 보낸다. 1개 이상 |
+| `evidence` | **diff-evidence 응답의 `evidence`를 그대로** 보낸다. 1개 이상. `changed_paths`는 분야·기술 태그를 고르는 재료이며, 서버가 이 칸을 넘기기 전까지는 비어 온다(AI 기본값 `[]`) |
 | `dependency_files` | 보내지 않는다(아직 사용하지 않음, AI 기본값 `[]`) |
 | `confirmed_answers` | 보내지 않는다(AI 기본값 `[]`) |
+| `pull_request_body` | 후보 PR 의 저장된 본문(앞 1,000자). PR 작성자가 요청자와 같을 때만 보낸다(대소문자 무시). 남이 쓴 PR·저장되지 않은 PR·빈 본문이면 키를 싣지 않는다. AI 는 비밀값·이메일을 가린 뒤 STAR 근거와 수치 근거로 쓴다 |
 
 ### 응답 `data` (`StarAnalysisResponse`) → 카드 저장
 
@@ -174,6 +177,8 @@ LLM 호출 하나가 실패해 503으로 끝나면 남은 배치는 LLM을 새�
 | `star.*.insufficient_reason_code` | EMPTY 칸의 이유 코드 | 화면 `droppedFields.reason` |
 | `star.*.insufficient_reason` | EMPTY인 이유 문장 | 로그·보조 안내 |
 | `star.*.review_reason` | NEEDS_REVIEW인 이유 | 화면 안내 |
+| `areas` | 이 카드의 변경이 주로 속한 분야, 최대 2개, 비중이 큰 순. 값은 `BACKEND` `FRONTEND` `MOBILE` `DEVOPS` `AI` `DB` `TEST` `DOCS`. 코드 분야와 `DOCS`가 같이 오면 `DOCS`를 뺀다. 못 고르거나 초안 생성 시간이 초과되면 `[]` | 카드 목록 태그(Spring은 이 칸을 읽는 PR 부터 사용) |
+| `techs` | 바뀐 파일 경로와 요약에 직접 드러난 기술, 최대 4개, 중요한 순. 값은 `C` `CPP` `CSHARP` `JAVA` `KOTLIN` `PYTHON` `GO` `RUST` `SWIFT` `DART` `TYPESCRIPT` `JAVASCRIPT` `REACT` `SQL` `DOCKER` `GITHUB_ACTIONS`. 근거로 판단할 수 없거나 시간이 초과되면 `[]` | 카드 목록 태그(위와 같음) |
 | `missing_fields` | EMPTY 칸 목록 | 확인용. Spring은 저장한 칸 문장으로 빈 칸을 판정한다 |
 | `shared_with` | 근거 커밋의 다른 작성자 로그인(쉼표 구분). 없으면 `null` | 공동 작업 표시. 커밋을 빼지는 않는다(ARCHITECTURE.md 기여 귀속 규칙) |
 | `removed_claims` | 근거 커밋과 확인 답변이 없어 AI가 지운 문장 | 저장·표시하지 않음. 품질 확인용 로그 |

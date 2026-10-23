@@ -159,7 +159,7 @@ def test_diff_evidence_returns_evidence_without_patch(override) -> None:
     assert data["evidence"][0] == {
         "sha": SHA, "message": "feat: jwt 필터", "author_login": "octo", "churn": "+3/-1",
         "summary": "JWT 필터를 추가했다.", "summary_source": "DIFF",
-        "technical_points": ["OncePerRequestFilter"], "url": None,
+        "technical_points": ["OncePerRequestFilter"], "changed_paths": ["Filter.java"], "url": None,
     }
     assert (data["partial"], data["partial_reason"], data["missing_commit_shas"]) == (False, None, [])
     assert body["meta"]["tool_calls_made"] == 4

@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import re
+from collections.abc import Iterable
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+#: 모델이 적은 커밋 번호가 입력과 글자까지 같지 않을 때 견주는 앞자리 수(git 짧은 커밋 번호 길이).
+SHA_PREFIX_LENGTH = 7
 
 #: 숫자. 천 단위 쉼표(1,000)와 소수(2.5)를 하나의 숫자로 읽는다.
 _NUMBER = r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?"
@@ -24,6 +32,31 @@ _HUNK_HEADER = re.compile(r"^[+\- ]?@@[^\n]*@@", re.MULTILINE)
 #: 이슈·PR 번호(#30), 날짜(2026-10-10), 시각(10:30)의 숫자도 수치 근거가 아니다.
 _REFERENCE_NUMBERS = re.compile(r"#\d+|\d{4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}:\d{2}(?::\d{2})?")
 _HANGUL = re.compile(r"[가-힣]")
+
+
+def match_commit_sha(written: str, known: Iterable[str], where: str) -> Optional[str]:
+    """모델이 적은 커밋 번호에 해당하는 입력 커밋 번호를 돌려주고, 맞출 수 없으면 None 을 돌려준다.
+
+    모델은 40자 번호를 옮기다 글자를 더하거나 빼거나 순서를 바꿔 적으므로, 글자까지 같은 번호가 없으면 앞 7자가 입력 커밋 하나와만 맞을 때 그 커밋으로 본다.
+    7자보다 짧으면 지어낸 번호일 수 있고, 둘 이상 맞으면 어느 커밋인지 정할 수 없어 버린다.
+    """
+    key = written.strip().casefold()
+    candidates = {sha.casefold(): sha for sha in known}
+    if key in candidates:
+        return candidates[key]
+    if len(key) < SHA_PREFIX_LENGTH:
+        return None
+    matches = [sha for folded, sha in candidates.items() if folded.startswith(key[:SHA_PREFIX_LENGTH])]
+    if len(matches) != 1:
+        return None
+    logger.warning(
+        "%s 근거 커밋 번호 보정: 입력과 다른 %d자 번호를 앞 %d자로 %s 에 맞춤",
+        where,
+        len(key),
+        SHA_PREFIX_LENGTH,
+        matches[0][:SHA_PREFIX_LENGTH],
+    )
+    return matches[0]
 
 
 def unsupported_metrics(text: str, source: str) -> list[str]:

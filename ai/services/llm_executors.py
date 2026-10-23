@@ -2,6 +2,7 @@
 
 경험 그룹화와 카드 초안(diff 근거·STAR)이 파이썬 기본 실행기를 같이 쓰면 초안 호출이 자리를
 차지해 그룹화가 마감을 넘길 수 있어, 둘을 따로 둔다.
+공고 매칭의 조건 뽑기와 색인·검색도 이벤트 루프를 막지 않도록 같은 방식으로 보낸다.
 """
 
 from __future__ import annotations
@@ -19,6 +20,13 @@ T = TypeVar("T")
 GROUPING_EXECUTOR = ThreadPoolExecutor(max_workers=3, thread_name_prefix="llm-grouping")
 #: diff 근거가 요청 하나에서 최대 3개를 동시에 부르므로 초안 2개가 겹쳐도 기다리지 않는다.
 CARD_DRAFT_EXECUTOR = ThreadPoolExecutor(max_workers=6, thread_name_prefix="llm-card-draft")
+#: 공고 조건 뽑기는 호출 한 번이 몇 분까지 걸릴 수 있어 그룹화·카드 초안 자리를 쓰지 않게 따로 둔다.
+POSTING_EXTRACTION_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="llm-posting")
+#: 되묻기는 사용자가 화면에서 기다리는 요청이라 카드 초안 줄에 밀리지 않게 따로 두고,
+#: 동시 사용자 10명 안팎이 몰려도 마감 안에 시작하도록 6개로 둔다.
+INTERVIEW_EXECUTOR = ThreadPoolExecutor(max_workers=6, thread_name_prefix="llm-interview")
+#: 색인과 검색이 같은 로컬 Chroma 파일을 동시에 열지 않게 한 줄로 세운다.
+MATCHING_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="matching-index")
 
 
 class LLMCallSkipped(Exception):

@@ -39,6 +39,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Set<string>>(() => loadSel(repoId));
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showWeak, setShowWeak] = useState(false);
   const [showUsed, setShowUsed] = useState(false); // 이미 카드로 만든 후보 행을 목록 아래에 펼칠지
   useDocumentTitle(repo.data ? `${repo.data.name} 후보 보드` : '후보 보드');
 
@@ -51,10 +52,15 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const needle = q.toLowerCase();
   const matches = (c: Candidate) => (c.title + c.reason).toLowerCase().includes(needle);
   const visible = useMemo(() => cands.filter((c) => c.status !== 'EXCLUDED' && c.status !== 'USED' && (c.title + c.reason).toLowerCase().includes(needle)), [cands, needle]);
+  const strongList = visible.filter(c => !c.weak);
+  const weakList = visible.filter(c => c.weak);
+  const weakOpen = showWeak || !!q.trim();
+  const selectedWeak = weakList.filter(c => selected.has(c.id)).length;
   const usedList = cands.filter((c) => c.status === 'USED' && matches(c));
   const excluded = cands.filter((c) => c.status === 'EXCLUDED');
   const selectable = new Set(cands.filter((c) => c.status === 'NEW').map((c) => c.id));
   const chosen = [...selected].filter((id) => selectable.has(id));
+  const selectedOutsideSearch = chosen.filter(id => !visible.some(candidate => candidate.id === id)).length;
   const busy = actions.running || patch.isPending || create.isPending;
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
   const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }, { label: '후보 보드' }];
@@ -98,7 +104,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
     const { cardIds, jobId } = await create.mutateAsync(chosen);
     track('candidates_confirmed', { repoId, count: chosen.length, jobId });
     setSelected(new Set());
-    nav(`/cards/${cardIds[0]}`);
+    nav(cardIds.length ? `/cards/${encodeURIComponent(cardIds[0])}` : `/jobs/${encodeURIComponent(jobId)}`, { state: cardIds.length ? { cardOrder: cardIds } : undefined });
     });
   };
 
@@ -161,7 +167,14 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       } />
 
       <div className="record-list">
-        {visible.map((c) => row(c))}
+        {strongList.map((c) => row(c))}
+        {weakList.length > 0 && <>
+          <button type="button" className="record-list__more" aria-expanded={weakOpen} onClick={() => setShowWeak(open => !open)} disabled={!!q.trim()}>
+            <span>추천도 낮은 후보 {weakList.length}개{selectedWeak > 0 ? ` · ${selectedWeak}개 선택` : ''}{q.trim() ? ' · 검색 결과' : weakOpen ? ' · 접기' : ' · 보기'}</span>
+            {weakOpen ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
+          </button>
+          {weakOpen && weakList.map(c => row(c))}
+        </>}
         {visible.length === 0 && (q || usedList.length === 0
           ? <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="검색 조건에 맞는 후보가 없어요" tone="inset" /><Button variant="outline" onClick={() => setQ('')}>검색 초기화</Button></div>
           : <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="남은 후보가 없어요" tone="inset">후보를 모두 카드로 만들었어요. 아래에서 만든 카드를 볼 수 있어요.</Note></div>)}
@@ -174,7 +187,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         {showUsed && usedList.map((c) => row(c))}
       </div>
 
-      <StickyFooter strong={`${chosen.length}개 선택`}>
+      <StickyFooter strong={`${chosen.length}개 선택`} sub={selectedOutsideSearch ? `검색 밖 ${selectedOutsideSearch}개 포함` : undefined}>
         <Link to="/" className="btn btn--outline">취소</Link>
         <Button size="lg" disabled={chosen.length === 0 || busy} loading={create.isPending} onClick={makeCards}>
           {chosen.length ? `선택한 ${chosen.length}개로 카드 만들기` : '후보를 선택하세요'}

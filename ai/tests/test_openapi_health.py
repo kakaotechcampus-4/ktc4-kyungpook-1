@@ -23,7 +23,12 @@ INTERNAL_PATHS = {
     "/internal/analysis/diff-evidence",
     "/internal/analysis/star",
     "/internal/interview-turns",
+    "/internal/interview-measured-sentence",
     "/internal/interview-answer-evaluations",
+    "/internal/job-postings/extract",
+    "/internal/matching/postings/index",
+    "/internal/matching/postings/prune",
+    "/internal/matching/search",
 }
 
 

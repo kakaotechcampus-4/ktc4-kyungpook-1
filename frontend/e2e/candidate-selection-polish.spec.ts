@@ -27,6 +27,7 @@ test('recommendation respects server eligibility and leaves used and weak candid
   await expect(page.locator('.cand').first()).toBeVisible();
   const candidates = await page.evaluate(async () => (await (await fetch('/api/repos/r_auth/candidates')).json()).data.candidates as {title:string;status:string;weak:boolean}[]);
   await page.getByRole('button',{name:'추천 후보 선택',exact:true}).click();
+  await page.getByRole('button',{name:/추천도 낮은 후보 \d+개/}).click();
   await page.getByRole('button',{name:/이미 카드로 만든 후보 \d+개 · 보기/}).click(); // 이미 카드로 만든 후보는 눌러야 펼쳐진다
   for(const candidate of candidates.filter(c=>c.status!=='EXCLUDED')) {
     const check=page.getByRole('checkbox',{name:`${candidate.title} 선택`,exact:true});

@@ -77,6 +77,20 @@ class JobViewTest {
 
     }
 
+    @Test
+    @DisplayName("AI 가 잠시 못 해서 실패한 Job 은 다시 시도할 수 있고 기다릴 시간은 모르니 남은 초는 비어 있다")
+    void aiUnavailableJobIsRetryableWithoutWaitTime() {
+
+        AnalysisJob job = collectedJob();
+        job.fail(JobErrorCode.AI_UNAVAILABLE);
+
+        JobView view = JobView.from(job, REPO_ID, List.of(), () -> REASONS);
+
+        assertThat(view.retryable()).isTrue();
+        assertThat(view.retryAfterSec()).isNull();
+
+    }
+
     private static List<String> countedReasons(AtomicInteger calls) {
 
         calls.incrementAndGet();

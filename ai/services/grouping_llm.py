@@ -300,13 +300,13 @@ class GroupingLlm:
     def _expected_descriptions(
         result: GroupDescriptionsOutput, batch: list[CommitGroup]
     ) -> dict[str, tuple[str, str]]:
-        """요청한 키의 설명만 남기고, 같은 키가 또 나오면 먼저 나온 것을 쓴다."""
+        """요청한 키의 설명만 남기되 같은 키가 또 나오면 먼저 나온 것을 쓰고, 제목·이유의 비밀값 모양은 가린다."""
         expected = {group.group_key for group in batch}
         output: dict[str, tuple[str, str]] = {}
         for item in result.descriptions:
             if item.group_key not in expected or item.group_key in output:
                 continue
-            output[item.group_key] = (item.title.strip(), item.reason.strip())
+            output[item.group_key] = (redact_secrets(item.title.strip()), redact_secrets(item.reason.strip()))
         return output
 
     async def _fill_missing(

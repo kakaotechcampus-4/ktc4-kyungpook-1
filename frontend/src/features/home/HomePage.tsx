@@ -11,6 +11,7 @@ import { track } from '@/lib/track';
 import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { CardTags } from '@/components/cards/CardTags';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
 
 /**
@@ -133,7 +134,7 @@ export function HomePage() {
           <Toolbar placeholder="카드 이름으로 검색" value={q} onChange={setQ} />
           <SectionHead label={`${me.data?.login ?? '나'}의 경험 카드`} count={cards.data?.length} />
           {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
-          <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} />)}</div>
+          <div className="experience-list">{list.map((c) => <CardGridItem key={c.id} c={c} cardOrder={list.map(card => card.id)} />)}</div>
           {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}" 에 맞는 카드가 없습니다`} desc="다른 이름으로 찾아보세요." />}
         </>
       )}
@@ -159,15 +160,16 @@ const STAR_KEYS: StarField[] = ['S', 'T', 'A', 'R'];
 export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] !== 'EMPTY');
 export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
 
-export function CardGridItem({ c }: { c: CardSummary }) {
+export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: string[] }) {
   const src = summarySource(c);
   const sub = summaryDetail(c);
   return (
-    <Link to={`/cards/${c.id}`} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
+    <Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
       <div className="experience-item__meta">
         <span>{cardKindShort[c.kind]}{src ? ` · ${src}` : ''}</span>
         {c.period && <span>{periodLabel(c.period)}</span>}
       </div>
+      <CardTags areas={c.areas} techs={c.techs} />
       <h3 className="gcard__title">{c.title}</h3>
       <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />
       <div className="experience-item__footer">

@@ -37,6 +37,7 @@ public class InterviewAnswerController {
             확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.
             답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다.
             스위치(INTERVIEW_ANSWER_REVIEW_ENABLED)가 켜져 있으면 답을 저장한 뒤 AI 가 답을 평가하고, 모자랄 때 같은 칸의 후속 질문이 생깁니다. 이 응답의 카드는 그대로이고 후속 질문은 질문 목록 조회에 나타납니다.
+            그 스위치가 켜져 있을 때 사용자별 호출 한도를 넘었으면 답의 모양 검사 뒤 429 RATE_LIMITED 이고 답을 저장하지 않습니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
     @ApiResponses({
@@ -50,6 +51,8 @@ public class InterviewAnswerController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID, 본인 카드 없음 또는 그 번호의 질문 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "CARD_CONFIRMED: 확정된 카드는 다시 열어야 답할 수 있음, INVALID_STATE: 이미 다른 답을 한 질문 또는 초안을 만드는 중인 카드",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 답 평가가 켜져 있고 사용자별 호출 한도를 넘음. details.retryAfterSec 와 Retry-After 헤더에 기다릴 초가 있음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<CardResponse> answer(

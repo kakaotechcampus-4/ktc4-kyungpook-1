@@ -50,7 +50,6 @@
             "title": "Html Url"
           },
           "message": {
-            "minLength": 1,
             "title": "Message",
             "type": "string"
           },
@@ -1075,6 +1074,33 @@
         "title": "ContributionConfirmation",
         "type": "object"
       },
+      "CriterionMatch": {
+        "additionalProperties": false,
+        "properties": {
+          "criterion_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Criterion Id",
+            "type": "integer"
+          },
+          "distance": {
+            "minimum": 0.0,
+            "title": "Distance",
+            "type": "number"
+          },
+          "statement_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Statement Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "statement_id",
+          "distance"
+        ],
+        "title": "CriterionMatch",
+        "type": "object"
+      },
       "CurrentTurnContext": {
         "additionalProperties": false,
         "description": "사용자가 지금 답변한 기존 인터뷰 질문의 문맥.",
@@ -1515,6 +1541,191 @@
         "title": "Envelope[InterviewTurnResult]",
         "type": "object"
       },
+      "Envelope_JobPostingDetailExtractionResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobPostingDetailExtractionResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[JobPostingDetailExtractionResult]",
+        "type": "object"
+      },
+      "Envelope_JobPostingIndexResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobPostingIndexResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[JobPostingIndexResult]",
+        "type": "object"
+      },
+      "Envelope_JobPostingPruneResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobPostingPruneResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[JobPostingPruneResult]",
+        "type": "object"
+      },
+      "Envelope_MatchingResponse_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[MatchingResponse]",
+        "type": "object"
+      },
+      "Envelope_MeasuredSentenceResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasuredSentenceResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[MeasuredSentenceResult]",
+        "type": "object"
+      },
       "Envelope_RepositoryCollectionResult_": {
         "properties": {
           "data": {
@@ -1878,6 +2089,24 @@
         "title": "ExperienceGroupingResponse",
         "type": "object"
       },
+      "ExperienceLevel": {
+        "enum": [
+          "ENTRY",
+          "EXPERIENCED",
+          "UNSPECIFIED"
+        ],
+        "title": "ExperienceLevel",
+        "type": "string"
+      },
+      "ExtractionOutcome": {
+        "description": "본문 해시 비교를 포함한 상세 조건 추출 결과.",
+        "enum": [
+          "UPDATED",
+          "UNCHANGED"
+        ],
+        "title": "ExtractionOutcome",
+        "type": "string"
+      },
       "FileChangeStatus": {
         "description": "GitHub 파일 변경 상태.",
         "enum": [
@@ -1927,6 +2156,60 @@
           }
         },
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "IndexedCriterion": {
+        "additionalProperties": false,
+        "description": "색인할 조건 하나.\n\n벡터는 text로 만들고 검색 결과는 criterion_id로 돌려준다.",
+        "properties": {
+          "criterion_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Criterion Id",
+            "type": "integer"
+          },
+          "criterion_type": {
+            "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_id",
+          "criterion_type",
+          "text"
+        ],
+        "title": "IndexedCriterion",
+        "type": "object"
+      },
+      "IndexedPosting": {
+        "additionalProperties": false,
+        "description": "색인에 반영할 공고.\n\nACTIVE가 아니거나 criteria가 비면 그 공고의 벡터를 지운다.",
+        "properties": {
+          "criteria": {
+            "items": {
+              "$ref": "#/components/schemas/IndexedCriterion"
+            },
+            "title": "Criteria",
+            "type": "array"
+          },
+          "posting_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Posting Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobPostingStatus"
+          }
+        },
+        "required": [
+          "posting_id",
+          "status"
+        ],
+        "title": "IndexedPosting",
         "type": "object"
       },
       "InterviewAnswerRequest": {
@@ -2076,6 +2359,27 @@
         "additionalProperties": false,
         "description": "`POST /internal/interview-turns` 요청 모델.",
         "properties": {
+          "allowed_slots": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "S",
+                    "T",
+                    "A",
+                    "R"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Spring 이 규칙(같은 칸 2번·측정 안 함/넘김 칸·상한)으로 거른 고를 수 있는 칸. null 이면 missing_slots 의 칸 전부다. 모든 칸은 missing_slots 에 문장과 함께 있어야 한다",
+            "title": "Allowed Slots"
+          },
           "candidate": {
             "anyOf": [
               {
@@ -2114,6 +2418,14 @@
             "title": "Missing Slots",
             "type": "array"
           },
+          "previous_turns": {
+            "description": "이 카드에서 이미 끝난 질문들(오래된 순)",
+            "items": {
+              "$ref": "#/components/schemas/PreviousTurn"
+            },
+            "title": "Previous Turns",
+            "type": "array"
+          },
           "source_type": {
             "description": "되묻기 대상 카드의 출처",
             "enum": [
@@ -2123,6 +2435,24 @@
             ],
             "title": "Source Type",
             "type": "string"
+          },
+          "target_star_slot": {
+            "anyOf": [
+              {
+                "enum": [
+                  "S",
+                  "T",
+                  "A",
+                  "R"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "화면에서 칸을 지정했을 때만 넣는다. 비면 AI 가 고른다",
+            "title": "Target Star Slot"
           }
         },
         "required": [
@@ -2136,6 +2466,22 @@
       "InterviewTurnResult": {
         "description": "`POST /internal/interview-turns` 응답 `data` 모델.\n\n질문을 새로 생성하지 않는 경우에는 `next_action=\"COMPLETE\"`만 채우고\n질문 관련 필드는 모두 null이 된다. 질문 저장 순번(`interview_turn.seq`)은\n동시성 안전을 위해 AI가 아닌 Spring이 저장 시점에 부여한다.",
         "properties": {
+          "answer_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "TEXT",
+                  "MEASURE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "화면이 보일 답 버튼. 질문이 없으면 null",
+            "title": "Answer Mode"
+          },
           "card_id": {
             "title": "Card Id",
             "type": "integer"
@@ -2175,6 +2521,14 @@
               }
             ],
             "title": "Question Type"
+          },
+          "suggested_answers": {
+            "description": "그대로 고를 수 있는 그 칸의 문장 후보(최대 2개)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Answers",
+            "type": "array"
           },
           "target_star_slot": {
             "anyOf": [
@@ -2223,6 +2577,445 @@
           "next_action"
         ],
         "title": "InterviewTurnResult",
+        "type": "object"
+      },
+      "JobCategory": {
+        "enum": [
+          "BACKEND",
+          "FRONTEND",
+          "MOBILE",
+          "DEVOPS",
+          "DATA",
+          "AI_ML",
+          "SECURITY",
+          "QA",
+          "ETC"
+        ],
+        "title": "JobCategory",
+        "type": "string"
+      },
+      "JobCriterion": {
+        "additionalProperties": false,
+        "description": "공고 원문에서 확인한 한 가지 직무 조건과 정확한 인용.",
+        "properties": {
+          "criterion_type": {
+            "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "source_quote": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Source Quote",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion_type",
+          "text",
+          "source_quote"
+        ],
+        "title": "JobCriterion",
+        "type": "object"
+      },
+      "JobCriterionType": {
+        "description": "상세 본문에서 뽑는 조건의 종류.\n\n기술 항목은 속한 문단에 따라 필수·우대로 넣는다.",
+        "enum": [
+          "RESPONSIBILITY",
+          "REQUIRED",
+          "PREFERRED"
+        ],
+        "title": "JobCriterionType",
+        "type": "string"
+      },
+      "JobExperience": {
+        "additionalProperties": false,
+        "description": "공고에 적힌 경력 요건.\n\nENTRY는 연차 없이 인용만, EXPERIENCED는 연차와 인용을, UNSPECIFIED는 둘 다 비운다.",
+        "properties": {
+          "level": {
+            "$ref": "#/components/schemas/ExperienceLevel"
+          },
+          "min_years": {
+            "anyOf": [
+              {
+                "maximum": 60.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Years"
+          },
+          "source_quote": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Quote"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "title": "JobExperience",
+        "type": "object"
+      },
+      "JobPostingContentStatus": {
+        "description": "정밀 매칭에 사용할 상세 본문 정규화 상태.",
+        "enum": [
+          "METADATA_ONLY",
+          "READY"
+        ],
+        "title": "JobPostingContentStatus",
+        "type": "string"
+      },
+      "JobPostingDetailExtractionRequest": {
+        "additionalProperties": false,
+        "description": "공개된 공고 상세 본문에서 직무 조건을 추출하는 요청.",
+        "properties": {
+          "external_posting_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "External Posting Id",
+            "type": "string"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          },
+          "previous_content_hash": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Content Hash"
+          },
+          "previous_content_status": {
+            "$ref": "#/components/schemas/JobPostingContentStatus",
+            "default": "READY"
+          },
+          "raw_text": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Raw Text",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "source_url": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "external_posting_id",
+          "job_title",
+          "source_url",
+          "raw_text"
+        ],
+        "title": "JobPostingDetailExtractionRequest",
+        "type": "object"
+      },
+      "JobPostingDetailExtractionResult": {
+        "additionalProperties": false,
+        "description": "Spring 저장과 Chroma 인덱싱에 사용할 검증 완료 조건.",
+        "properties": {
+          "content_hash": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "content_status": {
+            "$ref": "#/components/schemas/JobPostingContentStatus"
+          },
+          "criteria": {
+            "items": {
+              "$ref": "#/components/schemas/JobCriterion"
+            },
+            "title": "Criteria",
+            "type": "array"
+          },
+          "experience": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobExperience"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "external_posting_id": {
+            "title": "External Posting Id",
+            "type": "string"
+          },
+          "job_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ExtractionOutcome"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "source_url": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Source Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "external_posting_id",
+          "source_url",
+          "content_hash",
+          "outcome",
+          "content_status"
+        ],
+        "title": "JobPostingDetailExtractionResult",
+        "type": "object"
+      },
+      "JobPostingIndexRequest": {
+        "additionalProperties": false,
+        "description": "Spring이 저장한 공고 조건을 색인에 반영하는 요청.",
+        "properties": {
+          "postings": {
+            "items": {
+              "$ref": "#/components/schemas/IndexedPosting"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Postings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "postings"
+        ],
+        "title": "JobPostingIndexRequest",
+        "type": "object"
+      },
+      "JobPostingIndexResult": {
+        "additionalProperties": false,
+        "properties": {
+          "deactivated_postings": {
+            "minimum": 0.0,
+            "title": "Deactivated Postings",
+            "type": "integer"
+          },
+          "indexed_criteria": {
+            "minimum": 0.0,
+            "title": "Indexed Criteria",
+            "type": "integer"
+          },
+          "indexed_postings": {
+            "minimum": 0.0,
+            "title": "Indexed Postings",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "indexed_postings",
+          "indexed_criteria",
+          "deactivated_postings"
+        ],
+        "title": "JobPostingIndexResult",
+        "type": "object"
+      },
+      "JobPostingPruneRequest": {
+        "additionalProperties": false,
+        "description": "남길 공고 id 목록으로, 이 목록에 없는 공고의 벡터를 모두 지운다.",
+        "properties": {
+          "keep_posting_ids": {
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Keep Posting Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "keep_posting_ids"
+        ],
+        "title": "JobPostingPruneRequest",
+        "type": "object"
+      },
+      "JobPostingPruneResult": {
+        "additionalProperties": false,
+        "properties": {
+          "kept_postings": {
+            "minimum": 0.0,
+            "title": "Kept Postings",
+            "type": "integer"
+          },
+          "removed_postings": {
+            "minimum": 0.0,
+            "title": "Removed Postings",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kept_postings",
+          "removed_postings"
+        ],
+        "title": "JobPostingPruneResult",
+        "type": "object"
+      },
+      "JobPostingStatus": {
+        "enum": [
+          "ACTIVE",
+          "EXPIRED",
+          "REMOVED"
+        ],
+        "title": "JobPostingStatus",
+        "type": "string"
+      },
+      "MatchingRequest": {
+        "additionalProperties": false,
+        "description": "확정 STAR 문장과 가까운 조건을 찾는 요청.",
+        "properties": {
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/SearchStatement"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "statements"
+        ],
+        "title": "MatchingRequest",
+        "type": "object"
+      },
+      "MatchingResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "collection_criteria": {
+            "minimum": 0.0,
+            "title": "Collection Criteria",
+            "type": "integer"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/CriterionMatch"
+            },
+            "title": "Matches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "collection_criteria"
+        ],
+        "title": "MatchingResponse",
+        "type": "object"
+      },
+      "MeasuredSentenceRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/interview-measured-sentence` 요청 모델.",
+        "properties": {
+          "card_id": {
+            "description": "대상 STAR 카드 ID",
+            "exclusiveMinimum": 0.0,
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "card_title": {
+            "description": "카드 제목",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Card Title",
+            "type": "string"
+          },
+          "current_result": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "지금 R 칸 문장. 비어 있으면 null",
+            "title": "Current Result"
+          },
+          "user_text": {
+            "description": "사용자가 '재 봤어요' 에 자유롭게 쓴 측정 결과",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "User Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "card_title",
+          "user_text"
+        ],
+        "title": "MeasuredSentenceRequest",
+        "type": "object"
+      },
+      "MeasuredSentenceResult": {
+        "description": "`POST /internal/interview-measured-sentence` 응답 `data` 모델.",
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "sentence": {
+            "description": "수치를 넣어 다시 쓴 R 문장. 수치 확인은 Spring 이 한다",
+            "title": "Sentence",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "sentence"
+        ],
+        "title": "MeasuredSentenceResult",
         "type": "object"
       },
       "Meta": {
@@ -2363,6 +3156,58 @@
         ],
         "title": "PartialReason",
         "type": "string"
+      },
+      "PreviousTurn": {
+        "additionalProperties": false,
+        "description": "이 카드에서 이미 끝난 질문 하나. 다음 칸을 고르고 예상 답변을 만드는 재료다.",
+        "properties": {
+          "answer_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "넘긴 질문·측정 안 함이면 null 일 수 있다",
+            "title": "Answer Text"
+          },
+          "outcome": {
+            "enum": [
+              "ANSWERED",
+              "MEASURED",
+              "NOT_MEASURED",
+              "SKIPPED"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "question_text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Question Text",
+            "type": "string"
+          },
+          "star_slot": {
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "star_slot",
+          "question_text",
+          "outcome"
+        ],
+        "title": "PreviousTurn",
+        "type": "object"
       },
       "PullRequestContext": {
         "additionalProperties": false,
@@ -2648,6 +3493,29 @@
         "title": "ReviewContext",
         "type": "object"
       },
+      "SearchStatement": {
+        "additionalProperties": false,
+        "description": "Spring이 사용자 확정 여부를 검증해 보낸 STAR 문장.",
+        "properties": {
+          "body": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "statement_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Statement Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "statement_id",
+          "body"
+        ],
+        "title": "SearchStatement",
+        "type": "object"
+      },
       "StarAnalysisRequest": {
         "additionalProperties": false,
         "description": "확정된 경험의 STAR 분석을 요청한다.",
@@ -2679,6 +3547,18 @@
             "title": "Evidence",
             "type": "array"
           },
+          "pull_request_body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다",
+            "title": "Pull Request Body"
+          },
           "source_ref": {
             "anyOf": [
               {
@@ -2707,18 +3587,6 @@
           "title": {
             "title": "Title",
             "type": "string"
-          },
-          "pull_request_body": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다",
-            "title": "Pull Request Body"
           }
         },
         "required": [
@@ -3071,7 +3939,7 @@
     }
   },
   "info": {
-    "description": "AI는 판단·생성만 수행하며 인증·소유권 검증·영속 저장은 Spring이 담당합니다. `/internal/*` 응답은 공통 `Envelope`이고 스키마 검증 실패는 422 대신 400입니다.\n\n**현재 구현 범위:** GitHub 수집과 템플릿/규칙 기반 B-1/B-2가 구현되어 있습니다. A 경험 그룹화·STAR 생성은 아직 미구현이며, 기본 파이프라인 호출은 500으로 끝납니다. `/health`는 프로세스 생존 확인이며 LLM 또는 A 기능 readiness 검사가 아닙니다. 이 API는 내부 서버 간 호출용이고 인터넷에 공개하는 인증 API가 아닙니다.",
+    "description": "AI는 판단·생성만 수행하며 인증·소유권 검증·영속 저장은 Spring이 담당합니다. `/internal/*` 응답은 공통 `Envelope`이고 스키마 검증 실패는 422 대신 400입니다.\n\n**현재 구현 범위:** GitHub 수집, A 경험 그룹화·diff 근거·STAR 초안, 템플릿/규칙 기반 B-1/B-2, 공고 조건 추출과 매칭 색인·검색이 구현되어 있습니다. LLM 설정이 없으면 LLM을 쓰는 API만 503으로 끝납니다. `/health`는 프로세스 생존 확인이며 LLM 또는 A 기능 readiness 검사가 아닙니다. 이 API는 내부 서버 간 호출용이고 인터넷에 공개하는 인증 API가 아닙니다.",
     "summary": "Spring 백엔드에서 호출하는 stateless 수집·분석·되묻기 API",
     "title": "Gitory AI Internal API",
     "version": "0.0.1"
@@ -3102,7 +3970,7 @@
     },
     "/internal/analysis/diff-evidence": {
       "post": {
-        "description": "요청자 본인 커밋(commit_shas, 필수)의 diff를 GitHub에서 다시 조회해 커밋별 변경 요약·기술 포인트로 정리합니다. 응답의 evidence는 그대로 /internal/analysis/star 요청의 evidence로 넘깁니다. 원본 patch는 AI 안에서만 쓰고 응답·로그·DB에 남기지 않습니다. 비밀값은 모델로 보내기 전에 가립니다. 요청 전체는 240초 안에 끝나며, 시간·호출 수 상한에 닿은 커밋은 커밋 메시지 요약(summary_source=COMMIT_MESSAGE)으로 둡니다. 요청한 커밋이 근거에서 빠졌을 때만 partial=true이고 missing_commit_shas에 남깁니다. GitHub 토큰은 헤더로만 전달합니다.",
+        "description": "요청자 본인 커밋(commit_shas, 필수)의 diff를 GitHub에서 다시 조회해 커밋별 변경 요약·기술 포인트로 정리합니다. 응답의 evidence는 그대로 /internal/analysis/star 요청의 evidence로 넘깁니다. 원본 patch는 AI 안에서만 쓰고 응답·로그·DB에 남기지 않습니다. 비밀값은 모델로 보내기 전에 가립니다. 요청 전체는 240초 안에 끝나며, 시간·호출 수 상한에 닿았거나 patch를 하나도 보내지 못한 커밋은 커밋 메시지 요약(summary_source=COMMIT_MESSAGE)으로 둡니다. 요청한 커밋이 근거에서 빠졌을 때만 partial=true이고 missing_commit_shas에 남깁니다. GitHub 토큰은 헤더로만 전달합니다.",
         "operationId": "collect_diff_evidence_internal_analysis_diff_evidence_post",
         "parameters": [
           {
@@ -3173,14 +4041,13 @@
           },
           "500": {
             "content": {
-              "text/plain": {
-                "example": "Internal Server Error",
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             },
-            "description": "분석 처리 중 내부 오류 또는 LLM 호출 실패"
+            "description": "INTERNAL_ERROR: 처리하지 못한 내부 오류. 재시도 불가."
           },
           "502": {
             "content": {
@@ -3190,7 +4057,7 @@
                 }
               }
             },
-            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 재시도 가능."
+            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 다시 시도할지는 retryable로 알린다."
           },
           "503": {
             "content": {
@@ -3200,7 +4067,7 @@
                 }
               }
             },
-            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패(retryable=true) 또는 LLM 환경 설정 누락(retryable=false)."
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
           }
         },
         "summary": "A 선택 후보의 커밋별 diff 근거 생성",
@@ -3258,14 +4125,13 @@
           },
           "500": {
             "content": {
-              "text/plain": {
-                "example": "Internal Server Error",
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             },
-            "description": "분석 처리 중 내부 오류 또는 LLM 호출 실패"
+            "description": "INTERNAL_ERROR: 처리하지 못한 내부 오류. 재시도 불가."
           },
           "503": {
             "content": {
@@ -3286,7 +4152,7 @@
     },
     "/internal/analysis/star": {
       "post": {
-        "description": "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. 근거 커밋과 확인 답변이 없는 문장은 비우고 removed_claims에 남깁니다. 비운 칸은 insufficient_reason_code(NO_EVIDENCE·TIMEOUT)와 함께 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다.",
+        "description": "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. 근거 커밋과 확인 답변이 없는 문장은 비우고 removed_claims에 남깁니다. 근거 커밋 없이 확인 답변만 있는 문장은 NEEDS_REVIEW(LOW)로 채웁니다. 비운 칸은 insufficient_reason_code(NO_EVIDENCE·TIMEOUT)와 함께 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다.",
         "operationId": "analyze_star_internal_analysis_star_post",
         "requestBody": {
           "content": {
@@ -3333,14 +4199,13 @@
           },
           "500": {
             "content": {
-              "text/plain": {
-                "example": "Internal Server Error",
+              "application/json": {
                 "schema": {
-                  "type": "string"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             },
-            "description": "분석 처리 중 내부 오류 또는 LLM 호출 실패"
+            "description": "INTERNAL_ERROR: 처리하지 못한 내부 오류. 재시도 불가."
           },
           "503": {
             "content": {
@@ -3350,7 +4215,7 @@
                 }
               }
             },
-            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패(retryable=true) 또는 LLM 환경 설정 누락(retryable=false)."
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
           }
         },
         "summary": "A 확정 경험의 STAR 초안 생성",
@@ -3361,7 +4226,7 @@
     },
     "/internal/collect": {
       "post": {
-        "description": "Spring이 전달한 저장소·사용자 문맥으로 commit·PR·review·issue를 수집합니다. 복구 가능한 일부 수집 실패와 상한 초과는 HTTP 200의 partial=true 및 partial_reason으로 표시합니다. 원본 전체 diff는 반환하지 않으며 본문은 제한된 excerpt만 반환합니다. GitHub 토큰은 헤더로만 전달하고 본문·응답·DB에 저장하지 않습니다.",
+        "description": "Spring이 전달한 저장소·사용자 문맥으로 commit·PR·review·issue를 수집합니다. 복구 가능한 일부 수집 실패와 상한 초과는 HTTP 200의 partial=true 및 partial_reason으로 표시합니다. PR 은 최근 갱신순 상한 밖의 남의 PR 이 빠진 것은 부분 수집으로 표시하지 않고, 내 PR 이 잘렸을 수 있을 때만 표시합니다. 커밋이 없는 빈 저장소는 head_sha=null·커밋 0개로 반환합니다. 원본 전체 diff는 반환하지 않으며 본문은 제한된 excerpt만 반환합니다. GitHub 토큰은 헤더로만 전달하고 본문·응답·DB에 저장하지 않습니다.",
         "operationId": "collect_repository_activity_internal_collect_post",
         "parameters": [
           {
@@ -3438,7 +4303,7 @@
                 }
               }
             },
-            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 재시도 가능."
+            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 다시 시도할지는 retryable로 알린다."
           }
         },
         "summary": "A-1 GitHub 저장소 활동 수집",
@@ -3526,7 +4391,7 @@
                 }
               }
             },
-            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 재시도 가능."
+            "description": "GITHUB_API_ERROR: GitHub API 호출 실패. 다시 시도할지는 retryable로 알린다."
           }
         },
         "summary": "A-1 선택된 후보의 제한된 diff 수집",
@@ -3589,9 +4454,73 @@
         ]
       }
     },
+    "/internal/interview-measured-sentence": {
+      "post": {
+        "description": "사용자가 자유롭게 쓴 측정 결과와 지금 R 문장으로 결과 문장 하나를 씁니다. 저장하지 않습니다. 문장 속 수치가 사용자 글에 있는지는 Spring 이 확인하고, 실패하면 Spring 이 틀 문장으로 대신합니다.",
+        "operationId": "write_measured_sentence_internal_interview_measured_sentence_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MeasuredSentenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MeasuredSentenceResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 문장을 받지 못함(retryable=true)."
+          }
+        },
+        "summary": "'재 봤어요' 측정 결과로 R 문장 다시 쓰기",
+        "tags": [
+          "interview-turns"
+        ]
+      }
+    },
     "/internal/interview-turns": {
       "post": {
-        "description": "현재 결정적 템플릿으로 보강 질문 또는 COMPLETE를 반환합니다. LLM·DB·GitHub를 호출하지 않습니다. DIRECT_CARD는 candidate=null이어야 합니다. 질문 순번·최종 횟수 제한·영속 저장은 Spring이 관리합니다.",
+        "description": "고를 수 있는 칸(allowed_slots, 없으면 missing_slots 전부) 안에서 LLM 이 다음 칸·질문·예상 답변을 정하고, 칸을 지정하지 않았으면 더 물을 것이 없을 때 COMPLETE 를 반환합니다. 첫 질문은 R 에 수치가 없으면 R 입니다. LLM 이 없거나 12초 안에 쓸 만한 답을 못 주면 틀 질문으로 대신하므로 이 API 는 LLM 실패로 오류를 내지 않습니다. DIRECT_CARD는 candidate=null이어야 합니다. 질문 순번·최종 횟수 제한·영속 저장은 Spring이 관리합니다.",
         "operationId": "create_interview_turn_internal_interview_turns_post",
         "requestBody": {
           "content": {
@@ -3642,6 +4571,302 @@
           "interview-turns"
         ]
       }
+    },
+    "/internal/job-postings/extract": {
+      "post": {
+        "description": "상세 본문에서 원문 인용으로 검증 가능한 직무 조건만 추출한다.",
+        "operationId": "extract_job_posting_detail_internal_job_postings_extract_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobPostingDetailExtractionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobPostingDetailExtractionResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 예상하지 못한 내부 오류. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패(retryable=true), LLM 설정 누락·키·권한 오류·출력 길이 초과(retryable=false)."
+          }
+        },
+        "summary": "Extract Job Posting Detail",
+        "tags": [
+          "job-postings"
+        ]
+      }
+    },
+    "/internal/matching/postings/index": {
+      "post": {
+        "description": "Spring에 저장된 공고 조건을 AI의 재생성 가능한 Chroma 색인에 반영한다.",
+        "operationId": "index_job_postings_internal_matching_postings_index_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobPostingIndexRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobPostingIndexResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 예상하지 못한 내부 오류. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: OpenAI 호환 임베딩 호출 실패(retryable=true), 임베딩 설정 누락·키·권한 오류·하루 한도(retryable=false). 기본 로컬 임베딩(chroma-default)의 실패는 503이 아니라 500 INTERNAL_ERROR."
+          }
+        },
+        "summary": "Index Job Postings",
+        "tags": [
+          "matching"
+        ]
+      }
+    },
+    "/internal/matching/postings/prune": {
+      "post": {
+        "description": "남길 공고 id 목록에 없는 공고의 벡터를 색인에서 모두 지운다.",
+        "operationId": "prune_job_postings_internal_matching_postings_prune_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobPostingPruneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobPostingPruneResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 예상하지 못한 내부 오류. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: OpenAI 호환 임베딩 호출 실패(retryable=true), 임베딩 설정 누락·키·권한 오류·하루 한도(retryable=false). 기본 로컬 임베딩(chroma-default)의 실패는 503이 아니라 500 INTERNAL_ERROR."
+          }
+        },
+        "summary": "Prune Job Postings",
+        "tags": [
+          "matching"
+        ]
+      }
+    },
+    "/internal/matching/search": {
+      "post": {
+        "description": "확정 STAR 문장을 저장하지 않고 거리 기준 안의 조건 id를 모두 반환한다.",
+        "operationId": "search_job_matches_internal_matching_search_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MatchingResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "processing_ms": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 예상하지 못한 내부 오류. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: OpenAI 호환 임베딩 호출 실패(retryable=true), 임베딩 설정 누락·키·권한 오류·하루 한도(retryable=false). 기본 로컬 임베딩(chroma-default)의 실패는 503이 아니라 500 INTERNAL_ERROR."
+          }
+        },
+        "summary": "Search Job Matches",
+        "tags": [
+          "matching"
+        ]
+      }
     }
   },
   "tags": [
@@ -3654,12 +4879,20 @@
       "name": "collection"
     },
     {
-      "description": "A 경험 후보 그룹화·STAR 생성 계약. 현재 기본 구현은 미완성",
+      "description": "A 경험 후보 그룹화·diff 근거·STAR 초안 생성",
       "name": "analysis"
     },
     {
       "description": "B-1 질문 생성 / B-2 답변 평가. 현재 템플릿·규칙 기반이며 저장은 Spring 담당",
       "name": "interview-turns"
+    },
+    {
+      "description": "공고 상세 본문에서 원문 인용이 있는 직무 조건 추출",
+      "name": "job-postings"
+    },
+    {
+      "description": "공고 조건 인덱싱과 확정 STAR 기반 직무 검색",
+      "name": "matching"
     }
   ]
 }

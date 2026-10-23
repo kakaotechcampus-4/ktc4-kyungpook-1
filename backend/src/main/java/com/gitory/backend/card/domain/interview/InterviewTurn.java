@@ -9,6 +9,8 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -53,12 +55,24 @@ public class InterviewTurn {
     @Enumerated(EnumType.STRING)
     private TurnOutcome outcome;
 
+    @Enumerated(EnumType.STRING)
+    private AnswerMode answerMode;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<String> suggestedAnswers = new ArrayList<>();
+
     private Instant askedAt;
 
     private Instant answeredAt;
 
     private InterviewTurn(Long cardId, short seq, StarField starSlot, QuestionType questionType,
                           String questionText, TriggerSource triggerSource, Long parentTurnId) {
+        this(cardId, seq, starSlot, questionType, questionText, triggerSource, parentTurnId, null, List.of());
+    }
+
+    private InterviewTurn(Long cardId, short seq, StarField starSlot, QuestionType questionType,
+                          String questionText, TriggerSource triggerSource, Long parentTurnId,
+                          AnswerMode answerMode, List<String> suggestedAnswers) {
         this.cardId = cardId;
         this.seq = seq;
         this.starSlot = starSlot;
@@ -66,6 +80,8 @@ public class InterviewTurn {
         this.triggerSource = triggerSource;
         this.parentTurnId = parentTurnId;
         this.questionText = questionText;
+        this.answerMode = answerMode;
+        this.suggestedAnswers = new ArrayList<>(suggestedAnswers);
         this.askedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
@@ -77,6 +93,22 @@ public class InterviewTurn {
                                     String questionText) {
 
         return new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.USER, null);
+
+    }
+
+    /**
+     * 되묻기 루프에서 AI 가 정한 칸·답 버튼·예상 답변으로 질문을 만든다
+     * 사용자가 칸을 지정했으면 USER, AI 가 칸을 골랐으면 AUTO 이고 AUTO 는 바로 앞 질문을 부모로 남긴다
+     */
+    public static InterviewTurn asked(Long cardId, short seq, StarField starSlot, QuestionType questionType,
+                                      String questionText, boolean slotChosenByUser, Long previousTurnId,
+                                      AnswerMode answerMode, List<String> suggestedAnswers) {
+
+        return slotChosenByUser
+                ? new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.USER, null,
+                        answerMode, suggestedAnswers)
+                : new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.AUTO,
+                        previousTurnId, answerMode, suggestedAnswers);
 
     }
 
@@ -109,6 +141,21 @@ public class InterviewTurn {
     public boolean isAnswered() {
 
         return outcome == TurnOutcome.ANSWERED;
+
+    }
+
+    /** 답했거나 넘겼거나 측정 결과를 정한 질문이면 true 이고, 결과가 없거나 LATER·INSUFFICIENT 인 질문은 아직 답을 기다린다 */
+    public boolean isClosed() {
+
+        return outcome == TurnOutcome.ANSWERED || outcome == TurnOutcome.MEASURED
+                || outcome == TurnOutcome.NOT_MEASURED || outcome == TurnOutcome.SKIPPED;
+
+    }
+
+    /** 옛 질문은 답 버튼을 저장하지 않았으므로 글로 답하는 질문으로 본다 */
+    public AnswerMode answerModeOrText() {
+
+        return answerMode == null ? AnswerMode.TEXT : answerMode;
 
     }
 }

@@ -1148,7 +1148,9 @@ class InterviewAnswerApiTest {
         rows.addAll(jdbc.queryForList(
                 "SELECT e.id, e.statement_id, e.commit_id FROM statement_evidence e JOIN card_statement s ON s.id = e.statement_id WHERE s.card_id = ? ORDER BY e.id",
                 cardId));
-        rows.addAll(jdbc.queryForList("SELECT * FROM interview_turn WHERE card_id = ? ORDER BY seq", cardId));
+        // 배열 칸(suggested_answers)은 JDBC 객체끼리 같은지 비교되지 않아 행 전체를 JSON 글로 바꿔 비교한다
+        rows.addAll(jdbc.queryForList("SELECT to_jsonb(t)::text AS turn FROM interview_turn t WHERE card_id = ? ORDER BY seq",
+                cardId));
 
         return rows;
 

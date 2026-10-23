@@ -6,6 +6,7 @@ import com.gitory.backend.support.InterviewFixtures;
 import com.gitory.backend.support.InterviewFixtures.TurnRow;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
+import tools.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
@@ -63,7 +65,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "gitory.consent.token-key=test-encryption-key",
         "gitory.consent.token-salt=5c0744940b5c369b",
         "springdoc.api-docs.enabled=true",
-        "springdoc.api-docs.path=/api/docs"
+        "springdoc.api-docs.path=/api/docs",
+        "gitory.interview.max-turns=2"
 })
 @AutoConfigureMockMvc
 @Testcontainers
@@ -77,7 +80,7 @@ class InterviewAskApiTest {
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "found",
-            "missing", "question", "options", "answer", "remaining", "maxTurns"};
+            "missing", "question", "options", "answerMode", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -350,8 +353,8 @@ class InterviewAskApiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"LATER", "SKIPPED", "INSUFFICIENT"})
-    @DisplayName("결과가 ANSWERED 가 아니면 답 글이 남아 있어도 답하지 않은 질문으로 보고 answer 가 null 인 그 질문을 돌려준다")
+    @ValueSource(strings = {"LATER", "INSUFFICIENT"})
+    @DisplayName("결과가 LATER·INSUFFICIENT 면 답 글이 남아 있어도 답을 기다리는 질문으로 보고 answer 가 null 인 그 질문을 돌려준다")
     void treatsOtherOutcomesAsOpen(String outcome) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -417,7 +420,7 @@ class InterviewAskApiTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidBodies")
-    @DisplayName("field 가 없거나 null 이거나 정확히 S·T·A·R 이 아니면 400 BAD_FIELD 이고 AI 를 부르지 않으며 질문도 만들지 않는다")
+    @DisplayName("field 가 있는데 정확히 S·T·A·R 이 아니면 400 BAD_FIELD 이고 AI 를 부르지 않으며 질문도 만들지 않는다")
     void invalidFieldIsBadRequest(String content) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -450,7 +453,7 @@ class InterviewAskApiTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"S", "T", "A", "R"})
-    @DisplayName("질문을 받으면 요청한 칸의 질문을 200 으로 돌려주고, FE InterviewTurn 의 12개 키를 모두 담는다")
+    @DisplayName("질문을 받으면 요청한 칸의 질문을 200 으로 돌려주고, FE InterviewTurn 의 13개 키를 모두 담는다")
     void returnsTheNewQuestionWithTwelveKeys(String field) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -592,7 +595,7 @@ class InterviewAskApiTest {
     }
 
     @Test
-    @DisplayName("묻는 칸이 비어 있으면 카드 번호·직접 작성 출처·빈 후보·칸 하나(글 null·LOW·근거 커밋 없음)·질문 수 0·상한 2 를 AI 에 보낸다")
+    @DisplayName("빈 카드에 T 를 지정하면 고를 수 있는 네 칸(글 null·LOW·근거 커밋 없음)·지정 칸 T·지난 질문 없음·질문 수 0·상한 2 를 AI 에 보낸다")
     void sendsEmptySlotContext() throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -601,9 +604,13 @@ class InterviewAskApiTest {
 
         JsonNode expected = MAPPER.readTree("""
                 {"card_id": %d, "candidate": null,
-                 "missing_slots": [{"star_slot": "T", "statement_seq": 1, "body": null, "confidence": "LOW",
-                                    "linked_commits": []}],
-                 "existing_turn_count": 0, "max_turns": 2, "source_type": "DIRECT_CARD"}
+                 "missing_slots": [
+                   {"star_slot": "S", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []},
+                   {"star_slot": "T", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []},
+                   {"star_slot": "A", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []},
+                   {"star_slot": "R", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []}],
+                 "existing_turn_count": 0, "max_turns": 2, "source_type": "DIRECT_CARD",
+                 "target_star_slot": "T", "allowed_slots": ["S", "T", "A", "R"], "previous_turns": []}
                 """.formatted(cardId));
         assertThat((Object) sentRequest()).isEqualTo(expected);
 
@@ -618,7 +625,7 @@ class InterviewAskApiTest {
 
         ask(myUserId, MY_CARD.toString(), "T").andExpect(status().isOk());
 
-        JsonNode slot = sentRequest().path("missing_slots").path(0);
+        JsonNode slot = sentSlot("T");
         assertThat(slot.path("body").asString()).isEqualTo("  앞뒤 공백이 있는 글  ");
         assertThat(slot.path("confidence").asString()).isEqualTo("HIGH");
 
@@ -633,7 +640,7 @@ class InterviewAskApiTest {
 
         ask(myUserId, MY_CARD.toString(), "T").andExpect(status().isOk());
 
-        assertThat(sentRequest().path("missing_slots").path(0).path("confidence").asString()).isEqualTo("MEDIUM");
+        assertThat(sentSlot("T").path("confidence").asString()).isEqualTo("MEDIUM");
 
     }
 
@@ -663,7 +670,7 @@ class InterviewAskApiTest {
                 .andExpect(jsonPath(post + ".parameters.length()").value(1))
                 .andExpect(jsonPath(post + ".parameters[0].schema.format").value("uuid"))
                 .andExpect(jsonPath(post + ".requestBody").exists())
-                .andExpect(jsonPath(post + ".responses['200'].description").value(containsString("답하지 않은 채 남아 있던 질문")))
+                .andExpect(jsonPath(post + ".responses['200'].description").value(containsString("답을 기다리던 질문")))
                 .andExpect(jsonPath(post + ".responses['400'].description").value(containsString("BAD_FIELD")))
                 .andExpect(jsonPath(post + ".responses['400'].description").value(containsString("INVALID_REQUEST")))
                 .andExpect(jsonPath(post + ".responses['401'].description").value(containsString("로그인 세션 없음")))
@@ -675,11 +682,21 @@ class InterviewAskApiTest {
 
     }
 
+    private JsonNode sentSlot(String slot) {
+
+        for (JsonNode sent : sentRequest().path("missing_slots")) {
+            if (sent.path("star_slot").asString().equals(slot)) {
+                return sent;
+            }
+        }
+
+        throw new AssertionError(slot + " 칸을 보내지 않았다");
+
+    }
+
     static Stream<Named<String>> invalidBodies() {
 
         return Stream.of(
-                Named.of("키 없음", "{}"),
-                Named.of("null", "{\"field\":null}"),
                 Named.of("S·T·A·R 가 아닌 글자", "{\"field\":\"X\"}"),
                 Named.of("소문자", "{\"field\":\"s\"}"),
                 Named.of("앞 공백", "{\"field\":\" S\"}"),
@@ -708,6 +725,287 @@ class InterviewAskApiTest {
     private static Arguments scenario(String name, Function<Long, FakeInterviewAi.Reply> reply) {
 
         return arguments(Named.of(name, reply));
+
+    }
+
+    @Test
+    @DisplayName("field 없이 요청하면 AI 가 고른 칸의 질문을 저장하고, 누가 물었나는 AUTO(FOLLOW_UP)이며 바로 앞 질문을 부모로 남긴다")
+    void askWithoutFieldSavesAiChosenSlot() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long previous = interviews.insertAnswered(cardId, 1, "S", "배포가 느렸다", "TYPED");
+        AI.replyWith(request -> reply(cardId, "R", "MEASURE", "얼마나 빨라졌나요?", "배포 시간을 줄였다"));
+
+        send(myUserId, MY_CARD.toString(), "{}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.turnNo").value(2))
+                .andExpect(jsonPath("$.data.field").value("R"))
+                .andExpect(jsonPath("$.data.askedBy").value("FOLLOW_UP"))
+                .andExpect(jsonPath("$.data.answerMode").value("MEASURE"))
+                .andExpect(jsonPath("$.data.options[0]").value("배포 시간을 줄였다"));
+
+        assertThat(interviews.turnsOf(cardId).get(1))
+                .extracting(InterviewFixtures.TurnRow::triggerSource, InterviewFixtures.TurnRow::parentTurnId)
+                .containsExactly("AUTO", previous);
+
+    }
+
+    @Test
+    @DisplayName("field 없이 요청하면 지정 칸은 null 이고, 끝난 질문을 칸·질문·결과·답과 함께 AI 에 보낸다")
+    void sendsPreviousTurnsWithoutTarget() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAnswered(cardId, 1, "S", "배포가 느렸다", "TYPED");
+
+        send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
+
+        JsonNode sent = sentRequest();
+        assertThat(sent.path("target_star_slot").isNull()).isTrue();
+        assertThat((Object) sent.path("previous_turns")).isEqualTo(MAPPER.readTree("""
+                [{"star_slot": "S", "question_text": "질문", "outcome": "ANSWERED", "answer_text": "배포가 느렸다"}]
+                """));
+
+    }
+
+    @Test
+    @DisplayName("field 없이 요청했는데 AI 가 더 물을 것이 없다고 하면 질문을 만들지 않고 data 가 null 인 200 이다")
+    void completeWithoutFieldReturnsNull() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        AI.replyWith(request -> FakeInterviewAi.complete(cardId));
+
+        send(myUserId, MY_CARD.toString(), "{}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.error").value(nullValue()));
+
+        assertThat(interviews.turnsOf(cardId)).isEmpty();
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SKIPPED", "NOT_MEASURED"})
+    @DisplayName("넘김·측정 안 함으로 끝난 칸을 지정하면 409 INTERVIEW_FIELD_CLOSED 이고 AI 를 부르지 않으며 질문도 만들지 않는다")
+    void closedFieldIsConflict(String outcome) throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertTurn(cardId, 1, "R", "EVIDENCE_GAP", "USER", "결과는요?", outcome, null, null);
+
+        ask(myUserId, MY_CARD.toString(), "R")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INTERVIEW_FIELD_CLOSED"));
+
+        assertThat(AI.requests()).isEmpty();
+        assertThat(interviews.turnsOf(cardId)).hasSize(1);
+
+    }
+
+    @Test
+    @DisplayName("넘김으로 끝난 칸은 고를 수 있는 칸과 AI 에 보내는 칸 글에서 빠진다")
+    void closedSlotIsNotSentToAi() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertTurn(cardId, 1, "T", "EVIDENCE_GAP", "USER", "맡은 일은요?", "SKIPPED", null, null);
+
+        send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
+
+        JsonNode sent = sentRequest();
+        assertThat((Object) sent.path("allowed_slots")).isEqualTo(MAPPER.readTree("[\"S\", \"A\", \"R\"]"));
+        assertThat(sent.path("missing_slots").findValuesAsString("star_slot")).containsExactly("S", "A", "R");
+
+    }
+
+    @Test
+    @DisplayName("AI 가 고를 수 없는 칸의 질문을 주면 500 INTERNAL_ERROR 이고 질문을 만들지 않는다")
+    void aiChoosingClosedSlotIsRejected() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertTurn(cardId, 1, "T", "EVIDENCE_GAP", "USER", "맡은 일은요?", "SKIPPED", null, null);
+        AI.replyWith(request -> reply(cardId, "T", "TEXT", "맡은 일은요?"));
+
+        send(myUserId, MY_CARD.toString(), "{}")
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error.code").value("INTERNAL_ERROR"));
+
+        assertThat(interviews.turnsOf(cardId)).hasSize(1);
+
+    }
+
+    @Test
+    @DisplayName("R 이 아닌 칸에 MEASURE 가 오면 글로 답하는 질문(TEXT)으로 저장한다")
+    void measureOnlyForR() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        AI.replyWith(request -> reply(cardId, "S", "MEASURE", "그때 무엇이 문제였나요?"));
+
+        ask(myUserId, MY_CARD.toString(), "S")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.answerMode").value("TEXT"));
+
+        assertThat(jdbc.queryForObject("SELECT answer_mode FROM interview_turn WHERE card_id = ?", String.class, cardId))
+                .isEqualTo("TEXT");
+
+    }
+
+    @Test
+    @DisplayName("예상 답변은 빈 글을 빼고 2개까지 저장해 options 로 돌려준다")
+    void savesTwoSuggestions() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        AI.replyWith(request -> reply(cardId, "S", "TEXT", "그때 무엇이 문제였나요?", " ", "배포가 느렸다", "목록이 느렸다",
+                "세 번째"));
+
+        ask(myUserId, MY_CARD.toString(), "S")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.options.length()").value(2))
+                .andExpect(jsonPath("$.data.options[0]").value("배포가 느렸다"))
+                .andExpect(jsonPath("$.data.options[1]").value("목록이 느렸다"));
+
+        assertThat(jdbc.queryForObject("SELECT array_to_string(suggested_answers, '|') FROM interview_turn WHERE card_id = ?",
+                String.class, cardId)).isEqualTo("배포가 느렸다|목록이 느렸다");
+
+    }
+
+    @Test
+    @DisplayName("측정 결과에 숫자가 없으면 AI 를 부르지 않고 sentence 가 null 인 200 이다")
+    void draftWithoutNumberSkipsAi() throws Exception {
+
+        measureTurn();
+
+        draft("꽤 빨라졌어요")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sentence").value(nullValue()));
+
+        assertThat(AI.requests()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("AI 문장의 숫자가 모두 측정 결과에 있으면 그 문장을 돌려주고, AI 에는 지금 R 문장과 측정 결과를 보낸다")
+    void draftReturnsAiSentence() throws Exception {
+
+        Long cardId = measureTurn();
+        AI.replyWith(request -> sentence(cardId, "조회 시간을 3초에서 0.4초로 줄였다."));
+
+        draft("3초 걸리던 게 0.4초 정도")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sentence").value("조회 시간을 3초에서 0.4초로 줄였다."));
+
+        assertThat(sentRequest().path("current_result").asString()).isEqualTo("목록 조회를 쿼리 한 번으로 바꿨다");
+        assertThat(sentRequest().path("user_text").asString()).isEqualTo("3초 걸리던 게 0.4초 정도");
+
+    }
+
+    @Test
+    @DisplayName("AI 문장에 측정 결과에 없는 숫자가 있으면 지금 R 문장 뒤에 측정 결과를 붙인 문장을 돌려준다")
+    void draftFallsBackOnInventedNumber() throws Exception {
+
+        Long cardId = measureTurn();
+        AI.replyWith(request -> sentence(cardId, "조회 시간을 87% 줄였다."));
+
+        draft("3초 걸리던 게 0.4초 정도")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sentence").value("목록 조회를 쿼리 한 번으로 바꿨다 (3초 걸리던 게 0.4초 정도)"));
+
+    }
+
+    @Test
+    @DisplayName("AI 가 응답하지 못하면 지금 R 문장 뒤에 측정 결과를 붙인 문장을 돌려준다")
+    void draftFallsBackOnAiFailure() throws Exception {
+
+        measureTurn();
+        AI.replyWith(request -> FakeInterviewAi.failure(503, "LLM_UNAVAILABLE", true));
+
+        draft("3초에서 0.4초")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sentence").value("목록 조회를 쿼리 한 번으로 바꿨다 (3초에서 0.4초)"));
+
+    }
+
+    @Test
+    @DisplayName("R 수치 질문이 아니면 400 BAD_FIELD 이고 AI 를 부르지 않는다")
+    void draftNeedsMeasureQuestion() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAsked(cardId, 1, "R", "EVIDENCE_GAP", "USER", "결과는요?");
+
+        draft("3초에서 0.4초").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("BAD_FIELD"));
+
+        assertThat(AI.requests()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("결과가 정해진 질문이면 409 INVALID_STATE 이다")
+    void draftNeedsOpenQuestion() throws Exception {
+
+        Long cardId = measureTurn();
+        jdbc.update("UPDATE interview_turn SET outcome = 'NOT_MEASURED' WHERE card_id = ?", cardId);
+
+        draft("3초에서 0.4초").andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+
+    }
+
+    @Test
+    @DisplayName("미리 보기는 카드·버전·문장·질문을 하나도 바꾸지 않는다")
+    void draftSavesNothing() throws Exception {
+
+        Long cardId = measureTurn();
+        AI.replyWith(request -> sentence(cardId, "조회 시간을 3초에서 0.4초로 줄였다."));
+        List<Map<String, Object>> before = cardState(cardId);
+        String turnsBefore = turnsJson(cardId);
+
+        draft("3초에서 0.4초").andExpect(status().isOk());
+
+        assertThat(cardState(cardId)).isEqualTo(before);
+        assertThat(turnsJson(cardId)).isEqualTo(turnsBefore);
+
+    }
+
+    private Long measureTurn() {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        fixtures.insertStatement(cardId, 1, "R", "목록 조회를 쿼리 한 번으로 바꿨다", "COMMIT", "HIGH");
+        Long turnId = interviews.insertAsked(cardId, 1, "R", "EVIDENCE_GAP", "AUTO", "얼마나 빨라졌나요?");
+        jdbc.update("UPDATE interview_turn SET answer_mode = 'MEASURE' WHERE id = ?", turnId);
+
+        return cardId;
+
+    }
+
+    private ResultActions draft(String text) throws Exception {
+
+        return mvc.perform(post(ASK_PATH + "/1/measured-draft", MY_CARD.toString())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(MAPPER.writeValueAsString(Map.of("text", text)))
+                .with(loggedInAs(myUserId)).with(csrf()));
+
+    }
+
+    private String turnsJson(Long cardId) {
+
+        return jdbc.queryForObject("SELECT json_agg(to_jsonb(t) ORDER BY seq)::text FROM interview_turn t WHERE card_id = ?",
+                String.class, cardId);
+
+    }
+
+    private static FakeInterviewAi.Reply reply(Long cardId, String slot, String answerMode, String question,
+                                               String... suggestions) {
+
+        ObjectNode data = MAPPER.createObjectNode().put("card_id", cardId).put("target_star_slot", slot)
+                .put("target_statement_seq", 1).put("question_type", "EVIDENCE_GAP").put("trigger_source", "AUTO")
+                .put("question_text", question).put("next_action", "ASK_AGAIN").put("answer_mode", answerMode);
+        data.putArray("suggested_answers").addAll(Arrays.stream(suggestions).map(MAPPER.getNodeFactory()::textNode).toList());
+
+        return FakeInterviewAi.success(data);
+
+    }
+
+    private static FakeInterviewAi.Reply sentence(Long cardId, String sentence) {
+
+        return FakeInterviewAi.success(MAPPER.createObjectNode().put("card_id", cardId).put("sentence", sentence));
 
     }
 

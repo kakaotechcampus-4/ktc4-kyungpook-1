@@ -38,6 +38,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -77,9 +78,9 @@ class InterviewAnswerReviewServiceTest {
         when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(answered));
         when(turns.save(any(InterviewTurn.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(assembler.assemble(any(Card.class), any(StarField.class), anyInt())).thenReturn(new InterviewQuestionRequest(
+        when(assembler.assemble(any(Card.class), anyList(), any(), anyList())).thenReturn(new InterviewQuestionRequest(
                 CARD_ID, null, List.of(new InterviewMissingSlot(InterviewStarSlot.A, 1, "고쳤다", InterviewConfidence.HIGH,
-                List.of())), 1, 2, InterviewCardSourceType.DIRECT_CARD));
+                List.of())), 1, 2, InterviewCardSourceType.DIRECT_CARD, null, List.of(), List.of()));
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenAnswer(invocation -> {
             TransactionStatus status = new SimpleTransactionStatus();
             statuses.add(status);
@@ -297,7 +298,7 @@ class InterviewAnswerReviewServiceTest {
         InOrder order = inOrder(transactionManager, ownership, assembler, port, turns);
         order.verify(transactionManager).getTransaction(definitions.capture());
         order.verify(ownership).findOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD);
-        order.verify(assembler).assemble(any(Card.class), any(StarField.class), anyInt());
+        order.verify(assembler).assemble(any(Card.class), anyList(), any(), anyList());
         order.verify(transactionManager).commit(statuses.get(0));
         order.verify(port).review(any(InterviewAnswerReviewRequest.class));
         order.verify(transactionManager).getTransaction(definitions.capture());

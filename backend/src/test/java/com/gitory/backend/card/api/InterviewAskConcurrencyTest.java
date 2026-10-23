@@ -53,7 +53,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
         "spring.security.oauth2.client.registration.github.client-secret=test-client-secret",
         "gitory.consent.token-key=test-encryption-key",
-        "gitory.consent.token-salt=5c0744940b5c369b"
+        "gitory.consent.token-salt=5c0744940b5c369b",
+        "gitory.interview.max-turns=2"
 })
 @AutoConfigureMockMvc
 @Testcontainers

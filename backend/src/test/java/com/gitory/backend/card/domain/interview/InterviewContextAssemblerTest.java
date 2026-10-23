@@ -31,6 +31,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.stream.IntStream;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -67,7 +68,7 @@ class InterviewContextAssemblerTest {
     @DisplayName("빈 칸은 카드 번호·빈 후보·칸 하나(글 null·LOW·근거 커밋 없음)·받은 질문 수·설정의 상한·직접 작성 출처로 조립한다")
     void assemblesEmptySlot() {
 
-        InterviewQuestionRequest request = assembler(2).assemble(card, StarField.T, 1);
+        InterviewQuestionRequest request = assembler(2).assemble(card, List.of(StarField.T), StarField.T, asked(1));
 
         assertThat(request.cardId()).isEqualTo(CARD_ID);
         assertThat(request.candidate()).isNull();
@@ -83,7 +84,7 @@ class InterviewContextAssemblerTest {
     @DisplayName("상한은 설정 값을 따른다")
     void followsConfiguredMaxTurns() {
 
-        assertThat(assembler(3).assemble(card, StarField.T, 0).maxTurns()).isEqualTo(3);
+        assertThat(assembler(3).assemble(card, List.of(StarField.T), StarField.T, asked(0)).maxTurns()).isEqualTo(3);
 
     }
 
@@ -91,7 +92,7 @@ class InterviewContextAssemblerTest {
     @DisplayName("카드의 현재 버전 번호로 글을 읽는다")
     void readsTheCurrentVersion() {
 
-        assembler(2).assemble(card, StarField.T, 0);
+        assembler(2).assemble(card, List.of(StarField.T), StarField.T, asked(0));
 
         verify(reader).read(CARD_ID, CURRENT_VERSION);
 
@@ -108,7 +109,7 @@ class InterviewContextAssemblerTest {
         }
         slots(filled);
 
-        List<InterviewMissingSlot> sent = assembler(2).assemble(card, requested, 0).missingSlots();
+        List<InterviewMissingSlot> sent = assembler(2).assemble(card, List.of(requested), requested, asked(0)).missingSlots();
 
         assertThat(sent).hasSize(1);
         assertThat(sent.get(0).starSlot()).isEqualTo(InterviewStarSlot.valueOf(requested.name()));
@@ -156,7 +157,7 @@ class InterviewContextAssemblerTest {
 
         cardOfCandidate(9L, source(CandidateType.MANUAL, null));
 
-        InterviewQuestionRequest request = assembler(2).assemble(card, StarField.T, 0);
+        InterviewQuestionRequest request = assembler(2).assemble(card, List.of(StarField.T), StarField.T, asked(0));
 
         assertThat(request.candidate()).isNull();
         assertThat(request.sourceType()).isEqualTo(InterviewCardSourceType.DIRECT_CARD);
@@ -171,7 +172,7 @@ class InterviewContextAssemblerTest {
         cardOfCandidate(9L, source(CandidateType.PR, 7, draft(2L, "b"), draft(1L, "a")));
         summaries(summary(1L, "a", "첫째"), summary(2L, "b", "둘째"));
 
-        InterviewQuestionRequest request = assembler(2).assemble(card, StarField.T, 0);
+        InterviewQuestionRequest request = assembler(2).assemble(card, List.of(StarField.T), StarField.T, asked(0));
 
         assertThat(request.candidate().commits()).containsExactly(new InterviewCommit(2L, "b", "둘째"),
                 new InterviewCommit(1L, "a", "첫째"));
@@ -188,7 +189,7 @@ class InterviewContextAssemblerTest {
         cardOfCandidate(9L, source(CandidateType.PR, 7, draft(1L, "a")));
         summaries(summary(1L, "a", message));
 
-        assertThat(assembler(2).assemble(card, StarField.T, 0).candidate().commits())
+        assertThat(assembler(2).assemble(card, List.of(StarField.T), StarField.T, asked(0)).candidate().commits())
                 .containsExactly(new InterviewCommit(1L, "a", "feat: 인덱스 추가"));
 
     }
@@ -201,7 +202,7 @@ class InterviewContextAssemblerTest {
         cardOfCandidate(9L, source(CandidateType.PR, 7, draft(1L, "a")));
         summaries(summary(1L, "a", "😀".repeat(length)));
 
-        assertThat(assembler(2).assemble(card, StarField.T, 0).candidate().commits().get(0).message())
+        assertThat(assembler(2).assemble(card, List.of(StarField.T), StarField.T, asked(0)).candidate().commits().get(0).message())
                 .isEqualTo("😀".repeat(kept) + (ellipsis ? "…" : ""));
 
     }
@@ -215,7 +216,7 @@ class InterviewContextAssemblerTest {
         slots(Map.of(StarField.T, slot(StarField.T, "글", EvidenceType.COMMIT, null, List.of(1L, 3L))));
         summaries(summary(1L, "a", blank), summary(2L, "b", "남는 커밋"), summary(3L, "c", null));
 
-        InterviewQuestionRequest request = assembler(2).assemble(card, StarField.T, 0);
+        InterviewQuestionRequest request = assembler(2).assemble(card, List.of(StarField.T), StarField.T, asked(0));
 
         assertThat(request.candidate().commits()).containsExactly(new InterviewCommit(2L, "b", "남는 커밋"));
         assertThat(request.missingSlots().get(0).linkedCommits()).isEmpty();
@@ -229,7 +230,7 @@ class InterviewContextAssemblerTest {
         slots(Map.of(StarField.T, slot(StarField.T, "글", EvidenceType.COMMIT, null, List.of(32L, 31L, 33L))));
         summaries(summary(31L, "x", "feat: 31"), summary(32L, "y", "feat: 32"));
 
-        InterviewMissingSlot sent = assembler(2).assemble(card, StarField.T, 0).missingSlots().get(0);
+        InterviewMissingSlot sent = assembler(2).assemble(card, List.of(StarField.T), StarField.T, asked(0)).missingSlots().get(0);
 
         assertThat(sent.linkedCommits()).containsExactly(new InterviewCommit(32L, "y", "feat: 32"),
                 new InterviewCommit(31L, "x", "feat: 31"));
@@ -238,7 +239,7 @@ class InterviewContextAssemblerTest {
 
     private InterviewConfidence confidenceSent(StarField field) {
 
-        return assembler(2).assemble(card, field, 0).missingSlots().get(0).confidence();
+        return assembler(2).assemble(card, List.of(field), field, asked(0)).missingSlots().get(0).confidence();
 
     }
 
@@ -290,6 +291,15 @@ class InterviewContextAssemblerTest {
     private InterviewContextAssembler assembler(int maxTurns) {
 
         return new InterviewContextAssembler(reader, draftSources, commitSummaries, new InterviewLimits(maxTurns));
+
+    }
+
+    // 질문 수만 세는 시험이라 결과가 없는 질문을 개수만큼 만든다
+    private static List<InterviewTurn> asked(int count) {
+
+        return IntStream.rangeClosed(1, count)
+                .mapToObj(seq -> InterviewTurn.ask(1L, (short) seq, StarField.S, QuestionType.RECALL_AID, "질문"))
+                .toList();
 
     }
 }

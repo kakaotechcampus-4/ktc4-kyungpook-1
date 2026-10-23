@@ -344,6 +344,40 @@ class MigrationUpgradeTest {
 
     }
 
+    @Test
+    @DisplayName("V25 는 옛 질문을 답 버튼 null·예상 답변 빈 배열로 남기고, MEASURED 는 답 글과 출처가 있어야 하며 NOT_MEASURED 는 답 없이 허용한다")
+    void v25AddsInterviewLoopColumns() {
+
+        migrateTo("24");
+        Long cardId = fixtures.insertCard(UUID.fromString("11111111-1111-4111-8111-111111111111"),
+                fixtures.insertUser(1L, "grow22"));
+        insertTurn(cardId, 1, "ANSWERED", "답", "TYPED");
+        insertTurn(cardId, 2, "LATER", null, null);
+        insertTurn(cardId, 3, "SKIPPED", null, null);
+        insertTurn(cardId, 4, "INSUFFICIENT", "모자란 답", "TYPED");
+
+        migrateTo("25");
+
+        assertThat(jdbc.queryForList(
+                "SELECT outcome || ':' || coalesce(answer_mode, 'null') || ':' || cardinality(suggested_answers) FROM interview_turn ORDER BY seq",
+                String.class)).containsExactly("ANSWERED:null:0", "LATER:null:0", "SKIPPED:null:0", "INSUFFICIENT:null:0");
+        insertTurn(cardId, 5, "MEASURED", "3초에서 0.4초로 줄였다", "TYPED");
+        insertTurn(cardId, 6, "NOT_MEASURED", null, null);
+        assertThatThrownBy(() -> insertTurn(cardId, 7, "MEASURED", null, null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update("UPDATE interview_turn SET answer_mode = 'OTHER' WHERE seq = 1"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    private void insertTurn(Long cardId, int seq, String outcome, String answerText, String answerSource) {
+
+        jdbc.update(
+                "INSERT INTO interview_turn (card_id, seq, star_slot, question_type, trigger_source, question_text, outcome, answer_text, answer_source) VALUES (?, ?, 'R', 'EVIDENCE_GAP', 'USER', '질문', ?, ?, ?)",
+                cardId, seq, outcome, answerText, answerSource);
+
+    }
+
     private void insertJob(Long userId, Long userRepositoryId, String errorCode) {
 
         jdbc.update(

@@ -1,6 +1,7 @@
 package com.gitory.backend.agent.infra;
 
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.InterviewAnswerMode;
 import com.gitory.backend.agent.port.InterviewNextAction;
 import com.gitory.backend.agent.port.InterviewQuestionPort;
 import com.gitory.backend.agent.port.InterviewQuestionRequest;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -28,6 +30,9 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
 
     private static final List<String> QUESTION_FIELDS = List.of("target_star_slot", "target_statement_seq",
             "question_type", "question_text");
+
+    private static final int MAX_SUGGESTIONS = 2;
+    private static final int MAX_SUGGESTION_LENGTH = 300;
 
     private final AiHttpClient ai;
     private final AiClientProperties properties;
@@ -61,7 +66,9 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
                     InterviewStarSlot.valueOf(string(data, "target_star_slot")),
                     positiveInt(data, "target_statement_seq"),
                     InterviewQuestionType.valueOf(string(data, "question_type")),
-                    nonBlankString(data, "question_text"));
+                    nonBlankString(data, "question_text"),
+                    answerMode(data),
+                    suggestedAnswers(data));
             case COMPLETE -> complete(data);
         };
 
@@ -75,7 +82,45 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
                 throw AiClientException.invalidResponse();
             }
         }
-        return new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null);
+        return new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of());
+
+    }
+
+    // 되묻기 루프 전의 AI 는 답 버튼을 보내지 않으므로 없으면 글로 답하는 질문으로 본다
+    private static InterviewAnswerMode answerMode(JsonNode data) {
+
+        JsonNode value = data.path("answer_mode");
+        if (value.isMissingNode() || value.isNull()) {
+            return InterviewAnswerMode.TEXT;
+        }
+
+        return InterviewAnswerMode.valueOf(string(data, "answer_mode"));
+
+    }
+
+    // 화면에 버튼으로 보일 글이라 빈 글은 빼고, 저장 칸이 넘치지 않게 개수와 길이를 한 번 더 막는다
+    private static List<String> suggestedAnswers(JsonNode data) {
+
+        JsonNode values = data.path("suggested_answers");
+        if (values.isMissingNode() || values.isNull()) {
+            return List.of();
+        }
+        if (!values.isArray()) {
+            throw AiClientException.invalidResponse();
+        }
+
+        List<String> answers = new ArrayList<>();
+        for (JsonNode value : values) {
+            if (!value.isString()) {
+                throw AiClientException.invalidResponse();
+            }
+            String answer = value.asString().strip();
+            if (!answer.isEmpty() && answer.length() <= MAX_SUGGESTION_LENGTH && answers.size() < MAX_SUGGESTIONS) {
+                answers.add(answer);
+            }
+        }
+
+        return List.copyOf(answers);
 
     }
 

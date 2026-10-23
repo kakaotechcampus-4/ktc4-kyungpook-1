@@ -8,10 +8,14 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,10 +48,51 @@ public class MatchListService {
         MatchEvidence evidence = evidenceSearch.find(userId);
         Set<Long> metIds = evidence.matches().stream().map(CriterionMatch::criterionId).collect(Collectors.toSet());
 
-        return byPosting.values().stream()
+        List<MatchTarget> sorted = byPosting.values().stream()
                 .map(conditions -> MatchTargets.of(conditions, metIds, evidence.confirmed().hasConfirmedCard()))
                 .sorted(BY_FIT_THEN_DEADLINE)
                 .toList();
+        return mixCompanies(sorted);
+
+    }
+
+    /**
+     * 한 회사의 공고가 위쪽을 덮지 않도록, 같은 등급 안에서 회사마다 한 건씩 돌아가며 놓는다
+     * 등급을 넘어서는 섞지 않고, 회사 순서와 회사 안의 공고 순서는 들어온 정렬 순서를 따른다
+     */
+    static List<MatchTarget> mixCompanies(List<MatchTarget> sorted) {
+
+        List<MatchTarget> mixed = new ArrayList<>(sorted.size());
+        int start = 0;
+        while (start < sorted.size()) {
+            MatchGrade fit = sorted.get(start).fit();
+            int end = start;
+            while (end < sorted.size() && Objects.equals(sorted.get(end).fit(), fit)) {
+                end++;
+            }
+            mixed.addAll(roundRobin(sorted.subList(start, end)));
+            start = end;
+        }
+        return mixed;
+
+    }
+
+    private static List<MatchTarget> roundRobin(List<MatchTarget> sameFit) {
+
+        Map<String, Deque<MatchTarget>> byCompany = new LinkedHashMap<>();
+        for (MatchTarget target : sameFit) {
+            byCompany.computeIfAbsent(target.company(), company -> new ArrayDeque<>()).add(target);
+        }
+
+        List<MatchTarget> mixed = new ArrayList<>(sameFit.size());
+        while (mixed.size() < sameFit.size()) {
+            for (Deque<MatchTarget> queue : byCompany.values()) {
+                if (!queue.isEmpty()) {
+                    mixed.add(queue.poll());
+                }
+            }
+        }
+        return mixed;
 
     }
 }

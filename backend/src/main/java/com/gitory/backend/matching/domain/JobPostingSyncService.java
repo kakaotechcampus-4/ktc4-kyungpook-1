@@ -28,7 +28,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 설정에 둔 회사들의 채용 공고를 가져와 저장하고, 사라졌거나 마감이 지난 공고의 상태를 바꾼 뒤 본문을 받은 공고의 조건을 뽑게 넘긴다
+ * 설정에 둔 회사들의 채용 공고를 가져와 저장하고, 사라졌거나 마감이 지난 공고의 상태를 바꾼 뒤 본문을 받은 공고의 조건을 뽑게 넘기고 활성 공고를 색인에 다시 보낸다
  * 한 회사가 실패해도 공고 상태는 그대로 두고 다음 회사로 넘어가며, 가져오는 동안은 트랜잭션을 쥐지 않는다
  */
 @Slf4j
@@ -47,6 +47,7 @@ public class JobPostingSyncService {
     private final JobPostingRepository postings;
     private final JobPostingSourceRepository sources;
     private final JobPostingExtractionService extraction;
+    private final JobPostingIndexService indexing;
     private final TransactionTemplate transaction;
     private final SyncLock lock;
     private final Clock clock;
@@ -55,7 +56,7 @@ public class JobPostingSyncService {
 
         boolean ran = lock.runExclusively(this::syncAll);
         if (!ran) {
-            log.info("공고 가져오기를 건너뜀: 다른 서버가 이미 실행 중이다");
+            log.info("공고 가져오기를 건너뜀: 공고 가져오기나 색인 다시 보내기가 이미 실행 중이다");
         }
 
     }
@@ -75,6 +76,7 @@ public class JobPostingSyncService {
         }
         expireOverdue();
         extraction.extractAll(targets);
+        indexing.indexAll();
         log.info("공고 가져오기 끝: {}초", secondsSince(started));
 
     }

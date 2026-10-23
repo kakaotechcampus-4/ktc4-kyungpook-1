@@ -1,9 +1,18 @@
 package com.gitory.backend.matching.domain;
 
+import com.gitory.backend.agent.port.ExtractedCriterion;
+import com.gitory.backend.agent.port.ExtractedExperience;
+import com.gitory.backend.agent.port.IndexPosting;
+import com.gitory.backend.agent.port.JobMatchingIndexPort;
 import com.gitory.backend.agent.port.JobPostingExtractionPort;
 import com.gitory.backend.agent.port.JobPostingExtractionRequest;
 import com.gitory.backend.agent.port.JobPostingExtractionResult;
+import com.gitory.backend.agent.port.MatchingIndexResult;
+import com.gitory.backend.agent.port.MatchingPruneResult;
 import com.gitory.backend.agent.port.PostingContentStatus;
+import com.gitory.backend.agent.port.PostingCriterionType;
+import com.gitory.backend.agent.port.PostingExperienceLevel;
+import com.gitory.backend.agent.port.PostingJobCategory;
 import com.gitory.backend.matching.infra.CompanySource;
 import com.gitory.backend.matching.infra.CompanySourceType;
 import com.gitory.backend.matching.infra.GreenhouseClient;
@@ -109,6 +118,7 @@ class JobPostingSyncServiceTest {
     private final List<String> hits = new CopyOnWriteArrayList<>();
     private final List<String> queries = new CopyOnWriteArrayList<>();
     private final JobPostingExtractionPort extractionPort = mock(JobPostingExtractionPort.class);
+    private final JobMatchingIndexPort indexPort = mock(JobMatchingIndexPort.class);
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private HttpServer server;
@@ -120,6 +130,8 @@ class JobPostingSyncServiceTest {
         jdbc.execute("TRUNCATE job_posting, job_posting_source CASCADE");
         when(extractionPort.extract(any()))
                 .thenReturn(JobPostingExtractionResult.unchanged("0".repeat(64), PostingContentStatus.READY));
+        when(indexPort.index(any())).thenReturn(new MatchingIndexResult(0, 0, 0));
+        when(indexPort.prune(any())).thenReturn(new MatchingPruneResult(0, 0));
         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
         server.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
@@ -484,6 +496,29 @@ class JobPostingSyncServiceTest {
 
     }
 
+    @Test
+    @DisplayName("조건 뽑기가 끝난 다음에 뽑은 조건을 색인에 보내고 활성 공고 목록으로 정리를 한 번 부른다")
+    void indexesAfterExtraction() {
+
+        boards.put("acme", jobs(jobWithContent(1, "Software Engineer, Backend", "&lt;p&gt;Java&lt;/p&gt;")));
+        when(extractionPort.extract(any())).thenReturn(JobPostingExtractionResult.updated("1".repeat(64),
+                PostingContentStatus.READY,
+                List.of(new ExtractedCriterion(PostingCriterionType.REQUIRED, "Java 경험", "Java")),
+                PostingJobCategory.BACKEND, new ExtractedExperience(PostingExperienceLevel.UNSPECIFIED, null, null)));
+
+        service(ACME).sync();
+
+        long id = reload("acme").getFirst().getId();
+        ArgumentCaptor<List<IndexPosting>> sent = ArgumentCaptor.captor();
+        verify(indexPort).index(sent.capture());
+        assertThat(sent.getValue()).singleElement().satisfies(posting -> {
+            assertThat(posting.postingId()).isEqualTo(id);
+            assertThat(posting.criteria()).extracting(criterion -> criterion.text()).containsExactly("Java 경험");
+        });
+        verify(indexPort).prune(List.of(id));
+
+    }
+
     private static Stream<String> malformedBodies() {
 
         String valid = "\"title\":\"Software Engineer\",\"absolute_url\":\"https://jobs.example.com/1\"";
@@ -508,6 +543,7 @@ class JobPostingSyncServiceTest {
         return new JobPostingSyncService(properties, new PoliteFetcher(fetchProperties, Clock.systemUTC()),
                 new GreenhouseClient(properties), new GreetingClient(), postingRepository, sources,
                 extraction(postingRepository),
+                new JobPostingIndexService(indexPort, postingRepository, criteria, new TransactionTemplate(transactionManager)),
                 new TransactionTemplate(transactionManager), new SyncLock(dataSource), clock);
 
     }

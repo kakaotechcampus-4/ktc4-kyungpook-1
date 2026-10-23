@@ -28,9 +28,9 @@ LLM 을 부르는 기능에서 "무엇을 어떤 장치가 막고, 그 장치를
 
 | 막는 것 | 장치 | 코드 위치 | 확인하는 시험 |
 |---|---|---|---|
-| 카드 문장에 근거 없는 커밋이 이어지는 것 | AI 가 준 sha 는 보낸 커밋 하나와만 맞을 때 근거로 잇고, 이어지는 커밋이 없는 문장은 저장하지 않고 "근거 없음" 으로 비운다 | `backend/.../card/domain/CardDraftWriter.java:commitIdsOf`·`writeSentence` | `CardDraftRunnerTest` 의 `dropsSentenceWithoutLinkableEvidence`, `linksShortShaOnlyWhenUnique` |
+| 카드 문장에 근거 없는 커밋이 이어지는 것 | AI 가 준 sha 는 글자까지 같거나, 7자 이상 앞부분이 보낸 커밋 하나와만 맞을 때 근거로 잇고, 이어지는 커밋이 없는 문장은 저장하지 않고 "근거 없음" 으로 비운다 | `backend/.../card/domain/evidence/EvidenceShaMatcher.java:commitIdsOf`, `card/domain/CardDraftWriter.java:writeSentence` | `EvidenceShaMatcherTest` 전체, `CardDraftRunnerTest` 의 `dropsSentenceWithoutLinkableEvidence`, `linksShortShaOnlyWhenUnique` |
 | AI 의 이상한 응답이 저장되는 것 | 네 칸의 모양, 채움·비움과 확신도의 짝(LOW 는 확인 필요), sha 길이를 확인한다. 경험 그룹화는 보낸 커밋만 받고 한 커밋을 한 후보에만 둔다. 되묻기는 요청하지 않은 칸의 질문과 불필요한 종료를 거절한다 | `agent/infra/AiStarDraftAdapter.java:draft`·`slot`, `AiExperienceGroupingAdapter.java:candidate`, `AiInterviewQuestionAdapter.java`, `card/domain/interview/InterviewAskService.java` | `AiStarDraftAdapterTest`, `AiExperienceGroupingAdapterTest` (후보 커밋·대표 PR 검증), `AiInterviewQuestionAdapterTest` |
-| 모델이 근거 검증을 대신하는 것 | `ingest`·`recommend` 는 `agent` 를 참조할 수 없고, `agent` 는 다른 업무 모듈을 참조할 수 없으며, `AiHttpClient` 는 `common`·`consent`·`agent` 만 쓴다 | `backend/src/test/.../architecture/ModuleBoundaryTest.java` | `ruleLayerDoesNotCallTheModel`, `agentDependsOnNoOtherModule`, `onlyBoundaryModulesUseAiHttpClient` |
+| 모델이 근거 검증을 대신하는 것 | `ingest`·`recommend` 와 근거 sha 확인(`card.domain.evidence`)은 `agent` 를 참조할 수 없고, `agent` 는 다른 업무 모듈을 참조할 수 없으며, `AiHttpClient` 는 `common`·`consent`·`agent` 만 쓴다 | `backend/src/test/.../architecture/ModuleBoundaryTest.java` | `ruleLayerDoesNotCallTheModel`, `evidenceInsideCardDoesNotCallTheModel`, `agentDependsOnNoOtherModule`, `onlyBoundaryModulesUseAiHttpClient` |
 | AI 오류 원문이 화면과 로그로 나가는 것 | AI 호출 예외는 오류 코드·다시 시도 여부·상태만 담고 응답 원문과 원인은 담지 않는다. 오류 코드는 허용 목록만 받는다. 처리하지 못한 예외는 고정 문구로 답한다 | `common/infra/ai/AiClientException.java`, `AiHttpClient.java:ERROR_CODES`·`exchange`, `common/api/GlobalExceptionHandler.java` | `AiExperienceGroupingAdapterTest` ("이상 응답으로 끝낼 때 AI 응답 원문은 예외 메시지와 원인에 남기지 않는다"), `DiffEvidenceAccessTest` (응답의 글이 든 예외를 원인으로 넘기지 않음). 전역 처리기의 고정 문구는 오류 코드만 확인한다(`RepoApiTest`) |
 | Job 오류에 원문이 실리는 것 | Job 의 실패는 정해진 오류 코드(`JobErrorCode`)로만 기록하고 DB 도 코드 목록만 받는다 | `job/domain/JobErrorCode.java`, `AnalysisJob.java` | `AnalysisJobTest`, `MigrationUpgradeTest` (오류 코드 이름 바꾸기) |
 | GitHub 토큰이 새는 것 | DB 에는 암호화해서 저장하고, AI 에는 `X-GitHub-Token` 헤더로만 보내며 본문에는 싣지 않는다. 헤더에 못 넣는 토큰은 보내기 전에 거절한다 | `consent/infra/TokenCipher.java`, `common/infra/ai/AiHttpClient.java:collect`·`postWithGithubToken`·`requireHeaderSafe` | `TokenCipherTest`, `AiHttpClientPostTest` ("토큰을 X-GitHub-Token 헤더에만 싣고 본문에는 넣지 않는다", "예외 메시지에 토큰을 남기지 않는다") |
@@ -104,7 +104,6 @@ LLM 호출은 약 18번이며 비용은 수십 원 안팎으로 추정한다.
 ## 5. 알려진 한계
 
 - 유효한 근거를 단 문장 안에 주입 문장이 실리면 코드로 걸러내지 못한다. 카드는 사용자가 확정하기 전까지 초안이라 사람이 확인하는 데 맡긴다.
-- 아키텍처 시험의 "`card.domain.evidence` 는 `agent` 를 참조하지 않는다" 는 대상 패키지가 지금은 없어 아무것도 검사하지 않는다(`allowEmptyShould(true)`). 실제 sha 확인은 `card.domain.CardDraftWriter` 에 있어서 이 규칙으로 보호되지 않는다.
 - Spring 은 AI 가 준 되묻기 질문 글을 가리지 않고 저장한다. 비밀값 가리기는 AI 로 보내기 전과 AI 의 STAR·diff·경험 설명 출력에만 있다.
 - 사용자 답변과 공고 본문은 모델에 보내기 전에 비밀값 가리기를 거치지 않는다(공고는 공개 글, 답변 평가 LLM 은 아직 연결 전).
 - 출처 없는 수치 검사는 커밋 메시지·PR 본문·사용자 답변을 출처로 보므로, 주입 문장 자체에 든 수치(예: PR 본문의 "87.3% 줄었다")는 출처가 있는 것으로 통과한다.

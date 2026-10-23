@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { endpoints } from './endpoints';
 import { keys } from './keys';
-import { AuthError } from './client';
+import { ApiError, AuthError } from './client';
 import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard } from './schemas';
 import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
@@ -29,6 +29,31 @@ export const useRepoCommits = (repoId: string, q: string) =>
 export const useRecall = (repoId: string | undefined) =>
   useQuery({ queryKey: keys.recall(repoId ?? ''), queryFn: () => endpoints.recall(repoId!), enabled: !!repoId });
 export const useCards = () => useQuery({ queryKey: keys.cards, queryFn: endpoints.cards });
+export function useDeleteCard(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    retry: false,
+    meta: { errorPresentation: 'inline' },
+    mutationFn: async () => {
+      try { await endpoints.deleteCard(id); return { alreadyMissing: false }; }
+      catch (error) {
+        if (error instanceof ApiError && error.status === 404) return { alreadyMissing: true };
+        throw error;
+      }
+    },
+    onSuccess: async () => {
+      // A late read must not put the deleted card back into list/detail caches.
+      await Promise.all([keys.cards, keys.repos, keys.me, matchKeys.all]
+        .map(queryKey => client.cancelQueries({ queryKey })));
+      client.removeQueries({ queryKey: keys.card(id) });
+      client.setQueryData<CardSummary[]>(keys.cards, cards => cards?.filter(card => card.id !== id));
+      void client.invalidateQueries({ queryKey: keys.cards, exact: true });
+      void client.invalidateQueries({ queryKey: keys.repos });
+      void client.invalidateQueries({ queryKey: keys.me });
+      void client.resetQueries({ queryKey: matchKeys.all });
+    },
+  });
+}
 export const useVersions = (id: string | undefined, enabled = true) =>
   useQuery({ queryKey: keys.versions(id ?? ''), queryFn: () => endpoints.versions(id!), enabled: !!id && enabled });
 export const useInterview = (id: string | undefined) =>

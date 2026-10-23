@@ -43,6 +43,7 @@ export const endpoints = {
   // 카드
   cards: () => api(z.array(S.CardSummary), '/cards'),
   card: (id: string) => api(S.Card, `/cards/${id}`),
+  deleteCard: (id: string) => api(z.object({ ok: z.literal(true) }), `/cards/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   /** 직접 작성 첫 진입: 제목만으로 DRAFT 를 먼저 만들어 cardId 를 얻는다. 이후 입력은 PATCH 로만 간다. */
   createManualDraft: async (input: S.ManualDraftInput, idempotencyKey: string) =>
     api(S.Card, '/cards/manual/draft', { method: 'POST', body: S.ManualDraftInput.parse(input), headers: { 'Idempotency-Key': S.ManualDraftKey.parse(idempotencyKey) } }),

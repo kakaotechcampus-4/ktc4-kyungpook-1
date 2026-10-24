@@ -9,13 +9,15 @@ for (const width of [320, 390, 1440]) test(`weak candidates search, manual selec
     const response = await (await fetch('/api/repos/r_auth/candidates')).json();
     return response.data.candidates.find((c: { weak: boolean; status: string }) => c.weak && c.status === 'NEW') as { title: string };
   });
-  const group = page.getByRole('button', { name: /추천도 낮은 후보 \d+개/ });
+  const group = page.getByRole('button', { name: /더 보기 후보 \d+개/ });
   await expect(group).toHaveAttribute('aria-expanded', 'false');
   const checkbox = page.getByRole('checkbox', { name: `${weak.title} 선택`, exact: true });
   await expect(checkbox).toHaveCount(0);
   await page.getByRole('button', { name: '추천 후보 선택', exact: true }).click();
   await group.click();
   await expect(checkbox).toHaveAttribute('aria-checked', 'false');
+  // 추천 후보 선택이 8개를 채워 두면 더 고를 수 없어서, 접힌 후보를 고르는 동작은 선택을 비운 뒤 본다
+  await page.getByRole('button', { name: '선택 해제' }).click();
   await checkbox.click();
   await group.click();
   await expect(group).toContainText('1개 선택');

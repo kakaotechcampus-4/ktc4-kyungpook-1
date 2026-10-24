@@ -7,6 +7,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -21,6 +22,9 @@ import static lombok.AccessLevel.PROTECTED;
 @NoArgsConstructor(access = PROTECTED)
 @Table(name = "job_posting")
 public class JobPosting {
+
+    // 채용 사이트가 상시 채용을 2999-12-31 같은 먼 날짜로 보내므로, 이보다 먼 마감일은 마감일 없음으로 둔다
+    private static final Duration MAX_DEADLINE_AHEAD = Duration.ofDays(365);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -75,7 +79,7 @@ public class JobPosting {
         this.title = title;
         this.sourceUrl = sourceUrl;
         this.sourceUpdatedAt = sourceUpdatedAt;
-        this.expiresAt = expiresAt;
+        this.expiresAt = deadlineOf(expiresAt, now);
         this.experienceLevel = ExperienceLevel.UNSPECIFIED;
         this.status = JobPostingStatus.ACTIVE;
         this.contentStatus = JobPostingContentStatus.PENDING;
@@ -98,9 +102,15 @@ public class JobPosting {
         this.title = title;
         this.sourceUrl = sourceUrl;
         this.sourceUpdatedAt = sourceUpdatedAt;
-        this.expiresAt = expiresAt;
+        this.expiresAt = deadlineOf(expiresAt, now);
         this.lastSeenAt = now;
         this.status = JobPostingStatus.ACTIVE;
+
+    }
+
+    private static Instant deadlineOf(Instant expiresAt, Instant now) {
+
+        return expiresAt != null && expiresAt.isAfter(now.plus(MAX_DEADLINE_AHEAD)) ? null : expiresAt;
 
     }
 

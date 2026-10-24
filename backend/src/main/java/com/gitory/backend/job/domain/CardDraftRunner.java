@@ -1,11 +1,13 @@
 package com.gitory.backend.job.domain;
 
+import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.StarDraft;
 import com.gitory.backend.agent.port.StarDraftPort;
 import com.gitory.backend.agent.port.StarDraftRequest;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceSource;
 import com.gitory.backend.agent.port.StarSourceType;
+import com.gitory.backend.card.domain.CardDraftFailure;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.GeneratedCard;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
@@ -105,7 +107,10 @@ public class CardDraftRunner {
             return finishCard(job.getId(), done, total, () -> written(card, draft, commits));
         } catch (RuntimeException failure) {
             log.warn("카드 초안 Job {} 의 카드 {} 를 채우지 못했다", job.getId(), card.id(), failure);
-            return finishCard(job.getId(), done, total, () -> CardDraftResult.FAILED);
+            // AI 가 잠시 응답하지 못한 실패는 다시 하면 될 수 있어 따로 남기고, 카드에도 남겨 Job 이 끝난 뒤 다시 시도할 수 있게 한다
+            boolean aiUnavailable = failure instanceof AgentUnavailableException unavailable && unavailable.isRetryable();
+            return finishCard(job.getId(), done, total, () -> failed(card,
+                    aiUnavailable ? CardDraftFailure.AI_UNAVAILABLE : CardDraftFailure.INTERNAL_ERROR));
         }
 
     }
@@ -123,6 +128,13 @@ public class CardDraftRunner {
 
         return candidateSources.load(card.candidateId(), COMMIT_LIMIT)
                 .filter(source -> !source.commits().isEmpty());
+
+    }
+
+    private CardDraftResult failed(GeneratedCard card, CardDraftFailure failure) {
+
+        writer.markFailed(card.id(), failure);
+        return failure == CardDraftFailure.AI_UNAVAILABLE ? CardDraftResult.AI_UNAVAILABLE : CardDraftResult.FAILED;
 
     }
 

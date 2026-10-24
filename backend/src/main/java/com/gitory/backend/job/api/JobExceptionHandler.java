@@ -1,6 +1,9 @@
 package com.gitory.backend.job.api;
 
 import com.gitory.backend.card.domain.CandidateAlreadyUsedException;
+import com.gitory.backend.card.domain.CardConfirmedException;
+import com.gitory.backend.card.domain.CardDraftNotRetryableException;
+import com.gitory.backend.card.domain.CardNotFoundException;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
@@ -39,6 +42,30 @@ public class JobExceptionHandler {
     public ApiResponse<Void> handleGithubNotConnected() {
 
         return ApiResponse.fail(ErrorCode.GITHUB_UNAUTHORIZED, "쓸 수 있는 GitHub 연결이 없습니다.");
+
+    }
+
+    @ExceptionHandler(CardNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleCardNotFound() {
+
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "카드를 찾을 수 없습니다.");
+
+    }
+
+    @ExceptionHandler(CardConfirmedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleCardConfirmed() {
+
+        return ApiResponse.fail(ErrorCode.CARD_CONFIRMED, "확정된 카드는 다시 열어야 수정할 수 있습니다.");
+
+    }
+
+    @ExceptionHandler(CardDraftNotRetryableException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleDraftNotRetryable() {
+
+        return ApiResponse.fail(ErrorCode.INVALID_STATE, "다시 초안을 만들 수 있는 카드가 아닙니다.");
 
     }
 

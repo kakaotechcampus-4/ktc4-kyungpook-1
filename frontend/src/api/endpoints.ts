@@ -76,6 +76,7 @@ export const endpoints = {
   // 되묻기
   interviewTurns: (cardId: string) => api(z.array(S.InterviewTurn), `/cards/${cardId}/interview`),
   askInterview: (cardId: string, field: S.StarField) => api(S.InterviewTurn, `/cards/${cardId}/interview`, { method: 'POST', body: { field } }),
-  answerInterview: (cardId: string, turnNo: number, body: { text: string; source: S.EvidenceType }) =>
+  /** 글 답은 { text, source }, 넘기기는 { kind: 'SKIP' } — 넘긴 질문은 칸을 바꾸지 않고 다시 묻지 않는다 */
+  answerInterview: (cardId: string, turnNo: number, body: { text: string; source: S.EvidenceType } | { kind: 'SKIP' }) =>
     api(S.Card, `/cards/${cardId}/interview/${turnNo}/answer`, { method: 'POST', body }),
 };

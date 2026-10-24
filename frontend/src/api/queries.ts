@@ -244,6 +244,17 @@ export function useAnswerInterview(cardId: string) {
   });
 }
 
+export function useSkipInterview(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (turnNo: number) => endpoints.answerInterview(cardId, turnNo, { kind: 'SKIP' }),
+    onSuccess: (card) => {
+      qc.setQueryData(keys.card(cardId), card);
+      void qc.invalidateQueries({ queryKey: keys.interview(cardId) });
+    },
+  });
+}
+
 /** 유일하게 되돌릴 수 없는 호출. 성공 시 카드·후보 보드·홈 전부 무효화. */
 export function useConfirm(cardId: string) {
   const qc = useQueryClient();

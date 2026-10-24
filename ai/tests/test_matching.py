@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from pathlib import Path
 from typing import Any, Optional
@@ -623,6 +624,29 @@ def test_unexpected_failure_returns_internal_error_without_leaking_detail(path, 
     assert envelope.error.code == "INTERNAL_ERROR"
     assert envelope.error.retryable is False
     assert "secret internal detail" not in response.text
+
+
+@pytest.mark.parametrize(
+    ("path", "payload", "task"),
+    [(INDEX_PATH, index_payload(), "공고 색인"), (SEARCH_PATH, search_payload(), "공고 검색")],
+)
+@pytest.mark.parametrize(
+    ("failure", "code"),
+    [(EmbeddingError("LEAK-임베딩-원문", retryable=True), "LLM_UNAVAILABLE"), (RuntimeError("LEAK-임베딩-원문"), "INTERNAL_ERROR")],
+    ids=["embedding", "unexpected"],
+)
+def test_failure_log_is_one_line_without_exception_text(path, payload, task, failure, code, caplog) -> None:
+    """실패 로그에는 예외 종류만 남기고 예외 문구·traceback 을 싣지 않는다(#421)."""
+    with caplog.at_level(logging.WARNING):
+        post_matching(path, payload, stored_matcher(RaisingEmbedder(failure)))
+
+    records = [record for record in caplog.records if record.name == "api.matching"]
+    assert len(records) == 1
+    line = records[0].getMessage()
+    assert line.startswith(f"{task} 실패:")
+    assert all(part in line for part in (f"path={path}", f"code={code}", f"exc={type(failure).__name__}"))
+    assert "LEAK" not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
 
 
 def _http_response(status: int) -> httpx.Response:

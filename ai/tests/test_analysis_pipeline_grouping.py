@@ -12,6 +12,7 @@ import api.analysis as analysis_api
 from api.analysis import get_analysis_pipeline
 from main import create_app
 from schemas.analysis import (
+    ChangedFile,
     CommitInput,
     ExperienceCandidate,
     ExperienceGroupingRequest,
@@ -327,3 +328,35 @@ def test_client_disconnect_cancels_remaining_llm_calls(monkeypatch) -> None:
     asyncio.run(run())
 
     assert calls == [0]
+
+
+def _docs_only_request() -> ExperienceGroupingRequest:
+    code = commit("a" * 40, pr=17).model_copy(
+        update={"files": [ChangedFile(path="src/login.py", additions=40, deletions=0)]}
+    )
+    docs = commit("b" * 40).model_copy(
+        update={"files": [ChangedFile(path="README.md", additions=40, deletions=0)]}
+    )
+    return ExperienceGroupingRequest(
+        repository_id="repo-1",
+        target_login="minseo",
+        commits=[code, docs],
+        pull_requests=[PullRequestContext(number=17, title="로그인 개선")],
+    )
+
+
+def test_unusable_group_commits_are_reported_as_excluded() -> None:
+    result = asyncio.run(
+        AnalysisPipeline(grouping_llm=FakeGroupingLlm()).group_experiences(_docs_only_request())
+    )
+
+    assert [candidate.group_key for candidate in result.candidates] == ["pr:17"]
+    assert result.excluded_commit_shas == ["b" * 40]
+
+
+def test_unusable_group_is_not_sent_for_title_and_reason() -> None:
+    fake = FakeGroupingLlm()
+
+    asyncio.run(AnalysisPipeline(grouping_llm=fake).group_experiences(_docs_only_request()))
+
+    assert [group.group_key for group in fake.described] == ["pr:17"]

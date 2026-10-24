@@ -47,7 +47,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 사용자의 같은 연결 저장소에 활성 Job이 있으면 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409 + IDEMPOTENCY_KEY_MISMATCH** (확정). FE는 409에 새 키를 만들어 자동 재요청하지 않는다. |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
-| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개 |
+| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 8장까지이고, 중복을 뺀 후보가 9개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST` |
 | `GET /repos/{id}/commits?q=` | | `RepoCommit[]` — `{ sha, message, path, at, url, candidateId }` (C5 커밋 찾기, 최대 20) |
 | `GET /repos/{id}/recall` | | `Recall` — `{ repoId, note, dirs:[{ path, filesChanged, myCommits, files[], question, options[] }] }` |
 | `POST /repos/{id}/recall/answers` | `{ path, text }` | `Candidate` (type `MANUAL`, 근거 USER_STATED) |

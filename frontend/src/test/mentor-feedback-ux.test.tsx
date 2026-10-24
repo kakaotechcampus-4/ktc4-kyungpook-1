@@ -148,7 +148,7 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
     for (const candidate of board.candidates.filter((c) => c.status === 'NEW' && !c.weak)) expect(screen.getByText(candidate.title)).toBeInTheDocument();
     const weak = board.candidates.filter(c => c.status === 'NEW' && c.weak);
     for (const candidate of weak) expect(screen.queryByText(candidate.title)).not.toBeInTheDocument();
-    const weakToggle = screen.getByRole('button', { name: /추천도 낮은 후보 \d+개/ });
+    const weakToggle = screen.getByRole('button', { name: /더 보기 후보 \d+개/ });
     fireEvent.click(weakToggle);
     for (const candidate of weak) expect(screen.getByText(candidate.title)).toBeInTheDocument();
     fireEvent.click(weakToggle);
@@ -175,8 +175,21 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
     const open = board.candidates.filter((c) => c.status !== 'USED' && c.status !== 'EXCLUDED');
     expect(screen.getByText('후보 선택').parentElement).toHaveTextContent(String(open.length));
     fireEvent.click(screen.getByRole('button', { name: '추천 후보 선택' }));
-    const chosen = board.candidates.filter((c) => c.status === 'NEW' && !c.weak).length;
-    expect(screen.getByText(`${chosen}개 선택`)).toBeInTheDocument();
+    const chosen = Math.min(board.candidates.filter((c) => c.status === 'NEW' && !c.weak).length, 8);
+    expect(screen.getByText(`${chosen}/8개 선택`)).toBeInTheDocument();
+  });
+
+  it('8개를 고른 뒤에는 다른 후보를 눌러도 고르지 않고, 추천 후보 선택도 꺼진다', () => {
+    const board = mountBoard();
+    fireEvent.click(screen.getByRole('button', { name: '추천 후보 선택' }));
+    expect(screen.getByText('8/8개 선택')).toBeInTheDocument();
+    const isChecked = (el: HTMLElement) => el.getAttribute('aria-checked') === 'true' || (el as HTMLInputElement).checked === true;
+    const left = board.candidates.find((c) => c.status === 'NEW' && !c.weak && !isChecked(screen.getByRole('checkbox', { name: `${c.title} 선택` })));
+    expect(left).toBeDefined();
+    fireEvent.click(screen.getByRole('checkbox', { name: `${left!.title} 선택` }));
+    expect(screen.getByRole('checkbox', { name: `${left!.title} 선택` })).not.toBeChecked();
+    expect(screen.getByText('8/8개 선택')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '추천 후보 선택' })).toBeDisabled();
   });
 
   it('쓸 수 있는 후보가 하나도 없고 전부 카드로 만들었으면 그렇게 말한다 (검색 결과 없음이 아니다)', () => {

@@ -14,7 +14,7 @@ import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,8 +40,6 @@ public class RocketpunchClient {
     private static final String DETAIL_PATH = "/v1/jobs/";
     // 국내 채용 플랫폼이고 목록에 근무지 칸이 없어 한국 근무로 본다
     private static final String LOCATION = "대한민국";
-    // 목록의 마감 시각에는 시간대가 없어 서울 시각으로 읽는다
-    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     // 쪽 수가 비정상으로 크면 하루 호출 한도를 다 쓰므로 회사 전체를 실패시킨다
     private static final int MAX_PAGES = 20;
     private static final int MAX_TITLE_LENGTH = 255;
@@ -171,7 +169,8 @@ public class RocketpunchClient {
 
     }
 
-    // 목록은 시간대 없는 서울 시각, 상세는 UTC 시각을 주며 읽지 못하는 마감일은 없는 것으로 둔다
+    // 목록은 시간대 표시 없이 UTC 시각(예: 2027-01-19T15:00)을, 상세는 Z 가 붙은 UTC 시각을 준다(10/24 실제 응답에서 같은 공고로 확인)
+    // 읽지 못하는 마감일은 없는 것으로 둔다
     private static Instant instantOf(JsonNode value) {
 
         if (!value.isString()) {
@@ -182,7 +181,7 @@ public class RocketpunchClient {
             return OffsetDateTime.parse(text).toInstant();
         } catch (DateTimeException e) {
             try {
-                return LocalDateTime.parse(text).atZone(SEOUL).toInstant();
+                return LocalDateTime.parse(text).toInstant(ZoneOffset.UTC);
             } catch (DateTimeException ignored) {
                 return null;
             }

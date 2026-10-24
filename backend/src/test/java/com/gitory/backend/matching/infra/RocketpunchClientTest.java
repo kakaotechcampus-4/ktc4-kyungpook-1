@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
 
-/** 응답 모양은 로켓펀치 Open API 명세(JobSummaryResponse·JobDetailResponse)에서 쓰는 칸만 남겨 줄였다 */
+/** 응답 모양은 2026-10-24 에 받은 실제 목록·상세에서 쓰는 칸만 남겨 줄였다 */
 @Timeout(30)
 class RocketpunchClientTest {
 
@@ -45,15 +45,15 @@ class RocketpunchClientTest {
     }
 
     @Test
-    @DisplayName("목록을 마지막 쪽까지 읽고, 공고 id·제목·로켓펀치 주소·마감·회사 이름을 읽는다")
+    @DisplayName("목록을 마지막 쪽까지 읽고, 공고 id·제목·로켓펀치 주소·회사 이름과 시간대 없이 적힌 UTC 마감을 읽는다")
     void readsEveryPageWithCompanyNames() {
 
-        site.put(LIST + 1, page(2, item(11, "마케팅 매니저", "nudge", "넛지헬스케어", "\"2026-11-30T23:59:59\"")));
+        site.put(LIST + 1, page(2, item(11, "마케팅 매니저", "nudge", "넛지헬스케어", "\"2026-11-30T14:59\"")));
         site.put(LIST + 2, page(2, item(12, "영업 담당자", "scatter", "스캐터랩", "null")));
 
         assertThat(client(KEY).list(FakeCareersSite.session(), source)).containsExactly(
                 new FetchedPosting("11", "마케팅 매니저", "https://www.rocketpunch.com/jobs/11", "대한민국", null,
-                        Instant.parse("2026-11-30T14:59:59Z"), "", List.of(), "넛지헬스케어"),
+                        Instant.parse("2026-11-30T14:59:00Z"), "", List.of(), "넛지헬스케어"),
                 new FetchedPosting("12", "영업 담당자", "https://www.rocketpunch.com/jobs/12", "대한민국", null,
                         null, "", List.of(), "스캐터랩"));
         assertThat(site.hits()).containsExactly("GET " + LIST + 1, "GET " + LIST + 2);

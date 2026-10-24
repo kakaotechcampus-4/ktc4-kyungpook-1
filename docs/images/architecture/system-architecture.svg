@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1280" height="680" viewBox="0 0 1280 680" role="img" aria-labelledby="title desc">
+<title id="title">Gitory 시스템 아키텍처</title><desc id="desc">단일 AWS EC2의 Docker Compose 안에서 Caddy가 React 정적 파일과 HTTPS 진입점을 제공하고 Spring Boot가 FastAPI 및 PostgreSQL과 내부 통신합니다. 백엔드와 AI는 GitHub API를, AI는 GPT-5.6 Luna를 호출합니다.</desc>
+<defs>
+<symbol id="person" viewBox="0 0 32 32"><circle cx="16" cy="9" r="5"/><path d="M6 28v-4a10 10 0 0 1 20 0v4M2 28h28"/></symbol>
+<symbol id="browser" viewBox="0 0 32 32"><rect x="2" y="4" width="28" height="24" rx="3"/><path d="M2 11h28M6 8h1m3 0h1m3 0h1M12 16l-4 4 4 4m8-8 4 4-4 4"/></symbol>
+<symbol id="leaf" viewBox="0 0 32 32"><path d="M27 3c-2 9 6 20-10 24C3 29 0 16 9 10 15 6 22 8 27 3ZM5 28C9 19 17 15 23 12M11 21l-1-6m7 2 5 1"/></symbol>
+<symbol id="bolt" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13"/><path d="m18 6-9 12h7l-2 8 10-13h-8Z"/></symbol>
+<symbol id="database" viewBox="0 0 32 32"><ellipse cx="16" cy="7" rx="12" ry="4"/><path d="M4 7v18c0 6 24 6 24 0V7M4 16c0 6 24 6 24 0M4 24c0 6 24 6 24 0"/></symbol>
+<symbol id="git" viewBox="0 0 32 32"><circle cx="9" cy="5" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="25" cy="9" r="3"/><path d="M9 8v16m0-12c0 9 16 9 16 0"/></symbol>
+<symbol id="chip" viewBox="0 0 32 32"><rect x="7" y="7" width="18" height="18" rx="3"/><path d="M12 1v6m8-6v6M12 25v6m8-6v6M1 12h6m-6 8h6m18-8h6m-6 8h6M12 12h8v8h-8Z"/></symbol>
+<symbol id="cloud" viewBox="0 0 32 32"><path d="M8 26a7 7 0 0 1-1-14 10 10 0 0 1 19-1 8 8 0 0 1-1 15ZM11 31h10"/></symbol>
+<symbol id="cube" viewBox="0 0 32 32"><path d="m16 2 13 7v14l-13 7-13-7V9Zm0 14 13-7M3 9l13 7v14M9 5l13 7"/></symbol>
+<symbol id="filter" viewBox="0 0 32 32"><path d="M3 5h26L19 17v10l-6-3v-7ZM7 1v4m18-4v4"/></symbol>
+<symbol id="group" viewBox="0 0 32 32"><rect x="2" y="3" width="10" height="9" rx="2"/><rect x="20" y="3" width="10" height="9" rx="2"/><rect x="11" y="21" width="10" height="9" rx="2"/><path d="M7 12v5h18v-5m-9 5v4"/></symbol>
+<symbol id="select" viewBox="0 0 32 32"><rect x="3" y="3" width="26" height="26" rx="4"/><path d="m8 16 5 5L24 10"/></symbol>
+<symbol id="diff" viewBox="0 0 32 32"><path d="M20 2H6v28h20V8Zm0 0v7h6M10 15h12M10 23h12m-8-12v8"/></symbol>
+<symbol id="star" viewBox="0 0 32 32"><path d="m16 2 4 9 10 1-7 7 2 11-9-5-9 5 2-11-7-7 10-1Z"/></symbol>
+<symbol id="chat" viewBox="0 0 32 32"><path d="M4 4h24v19H14l-8 6v-6H4Z"/><path d="M13 10a4 4 0 0 1 7 2c0 3-4 2-4 5m0 2v1"/></symbol>
+<symbol id="card" viewBox="0 0 32 32"><rect x="4" y="2" width="24" height="28" rx="3"/><path d="M9 9h14M9 14h14M9 19h7m3 5 3 3 7-7"/></symbol>
+<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 9 5 1 9" fill="none" stroke="#59636e" stroke-width="1.6"/></marker></defs>
+<style>text{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;fill:#1f2328}.muted{fill:#59636e}.line{fill:none;stroke:#59636e;stroke-width:2;stroke-linejoin:round;stroke-linecap:round;marker-end:url(#arrow)}.icon{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}</style>
+<rect width="1280" height="680" rx="16" fill="#fff"/>
+<text x="28" y="46" font-size="28" font-weight="700" style="fill:#1f2328" text-anchor="start">시스템 아키텍처</text>
+<text x="28" y="75" font-size="16" font-weight="400" style="fill:#59636e" text-anchor="start">웹 진입점부터 AI 분석·저장까지의 연결</text>
+<rect x="238" y="102" width="712" height="520" rx="16" fill="#f6f8fa" stroke="#d1d9e0" />
+<use href="#cloud" xlink:href="#cloud" x="262" y="122" width="29" height="29" class="icon" style="color:#1f2328"/>
+<text x="305" y="145" font-size="21" font-weight="650" style="fill:#1f2328" text-anchor="start">단일 AWS EC2</text>
+<text x="922" y="143" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="end">배포 구성</text>
+<use href="#cube" xlink:href="#cube" x="278" y="168" width="25" height="25" class="icon" style="color:#59636e"/>
+<text x="315" y="187" font-size="16" font-weight="500" style="fill:#59636e" text-anchor="start">Docker Compose · 내부 서비스 네트워크</text>
+<rect x="266" y="205" width="656" height="391" rx="12" fill="none" stroke="#d1d9e0" stroke-dasharray="6 5"/>
+<rect x="28" y="270" width="172" height="130" rx="12" fill="#fff" stroke="#d1d9e0" />
+<rect x="44" y="288" width="42" height="42" rx="10" fill="#f6f8fa" stroke="none" />
+<use href="#person" xlink:href="#person" x="52" y="296" width="26" height="26" class="icon" style="color:#1f2328"/>
+<text x="100" y="308" font-size="21" font-weight="650" style="fill:#1f2328" text-anchor="start">사용자</text>
+<text x="100" y="329" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">브라우저</text>
+<text x="46" y="379" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="start">저장소 선택 · 카드 작성</text>
+<rect x="288" y="270" width="250" height="130" rx="12" fill="#fff" stroke="#d1d9e0" />
+<rect x="304" y="288" width="42" height="42" rx="10" fill="#f6f8fa" stroke="none" />
+<use href="#browser" xlink:href="#browser" x="312" y="296" width="26" height="26" class="icon" style="color:#0969da"/>
+<text x="360" y="308" font-size="21" font-weight="650" style="fill:#1f2328" text-anchor="start">React</text>
+<text x="360" y="329" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">Caddy · Web serving</text>
+<text x="306" y="379" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="start">정적 파일 제공 · /api 프록시</text>
+<rect x="630" y="270" width="264" height="130" rx="12" fill="#fff" stroke="#d1d9e0" />
+<rect x="646" y="288" width="42" height="42" rx="10" fill="#f6f8fa" stroke="none" />
+<use href="#leaf" xlink:href="#leaf" x="654" y="296" width="26" height="26" class="icon" style="color:#0969da"/>
+<text x="702" y="308" font-size="21" font-weight="650" style="fill:#1f2328" text-anchor="start">Spring Boot</text>
+<text x="702" y="329" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">Backend</text>
+<text x="648" y="379" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="start">인증 · 분석 Job · 카드 관리</text>
+<rect x="288" y="464" width="250" height="108" rx="12" fill="#fff" stroke="#d1d9e0" />
+<rect x="304" y="482" width="42" height="42" rx="10" fill="#f6f8fa" stroke="none" />
+<use href="#database" xlink:href="#database" x="312" y="490" width="26" height="26" class="icon" style="color:#0969da"/>
+<text x="360" y="502" font-size="21" font-weight="650" style="fill:#1f2328" text-anchor="start">PostgreSQL</text>
+<text x="360" y="523" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">Database</text>
+<text x="306" y="551" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="start">활동 · 후보 · 카드 · 답변 저장</text>
+<rect x="630" y="464" width="264" height="108" rx="12" fill="#fff" stroke="#d1d9e0" />
+<rect x="646" y="482" width="42" height="42" rx="10" fill="#f6f8fa" stroke="none" />
+<use href="#bolt" xlink:href="#bolt" x="654" y="490" width="26" height="26" class="icon" style="color:#0f766e"/>
+<text x="702" y="502" font-size="21" font-weight="650" style="fill:#1f2328" text-anchor="start">FastAPI</text>
+<text x="702" y="523" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">AI server</text>
+<text x="648" y="551" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="start">활동 수집 · 그룹화 · STAR</text>
+<rect x="1030" y="244" width="222" height="126" rx="12" fill="#fff" stroke="#d1d9e0" />
+<rect x="1046" y="262" width="42" height="42" rx="10" fill="#f6f8fa" stroke="none" />
+<use href="#git" xlink:href="#git" x="1054" y="270" width="26" height="26" class="icon" style="color:#1f2328"/>
+<text x="1102" y="282" font-size="21" font-weight="650" style="fill:#1f2328" text-anchor="start">GitHub API</text>
+<text x="1102" y="303" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">External API</text>
+<text x="1048" y="349" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="start">OAuth · 개발 활동 · diff</text>
+<rect x="1030" y="464" width="222" height="108" rx="12" fill="#fff" stroke="#d1d9e0" />
+<rect x="1046" y="482" width="42" height="42" rx="10" fill="#f6f8fa" stroke="none" />
+<use href="#chip" xlink:href="#chip" x="1054" y="490" width="26" height="26" class="icon" style="color:#0f766e"/>
+<text x="1102" y="502" font-size="21" font-weight="650" style="fill:#1f2328" text-anchor="start">GPT-5.6 Luna</text>
+<text x="1102" y="523" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">LLM · 운영 모델 선택</text>
+<text x="1048" y="551" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="start">그룹화 · 근거 요약 · STAR</text>
+<path d="M200 335H288" class="line"/>
+<text x="244" y="319" font-size="14" font-weight="500" style="fill:#1f2328" text-anchor="middle">HTTPS</text>
+<path d="M538 335H630" class="line"/>
+<text x="584" y="319" font-size="14" font-weight="500" style="fill:#1f2328" text-anchor="middle">/api</text>
+<path d="M762 400V464" class="line"/>
+<text x="780" y="438" font-size="14" font-weight="500" style="fill:#59636e" text-anchor="start">내부 HTTP</text>
+<path d="M665 400V433H413V464" class="line"/>
+<text x="526" y="425" font-size="14" font-weight="500" style="fill:#59636e" text-anchor="middle">SQL</text>
+<path d="M894 304H1030" class="line"/>
+<text x="962" y="285" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="middle">인증 · 저장소 조회</text>
+<path d="M894 489H978V342H1030" class="line"/>
+<text x="992" y="410" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">활동·diff</text>
+<text x="992" y="430" font-size="13" font-weight="400" style="fill:#59636e" text-anchor="start">조회</text>
+<path d="M894 538H1030" class="line"/>
+<text x="962" y="522" font-size="14" font-weight="400" style="fill:#59636e" text-anchor="middle">모델 호출</text>
+<text x="28" y="655" font-size="16" font-weight="400" style="fill:#59636e" text-anchor="start">외부 진입점은 Caddy이며, 백엔드–AI·DB 통신은 내부 Docker 네트워크를 사용합니다.</text>
+</svg>

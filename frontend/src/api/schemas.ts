@@ -327,6 +327,7 @@ export const VersionListItem = z.object({
 });
 
 // ───────────────────────────── 되묻기 ─────────────────────────────
+export const TurnOutcome = z.enum(['ANSWERED', 'LATER', 'SKIPPED', 'INSUFFICIENT', 'MEASURED', 'NOT_MEASURED']);
 export const InterviewTurn = z.object({
   turnNo: z.number(),
   field: StarField,
@@ -338,10 +339,15 @@ export const InterviewTurn = z.object({
   question: z.string(),
   options: z.array(z.string()), // USER_SELECTED 보기
   answer: z.object({ text: z.string(), source: EvidenceType }).nullable(),
+  // 질문이 어떻게 끝났는지. 답 전이면 null 이고, 데모 데이터처럼 값이 없으면 null 로 본다
+  outcome: TurnOutcome.nullable().optional().transform((value) => value ?? null),
   remaining: z.number(),
   maxTurns: z.number(), // 상한은 서버 정책이다. 화면 상수로 두지 않는다
 });
 export type InterviewTurn = z.infer<typeof InterviewTurn>;
+/** 서버의 InterviewTurn.isClosed 와 같은 규칙: 답·넘김·측정으로 끝나지 않았으면(LATER·INSUFFICIENT 포함) 아직 답을 기다린다 */
+export const isOpenTurn = (turn: Pick<InterviewTurn, 'answer' | 'outcome'>) =>
+  !turn.answer && (turn.outcome == null || turn.outcome === 'LATER' || turn.outcome === 'INSUFFICIENT');
 
 export const ConfirmResult = z.object({
   cardId: z.string(),

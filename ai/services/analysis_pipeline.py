@@ -52,7 +52,7 @@ class AnalysisPipeline:
         """커밋을 선별하고 같은 기능을 위한 작업을 경험 후보 하나로 묶는다.
 
         규칙: 선별 → PR·Issue·커밋 작업 단위 / LLM: 단위를 경험으로 묶기 →
-        규칙: 경험 병합(대표 PR·출처) / LLM: 제목·설명 / 규칙: 점수.
+        규칙: 경험 병합(대표 PR·출처)·쓸 수 없는 묶음 빼기 / LLM: 제목·설명 / 규칙: 점수.
         """
         selected, excluded_shas = self.commit_selector.select(
             request.commits, request.target_login
@@ -67,7 +67,15 @@ class AnalysisPipeline:
         experiences = await self.grouping_llm.group_units(
             units, pull_requests=request.pull_requests, issues=request.issues
         )
-        groups = [self.commit_grouper.merge(experience) for experience in experiences]
+        merged = [self.commit_grouper.merge(experience) for experience in experiences]
+        # 카드·자소서에 쓸 수 없는 묶음은 제목·이유 LLM 을 부르기 전에 빼고 그 커밋을 제외 목록에 남긴다
+        groups = [group for group in merged if not self.commit_grouper.is_unusable(group)]
+        excluded_shas = excluded_shas + [
+            commit.sha
+            for group in merged
+            if self.commit_grouper.is_unusable(group)
+            for commit in group.members
+        ]
         descriptions = await self.grouping_llm.describe(
             groups,
             pull_requests=request.pull_requests,

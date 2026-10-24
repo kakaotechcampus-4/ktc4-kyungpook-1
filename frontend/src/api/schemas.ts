@@ -311,10 +311,11 @@ export type CardSummary = z.infer<typeof CardSummary>;
 
 /** Shared by manual creation and metadata PATCH: blank periods clear to null. */
 export const CardPeriodInput = ManualDraftInput.shape.period;
-/** #186 confirmed contract: omitted fields stay unchanged; explicit null clears period. */
-export const CardMetadataPatch = z.object({ title: ManualDraftInput.shape.title.optional(), period: CardPeriodInput.optional() })
+/** #186/#420 server contract: omitted or null fields stay unchanged; an empty string clears period, so a cleared period goes out as ''. */
+export const CardMetadataPatch = z.object({ title: ManualDraftInput.shape.title.optional(), period: CardPeriodInput.transform((period) => period ?? '').optional() })
   .refine((value) => value.title !== undefined || value.period !== undefined);
-export type CardMetadataPatch = z.infer<typeof CardMetadataPatch>;
+/** Screen input: a blank or null period means "clear it". */
+export type CardMetadataPatch = z.input<typeof CardMetadataPatch>;
 export const CardMetadata = z.object({ cardId: z.string(), title: z.string(), period: z.string().nullable(), updatedAt: z.string().datetime({ offset: true }) });
 export type CardMetadata = z.infer<typeof CardMetadata>;
 

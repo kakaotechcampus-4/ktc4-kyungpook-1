@@ -143,7 +143,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 
 **제목·기간 수정 — #186 확정, #219 활성화 검증 (2026-10-15)**
 
-기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 확정 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string | null }`에서 전달한 필드만 수정한다. period는 자유 문자열이고 빈 입력은 FE에서 `null`로 정규화하여 삭제한다. 기간 생략은 기존 값 유지이고 검증 실패는 400 `INVALID_REQUEST`다. 응답은 `{ cardId, title, period: string | null, updatedAt }`이며 상세 `GET /cards/{id}`에도 period가 반환된다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
+기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 확정 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string | null }`에서 전달한 필드만 수정한다. period는 자유 문자열이고, 빈 글 `""`이 기간 삭제다. FE는 비운 기간을 `""`로 보낸다(#420). 기간 생략이나 `null`은 기존 값 유지이고(둘 다 바꿀 것이 없으면 400) 검증 실패는 400 `INVALID_REQUEST`다. 응답은 `{ cardId, title, period: string | null, updatedAt }`이며 상세 `GET /cards/{id}`에도 period가 반환된다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
 
 Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드에서는 `VITE_CARD_METADATA_ENABLED=true`를 명시하기 전 호출하지 않으며, 계약과 서버 구현 확인 후 활성화한다. 기존 기간이 누락돼도 제목만 수정하면 기간 삭제를 전송하지 않는다. 자유 입력 기간을 날짜로 억지 변환하지 않는다. [요청 댓글](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/61#issuecomment-5969111285)과 [작업 문서](2026-10-03-CARD_WORKFLOW.md)를 참고한다.
 

@@ -16,6 +16,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
 import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
+import { matchSupported } from '@/api/matching';
 import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
@@ -123,6 +124,7 @@ export function CardPage() {
             {justConfirmed.repoId && justConfirmed.remainingCandidates > 0
               ? <Button onClick={() => nav(`/repos/${justConfirmed.repoId}/candidates`)}>남은 후보 {justConfirmed.remainingCandidates}개 보기</Button>
               : <Link to="/" className="btn btn--primary">홈으로</Link>}
+            {matchSupported() && <Link to="/match" className="btn btn--outline">이 경험과 맞는 공고 보기</Link>}
           </div>
         )}
         <CardHeader card={card} right={<>

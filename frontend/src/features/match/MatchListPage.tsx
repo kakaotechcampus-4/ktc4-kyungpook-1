@@ -1,9 +1,10 @@
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
 import { Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
 import { Select } from "@/components/ui/Select";
+import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { isDemo } from '@/mock/browser';
 import { Fit, MatchFailure, MatchUnavailable } from "./shared";
@@ -18,6 +19,11 @@ import {
 export function MatchListPage() {
   useDocumentTitle("공고 매칭");
   const matches = useMatches();
+  // 받은 목록 기준으로 센다(검색·필터로는 다시 세지 않는다)
+  const loadedCount = matches.data?.length;
+  useEffect(() => {
+    if (loadedCount !== undefined) track("match_opened", { view: "list", count: loadedCount });
+  }, [loadedCount]);
   const [sp, setSp] = useSearchParams();
   const location = useLocation();
   const navigationType = useNavigationType();

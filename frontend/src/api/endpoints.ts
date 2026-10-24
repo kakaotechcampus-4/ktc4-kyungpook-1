@@ -75,7 +75,9 @@ export const endpoints = {
 
   // 되묻기
   interviewTurns: (cardId: string) => api(z.array(S.InterviewTurn), `/cards/${cardId}/interview`),
-  askInterview: (cardId: string, field: S.StarField) => api(S.InterviewTurn, `/cards/${cardId}/interview`, { method: 'POST', body: { field } }),
+  /** field 를 비우면 AI 가 다음 칸을 고르고, 더 물을 것이 없으면 null 이다 */
+  askInterview: (cardId: string, field?: S.StarField) =>
+    api(S.InterviewTurn.nullable(), `/cards/${cardId}/interview`, { method: 'POST', body: field ? { field } : {}, allowNullData: true }),
   /** 글 답은 { text, source }, 넘기기는 { kind: 'SKIP' } — 넘긴 질문은 칸을 바꾸지 않고 다시 묻지 않는다 */
   answerInterview: (cardId: string, turnNo: number, body: { text: string; source: S.EvidenceType } | { kind: 'SKIP' }) =>
     api(S.Card, `/cards/${cardId}/interview/${turnNo}/answer`, { method: 'POST', body }),

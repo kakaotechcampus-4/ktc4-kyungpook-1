@@ -280,6 +280,12 @@ on('POST', '/cards/:id/interview', ({ params, body }) => {
   const asked = db.interview[c.id] ?? [];
   if (asked.length >= INTERVIEW_MAX_TURNS) return fail(409, 'INTERVIEW_CAP', '이 카드의 되묻기 상한에 닿았습니다');
   if (asked.some((t: Any) => t.field === body.field && t.outcome === 'SKIPPED')) return fail(409, 'INTERVIEW_FIELD_CLOSED', '넘긴 칸은 다시 묻지 않습니다');
+  if (body.field === undefined || body.field === null) {
+    // 실서버처럼 field 가 없으면 빈 칸 중 아직 닫히지 않은 칸을 고르고, 없으면 더 물을 것이 없다(null)
+    const v = c.versions[c.versions.length - 1];
+    const next = STAR.find((f) => isCardBlank(v[FIELD_KEY[f]] ?? '') && !asked.some((t: Any) => t.field === f && t.outcome === 'SKIPPED'));
+    return ok(next ? askTurn(c, next) : null);
+  }
   if (!['S', 'T', 'A', 'R'].includes(body.field)) return fail(400, 'BAD_FIELD', 'field 는 S/T/A/R 중 하나여야 합니다');
   return ok(askTurn(c, body.field));
 });

@@ -35,6 +35,8 @@ export function InterviewPage() {
   const guard = useUnsavedChanges(!!text.trim() || answer.isPending);
   const [folded, setFolded] = useState(true); // 모바일에서는 미리보기를 접고 질문부터 보여준다
   const autoAsked = useRef(false);
+  // AI 가 더 물을 것이 없다고 끝낸 상태. 사용자가 칸을 골라 다시 물으면 풀린다
+  const [aiDone, setAiDone] = useState(false);
   useDocumentTitle(q.data ? `답변 작성 · ${q.data.title}` : '답변 작성');
 
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
@@ -52,12 +54,23 @@ export function InterviewPage() {
   // 넘긴 질문도 질문 상한에 센다(서버 규칙)
   const capReached = allTurns.length >= maxTurns;
 
+  // 칸을 정해 들어오면 그 칸을, 처음인데 칸이 없으면 AI 가 고른 칸을 묻는다
   useEffect(() => {
-    if (turns.isSuccess && !open && field && !autoAsked.current && !capReached) {
+    if (turns.isSuccess && !open && !autoAsked.current && !capReached && (field || allTurns.length === 0)) {
       autoAsked.current = true;
-      ask.mutate(field, { onSuccess: () => track('interview_asked', { cardId, field }) });
+      ask.mutate(field ?? undefined, {
+        onSuccess: (turn) => turn ? track('interview_asked', { cardId, field: turn.field }) : setAiDone(true),
+      });
     }
-  }, [turns.isSuccess, open, field, ask, cardId, capReached]);
+  }, [turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
+
+  // 답하거나 넘긴 뒤에는 칸을 정하지 않고 묻는다. AI 가 다음 칸을 고르거나, 더 물을 것이 없으면 null 로 끝낸다
+  const askNext = (turnsAfter: number) => {
+    if (turnsAfter >= maxTurns) return;
+    ask.mutate(undefined, {
+      onSuccess: (turn) => turn ? track('interview_asked', { cardId, field: turn.field, followUp: true }) : setAiDone(true),
+    });
+  };
 
   const card = q.data;
   const submit = async () => {
@@ -68,6 +81,7 @@ export function InterviewPage() {
     track('interview_answered', { cardId, field: open.field, source, turnNo: open.turnNo });
     toast(`${starFieldShort[open.field]} 답변을 저장했어요`, { tone: 'success' });
     setText(''); setPicked(null);
+    askNext(allTurns.length);
     return true;
     } catch { return false; }
   };
@@ -77,10 +91,11 @@ export function InterviewPage() {
       onSuccess: () => {
         toast(`${starFieldShort[open.field]} 질문을 넘겼어요`);
         setText(''); setPicked(null);
+        askNext(allTurns.length);
       },
     });
   };
-  const askMore = (f: StarField) => ask.mutate(f, { onSuccess: () => track('interview_asked', { cardId, field: f, followUp: true }) });
+  const askMore = (f: StarField) => { setAiDone(false); ask.mutate(f, { onSuccess: () => track('interview_asked', { cardId, field: f, followUp: true }) }); };
 
   if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   if (!card || turns.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={300} /></main>;
@@ -179,14 +194,18 @@ export function InterviewPage() {
                 <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채우시면 돼요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
-                  <span className="w-600" style={{ fontSize: 14 }}>{finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
+                  {aiDone && <Note strong="AI 가 더 물을 것이 없다고 판단했어요" tone="inset">카드를 확인하고 확정하세요. 더 채우고 싶은 칸이 있으면 골라서 물을 수 있어요.</Note>}
+                  <span className="w-600" style={{ fontSize: 14 }}>{aiDone ? '더 묻고 싶은 칸' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    {!aiDone && <Button variant="outline" size="sm" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</Button>}
                     {(weakFields.length ? weakFields : askable).map((f) => <Button key={f} variant="outline" size="sm" onClick={() => askMore(f)}>{starFieldShort[f]}{card.version[fieldKey[f]] ? (card.lowConfidenceFields.some((l) => l.field === f) ? ' ⚑' : '') : ' · 비어 있음'}</Button>)}
                   </div>
                 </div>
               )}
               <div className="row" style={{ gap: 8 }}>
-                <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>
+                {aiDone || capReached
+                  ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 확인하고 확정하기</Button>
+                  : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
                 <Button variant="text" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정</Button>
               </div>
             </>

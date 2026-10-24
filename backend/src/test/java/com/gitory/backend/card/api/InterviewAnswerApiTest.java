@@ -862,7 +862,7 @@ class InterviewAnswerApiTest {
                 .andExpect(jsonPath(post + ".responses['409'].description").value(containsString("INVALID_STATE")))
                 .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.required").doesNotExist())
                 .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.properties.kind.enum",
-                        containsInAnyOrder("TEXT", "SKIP")))
+                        containsInAnyOrder("TEXT", "MEASURED", "NOT_MEASURED", "SKIP")))
                 .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.properties.source.enum[0]")
                         .value(USER_STATED));
 
@@ -1059,8 +1059,8 @@ class InterviewAnswerApiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"MEASURED", "NOT_MEASURED", "skip", "ANSWER", ""})
-    @DisplayName("kind 가 TEXT·SKIP 이 아니면 400 INVALID_REQUEST 이고 질문과 카드는 그대로다")
+    @ValueSource(strings = {"measured", "skip", "ANSWER", ""})
+    @DisplayName("kind 가 TEXT·MEASURED·NOT_MEASURED·SKIP 이 아니면 400 INVALID_REQUEST 이고 질문과 카드는 그대로다")
     void unknownKindIsBadRequest(String kind) throws Exception {
 
         Long cardId = cardWithOpenTurn();
@@ -1109,6 +1109,185 @@ class InterviewAnswerApiTest {
                 .andExpect(jsonPath("$.data[1].outcome").value("SKIPPED"))
                 .andExpect(jsonPath("$.data[1].answer").value(nullValue()))
                 .andExpect(jsonPath("$.data[2].outcome").value(nullValue()));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {USER_STATED, "USER_SELECTED"})
+    @DisplayName("R 수치 질문에 MEASURED 로 답하면 확정 문장이 R 칸의 새 버전이 되고 질문 결과가 MEASURED 다")
+    void measuredReplacesResult(String source) throws Exception {
+
+        Long cardId = cardWithMeasureTurn("커밋으로 쓴 결과", "COMMIT", "MEDIUM");
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("MEASURED", "응답 시간을 2초에서 0.5초로 줄였다", source))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version.result").value("응답 시간을 2초에서 0.5초로 줄였다"));
+
+        assertThat(versions(cardId)).extracting(VersionRow::versionNo).containsExactly(1, 2);
+        assertThat(slotsOf(cardId, 2).get("R").evidenceType()).isEqualTo(source);
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome, TurnRow::answerText)
+                .containsExactly(tuple("MEASURED", "응답 시간을 2초에서 0.5초로 줄였다"));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"MEASURED", "NOT_MEASURED"})
+    @DisplayName("R 수치 질문이 아닌 질문에 MEASURED·NOT_MEASURED 로 답하면 400 INVALID_REQUEST 이고 질문과 카드는 그대로다")
+    void measureKindsNeedMeasureTurn(String kind) throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+        List<Map<String, Object>> before = stateOf(cardId);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody(kind, "답", USER_STATED))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(stateOf(cardId)).isEqualTo(before);
+
+    }
+
+    @Test
+    @DisplayName("지금 화면처럼 R 수치 질문에 kind 없이 글로 답해도 받아서 R 칸을 바꾼다")
+    void textAnswerStillWorksOnMeasureTurn() throws Exception {
+
+        Long cardId = cardWithMeasureTurn(null, null, null);
+
+        answer(MY_CARD, 1, "결과", USER_STATED).andExpect(status().isOk());
+
+        assertThat(slotsOf(cardId, 2).get("R").body()).isEqualTo("결과");
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome).containsExactly("ANSWERED");
+
+    }
+
+    @Test
+    @DisplayName("MEASURED 는 확정 문장이 필요해 글이 없으면 400 INVALID_REQUEST 이고 질문과 카드는 그대로다")
+    void measuredNeedsText() throws Exception {
+
+        Long cardId = cardWithMeasureTurn(null, null, null);
+        List<Map<String, Object>> before = stateOf(cardId);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("MEASURED", null, USER_STATED))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(stateOf(cardId)).isEqualTo(before);
+
+    }
+
+    @Test
+    @DisplayName("NOT_MEASURED 를 글 없이 보내면 카드는 그대로이고 질문 결과만 답 글 없이 NOT_MEASURED 가 된다")
+    void notMeasuredWithoutTextOnlyRecords() throws Exception {
+
+        Long cardId = cardWithMeasureTurn(null, null, null);
+        List<Long> before = statementIds(cardId, 1);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("NOT_MEASURED", null, null)).andExpect(status().isOk());
+
+        assertThat(versions(cardId)).extracting(VersionRow::versionNo).containsExactly(1);
+        assertThat(statementIds(cardId, 1)).isEqualTo(before);
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome, TurnRow::answerText, TurnRow::answerSource)
+                .containsExactly(tuple("NOT_MEASURED", null, null));
+
+    }
+
+    @Test
+    @DisplayName("R 이 커밋으로 확인된 문장이면 NOT_MEASURED 에 글이 있어도 R 칸을 지우지 않고 답만 기록한다")
+    void notMeasuredKeepsCommitConfirmedResult() throws Exception {
+
+        Long cardId = cardWithMeasureTurn("커밋으로 쓴 결과", "COMMIT", "MEDIUM");
+        List<Map<String, Object>> statementsBefore = jdbc.queryForList(
+                "SELECT id, version_no, body FROM card_statement WHERE card_id = ? ORDER BY id", cardId);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("NOT_MEASURED", "응답이 빨라졌다", USER_STATED))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version.result").value("커밋으로 쓴 결과"));
+
+        assertThat(versions(cardId)).extracting(VersionRow::versionNo).containsExactly(1);
+        assertThat(jdbc.queryForList("SELECT id, version_no, body FROM card_statement WHERE card_id = ? ORDER BY id",
+                cardId)).isEqualTo(statementsBefore);
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome, TurnRow::answerText, TurnRow::answerSource)
+                .containsExactly(tuple("NOT_MEASURED", "응답이 빨라졌다", "TYPED"));
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("resultsTheUserMayReplace")
+    @DisplayName("R 이 비었거나 확인 필요이거나 사용자가 쓴 글이면 NOT_MEASURED 의 글이 R 칸의 새 버전이 된다")
+    void notMeasuredReplacesUnconfirmedResult(String body, String evidenceType, String confidence) throws Exception {
+
+        Long cardId = cardWithMeasureTurn(body, evidenceType, confidence);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody("NOT_MEASURED", "응답이 빨라졌다", USER_STATED))
+                .andExpect(status().isOk());
+
+        assertThat(versions(cardId)).extracting(VersionRow::versionNo).containsExactly(1, 2);
+        assertThat(slotsOf(cardId, 2).get("R").body()).isEqualTo("응답이 빨라졌다");
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome).containsExactly("NOT_MEASURED");
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("measureAnswers")
+    @DisplayName("측정 답으로 끝난 질문에 같은 요청을 다시 보내면 200 이고 아무것도 바뀌지 않으며, 다른 종류의 답은 409 INVALID_STATE 다")
+    void measureAnswerResentIsIdempotent(String kind, String text, String source) throws Exception {
+
+        Long cardId = cardWithMeasureTurn("커밋으로 쓴 결과", "COMMIT", "MEDIUM");
+        send(myUserId, MY_CARD.toString(), "1", kindBody(kind, text, source)).andExpect(status().isOk());
+        List<Map<String, Object>> before = stateOf(cardId);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody(kind, text, source)).andExpect(status().isOk());
+        answer(MY_CARD, 1, text == null ? "글 답" : text, USER_STATED)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+
+        assertThat(stateOf(cardId)).isEqualTo(before);
+
+    }
+
+    @Test
+    @DisplayName("답을 저장해도 새 질문은 생기지 않고, 다음 질문은 질문 요청에서만 만든다")
+    void answerDoesNotCreateFollowUp() throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+
+        answer(MY_CARD, 1, "짧음", USER_STATED).andExpect(status().isOk());
+
+        assertThat(interviews.turnsOf(cardId)).hasSize(1);
+
+    }
+
+    static Stream<Arguments> resultsTheUserMayReplace() {
+
+        return Stream.of(
+                Arguments.of(Named.of("빈 R", null), null, null),
+                Arguments.of(Named.of("확인 필요 R", "흐린 결과"), "COMMIT", "LOW"),
+                Arguments.of(Named.of("사용자가 쓴 R", "내가 쓴 결과"), "USER_STATED", null));
+
+    }
+
+    static Stream<Arguments> measureAnswers() {
+
+        return Stream.of(
+                Arguments.of(Named.of("MEASURED", "MEASURED"), "응답 시간을 0.5초로 줄였다", USER_STATED),
+                Arguments.of(Named.of("글 없는 NOT_MEASURED", "NOT_MEASURED"), null, null),
+                Arguments.of(Named.of("글 있는 NOT_MEASURED", "NOT_MEASURED"), "응답이 빨라졌다", "USER_SELECTED"));
+
+    }
+
+    // R 칸의 1번 질문이 수치 질문(MEASURE)으로 열려 있고, body 가 있으면 1번 버전 R 칸에 그 문장이 있는 카드
+    private Long cardWithMeasureTurn(String body, String evidenceType, String confidence) {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        if (body != null) {
+            Long statement = fixtures.insertStatement(cardId, 1, "R", body, evidenceType, confidence);
+            if ("COMMIT".equals(evidenceType)) {
+                fixtures.insertStatementEvidence(statement, firstCommit);
+            }
+        }
+        interviews.insertAsked(cardId, 1, "R", "EVIDENCE_GAP", "USER", "얼마나 빨라졌나요?");
+        jdbc.update("UPDATE interview_turn SET answer_mode = 'MEASURE' WHERE card_id = ?", cardId);
+
+        return cardId;
 
     }
 

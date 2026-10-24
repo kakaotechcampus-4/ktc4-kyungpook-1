@@ -8,6 +8,7 @@ import com.gitory.backend.job.domain.IdempotencyKeyMismatchException;
 import com.gitory.backend.job.domain.JobNotFoundException;
 import com.gitory.backend.job.domain.NoCandidatesException;
 import com.gitory.backend.job.domain.RepositoryNotFoundException;
+import com.gitory.backend.job.domain.TooManyCandidatesException;
 import com.gitory.backend.recommend.domain.CandidateNotFoundException;
 import com.gitory.backend.recommend.domain.CandidateNotUsableException;
 import org.springframework.core.Ordered;
@@ -52,6 +53,14 @@ public class JobExceptionHandler {
     public ApiResponse<Void> handleNoCandidates() {
 
         return ApiResponse.fail(ErrorCode.NO_CANDIDATES, "카드로 만들 후보를 하나 이상 골라 주세요.");
+
+    }
+
+    @ExceptionHandler(TooManyCandidatesException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleTooManyCandidates(TooManyCandidatesException e) {
+
+        return ApiResponse.fail(ErrorCode.INVALID_REQUEST, "카드는 한 번에 " + e.max() + "개까지 만들 수 있습니다.");
 
     }
 

@@ -124,6 +124,8 @@ services:
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
       # 매일 새벽 공고 가져오기 → 조건 뽑기 → AI 색인 보내기 (application.yml gitory.matching.sync)
       MATCHING_SYNC_ENABLED: ${MATCHING_SYNC_ENABLED:-false}
+      # 켜면 /api/swagger-ui.html 에서 API 문서를 연다. 문서만 열리고 API 를 부르려면 여전히 로그인·CSRF 가 필요하다
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
       # 로켓펀치 Open API 키. 비어 있으면 로켓펀치 공고만 건너뛴다
       ROCKETPUNCH_API_KEY: ${ROCKETPUNCH_API_KEY:-}
     healthcheck:
@@ -135,7 +137,10 @@ services:
       retries: 6
 
   web:
-    build: ../frontend
+    build:
+      context: ../frontend
+      args:
+        VITE_SITE_URL: https://${SITE_ADDRESS:?deploy/.env 에 SITE_ADDRESS 가 필요하다}
     image: gitory-web
     restart: unless-stopped
     logging: *cloudwatch

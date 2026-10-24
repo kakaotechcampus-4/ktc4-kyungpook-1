@@ -6,6 +6,9 @@ export function getTheme(): Theme {
   try { return localStorage.getItem(KEY) === 'dark' ? 'dark' : 'light'; } catch { return 'light'; }
 }
 export function applyTheme(t: Theme) {
+  document.documentElement.style.colorScheme = t;
+  const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (themeColor) themeColor.content = t === 'dark' ? '#12140F' : '#F2F7F4';
   if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
   else document.documentElement.removeAttribute('data-theme');
 }

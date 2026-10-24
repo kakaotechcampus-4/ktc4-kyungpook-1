@@ -46,7 +46,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.github.client-secret=test-client-secret",
         "gitory.consent.token-key=test-encryption-key",
         "gitory.consent.token-salt=5c0744940b5c369b",
-        "gitory.interview.answer-review.enabled=true",
         "gitory.cards.ai-draft.enabled=true",
         "gitory.rate-limit.enabled=true",
         "gitory.rate-limit.interview-ask.per-day=1",
@@ -169,48 +168,24 @@ class RateLimitApiTest {
     }
 
     @Test
-    @DisplayName("넘기기는 답 평가가 켜져 있어도 평가 AI 를 부르지 않고 답 한도도 쓰지 않아, 넘긴 뒤의 글 답이 한도 안에서 저장된다")
-    void skipNeitherCallsReviewNorUsesTheLimit() throws Exception {
+    @DisplayName("답 저장은 글이든 넘기기든 AI 를 부르지 않아 답 한도를 쓰지 않으므로, 한도가 하루 1번이어도 둘 다 저장된다")
+    void answersNeitherCallAiNorUseTheLimit() throws Exception {
 
         Long first = fixtures.insertCard(FIRST_CARD, myUserId);
         Long second = fixtures.insertCard(SECOND_CARD, myUserId);
         interviews.insertAsked(first, 1, "A", "EVIDENCE_GAP", "USER", "무엇을 했나요?");
         interviews.insertAsked(second, 1, "A", "EVIDENCE_GAP", "USER", "무엇을 했나요?");
 
-        mvc.perform(post("/api/cards/{id}/interview/{turnNo}/answer", FIRST_CARD, 1)
+        answer(FIRST_CARD).andExpect(status().isOk());
+        mvc.perform(post("/api/cards/{id}/interview/{turnNo}/answer", SECOND_CARD, 1)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"kind\":\"SKIP\"}")
                         .with(loggedInAs(myUserId)).with(csrf()))
                 .andExpect(status().isOk());
+
         assertThat(AI.requests()).isEmpty();
-
-        answer(SECOND_CARD).andExpect(status().isOk());
-
-        assertThat(interviews.turnsOf(first)).extracting(TurnRow::outcome).containsExactly("SKIPPED");
-        assertThat(interviews.turnsOf(second)).extracting(TurnRow::outcome).containsExactly("ANSWERED");
-
-    }
-
-    @Test
-    @DisplayName("답 평가가 켜져 있을 때 답이 한도를 넘으면 429 이고, 답을 저장하지 않으며 평가 AI 를 부르지 않는다")
-    void answerOverLimitIsRejectedWithoutSavingOrCallingAi() throws Exception {
-
-        Long first = fixtures.insertCard(FIRST_CARD, myUserId);
-        Long second = fixtures.insertCard(SECOND_CARD, myUserId);
-        interviews.insertAsked(first, 1, "A", "EVIDENCE_GAP", "USER", "무엇을 했나요?");
-        interviews.insertAsked(second, 1, "A", "EVIDENCE_GAP", "USER", "무엇을 했나요?");
-        answer(FIRST_CARD).andExpect(status().isOk());
-        int aiCallsAfterFirst = AI.requests().size();
-
-        answer(SECOND_CARD)
-                .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.error.code").value("RATE_LIMITED"));
-
-        assertThat(interviews.turnsOf(second)).singleElement()
-                .satisfies(turn -> assertThat(turn.answerText()).isNull());
-        assertThat(jdbc.queryForObject("SELECT current_version FROM card WHERE id = ?", Integer.class, second))
-                .isEqualTo(1);
-        assertThat(AI.requests()).hasSize(aiCallsAfterFirst);
+        assertThat(interviews.turnsOf(first)).extracting(TurnRow::outcome).containsExactly("ANSWERED");
+        assertThat(interviews.turnsOf(second)).extracting(TurnRow::outcome).containsExactly("SKIPPED");
 
     }
 

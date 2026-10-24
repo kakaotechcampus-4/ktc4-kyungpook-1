@@ -87,4 +87,7 @@ tasks.named('test') {
     useJUnitPlatform()
     // DB 시험 클래스마다 컨테이너와 Spring 환경이 따로 쌓여 기본 512MB 로는 모자란다
     maxHeapSize = '1g'
+    // OpenAPI 스냅샷 비교 시험이 스냅샷만 바뀌었거나 고쳐 쓰기 모드로 돌 때 캐시로 건너뛰지 않게 한다
+    inputs.file('../docs/openapi/backend.json').withPropertyName('openApiSnapshot').optional()
+    inputs.property('updateOpenApi', providers.environmentVariable('UPDATE_OPENAPI').orElse(''))
 }

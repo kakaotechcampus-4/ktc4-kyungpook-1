@@ -6,6 +6,9 @@
 
 {$SITE_ADDRESS} {
 	encode zstd gzip
+	# Public marketing is indexable; account-specific app pages are not.
+	@private path /cards /cards/* /repos /repos/* /jobs /jobs/* /match /match/* /settings /settings/* /auth /auth/* /api /api/*
+	header @private X-Robots-Tag "noindex, nofollow, noarchive"
 
 	header {
 		X-Content-Type-Options nosniff

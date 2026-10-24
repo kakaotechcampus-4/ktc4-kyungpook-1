@@ -24,13 +24,14 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-@EnableConfigurationProperties(JobDraftProperties.class)
+@EnableConfigurationProperties({JobDraftProperties.class, CardCreationProperties.class})
 public class CardCreationService {
 
     private final CandidateUseService candidates;
     private final CandidateCardService cards;
     private final AnalysisJobRepository jobs;
     private final JobDraftProperties draft;
+    private final CardCreationProperties limits;
     private final UserRateLimiter rateLimiter;
 
     /** 같은 후보를 여러 번 보내면 한 번으로 세고, 형식이 잘못된 id 는 null 로 받아 없는 후보와 같게 다룬다 */
@@ -40,6 +41,10 @@ public class CardCreationService {
         List<UUID> distinct = candidateIds == null ? List.of() : new ArrayList<>(new LinkedHashSet<>(candidateIds));
         if (distinct.isEmpty()) {
             throw new NoCandidatesException();
+        }
+        // 카드마다 초안 LLM 을 두 번 불러 한 번에 수십 장이면 비용·대기가 커서, 후보를 확인하기 전에 개수부터 막는다
+        if (distinct.size() > limits.maxPerRequest()) {
+            throw new TooManyCandidatesException(limits.maxPerRequest());
         }
 
         List<CandidateForCard> used = candidates.useForCards(userId, userRepositoryId, distinct);

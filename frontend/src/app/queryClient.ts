@@ -3,6 +3,7 @@ import { ApiError, AuthError, ContractError } from '@/api/client';
 import { toast } from '@/lib/toast';
 import { errorView } from '@/api/errorView';
 import { CONFIG } from '@/lib/config';
+import { keys } from '@/api/keys';
 
 /** 세션이 끊기면 어디서든 랜딩으로 — 돌아올 위치를 들고 간다. */
 export function redirectToLogin() {
@@ -14,7 +15,8 @@ export function redirectToLogin() {
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: (err) => { if (err instanceof AuthError) redirectToLogin(); },
+    // 내 정보 401 은 처음 온 사람도 받으므로 만료로 보지 않고 AuthGate 가 문구 없이 랜딩으로 보낸다
+    onError: (err, query) => { if (err instanceof AuthError && query.queryKey[0] !== keys.me[0]) redirectToLogin(); },
   }),
   mutationCache: new MutationCache({
     onError: (err, _variables, _context, mutation) => {

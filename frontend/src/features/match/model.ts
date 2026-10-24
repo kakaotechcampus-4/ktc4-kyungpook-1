@@ -32,9 +32,10 @@ export function selectMatches(items: MatchTarget[], filters: MatchFilters) {
         (filters.experience === "ALL" ||
           x.experience.level === filters.experience),
     )
+    // 맞는 정도 순에서는 등급만 비교해, 같은 등급 안에서 서버가 회사를 섞은 순서를 그대로 둔다
     .sort((a, b) =>
       filters.sort === "fit"
-        ? grade(a) - grade(b) || compareDeadline(a, b)
+        ? grade(a) - grade(b)
         : compareDeadline(a, b) || grade(a) - grade(b),
     );
 }

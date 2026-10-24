@@ -237,9 +237,6 @@ gitory:
     # 카드당 되묻기 질문 최대 횟수(넘긴 질문도 센다).
     # AI 에는 요청의 max_turns, 프론트에는 응답의 maxTurns 로 내려준다.
     max-turns: 3
-    answer-review:
-      # 켜면 답을 저장한 뒤 AI 가 답이 충분한지 평가해, 모자라면 같은 칸의 질문을 하나 더 만든다(질문 상한 안에서)
-      enabled: ${INTERVIEW_ANSWER_REVIEW_ENABLED:false}
   analysis:
     grouping:
       # 켜면 분석 Job 이 수집 뒤 AI 로 경험 그룹화를 해 후보를 만들고, 끄면 후보 추리기·추천 이유를 건너뛴다
@@ -248,6 +245,8 @@ gitory:
       # AI 의 경험 그룹화 규칙이 바뀌면 올려, 보낼 요청이 지난번과 같아도 모든 저장소를 다시 경험 그룹화하게 한다
       version: 1
   cards:
+    # 후보로 카드 만들기 한 요청에 만들 수 있는 카드 수. 화면은 같은 값으로 선택을 막는다(CandidateBoardPage)
+    max-per-request: 8
     ai-draft:
       # 켜면 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채우고, 끄면 빈 카드로 끝낸다
       # 운영 AI 에 LLM 설정이 없으면 모든 초안이 실패하므로 그 설정을 넣고 한 번 확인한 뒤 켠다
@@ -260,7 +259,7 @@ gitory:
     interview-ask:
       per-minute: 10
       per-day: 100
-    # 답 평가. INTERVIEW_ANSWER_REVIEW_ENABLED 가 켜져 LLM 을 부를 때만 센다
+    # '재 봤어요' 수치 문장 미리 보기. 입력에 숫자가 있어 LLM 을 부를 때만 센다
     interview-answer:
       per-minute: 10
       per-day: 100

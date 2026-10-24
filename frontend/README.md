@@ -243,3 +243,15 @@ npm run e2e:static  # 동일한 검사를 프로덕션 빌드 산출물에 실�
 ### 2026-10-21 검색 입력 안정화
 
 매칭 검색의 입력 상태·URL 복구 기준은 [매칭 검색 입력 안정화](docs/2026-10-21-MATCH_SEARCH.md)를 참고하세요.
+
+## 2026-10-23 브랜드 인트로·SNS 공유·SEO
+중앙 로고가 헤더로 이동하는 인트로를 추가했습니다. 소개 화면은 로그인 여부와 관계없이 진입·새로고침마다 재생합니다. 동의 모달·동작 줄이기 설정은 예외입니다. 중앙 로고 구간을 약 20% 늘렸습니다.
+공개 랜딩의 HTML 메타데이터, 1200×630 OG 이미지, Twitter 카드, canonical, WebSite JSON-LD, robots와 sitemap을 빌드합니다. 개인 화면은 noindex로 처리합니다.
+`VITE_SITE_URL=https://서비스도메인`으로 운영 origin을 설정합니다. 기본값은 Vercel 데모이며 팀 Compose는 SITE_ADDRESS를 빌드에 전달합니다. 공유 이미지 재생성은 frontend에서 `node scripts/generate-social-image.mjs`로 실행합니다.
+[기획·검증·배포 주의사항](docs/2026-10-23-BRAND_SEO.md)을 참고하세요.
+
+
+[2026-10-24 인트로 반복 재생·중앙 대기 시간 변경](docs/2026-10-24-INTRO_REPLAY.md)을 반영했습니다.
+긴 레포 선택 메뉴의 테스트 초기화 경합은 [트러블슈팅 기록](docs/2026-10-23-SELECT_TEST_RACE.md)을 참고하세요.
+
+SNS 공유 이미지는 사이트 테마와 관계없이 라이트 테마로 고정합니다. [이미지 변경·캐시 대응 기록](docs/2026-10-24-LIGHT_OG.md).

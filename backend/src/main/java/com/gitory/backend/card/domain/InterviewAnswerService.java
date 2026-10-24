@@ -2,26 +2,26 @@ package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.interview.AnswerKind;
+import com.gitory.backend.card.domain.interview.AnswerMode;
 import com.gitory.backend.card.domain.interview.AnswerSource;
-import com.gitory.backend.card.domain.interview.InterviewAnswerReviewProperties;
 import com.gitory.backend.card.domain.interview.InterviewTurn;
 import com.gitory.backend.card.domain.interview.InterviewTurnAnsweredException;
 import com.gitory.backend.card.domain.interview.InterviewTurnNotFoundException;
 import com.gitory.backend.card.domain.interview.TurnOutcome;
 import com.gitory.backend.card.infra.CardStatementRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
-import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
-import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * 되묻기 답을 가공 없이 질문한 칸의 글로 저장하고 그 칸만 바꾼 INTERVIEW 새 버전을 만들며, 넘기기는 칸을 바꾸지 않고 질문만 넘김으로 남긴다
+ * '측정 안 했어요' 는 커밋으로 확인된 R 문장을 지우지 않도록 그 문장이 있으면 칸을 바꾸지 않고 답만 기록한다
  * 이미 정해진 결과와 같은 요청이 다시 오면 응답이 끊긴 뒤의 재시도이므로 확정된 카드여도 아무것도 쓰지 않고 지금 카드를 돌려준다
  */
 @Service
@@ -34,8 +34,6 @@ public class InterviewAnswerService {
     private final CardVersionWriter writer;
     private final CardStatementRepository statements;
     private final CardDetailService details;
-    private final InterviewAnswerReviewProperties review;
-    private final UserRateLimiter rateLimiter;
 
     /**
      * 카드 행을 잠근 뒤 질문 번호, 초안을 만드는 중인지, 이미 한 답, 확정 여부, 답의 모양 순서로 확인하고, 이 순서가 응답 코드의 우선순위다
@@ -57,24 +55,63 @@ public class InterviewAnswerService {
         }
 
         card.requireDraft();
-        // 넘기기는 LLM 을 부르지 않으므로 답 평가 호출 한도도 세지 않는다
-        if (kindOf(kind) == AnswerKind.SKIP) {
-            turn.skip();
+        AnswerKind answerKind = kindOf(kind);
+        // 글 답은 지금 화면이 수치 질문에도 kind 없이 보내므로 막지 않고, 측정 답만 수치 질문인지 본다
+        if (answerKind != AnswerKind.TEXT && answerKind != AnswerKind.SKIP
+                && turn.answerModeOrText() != AnswerMode.MEASURE) {
+            throw new InvalidCardInputException("측정 답은 R 수치 질문에만 보낼 수 있습니다.");
+        }
 
-            return details.load(publicId, userId);
+        switch (answerKind) {
+            case SKIP -> turn.skip();
+            case TEXT -> {
+                AnswerSource answerSource = checkedAnswer(text, source);
+                replaceSlot(card, turn, text, answerSource);
+                turn.answer(text, answerSource);
+            }
+            case MEASURED -> {
+                AnswerSource answerSource = checkedAnswer(text, source);
+                replaceSlot(card, turn, text, answerSource);
+                turn.measure(text, answerSource);
+            }
+            case NOT_MEASURED -> recordNotMeasured(card, turn, text, source);
+        }
+
+        return details.load(publicId, userId);
+
+    }
+
+    // 숫자 없는 문장을 함께 보내도 R 이 커밋으로 확인된 문장이면 그 문장을 지우지 않고, 빈 R·확인 필요 R 일 때만 반영한다
+    private void recordNotMeasured(Card card, InterviewTurn turn, String text, String source) {
+
+        if (text == null) {
+            turn.notMeasured(null, null);
+            return;
         }
 
         AnswerSource answerSource = checkedAnswer(text, source);
-        // 답을 저장한 뒤의 평가가 LLM 을 부르지만, 거절된 답이 저장돼 남지 않도록 저장 전에 센다
-        if (review.enabled()) {
-            rateLimiter.acquire(RateLimitedAction.INTERVIEW_ANSWER, userId, 1);
+        if (!confirmedByCommit(card, turn.getStarSlot())) {
+            replaceSlot(card, turn, text, answerSource);
         }
+        turn.notMeasured(text, answerSource);
+
+    }
+
+    private boolean confirmedByCommit(Card card, StarField slot) {
+
+        return statements.findByCardIdAndVersionNoAndStarSlot(card.getId(), card.getCurrentVersion(), slot).stream()
+                .anyMatch(statement -> statement.getEvidenceType() == EvidenceType.COMMIT
+                        && statement.getConfidence() != Confidence.LOW);
+
+    }
+
+    // 답한 칸은 옛 글의 근거를 옮기지 않고 답으로 바꾸므로 나머지 세 칸만 복사한다
+    private void replaceSlot(Card card, InterviewTurn turn, String text, AnswerSource answerSource) {
 
         StarField slot = turn.getStarSlot();
         short previous = card.getCurrentVersion();
         CardVersion next = writer.startNext(card, VersionSource.INTERVIEW);
 
-        // 답한 칸은 옛 글의 근거를 옮기지 않고 답으로 바꾸므로 나머지 세 칸만 복사한다
         for (StarField other : StarField.values()) {
             if (other != slot) {
                 writer.copySlot(card.getId(), previous, other, next.getVersionNo());
@@ -83,9 +120,6 @@ public class InterviewAnswerService {
 
         statements.save(CardStatement.answered(card.getId(), next.getVersionNo(), slot, text,
                 answerSource.evidenceType(), turn.getId()));
-        turn.answer(text, answerSource);
-
-        return details.load(publicId, userId);
 
     }
 
@@ -101,30 +135,53 @@ public class InterviewAnswerService {
 
     }
 
-    // 넘긴 질문에는 넘기기만, 답한 질문에는 같은 글·출처의 글 답만 같은 요청이고, 모르는 kind 는 어느 쪽과도 같지 않다
+    // 결과와 같은 종류의 요청에 같은 글·출처가 와야 같은 요청이고, 넘기기는 글을 보지 않으며, 모르는 kind 는 어느 결과와도 같지 않다
     private static boolean sameRequest(InterviewTurn turn, String kind, String text, String source) {
 
-        if (turn.getOutcome() == TurnOutcome.SKIPPED) {
-            return AnswerKind.SKIP.name().equals(kind);
+        Optional<AnswerKind> requested = kind == null ? Optional.of(AnswerKind.TEXT) : known(kind);
+        if (requested.isEmpty() || outcomeOf(requested.get()) != turn.getOutcome()) {
+            return false;
         }
 
-        return turn.isAnswered() && (kind == null || AnswerKind.TEXT.name().equals(kind))
-                && Objects.equals(turn.getAnswerText(), text)
+        if (requested.get() == AnswerKind.SKIP) {
+            return true;
+        }
+
+        if (turn.getAnswerText() == null) {
+            return text == null;
+        }
+
+        return Objects.equals(turn.getAnswerText(), text)
                 && turn.getAnswerSource().evidenceType().name().equals(source);
 
     }
 
-    // FE 가 아직 kind 를 보내지 않으므로 없으면 글 답으로 보고, 측정 답(MEASURED·NOT_MEASURED)은 아직 받지 않는다
+    private static TurnOutcome outcomeOf(AnswerKind kind) {
+
+        return switch (kind) {
+            case TEXT -> TurnOutcome.ANSWERED;
+            case MEASURED -> TurnOutcome.MEASURED;
+            case NOT_MEASURED -> TurnOutcome.NOT_MEASURED;
+            case SKIP -> TurnOutcome.SKIPPED;
+        };
+
+    }
+
+    // FE 가 아직 kind 를 보내지 않으므로 없으면 글 답으로 본다
     private static AnswerKind kindOf(String kind) {
 
         if (kind == null) {
             return AnswerKind.TEXT;
         }
 
-        return Arrays.stream(AnswerKind.values())
-                .filter(known -> known.name().equals(kind))
-                .findFirst()
-                .orElseThrow(() -> new InvalidCardInputException("답의 종류는 TEXT 또는 SKIP 만 보낼 수 있습니다."));
+        return known(kind).orElseThrow(() -> new InvalidCardInputException(
+                "답의 종류는 TEXT·MEASURED·NOT_MEASURED·SKIP 만 보낼 수 있습니다."));
+
+    }
+
+    private static Optional<AnswerKind> known(String kind) {
+
+        return Arrays.stream(AnswerKind.values()).filter(value -> value.name().equals(kind)).findFirst();
 
     }
 

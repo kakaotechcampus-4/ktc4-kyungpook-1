@@ -211,6 +211,14 @@ gitory:
       - { key: pearlabyss, name: 펄어비스, type: PEARL_ABYSS, board: 'https://www.pearlabyss.com/ko-KR/Company/Careers/List' }
       # 스마일게이트는 목록을 조회용 POST 로만 주어 board 에 그 주소를 적는다
       - { key: smilegate, name: 스마일게이트, type: SMILEGATE, board: 'https://careers.smilegate.com/api/apply/announce/guest' }
+      # 로켓펀치는 한 곳에서 여러 회사의 공고를 주고, 공고마다 API 가 준 회사 이름으로 저장한다(웹 화면은 읽지 않고 API 만 쓴다)
+      - { key: rocketpunch, name: 로켓펀치, type: ROCKETPUNCH, board: 'https://openapi.rocketpunch.com' }
+    rocketpunch:
+      # 키가 비어 있으면 로켓펀치는 건너뛴다. 로컬·CI 는 키 없이 돈다
+      api-key: ${ROCKETPUNCH_API_KEY:}
+      # 회사 채용 페이지를 위 sources 로 따로 읽는 회사의 로켓펀치 회사 id(handle). 같은 공고가 두 번 들어가지 않게 한다
+      # 10/24 확인: 라인플러스는 라인 채용 사이트로, 이스트게임즈는 이스트패밀리 그리팅([ESTgames] 공고)으로 이미 읽는다
+      skip-company-ids: [lineplus, estgames]
   ingest:
     # 아래 수집 상한은 AI 에 보내지 않아 바꾸면 AI 의 CollectionLimits 기본값도 같은 값으로 바꾼다
     # 커밋·이슈·최근 PR 밖의 내 PR 이 상한을 넘거나 PR 목록이 10쪽(1000개)을 채우면 partial=true 로 표시하고

@@ -27,6 +27,8 @@ import com.gitory.backend.matching.infra.MatchingProperties;
 import com.gitory.backend.matching.infra.PearlAbyssCareersClient;
 import com.gitory.backend.matching.infra.PoliteFetchProperties;
 import com.gitory.backend.matching.infra.PoliteFetcher;
+import com.gitory.backend.matching.infra.RocketpunchClient;
+import com.gitory.backend.matching.infra.RocketpunchProperties;
 import com.gitory.backend.matching.infra.SmilegateCareersClient;
 import com.gitory.backend.matching.infra.SyncLock;
 import com.gitory.backend.matching.infra.TossCareersClient;
@@ -77,6 +79,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -524,6 +527,42 @@ class JobPostingSyncServiceTest {
     }
 
     @Test
+    @DisplayName("로켓펀치 공고는 회사 키 rocketpunch 아래에 공고마다 받은 회사 이름으로 저장되고, 다른 출처는 설정의 회사 이름으로 저장된다")
+    void storesRocketpunchPostingsWithTheirOwnCompanyNames() {
+
+        CompanySource rocketpunch = new CompanySource("rocketpunch", "로켓펀치", CompanySourceType.ROCKETPUNCH, base);
+        boards.put("/v1/jobs", "{\"totalPages\":1,\"items\":["
+                + rocketpunchItem(31, "백엔드 개발자", "넛지헬스케어") + "," + rocketpunchItem(32, "서버 개발자", "스캐터랩") + "]}");
+        boards.put("/v1/jobs/31", "{\"hiring\":true,\"endAt\":null,\"duty\":\"API 개발\",\"company\":{\"name\":\"넛지헬스케어\"}}");
+        boards.put("/v1/jobs/32", "{\"hiring\":true,\"endAt\":null,\"duty\":\"서버 개발\",\"company\":{\"name\":\"스캐터랩\"}}");
+        boards.put("acme", jobs(job(1, "Software Engineer, Backend", SEOUL, null, null)));
+        MatchingProperties properties = new MatchingProperties(List.of(rocketpunch, ACME), base,
+                new RocketpunchProperties("test-key", List.of()));
+
+        service(postings, properties).sync();
+
+        assertThat(reload("rocketpunch")).extracting(JobPosting::getExternalId, JobPosting::getCompanyName)
+                .containsExactlyInAnyOrder(tuple("31", "넛지헬스케어"), tuple("32", "스캐터랩"));
+        assertThat(reload("acme")).extracting(JobPosting::getCompanyName).containsExactly("에이크미");
+
+    }
+
+    @Test
+    @DisplayName("로켓펀치 키가 비어 있으면 로켓펀치를 부르지 않고 저장된 로켓펀치 공고도 그대로 둔다")
+    void skipsRocketpunchWithoutKey() {
+
+        seed("rocketpunch", "31", "백엔드 개발자", JobPostingStatus.ACTIVE, null);
+        CompanySource rocketpunch = new CompanySource("rocketpunch", "로켓펀치", CompanySourceType.ROCKETPUNCH, base);
+
+        service(rocketpunch).sync();
+
+        assertThat(hits).noneMatch(path -> path.startsWith("/v1/jobs"));
+        assertThat(statusesOf("rocketpunch")).containsEntry("31", JobPostingStatus.ACTIVE);
+        assertThat(sources.findById("rocketpunch")).isEmpty();
+
+    }
+
+    @Test
     @DisplayName("이번 실행에서 마감이 된 공고는 조건을 뽑지 않는다")
     void doesNotExtractPostingsExpiredInThisRun() {
 
@@ -579,12 +618,17 @@ class JobPostingSyncServiceTest {
 
     private JobPostingSyncService service(JobPostingRepository postingRepository, CompanySource... companies) {
 
-        MatchingProperties properties = new MatchingProperties(List.of(companies), base);
+        return service(postingRepository, new MatchingProperties(List.of(companies), base, null));
+
+    }
+
+    private JobPostingSyncService service(JobPostingRepository postingRepository, MatchingProperties properties) {
+
         PoliteFetchProperties fetchProperties = new PoliteFetchProperties(null, null, null, Duration.ZERO, null, null);
         return new JobPostingSyncService(properties, new PoliteFetcher(fetchProperties, Clock.systemUTC()),
                 new GreenhouseClient(properties), new GreetingClient(), new TossCareersClient(), new LineCareersClient(),
                 new KakaoCareersClient(), new KtCareersClient(), new PearlAbyssCareersClient(), new SmilegateCareersClient(),
-                postingRepository, sources,
+                new RocketpunchClient(properties, clock), postingRepository, sources,
                 extraction(postingRepository),
                 new JobPostingIndexService(indexPort, postingRepository, criteria, new TransactionTemplate(transactionManager)),
                 new TransactionTemplate(transactionManager), new SyncLock(dataSource), clock);
@@ -647,6 +691,13 @@ class JobPostingSyncServiceTest {
     private static String jobWithContent(long id, String title, String content) {
 
         return job(id, title, SEOUL, null, null).replaceFirst("}$", ",\"content\":\"" + content + "\"}");
+
+    }
+
+    private static String rocketpunchItem(long id, String title, String company) {
+
+        return "{\"jobId\":" + id + ",\"title\":\"" + title + "\",\"company\":{\"id\":\"c" + id + "\",\"name\":\"" + company
+                + "\"},\"endAt\":null,\"webUrl\":\"https://www.rocketpunch.com/jobs/" + id + "\"}";
 
     }
 

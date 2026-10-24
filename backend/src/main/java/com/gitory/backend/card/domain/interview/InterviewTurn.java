@@ -127,10 +127,30 @@ public class InterviewTurn {
      */
     public void answer(String text, AnswerSource source) {
 
+        close(TurnOutcome.ANSWERED, text, source);
+
+    }
+
+    /** R 수치 질문에 '재 봤어요' 로 확정한 문장을 담는다 */
+    public void measure(String text, AnswerSource source) {
+
+        close(TurnOutcome.MEASURED, text, source);
+
+    }
+
+    /** '측정 안 했어요' 를 기록하며, 숫자 없는 문장을 함께 고르지 않았으면 글과 출처는 비어 있다 */
+    public void notMeasured(String text, AnswerSource source) {
+
+        close(TurnOutcome.NOT_MEASURED, text, source);
+
+    }
+
+    private void close(TurnOutcome result, String text, AnswerSource source) {
+
         requireOpen();
         this.answerText = text;
         this.answerSource = source;
-        this.outcome = TurnOutcome.ANSWERED;
+        this.outcome = result;
         this.answeredAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
 
     }

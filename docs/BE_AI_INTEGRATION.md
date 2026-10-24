@@ -33,7 +33,6 @@ flowchart LR
 | `AI_MATCHING_INDEX_READ_TIMEOUT` | `120s`; 공고 색인(`/internal/matching/postings/index`)과 색인 정리(`/internal/matching/postings/prune`) 응답 대기 제한. 하루 한 번 공고 가져오기 끝에 활성 공고를 20개씩 보낸 뒤 남길 공고 목록으로 정리를 한 번 부른다 |
 | `ANALYSIS_GROUPING_ENABLED` | `false`; 켜면 분석 Job 이 수집 뒤 경험 그룹화를 부른다. 운영 AI 에 LLM 설정(`GITORY_LLM_BASE_URL`·`GITORY_LLM_API_KEY`)을 넣은 뒤 켠다. `deploy/compose.yaml` 이 ai 에 LLM 설정을, backend 에 이 값을 이미 넘기므로 `deploy/.env` 에 적으면 들어간다 |
 | `CARD_AI_DRAFT_ENABLED` | `false`; 켜면 후보로 만든 카드의 초안 Job 이 diff 근거·STAR 초안으로 칸을 채우고, 끄면 AI 를 부르지 않고 끝낸다. 운영 AI 에 LLM 설정을 넣은 뒤 켠다. `deploy/compose.yaml` 의 backend `environment` 에 `CARD_AI_DRAFT_ENABLED` 를 넘겨야 `deploy/.env` 값이 들어간다 |
-| `INTERVIEW_ANSWER_REVIEW_ENABLED` | `false`; 켜면 되묻기 답을 저장한 뒤 AI(`/internal/interview-answer-evaluations`)가 답을 평가하고, 모자라면 같은 칸의 질문을 하나 더 만든다(카드당 질문 상한 안에서). 평가가 실패하거나 20초를 넘겨도 답 저장은 성공한다. `deploy/compose.yaml` 의 backend `environment` 에 이 변수를 넘겨야 `deploy/.env` 값이 들어간다 |
 | `API_DOCS_ENABLED` | BE 운영 기본 `false`, `local` 프로필 기본 `true` |
 | `AI_DOCS_ENABLED` | AI 기본 `true`; 운영에서 문서가 필요 없으면 `false` |
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | BE 기본 프로필의 PostgreSQL 접속 정보 |
@@ -129,7 +128,7 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 | 파트 | 현재 상태 / 남은 작업 |
 |---|---|
 | BE Job 워커 | `JobWorker`가 2초마다 대기 Job을 꺼내 실행(동시 실행 `JOB_WORKER_CONCURRENCY`, 기본 3, 카드 초안 Job과 같은 자리 사용). 분석 Job은 수집·저장·경험 그룹화·후보 저장까지 연결 |
-| BE AI 연결 | 수집·경험 그룹화·되묻기·diff 근거·STAR 초안·매칭 검색 어댑터는 실행 경로에 연결. diff 근거·STAR 초안은 카드 초안 Job이 `CARD_AI_DRAFT_ENABLED=true`일 때 부른다. 되묻기 답 평가(`/internal/interview-answer-evaluations`)도 연결돼 있고 `INTERVIEW_ANSWER_REVIEW_ENABLED=true`일 때 답을 저장한 뒤 부른다 |
+| BE AI 연결 | 수집·경험 그룹화·되묻기·diff 근거·STAR 초안·매칭 검색 어댑터는 실행 경로에 연결. diff 근거·STAR 초안은 카드 초안 Job이 `CARD_AI_DRAFT_ENABLED=true`일 때 부른다. 되묻기 답 평가(`/internal/interview-answer-evaluations`)는 BE 가 더 부르지 않는다 — 다음 질문 요청에서 AI 가 앞 답을 읽고 다시 물을지 정한다 |
 | BE API | 내 정보·분석 Job·카드·인터뷰 API를 BE Swagger로 문서화 |
 | AI API | 수집 2개, 분석 A 계약 3개, 인터뷰 B 2개와 health를 문서화 |
 | AI A | 경험 그룹화(#109)와 diff 근거·STAR 초안 구현. diff·STAR 연동은 [연동 문서](AI_DIFF_STAR_INTEGRATION.md) 참고 |

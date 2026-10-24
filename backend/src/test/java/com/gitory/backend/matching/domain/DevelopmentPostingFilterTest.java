@@ -49,6 +49,12 @@ class DevelopmentPostingFilterTest {
             "Seoul, South Korea | 설비 신뢰성 엔지니어 리드 | false",
             "일본 도쿄도 | 서버 개발자 | false",
             "대한민국 | 영업 담당자 | false",
+            "수원 | [Robot] 자율주행 배송로봇 현장 운영 스탭 - 수원 | false",
+            "서울 | [Robot] 구매 & 자재 운영 보조 (2개월 단기 계약직) | false",
+            "Seoul | [Robot] QC Engineer - Manufacturing Quality | false",
+            "Seoul | [Intern] Robotics Project Management | false",
+            "Seoul | [HR Div.] Developer Relations Program 운영/지원 | false",
+            "Seoul | Robot Software Engineer | true",
             "Santa Clara, California | Senior Software Engineer, Runtime | false",
             "Menlo Park, California, United States | Software Engineer | false"
     })

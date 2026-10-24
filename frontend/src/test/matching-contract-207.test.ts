@@ -70,6 +70,28 @@ describe("#207 matching contract", () => {
       }),
     ).toEqual([]);
   });
+  it("keeps the server order within the same fit so mixed companies stay mixed", () => {
+    const base = MatchTarget.parse(list.data[0]);
+    const posting = (company: string, expiresAt: string | null) => ({
+      ...base,
+      id: company,
+      company,
+      source: { ...base.source, expiresAt },
+    });
+    const items = [
+      posting("토스", "2026-12-31T00:00:00Z"),
+      posting("카카오", "2026-11-01T00:00:00Z"),
+      posting("토스2", "2026-11-15T00:00:00Z"),
+    ];
+    expect(
+      selectMatches(items, {
+        q: "",
+        category: "ALL",
+        experience: "ALL",
+        sort: "fit",
+      }).map((x) => x.company),
+    ).toEqual(["토스", "카카오", "토스2"]);
+  });
   it("keeps missing experience distinct from entry and unknown fit distinct from D", () => {
     expect(MatchTarget.parse(list.data[2]).experience.level).toBe(
       "UNSPECIFIED",

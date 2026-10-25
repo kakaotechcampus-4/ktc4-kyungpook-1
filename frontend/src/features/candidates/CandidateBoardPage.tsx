@@ -13,7 +13,8 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActionGate } from '@/lib/useActionGate';
 import { addTopRecommended, CARD_LIMIT_MESSAGE, MAX_CARDS_PER_REQUEST, splitRecommended } from '@/lib/candidatePicks';
-import { Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Braces, Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink, FileCode2, GitCommitHorizontal, MessageSquare } from 'lucide-react';
+import { MetaItem } from '@/components/MetaItem';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
 const loadSel = (repoId: string): Set<string> => {
@@ -235,7 +236,12 @@ function CandidateRow({ c, disabled, selected, onToggle, onExclude, expanded, on
           {c.weak && !used && <Badge kind="NEUTRAL">추천도 낮음</Badge>}
         </div>
         <p className="cand__reason">{c.reason}</p>
-        <span className="cand__meta">커밋 {included}개 · 변경 파일 {c.meta.files}개{c.meta.reviewComments ? ` · 리뷰 코멘트 ${c.meta.reviewComments}건` : ''}{c.meta.codeRatio != null ? ` · 코드 비율 ${Math.round(c.meta.codeRatio * 100)}%` : ''}</span>
+        <span className="cand__meta cand__meta--icons">
+          <MetaItem icon={GitCommitHorizontal}>커밋 {included}개</MetaItem>
+          <MetaItem icon={FileCode2}>변경 파일 {c.meta.files}개</MetaItem>
+          {c.meta.reviewComments ? <MetaItem icon={MessageSquare}>리뷰 코멘트 {c.meta.reviewComments}건</MetaItem> : null}
+          {c.meta.codeRatio != null ? <MetaItem icon={Braces}>코드 비율 {Math.round(c.meta.codeRatio * 100)}%</MetaItem> : null}
+        </span>
         {cluster && (
           <div className="cand__warn">
             <span>시간대·디렉터리로 묶은 커밋</span>

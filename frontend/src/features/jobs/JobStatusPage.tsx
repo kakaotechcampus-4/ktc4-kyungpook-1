@@ -2,11 +2,12 @@ import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useJob } from '@/api/queries';
 import { isTerminal } from '@/api/schemas';
-import { Badge, Breadcrumb, Note, PageTitle, Skeleton, Spinner } from '@/components/ui';
+import { Badge, Breadcrumb, Button, Note, PageTitle, Skeleton, Spinner } from '@/components/ui';
+import { reconnectGithub } from '@/lib/githubReconnect';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActiveJobFeed } from '@/lib/activeJobFeed';
 import { jobResultLink, jobResultState } from '@/lib/jobLinks';
-import { jobErrorTitle, jobStateLabel, jobStepLabel, jobTypeLabel } from '@/lib/labels';
+import { jobErrorHint, jobErrorTitle, jobStateLabel, jobStepLabel, jobTypeLabel } from '@/lib/labels';
 import { stepBadge } from '@/lib/jobView';
 import { DraftProgress } from '@/features/cards/DraftProgress';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -30,7 +31,7 @@ export function JobStatusPage() {
     <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '작업 진행' }]} />
     <PageTitle sub={<><span>{jobTypeLabel[job.type]}</span><Badge kind="NEUTRAL">{job.partial ? '부분 완료' : jobStateLabel[job.state]}</Badge></>}>{title}</PageTitle>
     {query.isError && <QueryFailure error={query.error} retry={() => query.refetch()} pending={query.isFetching} />}
-    {job.errorCode && <Note strong={jobErrorTitle[job.errorCode]} tone={job.state === 'FAILED' ? 'danger' : 'inset'} />}
+    {job.errorCode && <Note strong={jobErrorTitle[job.errorCode]} tone={job.state === 'FAILED' ? 'danger' : 'inset'}>{jobErrorHint[job.errorCode]}</Note>}
     {job.state === 'CANCELED' && <Note strong="작업이 취소됐어요" tone="inset" />}
     {job.type === 'DRAFT' ? <DraftProgress job={job} checkedAt={query.dataUpdatedAt} /> : <div className="stack job-status-steps">{job.steps.map((step) => <div className="card job-status-step" key={step.key}>
       <strong>{jobStepLabel[step.key]}</strong><span className="row t-12 c-2">{step.state === 'RUNNING' && step.total == null && <Spinner />}{step.state === 'SKIPPED' ? '해당 없음' : step.total == null ? `${step.done}개 처리` : `${step.done} / ${step.total}`}</span><Badge kind="NEUTRAL">{stepBadge(step)}</Badge>
@@ -39,6 +40,8 @@ export function JobStatusPage() {
       <Link to="/" className="btn btn--outline">홈으로</Link>
       {result && <Link to={result} state={jobResultState(job)} className="btn btn--primary">{job.state === 'FAILED' || job.partial || job.state === 'CANCELED' ? '상세 상태 보기' : '결과 보기'}</Link>}
       {done && !result && <Link to="/repos" className="btn btn--outline">저장소 목록</Link>}
+      {job.errorCode === 'GITHUB_UNAVAILABLE' && <Button variant="outline" onClick={reconnectGithub}>GitHub 다시 연결</Button>}
+      {job.state === 'FAILED' && <Link to="/cards/new" className="btn btn--ghost">직접 쓰기</Link>}
     </div>
   </main>;
 }

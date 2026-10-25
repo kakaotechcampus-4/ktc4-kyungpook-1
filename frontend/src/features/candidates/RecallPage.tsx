@@ -73,7 +73,7 @@ function RecallSession({ repoId }: { repoId: string }) {
 
   return (
     <main className="main main--tight recall-page">
-      <Breadcrumb items={[{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: `/repos/${repoId}/candidates` }, { label: '회상 도우미' }]} />
+      <Breadcrumb items={[{ label: '홈', to: '/' }, { label: repo.data?.name ?? '…', to: `/repos/${repoId}/candidates` }, { label: '회상 도우미' }]} />
       <PageTitle>파일부터 되짚어 볼까요</PageTitle>
       {recall.data && <Note strong="파일을 보며 경험을 떠올려 보세요">{recall.data.note}</Note>}
       {recall.isPending && <Skeleton h={200} />}

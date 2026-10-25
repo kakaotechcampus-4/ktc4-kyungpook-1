@@ -11,6 +11,8 @@ export const SCENARIOS = {
   'lost-response': { label: '분석 접수 후 응답 유실', delayMs: 160 },
   conflict: { label: '분석 요청 충돌', delayMs: 160 },
   'candidate-error': { label: '첫 후보 변경·카드 생성 실패', delayMs: 160 },
+  'github-disconnected': { label: 'GitHub 연결 끊김', delayMs: 160 },
+  'github-unauthorized': { label: 'GitHub 토큰 무효(분석 403)', delayMs: 160 },
 } as const;
 export type Scenario = keyof typeof SCENARIOS;
 export function parseScenario(value: string | null): Scenario {
@@ -38,6 +40,7 @@ export function createScenario(scenario: Scenario) {
         failedSave = true; return fault('INTERNAL_ERROR');
       }
       if (scenario === 'conflict' && method === 'POST' && path.endsWith('/analyze')) return fault('IDEMPOTENCY_KEY_MISMATCH', 409);
+      if ((scenario === 'github-disconnected' || scenario === 'github-unauthorized') && method === 'POST' && path.endsWith('/analyze')) return fault('GITHUB_UNAUTHORIZED', 403);
       return undefined;
     },
     after(method: string, path: string, result: MockResult): MockResult {
@@ -46,6 +49,10 @@ export function createScenario(scenario: Scenario) {
         lostResponse = true; throw new TypeError('Simulated response loss after acceptance');
       }
       if (method !== 'GET') return result;
+      if (scenario === 'github-disconnected' && path === '/me' && result.data && typeof result.data === 'object') {
+        const me = result.data as { github?: object };
+        return { ...result, data: { ...me, github: { ...me.github, connected: false, connectedAt: null } } };
+      }
       if (scenario === 'empty' && (path === '/cards' || path === '/repos')) return { ...result, data: [] };
       if (scenario === 'minimal-summary' && path === '/cards' && Array.isArray(result.data)) return { ...result, data: result.data.map(({ id, kind, status, title, versionNo, star, updatedAt }) => ({ id, kind, status, title, versionNo, star, updatedAt })) };
       if (scenario !== 'sparse') return result;

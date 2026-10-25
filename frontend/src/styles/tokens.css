@@ -53,6 +53,8 @@
   --text-primary: #1C2B21; --text-strong: #344B3B; --text-secondary: #51695A; --text-tertiary: #586C5E;
   --text-on-ink: var(--ink-0); --text-on-console: var(--matcha-mist);
   --text-accent: var(--matcha-green); --accent-decoration: var(--matcha-sage);
+  /* 포인트 — 화면마다 눈이 먼저 가야 할 한두 곳(주 행동, 강조 단어, 지금 메뉴)에만. 흰 글자 대비 4.8:1 */
+  --accent-point: #4F7F24; --accent-point-hover: var(--matcha-deep); --accent-point-soft: rgba(79, 127, 36, .12);
   --border-default: #D5E2D9; --border-strong: #7C9081; --border-selected: var(--matcha-green);
   --nav-active-bg: var(--bg-selected); --nav-active-text: var(--matcha-deep);
   --sidebar-text: var(--ink-900);
@@ -86,6 +88,7 @@
   --text-primary: #EDF2E4; --text-strong: #DCE6CF; --text-secondary: #C1CBB4; --text-tertiary: #AEB9A0;
   --text-on-ink: var(--matcha-night); --text-on-console: #EDF2E4;
   --text-accent: var(--matcha-highlight); --accent-decoration: var(--matcha-highlight);
+  --accent-point: var(--matcha-highlight); --accent-point-hover: #B8D18F; --accent-point-soft: rgba(168, 196, 124, .14);
   --border-default: #343D2A; --border-strong: #65734F; --border-selected: var(--matcha-highlight);
   --nav-active-bg: var(--matcha-inset); --nav-active-text: var(--matcha-highlight);
   --sidebar-text: var(--text-primary);

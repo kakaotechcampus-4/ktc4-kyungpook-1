@@ -13,7 +13,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActionGate } from '@/lib/useActionGate';
 import { addTopRecommended, CARD_LIMIT_MESSAGE, MAX_CARDS_PER_REQUEST, splitRecommended } from '@/lib/candidatePicks';
-import { Braces, Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink, FileCode2, GitCommitHorizontal, MessageSquare } from 'lucide-react';
+import { Braces, Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink, FileCode2, GitCommitHorizontal, MessageSquare, X } from 'lucide-react';
 import { MetaItem } from '@/components/MetaItem';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
@@ -64,7 +64,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const selectedOutsideSearch = chosen.filter(id => !visible.some(candidate => candidate.id === id)).length;
   const busy = actions.running || patch.isPending || create.isPending;
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }, { label: '후보 보드' }];
+  const crumbs = [{ label: '홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }, { label: '후보 보드' }];
 
   const overLimit = chosen.length > MAX_CARDS_PER_REQUEST;
   const toggle = (id: string) => {
@@ -152,7 +152,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   return (
     <main className="main main--footer main--tight candidate-board">
       <Breadcrumb items={crumbs} />
-      <PageTitle>{b.partial ? `후보 ${cands.length}개 (부분 결과)` : `후보 ${cands.length}개`}</PageTitle>
+      <PageTitle lead="커밋과 PR에서 카드로 만들 만한 작업을 골라 뒀어요. 자소서에 쓸 것만 체크하면 카드 초안을 써 드려요.">{b.partial ? `후보 ${cands.length}개 (부분 결과)` : `후보 ${cands.length}개`}</PageTitle>
       <RepoContext name={name} note="카드로 만들 경험을 선택하세요."
         right={<Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>분석 기준</Button>} />
 
@@ -227,7 +227,7 @@ function CandidateRow({ c, disabled, selected, onToggle, onExclude, expanded, on
           <h3 className="cand__title">{c.title}</h3>
           <div className="cand__actions">
             {used && c.usedByCardId && <Link to={`/cards/${c.usedByCardId}`} className="btn btn--outline btn--sm">카드 보기</Link>}
-            {!used && <button type="button" className="btn btn--text btn--sm cand__exclude" disabled={disabled} onClick={onExclude}>제외</button>}
+            {!used && <button type="button" className="btn btn--ghost btn--sm cand__exclude" disabled={disabled} onClick={onExclude}><X size={13} aria-hidden />제외</button>}
           </div>
         </div>
         <div className="cand__badges">

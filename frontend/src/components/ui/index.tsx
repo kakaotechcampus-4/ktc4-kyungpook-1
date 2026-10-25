@@ -1,6 +1,6 @@
 import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, ComponentPropsWithRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Check as CheckIcon, FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, type LucideIcon } from 'lucide-react';
+import { Check as CheckIcon, ExternalLink, FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, type LucideIcon } from 'lucide-react';
 import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
@@ -10,7 +10,8 @@ const STAR_LABELS: Record<StarField, string> = { S: '상황', T: '과제', A: '�
 
 // ───────── Button ─────────
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'outline' | 'text' | 'danger';
+  /** ghost = 아이콘 + 옅은 배경. 글자처럼 보이면 안 되는 보조 행동(새로고침, 복사, 수정)에 쓴다. */
+  variant?: 'primary' | 'outline' | 'ghost' | 'text' | 'danger';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   loading?: boolean;
 };
@@ -97,18 +98,23 @@ export const StarDots = ({ filled, low, showLabels }: { filled: StarField[]; low
   </span>
 );
 
-/** 근거 스트립 — 커밋은 링크(잉크 다크), 사용자 발화는 흰 카드. 무채색. */
+/**
+ * 근거 스트립 — 커밋은 "무엇을 했는지"(커밋 메시지)가 먼저, sha 는 뒤에 작게. 처음 보는 사람에게 해시는 뜻이 없다.
+ * 링크가 없는 근거는 눌러도 갈 곳이 없으니 링크로 만들지 않는다(`#` 으로 새 탭이 열리던 문제).
+ */
 export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string }) {
   if (e.type === 'COMMIT') {
-    return (
-      <a className="evidence" href={e.url ?? '#'} target="_blank" rel="noreferrer" title={e.url ?? undefined}>
+    const body = (
+      <>
         <GitCommitHorizontal size={13} className="evidence__icon" aria-hidden />
-        <span className="evidence__label">{evidenceTypeLabel.COMMIT}</span>
-        <span className="evidence__sha">{e.sha}</span>
-        {e.snippet && <span className="evidence__snippet">"{e.snippet}"</span>}
-        <span className="evidence__arrow" aria-hidden>↗</span>
-      </a>
+        <span className="evidence__snippet">{e.snippet ?? '커밋 기록'}</span>
+        <span className="evidence__meta"><span className="evidence__label">{evidenceTypeLabel.COMMIT}</span>{e.sha && <span className="evidence__sha">{e.sha.slice(0, 7)}</span>}{e.url && <span>GitHub에서 보기</span>}</span>
+        {e.url && <ExternalLink size={14} className="evidence__arrow" aria-hidden />}
+      </>
     );
+    return e.url
+      ? <a className="evidence evidence--commit" href={e.url} target="_blank" rel="noreferrer" title={e.sha ?? undefined}>{body}</a>
+      : <div className="evidence evidence--commit">{body}</div>;
   }
   return (
     <div className="evidence evidence--user">

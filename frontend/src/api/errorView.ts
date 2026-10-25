@@ -1,6 +1,7 @@
 import { ApiError, AuthError, ContractError } from './client';
 
-export type ErrorView = { title: string; message: string; canRetry: boolean };
+/** action = 다시 시도 말고 사용자가 해야 할 일. 화면이 그 버튼을 붙인다. */
+export type ErrorView = { title: string; message: string; canRetry: boolean; action?: 'reconnect-github' };
 
 export const isRateLimitError = (error: unknown): error is ApiError & { code: 'RATE_LIMITED' } => error instanceof ApiError && error.code === 'RATE_LIMITED';
 /** #335: minute quota waits are <=60s; longer waits are the Seoul daily quota. */
@@ -27,6 +28,9 @@ export function errorView(error: unknown, context: 'read' | 'write' = 'write'): 
     }
     if (error.code === 'IDEMPOTENCY_KEY_MISMATCH') {
       return { title: '분석 요청이 충돌했어요', message: '다른 저장소에 사용된 요청이에요. 저장소 목록에서 대상을 다시 선택해 주세요.', canRetry: false };
+    }
+    if (error.code === 'GITHUB_UNAUTHORIZED') {
+      return { title: 'GitHub 연결을 다시 해 주세요', message: '연결이 끊겼거나 권한이 만료됐어요. 다시 연결하면 지금 화면으로 돌아와요.', canRetry: false, action: 'reconnect-github' };
     }
     if (error.status === 404) return { title: '요청한 항목을 찾을 수 없어요', message: '삭제되었거나 접근할 수 없는 항목이에요. 목록에서 다시 확인해 주세요.', canRetry: false };
     if (error.status === 403) return { title: '접근 권한을 확인해 주세요', message: '이 작업을 진행할 권한이 없어요. 연결 상태를 확인해 주세요.', canRetry: false };

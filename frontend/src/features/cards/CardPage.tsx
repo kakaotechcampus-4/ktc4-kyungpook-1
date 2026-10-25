@@ -1,3 +1,4 @@
+import { Copy, EyeOff, History, ListChecks } from 'lucide-react';
 import { DraftProgress } from './DraftProgress';
 import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
@@ -78,7 +79,7 @@ export function CardPage() {
   const card = q.data!;
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel }];
+  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel }];
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
@@ -181,12 +182,12 @@ export function CardPage() {
   return (
     <main className="main main--footer main--tight">
       <Breadcrumb items={crumbs} />
-      <CardHeader card={card} right={<>{metadataAction}{card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="t-14 w-600 c-2">후보 목록 ›</Link>}</>} />
+      <CardHeader card={card} right={<>{metadataAction}{card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--ghost"><ListChecks size={15} aria-hidden />후보 목록</Link>}</>} />
       {partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">E-7</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
-            <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).join(' · ')} 는 채워졌고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => d.field).join(' · ')} 은 아직입니다</span>
+            <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).join(', ')} 는 채워졌고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => d.field).join(', ')} 은 아직입니다</span>
             <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈칸은 답변하거나 직접 작성해 주세요.'}</span>
           </div>
           {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{d.field} 칸만 다시 생성</Button>)}
@@ -209,10 +210,10 @@ export function CardPage() {
         <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <div className="stack" style={{ gap: 6 }}>
             <span className="t-12 w-600 c-3">카드 관리</span>
-            <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-              <Button variant="text" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
-              <Button variant="text" size="sm" onClick={() => setSp({ mode: 'mask' })}>정보 가리기{card.maskRules.length ? ` (${card.maskRules.length})` : ''}</Button>
-              <Button variant="text" size="sm" onClick={exportMd}>복사</Button>
+            <div className="card-tools">
+              <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
+              <Button variant="ghost" size="sm" onClick={() => setSp({ mode: 'mask' })}><EyeOff size={15} aria-hidden />정보 가리기{card.maskRules.length ? ` (${card.maskRules.length})` : ''}</Button>
+              <Button variant="ghost" size="sm" onClick={exportMd}><Copy size={15} aria-hidden />복사</Button>
             </div>
           </div>
         </div>
@@ -221,7 +222,7 @@ export function CardPage() {
       </div>
 
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
-      <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(' · ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'}>
+      <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
         <Button variant="outline" onClick={() => setSp({ mode: 'edit' })}>직접 수정</Button>
         <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>

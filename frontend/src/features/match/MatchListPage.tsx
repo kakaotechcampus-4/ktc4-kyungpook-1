@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
-import { ArrowRight, Briefcase, CalendarClock, Clock3 } from "lucide-react";
+import { ArrowRight, Briefcase, CalendarClock, Clock3, RefreshCw } from "lucide-react";
 import { MetaItem } from "@/components/MetaItem";
 import { Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { isDemo } from '@/mock/browser';
 import { Fit, MatchFailure, MatchUnavailable } from "./shared";
+import { AiWait } from '@/components/ui/AiWait';
 import {
   categoryLabel,
   deadlineLabel,
@@ -69,7 +70,7 @@ export function MatchListPage() {
   return (
     <main className="main matching-page">
       <PageTitle right={isDemo ? '예시 공고' : undefined}>공고 매칭</PageTitle>
-      <p className="match-intro">채용 조건과 연결되는 내 경험을 확인하세요.</p>
+      <p className="match-intro">채용 조건과 연결되는 내 경험을 확인하세요. 등급은 조건마다 근거로 이어진 확정 카드가 많을수록 높아요(A가 가장 높음).</p>
       <div className="match-controls">
         <SearchField
           value={filters.q}
@@ -109,7 +110,7 @@ export function MatchListPage() {
           ]}
         />
       </div>
-      {matches.isPending && <Skeleton h={180} />}
+      {matches.isPending && <><AiWait label="확정한 카드와 공고 조건을 하나씩 맞춰 보는 중이에요" /><div className="match-grid">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={200} />)}</div></>}
       {matches.isError && (
         <MatchFailure
           error={matches.error}
@@ -134,10 +135,13 @@ export function MatchListPage() {
           <div className="match-results">
             <span role="status">공고 {list.length}건</span>
             <Button
-              variant="text"
+              variant="ghost"
+              size="sm"
               onClick={() => void matches.refetch()}
-              loading={matches.isFetching}
+              disabled={matches.isFetching}
+              aria-busy={matches.isFetching || undefined}
             >
+              <RefreshCw size={14} className={matches.isFetching ? "spin" : undefined} aria-hidden />
               매칭 새로고침
             </Button>
           </div>
@@ -182,7 +186,7 @@ export function MatchListPage() {
                   </div>
                   <div className="match-counts">
                     <span>
-                      {item.required.total === 0 ? '필수 조건 없음 · 우대 기준' : '필수 '}
+                      {item.required.total === 0 ? '필수 조건 없음, 우대 조건만' : '필수 '}
                       {item.required.total > 0 &&
                       <strong>
                         {item.required.met} / {item.required.total}

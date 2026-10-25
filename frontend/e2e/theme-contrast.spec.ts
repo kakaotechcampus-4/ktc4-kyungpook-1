@@ -27,7 +27,8 @@ for (const theme of ['light', 'dark'] as const) {
       return { background: root.backgroundColor, action: button.backgroundColor, selection: selected.backgroundColor, surface: card.backgroundColor };
     });
     expect(palette.background).toBe(theme === 'light' ? 'rgb(242, 247, 244)' : 'rgb(18, 20, 15)');
-    expect(palette.action).toBe(theme === 'light' ? 'rgb(70, 112, 78)' : 'rgb(168, 196, 124)');
+    // 주 행동은 포인트 색(--accent-point): 라이트 #4F7F24, 다크 말차 하이라이트
+    expect(palette.action).toBe(theme === 'light' ? 'rgb(79, 127, 36)' : 'rgb(168, 196, 124)');
     expect(palette.selection).toBe(theme === 'light' ? 'rgb(223, 237, 227)' : 'rgb(31, 39, 25)');
     expect(palette.surface).toBe(theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(26, 29, 22)');
     const contrasts = await page.evaluate(readContrasts, [

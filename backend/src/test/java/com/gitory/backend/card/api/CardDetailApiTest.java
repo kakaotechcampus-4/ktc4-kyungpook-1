@@ -57,7 +57,8 @@ class CardDetailApiTest {
             "interviewTurns", "confirmedAt", "createdAt"};
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",
             "result"};
-    private static final String[] EVIDENCE_KEYS = {"field", "type", "authoredBy", "sha", "url", "snippet", "turnNo"};
+    private static final String[] EVIDENCE_KEYS = {"field", "type", "authoredBy", "sha", "url", "snippet", "committedAt",
+            "changedFiles", "turnNo"};
 
     @Container
     @ServiceConnection
@@ -215,8 +216,28 @@ class CardDetailApiTest {
                         tuple("R", "COMMIT", "AI"));
         assertThat(evidence).allSatisfy(row -> assertThat(row).containsOnlyKeys(EVIDENCE_KEYS));
         assertThat(evidence.subList(0, 2)).allSatisfy(row -> assertThat(row)
-                .containsEntry("sha", null).containsEntry("url", null).containsEntry("snippet", null));
+                .containsEntry("sha", null).containsEntry("url", null).containsEntry("snippet", null)
+                .containsEntry("committedAt", null).containsEntry("changedFiles", null));
         assertThat(evidence).extracting(row -> row.get("turnNo")).containsExactly(null, 1, null, null, null);
+
+    }
+
+    @Test
+    @DisplayName("커밋 근거는 저장된 커밋의 메시지 첫 줄·작성 시각·바뀐 파일 수를 싣는다")
+    void commitEvidenceCarriesMessageDateAndFileCount() throws Exception {
+
+        jdbc.update("UPDATE git_commit SET message = ?, authored_at = ?, changed_files = ? WHERE id = ?",
+                "fix: 만료 직전 토큰 갱신\n\n자세한 설명", java.sql.Timestamp.from(java.time.Instant.parse("2026-05-12T03:00:00Z")),
+                3, firstCommit);
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long action = fixtures.insertStatement(cardId, 1, "A", "커밋으로 쓴 행동", "COMMIT", "HIGH");
+        fixtures.insertStatementEvidence(action, firstCommit);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence[0].snippet").value("fix: 만료 직전 토큰 갱신"))
+                .andExpect(jsonPath("$.data.evidence[0].committedAt").value("2026-05-12T03:00:00Z"))
+                .andExpect(jsonPath("$.data.evidence[0].changedFiles").value(3));
 
     }
 

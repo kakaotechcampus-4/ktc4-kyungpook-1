@@ -13,6 +13,7 @@
     <a href="#주요-기능">주요 기능</a> ·
     <a href="#서비스-구성">서비스 구성</a> ·
     <a href="#기술-스택">기술 스택</a> ·
+    <a href="#로컬에서-실행하기">로컬에서 실행하기</a> ·
     <a href="#팀-소개">팀 소개</a> ·
     <a href="./docs/README.md">개발 문서</a>
   </p>
@@ -125,6 +126,50 @@ GitHub 연결 → 저장소 선택 → 경험 후보 확인 → STAR 초안 → 
 | Database | PostgreSQL 17 |
 | Infrastructure | AWS EC2 · Docker Compose · Caddy · GitHub Actions · CloudWatch |
 | Test | Vitest · Playwright · JUnit · Testcontainers · pytest |
+
+## 로컬에서 실행하기
+
+### 필요한 도구
+
+| 도구 | 버전 | 쓰는 곳 |
+| --- | --- | --- |
+| Node.js | 22 (`frontend/.nvmrc`, CI 는 22·24) | 프론트엔드 · E2E |
+| JDK | 21 | 백엔드 |
+| Python | 3.11 | AI 서버 |
+| Docker · `docker compose` | — | 로컬 DB, 백엔드 시험(Testcontainers), 전체 스택 |
+
+### 가장 빠른 체험 — 프론트 데모 모드
+
+백엔드 없이 브라우저 안의 목 API 로 모든 화면이 돕니다. PR 0건 저장소, 후보 0개, 수집 실패 같은 상황도 샘플로 볼 수 있습니다([목 시나리오](./frontend/README.md#목-시나리오-데모용)).
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
+
+설치 없이 보려면 [샘플 데모](https://gitory-prototypes.vercel.app)를 엽니다.
+
+### 전체 스택 띄우기
+
+| 방법 | 명령 | 언제 쓰나 |
+| --- | --- | --- |
+| 가짜 GitHub·LLM 스택 | `docker compose -f e2e/compose.yaml -p gitory-e2e up -d --build --wait` (저장소 루트) | 키 없이 db·ai·backend·web 을 운영과 같은 Dockerfile 로 띄웁니다. 화면은 `http://localhost:8088` 입니다. 끝나면 `down -v` 로 내립니다. [E2E README](./e2e/README.md) |
+| 운영 구성 | `cd deploy && cp .env.example .env` 로 값을 채운 뒤 `docker compose up -d --build` | 진짜 GitHub OAuth App 과 LLM 게이트웨이 키가 필요합니다. 내 컴퓨터에서는 `SITE_ADDRESS=localhost` 로 둡니다. 변수 설명은 `deploy/.env.example` 주석, 절차는 [배포 가이드](./docs/DEPLOYMENT.md) 4절에 있습니다. |
+| 파트별로 따로 | AI 는 uvicorn, 백엔드는 `./gradlew bootRun` | 한 파트만 고칠 때 씁니다. [BE–AI 연결 문서](./docs/BE_AI_INTEGRATION.md)의 로컬 실행 절을 따릅니다. |
+
+### 파트별 시험
+
+CI 와 같은 명령입니다.
+
+| 파트 | 명령 |
+| --- | --- |
+| Frontend | `cd frontend && npm ci && npm run typecheck && npm test` · 화면 E2E 는 `npx playwright install chromium` 뒤 `npm run e2e:static` |
+| Backend | `cd backend && ./gradlew build` (Docker 실행 중이어야 합니다) |
+| AI | `cd ai && python -m pip install -r requirements-dev.txt && python -m pytest -q` |
+| E2E | 위 가짜 스택을 띄운 뒤 `cd e2e && npm ci && npx playwright install chromium && npm test` |
+
+자세한 내용은 [Frontend README](./frontend/README.md) · [AI README](./ai/README.md) · [Backend 아키텍처](./backend/ARCHITECTURE.md)의 로컬 실행 절 · [E2E README](./e2e/README.md)에 있습니다. 백엔드 README 는 작성 중입니다(#441).
 
 ## 팀 소개
 

@@ -40,7 +40,7 @@ FE 2 · BE 2 · AI 2. 리드는 그 파트를 혼자 개발하지 않고 기술 
 | 프론트엔드 | ✅ React 19 + TypeScript + Vite · TanStack Query · React Router |
 | AI 서비스 | ✅ FastAPI · Pydantic · OpenAI SDK · **무상태(DB 없음)** |
 | LLM | ✅ `gpt-5.6-luna` 하나(Elice ML API 게이트웨이). 모델 6종을 견줘 비용 1/7~1/10 에 품질이 같거나 나아서 고름(10/01) |
-| 매칭 검색 | ✅ 임베딩 `text-embedding-3-small` + Chroma 색인 · 🟡 한국어 모델 교체 검토([#320](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/issues/320)) |
+| 매칭 검색 | ✅ Chroma 색인 · 임베딩 기본은 Chroma 기본 모델 `all-MiniLM-L6-v2`(설정 `GITORY_EMBEDDING_PROVIDER=openai` 면 `text-embedding-3-small`) · 🟡 한국어 모델 교체 검토([#320](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/issues/320)) |
 | 배포 | ✅ 카테캠 EC2 1대(t3.medium) · Docker Compose · Caddy(HTTPS·정적 파일·`/api` 전달) · develop 머지 시 자동 배포 |
 | 운영 | ✅ CloudWatch 로그·에러 경보 · 매일 DB 백업 · Redis 는 사용자별 호출 제한에만 |
 

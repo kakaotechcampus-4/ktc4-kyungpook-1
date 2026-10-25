@@ -2,7 +2,7 @@ import { Pencil } from 'lucide-react';
 import { applyMask } from '@/lib/mask';
 export { applyMask } from '@/lib/mask';
 import type { Card, StarField } from '@/api/schemas';
-import { Badge, Button, EvidenceStrip, StarKey } from '@/components/ui';
+import { Badge, Button, EvidenceList, StarKey } from '@/components/ui';
 import { dropReasonLabel, fieldKey, starFieldName, starFieldShort, interviewActionLabel } from '@/lib/labels';
 
 /**
@@ -57,7 +57,7 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
               {onAsk && <Button variant="outline" size="sm" className="right" aria-label={`${starFieldShort[field]} 답변하기`} onClick={onAsk}>{interviewActionLabel}</Button>}
             </div>
           )}
-          {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
+          <EvidenceList items={ev} label={starFieldName[field]} sentence={shown} />
         </>
       )}
     </section>

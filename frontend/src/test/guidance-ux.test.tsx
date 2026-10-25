@@ -6,7 +6,7 @@ import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
 import { keys } from '@/api/keys';
 import { Evidence, Me } from '@/api/schemas';
-import { Button, EvidenceStrip } from '@/components/ui';
+import { Button, EvidenceList, EvidenceStrip } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { GithubBanner } from '@/components/layout/GithubBanner';
@@ -73,6 +73,27 @@ describe('근거는 해시보다 내용이 먼저 (#437 화면 쪽)', () => {
     render(<EvidenceStrip e={commit({ url: null })} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.getByText('로그인 세션 처리 추가')).toBeInTheDocument();
+  });
+});
+
+describe('근거는 원할 때 팝업으로 본다', () => {
+  const many = Array.from({ length: 7 }, (_, i) => commit({ sha: `c0ffee${i}`, snippet: `커밋 ${i + 1}`, url: `https://github.com/o/r/commit/c0ffee${i}` }));
+
+  it('화면에는 개수만 담은 버튼 하나, 누르면 문장과 근거 7개가 팝업에 보인다', () => {
+    render(<EvidenceList items={many} label="행동" sentence="인터셉터로 재발급을 붙였다" />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '근거 커밋 7개 확인하기' }));
+    const dialog = screen.getByRole('dialog', { name: '행동 근거' });
+    expect(dialog).toHaveTextContent('인터셉터로 재발급을 붙였다');
+    expect(dialog.querySelectorAll('a.evidence')).toHaveLength(7);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('직접 답한 근거는 따로 센다', () => {
+    const said = Evidence.parse({ field: 'A', type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: 1 });
+    render(<EvidenceList items={[many[0], said]} />);
+    expect(screen.getByRole('button', { name: '근거 커밋 1개, 내 답변 1개 확인하기' })).toBeInTheDocument();
   });
 });
 

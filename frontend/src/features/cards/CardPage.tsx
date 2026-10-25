@@ -1,4 +1,4 @@
-import { Copy, EyeOff, History, ListChecks } from 'lucide-react';
+import { Copy, EyeOff, History, ListChecks, Printer } from 'lucide-react';
 import { DraftProgress } from './DraftProgress';
 import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
@@ -7,7 +7,7 @@ import { CardTags } from '@/components/cards/CardTags';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { useCard, useRegenerateField, useReopen } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
-import { Badge, Breadcrumb, Button, EvidenceStrip, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
+import { Badge, Breadcrumb, Button, EvidenceList, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
 import { toast } from '@/lib/toast';
@@ -128,8 +128,6 @@ export function CardPage() {
         )}
         <CardHeader card={card} right={<>
           <Button size="sm" onClick={exportMd} title="마스킹 적용된 표시값을 마크다운으로 복사">복사</Button>
-          <Button variant="outline" size="sm" onClick={print} title="면접 직전 복습용 인쇄">인쇄</Button>
-          <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
           <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast('다시 편집할 수 있습니다. 확정 버전은 히스토리에 남습니다.'); } })}>수정하기</Button>
         </>} />
         <div className="two-col two-col--340">
@@ -140,21 +138,27 @@ export function CardPage() {
               return (
                 <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했습니다</span>}
-                  {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
+                  <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
               );
             })}
           </div>
           <aside className="stack card-review-aside" style={{ gap: 16 }}>
+            {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 받을 질문, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
             <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
               <span className="w-600" style={{ fontSize: 13.5 }}>이 카드로 받을 수 있는 질문</span>
-              {interviewQuestions(card).map((qq) => <div key={qq} className="row" style={{ gap: 8, alignItems: 'flex-start' }}><span className="c-3">·</span><span className="t-12l c-2">{qq}</span></div>)}
+              <ul className="aside-list">{interviewQuestions(card).map((qq) => <li key={qq} className="t-12l c-2">{qq}</li>)}</ul>
             </div>
-            <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
-              <span className="w-600" style={{ fontSize: 13.5 }}>출처</span>
-              {[['후보', srcLabel], ['레포', repoName ?? '—'], ['커밋 근거', `${card.evidence.filter((e) => e.type === 'COMMIT').length}건`], ['내가 말한 것', `${card.evidence.filter((e) => e.type !== 'COMMIT').length}건`], ['마스킹', card.maskRules.length ? `규칙 ${card.maskRules.length}개` : '없음'], ['확정', card.confirmedAt ? ymd(card.confirmedAt) : '—']].map(([k, v]) => (
-                <div key={k} className="row t-12"><span className="c-2">{k}</span><span className="right w-600">{v}</span></div>
-              ))}
+            <div className="card stack" style={{ gap: 12, padding: '16px 18px' }}>
+              <div className="stack" style={{ gap: 4 }}>
+                <span className="t-12 w-600 c-3">출처</span>
+                <span className="t-12l">{[repoName, srcLabel].filter(Boolean).join(', ') || '직접 작성'}</span>
+                <span className="t-12 c-2">근거 커밋 {card.evidence.filter((e) => e.type === 'COMMIT').length}건, 내가 말한 것 {card.evidence.filter((e) => e.type !== 'COMMIT').length}건{card.maskRules.length ? `, 가린 정보 ${card.maskRules.length}개` : ''}</span>
+              </div>
+              <div className="card-tools">
+                <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
+                <Button variant="ghost" size="sm" onClick={print} title="면접 직전 복습용 인쇄"><Printer size={15} aria-hidden />인쇄</Button>
+              </div>
             </div>
             <CardNavigation cardId={cardId} />
           </aside>

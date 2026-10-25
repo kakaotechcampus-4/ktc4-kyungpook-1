@@ -1,9 +1,10 @@
-import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, ComponentPropsWithRef } from 'react';
+import { useState, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type ComponentPropsWithRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Check as CheckIcon, ExternalLink, FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, type LucideIcon } from 'lucide-react';
 import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
+import { Modal } from './Modal';
 
 const cx = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
 const STAR_LABELS: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
@@ -122,6 +123,34 @@ export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string
       <span className="evidence__label">{evidenceTypeLabel[e.type]}</span>
       <span className="grow" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{turnText ?? (e.turnNo ? `${e.turnNo}번째 답변` : '직접 작성한 내용')}</span>
     </div>
+  );
+}
+
+/**
+ * 한 칸의 근거 — 화면에는 "근거 N개 확인하기" 버튼만 두고, 누르면 팝업에서 정리된 근거를 본다.
+ * 실제 레포에선 한 칸에 근거 커밋이 7개씩 붙기도 해서 다 펼치면 문장보다 근거 띠가 화면을 차지했다.
+ * 근거가 있다는 사실(개수)은 늘 보이고, 내용은 원할 때만. 더 자세히는 팝업 안의 GitHub 링크(diff)로 간다.
+ * 인쇄(면접 직전 복습용)에는 팝업이 없으니 근거를 본문에 그대로 찍는다.
+ */
+export function EvidenceList({ items, label, sentence }: { items: EvidenceT[]; label?: string; sentence?: string | null }) {
+  const [open, setOpen] = useState(false);
+  if (!items.length) return null;
+  const commits = items.filter((e) => e.type === 'COMMIT').length;
+  const said = items.length - commits;
+  const count = [commits && `근거 커밋 ${commits}개`, said && `내 답변 ${said}개`].filter(Boolean).join(', ');
+  return (
+    <>
+      <button type="button" className="evidence-open" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        <GitCommitHorizontal size={14} aria-hidden />{count} 확인하기
+      </button>
+      <div className="evidence-print">{items.map((e, i) => <EvidenceStrip key={i} e={e} />)}</div>
+      {open && (
+        <Modal title={label ? `${label} 근거` : '근거'} sub={sentence ?? undefined} width={600} onClose={() => setOpen(false)}>
+          <p className="evidence-dialog__lead">이 문장을 받치는 기록이에요. 자세한 변경 내용은 "GitHub에서 보기"로 확인할 수 있어요.</p>
+          <div className="evidence-dialog__list">{items.map((e, i) => <EvidenceStrip key={i} e={e} />)}</div>
+        </Modal>
+      )}
+    </>
   );
 }
 

@@ -58,6 +58,19 @@
 .card-tools { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .card-tools .btn { justify-content: flex-start; width: 100%; }
 
+.aside-list { display: flex; flex-direction: column; gap: 6px; padding-left: 16px; list-style: disc; }
+.aside-list li::marker { color: var(--text-tertiary); }
+
+/* ───────── 근거: 버튼 하나 + 팝업 ───────── */
+.evidence-open { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; min-height: 36px; padding: 6px 12px; border-radius: var(--control-radius); background: var(--evidence-commit-bg); border: 1px solid var(--border-default); color: var(--evidence-commit-text); font-size: 12.5px; font-weight: var(--control-weight); }
+.evidence-open svg { color: var(--evidence-commit-label); }
+.evidence-open:hover { border-color: var(--border-selected); }
+.evidence-print { display: none; }
+.evidence-dialog__lead { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+.evidence-dialog__list { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 767px) { .evidence-open { align-self: stretch; justify-content: center; min-height: var(--control-touch-size); } }
+@media print { .evidence-open { display: none; } .evidence-print { display: flex; flex-direction: column; gap: 6px; } }
+
 /* ───────── AI 대기 한 줄 ───────── */
 .ai-wait { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border-radius: var(--radius-lg); background: var(--bg-subtle); border: 1px solid var(--border-default); }
 .ai-wait__dots { display: inline-flex; gap: 4px; padding-top: 7px; flex: 0 0 auto; }

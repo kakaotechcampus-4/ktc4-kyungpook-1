@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { errorView } from '@/api/errorView';
 import { useAnswerInterview, useAskInterview, useCard, useInterview } from '@/api/queries';
 import { StarField as StarFieldSchema, type EvidenceType, type StarField } from '@/api/schemas';
-import { Badge, Breadcrumb, Button, EvidenceStrip, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
+import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldName, starFieldShort } from '@/lib/labels';
 import { CONFIG } from '@/lib/config';
@@ -101,7 +101,7 @@ export function InterviewPage() {
                   className={`${!t ? 'star-read__row--gap' : ''} ${pending ? 'star-read__row--now' : ''}`}
                   metadata={pending && <Badge kind="PR">지금 채우는 칸</Badge>}>
                   {t ? <p className="star__text">{t}</p> : <span className="c-3" style={{ fontSize: 13 }}>{pending ? '질문에 답하면 이 칸에 저장돼요' : '비어 있음'}</span>}
-                  {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
+                  <EvidenceList items={ev} label={starFieldName[f]} sentence={t} />
                 </StarRow>
               );
             })}

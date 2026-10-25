@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { keys } from '@/api/keys';
 import { isBlankCardText, type Card, type DraftFields, type StarField } from '@/api/schemas';
-import { Badge, Button, Chip, EvidenceStrip, Input, StickyFooter } from '@/components/ui';
+import { Badge, Button, Chip, EvidenceList, Input, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, fieldKey, starFieldName } from '@/lib/labels';
 import { useMask, useSaveDraft } from '@/api/queries';
 import { toast } from '@/lib/toast';
@@ -87,7 +87,7 @@ export function EditMode({ card, onDone, initialField }: { card: Card; onDone: (
               metadata={dirty && <><Badge kind="CAUTION">고친 칸</Badge><button type="button" className="star-row__undo t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button></>}
               ref={(element) => { fields.current[f] = element; }} maxLength={CONFIG.MANUAL_FIELD_MAX} disabled={canceling} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
               placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]}>
-              {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
+              <EvidenceList items={ev} label={starFieldName[f]} sentence={draft[f] || null} />
               {dirty && ev.some((e) => e.type === 'COMMIT') && (
                 <div className="star__why"><strong>커밋에 없는 내용은 근거가 뒷받침하지 못해요</strong></div>
               )}

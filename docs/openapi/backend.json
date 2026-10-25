@@ -1324,7 +1324,7 @@
         "description" : "Job 상세. 부분 결과는 별도 상태가 아니라 partial로 표시합니다.",
         "properties" : {
           "errorCode" : {
-            "enum" : [ "GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING", "INTERNAL_ERROR", "COLLECTION_CAPPED", "AI_UNAVAILABLE" ],
+            "enum" : [ "GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "GITHUB_UNAUTHORIZED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING", "INTERNAL_ERROR", "COLLECTION_CAPPED", "AI_UNAVAILABLE" ],
             "type" : "string"
           },
           "finishedAt" : {

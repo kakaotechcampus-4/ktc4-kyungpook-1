@@ -315,6 +315,11 @@ public class JobRunner {
 
     private static JobErrorCode errorCodeOf(RuntimeException failure) {
 
+        // 토큰이 거절되거나 없어진 경우는 다시 해도 같아서 일시 장애와 나눠 다시 연결하라고 알린다
+        if (failure instanceof AiClientException ai && "GITHUB_UNAUTHORIZED".equals(ai.errorCode())) {
+            return JobErrorCode.GITHUB_UNAUTHORIZED;
+        }
+
         // AI 는 GitHub 쪽 실패에도 다시 해 보라고 알리므로 GitHub 코드를 먼저 가른다
         if (failure instanceof AiClientException ai && GITHUB_FAILURES.contains(ai.errorCode())) {
             return JobErrorCode.GITHUB_UNAVAILABLE;

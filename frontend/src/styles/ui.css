@@ -190,3 +190,14 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .select-menu__check { position: absolute; right: 12px; display: flex; color: var(--text-strong); }
 .select-menu__scroll { display: flex; align-items: center; justify-content: center; height: 24px; background: var(--bg-surface); color: var(--text-secondary); }
 .kbd { display: inline-block; padding: 0 5px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; font: 600 10.5px/16px ui-monospace, monospace; color: var(--text-secondary); }
+
+/* 아이콘 + 글자 한 덩어리(MetaItem) — 정보 종류가 아이콘으로 먼저 보이게 한다 */
+.meta-i { display: inline-flex; align-items: center; gap: 5px; }
+.meta-i > svg { flex: none; color: var(--text-tertiary); }
+.meta-i--strong { color: var(--text-primary); font-weight: 600; }
+.cand__meta--icons { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.repo-row__stats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.mine-chip > svg { flex: none; align-self: center; }
+.match-meta, .match-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.match-card__go { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text-accent); font-weight: 600; }
+.prompt__icon { flex: none; color: var(--text-tertiary); }

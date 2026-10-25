@@ -83,7 +83,8 @@ export function HomePage() {
           if (!e.currentTarget.contains(e.relatedTarget)) setSuggestionsOpen(false);
         }}>
           <div className="prompt__row">
-            <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); setSuggestionsOpen(true); }} placeholder="레포 이름을 적어 보세요" aria-label="레포 검색"
+            <Search size={18} className="prompt__icon" aria-hidden />
+            <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); setSuggestionsOpen(true); }} placeholder="레포 검색" aria-label="레포 검색"
               role="combobox" aria-autocomplete="list" aria-expanded={showSuggestions} aria-controls={suggestionId}
               aria-activedescendant={showSuggestions && sugg.length ? optionId(activeIndex) : undefined}
               onFocus={() => setSuggestionsOpen(true)}

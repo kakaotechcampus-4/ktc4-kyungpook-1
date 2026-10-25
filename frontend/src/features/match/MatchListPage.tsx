@@ -1,6 +1,8 @@
 import { useLayoutEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
+import { ArrowRight, Briefcase, CalendarClock, Clock3 } from "lucide-react";
+import { MetaItem } from "@/components/MetaItem";
 import { Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
 import { Select } from "@/components/ui/Select";
@@ -175,8 +177,8 @@ export function MatchListPage() {
                     <Fit value={item.fit} />
                   </div>
                   <div className="match-meta">
-                    <span>{categoryLabel[item.category]}</span>
-                    <span>{experienceLabel(item.experience)}</span>
+                    <MetaItem icon={Briefcase}>{categoryLabel[item.category]}</MetaItem>
+                    <MetaItem icon={Clock3}>{experienceLabel(item.experience)}</MetaItem>
                   </div>
                   <div className="match-counts">
                     <span>
@@ -194,8 +196,8 @@ export function MatchListPage() {
                     </span>
                   </div>
                   <div className="match-card__foot">
-                    <span>{deadlineLabel(item.source.expiresAt)}</span>
-                    <span>조건·근거 보기 →</span>
+                    <MetaItem icon={CalendarClock}>{deadlineLabel(item.source.expiresAt)}</MetaItem>
+                    <span className="match-card__go">조건·근거 보기<ArrowRight size={14} aria-hidden /></span>
                   </div>
                 </Link>
               ))}

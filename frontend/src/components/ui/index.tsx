@@ -145,8 +145,9 @@ export function EvidenceList({ items, label, sentence }: { items: EvidenceT[]; l
       </button>
       <div className="evidence-print">{items.map((e, i) => <EvidenceStrip key={i} e={e} />)}</div>
       {open && (
-        <Modal title={label ? `${label} 근거` : '근거'} sub={sentence ?? undefined} width={600} onClose={() => setOpen(false)}>
-          <p className="evidence-dialog__lead">이 문장을 받치는 기록이에요. 자세한 변경 내용은 "GitHub에서 보기"로 확인할 수 있어요.</p>
+        <Modal title={label ? `${label} 근거` : '근거'} width={600} onClose={() => setOpen(false)}>
+          {/* 문장은 본문 맨 위에 두어 근거 목록과 같이 스크롤된다 — 머리에 고정하면 가로 폰에서 목록 자리가 거의 없다 */}
+          {sentence && <p className="evidence-dialog__sentence">{sentence}</p>}
           <div className="evidence-dialog__list">{items.map((e, i) => <EvidenceStrip key={i} e={e} />)}</div>
         </Modal>
       )}

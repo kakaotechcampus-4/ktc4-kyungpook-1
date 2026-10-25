@@ -1175,6 +1175,10 @@
             "description" : "커밋 근거의 커밋 메시지 첫 줄이고, 사용자 근거나 메시지가 없으면 null",
             "type" : "string"
           },
+          "summary" : {
+            "description" : "커밋 근거의 diff 한 줄 요약(카드 초안 때 AI 가 diff 를 읽고 씀)이고, 아직 없거나 사용자 근거면 null",
+            "type" : "string"
+          },
           "turnNo" : {
             "description" : "되묻기 질문에 답해 칸의 글이 된 근거에만 그 질문 번호가 있고 그 밖에는 null",
             "format" : "int32",

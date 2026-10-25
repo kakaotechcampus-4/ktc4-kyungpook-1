@@ -105,7 +105,7 @@ curl --fail http://localhost:8080/actuator/health/readiness
 curl --fail http://localhost:8080/actuator/health/liveness
 ```
 
-AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반환한다. BE readiness는 DB와 AI의 이 응답을 확인한다. AI 연결이 끊기거나 서비스 식별자가 다르면 readiness는 DOWN·HTTP 503이 된다. liveness는 BE 프로세스 상태를 검사하므로 AI 장애에 따라 BE를 재시작시키지 않는다. 헬스 상세 내용은 공개하지 않는다.
+AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반환한다. BE readiness는 DB만 확인한다(`management.endpoint.health.group.readiness.include: readinessState,db`). AI 가 꺼져도 로그인·저장소 목록은 받아야 하기 때문이다. AI 의 이 응답은 `/actuator/health` 전체 응답(`AiHealthIndicator`)에만 반영되어, AI 연결이 끊기거나 서비스 식별자가 다르면 전체 health 가 DOWN 이 된다. liveness는 BE 프로세스 상태를 검사하므로 AI 장애에 따라 BE를 재시작시키지 않는다. 헬스 상세 내용은 공개하지 않는다.
 
 이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 연결 안 됨·시간 초과·AI가 다시 해 보라고 알린 실패(경험 그룹화 포함)를 다시 시도할 수 있는 `AI_UNAVAILABLE`, 그 밖의 오류를 `INTERNAL_ERROR`로 Job을 실패 처리한다.
 
@@ -141,7 +141,7 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 
 ## 검증
 
-2026-10-04 기준 최종 BE `build`의 **155개 테스트 통과**, AI **137 passed / 1 live skipped**를 확인했다. 임시 PostgreSQL·실제 Spring·FastAPI를 기동해 BE Swagger와 AI 읽기 화면, AI 명세 프록시, export 스크립트를 검증했다. 프록시 JSON은 AI 오프라인 export와 같았다. AI 중지 후 BE readiness는 **503 DOWN**, liveness는 **200 UP**, AI 명세 프록시는 정제된 **502**를 반환했다. 검증용 프로세스·DB는 종료했으며 운영 배포와 실제 OAuth/GitHub 호출은 수행하지 않았다.
+2026-10-04 기준 최종 BE `build`의 **155개 테스트 통과**, AI **137 passed / 1 live skipped**를 확인했다. 임시 PostgreSQL·실제 Spring·FastAPI를 기동해 BE Swagger와 AI 읽기 화면, AI 명세 프록시, export 스크립트를 검증했다. 프록시 JSON은 AI 오프라인 export와 같았다. AI 중지 후 BE readiness는 **503 DOWN**(당시 설정 — 지금은 readiness 에서 AI 를 뺐다), liveness는 **200 UP**, AI 명세 프록시는 정제된 **502**를 반환했다. 검증용 프로세스·DB는 종료했으며 운영 배포와 실제 OAuth/GitHub 호출은 수행하지 않았다.
 
 BE는 JDK 21 Gradle 빌드·테스트, 모듈 경계, 실제 HTTP stub, 공유 수집 계약 fixture, PostgreSQL 기반 Swagger·세션·CSRF 통합 테스트로 확인한다. AI는 전체 pytest, 오프라인 OpenAPI export, 실제 uvicorn HTTP 서버의 health 테스트를 실행한다. 신규 라이브러리 검증으로 임시 복사본에서 Swagger CSRF 설정을 끄면 interceptor 검사 실패, AI health 등록을 제거하면 uvicorn HTTP 검사 실패를 확인했으며 원본 테스트는 통과했다. 실제 GitHub 호출은 토큰을 명시한 live 테스트로 별도 분리되어 있으며 이번 로컬 검증에서는 호출하지 않는다.
 

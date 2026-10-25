@@ -57,8 +57,8 @@ GitHub 수집을 직접 호출할 때 실제 토큰을 예시·스크린샷·exp
 `GET /health` 응답은 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`입니다.
 이는 FastAPI 프로세스 생존만 뜻합니다. GitHub 연결, LLM 설정, 카드 생성 준비 상태를
 보장하지 않습니다. A 그룹화·diff 근거·STAR 초안은 LLM 환경변수가 없거나 호출에
-실패하면 503 `LLM_UNAVAILABLE`입니다. B 질문 생성은 템플릿, 답변 평가는 규칙 기반이며 LLM 판정기는 연결되지
-않았습니다.
+실패하면 503 `LLM_UNAVAILABLE`입니다. B 되묻기는 다음 칸·질문·예상 답을 LLM 이 정하고(`services/interview_llm.py`), LLM 이 실패하거나
+설정이 없으면 틀 질문으로 대신합니다. 답변 평가는 아직 규칙 기반이며 LLM 판정기는 연결되지 않았습니다.
 
 서버·DB·GitHub·LLM 없이 문서 JSON을 내보낼 수 있습니다. 저장소 루트에서 실행합니다.
 

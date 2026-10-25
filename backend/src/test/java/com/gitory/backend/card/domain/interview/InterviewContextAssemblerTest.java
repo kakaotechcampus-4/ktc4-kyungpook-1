@@ -277,7 +277,7 @@ class InterviewContextAssemblerTest {
 
     private static CommitSummary summary(Long id, String sha, String message) {
 
-        return new CommitSummary(id, sha, message, null, null);
+        return new CommitSummary(id, sha, message, null, null, null);
 
     }
 

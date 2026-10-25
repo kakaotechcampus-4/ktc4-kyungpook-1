@@ -14,8 +14,9 @@
 .menu-item[aria-current="page"] svg { color: var(--accent-point); }
 .mobile-nav a[aria-current="page"] svg { color: var(--accent-point); }
 /* 첫 방문 홈: 입력칸 정중앙 뒤에 옅은 빛. 예전 그라데이션은 중심이 섹션 맨 위라 글 위 얼룩이 됐다 — 중심을 입력칸에 둔다 */
-.home-page:not(.home-page--returning) .prompt { position: relative; isolation: isolate; }
-.home-page:not(.home-page--returning) .prompt::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 58%; width: min(900px, 120%); height: 360px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, var(--accent-point-soft), transparent); pointer-events: none; animation: halo-in .8s ease-out both; }
+/* 빛은 상자 폭을 넘지 않는다 — 넘치면 320px 화면에 가로 스크롤이 생긴다(e2e:real 320px 검사) */
+.home-page:not(.home-page--returning) .prompt { position: relative; isolation: isolate; overflow-x: clip; }
+.home-page:not(.home-page--returning) .prompt::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 58%; width: min(900px, 100%); height: 360px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, var(--accent-point-soft), transparent); pointer-events: none; animation: halo-in .8s ease-out both; }
 @keyframes halo-in { from { opacity: 0; } }
 
 /* ───────── 다크 대비 보강 ───────── */

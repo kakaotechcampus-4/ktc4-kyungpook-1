@@ -26,7 +26,7 @@ from schemas.analysis import (
 from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
 from services.analysis_pipeline import AnalysisPipeline
 from services.diff_analyzer import DiffAnalysisError
-from services.github_collector import GithubApiError, GithubResourceNotFound
+from services.github_collector import GithubApiError, GithubResourceNotFound, GithubUnauthorized
 from services.grouping_llm import GroupingLlmConfigError, GroupingLlmError
 from services.llm_settings import LLMConfigError
 from services.star_generator import StarGenerationError
@@ -139,6 +139,9 @@ async def collect_diff_evidence(
     except GithubResourceNotFound as exc:
         _log_diff_evidence_failure(request, "RESOURCE_NOT_FOUND", False, exc, started)
         return _error(started, 404, "RESOURCE_NOT_FOUND", "저장소·PR·commit이 없거나 현재 권한으로 읽을 수 없습니다.", False)
+    except GithubUnauthorized as exc:
+        _log_diff_evidence_failure(request, "GITHUB_UNAUTHORIZED", False, exc, started)
+        return _error(started, 401, "GITHUB_UNAUTHORIZED", "GitHub 이 토큰을 거절했습니다. GitHub 을 다시 연결해야 합니다.", False)
     except GithubApiError as exc:
         retryable = exc.secondary_rate_limited or exc.status_code not in _GITHUB_PERMANENT_STATUSES
         _log_diff_evidence_failure(request, "GITHUB_API_ERROR", retryable, exc, started)

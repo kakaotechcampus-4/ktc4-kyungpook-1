@@ -74,6 +74,10 @@ class GithubResourceNotFound(GithubApiError):
     """저장소가 없거나 현재 토큰으로 읽을 수 없음."""
 
 
+class GithubUnauthorized(GithubApiError):
+    """GitHub 이 토큰을 거절했다(401). 만료·취소된 토큰이라 다시 시도해도 같고 다시 연결해야 한다."""
+
+
 class _RateLimited(RuntimeError):
     """호출자가 지금까지 모은 값을 부분 결과로 바꾸기 위한 내부 신호."""
 
@@ -831,6 +835,8 @@ class GithubCollector:
                 and exc.response.headers.get("X-RateLimit-Remaining") == "0"
             ):
                 raise _RateLimited() from exc
+            if status == 401:
+                raise GithubUnauthorized("GitHub 이 토큰을 거절했습니다.", status) from exc
             if status == 404:
                 raise GithubResourceNotFound(
                     "저장소가 없거나 현재 권한으로 읽을 수 없습니다.", status

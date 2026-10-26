@@ -4,6 +4,7 @@ import { Check as CheckIcon, ExternalLink, FolderGit2, GitCommitHorizontal, Inbo
 import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
+import { ymd } from '@/lib/format';
 import { Modal } from './Modal';
 
 const cx = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
@@ -105,11 +106,20 @@ export const StarDots = ({ filled, low, showLabels }: { filled: StarField[]; low
  */
 export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string }) {
   if (e.type === 'COMMIT') {
+    // 첫 줄은 무엇을 했는지: diff 요약(#456)이 있으면 요약, 없으면 커밋 메시지. 요약을 쓰면 원래 커밋 메시지는 둘째 줄에 작게.
+    const headline = e.summary ?? e.snippet ?? '커밋 기록';
+    const message = e.summary && e.snippet ? e.snippet : null;
+    const when = e.committedAt ? ymd(e.committedAt) : '';
     const body = (
       <>
         <GitCommitHorizontal size={13} className="evidence__icon" aria-hidden />
-        <span className="evidence__snippet">{e.snippet ?? '커밋 기록'}</span>
-        <span className="evidence__meta"><span className="evidence__label">{evidenceTypeLabel.COMMIT}</span>{e.sha && <span className="evidence__sha">{e.sha.slice(0, 7)}</span>}{e.url && <span>GitHub에서 보기</span>}</span>
+        <span className="evidence__snippet">{headline}</span>
+        {message && <span className="evidence__message">{message}</span>}
+        <span className="evidence__meta">
+          <span className="evidence__label">{evidenceTypeLabel.COMMIT}</span>{e.sha && <span className="evidence__sha">{e.sha.slice(0, 7)}</span>}
+          {when && <span>{when}</span>}{e.changedFiles != null && <span>파일 {e.changedFiles}개</span>}
+          {e.url && <span>GitHub에서 보기</span>}
+        </span>
         {e.url && <ExternalLink size={14} className="evidence__arrow" aria-hidden />}
       </>
     );

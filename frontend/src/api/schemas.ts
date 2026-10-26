@@ -241,6 +241,11 @@ export const Evidence = z.object({
   url: z.string().nullable(),
   snippet: z.string().nullable(),
   turnNo: z.number().nullable(),
+  // #455·#456: 커밋 근거에만 오는 부가 정보. 이전 서버·이전 카드는 생략하거나 null 이라 모두 선택이다.
+  /** AI 가 커밋 diff 를 읽고 쓴 한 줄 요약. 화면은 summary ?? snippet(커밋 메시지) 순서로 보여 준다 */
+  summary: z.string().nullish(),
+  committedAt: z.string().nullish(),
+  changedFiles: z.number().int().nonnegative().nullish(),
 });
 export type Evidence = z.infer<typeof Evidence>;
 

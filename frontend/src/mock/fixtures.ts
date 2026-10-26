@@ -194,9 +194,12 @@ filler.forEach(([type, ref, title, reason, score, codeRatio], i) => {
   });
 });
 
-const ev = (field: string, sha: string, snippet: string, owner = 'hong-dev', repo = 'auth-service') => ({
-  field, type: 'COMMIT', authoredBy: 'AI', sha, url: gh(owner, repo, sha), snippet, turnNo: null,
+const ev = (field: string, sha: string, snippet: string, owner = 'hong-dev', repo = 'auth-service', extra: { summary?: string; committedAt?: string; changedFiles?: number } = {}) => ({
+  field, type: 'COMMIT', authoredBy: 'AI', sha, url: gh(owner, repo, sha), snippet, turnNo: null, ...extra,
 });
+/** #455·#456 이후 서버처럼 요약·시각·파일 수가 붙은 근거. 샘플 카드(card_01)에만 쓴다 — 실측 카드(card_05)에 지어 넣지 않는다 */
+const evFull = (field: string, sha: string, snippet: string, summary: string, committedAt: string, changedFiles: number) =>
+  ev(field, sha, snippet, 'hong-dev', 'auth-service', { summary, committedAt, changedFiles });
 const said = (field: string, turnNo: number) => ({ field, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
 
 export const seedCards = [
@@ -211,7 +214,12 @@ export const seedCards = [
       action: '인증 모듈의 세션 처리를 담당했다',
       result: '재로그인 요청이 줄었다',
     }],
-    evidence: [ev('S', 'a3f21c9', '로그인 세션 처리 추가'), ev('A', 'a3f21c9', '로그인 세션 처리 추가'), ev('A', '9c02de1', '리프레시 토큰 검증 분리'), ev('R', '7f3e9a2', '세션 만료 로그 추가')],
+    evidence: [
+      evFull('S', 'a3f21c9', '로그인 세션 처리 추가', '세션 쿠키를 발급하고 만료 시 로그인 화면으로 보내는 필터를 추가', '2024-03-14T05:20:00Z', 4),
+      evFull('A', 'a3f21c9', '로그인 세션 처리 추가', '세션 쿠키를 발급하고 만료 시 로그인 화면으로 보내는 필터를 추가', '2024-03-14T05:20:00Z', 4),
+      evFull('A', '9c02de1', '리프레시 토큰 검증 분리', '리프레시 토큰 검증을 인증 필터에서 떼어 별도 서비스로 옮김', '2024-03-18T09:02:00Z', 3),
+      ev('R', '7f3e9a2', '세션 만료 로그 추가'),
+    ],
     lowConfidenceFields: [{ field: 'R', why: '수치가 없고 근거 커밋이 1건뿐입니다' }],
     droppedFields: [{ field: 'T', reason: 'NO_EVIDENCE' }],
     maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: daysAgo(1),

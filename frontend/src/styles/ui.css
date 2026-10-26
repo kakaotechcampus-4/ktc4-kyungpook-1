@@ -120,7 +120,8 @@ button.chip { min-height: var(--control-touch-size); }
 .evidence__sha { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-weight: 500; white-space: normal; overflow-wrap: anywhere; min-width: 0; flex: 0 0 auto; }
 .evidence__snippet { color: var(--evidence-commit-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .evidence--commit .evidence__snippet { grid-column: 2; grid-row: 1; font-size: 13px; line-height: 20px; font-weight: 500; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-.evidence__meta { grid-column: 2; grid-row: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; font-size: 11px; line-height: 16px; color: var(--evidence-commit-muted); }
+.evidence__message { grid-column: 2; font-size: 12px; line-height: 18px; color: var(--evidence-commit-muted); overflow-wrap: anywhere; }
+.evidence__meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; font-size: 11px; line-height: 16px; color: var(--evidence-commit-muted); }
 .evidence__meta .evidence__sha { flex: 0 1 auto; }
 .evidence--commit .evidence__arrow { grid-column: 3; grid-row: 1; margin: 3px 0 0; }
 .evidence__arrow { margin-left: auto; color: var(--evidence-commit-muted); }

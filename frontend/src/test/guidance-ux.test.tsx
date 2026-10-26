@@ -69,6 +69,21 @@ describe('근거는 해시보다 내용이 먼저 (#437 화면 쪽)', () => {
     expect(link.textContent!.indexOf('로그인')).toBeLessThan(link.textContent!.indexOf('a3f21c9'));
   });
 
+  it('diff 요약(#456)이 있으면 요약이 첫 줄, 커밋 메시지는 둘째 줄, 날짜와 파일 수(#455)는 sha 옆에', () => {
+    const { container } = render(<EvidenceStrip e={commit({ summary: '세션 쿠키 발급 필터를 추가', committedAt: '2024-03-14T05:20:00Z', changedFiles: 4 })} />);
+    expect(container.querySelector('.evidence__snippet')).toHaveTextContent('세션 쿠키 발급 필터를 추가');
+    expect(container.querySelector('.evidence__message')).toHaveTextContent('로그인 세션 처리 추가');
+    expect(container.querySelector('.evidence__meta')).toHaveTextContent(/2024.*파일 4개/);
+  });
+
+  it('요약·시각·파일 수가 없는 이전 서버 응답도 그대로 읽고 커밋 메시지를 보여 준다', () => {
+    const old = Evidence.parse({ field: 'A', type: 'COMMIT', authoredBy: 'AI', sha: 'a3f21c9', url: null, snippet: '로그인 세션 처리 추가', turnNo: null });
+    const { container } = render(<EvidenceStrip e={old} />);
+    expect(container.querySelector('.evidence__snippet')).toHaveTextContent('로그인 세션 처리 추가');
+    expect(container.querySelector('.evidence__message')).toBeNull();
+    expect(container.querySelector('.evidence__meta')).not.toHaveTextContent('파일');
+  });
+
   it('링크가 없는 근거는 눌러서 # 으로 가지 않는다', () => {
     render(<EvidenceStrip e={commit({ url: null })} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();

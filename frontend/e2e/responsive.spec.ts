@@ -108,7 +108,8 @@ test.describe('반응형 레이아웃', () => {
 
     for (const path of ['/', '/cards']) {
       await page.goto(path);
-      await expect(page.locator('.experience-list')).toHaveCount(1);
+      // 홈은 경험 목록 하나, 카드 목록은 레포별 묶음 안에 같은 경험 목록을 쓴다
+      await expect(page.locator(path === '/' ? '.experience-list' : '.card-groups')).toHaveCount(1);
       await expect(page.locator('.experience-item').first()).toBeVisible();
       const itemShadow = await page.locator('.experience-item').first().evaluate((el) => getComputedStyle(el).boxShadow);
       expect(itemShadow).toBe('none');

@@ -61,6 +61,17 @@
 .aside-list { display: flex; flex-direction: column; gap: 6px; padding-left: 16px; list-style: disc; }
 .aside-list li::marker { color: var(--text-tertiary); }
 
+/* ───────── 카드 화면: 제목 옆 연필, 바깥 링크 ───────── */
+.title-edit { display: inline-grid; place-items: center; width: var(--control-touch-size); height: var(--control-touch-size); margin-left: -6px; border-radius: var(--control-radius); color: var(--text-tertiary); }
+.page-title:has(> .title-edit) { flex-wrap: nowrap; align-items: flex-start; }
+.page-title:has(> .title-edit) h1 { min-width: 0; flex: 0 1 auto; width: auto; } /* 모바일의 h1 width:100% 를 풀어 연필이 제목 바로 옆에 오게 */
+.title-edit { flex: 0 0 auto; margin-top: -2px; }
+.title-edit:hover, .title-edit:focus-visible { color: var(--text-accent); background: var(--bg-subtle); }
+.star__edit { color: var(--text-accent); gap: 4px; font-size: 13px; padding-inline: 10px; }
+.star__edit:hover:not(:disabled) { color: var(--text-primary); }
+.crumb__ext, .aside-link { display: inline-flex; align-items: center; gap: 3px; color: inherit; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.crumb__ext:hover, .aside-link:hover { color: var(--text-accent); text-decoration-color: currentColor; }
+
 /* ───────── 근거: 버튼 하나 + 팝업 ───────── */
 .evidence-open { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; min-height: 36px; padding: 6px 12px; border-radius: var(--control-radius); background: var(--evidence-commit-bg); border: 1px solid var(--border-default); color: var(--evidence-commit-text); font-size: 12.5px; font-weight: var(--control-weight); }
 .evidence-open svg { color: var(--evidence-commit-label); }
@@ -72,7 +83,7 @@
 @media print { .evidence-open { display: none; } .evidence-print { display: flex; flex-direction: column; gap: 6px; } }
 
 /* ───────── AI 대기 한 줄 ───────── */
-.ai-wait { display: flex; align-items: flex-start; gap: 12px; padding: 16px 18px; border-radius: var(--radius-lg); background: var(--bg-subtle); border: 1px solid var(--border-default); }
+.ai-wait { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; } /* 감싸는 상자 없이 점과 문장만 — 카드 안에 상자가 또 생기지 않게 */
 .ai-wait__dots { display: inline-flex; gap: 4px; padding-top: 7px; flex: 0 0 auto; }
 .ai-wait__dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-accent); animation: ai-dot 1.2s ease-in-out infinite; }
 .ai-wait__dots i:nth-child(2) { animation-delay: .15s; }

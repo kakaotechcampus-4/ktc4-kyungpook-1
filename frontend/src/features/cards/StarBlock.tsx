@@ -32,7 +32,7 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
         <StarKey field={field} dropped={isDropped} />
         <span className="star__name" id={`star-${field}`}>{starFieldName[field]}</span>
         {low && !isDropped && <Badge kind="CAUTION">확인 필요</Badge>}
-        {!isDropped && onEdit && <Button variant="ghost" size="sm" className="star__edit right" aria-label={`${starFieldShort[field]} 수정`} onClick={onEdit}><Pencil size={13} aria-hidden />수정</Button>}
+        {!isDropped && onEdit && <Button variant="text" size="sm" className="star__edit right" aria-label={`${starFieldShort[field]} 수정`} onClick={onEdit}><Pencil size={14} aria-hidden />수정</Button>}
       </div>
       {isDropped ? (
         <>
@@ -44,6 +44,8 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
             </span>
             <span className="right row" style={{ gap: 8 }}>
               {dropped?.reason === 'TIMEOUT' && onRegenerate && <Button variant="outline" size="sm" onClick={onRegenerate}>{field} 칸만 다시 생성</Button>}
+              {/* 하단 "직접 수정"을 없앴으니 빈 칸도 여기서 바로 쓸 수 있어야 한다 */}
+              {onEdit && <Button variant="text" size="sm" className="star__edit" aria-label={`${starFieldShort[field]} 직접 쓰기`} onClick={onEdit}><Pencil size={14} aria-hidden />직접 쓰기</Button>}
               {onAsk && <Button variant="outline" size="sm" aria-label={`${starFieldShort[field]} 답변하기`} onClick={onAsk}>{interviewActionLabel}</Button>}
             </span>
           </div>

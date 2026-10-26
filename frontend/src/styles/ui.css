@@ -114,7 +114,7 @@ button.chip { min-height: var(--control-touch-size); }
 .star-key--sm { width: 22px; height: 22px; border-radius: 5px; font-size: 10.5px; }
 .evidence { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--evidence-commit-bg); color: var(--evidence-commit-text); font-size: 11.5px; line-height: 16px; font-weight: 500; text-decoration: none; }
 /* 커밋 근거: 1행 = 무엇을 했는지(메시지), 2행 = 커밋 sha·GitHub 링크 안내. 아이콘·화살표는 1행에 고정. */
-.evidence--commit { display: grid; grid-template-columns: 13px minmax(0, 1fr) 16px; column-gap: 8px; row-gap: 2px; align-items: start; min-height: var(--control-touch-size); padding: 10px 12px; }
+.evidence--commit { display: grid; grid-template-columns: 13px minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: start; min-height: var(--control-touch-size); padding: 10px 12px; }
 .evidence--commit .evidence__icon { margin-top: 3px; }
 .evidence__label { font-size: 10px; font-weight: 600; color: var(--evidence-commit-label); flex: 0 0 auto; }
 .evidence__sha { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-weight: 500; white-space: normal; overflow-wrap: anywhere; min-width: 0; flex: 0 0 auto; }
@@ -124,6 +124,9 @@ button.chip { min-height: var(--control-touch-size); }
 .evidence__meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; font-size: 11px; line-height: 16px; color: var(--evidence-commit-muted); }
 .evidence__meta .evidence__sha { flex: 0 1 auto; }
 .evidence--commit .evidence__arrow { grid-column: 3; grid-row: 1; margin: 3px 0 0; }
+.evidence__go { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; gap: 4px; margin-top: 1px; font-size: 11.5px; font-weight: 600; color: var(--evidence-commit-label); white-space: nowrap; }
+.evidence__kind { padding: 1px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-default); font-size: 10.5px; font-weight: 600; color: var(--text-strong); }
+a.evidence--commit:hover .evidence__go { color: var(--text-accent); text-decoration: underline; text-underline-offset: 3px; }
 .evidence__arrow { margin-left: auto; color: var(--evidence-commit-muted); }
 a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .evidence--user { background: var(--evidence-user-bg); color: var(--evidence-user-text); border: 1px solid var(--border-default); }

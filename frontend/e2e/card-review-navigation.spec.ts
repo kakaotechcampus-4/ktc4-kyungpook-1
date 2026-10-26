@@ -85,7 +85,8 @@ test('editing, history and interview roundtrips retain the originating card sequ
   );
   const index = order.indexOf('/cards/card_01');
   await page.locator('.experience-item[href="/cards/card_01"]').click();
-  await page.getByRole('button', { name: '직접 수정', exact: true }).click();
+  // 하단 "직접 수정"은 없앴다 — 칸마다 있는 수정 버튼으로 편집에 들어간다
+  await page.getByRole('button', { name: '상황 수정', exact: true }).click();
   await expect(page.locator('.card-navigation')).toHaveCount(0);
   await page
     .getByRole('button', { name: '저장하고 닫기', exact: true })

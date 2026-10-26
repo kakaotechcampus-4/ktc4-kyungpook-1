@@ -5,6 +5,7 @@ import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
+import { readCommit } from '@/lib/commitMessage';
 import { Modal } from './Modal';
 
 const cx = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
@@ -106,25 +107,27 @@ export const StarDots = ({ filled, low, showLabels }: { filled: StarField[]; low
  */
 export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string }) {
   if (e.type === 'COMMIT') {
-    // 첫 줄은 무엇을 했는지: diff 요약(#456)이 있으면 요약, 없으면 커밋 메시지. 요약을 쓰면 원래 커밋 메시지는 둘째 줄에 작게.
-    const headline = e.summary ?? e.snippet ?? '커밋 기록';
-    const message = e.summary && e.snippet ? e.snippet : null;
+    // 첫 줄은 무엇을 했는지: diff 요약(#456)이 있으면 요약, 없으면 커밋 메시지를 읽기 좋게("feat: ..." → [기능] ...).
+    // 요약이 있으면 원래 커밋은 둘째 줄에 작게. sha·날짜·파일 수는 맨 아래 한 줄로만.
+    const commit = e.snippet ? readCommit(e.snippet) : null;
+    const headline = e.summary ?? commit?.text ?? '커밋 기록';
     const when = e.committedAt ? ymd(e.committedAt) : '';
+    const facts = [when, e.changedFiles != null ? `파일 ${e.changedFiles}개` : ''].filter(Boolean).join(', ');
     const body = (
       <>
         <GitCommitHorizontal size={13} className="evidence__icon" aria-hidden />
         <span className="evidence__snippet">{headline}</span>
-        {message && <span className="evidence__message">{message}</span>}
+        {e.summary && commit && <span className="evidence__message">{commit.text}</span>}
         <span className="evidence__meta">
-          <span className="evidence__label">{evidenceTypeLabel.COMMIT}</span>{e.sha && <span className="evidence__sha">{e.sha.slice(0, 7)}</span>}
-          {when && <span>{when}</span>}{e.changedFiles != null && <span>파일 {e.changedFiles}개</span>}
-          {e.url && <span>GitHub에서 보기</span>}
+          {commit?.kind && <span className="evidence__kind">{commit.kind}</span>}
+          {facts && <span>{facts}</span>}
+          {e.sha && <span className="evidence__sha">{e.sha.slice(0, 7)}</span>}
         </span>
-        {e.url && <ExternalLink size={14} className="evidence__arrow" aria-hidden />}
+        {e.url && <span className="evidence__go" aria-hidden>GitHub<ExternalLink size={13} /></span>}
       </>
     );
     return e.url
-      ? <a className="evidence evidence--commit" href={e.url} target="_blank" rel="noreferrer" title={e.sha ?? undefined}>{body}</a>
+      ? <a className="evidence evidence--commit" href={e.url} target="_blank" rel="noreferrer" title="GitHub에서 이 커밋 열기" aria-label={`${headline}, GitHub에서 커밋 열기`}>{body}</a>
       : <div className="evidence evidence--commit">{body}</div>;
   }
   return (
@@ -166,22 +169,26 @@ export function EvidenceList({ items, label, sentence }: { items: EvidenceT[]; l
 }
 
 // ───────── 페이지 구조 ─────────
-export const Breadcrumb = ({ items }: { items: { label: string; to?: string; state?: unknown }[] }) => (
+/** 경로 표시. href 가 있으면 GitHub 같은 바깥 주소로 새 탭에서 연다(마지막 항목이어도) — "PR #42" 를 누르면 그 PR 로. */
+export const Breadcrumb = ({ items }: { items: { label: string; to?: string; href?: string; state?: unknown }[] }) => (
   <nav className="crumb" aria-label="breadcrumb">
     {items.map((it, i) => {
       const last = i === items.length - 1;
       return (
         <span key={i} className="row" style={{ gap: 8 }}>
-          {it.to && !last ? <Link to={it.to} state={it.state}>{it.label}</Link> : <span className={cx(last && 'crumb__cur')}>{it.label}</span>}
+          {it.href
+            ? <a href={it.href} target="_blank" rel="noreferrer" className={cx('crumb__ext', last && 'crumb__cur')}>{it.label}<ExternalLink size={12} aria-hidden /></a>
+            : it.to && !last ? <Link to={it.to} state={it.state}>{it.label}</Link> : <span className={cx(last && 'crumb__cur')}>{it.label}</span>}
           {!last && <span className="crumb__sep" aria-hidden>›</span>}
         </span>
       );
     })}
   </nav>
 );
-export const PageTitle = ({ children, right, sub, lead }: { children: ReactNode; right?: ReactNode; sub?: ReactNode; lead?: ReactNode }) => (
+/** after = 제목 바로 옆에 붙는 작은 행동(예: 연필). 제목(h1) 밖에 두어 제목의 이름에 섞이지 않는다 */
+export const PageTitle = ({ children, right, sub, lead, after }: { children: ReactNode; right?: ReactNode; sub?: ReactNode; lead?: ReactNode; after?: ReactNode }) => (
   <div className="stack" style={{ gap: 8 }}>
-    <div className="page-title"><h1>{children}</h1>{right && <span className="page-title__right">{right}</span>}</div>
+    <div className="page-title"><h1>{children}</h1>{after}{right && <span className="page-title__right">{right}</span>}</div>
     {sub && <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{sub}</div>}
     {lead && <p className="page-lead">{lead}</p>}
   </div>

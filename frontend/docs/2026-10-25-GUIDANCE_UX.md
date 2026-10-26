@@ -10,6 +10,10 @@
 | AI 를 기다리는 동안 회색 상자만 보임 | 무엇을 하는 중인지 한 문장 + 움직이는 점. 10초가 넘으면 기다리는 이유를 덧붙임 | `AiWait` (되묻기 질문·답변, 분석 시작, 매칭 불러오기) |
 | 실제 레포에선 칸마다 근거 커밋이 7개씩 붙어 근거 띠가 문장보다 화면을 더 차지함 | 칸마다 "근거 커밋 N개 확인하기" 버튼 하나. 누르면 팝업에 그 칸의 문장과 근거 전부, 거기서 "GitHub에서 보기"로 diff. 인쇄에는 근거를 그대로 찍음 | `EvidenceList` |
 | 근거 첫 줄이 커밋 메시지뿐이라 "fix" 같은 커밋은 뜻이 안 통함(운영은 메시지마저 비어 있었음) | 백엔드 #455·#456 의 `summary`·`committedAt`·`changedFiles` 를 선택 필드로 받아 첫 줄은 요약 ?? 커밋 메시지, 요약이 있으면 메시지는 둘째 줄, sha 옆에 날짜와 파일 수. 필드가 없는 이전 서버·이전 카드도 그대로 읽음 | `schemas.ts`, `EvidenceStrip` |
+| 근거 줄의 "feat: ..." 같은 개발자 접두어가 복잡함 | 알려진 접두어는 `[기능]`, `[수정]` 같은 짧은 표시로 바꾸고 첫 글자를 대문자로. 줄 오른쪽 "GitHub ↗"로 누르면 바로 커밋으로 | `readCommit`, `EvidenceStrip` |
+| AI 대기 문구가 회색 상자 안에 있어 카드 안에 상자가 또 생김 | 상자 없이 움직이는 점과 문장만 | `guidance.css` |
+| 카드 화면 버튼이 많음(기본 정보 수정, 직접 수정, 정보 가리기) | 기본 정보 수정은 제목 옆 연필, 하단 직접 수정과 정보 가리기 버튼은 뺌(칸마다 수정, 빈 칸은 직접 쓰기). 칸 수정은 상자 없는 글자 버튼 | `CardPage`, `StarBlock` |
+| 경로의 "PR #42", 출처 레포가 그냥 글자 | GitHub PR, 이슈, 레포로 바로 가는 링크 | `Breadcrumb`, `CardPage` |
 | 확정 카드 화면에 버튼 4개와 출처 표 6줄 | 위에는 복사, 수정하기만. 작성 이력, 인쇄는 오른쪽 카드 관리로, 출처는 두 줄로(확정일은 제목 아래 이미 있음) | `CardPage` |
 | 근거에 커밋 해시가 굵게 먼저 나옴 | 커밋 메시지를 첫 줄에, sha 7자리와 "GitHub에서 보기"는 둘째 줄에 작게 | `EvidenceStrip` |
 | 링크 없는 근거가 `#` 으로 새 탭을 엶 | 링크가 없으면 누를 수 없는 띠로 | `EvidenceStrip` |
@@ -53,6 +57,8 @@
 | --- | --- |
 | 근거 많은 카드(실제 레포 → 버튼 → 팝업) | ![근거 팝업](screenshots/2026-10-25-guidance/20-evidence-popup.png) |
 | 근거 요약·날짜·파일 수 | ![근거 요약](screenshots/2026-10-25-guidance/22-evidence-summary.png) |
+| 카드 화면 정리 | ![카드 화면 정리](screenshots/2026-10-25-guidance/23-card-cleanup.png) |
+| 근거 줄 간결화, 상자 없는 로딩 | ![근거 간결화](screenshots/2026-10-25-guidance/24-evidence-short.png) |
 | 분석 시작 버튼 로딩 | ![분석 시작 버튼](screenshots/2026-10-25-guidance/01-analyze-start-button.png) |
 | 분석 시작 직후 | ![분석 대기](screenshots/2026-10-25-guidance/01-analyze-start-waiting.png) |
 | 되묻기 질문 만드는 중 | ![되묻기 대기](screenshots/2026-10-25-guidance/02-interview-ask.png) |

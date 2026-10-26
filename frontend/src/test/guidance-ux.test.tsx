@@ -6,7 +6,8 @@ import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
 import { keys } from '@/api/keys';
 import { Evidence, Me } from '@/api/schemas';
-import { Button, EvidenceList, EvidenceStrip } from '@/components/ui';
+import { Breadcrumb, Button, EvidenceList, EvidenceStrip } from '@/components/ui';
+import { readCommit } from '@/lib/commitMessage';
 import { AiWait } from '@/components/ui/AiWait';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { GithubBanner } from '@/components/layout/GithubBanner';
@@ -109,6 +110,33 @@ describe('근거는 원할 때 팝업으로 본다', () => {
     const said = Evidence.parse({ field: 'A', type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo: 1 });
     render(<EvidenceList items={[many[0], said]} />);
     expect(screen.getByRole('button', { name: '근거 커밋 1개, 내 답변 1개 확인하기' })).toBeInTheDocument();
+  });
+});
+
+describe('커밋 메시지를 읽기 좋게', () => {
+  it('알려진 접두어는 짧은 한글 표시로, 첫 글자는 대문자로, 끝 마침표는 뺀다', () => {
+    expect(readCommit('feat: complete intro scene')).toEqual({ kind: '기능', text: 'Complete intro scene' });
+    expect(readCommit('fix(auth)!: resolve CS1513 compiler error.')).toEqual({ kind: '수정', text: 'Resolve CS1513 compiler error' });
+    expect(readCommit('refactor: split steps\n\nbody text')).toEqual({ kind: '개선', text: 'Split steps' });
+  });
+
+  it('모르는 형식은 손대지 않는다', () => {
+    expect(readCommit('로그인 세션 처리 추가')).toEqual({ kind: null, text: '로그인 세션 처리 추가' });
+    expect(readCommit('WIP: something')).toEqual({ kind: null, text: 'WIP: something' });
+  });
+
+  it('근거 줄은 접두어 대신 표시를 붙이고 GitHub 로 바로 가는 링크다', () => {
+    const { container } = render(<EvidenceStrip e={commit({ snippet: 'feat: optimize ad popup generation' })} />);
+    expect(container.querySelector('.evidence__snippet')).toHaveTextContent(/^Optimize ad popup generation$/);
+    expect(container.querySelector('.evidence__kind')).toHaveTextContent('기능');
+    expect(screen.getByRole('link', { name: /GitHub에서 커밋 열기/ })).toHaveAttribute('target', '_blank');
+  });
+});
+
+describe('경로 표시의 PR 은 GitHub 로 간다', () => {
+  it('href 가 있으면 마지막 항목도 새 탭 링크다', () => {
+    render(<MemoryRouter><Breadcrumb items={[{ label: '홈', to: '/' }, { label: 'PR #42', href: 'https://github.com/o/r/pull/42' }]} /></MemoryRouter>);
+    expect(screen.getByRole('link', { name: 'PR #42' })).toHaveAttribute('href', 'https://github.com/o/r/pull/42');
   });
 });
 

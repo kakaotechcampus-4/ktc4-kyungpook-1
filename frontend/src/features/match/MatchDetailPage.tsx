@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatch } from "@/api/matching";
-import { PageTitle, Skeleton } from "@/components/ui";
+import { Badge, PageTitle, Skeleton } from "@/components/ui";
+import { cardKindLabel } from "@/lib/labels";
+import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { Fit, MatchFailure, MatchUnavailable } from "./shared";
 import {
@@ -23,6 +26,12 @@ export function MatchDetailPage() {
   const query = useMatch(matchId);
   const detail = query.data;
   useDocumentTitle(detail ? `${detail.company} - ${detail.role}` : "공고 상세");
+  // 다시 불러와도 같은 공고와 등급이면 한 번만 센다
+  const openedId = detail?.id;
+  const openedFit = detail?.fit ?? null;
+  useEffect(() => {
+    if (openedId) track("match_opened", { view: "detail", matchId: openedId, fit: openedFit });
+  }, [openedId, openedFit]);
   if (!matchSupported()) return <MatchUnavailable />;
   return (
     <main className="main matching-page">
@@ -60,6 +69,7 @@ export function MatchDetailPage() {
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn--outline"
+              onClick={() => track("match_source_opened", { matchId: detail.id })}
             >
               공고 원문 보기 ↗
             </a>
@@ -133,9 +143,11 @@ export function MatchDetailPage() {
                                 <Link
                                   to={`/cards/${encodeURIComponent(support.cardId)}`}
                                   className="match-support-link"
+                                  onClick={() => track("match_card_opened", { matchId: detail.id, cardId: support.cardId, field: support.field })}
                                 >
                                   <span className="match-support-title">
                                     {support.cardTitle}
+                                    <Badge kind="NEUTRAL">{cardKindLabel[support.cardKind]}</Badge>
                                     <span>
                                       {support.field === "A" ? "행동" : "결과"}
                                     </span>

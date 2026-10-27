@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
+from api.failure_log import log_failure
 from api.openapi import INVALID_PAYLOAD_RESPONSE
 from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
 from schemas.matching import (
@@ -76,23 +77,24 @@ async def extract_job_posting_detail(
             started, 422, "EVIDENCE_MISMATCH",
             "필수 조건의 근거를 공고 원문에서 확인할 수 없거나 추출된 조건이 모두 빠졌습니다.", False, tool_calls_made=1,
         )
-    except LLMConfigError:
-        logger.warning("공고 조건 추출 실패: LLM 설정 없음", exc_info=True)
+    except LLMConfigError as exc:
+        _log_extraction_failure(request, "LLM_UNAVAILABLE", False, exc, started)
         return _error(
             started, 503, "LLM_UNAVAILABLE", "공고 조건 추출 LLM 설정이 없어 추출할 수 없습니다.", False
         )
-    except (LLMNonRetryableError, LLMStructuredOutputTooLongError):
-        logger.warning("공고 조건 추출 실패: 다시 해도 같은 LLM 오류", exc_info=True)
+    except (LLMNonRetryableError, LLMStructuredOutputTooLongError) as exc:
+        _log_extraction_failure(request, "LLM_UNAVAILABLE", False, exc, started)
         return _error(
             started, 503, "LLM_UNAVAILABLE", "공고 상세 조건을 추출하지 못했습니다.", False, tool_calls_made=1
         )
-    except LLMStructuredCallError:
-        logger.warning("공고 조건 추출 실패: LLM 호출·출력 검증", exc_info=True)
+    except LLMStructuredCallError as exc:
+        _log_extraction_failure(request, "LLM_UNAVAILABLE", True, exc, started)
         return _error(
             started, 503, "LLM_UNAVAILABLE", "공고 상세 조건을 추출하지 못했습니다.", True, tool_calls_made=1
         )
-    except Exception:
-        logger.exception("공고 조건 추출 실패: 예상하지 못한 오류")
+    except Exception as exc:
+        # code=INTERNAL_ERROR 줄이 운영 에러 경보에 걸리므로 traceback 없이도 알림은 그대로 간다
+        _log_extraction_failure(request, "INTERNAL_ERROR", False, exc, started)
         return _error(started, 500, "INTERNAL_ERROR", "공고 조건 추출 중 내부 오류가 발생했습니다.", False)
 
     return Envelope(
@@ -104,6 +106,15 @@ async def extract_job_posting_detail(
             processing_ms=_elapsed_ms(started),
         ),
         error=None,
+    )
+
+
+def _log_extraction_failure(
+    request: JobPostingDetailExtractionRequest, code: str, retryable: bool, exc: Exception, started: float
+) -> None:
+    log_failure(
+        logger, "공고 조건 추출", path="/internal/job-postings/extract", code=code, retryable=retryable,
+        exc=exc, started=started, posting=request.external_posting_id,
     )
 
 

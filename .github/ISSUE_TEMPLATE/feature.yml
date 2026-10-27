@@ -26,7 +26,7 @@ body:
     attributes:
       label: 계약 변경
       description: |
-        API 모양이 바뀌면 `frontend/docs/api-spec.md` 의 어느 절인지 적어 주세요.
+        API 모양이 바뀌면 `frontend/docs/BACKEND_CONTRACT.md` 의 어느 절인지 적어 주세요.
         DB 스키마가 바뀌면 새 Flyway 마이그레이션 번호를 적어 주세요.
         둘 다 없으면 "없음".
     validations:

@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
+from api.failure_log import log_failure
 from api.openapi import INVALID_PAYLOAD_RESPONSE
 from rag.embedding import EmbeddingError, create_text_embedder, embedding_model_name
 from rag.vector_store import ChromaJobCriterionStore
@@ -95,7 +96,7 @@ async def index_job_postings(
     try:
         result = await run_llm_call(MATCHING_EXECUTOR, _index, matcher_factory, request)
     except Exception as exc:
-        return _failure(started, "공고 색인", exc)
+        return _failure(started, "공고 색인", "/internal/matching/postings/index", exc)
     return _success(started, result)
 
 
@@ -113,7 +114,7 @@ async def prune_job_postings(
     try:
         result = await run_llm_call(MATCHING_EXECUTOR, _prune, matcher_factory, request)
     except Exception as exc:
-        return _failure(started, "공고 색인 정리", exc)
+        return _failure(started, "공고 색인 정리", "/internal/matching/postings/prune", exc)
     return _success(started, result, embedded=False)
 
 
@@ -131,7 +132,7 @@ async def search_job_matches(
     try:
         result = await run_llm_call(MATCHING_EXECUTOR, _search, matcher_factory, request)
     except Exception as exc:
-        return _failure(started, "공고 검색", exc)
+        return _failure(started, "공고 검색", "/internal/matching/search", exc)
     return _success(started, result)
 
 
@@ -160,13 +161,14 @@ def _success(started: float, result, embedded: bool = True) -> Envelope:
     )
 
 
-def _failure(started: float, task: str, exc: Exception) -> JSONResponse:
+def _failure(started: float, task: str, path: str, exc: Exception) -> JSONResponse:
     if isinstance(exc, EmbeddingError):
-        logger.warning("%s 실패: 임베딩", task, exc_info=True)
+        log_failure(logger, task, path=path, code="LLM_UNAVAILABLE", retryable=exc.retryable, exc=exc, started=started)
         return _error(
             started, 503, "LLM_UNAVAILABLE", f"{task}에 필요한 임베딩을 만들지 못했습니다.", exc.retryable
         )
-    logger.exception("%s 실패: 예상하지 못한 오류", task)
+    # code=INTERNAL_ERROR 줄이 운영 에러 경보에 걸리므로 traceback 없이도 알림은 그대로 간다
+    log_failure(logger, task, path=path, code="INTERNAL_ERROR", retryable=False, exc=exc, started=started)
     return _error(started, 500, "INTERNAL_ERROR", f"{task} 중 내부 오류가 발생했습니다.", False)
 
 

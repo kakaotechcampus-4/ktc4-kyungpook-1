@@ -239,7 +239,7 @@
   flex-wrap: wrap;
   gap: 8px 12px;
 }
-.match-support-title > span {
+.match-support-title > span:not(.badge) {
   color: var(--text-secondary);
   font-weight: 400;
 }

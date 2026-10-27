@@ -541,6 +541,23 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("GitHub 이 토큰을 거절하면 카드에 GITHUB_UNAUTHORIZED 를 남기고, Job 은 다시 연결해야 하는 GITHUB_UNAUTHORIZED 로 실패한다")
+    void marksTokenRejectionOnCardAndJob() {
+
+        Long first = cardWithCommits(commit(SHA_A, 10, 0));
+        Long second = cardWithCommits(commit(SHA_B, 10, 0));
+        given(activities.diffEvidence(any())).willThrow(new AiClientException("GITHUB_UNAUTHORIZED", false, null));
+
+        runNext();
+
+        assertThat(generationFailureOf(first)).isEqualTo("GITHUB_UNAUTHORIZED");
+        assertThat(generationFailureOf(second)).isEqualTo("GITHUB_UNAUTHORIZED");
+        assertThat(job().getState()).isEqualTo(JobState.FAILED);
+        assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.GITHUB_UNAUTHORIZED);
+
+    }
+
+    @Test
     @DisplayName("다시 해도 같은 AI 오류(콘텐츠 제한·잘못된 응답)로 모든 카드가 실패하면 카드에 INTERNAL_ERROR 를 남기고 Job 은 INTERNAL_ERROR 로 실패한다")
     void failsWithInternalErrorWhenFailureIsNotRetryable() {
 

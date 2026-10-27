@@ -857,8 +857,8 @@
             "type" : "string"
           },
           "draftFailure" : {
-            "description" : "AI 초안을 채우지 못한 이유로, AI_UNAVAILABLE 은 AI 가 잠시 응답하지 못함(다시 하면 될 수 있음)·INTERNAL_ERROR 는 그 밖의 실패다. 실패가 없으면 null 이고, POST /api/cards/{id}/draft/retry 로 다시 만든다",
-            "enum" : [ "AI_UNAVAILABLE", "INTERNAL_ERROR" ],
+            "description" : "AI 초안을 채우지 못한 이유로, GITHUB_UNAUTHORIZED 는 GitHub 이 토큰을 거절함(다시 연결한 뒤 다시 만듦)·AI_UNAVAILABLE 은 AI 가 잠시 응답하지 못함(다시 하면 될 수 있음)·INTERNAL_ERROR 는 그 밖의 실패다. 실패가 없으면 null 이고, POST /api/cards/{id}/draft/retry 로 다시 만든다",
+            "enum" : [ "GITHUB_UNAUTHORIZED", "AI_UNAVAILABLE", "INTERNAL_ERROR" ],
             "type" : [ "string", "null" ]
           },
           "droppedFields" : {

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -24,6 +25,8 @@ from services.job_posting_extractor import (
     JobPostingDetailExtractor,
     JobPostingEvidenceMismatch,
 )
+from services.llm_settings import LLMConfigError
+from services.llm_structured_client import LLMNonRetryableError, LLMStructuredCallError
 
 
 RAW_TEXT = """담당 업무
@@ -402,6 +405,56 @@ def test_detail_extraction_api_maps_fabricated_required_quote_to_evidence_error(
     assert response.json()["error"]["retryable"] is False
     assert all(record.exc_info is None for record in caplog.records)
     assert any("posting=backend-101" in record.getMessage() for record in caplog.records)
+
+
+LEAK = "LEAK-모델-출력-조각"
+
+
+class RaisingExtractor:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def extract(self, request):
+        raise self.error
+
+
+def _caused(error: Exception) -> Exception:
+    # 구조화 출력 검증 실패처럼 원인 예외 문구에 모델 출력이 실린 경우
+    error.__cause__ = ValueError(LEAK)
+    return error
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code", "retryable"),
+    [
+        (_caused(LLMConfigError(LEAK)), 503, "LLM_UNAVAILABLE", False),
+        (_caused(LLMNonRetryableError(LEAK)), 503, "LLM_UNAVAILABLE", False),
+        (_caused(LLMStructuredCallError(LEAK)), 503, "LLM_UNAVAILABLE", True),
+        (_caused(RuntimeError(LEAK)), 500, "INTERNAL_ERROR", False),
+    ],
+    ids=["config", "non-retryable", "call", "unexpected"],
+)
+def test_detail_extraction_failure_logs_one_line_without_model_output(error, status, code, retryable, caplog) -> None:
+    """실패 로그에는 예외 종류만 남기고 예외 문구·traceback 을 싣지 않는다(#421)."""
+    app.dependency_overrides[get_job_posting_extractor] = lambda: RaisingExtractor(error)
+    try:
+        with caplog.at_level(logging.WARNING):
+            response = TestClient(app).post("/internal/job-postings/extract", json=request_payload())
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == status
+    assert response.json()["error"]["code"] == code
+    records = [record for record in caplog.records if record.name == "api.job_postings"]
+    assert len(records) == 1
+    line = records[0].getMessage()
+    assert line.startswith("공고 조건 추출 실패:")
+    assert all(part in line for part in (
+        "path=/internal/job-postings/extract", f"code={code}", f"retryable={str(retryable).lower()}",
+        f"exc={type(error).__name__}", "cause=ValueError", "posting='backend-101'",
+    ))
+    assert LEAK not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
 
 
 def test_job_posting_detail_contract_examples_validate_against_ai_dtos() -> None:

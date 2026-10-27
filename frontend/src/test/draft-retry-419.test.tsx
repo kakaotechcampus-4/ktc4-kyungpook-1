@@ -40,6 +40,14 @@ describe('#419 a card whose AI draft failed can be drafted again', () => {
     await waitFor(() => expect(retry).toHaveBeenCalledWith(card.id));
   });
 
+  it('asks to reconnect GitHub when GitHub rejected the token, and still offers the retry', () => {
+    mount({ ...card, draftFailure: 'GITHUB_UNAUTHORIZED' });
+
+    expect(screen.getByText(/GitHub 연결이 끊겼어요/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'GitHub 다시 연결' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '초안 다시 만들기' })).toBeInTheDocument();
+  });
+
   it('suggests writing the fields by hand for other failures', () => {
     mount({ ...card, draftFailure: 'INTERNAL_ERROR' });
 

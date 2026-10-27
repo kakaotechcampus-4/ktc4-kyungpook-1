@@ -69,14 +69,14 @@ public class AiHttpClient {
         return recorded("/internal/collect", collectionClient.post().uri("/internal/collect")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
-                .body(request));
+                .body(request), null);
     }
 
     /** {@link #collect} 와 같은 수집을 부르고, AI 가 PR·커밋을 하나 읽을 때마다 보내는 진행을 progress 에 넘긴다 */
     public JsonNode collectStreaming(Object request, String githubToken, Consumer<AiProgress> progress) {
 
         requireHeaderSafe(githubToken);
-        return streamingExchange(collectionClient.post().uri("/internal/collect/stream")
+        return recorded("/internal/collect/stream", collectionClient.post().uri("/internal/collect/stream")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
                 .body(request), progress);
@@ -88,7 +88,7 @@ public class AiHttpClient {
 
         requireInternalPath(path);
         RestClient postClient = postClients.computeIfAbsent(readTimeout, timeout -> client(properties, timeout));
-        return streamingExchange(postClient.post().uri(path)
+        return recorded(path, postClient.post().uri(path)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request), progress);
 
@@ -103,7 +103,7 @@ public class AiHttpClient {
         return recorded(path, postClient.post().uri(path)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
-                .body(request));
+                .body(request), null);
 
     }
 
@@ -114,17 +114,20 @@ public class AiHttpClient {
         RestClient postClient = postClients.computeIfAbsent(readTimeout, timeout -> client(properties, timeout));
         return recorded(path, postClient.post().uri(path)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(request));
+                .body(request), null);
 
     }
 
-    /** 응답 형식이 있는 호출을 부르고, 성공·실패와 상관없이 AI 가 준 처리 기록과 함께 한 번 남긴다 */
-    private JsonNode recorded(String path, RestClient.RequestHeadersSpec<?> request) {
+    /**
+     * 응답 형식이 있는 호출을 부르고, 성공·실패와 상관없이 AI 가 준 처리 기록과 함께 한 번 남긴다
+     * progress 가 있으면 진행 스트리밍으로 부르고, 진행 줄이 아니라 마지막 결과 줄의 상태·처리 기록을 남긴다
+     */
+    private JsonNode recorded(String path, RestClient.RequestHeadersSpec<?> request, Consumer<AiProgress> progress) {
 
         long started = System.nanoTime();
         Seen seen = new Seen();
         try {
-            JsonNode data = exchange(request, true, seen);
+            JsonNode data = progress == null ? exchange(request, true, seen) : streamingExchange(request, progress, seen);
             record(path, seen, null, started);
             return data;
         } catch (AiClientException failed) {
@@ -185,13 +188,17 @@ public class AiHttpClient {
      * 한 줄에 JSON 하나인 응답에서 진행 줄은 progress 에 넘기고, 마지막 결과 줄은 스트리밍 없는 응답과 똑같이 검사해 돌려준다
      * 읽을 수 없는 줄은 진행 표시만 빠지도록 버리고, 결과 줄 없이 끝나면 끊긴 응답처럼 다시 시도할 수 있는 실패로 본다
      */
-    private JsonNode streamingExchange(RestClient.RequestHeadersSpec<?> request, Consumer<AiProgress> progress) {
+    private JsonNode streamingExchange(RestClient.RequestHeadersSpec<?> request, Consumer<AiProgress> progress,
+                                       Seen seen) {
         try {
             return request.exchange((ignored, response) -> {
                 int status = response.getStatusCode().value();
+                seen.status = status;
                 if (status < 200 || status >= 300) {
                     // 요청 검증처럼 스트림을 열기 전에 난 실패는 보통 JSON 응답으로 온다
-                    throw httpFailure(status, readOrNull(response.getBody().readAllBytes()));
+                    JsonNode body = readOrNull(response.getBody().readAllBytes());
+                    seen.meta = body == null ? null : body.get("meta");
+                    throw httpFailure(status, body);
                 }
                 BufferedReader lines = new BufferedReader(
                         new InputStreamReader(response.getBody(), StandardCharsets.UTF_8));
@@ -206,7 +213,7 @@ public class AiHttpClient {
                         if ("progress".equals(type)) {
                             progressOf(item).ifPresent(progress);
                         } else if ("result".equals(type)) {
-                            return resultOf(item);
+                            return resultOf(item, seen);
                         }
                     }
                 } catch (IOException | JacksonIOException interrupted) {
@@ -241,9 +248,12 @@ public class AiHttpClient {
         return Optional.of(new AiProgress(step.asString(), done.asInt(), total.isIntegralNumber() ? total.asInt() : null));
     }
 
-    private static JsonNode resultOf(JsonNode item) {
+    // 스트림은 200 으로 열리므로 기록에는 AI 가 결과 줄에 실은 상태와 처리 기록을 남긴다
+    private static JsonNode resultOf(JsonNode item, Seen seen) {
         int status = item.path("status").asInt(0);
         JsonNode body = item.get("body");
+        seen.status = status;
+        seen.meta = body == null ? null : body.get("meta");
         if (status < 200 || status >= 300) {
             throw httpFailure(status, body);
         }

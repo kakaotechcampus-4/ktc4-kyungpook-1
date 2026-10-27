@@ -62,7 +62,7 @@ public class CardDetailService {
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
                 card.areaTags(), card.techTags(), card.getPeriod(), repository, current.getSource(),
                 current.getUpdatedAt(), slots, card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(),
-                candidate, generationOf(card), answeredCount(asked), turnNosOf(slots, asked), notesOf(card),
+                candidate, generationOf(card), card.getGenerationFailure(), answeredCount(asked), turnNosOf(slots, asked), notesOf(card),
                 commitsOf(slots));
 
     }

@@ -183,11 +183,13 @@ on('PATCH', '/cards/:id/metadata', ({ params, body }) => {
   const card = findCard(params[0]);
   if (!card) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (card.status !== 'DRAFT') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
-  const titleProvided = Object.hasOwn(body, 'title'), periodProvided = Object.hasOwn(body, 'period');
-  const parsed = CardMetadataPatch.safeParse(body);
+  // 실서버처럼 null 인 칸은 보내지 않은 것으로 보고, 빈 기간은 지운다(#420)
+  const patch = Object.fromEntries(Object.entries(body).filter(([, value]) => value !== null));
+  const titleProvided = Object.hasOwn(patch, 'title'), periodProvided = Object.hasOwn(patch, 'period');
+  const parsed = CardMetadataPatch.safeParse(patch);
   if (!parsed.success) return fail(400, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
   if (titleProvided) card.title = parsed.data.title!;
-  if (periodProvided) card.period = parsed.data.period!;
+  if (periodProvided) card.period = parsed.data.period || null;
   card.metadataUpdatedAt = now();
   card.updatedAt = card.metadataUpdatedAt;
   return ok({ cardId: card.id, title: card.title, period: card.period ?? null, updatedAt: card.metadataUpdatedAt });

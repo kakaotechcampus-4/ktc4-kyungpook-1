@@ -408,6 +408,46 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("diff 를 읽어 쓴 요약만 그 커밋에 남기고, 커밋 메시지로 대신한 요약과 빈 요약은 남기지 않는다")
+    void storesOnlyDiffSummaries() {
+
+        String shaC = "c".repeat(40);
+        Long commitA = commit(SHA_A, 10, 0);
+        Long commitB = commit(SHA_B, 5, 0);
+        Long commitC = commit(shaC, 3, 0);
+        cardWithCommits(commitA, commitB, commitC);
+        given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(
+                summary(SHA_A, " 세션 저장소를 DB 로 옮겼다 ", DiffEvidenceSource.DIFF),
+                summary(SHA_B, "feat: 세션 저장", DiffEvidenceSource.COMMIT_MESSAGE),
+                summary(shaC, "  ", DiffEvidenceSource.DIFF)), false, null, List.of()));
+        given(star.draft(any())).willReturn(allSlots(SHA_A));
+
+        runNext();
+
+        assertThat(diffSummaryOf(commitA)).isEqualTo("세션 저장소를 DB 로 옮겼다");
+        assertThat(diffSummaryOf(commitB)).isNull();
+        assertThat(diffSummaryOf(commitC)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("이미 요약이 있는 커밋을 다시 요약하면 새 요약으로 바꾼다")
+    void replacesOlderDiffSummary() {
+
+        Long commitA = commit(SHA_A, 10, 0);
+        jdbc.update("UPDATE git_commit SET diff_summary = '옛 요약' WHERE id = ?", commitA);
+        cardWithCommits(commitA);
+        given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(
+                summary(SHA_A, "새 요약", DiffEvidenceSource.DIFF)), false, null, List.of()));
+        given(star.draft(any())).willReturn(allSlots(SHA_A));
+
+        runNext();
+
+        assertThat(diffSummaryOf(commitA)).isEqualTo("새 요약");
+
+    }
+
+    @Test
     @DisplayName("보낸 커밋 중 하나에도 이어지지 않는 문장은 저장하지 않고 그 칸을 근거 없음으로 비운다")
     void dropsSentenceWithoutLinkableEvidence() {
 
@@ -830,6 +870,29 @@ class CardDraftRunnerTest {
 
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT generation_partial FROM card WHERE id = ?",
                 Boolean.class, cardId));
+
+    }
+
+    private static DiffEvidence summary(String sha, String text, DiffEvidenceSource source) {
+
+        return new DiffEvidence(sha, "feat: " + sha.substring(0, 7), LOGIN, "+10/-0", text, source, List.of(), null,
+                List.of());
+
+    }
+
+    private static StarDraft allSlots(String sha) {
+
+        return draftOf(Map.of(
+                StarSlot.S, filled(sha, "상황", StarConfidence.HIGH),
+                StarSlot.T, filled(sha, "과제", StarConfidence.HIGH),
+                StarSlot.A, filled(sha, "행동", StarConfidence.HIGH),
+                StarSlot.R, filled(sha, "결과", StarConfidence.HIGH)));
+
+    }
+
+    private String diffSummaryOf(Long commitId) {
+
+        return jdbc.queryForObject("SELECT diff_summary FROM git_commit WHERE id = ?", String.class, commitId);
 
     }
 

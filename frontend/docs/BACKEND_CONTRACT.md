@@ -163,7 +163,7 @@ Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드�
 **`evidence.authoredBy`**
 
 `AI` | `USER`. **AI 문장은 근거가 1개 이상 필요하고, USER 문장은 커밋·되묻기 근거가 없어도 허용된다.**
-실제 `EvidenceResponse`는 COMMIT이면 AI, USER_STATED/USER_SELECTED이면 USER로 authoredBy를 매핑합니다. 별도 DB 컬럼을 요구하지 않습니다. COMMIT 근거는 연결된 커밋마다 한 줄이고, `sha`는 앞 7자리, `url`은 카드 저장소의 GitHub 커밋 주소입니다. 저장소가 없는 카드나 커밋을 찾지 못한 근거는 `url`(또는 `sha`)이 null이고, 커밋 근거의 `snippet`은 커밋 메시지 첫 줄, `committedAt`은 커밋 작성 시각, `changedFiles`는 바뀐 파일 수이고, 모르면 null입니다. 사용자 근거는 셋 다 null입니다. 근거는 칸마다 AI가 인용한 순서로 내려갑니다. FE는 null인 근거 링크나 턴 번호를 만들어 내지 않습니다. Mock 시드의 알려진 링크·턴 정보는 데모 데이터입니다.
+실제 `EvidenceResponse`는 COMMIT이면 AI, USER_STATED/USER_SELECTED이면 USER로 authoredBy를 매핑합니다. 별도 DB 컬럼을 요구하지 않습니다. COMMIT 근거는 연결된 커밋마다 한 줄이고, `sha`는 앞 7자리, `url`은 카드 저장소의 GitHub 커밋 주소입니다. 저장소가 없는 카드나 커밋을 찾지 못한 근거는 `url`(또는 `sha`)이 null이고, 커밋 근거의 `snippet`은 커밋 메시지 첫 줄, `committedAt`은 커밋 작성 시각, `changedFiles`는 바뀐 파일 수, `summary`는 카드 초안 때 AI가 그 커밋의 diff를 읽고 쓴 한 줄 요약이고, 모르면 null입니다(이 기능 전에 만든 카드는 summary가 null이라 snippet을 대신 보여 줍니다). 사용자 근거는 넷 다 null입니다. 근거는 칸마다 AI가 인용한 순서로 내려갑니다. FE는 null인 근거 링크나 턴 번호를 만들어 내지 않습니다. Mock 시드의 알려진 링크·턴 정보는 데모 데이터입니다.
 API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `USER_SELECTED` 만 쓴다 —
 `user_written`, `inferred` 같은 소문자 내부값은 외부로 내보내지 않는다.
 
@@ -175,7 +175,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
   "period": "자유 글" | null,
   "repo": { "id", "owner", "name" } | null, "candidate": { "id", "type", "ref", "title" } | null,
   "version": { "versionNo", "source": "AI_DRAFT|USER_EDIT|INTERVIEW|MASK|RESTORE", "createdAt", "situation", "task", "action", "result" },  // 칸은 null 가능 = 비운 칸
-  "evidence": [{ "field": "S|T|A|R", "type": "COMMIT|USER_STATED|USER_SELECTED", "authoredBy": "AI|USER", "sha": "7자리" | null, "url": "링크" | null, "snippet": "글" | null, "committedAt": "ISO" | null, "changedFiles": n | null, "turnNo": n | null }],
+  "evidence": [{ "field": "S|T|A|R", "type": "COMMIT|USER_STATED|USER_SELECTED", "authoredBy": "AI|USER", "sha": "7자리" | null, "url": "링크" | null, "snippet": "글" | null, "committedAt": "ISO" | null, "changedFiles": n | null, "summary": "글" | null, "turnNo": n | null }],
   "lowConfidenceFields": [{ "field", "why" }], "droppedFields": [{ "field", "reason": "NO_EVIDENCE|OVERCLAIM|UNSOURCED_NUMBER|TIMEOUT" }],
   "maskRules": [{ "from", "to" }], "generation": { "jobId", "partial" } | null, "interviewTurns", "confirmedAt", "createdAt" }
 ```

@@ -162,7 +162,7 @@ def test_diff_evidence_returns_evidence_without_patch(override) -> None:
         "technical_points": ["OncePerRequestFilter"], "changed_paths": ["Filter.java"], "url": None,
     }
     assert (data["partial"], data["partial_reason"], data["missing_commit_shas"]) == (False, None, [])
-    assert body["meta"]["tool_calls_made"] == 4
+    assert (body["meta"]["github_calls"], body["meta"]["tool_calls_made"], body["meta"]["ended_by"]) == (4, 0, "COMPLETED")
     assert port.tokens == [TOKEN]
     assert port.skip_flags == [True]
     # PR 번호로 커밋을 다시 고르지 않고 본인 커밋 SHA만 조회한다.
@@ -186,6 +186,7 @@ def test_more_than_50_shas_are_cut_and_reported_as_partial(override) -> None:
     response = _post_diff(_diff_body(commit_shas=shas))
 
     assert response.status_code == 200
+    assert response.json()["meta"]["ended_by"] == "PARTIAL"
     data = response.json()["data"]
     assert port.requests[0].commit_shas == shas[:50]
     assert len(data["evidence"]) == 50

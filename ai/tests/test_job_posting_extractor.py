@@ -27,6 +27,7 @@ from services.job_posting_extractor import (
 )
 from services.llm_settings import LLMConfigError
 from services.llm_structured_client import LLMNonRetryableError, LLMStructuredCallError
+from services.usage import record_llm_call
 
 
 RAW_TEXT = """담당 업무
@@ -347,8 +348,16 @@ def test_texts_that_become_equal_after_replacement_are_deduplicated() -> None:
     ]
 
 
-def test_detail_extraction_api_reports_model_usage() -> None:
-    extractor = JobPostingDetailExtractor(FakeExtractionModel(valid_criteria()))
+class RecordingExtractionModel(FakeExtractionModel):
+    """실제 추출 모델처럼 공통 LLM 호출기가 남기는 기록을 남긴다."""
+
+    def extract(self, request):
+        record_llm_call("other-model", 7, 3)
+        return super().extract(request)
+
+
+def test_detail_extraction_api_reports_llm_calls_made_on_the_extraction_thread() -> None:
+    extractor = JobPostingDetailExtractor(RecordingExtractionModel(valid_criteria()))
     app.dependency_overrides[get_job_posting_extractor] = lambda: extractor
     try:
         response = TestClient(app).post(
@@ -360,23 +369,9 @@ def test_detail_extraction_api_reports_model_usage() -> None:
 
     assert response.status_code == 200
     assert response.json()["data"]["content_status"] == "READY"
-    assert response.json()["meta"]["model"] == "gpt-5.6-luna"
-    assert response.json()["meta"]["tool_calls_made"] == 1
-
-
-def test_detail_extraction_api_reports_the_configured_model(monkeypatch) -> None:
-    monkeypatch.setenv("GITORY_JOB_POSTING_MODEL", "other-model")
-    extractor = JobPostingDetailExtractor(FakeExtractionModel(valid_criteria()))
-    app.dependency_overrides[get_job_posting_extractor] = lambda: extractor
-    try:
-        response = TestClient(app).post(
-            "/internal/job-postings/extract",
-            json=request_payload(),
-        )
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.json()["meta"]["model"] == "other-model"
+    meta = response.json()["meta"]
+    assert (meta["model"], meta["llm_calls"], meta["input_tokens"], meta["output_tokens"]) == ("other-model", 1, 7, 3)
+    assert (meta["tool_calls_made"], meta["ended_by"]) == (0, "COMPLETED")
 
 
 def test_detail_extraction_api_maps_fabricated_required_quote_to_evidence_error(caplog) -> None:

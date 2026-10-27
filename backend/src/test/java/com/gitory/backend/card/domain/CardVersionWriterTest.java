@@ -70,7 +70,7 @@ class CardVersionWriterTest {
     @DisplayName("막 저장한 카드의 1번 버전을 받은 출처로, 확정본이 아니고 문장 없는 버전으로 만든다")
     void startFirstCreatesEmptyFirstVersion() {
 
-        Card card = Card.startManual(userId, null, "카드", null, null);
+        Card card = Card.startManual(userId, null, null, "카드", null, null);
         em.persist(card);
 
         CardVersion first = writer.startFirst(card, VersionSource.AI_DRAFT);

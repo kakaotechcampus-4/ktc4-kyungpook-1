@@ -16,6 +16,7 @@ import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiProgress;
@@ -203,6 +204,24 @@ class JobRunnerTest {
         assertThat(duringCollection.get().getFirst()).isEqualTo(new JobStep(JobStepKey.PR_REVIEW, JobStepState.RUNNING, 2, 3));
         assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.SUCCEEDED);
         verify(activities, never()).collect(any());
+
+    }
+
+    @Test
+    @DisplayName("분석 Job 을 도는 동안 부른 AI 호출에는 그 Job 이 붙고, Job 이 끝나면 떼어 낸다")
+    void marksAiCallsWithTheRunningJob() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        AtomicReference<Long> seen = new AtomicReference<>();
+        given(activities.collect(any())).willAnswer(invocation -> {
+            seen.set(AiCallContext.jobId());
+            return activity(null);
+        });
+
+        runNext();
+
+        assertThat(seen.get()).isEqualTo(jobId);
+        assertThat(AiCallContext.jobId()).isNull();
 
     }
 

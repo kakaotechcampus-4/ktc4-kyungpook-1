@@ -19,13 +19,14 @@ from schemas.collection import (
     RepositoryCollectionRequest,
     RepositoryCollectionResult,
 )
-from schemas.common import Envelope, ErrorDetail, Meta
+from schemas.common import Envelope, ErrorDetail
 from services.github_collector import (
     GithubApiError,
     GithubUnauthorized,
     GithubCollector,
     GithubResourceNotFound,
 )
+from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -90,14 +91,11 @@ async def collect_repository_activity(
             started=started,
         )
 
-    processing_ms = int((time.perf_counter() - started) * 1000)
     return Envelope(
         success=True,
         data=execution.result,
-        meta=Meta(
-            model=None,
-            tool_calls_made=execution.api_calls,
-            processing_ms=processing_ms,
+        meta=usage_meta(
+            started, "PARTIAL" if execution.result.partial else "COMPLETED", github_calls=execution.api_calls
         ),
         error=None,
     )
@@ -187,14 +185,11 @@ async def collect_candidate_details(
             started=started,
         )
 
-    processing_ms = int((time.perf_counter() - started) * 1000)
     return Envelope(
         success=True,
         data=execution.result,
-        meta=Meta(
-            model=None,
-            tool_calls_made=execution.api_calls,
-            processing_ms=processing_ms,
+        meta=usage_meta(
+            started, "PARTIAL" if execution.result.partial else "COMPLETED", github_calls=execution.api_calls
         ),
         error=None,
     )
@@ -236,11 +231,7 @@ def _error_response(
     envelope = Envelope(
         success=False,
         data=None,
-        meta=Meta(
-            model=None,
-            tool_calls_made=0,
-            processing_ms=int((time.perf_counter() - started) * 1000),
-        ),
+        meta=usage_meta(started, "FAILED"),
         error=ErrorDetail(code=code, message=message, retryable=retryable),
     )
     return JSONResponse(status_code=status_code, content=jsonable_encoder(envelope))

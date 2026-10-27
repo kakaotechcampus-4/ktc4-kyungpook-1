@@ -58,7 +58,7 @@ class CardDetailApiTest {
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",
             "result"};
     private static final String[] EVIDENCE_KEYS = {"field", "type", "authoredBy", "sha", "url", "snippet", "committedAt",
-            "changedFiles", "turnNo"};
+            "changedFiles", "summary", "turnNo"};
 
     @Container
     @ServiceConnection
@@ -217,7 +217,7 @@ class CardDetailApiTest {
         assertThat(evidence).allSatisfy(row -> assertThat(row).containsOnlyKeys(EVIDENCE_KEYS));
         assertThat(evidence.subList(0, 2)).allSatisfy(row -> assertThat(row)
                 .containsEntry("sha", null).containsEntry("url", null).containsEntry("snippet", null)
-                .containsEntry("committedAt", null).containsEntry("changedFiles", null));
+                .containsEntry("committedAt", null).containsEntry("changedFiles", null).containsEntry("summary", null));
         assertThat(evidence).extracting(row -> row.get("turnNo")).containsExactly(null, 1, null, null, null);
 
     }
@@ -238,6 +238,23 @@ class CardDetailApiTest {
                 .andExpect(jsonPath("$.data.evidence[0].snippet").value("fix: 만료 직전 토큰 갱신"))
                 .andExpect(jsonPath("$.data.evidence[0].committedAt").value("2026-05-12T03:00:00Z"))
                 .andExpect(jsonPath("$.data.evidence[0].changedFiles").value(3));
+
+    }
+
+    @Test
+    @DisplayName("커밋 근거는 저장된 diff 요약을 summary 로 싣고, 요약이 없는 커밋은 null 이다")
+    void commitEvidenceCarriesStoredDiffSummary() throws Exception {
+
+        jdbc.update("UPDATE git_commit SET diff_summary = ? WHERE id = ?", "만료 직전에 토큰을 갱신하는 인터셉터 추가", firstCommit);
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long action = fixtures.insertStatement(cardId, 1, "A", "커밋으로 쓴 행동", "COMMIT", "HIGH");
+        fixtures.insertStatementEvidence(action, firstCommit);
+        fixtures.insertStatementEvidence(action, secondCommit);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence[0].summary").value("만료 직전에 토큰을 갱신하는 인터셉터 추가"))
+                .andExpect(jsonPath("$.data.evidence[1].summary").value(nullValue()));
 
     }
 

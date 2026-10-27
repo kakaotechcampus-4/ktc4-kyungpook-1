@@ -4,6 +4,7 @@ import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.ExperienceGroupingRequest;
 import com.gitory.backend.common.infra.ai.AiClientException;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiProgress;
 import com.gitory.backend.consent.domain.UserLoginService;
@@ -128,6 +129,12 @@ public class JobRunner {
      * 분석 Job 은 AI 수집·경험 그룹화 결과대로 끝내고, 경험 그룹화가 실패해도 먼저 저장한 수집 결과는 남기고 다시 부르지 않고 실패로 끝낸다
      */
     public void run(AnalysisJob job) {
+
+        AiCallContext.runForJob(job.getId(), () -> runInContext(job));
+
+    }
+
+    private void runInContext(AnalysisJob job) {
 
         if (job.getType() == JobType.DRAFT) {
             runDraft(job);

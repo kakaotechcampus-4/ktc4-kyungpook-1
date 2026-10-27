@@ -77,6 +77,7 @@ def test_grouping_response_uses_envelope_and_allows_partial() -> None:
     assert body["data"]["verdict"] == "PARTIAL"
     assert body["error"] is None
     assert body["meta"]["processing_ms"] >= 0
+    assert body["meta"]["ended_by"] == "PARTIAL"
 
 
 def test_star_response_uses_filled_and_db_confidence_values() -> None:

@@ -11,10 +11,13 @@ import com.gitory.backend.card.domain.CardDraftFailure;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.GeneratedCard;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.consent.port.DiffEvidence;
 import com.gitory.backend.consent.port.DiffEvidenceResult;
+import com.gitory.backend.consent.port.DiffEvidenceSource;
+import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.DraftCommit;
 import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.domain.StoredPullRequest;
@@ -57,6 +60,7 @@ public class CardDraftRunner {
     private final StoredActivityService storedActivity;
     private final StarDraftPort star;
     private final CardDraftWriter writer;
+    private final CommitSummaryService commitSummaries;
 
     public void run(AnalysisJob job) {
 
@@ -69,7 +73,8 @@ public class CardDraftRunner {
 
         List<CardDraftResult> results = new ArrayList<>();
         for (GeneratedCard card : cards) {
-            Optional<CardDraftResult> result = draft(job, card, login, results.size(), total);
+            Optional<CardDraftResult> result = AiCallContext.callForCard(card.id(),
+                    () -> draft(job, card, login, results.size(), total));
             if (result.isEmpty()) {
                 return;
             }
@@ -95,6 +100,7 @@ public class CardDraftRunner {
             List<DraftCommit> commits = source.get().commits();
             DiffEvidenceResult evidence = activities.diffEvidence(new DiffEvidenceRequest(job.getUserRepositoryId(),
                     commits.stream().map(DraftCommit::sha).toList(), source.get().githubPrNumber(), card.title()));
+            commitSummaries.recordDiffSummaries(diffSummariesOf(evidence, commits));
             if (!record(job.getId(), done + 1, done, total)) {
                 return Optional.empty();
             }
@@ -111,6 +117,26 @@ public class CardDraftRunner {
             CardDraftFailure reason = failureOf(failure);
             return finishCard(job.getId(), done, total, () -> failed(card, reason));
         }
+
+    }
+
+    // diff 를 읽어 쓴 요약만 커밋에 남기고, 커밋 메시지로 대신한 요약은 snippet 과 같아 남기지 않는다
+    private static Map<Long, String> diffSummariesOf(DiffEvidenceResult evidence, List<DraftCommit> commits) {
+
+        Map<String, Long> idsBySha = new HashMap<>();
+        for (DraftCommit commit : commits) {
+            idsBySha.put(commit.sha().toLowerCase(Locale.ROOT), commit.id());
+        }
+        Map<Long, String> summaries = new HashMap<>();
+        for (DiffEvidence item : evidence.evidence()) {
+            Long commitId = idsBySha.get(item.sha().toLowerCase(Locale.ROOT));
+            if (commitId != null && item.summarySource() == DiffEvidenceSource.DIFF
+                    && item.summary() != null && !item.summary().isBlank()) {
+                summaries.put(commitId, item.summary().strip());
+            }
+        }
+
+        return summaries;
 
     }
 

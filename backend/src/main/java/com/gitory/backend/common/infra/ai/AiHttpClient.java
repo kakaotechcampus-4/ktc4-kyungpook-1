@@ -1,5 +1,7 @@
 package com.gitory.backend.common.infra.ai;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -24,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /** 내부 AI HTTP 경계. 원문 에러와 HTTP 예외의 cause를 밖으로 전달하지 않는다. */
+@Slf4j
 @Component
 @EnableConfigurationProperties(AiClientProperties.class)
 public class AiHttpClient {
@@ -38,10 +41,17 @@ public class AiHttpClient {
     // JDK HttpClient 는 만들 때마다 스레드를 하나 띄우므로 대기 시간마다 한 번만 만들어 다시 쓴다
     private final Map<Duration, RestClient> postClients = new ConcurrentHashMap<>();
     private final ObjectMapper mapper;
+    private final AiCallRecorder recorder;
 
     public AiHttpClient(AiClientProperties properties, ObjectMapper mapper) {
+        this(properties, mapper, AiCallRecorder.NONE);
+    }
+
+    @Autowired
+    public AiHttpClient(AiClientProperties properties, ObjectMapper mapper, AiCallRecorder recorder) {
         this.properties = properties;
         this.mapper = mapper;
+        this.recorder = recorder;
         this.collectionClient = client(properties, properties.collectReadTimeout());
         // health·OpenAPI 조회가 긴 수집 요청 제한 때문에 정체되지 않게 한다.
         this.queryClient = client(properties, Duration.ofSeconds(5));
@@ -50,16 +60,16 @@ public class AiHttpClient {
     /** health·OpenAPI 조회는 봉투가 없는 원본 JSON을 반환한다. */
     public JsonNode get(String path) {
         requireInternalPath(path);
-        return exchange(queryClient.get().uri(path), false);
+        return exchange(queryClient.get().uri(path), false, new Seen());
     }
 
     /** consent 모듈만 토큰을 복호화하고 이 메서드의 헤더에 전달한다. */
     public JsonNode collect(Object request, String githubToken) {
         requireHeaderSafe(githubToken);
-        return exchange(collectionClient.post().uri("/internal/collect")
+        return recorded("/internal/collect", collectionClient.post().uri("/internal/collect")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
-                .body(request), true);
+                .body(request));
     }
 
     /** {@link #collect} 와 같은 수집을 부르고, AI 가 PR·커밋을 하나 읽을 때마다 보내는 진행을 progress 에 넘긴다 */
@@ -90,10 +100,10 @@ public class AiHttpClient {
         requireInternalPath(path);
         requireHeaderSafe(githubToken);
         RestClient postClient = postClients.computeIfAbsent(readTimeout, timeout -> client(properties, timeout));
-        return exchange(postClient.post().uri(path)
+        return recorded(path, postClient.post().uri(path)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
-                .body(request), true);
+                .body(request));
 
     }
 
@@ -102,16 +112,45 @@ public class AiHttpClient {
 
         requireInternalPath(path);
         RestClient postClient = postClients.computeIfAbsent(readTimeout, timeout -> client(properties, timeout));
-        return exchange(postClient.post().uri(path)
+        return recorded(path, postClient.post().uri(path)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(request), true);
+                .body(request));
 
     }
 
-    private JsonNode exchange(RestClient.RequestHeadersSpec<?> request, boolean envelope) {
+    /** 응답 형식이 있는 호출을 부르고, 성공·실패와 상관없이 AI 가 준 처리 기록과 함께 한 번 남긴다 */
+    private JsonNode recorded(String path, RestClient.RequestHeadersSpec<?> request) {
+
+        long started = System.nanoTime();
+        Seen seen = new Seen();
+        try {
+            JsonNode data = exchange(request, true, seen);
+            record(path, seen, null, started);
+            return data;
+        } catch (AiClientException failed) {
+            record(path, seen, failed.errorCode(), started);
+            throw failed;
+        }
+
+    }
+
+    // 기록을 남기지 못해도 AI 호출의 결과는 그대로 돌려준다
+    private void record(String path, Seen seen, String errorCode, long started) {
+
+        try {
+            recorder.record(new AiCall(path, AiCallContext.jobId(), AiCallContext.cardId(), seen.status, errorCode,
+                    seen.meta, Duration.ofNanos(System.nanoTime() - started).toMillis()));
+        } catch (RuntimeException failed) {
+            log.warn("AI 호출 기록을 남기지 못했다: {}", path, failed);
+        }
+
+    }
+
+    private JsonNode exchange(RestClient.RequestHeadersSpec<?> request, boolean envelope, Seen seen) {
         try {
             return request.exchange((ignored, response) -> {
                 int status = response.getStatusCode().value();
+                seen.status = status;
                 JsonNode body;
                 try {
                     body = mapper.readTree(response.getBody());
@@ -124,6 +163,7 @@ public class AiHttpClient {
                     }
                     throw AiClientException.invalidResponse();
                 }
+                seen.meta = body == null ? null : body.get("meta");
                 if (status < 200 || status >= 300) {
                     throw httpFailure(status, body);
                 }
@@ -276,5 +316,11 @@ public class AiHttpClient {
                 || path.contains(":") || path.contains("?")) {
             throw new IllegalArgumentException("AI 경로는 서버 내부의 절대 경로여야 한다");
         }
+    }
+
+    private static final class Seen {
+
+        private Integer status;
+        private JsonNode meta;
     }
 }

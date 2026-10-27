@@ -956,6 +956,10 @@
           "period" : {
             "type" : "string"
           },
+          "repo" : {
+            "$ref" : "#/components/schemas/CardRepoResponse",
+            "description" : "카드를 만든 저장소로 카드 상세의 repo 와 같은 값이고, 저장소 없이 직접 쓴 카드는 null"
+          },
           "sourceLabel" : {
             "description" : "직접 작성 카드는 MANUAL, 되묻기에 답한 질문이 있는 직접 작성 카드는 INTERVIEW, 후보로 만든 카드는 그 후보의 ref(PR 번호나 날짜 같은 참조 글자)",
             "type" : "string"
@@ -1203,6 +1207,10 @@
           },
           "snippet" : {
             "description" : "커밋 근거의 커밋 메시지 첫 줄이고, 사용자 근거나 메시지가 없으면 null",
+            "type" : "string"
+          },
+          "summary" : {
+            "description" : "커밋 근거의 diff 한 줄 요약(카드 초안 때 AI 가 diff 를 읽고 씀)이고, 아직 없거나 사용자 근거면 null",
             "type" : "string"
           },
           "turnNo" : {

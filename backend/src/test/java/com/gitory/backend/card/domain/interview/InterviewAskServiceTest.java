@@ -18,6 +18,7 @@ import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,7 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -122,6 +124,23 @@ class InterviewAskServiceTest {
         TransactionDefinition write = definitions.getAllValues().get(1);
         assertThat(write.isReadOnly()).isFalse();
         assertThat(write.getIsolationLevel()).isEqualTo(TransactionDefinition.ISOLATION_DEFAULT);
+
+    }
+
+    @Test
+    @DisplayName("되묻기 질문을 받으려고 부른 AI 호출에는 그 카드가 붙고, 질문을 받은 뒤에는 떼어 낸다")
+    void marksAiCallWithTheCard() {
+
+        AtomicReference<Long> seen = new AtomicReference<>();
+        when(port.nextQuestion(request)).thenAnswer(invocation -> {
+            seen.set(AiCallContext.cardId());
+            return question(InterviewStarSlot.T);
+        });
+
+        service(2).ask(PUBLIC_ID, USER_ID, "T");
+
+        assertThat(seen.get()).isEqualTo(CARD_ID);
+        assertThat(AiCallContext.cardId()).isNull();
 
     }
 

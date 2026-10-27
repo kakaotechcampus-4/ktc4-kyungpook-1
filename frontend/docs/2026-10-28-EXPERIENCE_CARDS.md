@@ -20,6 +20,7 @@
   "endMonth": "2025-12" | null,        // null 은 진행 중
   "role": "백엔드 파트장" | null,       // 0~50자, 빈 글은 null
   "cardCount": 3,
+  "confirmedCount": 2,                 // cardCount 중 확정 카드 수
   "createdAt": "ISO" }
 ```
 
@@ -40,7 +41,7 @@
 | `GET /activities` | | `Activity[]` — 시작 월 최신순 |
 | `POST /activities` | `{ name, type, startMonth, endMonth?, role? }`, 헤더 `Idempotency-Key: <UUID v4>` | `Activity`. 같은 사용자·같은 키는 처음 만든 활동을 돌려준다(직접 작성 카드와 같은 규칙) |
 | `PATCH /activities/{id}` | 보낸 필드만 바꾼다. 카드 제목·기간 수정과 같이 생략·`null` 은 그대로이고, `endMonth`·`role` 은 빈 글 `""` 이 비우기(진행 중·역할 없음)다. 바꿀 것이 없으면 400 | `Activity` |
-| `DELETE /activities/{id}` | | `{ ok: true }`. **안의 카드도 모두 지운다**(카드 `DELETE` 와 같은 완전 삭제). 화면은 지우기 전에 `cardCount` 로 "카드 N장도 함께 지워집니다" 확인을 받는다 |
+| `DELETE /activities/{id}` | | `{ ok: true }`. **안의 카드도 모두 지운다**(카드 `DELETE` 와 같은 완전 삭제). 화면은 지우기 전에 `cardCount`·`confirmedCount` 로 "카드 N장(확정 M장 포함)도 함께 지워집니다" 확인을 받는다. 확정 카드는 자소서·매칭에 쓰였을 수 있어 따로 알린다 |
 
 - 오류: 이름·형식이 틀리거나 `endMonth` 가 `startMonth` 보다 앞서면 400 `INVALID_REQUEST`, 없는 활동·남의 활동은 404.
 - 종류는 활동을 만들 때 한 번 고르고, 안의 카드가 모두 따른다. AI 는 종류와 역할을 보고 첫 질문을 고른다.
@@ -67,7 +68,7 @@
 - `Card` · `CardSummary` 에 `themes: Theme[]` 를 더한다. 최대 2개이고 더 잘 맞는 것부터 오며, 없으면 `[]` 다. 분야 태그(`areas`)와 같은 모양이다.
 - 경험 카드(`QUALITATIVE`)에만 값이 있고 기술 카드는 늘 `[]` 다. '지원 동기'·'직무 역량' 문항은 유형에 넣지 않는다(지원 동기는 카드에서 나오지 않고, 직무 역량은 기술 카드가 맡는다).
 - **누가 붙이나**: AI 가 되묻기를 스스로 끝낼 때 붙인다. 되묻기 없이 네 칸을 직접 채웠거나 질문 상한에 걸려 끝난 카드는, 확정할 때 비어 있으면 붙인다. AI 가 실패하면 `[]` 로 두고 저장·확정을 막지 않는다.
-- **사용자가 바꾸기**: `PATCH /cards/{id}/metadata` 에 `themes?: Theme[]` 를 더한다(0~2개, `[]` 는 비우기, 같은 값 두 번·모르는 값은 400). 사용자가 한 번 바꾼 뒤에는 AI 가 덮어쓰지 않는다. 다른 메타데이터와 같이 작성 중(DRAFT) 카드만 바꿀 수 있다.
+- **사용자가 바꾸기**: `PATCH /cards/{id}/metadata` 에 `themes?: Theme[]` 를 더한다(0~2개, `[]` 는 비우기, 같은 값 두 번·모르는 값은 400). 사용자가 한 번 바꾼 뒤에는 AI 가 덮어쓰지 않는다. 문항 유형은 카드 글이 아니라 자소서에 쓸 카드를 고르는 표시라서 **확정 카드도 다시 열지 않고 바꿀 수 있다**(AI 가 확정할 때 붙인 유형을 바로 고칠 수 있게). 같은 요청에 `title`·`period` 가 있으면 그 둘은 지금처럼 작성 중(DRAFT) 카드만 바꾼다.
 
 ## 4. 경험 카드 되묻기
 

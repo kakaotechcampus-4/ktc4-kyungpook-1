@@ -121,6 +121,7 @@ def test_collect_stream_turns_unexpected_error_into_internal_error_line() -> Non
     assert last["body"]["error"] == {
         "code": "INTERNAL_ERROR", "message": "AI 내부 오류로 처리하지 못했습니다.", "retryable": False,
     }
+    assert last["body"]["meta"]["ended_by"] == "FAILED"
     assert "LEAK" not in response.text
 
 

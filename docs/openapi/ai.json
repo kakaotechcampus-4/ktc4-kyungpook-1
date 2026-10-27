@@ -4248,7 +4248,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4610,7 +4616,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false

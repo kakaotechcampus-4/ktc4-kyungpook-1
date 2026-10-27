@@ -11,8 +11,9 @@ from typing import Any
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from schemas.common import Envelope, ErrorDetail, Meta
+from schemas.common import Envelope, ErrorDetail
 from services.progress import listening
+from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ def _internal_error() -> Envelope:
     return Envelope(
         success=False,
         data=None,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=0),
+        meta=usage_meta(None, "FAILED"),
         error=ErrorDetail(code="INTERNAL_ERROR", message="AI 내부 오류로 처리하지 못했습니다.", retryable=False),
     )
 

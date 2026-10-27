@@ -14,7 +14,7 @@ import { useLogin } from '@/features/auth/useLogin';
 
 const SCOPES = [
   { scope: 'read:user', title: '프로필 읽기', desc: '아이디와 프로필 사진', granted: true },
-  { scope: 'repo', title: '비공개 저장소 읽기', desc: '비공개 저장소에는 접근하지 않아요', granted: false },
+  { scope: 'repo', title: '비공개 레포 읽기', desc: '비공개 레포에는 접근하지 않아요', granted: false },
 ];
 
 /** F1 GitHub 연결 관리 — 스코프 표시 · 재연동 · 해제. 쓰기 권한은 요청하지 않는다. */
@@ -36,7 +36,7 @@ export function GithubSettingsPage() {
           <UserAvatar src={me.data.avatarUrl} login={me.data.login} size={48} />
           <div className="stack grow" style={{ gap: 6 }}>
             <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 18 }}>{me.data.login}</span><Badge kind={gh?.connected ? 'CONFIRMED' : 'NEUTRAL'}>{login.isDemo ? '샘플 계정' : gh?.connected ? '연결됨' : '연결 안 됨'}</Badge></div>
-            <span className="t-12l c-2">{login.isDemo ? '샘플 데이터로 연결 관리 화면을 둘러보고 있어요.' : gh?.connectedAt ? `${ymd(gh.connectedAt)} 연결` : '연결되어 있지 않습니다 — 새 분석을 하려면 다시 연결하세요'}{gh?.lastCollectedAt ? ` · 마지막 수집 ${ymdhm(gh.lastCollectedAt)}` : ''}</span>
+            <span className="t-12l c-2">{login.isDemo ? '샘플 데이터로 연결 관리 화면을 둘러보고 있어요.' : gh?.connectedAt ? `${ymd(gh.connectedAt)} 연결` : '연결되어 있지 않습니다 — 새로 정리하려면 다시 연결하세요'}{gh?.lastCollectedAt ? `, 마지막 수집 ${ymdhm(gh.lastCollectedAt)}` : ''}</span>
           </div>
           {login.isDemo ? <span className="t-12 c-2">샘플 계정이라 실제 GitHub에는 연결되지 않아요</span> : <a href={endpoints.githubStartUrl()} className={`btn ${gh?.connected ? 'btn--outline' : 'btn--primary'}`}>{gh?.connected ? '재연동' : '연결하기'}</a>}
         </div>
@@ -61,7 +61,7 @@ export function GithubSettingsPage() {
         {analyzed.map((r) => (
           <div key={r.id} className="kv collection-row">
             <span className="w-600 collection-row__name">{r.name}</span>
-            <span className="t-12 c-2 collection-row__metrics">{isCounting(r) ? `개수 ${COUNTING}` : `커밋 ${r.contribution.mine} · PR ${r.prCount} · 리뷰 ${r.reviewCount}`}</span>
+            <span className="t-12 c-2 collection-row__metrics">{isCounting(r) ? `개수 ${COUNTING}` : `커밋 ${r.contribution.mine}, PR ${r.prCount}, 리뷰 ${r.reviewCount}`}</span>
             <span className="t-12 c-3 collection-row__date">{r.lastAnalyzedAt && ymdhm(r.lastAnalyzedAt)}</span>
             <span className="t-12 w-500 collection-row__result">후보 {r.candidateCount ?? '-'}개, 카드 {r.cardCount}장</span>
           </div>

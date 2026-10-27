@@ -94,7 +94,7 @@ const seedRepos = (client: QueryClient) => {
 describe('레포 목록 화면', () => {
   it('서버 목록이 비면 제외되는 저장소와 연결 확인 방법을 안내한다', () => {
     mount('/repos', <ReposPage />, '/repos', (client) => client.setQueryData(keys.repos, []));
-    expect(screen.getByText(/커밋이 없는 저장소와 내 프로필 README 저장소/)).toBeInTheDocument();
+    expect(screen.getByText(/커밋이 없는 레포와 내 프로필 README 레포/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'GitHub 연결 확인' })).toHaveAttribute('href', '/settings/github');
   });
   const rowOf = (name: RegExp) => screen.getByRole('radio', { name });
@@ -160,7 +160,7 @@ describe('홈 · 설정 · 분석 화면', () => {
       client.setQueryData(keys.activeJobs, { jobs: [] });
     });
     fireEvent.change(screen.getByPlaceholderText('레포 검색'), { target: { value: 'auth-service' } });
-    expect(screen.getByRole('option', { name: /auth-service/ })).toHaveTextContent('내 커밋 214 · 팀 402');
+    expect(screen.getByRole('option', { name: /auth-service/ })).toHaveTextContent('내 커밋 214 / 팀 402');
   });
 
   it('설정의 수집 이력 줄도 못 센 레포는 숫자를 숨긴다', () => {
@@ -172,7 +172,7 @@ describe('홈 · 설정 · 분석 화면', () => {
     const row = screen.getByText('side-project-new').closest('.collection-row') as HTMLElement;
     expect(row).toHaveTextContent('개수 세는 중');
     expect(row).not.toHaveTextContent('커밋 0');
-    expect(screen.getByText('auth-service').closest('.collection-row')).toHaveTextContent('커밋 214 · PR 31 · 리뷰 88');
+    expect(screen.getByText('auth-service').closest('.collection-row')).toHaveTextContent('커밋 214, PR 31, 리뷰 88');
   });
 
   it('분석 진행 화면은 못 센 레포를 "0개 읽는 중"이라고 말하지 않는다', () => {
@@ -180,14 +180,14 @@ describe('홈 · 설정 · 분석 화면', () => {
       seedRepos(client);
       client.setQueryData(keys.job('job'), job({ state: 'RUNNING', partial: false, finishedAt: null, pollAfterMs: 2000 }));
     });
-    expect(screen.getByText('커밋·PR·리뷰를 읽는 중이에요')).toBeInTheDocument();
+    expect(screen.getByText('커밋, PR, 리뷰를 읽는 중이에요')).toBeInTheDocument();
     expect(screen.queryByText(/커밋 0개/)).not.toBeInTheDocument();
     cleanup();
     mount('/repos/r_auth/run?job=job', <AnalyzePage />, '/repos/:repoId/run', (client) => {
       seedRepos(client);
       client.setQueryData(keys.job('job'), job({ state: 'RUNNING', partial: false, finishedAt: null, pollAfterMs: 2000 }));
     });
-    expect(screen.getByText('커밋 214개 · PR 31건 · 리뷰 88건을 읽는 중이에요')).toBeInTheDocument();
+    expect(screen.getByText('커밋 214개, PR 31건, 리뷰 88건을 읽는 중이에요')).toBeInTheDocument();
   });
 });
 
@@ -198,7 +198,7 @@ describe('AI 일시 장애 계약', () => {
       seedRepos(client);
       client.setQueryData(keys.job('job'), failed);
     });
-    expect(screen.getByText('분석 도우미가 잠시 응답하지 않아요')).toBeInTheDocument();
+    expect(screen.getByText('AI가 잠시 응답하지 않아요')).toBeInTheDocument();
     expect(screen.getByText('잠시 뒤 다시 시도해 주세요.')).toBeInTheDocument();
     // 서버가 재시도를 열지 않았으면 "다시 시도" 줄 자체를 두지 않는다(#253).
     const retry = screen.queryByRole('button', { name: '다시 시도' });
@@ -222,7 +222,7 @@ describe('분석 화면 — 수집 상한에 걸린 부분 결과', () => {
     expect(screen.getByText(jobErrorTitle.COLLECTION_CAPPED)).toBeInTheDocument();
     expect(screen.getByText(new RegExp(jobErrorHint.COLLECTION_CAPPED))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
-    expect(screen.queryByText('일부 기록만 분석했어요')).not.toBeInTheDocument();   // 이유를 모를 때의 문구가 아니다
+    expect(screen.queryByText('일부 기록만 정리했어요')).not.toBeInTheDocument();   // 이유를 모를 때의 문구가 아니다
   });
 
   it('서버가 재시도를 열지 않았으면(false·null) 눌러도 안 되는 "이어 읽기"를 두지 않는다', () => {
@@ -243,7 +243,7 @@ describe('분석 화면 — 수집 상한에 걸린 부분 결과', () => {
       seedRepos(client);
       client.setQueryData(keys.job('job'), job({ errorCode: null, retryable: false }));
     });
-    expect(screen.getByText('일부 기록만 분석했어요')).toBeInTheDocument();
+    expect(screen.getByText('일부 기록만 정리했어요')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /이어 읽기/ })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
   });

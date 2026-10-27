@@ -21,7 +21,7 @@ test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
   await expect(page.getByRole('heading', { name: /후보 \d+개 \(부분 결과\)/ })).toBeVisible();
   await expect(page.getByText('읽은 기록에서 찾은 후보예요')).toBeVisible();
-  await page.getByRole('button', { name: '분석 기준' }).click();
+  await page.getByRole('button', { name: '정리 기준' }).click();
   await expect(page.getByRole('button', { name: '다시 정리하기' })).toBeDisabled();
   await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).last().click();
   await page.getByRole('link', { name: '작업 상태 보기' }).click();
@@ -53,7 +53,7 @@ test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채
   expect(savedCard.version.task).toBe(selectedAnswer);
   expect(savedCard.evidence.some((entry: { field: string; type: string }) => entry.field === 'T' && entry.type === 'USER_SELECTED')).toBe(true);
   // 내부 enum 이 화면에 새지 않는다
-  await expect(page.getByText('선택한 답변 · 답변 저장됨')).toBeVisible();
+  await expect(page.getByText('선택한 답변, 답변 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
   await page.getByRole('button', { name: '카드로 돌아가기' }).click();
   await expect(page.locator('#star-T').locator('..').locator('..')).not.toContainText('근거를 찾지 못해');
@@ -86,7 +86,7 @@ test('새로고침으로 job 이 빠져도 서버의 진행 중 작업으로 되
   // 주소에서 job 을 떼고 다시 들어가도(= 새로고침으로 잃어도) 진행 화면으로 붙는다
   await page.goto('/repos/r_auth/run');
   await expect(page).toHaveURL(/\/run\?job=/, { timeout: 15_000 });
-  await expect(page.getByRole('heading', { name: '읽고 있습니다' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
 });
 
 test('모바일 되묻기 — 질문과 입력칸이 카드 미리보기보다 먼저 보인다', async ({ page }) => {

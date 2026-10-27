@@ -3,51 +3,33 @@
  * 색은 의미 토큰만 쓴다. 두 테마의 대비는 theme-contrast 검사가 지킨다.
  */
 
-/* ───────── 포인트 색 — 주 행동, 강조 단어, 지금 있는 메뉴에만 ───────── */
+/* ───────── 포인트 색 — 주 행동과 지금 있는 메뉴에만(제목 속 한 단어는 강조하지 않는다) ───────── */
 .btn--primary { background: var(--accent-point); border-color: var(--accent-point); }
 .btn--primary:hover:not(:disabled) { background: var(--accent-point-hover); border-color: var(--accent-point-hover); }
 .btn--primary.btn--loading { background: var(--accent-point) !important; border-color: var(--accent-point) !important; }
 .prompt__go:not(:disabled) { background: var(--accent-point); }
 .prompt__go:hover:not(:disabled) { background: var(--accent-point-hover); }
-.hl { color: var(--accent-point); text-decoration-color: var(--accent-point); }
 .menu-item[aria-current="page"] { box-shadow: inset 3px 0 0 var(--accent-point); }
 .menu-item[aria-current="page"] svg { color: var(--accent-point); }
 .mobile-nav a[aria-current="page"] svg { color: var(--accent-point); }
-/* 첫 방문 홈: 입력칸 정중앙 뒤에 옅은 빛. 예전 그라데이션은 중심이 섹션 맨 위라 글 위 얼룩이 됐다 — 중심을 입력칸에 둔다 */
-/* 빛은 상자 폭을 넘지 않는다 — 넘치면 320px 화면에 가로 스크롤이 생긴다(e2e:real 320px 검사) */
-.home-page:not(.home-page--returning) .prompt { position: relative; isolation: isolate; overflow-x: clip; }
-.home-page:not(.home-page--returning) .prompt::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 58%; width: min(900px, 100%); height: 360px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, var(--accent-point-soft), transparent); pointer-events: none; animation: halo-in .8s ease-out both; }
-@keyframes halo-in { from { opacity: 0; } }
-
 /* ───────── 다크 대비 보강 ───────── */
 .prompt__go:disabled { border: 1px solid var(--border-strong); }
 :root[data-theme="dark"] .stardot:not(.stardot--on):not(.stardot--low),
 :root[data-theme="dark"] .stardots--labeled .stardot:not(.stardot--on):not(.stardot--low) .stardot__letter { border-color: var(--text-tertiary); }
 
-/* ───────── 모션 — TIO 수치: 0.15초 표준 이징, 카드는 40ms씩 차례로 ─────────
- * 들어올 때는 투명도만 바꾼다. 위치를 옮기면 그 사이 레이아웃·터치 영역 측정이 흔들리고(스티키 푸터, 44px 버튼),
- * 화면이 바뀌는 느낌은 페이드만으로도 충분하다. 위로 뜨는 움직임은 마우스를 올린 카드에만 쓴다. */
+/* ───────── 모션 — 사람의 행동에 대한 답만 움직인다 ─────────
+ * 화면마다 섹션이 차례로 페이드되고 모든 카드가 hover 에 떠오르는 건 생성된 화면의 기본값처럼 읽힌다(frontend-design 기준).
+ * 남기는 것: 메뉴가 열림, 토스트가 나타남, 버튼이 눌림, 기다리는 동안 도는 표시. 카드는 테두리 색만 바뀐다. */
 :root { --motion-fast: .15s; --ease-standard: cubic-bezier(.4, 0, .2, 1); }
-.main > * { animation: enter-up .22s var(--ease-standard) both; }
-.main > :nth-child(2) { animation-delay: .04s; }
-.main > :nth-child(3) { animation-delay: .08s; }
-.main > :nth-child(n+4) { animation-delay: .12s; }
-@keyframes enter-up { from { opacity: 0; } }
-.experience-list > *, .match-grid > *, .resume > * { animation: card-in .28s var(--ease-standard) both; }
-.experience-list > :nth-child(2), .match-grid > :nth-child(2), .resume > :nth-child(2) { animation-delay: .04s; }
-.experience-list > :nth-child(3), .match-grid > :nth-child(3), .resume > :nth-child(3) { animation-delay: .08s; }
-.experience-list > :nth-child(n+4), .match-grid > :nth-child(n+4), .resume > :nth-child(n+4) { animation-delay: .12s; }
-@keyframes card-in { from { opacity: 0; } }
-.gcard, .match-card, .resume__item { transition: transform var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); }
-.gcard:hover, .match-card:hover, .resume__item:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0, 0, 0, .08); }
+.gcard, .match-card, .resume__item { transition: border-color var(--motion-fast) var(--ease-standard); }
 .btn { transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform .1s var(--ease-standard); }
 .btn:active:not(:disabled) { transform: scale(.98); }
 .select-menu { animation: menu-in var(--motion-fast) var(--ease-standard); transform-origin: top; }
 .toast { animation: toast-in .2s var(--ease-standard); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(16px); } }
 @media (prefers-reduced-motion: reduce) {
-  .main > *, .experience-list > *, .match-grid > *, .resume > *, .select-menu, .toast, .home-page .prompt::before { animation: none !important; }
-  .gcard:hover, .match-card:hover, .resume__item:hover, .btn:active:not(:disabled) { transform: none; }
+  .select-menu, .toast { animation: none !important; }
+  .btn:active:not(:disabled) { transform: none; }
 }
 
 .job-live > span:last-child { margin-left: 8px; color: var(--text-tertiary); }
@@ -116,7 +98,6 @@
 /* ───────── 분석: AI 가 지금 하는 일 ───────── */
 .agent-now { display: flex; align-items: flex-start; gap: 8px; font-size: 15px; line-height: 23px; font-weight: 500; color: var(--text-primary); }
 .agent-now svg { flex: 0 0 auto; margin-top: 4px; color: var(--accent-point); }
-.agent-now b { font-weight: 700; color: var(--accent-point); margin-right: 2px; }
 .stage__agent { font-size: 13px; line-height: 19px; color: var(--text-strong); }
 .stage--WAIT .stage__agent { color: var(--text-tertiary); }
 .stage--NOW .stage__agent { color: var(--text-primary); font-weight: 500; }

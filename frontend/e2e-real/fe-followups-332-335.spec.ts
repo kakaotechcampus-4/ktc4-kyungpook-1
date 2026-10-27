@@ -16,8 +16,8 @@ for (const width of [320, 1440]) test(`active work renders execution and separat
   await expect(rows.locator('strong')).toHaveText(['team/running', 'team/queued-draft', 'team/queued-analysis']);
   await expect(rows.first().locator('.spinner')).toBeVisible();
   await expect(rows.nth(1)).toContainText('초안');
-  await expect(rows.nth(1)).not.toContainText('앞 분석');
-  await expect(rows.nth(2)).toContainText('앞 분석이 끝나면 시작해요');
+  await expect(rows.nth(1)).not.toContainText('앞 정리');
+  await expect(rows.nth(2)).toContainText('앞 정리가 끝나면 시작해요');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   await section.screenshot({ path: `docs/screenshots/2026-10-21-followups/jobs-${width}.png` });
 });

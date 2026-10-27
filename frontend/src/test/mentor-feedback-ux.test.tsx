@@ -79,10 +79,10 @@ describe('분석 진행 화면', () => {
     mountAnalyze(job());
     expect(screen.getByText(/째 진행 중이에요/)).toBeInTheDocument();
     expect(screen.getByText(/마지막 확인/)).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: '분석 진행률' })).toHaveClass('track--live');
+    expect(screen.getByRole('progressbar', { name: '정리 진행률' })).toHaveClass('track--live');
     const now = screen.getByText('커밋 읽기').closest('li') as HTMLElement;
     expect(now.querySelector('.spinner')).not.toBeNull();            // 지금 읽는 단계에만
-    expect(screen.getByText('PR · 리뷰 읽기').closest('li')!.querySelector('.spinner')).toBeNull();
+    expect(screen.getByText('PR과 리뷰 읽기').closest('li')!.querySelector('.spinner')).toBeNull();
     expect(within(now).getByText('12 / 33개')).toBeInTheDocument();    // 서버가 준 숫자는 그대로 — 지어낸 분모가 아니다
   });
 
@@ -142,7 +142,7 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
     const board = mountBoard();
     const used = board.candidates.filter((c) => c.status === 'USED');
     expect(used.length).toBeGreaterThan(0);
-    const toggle = screen.getByRole('button', { name: `이미 카드로 만든 후보 ${used.length}개 · 보기` });
+    const toggle = screen.getByRole('button', { name: `이미 카드로 만든 후보 ${used.length}개 보기` });
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     for (const candidate of used) expect(screen.queryByText(candidate.title)).not.toBeInTheDocument();   // 기본은 안 보인다
     for (const candidate of board.candidates.filter((c) => c.status === 'NEW' && !c.weak)) expect(screen.getByText(candidate.title)).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
 
   it('후보 목록은 하나의 묶음이다 — 사용됨 행을 위한 두 번째 목록을 만들지 않는다', () => {
     mountBoard();
-    fireEvent.click(screen.getByRole('button', { name: /이미 카드로 만든 후보 \d+개 · 보기/ }));
+    fireEvent.click(screen.getByRole('button', { name: /이미 카드로 만든 후보 \d+개 보기/ }));
     expect(document.querySelectorAll('.record-list')).toHaveLength(1);
   });
 
@@ -197,12 +197,12 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
     expect(screen.getByText('남은 후보가 없어요')).toBeInTheDocument();
     expect(screen.getByText(/후보를 모두 카드로 만들었어요/)).toBeInTheDocument();
     expect(screen.queryByText('검색 조건에 맞는 후보가 없어요')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /이미 카드로 만든 후보 \d+개 · 보기/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /이미 카드로 만든 후보 \d+개 보기/ })).toBeInTheDocument();
   });
 
   it('검색해서 없으면 검색 결과 없음이고, 초기화하면 돌아온다', () => {
     const board = mountBoard();
-    fireEvent.change(screen.getByPlaceholderText('후보 검색 (제목·추천 이유)'), { target: { value: '일치하는 후보가 없는 검색어' } });
+    fireEvent.change(screen.getByPlaceholderText('후보 검색 (제목, 추천 이유)'), { target: { value: '일치하는 후보가 없는 검색어' } });
     expect(screen.getByText('검색 조건에 맞는 후보가 없어요')).toBeInTheDocument();
     expect(screen.queryByText('남은 후보가 없어요')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /이미 카드로 만든 후보/ })).not.toBeInTheDocument();   // 검색에 걸리지 않은 사용됨 행도 남지 않는다

@@ -22,7 +22,7 @@ export function MatchDetailPage() {
   const [sp] = useSearchParams();
   const query = useMatch(matchId);
   const detail = query.data;
-  useDocumentTitle(detail ? `${detail.company} · ${detail.role}` : "공고 상세");
+  useDocumentTitle(detail ? `${detail.company} - ${detail.role}` : "공고 상세");
   if (!matchSupported()) return <MatchUnavailable />;
   return (
     <main className="main matching-page">
@@ -142,7 +142,7 @@ export function MatchDetailPage() {
                                   </span>
                                   <p>{support.sentence}</p>
                                   <span className="match-support-action">
-                                    카드 보기 →
+                                    카드 보기
                                   </span>
                                 </Link>
                               </li>

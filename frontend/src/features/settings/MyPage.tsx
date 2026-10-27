@@ -7,9 +7,9 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 
 const COLLECTED = [
-  ['GitHub 아이디 · 아바타', '로그인 식별', '보관'],
-  ['공개 저장소 원본 (커밋·PR·리뷰)', '재현성 · 근거 검증', '보관'],
-  ['확정한 경험 카드 · 버전', '서비스 핵심 데이터', '보관'],
+  ['GitHub 아이디와 프로필 사진', '로그인 식별', '보관'],
+  ['공개 레포 원본 (커밋, PR, 리뷰)', '재현성과 근거 검증', '보관'],
+  ['확정한 경험 카드와 버전', '서비스 핵심 데이터', '보관'],
   ['질문 답변 원문', '카드의 근거', '보관'],
   ['GitHub 액세스 토큰', '수집에만 사용', '탈퇴 시 즉시 파기'],
 ] as const;
@@ -59,7 +59,7 @@ export function MyPage() {
         ))}
       </section>
       <details className="settings-section settings-storage">
-        <summary>저장·보관 정보</summary>
+        <summary>저장과 보관 정보</summary>
         <div className="stack" style={{ gap: 12, marginTop: 16 }}>
           {COLLECTED.map(([name, why, keep]) => (
             <div key={name} className="kv settings-data-row">

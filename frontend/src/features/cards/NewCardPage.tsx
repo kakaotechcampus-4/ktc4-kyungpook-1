@@ -63,7 +63,7 @@ export function NewCardPage() {
   const editedFields = useRef(new Set<StarField>());
 
   const canConfirm = !blockedCard && !isBlankCardText(f.S) && !isBlankCardText(f.A) && !isBlankCardText(title);
-  const missing = [isBlankCardText(title) && '제목', isBlankCardText(f.S) && '상황', isBlankCardText(f.A) && '행동'].filter(Boolean).join(' · ');
+  const missing = [isBlankCardText(title) && '제목', isBlankCardText(f.S) && '상황', isBlankCardText(f.A) && '행동'].filter(Boolean).join(', ');
 
   const snapshot = { title, period, repoId, fields: toDraftFields(f) };
   const acknowledgedInput = useRef<typeof snapshot | null>(null);
@@ -155,7 +155,7 @@ export function NewCardPage() {
               options={repoOptions} />
           </Field>
         </div>
-        {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목·기간·레포는 첫 저장 후 바꿀 수 없어요.'}</p>}
+        {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목, 기간, 레포는 첫 저장 후 바꿀 수 없어요.'}</p>}
       </div>
 
       <div className="manual-save-row">
@@ -167,7 +167,7 @@ export function NewCardPage() {
       <div className="card star-read">
         {STAR_FIELDS.map((k, i) => (
           <StarEditorField key={k} field={k} dropped={i > 0 && !f[k]}
-            label={<>{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 필수</span>}</>}
+            label={<>{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> (필수)</span>}</>}
             maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements"
             value={f[k]} onChange={(e) => { editedFields.current.add(k); const next = { ...latestFields.current, [k]: e.target.value }; latestFields.current = next; setF(next); }} placeholder={HINT[k]} aria-label={starFieldName[k]} />
         ))}

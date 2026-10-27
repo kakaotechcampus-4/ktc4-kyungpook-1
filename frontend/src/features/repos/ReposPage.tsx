@@ -77,8 +77,8 @@ export function ReposPage() {
 
       {repos.isPending && <div className="stack" style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Skeleton key={i} h={72} />)}</div>}
       {repos.isSuccess && list.length === 0 && <div className="stack" style={{ gap: 12, alignItems: 'center' }}>
-        <EmptyState title={q.trim() ? '검색 결과가 없어요' : filter !== 'all' ? '조건에 맞는 레포가 없어요' : '아직 불러온 레포가 없어요'} desc={q.trim() ? '이름을 확인하거나 검색·필터를 초기화해 주세요.' : filter !== 'all' ? '필터를 바꿔 다른 레포를 확인해 보세요.' : '비공개 저장소, 커밋이 없는 저장소와 내 프로필 README 저장소는 목록에서 제외돼요. GitHub 연결 상태도 확인해 주세요.'} />
-        {(q || filter !== 'all') ? <Button variant="outline" onClick={() => { setQ(''); setFilter('all'); }}>검색·필터 초기화</Button> : <Link to="/settings/github" className="btn btn--outline">GitHub 연결 확인</Link>}
+        <EmptyState title={q.trim() ? '검색 결과가 없어요' : filter !== 'all' ? '조건에 맞는 레포가 없어요' : '아직 불러온 레포가 없어요'} desc={q.trim() ? '이름을 확인하거나 검색과 필터를 초기화해 주세요.' : filter !== 'all' ? '필터를 바꿔 다른 레포를 확인해 보세요.' : '비공개 레포, 커밋이 없는 레포와 내 프로필 README 레포는 목록에서 제외돼요. GitHub 연결 상태도 확인해 주세요.'} />
+        {(q || filter !== 'all') ? <Button variant="outline" onClick={() => { setQ(''); setFilter('all'); }}>검색과 필터 초기화</Button> : <Link to="/settings/github" className="btn btn--outline">GitHub 연결 확인</Link>}
       </div>}
       <div className="record-list" role="radiogroup" aria-label="레포 선택">
         {list.map((r) => <RepoRow key={r.id} r={r} selected={r.id === selectedId} onSelect={() => select(r.id)} />)}
@@ -86,7 +86,7 @@ export function ReposPage() {
 
       <StickyFooter strong={selected ? `${selected.name}` : '레포를 하나 고르세요'}>
         <Link to="/" className="btn btn--outline">취소</Link>
-        <Button size="lg" disabled={!selected} onClick={openDisclose}>다음 →</Button>
+        <Button size="lg" disabled={!selected} onClick={openDisclose}>다음</Button>
       </StickyFooter>
 
       {disclose && selected && (
@@ -98,13 +98,13 @@ export function ReposPage() {
                 <IconBox icon={FolderGit2} size={36} />
                 <div className="stack grow" style={{ gap: 3 }}>
                   <span className="w-600" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
-                  <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요 — 0건이 아니라 집계 전이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team} · PR ${selected.prCount} · 리뷰 ${selected.reviewCount}`}</span>
+                  <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요 — 0건이 아니라 집계 전이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team}, PR ${selected.prCount}, 리뷰 ${selected.reviewCount}`}</span>
                 </div>
                 <Badge kind="NEUTRAL">READ ONLY</Badge>
               </div>
               {detail.isPending ? <Skeleton h={160} /> : detail.data && <PermissionGrid compact reads={detail.data.disclosure.reads} skips={detail.data.disclosure.skips} />}
               {detail.isError && <QueryFailure error={detail.error} retry={() => detail.refetch()} pending={detail.isFetching} />}
-              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 분석해 새 기록을 확인할 수 있어요.</Note>}
+              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요.</Note>}
             </div>
         </Modal>
       )}
@@ -132,13 +132,13 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}><GitCommitHorizontal size={14} aria-hidden />{counting ? <>내 커밋 <span>{COUNTING}</span></> : <>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></>}</span>
           <span className="repo-row__stats t-12 c-3">
-            <MetaItem icon={GitPullRequest}>{counting ? `PR · 리뷰 ${COUNTING}` : `PR ${r.prCount} · 리뷰 ${r.reviewCount}`}</MetaItem>
+            <MetaItem icon={GitPullRequest}>{counting ? `PR과 리뷰 ${COUNTING}` : `PR ${r.prCount}, 리뷰 ${r.reviewCount}`}</MetaItem>
             <MetaItem icon={FileCode2}>{r.language ?? '-'}</MetaItem>
             <MetaItem icon={CalendarDays}>{ym(r.activeFrom)} – {ym(r.activeTo)}</MetaItem>
           </span>
         </div>
         {/* 배지만 두면 왜 조심해야 하는지 안 읽힌다 — 한 줄로 풀어 쓴다 */}
-        {low && <span className="repo-row__warn">확인되는 기여가 적어요. 맡은 일은 답변으로 보완할 수 있어요.</span>}
+        {low && <span className="repo-row__warn">확인되는 기여가 적어요. 맡은 일은 답변해서 채울 수 있어요.</span>}
         {counting && <span className="t-12 c-3">아직 개수를 세지 못했어요. 0건이 아니라 집계 전이에요</span>}
         {!counting && !low && r.prCount === 0 && <span className="repo-row__warn">PR이 없어서 커밋을 묶어 후보를 만들어 드려요</span>}
       </div>

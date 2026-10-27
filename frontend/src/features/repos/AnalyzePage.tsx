@@ -80,8 +80,8 @@ export function AnalyzePage() {
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="w-600" style={{ fontSize: 17 }}>조회 실패는 분석 완료를 뜻하지 않아요</span>
-            <span className="c-2" style={{ fontSize: 13.5, lineHeight: '21px' }}>분석을 새로 실행하지 않고 기존 작업의 상태를 확인해 주세요.</span>
+            <span className="w-600" style={{ fontSize: 17 }}>조회 실패는 정리 완료를 뜻하지 않아요</span>
+            <span className="c-2" style={{ fontSize: 13.5, lineHeight: '21px' }}>정리를 새로 시작하지 않고 기존 작업의 상태를 확인해 주세요.</span>
           </div>
         </div>
         <div className="row" style={{ gap: 8 }}>
@@ -98,7 +98,7 @@ export function AnalyzePage() {
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '정리' }]} />
         <PageTitle>정리를 시작할까요</PageTitle>
-        <RepoContext name={name} note={disconnected ? 'GitHub 연결이 끊겨서 지금은 읽을 수 없어요.' : restart.isPending ? '분석을 요청하고 있어요. 곧 읽기 시작해요.' : active.isPending ? '진행 중인 작업을 확인하고 있어요…' : '진행 중인 작업이 없어요.'}
+        <RepoContext name={name} note={disconnected ? 'GitHub 연결이 끊겨서 지금은 읽을 수 없어요.' : restart.isPending ? '정리를 요청하고 있어요. 곧 읽기 시작해요.' : active.isPending ? '진행 중인 작업을 확인하고 있어요…' : '진행 중인 작업이 없어요.'}
           right={disconnected
             ? <Button onClick={reconnectGithub}>GitHub 다시 연결</Button>
             : <Button onClick={retry} loading={restart.isPending} disabled={active.isPending}>정리 시작</Button>} />
@@ -125,11 +125,11 @@ export function AnalyzePage() {
         <div className="card stack" style={{ gap: 10, padding: '18px 20px' }}>
           <span className="w-600" style={{ fontSize: 14 }}>이렇게 해 보시겠어요</span>
           {[
-            ...(blocked || canRetry ? [['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : '분석을 다시 요청해요',
+            ...(blocked || canRetry ? [['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : '정리를 다시 요청해요',
               <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>]] : []),
             ...(code === 'GITHUB_UNAVAILABLE' ? [['GitHub 다시 연결', '다시 시도해도 같으면 연결이 끊겼을 수 있어요',
               <Button key="g" variant="outline" size="sm" onClick={reconnectGithub}>다시 연결</Button>]] : []),
-            ['다른 저장소 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">이동</Link>],
+            ['다른 레포 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">이동</Link>],
             ['직접 쓰기', 'GitHub 없이 바로 쓸 수 있어요', <Link key="c" to="/cards/new" className="btn btn--outline btn--sm">이동</Link>],
           ].map(([t, d, b], i) => (
             <div key={i} className="card card--paper row" style={{ gap: 14, padding: '12px 14px', border: 0 }}>
@@ -151,7 +151,7 @@ export function AnalyzePage() {
         <div className="card row" style={{ gap: 16, padding: '18px 20px', background: 'var(--state-partial-bg)', border: 0 }}>
           <Badge kind="NEUTRAL">부분 결과</Badge>
           <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 15 }}>{code ? jobErrorTitle[code] : '일부 기록만 분석했어요'}</span>
+            <span className="w-600" style={{ fontSize: 15 }}>{code ? jobErrorTitle[code] : '일부 기록만 정리했어요'}</span>
             <span className="c-2" style={{ fontSize: 12.5, lineHeight: '20px' }}>{readNote(j)} {code && jobErrorHint[code]}</span>
           </div>
           {(canRetry || waitSec > 0) && (
@@ -162,7 +162,7 @@ export function AnalyzePage() {
         </div>
         <div className="row" style={{ gap: 8 }}>
           <Button onClick={() => nav(`/repos/${repoId}/candidates?job=${encodeURIComponent(jobId)}`)}>읽은 범위의 후보 보기</Button>
-          <Link to="/repos" className="btn btn--outline">다른 저장소</Link>
+          <Link to="/repos" className="btn btn--outline">다른 레포</Link>
         </div>
       </main>
     );
@@ -174,19 +174,19 @@ export function AnalyzePage() {
   return (
     <main className="main">
       <Breadcrumb items={[...crumbs, { label: '정리 중' }]} />
-      <PageTitle right="떠나도 돼요">읽고 있습니다</PageTitle>
-      <RepoContext name={name} note={repo.data ? (isCounting(repo.data) ? '커밋·PR·리뷰를 읽는 중이에요' : `커밋 ${repo.data.contribution.mine}개 · PR ${repo.data.prCount}건 · 리뷰 ${repo.data.reviewCount}건을 읽는 중이에요`) : '…'}
+      <PageTitle right="떠나도 돼요">레포를 읽고 있어요</PageTitle>
+      <RepoContext name={name} note={repo.data ? (isCounting(repo.data) ? '커밋, PR, 리뷰를 읽는 중이에요' : `커밋 ${repo.data.contribution.mine}개, PR ${repo.data.prCount}건, 리뷰 ${repo.data.reviewCount}건을 읽는 중이에요`) : '…'}
         right={<Badge kind={j?.state === 'SUCCEEDED' ? 'CONFIRMED' : 'NEUTRAL'}>{j?.state === 'SUCCEEDED' ? '완료' : '진행 중'}</Badge>} />
       <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
-        {!j ? <AiWait label="저장소를 읽을 준비를 하고 있어요. 곧 커밋부터 읽기 시작해요." /> : (
+        {!j ? <AiWait label="레포를 읽을 준비를 하고 있어요. 곧 커밋부터 읽기 시작해요." /> : (
           <>
             {/* AI 가 지금 하는 일을 한 문장으로 — 단계 이름보다 먼저 눈에 걸리게 */}
-            <p className="agent-now" aria-live="polite"><Sparkles size={16} aria-hidden /><span><b>AI</b> {agentHeadline(j, repo.data?.name)}</span></p>
+            <p className="agent-now" aria-live="polite"><Sparkles size={16} aria-hidden /><span>{agentHeadline(j, repo.data?.name)}</span></p>
             <div className="row" style={{ gap: 12 }}>
               <span className="w-700" style={{ fontSize: 14 }}>{doneCount} / {j.steps.length} 단계</span>
               <span className="right t-12l c-2">{j.state === 'SUCCEEDED' ? '완료, 후보 보드로 갈게요' : '조금만 기다려 주세요'}</span>
             </div>
-            <Track value={progress} label="분석 진행률" live={!isTerminal(j.state)} />
+            <Track value={progress} label="정리 진행률" live={!isTerminal(j.state)} />
             <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />
             <ol className="stages">
               {j.steps.map((s) => {
@@ -211,7 +211,7 @@ export function AnalyzePage() {
         <span className="c-2 t-14">끝나면 알려 드릴게요</span>
         <div className="right row" style={{ gap: 8 }}>
           <Link to="/" className="btn btn--outline">다른 작업 하러 가기</Link>
-          <Button variant="ghost" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>분석 취소</Button>
+          <Button variant="ghost" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>
         </div>
       </div>
     </main>

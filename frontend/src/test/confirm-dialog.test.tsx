@@ -34,7 +34,7 @@ it('confirms directly without a self-attestation checkbox and keeps the API payl
 it('describes freezing the current version and matches the returned version number', async () => {
   vi.spyOn(endpoints, 'confirm').mockResolvedValue(result);
   const confirmed = mount();
-  expect(screen.getByText(`v${card.version.versionNo} · 현재 버전 확정`)).toBeInTheDocument();
+  expect(screen.getByText(`v${card.version.versionNo}, 현재 버전 확정`)).toBeInTheDocument();
   expect(result.versionNo).toBe(card.version.versionNo);
   fireEvent.click(screen.getByRole('button', { name: '확정하기' }));
   await waitFor(() => expect(confirmed).toHaveBeenCalledWith(expect.objectContaining({ versionNo: card.version.versionNo })));

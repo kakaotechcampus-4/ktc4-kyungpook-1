@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 test('rapid typing retains every character and survives detail navigation', async ({ page }) => {
   await page.goto('/match');
-  const search = page.getByPlaceholder('기업·직무 검색');
+  const search = page.getByPlaceholder('기업이나 직무 검색');
   await expect(page.locator('.match-card').first()).toBeVisible();
   for (const query of ['backend developer', '프론트엔드 개발자', '나래']) {
     await search.fill('');
@@ -36,7 +36,7 @@ for (const width of [320, 390, 768, 1440]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await page.getByPlaceholder("기업·직무 검색").fill("나래");
+    await page.getByPlaceholder("기업이나 직무 검색").fill("나래");
     await expect(page.locator(".match-card")).toHaveCount(1);
     await page.getByRole("combobox", { name: "경력", exact: true }).click();
     await page.getByRole("option", { name: "신입 가능", exact: true }).click();
@@ -57,7 +57,7 @@ for (const width of [320, 390, 768, 1440]) {
       ),
     ).toBe(true);
     await page.getByRole("link", { name: "← 공고 목록" }).click();
-    await expect(page.getByPlaceholder("기업·직무 검색")).toHaveValue("나래");
+    await expect(page.getByPlaceholder("기업이나 직무 검색")).toHaveValue("나래");
     await expect(
       page.getByRole("combobox", { name: "경력", exact: true }),
     ).toContainText("신입 가능");
@@ -75,8 +75,8 @@ test("dark matching uses readable surfaces and preserves keyboard actions", asyn
   await page.goto("/match");
   await expect(page.locator(".match-card").first()).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByPlaceholder("기업·직무 검색").fill("없는회사");
+  await page.getByPlaceholder("기업이나 직무 검색").fill("없는회사");
   await expect(page.getByText("조건에 맞는 공고가 없어요")).toBeVisible();
-  await page.getByRole("button", { name: "검색·필터 초기화" }).click();
+  await page.getByRole("button", { name: "검색과 필터 초기화" }).click();
   await expect(page.locator(".match-card")).toHaveCount(5);
 });

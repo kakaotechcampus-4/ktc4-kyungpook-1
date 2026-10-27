@@ -86,7 +86,7 @@ function RecallSession({ repoId }: { repoId: string }) {
               <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
                 <span className="repo-ctx__icon" style={{ width: 16, height: 16, borderRadius: 4 }} aria-hidden />
                 <span className="w-600" style={{ fontSize: 15 }}>{d.path}</span>
-                <span className="t-12 c-3">변경 파일 {d.filesChanged}개 · 내 커밋 {d.myCommits}개</span>
+                <span className="t-12 c-3">변경 파일 {d.filesChanged}개, 내 커밋 {d.myCommits}개</span>
                 <button type="button" className="right t-12 w-600 c-2" onClick={() => goTo(i)}>{done.has(d.path) ? '답함' : active ? '답하는 중' : '펼치기'}</button>
               </div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{d.files.map((f) => <Chip key={f} fill>{f}</Chip>)}</div>

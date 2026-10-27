@@ -9,7 +9,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { LandingExample } from './LandingExample';
 
 const READS = ['내가 올린 커밋', '내가 만든 PR', '내가 남긴 리뷰 코멘트'];
-const SKIPS = ['비공개 저장소', '다른 사람만 작업한 내용'];
+const SKIPS = ['비공개 레포', '다른 사람만 작업한 내용'];
 
 /**
  * A1 랜딩 · A2 동의 안내(모달).
@@ -37,7 +37,7 @@ export function LandingPage() {
         <div className="landing__copy stack">
           <h1 className="landing__h1">커밋과 PR을<br />자소서 경험으로</h1>
           <p className="landing__lead">
-            저장소를 고르면 내가 한 작업을 찾아 상황·과제·행동·결과로 정리해요.
+            저장소를 고르면 내가 한 작업을 찾아 상황, 과제, 행동, 결과로 정리해요.
             비어 있는 내용은 질문에 답하며 채우고, 자소서와 면접에 활용할 수 있어요.
           </p>
 
@@ -63,7 +63,7 @@ export function LandingPage() {
           onClose={() => setSp({})}
           footer={{ strong: '쓰기 권한은 요청하지 않아요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>GitHub으로 이동</Button></> }}>
           {login.failure && <Note strong="시작하지 못했어요" tone="danger">{login.failure}</Note>}
-          <p className="t-14">프로필 정보와 공개 저장소만 읽어요.</p>
+          <p className="t-14">프로필 정보와 공개 레포만 읽어요.</p>
         </Modal>
       )}
     </main>
@@ -74,7 +74,7 @@ export function PermissionGrid({ reads, skips, compact }: { reads: string[]; ski
     <div className={`perm ${compact ? 'perm--compact' : ''}`}>
       <div className="perm__col">
         <h3>이건 읽어요</h3>
-        {reads.map((r) => <div key={r} className="perm__row"><b>·</b><span>{r}</span></div>)}
+        {reads.map((r) => <div key={r} className="perm__row"><b aria-hidden>•</b><span>{r}</span></div>)}
       </div>
       <div className="perm__col perm__col--skip">
         <h3>이건 안 읽어요</h3>

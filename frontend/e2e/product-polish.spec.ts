@@ -70,7 +70,7 @@ test('suggested selections add to previously selected hidden candidates', async 
   await loginAsDemo(page); await page.goto('/repos/r_auth/candidates');
   const first = page.getByRole('checkbox', { name: '로그인 세션 처리 선택' });
   await first.check();
-  await page.getByRole('textbox', { name: '후보 검색 (제목·추천 이유)' }).fill('로그인 API');
+  await page.getByRole('textbox', { name: '후보 검색 (제목, 추천 이유)' }).fill('로그인 API');
   await page.getByRole('button', { name: '추천 후보 선택' }).click();
   await page.getByRole('button', { name: '검색 지우기' }).click();
   await expect(first).toBeChecked();
@@ -87,7 +87,7 @@ test('bulk restore attempts every excluded candidate despite request failures', 
   });
   await page.goto('/repos/r_auth/candidates?demoScenario=candidate-error');
   await page.getByRole('button', { name: '제외 3개 복원' }).click();
-  await expect(page.locator('.toast').filter({ hasText: '0개 복원 · 3개는 다시 시도해 주세요' })).toBeVisible();
+  await expect(page.locator('.toast').filter({ hasText: '0개 복원, 3개는 다시 시도해 주세요' })).toBeVisible();
   await page.getByRole('button', { name: '제외 3개 복원' }).click();
   await expect(page.getByRole('button', { name: /제외 \d+개 복원/ })).toHaveCount(0);
 });

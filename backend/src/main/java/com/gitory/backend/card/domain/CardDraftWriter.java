@@ -85,6 +85,7 @@ public class CardDraftWriter {
         }
 
         writable.get().markAiDraft();
+        card.clearGenerationFailure();
         if (timedOut) {
             card.markGenerationPartial();
         }
@@ -117,6 +118,7 @@ public class CardDraftWriter {
         }
 
         writable.get().markAiDraft();
+        card.clearGenerationFailure();
 
     }
 

@@ -701,6 +701,53 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("서버가 다시 켜져 실패 표시가 남은 카드에 STAR 초안을 담으면 실패 표시를 지운다")
+    void clearsFailureWhenDraftIsWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allFilled(SHA_A));
+
+        runNext();
+
+        assertThat(statementsOf(cardId)).hasSize(4);
+        assertThat(generationFailureOf(cardId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("근거가 없어 근거 없음만 담아도 초안 시도가 끝났으므로 실패 표시를 지운다")
+    void clearsFailureWhenOnlyNoEvidenceIsWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf());
+
+        runNext();
+
+        assertThat(firstVersionSourceOf(cardId)).isEqualTo("AI_DRAFT");
+        assertThat(generationFailureOf(cardId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("현재 버전이 1번이 아니어서 초안을 담지 못한 카드는 실패 표시를 그대로 둔다")
+    void keepsFailureWhenDraftIsNotWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allFilled(SHA_A));
+
+        runNext();
+
+        assertThat(generationFailureOf(cardId)).isEqualTo("AI_UNAVAILABLE");
+
+    }
+
+    @Test
     @DisplayName("AI 가 보낸 분야·기술 태그를 받은 순서대로 카드에 저장한다")
     void savesTagsFromDraft() {
 

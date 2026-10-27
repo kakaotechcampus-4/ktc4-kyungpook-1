@@ -29,7 +29,6 @@ from schemas.common import (
     StarTech,
     StatementConfidence,
 )
-from services.evidence_checks import match_commit_sha, unsupported_metrics
 from services.llm_executors import CARD_DRAFT_EXECUTOR, LLMCallSkipped, run_llm_call
 from services.llm_structured_client import (
     LLMInvalidOutputError,
@@ -39,6 +38,7 @@ from services.llm_structured_client import (
     StructuredCallResult,
 )
 from services.secret_redaction import mask_emails, redact_secrets
+from services.star_check import DraftSlot, check_draft
 
 SYSTEM_PROMPT = """당신은 개발자의 커밋 근거로 STAR(상황·책임·행동·결과) 카드 초안을 만드는 작성기입니다.
 입력으로 경험 제목, 커밋별 근거 요약(evidence), 사용자가 인터뷰에서 확인한 답변(confirmed_answers)이 주어집니다.
@@ -92,8 +92,6 @@ SLOTS: tuple[StarSlot, ...] = ("S", "T", "A", "R")
 
 _REVIEW_REASON = "근거는 있으나 해석이 불확실해 사용자 확인이 필요합니다."
 _ANSWER_ONLY_REASON = "근거 커밋 없이 사용자 답변으로만 채워 사용자 확인이 필요합니다."
-_UNSOURCED_NUMBER_REASON = "근거에서 확인되지 않는 수치({metrics})가 있어 사용자 확인이 필요합니다."
-_NO_EVIDENCE_REASON = "입력에서 확인되는 근거 커밋이나 사용자 답변이 없어 비웠습니다."
 _DEFAULT_EMPTY_REASON = "이 칸을 뒷받침하는 근거를 찾지 못했습니다."
 _TIMEOUT_REASON = "초안 생성 시간이 초과되어 비웠습니다."
 
@@ -284,47 +282,53 @@ class StarGenerator:
         output: StarDraftOutput,
     ) -> StarAnalysisResponse:
         by_sha = {item.sha: item for item in evidence}
-        has_answers = bool(payload["confirmed_answers"])
         removed_claims: list[str] = []
         used_evidence: list[DiffEvidence] = []
         star: dict[StarSlot, StarFieldResult] = {}
+        texts = {
+            slot: _clip(redact_secrets(" ".join((getattr(output, slot).text or "").split())), self._limits.max_text_chars)
+            for slot in SLOTS
+        }
+        written = {
+            slot: DraftSlot(texts[slot], getattr(output, slot).evidence_shas)
+            for slot in SLOTS
+            if getattr(output, slot).status != "EMPTY" and texts[slot]
+        }
+        checks = check_draft(written, by_sha, payload["confirmed_answers"], payload.get("pull_request_body"))
 
         for slot in SLOTS:
             field: StarField = getattr(output, slot)
-            text = _clip(redact_secrets(" ".join((field.text or "").split())), self._limits.max_text_chars)
-            if field.status == "EMPTY" or not text:
+            text = texts[slot]
+            if slot not in checks:
                 star[slot] = self._empty(field.insufficient_reason, "NO_EVIDENCE")
                 continue
-            # 모델이 적은 SHA를 입력 커밋에 맞춰 그 커밋만 남기고, 맞출 수 없는 SHA는 버린다.
-            # 저자 일치는 배제 조건이 아니다(ARCHITECTURE.md 기여 귀속).
-            cited = _cited_evidence(field.evidence_shas, by_sha)
-            if not cited and not has_answers:
-                # 근거 0개 문장은 화면에 뜨면 안 된다(규칙 4).
+            check = checks[slot]
+            no_evidence = check.problem("NO_EVIDENCE")
+            if no_evidence:
                 removed_claims.append(text)
-                star[slot] = self._empty(_NO_EVIDENCE_REASON, "NO_EVIDENCE")
+                star[slot] = self._empty(no_evidence.reason, "NO_EVIDENCE")
                 continue
             status = field.status
             review_reason = _REVIEW_REASON if status == "NEEDS_REVIEW" else None
-            if not cited:
+            if not check.cited:
                 # 커밋으로 확인되지 않은 답변 문장이 HIGH 로 보이면 안 된다.
                 status = "NEEDS_REVIEW"
                 review_reason = _ANSWER_ONLY_REASON
             # 근거에 없는 수치는 지우지 않고 확인 필요로 내린다. 정규식 판정이라 틀려도 사용자가 확인하면 된다.
-            source = _metric_source(cited, payload["confirmed_answers"], payload.get("pull_request_body"))
-            unsupported = unsupported_metrics(text, source)
-            if unsupported:
+            unsourced = check.problem("UNSOURCED_NUMBER")
+            if unsourced:
                 status = "NEEDS_REVIEW"
-                review_reason = _UNSOURCED_NUMBER_REASON.format(metrics=", ".join(unsupported))
-            used_evidence.extend(cited)
+                review_reason = unsourced.reason
+            used_evidence.extend(check.cited)
             star[slot] = StarFieldResult(
                 text=text,
                 status=status,
-                confidence=_confidence(status, cited),
+                confidence=_confidence(status, check.cited),
                 evidence=[
                     EvidenceReference(
                         sha=item.sha, message=redact_secrets(_headline(item.message)), url=item.url
                     )
-                    for item in cited
+                    for item in check.cited
                 ],
                 review_reason=review_reason,
             )
@@ -371,29 +375,6 @@ def _clean_tags(values: list[str], allowed: frozenset[str], limit: int, drop_doc
     if drop_docs and any(tag != _NON_CODE_AREA for tag in tags):
         tags = [tag for tag in tags if tag != _NON_CODE_AREA]
     return tags[:limit]
-
-
-def _cited_evidence(shas: list[str], by_sha: dict[str, DiffEvidence]) -> list[DiffEvidence]:
-    cited: list[DiffEvidence] = []
-    for sha in shas:
-        matched = match_commit_sha(sha, by_sha, "STAR 초안")
-        item = by_sha[matched] if matched is not None else None
-        if item is not None and item not in cited:
-            cited.append(item)
-    return cited
-
-
-def _metric_source(cited: list[DiffEvidence], answers: list[str], body: Optional[str]) -> str:
-    """수치 근거로 볼 글. 커밋 메시지·확인 답변과 카드 주인이 쓴 PR 본문만 본다.
-
-    요약·기술 포인트는 모델이 쓴 글이라 지어낸 수치가 스스로를 받치게 되고,
-    churn(+30/-2)은 변경 줄 수라 결과 수치의 근거로 치지 않는다.
-    """
-    parts = [item.message for item in cited]
-    parts.extend(answers)
-    if body:
-        parts.append(body)
-    return "\n".join(parts)
 
 
 def _confidence(status: str, cited: list[DiffEvidence]) -> StatementConfidence:

@@ -204,6 +204,13 @@ public class Card {
 
     }
 
+    /** 서버가 다시 켜져 같은 Job 이 실패했던 카드를 다시 채우면, 채운 카드에 실패 안내가 남지 않게 지운다 */
+    void clearGenerationFailure() {
+
+        this.generationFailure = null;
+
+    }
+
     /** 초안 Job 은 1번 버전에만 담을 수 있어, 초안 실패가 남아 있고 되묻기·확정으로 버전이 올라가지 않은 후보 카드만 다시 채운다 */
     public void requireDraftRetryable() {
 

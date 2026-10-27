@@ -2,6 +2,8 @@ package com.gitory.backend.card.domain;
 
 import com.gitory.backend.card.infra.CardRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.ingest.domain.RepositoryReference;
+import com.gitory.backend.ingest.domain.RepositoryReferenceService;
 import com.gitory.backend.recommend.domain.CandidateReference;
 import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class CardListService {
     private final CardRepository cards;
     private final CardVersionReader reader;
     private final CandidateReferenceService candidates;
+    private final RepositoryReferenceService repositories;
     private final InterviewTurnRepository turns;
 
     // 임시 저장이 문장을 지우고 다시 넣는 중에도 카드·문장·근거를 한 시점으로 읽는다
@@ -34,11 +37,15 @@ public class CardListService {
                 .map(Card::getCandidateId)
                 .filter(Objects::nonNull)
                 .toList());
+        Map<Long, RepositoryReference> repos = repositories.findAll(found.stream()
+                .map(Card::getUserRepositoryId)
+                .filter(Objects::nonNull)
+                .toList());
         Set<Long> interviewed = Set.copyOf(turns.findCardIdsWithAnswer(found.stream().map(Card::getId).toList()));
 
         return found.stream()
                 .map(card -> CardSummary.of(card, current.get(card.getId()), references.get(card.getCandidateId()),
-                        interviewed.contains(card.getId())))
+                        repos.get(card.getUserRepositoryId()), interviewed.contains(card.getId())))
                 .toList();
 
     }

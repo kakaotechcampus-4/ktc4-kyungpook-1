@@ -107,7 +107,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ### 카드
 | | 요청 | 응답 |
 |---|---|---|
-| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount }`. `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
+| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount, repo }`. `repo`는 카드 상세의 `repo`와 같은 `{ id, owner, name }`이고, 저장소 없이 직접 쓴 카드는 null이다(#457). `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
 | `POST /cards/manual/draft` | `{ title, period, repoId|null }`, 헤더 `Idempotency-Key: <UUID v4>` | **구현됨.** `Card` — 빈 `USER_EDIT` v1 DRAFT. 같은 사용자·같은 키는 처음 만든 카드의 **현재** 상세를 반환 |
 | `PATCH /cards/{id}/draft` | `{ situation, task, action, result }` **네 키 필수**, string/null | **구현됨.** `{ cardId, versionNo, situation, task, action, result, savedAt }` — 임시 저장 |
 | `GET /cards/{id}` | | **구현됨.** `Card` (아래) |

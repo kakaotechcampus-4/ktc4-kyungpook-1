@@ -222,9 +222,9 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고(카드당 3 으로 바뀔 예정), 프론트는 그 값만 쓴다.
 - 답변 출처 이름(`USER_SELECTED`·`USER_STATED`)은 화면에 노출하지 않는다 — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
 
-### 기업·직무 매칭 (계약 확정 · 서버 미구현)
+### 기업·직무 매칭 (구현됨 · 10/24 운영 켬)
 
-[#199](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/issues/199)에서 정한 기준이다. 서버 구현이 아직 없어서, FE 는 실제 API 모드에서 지금처럼 `VITE_MATCH_ENABLED` 로 화면을 막아 둔다.
+[#199](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/issues/199)에서 정한 기준이다. 서버는 `GET /api/matches`·`GET /api/matches/{id}` 를 제공한다. FE 는 실제 API 모드에서 `VITE_MATCH_ENABLED=true` 일 때만 화면을 연다(운영은 #403 에서 켬).
 
 | | 응답 `data` |
 |---|---|
@@ -262,8 +262,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 ### 아직 서버 쪽에 남은 일 (FE 기대 계약)
 - 단계별 마지막 완료 지점을 Job 에 저장해, 재시도 때 처음부터 다시 돌리지 않고 이어서 처리하기.
-- 카드 confirm·regenerate·metadata 및 되묻기 생성/답변 HTTP 경로. 이 문서에 기대 응답이 있다는 이유로 구현됨을 뜻하지 않습니다. regenerate와 metadata는 실제 모드에서 capability를 확인합니다.
-- 기업·직무 매칭 목록·상세 API. 위 매칭 절이 계약 기준이다.
+- 카드 칸 다시 만들기(`POST /cards/{id}/regenerate`). 서버에 아직 없어 FE 는 실제 모드에서 capability 를 확인한다. (confirm·metadata·되묻기 생성/답변·매칭 목록·상세는 구현되었다.)
 
 ### 지표
 `POST /events` `{ name, props, at, path }` → `{ ok }`. 이벤트 이름은 `src/lib/track.ts` 의 `EventName`. 실패해도 프론트는 무시한다(sendBeacon).

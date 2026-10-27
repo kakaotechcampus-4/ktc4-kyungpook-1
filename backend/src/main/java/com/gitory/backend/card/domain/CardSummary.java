@@ -1,5 +1,6 @@
 package com.gitory.backend.card.domain;
 
+import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.recommend.domain.CandidateReference;
 
 import java.time.Instant;
@@ -22,9 +23,11 @@ public record CardSummary(
         String sourceType,
         String period,
         int evidenceCount,
-        int userStatedCount) {
+        int userStatedCount,
+        RepositoryReference repository) {
 
-    static CardSummary of(Card card, VersionSlots current, CandidateReference candidate, boolean interviewed) {
+    static CardSummary of(Card card, VersionSlots current, CandidateReference candidate, RepositoryReference repository,
+                          boolean interviewed) {
 
         Map<StarField, StarFieldState> star = new EnumMap<>(StarField.class);
         for (StarField field : StarField.values()) {
@@ -45,7 +48,8 @@ public record CardSummary(
                 candidate == null ? null : candidate.type().name(),
                 card.getPeriod(),
                 evidenceCountOf(current),
-                userStatedCountOf(current));
+                userStatedCountOf(current),
+                repository);
 
     }
 

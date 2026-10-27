@@ -65,6 +65,17 @@ public final class TestFixtures {
 
     }
 
+    /** 진행 중인 활동을 만들고, startMonth 는 그달 1일(예: 2025-03-01)로 받는다 */
+    public Long insertActivity(UUID publicId, Long userId, String name, String type, String startMonth) {
+
+        return jdbc.queryForObject("""
+                        INSERT INTO activity (public_id, user_id, name, activity_type, start_month, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, CAST(? AS date), now(), now()) RETURNING id
+                        """,
+                Long.class, publicId, userId, name, type, startMonth);
+
+    }
+
     /** 직접 작성한 작성 중 카드와 빈 1번 직접 수정 버전을 만든다 */
     public Long insertCard(UUID publicId, Long userId) {
 

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,4 +35,17 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     List<UUID> findPublicIdsByGenerationJobId(@Param("jobId") UUID jobId);
 
     List<Card> findByGenerationJobIdOrderById(UUID generationJobId);
+
+    long countByActivityId(Long activityId);
+
+    @Query("SELECT c.activityId AS activityId, count(c) AS cards FROM Card c "
+            + "WHERE c.activityId IN :activityIds GROUP BY c.activityId")
+    List<ActivityCardCount> countByActivityIds(@Param("activityIds") Collection<Long> activityIds);
+
+    interface ActivityCardCount {
+
+        Long getActivityId();
+
+        long getCards();
+    }
 }

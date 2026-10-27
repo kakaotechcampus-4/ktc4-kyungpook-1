@@ -9,10 +9,11 @@ from typing import Any, Awaitable
 
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from api.collection import get_repository_activity_port
 from api.failure_log import log_failure
+from api.progress_stream import NDJSON, STREAM_DESCRIPTION, stream_with_progress
 from api.openapi import COLLECTION_ERROR_RESPONSES, INVALID_PAYLOAD_RESPONSE, LLM_UNAVAILABLE_RESPONSE
 from ports.repository_activity import RepositoryActivityPort
 from schemas.analysis import (
@@ -105,6 +106,35 @@ async def group_experiences(
         data=result,
         meta=Meta(model=None, tool_calls_made=0, processing_ms=processing_ms),
         error=None,
+    )
+
+
+class _StaysConnected:
+    """스트리밍 응답은 호출자가 끊으면 스트림을 닫아 작업을 취소하므로, 요청을 두 곳에서 읽지 않게 끊김 감시를 끈다."""
+
+    async def is_disconnected(self) -> bool:
+        return False
+
+
+@router.post(
+    "/groups/stream",
+    response_class=StreamingResponse,
+    summary="A 경험 후보 그룹화 (진행 스트리밍)",
+    description=(
+        "`/internal/analysis/groups` 와 같은 그룹화를 하면서, 작업 단위 묶음 하나를 묶을 때마다(COMPRESS) "
+        "후보 묶음 하나에 제목·이유를 붙일 때마다(REASON) 진행을 보냅니다. "
+        + STREAM_DESCRIPTION
+    ),
+    responses={200: {"description": "진행 줄들과 마지막 결과 줄", "content": {NDJSON: {}}}},
+)
+async def group_experiences_stream(
+    request: ExperienceGroupingRequest,
+    pipeline: AnalysisPipeline = Depends(get_analysis_pipeline),
+) -> StreamingResponse:
+    """그룹화 API 와 같은 처리·마감·오류 응답을 쓰고, 그 사이 진행만 줄로 더 보낸다."""
+    return stream_with_progress(
+        "/internal/analysis/groups/stream",
+        lambda: group_experiences(request, _StaysConnected(), pipeline),
     )
 
 

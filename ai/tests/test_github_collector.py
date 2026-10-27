@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from ports.repository_activity import RepositoryActivityPort
+from services.progress import listening
 from schemas.collection import (
     CandidateDetailRequest,
     CollectedFileChange,
@@ -215,6 +216,28 @@ def test_collects_commit_diff_pull_review_and_issue() -> None:
     assert result.issues[0].body_excerpt == "응답 시간이 오래 걸립니다."
     assert not hasattr(result.commits[0].files[0], "patch")
     assert result.head_sha == "abc1234567890"
+
+
+def test_collect_reports_pull_requests_then_commits_progress() -> None:
+    """PR 을 하나 읽을 때마다, 그다음 커밋 상세를 하나 받을 때마다 진행을 알리고 PR 이 먼저다."""
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(_success_handler),
+    )
+    events: list[tuple[str, int, int | None]] = []
+
+    async def run() -> None:
+        with listening(lambda step, done, total: events.append((step, done, total))):
+            await collector.collect(_request(), "live-secret")
+
+    asyncio.run(run())
+
+    assert events == [
+        ("PR_REVIEW", 0, 1),
+        ("PR_REVIEW", 1, 1),
+        ("COMMITS", 0, 1),
+        ("COMMITS", 1, 1),
+    ]
 
 
 def test_issue_numbers_drop_zero_references() -> None:

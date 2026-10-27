@@ -35,6 +35,7 @@ from schemas.collection import (
     RepositoryCollectionResult,
 )
 from ports.repository_activity import RepositoryActivityExecution
+from services.progress import COMMITS, PULL_REQUESTS, report_progress
 
 
 GITHUB_API_VERSION = "2022-11-28"
@@ -262,7 +263,9 @@ class GithubCollector:
         request: RepositoryCollectionRequest,
         state: _CollectionState,
     ) -> None:
-        for pull in await self._select_pull_requests(client, request, state):
+        pulls = await self._select_pull_requests(client, request, state)
+        report_progress(PULL_REQUESTS, 0, len(pulls))
+        for index, pull in enumerate(pulls, start=1):
             number = _required_int(pull, "number")
             commit_shas = await self._collect_pull_commit_shas(
                 client, request, state, number
@@ -295,6 +298,7 @@ class GithubCollector:
                     reviews=reviews,
                 )
             )
+            report_progress(PULL_REQUESTS, index, len(pulls))
 
     async def _select_pull_requests(
         self,
@@ -551,7 +555,8 @@ class GithubCollector:
 
         pull_by_sha = _primary_pull_by_sha(state.pull_requests)
         selected_shas = list(summaries_by_sha)[: self._limits.max_commits]
-        for sha in selected_shas:
+        report_progress(COMMITS, 0, len(selected_shas))
+        for index, sha in enumerate(selected_shas, start=1):
             detail, files = await self._collect_commit_detail(
                 client, request, state, sha
             )
@@ -564,6 +569,7 @@ class GithubCollector:
             state.commits.append(commit)
             if confirmation is not None:
                 state.needs_confirmation.append(confirmation)
+            report_progress(COMMITS, index, len(selected_shas))
 
     async def _is_empty_repository(
         self,

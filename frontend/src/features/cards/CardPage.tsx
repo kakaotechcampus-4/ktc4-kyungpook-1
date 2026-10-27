@@ -1,3 +1,4 @@
+import { Copy, ExternalLink, History, ListChecks, Pencil, Printer } from 'lucide-react';
 import { DraftProgress } from './DraftProgress';
 import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
@@ -6,7 +7,7 @@ import { CardTags } from '@/components/cards/CardTags';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
-import { Badge, Breadcrumb, Button, EvidenceStrip, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
+import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
 import { toast } from '@/lib/toast';
@@ -81,11 +82,12 @@ export function CardPage() {
   const card = q.data!;
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel }];
+  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel, href: candidateGithubUrl(card) }];
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
-  const metadataAction = card.status === 'DRAFT' && cardMetadataSupported() ? <Button variant="outline" size="sm" onClick={() => setMetadataOpen(true)}>기본 정보 수정</Button> : null;
+  // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다
+  const metadataAction = card.status === 'DRAFT' && cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
   const metadataDialog = metadataOpen && card.status === 'DRAFT' ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
   const exportMd = () => setCopyOpen(true);
   const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
@@ -131,8 +133,6 @@ export function CardPage() {
         )}
         <CardHeader card={card} right={<>
           <Button size="sm" onClick={exportMd} title="마스킹 적용된 표시값을 마크다운으로 복사">복사</Button>
-          <Button variant="outline" size="sm" onClick={print} title="면접 직전 복습용 인쇄">인쇄</Button>
-          <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
           <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast('다시 편집할 수 있습니다. 확정 버전은 히스토리에 남습니다.'); } })}>수정하기</Button>
         </>} />
         <div className="two-col two-col--340">
@@ -143,21 +143,32 @@ export function CardPage() {
               return (
                 <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했습니다</span>}
-                  {ev.map((e, i) => <EvidenceStrip key={i} e={e} />)}
+                  <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
               );
             })}
           </div>
           <aside className="stack card-review-aside" style={{ gap: 16 }}>
+            {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 받을 질문, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
             <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
               <span className="w-600" style={{ fontSize: 13.5 }}>이 카드로 받을 수 있는 질문</span>
-              {interviewQuestions(card).map((qq) => <div key={qq} className="row" style={{ gap: 8, alignItems: 'flex-start' }}><span className="c-3">·</span><span className="t-12l c-2">{qq}</span></div>)}
+              <ul className="aside-list">{interviewQuestions(card).map((qq) => <li key={qq} className="t-12l c-2">{qq}</li>)}</ul>
             </div>
-            <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
-              <span className="w-600" style={{ fontSize: 13.5 }}>출처</span>
-              {[['후보', srcLabel], ['레포', repoName ?? '—'], ['커밋 근거', `${card.evidence.filter((e) => e.type === 'COMMIT').length}건`], ['내가 말한 것', `${card.evidence.filter((e) => e.type !== 'COMMIT').length}건`], ['마스킹', card.maskRules.length ? `규칙 ${card.maskRules.length}개` : '없음'], ['확정', card.confirmedAt ? ymd(card.confirmedAt) : '—']].map(([k, v]) => (
-                <div key={k} className="row t-12"><span className="c-2">{k}</span><span className="right w-600">{v}</span></div>
-              ))}
+            <div className="card stack" style={{ gap: 12, padding: '16px 18px' }}>
+              <div className="stack" style={{ gap: 4 }}>
+                <span className="t-12 w-600 c-3">출처</span>
+                <span className="t-12l">
+                  {card.repo ? <a className="aside-link" href={`https://github.com/${card.repo.owner}/${card.repo.name}`} target="_blank" rel="noreferrer">{repoName}<ExternalLink size={12} aria-hidden /></a> : null}
+                  {card.repo && srcLabel ? ', ' : ''}
+                  {(() => { const href = candidateGithubUrl(card); return href ? <a className="aside-link" href={href} target="_blank" rel="noreferrer">{srcLabel}<ExternalLink size={12} aria-hidden /></a> : srcLabel; })()}
+                  {!card.repo && !srcLabel ? '직접 작성' : null}
+                </span>
+                <span className="t-12 c-2">근거 커밋 {card.evidence.filter((e) => e.type === 'COMMIT').length}건, 내가 말한 것 {card.evidence.filter((e) => e.type !== 'COMMIT').length}건{card.maskRules.length ? `, 가린 정보 ${card.maskRules.length}개` : ''}</span>
+              </div>
+              <div className="card-tools">
+                <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
+                <Button variant="ghost" size="sm" onClick={print} title="면접 직전 복습용 인쇄"><Printer size={15} aria-hidden />인쇄</Button>
+              </div>
             </div>
             <CardNavigation cardId={cardId} />
           </aside>
@@ -170,7 +181,7 @@ export function CardPage() {
   }
 
   // ── D6 · D7 모드
-  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} right={metadataAction} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode key={card.id} card={card} onDone={close} initialField={editField} />{metadataDialog}</main>;
+  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} titleAction={metadataAction} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode key={card.id} card={card} onDone={close} initialField={editField} />{metadataDialog}</main>;
   if (mode === 'mask') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '정보 가리기' }]} /><PageTitle>공유할 정보 가리기</PageTitle><MaskMode key={card.id} card={card} onDone={close} /></main>;
 
   // ── D2 초안 · D3 (E-7 부분) · D4 (E-6 소재 부족)
@@ -186,12 +197,12 @@ export function CardPage() {
   return (
     <main className="main main--footer main--tight">
       <Breadcrumb items={crumbs} />
-      <CardHeader card={card} right={<>{metadataAction}{card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="t-14 w-600 c-2">후보 목록 ›</Link>}</>} />
+      <CardHeader card={card} titleAction={metadataAction} right={<>{card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--ghost"><ListChecks size={15} aria-hidden />후보 목록</Link>}</>} />
       {partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">E-7</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
-            <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).join(' · ')} 는 채워졌고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => d.field).join(' · ')} 은 아직입니다</span>
+            <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).join(', ')} 는 채워졌고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => d.field).join(', ')} 은 아직입니다</span>
             <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈칸은 답변하거나 직접 작성해 주세요.'}</span>
           </div>
           {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{d.field} 칸만 다시 생성</Button>)}
@@ -226,10 +237,9 @@ export function CardPage() {
         <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <div className="stack" style={{ gap: 6 }}>
             <span className="t-12 w-600 c-3">카드 관리</span>
-            <div className="row" style={{ gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-              <Button variant="text" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
-              <Button variant="text" size="sm" onClick={() => setSp({ mode: 'mask' })}>정보 가리기{card.maskRules.length ? ` (${card.maskRules.length})` : ''}</Button>
-              <Button variant="text" size="sm" onClick={exportMd}>복사</Button>
+            <div className="card-tools">
+              <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
+              <Button variant="ghost" size="sm" onClick={exportMd}><Copy size={15} aria-hidden />복사</Button>
             </div>
           </div>
         </div>
@@ -238,9 +248,8 @@ export function CardPage() {
       </div>
 
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
-      <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(' · ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'}>
+      <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
-        <Button variant="outline" onClick={() => setSp({ mode: 'edit' })}>직접 수정</Button>
         <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
         {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변으로 보완</Button>}
       </StickyFooter>
@@ -253,14 +262,14 @@ export function CardPage() {
   );
 }
 
-function CardHeader({ card, right, statusOverride, note }: { card: Card; right?: React.ReactNode; statusOverride?: React.ReactNode; note?: string }) {
+function CardHeader({ card, right, titleAction, statusOverride, note }: { card: Card; right?: React.ReactNode; titleAction?: React.ReactNode; statusOverride?: React.ReactNode; note?: string }) {
   return (
     <div className="card-page-header">
       <div className="card-page-header__identity"><PageTitle sub={<>
         <Badge kind="NEUTRAL">{cardKindLabel[card.kind]}</Badge>
         {statusOverride ?? <Badge kind={card.status}>{cardStatusLabel[card.status]}</Badge>}
         <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : isDraftMetadataPending(card) ? '본문 저장됨' : cardContentLabel[card.version.source])}</span>
-      </>}>{card.title}</PageTitle>
+      </>} after={titleAction}>{card.title}</PageTitle>
       <CardTags areas={card.areas} techs={card.techs} /></div>
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>
@@ -274,4 +283,12 @@ function interviewQuestions(card: Card): string[] {
   if (card.evidence.some((e) => e.type !== 'COMMIT')) qs.push('코드에 안 남은 부분은 어떻게 증명하나요?');
   if (card.droppedFields.length) qs.push(`${card.droppedFields.map((d) => d.field).join('·')} 칸이 빈 이유를 설명할 수 있나요?`);
   return qs.length ? qs : ['이 경험에서 가장 어려웠던 점은?'];
+}
+
+/** 후보가 PR·이슈면 그 GitHub 주소. 커밋 묶음은 한 주소로 가리킬 수 없어 링크를 만들지 않는다 */
+function candidateGithubUrl(card: Card): string | undefined {
+  const num = card.candidate?.ref.match(/^#(\d+)$/)?.[1];
+  if (!card.repo || !card.candidate || !num) return undefined;
+  const kind = card.candidate.type === 'PR' ? 'pull' : card.candidate.type === 'ISSUE' ? 'issues' : null;
+  return kind ? `https://github.com/${card.repo.owner}/${card.repo.name}/${kind}/${num}` : undefined;
 }

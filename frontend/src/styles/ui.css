@@ -6,15 +6,27 @@
 .btn--outline { background: var(--bg-surface); color: var(--text-strong); border-color: var(--border-strong); }
 .btn--text { color: var(--text-secondary); padding-inline: 8px; }
 .btn--text:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-subtle); }
+/* 고스트 — 옅은 배경이 늘 깔려 있어 글자가 아니라 누르는 것으로 보인다 */
+.btn--ghost { background: var(--bg-subtle); color: var(--text-strong); border-color: var(--border-default); }
+.btn--ghost:hover:not(:disabled) { background: var(--bg-selected); border-color: var(--border-strong); color: var(--text-primary); }
+.btn--ghost svg { color: var(--text-secondary); flex: 0 0 auto; }
 .btn--danger { background: var(--bg-surface); color: var(--state-failed-text); border-color: var(--danger-300); }
 .btn:disabled, .btn--disabled { background: var(--bg-inset) !important; color: var(--text-tertiary) !important; border-color: transparent !important; }
 .btn--sm { padding: 7px 12px; font-size: 12px; line-height: 16px; }
 .btn--lg { padding: 12px 22px; }
 .btn--xl { padding: 15px 28px; font-size: 14px; }
-/* .btn:disabled 의 !important 색(0,2,0)이 .btn--loading(0,1,0)을 이기면 로딩 중에 회색 글씨가 그대로 보인다 — 같은 특이도로 올리고 뒤에 둔다. */
-.btn--loading, .btn--loading:disabled { position: relative; color: transparent !important; }
-.btn--loading::after { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; color: var(--text-secondary); animation: spin .7s linear infinite; } /* 로딩 중 버튼은 항상 disabled(회색 inset 배경)라 흰 스피너는 안 보인다 */
-.btn--outline.btn--loading::after, .btn--text.btn--loading::after { color: var(--text-secondary); }
+/*
+ * 로딩 중에도 글자와 버튼 색을 지킨다 — 글자를 지우고 회색 상자만 남기면 무엇이 진행 중인지 모르고 멈춘 것처럼 보인다.
+ * .btn:disabled 의 !important(0,2,0)를 같은 특이도로 덮으려고 변형 클래스와 묶어 뒤에 둔다.
+ */
+.btn--loading { cursor: progress; }
+.btn--loading::before { content: ''; width: 14px; height: 14px; flex: 0 0 auto; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+.btn--primary.btn--loading { background: var(--bg-ink-solid) !important; border-color: var(--bg-ink-solid) !important; color: var(--text-on-ink) !important; opacity: .82; }
+.btn--outline.btn--loading { background: var(--bg-surface) !important; border-color: var(--border-strong) !important; color: var(--text-strong) !important; }
+.btn--ghost.btn--loading { background: var(--bg-subtle) !important; border-color: var(--border-default) !important; color: var(--text-strong) !important; }
+.btn--text.btn--loading { background: transparent !important; color: var(--text-secondary) !important; }
+.btn--danger.btn--loading { background: var(--bg-surface) !important; border-color: var(--danger-300) !important; color: var(--state-failed-text) !important; }
+@media (prefers-reduced-motion: reduce) { .btn--loading::before { animation-duration: 1.6s; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ───────── 배지 (원본: radius 4 · 11 SemiBold · 이름 = enum) ───────── */
@@ -101,12 +113,20 @@ button.chip { min-height: var(--control-touch-size); }
 .star-key--dropped { background: var(--bg-inset); color: var(--text-tertiary); }
 .star-key--sm { width: 22px; height: 22px; border-radius: 5px; font-size: 10.5px; }
 .evidence { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--evidence-commit-bg); color: var(--evidence-commit-text); font-size: 11.5px; line-height: 16px; font-weight: 500; text-decoration: none; }
-a.evidence { display: grid; grid-template-columns: 13px max-content minmax(0, 1fr) 16px; min-height: var(--control-touch-size); }
+/* 커밋 근거: 1행 = 무엇을 했는지(메시지), 2행 = 커밋 sha·GitHub 링크 안내. 아이콘·화살표는 1행에 고정. */
+.evidence--commit { display: grid; grid-template-columns: 13px minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: start; min-height: var(--control-touch-size); padding: 10px 12px; }
+.evidence--commit .evidence__icon { margin-top: 3px; }
 .evidence__label { font-size: 10px; font-weight: 600; color: var(--evidence-commit-label); flex: 0 0 auto; }
-.evidence__sha { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-weight: 600; white-space: normal; overflow-wrap: anywhere; min-width: 0; flex: 0 0 auto; }
-.evidence__snippet { color: var(--evidence-commit-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-a.evidence .evidence__snippet { grid-column: 2 / 4; grid-row: 2; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 20px; }
-a.evidence .evidence__arrow { grid-column: 4; grid-row: 1; margin-left: 0; }
+.evidence__sha { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-weight: 500; white-space: normal; overflow-wrap: anywhere; min-width: 0; flex: 0 0 auto; }
+.evidence__snippet { color: var(--evidence-commit-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evidence--commit .evidence__snippet { grid-column: 2; grid-row: 1; font-size: 13px; line-height: 20px; font-weight: 500; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.evidence__message { grid-column: 2; font-size: 12px; line-height: 18px; color: var(--evidence-commit-muted); overflow-wrap: anywhere; }
+.evidence__meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; font-size: 11px; line-height: 16px; color: var(--evidence-commit-muted); }
+.evidence__meta .evidence__sha { flex: 0 1 auto; }
+.evidence--commit .evidence__arrow { grid-column: 3; grid-row: 1; margin: 3px 0 0; }
+.evidence__go { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; gap: 4px; margin-top: 1px; font-size: 11.5px; font-weight: 600; color: var(--evidence-commit-label); white-space: nowrap; }
+.evidence__kind { padding: 1px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-default); font-size: 10.5px; font-weight: 600; color: var(--text-strong); }
+a.evidence--commit:hover .evidence__go { color: var(--text-accent); text-decoration: underline; text-underline-offset: 3px; }
 .evidence__arrow { margin-left: auto; color: var(--evidence-commit-muted); }
 a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .evidence--user { background: var(--evidence-user-bg); color: var(--evidence-user-text); border: 1px solid var(--border-default); }

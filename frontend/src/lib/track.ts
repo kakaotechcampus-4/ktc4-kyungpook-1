@@ -1,6 +1,6 @@
 /**
  * 지표 이벤트 (스펙 §추가 지표 · api.logger).
- * 퍼널: 레포 선택 → 후보 제시 → 후보 확정 → 초안 생성 → 되묻기 → 카드 확정.
+ * 퍼널: 레포 선택 → 후보 제시 → 후보 확정 → 초안 생성 → 되묻기 → 카드 확정 → 공고 매칭.
  * 실패해도 화면에 영향 없어야 하므로 fire-and-forget. 개인정보는 넣지 않는다 (id 만).
  */
 export type EventName =
@@ -8,7 +8,8 @@ export type EventName =
   | 'cluster_commit_excluded' | 'candidate_added_manually' | 'candidates_confirmed'
   | 'draft_generated' | 'interview_asked' | 'interview_answered' | 'card_edited' | 'card_masked'
   | 'card_confirmed' | 'card_reopened' | 'version_restored' | 'manual_card_created' | 'field_regenerated'
-  | 'recall_answered' | 'github_disconnected' | 'card_exported';
+  | 'recall_answered' | 'github_disconnected' | 'card_exported'
+  | 'match_opened' | 'match_card_opened' | 'match_source_opened';
 
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
 

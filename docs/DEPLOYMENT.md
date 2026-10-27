@@ -24,7 +24,7 @@
 - **org third-party 앱 접근 정책은 미해결.** 그래서 GitHub OAuth App 은 개인 계정 소유로 만들었다. org 소유로 옮기려면 `kakaotechcampus-4` org 설정 → Third-party access → OAuth App Policy 를 org owner 가 확인해야 한다. 옮겨도 `deploy/.env` 의 두 값만 바꾸면 된다.
 - 비용은 신경 쓰지 않아도 된다. 카테캠이 서버를 제공한다.
 
-## 2. 상태 (2026-10-06 기준)
+## 2. 상태 (2026-10-06 기준 · 자동 배포는 10-25 갱신)
 
 | 항목 | 상태 | 비고 |
 |---|---|---|
@@ -37,7 +37,7 @@
 | 서비스 3개 동시 기동 (스펙 R-7) | ✅ | 10/5. 4개 컨테이너 healthy |
 | 배포 환경 로그인 왕복 (스펙 R-10) | ✅ | 10/5. 브라우저로 GitHub 로그인 왕복 성공 |
 | Spring ↔ AI 토큰 경로 내부 전용 | ✅ (구성) | AI 포트 비공개를 외부에서 확인. 실제 수집 호출 로그 확인은 남음 (5절) |
-| 자동 배포 (GitHub Actions) | ⬜ | 워크플로 PR + 서버에 runner 설치 (6절) |
+| 자동 배포 (GitHub Actions) | ✅ | develop push 때 `.github/workflows/deploy.yml` 이 서버 runner(`gitory-deploy`)에서 배포 (6절) |
 
 ## 3. 구성
 

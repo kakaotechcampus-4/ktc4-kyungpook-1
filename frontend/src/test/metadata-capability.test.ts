@@ -22,11 +22,12 @@ it('does not acknowledge metadata for a different card', async () => {
   await expect(endpoints.saveMetadata('card', { title: '새 제목' })).rejects.toMatchObject({ name: 'ContractError' });
 });
 
-it.each(['', '   ', null])('sends cleared period %j as explicit null over HTTP', async (period) => {
+// 서버는 null 을 '바꾸지 않음' 으로 보고 빈 글만 '지우기' 로 받는다(#420)
+it.each(['', '   ', null])('sends cleared period %j as an empty string over HTTP', async (period) => {
   vi.stubEnv('VITE_API_MOCK', 'false'); vi.stubEnv('VITE_CARD_METADATA_ENABLED', 'true');
   const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: { cardId: 'card', title: '제목', period: null, updatedAt: '2026-10-15T00:00:00Z' }, error: null }), { status: 200 }));
   await endpoints.saveMetadata('card', { period });
-  expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).toEqual({ period: null });
+  expect(JSON.parse(fetcher.mock.calls[0][1]!.body as string)).toEqual({ period: '' });
 });
 it('preserves a 400 validation response as a non-retryable input error', async () => {
   vi.stubEnv('VITE_API_MOCK', 'false'); vi.stubEnv('VITE_CARD_METADATA_ENABLED', 'true');

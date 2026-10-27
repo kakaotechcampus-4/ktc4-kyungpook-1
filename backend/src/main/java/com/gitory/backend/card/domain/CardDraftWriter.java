@@ -94,6 +94,13 @@ public class CardDraftWriter {
     }
 
     /** diff 근거가 하나도 없어 STAR 를 부르지 않은 카드의 빈 칸에 근거 없음을 남겨, 화면이 빈 까닭을 보여 주게 한다 */
+    /** 초안을 채우지 못한 카드에 실패 이유를 남겨, Job 이 끝나도 화면이 실패와 다시 시도를 보여 주게 한다 */
+    public void markFailed(Long cardId, CardDraftFailure failure) {
+
+        cards.findWithLockById(cardId).orElseThrow().markGenerationFailed(failure);
+
+    }
+
     public void writeNoEvidence(Long cardId) {
 
         Card card = cards.findWithLockById(cardId).orElseThrow();

@@ -31,7 +31,7 @@ body:
       label: 근거
       description: |
         쫓아갈 수 있는 식별자를 적어 주세요 — Job ID, 요청 ID, 시각, 파일 경로, 커밋 sha.
-        **저장소 이름·카드 본문·인터뷰 답변 원문은 적지 마세요** (security-privacy.md).
+        **저장소 이름·카드 본문·인터뷰 답변 원문은 적지 마세요** (공개 저장소입니다).
     validations:
       required: false
 

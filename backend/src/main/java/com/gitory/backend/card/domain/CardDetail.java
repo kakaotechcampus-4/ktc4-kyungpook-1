@@ -26,6 +26,7 @@ public record CardDetail(
         Instant createdAt,
         CandidateReference candidate,
         CardGeneration generation,
+        CardDraftFailure draftFailure,
         int interviewTurns,
         Map<StarField, Integer> turnNos,
         Map<StarField, SlotNote> notes,

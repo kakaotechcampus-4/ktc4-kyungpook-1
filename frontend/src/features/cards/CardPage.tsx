@@ -5,12 +5,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CardTags } from '@/components/cards/CardTags';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
-import { useCard, useRegenerateField, useReopen } from '@/api/queries';
+import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
-import { Badge, Breadcrumb, Button, EvidenceList, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
+import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
 import { toast } from '@/lib/toast';
+import { errorView } from '@/api/errorView';
 import { track } from '@/lib/track';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -57,6 +58,7 @@ export function CardPage() {
     }
   }, [cardId, mode, q.data, q.refetch]);
   const regen = useRegenerateField(cardId);
+  const retry = useRetryDraft(cardId);
   const reopen = useReopen(cardId);
   const [justConfirmed, setJustConfirmed] = useState<ConfirmResult | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
@@ -188,6 +190,7 @@ export function CardPage() {
   const reviewFields = starFieldsToReview(card);
   const regenerate = (f: StarField) => regen.mutate(f, { onSuccess: () => { track('field_regenerated', { cardId, field: f }); toast(`${starFieldShort[f]} 칸을 다시 생성했습니다 — 근거가 없으면 그대로 비어 있습니다`); } });
   const canRegenerate = cardRegenerationSupported();
+  const retryDraft = () => retry.mutate(undefined, { onSuccess: () => toast('초안을 다시 만들고 있어요') });
 
   return (
     <main className="main main--footer main--tight">
@@ -201,6 +204,18 @@ export function CardPage() {
             <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈칸은 답변하거나 직접 작성해 주세요.'}</span>
           </div>
           {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{d.field} 칸만 다시 생성</Button>)}
+        </div>
+      )}
+      {card.draftFailure && card.status === 'DRAFT' && (
+        <div className="card row" role="status" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
+          <div className="stack grow" style={{ gap: 4 }}>
+            <span className="w-600" style={{ fontSize: 14 }}>AI 초안을 만들지 못했어요</span>
+            <span className="t-12l c-2">{card.draftFailure === 'AI_UNAVAILABLE'
+              ? 'AI 가 잠시 응답하지 않았어요. 다시 시도하면 채워질 수 있어요.'
+              : '초안을 만드는 중에 문제가 났어요. 다시 시도하거나 칸을 직접 채워 주세요.'} 직접 쓴 칸은 그대로 둡니다.</span>
+          </div>
+          <Button variant="outline" size="sm" loading={retry.isPending} onClick={retryDraft}>초안 다시 만들기</Button>
+          {retry.isError && <Note strong="다시 시도하지 못했어요" tone="danger">{errorView(retry.error).message}</Note>}
         </div>
       )}
       {e6 && (

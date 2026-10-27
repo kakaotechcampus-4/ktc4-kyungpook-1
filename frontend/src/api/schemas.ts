@@ -286,6 +286,8 @@ export const Card = z.object({
   droppedFields: z.array(DroppedField),
   maskRules: z.array(z.object({ from: z.string(), to: z.string() })),
   generation: z.object({ jobId: z.string(), partial: z.boolean() }).nullable(), // D1 · D3
+  // AI 초안을 채우지 못한 이유(#419). 데모 데이터처럼 값이 없으면 실패 없음이다
+  draftFailure: z.enum(['AI_UNAVAILABLE', 'INTERNAL_ERROR']).nullable().optional(),
   interviewTurns: z.number(),
   confirmedAt: z.string().nullable(),
   createdAt: z.string(),

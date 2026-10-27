@@ -74,8 +74,8 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ```jsonc
 { "jobId", "type": "ANALYZE|DRAFT", "state": "QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELED",
   "partial": false,                                   // 부분 완료는 별도 상태가 아니다 → SUCCEEDED + partial:true
-  "steps": [{ "key": "COMMITS|PR_REVIEW|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
-              "done": 0, "total": 0 }],               // 늘 이 4개가 이 순서. 총량을 모르면 total: null
+  "steps": [{ "key": "PR_REVIEW|COMMITS|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
+              "done": 0, "total": 0 }],               // 늘 4개. 순서는 아래 참고. 총량을 모르면 total: null
   "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|AI_UNAVAILABLE|COLLECTION_CAPPED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
   "retryable": bool | null,
   "retryAfterSec": n | null,                          // GITHUB_RATE_LIMITED 에서만 의미가 있다
@@ -84,6 +84,8 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
   "pollAfterMs": 2000 }                               // 다음 폴링까지 기다릴 시간. 간격은 서버가 정한다
 ```
 
+- **단계 순서는 서버가 준 순서 그대로 그린다.** 분석(`ANALYZE`)은 AI 가 실제로 읽는 순서인 `PR_REVIEW → COMMITS → COMPRESS → REASON`, 카드 초안(`DRAFT`)은 `COMMITS → PR_REVIEW → COMPRESS → REASON` 이다.
+- **분석 단계의 `done`/`total` 은 읽는 동안 실시간으로 바뀐다(서버 설정 `ANALYSIS_LIVE_PROGRESS_ENABLED`, 기본 켬).** 진행 중인 단계는 `RUNNING` + 지금까지 읽은 수/전체(전체를 아직 모르면 `total: null`), 앞 단계는 `DONE`, 뒤 단계는 `QUEUED` 다. 숫자는 저장소 전체가 아니라 **이번에 새로 읽는 양**이다 — 다시 분석하면 새 PR·커밋만 세고, 새로 읽을 게 없으면 `DONE` + `done: 0, total: 0` 이다. 갱신은 1초에 한 번 정도라 폴링마다 숫자가 조금씩 오른다.
 - **분석 실패는 HTTP 오류가 아니다.** 폴링 응답은 늘 200 이고, 실패는 `state` 로 말한다.
 - **후보 0개도 실패가 아니다.** `SUCCEEDED` + `result.verdict: "EMPTY"` + `reasons` 3줄.
 - **남의 Job 은 403 이 아니라 404** — 존재 여부조차 알려 주지 않는다.

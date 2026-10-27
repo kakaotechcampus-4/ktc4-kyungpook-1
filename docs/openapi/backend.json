@@ -1183,6 +1183,16 @@
             "enum" : [ "AI", "USER" ],
             "type" : "string"
           },
+          "changedFiles" : {
+            "description" : "커밋 근거의 바뀐 파일 수이고, 사용자 근거나 수집 때 몰랐으면 null",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "committedAt" : {
+            "description" : "커밋 근거의 커밋 작성 시각이고, 사용자 근거는 null",
+            "format" : "date-time",
+            "type" : "string"
+          },
           "field" : {
             "enum" : [ "S", "T", "A", "R" ],
             "type" : "string"
@@ -1192,6 +1202,7 @@
             "type" : "string"
           },
           "snippet" : {
+            "description" : "커밋 근거의 커밋 메시지 첫 줄이고, 사용자 근거나 메시지가 없으면 null",
             "type" : "string"
           },
           "turnNo" : {

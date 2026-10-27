@@ -3,6 +3,7 @@ package com.gitory.backend.consent.infra;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
+import com.gitory.backend.common.infra.ai.AiProgress;
 import com.gitory.backend.consent.domain.GithubConnection;
 import com.gitory.backend.consent.domain.GithubDisconnectService;
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
@@ -35,6 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /** consent 안에서 연결 상태를 확인하고, 복호화한 토큰은 HTTP 헤더에만 쓴다. */
 @Slf4j
@@ -71,12 +73,21 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     @Override
     public JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas) {
 
+        return collect(userId, target, knownCommitShas, null);
+
+    }
+
+    /** progress 가 없으면 진행 없이 한 번에 받는 수집 API 를 부른다 */
+    @Override
+    public JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas,
+                            Consumer<AiProgress> progress) {
+
         User user = activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
         String token = activeToken(userId).orElseThrow(GithubCollectionAccess::unavailable);
         AiCollectRequest request = new AiCollectRequest(target.userRepositoryId(), target.repository(),
                 new AiCollectActor(user.getGithubLogin(), List.of()), target.branches(), knownCommitShas);
 
-        return ai.collect(request, token);
+        return progress == null ? ai.collect(request, token) : ai.collectStreaming(request, token, progress);
 
     }
 

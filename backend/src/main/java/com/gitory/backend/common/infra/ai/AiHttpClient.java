@@ -11,11 +11,17 @@ import tools.jackson.core.exc.JacksonIOException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 /** 내부 AI HTTP 경계. 원문 에러와 HTTP 예외의 cause를 밖으로 전달하지 않는다. */
 @Component
@@ -54,6 +60,28 @@ public class AiHttpClient {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
                 .body(request), true);
+    }
+
+    /** {@link #collect} 와 같은 수집을 부르고, AI 가 PR·커밋을 하나 읽을 때마다 보내는 진행을 progress 에 넘긴다 */
+    public JsonNode collectStreaming(Object request, String githubToken, Consumer<AiProgress> progress) {
+
+        requireHeaderSafe(githubToken);
+        return streamingExchange(collectionClient.post().uri("/internal/collect/stream")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-GitHub-Token", githubToken)
+                .body(request), progress);
+
+    }
+
+    /** {@link #post} 와 같은 호출을 진행 스트리밍 경로로 부르고, 받은 진행을 progress 에 넘긴다 */
+    public JsonNode postStreaming(String path, Object request, Duration readTimeout, Consumer<AiProgress> progress) {
+
+        requireInternalPath(path);
+        RestClient postClient = postClients.computeIfAbsent(readTimeout, timeout -> client(properties, timeout));
+        return streamingExchange(postClient.post().uri(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request), progress);
+
     }
 
     /** 수집 말고도 토큰이 필요한 AI 호출로, 호출마다 기다릴 시간이 달라 경로와 대기 시간을 함께 받는다 */
@@ -111,6 +139,78 @@ public class AiHttpClient {
         } catch (RestClientException invalid) {
             throw AiClientException.invalidResponse();
         }
+    }
+
+    /**
+     * 한 줄에 JSON 하나인 응답에서 진행 줄은 progress 에 넘기고, 마지막 결과 줄은 스트리밍 없는 응답과 똑같이 검사해 돌려준다
+     * 읽을 수 없는 줄은 진행 표시만 빠지도록 버리고, 결과 줄 없이 끝나면 끊긴 응답처럼 다시 시도할 수 있는 실패로 본다
+     */
+    private JsonNode streamingExchange(RestClient.RequestHeadersSpec<?> request, Consumer<AiProgress> progress) {
+        try {
+            return request.exchange((ignored, response) -> {
+                int status = response.getStatusCode().value();
+                if (status < 200 || status >= 300) {
+                    // 요청 검증처럼 스트림을 열기 전에 난 실패는 보통 JSON 응답으로 온다
+                    throw httpFailure(status, readOrNull(response.getBody().readAllBytes()));
+                }
+                BufferedReader lines = new BufferedReader(
+                        new InputStreamReader(response.getBody(), StandardCharsets.UTF_8));
+                try {
+                    String line;
+                    while ((line = lines.readLine()) != null) {
+                        JsonNode item = readOrNull(line.getBytes(StandardCharsets.UTF_8));
+                        if (item == null) {
+                            continue;
+                        }
+                        String type = item.path("type").asString("");
+                        if ("progress".equals(type)) {
+                            progressOf(item).ifPresent(progress);
+                        } else if ("result".equals(type)) {
+                            return resultOf(item);
+                        }
+                    }
+                } catch (IOException | JacksonIOException interrupted) {
+                    throw new AiClientException("AI_UNAVAILABLE", true, status);
+                }
+                throw new AiClientException("AI_UNAVAILABLE", true, status);
+            });
+        } catch (AiClientException safe) {
+            throw safe;
+        } catch (ResourceAccessException unreachable) {
+            throw new AiClientException("AI_UNAVAILABLE", true, null);
+        } catch (RestClientException invalid) {
+            throw AiClientException.invalidResponse();
+        }
+    }
+
+    private JsonNode readOrNull(byte[] json) {
+        try {
+            return json.length == 0 ? null : mapper.readTree(json);
+        } catch (RuntimeException malformed) {
+            return null;
+        }
+    }
+
+    private static Optional<AiProgress> progressOf(JsonNode item) {
+        JsonNode step = item.path("step");
+        JsonNode done = item.path("done");
+        JsonNode total = item.path("total");
+        if (!step.isString() || !done.isIntegralNumber()) {
+            return Optional.empty();
+        }
+        return Optional.of(new AiProgress(step.asString(), done.asInt(), total.isIntegralNumber() ? total.asInt() : null));
+    }
+
+    private static JsonNode resultOf(JsonNode item) {
+        int status = item.path("status").asInt(0);
+        JsonNode body = item.get("body");
+        if (status < 200 || status >= 300) {
+            throw httpFailure(status, body);
+        }
+        if (body == null || !body.isObject()) {
+            throw AiClientException.invalidResponse();
+        }
+        return unwrap(body, status);
     }
 
     private static JsonNode unwrap(JsonNode body, int status) {

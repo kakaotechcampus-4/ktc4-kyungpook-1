@@ -244,6 +244,9 @@ gitory:
       enabled: ${ANALYSIS_GROUPING_ENABLED:false}
       # AI 의 경험 그룹화 규칙이 바뀌면 올려, 보낼 요청이 지난번과 같아도 모든 저장소를 다시 경험 그룹화하게 한다
       version: 1
+    live-progress:
+      # 켜면 AI 수집·경험 그룹화를 진행 스트리밍 API 로 불러 분석 단계에 읽은 수/전체를 실시간으로 남기고, 끄면 한 번에 받는 API 로 부른다
+      enabled: ${ANALYSIS_LIVE_PROGRESS_ENABLED:true}
   cards:
     # 후보로 카드 만들기 한 요청에 만들 수 있는 카드 수. 화면은 같은 값으로 선택을 막는다(CandidateBoardPage)
     max-per-request: 8

@@ -99,7 +99,7 @@ class JobQueryServiceTest {
         assertThat(found.partial()).isFalse();
         assertThat(found.steps())
                 .extracting(JobStep::key)
-                .containsExactly(JobStepKey.COMMITS, JobStepKey.PR_REVIEW, JobStepKey.COMPRESS, JobStepKey.REASON);
+                .containsExactly(JobStepKey.PR_REVIEW, JobStepKey.COMMITS, JobStepKey.COMPRESS, JobStepKey.REASON);
         assertThat(found.errorCode()).isNull();
         assertThat(found.retryable()).isNull();
         assertThat(found.retryAfterSec()).isNull();

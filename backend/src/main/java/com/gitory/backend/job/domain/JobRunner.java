@@ -5,6 +5,7 @@ import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.ExperienceGroupingRequest;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
+import com.gitory.backend.common.infra.ai.AiProgress;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
@@ -24,12 +25,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * 대기 중인 분석 Job 하나를 꺼내 AI 수집을 부르고, 경험 그룹화를 켰으면 저장한 수집 결과로 AI 경험 그룹화까지 부른 뒤 결과에 따라 끝내며, 카드 초안 Job 은 AI 초안을 켰을 때만 AI 를 불러 카드를 채운다
@@ -38,7 +41,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@EnableConfigurationProperties({JobGroupingProperties.class, JobDraftProperties.class})
+@EnableConfigurationProperties({JobGroupingProperties.class, JobDraftProperties.class, JobProgressProperties.class})
 public class JobRunner {
 
     // 멈춘 Job 판정은 수집·경험 그룹화·카드 초안 diff 근거·STAR 초안의 네 응답 대기 한도 중 큰 값에 이 여유를 더한 시간이다
@@ -61,6 +64,8 @@ public class JobRunner {
     private final GithubCollectionAccessPort githubAccess;
     private final JobDraftProperties draftProperties;
     private final CardDraftRunner cardDrafts;
+    private final JobProgressProperties progressProperties;
+    private final Clock clock;
 
     /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
     public Optional<AnalysisJob> claimNext() {
@@ -132,12 +137,15 @@ public class JobRunner {
         try {
             IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
                     activityStore.knownCommitShas(job.getUserRepositoryId()));
-            CollectedActivity activity = activities.collect(request);
+            Consumer<AiProgress> progress = progressOf(job);
+            CollectedActivity activity = progress == null
+                    ? activities.collect(request)
+                    : activities.collect(request, progress);
             Instant limitResetAt = limitResetAtOf(job, activity.partialReason());
             Boolean startedGrouping = transaction.execute(
                     status -> storeCollection(job.getId(), request, activity, limitResetAt));
             if (Boolean.TRUE.equals(startedGrouping)) {
-                group(job, activity.partialReason(), limitResetAt);
+                group(job, activity.partialReason(), limitResetAt, progress);
             }
         } catch (RuntimeException failure) {
             JobErrorCode errorCode = errorCodeOf(failure);
@@ -188,8 +196,7 @@ public class JobRunner {
         }
 
         Long collectionRunId = activityStore.store(request, activity);
-        job.recordCollection(collectionRunId, activityStore.storedCommitCount(request.userRepositoryId()),
-                activity.pullRequests().size());
+        job.recordCollection(collectionRunId, activity.commits().size(), activity.pullRequests().size());
         if (groupingProperties.enabled()) {
             job.startGrouping();
             return true;
@@ -200,11 +207,19 @@ public class JobRunner {
 
     }
 
+    /** 실시간 진행을 끄면 빈 값을 돌려줘, 진행 없이 한 번에 받는 AI API 를 부르게 한다 */
+    private Consumer<AiProgress> progressOf(AnalysisJob job) {
+
+        return progressProperties.enabled() ? new JobProgressRecorder(job.getId(), jobs, transaction, clock) : null;
+
+    }
+
     /**
      * 저장된 내 커밋에서 손댄 후보의 커밋·PR 을 빼고 AI 경험 그룹화를 불러 만든 후보를 저장한다
      * 보낼 요청이 지난번 경험 그룹화 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다
      */
-    private void group(AnalysisJob job, PartialReason partialReason, Instant limitResetAt) {
+    private void group(AnalysisJob job, PartialReason partialReason, Instant limitResetAt,
+                       Consumer<AiProgress> progress) {
 
         Long userRepositoryId = job.getUserRepositoryId();
         String login = users.loginOf(job.getUserId());
@@ -220,7 +235,8 @@ public class JobRunner {
             return;
         }
 
-        List<GroupedCandidate> grouped = GroupingConverter.candidatesOf(grouping.group(request));
+        List<GroupedCandidate> grouped = GroupingConverter.candidatesOf(
+                progress == null ? grouping.group(request) : grouping.group(request, progress));
         transaction.executeWithoutResult(
                 status -> storeCandidates(job.getId(), fingerprint, grouped, partialReason, limitResetAt));
 

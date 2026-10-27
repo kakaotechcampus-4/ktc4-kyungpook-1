@@ -18,7 +18,6 @@ export function JobLiveness({ job, checkedAt }: { job: Job; checkedAt: number })
     <p className="job-live t-12 c-2">
       <span className="spinner spinner--sm" aria-hidden />
       <span>{job.state === 'QUEUED' ? `대기열에서 ${elapsed(elapsedSec)}째 기다리는 중이에요` : `${elapsed(elapsedSec)}째 진행 중이에요`}</span>
-      <span aria-hidden>·</span>
       <span>마지막 확인 {elapsed(sinceCheckSec)} 전</span>
     </p>
   );

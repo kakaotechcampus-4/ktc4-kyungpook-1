@@ -27,9 +27,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static com.gitory.backend.usage.domain.UsageEventRejection.*;
@@ -128,6 +132,27 @@ class UsageEventApiTest {
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
         assertThat(rowCount()).isZero();
+
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("screenEventNames")
+    @DisplayName("화면 track.ts 의 이름은 모두 허용 목록에 있어 200 으로 저장된다 — 어긋나면 그 지표가 400 으로 버려진다")
+    void acceptsEveryScreenEventName(String name) throws Exception {
+
+        send(valid(name), MediaType.APPLICATION_JSON, true)
+                .andExpect(status().isOk());
+
+        assertThat(jdbc.queryForObject("SELECT name FROM usage_event", String.class)).isEqualTo(name);
+
+    }
+
+    static Stream<String> screenEventNames() throws IOException {
+
+        String source = Files.readString(Path.of("../frontend/src/lib/track.ts"));
+        int start = source.indexOf("export type EventName");
+        String union = source.substring(start, source.indexOf(';', start));
+        return Pattern.compile("'([a-z0-9_]+)'").matcher(union).results().map(match -> match.group(1));
 
     }
 

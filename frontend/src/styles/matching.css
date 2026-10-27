@@ -93,20 +93,26 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  color: var(--text-accent);
-  font-weight: 600;
-  font-size: 26px;
-  min-width: 54px;
+  gap: 4px;
+  min-width: 64px;
+  padding: 9px 12px 8px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1;
 }
 .match-fit > span {
-  color: var(--text-secondary);
+  color: inherit;
   font-size: 11px;
-  font-weight: 400;
+  font-weight: 500;
+  line-height: 1.2;
 }
-.match-fit--D {
-  color: var(--text-secondary);
-}
+/* 등급마다 색을 달리한다 — A·B·C 가 같은 초록이면 우선순위가 안 보인다. 색만으로 가르지 않도록 글자(A~D·근거 등급)도 함께 둔다 */
+.match-fit--A { background: var(--bg-ink-solid); color: var(--text-on-ink); }
+.match-fit--B { background: var(--bg-selected); border-color: var(--border-selected); color: var(--text-accent); }
+.match-fit--C { background: var(--state-open-bg); border-color: var(--state-open-text); color: var(--state-open-text); }
+.match-fit--D { background: var(--bg-subtle); border-color: var(--border-default); color: var(--text-secondary); }
 .match-fit-empty {
   color: var(--text-secondary);
   font-size: 13px;
@@ -233,7 +239,7 @@
   flex-wrap: wrap;
   gap: 8px 12px;
 }
-.match-support-title > span {
+.match-support-title > span:not(.badge) {
   color: var(--text-secondary);
   font-weight: 400;
 }

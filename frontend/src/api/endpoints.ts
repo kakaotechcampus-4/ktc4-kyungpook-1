@@ -62,6 +62,8 @@ export const endpoints = {
       return metadata;
     });
   },
+  /** AI 초안을 채우지 못한 카드만 새 초안 Job 으로 다시 채운다(#419) */
+  retryDraft: (id: string) => api(z.object({ jobId: z.string() }), `/cards/${id}/draft/retry`, { method: 'POST' }),
   regenerateField: (id: string, field: S.StarField) => {
     if (!cardRegenerationSupported()) return Promise.reject(new ApiError('FEATURE_UNAVAILABLE', '', 400));
     return api(z.object({ jobId: z.string() }), `/cards/${id}/regenerate`, { method: 'POST', body: { field } });

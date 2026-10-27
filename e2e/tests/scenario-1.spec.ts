@@ -102,7 +102,8 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
 
     await test.step('6. 상황·행동 직접 쓰기', async () => {
       // 과제는 비워 둬서 되묻기에 쓴다
-      await page.getByRole('button', { name: '직접 수정' }).click();
+      // 하단 "직접 수정"은 없앴다(#452). 칸마다 있는 버튼으로 편집에 들어간다 — 상황이 채워져 있으면 "상황 수정", 비어 있으면 "상황 직접 쓰기"
+      await page.getByRole('button', { name: /^상황 (수정|직접 쓰기)$/ }).click();
       await page.getByRole('textbox', { name: '상황 (Situation)' }).fill(SITUATION);
       await page.getByRole('textbox', { name: '행동 (Action)' }).fill(ACTION);
       await expect(page.getByText('저장됨', { exact: true })).toBeVisible({ timeout: 15_000 });

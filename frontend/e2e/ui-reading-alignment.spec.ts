@@ -18,7 +18,9 @@ test('all three repository step labels are visible without horizontal scrolling 
 
 test('mobile evidence links are easy to press and expose long snippets without truncation', async ({ page }) => {
   await page.setViewportSize({width:320,height:900}); await loginAsDemo(page); await page.goto('/cards/card_01');
-  const evidence=page.locator('a.evidence').first(); await expect(evidence).toBeVisible();
+  // 근거는 칸마다 버튼 하나로 접혀 있고 팝업에서 본다
+  const open=page.getByRole('button',{name:/근거 커밋 \d+개 확인하기/}).first(); expect((await open.boundingBox())!.height).toBeGreaterThanOrEqual(44); await open.click();
+  const evidence=page.getByRole('dialog').locator('a.evidence').first(); await expect(evidence).toBeVisible();
   expect((await evidence.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await evidence.locator('.evidence__sha').evaluate(e=>{e.textContent='abcdef0123456789abcdef0123456789abcdef0123';});
   await evidence.locator('.evidence__snippet').evaluate(e=>{e.textContent='긴 커밋 설명과 경로를 화면에서 모두 읽을 수 있어야 합니다. '.repeat(4);});

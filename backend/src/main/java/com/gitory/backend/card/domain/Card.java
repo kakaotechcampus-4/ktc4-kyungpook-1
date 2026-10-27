@@ -61,6 +61,9 @@ public class Card {
     // 후보로 만든 카드의 초안 Job 이고, Job 이 끝나도 지우지 않아 Job 이 자기 카드를 찾을 수 있다
     private UUID generationJobId;
     private boolean generationPartial;
+    // 초안 Job 이 이 카드를 채우지 못한 이유로, Job 이 끝나도 남아 화면이 다시 시도를 보여 준다
+    @Enumerated(EnumType.STRING)
+    private CardDraftFailure generationFailure;
 
     // enum 순번이 아니라 이름으로 저장해, 목록 가운데에 값을 더해도 저장된 태그의 뜻이 바뀌지 않게 한다
     // Hibernate 가 INSERT 에 이 칸을 넣어 DB 기본값이 쓰이지 않으므로 빈 목록으로 시작한다
@@ -189,6 +192,35 @@ public class Card {
     void markGenerationPartial() {
 
         this.generationPartial = true;
+        changed();
+
+    }
+
+    /** 초안 Job 이 AI 초안을 채우지 못했을 때 부르며, 다시 시도하면 지운다 */
+    void markGenerationFailed(CardDraftFailure failure) {
+
+        this.generationFailure = failure;
+        changed();
+
+    }
+
+    /** 초안 Job 은 1번 버전에만 담을 수 있어, 초안 실패가 남아 있고 되묻기·확정으로 버전이 올라가지 않은 후보 카드만 다시 채운다 */
+    public void requireDraftRetryable() {
+
+        requireDraft();
+        if (generationFailure == null || currentVersion != 1 || candidateId == null) {
+            throw new CardDraftNotRetryableException();
+        }
+
+    }
+
+    /** 초안을 채우지 못한 카드를 새 초안 Job 으로 다시 채우며, 새 Job 이 이 카드를 찾을 수 있게 Job 을 바꾼다 */
+    void restartGeneration(UUID jobId) {
+
+        requireDraftRetryable();
+        this.generationJobId = jobId;
+        this.generationFailure = null;
+        this.generationPartial = false;
         changed();
 
     }

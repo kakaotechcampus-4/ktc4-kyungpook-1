@@ -230,8 +230,17 @@ def test_llm_failure_returns_llm_unavailable_envelope(error, retryable, caplog) 
     assert body["error"]["retryable"] is retryable
     assert "secret-detail" not in response.text
     assert "GITORY_LLM_API_KEY" not in response.text
-    # 응답에 싣지 않는 원인은 운영에서 찾을 수 있게 서버 로그에만 남긴다.
-    assert [record.exc_info[1] for record in caplog.records if record.name == "api.analysis"] == [error]
+    # 원인은 예외 종류로만 남긴다. 예외 문구·traceback 에는 모델 출력 조각이 실릴 수 있다(#421).
+    records = [record for record in caplog.records if record.name == "api.analysis"]
+    assert len(records) == 1
+    line = records[0].getMessage()
+    assert line.startswith("경험 그룹화 실패:")
+    assert "path=/internal/analysis/groups" in line
+    assert f"exc={type(error).__name__}" in line
+    assert f"retryable={str(retryable).lower()}" in line
+    assert "secret-detail" not in caplog.text
+    assert "GITORY_LLM_API_KEY" not in caplog.text
+    assert records[0].exc_info is None
 
 
 def test_grouping_request_deadline_reaches_description_step() -> None:

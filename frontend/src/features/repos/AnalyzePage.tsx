@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useActiveJobs, useJob, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
+import { useActiveJobs, useJob, useMe, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
+import { isGithubUnauthorized, reconnectGithub } from '@/lib/githubReconnect';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton, Track } from '@/components/ui';
+import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Track } from '@/components/ui';
 import { JobLiveness } from '@/components/JobLiveness';
+import { AiWait } from '@/components/ui/AiWait';
 import { minutes } from '@/lib/format';
 import { isCounting } from '@/lib/repoCounts';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
@@ -20,6 +22,7 @@ export function AnalyzePage() {
   const [sp, setSp] = useSearchParams();
   const jobId = sp.get('job') ?? undefined;
   const repo = useRepo(repoId);
+  const me = useMe();
   const job = useJob(jobId);
   const active = useActiveJobs(!jobId); // Job ID 가 URL 에 없을 때만 — 새로고침 복구
   const nav = useNavigate();
@@ -56,7 +59,7 @@ export function AnalyzePage() {
 
 
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }];
+  const crumbs = [{ label: '홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }];
   const retry = async () => {
     if (restart.isPending || (jobId && !jobRetryState(j).canRetry)) return;
     try {
@@ -87,12 +90,17 @@ export function AnalyzePage() {
   }
 
   if (!jobId) {
+    // 연결이 끊긴 걸 알고 있으면 눌러서 실패하게 두지 않는다. 연결은 있다는데 서버가 403 으로 거절하면 같은 안내를 띄운다.
+    const disconnected = me.data?.github?.connected === false;
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '정리' }]} />
         <PageTitle>정리를 시작할까요</PageTitle>
-        <RepoContext name={name} note={active.isPending ? '진행 중인 작업을 확인하고 있어요…' : '진행 중인 작업이 없어요.'}
-          right={<Button onClick={retry} loading={restart.isPending} disabled={active.isPending}>정리 시작</Button>} />
+        <RepoContext name={name} note={disconnected ? 'GitHub 연결이 끊겨서 지금은 읽을 수 없어요.' : restart.isPending ? '분석을 요청하고 있어요. 곧 읽기 시작해요.' : active.isPending ? '진행 중인 작업을 확인하고 있어요…' : '진행 중인 작업이 없어요.'}
+          right={disconnected
+            ? <Button onClick={reconnectGithub}>GitHub 다시 연결</Button>
+            : <Button onClick={retry} loading={restart.isPending} disabled={active.isPending}>정리 시작</Button>} />
+        {isGithubUnauthorized(restart.error) && <QueryFailure error={restart.error} retry={retry} />}
       </main>
     );
   }
@@ -117,6 +125,8 @@ export function AnalyzePage() {
           {[
             ...(blocked || canRetry ? [['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : '분석을 다시 요청해요',
               <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>]] : []),
+            ...(code === 'GITHUB_UNAVAILABLE' ? [['GitHub 다시 연결', '다시 시도해도 같으면 연결이 끊겼을 수 있어요',
+              <Button key="g" variant="outline" size="sm" onClick={reconnectGithub}>다시 연결</Button>]] : []),
             ['다른 저장소 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">이동</Link>],
             ['직접 쓰기', 'GitHub 없이 바로 쓸 수 있어요', <Link key="c" to="/cards/new" className="btn btn--outline btn--sm">이동</Link>],
           ].map(([t, d, b], i) => (
@@ -166,7 +176,7 @@ export function AnalyzePage() {
       <RepoContext name={name} note={repo.data ? (isCounting(repo.data) ? '커밋·PR·리뷰를 읽는 중이에요' : `커밋 ${repo.data.contribution.mine}개 · PR ${repo.data.prCount}건 · 리뷰 ${repo.data.reviewCount}건을 읽는 중이에요`) : '…'}
         right={<Badge kind={j?.state === 'SUCCEEDED' ? 'CONFIRMED' : 'NEUTRAL'}>{j?.state === 'SUCCEEDED' ? '완료' : '진행 중'}</Badge>} />
       <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
-        {!j ? <Skeleton h={120} /> : (
+        {!j ? <AiWait label="저장소를 읽을 준비를 하고 있어요. 곧 커밋부터 읽기 시작해요." /> : (
           <>
             <div className="row" style={{ gap: 12 }}>
               <span className="w-700" style={{ fontSize: 14 }}>{doneCount} / {j.steps.length} 단계</span>
@@ -196,7 +206,7 @@ export function AnalyzePage() {
         <span className="c-2 t-14">끝나면 알려 드릴게요</span>
         <div className="right row" style={{ gap: 8 }}>
           <Link to="/" className="btn btn--outline">다른 작업 하러 가기</Link>
-          <Button variant="text" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>분석 취소</Button>
+          <Button variant="ghost" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>분석 취소</Button>
         </div>
       </div>
     </main>
@@ -218,5 +228,5 @@ function stepDetail(done: number, total: number | null, unit: string, state: str
 /** 어디까지 읽고 멈췄는지. 단계 진행값이 그대로 근거가 된다. */
 function readNote(j: Job) {
   const read = j.steps.filter((s) => s.done > 0).map((s) => `${jobStepLabel[s.key]} ${s.done}${s.total != null ? `/${s.total}` : ''}${jobStepUnit[s.key]}`);
-  return read.length ? `${read.join(' · ')} 까지 읽었어요.` : '아직 아무것도 읽지 못했어요.';
+  return read.length ? `${read.join(', ')} 까지 읽었어요.` : '아직 아무것도 읽지 못했어요.';
 }

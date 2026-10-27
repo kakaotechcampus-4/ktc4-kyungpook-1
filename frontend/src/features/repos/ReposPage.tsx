@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
-import { FolderGit2 } from 'lucide-react';
+import { CalendarDays, FileCode2, FolderGit2, GitCommitHorizontal, GitPullRequest } from 'lucide-react';
+import { MetaItem } from '@/components/MetaItem';
 import { Badge, Button, IconBox, Radio, PageTitle, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
@@ -129,8 +130,12 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
           {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}건</Badge></span>}
         </div>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-          <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}>{counting ? <>내 커밋 <span>{COUNTING}</span></> : <>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></>}</span>
-          <span className="repo-row__stats t-12 c-3"><span>{counting ? `PR · 리뷰 ${COUNTING}` : `PR ${r.prCount} · 리뷰 ${r.reviewCount}`}</span><span>{r.language ?? '-'}</span><span>{ym(r.activeFrom)} – {ym(r.activeTo)}</span></span>
+          <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}><GitCommitHorizontal size={14} aria-hidden />{counting ? <>내 커밋 <span>{COUNTING}</span></> : <>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></>}</span>
+          <span className="repo-row__stats t-12 c-3">
+            <MetaItem icon={GitPullRequest}>{counting ? `PR · 리뷰 ${COUNTING}` : `PR ${r.prCount} · 리뷰 ${r.reviewCount}`}</MetaItem>
+            <MetaItem icon={FileCode2}>{r.language ?? '-'}</MetaItem>
+            <MetaItem icon={CalendarDays}>{ym(r.activeFrom)} – {ym(r.activeTo)}</MetaItem>
+          </span>
         </div>
         {/* 배지만 두면 왜 조심해야 하는지 안 읽힌다 — 한 줄로 풀어 쓴다 */}
         {low && <span className="repo-row__warn">확인되는 기여가 적어요. 맡은 일은 답변으로 보완할 수 있어요.</span>}

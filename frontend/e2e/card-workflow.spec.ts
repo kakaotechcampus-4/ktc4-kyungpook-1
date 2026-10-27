@@ -4,7 +4,7 @@ import { loginAsDemo } from './helpers';
 test('minimal API summaries never imply a manual source or invented evidence count', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards?demoScenario=minimal-summary');
   const item = page.locator('.experience-item').first(); await expect(item).toBeVisible();
-  await expect(item.locator('.experience-item__meta')).toHaveText('기술');
+  await expect(item.locator('.experience-item__meta')).toHaveText('기술 카드');
   await expect(page.locator('.experience-item__footer').filter({ hasText: /근거 \d+개|내가 쓴 문장/ })).toHaveCount(0);
 });
 

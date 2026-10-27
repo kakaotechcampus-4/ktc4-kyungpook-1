@@ -19,6 +19,7 @@ import './styles/product.css';
 import './styles/responsive.css';
 import './styles/ux-polish.css';
 import './styles/landing-intro.css';
+import './styles/guidance.css';
 
 applyTheme(getTheme());
 installChunkReload();

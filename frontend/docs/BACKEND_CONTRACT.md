@@ -117,6 +117,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `GET /cards/{id}/versions` | | **구현됨.** `[{ versionNo, source, createdAt, summary, current }]` 최신순 |
 | `GET /cards/{id}/versions/{no}` | | **구현됨.** `CardVersion` — 그 버전의 `{ versionNo, source, createdAt, situation, task, action, result }`(`Card.version` 과 같은 모양, 빈 칸 null, 가리기 없는 원문). 남의 카드·없는 버전 번호는 404 |
 | `POST /cards/{id}/versions/{no}/restore` | | **구현됨.** `Card` — 과거 버전을 복사한 RESTORE 새 버전. 현재 버전이면 no-op |
+| `POST /cards/{id}/draft/retry` | | **구현됨(#419).** `{ jobId }` — AI 초안을 채우지 못한 카드(`Card.draftFailure` 가 `AI_UNAVAILABLE`·`INTERNAL_ERROR`)만 새 DRAFT Job 으로 다시 채운다. 사용자가 쓴 칸은 그대로. 실패가 없거나 1번 버전을 지났으면 409 `INVALID_STATE`, 확정 카드는 409 `CARD_CONFIRMED`, 초안이 켜져 있으면 하루 한도 1 (429) |
 | `POST /cards/{id}/regenerate` | `{ field }` | **Mock 체험 전용.** 실서버 controller 없음. FE는 실제 API 모드에서 화면과 endpoint 모두 차단 |
 | `POST /cards/{id}/confirm` | `{ edited, maskedFields[] }` | **FE 기대 계약·Mock. 실서버 controller 없음.** Mock `ConfirmResult` `{ cardId, status:'CONFIRMED', versionNo, usedCandidateIds[], remainingCandidates, repoId }`. S·A 없으면 422 `NOT_CONFIRMABLE`; 현재 버전을 확정 표시하고 같은 내용의 버전을 덧붙이지 않음 |
 
@@ -144,7 +145,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 
 **제목·기간 수정 — #186 확정, #219 활성화 검증 (2026-10-15)**
 
-기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 확정 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string | null }`에서 전달한 필드만 수정한다. period는 자유 문자열이고 빈 입력은 FE에서 `null`로 정규화하여 삭제한다. 기간 생략은 기존 값 유지이고 검증 실패는 400 `INVALID_REQUEST`다. 응답은 `{ cardId, title, period: string | null, updatedAt }`이며 상세 `GET /cards/{id}`에도 period가 반환된다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
+기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 확정 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string | null }`에서 전달한 필드만 수정한다. period는 자유 문자열이고, 빈 글 `""`이 기간 삭제다. FE는 비운 기간을 `""`로 보낸다(#420). 기간 생략이나 `null`은 기존 값 유지이고(둘 다 바꿀 것이 없으면 400) 검증 실패는 400 `INVALID_REQUEST`다. 응답은 `{ cardId, title, period: string | null, updatedAt }`이며 상세 `GET /cards/{id}`에도 period가 반환된다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
 
 Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드에서는 `VITE_CARD_METADATA_ENABLED=true`를 명시하기 전 호출하지 않으며, 계약과 서버 구현 확인 후 활성화한다. 기존 기간이 누락돼도 제목만 수정하면 기간 삭제를 전송하지 않는다. 자유 입력 기간을 날짜로 억지 변환하지 않는다. [요청 댓글](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/61#issuecomment-5969111285)과 [작업 문서](2026-10-03-CARD_WORKFLOW.md)를 참고한다.
 
@@ -174,7 +175,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
   "period": "자유 글" | null,
   "repo": { "id", "owner", "name" } | null, "candidate": { "id", "type", "ref", "title" } | null,
   "version": { "versionNo", "source": "AI_DRAFT|USER_EDIT|INTERVIEW|MASK|RESTORE", "createdAt", "situation", "task", "action", "result" },  // 칸은 null 가능 = 비운 칸
-  "evidence": [{ "field": "S|T|A|R", "type": "COMMIT|USER_STATED|USER_SELECTED", "authoredBy": "AI|USER", "sha": "7자리" | null, "url": "링크" | null, "snippet": "글" | null, "turnNo": n | null }],
+  "evidence": [{ "field": "S|T|A|R", "type": "COMMIT|USER_STATED|USER_SELECTED", "authoredBy": "AI|USER", "sha": "7자리" | null, "url": "링크" | null, "snippet": "글" | null, "turnNo": n | null, "summary"?: "diff 한 줄 요약" | null, "committedAt"?: "ISO 시각" | null, "changedFiles"?: n | null }],
   "lowConfidenceFields": [{ "field", "why" }], "droppedFields": [{ "field", "reason": "NO_EVIDENCE|OVERCLAIM|UNSOURCED_NUMBER|TIMEOUT" }],
   "maskRules": [{ "from", "to" }], "generation": { "jobId", "partial" } | null, "interviewTurns", "confirmedAt", "createdAt" }
 ```
@@ -222,9 +223,9 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고(카드당 3 으로 바뀔 예정), 프론트는 그 값만 쓴다.
 - 답변 출처 이름(`USER_SELECTED`·`USER_STATED`)은 화면에 노출하지 않는다 — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
 
-### 기업·직무 매칭 (계약 확정 · 서버 미구현)
+### 기업·직무 매칭 (구현됨 · 10/24 운영 켬)
 
-[#199](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/issues/199)에서 정한 기준이다. 서버 구현이 아직 없어서, FE 는 실제 API 모드에서 지금처럼 `VITE_MATCH_ENABLED` 로 화면을 막아 둔다.
+[#199](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/issues/199)에서 정한 기준이다. 서버는 `GET /api/matches`·`GET /api/matches/{id}` 를 제공한다. FE 는 실제 API 모드에서 `VITE_MATCH_ENABLED=true` 일 때만 화면을 연다(운영은 #403 에서 켬).
 
 | | 응답 `data` |
 |---|---|
@@ -262,8 +263,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 ### 아직 서버 쪽에 남은 일 (FE 기대 계약)
 - 단계별 마지막 완료 지점을 Job 에 저장해, 재시도 때 처음부터 다시 돌리지 않고 이어서 처리하기.
-- 카드 confirm·regenerate·metadata 및 되묻기 생성/답변 HTTP 경로. 이 문서에 기대 응답이 있다는 이유로 구현됨을 뜻하지 않습니다. regenerate와 metadata는 실제 모드에서 capability를 확인합니다.
-- 기업·직무 매칭 목록·상세 API. 위 매칭 절이 계약 기준이다.
+- 카드 칸 다시 만들기(`POST /cards/{id}/regenerate`). 서버에 아직 없어 FE 는 실제 모드에서 capability 를 확인한다. (confirm·metadata·되묻기 생성/답변·매칭 목록·상세는 구현되었다.)
 
 ### 지표
 `POST /events` `{ name, props, at, path }` → `{ ok }`. 이벤트 이름은 `src/lib/track.ts` 의 `EventName`. 실패해도 프론트는 무시한다(sendBeacon).

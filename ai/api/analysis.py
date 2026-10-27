@@ -93,12 +93,11 @@ async def group_experiences(
     except _ClientDisconnected:
         # 받을 사람이 없지만 남은 LLM 호출은 이미 취소했다. 응답은 형식만 맞춘다.
         return _llm_unavailable(started, "호출자가 연결을 끊었습니다.", True)
-    except GroupingLlmConfigError:
-        logger.warning("경험 그룹화 실패: LLM 설정 없음", exc_info=True)
+    except GroupingLlmConfigError as exc:
+        _log_grouping_failure(request, False, exc, started)
         return _llm_unavailable(started, "그룹화 LLM 설정이 없어 분석할 수 없습니다.", False)
-    except GroupingLlmError:
-        # 응답에는 내부 예외 문구를 싣지 않으므로, 운영에서 원인을 찾을 수 있게 여기서만 남긴다.
-        logger.warning("경험 그룹화 실패: LLM 호출·출력 검증", exc_info=True)
+    except GroupingLlmError as exc:
+        _log_grouping_failure(request, True, exc, started)
         return _llm_unavailable(started, "그룹화 LLM 호출에 실패했습니다.", True)
     processing_ms = int((time.perf_counter() - started) * 1000)
     return Envelope(
@@ -244,6 +243,15 @@ async def _wait_for_disconnect(http_request: Request, stop: asyncio.Event) -> bo
         except asyncio.TimeoutError:
             pass
     return False
+
+
+def _log_grouping_failure(
+    request: ExperienceGroupingRequest, retryable: bool, exc: Exception, started: float
+) -> None:
+    log_failure(
+        logger, "경험 그룹화", path="/internal/analysis/groups", code="LLM_UNAVAILABLE", retryable=retryable,
+        exc=exc, started=started, commits=len(request.commits),
+    )
 
 
 def _log_diff_evidence_failure(

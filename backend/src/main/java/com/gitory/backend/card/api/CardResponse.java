@@ -2,6 +2,7 @@ package com.gitory.backend.card.api;
 
 import com.gitory.backend.card.domain.CardArea;
 import com.gitory.backend.card.domain.CardDetail;
+import com.gitory.backend.card.domain.CardDraftFailure;
 import com.gitory.backend.card.domain.CardKind;
 import com.gitory.backend.card.domain.CardStatus;
 import com.gitory.backend.card.domain.CardTech;
@@ -36,6 +37,7 @@ public record CardResponse(
         List<DroppedFieldResponse> droppedFields,
         List<MaskRule> maskRules,
         @Schema(description = "후보로 만든 카드의 초안 Job 이 대기 중이거나 실행 중이거나 일부만 만들어졌을 때 그 Job 이고, 그 밖에는 null") CardGenerationResponse generation,
+        @Schema(description = "AI 초안을 채우지 못한 이유로, AI_UNAVAILABLE 은 AI 가 잠시 응답하지 못함(다시 하면 될 수 있음)·INTERNAL_ERROR 는 그 밖의 실패다. 실패가 없으면 null 이고, POST /api/cards/{id}/draft/retry 로 다시 만든다", nullable = true) CardDraftFailure draftFailure,
         @Schema(description = "답한 되묻기 질문 수이고, 답하지 않은 질문은 세지 않는다") int interviewTurns,
         Instant confirmedAt,
         Instant createdAt) {
@@ -58,6 +60,7 @@ public record CardResponse(
                 droppedOf(card.slots(), card.notes()),
                 card.maskRules(),
                 card.generation() == null ? null : CardGenerationResponse.from(card.generation()),
+                card.draftFailure(),
                 card.interviewTurns(),
                 card.confirmedAt(),
                 card.createdAt());

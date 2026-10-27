@@ -3,6 +3,7 @@ import { ApiError, AuthError, ContractError } from '@/api/client';
 import { toast } from '@/lib/toast';
 import { errorView } from '@/api/errorView';
 import { CONFIG } from '@/lib/config';
+import { reconnectGithub } from '@/lib/githubReconnect';
 import { keys } from '@/api/keys';
 
 /** 세션이 끊기면 어디서든 랜딩으로 — 돌아올 위치를 들고 간다. */
@@ -22,7 +23,8 @@ export const queryClient = new QueryClient({
     onError: (err, _variables, _context, mutation) => {
       if (err instanceof AuthError) return redirectToLogin();
       if (mutation.meta?.errorPresentation === 'inline') return;
-      toast(errorView(err).message, { tone: 'danger' });
+      const view = errorView(err);
+      toast(view.message, { tone: 'danger', action: view.action === 'reconnect-github' ? { label: 'GitHub 다시 연결', onClick: reconnectGithub } : undefined });
     },
   }),
   defaultOptions: {

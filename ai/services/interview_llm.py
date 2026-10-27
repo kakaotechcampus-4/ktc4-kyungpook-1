@@ -167,8 +167,10 @@ class InterviewLLM:
                 break
             except LLMInvalidOutputError:
                 continue
-            except LLMStructuredCallError:
-                logger.warning("되묻기 %s LLM 호출 실패", what, exc_info=True)
+            except LLMStructuredCallError as exc:
+                # 구조화 출력 검증 실패 문구에는 모델 출력 조각이 실릴 수 있어 예외 종류만 남긴다(#421)
+                cause = type(exc.__cause__).__name__ if exc.__cause__ is not None else "-"
+                logger.warning("되묻기 %s LLM 호출 실패: exc=%s cause=%s", what, type(exc).__name__, cause)
                 break
             except LLMConfigError:
                 logger.warning("되묻기 %s LLM 설정이 없어 부르지 않았다", what)

@@ -26,10 +26,10 @@ test('select menus are styled, support keyboard selection and restore focus on E
   expect(Math.abs(triggerStyle.height - buttonStyle.height)).toBeLessThanOrEqual(1);
 });
 
-test('desktop resume and new-experience input share their left and right boundaries', async ({ page }) => {
+test('desktop resume and the new-card box share their left and right boundaries', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 }); await loginAsDemo(page); await page.goto('/');
   await expect(page.locator('.home-resume')).toBeVisible();
-  const resume = await page.locator('.home-resume').boundingBox(), prompt = await page.locator('.prompt__card').boundingBox();
+  const resume = await page.locator('.home-resume').boundingBox(), prompt = await page.locator('.prompt').boundingBox();
   expect(Math.abs(resume!.x - prompt!.x)).toBeLessThanOrEqual(1);
   expect(Math.abs(resume!.x + resume!.width - prompt!.x - prompt!.width)).toBeLessThanOrEqual(1);
 });

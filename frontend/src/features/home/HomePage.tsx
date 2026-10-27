@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowUp, ChevronRight, FolderGit2, MessageSquareQuote, PenLine, Search } from 'lucide-react';
 import { useCards, useRepos } from '@/api/queries';
 import type { CardSummary, StarField } from '@/api/schemas';
-import { Badge, EmptyState, IconBox, KindIcon, PageTitle, SectionHead, Skeleton, StarDots, Toolbar } from '@/components/ui';
+import { Badge, EmptyState, IconBox, KindIcon, PageTitle, SectionHead, Skeleton, StarDots } from '@/components/ui';
+import { SearchField } from '@/components/ui/SearchField';
 import { cardKindShort, cardStatusLabel } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
 import { periodLabel } from '@/lib/format';
@@ -34,7 +35,8 @@ export function HomePage() {
   const preview = q.trim() ? list : list.slice(0, 3);
   const drafts = (cards.data ?? []).filter((c) => c.status === 'DRAFT').slice(0, 3);
   const empty = cards.isSuccess && cards.data.length === 0;
-  const returning = !!cards.data?.length;
+  // 카드 목록을 아직 모르면(불러오는 중, 실패) 처음 온 사람으로 단정하지 않는다 — 첫 방문 문구가 잠깐 떴다 사라지지 않게
+  const returning = cards.isSuccess ? cards.data.length > 0 : true;
   const sugg = useMemo(() => {
     const xs = repos.data ?? [];
     const t = rq.trim().toLowerCase();
@@ -77,13 +79,20 @@ export function HomePage() {
         </section>
       )}
       <section className="prompt">
-        {returning ? <SectionHead label="새 경험 정리" /> : <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>}
+        {returning ? (
+          <div className="home-start__head">
+            <h2>새 경험 카드 만들기</h2>
+            <p>레포를 검색해 바로 시작하거나, 코드에 남지 않은 경험은 직접 써 보세요.</p>
+          </div>
+        ) : <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>}
         {!returning && <p className="prompt__sub">레포를 고르면 경험 카드를 만들어 드려요.</p>}
+        <div className="home-start__row">
         <div className="prompt__card" role="search" onBlur={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget)) setSuggestionsOpen(false);
         }}>
           <div className="prompt__row">
-            <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); setSuggestionsOpen(true); }} placeholder="레포 이름을 적어 보세요" aria-label="레포 검색"
+            <Search size={18} className="prompt__icon" aria-hidden />
+            <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); setSuggestionsOpen(true); }} placeholder="레포 검색" aria-label="레포 검색"
               role="combobox" aria-autocomplete="list" aria-expanded={showSuggestions} aria-controls={suggestionId}
               aria-activedescendant={showSuggestions && sugg.length ? optionId(activeIndex) : undefined}
               onFocus={() => setSuggestionsOpen(true)}
@@ -120,6 +129,7 @@ export function HomePage() {
           <Link to="/repos" className="btn btn--outline"><FolderGit2 size={14} /> 모든 레포 보기</Link>
           <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
         </div>
+        </div>
       </section>
 
       {empty ? (
@@ -132,8 +142,12 @@ export function HomePage() {
         </>
       ) : (
         <>
-          <Toolbar placeholder="카드 이름으로 검색" value={q} onChange={setQ} />
-          <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}><SectionHead label={q.trim() ? '카드 검색 결과' : '최근 경험 카드'} count={q.trim() ? list.length : cards.data?.length} /><Link to="/cards" className="btn btn--text right">모든 카드 보기</Link></div>
+          {/* 카드 검색은 카드 목록의 일이라 그 제목 줄에 둔다 — 위의 레포 검색과 입력칸이 두 개 연달아 보이지 않게 */}
+          <div className="home-cards__head">
+            <SectionHead label={q.trim() ? '카드 검색 결과' : '최근 경험 카드'} count={q.trim() ? list.length : cards.data?.length} />
+            <SearchField className="home-cards__search" value={q} onChange={setQ} placeholder="카드 이름으로 검색" />
+            <Link to="/cards" className="btn btn--ghost btn--sm">모든 카드 보기<ArrowRight size={14} aria-hidden /></Link>
+          </div>
           {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
           <div className="experience-list">{preview.map((c) => <CardGridItem key={c.id} c={c} cardOrder={list.map(card => card.id)} />)}</div>
           {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}" 에 맞는 카드가 없습니다`} desc="다른 이름으로 찾아보세요." />}
@@ -167,7 +181,7 @@ export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: str
   return (
     <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : ''}`}>
       <div className="experience-item__meta">
-        <span>{cardKindShort[c.kind]}{src ? ` · ${src}` : ''}</span>
+        <span>{cardKindShort[c.kind]} 카드{src ? `, ${src}` : ''}</span>
         {c.period && <span>{periodLabel(c.period)}</span>}
       </div>
       <CardTags areas={c.areas} techs={c.techs} />

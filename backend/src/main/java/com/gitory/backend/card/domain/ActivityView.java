@@ -12,14 +12,15 @@ public record ActivityView(
         YearMonth endMonth,
         String role,
         long cardCount,
+        long confirmedCount,
         Instant createdAt) {
 
-    static ActivityView of(Activity activity, long cardCount) {
+    static ActivityView of(Activity activity, long cardCount, long confirmedCount) {
 
         return new ActivityView(activity.getPublicId(), activity.getName(), activity.getActivityType(),
                 YearMonth.from(activity.getStartMonth()),
                 activity.getEndMonth() == null ? null : YearMonth.from(activity.getEndMonth()),
-                activity.getRole(), cardCount, activity.getCreatedAt());
+                activity.getRole(), cardCount, confirmedCount, activity.getCreatedAt());
 
     }
 }

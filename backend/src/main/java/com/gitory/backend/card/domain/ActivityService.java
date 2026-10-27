@@ -4,6 +4,7 @@ import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.infra.ActivityRepository;
 import com.gitory.backend.card.infra.CardRepository;
+import com.gitory.backend.card.infra.CardRepository.ActivityCardCount;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -36,13 +37,10 @@ public class ActivityService {
     public List<ActivityView> list(Long userId) {
 
         List<Activity> found = activities.findByUserIdOrderByStartMonthDescIdDesc(userId);
-        Map<Long, Long> counts = cards.countByActivityIds(found.stream().map(Activity::getId).toList())
-                .stream()
-                .collect(Collectors.toMap(CardRepository.ActivityCardCount::getActivityId,
-                        CardRepository.ActivityCardCount::getCards));
+        Map<Long, ActivityCardCount> counts = countsOf(found);
 
         return found.stream()
-                .map(activity -> ActivityView.of(activity, counts.getOrDefault(activity.getId(), 0L)))
+                .map(activity -> viewOf(activity, counts.get(activity.getId())))
                 .toList();
 
     }
@@ -58,7 +56,7 @@ public class ActivityService {
         Activity activity = existing(userId, key)
                 .orElseGet(() -> save(Activity.start(userId, name, type, startMonth, endMonth, role, key)));
 
-        return ActivityView.of(activity, cards.countByActivityId(activity.getId()));
+        return viewOf(activity);
 
     }
 
@@ -69,7 +67,7 @@ public class ActivityService {
         Activity activity = lockOwned(publicId, userId, AuditAction.EDIT_ACTIVITY);
         activity.edit(name, type, startMonth, endMonth, role);
 
-        return ActivityView.of(activity, cards.countByActivityId(activity.getId()));
+        return viewOf(activity);
 
     }
 
@@ -77,10 +75,11 @@ public class ActivityService {
     public void delete(UUID publicId, Long userId) {
 
         Activity activity = lockOwned(publicId, userId, AuditAction.DELETE_ACTIVITY);
-        long cardCount = cards.countByActivityId(activity.getId());
+        ActivityView deleted = viewOf(activity);
         activities.delete(activity);
         auditLog.ok(userId, AuditAction.DELETE_ACTIVITY, activity.getId());
-        log.info("활동 {} 을 지우며 안의 카드 {}장을 함께 지웠다", activity.getId(), cardCount);
+        log.info("활동 {} 을 지우며 안의 카드 {}장(확정 {}장)을 함께 지웠다", activity.getId(), deleted.cardCount(),
+                deleted.confirmedCount());
 
     }
 
@@ -99,6 +98,27 @@ public class ActivityService {
     public void requireExists(Long activityId) {
 
         activities.findWithShareLockById(activityId).orElseThrow(ActivityNotFoundException::new);
+
+    }
+
+    private ActivityView viewOf(Activity activity) {
+
+        return viewOf(activity, countsOf(List.of(activity)).get(activity.getId()));
+
+    }
+
+    private Map<Long, ActivityCardCount> countsOf(List<Activity> found) {
+
+        return cards.countByActivityIds(found.stream().map(Activity::getId).toList()).stream()
+                .collect(Collectors.toMap(ActivityCardCount::getActivityId, count -> count));
+
+    }
+
+    // 카드가 없는 활동은 묶을 행이 없어 집계 결과에 빠진다
+    private static ActivityView viewOf(Activity activity, ActivityCardCount count) {
+
+        return count == null ? ActivityView.of(activity, 0, 0)
+                : ActivityView.of(activity, count.getCards(), count.getConfirmed());
 
     }
 

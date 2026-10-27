@@ -91,6 +91,11 @@
             "format" : "int64",
             "type" : "integer"
           },
+          "confirmedCount" : {
+            "description" : "cardCount 중 확정 카드 수로, 자소서·매칭에 쓰였을 수 있는 카드가 함께 지워진다고 따로 알릴 때 쓴다",
+            "format" : "int64",
+            "type" : "integer"
+          },
           "createdAt" : {
             "format" : "date-time",
             "type" : "string"

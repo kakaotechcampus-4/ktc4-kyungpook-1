@@ -15,6 +15,7 @@ public record ActivityResponse(
         @Schema(description = "YYYY-MM 이고, null 이면 진행 중", example = "2025-12") String endMonth,
         String role,
         @Schema(description = "이 활동 안의 카드 수로, 지우기 전에 함께 지워질 카드 수를 보여 줄 때 쓴다") long cardCount,
+        @Schema(description = "cardCount 중 확정 카드 수로, 자소서·매칭에 쓰였을 수 있는 카드가 함께 지워진다고 따로 알릴 때 쓴다") long confirmedCount,
         Instant createdAt) {
 
     static ActivityResponse from(ActivityView activity) {
@@ -22,7 +23,7 @@ public record ActivityResponse(
         return new ActivityResponse(activity.publicId().toString(), activity.name(), activity.type(),
                 activity.startMonth().toString(),
                 activity.endMonth() == null ? null : activity.endMonth().toString(),
-                activity.role(), activity.cardCount(), activity.createdAt());
+                activity.role(), activity.cardCount(), activity.confirmedCount(), activity.createdAt());
 
     }
 }

@@ -91,7 +91,7 @@ class ActivityApiTest {
     }
 
     @Test
-    @DisplayName("목록은 내 활동만 시작한 달이 최근인 순으로 주고, 활동마다 안의 카드 수를 싣는다")
+    @DisplayName("목록은 내 활동만 시작한 달이 최근인 순으로 주고, 활동마다 안의 카드 수와 그중 확정 카드 수를 싣는다")
     void listsMyActivitiesNewestStartFirstWithCardCount() throws Exception {
 
         UUID older = UUID.randomUUID();
@@ -99,7 +99,7 @@ class ActivityApiTest {
         fixtures.insertActivity(older, myUserId, "알고리즘 스터디", "STUDY", "2024-03-01");
         Long newerId = fixtures.insertActivity(newer, myUserId, "교내 개발 동아리", "CLUB", "2025-03-01");
         fixtures.insertActivity(UUID.randomUUID(), othersUserId, "남의 동아리", "CLUB", "2026-01-01");
-        inActivity(newerId, fixtures.insertCard(UUID.randomUUID(), myUserId));
+        fixtures.confirmCard(inActivity(newerId, fixtures.insertCard(UUID.randomUUID(), myUserId)));
         inActivity(newerId, fixtures.insertCard(UUID.randomUUID(), myUserId));
 
         mvc.perform(get("/api/activities").with(loggedInAs(myUserId)))
@@ -109,8 +109,10 @@ class ActivityApiTest {
                 .andExpect(jsonPath("$.data[0].startMonth").value("2025-03"))
                 .andExpect(jsonPath("$.data[0].endMonth").value(nullValue()))
                 .andExpect(jsonPath("$.data[0].cardCount").value(2))
+                .andExpect(jsonPath("$.data[0].confirmedCount").value(1))
                 .andExpect(jsonPath("$.data[1].id").value(older.toString()))
-                .andExpect(jsonPath("$.data[1].cardCount").value(0));
+                .andExpect(jsonPath("$.data[1].cardCount").value(0))
+                .andExpect(jsonPath("$.data[1].confirmedCount").value(0));
 
     }
 

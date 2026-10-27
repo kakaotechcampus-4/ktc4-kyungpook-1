@@ -36,10 +36,9 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
     List<Card> findByGenerationJobIdOrderById(UUID generationJobId);
 
-    long countByActivityId(Long activityId);
-
-    @Query("SELECT c.activityId AS activityId, count(c) AS cards FROM Card c "
-            + "WHERE c.activityId IN :activityIds GROUP BY c.activityId")
+    @Query("SELECT c.activityId AS activityId, count(c) AS cards, "
+            + "sum(CASE WHEN c.status = com.gitory.backend.card.domain.CardStatus.CONFIRMED THEN 1 ELSE 0 END) AS confirmed "
+            + "FROM Card c WHERE c.activityId IN :activityIds GROUP BY c.activityId")
     List<ActivityCardCount> countByActivityIds(@Param("activityIds") Collection<Long> activityIds);
 
     interface ActivityCardCount {
@@ -47,5 +46,7 @@ public interface CardRepository extends JpaRepository<Card, Long> {
         Long getActivityId();
 
         long getCards();
+
+        long getConfirmed();
     }
 }

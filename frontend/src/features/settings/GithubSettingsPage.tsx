@@ -35,7 +35,7 @@ export function GithubSettingsPage() {
         <div className="profile-summary" style={{ flexWrap: 'wrap' }}>
           <UserAvatar src={me.data.avatarUrl} login={me.data.login} size={48} />
           <div className="stack grow" style={{ gap: 6 }}>
-            <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 18 }}>{me.data.login}</span><Badge kind={gh?.connected ? 'CONFIRMED' : 'NEUTRAL'}>{login.isDemo ? '샘플 계정' : gh?.connected ? '연결됨' : '연결 안 됨'}</Badge></div>
+            <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 20 }}>{me.data.login}</span><Badge kind={gh?.connected ? 'CONFIRMED' : 'NEUTRAL'}>{login.isDemo ? '샘플 계정' : gh?.connected ? '연결됨' : '연결 안 됨'}</Badge></div>
             <span className="t-12l c-2">{login.isDemo ? '샘플 데이터로 연결 관리 화면을 둘러보고 있어요.' : gh?.connectedAt ? `${ymd(gh.connectedAt)} 연결` : '연결되어 있지 않습니다 — 새로 정리하려면 다시 연결하세요'}{gh?.lastCollectedAt ? `, 마지막 수집 ${ymdhm(gh.lastCollectedAt)}` : ''}</span>
           </div>
           {login.isDemo ? <span className="t-12 c-2">샘플 계정이라 실제 GitHub에는 연결되지 않아요</span> : <a href={endpoints.githubStartUrl()} className={`btn ${gh?.connected ? 'btn--outline' : 'btn--primary'}`}>{gh?.connected ? '재연동' : '연결하기'}</a>}
@@ -44,7 +44,7 @@ export function GithubSettingsPage() {
       {gh && !gh.connected && <Note strong="연결 해제됨 — 새 정리는 다시 연결 후" tone="inset" />}
 
       <section className="settings-section stack" style={{ gap: 4 }}>
-        <div className="row"><span className="w-600" style={{ fontSize: 14.5 }}>{login.isDemo ? '권한 안내 (샘플)' : '허용한 권한'}</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
+        <div className="row"><span className="w-600" style={{ fontSize: 14 }}>{login.isDemo ? '권한 안내 (샘플)' : '허용한 권한'}</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
         {SCOPES.map((s) => (
           <div key={s.scope} className={`settings-row settings-permission ${s.granted ? '' : 'settings-row--muted'}`}>
             <span className="settings-permission__scope"><code className="scope-code">{s.scope}</code></span>
@@ -55,7 +55,7 @@ export function GithubSettingsPage() {
       </section>
 
       <section className="settings-section stack">
-        <span className="w-600" style={{ fontSize: 14.5, marginBottom: 6 }}>{login.isDemo ? '샘플 수집 이력' : '수집 이력'}</span>
+        <span className="w-600" style={{ fontSize: 14, marginBottom: 6 }}>{login.isDemo ? '샘플 수집 이력' : '수집 이력'}</span>
         {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
         {repos.isSuccess && analyzed.length === 0 && <span className="t-12l c-3">아직 정리한 레포가 없습니다.</span>}
         {analyzed.map((r) => (
@@ -68,7 +68,7 @@ export function GithubSettingsPage() {
         ))}
       </section>
 
-      {!login.isDemo && <div className="row" style={{ gap: 14, padding: '18px 20px', borderRadius: 12, background: 'var(--state-failed-bg)', flexWrap: 'wrap' }}>
+      {!login.isDemo && <div className="row" style={{ gap: 14, padding: '18px 20px', borderRadius: 16, background: 'var(--state-failed-bg)', flexWrap: 'wrap' }}>
         <div className="stack grow" style={{ gap: 4 }}>
           <span className="w-600" style={{ fontSize: 14, color: 'var(--state-failed-text)' }}>연결 해제</span>
           <span className="t-12l c-2">토큰은 바로 지우고, 만든 카드는 남아요</span>

@@ -85,14 +85,14 @@ function RecallSession({ repoId }: { repoId: string }) {
             <div key={d.path} className={`card dir-card ${active ? 'card--selected' : ''}`}>
               <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
                 <span className="repo-ctx__icon" style={{ width: 16, height: 16, borderRadius: 4 }} aria-hidden />
-                <span className="w-600" style={{ fontSize: 15 }}>{d.path}</span>
+                <span className="w-600" style={{ fontSize: 16 }}>{d.path}</span>
                 <span className="t-12 c-3">변경 파일 {d.filesChanged}개, 내 커밋 {d.myCommits}개</span>
                 <button type="button" className="right t-12 w-600 c-2" onClick={() => goTo(i)}>{done.has(d.path) ? '답함' : active ? '답하는 중' : '펼치기'}</button>
               </div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{d.files.map((f) => <Chip key={f} fill>{f}</Chip>)}</div>
               {active && (
                 <div className="stack" style={{ gap: 10, padding: '14px 16px', borderRadius: 10, background: 'var(--bg-canvas)' }}>
-                  <span id={`recall-question-${i}`} className="w-600" style={{ fontSize: 15, lineHeight: '23px' }}>{d.question}</span>
+                  <span id={`recall-question-${i}`} className="w-600" style={{ fontSize: 16, lineHeight: '23px' }}>{d.question}</span>
                   {done.has(d.path) ? (
                     <span className="t-12 c-2">이미 후보로 만들었어요 — 다른 디렉터리를 골라 주세요.</span>
                   ) : (

@@ -85,7 +85,7 @@ export function InterviewPage() {
         {/* 좌측 캔버스 — 답할수록 채워지는 카드 */}
         <section className={`card iv__canvas ${folded ? 'iv__canvas--folded' : ''}`} aria-label="카드 미리보기">
           <div className="row" style={{ gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border-default)' }}>
-            <span className="w-600" style={{ fontSize: 15 }}>{card.title}</span>
+            <span className="w-600" style={{ fontSize: 16 }}>{card.title}</span>
             <button type="button" className="iv__fold right" aria-expanded={!folded} onClick={() => setFolded((x) => !x)}>
               {folded ? '지금까지 쓴 카드 보기' : '접기'}
             </button>
@@ -117,8 +117,8 @@ export function InterviewPage() {
           {ask.isError && <QueryFailure error={ask.error} retry={() => ask.variables && askMore(ask.variables)} pending={ask.isPending} />}
 
           {answered.map((t) => (
-            <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--bg-paper)' }}>
-              <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 10 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{t.field} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
+            <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 16, background: 'var(--bg-paper)' }}>
+              <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 11 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{t.field} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
               <span style={{ fontSize: 13, lineHeight: '20px' }}>{t.answer!.text}</span>
               <span className="t-12 c-3">{evidenceTypeLabel[t.answer!.source]}, 답변 저장됨</span>
             </div>
@@ -138,7 +138,7 @@ export function InterviewPage() {
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>
-                  <span className="t-12 w-600 c-3" style={{ fontSize: 10.5 }}>이 중에 고르셔도 돼요</span>
+                  <span className="t-12 w-600 c-3" style={{ fontSize: 11 }}>이 중에 고르셔도 돼요</span>
                   {open.options.map((o) => <button key={o} type="button" className="chip chip--option" disabled={answer.isPending} aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
                 </div>
               )}

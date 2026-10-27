@@ -82,7 +82,7 @@
   display: block;
 }
 .match-card h2 {
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.5;
   margin: 0;
@@ -97,9 +97,9 @@
   min-width: 64px;
   padding: 9px 12px 8px;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 16px;
   font-weight: 700;
-  font-size: 24px;
+  font-size: 28px;
   line-height: 1;
 }
 .match-fit > span {
@@ -145,7 +145,7 @@
 }
 .match-notice {
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--bg-subtle);
   display: flex;
   align-items: center;
@@ -190,7 +190,7 @@
 }
 .match-condition {
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--bg-surface);
   padding: 24px;
   min-width: 0;
@@ -245,7 +245,7 @@
 }
 .match-support-link p {
   margin: 10px 0;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.8;
   overflow-wrap: anywhere;
 }

@@ -134,7 +134,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <RepoContext name={name} note="후보 0개" />
         <div className="verdict">
           <div className="stack grow" style={{ gap: 8 }}>
-            <span className="w-600" style={{ fontSize: 15 }}>파일을 보며 경험을 떠올려 보세요</span>
+            <span className="w-600" style={{ fontSize: 16 }}>파일을 보며 경험을 떠올려 보세요</span>
             <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>• {r}</span>)}</div>
           </div>
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>

@@ -147,7 +147,7 @@ export function CardPage() {
           <aside className="stack card-review-aside" style={{ gap: 16 }}>
             {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 받을 질문, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
             <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
-              <span className="w-600" style={{ fontSize: 13.5 }}>이 카드로 받을 수 있는 질문</span>
+              <span className="w-600" style={{ fontSize: 14 }}>이 카드로 받을 수 있는 질문</span>
               <ul className="aside-list">{interviewQuestions(card).map((qq) => <li key={qq} className="t-12l c-2">{qq}</li>)}</ul>
             </div>
             <div className="card stack" style={{ gap: 12, padding: '16px 18px' }}>
@@ -219,7 +219,6 @@ export function CardPage() {
         </div>
         <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="t-12 w-600 c-3">카드 관리</span>
             <div className="card-tools">
               <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
               <Button variant="ghost" size="sm" onClick={exportMd}><Copy size={15} aria-hidden />복사</Button>

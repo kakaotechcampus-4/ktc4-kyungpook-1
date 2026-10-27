@@ -49,7 +49,7 @@ export const jobErrorTitle: Record<JobErrorCode, string> = {
   COLLECTION_CAPPED: '한 번에 읽는 상한까지만 읽었어요',
   DRAFT_TIMEOUT: '시간 안에 다 채우지 못했어요',
   EVIDENCE_MISSING: '근거가 없어서 채우지 않았어요',
-  INTERNAL_ERROR: '저희 쪽에서 문제가 났어요',
+  INTERNAL_ERROR: '서버가 작업을 끝내지 못했어요',
 };
 /** 한 줄 설명. 왜 이렇게 됐는지와, 지금 눌러도 되는지까지만. */
 export const jobErrorHint: Record<JobErrorCode, string> = {

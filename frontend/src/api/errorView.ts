@@ -48,7 +48,7 @@ export function errorView(error: unknown, context: 'read' | 'write' = 'write'): 
     };
     return { title: '요청을 처리하지 못했어요', message: messages[error.code] ?? '입력 내용과 현재 상태를 확인해 주세요.', canRetry: false };
   }
-  return { title: '요청을 처리하지 못했어요', message: '현재 화면의 내용을 확인하고 다시 시도해 주세요.', canRetry: true };
+  return { title: '요청이 끝나지 않았어요', message: '응답을 받기 전에 연결이 끊겼을 수 있어요. 인터넷 연결을 확인하고 다시 시도해 주세요.', canRetry: true };
 }
 
 export const isUnknownOutcome = (error: unknown) =>

@@ -80,8 +80,8 @@ export function AnalyzePage() {
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="w-600" style={{ fontSize: 17 }}>조회 실패는 정리 완료를 뜻하지 않아요</span>
-            <span className="c-2" style={{ fontSize: 13.5, lineHeight: '21px' }}>정리를 새로 시작하지 않고 기존 작업의 상태를 확인해 주세요.</span>
+            <span className="w-600" style={{ fontSize: 16 }}>조회 실패는 정리 완료를 뜻하지 않아요</span>
+            <span className="c-2" style={{ fontSize: 14, lineHeight: '21px' }}>정리를 새로 시작하지 않고 기존 작업의 상태를 확인해 주세요.</span>
           </div>
         </div>
         <div className="row" style={{ gap: 8 }}>
@@ -117,8 +117,8 @@ export function AnalyzePage() {
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="w-600" style={{ fontSize: 17, color: 'var(--state-failed-text)' }}>{jobErrorHint[code]}</span>
-            <span className="c-2" style={{ fontSize: 13.5, lineHeight: '21px' }}>{readNote(j)}</span>
+            <span className="w-600" style={{ fontSize: 16, color: 'var(--state-failed-text)' }}>{jobErrorHint[code]}</span>
+            <span className="c-2" style={{ fontSize: 14, lineHeight: '21px' }}>{readNote(j)}</span>
           </div>
         </div>
         {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
@@ -151,8 +151,8 @@ export function AnalyzePage() {
         <div className="card row" style={{ gap: 16, padding: '18px 20px', background: 'var(--state-partial-bg)', border: 0 }}>
           <Badge kind="NEUTRAL">부분 결과</Badge>
           <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 15 }}>{code ? jobErrorTitle[code] : '일부 기록만 정리했어요'}</span>
-            <span className="c-2" style={{ fontSize: 12.5, lineHeight: '20px' }}>{readNote(j)} {code && jobErrorHint[code]}</span>
+            <span className="w-600" style={{ fontSize: 16 }}>{code ? jobErrorTitle[code] : '일부 기록만 정리했어요'}</span>
+            <span className="c-2" style={{ fontSize: 12, lineHeight: '20px' }}>{readNote(j)} {code && jobErrorHint[code]}</span>
           </div>
           {(canRetry || waitSec > 0) && (
             <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>

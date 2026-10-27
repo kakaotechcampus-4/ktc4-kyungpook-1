@@ -17,6 +17,7 @@ import com.gitory.backend.agent.port.StarSourceType;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
@@ -148,6 +149,24 @@ class CardDraftRunnerTest {
         repositoryId = fixtures.insertRepository(100L, LOGIN, "gitory");
         userRepositoryId = fixtures.insertUserRepository(userId, repositoryId);
         jobId = cardFixtures.insertDraftJob(userId, userRepositoryId, "QUEUED");
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 이 카드마다 부른 AI 호출에는 그 Job 과 카드가 함께 붙는다")
+    void marksAiCallsWithTheJobAndCard() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 30, 10));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        AtomicReference<List<Long>> seen = new AtomicReference<>();
+        given(star.draft(any())).willAnswer(invocation -> {
+            seen.set(Arrays.asList(AiCallContext.jobId(), AiCallContext.cardId()));
+            return allSlots(SHA_A);
+        });
+
+        runNext();
+
+        assertThat(seen.get()).containsExactly(job().getId(), cardId);
 
     }
 

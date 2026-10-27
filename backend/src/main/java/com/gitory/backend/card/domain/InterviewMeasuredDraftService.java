@@ -10,6 +10,7 @@ import com.gitory.backend.card.domain.interview.InterviewTurnAnsweredException;
 import com.gitory.backend.card.domain.interview.InterviewTurnNotFoundException;
 import com.gitory.backend.card.domain.interview.InvalidInterviewFieldException;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import lombok.RequiredArgsConstructor;
@@ -58,8 +59,9 @@ public class InterviewMeasuredDraftService {
         String fallback = fallbackOf(prepared.currentResult(), text);
         String written;
         try {
-            written = sentences.write(new InterviewMeasuredSentenceRequest(prepared.cardId(), prepared.cardTitle(),
-                    prepared.currentResult(), text.strip()));
+            InterviewMeasuredSentenceRequest request = new InterviewMeasuredSentenceRequest(prepared.cardId(),
+                    prepared.cardTitle(), prepared.currentResult(), text.strip());
+            written = AiCallContext.callForCard(prepared.cardId(), () -> sentences.write(request));
         } catch (AgentUnavailableException failure) {
             log.warn("카드 {} 의 수치 문장을 AI 에게서 받지 못해 틀 문장으로 대신한다", prepared.cardId(), failure);
             return fallback;

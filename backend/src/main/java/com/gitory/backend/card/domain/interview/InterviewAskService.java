@@ -12,6 +12,7 @@ import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.recommend.domain.CandidateReference;
@@ -124,7 +125,7 @@ public class InterviewAskService {
 
         InterviewQuestionResult result;
         try {
-            result = questions.nextQuestion(request);
+            result = AiCallContext.callForCard(request.cardId(), () -> questions.nextQuestion(request));
         } catch (AgentUnavailableException failure) {
             throw failureOf(request, failure);
         }

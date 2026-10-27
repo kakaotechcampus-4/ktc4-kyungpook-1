@@ -145,6 +145,8 @@ GitHub 연결 → 저장소 선택 → 경험 후보 확인 → STAR 초안 → 
 
 | 시작하려는 작업 | 문서 |
 | --- | --- |
+| 무엇을 왜 만드는지 · AI 와 사람의 역할 나눔 | [서비스 기획](./docs/overview/service-plan.md) |
+| 아키텍처 · 데이터 모델 · 리스크 · 테스트 전략 | [테크스펙](./docs/overview/tech-spec.md) |
 | 프론트엔드 실행 · 샘플 데이터 체험 | [Frontend README](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/frontend/README.md) |
 | 백엔드 구조와 모듈 경계 이해 | [Backend 아키텍처](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/backend/ARCHITECTURE.md) |
 | AI 서버 실행과 API 확인 | [AI README](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/blob/develop/ai/README.md) |

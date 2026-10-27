@@ -198,6 +198,14 @@ on('GET', '/cards/:id', ({ params }) => {
   if (c.generation) viewJob(c.generation.jobId); // 폴링 없이 열어도 시간이 지났으면 채워진다
   return ok(cardView(c));
 });
+// 실서버처럼 초안 실패가 남은 카드만 다시 초안을 만들고, 시작하면 실패 이유를 지운다(#419)
+on('POST', '/cards/:id/draft/retry', ({ params }) => {
+  const c = findCard(params[0]);
+  if (!c) return fail(404, 'NOT_FOUND', '카드를 찾을 수 없습니다');
+  if (!c.draftFailure) return fail(409, 'INVALID_STATE', '다시 초안을 만들 수 있는 카드가 아닙니다.');
+  c.draftFailure = null;
+  return ok({ jobId: `job_retry_${c.id}` });
+});
 on('POST', '/cards/:id/regenerate', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');

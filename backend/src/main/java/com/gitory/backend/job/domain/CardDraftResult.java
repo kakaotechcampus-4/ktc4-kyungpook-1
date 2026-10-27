@@ -5,5 +5,6 @@ public enum CardDraftResult {
     SKIPPED,
     NO_EVIDENCE,
     TIMED_OUT,
+    AI_UNAVAILABLE,
     FAILED
 }

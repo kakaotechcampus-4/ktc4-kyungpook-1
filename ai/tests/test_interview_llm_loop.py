@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
 from typing import Any, Optional
 
@@ -183,6 +184,21 @@ def test_llm_failure_falls_back_to_template_question(error: Exception) -> None:
 
     assert (result.next_action, result.target_star_slot, result.answer_mode) == ("ASK_AGAIN", "R", "MEASURE")
     assert result.question_text
+
+
+def test_llm_failure_log_has_no_exception_text(caplog) -> None:
+    """실패 로그에는 예외 종류만 남기고 예외 문구·traceback 을 싣지 않는다(#421)."""
+    error = LLMStructuredCallError("LEAK-모델-출력")
+    error.__cause__ = ValueError("LEAK-모델-출력")
+
+    with caplog.at_level(logging.WARNING):
+        _next(_agent(FakeClient(error)), _request())
+
+    records = [record for record in caplog.records if record.name == "services.interview_llm"]
+    assert len(records) == 1
+    assert "exc=LLMStructuredCallError cause=ValueError" in records[0].getMessage()
+    assert "LEAK" not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
 
 
 def test_invalid_output_is_requested_again() -> None:

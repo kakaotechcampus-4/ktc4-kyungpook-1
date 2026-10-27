@@ -194,8 +194,9 @@ public class AnalysisJob {
         requireRunningDraft();
         this.steps = draftSteps(results.size(), results.size(), results.size());
 
-        if (!results.isEmpty() && results.stream().allMatch(result -> result == CardDraftResult.FAILED)) {
-            fail(JobErrorCode.INTERNAL_ERROR);
+        if (!results.isEmpty() && results.stream().allMatch(AnalysisJob::isDraftFailure)) {
+            // 실패한 카드가 모두 AI 일시 장애면 다시 시도할 수 있는 AI_UNAVAILABLE 로 끝낸다
+            fail(results.contains(CardDraftResult.FAILED) ? JobErrorCode.INTERNAL_ERROR : JobErrorCode.AI_UNAVAILABLE);
             return;
         }
 
@@ -329,10 +330,20 @@ public class AnalysisJob {
 
     }
 
+    private static boolean isDraftFailure(CardDraftResult result) {
+
+        return result == CardDraftResult.FAILED || result == CardDraftResult.AI_UNAVAILABLE;
+
+    }
+
     private static JobErrorCode draftErrorCodeOf(List<CardDraftResult> results) {
 
         if (results.contains(CardDraftResult.FAILED)) {
             return JobErrorCode.INTERNAL_ERROR;
+        }
+
+        if (results.contains(CardDraftResult.AI_UNAVAILABLE)) {
+            return JobErrorCode.AI_UNAVAILABLE;
         }
 
         if (results.contains(CardDraftResult.TIMED_OUT)) {

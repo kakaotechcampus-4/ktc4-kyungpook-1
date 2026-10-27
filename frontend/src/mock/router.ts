@@ -183,11 +183,13 @@ on('PATCH', '/cards/:id/metadata', ({ params, body }) => {
   const card = findCard(params[0]);
   if (!card) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (card.status !== 'DRAFT') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
-  const titleProvided = Object.hasOwn(body, 'title'), periodProvided = Object.hasOwn(body, 'period');
-  const parsed = CardMetadataPatch.safeParse(body);
+  // 실서버처럼 null 인 칸은 보내지 않은 것으로 보고, 빈 기간은 지운다(#420)
+  const patch = Object.fromEntries(Object.entries(body).filter(([, value]) => value !== null));
+  const titleProvided = Object.hasOwn(patch, 'title'), periodProvided = Object.hasOwn(patch, 'period');
+  const parsed = CardMetadataPatch.safeParse(patch);
   if (!parsed.success) return fail(400, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
   if (titleProvided) card.title = parsed.data.title!;
-  if (periodProvided) card.period = parsed.data.period!;
+  if (periodProvided) card.period = parsed.data.period || null;
   card.metadataUpdatedAt = now();
   card.updatedAt = card.metadataUpdatedAt;
   return ok({ cardId: card.id, title: card.title, period: card.period ?? null, updatedAt: card.metadataUpdatedAt });
@@ -197,6 +199,14 @@ on('GET', '/cards/:id', ({ params }) => {
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (c.generation) viewJob(c.generation.jobId); // 폴링 없이 열어도 시간이 지났으면 채워진다
   return ok(cardView(c));
+});
+// 실서버처럼 초안 실패가 남은 카드만 다시 초안을 만들고, 시작하면 실패 이유를 지운다(#419)
+on('POST', '/cards/:id/draft/retry', ({ params }) => {
+  const c = findCard(params[0]);
+  if (!c) return fail(404, 'NOT_FOUND', '카드를 찾을 수 없습니다');
+  if (!c.draftFailure) return fail(409, 'INVALID_STATE', '다시 초안을 만들 수 있는 카드가 아닙니다.');
+  c.draftFailure = null;
+  return ok({ jobId: `job_retry_${c.id}` });
 });
 on('POST', '/cards/:id/regenerate', ({ params, body }) => {
   const c = findCard(params[0]);

@@ -512,6 +512,8 @@ class CardDraftRunnerTest {
         assertThat(statementsOf(failed)).isEmpty();
         assertThat(firstVersionSourceOf(failed)).isEqualTo("USER_EDIT");
         assertThat(statementsOf(drafted)).hasSize(4);
+        assertThat(generationFailureOf(failed)).isEqualTo("INTERNAL_ERROR");
+        assertThat(generationFailureOf(drafted)).isNull();
         assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job().isPartial()).isTrue();
         assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
@@ -519,7 +521,7 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("모든 카드의 AI 가 실패하면 카드는 빈 채로 남고 Job 은 AI 오류로 실패한다")
+    @DisplayName("모든 카드의 AI 가 잠시 응답하지 못하면 카드에 그 이유를 남기고, Job 은 다시 시도할 수 있는 AI_UNAVAILABLE 로 실패한다")
     void failsWhenEveryCardFails() {
 
         Long first = cardWithCommits(commit(SHA_A, 10, 0));
@@ -531,6 +533,24 @@ class CardDraftRunnerTest {
 
         assertThat(statementsOf(first)).isEmpty();
         assertThat(statementsOf(second)).isEmpty();
+        assertThat(generationFailureOf(first)).isEqualTo("AI_UNAVAILABLE");
+        assertThat(generationFailureOf(second)).isEqualTo("AI_UNAVAILABLE");
+        assertThat(job().getState()).isEqualTo(JobState.FAILED);
+        assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.AI_UNAVAILABLE);
+
+    }
+
+    @Test
+    @DisplayName("다시 해도 같은 AI 오류(콘텐츠 제한·잘못된 응답)로 모든 카드가 실패하면 카드에 INTERNAL_ERROR 를 남기고 Job 은 INTERNAL_ERROR 로 실패한다")
+    void failsWithInternalErrorWhenFailureIsNotRetryable() {
+
+        Long card = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A));
+        given(star.draft(any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", false, true, null));
+
+        runNext();
+
+        assertThat(generationFailureOf(card)).isEqualTo("INTERNAL_ERROR");
         assertThat(job().getState()).isEqualTo(JobState.FAILED);
         assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
 
@@ -780,6 +800,12 @@ class CardDraftRunnerTest {
 
         return jdbc.queryForObject("SELECT source FROM card_version WHERE card_id = ? AND version_no = 1", String.class,
                 cardId);
+
+    }
+
+    private String generationFailureOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT generation_failure FROM card WHERE id = ?", String.class, cardId);
 
     }
 

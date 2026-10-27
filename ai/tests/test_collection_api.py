@@ -80,7 +80,7 @@ def test_collect_endpoint_passes_header_token_only_to_collector() -> None:
     assert fake.received_token == "secret-only-in-memory"
     body = response.json()
     assert body["success"] is True
-    assert body["meta"]["tool_calls_made"] == 3
+    assert (body["meta"]["github_calls"], body["meta"]["tool_calls_made"], body["meta"]["ended_by"]) == (3, 0, "COMPLETED")
     assert "secret-only-in-memory" not in response.text
 
 
@@ -98,7 +98,7 @@ def test_candidate_detail_endpoint_passes_header_token_only_to_port() -> None:
 
     assert response.status_code == 200
     assert fake.received_detail_token == "detail-secret-only-in-memory"
-    assert response.json()["meta"]["tool_calls_made"] == 2
+    assert (response.json()["meta"]["github_calls"], response.json()["meta"]["tool_calls_made"]) == (2, 0)
     assert "detail-secret-only-in-memory" not in response.text
 
 

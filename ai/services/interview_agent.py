@@ -64,7 +64,7 @@ class InterviewAgent:
         self._llm = llm
 
     async def next_turn(self, request: InterviewTurnRequest) -> tuple[InterviewTurnResult, bool]:
-        """고를 수 있는 칸 중 다음에 물을 칸과 질문을 정하고, LLM 을 불렀는지 함께 돌려준다.
+        """고를 수 있는 칸 중 다음에 물을 칸과 질문을 정하고, 틀 질문으로 대신했는지 함께 돌려준다.
 
         상한·고를 수 있는 칸은 코드가 정하고, 그 안에서 어디를 어떻게 물을지는 LLM 이 정한다.
         LLM 이 없거나 마감 안에 쓸 만한 답을 못 주면 틀 질문으로 대신해 질문 요청이 실패하지 않게 한다.
@@ -74,13 +74,13 @@ class InterviewAgent:
             return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE"), False
         fixed = request.target_star_slot or self._first_slot(request, allowed)
         if self._llm is None:
-            return self._template_turn(request, fixed or allowed[0]), False
+            return self._template_turn(request, fixed or allowed[0]), True
         try:
             written = await self._llm.write_question(request, fixed)
         except InterviewLLMUnavailable:
             return self._template_turn(request, fixed or allowed[0]), True
         if written is None:
-            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE"), True
+            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE"), False
         slot = self._missing_slot(request, written.star_slot)
         return InterviewTurnResult(
             card_id=request.card_id,
@@ -92,7 +92,7 @@ class InterviewAgent:
             next_action="ASK_AGAIN",
             answer_mode=written.answer_mode,
             suggested_answers=written.suggested_answers,
-        ), True
+        ), False
 
     @staticmethod
     def _first_slot(request: InterviewTurnRequest, allowed: list[StarSlot]) -> Optional[StarSlot]:

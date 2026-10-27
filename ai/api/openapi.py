@@ -11,7 +11,10 @@ INVALID_PAYLOAD_RESPONSE = {
             "example": {
                 "success": False,
                 "data": None,
-                "meta": {"model": None, "tool_calls_made": 0, "processing_ms": 0},
+                "meta": {
+                    "model": None, "tool_calls_made": 0, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0,
+                    "repair_rounds": 0, "github_calls": 0, "ended_by": "FAILED", "processing_ms": 0,
+                },
                 "error": {
                     "code": "INVALID_PAYLOAD",
                     "message": "요청 스키마가 명세와 일치하지 않습니다.",

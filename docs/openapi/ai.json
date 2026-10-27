@@ -3022,6 +3022,35 @@
       "Meta": {
         "description": "요청 처리 메타데이터(로깅/추적용).",
         "properties": {
+          "ended_by": {
+            "description": "COMPLETED 다 끝냄, PARTIAL 마감·누락으로 일부만, FALLBACK LLM 대신 정해 둔 길, FAILED 오류 응답",
+            "enum": [
+              "COMPLETED",
+              "PARTIAL",
+              "FALLBACK",
+              "FAILED"
+            ],
+            "title": "Ended By",
+            "type": "string"
+          },
+          "github_calls": {
+            "default": 0,
+            "description": "GitHub API 를 부른 횟수",
+            "title": "Github Calls",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "default": 0,
+            "description": "응답을 받은 LLM 요청의 입력 토큰 합",
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "llm_calls": {
+            "default": 0,
+            "description": "LLM 에 보낸 요청 수. 실패한 요청도 센다",
+            "title": "Llm Calls",
+            "type": "integer"
+          },
           "model": {
             "anyOf": [
               {
@@ -3034,19 +3063,34 @@
             "description": "실제 사용된 모델(LLM 미사용 응답은 null 또는 처리 방식 이름)",
             "title": "Model"
           },
+          "output_tokens": {
+            "default": 0,
+            "description": "응답을 받은 LLM 요청의 출력 토큰 합",
+            "title": "Output Tokens",
+            "type": "integer"
+          },
           "processing_ms": {
             "default": 0,
             "description": "처리 소요 시간(ms)",
             "title": "Processing Ms",
             "type": "integer"
           },
+          "repair_rounds": {
+            "default": 0,
+            "description": "검사에 걸려 고쳐 쓴 횟수. 고쳐 쓰기가 아직 없어 지금은 늘 0",
+            "title": "Repair Rounds",
+            "type": "integer"
+          },
           "tool_calls_made": {
             "default": 0,
-            "description": "이번 처리에서 실제 도구 호출 횟수",
+            "description": "모델이 스스로 골라 부른 도구 횟수. 그런 도구가 아직 없어 지금은 늘 0",
             "title": "Tool Calls Made",
             "type": "integer"
           }
         },
+        "required": [
+          "ended_by"
+        ],
         "title": "Meta",
         "type": "object"
       },
@@ -4018,7 +4062,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4122,7 +4172,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4196,7 +4252,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4284,7 +4346,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4382,7 +4450,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4466,7 +4540,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4520,7 +4600,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4584,7 +4670,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4638,7 +4730,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4712,7 +4810,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4786,7 +4890,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false
@@ -4860,7 +4970,13 @@
                     "retryable": false
                   },
                   "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
                     "processing_ms": 0,
+                    "repair_rounds": 0,
                     "tool_calls_made": 0
                   },
                   "success": false

@@ -39,7 +39,7 @@
 |---|---|---|
 | `GET /activities` | | `Activity[]` — 시작 월 최신순 |
 | `POST /activities` | `{ name, type, startMonth, endMonth?, role? }`, 헤더 `Idempotency-Key: <UUID v4>` | `Activity`. 같은 사용자·같은 키는 처음 만든 활동을 돌려준다(직접 작성 카드와 같은 규칙) |
-| `PATCH /activities/{id}` | 보낸 필드만 바꾼다. `endMonth`·`role` 은 `null` 이 비우기 | `Activity` |
+| `PATCH /activities/{id}` | 보낸 필드만 바꾼다. 카드 제목·기간 수정과 같이 생략·`null` 은 그대로이고, `endMonth`·`role` 은 빈 글 `""` 이 비우기(진행 중·역할 없음)다. 바꿀 것이 없으면 400 | `Activity` |
 | `DELETE /activities/{id}` | | `{ ok: true }`. **안의 카드도 모두 지운다**(카드 `DELETE` 와 같은 완전 삭제). 화면은 지우기 전에 `cardCount` 로 "카드 N장도 함께 지워집니다" 확인을 받는다 |
 
 - 오류: 이름·형식이 틀리거나 `endMonth` 가 `startMonth` 보다 앞서면 400 `INVALID_REQUEST`, 없는 활동·남의 활동은 404.

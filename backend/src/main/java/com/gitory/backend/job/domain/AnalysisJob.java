@@ -187,7 +187,7 @@ public class AnalysisJob {
 
     /**
      * 카드마다의 결과로 초안 Job 을 끝내며, 모든 카드가 실패면 실패이고 하나라도 덜 된 카드가 있으면 부분 완료다
-     * 이유가 여럿이면 AI 오류, 시간 초과, 근거 없음 순서로 하나만 남긴다
+     * 이유가 여럿이면 다시 연결, 내부 오류, AI 일시 장애, 시간 초과, 근거 없음 순서로 하나만 남긴다
      */
     public void finishDraft(List<CardDraftResult> results) {
 
@@ -195,8 +195,7 @@ public class AnalysisJob {
         this.steps = draftSteps(results.size(), results.size(), results.size());
 
         if (!results.isEmpty() && results.stream().allMatch(AnalysisJob::isDraftFailure)) {
-            // 실패한 카드가 모두 AI 일시 장애면 다시 시도할 수 있는 AI_UNAVAILABLE 로 끝낸다
-            fail(results.contains(CardDraftResult.FAILED) ? JobErrorCode.INTERNAL_ERROR : JobErrorCode.AI_UNAVAILABLE);
+            fail(draftErrorCodeOf(results));
             return;
         }
 
@@ -332,11 +331,17 @@ public class AnalysisJob {
 
     private static boolean isDraftFailure(CardDraftResult result) {
 
-        return result == CardDraftResult.FAILED || result == CardDraftResult.AI_UNAVAILABLE;
+        return result == CardDraftResult.FAILED || result == CardDraftResult.AI_UNAVAILABLE
+                || result == CardDraftResult.GITHUB_UNAUTHORIZED;
 
     }
 
+    // 토큰이 한 번 거절되면 연결이 끊겨 남은 카드도 같은 이유로 실패하므로, 다시 연결을 가장 먼저 알린다
     private static JobErrorCode draftErrorCodeOf(List<CardDraftResult> results) {
+
+        if (results.contains(CardDraftResult.GITHUB_UNAUTHORIZED)) {
+            return JobErrorCode.GITHUB_UNAUTHORIZED;
+        }
 
         if (results.contains(CardDraftResult.FAILED)) {
             return JobErrorCode.INTERNAL_ERROR;

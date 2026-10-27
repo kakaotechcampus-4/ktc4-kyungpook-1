@@ -11,6 +11,7 @@ import com.gitory.backend.card.domain.CardDraftFailure;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.GeneratedCard;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.consent.port.DiffEvidence;
 import com.gitory.backend.consent.port.DiffEvidenceResult;
@@ -107,10 +108,8 @@ public class CardDraftRunner {
             return finishCard(job.getId(), done, total, () -> written(card, draft, commits));
         } catch (RuntimeException failure) {
             log.warn("카드 초안 Job {} 의 카드 {} 를 채우지 못했다", job.getId(), card.id(), failure);
-            // AI 가 잠시 응답하지 못한 실패는 다시 하면 될 수 있어 따로 남기고, 카드에도 남겨 Job 이 끝난 뒤 다시 시도할 수 있게 한다
-            boolean aiUnavailable = failure instanceof AgentUnavailableException unavailable && unavailable.isRetryable();
-            return finishCard(job.getId(), done, total, () -> failed(card,
-                    aiUnavailable ? CardDraftFailure.AI_UNAVAILABLE : CardDraftFailure.INTERNAL_ERROR));
+            CardDraftFailure reason = failureOf(failure);
+            return finishCard(job.getId(), done, total, () -> failed(card, reason));
         }
 
     }
@@ -131,10 +130,29 @@ public class CardDraftRunner {
 
     }
 
+    /** 다시 연결해야 풀리는 실패와 AI 가 잠시 응답하지 못한 실패는 할 일이 달라, 카드에 따로 남겨 Job 이 끝난 뒤에도 화면이 안내하게 한다 */
+    private static CardDraftFailure failureOf(RuntimeException failure) {
+
+        if (failure instanceof AiClientException ai && "GITHUB_UNAUTHORIZED".equals(ai.errorCode())) {
+            return CardDraftFailure.GITHUB_UNAUTHORIZED;
+        }
+
+        if (failure instanceof AgentUnavailableException unavailable && unavailable.isRetryable()) {
+            return CardDraftFailure.AI_UNAVAILABLE;
+        }
+
+        return CardDraftFailure.INTERNAL_ERROR;
+
+    }
+
     private CardDraftResult failed(GeneratedCard card, CardDraftFailure failure) {
 
         writer.markFailed(card.id(), failure);
-        return failure == CardDraftFailure.AI_UNAVAILABLE ? CardDraftResult.AI_UNAVAILABLE : CardDraftResult.FAILED;
+        return switch (failure) {
+            case GITHUB_UNAUTHORIZED -> CardDraftResult.GITHUB_UNAUTHORIZED;
+            case AI_UNAVAILABLE -> CardDraftResult.AI_UNAVAILABLE;
+            case INTERNAL_ERROR -> CardDraftResult.FAILED;
+        };
 
     }
 

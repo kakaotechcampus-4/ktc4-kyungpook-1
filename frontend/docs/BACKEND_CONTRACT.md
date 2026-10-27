@@ -76,7 +76,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
   "partial": false,                                   // 부분 완료는 별도 상태가 아니다 → SUCCEEDED + partial:true
   "steps": [{ "key": "COMMITS|PR_REVIEW|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
               "done": 0, "total": 0 }],               // 늘 이 4개가 이 순서. 총량을 모르면 total: null
-  "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|AI_UNAVAILABLE|COLLECTION_CAPPED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
+  "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|GITHUB_UNAUTHORIZED|AI_UNAVAILABLE|COLLECTION_CAPPED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
   "retryable": bool | null,
   "retryAfterSec": n | null,                          // GITHUB_RATE_LIMITED 에서만 의미가 있다
   "startedAt", "updatedAt", "finishedAt": null,
@@ -92,6 +92,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 - FAILED와 SUCCEEDED + partial 모두 **retryable === true**일 때만 재시도한다. false/null은 허용으로 추정하지 않는다. 오류 코드 이름만으로 재시도 여부를 추정하지 않는다.
 - 2026-09-26 develop의 JobView는 GITHUB_UNAVAILABLE/GITHUB_RATE_LIMITED만 true이며 retryAfterSec/result는 아직 null이다. 향후 실제 대기 시간이 내려오면 finishedAt(없으면 updatedAt)부터 계산한다.
 - **`COLLECTION_CAPPED`(제안 — 프론트가 먼저 받을 준비를 했다, 백엔드가 내려주면 켜진다)**: 수집 상한에 걸려 일부만 읽은 경우로, 실패가 아니라 `SUCCEEDED` + `partial: true` + `errorCode: COLLECTION_CAPPED` 이다(`GITHUB_RATE_LIMITED` 부분 결과와 같은 모양). 화면은 "한 번에 읽는 상한까지만 읽었어요"와 읽은 범위의 후보로 가는 버튼을 보이고, **`retryable` 이 `true` 일 때만** "이어 읽기"를 둔다(false/null 이면 버튼 자체를 숨긴다 — 상한은 기다려도 풀리지 않는다고 가정). `retryAfterSec` 은 쓰지 않는다. 이 코드가 오기 전에는 `errorCode` 가 null 인 부분 결과로 "일부 기록만 분석했어요"만 보인다. DB `partial_reason` 에도 같은 값이 들어가야 한다.
+- **`GITHUB_UNAUTHORIZED`**: GitHub 이 토큰을 거절했거나(만료·취소) 쓸 토큰이 없어 분석하지 못한 경우로, `retryable: false` 다. 다시 시도가 아니라 GitHub 다시 연결을 안내한다. 이때 서버는 그 연결을 해제로 남겨 `/me` 의 `github.connected` 가 `false` 가 된다. 일시 장애는 지금처럼 `GITHUB_UNAVAILABLE` 이다.
 - 활성 Job 중복 제약은 user_repository_id 기준이다. 동일 GitHub 저장소라도 사용자 A/B의 연결 행은 달라 서로 분석을 막지 않는다.
 
 `GET /jobs?active=true` → `{ "jobs": [{ jobId, type, state, userRepositoryId, repoName, startedAt, pollAfterMs }] }`
@@ -116,7 +117,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `GET /cards/{id}/versions` | | **구현됨.** `[{ versionNo, source, createdAt, summary, current }]` 최신순 |
 | `GET /cards/{id}/versions/{no}` | | **구현됨.** `CardVersion` — 그 버전의 `{ versionNo, source, createdAt, situation, task, action, result }`(`Card.version` 과 같은 모양, 빈 칸 null, 가리기 없는 원문). 남의 카드·없는 버전 번호는 404 |
 | `POST /cards/{id}/versions/{no}/restore` | | **구현됨.** `Card` — 과거 버전을 복사한 RESTORE 새 버전. 현재 버전이면 no-op |
-| `POST /cards/{id}/draft/retry` | | **구현됨(#419).** `{ jobId }` — AI 초안을 채우지 못한 카드(`Card.draftFailure` 가 `AI_UNAVAILABLE`·`INTERNAL_ERROR`)만 새 DRAFT Job 으로 다시 채운다. 사용자가 쓴 칸은 그대로. 실패가 없거나 1번 버전을 지났으면 409 `INVALID_STATE`, 확정 카드는 409 `CARD_CONFIRMED`, 초안이 켜져 있으면 하루 한도 1 (429) |
+| `POST /cards/{id}/draft/retry` | | **구현됨(#419).** `{ jobId }` — AI 초안을 채우지 못한 카드(`Card.draftFailure` 가 `GITHUB_UNAUTHORIZED`·`AI_UNAVAILABLE`·`INTERNAL_ERROR`)만 새 DRAFT Job 으로 다시 채운다. `GITHUB_UNAUTHORIZED` 는 GitHub 이 토큰을 거절한 실패라 다시 연결한 뒤 다시 만들어야 하고, 연결 없이 다시 만들면 같은 이유로 다시 실패한다. 사용자가 쓴 칸은 그대로. 실패가 없거나 1번 버전을 지났으면 409 `INVALID_STATE`, 확정 카드는 409 `CARD_CONFIRMED`, 초안이 켜져 있으면 하루 한도 1 (429) |
 | `POST /cards/{id}/regenerate` | `{ field }` | **Mock 체험 전용.** 실서버 controller 없음. FE는 실제 API 모드에서 화면과 endpoint 모두 차단 |
 | `POST /cards/{id}/confirm` | `{ edited, maskedFields[] }` | **FE 기대 계약·Mock. 실서버 controller 없음.** Mock `ConfirmResult` `{ cardId, status:'CONFIRMED', versionNo, usedCandidateIds[], remainingCandidates, repoId }`. S·A 없으면 422 `NOT_CONFIRMABLE`; 현재 버전을 확정 표시하고 같은 내용의 버전을 덧붙이지 않음 |
 

@@ -216,6 +216,21 @@ class JobQueryServiceTest {
     }
 
     @Test
+    @DisplayName("토큰 거절로 실패한 Job 은 저장되고, 다시 해도 같아 다시 시도할 수 없다")
+    void rejectedTokenJobIsNotRetryable() {
+
+        AnalysisJob rejected = persistJob(myUserId, myRepoId, KEY_1);
+        rejected.start();
+        rejected.fail(JobErrorCode.GITHUB_UNAUTHORIZED);
+        em.flush();
+        em.clear();
+
+        assertThat(service.load(rejected.getPublicId(), myUserId, LOGIN).errorCode()).isEqualTo(JobErrorCode.GITHUB_UNAUTHORIZED);
+        assertThat(service.load(rejected.getPublicId(), myUserId, LOGIN).retryable()).isFalse();
+
+    }
+
+    @Test
     @DisplayName("한도로 일부만 읽고 끝난 Job 은 다시 시도할 수 있고 저장된 남은 초가 그대로 나온다")
     void rateLimitedPartialJobShowsRetryAfterSec() {
 

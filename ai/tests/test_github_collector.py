@@ -22,6 +22,7 @@ from services.github_collector import (
     GithubApiError,
     GithubCollector,
     GithubResourceNotFound,
+    GithubUnauthorized,
     _contribution_decision,
     _issue_numbers,
     _primary_pull_by_sha,
@@ -735,6 +736,16 @@ def test_missing_repository_is_not_hidden_as_rate_limit() -> None:
     )
 
     with pytest.raises(GithubResourceNotFound):
+        asyncio.run(collector.collect(_request(), "live-secret"))
+
+
+def test_rejected_token_is_unauthorized_not_a_temporary_error() -> None:
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(lambda _: httpx.Response(401)),
+    )
+
+    with pytest.raises(GithubUnauthorized):
         asyncio.run(collector.collect(_request(), "live-secret"))
 
 

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.collection import get_repository_activity_port
 from main import app
 from ports.repository_activity import RepositoryActivityExecution
 from schemas.collection import CandidateDetailResult, RepositoryCollectionResult
+from services.github_collector import GithubApiError, GithubUnauthorized
 
 
 class FakeActivityPort:
@@ -146,3 +148,39 @@ def test_candidate_detail_requires_sha_or_pr_number() -> None:
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "INVALID_PAYLOAD"
+
+
+class FailingActivityPort:
+    """수집·후보 상세 모두 정해 둔 GitHub 오류로 실패한다."""
+
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    async def collect(self, request, github_token):
+        raise self.error
+
+    async def fetch_candidate_details(self, request, github_token):
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [("/internal/collect", _payload), ("/internal/collect/candidate-details", _detail_payload)],
+)
+@pytest.mark.parametrize(
+    ("error", "status", "code", "retryable"),
+    [
+        (GithubUnauthorized("x", 401), 401, "GITHUB_UNAUTHORIZED", False),
+        (GithubApiError("x", 502), 502, "GITHUB_API_ERROR", True),
+    ],
+)
+def test_rejected_token_is_told_apart_from_temporary_github_failure(path, payload, error, status, code, retryable) -> None:
+    app.dependency_overrides[get_repository_activity_port] = lambda: FailingActivityPort(error)
+    try:
+        response = TestClient(app).post(path, json=payload(), headers={"X-GitHub-Token": "rejected-secret"})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == status
+    assert (response.json()["error"]["code"], response.json()["error"]["retryable"]) == (code, retryable)
+    assert "rejected-secret" not in response.text

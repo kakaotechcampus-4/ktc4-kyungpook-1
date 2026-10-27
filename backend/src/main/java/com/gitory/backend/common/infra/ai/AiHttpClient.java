@@ -30,7 +30,7 @@ public class AiHttpClient {
 
     private static final Set<String> ERROR_CODES = Set.of("INVALID_PAYLOAD", "UNAUTHORIZED",
             "RESOURCE_NOT_FOUND", "NO_TOOL_CALL", "EVIDENCE_MISMATCH", "LLM_RATE_LIMIT",
-            "GITHUB_API_ERROR", "LLM_UNAVAILABLE", "INTERNAL_ERROR");
+            "GITHUB_API_ERROR", "GITHUB_UNAUTHORIZED", "LLM_UNAVAILABLE", "INTERNAL_ERROR");
 
     private final AiClientProperties properties;
     private final RestClient collectionClient;

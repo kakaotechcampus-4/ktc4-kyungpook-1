@@ -58,6 +58,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     private static final Duration COUNT_TIME_LIMIT = Duration.ofSeconds(15);
 
     private static final String DIFF_EVIDENCE_PATH = "/internal/analysis/diff-evidence";
+    private static final String GITHUB_UNAUTHORIZED = "GITHUB_UNAUTHORIZED";
 
     private final UserRepository users;
     private final GithubConnectionRepository connections;
@@ -83,11 +84,16 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
                             Consumer<AiProgress> progress) {
 
         User user = activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
-        String token = activeToken(userId).orElseThrow(GithubCollectionAccess::unavailable);
+        UsableToken token = activeUsableToken(userId).orElseThrow(GithubCollectionAccess::unauthorized);
         AiCollectRequest request = new AiCollectRequest(target.userRepositoryId(), target.repository(),
                 new AiCollectActor(user.getGithubLogin(), List.of()), target.branches(), knownCommitShas);
 
-        return progress == null ? ai.collect(request, token) : ai.collectStreaming(request, token, progress);
+        try {
+            return progress == null ? ai.collect(request, token.value())
+                    : ai.collectStreaming(request, token.value(), progress);
+        } catch (AiClientException failed) {
+            throw revokedIfRejected(userId, token, failed);
+        }
 
     }
 
@@ -95,12 +101,17 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     public DiffEvidenceResult diffEvidence(Long userId, DiffEvidenceTarget target) {
 
         activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
-        String token = activeToken(userId).orElseThrow(GithubCollectionAccess::unavailable);
+        UsableToken token = activeUsableToken(userId).orElseThrow(GithubCollectionAccess::unauthorized);
         AiDiffEvidenceRequest request = new AiDiffEvidenceRequest(target.userRepositoryId(), target.repository(),
                 target.commitShas(), target.githubPrNumber(), target.title());
 
-        JsonNode data = ai.postWithGithubToken(DIFF_EVIDENCE_PATH, request, token,
-                aiProperties.diffEvidenceReadTimeout());
+        JsonNode data;
+        try {
+            data = ai.postWithGithubToken(DIFF_EVIDENCE_PATH, request, token.value(),
+                    aiProperties.diffEvidenceReadTimeout());
+        } catch (AiClientException failed) {
+            throw revokedIfRejected(userId, token, failed);
+        }
         return DiffEvidenceReader.read(data, target.userRepositoryId());
 
     }
@@ -326,7 +337,22 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     }
 
+    /** GitHub 이 이 토큰을 거절했다고 AI 가 알리면 연결을 해제로 남겨 다시 연결하라는 표시가 뜨게 하고, 받은 예외는 그대로 돌려준다 */
+    private AiClientException revokedIfRejected(Long userId, UsableToken token, AiClientException failed) {
+
+        if (GITHUB_UNAUTHORIZED.equals(failed.errorCode())) {
+            disconnects.revokeRejected(userId, token.encrypted());
+        }
+        return failed;
+
+    }
+
     private static AiClientException unavailable() {
         return new AiClientException("GITHUB_CONNECTION_UNAVAILABLE", false, null);
+    }
+
+    // 연결이 해제됐거나 토큰이 만료돼 쓸 토큰이 없으면 AI 가 거절을 받은 것과 같이 다시 연결해야 한다
+    private static AiClientException unauthorized() {
+        return new AiClientException(GITHUB_UNAUTHORIZED, false, null);
     }
 }

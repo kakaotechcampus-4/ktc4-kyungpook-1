@@ -24,6 +24,10 @@ INVALID_PAYLOAD_RESPONSE = {
 
 COLLECTION_ERROR_RESPONSES = {
     400: INVALID_PAYLOAD_RESPONSE,
+    401: {
+        "model": ErrorEnvelope,
+        "description": "GITHUB_UNAUTHORIZED: GitHub 이 토큰을 거절함(만료·취소). 다시 시도하지 않고 다시 연결해야 한다.",
+    },
     404: {
         "model": ErrorEnvelope,
         "description": "RESOURCE_NOT_FOUND: GitHub 리소스가 없거나 토큰 권한으로 읽을 수 없음.",

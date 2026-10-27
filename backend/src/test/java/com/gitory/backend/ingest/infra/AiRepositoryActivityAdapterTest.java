@@ -778,19 +778,19 @@ class AiRepositoryActivityAdapterTest {
     }
 
     @Test
-    @DisplayName("철회된 연결로는 AI를 호출하지 않는다")
+    @DisplayName("철회된 연결로는 AI를 호출하지 않고 다시 연결해야 한다는 GITHUB_UNAUTHORIZED 로 끝난다")
     void rejectsRevokedConnection() {
         GithubConnection connection = activeConnection(null);
         connection.revoke();
-        assertError("GITHUB_CONNECTION_UNAVAILABLE");
+        assertError("GITHUB_UNAUTHORIZED");
         assertThat(calls).hasValue(0);
     }
 
     @Test
-    @DisplayName("만료된 연결로는 AI를 호출하지 않는다")
+    @DisplayName("만료된 연결로는 AI를 호출하지 않고 다시 연결해야 한다는 GITHUB_UNAUTHORIZED 로 끝난다")
     void rejectsExpiredConnection() {
         activeConnection(Instant.now().minusSeconds(1));
-        assertError("GITHUB_CONNECTION_UNAVAILABLE");
+        assertError("GITHUB_UNAUTHORIZED");
         assertThat(calls).hasValue(0);
     }
 

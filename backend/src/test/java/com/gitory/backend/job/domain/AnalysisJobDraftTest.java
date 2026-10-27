@@ -67,7 +67,7 @@ class AnalysisJobDraftTest {
 
     @ParameterizedTest
     @MethodSource("partialResults")
-    @DisplayName("덜 된 카드가 있으면 부분 완료로 끝나고, 이유가 여럿이면 AI 오류, 시간 초과, 근거 없음 순서로 하나만 남긴다")
+    @DisplayName("덜 된 카드가 있으면 부분 완료로 끝나고, 이유가 여럿이면 다시 연결, 내부 오류, AI 일시 장애, 시간 초과, 근거 없음 순서로 하나만 남긴다")
     void finishesPartialWithOneReason(List<CardDraftResult> results, JobErrorCode expected) {
 
         AnalysisJob job = runningDraft();
@@ -90,6 +90,19 @@ class AnalysisJobDraftTest {
 
         assertThat(job.getState()).isEqualTo(JobState.FAILED);
         assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
+
+    }
+
+    @Test
+    @DisplayName("모든 카드가 실패하고 그중 토큰 거절이 있으면 Job 은 다시 연결해야 하는 GITHUB_UNAUTHORIZED 로 실패한다")
+    void failsWithTokenRejectionFirst() {
+
+        AnalysisJob job = runningDraft();
+
+        job.finishDraft(List.of(CardDraftResult.FAILED, CardDraftResult.GITHUB_UNAUTHORIZED));
+
+        assertThat(job.getState()).isEqualTo(JobState.FAILED);
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_UNAUTHORIZED);
 
     }
 
@@ -132,7 +145,9 @@ class AnalysisJobDraftTest {
                 argumentSet("시간 초과와 근거 없음이 섞였다", List.of(CardDraftResult.NO_EVIDENCE, CardDraftResult.TIMED_OUT),
                         JobErrorCode.DRAFT_TIMEOUT),
                 argumentSet("실패와 시간 초과와 근거 없음이 섞였다", List.of(CardDraftResult.NO_EVIDENCE,
-                        CardDraftResult.TIMED_OUT, CardDraftResult.FAILED), JobErrorCode.INTERNAL_ERROR));
+                        CardDraftResult.TIMED_OUT, CardDraftResult.FAILED), JobErrorCode.INTERNAL_ERROR),
+                argumentSet("토큰 거절과 내부 오류가 섞였다", List.of(CardDraftResult.FAILED,
+                        CardDraftResult.GITHUB_UNAUTHORIZED, CardDraftResult.DRAFTED), JobErrorCode.GITHUB_UNAUTHORIZED));
 
     }
 

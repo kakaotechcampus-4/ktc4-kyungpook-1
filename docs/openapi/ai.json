@@ -1813,6 +1813,7 @@
               "EVIDENCE_MISMATCH",
               "LLM_RATE_LIMIT",
               "GITHUB_API_ERROR",
+              "GITHUB_UNAUTHORIZED",
               "LLM_UNAVAILABLE",
               "INTERNAL_ERROR"
             ],
@@ -4029,6 +4030,16 @@
             },
             "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "GITHUB_UNAUTHORIZED: GitHub 이 토큰을 거절함(만료·취소). 다시 시도하지 않고 다시 연결해야 한다."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4345,6 +4356,16 @@
             },
             "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "GITHUB_UNAUTHORIZED: GitHub 이 토큰을 거절함(만료·취소). 다시 시도하지 않고 다시 연결해야 한다."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -4432,6 +4453,16 @@
               }
             },
             "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "GITHUB_UNAUTHORIZED: GitHub 이 토큰을 거절함(만료·취소). 다시 시도하지 않고 다시 연결해야 한다."
           },
           "404": {
             "content": {

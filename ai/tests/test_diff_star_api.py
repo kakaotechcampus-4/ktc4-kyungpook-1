@@ -14,7 +14,7 @@ from ports.repository_activity import RepositoryActivityExecution
 from schemas.collection import CandidateDetailResult
 from services.analysis_pipeline import AnalysisPipeline
 from services.diff_analyzer import CommitSummary, DiffAnalyzer, DiffSummaryOutput
-from services.github_collector import GithubApiError, GithubResourceNotFound
+from services.github_collector import GithubApiError, GithubResourceNotFound, GithubUnauthorized
 from services.llm_settings import LLMConfigError
 from services.llm_structured_client import (
     LLMNonRetryableError,
@@ -247,7 +247,7 @@ def test_diff_evidence_output_is_valid_star_input(override) -> None:
     ("error", "status", "code", "retryable"),
     [
         (GithubResourceNotFound("x"), 404, "RESOURCE_NOT_FOUND", False),
-        (GithubApiError("x", 401), 502, "GITHUB_API_ERROR", False),
+        (GithubUnauthorized("x", 401), 401, "GITHUB_UNAUTHORIZED", False),
         (GithubApiError("x", 403), 502, "GITHUB_API_ERROR", False),
         (GithubApiError("x", 403, secondary_rate_limited=True), 502, "GITHUB_API_ERROR", True),
         (GithubApiError("x", 422), 502, "GITHUB_API_ERROR", False),

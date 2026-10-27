@@ -22,6 +22,7 @@ from schemas.collection import (
 from schemas.common import Envelope, ErrorDetail, Meta
 from services.github_collector import (
     GithubApiError,
+    GithubUnauthorized,
     GithubCollector,
     GithubResourceNotFound,
 )
@@ -76,6 +77,9 @@ async def collect_repository_activity(
             retryable=False,
             started=started,
         )
+    except GithubUnauthorized as exc:
+        _log_collection_failure("GitHub 활동 수집", "/internal/collect", "GITHUB_UNAUTHORIZED", False, exc, started, request)
+        return _unauthorized_response(started)
     except GithubApiError as exc:
         _log_collection_failure("GitHub 활동 수집", "/internal/collect", "GITHUB_API_ERROR", True, exc, started, request)
         return _error_response(
@@ -166,6 +170,11 @@ async def collect_candidate_details(
             retryable=False,
             started=started,
         )
+    except GithubUnauthorized as exc:
+        _log_collection_failure(
+            "후보 diff 수집", "/internal/collect/candidate-details", "GITHUB_UNAUTHORIZED", False, exc, started, request
+        )
+        return _unauthorized_response(started)
     except GithubApiError as exc:
         _log_collection_failure(
             "후보 diff 수집", "/internal/collect/candidate-details", "GITHUB_API_ERROR", True, exc, started, request
@@ -204,6 +213,16 @@ def _log_collection_failure(
     if isinstance(request, CandidateDetailRequest):
         ids["commits"] = len(request.commit_shas)
     log_failure(logger, feature, path=path, code=code, retryable=retryable, exc=exc, started=started, **ids)
+
+
+def _unauthorized_response(started: float) -> JSONResponse:
+    return _error_response(
+        status_code=401,
+        code="GITHUB_UNAUTHORIZED",
+        message="GitHub 이 토큰을 거절했습니다. GitHub 을 다시 연결해야 합니다.",
+        retryable=False,
+        started=started,
+    )
 
 
 def _error_response(

@@ -535,6 +535,19 @@ class JobRunnerTest {
 
     }
 
+    @Test
+    @DisplayName("GitHub 이 토큰을 거절했거나 쓸 토큰이 없으면 일시 장애와 나눠 GITHUB_UNAUTHORIZED 로 끝낸다")
+    void rejectedTokenEndsAsGithubUnauthorized() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willThrow(new AiClientException("GITHUB_UNAUTHORIZED", false, 401));
+
+        runNext();
+
+        assertFailed(jobId, JobErrorCode.GITHUB_UNAUTHORIZED);
+
+    }
+
     @ParameterizedTest
     @CsvSource({"AI_UNAVAILABLE, true, ", "AI_UNAVAILABLE, true, 500", "LLM_UNAVAILABLE, true, 503", "AI_HTTP_ERROR, true, 502"})
     @DisplayName("AI 와 연결이 안 되거나 시간이 지나거나 AI 가 잠시 못 한다고 알리면 수집 실패도 AI_UNAVAILABLE 로 끝낸다")

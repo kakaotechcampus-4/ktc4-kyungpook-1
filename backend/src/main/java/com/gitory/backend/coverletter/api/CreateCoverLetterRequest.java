@@ -10,6 +10,7 @@ public record CreateCoverLetterRequest(
         @Schema(description = "지원 이유 등 메모, 1,000자까지. 없으면 null") String memo,
         @Schema(description = "문항 1~10개") List<Question> questions) {
 
+    @Schema(name = "CoverLetterQuestionInput")
     public record Question(
             @Schema(description = "회사가 묻는 문항 문장, 1~500자") String text,
             @Schema(description = "공백 포함 글자 수 100~5,000. null 이면 700") Integer charLimit) {

@@ -1330,6 +1330,20 @@
         },
         "type" : "object"
       },
+      "CoverLetterQuestionInput" : {
+        "properties" : {
+          "charLimit" : {
+            "description" : "공백 포함 글자 수 100~5,000. null 이면 700",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "description" : "회사가 묻는 문항 문장, 1~500자",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CoverLetterResponse" : {
         "description" : "자소서 한 편과 문항별 배정 카드",
         "properties" : {
@@ -1400,7 +1414,7 @@
           "questions" : {
             "description" : "문항 1~10개",
             "items" : {
-              "$ref" : "#/components/schemas/Question"
+              "$ref" : "#/components/schemas/CoverLetterQuestionInput"
             },
             "type" : "array"
           }

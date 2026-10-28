@@ -1,5 +1,6 @@
 package com.gitory.backend.card.api;
 
+import com.gitory.backend.card.domain.ActivityNotFoundException;
 import com.gitory.backend.card.domain.CardConfirmedException;
 import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardNotConfirmableException;
@@ -30,6 +31,14 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleCardNotFound() {
 
         return ApiResponse.fail(ErrorCode.NOT_FOUND, "카드를 찾을 수 없습니다.");
+
+    }
+
+    @ExceptionHandler(ActivityNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleActivityNotFound() {
+
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "활동을 찾을 수 없습니다.");
 
     }
 

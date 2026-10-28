@@ -20,7 +20,7 @@ from schemas.interview import InterviewTurnResult
 from services.llm_executors import run_llm_call
 from services.llm_structured_client import LLMSettings, LLMStructuredCallError, StructuredLLMClient
 from services.star_generator import StarGenerationError
-from services.usage import metering
+from services.usage import metering, record_repair_round, usage_meta
 
 client = TestClient(app)
 
@@ -119,6 +119,15 @@ def test_failed_llm_call_is_counted_without_tokens() -> None:
             _llm(fails=True).call("system", {}, _Output, 100)
 
     assert (usage.llm_calls, usage.input_tokens, usage.output_tokens) == (2, 3, 2)
+
+
+def test_repair_rounds_recorded_in_a_request_reach_meta() -> None:
+    with metering():
+        record_repair_round()
+        record_repair_round()
+        meta = usage_meta(None, "COMPLETED")
+
+    assert meta.repair_rounds == 2
 
 
 def test_error_response_carries_llm_calls_made_before_failure(star_pipeline) -> None:

@@ -18,6 +18,7 @@ from services.star_generator import (
     StarGenerator,
 )
 from services.star_review import SlotReview, StarReviewer, StarReviewOutput, reviewer_from_env
+from services.usage import metering
 
 SHA_A = "a" * 40
 PR_BODY = "예전에는 목록을 열 때마다 DB 를 10번 읽었다. 한 번에 읽도록 IN 조회로 바꿨다."
@@ -179,6 +180,20 @@ def test_failed_review_or_rewrite_builds_the_card_from_the_current_draft() -> No
 
     assert (review_failed.star["S"].text, review_failed.star["S"].status) == (REVERSED_S, "FILLED")
     assert (rewrite_failed.star["S"].text, rewrite_failed.star["S"].status) == (REVERSED_S, "NEEDS_REVIEW")
+
+
+def test_only_received_rewrites_are_counted_as_repair_rounds() -> None:
+    with metering() as rewritten_twice:
+        _run(
+            _FakeClient(_draft(S=_field(REVERSED_S)), _draft(S=_field("한 번에 읽던 목록이 느렸다.")),
+                        _draft(S=_field("목록을 한 번에 읽어 느렸다."))),
+            _FakeClient(_flags(("S", QUOTE)), _flags(("S", QUOTE)), _flags(("S", QUOTE))),
+        )
+    with metering() as rewrite_failed:
+        _run(_FakeClient(_draft(S=_field(REVERSED_S)), LLMStructuredCallError("다시 쓰기 실패")),
+             _FakeClient(_flags(("S", QUOTE))))
+
+    assert (rewritten_twice.repair_rounds, rewrite_failed.repair_rounds) == (2, 0)
 
 
 def test_repair_stops_when_the_deadline_is_near() -> None:

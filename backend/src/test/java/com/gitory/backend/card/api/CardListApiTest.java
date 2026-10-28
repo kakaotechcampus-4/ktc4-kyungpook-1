@@ -221,15 +221,17 @@ class CardListApiTest {
     }
 
     @Test
-    @DisplayName("카드마다 저장된 분야·기술 태그를 순서대로 싣는다")
+    @DisplayName("카드마다 저장된 분야·기술·문항 유형 태그를 순서대로 싣는다")
     void sendsTags() throws Exception {
 
         Long cardId = fixtures.insertCard(UUID.randomUUID(), myUserId);
-        jdbc.update("UPDATE card SET areas = '{DB,BACKEND}', techs = '{SQL,JAVA}' WHERE id = ?", cardId);
+        jdbc.update("UPDATE card SET areas = '{DB,BACKEND}', techs = '{SQL,JAVA}', themes = '{CONFLICT,GROWTH}' "
+                + "WHERE id = ?", cardId);
 
         getCards()
                 .andExpect(jsonPath("$.data[0].areas").value(contains("DB", "BACKEND")))
-                .andExpect(jsonPath("$.data[0].techs").value(contains("SQL", "JAVA")));
+                .andExpect(jsonPath("$.data[0].techs").value(contains("SQL", "JAVA")))
+                .andExpect(jsonPath("$.data[0].themes").value(contains("CONFLICT", "GROWTH")));
 
     }
 
@@ -384,7 +386,7 @@ class CardListApiTest {
         String body = bodyOf(getCards());
         Map<String, Object> card = JsonPath.read(body, "$.data[0]");
 
-        assertThat(card).containsOnlyKeys("id", "kind", "status", "title", "areas", "techs", "versionNo", "star",
+        assertThat(card).containsOnlyKeys("id", "kind", "status", "title", "areas", "techs", "themes", "versionNo", "star",
                 "updatedAt", "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount", "repo");
         assertThat(card).containsEntry("id", publicId.toString())
                 .containsEntry("kind", "QUALITATIVE")

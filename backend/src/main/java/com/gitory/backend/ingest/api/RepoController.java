@@ -43,6 +43,19 @@ public class RepoController {
 
     }
 
+    @GetMapping("/api/repos/saved")
+    @Operation(summary = "저장된 저장소 목록 조회", description = "GitHub 을 부르지 않고 마지막으로 받아 둔 저장소를 바로 돌려줍니다. 화면이 최신 목록(GET /api/repos)을 기다리는 동안 먼저 보여 줄 때 씁니다. 그사이 GitHub 에서 지웠거나 권한을 잃은 저장소도 남아 있을 수 있습니다. 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠집니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "저장소 배열. 아직 GitHub 에서 목록을 받은 적이 없으면 빈 배열"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<List<RepoSummaryResponse>> savedRepos(@Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser) {
+
+        return ApiResponse.ok(repositoryList.saved(loginUser.id(), loginUser.login()).stream().map(RepoSummaryResponse::from).toList());
+
+    }
+
     @GetMapping("/api/repos/{id}")
     @Operation(summary = "저장소 상세 조회", description = "목록 한 줄과 같은 칸에 분석 전 안내(읽는 것·안 읽는 것·예상 시간)를 더해 돌려줍니다. GitHub 을 부르지 않고 저장된 값만 읽습니다.")
     @ApiResponses({

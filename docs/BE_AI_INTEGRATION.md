@@ -18,6 +18,8 @@ flowchart LR
 
 수집 응답은 성공 봉투, 연결 저장소 ID, GitHub 저장소 ID, SHA, 숫자 범위, 부분 수집·제외 판정을 검증한 뒤 기존 `CollectedActivity`로 변환한다. 수집 포트는 분석 Job 워커(`JobRunner`)만 호출하며, 공개 수집 API는 없다.
 
+`ANALYSIS_LIVE_PROGRESS_ENABLED`(기본 `true`)를 켜면 분석 Job 은 수집·경험 그룹화를 진행 스트리밍 경로(`/internal/collect/stream`·`/internal/analysis/groups/stream`)로 부른다. AI 는 PR·커밋을 하나 읽거나 묶음 하나를 마칠 때마다 `{"type":"progress","step","done","total"}` 줄을 보내고, 마지막 줄 `{"type":"result","status","body"}` 에 스트리밍 없는 경로와 같은 HTTP 상태·응답을 싣는다. `AiHttpClient` 는 결과 줄을 스트리밍 없는 응답과 똑같이 검사하고, 진행 줄은 `JobProgressRecorder` 가 1초에 한 번 정도 분석 단계의 `done`/`total` 로 남긴다. 읽을 수 없는 진행 줄은 버리고, 결과 줄 없이 끝나면 다시 시도할 수 있는 `AI_UNAVAILABLE` 로 본다. 끄면 예전처럼 한 번에 받는 경로를 부른다.
+
 ## 설정
 
 | 변수 | 기본값 / 용도 |

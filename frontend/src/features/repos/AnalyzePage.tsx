@@ -7,7 +7,6 @@ import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Track } from '@/comp
 import { JobLiveness } from '@/components/JobLiveness';
 import { AiWait } from '@/components/ui/AiWait';
 import { minutes } from '@/lib/format';
-import { isCounting } from '@/lib/repoCounts';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
 import { isTerminal, type Job } from '@/api/schemas';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
@@ -175,10 +174,10 @@ export function AnalyzePage() {
     <main className="main">
       <Breadcrumb items={[...crumbs, { label: '정리 중' }]} />
       <PageTitle right="떠나도 돼요">읽고 있습니다</PageTitle>
-      <RepoContext name={name} note={repo.data ? (isCounting(repo.data) ? '커밋·PR·리뷰를 읽는 중이에요' : `커밋 ${repo.data.contribution.mine}개 · PR ${repo.data.prCount}건 · 리뷰 ${repo.data.reviewCount}건을 읽는 중이에요`) : '…'}
+      <RepoContext name={name} note="새 기록을 읽는 중이에요"
         right={<Badge kind={j?.state === 'SUCCEEDED' ? 'CONFIRMED' : 'NEUTRAL'}>{j?.state === 'SUCCEEDED' ? '완료' : '진행 중'}</Badge>} />
       <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
-        {!j ? <AiWait label="저장소를 읽을 준비를 하고 있어요. 곧 커밋부터 읽기 시작해요." /> : (
+        {!j ? <AiWait label="저장소를 읽을 준비를 하고 있어요. 곧 PR 부터 읽기 시작해요." /> : (
           <>
             <div className="row" style={{ gap: 12 }}>
               <span className="w-700" style={{ fontSize: 14 }}>{doneCount} / {j.steps.length} 단계</span>
@@ -224,6 +223,7 @@ function stepDetail(done: number, total: number | null, unit: string, state: str
   if (state === 'SKIPPED') return '읽을 게 없어 건너뛰었어요';
   if (state === 'QUEUED') return '대기 중';
   if (total == null) return `${done}${unit} 읽음`;
+  if (total === 0) return '새로 읽을 게 없어요';
   return `${done} / ${total}${unit}`;
 }
 

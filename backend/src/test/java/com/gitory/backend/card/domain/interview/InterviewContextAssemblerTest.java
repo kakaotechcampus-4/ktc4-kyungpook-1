@@ -57,7 +57,7 @@ class InterviewContextAssemblerTest {
     @BeforeEach
     void setUp() {
 
-        card = Card.startManual(7L, 11L, "카드", null, "key-1");
+        card = Card.startManual(7L, 11L, null, "카드", null, "key-1");
         ReflectionTestUtils.setField(card, "id", CARD_ID);
         ReflectionTestUtils.setField(card, "currentVersion", CURRENT_VERSION);
         slots(Map.of());

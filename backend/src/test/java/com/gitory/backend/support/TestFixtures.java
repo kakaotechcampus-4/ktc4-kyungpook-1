@@ -20,7 +20,8 @@ public final class TestFixtures {
     }
 
     public void clear() {
-        jdbc.execute("TRUNCATE users, repository CASCADE");
+        // AI 호출 기록은 Job·카드에 FK 가 없어 CASCADE 로 비워지지 않는다
+        jdbc.execute("TRUNCATE users, repository, ai_call CASCADE");
     }
 
     public Long insertUser(Long githubUserId, String login) {

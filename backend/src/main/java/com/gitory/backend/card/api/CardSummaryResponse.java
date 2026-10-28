@@ -25,7 +25,8 @@ public record CardSummaryResponse(
         @Schema(description = "후보로 만든 카드의 후보 종류. 직접 작성 카드는 null") String sourceType,
         String period,
         @Schema(description = "현재 버전 문장에 붙은 근거 커밋 수") int evidenceCount,
-        @Schema(description = "현재 버전에서 사용자가 쓰거나 고른 문장 수") int userStatedCount) {
+        @Schema(description = "현재 버전에서 사용자가 쓰거나 고른 문장 수") int userStatedCount,
+        @Schema(description = "카드를 만든 저장소로 카드 상세의 repo 와 같은 값이고, 저장소 없이 직접 쓴 카드는 null") CardRepoResponse repo) {
 
     static CardSummaryResponse from(CardSummary card) {
 
@@ -43,7 +44,8 @@ public record CardSummaryResponse(
                 card.sourceType(),
                 card.period(),
                 card.evidenceCount(),
-                card.userStatedCount());
+                card.userStatedCount(),
+                card.repository() == null ? null : CardRepoResponse.from(card.repository()));
 
     }
 }

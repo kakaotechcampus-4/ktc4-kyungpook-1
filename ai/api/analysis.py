@@ -23,13 +23,14 @@ from schemas.analysis import (
     StarAnalysisRequest,
     StarAnalysisResponse,
 )
-from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
+from schemas.common import EndedBy, Envelope, ErrorDetail, ErrorEnvelope
 from services.analysis_pipeline import AnalysisPipeline
 from services.diff_analyzer import DiffAnalysisError
 from services.github_collector import GithubApiError, GithubResourceNotFound, GithubUnauthorized
 from services.grouping_llm import GroupingLlmConfigError, GroupingLlmError
 from services.llm_settings import LLMConfigError
 from services.star_generator import StarGenerationError
+from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -99,11 +100,10 @@ async def group_experiences(
     except GroupingLlmError as exc:
         _log_grouping_failure(request, True, exc, started)
         return _llm_unavailable(started, "그룹화 LLM 호출에 실패했습니다.", True)
-    processing_ms = int((time.perf_counter() - started) * 1000)
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=processing_ms),
+        meta=usage_meta(started, "PARTIAL" if result.verdict == "PARTIAL" else "COMPLETED"),
         error=None,
     )
 
@@ -157,7 +157,9 @@ async def collect_diff_evidence(
     return Envelope(
         success=True,
         data=execution.result,
-        meta=Meta(model=None, tool_calls_made=execution.api_calls, processing_ms=_elapsed_ms(started)),
+        meta=usage_meta(
+            started, "PARTIAL" if execution.result.partial else "COMPLETED", github_calls=execution.api_calls
+        ),
         error=None,
     )
 
@@ -192,7 +194,7 @@ async def analyze_star(
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=_elapsed_ms(started)),
+        meta=usage_meta(started, _star_ended_by(result)),
         error=None,
     )
 
@@ -276,8 +278,10 @@ def _llm_unavailable(started: float, message: str, retryable: bool) -> JSONRespo
     return _error(started, 503, "LLM_UNAVAILABLE", message, retryable)
 
 
-def _elapsed_ms(started: float) -> int:
-    return int((time.perf_counter() - started) * 1000)
+def _star_ended_by(result: StarAnalysisResponse) -> EndedBy:
+    """마감에 걸려 비운 칸이 하나라도 있으면 일부만 끝난 것이다."""
+    timed_out = any(field.insufficient_reason_code == "TIMEOUT" for field in result.star.values())
+    return "PARTIAL" if timed_out else "COMPLETED"
 
 
 def _error(started: float, status_code: int, code: str, message: str, retryable: bool) -> JSONResponse:
@@ -285,7 +289,7 @@ def _error(started: float, status_code: int, code: str, message: str, retryable:
     envelope = Envelope(
         success=False,
         data=None,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=_elapsed_ms(started)),
+        meta=usage_meta(started, "FAILED"),
         error=ErrorDetail(code=code, message=message, retryable=retryable),
     )
     return JSONResponse(status_code=status_code, content=jsonable_encoder(envelope))

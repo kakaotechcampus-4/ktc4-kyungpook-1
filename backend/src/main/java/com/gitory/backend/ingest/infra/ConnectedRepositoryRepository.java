@@ -28,6 +28,13 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """)
     Optional<RepositoryReference> findReference(@Param("id") Long id);
 
+    @Query("""
+            SELECT c.id AS id, c.publicId AS publicId, r.ownerLogin AS ownerLogin, r.name AS name
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.id IN :ids
+            """)
+    List<ReferenceRow> findReferences(@Param("ids") Collection<Long> ids);
+
     @Modifying
     @Query(value = """
             INSERT INTO user_repository (user_id, repository_id)
@@ -87,4 +94,15 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """)
     List<ContributionTarget> findUncounted(@Param("userId") Long userId,
                                            @Param("githubRepoIds") Collection<Long> githubRepoIds);
+
+    interface ReferenceRow {
+
+        Long getId();
+
+        UUID getPublicId();
+
+        String getOwnerLogin();
+
+        String getName();
+    }
 }

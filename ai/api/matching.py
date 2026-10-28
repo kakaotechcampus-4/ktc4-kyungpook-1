@@ -16,7 +16,7 @@ from api.failure_log import log_failure
 from api.openapi import INVALID_PAYLOAD_RESPONSE
 from rag.embedding import EmbeddingError, create_text_embedder, embedding_model_name
 from rag.vector_store import ChromaJobCriterionStore
-from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
+from schemas.common import Envelope, ErrorDetail, ErrorEnvelope
 from schemas.matching import (
     JobPostingIndexRequest,
     JobPostingIndexResult,
@@ -27,6 +27,7 @@ from schemas.matching import (
 )
 from services.llm_executors import MATCHING_EXECUTOR, run_llm_call
 from services.talent_matcher import TalentMatcher
+from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -152,11 +153,7 @@ def _success(started: float, result, embedded: bool = True) -> Envelope:
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(
-            model=embedding_model_name() if embedded else None,
-            tool_calls_made=1 if embedded else 0,
-            processing_ms=_elapsed_ms(started),
-        ),
+        meta=usage_meta(started, "COMPLETED", model=embedding_model_name() if embedded else None),
         error=None,
     )
 
@@ -172,10 +169,6 @@ def _failure(started: float, task: str, path: str, exc: Exception) -> JSONRespon
     return _error(started, 500, "INTERNAL_ERROR", f"{task} 중 내부 오류가 발생했습니다.", False)
 
 
-def _elapsed_ms(started: float) -> int:
-    return int((time.perf_counter() - started) * 1000)
-
-
 def _error(started: float, status_code: int, code: str, message: str, retryable: bool) -> JSONResponse:
     """실패를 공통 응답 형식의 오류로 반환한다.
 
@@ -184,7 +177,7 @@ def _error(started: float, status_code: int, code: str, message: str, retryable:
     envelope = Envelope(
         success=False,
         data=None,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=_elapsed_ms(started)),
+        meta=usage_meta(started, "FAILED"),
         error=ErrorDetail(code=code, message=message, retryable=retryable),
     )
     return JSONResponse(status_code=status_code, content=jsonable_encoder(envelope))

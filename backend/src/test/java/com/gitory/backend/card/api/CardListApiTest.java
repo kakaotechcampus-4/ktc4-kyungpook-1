@@ -248,6 +248,42 @@ class CardListApiTest {
     }
 
     @Test
+    @DisplayName("저장소에서 만든 카드는 목록에도 카드 상세와 같은 저장소(repo)를 카드마다 싣는다")
+    void sendsRepositoryOfEachCardLikeDetail() throws Exception {
+
+        UUID gitoryCard = UUID.randomUUID();
+        UUID docsCard = UUID.randomUUID();
+        UUID gitory = UUID.randomUUID();
+        UUID docs = UUID.randomUUID();
+        inRepository(fixtures.insertCard(gitoryCard, myUserId), gitory, 10L, "grow22", "gitory-web");
+        inRepository(fixtures.insertCard(docsCard, myUserId), docs, 11L, "kakaotechcampus-4", "docs");
+
+        String list = bodyOf(getCards().andExpect(status().isOk()));
+
+        assertThat(repoInList(list, gitoryCard)).isEqualTo(repoInDetail(gitoryCard))
+                .containsEntry("id", gitory.toString())
+                .containsEntry("owner", "grow22")
+                .containsEntry("name", "gitory-web");
+        assertThat(repoInList(list, docsCard)).isEqualTo(repoInDetail(docsCard))
+                .containsEntry("id", docs.toString())
+                .containsEntry("owner", "kakaotechcampus-4")
+                .containsEntry("name", "docs");
+
+    }
+
+    @Test
+    @DisplayName("저장소 없이 직접 쓴 카드는 목록의 repo 를 빼지 않고 null 로 싣는다")
+    void sendsNullRepositoryForManualCard() throws Exception {
+
+        fixtures.insertCard(UUID.randomUUID(), myUserId);
+
+        Map<String, Object> card = JsonPath.read(bodyOf(getCards().andExpect(status().isOk())), "$.data[0]");
+
+        assertThat(card).containsEntry("repo", null);
+
+    }
+
+    @Test
     @DisplayName("직접 작성 카드는 출처 이름 MANUAL·후보 종류 null 이고, AI 카드는 둘 다 null 이다")
     void labelsOnlyManualCards() throws Exception {
 
@@ -334,7 +370,7 @@ class CardListApiTest {
     }
 
     @Test
-    @DisplayName("목록 한 줄은 계약의 열네 키에 현재 버전 번호·기간(없으면 null)·카드를 고친 시각을 ISO 문자열로 담는다")
+    @DisplayName("목록 한 줄은 계약의 열다섯 키에 현재 버전 번호·기간(없으면 null)·카드를 고친 시각을 ISO 문자열로 담는다")
     void carriesVersionPeriodAndUpdatedAt() throws Exception {
 
         UUID publicId = UUID.randomUUID();
@@ -349,7 +385,7 @@ class CardListApiTest {
         Map<String, Object> card = JsonPath.read(body, "$.data[0]");
 
         assertThat(card).containsOnlyKeys("id", "kind", "status", "title", "areas", "techs", "versionNo", "star",
-                "updatedAt", "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount");
+                "updatedAt", "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount", "repo");
         assertThat(card).containsEntry("id", publicId.toString())
                 .containsEntry("kind", "QUALITATIVE")
                 .containsEntry("status", "DRAFT")
@@ -436,6 +472,29 @@ class CardListApiTest {
     private ResultActions getCards() throws Exception {
 
         return mvc.perform(get("/api/cards").with(loggedInAs(myUserId)));
+
+    }
+
+    private void inRepository(Long cardId, UUID connectionId, Long githubRepoId, String owner, String name) {
+
+        Long connection = fixtures.insertUserRepository(connectionId, myUserId,
+                fixtures.insertRepository(githubRepoId, owner, name));
+        jdbc.update("UPDATE card SET user_repository_id = ? WHERE id = ?", connection, cardId);
+
+    }
+
+    private static Map<String, Object> repoInList(String body, UUID cardId) {
+
+        List<Map<String, Object>> repos = JsonPath.read(body, "$.data[?(@.id == '" + cardId + "')].repo");
+
+        return repos.get(0);
+
+    }
+
+    private Map<String, Object> repoInDetail(UUID cardId) throws Exception {
+
+        return JsonPath.read(bodyOf(mvc.perform(get("/api/cards/{id}", cardId).with(loggedInAs(myUserId)))
+                .andExpect(status().isOk())), "$.data.repo");
 
     }
 

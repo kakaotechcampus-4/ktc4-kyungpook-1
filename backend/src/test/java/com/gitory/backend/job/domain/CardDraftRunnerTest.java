@@ -17,6 +17,7 @@ import com.gitory.backend.agent.port.StarSourceType;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
@@ -148,6 +149,24 @@ class CardDraftRunnerTest {
         repositoryId = fixtures.insertRepository(100L, LOGIN, "gitory");
         userRepositoryId = fixtures.insertUserRepository(userId, repositoryId);
         jobId = cardFixtures.insertDraftJob(userId, userRepositoryId, "QUEUED");
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 이 카드마다 부른 AI 호출에는 그 Job 과 카드가 함께 붙는다")
+    void marksAiCallsWithTheJobAndCard() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 30, 10));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        AtomicReference<List<Long>> seen = new AtomicReference<>();
+        given(star.draft(any())).willAnswer(invocation -> {
+            seen.set(Arrays.asList(AiCallContext.jobId(), AiCallContext.cardId()));
+            return allSlots(SHA_A);
+        });
+
+        runNext();
+
+        assertThat(seen.get()).containsExactly(job().getId(), cardId);
 
     }
 
@@ -697,6 +716,53 @@ class CardDraftRunnerTest {
         assertThat(statementsOf(cardId)).isEmpty();
         assertThat(notesOf(cardId)).isEmpty();
         assertThat(firstVersionSourceOf(cardId)).isEqualTo("USER_EDIT");
+
+    }
+
+    @Test
+    @DisplayName("서버가 다시 켜져 실패 표시가 남은 카드에 STAR 초안을 담으면 실패 표시를 지운다")
+    void clearsFailureWhenDraftIsWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allFilled(SHA_A));
+
+        runNext();
+
+        assertThat(statementsOf(cardId)).hasSize(4);
+        assertThat(generationFailureOf(cardId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("근거가 없어 근거 없음만 담아도 초안 시도가 끝났으므로 실패 표시를 지운다")
+    void clearsFailureWhenOnlyNoEvidenceIsWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf());
+
+        runNext();
+
+        assertThat(firstVersionSourceOf(cardId)).isEqualTo("AI_DRAFT");
+        assertThat(generationFailureOf(cardId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("현재 버전이 1번이 아니어서 초안을 담지 못한 카드는 실패 표시를 그대로 둔다")
+    void keepsFailureWhenDraftIsNotWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allFilled(SHA_A));
+
+        runNext();
+
+        assertThat(generationFailureOf(cardId)).isEqualTo("AI_UNAVAILABLE");
 
     }
 

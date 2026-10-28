@@ -11,6 +11,7 @@ import com.gitory.backend.card.domain.CardDraftFailure;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.GeneratedCard;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.consent.port.DiffEvidence;
@@ -72,7 +73,8 @@ public class CardDraftRunner {
 
         List<CardDraftResult> results = new ArrayList<>();
         for (GeneratedCard card : cards) {
-            Optional<CardDraftResult> result = draft(job, card, login, results.size(), total);
+            Optional<CardDraftResult> result = AiCallContext.callForCard(card.id(),
+                    () -> draft(job, card, login, results.size(), total));
             if (result.isEmpty()) {
                 return;
             }

@@ -58,6 +58,9 @@ AnalysisVerdict = Literal["OK", "EMPTY", "PARTIAL"]
 #: 프론트 StarFieldState와 같게 두어 별도 문자열 번역을 만들지 않는다.
 StarStatus = Literal["FILLED", "EMPTY", "NEEDS_REVIEW"]
 
+#: 요청이 어떻게 끝났는지. PARTIAL 은 마감·누락으로 일부만, FALLBACK 은 LLM 대신 정해 둔 길로 끝난 것이다.
+EndedBy = Literal["COMPLETED", "PARTIAL", "FALLBACK", "FAILED"]
+
 T = TypeVar("T")
 
 
@@ -67,7 +70,17 @@ class Meta(BaseModel):
     model: Optional[str] = Field(
         None, description="실제 사용된 모델(LLM 미사용 응답은 null 또는 처리 방식 이름)"
     )
-    tool_calls_made: int = Field(0, description="이번 처리에서 실제 도구 호출 횟수")
+    tool_calls_made: int = Field(
+        0, description="모델이 스스로 골라 부른 도구 횟수. 그런 도구가 아직 없어 지금은 늘 0"
+    )
+    llm_calls: int = Field(0, description="LLM 에 보낸 요청 수. 실패한 요청도 센다")
+    input_tokens: int = Field(0, description="응답을 받은 LLM 요청의 입력 토큰 합")
+    output_tokens: int = Field(0, description="응답을 받은 LLM 요청의 출력 토큰 합")
+    repair_rounds: int = Field(0, description="검사에 걸려 고쳐 쓴 횟수. 고쳐 쓰기가 아직 없어 지금은 늘 0")
+    github_calls: int = Field(0, description="GitHub API 를 부른 횟수")
+    ended_by: EndedBy = Field(
+        ..., description="COMPLETED 다 끝냄, PARTIAL 마감·누락으로 일부만, FALLBACK LLM 대신 정해 둔 길, FAILED 오류 응답"
+    )
     processing_ms: int = Field(0, description="처리 소요 시간(ms)")
 
 

@@ -4,7 +4,11 @@ import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.CoverLetterAssignment;
 import com.gitory.backend.agent.port.CoverLetterAssignmentPort;
 import com.gitory.backend.agent.port.CoverLetterAssignmentRequest;
+import com.gitory.backend.agent.port.CoverLetterQuestions;
+import com.gitory.backend.agent.port.CoverLetterQuestionsPort;
+import com.gitory.backend.agent.port.CoverLetterQuestionsRequest;
 import com.gitory.backend.common.infra.ai.AiCallContext;
+import com.gitory.backend.coverletter.infra.CardMaterialAnswerRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterQuestionRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterRepository;
 import com.gitory.backend.support.TestFixtures;
@@ -38,14 +42,14 @@ import static org.mockito.BDDMockito.given;
         "gitory.consent.token-salt=5c0744940b5c369b"
 })
 @Testcontainers
-class CoverLetterAssignRunnerTest {
+class CoverLetterRunnerTest {
 
     @Container
     @ServiceConnection
     static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
 
     @Autowired
-    CoverLetterAssignRunner runner;
+    CoverLetterRunner runner;
 
     @Autowired
     CoverLetterRepository letters;
@@ -56,8 +60,14 @@ class CoverLetterAssignRunnerTest {
     @Autowired
     JdbcTemplate jdbc;
 
+    @Autowired
+    CardMaterialAnswerRepository answers;
+
     @MockitoBean
     CoverLetterAssignmentPort assignment;
+
+    @MockitoBean
+    CoverLetterQuestionsPort questionsPort;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -175,6 +185,109 @@ class CoverLetterAssignRunnerTest {
     }
 
     @Test
+    @DisplayName("질문 만들기를 기다리는 자소서도 집어, 배정된 카드 전문과 중심 카드의 지난 답을 AI 에 보내고, 받은 질문 뒤에 AI 가 묻지 않은 지난 답을 붙여 저장한다")
+    void savesAsksWithRememberedAnswersOfPrimaryCard() {
+
+        Long primary = confirmedCard("배포 시간 단축", "S", "A");
+        Long supporting = confirmedCard("동아리 회계", "R");
+        Long deletedPrimary = confirmedCard("지운 카드", "A");
+        Long leftSupporting = confirmedCard("남은 보조 카드", "A");
+        answers.save(CardMaterialAnswer.of(primary, MaterialItem.LEARNING, "작게 나눠 배포하게 됐다"));
+        answers.save(CardMaterialAnswer.of(supporting, MaterialItem.TRIGGER, "보조 카드의 계기"));
+        CoverLetter letter = askingLetter(new Pick(QuestionTheme.COLLABORATION, primary, supporting),
+                new Pick(QuestionTheme.FAILURE, deletedPrimary, leftSupporting),
+                new Pick(QuestionTheme.GROWTH, primary, null));
+        jdbc.update("UPDATE card SET deleted_at = now() WHERE id = ?", deletedPrimary);
+        AtomicReference<CoverLetterQuestionsRequest> sent = new AtomicReference<>();
+        given(questionsPort.ask(any())).willAnswer(invocation -> {
+            sent.set(invocation.getArgument(0));
+            return new CoverLetterQuestions(List.of(
+                    new CoverLetterQuestions.Question(1, List.of("RESULT"), List.of(
+                            new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?"),
+                            new CoverLetterQuestions.Ask("TRIGGER", "왜 고치기로 했나요?"))),
+                    new CoverLetterQuestions.Question(2, List.of(), List.of(
+                            new CoverLetterQuestions.Ask("SITUATION", "어떤 상황이었나요?"))),
+                    new CoverLetterQuestions.Question(3, List.of(), List.of(
+                            new CoverLetterQuestions.Ask("LEARNING", "무엇을 배웠나요?")))));
+        });
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetterQuestionsRequest.Question first = sent.get().questions().getFirst();
+        assertThat(first.questionTheme()).isEqualTo("COLLABORATION");
+        assertThat(first.primaryCard().cardId()).isEqualTo(primary);
+        assertThat(first.primaryCard().statements()).containsExactly(
+                new CoverLetterQuestionsRequest.Statement("S", "S 문장"),
+                new CoverLetterQuestionsRequest.Statement("A", "A 문장"));
+        assertThat(first.supportingCard().cardId()).isEqualTo(supporting);
+        assertThat(first.knownAnswers()).containsExactly(
+                new CoverLetterQuestionsRequest.KnownAnswer("LEARNING", "작게 나눠 배포하게 됐다", primary));
+        CoverLetterQuestionsRequest.Question second = sent.get().questions().get(1);
+        assertThat(second.primaryCard()).isNull();
+        assertThat(second.supportingCard()).isNull();
+        assertThat(second.knownAnswers()).isEmpty();
+
+        CoverLetter saved = letters.findById(letter.getId()).orElseThrow();
+        assertThat(saved.getStage()).isEqualTo(CoverLetterStage.ASKED);
+        assertThat(saved.getRunningSince()).isNull();
+        List<CoverLetterQuestion> stored = questions.findByCoverLetterIdOrderBySeq(letter.getId());
+        assertThat(stored.getFirst().getAsks()).containsExactly(
+                new MaterialAsk(MaterialItem.RESULT, "배포가 얼마나 빨라졌나요?", true),
+                new MaterialAsk(MaterialItem.TRIGGER, "왜 고치기로 했나요?", false),
+                new MaterialAsk(MaterialItem.LEARNING, null, false));
+        assertThat(stored.getFirst().getAnswers()).containsExactly(
+                new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true));
+        assertThat(stored.get(1).getAsks()).containsExactly(
+                new MaterialAsk(MaterialItem.SITUATION, "어떤 상황이었나요?", false));
+        assertThat(stored.get(1).getAnswers()).isEmpty();
+        assertThat(stored.get(2).getAsks()).containsExactly(
+                new MaterialAsk(MaterialItem.LEARNING, "무엇을 배웠나요?", false));
+        assertThat(stored.get(2).getAnswers()).containsExactly(
+                new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true));
+
+    }
+
+    @Test
+    @DisplayName("카드 문장은 AI 가 카드마다 받는 20개까지만 보낸다")
+    void sendsAtMostTwentyStatementsPerCard() {
+
+        Long card = confirmedCard("문장이 많은 카드");
+        for (int seq = 1; seq <= 21; seq++) {
+            jdbc.update("INSERT INTO card_statement (card_id, version_no, star_slot, seq, body, evidence_type) "
+                    + "VALUES (?, 1, 'A', ?, ?, 'USER_STATED')", card, seq, "행동 " + seq);
+        }
+        askingLetter(new Pick(QuestionTheme.COLLABORATION, card, null));
+        AtomicReference<CoverLetterQuestionsRequest> sent = new AtomicReference<>();
+        given(questionsPort.ask(any())).willAnswer(invocation -> {
+            sent.set(invocation.getArgument(0));
+            return new CoverLetterQuestions(List.of(new CoverLetterQuestions.Question(1, List.of(), List.of())));
+        });
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        assertThat(sent.get().questions().getFirst().primaryCard().statements()).hasSize(20);
+
+    }
+
+    @Test
+    @DisplayName("질문 만들기 AI 호출이 실패하면 질문 단계 실패로 끝낸다")
+    void failsAskStepWhenAiFails() {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        CoverLetter letter = askingLetter(new Pick(QuestionTheme.COLLABORATION, card, null));
+        given(questionsPort.ask(any())).willThrow(new AgentUnavailableException("AI 실패", true, false, null));
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetter saved = letters.findById(letter.getId()).orElseThrow();
+        assertThat(saved.getStage()).isEqualTo(CoverLetterStage.FAILED);
+        assertThat(saved.getFailedStep()).isEqualTo(CoverLetterStep.ASK);
+        assertThat(saved.getErrorCode()).isEqualTo(CoverLetterError.AI_UNAVAILABLE.name());
+        assertThat(questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst().getAsks()).isEmpty();
+
+    }
+
+    @Test
     @DisplayName("집은 지 5분이 지난 단계만 다시 시도할 수 있는 실패로 끝낸다")
     void failsStepsStuckForFiveMinutes() {
 
@@ -214,6 +327,25 @@ class CoverLetterAssignRunnerTest {
         }
         return letter;
 
+    }
+
+    private CoverLetter askingLetter(Pick... picks) {
+
+        CoverLetter letter = letters.save(CoverLetter.start(userId, "백엔드 개발", null, null));
+        for (int i = 0; i < picks.length; i++) {
+            CoverLetterQuestion question = CoverLetterQuestion.of(letter.getId(), i + 1, "문항 " + (i + 1), 700);
+            question.assign(picks[i].theme(), picks[i].primary(), picks[i].supporting(), AssignedBy.SUB_AGENT, "이유",
+                    List.of());
+            questions.save(question);
+        }
+        letter.claim();
+        letter.assigned(List.of());
+        letter.startAsking();
+        return letters.save(letter);
+
+    }
+
+    private record Pick(QuestionTheme theme, Long primary, Long supporting) {
     }
 
     private Long confirmedCard(String title, String... slots) {

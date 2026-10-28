@@ -107,6 +107,19 @@ public class CoverLetterQuestion {
 
     }
 
+    public void asked(List<MaterialAsk> asks, List<MaterialAnswer> answers) {
+
+        this.asks = new ArrayList<>(asks);
+        this.answers = new ArrayList<>(answers);
+
+    }
+
+    public void answer(List<MaterialAnswer> answers) {
+
+        this.answers = new ArrayList<>(answers);
+
+    }
+
     /** 사용자가 고른 카드로 바꾸며, AI 가 고른 이유는 더는 이 카드에 맞지 않아 지운다 */
     public void chooseCards(Long primaryCardId, Long supportingCardId) {
 

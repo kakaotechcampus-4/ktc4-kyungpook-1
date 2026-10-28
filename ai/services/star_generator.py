@@ -9,6 +9,7 @@ STAR 문장 작성만 LLM에 맡기고, 근거 SHA 실재 확인·근거 없는 
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Protocol, get_args
@@ -38,7 +39,10 @@ from services.llm_structured_client import (
     StructuredCallResult,
 )
 from services.secret_redaction import mask_emails, redact_secrets
-from services.star_check import DraftSlot, check_draft
+from services.star_check import DraftSlot, SlotCheck, check_draft
+from services.star_review import ReviewFinding, ReviewSources, StarReviewer
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """당신은 개발자의 커밋 근거로 STAR(상황·책임·행동·결과) 카드 초안을 만드는 작성기입니다.
 입력으로 경험 제목, 커밋별 근거 요약(evidence), 사용자가 인터뷰에서 확인한 답변(confirmed_answers)이 주어집니다.
@@ -88,12 +92,26 @@ PR 본문 활용:
 
 반드시 제공된 구조화 출력 스키마로만 응답하세요."""
 
+REWRITE_SYSTEM_PROMPT = SYSTEM_PROMPT + """
+
+고쳐 쓰기:
+- 입력의 previous_draft는 직전 초안이고, problems는 코드 검사와 검토에 걸린 칸의 문제 목록이다.
+- problems에 있는 칸만 고쳐 쓰고, 나머지 칸은 previous_draft 그대로 적는다.
+- REVERSED_MEANING: value는 견준 원문 문장이다. 그 원문의 상태·방향·주어대로 바로잡는다.
+- UNSOURCED_NUMBER: value의 수치를 빼거나 근거 글에 적힌 수치로 바꾼다.
+- NO_EVIDENCE: 문장을 뒷받침하는 입력 커밋 sha를 evidence_shas에 단다. 뒷받침하는 커밋이 없으면 EMPTY로 둔다.
+- 문제를 고치려고 근거에 없는 내용을 더하지 않는다."""
+
 SLOTS: tuple[StarSlot, ...] = ("S", "T", "A", "R")
 
 _REVIEW_REASON = "근거는 있으나 해석이 불확실해 사용자 확인이 필요합니다."
 _ANSWER_ONLY_REASON = "근거 커밋 없이 사용자 답변으로만 채워 사용자 확인이 필요합니다."
 _DEFAULT_EMPTY_REASON = "이 칸을 뒷받침하는 근거를 찾지 못했습니다."
 _TIMEOUT_REASON = "초안 생성 시간이 초과되어 비웠습니다."
+_REVERSED_REASON = "원문과 뜻이 다를 수 있어 사용자 확인이 필요합니다."
+_REVERSED_CODE = "REVERSED_MEANING"
+#: 없는 커밋 번호는 코드가 이미 빼고 다른 근거로 문장을 남기므로 다시 쓰게 하지 않는다.
+_REPAIR_CODES = frozenset({"NO_EVIDENCE", "UNSOURCED_NUMBER"})
 
 #: 프롬프트의 '바꾼 것과 처음 만든 것을 구분한다' 규칙이 읽는 표시로, 커밋 전체의 지운 줄 수 하나로 정한다.
 _CHANGE_KIND_NEW = "새로 더함"
@@ -176,6 +194,8 @@ class StarGenerationLimits:
     deadline_seconds: float = 150.0
     #: 남은 시간이 이보다 짧으면 새 호출을 시작하지 않는다.
     min_call_seconds: float = 10.0
+    #: 검사·검토에 걸린 칸을 다시 쓰는 최대 횟수. 검토는 다시 쓴 뒤마다 한 번 더 해 최대 횟수 +1 번 부른다.
+    max_repair_rounds: int = 2
 
 
 class StarGenerator:
@@ -185,14 +205,17 @@ class StarGenerator:
         self,
         client: Optional[StructuredCaller] = None,
         limits: StarGenerationLimits = StarGenerationLimits(),
+        reviewer: Optional[StarReviewer] = None,
     ) -> None:
         self._client = client
         self._limits = limits
+        self._reviewer = reviewer
 
     async def generate(self, request: StarAnalysisRequest) -> StarAnalysisResponse:
         """근거가 없는 영역은 비운 STAR 분석 결과를 반환한다.
 
         마감 안에 초안을 받지 못하면 실패 대신 네 칸을 TIMEOUT으로 비운 결과를 돌려준다.
+        검토를 받았으면 첫 초안 뒤에 검사·검토에 걸린 칸만 고쳐 쓰게 한다.
         """
         if self._client is None:
             raise StarGenerationError("STAR 생성에 사용할 LLM이 설정되지 않았습니다.", retryable=False)
@@ -201,10 +224,13 @@ class StarGenerator:
         payload = self.build_payload(request, evidence)
         deadline = asyncio.get_running_loop().time() + self._limits.deadline_seconds
         try:
-            output = await self._call(payload, deadline)
+            output = await self._call(SYSTEM_PROMPT, payload, deadline)
         except _Timeout:
             return self._timed_out(request)
-        return self._to_response(request, evidence, payload, output)
+        still_reversed: frozenset[StarSlot] = frozenset()
+        if self._reviewer is not None:
+            output, still_reversed = await self._repair(self._reviewer, evidence, payload, output, deadline)
+        return self._to_response(request, evidence, payload, output, still_reversed)
 
     def build_payload(
         self, request: StarAnalysisRequest, evidence: list[DiffEvidence]
@@ -225,7 +251,7 @@ class StarGenerator:
         ]
         return payload
 
-    async def _call(self, payload: dict[str, Any], deadline: float) -> StarDraftOutput:
+    async def _call(self, system_prompt: str, payload: dict[str, Any], deadline: float) -> StarDraftOutput:
         """스키마에 맞지 않는 응답만 다시 요청한다. 각 호출은 남은 마감 시간 안에서만 기다린다.
 
         키·모델 이름·콘텐츠 필터 오류와 출력 길이 초과는 다시 해도 같으므로 retryable=false로 올린다.
@@ -240,7 +266,7 @@ class StarGenerator:
                     run_llm_call(
                         CARD_DRAFT_EXECUTOR,
                         self._client.call,
-                        SYSTEM_PROMPT,
+                        system_prompt,
                         payload,
                         StarDraftOutput,
                         self._limits.max_completion_tokens,
@@ -267,6 +293,71 @@ class StarGenerator:
             return result.output
         raise StarGenerationError("STAR 초안을 생성하지 못했습니다.", retryable=True)
 
+    async def _repair(
+        self,
+        reviewer: StarReviewer,
+        evidence: list[DiffEvidence],
+        payload: dict[str, Any],
+        output: StarDraftOutput,
+        deadline: float,
+    ) -> tuple[StarDraftOutput, frozenset[StarSlot]]:
+        """검사·검토에 걸린 칸만 이유와 함께 다시 쓰게 하고, 다시 쓴 칸만 다시 검사·검토한다.
+
+        검토·다시 쓰기 호출이 실패하거나 마감이 가까우면 지금 초안에서 멈춘다. 돌려주는 칸 목록은 마지막 검토에서도
+        뒤집혔다고 본 칸이라, 검토가 틀렸을 수 있어 지우지 않고 확인 필요로 내린다.
+        """
+        by_sha = {item.sha: item for item in evidence}
+        sources = ReviewSources.from_payload(payload)
+        targets: set[StarSlot] = set(SLOTS)
+        for round_index in range(self._limits.max_repair_rounds + 1):
+            written = {slot: draft for slot, draft in self._written(output).items() if slot in targets}
+            if not written:
+                return output, frozenset()
+            try:
+                reversed_slots = await reviewer.review(
+                    {slot: draft.text for slot, draft in written.items()},
+                    sources,
+                    deadline,
+                    self._limits.min_call_seconds,
+                )
+            except Exception as exc:
+                # 검토 모델 설정·호출·형식이 어떻게 실패하든 카드는 지금 초안으로 만든다
+                logger.warning("STAR 초안 검토가 실패해 고쳐 쓰기를 멈춘다: %s", type(exc).__name__)
+                return output, frozenset()
+            checks = check_draft(written, by_sha, payload["confirmed_answers"], payload.get("pull_request_body"))
+            problems = _repair_problems(checks, reversed_slots)
+            flagged = {problem["slot"] for problem in problems}
+            if not flagged or round_index == self._limits.max_repair_rounds:
+                return output, frozenset(reversed_slots)
+            rewrite_payload = {
+                **payload,
+                "previous_draft": {slot: getattr(output, slot).model_dump() for slot in SLOTS},
+                "problems": problems,
+            }
+            try:
+                rewritten = await self._call(REWRITE_SYSTEM_PROMPT, rewrite_payload, deadline)
+            except (_Timeout, StarGenerationError) as exc:
+                logger.warning("STAR 초안을 고쳐 쓰지 못해 지금 초안으로 만든다: %s", type(exc).__name__)
+                return output, frozenset(reversed_slots)
+            output = output.model_copy(update={slot: getattr(rewritten, slot) for slot in flagged})
+            targets = flagged
+        return output, frozenset()
+
+    def _texts(self, output: StarDraftOutput) -> dict[StarSlot, str]:
+        return {
+            slot: _clip(redact_secrets(" ".join((getattr(output, slot).text or "").split())), self._limits.max_text_chars)
+            for slot in SLOTS
+        }
+
+    def _written(self, output: StarDraftOutput) -> dict[StarSlot, DraftSlot]:
+        """모델이 글을 쓴 칸만 검사기에 넘길 모양으로 모은다. 모델이 스스로 비운 칸은 넘기지 않는다."""
+        texts = self._texts(output)
+        return {
+            slot: DraftSlot(texts[slot], getattr(output, slot).evidence_shas)
+            for slot in SLOTS
+            if getattr(output, slot).status != "EMPTY" and texts[slot]
+        }
+
     def _timed_out(self, request: StarAnalysisRequest) -> StarAnalysisResponse:
         return StarAnalysisResponse(
             title=request.title,
@@ -280,21 +371,16 @@ class StarGenerator:
         evidence: list[DiffEvidence],
         payload: dict[str, Any],
         output: StarDraftOutput,
+        still_reversed: frozenset[StarSlot] = frozenset(),
     ) -> StarAnalysisResponse:
         by_sha = {item.sha: item for item in evidence}
         removed_claims: list[str] = []
         used_evidence: list[DiffEvidence] = []
         star: dict[StarSlot, StarFieldResult] = {}
-        texts = {
-            slot: _clip(redact_secrets(" ".join((getattr(output, slot).text or "").split())), self._limits.max_text_chars)
-            for slot in SLOTS
-        }
-        written = {
-            slot: DraftSlot(texts[slot], getattr(output, slot).evidence_shas)
-            for slot in SLOTS
-            if getattr(output, slot).status != "EMPTY" and texts[slot]
-        }
-        checks = check_draft(written, by_sha, payload["confirmed_answers"], payload.get("pull_request_body"))
+        texts = self._texts(output)
+        checks = check_draft(
+            self._written(output), by_sha, payload["confirmed_answers"], payload.get("pull_request_body")
+        )
 
         for slot in SLOTS:
             field: StarField = getattr(output, slot)
@@ -319,6 +405,9 @@ class StarGenerator:
             if unsourced:
                 status = "NEEDS_REVIEW"
                 review_reason = unsourced.reason
+            if slot in still_reversed:
+                status = "NEEDS_REVIEW"
+                review_reason = _REVERSED_REASON
             used_evidence.extend(check.cited)
             star[slot] = StarFieldResult(
                 text=text,
@@ -398,6 +487,23 @@ def _shared_with(target_login: str, cited: list[DiffEvidence]) -> Optional[str]:
         if login and login.casefold() != target and login not in others:
             others.append(login)
     return ", ".join(others) or None
+
+
+def _repair_problems(
+    checks: dict[StarSlot, SlotCheck], reversed_slots: dict[StarSlot, ReviewFinding]
+) -> list[dict[str, Any]]:
+    """다시 쓰게 할 문제를 모델 입력 모양으로 모은다. 한 칸에 문제가 여럿이면 모두 넘긴다."""
+    problems: list[dict[str, Any]] = [
+        {"slot": problem.slot, "code": problem.code, "value": problem.value, "reason": problem.reason}
+        for check in checks.values()
+        for problem in check.problems
+        if problem.code in _REPAIR_CODES
+    ]
+    problems.extend(
+        {"slot": finding.slot, "code": _REVERSED_CODE, "value": finding.source_quote, "reason": finding.reason}
+        for finding in reversed_slots.values()
+    )
+    return problems
 
 
 def _evidence_input(item: DiffEvidence, limits: StarGenerationLimits) -> dict[str, Any]:

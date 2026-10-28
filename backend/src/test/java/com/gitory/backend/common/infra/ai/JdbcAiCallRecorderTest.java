@@ -50,10 +50,10 @@ class JdbcAiCallRecorderTest {
     }
 
     @Test
-    @DisplayName("AI 호출 한 번을 경로·Job·카드·상태와 AI 가 준 처리 기록의 칸마다 나눠 한 줄로 남긴다")
+    @DisplayName("AI 호출 한 번을 경로·Job·카드·자소서·상태와 AI 가 준 처리 기록의 칸마다 나눠 한 줄로 남긴다")
     void storesAiMetaInOneRow() throws Exception {
 
-        recorder.record(new AiCall("/internal/analysis/star", 3L, 5L, 200, null, JsonMapper.builder().build().readTree(
+        recorder.record(new AiCall("/internal/analysis/star", 3L, 5L, 7L, 200, null, JsonMapper.builder().build().readTree(
                 "{\"model\":\"gpt-5.6-luna\",\"llm_calls\":2,\"tool_calls_made\":1,\"repair_rounds\":1,"
                         + "\"input_tokens\":1800,\"output_tokens\":420,\"github_calls\":4,\"ended_by\":\"PARTIAL\","
                         + "\"processing_ms\":9300}"), 9450));
@@ -61,6 +61,7 @@ class JdbcAiCallRecorderTest {
         assertThat(onlyRow()).containsEntry("path", "/internal/analysis/star")
                 .containsEntry("job_id", 3L)
                 .containsEntry("card_id", 5L)
+                .containsEntry("cover_letter_id", 7L)
                 .containsEntry("http_status", 200)
                 .containsEntry("error_code", null)
                 .containsEntry("model", "gpt-5.6-luna")
@@ -80,7 +81,7 @@ class JdbcAiCallRecorderTest {
     @DisplayName("AI 가 준 처리 기록이 없으면 그 칸들은 비우고 상태·오류 코드·걸린 시간만 남긴다")
     void storesCallWithoutMetaWithEmptyMetaColumns() {
 
-        recorder.record(new AiCall("/internal/collect", null, null, null, "AI_UNAVAILABLE", null, 12));
+        recorder.record(new AiCall("/internal/collect", null, null, null, null, "AI_UNAVAILABLE", null, 12));
 
         assertThat(onlyRow()).containsEntry("http_status", null)
                 .containsEntry("error_code", "AI_UNAVAILABLE")
@@ -96,7 +97,7 @@ class JdbcAiCallRecorderTest {
     void keepsRecordWhenCallerRollsBack() {
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            recorder.record(new AiCall("/internal/analysis/groups", 1L, null, 503, "LLM_UNAVAILABLE", null, 40));
+            recorder.record(new AiCall("/internal/analysis/groups", 1L, null, null, 503, "LLM_UNAVAILABLE", null, 40));
             status.setRollbackOnly();
         });
 

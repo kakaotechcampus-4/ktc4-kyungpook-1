@@ -13,6 +13,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -140,6 +142,20 @@ class CardMaterialReaderTest {
 
         assertThat(reader.read(myUserId, 2)).extracting(CardMaterial::id).containsExactly(march, february);
         assertThat(reader.read(myUserId, 3)).extracting(CardMaterial::id).containsExactly(march, february, january);
+
+    }
+
+    @Test
+    @DisplayName("채워진 칸은 지금 버전에서 가린 뒤에도 문장이 남는 칸이다")
+    void filledSlotsAreThoseLeftAfterMasking() {
+
+        Long card = confirmedCard("2026-03-01T00:00:00Z", "카드");
+        fixtures.insertStatement(card, 1, "S", "그린랩스", "USER_STATED", null);
+        fixtures.insertStatement(card, 1, "R", "배포가 빨라졌다", "USER_STATED", null);
+        jdbc.update("UPDATE card SET mask_rules = ?::jsonb WHERE id = ?", "[{\"from\":\"그린랩스\",\"to\":\"\"}]", card);
+
+        assertThat(reader.filledSlots(List.of(card))).containsExactly(
+                Map.entry(card, Set.of(StarField.A, StarField.R)));
 
     }
 

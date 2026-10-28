@@ -10,10 +10,14 @@ import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarEvidenceSource;
+import com.gitory.backend.agent.port.StarMaterialKind;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
 import com.gitory.backend.agent.port.StarSourceType;
+import com.gitory.backend.agent.port.StarStep;
+import com.gitory.backend.agent.port.StarStepActor;
+import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
@@ -356,6 +360,41 @@ class CardDraftRunnerTest {
                 argumentSet("공백뿐인 본문", true, LOGIN, "   ", null),
                 argumentSet("본문 없는 PR", true, LOGIN, null, null),
                 argumentSet("저장되지 않은 PR", false, LOGIN, "본문", null));
+
+    }
+
+    @Test
+    @DisplayName("AI 가 준 초안 단계는 칸과 같은 트랜잭션에서 1번 버전에 순서대로 남기고, 이유는 60자로 자른다")
+    void storesDraftStepsOnFirstVersion() {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "PR", 17, "#17", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
+        Long cardId = cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        StarDraft empty = allEmpty(StarEmptyReason.NO_EVIDENCE);
+        given(star.draft(any())).willReturn(new StarDraft(empty.title(), empty.slots(), empty.missingFields(), null,
+                List.of(), List.of(), List.of(), List.of(
+                        new StarStep(0, StarStepActor.MODEL, StarStepKind.DRAFT, null, null, null, null, null),
+                        new StarStep(0, StarStepActor.CODE, StarStepKind.FLAG, StarSlot.R, "UNSOURCED_NUMBER", "50%",
+                                null, null),
+                        new StarStep(1, StarStepActor.MODEL, StarStepKind.OPEN, StarSlot.S, null, "이슈 #98",
+                                StarMaterialKind.ISSUE, "가".repeat(80)))));
+
+        runNext();
+
+        assertThat(jdbc.queryForList("""
+                SELECT version_no, seq, round_no, actor, kind, star_slot, code, detail, material, reason
+                FROM card_draft_step WHERE card_id = ? ORDER BY seq
+                """, cardId))
+                .extracting(row -> tuple(row.get("version_no"), row.get("seq"), row.get("round_no"), row.get("actor"),
+                        row.get("kind"), row.get("star_slot"), row.get("code"), row.get("detail"), row.get("material"),
+                        row.get("reason")))
+                .containsExactly(
+                        tuple(1, 0, 0, "MODEL", "DRAFT", null, null, null, null, null),
+                        tuple(1, 1, 0, "CODE", "FLAG", "R", "UNSOURCED_NUMBER", "50%", null,
+                                null),
+                        tuple(1, 2, 1, "MODEL", "OPEN", "S", null, "이슈 #98", "ISSUE",
+                                "가".repeat(60)));
 
     }
 
@@ -1006,7 +1045,7 @@ class CardDraftRunnerTest {
                 .filter(slot -> slots.get(slot).status() == StarSlotStatus.EMPTY)
                 .toList();
 
-        return new StarDraft("후보 카드", slots, missing, null, List.of(), areas, techs);
+        return new StarDraft("후보 카드", slots, missing, null, List.of(), areas, techs, List.of());
 
     }
 

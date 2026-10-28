@@ -219,6 +219,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 | `GET /cards/{id}/interview` | | **구현됨(#172).** `InterviewTurn[]`, 질문 번호순. 없으면 빈 배열; 없는 카드·남의 카드·잘못된 UUID는 404 |
 | `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED` |
 | `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다 |
+| `POST /cards/{id}/interview/{turnNo}/polished-draft` | `{ text }` | **새로 만듦(#482).** `{ sentence, polished, unsourcedNumbers: string[] }` — 경험 카드 글 질문의 답 다듬기 미리 보기. **아무것도 저장하지 않고** 질문 상한에 세지 않는다. AI 는 표현만 다듬고, 다듬은 문장에 답에 없는 숫자가 생기면 한 번 고쳐 쓰게 한 뒤에도 남은 숫자를 서버가 견줘 `unsourcedNumbers` 로 알린다. AI 가 응답하지 못하면 오류가 아니라 `polished: false` 와 답 그대로의 `sentence` 다. 오류 순서는 `measured-draft` 와 같고, 경험 카드의 글 질문이 아니면 400 `BAD_FIELD` 다 |
 | `POST /cards/{id}/interview/{turnNo}/measured-draft` | `{ text }` | **새로 만듦.** `{ sentence }` — '재 봤어요' 미리 보기. **아무것도 저장하지 않는다.** 입력에 수치(아라비아 숫자)가 없으면 AI 를 부르지 않고 `sentence: null` 이고, 화면은 "수치를 찾지 못했어요. 대략이라도 적어 주세요" 를 보인다. 질문 상한에 세지 않는다 |
 
 **답 종류 `kind`**
@@ -230,6 +231,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 | `SKIP` | [넘기기] | 없음 | 바꾸지 않는다 |
 
 - `kind` 를 보내지 않으면 `TEXT` 로 본다(FE 가 바꾸는 동안의 하위 호환).
+- 경험 카드의 다듬은 문장을 저장할 때는 `{ kind: 'TEXT', text, source: 'USER_STATED', original }` 로 다듬기 전 답을 함께 보낸다(1,000자까지, 공백뿐이면 남기지 않음). TEXT 답에만 남고, 지난 질문 목록의 `answer.original` 로 '내 답 → 다듬은 문장' 을 다시 보여 준다. 다듬지 않고 저장한 답은 `null` 이다.
 - `kind` 가 질문의 버튼과 맞지 않으면(`answerMode: TEXT` 질문에 `MEASURED`·`NOT_MEASURED`) 400 `INVALID_REQUEST` 이고 아무것도 저장하지 않는다.
 
 **오류 순서**
@@ -240,7 +242,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 `{ turnNo, field, askedBy:'USER_REQUEST'|'FOLLOW_UP', sourceType:'PR'|'COMMIT_CLUSTER'|'DIRECT_CARD',
    questionType:'EVIDENCE_GAP'|'FOLLOWUP'|'RECALL_AID', found[], missing[], question, reason|null, options[],
    answerMode:'TEXT'|'MEASURE', outcome:'ANSWERED'|'MEASURED'|'NOT_MEASURED'|'SKIPPED'|null,
-   answer:{text, source}|null, remaining, maxTurns }`
+   answer:{text, source, original}|null, remaining, maxTurns }`
 
 - `answerMode` 는 보일 버튼이다. `MEASURE`(R 수치 질문) = [재 봤어요] [측정 안 했어요] [넘기기], `TEXT` = 입력 칸 + [저장] [넘기기].
 - `outcome` 은 질문이 어떻게 끝났는지다(답 전 `null`). 지난 질문 목록에 '넘김'·'측정 안 함' 을 보일 때 쓴다.

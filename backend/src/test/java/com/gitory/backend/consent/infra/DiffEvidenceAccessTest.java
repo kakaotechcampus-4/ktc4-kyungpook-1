@@ -225,7 +225,7 @@ class DiffEvidenceAccessTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"DIFF_EVIDENCE", "COLLECT"})
+    @ValueSource(strings = {"DIFF_EVIDENCE", "COLLECT", "COLLECT_STREAMING"})
     @DisplayName("AI 가 GitHub 이 토큰을 거절했다고 알리면 그 토큰의 암호문으로 연결 해제를 요청하고 실패는 그대로 넘긴다")
     void rejectedTokenRevokesThatConnection(String call) {
 
@@ -242,7 +242,7 @@ class DiffEvidenceAccessTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"DIFF_EVIDENCE", "COLLECT"})
+    @ValueSource(strings = {"DIFF_EVIDENCE", "COLLECT", "COLLECT_STREAMING"})
     @DisplayName("GitHub 일시 장애로 실패하면 연결은 해제하지 않는다")
     void temporaryGithubFailureKeepsConnection(String call) {
 
@@ -436,9 +436,26 @@ class DiffEvidenceAccessTest {
     private Object call(String call) {
 
         GithubCollectionRepo repository = new GithubCollectionRepo(456789L, "grow22", "gitory", "develop");
-        return call.equals("COLLECT")
-                ? access.collect(USER_ID, new GithubCollectionTarget(USER_REPOSITORY_ID, repository, List.of()), List.of())
-                : access.diffEvidence(USER_ID, target(17));
+        GithubCollectionTarget collectTarget = new GithubCollectionTarget(USER_REPOSITORY_ID, repository, List.of());
+        return switch (call) {
+            case "COLLECT" -> access.collect(USER_ID, collectTarget, List.of());
+            case "COLLECT_STREAMING" -> {
+                streamAsResultLine();
+                yield access.collect(USER_ID, collectTarget, List.of(), progress -> { });
+            }
+            default -> access.diffEvidence(USER_ID, target(17));
+        };
+
+    }
+
+    /** 스트리밍 수집은 200 으로 연 뒤 진행 줄을 보내고, 정해 둔 응답을 마지막 결과 줄의 상태·본문으로 싣는다 */
+    private void streamAsResultLine() {
+
+        ObjectNode result = MAPPER.createObjectNode().put("type", "result").put("status", responseStatus);
+        result.set("body", MAPPER.readTree(responseBody));
+        responseBody = "{\"type\":\"progress\",\"step\":\"PR_REVIEW\",\"done\":0,\"total\":1}\n"
+                + MAPPER.writeValueAsString(result) + "\n";
+        responseStatus = 200;
 
     }
 

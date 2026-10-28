@@ -1,6 +1,7 @@
 package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.common.infra.ai.AiClientException;
+import com.gitory.backend.common.infra.ai.AiProgress;
 import com.gitory.backend.consent.port.DiffEvidenceResult;
 import com.gitory.backend.consent.port.DiffEvidenceTarget;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
@@ -29,6 +30,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /** Spring의 내부 저장소 ID를 수집 계약으로 변환하고 기존 저장 DTO로 투영한다. */
 @Component
@@ -40,12 +42,17 @@ public class AiRepositoryActivityAdapter implements RepositoryActivityPort {
 
     @Override
     public CollectedActivity collect(IngestRequest request) {
+        return collect(request, null);
+    }
+
+    @Override
+    public CollectedActivity collect(IngestRequest request, Consumer<AiProgress> progress) {
         if (request == null || request.userRepositoryId() == null || request.userRepositoryId() <= 0) {
             throw new IllegalArgumentException("수집할 연결 저장소 ID가 필요하다");
         }
         List<String> branches = normalizedBranches(request.branches());
         CollectionTargetLookup.Target target = targets.find(request.userRepositoryId(), branches);
-        JsonNode result = access.collect(target.userId(), target.collection(), request.knownCommitShas());
+        JsonNode result = access.collect(target.userId(), target.collection(), request.knownCommitShas(), progress);
         try {
             return activity(result, request.userRepositoryId(), target.collection().repository().githubRepoId());
         } catch (AiClientException safe) {

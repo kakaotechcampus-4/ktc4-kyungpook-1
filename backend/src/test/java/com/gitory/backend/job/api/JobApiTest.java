@@ -207,8 +207,8 @@ class JobApiTest {
 
         getJob(jobId)
                 .andExpect(jsonPath("$.data.steps.length()").value(4))
-                .andExpect(jsonPath("$.data.steps[0].key").value("COMMITS"))
-                .andExpect(jsonPath("$.data.steps[1].key").value("PR_REVIEW"))
+                .andExpect(jsonPath("$.data.steps[0].key").value("PR_REVIEW"))
+                .andExpect(jsonPath("$.data.steps[1].key").value("COMMITS"))
                 .andExpect(jsonPath("$.data.steps[2].key").value("COMPRESS"))
                 .andExpect(jsonPath("$.data.steps[3].key").value("REASON"))
                 .andExpect(jsonPath("$.data.steps[0].state").value("QUEUED"))

@@ -65,7 +65,7 @@
     "considered": [{ "cardId", "title", "note": "…" | null }],
     "materials": ["SITUATION", "ACTION"],
     // ④ 질문 — ASKED 부터
-    "asks": [{ "item": "RESULT", "question": "…", "required": true,
+    "asks": [{ "item": "RESULT", "question": "…" | null, "required": true,
                "answer": { "text": "…", "reused": false } | null, "skipped": false }],
     // ⑥ 초안 — DRAFTED
     "draft": { "text": "…", "aiText": "…", "edited": false, "charCount": 642, "overBy": 0,
@@ -81,7 +81,7 @@
 - `primaryCard: null` 이고 `assignedBy` 가 `FAILED` 가 아니면 '맞는 카드 없음'이다. 화면은 이 유형의 경험 카드를 만들도록 안내할 수 있다.
 - `considered`: AI 가 견준 카드 최대 3장과 짧은 평. 화면 ②·③에서 'AI 가 무엇을 보고 골랐는지'를 보여 줄 때 쓴다.
 - `materials`: 중심 카드의 상황·행동·결과 문장과 같은 카드로 전에 받은 답에 이미 있는 재료(`SITUATION` · `ACTION` · `RESULT` · `LEARNING` · `TRIGGER`). 화면 ③ '재료 점검'에 쓴다. 무엇이 꼭 필요한지는 ④의 `required` 가 정한다.
-- `asks`: 문항마다 최대 3개. `required: true` 는 없으면 초안에 빈칸이 남는 항목이다. 같은 카드로 전에 답한 배운 점·계기는 `answer` 를 미리 채워 `reused: true` 로 온다(고쳐서 저장할 수 있다). 직무 연결·지원 이유는 회사마다 달라 미리 채우지 않는다.
+- `asks`: AI 가 묻는 항목은 문항마다 최대 3개다. `required: true` 는 없으면 초안에 빈칸이 남는 항목이다. 같은 카드로 전에 답한 상황·행동·결과·배운 점·계기는 AI 가 다시 묻지 않고, 서버가 `asks` 끝에 `question: null` · `answer: { text, reused: true }` 로 붙인다 — 화면은 항목 이름으로 제목을 만들고("배운 점 (지난번에 답한 내용)") 사용자는 고쳐서 저장할 수 있다. 직무 연결·지원 이유는 회사마다 달라 미리 채우지 않는다.
 - 항목(`item`): `SITUATION` 상황 · `ACTION` 행동 · `RESULT` 결과 · `LEARNING` 배운 점 · `TRIGGER` 계기 · `JOB_LINK` 지원 직무와 이어지는 점 · `REASON` 지원 이유.
 - `draft.text` 는 지금 글(고쳤으면 고친 글), `aiText` 는 AI 원본이다. `sentences` · `marks` 는 `aiText` 의 문장 번호를 가리킨다. 고친 뒤 표시를 어떻게 보일지는 화면이 정한다.
 - `draft.charCount` 는 공백 포함 글자 수이고 `[항목: …]` 빈칸은 세지 않는다. `overBy` 는 넘은 만큼(넘지 않으면 0). 2번 다시 써도 넘치면 자르지 않고 그대로 보낸다.

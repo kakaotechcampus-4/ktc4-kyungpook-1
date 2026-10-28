@@ -3077,7 +3077,7 @@
           },
           "repair_rounds": {
             "default": 0,
-            "description": "검사에 걸려 고쳐 쓴 횟수. 고쳐 쓰기가 아직 없어 지금은 늘 0",
+            "description": "검사·검토에 걸려 다시 써서 새 초안을 받은 횟수(STAR 초안·자소서). 그 밖의 API 는 0",
             "title": "Repair Rounds",
             "type": "integer"
           },

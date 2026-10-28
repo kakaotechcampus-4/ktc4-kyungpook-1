@@ -25,6 +25,7 @@ class CallUsage:
         self.llm_calls = 0
         self.input_tokens = 0
         self.output_tokens = 0
+        self.repair_rounds = 0
 
     def add_llm_call(self, model: str, input_tokens: Optional[int], output_tokens: Optional[int]) -> None:
         with self._lock:
@@ -32,6 +33,10 @@ class CallUsage:
             self.llm_calls += 1
             self.input_tokens += input_tokens or 0
             self.output_tokens += output_tokens or 0
+
+    def add_repair_round(self) -> None:
+        with self._lock:
+            self.repair_rounds += 1
 
 
 _current: ContextVar[Optional[CallUsage]] = ContextVar("call_usage", default=None)
@@ -55,6 +60,13 @@ def record_llm_call(model: str, input_tokens: Optional[int], output_tokens: Opti
         usage.add_llm_call(model, input_tokens, output_tokens)
 
 
+def record_repair_round() -> None:
+    """검사·검토에 걸린 초안을 다시 써서 새 초안을 받았을 때 부른다. 시도 횟수는 llm_calls 가 센다."""
+    usage = _current.get()
+    if usage is not None:
+        usage.add_repair_round()
+
+
 def usage_meta(
     started: Optional[float],
     ended_by: EndedBy,
@@ -69,6 +81,7 @@ def usage_meta(
         llm_calls=usage.llm_calls,
         input_tokens=usage.input_tokens,
         output_tokens=usage.output_tokens,
+        repair_rounds=usage.repair_rounds,
         github_calls=github_calls,
         ended_by=ended_by,
         processing_ms=0 if started is None else int((time.perf_counter() - started) * 1000),

@@ -41,6 +41,7 @@ from services.llm_structured_client import (
 from services.secret_redaction import mask_emails, redact_secrets
 from services.star_check import DraftSlot, SlotCheck, check_draft
 from services.star_review import ReviewFinding, ReviewSources, StarReviewer
+from services.usage import record_repair_round
 
 logger = logging.getLogger(__name__)
 
@@ -339,6 +340,7 @@ class StarGenerator:
             except (_Timeout, StarGenerationError) as exc:
                 logger.warning("STAR 초안을 고쳐 쓰지 못해 지금 초안으로 만든다: %s", type(exc).__name__)
                 return output, frozenset(reversed_slots)
+            record_repair_round()
             output = output.model_copy(update={slot: getattr(rewritten, slot) for slot in flagged})
             targets = flagged
         return output, frozenset()

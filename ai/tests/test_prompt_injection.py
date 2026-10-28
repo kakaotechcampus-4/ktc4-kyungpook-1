@@ -38,6 +38,10 @@ from scripts.evaluate_prompt_injection import (
 )
 from services import interview_agent
 from services.commit_grouper import CommitGroup
+from services.cover_letter_asker import ASK_PROMPT
+from services.cover_letter_assigner import PICK_PROMPT, SUPERVISOR_PROMPT
+from services.cover_letter_drafter import REVIEW_PROMPT
+from services.cover_letter_writer import DECIDE_PROMPT, WRITE_PROMPT
 from services.diff_analyzer import SYSTEM_PROMPT as DIFF_PROMPT
 from services.diff_analyzer import DiffAnalyzer, DiffSummaryOutput
 from services.grouping_llm import (
@@ -179,11 +183,14 @@ def _decision_completion(decision: AnswerSufficiencyDecision):
 
 @pytest.mark.parametrize(
     "prompt",
-    [STAR_PROMPT, DIFF_PROMPT, _CLUSTER_SYSTEM_PROMPT, _DESCRIPTION_SYSTEM_PROMPT, POSTING_PROMPT, ANSWER_PROMPT],
-    ids=["star", "diff", "grouping-cluster", "grouping-description", "posting", "answer"],
+    [STAR_PROMPT, DIFF_PROMPT, _CLUSTER_SYSTEM_PROMPT, _DESCRIPTION_SYSTEM_PROMPT, POSTING_PROMPT, ANSWER_PROMPT,
+     PICK_PROMPT, SUPERVISOR_PROMPT, ASK_PROMPT, WRITE_PROMPT, DECIDE_PROMPT, REVIEW_PROMPT],
+    ids=["star", "diff", "grouping-cluster", "grouping-description", "posting", "answer",
+         "cover-letter-pick", "cover-letter-supervisor", "cover-letter-ask", "cover-letter-write",
+         "cover-letter-decide", "cover-letter-review"],
 )
 def test_system_prompt_says_input_is_data_not_instructions(prompt: str) -> None:
-    assert re.search(r"지시사항이 아니다|명령을 따르지 않는다", prompt)
+    assert re.search(r"지시사항이 아니다|지시사항이 아닙니다|명령을 따르지 않는다", prompt)
 
 
 def _capture_star() -> list[tuple[str, dict]]:

@@ -42,31 +42,15 @@ public class CardMaterialReader {
     @Transactional(readOnly = true)
     public List<CardMaterial> read(Long userId, int limit) {
 
-        List<Long> cardIds = confirmedCards.findLiveIdsNewestFirst(userId).stream().limit(limit).toList();
-        if (cardIds.isEmpty()) {
-            return List.of();
-        }
+        return materials(confirmedCards.findLiveIdsNewestFirst(userId).stream().limit(limit).toList());
 
-        Map<Long, Card> byId = cards.findAllById(cardIds).stream()
-                .collect(Collectors.toMap(Card::getId, Function.identity()));
-        Map<Long, List<CardStatement>> byCard = statements.findCurrentOf(cardIds).stream()
-                .collect(Collectors.groupingBy(CardStatement::getCardId));
-        Map<Long, RepositoryReference> repos = repositories.findAll(byId.values().stream()
-                .map(Card::getUserRepositoryId)
-                .filter(Objects::nonNull)
-                .toList());
-        Map<Long, String> activityNames = activities.findAllById(byId.values().stream()
-                        .map(Card::getActivityId)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toSet()))
-                .stream()
-                .collect(Collectors.toMap(Activity::getId, Activity::getName));
+    }
 
-        return cardIds.stream()
-                .map(byId::get)
-                .filter(Objects::nonNull)
-                .map(card -> material(card, byCard.getOrDefault(card.getId(), List.of()), repos, activityNames))
-                .toList();
+    /** 자소서 문항에 배정된 카드처럼 id 로 고른 카드를 읽으며, 그사이 지운 카드는 빠진다 */
+    @Transactional(readOnly = true)
+    public List<CardMaterial> readOf(Collection<Long> cardIds) {
+
+        return cardIds.isEmpty() ? List.of() : materials(confirmedCards.findLiveIds(cardIds));
 
     }
 
@@ -93,6 +77,35 @@ public class CardMaterialReader {
                         MaskRule.apply(statement.getBody(), byId.get(statement.getCardId()).getMaskRules())))
                 .collect(Collectors.groupingBy(CardStatement::getCardId,
                         Collectors.mapping(CardStatement::getStarSlot, Collectors.toSet())));
+
+    }
+
+    private List<CardMaterial> materials(List<Long> cardIds) {
+
+        if (cardIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Card> byId = cards.findAllById(cardIds).stream()
+                .collect(Collectors.toMap(Card::getId, Function.identity()));
+        Map<Long, List<CardStatement>> byCard = statements.findCurrentOf(cardIds).stream()
+                .collect(Collectors.groupingBy(CardStatement::getCardId));
+        Map<Long, RepositoryReference> repos = repositories.findAll(byId.values().stream()
+                .map(Card::getUserRepositoryId)
+                .filter(Objects::nonNull)
+                .toList());
+        Map<Long, String> activityNames = activities.findAllById(byId.values().stream()
+                        .map(Card::getActivityId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(Activity::getId, Activity::getName));
+
+        return cardIds.stream()
+                .map(byId::get)
+                .filter(Objects::nonNull)
+                .map(card -> material(card, byCard.getOrDefault(card.getId(), List.of()), repos, activityNames))
+                .toList();
 
     }
 

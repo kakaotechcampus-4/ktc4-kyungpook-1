@@ -95,7 +95,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @ExtendWith(OutputCaptureExtension.class)
 @Import({ClockConfig.class, JobRunner.class, JobCancelService.class, JobQueryService.class, ActivityStoreService.class,
         GroupingMaterialService.class, CandidateStoreService.class, StoredActivityService.class, UserLoginService.class,
-        JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class,
+        JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class, CollectionStatsService.class,
         GeneratedCardQueryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)

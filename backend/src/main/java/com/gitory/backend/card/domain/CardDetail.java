@@ -18,6 +18,7 @@ public record CardDetail(
         List<CardTech> techs,
         String period,
         RepositoryReference repository,
+        ActivityReference activity,
         VersionSource source,
         Instant versionSavedAt,
         VersionSlots slots,

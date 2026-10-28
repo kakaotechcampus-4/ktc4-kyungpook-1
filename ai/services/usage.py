@@ -1,4 +1,4 @@
-"""요청 하나가 LLM 을 몇 번 부르고 토큰을 얼마나 썼는지 모은다.
+"""요청 하나가 LLM 을 몇 번 부르고 토큰을 얼마나 썼는지, 도구를 몇 번 쓰고 몇 번 고쳐 썼는지 모은다.
 
 요청마다 미들웨어가 빈 기록을 열고(``metering``), 공통 LLM 호출기가 그 기록에 더하며, 각 API 는 응답을
 만들 때 ``usage_meta`` 로 읽는다. LLM 호출은 실행기 스레드에서 돌지만 ``run_llm_call`` 이 요청의 문맥을
@@ -25,6 +25,8 @@ class CallUsage:
         self.llm_calls = 0
         self.input_tokens = 0
         self.output_tokens = 0
+        self.tool_calls = 0
+        self.repair_rounds = 0
 
     def add_llm_call(self, model: str, input_tokens: Optional[int], output_tokens: Optional[int]) -> None:
         with self._lock:
@@ -32,6 +34,14 @@ class CallUsage:
             self.llm_calls += 1
             self.input_tokens += input_tokens or 0
             self.output_tokens += output_tokens or 0
+
+    def add_tool_call(self) -> None:
+        with self._lock:
+            self.tool_calls += 1
+
+    def add_repair_round(self) -> None:
+        with self._lock:
+            self.repair_rounds += 1
 
 
 _current: ContextVar[Optional[CallUsage]] = ContextVar("call_usage", default=None)
@@ -55,6 +65,20 @@ def record_llm_call(model: str, input_tokens: Optional[int], output_tokens: Opti
         usage.add_llm_call(model, input_tokens, output_tokens)
 
 
+def record_tool_call() -> None:
+    """모델이 고른 도구를 코드가 실행했을 때 하나를 센다. 열린 기록이 없으면 아무것도 하지 않는다."""
+    usage = _current.get()
+    if usage is not None:
+        usage.add_tool_call()
+
+
+def record_repair_round() -> None:
+    """걸리거나 빈 칸을 다시 쓴 호출이 끝났을 때 하나를 센다. 열린 기록이 없으면 아무것도 하지 않는다."""
+    usage = _current.get()
+    if usage is not None:
+        usage.add_repair_round()
+
+
 def usage_meta(
     started: Optional[float],
     ended_by: EndedBy,
@@ -66,9 +90,11 @@ def usage_meta(
     usage = _current.get() or CallUsage()
     return Meta(
         model=usage.model or model,
+        tool_calls_made=usage.tool_calls,
         llm_calls=usage.llm_calls,
         input_tokens=usage.input_tokens,
         output_tokens=usage.output_tokens,
+        repair_rounds=usage.repair_rounds,
         github_calls=github_calls,
         ended_by=ended_by,
         processing_ms=0 if started is None else int((time.perf_counter() - started) * 1000),

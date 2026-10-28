@@ -71,12 +71,12 @@ class Meta(BaseModel):
         None, description="실제 사용된 모델(LLM 미사용 응답은 null 또는 처리 방식 이름)"
     )
     tool_calls_made: int = Field(
-        0, description="모델이 스스로 골라 부른 도구 횟수. 그런 도구가 아직 없어 지금은 늘 0"
+        0, description="모델이 스스로 골라 부른 도구 횟수. 지금은 STAR 초안이 골라 연 자료 수만 센다"
     )
     llm_calls: int = Field(0, description="LLM 에 보낸 요청 수. 실패한 요청도 센다")
     input_tokens: int = Field(0, description="응답을 받은 LLM 요청의 입력 토큰 합")
     output_tokens: int = Field(0, description="응답을 받은 LLM 요청의 출력 토큰 합")
-    repair_rounds: int = Field(0, description="검사에 걸려 고쳐 쓴 횟수. 고쳐 쓰기가 아직 없어 지금은 늘 0")
+    repair_rounds: int = Field(0, description="검사에 걸리거나 빈 칸을 다시 쓴 횟수. 지금은 STAR 초안만 센다")
     github_calls: int = Field(0, description="GitHub API 를 부른 횟수")
     ended_by: EndedBy = Field(
         ..., description="COMPLETED 다 끝냄, PARTIAL 마감·누락으로 일부만, FALLBACK LLM 대신 정해 둔 길, FAILED 오류 응답"

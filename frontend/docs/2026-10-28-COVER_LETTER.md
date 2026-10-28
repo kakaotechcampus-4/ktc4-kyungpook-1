@@ -21,7 +21,7 @@
 
 | | 요청 | 응답 |
 |---|---|---|
-| `POST /cover-letters` | `{ jobRole, memo, questions: [{ text, charLimit }] }`, 헤더 `Idempotency-Key: <UUID v4>` | `CoverLetter`(`stage: ASSIGNING`). 같은 사용자·같은 키는 처음 만든 자소서를 돌려준다 |
+| `POST /cover-letters` | `{ jobRole, memo, questions: [{ text, charLimit }] }`, 헤더 `Idempotency-Key: <UUID v4>` | `CoverLetter`(`stage: ASSIGNING`). 같은 사용자·같은 키는 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다. 화면은 입력을 고치면 새 키를 만든다(같은 키는 내용을 바꾸지 않은 재전송에만 쓴다) |
 | `GET /cover-letters/{id}` | | `CoverLetter` |
 | `GET /cover-letters` | | `CoverLetterSummary[]` 최근 만든 순 |
 | `PUT /cover-letters/{id}/questions/{qid}/cards` | `{ primaryCardId, supportingCardId }` | `CoverLetter` — `ASSIGNED` 에서만 |

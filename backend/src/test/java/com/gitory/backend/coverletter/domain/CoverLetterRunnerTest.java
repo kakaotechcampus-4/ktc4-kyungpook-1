@@ -4,6 +4,9 @@ import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.CoverLetterAssignment;
 import com.gitory.backend.agent.port.CoverLetterAssignmentPort;
 import com.gitory.backend.agent.port.CoverLetterAssignmentRequest;
+import com.gitory.backend.agent.port.CoverLetterDrafts;
+import com.gitory.backend.agent.port.CoverLetterDraftsPort;
+import com.gitory.backend.agent.port.CoverLetterDraftsRequest;
 import com.gitory.backend.agent.port.CoverLetterQuestions;
 import com.gitory.backend.agent.port.CoverLetterQuestionsPort;
 import com.gitory.backend.agent.port.CoverLetterQuestionsRequest;
@@ -68,6 +71,9 @@ class CoverLetterRunnerTest {
 
     @MockitoBean
     CoverLetterQuestionsPort questionsPort;
+
+    @MockitoBean
+    CoverLetterDraftsPort draftsPort;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -288,6 +294,92 @@ class CoverLetterRunnerTest {
     }
 
     @Test
+    @DisplayName("초안 쓰기를 기다리는 자소서도 집어, 넘기지 않은 답과 꼭 필요한데 받지 못한 항목을 AI 에 보내고, 받은 초안과 쓰기 과정을 저장한다")
+    void savesDraftsWithWrittenAnswersAndMissingItems() {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        CoverLetter letter = draftingLetter(card,
+                List.of(new MaterialAsk(MaterialItem.RESULT, "결과는요?", true),
+                        new MaterialAsk(MaterialItem.JOB_LINK, "직무와 어떻게 이어지나요?", true),
+                        new MaterialAsk(MaterialItem.REASON, "왜 지원했나요?", false),
+                        new MaterialAsk(MaterialItem.TRIGGER, "계기는요?", false),
+                        new MaterialAsk(MaterialItem.LEARNING, null, false)),
+                List.of(new MaterialAnswer(MaterialItem.RESULT, "배포가 3분 빨라졌다", false, false),
+                        new MaterialAnswer(MaterialItem.JOB_LINK, null, true, false),
+                        new MaterialAnswer(MaterialItem.REASON, "결제를 다뤄 보고 싶다", false, false),
+                        new MaterialAnswer(MaterialItem.TRIGGER, null, true, false),
+                        new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true)));
+        AtomicReference<CoverLetterDraftsRequest> sent = new AtomicReference<>();
+        given(draftsPort.write(any())).willAnswer(invocation -> {
+            sent.set(invocation.getArgument(0));
+            return new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1, "배포를 고쳤다. [직무 연결: 지원 직무와 이어지는 점을 적어 주세요]",
+                            List.of(new CoverLetterDrafts.Sentence(1, "배포를 고쳤다.")), 8, 0,
+                            List.of(new CoverLetterDrafts.Mark(1, "UNSOURCED_TERM", "CI")), List.of("JOB_LINK"), "LLM")),
+                    List.of(new CoverLetterDrafts.Step(1, "SUB_AGENT", "WROTE", 1, null, "8", null, null, null)));
+        });
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetterDraftsRequest.Question question = sent.get().questions().getFirst();
+        assertThat(question.primaryCard().cardId()).isEqualTo(card);
+        assertThat(question.answers()).containsExactly(
+                new CoverLetterQuestionsRequest.KnownAnswer("RESULT", "배포가 3분 빨라졌다", card),
+                new CoverLetterQuestionsRequest.KnownAnswer("REASON", "결제를 다뤄 보고 싶다", null),
+                new CoverLetterQuestionsRequest.KnownAnswer("LEARNING", "작게 나눠 배포하게 됐다", card));
+        assertThat(question.missingItems()).containsExactly("JOB_LINK");
+
+        CoverLetter saved = letters.findById(letter.getId()).orElseThrow();
+        assertThat(saved.getStage()).isEqualTo(CoverLetterStage.DRAFTED);
+        assertThat(saved.getRunningSince()).isNull();
+        assertThat(saved.getDraftSteps()).containsExactly(new DraftStep(1, "SUB_AGENT", "WROTE", 1, null, "8", null,
+                null, null));
+        CoverLetterQuestion stored = questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst();
+        assertThat(stored).extracting(CoverLetterQuestion::getAiText, CoverLetterQuestion::getDraftText,
+                        CoverLetterQuestion::isEdited, CoverLetterQuestion::getCharCount, CoverLetterQuestion::getOverBy,
+                        CoverLetterQuestion::getBlanks, CoverLetterQuestion::getDraftSource)
+                .containsExactly("배포를 고쳤다. [직무 연결: 지원 직무와 이어지는 점을 적어 주세요]",
+                        "배포를 고쳤다. [직무 연결: 지원 직무와 이어지는 점을 적어 주세요]", false, 8, 0,
+                        List.of(MaterialItem.JOB_LINK), DraftSource.LLM);
+        assertThat(stored.getSentences()).containsExactly(new DraftSentence(1, "배포를 고쳤다."));
+        assertThat(stored.getMarks()).containsExactly(new DraftMark(1, "UNSOURCED_TERM", "CI"));
+
+    }
+
+    @Test
+    @DisplayName("초안 쓰기 AI 호출이 실패하면 초안 단계 실패로 끝낸다")
+    void failsDraftStepWhenAiFails() {
+
+        CoverLetter letter = draftingLetter(confirmedCard("배포 시간 단축", "A"), List.of(), List.of());
+        given(draftsPort.write(any())).willThrow(new AgentUnavailableException("AI 실패", false, true, null));
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetter saved = letters.findById(letter.getId()).orElseThrow();
+        assertThat(saved.getStage()).isEqualTo(CoverLetterStage.FAILED);
+        assertThat(saved.getFailedStep()).isEqualTo(CoverLetterStep.DRAFT);
+        assertThat(saved.getErrorCode()).isEqualTo(CoverLetterError.INTERNAL_ERROR.name());
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 자소서를 지웠으면 늦게 온 초안은 버린다")
+    void dropsDraftsOfLetterDeletedWhileWaiting() {
+
+        CoverLetter letter = draftingLetter(confirmedCard("배포 시간 단축", "A"), List.of(), List.of());
+        given(draftsPort.write(any())).willAnswer(invocation -> {
+            jdbc.update("DELETE FROM cover_letter WHERE id = ?", letter.getId());
+            return new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1, "초안", List.of(), 2, 0, List.of(),
+                    List.of(), "LLM")), List.of());
+        });
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        assertThat(letters.findById(letter.getId())).isEmpty();
+        assertThat(questions.findByCoverLetterIdOrderBySeq(letter.getId())).isEmpty();
+
+    }
+
+    @Test
     @DisplayName("집은 지 5분이 지난 단계만 다시 시도할 수 있는 실패로 끝낸다")
     void failsStepsStuckForFiveMinutes() {
 
@@ -341,6 +433,19 @@ class CoverLetterRunnerTest {
         letter.claim();
         letter.assigned(List.of());
         letter.startAsking();
+        return letters.save(letter);
+
+    }
+
+    private CoverLetter draftingLetter(Long card, List<MaterialAsk> asks, List<MaterialAnswer> answers) {
+
+        CoverLetter letter = askingLetter(new Pick(QuestionTheme.COLLABORATION, card, null));
+        CoverLetterQuestion question = questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst();
+        question.asked(asks, answers);
+        questions.save(question);
+        letter.claim();
+        letter.asked();
+        letter.startDrafting();
         return letters.save(letter);
 
     }

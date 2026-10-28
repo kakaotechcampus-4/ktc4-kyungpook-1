@@ -15,7 +15,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -30,9 +29,6 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 class CoverLetterAskStep {
 
-    // AI 자소서 계약이 카드마다 받는 문장 수의 상한이다
-    private static final int MAX_STATEMENTS = 20;
-
     private final CoverLetterQuestionRepository questions;
     private final CardMaterialReader cardMaterials;
     private final CardMaterialAnswerRepository rememberedAnswers;
@@ -41,7 +37,7 @@ class CoverLetterAskStep {
     Consumer<CoverLetter> run(CoverLetter claimed) {
 
         List<CoverLetterQuestion> loaded = questions.findByCoverLetterIdOrderBySeq(claimed.getId());
-        Map<Long, CardMaterial> cards = cardMaterials.readOf(cardIdsOf(loaded)).stream()
+        Map<Long, CardMaterial> cards = cardMaterials.readOf(CoverLetterCardDetails.cardIdsOf(loaded)).stream()
                 .collect(Collectors.toMap(CardMaterial::id, Function.identity()));
         Map<Long, List<CardMaterialAnswer>> remembered = rememberedAnswers.findByCardIdIn(cards.keySet()).stream()
                 .sorted(Comparator.comparing(CardMaterialAnswer::getItem))
@@ -50,16 +46,14 @@ class CoverLetterAskStep {
         Map<Integer, List<CardMaterialAnswer>> known = new HashMap<>();
         List<CoverLetterQuestionsRequest.Question> sent = new ArrayList<>();
         for (CoverLetterQuestion question : loaded) {
-            CardMaterial primary = question.getPrimaryCardId() == null ? null : cards.get(question.getPrimaryCardId());
-            // AI 는 중심 카드 없이 보조 카드만 받지 않아, 중심 카드를 지웠으면 보조 카드도 보내지 않는다
-            CardMaterial supporting = primary == null || question.getSupportingCardId() == null ? null
-                    : cards.get(question.getSupportingCardId());
+            CardMaterial primary = CoverLetterCardDetails.primaryOf(question, cards);
             List<CardMaterialAnswer> answers = primary == null ? List.of()
                     : remembered.getOrDefault(primary.id(), List.of());
             known.put((int) question.getSeq(), answers);
             sent.add(new CoverLetterQuestionsRequest.Question(question.getSeq(), question.getText(),
                     question.getCharLimit(), question.getTheme() == null ? null : question.getTheme().name(),
-                    detail(primary), detail(supporting),
+                    CoverLetterCardDetails.detail(primary),
+                    CoverLetterCardDetails.detail(CoverLetterCardDetails.supportingOf(question, cards)),
                     answers.stream()
                             .map(answer -> new CoverLetterQuestionsRequest.KnownAnswer(answer.getItem().name(),
                                     answer.getText(), answer.getCardId()))
@@ -100,30 +94,6 @@ class CoverLetterAskStep {
                         .filter(item -> !askedItems.contains(item))
                         .map(item -> new MaterialAsk(item, null, false)))
                 .toList();
-
-    }
-
-    private static List<Long> cardIdsOf(List<CoverLetterQuestion> loaded) {
-
-        return loaded.stream()
-                .flatMap(question -> Stream.of(question.getPrimaryCardId(), question.getSupportingCardId()))
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-
-    }
-
-    private static CoverLetterQuestionsRequest.CardDetail detail(CardMaterial card) {
-
-        if (card == null) {
-            return null;
-        }
-
-        return new CoverLetterQuestionsRequest.CardDetail(card.id(), card.title(), card.kind().name(),
-                card.sourceName(), card.statements().stream()
-                .limit(MAX_STATEMENTS)
-                .map(statement -> new CoverLetterQuestionsRequest.Statement(statement.slot().name(), statement.text()))
-                .toList());
 
     }
 }

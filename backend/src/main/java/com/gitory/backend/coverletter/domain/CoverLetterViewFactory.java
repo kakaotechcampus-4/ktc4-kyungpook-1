@@ -55,7 +55,8 @@ class CoverLetterViewFactory {
                 letter.getErrorCode(), retryable(letter), letter.isRunning(), letter.getJobRole(), letter.getMemo(),
                 letter.getCreatedAt(), letter.getUpdatedAt(),
                 loaded.stream().map(question -> question(question, labels, slots, remembered)).toList(),
-                letter.getAssignSteps().stream().map(step -> step(step, questionIds, labels)).toList());
+                letter.getAssignSteps().stream().map(step -> step(step, questionIds, labels)).toList(),
+                letter.getDraftSteps().stream().map(step -> writingStep(step, questionIds)).toList());
 
     }
 
@@ -93,7 +94,19 @@ class CoverLetterViewFactory {
                 question.getCharLimit(), question.getTheme(), cardRef(labelOf(labels, question.getPrimaryCardId())),
                 cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
                 question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered),
-                asks(question));
+                asks(question), draft(question));
+
+    }
+
+    private static CoverLetterView.QuestionDraft draft(CoverLetterQuestion question) {
+
+        if (question.getAiText() == null) {
+            return null;
+        }
+
+        return new CoverLetterView.QuestionDraft(question.getDraftText(), question.getAiText(), question.isEdited(),
+                question.getCharCount(), question.getOverBy(), question.getSentences(), question.getMarks(),
+                question.getBlanks(), question.getDraftSource());
 
     }
 
@@ -152,6 +165,14 @@ class CoverLetterViewFactory {
         return new CoverLetterView.Step(step.seq(), step.actor(), step.kind(),
                 step.questionSeq() == null ? null : questionIds.get(step.questionSeq()),
                 card == null ? null : card.publicId(), step.reason());
+
+    }
+
+    private static CoverLetterView.WritingStep writingStep(DraftStep step, Map<Integer, UUID> questionIds) {
+
+        return new CoverLetterView.WritingStep(step.seq(), step.actor(), step.kind(),
+                step.questionSeq() == null ? null : questionIds.get(step.questionSeq()), step.code(), step.value(),
+                step.sentenceSeq(), step.action(), step.reason());
 
     }
 }

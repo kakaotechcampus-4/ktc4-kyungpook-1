@@ -37,7 +37,7 @@
 - `questions` 1~10개. `text` 1~500자, `charLimit` 공백 포함 100~5,000 정수이고 `null` 이면 700.
 - `primaryCardId` · `supportingCardId` 는 카드 API 와 같은 공개 id(UUID)이고 `null` 이 될 수 있다. 내 확정 카드만 고를 수 있다. 다른 문항과 겹쳐도 막지 않는다. 중심과 보조가 같으면 400.
 - `answers[].item` 은 그 문항 `asks` 에 있는 항목만, 한 번씩. `skipped: true` 면 `text` 는 `null`. 넘기지 않은 답의 `text` 는 1~1,000자(공백뿐이면 400) — 화면은 입력 칸에 1,000자 제한을 건다.
-- `PATCH` 의 `text` 는 10,000자 이하.
+- `PATCH` 의 `text` 는 10,000자 이하. 저장하면 서버가 고친 글로 `charCount` · `overBy` · `blanks` 를 다시 센다(빈칸은 AI 가 넣은 `[항목: …]` 문구가 글자 그대로 남아 있는 항목). `sentences` · `marks` 는 `aiText` 기준 그대로다. `edited` 는 고친 글이 `aiText` 와 다르면 `true`.
 - 모든 글에서 U+0000 은 400.
 
 **오류**

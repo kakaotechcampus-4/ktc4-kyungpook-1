@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.ExperienceCandidate;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
@@ -92,7 +93,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
-@Import({JobRunner.class, JobCancelService.class, JobQueryService.class, ActivityStoreService.class,
+@Import({ClockConfig.class, JobRunner.class, JobCancelService.class, JobQueryService.class, ActivityStoreService.class,
         GroupingMaterialService.class, CandidateStoreService.class, StoredActivityService.class, UserLoginService.class,
         JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class,
         GeneratedCardQueryService.class})
@@ -310,8 +311,8 @@ class JobRunnerGroupingTest {
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         assertThat(job.getSteps()).containsExactly(
-                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 1, null),
-                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 1, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 1, 1),
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 1, 1),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, 2, null),
                 new JobStep(JobStepKey.REASON, JobStepState.DONE, 2, null));
         assertThat(resultOf(job)).isEqualTo(new JobResult(userRepositoryPublicId(), null, "OK", List.of()));

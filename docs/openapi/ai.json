@@ -4567,6 +4567,72 @@
         ]
       }
     },
+    "/internal/analysis/groups/stream": {
+      "post": {
+        "description": "`/internal/analysis/groups` 와 같은 그룹화를 하면서, 작업 단위 묶음 하나를 묶을 때마다(COMPRESS) 후보 묶음 하나에 제목·이유를 붙일 때마다(REASON) 진행을 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 `{\"type\":\"progress\",\"step\":\"PR_REVIEW|COMMITS|COMPRESS|REASON\",\"done\":0,\"total\":44}` 줄을 보내고, 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 입니다. `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "group_experiences_stream_internal_analysis_groups_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExperienceGroupingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 처리하지 못한 내부 오류. 재시도 불가."
+          }
+        },
+        "summary": "A 경험 후보 그룹화 (진행 스트리밍)",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
     "/internal/analysis/star": {
       "post": {
         "description": "/internal/analysis/diff-evidence가 만든 커밋별 근거(1개 이상)로 인터뷰 전 STAR 초안을 생성합니다. 근거 커밋과 확인 답변이 없는 문장은 비우고 removed_claims에 남깁니다. 근거 커밋 없이 확인 답변만 있는 문장은 NEEDS_REVIEW(LOW)로 채웁니다. 비운 칸은 insufficient_reason_code(NO_EVIDENCE·TIMEOUT)와 함께 missing_fields로 반환하며 B 인터뷰가 이 칸을 질문합니다. 150초 안에 초안을 받지 못하면 네 칸을 TIMEOUT으로 비운 200을 반환합니다.",
@@ -4920,6 +4986,76 @@
           }
         },
         "summary": "A-1 선택된 후보의 제한된 diff 수집",
+        "tags": [
+          "collection"
+        ]
+      }
+    },
+    "/internal/collect/stream": {
+      "post": {
+        "description": "`/internal/collect` 와 같은 수집을 하면서 PR 하나(PR_REVIEW)·커밋 상세 하나(COMMITS)를 읽을 때마다 진행을 보냅니다. 전체 수는 읽을 PR 을 고른 뒤, 상세를 받을 새 커밋을 정한 뒤에 처음 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 `{\"type\":\"progress\",\"step\":\"PR_REVIEW|COMMITS|COMPRESS|REASON\",\"done\":0,\"total\":44}` 줄을 보내고, 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 입니다. `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "collect_repository_activity_stream_internal_collect_stream_post",
+        "parameters": [
+          {
+            "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryCollectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "A-1 GitHub 저장소 활동 수집 (진행 스트리밍)",
         "tags": [
           "collection"
         ]

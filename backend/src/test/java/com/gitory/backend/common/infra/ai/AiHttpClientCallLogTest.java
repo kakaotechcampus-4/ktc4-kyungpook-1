@@ -114,6 +114,28 @@ class AiHttpClientCallLogTest {
     }
 
     @Test
+    @DisplayName("진행 스트리밍 호출도 진행 줄이 아니라 마지막 결과 줄의 상태·처리 기록으로 한 번 남기고, 결과 줄이 실패면 그 오류 코드를 남긴다")
+    void recordsStreamingCallByItsResultLine() {
+
+        List<AiProgress> progress = new CopyOnWriteArrayList<>();
+        responseBody = "{\"type\":\"progress\",\"step\":\"PR_REVIEW\",\"done\":1,\"total\":2}\n"
+                + "{\"type\":\"result\",\"status\":200,\"body\":{\"success\":true,\"data\":{\"commits\":[]},\"meta\":"
+                + META + ",\"error\":null}}\n";
+        client.collectStreaming(REQUEST, "ghp_" + "x".repeat(36), progress::add);
+        responseBody = "{\"type\":\"result\",\"status\":401,\"body\":{\"success\":false,\"data\":null,\"meta\":" + META
+                + ",\"error\":{\"code\":\"GITHUB_UNAUTHORIZED\",\"message\":\"m\",\"retryable\":false}}}\n";
+        assertThatThrownBy(() -> client.postStreaming(GROUPS + "/stream", REQUEST, Duration.ofSeconds(5), progress::add))
+                .isInstanceOf(AiClientException.class);
+
+        assertThat(progress).hasSize(1);
+        assertThat(calls).extracting(AiCall::path, AiCall::httpStatus, AiCall::errorCode)
+                .containsExactly(tuple("/internal/collect/stream", 200, null),
+                        tuple(GROUPS + "/stream", 401, "GITHUB_UNAUTHORIZED"));
+        assertThat(calls).allSatisfy(call -> assertThat(call.meta().path("llm_calls").asInt()).isEqualTo(2));
+
+    }
+
+    @Test
     @DisplayName("상태 확인·문서 조회(GET)는 남기지 않는다")
     void doesNotRecordGet() {
 

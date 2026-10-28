@@ -18,8 +18,10 @@ from services.github_collector import GithubApiError, GithubResourceNotFound
 
 INTERNAL_PATHS = {
     "/internal/collect",
+    "/internal/collect/stream",
     "/internal/collect/candidate-details",
     "/internal/analysis/groups",
+    "/internal/analysis/groups/stream",
     "/internal/analysis/diff-evidence",
     "/internal/analysis/star",
     "/internal/interview-turns",

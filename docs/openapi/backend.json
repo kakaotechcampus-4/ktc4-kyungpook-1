@@ -784,11 +784,18 @@
         "type" : "object"
       },
       "CardMetadataRequest" : {
-        "description" : "고칠 제목·기간. 키가 없거나 null 인 칸은 그대로 둡니다.",
+        "description" : "고칠 제목·기간·문항 유형. 키가 없거나 null 인 칸은 그대로 둡니다.",
         "properties" : {
           "period" : {
             "description" : "자유 글 50자까지이고, 빈 글이나 공백뿐이면 기간을 지움",
             "type" : "string"
+          },
+          "themes" : {
+            "description" : "경험 카드의 자소서 문항 유형 0~2개. 빈 배열은 비우기이고, 확정 카드도 바꿀 수 있음",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "title" : {
             "description" : "공백뿐이면 안 되고 256자까지",
@@ -798,7 +805,7 @@
         "type" : "object"
       },
       "CardMetadataResponse" : {
-        "description" : "고친 뒤의 제목·기간. 기간이 없으면 period 는 null 입니다.",
+        "description" : "고친 뒤의 제목·기간·문항 유형. 기간이 없으면 period 는 null 입니다.",
         "properties" : {
           "cardId" : {
             "format" : "uuid",
@@ -806,6 +813,14 @@
           },
           "period" : {
             "type" : "string"
+          },
+          "themes" : {
+            "description" : "경험 카드의 자소서 문항 유형, 없으면 빈 배열",
+            "items" : {
+              "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH" ],
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "title" : {
             "type" : "string"
@@ -931,6 +946,14 @@
             },
             "type" : "array"
           },
+          "themes" : {
+            "description" : "경험 카드의 자소서 문항 유형을 잘 맞는 순서로 최대 2개. 기술 카드와 유형이 없는 카드는 빈 배열",
+            "items" : {
+              "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "title" : {
             "type" : "string"
           },
@@ -990,6 +1013,14 @@
             "description" : "AI 초안이 고른 기술을 중요한 순서로 최대 4개. 태그가 없는 카드는 빈 배열",
             "items" : {
               "enum" : [ "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART", "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "themes" : {
+            "description" : "경험 카드의 자소서 문항 유형을 잘 맞는 순서로 최대 2개. 기술 카드와 유형이 없는 카드는 빈 배열",
+            "items" : {
+              "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH" ],
               "type" : "string"
             },
             "type" : "array"
@@ -3527,7 +3558,7 @@
     },
     "/api/cards/{id}/metadata" : {
       "patch" : {
-        "description" : "보낸 칸만 고칩니다. 키가 없거나 null 인 칸은 그대로 두고, 기간을 빈 글이나 공백뿐인 글로 보내면 기간을 지웁니다.\n제목은 공백뿐이면 안 되고 256자까지, 기간은 50자까지이며 둘 다 받은 글 그대로 저장합니다.\n보낸 값이 모두 지금 값과 같으면(기간이 없는 카드에 빈 기간을 보낸 경우 포함) 아무것도 바꾸지 않고 updatedAt 도 그대로인 지금 값을 돌려줍니다.\n제목과 기간을 모두 보내지 않으면 400 입니다. 네 칸·근거·버전은 바꾸지 않습니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "보낸 칸만 고칩니다. 키가 없거나 null 인 칸은 그대로 두고, 기간을 빈 글이나 공백뿐인 글로 보내면 기간을 지웁니다.\n제목은 공백뿐이면 안 되고 256자까지, 기간은 50자까지이며 둘 다 받은 글 그대로 저장합니다.\n보낸 값이 모두 지금 값과 같으면(기간이 없는 카드에 빈 기간을 보낸 경우 포함) 아무것도 바꾸지 않고 updatedAt 도 그대로인 지금 값을 돌려줍니다.\n제목·기간·문항 유형을 모두 보내지 않으면 400 입니다. 네 칸·근거·버전은 바꾸지 않습니다.\n문항 유형(themes)은 경험 카드에만 0~2개 붙이고 빈 배열이면 비웁니다. 카드 글이 아니라 자소서에 쓸 카드를 고르는 표시라\n확정 카드도 바꿀 수 있고 updatedAt 을 바꾸지 않으며, 사용자가 고른 뒤로 AI 는 덮어쓰지 않습니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "edit",
         "parameters" : [ {
           "description" : "카드 id",
@@ -3568,7 +3599,7 @@
                 }
               }
             },
-            "description" : "INVALID_REQUEST: 바꿀 칸이 없음, 제목이 공백뿐이거나 256자를 넘음, 기간이 50자를 넘음, 제목·기간에 U+0000 이 있음"
+            "description" : "INVALID_REQUEST: 바꿀 칸이 없음, 제목이 공백뿐이거나 256자를 넘음, 기간이 50자를 넘음, 제목·기간에 U+0000 이 있음, 문항 유형이 셋 이상·겹침·모르는 값이거나 기술 카드에 붙임"
           },
           "401" : {
             "content" : {
@@ -3608,7 +3639,7 @@
                 }
               }
             },
-            "description" : "CARD_CONFIRMED: 확정된 카드는 다시 열어야 수정할 수 있음"
+            "description" : "CARD_CONFIRMED: 확정된 카드의 제목·기간은 다시 열어야 수정할 수 있음"
           },
           "422" : {
             "content" : {
@@ -3631,7 +3662,7 @@
             "description" : "Service Unavailable"
           }
         },
-        "summary" : "카드 제목·기간 수정",
+        "summary" : "카드 제목·기간·문항 유형 수정",
         "tags" : [ "Cards" ]
       }
     },

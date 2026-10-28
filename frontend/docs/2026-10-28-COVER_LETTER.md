@@ -36,7 +36,7 @@
 - `jobRole` 1~100자. `memo` 1,000자 이하, 없으면 `null`(지원 동기 문항에서 '이 회사를 고른 이유'로 쓴다).
 - `questions` 1~10개. `text` 1~500자, `charLimit` 공백 포함 100~5,000 정수이고 `null` 이면 700.
 - `primaryCardId` · `supportingCardId` 는 카드 API 와 같은 공개 id(UUID)이고 `null` 이 될 수 있다. 내 확정 카드만 고를 수 있다. 다른 문항과 겹쳐도 막지 않는다. 중심과 보조가 같으면 400.
-- `answers[].item` 은 그 문항 `asks` 에 있는 항목만. `skipped: true` 면 `text` 는 `null`.
+- `answers[].item` 은 그 문항 `asks` 에 있는 항목만, 한 번씩. `skipped: true` 면 `text` 는 `null`. 넘기지 않은 답의 `text` 는 1~1,000자(공백뿐이면 400) — 화면은 입력 칸에 1,000자 제한을 건다.
 - `PATCH` 의 `text` 는 10,000자 이하.
 - 모든 글에서 U+0000 은 400.
 

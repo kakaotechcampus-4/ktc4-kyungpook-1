@@ -26,6 +26,7 @@ import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.IngestRequest;
 import com.gitory.backend.support.AiTestProperties;
 import com.sun.net.httpserver.HttpServer;
+import com.gitory.backend.common.infra.ai.AiProgress;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +53,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -135,6 +137,21 @@ class AiRepositoryActivityAdapterTest {
 
     @AfterEach
     void tearDown() { server.stop(0); }
+
+    @Test
+    @DisplayName("진행을 받으면 토큰을 헤더에만 실어 /internal/collect/stream 로 보내 진행을 넘기고, 결과는 스트리밍 없는 수집과 같게 읽는다")
+    void collectsWithProgressOverStream() {
+        List<AiProgress> received = new ArrayList<>();
+        responseBody = "{\"type\":\"progress\",\"step\":\"PR_REVIEW\",\"done\":1,\"total\":1}\n"
+                + "{\"type\":\"result\",\"status\":200,\"body\":" + success(data) + "}\n";
+
+        var activity = adapter.collect(request(List.of()), received::add);
+
+        assertThat(requestPath).isEqualTo("/internal/collect/stream");
+        assertThat(requestToken).isEqualTo(TOKEN);
+        assertThat(received).containsExactly(new AiProgress("PR_REVIEW", 1, 1));
+        assertThat(activity.commits()).hasSize(1);
+    }
 
     @Test
     @DisplayName("DB 저장소 정보와 서버 사용자로 요청을 만들고, 토큰은 헤더에만 전달한다")

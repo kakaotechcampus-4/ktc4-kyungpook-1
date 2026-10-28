@@ -1,5 +1,6 @@
 package com.gitory.backend.job.domain;
 
+import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.StarConfidence;
@@ -91,7 +92,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, JobCancelService.class,
+@Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, JobCancelService.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,

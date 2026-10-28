@@ -74,8 +74,8 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ```jsonc
 { "jobId", "type": "ANALYZE|DRAFT", "state": "QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELED",
   "partial": false,                                   // 부분 완료는 별도 상태가 아니다 → SUCCEEDED + partial:true
-  "steps": [{ "key": "COMMITS|PR_REVIEW|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
-              "done": 0, "total": 0 }],               // 늘 이 4개가 이 순서. 총량을 모르면 total: null
+  "steps": [{ "key": "PR_REVIEW|COMMITS|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
+              "done": 0, "total": 0 }],               // 늘 4개. 순서는 아래 참고. 총량을 모르면 total: null
   "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|GITHUB_UNAUTHORIZED|AI_UNAVAILABLE|COLLECTION_CAPPED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
   "retryable": bool | null,
   "retryAfterSec": n | null,                          // GITHUB_RATE_LIMITED 에서만 의미가 있다
@@ -84,6 +84,8 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
   "pollAfterMs": 2000 }                               // 다음 폴링까지 기다릴 시간. 간격은 서버가 정한다
 ```
 
+- **단계 순서는 서버가 준 순서 그대로 그린다.** 분석(`ANALYZE`)은 AI 가 실제로 읽는 순서인 `PR_REVIEW → COMMITS → COMPRESS → REASON`, 카드 초안(`DRAFT`)은 `COMMITS → PR_REVIEW → COMPRESS → REASON` 이다.
+- **분석 단계의 `done`/`total` 은 읽는 동안 실시간으로 바뀐다(서버 설정 `ANALYSIS_LIVE_PROGRESS_ENABLED`, 기본 켬).** 진행 중인 단계는 `RUNNING` + 지금까지 읽은 수/전체(전체를 아직 모르면 `total: null`), 앞 단계는 `DONE`, 뒤 단계는 `QUEUED` 다. 숫자는 저장소 전체가 아니라 **이번에 새로 읽는 양**이다 — 다시 분석하면 새 PR·커밋만 세고, 새로 읽을 게 없으면 `DONE` + `done: 0, total: 0` 이다. 갱신은 1초에 한 번 정도라 폴링마다 숫자가 조금씩 오른다.
 - **분석 실패는 HTTP 오류가 아니다.** 폴링 응답은 늘 200 이고, 실패는 `state` 로 말한다.
 - **후보 0개도 실패가 아니다.** `SUCCEEDED` + `result.verdict: "EMPTY"` + `reasons` 3줄.
 - **남의 Job 은 403 이 아니라 404** — 존재 여부조차 알려 주지 않는다.
@@ -248,7 +250,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - **물을 칸은 AI 가 고른다.** 첫 질문은 규칙(R 에 확인된 수치가 없으면 R)이고, 그 뒤는 앞 답·카드 상태를 읽은 AI 가 '같은 칸 다시 / 다른 칸 / 끝' 을 고른다. 답은 질문한 칸에만 들어간다.
 - **서버가 지키는 규칙:** 같은 칸은 2번까지 · `NOT_MEASURED`·`SKIP` 으로 끝난 칸은 다시 묻지 않는다 · 넘긴 질문도 상한에 센다.
 - **닫힌 칸:** 지난 질문 목록(`GET /cards/{id}/interview`)에서 같은 `field` 가 2번 있거나 `outcome` 이 `NOT_MEASURED`·`SKIPPED` 인 칸이다. 그 칸의 [이 칸 질문 받기]를 숨길지, 흐리게 하고 이유(넘김·측정 안 함·2번 물음)를 짧게 보일지는 화면 디자인을 고려해 FE 가 정한다. 서버는 닫힌 칸 지정을 409 `INTERVIEW_FIELD_CLOSED` 로 막는다(탭 두 개·오래 열어 둔 화면).
-- **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고(카드당 3 으로 바뀔 예정), 프론트는 그 값만 쓴다.
+- **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고(카드당 8, 네 칸을 칸마다 두 번까지), 프론트는 그 값만 쓴다.
 - 답변 출처 이름(`USER_SELECTED`·`USER_STATED`)은 화면에 노출하지 않는다 — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
 
 ### 기업·직무 매칭 (구현됨 · 10/24 운영 켬)
@@ -336,3 +338,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 ## 카드 분야·기술 태그 (#338 → #339, 선행 구현 대기)
 
 카드 목록·상세는 `areas: string[]`(최대 2), `techs: string[]`(최대 4)를 반환합니다. 허용 enum과 배포 전환 처리는 [태그 계약](2026-10-21-CARD_TAGS.md)을 따릅니다. 태그는 읽기 전용 카드 메타데이터이며 수정 요청에 포함하지 않습니다. FE 태그 PR은 BE #338 이후 머지합니다.
+
+## 경험 카드 — 활동 묶음·문항 유형·다듬기 (#474, 계약만 · 서버 구현 전)
+
+레포 밖 경험을 묶는 활동(`/activities`), 카드의 `activity` · `themes`, 경험 카드 되묻기의 다듬기 미리 보기(`polished-draft`)와 답의 `original` 은 [경험 카드 계약](2026-10-28-EXPERIENCE_CARDS.md)을 따릅니다. 위 카드·되묻기 표는 서버 구현이 머지될 때 이 내용으로 고칩니다.

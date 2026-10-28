@@ -17,8 +17,6 @@ public interface GitCommitRepository extends JpaRepository<GitCommit, Long> {
 
     List<GitCommit> findByCollectionRunIdAndExcludedFalse(Long collectionRunId);
 
-    long countByRepositoryId(Long repositoryId);
-
     // sha 칸은 CHAR(40) 이라 짧은 sha 는 뒤에 공백이 붙어 나오므로 지운다
     @Query("""
             SELECT TRIM(TRAILING FROM c.sha) FROM GitCommit c

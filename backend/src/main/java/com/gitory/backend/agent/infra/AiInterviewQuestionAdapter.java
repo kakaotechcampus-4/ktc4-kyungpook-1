@@ -33,6 +33,7 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
 
     private static final int MAX_SUGGESTIONS = 2;
     private static final int MAX_SUGGESTION_LENGTH = 300;
+    private static final int MAX_REASON_LENGTH = 60;
 
     private final AiHttpClient ai;
     private final AiClientProperties properties;
@@ -68,7 +69,8 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
                     InterviewQuestionType.valueOf(string(data, "question_type")),
                     nonBlankString(data, "question_text"),
                     answerMode(data),
-                    suggestedAnswers(data));
+                    suggestedAnswers(data),
+                    reason(data));
             case COMPLETE -> complete(data);
         };
 
@@ -82,7 +84,21 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
                 throw AiClientException.invalidResponse();
             }
         }
-        return new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of());
+        return new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(),
+                reason(data));
+
+    }
+
+    // 화면에 보일 판단 이유라 없거나 모양이 틀려도 질문은 그대로 받고, 저장 칸 길이에서 자른다
+    private static String reason(JsonNode data) {
+
+        JsonNode value = data.path("reason");
+        if (!value.isString() || value.asString().isBlank()) {
+            return null;
+        }
+        String reason = value.asString().strip();
+
+        return reason.length() <= MAX_REASON_LENGTH ? reason : reason.substring(0, MAX_REASON_LENGTH);
 
     }
 

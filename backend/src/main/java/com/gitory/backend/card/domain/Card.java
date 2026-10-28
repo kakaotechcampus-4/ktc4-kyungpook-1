@@ -65,6 +65,9 @@ public class Card {
     @Enumerated(EnumType.STRING)
     private CardDraftFailure generationFailure;
 
+    // 질문 API 는 끝이면 null 이라 AI 가 그만 묻기로 한 이유를 카드에 남기고, 새 질문이 생기면 지운다
+    private String interviewEndReason;
+
     // enum 순번이 아니라 이름으로 저장해, 목록 가운데에 값을 더해도 저장된 태그의 뜻이 바뀌지 않게 한다
     // Hibernate 가 INSERT 에 이 칸을 넣어 DB 기본값이 쓰이지 않으므로 빈 목록으로 시작한다
     @JdbcTypeCode(SqlTypes.ARRAY)
@@ -249,6 +252,19 @@ public class Card {
     public List<CardTech> techTags() {
 
         return techs.stream().map(CardTech::valueOf).toList();
+
+    }
+
+    /** 되묻기를 끝낸 이유는 카드 내용이 아니라 화면 안내라 updatedAt 을 바꾸지 않는다 */
+    public void endInterview(String reason) {
+
+        this.interviewEndReason = reason;
+
+    }
+
+    public void resumeInterview() {
+
+        this.interviewEndReason = null;
 
     }
 

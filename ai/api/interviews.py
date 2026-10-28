@@ -3,6 +3,8 @@
 `POST /internal/interview-turns`: 고를 수 있는 칸 중 다음에 물을 칸과 질문·예상 답변을 LLM 으로 정한다.
 LLM 이 없거나 실패하면 틀 질문으로 대신한다(services.interview_agent.InterviewAgent 참고).
 `POST /internal/interview-measured-sentence`: '재 봤어요' 에 쓴 측정 결과로 R 문장을 다시 쓴다.
+`POST /internal/interview-polished-sentence`: 경험 카드 답을 표현만 다듬는다.
+`POST /internal/card-themes`: 확정할 때 경험 카드의 자소서 문항 유형을 고른다.
 """
 
 from __future__ import annotations
@@ -17,12 +19,16 @@ from fastapi.responses import JSONResponse
 from api.openapi import INVALID_PAYLOAD_RESPONSE
 from schemas.common import Envelope, ErrorDetail, ErrorEnvelope
 from schemas.interview import (
+    CardThemesRequest,
+    CardThemesResult,
     InterviewAnswerRequest,
     InterviewAnswerResult,
     InterviewTurnRequest,
     InterviewTurnResult,
     MeasuredSentenceRequest,
     MeasuredSentenceResult,
+    PolishedSentenceRequest,
+    PolishedSentenceResult,
 )
 from services.interview_answer_service import InterviewAnswerService
 from services.interview_agent import InterviewAgent
@@ -108,6 +114,79 @@ async def write_measured_sentence(request: MeasuredSentenceRequest):
         meta=usage_meta(started, "COMPLETED"),
         error=None,
     )
+
+
+@router.post(
+    "/interview-polished-sentence",
+    response_model=Envelope[PolishedSentenceResult],
+    summary="경험 카드 답을 표현만 다듬기",
+    description=(
+        "사용자 답을 사실을 더하거나 빼지 않고 그 칸의 문장으로 다듬습니다. 저장하지 않습니다. "
+        "다듬은 문장에 답에 없는 숫자가 생기면 한 번 고쳐 쓰게 하고, 그래도 남은 숫자를 unsourced_numbers 로 돌려줍니다. "
+        "실패하면 Spring 이 사용자 답을 그대로 보여 줍니다."
+    ),
+    responses={
+        503: {
+            "model": ErrorEnvelope,
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 문장을 받지 못함(retryable=true).",
+        },
+    },
+)
+async def polish_answer(request: PolishedSentenceRequest):
+    """다듬은 문장을 돌려주거나, 받지 못하면 503 을 돌려준다."""
+    started = time.perf_counter()
+    try:
+        polished = await _llm.polish(request)
+    except InterviewLLMUnavailable:
+        return _unavailable(started, "답을 다듬지 못했습니다.")
+    return Envelope(
+        success=True,
+        data=PolishedSentenceResult(
+            card_id=request.card_id, sentence=polished.sentence, unsourced_numbers=polished.unsourced_numbers
+        ),
+        meta=usage_meta(started, "COMPLETED"),
+        error=None,
+    )
+
+
+@router.post(
+    "/card-themes",
+    response_model=Envelope[CardThemesResult],
+    summary="경험 카드의 자소서 문항 유형 고르기",
+    description=(
+        "확정할 때 문항 유형이 빈 경험 카드의 제목·칸 문장으로 유형을 최대 2개 고릅니다. 저장하지 않습니다. "
+        "실패하면 Spring 이 빈 유형으로 확정합니다."
+    ),
+    responses={
+        503: {
+            "model": ErrorEnvelope,
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 답을 받지 못함(retryable=true).",
+        },
+    },
+)
+async def choose_card_themes(request: CardThemesRequest):
+    """고른 문항 유형을 돌려주거나, 받지 못하면 503 을 돌려준다."""
+    started = time.perf_counter()
+    try:
+        themes = await _llm.card_themes(request)
+    except InterviewLLMUnavailable:
+        return _unavailable(started, "문항 유형을 고르지 못했습니다.")
+    return Envelope(
+        success=True,
+        data=CardThemesResult(card_id=request.card_id, themes=themes),
+        meta=usage_meta(started, "COMPLETED"),
+        error=None,
+    )
+
+
+def _unavailable(started: float, message: str) -> JSONResponse:
+    envelope = Envelope(
+        success=False,
+        data=None,
+        meta=usage_meta(started, "FAILED"),
+        error=ErrorDetail(code="LLM_UNAVAILABLE", message=message, retryable=True),
+    )
+    return JSONResponse(status_code=503, content=jsonable_encoder(envelope))
 
 
 @router.post(

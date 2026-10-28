@@ -80,7 +80,8 @@ class InterviewAgent:
         except InterviewLLMUnavailable:
             return self._template_turn(request, fixed or allowed[0]), True
         if isinstance(written, EndedQuestions):
-            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE", reason=written.reason), False
+            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE", reason=written.reason,
+                                       themes=list(written.themes)), False
         slot = self._missing_slot(request, written.star_slot)
         return InterviewTurnResult(
             card_id=request.card_id,
@@ -98,8 +99,16 @@ class InterviewAgent:
 
     @staticmethod
     def _first_slot(request: InterviewTurnRequest, allowed: list[StarSlot]) -> Optional[StarSlot]:
-        """첫 질문은 R 에 확인된 수치가 없으면 R 로 정하고, 그 밖은 LLM 이 고르게 둔다."""
-        if request.previous_turns or "R" not in allowed:
+        """첫 질문을 정하고, 그 밖은 LLM 이 고르게 둔다.
+
+        경험 카드는 사용자 답이 곧 이야기라 S 가 비어 있으면 S 부터, 기술 카드는 R 에 확인된 수치가 없으면 R 부터 묻는다.
+        """
+        if request.previous_turns:
+            return None
+        if request.card_kind == "QUALITATIVE":
+            situation = InterviewAgent._missing_slot(request, "S") if "S" in allowed else None
+            return "S" if situation is not None and not situation.body else None
+        if "R" not in allowed:
             return None
         result = InterviewAgent._missing_slot(request, "R")
         return None if has_metric(result.body) else "R"

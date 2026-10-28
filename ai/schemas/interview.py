@@ -24,8 +24,19 @@ TriggerSource = Literal["AUTO"]
 NextAction = Literal["ASK_AGAIN", "COMPLETE"]
 
 #: 되묻기 대상의 출처.
-#: pr=PR 단위, commit_cluster=커밋 묶음, direct_card=카드 직접 지정.
-SourceType = Literal["PR", "COMMIT_CLUSTER", "DIRECT_CARD"]
+#: pr=PR 단위, commit_cluster=커밋 묶음, direct_card=카드 직접 지정, activity=레포 밖 활동 안의 경험 카드.
+SourceType = Literal["PR", "COMMIT_CLUSTER", "DIRECT_CARD", "ACTIVITY"]
+
+#: card.card_type. 경험 카드(QUALITATIVE)는 첫 질문을 S 로 하고 끝낼 때 문항 유형을 고른다.
+CardKind = Literal["TECH", "QUALITATIVE"]
+
+#: 경험 카드의 자소서 문항 유형. 프론트 계약 `themes` 와 같은 값이다.
+CardTheme = Literal["COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH"]
+
+#: 활동 종류. Spring activity.type 과 같은 값이다.
+ActivityType = Literal[
+    "CLUB", "EXTERNAL", "CONTEST", "INTERNSHIP", "EDUCATION", "PART_TIME", "VOLUNTEER", "STUDY", "OTHER"
+]
 
 #: card_statement.confidence. A/DB/FE 계약의 대문자 enum을 따른다.
 Confidence = Literal["HIGH", "MEDIUM", "LOW"]
@@ -118,6 +129,14 @@ class CandidateContext(StrictRequestModel):
     )
 
 
+class ActivityContext(StrictRequestModel):
+    """활동 안 경험 카드가 속한 활동으로, 기록이 없어 질문과 빈칸 틀의 단서가 된다."""
+
+    name: NonBlankText = Field(..., max_length=50)
+    type: ActivityType
+    role: Optional[str] = Field(None, max_length=50, description="활동에서 맡은 역할. 없으면 null")
+
+
 class MissingSlot(StrictRequestModel):
     """STAR 카드에서 비어 있거나 신뢰도 보강이 필요한 문장 슬롯 하나."""
 
@@ -167,6 +186,8 @@ class InterviewTurnRequest(StrictRequestModel):
     )
 
     source_type: SourceType = Field(..., description="되묻기 대상 카드의 출처")
+    card_kind: CardKind = Field("TECH", description="카드 종류. 경험 카드(QUALITATIVE)는 첫 질문이 S 다")
+    activity: Optional[ActivityContext] = Field(None, description="ACTIVITY 카드가 속한 활동. 그 밖에는 null")
     target_star_slot: Optional[StarSlot] = Field(
         None, description="화면에서 칸을 지정했을 때만 넣는다. 비면 AI 가 고른다"
     )
@@ -205,9 +226,9 @@ class InterviewTurnRequest(StrictRequestModel):
                 )
         elif self.source_type == "COMMIT_CLUSTER" and self.candidate is None:
             raise ValueError("source_type='COMMIT_CLUSTER'이면 candidate가 필요합니다.")
-        elif self.source_type == "DIRECT_CARD" and self.candidate is not None:
+        elif self.source_type in ("DIRECT_CARD", "ACTIVITY") and self.candidate is not None:
             raise ValueError(
-                "source_type='DIRECT_CARD'이면 candidate는 null이어야 합니다."
+                f"source_type='{self.source_type}'이면 candidate는 null이어야 합니다."
             )
         return self
 
@@ -247,6 +268,10 @@ class InterviewTurnResult(BaseModel):
     reason: Optional[str] = Field(
         None,
         description="LLM 이 이 칸을 묻거나 그만 묻기로 한 이유 한 줄(60자 이내). 화면이 칸을 정했거나 틀 질문이면 null",
+    )
+    themes: list[CardTheme] = Field(
+        default_factory=list,
+        description="경험 카드에서 LLM 이 그만 묻기로 할 때 고른 문항 유형(잘 맞는 순, 최대 2개). 그 밖에는 빈 배열",
     )
 
 
@@ -578,3 +603,44 @@ class MeasuredSentenceResult(BaseModel):
 
     card_id: int
     sentence: str = Field(..., description="수치를 넣어 다시 쓴 R 문장. 수치 확인은 Spring 이 한다")
+
+
+class PolishedSentenceRequest(StrictRequestModel):
+    """`POST /internal/interview-polished-sentence` 요청 모델."""
+
+    card_id: PositiveId = Field(..., description="대상 경험 카드 ID")
+    star_slot: StarSlot = Field(..., description="답이 들어갈 칸")
+    question_text: Optional[str] = Field(None, max_length=1_000, description="그 답을 받은 질문")
+    answer_text: NonBlankText = Field(..., max_length=1_000, description="사용자가 쓴 답")
+
+
+class PolishedSentenceResult(BaseModel):
+    """`POST /internal/interview-polished-sentence` 응답 `data` 모델."""
+
+    card_id: int
+    sentence: str = Field(..., description="표현만 다듬은 문장")
+    unsourced_numbers: list[str] = Field(
+        default_factory=list, description="다듬은 문장에는 있는데 사용자 답에는 없는 숫자. 한 번 고쳐 쓴 뒤에도 남은 것"
+    )
+
+
+class CardSlotText(StrictRequestModel):
+    """문항 유형을 고를 때 읽는 카드 칸 하나."""
+
+    star_slot: StarSlot
+    body: Optional[str] = Field(None, max_length=1_000, description="칸 문장. 비어 있으면 null")
+
+
+class CardThemesRequest(StrictRequestModel):
+    """`POST /internal/card-themes` 요청 모델."""
+
+    card_id: PositiveId = Field(..., description="대상 경험 카드 ID")
+    title: NonBlankText = Field(..., max_length=256, description="카드 제목")
+    slots: list[CardSlotText] = Field(..., min_length=1, max_length=4)
+
+
+class CardThemesResult(BaseModel):
+    """`POST /internal/card-themes` 응답 `data` 모델."""
+
+    card_id: int
+    themes: list[CardTheme] = Field(default_factory=list, description="잘 맞는 순, 최대 2개. 맞는 것이 없으면 빈 배열")

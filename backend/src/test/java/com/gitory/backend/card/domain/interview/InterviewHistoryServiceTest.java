@@ -39,7 +39,7 @@ class InterviewHistoryServiceTest {
     @BeforeEach
     void setUp() {
 
-        Card card = Card.startManual(USER_ID, 11L, "카드", null, "key-1");
+        Card card = Card.startManual(USER_ID, 11L, null, "카드", null, "key-1");
         ReflectionTestUtils.setField(card, "id", CARD_ID);
         when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.VIEW_CARD)).thenReturn(card);
 

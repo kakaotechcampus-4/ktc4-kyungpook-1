@@ -280,6 +280,7 @@ export function cardSummary(c: Any) {
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
     updatedAt: c.updatedAt ?? legacyUpdatedAt(c),
+    repo: c.repo ? { id: c.repo.id, owner: c.repo.owner, name: c.repo.name } : null,
   };
 }
 

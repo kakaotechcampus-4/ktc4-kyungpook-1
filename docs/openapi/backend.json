@@ -888,6 +888,10 @@
             "format" : "uuid",
             "type" : "string"
           },
+          "interviewEndReason" : {
+            "description" : "AI 가 되묻기를 그만두기로 한 이유 한 줄(60자 이내)로, 끝내지 않았거나 그 뒤 새 질문을 만들었으면 null",
+            "type" : [ "string", "null" ]
+          },
           "interviewTurns" : {
             "description" : "답한 되묻기 질문 수이고, 답하지 않은 질문은 세지 않는다",
             "format" : "int32",
@@ -1401,6 +1405,10 @@
           "questionType" : {
             "enum" : [ "EVIDENCE_GAP", "FOLLOWUP", "RECALL_AID" ],
             "type" : "string"
+          },
+          "reason" : {
+            "description" : "AI 가 이 칸을 묻기로 한 이유 한 줄(60자 이내)로, 사용자가 칸을 골랐거나 AI 가 틀 질문을 썼으면 null",
+            "type" : [ "string", "null" ]
           },
           "remaining" : {
             "description" : "이 질문을 만든 뒤 남은 질문 수",

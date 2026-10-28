@@ -6,6 +6,7 @@ import pytest
 
 from schemas.analysis import ChangedFile, CommitInput, IssueContext, PullRequestContext
 from services.commit_grouper import CommitGroup, CommitGrouper
+from services.progress import listening
 from services.grouping_llm import (
     ExperienceGroupingOutput,
     GroupDescriptionsOutput,
@@ -111,6 +112,36 @@ def test_group_units_batches_without_losing_units() -> None:
     assert len(fake.calls) == 1
     assert [unit.group_key for experience in experiences for unit in experience] == [
         unit.group_key for unit in units
+    ]
+
+
+def test_group_units_and_describe_report_progress_per_batch() -> None:
+    """묶음 하나를 묶을 때마다 묶은 작업 단위 수를, 설명 묶음 하나를 마칠 때마다 이유를 붙인 수를 알린다."""
+    units = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 4)]
+    fake = FakeModelClient(
+        [
+            {"experiences": [{"item_ids": [1, 2]}]},
+            {"descriptions": [{"group_key": u.group_key, "title": "기능", "reason": "근거"} for u in units[:2]]},
+            {"descriptions": [{"group_key": units[2].group_key, "title": "기능", "reason": "근거"}]},
+        ]
+    )
+    llm = GroupingLlm(fake, batch_size=2, description_batch_size=2)
+    events: list[tuple[str, int, int | None]] = []
+
+    async def run() -> None:
+        with listening(lambda step, done, total: events.append((step, done, total))):
+            await llm.group_units(units)
+            await llm.describe(units)
+
+    asyncio.run(run())
+
+    assert events == [
+        ("COMPRESS", 0, 3),
+        ("COMPRESS", 2, 3),
+        ("COMPRESS", 3, 3),
+        ("REASON", 0, 3),
+        ("REASON", 2, 3),
+        ("REASON", 3, 3),
     ]
 
 

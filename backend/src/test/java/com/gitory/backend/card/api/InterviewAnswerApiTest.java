@@ -1075,15 +1075,17 @@ class InterviewAnswerApiTest {
     }
 
     @Test
-    @DisplayName("넘긴 질문도 질문 상한에 세어, 상한만큼 넘긴 카드는 새 질문을 요청하면 409 INTERVIEW_CAP 이다")
+    @DisplayName("넘긴 질문도 질문 상한(기본 8)에 세어, 8번째 질문까지 넘긴 카드는 새 질문을 요청하면 409 INTERVIEW_CAP 이다")
     void skippedTurnsCountTowardTheCap() throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
-        interviews.insertTurn(cardId, 1, "S", "EVIDENCE_GAP", "USER", "상황은요?", "SKIPPED", null, null);
-        interviews.insertTurn(cardId, 2, "T", "EVIDENCE_GAP", "USER", "과제는요?", "SKIPPED", null, null);
-        interviews.insertAsked(cardId, 3, "A", "EVIDENCE_GAP", "USER", "행동은요?");
+        String[] slots = {"S", "S", "T", "T", "A", "A", "R"};
+        for (int seq = 1; seq <= slots.length; seq++) {
+            interviews.insertTurn(cardId, seq, slots[seq - 1], "EVIDENCE_GAP", "USER", "질문", "SKIPPED", null, null);
+        }
+        interviews.insertAsked(cardId, 8, "R", "EVIDENCE_GAP", "USER", "결과는요?");
 
-        send(myUserId, MY_CARD.toString(), "3", kindBody("SKIP", null, null)).andExpect(status().isOk());
+        send(myUserId, MY_CARD.toString(), "8", kindBody("SKIP", null, null)).andExpect(status().isOk());
 
         mvc.perform(post("/api/cards/{id}/interview", MY_CARD).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"field\":\"R\"}").with(loggedInAs(myUserId)).with(csrf()))

@@ -3060,8 +3060,16 @@
                 "type": "null"
               }
             ],
-            "description": "실제 사용된 모델(LLM 미사용 응답은 null 또는 처리 방식 이름)",
+            "description": "마지막에 부른 LLM 모델로, 모델별 사용량은 model_usage 에 있다(LLM 미사용 응답은 null 또는 처리 방식 이름)",
             "title": "Model"
+          },
+          "model_usage": {
+            "description": "모델별 LLM 요청 수와 토큰. 처음 부른 모델부터 오고, 더하면 llm_calls·input_tokens·output_tokens 와 같다. LLM 을 안 불렀으면 빈 목록",
+            "items": {
+              "$ref": "#/components/schemas/ModelUsage"
+            },
+            "title": "Model Usage",
+            "type": "array"
           },
           "output_tokens": {
             "default": 0,
@@ -3151,6 +3159,39 @@
           "statement_seq"
         ],
         "title": "MissingSlot",
+        "type": "object"
+      },
+      "ModelUsage": {
+        "description": "한 요청 안에서 모델 하나에 보낸 LLM 요청 수와 토큰.",
+        "properties": {
+          "input_tokens": {
+            "default": 0,
+            "description": "이 모델에서 응답을 받은 요청의 입력 토큰 합",
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "llm_calls": {
+            "default": 0,
+            "description": "이 모델에 보낸 요청 수. 실패한 요청도 센다",
+            "title": "Llm Calls",
+            "type": "integer"
+          },
+          "model": {
+            "description": "LLM 모델 이름",
+            "title": "Model",
+            "type": "string"
+          },
+          "output_tokens": {
+            "default": 0,
+            "description": "이 모델에서 응답을 받은 요청의 출력 토큰 합",
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "ModelUsage",
         "type": "object"
       },
       "NextInterviewTurn": {
@@ -4066,6 +4107,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4176,6 +4218,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4252,6 +4295,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4322,6 +4366,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4416,6 +4461,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4520,6 +4566,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4620,6 +4667,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4680,6 +4728,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4740,6 +4789,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4810,6 +4860,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4870,6 +4921,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4950,6 +5002,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -5030,6 +5083,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -5110,6 +5164,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,

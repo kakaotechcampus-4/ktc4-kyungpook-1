@@ -10,6 +10,7 @@ import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
+import com.gitory.backend.card.domain.CardTheme;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.common.infra.ai.AiCallContext;
@@ -80,7 +81,7 @@ public class InterviewAskService {
         InterviewQuestionResult question = fetchQuestion(prepared.request(), prepared.target(), prepared.allowed());
         if (question.nextAction() != InterviewNextAction.ASK_AGAIN) {
             new TransactionTemplate(transactionManager)
-                    .executeWithoutResult(status -> recordEnd(publicId, userId, question.reason()));
+                    .executeWithoutResult(status -> recordEnd(publicId, userId, question));
             return null;
         }
 
@@ -202,11 +203,13 @@ public class InterviewAskService {
     }
 
     // AI 를 기다리는 사이 다른 창에서 새 질문이 생겼으면 끝낸 이유가 맞지 않으므로 남기지 않는다
-    private void recordEnd(UUID publicId, Long userId, String reason) {
+    // 경험 카드면 AI 가 끝내며 고른 문항 유형도 붙이고, 사용자가 고른 유형은 Card 가 지킨다
+    private void recordEnd(UUID publicId, Long userId, InterviewQuestionResult ended) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         if (openTurnOf(turns.findByCardIdOrderBySeqAsc(card.getId())).isEmpty()) {
-            card.endInterview(reason);
+            card.endInterview(ended.reason());
+            card.suggestThemes(ended.themes().stream().map(theme -> CardTheme.valueOf(theme.name())).toList());
         }
 
     }

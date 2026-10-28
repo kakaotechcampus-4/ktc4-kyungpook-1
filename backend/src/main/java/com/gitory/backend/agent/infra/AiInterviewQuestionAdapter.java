@@ -70,7 +70,8 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
                     nonBlankString(data, "question_text"),
                     answerMode(data),
                     suggestedAnswers(data),
-                    reason(data));
+                    reason(data),
+                    List.of());
             case COMPLETE -> complete(data);
         };
 
@@ -85,7 +86,7 @@ public class AiInterviewQuestionAdapter implements InterviewQuestionPort {
             }
         }
         return new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(),
-                reason(data));
+                reason(data), ExperienceThemes.read(data.path("themes")));
 
     }
 

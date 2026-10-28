@@ -1,8 +1,10 @@
 package com.gitory.backend.card.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.support.FakeInterviewAi;
 import com.gitory.backend.support.TestFixtures;
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Named;
@@ -18,6 +20,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -28,6 +32,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -42,6 +49,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,6 +74,8 @@ class CardConfirmApiTest {
     private static final UUID OTHERS_CARD = UUID.fromString("22222222-2222-4222-8222-222222222222");
     private static final UUID MY_REPO = UUID.fromString("33333333-3333-4333-8333-333333333333");
     private static final Instant OLD = Instant.parse("2026-01-01T00:00:00Z");
+    // 확정할 때 문항 유형이 빈 경험 카드는 AI 에 유형을 물으므로, 실제 주소 대신 받은 요청을 남기는 가짜 AI 로 받는다
+    private static final FakeInterviewAi AI = FakeInterviewAi.start();
 
     // 화면이 확정할 때 보내는 본문이고, 서버는 읽지 않는다
     private static final String SCREEN_BODY = "{\"edited\":true,\"maskedFields\":[\"S\"]}";
@@ -73,6 +83,20 @@ class CardConfirmApiTest {
     @Container
     @ServiceConnection
     static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
+
+    @DynamicPropertySource
+    static void ai(DynamicPropertyRegistry registry) {
+
+        registry.add("gitory.ai.base-url", AI::baseUrl);
+
+    }
+
+    @AfterAll
+    static void stopAi() {
+
+        AI.close();
+
+    }
 
     @Autowired
     MockMvc mvc;
@@ -96,6 +120,7 @@ class CardConfirmApiTest {
 
         fixtures = new TestFixtures(jdbc);
         fixtures.clear();
+        AI.reset();
 
         myUserId = fixtures.insertUser(1L, "grow22");
         othersUserId = fixtures.insertUser(2L, "someone-else");
@@ -439,6 +464,110 @@ class CardConfirmApiTest {
                 Arguments.of(Named.of("T·A·R 만 있음", List.of("T", "A", "R"))),
                 Arguments.of(Named.of("T·R 만 있음", List.of("T", "R"))),
                 Arguments.of(Named.of("빈 카드", List.of())));
+
+    }
+
+    @Test
+    @DisplayName("문항 유형이 빈 경험 카드를 확정하면 AI 에 제목과 네 칸 문장을 보내 고른 유형을 붙이고, 모르는 값·겹친 값은 버린다")
+    void asksAiForThemesOfAnExperienceCard() throws Exception {
+
+        Long cardId = manualCardWithSituationAndAction();
+        AI.replyWith(request -> themesReply(request, "COLLABORATION", "SINGING", "COLLABORATION", "GROWTH"));
+
+        confirm(MY_CARD).andExpect(status().isOk());
+
+        assertThat(AI.requests()).hasSize(1);
+        JsonNode sent = AI.requests().get(0);
+        assertThat(sent.path("card_id").longValue()).isEqualTo(cardId);
+        assertThat(sent.path("title").asString()).isEqualTo("카드");
+        assertThat(sent.path("slots").toString()).isEqualTo(
+                "[{\"star_slot\":\"S\",\"body\":\"상황\"},{\"star_slot\":\"T\",\"body\":null},"
+                        + "{\"star_slot\":\"A\",\"body\":\"행동\"},{\"star_slot\":\"R\",\"body\":null}]");
+        assertThat(themesOf(cardId)).isEqualTo("COLLABORATION,GROWTH");
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("unusableThemeReplies")
+    @DisplayName("AI 가 유형을 주지 못하거나 다른 카드의 답을 주면 확정은 그대로 하고 유형은 비워 둔다")
+    void confirmsWithoutThemesWhenAiFails(Function<JsonNode, FakeInterviewAi.Reply> reply) throws Exception {
+
+        Long cardId = manualCardWithSituationAndAction();
+        AI.replyWith(reply);
+
+        confirm(MY_CARD)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+
+        assertThat(themesOf(cardId)).isEmpty();
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("cardsNotNeedingThemes")
+    @DisplayName("사용자가 유형을 고른 카드·기술 카드·이미 확정한 카드는 AI 에 유형을 묻지 않는다")
+    void doesNotAskAiWhenThemesAreNotNeeded(String update) throws Exception {
+
+        Long cardId = manualCardWithSituationAndAction();
+        jdbc.update(update, cardId);
+
+        confirm(MY_CARD).andExpect(status().isOk());
+
+        assertThat(AI.requests()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("상황·행동이 비어 확정할 수 없는 카드는 AI 에 유형을 묻지 않고 422 NOT_CONFIRMABLE 이다")
+    void unconfirmableCardDoesNotAskAi() throws Exception {
+
+        fixtures.insertCard(MY_CARD, myUserId);
+
+        confirm(MY_CARD)
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.error.code").value("NOT_CONFIRMABLE"));
+
+        assertThat(AI.requests()).isEmpty();
+
+    }
+
+    static Stream<Arguments> unusableThemeReplies() {
+
+        Function<JsonNode, FakeInterviewAi.Reply> failure = request -> FakeInterviewAi.failure(503, "LLM_UNAVAILABLE", true);
+        Function<JsonNode, FakeInterviewAi.Reply> otherCard = request -> FakeInterviewAi.success(
+                JsonMapper.builder().build().createObjectNode().put("card_id", 999_999).set("themes",
+                        JsonMapper.builder().build().createArrayNode().add("GROWTH")));
+
+        return Stream.of(
+                Arguments.of(Named.of("AI 오류", failure)),
+                Arguments.of(Named.of("다른 카드 id", otherCard)));
+
+    }
+
+    static Stream<Arguments> cardsNotNeedingThemes() {
+
+        return Stream.of(
+                Arguments.of(Named.of("사용자가 고른 빈 유형", "UPDATE card SET themes_by_user = true WHERE id = ?")),
+                Arguments.of(Named.of("기술 카드", "UPDATE card SET card_type = 'TECH' WHERE id = ?")),
+                Arguments.of(Named.of("이미 확정한 카드",
+                        "UPDATE card SET status = 'CONFIRMED', confirmed_at = now() WHERE id = ?")));
+
+    }
+
+    private static FakeInterviewAi.Reply themesReply(JsonNode request, String... themes) {
+
+        ObjectNode data = JsonMapper.builder().build().createObjectNode().put("card_id", request.path("card_id").longValue());
+        for (String theme : themes) {
+            data.withArray("themes").add(theme);
+        }
+
+        return FakeInterviewAi.success(data);
+
+    }
+
+    private String themesOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT array_to_string(themes, ',') FROM card WHERE id = ?", String.class, cardId);
 
     }
 

@@ -22,6 +22,7 @@ from services.github_collector import GithubApiError
 from services.grouping_llm import GroupingLlm
 from services.llm_settings import EnvironmentLLMClient
 from services.star_generator import StarGenerator
+from services.star_review import reviewer_from_env
 
 
 #: diff를 다시 읽는 커밋 수 상한. ``/internal/collect/candidate-details``와 같다.
@@ -44,7 +45,7 @@ class AnalysisPipeline:
         self.commit_grouper = commit_grouper or CommitGrouper()
         self.grouping_llm = grouping_llm or GroupingLlm()
         self.diff_analyzer = diff_analyzer or DiffAnalyzer(EnvironmentLLMClient("DIFF"))
-        self.star_generator = star_generator or StarGenerator(EnvironmentLLMClient("STAR"))
+        self.star_generator = star_generator or StarGenerator(EnvironmentLLMClient("STAR"), reviewer=reviewer_from_env())
 
     async def group_experiences(
         self, request: ExperienceGroupingRequest, *, deadline: float | None = None

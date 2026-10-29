@@ -207,7 +207,9 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
   "evidence": [{ "field": "S|T|A|R", "type": "COMMIT|USER_STATED|USER_SELECTED", "authoredBy": "AI|USER", "sha": "7자리" | null, "url": "링크" | null, "snippet": "글" | null, "committedAt": "ISO" | null, "changedFiles": n | null, "summary": "글" | null, "turnNo": n | null }],
   "lowConfidenceFields": [{ "field", "why" }], "droppedFields": [{ "field", "reason": "NO_EVIDENCE|OVERCLAIM|UNSOURCED_NUMBER|TIMEOUT" }],
   "draftSteps": [{ "round", "actor", "kind", "field", "code", "value", "material", "reason" }],  // 아래 'AI 가 한 일', 없으면 []
-  "maskRules": [{ "from", "to" }], "generation": { "jobId", "partial" } | null, "interviewTurns", "confirmedAt", "createdAt" }
+  "maskRules": [{ "from", "to" }], "generation": { "jobId", "partial" } | null, "interviewTurns",
+  "interviewEndReason": "글" | null,  // 아래 되묻기 'AI 판단 이유'
+  "confirmedAt", "createdAt" }
 ```
 `task: null`은 비운 칸입니다. 현재 실서버 CardResponse는 candidate/generation을 null, droppedFields를 빈 배열, interviewTurns를 0으로 반환합니다. Mock은 데모의 실제 후보·생성 Job·되묻기 횟수·빈 칸 이유를 추가로 보존합니다. `generation != null`이면 프론트는 D1(생성 중)을 그리고 Job을 폴링합니다.
 
@@ -266,7 +268,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 `InterviewTurn`
 `{ turnNo, field, askedBy:'USER_REQUEST'|'FOLLOW_UP', sourceType:'PR'|'COMMIT_CLUSTER'|'DIRECT_CARD',
-   questionType:'EVIDENCE_GAP'|'FOLLOWUP'|'RECALL_AID', found[], missing[], question, options[],
+   questionType:'EVIDENCE_GAP'|'FOLLOWUP'|'RECALL_AID', found[], missing[], question, reason|null, options[],
    answerMode:'TEXT'|'MEASURE', outcome:'ANSWERED'|'MEASURED'|'NOT_MEASURED'|'SKIPPED'|null,
    answer:{text, source}|null, remaining, maxTurns }`
 
@@ -280,6 +282,11 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - **닫힌 칸:** 지난 질문 목록(`GET /cards/{id}/interview`)에서 같은 `field` 가 2번 있거나 `outcome` 이 `NOT_MEASURED`·`SKIPPED` 인 칸이다. 그 칸의 [이 칸 질문 받기]를 숨길지, 흐리게 하고 이유(넘김·측정 안 함·2번 물음)를 짧게 보일지는 화면 디자인을 고려해 FE 가 정한다. 서버는 닫힌 칸 지정을 409 `INTERVIEW_FIELD_CLOSED` 로 막는다(탭 두 개·오래 열어 둔 화면).
 - **질문 상한은 서버 정책이다.** 응답의 `maxTurns` 로 내려주고(카드당 8, 네 칸을 칸마다 두 번까지), 프론트는 그 값만 쓴다.
 - 답변 출처 이름(`USER_SELECTED`·`USER_STATED`)은 화면에 노출하지 않는다 — "보기에서 고른 것", "내가 말한 것"으로 번역해 보여 준다.
+
+**AI 판단 이유 (`reason`·`interviewEndReason`, #480)** — AI 가 다음 칸을 고르거나 그만 묻기로 한 이유 한 줄(60자 이내)이다. AI 가 쓴 글을 비밀값만 가려 그대로 보내므로, 카드 문장과 섞지 말고 'AI 판단' 으로 구분해 보여 준다(#430).
+- 질문의 `reason`: 그 칸을 묻는 이유. 앞 답이 모자라 같은 칸을 다시 물으면 무엇이 모자랐는지 적는다. 사용자가 `field` 로 칸을 골랐거나 AI 가 실패해 틀 질문을 썼으면 `null` 이고, 지난 질문 목록에도 같은 값이 온다.
+- 카드의 `interviewEndReason`: AI 가 그만 묻기로 해 `POST /cards/{id}/interview` 가 `null` 을 돌려줬을 때의 이유다. 화면은 `null` 을 받으면 카드를 다시 읽어 보여 준다. 그 뒤 새 질문을 만들면 `null` 로 지운다. 고를 칸이 없거나 상한에 닿아 AI 를 부르지 않고 끝난 경우는 바뀌지 않는다.
+- 화면 예: 질문 위 "AI 판단: 앞 답에 결과 수치가 없어 R 을 다시 물어요", 끝날 때 "AI 판단: 네 칸 모두 근거가 있어 질문을 마칠게요".
 
 ### 기업·직무 매칭 (구현됨 · 10/24 운영 켬)
 

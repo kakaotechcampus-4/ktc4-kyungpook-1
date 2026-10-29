@@ -74,11 +74,12 @@ class InterviewAskServiceTest {
     private final List<TransactionStatus> statuses = new ArrayList<>();
 
     private InterviewQuestionRequest request;
+    private Card card;
 
     @BeforeEach
     void setUp() {
 
-        Card card = Card.startManual(USER_ID, 11L, null, "카드", null, "key-1");
+        card = Card.startManual(USER_ID, 11L, null, "카드", null, "key-1");
         ReflectionTestUtils.setField(card, "id", CARD_ID);
         when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(card);
         when(ownership.lockOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(card);
@@ -325,6 +326,20 @@ class InterviewAskServiceTest {
 
     }
 
+    @Test
+    @DisplayName("AI 가 끝을 고르는 사이 다른 창에서 새 질문이 생겼으면 끝낸 이유를 카드에 남기지 않고 null 을 돌려준다")
+    void endReasonIsNotKeptWhenQuestionOpenedMeanwhile() {
+
+        InterviewTurn open = InterviewTurn.ask(CARD_ID, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(), List.of(open));
+        when(port.nextQuestion(request)).thenReturn(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null,
+                null, null, null, null, List.of(), "네 칸 모두 근거가 있어 마칠게요"));
+
+        assertThat(service(3).ask(PUBLIC_ID, USER_ID, null)).isNull();
+        assertThat(card.getInterviewEndReason()).isNull();
+
+    }
+
     private static InterviewTurn answered(int seq, StarField slot) {
 
         InterviewTurn turn = InterviewTurn.ask(CARD_ID, (short) seq, slot, QuestionType.EVIDENCE_GAP, "질문");
@@ -338,10 +353,10 @@ class InterviewAskServiceTest {
 
         return Stream.of(
                 arguments(Named.of("COMPLETE", new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null,
-                        null, null, null, List.of()))),
+                        null, null, null, List.of(), null))),
                 arguments(Named.of("질문 칸이 차 있는 COMPLETE", new InterviewQuestionResult(
                         InterviewNextAction.COMPLETE, InterviewStarSlot.T, 1, InterviewQuestionType.RECALL_AID, "글",
-                        InterviewAnswerMode.TEXT, List.of()))),
+                        InterviewAnswerMode.TEXT, List.of(), null))),
                 arguments(Named.of("다른 칸의 질문", question(InterviewStarSlot.A))));
 
     }
@@ -349,7 +364,7 @@ class InterviewAskServiceTest {
     private static InterviewQuestionResult question(InterviewStarSlot slot) {
 
         return new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN, slot, 1, InterviewQuestionType.RECALL_AID,
-                "묻는 글", InterviewAnswerMode.TEXT, List.of());
+                "묻는 글", InterviewAnswerMode.TEXT, List.of(), null);
 
     }
 

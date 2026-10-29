@@ -143,6 +143,11 @@ gitory:
       enabled: ${JOB_WORKER_ENABLED:true}
       # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
+  cover-letter:
+    worker:
+      # 끄면 자소서의 AI 단계가 돌지 않는다. 분석 Job 과 자리를 나눠, 오래 걸리는 분석이 자소서를 막지 않는다
+      enabled: ${COVER_LETTER_WORKER_ENABLED:true}
+      concurrency: ${COVER_LETTER_WORKER_CONCURRENCY:2}
   matching:
     sync:
       # 켜면 매일 새벽 5시(서울)에 회사 채용 공고를 가져오고 서버가 뜰 때 24시간 넘게 안 돌았으면 바로 한 번 돈다
@@ -270,6 +275,10 @@ gitory:
     # 카드 만들기. CARD_AI_DRAFT_ENABLED 가 켜졌을 때만 한 요청의 카드 수만큼 센다
     card-draft:
       per-day: 100
+    # 자소서 만들기와 다시 시도. 한 편에 AI 를 여러 번 부르므로 다른 요청보다 적게 둔다
+    cover-letter:
+      per-minute: 2
+      per-day: 10
 
 logging:
   level:

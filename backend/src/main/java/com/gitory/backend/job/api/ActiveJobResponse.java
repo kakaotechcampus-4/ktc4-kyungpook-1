@@ -17,6 +17,9 @@ public record ActiveJobResponse(
         Instant startedAt,
         int pollAfterMs) {
 
+    // 목록에는 실시간 줄이 없어 Job 상세(1초)보다 드물게 읽어도 된다
+    private static final int POLL_AFTER_MS = 2000;
+
     static ActiveJobResponse from(ActiveJobRow row) {
         return new ActiveJobResponse(
                 row.jobId().toString(),
@@ -25,6 +28,6 @@ public record ActiveJobResponse(
                 row.userRepositoryId().toString(),
                 row.repoName(),
                 row.startedAt(),
-                JobResponse.POLL_AFTER_MS);
+                POLL_AFTER_MS);
     }
 }

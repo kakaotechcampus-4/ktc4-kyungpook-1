@@ -23,12 +23,12 @@ test('active analysis is visible on home and can be reopened after refresh', asy
 
 test('review and missing-field filters use the current server STAR states', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards');
-  const filter = page.getByRole('combobox', { name: '보완 상태', exact: true });
-  await filter.click(); await page.getByRole('option', { name: '확인 필요', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '로그인 세션 처리', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '결제 롤백 대응 경험', exact: true })).toHaveCount(0);
-  await filter.click(); await page.getByRole('option', { name: '빈칸 있음', exact: true }).click();
+  // 보완 상태 선택 칸 대신 "보완 필요" 탭 하나 — 빈칸 있음, 확인 필요인 작성 중 카드를 함께 보여 준다
+  await page.getByRole('button', { name: /^보완 필요/ }).click();
+  await expect(page.getByRole('heading', { name: '로그인 세션 처리', exact: true })).toBeVisible(); // 확인 필요
+  await expect(page.getByRole('heading', { name: '결제 롤백 대응 경험', exact: true })).toBeVisible(); // 빈칸 있음
   await expect(page.locator('.experience-item')).toHaveCount(2);
+  await expect(page.getByRole('heading', { name: '토큰 만료 자동 재발급', exact: true })).toHaveCount(0); // 확정 카드는 빠진다
 });
 
 test('copy preview offers plain STAR and evidence formats without modifying saved text', async ({ page }) => {

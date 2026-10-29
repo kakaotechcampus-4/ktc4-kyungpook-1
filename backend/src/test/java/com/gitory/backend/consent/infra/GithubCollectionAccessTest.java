@@ -723,6 +723,43 @@ class GithubCollectionAccessTest {
     }
 
     @Test
+    @DisplayName("내 PR 검색과 리뷰 검색은 서로, 그리고 저장소 커밋 수 세기와도 동시에 돌고, 검색한 PR 수는 마지막에 채운다")
+    void searchesRunAlongsideCommitCounting() {
+
+        connectionExpiringAt(null);
+        when(counter.viewerId(TOKEN)).thenReturn(VIEWER_ID);
+        CountDownLatch reviewedStarted = new CountDownLatch(1);
+        CountDownLatch commitsStarted = new CountDownLatch(1);
+        when(counter.countPullRequests(TOKEN, "is:pr author:grow22")).thenAnswer(invocation -> {
+            awaitTogether(reviewedStarted);
+            awaitTogether(commitsStarted);
+            return Map.of("kakao/gitory", 23);
+        });
+        when(counter.countPullRequests(TOKEN, "is:pr reviewed-by:grow22 -author:grow22")).thenAnswer(invocation -> {
+            reviewedStarted.countDown();
+            awaitTogether(commitsStarted);
+            return Map.of("kakao/gitory", 11);
+        });
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            commitsStarted.countDown();
+            return Map.of(100L, new GithubRepositoryTotals(188, 43, 58, 0));
+        });
+
+        List<GithubRepositoryCount> counts = access.countActivity(USER_ID, List.of(new GithubCountTarget(100L, "kakao", "gitory")));
+
+        assertThat(counts).containsExactly(new GithubRepositoryCount(100L, 188, 43, 58, 23, 11));
+
+    }
+
+    private static void awaitTogether(CountDownLatch started) throws InterruptedException {
+
+        if (!started.await(2, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("함께 돌아야 할 요청이 시작되지 않았다");
+        }
+
+    }
+
+    @Test
     @DisplayName("검색 결과를 다 받지 못하면 어느 저장소의 개수도 돌려주지 않고 예외를 그대로 던진다")
     void passesThroughIncompleteSearch() {
 

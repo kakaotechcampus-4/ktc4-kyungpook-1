@@ -11,24 +11,20 @@ for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']
     await expect(cards).toHaveCount(5);
     // Untagged cards remain visible, without an invented tag or empty pill.
     await expect(cards.filter({ hasText: '팀원과 토큰 저장 위치로 갈린 경험' }).locator('.card-tags')).toHaveCount(0);
-    await page.getByRole('combobox', { name: '분야', exact: true }).click();
-    await page.getByRole('option', { name: 'Backend', exact: true }).click();
-    await expect(cards).toHaveCount(1);
-    await page.getByRole('combobox', { name: '기술', exact: true }).click();
-    await page.getByRole('option', { name: 'React', exact: true }).click();
-    await expect(page.getByText('조건에 맞는 카드가 없어요')).toBeVisible();
-    await page.getByRole('combobox', { name: '기술', exact: true }).click();
-    await page.getByRole('option', { name: 'Java', exact: true }).click();
-    await expect(cards).toHaveCount(1);
-    await expect(cards.locator('.card-tags')).toContainText('Backend');
-    await expect(cards.locator('.card-tags')).toContainText('Java');
-    const taggedCard = cards.first();
+    // 분야·기술 선택 칸 대신 "기술별"로 묶어 본다(팀 피드백 10/26). 태그 없는 카드는 지어내지 않고 "기술 정보 없음" 묶음에
+    await page.getByRole('radio', { name: '기술별', exact: true }).click();
+    const java = page.getByRole('region', { name: 'Java', exact: true });
+    await expect(java.locator('.experience-item')).toHaveCount(1);
+    await expect(page.getByRole('region', { name: '기술 정보 없음', exact: true }).locator('.experience-item')).toHaveCount(4);
+    await expect(java.locator('.card-tags')).toContainText('Backend');
+    await expect(java.locator('.card-tags')).toContainText('Java');
+    const taggedCard = java.locator('.experience-item').first();
     const tagBox = await taggedCard.locator('.card-tags').boundingBox();
     const titleBox = await taggedCard.locator('.gcard__title').boundingBox();
     expect(tagBox!.y + tagBox!.height).toBeLessThanOrEqual(titleBox!.y);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: `docs/screenshots/2026-10-21-tags/list-${width}-${theme}.png`, fullPage: true });
-    await cards.click();
+    await taggedCard.click();
     await expect(page.locator('.card-page-header .card-tags')).toHaveText(['BackendJava']);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.screenshot({ path: `docs/screenshots/2026-10-21-tags/detail-${width}-${theme}.png`, fullPage: true });

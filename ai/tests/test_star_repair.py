@@ -7,6 +7,8 @@ import json
 import time
 from typing import Any
 
+import pytest
+
 from schemas.analysis import StarAnalysisRequest
 from services.analysis_pipeline import AnalysisPipeline
 from services.llm_structured_client import LLMStructuredCallError, StructuredCallResult
@@ -154,17 +156,17 @@ def test_code_problems_are_rewritten_but_unknown_sha_alone_is_not() -> None:
     assert len(sha_writer.calls) == 1
 
 
-def test_slot_still_reversed_after_two_rewrites_keeps_text_and_needs_review() -> None:
+def test_slot_still_reversed_after_five_rewrites_keeps_text_and_needs_review() -> None:
     writer = _FakeClient(
         _draft(S=_field(REVERSED_S)),
-        _draft(S=_field("한 번에 읽던 목록이 느렸다.")),
+        *[_draft(S=_field(f"한 번에 읽던 목록이 {n}번째로 느렸다.")) for n in range(1, 5)],
         _draft(S=_field("목록을 한 번에 읽어 느렸다.")),
     )
-    reviewer = _FakeClient(_flags(("S", QUOTE)), _flags(("S", QUOTE)), _flags(("S", QUOTE)))
+    reviewer = _FakeClient(*[_flags(("S", QUOTE)) for _ in range(6)])
 
     result = _run(writer, reviewer)
 
-    assert (len(writer.calls), len(reviewer.calls)) == (3, 3)
+    assert (len(writer.calls), len(reviewer.calls)) == (6, 6)
     assert result.star["S"].text == "목록을 한 번에 읽어 느렸다."
     assert result.star["S"].status == "NEEDS_REVIEW"
     assert result.star["S"].confidence == "LOW"
@@ -188,6 +190,7 @@ def test_only_received_rewrites_are_counted_as_repair_rounds() -> None:
             _FakeClient(_draft(S=_field(REVERSED_S)), _draft(S=_field("한 번에 읽던 목록이 느렸다.")),
                         _draft(S=_field("목록을 한 번에 읽어 느렸다."))),
             _FakeClient(_flags(("S", QUOTE)), _flags(("S", QUOTE)), _flags(("S", QUOTE))),
+            limits=StarGenerationLimits(max_repair_rounds=2),
         )
     with metering() as rewrite_failed:
         _run(_FakeClient(_draft(S=_field(REVERSED_S)), LLMStructuredCallError("다시 쓰기 실패")),
@@ -206,12 +209,87 @@ def test_repair_stops_when_the_deadline_is_near() -> None:
     assert (result.star["S"].text, result.star["S"].status) == (REVERSED_S, "FILLED")
 
 
-def test_repair_runs_only_when_switched_on(monkeypatch) -> None:
-    monkeypatch.delenv("GITORY_STAR_REPAIR_ENABLED", raising=False)
-    assert reviewer_from_env() is None
-    assert AnalysisPipeline().star_generator._reviewer is None
+def test_code_problems_are_rewritten_without_review() -> None:
+    writer = _FakeClient(
+        _draft(R=_field("조회 시간을 50% 줄였다."), A=_field(ACTION)),
+        _draft(R=_field("목록 조회를 한 번으로 줄였다."), A=_field("다시 쓴 A 문장")),
+    )
 
-    monkeypatch.setenv("GITORY_STAR_REPAIR_ENABLED", "true")
+    result = asyncio.run(StarGenerator(writer, repair=True).generate(_request()))
+
+    assert [problem["code"] for problem in writer.calls[1]["payload"]["problems"]] == ["UNSOURCED_NUMBER"]
+    assert (result.star["R"].text, result.star["R"].status) == ("목록 조회를 한 번으로 줄였다.", "FILLED")
+    assert result.star["A"].text == ACTION
+
+
+@pytest.mark.parametrize("worse", [_field("목록 조회를 한 번으로 줄였다.", []), StarField(
+    status="EMPTY", text=None, evidence_shas=[], insufficient_reason="근거 없음")], ids=["근거 빠짐", "비움"])
+def test_worse_rewrite_is_reverted_and_written_again(worse: StarField) -> None:
+    writer = _FakeClient(
+        _draft(R=_field("조회 시간을 50% 줄였다.")),
+        _draft(R=worse),
+        _draft(R=_field("목록 조회를 한 번으로 줄였다.")),
+    )
+
+    result = asyncio.run(StarGenerator(writer, repair=True).generate(_request()))
+
+    assert writer.calls[2]["payload"]["previous_draft"]["R"]["text"] == "조회 시간을 50% 줄였다."
+    assert (result.star["R"].text, result.star["R"].status) == ("목록 조회를 한 번으로 줄였다.", "FILLED")
+
+
+def test_rewrite_left_with_only_the_earlier_problem_is_kept() -> None:
+    writer = _FakeClient(
+        _draft(R=_field("조회 시간을 50% 줄이고 호출을 3배 덜 했다.")),
+        _draft(R=_field("호출을 3배 덜 했다.")),
+        _draft(R=_field("목록 조회를 한 번으로 줄였다.")),
+    )
+
+    asyncio.run(StarGenerator(writer, repair=True).generate(_request()))
+
+    assert writer.calls[2]["payload"]["previous_draft"]["R"]["text"] == "호출을 3배 덜 했다."
+
+
+def test_slot_still_worse_after_the_last_rewrite_keeps_the_earlier_text() -> None:
+    writer = _FakeClient(_draft(R=_field("조회 시간을 50% 줄였다.")), _draft(R=_field("목록 조회를 줄였다.", [])))
+
+    result = asyncio.run(
+        StarGenerator(writer, StarGenerationLimits(max_repair_rounds=1), repair=True).generate(_request())
+    )
+
+    assert (result.star["R"].text, result.star["R"].status) == ("조회 시간을 50% 줄였다.", "NEEDS_REVIEW")
+
+
+def test_slot_without_evidence_may_be_emptied_by_the_rewrite() -> None:
+    writer = _FakeClient(
+        _draft(R=_field("목록 조회를 한 번으로 줄였다.", [])),
+        _draft(R=StarField(status="EMPTY", text=None, evidence_shas=[], insufficient_reason="근거 없음")),
+    )
+
+    result = asyncio.run(StarGenerator(writer, repair=True).generate(_request()))
+
+    assert len(writer.calls) == 2
+    assert result.star["R"].status == "EMPTY"
+
+
+def test_first_draft_is_kept_when_repair_is_off() -> None:
+    writer = _FakeClient(_draft(R=_field("조회 시간을 50% 줄였다.")))
+
+    result = asyncio.run(StarGenerator(writer).generate(_request()))
+
+    assert len(writer.calls) == 1
+    assert result.star["R"].text == "조회 시간을 50% 줄였다."
+
+
+def test_repair_is_on_and_review_is_off_unless_switched(monkeypatch) -> None:
+    monkeypatch.delenv("GITORY_STAR_REPAIR_ENABLED", raising=False)
+    monkeypatch.delenv("GITORY_STAR_REVIEW_ENABLED", raising=False)
+    generator = AnalysisPipeline().star_generator
+    assert (generator._repair_enabled, generator._reviewer) == (True, None)
+
+    monkeypatch.setenv("GITORY_STAR_REPAIR_ENABLED", "false")
+    assert AnalysisPipeline().star_generator._repair_enabled is False
+
+    monkeypatch.setenv("GITORY_STAR_REVIEW_ENABLED", "true")
     assert isinstance(reviewer_from_env(), StarReviewer)
 
 

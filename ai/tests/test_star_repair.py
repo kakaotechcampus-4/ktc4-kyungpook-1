@@ -306,7 +306,7 @@ def test_code_name_is_rewritten_into_plain_words() -> None:
         _draft(A=_field("마이페이지 API 응답을 한 번에 읽게 바꿨다.")),
     )
 
-    result = _run(writer, _FakeClient(NO_FLAGS, NO_FLAGS), _request_changing("api/MyPageResponse.java"))
+    result = asyncio.run(StarGenerator(writer, repair=True).generate(_request_changing("api/MyPageResponse.java")))
 
     assert [(p["slot"], p["code"], p["value"]) for p in writer.calls[1]["payload"]["problems"]] == [
         ("A", "CODE_NAME", "MyPageResponse"),
@@ -315,12 +315,13 @@ def test_code_name_is_rewritten_into_plain_words() -> None:
     assert result.star["S"].text == FIXED_S
 
 
-def test_code_name_left_after_two_rewrites_keeps_text_and_needs_review() -> None:
-    """두 번 다시 써도 프로젝트 안 이름이 남으면 문장은 남기고 어느 이름인지 적어 확인 필요로 내린다."""
+def test_code_name_left_after_the_last_rewrite_keeps_text_and_needs_review() -> None:
+    """끝까지 다시 써도 프로젝트 안 이름이 남으면 문장은 남기고 어느 이름인지 적어 확인 필요로 내린다."""
     stuck = _draft(A=_field("MyPageResponse 를 한 번에 읽게 바꿨다."))
-    writer = _FakeClient(stuck, stuck, stuck)
+    writer = _FakeClient(*[stuck] * 6)
 
-    result = _run(writer, _FakeClient(NO_FLAGS, NO_FLAGS, NO_FLAGS), _request_changing("api/MyPageResponse.java"))
+    result = asyncio.run(StarGenerator(writer, repair=True).generate(_request_changing("api/MyPageResponse.java")))
 
+    assert len(writer.calls) == 6
     assert (result.star["A"].text, result.star["A"].status) == ("MyPageResponse 를 한 번에 읽게 바꿨다.", "NEEDS_REVIEW")
     assert "MyPageResponse" in result.star["A"].review_reason

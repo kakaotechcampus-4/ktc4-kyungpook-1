@@ -7,9 +7,13 @@ import com.gitory.backend.agent.port.StarDraftPort;
 import com.gitory.backend.agent.port.StarDraftRequest;
 import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidenceRef;
+import com.gitory.backend.agent.port.StarMaterialKind;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
+import com.gitory.backend.agent.port.StarStep;
+import com.gitory.backend.agent.port.StarStepActor;
+import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
@@ -22,6 +26,7 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -33,6 +38,8 @@ import java.util.Set;
 public class AiStarDraftAdapter implements StarDraftPort {
 
     private static final String PATH = "/internal/analysis/star";
+    // 두 번 고쳐 써도 네 칸의 단계가 40개 안팎이라, 넘는 것은 AI 가 잘못 보낸 것으로 보고 자른다
+    private static final int MAX_STEPS = 60;
 
     private final AiHttpClient ai;
     private final AiClientProperties properties;
@@ -79,7 +86,45 @@ public class AiStarDraftAdapter implements StarDraftPort {
         }
         return new StarDraft(string(data, "title"), Map.copyOf(slots), List.copyOf(missingFields),
                 optionalString(data, "shared_with"), strings(data, "removed_claims"), optionalStrings(data, "areas"),
-                optionalStrings(data, "techs"));
+                optionalStrings(data, "techs"), steps(data));
+
+    }
+
+    // 단계 기록은 카드를 만드는 데 꼭 필요한 값이 아니라 모양이 틀린 단계만 버리고 카드는 저장하며,
+    // 기록을 보내기 전의 AI 와도 같이 돌도록 칸이 없으면 빈 목록이다
+    private static List<StarStep> steps(JsonNode data) {
+
+        JsonNode value = data.path("steps");
+        if (!value.isArray()) {
+            return List.of();
+        }
+        List<StarStep> steps = new ArrayList<>();
+        for (JsonNode node : value) {
+            if (steps.size() == MAX_STEPS) {
+                break;
+            }
+            step(node).ifPresent(steps::add);
+        }
+        return List.copyOf(steps);
+
+    }
+
+    private static Optional<StarStep> step(JsonNode node) {
+
+        try {
+            JsonNode round = node.path("round");
+            if (!round.isIntegralNumber() || round.asInt() < 0) {
+                return Optional.empty();
+            }
+            String slot = optionalString(node, "slot");
+            String material = optionalString(node, "material");
+            return Optional.of(new StarStep(round.asInt(), StarStepActor.valueOf(string(node, "actor")),
+                    StarStepKind.valueOf(string(node, "kind")), slot == null ? null : StarSlot.valueOf(slot),
+                    optionalString(node, "code"), optionalString(node, "value"),
+                    material == null ? null : StarMaterialKind.valueOf(material), optionalString(node, "reason")));
+        } catch (RuntimeException malformed) {
+            return Optional.empty();
+        }
 
     }
 

@@ -1006,6 +1006,13 @@
             "enum" : [ "GITHUB_UNAUTHORIZED", "AI_UNAVAILABLE", "INTERNAL_ERROR" ],
             "type" : [ "string", "null" ]
           },
+          "draftSteps" : {
+            "description" : "AI 초안이 거친 단계를 순서대로 담고, AI 초안이 없거나 기록 전에 만든 카드는 빈 배열",
+            "items" : {
+              "$ref" : "#/components/schemas/DraftStepResponse"
+            },
+            "type" : "array"
+          },
           "droppedFields" : {
             "items" : {
               "$ref" : "#/components/schemas/DroppedFieldResponse"
@@ -1315,6 +1322,49 @@
           }
         },
         "required" : [ "action", "result", "situation", "task" ],
+        "type" : "object"
+      },
+      "DraftStepResponse" : {
+        "description" : "AI 초안이 거친 단계 하나로, 화면이 값으로 문장을 만든다",
+        "properties" : {
+          "actor" : {
+            "description" : "MODEL 은 AI 가, CODE 는 코드가 한 단계",
+            "enum" : [ "MODEL", "CODE" ],
+            "type" : "string"
+          },
+          "code" : {
+            "description" : "FLAG 의 이유 코드(NO_EVIDENCE·UNSOURCED_NUMBER·REVERSED_MEANING·EMPTY 등)이고, 그 밖에는 null",
+            "type" : [ "string", "null" ]
+          },
+          "field" : {
+            "description" : "단계가 다룬 칸이고, 카드 전체 단계(DRAFT)는 null",
+            "enum" : [ "S", "T", "A", "R" ],
+            "type" : [ "string", "null" ]
+          },
+          "kind" : {
+            "description" : "DRAFT 첫 초안·FLAG 문제 발견·OPEN 자료 열기로 고름·RETRY 자료 없이 고쳐 쓰기로 고름·KEEP 그대로 두기로 고름·REWRITE 칸을 다시 씀·PASS 다시 검사 통과",
+            "enum" : [ "DRAFT", "FLAG", "OPEN", "RETRY", "KEEP", "REWRITE", "PASS" ],
+            "type" : "string"
+          },
+          "material" : {
+            "description" : "OPEN 으로 연 자료의 종류이고, 그 밖에는 null",
+            "enum" : [ "ISSUE", "REVIEW", "OWNER_REPLY" ],
+            "type" : [ "string", "null" ]
+          },
+          "reason" : {
+            "description" : "AI 가 고른 행동(OPEN·RETRY·KEEP)의 이유 한 줄(60자 이내)이고, 코드가 정한 행동이면 null",
+            "type" : [ "string", "null" ]
+          },
+          "round" : {
+            "description" : "0 은 첫 초안과 첫 검사, 1·2 는 고쳐 쓴 바퀴",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "value" : {
+            "description" : "걸린 수치나 연 자료의 제목이고, 없으면 null",
+            "type" : [ "string", "null" ]
+          }
+        },
         "type" : "object"
       },
       "DroppedFieldResponse" : {

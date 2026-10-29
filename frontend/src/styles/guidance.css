@@ -189,3 +189,19 @@
 .error-screen__detail { margin-top: 8px; color: var(--text-tertiary); font-size: 12px; }
 .error-screen__detail summary { cursor: pointer; min-height: var(--control-touch-size); display: list-item; padding-block: 12px; }
 .error-screen__detail pre { font-size: 12px; background: var(--bg-subtle); padding: 12px; border-radius: 10px; overflow: auto; white-space: pre-wrap; }
+
+/* ───────── 분석 화면 AI 가 읽고 판단한 줄(#519) ─────────
+   읽기 줄은 지금 읽는 단계에서 최근 3줄만 흐르고 맨 아래가 가장 최근. 판단 줄은 왼쪽 포인트 선으로 남는다. */
+.stage__feed { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.feed-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 12px; line-height: 18px; color: var(--text-tertiary); animation: feed-in .18s ease-out; }
+.feed-line__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.feed-line__meta { flex: 0 0 auto; color: var(--text-tertiary); }
+.feed-line__tag { flex: 0 0 auto; padding: 0 5px; border-radius: 4px; background: var(--bg-inset); color: var(--text-secondary); font-size: 11px; line-height: 16px; }
+.feed-line--read:last-of-type { color: var(--text-secondary); }
+.feed-line--skip .feed-line__text { text-decoration: line-through; }
+.feed-line--judge { display: block; padding: 2px 0 2px 10px; border-left: 2px solid var(--accent-point); color: var(--text-strong); }
+.feed-line--judge .feed-line__text { display: block; white-space: normal; font-size: 13px; font-weight: 500; }
+.feed-line--judge .feed-line__meta { display: block; color: var(--text-secondary); }
+@keyframes feed-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .feed-line { animation: none; } }
+@media (max-width: 640px) { .feed-line--read .feed-line__meta { display: none; } }

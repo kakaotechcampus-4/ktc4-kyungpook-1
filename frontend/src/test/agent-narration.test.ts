@@ -14,7 +14,7 @@ describe('AI 가 하는 일 문장', () => {
     const j = job('RUNNING', [['COMMITS', 'DONE', 96], ['PR_REVIEW', 'RUNNING', 5], ['COMPRESS', 'QUEUED', 0], ['REASON', 'QUEUED', 0]]);
     expect(agentLine(j.steps[0])).toBe('내 커밋을 모두 읽었어요');
     expect(agentLine(j.steps[1])).toBe('PR과 리뷰에서 무엇이 논의됐는지 보고 있어요');
-    expect(agentLine(j.steps[2])).toBe('그다음 비슷한 작업끼리 묶어요');
+    expect(agentLine(j.steps[2])).toBe('비슷한 작업끼리 묶을 차례예요');
     expect(agentHeadline(j, 'web-client')).toBe('web-client에서 자소서에 쓸 만한 경험을 찾고 있어요');
   });
 

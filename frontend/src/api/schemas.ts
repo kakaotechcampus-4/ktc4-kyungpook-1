@@ -149,6 +149,26 @@ export const JobStep = z.object({
 });
 export type JobStep = z.infer<typeof JobStep>;
 
+/**
+ * AI 가 방금 읽거나 판단한 줄(#493, #496). 오래된 줄부터 오고 seq 는 Job 안에서 1부터 늘어난다.
+ * 종류에 없는 칸은 null. 새 종류가 생겨도 화면이 깨지지 않게 kind·step 은 글자로 받고 모르는 줄은 그리지 않는다.
+ */
+export const JobActivity = z.object({
+  seq: z.number(),
+  step: z.string(),
+  kind: z.string(),
+  number: z.number().nullish(),      // PULL_REQUEST
+  title: z.string().nullish(),       // PULL_REQUEST, COMMIT(메시지 첫 줄), DESCRIBED(경험 제목)
+  reviews: z.number().nullish(),     // PULL_REQUEST
+  sha: z.string().nullish(),         // COMMIT(7자)
+  files: z.number().nullish(),       // COMMIT
+  excluded: z.string().nullish(),    // COMMIT — BOT|MERGE_COMMIT|LOCKFILE_ONLY|NOT_OWN, 빼지 않았으면 null
+  units: z.number().nullish(),       // GROUPED
+  experiences: z.number().nullish(), // GROUPED
+  reason: z.string().nullish(),      // DESCRIBED
+});
+export type JobActivity = z.infer<typeof JobActivity>;
+
 /** verdict EMPTY 는 실패가 아니다. 판정이고, 판정 근거를 reasons 로 준다. */
 export const JobResult = z.object({
   repoId: z.string().nullish(),
@@ -163,6 +183,7 @@ export const Job = z.object({
   state: JobState,
   partial: z.boolean(),          // 부분 완료는 별도 상태가 아니라 SUCCEEDED + partial
   steps: z.array(JobStep),
+  activity: z.array(JobActivity).nullish(), // 이전 서버, 카드 초안 Job, 끝나고 10분 뒤에는 없거나 []
   errorCode: JobErrorCode.nullable(),
   retryable: z.boolean().nullable(),
   retryAfterSec: z.number().nullable(), // GITHUB_RATE_LIMITED 에서만 의미가 있다

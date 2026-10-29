@@ -55,10 +55,15 @@ def check_draft(
     evidence_by_sha: dict[str, DiffEvidence],
     answers: list[str],
     pull_request_body: Optional[str],
+    extra_sources: Optional[dict[StarSlot, list[str]]] = None,
 ) -> dict[StarSlot, SlotCheck]:
-    """모델이 채운 칸마다 근거를 맞추고 문제를 찾는다. 모델이 스스로 비운 칸은 넘기지 않는다."""
+    """모델이 채운 칸마다 근거를 맞추고 문제를 찾는다. 모델이 스스로 비운 칸은 넘기지 않는다.
+
+    extra_sources 는 칸마다 수치 근거로 더 볼 글로, 그 칸에 쓸 수 있는 자료 중 이번에 연 것만 넣는다.
+    """
+    extra = extra_sources or {}
     return {
-        slot: _check_slot(slot, draft, evidence_by_sha, answers, pull_request_body)
+        slot: _check_slot(slot, draft, evidence_by_sha, answers, pull_request_body, extra.get(slot, []))
         for slot, draft in slots.items()
     }
 
@@ -69,6 +74,7 @@ def _check_slot(
     evidence_by_sha: dict[str, DiffEvidence],
     answers: list[str],
     pull_request_body: Optional[str],
+    extra_sources: list[str],
 ) -> SlotCheck:
     cited, unknown = _cite(draft.evidence_shas, evidence_by_sha)
     problems = [
@@ -78,7 +84,7 @@ def _check_slot(
         # 근거 0개 문장은 화면에 뜨면 안 되므로 빠질 문장이라, 수치는 더 보지 않는다
         problems.append(DraftProblem(slot, "NO_EVIDENCE", draft.text, None, NO_EVIDENCE_REASON))
         return SlotCheck(cited, problems)
-    unsupported = unsupported_metrics(draft.text, _metric_source(cited, answers, pull_request_body))
+    unsupported = unsupported_metrics(draft.text, _metric_source(cited, answers, pull_request_body, extra_sources))
     if unsupported:
         metrics = ", ".join(unsupported)
         problems.append(DraftProblem(
@@ -103,8 +109,10 @@ def _cite(shas: list[str], evidence_by_sha: dict[str, DiffEvidence]) -> tuple[li
     return cited, unknown
 
 
-def _metric_source(cited: list[DiffEvidence], answers: list[str], body: Optional[str]) -> str:
-    """수치 근거로 볼 글. 커밋 메시지·확인 답변과 카드 주인이 쓴 PR 본문만 본다.
+def _metric_source(
+    cited: list[DiffEvidence], answers: list[str], body: Optional[str], extra_sources: list[str]
+) -> str:
+    """수치 근거로 볼 글. 커밋 메시지·확인 답변과 카드 주인이 쓴 PR 본문, 그 칸에 쓸 수 있는 연 자료만 본다.
 
     요약·기술 포인트는 모델이 쓴 글이라 지어낸 수치가 스스로를 받치게 되고,
     churn(+30/-2)은 변경 줄 수라 결과 수치의 근거로 치지 않는다.
@@ -113,4 +121,5 @@ def _metric_source(cited: list[DiffEvidence], answers: list[str], body: Optional
     parts.extend(answers)
     if body:
         parts.append(body)
+    parts.extend(extra_sources)
     return "\n".join(parts)

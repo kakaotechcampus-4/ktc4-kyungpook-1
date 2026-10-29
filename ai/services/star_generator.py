@@ -78,6 +78,7 @@ PR 본문 활용:
 - A는 푼 방법을 단계로 쓴다(무엇을 모으고, 어떻게 거르고, 무엇만 남겼는지). 쓴 기술 이름(라이브러리·DB 기능·프로토콜 등)을 넣는다.
 - R은 A를 되풀이하지 않고, 무엇이 달라졌는지를 쓴다.
 - 쉬운 말로 쓰되 핵심 기술 용어 하나는 남긴다(예: IN 조회).
+- 이 프로젝트 안에서만 쓰는 이름(클래스·메서드·DTO·파일·필드 이름과 오류 코드 값, 예: MyPageResponse·GITHUB_UNAUTHORIZED·data.sql)은 그대로 쓰지 않고, 그 이름을 이루는 낱말을 보통 말로 옮긴다(MyPageResponse → 마이페이지 API 응답, GITHUB_UNAUTHORIZED → GitHub 인증 실패 오류). 이름만으로 뜻이 안 나오면 그 코드가 하는 일로 풀어 쓴다. 언어·프레임워크·라이브러리·DB 기능·프로토콜·상태 코드 이름(Spring, BCrypt, ON CONFLICT, HTTP 401)은 공고와 맞춰 보는 재료라 그대로 쓴다.
 - '향상·개선·최적화'를 혼자 쓰지 않는다.
 - 숫자는 커밋 메시지·PR 본문·사용자 답변에 적힌 것만 쓴다. diff 요약(summary·technical_points)에만 있는 숫자는 쓰지 않는다.
 - '○○ 파일을 수정했다' 같은 파일 나열 문장은 쓰지 않는다.
@@ -102,6 +103,7 @@ REWRITE_SYSTEM_PROMPT = SYSTEM_PROMPT + """
 - REVERSED_MEANING: value는 견준 원문 문장이다. 그 원문의 상태·방향·주어대로 바로잡는다.
 - UNSOURCED_NUMBER: value의 수치를 빼거나 근거 글에 적힌 수치로 바꾼다.
 - NO_EVIDENCE: 문장을 뒷받침하는 입력 커밋 sha를 evidence_shas에 단다. 뒷받침하는 커밋이 없으면 EMPTY로 둔다.
+- CODE_NAME: value의 프로젝트 안 이름을 그 이름을 이루는 낱말의 보통 말로 바꾼다. 이름만으로 뜻이 안 나오면 그 코드가 하는 일로 풀어 쓴다.
 - 문제를 고치려고 근거에 없는 내용을 더하지 않는다."""
 
 CHOOSE_SYSTEM_PROMPT = """당신은 개발자 경험 카드(STAR) 초안에서 검사에 걸렸거나 비어 있는 칸마다 다음 행동 하나를 고르는 작성기입니다.
@@ -139,7 +141,7 @@ _TIMEOUT_REASON = "초안 생성 시간이 초과되어 비웠습니다."
 _REVERSED_REASON = "원문과 뜻이 다를 수 있어 사용자 확인이 필요합니다."
 _REVERSED_CODE = "REVERSED_MEANING"
 #: 없는 커밋 번호는 코드가 이미 빼고 다른 근거로 문장을 남기므로 다시 쓰게 하지 않는다.
-_REPAIR_CODES = frozenset({"NO_EVIDENCE", "UNSOURCED_NUMBER"})
+_REPAIR_CODES = frozenset({"NO_EVIDENCE", "UNSOURCED_NUMBER", "CODE_NAME"})
 _EMPTY_CODE = "EMPTY"
 _EMPTY_PROBLEM_REASON = "이 칸이 비어 있습니다."
 
@@ -622,6 +624,10 @@ class StarGenerator:
             if unsourced:
                 status = "NEEDS_REVIEW"
                 review_reason = unsourced.reason
+            code_name = check.problem("CODE_NAME")
+            if code_name and not unsourced:
+                status = "NEEDS_REVIEW"
+                review_reason = code_name.reason
             if slot in still_reversed:
                 status = "NEEDS_REVIEW"
                 review_reason = _REVERSED_REASON

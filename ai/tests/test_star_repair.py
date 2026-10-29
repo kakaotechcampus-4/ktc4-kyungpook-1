@@ -291,3 +291,37 @@ def test_repair_is_on_and_review_is_off_unless_switched(monkeypatch) -> None:
 
     monkeypatch.setenv("GITORY_STAR_REVIEW_ENABLED", "true")
     assert isinstance(reviewer_from_env(), StarReviewer)
+
+
+def _request_changing(path: str) -> StarAnalysisRequest:
+    request = _request().model_dump()
+    request["evidence"][0]["changed_paths"] = [path]
+    return StarAnalysisRequest.model_validate(request)
+
+
+def test_code_name_is_rewritten_into_plain_words() -> None:
+    """근거 커밋에서 바뀐 파일의 이름이 카드 문장에 그대로 나오면 그 칸만 보통 말로 다시 쓰게 한다."""
+    writer = _FakeClient(
+        _draft(S=_field(FIXED_S), A=_field("MyPageResponse 를 한 번에 읽게 바꿨다.")),
+        _draft(A=_field("마이페이지 API 응답을 한 번에 읽게 바꿨다.")),
+    )
+
+    result = asyncio.run(StarGenerator(writer, repair=True).generate(_request_changing("api/MyPageResponse.java")))
+
+    assert [(p["slot"], p["code"], p["value"]) for p in writer.calls[1]["payload"]["problems"]] == [
+        ("A", "CODE_NAME", "MyPageResponse"),
+    ]
+    assert (result.star["A"].text, result.star["A"].status) == ("마이페이지 API 응답을 한 번에 읽게 바꿨다.", "FILLED")
+    assert result.star["S"].text == FIXED_S
+
+
+def test_code_name_left_after_the_last_rewrite_keeps_text_and_needs_review() -> None:
+    """끝까지 다시 써도 프로젝트 안 이름이 남으면 문장은 남기고 어느 이름인지 적어 확인 필요로 내린다."""
+    stuck = _draft(A=_field("MyPageResponse 를 한 번에 읽게 바꿨다."))
+    writer = _FakeClient(*[stuck] * 6)
+
+    result = asyncio.run(StarGenerator(writer, repair=True).generate(_request_changing("api/MyPageResponse.java")))
+
+    assert len(writer.calls) == 6
+    assert (result.star["A"].text, result.star["A"].status) == ("MyPageResponse 를 한 번에 읽게 바꿨다.", "NEEDS_REVIEW")
+    assert "MyPageResponse" in result.star["A"].review_reason

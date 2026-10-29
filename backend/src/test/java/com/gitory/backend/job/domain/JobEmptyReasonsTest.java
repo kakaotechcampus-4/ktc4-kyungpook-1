@@ -1,5 +1,6 @@
 package com.gitory.backend.job.domain;
 
+import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CandidateCardQueryService;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
@@ -40,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobQueryService.class, JobCancelService.class, JobViewFactory.class, CandidateEmptyReasons.class,
+@Import({ClockConfig.class, JobQueryService.class, JobCancelService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, CandidateBoardService.class,
         RepositoryOwnershipService.class, RepositoryReferenceService.class, LastAnalyzedService.class,
         CommitSummaryService.class, UsedCardAdapter.class, CandidateCardQueryService.class,

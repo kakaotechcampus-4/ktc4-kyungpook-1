@@ -17,8 +17,8 @@ class JdbcAiCallRecorder implements AiCallRecorder {
     private static final String INSERT = """
             INSERT INTO ai_call (path, job_id, card_id, cover_letter_id, http_status, error_code, model, llm_calls,
                                  tool_calls, repair_rounds, input_tokens, output_tokens, github_calls, ended_by,
-                                 ai_processing_ms, elapsed_ms)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 ai_processing_ms, elapsed_ms, model_usage)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb))
             """;
 
     private final JdbcTemplate jdbc;
@@ -34,7 +34,15 @@ class JdbcAiCallRecorder implements AiCallRecorder {
                 call.coverLetterId(), call.httpStatus(), call.errorCode(), textOf(meta, "model"), intOf(meta, "llm_calls"),
                 intOf(meta, "tool_calls_made"), intOf(meta, "repair_rounds"), intOf(meta, "input_tokens"),
                 intOf(meta, "output_tokens"), intOf(meta, "github_calls"), textOf(meta, "ended_by"),
-                intOf(meta, "processing_ms"), call.elapsedMs()));
+                intOf(meta, "processing_ms"), call.elapsedMs(), modelUsageOf(meta)));
+
+    }
+
+    /** 기록 저장이 AI 호출을 실패시키면 안 되므로 목록 안의 값은 검사하지 않고, 비지 않은 배열만 그대로 남긴다 */
+    private static String modelUsageOf(JsonNode meta) {
+
+        JsonNode usage = meta == null ? null : meta.path("model_usage");
+        return usage != null && usage.isArray() && !usage.isEmpty() ? usage.toString() : null;
 
     }
 

@@ -1,6 +1,7 @@
 package com.gitory.backend.job.domain;
 
 import com.gitory.backend.common.infra.ai.AiProgress;
+import com.gitory.backend.common.infra.ai.AiProgressItem;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,12 +25,14 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 class JobProgressRecorderTest {
 
     private final AnalysisJobRepository jobs = mock(AnalysisJobRepository.class);
     private final MovingClock clock = new MovingClock(Instant.parse("2026-10-27T00:00:00Z"));
     private final AnalysisJob job = AnalysisJob.enqueue(1L, 10L, "progress-key");
+    private final JobActivityLog activity = mock(JobActivityLog.class);
 
     private JobProgressRecorder recorder;
 
@@ -40,7 +43,7 @@ class JobProgressRecorderTest {
         given(manager.getTransaction(any())).willReturn(new SimpleTransactionStatus());
         given(jobs.findWithLockById(1L)).willReturn(Optional.of(job));
         job.start();
-        recorder = new JobProgressRecorder(1L, jobs, new TransactionTemplate(manager), clock);
+        recorder = new JobProgressRecorder(1L, jobs, new TransactionTemplate(manager), clock, activity);
 
     }
 
@@ -114,6 +117,25 @@ class JobProgressRecorderTest {
         given(jobs.findWithLockById(1L)).willThrow(new IllegalStateException("db down"));
 
         assertThatCode(() -> recorder.accept(new AiProgress("PR_REVIEW", 1, 4))).doesNotThrowAnyException();
+
+    }
+
+    @Test
+    @DisplayName("방금 읽은 줄은 진행 숫자를 1초 안에 다시 쓰지 않을 때도 모두 활동 기록에 넘기고, 모르는 단계의 줄은 넘기지 않는다")
+    void passesEveryItemToActivityLogEvenWhileThrottled() {
+
+        AiProgressItem first = new AiProgressItem("COMMIT", null, "첫 커밋", null, "aaaaaaa", 1, null, null, null, null);
+        AiProgressItem second = new AiProgressItem("COMMIT", null, "둘째 커밋", null, "bbbbbbb", 2, null, null, null, null);
+
+        recorder.accept(new AiProgress("COMMITS", 1, 4, first));
+        clock.advance(Duration.ofMillis(500));
+        recorder.accept(new AiProgress("COMMITS", 2, 4, second));
+        recorder.accept(new AiProgress("SOMETHING_NEW", 1, 2, first));
+
+        assertThat(step(JobStepKey.COMMITS).done()).isEqualTo(1);
+        verify(activity).append(1L, JobStepKey.COMMITS, first);
+        verify(activity).append(1L, JobStepKey.COMMITS, second);
+        verifyNoMoreInteractions(activity);
 
     }
 

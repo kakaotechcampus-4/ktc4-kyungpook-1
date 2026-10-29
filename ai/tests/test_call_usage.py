@@ -20,7 +20,8 @@ from schemas.interview import InterviewTurnResult
 from services.llm_executors import run_llm_call
 from services.llm_structured_client import LLMSettings, LLMStructuredCallError, StructuredLLMClient
 from services.star_generator import StarGenerationError
-from services.usage import metering
+from schemas.common import ModelUsage
+from services.usage import metering, usage_meta
 
 client = TestClient(app)
 
@@ -29,9 +30,9 @@ class _Output(BaseModel):
     value: str
 
 
-def _llm(*, fails: bool = False) -> StructuredLLMClient:
+def _llm(*, fails: bool = False, model: str = "m") -> StructuredLLMClient:
     """안쪽 OpenAI 만 가짜로 바꾼 공통 LLM 호출기로, 성공하면 입력 3·출력 2 토큰을 쓴다."""
-    llm = StructuredLLMClient(LLMSettings(base_url="http://127.0.0.1:1", api_key="test", model="m"))
+    llm = StructuredLLMClient(LLMSettings(base_url="http://127.0.0.1:1", api_key="test", model=model))
     completion = SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(parsed=_Output(value="ok")))],
         usage=SimpleNamespace(prompt_tokens=3, completion_tokens=2),
@@ -110,6 +111,7 @@ def test_adds_every_llm_call_even_when_called_at_once() -> None:
         asyncio.run(three_at_once(executor))
 
     assert (usage.model, usage.llm_calls, usage.input_tokens, usage.output_tokens) == ("m", 3, 9, 6)
+    assert usage.by_model["m"] == ModelUsage(model="m", llm_calls=3, input_tokens=9, output_tokens=6)
 
 
 def test_failed_llm_call_is_counted_without_tokens() -> None:
@@ -119,6 +121,24 @@ def test_failed_llm_call_is_counted_without_tokens() -> None:
             _llm(fails=True).call("system", {}, _Output, 100)
 
     assert (usage.llm_calls, usage.input_tokens, usage.output_tokens) == (2, 3, 2)
+    assert usage.by_model["m"] == ModelUsage(model="m", llm_calls=2, input_tokens=3, output_tokens=2)
+
+
+def test_model_usage_lists_each_model_once_in_first_called_order_and_adds_up_to_totals() -> None:
+    with metering():
+        _llm(model="writer").call("system", {}, _Output, 100)
+        _llm(model="judge").call("system", {}, _Output, 100)
+        _llm(model="writer").call("system", {}, _Output, 100)
+        meta = usage_meta(None, "COMPLETED")
+
+    assert meta.model_usage == [
+        ModelUsage(model="writer", llm_calls=2, input_tokens=6, output_tokens=4),
+        ModelUsage(model="judge", llm_calls=1, input_tokens=3, output_tokens=2),
+    ]
+    assert (meta.model, meta.llm_calls, meta.input_tokens, meta.output_tokens) == ("writer", 3, 9, 6)
+    assert sum(u.llm_calls for u in meta.model_usage) == meta.llm_calls
+    assert sum(u.input_tokens for u in meta.model_usage) == meta.input_tokens
+    assert sum(u.output_tokens for u in meta.model_usage) == meta.output_tokens
 
 
 def test_error_response_carries_llm_calls_made_before_failure(star_pipeline) -> None:
@@ -129,6 +149,7 @@ def test_error_response_carries_llm_calls_made_before_failure(star_pipeline) -> 
     assert response.status_code == 503
     meta = response.json()["meta"]
     assert (meta["model"], meta["llm_calls"], meta["input_tokens"], meta["ended_by"]) == ("m", 1, 3, "FAILED")
+    assert meta["model_usage"] == [{"model": "m", "llm_calls": 1, "input_tokens": 3, "output_tokens": 2}]
 
 
 def test_response_without_llm_reports_no_calls_and_no_model(star_pipeline) -> None:
@@ -138,6 +159,7 @@ def test_response_without_llm_reports_no_calls_and_no_model(star_pipeline) -> No
 
     assert (meta["model"], meta["llm_calls"], meta["input_tokens"], meta["output_tokens"]) == (None, 0, 0, 0)
     assert (meta["tool_calls_made"], meta["repair_rounds"], meta["github_calls"]) == (0, 0, 0)
+    assert meta["model_usage"] == []
 
 
 @pytest.mark.parametrize(("timeout_field", "ended_by"), [(True, "PARTIAL"), (False, "COMPLETED")])
@@ -172,3 +194,4 @@ def test_each_request_reports_only_its_own_llm_calls(star_pipeline) -> None:
 
     assert (first["llm_calls"], first["input_tokens"], first["output_tokens"]) == (2, 6, 4)
     assert (second["llm_calls"], second["input_tokens"], second["output_tokens"]) == (2, 6, 4)
+    assert second["model_usage"] == [{"model": "m", "llm_calls": 2, "input_tokens": 6, "output_tokens": 4}]

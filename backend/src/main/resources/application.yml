@@ -143,6 +143,11 @@ gitory:
       enabled: ${JOB_WORKER_ENABLED:true}
       # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
+  cover-letter:
+    worker:
+      # 끄면 자소서의 AI 단계가 돌지 않는다. 분석 Job 과 자리를 나눠, 오래 걸리는 분석이 자소서를 막지 않는다
+      enabled: ${COVER_LETTER_WORKER_ENABLED:true}
+      concurrency: ${COVER_LETTER_WORKER_CONCURRENCY:2}
   matching:
     sync:
       # 켜면 매일 새벽 5시(서울)에 회사 채용 공고를 가져오고 서버가 뜰 때 24시간 넘게 안 돌았으면 바로 한 번 돈다
@@ -150,59 +155,59 @@ gitory:
       enabled: ${MATCHING_SYNC_ENABLED:false}
     sources:
       # 쿠팡은 회사 채용 사이트가 공고 경로에서 채용 집계 봇을 막고 있어 그 뜻을 따라 넣지 않는다
-      - { key: daangn, name: 당근, type: GREENHOUSE, board: daangn }
-      - { key: krafton, name: 크래프톤, type: GREENHOUSE, board: krafton }
+      - { key: daangn, name: 당근, type: GREENHOUSE, board: daangn, logo: 'https://about.daangn.com/icons/icon-72x72.png?v=7ecc65aad435f5c3e7bed69e5a7a6219' }
+      - { key: krafton, name: 크래프톤, type: GREENHOUSE, board: krafton, logo: 'https://s2-recruiting.cdn.greenhouse.io/external_greenhouse_job_boards/logos/400/963/700/original/KRAFTON_1_Primary_Wordmark_Black_260112.png?1772068780' }
       - { key: furiosaai, name: 퓨리오사AI, type: GREENHOUSE, board: furiosaai }
       - { key: moloco, name: 몰로코, type: GREENHOUSE, board: moloco }
       - { key: sendbird, name: 센드버드, type: GREENHOUSE, board: sendbird }
-      - { key: lgairesearch, name: LG AI연구원, type: GREENHOUSE, board: lgairesearch }
-      - { key: seoulrobotics, name: 서울로보틱스, type: GREENHOUSE, board: seoulrobotics }
+      - { key: lgairesearch, name: LG AI연구원, type: GREENHOUSE, board: lgairesearch, logo: 'https://www.lgresearch.ai/img/common/logo_en.png' }
+      - { key: seoulrobotics, name: 서울로보틱스, type: GREENHOUSE, board: seoulrobotics, logo: 'https://s8-recruiting.cdn.greenhouse.io/external_greenhouse_job_boards/logos/400/355/700/original/SR_Logo_CMYK_Black.png?1762160770' }
       - { key: commvault, name: Commvault, type: GREENHOUSE, board: commvault }
       - { key: overdare, name: OVERDARE, type: GREENHOUSE, board: overdare }
-      - { key: bluehole, name: 블루홀스튜디오, type: GREENHOUSE, board: bluehole }
+      - { key: bluehole, name: 블루홀스튜디오, type: GREENHOUSE, board: bluehole, logo: 'https://s2-recruiting.cdn.greenhouse.io/external_greenhouse_job_boards/logos/400/963/900/original/Logo_Bluehole_blue.png?1627873354' }
       - { key: ujet, name: UJET, type: GREENHOUSE, board: ujet }
       - { key: riotgames, name: Riot Games 코리아, type: GREENHOUSE, board: riotgames }
       # 그리팅은 board 에 목록 페이지 주소를 적으며 리다이렉트를 따르지 않아 이동이 끝난 주소여야 한다
-      - { key: upstage, name: 업스테이지, type: GREETING, board: 'https://careers.upstage.ai/ko/upstage' }
-      - { key: kakaopay, name: 카카오페이, type: GREETING, board: 'https://careers.kakaopay.com/ko/main' }
-      - { key: hyundai-autoever, name: 현대오토에버, type: GREETING, board: 'https://career.hyundai-autoever.com/ko/home' }
-      - { key: stradvision, name: 스트라드비젼, type: GREETING, board: 'https://stradvision.career.greetinghr.com/ko/intro' }
-      - { key: deepx, name: 딥엑스, type: GREETING, board: 'https://deepx.career.greetinghr.com/ko/career' }
-      - { key: nextsecurities, name: 넥스트증권, type: GREETING, board: 'https://nextsecurities.career.greetinghr.com/ko/home' }
-      - { key: interxlab, name: 인터엑스, type: GREETING, board: 'https://interxlab.career.greetinghr.com/ko/interxlab' }
-      - { key: rebellions, name: 리벨리온, type: GREETING, board: 'https://rebellions.career.greetinghr.com/ko/accelerate-your-career' }
-      - { key: ex-em, name: 엑셈, type: GREETING, board: 'https://ex-em.career.greetinghr.com/ko/intro' }
-      - { key: realworld, name: 리얼월드, type: GREETING, board: 'https://realworld.career.greetinghr.com/ko/home' }
-      - { key: xcena, name: 엑시나, type: GREETING, board: 'https://xcena.career.greetinghr.com/en/intro' }
-      - { key: kurly, name: 컬리, type: GREETING, board: 'https://kurly.career.greetinghr.com/ko/home' }
-      - { key: kakaomobility, name: 카카오모빌리티, type: GREETING, board: 'https://kakaomobility.career.greetinghr.com/ko/guide' }
-      - { key: makinarocks, name: 마키나락스, type: GREETING, board: 'https://makinarocks.career.greetinghr.com/ko/home' }
-      - { key: supercent, name: 슈퍼센트, type: GREETING, board: 'https://supercent.career.greetinghr.com/ko/career' }
-      - { key: mangoboost, name: 망고부스트, type: GREETING, board: 'https://mangoboost.career.greetinghr.com/en/careers' }
-      - { key: healingpaper, name: 강남언니(힐링페이퍼), type: GREETING, board: 'https://career.gangnamunni.com/ko/home' }
-      - { key: autocrypt, name: 아우토크립트, type: GREETING, board: 'https://autocrypt.career.greetinghr.com/ko/home' }
-      - { key: wrtn, name: 뤼튼테크놀로지스, type: GREETING, board: 'https://career.wrtn.io/ko/career' }
-      - { key: pfct, name: PFCT, type: GREETING, board: 'https://pfct.career.greetinghr.com/ko/home' }
-      - { key: riibotics, name: 리보틱스, type: GREETING, board: 'https://riibotics.career.greetinghr.com/ko/intro' }
-      - { key: estfamily, name: 이스트소프트·이스트시큐리티, type: GREETING, board: 'https://estfamily.career.greetinghr.com/ko/home' }
-      - { key: gccompany, name: 여기어때컴퍼니, type: GREETING, board: 'https://gccompany.career.greetinghr.com/ko/apply' }
-      - { key: nuua, name: 누아, type: GREETING, board: 'https://nuua.career.greetinghr.com/ko/home' }
-      - { key: moreh, name: 모레, type: GREETING, board: 'https://moreh.career.greetinghr.com/ko/jobs' }
-      - { key: linqalpha, name: 링크알파, type: GREETING, board: 'https://linqalpha.career.greetinghr.com/en/intro' }
-      - { key: ezcaretech, name: 이지케어텍, type: GREETING, board: 'https://ezcaretech.career.greetinghr.com/ko/home' }
-      - { key: finda, name: 핀다, type: GREETING, board: 'https://finda.career.greetinghr.com/ko/career' }
-      - { key: sionicai, name: 사이오닉에이아이, type: GREETING, board: 'https://sionicai.career.greetinghr.com/en/career' }
-      - { key: mobilint, name: 모빌린트, type: GREETING, board: 'https://mobilinthire.career.greetinghr.com/ko/recruit' }
-      - { key: buzzvil, name: 버즈빌, type: GREETING, board: 'https://buzzvil.career.greetinghr.com/ko/home' }
-      - { key: featuring, name: 피처링, type: GREETING, board: 'https://featuring.career.greetinghr.com/ko/info' }
-      - { key: neubility, name: 뉴빌리티, type: GREETING, board: 'https://neubility.career.greetinghr.com/ko/about' }
-      - { key: ineeji, name: 이니지, type: GREETING, board: 'https://ineeji.career.greetinghr.com/ko/intro' }
-      - { key: lawcompany, name: 로앤컴퍼니, type: GREETING, board: 'https://lawcompany.career.greetinghr.com/ko/home' }
-      - { key: medistream, name: 메디스트림, type: GREETING, board: 'https://medistream.career.greetinghr.com/ko/career' }
-      - { key: masangsoft, name: 마상소프트, type: GREETING, board: 'https://masangsoft.career.greetinghr.com/ko/careers' }
-      - { key: shoplive, name: 샵라이브코리아, type: GREETING, board: 'https://shoplive.career.greetinghr.com/ko/intro' }
-      - { key: sianalytics, name: 에스아이에이, type: GREETING, board: 'https://sianalytics.career.greetinghr.com/ko/home' }
-      - { key: deepauto-ai, name: 딥오토에이아이, type: GREETING, board: 'https://deepauto-ai.career.greetinghr.com/ko/career' }
+      - { key: upstage, name: 업스테이지, type: GREETING, board: 'https://careers.upstage.ai/ko/upstage', logo: 'https://opening-attachments.greetinghr.com/2026-02-26/5b2540f1-bf17-4c76-a3bd-4548cdcc7ea5/Variant4.png' }
+      - { key: kakaopay, name: 카카오페이, type: GREETING, board: 'https://careers.kakaopay.com/ko/main', logo: 'https://opening-attachments.greetinghr.com/2024-01-29/e0bfa911-92d7-4d67-8add-ec3f680e6897/BI_recruit.png' }
+      - { key: hyundai-autoever, name: 현대오토에버, type: GREETING, board: 'https://career.hyundai-autoever.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2026-06-22/532f95ec-9b58-4a2a-9756-cb71a04ad530/.jpg' }
+      - { key: stradvision, name: 스트라드비젼, type: GREETING, board: 'https://stradvision.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2024-06-07/c4aa3fa9-2ad2-4e24-aa33-0ad32626e142/STRADVISION-logo_2024-06-04-003132_duxy.jpg' }
+      - { key: deepx, name: 딥엑스, type: GREETING, board: 'https://deepx.career.greetinghr.com/ko/career', logo: 'https://opening-attachments.greetinghr.com/2025-02-04/6ee8d430-29a9-4d44-aa63-c9a9c3bf8a03/-.png' }
+      - { key: nextsecurities, name: 넥스트증권, type: GREETING, board: 'https://nextsecurities.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2025-12-03/5a7b31d2-9f1e-4e4a-8499-2ce18f8d1754/Logo_NextS_Primary_Black.png' }
+      - { key: interxlab, name: 인터엑스, type: GREETING, board: 'https://interxlab.career.greetinghr.com/ko/interxlab', logo: 'https://profiles.greetinghr.com/group/bfef70eb-ad56-43e0-a53e-848bd5c403a3' }
+      - { key: rebellions, name: 리벨리온, type: GREETING, board: 'https://rebellions.career.greetinghr.com/ko/accelerate-your-career', logo: 'https://opening-attachments.greetinghr.com/2025-08-13/b6cc2665-29e7-418e-a640-9061cb9232b0/Rebellions_logo_positive_primary_RGB.png' }
+      - { key: ex-em, name: 엑셈, type: GREETING, board: 'https://ex-em.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2025-12-10/0c90e898-f259-453a-9a28-360ff6d08486/Groupware_LoginIMG(300x150).png' }
+      - { key: realworld, name: 리얼월드, type: GREETING, board: 'https://realworld.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2025-12-22/c31e70f9-eeed-4ca8-bb92-919bb8eed2cc/favi.png' }
+      - { key: xcena, name: 엑시나, type: GREETING, board: 'https://xcena.career.greetinghr.com/en/intro', logo: 'https://opening-attachments.greetinghr.com/2024-12-03/f3f88511-77b0-4964-9ec8-27036ea4f027/XCENA-Logo_Basic.png' }
+      - { key: kurly, name: 컬리, type: GREETING, board: 'https://kurly.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2026-02-23/23bb5db7-3937-4bef-998b-867b25bceae7/logo.png' }
+      - { key: kakaomobility, name: 카카오모빌리티, type: GREETING, board: 'https://kakaomobility.career.greetinghr.com/ko/guide', logo: 'https://opening-attachments.greetinghr.com/2025-02-06/0e82fcb5-f39c-4d8f-8aee-f20e3efaa187/111.png' }
+      - { key: makinarocks, name: 마키나락스, type: GREETING, board: 'https://makinarocks.career.greetinghr.com/ko/home', logo: 'https://profiles.greetinghr.com/group/900e83ac-2ad7-42aa-9f2a-306e88914acf' }
+      - { key: supercent, name: 슈퍼센트, type: GREETING, board: 'https://supercent.career.greetinghr.com/ko/career', logo: 'https://opening-attachments.greetinghr.com/20230511/6b4be44e-7a39-4129-b4a2-3de24a0309a2/1_CI_supercent_BLACK3.png' }
+      - { key: mangoboost, name: 망고부스트, type: GREETING, board: 'https://mangoboost.career.greetinghr.com/en/careers', logo: 'https://opening-attachments.greetinghr.com/2025-01-02/153adda7-5a20-4381-99ad-90d5b262bb05/MangoBoost_Logo_Hori_YellowGrey_rgb_2x.png' }
+      - { key: healingpaper, name: 강남언니(힐링페이퍼), type: GREETING, board: 'https://career.gangnamunni.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2026-07-09/95eb1454-eeab-4936-ad2b-26bad37752f8/Group15270(6).png' }
+      - { key: autocrypt, name: 아우토크립트, type: GREETING, board: 'https://autocrypt.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2026-10-27/15dbd0f9-5c6f-4268-9cae-f22e5eff5244/CI_AUTOCRYPT(BK).png' }
+      - { key: wrtn, name: 뤼튼테크놀로지스, type: GREETING, board: 'https://career.wrtn.io/ko/career', logo: 'https://opening-attachments.greetinghr.com/2026-02-04/7541c46c-0f18-4a14-9fd9-2f9c4cea4192/logo_full_profile_dark.png' }
+      - { key: pfct, name: PFCT, type: GREETING, board: 'https://pfct.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2024-03-15/7571cea3-cf7e-4b64-ba9f-ebb66b143f6f/logo_gnb.png' }
+      - { key: riibotics, name: 리보틱스, type: GREETING, board: 'https://riibotics.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2025-07-31/ec525cb2-37dd-473b-9229-838dc639a587/Asset2-8.png' }
+      - { key: estfamily, name: 이스트소프트·이스트시큐리티, type: GREETING, board: 'https://estfamily.career.greetinghr.com/ko/home', logo: 'https://profiles.greetinghr.com/group/afb477e2-0ac7-49b4-9797-fb177531be92' }
+      - { key: gccompany, name: 여기어때컴퍼니, type: GREETING, board: 'https://gccompany.career.greetinghr.com/ko/apply', logo: 'https://opening-attachments.greetinghr.com/2024-11-12/fa483b86-7b4d-43cb-8880-6bf46c7688d2/icn_yds_brand_logo.png' }
+      - { key: nuua, name: 누아, type: GREETING, board: 'https://nuua.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/20230831/85ecba8b-bfd5-4214-81ce-516772685276/_256x65.png' }
+      - { key: moreh, name: 모레, type: GREETING, board: 'https://moreh.career.greetinghr.com/ko/jobs', logo: 'https://profiles.greetinghr.com/group/2a79989e-53a7-4c80-8c9f-0af7d8677a38' }
+      - { key: linqalpha, name: 링크알파, type: GREETING, board: 'https://linqalpha.career.greetinghr.com/en/intro', logo: 'https://opening-attachments.greetinghr.com/2026-07-02/2b81a010-009e-4a01-9229-300ce8b4c299/Frame1171277053.png' }
+      - { key: ezcaretech, name: 이지케어텍, type: GREETING, board: 'https://ezcaretech.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2024-07-30/40d52c6d-fc31-43a2-ab17-3174fd3e52d9/CI.png' }
+      - { key: finda, name: 핀다, type: GREETING, board: 'https://finda.career.greetinghr.com/ko/career', logo: 'https://opening-attachments.greetinghr.com/2026-02-04/48bfc7d6-89ba-4495-9750-dae9abd738cb/findaLogo(1).jpg' }
+      - { key: sionicai, name: 사이오닉에이아이, type: GREETING, board: 'https://sionicai.career.greetinghr.com/en/career', logo: 'https://profiles.greetinghr.com/group/f7b3fc29-e610-4ceb-b00f-27c18934b2fd' }
+      - { key: mobilint, name: 모빌린트, type: GREETING, board: 'https://mobilinthire.career.greetinghr.com/ko/recruit', logo: 'https://opening-attachments.greetinghr.com/2024-02-02/1aca7674-4ddb-4aa3-8690-8eaabf87cdc0/-.png' }
+      - { key: buzzvil, name: 버즈빌, type: GREETING, board: 'https://buzzvil.career.greetinghr.com/ko/home', logo: 'https://profiles.greetinghr.com/group/f23ad931-b183-40f1-9b66-01770fc87960' }
+      - { key: featuring, name: 피처링, type: GREETING, board: 'https://featuring.career.greetinghr.com/ko/info', logo: 'https://opening-attachments.greetinghr.com/2025-02-06/19076cd3-2e88-4a8b-addd-01ea40a6a369/logo.png' }
+      - { key: neubility, name: 뉴빌리티, type: GREETING, board: 'https://neubility.career.greetinghr.com/ko/about', logo: 'https://opening-attachments.greetinghr.com/2026-08-08/178328c1-4e7a-492e-aaaa-bebd6084b8a3/NBCareers.png' }
+      - { key: ineeji, name: 이니지, type: GREETING, board: 'https://ineeji.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2024-11-15/a9cc5f16-1434-4de1-a547-aca45c9c8388/4.jpg' }
+      - { key: lawcompany, name: 로앤컴퍼니, type: GREETING, board: 'https://lawcompany.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2025-06-18/73a75253-7aae-464e-bc45-495620f0ec89/.png' }
+      - { key: medistream, name: 메디스트림, type: GREETING, board: 'https://medistream.career.greetinghr.com/ko/career', logo: 'https://profiles.greetinghr.com/group/a7810191-1eb2-4cd1-b2a5-66356d2c17a6' }
+      - { key: masangsoft, name: 마상소프트, type: GREETING, board: 'https://masangsoft.career.greetinghr.com/ko/careers', logo: 'https://opening-attachments.greetinghr.com/2023-11-01/9b211f6c-7436-4d69-b653-ebcb349cc4b2/logo.jpg' }
+      - { key: shoplive, name: 샵라이브코리아, type: GREETING, board: 'https://shoplive.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2025-09-30/faab90a9-2ef5-42f1-9326-2c67dd558f80/basic-logo_on-light-bg-.png' }
+      - { key: sianalytics, name: 에스아이에이, type: GREETING, board: 'https://sianalytics.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2024-11-19/52f4f0ea-dfac-46a0-900b-1e975a2e5c8d/SIA_CI_.png' }
+      - { key: deepauto-ai, name: 딥오토에이아이, type: GREETING, board: 'https://deepauto-ai.career.greetinghr.com/ko/career', logo: 'https://opening-attachments.greetinghr.com/2026-03-25/ce3c89e3-bd3b-4c1f-9f8f-199fdf499a50/Frame4.png' }
       # 자체 채용 사이트는 회사마다 읽는 모양이 달라 회사 하나가 종류 하나이고, board 에는 목록 주소를 적는다(카카오는 page 를 뺀 주소)
       - { key: toss, name: 토스, type: TOSS, board: 'https://api-public.toss.im/api/v3/ipd-eggnog/career/jobs' }
       - { key: lineplus, name: 라인플러스, type: LINE, board: 'https://careers.linecorp.com/page-data/ko/jobs/page-data.json' }
@@ -270,6 +275,10 @@ gitory:
     # 카드 만들기. CARD_AI_DRAFT_ENABLED 가 켜졌을 때만 한 요청의 카드 수만큼 센다
     card-draft:
       per-day: 100
+    # 자소서 만들기와 다시 시도. 한 편에 AI 를 여러 번 부르므로 다른 요청보다 적게 둔다
+    cover-letter:
+      per-minute: 2
+      per-day: 10
 
 logging:
   level:

@@ -1,6 +1,172 @@
 {
   "components": {
     "schemas": {
+      "AssignmentRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/cover-letter-assignments` 요청 모델.",
+        "properties": {
+          "cards": {
+            "description": "확정 카드 전부(초안 카드 제외)",
+            "items": {
+              "$ref": "#/components/schemas/CardSummary"
+            },
+            "maxItems": 100,
+            "title": "Cards",
+            "type": "array"
+          },
+          "cover_letter_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "job_role": {
+            "description": "지원 직무",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Job Role",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "사용자 메모(지원 이유 등). 없으면 null",
+            "title": "Memo"
+          },
+          "profile": {
+            "description": "학력·자격증·어학. 비어도 된다",
+            "items": {
+              "$ref": "#/components/schemas/ProfileItem"
+            },
+            "maxItems": 30,
+            "title": "Profile",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/CoverLetterQuestion"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "job_role",
+          "questions"
+        ],
+        "title": "AssignmentRequest",
+        "type": "object"
+      },
+      "AssignmentResult": {
+        "description": "`POST /internal/cover-letter-assignments` 응답 `data` 모델.",
+        "properties": {
+          "assignments": {
+            "description": "요청 문항 순서 그대로",
+            "items": {
+              "$ref": "#/components/schemas/QuestionAssignment"
+            },
+            "title": "Assignments",
+            "type": "array"
+          },
+          "cover_letter_id": {
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "assignments",
+          "steps"
+        ],
+        "title": "AssignmentResult",
+        "type": "object"
+      },
+      "AssignmentStep": {
+        "properties": {
+          "actor": {
+            "enum": [
+              "SUB_AGENT",
+              "SUPERVISOR",
+              "CODE"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "card_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Id"
+          },
+          "kind": {
+            "enum": [
+              "PICKED",
+              "NO_FIT",
+              "FAILED",
+              "CHECKED",
+              "SWITCHED",
+              "RESOLVED"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "seq": {
+            "description": "1부터. 화면이 이 순서로 과정을 보인다",
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq",
+          "actor",
+          "kind"
+        ],
+        "title": "AssignmentStep",
+        "type": "object"
+      },
       "CandidateCommitDetail": {
         "additionalProperties": false,
         "description": "A의 diff 해석에 필요한 선택 commit 상세.",
@@ -259,6 +425,168 @@
           "deletions"
         ],
         "title": "CandidateFileDiff",
+        "type": "object"
+      },
+      "CardDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "card_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "card_kind": {
+            "default": "TECH",
+            "enum": [
+              "TECH",
+              "QUALITATIVE"
+            ],
+            "title": "Card Kind",
+            "type": "string"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          },
+          "statements": {
+            "description": "비어 있지 않은 STAR 문장",
+            "items": {
+              "$ref": "#/components/schemas/CardStatement"
+            },
+            "maxItems": 20,
+            "title": "Statements",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "title"
+        ],
+        "title": "CardDetail",
+        "type": "object"
+      },
+      "CardStatement": {
+        "additionalProperties": false,
+        "properties": {
+          "star_slot": {
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "star_slot",
+          "text"
+        ],
+        "title": "CardStatement",
+        "type": "object"
+      },
+      "CardSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "card_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "card_kind": {
+            "default": "TECH",
+            "enum": [
+              "TECH",
+              "QUALITATIVE"
+            ],
+            "title": "Card Kind",
+            "type": "string"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "예: 2025.03~2025.06",
+            "title": "Period"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "저장소 이름이나 활동 이름. 문항끼리 같은 프로젝트 이야기인지 보는 데 쓴다",
+            "title": "Source Name"
+          },
+          "summary": {
+            "description": "Spring 이 카드 문장으로 만든 짧은 요약",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "themes": {
+            "description": "카드의 문항 유형. 참고로만 쓴다",
+            "items": {
+              "enum": [
+                "COLLABORATION",
+                "CONFLICT",
+                "PROBLEM_SOLVING",
+                "LEADERSHIP",
+                "CHALLENGE",
+                "FAILURE",
+                "GROWTH"
+              ],
+              "type": "string"
+            },
+            "maxItems": 7,
+            "title": "Themes",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "title",
+          "summary"
+        ],
+        "title": "CardSummary",
         "type": "object"
       },
       "ChangedFile": {
@@ -1046,6 +1374,31 @@
         "title": "CommitInput",
         "type": "object"
       },
+      "ConsideredCard": {
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "견준 카드의 짧은 평. 입력에 없는 수치가 있으면 버려 null",
+            "title": "Note"
+          }
+        },
+        "required": [
+          "card_id"
+        ],
+        "title": "ConsideredCard",
+        "type": "object"
+      },
       "ContributionConfirmation": {
         "additionalProperties": false,
         "description": "로그인·이메일만으로 본인 여부를 확정하지 못한 커밋.",
@@ -1072,6 +1425,38 @@
           "sha"
         ],
         "title": "ContributionConfirmation",
+        "type": "object"
+      },
+      "CoverLetterQuestion": {
+        "additionalProperties": false,
+        "properties": {
+          "char_limit": {
+            "description": "글자 수 상한(공백 포함)",
+            "maximum": 5000.0,
+            "minimum": 100.0,
+            "title": "Char Limit",
+            "type": "integer"
+          },
+          "question_id": {
+            "description": "자소서 문항 ID. 응답에서 문항을 맞추는 데만 쓴다",
+            "exclusiveMinimum": 0.0,
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "text": {
+            "description": "회사가 묻는 문항 문장",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "text",
+          "char_limit"
+        ],
+        "title": "CoverLetterQuestion",
         "type": "object"
       },
       "CriterionMatch": {
@@ -1356,6 +1741,408 @@
         "title": "DiffEvidenceResult",
         "type": "object"
       },
+      "DraftMark": {
+        "properties": {
+          "code": {
+            "enum": [
+              "UNSOURCED_NUMBER",
+              "UNSOURCED_TERM",
+              "OVER_LIMIT",
+              "UNDER_LENGTH",
+              "MISSING_BLANK",
+              "REPEATED",
+              "UNSUPPORTED_CLAIM",
+              "OFF_TOPIC"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "sentence_seq": {
+            "title": "Sentence Seq",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "초안에서 걸린 수치·낱말 그대로. 감독이 찾은 문제는 null",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "sentence_seq",
+          "code"
+        ],
+        "title": "DraftMark",
+        "type": "object"
+      },
+      "DraftQuestion": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "description": "이 자소서에서 받은 답과 지난 자소서에서 다시 쓰는 답",
+            "items": {
+              "$ref": "#/components/schemas/KnownAnswer"
+            },
+            "maxItems": 20,
+            "title": "Answers",
+            "type": "array"
+          },
+          "char_limit": {
+            "maximum": 5000.0,
+            "minimum": 100.0,
+            "title": "Char Limit",
+            "type": "integer"
+          },
+          "missing_items": {
+            "description": "꼭 있어야 하는데 끝내 답을 받지 못한 항목. 초안은 이 자리를 지어내지 않고 빈칸으로 둔다",
+            "items": {
+              "enum": [
+                "SITUATION",
+                "ACTION",
+                "RESULT",
+                "LEARNING",
+                "TRIGGER",
+                "JOB_LINK",
+                "REASON"
+              ],
+              "type": "string"
+            },
+            "maxItems": 7,
+            "title": "Missing Items",
+            "type": "array"
+          },
+          "primary_card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "question_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "question_theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "COLLABORATION",
+                  "CONFLICT",
+                  "PROBLEM_SOLVING",
+                  "LEADERSHIP",
+                  "CHALLENGE",
+                  "FAILURE",
+                  "GROWTH",
+                  "MOTIVATION"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Theme"
+          },
+          "supporting_card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "text",
+          "char_limit"
+        ],
+        "title": "DraftQuestion",
+        "type": "object"
+      },
+      "DraftSentence": {
+        "properties": {
+          "seq": {
+            "description": "1부터. 전체 검토와 '확인 필요' 표시가 이 번호로 문장을 가리킨다",
+            "title": "Seq",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "text"
+        ],
+        "title": "DraftSentence",
+        "type": "object"
+      },
+      "DraftStep": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "FIX",
+                  "KEEP"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "DECIDED 일 때 고친 쪽(FIX)인지 둔 쪽(KEEP)인지",
+            "title": "Action"
+          },
+          "actor": {
+            "enum": [
+              "SUB_AGENT",
+              "SUPERVISOR",
+              "CODE"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "UNSOURCED_NUMBER",
+                  "UNSOURCED_TERM",
+                  "OVER_LIMIT",
+                  "UNDER_LENGTH",
+                  "MISSING_BLANK",
+                  "REPEATED",
+                  "UNSUPPORTED_CLAIM",
+                  "OFF_TOPIC"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "kind": {
+            "enum": [
+              "WROTE",
+              "CHECK_PASSED",
+              "CHECK_FAILED",
+              "DECIDED",
+              "REWROTE",
+              "REVERTED",
+              "MARKED",
+              "SKELETON",
+              "REVIEWED",
+              "SENT_BACK",
+              "FAILED"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "question_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Id"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "sentence_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SENT_BACK 이 건 문장 번호(검토할 때의 번호)",
+            "title": "Sentence Seq"
+          },
+          "seq": {
+            "description": "1부터. 문항별로 동시에 돈 일이 일어난 순서다",
+            "title": "Seq",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "WROTE·REWROTE·CHECK_PASSED 는 글자 수, REVIEWED 는 걸린 문장 수, CHECK_FAILED·DECIDED·MARKED 는 걸린 값(수치·낱말 그대로, OVER_LIMIT 은 넘은 글자 수, MISSING_BLANK 는 항목 이름)",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "seq",
+          "actor",
+          "kind"
+        ],
+        "title": "DraftStep",
+        "type": "object"
+      },
+      "DraftsRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/cover-letter-drafts` 요청 모델.",
+        "properties": {
+          "cover_letter_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "job_role": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Job Role",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "profile": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileItem"
+            },
+            "maxItems": 30,
+            "title": "Profile",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/DraftQuestion"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "job_role",
+          "questions"
+        ],
+        "title": "DraftsRequest",
+        "type": "object"
+      },
+      "DraftsResult": {
+        "description": "`POST /internal/cover-letter-drafts` 응답 `data` 모델.",
+        "properties": {
+          "cover_letter_id": {
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "drafts": {
+            "description": "요청 문항 순서 그대로",
+            "items": {
+              "$ref": "#/components/schemas/QuestionDraft"
+            },
+            "title": "Drafts",
+            "type": "array"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/DraftStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "drafts",
+          "steps"
+        ],
+        "title": "DraftsResult",
+        "type": "object"
+      },
+      "Envelope_AssignmentResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssignmentResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[AssignmentResult]",
+        "type": "object"
+      },
       "Envelope_CandidateDetailResult_": {
         "properties": {
           "data": {
@@ -1428,6 +2215,43 @@
           "meta"
         ],
         "title": "Envelope[DiffEvidenceResult]",
+        "type": "object"
+      },
+      "Envelope_DraftsResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftsResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[DraftsResult]",
         "type": "object"
       },
       "Envelope_ExperienceGroupingResponse_": {
@@ -1724,6 +2548,43 @@
           "meta"
         ],
         "title": "Envelope[MeasuredSentenceResult]",
+        "type": "object"
+      },
+      "Envelope_QuestionsResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QuestionsResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[QuestionsResult]",
         "type": "object"
       },
       "Envelope_RepositoryCollectionResult_": {
@@ -2911,6 +3772,49 @@
         "title": "JobPostingStatus",
         "type": "string"
       },
+      "KnownAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "card_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "어느 카드의 경험에 대한 답인지. 지원 이유처럼 카드와 상관없는 답은 null. 중심 카드의 답만 중심 경험의 재료로 센다",
+            "title": "Card Id"
+          },
+          "item": {
+            "enum": [
+              "SITUATION",
+              "ACTION",
+              "RESULT",
+              "LEARNING",
+              "TRIGGER",
+              "JOB_LINK",
+              "REASON"
+            ],
+            "title": "Item",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item",
+          "text"
+        ],
+        "title": "KnownAnswer",
+        "type": "object"
+      },
       "MatchingRequest": {
         "additionalProperties": false,
         "description": "확정 STAR 문장과 가까운 조건을 찾는 요청.",
@@ -2951,6 +3855,41 @@
           "collection_criteria"
         ],
         "title": "MatchingResponse",
+        "type": "object"
+      },
+      "MaterialAsk": {
+        "properties": {
+          "item": {
+            "enum": [
+              "SITUATION",
+              "ACTION",
+              "RESULT",
+              "LEARNING",
+              "TRIGGER",
+              "JOB_LINK",
+              "REASON"
+            ],
+            "title": "Item",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "templates": {
+            "description": "답을 돕는 빈칸 틀 0~2개. 카드에 적힌 사실만 들어 있고 사용자가 채울 곳은 '___' 이다",
+            "items": {
+              "type": "string"
+            },
+            "title": "Templates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "item",
+          "question"
+        ],
+        "title": "MaterialAsk",
         "type": "object"
       },
       "MeasuredSentenceRequest": {
@@ -3295,6 +4234,34 @@
         "title": "PreviousTurn",
         "type": "object"
       },
+      "ProfileItem": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "EDUCATION",
+              "CERTIFICATE",
+              "LANGUAGE",
+              "OTHER"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "description": "예: 정보처리기사(2025), TOEIC 900",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "ProfileItem",
+        "type": "object"
+      },
       "PullRequestContext": {
         "additionalProperties": false,
         "description": "PR 후보의 제목·설명과 Issue 연결에 쓰는 PR 문맥(Spring ``pull_request`` 행).",
@@ -3335,6 +4302,382 @@
           "title"
         ],
         "title": "PullRequestContext",
+        "type": "object"
+      },
+      "QuestionAsks": {
+        "properties": {
+          "asks": {
+            "description": "최대 4개. required_missing 은 모두 들어 있다",
+            "items": {
+              "$ref": "#/components/schemas/MaterialAsk"
+            },
+            "title": "Asks",
+            "type": "array"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "required_missing": {
+            "description": "꼭 있어야 하는데 카드·답·메모에 없는 항목. 답을 받은 뒤 Spring 이 채워졌는지 본다",
+            "items": {
+              "enum": [
+                "SITUATION",
+                "ACTION",
+                "RESULT",
+                "LEARNING",
+                "TRIGGER",
+                "JOB_LINK",
+                "REASON"
+              ],
+              "type": "string"
+            },
+            "title": "Required Missing",
+            "type": "array"
+          },
+          "source": {
+            "enum": [
+              "LLM",
+              "TEMPLATE",
+              "NONE"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "required_missing",
+          "asks",
+          "source"
+        ],
+        "title": "QuestionAsks",
+        "type": "object"
+      },
+      "QuestionAssignment": {
+        "properties": {
+          "considered": {
+            "description": "견준 카드 최대 3장",
+            "items": {
+              "$ref": "#/components/schemas/ConsideredCard"
+            },
+            "title": "Considered",
+            "type": "array"
+          },
+          "decided_by": {
+            "enum": [
+              "SUPERVISOR",
+              "SUB_AGENT",
+              "CODE",
+              "FAILED"
+            ],
+            "title": "Decided By",
+            "type": "string"
+          },
+          "primary_card_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "중심 카드. 맞는 카드가 없으면 null",
+            "title": "Primary Card Id"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "question_theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "COLLABORATION",
+                  "CONFLICT",
+                  "PROBLEM_SOLVING",
+                  "LEADERSHIP",
+                  "CHALLENGE",
+                  "FAILURE",
+                  "GROWTH",
+                  "MOTIVATION"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 고르기 답을 받지 못하면 null",
+            "title": "Question Theme"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "중심 카드를 고른 이유 한 줄",
+            "title": "Reason"
+          },
+          "supporting_card_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "보조 카드. 다른 문항의 카드여도 된다",
+            "title": "Supporting Card Id"
+          }
+        },
+        "required": [
+          "question_id",
+          "decided_by"
+        ],
+        "title": "QuestionAssignment",
+        "type": "object"
+      },
+      "QuestionDraft": {
+        "properties": {
+          "blanks": {
+            "description": "빈칸으로 남긴 항목",
+            "items": {
+              "enum": [
+                "SITUATION",
+                "ACTION",
+                "RESULT",
+                "LEARNING",
+                "TRIGGER",
+                "JOB_LINK",
+                "REASON"
+              ],
+              "type": "string"
+            },
+            "title": "Blanks",
+            "type": "array"
+          },
+          "char_count": {
+            "description": "공백 포함 글자 수. 사용자가 채울 빈칸은 세지 않는다",
+            "title": "Char Count",
+            "type": "integer"
+          },
+          "marks": {
+            "description": "화면이 '확인 필요' 로 보일 문장",
+            "items": {
+              "$ref": "#/components/schemas/DraftMark"
+            },
+            "title": "Marks",
+            "type": "array"
+          },
+          "over_by": {
+            "description": "글자 수 상한을 넘은 만큼(char_count 기준). 넘지 않으면 0",
+            "title": "Over By",
+            "type": "integer"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "rewrites": {
+            "default": 0,
+            "description": "검사·검토에 걸려 다시 쓴 횟수",
+            "title": "Rewrites",
+            "type": "integer"
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/DraftSentence"
+            },
+            "title": "Sentences",
+            "type": "array"
+          },
+          "source": {
+            "enum": [
+              "LLM",
+              "SKELETON"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "description": "초안 전문. 빈칸([항목: …])이 들어 있을 수 있다",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "text",
+          "sentences",
+          "char_count",
+          "over_by",
+          "source"
+        ],
+        "title": "QuestionDraft",
+        "type": "object"
+      },
+      "QuestionMaterial": {
+        "additionalProperties": false,
+        "properties": {
+          "char_limit": {
+            "maximum": 5000.0,
+            "minimum": 100.0,
+            "title": "Char Limit",
+            "type": "integer"
+          },
+          "known_answers": {
+            "description": "이미 받은 답. 지난 자소서의 답 중 다시 쓸 항목은 Spring 이 골라 넣는다",
+            "items": {
+              "$ref": "#/components/schemas/KnownAnswer"
+            },
+            "maxItems": 10,
+            "title": "Known Answers",
+            "type": "array"
+          },
+          "primary_card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardDetail"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "맞는 카드가 없으면 null"
+          },
+          "question_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "question_theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "COLLABORATION",
+                  "CONFLICT",
+                  "PROBLEM_SOLVING",
+                  "LEADERSHIP",
+                  "CHALLENGE",
+                  "FAILURE",
+                  "GROWTH",
+                  "MOTIVATION"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 고르기에서 받지 못했으면 null",
+            "title": "Question Theme"
+          },
+          "supporting_card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "text",
+          "char_limit"
+        ],
+        "title": "QuestionMaterial",
+        "type": "object"
+      },
+      "QuestionsRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/cover-letter-questions` 요청 모델.",
+        "properties": {
+          "cover_letter_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "job_role": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Job Role",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "profile": {
+            "items": {
+              "$ref": "#/components/schemas/ProfileItem"
+            },
+            "maxItems": 30,
+            "title": "Profile",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionMaterial"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "job_role",
+          "questions"
+        ],
+        "title": "QuestionsRequest",
+        "type": "object"
+      },
+      "QuestionsResult": {
+        "description": "`POST /internal/cover-letter-questions` 응답 `data` 모델.",
+        "properties": {
+          "cover_letter_id": {
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "questions": {
+            "description": "요청 문항 순서 그대로",
+            "items": {
+              "$ref": "#/components/schemas/QuestionAsks"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "questions"
+        ],
+        "title": "QuestionsResult",
         "type": "object"
       },
       "RepositoryCollectionRequest": {
@@ -4689,6 +6032,189 @@
         ]
       }
     },
+    "/internal/cover-letter-assignments": {
+      "post": {
+        "description": "문항마다 확정 카드 전부의 요약을 보고 1·2순위 카드를 고른 뒤, 문항이 둘 이상 카드를 고르면 감독이 겹침과 균형을 보고 최종 배정을 정합니다. 감독 답을 못 받으면 코드가 2순위로 겹침을 정리합니다(decided_by=CODE). 카드 고르기 답을 못 받은 문항은 decided_by=FAILED 로 카드 없이 돌려주며, 이 API 는 LLM 실패로 오류를 내지 않습니다. steps 는 화면이 과정을 보일 순서입니다. 저장은 Spring 이 합니다.",
+        "operationId": "assign_cards_internal_cover_letter_assignments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_AssignmentResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "자소서 문항마다 쓸 카드 고르기",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
+    "/internal/cover-letter-drafts": {
+      "post": {
+        "description": "문항마다 동시에 초안을 쓰고, 검사기(근거에 없는 수치·영문 낱말, 글자 수, 빈칸)에 걸리면 고쳐 쓰거나(FIX) 검사기가 잘못 건 것으로 보고 표시만 합니다(KEEP). 다시 쓰기는 문항마다 2번까지이고, 그 뒤 남은 수치·낱말은 marks 로 표시합니다. 모든 문항이 끝나면 감독이 함께 읽어 되풀이·근거 없는 역할·문항 벗어남을 문장 번호로 걸고, 걸린 문항만 한 번 더 씁니다. 글자 수가 넘친 채로 남으면 자르지 않고 over_by 로 알립니다. 쓰기 답을 못 받은 문항은 카드 문장과 빈칸으로 만든 뼈대(source=SKELETON)이며, 이 API 는 LLM 실패로 오류를 내지 않습니다.",
+        "operationId": "create_drafts_internal_cover_letter_drafts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DraftsResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "자소서 문항마다 초안 쓰기와 전체 검토",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
+    "/internal/cover-letter-questions": {
+      "post": {
+        "description": "꼭 있어야 하는 항목(경험 문항은 상황·행동·결과, 지원 동기는 지원 이유) 중 중심 카드 문장·이미 받은 답·메모에 없는 것을 required_missing 으로 돌려주고, 질문은 최대 3개로 그 항목을 모두 묻습니다. LLM 답을 못 받으면 required_missing 만 틀 질문으로 묻고(source=TEMPLATE), 물을 항목이 없으면 LLM 을 부르지 않습니다(source=NONE).",
+        "operationId": "create_questions_internal_cover_letter_questions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_QuestionsResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "자소서 문항마다 모자란 재료를 묻는 질문 만들기",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
     "/internal/interview-answer-evaluations": {
       "post": {
         "description": "현재 최소 정보량·회피성 표현 규칙으로 답변 충분성을 판단하며 LLM 판정기는 연결되지 않았습니다. ANSWERED이면 사용자 답변 원문을 resulting_statement로 반환합니다. SKIPPED/LATER는 Spring이 직접 처리하고 이 API를 호출하지 않습니다.",
@@ -5231,6 +6757,10 @@
     {
       "description": "공고 조건 인덱싱과 확정 STAR 기반 직무 검색",
       "name": "matching"
+    },
+    {
+      "description": "자소서 문항별 카드 고르기·모자란 재료 질문·초안 쓰기와 전체 검토. 저장은 Spring 담당",
+      "name": "cover-letters"
     }
   ]
 }

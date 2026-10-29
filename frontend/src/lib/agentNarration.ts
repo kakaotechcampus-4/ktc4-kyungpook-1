@@ -24,7 +24,10 @@ export function agentHeadline(job: Job, repoName?: string): string {
   if (isTerminal(job.state)) {
     const commits = job.steps.find((s) => s.key === 'COMMITS')?.done ?? 0;
     const picked = job.steps.find((s) => s.key === 'COMPRESS')?.done ?? 0;
-    if (job.state === 'SUCCEEDED' && picked > 0) return `커밋 ${commits}개를 읽고 카드가 될 만한 작업 ${picked}개를 골랐어요`;
+    // 숫자는 이번에 새로 읽은 양이다. 다시 정리할 때 새 커밋이 없으면 "커밋 0개를 읽고"라고 말하지 않는다
+    if (job.state === 'SUCCEEDED' && picked > 0) return commits > 0
+      ? `커밋 ${commits}개를 읽고 카드가 될 만한 작업 ${picked}개를 골랐어요`
+      : `새 커밋은 없었고, 카드가 될 만한 작업 ${picked}개를 골랐어요`;
     return job.state === 'SUCCEEDED' ? '읽기를 마쳤어요' : '여기까지 읽고 멈췄어요';
   }
   return repoName ? `${repoName}에서 자소서에 쓸 만한 경험을 찾고 있어요` : '자소서에 쓸 만한 경험을 찾고 있어요';

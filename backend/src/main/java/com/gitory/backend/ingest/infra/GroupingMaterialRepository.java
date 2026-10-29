@@ -38,6 +38,14 @@ public interface GroupingMaterialRepository extends Repository<GitCommit, Long> 
     @Query("SELECT f FROM CommitFile f WHERE f.commitId IN :commitIds ORDER BY f.id")
     List<CommitFile> findFiles(@Param("commitIds") Collection<Long> commitIds);
 
+    @Query("""
+            SELECT c FROM GitCommit c
+            WHERE c.repositoryId = :repositoryId
+              AND LOWER(c.authorLogin) = LOWER(:login)
+              AND c.exclusionReason IS NOT NULL
+            """)
+    List<GitCommit> findOwnExcludedCommits(@Param("repositoryId") Long repositoryId, @Param("login") String login);
+
     @Query("SELECT p FROM PullRequest p WHERE p.repositoryId = :repositoryId")
     List<PullRequest> findPullRequests(@Param("repositoryId") Long repositoryId);
 

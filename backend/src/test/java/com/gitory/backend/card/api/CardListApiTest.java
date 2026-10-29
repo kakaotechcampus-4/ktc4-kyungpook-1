@@ -274,6 +274,27 @@ class CardListApiTest {
     }
 
     @Test
+    @DisplayName("활동 안 카드는 카드 상세와 같은 activity(공개 id·이름·종류)를 싣고, 활동 밖 카드는 activity 가 null 이다")
+    void sendsActivityOfEachCardLikeDetail() throws Exception {
+
+        UUID clubCard = UUID.randomUUID();
+        UUID outsideCard = UUID.randomUUID();
+        UUID club = UUID.randomUUID();
+        Long clubId = fixtures.insertActivity(club, myUserId, "교내 개발 동아리", "CLUB", "2025-03-01");
+        jdbc.update("UPDATE card SET activity_id = ? WHERE id = ?", clubId, fixtures.insertCard(clubCard, myUserId));
+        fixtures.insertCard(outsideCard, myUserId);
+
+        String list = bodyOf(getCards().andExpect(status().isOk()));
+
+        assertThat(activityInList(list, clubCard)).isEqualTo(activityInDetail(clubCard))
+                .containsEntry("id", club.toString())
+                .containsEntry("name", "교내 개발 동아리")
+                .containsEntry("type", "CLUB");
+        assertThat(activityInList(list, outsideCard)).isNull();
+
+    }
+
+    @Test
     @DisplayName("저장소 없이 직접 쓴 카드는 목록의 repo 를 빼지 않고 null 로 싣는다")
     void sendsNullRepositoryForManualCard() throws Exception {
 
@@ -387,7 +408,8 @@ class CardListApiTest {
         Map<String, Object> card = JsonPath.read(body, "$.data[0]");
 
         assertThat(card).containsOnlyKeys("id", "kind", "status", "title", "areas", "techs", "themes", "versionNo", "star",
-                "updatedAt", "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount", "repo");
+                "updatedAt", "sourceLabel", "sourceType", "period", "evidenceCount", "userStatedCount", "repo",
+                "activity");
         assertThat(card).containsEntry("id", publicId.toString())
                 .containsEntry("kind", "QUALITATIVE")
                 .containsEntry("status", "DRAFT")
@@ -490,6 +512,21 @@ class CardListApiTest {
         List<Map<String, Object>> repos = JsonPath.read(body, "$.data[?(@.id == '" + cardId + "')].repo");
 
         return repos.get(0);
+
+    }
+
+    private static Map<String, Object> activityInList(String body, UUID cardId) {
+
+        List<Map<String, Object>> activities = JsonPath.read(body, "$.data[?(@.id == '" + cardId + "')].activity");
+
+        return activities.get(0);
+
+    }
+
+    private Map<String, Object> activityInDetail(UUID cardId) throws Exception {
+
+        return JsonPath.read(bodyOf(mvc.perform(get("/api/cards/{id}", cardId).with(loggedInAs(myUserId)))
+                .andExpect(status().isOk())), "$.data.activity");
 
     }
 

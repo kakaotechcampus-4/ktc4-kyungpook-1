@@ -6,6 +6,7 @@ public enum AuditAction {
     ANALYZE,
     VIEW_REPO,
     SEARCH_COMMITS,
+    VIEW_REPO_MATERIALS,
     VIEW_JOB,
     CANCEL_JOB,
     CREATE_CARD,
@@ -16,5 +17,7 @@ public enum AuditAction {
     VIEW_CANDIDATES,
     VIEW_RECALL,
     CREATE_CANDIDATE,
-    EDIT_CANDIDATE
+    EDIT_CANDIDATE,
+    EDIT_ACTIVITY,
+    DELETE_ACTIVITY
 }

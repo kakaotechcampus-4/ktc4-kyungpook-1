@@ -1,5 +1,9 @@
 package com.gitory.backend.agent.port;
 
+import com.gitory.backend.common.infra.ai.AiProgress;
+
+import java.util.function.Consumer;
+
 public interface ExperienceGroupingPort {
 
     /**
@@ -7,4 +11,11 @@ public interface ExperienceGroupingPort {
      * AI 를 부르지 못했거나 응답이 계약과 다르면 AgentUnavailableException 을 던진다
      */
     ExperienceGroupingResponse group(ExperienceGroupingRequest request);
+
+    /** {@link #group(ExperienceGroupingRequest)} 와 같고, AI 가 묶음 하나를 묶거나 이유를 붙일 때마다 진행을 progress 로 받는다 */
+    default ExperienceGroupingResponse group(ExperienceGroupingRequest request, Consumer<AiProgress> progress) {
+
+        return group(request);
+
+    }
 }

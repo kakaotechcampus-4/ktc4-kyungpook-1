@@ -25,10 +25,11 @@ public record CardSummary(
         String period,
         int evidenceCount,
         int userStatedCount,
-        RepositoryReference repository) {
+        RepositoryReference repository,
+        ActivityReference activity) {
 
     static CardSummary of(Card card, VersionSlots current, CandidateReference candidate, RepositoryReference repository,
-                          boolean interviewed) {
+                          ActivityReference activity, boolean interviewed) {
 
         Map<StarField, StarFieldState> star = new EnumMap<>(StarField.class);
         for (StarField field : StarField.values()) {
@@ -51,7 +52,8 @@ public record CardSummary(
                 card.getPeriod(),
                 evidenceCountOf(current),
                 userStatedCountOf(current),
-                repository);
+                repository,
+                activity);
 
     }
 

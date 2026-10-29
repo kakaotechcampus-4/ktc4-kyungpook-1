@@ -19,6 +19,7 @@ public record CardDetail(
         List<CardTheme> themes,
         String period,
         RepositoryReference repository,
+        ActivityReference activity,
         VersionSource source,
         Instant versionSavedAt,
         VersionSlots slots,

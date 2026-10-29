@@ -54,7 +54,7 @@
         }
       ],
       "existing_turn_count": 0,
-      "max_turns": 3,
+      "max_turns": 8,
       "source_type": "DIRECT_CARD",
       "card_kind": "QUALITATIVE",
       "target_star_slot": "T",

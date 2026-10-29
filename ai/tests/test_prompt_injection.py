@@ -378,7 +378,7 @@ def test_question_template_keeps_its_shape_when_review_text_is_an_injection() ->
 
     assert (result.next_action, result.question_type) == ("ASK_AGAIN", "EVIDENCE_GAP")
     assert (result.target_star_slot, result.target_statement_seq) == ("R", 1)
-    assert result.question_text.startswith("PR #7의 리뷰 5에서")
+    assert result.question_text.startswith("PR #7 리뷰에서")
 
 
 # ---- 판정 함수 ---------------------------------------------------------------------------------

@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -158,9 +159,6 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         String viewerId = counter.viewerId(token);
         // 내 PR 에 달린 리뷰 댓글에 답글만 달아도 GitHub 이 내 리뷰로 기록해 내 PR 이 섞이므로 내가 쓴 PR 은 뺀다
         String reviewedQuery = "is:pr reviewed-by:" + login + " -author:" + login;
-        GithubSearchCounts searches = new GithubSearchCounts(
-                counter.countPullRequests(token, "is:pr author:" + login),
-                counter.countPullRequests(token, reviewedQuery));
 
         int countable = Math.min(targets.size(), COUNT_BATCH_SIZE * COUNT_BATCH_LIMIT);
         if (countable < targets.size()) {
@@ -168,20 +166,33 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         }
 
         List<GithubRepositoryCount> counts = new ArrayList<>();
-        GithubCountRun run = new GithubCountRun(token, viewerId, searches, deadline, new AtomicReference<>(), new AtomicInteger());
         // 실행기를 요청마다 만들어 다른 사용자의 개수 세기를 기다리지 않게 하고, 응답 전에 닫아 스레드를 남기지 않는다
-        try (ExecutorService pool = Executors.newFixedThreadPool(COUNT_CONCURRENCY)) {
+        try (ExecutorService pool = Executors.newFixedThreadPool(COUNT_CONCURRENCY);
+             ExecutorService searchPool = Executors.newFixedThreadPool(2)) {
+            // 검색 결과는 저장소별 PR 수를 채울 때만 쓰여, 검색이 끝나기를 기다리지 않고 커밋 수부터 센다
+            CompletableFuture<GithubSearchCounts> searches = CompletableFuture
+                    .supplyAsync(() -> counter.countPullRequests(token, "is:pr author:" + login), searchPool)
+                    .thenCombine(CompletableFuture.supplyAsync(() -> counter.countPullRequests(token, reviewedQuery), searchPool),
+                            GithubSearchCounts::new);
+            GithubCountRun run = new GithubCountRun(token, viewerId, searches, deadline, new AtomicReference<>(), new AtomicInteger());
             List<CompletableFuture<List<GithubRepositoryCount>>> batchCounts = new ArrayList<>();
             for (int from = 0; from < countable; from += COUNT_BATCH_SIZE) {
                 List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, countable));
                 batchCounts.add(CompletableFuture.supplyAsync(() -> countBatch(run, batch), pool));
             }
             batchCounts.forEach(batchCount -> counts.addAll(batchCount.join()));
-        }
+            searches.join();
 
-        GithubCountStop stopped = run.stopped().get();
-        if (stopped != null) {
-            log.warn(stopped.message, run.skipped().get());
+            GithubCountStop stopped = run.stopped().get();
+            if (stopped != null) {
+                log.warn(stopped.message, run.skipped().get());
+            }
+        } catch (CompletionException failed) {
+            // 검색이 다 받지 못했거나 한도로 막힌 예외를 감싸지 않고 넘겨, 지금까지처럼 아무 개수도 저장되지 않게 한다
+            if (failed.getCause() instanceof RuntimeException cause) {
+                throw cause;
+            }
+            throw failed;
         }
 
         return counts;
@@ -267,7 +278,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         for (GithubCountTarget target : batch) {
             GithubRepositoryTotals total = totals.get(target.githubRepoId());
             if (total != null) {
-                counts.add(countOf(target, total, run.searches()));
+                counts.add(countOf(target, total, run.searches().join()));
             }
         }
         // 내 커밋 이어 받기가 멈춰 결과에서 빠진 저장소도 건너뛴 수에 넣어야 마지막 로그가 맞다

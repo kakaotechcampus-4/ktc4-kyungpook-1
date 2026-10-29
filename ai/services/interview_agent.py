@@ -7,13 +7,15 @@ LLM 이 없거나 실패하면 아래 결정적인 틀 질문(``build_turn``)으
 질문 생성 하드 규칙(명세서 gitory_api_spec_v2 346행):
     - "실패" 등 부정적 결과를 단정하지 않는다.
     - 탈출구("기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요")를 반드시 포함한다.
-    - 제공된 sha 또는 pr_number는 반드시 질문 본문에 인용한다.
+    - 제공된 커밋은 메시지 첫 줄로, PR 은 pr_number 로 질문 본문에 인용한다.
+      커밋 sha·리뷰 id 는 사용자가 읽을 수 없는 번호라 넣지 않는다(화면의 '질문 근거 보기' 가 보여 준다).
     - existing_turn_count >= max_turns면 질문을 생성하지 않고
       next_action="COMPLETE".
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -32,6 +34,12 @@ from services.interview_llm import EndedQuestions, InterviewLLM, InterviewLLMUna
 
 #: 모든 질문에 반드시 들어가는 탈출구 문구.
 _ESCAPE_HATCH = "기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요."
+
+#: 사용자는 S·T·A·R 글자를 모르므로 질문에는 칸의 한국어 이름을 쓴다.
+_SLOT_NAMES: dict[str, str] = {"S": "상황", "T": "과제", "A": "행동", "R": "결과"}
+
+#: 커밋 메시지 앞의 종류 표시(feat:, fix(api):, refactor!: 등).
+_COMMIT_TYPE_PREFIX = re.compile(r"^[A-Za-z]+(\([^)]*\))?!?:\s*")
 
 InternalEvidenceKind = Literal[
     "REVERT",
@@ -224,35 +232,34 @@ class InterviewAgent:
         )
 
     def _ask_for_revert(self, hint: EvidenceHint) -> str:
-        """revert 케이스: revert 커밋 SHA를 인용해 되돌린 이유를 묻는다."""
-        sha = hint.commit.sha if hint.commit else "확인되지 않은 커밋"
+        """revert 케이스: revert 커밋 메시지를 인용해 되돌린 이유를 묻는다."""
+        title = _title(hint.commit) if hint.commit else "되돌린"
         return (
-            f"Revert 커밋({sha})을 찾았지만 되돌린 이유는 "
+            f"‘{title}’ 커밋을 찾았지만 되돌린 이유는 "
             "전달된 근거만으로 확인하기 어려워요. "
             f"혹시 어떤 상황이었나요? {_ESCAPE_HATCH}"
         )
 
     def _ask_for_linked_commit(self, slot: MissingSlot, hint: EvidenceHint) -> str:
         """직접 연결 커밋은 있으나 STAR 문장 보강이 필요한 경우를 묻는다."""
-        message = hint.commit.message if hint.commit else "해당 작업"
-        sha = hint.commit.sha if hint.commit else "확인되지 않은 커밋"
+        title = _title(hint.commit) if hint.commit else "해당 작업"
         return (
-            f"커밋 {sha}의 ‘{message}’ 작업과 관련해 "
-            f"{slot.star_slot} 부분에서 확인된 결과나 "
+            f"‘{title}’ 작업과 관련해 "
+            f"{_SLOT_NAMES[slot.star_slot]} 부분에서 확인된 결과나 "
             f"판단 기준이 있었나요? {_ESCAPE_HATCH}"
         )
 
     def _ask_for_changes_requested(
         self, slot: MissingSlot, hint: EvidenceHint
     ) -> str:
-        """changes requested 케이스: PR·리뷰 식별자와 요약을 인용한다."""
+        """changes requested 케이스: PR 번호와 리뷰 요약을 인용한다."""
         review = hint.review
         if review is None:
             raise ValueError("CHANGES_REQUESTED 질문에는 review 문맥이 필요합니다.")
         return (
-            f"PR #{review.pr_number}의 리뷰 {review.review_id}에서 "
+            f"PR #{review.pr_number} 리뷰에서 "
             f"‘{review.summary}’라는 변경 요청이 있었어요. "
-            f"이를 반영하면서 {slot.star_slot} 부분에서 어떤 기준으로 "
+            f"이를 반영하면서 {_SLOT_NAMES[slot.star_slot]} 부분에서 어떤 기준으로 "
             f"수정하셨나요? {_ESCAPE_HATCH}"
         )
 
@@ -269,7 +276,7 @@ class InterviewAgent:
         return (
             f"이슈 #{issue.issue_number} ‘{issue.title}’에서 "
             f"{feedback_context}"
-            f"이를 반영한 뒤 {slot.star_slot} 부분에서 확인된 변화가 있었나요? "
+            f"이를 반영한 뒤 {_SLOT_NAMES[slot.star_slot]} 부분에서 확인된 변화가 있었나요? "
             f"{_ESCAPE_HATCH}"
         )
 
@@ -280,23 +287,29 @@ class InterviewAgent:
         이때도 카드 전체 커밋이 있으면 작업명을 질문에 인용한다. 카드 커밋까지
         없을 때만 완전히 일반적인 회상 질문을 생성한다.
         """
+        name = _SLOT_NAMES[slot.star_slot]
         if candidate and candidate.commits:
-            commit = candidate.commits[0]
             pr_context = (
                 f"PR #{candidate.github_pr_number}의 "
                 if candidate.github_pr_number is not None
                 else ""
             )
             return (
-                f"{pr_context}커밋 {commit.sha}의 ‘{commit.message}’ 작업 이후 "
-                f"{slot.star_slot} 부분에서 확인된 결과나 변화가 있었나요? {_ESCAPE_HATCH}"
+                f"{pr_context}‘{_title(candidate.commits[0])}’ 작업 이후 "
+                f"{name} 부분에서 확인된 결과나 변화가 있었나요? {_ESCAPE_HATCH}"
             )
         if candidate and candidate.github_pr_number is not None:
             return (
-                f"PR #{candidate.github_pr_number} 작업에서 {slot.star_slot} 부분과 관련해 "
+                f"PR #{candidate.github_pr_number} 작업에서 {name} 부분과 관련해 "
                 f"확인된 결과나 판단 기준이 있었나요? {_ESCAPE_HATCH}"
             )
         return (
-            f"{slot.star_slot} 부분에 대한 근거를 아직 찾지 못했어요. "
+            f"{name} 부분에 대한 근거를 아직 찾지 못했어요. "
             f"당시 상황을 간단히 설명해주실 수 있나요? {_ESCAPE_HATCH}"
         )
+
+
+def _title(commit: CommitContext) -> str:
+    """질문에 인용할 커밋 이름으로, 메시지 첫 줄에서 feat: 같은 종류 표시를 뗀다."""
+    first_line = commit.message.strip().splitlines()[0].strip()
+    return _COMMIT_TYPE_PREFIX.sub("", first_line) or first_line

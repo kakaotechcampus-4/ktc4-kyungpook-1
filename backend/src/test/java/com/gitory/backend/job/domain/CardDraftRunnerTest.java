@@ -379,7 +379,9 @@ class CardDraftRunnerTest {
                         new StarStep(0, StarStepActor.CODE, StarStepKind.FLAG, StarSlot.R, "UNSOURCED_NUMBER", "50%",
                                 null, null),
                         new StarStep(1, StarStepActor.MODEL, StarStepKind.OPEN, StarSlot.S, null, "이슈 #98",
-                                StarMaterialKind.ISSUE, "가".repeat(80)))));
+                                StarMaterialKind.ISSUE, "가".repeat(80)),
+                        new StarStep(2, StarStepActor.CODE, StarStepKind.REVERT, StarSlot.S, "EMPTY", null, null,
+                                null))));
 
         runNext();
 
@@ -395,7 +397,8 @@ class CardDraftRunnerTest {
                         tuple(1, 1, 0, "CODE", "FLAG", "R", "UNSOURCED_NUMBER", "50%", null,
                                 null),
                         tuple(1, 2, 1, "MODEL", "OPEN", "S", null, "이슈 #98", "ISSUE",
-                                "가".repeat(60)));
+                                "가".repeat(60)),
+                        tuple(1, 3, 2, "CODE", "REVERT", "S", "EMPTY", null, null, null));
 
     }
 

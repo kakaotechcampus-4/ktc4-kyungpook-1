@@ -7,5 +7,6 @@ public enum StarStepKind {
     RETRY,
     KEEP,
     REWRITE,
-    PASS
+    PASS,
+    REVERT
 }

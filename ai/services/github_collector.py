@@ -35,7 +35,7 @@ from schemas.collection import (
     RepositoryCollectionResult,
 )
 from ports.repository_activity import RepositoryActivityExecution
-from services.progress import COMMITS, PULL_REQUESTS, report_progress
+from services.progress import COMMITS, PULL_REQUESTS, commit_item, pull_request_item, report_progress
 
 
 GITHUB_API_VERSION = "2022-11-28"
@@ -302,7 +302,7 @@ class GithubCollector:
                     reviews=reviews,
                 )
             )
-            report_progress(PULL_REQUESTS, index, len(pulls))
+            report_progress(PULL_REQUESTS, index, len(pulls), pull_request_item(number, title, len(reviews)))
 
     async def _select_pull_requests(
         self,
@@ -573,7 +573,7 @@ class GithubCollector:
             state.commits.append(commit)
             if confirmation is not None:
                 state.needs_confirmation.append(confirmation)
-            report_progress(COMMITS, index, len(selected_shas))
+            report_progress(COMMITS, index, len(selected_shas), commit_item(commit))
 
     async def _is_empty_repository(
         self,

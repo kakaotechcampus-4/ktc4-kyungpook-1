@@ -313,6 +313,8 @@ export const CardSummary = z.object({
   period: z.string().nullish(),
   evidenceCount: z.number().nonnegative().nullish(),
   userStatedCount: z.number().nonnegative().nullish(),
+  /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
+  repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
 });
 export type CardSummary = z.infer<typeof CardSummary>;
 

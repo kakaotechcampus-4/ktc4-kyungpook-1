@@ -1748,6 +1748,7 @@
               "UNSOURCED_NUMBER",
               "UNSOURCED_TERM",
               "OVER_LIMIT",
+              "UNDER_LENGTH",
               "MISSING_BLANK",
               "REPEATED",
               "UNSUPPORTED_CLAIM",
@@ -1930,6 +1931,7 @@
                   "UNSOURCED_NUMBER",
                   "UNSOURCED_TERM",
                   "OVER_LIMIT",
+                  "UNDER_LENGTH",
                   "MISSING_BLANK",
                   "REPEATED",
                   "UNSUPPORTED_CLAIM",
@@ -3873,6 +3875,14 @@
           "question": {
             "title": "Question",
             "type": "string"
+          },
+          "templates": {
+            "description": "답을 돕는 빈칸 틀 0~2개. 카드에 적힌 사실만 들어 있고 사용자가 채울 곳은 '___' 이다",
+            "items": {
+              "type": "string"
+            },
+            "title": "Templates",
+            "type": "array"
           }
         },
         "required": [
@@ -4256,7 +4266,7 @@
       "QuestionAsks": {
         "properties": {
           "asks": {
-            "description": "최대 3개. required_missing 은 모두 들어 있다",
+            "description": "최대 4개. required_missing 은 모두 들어 있다",
             "items": {
               "$ref": "#/components/schemas/MaterialAsk"
             },

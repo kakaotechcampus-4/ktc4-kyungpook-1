@@ -58,8 +58,12 @@ class CoverLetterLimits:
     max_question_chars: int = 150
     max_text_chars: int = 500
     max_material_chars: int = 1_000
+    # 자소서는 글자 수 상한 가까이 채우므로, 이 비율보다 짧으면 재료를 더 묻고 풀어 쓰거나 모자란 자리를 빈칸으로 알린다
+    target_ratio: float = 0.7
     max_considered: int = 3
-    max_asks: int = 3
+    max_asks: int = 4
+    max_templates: int = 2
+    max_template_chars: int = 80
     max_rewrites: int = 2
     max_findings_per_question: int = 3
 

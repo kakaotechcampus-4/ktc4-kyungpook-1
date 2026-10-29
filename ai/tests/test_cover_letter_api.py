@@ -73,7 +73,8 @@ def test_questions_api_returns_asks_in_request_order(monkeypatch: pytest.MonkeyP
     """질문 API 는 문항 순서대로 질문을 돌려주고, 일부 문항만 틀 질문이면 PARTIAL 이다."""
     asks = {"문제 해결 경험": AskOutput(asks=[AskItemOutput(item="RESULT", question="결과로 무엇이 달라졌나요?")]),
             "지원 동기": LLMStructuredCallError("실패")}
-    monkeypatch.setattr(cover_letters_api, "_asker", CoverLetterAsker(FixedClient({AskOutput: asks})))
+    monkeypatch.setattr(cover_letters_api, "_asker",
+                        CoverLetterAsker(FixedClient({AskOutput: asks}), CoverLetterLimits(target_ratio=0.0)))
     payload = {"cover_letter_id": 9, "job_role": "백엔드 개발", "questions": [
         {"question_id": 1, "text": "문제 해결 경험", "char_limit": 700, "question_theme": "PROBLEM_SOLVING",
          "primary_card": CARD},
@@ -102,7 +103,8 @@ def test_drafts_api_returns_drafts_in_request_order(monkeypatch: pytest.MonkeyPa
     writes = {"문제 해결 경험": WriteOutput(text="바뀐 모듈만 다시 빌드했습니다. 배포가 40분 걸렸습니다."),
               "협업 경험": WriteOutput(text="바뀐 모듈만 다시 빌드하자고 제안했습니다. 배포가 40분 걸렸습니다.")}
     client = FixedClient({WriteOutput: writes, ReviewOutput: ReviewOutput(findings=[])})
-    monkeypatch.setattr(cover_letters_api, "_drafter", CoverLetterDrafter(client, client, CoverLetterLimits()))
+    monkeypatch.setattr(cover_letters_api, "_drafter",
+                        CoverLetterDrafter(client, client, CoverLetterLimits(target_ratio=0.0)))
     question = {"char_limit": 700, "question_theme": "PROBLEM_SOLVING", "primary_card": CARD,
                 "answers": [{"item": "RESULT", "text": "배포가 빨라졌다", "card_id": 1}]}
     payload = {"cover_letter_id": 9, "job_role": "백엔드 개발", "questions": [

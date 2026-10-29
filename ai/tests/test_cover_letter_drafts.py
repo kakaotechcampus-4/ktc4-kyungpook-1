@@ -83,8 +83,12 @@ def _request(*questions: dict, memo: Optional[str] = None) -> DraftsRequest:
                                          "questions": list(questions)})
 
 
+#: 글자 수 목표와 상관없는 시험은 짧은 초안으로 쓰므로 목표 비율을 0 으로 둔다
+NO_TARGET = CoverLetterLimits(target_ratio=0.0)
+
+
 def _draft(client: DraftClient, request: DraftsRequest, limits: Optional[CoverLetterLimits] = None):
-    return asyncio.run(CoverLetterDrafter(client, client, limits).draft(request))
+    return asyncio.run(CoverLetterDrafter(client, client, limits or NO_TARGET).draft(request))
 
 
 def _fix(*actions: str, reason: Optional[str] = None) -> DecideOutput:
@@ -492,7 +496,8 @@ class SlowDraftClient(DraftClient):
 
 def test_slow_question_does_not_take_the_review_time() -> None:
     """한 문항의 쓰기가 늦어도 검토 몫 시간을 남기고 뼈대로 끊어, 감독은 나머지 문항을 검토한다."""
-    limits = CoverLetterLimits(draft_deadline_seconds=3.0, review_reserve_seconds=1.5, min_call_seconds=0.2)
+    limits = CoverLetterLimits(draft_deadline_seconds=3.0, review_reserve_seconds=1.5, min_call_seconds=0.2,
+                               target_ratio=0.0)
     client = SlowDraftClient({"협업 경험": 6.0}, {"협업 경험": [GOOD_API], "문제 해결 경험": [GOOD]},
                              reviews=[NO_REVIEW_FINDINGS])
 
@@ -500,3 +505,41 @@ def test_slow_question_does_not_take_the_review_time() -> None:
 
     assert [d.source for d in result.drafts] == ["SKELETON", "LLM"]
     assert "REVIEWED" in _kinds(result)
+
+
+def test_draft_below_target_length_is_rewritten_to_reach_it() -> None:
+    """초안이 목표 글자 수(상한의 70%)에 못 미치고 '[더 쓸 거리]' 빈칸도 없으면 사실을 풀어 써서 다시 쓰게 한다."""
+    long_draft = "배포 시간을 40분에서 12분으로 줄였습니다. " * 20
+    client = DraftClient({"문제 해결 경험": [GOOD, long_draft]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question()), CoverLetterLimits())
+
+    payloads = client.writes_for("문제 해결 경험")
+    assert payloads[0]["question"]["target_chars"] == 490
+    assert "글자 수가 목표보다" in payloads[1]["fix"]["problems"][0]
+    assert (result.drafts[0].text, result.drafts[0].rewrites) == (long_draft.strip(), 1)
+
+
+def test_short_draft_with_more_to_write_blank_passes_and_blank_is_not_counted() -> None:
+    """재료가 모자라 '[더 쓸 거리: …]' 빈칸을 넣은 짧은 초안은 그대로 두고, 빈칸은 글자 수에 세지 않는다."""
+    text = GOOD + " [더 쓸 거리: 바뀐 모듈만 빌드한 이유]"
+    client = DraftClient({"문제 해결 경험": [text]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question()), CoverLetterLimits())
+
+    draft = result.drafts[0]
+    assert (draft.rewrites, draft.char_count) == (0, len(GOOD) + 1)
+    assert "CHECK_PASSED" in _kinds(result)
+
+
+def test_rewrite_after_review_that_is_still_short_is_not_reverted() -> None:
+    """검토 뒤 다시 쓴 글이 앞 초안처럼 목표 글자 수에 못 미칠 뿐이면 새 문제가 아니라서 되돌리지 않는다."""
+    claimed = GOOD.split(" 바뀐")[0] + " 팀장으로서 일정을 이끌었습니다."
+    fixed = GOOD + " 배포가 빨라졌습니다."
+    finding = FindingOutput(question_id=1, sentence_seq=2, code="UNSUPPORTED_CLAIM", reason="근거에 없는 팀장 역할")
+    client = DraftClient({"문제 해결 경험": [claimed, claimed, claimed, fixed]}, reviews=[ReviewOutput(findings=[finding])])
+
+    result, _ = _draft(client, _request(_question()), CoverLetterLimits())
+
+    assert (result.drafts[0].text, result.drafts[0].rewrites) == (fixed, 3)
+    assert "REVERTED" not in _kinds(result)

@@ -179,6 +179,10 @@ class QuestionsRequest(StrictRequestModel):
 class MaterialAsk(BaseModel):
     item: MaterialItem
     question: str
+    templates: list[str] = Field(
+        default_factory=list,
+        description="답을 돕는 빈칸 틀 0~2개. 카드에 적힌 사실만 들어 있고 사용자가 채울 곳은 '___' 이다",
+    )
 
 
 class QuestionAsks(BaseModel):
@@ -186,7 +190,7 @@ class QuestionAsks(BaseModel):
     required_missing: list[MaterialItem] = Field(
         ..., description="꼭 있어야 하는데 카드·답·메모에 없는 항목. 답을 받은 뒤 Spring 이 채워졌는지 본다"
     )
-    asks: list[MaterialAsk] = Field(..., description="최대 3개. required_missing 은 모두 들어 있다")
+    asks: list[MaterialAsk] = Field(..., description="최대 4개. required_missing 은 모두 들어 있다")
     source: AskSource
 
 
@@ -197,9 +201,11 @@ class QuestionsResult(BaseModel):
     questions: list[QuestionAsks] = Field(..., description="요청 문항 순서 그대로")
 
 
-#: 초안에서 걸린 문제. 앞 셋은 검사기(코드)가, 뒤 셋은 전체 검토(감독)가 찾는다.
+#: 초안에서 걸린 문제. REPEATED·UNSUPPORTED_CLAIM·OFF_TOPIC 은 전체 검토(감독)가, 나머지는 검사기(코드)가 찾는다.
+#: UNDER_LENGTH 는 글자 수가 목표에 못 미치는데 '[더 쓸 거리: …]' 빈칸도 없다는 뜻이다.
 DraftProblemCode = Literal[
-    "UNSOURCED_NUMBER", "UNSOURCED_TERM", "OVER_LIMIT", "MISSING_BLANK", "REPEATED", "UNSUPPORTED_CLAIM", "OFF_TOPIC",
+    "UNSOURCED_NUMBER", "UNSOURCED_TERM", "OVER_LIMIT", "UNDER_LENGTH", "MISSING_BLANK", "REPEATED",
+    "UNSUPPORTED_CLAIM", "OFF_TOPIC",
 ]
 
 #: 초안을 누가 만들었는지. SKELETON 은 LLM 답을 받지 못해 카드 문장과 빈칸으로 만든 뼈대다.

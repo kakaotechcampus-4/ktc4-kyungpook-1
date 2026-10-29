@@ -10,6 +10,7 @@ import pytest
 
 from schemas.cover_letter import QuestionsRequest
 from services.cover_letter_asker import AskItemOutput, AskOutput, CoverLetterAsker
+from services.cover_letter_llm import CoverLetterLimits
 from services.llm_structured_client import LLMStructuredCallError, StructuredCallResult
 
 CARD = {
@@ -54,8 +55,12 @@ def _asks(*items: str) -> AskOutput:
     return AskOutput(asks=[AskItemOutput(item=item, question=f"{item} 를 알려 주세요.") for item in items])
 
 
-def _ask(client: RoutedClient, request: QuestionsRequest):
-    return asyncio.run(CoverLetterAsker(client).ask(request))
+#: 글자 수 목표와 상관없는 시험은 재료가 짧은 카드로 쓰므로 목표 비율을 0 으로 둔다
+NO_TARGET = CoverLetterLimits(target_ratio=0.0)
+
+
+def _ask(client: RoutedClient, request: QuestionsRequest, limits: CoverLetterLimits = NO_TARGET):
+    return asyncio.run(CoverLetterAsker(client, limits).ask(request))
 
 
 def test_empty_star_slots_of_primary_card_are_required() -> None:
@@ -147,16 +152,16 @@ def test_learning_template_question_names_the_card() -> None:
     )
 
 
-def test_lesson_question_without_card_asks_up_to_three_and_reports_all_missing() -> None:
-    """카드 없는 성장 문항은 꼭 있어야 하는 항목이 넷이라 앞의 셋만 묻고, 모자란 항목에는 넷을 모두 알려 초안에 빈칸이 남게 한다."""
-    client = RoutedClient({"성장 경험": [_asks("SITUATION", "ACTION", "RESULT")]})
+def test_lesson_question_without_card_asks_all_four_required_items() -> None:
+    """카드 없는 성장 문항은 꼭 있어야 하는 항목 넷을 질문 상한 4개 안에서 모두 묻는다."""
+    client = RoutedClient({"성장 경험": [_asks("SITUATION", "ACTION", "RESULT", "LEARNING")]})
 
     result, _ = _ask(client, _request(_question("성장 경험", "GROWTH", card=None)))
 
     asks = result.questions[0]
     assert asks.required_missing == ["SITUATION", "ACTION", "RESULT", "LEARNING"]
-    assert ([a.item for a in asks.asks], asks.source) == (["SITUATION", "ACTION", "RESULT"], "LLM")
-    assert client.payloads[0]["required"] == ["SITUATION", "ACTION", "RESULT"]
+    assert ([a.item for a in asks.asks], asks.source) == (["SITUATION", "ACTION", "RESULT", "LEARNING"], "LLM")
+    assert client.payloads[0]["required"] == ["SITUATION", "ACTION", "RESULT", "LEARNING"]
 
 
 def test_answer_about_supporting_card_does_not_fill_primary_experience() -> None:
@@ -185,8 +190,8 @@ def test_question_without_card_requires_all_star_items() -> None:
     "broken",
     [
         pytest.param(_asks("LEARNING"), id="꼭 물을 항목을 빠뜨림"),
-        pytest.param(_asks("RESULT", "SITUATION"), id="이미 있는 항목을 물음"),
-        pytest.param(_asks("RESULT", "LEARNING", "TRIGGER", "JOB_LINK"), id="질문이 4개"),
+        pytest.param(_asks("RESULT", "REASON"), id="경험 문항에서 지원 이유를 물음"),
+        pytest.param(_asks("RESULT", "LEARNING", "TRIGGER", "JOB_LINK", "ACTION"), id="질문이 5개"),
         pytest.param(_asks("RESULT", "RESULT"), id="같은 항목을 두 번"),
         pytest.param(AskOutput(asks=[AskItemOutput(item="RESULT", question="배포가 30% 빨라졌나요?")]),
                      id="입력에 없는 수치"),
@@ -221,11 +226,96 @@ def test_template_questions_ask_only_required_items_when_llm_fails() -> None:
 
 
 def test_nothing_to_ask_skips_llm() -> None:
-    """꼭 물을 항목도 더 물을 항목도 없으면 LLM 을 부르지 않는다."""
-    known = [{"item": item, "text": "이미 받은 답"} for item in ("RESULT", "LEARNING", "TRIGGER", "JOB_LINK")]
+    """꼭 물을 항목도, 더 물을 항목도, 더 깊게 물을 항목도 없으면 LLM 을 부르지 않는다."""
+    known = [{"item": item, "text": "이미 받은 답"}
+             for item in ("SITUATION", "ACTION", "RESULT", "LEARNING", "TRIGGER", "JOB_LINK")]
     client = RoutedClient({})
 
     result, ended_by = _ask(client, _request(_question(known=known)))
 
     assert (result.questions[0].asks, result.questions[0].source) == ([], "NONE")
     assert (client.payloads, ended_by) == ([], "COMPLETED")
+
+
+def test_short_material_asks_as_many_as_needed_up_to_four() -> None:
+    """재료가 목표 글자 수(상한의 70%)에 모자라면 답 하나를 100자로 어림해 모자란 만큼, 최대 4개를 묻는다."""
+    client = RoutedClient({"문제 해결 경험": [_asks("RESULT", "ACTION", "LEARNING", "JOB_LINK")]})
+
+    result, _ = _ask(client, _request(_question()), CoverLetterLimits())
+
+    payload = client.payloads[0]
+    assert (payload["material_chars"], payload["target_chars"], payload["asks_needed"]) == (56, 490, 4)
+    assert payload["deepen"] == ["ACTION", "SITUATION"]
+    assert [a.item for a in result.questions[0].asks] == ["RESULT", "ACTION", "LEARNING", "JOB_LINK"]
+
+
+def test_fewer_asks_than_needed_are_asked_again() -> None:
+    """재료가 모자란데 필요한 수보다 적게 물으면 한 번 더 묻는다."""
+    client = RoutedClient({"문제 해결 경험": [_asks("RESULT"), _asks("RESULT", "ACTION", "LEARNING", "JOB_LINK")]})
+
+    result, _ = _ask(client, _request(_question()), CoverLetterLimits())
+
+    assert len(client.payloads) == 2
+    assert len(result.questions[0].asks) == 4
+
+
+def test_enough_material_asks_only_required_items() -> None:
+    """이미 받은 답까지 합쳐 재료가 목표 글자 수를 넘으면 꼭 물을 항목만 물어도 된다."""
+    known = [{"item": "LEARNING", "text": "작게 나눠 빌드하는 습관이 생겼다. " * 25}]
+    client = RoutedClient({"문제 해결 경험": [_asks("RESULT")]})
+
+    result, _ = _ask(client, _request(_question(known=known)), CoverLetterLimits())
+
+    assert client.payloads[0]["asks_needed"] == 1
+    assert [a.item for a in result.questions[0].asks] == ["RESULT"]
+
+
+def test_card_items_already_answered_are_not_asked_deeper() -> None:
+    """카드에 있는 항목도 더 깊게 물을 수 있지만, 그 항목의 답을 이미 받았으면 다시 묻지 않는다."""
+    known = [{"item": "ACTION", "text": "모듈마다 캐시 키를 따로 두었다"}]
+    client = RoutedClient({"문제 해결 경험": [_asks("RESULT")]})
+
+    _ask(client, _request(_question(known=known)))
+
+    assert client.payloads[0]["deepen"] == ["SITUATION"]
+
+
+def test_templates_without_blank_or_with_unsourced_number_are_dropped() -> None:
+    """빈칸 없는 틀·입력에 없는 수치가 든 틀·너무 긴 틀·같은 틀은 버리고, 남은 틀은 2개까지 준다."""
+    templates = [
+        "빌드 캐시를 나눈 이유는 ___ 때문이었다",
+        "배포가 30% 빨라진 이유는 ___ 이었다",
+        "빌드 캐시를 나눴다",
+        "빌드 캐시를 나눈 이유는 ___ 때문이었다",
+        "___ 때문에 " + "가" * 80,
+        "___ 방법도 생각했지만 ___ 때문에 빌드 캐시를 나눴다",
+        "바뀐 모듈만 빌드한 뒤 ___ 이 달라졌다",
+    ]
+    ask = AskItemOutput(item="RESULT", question="결과로 무엇이 달라졌나요?", templates=templates)
+    client = RoutedClient({"문제 해결 경험": [AskOutput(asks=[ask])]})
+
+    result, _ = _ask(client, _request(_question()))
+
+    assert result.questions[0].asks[0].templates == [
+        "빌드 캐시를 나눈 이유는 ___ 때문이었다", "___ 방법도 생각했지만 ___ 때문에 빌드 캐시를 나눴다",
+    ]
+
+
+def test_template_questions_have_no_templates() -> None:
+    """LLM 답을 못 받아 틀 질문으로 물을 때는 지어낸 틀이 없도록 빈칸 틀을 주지 않는다."""
+    client = RoutedClient({"문제 해결 경험": [LLMStructuredCallError("실패")]})
+
+    result, _ = _ask(client, _request(_question()))
+
+    assert [a.templates for a in result.questions[0].asks] == [[]]
+
+
+def test_card_items_left_to_deepen_are_still_asked() -> None:
+    """꼭 물을 항목도 더 물을 항목도 없어도, 카드에 한 문장뿐인 항목이 남아 있으면 더 깊게 묻는다."""
+    known = [{"item": item, "text": "이미 받은 답"} for item in ("RESULT", "LEARNING", "TRIGGER", "JOB_LINK")]
+    client = RoutedClient({"문제 해결 경험": [_asks("ACTION")]})
+
+    result, _ = _ask(client, _request(_question(known=known)))
+
+    assert ([a.item for a in result.questions[0].asks], result.questions[0].source) == (["ACTION"], "LLM")
+    assert client.payloads[0]["deepen"] == ["ACTION", "SITUATION"]

@@ -274,12 +274,13 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 | | 응답 `data` |
 |---|---|
-| `GET /matches` | `MatchTarget[]` — 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다 |
+| `GET /matches` | `MatchTarget[]` — 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다. `?companyId=` 를 주면 그 회사 공고만 오고(없는 회사면 빈 배열), 비어 있으면 거르지 않는다 |
 | `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote` · `conditions[]`. 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
 
 **MatchTarget**
 ```jsonc
-{ "id", "company", "role",                        // role = 공고 원문의 직무명
+{ "id", "company", "companyId", "logoUrl": "https://…" | null,   // companyId = 같은 회사의 공고를 묶는 id
+  "role",                                          // role = 공고 원문의 직무명
   "category": "BACKEND|FRONTEND|MOBILE|DEVOPS|DATA|AI_ML|SECURITY|QA|ETC",
   "fit": "A|B|C|D" | null,                         // null = 확정 카드가 하나도 없음
   "required": { "total", "met" }, "preferred": { "total", "met" },
@@ -301,7 +302,8 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 비슷한 내 카드 문장이 있으면 `supports` 로 함께 온다.
 - **경력은 원문에 적혀 있을 때만 나온다.** `ENTRY` = 신입·경력 무관·인턴·최소 0년(상한만 있는 '1년 미만'·'3년 이하' 도 포함), `EXPERIENCED` = 최소 N년(`minYears`), `UNSPECIFIED` = 경력 얘기가 없거나 원문으로 확인할 수 없을 때. 경력 조건은 `conditions` 에 넣지 않는다.
 - **정렬**: 서버는 `fit` A→D, 같으면 `expiresAt` 이 가까운 순, 상시 채용(null)은 뒤로 내려준다. `fit` 이 모두 null 이면 `expiresAt` 순만 본다. 화면의 '마감 순' 보기는 받은 목록을 다시 정렬한다 — `expiresAt` 이 가까운 순, 상시 채용은 뒤, 같으면 `fit` 순.
-- **필터(경력: 전체·신입 가능·경력·경력 표시 없음, 직무 분류)도 화면에서 한다.** '경력 표시 없음'은 `experience.level` 이 `UNSPECIFIED` 인 공고라, 경력 조건을 알 수 없는 공고를 따로 걸러 볼 수 있게 한다. 서버 쿼리 파라미터는 없다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
+- **필터(경력: 전체·신입 가능·경력·경력 표시 없음, 직무 분류)도 화면에서 한다.** '경력 표시 없음'은 `experience.level` 이 `UNSPECIFIED` 인 공고라, 경력 조건을 알 수 없는 공고를 따로 걸러 볼 수 있게 한다. 서버 쿼리 파라미터는 기업 페이지용 `companyId` 하나뿐이다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
+- **회사(`companyId` · `logoUrl`)**: `companyId` 는 서버 회사 설정의 키(예: `daangn`)이고, 여러 회사의 공고를 주는 출처(로켓펀치)는 `rocketpunch:회사이름` 이다. 기업별로 묶을 때 회사 이름 대신 이 값을 쓴다. `logoUrl` 은 회사 설정에 적은 공식 로고 https 주소이고, 없으면 null 이라 화면은 이니셜을 보인다. 이미지를 불러오지 못할 때도 이니셜로 되돌린다.
 - **오류**: 401 `UNAUTHENTICATED` · 404 `NOT_FOUND` · 503 `AI_UNAVAILABLE`(근거를 찾는 AI 검색이 잠시 실패, 다시 시도할 수 있다).
 - **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급 A~D, 필수 조건이 없어 우대로 센 공고 포함) · `list-no-cards.json`(확정 카드가 없을 때) · `detail.json`(근거가 있는 조건과 빈 조건) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
 - 한 줄 소개(`summary`), 인재상 태그(`matchedTags`·`gapTags`), 카드 수 기준 칸(`supportedTagCount`·`independentTagCount`)은 없다. `source.verifiedAt` 대신 `source.collectedAt`(공고를 가져온 시각)이다.

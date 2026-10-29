@@ -4,6 +4,7 @@ import com.gitory.backend.consent.domain.GithubNotConnectedException;
 import com.gitory.backend.consent.domain.GithubRateLimitedException;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
+import com.gitory.backend.consent.port.GithubCountTarget;
 import com.gitory.backend.consent.port.GithubOwnerResponse;
 import com.gitory.backend.consent.port.GithubRepositoryCount;
 import com.gitory.backend.consent.port.GithubRepositoryResponse;
@@ -12,6 +13,7 @@ import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -28,10 +30,12 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.LongStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.closeTo;
@@ -40,6 +44,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -301,6 +306,31 @@ class RepoApiTest {
     }
 
     @Test
+    @DisplayName("센 저장소가 하나도 없으면 최근에 활동한 저장소 20개만 세고 나머지는 다음 조회로 미룬다")
+    void firstCountCoversOnlyTwentyRecentRepositories() throws Exception {
+
+        githubReturns(pushedOnDays(25));
+
+        repos(myUserId).andExpect(jsonPath("$.data.length()").value(25));
+
+        assertThat(countedRepoIds()).containsExactlyElementsOf(LongStream.iterate(25, day -> day - 1).limit(20).boxed().toList());
+
+    }
+
+    @Test
+    @DisplayName("센 저장소가 하나라도 있으면 아직 안 센 저장소를 모두 센다")
+    void laterCountsCoverEveryUncountedRepository() throws Exception {
+
+        connectCounted(500L, "grow22", "counted-before");
+        githubReturns(pushedOnDays(25));
+
+        repos(myUserId);
+
+        assertThat(countedRepoIds()).hasSize(25);
+
+    }
+
+    @Test
     @DisplayName("GitHub 에 마지막 push 시각이 없으면 activeTo 는 저장소를 만든 시각이다")
     void activeToFallsBackToCreatedAt() throws Exception {
 
@@ -551,6 +581,24 @@ class RepoApiTest {
     private ResultActions detail(UUID id) throws Exception {
 
         return mvc.perform(get("/api/repos/{id}", id).with(loggedInAs(myUserId)));
+
+    }
+
+    private static GithubRepositoryResponse[] pushedOnDays(int days) {
+
+        return LongStream.rangeClosed(1, days)
+                .mapToObj(day -> new GithubRepositoryResponse(day, "repo-" + day, new GithubOwnerResponse("grow22"),
+                        false, "Java", "main", CREATED, CREATED.plus(Duration.ofDays(day))))
+                .toArray(GithubRepositoryResponse[]::new);
+
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Long> countedRepoIds() {
+
+        ArgumentCaptor<List<GithubCountTarget>> targets = ArgumentCaptor.forClass(List.class);
+        verify(github).countActivity(eq(myUserId), targets.capture());
+        return targets.getValue().stream().map(GithubCountTarget::githubRepoId).toList();
 
     }
 

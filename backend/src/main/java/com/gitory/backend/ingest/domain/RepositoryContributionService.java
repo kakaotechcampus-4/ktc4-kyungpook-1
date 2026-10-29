@@ -22,6 +22,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RepositoryContributionService {
 
+    // 센 저장소가 없는 사용자는 저장된 목록이 없어 화면이 이 응답을 기다리므로, 최근 저장소 한 묶음만 세고 나머지는 다음 조회 때 센다
+    private static final int FIRST_COUNT_LIMIT = 20;
+
     private final GithubCollectionAccessPort github;
     private final ConnectedRepositoryRepository connections;
     private final TransactionTemplate transaction;
@@ -32,6 +35,9 @@ public class RepositoryContributionService {
         List<ContributionTarget> targets = connections.findUncounted(userId, githubRepoIds);
         if (targets.isEmpty()) {
             return;
+        }
+        if (!connections.existsByUserIdAndCountedAtIsNotNull(userId)) {
+            targets = targets.subList(0, Math.min(FIRST_COUNT_LIMIT, targets.size()));
         }
 
         Instant countedAt = Instant.now();

@@ -28,6 +28,7 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
+import { DraftSteps } from './DraftSteps';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -175,6 +176,7 @@ export function CardPage() {
             <CardNavigation cardId={cardId} />
           </aside>
         </div>
+        <DraftSteps steps={card.draftSteps} />
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
         <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
@@ -252,6 +254,7 @@ export function CardPage() {
         </aside>
       </div>
 
+      <DraftSteps steps={card.draftSteps} />
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}

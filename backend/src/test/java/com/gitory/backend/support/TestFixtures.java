@@ -20,7 +20,8 @@ public final class TestFixtures {
     }
 
     public void clear() {
-        jdbc.execute("TRUNCATE users, repository CASCADE");
+        // AI 호출 기록은 Job·카드에 FK 가 없어 CASCADE 로 비워지지 않는다
+        jdbc.execute("TRUNCATE users, repository, ai_call CASCADE");
     }
 
     public Long insertUser(Long githubUserId, String login) {
@@ -62,6 +63,17 @@ public final class TestFixtures {
         return jdbc.queryForObject(
                 "INSERT INTO git_commit (repository_id, sha) VALUES (?, ?) RETURNING id",
                 Long.class, repositoryId, sha);
+
+    }
+
+    /** 진행 중인 활동을 만들고, startMonth 는 그달 1일(예: 2025-03-01)로 받는다 */
+    public Long insertActivity(UUID publicId, Long userId, String name, String type, String startMonth) {
+
+        return jdbc.queryForObject("""
+                        INSERT INTO activity (public_id, user_id, name, activity_type, start_month, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, CAST(? AS date), now(), now()) RETURNING id
+                        """,
+                Long.class, publicId, userId, name, type, startMonth);
 
     }
 

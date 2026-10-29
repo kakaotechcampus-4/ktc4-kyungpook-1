@@ -4,6 +4,7 @@ import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
 import com.gitory.backend.consent.domain.GithubConnection;
+import com.gitory.backend.consent.domain.GithubDisconnectService;
 import com.gitory.backend.consent.domain.User;
 import com.gitory.backend.consent.port.DiffEvidence;
 import com.gitory.backend.consent.port.DiffEvidencePartialReason;
@@ -11,6 +12,7 @@ import com.gitory.backend.consent.port.DiffEvidenceResult;
 import com.gitory.backend.consent.port.DiffEvidenceSource;
 import com.gitory.backend.consent.port.DiffEvidenceTarget;
 import com.gitory.backend.consent.port.GithubCollectionRepo;
+import com.gitory.backend.consent.port.GithubCollectionTarget;
 import com.gitory.backend.support.AiTestProperties;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -41,7 +43,11 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /** 실제 HTTP 를 거쳐 diff 근거 요청의 모양·토큰 위치와 응답 확인을 검사한다 */
@@ -58,6 +64,7 @@ class DiffEvidenceAccessTest {
     private final UserRepository users = mock(UserRepository.class);
     private final GithubConnectionRepository connections = mock(GithubConnectionRepository.class);
     private final TokenCipher cipher = new TokenCipher("diff-evidence-key", "0123456789abcdef");
+    private final GithubDisconnectService disconnects = mock(GithubDisconnectService.class);
     private final AtomicInteger calls = new AtomicInteger();
 
     private HttpServer server;
@@ -189,23 +196,61 @@ class DiffEvidenceAccessTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"NONE", "REVOKED", "EXPIRED", "LEAVING"})
-    @DisplayName("쓸 수 있는 연결이 없으면 AI 를 부르지 않고 연결 없음으로 끝난다")
-    void rejectsWithoutUsableConnection(String state) {
+    @ValueSource(strings = {"NONE", "REVOKED", "EXPIRED"})
+    @DisplayName("쓸 토큰이 없으면 AI 를 부르지 않고, 다시 연결해야 한다는 GITHUB_UNAUTHORIZED 로 끝난다")
+    void rejectsWithoutUsableToken(String state) {
 
         switch (state) {
             case "NONE" -> when(connections.findByUserIdAndRevokedAtIsNull(USER_ID)).thenReturn(Optional.empty());
             case "REVOKED" -> connectionExpiringAt(null).revoke();
-            case "EXPIRED" -> connectionExpiringAt(Instant.now().minusSeconds(1));
-            default -> {
-                User leaving = mock(User.class);
-                when(leaving.isDeletionRequested()).thenReturn(true);
-                when(users.findById(USER_ID)).thenReturn(Optional.of(leaving));
-            }
+            default -> connectionExpiringAt(Instant.now().minusSeconds(1));
         }
+
+        assertError("GITHUB_UNAUTHORIZED", false);
+        assertThat(calls).hasValue(0);
+
+    }
+
+    @Test
+    @DisplayName("탈퇴를 요청한 사용자면 AI 를 부르지 않고 연결 없음으로 끝난다")
+    void rejectsLeavingUser() {
+
+        User leaving = mock(User.class);
+        when(leaving.isDeletionRequested()).thenReturn(true);
+        when(users.findById(USER_ID)).thenReturn(Optional.of(leaving));
 
         assertError("GITHUB_CONNECTION_UNAVAILABLE", false);
         assertThat(calls).hasValue(0);
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"DIFF_EVIDENCE", "COLLECT", "COLLECT_STREAMING"})
+    @DisplayName("AI 가 GitHub 이 토큰을 거절했다고 알리면 그 토큰의 암호문으로 연결 해제를 요청하고 실패는 그대로 넘긴다")
+    void rejectedTokenRevokesThatConnection(String call) {
+
+        GithubConnection connection = connectionExpiringAt(null);
+        responseStatus = 401;
+        responseBody = failure("GITHUB_UNAUTHORIZED", false);
+
+        assertThatThrownBy(() -> call(call)).isInstanceOfSatisfying(AiClientException.class, error -> {
+            assertThat(error.errorCode()).isEqualTo("GITHUB_UNAUTHORIZED");
+            assertThat(error.retryable()).isFalse();
+        });
+        verify(disconnects).revokeRejected(USER_ID, connection.getTokenEnc());
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"DIFF_EVIDENCE", "COLLECT", "COLLECT_STREAMING"})
+    @DisplayName("GitHub 일시 장애로 실패하면 연결은 해제하지 않는다")
+    void temporaryGithubFailureKeepsConnection(String call) {
+
+        responseStatus = 502;
+        responseBody = failure("GITHUB_API_ERROR", true);
+
+        assertThatThrownBy(() -> call(call)).isInstanceOf(AiClientException.class);
+        verify(disconnects, never()).revokeRejected(anyLong(), any());
 
     }
 
@@ -388,10 +433,36 @@ class DiffEvidenceAccessTest {
 
     }
 
+    private Object call(String call) {
+
+        GithubCollectionRepo repository = new GithubCollectionRepo(456789L, "grow22", "gitory", "develop");
+        GithubCollectionTarget collectTarget = new GithubCollectionTarget(USER_REPOSITORY_ID, repository, List.of());
+        return switch (call) {
+            case "COLLECT" -> access.collect(USER_ID, collectTarget, List.of());
+            case "COLLECT_STREAMING" -> {
+                streamAsResultLine();
+                yield access.collect(USER_ID, collectTarget, List.of(), progress -> { });
+            }
+            default -> access.diffEvidence(USER_ID, target(17));
+        };
+
+    }
+
+    /** 스트리밍 수집은 200 으로 연 뒤 진행 줄을 보내고, 정해 둔 응답을 마지막 결과 줄의 상태·본문으로 싣는다 */
+    private void streamAsResultLine() {
+
+        ObjectNode result = MAPPER.createObjectNode().put("type", "result").put("status", responseStatus);
+        result.set("body", MAPPER.readTree(responseBody));
+        responseBody = "{\"type\":\"progress\",\"step\":\"PR_REVIEW\",\"done\":0,\"total\":1}\n"
+                + MAPPER.writeValueAsString(result) + "\n";
+        responseStatus = 200;
+
+    }
+
     private GithubCollectionAccess accessOf(AiClientProperties properties) {
 
         return new GithubCollectionAccess(users, connections, cipher, new AiHttpClient(properties, MAPPER), null, null,
-                Clock.systemUTC(), null, null, properties);
+                Clock.systemUTC(), disconnects, null, properties);
 
     }
 

@@ -80,10 +80,10 @@ def test_cap_reached_completes_without_calling_llm() -> None:
     """질문 상한을 다 쓰면 LLM 을 부르지 않고 끝낸다."""
     client = FakeClient()
 
-    result, used_llm = _next(_agent(client), _request(existing_turn_count=3))
+    result, fell_back = _next(_agent(client), _request(existing_turn_count=3))
 
     assert result.next_action == "COMPLETE"
-    assert (used_llm, client.payloads) == (False, [])
+    assert (fell_back, client.payloads) == (False, [])
 
 
 def test_no_choosable_slot_completes_without_calling_llm() -> None:
@@ -131,9 +131,9 @@ def test_llm_can_end_when_no_slot_is_fixed() -> None:
     client = FakeClient(QuestionOutput(action="END"))
     previous = [{"star_slot": "S", "question_text": "상황은요?", "outcome": "ANSWERED", "answer_text": "배포가 느렸다"}]
 
-    result, used_llm = _next(_agent(client), _request(previous_turns=previous))
+    result, fell_back = _next(_agent(client), _request(previous_turns=previous))
 
-    assert (result.next_action, used_llm) == ("COMPLETE", True)
+    assert (result.next_action, fell_back) == ("COMPLETE", False)
 
 
 def test_end_on_fixed_slot_falls_back_to_template_question() -> None:
@@ -179,9 +179,10 @@ def test_suggestions_drop_invented_metrics_and_keep_two() -> None:
 
 @pytest.mark.parametrize("error", [LLMStructuredCallError("실패"), LLMConfigError("설정 없음")])
 def test_llm_failure_falls_back_to_template_question(error: Exception) -> None:
-    """LLM 호출이 실패하거나 설정이 없으면 틀 질문으로 대신해 질문 요청이 실패하지 않는다."""
-    result, _ = _next(_agent(FakeClient(error)), _request())
+    """LLM 호출이 실패하거나 설정이 없으면 틀 질문으로 대신해 질문 요청이 실패하지 않고, 대신했다고 알린다."""
+    result, fell_back = _next(_agent(FakeClient(error)), _request())
 
+    assert fell_back is True
     assert (result.next_action, result.target_star_slot, result.answer_mode) == ("ASK_AGAIN", "R", "MEASURE")
     assert result.question_text
 

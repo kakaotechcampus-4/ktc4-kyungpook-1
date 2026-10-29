@@ -12,6 +12,7 @@ import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKe
 import { ymd } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { errorView } from '@/api/errorView';
+import { reconnectGithub } from '@/lib/githubReconnect';
 import { track } from '@/lib/track';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -212,10 +213,13 @@ export function CardPage() {
         <div className="card row" role="status" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
           <div className="stack grow" style={{ gap: 4 }}>
             <span className="w-600" style={{ fontSize: 14 }}>AI 초안을 만들지 못했어요</span>
-            <span className="t-12l c-2">{card.draftFailure === 'AI_UNAVAILABLE'
+            <span className="t-12l c-2">{card.draftFailure === 'GITHUB_UNAUTHORIZED'
+              ? 'GitHub 연결이 끊겼어요. 다시 연결한 뒤 초안을 다시 만들어 주세요.'
+              : card.draftFailure === 'AI_UNAVAILABLE'
               ? 'AI 가 잠시 응답하지 않았어요. 다시 시도하면 채워질 수 있어요.'
               : '초안을 만드는 중에 문제가 났어요. 다시 시도하거나 칸을 직접 채워 주세요.'} 직접 쓴 칸은 그대로 둡니다.</span>
           </div>
+          {card.draftFailure === 'GITHUB_UNAUTHORIZED' && <Button size="sm" onClick={reconnectGithub}>GitHub 다시 연결</Button>}
           <Button variant="outline" size="sm" loading={retry.isPending} onClick={retryDraft}>초안 다시 만들기</Button>
           {retry.isError && <Note strong="다시 시도하지 못했어요" tone="danger">{errorView(retry.error).message}</Note>}
         </div>

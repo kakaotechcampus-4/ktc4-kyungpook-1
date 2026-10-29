@@ -13,6 +13,7 @@ public record JobView(
         JobState state,
         boolean partial,
         List<JobStep> steps,
+        List<JobActivity> activity,
         JobErrorCode errorCode,
         Boolean retryable,
         Integer retryAfterSec,
@@ -22,7 +23,8 @@ public record JobView(
         JobResult result,
         boolean terminal) {
 
-    static JobView from(AnalysisJob job, UUID repoId, List<UUID> cardIds, Supplier<List<String>> emptyReasons) {
+    static JobView from(AnalysisJob job, UUID repoId, List<UUID> cardIds, Supplier<List<String>> emptyReasons,
+                        List<JobActivity> activity) {
 
         return new JobView(
                 job.getPublicId().toString(),
@@ -30,6 +32,7 @@ public record JobView(
                 job.getState(),
                 job.isPartial(),
                 job.getSteps(),
+                activity,
                 job.getErrorCode(),
                 retryable(job.getErrorCode()),
                 job.getRetryAfterSec(),

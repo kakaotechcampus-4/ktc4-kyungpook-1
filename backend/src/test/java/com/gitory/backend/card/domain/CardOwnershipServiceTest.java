@@ -158,7 +158,7 @@ class CardOwnershipServiceTest {
     @DisplayName("버전을 쓰는 메서드와 카드 잠가 찾기는 트랜잭션 밖에서 부르면 IllegalTransactionStateException 이다")
     void writesNeedTransaction() {
 
-        Card card = Card.startManual(myUserId, null, "카드", null, null);
+        Card card = Card.startManual(myUserId, null, null, "카드", null, null);
 
         assertThatThrownBy(() -> writer.startFirst(card, VersionSource.USER_EDIT))
                 .isInstanceOf(IllegalTransactionStateException.class);

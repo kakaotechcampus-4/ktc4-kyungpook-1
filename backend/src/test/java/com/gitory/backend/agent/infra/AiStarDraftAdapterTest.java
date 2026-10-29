@@ -8,9 +8,13 @@ import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarEvidenceSource;
+import com.gitory.backend.agent.port.StarMaterialKind;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
+import com.gitory.backend.agent.port.StarStep;
+import com.gitory.backend.agent.port.StarStepActor;
+import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.agent.port.StarSourceType;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
@@ -29,6 +33,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 import java.io.IOException;
@@ -145,7 +150,8 @@ class AiStarDraftAdapterTest {
                         StarConfidence.LOW, List.of(ref), null, null, "근거에 없는 수치: 30%"),
                 StarSlot.R, new StarSlotDraft(StarSlotStatus.FILLED, "재시작해도 로그인이 유지됐다.",
                         StarConfidence.MEDIUM, List.of(ref), null, null, null)),
-                List.of(StarSlot.T), "teammate", List.of("근거 없는 문장"), List.of("BACKEND", "DB"), List.of("JAVA")));
+                List.of(StarSlot.T), "teammate", List.of("근거 없는 문장"), List.of("BACKEND", "DB"), List.of("JAVA"),
+                List.of()));
 
     }
 
@@ -214,6 +220,46 @@ class AiStarDraftAdapterTest {
                 base.sourceRef(), base.evidence(), "## 고민한 점 폴링을 골랐다"));
 
         assertThat(MAPPER.readTree(requestBody).path("pull_request_body").asString()).isEqualTo("## 고민한 점 폴링을 골랐다");
+
+    }
+
+    @Test
+    @DisplayName("초안 단계는 순서대로 읽고, 모르는 값·음수 바퀴·객체가 아닌 단계만 버린 채 카드는 그대로 받는다")
+    void readsDraftStepsAndDropsMalformedOnes() {
+
+        responseBody = success(draft(data -> {
+            ArrayNode steps = data.putArray("steps");
+            steps.addObject().put("round", 0).put("actor", "MODEL").put("kind", "DRAFT");
+            steps.addObject().put("round", 1).put("actor", "MODEL").put("kind", "OPEN").put("slot", "S")
+                    .put("value", "이슈 #98 세션 만료").put("material", "ISSUE").put("reason", "문제 상황이 적혀 있을 것 같음");
+            steps.addObject().put("round", 1).put("actor", "MODEL").put("kind", "THINK");
+            steps.addObject().put("round", -1).put("actor", "CODE").put("kind", "PASS");
+            steps.addObject().put("round", 1).put("actor", "CODE").put("kind", "PASS").put("slot", "X");
+            steps.add("문장");
+        }));
+
+        StarDraft draft = adapter.draft(request());
+
+        assertThat(draft.title()).isEqualTo(TITLE);
+        assertThat(draft.steps()).containsExactly(
+                new StarStep(0, StarStepActor.MODEL, StarStepKind.DRAFT, null, null, null, null, null),
+                new StarStep(1, StarStepActor.MODEL, StarStepKind.OPEN, StarSlot.S, null, "이슈 #98 세션 만료",
+                        StarMaterialKind.ISSUE, "문제 상황이 적혀 있을 것 같음"));
+
+    }
+
+    @Test
+    @DisplayName("초안 단계가 60개를 넘으면 앞 60개만 받는다")
+    void capsDraftSteps() {
+
+        responseBody = success(draft(data -> {
+            ArrayNode steps = data.putArray("steps");
+            for (int i = 0; i < 70; i++) {
+                steps.addObject().put("round", 0).put("actor", "CODE").put("kind", "FLAG").put("code", "C" + i);
+            }
+        }));
+
+        assertThat(adapter.draft(request()).steps()).hasSize(60).last().extracting(StarStep::code).isEqualTo("C59");
 
     }
 

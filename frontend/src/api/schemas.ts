@@ -43,7 +43,7 @@ export const JobStepKey = z.enum(['COMMITS', 'PR_REVIEW', 'COMPRESS', 'REASON'])
 export const StepState = z.enum(['QUEUED', 'RUNNING', 'DONE', 'SKIPPED']);
 export const Verdict = z.enum(['OK', 'EMPTY', 'PARTIAL']);
 export const DropReason = z.enum(['NO_EVIDENCE', 'OVERCLAIM', 'UNSOURCED_NUMBER', 'TIMEOUT']);
-export const JobErrorCode = z.enum(['GITHUB_UNAVAILABLE', 'GITHUB_RATE_LIMITED', 'AI_UNAVAILABLE', 'COLLECTION_CAPPED', 'DRAFT_TIMEOUT', 'EVIDENCE_MISSING', 'INTERNAL_ERROR']);
+export const JobErrorCode = z.enum(['GITHUB_UNAVAILABLE', 'GITHUB_RATE_LIMITED', 'GITHUB_UNAUTHORIZED', 'AI_UNAVAILABLE', 'COLLECTION_CAPPED', 'DRAFT_TIMEOUT', 'EVIDENCE_MISSING', 'INTERNAL_ERROR']);
 export const ContributionLevel = z.enum(['NONE', 'PARTIAL', 'SHARED', 'MAJOR']);
 /** 문장을 누가 썼는가. AI 문장은 근거가 1개 이상 필요하고, USER 문장은 근거 없이도 허용된다. */
 export const AuthoredBy = z.enum(['AI', 'USER']);
@@ -287,7 +287,7 @@ export const Card = z.object({
   maskRules: z.array(z.object({ from: z.string(), to: z.string() })),
   generation: z.object({ jobId: z.string(), partial: z.boolean() }).nullable(), // D1 · D3
   // AI 초안을 채우지 못한 이유(#419). 데모 데이터처럼 값이 없으면 실패 없음이다
-  draftFailure: z.enum(['AI_UNAVAILABLE', 'INTERNAL_ERROR']).nullable().optional(),
+  draftFailure: z.enum(['GITHUB_UNAUTHORIZED', 'AI_UNAVAILABLE', 'INTERNAL_ERROR']).nullable().optional(),
   interviewTurns: z.number(),
   confirmedAt: z.string().nullable(),
   createdAt: z.string(),
@@ -313,6 +313,8 @@ export const CardSummary = z.object({
   period: z.string().nullish(),
   evidenceCount: z.number().nonnegative().nullish(),
   userStatedCount: z.number().nonnegative().nullish(),
+  /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
+  repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
 });
 export type CardSummary = z.infer<typeof CardSummary>;
 

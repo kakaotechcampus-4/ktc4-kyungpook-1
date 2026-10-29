@@ -142,8 +142,9 @@ PR 번호로 커밋을 고르지 않는다. PR에는 팀원 커밋과 기본 브
 | HTTP | `error.code` | `retryable` | 상황 |
 |---|---|---|---|
 | 400 | `INVALID_PAYLOAD` | false | 필드·헤더 누락, `commit_shas` 없음·빈 배열 |
+| 401 | `GITHUB_UNAUTHORIZED` | false | GitHub 이 토큰을 거절함(401, 만료·취소). Spring 은 그 연결을 해제로 남기고 다시 연결을 안내한다 |
 | 404 | `RESOURCE_NOT_FOUND` | false | 저장소가 없거나 토큰 권한으로 읽을 수 없음 |
-| 502 | `GITHUB_API_ERROR` | **false** | GitHub 400·401·403·422(토큰 만료·권한 없음 등, 다시 해도 같음). 2차 한도 403은 제외 |
+| 502 | `GITHUB_API_ERROR` | **false** | GitHub 400·403·422(권한 없음 등, 다시 해도 같음). 2차 한도 403은 제외 |
 | 502 | `GITHUB_API_ERROR` | true | GitHub 5xx·네트워크 오류·조회가 마감 안에 끝나지 않음, 2차 한도 403(`Retry-After` 헤더 또는 `secondary rate limit` 문구) |
 | 503 | `LLM_UNAVAILABLE` | **false** | AI 서버에 LLM 환경변수가 없음, LLM 키·권한·모델 이름 오류. **설정은 GitHub 조회 전에 확인한다** |
 | 503 | `LLM_UNAVAILABLE` | true | LLM 호출 한도·연결 오류, 출력 형식이 재시도 후에도 맞지 않음 |

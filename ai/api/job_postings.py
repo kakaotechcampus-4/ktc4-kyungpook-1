@@ -11,9 +11,8 @@ from fastapi.responses import JSONResponse
 
 from api.failure_log import log_failure
 from api.openapi import INVALID_PAYLOAD_RESPONSE
-from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
+from schemas.common import Envelope, ErrorDetail, ErrorEnvelope
 from schemas.matching import (
-    ExtractionOutcome,
     JobPostingDetailExtractionRequest,
     JobPostingDetailExtractionResult,
 )
@@ -23,12 +22,13 @@ from services.job_posting_extractor import (
     LunaJobPostingExtractionModel,
 )
 from services.llm_executors import POSTING_EXTRACTION_EXECUTOR, run_llm_call
-from services.llm_settings import LLMConfigError, configured_model
+from services.llm_settings import LLMConfigError
 from services.llm_structured_client import (
     LLMNonRetryableError,
     LLMStructuredCallError,
     LLMStructuredOutputTooLongError,
 )
+from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ async def extract_job_posting_detail(
         logger.warning("공고 조건 추출 거절: posting=%s %s", request.external_posting_id, exc)
         return _error(
             started, 422, "EVIDENCE_MISMATCH",
-            "필수 조건의 근거를 공고 원문에서 확인할 수 없거나 추출된 조건이 모두 빠졌습니다.", False, tool_calls_made=1,
+            "필수 조건의 근거를 공고 원문에서 확인할 수 없거나 추출된 조건이 모두 빠졌습니다.", False,
         )
     except LLMConfigError as exc:
         _log_extraction_failure(request, "LLM_UNAVAILABLE", False, exc, started)
@@ -85,12 +85,12 @@ async def extract_job_posting_detail(
     except (LLMNonRetryableError, LLMStructuredOutputTooLongError) as exc:
         _log_extraction_failure(request, "LLM_UNAVAILABLE", False, exc, started)
         return _error(
-            started, 503, "LLM_UNAVAILABLE", "공고 상세 조건을 추출하지 못했습니다.", False, tool_calls_made=1
+            started, 503, "LLM_UNAVAILABLE", "공고 상세 조건을 추출하지 못했습니다.", False
         )
     except LLMStructuredCallError as exc:
         _log_extraction_failure(request, "LLM_UNAVAILABLE", True, exc, started)
         return _error(
-            started, 503, "LLM_UNAVAILABLE", "공고 상세 조건을 추출하지 못했습니다.", True, tool_calls_made=1
+            started, 503, "LLM_UNAVAILABLE", "공고 상세 조건을 추출하지 못했습니다.", True
         )
     except Exception as exc:
         # code=INTERNAL_ERROR 줄이 운영 에러 경보에 걸리므로 traceback 없이도 알림은 그대로 간다
@@ -100,11 +100,7 @@ async def extract_job_posting_detail(
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(
-            model=configured_model("JOB_POSTING") if result.outcome == ExtractionOutcome.UPDATED else None,
-            tool_calls_made=1 if result.outcome == ExtractionOutcome.UPDATED else 0,
-            processing_ms=_elapsed_ms(started),
-        ),
+        meta=usage_meta(started, "COMPLETED"),
         error=None,
     )
 
@@ -118,18 +114,12 @@ def _log_extraction_failure(
     )
 
 
-def _elapsed_ms(started: float) -> int:
-    return int((time.perf_counter() - started) * 1000)
-
-
 def _error(
     started: float,
     status_code: int,
     code: str,
     message: str,
     retryable: bool,
-    *,
-    tool_calls_made: int = 0,
 ) -> JSONResponse:
     """실패를 공통 에러 봉투로 반환한다.
 
@@ -138,7 +128,7 @@ def _error(
     envelope = Envelope(
         success=False,
         data=None,
-        meta=Meta(model=None, tool_calls_made=tool_calls_made, processing_ms=_elapsed_ms(started)),
+        meta=usage_meta(started, "FAILED"),
         error=ErrorDetail(code=code, message=message, retryable=retryable),
     )
     return JSONResponse(status_code=status_code, content=jsonable_encoder(envelope))

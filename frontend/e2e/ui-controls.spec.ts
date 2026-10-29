@@ -13,13 +13,14 @@ test('search has one focus boundary, Escape clears and returns typing focus', as
 });
 
 test('select menus are styled, support keyboard selection and restore focus on Escape', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/cards');
+  // 카드 목록의 정렬 칸은 묶어 보기로 바뀌어 레포 고르기의 정렬 칸으로 검사한다
+  await loginAsDemo(page); await page.goto('/repos');
   const sort = page.getByRole('combobox', { name: '정렬', exact: true });
   await sort.click(); const menu = page.getByRole('listbox', { name: '정렬', exact: true }); await expect(menu).toBeVisible();
-  await page.keyboard.press('End'); await expect(page.getByRole('option', { name: '이름순', exact: true })).toBeFocused();
-  await page.keyboard.press('Enter'); await expect(sort).toContainText('이름순');
+  await page.keyboard.press('End'); await expect(page.getByRole('option', { name: '이름 순', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter'); await expect(sort).toContainText('이름 순');
   await sort.click(); await page.keyboard.press('Escape'); await expect(menu).toHaveCount(0); await expect(sort).toBeFocused();
-  const create = page.getByRole('button', { name: '레포에서 만들기', exact: true });
+  const create = page.getByRole('link', { name: '취소', exact: true });
   const style = async (element: typeof sort) => element.evaluate(node => ({ radius: getComputedStyle(node).borderRadius, height: node.getBoundingClientRect().height }));
   const triggerStyle = await style(sort), buttonStyle = await style(create);
   expect(triggerStyle.radius).toBe(buttonStyle.radius); expect(triggerStyle.height).toBeGreaterThanOrEqual(44);

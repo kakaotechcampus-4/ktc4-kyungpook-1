@@ -12,7 +12,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from schemas.common import Envelope, ErrorDetail
-from services.progress import listening
+from services.progress import ProgressItem, listening
 from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,11 @@ NDJSON = "application/x-ndjson"
 STREAM_DESCRIPTION = (
     "본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 "
     '`{"type":"progress","step":"PR_REVIEW|COMMITS|COMPRESS|REASON","done":0,"total":44}` 줄을 보내고, '
+    "방금 읽거나 판단한 것이 있으면 `item` 을 더합니다: "
+    '`{"kind":"PULL_REQUEST","number":31,"title":"...","reviews":4}`, '
+    '`{"kind":"COMMIT","sha":"a1b2c3d","title":"메시지 첫 줄","files":3,"excluded":null|"BOT|MERGE_COMMIT|LOCKFILE_ONLY|NOT_OWN"}`, '
+    '`{"kind":"GROUPED","units":12,"experiences":4}`, `{"kind":"DESCRIBED","title":"...","reason":"..."}`. '
+    "글 값은 비밀값을 가리고 제목 100자, 이유 200자에서 자릅니다. "
     '마지막 줄은 `{"type":"result","status":200,"body":{...}}` 입니다. '
     "`status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. "
     "응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다."
@@ -36,8 +41,11 @@ def stream_with_progress(path: str, run: Callable[[], Awaitable[Any]]) -> Stream
 async def _lines(path: str, run: Callable[[], Awaitable[Any]]) -> AsyncIterator[str]:
     queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
 
-    def on_progress(step: str, done: int, total: int | None) -> None:
-        queue.put_nowait({"type": "progress", "step": step, "done": done, "total": total})
+    def on_progress(step: str, done: int, total: int | None, item: ProgressItem | None) -> None:
+        line: dict[str, Any] = {"type": "progress", "step": step, "done": done, "total": total}
+        if item is not None:
+            line["item"] = item
+        queue.put_nowait(line)
 
     with listening(on_progress):
         task = asyncio.ensure_future(run())

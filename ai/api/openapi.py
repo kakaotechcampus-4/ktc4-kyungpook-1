@@ -12,8 +12,8 @@ INVALID_PAYLOAD_RESPONSE = {
                 "success": False,
                 "data": None,
                 "meta": {
-                    "model": None, "tool_calls_made": 0, "llm_calls": 0, "input_tokens": 0, "output_tokens": 0,
-                    "repair_rounds": 0, "github_calls": 0, "ended_by": "FAILED", "processing_ms": 0,
+                    "model": None, "model_usage": [], "tool_calls_made": 0, "llm_calls": 0, "input_tokens": 0,
+                    "output_tokens": 0, "repair_rounds": 0, "github_calls": 0, "ended_by": "FAILED", "processing_ms": 0,
                 },
                 "error": {
                     "code": "INVALID_PAYLOAD",

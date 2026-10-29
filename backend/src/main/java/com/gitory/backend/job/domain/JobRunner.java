@@ -67,6 +67,7 @@ public class JobRunner {
     private final CardDraftRunner cardDrafts;
     private final JobProgressProperties progressProperties;
     private final Clock clock;
+    private final JobActivityLog activity;
 
     /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
     public Optional<AnalysisJob> claimNext() {
@@ -130,7 +131,11 @@ public class JobRunner {
      */
     public void run(AnalysisJob job) {
 
-        AiCallContext.runForJob(job.getId(), () -> runInContext(job));
+        try {
+            AiCallContext.runForJob(job.getId(), () -> runInContext(job));
+        } finally {
+            activity.finish(job.getId());
+        }
 
     }
 
@@ -217,7 +222,7 @@ public class JobRunner {
     /** 실시간 진행을 끄면 빈 값을 돌려줘, 진행 없이 한 번에 받는 AI API 를 부르게 한다 */
     private Consumer<AiProgress> progressOf(AnalysisJob job) {
 
-        return progressProperties.enabled() ? new JobProgressRecorder(job.getId(), jobs, transaction, clock) : null;
+        return progressProperties.enabled() ? new JobProgressRecorder(job.getId(), jobs, transaction, clock, activity) : null;
 
     }
 

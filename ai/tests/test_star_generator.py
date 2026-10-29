@@ -419,11 +419,12 @@ def test_leaves_out_missing_or_blank_pull_request_body(body: str | None) -> None
 @pytest.mark.parametrize(
     ("body", "sent"),
     [
-        # 1,000자에서 'uuu1856@naver.' 로 잘려 이메일 모양이 깨지므로, '@' 가 든 끝 낱말을 지운다.
-        ("가" * 985 + " uuu1856@naver.com 로 연락", "가" * 985),
+        # 3,000자에서 'uuu1856@naver.' 로 잘려 이메일 모양이 깨지므로, '@' 가 든 끝 낱말을 지운다.
+        ("가" * 2_985 + " uuu1856@naver.com 로 연락", "가" * 2_985),
         # 상한에 닿지 않은 본문의 멘션은 그대로 둔다.
         ("리뷰어 @octo", "리뷰어 @octo"),
     ],
+    ids=["상한에서 잘린 이메일", "상한 안의 멘션"],
 )
 def test_clips_pull_request_body_and_drops_a_cut_off_email(body: str, sent: str) -> None:
     client = _FakeClient(_output())

@@ -44,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,7 +57,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
         "spring.security.oauth2.client.registration.github.client-secret=test-client-secret",
         "gitory.consent.token-key=test-encryption-key",
-        "gitory.consent.token-salt=5c0744940b5c369b"
+        "gitory.consent.token-salt=5c0744940b5c369b",
+        "gitory.matching.sources[0].key=gaon",
+        "gitory.matching.sources[0].name=가온소프트",
+        "gitory.matching.sources[0].type=GREENHOUSE",
+        "gitory.matching.sources[0].board=gaon",
+        "gitory.matching.sources[0].logo=https://cdn.example.com/gaon.png",
+        "gitory.matching.sources[1].key=rocketpunch",
+        "gitory.matching.sources[1].name=로켓펀치",
+        "gitory.matching.sources[1].type=ROCKETPUNCH",
+        "gitory.matching.sources[1].board=https://openapi.rocketpunch.com"
 })
 @AutoConfigureMockMvc
 @Testcontainers
@@ -293,6 +303,47 @@ class MatchListApiTest {
     }
 
     @Test
+    @DisplayName("공고마다 회사 설정의 키를 companyId 로, 로고 주소를 logoUrl 로 싣고, 여러 회사를 주는 출처는 회사 이름을 붙이고 로고는 null 이다")
+    void carriesCompanyIdAndLogoFromCompanySettings() throws Exception {
+
+        criteria(postingAt("gaon", "가온소프트"), "REQUIRED", 1);
+        criteria(postingAt("rocketpunch", "블루랩"), "REQUIRED", 1);
+        criteria(postingAt("unlisted", "설정에 없는 회사"), "REQUIRED", 1);
+
+        mvc.perform(get("/api/matches").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.company == '가온소프트')].companyId", contains("gaon")))
+                .andExpect(jsonPath("$.data[?(@.company == '가온소프트')].logoUrl", contains("https://cdn.example.com/gaon.png")))
+                .andExpect(jsonPath("$.data[?(@.company == '블루랩')].companyId", contains("rocketpunch:블루랩")))
+                .andExpect(jsonPath("$.data[?(@.company == '블루랩')].logoUrl", contains(nullValue())))
+                .andExpect(jsonPath("$.data[?(@.company == '설정에 없는 회사')].companyId", contains("unlisted")))
+                .andExpect(jsonPath("$.data[?(@.company == '설정에 없는 회사')].logoUrl", contains(nullValue())));
+
+    }
+
+    @Test
+    @DisplayName("companyId 를 주면 그 회사 공고만 돌려주고, 없는 회사면 AI 를 부르지 않고 빈 목록이며, 비어 있으면 거르지 않는다")
+    void filtersByCompanyId() throws Exception {
+
+        confirmedCardWithStatements();
+        criteria(postingAt("gaon", "가온소프트"), "REQUIRED", 1);
+        criteria(postingAt("rocketpunch", "블루랩"), "REQUIRED", 1);
+        answerWith(Set.of());
+
+        mvc.perform(get("/api/matches").param("companyId", "rocketpunch:블루랩").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].company", contains("블루랩")));
+        mvc.perform(get("/api/matches").param("companyId", "").with(loggedIn()))
+                .andExpect(jsonPath("$.data.length()").value(2));
+        clearInvocations(search);
+        mvc.perform(get("/api/matches").param("companyId", "nope").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(0));
+        verify(search, never()).search(any());
+
+    }
+
+    @Test
     @DisplayName("응답의 칸 이름과 중첩이 FE 계약 예시와 같다")
     void responseShapeMatchesContractExamples() throws Exception {
 
@@ -389,6 +440,19 @@ class MatchListApiTest {
 
     private Long posting(String company, String role, String category, String level, Integer minYears, Instant expiresAt) {
 
+        return insertPosting("company" + (postingSeq + 1), company, role, category, level, minYears, expiresAt);
+
+    }
+
+    private Long postingAt(String companyKey, String company) {
+
+        return insertPosting(companyKey, company, "백엔드", "BACKEND", "UNSPECIFIED", null, null);
+
+    }
+
+    private Long insertPosting(String companyKey, String company, String role, String category, String level,
+                               Integer minYears, Instant expiresAt) {
+
         postingSeq++;
         String quote = "UNSPECIFIED".equals(level) ? null : "경력 원문";
 
@@ -398,7 +462,7 @@ class MatchListApiTest {
                     indexed_content_hash, expires_at, first_seen_at, last_seen_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', 'READY', ?, ?, ?, now(), now())
                 RETURNING id
-                """, Long.class, "company" + postingSeq, "posting-" + postingSeq, company, role,
+                """, Long.class, companyKey, "posting-" + postingSeq, company, role,
                 "https://careers.example.com/jobs/" + postingSeq, category, level, minYears, quote, HASH, HASH,
                 expiresAt == null ? null : Timestamp.from(expiresAt));
 

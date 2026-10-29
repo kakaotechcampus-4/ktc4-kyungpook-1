@@ -1852,6 +1852,10 @@
           "company" : {
             "type" : "string"
           },
+          "companyId" : {
+            "description" : "같은 회사의 공고를 묶는 id. 회사 이름 표기가 달라도 같다",
+            "type" : "string"
+          },
           "conditions" : {
             "items" : {
               "$ref" : "#/components/schemas/MatchConditionResponse"
@@ -1867,6 +1871,10 @@
           },
           "id" : {
             "type" : "string"
+          },
+          "logoUrl" : {
+            "description" : "회사 로고 https 주소. 없으면 null 이라 화면이 이니셜을 보인다",
+            "type" : [ "string", "null" ]
           },
           "preferred" : {
             "$ref" : "#/components/schemas/MatchCountResponse"
@@ -1943,6 +1951,10 @@
           "company" : {
             "type" : "string"
           },
+          "companyId" : {
+            "description" : "같은 회사의 공고를 묶는 id. 회사 이름 표기가 달라도 같다",
+            "type" : "string"
+          },
           "experience" : {
             "$ref" : "#/components/schemas/MatchExperienceResponse"
           },
@@ -1952,6 +1964,10 @@
           },
           "id" : {
             "type" : "string"
+          },
+          "logoUrl" : {
+            "description" : "회사 로고 https 주소. 없으면 null 이라 화면이 이니셜을 보인다",
+            "type" : [ "string", "null" ]
           },
           "preferred" : {
             "$ref" : "#/components/schemas/MatchCountResponse"
@@ -4980,6 +4996,15 @@
       "get" : {
         "description" : "열 때마다 확정 카드의 행동(A)·결과(R) 문장과 공고 조건을 맞춰 등급(fit)을 셉니다. 등급 순, 같으면 마감이 가까운 순이고 상시 채용은 뒤입니다. 확정 카드가 없으면 fit 은 null 입니다.",
         "operationId" : "matches",
+        "parameters" : [ {
+          "description" : "주면 그 회사(companyId)의 공고만 돌려준다. 없는 회사면 빈 배열",
+          "in" : "query",
+          "name" : "companyId",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "content" : {

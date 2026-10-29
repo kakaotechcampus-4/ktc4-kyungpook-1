@@ -402,6 +402,36 @@ class RepoApiTest {
 
     }
 
+    @Test
+    @DisplayName("저장 목록은 GitHub 을 부르지 않고, 연결이 없어도 저장된 내 저장소를 최신 목록과 같은 칸으로 준다")
+    void savedListReadsOnlyDatabase() throws Exception {
+
+        connectCounted(100L, "grow22", "gitory");
+        connectCounted(300L, "kakao", "board");
+
+        Map<String, Object> repo = JsonPath.read(bodyOf(savedRepos()), "$.data[0]");
+
+        assertThat(repo).containsOnlyKeys(
+                "id", "owner", "name", "contribution", "prCount", "reviewCount", "language",
+                "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended");
+        savedRepos()
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].name", contains("gitory", "board")))
+                .andExpect(jsonPath("$.data[0].contribution.mine").value(43));
+        verifyNoInteractions(github);
+
+    }
+
+    @Test
+    @DisplayName("로그인하지 않으면 저장 목록도 401 이다")
+    void savedListRequiresLogin() throws Exception {
+
+        mvc.perform(get("/api/repos/saved"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+
+    }
+
     private void githubReturns(GithubRepositoryResponse... repositories) {
 
         given(github.repositories(anyLong())).willReturn(List.of(repositories));
@@ -534,6 +564,12 @@ class RepoApiTest {
     private ResultActions repos(Long userId) throws Exception {
 
         return mvc.perform(get("/api/repos").with(loggedInAs(userId)));
+
+    }
+
+    private ResultActions savedRepos() throws Exception {
+
+        return mvc.perform(get("/api/repos/saved").with(loggedInAs(myUserId)));
 
     }
 

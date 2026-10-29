@@ -33,7 +33,7 @@ class RocketpunchClientTest {
     void startSite() {
 
         site = FakeCareersSite.start();
-        source = new CompanySource("rocketpunch", "로켓펀치", CompanySourceType.ROCKETPUNCH, site.base());
+        source = new CompanySource("rocketpunch", "로켓펀치", CompanySourceType.ROCKETPUNCH, site.base(), null);
 
     }
 

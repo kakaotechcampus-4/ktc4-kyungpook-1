@@ -1,5 +1,6 @@
 import { CardMetadataPatch } from '@/api/schemas';
 import { mockMatchDetail, mockMatchList } from './matching';
+import { getProfile, putProfile } from './profile';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
@@ -11,10 +12,10 @@ import { now } from './fixtures';
 import { CONFIG } from '@/lib/config';
 
 type Any = Record<string, any>;
-export type MockResult = { status: number; data: unknown; error: { code: string; message: string } | null };
+export type MockResult = { status: number; data: unknown; error: { code: string; message: string; details?: Record<string, unknown> } | null };
 
 const ok = (data: unknown): MockResult => ({ status: 200, data, error: null });
-const fail = (status: number, code: string, message: string): MockResult => ({ status, data: null, error: { code, message } });
+const fail = (status: number, code: string, message: string, details?: Record<string, unknown>): MockResult => ({ status, data: null, error: { code, message, ...(details ? { details } : {}) } });
 
 type Ctx = { params: string[]; body: Any; search: URLSearchParams; headers: Record<string, string> };
 type Handler = (c: Ctx) => MockResult;
@@ -32,6 +33,12 @@ on('GET', '/matches', () => ok(mockMatchList()));
 on('GET', '/matches/:id', ({ params }) => {
   const detail=mockMatchDetail(params[0]);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
+});
+// 인적사항 — 제안 계약. 한 사용자당 한 문서이고 PUT 이 통째로 바꾼다(같은 본문은 no-op)
+on('GET', '/profile', () => ok(getProfile())); // 저장한 적이 없어도 200 + 빈 목록
+on('PUT', '/profile', ({ body }) => {
+  const saved = putProfile(body);
+  return saved.ok ? ok(saved.profile) : fail(400, 'INVALID_REQUEST', '입력 내용을 확인해 주세요', { fields: saved.fields });
 });
 on('DELETE', '/cards/:id', ({ params }) => {
   const index = db.cards.findIndex(card => card.id === params[0]);

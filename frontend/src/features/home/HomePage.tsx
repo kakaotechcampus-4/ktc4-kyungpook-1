@@ -15,6 +15,7 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CardTags } from '@/components/cards/CardTags';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
+import { ProfilePrompt } from '@/features/profile/ProfilePrompt';
 
 /**
  * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 버튼 → 이어서 하기 → 카드.
@@ -60,6 +61,7 @@ export function HomePage() {
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
       {returning && <PageTitle>경험 정리</PageTitle>}
       <ActiveJobsList />
+      <ProfilePrompt />
       {drafts.length > 0 && (
         <section className="stack home-resume" style={{ gap: 16 }}>
           <SectionHead label="이어서 하기" count={drafts.length} />

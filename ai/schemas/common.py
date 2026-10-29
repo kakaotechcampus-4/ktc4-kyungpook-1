@@ -71,11 +71,24 @@ EndedBy = Literal["COMPLETED", "PARTIAL", "FALLBACK", "FAILED"]
 T = TypeVar("T")
 
 
+class ModelUsage(BaseModel):
+    """한 요청 안에서 모델 하나에 보낸 LLM 요청 수와 토큰."""
+
+    model: str = Field(..., description="LLM 모델 이름")
+    llm_calls: int = Field(0, description="이 모델에 보낸 요청 수. 실패한 요청도 센다")
+    input_tokens: int = Field(0, description="이 모델에서 응답을 받은 요청의 입력 토큰 합")
+    output_tokens: int = Field(0, description="이 모델에서 응답을 받은 요청의 출력 토큰 합")
+
+
 class Meta(BaseModel):
     """요청 처리 메타데이터(로깅/추적용)."""
 
     model: Optional[str] = Field(
-        None, description="실제 사용된 모델(LLM 미사용 응답은 null 또는 처리 방식 이름)"
+        None, description="마지막에 부른 LLM 모델로, 모델별 사용량은 model_usage 에 있다(LLM 미사용 응답은 null 또는 처리 방식 이름)"
+    )
+    model_usage: list[ModelUsage] = Field(
+        default_factory=list,
+        description="모델별 LLM 요청 수와 토큰. 처음 부른 모델부터 오고, 더하면 llm_calls·input_tokens·output_tokens 와 같다. LLM 을 안 불렀으면 빈 목록",
     )
     tool_calls_made: int = Field(
         0, description="모델이 스스로 골라 부른 도구 횟수. 지금은 STAR 초안이 골라 연 자료 수만 센다"

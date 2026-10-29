@@ -7,6 +7,8 @@ import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -20,6 +22,7 @@ import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiProgress;
+import com.gitory.backend.common.infra.ai.AiProgressItem;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
@@ -42,6 +45,7 @@ import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -92,7 +96,7 @@ import java.util.function.Consumer;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
-        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class,
+        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class,
         CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -197,13 +201,39 @@ class JobRunnerTest {
         });
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
-                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC());
+                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(),
+                new JobActivityLog(Clock.systemUTC()));
 
         live.claimNext().ifPresent(live::run);
 
         assertThat(duringCollection.get().getFirst()).isEqualTo(new JobStep(JobStepKey.PR_REVIEW, JobStepState.RUNNING, 2, 3));
         assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.SUCCEEDED);
         verify(activities, never()).collect(any());
+
+    }
+
+    @Test
+    @DisplayName("실시간 진행에 실린 줄은 Job 활동 기록에 남기고, Job 을 다 돈 뒤에 끝났다고 알린다")
+    void passesActivityLinesAndFinishesThemAfterRun() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        AiProgressItem item = new AiProgressItem("PULL_REQUEST", 31, "로그인 리팩터링", 4, null, null, null, null, null,
+                null);
+        given(activities.collect(any(), any())).willAnswer(invocation -> {
+            Consumer<AiProgress> progress = invocation.getArgument(1);
+            progress.accept(new AiProgress("PR_REVIEW", 1, 3, item));
+            return activity(null);
+        });
+        JobActivityLog log = mock(JobActivityLog.class);
+        JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
+                new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
+                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log);
+
+        live.claimNext().ifPresent(live::run);
+
+        InOrder order = inOrder(log);
+        order.verify(log).append(jobId, JobStepKey.PR_REVIEW, item);
+        order.verify(log).finish(jobId);
 
     }
 
@@ -401,7 +431,7 @@ class JobRunnerTest {
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.getSteps()).extracting(JobStep::key, JobStep::state).endsWith(
                 tuple(JobStepKey.COMPRESS, JobStepState.SKIPPED), tuple(JobStepKey.REASON, JobStepState.SKIPPED));
-        assertThat(JobView.from(job, UUID.randomUUID(), List.of(), List::of).result().verdict()).isNull();
+        assertThat(JobView.from(job, UUID.randomUUID(), List.of(), List::of, List.of()).result().verdict()).isNull();
         assertThat(countOf("candidate_grouping")).isZero();
 
     }
@@ -1152,7 +1182,8 @@ class JobRunnerTest {
 
         return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
-                new JobDraftProperties(false), null, new JobProgressProperties(false), Clock.systemUTC());
+                new JobDraftProperties(false), null, new JobProgressProperties(false), Clock.systemUTC(),
+                new JobActivityLog(Clock.systemUTC()));
 
     }
 

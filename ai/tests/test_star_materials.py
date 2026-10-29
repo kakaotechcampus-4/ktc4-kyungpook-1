@@ -139,6 +139,23 @@ def test_empty_slot_opens_an_issue_and_is_written_from_it() -> None:
     assert (meta.tool_calls_made, meta.repair_rounds) == (1, 1)
 
 
+
+def test_empty_slot_opens_an_issue_without_review_when_repair_is_on() -> None:
+    written_s = "세션이 30분 뒤 풀려 작성 중이던 글이 사라졌다."
+    writer = _FakeClient(
+        _draft(A=_field(ACTION)),
+        _choose(("S", "OPEN", "issue-98"), ("T", "KEEP", None)),
+        _draft(S=_field(written_s), A=_field(ACTION)),
+    )
+    materials = {"issues": ALL_MATERIALS["issues"], "reviews": [], "owner_replies": []}
+
+    with metering():
+        result = asyncio.run(StarGenerator(writer, repair=True).generate(_request(materials)))
+        meta = usage_meta(None, "COMPLETED")
+
+    assert (result.star["S"].text, result.star["S"].status) == (written_s, "FILLED")
+    assert (meta.tool_calls_made, meta.repair_rounds) == (1, 1)
+
 def test_issue_and_review_are_not_opened_for_action_or_result() -> None:
     writer = _FakeClient(
         _draft(A=_field("세션 조회를 50% 줄였다.")),
@@ -191,7 +208,8 @@ def test_numbers_in_an_opened_material_count_only_in_its_slots() -> None:
     )
     materials = {"issues": ALL_MATERIALS["issues"], "reviews": [], "owner_replies": []}
 
-    result, _ = _run(writer, _FakeClient(NO_FLAGS, NO_FLAGS, NO_FLAGS), materials)
+    result, _ = _run(writer, _FakeClient(NO_FLAGS, NO_FLAGS, NO_FLAGS), materials,
+                     StarGenerationLimits(max_repair_rounds=2))
 
     assert result.star["S"].status == "FILLED"
     assert result.star["A"].status == "NEEDS_REVIEW"

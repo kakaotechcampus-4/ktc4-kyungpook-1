@@ -113,6 +113,14 @@
 @media (max-width: 767px) { .evidence-open { align-self: stretch; justify-content: center; min-height: var(--control-touch-size); } }
 @media print { .evidence-open { display: none; } .evidence-print { display: flex; flex-direction: column; gap: 6px; } }
 
+/* ───────── 분석: AI 가 지금 하는 일 ───────── */
+.agent-now { display: flex; align-items: flex-start; gap: 8px; font-size: 15px; line-height: 23px; font-weight: 500; color: var(--text-primary); }
+.agent-now svg { flex: 0 0 auto; margin-top: 4px; color: var(--accent-point); }
+.agent-now b { font-weight: 700; color: var(--accent-point); margin-right: 2px; }
+.stage__agent { font-size: 13px; line-height: 19px; color: var(--text-strong); }
+.stage--WAIT .stage__agent { color: var(--text-tertiary); }
+.stage--NOW .stage__agent { color: var(--text-primary); font-weight: 500; }
+
 /* ───────── AI 대기 한 줄 ───────── */
 .ai-wait { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; } /* 감싸는 상자 없이 점과 문장만 — 카드 안에 상자가 또 생기지 않게 */
 .ai-wait__dots { display: inline-flex; gap: 4px; padding-top: 7px; flex: 0 0 auto; }

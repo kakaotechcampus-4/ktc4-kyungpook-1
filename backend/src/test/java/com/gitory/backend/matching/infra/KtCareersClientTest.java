@@ -33,7 +33,7 @@ class KtCareersClientTest {
     void startSite() {
 
         site = FakeCareersSite.start();
-        source = new CompanySource("kt", "KT", CompanySourceType.KT, site.base() + LIST);
+        source = new CompanySource("kt", "KT", CompanySourceType.KT, site.base() + LIST, null);
 
     }
 

@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowUp, ChevronRight, FolderGit2, MessageSquareQuote, PenLine, Search } from 'lucide-react';
 import { useCards, useRepos } from '@/api/queries';
 import type { CardSummary, StarField } from '@/api/schemas';
-import { Badge, EmptyState, IconBox, KindIcon, PageTitle, SectionHead, Skeleton, StarDots } from '@/components/ui';
+import { EmptyState, IconBox, KindIcon, PageTitle, SectionHead, Skeleton, StarDots } from '@/components/ui';
 import { SearchField } from '@/components/ui/SearchField';
-import { cardKindShort, cardStatusLabel } from '@/lib/labels';
+import { CardStatusMark } from '@/components/cards/CardStatusMark';
+import { cardKindShort } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
 import { periodLabel } from '@/lib/format';
 import { track } from '@/lib/track';
@@ -194,8 +195,7 @@ export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: str
       </div>
       <div className="experience-item__footer">
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-        <Badge kind={c.status}>{cardStatusLabel[c.status]}</Badge>
-        {needsReviewOf(c).length > 0 && c.status === 'DRAFT' && <Badge kind="CAUTION">확인 필요</Badge>}
+        <CardStatusMark status={c.status} star={c.star} />
         </div>
         <span className="t-12 c-2">{sub}</span>
       </div>

@@ -263,6 +263,36 @@ export type CardVersion = z.infer<typeof CardVersion>;
 export const DroppedField = z.object({ field: StarField, reason: DropReason });
 export const LowConfidence = z.object({ field: StarField, why: z.string() });
 
+// ───────────────────────────── AI 가 한 일 (#479 draftSteps) ─────────────────────────────
+export const DraftStepKind = z.enum(['DRAFT', 'FLAG', 'OPEN', 'RETRY', 'KEEP', 'REWRITE', 'PASS']);
+export const DraftStepActor = z.enum(['MODEL', 'CODE']);
+export const DraftMaterial = z.enum(['ISSUE', 'REVIEW', 'OWNER_REPLY']);
+export type DraftStepKind = z.infer<typeof DraftStepKind>;
+export type DraftStepActor = z.infer<typeof DraftStepActor>;
+export type DraftMaterial = z.infer<typeof DraftMaterial>;
+/** 비었거나 모양이 틀린 글은 null. 공백만 있는 글을 값으로 오인해 빈 문장을 그리지 않는다 */
+const stepText = z.string().nullable().catch(null).transform((text) => text?.trim() || null);
+/**
+ * 단계 하나. 서버가 새 값을 추가해도 카드 전체가 깨지지 않게 느슨하게 읽는다.
+ *  - 모르는 kind·고장 난 round 는 단계를 통째로 버린다(무슨 일을 했는지 알 수 없으니 지어내지 않는다).
+ *  - 모르는 actor·field·material 과 글은 null 로 둔다. 화면이 null 을 보고 그 부분만 건너뛴다.
+ */
+export const DraftStep = z.object({
+  round: z.number().int().nonnegative(),
+  actor: DraftStepActor.nullable().catch(null),
+  kind: DraftStepKind,
+  field: StarField.nullable().catch(null),
+  code: stepText,
+  value: stepText,
+  material: DraftMaterial.nullable().catch(null),
+  reason: stepText,
+});
+export type DraftStep = z.infer<typeof DraftStep>;
+/** 배열이 아니거나 null 이면 []. 걸러진 단계가 있어도 남은 단계의 순서는 서버 순서 그대로다 */
+export const DraftSteps = z.array(z.unknown())
+  .transform((items) => items.flatMap((item) => { const step = DraftStep.safeParse(item); return step.success ? [step.data] : []; }))
+  .catch([]);
+
 export const CardArea = z.enum(['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'AI', 'DB', 'TEST', 'DOCS']);
 export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON', 'GO', 'RUST', 'SWIFT', 'DART', 'TYPESCRIPT', 'JAVASCRIPT', 'REACT', 'SQL', 'DOCKER', 'GITHUB_ACTIONS']);
 // Optional only for existing snapshots / rolling deployments; never infer absent tags.
@@ -284,6 +314,8 @@ export const Card = z.object({
   evidence: z.array(Evidence),
   lowConfidenceFields: z.array(LowConfidence),
   droppedFields: z.array(DroppedField),
+  /** AI 가 초안을 만든 단계(카드 상세에만 온다) → 'AI 가 한 일'. 이전 서버·이전 스냅샷은 키가 없어 선택이다. 있는데 고장 난 값은 [] 로 읽는다 */
+  draftSteps: DraftSteps.optional(),
   maskRules: z.array(z.object({ from: z.string(), to: z.string() })),
   generation: z.object({ jobId: z.string(), partial: z.boolean() }).nullable(), // D1 · D3
   // AI 초안을 채우지 못한 이유(#419). 데모 데이터처럼 값이 없으면 실패 없음이다

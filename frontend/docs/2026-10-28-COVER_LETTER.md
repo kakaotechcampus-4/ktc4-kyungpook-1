@@ -26,7 +26,7 @@
 | `GET /cover-letters` | | `CoverLetterSummary[]` 최근 만든 순 |
 | `PUT /cover-letters/{id}/questions/{qid}/cards` | `{ primaryCardId, supportingCardId }` | `CoverLetter` — `ASSIGNED` 에서만 |
 | `POST /cover-letters/{id}/asks` | | `CoverLetter`(`stage: ASKING`) — 배정을 확정하고 질문 만들기를 시작한다. `ASSIGNED` 에서만 |
-| `PUT /cover-letters/{id}/questions/{qid}/answers` | `{ answers: [{ item, text, skipped }] }` | `CoverLetter` — 그 문항의 답 전체를 바꾼다. `ASKED` 에서만 |
+| `PUT /cover-letters/{id}/questions/{qid}/answers` | `{ answers: [{ item, text, skipped }] }` | `CoverLetter` — 그 문항의 답 전체를 바꾼다. 보내지 않은 항목은 답이 없는 것으로 남으므로, 미리 채운 지난 답(`reused: true`)도 다시 보내야 남는다. `ASKED` 에서만 |
 | `POST /cover-letters/{id}/drafts` | | `CoverLetter`(`stage: DRAFTING`) — 답하지 않은 질문은 넘긴 것으로 본다. `ASKED` 에서만 |
 | `PATCH /cover-letters/{id}/questions/{qid}` | `{ text }` | `CoverLetter` — 고친 글을 저장한다. AI 원본(`aiText`)은 그대로 남는다. `DRAFTED` 에서만 |
 | `POST /cover-letters/{id}/retry` | | `CoverLetter` — 실패한 단계만 다시 돈다. `FAILED` 에서만 |
@@ -51,14 +51,14 @@
 
 ```jsonc
 { "id": "UUID", "stage": "ASSIGNING|ASSIGNED|ASKING|ASKED|DRAFTING|DRAFTED|FAILED",
-  "failedStep": "ASSIGN|ASK|DRAFT" | null, "errorCode": "AI_UNAVAILABLE|INTERNAL_ERROR" | null, "retryable": true,
+  "failedStep": "ASSIGN|ASK|DRAFT" | null, "errorCode": "AI_UNAVAILABLE|INTERNAL_ERROR" | null, "retryable": true | false | null,
   "pollAfterMs": 1500 | null,
   "jobRole": "백엔드 개발", "memo": "…" | null, "createdAt": "ISO", "updatedAt": "ISO",
   "questions": [{
     "id": "UUID", "seq": 1, "text": "지원 동기와 입사 후 포부를 적어 주세요", "charLimit": 700,
     "theme": "COLLABORATION|CONFLICT|PROBLEM_SOLVING|LEADERSHIP|CHALLENGE|FAILURE|GROWTH|MOTIVATION" | null,
     // ③ 카드 — ASSIGNED 부터
-    "primaryCard": { "id", "title", "kind": "TECH|QUALITATIVE" } | null,
+    "primaryCard": { "id", "title", "kind": "TECH|QUALITATIVE" } | null, "primaryCardDeleted": false,
     "supportingCard": { "id", "title", "kind" } | null,
     "assignedBy": "SUPERVISOR|SUB_AGENT|CODE|FAILED|USER" | null,
     "pickReason": "…" | null,
@@ -76,9 +76,11 @@
   "steps": { "assign": [ … ], "draft": [ … ] } }
 ```
 
+- 응답 모양은 단계와 상관없이 같다. 아직 없는 값은 `null`, 목록은 `[]` 로 온다(`asks` · `draft` · `steps.draft` 포함). `retryable` 은 `FAILED` 일 때만 `true`·`false` 이고 그 밖에는 `null` 이다 — 화면은 `true` 일 때만 다시 시도를 연다.
 - `theme`: AI 가 알아본 문항 유형. 카드의 문항 유형 7개에 `MOTIVATION`(지원 동기)을 더했다. 카드 고르기에 실패하면 `null`.
 - `assignedBy`: 최종 배정을 누가 정했는지. `SUPERVISOR`(감독이 겹침·균형을 보고 정함) · `SUB_AGENT`(문항 하나뿐이거나 겹침이 없어 그 문항의 1순위) · `CODE`(감독 답을 못 받아 코드가 2순위로 겹침을 정리) · `FAILED`(그 문항 카드 고르기 실패 — 사용자가 골라야 함) · `USER`(사용자가 바꿈).
-- `primaryCard: null` 이고 `assignedBy` 가 `FAILED` 가 아니면 '맞는 카드 없음'이다. 화면은 이 유형의 경험 카드를 만들도록 안내할 수 있다.
+- `primaryCard: null` 이고 `assignedBy` 가 `FAILED` 가 아니며 `primaryCardDeleted` 가 `false` 면 '맞는 카드 없음'이다. 화면은 이 유형의 경험 카드를 만들도록 안내할 수 있다.
+- `primaryCardDeleted: true` 는 배정된 중심 카드를 사용자가 지운 것이다(`primaryCard` 는 `null`). 화면은 "고른 카드가 지워졌어요. 다시 골라 주세요" 처럼 다시 고르게 안내한다.
 - `considered`: AI 가 견준 카드 최대 3장과 짧은 평. 화면 ②·③에서 'AI 가 무엇을 보고 골랐는지'를 보여 줄 때 쓴다.
 - `materials`: 중심 카드의 상황·행동·결과 문장과 같은 카드로 전에 받은 답에 이미 있는 재료(`SITUATION` · `ACTION` · `RESULT` · `LEARNING` · `TRIGGER`). 화면 ③ '재료 점검'에 쓴다. 무엇이 꼭 필요한지는 ④의 `required` 가 정한다.
 - `asks`: AI 가 묻는 항목은 문항마다 최대 3개다. `required: true` 는 없으면 초안에 빈칸이 남는 항목이다. 같은 카드로 전에 답한 상황·행동·결과·배운 점·계기는 AI 가 다시 묻지 않고, 서버가 `asks` 끝에 `question: null` · `answer: { text, reused: true }` 로 붙인다 — 화면은 항목 이름으로 제목을 만들고("배운 점 (지난번에 답한 내용)") 사용자는 고쳐서 저장할 수 있다. 직무 연결·지원 이유는 회사마다 달라 미리 채우지 않는다.
@@ -95,7 +97,7 @@
 
 서버는 값만 보내고 문장은 화면이 만든다. 순서는 `seq`(1부터)다. `questionId`·`cardId` 는 위와 같은 공개 id 다.
 
-**`steps.assign`** — `{ seq, actor, kind, questionId, cardId, reason }`
+**`steps.assign`** — `{ seq, actor, kind, questionId, cardId, cardTitle, reason }`. `cardTitle` 은 그 카드의 지금 제목이고, 지운 카드면 `null` 이다.
 
 | `actor` · `kind` | 뜻 | 문장 예시 |
 |---|---|---|

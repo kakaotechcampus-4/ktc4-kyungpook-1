@@ -188,8 +188,9 @@ class StarGenerationLimits:
     #: 근거 하나에서 모델에 보내는 바뀐 파일 경로 수와 경로 길이(diff 요약의 상한과 같다).
     max_changed_paths: int = 50
     max_path_chars: int = 150
-    # Elice 비스트리밍 게이트웨이의 응답 토큰 상한(#109 실측). 넘으면 요청이 거절된다.
-    max_completion_tokens: int = 2_000
+    #: 모델이 생각하는 토큰도 이 상한에 들어가 비스트리밍 게이트웨이 상한(2,000)에서는 가끔 넘쳐서,
+    #: 스트리밍으로 받는 4,000 을 쓴다. 실제로 쓴 토큰만 비용이 든다.
+    max_completion_tokens: int = 4_000
     max_attempts: int = 2
     #: 요청 전체 마감. Spring 대기(star 180초 제안)보다 짧게 둔다.
     deadline_seconds: float = 150.0

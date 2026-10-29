@@ -35,27 +35,35 @@ public class MatchListService {
 
     private final JobPostingRepository postings;
     private final MatchEvidenceSearch evidenceSearch;
+    private final CompanyDirectory companies;
     private final Clock clock;
 
-    public List<MatchTarget> list(Long userId) {
+    /** companyId 가 null 이거나 비어 있으면 거르지 않고, 거른 뒤 남은 공고가 없으면 AI 를 부르지 않는다 */
+    public List<MatchTarget> list(Long userId, String companyId) {
 
         Instant now = Instant.now(clock);
-        List<MatchableCondition> rows = postings.findMatchableConditions(now);
-        if (rows.isEmpty()) {
+        boolean filtered = companyId != null && !companyId.isBlank();
+        Map<Long, List<MatchableCondition>> byPosting = postings.findMatchableConditions(now).stream()
+                .filter(row -> !filtered || companyId.equals(companyIdOf(row.posting())))
+                .collect(Collectors.groupingBy(row -> row.posting().getId(), LinkedHashMap::new, Collectors.toList()));
+        if (byPosting.isEmpty()) {
             return List.of();
         }
-
-        Map<Long, List<MatchableCondition>> byPosting = rows.stream()
-                .collect(Collectors.groupingBy(row -> row.posting().getId(), LinkedHashMap::new, Collectors.toList()));
 
         MatchEvidence evidence = evidenceSearch.find(userId);
         Set<Long> metIds = evidence.matches().stream().map(CriterionMatch::criterionId).collect(Collectors.toSet());
 
         List<MatchTarget> sorted = byPosting.values().stream()
-                .map(conditions -> MatchTargets.of(conditions, metIds, evidence.confirmed().hasConfirmedCard()))
+                .map(conditions -> MatchTargets.of(conditions, metIds, evidence.confirmed().hasConfirmedCard(), companies))
                 .sorted(BY_FIT_THEN_DEADLINE)
                 .toList();
         return mixCompanies(sorted, now);
+
+    }
+
+    private String companyIdOf(JobPosting posting) {
+
+        return companies.of(posting.getCompanyKey(), posting.getCompanyName()).id();
 
     }
 

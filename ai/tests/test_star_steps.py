@@ -58,7 +58,7 @@ def _choose(*choices: tuple[str, str, str | None], reason: str = "이유") -> Sl
 
 
 def _run(writer: _FakeClient, reviewer: _FakeClient | None, *, with_issue: bool = True,
-         limits: StarGenerationLimits = StarGenerationLimits()) -> StarAnalysisResponse:
+         limits: StarGenerationLimits = StarGenerationLimits(), repair: bool = False) -> StarAnalysisResponse:
     body: dict[str, Any] = {
         "candidate_id": "c1",
         "target_login": "octo",
@@ -76,7 +76,8 @@ def _run(writer: _FakeClient, reviewer: _FakeClient | None, *, with_issue: bool 
     }
     if with_issue:
         body["materials"] = {"issues": [ISSUE], "reviews": [], "owner_replies": []}
-    generator = StarGenerator(writer, limits, reviewer=StarReviewer(reviewer) if reviewer is not None else None)
+    generator = StarGenerator(writer, limits, reviewer=StarReviewer(reviewer) if reviewer is not None else None,
+                              repair=repair)
     return asyncio.run(generator.generate(StarAnalysisRequest.model_validate(body)))
 
 
@@ -123,6 +124,23 @@ def test_choices_rewrites_and_rechecks_are_recorded_by_round() -> None:
         _flag(1, "A", "UNSOURCED_NUMBER", "30%"),
     ]
 
+
+
+def test_rewrite_that_got_worse_is_recorded_as_revert_with_its_problem() -> None:
+    no_sha = StarField(status="FILLED", text=ACTION, evidence_shas=[], insufficient_reason=None)
+    writer = _FakeClient(_draft(A=_field(UNSOURCED_A)), _draft(A=no_sha), _draft(A=_field(ACTION)))
+
+    result = _run(writer, None, with_issue=False, limits=StarGenerationLimits(max_repair_rounds=2), repair=True)
+
+    assert [step for step in result.steps if step.slot == "A"] == [
+        _flag(0, "A", "UNSOURCED_NUMBER", "50%"),
+        StarStep(round=1, actor="MODEL", kind="REWRITE", slot="A"),
+        StarStep(round=1, actor="CODE", kind="REVERT", slot="A", code="NO_EVIDENCE"),
+        _flag(1, "A", "UNSOURCED_NUMBER", "50%"),
+        StarStep(round=2, actor="MODEL", kind="REWRITE", slot="A"),
+        StarStep(round=2, actor="CODE", kind="PASS", slot="A"),
+    ]
+    assert result.star["A"].text == ACTION
 
 def test_actions_changed_by_code_are_recorded_without_the_model_reason() -> None:
     writer = _FakeClient(

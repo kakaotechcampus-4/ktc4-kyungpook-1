@@ -145,7 +145,6 @@ _REVERSED_CODE = "REVERSED_MEANING"
 _REPAIR_CODES = frozenset({"NO_EVIDENCE", "UNSOURCED_NUMBER"})
 _EMPTY_CODE = "EMPTY"
 _EMPTY_PROBLEM_REASON = "이 칸이 비어 있습니다."
-_UNSOURCED_CODE = "UNSOURCED_NUMBER"
 _MAX_STEP_REASON_CHARS = 60
 
 SlotAction = Literal["OPEN", "REWRITE", "KEEP"]
@@ -430,7 +429,7 @@ class StarGenerator:
         있는 자료만 상한까지 열어 붙인다. 다시 쓴 칸이 앞 글에 없던 문제로 검사에 걸리거나 비면 앞 글로 되돌려 남은 횟수
         안에서 다시 쓰게 하고, 검토·다시 쓰기 호출이 실패하거나 마감이 가까우면 지금 초안에서 멈춘다. 돌려주는 칸 목록은
         마지막 검토에서도 뒤집혔다고 본 칸과 뒤집혔는데 그대로 두기로 한 칸이라, 검토가 틀렸을 수 있어 지우지 않고 확인 필요로 내린다.
-        검사 결과·고른 행동·다시 쓴 칸은 바퀴 번호와 함께 steps 에 더한다.
+        검사 결과·고른 행동·다시 쓴 칸·되돌린 칸은 바퀴 번호와 함께 steps 에 더한다.
         """
         by_sha = {item.sha: item for item in evidence}
         targets: set[StarSlot] = set(SLOTS)
@@ -462,9 +461,11 @@ class StarGenerator:
             still_reversed = frozenset(kept_reversed | set(reversed_slots))
             if (not flagged and not empties) or round_index == self._limits.max_repair_rounds:
                 return output, still_reversed, opened
-            plan, to_open = await self._choose(payload["title"], output, problems, flagged, empties,
-                                               materials, opened, deadline)
-            steps.extend(_choice_step(round_index + 1, slot, choice) for slot, choice in plan.items())
+            plan, to_open, asked = await self._choose(payload["title"], output, problems, flagged, empties,
+                                                      materials, opened, deadline)
+            # 고를 자료가 없어 모델에게 묻지 않은 바퀴는 고쳐 쓰기뿐이라, 행동 단계 없이 다시 쓴 칸만 남긴다
+            if asked:
+                steps.extend(_choice_step(round_index + 1, slot, choice) for slot, choice in plan.items())
             for material in to_open:
                 opened.append(material)
                 record_tool_call()
@@ -496,8 +497,13 @@ class StarGenerator:
                 for slot in SLOTS
                 if slot in rewrite_slots
             )
-            kept = {slot for slot in rewrite_slots if not self._worse(slot, problems, rewritten, by_sha, payload, opened)}
-            output = output.model_copy(update={slot: getattr(rewritten, slot) for slot in kept})
+            worse = {slot: self._worse(slot, problems, rewritten, by_sha, payload, opened) for slot in rewrite_slots}
+            steps.extend(
+                StarStep(round=round_index + 1, actor="CODE", kind="REVERT", slot=slot, code=worse[slot])
+                for slot in SLOTS
+                if worse.get(slot)
+            )
+            output = output.model_copy(update={slot: getattr(rewritten, slot) for slot in rewrite_slots if not worse[slot]})
             targets = rewrite_slots
         return output, frozenset(kept_reversed), opened
 
@@ -517,8 +523,8 @@ class StarGenerator:
         materials: list[Material],
         opened: list[Material],
         deadline: float,
-    ) -> tuple[dict[StarSlot, _Choice], list[Material]]:
-        """걸린 칸과 빈 칸의 행동을 정한다. 걸린 칸이 쓸 수 있는 자료가 없으면 모델을 부르지 않고 고쳐 쓰기로 둔다."""
+    ) -> tuple[dict[StarSlot, _Choice], list[Material], bool]:
+        """걸린 칸과 빈 칸의 행동과 모델에게 물었는지를 정한다. 쓸 수 있는 자료가 없으면 모델을 부르지 않고 고쳐 쓰기로 둔다."""
         targets = flagged | empties
         offered = {
             material.id: material
@@ -527,7 +533,7 @@ class StarGenerator:
         }
         opens_left = self._limits.max_material_opens - len(opened)
         if not offered or opens_left <= 0:
-            return _plan(None, flagged, empties, {}, 0)
+            return *_plan(None, flagged, empties, {}, 0), False
         texts = self._texts(output)
         slots = [
             {
@@ -548,7 +554,7 @@ class StarGenerator:
             "materials": [material.offer() for material in offered.values()],
             "opens_left": opens_left,
         }
-        return _plan(await self._decide(payload, deadline), flagged, empties, offered, opens_left)
+        return *_plan(await self._decide(payload, deadline), flagged, empties, offered, opens_left), True
 
     async def _decide(self, payload: dict[str, Any], deadline: float) -> Optional[SlotChoiceOutput]:
         """고르기가 없어도 자료 없이 걸린 칸만 고쳐 쓰면 되므로, 어떤 실패든 빈 값으로 돌려준다."""
@@ -582,15 +588,19 @@ class StarGenerator:
         by_sha: dict[str, DiffEvidence],
         payload: dict[str, Any],
         opened: list[Material],
-    ) -> bool:
-        """다시 쓴 칸이 앞 글보다 나빠졌는지 본다. 근거가 없어 걸린 칸은 비우는 것이 고친 것이다."""
+    ) -> Optional[str]:
+        """다시 쓴 칸이 앞 글보다 나빠졌으면 그렇게 만든 문제 코드를, 아니면 None 을 돌려준다.
+
+        근거가 없어 걸린 칸은 비우는 것이 고친 것이고, 그 밖의 칸이 비면 EMPTY 다.
+        """
         before = {problem["code"] for problem in problems if problem["slot"] == slot}
         written = self._written(rewritten)
         if slot not in written:
-            return "NO_EVIDENCE" not in before
+            return None if "NO_EVIDENCE" in before else _EMPTY_CODE
         check = check_draft({slot: written[slot]}, by_sha, payload["confirmed_answers"],
                             payload.get("pull_request_body"), _extra_sources(opened))
-        return any(problem.code in _REPAIR_CODES and problem.code not in before for problem in check[slot].problems)
+        return next((problem.code for problem in check[slot].problems
+                     if problem.code in _REPAIR_CODES and problem.code not in before), None)
 
     def _texts(self, output: StarDraftOutput) -> dict[StarSlot, str]:
         return {
@@ -855,7 +865,7 @@ def _check_steps(
 ) -> list[StarStep]:
     """검사·검토 결과를 칸 순서대로 남긴다. 걸린 칸은 문제마다, 빈 칸은 EMPTY 로, 통과한 칸은 다시 쓴 뒤에만 남긴다.
 
-    뒤집힘은 검토 모델이 찾아 MODEL 이고, 값은 화면 문장에 쓰는 걸린 수치만 보낸다.
+    뒤집힘은 검토 모델이 찾아 MODEL 이고, 값은 화면 문장에 쓰는 걸린 수치·이름만 보내고 긴 원문 문장은 보내지 않는다.
     """
     steps: list[StarStep] = []
     for slot in SLOTS:
@@ -870,7 +880,7 @@ def _check_steps(
                     kind="FLAG",
                     slot=slot,
                     code=problem["code"],
-                    value=problem["value"] if problem["code"] == _UNSOURCED_CODE else None,
+                    value=None if problem["code"] == _REVERSED_CODE else problem["value"],
                 )
                 for problem in found
             )

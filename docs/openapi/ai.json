@@ -3999,7 +3999,8 @@
               "RETRY",
               "KEEP",
               "REWRITE",
-              "PASS"
+              "PASS",
+              "REVERT"
             ],
             "title": "Kind",
             "type": "string"

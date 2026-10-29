@@ -196,7 +196,7 @@ class StarGenerationLimits:
     #: 남은 시간이 이보다 짧으면 새 호출을 시작하지 않는다.
     min_call_seconds: float = 10.0
     #: 검사·검토에 걸린 칸을 다시 쓰는 최대 횟수. 검토는 다시 쓴 뒤마다 한 번 더 해 최대 횟수 +1 번 부른다.
-    max_repair_rounds: int = 2
+    max_repair_rounds: int = 5
 
 
 class StarGenerator:
@@ -207,16 +207,18 @@ class StarGenerator:
         client: Optional[StructuredCaller] = None,
         limits: StarGenerationLimits = StarGenerationLimits(),
         reviewer: Optional[StarReviewer] = None,
+        repair: bool = False,
     ) -> None:
         self._client = client
         self._limits = limits
         self._reviewer = reviewer
+        self._repair_enabled = repair or reviewer is not None
 
     async def generate(self, request: StarAnalysisRequest) -> StarAnalysisResponse:
         """근거가 없는 영역은 비운 STAR 분석 결과를 반환한다.
 
         마감 안에 초안을 받지 못하면 실패 대신 네 칸을 TIMEOUT으로 비운 결과를 돌려준다.
-        검토를 받았으면 첫 초안 뒤에 검사·검토에 걸린 칸만 고쳐 쓰게 한다.
+        고쳐 쓰기를 켰으면 첫 초안 뒤에 코드 검사에 걸린 칸만, 검토도 받았으면 검토가 뒤집혔다고 본 칸까지 고쳐 쓰게 한다.
         """
         if self._client is None:
             raise StarGenerationError("STAR 생성에 사용할 LLM이 설정되지 않았습니다.", retryable=False)
@@ -229,7 +231,7 @@ class StarGenerator:
         except _Timeout:
             return self._timed_out(request)
         still_reversed: frozenset[StarSlot] = frozenset()
-        if self._reviewer is not None:
+        if self._repair_enabled:
             output, still_reversed = await self._repair(self._reviewer, evidence, payload, output, deadline)
         return self._to_response(request, evidence, payload, output, still_reversed)
 
@@ -296,7 +298,7 @@ class StarGenerator:
 
     async def _repair(
         self,
-        reviewer: StarReviewer,
+        reviewer: Optional[StarReviewer],
         evidence: list[DiffEvidence],
         payload: dict[str, Any],
         output: StarDraftOutput,
@@ -304,6 +306,7 @@ class StarGenerator:
     ) -> tuple[StarDraftOutput, frozenset[StarSlot]]:
         """검사·검토에 걸린 칸만 이유와 함께 다시 쓰게 하고, 다시 쓴 칸만 다시 검사·검토한다.
 
+        다시 쓴 칸이 앞 글에 없던 문제로 검사에 걸리거나 비면 앞 글로 되돌려, 남은 횟수 안에서 다시 쓰게 한다.
         검토·다시 쓰기 호출이 실패하거나 마감이 가까우면 지금 초안에서 멈춘다. 돌려주는 칸 목록은 마지막 검토에서도
         뒤집혔다고 본 칸이라, 검토가 틀렸을 수 있어 지우지 않고 확인 필요로 내린다.
         """
@@ -315,7 +318,7 @@ class StarGenerator:
             if not written:
                 return output, frozenset()
             try:
-                reversed_slots = await reviewer.review(
+                reversed_slots = {} if reviewer is None else await reviewer.review(
                     {slot: draft.text for slot, draft in written.items()},
                     sources,
                     deadline,
@@ -341,9 +344,26 @@ class StarGenerator:
                 logger.warning("STAR 초안을 고쳐 쓰지 못해 지금 초안으로 만든다: %s", type(exc).__name__)
                 return output, frozenset(reversed_slots)
             record_repair_round()
-            output = output.model_copy(update={slot: getattr(rewritten, slot) for slot in flagged})
+            kept = {slot for slot in flagged if not self._worse(slot, problems, rewritten, by_sha, payload)}
+            output = output.model_copy(update={slot: getattr(rewritten, slot) for slot in kept})
             targets = flagged
         return output, frozenset()
+
+    def _worse(
+        self,
+        slot: StarSlot,
+        problems: list[dict[str, Any]],
+        rewritten: StarDraftOutput,
+        by_sha: dict[str, DiffEvidence],
+        payload: dict[str, Any],
+    ) -> bool:
+        """다시 쓴 칸이 앞 글보다 나빠졌는지 본다. 근거가 없어 걸린 칸은 비우는 것이 고친 것이다."""
+        before = {problem["code"] for problem in problems if problem["slot"] == slot}
+        written = self._written(rewritten)
+        if slot not in written:
+            return "NO_EVIDENCE" not in before
+        check = check_draft({slot: written[slot]}, by_sha, payload["confirmed_answers"], payload.get("pull_request_body"))
+        return any(problem.code in _REPAIR_CODES and problem.code not in before for problem in check[slot].problems)
 
     def _texts(self, output: StarDraftOutput) -> dict[StarSlot, str]:
         return {

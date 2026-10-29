@@ -138,12 +138,17 @@ class StarReviewer:
         return findings
 
 
-def reviewer_from_env() -> Optional[StarReviewer]:
-    """GITORY_STAR_REPAIR_ENABLED 를 켰을 때만 검토·고쳐 쓰기를 돌고, 검토 모델은 GITORY_STAR_REVIEW_MODEL 로 고른다.
+def repair_from_env() -> bool:
+    """GITORY_STAR_REPAIR_ENABLED 를 끄지 않으면 코드 검사에 걸린 칸을 다시 쓴다."""
+    return os.getenv("GITORY_STAR_REPAIR_ENABLED", "true").strip().lower() in _ENABLED_VALUES
 
-    검토 모델을 재고 운영 키가 그 모델을 허용한 뒤에 켜야 해서 기본은 끈다.
+
+def reviewer_from_env() -> Optional[StarReviewer]:
+    """GITORY_STAR_REVIEW_ENABLED 를 켰을 때만 뒤집힌 칸도 검토하고, 검토 모델은 GITORY_STAR_REVIEW_MODEL 로 고른다.
+
+    첫 초안에서 뒤집힌 칸은 드물고 검토가 멀쩡한 칸을 뒤집혔다고 짚기도 해서 기본은 끈다.
     """
-    if os.getenv("GITORY_STAR_REPAIR_ENABLED", "false").strip().lower() not in _ENABLED_VALUES:
+    if os.getenv("GITORY_STAR_REVIEW_ENABLED", "false").strip().lower() not in _ENABLED_VALUES:
         return None
     return StarReviewer(EnvironmentLLMClient("STAR_REVIEW"))
 

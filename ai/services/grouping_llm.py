@@ -40,6 +40,8 @@ COMMIT_FILE_SAMPLE = 10
 DESCRIPTION_COMMIT_SAMPLE = 12
 DESCRIPTION_FILE_SAMPLE = 10
 DESCRIPTION_MESSAGE_MAX_LENGTH = 500
+#: PR 본문은 카드 초안을 위해 3,000자까지 모으지만, 제목·이유 두 문장에는 앞부분이면 충분해 묶기 입력은 예전 길이로 둔다.
+DESCRIPTION_PULL_REQUEST_BODY_MAX_LENGTH = 1_000
 #: 후보 설명이 빠졌을 때 다시 묻기 위해 남아 있어야 하는 최소 시간(초). 끊기기 쉬운 호출을
 #: 시작하지 않게 diff 분석·STAR의 min_call_seconds와 같은 값을 쓴다.
 MIN_REDESCRIBE_SECONDS = 10.0
@@ -481,7 +483,9 @@ class GroupingLlm:
             {
                 "number": n,
                 "title": redact_secrets(pull_by_number[n].title),
-                "body_excerpt": _redact_optional(pull_by_number[n].body_excerpt),
+                "body_excerpt": _redact_optional(
+                    _head(pull_by_number[n].body_excerpt, DESCRIPTION_PULL_REQUEST_BODY_MAX_LENGTH)
+                ),
             }
             for n in group.pull_request_numbers
             if n in pull_by_number
@@ -523,6 +527,10 @@ def _first_line(message: str) -> str:
 
 def _redact_optional(text: str | None) -> str | None:
     return None if text is None else redact_secrets(text)
+
+
+def _head(text: str | None, limit: int) -> str | None:
+    return None if text is None else text[:limit]
 
 
 def _keys(groups: list[CommitGroup]) -> str:

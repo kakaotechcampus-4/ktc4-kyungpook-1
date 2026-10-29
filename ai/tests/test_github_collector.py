@@ -219,6 +219,39 @@ def test_collects_commit_diff_pull_review_and_issue() -> None:
     assert result.head_sha == "abc1234567890"
 
 
+def test_pull_request_body_keeps_3000_chars_while_review_and_issue_bodies_keep_1000() -> None:
+    """PR 본문은 카드 초안이 '왜' 를 찾는 재료라 3,000자까지 남기고, 리뷰·줄 댓글·이슈 본문은 1,000자에서 자른다."""
+    long_paths = {
+        "/repos/grow22/gitory/pulls": "가" * 3_500,
+        "/repos/grow22/gitory/pulls/17/reviews": "나" * 1_500,
+        "/repos/grow22/gitory/pulls/17/comments": "다" * 1_500,
+        "/repos/grow22/gitory/issues": "라" * 1_500,
+    }
+
+    def long_bodies(request: httpx.Request) -> httpx.Response:
+        response = _success_handler(request)
+        if request.url.path not in long_paths:
+            return response
+        items = response.json()
+        for item in items:
+            item["body"] = long_paths[request.url.path]
+        return httpx.Response(200, json=items)
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(long_bodies),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    pull = result.pull_requests[0]
+    assert (len(pull.body_excerpt), pull.body_truncated) == (3_000, True)
+    assert len(pull.reviews[0].body_excerpt) == 1_000
+    assert len(pull.reviews[0].comments[0].body_excerpt) == 1_000
+    assert len(result.issues[0].body_excerpt) == 1_000
+
+
+
 def test_collect_reports_pull_requests_then_commits_progress() -> None:
     """PR 을 하나 읽을 때마다, 그다음 커밋 상세를 하나 받을 때마다 진행을 알리고 PR 이 먼저다."""
     collector = GithubCollector(

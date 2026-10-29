@@ -97,6 +97,8 @@ class CollectionLimits:
     max_pull_request_pages: int = 10
     max_issues: int = 50
     max_text_chars: int = 1_000
+    #: PR 본문은 카드 초안이 '왜 그렇게 했는지' 를 찾는 재료라 리뷰·이슈 글보다 길게 둔다.
+    max_pull_request_body_chars: int = 3_000
     max_candidate_commits: int = 50
     max_patch_chars: int = 20_000
     max_candidate_patch_chars: int = 100_000
@@ -283,7 +285,7 @@ class GithubCollector:
             title = _required_text(pull, "title")
             body = _optional_text(pull, "body")
             body_excerpt, body_truncated = _excerpt(
-                body, self._limits.max_text_chars
+                body, self._limits.max_pull_request_body_chars
             )
             state.pull_requests.append(
                 CollectedPullRequest(

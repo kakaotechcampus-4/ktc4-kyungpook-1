@@ -1568,9 +1568,66 @@
         },
         "type" : "object"
       },
+      "JobActivity" : {
+        "properties" : {
+          "excluded" : {
+            "enum" : [ "BOT", "MERGE_COMMIT", "LOCKFILE_ONLY", "NOT_OWN" ],
+            "type" : "string"
+          },
+          "experiences" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "files" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "kind" : {
+            "enum" : [ "PULL_REQUEST", "COMMIT", "GROUPED", "DESCRIBED" ],
+            "type" : "string"
+          },
+          "number" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "reviews" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "seq" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sha" : {
+            "type" : "string"
+          },
+          "step" : {
+            "enum" : [ "COMMITS", "PR_REVIEW", "COMPRESS", "REASON" ],
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "units" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "JobResponse" : {
         "description" : "Job 상세. 부분 결과는 별도 상태가 아니라 partial로 표시합니다.",
         "properties" : {
+          "activity" : {
+            "description" : "AI 가 방금 읽거나 판단한 줄, 오래된 것부터. 읽기 줄(PULL_REQUEST·COMMIT)은 단계마다 최근 20줄, 판단 줄(GROUPED·DESCRIBED)은 모두 싣고, Job 이 끝나고 10분 뒤나 서버가 다시 시작되면 빈 목록이다. seq 는 Job 안에서 1부터 늘어나 이미 받은 줄을 가를 수 있다",
+            "items" : {
+              "$ref" : "#/components/schemas/JobActivity"
+            },
+            "type" : "array"
+          },
           "errorCode" : {
             "enum" : [ "GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "GITHUB_UNAUTHORIZED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING", "INTERNAL_ERROR", "COLLECTION_CAPPED", "AI_UNAVAILABLE" ],
             "type" : "string"
@@ -1589,7 +1646,7 @@
           },
           "pollAfterMs" : {
             "description" : "다음 조회 간격(밀리초). 종료 상태는 0",
-            "example" : 2000,
+            "example" : 1000,
             "format" : "int32",
             "type" : "integer"
           },

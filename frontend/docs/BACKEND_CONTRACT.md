@@ -76,13 +76,25 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
   "partial": false,                                   // 부분 완료는 별도 상태가 아니다 → SUCCEEDED + partial:true
   "steps": [{ "key": "PR_REVIEW|COMMITS|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
               "done": 0, "total": 0 }],               // 늘 4개. 순서는 아래 참고. 총량을 모르면 total: null
+  "activity": [{ "seq": 41, "step": "COMMITS", "kind": "PULL_REQUEST|COMMIT|GROUPED|DESCRIBED", ... }],  // 아래 참고. 없으면 []
   "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|GITHUB_UNAUTHORIZED|AI_UNAVAILABLE|COLLECTION_CAPPED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
   "retryable": bool | null,
   "retryAfterSec": n | null,                          // GITHUB_RATE_LIMITED 에서만 의미가 있다
   "startedAt", "updatedAt", "finishedAt": null,
   "result": { "repoId"?, "cardIds"?, "verdict": "OK|EMPTY|PARTIAL", "reasons": [] } | null,
-  "pollAfterMs": 2000 }                               // 다음 폴링까지 기다릴 시간. 간격은 서버가 정한다
+  "pollAfterMs": 1000 }                               // 다음 폴링까지 기다릴 시간. 간격은 서버가 정한다(진행 중 Job 목록은 2000)
 ```
+
+- **`activity` 는 AI 가 방금 읽거나 판단한 줄이다(#493).** 오래된 줄부터 오고, `seq` 는 Job 안에서 1부터 늘어나 이미 받은 줄을 가를 수 있다. 문장은 화면이 만든다.
+
+  | `kind` | `step` | 값 | 화면 예시 |
+  |---|---|---|---|
+  | `PULL_REQUEST` | `PR_REVIEW` | `number`, `title`, `reviews` | #31 로그인 리팩터링 (리뷰 4건) |
+  | `COMMIT` | `COMMITS` | `sha`(7자), `title`(메시지 첫 줄), `files`, `excluded`(`BOT`·`MERGE_COMMIT`·`LOCKFILE_ONLY`·`NOT_OWN`, 빼지 않았으면 null) | fix: 토큰 만료 처리 (파일 3개) |
+  | `GROUPED` | `COMPRESS` | `units`(이번에 본 작업 수), `experiences`(만든 경험 수) | 작업 12개를 경험 4개로 묶었어요 |
+  | `DESCRIBED` | `REASON` | `title`(경험 제목), `reason`(고른 이유) | 배포 자동화: 리뷰가 많이 오간 작업 |
+
+  종류에 없는 칸은 null 이다. 읽기 줄(`PULL_REQUEST`·`COMMIT`)은 1초에 여러 개 지나가서 단계마다 최근 20줄만 오고, 판단 줄(`GROUPED`·`DESCRIBED`)은 모두 온다 — 고른 이유는 AI 한 번에 8개씩 한꺼번에 와서, 화면이 `seq` 로 아직 안 보인 줄을 골라 차례로 보여 줄 수 있다. 카드 초안 Job, Job 이 끝나고 10분 뒤, 서버가 다시 시작된 뒤에는 `[]` 이다.
 
 - **단계 순서는 서버가 준 순서 그대로 그린다.** 분석(`ANALYZE`)은 AI 가 실제로 읽는 순서인 `PR_REVIEW → COMMITS → COMPRESS → REASON`, 카드 초안(`DRAFT`)은 `COMMITS → PR_REVIEW → COMPRESS → REASON` 이다.
 - **분석 단계의 `done`/`total` 은 읽는 동안 실시간으로 바뀐다(서버 설정 `ANALYSIS_LIVE_PROGRESS_ENABLED`, 기본 켬).** 진행 중인 단계는 `RUNNING` + 지금까지 읽은 수/전체(전체를 아직 모르면 `total: null`), 앞 단계는 `DONE`, 뒤 단계는 `QUEUED` 다. 숫자는 저장소 전체가 아니라 **이번에 새로 읽는 양**이다 — 다시 분석하면 새 PR·커밋만 세고, 새로 읽을 게 없으면 `DONE` + `done: 0, total: 0` 이다. 갱신은 1초에 한 번 정도라 폴링마다 숫자가 조금씩 오른다.

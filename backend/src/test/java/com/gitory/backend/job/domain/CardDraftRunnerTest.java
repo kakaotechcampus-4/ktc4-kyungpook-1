@@ -94,7 +94,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, JobCancelService.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
-        StoredActivityService.class, UserLoginService.class, JobViewFactory.class, CandidateEmptyReasons.class,
+        StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
         CommitSummaryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)

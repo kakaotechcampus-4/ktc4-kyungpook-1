@@ -289,7 +289,7 @@ export const seedInterview: Record<string, unknown[]> = {
     turnNo: 1, field: 'S', askedBy: 'USER_REQUEST', sourceType: 'PR', questionType: 'EVIDENCE_GAP',
     found: ['Revert 커밋 2건 (4.02)', '결제 롤백 이슈 #31'], missing: ['그때 왜 되돌렸고, 어떻게 다시 붙였는지'],
     question: '그때 의견이 갈린 지점은 무엇이었나요?', options: [],
-    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 1, maxTurns: 2,
+    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 7, maxTurns: 8,
   }],
 };
 

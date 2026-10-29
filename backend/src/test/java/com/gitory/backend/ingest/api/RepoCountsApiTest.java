@@ -204,6 +204,29 @@ class RepoCountsApiTest {
     }
 
     @Test
+    @DisplayName("저장 목록의 후보 수·카드 수·마지막 분석 시각은 최신 목록의 같은 저장소 한 줄과 같다")
+    void savedListHasTheSameCountsAsTheListRow() throws Exception {
+
+        githubReturns(repo(100L, "gitory"));
+        Long connection = connectionOf(listIds().get(0));
+        candidates.insertCandidate(connection, "PR", 7, "NEW");
+        candidates.insertCandidate(connection, "PR", 8, "USED");
+        card(connection, true);
+        analyzedAt(connection, ANALYZED);
+
+        mvc.perform(get("/api/repos/saved").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].candidateCount").value(2))
+                .andExpect(jsonPath("$.data[0].cardCount").value(1))
+                .andExpect(jsonPath("$.data[0].lastAnalyzedAt").value("2026-10-08T05:00:00Z"));
+        list()
+                .andExpect(jsonPath("$.data[0].candidateCount").value(2))
+                .andExpect(jsonPath("$.data[0].cardCount").value(1))
+                .andExpect(jsonPath("$.data[0].lastAnalyzedAt").value("2026-10-08T05:00:00Z"));
+
+    }
+
+    @Test
     @DisplayName("분석한 적 없고 후보도 없으면 후보 수는 null 이다")
     void candidateCountIsNullBeforeFirstAnalysis() throws Exception {
 

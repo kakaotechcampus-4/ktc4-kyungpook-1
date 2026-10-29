@@ -36,7 +36,7 @@ class CardTest {
     @DisplayName("직접 작성 카드는 정성·직접 작성·작성 중·현재 버전 1·가리기 규칙 없음으로 시작하고 제목은 앞뒤 공백까지 그대로 둔다")
     void startsManualDraft() {
 
-        Card card = Card.startManual(USER_ID, REPO_LINK_ID, "  첫 카드  ", PERIOD, "key-1");
+        Card card = Card.startManual(USER_ID, REPO_LINK_ID, null, "  첫 카드  ", PERIOD, "key-1");
 
         assertThat(card.getCardType()).isEqualTo(CardKind.QUALITATIVE);
         assertThat(card.getOrigin()).isEqualTo(CardOrigin.MANUAL);
@@ -58,7 +58,7 @@ class CardTest {
     @DisplayName("제목이 null·빈 글·공백뿐(NBSP·U+2007·U+202F·BOM 포함)이거나 U+0000 이 있거나 256자를 넘으면 카드 시작과 제목 바꾸기 모두 InvalidCardInputException 이고 카드는 그대로다")
     void rejectsInvalidTitle(String title) {
 
-        assertThatThrownBy(() -> Card.startManual(USER_ID, null, title, null, null))
+        assertThatThrownBy(() -> Card.startManual(USER_ID, null, null, title, null, null))
                 .isInstanceOf(InvalidCardInputException.class);
 
         Card card = draft();
@@ -75,7 +75,7 @@ class CardTest {
 
         String title = "가".repeat(256);
 
-        assertThat(Card.startManual(USER_ID, null, title, null, null).getTitle()).isEqualTo(title);
+        assertThat(Card.startManual(USER_ID, null, null, title, null, null).getTitle()).isEqualTo(title);
 
         Card card = draft();
         card.rename(title);
@@ -88,7 +88,7 @@ class CardTest {
     @DisplayName("기간이 null·빈 글·공백뿐(NBSP·U+2007·U+202F·BOM 포함)이면 카드 시작과 기간 바꾸기 모두 기간을 비운다")
     void blankPeriodBecomesNull(String period) {
 
-        assertThat(Card.startManual(USER_ID, null, TITLE, period, null).getPeriod()).isNull();
+        assertThat(Card.startManual(USER_ID, null, null, TITLE, period, null).getPeriod()).isNull();
 
         Card card = draft();
         card.changePeriod(period);
@@ -101,7 +101,7 @@ class CardTest {
     @DisplayName("기간이 50자를 넘거나 U+0000 이 있으면 카드 시작과 기간 바꾸기 모두 InvalidCardInputException 이고 카드는 그대로다")
     void rejectsInvalidPeriod(String period) {
 
-        assertThatThrownBy(() -> Card.startManual(USER_ID, null, TITLE, period, null))
+        assertThatThrownBy(() -> Card.startManual(USER_ID, null, null, TITLE, period, null))
                 .isInstanceOf(InvalidCardInputException.class);
 
         Card card = draft();
@@ -117,7 +117,7 @@ class CardTest {
     @DisplayName("정확히 50자인 기간과 앞뒤에 공백이 있는 기간은 카드 시작과 기간 바꾸기 모두 받은 그대로 둔다")
     void keepsPeriodAsGiven(String period) {
 
-        assertThat(Card.startManual(USER_ID, null, TITLE, period, null).getPeriod()).isEqualTo(period);
+        assertThat(Card.startManual(USER_ID, null, null, TITLE, period, null).getPeriod()).isEqualTo(period);
 
         Card card = draft();
         card.changePeriod(period);
@@ -382,7 +382,7 @@ class CardTest {
 
     private static Card draft() {
 
-        return Card.startManual(USER_ID, null, TITLE, PERIOD, null);
+        return Card.startManual(USER_ID, null, null, TITLE, PERIOD, null);
 
     }
 

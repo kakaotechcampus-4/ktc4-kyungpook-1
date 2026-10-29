@@ -15,7 +15,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from api.openapi import INVALID_PAYLOAD_RESPONSE
-from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
+from schemas.common import Envelope, ErrorDetail, ErrorEnvelope
 from schemas.interview import (
     InterviewAnswerRequest,
     InterviewAnswerResult,
@@ -27,7 +27,8 @@ from schemas.interview import (
 from services.interview_answer_service import InterviewAnswerService
 from services.interview_agent import InterviewAgent
 from services.interview_llm import InterviewLLM, InterviewLLMUnavailable
-from services.llm_settings import EnvironmentLLMClient, configured_model
+from services.llm_settings import EnvironmentLLMClient
+from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -63,17 +64,12 @@ async def create_interview_turn(request: InterviewTurnRequest) -> Envelope[Inter
         최종 횟수 제한은 Spring이 저장 시점에 관리한다.
     """
     started = time.perf_counter()
-    result, used_llm = await _agent.next_turn(request)
-    processing_ms = int((time.perf_counter() - started) * 1000)
+    result, fell_back = await _agent.next_turn(request)
 
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(
-            model=configured_model("INTERVIEW") if used_llm else None,
-            tool_calls_made=1 if used_llm else 0,
-            processing_ms=processing_ms,
-        ),
+        meta=usage_meta(started, "FALLBACK" if fell_back else "COMPLETED"),
         error=None,
     )
 
@@ -102,18 +98,14 @@ async def write_measured_sentence(request: MeasuredSentenceRequest):
         envelope = Envelope(
             success=False,
             data=None,
-            meta=Meta(model=None, tool_calls_made=1, processing_ms=int((time.perf_counter() - started) * 1000)),
+            meta=usage_meta(started, "FAILED"),
             error=ErrorDetail(code="LLM_UNAVAILABLE", message="수치 문장을 만들지 못했습니다.", retryable=True),
         )
         return JSONResponse(status_code=503, content=jsonable_encoder(envelope))
     return Envelope(
         success=True,
         data=MeasuredSentenceResult(card_id=request.card_id, sentence=sentence),
-        meta=Meta(
-            model=configured_model("INTERVIEW"),
-            tool_calls_made=1,
-            processing_ms=int((time.perf_counter() - started) * 1000),
-        ),
+        meta=usage_meta(started, "COMPLETED"),
         error=None,
     )
 
@@ -134,11 +126,10 @@ async def evaluate_interview_answer(
     """사용자 답변을 평가해 STAR 문장과 다음 인터뷰 행동을 반환한다."""
     started = time.perf_counter()
     result = _answer_service.process_answer(request)
-    processing_ms = int((time.perf_counter() - started) * 1000)
 
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=processing_ms),
+        meta=usage_meta(started, "COMPLETED"),
         error=None,
     )

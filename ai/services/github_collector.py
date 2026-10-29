@@ -35,6 +35,7 @@ from schemas.collection import (
     RepositoryCollectionResult,
 )
 from ports.repository_activity import RepositoryActivityExecution
+from services.progress import COMMITS, PULL_REQUESTS, commit_item, pull_request_item, report_progress
 
 
 GITHUB_API_VERSION = "2022-11-28"
@@ -72,6 +73,10 @@ class GithubApiError(RuntimeError):
 
 class GithubResourceNotFound(GithubApiError):
     """저장소가 없거나 현재 토큰으로 읽을 수 없음."""
+
+
+class GithubUnauthorized(GithubApiError):
+    """GitHub 이 토큰을 거절했다(401). 만료·취소된 토큰이라 다시 시도해도 같고 다시 연결해야 한다."""
 
 
 class _RateLimited(RuntimeError):
@@ -262,7 +267,9 @@ class GithubCollector:
         request: RepositoryCollectionRequest,
         state: _CollectionState,
     ) -> None:
-        for pull in await self._select_pull_requests(client, request, state):
+        pulls = await self._select_pull_requests(client, request, state)
+        report_progress(PULL_REQUESTS, 0, len(pulls))
+        for index, pull in enumerate(pulls, start=1):
             number = _required_int(pull, "number")
             commit_shas = await self._collect_pull_commit_shas(
                 client, request, state, number
@@ -295,6 +302,7 @@ class GithubCollector:
                     reviews=reviews,
                 )
             )
+            report_progress(PULL_REQUESTS, index, len(pulls), pull_request_item(number, title, len(reviews)))
 
     async def _select_pull_requests(
         self,
@@ -551,7 +559,8 @@ class GithubCollector:
 
         pull_by_sha = _primary_pull_by_sha(state.pull_requests)
         selected_shas = list(summaries_by_sha)[: self._limits.max_commits]
-        for sha in selected_shas:
+        report_progress(COMMITS, 0, len(selected_shas))
+        for index, sha in enumerate(selected_shas, start=1):
             detail, files = await self._collect_commit_detail(
                 client, request, state, sha
             )
@@ -564,6 +573,7 @@ class GithubCollector:
             state.commits.append(commit)
             if confirmation is not None:
                 state.needs_confirmation.append(confirmation)
+            report_progress(COMMITS, index, len(selected_shas), commit_item(commit))
 
     async def _is_empty_repository(
         self,
@@ -831,6 +841,8 @@ class GithubCollector:
                 and exc.response.headers.get("X-RateLimit-Remaining") == "0"
             ):
                 raise _RateLimited() from exc
+            if status == 401:
+                raise GithubUnauthorized("GitHub 이 토큰을 거절했습니다.", status) from exc
             if status == 404:
                 raise GithubResourceNotFound(
                     "저장소가 없거나 현재 권한으로 읽을 수 없습니다.", status

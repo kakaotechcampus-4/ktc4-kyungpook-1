@@ -27,6 +27,12 @@ import static lombok.AccessLevel.*;
 @Table(name = "analysis_job")
 public class AnalysisJob {
 
+    // 분석은 AI 가 PR 을 먼저 읽어 커밋과 이을 PR 을 알아 둔 뒤 커밋을 읽으므로 화면 단계도 그 순서로 둔다
+    private static final List<JobStepKey> ANALYZE_ORDER =
+            List.of(JobStepKey.PR_REVIEW, JobStepKey.COMMITS, JobStepKey.COMPRESS, JobStepKey.REASON);
+    private static final List<JobStepKey> DRAFT_ORDER =
+            List.of(JobStepKey.COMMITS, JobStepKey.PR_REVIEW, JobStepKey.COMPRESS, JobStepKey.REASON);
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -73,7 +79,7 @@ public class AnalysisJob {
         this.idempotencyKey = idempotencyKey;
         this.type = type;
         this.state = JobState.QUEUED;
-        this.steps = queuedSteps();
+        this.steps = queuedSteps(type);
         this.partial = false;
     }
 
@@ -91,16 +97,15 @@ public class AnalysisJob {
     }
 
     /**
-     * QUEUED -> RUNNING, 첫 단계인 커밋 읽기를 진행 중으로 표시
+     * QUEUED -> RUNNING, 첫 단계(분석은 PR·리뷰 읽기, 카드 초안은 커밋 읽기)를 진행 중으로 표시
      */
     public void start() {
 
         requireState(JobState.QUEUED);
         this.state = JobState.RUNNING;
+        JobStepKey first = orderOf(type).getFirst();
         this.steps = steps.stream()
-                .map(step -> step.key() == JobStepKey.COMMITS
-                        ? new JobStep(JobStepKey.COMMITS, JobStepState.RUNNING, 0, null)
-                        : step)
+                .map(step -> step.key() == first ? new JobStep(first, JobStepState.RUNNING, 0, null) : step)
                 .toList();
 
     }
@@ -113,12 +118,12 @@ public class AnalysisJob {
 
         requireState(JobState.RUNNING);
         this.state = JobState.QUEUED;
-        this.steps = queuedSteps();
+        this.steps = queuedSteps(type);
 
     }
 
     /**
-     * 수집 기록을 연결하고 커밋 단계는 저장소에 저장된 커밋 수로, PR 단계는 이번에 읽은 PR 수로 끝낸다
+     * 수집 기록을 연결하고 PR·커밋 단계를 이번에 새로 읽은 수(읽은 수와 전체가 같음)로 끝내, 진행 중에 보이던 수와 이어지게 한다
      * 후보 추리기·추천 이유는 경험 그룹화를 끈 채 끝나도록 SKIPPED 로 두고, 경험 그룹화를 하면 {@link #startGrouping()} 이 바꾼다
      */
     public void recordCollection(Long collectionRunId, int commitCount, int pullRequestCount) {
@@ -126,10 +131,33 @@ public class AnalysisJob {
         requireState(JobState.RUNNING);
         this.collectionRunId = collectionRunId;
         this.steps = List.of(
-                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, commitCount, null),
-                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, pullRequestCount, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, pullRequestCount, pullRequestCount),
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, commitCount, commitCount),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
+
+    }
+
+    /**
+     * AI 가 보낸 진행으로 그 단계를 진행 중으로, 앞 단계를 다 읽은 것으로 바꾼다
+     * 뒤 단계는 건드리지 않아, 경험 그룹화를 꺼서 건너뛴 단계(SKIPPED)는 그대로 남는다
+     */
+    public void recordProgress(JobStepKey key, int done, Integer total) {
+
+        requireState(JobState.RUNNING);
+        if (type != JobType.ANALYZE) {
+            throw new IllegalStateException("분석 Job 이 아니다: " + type);
+        }
+        int target = ANALYZE_ORDER.indexOf(key);
+        this.steps = steps.stream()
+                .map(step -> {
+                    int order = ANALYZE_ORDER.indexOf(step.key());
+                    if (order == target) {
+                        return new JobStep(key, JobStepState.RUNNING, done, total);
+                    }
+                    return order < target && step.state() != JobStepState.SKIPPED ? finished(step) : step;
+                })
+                .toList();
 
     }
 
@@ -145,14 +173,20 @@ public class AnalysisJob {
     }
 
     /**
-     * 후보 추리기·추천 이유를 저장소 후보 수로 끝내며, 받는 수는 상태와 상관없이 그 저장소 후보를 모두 센 값이다
-     * 후보가 없으면 이유를 붙일 후보가 없어 추천 이유만 SKIPPED 로 둔다
+     * 후보 추리기·추천 이유를 끝내며, AI 가 진행을 보낸 단계는 받은 전체 수로, 못 받은 단계는 저장소 후보 수로 끝낸다
+     * 저장소 후보 수는 상태와 상관없이 그 저장소 후보를 모두 센 값이고, 후보가 없으면 추천 이유만 SKIPPED 로 둔다
      */
     public void recordCandidates(int candidateCount) {
 
         requireState(JobState.RUNNING);
         JobStepState reason = candidateCount == 0 ? JobStepState.SKIPPED : JobStepState.DONE;
-        this.steps = withCandidateSteps(JobStepState.DONE, reason, candidateCount);
+        this.steps = steps.stream()
+                .map(step -> switch (step.key()) {
+                    case COMPRESS -> candidateStep(step, JobStepState.DONE, candidateCount);
+                    case REASON -> candidateStep(step, reason, candidateCount);
+                    default -> step;
+                })
+                .toList();
 
     }
 
@@ -187,7 +221,7 @@ public class AnalysisJob {
 
     /**
      * 카드마다의 결과로 초안 Job 을 끝내며, 모든 카드가 실패면 실패이고 하나라도 덜 된 카드가 있으면 부분 완료다
-     * 이유가 여럿이면 AI 오류, 시간 초과, 근거 없음 순서로 하나만 남긴다
+     * 이유가 여럿이면 다시 연결, 내부 오류, AI 일시 장애, 시간 초과, 근거 없음 순서로 하나만 남긴다
      */
     public void finishDraft(List<CardDraftResult> results) {
 
@@ -195,8 +229,7 @@ public class AnalysisJob {
         this.steps = draftSteps(results.size(), results.size(), results.size());
 
         if (!results.isEmpty() && results.stream().allMatch(AnalysisJob::isDraftFailure)) {
-            // 실패한 카드가 모두 AI 일시 장애면 다시 시도할 수 있는 AI_UNAVAILABLE 로 끝낸다
-            fail(results.contains(CardDraftResult.FAILED) ? JobErrorCode.INTERNAL_ERROR : JobErrorCode.AI_UNAVAILABLE);
+            fail(draftErrorCodeOf(results));
             return;
         }
 
@@ -332,11 +365,17 @@ public class AnalysisJob {
 
     private static boolean isDraftFailure(CardDraftResult result) {
 
-        return result == CardDraftResult.FAILED || result == CardDraftResult.AI_UNAVAILABLE;
+        return result == CardDraftResult.FAILED || result == CardDraftResult.AI_UNAVAILABLE
+                || result == CardDraftResult.GITHUB_UNAUTHORIZED;
 
     }
 
+    // 토큰이 한 번 거절되면 연결이 끊겨 남은 카드도 같은 이유로 실패하므로, 다시 연결을 가장 먼저 알린다
     private static JobErrorCode draftErrorCodeOf(List<CardDraftResult> results) {
+
+        if (results.contains(CardDraftResult.GITHUB_UNAUTHORIZED)) {
+            return JobErrorCode.GITHUB_UNAUTHORIZED;
+        }
 
         if (results.contains(CardDraftResult.FAILED)) {
             return JobErrorCode.INTERNAL_ERROR;
@@ -354,15 +393,39 @@ public class AnalysisJob {
 
     }
 
-    private static List<JobStep> queuedSteps() {
+    private static List<JobStep> queuedSteps(JobType type) {
 
         List<JobStep> steps = new ArrayList<>();
 
-        for (JobStepKey key : JobStepKey.values()) {
+        for (JobStepKey key : orderOf(type)) {
             steps.add(new JobStep(key, JobStepState.QUEUED, 0, null));
         }
 
         return steps;
+    }
+
+    private static List<JobStepKey> orderOf(JobType type) {
+
+        return type == JobType.DRAFT ? DRAFT_ORDER : ANALYZE_ORDER;
+
+    }
+
+    private static JobStep finished(JobStep step) {
+
+        int done = step.total() != null ? step.total() : step.done();
+        return new JobStep(step.key(), JobStepState.DONE, done, step.total());
+
+    }
+
+    // 진행을 끄거나 같은 입력이라 AI 를 부르지 않아 전체 수를 못 받았으면 후보 수로 끝낸다
+    private static JobStep candidateStep(JobStep step, JobStepState state, int candidateCount) {
+
+        if (step.total() != null) {
+            return new JobStep(step.key(), state, step.total(), step.total());
+        }
+
+        return new JobStep(step.key(), state, candidateCount, null);
+
     }
 
     private List<JobStep> withCandidateSteps(JobStepState compress, JobStepState reason, int done) {

@@ -6,7 +6,9 @@ import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
+import com.gitory.backend.agent.port.StarStep;
 import com.gitory.backend.card.domain.evidence.EvidenceShaMatcher;
+import com.gitory.backend.card.infra.CardDraftStepRepository;
 import com.gitory.backend.card.infra.CardRepository;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardStatementRepository;
@@ -37,7 +39,7 @@ import java.util.Set;
 @Transactional(propagation = Propagation.MANDATORY)
 public class CardDraftWriter {
 
-    private static final short FIRST = 1;
+    static final short FIRST = 1;
     private static final int MAX_AREAS = 2;
     private static final int MAX_TECHS = 4;
 
@@ -46,6 +48,7 @@ public class CardDraftWriter {
     private final CardStatementRepository statements;
     private final StatementEvidenceRepository evidence;
     private final CardSlotNoteRepository notes;
+    private final CardDraftStepRepository steps;
 
     /** 서버가 다시 켜져 같은 Job 이 다시 돌 때 이미 초안을 담은 카드를 건너뛰게 하며, 1번 버전이 없는 카드도 건너뛴다 */
     public boolean isDrafted(Long cardId) {
@@ -83,8 +86,10 @@ public class CardDraftWriter {
             }
             writeSentence(cardId, field, slot, commitIdsBySha);
         }
+        writeSteps(cardId, draft.steps());
 
         writable.get().markAiDraft();
+        card.clearGenerationFailure();
         if (timedOut) {
             card.markGenerationPartial();
         }
@@ -117,6 +122,20 @@ public class CardDraftWriter {
         }
 
         writable.get().markAiDraft();
+        card.clearGenerationFailure();
+
+    }
+
+    // 칸을 저장하는 같은 트랜잭션에서 남겨, 카드는 저장됐는데 단계만 빠지는 일이 없게 한다
+    private void writeSteps(Long cardId, List<StarStep> drafted) {
+
+        for (int seq = 0; seq < drafted.size(); seq++) {
+            StarStep step = drafted.get(seq);
+            steps.save(CardDraftStep.recorded(cardId, FIRST, (short) seq, new DraftStep(step.round(),
+                    DraftStepActor.valueOf(step.actor().name()), DraftStepKind.valueOf(step.kind().name()),
+                    step.slot() == null ? null : StarField.valueOf(step.slot().name()), step.code(), step.value(),
+                    step.material() == null ? null : DraftMaterial.valueOf(step.material().name()), step.reason())));
+        }
 
     }
 

@@ -249,6 +249,63 @@ class ManualCardApiTest {
 
     }
 
+    @Test
+    @DisplayName("내 활동을 고르면 activity 에 공개 id·이름·종류가 실리고 repo 는 null 이며, 카드가 그 활동에 묶인다")
+    void attachesMyActivityWhenChosen() throws Exception {
+
+        UUID activity = UUID.randomUUID();
+        Long activityId = fixtures.insertActivity(activity, myUserId, "교내 개발 동아리", "CLUB", "2025-03-01");
+
+        String body = startIn(myUserId, null, "온보딩", null, null, activity.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.kind").value("QUALITATIVE"))
+                .andExpect(jsonPath("$.data.activity.id").value(activity.toString()))
+                .andExpect(jsonPath("$.data.activity.name").value("교내 개발 동아리"))
+                .andExpect(jsonPath("$.data.activity.type").value("CLUB"))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        Map<String, Object> card = JsonPath.read(body, "$.data");
+        assertThat(card).containsEntry("repo", null);
+        assertThat(jdbc.queryForObject("SELECT activity_id FROM card WHERE public_id = ?", Long.class,
+                UUID.fromString(JsonPath.read(body, "$.data.id")))).isEqualTo(activityId);
+
+    }
+
+    @Test
+    @DisplayName("저장소와 활동을 함께 고르면 400 INVALID_REQUEST 이고 카드가 생기지 않는다")
+    void rejectsRepositoryAndActivityTogether() throws Exception {
+
+        UUID activity = UUID.randomUUID();
+        fixtures.insertActivity(activity, myUserId, "동아리", "CLUB", "2025-03-01");
+
+        startIn(myUserId, null, "카드", null, MY_REPO.toString(), activity.toString())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(cardCount()).isZero();
+
+    }
+
+    @Test
+    @DisplayName("남의 활동을 고르면 없는 활동과 똑같이 404 NOT_FOUND 이고, 그 활동으로 CREATE_CARD 거절 기록이 남고 카드는 생기지 않는다")
+    void deniesOthersActivity() throws Exception {
+
+        UUID others = UUID.randomUUID();
+        // 활동 id 가 사용자 id 와 겹치면 거절 기록에 어느 id 를 남겼는지 가려지지 않아 활동을 하나 더 만든다
+        fixtures.insertActivity(UUID.randomUUID(), othersUserId, "다른 동아리", "CLUB", "2025-03-01");
+        Long othersActivityId = fixtures.insertActivity(others, othersUserId, "남의 동아리", "CLUB", "2025-03-01");
+
+        startIn(myUserId, null, "카드", null, null, others.toString())
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+        startIn(myUserId, null, "카드", null, null, "not-a-uuid")
+                .andExpect(status().isNotFound());
+
+        assertThat(events()).containsExactly(new AuditRow(myUserId, "CREATE_CARD", othersActivityId, "DENIED"));
+        assertThat(cardCount()).isZero();
+
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"44444444-4444-4444-8444-444444444444", "not-a-uuid"})
     @DisplayName("없는 저장소나 UUID 가 아닌 repoId 면 404 NOT_FOUND 이고, 거절 기록도 카드도 남지 않는다")
@@ -389,7 +446,7 @@ class ManualCardApiTest {
 
         mvc.perform(post("/api/cards/manual/draft").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(bodyOf("카드", null, null)))
+                        .content(bodyOf("카드", null, null, null)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
 
@@ -403,7 +460,7 @@ class ManualCardApiTest {
 
         mvc.perform(post("/api/cards/manual/draft").with(loggedInAs(myUserId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(bodyOf("카드", null, null)))
+                        .content(bodyOf("카드", null, null, null)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
@@ -425,11 +482,18 @@ class ManualCardApiTest {
     private ResultActions start(Long userId, String idempotencyKey, String title, String period, String repoId)
             throws Exception {
 
+        return startIn(userId, idempotencyKey, title, period, repoId, null);
+
+    }
+
+    private ResultActions startIn(Long userId, String idempotencyKey, String title, String period, String repoId,
+                                  String activityId) throws Exception {
+
         MockHttpServletRequestBuilder request = post("/api/cards/manual/draft")
                 .with(loggedInAs(userId))
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(bodyOf(title, period, repoId));
+                .content(bodyOf(title, period, repoId, activityId));
 
         if (idempotencyKey != null) {
             request = request.header("Idempotency-Key", idempotencyKey);
@@ -439,12 +503,13 @@ class ManualCardApiTest {
 
     }
 
-    private String bodyOf(String title, String period, String repoId) {
+    private String bodyOf(String title, String period, String repoId, String activityId) {
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("title", title);
         body.put("period", period);
         body.put("repoId", repoId);
+        body.put("activityId", activityId);
 
         return json.writeValueAsString(body);
 

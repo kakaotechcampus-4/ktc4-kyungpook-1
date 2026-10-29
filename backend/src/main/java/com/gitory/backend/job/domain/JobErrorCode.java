@@ -8,6 +8,7 @@ package com.gitory.backend.job.domain;
 public enum JobErrorCode {
     GITHUB_UNAVAILABLE,
     GITHUB_RATE_LIMITED,
+    GITHUB_UNAUTHORIZED,
     DRAFT_TIMEOUT,
     EVIDENCE_MISSING,
     INTERNAL_ERROR,

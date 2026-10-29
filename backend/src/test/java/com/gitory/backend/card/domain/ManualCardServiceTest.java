@@ -41,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @Import({ManualCardService.class, CardDetailService.class, CardOwnershipService.class, CardVersionWriter.class,
         CardVersionReader.class, RepositoryOwnershipService.class, RepositoryReferenceService.class, AuditLog.class,
-        CandidateReferenceService.class, CommitSummaryService.class})
+        CandidateReferenceService.class, CommitSummaryService.class, ActivityService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class ManualCardServiceTest {
 
@@ -88,7 +88,7 @@ class ManualCardServiceTest {
             Future<CardDetail> later = transaction.execute(status -> {
                 Long cardId = fixtures.insertCard(first, userId);
                 jdbc.update("UPDATE card SET idempotency_key = ? WHERE id = ?", KEY, cardId);
-                Future<CardDetail> started = other.submit(() -> service.start(userId, "나중 제목", null, null, KEY));
+                Future<CardDetail> started = other.submit(() -> service.start(userId, "나중 제목", null, null, null, KEY));
                 awaitBlockedRequest();
                 return started;
             });
@@ -117,7 +117,7 @@ class ManualCardServiceTest {
             for (int i = 0; i < requests; i++) {
                 futures.add(pool.submit(() -> {
                     startLine.await();
-                    return service.start(userId, "동시 제목", null, null, KEY);
+                    return service.start(userId, "동시 제목", null, null, null, KEY);
                 }));
             }
             startLine.countDown();

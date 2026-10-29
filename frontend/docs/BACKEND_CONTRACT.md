@@ -199,32 +199,33 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 ```
 `task: null`은 비운 칸입니다. 현재 실서버 CardResponse는 candidate/generation을 null, droppedFields를 빈 배열, interviewTurns를 0으로 반환합니다. Mock은 데모의 실제 후보·생성 Job·되묻기 횟수·빈 칸 이유를 추가로 보존합니다. `generation != null`이면 프론트는 D1(생성 중)을 그리고 Job을 폴링합니다.
 
-**AI 가 한 일 (`draftSteps`, #479)** — 카드 상세에만 있고 목록에는 없다. AI 초안이 거친 단계를 순서대로 담고, 직접 쓴 카드·이 기능 전에 만든 카드는 `[]` 다. 사용자가 고쳐 버전이 늘어도 초안을 만든 과정이라 그대로 온다. 서버는 값만 보내고 문장은 화면이 만든다.
+**AI 가 한 일 (`draftSteps`, #479)** — 카드 상세에만 있고 목록에는 없다. AI 초안이 거친 단계를 순서대로 담고, 직접 쓴 카드·이 기능 전에 만든 카드는 `[]` 다. 사용자가 고쳐 버전이 늘어도 초안을 만든 과정이라 그대로 오고, 실패한 초안을 다시 만들면(`POST /cards/{id}/draft/retry`) 성공한 그 시도의 단계가 온다. 서버는 값만 보내고 문장은 화면이 만든다.
 
 | 칸 | 값 |
 |---|---|
-| `round` | 0 = 첫 초안과 첫 검사, 1·2 = 고쳐 쓴 바퀴 |
+| `round` | 0 = 첫 초안과 첫 검사, 1 부터 = 고쳐 쓴 바퀴(최대 5) |
 | `actor` | `MODEL`(AI 가 함) · `CODE`(코드가 함) |
-| `kind` | `DRAFT` · `FLAG` · `OPEN` · `RETRY` · `KEEP` · `REWRITE` · `PASS` |
+| `kind` | `DRAFT` · `FLAG` · `OPEN` · `RETRY` · `KEEP` · `REWRITE` · `PASS` · `REVERT` |
 | `field` | `S·T·A·R`, 카드 전체 단계(`DRAFT`)는 null |
-| `code` | `FLAG` 의 이유: `NO_EVIDENCE` · `UNSOURCED_NUMBER` · `REVERSED_MEANING` · `EMPTY`(모르는 값이면 이유 없이 '문제 발견'으로) |
+| `code` | `FLAG` 의 이유: `NO_EVIDENCE` · `UNSOURCED_NUMBER` · `REVERSED_MEANING` · `CODE_NAME`(프로젝트 안 이름) · `EMPTY`. `REVERT` 는 되돌리게 만든 새 문제이고 다시 쓴 칸이 비었으면 `EMPTY`(모르는 값이면 이유 없이 '문제 발견'으로) |
 | `value` | 걸린 수치(예: `50%`)나 연 자료 제목(예: `이슈 #98 세션 만료 시 작성 글 사라짐`), 없으면 null |
-| `material` | `OPEN` 일 때 `ISSUE` · `REVIEW` · `OWNER_REPLY`, 그 밖에는 null |
+| `material` | `OPEN` 일 때 `ISSUE`(PR 에 연결된 이슈) · `REVIEW`(다른 사람이 단 리뷰·줄 댓글) · `OWNER_REPLY`(카드 주인이 리뷰에 단 답 댓글), 그 밖에는 null |
 | `reason` | AI 가 고른 행동(`OPEN`·`RETRY`·`KEEP`)의 이유 한 줄(60자 이내), `actor: CODE` 면 null |
 
 문장 예시(그대로 써도 되고 다듬어도 된다):
 
 | kind | 예시 |
 |---|---|
-| `DRAFT` | 커밋과 PR 본문으로 초안을 썼어요 |
-| `FLAG` | {field}칸: 근거 없는 숫자({value}) / 근거 커밋 없음 / 원문과 뜻이 다를 수 있음 / 비어 있음 |
+| `DRAFT` | GitHub 기록으로 초안을 썼어요 — 서버는 PR 본문을 썼는지 알려 주지 않으니 후보 종류와 상관없이 같은 문장을 쓴다 |
+| `FLAG` | {field}칸: 근거 없는 숫자({value}) / 근거 커밋 없음 / 원문과 뜻이 다를 수 있음 / 프로젝트 안 이름({value}) / 비어 있음 |
 | `OPEN` | {field}칸: {value} 을(를) 열어 봤어요 — "{reason}" |
 | `RETRY` | {field}칸: 자료 없이 고쳐 쓰기로 했어요 — "{reason}" |
 | `KEEP` | {field}칸: 그대로 두기로 했어요 — "{reason}" |
 | `REWRITE` | {field}칸을 다시 썼어요 |
 | `PASS` | {field}칸 다시 검사: 통과 |
+| `REVERT` | {field}칸: 다시 쓴 글이 더 나빠 앞 글로 되돌렸어요 |
 
-`reason` 은 AI 가 쓴 글이라 카드 문장과 섞지 말고 'AI 의 판단' 으로 구분해 보여 준다. AI 쪽이 단계를 보내는 PR 이 머지되기 전까지는 늘 `[]` 이고, 그 뒤에도 고쳐 쓰기를 켜기 전 운영에서는 `DRAFT` 와 첫 검사의 `FLAG` 정도만 온다. 나중에 초안을 만드는 동안 실시간으로 보여 줄 때도 같은 모양의 단계를 쓴다.
+`reason` 은 AI 가 쓴 글이라 카드 문장과 섞지 말고 'AI 의 판단' 으로 구분해 보여 준다. AI 쪽이 단계를 보내는 PR 이 머지되기 전까지는 늘 `[]` 다. 그 뒤 운영은 걸린 칸을 코드 검사로 고쳐 쓰므로 `DRAFT` · `FLAG` · `REWRITE` · `PASS` · `REVERT` 가 오고, `OPEN` · `RETRY` · `KEEP` 은 AI 가 칸마다 자료를 열지 고를 때 온다. `REVERT` 는 그것을 저장하는 서버 변경이 머지되기 전에는 그 단계만 빠진 채 온다. 나중에 초안을 만드는 동안 실시간으로 보여 줄 때도 같은 모양의 단계를 쓴다.
 
 ### 되묻기
 되묻기는 AI 가 물을 칸을 골라 이어서 묻는 흐름으로 바뀐다(#321, 계약은 #363). 아래 표의 '바뀔 것' 은 구현(#360·#361·#362) 뒤에 실서버에 들어간다.

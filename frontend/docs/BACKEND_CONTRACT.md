@@ -39,6 +39,30 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `GET /me` | `Me` — `{ id, login, avatarUrl, plan:'FREE', github:{connected, scopes[], connectedAt, lastCollectedAt}, stats:{confirmedCards, analyzedRepos, interviewTurns, remainingCandidates} }` |
 | `POST /github/disconnect` | `{ ok }` — 토큰 즉시 파기 |
 
+### 인적사항 (#516, 구현됨)
+| | 요청 | 응답 `data` |
+|---|---|---|
+| `GET /profile` | | `Profile` — 한 번도 저장하지 않았으면 네 목록이 `[]` 이고 `savedAt: null` |
+| `PUT /profile` | `{ educations[], careers[], languages[], certifications[] }` **네 목록 모두 필수**(없으면 `[]`) | `Profile` — 네 목록을 통째로 바꿈 |
+
+```jsonc
+// Profile — 요청 항목도 같은 모양(savedAt 빼고)이고, 비운 칸은 null
+{ "educations": [{ "level": "HIGH_SCHOOL|ASSOCIATE|BACHELOR|MASTER|DOCTOR", "school": "경북대학교", "major": "컴퓨터학부" | null,
+                   "status": "ENROLLED|ON_LEAVE|GRADUATION_EXPECTED|GRADUATED|DROPPED_OUT",
+                   "startMonth": "2021-03" | null, "endMonth": "2027-02" | null, "gpa": 3.8 | null, "gpaMax": 4.5 | null }],  // 5개까지
+  "careers": [{ "company": "카카오", "role": "백엔드" | null, "type": "FULL_TIME|CONTRACT|INTERN|PART_TIME|FREELANCE",
+                "startMonth": "2025-07", "endMonth": "2025-12" | null }],  // 10개까지, endMonth null = 재직 중
+  "languages": [{ "test": "TOEIC|TOEIC_SPEAKING|OPIC|TOEFL|IELTS|TEPS|JLPT|JPT|HSK|OTHER", "testName": "TOPIK" | null,
+                  "score": "IH", "acquiredMonth": "2025-05" | null }],  // 10개까지, testName 은 OTHER 일 때만 필수·저장
+  "certifications": [{ "name": "정보처리기사", "issuer": "한국산업인력공단" | null, "acquiredMonth": "2026-06" | null }],  // 20개까지
+  "savedAt": "ISO" | null }
+```
+
+- 처음 들어올 때 `savedAt: null` 이면 입력 화면을 띄운다(#531). '건너뛰기'는 빈 목록 네 개를 `PUT` 해 저장하므로 다음부터 띄우지 않는다.
+- 글은 앞뒤 공백을 지우고 50자까지(어학 점수는 20자), 빈 글은 null. 달은 `YYYY-MM`, 끝난 달이 시작한 달보다 앞서면 400. 학점은 만점(4.0·4.3·4.5·100)과 함께 보내거나 둘 다 null.
+- 규칙을 어기면 400 `INVALID_REQUEST` 이고 `error.message` 에 "학력 1번째 학교 이름…" 처럼 목록과 순번을 적는다. CSRF 헤더 필요.
+- 매칭 1차 필터(#532)와 자소서 AI(#484)가 이 값을 읽는다(아직 연결 전).
+
 ### 레포
 | | 요청 | 응답 `data` |
 |---|---|---|

@@ -182,12 +182,12 @@ class ModuleBoundaryTest {
      */
     static final class Modules {
         static final String[] ALL = {
-                "consent", "ingest", "recommend", "agent", "card", "job", "audit", "usage", "matching", "coverletter"
+                "consent", "ingest", "recommend", "agent", "card", "job", "audit", "usage", "matching", "coverletter", "profile"
         };
 
         /** {@code job} 을 참조하면 안 되는 모듈들. 오케스트레이션 의존은 한 방향이다. */
         static final String[] BELOW_JOB = {
-                "consent", "ingest", "recommend", "card", "audit", "usage", "matching", "coverletter"
+                "consent", "ingest", "recommend", "card", "audit", "usage", "matching", "coverletter", "profile"
         };
 
         private Modules() {

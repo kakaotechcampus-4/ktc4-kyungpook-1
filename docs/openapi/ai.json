@@ -4262,7 +4262,7 @@
     },
     "/internal/analysis/groups/stream": {
       "post": {
-        "description": "`/internal/analysis/groups` 와 같은 그룹화를 하면서, 작업 단위 묶음 하나를 묶을 때마다(COMPRESS) 후보 묶음 하나에 제목·이유를 붙일 때마다(REASON) 진행을 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 `{\"type\":\"progress\",\"step\":\"PR_REVIEW|COMMITS|COMPRESS|REASON\",\"done\":0,\"total\":44}` 줄을 보내고, 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 입니다. `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "description": "`/internal/analysis/groups` 와 같은 그룹화를 하면서, 작업 단위 묶음 하나를 묶을 때마다(COMPRESS) 후보 묶음 하나에 제목·이유를 붙일 때마다(REASON) 진행을 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 `{\"type\":\"progress\",\"step\":\"PR_REVIEW|COMMITS|COMPRESS|REASON\",\"done\":0,\"total\":44}` 줄을 보내고, 방금 읽거나 판단한 것이 있으면 `item` 을 더합니다: `{\"kind\":\"PULL_REQUEST\",\"number\":31,\"title\":\"...\",\"reviews\":4}`, `{\"kind\":\"COMMIT\",\"sha\":\"a1b2c3d\",\"title\":\"메시지 첫 줄\",\"files\":3,\"excluded\":null|\"BOT|MERGE_COMMIT|LOCKFILE_ONLY|NOT_OWN\"}`, `{\"kind\":\"GROUPED\",\"units\":12,\"experiences\":4}`, `{\"kind\":\"DESCRIBED\",\"title\":\"...\",\"reason\":\"...\"}`. 글 값은 비밀값을 가리고 제목 100자, 이유 200자에서 자릅니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 입니다. `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
         "operationId": "group_experiences_stream_internal_analysis_groups_stream_post",
         "requestBody": {
           "content": {
@@ -4620,7 +4620,7 @@
     },
     "/internal/collect/stream": {
       "post": {
-        "description": "`/internal/collect` 와 같은 수집을 하면서 PR 하나(PR_REVIEW)·커밋 상세 하나(COMMITS)를 읽을 때마다 진행을 보냅니다. 전체 수는 읽을 PR 을 고른 뒤, 상세를 받을 새 커밋을 정한 뒤에 처음 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 `{\"type\":\"progress\",\"step\":\"PR_REVIEW|COMMITS|COMPRESS|REASON\",\"done\":0,\"total\":44}` 줄을 보내고, 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 입니다. `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "description": "`/internal/collect` 와 같은 수집을 하면서 PR 하나(PR_REVIEW)·커밋 상세 하나(COMMITS)를 읽을 때마다 진행을 보냅니다. 전체 수는 읽을 PR 을 고른 뒤, 상세를 받을 새 커밋을 정한 뒤에 처음 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 `{\"type\":\"progress\",\"step\":\"PR_REVIEW|COMMITS|COMPRESS|REASON\",\"done\":0,\"total\":44}` 줄을 보내고, 방금 읽거나 판단한 것이 있으면 `item` 을 더합니다: `{\"kind\":\"PULL_REQUEST\",\"number\":31,\"title\":\"...\",\"reviews\":4}`, `{\"kind\":\"COMMIT\",\"sha\":\"a1b2c3d\",\"title\":\"메시지 첫 줄\",\"files\":3,\"excluded\":null|\"BOT|MERGE_COMMIT|LOCKFILE_ONLY|NOT_OWN\"}`, `{\"kind\":\"GROUPED\",\"units\":12,\"experiences\":4}`, `{\"kind\":\"DESCRIBED\",\"title\":\"...\",\"reason\":\"...\"}`. 글 값은 비밀값을 가리고 제목 100자, 이유 200자에서 자릅니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 입니다. `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
         "operationId": "collect_repository_activity_stream_internal_collect_stream_post",
         "parameters": [
           {

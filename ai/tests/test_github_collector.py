@@ -220,24 +220,27 @@ def test_collects_commit_diff_pull_review_and_issue() -> None:
 
 
 def test_collect_reports_pull_requests_then_commits_progress() -> None:
-    """PR 을 하나 읽을 때마다, 그다음 커밋 상세를 하나 받을 때마다 진행을 알리고 PR 이 먼저다."""
+    """PR 을 하나 읽을 때마다 번호·제목·리뷰 수를, 그다음 커밋 상세를 하나 받을 때마다 커밋 값을 실어 알리고 PR 이 먼저다."""
     collector = GithubCollector(
         base_url="https://api.github.test",
         transport=httpx.MockTransport(_success_handler),
     )
-    events: list[tuple[str, int, int | None]] = []
+    events: list[tuple] = []
 
     async def run() -> None:
-        with listening(lambda step, done, total: events.append((step, done, total))):
+        with listening(lambda step, done, total, item: events.append((step, done, total, item))):
             await collector.collect(_request(), "live-secret")
 
     asyncio.run(run())
 
     assert events == [
-        ("PR_REVIEW", 0, 1),
-        ("PR_REVIEW", 1, 1),
-        ("COMMITS", 0, 1),
-        ("COMMITS", 1, 1),
+        ("PR_REVIEW", 0, 1, None),
+        ("PR_REVIEW", 1, 1, {"kind": "PULL_REQUEST", "number": 17, "title": "세션 조회 성능 개선", "reviews": 1}),
+        ("COMMITS", 0, 1, None),
+        (
+            "COMMITS", 1, 1,
+            {"kind": "COMMIT", "sha": "abc1234", "title": "feat: 세션 인덱스 추가 (#42)", "files": 2, "excluded": None},
+        ),
     ]
 
 

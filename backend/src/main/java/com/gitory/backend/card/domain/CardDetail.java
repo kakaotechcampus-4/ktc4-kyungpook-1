@@ -29,6 +29,7 @@ public record CardDetail(
         CardGeneration generation,
         CardDraftFailure draftFailure,
         int interviewTurns,
+        String interviewEndReason,
         Map<StarField, Integer> turnNos,
         Map<StarField, SlotNote> notes,
         Map<Long, CommitSummary> commits,

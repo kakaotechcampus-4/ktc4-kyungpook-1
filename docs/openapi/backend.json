@@ -344,6 +344,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseCoverLetterResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CoverLetterResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseDisconnectResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -973,6 +987,22 @@
         },
         "type" : "object"
       },
+      "CardRef" : {
+        "properties" : {
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "TECH", "QUALITATIVE" ],
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CardRepoResponse" : {
         "properties" : {
           "id" : {
@@ -1046,6 +1076,10 @@
           "id" : {
             "format" : "uuid",
             "type" : "string"
+          },
+          "interviewEndReason" : {
+            "description" : "AI 가 되묻기를 그만두기로 한 이유 한 줄(60자 이내)로, 끝내지 않았거나 그 뒤 새 질문을 만들었으면 null",
+            "type" : [ "string", "null" ]
           },
           "interviewTurns" : {
             "description" : "답한 되묻기 질문 수이고, 답하지 않은 질문은 세지 않는다",
@@ -1204,6 +1238,22 @@
         },
         "type" : "object"
       },
+      "ChooseCardsRequest" : {
+        "description" : "문항의 중심·보조 카드를 바꿀 때 보내는 값",
+        "properties" : {
+          "primaryCardId" : {
+            "description" : "중심 카드 공개 id. 없으면 null",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "supportingCardId" : {
+            "description" : "보조 카드 공개 id. 없으면 null",
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ClusterCommitResponse" : {
         "description" : "커밋 묶음 후보에 든 커밋 한 줄. 사용자가 뺀 커밋도 included=false 로 함께 옵니다.",
         "properties" : {
@@ -1269,6 +1319,21 @@
         },
         "type" : "object"
       },
+      "Considered" : {
+        "properties" : {
+          "cardId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "note" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ContributionResponse" : {
         "properties" : {
           "level" : {
@@ -1286,6 +1351,97 @@
           "team" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "CoverLetterQuestionInput" : {
+        "properties" : {
+          "charLimit" : {
+            "description" : "공백 포함 글자 수 100~5,000. null 이면 700",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "description" : "회사가 묻는 문항 문장, 1~500자",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CoverLetterResponse" : {
+        "description" : "자소서 한 편과 문항별 배정 카드",
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "errorCode" : {
+            "description" : "AI_UNAVAILABLE 또는 INTERNAL_ERROR. 실패가 아니면 null",
+            "type" : "string"
+          },
+          "failedStep" : {
+            "enum" : [ "ASSIGN", "ASK", "DRAFT" ],
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "jobRole" : {
+            "type" : "string"
+          },
+          "memo" : {
+            "type" : "string"
+          },
+          "pollAfterMs" : {
+            "description" : "AI 가 도는 단계면 다음 조회 간격(밀리초), 아니면 null",
+            "example" : 1500,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "questions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Question"
+            },
+            "type" : "array"
+          },
+          "retryable" : {
+            "description" : "실패일 때만 값이 있고, true 면 다시 시도할 수 있다",
+            "type" : "boolean"
+          },
+          "stage" : {
+            "enum" : [ "ASSIGNING", "ASSIGNED", "ASKING", "ASKED", "DRAFTING", "DRAFTED", "FAILED" ],
+            "type" : "string"
+          },
+          "steps" : {
+            "$ref" : "#/components/schemas/Steps"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CreateCoverLetterRequest" : {
+        "description" : "자소서를 만들 때 보내는 값",
+        "properties" : {
+          "jobRole" : {
+            "description" : "지원 직무, 1~100자",
+            "example" : "백엔드 개발",
+            "type" : "string"
+          },
+          "memo" : {
+            "description" : "지원 이유 등 메모, 1,000자까지. 없으면 null",
+            "type" : "string"
+          },
+          "questions" : {
+            "description" : "문항 1~10개",
+            "items" : {
+              "$ref" : "#/components/schemas/CoverLetterQuestionInput"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -1347,7 +1503,7 @@
             "type" : "string"
           },
           "code" : {
-            "description" : "FLAG 의 이유 코드(NO_EVIDENCE·UNSOURCED_NUMBER·REVERSED_MEANING·EMPTY 등)이고, 그 밖에는 null",
+            "description" : "FLAG 의 이유 코드(NO_EVIDENCE·UNSOURCED_NUMBER·REVERSED_MEANING·CODE_NAME·EMPTY 등)와 REVERT 하게 만든 문제 코드이고, 그 밖에는 null",
             "type" : [ "string", "null" ]
           },
           "field" : {
@@ -1356,8 +1512,8 @@
             "type" : [ "string", "null" ]
           },
           "kind" : {
-            "description" : "DRAFT 첫 초안·FLAG 문제 발견·OPEN 자료 열기로 고름·RETRY 자료 없이 고쳐 쓰기로 고름·KEEP 그대로 두기로 고름·REWRITE 칸을 다시 씀·PASS 다시 검사 통과",
-            "enum" : [ "DRAFT", "FLAG", "OPEN", "RETRY", "KEEP", "REWRITE", "PASS" ],
+            "description" : "DRAFT 첫 초안·FLAG 문제 발견·OPEN 자료 열기로 고름·RETRY 자료 없이 고쳐 쓰기로 고름·KEEP 그대로 두기로 고름·REWRITE 칸을 다시 씀·PASS 다시 검사 통과·REVERT 다시 쓴 칸이 나빠져 앞 글로 되돌림",
+            "enum" : [ "DRAFT", "FLAG", "OPEN", "RETRY", "KEEP", "REWRITE", "PASS", "REVERT" ],
             "type" : "string"
           },
           "material" : {
@@ -1370,7 +1526,7 @@
             "type" : [ "string", "null" ]
           },
           "round" : {
-            "description" : "0 은 첫 초안과 첫 검사, 1·2 는 고쳐 쓴 바퀴",
+            "description" : "0 은 첫 초안과 첫 검사, 1 부터는 고쳐 쓴 바퀴(최대 5)",
             "format" : "int32",
             "type" : "integer"
           },
@@ -1564,6 +1720,10 @@
           "questionType" : {
             "enum" : [ "EVIDENCE_GAP", "FOLLOWUP", "RECALL_AID" ],
             "type" : "string"
+          },
+          "reason" : {
+            "description" : "AI 가 이 칸을 묻기로 한 이유 한 줄(60자 이내)로, 사용자가 칸을 골랐거나 AI 가 틀 질문을 썼으면 null",
+            "type" : [ "string", "null" ]
           },
           "remaining" : {
             "description" : "이 질문을 만든 뒤 남은 질문 수",
@@ -2029,6 +2189,56 @@
         },
         "type" : "object"
       },
+      "Question" : {
+        "properties" : {
+          "assignedBy" : {
+            "enum" : [ "SUPERVISOR", "SUB_AGENT", "CODE", "FAILED", "USER" ],
+            "type" : "string"
+          },
+          "charLimit" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "considered" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Considered"
+            },
+            "type" : "array"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "materials" : {
+            "items" : {
+              "enum" : [ "SITUATION", "ACTION", "RESULT", "LEARNING", "TRIGGER", "JOB_LINK", "REASON" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "pickReason" : {
+            "type" : "string"
+          },
+          "primaryCard" : {
+            "$ref" : "#/components/schemas/CardRef"
+          },
+          "seq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "supportingCard" : {
+            "$ref" : "#/components/schemas/CardRef"
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "theme" : {
+            "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH", "MOTIVATION" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ReadCoverageResponse" : {
         "properties" : {
           "commitsRead" : {
@@ -2395,6 +2605,43 @@
         },
         "type" : "object"
       },
+      "Step" : {
+        "properties" : {
+          "actor" : {
+            "type" : "string"
+          },
+          "cardId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "seq" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "Steps" : {
+        "properties" : {
+          "assign" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Step"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "UsageEventAcceptedResponse" : {
         "properties" : {
           "ok" : {
@@ -2567,7 +2814,7 @@
       },
       "post" : {
         "description" : "이름·종류·기간·역할로 활동을 만듭니다. 끝난 달이 없으면 진행 중입니다.\n같은 Idempotency-Key 로 다시 요청하면 새로 만들지 않고 그 키로 만든 활동을 돌려주며, 다시 보낸 값은 쓰지 않습니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
-        "operationId" : "create_1",
+        "operationId" : "create_2",
         "parameters" : [ {
           "description" : "응답을 못 받고 다시 보내도 활동이 하나만 생기도록, 활동을 추가할 때마다 만들어 보내는 255자까지의 키",
           "in" : "header",
@@ -3501,7 +3748,7 @@
     "/api/cards/{id}/draft/retry" : {
       "post" : {
         "description" : "AI 초안을 채우지 못한 카드(카드의 draftFailure 가 있음) 한 장으로 새 카드 초안 Job 을 만들어 다시 채우고, 그 Job 을 돌려줍니다.\n사용자가 이미 쓴 칸은 그대로 두고 나머지 칸만 채웁니다. 시작하면 카드의 draftFailure 는 지워지고, 또 실패하면 다시 남습니다.\n초안 실패가 없거나, 되묻기·확정으로 1번 버전을 지난 카드, 후보 없이 직접 쓴 카드는 409(INVALID_STATE), 확정된 카드는 409(CARD_CONFIRMED)입니다.\n카드 초안(CARD_AI_DRAFT_ENABLED)이 켜져 있으면 사용자별 하루 한도를 1 세고, 넘으면 아무것도 바꾸지 않고 429(RATE_LIMITED)입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
-        "operationId" : "retry",
+        "operationId" : "retry_1",
         "parameters" : [ {
           "description" : "카드의 공개 UUID",
           "in" : "path",
@@ -4660,6 +4907,324 @@
         },
         "summary" : "예전 버전으로 되돌리기",
         "tags" : [ "Cards" ]
+      }
+    },
+    "/api/cover-letters" : {
+      "post" : {
+        "description" : "직무·메모·문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING).\n같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.\n화면은 입력을 고치면 새 키를 만듭니다.\n",
+        "operationId" : "create_1",
+        "parameters" : [ {
+          "description" : "응답을 못 받고 다시 보내도 자소서가 한 편만 생기도록, 만들 때마다 새로 만들어 보내는 255자까지의 키",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateCoverLetterRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterResponse"
+                }
+              }
+            },
+            "description" : "새로 만든 자소서 또는 같은 키로 이미 만든 자소서"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 직무가 비었거나 100자를 넘음, 메모가 1,000자를 넘음, 문항이 0개거나 10개를 넘음, 문항이 비었거나 500자를 넘음, 글자 수가 100~5,000 이 아님, U+0000 이 있음, Idempotency-Key 가 255자를 넘음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "NO_CONFIRMED_CARDS: 확정한 카드가 한 장도 없음"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 만들기와 다시 시도를 합쳐 1분 2번, 하루 10번을 넘음"
+          }
+        },
+        "summary" : "자소서 만들기",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}" : {
+      "get" : {
+        "description" : "AI 가 도는 단계(ASSIGNING·ASKING·DRAFTING)면 pollAfterMs 마다 다시 부릅니다.",
+        "operationId" : "get",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID, 없는 자소서, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "자소서 조회",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/questions/{questionId}/cards" : {
+      "put" : {
+        "description" : "카드 고르기가 끝난 뒤(ASSIGNED)에만 바꿉니다. 내 확정 카드만 고를 수 있고 다른 문항과 겹쳐도 됩니다.\n바꾸면 assignedBy 가 USER 가 되고 AI 가 고른 이유는 지웁니다.\n",
+        "operationId" : "chooseCards",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "문항 id",
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChooseCardsRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 카드 id 가 UUID 가 아님, 내 확정 카드가 아님, 중심과 보조가 같음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서·문항, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: ASSIGNED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "문항의 카드 바꾸기",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/retry" : {
+      "post" : {
+        "description" : "실패한 자소서(FAILED)의 실패한 단계만 다시 줄 세웁니다.",
+        "operationId" : "retry",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: FAILED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 만들기와 다시 시도를 합쳐 1분 2번, 하루 10번을 넘음"
+          }
+        },
+        "summary" : "실패한 단계 다시 시도",
+        "tags" : [ "Cover letters" ]
       }
     },
     "/api/events" : {
@@ -5951,6 +6516,9 @@
   }, {
     "description" : "본인의 GitHub 저장소 목록·상세 조회",
     "name" : "Repos"
+  }, {
+    "description" : "확정 카드로 쓰는 자소서",
+    "name" : "Cover letters"
   }, {
     "description" : "본인 카드 작성과 조회",
     "name" : "Cards"

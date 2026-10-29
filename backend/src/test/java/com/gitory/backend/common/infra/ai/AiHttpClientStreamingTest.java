@@ -120,6 +120,25 @@ class AiHttpClientStreamingTest {
     }
 
     @Test
+    @DisplayName("진행 줄의 item 은 종류와 값을 그대로 넘기고, 종류가 없는 item 은 버린 채 진행 숫자만 넘긴다")
+    void passesItemWithKindAndDropsItemWithoutKind() {
+
+        responseBody = lines(
+                "{\"type\":\"progress\",\"step\":\"COMMITS\",\"done\":1,\"total\":3,\"item\":{\"kind\":\"COMMIT\","
+                        + "\"sha\":\"abc1234\",\"title\":\"fix: 토큰 만료 처리\",\"files\":3,\"excluded\":\"MERGE_COMMIT\"}}",
+                "{\"type\":\"progress\",\"step\":\"COMMITS\",\"done\":2,\"total\":3,\"item\":{\"title\":\"종류 없음\"}}",
+                OK_RESULT);
+
+        client.collectStreaming(REQUEST, TOKEN, received::add);
+
+        assertThat(received).containsExactly(
+                new AiProgress("COMMITS", 1, 3, new AiProgressItem("COMMIT", null, "fix: 토큰 만료 처리", null, "abc1234", 3,
+                        "MERGE_COMMIT", null, null, null)),
+                new AiProgress("COMMITS", 2, 3));
+
+    }
+
+    @Test
     @DisplayName("읽을 수 없는 줄과 모양이 틀린 진행 줄은 진행 표시만 빠지도록 버리고 결과 줄까지 읽는다")
     void skipsUnreadableLines() {
 

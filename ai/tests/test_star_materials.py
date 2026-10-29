@@ -139,6 +139,7 @@ def test_empty_slot_opens_an_issue_and_is_written_from_it() -> None:
     assert (meta.tool_calls_made, meta.repair_rounds) == (1, 1)
 
 
+
 def test_issue_and_review_are_not_opened_for_action_or_result() -> None:
     writer = _FakeClient(
         _draft(A=_field("세션 조회를 50% 줄였다.")),
@@ -191,7 +192,8 @@ def test_numbers_in_an_opened_material_count_only_in_its_slots() -> None:
     )
     materials = {"issues": ALL_MATERIALS["issues"], "reviews": [], "owner_replies": []}
 
-    result, _ = _run(writer, _FakeClient(NO_FLAGS, NO_FLAGS, NO_FLAGS), materials)
+    result, _ = _run(writer, _FakeClient(NO_FLAGS, NO_FLAGS, NO_FLAGS), materials,
+                     StarGenerationLimits(max_repair_rounds=2))
 
     assert result.star["S"].status == "FILLED"
     assert result.star["A"].status == "NEEDS_REVIEW"

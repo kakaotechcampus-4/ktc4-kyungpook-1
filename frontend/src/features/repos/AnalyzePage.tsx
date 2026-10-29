@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useActiveJobs, useJob, useMe, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
-import { isGithubUnauthorized, reconnectGithub } from '@/lib/githubReconnect';
+import { isGithubUnauthorized, reconnectGithub, reconnectGithubTo } from '@/lib/githubReconnect';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Track } from '@/components/ui';
 import { JobLiveness } from '@/components/JobLiveness';
@@ -9,7 +9,6 @@ import { AiWait } from '@/components/ui/AiWait';
 import { Sparkles } from 'lucide-react';
 import { agentHeadline, agentLine } from '@/lib/agentNarration';
 import { minutes } from '@/lib/format';
-import { isCounting } from '@/lib/repoCounts';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
 import { isTerminal, type Job } from '@/api/schemas';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
@@ -129,6 +128,8 @@ export function AnalyzePage() {
               <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>]] : []),
             ...(code === 'GITHUB_UNAVAILABLE' ? [['GitHub 다시 연결', '다시 시도해도 같으면 연결이 끊겼을 수 있어요',
               <Button key="g" variant="outline" size="sm" onClick={reconnectGithub}>다시 연결</Button>]] : []),
+            ...(code === 'GITHUB_UNAUTHORIZED' ? [['GitHub 다시 연결', '다시 연결하면 정리를 시작하는 화면으로 돌아와요',
+              <Button key="u" size="sm" onClick={() => reconnectGithubTo(`/repos/${repoId}/run`)}>다시 연결</Button>]] : []),
             ['다른 레포 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">이동</Link>],
             ['직접 쓰기', 'GitHub 없이 바로 쓸 수 있어요', <Link key="c" to="/cards/new" className="btn btn--outline btn--sm">이동</Link>],
           ].map(([t, d, b], i) => (
@@ -175,10 +176,10 @@ export function AnalyzePage() {
     <main className="main">
       <Breadcrumb items={[...crumbs, { label: '정리 중' }]} />
       <PageTitle right="떠나도 돼요">레포를 읽고 있어요</PageTitle>
-      <RepoContext name={name} note={repo.data ? (isCounting(repo.data) ? '커밋, PR, 리뷰를 읽는 중이에요' : `커밋 ${repo.data.contribution.mine}개, PR ${repo.data.prCount}건, 리뷰 ${repo.data.reviewCount}건을 읽는 중이에요`) : '…'}
+      <RepoContext name={name} note="새 기록을 읽는 중이에요"
         right={<Badge kind={j?.state === 'SUCCEEDED' ? 'CONFIRMED' : 'NEUTRAL'}>{j?.state === 'SUCCEEDED' ? '완료' : '진행 중'}</Badge>} />
       <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
-        {!j ? <AiWait label="레포를 읽을 준비를 하고 있어요. 곧 커밋부터 읽기 시작해요." /> : (
+        {!j ? <AiWait label="레포를 읽을 준비를 하고 있어요. 곧 PR부터 읽기 시작해요." /> : (
           <>
             {/* AI 가 지금 하는 일을 한 문장으로 — 단계 이름보다 먼저 눈에 걸리게 */}
             <p className="agent-now" aria-live="polite"><Sparkles size={16} aria-hidden /><span>{agentHeadline(j, repo.data?.name)}</span></p>
@@ -227,6 +228,7 @@ function stepDetail(done: number, total: number | null, unit: string, state: str
   if (state === 'SKIPPED') return '읽을 게 없어 건너뛰었어요';
   if (state === 'QUEUED') return '대기 중';
   if (total == null) return `${done}${unit} 읽음`;
+  if (total === 0) return '새로 읽을 게 없어요';
   return `${done} / ${total}${unit}`;
 }
 

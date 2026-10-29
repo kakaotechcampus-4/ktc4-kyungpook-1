@@ -21,12 +21,21 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
     // 소유자를 보지 않으므로 남의 저장소인지 가려 거절 기록을 남길 때만 쓴다
     Optional<ConnectedRepository> findByPublicId(UUID publicId);
 
+    boolean existsByUserIdAndCountedAtIsNotNull(Long userId);
+
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositoryReference(c.publicId, r.ownerLogin, r.name)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.id = :id
             """)
     Optional<RepositoryReference> findReference(@Param("id") Long id);
+
+    @Query("""
+            SELECT c.id AS id, c.publicId AS publicId, r.ownerLogin AS ownerLogin, r.name AS name
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.id IN :ids
+            """)
+    List<ReferenceRow> findReferences(@Param("ids") Collection<Long> ids);
 
     @Modifying
     @Query(value = """
@@ -87,4 +96,15 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """)
     List<ContributionTarget> findUncounted(@Param("userId") Long userId,
                                            @Param("githubRepoIds") Collection<Long> githubRepoIds);
+
+    interface ReferenceRow {
+
+        Long getId();
+
+        UUID getPublicId();
+
+        String getOwnerLogin();
+
+        String getName();
+    }
 }

@@ -48,7 +48,8 @@ export function errorView(error: unknown, context: 'read' | 'write' = 'write'): 
     };
     return { title: '요청을 처리하지 못했어요', message: messages[error.code] ?? '입력 내용과 현재 상태를 확인해 주세요.', canRetry: false };
   }
-  return { title: '요청이 끝나지 않았어요', message: '응답을 받기 전에 연결이 끊겼을 수 있어요. 인터넷 연결을 확인하고 다시 시도해 주세요.', canRetry: true };
+  // 연결 실패는 위에서 ApiError NETWORK·TIMEOUT 으로 따로 말한다. 여기는 화면 코드 오류까지 받으므로 원인을 단정하지 않는다(#461 리뷰)
+  return { title: '요청을 마치지 못했어요', message: '다시 시도해도 같으면 새로고침해 주세요.', canRetry: true };
 }
 
 export const isUnknownOutcome = (error: unknown) =>

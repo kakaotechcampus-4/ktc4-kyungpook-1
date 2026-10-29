@@ -897,6 +897,25 @@ class InterviewAskApiTest {
     }
 
     @Test
+    @DisplayName("수치 문장을 받으려고 부른 AI 호출은 그 카드와 함께 AI 호출 기록에 한 줄 남는다")
+    void measuredDraftAiCallIsRecordedWithTheCard() throws Exception {
+
+        Long cardId = measureTurn();
+        AI.replyWith(request -> sentence(cardId, "조회 시간을 3초에서 0.4초로 줄였다."));
+
+        draft("3초 걸리던 게 0.4초 정도").andExpect(status().isOk());
+
+        Map<String, Object> call = jdbc.queryForMap(
+                "SELECT path, card_id, job_id, http_status, error_code FROM ai_call WHERE card_id = ?", cardId);
+        assertThat(call).containsEntry("path", "/internal/interview-measured-sentence")
+                .containsEntry("card_id", cardId)
+                .containsEntry("job_id", null)
+                .containsEntry("http_status", 200)
+                .containsEntry("error_code", null);
+
+    }
+
+    @Test
     @DisplayName("AI 문장에 측정 결과에 없는 숫자가 있으면 지금 R 문장 뒤에 측정 결과를 붙인 문장을 돌려준다")
     void draftFallsBackOnInventedNumber() throws Exception {
 

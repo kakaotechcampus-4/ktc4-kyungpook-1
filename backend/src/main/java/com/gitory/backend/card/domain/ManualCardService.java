@@ -20,21 +20,29 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ManualCardService {
 
-    private static final int IDEMPOTENCY_KEY_MAX_LENGTH = 255;
-
     private final RepositoryOwnershipService repositoryOwnership;
+    private final ActivityService activities;
     private final CardRepository cards;
     private final CardVersionWriter versions;
     private final CardDetailService details;
     private final TransactionTemplate transaction;
 
-    /** repositoryPublicId 는 없어도 되고, 있으면 내 저장소여야 하며 아니면 없는 저장소와 똑같이 404 로 답하게 한다 */
-    public CardDetail start(Long userId, String title, String period, UUID repositoryPublicId, String idempotencyKey) {
+    /**
+     * 저장소와 활동은 둘 다 없어도 되고, 있으면 내 것이어야 하며 아니면 없는 것과 똑같이 404 로 답하게 한다
+     * 카드는 저장소와 활동 중 하나에만 묶이므로 둘 다 오면 400 으로 답하게 한다
+     */
+    public CardDetail start(Long userId, String title, String period, UUID repositoryPublicId, UUID activityPublicId,
+                            String idempotencyKey) {
+
+        if (repositoryPublicId != null && activityPublicId != null) {
+            throw new InvalidCardInputException("저장소와 활동 중 하나만 고를 수 있습니다.");
+        }
 
         Long userRepositoryId = ownedRepository(repositoryPublicId, userId);
-        String key = checkedKey(idempotencyKey);
+        Long activityId = activityPublicId == null ? null : activities.ownedActivityId(activityPublicId, userId);
+        String key = IdempotencyKey.checked(idempotencyKey);
         UUID cardId = existing(userId, key)
-                .orElseGet(() -> create(userId, userRepositoryId, title, period, key));
+                .orElseGet(() -> create(userId, userRepositoryId, activityId, title, period, key));
 
         return details.load(cardId, userId);
 
@@ -51,35 +59,25 @@ public class ManualCardService {
 
     }
 
-    private static String checkedKey(String idempotencyKey) {
-
-        // 빈 키를 키로 쓰면 빈 키로 온 요청이 모두 처음 만든 카드 하나를 돌려받는다
-        if (idempotencyKey == null || CardText.isBlank(idempotencyKey)) {
-            return null;
-        }
-
-        // 아주 긴 키는 유니크 인덱스 한도에 걸려 저장 때 500 이 된다
-        if (idempotencyKey.length() > IDEMPOTENCY_KEY_MAX_LENGTH) {
-            throw new InvalidCardInputException("Idempotency-Key 는 " + IDEMPOTENCY_KEY_MAX_LENGTH + "자를 넘을 수 없습니다.");
-        }
-
-        return idempotencyKey;
-
-    }
-
-    private UUID create(Long userId, Long userRepositoryId, String title, String period, String idempotencyKey) {
+    private UUID create(Long userId, Long userRepositoryId, Long activityId, String title, String period,
+                        String idempotencyKey) {
 
         try {
-            return transaction.execute(status -> save(userId, userRepositoryId, title, period, idempotencyKey));
+            return transaction.execute(status -> save(userId, userRepositoryId, activityId, title, period,
+                    idempotencyKey));
         } catch (DataIntegrityViolationException e) {
             return existing(userId, idempotencyKey).orElseThrow(() -> e);
         }
 
     }
 
-    private UUID save(Long userId, Long userRepositoryId, String title, String period, String idempotencyKey) {
+    private UUID save(Long userId, Long userRepositoryId, Long activityId, String title, String period,
+                      String idempotencyKey) {
 
-        Card card = cards.save(Card.startManual(userId, userRepositoryId, title, period, idempotencyKey));
+        if (activityId != null) {
+            activities.requireExists(activityId);
+        }
+        Card card = cards.save(Card.startManual(userId, userRepositoryId, activityId, title, period, idempotencyKey));
         versions.startFirst(card, VersionSource.USER_EDIT);
 
         return card.getPublicId();

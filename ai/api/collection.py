@@ -7,10 +7,11 @@ import time
 
 from fastapi import APIRouter, Depends, Header
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from api.failure_log import log_failure
-from api.openapi import COLLECTION_ERROR_RESPONSES
+from api.openapi import COLLECTION_ERROR_RESPONSES, INVALID_PAYLOAD_RESPONSE
+from api.progress_stream import NDJSON, STREAM_DESCRIPTION, stream_with_progress
 from ports.repository_activity import RepositoryActivityPort
 from schemas.collection import (
     CandidateDetailRequest,
@@ -18,12 +19,14 @@ from schemas.collection import (
     RepositoryCollectionRequest,
     RepositoryCollectionResult,
 )
-from schemas.common import Envelope, ErrorDetail, Meta
+from schemas.common import Envelope, ErrorDetail
 from services.github_collector import (
     GithubApiError,
+    GithubUnauthorized,
     GithubCollector,
     GithubResourceNotFound,
 )
+from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +78,9 @@ async def collect_repository_activity(
             retryable=False,
             started=started,
         )
+    except GithubUnauthorized as exc:
+        _log_collection_failure("GitHub 활동 수집", "/internal/collect", "GITHUB_UNAUTHORIZED", False, exc, started, request)
+        return _unauthorized_response(started)
     except GithubApiError as exc:
         _log_collection_failure("GitHub 활동 수집", "/internal/collect", "GITHUB_API_ERROR", True, exc, started, request)
         return _error_response(
@@ -85,16 +91,42 @@ async def collect_repository_activity(
             started=started,
         )
 
-    processing_ms = int((time.perf_counter() - started) * 1000)
     return Envelope(
         success=True,
         data=execution.result,
-        meta=Meta(
-            model=None,
-            tool_calls_made=execution.api_calls,
-            processing_ms=processing_ms,
+        meta=usage_meta(
+            started, "PARTIAL" if execution.result.partial else "COMPLETED", github_calls=execution.api_calls
         ),
         error=None,
+    )
+
+
+@router.post(
+    "/collect/stream",
+    response_class=StreamingResponse,
+    summary="A-1 GitHub 저장소 활동 수집 (진행 스트리밍)",
+    description=(
+        "`/internal/collect` 와 같은 수집을 하면서 PR 하나(PR_REVIEW)·커밋 상세 하나(COMMITS)를 읽을 때마다 진행을 보냅니다. "
+        "전체 수는 읽을 PR 을 고른 뒤, 상세를 받을 새 커밋을 정한 뒤에 처음 보냅니다. "
+        + STREAM_DESCRIPTION
+    ),
+    responses={
+        200: {"description": "진행 줄들과 마지막 결과 줄", "content": {NDJSON: {}}},
+        400: INVALID_PAYLOAD_RESPONSE,
+    },
+)
+async def collect_repository_activity_stream(
+    request: RepositoryCollectionRequest,
+    x_github_token: str = Header(
+        ..., alias="X-GitHub-Token", min_length=1,
+        description="Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+    ),
+    activity_port: RepositoryActivityPort = Depends(get_repository_activity_port),
+) -> StreamingResponse:
+    """수집 API 와 같은 처리·오류 응답을 쓰고, 그 사이 진행만 줄로 더 보낸다."""
+    return stream_with_progress(
+        "/internal/collect/stream",
+        lambda: collect_repository_activity(request, x_github_token, activity_port),
     )
 
 
@@ -136,6 +168,11 @@ async def collect_candidate_details(
             retryable=False,
             started=started,
         )
+    except GithubUnauthorized as exc:
+        _log_collection_failure(
+            "후보 diff 수집", "/internal/collect/candidate-details", "GITHUB_UNAUTHORIZED", False, exc, started, request
+        )
+        return _unauthorized_response(started)
     except GithubApiError as exc:
         _log_collection_failure(
             "후보 diff 수집", "/internal/collect/candidate-details", "GITHUB_API_ERROR", True, exc, started, request
@@ -148,14 +185,11 @@ async def collect_candidate_details(
             started=started,
         )
 
-    processing_ms = int((time.perf_counter() - started) * 1000)
     return Envelope(
         success=True,
         data=execution.result,
-        meta=Meta(
-            model=None,
-            tool_calls_made=execution.api_calls,
-            processing_ms=processing_ms,
+        meta=usage_meta(
+            started, "PARTIAL" if execution.result.partial else "COMPLETED", github_calls=execution.api_calls
         ),
         error=None,
     )
@@ -176,6 +210,16 @@ def _log_collection_failure(
     log_failure(logger, feature, path=path, code=code, retryable=retryable, exc=exc, started=started, **ids)
 
 
+def _unauthorized_response(started: float) -> JSONResponse:
+    return _error_response(
+        status_code=401,
+        code="GITHUB_UNAUTHORIZED",
+        message="GitHub 이 토큰을 거절했습니다. GitHub 을 다시 연결해야 합니다.",
+        retryable=False,
+        started=started,
+    )
+
+
 def _error_response(
     *,
     status_code: int,
@@ -187,11 +231,7 @@ def _error_response(
     envelope = Envelope(
         success=False,
         data=None,
-        meta=Meta(
-            model=None,
-            tool_calls_made=0,
-            processing_ms=int((time.perf_counter() - started) * 1000),
-        ),
+        meta=usage_meta(started, "FAILED"),
         error=ErrorDetail(code=code, message=message, retryable=retryable),
     )
     return JSONResponse(status_code=status_code, content=jsonable_encoder(envelope))

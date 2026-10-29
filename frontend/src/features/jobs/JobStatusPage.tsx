@@ -41,7 +41,7 @@ export function JobStatusPage() {
       <Link to="/" className="btn btn--outline">홈으로</Link>
       {result && <Link to={result} state={jobResultState(job)} className="btn btn--primary">{job.state === 'FAILED' || job.partial || job.state === 'CANCELED' ? '상세 상태 보기' : '결과 보기'}</Link>}
       {done && !result && <Link to="/repos" className="btn btn--outline">레포 목록</Link>}
-      {job.errorCode === 'GITHUB_UNAVAILABLE' && <Button variant="outline" onClick={reconnectGithub}>GitHub 다시 연결</Button>}
+      {(job.errorCode === 'GITHUB_UNAVAILABLE' || job.errorCode === 'GITHUB_UNAUTHORIZED') && <Button variant="outline" onClick={reconnectGithub}>GitHub 다시 연결</Button>}
       {job.state === 'FAILED' && <Link to="/cards/new" className="btn btn--ghost">직접 쓰기</Link>}
     </div>
   </main>;

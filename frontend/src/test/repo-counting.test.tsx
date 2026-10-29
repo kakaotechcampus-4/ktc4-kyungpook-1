@@ -175,19 +175,33 @@ describe('홈 · 설정 · 분석 화면', () => {
     expect(screen.getByText('auth-service').closest('.collection-row')).toHaveTextContent('커밋 214, PR 31, 리뷰 88');
   });
 
-  it('분석 진행 화면은 못 센 레포를 "0개 읽는 중"이라고 말하지 않는다', () => {
-    mount('/repos/r_counting/run?job=job', <AnalyzePage />, '/repos/:repoId/run', (client) => {
-      seedRepos(client);
-      client.setQueryData(keys.job('job'), job({ state: 'RUNNING', partial: false, finishedAt: null, pollAfterMs: 2000 }));
-    });
-    expect(screen.getByText('커밋, PR, 리뷰를 읽는 중이에요')).toBeInTheDocument();
-    expect(screen.queryByText(/커밋 0개/)).not.toBeInTheDocument();
-    cleanup();
+  // 다시 분석하면 새 기록만 읽으므로, 저장소 전체 숫자를 이번에 읽는 양처럼 말하지 않는다(읽는 양은 단계 숫자가 보여 준다)
+  it('분석 진행 화면의 저장소 줄은 못 센 레포든 센 레포든 숫자 없이 새 기록을 읽는 중이라고만 말한다', () => {
+    for (const repoId of ['r_counting', 'r_auth']) {
+      mount(`/repos/${repoId}/run?job=job`, <AnalyzePage />, '/repos/:repoId/run', (client) => {
+        seedRepos(client);
+        client.setQueryData(keys.job('job'), job({ state: 'RUNNING', partial: false, finishedAt: null, pollAfterMs: 2000 }));
+      });
+      expect(screen.getByText('새 기록을 읽는 중이에요')).toBeInTheDocument();
+      expect(screen.queryByText(/커밋 \d+개 ·/)).not.toBeInTheDocument();
+      cleanup();
+    }
+  });
+
+  it('이번에 새로 읽을 게 없는 단계는 0 / 0 대신 새로 읽을 게 없다고 말하고, 읽는 중인 단계는 읽은 수/전체를 보인다', () => {
     mount('/repos/r_auth/run?job=job', <AnalyzePage />, '/repos/:repoId/run', (client) => {
       seedRepos(client);
-      client.setQueryData(keys.job('job'), job({ state: 'RUNNING', partial: false, finishedAt: null, pollAfterMs: 2000 }));
+      client.setQueryData(keys.job('job'), job({
+        state: 'RUNNING', partial: false, finishedAt: null, pollAfterMs: 2000, steps: [
+          { key: 'PR_REVIEW', state: 'DONE', done: 0, total: 0 },
+          { key: 'COMMITS', state: 'RUNNING', done: 3, total: 30 },
+          { key: 'COMPRESS', state: 'QUEUED', done: 0, total: null },
+          { key: 'REASON', state: 'QUEUED', done: 0, total: null },
+        ],
+      }));
     });
-    expect(screen.getByText('커밋 214개, PR 31건, 리뷰 88건을 읽는 중이에요')).toBeInTheDocument();
+    expect(screen.getByText('새로 읽을 게 없어요')).toBeInTheDocument();
+    expect(screen.getByText('3 / 30개')).toBeInTheDocument();
   });
 });
 

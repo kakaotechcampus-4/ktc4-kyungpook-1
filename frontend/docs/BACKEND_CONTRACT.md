@@ -109,8 +109,8 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ### 카드
 | | 요청 | 응답 |
 |---|---|---|
-| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount, repo }`. `repo`는 카드 상세의 `repo`와 같은 `{ id, owner, name }`이고, 저장소 없이 직접 쓴 카드는 null이다(#457). `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
-| `POST /cards/manual/draft` | `{ title, period, repoId|null }`, 헤더 `Idempotency-Key: <UUID v4>` | **구현됨.** `Card` — 빈 `USER_EDIT` v1 DRAFT. 같은 사용자·같은 키는 처음 만든 카드의 **현재** 상세를 반환 |
+| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount, repo }`. `repo`는 카드 상세의 `repo`와 같은 `{ id, owner, name }`이고, 저장소 없이 직접 쓴 카드는 null이다(#457). `activity`는 카드가 속한 활동 `{ id, name, type }`이고 활동 밖 카드는 null이다(#477). `repo`·`activity` 가 둘 다 값이 있는 카드는 없다. `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
+| `POST /cards/manual/draft` | `{ title, period, repoId|null, activityId|null }`, 헤더 `Idempotency-Key: <UUID v4>` | **구현됨.** `Card` — 빈 `USER_EDIT` v1 DRAFT. 같은 사용자·같은 키는 처음 만든 카드의 **현재** 상세를 반환 |
 | `PATCH /cards/{id}/draft` | `{ situation, task, action, result }` **네 키 필수**, string/null | **구현됨.** `{ cardId, versionNo, situation, task, action, result, savedAt }` — 임시 저장 |
 | `GET /cards/{id}` | | **구현됨.** `Card` (아래) |
 | `DELETE /cards/{id}` | | **구현됨(#350).** `{ ok: true }` — 작성 중·확정 카드 모두 버전·문장·근거·되묻기까지 완전 삭제. 후보로 만든 카드면 후보가 `NEW` 로 돌아가 다시 고를 수 있다. 오류는 401 → 403 → 404(잘못된 UUID·없는 카드·이미 지운 카드·남의 카드) → 409 `INVALID_STATE`(초안을 만드는 중) 순 |
@@ -129,6 +129,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 
 - 제목은 공백만 있는 값을 거절하고 최대 256자, 기간은 최대 50자의 자유 글입니다. 빈 기간/null/공백만 있는 기간은 null입니다. 제목·기간의 U+0000은 400 `INVALID_REQUEST`입니다. 의미 있는 글의 앞뒤 공백은 보존합니다.
 - `repoId`가 있으면 본인 연결 저장소를 먼저 확인합니다. 없거나 다른 사용자의 저장소는 404이고, 같은 키로 이미 만든 카드가 있어도 이 검사를 건너뛰지 않습니다.
+- `activityId`도 같은 규칙으로 본인 활동을 확인합니다(#477). `repoId`와 함께 보내면 400 `INVALID_REQUEST`입니다. 활동은 [경험 카드 계약](2026-10-28-EXPERIENCE_CARDS.md#1-활동)의 `/activities`로 만듭니다.
 - 키는 사용자 ID와 함께 식별합니다. 같은 키로 다른 제목·기간·저장소를 보내도 처음 카드의 현재 제목·기간·저장소·버전·상태를 반환합니다. FE는 화면 진입마다 UUID v4 하나를 만들고 실패 재요청에 재사용하며, 반환된 메타데이터를 미구현 PATCH metadata로 덮어쓰지 않습니다.
 - 서버는 키가 없거나 공백이면 매번 새 카드를 만들 수 있습니다. 의미 있는 키는 최대 255자입니다. 분석 Job의 키와 직접 작성 키는 별도 범위입니다. Mock은 이 매핑을 Job과 함께 snapshot/hydrate에서 보존하고 reset에서 초기화합니다.
 
@@ -175,7 +176,9 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
   "areas": ["BACKEND|FRONTEND|MOBILE|DEVOPS|AI|DB|TEST|DOCS"],  // 최대 2개, 없으면 []
   "techs": ["C|CPP|CSHARP|JAVA|KOTLIN|PYTHON|GO|RUST|SWIFT|DART|TYPESCRIPT|JAVASCRIPT|REACT|SQL|DOCKER|GITHUB_ACTIONS"],  // 최대 4개, 없으면 []
   "period": "자유 글" | null,
-  "repo": { "id", "owner", "name" } | null, "candidate": { "id", "type", "ref", "title" } | null,
+  "repo": { "id", "owner", "name" } | null,
+  "activity": { "id", "name", "type": "CLUB|EXTERNAL|CONTEST|INTERNSHIP|EDUCATION|PART_TIME|VOLUNTEER|STUDY|OTHER" } | null,  // repo 와 함께 값이 있는 카드는 없다
+  "candidate": { "id", "type", "ref", "title" } | null,
   "version": { "versionNo", "source": "AI_DRAFT|USER_EDIT|INTERVIEW|MASK|RESTORE", "createdAt", "situation", "task", "action", "result" },  // 칸은 null 가능 = 비운 칸
   "evidence": [{ "field": "S|T|A|R", "type": "COMMIT|USER_STATED|USER_SELECTED", "authoredBy": "AI|USER", "sha": "7자리" | null, "url": "링크" | null, "snippet": "글" | null, "committedAt": "ISO" | null, "changedFiles": n | null, "summary": "글" | null, "turnNo": n | null }],
   "lowConfidenceFields": [{ "field", "why" }], "droppedFields": [{ "field", "reason": "NO_EVIDENCE|OVERCLAIM|UNSOURCED_NUMBER|TIMEOUT" }],
@@ -311,6 +314,6 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 카드 목록·상세는 `areas: string[]`(최대 2), `techs: string[]`(최대 4)를 반환합니다. 허용 enum과 배포 전환 처리는 [태그 계약](2026-10-21-CARD_TAGS.md)을 따릅니다. 태그는 읽기 전용 카드 메타데이터이며 수정 요청에 포함하지 않습니다. FE 태그 PR은 BE #338 이후 머지합니다.
 
-## 경험 카드 — 활동 묶음·문항 유형·다듬기 (#474, 계약만 · 서버 구현 전)
+## 경험 카드 — 활동 묶음·문항 유형·다듬기 (#474)
 
-레포 밖 경험을 묶는 활동(`/activities`), 카드의 `activity` · `themes`, 경험 카드 되묻기의 다듬기 미리 보기(`polished-draft`)와 답의 `original` 은 [경험 카드 계약](2026-10-28-EXPERIENCE_CARDS.md)을 따릅니다. 위 카드·되묻기 표는 서버 구현이 머지될 때 이 내용으로 고칩니다.
+모두 [경험 카드 계약](2026-10-28-EXPERIENCE_CARDS.md)을 따릅니다. 레포 밖 경험을 묶는 활동(`/activities`)과 카드의 `activity` 는 구현됐고(#477) 위 카드 표에 반영했습니다. 카드의 `themes`, 경험 카드 되묻기의 다듬기 미리 보기(`polished-draft`)와 답의 `original` 은 계약만 정했고, 위 카드·되묻기 표는 그 서버 구현이 머지될 때 고칩니다.

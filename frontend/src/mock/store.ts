@@ -253,7 +253,8 @@ export function cardView(c: Any) {
   const { _metadata, _confirmed, ...version } = v;
   void versions;
   void userId; void _metadata; void _confirmed;
-  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], version });
+  // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
+  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.
@@ -379,7 +380,7 @@ export function pushVersion(c: Any, source: string, fields: Any) {
 }
 
 /** 되묻기 턴 생성 — "코드에서 찾은 것"은 카드 근거에서 조립 */
-export const INTERVIEW_MAX_TURNS = 2; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
+export const INTERVIEW_MAX_TURNS = 8; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
 
 export function askTurn(c: Any, field: string) {
   const bank = interviewBank[field];

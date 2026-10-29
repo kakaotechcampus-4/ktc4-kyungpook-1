@@ -14,7 +14,7 @@ from schemas.analysis import CommitInput, IssueContext, PullRequestContext
 from services.commit_grouper import CommitGroup
 from services.llm_executors import GROUPING_EXECUTOR, run_llm_call
 from services.llm_settings import LLMConfigError, load_llm_settings
-from services.progress import COMPRESS, REASON, report_progress
+from services.progress import COMPRESS, REASON, described_item, grouped_item, report_progress
 from services.llm_structured_client import (
     LLMStructuredCallError,
     LLMStructuredOutputTooLongError,
@@ -179,11 +179,12 @@ class GroupingLlm:
         experiences: list[list[CommitGroup]] = []
         grouped = 0
         for batch in self._split_batches(ordered, self._batch_size, self._started_at):
-            experiences.extend(
-                await self._group_batch(batch, pull_by_number, issue_by_number)
-            )
+            batch_experiences = await self._group_batch(batch, pull_by_number, issue_by_number)
+            experiences.extend(batch_experiences)
             grouped += len(batch)
-            report_progress(COMPRESS, grouped, len(ordered))
+            report_progress(
+                COMPRESS, grouped, len(ordered), grouped_item(len(batch), len(batch_experiences))
+            )
         return experiences
 
     async def _group_batch(
@@ -241,10 +242,11 @@ class GroupingLlm:
         report_progress(REASON, 0, len(groups))
         for offset in range(0, len(groups), self._description_batch_size):
             batch = groups[offset : offset + self._description_batch_size]
-            output.update(
-                await self._describe_batch(batch, pull_by_number, issue_by_number, deadline)
-            )
-            report_progress(REASON, offset + len(batch), len(groups))
+            described = await self._describe_batch(batch, pull_by_number, issue_by_number, deadline)
+            output.update(described)
+            # 한 번에 받은 설명도 경험마다 한 줄씩 알려, 화면이 고른 이유를 빠짐없이 보여 줄 수 있게 한다
+            for done, group in enumerate(batch, start=offset + 1):
+                report_progress(REASON, done, len(groups), described_item(*described[group.group_key]))
         return output
 
     async def _describe_batch(

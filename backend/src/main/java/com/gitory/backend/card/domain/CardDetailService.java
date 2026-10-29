@@ -3,6 +3,7 @@ package com.gitory.backend.card.domain;
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.interview.InterviewTurn;
 import com.gitory.backend.card.infra.ActivityRepository;
+import com.gitory.backend.card.infra.CardDraftStepRepository;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
@@ -28,7 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 내 카드 한 장을 현재 버전의 네 칸, 칸 메모, 답한 되묻기 질문 수, 칸에 연결된 질문 번호와 함께 읽는다
+ * 내 카드 한 장을 현재 버전의 네 칸, 칸 메모, AI 초안 단계, 답한 되묻기 질문 수, 칸에 연결된 질문 번호와 함께 읽는다
  * 임시 저장이 문장을 지우고 다시 넣는 사이에도 문장과 근거를 한 시점으로 읽도록 REPEATABLE READ 로 읽는다
  */
 @Service
@@ -43,6 +44,7 @@ public class CardDetailService {
     private final CardGenerationPort generationJobs;
     private final InterviewTurnRepository turns;
     private final CardSlotNoteRepository notes;
+    private final CardDraftStepRepository draftSteps;
     private final CommitSummaryService commitSummaries;
     private final ActivityRepository activities;
 
@@ -69,7 +71,7 @@ public class CardDetailService {
                 card.areaTags(), card.techTags(), card.getPeriod(), repository, activity, current.getSource(),
                 current.getUpdatedAt(), slots, card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(),
                 candidate, generationOf(card), card.getGenerationFailure(), answeredCount(asked), turnNosOf(slots, asked), notesOf(card),
-                commitsOf(slots));
+                commitsOf(slots), draftStepsOf(card));
 
     }
 
@@ -96,6 +98,15 @@ public class CardDetailService {
         }
 
         return null;
+
+    }
+
+    // 단계는 AI 초안을 담은 1번 버전에만 남고, 사용자가 고쳐 버전이 늘어도 초안을 만든 과정이라 그대로 보여 준다
+    private List<DraftStep> draftStepsOf(Card card) {
+
+        return draftSteps.findByCardIdAndVersionNoOrderBySeq(card.getId(), CardDraftWriter.FIRST).stream()
+                .map(CardDraftStep::view)
+                .toList();
 
     }
 

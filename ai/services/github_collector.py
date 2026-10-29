@@ -6,12 +6,14 @@ DB 저장과 Job 상태 관리는 Spring의 책임이다.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import PurePosixPath
-from typing import Any, Optional, Union
+from typing import Any, Optional, TypeVar, Union
 from urllib.parse import quote
 
 import httpx
@@ -35,13 +37,15 @@ from schemas.collection import (
     RepositoryCollectionResult,
 )
 from ports.repository_activity import RepositoryActivityExecution
-from services.progress import COMMITS, PULL_REQUESTS, report_progress
+from services.progress import COMMITS, PULL_REQUESTS, commit_item, pull_request_item, report_progress
 
 
 GITHUB_API_VERSION = "2022-11-28"
 GITHUB_API_BASE_URL_ENV = "GITORY_GITHUB_API_BASE_URL"
 DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com"
 GITHUB_ACCEPT = "application/vnd.github+json"
+#: PR·커밋 상세를 한 번에 읽는 수. 8 이면 같은 토큰의 REST 2차 한도(1분 900번)를 넘을 수 있어 4로 묶는다.
+MAX_CONCURRENT_READS = 4
 ISSUE_REFERENCE = re.compile(r"(?<![\w/])#(\d+)")
 LOCKFILES = {
     "package-lock.json",
@@ -117,6 +121,45 @@ class _CollectionState:
     def mark_partial(self, reason: PartialReason) -> None:
         if self.partial_reason != PartialReason.GITHUB_RATE_LIMITED:
             self.partial_reason = reason
+
+
+_Item = TypeVar("_Item")
+_Read = TypeVar("_Read")
+_NOT_READ = object()
+
+
+async def _read_in_order(
+    items: list[_Item],
+    read: Callable[[_Item], Awaitable[_Read]],
+    on_read: Callable[[_Read, int], None],
+) -> tuple[list[_Read], bool]:
+    """items 를 MAX_CONCURRENT_READS 개씩 동시에 읽고, 다 읽은 것을 items 순서로 돌려준다.
+
+    한도 신호면 새로 읽지 않고 읽던 것을 멈춘 뒤 그때까지 읽은 것과 True 를, 그 밖의 실패는 읽던 것을 멈추고 그대로 던진다.
+    on_read 는 하나를 다 읽을 때마다 그 결과와 지금까지 읽은 수로 불린다.
+    """
+    reads: list[Any] = [_NOT_READ] * len(items)
+    indexes = iter(range(len(items)))
+    read_count = 0
+
+    async def work() -> None:
+        nonlocal read_count
+        for index in indexes:
+            reads[index] = await read(items[index])
+            read_count += 1
+            on_read(reads[index], read_count)
+
+    workers = [asyncio.create_task(work()) for _ in range(min(MAX_CONCURRENT_READS, len(items)))]
+    rate_limited = False
+    try:
+        await asyncio.gather(*workers)
+    except _RateLimited:
+        rate_limited = True
+    finally:
+        for worker in workers:
+            worker.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+    return [result for result in reads if result is not _NOT_READ], rate_limited
 
 
 class GithubCollector:
@@ -271,40 +314,57 @@ class GithubCollector:
     ) -> None:
         pulls = await self._select_pull_requests(client, request, state)
         report_progress(PULL_REQUESTS, 0, len(pulls))
-        for index, pull in enumerate(pulls, start=1):
-            number = _required_int(pull, "number")
-            commit_shas = await self._collect_pull_commit_shas(
-                client, request, state, number
-            )
-            review_comments = await self._collect_review_comments(
-                client, request, state, number
-            )
-            reviews = await self._collect_reviews(
-                client, request, state, number, review_comments
-            )
-            title = _required_text(pull, "title")
-            body = _optional_text(pull, "body")
-            body_excerpt, body_truncated = _excerpt(
-                body, self._limits.max_pull_request_body_chars
-            )
-            state.pull_requests.append(
-                CollectedPullRequest(
-                    number=number,
-                    title=title,
-                    body_excerpt=body_excerpt,
-                    body_truncated=body_truncated,
-                    state=_required_text(pull, "state").upper(),
-                    author_login=_nested_optional_text(pull, "user", "login"),
-                    base_branch=_nested_required_text(pull, "base", "ref"),
-                    head_branch=_nested_required_text(pull, "head", "ref"),
-                    created_at=_required_text(pull, "created_at"),
-                    merged_at=_optional_text(pull, "merged_at"),
-                    commit_shas=commit_shas,
-                    linked_issue_numbers=_issue_numbers(f"{title}\n{body or ''}"),
-                    reviews=reviews,
-                )
-            )
-            report_progress(PULL_REQUESTS, index, len(pulls))
+        pull_requests, rate_limited = await _read_in_order(
+            pulls,
+            lambda pull: self._collect_pull_request(client, request, state, pull),
+            lambda pull_request, read: report_progress(
+                PULL_REQUESTS,
+                read,
+                len(pulls),
+                pull_request_item(pull_request.number, pull_request.title, len(pull_request.reviews)),
+            ),
+        )
+        state.pull_requests.extend(pull_requests)
+        if rate_limited:
+            raise _RateLimited()
+
+    async def _collect_pull_request(
+        self,
+        client: httpx.AsyncClient,
+        request: RepositoryCollectionRequest,
+        state: _CollectionState,
+        pull: dict[str, Any],
+    ) -> CollectedPullRequest:
+        number = _required_int(pull, "number")
+        commit_shas = await self._collect_pull_commit_shas(
+            client, request, state, number
+        )
+        review_comments = await self._collect_review_comments(
+            client, request, state, number
+        )
+        reviews = await self._collect_reviews(
+            client, request, state, number, review_comments
+        )
+        title = _required_text(pull, "title")
+        body = _optional_text(pull, "body")
+        body_excerpt, body_truncated = _excerpt(
+            body, self._limits.max_pull_request_body_chars
+        )
+        return CollectedPullRequest(
+            number=number,
+            title=title,
+            body_excerpt=body_excerpt,
+            body_truncated=body_truncated,
+            state=_required_text(pull, "state").upper(),
+            author_login=_nested_optional_text(pull, "user", "login"),
+            base_branch=_nested_required_text(pull, "base", "ref"),
+            head_branch=_nested_required_text(pull, "head", "ref"),
+            created_at=_required_text(pull, "created_at"),
+            merged_at=_optional_text(pull, "merged_at"),
+            commit_shas=commit_shas,
+            linked_issue_numbers=_issue_numbers(f"{title}\n{body or ''}"),
+            reviews=reviews,
+        )
 
     async def _select_pull_requests(
         self,
@@ -562,20 +622,30 @@ class GithubCollector:
         pull_by_sha = _primary_pull_by_sha(state.pull_requests)
         selected_shas = list(summaries_by_sha)[: self._limits.max_commits]
         report_progress(COMMITS, 0, len(selected_shas))
-        for index, sha in enumerate(selected_shas, start=1):
-            detail, files = await self._collect_commit_detail(
-                client, request, state, sha
-            )
-            commit, confirmation = self._to_commit(
-                request,
-                detail,
-                files,
-                pull_by_sha.get(sha),
-            )
+        commits, rate_limited = await _read_in_order(
+            selected_shas,
+            lambda sha: self._collect_commit(client, request, state, sha, pull_by_sha.get(sha)),
+            lambda commit, read: report_progress(COMMITS, read, len(selected_shas), commit_item(commit[0])),
+        )
+        for commit, confirmation in commits:
             state.commits.append(commit)
             if confirmation is not None:
                 state.needs_confirmation.append(confirmation)
-            report_progress(COMMITS, index, len(selected_shas))
+        if rate_limited:
+            raise _RateLimited()
+
+    async def _collect_commit(
+        self,
+        client: httpx.AsyncClient,
+        request: RepositoryCollectionRequest,
+        state: _CollectionState,
+        sha: str,
+        pull_request_number: Optional[int],
+    ) -> tuple[CollectedCommit, Optional[ContributionConfirmation]]:
+        detail, files = await self._collect_commit_detail(
+            client, request, state, sha
+        )
+        return self._to_commit(request, detail, files, pull_request_number)
 
     async def _is_empty_repository(
         self,

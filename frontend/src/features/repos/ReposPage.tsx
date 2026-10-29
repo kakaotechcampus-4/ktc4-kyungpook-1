@@ -5,6 +5,7 @@ import type { RepoSummary } from '@/api/schemas';
 import { CalendarDays, FileCode2, FolderGit2, GitCommitHorizontal, GitPullRequest } from 'lucide-react';
 import { MetaItem } from '@/components/MetaItem';
 import { Badge, Button, IconBox, Radio, PageTitle, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
+import { AiWait } from '@/components/ui/AiWait';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
 import { pct, ym } from '@/lib/format';
@@ -19,6 +20,8 @@ type Sort = 'activity' | 'recent' | 'name';
 type Filter = 'all' | 'pr' | 'nopr' | 'fresh';
 const SORT_LABEL: Record<Sort, string> = { activity: '활동량 순', recent: '최근 활동 순', name: '이름 순' };
 const FILTER_LABEL: Record<Filter, string> = { all: '전체', pr: 'PR 있는 레포', nopr: 'PR 0건', fresh: '아직 정리 안 함' };
+/** 이만큼 지나도 목록이 안 오면 "GitHub 가 느리다"고 덧붙인다 — 빠른 응답(1~2초)에는 한 줄만 보이게 */
+const REPOS_SLOW_MS = 3_000;
 
 /** B1 레포 목록·선택 (페이지) → B2 사전 고지 (모달) → 정리 시작 → B3 */
 export function ReposPage() {
@@ -66,7 +69,8 @@ export function ReposPage() {
         <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
       </ol>
       <div className="list-head">
-        <PageTitle>레포 고르기 <span className="c-3 t-14">{repos.data?.length ?? 0}</span></PageTitle>
+        {/* 아직 못 받았으면 개수를 모른다 — 0 으로 보이면 "레포가 없다"로 읽힌다 */}
+        <PageTitle>레포 고르기 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />
@@ -75,7 +79,13 @@ export function ReposPage() {
       </div>
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
 
-      {repos.isPending && <div className="stack" style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Skeleton key={i} h={72} />)}</div>}
+      {/* 목록은 서버가 GitHub 에서 그때그때 읽어 온다 — GitHub 가 느려지면 그만큼 늦게 뜬다. 회색 막대만 두면 멈춘 것처럼 보인다.
+          실패하면 자동으로 다시 시도하므로(failureCount) 그 사실도 말한다. 얼마나 남았는지는 모르니 시간·진행률은 만들지 않는다. */}
+      {repos.isPending && <>
+        <AiWait label="GitHub 에서 내 레포 목록을 불러오는 중이에요" longAfterMs={REPOS_SLOW_MS}
+          longLabel={repos.failureCount > 0 ? 'GitHub 응답이 없어 다시 시도하는 중이에요. 잠시만 기다려 주세요.' : 'GitHub 응답이 평소보다 느려요. 이 화면에서 잠시만 기다려 주세요.'} />
+        <div className="stack" style={{ gap: 8 }}>{[0, 1, 2].map((i) => <Skeleton key={i} h={72} />)}</div>
+      </>}
       {repos.isSuccess && list.length === 0 && <div className="stack" style={{ gap: 12, alignItems: 'center' }}>
         <EmptyState title={q.trim() ? '검색 결과가 없어요' : filter !== 'all' ? '조건에 맞는 레포가 없어요' : '아직 불러온 레포가 없어요'} desc={q.trim() ? '이름을 확인하거나 검색·필터를 초기화해 주세요.' : filter !== 'all' ? '필터를 바꿔 다른 레포를 확인해 보세요.' : '비공개 저장소, 커밋이 없는 저장소와 내 프로필 README 저장소는 목록에서 제외돼요. GitHub 연결 상태도 확인해 주세요.'} />
         {(q || filter !== 'all') ? <Button variant="outline" onClick={() => { setQ(''); setFilter('all'); }}>검색·필터 초기화</Button> : <Link to="/settings/github" className="btn btn--outline">GitHub 연결 확인</Link>}

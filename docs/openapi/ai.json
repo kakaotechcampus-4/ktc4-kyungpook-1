@@ -3060,8 +3060,16 @@
                 "type": "null"
               }
             ],
-            "description": "실제 사용된 모델(LLM 미사용 응답은 null 또는 처리 방식 이름)",
+            "description": "마지막에 부른 LLM 모델로, 모델별 사용량은 model_usage 에 있다(LLM 미사용 응답은 null 또는 처리 방식 이름)",
             "title": "Model"
+          },
+          "model_usage": {
+            "description": "모델별 LLM 요청 수와 토큰. 처음 부른 모델부터 오고, 더하면 llm_calls·input_tokens·output_tokens 와 같다. LLM 을 안 불렀으면 빈 목록",
+            "items": {
+              "$ref": "#/components/schemas/ModelUsage"
+            },
+            "title": "Model Usage",
+            "type": "array"
           },
           "output_tokens": {
             "default": 0,
@@ -3151,6 +3159,39 @@
           "statement_seq"
         ],
         "title": "MissingSlot",
+        "type": "object"
+      },
+      "ModelUsage": {
+        "description": "한 요청 안에서 모델 하나에 보낸 LLM 요청 수와 토큰.",
+        "properties": {
+          "input_tokens": {
+            "default": 0,
+            "description": "이 모델에서 응답을 받은 요청의 입력 토큰 합",
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "llm_calls": {
+            "default": 0,
+            "description": "이 모델에 보낸 요청 수. 실패한 요청도 센다",
+            "title": "Llm Calls",
+            "type": "integer"
+          },
+          "model": {
+            "description": "LLM 모델 이름",
+            "title": "Model",
+            "type": "string"
+          },
+          "output_tokens": {
+            "default": 0,
+            "description": "이 모델에서 응답을 받은 요청의 출력 토큰 합",
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "ModelUsage",
         "type": "object"
       },
       "NextInterviewTurn": {
@@ -4066,6 +4107,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4176,6 +4218,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4212,6 +4255,73 @@
           }
         },
         "summary": "A 경험 후보 그룹화",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/internal/analysis/groups/stream": {
+      "post": {
+        "description": "`/internal/analysis/groups` 와 같은 그룹화를 하면서, 작업 단위 묶음 하나를 묶을 때마다(COMPRESS) 후보 묶음 하나에 제목·이유를 붙일 때마다(REASON) 진행을 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 `{\"type\":\"progress\",\"step\":\"PR_REVIEW|COMMITS|COMPRESS|REASON\",\"done\":0,\"total\":44}` 줄을 보내고, 방금 읽거나 판단한 것이 있으면 `item` 을 더합니다: `{\"kind\":\"PULL_REQUEST\",\"number\":31,\"title\":\"...\",\"reviews\":4}`, `{\"kind\":\"COMMIT\",\"sha\":\"a1b2c3d\",\"title\":\"메시지 첫 줄\",\"files\":3,\"excluded\":null|\"BOT|MERGE_COMMIT|LOCKFILE_ONLY|NOT_OWN\"}`, `{\"kind\":\"GROUPED\",\"units\":12,\"experiences\":4}`, `{\"kind\":\"DESCRIBED\",\"title\":\"...\",\"reason\":\"...\"}`. 글 값은 비밀값을 가리고 제목 100자, 이유 200자에서 자릅니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 입니다. `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "group_experiences_stream_internal_analysis_groups_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExperienceGroupingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 처리하지 못한 내부 오류. 재시도 불가."
+          }
+        },
+        "summary": "A 경험 후보 그룹화 (진행 스트리밍)",
         "tags": [
           "analysis"
         ]
@@ -4256,6 +4366,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4350,6 +4461,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4454,6 +4566,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4505,6 +4618,77 @@
         ]
       }
     },
+    "/internal/collect/stream": {
+      "post": {
+        "description": "`/internal/collect` 와 같은 수집을 하면서 PR 하나(PR_REVIEW)·커밋 상세 하나(COMMITS)를 읽을 때마다 진행을 보냅니다. 전체 수는 읽을 PR 을 고른 뒤, 상세를 받을 새 커밋을 정한 뒤에 처음 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)입니다. 처리하는 동안 `{\"type\":\"progress\",\"step\":\"PR_REVIEW|COMMITS|COMPRESS|REASON\",\"done\":0,\"total\":44}` 줄을 보내고, 방금 읽거나 판단한 것이 있으면 `item` 을 더합니다: `{\"kind\":\"PULL_REQUEST\",\"number\":31,\"title\":\"...\",\"reviews\":4}`, `{\"kind\":\"COMMIT\",\"sha\":\"a1b2c3d\",\"title\":\"메시지 첫 줄\",\"files\":3,\"excluded\":null|\"BOT|MERGE_COMMIT|LOCKFILE_ONLY|NOT_OWN\"}`, `{\"kind\":\"GROUPED\",\"units\":12,\"experiences\":4}`, `{\"kind\":\"DESCRIBED\",\"title\":\"...\",\"reason\":\"...\"}`. 글 값은 비밀값을 가리고 제목 100자, 이유 200자에서 자릅니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 입니다. `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "collect_repository_activity_stream_internal_collect_stream_post",
+        "parameters": [
+          {
+            "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryCollectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "A-1 GitHub 저장소 활동 수집 (진행 스트리밍)",
+        "tags": [
+          "collection"
+        ]
+      }
+    },
     "/internal/interview-answer-evaluations": {
       "post": {
         "description": "현재 최소 정보량·회피성 표현 규칙으로 답변 충분성을 판단하며 LLM 판정기는 연결되지 않았습니다. ANSWERED이면 사용자 답변 원문을 resulting_statement로 반환합니다. SKIPPED/LATER는 Spring이 직접 처리하고 이 API를 호출하지 않습니다.",
@@ -4544,6 +4728,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4604,6 +4789,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4674,6 +4860,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4734,6 +4921,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4814,6 +5002,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4894,6 +5083,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,
@@ -4974,6 +5164,7 @@
                     "github_calls": 0,
                     "input_tokens": 0,
                     "llm_calls": 0,
+                    "model_usage": [],
                     "output_tokens": 0,
                     "processing_ms": 0,
                     "repair_rounds": 0,

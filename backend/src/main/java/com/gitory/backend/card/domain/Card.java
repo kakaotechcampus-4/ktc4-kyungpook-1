@@ -37,6 +37,9 @@ public class Card {
     private Long userId;
     private Long userRepositoryId;
 
+    // 레포 밖 경험을 묶는 활동으로, 저장소와 함께 값이 있는 카드는 없다(DB 제약)
+    private Long activityId;
+
     @Enumerated(EnumType.STRING)
     private CardKind cardType;
 
@@ -104,11 +107,14 @@ public class Card {
     }
 
     /** 사용자가 직접 쓰는 정성 카드를 1번 버전이 현재 버전인 작성 중 상태로 만들고, 1번 버전 행은 {@link CardVersionWriter} 가 만든다 */
-    public static Card startManual(Long userId, Long userRepositoryId, String title, String period,
+    public static Card startManual(Long userId, Long userRepositoryId, Long activityId, String title, String period,
                                    String idempotencyKey) {
 
-        return new Card(userId, userRepositoryId, CardKind.QUALITATIVE, CardOrigin.MANUAL, title, period,
+        Card card = new Card(userId, userRepositoryId, CardKind.QUALITATIVE, CardOrigin.MANUAL, title, period,
                 idempotencyKey, null, null);
+        card.activityId = activityId;
+
+        return card;
 
     }
 

@@ -47,6 +47,86 @@
         },
         "type" : "object"
       },
+      "ActivityDeleteResponse" : {
+        "properties" : {
+          "ok" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "ActivityRequest" : {
+        "description" : "활동을 만들거나 고칠 때 보내는 값. 고칠 때는 키가 없거나 null 인 값을 그대로 둡니다.",
+        "properties" : {
+          "endMonth" : {
+            "description" : "끝난 달, YYYY-MM. 만들 때 null·빈 글이면 진행 중이고, 고칠 때 빈 글이면 진행 중으로 바꿈",
+            "example" : "2025-12",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "공백뿐이면 안 되고 50자까지",
+            "type" : "string"
+          },
+          "role" : {
+            "description" : "맡은 역할 50자까지. 빈 글이면 역할 없음",
+            "type" : "string"
+          },
+          "startMonth" : {
+            "description" : "시작한 달, YYYY-MM",
+            "example" : "2025-03",
+            "type" : "string"
+          },
+          "type" : {
+            "description" : "CLUB · EXTERNAL · CONTEST · INTERNSHIP · EDUCATION · PART_TIME · VOLUNTEER · STUDY · OTHER",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ActivityResponse" : {
+        "description" : "레포 밖 경험(동아리·대외활동 등)을 묶는 활동",
+        "properties" : {
+          "cardCount" : {
+            "description" : "이 활동 안의 카드 수로, 지우기 전에 함께 지워질 카드 수를 보여 줄 때 쓴다",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "confirmedCount" : {
+            "description" : "cardCount 중 확정 카드 수로, 자소서·매칭에 쓰였을 수 있는 카드가 함께 지워진다고 따로 알릴 때 쓴다",
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "endMonth" : {
+            "description" : "YYYY-MM 이고, null 이면 진행 중",
+            "example" : "2025-12",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "startMonth" : {
+            "description" : "YYYY-MM",
+            "example" : "2025-03",
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "CLUB", "EXTERNAL", "CONTEST", "INTERNSHIP", "EDUCATION", "PART_TIME", "VOLUNTEER", "STUDY", "OTHER" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ApiError" : {
         "description" : "사용자에게 노출 가능한 오류 코드와 안내 문구",
         "properties" : {
@@ -87,6 +167,34 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/ActiveJobListResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseActivityDeleteResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ActivityDeleteResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseActivityResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ActivityResponse",
             "description" : "성공 응답 데이터. 오류 응답에서는 null"
           },
           "error" : {
@@ -278,6 +386,23 @@
         },
         "type" : "object"
       },
+      "ApiResponseListActivityResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "description" : "성공 응답 데이터. 오류 응답에서는 null",
+            "items" : {
+              "$ref" : "#/components/schemas/ActivityResponse"
+            },
+            "type" : "array"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListCardSummaryResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -441,6 +566,20 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/RepoDetailResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseRepoMaterialsResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RepoMaterialsResponse",
             "description" : "성공 응답 데이터. 오류 응답에서는 null"
           },
           "error" : {
@@ -655,6 +794,22 @@
         },
         "type" : "object"
       },
+      "CardActivityResponse" : {
+        "properties" : {
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "CLUB", "EXTERNAL", "CONTEST", "INTERNSHIP", "EDUCATION", "PART_TIME", "VOLUNTEER", "STUDY", "OTHER" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CardCandidateResponse" : {
         "properties" : {
           "id" : {
@@ -836,6 +991,10 @@
       "CardResponse" : {
         "description" : "카드 한 장으로, 칸 글은 현재 버전 기준이고 원문은 가리기 규칙과 상관없이 그대로 온다",
         "properties" : {
+          "activity" : {
+            "$ref" : "#/components/schemas/CardActivityResponse",
+            "description" : "카드가 속한 활동(레포 밖 경험 묶음)이고, 활동 밖 카드는 null. repo 와 함께 값이 있는 카드는 없다"
+          },
           "areas" : {
             "description" : "AI 초안이 고른 분야를 중요한 순서로 최대 2개. 태그가 없는 카드는 빈 배열",
             "items" : {
@@ -943,6 +1102,10 @@
       "CardSummaryResponse" : {
         "description" : "카드 목록의 한 줄. 칸 상태(star)는 현재 버전 글로 서버가 판정합니다.",
         "properties" : {
+          "activity" : {
+            "$ref" : "#/components/schemas/CardActivityResponse",
+            "description" : "카드가 속한 활동으로 카드 상세의 activity 와 같은 값이고, 활동 밖 카드는 null"
+          },
           "areas" : {
             "description" : "AI 초안이 고른 분야를 중요한 순서로 최대 2개. 태그가 없는 카드는 빈 배열",
             "items" : {
@@ -1427,9 +1590,66 @@
         },
         "type" : "object"
       },
+      "JobActivity" : {
+        "properties" : {
+          "excluded" : {
+            "enum" : [ "BOT", "MERGE_COMMIT", "LOCKFILE_ONLY", "NOT_OWN" ],
+            "type" : "string"
+          },
+          "experiences" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "files" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "kind" : {
+            "enum" : [ "PULL_REQUEST", "COMMIT", "GROUPED", "DESCRIBED" ],
+            "type" : "string"
+          },
+          "number" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "reviews" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "seq" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sha" : {
+            "type" : "string"
+          },
+          "step" : {
+            "enum" : [ "COMMITS", "PR_REVIEW", "COMPRESS", "REASON" ],
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "units" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "JobResponse" : {
         "description" : "Job 상세. 부분 결과는 별도 상태가 아니라 partial로 표시합니다.",
         "properties" : {
+          "activity" : {
+            "description" : "AI 가 방금 읽거나 판단한 줄, 오래된 것부터. 읽기 줄(PULL_REQUEST·COMMIT)은 단계마다 최근 20줄, 판단 줄(GROUPED·DESCRIBED)은 모두 싣고, Job 이 끝나고 10분 뒤나 서버가 다시 시작되면 빈 목록이다. seq 는 Job 안에서 1부터 늘어나 이미 받은 줄을 가를 수 있다",
+            "items" : {
+              "$ref" : "#/components/schemas/JobActivity"
+            },
+            "type" : "array"
+          },
           "errorCode" : {
             "enum" : [ "GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "GITHUB_UNAUTHORIZED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING", "INTERNAL_ERROR", "COLLECTION_CAPPED", "AI_UNAVAILABLE" ],
             "type" : "string"
@@ -1448,7 +1668,7 @@
           },
           "pollAfterMs" : {
             "description" : "다음 조회 간격(밀리초). 종료 상태는 0",
-            "example" : 2000,
+            "example" : 1000,
             "format" : "int32",
             "type" : "integer"
           },
@@ -1544,8 +1764,13 @@
         "type" : "object"
       },
       "ManualCardRequest" : {
-        "description" : "직접 작성 카드를 시작할 때 보내는 제목·기간·관련 저장소",
+        "description" : "직접 작성 카드를 시작할 때 보내는 제목·기간과, 카드를 묶을 저장소나 활동",
         "properties" : {
+          "activityId" : {
+            "description" : "활동 목록의 id 이고, 활동 밖 카드면 null. repoId 와 함께 보내면 400",
+            "format" : "uuid",
+            "type" : "string"
+          },
           "period" : {
             "description" : "자유 글 50자까지이고, 빈 글이나 공백뿐이면 기간 없음으로 저장",
             "type" : "string"
@@ -1985,6 +2210,77 @@
         },
         "type" : "object"
       },
+      "RepoMaterialCommit" : {
+        "properties" : {
+          "authoredAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "excluded" : {
+            "description" : "분석에서 뺀 이유. 분석에 쓴 커밋이면 null",
+            "enum" : [ "BOT", "MERGE_COMMIT", "LOCKFILE_ONLY" ],
+            "type" : "string"
+          },
+          "files" : {
+            "description" : "바뀐 파일 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pullRequestNumber" : {
+            "description" : "분석이 이 커밋을 묶은 PR 번호. 묶을 PR 이 없거나 뺀 커밋이면 null",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sha" : {
+            "description" : "커밋 번호 앞 7자",
+            "type" : "string"
+          },
+          "title" : {
+            "description" : "커밋 메시지 첫 줄",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoMaterialPullRequest" : {
+        "properties" : {
+          "commitCount" : {
+            "description" : "이 PR 에 묶인 내 커밋 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "mergedAt" : {
+            "description" : "머지되지 않았으면 null",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "number" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoMaterialsResponse" : {
+        "properties" : {
+          "commits" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RepoMaterialCommit"
+            },
+            "type" : "array"
+          },
+          "pullRequests" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RepoMaterialPullRequest"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "RepoSummaryResponse" : {
         "description" : "분석할 저장소를 고르는 목록의 한 줄. 커밋 수는 GitHub 기본 브랜치 기준입니다.",
         "properties" : {
@@ -2192,6 +2488,331 @@
   },
   "openapi" : "3.1.0",
   "paths" : {
+    "/api/activities" : {
+      "get" : {
+        "description" : "시작한 달이 최근인 순으로, 활동마다 안의 카드 수와 함께 돌려줍니다.",
+        "operationId" : "list",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListActivityResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "내 활동 목록",
+        "tags" : [ "Activities" ]
+      },
+      "post" : {
+        "description" : "이름·종류·기간·역할로 활동을 만듭니다. 끝난 달이 없으면 진행 중입니다.\n같은 Idempotency-Key 로 다시 요청하면 새로 만들지 않고 그 키로 만든 활동을 돌려주며, 다시 보낸 값은 쓰지 않습니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "create_1",
+        "parameters" : [ {
+          "description" : "응답을 못 받고 다시 보내도 활동이 하나만 생기도록, 활동을 추가할 때마다 만들어 보내는 255자까지의 키",
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ActivityRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseActivityResponse"
+                }
+              }
+            },
+            "description" : "새로 만든 활동 또는 같은 키로 이미 만든 활동"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 이름이 비었거나 50자를 넘음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 역할이 50자를 넘음, U+0000 이 있음, Idempotency-Key 가 255자를 넘음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "활동 추가",
+        "tags" : [ "Activities" ]
+      }
+    },
+    "/api/activities/{id}" : {
+      "delete" : {
+        "description" : "활동과 그 안의 카드를 버전·문장·근거·되묻기까지 모두 지웁니다. 다른 활동·저장소의 카드는 그대로입니다.\n화면은 지우기 전에 cardCount 로 함께 지워질 카드 수를 보여 주고 확인을 받습니다.\n",
+        "operationId" : "delete",
+        "parameters" : [ {
+          "description" : "활동 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseActivityDeleteResponse"
+                }
+              }
+            },
+            "description" : "지움"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID, 본인 활동 없음 또는 이미 지운 활동"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "활동 삭제",
+        "tags" : [ "Activities" ]
+      },
+      "patch" : {
+        "description" : "보낸 값만 고칩니다. 키가 없거나 null 인 값은 그대로 두고, 끝난 달·역할은 빈 글이면 지웁니다(진행 중·역할 없음).\n아무 값도 보내지 않으면 400 이고, 고친 뒤에도 끝난 달이 시작한 달보다 앞서면 400 입니다.\n",
+        "operationId" : "edit_2",
+        "parameters" : [ {
+          "description" : "활동 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ActivityRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseActivityResponse"
+                }
+              }
+            },
+            "description" : "고친 뒤의 활동"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 바꿀 값이 없음, 또는 추가와 같은 입력 규칙 위반"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID 또는 본인 활동 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "활동 수정",
+        "tags" : [ "Activities" ]
+      }
+    },
     "/api/candidates/{id}" : {
       "patch" : {
         "description" : "후보를 제외하거나 복원하고, 커밋 묶음 후보에서는 뺄 커밋을 정해 보드의 후보 한 줄과 같은 모양으로 돌려줍니다.\n이미 그 상태여도 200 이고, 성공한 수정은 모두 사용자가 손댄 후보로 표시합니다.\n남의 후보는 없는 후보와 똑같이 404 이고 거절 기록이 남으며, 카드로 쓴 후보는 409, 입력 검사는 그다음입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
@@ -2364,7 +2985,7 @@
     },
     "/api/cards/manual/draft" : {
       "post" : {
-        "description" : "제목·기간·관련 저장소로 내용이 빈 작성 중 카드(1번 버전)를 만들고 카드 전체를 돌려줍니다.\n같은 Idempotency-Key 로 다시 요청하면 새로 만들지 않고 그 키로 만든 카드를 돌려주며, 다시 보낸 제목·기간·저장소는 쓰지 않습니다.\n키가 없거나 비었거나 공백뿐이면 요청마다 새로 만듭니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "제목·기간과 관련 저장소나 활동으로 내용이 빈 작성 중 카드(1번 버전)를 만들고 카드 전체를 돌려줍니다.\n저장소와 활동은 둘 중 하나만 보낼 수 있습니다.\n같은 Idempotency-Key 로 다시 요청하면 새로 만들지 않고 그 키로 만든 카드를 돌려주며, 다시 보낸 제목·기간·저장소는 쓰지 않습니다.\n키가 없거나 비었거나 공백뿐이면 요청마다 새로 만듭니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "start",
         "parameters" : [ {
           "description" : "응답을 못 받고 다시 보내도 카드가 하나만 생기도록, 새 카드를 쓰기 시작할 때마다 만들어 보내는 255자까지의 키",
@@ -2404,7 +3025,7 @@
                 }
               }
             },
-            "description" : "제목이 비었거나 256자를 넘음, 기간이 50자를 넘음, 제목·기간에 U+0000 이 있음, Idempotency-Key 가 255자를 넘음"
+            "description" : "제목이 비었거나 256자를 넘음, 기간이 50자를 넘음, 제목·기간에 U+0000 이 있음, Idempotency-Key 가 255자를 넘음, repoId 와 activityId 를 함께 보냄"
           },
           "401" : {
             "content" : {
@@ -2434,7 +3055,7 @@
                 }
               }
             },
-            "description" : "repoId 가 잘못된 UUID 이거나 본인 저장소가 아님"
+            "description" : "repoId·activityId 가 잘못된 UUID 이거나 본인 저장소·활동이 아님"
           },
           "409" : {
             "content" : {
@@ -2474,7 +3095,7 @@
     "/api/cards/{id}" : {
       "delete" : {
         "description" : "작성 중 카드와 확정 카드 모두 버전·문장·근거·칸 메모·되묻기 질문까지 통째로 지우며, 되돌릴 수 없습니다.\n후보로 만든 카드면 그 후보는 NEW 로 돌아가 후보 보드에 다시 나타나고, 같은 후보로 카드를 다시 만들 수 있습니다.\n오류 순서는 401 → 403 → 404 → 409 입니다. 이미 지운 카드는 없는 카드라 404 이고, 초안을 만드는 중인 카드는 409 INVALID_STATE 입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
-        "operationId" : "delete",
+        "operationId" : "delete_1",
         "parameters" : [ {
           "description" : "카드 id",
           "in" : "path",
@@ -4580,6 +5201,46 @@
         "tags" : [ "Repos" ]
       }
     },
+    "/api/repos/saved" : {
+      "get" : {
+        "description" : "GitHub 을 부르지 않고 마지막으로 받아 둔 저장소를 바로 돌려줍니다. 화면이 최신 목록(GET /api/repos)을 기다리는 동안 먼저 보여 줄 때 씁니다. 그사이 GitHub 에서 지웠거나 권한을 잃은 저장소도 남아 있을 수 있습니다. 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠집니다.",
+        "operationId" : "savedRepos",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListRepoSummaryResponse"
+                }
+              }
+            },
+            "description" : "저장소 배열. 아직 GitHub 에서 목록을 받은 적이 없으면 빈 배열"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          }
+        },
+        "summary" : "저장된 저장소 목록 조회",
+        "tags" : [ "Repos" ]
+      }
+    },
     "/api/repos/{id}" : {
       "get" : {
         "description" : "목록 한 줄과 같은 칸에 분석 전 안내(읽는 것·안 읽는 것·예상 시간)를 더해 돌려줍니다. GitHub 을 부르지 않고 저장된 값만 읽습니다.",
@@ -5041,6 +5702,56 @@
         "tags" : [ "Repos" ]
       }
     },
+    "/api/repos/{id}/materials" : {
+      "get" : {
+        "description" : "분석이 끝난 뒤 '읽은 커밋·PR 전체 보기' 에 씁니다. 이 저장소에 저장된 내 커밋을 분석에 쓴 것과 뺀 것(뺀 이유)을 함께 최근 순으로, 분석이 그 커밋을 묶은 PR 을 번호가 큰 순으로 한 번에 돌려줍니다. 커밋을 PR 에 묶는 규칙은 분석과 같습니다. GitHub 을 부르지 않고 저장된 값만 읽습니다.",
+        "operationId" : "materials",
+        "parameters" : [ {
+          "description" : "목록 응답의 저장소 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoMaterialsResponse"
+                }
+              }
+            },
+            "description" : "커밋·PR 목록. 분석 전이면 둘 다 빈 배열"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID 또는 본인 저장소 없음"
+          }
+        },
+        "summary" : "분석에 쓴 커밋·PR 목록 조회",
+        "tags" : [ "Repos" ]
+      }
+    },
     "/api/repos/{id}/recall" : {
       "get" : {
         "description" : "저장해 둔 내 커밋이 바꾼 파일을 폴더 끝 두 단계로 묶어, 내 커밋이 많은 폴더 5개를 질문과 함께 돌려줍니다. GitHub 를 부르지 않고 DB 만 읽으며 성공은 감사 기록을 남기지 않습니다. 남의 저장소는 없는 저장소와 똑같이 404 입니다.",
@@ -5214,6 +5925,9 @@
   }, {
     "description" : "GitHub 로그인 세션의 사용자 정보",
     "name" : "Session"
+  }, {
+    "description" : "레포 밖 경험(동아리·대외활동 등)을 묶는 활동",
+    "name" : "Activities"
   }, {
     "description" : "본인의 분석 Job 상태와 활성 작업 조회",
     "name" : "Jobs"

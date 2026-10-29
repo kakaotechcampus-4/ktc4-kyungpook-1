@@ -126,7 +126,7 @@ class AnalysisJobPersistenceTest {
 
         assertThat(loaded.getSteps())
                 .extracting(JobStep::key)
-                .containsExactly(JobStepKey.COMMITS, JobStepKey.PR_REVIEW, JobStepKey.COMPRESS, JobStepKey.REASON);
+                .containsExactly(JobStepKey.PR_REVIEW, JobStepKey.COMMITS, JobStepKey.COMPRESS, JobStepKey.REASON);
 
         for (JobStep step : loaded.getSteps()) {
             assertThat(step.state()).isEqualTo(JobStepState.QUEUED);
@@ -154,7 +154,7 @@ class AnalysisJobPersistenceTest {
 
         assertThat(type).isEqualTo("ANALYZE");
         assertThat(stepCount).isEqualTo(4);
-        assertThat(firstKey).isEqualTo("COMMITS");
+        assertThat(firstKey).isEqualTo("PR_REVIEW");
     }
 
     @Test

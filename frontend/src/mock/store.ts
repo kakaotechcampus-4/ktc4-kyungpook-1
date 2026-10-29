@@ -64,7 +64,7 @@ export function resetDb() {
 // ───────────────────────────── Job ─────────────────────────────
 const ANALYZE_SEC = 12, DRAFT_SEC = 8;
 const POLL_MS = 1200;
-const STEP_KEYS = ['COMMITS', 'PR_REVIEW', 'COMPRESS', 'REASON'] as const;
+const STEP_KEYS = ['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON'] as const;
 
 /**
  * 분석 시작. 두 경우에 새 Job 을 만들지 않는다 — 실서버와 같은 규칙이다.
@@ -125,7 +125,7 @@ function analyzeSteps(repo: Any, progress: number, candidates: number | null) {
   const totals: Record<string, number | null> = { COMMITS: repo.contribution.mine, PR_REVIEW: repo.prCount, COMPRESS: null, REASON: null };
   return STEP_KEYS.map((key, i) => {
     const local = Math.min(1, Math.max(0, (progress - i * share) / share));
-    if (key === 'PR_REVIEW' && repo.prCount === 0) return step(key, progress > share ? 'SKIPPED' : 'QUEUED', 0, 0);
+    if (key === 'PR_REVIEW' && repo.prCount === 0) return step(key, progress > i * share ? 'SKIPPED' : 'QUEUED', 0, 0);
     const total = totals[key];
     const done = total != null ? Math.floor(total * local) : Math.round((candidates ?? 20) * local);
     const state = local >= 1 ? 'DONE' : local > 0 ? 'RUNNING' : 'QUEUED';
@@ -280,6 +280,7 @@ export function cardSummary(c: Any) {
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
     updatedAt: c.updatedAt ?? legacyUpdatedAt(c),
+    repo: c.repo ? { id: c.repo.id, owner: c.repo.owner, name: c.repo.name } : null,
   };
 }
 
@@ -378,7 +379,7 @@ export function pushVersion(c: Any, source: string, fields: Any) {
 }
 
 /** 되묻기 턴 생성 — "코드에서 찾은 것"은 카드 근거에서 조립 */
-export const INTERVIEW_MAX_TURNS = 2; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
+export const INTERVIEW_MAX_TURNS = 8; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
 
 export function askTurn(c: Any, field: string) {
   const bank = interviewBank[field];

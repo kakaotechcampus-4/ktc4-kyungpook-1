@@ -82,7 +82,8 @@ def test_revert_commit_in_candidate_creates_evidence_gap_question() -> None:
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["question_type"] == "EVIDENCE_GAP"
-    assert "b9c02d" in data["question_text"]
+    assert "세션 캐시 도입" in data["question_text"]
+    assert "b9c02d" not in data["question_text"]
     assert data["target_star_slot"] == "R"
     assert data["target_statement_seq"] == 1
     assert "turn_seq" not in data
@@ -108,7 +109,6 @@ def test_linked_commit_creates_evidence_gap_question() -> None:
     data = response.json()["data"]
     assert data["question_type"] == "EVIDENCE_GAP"
     assert "세션 테이블 인덱스 추가" in data["question_text"]
-    assert "abc123" in data["question_text"]
 
 
 def test_empty_slot_uses_card_commit_as_recall_aid_context() -> None:
@@ -126,8 +126,31 @@ def test_empty_slot_uses_card_commit_as_recall_aid_context() -> None:
     data = response.json()["data"]
     assert data["question_type"] == "RECALL_AID"
     assert "세션 테이블 인덱스 추가" in data["question_text"]
-    assert "abc123" in data["question_text"]
+    assert "abc123" not in data["question_text"]
     assert ESCAPE_HATCH in data["question_text"]
+
+
+def test_template_question_uses_slot_name_and_commit_title_without_ids() -> None:
+    """틀 질문은 커밋 번호·리뷰 id·S·T·A·R 글자를 쓰지 않고, 칸 이름과 종류 표시를 뗀 커밋 메시지 첫 줄을 인용한다."""
+    sha = "069600b7a4121b6c9ecaff2a7711b78801026224"
+    message = "feat(api): Category enum을 의류 쇼핑몰 카테고리로 변경\n\n시드 데이터도 함께 바꿨다"
+    response = _post(
+        {
+            "card_id": 140,
+            "source_type": "COMMIT_CLUSTER",
+            "candidate": _candidate(_commit(790, sha, message)),
+            "missing_slots": [_slot(linked_commits=[_commit(790, sha, message)])],
+            "existing_turn_count": 0,
+        }
+    )
+
+    question_text = response.json()["data"]["question_text"]
+    assert "‘Category enum을 의류 쇼핑몰 카테고리로 변경’" in question_text
+    assert "결과 부분" in question_text
+    assert sha[:7] not in question_text
+    assert "feat" not in question_text
+    assert "시드 데이터" not in question_text
+    assert "R 부분" not in question_text
 
 
 def test_pr_without_commits_cites_pr_number() -> None:
@@ -163,12 +186,12 @@ def test_direct_slot_commit_precedes_unrelated_candidate_revert() -> None:
     )
 
     question_text = response.json()["data"]["question_text"]
-    assert "abc123" in question_text
-    assert "dead111" not in question_text
+    assert "세션 테이블 인덱스 추가" in question_text
+    assert "다른 기능" not in question_text
 
 
 def test_changes_requested_review_creates_evidence_gap_question() -> None:
-    """변경 요청 리뷰가 전달되면 PR·리뷰 식별자와 요약을 인용한다."""
+    """변경 요청 리뷰가 전달되면 PR 번호와 리뷰 요약을 인용한다."""
     response = _post(
         {
             "card_id": 125,
@@ -192,7 +215,6 @@ def test_changes_requested_review_creates_evidence_gap_question() -> None:
     data = response.json()["data"]
     assert data["question_type"] == "EVIDENCE_GAP"
     assert "PR #222" in data["question_text"]
-    assert "리뷰 9001" in data["question_text"]
     assert "책임을 분리" in data["question_text"]
     assert ESCAPE_HATCH in data["question_text"]
 
@@ -217,7 +239,7 @@ def test_non_changes_requested_review_does_not_use_changes_question() -> None:
     data = response.json()["data"]
     assert data["question_type"] == "RECALL_AID"
     assert "PR #222" in data["question_text"]
-    assert "리뷰 9002" not in data["question_text"]
+    assert "승인합니다" not in data["question_text"]
 
 
 def test_issue_feedback_creates_evidence_gap_question() -> None:
@@ -272,8 +294,8 @@ def test_direct_slot_commit_precedes_review_and_issue_context() -> None:
     )
 
     question_text = response.json()["data"]["question_text"]
-    assert "abc123" in question_text
-    assert "리뷰 9001" not in question_text
+    assert "세션 테이블 인덱스 추가" in question_text
+    assert "책임 분리 요청" not in question_text
     assert "이슈 #31" not in question_text
 
 

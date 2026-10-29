@@ -6,6 +6,7 @@ import pytest
 
 from schemas.analysis import ChangedFile, CommitInput, IssueContext, PullRequestContext
 from services.commit_grouper import CommitGroup, CommitGrouper
+from services.progress import listening
 from services.grouping_llm import (
     ExperienceGroupingOutput,
     GroupDescriptionsOutput,
@@ -111,6 +112,42 @@ def test_group_units_batches_without_losing_units() -> None:
     assert len(fake.calls) == 1
     assert [unit.group_key for experience in experiences for unit in experience] == [
         unit.group_key for unit in units
+    ]
+
+
+def test_group_units_report_per_batch_and_describe_reports_per_experience() -> None:
+    """묶음 하나를 묶을 때마다 본 작업 수와 만든 경험 수를 알리고, 설명은 한 번에 받아도 경험마다 제목·이유를 한 줄씩 알린다."""
+    units = [cluster(f"cluster:{n}", [commit(f"{n:040x}", n)]) for n in range(1, 4)]
+    fake = FakeModelClient(
+        [
+            {"experiences": [{"item_ids": [1, 2]}]},
+            {
+                "descriptions": [
+                    {"group_key": u.group_key, "title": f"기능 {n}", "reason": f"근거 {n}"}
+                    for n, u in enumerate(units[:2], start=1)
+                ]
+            },
+            {"descriptions": [{"group_key": units[2].group_key, "title": "기능 3", "reason": "근거 3"}]},
+        ]
+    )
+    llm = GroupingLlm(fake, batch_size=2, description_batch_size=2)
+    events: list[tuple] = []
+
+    async def run() -> None:
+        with listening(lambda step, done, total, item: events.append((step, done, total, item))):
+            await llm.group_units(units)
+            await llm.describe(units)
+
+    asyncio.run(run())
+
+    assert events == [
+        ("COMPRESS", 0, 3, None),
+        ("COMPRESS", 2, 3, {"kind": "GROUPED", "units": 2, "experiences": 1}),
+        ("COMPRESS", 3, 3, {"kind": "GROUPED", "units": 1, "experiences": 1}),
+        ("REASON", 0, 3, None),
+        ("REASON", 1, 3, {"kind": "DESCRIBED", "title": "기능 1", "reason": "근거 1"}),
+        ("REASON", 2, 3, {"kind": "DESCRIBED", "title": "기능 2", "reason": "근거 2"}),
+        ("REASON", 3, 3, {"kind": "DESCRIBED", "title": "기능 3", "reason": "근거 3"}),
     ]
 
 

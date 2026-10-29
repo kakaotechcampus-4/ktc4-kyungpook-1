@@ -358,7 +358,7 @@ class AiInterviewQuestionAdapterTest {
                         new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of()),
                         new InterviewMissingSlot(InterviewStarSlot.A, 1, "A 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of()),
                         new InterviewMissingSlot(InterviewStarSlot.R, 1, "R 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of())),
-                0, 3, InterviewCardSourceType.DIRECT_CARD, InterviewStarSlot.T,
+                0, 8, InterviewCardSourceType.DIRECT_CARD, InterviewStarSlot.T,
                 List.of(InterviewStarSlot.S, InterviewStarSlot.T, InterviewStarSlot.A, InterviewStarSlot.R), List.of());
 
         adapter.nextQuestion(request);

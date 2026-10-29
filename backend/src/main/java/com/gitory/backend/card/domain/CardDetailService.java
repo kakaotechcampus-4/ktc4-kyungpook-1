@@ -2,6 +2,7 @@ package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.interview.InterviewTurn;
+import com.gitory.backend.card.infra.ActivityRepository;
 import com.gitory.backend.card.infra.CardDraftStepRepository;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
@@ -45,6 +46,7 @@ public class CardDetailService {
     private final CardSlotNoteRepository notes;
     private final CardDraftStepRepository draftSteps;
     private final CommitSummaryService commitSummaries;
+    private final ActivityRepository activities;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public CardDetail load(UUID publicId, Long userId) {
@@ -54,6 +56,10 @@ public class CardDetailService {
         RepositoryReference repository = Optional.ofNullable(card.getUserRepositoryId())
                 .flatMap(repositories::find)
                 .orElse(null);
+        ActivityReference activity = Optional.ofNullable(card.getActivityId())
+                .flatMap(activities::findById)
+                .map(ActivityReference::of)
+                .orElse(null);
         VersionSlots slots = reader.read(card.getId(), card.getCurrentVersion());
         List<InterviewTurn> asked = turns.findByCardIdOrderBySeqAsc(card.getId());
 
@@ -62,7 +68,7 @@ public class CardDetailService {
                 .orElse(null);
 
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
-                card.areaTags(), card.techTags(), card.getPeriod(), repository, current.getSource(),
+                card.areaTags(), card.techTags(), card.getPeriod(), repository, activity, current.getSource(),
                 current.getUpdatedAt(), slots, card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(),
                 candidate, generationOf(card), card.getGenerationFailure(), answeredCount(asked),
                 card.getInterviewEndReason(), turnNosOf(slots, asked), notesOf(card),

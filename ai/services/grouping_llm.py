@@ -14,6 +14,7 @@ from schemas.analysis import CommitInput, IssueContext, PullRequestContext
 from services.commit_grouper import CommitGroup
 from services.llm_executors import GROUPING_EXECUTOR, run_llm_call
 from services.llm_settings import LLMConfigError, load_llm_settings
+from services.progress import COMPRESS, REASON, described_item, grouped_item, report_progress
 from services.llm_structured_client import (
     LLMStructuredCallError,
     LLMStructuredOutputTooLongError,
@@ -166,15 +167,21 @@ class GroupingLlm:
     ) -> list[list[CommitGroup]]:
         """같은 경험에 속하는 작업 단위들을 고른다. 모든 단위는 정확히 한 경험에 들어간다."""
         ordered = sorted(units, key=lambda unit: (self._started_at(unit), unit.group_key))
+        report_progress(COMPRESS, 0, len(ordered))
         if len(ordered) <= 1:
+            report_progress(COMPRESS, len(ordered), len(ordered))
             return [[unit] for unit in ordered]
 
         pull_by_number = {pull.number: pull for pull in pull_requests}
         issue_by_number = {issue.number: issue for issue in issues}
         experiences: list[list[CommitGroup]] = []
+        grouped = 0
         for batch in self._split_batches(ordered, self._batch_size, self._started_at):
-            experiences.extend(
-                await self._group_batch(batch, pull_by_number, issue_by_number)
+            batch_experiences = await self._group_batch(batch, pull_by_number, issue_by_number)
+            experiences.extend(batch_experiences)
+            grouped += len(batch)
+            report_progress(
+                COMPRESS, grouped, len(ordered), grouped_item(len(batch), len(batch_experiences))
             )
         return experiences
 
@@ -230,11 +237,14 @@ class GroupingLlm:
         pull_by_number = {pull.number: pull for pull in pull_requests}
         issue_by_number = {issue.number: issue for issue in issues}
         output: dict[str, tuple[str, str]] = {}
+        report_progress(REASON, 0, len(groups))
         for offset in range(0, len(groups), self._description_batch_size):
             batch = groups[offset : offset + self._description_batch_size]
-            output.update(
-                await self._describe_batch(batch, pull_by_number, issue_by_number, deadline)
-            )
+            described = await self._describe_batch(batch, pull_by_number, issue_by_number, deadline)
+            output.update(described)
+            # 한 번에 받은 설명도 경험마다 한 줄씩 알려, 화면이 고른 이유를 빠짐없이 보여 줄 수 있게 한다
+            for done, group in enumerate(batch, start=offset + 1):
+                report_progress(REASON, done, len(groups), described_item(*described[group.group_key]))
         return output
 
     async def _describe_batch(

@@ -7,10 +7,11 @@ import time
 
 from fastapi import APIRouter, Depends, Header
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from api.failure_log import log_failure
-from api.openapi import COLLECTION_ERROR_RESPONSES
+from api.openapi import COLLECTION_ERROR_RESPONSES, INVALID_PAYLOAD_RESPONSE
+from api.progress_stream import NDJSON, STREAM_DESCRIPTION, stream_with_progress
 from ports.repository_activity import RepositoryActivityPort
 from schemas.collection import (
     CandidateDetailRequest,
@@ -97,6 +98,35 @@ async def collect_repository_activity(
             started, "PARTIAL" if execution.result.partial else "COMPLETED", github_calls=execution.api_calls
         ),
         error=None,
+    )
+
+
+@router.post(
+    "/collect/stream",
+    response_class=StreamingResponse,
+    summary="A-1 GitHub 저장소 활동 수집 (진행 스트리밍)",
+    description=(
+        "`/internal/collect` 와 같은 수집을 하면서 PR 하나(PR_REVIEW)·커밋 상세 하나(COMMITS)를 읽을 때마다 진행을 보냅니다. "
+        "전체 수는 읽을 PR 을 고른 뒤, 상세를 받을 새 커밋을 정한 뒤에 처음 보냅니다. "
+        + STREAM_DESCRIPTION
+    ),
+    responses={
+        200: {"description": "진행 줄들과 마지막 결과 줄", "content": {NDJSON: {}}},
+        400: INVALID_PAYLOAD_RESPONSE,
+    },
+)
+async def collect_repository_activity_stream(
+    request: RepositoryCollectionRequest,
+    x_github_token: str = Header(
+        ..., alias="X-GitHub-Token", min_length=1,
+        description="Spring이 호출 중에만 전달하는 GitHub OAuth 토큰. 요청 본문이나 문서 예시에 넣지 않습니다.",
+    ),
+    activity_port: RepositoryActivityPort = Depends(get_repository_activity_port),
+) -> StreamingResponse:
+    """수집 API 와 같은 처리·오류 응답을 쓰고, 그 사이 진행만 줄로 더 보낸다."""
+    return stream_with_progress(
+        "/internal/collect/stream",
+        lambda: collect_repository_activity(request, x_github_token, activity_port),
     )
 
 

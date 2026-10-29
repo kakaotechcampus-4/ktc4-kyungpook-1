@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
@@ -37,7 +38,7 @@ import java.util.UUID;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobQueryService.class, JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class,
+@Import({ClockConfig.class, JobQueryService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class, CollectionStatsService.class,
         GeneratedCardQueryService.class})
 class JobQueryServiceTest {
 
@@ -99,7 +100,7 @@ class JobQueryServiceTest {
         assertThat(found.partial()).isFalse();
         assertThat(found.steps())
                 .extracting(JobStep::key)
-                .containsExactly(JobStepKey.COMMITS, JobStepKey.PR_REVIEW, JobStepKey.COMPRESS, JobStepKey.REASON);
+                .containsExactly(JobStepKey.PR_REVIEW, JobStepKey.COMMITS, JobStepKey.COMPRESS, JobStepKey.REASON);
         assertThat(found.errorCode()).isNull();
         assertThat(found.retryable()).isNull();
         assertThat(found.retryAfterSec()).isNull();

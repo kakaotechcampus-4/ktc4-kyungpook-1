@@ -244,6 +244,10 @@ class InterviewTurnResult(BaseModel):
     suggested_answers: list[str] = Field(
         default_factory=list, description="그대로 고를 수 있는 그 칸의 문장 후보(최대 2개)"
     )
+    reason: Optional[str] = Field(
+        None,
+        description="LLM 이 이 칸을 묻거나 그만 묻기로 한 이유 한 줄(60자 이내). 화면이 칸을 정했거나 틀 질문이면 null",
+    )
 
 
 class StatementTarget(StrictRequestModel):

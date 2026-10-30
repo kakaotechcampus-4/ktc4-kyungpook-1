@@ -83,12 +83,14 @@ on('GET', '/repos/:id/candidates', ({ params }) => {
   return ok(boardFor(r.id)); // 후보 0개도 200 — 판정이다
 });
 on('POST', '/repos/:id/candidates', ({ params, body }) => {
+  if (!db.repos.some((r) => r.id === params[0])) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다'); // 입력 검사보다 먼저, 실서버와 같다
   const c = { id: nextId('c'), repoId: params[0], type: 'MANUAL', status: 'NEW', ref: 'MANUAL', title: body.title, reason: body.summary,
     meta: { commits: body.shas?.length ?? 0, files: 0, reviewComments: 0, days: null, codeRatio: null }, weak: false, score: 0, commits: null, usedByCardId: null };
   db.candidates.push(c);
   return ok(c);
 });
 on('POST', '/repos/:id/cards', ({ params, body }) => {
+  if (!db.repos.some((r) => r.id === params[0])) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
   const ids: string[] = body.candidateIds ?? [];
   if (!ids.length) return fail(400, 'NO_CANDIDATES', '후보를 하나 이상 선택해야 합니다');
   return ok(createDraftCards(params[0], ids));
@@ -107,8 +109,12 @@ on('GET', '/repos/:id/commits', ({ params, search }) => {
   });
   return ok([...fromClusters, ...synth].filter((c) => !q || c.message.toLowerCase().includes(q) || c.sha.startsWith(q)).slice(0, 20));
 });
-on('GET', '/repos/:id/recall', ({ params }) => ok(recallFor(params[0])));
+on('GET', '/repos/:id/recall', ({ params }) => {
+  if (!db.repos.some((r) => r.id === params[0])) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
+  return ok(recallFor(params[0]));
+});
 on('POST', '/repos/:id/recall/answers', ({ params, body }) => {
+  if (!db.repos.some((r) => r.id === params[0])) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
   const c = { id: nextId('c'), repoId: params[0], type: 'MANUAL', status: 'NEW', ref: 'RECALL', title: `${body.path} 작업`, reason: `회상 답변: "${body.text}"`,
     meta: { commits: 0, files: 0, reviewComments: 0, days: null, codeRatio: null }, weak: false, score: 1, commits: null, usedByCardId: null };
   db.candidates.push(c);

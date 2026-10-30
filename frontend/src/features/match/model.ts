@@ -55,4 +55,4 @@ export const dateLabel = (date: string) =>
     timeZone: "Asia/Seoul",
   }).format(new Date(date));
 export const deadlineLabel = (value: string | null) =>
-  value === null ? "상시 채용" : `${dateLabel(value)} 마감`;
+  value === null ? "마감일 없음" : `${dateLabel(value)} 마감`;

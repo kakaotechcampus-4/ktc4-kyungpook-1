@@ -52,8 +52,9 @@ export function MatchListPage() {
       exp === "ENTRY" || exp === "EXPERIENCED" || exp === "UNSPECIFIED"
         ? exp
         : "ALL",
-    // 등급이 하나도 없으면 sort=fit 이 주소에 남아 있어도 마감 순으로 본다
-    sort: hasGrade !== false && sp.get("sort") !== "deadline" ? "fit" : "deadline",
+    // sort=fit 은 서버가 준 순서를 그대로 둔다 — 등급이 있으면 등급순이고 같은 등급 안에서는 서버가 회사를 섞은 순서,
+    // 등급이 없으면(목록은 늘 fit null) 서버가 정한 순서(마감 임박 먼저, 나머지는 회사마다 돌아가며) 그대로다. 마감 순을 고르면 그때만 다시 정렬한다.
+    sort: sp.get("sort") === "deadline" ? "deadline" : "fit",
   };
   const list = useMemo(
     () => selectMatches(matches.data ?? [], filters),
@@ -117,7 +118,7 @@ export function MatchListPage() {
           value={filters.sort}
           onChange={(x) => update("sort", x)}
           options={[
-            ...(hasGrade !== false ? [{ value: "fit" as const, label: "근거 등급 순" }] : []),
+            { value: "fit" as const, label: hasGrade === false ? "기본 순서" : "근거 등급 순" },
             { value: "deadline" as const, label: "마감 순" },
           ]}
         />

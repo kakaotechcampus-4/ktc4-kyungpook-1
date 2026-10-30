@@ -95,7 +95,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
     await actions.run(async () => {
       const results = await Promise.allSettled(excluded.map((c) => patch.mutateAsync({ id: c.id, status: 'NEW' })));
       const failures = results.filter((result) => result.status === 'rejected').length;
-      if (failures) toast(`${results.length - failures}개 복원 · ${failures}개는 다시 시도해 주세요`, { tone: 'danger' });
+      if (failures) toast(`${results.length - failures}개 복원, ${failures}개는 다시 시도해 주세요`, { tone: 'danger' });
     });
   };
   const row = (c: Candidate) => (
@@ -122,7 +122,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
 
   if (board.isPending) return <main className="main"><Breadcrumb items={crumbs} /><Skeleton h={40} w={240} /><Skeleton h={300} /></main>;
   // 백그라운드 리페치만 실패했고 캐시에 보드가 있으면(방금 PATCH 응답을 합쳐 둔 상태) 보드를 그대로 보여준다.
-  if (board.isError && !board.data) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">저장소 목록</Link></main>;
+  if (board.isError && !board.data) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">레포 목록</Link></main>;
   const b = board.data!;
 
   // C2 — 후보 0개: 에러가 아니라 판정. 판정 근거 3줄 + 다음 행동 3개.
@@ -134,14 +134,14 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <RepoContext name={name} note="후보 0개" />
         <div className="verdict">
           <div className="stack grow" style={{ gap: 8 }}>
-            <span className="w-600" style={{ fontSize: 15 }}>파일을 보며 경험을 떠올려 보세요</span>
-            <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>· {r}</span>)}</div>
+            <span className="w-600" style={{ fontSize: 16 }}>파일을 보며 경험을 떠올려 보세요</span>
+            <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>• {r}</span>)}</div>
           </div>
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
             <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>
             <div className="row" style={{ gap: 8 }}>
               <Link to="/cards/new" className="btn btn--outline btn--sm">직접 입력</Link>
-              <Link to="/repos" className="btn btn--outline btn--sm">다른 저장소</Link>
+              <Link to="/repos" className="btn btn--outline btn--sm">다른 레포</Link>
             </div>
           </div>
         </div>
@@ -154,20 +154,20 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       <Breadcrumb items={crumbs} />
       <PageTitle lead="커밋과 PR에서 카드로 만들 만한 작업을 골라 뒀어요. 자소서에 쓸 것만 체크하면 카드 초안을 써 드려요.">{b.partial ? `후보 ${cands.length}개 (부분 결과)` : `후보 ${cands.length}개`}</PageTitle>
       <RepoContext name={name} note="카드로 만들 경험을 선택하세요."
-        right={<Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>분석 기준</Button>} />
+        right={<Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>정리 기준</Button>} />
 
       {b.partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 20px', background: 'var(--state-partial-bg)', border: 0, flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">부분 결과</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
             <span className="w-600" style={{ fontSize: 14 }}>읽은 기록에서 찾은 후보예요</span>
-            {b.readCoverage && <span className="t-12l c-2">{`커밋 ${b.readCoverage.commitsRead}/${b.readCoverage.commitsTotal} · PR ${b.readCoverage.prsRead}/${b.readCoverage.prsTotal} 읽음`}</span>}
+            {b.readCoverage && <span className="t-12l c-2">{`커밋 ${b.readCoverage.commitsRead}/${b.readCoverage.commitsTotal}, PR ${b.readCoverage.prsRead}/${b.readCoverage.prsTotal} 읽음`}</span>}
           </div>
           {sp.get('job') && <Link className="btn btn--outline btn--sm" to={`/repos/${repoId}/run?job=${encodeURIComponent(sp.get('job')!)}`}>작업 상태 보기</Link>}
         </div>
       )}
 
-      <Toolbar placeholder="후보 검색 (제목·추천 이유)" value={q} onChange={setQ}>
+      <Toolbar placeholder="후보 검색 (제목, 추천 이유)" value={q} onChange={setQ}>
         <Button disabled={busy} onClick={() => setSp((current) => { current.set('add', '1'); return current; })}>+ 직접 추가</Button>
       </Toolbar>
       <SectionHead label="후보 선택" count={visible.length} right={
@@ -182,7 +182,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         {recommended.map((c) => row(c))}
         {more.length > 0 && <>
           <button type="button" className="record-list__more" aria-expanded={moreOpen} onClick={() => setShowWeak(open => !open)} disabled={!!q.trim()}>
-            <span>더 보기 후보 {more.length}개{selectedMore > 0 ? ` · ${selectedMore}개 선택` : ''}{q.trim() ? ' · 검색 결과' : moreOpen ? ' · 접기' : ' · 보기'}</span>
+            <span>더 보기 후보 {more.length}개{selectedMore > 0 ? `, ${selectedMore}개 선택` : ''}{q.trim() ? ', 검색 결과' : moreOpen ? ' 접기' : ' 보기'}</span>
             {moreOpen ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
           </button>
           {moreOpen && more.map(c => row(c))}
@@ -192,7 +192,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
           : <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="남은 후보가 없어요" tone="inset">후보를 모두 카드로 만들었어요. 아래에서 만든 카드를 볼 수 있어요.</Note></div>)}
         {usedList.length > 0 && (
           <button type="button" className="record-list__more" aria-expanded={showUsed} onClick={() => setShowUsed((open) => !open)}>
-            <span>이미 카드로 만든 후보 {usedList.length}개 · {showUsed ? '접기' : '보기'}</span>
+            <span>이미 카드로 만든 후보 {usedList.length}개 {showUsed ? '접기' : '보기'}</span>
             {showUsed ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
           </button>
         )}
@@ -244,7 +244,7 @@ function CandidateRow({ c, disabled, selected, onToggle, onExclude, expanded, on
         </span>
         {cluster && (
           <div className="cand__warn">
-            <span>시간대·디렉터리로 묶은 커밋</span>
+            <span>시간대와 디렉터리로 묶은 커밋</span>
             {c.commits && c.commits.length > 0 && <button type="button" className="btn btn--text btn--sm cand__expand" onClick={onExpand} aria-expanded={expanded}>{expanded ? '접기' : `커밋 ${c.commits.length}개 펼치기`}{expanded ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}</button>}
           </div>
         )}
@@ -269,7 +269,7 @@ function ClusterCommits({ c, disabled, onChange }: { c: Candidate; disabled: boo
           <div className="commit-row__body">
             <div className="commit-row__heading"><span className="commit-row__sha">{shortSha(cm.sha)}</span>{!cm.included && <Badge kind="NEUTRAL">제외됨</Badge>}</div>
             <span className="commit-row__msg">{cm.message}</span>
-            <span className="commit-row__path">{cm.path} · {cm.at.slice(5, 16).replace('T', ' ')}</span>
+            <span className="commit-row__path">{cm.path}, {cm.at.slice(5, 16).replace('T', ' ')}</span>
           </div>
           <a href={cm.url} target="_blank" rel="noreferrer" className="commit-row__link" aria-label={`${shortSha(cm.sha)} GitHub에서 보기`}><ExternalLink size={16} aria-hidden /></a>
         </div>
@@ -278,7 +278,7 @@ function ClusterCommits({ c, disabled, onChange }: { c: Candidate; disabled: boo
   );
 }
 
-/** "분석 기준 보기" — 이 레포에서 무엇을 읽고 안 읽었는지 · 언제 정리했는지 · 다시 정리 */
+/** "정리 기준 보기" — 이 레포에서 무엇을 읽고 안 읽었는지 · 언제 정리했는지 · 다시 정리 */
 function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial: boolean; onClose: () => void }) {
   const repo = useRepo(repoId);
   const start = useStartAnalysis();
@@ -294,7 +294,7 @@ function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial:
     });
   };
   return (
-    <Modal title="이 보드의 분석 기준" width={720} onClose={() => { if (!start.isPending) onClose(); }}
+    <Modal title="이 보드의 정리 기준" width={720} onClose={() => { if (!start.isPending) onClose(); }}
       sub={r.lastAnalyzedAt ? `${ymdhm(r.lastAnalyzedAt)} 에 읽은 결과입니다.` : '아직 정리 기록이 없습니다.'}
       footer={{ strong: partial ? '재시도 가능 여부는 작업 상태에서 확인하세요' : '후보의 추천 이유와 근거를 확인하세요', actions: <><Button variant="outline" disabled={start.isPending} onClick={onClose}>닫기</Button><Button onClick={again} disabled={partial} loading={start.isPending}>다시 정리하기</Button></> }}>
       <PermissionGrid compact reads={r.disclosure.reads} skips={r.disclosure.skips} />

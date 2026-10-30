@@ -49,7 +49,7 @@ describe('interview retry and pending answer', () => {
       fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
       await screen.findByText('이어서 물을까요?');
     }
-    fireEvent.click(screen.getByRole('button', { name: /결과 · 비어 있음/ }));
+    fireEvent.click(screen.getByRole('button', { name: /결과 \(비어 있음\)/ }));
     const retry = await screen.findByRole('button', { name: /다시/ });
     fireEvent.click(retry);
     await waitFor(() => expect(ask.mock.calls.map((call) => call[1])).toEqual(suffix ? ['T', 'R', 'R'] : ['R', 'R']));

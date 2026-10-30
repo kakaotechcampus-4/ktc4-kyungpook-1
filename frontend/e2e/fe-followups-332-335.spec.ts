@@ -21,11 +21,11 @@ for (const width of [320, 390, 1440]) test(`weak candidates search, manual selec
   await checkbox.click();
   await group.click();
   await expect(group).toContainText('1개 선택');
-  await page.getByPlaceholder('후보 검색 (제목·추천 이유)').fill(weak.title);
+  await page.getByPlaceholder('후보 검색 (제목, 추천 이유)').fill(weak.title);
   await expect(checkbox).toBeVisible();
   await expect(checkbox).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('.record-list')).toHaveCount(1);
-  await page.getByPlaceholder('후보 검색 (제목·추천 이유)').blur();
+  await page.getByPlaceholder('후보 검색 (제목, 추천 이유)').blur();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   await page.screenshot({ path: `docs/screenshots/2026-10-21-followups/candidates-${width}.png`, fullPage: true });
 });

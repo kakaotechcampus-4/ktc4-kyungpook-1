@@ -10,7 +10,7 @@ for (const text of ['abcdef', 'backend developer', '프론트엔드 개발자'])
   test(`매칭 검색창에 빠르게 쳐도 글자가 그대로고 URL 의 q 도 같아요 (${text})`, async ({ page }) => {
     await page.goto('/match');
     await expect(page.locator('.match-card').first()).toBeVisible();
-    const search = page.getByPlaceholder('기업·직무 검색');
+    const search = page.getByPlaceholder('기업이나 직무 검색');
     await search.pressSequentially(text, { delay: 0 });
     await expect(search).toHaveValue(text);
     await expect.poll(() => urlQuery(page.url())).toBe(text);
@@ -24,7 +24,7 @@ for (const text of ['abcdef', 'backend developer', '프론트엔드 개발자'])
 test('검색어를 친 뒤 필터를 바꿔도 검색어가 입력과 URL 에 남아요', async ({ page }) => {
   await page.goto('/match');
   await expect(page.locator('.match-card').first()).toBeVisible();
-  const search = page.getByPlaceholder('기업·직무 검색');
+  const search = page.getByPlaceholder('기업이나 직무 검색');
   await search.pressSequentially('abc', { delay: 0 });
   await page.getByRole('combobox', { name: '공고 정렬', exact: true }).click();
   await page.getByRole('option', { name: '마감 순', exact: true }).click();

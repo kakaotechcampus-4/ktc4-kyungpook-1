@@ -1,4 +1,10 @@
 package com.gitory.backend.coverletter.domain;
 
-public record MaterialAsk(MaterialItem item, String question, boolean required) {
+import java.util.List;
+
+public record MaterialAsk(MaterialItem item, String question, boolean required, List<String> templates) {
+
+    public MaterialAsk {
+        templates = templates == null ? List.of() : List.copyOf(templates);
+    }
 }

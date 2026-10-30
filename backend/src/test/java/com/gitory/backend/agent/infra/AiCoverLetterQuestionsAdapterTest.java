@@ -86,16 +86,16 @@ class AiCoverLetterQuestionsAdapterTest {
         assertThat(sent.path("questions").get(1).path("primary_card").isNull()).isTrue();
         assertThat(result.questions()).containsExactly(
                 new CoverLetterQuestions.Question(1, List.of("RESULT"), List.of(
-                        new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?"),
-                        new CoverLetterQuestions.Ask("TRIGGER", "왜 고치기로 했나요?"))),
+                        new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?", List.of()),
+                        new CoverLetterQuestions.Ask("TRIGGER", "왜 고치기로 했나요?", List.of()))),
                 new CoverLetterQuestions.Question(2, List.of(), List.of()));
 
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"missingQuestion", "swappedQuestions", "unknownItem", "unknownRequiredItem",
-            "sameItemTwice", "fourAsks", "blankQuestion"})
-    @DisplayName("문항이 빠지거나 순서가 다르거나, 모르는 항목·같은 항목을 묻거나, 3개를 넘게 묻거나, 빈 질문이 온 응답은 다시 해도 같은 이상 응답이다")
+            "sameItemTwice", "fiveAsks", "blankQuestion", "threeTemplates", "blankTemplate", "templatesNotArray"})
+    @DisplayName("문항이 빠지거나 순서가 다르거나, 모르는 항목·같은 항목을 묻거나, 4개를 넘게 묻거나, 빈 질문이 오거나, 빈칸 틀이 2개를 넘거나 비었거나 목록이 아닌 응답은 다시 해도 같은 이상 응답이다")
     void rejectsResponsesOutsideTheContract(String broken) {
 
         ObjectNode data = validData();
@@ -106,11 +106,16 @@ class AiCoverLetterQuestionsAdapterTest {
             case "unknownItem" -> ((ObjectNode) first.withArray("asks").get(0)).put("item", "HOBBY");
             case "unknownRequiredItem" -> first.withArray("required_missing").add("HOBBY");
             case "sameItemTwice" -> ((ObjectNode) first.withArray("asks").get(1)).put("item", "RESULT");
-            case "fourAsks" -> {
+            case "fiveAsks" -> {
                 first.withArray("asks").addObject().put("item", "LEARNING").put("question", "무엇을 배웠나요?");
                 first.withArray("asks").addObject().put("item", "JOB_LINK").put("question", "직무와 어떻게 이어지나요?");
+                first.withArray("asks").addObject().put("item", "ACTION").put("question", "어떻게 고쳤나요?");
             }
             case "blankQuestion" -> ((ObjectNode) first.withArray("asks").get(0)).put("question", " ");
+            case "threeTemplates" -> ((ObjectNode) first.withArray("asks").get(0)).putArray("templates")
+                    .add("___ 때문이었다").add("___ 이 달라졌다").add("___ 을 했다");
+            case "blankTemplate" -> ((ObjectNode) first.withArray("asks").get(0)).putArray("templates").add(" ");
+            case "templatesNotArray" -> ((ObjectNode) first.withArray("asks").get(0)).put("templates", "___ 때문이었다");
             default -> throw new IllegalArgumentException(broken);
         }
         responseBody = success(data);
@@ -120,6 +125,39 @@ class AiCoverLetterQuestionsAdapterTest {
                     assertThat(failure.isRetryable()).isFalse();
                     assertThat(failure.isInvalidResponse()).isTrue();
                 });
+
+    }
+
+    @Test
+    @DisplayName("문항마다 질문을 4개까지 받는다")
+    void readsUpToFourAsksPerQuestion() {
+
+        ObjectNode data = validData();
+        ObjectNode first = (ObjectNode) data.withArray("questions").get(0);
+        first.withArray("asks").addObject().put("item", "LEARNING").put("question", "무엇을 배웠나요?");
+        first.withArray("asks").addObject().put("item", "JOB_LINK").put("question", "직무와 어떻게 이어지나요?");
+        responseBody = success(data);
+
+        CoverLetterQuestions result = adapter().ask(REQUEST);
+
+        assertThat(result.questions().get(0).asks()).extracting(CoverLetterQuestions.Ask::item)
+                .containsExactly("RESULT", "TRIGGER", "LEARNING", "JOB_LINK");
+
+    }
+
+    @Test
+    @DisplayName("질문에 붙은 빈칸 틀을 받아 돌려주고, 빈칸 틀 칸이 없는 질문은 틀 없는 질문으로 본다")
+    void readsTemplatesAndTreatsMissingTemplatesAsNone() {
+
+        ObjectNode data = validData();
+        ((ObjectNode) data.withArray("questions").get(0).withArray("asks").get(0)).putArray("templates")
+                .add("빌드 캐시를 나눈 이유는 ___ 때문이었다").add("___ 방법도 생각했지만 ___ 때문에 정했다");
+        responseBody = success(data);
+
+        CoverLetterQuestions result = adapter().ask(REQUEST);
+
+        assertThat(result.questions().get(0).asks()).extracting(CoverLetterQuestions.Ask::templates).containsExactly(
+                List.of("빌드 캐시를 나눈 이유는 ___ 때문이었다", "___ 방법도 생각했지만 ___ 때문에 정했다"), List.of());
 
     }
 

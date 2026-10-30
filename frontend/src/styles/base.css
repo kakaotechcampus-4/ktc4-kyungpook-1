@@ -15,9 +15,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .t-12l { font-size: 12px; line-height: 20px; }
 .t-14 { font-size: 14px; line-height: 20px; }
 .t-16 { font-size: 16px; line-height: 24px; }
-.t-18 { font-size: 18px; line-height: 28px; }
+.t-18 { font-size: 20px; line-height: 28px; }
 .t-20 { font-size: 20px; line-height: 28px; }
-.t-24 { font-size: 24px; line-height: 32px; }
+.t-24 { font-size: 28px; line-height: 32px; }
 .t-28 { font-size: 28px; line-height: 40px; letter-spacing: var(--text-tracking); }
 .t-40 { font-size: 40px; line-height: 52px; letter-spacing: var(--text-tracking); }
 .w-500 { font-weight: 500; } .w-600 { font-weight: 600; } .w-700 { font-weight: 700; } .w-800 { font-weight: 800; }

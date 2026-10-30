@@ -117,6 +117,23 @@ public class CoverLetter {
 
     }
 
+    /** 질문을 받은 자소서에서만 부르며, 지금 답으로 초안 쓰기를 줄 세운다 */
+    public void startDrafting() {
+
+        stage = CoverLetterStage.DRAFTING;
+        updatedAt = CoverLetterTime.now();
+
+    }
+
+    public void drafted(List<DraftStep> steps) {
+
+        stage = CoverLetterStage.DRAFTED;
+        runningSince = null;
+        draftSteps = new ArrayList<>(steps);
+        updatedAt = CoverLetterTime.now();
+
+    }
+
     /** 도는 단계에서만 부르며, 그 단계를 실패한 단계로 남겨 다시 시도가 그 단계부터 돌게 한다 */
     public void fail(CoverLetterError error) {
 

@@ -61,18 +61,20 @@ public class InterviewTurn {
     @JdbcTypeCode(SqlTypes.ARRAY)
     private List<String> suggestedAnswers = new ArrayList<>();
 
+    private String choiceReason;
+
     private Instant askedAt;
 
     private Instant answeredAt;
 
     private InterviewTurn(Long cardId, short seq, StarField starSlot, QuestionType questionType,
                           String questionText, TriggerSource triggerSource, Long parentTurnId) {
-        this(cardId, seq, starSlot, questionType, questionText, triggerSource, parentTurnId, null, List.of());
+        this(cardId, seq, starSlot, questionType, questionText, triggerSource, parentTurnId, null, List.of(), null);
     }
 
     private InterviewTurn(Long cardId, short seq, StarField starSlot, QuestionType questionType,
                           String questionText, TriggerSource triggerSource, Long parentTurnId,
-                          AnswerMode answerMode, List<String> suggestedAnswers) {
+                          AnswerMode answerMode, List<String> suggestedAnswers, String choiceReason) {
         this.cardId = cardId;
         this.seq = seq;
         this.starSlot = starSlot;
@@ -82,6 +84,7 @@ public class InterviewTurn {
         this.questionText = questionText;
         this.answerMode = answerMode;
         this.suggestedAnswers = new ArrayList<>(suggestedAnswers);
+        this.choiceReason = choiceReason;
         this.askedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
@@ -97,18 +100,18 @@ public class InterviewTurn {
     }
 
     /**
-     * 되묻기 루프에서 AI 가 정한 칸·답 버튼·예상 답변으로 질문을 만든다
+     * 되묻기 루프에서 AI 가 정한 칸·답 버튼·예상 답변·판단 이유로 질문을 만든다
      * 사용자가 칸을 지정했으면 USER, AI 가 칸을 골랐으면 AUTO 이고 AUTO 는 바로 앞 질문을 부모로 남긴다
      */
     public static InterviewTurn asked(Long cardId, short seq, StarField starSlot, QuestionType questionType,
                                       String questionText, boolean slotChosenByUser, Long previousTurnId,
-                                      AnswerMode answerMode, List<String> suggestedAnswers) {
+                                      AnswerMode answerMode, List<String> suggestedAnswers, String choiceReason) {
 
         return slotChosenByUser
                 ? new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.USER, null,
-                        answerMode, suggestedAnswers)
+                        answerMode, suggestedAnswers, choiceReason)
                 : new InterviewTurn(cardId, seq, starSlot, questionType, questionText, TriggerSource.AUTO,
-                        previousTurnId, answerMode, suggestedAnswers);
+                        previousTurnId, answerMode, suggestedAnswers, choiceReason);
 
     }
 

@@ -187,3 +187,19 @@ def test_streamed_reply_cut_at_budget_is_too_long_error() -> None:
 
     with pytest.raises(LLMStructuredOutputTooLongError):
         _client_streaming(_FakeStream(error=error), {}).call("system", {}, _Output, 6000)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        httpx.RemoteProtocolError("peer closed connection without sending complete message body"),
+        httpx.ReadTimeout("read timed out"),
+    ],
+    ids=lambda error: type(error).__name__,
+)
+def test_connection_cut_while_reading_stream_is_retryable(error: Exception) -> None:
+    with pytest.raises(LLMStructuredCallError) as raised:
+        _client_streaming(_FakeStream(error=error), {}).call("system", {}, _Output, 6000)
+
+    assert type(raised.value) is LLMStructuredCallError
+

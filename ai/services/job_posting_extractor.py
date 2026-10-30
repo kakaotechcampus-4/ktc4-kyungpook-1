@@ -35,6 +35,16 @@ SYSTEM_PROMPT = """당신은 채용공고 상세 본문을 구조화하는 추�
 criteria: 각 조건은 RESPONSIBILITY(담당 업무), REQUIRED(자격 요건), PREFERRED(우대 사항) 중 하나로 분류한다.
 기술 항목은 자격 요건 문단 안이면 REQUIRED, 우대 사항 문단 안이면 PREFERRED로 넣는다.
 자격 요건·우대 사항 문단 밖의 기술 항목(기술 스택 목록 등)과 어느 문단인지 확인할 수 없는 기술은 조건에 넣지 않는다.
+general_type은 STAR 카드가 아닌 사용자의 인적사항으로 확인할 일반 조건에만 붙인다.
+- EDUCATION: 학력·전공 (예: 4년제 졸업, 컴퓨터 관련 학과)
+- MILITARY: 병역 (예: 병역필 또는 면제)
+- LANGUAGE: 어학 (예: TOEIC 800, 영어 회화 가능)
+- CERTIFICATE: 자격증 (예: 정보처리기사)
+- LOCATION: 근무지·근무 형태 (예: 판교 근무 가능, 교대 근무)
+- OTHER: 위 종류 밖에서 STAR 카드로 증명할 수 없는 조건 (예: 해외여행 결격 사유 없음, 나이 제한)
+기술·직무 조건에는 general_type을 null로 둔다. RESPONSIBILITY에는 언제나 null을 둔다.
+한 문장에 일반 조건이 둘 이상 있으면 조건을 나눈다. 예: "4년제 졸업 및 병역필 또는 면제자"는 EDUCATION 하나와 MILITARY 하나다.
+기술 조건과 일반 조건이 섞여도 나눈다. 예: "Java 경험 3년 이상, 판교 근무 가능자"는 기술 조건(null)과 LOCATION 조건 하나다.
 source_quote에는 판단 근거가 된 원문을 글자 하나 바꾸지 말고 그대로 복사한다.
 text에는 source_quote에 나온 말만 사용해 요약하고, 인용에 없는 기술·자격·수치를 덧붙이지 않는다.
 text에 '필수', '우대', '자격 요건' 같은 문단 표시어를 넣지 않는다. 종류는 criterion_type으로만 나타낸다.
@@ -225,7 +235,7 @@ class JobPostingDetailExtractor:
                 kind = criterion.criterion_type.value
                 dropped[kind] = dropped.get(kind, 0) + 1
                 continue
-            key = (criterion.criterion_type.value, text.casefold())
+            key = (criterion.criterion_type.value, criterion.general_type, text.casefold())
             if key not in seen:
                 seen.add(key)
                 result.append(criterion.model_copy(update={"text": text}))

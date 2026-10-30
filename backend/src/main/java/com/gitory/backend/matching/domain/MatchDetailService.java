@@ -34,6 +34,7 @@ public class MatchDetailService {
 
     private final JobPostingRepository postings;
     private final MatchEvidenceSearch evidenceSearch;
+    private final CompanyDirectory companies;
     private final Clock clock;
 
     public MatchDetail detail(UUID postingId, Long userId) {
@@ -53,7 +54,7 @@ public class MatchDetailService {
                 .map(row -> new MatchableCondition(row.posting(), row.criterion().getId(), row.criterion().getType()))
                 .toList();
         Set<Long> metIds = matchesByCriterion.keySet();
-        MatchTarget target = MatchTargets.of(graded, metIds, evidence.confirmed().hasConfirmedCard());
+        MatchTarget target = MatchTargets.of(graded, metIds, evidence.confirmed().hasConfirmedCard(), companies);
 
         List<MatchCondition> conditions = rows.stream()
                 .map(PostingCondition::criterion)

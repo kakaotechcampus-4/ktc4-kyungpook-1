@@ -67,7 +67,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 시험이 3,000개를 넘어 13~15분 걸려, 15분이면 조금만 느려도 실패가 아닌 취소로 끝난다
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4

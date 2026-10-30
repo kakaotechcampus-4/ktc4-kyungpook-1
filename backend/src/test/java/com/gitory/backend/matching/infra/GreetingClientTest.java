@@ -58,7 +58,7 @@ class GreetingClientTest {
         });
         server.start();
         base = "http://127.0.0.1:" + server.getAddress().getPort();
-        source = new CompanySource("greet", "그리팅사", CompanySourceType.GREETING, base + LIST_PATH);
+        source = new CompanySource("greet", "그리팅사", CompanySourceType.GREETING, base + LIST_PATH, null);
 
     }
 

@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -40,9 +41,12 @@ public class MatchController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI 검색이 잠시 실패해 근거를 찾지 못함. 다시 시도할 수 있음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
-    public ApiResponse<List<MatchTargetResponse>> matches(@Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser) {
+    public ApiResponse<List<MatchTargetResponse>> matches(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "주면 그 회사(companyId)의 공고만 돌려준다. 없는 회사면 빈 배열")
+            @RequestParam(required = false) String companyId) {
 
-        return ApiResponse.ok(matches.list(loginUser.id()).stream().map(MatchTargetResponse::from).toList());
+        return ApiResponse.ok(matches.list(loginUser.id(), companyId).stream().map(MatchTargetResponse::from).toList());
 
     }
 

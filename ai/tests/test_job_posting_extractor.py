@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from api.job_postings import get_job_posting_extractor
 from main import app
 from schemas.matching import (
+    GeneralConditionType,
     JobCriterion,
     JobExperience,
     JobPostingDetailExtractionRequest,
@@ -116,6 +117,70 @@ def test_extracts_only_criteria_with_exact_source_quotes() -> None:
     assert len(result.criteria) == 3
     assert result.criteria[1].source_quote in RAW_TEXT
     assert model.calls == 1
+
+
+def test_general_condition_type_is_kept_while_technical_condition_is_null() -> None:
+    raw_text = "자격 요건\nJava 개발 경험이 필요합니다.\n4년제 대학 졸업자."
+    criteria = [
+        JobCriterion(
+            criterion_type="REQUIRED",
+            general_type=None,
+            text="Java 개발 경험",
+            source_quote="Java 개발 경험이 필요합니다.",
+        ),
+        JobCriterion(
+            criterion_type="REQUIRED",
+            general_type="EDUCATION",
+            text="4년제 대학 졸업자",
+            source_quote="4년제 대학 졸업자.",
+        ),
+    ]
+
+    result = JobPostingDetailExtractor(FakeExtractionModel(criteria)).extract(
+        JobPostingDetailExtractionRequest.model_validate(request_payload(raw_text=raw_text))
+    )
+
+    assert [criterion.general_type for criterion in result.criteria] == [
+        None,
+        GeneralConditionType.EDUCATION,
+    ]
+
+
+def test_responsibility_rejects_a_general_condition_type() -> None:
+    with pytest.raises(ValidationError, match="RESPONSIBILITY"):
+        JobCriterion(
+            criterion_type="RESPONSIBILITY",
+            general_type="LOCATION",
+            text="판교에서 백엔드 개발",
+            source_quote="판교에서 백엔드 개발을 담당합니다.",
+        )
+
+
+def test_model_output_can_split_mixed_general_conditions_from_one_quote() -> None:
+    quote = "4년제 졸업 및 병역필 또는 면제자"
+    criteria = [
+        JobCriterion(
+            criterion_type="REQUIRED",
+            general_type="EDUCATION",
+            text="4년제 졸업",
+            source_quote=quote,
+        ),
+        JobCriterion(
+            criterion_type="REQUIRED",
+            general_type="MILITARY",
+            text="병역필 또는 면제",
+            source_quote=quote,
+        ),
+    ]
+
+    result = JobPostingDetailExtractor(FakeExtractionModel(criteria)).extract(
+        JobPostingDetailExtractionRequest.model_validate(request_payload(raw_text=quote))
+    )
+
+    assert [(criterion.general_type, criterion.source_quote) for criterion in result.criteria] == [
+        (GeneralConditionType.EDUCATION, quote),
+        (GeneralConditionType.MILITARY, quote),
+    ]
 
 
 def test_required_quote_missing_from_original_body_rejects_whole_posting() -> None:

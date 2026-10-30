@@ -10,7 +10,7 @@ import { PageLoading } from '@/components/ui/PageLoading';
  *  A1 /login · (OAuth 콜백은 Spring 이 처리하고 / 또는 /login?error= 로 돌려보낸다)
  *  B1 /repos · B3 /repos/:id/run · C1 /repos/:id/candidates · C4 /repos/:id/recall
  *  D1~D9·E2·E3 /cards/:id (모드는 쿼리) · D5 /cards/:id/interview · E4 /cards/new · E1 /
- *  F1 /settings/github · F2 /settings · F3 /settings/leave
+ *  F1 /settings/github · F2 /settings · F3 /settings/leave · F4 /settings/profile (인적사항, BE #552 계약)
  */
 const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() => f().then((m) => ({ default: m[name] as React.ComponentType })));
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
@@ -28,6 +28,7 @@ const InterviewPage = L(() => import('@/features/cards/InterviewPage'), 'Intervi
 const NewCardPage = L(() => import('@/features/cards/NewCardPage'), 'NewCardPage');
 const GithubSettingsPage = L(() => import('@/features/settings/GithubSettingsPage'), 'GithubSettingsPage');
 const MyPage = L(() => import('@/features/settings/MyPage'), 'MyPage');
+const ProfilePage = L(() => import('@/features/profile/ProfilePage'), 'ProfilePage');
 const LeavePage = L(() => import('@/features/settings/LeavePage'), 'LeavePage');
 const NotFoundPage = L(() => import('@/features/NotFoundPage'), 'NotFoundPage');
 
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
       { path: '/cards/:cardId/interview', element: <S><InterviewPage /></S> },
       { path: '/settings', element: <S><MyPage /></S> },
       { path: '/settings/github', element: <S><GithubSettingsPage /></S> },
+      { path: '/settings/profile', element: <S><ProfilePage /></S> },
       { path: '/settings/leave', element: <S><LeavePage /></S> },
       { path: '*', element: <S><NotFoundPage /></S> },
     ],

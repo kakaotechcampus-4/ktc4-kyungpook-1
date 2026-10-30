@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -13,11 +15,18 @@ from schemas.analysis import DiffEvidence
 from schemas.common import StarSlot
 from services.evidence_checks import match_commit_sha, unsupported_metrics
 
-DraftProblemCode = Literal["NO_EVIDENCE", "UNSOURCED_NUMBER", "UNKNOWN_SHA"]
+DraftProblemCode = Literal["NO_EVIDENCE", "UNSOURCED_NUMBER", "UNKNOWN_SHA", "CODE_NAME"]
 
 NO_EVIDENCE_REASON = "입력에서 확인되는 근거 커밋이나 사용자 답변이 없어 비웠습니다."
 UNSOURCED_NUMBER_REASON = "근거에서 확인되지 않는 수치({metrics})가 있어 사용자 확인이 필요합니다."
 UNKNOWN_SHA_REASON = "입력에 없는 커밋 번호({sha})를 근거로 적어 그 번호는 뺐습니다."
+CODE_NAME_REASON = "프로젝트 안에서만 쓰는 이름({names})이 있어 보통 말로 바꿀지 확인이 필요합니다."
+
+#: 코드 이름 모양으로, 소문자 뒤에 대문자가 오거나(MyPageResponse·userId) 밑줄로 이은 이름이다.
+_IDENTIFIER_SHAPE = re.compile(r"[a-z][A-Z]|_")
+_UPPER_SNAKE = re.compile(r"[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+")
+_NAME_TOKEN = re.compile(r"(?<![A-Za-z0-9_.])[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z0-9]+)?(?![A-Za-z0-9_])")
+_BACKTICKED = re.compile(r"`([^`\s]+)`")
 
 
 @dataclass(frozen=True)
@@ -55,12 +64,46 @@ def check_draft(
     evidence_by_sha: dict[str, DiffEvidence],
     answers: list[str],
     pull_request_body: Optional[str],
+    extra_sources: Optional[dict[StarSlot, list[str]]] = None,
 ) -> dict[StarSlot, SlotCheck]:
-    """모델이 채운 칸마다 근거를 맞추고 문제를 찾는다. 모델이 스스로 비운 칸은 넘기지 않는다."""
+    """모델이 채운 칸마다 근거를 맞추고 문제를 찾는다. 모델이 스스로 비운 칸은 넘기지 않는다.
+
+    extra_sources 는 칸마다 수치 근거로 더 볼 글로, 그 칸에 쓸 수 있는 자료 중 이번에 연 것만 넣는다.
+    """
+    names = project_names(evidence_by_sha.values())
+    extra = extra_sources or {}
     return {
-        slot: _check_slot(slot, draft, evidence_by_sha, answers, pull_request_body)
+        slot: _check_slot(slot, draft, evidence_by_sha, answers, pull_request_body, extra.get(slot, []), names)
         for slot, draft in slots.items()
     }
+
+
+def project_names(evidence: Iterable[DiffEvidence]) -> set[str]:
+    """이 카드 근거 커밋에서 바뀐 파일 이름과 코드 이름 모양의 파일 이름, 커밋 메시지·요약에 `` 로 감싼 코드 이름이다.
+
+    Spring·PostgreSQL 같은 기술 이름은 바뀐 파일 이름이 아니라서 들어가지 않아, 공고 매칭에 쓰는 낱말을 바꾸게 하지 않는다.
+    """
+    names: set[str] = set()
+    for item in evidence:
+        for path in item.changed_paths:
+            file_name = path.rsplit("/", 1)[-1]
+            stem = file_name.split(".", 1)[0]
+            if "." in file_name:
+                names.add(file_name)
+            if _IDENTIFIER_SHAPE.search(stem):
+                names.add(stem)
+        for text in (item.message, item.summary, *item.technical_points):
+            names.update(name for name in _BACKTICKED.findall(text) if _IDENTIFIER_SHAPE.search(name))
+    return names
+
+
+def code_names(text: str, names: set[str]) -> list[str]:
+    """글에 나온 프로젝트 안 이름으로, 근거의 이름과 오류 코드처럼 대문자를 밑줄로 이은 이름이다."""
+    found: list[str] = []
+    for token in _NAME_TOKEN.findall(text):
+        if (token in names or _UPPER_SNAKE.fullmatch(token)) and token not in found:
+            found.append(token)
+    return found
 
 
 def _check_slot(
@@ -69,6 +112,8 @@ def _check_slot(
     evidence_by_sha: dict[str, DiffEvidence],
     answers: list[str],
     pull_request_body: Optional[str],
+    extra_sources: list[str],
+    names: set[str],
 ) -> SlotCheck:
     cited, unknown = _cite(draft.evidence_shas, evidence_by_sha)
     problems = [
@@ -78,12 +123,16 @@ def _check_slot(
         # 근거 0개 문장은 화면에 뜨면 안 되므로 빠질 문장이라, 수치는 더 보지 않는다
         problems.append(DraftProblem(slot, "NO_EVIDENCE", draft.text, None, NO_EVIDENCE_REASON))
         return SlotCheck(cited, problems)
-    unsupported = unsupported_metrics(draft.text, _metric_source(cited, answers, pull_request_body))
+    unsupported = unsupported_metrics(draft.text, _metric_source(cited, answers, pull_request_body, extra_sources))
     if unsupported:
         metrics = ", ".join(unsupported)
         problems.append(DraftProblem(
             slot, "UNSOURCED_NUMBER", draft.text, metrics, UNSOURCED_NUMBER_REASON.format(metrics=metrics)
         ))
+    found = code_names(draft.text, names)
+    if found:
+        joined = ", ".join(found)
+        problems.append(DraftProblem(slot, "CODE_NAME", draft.text, joined, CODE_NAME_REASON.format(names=joined)))
     return SlotCheck(cited, problems)
 
 
@@ -103,8 +152,10 @@ def _cite(shas: list[str], evidence_by_sha: dict[str, DiffEvidence]) -> tuple[li
     return cited, unknown
 
 
-def _metric_source(cited: list[DiffEvidence], answers: list[str], body: Optional[str]) -> str:
-    """수치 근거로 볼 글. 커밋 메시지·확인 답변과 카드 주인이 쓴 PR 본문만 본다.
+def _metric_source(
+    cited: list[DiffEvidence], answers: list[str], body: Optional[str], extra_sources: list[str]
+) -> str:
+    """수치 근거로 볼 글. 커밋 메시지·확인 답변과 카드 주인이 쓴 PR 본문, 그 칸에 쓸 수 있는 연 자료만 본다.
 
     요약·기술 포인트는 모델이 쓴 글이라 지어낸 수치가 스스로를 받치게 되고,
     churn(+30/-2)은 변경 줄 수라 결과 수치의 근거로 치지 않는다.
@@ -113,4 +164,5 @@ def _metric_source(cited: list[DiffEvidence], answers: list[str], body: Optional
     parts.extend(answers)
     if body:
         parts.append(body)
+    parts.extend(extra_sources)
     return "\n".join(parts)

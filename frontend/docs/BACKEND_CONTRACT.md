@@ -48,7 +48,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 사용자의 같은 연결 저장소에 활성 Job이 있으면 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409 + IDEMPOTENCY_KEY_MISMATCH** (확정). FE는 409에 새 키를 만들어 자동 재요청하지 않는다. |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
-| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 8장까지이고, 중복을 뺀 후보가 9개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST` |
+| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 8장까지이고, 중복을 뺀 후보가 9개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST`. AI 초안의 네 칸이 확인 필요 없이 모두 찬 카드는 Job 이 바로 `CONFIRMED` 로 두고(#568), 확인 필요 칸이나 빈 칸이 있는 카드만 `DRAFT` 로 남는다 — 화면은 `DRAFT` 카드에만 확정 버튼을 보여 준다 |
 | `GET /repos/{id}/commits?q=` | | `RepoCommit[]` — `{ sha, message, path, at, url, candidateId }` (C5 커밋 찾기, 최대 20) |
 | `GET /repos/{id}/materials` | | `RepoMaterials` (아래) — 분석이 끝난 뒤 '읽은 커밋·PR 전체 보기' 용. GitHub 을 부르지 않고 저장된 값만 읽는다. 분석 전이면 두 배열 모두 빈 배열 |
 | `GET /repos/{id}/recall` | | `Recall` — `{ repoId, note, dirs:[{ path, filesChanged, myCommits, files[], question, options[] }] }` |
@@ -140,7 +140,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `GET /cards/{id}` | | **구현됨.** `Card` (아래) |
 | `DELETE /cards/{id}` | | **구현됨(#350).** `{ ok: true }` — 작성 중·확정 카드 모두 버전·문장·근거·되묻기까지 완전 삭제. 후보로 만든 카드면 후보가 `NEW` 로 돌아가 다시 고를 수 있다. 오류는 401 → 403 → 404(잘못된 UUID·없는 카드·이미 지운 카드·남의 카드) → 409 `INVALID_STATE`(초안을 만드는 중) 순 |
 | `POST /cards/{id}/mask` | `{ rules:[{from,to}] }` | **구현됨.** `Card` — 원문 불변, 표시·내보내기용 |
-| `POST /cards/{id}/reopen` | | **구현됨.** `Card` (DRAFT로). 이미 DRAFT면 no-op |
+| `POST /cards/{id}/reopen` | | **구현됨.** `Card` (DRAFT로). 이미 DRAFT면 no-op. 확정 카드도 다시 열지 않고 고칠 수 있어(#568) 화면은 쓰지 않아도 되고, 화면이 쓰지 않게 되면 지운다 |
 | `GET /cards/{id}/versions` | | **구현됨.** `[{ versionNo, source, createdAt, summary, current }]` 최신순 |
 | `GET /cards/{id}/versions/{no}` | | **구현됨.** `CardVersion` — 그 버전의 `{ versionNo, source, createdAt, situation, task, action, result }`(`Card.version` 과 같은 모양, 빈 칸 null, 가리기 없는 원문). 남의 카드·없는 버전 번호는 404 |
 | `POST /cards/{id}/versions/{no}/restore` | | **구현됨.** `Card` — 과거 버전을 복사한 RESTORE 새 버전. 현재 버전이면 no-op |
@@ -161,8 +161,8 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 **가리기·이력 (`#175`)**
 
 - `rules` 목록은 필수이며 최대 20개, from/to는 각 최대 100자입니다. from은 공백만 있으면 안 되고 to의 빈 문자열은 삭제 규칙으로 허용합니다. null 규칙·누락된 from/to·U+0000은 400 `INVALID_REQUEST`입니다. 원문을 수정하지 않습니다.
-- 확정 카드의 mask는 입력 검사 전에 409 `CARD_CONFIRMED`입니다. 규칙 값과 순서가 기존 목록과 같으면 버전과 수정 시각을 바꾸지 않습니다. 달라지면 원문·근거를 복사한 MASK 버전을 추가합니다.
-- 과거 버전 restore는 확정 카드도 다시 열어 RESTORE 버전을 추가합니다. 현재 버전 restore는 확정 상태·시각·버전을 그대로 두고, 없는 번호는 404입니다. 마스킹 규칙은 카드에 속하므로 과거 원문 복원으로 이전 규칙까지 되돌리지 않습니다.
+- 확정 카드도 다시 열지 않고 mask 를 바꾸며 확정 상태는 그대로입니다(#568). 규칙 값과 순서가 기존 목록과 같으면 버전과 수정 시각을 바꾸지 않습니다. 달라지면 원문·근거를 복사한 MASK 버전을 추가합니다.
+- 과거 버전 restore는 RESTORE 버전을 추가한 뒤 그 글로 상태를 다시 정합니다(아래 임시 저장과 같은 규칙, #568). 현재 버전 restore는 확정 상태·시각·버전을 그대로 두고, 없는 번호는 404입니다. 마스킹 규칙은 카드에 속하므로 과거 원문 복원으로 이전 규칙까지 되돌리지 않습니다.
 - summary는 빈 버전이면 `채운 칸 없음`, 아니면 `S · T · A · R 채움` 중 실제 채운 칸입니다. 첫 AI_DRAFT에만 ` · 원본(잠김)`, 확정된 버전에는 ` · 확정`을 붙입니다.
 
 **카드 목록의 `star`**
@@ -185,7 +185,7 @@ Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드�
 - **정규화한 네 칸이 현재 글과 같으면 no-op**입니다. 버전 번호·버전 시각·카드 수정 시각을 바꾸지 않으며 savedAt은 기존 버전 시각입니다.
 - **확정되지 않은 USER_EDIT만 같은 버전을 덮어씁니다.** AI_DRAFT·INTERVIEW·MASK·RESTORE 또는 확정 후 다시 연 버전 위의 첫 실제 변경은 USER_EDIT 새 버전입니다. 그 뒤의 변경은 같은 미확정 USER_EDIT에 저장합니다.
 - 각 칸의 글이 분기 직전 버전과 정확히 같으면 그 칸의 근거·확신도·되묻기 턴 연결을 복사합니다. 취소로 같은 원문을 다시 보내도 이 정보가 돌아옵니다. 달라진 칸은 USER_STATED이며 이전 커밋 근거·확인 필요 표시는 붙이지 않습니다. null은 문장과 그 칸의 근거를 제거합니다.
-- 확정된 카드에 PATCH 하면 입력 검사 전에 409 `CARD_CONFIRMED`입니다. 다시 열어도 확정된 과거 버전은 고정된 채 남습니다. 새 버전은 이 확정 표시를 상속하지 않습니다.
+- 확정된 카드도 다시 열지 않고 PATCH 합니다(#568). 저장한 글로 `status` 를 다시 정합니다 — 작성 중 카드는 네 칸이 모두 차고 확인 필요 칸이 없으면 `CONFIRMED`, 확정 카드는 상황이나 행동이 비면 `DRAFT`(확정 시각 null)로 돌아가고 그 밖에는 `CONFIRMED` 를 유지합니다. 화면이 자동 저장하므로 이렇게 바뀐 확정은 확정본(이력의 ` · 확정`)을 남기지 않습니다. 확정 버튼으로 확정한 과거 버전은 고정된 채 남고, 새 버전은 이 확정 표시를 상속하지 않습니다.
 - 목록 updatedAt은 마지막 실제 수정 시각이고 최근 수정순입니다. savedAt ACK의 글·버전·시각은 FE 캐시에 먼저 반영하고, ACK에 없는 근거를 추정하지 않고 상세를 다시 조회합니다.
 
 **`evidence.authoredBy`**
@@ -248,7 +248,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 | | 요청 | 응답 |
 |---|---|---|
 | `GET /cards/{id}/interview` | | **구현됨(#172).** `InterviewTurn[]`, 질문 번호순. 없으면 빈 배열; 없는 카드·남의 카드·잘못된 UUID는 404 |
-| `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED` |
+| `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED`. 이렇게 되묻기가 끝나(`null`) 네 칸이 확인 필요 없이 모두 차 있으면 서버가 카드를 `CONFIRMED` 로 바꾸므로(#568) 화면은 카드를 다시 읽는다 |
 | `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다 |
 | `POST /cards/{id}/interview/{turnNo}/measured-draft` | `{ text }` | **새로 만듦.** `{ sentence }` — '재 봤어요' 미리 보기. **아무것도 저장하지 않는다.** 입력에 수치(아라비아 숫자)가 없으면 AI 를 부르지 않고 `sentence: null` 이고, 화면은 "수치를 찾지 못했어요. 대략이라도 적어 주세요" 를 보인다. 질문 상한에 세지 않는다 |
 
@@ -291,7 +291,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 ### 기업·직무 매칭 (구현됨 · 10/24 운영 켬)
 
-> **개편 예정** — 레포 분석 뒤 그 레포에 맞는 기업, 공고 페이지의 기업별 목록과 '내 조건으로 매칭하기'(전체 매칭), 공고 상세에서 자소서로 이어지는 새 흐름은 [매칭 개편](2026-10-30-MATCHING.md)에 있다(흐름 확정 · API 미정). 그 문서의 API 절이 채워지기 전까지 아래 계약과 지금 화면은 그대로다.
+> **개편 예정** — 레포 분석 뒤 그 레포에 맞는 기업, 공고 페이지의 '내 조건으로 매칭하기'(탑 기업 3~5곳)와 기업별 목록, 공고 상세의 '이 공고와 매칭하기', 공고에서 자소서로 이어지는 새 흐름은 [매칭 개편](2026-10-30-MATCHING.md)에 있다(흐름 확정 · API 미정). 그 문서의 API 절이 채워지기 전까지 아래 계약과 지금 화면은 그대로다.
 
 [#199](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/issues/199)에서 정한 기준이다. 서버는 `GET /api/matches`·`GET /api/matches/{id}` 를 제공한다. FE 는 실제 API 모드에서 `VITE_MATCH_ENABLED=true` 일 때만 화면을 연다(운영은 #403 에서 켬).
 
@@ -383,7 +383,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 ## 카드 분야·기술 태그 (#338 → #339, 선행 구현 대기)
 
-카드 목록·상세는 `areas: string[]`(최대 2), `techs: string[]`(최대 4)를 반환합니다. 허용 enum과 배포 전환 처리는 [태그 계약](2026-10-21-CARD_TAGS.md)을 따릅니다. 태그는 읽기 전용 카드 메타데이터이며 수정 요청에 포함하지 않습니다. FE 태그 PR은 BE #338 이후 머지합니다.
+카드 목록·상세는 `areas: string[]`(최대 2), `techs: string[]`(최대 8)를 반환합니다. 허용 enum과 배포 전환 처리는 [태그 계약](2026-10-21-CARD_TAGS.md)을 따릅니다. 태그는 읽기 전용 카드 메타데이터이며 수정 요청에 포함하지 않습니다. FE 태그 PR은 BE #338 이후 머지합니다.
 
 ## 경험 카드 — 활동 묶음·문항 유형·다듬기 (#474)
 

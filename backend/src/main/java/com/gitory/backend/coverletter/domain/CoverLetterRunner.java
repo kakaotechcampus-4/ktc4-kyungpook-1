@@ -28,6 +28,7 @@ public class CoverLetterRunner {
     private final CoverLetterRepository letters;
     private final CoverLetterAssignStep assignStep;
     private final CoverLetterAskStep askStep;
+    private final CoverLetterDraftStep draftStep;
     private final TransactionTemplate transaction;
 
     /** 집은 자소서는 집은 시각을 커밋한 뒤에 돌려주고, 기다리는 자소서가 없으면 빈 값을 돌려준다 */
@@ -75,6 +76,7 @@ public class CoverLetterRunner {
             Consumer<CoverLetter> save = switch (claimed.getStage()) {
                 case ASSIGNING -> assignStep.run(claimed);
                 case ASKING -> askStep.run(claimed);
+                case DRAFTING -> draftStep.run(claimed);
                 default -> throw new IllegalStateException("AI 단계가 아닌 자소서를 집었다: " + claimed.getStage());
             };
             transaction.executeWithoutResult(status -> stillClaimed(claimed).ifPresent(save));

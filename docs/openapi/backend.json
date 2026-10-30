@@ -355,6 +355,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseCoverLetterDeleteResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CoverLetterDeleteResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseCoverLetterResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -435,6 +449,23 @@
             "description" : "성공 응답 데이터. 오류 응답에서는 null",
             "items" : {
               "$ref" : "#/components/schemas/CardSummaryResponse"
+            },
+            "type" : "array"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListCoverLetterSummaryResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "description" : "성공 응답 데이터. 오류 응답에서는 null",
+            "items" : {
+              "$ref" : "#/components/schemas/CoverLetterSummaryResponse"
             },
             "type" : "array"
           },
@@ -672,6 +703,12 @@
           },
           "skipped" : {
             "type" : "boolean"
+          },
+          "templates" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -1406,6 +1443,14 @@
         },
         "type" : "object"
       },
+      "CoverLetterDeleteResponse" : {
+        "properties" : {
+          "ok" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
       "CoverLetterQuestionInput" : {
         "properties" : {
           "charLimit" : {
@@ -1467,6 +1512,38 @@
           },
           "steps" : {
             "$ref" : "#/components/schemas/Steps"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CoverLetterSummaryResponse" : {
+        "description" : "자소서 목록의 한 줄",
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "firstQuestion" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "jobRole" : {
+            "type" : "string"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "stage" : {
+            "enum" : [ "ASSIGNING", "ASSIGNED", "ASKING", "ASKED", "DRAFTING", "DRAFTED", "FAILED" ],
+            "type" : "string"
           },
           "updatedAt" : {
             "format" : "date-time",
@@ -1545,6 +1622,33 @@
         "required" : [ "action", "result", "situation", "task" ],
         "type" : "object"
       },
+      "DraftMark" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "sentenceSeq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftSentence" : {
+        "properties" : {
+          "seq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "DraftStepResponse" : {
         "description" : "AI 초안이 거친 단계 하나로, 화면이 값으로 문장을 만든다",
         "properties" : {
@@ -1596,6 +1700,16 @@
           },
           "reason" : {
             "enum" : [ "NO_EVIDENCE", "OVERCLAIM", "UNSOURCED_NUMBER", "TIMEOUT" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "EditDraftRequest" : {
+        "description" : "고친 초안",
+        "properties" : {
+          "text" : {
+            "description" : "고친 글 전체, 10,000자까지",
             "type" : "string"
           }
         },
@@ -2262,6 +2376,9 @@
             },
             "type" : "array"
           },
+          "draft" : {
+            "$ref" : "#/components/schemas/QuestionDraft"
+          },
           "id" : {
             "format" : "uuid",
             "type" : "string"
@@ -2279,6 +2396,9 @@
           "primaryCard" : {
             "$ref" : "#/components/schemas/CardRef"
           },
+          "primaryCardDeleted" : {
+            "type" : "boolean"
+          },
           "seq" : {
             "format" : "int32",
             "type" : "integer"
@@ -2291,6 +2411,51 @@
           },
           "theme" : {
             "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH", "MOTIVATION" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "QuestionDraft" : {
+        "properties" : {
+          "aiText" : {
+            "type" : "string"
+          },
+          "blanks" : {
+            "items" : {
+              "enum" : [ "SITUATION", "ACTION", "RESULT", "LEARNING", "TRIGGER", "JOB_LINK", "REASON" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "charCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "edited" : {
+            "type" : "boolean"
+          },
+          "marks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DraftMark"
+            },
+            "type" : "array"
+          },
+          "overBy" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sentences" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DraftSentence"
+            },
+            "type" : "array"
+          },
+          "source" : {
+            "enum" : [ "LLM", "SKELETON" ],
+            "type" : "string"
+          },
+          "text" : {
             "type" : "string"
           }
         },
@@ -2683,6 +2848,9 @@
             "format" : "uuid",
             "type" : "string"
           },
+          "cardTitle" : {
+            "type" : "string"
+          },
           "kind" : {
             "type" : "string"
           },
@@ -2705,6 +2873,12 @@
           "assign" : {
             "items" : {
               "$ref" : "#/components/schemas/Step"
+            },
+            "type" : "array"
+          },
+          "draft" : {
+            "items" : {
+              "$ref" : "#/components/schemas/WritingStep"
             },
             "type" : "array"
           }
@@ -2794,6 +2968,41 @@
           }
         },
         "type" : "object"
+      },
+      "WritingStep" : {
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "actor" : {
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "sentenceSeq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "seq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
       }
     },
     "securitySchemes" : {
@@ -2815,7 +3024,7 @@
     "/api/activities" : {
       "get" : {
         "description" : "시작한 달이 최근인 순으로, 활동마다 안의 카드 수와 함께 돌려줍니다.",
-        "operationId" : "list",
+        "operationId" : "list_1",
         "responses" : {
           "200" : {
             "content" : {
@@ -3419,7 +3628,7 @@
     "/api/cards/{id}" : {
       "delete" : {
         "description" : "작성 중 카드와 확정 카드 모두 버전·문장·근거·칸 메모·되묻기 질문까지 통째로 지우며, 되돌릴 수 없습니다.\n후보로 만든 카드면 그 후보는 NEW 로 돌아가 후보 보드에 다시 나타나고, 같은 후보로 카드를 다시 만들 수 있습니다.\n오류 순서는 401 → 403 → 404 → 409 입니다. 이미 지운 카드는 없는 카드라 404 이고, 초안을 만드는 중인 카드는 409 INVALID_STATE 입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
-        "operationId" : "delete_1",
+        "operationId" : "delete_2",
         "parameters" : [ {
           "description" : "카드 id",
           "in" : "path",
@@ -4979,6 +5188,64 @@
       }
     },
     "/api/cover-letters" : {
+      "get" : {
+        "description" : "최근에 만든 자소서부터, 문항 수와 첫 문항을 함께 돌려줍니다. 없으면 빈 배열입니다.",
+        "operationId" : "list",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListCoverLetterSummaryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "내 자소서 목록",
+        "tags" : [ "Cover letters" ]
+      },
       "post" : {
         "description" : "직무·메모·문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING).\n같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.\n화면은 입력을 고치면 새 키를 만듭니다.\n",
         "operationId" : "create_1",
@@ -5068,6 +5335,74 @@
       }
     },
     "/api/cover-letters/{id}" : {
+      "delete" : {
+        "description" : "어느 단계에서든 자소서와 문항·답·초안을 지웁니다. AI 가 돌던 단계의 결과는 저장하지 않고 버립니다.\n카드에 기억한 답은 다른 자소서도 쓰므로 그대로 둡니다.\n",
+        "operationId" : "delete_1",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterDeleteResponse"
+                }
+              }
+            },
+            "description" : "지움"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID, 없는 자소서, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "자소서 지우기",
+        "tags" : [ "Cover letters" ]
+      },
       "get" : {
         "description" : "AI 가 도는 단계(ASSIGNING·ASKING·DRAFTING)면 pollAfterMs 마다 다시 부릅니다.",
         "operationId" : "get",
@@ -5204,6 +5539,165 @@
           }
         },
         "summary" : "질문 만들기 시작",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/drafts" : {
+      "post" : {
+        "description" : "질문을 받은 뒤(ASKED)에 지금 답으로 초안 쓰기를 줄 세웁니다(stage DRAFTING). 답하지 않은 질문은 넘긴 것으로 봅니다.\n이때 상황·행동·결과·배운 점·계기 답을 중심 카드에 기억해, 같은 카드를 쓰는 다음 자소서에 미리 채웁니다(넘긴 항목은 전에 기억한 답을 지우지 않음).\n호출 제한은 세지 않습니다.\n",
+        "operationId" : "startDrafting",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: ASKED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "초안 쓰기 시작",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/questions/{questionId}" : {
+      "patch" : {
+        "description" : "초안을 받은 뒤(DRAFTED)에 문항의 글을 고친 글로 바꿉니다. AI 원본(aiText)·문장 번호(sentences)·확인 필요 표시(marks)는 그대로입니다.\ncharCount·overBy·blanks 는 고친 글로 다시 세고, 고친 글이 AI 원본과 다르면 edited 가 true 입니다.\n",
+        "operationId" : "editDraft",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "문항 id",
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EditDraftRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 글이 없음, 10,000자를 넘음, U+0000 이 있음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서·문항, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: DRAFTED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "초안 고치기",
         "tags" : [ "Cover letters" ]
       }
     },

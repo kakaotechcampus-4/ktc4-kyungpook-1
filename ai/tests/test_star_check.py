@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from schemas.analysis import DiffEvidence
 from services.star_check import (
+    CODE_NAME_REASON,
     NO_EVIDENCE_REASON,
     DraftProblem,
     DraftSlot,
@@ -68,3 +69,41 @@ def test_answer_only_sentence_is_not_a_problem() -> None:
     checks = check_draft({"T": DraftSlot("팀이 정한 일정에 맞춰야 했다.", [])}, EVIDENCE, ["일정이 빠듯했어요"], None)
 
     assert (checks["T"].cited, checks["T"].problems) == ([], [])
+
+
+def _code_evidence() -> dict[str, DiffEvidence]:
+    return {SHA_A: DiffEvidence(
+        sha=SHA_A, message="fix: `main` 에 합치기 전 `userId` 로 내 정보를 찾게 고침", churn="+10/-2", summary="요약",
+        summary_source="DIFF",
+        changed_paths=["backend/src/main/java/com/gitory/MyPageResponse.java", "backend/src/main/resources/data.sql",
+                       "backend/build.gradle"],
+    )}
+
+
+def test_names_of_changed_files_and_backticked_code_are_code_names() -> None:
+    """근거 커밋에서 바뀐 파일 이름, 코드 이름 모양의 파일 이름, 커밋 메시지에 `` 로 감싼 코드 이름은 프로젝트 안 이름으로 걸린다."""
+    checks = check_draft(
+        {"A": DraftSlot("MyPageResponse 에 userId 를 담고 data.sql 을 고쳐 MyPageResponse 를 줄였다.", [SHA_A])},
+        _code_evidence(), [], None,
+    )
+
+    problem = checks["A"].problem("CODE_NAME")
+    assert problem.value == "MyPageResponse, userId, data.sql"
+    assert problem.reason == CODE_NAME_REASON.format(names="MyPageResponse, userId, data.sql")
+
+
+def test_tech_names_and_names_not_in_evidence_are_not_code_names() -> None:
+    """Spring·PostgreSQL·HTTP 401 같은 기술 이름, 근거에 없는 이름, 코드 이름 모양이 아닌 파일 이름 앞부분·`` 안 낱말은 걸지 않는다."""
+    checks = check_draft(
+        {"A": DraftSlot("Spring 과 PostgreSQL 로 HTTP 401 을 막고 getUser 와 build 설정을 고쳐 main 에 합쳤다.", [SHA_A])},
+        _code_evidence(), [], None,
+    )
+
+    assert checks["A"].problem("CODE_NAME") is None
+
+
+def test_error_code_joined_by_underscores_is_a_code_name_even_without_evidence() -> None:
+    """오류 코드처럼 대문자를 밑줄로 이은 이름은 근거에 없어도 프로젝트 안 이름으로 건다."""
+    checks = check_draft({"A": DraftSlot("GITHUB_UNAUTHORIZED 오류를 막았다.", [SHA_A])}, EVIDENCE, [], None)
+
+    assert checks["A"].problem("CODE_NAME").value == "GITHUB_UNAUTHORIZED"

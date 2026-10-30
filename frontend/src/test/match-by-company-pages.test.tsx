@@ -73,7 +73,7 @@ it("목록 카드: 기업 이름은 기업 페이지로, 제목은 공고 상세
     expect(link).toHaveAttribute("href", `/match/company/${enc("가온소프트")}?sort=deadline&experience=ENTRY`);
   expect(screen.getByRole("link", { name: "백엔드 엔지니어" })).toHaveAttribute("href", "/match/p1?sort=deadline&experience=ENTRY");
   // 검색어도 이어 간다
-  fireEvent.change(screen.getByPlaceholderText("기업·직무 검색"), { target: { value: "나래" } });
+  fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), { target: { value: "나래" } });
   const narae = screen.getByRole("link", { name: "나래랩스" });
   expect(narae.getAttribute("href")).toContain(`/match/company/${enc("나래랩스")}?`);
   expect(narae.getAttribute("href")).toContain(`q=${enc("나래")}`);
@@ -154,15 +154,15 @@ it("기업별 보기도 검색·필터를 따르고(공고 수·기업 수), 기
 it("검색어를 쓴 채 기업별로 바꿔도 검색어가 남고, 초기화하면 보기 방식은 남긴다", async () => {
   const { where } = mount("/match");
   await screen.findAllByText("나래랩스");
-  fireEvent.change(screen.getByPlaceholderText("기업·직무 검색"), { target: { value: "나래" } });
+  fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), { target: { value: "나래" } });
   fireEvent.click(screen.getByRole("button", { name: "기업별" }));
   expect(new URLSearchParams(where().search).get("q")).toBe("나래");
   expect(new URLSearchParams(where().search).get("view")).toBe("company");
   expect(cardHeadings()).toEqual(["나래랩스"]);
-  fireEvent.change(screen.getByPlaceholderText("기업·직무 검색"), { target: { value: "없는회사" } });
-  fireEvent.click(await screen.findByRole("button", { name: "검색·필터 초기화" }));
+  fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), { target: { value: "없는회사" } });
+  fireEvent.click(await screen.findByRole("button", { name: "검색과 필터 초기화" }));
   expect(where().search).toBe("?view=company");
-  expect(screen.getByPlaceholderText("기업·직무 검색")).toHaveValue("");
+  expect(screen.getByPlaceholderText("기업이나 직무 검색")).toHaveValue("");
   expect(screen.getByRole("button", { name: "기업별" })).toHaveAttribute("aria-pressed", "true");
 });
 

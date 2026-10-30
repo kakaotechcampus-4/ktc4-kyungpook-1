@@ -232,6 +232,8 @@ class AiStarDraftAdapterTest {
             steps.addObject().put("round", 0).put("actor", "MODEL").put("kind", "DRAFT");
             steps.addObject().put("round", 1).put("actor", "MODEL").put("kind", "OPEN").put("slot", "S")
                     .put("value", "이슈 #98 세션 만료").put("material", "ISSUE").put("reason", "문제 상황이 적혀 있을 것 같음");
+            steps.addObject().put("round", 2).put("actor", "CODE").put("kind", "REVERT").put("slot", "A")
+                    .put("code", "UNSOURCED_NUMBER");
             steps.addObject().put("round", 1).put("actor", "MODEL").put("kind", "THINK");
             steps.addObject().put("round", -1).put("actor", "CODE").put("kind", "PASS");
             steps.addObject().put("round", 1).put("actor", "CODE").put("kind", "PASS").put("slot", "X");
@@ -244,7 +246,9 @@ class AiStarDraftAdapterTest {
         assertThat(draft.steps()).containsExactly(
                 new StarStep(0, StarStepActor.MODEL, StarStepKind.DRAFT, null, null, null, null, null),
                 new StarStep(1, StarStepActor.MODEL, StarStepKind.OPEN, StarSlot.S, null, "이슈 #98 세션 만료",
-                        StarMaterialKind.ISSUE, "문제 상황이 적혀 있을 것 같음"));
+                        StarMaterialKind.ISSUE, "문제 상황이 적혀 있을 것 같음"),
+                new StarStep(2, StarStepActor.CODE, StarStepKind.REVERT, StarSlot.A, "UNSOURCED_NUMBER", null, null,
+                        null));
 
     }
 

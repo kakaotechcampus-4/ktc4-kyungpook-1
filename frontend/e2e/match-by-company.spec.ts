@@ -10,7 +10,7 @@ const overflowFree = (page: import("@playwright/test").Page) =>
 
 test("목록 → 기업 페이지 → 공고 상세 → 뒤로: 기업 페이지와 목록의 검색어가 그대로 남는다", async ({ page }) => {
   await page.goto("/match");
-  const search = page.getByPlaceholder("기업·직무 검색");
+  const search = page.getByPlaceholder("기업이나 직무 검색");
   await expect(page.locator(".match-card")).toHaveCount(5);
   await search.fill("나래");
   await expect(page.locator(".match-card")).toHaveCount(1);

@@ -177,7 +177,7 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
         })}
       </div>
       {mask.isError && <p role="alert">마스킹을 저장하지 못했습니다. 다시 시도해 주세요.</p>}
-      <StickyFooter strong={!changed ? '변경한 규칙 없음' : hits.length ? `${hits.length}칸에 적용` : valid.length ? '현재 본문과 일치하는 문구 없음' : '마스킹 해제'} sub={changed && valid.length && !hits.length ? '규칙은 저장되며, 일치하는 문구가 생기면 적용됩니다' : '원문은 그대로 · 표시할 때만 가림'}>
+      <StickyFooter strong={!changed ? '변경한 규칙 없음' : hits.length ? `${hits.length}칸에 적용` : valid.length ? '현재 본문과 일치하는 문구 없음' : '마스킹 해제'} sub={changed && valid.length && !hits.length ? '규칙은 저장되며, 일치하는 문구가 생기면 적용됩니다' : '원문은 그대로 두고 표시할 때만 가림'}>
         <Button variant="outline" disabled={mask.isPending} onClick={onDone}>카드로 돌아가기</Button>
         <Button disabled={locked || invalidRules || !changed} loading={mask.isPending} onClick={() => void apply()}>마스킹 적용</Button>
       </StickyFooter>

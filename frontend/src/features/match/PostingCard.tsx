@@ -43,7 +43,7 @@ export function PostingCard({ item, search, showCompany = true }: { item: MatchT
       </div>
       <div className="match-card__foot">
         <MetaItem icon={CalendarClock}>{deadlineLabel(item.source.expiresAt)}</MetaItem>
-        <span className="match-card__go">조건·근거 보기<ArrowRight size={14} aria-hidden /></span>
+        <span className="match-card__go">조건과 근거 보기<ArrowRight size={14} aria-hidden /></span>
       </div>
     </article>
   );

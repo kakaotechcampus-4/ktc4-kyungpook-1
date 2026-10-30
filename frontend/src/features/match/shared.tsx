@@ -45,7 +45,7 @@ export function MatchFailure({
     return (
       <section className="query-failure" role="alert">
         <h2>경험 근거를 찾지 못했어요</h2>
-        <p>분석 도우미가 잠시 응답하지 않아요. 잠시 뒤 다시 시도해 주세요.</p>
+        <p>AI가 잠시 응답하지 않아요. 잠시 뒤 다시 시도해 주세요.</p>
         <Button
           variant="outline"
           loading={pending}

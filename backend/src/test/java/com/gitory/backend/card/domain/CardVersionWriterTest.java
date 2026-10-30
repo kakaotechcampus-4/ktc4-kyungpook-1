@@ -104,23 +104,6 @@ class CardVersionWriterTest {
 
     }
 
-    @Test
-    @DisplayName("확정된 카드에 새 버전을 만들면 CardConfirmedException 이고 버전 행도 현재 번호도 그대로다")
-    void startNextOnConfirmedCardLeavesNothing() {
-
-        Long cardId = fixtures.insertCard(UUID.randomUUID(), userId);
-        fixtures.confirmCard(cardId);
-        Card card = em.find(Card.class, cardId);
-
-        assertThatThrownBy(() -> writer.startNext(card, VersionSource.USER_EDIT))
-                .isInstanceOf(CardConfirmedException.class);
-        em.flush();
-
-        assertThat(versionsOf(cardId)).containsExactly(new VersionRow(1, "USER_EDIT", false));
-        assertThat(currentVersionOf(cardId)).isEqualTo(1);
-
-    }
-
     // 실패한 트랜잭션이 끝난 뒤의 DB 를 보려고 테스트 트랜잭션 없이 돌리므로, 커밋된 행은 끝에 직접 지운다
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)

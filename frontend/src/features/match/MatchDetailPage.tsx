@@ -30,8 +30,8 @@ export function MatchDetailPage() {
   const [sp] = useSearchParams();
   const query = useMatch(matchId);
   const detail = query.data;
-  useDocumentTitle(detail ? `${detail.company} · ${detail.role}` : "공고 상세");
-  // 다시 불러와도 같은 공고·등급이면 한 번만 센다
+  useDocumentTitle(detail ? `${detail.company} - ${detail.role}` : "공고 상세");
+  // 다시 불러와도 같은 공고와 등급이면 한 번만 센다
   const openedId = detail?.id;
   const openedFit = detail?.fit ?? null;
   useEffect(() => {
@@ -167,7 +167,7 @@ export function MatchDetailPage() {
                                   </span>
                                   <p>{support.sentence}</p>
                                   <span className="match-support-action">
-                                    카드 보기 →
+                                    카드 보기
                                   </span>
                                 </Link>
                               </li>

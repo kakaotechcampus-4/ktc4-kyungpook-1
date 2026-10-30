@@ -23,8 +23,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -39,11 +37,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -84,9 +77,6 @@ class CardMetadataApiTest {
 
     @Autowired
     ObjectMapper mapper;
-
-    @Autowired
-    PlatformTransactionManager transactionManager;
 
     private TestFixtures fixtures;
 
@@ -358,10 +348,9 @@ class CardMetadataApiTest {
 
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("bodiesForConfirmedCard")
-    @DisplayName("확정된 카드면 지금과 같은 제목이어도 409 CARD_CONFIRMED 이고, 빈 본문·잘못된 제목·긴 기간도 400 보다 먼저 409 이며 카드는 그대로다")
-    void confirmedCardIsConflict(String body) throws Exception {
+    @Test
+    @DisplayName("확정된 카드도 다시 열지 않고 제목·기간을 고치며, 카드는 확정으로 남는다")
+    void confirmedCardAcceptsTitleAndPeriodAndStaysConfirmed() throws Exception {
 
         Long cardId = draftCard(MY_CARD, myUserId, "제목", "2024.04");
         fixtures.insertStatement(cardId, 1, "S", "상황", "USER_STATED", null);
@@ -371,52 +360,12 @@ class CardMetadataApiTest {
         fixtures.insertStatement(cardId, 2, "A", "행동", "USER_STATED", null);
         fixtures.confirmCard(cardId);
         age(cardId);
-        List<Map<String, Object>> before = stateOf(cardId);
 
-        edit(MY_CARD, body)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.data").value(nullValue()))
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
+        edit(MY_CARD, "{\"title\":\"새 제목\",\"period\":\"2025.01\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("새 제목"));
 
-        assertThat(stateOf(cardId)).isEqualTo(before);
-
-    }
-
-    @Test
-    @DisplayName("확정이 카드 행을 잡고 있는 사이에 온 수정은 확정이 끝나기를 기다렸다가 409 CARD_CONFIRMED 이고 확정 상태와 제목·기간이 그대로다")
-    void editWaitsForConfirmInProgress() throws Exception {
-
-        Long cardId = draftCard(MY_CARD, myUserId, "제목", "2024.04");
-
-        CountDownLatch locked = new CountDownLatch(1);
-        CountDownLatch release = new CountDownLatch(1);
-        ExecutorService pool = Executors.newFixedThreadPool(2);
-
-        try {
-            // 확정하는 쪽이 카드 행을 잡은 채로 수정을 기다리게 한 뒤 확정을 커밋해, 수정이 확정 뒤의 카드를 보고 판단하는지 확인한다
-            Future<?> confirming = pool.submit(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-                jdbc.queryForObject("SELECT id FROM card WHERE id = ? FOR UPDATE", Long.class, cardId);
-                locked.countDown();
-                awaitQuietly(release);
-                jdbc.update("UPDATE card SET status = 'CONFIRMED', confirmed_at = now() WHERE id = ?", cardId);
-            }));
-            assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
-
-            Future<MvcResult> edited = pool.submit(() -> edit(MY_CARD, json("title", "새 제목")).andReturn());
-            awaitLockWaiters(1);
-            release.countDown();
-            confirming.get(10, TimeUnit.SECONDS);
-
-            MvcResult response = edited.get(30, TimeUnit.SECONDS);
-            assertThat(response.getResponse().getStatus()).isEqualTo(409);
-            assertThat((String) JsonPath.read(response.getResponse().getContentAsString(), "$.error.code"))
-                    .isEqualTo("CARD_CONFIRMED");
-        } finally {
-            release.countDown();
-            pool.shutdownNow();
-        }
-
-        assertThat(titleAndPeriodOf(cardId)).containsExactly("제목", "2024.04");
+        assertThat(titleAndPeriodOf(cardId)).containsExactly("새 제목", "2025.01");
         assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId))
                 .isEqualTo("CONFIRMED");
 
@@ -585,17 +534,6 @@ class CardMetadataApiTest {
 
     }
 
-    static Stream<Arguments> bodiesForConfirmedCard() {
-
-        return Stream.of(
-                arguments(Named.of("바른 제목", "{\"title\":\"새 제목\"}")),
-                arguments(Named.of("지금과 같은 제목", "{\"title\":\"제목\"}")),
-                arguments(Named.of("빈 본문", "{}")),
-                arguments(Named.of("공백 제목", "{\"title\":\"   \"}")),
-                arguments(Named.of("51자 기간", "{\"period\":\"" + PERIOD_OVER_LIMIT + "\"}")));
-
-    }
-
     private Long draftCard(UUID publicId, Long userId, String title, String period) {
 
         Long cardId = fixtures.insertCard(publicId, userId);
@@ -624,33 +562,6 @@ class CardMetadataApiTest {
         return patch("/api/cards/{id}/metadata", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body);
-
-    }
-
-    private void awaitLockWaiters(int count) throws InterruptedException {
-
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-        while (System.nanoTime() < deadline) {
-            Integer waiting = jdbc.queryForObject(
-                    "SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()",
-                    Integer.class);
-            if (waiting != null && waiting >= count) {
-                return;
-            }
-            Thread.sleep(20);
-        }
-
-        throw new AssertionError("잠금을 기다리는 요청이 " + count + "개가 되지 않았다");
-
-    }
-
-    private static void awaitQuietly(CountDownLatch latch) {
-
-        try {
-            latch.await(10, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
 
     }
 

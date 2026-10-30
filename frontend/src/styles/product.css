@@ -11,7 +11,7 @@
 .landing-notice { margin-top: -10px; color: var(--text-secondary); font-size: 12px; line-height: 20px; }
 .landing-notice--error { color: var(--state-failed-text); }
 .landing-example { display: grid; grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1.12fr); align-items: stretch; gap: 12px; min-width: 0; }
-.github-snapshot, .landing-card { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-surface); }
+.github-snapshot, .landing-card { min-width: 0; margin: 0; overflow: hidden; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
 .example-heading { display: flex; align-items: center; gap: 8px; padding: 16px; border-bottom: 1px solid var(--border-default); font-size: 12px; }
 .example-heading > span { margin-left: auto; color: var(--text-tertiary); font-size: 11px; }
 .github-snapshot__repo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 16px 8px; font-size: 12px; }
@@ -24,9 +24,9 @@
 .github-snapshot__commits li > svg { color: var(--text-tertiary); }
 .github-snapshot__commits li > div { display: grid; gap: 3px; min-width: 0; }
 .github-snapshot__commits strong { font-size: 12px; font-weight: 600; }
-.github-snapshot__commits div > span { font-size: 10px; color: var(--text-tertiary); overflow-wrap: anywhere; }
-.github-snapshot__commits code { grid-column: 2; font-size: 10px; color: var(--text-secondary); }
-.github-snapshot__diff { display: grid; gap: 4px; margin: 12px; padding: 10px 12px; background: var(--bg-subtle); border-radius: 8px; color: var(--text-secondary); font-size: 11px; }
+.github-snapshot__commits div > span { font-size: 11px; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.github-snapshot__commits code { grid-column: 2; font-size: 11px; color: var(--text-secondary); }
+.github-snapshot__diff { display: grid; gap: 4px; margin: 12px; padding: 10px 12px; background: var(--bg-subtle); border-radius: 10px; color: var(--text-secondary); font-size: 11px; }
 .landing-example__connector { color: var(--text-tertiary); align-self: center; }
 .landing-card { display: flex; flex-direction: column; box-shadow: 0 16px 36px rgba(0,0,0,.06); }
 .landing-card h2 { padding: 16px; font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); }

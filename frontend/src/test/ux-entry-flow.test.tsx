@@ -39,13 +39,13 @@ it('explains search misses without claiming a private-repository permission prob
   fireEvent.change(screen.getByRole('textbox', { name: '레포 이름 검색' }), { target: { value: 'no-such-repo' } });
   expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument();
   expect(screen.queryByText(/권한부터 요청하지/)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '검색·필터 초기화' }));
+  fireEvent.click(screen.getByRole('button', { name: '검색과 필터 초기화' }));
   expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
 });
 it('does not equate a small commit share with exaggerating experience', () => {
   mount(<ReposPage />, '/repos');
   expect(screen.queryAllByText(/부풀린 것처럼/)).toHaveLength(0);
-  expect(screen.getAllByText('확인되는 기여가 적어요. 맡은 일은 답변으로 보완할 수 있어요.').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('확인되는 기여가 적어요. 맡은 일은 답변해서 채울 수 있어요.').length).toBeGreaterThan(0);
 });
 it('does not tell sample visitors their actual login expired', () => {
   vi.stubEnv('VITE_API_MOCK', 'true');

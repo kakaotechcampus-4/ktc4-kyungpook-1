@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
+import { useMe } from "@/api/queries";
 import { RefreshCw } from "lucide-react";
 import { Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
@@ -22,6 +23,10 @@ import {
 export function MatchListPage() {
   useDocumentTitle("공고 매칭");
   const matches = useMatches();
+  // 확정 카드 수는 목록의 등급이 아니라 내 정보에서 읽는다(등급이 비었다고 카드가 없는 것은 아니다). 아직 모르면 undefined
+  const confirmedCards = useMe().data?.stats.confirmedCards;
+  // 목록에 등급이 하나라도 있는지. 받기 전에는 모르니 undefined
+  const hasGrade = matches.data?.some((x) => x.fit !== null);
   // 받은 목록 기준으로 센다(검색·필터로는 다시 세지 않는다)
   const loadedCount = matches.data?.length;
   useEffect(() => {
@@ -47,7 +52,8 @@ export function MatchListPage() {
       exp === "ENTRY" || exp === "EXPERIENCED" || exp === "UNSPECIFIED"
         ? exp
         : "ALL",
-    sort: sp.get("sort") === "deadline" ? "deadline" : "fit",
+    // 등급이 하나도 없으면 sort=fit 이 주소에 남아 있어도 마감 순으로 본다
+    sort: hasGrade !== false && sp.get("sort") !== "deadline" ? "fit" : "deadline",
   };
   const list = useMemo(
     () => selectMatches(matches.data ?? [], filters),
@@ -66,7 +72,7 @@ export function MatchListPage() {
       (current) => {
         const next = new URLSearchParams(current);
         if (query) next.set('q', query); else next.delete('q');
-        if (value === "ALL" || !value) next.delete(key);
+        if (!value || (value === "ALL" && key !== 'q')) next.delete(key);
         else next.set(key, value);
         return next;
       },
@@ -84,7 +90,7 @@ export function MatchListPage() {
         <SearchField
           value={filters.q}
           onChange={(value) => { setQuery(value); update('q', value); }}
-          placeholder="기업·직무 검색"
+          placeholder="기업이나 직무 검색"
         />
         <Select
           label="경력"
@@ -114,12 +120,12 @@ export function MatchListPage() {
           value={filters.sort}
           onChange={(x) => update("sort", x)}
           options={[
-            { value: "fit", label: "근거 등급 순" },
-            { value: "deadline", label: "마감 순" },
+            ...(hasGrade !== false ? [{ value: "fit" as const, label: "근거 등급 순" }] : []),
+            { value: "deadline" as const, label: "마감 순" },
           ]}
         />
       </div>
-      {matches.isPending && <><AiWait label="확정한 카드와 공고 조건을 하나씩 맞춰 보는 중이에요" /><div className="match-grid">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={200} />)}</div></>}
+      {matches.isPending && <><AiWait label="공고 목록을 불러오는 중이에요" /><div className="match-grid">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={200} />)}</div></>}
       {matches.isError && (
         <MatchFailure
           error={matches.error}
@@ -129,8 +135,7 @@ export function MatchListPage() {
       )}
       {matches.isSuccess && (
         <>
-          {matches.data.length > 0 &&
-            matches.data.every((x) => x.fit === null) && (
+          {matches.data.length > 0 && !hasGrade && confirmedCards === 0 && (
               <div className="match-notice">
                 <p>
                   확정한 카드가 없어요. 카드를 확정하면 공고별 근거를 비교할 수
@@ -170,7 +175,7 @@ export function MatchListPage() {
               />
               {filtered && (
                 <Button variant="outline" onClick={() => { setQuery(''); setSp(view === "company" ? { view } : {}); }}>
-                  검색·필터 초기화
+                  검색과 필터 초기화
                 </Button>
               )}
             </div>

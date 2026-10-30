@@ -63,9 +63,9 @@ def _request(**overrides: Any) -> InterviewTurnRequest:
 
 
 def _ask(slot: str, question: str = "그때 어떤 문제가 있었나요?", mode: str = "TEXT",
-         suggestions: Optional[list[str]] = None) -> QuestionOutput:
+         suggestions: Optional[list[str]] = None, reason: Optional[str] = None) -> QuestionOutput:
     return QuestionOutput(action="ASK", star_slot=slot, question=question, answer_mode=mode,
-                          suggested_answers=suggestions or [])
+                          suggested_answers=suggestions or [], reason=reason)
 
 
 def _agent(client: Optional[FakeClient], limits: Optional[InterviewLLMLimits] = None) -> InterviewAgent:
@@ -175,6 +175,78 @@ def test_suggestions_drop_invented_metrics_and_keep_two() -> None:
     result, _ = _next(_agent(client), _request(target_star_slot="S"))
 
     assert result.suggested_answers == ["배포 대기를 없앴다", "목록 조회를 쿼리 한 번으로 바꿨다"]
+
+
+ANSWERED_S = [{"star_slot": "S", "question_text": "상황은요?", "outcome": "ANSWERED", "answer_text": "배포가 느렸다"}]
+
+
+def test_reason_for_a_slot_the_llm_chose_is_sent() -> None:
+    """정해진 칸이 없을 때 LLM 이 고른 칸에는 LLM 이 쓴 판단 이유를 그대로 보낸다."""
+    client = FakeClient(_ask("S", reason="앞 답에 무엇이 느렸는지 빠져 다시 물어요"))
+
+    result, _ = _next(_agent(client), _request(previous_turns=ANSWERED_S))
+
+    assert client.payloads[0]["fixed_slot"] is None
+    assert (result.target_star_slot, result.reason) == ("S", "앞 답에 무엇이 느렸는지 빠져 다시 물어요")
+
+
+def test_reason_is_kept_when_the_first_question_is_fixed_to_r() -> None:
+    """첫 질문을 코드가 R 로 정해도 LLM 이 쓴 그 칸을 묻는 이유는 보낸다."""
+    client = FakeClient(_ask("R", mode="MEASURE", reason="결과에 수치가 없어 결과부터 물어요"))
+
+    result, _ = _next(_agent(client), _request())
+
+    assert client.payloads[0]["fixed_slot"] == "R"
+    assert result.reason == "결과에 수치가 없어 결과부터 물어요"
+
+
+def test_slot_chosen_on_screen_has_no_reason() -> None:
+    """화면에서 칸을 지정한 질문은 사용자가 고른 것이라 LLM 이 이유를 써도 보내지 않는다."""
+    client = FakeClient(_ask("S", reason="상황이 비어 있어 물어요"))
+
+    result, _ = _next(_agent(client), _request(target_star_slot="S"))
+
+    assert (result.target_star_slot, result.reason) == ("S", None)
+
+
+def test_end_carries_the_reason() -> None:
+    """LLM 이 그만 묻기로 하면 질문 없이 끝내고 그 이유를 함께 보낸다."""
+    client = FakeClient(QuestionOutput(action="END", reason="네 칸 모두 근거가 있어 마칠게요"))
+
+    result, _ = _next(_agent(client), _request(previous_turns=ANSWERED_S))
+
+    assert (result.next_action, result.reason) == ("COMPLETE", "네 칸 모두 근거가 있어 마칠게요")
+
+
+def test_reason_is_masked_and_clipped() -> None:
+    """이유는 화면에 그대로 나가므로 비밀값·이메일을 가리고 60자 안으로 자른다."""
+    token = "ghp_" + "x" * 36
+    client = FakeClient(_ask("S", reason=f"토큰 {token} 과 kim@example.com 이 적힌 답이라 " + "가" * 80))
+
+    result, _ = _next(_agent(client), _request(previous_turns=ANSWERED_S))
+
+    assert len(result.reason) <= 60
+    assert token not in result.reason and "kim@example.com" not in result.reason
+
+
+def test_reason_with_invented_numbers_is_dropped() -> None:
+    """입력에 없는 수치가 든 이유는 보내지 않고, 질문은 그대로 쓴다."""
+    client = FakeClient(_ask("S", reason="응답이 3초 걸렸다는 답이 없어 물어요"))
+
+    result, _ = _next(_agent(client), _request(previous_turns=ANSWERED_S))
+
+    assert (result.target_star_slot, result.reason) == ("S", None)
+    assert len(client.payloads) == 1
+
+
+def test_missing_reason_does_not_ask_again() -> None:
+    """이유가 없어도 질문은 쓸 수 있으므로 다시 요청하지 않는다."""
+    client = FakeClient(_ask("S"))
+
+    result, fell_back = _next(_agent(client), _request(previous_turns=ANSWERED_S))
+
+    assert (result.target_star_slot, result.reason, fell_back) == ("S", None, False)
+    assert len(client.payloads) == 1
 
 
 @pytest.mark.parametrize("error", [LLMStructuredCallError("실패"), LLMConfigError("설정 없음")])

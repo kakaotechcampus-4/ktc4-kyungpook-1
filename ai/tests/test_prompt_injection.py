@@ -21,7 +21,7 @@ from pydantic import BaseModel, ValidationError
 
 from schemas.analysis import ChangedFile, CommitInput, PullRequestContext, StarAnalysisRequest
 from schemas.collection import CandidateDetailResult
-from schemas.interview import InterviewAnswerRequest, InterviewTurnRequest
+from schemas.interview import InterviewAnswerRequest, InterviewTurnRequest, MeasuredSentenceRequest
 from schemas.matching import JobPostingDetailExtractionRequest
 from scripts.evaluate_prompt_injection import (
     CASES,
@@ -52,6 +52,13 @@ from services.grouping_llm import (
     GroupingLlm,
 )
 from services.interview_agent import InterviewAgent
+from services.interview_llm import (
+    QUESTION_PROMPT,
+    SENTENCE_PROMPT,
+    InterviewLLM,
+    QuestionOutput,
+    SentenceOutput,
+)
 from services.job_posting_extractor import (
     SYSTEM_PROMPT as POSTING_PROMPT,
 )
@@ -184,9 +191,10 @@ def _decision_completion(decision: AnswerSufficiencyDecision):
 @pytest.mark.parametrize(
     "prompt",
     [STAR_PROMPT, DIFF_PROMPT, _CLUSTER_SYSTEM_PROMPT, _DESCRIPTION_SYSTEM_PROMPT, POSTING_PROMPT, ANSWER_PROMPT,
+     QUESTION_PROMPT, SENTENCE_PROMPT,
      PICK_PROMPT, SUPERVISOR_PROMPT, ASK_PROMPT, WRITE_PROMPT, DECIDE_PROMPT, REVIEW_PROMPT],
     ids=["star", "diff", "grouping-cluster", "grouping-description", "posting", "answer",
-         "cover-letter-pick", "cover-letter-supervisor", "cover-letter-ask", "cover-letter-write",
+         "interview-question", "interview-measured-sentence", "cover-letter-pick", "cover-letter-supervisor", "cover-letter-ask", "cover-letter-write",
          "cover-letter-decide", "cover-letter-review"],
 )
 def test_system_prompt_says_input_is_data_not_instructions(prompt: str) -> None:
@@ -250,10 +258,39 @@ def _capture_answer() -> list[tuple[str, dict]]:
     return calls
 
 
+def _capture_interview_question() -> list[tuple[str, dict]]:
+    client = _FakeStructuredClient(QuestionOutput(
+        action="ASK", star_slot="R", question="결과를 어떻게 확인했나요?",
+    ))
+    request = InterviewTurnRequest.model_validate({
+        "card_id": 1, "source_type": "COMMIT_CLUSTER", "max_turns": 2,
+        "candidate": {"commits": [{"commit_id": 1, "sha": SHA_A, "message": ALL_INJECTIONS}]},
+        "missing_slots": [{"star_slot": "R", "statement_seq": 1, "body": ALL_INJECTIONS}],
+        "previous_turns": [{"star_slot": "R", "question_text": ALL_INJECTIONS,
+                            "outcome": "NOT_MEASURED", "answer_text": ALL_INJECTIONS}],
+    })
+
+    asyncio.run(InterviewLLM(client).write_question(request, "R"))
+    return client.calls
+
+
+def _capture_measured_sentence() -> list[tuple[str, dict]]:
+    client = _FakeStructuredClient(SentenceOutput(sentence="401 응답을 확인했다."))
+    injected = f"{MARKER} {FAKE_SECRET}"
+    request = MeasuredSentenceRequest.model_validate({
+        "card_id": 1, "card_title": injected,
+        "current_result": injected, "user_text": injected,
+    })
+
+    asyncio.run(InterviewLLM(client).write_sentence(request))
+    return client.calls
+
+
 @pytest.mark.parametrize(
     ("capture", "redacts_input"),
-    [(_capture_star, True), (_capture_diff, True), (_capture_grouping, True), (_capture_posting, False), (_capture_answer, False)],
-    ids=["star", "diff", "grouping", "posting", "answer"],
+    [(_capture_star, True), (_capture_diff, True), (_capture_grouping, True), (_capture_posting, False),
+     (_capture_answer, False), (_capture_interview_question, True), (_capture_measured_sentence, True)],
+    ids=["star", "diff", "grouping", "posting", "answer", "interview-question", "interview-measured-sentence"],
 )
 def test_injected_text_reaches_the_model_only_inside_user_input(capture, redacts_input: bool) -> None:
     calls = capture()
@@ -265,6 +302,15 @@ def test_injected_text_reaches_the_model_only_inside_user_input(capture, redacts
         if redacts_input:
             # 비밀값 모양을 출력하라는 문장의 예시 값은 모델에 가기 전에 가려진다.
             assert FAKE_SECRET not in json.dumps(payload, ensure_ascii=False)
+
+
+def test_prompt_injection_evaluation_covers_all_live_llm_tasks() -> None:
+    """실제 호출 평가가 LLM 없는 틀 경로가 아니라 현재 운영 LLM 작업을 빠뜨리지 않는다."""
+    case_tasks = {case.task for case in CASES}
+
+    assert len(CASES) >= 50
+    assert {"INTERVIEW", "MEASURE", "COVER_ASSIGN", "COVER_ASK", "COVER_DRAFT"} <= case_tasks
+    assert case_tasks <= set(RUNNERS)
 
 
 def test_structured_client_sends_input_as_a_json_user_message_apart_from_the_system_prompt() -> None:

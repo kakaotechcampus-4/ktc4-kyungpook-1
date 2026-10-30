@@ -187,7 +187,7 @@ export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: str
         <span>{cardKindShort[c.kind]} 카드{src ? `, ${src}` : ''}</span>
         {c.period && <span>{periodLabel(c.period)}</span>}
       </div>
-      <CardTags areas={c.areas} techs={c.techs} />
+      <CardTags areas={c.areas} techs={c.techs} techLimit={4} />
       <h3 className="gcard__title">{c.title}</h3>
       <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />
       <div className="experience-item__footer">

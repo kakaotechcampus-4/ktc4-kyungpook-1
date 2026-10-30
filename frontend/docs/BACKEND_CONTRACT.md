@@ -39,6 +39,30 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `GET /me` | `Me` — `{ id, login, avatarUrl, plan:'FREE', github:{connected, scopes[], connectedAt, lastCollectedAt}, stats:{confirmedCards, analyzedRepos, interviewTurns, remainingCandidates} }` |
 | `POST /github/disconnect` | `{ ok }` — 토큰 즉시 파기 |
 
+### 인적사항 (#516, 구현됨)
+| | 요청 | 응답 `data` |
+|---|---|---|
+| `GET /profile` | | `Profile` — 한 번도 저장하지 않았으면 네 목록이 `[]` 이고 `savedAt: null` |
+| `PUT /profile` | `{ educations[], careers[], languages[], certifications[] }` **네 목록 모두 필수**(없으면 `[]`) | `Profile` — 네 목록을 통째로 바꿈 |
+
+```jsonc
+// Profile — 요청 항목도 같은 모양(savedAt 빼고)이고, 비운 칸은 null
+{ "educations": [{ "level": "HIGH_SCHOOL|ASSOCIATE|BACHELOR|MASTER|DOCTOR", "school": "경북대학교", "major": "컴퓨터학부" | null,
+                   "status": "ENROLLED|ON_LEAVE|GRADUATION_EXPECTED|GRADUATED|DROPPED_OUT",
+                   "startMonth": "2021-03" | null, "endMonth": "2027-02" | null, "gpa": 3.8 | null, "gpaMax": 4.5 | null }],  // 5개까지
+  "careers": [{ "company": "카카오", "role": "백엔드" | null, "type": "FULL_TIME|CONTRACT|INTERN|PART_TIME|FREELANCE",
+                "startMonth": "2025-07", "endMonth": "2025-12" | null }],  // 10개까지, endMonth null = 재직 중
+  "languages": [{ "test": "TOEIC|TOEIC_SPEAKING|OPIC|TOEFL|IELTS|TEPS|JLPT|JPT|HSK|OTHER", "testName": "TOPIK" | null,
+                  "score": "IH", "acquiredMonth": "2025-05" | null }],  // 10개까지, testName 은 OTHER 일 때만 필수·저장
+  "certifications": [{ "name": "정보처리기사", "issuer": "한국산업인력공단" | null, "acquiredMonth": "2026-06" | null }],  // 20개까지
+  "savedAt": "ISO" | null }
+```
+
+- 처음 들어올 때 `savedAt: null` 이면 입력 화면을 띄운다(#531). '건너뛰기'는 빈 목록 네 개를 `PUT` 해 저장하므로 다음부터 띄우지 않는다.
+- 글은 앞뒤 공백을 지우고 50자까지(어학 점수는 20자), 빈 글은 null. 달은 `YYYY-MM`, 끝난 달이 시작한 달보다 앞서면 400. 학점은 만점(4.0·4.3·4.5·100)과 함께 보내거나 둘 다 null.
+- 규칙을 어기면 400 `INVALID_REQUEST` 이고 `error.message` 에 "학력 1번째 학교 이름…" 처럼 목록과 순번을 적는다. CSRF 헤더 필요.
+- 매칭 1차 필터(#532)와 자소서 AI(#484)가 이 값을 읽는다(아직 연결 전).
+
 ### 레포
 | | 요청 | 응답 `data` |
 |---|---|---|
@@ -88,6 +112,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
   "partial": false,                                   // 부분 완료는 별도 상태가 아니다 → SUCCEEDED + partial:true
   "steps": [{ "key": "PR_REVIEW|COMMITS|COMPRESS|REASON", "state": "QUEUED|RUNNING|DONE|SKIPPED",
               "done": 0, "total": 0 }],               // 늘 4개. 순서는 아래 참고. 총량을 모르면 total: null
+                                                      // FAILED·CANCELED 로 끝난 Job 의 RUNNING 은 중단된 단계, QUEUED 는 시작하지 못한 단계다(서버는 닫지 않는다)
   "activity": [{ "seq": 41, "step": "COMMITS", "kind": "PULL_REQUEST|COMMIT|GROUPED|DESCRIBED", ... }],  // 아래 참고. 없으면 []
   "errorCode": "GITHUB_UNAVAILABLE|GITHUB_RATE_LIMITED|GITHUB_UNAUTHORIZED|AI_UNAVAILABLE|COLLECTION_CAPPED|DRAFT_TIMEOUT|EVIDENCE_MISSING|INTERNAL_ERROR" | null,
   "retryable": bool | null,
@@ -296,7 +321,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 | | 응답 `data` |
 |---|---|
-| `GET /matches` | `MatchTarget[]` — 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다. `?companyId=` 를 주면 그 회사 공고만 오고(없는 회사면 빈 배열), 비어 있으면 거르지 않는다 |
+| `GET /matches` | `MatchTarget[]` — **AI 를 부르지 않는다.** 모든 공고의 `fit` 은 null, `required`·`preferred` 의 `met` 은 0 이고 `total` 은 공고의 조건 수다(#581). 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다. `?companyId=` 를 주면 그 회사 공고만 오고(없는 회사면 빈 배열), 비어 있으면 거르지 않는다 |
 | `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote` · `conditions[]`. 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
 
 **MatchTarget**
@@ -304,10 +329,10 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 { "id", "company", "companyId", "logoUrl": "https://…" | null,   // companyId = 같은 회사의 공고를 묶는 id
   "role",                                          // role = 공고 원문의 직무명
   "category": "BACKEND|FRONTEND|MOBILE|DEVOPS|DATA|AI_ML|SECURITY|QA|ETC",
-  "fit": "A|B|C|D" | null,                         // null = 확정 카드가 하나도 없음
+  "fit": "A|B|C|D" | null,                         // 목록은 늘 null(판정하지 않음). 상세에서 null = 확정 카드가 하나도 없음
   "required": { "total", "met" }, "preferred": { "total", "met" },
   "experience": { "level": "ENTRY|EXPERIENCED|UNSPECIFIED", "minYears": n | null },
-  "source": { "url", "collectedAt", "expiresAt": "ISO" | null } }   // expiresAt null = 상시 채용
+  "source": { "url", "collectedAt", "expiresAt": "ISO" | null } }   // expiresAt null = 마감일 없음(아래 참고)
 ```
 
 **MatchDetail** 에 더하는 칸
@@ -319,15 +344,17 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 - **매칭 기준은 공고 조건이다.** 인재상 태그는 쓰지 않는다. 조건은 필수(REQUIRED) → 우대(PREFERRED) → 담당 업무(RESPONSIBILITY) 순이고, 같은 종류 안에서는 원문 순서다.
 - **근거는 확정 카드의 지금 확정 버전에서 행동(A)·결과(R) 칸 문장뿐이다.** 카드의 가리기를 적용한 문장을 보낸다. 같은 카드의 A·R 이 둘 다 맞으면 둘 다 담는다. `supports` 가 빈 조건은 근거가 없는 빈 칸이고, 숨기지 않는다.
-- **등급(`fit`)은 서버가 규칙으로 센다.** `met` 은 근거가 하나 이상 있는 조건 수다. 필수 조건 중 `met` 의 비율이 전부면 A · 절반 이상 B · 1개 이상 C · 0개 D 다. 필수가 없는 공고는 우대로 같은 규칙을 쓴다. 한 카드가 여러 조건을 채워도 된다. 우대는 등급에 넣지 않고 `preferred` 로 따로 보여 준다. 담당 업무와 경력은 등급에 넣지 않는다.
-- **확정 카드가 하나도 없으면 `fit` 은 null, `met` 은 0, `supports` 는 모두 빈 배열이다.** D 는 '카드는 있는데 맞는 근거가 없음' 이다. 화면은 null 이면 등급 대신 "카드를 확정하면 등급이 나와요" 같은 안내를 보여 준다.
+- **등급(`fit`)은 상세에서만 서버가 규칙으로 센다.** `met` 은 근거가 하나 이상 있는 조건 수다. 필수 조건 중 `met` 의 비율이 전부면 A · 절반 이상 B · 1개 이상 C · 0개 D 다. 필수가 없는 공고는 우대로 같은 규칙을 쓴다. 한 카드가 여러 조건을 채워도 된다. 우대는 등급에 넣지 않고 `preferred` 로 따로 보여 준다. 담당 업무와 경력은 등급에 넣지 않는다.
+- **상세에서 확정 카드가 하나도 없으면 `fit` 은 null, `met` 은 0, `supports` 는 모두 빈 배열이다.** D 는 '카드는 있는데 맞는 근거가 없음' 이다. 목록의 `fit` 은 늘 null 이라 '확정 카드가 없음' 과 같은 뜻이 아니다 — 확정 카드 수는 내 정보 `stats.confirmedCards` 로 본다.
 - **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 비슷한 내 카드 문장이 있으면 `supports` 로 함께 온다.
 - **경력은 원문에 적혀 있을 때만 나온다.** `ENTRY` = 신입·경력 무관·인턴·최소 0년(상한만 있는 '1년 미만'·'3년 이하' 도 포함), `EXPERIENCED` = 최소 N년(`minYears`), `UNSPECIFIED` = 경력 얘기가 없거나 원문으로 확인할 수 없을 때. 경력 조건은 `conditions` 에 넣지 않는다.
-- **정렬**: 서버는 `fit` A→D, 같으면 `expiresAt` 이 가까운 순, 상시 채용(null)은 뒤로 내려준다. `fit` 이 모두 null 이면 `expiresAt` 순만 본다. 화면의 '마감 순' 보기는 받은 목록을 다시 정렬한다 — `expiresAt` 이 가까운 순, 상시 채용은 뒤, 같으면 `fit` 순.
+- **정렬**: 목록은 등급이 없으므로 마감이 7일 안에 남은 공고를 마감이 가까운 순으로 앞에 두고, 나머지는 `expiresAt` 이 가까운 순을 지키며 회사마다 한 건씩 돌아가며 놓고, 마감일이 없는(null) 공고는 뒤로 내려준다. 화면의 '마감 순' 보기는 받은 목록을 다시 정렬한다.
 - **필터(경력: 전체·신입 가능·경력·경력 표시 없음, 직무 분류)도 화면에서 한다.** '경력 표시 없음'은 `experience.level` 이 `UNSPECIFIED` 인 공고라, 경력 조건을 알 수 없는 공고를 따로 걸러 볼 수 있게 한다. 서버 쿼리 파라미터는 기업 페이지용 `companyId` 하나뿐이다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
 - **회사(`companyId` · `logoUrl`)**: `companyId` 는 서버 회사 설정의 키(예: `daangn`)이고, 여러 회사의 공고를 주는 출처(로켓펀치)는 `rocketpunch:회사이름` 이다. 기업별로 묶을 때 회사 이름 대신 이 값을 쓴다. `logoUrl` 은 회사 설정에 적은 공식 로고 https 주소이고, 없으면 null 이라 화면은 이니셜을 보인다. 이미지를 불러오지 못할 때도 이니셜로 되돌린다.
-- **오류**: 401 `UNAUTHENTICATED` · 404 `NOT_FOUND` · 503 `AI_UNAVAILABLE`(근거를 찾는 AI 검색이 잠시 실패, 다시 시도할 수 있다).
-- **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급 A~D, 필수 조건이 없어 우대로 센 공고 포함) · `list-no-cards.json`(확정 카드가 없을 때) · `detail.json`(근거가 있는 조건과 빈 조건) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
+- **마감일(`source.expiresAt`)**: null 은 '마감일 없음' 이다. 출처가 상시 채용이라 마감일을 주지 않은 공고, 출처가 준 날짜를 읽지 못한 공고, 1년 넘게 먼 날짜를 준 공고가 함께 null 이라 화면은 '상시 채용' 보다 '마감일 없음' 이 맞다. 마감된 공고는 회사 채용 목록에서 사라지면 다음 가져오기에서 목록에서 빠진다.
+- **회사 이름(`company`)**: 같은 `companyId` 면 이름도 늘 같다. 회사 설정 출처는 설정의 이름 하나를 쓰고, 로켓펀치는 회사 이름이 `companyId` 안에 들어 있다.
+- **오류**: 목록은 401 `UNAUTHENTICATED` 뿐이다. 상세는 401 · 404 `NOT_FOUND` · 503 `AI_UNAVAILABLE`(근거를 찾는 AI 검색이 잠시 실패, 다시 시도할 수 있다).
+- **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급을 셀 때의 예시로, 지금 목록 응답과 값이 다르다) · `list-no-cards.json`(지금 목록 응답과 같은 모양 — `fit` null, `met` 0) · `detail.json`(근거가 있는 조건과 빈 조건) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
 - 한 줄 소개(`summary`), 인재상 태그(`matchedTags`·`gapTags`), 카드 수 기준 칸(`supportedTagCount`·`independentTagCount`)은 없다. `source.verifiedAt` 대신 `source.collectedAt`(공고를 가져온 시각)이다.
 
 ### 아직 서버 쪽에 남은 일 (FE 기대 계약)

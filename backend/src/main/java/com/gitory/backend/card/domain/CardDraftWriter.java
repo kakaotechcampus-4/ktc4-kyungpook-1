@@ -41,7 +41,7 @@ public class CardDraftWriter {
 
     static final short FIRST = 1;
     private static final int MAX_AREAS = 2;
-    private static final int MAX_TECHS = 4;
+    private static final int MAX_TECHS = 8;
 
     private final CardRepository cards;
     private final CardVersionRepository versions;

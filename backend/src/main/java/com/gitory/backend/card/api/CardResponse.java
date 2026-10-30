@@ -27,7 +27,7 @@ public record CardResponse(
         CardStatus status,
         String title,
         @Schema(description = "AI 초안이 고른 분야를 중요한 순서로 최대 2개. 태그가 없는 카드는 빈 배열") List<CardArea> areas,
-        @Schema(description = "AI 초안이 고른 기술을 중요한 순서로 최대 4개. 태그가 없는 카드는 빈 배열") List<CardTech> techs,
+        @Schema(description = "AI 초안이 고른 기술을 중요한 순서로 최대 8개. 태그가 없는 카드는 빈 배열") List<CardTech> techs,
         String period,
         CardRepoResponse repo,
         @Schema(description = "카드가 속한 활동(레포 밖 경험 묶음)이고, 활동 밖 카드는 null. repo 와 함께 값이 있는 카드는 없다") CardActivityResponse activity,

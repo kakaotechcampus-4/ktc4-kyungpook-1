@@ -2984,6 +2984,19 @@
         "title": "FileChangeStatus",
         "type": "string"
       },
+      "GeneralConditionType": {
+        "description": "STAR 카드가 아닌 사용자의 인적사항으로 확인할 공고 조건 종류.",
+        "enum": [
+          "EDUCATION",
+          "MILITARY",
+          "LANGUAGE",
+          "CERTIFICATE",
+          "LOCATION",
+          "OTHER"
+        ],
+        "title": "GeneralConditionType",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3470,10 +3483,20 @@
       },
       "JobCriterion": {
         "additionalProperties": false,
-        "description": "공고 원문에서 확인한 한 가지 직무 조건과 정확한 인용.",
+        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.",
         "properties": {
           "criterion_type": {
             "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "general_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GeneralConditionType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "source_quote": {
             "maxLength": 4000,

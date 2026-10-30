@@ -16,7 +16,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -61,6 +63,17 @@ public class CoverLetterController {
                 .toList();
         return ApiResponse.ok(CoverLetterResponse.from(coverLetters.create(loginUser.id(), request.jobRole(),
                 request.memo(), questions, idempotencyKey)));
+
+    }
+
+    @GetMapping("/api/cover-letters")
+    @Operation(summary = "내 자소서 목록", description = "최근에 만든 자소서부터, 문항 수와 첫 문항을 함께 돌려줍니다. 없으면 빈 배열입니다.")
+    public ApiResponse<List<CoverLetterSummaryResponse>> list(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser) {
+
+        return ApiResponse.ok(coverLetterQuery.list(loginUser.id()).stream()
+                .map(CoverLetterSummaryResponse::from)
+                .toList());
 
     }
 
@@ -146,6 +159,70 @@ public class CoverLetterController {
                 .toList();
         return ApiResponse.ok(CoverLetterResponse.from(coverLetters.answer(toUuid(id), toUuid(questionId),
                 loginUser.id(), answers)));
+
+    }
+
+    @PostMapping("/api/cover-letters/{id}/drafts")
+    @Operation(summary = "초안 쓰기 시작", description = """
+            질문을 받은 뒤(ASKED)에 지금 답으로 초안 쓰기를 줄 세웁니다(stage DRAFTING). 답하지 않은 질문은 넘긴 것으로 봅니다.
+            이때 상황·행동·결과·배운 점·계기 답을 중심 카드에 기억해, 같은 카드를 쓰는 다음 자소서에 미리 채웁니다(넘긴 항목은 전에 기억한 답을 지우지 않음).
+            호출 제한은 세지 않습니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: ASKED 가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterResponse> startDrafting(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id) {
+
+        return ApiResponse.ok(CoverLetterResponse.from(coverLetters.startDrafting(toUuid(id), loginUser.id())));
+
+    }
+
+    @PatchMapping("/api/cover-letters/{id}/questions/{questionId}")
+    @Operation(summary = "초안 고치기", description = """
+            초안을 받은 뒤(DRAFTED)에 문항의 글을 고친 글로 바꿉니다. AI 원본(aiText)·문장 번호(sentences)·확인 필요 표시(marks)는 그대로입니다.
+            charCount·overBy·blanks 는 고친 글로 다시 세고, 고친 글이 AI 원본과 다르면 edited 가 true 입니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 글이 없음, 10,000자를 넘음, U+0000 이 있음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서·문항, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterResponse> editDraft(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
+            @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId,
+            @RequestBody EditDraftRequest request) {
+
+        return ApiResponse.ok(CoverLetterResponse.from(coverLetters.editDraft(toUuid(id), toUuid(questionId),
+                loginUser.id(), request.text())));
+
+    }
+
+    @DeleteMapping("/api/cover-letters/{id}")
+    @Operation(summary = "자소서 지우기", description = """
+            어느 단계에서든 자소서와 문항·답·초안을 지웁니다. AI 가 돌던 단계의 결과는 저장하지 않고 버립니다.
+            카드에 기억한 답은 다른 자소서도 쓰므로 그대로 둡니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "지움"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID, 없는 자소서, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterDeleteResponse> delete(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id) {
+
+        coverLetters.delete(toUuid(id), loginUser.id());
+
+        return ApiResponse.ok(new CoverLetterDeleteResponse(true));
 
     }
 

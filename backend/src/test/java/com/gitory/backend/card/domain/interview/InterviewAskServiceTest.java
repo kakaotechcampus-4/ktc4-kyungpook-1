@@ -16,7 +16,9 @@ import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
+import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
+import com.gitory.backend.card.domain.VersionSlots;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
@@ -39,6 +41,7 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -49,6 +52,8 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -71,6 +76,7 @@ class InterviewAskServiceTest {
     private final InterviewContextAssembler assembler = mock(InterviewContextAssembler.class);
     private final InterviewQuestionPort port = mock(InterviewQuestionPort.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    private final CardVersionReader reader = mock(CardVersionReader.class);
     private final List<TransactionStatus> statuses = new ArrayList<>();
 
     private InterviewQuestionRequest request;
@@ -92,6 +98,7 @@ class InterviewAskServiceTest {
 
         when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of());
         when(turns.save(any(InterviewTurn.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reader.read(anyLong(), anyShort())).thenReturn(new VersionSlots((short) 1, Map.of()));
 
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenAnswer(invocation -> {
             TransactionStatus status = new SimpleTransactionStatus();
@@ -378,7 +385,7 @@ class InterviewAskServiceTest {
     private InterviewAskService service(int maxTurns) {
 
         return new InterviewAskService(ownership, generation, turns, candidates, assembler, port, new InterviewLimits(maxTurns),
-                transactionManager, mock(UserRateLimiter.class));
+                transactionManager, mock(UserRateLimiter.class), reader);
 
     }
 }

@@ -4059,13 +4059,13 @@
           },
           "repair_rounds": {
             "default": 0,
-            "description": "검사에 걸려 고쳐 쓴 횟수. 고쳐 쓰기가 아직 없어 지금은 늘 0",
+            "description": "검사·검토에 걸리거나 빈 칸을 다시 써서 새 초안을 받은 횟수(STAR 초안·자소서). 그 밖의 API 는 0",
             "title": "Repair Rounds",
             "type": "integer"
           },
           "tool_calls_made": {
             "default": 0,
-            "description": "모델이 스스로 골라 부른 도구 횟수. 그런 도구가 아직 없어 지금은 늘 0",
+            "description": "모델이 스스로 골라 부른 도구 횟수. 지금은 STAR 초안이 골라 연 자료 수만 센다",
             "title": "Tool Calls Made",
             "type": "integer"
           }
@@ -5011,6 +5011,17 @@
             "title": "Evidence",
             "type": "array"
           },
+          "materials": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StarMaterials"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 주인이 쓴 PR 의 연결 이슈·리뷰. 자료가 없으면 보내지 않는다"
+          },
           "pull_request_body": {
             "anyOf": [
               {
@@ -5259,6 +5270,72 @@
           "status"
         ],
         "title": "StarFieldResult",
+        "type": "object"
+      },
+      "StarIssueMaterial": {
+        "additionalProperties": false,
+        "description": "후보 PR 에 연결된 이슈 하나.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "저장된 이슈 본문(앞 1,000자). 없으면 제목만 쓴다",
+            "title": "Body"
+          },
+          "number": {
+            "exclusiveMinimum": 0.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "title"
+        ],
+        "title": "StarIssueMaterial",
+        "type": "object"
+      },
+      "StarMaterials": {
+        "additionalProperties": false,
+        "description": "첫 쓰기에는 넣지 않고, 검사에 걸리거나 빈 칸에서 AI 가 골라 여는 자료.",
+        "properties": {
+          "issues": {
+            "description": "후보 PR 에 연결된 이슈. 앞 3개만 쓰고 S·T 칸에만 쓸 수 있다",
+            "items": {
+              "$ref": "#/components/schemas/StarIssueMaterial"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "owner_replies": {
+            "description": "카드 주인이 그 PR 에 단 리뷰와 줄 댓글. 앞 5개를 300자까지 쓰고 모든 칸에 쓸 수 있다",
+            "items": {
+              "type": "string"
+            },
+            "title": "Owner Replies",
+            "type": "array"
+          },
+          "reviews": {
+            "description": "다른 사람이 그 PR 에 단 리뷰와 줄 댓글. 앞 5개를 300자까지 쓰고 S·T 칸에만 쓸 수 있다",
+            "items": {
+              "type": "string"
+            },
+            "title": "Reviews",
+            "type": "array"
+          }
+        },
+        "title": "StarMaterials",
         "type": "object"
       },
       "StatementTarget": {

@@ -7,6 +7,7 @@ import com.gitory.backend.card.domain.CardLabelReader;
 import com.gitory.backend.card.domain.CardMaterialReader;
 import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
+import com.gitory.backend.coverletter.infra.CardMaterialAnswerRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterQuestionRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -26,7 +28,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 자소서를 만들고, 고른 카드를 바꾸고, 질문 만들기를 줄 세우고 답을 저장하고, 실패한 단계를 다시 줄 세운다
+ * 자소서를 만들고 지우며, 단계마다 사용자가 바꾸는 것(카드·답·고친 초안)을 저장하고 다음 AI 단계를 줄 세운다
  * AI 를 새로 돌리는 만들기와 다시 시도만 호출 제한을 세고, 같은 요청 키로 다시 온 만들기는 세지 않는다
  */
 @Service
@@ -44,9 +46,11 @@ public class CoverLetterService {
     private static final int KEY_MAX_LENGTH = 255;
     // AI 가 답 하나를 받는 상한과 같아, 넘는 답이 초안 쓰기 실패로 이어지지 않는다
     private static final int ANSWER_MAX_LENGTH = 1_000;
+    private static final int DRAFT_MAX_LENGTH = 10_000;
 
     private final CoverLetterRepository letters;
     private final CoverLetterQuestionRepository questions;
+    private final CardMaterialAnswerRepository rememberedAnswers;
     private final CardMaterialReader cardMaterials;
     private final CardLabelReader cardLabels;
     private final UserRateLimiter rateLimiter;
@@ -130,6 +134,59 @@ public class CoverLetterService {
 
     }
 
+    /**
+     * 질문을 받은 뒤에만 부르며, 답하지 않은 질문은 넘긴 것으로 두고 초안 쓰기를 줄 세운다
+     * 답은 이때 중심 카드에 기억해, 답하다 그만둔 자소서의 덜 쓴 답이 전에 써 둔 답을 덮지 않게 한다
+     */
+    @Transactional
+    public CoverLetterView startDrafting(UUID letterId, Long userId) {
+
+        CoverLetter letter = lockOwned(letterId, userId, AuditAction.EDIT_COVER_LETTER);
+        if (letter.getStage() != CoverLetterStage.ASKED) {
+            throw new CoverLetterStateException("초안은 질문을 받은 뒤에만 쓸 수 있습니다.");
+        }
+
+        List<CoverLetterQuestion> loaded = questions.findByCoverLetterIdOrderBySeq(letter.getId());
+        loaded.forEach(CoverLetterQuestion::skipUnanswered);
+        remember(loaded);
+        letter.startDrafting();
+
+        return views.of(letter);
+
+    }
+
+    /** 초안을 받은 뒤에만 고치며, AI 원본은 그대로 두고 고친 글로 글자 수와 남은 빈칸을 다시 센다 */
+    @Transactional
+    public CoverLetterView editDraft(UUID letterId, UUID questionId, Long userId, String text) {
+
+        CoverLetter letter = lockOwned(letterId, userId, AuditAction.EDIT_COVER_LETTER);
+        CoverLetterQuestion question = questions.findByPublicIdAndCoverLetterId(questionId, letter.getId())
+                .orElseThrow(CoverLetterNotFoundException::new);
+        if (letter.getStage() != CoverLetterStage.DRAFTED) {
+            throw new CoverLetterStateException("초안은 다 쓴 뒤에만 고칠 수 있습니다.");
+        }
+        if (text == null) {
+            throw new InvalidCoverLetterInputException("고친 글이 없습니다.");
+        }
+        requireLength(text, "고친 글 칸", DRAFT_MAX_LENGTH);
+
+        question.edit(text);
+        letter.touch();
+
+        return views.of(letter);
+
+    }
+
+    /** 어느 단계에서든 지우며, 워커가 돌리던 단계의 결과는 자소서가 없어 저장되지 않는다 */
+    @Transactional
+    public void delete(UUID letterId, Long userId) {
+
+        CoverLetter letter = lockOwned(letterId, userId, AuditAction.DELETE_COVER_LETTER);
+        letters.delete(letter);
+        auditLog.ok(userId, AuditAction.DELETE_COVER_LETTER, letter.getId());
+
+    }
+
     @Transactional
     public CoverLetterView retry(UUID letterId, Long userId) {
 
@@ -159,6 +216,27 @@ public class CoverLetterService {
             });
         } catch (DataIntegrityViolationException e) {
             return existing(userId, key).orElseThrow(() -> e);
+        }
+
+    }
+
+    // 넘긴 항목은 전에 기억한 답을 지우지 않고, 같은 카드·항목을 여러 문항이 답했으면 뒤 문항의 답이 남는다
+    private void remember(List<CoverLetterQuestion> loaded) {
+
+        Set<Long> live = cardLabels.liveLabels(loaded.stream()
+                .map(CoverLetterQuestion::getPrimaryCardId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet())).keySet();
+        for (CoverLetterQuestion question : loaded) {
+            if (question.getPrimaryCardId() == null || !live.contains(question.getPrimaryCardId())) {
+                continue;
+            }
+            for (MaterialAnswer answer : question.getAnswers()) {
+                if (!answer.skipped() && CardMaterialAnswer.remembers(answer.item())) {
+                    rememberedAnswers.remember(question.getPrimaryCardId(), answer.item().name(), answer.text(),
+                            CoverLetterTime.now());
+                }
+            }
         }
 
     }

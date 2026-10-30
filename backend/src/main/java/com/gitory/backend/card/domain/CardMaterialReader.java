@@ -57,7 +57,7 @@ public class CardMaterialReader {
     @Transactional(readOnly = true)
     public boolean hasConfirmed(Long userId) {
 
-        return !confirmedCards.findLiveIdsNewestFirst(userId).isEmpty();
+        return confirmedCards.existsLiveConfirmed(userId);
 
     }
 

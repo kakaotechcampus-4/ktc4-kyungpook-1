@@ -1,0 +1,6 @@
+/* 경험 카드 목록 타일의 STAR 네 칸 — '4칸 중 N칸' 막대를 없앤 대신 칸을 키워 그 줄이 진행 정도로 읽히게 한다
+   비어 있는 칸은 점선, 채운 칸은 꽉 찬 원, 확인 필요 칸은 주황이라 색 말고 모양으로도 구분된다 (design2.css) */
+.experience-item .stardots--labeled { width: 100%; max-width: none; min-width: 0; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.experience-item .stardots--labeled .stardot { height: auto; grid-template-rows: auto auto; gap: 6px; }
+.experience-item .stardots--labeled .stardot__letter { width: 32px; height: 32px; font-size: 14px; }
+.experience-item .stardots--labeled .stardot__label { font-size: 12px; line-height: 16px; }

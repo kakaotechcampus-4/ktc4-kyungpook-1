@@ -43,7 +43,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <S><HomePage /></S> },
       { path: '/match', element: <S><MatchListPage /></S> },
-      { path: '/match/company/:company', element: <S><CompanyPage /></S> },
+      { path: '/match/company/:companyId', element: <S><CompanyPage /></S> },
       { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },
       { path: '/repos', element: <S><ReposPage /></S> },
       { path: '/repos/:repoId/run', element: <S><AnalyzePage /></S> },

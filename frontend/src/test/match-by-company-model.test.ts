@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MatchTarget } from "@/api/matching";
 import {
-  bestFit,
   companyKey,
   companyLabel,
   companyMonogram,
@@ -11,6 +10,7 @@ import {
   filtersFromParams,
   findCompany,
   groupByCompany,
+  groupKey,
   isFiltered,
 } from "@/features/match/model";
 import list from "../../docs/examples/matching/list.json";
@@ -37,8 +37,8 @@ describe("기업별 묶기", () => {
     const groups = groupByCompany(items);
     expect(groups.map((g) => g.postings.map((p) => p.id)).sort()).toEqual([["1", "3"], ["2"], ["4", "5"], ["6"]]);
     // 표시 이름은 묶인 공고 중 처음 나온 표기(앞뒤 공백만 제거)
-    expect(groups.find((g) => g.key === companyKey("카카오"))!.company).toBe("카카오");
-    expect(groups.find((g) => g.key === companyKey("toss"))!.company).toBe("Toss");
+    expect(groups.find((g) => g.key === groupKey({ company: "카카오" }))!.company).toBe("카카오");
+    expect(groups.find((g) => g.key === groupKey({ company: "toss" }))!.company).toBe("Toss");
   });
 
   it("공고 순서는 받은 순서를 지키고 입력 배열을 바꾸지 않는다", () => {
@@ -53,7 +53,7 @@ describe("기업별 묶기", () => {
     expect(groupByCompany([posting("1", "(주)카카오"), posting("2", "카카오")])).toHaveLength(2);
   });
 
-  it("빈 이름은 한 묶음으로 모으고 '기업명 없음'으로 보이며, 같은 등급 안에서는 맨 뒤에 둔다", () => {
+  it("빈 이름은 한 묶음으로 모으고 '기업명 없음'으로 보이며, 공고가 더 많아도 맨 뒤에 둔다", () => {
     const groups = groupByCompany([posting("1", ""), posting("2", "   "), posting("3", "하나", "B")]);
     expect(groups.map((g) => g.postings.map((p) => p.id))).toEqual([["3"], ["1", "2"]]);
     expect(groups[1].company).toBe("");
@@ -69,46 +69,43 @@ describe("기업별 묶기", () => {
   });
 });
 
-describe("최고 등급과 기업 정렬 — 평가 전(null)은 D 가 아니다", () => {
-  it("bestFit: A 가 가장 높고, null 은 건너뛰며, 전부 null 이면 null(D 가 아님)", () => {
-    expect(bestFit([posting("1", "x", "C"), posting("2", "x", "B"), posting("3", "x", "D")])).toBe("B");
-    expect(bestFit([posting("1", "x", null), posting("2", "x", "D")])).toBe("D");
-    expect(bestFit([posting("1", "x", null), posting("2", "x", "C")])).toBe("C");
-    expect(bestFit([posting("1", "x", null), posting("2", "x", null)])).toBeNull();
-    expect(bestFit([])).toBeNull();
-  });
-
-  it("기업은 최고 등급 순 → 이름 순, 평가 전 기업은 D 보다도 뒤", () => {
+describe("기업 정렬 — 공고 수 많은 순 → 이름 순(목록 단계의 등급은 쓰지 않는다)", () => {
+  it("공고가 많은 기업이 먼저, 같으면 가나다순", () => {
     const groups = groupByCompany([
-      posting("1", "하늘", null),
-      posting("2", "다온", "D"),
-      posting("3", "나무", "B"),
-      posting("4", "가람", "B"),
-      posting("5", "바다", "A"),
-      posting("6", "가람", "C"),
-      posting("7", "라온", "C"),
-      posting("8", "마루", null),
+      posting("1", "하늘"),
+      posting("2", "다온"),
+      posting("3", "나무"),
+      posting("4", "가람"),
+      posting("5", "바다"),
+      posting("6", "가람"),
+      posting("7", "라온"),
+      posting("8", "다온"),
+      posting("9", "다온"),
     ]);
-    expect(groups.map((g) => [g.company, g.bestFit])).toEqual([
-      ["바다", "A"],
-      ["가람", "B"], // C 공고가 섞여 있어도 최고 등급은 B
-      ["나무", "B"],
-      ["라온", "C"],
-      ["다온", "D"],
-      ["마루", null],
-      ["하늘", null],
+    expect(groups.map((g) => [g.company, g.postings.length])).toEqual([
+      ["다온", 3],
+      ["가람", 2],
+      ["나무", 1],
+      ["라온", 1],
+      ["바다", 1],
+      ["하늘", 1],
     ]);
   });
 
-  it("전부 평가 전이면 어떤 기업도 D 를 받지 않는다", () => {
+  it("등급(fit)이 무엇이든, 비어 있든 순서가 같다 — 기업 묶음에 등급 값이 없다", () => {
+    const names = ["하늘", "다온", "나무", "가람", "바다", "가람"];
+    const fits: MatchTarget["fit"][] = ["A", "D", null, "B", "C", "A"];
+    const withFits = groupByCompany(names.map((name, i) => posting(String(i), name, fits[i])));
+    const withoutFits = groupByCompany(names.map((name, i) => posting(String(i), name, null)));
+    expect(withFits.map((g) => g.company)).toEqual(withoutFits.map((g) => g.company));
+    expect(withFits.map((g) => g.company)).toEqual(["가람", "나무", "다온", "바다", "하늘"]);
+    for (const group of withFits) expect(Object.keys(group).sort()).toEqual(["company", "companyId", "key", "logoUrl", "postings"]);
+  });
+
+  it("평가 전(fit null)뿐인 목록도 같은 규칙으로 묶인다", () => {
     const groups = groupByCompany(list.data.map((x) => MatchTarget.parse({ ...x, fit: null })));
     expect(groups).toHaveLength(5);
-    expect(groups.every((g) => g.bestFit === null)).toBe(true);
     expect(groups.map((g) => g.company)).toEqual(["가온소프트", "나래랩스", "다온페이", "라온모빌리티", "마루데이터"]);
-  });
-
-  it("한 기업 안의 공고가 평가 전과 D 가 섞여 있으면 그 기업은 D", () => {
-    expect(groupByCompany([posting("1", "x", null), posting("2", "x", "D")])[0].bestFit).toBe("D");
   });
 });
 
@@ -164,6 +161,16 @@ describe("기업 페이지 주소", () => {
     );
     expect(companyPath("A/B? #50%")).toBe("/match/company/A%2FB%3F%20%2350%25");
     expect(companyPath("나래랩스", "")).toBe(`/match/company/${encodeURIComponent("나래랩스")}`);
+  });
+
+  it("짝 잃은 서로게이트(잘린 이모지)는 대체 문자로 바꿔 던지지 않고, 온전한 이모지는 그대로 둔다", () => {
+    expect(() => companyPath("연구소\ud83d")).not.toThrow();
+    expect(() => companyPath("\ude00연구소")).not.toThrow();
+    expect(companyPath("연구소\ud83d")).toBe(`/match/company/${encodeURIComponent("연구소\ufffd")}`);
+    expect(companyPath("🚀스타트업")).toBe(`/match/company/${encodeURIComponent("🚀스타트업")}`);
+    // 주소에서 읽은 이름으로 같은 기업을 찾을 수 있다
+    expect(companyKey("연구소\ud83d")).toBe(companyKey("연구소\ufffd"));
+    expect(findCompany([posting("a", "연구소\ud83d")], "연구소\ufffd")?.postings).toHaveLength(1);
   });
 
   it("빈 이름도 경로 조각이 비지 않는다", () => {

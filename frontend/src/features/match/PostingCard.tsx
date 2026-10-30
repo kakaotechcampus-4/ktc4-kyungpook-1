@@ -3,7 +3,6 @@ import { ArrowRight, Briefcase, CalendarClock, Clock3 } from "lucide-react";
 import type { MatchTarget } from "@/api/matching";
 import { MetaItem } from "@/components/MetaItem";
 import { CompanyMark } from "./CompanyMark";
-import { Fit } from "./shared";
 import { categoryLabel, companyLabel, companyPath, deadlineLabel, experienceLabel } from "./model";
 
 /**
@@ -12,6 +11,8 @@ import { categoryLabel, companyLabel, companyPath, deadlineLabel, experienceLabe
  * 링크 안에 링크를 넣을 수 없어서 카드를 <a> 로 감싸지 않는다.
  * search: 목록의 검색·필터·정렬·보기 쿼리. 상세·기업 페이지로 갈 때 그대로 이어 붙여 돌아왔을 때 같은 목록이 되게 한다.
  * showCompany: 기업 페이지처럼 머리말에 이미 기업이 있으면 카드마다 되풀이하지 않는다.
+ * 근거 등급(fit)과 필수·우대 충족 개수(met)는 그리지 않는다: 목록 단계의 값은 판정 기준이 느슨해 오해를 줄 수 있고(경력 10년 이상 공고도 A 가 나왔다),
+ * 서버도 목록의 AI 검색을 끈다. 근거와 함께 보여 줄 수 있는 상세에서만 보인다. 그래서 fit·required·preferred 가 비어 와도 이 카드는 같다.
  */
 export function PostingCard({ item, search, showCompany = true }: { item: MatchTarget; search: URLSearchParams; showCompany?: boolean }) {
   return (
@@ -20,8 +21,8 @@ export function PostingCard({ item, search, showCompany = true }: { item: MatchT
         <div>
           {showCompany && (
             <div className="match-company-row">
-              <Link className="match-company-link" to={companyPath(item.company, search)}>
-                <CompanyMark name={item.company} size={40} />
+              <Link className="match-company-link" to={companyPath(item, search)}>
+                <CompanyMark name={item.company} logoUrl={item.logoUrl} size={40} />
                 <span className="match-company-link__name">{companyLabel(item.company)}</span>
               </Link>
             </div>
@@ -35,26 +36,10 @@ export function PostingCard({ item, search, showCompany = true }: { item: MatchT
             </Link>
           </h2>
         </div>
-        <Fit value={item.fit} />
       </div>
       <div className="match-meta">
         <MetaItem icon={Briefcase}>{categoryLabel[item.category]}</MetaItem>
         <MetaItem icon={Clock3}>{experienceLabel(item.experience)}</MetaItem>
-      </div>
-      <div className="match-counts">
-        <span>
-          {item.required.total === 0 ? '필수 조건 없음, 우대 조건만' : '필수 '}
-          {item.required.total > 0 &&
-          <strong>
-            {item.required.met} / {item.required.total}
-          </strong>}
-        </span>
-        <span>
-          우대{" "}
-          <strong>
-            {item.preferred.met} / {item.preferred.total}
-          </strong>
-        </span>
       </div>
       <div className="match-card__foot">
         <MetaItem icon={CalendarClock}>{deadlineLabel(item.source.expiresAt)}</MetaItem>

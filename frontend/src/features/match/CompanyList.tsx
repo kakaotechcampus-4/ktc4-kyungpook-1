@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { CompanyMark } from "./CompanyMark";
-import { Fit } from "./shared";
 import { companyLabel, companyPath, type CompanyGroup } from "./model";
 
 export type MatchView = "posting" | "company";
@@ -34,7 +33,7 @@ export function ViewToggle({ value, onChange }: { value: MatchView; onChange: (n
 
 const ROLES_SHOWN = 3;
 
-/** 기업별 보기 — 기업마다 카드 하나(마크·이름·공고 수·최고 등급·대표 직무). 카드를 누르면 그 기업의 페이지로 간다. */
+/** 기업별 보기 — 기업마다 카드 하나(마크·이름·공고 수·대표 직무). 카드를 누르면 그 기업의 페이지로 간다. 등급은 보이지 않는다(PostingCard 주석 참고). */
 export function CompanyList({ groups, search }: { groups: CompanyGroup[]; search: URLSearchParams }) {
   return (
     <div className="match-grid">
@@ -45,17 +44,16 @@ export function CompanyList({ groups, search }: { groups: CompanyGroup[]; search
           <article key={group.key} className="match-card match-card--company">
             <div className="match-card__head">
               <div className="match-company-head">
-                <CompanyMark name={group.company} size={44} />
+                <CompanyMark name={group.company} logoUrl={group.logoUrl} size={44} />
                 <div>
                   <h2>
-                    <Link className="match-card__link" to={companyPath(group.company, search)}>
+                    <Link className="match-card__link" to={companyPath(group, search)}>
                       {companyLabel(group.company)}
                     </Link>
                   </h2>
                   <span className="match-company-count">공고 {group.postings.length}건</span>
                 </div>
               </div>
-              <Fit value={group.bestFit} label="최고 등급" />
             </div>
             <ul className="match-company-roles" aria-label="대표 직무">
               {roles.map((posting) => (

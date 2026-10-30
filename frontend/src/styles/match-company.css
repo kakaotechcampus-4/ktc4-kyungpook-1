@@ -34,6 +34,19 @@
 .company-mark--5 { --cm-tone: var(--matcha-sage); }
 .company-mark--6 { --cm-tone: color-mix(in srgb, var(--matcha-green) 50%, var(--caution-500)); }
 .company-mark--7 { --cm-tone: color-mix(in srgb, var(--danger-500) 50%, var(--ink-500)); }
+/* 로고 이미지 — 로고는 흰 바탕을 가정하고 만들어지므로 다크 모드에서도 흰색(--ink-0) 위에 올린다. 크기는 --cm-size 로 고정해 이미지가 오고 가도 레이아웃이 흔들리지 않는다. */
+.company-mark--logo {
+  background: var(--ink-0);
+  border-color: var(--border-default);
+  overflow: hidden;
+}
+.company-mark--logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: calc(var(--cm-size) * 0.12);
+  object-fit: contain;
+}
 
 /* 카드: 카드 전체가 공고 상세 링크(제목 링크를 카드만큼 펼침), 기업 이름만 위에 얹은 별도 링크 */
 .match-card {

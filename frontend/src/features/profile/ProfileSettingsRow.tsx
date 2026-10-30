@@ -8,8 +8,9 @@ export function ProfileSettingsRow() {
   if (!profileSupported()) return null;
   const p = profile.data;
   const summary = !p ? '학력·경력·어학·자격증을 공고 매칭에 써요'
-    : isProfileEmpty(p) ? '아직 입력하지 않았어요 · 공고 매칭에 써요'
-    : `학력 ${p.education.length} · 경력 ${p.career.length} · 어학 ${p.languages.length} · 자격증 ${p.certificates.length}`;
+    : p.savedAt === null ? '아직 입력하지 않았어요 · 공고 매칭에 써요'
+    : isProfileEmpty(p) ? '입력한 정보가 없어요'
+    : `학력 ${p.educations.length} · 경력 ${p.careers.length} · 어학 ${p.languages.length} · 자격증 ${p.certifications.length}`;
   return (
     <Link to="/settings/profile" className="kv" style={{ padding: '14px 0' }}>
       <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13.5 }}>인적사항</span><span className="t-12 c-2">{summary}</span></div>

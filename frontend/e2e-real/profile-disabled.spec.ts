@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { installContractFixture } from './contract-fixture';
 
-// 인적사항은 서버에 아직 없다(제안 계약) — 실서버 모드에서는 화면도 요청도 열지 않는다.
+// 인적사항 API 는 BE #552 가 구현했지만 머지·배포 전이다 — 실서버 모드에서는 VITE_PROFILE_ENABLED 를 켜기 전까지 화면도 요청도 열지 않는다.
 test('unreleased profile is hidden: no home prompt, no MyPage row, a direct route says not open, and no /profile request is ever sent', async ({ page }) => {
   const http = await installContractFixture(page);
   await page.goto('/');
@@ -20,7 +20,7 @@ test('unreleased profile is hidden: no home prompt, no MyPage row, a direct rout
   const guarded = await page.evaluate(async () => {
     const source = '/src/api/profile.ts';
     const { profileApi } = await import(/* @vite-ignore */ source);
-    const empty = { education: [], career: [], languages: [], certificates: [] };
+    const empty = { educations: [], careers: [], languages: [], certifications: [] };
     return Promise.all([profileApi.get(), profileApi.save(empty)].map((p: Promise<unknown>) => p.catch((e: { code: string }) => e.code)));
   });
   expect(guarded).toEqual(['FEATURE_UNAVAILABLE', 'FEATURE_UNAVAILABLE']);

@@ -17,7 +17,7 @@ const COLLECTED = [
 ] as const;
 
 /** 인적사항은 서버 지원이 열린 환경에서만 수집한다 — 안 받는 정보를 받는다고 적지 않는다 */
-const PROFILE_COLLECTED = [['인적사항 (학력·경력·어학·자격증)', '공고 매칭의 지원 자격 비교', '보관']] as const;
+const PROFILE_COLLECTED = [['인적사항 (학력·경력·어학·자격증)', '공고 매칭의 지원 자격 비교, 자소서 AI 참고', '보관']] as const;
 
 /** F2 마이페이지 — 수집 항목 투명 공개. 지표·크레딧 UI 없음 (과금 단위 미정). */
 export function MyPage() {

@@ -25,6 +25,7 @@
 .profile-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px 12px; }
 .profile-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; grid-column: span 2; }
 .profile-cell--half { grid-column: span 3; }
+.profile-cell--wide { grid-column: span 4; }
 .profile-cell--full { grid-column: 1 / -1; }
 .profile-cell .input, .profile-cell .select-trigger { width: 100%; }
 .profile-cell .input[aria-invalid="true"], .profile-cell--invalid .select-trigger { border-color: var(--danger-500); box-shadow: inset 0 0 0 1px var(--danger-500); }
@@ -42,6 +43,6 @@
 /* 좁은 화면은 한 칸씩 — 월 입력(type=month)은 달력 아이콘까지 폭이 필요하다 */
 @media (max-width: 600px) {
   .profile-grid { grid-template-columns: minmax(0, 1fr); }
-  .profile-cell, .profile-cell--half, .profile-cell--full { grid-column: 1 / -1; }
+  .profile-cell, .profile-cell--half, .profile-cell--wide, .profile-cell--full { grid-column: 1 / -1; }
 }
 .profile-cell input[type="month"] { min-width: 0; }

@@ -1,28 +1,31 @@
 /**
- * 인적사항 Mock 서버 — 제안 계약(docs/2026-10-29-PROFILE.md)을 서버처럼 검증하고 저장한다.
- * 저장소는 store.ts 의 db.profile 한 문서(사용자당 하나). 이 값은 브라우저 sessionStorage 데모 DB 에만 있다.
- * 검증 오류에는 칸 위치(path)와 코드만 싣는다 — 받은 값을 되돌려 주거나 로그에 남기지 않는다.
+ * 인적사항 Mock 서버 — BE #552 계약(docs/2026-10-29-PROFILE.md)을 서버처럼 검증하고 저장한다.
+ * 저장소는 store.ts 의 db.profile 한 문서(사용자당 하나). 이 값은 데모 DB(브라우저 탭 저장소)에만 있다.
+ * 실제 서버처럼 400 은 `INVALID_REQUEST` 와 한국어 문장 하나뿐이다(칸별 오류 목록 없음). 받은 값은 되돌려 주지도 로그에 남기지도 않는다.
  */
 import { ProfileInput, issuesOf, type Profile, type ProfileIssue } from '@/api/profile';
 import { db } from './store';
 import { now } from './fixtures';
 
-export type PutProfileResult = { ok: true; profile: Profile } | { ok: false; fields: ProfileIssue[] };
+export type PutProfileResult = { ok: true; profile: Profile } | { ok: false; message: string };
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
-/** 키 순서와 updatedAt 에 흔들리지 않는 비교용 문자열 */
-const canonical = (profile: Profile) => JSON.stringify({ ...profile, updatedAt: null }, (_key, value) =>
-  value && typeof value === 'object' && !Array.isArray(value) ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : 1))) : value);
-const sameContent = (a: Profile, b: Profile) => canonical(a) === canonical(b);
+const LIST_NAME: Record<string, string> = { educations: '학력', careers: '경력', languages: '어학', certifications: '자격증' };
+
+/** 서버처럼 어느 목록의 몇 번째인지만 적는다 — 값은 담지 않는다 */
+function describe(issues: ProfileIssue[]): string {
+  const first = issues[0]?.path.match(/^(\w+)(?:\[(\d+)\])?/);
+  const list = first && LIST_NAME[first[1]];
+  if (!list) return '요청 본문을 확인해 주세요.';
+  return first[2] === undefined ? `${list} 목록을 확인해 주세요.` : `${list} ${Number(first[2]) + 1}번째 항목을 확인해 주세요.`;
+}
 
 export const getProfile = (): Profile => clone(db.profile);
 
-/** 통째로 바꾼다. 같은 내용을 다시 보내면 아무것도 바꾸지 않고(updatedAt 도 그대로) 지금 값을 돌려준다 */
+/** 네 목록을 통째로 바꾼다. 빈 목록 네 개도 저장이다(`savedAt` 이 생겨 다음부터 처음 입력을 띄우지 않는다) */
 export function putProfile(body: unknown): PutProfileResult {
   const parsed = ProfileInput.safeParse(body);
-  if (!parsed.success) return { ok: false, fields: issuesOf(parsed.error) };
-  const next: Profile = { ...parsed.data, updatedAt: now() };
-  if (sameContent(db.profile, next)) return { ok: true, profile: getProfile() };
-  db.profile = next;
+  if (!parsed.success) return { ok: false, message: describe(issuesOf(parsed.error)) };
+  db.profile = { ...parsed.data, savedAt: now() };
   return { ok: true, profile: getProfile() };
 }

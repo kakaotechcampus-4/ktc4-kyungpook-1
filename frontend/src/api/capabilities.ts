@@ -10,8 +10,8 @@ export const cardRegenerationSupported = (env: { VITE_API_MOCK?: string } = {
 }) => env.VITE_API_MOCK !== 'false';
 
 /**
- * 인적사항(학력·경력·어학·자격증) — `GET·PUT /api/profile` 은 제안 단계라 서버에 아직 없다.
- * Mock 에서는 기본으로 켜지고, 실서버 모드에서는 계약 확정·구현 뒤 `VITE_PROFILE_ENABLED=true` 로 명시해야 열린다.
+ * 인적사항(학력·경력·어학·자격증) — `GET·PUT /api/profile` 은 BE #552 가 구현했지만 머지·배포 전이다.
+ * Mock 에서는 기본으로 켜지고, 실서버 모드에서는 BE 가 배포된 뒤 `VITE_PROFILE_ENABLED=true` 로 명시해야 열린다.
  * 꺼져 있으면 화면은 "준비 중"만 보이고 어떤 요청도 보내지 않는다.
  */
 export const profileSupported = (env: { VITE_API_MOCK?: string; VITE_PROFILE_ENABLED?: string } = {

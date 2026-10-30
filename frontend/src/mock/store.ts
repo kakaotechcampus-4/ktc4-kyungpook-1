@@ -15,7 +15,7 @@ export const db = {
   candidates: clone(seedCandidates) as Any[],
   cards: clone(seedCards) as Any[],
   interview: clone(seedInterview) as Record<string, Any[]>,
-  profile: emptyProfile(), // 인적사항(제안 계약) — 사용자당 한 문서. 처음엔 비어 있다
+  profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)

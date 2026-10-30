@@ -361,25 +361,3 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 ## 경험 카드 — 활동 묶음·문항 유형·다듬기 (#474)
 
 모두 [경험 카드 계약](2026-10-28-EXPERIENCE_CARDS.md)을 따릅니다. 레포 밖 경험을 묶는 활동(`/activities`)과 카드의 `activity` 는 구현됐고(#477) 위 카드 표에 반영했습니다. 카드의 `themes`, 경험 카드 되묻기의 다듬기 미리 보기(`polished-draft`)와 답의 `original` 은 계약만 정했고, 위 카드·되묻기 표는 그 서버 구현이 머지될 때 고칩니다.
-
-## 인적사항(학력·경력·어학·자격증) — 제안(미확정) · 서버 없음
-
-사용자가 학력·경력·어학·자격증을 문서 하나로 등록하고, 공고 매칭이 1차로 학력·자격 같은 단어로 거르는 데 쓰는 API 의 **제안**이다. **서버에 아직 없다.** `GET /me`(`MeView`)에도 필드가 없고, 레포 밖 경험을 묶는 활동(`/activities`)과는 다른 것이다. 필드 규칙·오류·개인정보 원칙·BE 가 정할 것은 [인적사항 제안](2026-10-29-PROFILE.md)에 있다.
-
-| | 요청 | 응답 `data` |
-|---|---|---|
-| `GET /profile` | | `Profile` — 저장한 적이 없어도 **200**, 빈 목록 네 개 + `updatedAt: null` |
-| `PUT /profile` | `{ education[], career[], languages[], certificates[] }` — 네 목록 모두(빠지면 400) | 저장된 `Profile`. 통째로 교체하고 **멱등**이다(같은 본문은 `updatedAt` 도 그대로) |
-
-```jsonc
-{ "education":    [{ "school", "major", "status": "ENROLLED|GRADUATED|LEAVE|DROPOUT|COMPLETED", "startMonth": "YYYY-MM", "endMonth": "YYYY-MM" | null }],
-  "career":       [{ "company", "role", "startMonth", "endMonth" | null }],        // endMonth null = 재직 중
-  "languages":    [{ "name", "score", "acquiredMonth" }],                          // score = 점수·등급을 적은 그대로(자유 글 30자)
-  "certificates": [{ "name", "issuer" | null, "acquiredMonth" }],
-  "updatedAt": "ISO" | null }
-```
-
-- 목록마다 **최대 10개**. 글은 앞뒤 공백을 지운 뒤 학교·전공·회사·직무·자격증·발급 기관 50자, 어학 시험·점수 30자. 월은 `YYYY-MM`, 1950년 이후, 시작·취득 월은 이번 달까지(학력 종료 월은 졸업 예정 10년 뒤까지). 종료 월은 시작 월보다 앞설 수 없고, 졸업·중퇴·수료는 종료 월이 있어야 한다.
-- 오류: 401 `UNAUTHENTICATED`, 400 `INVALID_REQUEST` + `details.fields: [{ path: "education[0].school", code: "REQUIRED" }]`. **받은 값을 응답·로그에 담지 않는다**(`path` 와 `code` 만).
-- **개인정보다.** 지표 이벤트에는 개수만 싣고, 로그·URL·쿼리스트링에 값을 넣지 않는다. 매칭에서는 **거르는 데** 쓰고, 자소서 AI 요청에는 **가려서 싣는다**(팀 결정 10/29, #516·#531). 카드(STAR) 문장을 만드는 데는 쓰지 않는다. AI 로 보내는 칸·가리는 규칙·사용자 고지 문구는 BE 가 정한다.
-- FE 는 Mock 과 화면(`/settings/profile` · 홈 첫 방문 안내 · 마이페이지 줄)을 준비했다. 실제 API 모드에서는 `VITE_PROFILE_ENABLED=true` 를 명시하기 전에는 이 경로를 **호출하지 않는다**(`VITE_MATCH_ENABLED`·`VITE_CARD_METADATA_ENABLED` 와 같은 방식). 계약 확정과 서버 구현 뒤에 켠다.

@@ -39,10 +39,10 @@ export function mountApp(routes: RouteObject[], initialPath: string, client = ne
 
 export const page = (element: ReactNode, path: string): RouteObject => ({ path, element });
 
-/** 필요한 만큼만 채운 저장 본문 */
+/** 필요한 만큼만 채운 저장 본문(BE #552 계약 모양) */
 export const sampleInput = (): ProfileInput => ({
-  education: [{ school: '샘플대학교', major: '컴퓨터공학', status: 'GRADUATED', startMonth: '2018-03', endMonth: '2022-02' }],
-  career: [{ company: '샘플컴퍼니', role: '백엔드 개발', startMonth: '2022-03', endMonth: null }],
-  languages: [{ name: 'TOEIC', score: '900', acquiredMonth: '2021-08' }],
-  certificates: [{ name: '정보처리기사', issuer: null, acquiredMonth: '2021-11' }],
+  educations: [{ level: 'BACHELOR', school: '샘플대학교', major: '컴퓨터공학', status: 'GRADUATED', startMonth: '2018-03', endMonth: '2022-02', gpa: 3.8, gpaMax: 4.5 }],
+  careers: [{ company: '샘플컴퍼니', role: '백엔드 개발', type: 'FULL_TIME', startMonth: '2022-03', endMonth: null }],
+  languages: [{ test: 'TOEIC', testName: null, score: '900', acquiredMonth: '2021-08' }],
+  certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: '2021-11' }],
 });

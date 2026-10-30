@@ -1,6 +1,6 @@
 import { act, cleanup, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { profileApi } from '@/api/profile';
+import { emptyInput, emptyProfile, profileApi } from '@/api/profile';
 import { ProfilePage } from '@/features/profile/ProfilePage';
 import { MyPage } from '@/features/settings/MyPage';
 import { putProfile } from '@/mock/profile';
@@ -30,13 +30,12 @@ describe('real-server mode (the endpoint does not exist yet)', () => {
   });
   it('talks to /api/profile once the flag is on', async () => {
     realMode(); vi.stubEnv('VITE_PROFILE_ENABLED', 'true');
-    const empty = { education: [], career: [], languages: [], certificates: [], updatedAt: null };
-    const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ data: empty, error: null }), { status: 200 }));
+    const fetcher = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ data: emptyProfile(), error: null }), { status: 200 }));
     await profileApi.get();
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(String(fetcher.mock.calls[0][0])).toBe('/api/profile');
-    await profileApi.save({ education: [], career: [], languages: [], certificates: [] });
-    expect(fetcher.mock.calls[1][1]).toMatchObject({ method: 'PUT' });
+    await profileApi.save(emptyInput());
+    expect(fetcher.mock.calls[1][1]).toMatchObject({ method: 'PUT', body: JSON.stringify({ educations: [], careers: [], languages: [], certifications: [] }) });
   });
 
   it('the page says the feature is not open yet, offers a way back, and sends no request', async () => {
@@ -73,17 +72,27 @@ describe('mock mode', () => {
     await waitFor(() => expect(row).toHaveTextContent('학력 1 · 경력 1 · 어학 1 · 자격증 1'));
     expect(server.profileCalls()).toHaveLength(1);
   });
-  it('MyPage invites an empty profile without pretending anything is saved', async () => {
+  it('MyPage invites a never-saved profile without pretending anything is saved', async () => {
     connectMockServer();
     mountApp([page(<MyPage />, '/settings')], '/settings');
     const row = await screen.findByRole('link', { name: /인적사항/ });
     await waitFor(() => expect(row).toHaveTextContent('아직 입력하지 않았어요'));
   });
-  it('lists the profile among the stored data, so the transparency page stays true', async () => {
+  it('MyPage tells a skipped profile (saved, all lists empty) apart from a never-saved one', async () => {
+    connectMockServer();
+    putProfile(emptyInput());
+    mountApp([page(<MyPage />, '/settings')], '/settings');
+    const row = await screen.findByRole('link', { name: /인적사항/ });
+    await waitFor(() => expect(row).toHaveTextContent('입력한 정보가 없어요'));
+    expect(row).not.toHaveTextContent('아직 입력하지 않았어요');
+  });
+  it('lists the profile among the stored data with both uses, so the transparency page stays true (#552: matching and cover-letter AI)', async () => {
     connectMockServer();
     mountApp([page(<MyPage />, '/settings')], '/settings');
     await screen.findByRole('link', { name: /인적사항/ });
-    expect(screen.getByText('인적사항 (학력·경력·어학·자격증)')).toBeInTheDocument();
+    const line = screen.getByText('인적사항 (학력·경력·어학·자격증)').closest('.settings-data-row')!;
+    expect(line).toHaveTextContent('공고 매칭의 지원 자격 비교');
+    expect(line).toHaveTextContent('자소서 AI 참고');
   });
   it('the form page fails visibly (not silently) when the profile cannot be read, and can retry', async () => {
     let fail = true;

@@ -9,7 +9,8 @@ export function SaveStatus({ status, retry }: { status: SaveState; retry: () => 
   return <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}><span role="status" aria-live="polite">{labels[status]}</span>{status === 'error' && <Button size="sm" variant="outline" onClick={() => void retry()}>다시 저장</Button>}</div>;
 }
 
-export function UnsavedChangesDialog({ blocker, saving, flush }: { blocker: Blocker; saving: boolean; flush: () => Promise<boolean> }) {
+/** failureMessage: 저장이 안 된 이유가 연결이 아닐 때(예: 입력 오류) 기본 문구를 바꾼다 */
+export function UnsavedChangesDialog({ blocker, saving, flush, failureMessage = '저장하지 못했어요. 연결을 확인한 뒤 다시 저장해 주세요.' }: { blocker: Blocker; saving: boolean; flush: () => Promise<boolean>; failureMessage?: string }) {
   const [failed, setFailed] = useState(false);
   if (blocker.state !== 'blocked') return null;
   const stay = () => { if (!saving) { setFailed(false); blocker.reset(); } };
@@ -17,5 +18,5 @@ export function UnsavedChangesDialog({ blocker, saving, flush }: { blocker: Bloc
     <Button variant="text" disabled={saving} onClick={() => blocker.proceed()}>저장하지 않고 나가기</Button>
     <Button variant="outline" disabled={saving} onClick={stay}>계속 작성</Button>
     <Button loading={saving} onClick={async () => { if (await flush()) blocker.proceed(); else setFailed(true); }}>저장하고 이동</Button>
-  </> }}><p>저장에 실패하면 이동하지 않아요. 저장하지 않고 나가면 남은 변경 사항을 잃게 돼요.</p>{failed && <p role="alert">저장하지 못했어요. 연결을 확인한 뒤 다시 저장해 주세요.</p>}</Modal>;
+  </> }}><p>저장에 실패하면 이동하지 않아요. 저장하지 않고 나가면 남은 변경 사항을 잃게 돼요.</p>{failed && <p role="alert">{failureMessage}</p>}</Modal>;
 }

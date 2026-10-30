@@ -31,7 +31,7 @@ public class CardMaskController {
             가릴 말(from)을 바꿀 말(to)로 보여 주는 규칙을 받은 순서 그대로 저장하고 카드 전체를 돌려줍니다. 원문은 바꾸지 않고, 가린 글은 화면이 규칙으로 만듭니다.
             규칙이 바뀌면 네 칸을 그대로 복사한 MASK 새 버전을 만들고, 저장된 규칙과 순서까지 같으면 버전을 만들지 않습니다.
             규칙은 20개까지, from·to 는 각각 100자까지이며 앞뒤 공백도 그대로 저장합니다. from 은 공백뿐이면 안 되고 to 는 빈 글이어도 됩니다.
-            확정한 카드는 다시 열어야 바꿀 수 있습니다.
+            확정한 카드도 다시 열지 않고 바꿉니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
     @ApiResponses({
@@ -43,8 +43,6 @@ public class CardMaskController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "CSRF 토큰 없음 또는 불일치",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID 또는 본인 카드 없음",
-                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "확정한 카드(CARD_CONFIRMED)",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<CardResponse> mask(

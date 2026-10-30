@@ -143,7 +143,6 @@ public class Card {
 
     public void rename(String title) {
 
-        requireDraft();
         this.title = checkedTitle(title);
         changed();
 
@@ -152,7 +151,6 @@ public class Card {
     /** 빈 글이나 공백뿐인 글을 받으면 기간을 지운다 */
     public void changePeriod(String period) {
 
-        requireDraft();
         this.period = checkedPeriod(period);
         changed();
 
@@ -161,7 +159,6 @@ public class Card {
     /** 받은 순서 그대로 저장하고, 저장된 규칙과 순서까지 같으면 바꾸지 않고 false 를 돌려준다 */
     public boolean replaceMaskRules(List<MaskRule> rules) {
 
-        requireDraft();
         List<MaskRule> checked = checkedMaskRules(rules);
 
         if (checked.equals(maskRules)) {
@@ -194,6 +191,22 @@ public class Card {
         this.status = CardStatus.DRAFT;
         this.confirmedAt = null;
         changed();
+
+    }
+
+    /**
+     * 칸 글이 바뀐 뒤 지금 버전 글로 상태를 다시 정하고, 화면이 자동 저장하므로 확정본은 남기지 않는다
+     * 작성 중은 네 칸이 확인 필요 없이 모두 차야 확정하고, 확정은 상황·행동이 빌 때만 작성 중으로 돌린다
+     */
+    public void settle(VersionSlots slots) {
+
+        if (!isConfirmed() && slots.isComplete()) {
+            this.status = CardStatus.CONFIRMED;
+            this.confirmedAt = CardTime.now();
+            changed();
+        } else if (isConfirmed() && !slots.isConfirmable()) {
+            reopen();
+        }
 
     }
 
@@ -277,15 +290,12 @@ public class Card {
     /** 임시 저장이 현재 버전을 덮어써 카드 행의 다른 칸이 그대로일 때 부른다 */
     public void markEdited() {
 
-        requireDraft();
         changed();
 
     }
 
-    // 확정된 카드에 새 버전이 붙으면 확정본이 현재 버전이 아니게 되므로 막는다
     void switchTo(short versionNo) {
 
-        requireDraft();
         this.currentVersion = versionNo;
         changed();
 

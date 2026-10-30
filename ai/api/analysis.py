@@ -9,10 +9,11 @@ from typing import Any, Awaitable
 
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from api.collection import get_repository_activity_port
 from api.failure_log import log_failure
+from api.progress_stream import NDJSON, STREAM_DESCRIPTION, stream_with_progress
 from api.openapi import COLLECTION_ERROR_RESPONSES, INVALID_PAYLOAD_RESPONSE, LLM_UNAVAILABLE_RESPONSE
 from ports.repository_activity import RepositoryActivityPort
 from schemas.analysis import (
@@ -23,13 +24,14 @@ from schemas.analysis import (
     StarAnalysisRequest,
     StarAnalysisResponse,
 )
-from schemas.common import Envelope, ErrorDetail, ErrorEnvelope, Meta
+from schemas.common import EndedBy, Envelope, ErrorDetail, ErrorEnvelope
 from services.analysis_pipeline import AnalysisPipeline
 from services.diff_analyzer import DiffAnalysisError
-from services.github_collector import GithubApiError, GithubResourceNotFound
+from services.github_collector import GithubApiError, GithubResourceNotFound, GithubUnauthorized
 from services.grouping_llm import GroupingLlmConfigError, GroupingLlmError
 from services.llm_settings import LLMConfigError
 from services.star_generator import StarGenerationError
+from services.usage import usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -93,19 +95,46 @@ async def group_experiences(
     except _ClientDisconnected:
         # 받을 사람이 없지만 남은 LLM 호출은 이미 취소했다. 응답은 형식만 맞춘다.
         return _llm_unavailable(started, "호출자가 연결을 끊었습니다.", True)
-    except GroupingLlmConfigError:
-        logger.warning("경험 그룹화 실패: LLM 설정 없음", exc_info=True)
+    except GroupingLlmConfigError as exc:
+        _log_grouping_failure(request, False, exc, started)
         return _llm_unavailable(started, "그룹화 LLM 설정이 없어 분석할 수 없습니다.", False)
-    except GroupingLlmError:
-        # 응답에는 내부 예외 문구를 싣지 않으므로, 운영에서 원인을 찾을 수 있게 여기서만 남긴다.
-        logger.warning("경험 그룹화 실패: LLM 호출·출력 검증", exc_info=True)
+    except GroupingLlmError as exc:
+        _log_grouping_failure(request, True, exc, started)
         return _llm_unavailable(started, "그룹화 LLM 호출에 실패했습니다.", True)
-    processing_ms = int((time.perf_counter() - started) * 1000)
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=processing_ms),
+        meta=usage_meta(started, "PARTIAL" if result.verdict == "PARTIAL" else "COMPLETED"),
         error=None,
+    )
+
+
+class _StaysConnected:
+    """스트리밍 응답은 호출자가 끊으면 스트림을 닫아 작업을 취소하므로, 요청을 두 곳에서 읽지 않게 끊김 감시를 끈다."""
+
+    async def is_disconnected(self) -> bool:
+        return False
+
+
+@router.post(
+    "/groups/stream",
+    response_class=StreamingResponse,
+    summary="A 경험 후보 그룹화 (진행 스트리밍)",
+    description=(
+        "`/internal/analysis/groups` 와 같은 그룹화를 하면서, 작업 단위 묶음 하나를 묶을 때마다(COMPRESS) "
+        "후보 묶음 하나에 제목·이유를 붙일 때마다(REASON) 진행을 보냅니다. "
+        + STREAM_DESCRIPTION
+    ),
+    responses={200: {"description": "진행 줄들과 마지막 결과 줄", "content": {NDJSON: {}}}},
+)
+async def group_experiences_stream(
+    request: ExperienceGroupingRequest,
+    pipeline: AnalysisPipeline = Depends(get_analysis_pipeline),
+) -> StreamingResponse:
+    """그룹화 API 와 같은 처리·마감·오류 응답을 쓰고, 그 사이 진행만 줄로 더 보낸다."""
+    return stream_with_progress(
+        "/internal/analysis/groups/stream",
+        lambda: group_experiences(request, _StaysConnected(), pipeline),
     )
 
 
@@ -139,6 +168,9 @@ async def collect_diff_evidence(
     except GithubResourceNotFound as exc:
         _log_diff_evidence_failure(request, "RESOURCE_NOT_FOUND", False, exc, started)
         return _error(started, 404, "RESOURCE_NOT_FOUND", "저장소·PR·commit이 없거나 현재 권한으로 읽을 수 없습니다.", False)
+    except GithubUnauthorized as exc:
+        _log_diff_evidence_failure(request, "GITHUB_UNAUTHORIZED", False, exc, started)
+        return _error(started, 401, "GITHUB_UNAUTHORIZED", "GitHub 이 토큰을 거절했습니다. GitHub 을 다시 연결해야 합니다.", False)
     except GithubApiError as exc:
         retryable = exc.secondary_rate_limited or exc.status_code not in _GITHUB_PERMANENT_STATUSES
         _log_diff_evidence_failure(request, "GITHUB_API_ERROR", retryable, exc, started)
@@ -155,7 +187,9 @@ async def collect_diff_evidence(
     return Envelope(
         success=True,
         data=execution.result,
-        meta=Meta(model=None, tool_calls_made=execution.api_calls, processing_ms=_elapsed_ms(started)),
+        meta=usage_meta(
+            started, "PARTIAL" if execution.result.partial else "COMPLETED", github_calls=execution.api_calls
+        ),
         error=None,
     )
 
@@ -190,7 +224,7 @@ async def analyze_star(
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=_elapsed_ms(started)),
+        meta=usage_meta(started, _star_ended_by(result)),
         error=None,
     )
 
@@ -243,6 +277,15 @@ async def _wait_for_disconnect(http_request: Request, stop: asyncio.Event) -> bo
     return False
 
 
+def _log_grouping_failure(
+    request: ExperienceGroupingRequest, retryable: bool, exc: Exception, started: float
+) -> None:
+    log_failure(
+        logger, "경험 그룹화", path="/internal/analysis/groups", code="LLM_UNAVAILABLE", retryable=retryable,
+        exc=exc, started=started, commits=len(request.commits),
+    )
+
+
 def _log_diff_evidence_failure(
     request: DiffEvidenceRequest, code: str, retryable: bool, exc: Exception, started: float
 ) -> None:
@@ -265,8 +308,10 @@ def _llm_unavailable(started: float, message: str, retryable: bool) -> JSONRespo
     return _error(started, 503, "LLM_UNAVAILABLE", message, retryable)
 
 
-def _elapsed_ms(started: float) -> int:
-    return int((time.perf_counter() - started) * 1000)
+def _star_ended_by(result: StarAnalysisResponse) -> EndedBy:
+    """마감에 걸려 비운 칸이 하나라도 있으면 일부만 끝난 것이다."""
+    timed_out = any(field.insufficient_reason_code == "TIMEOUT" for field in result.star.values())
+    return "PARTIAL" if timed_out else "COMPLETED"
 
 
 def _error(started: float, status_code: int, code: str, message: str, retryable: bool) -> JSONResponse:
@@ -274,7 +319,7 @@ def _error(started: float, status_code: int, code: str, message: str, retryable:
     envelope = Envelope(
         success=False,
         data=None,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=_elapsed_ms(started)),
+        meta=usage_meta(started, "FAILED"),
         error=ErrorDetail(code=code, message=message, retryable=retryable),
     )
     return JSONResponse(status_code=status_code, content=jsonable_encoder(envelope))

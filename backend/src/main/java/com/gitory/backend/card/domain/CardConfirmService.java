@@ -42,7 +42,7 @@ public class CardConfirmService {
 
         // 문장을 고치는 요청은 모두 카드 행을 먼저 잠그므로, 잠근 뒤 읽는 여기서는 문장과 근거가 한 시점으로 읽힌다
         VersionSlots slots = reader.read(card.getId(), card.getCurrentVersion());
-        if (slots.stateOf(StarField.S) == StarFieldState.EMPTY || slots.stateOf(StarField.A) == StarFieldState.EMPTY) {
+        if (!slots.isConfirmable()) {
             throw new CardNotConfirmableException();
         }
 

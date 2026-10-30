@@ -1,15 +1,25 @@
 package com.gitory.backend.consent.port;
 
+import com.gitory.backend.common.infra.ai.AiProgress;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /** 토큰 대신 범위가 고정된 수집 호출 권한을 제공한다. */
 public interface GithubCollectionAccessPort {
 
     JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas);
+
+    /** {@link #collect(Long, GithubCollectionTarget, List)} 와 같고, AI 가 PR·커밋을 하나 읽을 때마다 진행을 progress 로 받는다 */
+    default JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas,
+                             Consumer<AiProgress> progress) {
+
+        return collect(userId, target, knownCommitShas);
+
+    }
 
     /** 후보 커밋의 diff 를 AI 가 읽어 커밋별 근거로 요약하며, 토큰은 이 호출 안의 헤더에만 쓴다 */
     DiffEvidenceResult diffEvidence(Long userId, DiffEvidenceTarget target);

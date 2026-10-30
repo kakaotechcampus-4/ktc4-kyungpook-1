@@ -11,6 +11,7 @@ public record InterviewTurnView(
         InterviewSourceType sourceType,
         QuestionType questionType,
         String question,
+        String reason,
         AnswerMode answerMode,
         List<String> options,
         TurnOutcome outcome,
@@ -25,7 +26,7 @@ public record InterviewTurnView(
                 : null;
 
         return new InterviewTurnView(turn.getSeq(), turn.getStarSlot(), turn.getTriggerSource(), sourceType,
-                turn.getQuestionType(), turn.getQuestionText(), turn.answerModeOrText(),
+                turn.getQuestionType(), turn.getQuestionText(), turn.getChoiceReason(), turn.answerModeOrText(),
                 List.copyOf(turn.getSuggestedAnswers()), turn.isClosed() ? turn.getOutcome() : null, answer,
                 Math.max(0, maxTurns - turn.getSeq()),
                 maxTurns);

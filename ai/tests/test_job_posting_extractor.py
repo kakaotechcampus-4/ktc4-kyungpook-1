@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from pydantic import ValidationError
 from api.job_postings import get_job_posting_extractor
 from main import app
 from schemas.matching import (
+    GeneralConditionType,
     JobCriterion,
     JobExperience,
     JobPostingDetailExtractionRequest,
@@ -24,6 +26,9 @@ from services.job_posting_extractor import (
     JobPostingDetailExtractor,
     JobPostingEvidenceMismatch,
 )
+from services.llm_settings import LLMConfigError
+from services.llm_structured_client import LLMNonRetryableError, LLMStructuredCallError
+from services.usage import record_llm_call
 
 
 RAW_TEXT = """담당 업무
@@ -112,6 +117,70 @@ def test_extracts_only_criteria_with_exact_source_quotes() -> None:
     assert len(result.criteria) == 3
     assert result.criteria[1].source_quote in RAW_TEXT
     assert model.calls == 1
+
+
+def test_general_condition_type_is_kept_while_technical_condition_is_null() -> None:
+    raw_text = "자격 요건\nJava 개발 경험이 필요합니다.\n4년제 대학 졸업자."
+    criteria = [
+        JobCriterion(
+            criterion_type="REQUIRED",
+            general_type=None,
+            text="Java 개발 경험",
+            source_quote="Java 개발 경험이 필요합니다.",
+        ),
+        JobCriterion(
+            criterion_type="REQUIRED",
+            general_type="EDUCATION",
+            text="4년제 대학 졸업자",
+            source_quote="4년제 대학 졸업자.",
+        ),
+    ]
+
+    result = JobPostingDetailExtractor(FakeExtractionModel(criteria)).extract(
+        JobPostingDetailExtractionRequest.model_validate(request_payload(raw_text=raw_text))
+    )
+
+    assert [criterion.general_type for criterion in result.criteria] == [
+        None,
+        GeneralConditionType.EDUCATION,
+    ]
+
+
+def test_responsibility_rejects_a_general_condition_type() -> None:
+    with pytest.raises(ValidationError, match="RESPONSIBILITY"):
+        JobCriterion(
+            criterion_type="RESPONSIBILITY",
+            general_type="LOCATION",
+            text="판교에서 백엔드 개발",
+            source_quote="판교에서 백엔드 개발을 담당합니다.",
+        )
+
+
+def test_model_output_can_split_mixed_general_conditions_from_one_quote() -> None:
+    quote = "4년제 졸업 및 병역필 또는 면제자"
+    criteria = [
+        JobCriterion(
+            criterion_type="REQUIRED",
+            general_type="EDUCATION",
+            text="4년제 졸업",
+            source_quote=quote,
+        ),
+        JobCriterion(
+            criterion_type="REQUIRED",
+            general_type="MILITARY",
+            text="병역필 또는 면제",
+            source_quote=quote,
+        ),
+    ]
+
+    result = JobPostingDetailExtractor(FakeExtractionModel(criteria)).extract(
+        JobPostingDetailExtractionRequest.model_validate(request_payload(raw_text=quote))
+    )
+
+    assert [(criterion.general_type, criterion.source_quote) for criterion in result.criteria] == [
+        (GeneralConditionType.EDUCATION, quote),
+        (GeneralConditionType.MILITARY, quote),
+    ]
 
 
 def test_required_quote_missing_from_original_body_rejects_whole_posting() -> None:
@@ -344,8 +413,16 @@ def test_texts_that_become_equal_after_replacement_are_deduplicated() -> None:
     ]
 
 
-def test_detail_extraction_api_reports_model_usage() -> None:
-    extractor = JobPostingDetailExtractor(FakeExtractionModel(valid_criteria()))
+class RecordingExtractionModel(FakeExtractionModel):
+    """실제 추출 모델처럼 공통 LLM 호출기가 남기는 기록을 남긴다."""
+
+    def extract(self, request):
+        record_llm_call("other-model", 7, 3)
+        return super().extract(request)
+
+
+def test_detail_extraction_api_reports_llm_calls_made_on_the_extraction_thread() -> None:
+    extractor = JobPostingDetailExtractor(RecordingExtractionModel(valid_criteria()))
     app.dependency_overrides[get_job_posting_extractor] = lambda: extractor
     try:
         response = TestClient(app).post(
@@ -357,23 +434,9 @@ def test_detail_extraction_api_reports_model_usage() -> None:
 
     assert response.status_code == 200
     assert response.json()["data"]["content_status"] == "READY"
-    assert response.json()["meta"]["model"] == "gpt-5.6-luna"
-    assert response.json()["meta"]["tool_calls_made"] == 1
-
-
-def test_detail_extraction_api_reports_the_configured_model(monkeypatch) -> None:
-    monkeypatch.setenv("GITORY_JOB_POSTING_MODEL", "other-model")
-    extractor = JobPostingDetailExtractor(FakeExtractionModel(valid_criteria()))
-    app.dependency_overrides[get_job_posting_extractor] = lambda: extractor
-    try:
-        response = TestClient(app).post(
-            "/internal/job-postings/extract",
-            json=request_payload(),
-        )
-    finally:
-        app.dependency_overrides.clear()
-
-    assert response.json()["meta"]["model"] == "other-model"
+    meta = response.json()["meta"]
+    assert (meta["model"], meta["llm_calls"], meta["input_tokens"], meta["output_tokens"]) == ("other-model", 1, 7, 3)
+    assert (meta["tool_calls_made"], meta["ended_by"]) == (0, "COMPLETED")
 
 
 def test_detail_extraction_api_maps_fabricated_required_quote_to_evidence_error(caplog) -> None:
@@ -402,6 +465,56 @@ def test_detail_extraction_api_maps_fabricated_required_quote_to_evidence_error(
     assert response.json()["error"]["retryable"] is False
     assert all(record.exc_info is None for record in caplog.records)
     assert any("posting=backend-101" in record.getMessage() for record in caplog.records)
+
+
+LEAK = "LEAK-모델-출력-조각"
+
+
+class RaisingExtractor:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def extract(self, request):
+        raise self.error
+
+
+def _caused(error: Exception) -> Exception:
+    # 구조화 출력 검증 실패처럼 원인 예외 문구에 모델 출력이 실린 경우
+    error.__cause__ = ValueError(LEAK)
+    return error
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "code", "retryable"),
+    [
+        (_caused(LLMConfigError(LEAK)), 503, "LLM_UNAVAILABLE", False),
+        (_caused(LLMNonRetryableError(LEAK)), 503, "LLM_UNAVAILABLE", False),
+        (_caused(LLMStructuredCallError(LEAK)), 503, "LLM_UNAVAILABLE", True),
+        (_caused(RuntimeError(LEAK)), 500, "INTERNAL_ERROR", False),
+    ],
+    ids=["config", "non-retryable", "call", "unexpected"],
+)
+def test_detail_extraction_failure_logs_one_line_without_model_output(error, status, code, retryable, caplog) -> None:
+    """실패 로그에는 예외 종류만 남기고 예외 문구·traceback 을 싣지 않는다(#421)."""
+    app.dependency_overrides[get_job_posting_extractor] = lambda: RaisingExtractor(error)
+    try:
+        with caplog.at_level(logging.WARNING):
+            response = TestClient(app).post("/internal/job-postings/extract", json=request_payload())
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == status
+    assert response.json()["error"]["code"] == code
+    records = [record for record in caplog.records if record.name == "api.job_postings"]
+    assert len(records) == 1
+    line = records[0].getMessage()
+    assert line.startswith("공고 조건 추출 실패:")
+    assert all(part in line for part in (
+        "path=/internal/job-postings/extract", f"code={code}", f"retryable={str(retryable).lower()}",
+        f"exc={type(error).__name__}", "cause=ValueError", "posting='backend-101'",
+    ))
+    assert LEAK not in caplog.text
+    assert all(record.exc_info is None for record in caplog.records)
 
 
 def test_job_posting_detail_contract_examples_validate_against_ai_dtos() -> None:

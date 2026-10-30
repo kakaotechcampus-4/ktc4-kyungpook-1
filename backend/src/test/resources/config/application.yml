@@ -3,3 +3,10 @@ gitory:
   job:
     worker:
       enabled: false
+  cover-letter:
+    worker:
+      enabled: false
+  # 시험의 가짜 포트는 진행 없이 부르는 수집·그룹화만 흉내 내므로 끄고, 실시간 진행 시험은 따로 켠다
+  analysis:
+    live-progress:
+      enabled: false

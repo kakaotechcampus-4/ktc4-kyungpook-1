@@ -80,7 +80,7 @@ class InterviewAskApiTest {
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "found",
-            "missing", "question", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
+            "missing", "question", "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -783,6 +783,75 @@ class InterviewAskApiTest {
 
     }
 
+    @Test
+    @DisplayName("AI 가 칸을 고른 판단 이유는 질문에 담아 저장하고 돌려준다")
+    void savesTheAiReasonWithTheQuestion() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        AI.replyWith(request -> reasoned(cardId, "S", "상황이 비어 있어 먼저 물어요"));
+
+        send(myUserId, MY_CARD.toString(), "{}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reason").value("상황이 비어 있어 먼저 물어요"));
+
+        assertThat(jdbc.queryForObject("SELECT choice_reason FROM interview_turn WHERE card_id = ?", String.class,
+                cardId)).isEqualTo("상황이 비어 있어 먼저 물어요");
+
+    }
+
+    @Test
+    @DisplayName("field 없이 요청했는데 AI 가 그만 묻기로 하면 data 가 null 인 200 이고 그 이유를 카드에 남긴다")
+    void keepsTheEndReasonOnTheCard() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAnswered(cardId, 1, "S", "첫 답", "TYPED");
+        AI.replyWith(request -> ended(cardId, "네 칸 모두 근거가 있어 마칠게요"));
+
+        send(myUserId, MY_CARD.toString(), "{}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(nullValue()));
+
+        assertThat(endReasonOf(cardId)).isEqualTo("네 칸 모두 근거가 있어 마칠게요");
+
+    }
+
+    @Test
+    @DisplayName("끝낸 이유가 남은 카드에 새 질문을 만들면 그 이유를 지운다")
+    void newQuestionClearsTheEndReason() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        jdbc.update("UPDATE card SET interview_end_reason = '네 칸 모두 근거가 있어 마칠게요' WHERE id = ?", cardId);
+        AI.replyWith(FakeInterviewAi::askAgain);
+
+        ask(myUserId, MY_CARD.toString(), "T").andExpect(status().isOk());
+
+        assertThat(endReasonOf(cardId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("되묻기가 끝나면 그 글로 카드 상태를 정해, 네 칸이 확인 필요 없이 모두 찬 카드는 확정하고 빈 칸이 있는 카드는 작성 중으로 둔다")
+    void interviewEndConfirmsOnlyCompleteCard() throws Exception {
+
+        Long complete = fixtures.insertCard(MY_CARD, myUserId);
+        for (String slot : List.of("S", "T", "A", "R")) {
+            fixtures.insertStatement(complete, 1, slot, slot + " 글", "USER_STATED", null);
+        }
+        UUID partialId = UUID.randomUUID();
+        Long partial = fixtures.insertCard(partialId, myUserId);
+        fixtures.insertStatement(partial, 1, "S", "상황 글", "USER_STATED", null);
+        AI.replyWith(request -> FakeInterviewAi.complete(request.path("card_id").longValue()));
+
+        send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
+        send(myUserId, partialId.toString(), "{}").andExpect(status().isOk());
+
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, complete))
+                .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, partial))
+                .isEqualTo("DRAFT");
+
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"SKIPPED", "NOT_MEASURED"})
     @DisplayName("넘김·측정 안 함으로 끝난 칸을 지정하면 409 INTERVIEW_FIELD_CLOSED 이고 AI 를 부르지 않으며 질문도 만들지 않는다")
@@ -897,6 +966,25 @@ class InterviewAskApiTest {
     }
 
     @Test
+    @DisplayName("수치 문장을 받으려고 부른 AI 호출은 그 카드와 함께 AI 호출 기록에 한 줄 남는다")
+    void measuredDraftAiCallIsRecordedWithTheCard() throws Exception {
+
+        Long cardId = measureTurn();
+        AI.replyWith(request -> sentence(cardId, "조회 시간을 3초에서 0.4초로 줄였다."));
+
+        draft("3초 걸리던 게 0.4초 정도").andExpect(status().isOk());
+
+        Map<String, Object> call = jdbc.queryForMap(
+                "SELECT path, card_id, job_id, http_status, error_code FROM ai_call WHERE card_id = ?", cardId);
+        assertThat(call).containsEntry("path", "/internal/interview-measured-sentence")
+                .containsEntry("card_id", cardId)
+                .containsEntry("job_id", null)
+                .containsEntry("http_status", 200)
+                .containsEntry("error_code", null);
+
+    }
+
+    @Test
     @DisplayName("AI 문장에 측정 결과에 없는 숫자가 있으면 지금 R 문장 뒤에 측정 결과를 붙인 문장을 돌려준다")
     void draftFallsBackOnInventedNumber() throws Exception {
 
@@ -1000,6 +1088,29 @@ class InterviewAskApiTest {
         data.putArray("suggested_answers").addAll(Arrays.stream(suggestions).map(MAPPER.getNodeFactory()::textNode).toList());
 
         return FakeInterviewAi.success(data);
+
+    }
+
+    private static FakeInterviewAi.Reply reasoned(Long cardId, String slot, String reason) {
+
+        ObjectNode data = MAPPER.createObjectNode().put("card_id", cardId).put("target_star_slot", slot)
+                .put("target_statement_seq", 1).put("question_type", "EVIDENCE_GAP").put("trigger_source", "AUTO")
+                .put("question_text", "그때 무엇이 문제였나요?").put("next_action", "ASK_AGAIN").put("reason", reason);
+
+        return FakeInterviewAi.success(data);
+
+    }
+
+    private static FakeInterviewAi.Reply ended(Long cardId, String reason) {
+
+        return FakeInterviewAi.success(MAPPER.createObjectNode().put("card_id", cardId).put("next_action", "COMPLETE")
+                .put("reason", reason));
+
+    }
+
+    private String endReasonOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT interview_end_reason FROM card WHERE id = ?", String.class, cardId);
 
     }
 

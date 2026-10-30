@@ -1,16 +1,21 @@
-import type { ReactNode, ButtonHTMLAttributes, InputHTMLAttributes, ComponentPropsWithRef } from 'react';
+import { useState, type ReactNode, type ButtonHTMLAttributes, type InputHTMLAttributes, type ComponentPropsWithRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Check as CheckIcon, FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, type LucideIcon } from 'lucide-react';
+import { Check as CheckIcon, ExternalLink, FolderGit2, GitCommitHorizontal, Inbox, MessageSquareQuote, type LucideIcon } from 'lucide-react';
 import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
+import { starFillLabel } from '@/lib/starFillLabel';
+import { ymd } from '@/lib/format';
+import { readCommit } from '@/lib/commitMessage';
+import { Modal } from './Modal';
 
 const cx = (...xs: (string | false | null | undefined)[]) => xs.filter(Boolean).join(' ');
 const STAR_LABELS: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
 
 // ───────── Button ─────────
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'outline' | 'text' | 'danger';
+  /** ghost = 아이콘 + 옅은 배경. 글자처럼 보이면 안 되는 보조 행동(새로고침, 복사, 수정)에 쓴다. */
+  variant?: 'primary' | 'outline' | 'ghost' | 'text' | 'danger';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   loading?: boolean;
 };
@@ -87,9 +92,9 @@ export const StarKey = ({ field, dropped, small }: { field: StarField; dropped?:
 );
 /** S·T·A·R 채움 상태를 고정된 네 칸으로 — 목록에서 카드 상태를 한눈에. */
 export const StarDots = ({ filled, low, showLabels }: { filled: StarField[]; low?: StarField[]; showLabels?: boolean }) => (
-  <span className={cx('stardots', showLabels && 'stardots--labeled')} aria-label={`STAR 채움: ${filled.join('') || '없음'}`}>
+  <span className={cx('stardots', showLabels && 'stardots--labeled')} role="img" aria-label={starFillLabel(filled, low)}>
     {(['S', 'T', 'A', 'R'] as StarField[]).map((f) => (
-      <span key={f} className={cx('stardot', filled.includes(f) && 'stardot--on', low?.includes(f) && 'stardot--low')} title={`${f} ${filled.includes(f) ? (low?.includes(f) ? '확인 필요' : '채움') : '비어 있음'}`}>
+      <span key={f} className={cx('stardot', filled.includes(f) && 'stardot--on', low?.includes(f) && 'stardot--low')} title={`${STAR_LABELS[f]} ${filled.includes(f) ? (low?.includes(f) ? '확인 필요' : '채움') : '비어 있음'}`}>
         <span className="stardot__letter">{f}</span>
         {showLabels && <span className="stardot__label">{STAR_LABELS[f]}</span>}
       </span>
@@ -97,18 +102,34 @@ export const StarDots = ({ filled, low, showLabels }: { filled: StarField[]; low
   </span>
 );
 
-/** 근거 스트립 — 커밋은 링크(잉크 다크), 사용자 발화는 흰 카드. 무채색. */
+/**
+ * 근거 스트립 — 커밋은 "무엇을 했는지"(커밋 메시지)가 먼저, sha 는 뒤에 작게. 처음 보는 사람에게 해시는 뜻이 없다.
+ * 링크가 없는 근거는 눌러도 갈 곳이 없으니 링크로 만들지 않는다(`#` 으로 새 탭이 열리던 문제).
+ */
 export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string }) {
   if (e.type === 'COMMIT') {
-    return (
-      <a className="evidence" href={e.url ?? '#'} target="_blank" rel="noreferrer" title={e.url ?? undefined}>
+    // 첫 줄은 무엇을 했는지: diff 요약(#456)이 있으면 요약, 없으면 커밋 메시지를 읽기 좋게("feat: ..." → [기능] ...).
+    // 요약이 있으면 원래 커밋은 둘째 줄에 작게. sha·날짜·파일 수는 맨 아래 한 줄로만.
+    const commit = e.snippet ? readCommit(e.snippet) : null;
+    const headline = e.summary ?? commit?.text ?? '커밋 기록';
+    const when = e.committedAt ? ymd(e.committedAt) : '';
+    const facts = [when, e.changedFiles != null ? `파일 ${e.changedFiles}개` : ''].filter(Boolean).join(', ');
+    const body = (
+      <>
         <GitCommitHorizontal size={13} className="evidence__icon" aria-hidden />
-        <span className="evidence__label">{evidenceTypeLabel.COMMIT}</span>
-        <span className="evidence__sha">{e.sha}</span>
-        {e.snippet && <span className="evidence__snippet">"{e.snippet}"</span>}
-        <span className="evidence__arrow" aria-hidden>↗</span>
-      </a>
+        <span className="evidence__snippet">{headline}</span>
+        {e.summary && commit && <span className="evidence__message">{commit.text}</span>}
+        <span className="evidence__meta">
+          {commit?.kind && <span className="evidence__kind">{commit.kind}</span>}
+          {facts && <span>{facts}</span>}
+          {e.sha && <span className="evidence__sha">{e.sha.slice(0, 7)}</span>}
+        </span>
+        {e.url && <span className="evidence__go" aria-hidden>GitHub<ExternalLink size={13} /></span>}
+      </>
     );
+    return e.url
+      ? <a className="evidence evidence--commit" href={e.url} target="_blank" rel="noreferrer" title="GitHub에서 이 커밋 열기" aria-label={`${headline}, GitHub에서 커밋 열기`}>{body}</a>
+      : <div className="evidence evidence--commit">{body}</div>;
   }
   return (
     <div className="evidence evidence--user">
@@ -119,23 +140,56 @@ export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string
   );
 }
 
+/**
+ * 한 칸의 근거 — 화면에는 "근거 N개 확인하기" 버튼만 두고, 누르면 팝업에서 정리된 근거를 본다.
+ * 실제 레포에선 한 칸에 근거 커밋이 7개씩 붙기도 해서 다 펼치면 문장보다 근거 띠가 화면을 차지했다.
+ * 근거가 있다는 사실(개수)은 늘 보이고, 내용은 원할 때만. 더 자세히는 팝업 안의 GitHub 링크(diff)로 간다.
+ * 인쇄(면접 직전 복습용)에는 팝업이 없으니 근거를 본문에 그대로 찍는다.
+ */
+export function EvidenceList({ items, label, sentence }: { items: EvidenceT[]; label?: string; sentence?: string | null }) {
+  const [open, setOpen] = useState(false);
+  if (!items.length) return null;
+  const commits = items.filter((e) => e.type === 'COMMIT').length;
+  const said = items.length - commits;
+  const count = [commits && `근거 커밋 ${commits}개`, said && `내 답변 ${said}개`].filter(Boolean).join(', ');
+  return (
+    <>
+      <button type="button" className="evidence-open" aria-haspopup="dialog" onClick={() => setOpen(true)}>
+        <GitCommitHorizontal size={14} aria-hidden />{count} 확인하기
+      </button>
+      <div className="evidence-print">{items.map((e, i) => <EvidenceStrip key={i} e={e} />)}</div>
+      {open && (
+        <Modal title={label ? `${label} 근거` : '근거'} width={600} onClose={() => setOpen(false)}>
+          {/* 문장은 본문 맨 위에 두어 근거 목록과 같이 스크롤된다 — 머리에 고정하면 가로 폰에서 목록 자리가 거의 없다 */}
+          {sentence && <p className="evidence-dialog__sentence">{sentence}</p>}
+          <div className="evidence-dialog__list">{items.map((e, i) => <EvidenceStrip key={i} e={e} />)}</div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
 // ───────── 페이지 구조 ─────────
-export const Breadcrumb = ({ items }: { items: { label: string; to?: string; state?: unknown }[] }) => (
+/** 경로 표시. href 가 있으면 GitHub 같은 바깥 주소로 새 탭에서 연다(마지막 항목이어도) — "PR #42" 를 누르면 그 PR 로. */
+export const Breadcrumb = ({ items }: { items: { label: string; to?: string; href?: string; state?: unknown }[] }) => (
   <nav className="crumb" aria-label="breadcrumb">
     {items.map((it, i) => {
       const last = i === items.length - 1;
       return (
         <span key={i} className="row" style={{ gap: 8 }}>
-          {it.to && !last ? <Link to={it.to} state={it.state}>{it.label}</Link> : <span className={cx(last && 'crumb__cur')}>{it.label}</span>}
+          {it.href
+            ? <a href={it.href} target="_blank" rel="noreferrer" className={cx('crumb__ext', last && 'crumb__cur')}>{it.label}<ExternalLink size={12} aria-hidden /></a>
+            : it.to && !last ? <Link to={it.to} state={it.state}>{it.label}</Link> : <span className={cx(last && 'crumb__cur')}>{it.label}</span>}
           {!last && <span className="crumb__sep" aria-hidden>›</span>}
         </span>
       );
     })}
   </nav>
 );
-export const PageTitle = ({ children, right, sub, lead }: { children: ReactNode; right?: ReactNode; sub?: ReactNode; lead?: ReactNode }) => (
+/** after = 제목 바로 옆에 붙는 작은 행동(예: 연필). 제목(h1) 밖에 두어 제목의 이름에 섞이지 않는다 */
+export const PageTitle = ({ children, right, sub, lead, after }: { children: ReactNode; right?: ReactNode; sub?: ReactNode; lead?: ReactNode; after?: ReactNode }) => (
   <div className="stack" style={{ gap: 8 }}>
-    <div className="page-title"><h1>{children}</h1>{right && <span className="page-title__right">{right}</span>}</div>
+    <div className="page-title"><h1>{children}</h1>{after}{right && <span className="page-title__right">{right}</span>}</div>
     {sub && <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{sub}</div>}
     {lead && <p className="page-lead">{lead}</p>}
   </div>

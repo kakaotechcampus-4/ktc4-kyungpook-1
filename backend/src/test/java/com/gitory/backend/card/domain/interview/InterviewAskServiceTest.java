@@ -16,8 +16,11 @@ import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
+import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
+import com.gitory.backend.card.domain.VersionSlots;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +41,9 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,6 +52,8 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -69,14 +76,16 @@ class InterviewAskServiceTest {
     private final InterviewContextAssembler assembler = mock(InterviewContextAssembler.class);
     private final InterviewQuestionPort port = mock(InterviewQuestionPort.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    private final CardVersionReader reader = mock(CardVersionReader.class);
     private final List<TransactionStatus> statuses = new ArrayList<>();
 
     private InterviewQuestionRequest request;
+    private Card card;
 
     @BeforeEach
     void setUp() {
 
-        Card card = Card.startManual(USER_ID, 11L, "카드", null, "key-1");
+        card = Card.startManual(USER_ID, 11L, null, "카드", null, "key-1");
         ReflectionTestUtils.setField(card, "id", CARD_ID);
         when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(card);
         when(ownership.lockOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(card);
@@ -89,6 +98,7 @@ class InterviewAskServiceTest {
 
         when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of());
         when(turns.save(any(InterviewTurn.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reader.read(anyLong(), anyShort())).thenReturn(new VersionSlots((short) 1, Map.of()));
 
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenAnswer(invocation -> {
             TransactionStatus status = new SimpleTransactionStatus();
@@ -122,6 +132,23 @@ class InterviewAskServiceTest {
         TransactionDefinition write = definitions.getAllValues().get(1);
         assertThat(write.isReadOnly()).isFalse();
         assertThat(write.getIsolationLevel()).isEqualTo(TransactionDefinition.ISOLATION_DEFAULT);
+
+    }
+
+    @Test
+    @DisplayName("되묻기 질문을 받으려고 부른 AI 호출에는 그 카드가 붙고, 질문을 받은 뒤에는 떼어 낸다")
+    void marksAiCallWithTheCard() {
+
+        AtomicReference<Long> seen = new AtomicReference<>();
+        when(port.nextQuestion(request)).thenAnswer(invocation -> {
+            seen.set(AiCallContext.cardId());
+            return question(InterviewStarSlot.T);
+        });
+
+        service(2).ask(PUBLIC_ID, USER_ID, "T");
+
+        assertThat(seen.get()).isEqualTo(CARD_ID);
+        assertThat(AiCallContext.cardId()).isNull();
 
     }
 
@@ -306,6 +333,20 @@ class InterviewAskServiceTest {
 
     }
 
+    @Test
+    @DisplayName("AI 가 끝을 고르는 사이 다른 창에서 새 질문이 생겼으면 끝낸 이유를 카드에 남기지 않고 null 을 돌려준다")
+    void endReasonIsNotKeptWhenQuestionOpenedMeanwhile() {
+
+        InterviewTurn open = InterviewTurn.ask(CARD_ID, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(), List.of(open));
+        when(port.nextQuestion(request)).thenReturn(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null,
+                null, null, null, null, List.of(), "네 칸 모두 근거가 있어 마칠게요"));
+
+        assertThat(service(3).ask(PUBLIC_ID, USER_ID, null)).isNull();
+        assertThat(card.getInterviewEndReason()).isNull();
+
+    }
+
     private static InterviewTurn answered(int seq, StarField slot) {
 
         InterviewTurn turn = InterviewTurn.ask(CARD_ID, (short) seq, slot, QuestionType.EVIDENCE_GAP, "질문");
@@ -319,10 +360,10 @@ class InterviewAskServiceTest {
 
         return Stream.of(
                 arguments(Named.of("COMPLETE", new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null,
-                        null, null, null, List.of()))),
+                        null, null, null, List.of(), null))),
                 arguments(Named.of("질문 칸이 차 있는 COMPLETE", new InterviewQuestionResult(
                         InterviewNextAction.COMPLETE, InterviewStarSlot.T, 1, InterviewQuestionType.RECALL_AID, "글",
-                        InterviewAnswerMode.TEXT, List.of()))),
+                        InterviewAnswerMode.TEXT, List.of(), null))),
                 arguments(Named.of("다른 칸의 질문", question(InterviewStarSlot.A))));
 
     }
@@ -330,7 +371,7 @@ class InterviewAskServiceTest {
     private static InterviewQuestionResult question(InterviewStarSlot slot) {
 
         return new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN, slot, 1, InterviewQuestionType.RECALL_AID,
-                "묻는 글", InterviewAnswerMode.TEXT, List.of());
+                "묻는 글", InterviewAnswerMode.TEXT, List.of(), null);
 
     }
 
@@ -344,7 +385,7 @@ class InterviewAskServiceTest {
     private InterviewAskService service(int maxTurns) {
 
         return new InterviewAskService(ownership, generation, turns, candidates, assembler, port, new InterviewLimits(maxTurns),
-                transactionManager, mock(UserRateLimiter.class));
+                transactionManager, mock(UserRateLimiter.class), reader);
 
     }
 }

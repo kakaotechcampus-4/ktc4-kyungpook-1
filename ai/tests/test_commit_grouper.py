@@ -229,3 +229,53 @@ def test_commit_input_rejects_non_positive_pr_and_issue_numbers() -> None:
         commit("a" * 40, pull_request_number=0)
     with pytest.raises(ValidationError):
         commit("a" * 40, issue_numbers=[-1])
+
+
+def _touching(sha: str, minute: int, *paths: str) -> CommitInput:
+    return commit(
+        sha,
+        minute,
+        additions=30 * len(paths),
+        deletions=0,
+        files=[ChangedFile(path=path, additions=30, deletions=0) for path in paths],
+    )
+
+
+def test_group_touching_only_docs_and_repo_settings_is_unusable() -> None:
+    group = cluster_group(
+        [
+            _touching("a" * 40, 0, "README.md", "docs/setup.md"),
+            _touching("b" * 40, 1, "LICENSE", ".gitignore", "CHANGELOG.md"),
+        ]
+    )
+
+    assert CommitGrouper.is_unusable(group) is True
+
+
+def test_group_touching_only_dependency_manifests_is_unusable() -> None:
+    group = cluster_group(
+        [
+            _touching("a" * 40, 0, "frontend/package.json", "frontend/package-lock.json"),
+            _touching("b" * 40, 1, "backend/build.gradle", "ai/requirements-dev.txt"),
+        ]
+    )
+
+    assert CommitGrouper.is_unusable(group) is True
+
+
+def test_ci_and_container_files_are_kept_and_judged_like_code() -> None:
+    group = cluster_group(
+        [
+            _touching("a" * 40, 0, ".github/workflows/deploy.yml", "deploy/docker-compose.yml"),
+            _touching("b" * 40, 1, ".github/workflows/ci.yaml", "README.md"),
+        ]
+    )
+
+    assert CommitGrouper.is_unusable(group) is False
+    assert CommitGrouper().to_candidate(group, "배포 자동화", "근거").low_card_worth is False
+
+
+def test_group_with_a_commit_of_unknown_files_is_not_unusable() -> None:
+    group = cluster_group([_touching("a" * 40, 0, "README.md"), commit("b" * 40, 1)])
+
+    assert CommitGrouper.is_unusable(group) is False

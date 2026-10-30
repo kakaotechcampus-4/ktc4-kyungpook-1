@@ -28,12 +28,19 @@ public class RepositoryListService {
         try {
             githubRepoIds = sync.sync(userId);
         } catch (GithubNotConnectedException | GithubRateLimitedException unavailable) {
-            return workCounter.fill(connections.findAllSummaries(userId, login));
+            return saved(userId, login);
         }
 
         contribution.refresh(userId, githubRepoIds);
 
         return workCounter.fill(connections.findSummaries(userId, githubRepoIds, login));
+
+    }
+
+    /** GitHub 을 부르지 않아, 화면이 최신 목록을 기다리는 동안 먼저 보여 줄 목록으로도 쓴다 */
+    public List<RepositorySummary> saved(Long userId, String login) {
+
+        return workCounter.fill(connections.findAllSummaries(userId, login));
 
     }
 }

@@ -139,7 +139,7 @@ export function NewCardPage() {
 
   return (
     <main className="main main--footer main--tight manual-card-page">
-      <Breadcrumb items={[{ label: '경험정리/홈', to: '/' }, { label: '경험 카드', to: '/cards' }, { label: '직접 작성' }]} />
+      <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, { label: '직접 작성' }]} />
       <PageTitle>직접 작성</PageTitle>
 
       <div className="card manual-metadata">

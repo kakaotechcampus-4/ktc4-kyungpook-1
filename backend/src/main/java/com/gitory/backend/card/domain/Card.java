@@ -37,6 +37,9 @@ public class Card {
     private Long userId;
     private Long userRepositoryId;
 
+    // 레포 밖 경험을 묶는 활동으로, 저장소와 함께 값이 있는 카드는 없다(DB 제약)
+    private Long activityId;
+
     @Enumerated(EnumType.STRING)
     private CardKind cardType;
 
@@ -61,6 +64,12 @@ public class Card {
     // 후보로 만든 카드의 초안 Job 이고, Job 이 끝나도 지우지 않아 Job 이 자기 카드를 찾을 수 있다
     private UUID generationJobId;
     private boolean generationPartial;
+    // 초안 Job 이 이 카드를 채우지 못한 이유로, Job 이 끝나도 남아 화면이 다시 시도를 보여 준다
+    @Enumerated(EnumType.STRING)
+    private CardDraftFailure generationFailure;
+
+    // 질문 API 는 끝이면 null 이라 AI 가 그만 묻기로 한 이유를 카드에 남기고, 새 질문이 생기면 지운다
+    private String interviewEndReason;
 
     // enum 순번이 아니라 이름으로 저장해, 목록 가운데에 값을 더해도 저장된 태그의 뜻이 바뀌지 않게 한다
     // Hibernate 가 INSERT 에 이 칸을 넣어 DB 기본값이 쓰이지 않으므로 빈 목록으로 시작한다
@@ -98,11 +107,14 @@ public class Card {
     }
 
     /** 사용자가 직접 쓰는 정성 카드를 1번 버전이 현재 버전인 작성 중 상태로 만들고, 1번 버전 행은 {@link CardVersionWriter} 가 만든다 */
-    public static Card startManual(Long userId, Long userRepositoryId, String title, String period,
+    public static Card startManual(Long userId, Long userRepositoryId, Long activityId, String title, String period,
                                    String idempotencyKey) {
 
-        return new Card(userId, userRepositoryId, CardKind.QUALITATIVE, CardOrigin.MANUAL, title, period,
+        Card card = new Card(userId, userRepositoryId, CardKind.QUALITATIVE, CardOrigin.MANUAL, title, period,
                 idempotencyKey, null, null);
+        card.activityId = activityId;
+
+        return card;
 
     }
 
@@ -131,7 +143,6 @@ public class Card {
 
     public void rename(String title) {
 
-        requireDraft();
         this.title = checkedTitle(title);
         changed();
 
@@ -140,7 +151,6 @@ public class Card {
     /** 빈 글이나 공백뿐인 글을 받으면 기간을 지운다 */
     public void changePeriod(String period) {
 
-        requireDraft();
         this.period = checkedPeriod(period);
         changed();
 
@@ -149,7 +159,6 @@ public class Card {
     /** 받은 순서 그대로 저장하고, 저장된 규칙과 순서까지 같으면 바꾸지 않고 false 를 돌려준다 */
     public boolean replaceMaskRules(List<MaskRule> rules) {
 
-        requireDraft();
         List<MaskRule> checked = checkedMaskRules(rules);
 
         if (checked.equals(maskRules)) {
@@ -185,10 +194,62 @@ public class Card {
 
     }
 
+    /**
+     * 칸 글이 바뀐 뒤 지금 버전 글로 상태를 다시 정하고, 화면이 자동 저장하므로 확정본은 남기지 않는다
+     * 작성 중은 네 칸이 확인 필요 없이 모두 차야 확정하고, 확정은 상황·행동이 빌 때만 작성 중으로 돌린다
+     */
+    public void settle(VersionSlots slots) {
+
+        if (!isConfirmed() && slots.isComplete()) {
+            this.status = CardStatus.CONFIRMED;
+            this.confirmedAt = CardTime.now();
+            changed();
+        } else if (isConfirmed() && !slots.isConfirmable()) {
+            reopen();
+        }
+
+    }
+
     /** 초안 Job 이 시간이 모자라 일부 칸을 채우지 못했을 때 부르며, 화면은 이 카드에 채운 칸까지만 보여 준다 */
     void markGenerationPartial() {
 
         this.generationPartial = true;
+        changed();
+
+    }
+
+    /** 초안 Job 이 AI 초안을 채우지 못했을 때 부르며, 다시 시도하면 지운다 */
+    void markGenerationFailed(CardDraftFailure failure) {
+
+        this.generationFailure = failure;
+        changed();
+
+    }
+
+    /** 서버가 다시 켜져 같은 Job 이 실패했던 카드를 다시 채우면, 채운 카드에 실패 안내가 남지 않게 지운다 */
+    void clearGenerationFailure() {
+
+        this.generationFailure = null;
+
+    }
+
+    /** 초안 Job 은 1번 버전에만 담을 수 있어, 초안 실패가 남아 있고 되묻기·확정으로 버전이 올라가지 않은 후보 카드만 다시 채운다 */
+    public void requireDraftRetryable() {
+
+        requireDraft();
+        if (generationFailure == null || currentVersion != 1 || candidateId == null) {
+            throw new CardDraftNotRetryableException();
+        }
+
+    }
+
+    /** 초안을 채우지 못한 카드를 새 초안 Job 으로 다시 채우며, 새 Job 이 이 카드를 찾을 수 있게 Job 을 바꾼다 */
+    void restartGeneration(UUID jobId) {
+
+        requireDraftRetryable();
+        this.generationJobId = jobId;
+        this.generationFailure = null;
+        this.generationPartial = false;
         changed();
 
     }
@@ -213,18 +274,28 @@ public class Card {
 
     }
 
+    /** 되묻기를 끝낸 이유는 카드 내용이 아니라 화면 안내라 updatedAt 을 바꾸지 않는다 */
+    public void endInterview(String reason) {
+
+        this.interviewEndReason = reason;
+
+    }
+
+    public void resumeInterview() {
+
+        this.interviewEndReason = null;
+
+    }
+
     /** 임시 저장이 현재 버전을 덮어써 카드 행의 다른 칸이 그대로일 때 부른다 */
     public void markEdited() {
 
-        requireDraft();
         changed();
 
     }
 
-    // 확정된 카드에 새 버전이 붙으면 확정본이 현재 버전이 아니게 되므로 막는다
     void switchTo(short versionNo) {
 
-        requireDraft();
         this.currentVersion = versionNo;
         changed();
 

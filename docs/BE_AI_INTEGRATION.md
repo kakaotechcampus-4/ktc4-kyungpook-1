@@ -18,6 +18,10 @@ flowchart LR
 
 수집 응답은 성공 봉투, 연결 저장소 ID, GitHub 저장소 ID, SHA, 숫자 범위, 부분 수집·제외 판정을 검증한 뒤 기존 `CollectedActivity`로 변환한다. 수집 포트는 분석 Job 워커(`JobRunner`)만 호출하며, 공개 수집 API는 없다.
 
+`ANALYSIS_LIVE_PROGRESS_ENABLED`(기본 `true`)를 켜면 분석 Job 은 수집·경험 그룹화를 진행 스트리밍 경로(`/internal/collect/stream`·`/internal/analysis/groups/stream`)로 부른다. AI 는 PR·커밋을 하나 읽거나 묶음 하나를 마칠 때마다 `{"type":"progress","step","done","total"}` 줄을 보내고(방금 읽은 PR·커밋, 묶은 결과, 경험마다 붙인 제목·이유가 있으면 `item` 에 종류 `kind` 와 값을 싣는다 — 모양은 AI OpenAPI 의 스트리밍 경로 설명), 마지막 줄 `{"type":"result","status","body"}` 에 스트리밍 없는 경로와 같은 HTTP 상태·응답을 싣는다. `AiHttpClient` 는 결과 줄을 스트리밍 없는 응답과 똑같이 검사하고, 진행 줄은 `JobProgressRecorder` 가 1초에 한 번 정도 분석 단계의 `done`/`total` 로 남긴다. 읽을 수 없는 진행 줄은 버리고, 결과 줄 없이 끝나면 다시 시도할 수 있는 `AI_UNAVAILABLE` 로 본다. 끄면 예전처럼 한 번에 받는 경로를 부른다.
+
+진행 줄에 방금 읽거나 판단한 `item` 이 실려 오면 Spring 은 그 줄을 Job 마다 서버 메모리(`JobActivityLog`)에만 남겨 Job 상세 응답 `activity` 로 내려준다. 읽기 줄(PR·커밋)은 단계마다 최근 20줄, 판단 줄(묶은 결과·고른 이유)은 모두 두고, Job 이 끝나고 10분 뒤 지운다. 종류를 모르거나 값이 빠진 `item` 은 버리고 진행 숫자만 남긴다. 서버가 1대라는 전제라, 2대로 늘리면 Redis 로 옮긴다.
+
 ## 설정
 
 | 변수 | 기본값 / 용도 |
@@ -97,6 +101,22 @@ AI만 내보내려면:
 .venv/bin/python ai/scripts/export_openapi.py --output docs/openapi/ai.json
 ```
 
+## 공고 조건의 일반 조건 종류
+
+`POST /internal/job-postings/extract`의 `criteria[]`에는 `general_type`이 있다. `null`이면 STAR 카드로 근거를 찾을 수 있는 기술·직무 조건이고, 값이 있으면 카드 대신 사용자의 인적사항으로 확인할 일반 조건이다.
+
+| 값 | 뜻 |
+|---|---|
+| `null` | 기술·직무 조건 |
+| `EDUCATION` | 학력·전공 |
+| `MILITARY` | 병역 |
+| `LANGUAGE` | 어학 |
+| `CERTIFICATE` | 자격증 |
+| `LOCATION` | 근무지·근무 형태 |
+| `OTHER` | 나이 제한·해외여행 결격 사유 등 나머지 일반 조건 |
+
+AI는 한 문장에 둘 이상의 조건이 있으면 각각 나눈다. 예를 들어 `4년제 졸업 및 병역필 또는 면제자`는 `EDUCATION`과 `MILITARY` 조건 두 개로 반환하며, 두 조건이 같은 `source_quote`를 가져도 된다. `RESPONSIBILITY`는 담당 업무 설명이므로 `general_type`이 항상 `null`이다. Spring은 이 값을 조건과 함께 저장하고, #532에서 일반 조건을 STAR 카드 벡터 색인에서 빼 인적사항 1차 필터에 사용한다.
+
 ## 연결 상태 확인
 
 ```bash
@@ -105,7 +125,7 @@ curl --fail http://localhost:8080/actuator/health/readiness
 curl --fail http://localhost:8080/actuator/health/liveness
 ```
 
-AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반환한다. BE readiness는 DB와 AI의 이 응답을 확인한다. AI 연결이 끊기거나 서비스 식별자가 다르면 readiness는 DOWN·HTTP 503이 된다. liveness는 BE 프로세스 상태를 검사하므로 AI 장애에 따라 BE를 재시작시키지 않는다. 헬스 상세 내용은 공개하지 않는다.
+AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반환한다. BE readiness는 DB만 확인한다(`management.endpoint.health.group.readiness.include: readinessState,db`). AI 가 꺼져도 로그인·저장소 목록은 받아야 하기 때문이다. AI 의 이 응답은 `/actuator/health` 전체 응답(`AiHealthIndicator`)에만 반영되어, AI 연결이 끊기거나 서비스 식별자가 다르면 전체 health 가 DOWN 이 된다. liveness는 BE 프로세스 상태를 검사하므로 AI 장애에 따라 BE를 재시작시키지 않는다. 헬스 상세 내용은 공개하지 않는다.
 
 이 확인은 HTTP 연결과 프로세스 생존을 뜻하며 GitHub 권한·LLM 설정·카드 생성 가능 여부를 보장하지 않는다. AI 문서 프록시 실패는 안전한 BE 오류 봉투로 502를 반환한다. 수집 오류는 `AiClientException`의 정제된 `errorCode`, `retryable`, `httpStatus`로 내부 호출자에게 전달한다. 분석 Job 워커는 GitHub 쪽 오류를 `GITHUB_UNAVAILABLE`, 연결 안 됨·시간 초과·AI가 다시 해 보라고 알린 실패(경험 그룹화 포함)를 다시 시도할 수 있는 `AI_UNAVAILABLE`, 그 밖의 오류를 `INTERNAL_ERROR`로 Job을 실패 처리한다.
 
@@ -141,7 +161,7 @@ AI `/health`는 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`를 반
 
 ## 검증
 
-2026-10-04 기준 최종 BE `build`의 **155개 테스트 통과**, AI **137 passed / 1 live skipped**를 확인했다. 임시 PostgreSQL·실제 Spring·FastAPI를 기동해 BE Swagger와 AI 읽기 화면, AI 명세 프록시, export 스크립트를 검증했다. 프록시 JSON은 AI 오프라인 export와 같았다. AI 중지 후 BE readiness는 **503 DOWN**, liveness는 **200 UP**, AI 명세 프록시는 정제된 **502**를 반환했다. 검증용 프로세스·DB는 종료했으며 운영 배포와 실제 OAuth/GitHub 호출은 수행하지 않았다.
+2026-10-04 기준 최종 BE `build`의 **155개 테스트 통과**, AI **137 passed / 1 live skipped**를 확인했다. 임시 PostgreSQL·실제 Spring·FastAPI를 기동해 BE Swagger와 AI 읽기 화면, AI 명세 프록시, export 스크립트를 검증했다. 프록시 JSON은 AI 오프라인 export와 같았다. AI 중지 후 BE readiness는 **503 DOWN**(당시 설정 — 지금은 readiness 에서 AI 를 뺐다), liveness는 **200 UP**, AI 명세 프록시는 정제된 **502**를 반환했다. 검증용 프로세스·DB는 종료했으며 운영 배포와 실제 OAuth/GitHub 호출은 수행하지 않았다.
 
 BE는 JDK 21 Gradle 빌드·테스트, 모듈 경계, 실제 HTTP stub, 공유 수집 계약 fixture, PostgreSQL 기반 Swagger·세션·CSRF 통합 테스트로 확인한다. AI는 전체 pytest, 오프라인 OpenAPI export, 실제 uvicorn HTTP 서버의 health 테스트를 실행한다. 신규 라이브러리 검증으로 임시 복사본에서 Swagger CSRF 설정을 끄면 interceptor 검사 실패, AI health 등록을 제거하면 uvicorn HTTP 검사 실패를 확인했으며 원본 테스트는 통과했다. 실제 GitHub 호출은 토큰을 명시한 live 테스트로 별도 분리되어 있으며 이번 로컬 검증에서는 호출하지 않는다.
 

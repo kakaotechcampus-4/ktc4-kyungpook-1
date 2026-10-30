@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Generic, Literal, Optional, TypeVar
 
+import httpx
 from openai import (
     APIConnectionError,
     APIError,
@@ -26,6 +27,8 @@ from openai import (
     UnprocessableEntityError,
 )
 from pydantic import BaseModel, ValidationError
+
+from services.usage import record_llm_call
 
 ReasoningEffort = Literal["none", "low", "medium", "high"]
 OutputT = TypeVar("OutputT", bound=BaseModel)
@@ -104,7 +107,24 @@ class StructuredLLMClient:
 
         ``timeout_seconds``를 주면 요청 전체 마감에 맞춰 이 호출만 그 시간 안에 끝내고,
         SDK 재시도도 하지 않는다. 재시도까지 하면 마감을 넘기기 때문이다.
+        실패한 호출도 요청의 LLM 호출 수에 세고, SDK 가 안에서 다시 보낸 요청은 따로 세지 않는다.
         """
+        try:
+            result = self._call(system_prompt, payload, output_model, max_completion_tokens, timeout_seconds)
+        except Exception:
+            record_llm_call(self._settings.model, None, None)
+            raise
+        record_llm_call(self._settings.model, result.prompt_tokens, result.completion_tokens)
+        return result
+
+    def _call(
+        self,
+        system_prompt: str,
+        payload: dict[str, Any],
+        output_model: type[OutputT],
+        max_completion_tokens: int,
+        timeout_seconds: Optional[float],
+    ) -> StructuredCallResult[OutputT]:
         started_at = time.perf_counter()
         client = (
             self._client
@@ -140,6 +160,9 @@ class StructuredLLMClient:
             raise LLMNonRetryableError("LLM 키·권한·모델 이름 또는 요청 형식이 잘못됐습니다.") from exc
         except (APIConnectionError, APITimeoutError, APIError) as exc:
             raise LLMStructuredCallError("LLM 요청을 처리하지 못했습니다.") from exc
+        except httpx.TransportError as exc:
+            # SDK 는 스트림을 읽는 도중 끊긴 연결을 자기 오류로 감싸지 않아 여기서 다시 시도할 수 있는 실패로 바꾼다
+            raise LLMStructuredCallError("LLM 응답을 받는 중 연결이 끊겼습니다.") from exc
         except ValidationError as exc:
             raise LLMInvalidOutputError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.") from exc
         except LengthFinishReasonError as exc:

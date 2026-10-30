@@ -1,17 +1,23 @@
 package com.gitory.backend.job.domain;
 
+import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.StarDraft;
 import com.gitory.backend.agent.port.StarDraftPort;
 import com.gitory.backend.agent.port.StarDraftRequest;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceSource;
 import com.gitory.backend.agent.port.StarSourceType;
+import com.gitory.backend.card.domain.CardDraftFailure;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.GeneratedCard;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.common.infra.ai.AiCallContext;
+import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.consent.port.DiffEvidence;
 import com.gitory.backend.consent.port.DiffEvidenceResult;
+import com.gitory.backend.consent.port.DiffEvidenceSource;
+import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.DraftCommit;
 import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.domain.StoredPullRequest;
@@ -54,6 +60,7 @@ public class CardDraftRunner {
     private final StoredActivityService storedActivity;
     private final StarDraftPort star;
     private final CardDraftWriter writer;
+    private final CommitSummaryService commitSummaries;
 
     public void run(AnalysisJob job) {
 
@@ -66,7 +73,8 @@ public class CardDraftRunner {
 
         List<CardDraftResult> results = new ArrayList<>();
         for (GeneratedCard card : cards) {
-            Optional<CardDraftResult> result = draft(job, card, login, results.size(), total);
+            Optional<CardDraftResult> result = AiCallContext.callForCard(card.id(),
+                    () -> draft(job, card, login, results.size(), total));
             if (result.isEmpty()) {
                 return;
             }
@@ -92,6 +100,7 @@ public class CardDraftRunner {
             List<DraftCommit> commits = source.get().commits();
             DiffEvidenceResult evidence = activities.diffEvidence(new DiffEvidenceRequest(job.getUserRepositoryId(),
                     commits.stream().map(DraftCommit::sha).toList(), source.get().githubPrNumber(), card.title()));
+            commitSummaries.recordDiffSummaries(diffSummariesOf(evidence, commits));
             if (!record(job.getId(), done + 1, done, total)) {
                 return Optional.empty();
             }
@@ -105,8 +114,29 @@ public class CardDraftRunner {
             return finishCard(job.getId(), done, total, () -> written(card, draft, commits));
         } catch (RuntimeException failure) {
             log.warn("카드 초안 Job {} 의 카드 {} 를 채우지 못했다", job.getId(), card.id(), failure);
-            return finishCard(job.getId(), done, total, () -> CardDraftResult.FAILED);
+            CardDraftFailure reason = failureOf(failure);
+            return finishCard(job.getId(), done, total, () -> failed(card, reason));
         }
+
+    }
+
+    // diff 를 읽어 쓴 요약만 커밋에 남기고, 커밋 메시지로 대신한 요약은 snippet 과 같아 남기지 않는다
+    private static Map<Long, String> diffSummariesOf(DiffEvidenceResult evidence, List<DraftCommit> commits) {
+
+        Map<String, Long> idsBySha = new HashMap<>();
+        for (DraftCommit commit : commits) {
+            idsBySha.put(commit.sha().toLowerCase(Locale.ROOT), commit.id());
+        }
+        Map<Long, String> summaries = new HashMap<>();
+        for (DiffEvidence item : evidence.evidence()) {
+            Long commitId = idsBySha.get(item.sha().toLowerCase(Locale.ROOT));
+            if (commitId != null && item.summarySource() == DiffEvidenceSource.DIFF
+                    && item.summary() != null && !item.summary().isBlank()) {
+                summaries.put(commitId, item.summary().strip());
+            }
+        }
+
+        return summaries;
 
     }
 
@@ -123,6 +153,32 @@ public class CardDraftRunner {
 
         return candidateSources.load(card.candidateId(), COMMIT_LIMIT)
                 .filter(source -> !source.commits().isEmpty());
+
+    }
+
+    /** 다시 연결해야 풀리는 실패와 AI 가 잠시 응답하지 못한 실패는 할 일이 달라, 카드에 따로 남겨 Job 이 끝난 뒤에도 화면이 안내하게 한다 */
+    private static CardDraftFailure failureOf(RuntimeException failure) {
+
+        if (failure instanceof AiClientException ai && "GITHUB_UNAUTHORIZED".equals(ai.errorCode())) {
+            return CardDraftFailure.GITHUB_UNAUTHORIZED;
+        }
+
+        if (failure instanceof AgentUnavailableException unavailable && unavailable.isRetryable()) {
+            return CardDraftFailure.AI_UNAVAILABLE;
+        }
+
+        return CardDraftFailure.INTERNAL_ERROR;
+
+    }
+
+    private CardDraftResult failed(GeneratedCard card, CardDraftFailure failure) {
+
+        writer.markFailed(card.id(), failure);
+        return switch (failure) {
+            case GITHUB_UNAUTHORIZED -> CardDraftResult.GITHUB_UNAUTHORIZED;
+            case AI_UNAVAILABLE -> CardDraftResult.AI_UNAVAILABLE;
+            case INTERNAL_ERROR -> CardDraftResult.FAILED;
+        };
 
     }
 

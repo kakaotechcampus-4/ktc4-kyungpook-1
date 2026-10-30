@@ -20,6 +20,7 @@ ErrorCode = Literal[
     "EVIDENCE_MISMATCH",
     "LLM_RATE_LIMIT",
     "GITHUB_API_ERROR",
+    "GITHUB_UNAUTHORIZED",
     "LLM_UNAVAILABLE",
     "INTERNAL_ERROR",
 ]
@@ -57,16 +58,44 @@ AnalysisVerdict = Literal["OK", "EMPTY", "PARTIAL"]
 #: 프론트 StarFieldState와 같게 두어 별도 문자열 번역을 만들지 않는다.
 StarStatus = Literal["FILLED", "EMPTY", "NEEDS_REVIEW"]
 
+#: 요청이 어떻게 끝났는지. PARTIAL 은 마감·누락으로 일부만, FALLBACK 은 LLM 대신 정해 둔 길로 끝난 것이다.
+EndedBy = Literal["COMPLETED", "PARTIAL", "FALLBACK", "FAILED"]
+
 T = TypeVar("T")
+
+
+class ModelUsage(BaseModel):
+    """한 요청 안에서 모델 하나에 보낸 LLM 요청 수와 토큰."""
+
+    model: str = Field(..., description="LLM 모델 이름")
+    llm_calls: int = Field(0, description="이 모델에 보낸 요청 수. 실패한 요청도 센다")
+    input_tokens: int = Field(0, description="이 모델에서 응답을 받은 요청의 입력 토큰 합")
+    output_tokens: int = Field(0, description="이 모델에서 응답을 받은 요청의 출력 토큰 합")
 
 
 class Meta(BaseModel):
     """요청 처리 메타데이터(로깅/추적용)."""
 
     model: Optional[str] = Field(
-        None, description="실제 사용된 모델(LLM 미사용 응답은 null 또는 처리 방식 이름)"
+        None, description="마지막에 부른 LLM 모델로, 모델별 사용량은 model_usage 에 있다(LLM 미사용 응답은 null 또는 처리 방식 이름)"
     )
-    tool_calls_made: int = Field(0, description="이번 처리에서 실제 도구 호출 횟수")
+    model_usage: list[ModelUsage] = Field(
+        default_factory=list,
+        description="모델별 LLM 요청 수와 토큰. 처음 부른 모델부터 오고, 더하면 llm_calls·input_tokens·output_tokens 와 같다. LLM 을 안 불렀으면 빈 목록",
+    )
+    tool_calls_made: int = Field(
+        0, description="모델이 스스로 골라 부른 도구 횟수. 지금은 STAR 초안이 골라 연 자료 수만 센다"
+    )
+    llm_calls: int = Field(0, description="LLM 에 보낸 요청 수. 실패한 요청도 센다")
+    input_tokens: int = Field(0, description="응답을 받은 LLM 요청의 입력 토큰 합")
+    output_tokens: int = Field(0, description="응답을 받은 LLM 요청의 출력 토큰 합")
+    repair_rounds: int = Field(
+        0, description="검사·검토에 걸리거나 빈 칸을 다시 써서 새 초안을 받은 횟수(STAR 초안·자소서). 그 밖의 API 는 0"
+    )
+    github_calls: int = Field(0, description="GitHub API 를 부른 횟수")
+    ended_by: EndedBy = Field(
+        ..., description="COMPLETED 다 끝냄, PARTIAL 마감·누락으로 일부만, FALLBACK LLM 대신 정해 둔 길, FAILED 오류 응답"
+    )
     processing_ms: int = Field(0, description="처리 소요 시간(ms)")
 
 

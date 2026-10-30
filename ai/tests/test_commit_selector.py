@@ -128,3 +128,19 @@ def test_select_applies_size_and_generated_rules_even_after_collector_decision()
 def test_grouping_request_rejects_blank_target_login() -> None:
     with pytest.raises(ValidationError):
         ExperienceGroupingRequest(repository_id="repo-1", target_login="  ", commits=[])
+
+
+def test_select_excludes_reverts_and_the_commits_they_revert() -> None:
+    commits = [
+        commit("a" * 40, message="feat: 세션 캐시 도입"),
+        commit("b" * 40, message='Revert "feat: 세션 캐시 도입"\n\nThis reverts commit aaaaaaa.'),
+        commit("c" * 40, message="feat: 알림 배지"),
+        commit("d" * 40, message='Revert "feat: 알림 배지"'),
+        commit("e" * 40, message='Revert "수집하지 않은 커밋"\n\nThis reverts commit 1234567.'),
+        commit("f" * 40, message="feat: 남는 작업"),
+    ]
+
+    selected, excluded = CommitSelector().select(commits, "minseo")
+
+    assert [item.sha for item in selected] == ["f" * 40]
+    assert excluded == ["a" * 40, "b" * 40, "c" * 40, "d" * 40, "e" * 40]

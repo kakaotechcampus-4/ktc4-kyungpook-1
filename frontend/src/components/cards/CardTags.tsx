@@ -9,7 +9,7 @@ export function CardTags({ areas = [], techs = [], techLimit }: TaggedCard & { t
   if (!areas.length && !techs.length) return null;
   const shown = techLimit === undefined ? techs : techs.slice(0, techLimit);
   const hidden = techs.slice(shown.length).map(tag => techLabels[tag]);
-  return <ul className="card-tags" aria-label="분야·기술 태그">
+  return <ul className="card-tags" aria-label="분야와 기술 태그">
     {areas.map(tag => <li className="card-tags__area" key={`area-${tag}`}>{areaLabels[tag]}</li>)}
     {shown.map(tag => <li key={`tech-${tag}`}>{techLabels[tag]}</li>)}
     {hidden.length > 0 && <li className="card-tags__more" title={hidden.join(', ')} aria-label={`기술 ${hidden.length}개 더: ${hidden.join(', ')}`}>+{hidden.length}</li>}

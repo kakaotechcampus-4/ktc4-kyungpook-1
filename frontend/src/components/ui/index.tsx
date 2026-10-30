@@ -61,7 +61,7 @@ export const Note = ({ strong, children, tone }: { strong: string; children?: Re
 export const EmptyState = ({ title, desc, icon: Icon = Inbox, children }: { title: string; desc: string; icon?: LucideIcon; children?: ReactNode }) => (
   <div className="empty">
     <IconBox icon={Icon} size={44} tone="paper" />
-    <h2 className="t-18 w-600" style={{ fontSize: 17 }}>{title}</h2>
+    <h2 className="t-18 w-600" style={{ fontSize: 16 }}>{title}</h2>
     <p className="c-2" style={{ maxWidth: 620, fontSize: 13, lineHeight: '21px' }}>{desc}</p>
     {children && <div className="row" style={{ gap: 10, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>{children}</div>}
   </div>

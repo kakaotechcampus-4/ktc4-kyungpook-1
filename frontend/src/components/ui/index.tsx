@@ -4,6 +4,7 @@ import { Check as CheckIcon, ExternalLink, FolderGit2, GitCommitHorizontal, Inbo
 import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
+import { starFillLabel } from '@/lib/starFillLabel';
 import { ymd } from '@/lib/format';
 import { readCommit } from '@/lib/commitMessage';
 import { Modal } from './Modal';
@@ -91,9 +92,9 @@ export const StarKey = ({ field, dropped, small }: { field: StarField; dropped?:
 );
 /** S·T·A·R 채움 상태를 고정된 네 칸으로 — 목록에서 카드 상태를 한눈에. */
 export const StarDots = ({ filled, low, showLabels }: { filled: StarField[]; low?: StarField[]; showLabels?: boolean }) => (
-  <span className={cx('stardots', showLabels && 'stardots--labeled')} aria-label={`STAR 채움: ${filled.join('') || '없음'}`}>
+  <span className={cx('stardots', showLabels && 'stardots--labeled')} role="img" aria-label={starFillLabel(filled, low)}>
     {(['S', 'T', 'A', 'R'] as StarField[]).map((f) => (
-      <span key={f} className={cx('stardot', filled.includes(f) && 'stardot--on', low?.includes(f) && 'stardot--low')} title={`${f} ${filled.includes(f) ? (low?.includes(f) ? '확인 필요' : '채움') : '비어 있음'}`}>
+      <span key={f} className={cx('stardot', filled.includes(f) && 'stardot--on', low?.includes(f) && 'stardot--low')} title={`${STAR_LABELS[f]} ${filled.includes(f) ? (low?.includes(f) ? '확인 필요' : '채움') : '비어 있음'}`}>
         <span className="stardot__letter">{f}</span>
         {showLabels && <span className="stardot__label">{STAR_LABELS[f]}</span>}
       </span>

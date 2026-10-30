@@ -26,11 +26,16 @@ INTERNAL_PATHS = {
     "/internal/analysis/star",
     "/internal/interview-turns",
     "/internal/interview-measured-sentence",
+    "/internal/interview-polished-sentence",
+    "/internal/card-themes",
     "/internal/interview-answer-evaluations",
     "/internal/job-postings/extract",
     "/internal/matching/postings/index",
     "/internal/matching/postings/prune",
     "/internal/matching/search",
+    "/internal/cover-letter-assignments",
+    "/internal/cover-letter-questions",
+    "/internal/cover-letter-drafts",
 }
 
 

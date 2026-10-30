@@ -11,8 +11,9 @@ export function summarySource(card: CardSummary): string | undefined {
 export function summaryDetail(card: CardSummary): string | undefined {
   const empty = Object.values(card.star).filter((state) => state === 'EMPTY').length;
   if (empty) return `빈 칸 ${empty}개`;
-  if (card.userStatedCount != null && card.userStatedCount > 0 && (card.evidenceCount == null || card.evidenceCount === 0)) return `내가 쓴 문장 ${card.userStatedCount}개`;
-  if (card.evidenceCount != null) return `근거 ${card.evidenceCount}개`;
+  // 카드 상세(EvidenceList)와 같은 이름: 커밋 쪽은 "근거 커밋", 내가 쓴 쪽은 "내 답변"
+  if (card.userStatedCount != null && card.userStatedCount > 0 && (card.evidenceCount == null || card.evidenceCount === 0)) return `내 답변 ${card.userStatedCount}개`;
+  if (card.evidenceCount != null) return `근거 커밋 ${card.evidenceCount}개`;
   return undefined;
 }
 

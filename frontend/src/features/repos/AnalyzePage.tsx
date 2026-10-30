@@ -6,6 +6,8 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Track } from '@/components/ui';
 import { JobLiveness } from '@/components/JobLiveness';
 import { AiWait } from '@/components/ui/AiWait';
+import { Sparkles } from 'lucide-react';
+import { agentHeadline, agentLine } from '@/lib/agentNarration';
 import { minutes } from '@/lib/format';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
 import { isTerminal, type Job } from '@/api/schemas';
@@ -27,7 +29,7 @@ export function AnalyzePage() {
   const nav = useNavigate();
   const restart = useStartAnalysis();
   const cancel = useCancelJob();
-  useDocumentTitle(repo.data ? `${repo.data.name} 정리 중` : '정리 중');
+  useDocumentTitle(repo.data ? `${repo.data.name} 정리 중` : !jobId && repo.isError ? '레포를 확인하지 못했어요' : '정리 중');
 
   const j = job.data;
   const { waitSec, canRetry } = useJobRetry(j);
@@ -58,7 +60,7 @@ export function AnalyzePage() {
 
 
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
-  const crumbs = [{ label: '홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }];
+  const crumbs = [{ label: '홈', to: '/' }, { label: repo.data?.name ?? (repo.isError ? '레포 목록' : '…'), to: '/repos' }];
   const retry = async () => {
     if (restart.isPending || (jobId && !jobRetryState(j).canRetry)) return;
     try {
@@ -83,6 +85,21 @@ export function AnalyzePage() {
         </div>
         <div className="row" style={{ gap: 8 }}>
           <Link to="/repos" className="btn btn--outline">레포 목록</Link>
+        </div>
+      </main>
+    );
+  }
+
+  // 없는 레포(주소를 잘못 쳤거나 지워졌다)나 조회 실패를 정상 시작 화면처럼 열면 이름이 '…' 로 남고 "정리 시작" 이 눌린다.
+  // 진행 중인 작업(jobId)이 있으면 그 화면이 더 중요하므로 시작 화면에서만 막는다.
+  if (!jobId && repo.isError) {
+    return (
+      <main className="main">
+        <Breadcrumb items={[...crumbs, { label: '정리' }]} />
+        <PageTitle>레포를 확인하지 못했어요</PageTitle>
+        <QueryFailure error={repo.error} retry={() => repo.refetch()} pending={repo.isFetching} />
+        <div className="row" style={{ gap: 8 }}>
+          <Link to="/repos" className="btn btn--outline">레포 목록으로</Link>
         </div>
       </main>
     );
@@ -179,9 +196,11 @@ export function AnalyzePage() {
       <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
         {!j ? <AiWait label="저장소를 읽을 준비를 하고 있어요. 곧 PR 부터 읽기 시작해요." /> : (
           <>
+            {/* AI 가 지금 하는 일을 한 문장으로 — 단계 이름보다 먼저 눈에 걸리게 */}
+            <p className="agent-now" aria-live="polite"><Sparkles size={16} aria-hidden /><span><b>AI</b> {agentHeadline(j, repo.data?.name)}</span></p>
             <div className="row" style={{ gap: 12 }}>
               <span className="w-700" style={{ fontSize: 14 }}>{doneCount} / {j.steps.length} 단계</span>
-              <span className="right t-12l c-2">{j.state === 'SUCCEEDED' ? '완료 — 후보 보드로 갈게요' : '조금만 기다려 주세요'}</span>
+              <span className="right t-12l c-2">{j.state === 'SUCCEEDED' ? '완료, 후보 보드로 갈게요' : '조금만 기다려 주세요'}</span>
             </div>
             <Track value={progress} label="분석 진행률" live={!isTerminal(j.state)} />
             <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />
@@ -193,9 +212,10 @@ export function AnalyzePage() {
                     <span className="stage__icon" aria-hidden>{status === 'DONE' ? '✓' : status === 'NOW' ? <span className="spinner spinner--sm" /> : ''}</span>
                     <div className="stack grow" style={{ gap: 3 }}>
                       <span className="stage__label">{jobStepLabel[s.key]}</span>
+                      <span className="stage__agent">{agentLine(s, j)}</span>
                       <span className="stage__detail">{stepDetail(s.done, s.total, jobStepUnit[s.key], s.state)}</span>
                     </div>
-                    <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s)}</Badge>
+                    <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s, j)}</Badge>
                   </li>
                 );
               })}

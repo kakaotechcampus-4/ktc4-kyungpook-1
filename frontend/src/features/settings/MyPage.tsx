@@ -5,6 +5,8 @@ import { Badge, Button, PageTitle, Skeleton } from '@/components/ui';
 import { getTheme, setTheme, type Theme } from '@/lib/theme';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { UserAvatar } from '@/components/ui/UserAvatar';
+import { profileSupported } from '@/api/capabilities';
+import { ProfileSettingsRow } from '@/features/profile/ProfileSettingsRow';
 
 const COLLECTED = [
   ['GitHub 아이디 · 아바타', '로그인 식별', '보관'],
@@ -13,6 +15,9 @@ const COLLECTED = [
   ['질문 답변 원문', '카드의 근거', '보관'],
   ['GitHub 액세스 토큰', '수집에만 사용', '탈퇴 시 즉시 파기'],
 ] as const;
+
+/** 인적사항은 서버 지원이 열린 환경에서만 수집한다 — 안 받는 정보를 받는다고 적지 않는다 */
+const PROFILE_COLLECTED = [['인적사항 (학력·경력·어학·자격증)', '공고 매칭의 지원 자격 비교, 자소서 AI 참고', '보관']] as const;
 
 /** F2 마이페이지 — 수집 항목 투명 공개. 지표·크레딧 UI 없음 (과금 단위 미정). */
 export function MyPage() {
@@ -43,6 +48,7 @@ export function MyPage() {
         </div>
       </section>
       <section className="settings-section settings-links stack">
+        <ProfileSettingsRow />
         <Link to="/settings/github" className="kv" style={{ padding: '14px 0' }}>
           <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13.5 }}>GitHub 연결 관리</span><span className="t-12 c-2">권한 확인, 다시 연결, 연결 해제</span></div>
           <span className="c-3" style={{ fontSize: 16 }}>›</span>
@@ -61,7 +67,7 @@ export function MyPage() {
       <details className="settings-section settings-storage">
         <summary>저장·보관 정보</summary>
         <div className="stack" style={{ gap: 12, marginTop: 16 }}>
-          {COLLECTED.map(([name, why, keep]) => (
+          {[...COLLECTED, ...(profileSupported() ? PROFILE_COLLECTED : [])].map(([name, why, keep]) => (
             <div key={name} className="kv settings-data-row">
               <div className="settings-data-copy"><span className="w-500">{name}</span><span className="t-12 c-2">{why}</span></div>
               <Badge kind={keep === '보관' ? 'NEUTRAL' : 'CAUTION'}>{keep}</Badge>

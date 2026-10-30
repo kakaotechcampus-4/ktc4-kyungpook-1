@@ -8,7 +8,8 @@ it('accepts empty/legacy tags but enforces contract limits and enum spelling', (
   expect(tags.parse({ areas: [], techs: [] })).toEqual({ areas: [], techs: [] });
   expect(tags.parse({})).toEqual({});
   expect(tags.safeParse({ areas: ['BACKEND', 'FRONTEND', 'MOBILE'] }).success).toBe(false);
-  expect(tags.safeParse({ techs: ['JAVA', 'C', 'CPP', 'CSHARP', 'SQL'] }).success).toBe(false);
+  expect(tags.safeParse({ techs: ['JAVA', 'SPRING', 'JPA', 'MYSQL', 'REDIS', 'AWS', 'KAFKA', 'CI_CD'] }).success).toBe(true);
+  expect(tags.safeParse({ techs: ['JAVA', 'SPRING', 'JPA', 'MYSQL', 'REDIS', 'AWS', 'KAFKA', 'CI_CD', 'LLM'] }).success).toBe(false);
   expect(tags.safeParse({ areas: ['backend'] }).success).toBe(false);
   expect(tags.safeParse({ techs: ['MADE_UP'] }).success).toBe(false);
 });

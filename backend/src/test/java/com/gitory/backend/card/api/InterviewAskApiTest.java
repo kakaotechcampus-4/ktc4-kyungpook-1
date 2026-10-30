@@ -605,10 +605,10 @@ class InterviewAskApiTest {
         JsonNode expected = MAPPER.readTree("""
                 {"card_id": %d, "candidate": null,
                  "missing_slots": [
-                   {"star_slot": "S", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []},
-                   {"star_slot": "T", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []},
-                   {"star_slot": "A", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []},
-                   {"star_slot": "R", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []}],
+                   {"star_slot": "S", "statement_seq": 1, "body": null, "confidence": "LOW", "review_reason": null, "linked_commits": []},
+                   {"star_slot": "T", "statement_seq": 1, "body": null, "confidence": "LOW", "review_reason": null, "linked_commits": []},
+                   {"star_slot": "A", "statement_seq": 1, "body": null, "confidence": "LOW", "review_reason": null, "linked_commits": []},
+                   {"star_slot": "R", "statement_seq": 1, "body": null, "confidence": "LOW", "review_reason": null, "linked_commits": []}],
                  "existing_turn_count": 0, "max_turns": 2, "source_type": "DIRECT_CARD",
                  "target_star_slot": "T", "allowed_slots": ["S", "T", "A", "R"], "previous_turns": []}
                 """.formatted(cardId));

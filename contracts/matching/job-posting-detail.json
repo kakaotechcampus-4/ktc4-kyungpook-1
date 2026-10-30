@@ -14,7 +14,7 @@
       "external_posting_id": "backend-101",
       "job_title": "백엔드 개발자",
       "source_url": "https://careers.example.com/jobs/backend-101",
-      "raw_text": "담당 업무\nSpring Boot 기반 REST API를 설계하고 개발합니다.\n자격 요건\nJava 개발 경험이 필요합니다.\n경력 3년 이상 지원 가능합니다.",
+      "raw_text": "담당 업무\nSpring Boot 기반 REST API를 설계하고 개발합니다.\n자격 요건\nJava 개발 경험이 필요합니다.\n4년제 대학 졸업자.\n경력 3년 이상 지원 가능합니다.",
       "previous_content_hash": null,
       "previous_content_status": "METADATA_ONLY"
     }
@@ -24,19 +24,27 @@
       "source": "COMPANY_CAREER_PAGE",
       "external_posting_id": "backend-101",
       "source_url": "https://careers.example.com/jobs/backend-101",
-      "content_hash": "2342bcdd05db594d14eb7eadcc6eff81f6c74d4188d8cafd831a3f06846af281",
+      "content_hash": "be2ecea28fba3b0db5fa750da765c258e99f6f307a202a102fd913ea1ab2d8ac",
       "outcome": "UPDATED",
       "content_status": "READY",
       "criteria": [
         {
           "criterion_type": "RESPONSIBILITY",
+          "general_type": null,
           "text": "Spring Boot 기반 REST API 개발",
           "source_quote": "Spring Boot 기반 REST API를 설계하고 개발합니다."
         },
         {
           "criterion_type": "REQUIRED",
+          "general_type": null,
           "text": "Java 개발 경험",
           "source_quote": "Java 개발 경험이 필요합니다."
+        },
+        {
+          "criterion_type": "REQUIRED",
+          "general_type": "EDUCATION",
+          "text": "4년제 대학 졸업자",
+          "source_quote": "4년제 대학 졸업자."
         }
       ],
       "job_category": "BACKEND",
@@ -72,13 +80,14 @@
     ],
     "criterion_fields": [
       "type",
+      "general_type",
       "seq",
       "text",
       "quote"
     ],
     "raw_text_persistence": false,
     "transaction_rules": [
-      "UPDATED이면 공고(job_category·experience 포함)를 upsert하고 기존 조건을 새 criteria(조건 id도 새로)로 한 트랜잭션에서 교체한다.",
+      "UPDATED이면 공고(job_category·experience 포함)를 upsert하고 기존 조건을 새 criteria(type·general_type·조건 id도 새로)로 한 트랜잭션에서 교체한다.",
       "UNCHANGED이면 조건을 교체하지 않고 last_seen_at과 공고 상태만 갱신한다.",
       "하루 한 번 실행 끝(조건 뽑기 다음)에 ACTIVE·READY 공고를 20개씩 나눠 posting_id·criterion_id와 함께 /internal/matching/postings/index로 보내고, 묶음이 성공한 공고만 indexed_content_hash를 보낸 때의 content_hash로 채운다.",
       "모든 묶음을 보낸 뒤 지금 ACTIVE·READY 공고 id 전부(색인 묶음이 실패한 공고 포함)를 /internal/matching/postings/prune에 한 번 보내 목록 밖 공고의 벡터를 지운다. 목록이 비면 부르지 않는다.",
@@ -87,12 +96,12 @@
   },
   "ai_to_spring_unchanged": {
     "note": "본문이 그대로이면 criteria는 빈 배열, job_category와 experience는 null로 보낸다. Spring은 저장된 값을 두고 last_seen_at과 공고 상태만 갱신한다. Spring이 previous_content_hash를 비워 보내면 AI가 다시 뽑는다.",
-    "request_previous_content_hash": "2342bcdd05db594d14eb7eadcc6eff81f6c74d4188d8cafd831a3f06846af281",
+    "request_previous_content_hash": "be2ecea28fba3b0db5fa750da765c258e99f6f307a202a102fd913ea1ab2d8ac",
     "data": {
       "source": "COMPANY_CAREER_PAGE",
       "external_posting_id": "backend-101",
       "source_url": "https://careers.example.com/jobs/backend-101",
-      "content_hash": "2342bcdd05db594d14eb7eadcc6eff81f6c74d4188d8cafd831a3f06846af281",
+      "content_hash": "be2ecea28fba3b0db5fa750da765c258e99f6f307a202a102fd913ea1ab2d8ac",
       "outcome": "UNCHANGED",
       "content_status": "READY",
       "criteria": [],

@@ -120,7 +120,7 @@ class AiInterviewQuestionAdapterTest {
         assertThat(requestPath).isEqualTo(PATH);
         assertThat(requestContentType).startsWith("application/json");
         assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN,
-                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of()));
+                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null));
 
     }
 
@@ -133,7 +133,7 @@ class AiInterviewQuestionAdapterTest {
 
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
-        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of()));
+        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null));
 
     }
 
@@ -147,7 +147,7 @@ class AiInterviewQuestionAdapterTest {
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
         assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN,
-                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of()));
+                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null));
 
     }
 
@@ -160,7 +160,39 @@ class AiInterviewQuestionAdapterTest {
 
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
-        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of()));
+        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null));
+
+    }
+
+    @Test
+    @DisplayName("질문과 COMPLETE 모두 AI 가 쓴 판단 이유를 앞뒤 공백만 떼고 받는다")
+    void readsReason() {
+
+        responseBody = success(askAgain(data -> data.put("reason", "  결과에 수치가 없어 물어요 ")));
+        InterviewQuestionResult asked = adapter.nextQuestion(request());
+        responseBody = success(complete(data -> data.put("reason", "네 칸 모두 근거가 있어 마칠게요")));
+        InterviewQuestionResult ended = adapter.nextQuestion(request());
+
+        assertThat(asked.reason()).isEqualTo("결과에 수치가 없어 물어요");
+        assertThat(ended.reason()).isEqualTo("네 칸 모두 근거가 있어 마칠게요");
+
+    }
+
+    @Test
+    @DisplayName("판단 이유가 글이 아니거나 비었으면 버리고 질문은 그대로 받으며, 60자를 넘으면 저장 칸 길이에서 자른다")
+    void dropsMalformedReasonAndClipsLongOne() {
+
+        responseBody = success(askAgain(data -> data.put("reason", 3)));
+        InterviewQuestionResult number = adapter.nextQuestion(request());
+        responseBody = success(askAgain(data -> data.put("reason", "   ")));
+        InterviewQuestionResult blank = adapter.nextQuestion(request());
+        responseBody = success(askAgain(data -> data.put("reason", "가".repeat(80))));
+        InterviewQuestionResult longer = adapter.nextQuestion(request());
+
+        assertThat(number.questionText()).isEqualTo(QUESTION);
+        assertThat(number.reason()).isNull();
+        assertThat(blank.reason()).isNull();
+        assertThat(longer.reason()).isEqualTo("가".repeat(60));
 
     }
 
@@ -326,7 +358,7 @@ class AiInterviewQuestionAdapterTest {
                         new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of()),
                         new InterviewMissingSlot(InterviewStarSlot.A, 1, "A 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of()),
                         new InterviewMissingSlot(InterviewStarSlot.R, 1, "R 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of())),
-                0, 3, InterviewCardSourceType.DIRECT_CARD, InterviewStarSlot.T,
+                0, 8, InterviewCardSourceType.DIRECT_CARD, InterviewStarSlot.T,
                 List.of(InterviewStarSlot.S, InterviewStarSlot.T, InterviewStarSlot.A, InterviewStarSlot.R), List.of());
 
         adapter.nextQuestion(request);

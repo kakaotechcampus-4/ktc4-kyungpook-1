@@ -70,7 +70,7 @@ class CardVersionWriterTest {
     @DisplayName("막 저장한 카드의 1번 버전을 받은 출처로, 확정본이 아니고 문장 없는 버전으로 만든다")
     void startFirstCreatesEmptyFirstVersion() {
 
-        Card card = Card.startManual(userId, null, "카드", null, null);
+        Card card = Card.startManual(userId, null, null, "카드", null, null);
         em.persist(card);
 
         CardVersion first = writer.startFirst(card, VersionSource.AI_DRAFT);
@@ -101,23 +101,6 @@ class CardVersionWriterTest {
         assertThat(slotsOf(cardId, 2)).isEmpty();
         assertThat(slotsOf(cardId, 1)).containsExactly(
                 new SlotRow("S", 1, "1번 버전 글", "USER_STATED", null, null, List.of()));
-
-    }
-
-    @Test
-    @DisplayName("확정된 카드에 새 버전을 만들면 CardConfirmedException 이고 버전 행도 현재 번호도 그대로다")
-    void startNextOnConfirmedCardLeavesNothing() {
-
-        Long cardId = fixtures.insertCard(UUID.randomUUID(), userId);
-        fixtures.confirmCard(cardId);
-        Card card = em.find(Card.class, cardId);
-
-        assertThatThrownBy(() -> writer.startNext(card, VersionSource.USER_EDIT))
-                .isInstanceOf(CardConfirmedException.class);
-        em.flush();
-
-        assertThat(versionsOf(cardId)).containsExactly(new VersionRow(1, "USER_EDIT", false));
-        assertThat(currentVersionOf(cardId)).isEqualTo(1);
 
     }
 

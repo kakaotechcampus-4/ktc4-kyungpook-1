@@ -4,6 +4,7 @@ import com.gitory.backend.ingest.infra.CommitSummaryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -29,6 +30,14 @@ public class CommitSummaryService {
     public List<DraftCommit> largestFirst(Collection<Long> commitIds, int limit) {
 
         return commits.findLargestFirst(commitIds, Limit.of(limit));
+
+    }
+
+    /** 같은 커밋을 다시 요약하면 새 요약으로 바꾼다 */
+    @Transactional
+    public void recordDiffSummaries(Map<Long, String> summaryByCommitId) {
+
+        summaryByCommitId.forEach(commits::updateDiffSummary);
 
     }
 }

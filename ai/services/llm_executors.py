@@ -25,6 +25,10 @@ POSTING_EXTRACTION_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_pref
 #: 되묻기는 사용자가 화면에서 기다리는 요청이라 카드 초안 줄에 밀리지 않게 따로 두고,
 #: 동시 사용자 10명 안팎이 몰려도 마감 안에 시작하도록 6개로 둔다.
 INTERVIEW_EXECUTOR = ThreadPoolExecutor(max_workers=6, thread_name_prefix="llm-interview")
+#: 자소서는 문항마다 동시에 부르므로 되묻기 자리를 차지하지 않게 따로 둔다.
+COVER_LETTER_EXECUTOR = ThreadPoolExecutor(max_workers=6, thread_name_prefix="llm-cover-letter")
+#: 마감을 넘겨 버려진 쓰기 호출이 스트림을 다 받을 때까지 자리를 잡아도 감독·다음 행동 판단이 밀리지 않게 나눈다.
+COVER_LETTER_JUDGE_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="llm-cover-letter-judge")
 #: 색인과 검색이 같은 로컬 Chroma 파일을 동시에 열지 않게 한 줄로 세운다.
 MATCHING_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="matching-index")
 

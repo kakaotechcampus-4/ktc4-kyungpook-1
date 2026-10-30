@@ -194,10 +194,19 @@ filler.forEach(([type, ref, title, reason, score, codeRatio], i) => {
   });
 });
 
-const ev = (field: string, sha: string, snippet: string, owner = 'hong-dev', repo = 'auth-service') => ({
-  field, type: 'COMMIT', authoredBy: 'AI', sha, url: gh(owner, repo, sha), snippet, turnNo: null,
+const ev = (field: string, sha: string, snippet: string, owner = 'hong-dev', repo = 'auth-service', extra: { summary?: string; committedAt?: string; changedFiles?: number } = {}) => ({
+  field, type: 'COMMIT', authoredBy: 'AI', sha, url: gh(owner, repo, sha), snippet, turnNo: null, ...extra,
 });
+/** #455·#456 이후 서버처럼 요약·시각·파일 수가 붙은 근거. 샘플 카드(card_01)에만 쓴다 — 실측 카드(card_05)에 지어 넣지 않는다 */
+const evFull = (field: string, sha: string, snippet: string, summary: string, committedAt: string, changedFiles: number) =>
+  ev(field, sha, snippet, 'hong-dev', 'auth-service', { summary, committedAt, changedFiles });
 const said = (field: string, turnNo: number) => ({ field, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
+/**
+ * 'AI 가 한 일'(draftSteps) 데모 값. 실서버가 보내는 모양 그대로이고 문장은 화면이 만든다.
+ * 실측 카드(card_05)에는 지어 넣지 않는다 — 샘플 카드 card_01(전 과정)과 card_03(첫 검사만)에만 쓴다.
+ */
+const step = (round: number, actor: 'MODEL' | 'CODE', kind: string, field: string | null, rest: { code?: string; value?: string; material?: string; reason?: string } = {}) =>
+  ({ round, actor, kind, field, code: null, value: null, material: null, reason: null, ...rest });
 
 export const seedCards = [
   {
@@ -211,9 +220,25 @@ export const seedCards = [
       action: '인증 모듈의 세션 처리를 담당했다',
       result: '재로그인 요청이 줄었다',
     }],
-    evidence: [ev('S', 'a3f21c9', '로그인 세션 처리 추가'), ev('A', 'a3f21c9', '로그인 세션 처리 추가'), ev('A', '9c02de1', '리프레시 토큰 검증 분리'), ev('R', '7f3e9a2', '세션 만료 로그 추가')],
+    evidence: [
+      evFull('S', 'a3f21c9', '로그인 세션 처리 추가', '세션 쿠키를 발급하고 만료 시 로그인 화면으로 보내는 필터를 추가', '2024-03-14T05:20:00Z', 4),
+      evFull('A', 'a3f21c9', '로그인 세션 처리 추가', '세션 쿠키를 발급하고 만료 시 로그인 화면으로 보내는 필터를 추가', '2024-03-14T05:20:00Z', 4),
+      evFull('A', '9c02de1', '리프레시 토큰 검증 분리', '리프레시 토큰 검증을 인증 필터에서 떼어 별도 서비스로 옮김', '2024-03-18T09:02:00Z', 3),
+      ev('R', '7f3e9a2', '세션 만료 로그 추가'),
+    ],
     lowConfidenceFields: [{ field: 'R', why: '수치가 없고 근거 커밋이 1건뿐입니다' }],
     droppedFields: [{ field: 'T', reason: 'NO_EVIDENCE' }],
+    // 첫 초안(DRAFT) → 코드가 문제를 찾음(FLAG) → AI 가 자료를 열지, 그대로 둘지, 자료 없이 고칠지 고름(OPEN·KEEP·RETRY) → 다시 씀 → 다시 검사
+    draftSteps: [
+      step(0, 'MODEL', 'DRAFT', null),
+      step(0, 'CODE', 'FLAG', 'T', { code: 'NO_EVIDENCE' }),
+      step(0, 'CODE', 'FLAG', 'R', { code: 'UNSOURCED_NUMBER', value: '50%' }),
+      step(1, 'MODEL', 'OPEN', 'T', { value: '이슈 #98 세션 만료 시 작성 글 사라짐', material: 'ISSUE', reason: '과제가 이슈 본문에 적혀 있을 것 같음' }),
+      step(1, 'MODEL', 'KEEP', 'T', { reason: '이슈에도 맡은 일이 적혀 있지 않음' }),
+      step(1, 'MODEL', 'RETRY', 'R', { reason: '50% 를 뒷받침할 자료가 없어 숫자를 뺌' }),
+      step(1, 'MODEL', 'REWRITE', 'R'),
+      step(1, 'CODE', 'PASS', 'R'),
+    ],
     maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: daysAgo(1),
   },
   {
@@ -241,6 +266,12 @@ export const seedCards = [
     ],
     evidence: [ev('S', '5d1e8b0', '토큰 만료 시 401 처리'), ev('A', '5d1e8b0', '토큰 만료 시 401 처리'), ev('A', '8a7c2f4', '리프레시 인터셉터 추가'), said('T', 1), said('R', 2)],
     lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 2, confirmedAt: daysAgo(3), createdAt: daysAgo(4),
+    // 고쳐 쓰기를 켜기 전 운영처럼 첫 초안과 첫 검사만 남은 카드. 이후 답변·수정으로 버전이 늘었어도 초안을 만든 과정이라 그대로 온다
+    draftSteps: [
+      step(0, 'MODEL', 'DRAFT', null),
+      step(0, 'CODE', 'FLAG', 'T', { code: 'EMPTY' }),
+      step(0, 'CODE', 'FLAG', 'R', { code: 'EMPTY' }),
+    ],
   },
   {
     id: 'card_04', kind: 'QUALITATIVE', status: 'CONFIRMED', title: '팀원과 토큰 저장 위치로 갈린 경험',
@@ -281,7 +312,7 @@ export const seedInterview: Record<string, unknown[]> = {
     turnNo: 1, field: 'S', askedBy: 'USER_REQUEST', sourceType: 'PR', questionType: 'EVIDENCE_GAP',
     found: ['Revert 커밋 2건 (4.02)', '결제 롤백 이슈 #31'], missing: ['그때 왜 되돌렸고, 어떻게 다시 붙였는지'],
     question: '그때 의견이 갈린 지점은 무엇이었나요?', options: [],
-    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 1, maxTurns: 2,
+    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 7, maxTurns: 8,
   }],
 };
 

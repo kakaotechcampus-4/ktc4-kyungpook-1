@@ -8,5 +8,6 @@ public enum CompanySourceType {
     KAKAO,
     KT,
     PEARL_ABYSS,
-    SMILEGATE
+    SMILEGATE,
+    ROCKETPUNCH
 }

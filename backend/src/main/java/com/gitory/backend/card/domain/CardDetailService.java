@@ -2,6 +2,8 @@ package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.interview.InterviewTurn;
+import com.gitory.backend.card.infra.ActivityRepository;
+import com.gitory.backend.card.infra.CardDraftStepRepository;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
@@ -27,7 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * 내 카드 한 장을 현재 버전의 네 칸, 칸 메모, 답한 되묻기 질문 수, 칸에 연결된 질문 번호와 함께 읽는다
+ * 내 카드 한 장을 현재 버전의 네 칸, 칸 메모, AI 초안 단계, 답한 되묻기 질문 수, 칸에 연결된 질문 번호와 함께 읽는다
  * 임시 저장이 문장을 지우고 다시 넣는 사이에도 문장과 근거를 한 시점으로 읽도록 REPEATABLE READ 로 읽는다
  */
 @Service
@@ -42,7 +44,9 @@ public class CardDetailService {
     private final CardGenerationPort generationJobs;
     private final InterviewTurnRepository turns;
     private final CardSlotNoteRepository notes;
+    private final CardDraftStepRepository draftSteps;
     private final CommitSummaryService commitSummaries;
+    private final ActivityRepository activities;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public CardDetail load(UUID publicId, Long userId) {
@@ -52,6 +56,10 @@ public class CardDetailService {
         RepositoryReference repository = Optional.ofNullable(card.getUserRepositoryId())
                 .flatMap(repositories::find)
                 .orElse(null);
+        ActivityReference activity = Optional.ofNullable(card.getActivityId())
+                .flatMap(activities::findById)
+                .map(ActivityReference::of)
+                .orElse(null);
         VersionSlots slots = reader.read(card.getId(), card.getCurrentVersion());
         List<InterviewTurn> asked = turns.findByCardIdOrderBySeqAsc(card.getId());
 
@@ -60,10 +68,11 @@ public class CardDetailService {
                 .orElse(null);
 
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
-                card.areaTags(), card.techTags(), card.getPeriod(), repository, current.getSource(),
+                card.areaTags(), card.techTags(), card.getPeriod(), repository, activity, current.getSource(),
                 current.getUpdatedAt(), slots, card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(),
-                candidate, generationOf(card), answeredCount(asked), turnNosOf(slots, asked), notesOf(card),
-                commitsOf(slots));
+                candidate, generationOf(card), card.getGenerationFailure(), answeredCount(asked),
+                card.getInterviewEndReason(), turnNosOf(slots, asked), notesOf(card),
+                commitsOf(slots), draftStepsOf(card));
 
     }
 
@@ -90,6 +99,15 @@ public class CardDetailService {
         }
 
         return null;
+
+    }
+
+    // 단계는 AI 초안을 담은 1번 버전에만 남고, 사용자가 고쳐 버전이 늘어도 초안을 만든 과정이라 그대로 보여 준다
+    private List<DraftStep> draftStepsOf(Card card) {
+
+        return draftSteps.findByCardIdAndVersionNoOrderBySeq(card.getId(), CardDraftWriter.FIRST).stream()
+                .map(CardDraftStep::view)
+                .toList();
 
     }
 

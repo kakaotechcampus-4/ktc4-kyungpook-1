@@ -69,6 +69,9 @@ services:
       # 경험 그룹화·STAR 초안이 쓰는 LLM 게이트웨이. 비어 있으면 그 두 기능만 503 이고 수집·되묻기는 돈다
       GITORY_LLM_BASE_URL: ${GITORY_LLM_BASE_URL:-}
       GITORY_LLM_API_KEY: ${GITORY_LLM_API_KEY:-}
+      GITORY_STAR_REPAIR_ENABLED: ${GITORY_STAR_REPAIR_ENABLED:-true}
+      GITORY_STAR_REVIEW_ENABLED: ${GITORY_STAR_REVIEW_ENABLED:-false}
+      GITORY_STAR_REVIEW_MODEL: ${GITORY_STAR_REVIEW_MODEL:-}
     # 공고 색인(Chroma)과 임베딩 모델 파일을 서버 디스크에 둬서, 배포로 컨테이너를 새로 만들어도 색인이 남는다
     volumes:
       - ai-index:/app/.chroma
@@ -117,6 +120,8 @@ services:
       AI_BASE_URL: http://ai:8000
       # 분석 Job 이 수집 뒤 AI 경험 그룹화로 후보를 만든다. AI 에 LLM 설정을 넣고 확인한 뒤 true 로 켠다
       ANALYSIS_GROUPING_ENABLED: ${ANALYSIS_GROUPING_ENABLED:-false}
+      # 분석 단계에 읽은 수/전체를 실시간으로 남긴다. 문제가 생기면 false 로 끄면 한 번에 받는 AI API 로 돌아간다
+      ANALYSIS_LIVE_PROGRESS_ENABLED: ${ANALYSIS_LIVE_PROGRESS_ENABLED:-true}
       # 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채운다 (#212). 끄면 빈 카드로 끝난다
       CARD_AI_DRAFT_ENABLED: ${CARD_AI_DRAFT_ENABLED:-false}
       # 되묻기 질문·답 평가·카드 초안의 사용자별 호출 한도 (application.yml gitory.rate-limit). 서버 로그 첫머리에 켜졌는지 남는다
@@ -126,6 +131,8 @@ services:
       MATCHING_SYNC_ENABLED: ${MATCHING_SYNC_ENABLED:-false}
       # 켜면 /api/swagger-ui.html 에서 API 문서를 연다. 문서만 열리고 API 를 부르려면 여전히 로그인·CSRF 가 필요하다
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      # 로켓펀치 Open API 키. 비어 있으면 로켓펀치 공고만 건너뛴다
+      ROCKETPUNCH_API_KEY: ${ROCKETPUNCH_API_KEY:-}
     healthcheck:
       # readiness 그룹은 db 연결까지 본다. ai 는 넣지 않는다 (application.yml management 절)
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]

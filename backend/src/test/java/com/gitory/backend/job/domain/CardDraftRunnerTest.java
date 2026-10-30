@@ -1,5 +1,6 @@
 package com.gitory.backend.job.domain;
 
+import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.StarConfidence;
@@ -10,13 +11,19 @@ import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarEvidenceSource;
+import com.gitory.backend.agent.port.StarMaterialKind;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
 import com.gitory.backend.agent.port.StarSourceType;
+import com.gitory.backend.agent.port.StarStep;
+import com.gitory.backend.agent.port.StarStepActor;
+import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
+import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.consent.domain.UserLoginService;
@@ -86,9 +93,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, JobCancelService.class,
+@Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, CardVersionReader.class, JobCancelService.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
-        StoredActivityService.class, UserLoginService.class, JobViewFactory.class, CandidateEmptyReasons.class,
+        StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
         CommitSummaryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
@@ -148,6 +155,24 @@ class CardDraftRunnerTest {
         repositoryId = fixtures.insertRepository(100L, LOGIN, "gitory");
         userRepositoryId = fixtures.insertUserRepository(userId, repositoryId);
         jobId = cardFixtures.insertDraftJob(userId, userRepositoryId, "QUEUED");
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 이 카드마다 부른 AI 호출에는 그 Job 과 카드가 함께 붙는다")
+    void marksAiCallsWithTheJobAndCard() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 30, 10));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        AtomicReference<List<Long>> seen = new AtomicReference<>();
+        given(star.draft(any())).willAnswer(invocation -> {
+            seen.set(Arrays.asList(AiCallContext.jobId(), AiCallContext.cardId()));
+            return allSlots(SHA_A);
+        });
+
+        runNext();
+
+        assertThat(seen.get()).containsExactly(job().getId(), cardId);
 
     }
 
@@ -341,6 +366,44 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("AI 가 준 초안 단계는 칸과 같은 트랜잭션에서 1번 버전에 순서대로 남기고, 이유는 60자로 자른다")
+    void storesDraftStepsOnFirstVersion() {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "PR", 17, "#17", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
+        Long cardId = cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        StarDraft empty = allEmpty(StarEmptyReason.NO_EVIDENCE);
+        given(star.draft(any())).willReturn(new StarDraft(empty.title(), empty.slots(), empty.missingFields(), null,
+                List.of(), List.of(), List.of(), List.of(
+                        new StarStep(0, StarStepActor.MODEL, StarStepKind.DRAFT, null, null, null, null, null),
+                        new StarStep(0, StarStepActor.CODE, StarStepKind.FLAG, StarSlot.R, "UNSOURCED_NUMBER", "50%",
+                                null, null),
+                        new StarStep(1, StarStepActor.MODEL, StarStepKind.OPEN, StarSlot.S, null, "이슈 #98",
+                                StarMaterialKind.ISSUE, "가".repeat(80)),
+                        new StarStep(2, StarStepActor.CODE, StarStepKind.REVERT, StarSlot.S, "EMPTY", null, null,
+                                null))));
+
+        runNext();
+
+        assertThat(jdbc.queryForList("""
+                SELECT version_no, seq, round_no, actor, kind, star_slot, code, detail, material, reason
+                FROM card_draft_step WHERE card_id = ? ORDER BY seq
+                """, cardId))
+                .extracting(row -> tuple(row.get("version_no"), row.get("seq"), row.get("round_no"), row.get("actor"),
+                        row.get("kind"), row.get("star_slot"), row.get("code"), row.get("detail"), row.get("material"),
+                        row.get("reason")))
+                .containsExactly(
+                        tuple(1, 0, 0, "MODEL", "DRAFT", null, null, null, null, null),
+                        tuple(1, 1, 0, "CODE", "FLAG", "R", "UNSOURCED_NUMBER", "50%", null,
+                                null),
+                        tuple(1, 2, 1, "MODEL", "OPEN", "S", null, "이슈 #98", "ISSUE",
+                                "가".repeat(60)),
+                        tuple(1, 3, 2, "CODE", "REVERT", "S", "EMPTY", null, null, null));
+
+    }
+
+    @Test
     @DisplayName("ref 가 빈 후보는 STAR 요청의 ref 를 비워 보낸다")
     void sendsBlankRefAsNull() {
 
@@ -408,6 +471,46 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("diff 를 읽어 쓴 요약만 그 커밋에 남기고, 커밋 메시지로 대신한 요약과 빈 요약은 남기지 않는다")
+    void storesOnlyDiffSummaries() {
+
+        String shaC = "c".repeat(40);
+        Long commitA = commit(SHA_A, 10, 0);
+        Long commitB = commit(SHA_B, 5, 0);
+        Long commitC = commit(shaC, 3, 0);
+        cardWithCommits(commitA, commitB, commitC);
+        given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(
+                summary(SHA_A, " 세션 저장소를 DB 로 옮겼다 ", DiffEvidenceSource.DIFF),
+                summary(SHA_B, "feat: 세션 저장", DiffEvidenceSource.COMMIT_MESSAGE),
+                summary(shaC, "  ", DiffEvidenceSource.DIFF)), false, null, List.of()));
+        given(star.draft(any())).willReturn(allSlots(SHA_A));
+
+        runNext();
+
+        assertThat(diffSummaryOf(commitA)).isEqualTo("세션 저장소를 DB 로 옮겼다");
+        assertThat(diffSummaryOf(commitB)).isNull();
+        assertThat(diffSummaryOf(commitC)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("이미 요약이 있는 커밋을 다시 요약하면 새 요약으로 바꾼다")
+    void replacesOlderDiffSummary() {
+
+        Long commitA = commit(SHA_A, 10, 0);
+        jdbc.update("UPDATE git_commit SET diff_summary = '옛 요약' WHERE id = ?", commitA);
+        cardWithCommits(commitA);
+        given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(
+                summary(SHA_A, "새 요약", DiffEvidenceSource.DIFF)), false, null, List.of()));
+        given(star.draft(any())).willReturn(allSlots(SHA_A));
+
+        runNext();
+
+        assertThat(diffSummaryOf(commitA)).isEqualTo("새 요약");
+
+    }
+
+    @Test
     @DisplayName("보낸 커밋 중 하나에도 이어지지 않는 문장은 저장하지 않고 그 칸을 근거 없음으로 비운다")
     void dropsSentenceWithoutLinkableEvidence() {
 
@@ -454,7 +557,7 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("확인 필요 칸은 LOW 문장과 함께 그 이유를, 과장이라 비운 칸은 그 이유 코드를 칸 메모로 남긴다")
+    @DisplayName("확인 필요 칸은 LOW 문장과 함께 그 이유를, 과장이라 비운 칸은 그 이유 코드를 칸 메모로 남기고 카드는 작성 중으로 둔다")
     void notesReviewAndDropReasons() {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
@@ -472,6 +575,22 @@ class CardDraftRunnerTest {
         assertThat(notesOf(cardId)).containsExactly(
                 new NoteRow("A", null, "근거에 없는 수치: 30%"),
                 new NoteRow("R", "OVERCLAIM", null));
+        assertThat(statusOf(cardId)).isEqualTo("DRAFT");
+
+    }
+
+    @Test
+    @DisplayName("AI 초안의 네 칸이 확인 필요 없이 모두 차면 사용자가 확정을 누르지 않아도 카드를 확정한다")
+    void completeDraftConfirmsCard() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allSlots(SHA_A));
+
+        runNext();
+
+        assertThat(statusOf(cardId)).isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT confirmed_at FROM card WHERE id = ?", Object.class, cardId)).isNotNull();
 
     }
 
@@ -512,6 +631,8 @@ class CardDraftRunnerTest {
         assertThat(statementsOf(failed)).isEmpty();
         assertThat(firstVersionSourceOf(failed)).isEqualTo("USER_EDIT");
         assertThat(statementsOf(drafted)).hasSize(4);
+        assertThat(generationFailureOf(failed)).isEqualTo("INTERNAL_ERROR");
+        assertThat(generationFailureOf(drafted)).isNull();
         assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job().isPartial()).isTrue();
         assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
@@ -519,7 +640,7 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("모든 카드의 AI 가 실패하면 카드는 빈 채로 남고 Job 은 AI 오류로 실패한다")
+    @DisplayName("모든 카드의 AI 가 잠시 응답하지 못하면 카드에 그 이유를 남기고, Job 은 다시 시도할 수 있는 AI_UNAVAILABLE 로 실패한다")
     void failsWhenEveryCardFails() {
 
         Long first = cardWithCommits(commit(SHA_A, 10, 0));
@@ -531,6 +652,41 @@ class CardDraftRunnerTest {
 
         assertThat(statementsOf(first)).isEmpty();
         assertThat(statementsOf(second)).isEmpty();
+        assertThat(generationFailureOf(first)).isEqualTo("AI_UNAVAILABLE");
+        assertThat(generationFailureOf(second)).isEqualTo("AI_UNAVAILABLE");
+        assertThat(job().getState()).isEqualTo(JobState.FAILED);
+        assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.AI_UNAVAILABLE);
+
+    }
+
+    @Test
+    @DisplayName("GitHub 이 토큰을 거절하면 카드에 GITHUB_UNAUTHORIZED 를 남기고, Job 은 다시 연결해야 하는 GITHUB_UNAUTHORIZED 로 실패한다")
+    void marksTokenRejectionOnCardAndJob() {
+
+        Long first = cardWithCommits(commit(SHA_A, 10, 0));
+        Long second = cardWithCommits(commit(SHA_B, 10, 0));
+        given(activities.diffEvidence(any())).willThrow(new AiClientException("GITHUB_UNAUTHORIZED", false, null));
+
+        runNext();
+
+        assertThat(generationFailureOf(first)).isEqualTo("GITHUB_UNAUTHORIZED");
+        assertThat(generationFailureOf(second)).isEqualTo("GITHUB_UNAUTHORIZED");
+        assertThat(job().getState()).isEqualTo(JobState.FAILED);
+        assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.GITHUB_UNAUTHORIZED);
+
+    }
+
+    @Test
+    @DisplayName("다시 해도 같은 AI 오류(콘텐츠 제한·잘못된 응답)로 모든 카드가 실패하면 카드에 INTERNAL_ERROR 를 남기고 Job 은 INTERNAL_ERROR 로 실패한다")
+    void failsWithInternalErrorWhenFailureIsNotRetryable() {
+
+        Long card = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A));
+        given(star.draft(any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", false, true, null));
+
+        runNext();
+
+        assertThat(generationFailureOf(card)).isEqualTo("INTERNAL_ERROR");
         assertThat(job().getState()).isEqualTo(JobState.FAILED);
         assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
 
@@ -620,6 +776,53 @@ class CardDraftRunnerTest {
         assertThat(statementsOf(cardId)).isEmpty();
         assertThat(notesOf(cardId)).isEmpty();
         assertThat(firstVersionSourceOf(cardId)).isEqualTo("USER_EDIT");
+
+    }
+
+    @Test
+    @DisplayName("서버가 다시 켜져 실패 표시가 남은 카드에 STAR 초안을 담으면 실패 표시를 지운다")
+    void clearsFailureWhenDraftIsWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allFilled(SHA_A));
+
+        runNext();
+
+        assertThat(statementsOf(cardId)).hasSize(4);
+        assertThat(generationFailureOf(cardId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("근거가 없어 근거 없음만 담아도 초안 시도가 끝났으므로 실패 표시를 지운다")
+    void clearsFailureWhenOnlyNoEvidenceIsWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf());
+
+        runNext();
+
+        assertThat(firstVersionSourceOf(cardId)).isEqualTo("AI_DRAFT");
+        assertThat(generationFailureOf(cardId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("현재 버전이 1번이 아니어서 초안을 담지 못한 카드는 실패 표시를 그대로 둔다")
+    void keepsFailureWhenDraftIsNotWritten() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
+        jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allFilled(SHA_A));
+
+        runNext();
+
+        assertThat(generationFailureOf(cardId)).isEqualTo("AI_UNAVAILABLE");
 
     }
 
@@ -747,6 +950,12 @@ class CardDraftRunnerTest {
     }
 
     /** 커밋을 모두 포함한 PR 후보와, 이 Job 이 채울 그 후보의 카드를 만든다 */
+    private String statusOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId);
+
+    }
+
     private Long cardWithCommits(Long... commitIds) {
 
         Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "PR", 17, "#17", "후보", "USED");
@@ -783,10 +992,39 @@ class CardDraftRunnerTest {
 
     }
 
+    private String generationFailureOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT generation_failure FROM card WHERE id = ?", String.class, cardId);
+
+    }
+
     private boolean generationPartialOf(Long cardId) {
 
         return Boolean.TRUE.equals(jdbc.queryForObject("SELECT generation_partial FROM card WHERE id = ?",
                 Boolean.class, cardId));
+
+    }
+
+    private static DiffEvidence summary(String sha, String text, DiffEvidenceSource source) {
+
+        return new DiffEvidence(sha, "feat: " + sha.substring(0, 7), LOGIN, "+10/-0", text, source, List.of(), null,
+                List.of());
+
+    }
+
+    private static StarDraft allSlots(String sha) {
+
+        return draftOf(Map.of(
+                StarSlot.S, filled(sha, "상황", StarConfidence.HIGH),
+                StarSlot.T, filled(sha, "과제", StarConfidence.HIGH),
+                StarSlot.A, filled(sha, "행동", StarConfidence.HIGH),
+                StarSlot.R, filled(sha, "결과", StarConfidence.HIGH)));
+
+    }
+
+    private String diffSummaryOf(Long commitId) {
+
+        return jdbc.queryForObject("SELECT diff_summary FROM git_commit WHERE id = ?", String.class, commitId);
 
     }
 
@@ -834,7 +1072,7 @@ class CardDraftRunnerTest {
                 .filter(slot -> slots.get(slot).status() == StarSlotStatus.EMPTY)
                 .toList();
 
-        return new StarDraft("후보 카드", slots, missing, null, List.of(), areas, techs);
+        return new StarDraft("후보 카드", slots, missing, null, List.of(), areas, techs, List.of());
 
     }
 

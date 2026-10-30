@@ -18,6 +18,7 @@ public record CardDetail(
         List<CardTech> techs,
         String period,
         RepositoryReference repository,
+        ActivityReference activity,
         VersionSource source,
         Instant versionSavedAt,
         VersionSlots slots,
@@ -26,8 +27,11 @@ public record CardDetail(
         Instant createdAt,
         CandidateReference candidate,
         CardGeneration generation,
+        CardDraftFailure draftFailure,
         int interviewTurns,
+        String interviewEndReason,
         Map<StarField, Integer> turnNos,
         Map<StarField, SlotNote> notes,
-        Map<Long, CommitSummary> commits) {
+        Map<Long, CommitSummary> commits,
+        List<DraftStep> draftSteps) {
 }

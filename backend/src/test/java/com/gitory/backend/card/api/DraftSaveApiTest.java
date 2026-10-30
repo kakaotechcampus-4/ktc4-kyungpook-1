@@ -148,20 +148,42 @@ class DraftSaveApiTest {
     }
 
     @Test
-    @DisplayName("확정된 카드에 임시 저장하면 보낸 글이 현재 버전과 같든 다르든 409 CARD_CONFIRMED 이고 버전·문장·시각이 그대로다")
-    void confirmedCardIsConflict() throws Exception {
+    @DisplayName("작성 중 카드는 네 칸을 확인 필요 없이 모두 채워 저장하면 확정되고, 비운 칸이 있으면 작성 중으로 남는다")
+    void savingAllFourSlotsConfirmsDraftCard() throws Exception {
 
-        Long cardId = confirmedCard();
-        List<Map<String, Object>> before = stateOf(cardId);
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
 
-        save(MY_CARD, "고친 상황", null, "행동", null)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
-        save(MY_CARD, "상황", null, "행동", null)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
+        save(MY_CARD, "상황", null, "행동", null).andExpect(status().isOk());
+        assertThat(statusOf(cardId)).isEqualTo("DRAFT");
 
-        assertThat(stateOf(cardId)).isEqualTo(before);
+        save(MY_CARD, "상황", "맡은 일", "행동", "결과").andExpect(status().isOk());
+        assertThat(statusOf(cardId)).isEqualTo("CONFIRMED");
+        assertThat(confirmedAtOf(cardId)).isNotNull();
+
+    }
+
+    @Test
+    @DisplayName("확정된 카드도 다시 열지 않고 새 버전에 저장해 상황·행동이 남으면 확정으로 남고, 행동을 비우면 작성 중으로 돌아간다")
+    void confirmedCardIsSavedAndReturnsToDraftOnlyWhenActionIsCleared() throws Exception {
+
+        Long cleared = confirmedCard();
+        UUID keptId = UUID.randomUUID();
+        Long kept = fixtures.insertCard(keptId, myUserId);
+        fixtures.insertCardVersion(kept, 2, "USER_EDIT", true);
+        fixtures.insertStatement(kept, 2, "S", "상황", "USER_STATED", null);
+        fixtures.insertStatement(kept, 2, "A", "행동", "USER_STATED", null);
+        fixtures.confirmCard(kept);
+
+        save(keptId, "고친 상황", null, "행동", null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.versionNo").value(3));
+        assertThat(statusOf(kept)).isEqualTo("CONFIRMED");
+
+        save(MY_CARD, "고친 상황", null, null, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.versionNo").value(3));
+        assertThat(statusOf(cleared)).isEqualTo("DRAFT");
+        assertThat(confirmedAtOf(cleared)).isNull();
 
     }
 
@@ -227,8 +249,8 @@ class DraftSaveApiTest {
     }
 
     @Test
-    @DisplayName("키가 빠진 본문이어도 남의 카드면 404 와 거절 기록, 확정된 카드면 409 로 먼저 답하고 작성 중인 내 카드에서만 400 이다")
-    void checksOwnershipThenConfirmationBeforeMissingKey() throws Exception {
+    @DisplayName("키가 빠진 본문이어도 남의 카드면 404 와 거절 기록으로 먼저 답하고, 내 카드는 확정했든 작성 중이든 400 이다")
+    void checksOwnershipBeforeMissingKey() throws Exception {
 
         Long othersCardId = fixtures.insertCard(OTHERS_CARD, othersUserId);
         confirmedCard();
@@ -241,8 +263,8 @@ class DraftSaveApiTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
         save(MY_CARD, withoutResult)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         save(draftCard, withoutResult)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
@@ -276,8 +298,8 @@ class DraftSaveApiTest {
     }
 
     @Test
-    @DisplayName("규칙 여러 개에 함께 걸리면 남의 카드 404, 확정된 카드 409, 글자 수 400 순서로 답한다")
-    void checksOwnershipThenConfirmationThenLength() throws Exception {
+    @DisplayName("규칙 여러 개에 함께 걸리면 남의 카드 404, 글자 수 400 순서로 답하고 확정한 카드도 글자 수로 400 이다")
+    void checksOwnershipThenLength() throws Exception {
 
         Long othersCardId = fixtures.insertCard(OTHERS_CARD, othersUserId);
         fixtures.insertCardVersion(othersCardId, 2, "USER_EDIT", true);
@@ -290,8 +312,8 @@ class DraftSaveApiTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
         save(MY_CARD, OVER_LIMIT_TEXT, null, null, null)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         save(draftCard, OVER_LIMIT_TEXT, null, null, null)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
@@ -765,6 +787,18 @@ class DraftSaveApiTest {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+
+    }
+
+    private String statusOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId);
+
+    }
+
+    private Object confirmedAtOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT confirmed_at FROM card WHERE id = ?", Object.class, cardId);
 
     }
 

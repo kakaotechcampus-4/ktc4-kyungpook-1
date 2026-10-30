@@ -255,6 +255,17 @@ export function useSkipInterview(cardId: string) {
   });
 }
 
+export function useRetryDraft(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => endpoints.retryDraft(cardId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.card(cardId) });
+      void qc.invalidateQueries({ queryKey: keys.cards });
+    },
+  });
+}
+
 /** 유일하게 되돌릴 수 없는 호출. 성공 시 카드·후보 보드·홈 전부 무효화. */
 export function useConfirm(cardId: string) {
   const qc = useQueryClient();

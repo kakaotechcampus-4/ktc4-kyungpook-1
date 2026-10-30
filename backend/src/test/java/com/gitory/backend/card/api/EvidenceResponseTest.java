@@ -38,12 +38,40 @@ class EvidenceResponseTest {
     @DisplayName("7자리보다 짧은 sha 는 자르지 않고 그대로 싣는다")
     void keepsShortShaAsIs() {
 
-        CommitSummary commit = new CommitSummary(1L, "abc12", "fix", Instant.EPOCH);
+        CommitSummary commit = new CommitSummary(1L, "abc12", "fix", Instant.EPOCH, null, null);
 
         EvidenceResponse evidence = EvidenceResponse.commit(StarField.R, commit, REPOSITORY);
 
         assertThat(evidence.sha()).isEqualTo("abc12");
         assertThat(evidence.url()).isEqualTo("https://github.com/grow22/gitory/commit/abc12");
+
+    }
+
+    @Test
+    @DisplayName("커밋 근거의 snippet 은 커밋 메시지 첫 줄이고, 작성 시각과 바뀐 파일 수를 함께 싣는다")
+    void carriesHeadlineDateAndFileCount() {
+
+        Instant authoredAt = Instant.parse("2026-05-12T03:00:00Z");
+        CommitSummary commit = new CommitSummary(1L, "abc1234567", "  feat: 토큰 갱신 인터셉터 추가  \n\n본문 설명", authoredAt, 3, null);
+
+        EvidenceResponse evidence = EvidenceResponse.commit(StarField.A, commit, REPOSITORY);
+
+        assertThat(evidence.snippet()).isEqualTo("feat: 토큰 갱신 인터셉터 추가");
+        assertThat(evidence.committedAt()).isEqualTo(authoredAt);
+        assertThat(evidence.changedFiles()).isEqualTo(3);
+
+    }
+
+    @Test
+    @DisplayName("커밋 메시지가 비었거나 파일 수를 모르면 snippet·changedFiles 를 지어내지 않고 null 로 둔다")
+    void leavesUnknownHeadlineAndFileCountEmpty() {
+
+        EvidenceResponse blank = EvidenceResponse.commit(StarField.A, new CommitSummary(1L, "abc1234567", " \n ", null, null, null), REPOSITORY);
+        EvidenceResponse missing = EvidenceResponse.commit(StarField.A, new CommitSummary(2L, "abc1234567", null, null, null, null), REPOSITORY);
+
+        assertThat(blank.snippet()).isNull();
+        assertThat(blank.changedFiles()).isNull();
+        assertThat(missing.snippet()).isNull();
 
     }
 }

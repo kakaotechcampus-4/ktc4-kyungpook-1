@@ -36,9 +36,13 @@ test('first, middle and last selected repository rows retain geometry and rounde
 test('desktop experiences have individual card boundaries and gaps', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsDemo(page); await page.goto('/cards');
-  const first = await page.locator('.experience-item').nth(0).boundingBox();
-  const second = await page.locator('.experience-item').nth(1).boundingBox();
-  expect(second!.x - (first!.x + first!.width)).toBeGreaterThanOrEqual(16);
+  // 레포별 묶음이라 처음 두 장이 한 줄이라는 보장이 없다 — 같은 줄(같은 top)에 나란히 놓인 두 장의 간격을 잰다
+  await expect(page.locator('.experience-item')).toHaveCount(5);
+  const boxes = await page.locator('.experience-item').evaluateAll(items => items.map(item => item.getBoundingClientRect()).map(r => ({ top: Math.round(r.top), x: r.x, right: r.right })));
+  const pair = boxes.find((a, i) => boxes.slice(i + 1).some(b => b.top === a.top));
+  expect(pair).toBeDefined();
+  const neighbor = boxes.find(b => b !== pair && b.top === pair!.top && b.x > pair!.x)!;
+  expect(neighbor.x - pair!.right).toBeGreaterThanOrEqual(16);
 });
 
 test('large and short desktop dialogs remain centered with visible actions', async ({ page }) => {

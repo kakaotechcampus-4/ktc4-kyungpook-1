@@ -1,6 +1,7 @@
 package com.gitory.backend.matching.domain;
 
 import com.gitory.backend.matching.infra.CompanySource;
+import com.gitory.backend.matching.infra.CompanySourceType;
 import com.gitory.backend.matching.infra.FetchFailureCode;
 import com.gitory.backend.matching.infra.GreenhouseClient;
 import com.gitory.backend.matching.infra.GreetingClient;
@@ -14,6 +15,7 @@ import com.gitory.backend.matching.infra.PearlAbyssCareersClient;
 import com.gitory.backend.matching.infra.PoliteFetchException;
 import com.gitory.backend.matching.infra.PoliteFetchSession;
 import com.gitory.backend.matching.infra.PoliteFetcher;
+import com.gitory.backend.matching.infra.RocketpunchClient;
 import com.gitory.backend.matching.infra.SmilegateCareersClient;
 import com.gitory.backend.matching.infra.SyncLock;
 import com.gitory.backend.matching.infra.TossCareersClient;
@@ -56,6 +58,7 @@ public class JobPostingSyncService {
     private final KtCareersClient kt;
     private final PearlAbyssCareersClient pearlAbyss;
     private final SmilegateCareersClient smilegate;
+    private final RocketpunchClient rocketpunch;
     private final JobPostingRepository postings;
     private final JobPostingSourceRepository sources;
     private final JobPostingExtractionService extraction;
@@ -104,6 +107,11 @@ public class JobPostingSyncService {
 
     private void syncCompany(PoliteFetchSession session, CompanySource source, List<ExtractionTarget> targets) {
 
+        // 키 없이 부르면 401 로 실패가 남고, 실패 기록은 저장된 공고를 그대로 두지만 로컬·CI 에서 잡음만 늘어 부르지 않는다
+        if (source.type() == CompanySourceType.ROCKETPUNCH && !rocketpunch.isConfigured()) {
+            log.info("공고 가져오기 건너뜀 {}: 로켓펀치 API 키가 없다", source.name());
+            return;
+        }
         Instant started = clock.instant();
         transaction.executeWithoutResult(status -> sourceOf(source).attempt(started));
         try {
@@ -116,6 +124,7 @@ public class JobPostingSyncService {
                 case KT -> kt.list(session, source);
                 case PEARL_ABYSS -> pearlAbyss.list(session, source);
                 case SMILEGATE -> smilegate.list(session, source);
+                case ROCKETPUNCH -> rocketpunch.list(session, source);
             };
             List<FetchedPosting> development = fetched.stream().filter(DevelopmentPostingFilter::accepts).toList();
             Counts counts = transaction.execute(status -> store(source, fetched.size(), development));
@@ -141,11 +150,11 @@ public class JobPostingSyncService {
         for (FetchedPosting posting : development) {
             JobPosting existing = known.get(posting.externalId());
             if (existing == null) {
-                postings.save(JobPosting.discovered(source.key(), posting.externalId(), source.name(), posting.title(),
-                        posting.sourceUrl(), posting.sourceUpdatedAt(), posting.expiresAt(), now));
+                postings.save(JobPosting.discovered(source.key(), posting.externalId(), companyNameOf(source, posting),
+                        posting.title(), posting.sourceUrl(), posting.sourceUpdatedAt(), posting.expiresAt(), now));
                 added++;
             } else {
-                existing.seenAgain(source.name(), posting.title(), posting.sourceUrl(), posting.sourceUpdatedAt(),
+                existing.seenAgain(companyNameOf(source, posting), posting.title(), posting.sourceUrl(), posting.sourceUpdatedAt(),
                         posting.expiresAt(), now);
             }
         }
@@ -162,6 +171,13 @@ public class JobPostingSyncService {
             sourceOf(source).succeed(now);
         }
         return new Counts(added, removed);
+
+    }
+
+    // 로켓펀치처럼 한 출처가 여러 회사의 공고를 주면 공고마다 받은 회사 이름을 쓴다
+    private static String companyNameOf(CompanySource source, FetchedPosting posting) {
+
+        return posting.companyName() == null || posting.companyName().isBlank() ? source.name() : posting.companyName();
 
     }
 

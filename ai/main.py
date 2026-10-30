@@ -14,14 +14,17 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from api.collection import router as collection_router
 from api.analysis import router as analysis_router
+from api.cover_letters import router as cover_letters_router
 from api.interviews import router as interviews_router
 from api.health import SERVICE_VERSION, router as health_router
 from api.job_postings import router as job_postings_router
 from api.matching import router as matching_router
-from schemas.common import Envelope, ErrorDetail, Meta
+from schemas.common import Envelope, ErrorDetail
+from services.usage import metering, usage_meta
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +46,7 @@ async def handle_request_validation_error(
     envelope = Envelope(
         success=False,
         data=None,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=0),
+        meta=usage_meta(None, "FAILED"),
         error=ErrorDetail(
             code="INVALID_PAYLOAD",
             message="요청 스키마가 명세와 일치하지 않습니다.",
@@ -62,7 +65,7 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
     envelope = Envelope(
         success=False,
         data=None,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=0),
+        meta=usage_meta(None, "FAILED"),
         error=ErrorDetail(
             code="INTERNAL_ERROR",
             message="AI 내부 오류로 처리하지 못했습니다.",
@@ -70,6 +73,20 @@ async def handle_unexpected_error(request: Request, exc: Exception) -> JSONRespo
         ),
     )
     return JSONResponse(status_code=500, content=jsonable_encoder(envelope))
+
+
+class CallUsageMiddleware:
+    """요청마다 LLM 호출 기록을 새로 열고, 스트리밍 응답도 본문을 다 보낼 때까지 같은 기록을 쓴다."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        with metering():
+            await self.app(scope, receive, send)
 
 
 def configure_logging() -> None:
@@ -104,6 +121,7 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
             {"name": "interview-turns", "description": "B-1 질문 생성 / B-2 답변 평가. 현재 템플릿·규칙 기반이며 저장은 Spring 담당"},
             {"name": "job-postings", "description": "공고 상세 본문에서 원문 인용이 있는 직무 조건 추출"},
             {"name": "matching", "description": "공고 조건 인덱싱과 확정 STAR 기반 직무 검색"},
+            {"name": "cover-letters", "description": "자소서 문항별 카드 고르기·모자란 재료 질문·초안 쓰기와 전체 검토. 저장은 Spring 담당"},
         ],
         openapi_url="/openapi.json" if docs_enabled else None,
         docs_url="/docs" if docs_enabled else None,
@@ -116,10 +134,12 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
     application.include_router(interviews_router)
     application.include_router(job_postings_router)
     application.include_router(matching_router)
+    application.include_router(cover_letters_router)
     application.add_exception_handler(
         RequestValidationError, handle_request_validation_error
     )
     application.add_exception_handler(Exception, handle_unexpected_error)
+    application.add_middleware(CallUsageMiddleware)
 
     default_openapi = application.openapi
 

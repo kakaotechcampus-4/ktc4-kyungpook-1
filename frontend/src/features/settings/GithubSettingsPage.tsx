@@ -13,7 +13,7 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useLogin } from '@/features/auth/useLogin';
 
 const SCOPES = [
-  { scope: 'read:user', title: '프로필 읽기', desc: '아이디 · 아바타', granted: true },
+  { scope: 'read:user', title: '프로필 읽기', desc: '아이디와 프로필 사진', granted: true },
   { scope: 'repo', title: '비공개 저장소 읽기', desc: '비공개 저장소에는 접근하지 않아요', granted: false },
 ];
 
@@ -38,13 +38,13 @@ export function GithubSettingsPage() {
             <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 18 }}>{me.data.login}</span><Badge kind={gh?.connected ? 'CONFIRMED' : 'NEUTRAL'}>{login.isDemo ? '샘플 계정' : gh?.connected ? '연결됨' : '연결 안 됨'}</Badge></div>
             <span className="t-12l c-2">{login.isDemo ? '샘플 데이터로 연결 관리 화면을 둘러보고 있어요.' : gh?.connectedAt ? `${ymd(gh.connectedAt)} 연결` : '연결되어 있지 않습니다 — 새 분석을 하려면 다시 연결하세요'}{gh?.lastCollectedAt ? ` · 마지막 수집 ${ymdhm(gh.lastCollectedAt)}` : ''}</span>
           </div>
-          {login.isDemo ? <span className="t-12 c-2">샘플 계정 · 실제 GitHub 연결 없음</span> : <a href={endpoints.githubStartUrl()} className={`btn ${gh?.connected ? 'btn--outline' : 'btn--primary'}`}>{gh?.connected ? '재연동' : '연결하기'}</a>}
+          {login.isDemo ? <span className="t-12 c-2">샘플 계정이라 실제 GitHub에는 연결되지 않아요</span> : <a href={endpoints.githubStartUrl()} className={`btn ${gh?.connected ? 'btn--outline' : 'btn--primary'}`}>{gh?.connected ? '재연동' : '연결하기'}</a>}
         </div>
       )}
       {gh && !gh.connected && <Note strong="연결 해제됨 — 새 정리는 다시 연결 후" tone="inset" />}
 
       <section className="settings-section stack" style={{ gap: 4 }}>
-        <div className="row"><span className="w-600" style={{ fontSize: 14.5 }}>{login.isDemo ? '권한 안내 · 샘플' : '허용한 권한'}</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
+        <div className="row"><span className="w-600" style={{ fontSize: 14.5 }}>{login.isDemo ? '권한 안내 (샘플)' : '허용한 권한'}</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
         {SCOPES.map((s) => (
           <div key={s.scope} className={`settings-row settings-permission ${s.granted ? '' : 'settings-row--muted'}`}>
             <span className="settings-permission__scope"><code className="scope-code">{s.scope}</code></span>
@@ -63,7 +63,7 @@ export function GithubSettingsPage() {
             <span className="w-600 collection-row__name">{r.name}</span>
             <span className="t-12 c-2 collection-row__metrics">{isCounting(r) ? `개수 ${COUNTING}` : `커밋 ${r.contribution.mine} · PR ${r.prCount} · 리뷰 ${r.reviewCount}`}</span>
             <span className="t-12 c-3 collection-row__date">{r.lastAnalyzedAt && ymdhm(r.lastAnalyzedAt)}</span>
-            <span className="t-12 w-500 collection-row__result">후보 {r.candidateCount ?? '-'} · 카드 {r.cardCount}</span>
+            <span className="t-12 w-500 collection-row__result">후보 {r.candidateCount ?? '-'}개, 카드 {r.cardCount}장</span>
           </div>
         ))}
       </section>
@@ -71,7 +71,7 @@ export function GithubSettingsPage() {
       {!login.isDemo && <div className="row" style={{ gap: 14, padding: '18px 20px', borderRadius: 12, background: 'var(--state-failed-bg)', flexWrap: 'wrap' }}>
         <div className="stack grow" style={{ gap: 4 }}>
           <span className="w-600" style={{ fontSize: 14, color: 'var(--state-failed-text)' }}>연결 해제</span>
-          <span className="t-12l c-2">토큰 즉시 파기 · 카드는 남음</span>
+          <span className="t-12l c-2">토큰은 바로 지우고, 만든 카드는 남아요</span>
         </div>
         <Button variant="danger" disabled={!gh?.connected} onClick={() => setAsking(true)}>연결 해제</Button>
       </div>}

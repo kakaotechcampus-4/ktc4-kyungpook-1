@@ -12,7 +12,9 @@ import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActionGate } from '@/lib/useActionGate';
-import { Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { addTopRecommended, CARD_LIMIT_MESSAGE, MAX_CARDS_PER_REQUEST, splitRecommended } from '@/lib/candidatePicks';
+import { Braces, Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink, FileCode2, GitCommitHorizontal, MessageSquare, X } from 'lucide-react';
+import { MetaItem } from '@/components/MetaItem';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
 const loadSel = (repoId: string): Set<string> => {
@@ -52,10 +54,9 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const needle = q.toLowerCase();
   const matches = (c: Candidate) => (c.title + c.reason).toLowerCase().includes(needle);
   const visible = useMemo(() => cands.filter((c) => c.status !== 'EXCLUDED' && c.status !== 'USED' && (c.title + c.reason).toLowerCase().includes(needle)), [cands, needle]);
-  const strongList = visible.filter(c => !c.weak);
-  const weakList = visible.filter(c => c.weak);
-  const weakOpen = showWeak || !!q.trim();
-  const selectedWeak = weakList.filter(c => selected.has(c.id)).length;
+  const { recommended, more } = splitRecommended(visible);
+  const moreOpen = showWeak || !!q.trim();
+  const selectedMore = more.filter(c => selected.has(c.id)).length;
   const usedList = cands.filter((c) => c.status === 'USED' && matches(c));
   const excluded = cands.filter((c) => c.status === 'EXCLUDED');
   const selectable = new Set(cands.filter((c) => c.status === 'NEW').map((c) => c.id));
@@ -63,9 +64,16 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const selectedOutsideSearch = chosen.filter(id => !visible.some(candidate => candidate.id === id)).length;
   const busy = actions.running || patch.isPending || create.isPending;
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }, { label: '후보 보드' }];
+  const crumbs = [{ label: '홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }, { label: '후보 보드' }];
 
-  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const overLimit = chosen.length > MAX_CARDS_PER_REQUEST;
+  const toggle = (id: string) => {
+    if (!selected.has(id) && chosen.length >= MAX_CARDS_PER_REQUEST) {
+      toast(CARD_LIMIT_MESSAGE);
+      return;
+    }
+    setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
   const exclude = (c: Candidate) => {
     void actions.run(async () => {
       await patch.mutateAsync({ id: c.id, status: 'EXCLUDED' });
@@ -100,6 +108,10 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   );
   const makeCards = async () => {
     if (chosen.length === 0) return;
+    if (overLimit) {
+      toast(CARD_LIMIT_MESSAGE);
+      return;
+    }
     await actions.run(async () => {
     const { cardIds, jobId } = await create.mutateAsync(chosen);
     track('candidates_confirmed', { repoId, count: chosen.length, jobId });
@@ -140,7 +152,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   return (
     <main className="main main--footer main--tight candidate-board">
       <Breadcrumb items={crumbs} />
-      <PageTitle>{b.partial ? `후보 ${cands.length}개 (부분 결과)` : `후보 ${cands.length}개`}</PageTitle>
+      <PageTitle lead="커밋과 PR에서 카드로 만들 만한 작업을 골라 뒀어요. 자소서에 쓸 것만 체크하면 카드 초안을 써 드려요.">{b.partial ? `후보 ${cands.length}개 (부분 결과)` : `후보 ${cands.length}개`}</PageTitle>
       <RepoContext name={name} note="카드로 만들 경험을 선택하세요."
         right={<Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>분석 기준</Button>} />
 
@@ -161,19 +173,19 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       <SectionHead label="후보 선택" count={visible.length} right={
         <span className="row candidate-board__actions">
           {excluded.length > 0 && <Button variant="text" size="sm" disabled={busy} onClick={() => void restoreExcluded()}>제외 {excluded.length}개 복원</Button>}
-          <Button variant="outline" size="sm" disabled={busy || !visible.some((c) => c.status === 'NEW' && !c.weak)} onClick={() => setSelected((current) => new Set([...current, ...visible.filter((c) => c.status === 'NEW' && !c.weak).map((c) => c.id)]))} title="검색 결과의 추천 후보를 기존 선택에 추가"><CheckIcon size={16} aria-hidden />추천 후보 선택</Button>
+          <Button variant="outline" size="sm" disabled={busy || chosen.length >= MAX_CARDS_PER_REQUEST || !visible.some((c) => c.status === 'NEW' && !c.weak && !selected.has(c.id))} onClick={() => setSelected((current) => addTopRecommended(current, chosen.length, visible))} title={`검색 결과의 추천 후보를 점수 순으로 ${MAX_CARDS_PER_REQUEST}개까지 기존 선택에 추가`}><CheckIcon size={16} aria-hidden />추천 후보 선택</Button>
           {chosen.length > 0 && <Button variant="text" size="sm" disabled={busy} onClick={() => setSelected(new Set())}>선택 해제</Button>}
         </span>
       } />
 
       <div className="record-list">
-        {strongList.map((c) => row(c))}
-        {weakList.length > 0 && <>
-          <button type="button" className="record-list__more" aria-expanded={weakOpen} onClick={() => setShowWeak(open => !open)} disabled={!!q.trim()}>
-            <span>추천도 낮은 후보 {weakList.length}개{selectedWeak > 0 ? ` · ${selectedWeak}개 선택` : ''}{q.trim() ? ' · 검색 결과' : weakOpen ? ' · 접기' : ' · 보기'}</span>
-            {weakOpen ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
+        {recommended.map((c) => row(c))}
+        {more.length > 0 && <>
+          <button type="button" className="record-list__more" aria-expanded={moreOpen} onClick={() => setShowWeak(open => !open)} disabled={!!q.trim()}>
+            <span>더 보기 후보 {more.length}개{selectedMore > 0 ? ` · ${selectedMore}개 선택` : ''}{q.trim() ? ' · 검색 결과' : moreOpen ? ' · 접기' : ' · 보기'}</span>
+            {moreOpen ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
           </button>
-          {weakOpen && weakList.map(c => row(c))}
+          {moreOpen && more.map(c => row(c))}
         </>}
         {visible.length === 0 && (q || usedList.length === 0
           ? <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="검색 조건에 맞는 후보가 없어요" tone="inset" /><Button variant="outline" onClick={() => setQ('')}>검색 초기화</Button></div>
@@ -187,9 +199,9 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         {showUsed && usedList.map((c) => row(c))}
       </div>
 
-      <StickyFooter strong={`${chosen.length}개 선택`} sub={selectedOutsideSearch ? `검색 밖 ${selectedOutsideSearch}개 포함` : undefined}>
+      <StickyFooter strong={`${chosen.length}/${MAX_CARDS_PER_REQUEST}개 선택`} sub={overLimit ? CARD_LIMIT_MESSAGE : selectedOutsideSearch ? `검색 밖 ${selectedOutsideSearch}개 포함` : undefined}>
         <Link to="/" className="btn btn--outline">취소</Link>
-        <Button size="lg" disabled={chosen.length === 0 || busy} loading={create.isPending} onClick={makeCards}>
+        <Button size="lg" disabled={chosen.length === 0 || overLimit || busy} loading={create.isPending} onClick={makeCards}>
           {chosen.length ? `선택한 ${chosen.length}개로 카드 만들기` : '후보를 선택하세요'}
         </Button>
       </StickyFooter>
@@ -215,7 +227,7 @@ function CandidateRow({ c, disabled, selected, onToggle, onExclude, expanded, on
           <h3 className="cand__title">{c.title}</h3>
           <div className="cand__actions">
             {used && c.usedByCardId && <Link to={`/cards/${c.usedByCardId}`} className="btn btn--outline btn--sm">카드 보기</Link>}
-            {!used && <button type="button" className="btn btn--text btn--sm cand__exclude" disabled={disabled} onClick={onExclude}>제외</button>}
+            {!used && <button type="button" className="btn btn--ghost btn--sm cand__exclude" disabled={disabled} onClick={onExclude}><X size={13} aria-hidden />제외</button>}
           </div>
         </div>
         <div className="cand__badges">
@@ -224,7 +236,12 @@ function CandidateRow({ c, disabled, selected, onToggle, onExclude, expanded, on
           {c.weak && !used && <Badge kind="NEUTRAL">추천도 낮음</Badge>}
         </div>
         <p className="cand__reason">{c.reason}</p>
-        <span className="cand__meta">커밋 {included}개 · 변경 파일 {c.meta.files}개{c.meta.reviewComments ? ` · 리뷰 코멘트 ${c.meta.reviewComments}건` : ''}{c.meta.codeRatio != null ? ` · 코드 비율 ${Math.round(c.meta.codeRatio * 100)}%` : ''}</span>
+        <span className="cand__meta cand__meta--icons">
+          <MetaItem icon={GitCommitHorizontal}>커밋 {included}개</MetaItem>
+          <MetaItem icon={FileCode2}>변경 파일 {c.meta.files}개</MetaItem>
+          {c.meta.reviewComments ? <MetaItem icon={MessageSquare}>리뷰 코멘트 {c.meta.reviewComments}건</MetaItem> : null}
+          {c.meta.codeRatio != null ? <MetaItem icon={Braces}>코드 비율 {Math.round(c.meta.codeRatio * 100)}%</MetaItem> : null}
+        </span>
         {cluster && (
           <div className="cand__warn">
             <span>시간대·디렉터리로 묶은 커밋</span>

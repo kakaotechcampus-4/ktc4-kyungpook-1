@@ -197,10 +197,10 @@ export function AnalyzePage() {
                     <span className="stage__icon" aria-hidden>{status === 'DONE' ? '✓' : status === 'NOW' ? <span className="spinner spinner--sm" /> : ''}</span>
                     <div className="stack grow" style={{ gap: 3 }}>
                       <span className="stage__label">{jobStepLabel[s.key]}</span>
-                      <span className="stage__agent">{agentLine(s)}</span>
+                      <span className="stage__agent">{agentLine(s, j)}</span>
                       <span className="stage__detail">{stepDetail(s.done, s.total, jobStepUnit[s.key], s.state)}</span>
                     </div>
-                    <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s)}</Badge>
+                    <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s, j)}</Badge>
                   </li>
                 );
               })}

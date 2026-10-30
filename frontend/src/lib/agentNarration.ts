@@ -1,5 +1,5 @@
 import { isTerminal, type Job, type JobStep, type JobStepKey } from '@/api/schemas';
-import { stepView } from '@/lib/jobView';
+import { isHalted, stepView } from '@/lib/jobView';
 
 /**
  * 분석 단계를 "AI 가 지금 무엇을 하는지"의 문장으로 — 멘토 피드백 "에이전트가 스스로 판단하고 움직이는 장면이 드러나게".
@@ -13,7 +13,16 @@ const LINES: Record<JobStepKey, { WAIT: string; NOW: string; DONE: string; SKIPP
   REASON: { WAIT: '고른 이유를 적을 차례예요', NOW: '후보마다 왜 자소서에 쓸 만한지 이유를 쓰고 있어요', DONE: '후보마다 추천 이유를 붙였어요', SKIPPED: '이유를 붙일 후보가 없었어요' },
 };
 
-export function agentLine(step: JobStep): string {
+/**
+ * job 을 주면 멈춘 작업(FAILED · CANCELED)에서는 사실만 말한다. 서버가 읽던 단계를 RUNNING 으로, 뒤 단계를 QUEUED 로 남겨 두므로
+ * 현재형("…보고 있어요")이나 예고("…차례예요")를 그대로 쓰면 이미 끝난 작업이 계속 일하는 것처럼 보인다.
+ * 끝난 단계와 건너뛴 단계의 문장은 그대로다.
+ */
+export function agentLine(step: JobStep, job?: Pick<Job, 'state'>): string {
+  if (isHalted(job)) {
+    if (step.state === 'RUNNING') return job?.state === 'CANCELED' ? '여기서 멈추게 했어요' : '여기서 멈췄어요';
+    if (step.state === 'QUEUED') return '시작하지 못했어요';
+  }
   if (step.state === 'SKIPPED') return LINES[step.key].SKIPPED;
   return LINES[step.key][stepView(step)];
 }

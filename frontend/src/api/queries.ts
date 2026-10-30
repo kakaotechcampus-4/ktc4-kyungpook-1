@@ -227,7 +227,7 @@ export function useRegenerateField(id: string) {
 export function useAskInterview(cardId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (field: StarField) => endpoints.askInterview(cardId, field),
+    mutationFn: (field?: StarField) => endpoints.askInterview(cardId, field),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.interview(cardId) }),
   });
 }

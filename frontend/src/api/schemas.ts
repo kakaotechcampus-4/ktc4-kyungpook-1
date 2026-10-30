@@ -79,11 +79,12 @@ export const ApiErrorBody = z.object({
 });
 export type ApiErrorBody = z.infer<typeof ApiErrorBody>;
 
-export const envelope = <T extends z.ZodTypeAny>(data: T) =>
+export const envelope = <T extends z.ZodTypeAny>(data: T, options: { allowNullData?: boolean } = {}) =>
   z.object({ data: data.nullable(), error: ApiErrorBody.nullable() })
     // data·error 가 둘 다 null이면 2xx 성공 규칙("data 반환")을 어긴 것이다 — 통과시키면 호출부가
     // null을 T로 오인해 조용히 깨진다. 계약 위반은 ContractError 로 즉시 드러나야 한다.
-    .refine((v) => v.error != null || v.data !== null, { message: '2xx 응답의 data·error 가 모두 null입니다' });
+    // 되묻기 질문처럼 null 이 정상 결과('더 물을 것 없음')인 API 만 allowNullData 로 허용한다.
+    .refine((v) => options.allowNullData || v.error != null || v.data !== null, { message: '2xx 응답의 data·error 가 모두 null입니다' });
 
 // ───────────────────────────── 사용자 ─────────────────────────────
 export const Me = z.object({

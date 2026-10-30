@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -91,7 +92,25 @@ class CoverLetterViewFactory {
         return new CoverLetterView.Question(question.getPublicId(), question.getSeq(), question.getText(),
                 question.getCharLimit(), question.getTheme(), cardRef(labelOf(labels, question.getPrimaryCardId())),
                 cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
-                question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered));
+                question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered),
+                asks(question));
+
+    }
+
+    private static List<CoverLetterView.Ask> asks(CoverLetterQuestion question) {
+
+        Map<MaterialItem, MaterialAnswer> answers = question.getAnswers().stream()
+                .collect(Collectors.toMap(MaterialAnswer::item, Function.identity()));
+        return question.getAsks().stream().map(ask -> ask(ask, answers.get(ask.item()))).toList();
+
+    }
+
+    private static CoverLetterView.Ask ask(MaterialAsk ask, MaterialAnswer answer) {
+
+        boolean skipped = answer != null && answer.skipped();
+        CoverLetterView.Answer written = answer == null || skipped ? null
+                : new CoverLetterView.Answer(answer.text(), answer.reused());
+        return new CoverLetterView.Ask(ask.item(), ask.question(), ask.required(), written, skipped);
 
     }
 

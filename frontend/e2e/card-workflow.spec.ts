@@ -5,7 +5,7 @@ test('minimal API summaries never imply a manual source or invented evidence cou
   await loginAsDemo(page); await page.goto('/cards?demoScenario=minimal-summary');
   const item = page.locator('.experience-item').first(); await expect(item).toBeVisible();
   await expect(item.locator('.experience-item__meta')).toHaveText('기술 카드');
-  await expect(page.locator('.experience-item__footer').filter({ hasText: /근거 \d+개|내가 쓴 문장/ })).toHaveCount(0);
+  await expect(page.locator('.experience-item__footer').filter({ hasText: /근거 커밋 \d+개|내 답변 \d+개/ })).toHaveCount(0);
 });
 
 test('cards with all four STAR fields filled drop the text status badge; incomplete cards keep it', async ({ page }) => {
@@ -56,7 +56,7 @@ test('copy preview offers plain STAR and evidence formats without modifying save
   await page.getByRole('button', { name: '복사', exact: true }).click();
   const preview = page.getByRole('textbox', { name: '복사할 내용', exact: true });
   const plain = await preview.inputValue(); expect(plain).not.toContain('##'); expect(plain).not.toContain('CONFIRMED');
-  await page.getByRole('radio', { name: 'STAR 형식', exact: true }).click();
+  await page.getByRole('radio', { name: '상황, 과제, 행동, 결과 형식', exact: true }).click();
   await expect(preview).toHaveValue(/상황\n/);
   await page.getByRole('radio', { name: '근거 포함', exact: true }).click();
   await expect(preview).toHaveValue(/https:\/\/github.com/);

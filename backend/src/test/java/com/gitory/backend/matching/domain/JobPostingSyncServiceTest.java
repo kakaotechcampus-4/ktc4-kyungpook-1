@@ -98,8 +98,8 @@ class JobPostingSyncServiceTest {
     private static final Instant NOW = Instant.parse("2026-10-19T05:00:00Z");
     private static final Instant EARLIER = Instant.parse("2026-10-18T05:00:00Z");
     private static final String SEOUL = "Seoul, South Korea";
-    private static final CompanySource ACME = new CompanySource("acme", "에이크미", CompanySourceType.GREENHOUSE, "acme");
-    private static final CompanySource BETA = new CompanySource("beta", "베타", CompanySourceType.GREENHOUSE, "beta");
+    private static final CompanySource ACME = new CompanySource("acme", "에이크미", CompanySourceType.GREENHOUSE, "acme", null);
+    private static final CompanySource BETA = new CompanySource("beta", "베타", CompanySourceType.GREENHOUSE, "beta", null);
 
     @Container
     @ServiceConnection
@@ -473,7 +473,7 @@ class JobPostingSyncServiceTest {
     @DisplayName("그리팅 회사도 같은 흐름으로 개발 공고만 저장하고 상세 본문을 조건 뽑기에 넘긴다")
     void greetingCompanyFollowsSameFlow() {
 
-        CompanySource greeting = new CompanySource("greet", "그리팅사", CompanySourceType.GREETING, base + "/ko/home");
+        CompanySource greeting = new CompanySource("greet", "그리팅사", CompanySourceType.GREETING, base + "/ko/home", null);
         boards.put("/ko/home", greetingPage("[{\"queryKey\":[\"openings\"],\"state\":{\"data\":["
                 + greetingOpening(7, "서버 개발자", "\"2026-11-30T14:59:59Z\"") + "," + greetingOpening(8, "마케팅 매니저", "null") + "]}}]"));
         boards.put("/ko/o/7", greetingPage("[{\"queryKey\":[\"career\",\"getOpeningById\"],\"state\":{\"data\":"
@@ -496,7 +496,7 @@ class JobPostingSyncServiceTest {
     @DisplayName("그리팅 상세를 못 읽은 공고가 이미 저장돼 있으면 사라짐으로 바꾸지 않고 본문 해시와 조건도 그대로 둔다")
     void keepsStoredGreetingPostingWhenDetailUnreadable() {
 
-        CompanySource greeting = new CompanySource("greet", "그리팅사", CompanySourceType.GREETING, base + "/ko/home");
+        CompanySource greeting = new CompanySource("greet", "그리팅사", CompanySourceType.GREETING, base + "/ko/home", null);
         boards.put("/ko/home", greetingPage("[{\"queryKey\":[\"openings\"],\"state\":{\"data\":["
                 + greetingOpening(7, "서버 개발자", "null") + "]}}]"));
         boards.put("/ko/o/7", greetingPage("[{\"queryKey\":[\"career\",\"getOpeningById\"],\"state\":{\"data\":"
@@ -530,7 +530,7 @@ class JobPostingSyncServiceTest {
     @DisplayName("로켓펀치 공고는 회사 키 rocketpunch 아래에 공고마다 받은 회사 이름으로 저장되고, 다른 출처는 설정의 회사 이름으로 저장된다")
     void storesRocketpunchPostingsWithTheirOwnCompanyNames() {
 
-        CompanySource rocketpunch = new CompanySource("rocketpunch", "로켓펀치", CompanySourceType.ROCKETPUNCH, base);
+        CompanySource rocketpunch = new CompanySource("rocketpunch", "로켓펀치", CompanySourceType.ROCKETPUNCH, base, null);
         boards.put("/v1/jobs", "{\"totalPages\":1,\"items\":["
                 + rocketpunchItem(31, "백엔드 개발자", "넛지헬스케어") + "," + rocketpunchItem(32, "서버 개발자", "스캐터랩") + "]}");
         boards.put("/v1/jobs/31", "{\"hiring\":true,\"endAt\":null,\"duty\":\"API 개발\",\"company\":{\"name\":\"넛지헬스케어\"}}");
@@ -552,7 +552,7 @@ class JobPostingSyncServiceTest {
     void skipsRocketpunchWithoutKey() {
 
         seed("rocketpunch", "31", "백엔드 개발자", JobPostingStatus.ACTIVE, null);
-        CompanySource rocketpunch = new CompanySource("rocketpunch", "로켓펀치", CompanySourceType.ROCKETPUNCH, base);
+        CompanySource rocketpunch = new CompanySource("rocketpunch", "로켓펀치", CompanySourceType.ROCKETPUNCH, base, null);
 
         service(rocketpunch).sync();
 

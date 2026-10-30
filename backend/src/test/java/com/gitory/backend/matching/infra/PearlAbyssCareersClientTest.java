@@ -31,7 +31,7 @@ class PearlAbyssCareersClientTest {
     void startSite() {
 
         site = FakeCareersSite.start();
-        source = new CompanySource("pearlabyss", "펄어비스", CompanySourceType.PEARL_ABYSS, site.base() + LIST_PATH);
+        source = new CompanySource("pearlabyss", "펄어비스", CompanySourceType.PEARL_ABYSS, site.base() + LIST_PATH, null);
 
     }
 

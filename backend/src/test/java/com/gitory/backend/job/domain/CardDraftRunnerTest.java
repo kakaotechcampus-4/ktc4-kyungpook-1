@@ -21,6 +21,7 @@ import com.gitory.backend.agent.port.StarStepActor;
 import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
+import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
@@ -92,7 +93,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, JobCancelService.class,
+@Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, CardVersionReader.class, JobCancelService.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
@@ -379,7 +380,9 @@ class CardDraftRunnerTest {
                         new StarStep(0, StarStepActor.CODE, StarStepKind.FLAG, StarSlot.R, "UNSOURCED_NUMBER", "50%",
                                 null, null),
                         new StarStep(1, StarStepActor.MODEL, StarStepKind.OPEN, StarSlot.S, null, "이슈 #98",
-                                StarMaterialKind.ISSUE, "가".repeat(80)))));
+                                StarMaterialKind.ISSUE, "가".repeat(80)),
+                        new StarStep(2, StarStepActor.CODE, StarStepKind.REVERT, StarSlot.S, "EMPTY", null, null,
+                                null))));
 
         runNext();
 
@@ -395,7 +398,8 @@ class CardDraftRunnerTest {
                         tuple(1, 1, 0, "CODE", "FLAG", "R", "UNSOURCED_NUMBER", "50%", null,
                                 null),
                         tuple(1, 2, 1, "MODEL", "OPEN", "S", null, "이슈 #98", "ISSUE",
-                                "가".repeat(60)));
+                                "가".repeat(60)),
+                        tuple(1, 3, 2, "CODE", "REVERT", "S", "EMPTY", null, null, null));
 
     }
 
@@ -553,7 +557,7 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("확인 필요 칸은 LOW 문장과 함께 그 이유를, 과장이라 비운 칸은 그 이유 코드를 칸 메모로 남긴다")
+    @DisplayName("확인 필요 칸은 LOW 문장과 함께 그 이유를, 과장이라 비운 칸은 그 이유 코드를 칸 메모로 남기고 카드는 작성 중으로 둔다")
     void notesReviewAndDropReasons() {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
@@ -571,6 +575,22 @@ class CardDraftRunnerTest {
         assertThat(notesOf(cardId)).containsExactly(
                 new NoteRow("A", null, "근거에 없는 수치: 30%"),
                 new NoteRow("R", "OVERCLAIM", null));
+        assertThat(statusOf(cardId)).isEqualTo("DRAFT");
+
+    }
+
+    @Test
+    @DisplayName("AI 초안의 네 칸이 확인 필요 없이 모두 차면 사용자가 확정을 누르지 않아도 카드를 확정한다")
+    void completeDraftConfirmsCard() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any())).willReturn(allSlots(SHA_A));
+
+        runNext();
+
+        assertThat(statusOf(cardId)).isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT confirmed_at FROM card WHERE id = ?", Object.class, cardId)).isNotNull();
 
     }
 
@@ -930,6 +950,12 @@ class CardDraftRunnerTest {
     }
 
     /** 커밋을 모두 포함한 PR 후보와, 이 Job 이 채울 그 후보의 카드를 만든다 */
+    private String statusOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId);
+
+    }
+
     private Long cardWithCommits(Long... commitIds) {
 
         Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "PR", 17, "#17", "후보", "USED");

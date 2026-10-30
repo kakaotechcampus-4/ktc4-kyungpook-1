@@ -31,7 +31,7 @@ class SmilegateCareersClientTest {
     void startSite() {
 
         site = FakeCareersSite.start();
-        source = new CompanySource("smilegate", "스마일게이트", CompanySourceType.SMILEGATE, site.base() + LIST_PATH);
+        source = new CompanySource("smilegate", "스마일게이트", CompanySourceType.SMILEGATE, site.base() + LIST_PATH, null);
 
     }
 

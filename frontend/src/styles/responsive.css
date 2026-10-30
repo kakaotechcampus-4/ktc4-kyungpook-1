@@ -352,7 +352,7 @@ body { overflow-x: hidden; }
 .settings-storage[open] summary::after { content: '−'; }
 .landing-example-wrap { min-width: 0; }
 .active-job-row, .job-status-step { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-12); padding: var(--space-16) var(--space-20); }
-.job-status-step > strong { flex: 1 1 auto; }
+.job-status-step > .stack { flex: 1 1 auto; }
 .job-status-steps { gap: var(--space-16); }
 .job-status-step > span.row { gap: var(--space-8); }
 .active-job-row .grow { min-width: 0; }

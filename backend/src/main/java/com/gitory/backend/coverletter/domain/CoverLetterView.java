@@ -12,7 +12,13 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
 
     public record Question(UUID id, int seq, String text, int charLimit, QuestionTheme theme, CardRef primaryCard,
                            CardRef supportingCard, AssignedBy assignedBy, String pickReason,
-                           List<Considered> considered, List<MaterialItem> materials) {
+                           List<Considered> considered, List<MaterialItem> materials, List<Ask> asks) {
+    }
+
+    public record Ask(MaterialItem item, String question, boolean required, Answer answer, boolean skipped) {
+    }
+
+    public record Answer(String text, boolean reused) {
     }
 
     public record CardRef(UUID id, String title, CardKind kind) {

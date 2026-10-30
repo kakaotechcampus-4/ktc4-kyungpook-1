@@ -15,12 +15,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * 자소서를 만들고, 고른 카드를 바꾸고, 실패한 단계를 다시 줄 세운다
+ * 자소서를 만들고, 고른 카드를 바꾸고, 질문 만들기를 줄 세우고 답을 저장하고, 실패한 단계를 다시 줄 세운다
  * AI 를 새로 돌리는 만들기와 다시 시도만 호출 제한을 세고, 같은 요청 키로 다시 온 만들기는 세지 않는다
  */
 @Service
@@ -36,6 +42,8 @@ public class CoverLetterService {
     // 근거 없는 임시 값이라, 써 보며 바꿀 수 있다
     private static final int DEFAULT_CHAR_LIMIT = 700;
     private static final int KEY_MAX_LENGTH = 255;
+    // AI 가 답 하나를 받는 상한과 같아, 넘는 답이 초안 쓰기 실패로 이어지지 않는다
+    private static final int ANSWER_MAX_LENGTH = 1_000;
 
     private final CoverLetterRepository letters;
     private final CoverLetterQuestionRepository questions;
@@ -83,6 +91,39 @@ public class CoverLetterService {
         }
 
         question.chooseCards(confirmedCardId(userId, primaryCardId), confirmedCardId(userId, supportingCardId));
+        letter.touch();
+
+        return views.of(letter);
+
+    }
+
+    /** 카드 고르기가 끝난 뒤에만 부르며, 지금 배정으로 질문 만들기를 줄 세운 뒤로는 카드를 바꿀 수 없다 */
+    @Transactional
+    public CoverLetterView startAsking(UUID letterId, Long userId) {
+
+        CoverLetter letter = lockOwned(letterId, userId, AuditAction.EDIT_COVER_LETTER);
+        if (letter.getStage() != CoverLetterStage.ASSIGNED) {
+            throw new CoverLetterStateException("질문은 카드 고르기가 끝난 뒤에만 만들 수 있습니다.");
+        }
+
+        letter.startAsking();
+
+        return views.of(letter);
+
+    }
+
+    /** 질문을 받은 뒤에만 부르며, 문항의 답을 보낸 것으로 통째로 바꾸고 보내지 않은 항목은 답이 없는 것으로 남긴다 */
+    @Transactional
+    public CoverLetterView answer(UUID letterId, UUID questionId, Long userId, List<NewAnswer> newAnswers) {
+
+        CoverLetter letter = lockOwned(letterId, userId, AuditAction.EDIT_COVER_LETTER);
+        CoverLetterQuestion question = questions.findByPublicIdAndCoverLetterId(questionId, letter.getId())
+                .orElseThrow(CoverLetterNotFoundException::new);
+        if (letter.getStage() != CoverLetterStage.ASKED) {
+            throw new CoverLetterStateException("답은 질문을 받은 뒤에만 저장할 수 있습니다.");
+        }
+
+        question.answer(checkedAnswers(question, newAnswers));
         letter.touch();
 
         return views.of(letter);
@@ -187,6 +228,52 @@ public class CoverLetterService {
                 throw new InvalidCoverLetterInputException(
                         "글자 수는 " + MIN_CHAR_LIMIT + "부터 " + MAX_CHAR_LIMIT + "까지입니다.");
             }
+        }
+
+    }
+
+    // 지난 답을 고치지 않고 다시 보내면 미리 채운 답으로 남겨, 화면이 '지난번에 답한 내용' 표시를 그대로 둘 수 있게 한다
+    private static List<MaterialAnswer> checkedAnswers(CoverLetterQuestion question, List<NewAnswer> newAnswers) {
+
+        if (newAnswers == null) {
+            throw new InvalidCoverLetterInputException("답 목록이 없습니다.");
+        }
+
+        Set<MaterialItem> asked = question.getAsks().stream().map(MaterialAsk::item).collect(Collectors.toSet());
+        Map<MaterialItem, MaterialAnswer> before = question.getAnswers().stream()
+                .collect(Collectors.toMap(MaterialAnswer::item, Function.identity()));
+        Set<MaterialItem> seen = EnumSet.noneOf(MaterialItem.class);
+        List<MaterialAnswer> checked = new ArrayList<>();
+        for (NewAnswer answer : newAnswers) {
+            if (answer == null) {
+                throw new InvalidCoverLetterInputException("빈 답이 있습니다.");
+            }
+            MaterialItem item = itemOf(answer.item());
+            if (!asked.contains(item)) {
+                throw new InvalidCoverLetterInputException("이 문항의 질문에 없는 항목입니다: " + item);
+            }
+            if (!seen.add(item)) {
+                throw new InvalidCoverLetterInputException("같은 항목의 답이 두 번 있습니다: " + item);
+            }
+            if (answer.skipped()) {
+                checked.add(new MaterialAnswer(item, null, true, false));
+                continue;
+            }
+            requireText(answer.text(), "답 칸", ANSWER_MAX_LENGTH);
+            MaterialAnswer previous = before.get(item);
+            boolean reused = previous != null && previous.reused() && answer.text().equals(previous.text());
+            checked.add(new MaterialAnswer(item, answer.text(), false, reused));
+        }
+        return checked;
+
+    }
+
+    private static MaterialItem itemOf(String item) {
+
+        try {
+            return MaterialItem.valueOf(item);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new InvalidCoverLetterInputException("답의 항목이 올바르지 않습니다.");
         }
 
     }

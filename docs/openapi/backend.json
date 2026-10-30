@@ -127,6 +127,17 @@
         },
         "type" : "object"
       },
+      "Answer" : {
+        "properties" : {
+          "reused" : {
+            "type" : "boolean"
+          },
+          "text" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ApiError" : {
         "description" : "사용자에게 노출 가능한 오류 코드와 안내 문구",
         "properties" : {
@@ -640,6 +651,27 @@
           "error" : {
             "$ref" : "#/components/schemas/ApiError",
             "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "Ask" : {
+        "properties" : {
+          "answer" : {
+            "$ref" : "#/components/schemas/Answer"
+          },
+          "item" : {
+            "enum" : [ "SITUATION", "ACTION", "RESULT", "LEARNING", "TRIGGER", "JOB_LINK", "REASON" ],
+            "type" : "string"
+          },
+          "question" : {
+            "type" : "string"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "skipped" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -1355,6 +1387,25 @@
         },
         "type" : "object"
       },
+      "CoverLetterAnswerInput" : {
+        "description" : "질문 하나의 답",
+        "properties" : {
+          "item" : {
+            "description" : "그 문항 asks 에 있는 항목",
+            "enum" : [ "SITUATION", "ACTION", "RESULT", "LEARNING", "TRIGGER", "JOB_LINK", "REASON" ],
+            "type" : "string"
+          },
+          "skipped" : {
+            "description" : "넘기기를 눌렀으면 true. 없으면 false 로 본다",
+            "type" : [ "boolean", "null" ]
+          },
+          "text" : {
+            "description" : "넘기지 않았으면 1~1,000자, 넘겼으면 보지 않는다",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
       "CoverLetterQuestionInput" : {
         "properties" : {
           "charLimit" : {
@@ -1370,7 +1421,7 @@
         "type" : "object"
       },
       "CoverLetterResponse" : {
-        "description" : "자소서 한 편과 문항별 배정 카드",
+        "description" : "자소서 한 편과 문항별 배정 카드·질문과 답",
         "properties" : {
           "createdAt" : {
             "format" : "date-time",
@@ -2191,6 +2242,12 @@
       },
       "Question" : {
         "properties" : {
+          "asks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Ask"
+            },
+            "type" : "array"
+          },
           "assignedBy" : {
             "enum" : [ "SUPERVISOR", "SUB_AGENT", "CODE", "FAILED", "USER" ],
             "type" : "string"
@@ -2560,6 +2617,18 @@
             "description" : "내가 리뷰한 PR 수",
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "SaveAnswersRequest" : {
+        "description" : "문항의 답 전체로, 보내지 않은 항목은 답이 없는 것으로 남는다",
+        "properties" : {
+          "answers" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CoverLetterAnswerInput"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -5065,6 +5134,165 @@
           }
         },
         "summary" : "자소서 조회",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/asks" : {
+      "post" : {
+        "description" : "카드 고르기가 끝난 뒤(ASSIGNED)에 지금 배정으로 질문 만들기를 줄 세웁니다(stage ASKING). 그 뒤로는 카드를 바꿀 수 없습니다.\n호출 제한은 세지 않습니다.\n",
+        "operationId" : "startAsking",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: ASSIGNED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "질문 만들기 시작",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/questions/{questionId}/answers" : {
+      "put" : {
+        "description" : "질문을 받은 뒤(ASKED)에 그 문항의 답 전체를 보낸 것으로 바꿉니다. 보내지 않은 항목은 답이 없는 것으로 남습니다.\n지난 답(question 이 null 인 줄)을 고치지 않고 다시 보내면 reused 가 true 로 남고, 고치면 false 가 됩니다.\n",
+        "operationId" : "saveAnswers",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "문항 id",
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SaveAnswersRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 답 목록이 없음, 질문에 없거나 모르는 항목, 같은 항목이 두 번, 넘기지 않았는데 글이 비었거나 1,000자를 넘거나 U+0000 이 있음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서·문항, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: ASKED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "문항의 답 저장",
         "tags" : [ "Cover letters" ]
       }
     },

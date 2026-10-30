@@ -188,11 +188,6 @@ export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: str
       <CardTags areas={c.areas} techs={c.techs} />
       <h3 className="gcard__title">{c.title}</h3>
       <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />
-      {/* 얼마나 만들었는지 한눈에 — 네 칸 중 몇 칸, 짧은 막대 */}
-      <div className={`card-fill ${filledOf(c).length === 4 ? 'card-fill--full' : ''}`} aria-label={`네 칸 중 ${filledOf(c).length}칸 채움`}>
-        <span className="card-fill__bar" aria-hidden><i style={{ width: `${filledOf(c).length * 25}%` }} /></span>
-        <span className="card-fill__text">4칸 중 {filledOf(c).length}칸</span>
-      </div>
       <div className="experience-item__footer">
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <CardStatusMark status={c.status} star={c.star} />

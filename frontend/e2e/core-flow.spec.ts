@@ -15,7 +15,7 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '이건 안 읽어요' })).toBeVisible(); // 사전 고지
   await page.getByRole('button', { name: '정리 시작' }).click();
 
-  await expect(page.getByRole('heading', { name: '읽고 있습니다' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
   await expect(page).toHaveURL(/\/candidates/, { timeout: 30_000 });
   await expect(page.getByText('커밋 묶음', { exact: true }).first()).toBeVisible(); // COMMIT_CLUSTER 출처 라벨
 

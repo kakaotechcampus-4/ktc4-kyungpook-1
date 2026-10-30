@@ -1,20 +1,21 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
-import { ArrowRight, Briefcase, CalendarClock, Clock3, RefreshCw } from "lucide-react";
-import { MetaItem } from "@/components/MetaItem";
+import { useMe } from "@/api/queries";
+import { RefreshCw } from "lucide-react";
 import { Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
 import { Select } from "@/components/ui/Select";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { isDemo } from '@/mock/browser';
-import { Fit, MatchFailure, MatchUnavailable } from "./shared";
+import { MatchFailure, MatchUnavailable } from "./shared";
 import { AiWait } from '@/components/ui/AiWait';
+import { CompanyList, matchViewFromParams, ViewToggle } from "./CompanyList";
+import { PostingCard } from "./PostingCard";
 import {
   categoryLabel,
-  deadlineLabel,
-  experienceLabel,
+  groupByCompany,
   selectMatches,
   type MatchFilters,
 } from "./model";
@@ -22,6 +23,10 @@ import {
 export function MatchListPage() {
   useDocumentTitle("공고 매칭");
   const matches = useMatches();
+  // 확정 카드 수는 목록의 등급이 아니라 내 정보에서 읽는다(등급이 비었다고 카드가 없는 것은 아니다). 아직 모르면 undefined
+  const confirmedCards = useMe().data?.stats.confirmedCards;
+  // 목록에 등급이 하나라도 있는지. 받기 전에는 모르니 undefined
+  const hasGrade = matches.data?.some((x) => x.fit !== null);
   // 받은 목록 기준으로 센다(검색·필터로는 다시 세지 않는다)
   const loadedCount = matches.data?.length;
   useEffect(() => {
@@ -47,7 +52,8 @@ export function MatchListPage() {
       exp === "ENTRY" || exp === "EXPERIENCED" || exp === "UNSPECIFIED"
         ? exp
         : "ALL",
-    sort: sp.get("sort") === "deadline" ? "deadline" : "fit",
+    // 등급이 하나도 없으면 sort=fit 이 주소에 남아 있어도 마감 순으로 본다
+    sort: hasGrade !== false && sp.get("sort") !== "deadline" ? "fit" : "deadline",
   };
   const list = useMemo(
     () => selectMatches(matches.data ?? [], filters),
@@ -59,12 +65,14 @@ export function MatchListPage() {
       filters.sort,
     ],
   );
+  const view = matchViewFromParams(sp);
+  const groups = useMemo(() => (view === "company" ? groupByCompany(list) : []), [view, list]);
   const update = (key: string, value: string) =>
     setSp(
       (current) => {
         const next = new URLSearchParams(current);
         if (query) next.set('q', query); else next.delete('q');
-        if (value === "ALL" || !value) next.delete(key);
+        if (!value || (value === "ALL" && key !== 'q')) next.delete(key);
         else next.set(key, value);
         return next;
       },
@@ -77,11 +85,12 @@ export function MatchListPage() {
     <main className="main matching-page">
       <PageTitle right={isDemo ? '예시 공고' : undefined}>공고 매칭</PageTitle>
       <p className="match-intro">채용 조건과 연결되는 내 경험을 확인하세요. 등급은 조건마다 근거로 이어진 확정 카드가 많을수록 높아요(A가 가장 높음).</p>
+      <ViewToggle value={view} onChange={(next) => update("view", next === "company" ? next : "")} />
       <div className="match-controls">
         <SearchField
           value={filters.q}
           onChange={(value) => { setQuery(value); update('q', value); }}
-          placeholder="기업·직무 검색"
+          placeholder="기업이나 직무 검색"
         />
         <Select
           label="경력"
@@ -111,12 +120,12 @@ export function MatchListPage() {
           value={filters.sort}
           onChange={(x) => update("sort", x)}
           options={[
-            { value: "fit", label: "근거 등급 순" },
-            { value: "deadline", label: "마감 순" },
+            ...(hasGrade !== false ? [{ value: "fit" as const, label: "근거 등급 순" }] : []),
+            { value: "deadline" as const, label: "마감 순" },
           ]}
         />
       </div>
-      {matches.isPending && <><AiWait label="확정한 카드와 공고 조건을 하나씩 맞춰 보는 중이에요" /><div className="match-grid">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={200} />)}</div></>}
+      {matches.isPending && <><AiWait label="공고 목록을 불러오는 중이에요" /><div className="match-grid">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={200} />)}</div></>}
       {matches.isError && (
         <MatchFailure
           error={matches.error}
@@ -126,8 +135,7 @@ export function MatchListPage() {
       )}
       {matches.isSuccess && (
         <>
-          {matches.data.length > 0 &&
-            matches.data.every((x) => x.fit === null) && (
+          {matches.data.length > 0 && !hasGrade && confirmedCards === 0 && (
               <div className="match-notice">
                 <p>
                   확정한 카드가 없어요. 카드를 확정하면 공고별 근거를 비교할 수
@@ -139,7 +147,7 @@ export function MatchListPage() {
               </div>
             )}
           <div className="match-results">
-            <span role="status">공고 {list.length}건</span>
+            <span role="status">{view === "company" && `기업 ${groups.length}곳 · `}공고 {list.length}건</span>
             <Button
               variant="ghost"
               size="sm"
@@ -166,50 +174,17 @@ export function MatchListPage() {
                 }
               />
               {filtered && (
-                <Button variant="outline" onClick={() => { setQuery(''); setSp({}); }}>
-                  검색·필터 초기화
+                <Button variant="outline" onClick={() => { setQuery(''); setSp(view === "company" ? { view } : {}); }}>
+                  검색과 필터 초기화
                 </Button>
               )}
             </div>
+          ) : view === "company" ? (
+            <CompanyList groups={groups} search={search} />
           ) : (
             <div className="match-grid">
               {list.map((item) => (
-                <Link
-                  key={item.id}
-                  className="match-card"
-                  to={`/match/${encodeURIComponent(item.id)}${search.size ? `?${search}` : ""}`}
-                >
-                  <div className="match-card__head">
-                    <div>
-                      <span className="match-company">{item.company}</span>
-                      <h2>{item.role}</h2>
-                    </div>
-                    <Fit value={item.fit} />
-                  </div>
-                  <div className="match-meta">
-                    <MetaItem icon={Briefcase}>{categoryLabel[item.category]}</MetaItem>
-                    <MetaItem icon={Clock3}>{experienceLabel(item.experience)}</MetaItem>
-                  </div>
-                  <div className="match-counts">
-                    <span>
-                      {item.required.total === 0 ? '필수 조건 없음, 우대 조건만' : '필수 '}
-                      {item.required.total > 0 &&
-                      <strong>
-                        {item.required.met} / {item.required.total}
-                      </strong>}
-                    </span>
-                    <span>
-                      우대{" "}
-                      <strong>
-                        {item.preferred.met} / {item.preferred.total}
-                      </strong>
-                    </span>
-                  </div>
-                  <div className="match-card__foot">
-                    <MetaItem icon={CalendarClock}>{deadlineLabel(item.source.expiresAt)}</MetaItem>
-                    <span className="match-card__go">조건·근거 보기<ArrowRight size={14} aria-hidden /></span>
-                  </div>
-                </Link>
+                <PostingCard key={item.id} item={item} search={search} />
               ))}
             </div>
           )}

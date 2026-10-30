@@ -5,10 +5,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CardTags } from '@/components/cards/CardTags';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
+import { CardStatusMark, cardStarStates } from '@/components/cards/CardStatusMark';
 import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
-import { STAR_FIELDS, cardKindLabel, cardStatusLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
+import { STAR_FIELDS, cardKindLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
 import { toast } from '@/lib/toast';
 import { errorView } from '@/api/errorView';
@@ -20,13 +21,14 @@ import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
 import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
 import { matchSupported } from '@/api/matching';
-import { StarBlock, applyMask } from './StarBlock';
+import { StarBlock, applyMask, railKind } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
+import { DraftSteps } from './DraftSteps';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -123,7 +125,7 @@ export function CardPage() {
             <span className="done-card__ok" aria-hidden>✓</span>
             <div className="stack grow" style={{ gap: 5 }}>
               <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 16 }}>{card.title}</span><Badge kind="CONFIRMED">확정됨</Badge></div>
-              <span className="t-12l c-2">근거 {card.evidence.length}건 · {emptyStarFields(card).length ? `비어 있는 항목 ${emptyStarFields(card).length}개` : '모든 항목 작성 완료'}</span>
+              <span className="t-12l c-2">근거 {card.evidence.length}건, {emptyStarFields(card).length ? `비어 있는 항목 ${emptyStarFields(card).length}개` : '모든 항목 작성 완료'}</span>
             </div>
             <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
             {justConfirmed.repoId && justConfirmed.remainingCandidates > 0
@@ -137,12 +139,12 @@ export function CardPage() {
           <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast('다시 편집할 수 있습니다. 확정 버전은 히스토리에 남습니다.'); } })}>수정하기</Button>
         </>} />
         <div className="two-col two-col--340">
-          <div className="card star-read">
+          <div className="card star-read evidence-rail evidence-rail--rows">
             {STAR_FIELDS.map((f) => {
               const t = card.version[fieldKey[f]];
               const ev = card.evidence.filter((e) => e.field === f);
               return (
-                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'}>
+                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'} rail={{ commits: ev.filter((e) => e.type === 'COMMIT').length, kind: railKind(!t, ev) }}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했습니다</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
@@ -152,7 +154,7 @@ export function CardPage() {
           <aside className="stack card-review-aside" style={{ gap: 16 }}>
             {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 받을 질문, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
             <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
-              <span className="w-600" style={{ fontSize: 13.5 }}>이 카드로 받을 수 있는 질문</span>
+              <span className="w-600" style={{ fontSize: 14 }}>이 카드로 받을 수 있는 질문</span>
               <ul className="aside-list">{interviewQuestions(card).map((qq) => <li key={qq} className="t-12l c-2">{qq}</li>)}</ul>
             </div>
             <div className="card stack" style={{ gap: 12, padding: '16px 18px' }}>
@@ -174,6 +176,7 @@ export function CardPage() {
             <CardNavigation cardId={cardId} />
           </aside>
         </div>
+        <DraftSteps steps={card.draftSteps} />
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
         <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
@@ -235,12 +238,12 @@ export function CardPage() {
       )}
 
       <div className="two-col card-detail-layout">
-        <div className="stack" style={{ gap: 12 }}>
+        {/* 커밋 레일 — 문장마다 몇 개의 커밋이 받치는지, 근거 없는 칸은 선이 끊긴다. Gitory 의 한 가지 얼굴 */}
+        <div className="stack evidence-rail" style={{ gap: 12 }}>
           {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
         <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="t-12 w-600 c-3">카드 관리</span>
             <div className="card-tools">
               <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
               <Button variant="ghost" size="sm" onClick={exportMd}><Copy size={15} aria-hidden />복사</Button>
@@ -251,11 +254,12 @@ export function CardPage() {
         </aside>
       </div>
 
+      <DraftSteps steps={card.draftSteps} />
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
         <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
-        {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변으로 보완</Button>}
+        {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변하기</Button>}
       </StickyFooter>
 
       {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={(r) => { setJustConfirmed(r); close(); }} />}
@@ -271,7 +275,7 @@ function CardHeader({ card, right, titleAction, statusOverride, note }: { card: 
     <div className="card-page-header">
       <div className="card-page-header__identity"><PageTitle sub={<>
         <Badge kind="NEUTRAL">{cardKindLabel[card.kind]}</Badge>
-        {statusOverride ?? <Badge kind={card.status}>{cardStatusLabel[card.status]}</Badge>}
+        {statusOverride ?? <CardStatusMark status={card.status} star={cardStarStates(card)} reviewWithStatus={false} />}
         <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : isDraftMetadataPending(card) ? '본문 저장됨' : cardContentLabel[card.version.source])}</span>
       </>} after={titleAction}>{card.title}</PageTitle>
       <CardTags areas={card.areas} techs={card.techs} /></div>
@@ -285,7 +289,7 @@ function interviewQuestions(card: Card): string[] {
   if (card.version.action) qs.push(`왜 그 방식을 택했나요? — ${starFieldName.A}`);
   if (card.version.result) qs.push(`그 결과는 어떻게 측정했나요? — ${starFieldName.R}`);
   if (card.evidence.some((e) => e.type !== 'COMMIT')) qs.push('코드에 안 남은 부분은 어떻게 증명하나요?');
-  if (card.droppedFields.length) qs.push(`${card.droppedFields.map((d) => d.field).join('·')} 칸이 빈 이유를 설명할 수 있나요?`);
+  if (card.droppedFields.length) qs.push(`${card.droppedFields.map((d) => d.field).join(', ')} 칸이 빈 이유를 설명할 수 있나요?`);
   return qs.length ? qs : ['이 경험에서 가장 어려웠던 점은?'];
 }
 

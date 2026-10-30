@@ -15,10 +15,10 @@ import tools.jackson.databind.JsonNode;
 class JdbcAiCallRecorder implements AiCallRecorder {
 
     private static final String INSERT = """
-            INSERT INTO ai_call (path, job_id, card_id, http_status, error_code, model, llm_calls, tool_calls,
-                                 repair_rounds, input_tokens, output_tokens, github_calls, ended_by,
+            INSERT INTO ai_call (path, job_id, card_id, cover_letter_id, http_status, error_code, model, llm_calls,
+                                 tool_calls, repair_rounds, input_tokens, output_tokens, github_calls, ended_by,
                                  ai_processing_ms, elapsed_ms, model_usage)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CAST(? AS jsonb))
             """;
 
     private final JdbcTemplate jdbc;
@@ -31,7 +31,7 @@ class JdbcAiCallRecorder implements AiCallRecorder {
         TransactionTemplate newTransaction = new TransactionTemplate(transactionManager,
                 new DefaultTransactionDefinition(TransactionDefinition.PROPAGATION_REQUIRES_NEW));
         newTransaction.executeWithoutResult(status -> jdbc.update(INSERT, call.path(), call.jobId(), call.cardId(),
-                call.httpStatus(), call.errorCode(), textOf(meta, "model"), intOf(meta, "llm_calls"),
+                call.coverLetterId(), call.httpStatus(), call.errorCode(), textOf(meta, "model"), intOf(meta, "llm_calls"),
                 intOf(meta, "tool_calls_made"), intOf(meta, "repair_rounds"), intOf(meta, "input_tokens"),
                 intOf(meta, "output_tokens"), intOf(meta, "github_calls"), textOf(meta, "ended_by"),
                 intOf(meta, "processing_ms"), call.elapsedMs(), modelUsageOf(meta)));

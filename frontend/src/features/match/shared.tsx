@@ -18,16 +18,17 @@ export function MatchUnavailable() {
     </main>
   );
 }
-export function Fit({ value }: { value: MatchTarget["fit"] }) {
+/** label: 기업 묶음처럼 여러 공고 중 대표 등급을 보일 때는 "최고 등급"으로 바꿔 쓴다 */
+export function Fit({ value, label = "근거 등급" }: { value: MatchTarget["fit"]; label?: string }) {
   return value === null ? (
     <span className="match-fit-empty">카드를 확정하면 등급이 나와요</span>
   ) : (
     <span
       className={`match-fit match-fit--${value}`}
-      aria-label={`근거 등급 ${value}`}
+      aria-label={`${label} ${value}`}
     >
       {value}
-      <span>근거 등급</span>
+      <span>{label}</span>
     </span>
   );
 }
@@ -44,7 +45,7 @@ export function MatchFailure({
     return (
       <section className="query-failure" role="alert">
         <h2>경험 근거를 찾지 못했어요</h2>
-        <p>분석 도우미가 잠시 응답하지 않아요. 잠시 뒤 다시 시도해 주세요.</p>
+        <p>AI가 잠시 응답하지 않아요. 잠시 뒤 다시 시도해 주세요.</p>
         <Button
           variant="outline"
           loading={pending}

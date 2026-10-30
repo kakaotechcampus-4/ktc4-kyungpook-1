@@ -101,6 +101,22 @@ AI만 내보내려면:
 .venv/bin/python ai/scripts/export_openapi.py --output docs/openapi/ai.json
 ```
 
+## 공고 조건의 일반 조건 종류
+
+`POST /internal/job-postings/extract`의 `criteria[]`에는 `general_type`이 있다. `null`이면 STAR 카드로 근거를 찾을 수 있는 기술·직무 조건이고, 값이 있으면 카드 대신 사용자의 인적사항으로 확인할 일반 조건이다.
+
+| 값 | 뜻 |
+|---|---|
+| `null` | 기술·직무 조건 |
+| `EDUCATION` | 학력·전공 |
+| `MILITARY` | 병역 |
+| `LANGUAGE` | 어학 |
+| `CERTIFICATE` | 자격증 |
+| `LOCATION` | 근무지·근무 형태 |
+| `OTHER` | 나이 제한·해외여행 결격 사유 등 나머지 일반 조건 |
+
+AI는 한 문장에 둘 이상의 조건이 있으면 각각 나눈다. 예를 들어 `4년제 졸업 및 병역필 또는 면제자`는 `EDUCATION`과 `MILITARY` 조건 두 개로 반환하며, 두 조건이 같은 `source_quote`를 가져도 된다. `RESPONSIBILITY`는 담당 업무 설명이므로 `general_type`이 항상 `null`이다. Spring은 이 값을 조건과 함께 저장하고, #532에서 일반 조건을 STAR 카드 벡터 색인에서 빼 인적사항 1차 필터에 사용한다.
+
 ## 연결 상태 확인
 
 ```bash

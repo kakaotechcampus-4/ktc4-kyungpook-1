@@ -69,7 +69,7 @@ class CardHistoryApiTest {
     // FE schemas.ts 의 Card·CardVersion·VersionListItem 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "period", "repo",
             "activity", "candidate", "version", "evidence", "lowConfidenceFields", "droppedFields", "draftSteps",
-            "maskRules", "generation", "draftFailure", "interviewTurns", "confirmedAt", "createdAt"};
+            "maskRules", "generation", "draftFailure", "interviewTurns", "interviewEndReason", "confirmedAt", "createdAt"};
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",
             "result"};
     private static final String[] VERSION_ITEM_KEYS = {"versionNo", "source", "createdAt", "summary", "current"};
@@ -430,28 +430,35 @@ class CardHistoryApiTest {
     }
 
     @Test
-    @DisplayName("확정한 카드에서 복원하면 한 요청 안에서 다시 열려(작성 중, 확정 시각 없음) 복원 버전이 현재 버전이 되고, 원래 확정본은 확정본 표시를 그대로 가진다")
-    void restoreOnConfirmedCardReopens() throws Exception {
+    @DisplayName("확정한 카드에서 상황·행동이 있는 버전을 복원하면 확정으로 남고, 행동이 빈 버전을 복원하면 작성 중으로 돌아가 확정 시각이 지워진다")
+    void restoreOnConfirmedCardKeepsConfirmedUnlessActionIsEmpty() throws Exception {
 
         Long cardId = confirmedCard();
+        fixtures.insertCardVersion(cardId, 3, "USER_EDIT", false);
+        fixtures.insertStatement(cardId, 3, "S", "고친 상황", "USER_STATED", null);
+        fixtures.insertStatement(cardId, 3, "A", "고친 행동", "USER_STATED", null);
+        jdbc.update("UPDATE card SET current_version = 3 WHERE id = ?", cardId);
+
+        restore(myUserId, MY_CARD.toString(), "2")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.version.versionNo").value(4))
+                .andExpect(jsonPath("$.data.version.action").value("확정한 행동"));
 
         restore(myUserId, MY_CARD.toString(), "1")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andExpect(jsonPath("$.data.confirmedAt").value(nullValue()))
-                .andExpect(jsonPath("$.data.version.versionNo").value(3))
-                .andExpect(jsonPath("$.data.version.source").value("RESTORE"))
+                .andExpect(jsonPath("$.data.version.versionNo").value(5))
                 .andExpect(jsonPath("$.data.version.situation").value("처음 상황"))
                 .andExpect(jsonPath("$.data.version.action").value(nullValue()));
 
-        Map<String, Object> card = cardRowOf(cardId);
-        assertThat(card.get("status")).isEqualTo("DRAFT");
-        assertThat(card.get("confirmed_at")).isNull();
-        assertThat(((Number) card.get("current_version")).intValue()).isEqualTo(3);
         assertThat(versionsOf(cardId)).containsExactly(
                 new VersionRow(1, "USER_EDIT", false),
                 new VersionRow(2, "USER_EDIT", true),
-                new VersionRow(3, "RESTORE", false));
+                new VersionRow(3, "USER_EDIT", false),
+                new VersionRow(4, "RESTORE", false),
+                new VersionRow(5, "RESTORE", false));
 
     }
 

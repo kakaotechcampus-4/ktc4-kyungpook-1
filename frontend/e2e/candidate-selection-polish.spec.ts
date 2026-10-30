@@ -29,7 +29,7 @@ test('recommendation picks the eight highest-scoring eligible candidates and lea
   const top=new Set(candidates.filter(c=>c.status==='NEW'&&!c.weak).sort((a,b)=>b.score-a.score).slice(0,8).map(c=>c.id));
   await page.getByRole('button',{name:'추천 후보 선택',exact:true}).click();
   await page.getByRole('button',{name:/더 보기 후보 \d+개/}).click();
-  await page.getByRole('button',{name:/이미 카드로 만든 후보 \d+개 · 보기/}).click(); // 이미 카드로 만든 후보는 눌러야 펼쳐진다
+  await page.getByRole('button',{name:/이미 카드로 만든 후보 \d+개 보기/}).click(); // 이미 카드로 만든 후보는 눌러야 펼쳐진다
   for(const candidate of candidates.filter(c=>c.status!=='EXCLUDED')) {
     const check=page.getByRole('checkbox',{name:`${candidate.title} 선택`,exact:true});
     await expect(check).toHaveAttribute('aria-checked',String(top.has(candidate.id)));

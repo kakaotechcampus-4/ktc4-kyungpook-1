@@ -15,6 +15,7 @@ import java.util.function.Consumer;
 /**
  * AI 가 보낸 진행을 분석 Job 단계에 남기며, 같은 단계는 1초에 한 번까지만 쓰고 단계가 바뀌거나 다 읽은 순간은 바로 쓴다
  * 진행은 화면 표시용이라 쓰지 못해도 분석은 계속하고, 그사이 취소돼 RUNNING 이 아닌 Job 에는 쓰지 않는다
+ * 방금 읽거나 판단한 줄은 DB 를 거치지 않으므로 1초를 기다리지 않고 모두 메모리에 남긴다
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -26,6 +27,7 @@ class JobProgressRecorder implements Consumer<AiProgress> {
     private final AnalysisJobRepository jobs;
     private final TransactionTemplate transaction;
     private final Clock clock;
+    private final JobActivityLog activity;
 
     private JobStepKey lastStep;
     private Instant lastWrittenAt;
@@ -34,6 +36,10 @@ class JobProgressRecorder implements Consumer<AiProgress> {
     public void accept(AiProgress progress) {
 
         Optional<JobStepKey> step = stepOf(progress.step());
+        if (step.isPresent() && progress.item() != null) {
+            activity.append(jobId, step.get(), progress.item());
+        }
+
         Instant now = clock.instant();
         if (step.isEmpty() || throttled(step.get(), progress, now)) {
             return;

@@ -19,8 +19,8 @@ for (const width of [320, 390, 1440])
     await page.setViewportSize({ width, height: 900 });
     await loginAsDemo(page);
     await page.goto('/cards');
-    await page.getByRole('combobox', { name: '정렬', exact: true }).click();
-    await page.getByRole('option', { name: '이름순', exact: true }).click();
+    // 정렬 칸 대신 묶어 보기(최근순). 이전/다음은 화면에 보이는 순서를 따른다
+    await page.getByRole('radio', { name: '최근순', exact: true }).click();
     const items = page.locator('.experience-item');
     await expect(items.first()).toBeVisible();
     const order = await items.evaluateAll((links) =>
@@ -76,8 +76,8 @@ test('editing, history and interview roundtrips retain the originating card sequ
 }) => {
   await loginAsDemo(page);
   await page.goto('/cards');
-  await page.getByRole('combobox', { name: '정렬', exact: true }).click();
-  await page.getByRole('option', { name: '이름순', exact: true }).click();
+  // 정렬 선택 칸 대신 묶어 보기 — 다른 보기로 바꿔도 이전/다음은 화면에 보이는 순서를 따른다
+  await page.getByRole('radio', { name: '최근순', exact: true }).click();
   const items = page.locator('.experience-item');
   await expect(items.first()).toBeVisible();
   const order = await items.evaluateAll((links) =>

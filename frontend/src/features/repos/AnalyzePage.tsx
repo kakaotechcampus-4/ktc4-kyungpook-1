@@ -6,6 +6,8 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Track } from '@/components/ui';
 import { JobLiveness } from '@/components/JobLiveness';
 import { AiWait } from '@/components/ui/AiWait';
+import { Sparkles } from 'lucide-react';
+import { agentHeadline, agentLine } from '@/lib/agentNarration';
 import { minutes } from '@/lib/format';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
 import { isTerminal, type Job } from '@/api/schemas';
@@ -179,9 +181,11 @@ export function AnalyzePage() {
       <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
         {!j ? <AiWait label="저장소를 읽을 준비를 하고 있어요. 곧 PR 부터 읽기 시작해요." /> : (
           <>
+            {/* AI 가 지금 하는 일을 한 문장으로 — 단계 이름보다 먼저 눈에 걸리게 */}
+            <p className="agent-now" aria-live="polite"><Sparkles size={16} aria-hidden /><span><b>AI</b> {agentHeadline(j, repo.data?.name)}</span></p>
             <div className="row" style={{ gap: 12 }}>
               <span className="w-700" style={{ fontSize: 14 }}>{doneCount} / {j.steps.length} 단계</span>
-              <span className="right t-12l c-2">{j.state === 'SUCCEEDED' ? '완료 — 후보 보드로 갈게요' : '조금만 기다려 주세요'}</span>
+              <span className="right t-12l c-2">{j.state === 'SUCCEEDED' ? '완료, 후보 보드로 갈게요' : '조금만 기다려 주세요'}</span>
             </div>
             <Track value={progress} label="분석 진행률" live={!isTerminal(j.state)} />
             <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />
@@ -193,6 +197,7 @@ export function AnalyzePage() {
                     <span className="stage__icon" aria-hidden>{status === 'DONE' ? '✓' : status === 'NOW' ? <span className="spinner spinner--sm" /> : ''}</span>
                     <div className="stack grow" style={{ gap: 3 }}>
                       <span className="stage__label">{jobStepLabel[s.key]}</span>
+                      <span className="stage__agent">{agentLine(s)}</span>
                       <span className="stage__detail">{stepDetail(s.done, s.total, jobStepUnit[s.key], s.state)}</span>
                     </div>
                     <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s)}</Badge>

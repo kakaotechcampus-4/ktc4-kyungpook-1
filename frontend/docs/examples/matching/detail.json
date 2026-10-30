@@ -2,6 +2,8 @@
   "data": {
     "id": "8a1e5c34-2f7b-4d90-b6c3-5e2f9a7d3b02",
     "company": "나래랩스",
+    "companyId": "narae",
+    "logoUrl": null,
     "role": "서버 개발자 (신입)",
     "category": "BACKEND",
     "fit": "B",

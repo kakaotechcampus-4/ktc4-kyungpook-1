@@ -239,14 +239,35 @@ public class AiHttpClient {
         }
     }
 
-    private static Optional<AiProgress> progressOf(JsonNode item) {
-        JsonNode step = item.path("step");
-        JsonNode done = item.path("done");
-        JsonNode total = item.path("total");
+    private static Optional<AiProgress> progressOf(JsonNode line) {
+        JsonNode step = line.path("step");
+        JsonNode done = line.path("done");
+        JsonNode total = line.path("total");
         if (!step.isString() || !done.isIntegralNumber()) {
             return Optional.empty();
         }
-        return Optional.of(new AiProgress(step.asString(), done.asInt(), total.isIntegralNumber() ? total.asInt() : null));
+        return Optional.of(new AiProgress(step.asString(), done.asInt(), total.isIntegralNumber() ? total.asInt() : null,
+                itemOf(line.path("item"))));
+    }
+
+    // 종류가 없는 값은 버리고 숫자만 남겨, 화면에 줄 하나가 빠질 뿐 진행은 계속 보이게 한다
+    private static AiProgressItem itemOf(JsonNode item) {
+        if (!item.path("kind").isString()) {
+            return null;
+        }
+        return new AiProgressItem(item.path("kind").asString(), intOf(item, "number"), textOf(item, "title"),
+                intOf(item, "reviews"), textOf(item, "sha"), intOf(item, "files"), textOf(item, "excluded"),
+                intOf(item, "units"), intOf(item, "experiences"), textOf(item, "reason"));
+    }
+
+    private static Integer intOf(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        return value.isIntegralNumber() ? value.asInt() : null;
+    }
+
+    private static String textOf(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        return value.isString() ? value.asString() : null;
     }
 
     // 스트림은 200 으로 열리므로 기록에는 AI 가 결과 줄에 실은 상태와 처리 기록을 남긴다

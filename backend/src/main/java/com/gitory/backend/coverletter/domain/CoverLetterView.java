@@ -17,7 +17,8 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
                            QuestionDraft draft) {
     }
 
-    public record Ask(MaterialItem item, String question, boolean required, Answer answer, boolean skipped) {
+    public record Ask(MaterialItem item, String question, List<String> templates, boolean required, Answer answer,
+                      boolean skipped) {
     }
 
     public record Answer(String text, boolean reused) {

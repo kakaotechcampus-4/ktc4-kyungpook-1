@@ -85,14 +85,14 @@ class CoverLetterAskStep {
 
         List<MaterialAsk> fromAi = asked.asks().stream()
                 .map(ask -> new MaterialAsk(MaterialItem.valueOf(ask.item()), ask.question(),
-                        asked.requiredMissing().contains(ask.item())))
+                        asked.requiredMissing().contains(ask.item()), ask.templates()))
                 .toList();
         Set<MaterialItem> askedItems = fromAi.stream().map(MaterialAsk::item).collect(Collectors.toSet());
 
         return Stream.concat(fromAi.stream(), reused.stream()
                         .map(CardMaterialAnswer::getItem)
                         .filter(item -> !askedItems.contains(item))
-                        .map(item -> new MaterialAsk(item, null, false)))
+                        .map(item -> new MaterialAsk(item, null, false, List.of())))
                 .toList();
 
     }

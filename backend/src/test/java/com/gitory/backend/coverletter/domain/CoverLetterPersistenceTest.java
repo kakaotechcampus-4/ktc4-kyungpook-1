@@ -93,7 +93,7 @@ class CoverLetterPersistenceTest {
                        sentences = ?::jsonb, marks = ?::jsonb, blanks = ?::jsonb WHERE id = ?
                 """,
                 "[{\"cardId\":7,\"note\":\"결과가 분명함\"}]",
-                "[{\"item\":\"LEARNING\",\"question\":\"무엇을 배웠나요?\",\"required\":true}]",
+                "[{\"item\":\"LEARNING\",\"question\":\"무엇을 배웠나요?\",\"required\":true,\"templates\":[\"___ 을 배웠다\"]}]",
                 "[{\"item\":\"LEARNING\",\"text\":\"재 보고 고치기\",\"skipped\":false,\"reused\":true}]",
                 "[{\"seq\":1,\"text\":\"첫 문장입니다.\"}]",
                 "[{\"sentenceSeq\":1,\"code\":\"UNSOURCED_NUMBER\",\"value\":\"30%\"}]",
@@ -106,7 +106,7 @@ class CoverLetterPersistenceTest {
         assertThat(foundLetter.getDraftSteps()).containsExactly(
                 new DraftStep(1, "CODE", "CHECK_FAILED", 1, "UNSOURCED_NUMBER", "30%", null, null, null));
         assertThat(found.getConsidered()).containsExactly(new ConsideredCard(7L, "결과가 분명함"));
-        assertThat(found.getAsks()).containsExactly(new MaterialAsk(MaterialItem.LEARNING, "무엇을 배웠나요?", true));
+        assertThat(found.getAsks()).containsExactly(new MaterialAsk(MaterialItem.LEARNING, "무엇을 배웠나요?", true, List.of("___ 을 배웠다")));
         assertThat(found.getAnswers()).containsExactly(new MaterialAnswer(MaterialItem.LEARNING, "재 보고 고치기", false, true));
         assertThat(found.getSentences()).containsExactly(new DraftSentence(1, "첫 문장입니다."));
         assertThat(found.getMarks()).containsExactly(new DraftMark(1, "UNSOURCED_NUMBER", "30%"));

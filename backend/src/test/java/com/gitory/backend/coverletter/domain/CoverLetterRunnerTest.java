@@ -209,12 +209,13 @@ class CoverLetterRunnerTest {
             sent.set(invocation.getArgument(0));
             return new CoverLetterQuestions(List.of(
                     new CoverLetterQuestions.Question(1, List.of("RESULT"), List.of(
-                            new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?"),
-                            new CoverLetterQuestions.Ask("TRIGGER", "왜 고치기로 했나요?"))),
+                            new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?",
+                                    List.of("배포가 ___ 빨라졌다")),
+                            new CoverLetterQuestions.Ask("TRIGGER", "왜 고치기로 했나요?", List.of()))),
                     new CoverLetterQuestions.Question(2, List.of(), List.of(
-                            new CoverLetterQuestions.Ask("SITUATION", "어떤 상황이었나요?"))),
+                            new CoverLetterQuestions.Ask("SITUATION", "어떤 상황이었나요?", List.of()))),
                     new CoverLetterQuestions.Question(3, List.of(), List.of(
-                            new CoverLetterQuestions.Ask("LEARNING", "무엇을 배웠나요?")))));
+                            new CoverLetterQuestions.Ask("LEARNING", "무엇을 배웠나요?", List.of())))));
         });
 
         runner.run(runner.claimNext().orElseThrow());
@@ -238,16 +239,16 @@ class CoverLetterRunnerTest {
         assertThat(saved.getRunningSince()).isNull();
         List<CoverLetterQuestion> stored = questions.findByCoverLetterIdOrderBySeq(letter.getId());
         assertThat(stored.getFirst().getAsks()).containsExactly(
-                new MaterialAsk(MaterialItem.RESULT, "배포가 얼마나 빨라졌나요?", true),
-                new MaterialAsk(MaterialItem.TRIGGER, "왜 고치기로 했나요?", false),
-                new MaterialAsk(MaterialItem.LEARNING, null, false));
+                new MaterialAsk(MaterialItem.RESULT, "배포가 얼마나 빨라졌나요?", true, List.of("배포가 ___ 빨라졌다")),
+                new MaterialAsk(MaterialItem.TRIGGER, "왜 고치기로 했나요?", false, List.of()),
+                new MaterialAsk(MaterialItem.LEARNING, null, false, List.of()));
         assertThat(stored.getFirst().getAnswers()).containsExactly(
                 new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true));
         assertThat(stored.get(1).getAsks()).containsExactly(
-                new MaterialAsk(MaterialItem.SITUATION, "어떤 상황이었나요?", false));
+                new MaterialAsk(MaterialItem.SITUATION, "어떤 상황이었나요?", false, List.of()));
         assertThat(stored.get(1).getAnswers()).isEmpty();
         assertThat(stored.get(2).getAsks()).containsExactly(
-                new MaterialAsk(MaterialItem.LEARNING, "무엇을 배웠나요?", false));
+                new MaterialAsk(MaterialItem.LEARNING, "무엇을 배웠나요?", false, List.of()));
         assertThat(stored.get(2).getAnswers()).containsExactly(
                 new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true));
 
@@ -299,11 +300,11 @@ class CoverLetterRunnerTest {
 
         Long card = confirmedCard("배포 시간 단축", "A");
         CoverLetter letter = draftingLetter(card,
-                List.of(new MaterialAsk(MaterialItem.RESULT, "결과는요?", true),
-                        new MaterialAsk(MaterialItem.JOB_LINK, "직무와 어떻게 이어지나요?", true),
-                        new MaterialAsk(MaterialItem.REASON, "왜 지원했나요?", false),
-                        new MaterialAsk(MaterialItem.TRIGGER, "계기는요?", false),
-                        new MaterialAsk(MaterialItem.LEARNING, null, false)),
+                List.of(new MaterialAsk(MaterialItem.RESULT, "결과는요?", true, List.of()),
+                        new MaterialAsk(MaterialItem.JOB_LINK, "직무와 어떻게 이어지나요?", true, List.of()),
+                        new MaterialAsk(MaterialItem.REASON, "왜 지원했나요?", false, List.of()),
+                        new MaterialAsk(MaterialItem.TRIGGER, "계기는요?", false, List.of()),
+                        new MaterialAsk(MaterialItem.LEARNING, null, false, List.of())),
                 List.of(new MaterialAnswer(MaterialItem.RESULT, "배포가 3분 빨라졌다", false, false),
                         new MaterialAnswer(MaterialItem.JOB_LINK, null, true, false),
                         new MaterialAnswer(MaterialItem.REASON, "결제를 다뤄 보고 싶다", false, false),

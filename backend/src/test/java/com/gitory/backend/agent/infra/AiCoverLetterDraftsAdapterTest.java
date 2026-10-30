@@ -137,6 +137,22 @@ class AiCoverLetterDraftsAdapterTest {
     }
 
     @Test
+    @DisplayName("초안이 목표 글자 수에 못 미쳐 걸린 쓰기 과정도 받아 돌려준다")
+    void readsUnderLengthCheckStep() {
+
+        ObjectNode data = validData();
+        data.withArray("steps").addObject().put("seq", 4).put("actor", "CODE").put("kind", "CHECK_FAILED")
+                .put("question_id", 1).put("code", "UNDER_LENGTH").put("value", "447");
+        responseBody = success(data);
+
+        CoverLetterDrafts result = adapter().write(REQUEST);
+
+        assertThat(result.steps()).last().isEqualTo(
+                new CoverLetterDrafts.Step(4, "CODE", "CHECK_FAILED", 1, "UNDER_LENGTH", "447", null, null, null));
+
+    }
+
+    @Test
     @DisplayName("AI 가 잠시 못 한다고 알리면 다시 시도할 수 있는 실패로 넘긴다")
     void passesTemporaryFailureAsRetryable() {
 

@@ -386,6 +386,19 @@ class CoverLetterApiTest {
     }
 
     @Test
+    @DisplayName("질문마다 받은 빈칸 틀을 저장해 두었다가 조회할 때 함께 내리고, 틀이 없는 질문은 빈 목록이다")
+    void returnsTemplatesOfEachAsk() throws Exception {
+
+        CoverLetter letter = askedLetter();
+
+        getLetter(letter.getPublicId().toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.questions[0].asks[0].templates[0]").value("배포가 ___ 빨라졌다"))
+                .andExpect(jsonPath("$.data.questions[0].asks[1].templates").isEmpty());
+
+    }
+
+    @Test
     @DisplayName("답은 문항의 답 전체를 바꾸고, 넘긴 답은 글 없이 남기며, 지난 답은 고치지 않고 다시 보낼 때만 미리 채운 답으로 남는다")
     void savesAnswersReplacingTheWholeQuestion() throws Exception {
 
@@ -490,16 +503,16 @@ class CoverLetterApiTest {
         answers.save(CardMaterialAnswer.of(card, MaterialItem.TRIGGER, "예전 계기"));
         answers.save(CardMaterialAnswer.of(card, MaterialItem.LEARNING, "작게 나눠 배포하게 됐다"));
         CoverLetter letter = askedLetterWith(
-                new Asked(card, List.of(new MaterialAsk(MaterialItem.RESULT, "결과는요?", true),
-                        new MaterialAsk(MaterialItem.TRIGGER, "계기는요?", false),
-                        new MaterialAsk(MaterialItem.LEARNING, null, false)),
+                new Asked(card, List.of(new MaterialAsk(MaterialItem.RESULT, "결과는요?", true, List.of()),
+                        new MaterialAsk(MaterialItem.TRIGGER, "계기는요?", false, List.of()),
+                        new MaterialAsk(MaterialItem.LEARNING, null, false, List.of())),
                         List.of(new MaterialAnswer(MaterialItem.RESULT, "첫 문항의 결과", false, false),
                                 new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 자주 배포하게 됐다", false, false))),
-                new Asked(card, List.of(new MaterialAsk(MaterialItem.RESULT, "결과는요?", true),
-                        new MaterialAsk(MaterialItem.JOB_LINK, "직무와 어떻게 이어지나요?", false)),
+                new Asked(card, List.of(new MaterialAsk(MaterialItem.RESULT, "결과는요?", true, List.of()),
+                        new MaterialAsk(MaterialItem.JOB_LINK, "직무와 어떻게 이어지나요?", false, List.of())),
                         List.of(new MaterialAnswer(MaterialItem.RESULT, "둘째 문항의 결과", false, false),
                                 new MaterialAnswer(MaterialItem.JOB_LINK, "결제 서비스와 이어진다", false, false))),
-                new Asked(deleted, List.of(new MaterialAsk(MaterialItem.ACTION, "무엇을 했나요?", true)),
+                new Asked(deleted, List.of(new MaterialAsk(MaterialItem.ACTION, "무엇을 했나요?", true, List.of())),
                         List.of(new MaterialAnswer(MaterialItem.ACTION, "지운 카드의 행동", false, false))));
         jdbc.update("UPDATE card SET deleted_at = now() WHERE id = ?", deleted);
 
@@ -725,9 +738,10 @@ class CoverLetterApiTest {
 
         CoverLetter letter = assignedLetterPicking(confirmedCard(myUserId, "배포 시간 단축", "A"));
         CoverLetterQuestion question = questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst();
-        question.asked(List.of(new MaterialAsk(MaterialItem.RESULT, "배포가 얼마나 빨라졌나요?", true),
-                        new MaterialAsk(MaterialItem.TRIGGER, "왜 고치기로 했나요?", false),
-                        new MaterialAsk(MaterialItem.LEARNING, null, false)),
+        question.asked(List.of(new MaterialAsk(MaterialItem.RESULT, "배포가 얼마나 빨라졌나요?", true,
+                                List.of("배포가 ___ 빨라졌다")),
+                        new MaterialAsk(MaterialItem.TRIGGER, "왜 고치기로 했나요?", false, List.of()),
+                        new MaterialAsk(MaterialItem.LEARNING, null, false, List.of())),
                 List.of(new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true)));
         questions.save(question);
         letter.startAsking();

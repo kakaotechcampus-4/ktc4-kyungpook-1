@@ -30,7 +30,7 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
     private static final Set<String> MARK_CODES = Set.of("UNSOURCED_NUMBER", "UNSOURCED_TERM", "REPEATED",
             "UNSUPPORTED_CLAIM", "OFF_TOPIC");
     private static final Set<String> STEP_CODES = Set.of("UNSOURCED_NUMBER", "UNSOURCED_TERM", "OVER_LIMIT",
-            "MISSING_BLANK", "REPEATED", "UNSUPPORTED_CLAIM", "OFF_TOPIC");
+            "UNDER_LENGTH", "MISSING_BLANK", "REPEATED", "UNSUPPORTED_CLAIM", "OFF_TOPIC");
     private static final Set<String> SOURCES = Set.of("LLM", "SKELETON");
     private static final Set<String> ACTORS = Set.of("SUB_AGENT", "SUPERVISOR", "CODE");
     private static final Set<String> KINDS = Set.of("WROTE", "CHECK_PASSED", "CHECK_FAILED", "DECIDED", "REWROTE",

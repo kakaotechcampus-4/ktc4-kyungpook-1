@@ -689,6 +689,12 @@
           },
           "skipped" : {
             "type" : "boolean"
+          },
+          "templates" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"

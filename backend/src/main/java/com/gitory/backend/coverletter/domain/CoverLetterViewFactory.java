@@ -123,7 +123,7 @@ class CoverLetterViewFactory {
         boolean skipped = answer != null && answer.skipped();
         CoverLetterView.Answer written = answer == null || skipped ? null
                 : new CoverLetterView.Answer(answer.text(), answer.reused());
-        return new CoverLetterView.Ask(ask.item(), ask.question(), ask.required(), written, skipped);
+        return new CoverLetterView.Ask(ask.item(), ask.question(), ask.templates(), ask.required(), written, skipped);
 
     }
 

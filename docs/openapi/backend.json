@@ -2251,6 +2251,9 @@
           "primaryCard" : {
             "$ref" : "#/components/schemas/CardRef"
           },
+          "primaryCardDeleted" : {
+            "type" : "boolean"
+          },
           "seq" : {
             "format" : "int32",
             "type" : "integer"
@@ -2627,6 +2630,9 @@
           },
           "cardId" : {
             "format" : "uuid",
+            "type" : "string"
+          },
+          "cardTitle" : {
             "type" : "string"
           },
           "kind" : {

@@ -90,9 +90,13 @@ class CoverLetterViewFactory {
                         labels.get(card.cardId()).title(), card.note()))
                 .toList();
 
+        // 지운 카드는 liveLabels 에 없어서, 배정된 중심 카드가 라벨에 없으면 사용자가 지운 것이다
+        boolean primaryCardDeleted = question.getPrimaryCardId() != null
+                && !labels.containsKey(question.getPrimaryCardId());
+
         return new CoverLetterView.Question(question.getPublicId(), question.getSeq(), question.getText(),
                 question.getCharLimit(), question.getTheme(), cardRef(labelOf(labels, question.getPrimaryCardId())),
-                cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
+                primaryCardDeleted, cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
                 question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered),
                 asks(question), draft(question));
 
@@ -164,7 +168,7 @@ class CoverLetterViewFactory {
         CardLabel card = labelOf(labels, step.cardId());
         return new CoverLetterView.Step(step.seq(), step.actor(), step.kind(),
                 step.questionSeq() == null ? null : questionIds.get(step.questionSeq()),
-                card == null ? null : card.publicId(), step.reason());
+                card == null ? null : card.publicId(), card == null ? null : card.title(), step.reason());
 
     }
 

@@ -12,7 +12,7 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
                               List<WritingStep> draftSteps) {
 
     public record Question(UUID id, int seq, String text, int charLimit, QuestionTheme theme, CardRef primaryCard,
-                           CardRef supportingCard, AssignedBy assignedBy, String pickReason,
+                           boolean primaryCardDeleted, CardRef supportingCard, AssignedBy assignedBy, String pickReason,
                            List<Considered> considered, List<MaterialItem> materials, List<Ask> asks,
                            QuestionDraft draft) {
     }
@@ -35,7 +35,8 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
     public record Considered(UUID cardId, String title, String note) {
     }
 
-    public record Step(int seq, String actor, String kind, UUID questionId, UUID cardId, String reason) {
+    public record Step(int seq, String actor, String kind, UUID questionId, UUID cardId, String cardTitle,
+                       String reason) {
     }
 
     public record WritingStep(int seq, String actor, String kind, UUID questionId, String code, String value,

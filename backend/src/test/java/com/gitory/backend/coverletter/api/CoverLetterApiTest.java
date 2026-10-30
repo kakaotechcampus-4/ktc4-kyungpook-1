@@ -136,6 +136,7 @@ class CoverLetterApiTest {
                 .andExpect(jsonPath("$.data.questions[1].text").value("실패 경험을 쓰세요"))
                 .andExpect(jsonPath("$.data.questions[1].charLimit").value(700))
                 .andExpect(jsonPath("$.data.questions[1].primaryCard").value(nullValue()))
+                .andExpect(jsonPath("$.data.questions[1].primaryCardDeleted").value(false))
                 .andExpect(jsonPath("$.data.steps.assign").isEmpty());
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter WHERE running_since IS NULL", Integer.class))
@@ -178,10 +179,13 @@ class CoverLetterApiTest {
     }
 
     @Test
-    @DisplayName("확정한 카드가 없으면 422 NO_CONFIRMED_CARDS 이고, 만들지도 호출 제한을 세지도 않는다")
+    @DisplayName("살아 있는 내 확정 카드가 없으면(작성 중 카드·지운 확정 카드·남의 확정 카드만 있으면) 422 NO_CONFIRMED_CARDS 이고, 만들지도 호출 제한을 세지도 않는다")
     void rejectsWhenNoConfirmedCards() throws Exception {
 
         fixtures.insertCard(UUID.randomUUID(), myUserId);
+        Long deleted = confirmedCard(myUserId, "지운 카드", "A");
+        jdbc.update("UPDATE card SET deleted_at = now() WHERE id = ?", deleted);
+        confirmedCard(othersUserId, "남의 카드", "A");
 
         create(BODY, "key-1")
                 .andExpect(status().isUnprocessableContent())
@@ -255,13 +259,15 @@ class CoverLetterApiTest {
                 .andExpect(jsonPath("$.data.questions[0].considered[0].title").value("동아리 회계"))
                 .andExpect(jsonPath("$.data.questions[0].considered[0].note").value("협업이 덜 드러남"))
                 .andExpect(jsonPath("$.data.questions[0].materials", contains("SITUATION", "ACTION", "LEARNING")))
+                .andExpect(jsonPath("$.data.questions[0].primaryCardDeleted").value(false))
                 .andExpect(jsonPath("$.data.steps.assign[0].questionId").value(question.getPublicId().toString()))
-                .andExpect(jsonPath("$.data.steps.assign[0].cardId").value(publicIdOf(primary)));
+                .andExpect(jsonPath("$.data.steps.assign[0].cardId").value(publicIdOf(primary)))
+                .andExpect(jsonPath("$.data.steps.assign[0].cardTitle").value("배포 시간 단축"));
 
     }
 
     @Test
-    @DisplayName("지운 카드는 고른 카드·견준 카드·재료에서 없는 카드로 보인다")
+    @DisplayName("지운 카드는 고른 카드·견준 카드·재료·과정에서 없는 카드로 보이고, 중심 카드를 지웠다고 알린다")
     void deletedCardShowsAsEmpty() throws Exception {
 
         Long primary = confirmedCard(myUserId, "배포 시간 단축", "A");
@@ -270,13 +276,16 @@ class CoverLetterApiTest {
         question.assign(QuestionTheme.COLLABORATION, primary, null, AssignedBy.SUB_AGENT, "이유",
                 List.of(new ConsideredCard(primary, "평")));
         questions.save(question);
-        assigned(letter, List.of());
+        assigned(letter, List.of(new AssignStep(1, "SUB_AGENT", "PICKED", 1, primary, "이유")));
         jdbc.update("UPDATE card SET deleted_at = now() WHERE id = ?", primary);
 
         getLetter(letter.getPublicId().toString())
                 .andExpect(jsonPath("$.data.questions[0].primaryCard").value(nullValue()))
+                .andExpect(jsonPath("$.data.questions[0].primaryCardDeleted").value(true))
                 .andExpect(jsonPath("$.data.questions[0].considered").isEmpty())
-                .andExpect(jsonPath("$.data.questions[0].materials").isEmpty());
+                .andExpect(jsonPath("$.data.questions[0].materials").isEmpty())
+                .andExpect(jsonPath("$.data.steps.assign[0].cardId").value(nullValue()))
+                .andExpect(jsonPath("$.data.steps.assign[0].cardTitle").value(nullValue()));
 
     }
 

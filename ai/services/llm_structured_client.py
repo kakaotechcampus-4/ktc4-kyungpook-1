@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Generic, Literal, Optional, TypeVar
 
+import httpx
 from openai import (
     APIConnectionError,
     APIError,
@@ -159,6 +160,9 @@ class StructuredLLMClient:
             raise LLMNonRetryableError("LLM 키·권한·모델 이름 또는 요청 형식이 잘못됐습니다.") from exc
         except (APIConnectionError, APITimeoutError, APIError) as exc:
             raise LLMStructuredCallError("LLM 요청을 처리하지 못했습니다.") from exc
+        except httpx.TransportError as exc:
+            # SDK 는 스트림을 읽는 도중 끊긴 연결을 자기 오류로 감싸지 않아 여기서 다시 시도할 수 있는 실패로 바꾼다
+            raise LLMStructuredCallError("LLM 응답을 받는 중 연결이 끊겼습니다.") from exc
         except ValidationError as exc:
             raise LLMInvalidOutputError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.") from exc
         except LengthFinishReasonError as exc:

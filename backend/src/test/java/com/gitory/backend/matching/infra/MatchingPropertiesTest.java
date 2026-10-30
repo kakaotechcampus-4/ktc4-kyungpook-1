@@ -26,6 +26,27 @@ class MatchingPropertiesTest {
 
     }
 
+    @Test
+    @DisplayName("회사 설정의 이름이 비었거나 로고가 https 주소가 아니면 서버가 뜨지 않는다")
+    void rejectsBlankNameOrNonHttpsLogo() {
+
+        String[] company = {"gitory.matching.sources[0].key=acme", "gitory.matching.sources[0].type=GREENHOUSE",
+                "gitory.matching.sources[0].board=acme"};
+
+        configFile.withPropertyValues(company)
+                .withPropertyValues("gitory.matching.sources[0].name=에이크미",
+                        "gitory.matching.sources[0].logo=https://cdn.example.com/acme.png")
+                .run(context -> assertThat(context).hasNotFailed());
+        configFile.withPropertyValues(company)
+                .withPropertyValues("gitory.matching.sources[0].name=에이크미",
+                        "gitory.matching.sources[0].logo=http://cdn.example.com/acme.png")
+                .run(context -> assertThat(context).hasFailed());
+        configFile.withPropertyValues(company)
+                .withPropertyValues("gitory.matching.sources[0].name= ")
+                .run(context -> assertThat(context).hasFailed());
+
+    }
+
     @EnableConfigurationProperties(MatchingProperties.class)
     static class BindMatchingProperties {
     }

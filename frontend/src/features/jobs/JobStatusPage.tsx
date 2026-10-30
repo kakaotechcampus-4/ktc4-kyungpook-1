@@ -8,7 +8,8 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActiveJobFeed } from '@/lib/activeJobFeed';
 import { jobResultLink, jobResultState } from '@/lib/jobLinks';
 import { jobErrorHint, jobErrorTitle, jobStateLabel, jobStepLabel, jobTypeLabel } from '@/lib/labels';
-import { stepBadge } from '@/lib/jobView';
+import { isHalted, stepBadge } from '@/lib/jobView';
+import { agentLine } from '@/lib/agentNarration';
 import { DraftProgress } from '@/features/cards/DraftProgress';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
@@ -34,7 +35,7 @@ export function JobStatusPage() {
     {job.errorCode && <Note strong={jobErrorTitle[job.errorCode]} tone={job.state === 'FAILED' ? 'danger' : 'inset'}>{jobErrorHint[job.errorCode]}</Note>}
     {job.state === 'CANCELED' && <Note strong="작업이 취소됐어요" tone="inset" />}
     {job.type === 'DRAFT' ? <DraftProgress job={job} checkedAt={query.dataUpdatedAt} /> : <div className="stack job-status-steps">{job.steps.map((step) => <div className="card job-status-step" key={step.key}>
-      <strong>{jobStepLabel[step.key]}</strong><span className="row t-12 c-2">{step.state === 'RUNNING' && step.total == null && <Spinner />}{step.state === 'SKIPPED' ? '해당 없음' : step.total == null ? `${step.done}개 처리` : `${step.done} / ${step.total}`}</span><Badge kind="NEUTRAL">{stepBadge(step)}</Badge>
+      <span className="stack" style={{ gap: 2, minWidth: 0 }}><strong>{jobStepLabel[step.key]}</strong><span className="stage__agent">{agentLine(step, job)}</span></span><span className="row t-12 c-2">{step.state === 'RUNNING' && !isHalted(job) && step.total == null && <Spinner />}{step.state === 'SKIPPED' ? '해당 없음' : step.total == null ? `${step.done}개 처리` : `${step.done} / ${step.total}`}</span><Badge kind="NEUTRAL">{stepBadge(step, job)}</Badge>
     </div>)}</div>}
     <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
       <Link to="/" className="btn btn--outline">홈으로</Link>

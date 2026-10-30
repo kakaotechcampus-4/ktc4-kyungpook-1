@@ -62,6 +62,17 @@ class ReportingPort:
         return RepositoryActivityExecution(result=result, api_calls=3)
 
 
+class ItemReportingPort(ReportingPort):
+    """먼저 커밋 하나를 읽은 값을 실어 알린 뒤 ReportingPort 처럼 숫자만 알린다."""
+
+    async def collect(self, request, token):
+        report_progress(COMMITS, 1, 1, COMMIT_ITEM)
+        return await super().collect(request, token)
+
+
+COMMIT_ITEM = {"kind": "COMMIT", "sha": "abc1234", "title": "feat: 기능", "files": 2, "excluded": None}
+
+
 class ReportingPipeline:
     async def group_experiences(self, request, *, deadline=None):
         report_progress(COMPRESS, 0, 1)
@@ -98,6 +109,13 @@ def test_collect_stream_sends_progress_then_same_result_as_collect() -> None:
     assert lines[-1]["type"] == "result"
     assert lines[-1]["status"] == 200
     assert lines[-1]["body"]["data"] == plain.json()["data"]
+
+
+def test_progress_line_carries_item_only_when_one_was_reported() -> None:
+    lines = _lines(_post("/internal/collect/stream", _collect_payload(), ItemReportingPort(), TOKEN))
+
+    assert lines[0] == {"type": "progress", "step": "COMMITS", "done": 1, "total": 1, "item": COMMIT_ITEM}
+    assert "item" not in lines[1]
 
 
 def test_collect_stream_puts_handled_error_in_last_line() -> None:

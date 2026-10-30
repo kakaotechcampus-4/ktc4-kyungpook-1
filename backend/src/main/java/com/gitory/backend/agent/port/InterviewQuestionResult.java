@@ -5,5 +5,5 @@ import java.util.List;
 public record InterviewQuestionResult(InterviewNextAction nextAction, InterviewStarSlot targetStarSlot,
                                       Integer targetStatementSeq, InterviewQuestionType questionType,
                                       String questionText, InterviewAnswerMode answerMode,
-                                      List<String> suggestedAnswers) {
+                                      List<String> suggestedAnswers, String reason) {
 }

@@ -9,7 +9,7 @@ import { track } from '@/lib/track';
 import { useActionGate } from '@/lib/useActionGate';
 
 const formats: { value: CopyFormat; label: string }[] = [
-  { value: 'BODY', label: '본문만' }, { value: 'STAR', label: 'STAR 형식' }, { value: 'EVIDENCE', label: '근거 포함' },
+  { value: 'BODY', label: '본문만' }, { value: 'STAR', label: '상황, 과제, 행동, 결과 형식' }, { value: 'EVIDENCE', label: '근거 포함' },
 ];
 export function CardCopyDialog({ card, onClose }: { card: Card; onClose: () => void }) {
   const [format, setFormat] = useState<CopyFormat>('BODY');
@@ -19,9 +19,9 @@ export function CardCopyDialog({ card, onClose }: { card: Card; onClose: () => v
   const copy = () => gate.run(async () => {
     const success = await copyText(text);
     setFailed(!success);
-    if (success) { track('card_exported', { cardId: card.id, format: format === 'EVIDENCE' ? 'markdown' : format === 'STAR' ? 'star' : 'text' }); toast('복사했습니다', { tone: 'success' }); onClose(); }
+    if (success) { track('card_exported', { cardId: card.id, format: format === 'EVIDENCE' ? 'markdown' : format === 'STAR' ? 'star' : 'text' }); toast('복사했어요', { tone: 'success' }); onClose(); }
   });
-  return <Modal title="카드 복사" width={720} onClose={() => { if (!gate.isLocked()) onClose(); }} footer={{ strong: '미리보기 내용으로 복사합니다', actions: <><Button variant="outline" disabled={copying} onClick={onClose}>닫기</Button><Button loading={copying} disabled={!text} onClick={() => void copy()}>복사하기</Button></> }}>
+  return <Modal title="카드 복사" width={720} onClose={() => { if (!gate.isLocked()) onClose(); }} footer={{ strong: '미리보기 내용 그대로 복사해요', actions: <><Button variant="outline" disabled={copying} onClick={onClose}>닫기</Button><Button loading={copying} disabled={!text} onClick={() => void copy()}>복사하기</Button></> }}>
     <div className="row copy-formats" role="radiogroup" aria-label="복사 형식">
       {formats.map((item) => <Button key={item.value} variant={format === item.value ? 'primary' : 'outline'} role="radio" aria-checked={format === item.value} disabled={copying} onClick={() => { setFormat(item.value); setFailed(false); }}>{item.label}</Button>)}
     </div>

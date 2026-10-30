@@ -1,9 +1,12 @@
 package com.gitory.backend.job.api;
 
+import com.gitory.backend.common.infra.ai.AiProgressItem;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.job.domain.AnalysisJob;
+import com.gitory.backend.job.domain.JobActivityLog;
 import com.gitory.backend.job.domain.JobErrorCode;
 import com.gitory.backend.job.domain.JobState;
+import com.gitory.backend.job.domain.JobStepKey;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
 import com.gitory.backend.support.BoardVerdictFixtures;
 import com.gitory.backend.support.TestFixtures;
@@ -64,6 +67,9 @@ class JobApiTest {
     @Autowired
     AnalysisJobRepository jobs;
 
+    @Autowired
+    JobActivityLog activity;
+
     private TestFixtures fixtures;
 
     private Long myUserId;
@@ -112,7 +118,34 @@ class JobApiTest {
                 .andExpect(jsonPath("$.data.result.repoId").value(MY_REPO.toString()))
                 .andExpect(jsonPath("$.data.startedAt").isString())
                 .andExpect(jsonPath("$.data.updatedAt").isString())
-                .andExpect(jsonPath("$.data.pollAfterMs").value(2000));
+                .andExpect(jsonPath("$.data.activity").isEmpty())
+                .andExpect(jsonPath("$.data.pollAfterMs").value(1000));
+
+    }
+
+    @Test
+    @DisplayName("Job 상세는 AI 가 방금 읽거나 판단한 줄을 받은 순서대로 번호와 함께 싣는다")
+    void returnsActivityLinesOfMyJob() throws Exception {
+
+        AnalysisJob job = jobs.save(AnalysisJob.enqueue(myUserId, myRepoId, KEY));
+        activity.append(job.getId(), JobStepKey.COMMITS,
+                new AiProgressItem("COMMIT", null, "Merge branch 'main'", null, "abc1234", 0, "MERGE_COMMIT", null, null, null));
+        activity.append(job.getId(), JobStepKey.REASON,
+                new AiProgressItem("DESCRIBED", null, "배포 자동화", null, null, null, null, null, null, "리뷰가 많이 오간 작업"));
+
+        getJob(job.getPublicId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.activity.length()").value(2))
+                .andExpect(jsonPath("$.data.activity[0].seq").value(1))
+                .andExpect(jsonPath("$.data.activity[0].step").value("COMMITS"))
+                .andExpect(jsonPath("$.data.activity[0].kind").value("COMMIT"))
+                .andExpect(jsonPath("$.data.activity[0].sha").value("abc1234"))
+                .andExpect(jsonPath("$.data.activity[0].title").value("Merge branch 'main'"))
+                .andExpect(jsonPath("$.data.activity[0].files").value(0))
+                .andExpect(jsonPath("$.data.activity[0].excluded").value("MERGE_COMMIT"))
+                .andExpect(jsonPath("$.data.activity[1].seq").value(2))
+                .andExpect(jsonPath("$.data.activity[1].kind").value("DESCRIBED"))
+                .andExpect(jsonPath("$.data.activity[1].reason").value("리뷰가 많이 오간 작업"));
 
     }
 
@@ -187,7 +220,7 @@ class JobApiTest {
     }
 
     @Test
-    @DisplayName("값이 비어 있어도 프론트가 요구하는 키 13개는 모두 내려간다")
+    @DisplayName("값이 비어 있어도 프론트가 요구하는 키 14개는 모두 내려간다")
     void keepsEveryContractKey() throws Exception {
 
         UUID jobId = newJob(myUserId, myRepoId);
@@ -195,7 +228,7 @@ class JobApiTest {
         Map<String, Object> data = JsonPath.read(bodyOf(getJob(jobId)), "$.data");
 
         assertThat(data).containsOnlyKeys(
-                "jobId", "type", "state", "partial", "steps", "errorCode", "retryable",
+                "jobId", "type", "state", "partial", "steps", "activity", "errorCode", "retryable",
                 "retryAfterSec", "startedAt", "updatedAt", "finishedAt", "result", "pollAfterMs");
     }
 
@@ -319,7 +352,7 @@ class JobApiTest {
     }
 
     @Test
-    @DisplayName("내 QUEUED Job 을 취소하면 CANCELED 로 바뀌고, 응답은 Job 조회 API 와 같은 13개 칸으로 내려온다")
+    @DisplayName("내 QUEUED Job 을 취소하면 CANCELED 로 바뀌고, 응답은 Job 조회 API 와 같은 14개 칸으로 내려온다")
     void cancelsMyQueuedJob() throws Exception {
 
         UUID jobId = newJob(myUserId, myRepoId);
@@ -334,7 +367,7 @@ class JobApiTest {
 
         Map<String, Object> data = JsonPath.read(bodyOf(response), "$.data");
         assertThat(data).containsOnlyKeys(
-                "jobId", "type", "state", "partial", "steps", "errorCode", "retryable",
+                "jobId", "type", "state", "partial", "steps", "activity", "errorCode", "retryable",
                 "retryAfterSec", "startedAt", "updatedAt", "finishedAt", "result", "pollAfterMs");
 
     }

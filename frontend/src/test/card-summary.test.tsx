@@ -13,7 +13,7 @@ it('does not invent a manual source, period, or zero evidence for a minimal resp
   expect(card.period).toBeUndefined();
   expect(card.evidenceCount).toBeUndefined();
   render(<MemoryRouter><CardGridItem c={card} /></MemoryRouter>);
-  expect(screen.queryByText(/직접 작성|근거 0개/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/직접 작성|근거 커밋 \d+개|내 답변/)).not.toBeInTheDocument();
   expect(screen.getByText('서버 카드')).toBeInTheDocument();
 });
 it('accepts null enrichment and still uses the server STAR states', () => {
@@ -21,13 +21,13 @@ it('accepts null enrichment and still uses the server STAR states', () => {
     star: { ...minimal.star, T: 'EMPTY', R: 'NEEDS_REVIEW' } });
   render(<MemoryRouter><CardGridItem c={card} /></MemoryRouter>);
   expect(screen.getByText('빈 칸 1개')).toBeInTheDocument();
-  expect(screen.queryByText(/직접 작성|근거 0개/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/직접 작성|근거 커밋 \d+개|내 답변/)).not.toBeInTheDocument();
 });
 it('keeps explicitly provided zero evidence distinct from unknown information', () => {
   const card = CardSummary.parse({ ...minimal, sourceLabel: 'MANUAL', evidenceCount: 0 });
   render(<MemoryRouter><CardGridItem c={card} /></MemoryRouter>);
   expect(screen.getByText(/직접 작성/)).toBeInTheDocument();
-  expect(screen.getByText('근거 0개')).toBeInTheDocument();
+  expect(screen.getByText('근거 커밋 0개')).toBeInTheDocument();
 });
 
 it.each(['2024년 상반기', '2024.04 ~ 2024.06'])('shows acknowledged free-text period %s without losing it during date formatting', (period) => {

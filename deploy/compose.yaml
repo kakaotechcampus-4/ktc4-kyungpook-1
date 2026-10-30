@@ -69,6 +69,9 @@ services:
       # 경험 그룹화·STAR 초안이 쓰는 LLM 게이트웨이. 비어 있으면 그 두 기능만 503 이고 수집·되묻기는 돈다
       GITORY_LLM_BASE_URL: ${GITORY_LLM_BASE_URL:-}
       GITORY_LLM_API_KEY: ${GITORY_LLM_API_KEY:-}
+      GITORY_STAR_REPAIR_ENABLED: ${GITORY_STAR_REPAIR_ENABLED:-true}
+      GITORY_STAR_REVIEW_ENABLED: ${GITORY_STAR_REVIEW_ENABLED:-false}
+      GITORY_STAR_REVIEW_MODEL: ${GITORY_STAR_REVIEW_MODEL:-}
     # 공고 색인(Chroma)과 임베딩 모델 파일을 서버 디스크에 둬서, 배포로 컨테이너를 새로 만들어도 색인이 남는다
     volumes:
       - ai-index:/app/.chroma

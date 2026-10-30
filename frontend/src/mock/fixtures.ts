@@ -201,6 +201,12 @@ const ev = (field: string, sha: string, snippet: string, owner = 'hong-dev', rep
 const evFull = (field: string, sha: string, snippet: string, summary: string, committedAt: string, changedFiles: number) =>
   ev(field, sha, snippet, 'hong-dev', 'auth-service', { summary, committedAt, changedFiles });
 const said = (field: string, turnNo: number) => ({ field, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
+/**
+ * 'AI 가 한 일'(draftSteps) 데모 값. 실서버가 보내는 모양 그대로이고 문장은 화면이 만든다.
+ * 실측 카드(card_05)에는 지어 넣지 않는다 — 샘플 카드 card_01(전 과정)과 card_03(첫 검사만)에만 쓴다.
+ */
+const step = (round: number, actor: 'MODEL' | 'CODE', kind: string, field: string | null, rest: { code?: string; value?: string; material?: string; reason?: string } = {}) =>
+  ({ round, actor, kind, field, code: null, value: null, material: null, reason: null, ...rest });
 
 export const seedCards = [
   {
@@ -222,6 +228,17 @@ export const seedCards = [
     ],
     lowConfidenceFields: [{ field: 'R', why: '수치가 없고 근거 커밋이 1건뿐입니다' }],
     droppedFields: [{ field: 'T', reason: 'NO_EVIDENCE' }],
+    // 첫 초안(DRAFT) → 코드가 문제를 찾음(FLAG) → AI 가 자료를 열지, 그대로 둘지, 자료 없이 고칠지 고름(OPEN·KEEP·RETRY) → 다시 씀 → 다시 검사
+    draftSteps: [
+      step(0, 'MODEL', 'DRAFT', null),
+      step(0, 'CODE', 'FLAG', 'T', { code: 'NO_EVIDENCE' }),
+      step(0, 'CODE', 'FLAG', 'R', { code: 'UNSOURCED_NUMBER', value: '50%' }),
+      step(1, 'MODEL', 'OPEN', 'T', { value: '이슈 #98 세션 만료 시 작성 글 사라짐', material: 'ISSUE', reason: '과제가 이슈 본문에 적혀 있을 것 같음' }),
+      step(1, 'MODEL', 'KEEP', 'T', { reason: '이슈에도 맡은 일이 적혀 있지 않음' }),
+      step(1, 'MODEL', 'RETRY', 'R', { reason: '50% 를 뒷받침할 자료가 없어 숫자를 뺌' }),
+      step(1, 'MODEL', 'REWRITE', 'R'),
+      step(1, 'CODE', 'PASS', 'R'),
+    ],
     maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: daysAgo(1),
   },
   {
@@ -249,6 +266,12 @@ export const seedCards = [
     ],
     evidence: [ev('S', '5d1e8b0', '토큰 만료 시 401 처리'), ev('A', '5d1e8b0', '토큰 만료 시 401 처리'), ev('A', '8a7c2f4', '리프레시 인터셉터 추가'), said('T', 1), said('R', 2)],
     lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 2, confirmedAt: daysAgo(3), createdAt: daysAgo(4),
+    // 고쳐 쓰기를 켜기 전 운영처럼 첫 초안과 첫 검사만 남은 카드. 이후 답변·수정으로 버전이 늘었어도 초안을 만든 과정이라 그대로 온다
+    draftSteps: [
+      step(0, 'MODEL', 'DRAFT', null),
+      step(0, 'CODE', 'FLAG', 'T', { code: 'EMPTY' }),
+      step(0, 'CODE', 'FLAG', 'R', { code: 'EMPTY' }),
+    ],
   },
   {
     id: 'card_04', kind: 'QUALITATIVE', status: 'CONFIRMED', title: '팀원과 토큰 저장 위치로 갈린 경험',

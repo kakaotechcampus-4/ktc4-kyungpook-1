@@ -31,9 +31,9 @@ public class CardMetadataController {
             보낸 칸만 고칩니다. 키가 없거나 null 인 칸은 그대로 두고, 기간을 빈 글이나 공백뿐인 글로 보내면 기간을 지웁니다.
             제목은 공백뿐이면 안 되고 256자까지, 기간은 50자까지이며 둘 다 받은 글 그대로 저장합니다.
             보낸 값이 모두 지금 값과 같으면(기간이 없는 카드에 빈 기간을 보낸 경우 포함) 아무것도 바꾸지 않고 updatedAt 도 그대로인 지금 값을 돌려줍니다.
-            제목·기간·문항 유형을 모두 보내지 않으면 400 입니다. 네 칸·근거·버전은 바꾸지 않습니다.
+            제목·기간·문항 유형을 모두 보내지 않으면 400 입니다. 네 칸·근거·버전은 바꾸지 않고, 확정한 카드도 다시 열지 않고 고칩니다.
             문항 유형(themes)은 경험 카드에만 0~2개 붙이고 빈 배열이면 비웁니다. 카드 글이 아니라 자소서에 쓸 카드를 고르는 표시라
-            확정 카드도 바꿀 수 있고 updatedAt 을 바꾸지 않으며, 사용자가 고른 뒤로 AI 는 덮어쓰지 않습니다.
+            updatedAt 을 바꾸지 않으며, 사용자가 고른 뒤로 AI 는 덮어쓰지 않습니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
     @ApiResponses({
@@ -45,8 +45,6 @@ public class CardMetadataController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "CSRF 토큰 없음 또는 불일치",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID 또는 본인 카드 없음",
-                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "CARD_CONFIRMED: 확정된 카드의 제목·기간은 다시 열어야 수정할 수 있음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<CardMetadataResponse> edit(

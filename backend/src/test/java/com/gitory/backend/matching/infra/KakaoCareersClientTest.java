@@ -29,7 +29,7 @@ class KakaoCareersClientTest {
     void startSite() {
 
         site = FakeCareersSite.start();
-        source = new CompanySource("kakao", "카카오", CompanySourceType.KAKAO, site.base() + LIST);
+        source = new CompanySource("kakao", "카카오", CompanySourceType.KAKAO, site.base() + LIST, null);
 
     }
 

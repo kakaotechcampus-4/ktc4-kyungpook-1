@@ -11,6 +11,7 @@ import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.CardTheme;
+import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.common.infra.ai.AiCallContext;
@@ -58,11 +59,12 @@ public class InterviewAskService {
     private final InterviewLimits limits;
     private final PlatformTransactionManager transactionManager;
     private final UserRateLimiter rateLimiter;
+    private final CardVersionReader reader;
 
     /**
      * 초안을 만드는 중이거나 확정된 카드는 409, 답을 기다리는 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409,
      * 칸이 잘못되면 400, 지정한 칸이 닫혔으면 409 순서로 확인한다
-     * 칸을 지정하지 않았는데 고를 칸이 없거나 AI 가 끝을 고르면 질문을 만들지 않고 null 을 돌려주며, AI 가 끝낸 이유는 카드에 남긴다
+     * 칸을 지정하지 않았는데 고를 칸이 없거나 AI 가 끝을 고르면 질문을 만들지 않고 null 을 돌려주며, AI 가 끝낸 이유를 남기고 카드 상태를 다시 정한다
      * 새 질문은 AI 를 다녀온 뒤 같은 확인을 한 번 더 하고 저장한다
      */
     public InterviewTurnView ask(UUID publicId, Long userId, String field) {
@@ -73,6 +75,7 @@ public class InterviewAskService {
             return prepared.openTurn();
         }
         if (prepared.request() == null) {
+            settleAtEnd(publicId, userId);
             return null;
         }
 
@@ -86,6 +89,16 @@ public class InterviewAskService {
         }
 
         return save(prepared, publicId, userId, question);
+
+    }
+
+    // 답마다 확정하면 다음 질문이 확정 카드라 막히므로, 되묻기가 끝났을 때 한 번 그 글로 카드 상태를 정한다
+    private void settleAtEnd(UUID publicId, Long userId) {
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
+            card.settle(reader.read(card.getId(), card.getCurrentVersion()));
+        });
 
     }
 
@@ -202,7 +215,7 @@ public class InterviewAskService {
 
     }
 
-    // AI 를 기다리는 사이 다른 창에서 새 질문이 생겼으면 끝낸 이유가 맞지 않으므로 남기지 않는다
+    // AI 를 기다리는 사이 다른 창에서 새 질문이 생겼으면 되묻기가 끝나지 않았으므로 이유·유형을 남기지 않고 상태도 정하지 않는다
     // 경험 카드면 AI 가 끝내며 고른 문항 유형도 붙이고, 사용자가 고른 유형은 Card 가 지킨다
     private void recordEnd(UUID publicId, Long userId, InterviewQuestionResult ended) {
 
@@ -210,6 +223,7 @@ public class InterviewAskService {
         if (openTurnOf(turns.findByCardIdOrderBySeqAsc(card.getId())).isEmpty()) {
             card.endInterview(ended.reason());
             card.suggestThemes(ended.themes().stream().map(theme -> CardTheme.valueOf(theme.name())).toList());
+            card.settle(reader.read(card.getId(), card.getCurrentVersion()));
         }
 
     }

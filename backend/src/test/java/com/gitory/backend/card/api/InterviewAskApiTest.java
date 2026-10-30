@@ -846,6 +846,29 @@ class InterviewAskApiTest {
 
     }
 
+    @Test
+    @DisplayName("되묻기가 끝나면 그 글로 카드 상태를 정해, 네 칸이 확인 필요 없이 모두 찬 카드는 확정하고 빈 칸이 있는 카드는 작성 중으로 둔다")
+    void interviewEndConfirmsOnlyCompleteCard() throws Exception {
+
+        Long complete = fixtures.insertCard(MY_CARD, myUserId);
+        for (String slot : List.of("S", "T", "A", "R")) {
+            fixtures.insertStatement(complete, 1, slot, slot + " 글", "USER_STATED", null);
+        }
+        UUID partialId = UUID.randomUUID();
+        Long partial = fixtures.insertCard(partialId, myUserId);
+        fixtures.insertStatement(partial, 1, "S", "상황 글", "USER_STATED", null);
+        AI.replyWith(request -> FakeInterviewAi.complete(request.path("card_id").longValue()));
+
+        send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
+        send(myUserId, partialId.toString(), "{}").andExpect(status().isOk());
+
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, complete))
+                .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, partial))
+                .isEqualTo("DRAFT");
+
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"SKIPPED", "NOT_MEASURED"})
     @DisplayName("넘김·측정 안 함으로 끝난 칸을 지정하면 409 INTERVIEW_FIELD_CLOSED 이고 AI 를 부르지 않으며 질문도 만들지 않는다")

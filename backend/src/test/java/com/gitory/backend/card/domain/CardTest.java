@@ -11,7 +11,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -127,20 +129,56 @@ class CardTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("changes")
-    @DisplayName("확정된 카드에 제목·기간·가리기 규칙 바꾸기, 편집 표시, 새 버전 전환을 하면 CardConfirmedException 이고 아무것도 바뀌지 않는다")
-    void confirmedCardRejectsChanges(Consumer<Card> change) {
+    @DisplayName("확정된 카드도 다시 열지 않고 제목·기간·가리기 규칙 바꾸기, 편집 표시, 새 버전 전환을 하며 확정으로 남는다")
+    void confirmedCardAcceptsChangesAndStaysConfirmed(Consumer<Card> change) {
 
         Card card = confirmed();
         age(card);
 
-        assertThatThrownBy(() -> change.accept(card)).isInstanceOf(CardConfirmedException.class);
+        change.accept(card);
 
         assertThat(card.getStatus()).isEqualTo(CardStatus.CONFIRMED);
-        assertThat(card.getTitle()).isEqualTo(TITLE);
-        assertThat(card.getPeriod()).isEqualTo(PERIOD);
-        assertThat(card.getMaskRules()).isEmpty();
-        assertThat(card.getCurrentVersion()).isEqualTo((short) 1);
-        assertThat(card.getUpdatedAt()).isEqualTo(OLD);
+        assertThat(card.getConfirmedAt()).isNotNull();
+        assertThat(card.getUpdatedAt()).isAfter(OLD);
+
+    }
+
+    @Test
+    @DisplayName("작성 중 카드는 네 칸이 확인 필요 없이 모두 찬 글로 정할 때만 확정되고, 확인 필요 칸이나 빈 칸이 하나라도 있으면 작성 중으로 남는다")
+    void draftIsConfirmedOnlyWhenAllFourSlotsAreFilledWithoutReview() {
+
+        Card complete = draft();
+        complete.settle(slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH));
+        assertThat(complete.getStatus()).isEqualTo(CardStatus.CONFIRMED);
+        assertThat(complete.getConfirmedAt()).isNotNull();
+
+        Card needsReview = draft();
+        needsReview.settle(slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.LOW));
+        assertThat(needsReview.getStatus()).isEqualTo(CardStatus.DRAFT);
+
+        Card emptyTask = draft();
+        emptyTask.settle(slots(Confidence.HIGH, null, Confidence.HIGH, Confidence.HIGH));
+        assertThat(emptyTask.getStatus()).isEqualTo(CardStatus.DRAFT);
+        assertThat(emptyTask.getConfirmedAt()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("확정된 카드는 확인 필요 칸이나 빈 맡은 일·결과가 있어도 확정으로 남고, 상황이나 행동이 비면 작성 중으로 돌아가 확정 시각이 지워진다")
+    void confirmedCardReturnsToDraftOnlyWhenSituationOrActionIsEmpty() {
+
+        Card reviewed = confirmed();
+        reviewed.settle(slots(Confidence.HIGH, null, Confidence.HIGH, Confidence.LOW));
+        assertThat(reviewed.getStatus()).isEqualTo(CardStatus.CONFIRMED);
+
+        Card noAction = confirmed();
+        noAction.settle(slots(Confidence.HIGH, Confidence.HIGH, null, Confidence.HIGH));
+        assertThat(noAction.getStatus()).isEqualTo(CardStatus.DRAFT);
+        assertThat(noAction.getConfirmedAt()).isNull();
+
+        Card noSituation = confirmed();
+        noSituation.settle(slots(null, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH));
+        assertThat(noSituation.getStatus()).isEqualTo(CardStatus.DRAFT);
 
     }
 
@@ -430,6 +468,23 @@ class CardTest {
         assertThat(experience.needsThemes()).isFalse();
         assertThatThrownBy(() -> tech.chooseThemes(List.of(CardTheme.GROWTH)))
                 .isInstanceOf(InvalidCardInputException.class);
+
+    }
+
+    // 칸마다 확신도를 주고, null 이면 빈 칸이다
+    private static VersionSlots slots(Confidence s, Confidence t, Confidence a, Confidence r) {
+
+        Map<StarField, SlotContent> slots = new EnumMap<>(StarField.class);
+        Confidence[] confidences = {s, t, a, r};
+        StarField[] fields = {StarField.S, StarField.T, StarField.A, StarField.R};
+        for (int i = 0; i < fields.length; i++) {
+            if (confidences[i] != null) {
+                slots.put(fields[i], new SlotContent(fields[i], "글", EvidenceType.USER_STATED, confidences[i], null,
+                        List.of()));
+            }
+        }
+
+        return new VersionSlots((short) 1, slots);
 
     }
 

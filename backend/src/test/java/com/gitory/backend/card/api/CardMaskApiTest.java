@@ -291,10 +291,9 @@ class CardMaskApiTest {
 
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("bodiesForConfirmedCard")
-    @DisplayName("확정한 카드에 가리기를 보내면 규칙이 같든 다르든 409 CARD_CONFIRMED 이고, 규칙 목록이 없거나 잘못된 규칙(21개·to 없음·NBSP 뿐인 from·101자·U+0000)도 400 보다 먼저 409 이며 규칙도 버전도 바뀌지 않는다")
-    void confirmedCardIsConflict(String body) throws Exception {
+    @Test
+    @DisplayName("확정한 카드도 다시 열지 않고 가리기 규칙을 바꿔 MASK 새 버전을 만들며, 카드는 확정으로 남는다")
+    void confirmedCardAcceptsNewRulesAndStaysConfirmed() throws Exception {
 
         Long cardId = draftCard();
         storeRules(cardId, List.of(TEAM_RULE));
@@ -303,14 +302,16 @@ class CardMaskApiTest {
         fixtures.insertStatement(cardId, 2, "A", "우리 팀이 한 일", "USER_STATED", null);
         fixtures.confirmCard(cardId);
         age(cardId);
-        List<Map<String, Object>> before = stateOf(cardId);
 
-        mask(myUserId, MY_CARD.toString(), body)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.data").value(nullValue()))
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
+        mask(myUserId, MY_CARD.toString(), "{\"rules\": [{\"from\": \"A사\", \"to\": \"\"}]}")
+                .andExpect(status().isOk());
 
-        assertThat(stateOf(cardId)).isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId))
+                .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT current_version FROM card WHERE id = ?", Integer.class, cardId))
+                .isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT source FROM card_version WHERE card_id = ? AND version_no = 3",
+                String.class, cardId)).isEqualTo("MASK");
 
     }
 

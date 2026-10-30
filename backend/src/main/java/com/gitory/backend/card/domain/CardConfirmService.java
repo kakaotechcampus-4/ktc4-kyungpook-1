@@ -82,7 +82,7 @@ public class CardConfirmService {
             return null;
         }
         VersionSlots slots = reader.read(card.getId(), card.getCurrentVersion());
-        if (!confirmable(slots)) {
+        if (!slots.isConfirmable()) {
             return null;
         }
 
@@ -102,7 +102,7 @@ public class CardConfirmService {
 
         // 문장을 고치는 요청은 모두 카드 행을 먼저 잠그므로, 잠근 뒤 읽는 여기서는 문장과 근거가 한 시점으로 읽힌다
         VersionSlots slots = reader.read(card.getId(), card.getCurrentVersion());
-        if (!confirmable(slots)) {
+        if (!slots.isConfirmable()) {
             throw new CardNotConfirmableException();
         }
 
@@ -115,12 +115,6 @@ public class CardConfirmService {
         auditLog.ok(userId, AuditAction.CONFIRM_CARD, card.getId());
 
         return resultOf(card);
-
-    }
-
-    private static boolean confirmable(VersionSlots slots) {
-
-        return slots.stateOf(StarField.S) != StarFieldState.EMPTY && slots.stateOf(StarField.A) != StarFieldState.EMPTY;
 
     }
 

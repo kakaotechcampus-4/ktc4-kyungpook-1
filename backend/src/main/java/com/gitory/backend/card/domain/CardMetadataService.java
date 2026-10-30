@@ -31,9 +31,6 @@ public class CardMetadataService {
     public CardMetadata edit(UUID publicId, Long userId, String title, String period, List<String> themes) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
-        if (themes == null || title != null || period != null) {
-            card.requireDraft();
-        }
 
         if (title == null && period == null && themes == null) {
             throw new InvalidCardInputException("바꿀 제목·기간·문항 유형을 보내 주세요.");

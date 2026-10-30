@@ -141,8 +141,9 @@ public class AiHttpClient {
     private void record(String path, Seen seen, String errorCode, long started) {
 
         try {
-            recorder.record(new AiCall(path, AiCallContext.jobId(), AiCallContext.cardId(), seen.status, errorCode,
-                    seen.meta, Duration.ofNanos(System.nanoTime() - started).toMillis()));
+            recorder.record(new AiCall(path, AiCallContext.jobId(), AiCallContext.cardId(),
+                    AiCallContext.coverLetterId(), seen.status, errorCode, seen.meta,
+                    Duration.ofNanos(System.nanoTime() - started).toMillis()));
         } catch (RuntimeException failed) {
             log.warn("AI 호출 기록을 남기지 못했다: {}", path, failed);
         }

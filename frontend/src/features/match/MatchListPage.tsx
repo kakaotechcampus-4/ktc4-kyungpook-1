@@ -64,7 +64,7 @@ export function MatchListPage() {
       (current) => {
         const next = new URLSearchParams(current);
         if (query) next.set('q', query); else next.delete('q');
-        if (value === "ALL" || !value) next.delete(key);
+        if (!value || (value === "ALL" && key !== 'q')) next.delete(key);
         else next.set(key, value);
         return next;
       },

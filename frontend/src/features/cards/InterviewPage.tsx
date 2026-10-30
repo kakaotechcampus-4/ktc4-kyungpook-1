@@ -38,7 +38,7 @@ export function InterviewPage() {
   const autoAsked = useRef(false);
   // AI 가 더 물을 것이 없다고 끝낸 상태. 사용자가 칸을 골라 다시 물으면 풀린다
   const [aiDone, setAiDone] = useState(false);
-  useDocumentTitle(q.data ? `답변 작성 · ${q.data.title}` : '답변 작성');
+  useDocumentTitle(q.data ? `답변하기 - ${q.data.title}` : '답변하기');
 
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
   const field: StarField | null = parsedField.success ? parsedField.data : null;
@@ -101,7 +101,7 @@ export function InterviewPage() {
   if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   if (!card || turns.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={300} /></main>;
   const total = allTurns.length;
-  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}`, state: location.state }, { label: '답변 작성' }];
+  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}`, state: location.state }, { label: '답변하기' }];
   const askable = STAR_FIELDS.filter((f) => !closedFields.has(f));
   const weakFields = askable.filter((f) => !card.version[fieldKey[f]] || card.lowConfidenceFields.some((l) => l.field === f));
   const anyFilled = STAR_FIELDS.some((f) => card.version[fieldKey[f]]);
@@ -109,13 +109,13 @@ export function InterviewPage() {
   return (
     <main className="main main--tight">
       <Breadcrumb items={crumbs} />
-      <PageTitle right={`질문 ${total} / ${maxTurns}`}>답변 작성</PageTitle>
+      <PageTitle right={`질문 ${total} / ${maxTurns}`}>답변하기</PageTitle>
 
       <div className="iv">
         {/* 좌측 캔버스 — 답할수록 채워지는 카드 */}
         <section className={`card iv__canvas ${folded ? 'iv__canvas--folded' : ''}`} aria-label="카드 미리보기">
           <div className="row" style={{ gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border-default)' }}>
-            <span className="w-600" style={{ fontSize: 15 }}>{card.title}</span>
+            <span className="w-600" style={{ fontSize: 16 }}>{card.title}</span>
             <button type="button" className="iv__fold right" aria-expanded={!folded} onClick={() => setFolded((x) => !x)}>
               {folded ? '지금까지 쓴 카드 보기' : '접기'}
             </button>
@@ -148,12 +148,12 @@ export function InterviewPage() {
           {ask.isError && <QueryFailure error={ask.error} retry={() => ask.variables && askMore(ask.variables)} pending={ask.isPending} />}
 
           {finished.map((t) => (
-            <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 12, background: 'var(--bg-paper)' }}>
-              <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 10 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{t.field} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
+            <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 16, background: 'var(--bg-paper)' }}>
+              <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 11 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{t.field} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
               {t.answer ? (
                 <>
                   <span style={{ fontSize: 13, lineHeight: '20px' }}>{t.answer.text}</span>
-                  <span className="t-12 c-3">{evidenceTypeLabel[t.answer.source]} · 답변 저장됨</span>
+                  <span className="t-12 c-3">{evidenceTypeLabel[t.answer.source]}, 답변 저장됨</span>
                 </>
               ) : (
                 <span className="t-12 c-3">{t.outcome === 'SKIPPED' ? '넘긴 질문' : '측정하지 않음으로 기록'}</span>
@@ -168,14 +168,14 @@ export function InterviewPage() {
                 <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
                 <details className="interview-evidence"><summary>질문 근거 보기</summary>
                 <div className="found" style={{ gridTemplateColumns: '1fr' }}>
-                  <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>· {f}</span>)}</div>
-                  <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>· {m}</span>)}</div>
+                  <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>• {f}</span>)}</div>
+                  <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>• {m}</span>)}</div>
                 </div>
                 </details>
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>
-                  <span className="t-12 w-600 c-3" style={{ fontSize: 10.5 }}>이 중에 고르셔도 돼요</span>
+                  <span className="t-12 w-600 c-3" style={{ fontSize: 11 }}>이 중에 고르셔도 돼요</span>
                   {open.options.map((o) => <button key={o} type="button" className="chip chip--option" disabled={answer.isPending} aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
                 </div>
               )}
@@ -199,7 +199,7 @@ export function InterviewPage() {
                   <span className="w-600" style={{ fontSize: 14 }}>{aiDone ? '더 묻고 싶은 칸' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                     {!aiDone && <Button variant="outline" size="sm" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</Button>}
-                    {(weakFields.length ? weakFields : askable).map((f) => <Button key={f} variant="outline" size="sm" onClick={() => askMore(f)}>{starFieldShort[f]}{card.version[fieldKey[f]] ? (card.lowConfidenceFields.some((l) => l.field === f) ? ' · 확인 필요' : '') : ' · 비어 있음'}</Button>)}
+                    {(weakFields.length ? weakFields : askable).map((f) => <Button key={f} variant="outline" size="sm" onClick={() => askMore(f)}>{starFieldShort[f]}{card.version[fieldKey[f]] ? (card.lowConfidenceFields.some((l) => l.field === f) ? ' (확인 필요)' : '') : ' (비어 있음)'}</Button>)}
                   </div>
                 </div>
               )}

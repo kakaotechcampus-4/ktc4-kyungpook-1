@@ -51,7 +51,7 @@ describe('interview retry and pending answer', () => {
       fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
       fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
     }
-    fireEvent.click(await screen.findByRole('button', { name: /결과 · 비어 있음/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /결과 \(비어 있음\)/ }));
     const retry = await screen.findByRole('button', { name: /다시/ });
     fireEvent.click(retry);
     await waitFor(() => expect(ask.mock.calls.map((call) => call[1])).toEqual(suffix ? ['T', undefined, 'R', 'R'] : [undefined, 'R', 'R']));
@@ -120,7 +120,7 @@ describe('#417 skip saves SKIP instead of leaving the question open', () => {
 
     await screen.findByText('이어서 물을까요?');
     expect(screen.queryByRole('button', { name: /^과제/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /결과 · 비어 있음/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /결과 \(비어 있음\)/ })).toBeInTheDocument();
   });
 
   it('keeps the question open and explains why when skipping fails', async () => {

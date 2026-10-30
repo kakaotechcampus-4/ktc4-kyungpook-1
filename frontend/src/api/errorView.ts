@@ -27,7 +27,7 @@ export function errorView(error: unknown, context: 'read' | 'write' = 'write'): 
       return { title: '요청이 많아요', message: `${wait} 다시 시도해 주세요.${context === 'write' ? ' 입력한 내용은 그대로 남아 있어요.' : ''}`, canRetry: context === 'read' };
     }
     if (error.code === 'IDEMPOTENCY_KEY_MISMATCH') {
-      return { title: '분석 요청이 충돌했어요', message: '다른 저장소에 사용된 요청이에요. 저장소 목록에서 대상을 다시 선택해 주세요.', canRetry: false };
+      return { title: '정리 요청이 충돌했어요', message: '다른 레포에 쓰인 요청이에요. 레포 목록에서 다시 골라 주세요.', canRetry: false };
     }
     if (error.code === 'GITHUB_UNAUTHORIZED') {
       return { title: 'GitHub 연결을 다시 해 주세요', message: '연결이 끊겼거나 권한이 만료됐어요. 다시 연결하면 지금 화면으로 돌아와요.', canRetry: false, action: 'reconnect-github' };
@@ -45,11 +45,12 @@ export function errorView(error: unknown, context: 'read' | 'write' = 'write'): 
       NOT_CONFIRMABLE: '상황과 행동을 작성한 뒤 확정해 주세요.',
       BAD_FIELD: '보완할 항목을 다시 선택해 주세요.',
       NO_CANDIDATES: '카드로 만들 경험을 먼저 선택해 주세요.',
-      FEATURE_UNAVAILABLE: '현재는 제목·기간을 수정할 수 없어요.',
+      FEATURE_UNAVAILABLE: '현재는 제목과 기간을 수정할 수 없어요.',
     };
     return { title: '요청을 처리하지 못했어요', message: messages[error.code] ?? '입력 내용과 현재 상태를 확인해 주세요.', canRetry: false };
   }
-  return { title: '요청을 처리하지 못했어요', message: '현재 화면의 내용을 확인하고 다시 시도해 주세요.', canRetry: true };
+  // 연결 실패는 위에서 ApiError NETWORK·TIMEOUT 으로 따로 말한다. 여기는 화면 코드 오류까지 받으므로 원인을 단정하지 않는다(#461 리뷰)
+  return { title: '요청을 마치지 못했어요', message: '다시 시도해도 같으면 새로고침해 주세요.', canRetry: true };
 }
 
 export const isUnknownOutcome = (error: unknown) =>

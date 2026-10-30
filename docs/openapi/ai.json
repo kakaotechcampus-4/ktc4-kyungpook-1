@@ -1,6 +1,52 @@
 {
   "components": {
     "schemas": {
+      "ActivityContext": {
+        "additionalProperties": false,
+        "description": "활동 안 경험 카드가 속한 활동으로, 기록이 없어 질문과 빈칸 틀의 단서가 된다.",
+        "properties": {
+          "name": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "활동에서 맡은 역할. 없으면 null",
+            "title": "Role"
+          },
+          "type": {
+            "enum": [
+              "CLUB",
+              "EXTERNAL",
+              "CONTEST",
+              "INTERNSHIP",
+              "EDUCATION",
+              "PART_TIME",
+              "VOLUNTEER",
+              "STUDY",
+              "OTHER"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "ActivityContext",
+        "type": "object"
+      },
       "AssignmentRequest": {
         "additionalProperties": false,
         "description": "`POST /internal/cover-letter-assignments` 요청 모델.",
@@ -479,6 +525,40 @@
         "title": "CardDetail",
         "type": "object"
       },
+      "CardSlotText": {
+        "additionalProperties": false,
+        "description": "문항 유형을 고를 때 읽는 카드 칸 하나.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "칸 문장. 비어 있으면 null",
+            "title": "Body"
+          },
+          "star_slot": {
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "star_slot"
+        ],
+        "title": "CardSlotText",
+        "type": "object"
+      },
       "CardStatement": {
         "additionalProperties": false,
         "properties": {
@@ -587,6 +667,72 @@
           "summary"
         ],
         "title": "CardSummary",
+        "type": "object"
+      },
+      "CardThemesRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/card-themes` 요청 모델.",
+        "properties": {
+          "card_id": {
+            "description": "대상 경험 카드 ID",
+            "exclusiveMinimum": 0.0,
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/CardSlotText"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Slots",
+            "type": "array"
+          },
+          "title": {
+            "description": "카드 제목",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "title",
+          "slots"
+        ],
+        "title": "CardThemesRequest",
+        "type": "object"
+      },
+      "CardThemesResult": {
+        "description": "`POST /internal/card-themes` 응답 `data` 모델.",
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "themes": {
+            "description": "잘 맞는 순, 최대 2개. 맞는 것이 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "COLLABORATION",
+                "CONFLICT",
+                "PROBLEM_SOLVING",
+                "LEADERSHIP",
+                "CHALLENGE",
+                "FAILURE",
+                "GROWTH"
+              ],
+              "type": "string"
+            },
+            "title": "Themes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "card_id"
+        ],
+        "title": "CardThemesResult",
         "type": "object"
       },
       "ChangedFile": {
@@ -2180,6 +2326,43 @@
         "title": "Envelope[CandidateDetailResult]",
         "type": "object"
       },
+      "Envelope_CardThemesResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardThemesResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[CardThemesResult]",
+        "type": "object"
+      },
       "Envelope_DiffEvidenceResult_": {
         "properties": {
           "data": {
@@ -2548,6 +2731,43 @@
           "meta"
         ],
         "title": "Envelope[MeasuredSentenceResult]",
+        "type": "object"
+      },
+      "Envelope_PolishedSentenceResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PolishedSentenceResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[PolishedSentenceResult]",
         "type": "object"
       },
       "Envelope_QuestionsResult_": {
@@ -3152,7 +3372,8 @@
             "enum": [
               "PR",
               "COMMIT_CLUSTER",
-              "DIRECT_CARD"
+              "DIRECT_CARD",
+              "ACTIVITY"
             ],
             "title": "Source Type",
             "type": "string"
@@ -3234,6 +3455,17 @@
         "additionalProperties": false,
         "description": "`POST /internal/interview-turns` 요청 모델.",
         "properties": {
+          "activity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActivityContext"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ACTIVITY 카드가 속한 활동. 그 밖에는 null"
+          },
           "allowed_slots": {
             "anyOf": [
               {
@@ -3272,6 +3504,16 @@
             "title": "Card Id",
             "type": "integer"
           },
+          "card_kind": {
+            "default": "TECH",
+            "description": "카드 종류. 경험 카드(QUALITATIVE)는 첫 질문이 S 다",
+            "enum": [
+              "TECH",
+              "QUALITATIVE"
+            ],
+            "title": "Card Kind",
+            "type": "string"
+          },
           "existing_turn_count": {
             "default": 0,
             "description": "이 카드에 대해 이미 생성된 interview_turn 수",
@@ -3306,7 +3548,8 @@
             "enum": [
               "PR",
               "COMMIT_CLUSTER",
-              "DIRECT_CARD"
+              "DIRECT_CARD",
+              "ACTIVITY"
             ],
             "title": "Source Type",
             "type": "string"
@@ -3445,6 +3688,23 @@
             ],
             "description": "질문 대상 STAR 문장 순번(missing_slots[].statement_seq)",
             "title": "Target Statement Seq"
+          },
+          "themes": {
+            "description": "경험 카드에서 LLM 이 그만 묻기로 할 때 고른 문항 유형(잘 맞는 순, 최대 2개). 그 밖에는 빈 배열",
+            "items": {
+              "enum": [
+                "COLLABORATION",
+                "CONFLICT",
+                "PROBLEM_SOLVING",
+                "LEADERSHIP",
+                "CHALLENGE",
+                "FAILURE",
+                "GROWTH"
+              ],
+              "type": "string"
+            },
+            "title": "Themes",
+            "type": "array"
           },
           "trigger_source": {
             "anyOf": [
@@ -4216,6 +4476,84 @@
         ],
         "title": "PartialReason",
         "type": "string"
+      },
+      "PolishedSentenceRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/interview-polished-sentence` 요청 모델.",
+        "properties": {
+          "answer_text": {
+            "description": "사용자가 쓴 답",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Answer Text",
+            "type": "string"
+          },
+          "card_id": {
+            "description": "대상 경험 카드 ID",
+            "exclusiveMinimum": 0.0,
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "question_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "그 답을 받은 질문",
+            "title": "Question Text"
+          },
+          "star_slot": {
+            "description": "답이 들어갈 칸",
+            "enum": [
+              "S",
+              "T",
+              "A",
+              "R"
+            ],
+            "title": "Star Slot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "star_slot",
+          "answer_text"
+        ],
+        "title": "PolishedSentenceRequest",
+        "type": "object"
+      },
+      "PolishedSentenceResult": {
+        "description": "`POST /internal/interview-polished-sentence` 응답 `data` 모델.",
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "integer"
+          },
+          "sentence": {
+            "description": "표현만 다듬은 문장",
+            "title": "Sentence",
+            "type": "string"
+          },
+          "unsourced_numbers": {
+            "description": "다듬은 문장에는 있는데 사용자 답에는 없는 숫자. 한 번 고쳐 쓴 뒤에도 남은 것",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unsourced Numbers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "card_id",
+          "sentence"
+        ],
+        "title": "PolishedSentenceResult",
+        "type": "object"
       },
       "PreviousTurn": {
         "additionalProperties": false,
@@ -5863,6 +6201,77 @@
         ]
       }
     },
+    "/internal/card-themes": {
+      "post": {
+        "description": "확정할 때 문항 유형이 빈 경험 카드의 제목·칸 문장으로 유형을 최대 2개 고릅니다. 저장하지 않습니다. 실패하면 Spring 이 빈 유형으로 확정합니다.",
+        "operationId": "choose_card_themes_internal_card_themes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardThemesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_CardThemesResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 답을 받지 못함(retryable=true)."
+          }
+        },
+        "summary": "경험 카드의 자소서 문항 유형 고르기",
+        "tags": [
+          "interview-turns"
+        ]
+      }
+    },
     "/internal/collect": {
       "post": {
         "description": "Spring이 전달한 저장소·사용자 문맥으로 commit·PR·review·issue를 수집합니다. 복구 가능한 일부 수집 실패와 상한 초과는 HTTP 200의 partial=true 및 partial_reason으로 표시합니다. PR 은 최근 갱신순 상한 밖의 남의 PR 이 빠진 것은 부분 수집으로 표시하지 않고, 내 PR 이 잘렸을 수 있을 때만 표시합니다. 커밋이 없는 빈 저장소는 head_sha=null·커밋 0개로 반환합니다. 원본 전체 diff는 반환하지 않으며 본문은 제한된 excerpt만 반환합니다. GitHub 토큰은 헤더로만 전달하고 본문·응답·DB에 저장하지 않습니다.",
@@ -6454,6 +6863,77 @@
           }
         },
         "summary": "'재 봤어요' 측정 결과로 R 문장 다시 쓰기",
+        "tags": [
+          "interview-turns"
+        ]
+      }
+    },
+    "/internal/interview-polished-sentence": {
+      "post": {
+        "description": "사용자 답을 사실을 더하거나 빼지 않고 그 칸의 문장으로 다듬습니다. 저장하지 않습니다. 다듬은 문장에 답에 없는 숫자가 생기면 한 번 고쳐 쓰게 하고, 그래도 남은 숫자를 unsourced_numbers 로 돌려줍니다. 실패하면 Spring 이 사용자 답을 그대로 보여 줍니다.",
+        "operationId": "polish_answer_internal_interview_polished_sentence_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolishedSentenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_PolishedSentenceResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 문장을 받지 못함(retryable=true)."
+          }
+        },
+        "summary": "경험 카드 답을 표현만 다듬기",
         "tags": [
           "interview-turns"
         ]

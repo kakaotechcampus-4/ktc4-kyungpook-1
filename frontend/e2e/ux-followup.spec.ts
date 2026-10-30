@@ -15,7 +15,7 @@ test('failed reads show unknown counts while a confirmed empty response shows ze
 test('drafts lead to answering missing fields while confirmation remains available', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards/card_01');
   const next = page.locator('.sticky-footer .btn--primary');
-  await expect(next).toHaveText('답변으로 보완');
+  await expect(next).toHaveText('답변하기');
   await expect(page.getByRole('button', { name: '확정', exact: true })).toBeEnabled();
   await next.click();
   await expect(page).toHaveURL(/\/interview\?field=T$/);
@@ -63,6 +63,6 @@ test('settings prioritizes controls and keeps storage details available on deman
   expect((await dark.boundingBox())!.y).toBeLessThan(500);
   await expect(page.getByText('Free Plan', { exact: true })).toHaveCount(0);
   await expect(page.getByText('GitHub 액세스 토큰', { exact: true })).toBeHidden();
-  await page.locator('summary').filter({ hasText: '저장·보관 정보' }).click();
+  await page.locator('summary').filter({ hasText: '저장과 보관 정보' }).click();
   await expect(page.getByText('GitHub 액세스 토큰', { exact: true })).toBeVisible();
 });

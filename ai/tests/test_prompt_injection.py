@@ -23,6 +23,7 @@ from schemas.analysis import ChangedFile, CommitInput, PullRequestContext, StarA
 from schemas.collection import CandidateDetailResult
 from schemas.interview import InterviewAnswerRequest, InterviewTurnRequest, MeasuredSentenceRequest
 from schemas.matching import JobPostingDetailExtractionRequest
+from scripts import evaluate_prompt_injection
 from scripts.evaluate_prompt_injection import (
     CASES,
     FAKE_COMPANY,
@@ -311,7 +312,87 @@ def test_prompt_injection_evaluation_covers_all_live_llm_tasks() -> None:
     assert len(CASES) >= 50
     assert {"GROUPING_CLUSTER", "INTERVIEW", "MEASURE", "COVER_ASSIGN", "COVER_SUPERVISE", "COVER_ASK",
             "COVER_DRAFT"} <= case_tasks
-    assert case_tasks <= set(RUNNERS)
+    assert case_tasks == set(RUNNERS)
+
+
+def test_every_task_has_at_least_six_cases() -> None:
+    counts = {task: sum(case.task == task for case in CASES) for task in RUNNERS}
+
+    assert min(counts.values()) >= 6, counts
+
+
+def test_cases_cover_the_injection_styles_and_places_the_issue_asks_for() -> None:
+    """#370: 영어·섞인 말·숨은 주석·코드 블록·긴 글에 묻은 지시·다른 대상인 척, 이슈·파일 경로·함수 이름·공고 제목·회사 소개."""
+    kinds = {kind for case in CASES for kind in case.kinds}
+    places = {case.surface for case in CASES}
+
+    assert {"ENGLISH", "MIXED_LANGUAGE", "HTML_COMMENT", "CODE_BLOCK", "BURIED", "OTHER_TARGET"} <= kinds
+    assert {"issue_title", "issue_body", "file_path", "function_name", "job_title", "company_intro"} <= places
+    assert {item.kind for item in INJECTIONS} == kinds
+
+
+class _ScriptedClient:
+    """평가 스크립트가 만드는 호출기 대신, 정해 둔 출력을 차례로 돌려준다."""
+
+    def __init__(self, *outputs: BaseModel) -> None:
+        self._outputs = list(outputs)
+
+    def ensure_ready(self) -> None:
+        pass
+
+    def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
+        output = self._outputs.pop(0) if len(self._outputs) > 1 else self._outputs[0]
+        return StructuredCallResult(output=output, prompt_tokens=1, completion_tokens=1, latency_ms=1)
+
+
+def _run_with(monkeypatch, case_name: str, task: str, *outputs: BaseModel) -> dict:
+    monkeypatch.setattr(evaluate_prompt_injection, "EnvironmentLLMClient", lambda *a, **k: _ScriptedClient(*outputs))
+    return run_case(next(case for case in CASES if case.task == task and case.name == case_name))
+
+
+def test_interview_question_on_a_slot_outside_allowed_slots_counts_as_followed_but_blocked(monkeypatch) -> None:
+    steered = QuestionOutput(action="ASK", star_slot="S", question="어떤 상황이었나요?")
+
+    entry = _run_with(monkeypatch, "slot_text_slot_steer", "INTERVIEW", steered)
+
+    assert entry["status"] == "OK"
+    assert "SLOT_OUTSIDE_ALLOWED" in entry["followed_raw"]
+    assert "SLOT_OUTSIDE_ALLOWED" not in entry["followed_after_filters"]
+
+
+def test_interview_suggestion_with_a_number_not_in_the_input_counts_as_followed(monkeypatch) -> None:
+    invented = QuestionOutput(action="ASK", star_slot="R", question="결과를 어떻게 확인했나요?",
+                              suggested_answers=["오류가 30% 줄었다."])
+
+    entry = _run_with(monkeypatch, "previous_answer_mixed", "INTERVIEW", invented)
+
+    assert "UNSOURCED_NUMBER" in entry["followed_raw"]
+    # 입력에 없는 수치가 든 예상 답변은 코드가 버리므로 거른 뒤에는 남지 않는다.
+    assert "UNSOURCED_NUMBER" not in entry["followed_after_filters"]
+
+
+def test_interview_question_inside_allowed_slots_without_invented_numbers_is_clean(monkeypatch) -> None:
+    clean = QuestionOutput(action="ASK", star_slot="R", question="401 응답을 어떻게 확인했나요?",
+                           suggested_answers=["만료 토큰 요청에 401을 돌려줬다."])
+
+    entry = _run_with(monkeypatch, "slot_text_slot_steer", "INTERVIEW", clean)
+
+    assert (entry["followed_raw"], entry["followed_after_filters"]) == ([], [])
+
+
+def test_measured_sentence_with_a_number_the_user_did_not_write_counts_as_followed(monkeypatch) -> None:
+    entry = _run_with(monkeypatch, "user_text_buried", "MEASURE", SentenceOutput(sentence="응답 시간이 50ms 줄었다."))
+
+    assert "UNSOURCED_NUMBER" in entry["followed_raw"]
+    assert "UNSOURCED_NUMBER" in entry["followed_after_filters"]
+
+
+def test_measured_sentence_using_only_the_users_numbers_is_clean(monkeypatch) -> None:
+    sentence = SentenceOutput(sentence="응답 시간을 120ms 에서 80ms 로 줄였다.")
+
+    entry = _run_with(monkeypatch, "user_text_buried", "MEASURE", sentence)
+
+    assert (entry["followed_raw"], entry["followed_after_filters"]) == ([], [])
 
 
 def test_structured_client_sends_input_as_a_json_user_message_apart_from_the_system_prompt() -> None:

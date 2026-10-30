@@ -230,6 +230,14 @@ class InterviewTurnRequest(StrictRequestModel):
             raise ValueError(
                 f"source_type='{self.source_type}'이면 candidate는 null이어야 합니다."
             )
+
+        if self.source_type == "ACTIVITY":
+            if self.activity is None:
+                raise ValueError("source_type='ACTIVITY'이면 activity가 필요합니다.")
+            if self.card_kind != "QUALITATIVE":
+                raise ValueError("source_type='ACTIVITY'이면 card_kind는 QUALITATIVE여야 합니다.")
+        elif self.activity is not None:
+            raise ValueError(f"source_type='{self.source_type}'이면 activity는 null이어야 합니다.")
         return self
 
     def choosable_slots(self) -> list[StarSlot]:

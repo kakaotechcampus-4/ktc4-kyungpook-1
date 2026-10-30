@@ -213,7 +213,7 @@ class InterviewLLM:
 
         돌려보낸 호출이 실패하면 첫 문장을 남은 숫자와 함께 돌려주고, 첫 호출이 실패하면 InterviewLLMUnavailable.
         """
-        answer = self._clip(request.answer_text)
+        answer = self._clip(request.answer_text, self._limits.max_answer_chars)
         payload = {
             "star_slot": request.star_slot,
             "question": self._clip(request.question_text) if request.question_text else None,
@@ -391,11 +391,14 @@ class InterviewLLM:
         parts = [slot["text"] or "" for slot in payload["slots"]]
         parts += [turn["answer"] or "" for turn in payload["previous_turns"]]
         parts += payload["commits"]
+        activity = payload.get("activity")
+        if activity:
+            parts += [activity["name"], activity["role"] or ""]
         return "\n".join(parts)
 
-    def _clip(self, text: str) -> str:
+    def _clip(self, text: str, limit: Optional[int] = None) -> str:
         cleaned = mask_emails(redact_secrets(text))
-        return cleaned[: self._limits.max_text_chars]
+        return cleaned[: limit or self._limits.max_text_chars]
 
 
 def has_metric(text: Optional[str]) -> bool:

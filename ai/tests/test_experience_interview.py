@@ -66,6 +66,7 @@ def _next(client: FakeClient, request: InterviewTurnRequest):
     return asyncio.run(InterviewAgent(llm=InterviewLLM(client)).next_turn(request))
 
 
+ACTIVITY = {"name": "캠퍼스 해커톤", "type": "CONTEST", "role": "백엔드"}
 ANSWERED_S = [{"star_slot": "S", "question_text": "상황은요?", "outcome": "ANSWERED", "answer_text": "회의가 길었다"}]
 
 
@@ -234,5 +235,48 @@ def test_card_themes_endpoint_returns_503_when_unavailable(monkeypatch) -> None:
 
 def test_activity_card_rejects_a_candidate() -> None:
     """활동 카드는 레포 후보가 없으므로 candidate 를 함께 보내면 거절한다."""
-    with pytest.raises(ValidationError):
-        _turn(source_type="ACTIVITY", candidate={"commits": []})
+    with pytest.raises(ValidationError, match="candidate"):
+        _turn(source_type="ACTIVITY", activity=ACTIVITY, candidate={"commits": []})
+
+
+def test_polish_keeps_the_whole_answer_up_to_the_stored_length() -> None:
+    """답은 저장 칸 길이(1,000자)까지 그대로 넘겨, 긴 답의 끝에만 있는 숫자도 지어낸 숫자로 보지 않는다."""
+    answer = "회의 방식을 바꾸려고 여러 번 이야기를 나눴다. " * 30 + "그 결과 회의 시간이 40% 줄었다"
+    client = FakeClient(SentenceOutput(sentence="회의 방식을 바꿔 회의 시간을 40% 줄였다."))
+
+    result = _polish(client, answer)
+
+    assert len(answer) > 500
+    assert client.payloads[0]["answer"] == answer
+    assert len(client.payloads) == 1
+    assert result.unsourced_numbers == []
+
+
+def test_activity_name_and_role_count_as_number_sources() -> None:
+    """활동 이름·역할에 든 수치(24시간, 2개)는 지어낸 숫자가 아니라서, 그 수치가 든 빈칸 틀을 버리지 않는다."""
+    client = FakeClient(QuestionOutput(
+        action="ASK", star_slot="S", question="해커톤에서 어떤 상황이었나요?",
+        suggested_answers=["24시간 캠퍼스 해커톤에서 ___ 를 준비하던 중 ___ 문제가 생겼다",
+                           "2개 파트의 ___ 를 맡아 ___ 를 만들었다"],
+    ))
+    activity = {"name": "24시간 캠퍼스 해커톤", "type": "CONTEST", "role": "2개 파트 리드"}
+
+    result, _ = _next(client, _turn(source_type="ACTIVITY", activity=activity))
+
+    assert result.suggested_answers == ["24시간 캠퍼스 해커톤에서 ___ 를 준비하던 중 ___ 문제가 생겼다",
+                                        "2개 파트의 ___ 를 맡아 ___ 를 만들었다"]
+
+
+@pytest.mark.parametrize("overrides", [
+    {"source_type": "ACTIVITY"},
+    {"source_type": "DIRECT_CARD", "activity": ACTIVITY},
+    {"source_type": "ACTIVITY", "activity": ACTIVITY, "card_kind": "TECH"},
+], ids=["활동 출처인데 활동 없음", "활동 출처가 아닌데 활동 있음", "활동 카드인데 기술 카드"])
+def test_source_activity_and_card_kind_must_agree(overrides: dict) -> None:
+    """활동 출처일 때만 활동을 받고 활동 카드는 경험 카드뿐이라, 어긋난 조합은 400 이다."""
+    payload = {"card_id": 7, "card_kind": "QUALITATIVE", "max_turns": 8,
+               "missing_slots": [_slot("S"), _slot("T"), _slot("A"), _slot("R")], **overrides}
+
+    response = TestClient(app).post("/internal/interview-turns", json=payload)
+
+    assert response.status_code == 400

@@ -1115,3 +1115,193 @@ def test_github_api_base_url_ignores_trailing_slash(monkeypatch) -> None:
     monkeypatch.setenv("GITORY_GITHUB_API_BASE_URL", "https://fake-github.test/gh/")
 
     assert GithubCollector()._base_url == "https://fake-github.test/gh"
+
+
+COMMIT_DETAIL_PREFIX = "/repos/grow22/gitory/commits/"
+
+
+def _commit_detail(sha: str) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "sha": sha,
+            "author": {"login": "grow22", "type": "User"},
+            "commit": {
+                "message": f"feat: {sha}",
+                "author": {"name": "Grow", "email": "grow22@example.com", "date": "2026-09-20T09:00:00Z"},
+            },
+            "parents": [{"sha": "parent"}],
+            "stats": {"additions": 1, "deletions": 0},
+            "files": [],
+        },
+    )
+
+
+def _detail_collector(pulls: list[int], shas: list[str], answer, calls: list[str]) -> GithubCollector:
+    """PR 목록·커밋 목록은 바로 주고, PR 하나의 커밋·리뷰·줄 댓글과 커밋 상세는 answer 가 답하는 가짜 GitHub."""
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        calls.append(path)
+        if path == "/repos/grow22/gitory/pulls":
+            return httpx.Response(200, json=[_pull(number, "teammate") for number in pulls])
+        if path == "/repos/grow22/gitory/branches/develop":
+            return httpx.Response(200, json={"name": "develop", "commit": {"sha": "dead000"}})
+        if path == "/repos/grow22/gitory/commits":
+            return httpx.Response(200, json=[{"sha": sha} for sha in shas])
+        if path == "/repos/grow22/gitory/issues":
+            return httpx.Response(200, json=[])
+        return await answer(path)
+
+    return GithubCollector(base_url="https://api.github.test", transport=httpx.MockTransport(handler))
+
+
+def _collect_listening(collector: GithubCollector, events: list[tuple]):
+    """진행 알림을 events 에 모으며 수집하고, 멈춰 버리면 2초 뒤 시간 초과로 실패한다."""
+
+    async def run():
+        with listening(lambda step, done, total, item: events.append((step, done, total, item))):
+            return await asyncio.wait_for(collector.collect(_request(), "live-secret"), 2)
+
+    return asyncio.run(run())
+
+
+async def _wait_until(condition) -> None:
+    while not condition():
+        await asyncio.sleep(0.001)
+
+
+def _read_pulls(events: list[tuple]) -> list[int]:
+    return [item["number"] for step, _, _, item in events if step == "PR_REVIEW" and item]
+
+
+def _read_commits(events: list[tuple]) -> list[str]:
+    return [item["sha"] for step, _, _, item in events if step == "COMMITS" and item]
+
+
+def _finishing_backwards(pulls: list[int], shas: list[str], events: list[tuple]):
+    """목록의 앞 것은 바로 뒤의 것을 다 읽었다는 진행 알림이 온 뒤에 답해, 뒤에서부터 끝나게 한다."""
+
+    async def answer(path: str) -> httpx.Response:
+        if path.startswith(COMMIT_DETAIL_PREFIX):
+            sha = path.removeprefix(COMMIT_DETAIL_PREFIX)
+            index = shas.index(sha)
+            if index + 1 < len(shas):
+                await _wait_until(lambda: shas[index + 1][:7] in _read_commits(events))
+            return _commit_detail(sha)
+        number = int(path.split("/")[5])
+        index = pulls.index(number)
+        if path.endswith("/reviews") and index + 1 < len(pulls):
+            await _wait_until(lambda: pulls[index + 1] in _read_pulls(events))
+        return httpx.Response(200, json=[])
+
+    return answer
+
+
+def test_reads_pull_requests_and_commits_four_at_a_time() -> None:
+    """PR 상세와 커밋 상세는 4개까지 동시에 읽고 그보다 많이 읽지 않는다."""
+    in_flight = {"pulls": 0, "commits": 0}
+    peak = {"pulls": 0, "commits": 0}
+
+    async def answer(path: str) -> httpx.Response:
+        kind = "commits" if path.startswith(COMMIT_DETAIL_PREFIX) else "pulls"
+        in_flight[kind] += 1
+        peak[kind] = max(peak[kind], in_flight[kind])
+        await asyncio.sleep(0.02)
+        in_flight[kind] -= 1
+        if kind == "commits":
+            return _commit_detail(path.removeprefix(COMMIT_DETAIL_PREFIX))
+        return httpx.Response(200, json=[])
+
+    shas = [f"c{i}00000" for i in range(1, 7)]
+    collector = _detail_collector([60, 50, 40, 30, 20, 10], shas, answer, [])
+
+    result = _collect_listening(collector, []).result
+
+    assert peak == {"pulls": 4, "commits": 4}
+    assert len(result.pull_requests) == 6
+    assert len(result.commits) == 6
+
+
+def test_results_keep_list_order_when_later_reads_finish_first() -> None:
+    """뒤의 것이 먼저 끝나도 PR 은 PR 목록 순서로, 커밋은 커밋 목록 순서로 모은다."""
+    pulls = [40, 30, 20, 10]
+    shas = ["c100000", "c200000", "c300000", "c400000"]
+    events: list[tuple] = []
+    collector = _detail_collector(pulls, shas, _finishing_backwards(pulls, shas, events), [])
+
+    result = _collect_listening(collector, events).result
+
+    assert _read_pulls(events) == [10, 20, 30, 40]
+    assert [pull.number for pull in result.pull_requests] == pulls
+    assert [commit.sha for commit in result.commits] == shas
+
+
+def test_progress_counts_finished_reads_and_reports_them_as_they_finish() -> None:
+    """진행 숫자는 다 읽은 개수라 1씩 늘고, 함께 싣는 PR·커밋은 끝난 순서로 나온다."""
+    pulls = [40, 30, 20, 10]
+    shas = ["c100000", "c200000", "c300000", "c400000"]
+    events: list[tuple] = []
+    collector = _detail_collector(pulls, shas, _finishing_backwards(pulls, shas, events), [])
+
+    _collect_listening(collector, events)
+
+    assert [(done, total) for step, done, total, _ in events if step == "PR_REVIEW"] == [(i, 4) for i in range(5)]
+    assert [(done, total) for step, done, total, _ in events if step == "COMMITS"] == [(i, 4) for i in range(5)]
+    assert _read_pulls(events) == [10, 20, 30, 40]
+    assert _read_commits(events) == ["c400000", "c300000", "c200000", "c100000"]
+
+
+@pytest.mark.parametrize("reading_pulls", [True, False])
+def test_rate_limit_stops_new_reads_and_keeps_finished_ones_in_list_order(reading_pulls: bool) -> None:
+    """한도에 걸리면 아직 안 읽은 PR·커밋은 요청하지 않고 읽던 것은 멈추며, 그때까지 다 읽은 것만 목록 순서로 부분 결과에 담고 다음 단계로 가지 않는다."""
+    keys: list = [80, 70, 60, 50, 40, 30, 20, 10] if reading_pulls else [f"c{i}00000" for i in range(1, 9)]
+    events: list[tuple] = []
+    calls: list[str] = []
+
+    def read() -> list:
+        return _read_pulls(events) if reading_pulls else _read_commits(events)
+
+    def key_of(path: str):
+        if reading_pulls:
+            return int(path.split("/")[5]) if path.startswith("/repos/grow22/gitory/pulls/") else None
+        return path.removeprefix(COMMIT_DETAIL_PREFIX) if path.startswith(COMMIT_DETAIL_PREFIX) else None
+
+    async def answer(path: str) -> httpx.Response:
+        key = key_of(path) if not reading_pulls or path.endswith("/commits") else None
+        if key == keys[0]:
+            await _wait_until(lambda: keys[1] in read())
+        elif key == keys[2]:
+            await _wait_until(lambda: len(read()) == 2)
+            return httpx.Response(429)
+        elif key is not None and key != keys[1]:
+            await asyncio.sleep(5)
+        return httpx.Response(200, json=[]) if reading_pulls else _commit_detail(path.removeprefix(COMMIT_DETAIL_PREFIX))
+
+    pulls, shas = (keys, []) if reading_pulls else ([], keys)
+    result = _collect_listening(_detail_collector(pulls, shas, answer, calls), events).result
+
+    collected = [pull.number for pull in result.pull_requests] if reading_pulls else [commit.sha for commit in result.commits]
+    requested = {key_of(path) for path in calls} - {None}
+    assert collected == keys[:2]
+    assert result.partial_reason == PartialReason.GITHUB_RATE_LIMITED
+    assert requested.isdisjoint(keys[6:])
+    assert "/repos/grow22/gitory/issues" not in calls
+
+
+def test_rejected_token_while_reading_together_fails_the_whole_collection() -> None:
+    """여럿을 동시에 읽다가 GitHub 이 토큰을 거절하면 읽던 것을 멈추고 수집 전체를 실패로 끝낸다."""
+    shas = [f"c{i}00000" for i in range(1, 7)]
+    calls: list[str] = []
+
+    async def answer(path: str) -> httpx.Response:
+        if path.removeprefix(COMMIT_DETAIL_PREFIX) == shas[0]:
+            return httpx.Response(401)
+        await asyncio.sleep(5)
+        return _commit_detail(path.removeprefix(COMMIT_DETAIL_PREFIX))
+
+    with pytest.raises(GithubUnauthorized):
+        _collect_listening(_detail_collector([], shas, answer, calls), [])
+
+    requested = {path.removeprefix(COMMIT_DETAIL_PREFIX) for path in calls if path.startswith(COMMIT_DETAIL_PREFIX)}
+    assert requested.isdisjoint(shas[4:])

@@ -10,10 +10,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,7 +42,46 @@ public class CardMaterialReader {
     @Transactional(readOnly = true)
     public List<CardMaterial> read(Long userId, int limit) {
 
-        List<Long> cardIds = confirmedCards.findLiveIdsNewestFirst(userId).stream().limit(limit).toList();
+        return materials(confirmedCards.findLiveIdsNewestFirst(userId).stream().limit(limit).toList());
+
+    }
+
+    /** 자소서 문항에 배정된 카드처럼 id 로 고른 카드를 읽으며, 그사이 지운 카드는 빠진다 */
+    @Transactional(readOnly = true)
+    public List<CardMaterial> readOf(Collection<Long> cardIds) {
+
+        return cardIds.isEmpty() ? List.of() : materials(confirmedCards.findLiveIds(cardIds));
+
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasConfirmed(Long userId) {
+
+        return !confirmedCards.findLiveIdsNewestFirst(userId).isEmpty();
+
+    }
+
+    /** 카드마다 가린 뒤에도 문장이 남는 칸으로, 자소서 화면의 '재료 점검' 이 AI 가 받는 문장과 같은 기준을 쓰게 한다 */
+    @Transactional(readOnly = true)
+    public Map<Long, Set<StarField>> filledSlots(Collection<Long> cardIds) {
+
+        if (cardIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Card> byId = cards.findAllById(cardIds).stream()
+                .collect(Collectors.toMap(Card::getId, Function.identity()));
+        return statements.findCurrentOf(cardIds).stream()
+                .filter(statement -> byId.containsKey(statement.getCardId()))
+                .filter(statement -> !CardText.isBlank(
+                        MaskRule.apply(statement.getBody(), byId.get(statement.getCardId()).getMaskRules())))
+                .collect(Collectors.groupingBy(CardStatement::getCardId,
+                        Collectors.mapping(CardStatement::getStarSlot, Collectors.toSet())));
+
+    }
+
+    private List<CardMaterial> materials(List<Long> cardIds) {
+
         if (cardIds.isEmpty()) {
             return List.of();
         }

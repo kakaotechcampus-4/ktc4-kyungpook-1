@@ -22,11 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class InterviewTurnResponseTest {
 
     @Test
-    @DisplayName("질문 번호·칸·출처 종류·질문 종류·질문 글·남은 수·최대 수는 도메인 값 그대로고 근거·보기는 빈 배열이다")
+    @DisplayName("질문 번호·칸·출처 종류·질문 종류·질문 글·판단 이유·남은 수·최대 수는 도메인 값 그대로고 근거·보기는 빈 배열이다")
     void copiesDomainValues() {
 
         InterviewTurnView view = new InterviewTurnView(2, StarField.R, TriggerSource.USER,
-                InterviewSourceType.COMMIT_CLUSTER, QuestionType.RECALL_AID, "  결과는 어땠나요?  ", AnswerMode.TEXT, List.of(), null, null, 1, 3);
+                InterviewSourceType.COMMIT_CLUSTER, QuestionType.RECALL_AID, "  결과는 어땠나요?  ",
+                "결과에 수치가 없어 물어요", AnswerMode.TEXT, List.of(), null, null, 1, 3);
 
         InterviewTurnResponse response = InterviewTurnResponse.from(view);
 
@@ -35,6 +36,7 @@ class InterviewTurnResponseTest {
         assertThat(response.sourceType()).isEqualTo(InterviewSourceType.COMMIT_CLUSTER);
         assertThat(response.questionType()).isEqualTo(QuestionType.RECALL_AID);
         assertThat(response.question()).isEqualTo("  결과는 어땠나요?  ");
+        assertThat(response.reason()).isEqualTo("결과에 수치가 없어 물어요");
         assertThat(response.remaining()).isEqualTo(1);
         assertThat(response.maxTurns()).isEqualTo(3);
         assertThat(response.found()).isEmpty();
@@ -51,7 +53,7 @@ class InterviewTurnResponseTest {
     void mapsTriggerSourceToAskedBy(TriggerSource source, AskedBy expected) {
 
         InterviewTurnView view = new InterviewTurnView(1, StarField.T, source, InterviewSourceType.DIRECT_CARD,
-                QuestionType.EVIDENCE_GAP, "질문", AnswerMode.TEXT, List.of(), null, null, 1, 2);
+                QuestionType.EVIDENCE_GAP, "질문", null, AnswerMode.TEXT, List.of(), null, null, 1, 2);
 
         assertThat(InterviewTurnResponse.from(view).askedBy()).isEqualTo(expected);
 
@@ -63,7 +65,7 @@ class InterviewTurnResponseTest {
     void mapsAnswerSource(AnswerSource stored, EvidenceType expected) {
 
         InterviewTurnView view = new InterviewTurnView(1, StarField.T, TriggerSource.USER,
-                InterviewSourceType.DIRECT_CARD, QuestionType.EVIDENCE_GAP, "질문",
+                InterviewSourceType.DIRECT_CARD, QuestionType.EVIDENCE_GAP, "질문", null,
                 AnswerMode.TEXT, List.of(), TurnOutcome.ANSWERED, new InterviewAnswer("  답  ", stored), 1, 2);
 
         InterviewAnswerResponse answer = InterviewTurnResponse.from(view).answer();
@@ -78,7 +80,7 @@ class InterviewTurnResponseTest {
     void skippedTurnHasOutcomeWithoutAnswer() {
 
         InterviewTurnView view = new InterviewTurnView(1, StarField.T, TriggerSource.USER,
-                InterviewSourceType.DIRECT_CARD, QuestionType.EVIDENCE_GAP, "질문",
+                InterviewSourceType.DIRECT_CARD, QuestionType.EVIDENCE_GAP, "질문", null,
                 AnswerMode.TEXT, List.of(), TurnOutcome.SKIPPED, null, 1, 3);
 
         InterviewTurnResponse response = InterviewTurnResponse.from(view);

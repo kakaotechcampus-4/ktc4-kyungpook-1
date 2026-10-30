@@ -32,7 +32,7 @@ class LineCareersClientTest {
     void startSite() {
 
         site = FakeCareersSite.start();
-        source = new CompanySource("lineplus", "라인플러스", CompanySourceType.LINE, site.base() + LIST_PATH);
+        source = new CompanySource("lineplus", "라인플러스", CompanySourceType.LINE, site.base() + LIST_PATH, null);
 
     }
 

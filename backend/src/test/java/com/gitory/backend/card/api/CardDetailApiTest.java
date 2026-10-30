@@ -54,7 +54,7 @@ class CardDetailApiTest {
     // FE schemas.ts 의 Card·CardVersion·Evidence 가 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "period", "repo",
             "activity", "candidate", "version", "evidence", "lowConfidenceFields", "droppedFields", "draftSteps",
-            "maskRules", "generation", "draftFailure", "interviewTurns", "confirmedAt", "createdAt"};
+            "maskRules", "generation", "draftFailure", "interviewTurns", "interviewEndReason", "confirmedAt", "createdAt"};
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",
             "result"};
     private static final String[] EVIDENCE_KEYS = {"field", "type", "authoredBy", "sha", "url", "snippet", "committedAt",
@@ -91,6 +91,21 @@ class CardDetailApiTest {
         myRepoId = fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
         firstCommit = fixtures.insertCommit(repositoryId, "1111111111111111111111111111111111111111");
         secondCommit = fixtures.insertCommit(repositoryId, "2222222222222222222222222222222222222222");
+
+    }
+
+    @Test
+    @DisplayName("AI 가 되묻기를 그만두기로 한 이유가 카드에 남아 있으면 interviewEndReason 으로, 없으면 null 로 보낸다")
+    void sendsInterviewEndReason() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        card(myUserId, MY_CARD.toString())
+                .andExpect(jsonPath("$.data.interviewEndReason").value(nullValue()));
+        jdbc.update("UPDATE card SET interview_end_reason = '네 칸 모두 근거가 있어 마칠게요' WHERE id = ?", cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.interviewEndReason").value("네 칸 모두 근거가 있어 마칠게요"));
 
     }
 

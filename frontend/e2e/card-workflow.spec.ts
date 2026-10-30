@@ -5,7 +5,27 @@ test('minimal API summaries never imply a manual source or invented evidence cou
   await loginAsDemo(page); await page.goto('/cards?demoScenario=minimal-summary');
   const item = page.locator('.experience-item').first(); await expect(item).toBeVisible();
   await expect(item.locator('.experience-item__meta')).toHaveText('기술 카드');
-  await expect(page.locator('.experience-item__footer').filter({ hasText: /근거 \d+개|내가 쓴 문장/ })).toHaveCount(0);
+  await expect(page.locator('.experience-item__footer').filter({ hasText: /근거 커밋 \d+개|내 답변 \d+개/ })).toHaveCount(0);
+});
+
+test('cards with all four STAR fields filled drop the text status badge; incomplete cards keep it', async ({ page }) => {
+  await loginAsDemo(page); await page.goto('/cards');
+  const tile = (id: string) => page.locator(`.experience-item[href="/cards/${id}"]`);
+  // 네 칸이 다 찬 확정 카드 — 글자 대신 체크 아이콘(이름 "확정됨"). card_05 는 확인 필요 표시가 있어도 확정 카드라 같다
+  for (const id of ['card_03', 'card_04', 'card_05']) {
+    await expect(tile(id).getByRole('img', { name: '확정됨' })).toBeVisible();
+    await expect(tile(id).locator('.badge')).toHaveCount(0);
+  }
+  // 빈 칸이 있는 작성 중 카드는 그대로 — 작성 중 + 확인 필요 + 빈 칸 수
+  await expect(tile('card_01').locator('.badge')).toHaveText(['작성 중', '확인 필요']);
+  await expect(tile('card_02').locator('.badge')).toHaveText(['작성 중']);
+  await expect(tile('card_02')).toContainText('빈 칸 2개');
+  // 탭 이름과 개수는 그대로 — 글자 배지가 사라져도 "확정됨" 탭으로 확정 카드를 모아 볼 수 있다
+  await expect(page.getByRole('button', { name: /^전체 5/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^작성 중 2/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^보완 필요 2/ })).toBeVisible();
+  await page.getByRole('button', { name: /^확정됨 3/ }).click();
+  await expect(page.locator('.experience-item')).toHaveCount(3);
 });
 
 test('active analysis is visible on home and can be reopened after refresh', async ({ page }) => {
@@ -36,7 +56,7 @@ test('copy preview offers plain STAR and evidence formats without modifying save
   await page.getByRole('button', { name: '복사', exact: true }).click();
   const preview = page.getByRole('textbox', { name: '복사할 내용', exact: true });
   const plain = await preview.inputValue(); expect(plain).not.toContain('##'); expect(plain).not.toContain('CONFIRMED');
-  await page.getByRole('radio', { name: 'STAR 형식', exact: true }).click();
+  await page.getByRole('radio', { name: '상황, 과제, 행동, 결과 형식', exact: true }).click();
   await expect(preview).toHaveValue(/상황\n/);
   await page.getByRole('radio', { name: '근거 포함', exact: true }).click();
   await expect(preview).toHaveValue(/https:\/\/github.com/);

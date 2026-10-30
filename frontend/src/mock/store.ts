@@ -253,7 +253,8 @@ export function cardView(c: Any) {
   const { _metadata, _confirmed, ...version } = v;
   void versions;
   void userId; void _metadata; void _confirmed;
-  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], version });
+  // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
+  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.

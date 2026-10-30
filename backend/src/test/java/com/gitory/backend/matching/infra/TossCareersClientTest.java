@@ -29,7 +29,7 @@ class TossCareersClientTest {
     void startSite() {
 
         site = FakeCareersSite.start();
-        source = new CompanySource("toss", "토스", CompanySourceType.TOSS, site.base() + LIST_PATH);
+        source = new CompanySource("toss", "토스", CompanySourceType.TOSS, site.base() + LIST_PATH, null);
 
     }
 

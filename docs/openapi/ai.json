@@ -2252,6 +2252,18 @@
         "title": "DraftsResult",
         "type": "object"
       },
+      "EducationLevel": {
+        "description": "지원할 수 있는 가장 낮은 학력으로, Spring 인적사항의 학력 단계와 같은 다섯 값이다.",
+        "enum": [
+          "HIGH_SCHOOL",
+          "ASSOCIATE",
+          "BACHELOR",
+          "MASTER",
+          "DOCTOR"
+        ],
+        "title": "EducationLevel",
+        "type": "string"
+      },
       "Envelope_AssignmentResult_": {
         "properties": {
           "data": {
@@ -3743,10 +3755,25 @@
       },
       "JobCriterion": {
         "additionalProperties": false,
-        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.",
+        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.\n``techs`` 는 필수·우대 기술 조건에만, 학력 값은 학력 조건에만 남기고 그 밖은 추출기가 비운다.",
         "properties": {
           "criterion_type": {
             "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "education_exempt": {
+            "default": false,
+            "title": "Education Exempt",
+            "type": "boolean"
+          },
+          "education_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EducationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "general_type": {
             "anyOf": [
@@ -3763,6 +3790,81 @@
             "minLength": 1,
             "title": "Source Quote",
             "type": "string"
+          },
+          "techs": {
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
+                "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
+                "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
+                "DOCKER",
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Techs",
+            "type": "array"
           },
           "text": {
             "maxLength": 1000,
@@ -3871,6 +3973,18 @@
             "$ref": "#/components/schemas/JobPostingContentStatus",
             "default": "READY"
           },
+          "previous_extraction_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Extraction Version"
+          },
           "raw_text": {
             "maxLength": 100000,
             "minLength": 1,
@@ -3934,6 +4048,11 @@
             "title": "External Posting Id",
             "type": "string"
           },
+          "extraction_version": {
+            "minimum": 1.0,
+            "title": "Extraction Version",
+            "type": "integer"
+          },
           "job_category": {
             "anyOf": [
               {
@@ -3956,6 +4075,81 @@
             "minLength": 1,
             "title": "Source Url",
             "type": "string"
+          },
+          "team_techs": {
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
+                "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
+                "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
+                "DOCKER",
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Team Techs",
+            "type": "array"
           }
         },
         "required": [
@@ -3964,7 +4158,8 @@
           "source_url",
           "content_hash",
           "outcome",
-          "content_status"
+          "content_status",
+          "extraction_version"
         ],
         "title": "JobPostingDetailExtractionResult",
         "type": "object"

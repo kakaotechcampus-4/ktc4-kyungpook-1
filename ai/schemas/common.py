@@ -48,6 +48,19 @@ StarTech = Literal[
     "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS",
 ]
 
+#: 카드와 공고가 같이 쓰는 기술 이름표로, Spring 의 CardTech·화면의 CardTech 와 같은 65개다.
+#: 값을 더하거나 빼면 세 곳을 같이 바꿔야 서로 모르는 값을 거절하지 않는다.
+TechTag = Literal[
+    "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART", "TYPESCRIPT",
+    "JAVASCRIPT", "SCALA", "SPRING", "JPA", "NODEJS", "NESTJS", "EXPRESS", "DJANGO", "FASTAPI",
+    "FLASK", "DOTNET", "REACT", "NEXTJS", "VUE", "ANGULAR", "ANDROID", "IOS", "FLUTTER",
+    "REACT_NATIVE", "SQL", "MYSQL", "POSTGRESQL", "ORACLE", "MONGODB", "REDIS", "ELASTICSEARCH",
+    "KAFKA", "RABBITMQ", "SPARK", "AIRFLOW", "HADOOP", "DOCKER", "KUBERNETES", "AWS", "GCP",
+    "AZURE", "TERRAFORM", "LINUX", "NGINX", "CI_CD", "GITHUB_ACTIONS", "JENKINS", "PROMETHEUS",
+    "GRAFANA", "LLM", "PYTORCH", "TENSORFLOW", "SCIKIT_LEARN", "LANGCHAIN", "GRAPHQL", "GRPC",
+    "MSA", "UNITY", "UNREAL",
+]
+
 #: card_statement.confidence 및 DB CHECK 제약과 같은 세 값.
 StatementConfidence = Literal["HIGH", "MEDIUM", "LOW"]
 

@@ -56,6 +56,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -468,7 +469,7 @@ class CardConfirmApiTest {
     }
 
     @Test
-    @DisplayName("문항 유형이 빈 경험 카드를 확정하면 AI 에 제목과 네 칸 문장을 보내 고른 유형을 붙이고, 모르는 값·겹친 값은 버린다")
+    @DisplayName("문항 유형이 빈 경험 카드를 확정하면 확정을 저장한 뒤 AI 에 제목과 네 칸 문장을 보내 고른 유형을 붙이고, 모르는 값·겹친 값은 버린다")
     void asksAiForThemesOfAnExperienceCard() throws Exception {
 
         Long cardId = manualCardWithSituationAndAction();
@@ -476,6 +477,7 @@ class CardConfirmApiTest {
 
         confirm(MY_CARD).andExpect(status().isOk());
 
+        assertThat(themesAfterSuggestion(cardId)).isEqualTo("COLLABORATION,GROWTH");
         assertThat(AI.requests()).hasSize(1);
         JsonNode sent = AI.requests().get(0);
         assertThat(sent.path("card_id").longValue()).isEqualTo(cardId);
@@ -483,7 +485,25 @@ class CardConfirmApiTest {
         assertThat(sent.path("slots").toString()).isEqualTo(
                 "[{\"star_slot\":\"S\",\"body\":\"상황\"},{\"star_slot\":\"T\",\"body\":null},"
                         + "{\"star_slot\":\"A\",\"body\":\"행동\"},{\"star_slot\":\"R\",\"body\":null}]");
-        assertThat(themesOf(cardId)).isEqualTo("COLLABORATION,GROWTH");
+
+    }
+
+    @Test
+    @DisplayName("확정 버튼 없이 네 칸을 저장해 저절로 확정된 경험 카드도 저장 뒤 AI 에게 유형을 물어 붙인다")
+    void asksAiForThemesWhenSavingConfirmsTheCard() throws Exception {
+
+        Long cardId = manualCardWithSituationAndAction();
+        AI.replyWith(request -> themesReply(request, "GROWTH"));
+
+        mvc.perform(patch("/api/cards/{id}/draft", MY_CARD.toString())
+                        .with(loggedInAs(myUserId)).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"situation\":\"상황\",\"task\":\"맡은 일\",\"action\":\"행동\",\"result\":\"결과\"}"))
+                .andExpect(status().isOk());
+
+        assertThat(themesAfterSuggestion(cardId)).isEqualTo("GROWTH");
+        assertThat(AI.requests()).singleElement()
+                .satisfies(sent -> assertThat(sent.path("slots").toString()).contains("\"body\":\"결과\""));
 
     }
 
@@ -499,6 +519,7 @@ class CardConfirmApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
 
+        awaitAiRequests(1);
         assertThat(themesOf(cardId)).isEmpty();
 
     }
@@ -568,6 +589,26 @@ class CardConfirmApiTest {
     private String themesOf(Long cardId) {
 
         return jdbc.queryForObject("SELECT array_to_string(themes, ',') FROM card WHERE id = ?", String.class, cardId);
+
+    }
+
+    // 유형은 확정을 저장한 뒤 따로 붙으므로 붙을 때까지 잠깐 기다려 읽는다
+    private String themesAfterSuggestion(Long cardId) throws InterruptedException {
+
+        for (int i = 0; i < 100 && themesOf(cardId).isEmpty(); i++) {
+            Thread.sleep(50);
+        }
+
+        return themesOf(cardId);
+
+    }
+
+    private void awaitAiRequests(int count) throws InterruptedException {
+
+        for (int i = 0; i < 100 && AI.requests().size() < count; i++) {
+            Thread.sleep(50);
+        }
+        assertThat(AI.requests()).hasSizeGreaterThanOrEqualTo(count);
 
     }
 

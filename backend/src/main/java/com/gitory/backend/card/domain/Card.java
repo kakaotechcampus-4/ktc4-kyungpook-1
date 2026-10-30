@@ -204,16 +204,20 @@ public class Card {
     /**
      * 칸 글이 바뀐 뒤 지금 버전 글로 상태를 다시 정하고, 화면이 자동 저장하므로 확정본은 남기지 않는다
      * 작성 중은 네 칸이 확인 필요 없이 모두 차야 확정하고, 확정은 상황·행동이 빌 때만 작성 중으로 돌린다
+     * 이번 호출로 확정됐으면 참을 돌려준다
      */
-    public void settle(VersionSlots slots) {
+    public boolean settle(VersionSlots slots) {
 
         if (!isConfirmed() && slots.isComplete()) {
             this.status = CardStatus.CONFIRMED;
             this.confirmedAt = CardTime.now();
             changed();
-        } else if (isConfirmed() && !slots.isConfirmable()) {
+            return true;
+        }
+        if (isConfirmed() && !slots.isConfirmable()) {
             reopen();
         }
+        return false;
 
     }
 

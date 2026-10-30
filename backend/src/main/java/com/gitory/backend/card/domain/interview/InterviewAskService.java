@@ -11,6 +11,7 @@ import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.CardTheme;
+import com.gitory.backend.card.domain.CardThemeSuggester;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
@@ -60,6 +61,7 @@ public class InterviewAskService {
     private final PlatformTransactionManager transactionManager;
     private final UserRateLimiter rateLimiter;
     private final CardVersionReader reader;
+    private final CardThemeSuggester themeSuggester;
 
     /**
      * 초안을 만드는 중이거나 확정된 카드는 409, 답을 기다리는 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409,
@@ -97,7 +99,7 @@ public class InterviewAskService {
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
-            card.settle(reader.read(card.getId(), card.getCurrentVersion()));
+            themeSuggester.settle(card, reader.read(card.getId(), card.getCurrentVersion()));
         });
 
     }
@@ -223,7 +225,7 @@ public class InterviewAskService {
         if (openTurnOf(turns.findByCardIdOrderBySeqAsc(card.getId())).isEmpty()) {
             card.endInterview(ended.reason());
             card.suggestThemes(ended.themes().stream().map(theme -> CardTheme.valueOf(theme.name())).toList());
-            card.settle(reader.read(card.getId(), card.getCurrentVersion()));
+            themeSuggester.settle(card, reader.read(card.getId(), card.getCurrentVersion()));
         }
 
     }

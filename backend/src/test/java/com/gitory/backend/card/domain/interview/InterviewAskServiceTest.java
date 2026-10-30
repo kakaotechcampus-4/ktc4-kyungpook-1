@@ -2,6 +2,7 @@ package com.gitory.backend.card.domain.interview;
 
 import com.gitory.backend.agent.port.InterviewAnswerMode;
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.CardThemePort;
 import com.gitory.backend.agent.port.InterviewCardKind;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
 import com.gitory.backend.agent.port.InterviewConfidence;
@@ -17,9 +18,11 @@ import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
+import com.gitory.backend.card.domain.CardThemeSuggester;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.domain.VersionSlots;
+import com.gitory.backend.card.infra.CardRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
@@ -33,6 +36,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -78,6 +82,8 @@ class InterviewAskServiceTest {
     private final InterviewQuestionPort port = mock(InterviewQuestionPort.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final CardVersionReader reader = mock(CardVersionReader.class);
+    private final CardThemeSuggester themeSuggester = new CardThemeSuggester(mock(CardRepository.class), reader,
+            mock(CardThemePort.class), mock(ApplicationEventPublisher.class), transactionManager);
     private final List<TransactionStatus> statuses = new ArrayList<>();
 
     private InterviewQuestionRequest request;
@@ -386,7 +392,7 @@ class InterviewAskServiceTest {
     private InterviewAskService service(int maxTurns) {
 
         return new InterviewAskService(ownership, generation, turns, candidates, assembler, port, new InterviewLimits(maxTurns),
-                transactionManager, mock(UserRateLimiter.class), reader);
+                transactionManager, mock(UserRateLimiter.class), reader, themeSuggester);
 
     }
 }

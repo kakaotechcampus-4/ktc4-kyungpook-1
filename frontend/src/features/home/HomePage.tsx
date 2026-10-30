@@ -87,7 +87,7 @@ export function HomePage() {
             <h2>새 경험 카드 만들기</h2>
             <p>레포를 검색해 바로 시작하거나, 코드에 남지 않은 경험은 직접 써 보세요.</p>
           </div>
-        ) : <h1 className="prompt__h">오늘은 어떤 <span className="hl">경험을</span> 정리해 볼까요?</h1>}
+        ) : <h1 className="prompt__h">오늘은 어떤 경험을 정리해 볼까요?</h1>}
         {!returning && <p className="prompt__sub">레포를 고르면 경험 카드를 만들어 드려요.</p>}
         <div className="home-start__row">
         <div className="prompt__card" role="search" onBlur={(e) => {
@@ -120,7 +120,7 @@ export function HomePage() {
                       onMouseEnter={() => setHi(i)} onPointerDown={(e) => e.preventDefault()} onClick={() => go(r.id)}>
                       <FolderGit2 size={15} className="prompt__sugg-icon" />
                       <span className="prompt__sugg-name">{r.owner} / {r.name}</span>
-                      <span className="prompt__sugg-meta">{isCounting(r) ? `개수 ${COUNTING}` : `내 커밋 ${r.contribution.mine} · 팀 ${r.contribution.team}`}</span>
+                      <span className="prompt__sugg-meta">{isCounting(r) ? `개수 ${COUNTING}` : `내 커밋 ${r.contribution.mine} / 팀 ${r.contribution.team}`}</span>
                     </button>
                   </li>
                 ))}
@@ -187,14 +187,9 @@ export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: str
         <span>{cardKindShort[c.kind]} 카드{src ? `, ${src}` : ''}</span>
         {c.period && <span>{periodLabel(c.period)}</span>}
       </div>
-      <CardTags areas={c.areas} techs={c.techs} />
+      <CardTags areas={c.areas} techs={c.techs} techLimit={4} />
       <h3 className="gcard__title">{c.title}</h3>
       <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />
-      {/* 얼마나 만들었는지 한눈에 — 네 칸 중 몇 칸, 짧은 막대 */}
-      <div className={`card-fill ${filledOf(c).length === 4 ? 'card-fill--full' : ''}`} aria-label={`네 칸 중 ${filledOf(c).length}칸 채움`}>
-        <span className="card-fill__bar" aria-hidden><i style={{ width: `${filledOf(c).length * 25}%` }} /></span>
-        <span className="card-fill__text">4칸 중 {filledOf(c).length}칸</span>
-      </div>
       <div className="experience-item__footer">
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <CardStatusMark status={c.status} star={c.star} />

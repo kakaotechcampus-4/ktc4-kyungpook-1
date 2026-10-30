@@ -41,6 +41,12 @@ public class CardMaterialAnswer {
     private String text;
     private Instant updatedAt;
 
+    public static boolean remembers(MaterialItem item) {
+
+        return REMEMBERED.contains(item);
+
+    }
+
     public static CardMaterialAnswer of(Long cardId, MaterialItem item, String text) {
 
         if (!REMEMBERED.contains(item)) {

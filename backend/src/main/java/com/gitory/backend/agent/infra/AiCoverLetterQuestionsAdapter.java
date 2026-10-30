@@ -28,8 +28,9 @@ public class AiCoverLetterQuestionsAdapter implements CoverLetterQuestionsPort {
 
     private static final Set<String> ITEMS = Set.of("SITUATION", "ACTION", "RESULT", "LEARNING", "TRIGGER",
             "JOB_LINK", "REASON");
-    // 화면 계약이 문항마다 AI 질문을 3개까지로 정했다
-    private static final int MAX_ASKS = 3;
+    // 화면 계약이 문항마다 AI 질문을 4개까지, 질문마다 빈칸 틀을 2개까지로 정했다
+    private static final int MAX_ASKS = 4;
+    private static final int MAX_TEMPLATES = 2;
 
     private final AiHttpClient ai;
     private final AiClientProperties properties;
@@ -82,7 +83,7 @@ public class AiCoverLetterQuestionsAdapter implements CoverLetterQuestionsPort {
             if (!asked.add(item)) {
                 throw AiClientException.invalidResponse();
             }
-            asks.add(new CoverLetterQuestions.Ask(item, text(ask.path("question"))));
+            asks.add(new CoverLetterQuestions.Ask(item, text(ask.path("question")), templates(ask)));
         }
         if (asks.size() > MAX_ASKS) {
             throw AiClientException.invalidResponse();
@@ -128,6 +129,23 @@ public class AiCoverLetterQuestionsAdapter implements CoverLetterQuestionsPort {
             throw AiClientException.invalidResponse();
         }
         return value.asString().strip();
+
+    }
+
+    // 빈칸 틀이 없던 AI 응답도 받도록, 칸이 없으면 틀 없는 질문으로 본다
+    private static List<String> templates(JsonNode ask) {
+
+        if (ask.path("templates").isMissingNode()) {
+            return List.of();
+        }
+        List<String> templates = new ArrayList<>();
+        for (JsonNode template : array(ask, "templates")) {
+            templates.add(text(template));
+        }
+        if (templates.size() > MAX_TEMPLATES) {
+            throw AiClientException.invalidResponse();
+        }
+        return List.copyOf(templates);
 
     }
 

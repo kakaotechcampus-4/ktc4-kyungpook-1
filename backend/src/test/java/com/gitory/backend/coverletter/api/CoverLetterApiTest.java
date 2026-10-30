@@ -555,13 +555,13 @@ class CoverLetterApiTest {
     }
 
     @Test
-    @DisplayName("초안을 고치면 AI 원본·문장·표시는 두고 고친 글로 글자 수·넘은 수·남은 빈칸을 다시 세며, 원본과 같아지면 고치지 않은 것으로 본다")
+    @DisplayName("초안을 고치면 AI 원본·문장·표시는 두고 고친 글로 글자 수(빈칸·더 쓸 거리 빼고)·넘은 수·남은 빈칸을 다시 세며, 원본과 같아지면 고치지 않은 것으로 본다")
     void editsDraftAndRecountsFromEditedText() throws Exception {
 
         String aiText = "가".repeat(90) + " " + LEARNING_BLANK;
         CoverLetter letter = draftedLetter(aiText);
         String question = questionIdOf(letter);
-        String edited = "가".repeat(100) + "😀" + "나".repeat(9);
+        String edited = "가".repeat(100) + "[더 쓸 거리: 멱등 키를 고른 이유]" + "😀" + "나".repeat(9);
 
         editDraft(letter, question, "{\"text\": \"" + edited + "\"}")
                 .andExpect(status().isOk())

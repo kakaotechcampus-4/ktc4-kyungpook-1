@@ -6,6 +6,7 @@ import com.gitory.backend.coverletter.domain.CoverLetterNotFoundException;
 import com.gitory.backend.coverletter.domain.CoverLetterQueryService;
 import com.gitory.backend.coverletter.domain.CoverLetterService;
 import com.gitory.backend.coverletter.domain.InvalidCoverLetterInputException;
+import com.gitory.backend.coverletter.domain.NewAnswer;
 import com.gitory.backend.coverletter.domain.NewQuestion;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -98,6 +99,53 @@ public class CoverLetterController {
 
         return ApiResponse.ok(CoverLetterResponse.from(coverLetters.chooseCards(toUuid(id), toUuid(questionId),
                 loginUser.id(), cardIdOf(request.primaryCardId()), cardIdOf(request.supportingCardId()))));
+
+    }
+
+    @PostMapping("/api/cover-letters/{id}/asks")
+    @Operation(summary = "질문 만들기 시작", description = """
+            카드 고르기가 끝난 뒤(ASSIGNED)에 지금 배정으로 질문 만들기를 줄 세웁니다(stage ASKING). 그 뒤로는 카드를 바꿀 수 없습니다.
+            호출 제한은 세지 않습니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: ASSIGNED 가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterResponse> startAsking(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id) {
+
+        return ApiResponse.ok(CoverLetterResponse.from(coverLetters.startAsking(toUuid(id), loginUser.id())));
+
+    }
+
+    @PutMapping("/api/cover-letters/{id}/questions/{questionId}/answers")
+    @Operation(summary = "문항의 답 저장", description = """
+            질문을 받은 뒤(ASKED)에 그 문항의 답 전체를 보낸 것으로 바꿉니다. 보내지 않은 항목은 답이 없는 것으로 남습니다.
+            지난 답(question 이 null 인 줄)을 고치지 않고 다시 보내면 reused 가 true 로 남고, 고치면 false 가 됩니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 답 목록이 없음, 질문에 없거나 모르는 항목, 같은 항목이 두 번, 넘기지 않았는데 글이 비었거나 1,000자를 넘거나 U+0000 이 있음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서·문항, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: ASKED 가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterResponse> saveAnswers(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
+            @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId,
+            @RequestBody SaveAnswersRequest request) {
+
+        List<NewAnswer> answers = request.answers() == null ? null : request.answers().stream()
+                .map(answer -> answer == null ? null
+                        : new NewAnswer(answer.item(), answer.text(), Boolean.TRUE.equals(answer.skipped())))
+                .toList();
+        return ApiResponse.ok(CoverLetterResponse.from(coverLetters.answer(toUuid(id), toUuid(questionId),
+                loginUser.id(), answers)));
 
     }
 

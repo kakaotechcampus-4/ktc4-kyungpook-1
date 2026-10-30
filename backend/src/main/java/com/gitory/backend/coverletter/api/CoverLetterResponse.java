@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 
-@Schema(description = "자소서 한 편과 문항별 배정 카드")
+@Schema(description = "자소서 한 편과 문항별 배정 카드·질문과 답")
 public record CoverLetterResponse(
         @Schema(format = "uuid") String id,
         CoverLetterStage stage,

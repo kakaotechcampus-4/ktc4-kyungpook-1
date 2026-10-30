@@ -32,7 +32,7 @@ public interface CoverLetterRepository extends JpaRepository<CoverLetter, Long> 
     // 다른 워커가 잡고 있는 행은 건너뛰어 같은 단계를 두 번 집지 않는다
     @Query(value = """
             SELECT * FROM cover_letter
-            WHERE stage = 'ASSIGNING' AND running_since IS NULL
+            WHERE stage IN ('ASSIGNING', 'ASKING') AND running_since IS NULL
             ORDER BY updated_at, id
             LIMIT 1
             FOR UPDATE SKIP LOCKED

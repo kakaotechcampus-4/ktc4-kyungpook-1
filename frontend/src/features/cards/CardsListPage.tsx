@@ -40,6 +40,8 @@ export function CardsListPage() {
   const pick = (v: CardView) => { setPicked(v); write(VIEW_KEY, v); };
 
   const all = cards.data ?? [];
+  // 서버가 "카드 0개"라고 알려 준 상태. 조회 중·실패(건수를 모름)와 다르다 — 그때는 아래 화면을 그대로 둔다
+  const isEmpty = cards.isSuccess && all.length === 0;
   const list = useMemo(() => all.filter((c) => c.title.toLowerCase().includes(q.toLowerCase())
     && (status === 'ALL' || (status === 'NEEDS_WORK' ? needsWork(c) : c.status === status))), [all, q, status]);
   const groups = useMemo(() => groupCards(list, view), [list, view]);
@@ -55,13 +57,16 @@ export function CardsListPage() {
     <main className="main cards-list">
       <div className="list-head">
         <PageTitle>경험 카드 <span className="c-3 t-14">{counts.ALL ?? '—'}</span></PageTitle>
-        <div className="right">
-          <SearchField className="list-search" value={q} onChange={setQ} placeholder="카드 검색" label="카드 이름으로 검색" />
-          <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
-          <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 만들기</Button>
-        </div>
+        {/* 카드가 하나도 없으면 검색·만들기 버튼은 아래 빈 상태가 한 번만 안내한다(같은 이름의 주 버튼이 둘이 되지 않게) */}
+        {!isEmpty && (
+          <div className="right">
+            <SearchField className="list-search" value={q} onChange={setQ} placeholder="카드 검색" label="카드 이름으로 검색" />
+            <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
+            <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 만들기</Button>
+          </div>
+        )}
       </div>
-      <div className="cards-controls">
+      {!isEmpty && <div className="cards-controls">
         <div className="view-switch" role="radiogroup" aria-label="카드 묶어 보기">
           {VIEWS.filter((v) => v.value !== 'repo' || !cards.isSuccess || repoKnown).map((v) => (
             <button key={v.value} type="button" role="radio" aria-checked={view === v.value} className="view-switch__item" onClick={() => pick(v.value)}>{v.label}</button>
@@ -74,16 +79,20 @@ export function CardsListPage() {
             </button>
           ))}
         </div>
-      </div>
-      {cards.data && (q || status !== 'ALL') && <span className="t-12 c-2" role="status">{list.length}개 보기</span>}
+      </div>}
+      {cards.data && !isEmpty && (q || status !== 'ALL') && <span className="t-12 c-2" role="status">{list.length}개 보기</span>}
       {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
       {cards.isPending && <div className="grid-2">{[0, 1].map((i) => <Skeleton key={i} h={150} />)}</div>}
       {cards.isSuccess && list.length === 0 && (
         <div className="stack" style={{ alignItems: 'center', gap: 14, padding: '48px 0' }}>
           <span className="illus"><Layers size={34} /></span>
-          <span className="c-2 t-14">{cards.data?.length ? '조건에 맞는 카드가 없어요' : '아직 카드가 없어요'}</span>
-          {!!cards.data?.length && <Button variant="outline" onClick={() => { setQ(''); setStatus('ALL'); }}>필터 초기화</Button>}
-          <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 카드 만들기</Button>
+          <span className="c-2 t-14">{isEmpty ? '아직 카드가 없어요' : '조건에 맞는 카드가 없어요'}</span>
+          {isEmpty ? (
+            <>
+              <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 카드 만들기</Button>
+              <Link to="/cards/new" className="btn btn--text" style={{ whiteSpace: 'normal', textAlign: 'center' }}><PenLine size={14} aria-hidden /> 코드에 없는 경험은 직접 작성해도 돼요</Link>
+            </>
+          ) : <Button variant="outline" onClick={() => { setQ(''); setStatus('ALL'); }}>필터 초기화</Button>}
         </div>
       )}
       <div className="card-groups">
@@ -104,7 +113,7 @@ function CardGroupSection({ group, open, onToggle, cardOrder }: { group: CardGro
         <button type="button" className="card-group__toggle" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
           <ChevronDown size={18} aria-hidden className="card-group__chev" />
           <span className="card-group__title">{group.title}</span>
-          <span className="card-group__counts">카드 {group.cards.length}장, 확정 {confirmed}, 작성 중 {drafts}</span>
+          <span className="card-group__counts">카드 {group.cards.length}장, 확정 {confirmed}장, 작성 중 {drafts}장</span>
           <span className="card-group__bar" aria-hidden><i style={{ width: `${Math.round((filled / (group.cards.length * 4)) * 100)}%` }} /></span>
         </button>
         {group.to && <Link to={group.to} className="btn btn--ghost btn--sm card-group__go">후보 보드</Link>}

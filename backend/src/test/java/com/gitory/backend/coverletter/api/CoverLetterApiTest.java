@@ -10,6 +10,8 @@ import com.gitory.backend.coverletter.domain.ConsideredCard;
 import com.gitory.backend.coverletter.domain.CoverLetter;
 import com.gitory.backend.coverletter.domain.CoverLetterError;
 import com.gitory.backend.coverletter.domain.CoverLetterQuestion;
+import com.gitory.backend.coverletter.domain.MaterialAnswer;
+import com.gitory.backend.coverletter.domain.MaterialAsk;
 import com.gitory.backend.coverletter.domain.MaterialItem;
 import com.gitory.backend.coverletter.domain.QuestionTheme;
 import com.gitory.backend.coverletter.infra.CardMaterialAnswerRepository;
@@ -47,6 +49,7 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -345,6 +348,130 @@ class CoverLetterApiTest {
     }
 
     @Test
+    @DisplayName("질문 만들기는 카드 고르기가 끝난 내 자소서만 줄 세우고 호출 제한을 세지 않으며, 그 뒤로는 카드를 바꿀 수 없다")
+    void startsAskingOnlyAfterAssignment() throws Exception {
+
+        Long card = confirmedCard(myUserId, "배포 시간 단축", "A");
+        CoverLetter letter = assignedLetterPicking(card);
+        CoverLetter waiting = savedLetter(myUserId, "문항");
+        CoverLetter others = assigned(savedLetter(othersUserId, "문항"), List.of());
+
+        startAsking(letter)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stage").value("ASKING"))
+                .andExpect(jsonPath("$.data.pollAfterMs").value(1500))
+                .andExpect(jsonPath("$.data.questions[0].primaryCard.id").value(publicIdOf(card)))
+                .andExpect(jsonPath("$.data.questions[0].asks").isEmpty());
+        startAsking(letter)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+        startAsking(waiting).andExpect(status().isConflict());
+        startAsking(others).andExpect(status().isNotFound());
+        chooseCards(letter, questionIdOf(letter), publicIdOf(card), null).andExpect(status().isConflict());
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter WHERE stage = 'ASKING' AND running_since IS NULL",
+                Integer.class)).isEqualTo(1);
+        verifyNoInteractions(rateLimiter);
+
+    }
+
+    @Test
+    @DisplayName("답은 문항의 답 전체를 바꾸고, 넘긴 답은 글 없이 남기며, 지난 답은 고치지 않고 다시 보낼 때만 미리 채운 답으로 남는다")
+    void savesAnswersReplacingTheWholeQuestion() throws Exception {
+
+        CoverLetter letter = askedLetter();
+        String question = questionIdOf(letter);
+
+        saveAnswers(letter, question, """
+                {"answers": [{"item": "RESULT", "text": "배포가 3분 빨라졌다", "skipped": false},
+                             {"item": "TRIGGER", "text": null, "skipped": true},
+                             {"item": "LEARNING", "text": "작게 나눠 배포하게 됐다"}]}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stage").value("ASKED"))
+                .andExpect(jsonPath("$.data.pollAfterMs").value(nullValue()))
+                .andExpect(jsonPath("$.data.questions[0].asks[0].item").value("RESULT"))
+                .andExpect(jsonPath("$.data.questions[0].asks[0].question").value("배포가 얼마나 빨라졌나요?"))
+                .andExpect(jsonPath("$.data.questions[0].asks[0].required").value(true))
+                .andExpect(jsonPath("$.data.questions[0].asks[0].answer.text").value("배포가 3분 빨라졌다"))
+                .andExpect(jsonPath("$.data.questions[0].asks[0].answer.reused").value(false))
+                .andExpect(jsonPath("$.data.questions[0].asks[1].answer").value(nullValue()))
+                .andExpect(jsonPath("$.data.questions[0].asks[1].skipped").value(true))
+                .andExpect(jsonPath("$.data.questions[0].asks[2].question").value(nullValue()))
+                .andExpect(jsonPath("$.data.questions[0].asks[2].answer.reused").value(true));
+
+        saveAnswers(letter, question, """
+                {"answers": [{"item": "LEARNING", "text": "작게 나눠 자주 배포하게 됐다"}]}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.questions[0].asks[0].answer").value(nullValue()))
+                .andExpect(jsonPath("$.data.questions[0].asks[0].skipped").value(false))
+                .andExpect(jsonPath("$.data.questions[0].asks[1].skipped").value(false))
+                .andExpect(jsonPath("$.data.questions[0].asks[2].answer.text").value("작게 나눠 자주 배포하게 됐다"))
+                .andExpect(jsonPath("$.data.questions[0].asks[2].answer.reused").value(false));
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidAnswers")
+    @DisplayName("질문에 없거나 모르는 항목, 같은 항목 두 번, 넘기지 않았는데 비었거나 1,000자를 넘거나 U+0000 이 있는 답은 400 이고 답을 바꾸지 않는다")
+    void rejectsInvalidAnswers(String body) throws Exception {
+
+        CoverLetter letter = askedLetter();
+
+        saveAnswers(letter, questionIdOf(letter), body)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst().getAnswers())
+                .containsExactly(new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true));
+
+    }
+
+    static Stream<String> invalidAnswers() {
+
+        return Stream.of(
+                "{\"answers\": null}",
+                "{\"answers\": [null]}",
+                "{\"answers\": [{\"item\": \"JOB_LINK\", \"text\": \"질문에 없는 항목\"}]}",
+                "{\"answers\": [{\"item\": \"HOBBY\", \"text\": \"모르는 항목\"}]}",
+                "{\"answers\": [{\"item\": null, \"text\": \"항목 없음\"}]}",
+                "{\"answers\": [{\"item\": \"RESULT\", \"text\": \"한 번\"}, {\"item\": \"RESULT\", \"text\": \"두 번\"}]}",
+                "{\"answers\": [{\"item\": \"RESULT\", \"text\": \" \"}]}",
+                "{\"answers\": [{\"item\": \"RESULT\", \"text\": null}]}",
+                "{\"answers\": [{\"item\": \"RESULT\", \"text\": \"" + "가".repeat(1_001) + "\"}]}",
+                "{\"answers\": [{\"item\": \"RESULT\", \"text\": \"a\\u0000b\"}]}");
+
+    }
+
+    @Test
+    @DisplayName("답 1,000자까지는 저장한다")
+    void savesAnswerUpToTheLimit() throws Exception {
+
+        CoverLetter letter = askedLetter();
+
+        saveAnswers(letter, questionIdOf(letter), "{\"answers\": [{\"item\": \"RESULT\", \"text\": \""
+                + "가".repeat(1_000) + "\"}]}")
+                .andExpect(status().isOk());
+
+    }
+
+    @Test
+    @DisplayName("질문을 받기 전에는 409, 없는 문항은 404 로 답을 저장하지 않는다")
+    void rejectsAnswersOutsideAskedStageOrQuestion() throws Exception {
+
+        Long card = confirmedCard(myUserId, "배포 시간 단축", "A");
+        CoverLetter assigned = assignedLetterPicking(card);
+
+        saveAnswers(assigned, questionIdOf(assigned), "{\"answers\": []}")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+        saveAnswers(askedLetter(), UUID.randomUUID().toString(), "{\"answers\": []}")
+                .andExpect(status().isNotFound());
+
+    }
+
+    @Test
     @DisplayName("다시 시도는 실패한 자소서의 실패한 단계만 다시 줄 세우고 호출 제한을 센다")
     void retryRequeuesOnlyFailedLetter() throws Exception {
 
@@ -414,6 +541,26 @@ class CoverLetterApiTest {
 
     }
 
+    private CoverLetter askedLetter() {
+
+        CoverLetter letter = assignedLetterPicking(confirmedCard(myUserId, "배포 시간 단축", "A"));
+        CoverLetterQuestion question = questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst();
+        question.asked(List.of(new MaterialAsk(MaterialItem.RESULT, "배포가 얼마나 빨라졌나요?", true),
+                        new MaterialAsk(MaterialItem.TRIGGER, "왜 고치기로 했나요?", false),
+                        new MaterialAsk(MaterialItem.LEARNING, null, false)),
+                List.of(new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true)));
+        questions.save(question);
+        letter.startAsking();
+        letter.claim();
+        letter.asked();
+        return letters.save(letter);
+
+    }
+
+    private String questionIdOf(CoverLetter letter) {
+        return questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst().getPublicId().toString();
+    }
+
     private CoverLetter failed(CoverLetter letter, CoverLetterError error) {
 
         letter.claim();
@@ -438,6 +585,20 @@ class CoverLetterApiTest {
 
         String body = "{\"primaryCardId\": " + quoted(primary) + ", \"supportingCardId\": " + quoted(supporting) + "}";
         return mvc.perform(put("/api/cover-letters/{id}/questions/{qid}/cards", letter.getPublicId(), questionId)
+                .with(loggedInAs(myUserId)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body));
+
+    }
+
+    private ResultActions startAsking(CoverLetter letter) throws Exception {
+
+        return mvc.perform(post("/api/cover-letters/{id}/asks", letter.getPublicId())
+                .with(loggedInAs(myUserId)).with(csrf()));
+
+    }
+
+    private ResultActions saveAnswers(CoverLetter letter, String questionId, String body) throws Exception {
+
+        return mvc.perform(put("/api/cover-letters/{id}/questions/{qid}/answers", letter.getPublicId(), questionId)
                 .with(loggedInAs(myUserId)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body));
 
     }

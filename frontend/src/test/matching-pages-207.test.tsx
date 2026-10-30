@@ -21,6 +21,7 @@ import { db, resetDb } from "@/mock/store";
 import { handle } from "@/mock/router";
 import { useMask, useReopen, useConfirm } from "@/api/queries";
 import { endpoints } from "@/api/endpoints";
+import { keys } from "@/api/keys";
 import { Card } from "@/api/schemas";
 import sampleList from "../../docs/examples/matching/list.json";
 import sampleDetail from "../../docs/examples/matching/detail.json";
@@ -67,7 +68,11 @@ it("does not render null grade as D and provides a card action", async () => {
   vi.spyOn(matchingApi, "list").mockResolvedValue(
     sampleList.data.map((x) => MatchTarget.parse({ ...x, fit: null })),
   );
-  mount();
+  // 안내는 확정 카드가 0장일 때만 나온다(match-list-without-fit.test.tsx). 확정 카드 수는 내 정보에서 읽는다
+  mount("/match", (client) => {
+    const me = handle("GET", "/me", new URLSearchParams(), {}, true).data as { stats: object };
+    client.setQueryData(keys.me, { ...me, stats: { ...me.stats, confirmedCards: 0 } });
+  });
   await screen.findByText(
     "확정한 카드가 없어요. 카드를 확정하면 공고별 근거를 비교할 수 있어요.",
   );

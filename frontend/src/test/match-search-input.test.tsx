@@ -31,7 +31,7 @@ async function mount(path = '/match', ready = '가온소프트') {
     </QueryClientProvider>,
   );
   await screen.findByText(ready);
-  return screen.getByPlaceholderText('기업·직무 검색') as HTMLInputElement;
+  return screen.getByPlaceholderText('기업이나 직무 검색') as HTMLInputElement;
 }
 const type = (input: HTMLInputElement, text: string) => {
   for (let i = 1; i <= text.length; i++) fireEvent.change(input, { target: { value: text.slice(0, i) } });

@@ -309,7 +309,8 @@ def test_prompt_injection_evaluation_covers_all_live_llm_tasks() -> None:
     case_tasks = {case.task for case in CASES}
 
     assert len(CASES) >= 50
-    assert {"INTERVIEW", "MEASURE", "COVER_ASSIGN", "COVER_ASK", "COVER_DRAFT"} <= case_tasks
+    assert {"GROUPING_CLUSTER", "INTERVIEW", "MEASURE", "COVER_ASSIGN", "COVER_SUPERVISE", "COVER_ASK",
+            "COVER_DRAFT"} <= case_tasks
     assert case_tasks <= set(RUNNERS)
 
 

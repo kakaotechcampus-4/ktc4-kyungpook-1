@@ -30,7 +30,7 @@ from schemas.interview import (
     ReviewContext,
     StarSlot,
 )
-from services.interview_llm import InterviewLLM, InterviewLLMUnavailable, has_metric
+from services.interview_llm import EndedQuestions, InterviewLLM, InterviewLLMUnavailable, has_metric
 
 #: 모든 질문에 반드시 들어가는 탈출구 문구.
 _ESCAPE_HATCH = "기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요."
@@ -87,8 +87,8 @@ class InterviewAgent:
             written = await self._llm.write_question(request, fixed)
         except InterviewLLMUnavailable:
             return self._template_turn(request, fixed or allowed[0]), True
-        if written is None:
-            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE"), False
+        if isinstance(written, EndedQuestions):
+            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE", reason=written.reason), False
         slot = self._missing_slot(request, written.star_slot)
         return InterviewTurnResult(
             card_id=request.card_id,
@@ -100,6 +100,8 @@ class InterviewAgent:
             next_action="ASK_AGAIN",
             answer_mode=written.answer_mode,
             suggested_answers=written.suggested_answers,
+            # 화면이 정한 칸은 사용자가 고른 것이라 판단 이유를 보이지 않는다
+            reason=written.reason if request.target_star_slot is None else None,
         ), False
 
     @staticmethod

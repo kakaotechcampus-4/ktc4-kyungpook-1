@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthGate } from './AuthGate';
 import { ErrorBoundary } from './ErrorBoundary';
-import { Spinner } from '@/components/ui';
+import { PageLoading } from '@/components/ui/PageLoading';
 
 /**
  * 라우트 = 플로우 맵 노드 ID. 기능별로 코드 스플리팅한다.
@@ -31,7 +31,7 @@ const MyPage = L(() => import('@/features/settings/MyPage'), 'MyPage');
 const LeavePage = L(() => import('@/features/settings/LeavePage'), 'LeavePage');
 const NotFoundPage = L(() => import('@/features/NotFoundPage'), 'NotFoundPage');
 
-const S = ({ children }: { children: ReactNode }) => <Suspense fallback={<main className="main" style={{ alignItems: 'center', paddingTop: 96 }}><Spinner /></main>}>{children}</Suspense>;
+const S = ({ children }: { children: ReactNode }) => <Suspense fallback={<main className="main" style={{ alignItems: 'center', paddingTop: 96 }}><PageLoading /></main>}>{children}</Suspense>;
 
 export const router = createBrowserRouter([
   { path: '/login', element: <S><LandingPage /></S>, errorElement: <ErrorBoundary /> },

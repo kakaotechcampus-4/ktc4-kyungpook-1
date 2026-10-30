@@ -146,6 +146,21 @@ class CardMaterialReaderTest {
     }
 
     @Test
+    @DisplayName("id 로 고른 카드도 같은 기준으로 가려 읽고, 그사이 지운 카드는 뺀다")
+    void readsChosenCardsWithoutDeletedOnes() {
+
+        Long kept = confirmedCard("2026-03-01T00:00:00Z", "그린랩스 배포");
+        Long deleted = confirmedCard("2026-03-02T00:00:00Z", "지운 카드");
+        jdbc.update("UPDATE card SET mask_rules = ?::jsonb WHERE id = ?", "[{\"from\":\"그린랩스\",\"to\":\"회사\"}]", kept);
+        jdbc.update("UPDATE card SET deleted_at = now() WHERE id = ?", deleted);
+
+        assertThat(reader.readOf(List.of(kept, deleted))).extracting(CardMaterial::id, CardMaterial::title)
+                .containsExactly(tuple(kept, "회사 배포"));
+        assertThat(reader.readOf(List.of())).isEmpty();
+
+    }
+
+    @Test
     @DisplayName("채워진 칸은 지금 버전에서 가린 뒤에도 문장이 남는 칸이다")
     void filledSlotsAreThoseLeftAfterMasking() {
 

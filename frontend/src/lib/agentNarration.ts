@@ -1,5 +1,5 @@
 import { isTerminal, type Job, type JobStep, type JobStepKey } from '@/api/schemas';
-import { stepView } from '@/lib/jobView';
+import { isHalted, stepView } from '@/lib/jobView';
 
 /**
  * 분석 단계를 "AI 가 지금 무엇을 하는지"의 문장으로 — 멘토 피드백 "에이전트가 스스로 판단하고 움직이는 장면이 드러나게".
@@ -13,7 +13,16 @@ const LINES: Record<JobStepKey, { WAIT: string; NOW: string; DONE: string; SKIPP
   REASON: { WAIT: '고른 이유를 적을 차례예요', NOW: '후보마다 왜 자소서에 쓸 만한지 이유를 쓰고 있어요', DONE: '후보마다 추천 이유를 붙였어요', SKIPPED: '이유를 붙일 후보가 없었어요' },
 };
 
-export function agentLine(step: JobStep): string {
+/**
+ * job 을 주면 멈춘 작업(FAILED · CANCELED)에서는 사실만 말한다. 서버가 읽던 단계를 RUNNING 으로, 뒤 단계를 QUEUED 로 남겨 두므로
+ * 현재형("…보고 있어요")이나 예고("…차례예요")를 그대로 쓰면 이미 끝난 작업이 계속 일하는 것처럼 보인다.
+ * 끝난 단계와 건너뛴 단계의 문장은 그대로다.
+ */
+export function agentLine(step: JobStep, job?: Pick<Job, 'state'>): string {
+  if (isHalted(job)) {
+    if (step.state === 'RUNNING') return job?.state === 'CANCELED' ? '여기서 멈추게 했어요' : '여기서 멈췄어요';
+    if (step.state === 'QUEUED') return '시작하지 못했어요';
+  }
   if (step.state === 'SKIPPED') return LINES[step.key].SKIPPED;
   return LINES[step.key][stepView(step)];
 }
@@ -23,11 +32,15 @@ export function agentHeadline(job: Job, repoName?: string): string {
   if (job.state === 'QUEUED') return '앞 작업이 끝나면 바로 읽기 시작해요';
   if (isTerminal(job.state)) {
     const commits = job.steps.find((s) => s.key === 'COMMITS')?.done ?? 0;
-    const picked = job.steps.find((s) => s.key === 'COMPRESS')?.done ?? 0;
+    const compress = job.steps.find((s) => s.key === 'COMPRESS');
+    const picked = compress?.done ?? 0;
+    // 서버는 AI 가 이 단계의 진행을 보내 total 이 있으면 done 을 "AI 가 센 작업 단위 수"로 끝내고(AnalysisJob.candidateStep),
+    // 진행을 못 받았을 때만(total 이 null) 후보 수로 끝낸다. total 이 있으면 done 은 후보 수가 아니므로 숫자를 말하지 않는다.
+    const what = compress?.total == null ? `카드가 될 만한 작업 ${picked}개를` : '카드가 될 만한 작업을';
     // 숫자는 이번에 새로 읽은 양이다. 다시 정리할 때 새 커밋이 없으면 "커밋 0개를 읽고"라고 말하지 않는다
     if (job.state === 'SUCCEEDED' && picked > 0) return commits > 0
-      ? `커밋 ${commits}개를 읽고 카드가 될 만한 작업 ${picked}개를 골랐어요`
-      : `새 커밋은 없었고, 카드가 될 만한 작업 ${picked}개를 골랐어요`;
+      ? `커밋 ${commits}개를 읽고 ${what} 골랐어요`
+      : `새 커밋은 없었고, ${what} 골랐어요`;
     return job.state === 'SUCCEEDED' ? '읽기를 마쳤어요' : '여기까지 읽고 멈췄어요';
   }
   return repoName ? `${repoName}에서 자소서에 쓸 만한 경험을 찾고 있어요` : '자소서에 쓸 만한 경험을 찾고 있어요';

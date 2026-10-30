@@ -16,10 +16,14 @@ import {
 import list from "../../docs/examples/matching/list.json";
 
 const base = MatchTarget.parse(list.data[0]);
+// 이 파일은 이름으로 묶는 규칙(companyId 가 없을 때의 폴백)을 시험한다. 예시 JSON 의 첫 공고에는 companyId 가 있을 수도(#556 이후) 없을 수도 있으므로
+// 두 칸을 직접 비워, 예시 파일이 바뀌어도 모든 공고가 같은 기업으로 묶이지 않게 한다. id 로 묶는 시험은 match-company-id-model.test.ts.
 const posting = (id: string, company: string, fit: MatchTarget["fit"] = "B", role = `${id} 직무`): MatchTarget => ({
   ...base,
   id,
   company,
+  companyId: null,
+  logoUrl: null,
   role,
   fit,
 });

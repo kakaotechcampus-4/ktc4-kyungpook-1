@@ -35,6 +35,17 @@ class JobCriterionType(str, Enum):
     PREFERRED = "PREFERRED"
 
 
+class GeneralConditionType(str, Enum):
+    """STAR 카드가 아닌 사용자의 인적사항으로 확인할 공고 조건 종류."""
+
+    EDUCATION = "EDUCATION"
+    MILITARY = "MILITARY"
+    LANGUAGE = "LANGUAGE"
+    CERTIFICATE = "CERTIFICATE"
+    LOCATION = "LOCATION"
+    OTHER = "OTHER"
+
+
 class JobCategory(str, Enum):
     BACKEND = "BACKEND"
     FRONTEND = "FRONTEND"
@@ -68,11 +79,22 @@ class ExtractionOutcome(str, Enum):
 
 
 class JobCriterion(StrictModel):
-    """공고 원문에서 확인한 한 가지 직무 조건과 정확한 인용."""
+    """공고 원문에서 확인한 한 가지 조건과 정확한 인용.
+
+    ``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.
+    담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.
+    """
 
     criterion_type: JobCriterionType
+    general_type: Optional[GeneralConditionType] = None
     text: str = Field(min_length=1, max_length=1000)
     source_quote: str = Field(min_length=1, max_length=4000)
+
+    @model_validator(mode="after")
+    def check_general_type(self) -> "JobCriterion":
+        if self.criterion_type is JobCriterionType.RESPONSIBILITY and self.general_type is not None:
+            raise ValueError("RESPONSIBILITY 조건에는 general_type을 넣을 수 없습니다.")
+        return self
 
 
 class JobExperience(StrictModel):

@@ -4111,6 +4111,18 @@
             "title": "Linked Commits",
             "type": "array"
           },
+          "review_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "확인이 필요한 칸이면 그 이유 문장. 이유가 없거나 확인이 필요 없는 칸이면 null",
+            "title": "Review Reason"
+          },
           "star_slot": {
             "enum": [
               "S",

@@ -33,14 +33,15 @@ from services.secret_redaction import mask_emails, redact_secrets
 logger = logging.getLogger(__name__)
 
 QUESTION_PROMPT = """당신은 개발자가 STAR(상황·책임·행동·결과) 경험 카드를 채우도록 짧은 질문을 하나 만드는 면접관입니다.
-입력으로 카드의 칸(slots: 칸·지금 문장·근거 신뢰도), 고를 수 있는 칸(allowed_slots), 정해진 칸(fixed_slot, 없을 수 있음),
+입력으로 카드의 칸(slots: 칸·지금 문장·근거 신뢰도·확인이 필요한 이유), 고를 수 있는 칸(allowed_slots), 정해진 칸(fixed_slot, 없을 수 있음),
 이 카드에서 이미 끝난 질문(previous_turns: 칸·질문·결과·답), 작업 커밋 메시지(commits)가 주어집니다.
 
 - action: fixed_slot 이 있으면 반드시 ASK 입니다. 없으면, 고를 수 있는 칸을 더 물어도 카드가 나아질 것이 없을 때만 END, 아니면 ASK.
 - star_slot: ASK 일 때 fixed_slot, 없으면 allowed_slots 중 하나. 비었거나 근거 신뢰도가 낮거나 앞 답이 모자란 칸을 먼저 고릅니다.
   앞 답으로 이미 충분히 채운 칸은 다시 고르지 않습니다.
 - question: 한국어 해요체 한두 문장, 120자 이내. 커밋 메시지나 지금 문장을 짧게 인용해 무엇을 묻는지 분명히 합니다.
-  실패를 단정하지 않습니다.
+  실패를 단정하지 않습니다. 고른 칸에 확인이 필요한 이유(review_reason)가 있으면 그 이유가 짚는 수치나 사실을 집어
+  '그 10초는 어디서 재신 건가요?'처럼 무엇을 확인하려는지 드러나게 묻습니다.
 - answer_mode: R 칸에서 시간·횟수·비율 같은 수치를 묻는 질문이면 MEASURE, 그 밖은 TEXT.
 - suggested_answers: 사용자가 그대로 고를 수 있는 그 칸의 카드 문장 후보 0~2개. 평서체 '~했다', 각 80자 이내.
   입력에 있는 사실만 쓰고 입력에 없는 수치를 쓰지 않습니다. 앞 답에 이 칸에 쓸 내용이 있으면 그것을 문장으로 옮깁니다.
@@ -243,7 +244,8 @@ class InterviewLLM:
         return {
             "slots": [
                 {"slot": slot.star_slot, "text": self._clip(slot.body) if slot.body else None,
-                 "confidence": slot.confidence}
+                 "confidence": slot.confidence,
+                 "review_reason": self._clip(slot.review_reason) if slot.review_reason else None}
                 for slot in request.missing_slots if slot.star_slot in allowed
             ],
             "allowed_slots": allowed,
@@ -256,6 +258,7 @@ class InterviewLLM:
             "commits": [self._clip(commit.message) for commit in commits[: self._limits.max_commits]],
         }
 
+    # 확인이 필요한 이유는 근거에서 확인되지 않은 수치를 짚는 글이라, 후보·이유 문장에 쓸 수치의 출처로 치지 않는다
     @staticmethod
     def _source_text(payload: dict[str, Any]) -> str:
         parts = [slot["text"] or "" for slot in payload["slots"]]

@@ -125,6 +125,9 @@ class MissingSlot(StrictRequestModel):
     statement_seq: int = Field(..., ge=1, strict=True, description="card_statement.seq")
     body: Optional[str] = Field(None, description="현재 STAR 문장. 비어 있으면 null")
     confidence: Confidence = Field("LOW", description="현재 문장 근거 신뢰도")
+    review_reason: Optional[str] = Field(
+        None, description="확인이 필요한 칸이면 그 이유 문장. 이유가 없거나 확인이 필요 없는 칸이면 null"
+    )
     linked_commits: list[CommitContext] = Field(
         default_factory=list,
         description="이 STAR 문장을 직접 뒷받침하는 커밋 목록. 없으면 빈 배열",

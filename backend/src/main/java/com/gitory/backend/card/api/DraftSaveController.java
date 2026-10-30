@@ -37,6 +37,8 @@ public class DraftSaveController {
             네 칸을 저장합니다. 확정본이 아닌 직접 수정(USER_EDIT) 현재 버전은 덮어쓰고, 그 밖의 버전 위에서는
             첫 저장 때 USER_EDIT 새 버전을 만듭니다. 네 칸이 현재 버전과 같으면 아무것도 바꾸지 않고 현재 버전 번호를 돌려줍니다.
             네 키를 모두 보내야 하고 비운 칸은 null 로 보냅니다. 칸마다 1,000자까지 저장합니다.
+            확정한 카드도 다시 열지 않고 저장하고, 저장한 글로 상태를 다시 정합니다. 작성 중 카드는 네 칸이 확인 필요 없이 모두 차면 확정되고,
+            확정한 카드는 상황이나 행동을 비우면 작성 중으로 돌아갑니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
@@ -50,8 +52,6 @@ public class DraftSaveController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "CSRF 토큰 없음 또는 불일치",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID 또는 본인 카드 없음",
-                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "CARD_CONFIRMED: 확정된 카드는 다시 열어야 수정할 수 있음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<CardDraftResponse> save(

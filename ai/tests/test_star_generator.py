@@ -170,6 +170,28 @@ def test_text_backed_only_by_confirmed_answers_is_kept_for_user_review() -> None
     assert "R" not in result.missing_fields
 
 
+def test_code_name_needs_review_even_without_the_repair_loop() -> None:
+    """고쳐 쓰기 루프를 켜지 않아도 카드 문장에 남은 프로젝트 안 이름은 확인 필요로 내려 사용자가 보게 한다."""
+    client = _FakeClient(_output(A=_field("FILLED", "MyPageResponse 를 둘로 나눴다.", [SHA_A])))
+    request = _request(_evidence(SHA_A, changed_paths=["backend/api/MyPageResponse.java"]))
+
+    result = _run(StarGenerator(client), request)
+
+    assert (result.star["A"].status, result.star["A"].text) == ("NEEDS_REVIEW", "MyPageResponse 를 둘로 나눴다.")
+    assert "MyPageResponse" in result.star["A"].review_reason
+
+
+
+def test_number_reason_comes_before_code_name_reason() -> None:
+    """근거 없는 수치와 프로젝트 안 이름이 한 칸에 함께 걸리면, 더 중요한 수치 이유를 보인다."""
+    client = _FakeClient(_output(R=_field("FILLED", "MyPageResponse 응답이 40% 빨라졌다.", [SHA_A])))
+    request = _request(_evidence(SHA_A, changed_paths=["backend/api/MyPageResponse.java"]))
+
+    result = _run(StarGenerator(client), request)
+
+    assert "40%" in result.star["R"].review_reason
+
+
 def test_marks_unsourced_numeric_draft_for_user_review_without_dropping_it() -> None:
     client = _FakeClient(_output(
         R=_field("FILLED", "응답 시간이 40% 줄었다.", [SHA_A]),

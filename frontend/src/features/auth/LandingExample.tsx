@@ -41,7 +41,7 @@ export function LandingExample() {
         <StarKey field={field.key} dropped={!field.text} small />
         <div><strong>{field.title}</strong><p><span className="landing-card__full">{field.text ?? '실제로 무엇이 달라졌는지 답변해 채울 수 있어요.'}</span><span className="landing-card__preview">{field.preview}</span></p></div>
       </div>)}</div>
-      <span className="landing-card__evidence">연결된 근거 · 커밋 3개</span>
+      <span className="landing-card__evidence">연결된 근거: 커밋 3개</span>
     </figure>
   </div>
   <Button variant="text" className="landing-example__toggle" aria-expanded={expanded} aria-controls={exampleId} onClick={() => setExpanded((value) => !value)}>{expanded ? '예시 접기' : '전체 예시 보기'}</Button>

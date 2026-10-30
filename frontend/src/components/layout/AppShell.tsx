@@ -60,7 +60,6 @@ export function AppShell() {
         {rail && <button type="button" className="sidebar__toggle" style={{ alignSelf: 'center' }} onClick={() => setRail(false)} aria-label="사이드바 펼치기" title="사이드바 펼치기"><PanelLeft size={16} /></button>}
         {MENU.map((g) => (
           <nav key={g.group} className="menu-group" aria-label={g.group}>
-            <div className="menu-group__title">{g.group}</div>
             {g.items.map((it) => (
               <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.label}>
                 <it.icon size={16} /><span>{it.label}</span>

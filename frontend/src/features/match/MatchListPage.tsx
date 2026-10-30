@@ -87,7 +87,7 @@ export function MatchListPage() {
         <SearchField
           value={filters.q}
           onChange={(value) => { setQuery(value); update('q', value); }}
-          placeholder="기업·직무 검색"
+          placeholder="기업이나 직무 검색"
         />
         <Select
           label="경력"
@@ -172,7 +172,7 @@ export function MatchListPage() {
               />
               {filtered && (
                 <Button variant="outline" onClick={() => { setQuery(''); setSp({}); }}>
-                  검색·필터 초기화
+                  검색과 필터 초기화
                 </Button>
               )}
             </div>
@@ -215,7 +215,7 @@ export function MatchListPage() {
                   )}
                   <div className="match-card__foot">
                     <MetaItem icon={CalendarClock}>{deadlineLabel(item.source.expiresAt)}</MetaItem>
-                    <span className="match-card__go">조건·근거 보기<ArrowRight size={14} aria-hidden /></span>
+                    <span className="match-card__go">조건과 근거 보기<ArrowRight size={14} aria-hidden /></span>
                   </div>
                 </Link>
               ))}

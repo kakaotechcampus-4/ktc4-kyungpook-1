@@ -20,6 +20,11 @@ public interface ConfirmedCardRepository extends Repository<Card, Long> {
             """, nativeQuery = true)
     List<Long> findLiveIdsNewestFirst(@Param("userId") Long userId);
 
+    @Query(value = """
+            SELECT EXISTS (SELECT 1 FROM card WHERE user_id = :userId AND status = 'CONFIRMED' AND deleted_at IS NULL)
+            """, nativeQuery = true)
+    boolean existsLiveConfirmed(@Param("userId") Long userId);
+
     @Query(value = "SELECT id FROM card WHERE id IN (:ids) AND deleted_at IS NULL", nativeQuery = true)
     List<Long> findLiveIds(@Param("ids") Collection<Long> ids);
 

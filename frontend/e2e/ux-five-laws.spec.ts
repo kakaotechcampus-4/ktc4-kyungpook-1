@@ -11,9 +11,9 @@ for (const width of [320, 390, 1440]) {
     await page.goto('/repos');
     await page.getByRole('textbox', { name: '레포 이름 검색' }).fill('not-a-repo');
     await expect(page.getByText('검색 결과가 없어요', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: '검색·필터 초기화' }).click();
+    await page.getByRole('button', { name: '검색과 필터 초기화' }).click();
     await page.getByRole('radio', { name: /auth-service/ }).click();
-    await page.getByRole('button', { name: '다음 →' }).click();
+    await page.getByRole('button', { name: '다음', exact: true }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('list', { name: '진행 단계' })).toHaveCount(0);

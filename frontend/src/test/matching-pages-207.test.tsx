@@ -54,7 +54,7 @@ it("filters locally and preserves search in detail/list links without repeating 
     .mockResolvedValue(sampleList.data.map((x) => MatchTarget.parse(x)));
   mount();
   await screen.findByText("가온소프트");
-  fireEvent.change(screen.getByPlaceholderText("기업·직무 검색"), {
+  fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), {
     target: { value: "나래" },
   });
   expect(screen.queryByText("가온소프트")).not.toBeInTheDocument();

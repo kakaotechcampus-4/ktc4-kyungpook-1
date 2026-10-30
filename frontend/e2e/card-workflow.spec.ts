@@ -56,7 +56,7 @@ test('copy preview offers plain STAR and evidence formats without modifying save
   await page.getByRole('button', { name: '복사', exact: true }).click();
   const preview = page.getByRole('textbox', { name: '복사할 내용', exact: true });
   const plain = await preview.inputValue(); expect(plain).not.toContain('##'); expect(plain).not.toContain('CONFIRMED');
-  await page.getByRole('radio', { name: 'STAR 형식', exact: true }).click();
+  await page.getByRole('radio', { name: '상황, 과제, 행동, 결과 형식', exact: true }).click();
   await expect(preview).toHaveValue(/상황\n/);
   await page.getByRole('radio', { name: '근거 포함', exact: true }).click();
   await expect(preview).toHaveValue(/https:\/\/github.com/);

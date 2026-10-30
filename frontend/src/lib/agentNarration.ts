@@ -23,11 +23,15 @@ export function agentHeadline(job: Job, repoName?: string): string {
   if (job.state === 'QUEUED') return '앞 작업이 끝나면 바로 읽기 시작해요';
   if (isTerminal(job.state)) {
     const commits = job.steps.find((s) => s.key === 'COMMITS')?.done ?? 0;
-    const picked = job.steps.find((s) => s.key === 'COMPRESS')?.done ?? 0;
+    const compress = job.steps.find((s) => s.key === 'COMPRESS');
+    const picked = compress?.done ?? 0;
+    // 서버는 AI 가 이 단계의 진행을 보내 total 이 있으면 done 을 "AI 가 센 작업 단위 수"로 끝내고(AnalysisJob.candidateStep),
+    // 진행을 못 받았을 때만(total 이 null) 후보 수로 끝낸다. total 이 있으면 done 은 후보 수가 아니므로 숫자를 말하지 않는다.
+    const what = compress?.total == null ? `카드가 될 만한 작업 ${picked}개를` : '카드가 될 만한 작업을';
     // 숫자는 이번에 새로 읽은 양이다. 다시 정리할 때 새 커밋이 없으면 "커밋 0개를 읽고"라고 말하지 않는다
     if (job.state === 'SUCCEEDED' && picked > 0) return commits > 0
-      ? `커밋 ${commits}개를 읽고 카드가 될 만한 작업 ${picked}개를 골랐어요`
-      : `새 커밋은 없었고, 카드가 될 만한 작업 ${picked}개를 골랐어요`;
+      ? `커밋 ${commits}개를 읽고 ${what} 골랐어요`
+      : `새 커밋은 없었고, ${what} 골랐어요`;
     return job.state === 'SUCCEEDED' ? '읽기를 마쳤어요' : '여기까지 읽고 멈췄어요';
   }
   return repoName ? `${repoName}에서 자소서에 쓸 만한 경험을 찾고 있어요` : '자소서에 쓸 만한 경험을 찾고 있어요';

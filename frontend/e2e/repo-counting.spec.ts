@@ -17,7 +17,7 @@ test('개수를 못 센 레포는 숫자 대신 "세는 중"이고, 0 으로 오
   expect(await page.getByText('PR 0건', { exact: true }).count()).toBe(2);   // algorithm-study · team-board, 못 센 레포는 세지 않는다
 
   await counting.click();
-  await page.getByRole('button', { name: '다음 →' }).click();
+  await page.getByRole('button', { name: '다음', exact: true }).click();
   await expect(page.getByRole('dialog').getByText(/기여 개수를 세는 중이에요/)).toBeVisible();
 });
 
@@ -27,7 +27,7 @@ test('수집 상한에 걸리면 이유를 말하고, 서버가 열지 않은 "�
   await page.getByRole('button', { name: '정리 시작' }).click();
   await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('한 번에 읽는 상한까지만 읽었어요')).toBeVisible();
-  await expect(page.getByText('일부 기록만 분석했어요')).toHaveCount(0);
+  await expect(page.getByText('일부 기록만 정리했어요')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /이어 읽기/ })).toHaveCount(0);   // retryable: false
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
   await expect(page.getByRole('heading', { name: /후보 \d+개 \(부분 결과\)/ })).toBeVisible();

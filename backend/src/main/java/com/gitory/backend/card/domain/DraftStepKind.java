@@ -7,5 +7,6 @@ public enum DraftStepKind {
     RETRY,
     KEEP,
     REWRITE,
-    PASS
+    PASS,
+    REVERT
 }

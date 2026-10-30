@@ -36,7 +36,8 @@ export function createScenario(scenario: Scenario) {
         }
       }
       if (scenario === 'read-error' && method === 'GET' && path !== '/me' && !path.startsWith('/jobs')) return fault('INTERNAL_ERROR');
-      if (scenario === 'save-error' && method === 'PATCH' && path.endsWith('/draft') && !failedSave) {
+      // 인적사항 통째 저장(PUT /profile)도 같은 "첫 저장 실패" — 입력이 남고 다시 저장하면 되는지 눈으로 보려는 시나리오
+      if (scenario === 'save-error' && ((method === 'PATCH' && path.endsWith('/draft')) || (method === 'PUT' && path === '/profile')) && !failedSave) {
         failedSave = true; return fault('INTERNAL_ERROR');
       }
       if (scenario === 'conflict' && method === 'POST' && path.endsWith('/analyze')) return fault('IDEMPOTENCY_KEY_MISMATCH', 409);

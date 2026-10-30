@@ -2,6 +2,7 @@ package com.gitory.backend.matching.api;
 
 import com.gitory.backend.agent.port.CriterionMatch;
 import com.gitory.backend.agent.port.JobMatchingSearchPort;
+import com.gitory.backend.agent.port.MatchingSearchRequest;
 import com.gitory.backend.agent.port.MatchingSearchResult;
 import com.gitory.backend.agent.port.MatchingSearchUnavailableException;
 import com.gitory.backend.consent.domain.LoginUser;
@@ -10,7 +11,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -167,8 +170,8 @@ class MatchDetailApiTest {
     }
 
     @Test
-    @DisplayName("등급과 맞은 조건 수를 목록과 같은 규칙으로 센다")
-    void countsLikeTheList() throws Exception {
+    @DisplayName("등급은 필수 조건으로 세고, 우대는 따로 세며, 담당 업무는 세지 않는다")
+    void countsRequiredAndPreferredButNotDuties() throws Exception {
 
         Long card = confirmedCard("행동", "결과");
         Long posting = posting(days(10));
@@ -181,17 +184,125 @@ class MatchDetailApiTest {
                 new CriterionMatch(first, statement, 0.1), new CriterionMatch(preferred, statement, 0.1),
                 new CriterionMatch(duty, statement, 0.1)), 4));
 
-        JsonNode inDetail = MAPPER.readTree(mvc.perform(get("/api/matches/" + publicIdOf(posting)).with(loggedIn()))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8))
-                .get("data");
-        JsonNode inList = MAPPER.readTree(mvc.perform(get("/api/matches").with(loggedIn()))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8))
-                .get("data").get(0);
+        mvc.perform(get("/api/matches/" + publicIdOf(posting)).with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.fit").value("B"))
+                .andExpect(jsonPath("$.data.required.total").value(2))
+                .andExpect(jsonPath("$.data.required.met").value(1))
+                .andExpect(jsonPath("$.data.preferred.total").value(1))
+                .andExpect(jsonPath("$.data.preferred.met").value(1));
 
-        assertThat(inDetail.get("fit").asString()).isEqualTo("B").isEqualTo(inList.get("fit").asString());
-        assertThat(inDetail.get("required")).isEqualTo(inList.get("required"));
-        assertThat(inDetail.get("preferred")).isEqualTo(inList.get("preferred"));
-        assertThat(inDetail.get("required").get("met").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("같은 조건에 문장이 여럿 맞아도 조건은 한 번만 센다")
+    void countsEachConditionOnce() throws Exception {
+
+        Long card = confirmedCard("행동", "결과");
+        Long posting = posting(days(10));
+        List<Long> required = criteria(posting, "REQUIRED", 2);
+        when(search.search(any())).thenReturn(new MatchingSearchResult(List.of(
+                new CriterionMatch(required.get(0), statementOf(card, "A"), 0.1),
+                new CriterionMatch(required.get(0), statementOf(card, "R"), 0.2)), 5));
+
+        mvc.perform(get("/api/matches/" + publicIdOf(posting)).with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.required.met").value(1));
+
+    }
+
+    @Test
+    @DisplayName("확정 카드는 있는데 행동·결과 문장이 없으면 AI 를 부르지 않고 D 다")
+    void confirmedCardWithoutActionAndResultIsGradeD() throws Exception {
+
+        Long card = fixtures.insertCard(UUID.randomUUID(), myUserId);
+        fixtures.insertStatement(card, 1, "S", "상황", "USER_STATED", null);
+        fixtures.confirmCard(card);
+        Long posting = posting(days(10));
+        criteria(posting, "REQUIRED", 2);
+
+        mvc.perform(get("/api/matches/" + publicIdOf(posting)).with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.fit").value("D"));
+        verify(search, never()).search(any());
+
+    }
+
+    @Test
+    @DisplayName("문장이 200개를 넘으면 200개만 AI 에 보낸다")
+    void sendsAtMost200StatementsNewestFirst() throws Exception {
+
+        IntStream.range(0, 101).forEach(index -> {
+            Long card = fixtures.insertCard(UUID.randomUUID(), myUserId);
+            fixtures.insertStatement(card, 1, "A", "행동 " + index, "USER_STATED", null);
+            fixtures.insertStatement(card, 1, "R", "결과 " + index, "USER_STATED", null);
+            fixtures.confirmCard(card);
+            jdbc.update("UPDATE card SET confirmed_at = now() + (? * interval '1 minute') WHERE id = ?", index, card);
+        });
+        Long posting = posting(days(10));
+        criteria(posting, "REQUIRED", 1);
+        when(search.search(any())).thenReturn(new MatchingSearchResult(List.of(), 5));
+
+        mvc.perform(get("/api/matches/" + publicIdOf(posting)).with(loggedIn())).andExpect(status().isOk());
+
+        ArgumentCaptor<MatchingSearchRequest> sent = ArgumentCaptor.forClass(MatchingSearchRequest.class);
+        verify(search).search(sent.capture());
+        assertThat(sent.getValue().statements()).hasSize(200);
+
+    }
+
+    @Test
+    @DisplayName("AI 가 거절하는 문장은 보내지 않는다: 공백만 남은 문장은 빼고 4000자를 넘는 문장은 4000자로 자른다")
+    void doesNotSendWhatAiRejects() throws Exception {
+
+        Long card = fixtures.insertCard(UUID.randomUUID(), myUserId);
+        fixtures.insertStatement(card, 1, "A", "", "USER_STATED", null);
+        fixtures.insertStatement(card, 1, "R", "가".repeat(100), "USER_STATED", null);
+        fixtures.confirmCard(card);
+        jdbc.update("UPDATE card SET mask_rules = ?::jsonb WHERE id = ?",
+                "[{\"from\":\"가\",\"to\":\"" + "나".repeat(100) + "\"}]", card);
+        Long posting = posting(days(10));
+        criteria(posting, "REQUIRED", 1);
+        when(search.search(any())).thenReturn(new MatchingSearchResult(List.of(), 5));
+
+        mvc.perform(get("/api/matches/" + publicIdOf(posting)).with(loggedIn())).andExpect(status().isOk());
+
+        ArgumentCaptor<MatchingSearchRequest> sent = ArgumentCaptor.forClass(MatchingSearchRequest.class);
+        verify(search).search(sent.capture());
+        assertThat(sent.getValue().statements()).hasSize(1);
+        assertThat(sent.getValue().statements().getFirst().body()).hasSize(4000);
+
+    }
+
+    @Test
+    @DisplayName("AI 색인에 조건이 하나도 없다고 답하면 근거 없는 D 로 보이지 않게 503 AI_UNAVAILABLE 이다")
+    void emptyIndexIsServiceUnavailable() throws Exception {
+
+        confirmedCard("행동", "결과");
+        Long posting = posting(days(10));
+        criteria(posting, "REQUIRED", 1);
+        when(search.search(any())).thenReturn(new MatchingSearchResult(List.of(), 0));
+
+        mvc.perform(get("/api/matches/" + publicIdOf(posting)).with(loggedIn()))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error.code").value("AI_UNAVAILABLE"));
+
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true, 503, AI_UNAVAILABLE", "false, 500, INTERNAL_ERROR"})
+    @DisplayName("AI 검색이 다시 시도할 수 있게 실패하면 503, 다시 해도 같은 실패이거나 이상한 응답이면 500 이다")
+    void searchFailureMapsToStatus(boolean retryable, int status, String code) throws Exception {
+
+        confirmedCard("행동", "결과");
+        Long posting = posting(days(10));
+        criteria(posting, "REQUIRED", 1);
+        when(search.search(any())).thenThrow(new MatchingSearchUnavailableException("AI 매칭 검색 실패", retryable,
+                !retryable, retryable ? "AI_UNAVAILABLE" : "AI_INVALID_RESPONSE", null));
+
+        mvc.perform(get("/api/matches/" + publicIdOf(posting)).with(loggedIn()))
+                .andExpect(status().is(status))
+                .andExpect(jsonPath("$.error.code").value(code));
 
     }
 

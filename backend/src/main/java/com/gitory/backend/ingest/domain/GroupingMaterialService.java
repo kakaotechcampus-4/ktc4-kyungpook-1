@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,7 +17,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * 저장소 연결 하나에 저장된 수집 결과로 AI 후보 묶기에 보낼 내 커밋과, 그 커밋이 가리키는 PR·이슈의 제목·본문을 모은다
+ * 저장소 연결 하나에 저장된 수집 결과로 AI 경험 그룹화에 보낼 내 커밋과, 그 커밋이 가리키는 PR·이슈의 제목·본문을 모은다
  * ingest 는 후보를 모르므로 손댄 후보에 든 커밋 sha 와 손댄 후보가 담은 PR 번호는 부르는 쪽이 넘긴다
  */
 @Slf4j
@@ -35,14 +34,8 @@ public class GroupingMaterialService {
 
         GithubRepo repository = materials.findRepository(userRepositoryId)
                 .orElseThrow(() -> new IllegalStateException("연결된 저장소가 없다: " + userRepositoryId));
-        String defaultBranch = repository.getDefaultBranch();
         List<PullRequest> pullRequests = materials.findPullRequests(repository.getId());
-        Map<String, List<PullRequest>> pullRequestsBySha = pullRequestsBySha(pullRequests);
-        Set<Integer> ownPullRequests = pullRequests.stream()
-                .filter(pullRequest -> login.equalsIgnoreCase(pullRequest.getAuthorLogin()))
-                .filter(pullRequest -> !isRelease(pullRequest, defaultBranch))
-                .map(PullRequest::getGithubPrNumber)
-                .collect(Collectors.toSet());
+        PullRequestBinding binding = new PullRequestBinding(pullRequests, login, repository.getDefaultBranch());
         Map<Integer, Issue> issues = materials.findIssues(repository.getId()).stream()
                 .collect(Collectors.toMap(Issue::getGithubIssueNumber, Function.identity()));
 
@@ -52,16 +45,10 @@ public class GroupingMaterialService {
         for (GitCommit commit : ownCommits) {
             // sha 칸은 CHAR(40) 이라 40자보다 짧은 sha 는 뒤에 공백이 붙어 나와, PR 커밋 목록·넘겨받은 sha 와 같게 비교되도록 지운다
             String sha = commit.getSha().stripTrailing();
-            List<PullRequest> containing = pullRequestsBySha.getOrDefault(sha, List.of());
             // issue_numbers 는 AI 가 메시지에서 뽑은 '#숫자' 전부라 이슈 번호와 PR 번호가 섞여 있다
             List<Integer> references = Objects.requireNonNullElse(commit.getIssueNumbers(), List.of());
 
-            Integer pullRequestNumber = narrowestPullRequest(containing, defaultBranch);
-            if (pullRequestNumber == null) {
-                // 스쿼시로 머지한 커밋은 PR 커밋 목록에 없고 메시지에 PR 번호만 남는다
-                // 남의 PR 번호를 적은 커밋이 남의 PR 후보가 되지 않게 내 PR 만 본다
-                pullRequestNumber = references.stream().filter(ownPullRequests::contains).findFirst().orElse(null);
-            }
+            Integer pullRequestNumber = binding.pullRequestOf(sha, references);
             // 손댄 후보의 PR 을 커밋의 PR 로 보내면 AI 가 그 PR 후보를 다시 만든다
             // 손댄 PR 에도 들었지만 커밋이 더 적은 다른 PR 이 커밋의 PR 이면(쌓은 PR) 빼지 않아 그 PR 의 후보가 사라지지 않게 한다
             if (lockedShas.contains(sha)
@@ -79,7 +66,7 @@ public class GroupingMaterialService {
 
         List<MaterialPullRequest> pullRequestContexts = pullRequestContexts(commits, pullRequests, issues);
         List<MaterialIssue> issueContexts = issueContexts(commits, pullRequestContexts, issues);
-        log.info("저장소 연결 {} 의 후보 묶기 재료로 내 커밋 {}개, PR {}개, 이슈 {}개를 모았다", userRepositoryId,
+        log.info("저장소 연결 {} 의 경험 그룹화에 보낼 내 커밋 {}개, PR {}개, 이슈 {}개를 모았다", userRepositoryId,
                 commits.size(), pullRequestContexts.size(), issueContexts.size());
 
         return new GroupingMaterial(commits, pullRequestContexts, issueContexts);
@@ -93,40 +80,6 @@ public class GroupingMaterialService {
                         file -> new MaterialFile(file.getPath(), file.getStatus(), file.getAdditions(),
                                 file.getDeletions()),
                         Collectors.toList())));
-
-    }
-
-    private static Map<String, List<PullRequest>> pullRequestsBySha(List<PullRequest> pullRequests) {
-
-        Map<String, List<PullRequest>> bySha = new HashMap<>();
-        for (PullRequest pullRequest : pullRequests) {
-            for (String sha : pullRequest.getCommitShas()) {
-                bySha.computeIfAbsent(sha, ignored -> new ArrayList<>()).add(pullRequest);
-            }
-        }
-        return bySha;
-
-    }
-
-    /** 한 커밋이 기능 PR 과 그 PR 을 덮는 넓은 PR 에 함께 들므로, 커밋이 가장 적은 PR 을 그 커밋의 작업으로 본다 */
-    private static Integer narrowestPullRequest(List<PullRequest> containing, String defaultBranch) {
-
-        return containing.stream()
-                .filter(pullRequest -> !isRelease(pullRequest, defaultBranch))
-                .min(Comparator.comparingInt((PullRequest pullRequest) -> pullRequest.getCommitShas().size())
-                        .thenComparingInt(PullRequest::getGithubPrNumber))
-                .map(PullRequest::getGithubPrNumber)
-                .orElse(null);
-
-    }
-
-    /**
-     * 기본 브랜치를 다른 브랜치로 올리는 릴리스 PR 은 그 사이 모든 커밋을 담아, 고르면 남이 만든 릴리스 PR 이 내 후보가 된다
-     * 포크의 기본 브랜치에서 온 PR 은 head·base 이름이 같아 릴리스 PR 로 보지 않는다
-     */
-    private static boolean isRelease(PullRequest pullRequest, String defaultBranch) {
-
-        return pullRequest.getHeadBranch().equals(defaultBranch) && !pullRequest.getBaseBranch().equals(defaultBranch);
 
     }
 

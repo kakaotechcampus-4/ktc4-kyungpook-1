@@ -107,7 +107,7 @@ describe('작업 결과는 HTTP 오류가 아니라 본문의 상태다', () => 
   it('단계는 늘 4개가 정해진 순서로 온다', () => {
     const started = parse(StartedJob, req('POST', '/repos/r_auth/analyze'));
     const job = parse(Job, req('GET', `/jobs/${started.jobId}`));
-    expect(job.steps.map((s) => s.key)).toEqual(['COMMITS', 'PR_REVIEW', 'COMPRESS', 'REASON']);
+    expect(job.steps.map((s) => s.key)).toEqual(['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON']);
   });
 
   it('이미 끝난 Job 을 취소해도 오류가 아니다 — 현재 상태를 200 으로 준다', () => {

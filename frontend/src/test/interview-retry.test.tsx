@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '@/api/client';
 import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import type { Card, InterviewTurn, StarField } from '@/api/schemas';
@@ -48,7 +49,7 @@ describe('interview retry and pending answer', () => {
       fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
       await screen.findByText('이어서 물을까요?');
     }
-    fireEvent.click(screen.getByRole('button', { name: /결과 · 비어 있음/ }));
+    fireEvent.click(screen.getByRole('button', { name: /결과 \(비어 있음\)/ }));
     const retry = await screen.findByRole('button', { name: /다시/ });
     fireEvent.click(retry);
     await waitFor(() => expect(ask.mock.calls.map((call) => call[1])).toEqual(suffix ? ['T', 'R', 'R'] : ['R', 'R']));
@@ -68,5 +69,25 @@ describe('interview retry and pending answer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Second option' }));
     expect(screen.getByRole('textbox', { name: '답변' })).toHaveValue('First option');
     await act(async () => { resolve(card); });
+  });
+
+  it('shows why an answer was rejected instead of blaming the connection', async () => {
+    vi.spyOn(endpoints, 'answerInterview').mockRejectedValue(new ApiError('INVALID_REQUEST', 'hidden', 400));
+    vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue([]);
+    mount([{ ...template, answer: null }]);
+    fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
+    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    expect(await screen.findByText('입력 내용과 현재 상태를 확인해 주세요.')).toBeInTheDocument();
+    expect(screen.queryByText(/연결을 확인/)).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '답변' })).toHaveValue('T answer');
+  });
+
+  it('still asks to check the connection when the server cannot be reached', async () => {
+    vi.spyOn(endpoints, 'answerInterview').mockRejectedValue(new ApiError('NETWORK', 'hidden', 0));
+    vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue([]);
+    mount([{ ...template, answer: null }]);
+    fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
+    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    expect(await screen.findByText(/연결을 확인한 뒤 다시 시도해 주세요/)).toBeInTheDocument();
   });
 });

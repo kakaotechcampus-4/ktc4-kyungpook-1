@@ -25,7 +25,7 @@ test('mobile search reset preserves selection and refresh restores it', async ({
   await page.goto('/repos/r_auth/candidates');
   const checkbox = page.getByRole('checkbox', { disabled: false }).first();
   await checkbox.check();
-  await page.getByRole('textbox', { name: '후보 검색 (제목·추천 이유)' }).fill('일치하지 않는 검색');
+  await page.getByRole('textbox', { name: '후보 검색 (제목, 추천 이유)' }).fill('일치하지 않는 검색');
   await page.getByRole('button', { name: '검색 초기화' }).click();
   await expect(checkbox).toBeChecked();
   await page.reload();

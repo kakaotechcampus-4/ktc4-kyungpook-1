@@ -3,6 +3,8 @@ package com.gitory.backend.common.api;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.util.Map;
+
 /**
  * API 응답의 공통 형식 {@code { data, error }}.
  * 후보 0개·부분 결과·작업 실패 같은 판정은 오류가 아니라 200 + 상태값으로 내린다.
@@ -21,5 +23,9 @@ public record ApiResponse<T>(
 
     public static <T> ApiResponse<T> fail(ErrorCode code, String message) {
         return new ApiResponse<>(null, new ApiError(code.name(), message));
+    }
+
+    public static <T> ApiResponse<T> fail(ErrorCode code, String message, Map<String, Object> details) {
+        return new ApiResponse<>(null, new ApiError(code.name(), message, details));
     }
 }

@@ -2,20 +2,26 @@ package com.gitory.backend.card.domain.interview;
 
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.Card;
+import com.gitory.backend.card.domain.CardKind;
 import com.gitory.backend.card.domain.CardNotFoundException;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.recommend.domain.CandidateReference;
+import com.gitory.backend.recommend.domain.CandidateReferenceService;
+import com.gitory.backend.recommend.domain.CandidateType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -28,11 +34,12 @@ class InterviewHistoryServiceTest {
 
     private final CardOwnershipService ownership = mock(CardOwnershipService.class);
     private final InterviewTurnRepository turns = mock(InterviewTurnRepository.class);
+    private final CandidateReferenceService candidates = mock(CandidateReferenceService.class);
 
     @BeforeEach
     void setUp() {
 
-        Card card = Card.startManual(USER_ID, 11L, "카드", null, "key-1");
+        Card card = Card.startManual(USER_ID, 11L, null, "카드", null, "key-1");
         ReflectionTestUtils.setField(card, "id", CARD_ID);
         when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.VIEW_CARD)).thenReturn(card);
 
@@ -51,6 +58,41 @@ class InterviewHistoryServiceTest {
         assertThat(history).extracting(InterviewTurnView::sourceType)
                 .containsOnly(InterviewSourceType.DIRECT_CARD);
         verify(ownership).findOwned(PUBLIC_ID, USER_ID, AuditAction.VIEW_CARD);
+
+    }
+
+    @Test
+    @DisplayName("후보로 만든 카드의 질문 기록은 후보 종류로 정한 출처로 나가고, 후보는 한 번만 읽는다")
+    void usesSourceTypeOfTheCandidate() {
+
+        Card candidateCard = Card.startFromCandidate(USER_ID, 11L, 9L, "카드", CardKind.TECH, null);
+        ReflectionTestUtils.setField(candidateCard, "id", CARD_ID);
+        when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.VIEW_CARD)).thenReturn(candidateCard);
+        when(candidates.find(9L)).thenReturn(Optional.of(
+                new CandidateReference(9L, UUID.randomUUID(), CandidateType.PR, "7", "제목")));
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID))
+                .thenReturn(List.of(InterviewTurnSamples.open(1), InterviewTurnSamples.open(2)));
+
+        List<InterviewTurnView> history = service(2).history(PUBLIC_ID, USER_ID);
+
+        assertThat(history).extracting(InterviewTurnView::sourceType).containsOnly(InterviewSourceType.PR);
+        verify(candidates, times(1)).find(9L);
+
+    }
+
+    @Test
+    @DisplayName("직접 추가한 후보로 만든 카드의 질문 기록은 DIRECT_CARD 출처로 나간다")
+    void usesDirectCardForManualCandidate() {
+
+        Card candidateCard = Card.startFromCandidate(USER_ID, 11L, 9L, "카드", CardKind.TECH, null);
+        ReflectionTestUtils.setField(candidateCard, "id", CARD_ID);
+        when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.VIEW_CARD)).thenReturn(candidateCard);
+        when(candidates.find(9L)).thenReturn(Optional.of(
+                new CandidateReference(9L, UUID.randomUUID(), CandidateType.MANUAL, "manual", "제목")));
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(InterviewTurnSamples.open(1)));
+
+        assertThat(service(2).history(PUBLIC_ID, USER_ID)).extracting(InterviewTurnView::sourceType)
+                .containsOnly(InterviewSourceType.DIRECT_CARD);
 
     }
 
@@ -92,7 +134,7 @@ class InterviewHistoryServiceTest {
 
     private InterviewHistoryService service(int maxTurns) {
 
-        return new InterviewHistoryService(ownership, turns, new InterviewLimits(maxTurns));
+        return new InterviewHistoryService(ownership, turns, candidates, new InterviewLimits(maxTurns));
 
     }
 }

@@ -16,6 +16,7 @@ import java.util.UUID;
 /**
  * 임시 저장으로 카드의 네 칸을 저장하고, 칸마다 보낸 글이 갈라져 나온 직전 버전의 글과 같으면 그 문장을 근거·칸 메모째 복사한다
  * 비교 기준을 직전 버전으로 둬야 편집 취소로 원문을 다시 보낼 때 커밋 근거와 확인 필요 표시가 함께 돌아온다
+ * 확정 카드도 다시 열지 않고 고치며, 저장한 글로 카드 상태를 다시 정한다({@link Card#settle})
  */
 @Service
 @RequiredArgsConstructor
@@ -29,12 +30,12 @@ public class DraftSaveService {
     private final CardSlotNoteRepository notes;
     private final CardVersionReader reader;
     private final CardVersionWriter writer;
+    private final CardThemeSuggester themeSuggester;
 
     @Transactional
     public SavedDraft save(UUID publicId, Long userId, Map<StarField, String> texts) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
-        card.requireDraft();
         Map<StarField, String> sent = checkedTexts(texts);
 
         CardVersion current = versions.findByCardIdAndVersionNo(card.getId(), card.getCurrentVersion()).orElseThrow();
@@ -51,6 +52,7 @@ public class DraftSaveService {
 
         CardVersion next = writer.startNext(card, VersionSource.USER_EDIT);
         fill(card.getId(), currentSlots, next.getVersionNo(), sent);
+        themeSuggester.settle(card, reader.read(card.getId(), next.getVersionNo()));
 
         return new SavedDraft(card.getPublicId(), next.getVersionNo(), sent, next.getUpdatedAt());
 
@@ -68,6 +70,7 @@ public class DraftSaveService {
         fill(card.getId(), branchedFrom, current.getVersionNo(), sent);
         current.markSaved();
         card.markEdited();
+        themeSuggester.settle(card, reader.read(card.getId(), current.getVersionNo()));
 
         return new SavedDraft(card.getPublicId(), current.getVersionNo(), sent, current.getUpdatedAt());
 

@@ -11,6 +11,7 @@ import com.gitory.backend.agent.port.GroupingVerdict;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
+import com.gitory.backend.common.infra.ai.AiProgress;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
@@ -19,9 +20,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
- * AI 후보 묶기를 부르고, 응답이 저장해도 되는 모양인지 확인한 뒤 돌려준다
+ * AI 경험 그룹화 API 를 부르고, 응답이 저장해도 되는 모양인지 확인한 뒤 돌려준다
  * 후보 커밋은 보낸 커밋에만 이어 저장하고 한 커밋은 한 후보에만 두므로, 이를 어긴 응답도 이상 응답으로 끝낸다
  */
 @Component
@@ -40,13 +42,23 @@ public class AiExperienceGroupingAdapter implements ExperienceGroupingPort {
     @Override
     public ExperienceGroupingResponse group(ExperienceGroupingRequest request) {
 
+        return group(request, null);
+
+    }
+
+    /** progress 가 없으면 진행 없이 한 번에 받는 그룹화 API 를 부른다 */
+    @Override
+    public ExperienceGroupingResponse group(ExperienceGroupingRequest request, Consumer<AiProgress> progress) {
+
         Set<String> sentShas = new HashSet<>();
         for (GroupingCommit commit : request.commits()) {
             sentShas.add(commit.sha());
         }
         JsonNode data;
         try {
-            data = ai.post(PATH, request, properties.groupsReadTimeout());
+            data = progress == null
+                    ? ai.post(PATH, request, properties.groupsReadTimeout())
+                    : ai.postStreaming(PATH + "/stream", request, properties.groupsReadTimeout(), progress);
         } catch (AiClientException failure) {
             throw unavailable(failure);
         }
@@ -205,7 +217,7 @@ public class AiExperienceGroupingAdapter implements ExperienceGroupingPort {
     private static AgentUnavailableException unavailable(AiClientException failure) {
 
         boolean retryable = retryable(failure);
-        return new AgentUnavailableException("AI 후보 묶기 실패 (" + failure.errorCode() + ")", retryable,
+        return new AgentUnavailableException("AI 경험 그룹화 실패 (" + failure.errorCode() + ")", retryable,
                 !retryable, failure);
 
     }

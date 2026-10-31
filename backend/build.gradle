@@ -49,6 +49,12 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-restclient'
 
+    // LLM 을 부르는 요청의 사용자별 호출 횟수를 센다. 서버가 다시 떠도 숫자가 남고 만료가 저절로 된다
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // 채용 공고 본문의 HTML 을 글로 바꾼다
+    implementation 'org.jsoup:jsoup:1.22.2'
+
     // 운영
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
@@ -79,4 +85,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // DB 시험 클래스마다 컨테이너와 Spring 환경이 따로 쌓여 기본 512MB 로는 모자란다
+    maxHeapSize = '1g'
+    // OpenAPI 스냅샷 비교 시험이 스냅샷만 바뀌었거나 고쳐 쓰기 모드로 돌 때 캐시로 건너뛰지 않게 한다
+    inputs.file('../docs/openapi/backend.json').withPropertyName('openApiSnapshot').optional()
+    inputs.property('updateOpenApi', providers.environmentVariable('UPDATE_OPENAPI').orElse(''))
 }

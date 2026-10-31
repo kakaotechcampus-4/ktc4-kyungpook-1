@@ -11,7 +11,9 @@ public record GithubStatus(
 
     static GithubStatus from(GithubConnection connection, Instant lastCollectedAt) {
 
-        return new GithubStatus(connection.isActive(), connection.scopeList(), connection.getGrantedAt(), lastCollectedAt);
+        boolean usable = connection.isActive()
+                && (connection.getTokenExpiresAt() == null || connection.getTokenExpiresAt().isAfter(Instant.now()));
+        return new GithubStatus(usable, connection.scopeList(), connection.getGrantedAt(), lastCollectedAt);
 
     }
 

@@ -584,7 +584,7 @@ class RecallApiTest {
     }
 
     @Test
-    @DisplayName("묶은 기록을 만들거나 바꾸지 않는다")
+    @DisplayName("경험 그룹화 기록을 만들거나 바꾸지 않는다")
     void leavesGroupingRecordAlone() throws Exception {
 
         answer(myUserId, MY_REPO.toString(), "/src/api/", "로그인을 맡았다").andExpect(status().isOk());

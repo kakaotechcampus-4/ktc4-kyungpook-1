@@ -31,14 +31,13 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
     UUID findUserRepositoryPublicId(@Param("id") Long userRepositoryId);
 
     // 다른 워커가 잡고 있는 행은 건너뛰어 같은 Job 을 두 번 꺼내지 않는다
-    // 분석 Job 은 같은 사용자의 분석 Job 이 실행 중이면 건너뛰어 한 토큰으로 GitHub 를 동시에 부르지 않는다
-    // 카드 초안 Job 은 GitHub 를 부르지 않아 그 조건 없이 오래된 순으로 꺼낸다
+    // 분석과 카드 초안(AI 초안을 켠 경우)은 사용자의 GitHub 토큰을 쓰므로, 같은 사용자의 같은 종류 Job 이 실행 중이면 건너뛰어 하나씩 돌린다
+    // 분석과 초안은 서로 막지 않아, 분석이 길어도 초안이 기다리지 않는다
     @Query(value = """
             SELECT * FROM analysis_job j
             WHERE j.state = 'QUEUED'
-              AND (j.type = 'DRAFT'
-                   OR NOT EXISTS (SELECT 1 FROM analysis_job r
-                                  WHERE r.user_id = j.user_id AND r.type = 'ANALYZE' AND r.state = 'RUNNING'))
+              AND NOT EXISTS (SELECT 1 FROM analysis_job r
+                              WHERE r.user_id = j.user_id AND r.type = j.type AND r.state = 'RUNNING')
             ORDER BY j.started_at
             LIMIT 1
             FOR UPDATE SKIP LOCKED

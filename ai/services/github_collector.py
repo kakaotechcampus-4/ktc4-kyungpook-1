@@ -6,11 +6,14 @@ DB 저장과 Job 상태 관리는 Spring의 책임이다.
 
 from __future__ import annotations
 
+import asyncio
+import os
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import PurePosixPath
-from typing import Any, Optional, Union
+from typing import Any, Optional, TypeVar, Union
 from urllib.parse import quote
 
 import httpx
@@ -34,10 +37,15 @@ from schemas.collection import (
     RepositoryCollectionResult,
 )
 from ports.repository_activity import RepositoryActivityExecution
+from services.progress import COMMITS, PULL_REQUESTS, commit_item, pull_request_item, report_progress
 
 
 GITHUB_API_VERSION = "2022-11-28"
+GITHUB_API_BASE_URL_ENV = "GITORY_GITHUB_API_BASE_URL"
+DEFAULT_GITHUB_API_BASE_URL = "https://api.github.com"
 GITHUB_ACCEPT = "application/vnd.github+json"
+#: PR·커밋 상세를 한 번에 읽는 수. 8 이면 같은 토큰의 REST 2차 한도(1분 900번)를 넘을 수 있어 4로 묶는다.
+MAX_CONCURRENT_READS = 4
 ISSUE_REFERENCE = re.compile(r"(?<![\w/])#(\d+)")
 LOCKFILES = {
     "package-lock.json",
@@ -71,6 +79,10 @@ class GithubResourceNotFound(GithubApiError):
     """저장소가 없거나 현재 토큰으로 읽을 수 없음."""
 
 
+class GithubUnauthorized(GithubApiError):
+    """GitHub 이 토큰을 거절했다(401). 만료·취소된 토큰이라 다시 시도해도 같고 다시 연결해야 한다."""
+
+
 class _RateLimited(RuntimeError):
     """호출자가 지금까지 모은 값을 부분 결과로 바꾸기 위한 내부 신호."""
 
@@ -80,7 +92,13 @@ class CollectionLimits:
     """한 번의 수집이 GitHub와 AI 서버를 과도하게 점유하지 않도록 하는 상한."""
 
     max_commits: int = 1_000
+    #: 누구 PR 이든 최근 갱신순으로 모으는 수. 이 밖의 PR 은 내 PR 만 더 모은다.
     max_pull_requests: int = 50
+    #: 최근 갱신 상한 밖에서 더 모으는 내 PR 수. 최근 상한 안의 내 PR 은 세지 않는다.
+    #: PR 마다 커밋·리뷰·줄 댓글로 3번 이상 부르므로, 커밋 상한과 합쳐도 Spring 의 수집 대기(600초) 안에 끝나게 잡는다.
+    max_own_pull_requests: int = 50
+    #: 내 PR 을 찾으려고 PR 목록(쪽당 100개)을 읽는 쪽 수.
+    max_pull_request_pages: int = 10
     max_issues: int = 50
     max_text_chars: int = 1_000
     max_candidate_commits: int = 50
@@ -103,18 +121,59 @@ class _CollectionState:
             self.partial_reason = reason
 
 
+_Item = TypeVar("_Item")
+_Read = TypeVar("_Read")
+_NOT_READ = object()
+
+
+async def _read_in_order(
+    items: list[_Item],
+    read: Callable[[_Item], Awaitable[_Read]],
+    on_read: Callable[[_Read, int], None],
+) -> tuple[list[_Read], bool]:
+    """items 를 MAX_CONCURRENT_READS 개씩 동시에 읽고, 다 읽은 것을 items 순서로 돌려준다.
+
+    한도 신호면 새로 읽지 않고 읽던 것을 멈춘 뒤 그때까지 읽은 것과 True 를, 그 밖의 실패는 읽던 것을 멈추고 그대로 던진다.
+    on_read 는 하나를 다 읽을 때마다 그 결과와 지금까지 읽은 수로 불린다.
+    """
+    reads: list[Any] = [_NOT_READ] * len(items)
+    indexes = iter(range(len(items)))
+    read_count = 0
+
+    async def work() -> None:
+        nonlocal read_count
+        for index in indexes:
+            reads[index] = await read(items[index])
+            read_count += 1
+            on_read(reads[index], read_count)
+
+    workers = [asyncio.create_task(work()) for _ in range(min(MAX_CONCURRENT_READS, len(items)))]
+    rate_limited = False
+    try:
+        await asyncio.gather(*workers)
+    except _RateLimited:
+        rate_limited = True
+    finally:
+        for worker in workers:
+            worker.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
+    return [result for result in reads if result is not _NOT_READ], rate_limited
+
+
 class GithubCollector:
     """선택 저장소의 commit·PR·review·issue·diff를 수집한다."""
 
     def __init__(
         self,
         *,
-        base_url: str = "https://api.github.com",
+        base_url: Optional[str] = None,
         limits: CollectionLimits = CollectionLimits(),
         transport: Optional[httpx.AsyncBaseTransport] = None,
         timeout_seconds: float = 30.0,
     ) -> None:
-        self._base_url = base_url
+        # E2E 시험이 가짜 GitHub 으로 바꿀 수 있게 환경변수를 생성 시점에 읽는다
+        configured = os.getenv(GITHUB_API_BASE_URL_ENV, "").strip()
+        self._base_url = (base_url or configured or DEFAULT_GITHUB_API_BASE_URL).rstrip("/")
         self._limits = limits
         self._transport = transport
         self._timeout_seconds = timeout_seconds
@@ -251,54 +310,108 @@ class GithubCollector:
         request: RepositoryCollectionRequest,
         state: _CollectionState,
     ) -> None:
-        repository = request.repository
-        pulls = await self._get_list(
-            client,
-            state,
-            f"/repos/{repository.owner_login}/{repository.name}/pulls",
-            params={
-                "state": "all",
-                "sort": "updated",
-                "direction": "desc",
-                "per_page": min(self._limits.max_pull_requests + 1, 100),
-            },
+        pulls = await self._select_pull_requests(client, request, state)
+        report_progress(PULL_REQUESTS, 0, len(pulls))
+        pull_requests, rate_limited = await _read_in_order(
+            pulls,
+            lambda pull: self._collect_pull_request(client, request, state, pull),
+            lambda pull_request, read: report_progress(
+                PULL_REQUESTS,
+                read,
+                len(pulls),
+                pull_request_item(pull_request.number, pull_request.title, len(pull_request.reviews)),
+            ),
         )
-        if len(pulls) > self._limits.max_pull_requests:
-            state.mark_partial(PartialReason.CAP_EXCEEDED)
+        state.pull_requests.extend(pull_requests)
+        if rate_limited:
+            raise _RateLimited()
 
-        for pull in pulls[: self._limits.max_pull_requests]:
-            number = _required_int(pull, "number")
-            commit_shas = await self._collect_pull_commit_shas(
-                client, request, state, number
+    async def _collect_pull_request(
+        self,
+        client: httpx.AsyncClient,
+        request: RepositoryCollectionRequest,
+        state: _CollectionState,
+        pull: dict[str, Any],
+    ) -> CollectedPullRequest:
+        number = _required_int(pull, "number")
+        commit_shas = await self._collect_pull_commit_shas(
+            client, request, state, number
+        )
+        review_comments = await self._collect_review_comments(
+            client, request, state, number
+        )
+        reviews = await self._collect_reviews(
+            client, request, state, number, review_comments
+        )
+        title = _required_text(pull, "title")
+        body = _optional_text(pull, "body")
+        body_excerpt, body_truncated = _excerpt(
+            body, self._limits.max_text_chars
+        )
+        return CollectedPullRequest(
+            number=number,
+            title=title,
+            body_excerpt=body_excerpt,
+            body_truncated=body_truncated,
+            state=_required_text(pull, "state").upper(),
+            author_login=_nested_optional_text(pull, "user", "login"),
+            base_branch=_nested_required_text(pull, "base", "ref"),
+            head_branch=_nested_required_text(pull, "head", "ref"),
+            created_at=_required_text(pull, "created_at"),
+            merged_at=_optional_text(pull, "merged_at"),
+            commit_shas=commit_shas,
+            linked_issue_numbers=_issue_numbers(f"{title}\n{body or ''}"),
+            reviews=reviews,
+        )
+
+    async def _select_pull_requests(
+        self,
+        client: httpx.AsyncClient,
+        request: RepositoryCollectionRequest,
+        state: _CollectionState,
+    ) -> list[dict[str, Any]]:
+        """최근 갱신 PR 은 누구 것이든, 그 밖은 내 PR 만 고른다.
+
+        팀 저장소는 PR 이 많아 최근 몇 개만 읽으면 오래된 내 PR 이 빠진다. 남의 오래된 PR 이
+        빠진 것은 부분 수집으로 알리지 않고, 내 PR 이 잘렸을 수 있을 때만 알린다.
+        """
+        repository = request.repository
+        actor_login = request.actor.github_login.lower()
+        selected: list[dict[str, Any]] = []
+        seen = 0
+        older_own = 0
+        page = 1
+        while True:
+            pulls = await self._get_list(
+                client,
+                state,
+                f"/repos/{repository.owner_login}/{repository.name}/pulls",
+                params={
+                    "state": "all",
+                    "sort": "updated",
+                    "direction": "desc",
+                    "per_page": 100,
+                    "page": page,
+                },
             )
-            review_comments = await self._collect_review_comments(
-                client, request, state, number
-            )
-            reviews = await self._collect_reviews(
-                client, request, state, number, review_comments
-            )
-            title = _required_text(pull, "title")
-            body = _optional_text(pull, "body")
-            body_excerpt, body_truncated = _excerpt(
-                body, self._limits.max_text_chars
-            )
-            state.pull_requests.append(
-                CollectedPullRequest(
-                    number=number,
-                    title=title,
-                    body_excerpt=body_excerpt,
-                    body_truncated=body_truncated,
-                    state=_required_text(pull, "state").upper(),
-                    author_login=_nested_optional_text(pull, "user", "login"),
-                    base_branch=_nested_required_text(pull, "base", "ref"),
-                    head_branch=_nested_required_text(pull, "head", "ref"),
-                    created_at=_required_text(pull, "created_at"),
-                    merged_at=_optional_text(pull, "merged_at"),
-                    commit_shas=commit_shas,
-                    linked_issue_numbers=_issue_numbers(f"{title}\n{body or ''}"),
-                    reviews=reviews,
-                )
-            )
+            for pull in pulls:
+                is_recent = seen < self._limits.max_pull_requests
+                is_own = (_nested_optional_text(pull, "user", "login") or "").lower() == actor_login
+                seen += 1
+                if not is_recent and not is_own:
+                    continue
+                if not is_recent:
+                    if older_own >= self._limits.max_own_pull_requests:
+                        state.mark_partial(PartialReason.CAP_EXCEEDED)
+                        continue
+                    older_own += 1
+                selected.append(pull)
+            if len(pulls) < 100:
+                return selected
+            if page >= self._limits.max_pull_request_pages:
+                state.mark_partial(PartialReason.CAP_EXCEEDED)
+                return selected
+            page += 1
 
     async def _collect_pull_commit_shas(
         self,
@@ -459,12 +572,18 @@ class GithubCollector:
         # 항목에 기대면 빈 저장소에서 head_sha가 사라지거나, 다른 브랜치
         # SHA를 기본 브랜치 head로 잘못 기록할 수 있다.
         branch = quote(repository.default_branch, safe="")
-        branch_info = await self._get_dict(
-            client,
-            state,
-            f"/repos/{repository.owner_login}/{repository.name}/branches/{branch}",
-            params={},
-        )
+        try:
+            branch_info = await self._get_dict(
+                client,
+                state,
+                f"/repos/{repository.owner_login}/{repository.name}/branches/{branch}",
+                params={},
+            )
+        except GithubResourceNotFound:
+            # 커밋이 없는 저장소는 기본 브랜치도 없어 404 가 온다. 실패 대신 커밋 0개로 끝낸다.
+            if await self._is_empty_repository(client, request, state):
+                return
+            raise
         state.head_sha = _nested_required_text(branch_info, "commit", "sha")
 
         known_shas = {sha.casefold() for sha in request.known_commit_shas}
@@ -500,19 +619,50 @@ class GithubCollector:
 
         pull_by_sha = _primary_pull_by_sha(state.pull_requests)
         selected_shas = list(summaries_by_sha)[: self._limits.max_commits]
-        for sha in selected_shas:
-            detail, files = await self._collect_commit_detail(
-                client, request, state, sha
-            )
-            commit, confirmation = self._to_commit(
-                request,
-                detail,
-                files,
-                pull_by_sha.get(sha),
-            )
+        report_progress(COMMITS, 0, len(selected_shas))
+        commits, rate_limited = await _read_in_order(
+            selected_shas,
+            lambda sha: self._collect_commit(client, request, state, sha, pull_by_sha.get(sha)),
+            lambda commit, read: report_progress(COMMITS, read, len(selected_shas), commit_item(commit[0])),
+        )
+        for commit, confirmation in commits:
             state.commits.append(commit)
             if confirmation is not None:
                 state.needs_confirmation.append(confirmation)
+        if rate_limited:
+            raise _RateLimited()
+
+    async def _collect_commit(
+        self,
+        client: httpx.AsyncClient,
+        request: RepositoryCollectionRequest,
+        state: _CollectionState,
+        sha: str,
+        pull_request_number: Optional[int],
+    ) -> tuple[CollectedCommit, Optional[ContributionConfirmation]]:
+        detail, files = await self._collect_commit_detail(
+            client, request, state, sha
+        )
+        return self._to_commit(request, detail, files, pull_request_number)
+
+    async def _is_empty_repository(
+        self,
+        client: httpx.AsyncClient,
+        request: RepositoryCollectionRequest,
+        state: _CollectionState,
+    ) -> bool:
+        """GitHub 은 빈 저장소의 커밋 목록에 409 를 준다. 저장소가 없거나 못 읽는 404 와 가른다."""
+        repository = request.repository
+        try:
+            await self._get_list(
+                client,
+                state,
+                f"/repos/{repository.owner_login}/{repository.name}/commits",
+                params={"per_page": 1},
+            )
+        except GithubApiError as exc:
+            return exc.status_code == 409
+        return False
 
     async def _collect_commit_detail(
         self,
@@ -761,6 +911,8 @@ class GithubCollector:
                 and exc.response.headers.get("X-RateLimit-Remaining") == "0"
             ):
                 raise _RateLimited() from exc
+            if status == 401:
+                raise GithubUnauthorized("GitHub 이 토큰을 거절했습니다.", status) from exc
             if status == 404:
                 raise GithubResourceNotFound(
                     "저장소가 없거나 현재 권한으로 읽을 수 없습니다.", status

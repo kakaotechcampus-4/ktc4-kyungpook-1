@@ -2,12 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { endpoints } from './endpoints';
 import { keys } from './keys';
-import { AuthError } from './client';
+import { ApiError, AuthError } from './client';
 import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard } from './schemas';
 import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
 import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
+import { matchKeys } from './matching';
 
 // ───────────────────────────── 조회 ─────────────────────────────
 export function useMe() {
@@ -28,6 +29,31 @@ export const useRepoCommits = (repoId: string, q: string) =>
 export const useRecall = (repoId: string | undefined) =>
   useQuery({ queryKey: keys.recall(repoId ?? ''), queryFn: () => endpoints.recall(repoId!), enabled: !!repoId });
 export const useCards = () => useQuery({ queryKey: keys.cards, queryFn: endpoints.cards });
+export function useDeleteCard(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    retry: false,
+    meta: { errorPresentation: 'inline' },
+    mutationFn: async () => {
+      try { await endpoints.deleteCard(id); return { alreadyMissing: false }; }
+      catch (error) {
+        if (error instanceof ApiError && error.status === 404) return { alreadyMissing: true };
+        throw error;
+      }
+    },
+    onSuccess: async () => {
+      // A late read must not put the deleted card back into list/detail caches.
+      await Promise.all([keys.cards, keys.repos, keys.me, matchKeys.all]
+        .map(queryKey => client.cancelQueries({ queryKey })));
+      client.removeQueries({ queryKey: keys.card(id) });
+      client.setQueryData<CardSummary[]>(keys.cards, cards => cards?.filter(card => card.id !== id));
+      void client.invalidateQueries({ queryKey: keys.cards, exact: true });
+      void client.invalidateQueries({ queryKey: keys.repos });
+      void client.invalidateQueries({ queryKey: keys.me });
+      void client.resetQueries({ queryKey: matchKeys.all });
+    },
+  });
+}
 export const useVersions = (id: string | undefined, enabled = true) =>
   useQuery({ queryKey: keys.versions(id ?? ''), queryFn: () => endpoints.versions(id!), enabled: !!id && enabled });
 export const useInterview = (id: string | undefined) =>
@@ -130,7 +156,7 @@ export function useCreateManualDraft() {
 export function useSaveMetadata(cardId: string) {
   const client = useQueryClient();
   return useMutation({ mutationFn: (body: import('./schemas').CardMetadataPatch) => endpoints.saveMetadata(cardId, body),
-    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); } });
+    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); void client.resetQueries({ queryKey: matchKeys.all }); } });
 }
 
 export function usePatchCandidate(repoId: string) {
@@ -179,6 +205,7 @@ function useCardMutation<V>(id: string, fn: (v: V) => Promise<Card>) {
   return useMutation({
     mutationFn: fn,
     onSuccess: (card) => {
+      void qc.resetQueries({ queryKey: matchKeys.all });
       qc.setQueryData(keys.card(id), card);
       void qc.invalidateQueries({ queryKey: keys.versions(id) });
       void qc.invalidateQueries({ queryKey: keys.cards });
@@ -217,12 +244,26 @@ export function useAnswerInterview(cardId: string) {
   });
 }
 
+export function useRetryDraft(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => endpoints.retryDraft(cardId),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: keys.card(cardId) });
+      void qc.invalidateQueries({ queryKey: keys.cards });
+    },
+  });
+}
+
 /** 유일하게 되돌릴 수 없는 호출. 성공 시 카드·후보 보드·홈 전부 무효화. */
 export function useConfirm(cardId: string) {
   const qc = useQueryClient();
   return useMutation({
+    // ConfirmDialog owns errors; a global toast would cover and repeat its notice.
+    meta: { errorPresentation: 'inline' },
     mutationFn: (body: { edited: boolean; maskedFields: StarField[] }) => endpoints.confirm(cardId, body),
     onSuccess: async (r) => {
+      void qc.resetQueries({ queryKey: matchKeys.all });
       // The POST acknowledgement is authoritative even if the following GET fails.
       await qc.cancelQueries({ queryKey: keys.card(cardId), exact: true });
       qc.setQueryData<Card>(keys.card(cardId), (card) => card ? {

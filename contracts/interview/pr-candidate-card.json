@@ -1,0 +1,123 @@
+{
+  "case": "PR 후보로 만든 카드의 A칸 되묻기 — 칸에 근거 커밋 하나",
+  "givenCard": {
+    "id": 105,
+    "publicId": "6f1c8d52-3a7e-4b49-9c0d-2e5a7b1f8c36",
+    "userId": 7,
+    "origin": "AI",
+    "candidate": {
+      "sourceType": "PR",
+      "githubPrNumber": 7
+    },
+    "commits": [
+      {
+        "id": 11,
+        "sha": "3f9c2a1b7d4e5f60718293a4b5c6d7e8f9012345",
+        "message": "feat: 세션 조회에 인덱스 추가\n\n이유: 목록이 느렸다",
+        "additions": 40,
+        "deletions": 2
+      },
+      {
+        "id": 12,
+        "sha": "8a7b6c5d4e3f20112233445566778899aabbccdd",
+        "message": "refactor: 세션 저장소 분리",
+        "additions": 10,
+        "deletions": 5
+      }
+    ],
+    "slotA": {
+      "body": "세션 조회 쿼리에 인덱스를 추가했다",
+      "evidenceType": "COMMIT",
+      "confidence": "LOW",
+      "evidenceCommitIds": [
+        11
+      ]
+    }
+  },
+  "frontendToSpring": {
+    "request": {
+      "method": "POST",
+      "path": "/api/cards/6f1c8d52-3a7e-4b49-9c0d-2e5a7b1f8c36/interview",
+      "body": {
+        "field": "A"
+      }
+    },
+    "expectedResponseFields": {
+      "sourceType": "PR"
+    }
+  },
+  "springToAi": {
+    "expectedRequest": {
+      "card_id": 105,
+      "candidate": {
+        "github_pr_number": 7,
+        "commits": [
+          {
+            "commit_id": 11,
+            "sha": "3f9c2a1b7d4e5f60718293a4b5c6d7e8f9012345",
+            "message": "feat: 세션 조회에 인덱스 추가"
+          },
+          {
+            "commit_id": 12,
+            "sha": "8a7b6c5d4e3f20112233445566778899aabbccdd",
+            "message": "refactor: 세션 저장소 분리"
+          }
+        ],
+        "reviews": [],
+        "issues": []
+      },
+      "missing_slots": [
+        {
+          "star_slot": "S",
+          "statement_seq": 1,
+          "body": null,
+          "confidence": "LOW",
+          "review_reason": null,
+          "linked_commits": []
+        },
+        {
+          "star_slot": "T",
+          "statement_seq": 1,
+          "body": null,
+          "confidence": "LOW",
+          "review_reason": null,
+          "linked_commits": []
+        },
+        {
+          "star_slot": "A",
+          "statement_seq": 1,
+          "body": "세션 조회 쿼리에 인덱스를 추가했다",
+          "confidence": "LOW",
+          "review_reason": null,
+          "linked_commits": [
+            {
+              "commit_id": 11,
+              "sha": "3f9c2a1b7d4e5f60718293a4b5c6d7e8f9012345",
+              "message": "feat: 세션 조회에 인덱스 추가"
+            }
+          ]
+        },
+        {
+          "star_slot": "R",
+          "statement_seq": 1,
+          "body": null,
+          "confidence": "LOW",
+          "review_reason": null,
+          "linked_commits": []
+        }
+      ],
+      "existing_turn_count": 0,
+      "max_turns": 8,
+      "source_type": "PR",
+      "card_kind": "TECH",
+      "target_star_slot": "A",
+      "allowed_slots": [
+        "S",
+        "T",
+        "A",
+        "R"
+      ],
+      "previous_turns": []
+    }
+  }
+}

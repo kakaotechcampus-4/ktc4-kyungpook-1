@@ -2,10 +2,14 @@ package com.gitory.backend.card.domain;
 
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.interview.InterviewTurn;
+import com.gitory.backend.card.infra.ActivityRepository;
+import com.gitory.backend.card.infra.CardDraftStepRepository;
 import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.card.infra.CardVersionRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.card.port.CardGenerationPort;
+import com.gitory.backend.ingest.domain.CommitSummary;
+import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositoryReferenceService;
 import com.gitory.backend.recommend.domain.CandidateReference;
@@ -17,13 +21,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * 내 카드 한 장을 현재 버전의 네 칸, 칸 메모, 답한 되묻기 질문 수, 칸에 연결된 질문 번호와 함께 읽는다
+ * 내 카드 한 장을 현재 버전의 네 칸, 칸 메모, AI 초안 단계, 답한 되묻기 질문 수, 칸에 연결된 질문 번호와 함께 읽는다
  * 임시 저장이 문장을 지우고 다시 넣는 사이에도 문장과 근거를 한 시점으로 읽도록 REPEATABLE READ 로 읽는다
  */
 @Service
@@ -38,6 +44,9 @@ public class CardDetailService {
     private final CardGenerationPort generationJobs;
     private final InterviewTurnRepository turns;
     private final CardSlotNoteRepository notes;
+    private final CardDraftStepRepository draftSteps;
+    private final CommitSummaryService commitSummaries;
+    private final ActivityRepository activities;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public CardDetail load(UUID publicId, Long userId) {
@@ -47,6 +56,10 @@ public class CardDetailService {
         RepositoryReference repository = Optional.ofNullable(card.getUserRepositoryId())
                 .flatMap(repositories::find)
                 .orElse(null);
+        ActivityReference activity = Optional.ofNullable(card.getActivityId())
+                .flatMap(activities::findById)
+                .map(ActivityReference::of)
+                .orElse(null);
         VersionSlots slots = reader.read(card.getId(), card.getCurrentVersion());
         List<InterviewTurn> asked = turns.findByCardIdOrderBySeqAsc(card.getId());
 
@@ -55,9 +68,21 @@ public class CardDetailService {
                 .orElse(null);
 
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
-                card.getPeriod(), repository, current.getSource(), current.getUpdatedAt(), slots,
-                card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(), candidate, generationOf(card),
-                answeredCount(asked), turnNosOf(slots, asked), notesOf(card));
+                card.areaTags(), card.techTags(), card.themeTags(), card.getPeriod(), repository, activity, current.getSource(),
+                current.getUpdatedAt(), slots, card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(),
+                candidate, generationOf(card), card.getGenerationFailure(), answeredCount(asked),
+                card.getInterviewEndReason(), turnNosOf(slots, asked), notesOf(card),
+                commitsOf(slots), draftStepsOf(card));
+
+    }
+
+    // 근거 커밋의 sha 로 화면이 GitHub 커밋 링크를 걸 수 있게, 네 칸의 커밋을 한 번에 읽는다
+    private Map<Long, CommitSummary> commitsOf(VersionSlots slots) {
+
+        Set<Long> commitIds = new LinkedHashSet<>();
+        slots.slots().values().forEach(slot -> commitIds.addAll(slot.commitIds()));
+
+        return commitIds.isEmpty() ? Map.of() : commitSummaries.findByIds(commitIds);
 
     }
 
@@ -74,6 +99,15 @@ public class CardDetailService {
         }
 
         return null;
+
+    }
+
+    // 단계는 AI 초안을 담은 1번 버전에만 남고, 사용자가 고쳐 버전이 늘어도 초안을 만든 과정이라 그대로 보여 준다
+    private List<DraftStep> draftStepsOf(Card card) {
+
+        return draftSteps.findByCardIdAndVersionNoOrderBySeq(card.getId(), CardDraftWriter.FIRST).stream()
+                .map(CardDraftStep::view)
+                .toList();
 
     }
 

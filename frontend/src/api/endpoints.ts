@@ -43,6 +43,7 @@ export const endpoints = {
   // 카드
   cards: () => api(z.array(S.CardSummary), '/cards'),
   card: (id: string) => api(S.Card, `/cards/${id}`),
+  deleteCard: (id: string) => api(z.object({ ok: z.literal(true) }), `/cards/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   /** 직접 작성 첫 진입: 제목만으로 DRAFT 를 먼저 만들어 cardId 를 얻는다. 이후 입력은 PATCH 로만 간다. */
   createManualDraft: async (input: S.ManualDraftInput, idempotencyKey: string) =>
     api(S.Card, '/cards/manual/draft', { method: 'POST', body: S.ManualDraftInput.parse(input), headers: { 'Idempotency-Key': S.ManualDraftKey.parse(idempotencyKey) } }),
@@ -61,6 +62,8 @@ export const endpoints = {
       return metadata;
     });
   },
+  /** AI 초안을 채우지 못한 카드만 새 초안 Job 으로 다시 채운다(#419) */
+  retryDraft: (id: string) => api(z.object({ jobId: z.string() }), `/cards/${id}/draft/retry`, { method: 'POST' }),
   regenerateField: (id: string, field: S.StarField) => {
     if (!cardRegenerationSupported()) return Promise.reject(new ApiError('FEATURE_UNAVAILABLE', '', 400));
     return api(z.object({ jobId: z.string() }), `/cards/${id}/regenerate`, { method: 'POST', body: { field } });

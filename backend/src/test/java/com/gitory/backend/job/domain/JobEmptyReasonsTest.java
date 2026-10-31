@@ -1,5 +1,6 @@
 package com.gitory.backend.job.domain;
 
+import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CandidateCardQueryService;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
@@ -40,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({JobQueryService.class, JobCancelService.class, JobViewFactory.class, CandidateEmptyReasons.class,
+@Import({ClockConfig.class, JobQueryService.class, JobCancelService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, CandidateBoardService.class,
         RepositoryOwnershipService.class, RepositoryReferenceService.class, LastAnalyzedService.class,
         CommitSummaryService.class, UsedCardAdapter.class, CandidateCardQueryService.class,
@@ -146,7 +147,7 @@ class JobEmptyReasonsTest {
     }
 
     @Test
-    @DisplayName("묶기를 건너뛴 분석 Job 은 판정과 이유 줄이 그대로 null 이다")
+    @DisplayName("경험 그룹화를 건너뛴 분석 Job 은 판정과 이유 줄이 그대로 null 이다")
     void leavesNullVerdictUnchanged() {
 
         AnalysisJob job = jobs.ungroupedJob(userId, myRepoId, KEY_1, runId);

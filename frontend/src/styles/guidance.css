@@ -1,0 +1,231 @@
+/*
+ * 안내 UI — 기다릴 때(AI 대기), 막혔을 때(오류·연결 끊김), 처음 쓸 때(용어 한 줄) 화면이 말을 걸게 한다.
+ * 색은 의미 토큰만 쓴다. 두 테마의 대비는 theme-contrast 검사가 지킨다.
+ */
+
+/* ───────── 포인트 색 — 주 행동과 지금 있는 메뉴에만(제목 속 한 단어는 강조하지 않는다) ───────── */
+.btn--primary { background: var(--accent-point); border-color: var(--accent-point); }
+.btn--primary:hover:not(:disabled) { background: var(--accent-point-hover); border-color: var(--accent-point-hover); }
+.btn--primary.btn--loading { background: var(--accent-point) !important; border-color: var(--accent-point) !important; }
+.prompt__go:not(:disabled) { background: var(--accent-point); }
+.prompt__go:hover:not(:disabled) { background: var(--accent-point-hover); }
+.menu-item[aria-current="page"] { box-shadow: inset 3px 0 0 var(--accent-point); }
+.menu-item[aria-current="page"] svg { color: var(--accent-point); }
+.mobile-nav a[aria-current="page"] svg { color: var(--accent-point); }
+/* ───────── 다크 대비 보강 ───────── */
+.prompt__go:disabled { border: 1px solid var(--border-strong); }
+:root[data-theme="dark"] .stardot:not(.stardot--on):not(.stardot--low),
+:root[data-theme="dark"] .stardots--labeled .stardot:not(.stardot--on):not(.stardot--low) .stardot__letter { border-color: var(--text-tertiary); }
+
+/* ───────── 모션 — 사람의 행동에 대한 답만 움직인다 ─────────
+ * 화면마다 섹션이 차례로 페이드되고 모든 카드가 hover 에 떠오르는 건 생성된 화면의 기본값처럼 읽힌다(frontend-design 기준).
+ * 남기는 것: 메뉴가 열림, 토스트가 나타남, 버튼이 눌림, 기다리는 동안 도는 표시. 카드는 테두리 색만 바뀐다. */
+:root { --motion-fast: .15s; --ease-standard: cubic-bezier(.4, 0, .2, 1); }
+.gcard, .match-card, .resume__item { transition: border-color var(--motion-fast) var(--ease-standard); }
+.btn { transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform .1s var(--ease-standard); }
+.btn:active:not(:disabled) { transform: scale(.98); }
+.select-menu { animation: menu-in var(--motion-fast) var(--ease-standard); transform-origin: top; }
+.toast { animation: toast-in .2s var(--ease-standard); }
+@keyframes toast-in { from { opacity: 0; transform: translateY(16px); } }
+@media (prefers-reduced-motion: reduce) {
+  .select-menu, .toast { animation: none !important; }
+  .btn:active:not(:disabled) { transform: none; }
+}
+
+.job-live > span:last-child { margin-left: 8px; color: var(--text-tertiary); }
+.spin { animation: spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2s; } }
+
+/* 카드 관리 — 세로로 같은 폭, 아이콘으로 무슨 일인지 먼저 보인다 */
+.card-tools { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.card-tools .btn { justify-content: flex-start; width: 100%; }
+
+.aside-list { display: flex; flex-direction: column; gap: 6px; padding-left: 16px; list-style: disc; }
+.aside-list li::marker { color: var(--text-tertiary); }
+
+/* ───────── 경험 카드 목록: 묶어 보기, 레포 묶음, 채운 칸 ───────── */
+.cards-controls { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; }
+.view-switch { display: inline-flex; padding: 3px; border-radius: var(--control-radius); background: var(--bg-inset); }
+.view-switch__item { min-height: 38px; padding: 6px 14px; border-radius: 10px; font-size: 13px; font-weight: var(--control-weight); color: var(--text-secondary); }
+.view-switch__item[aria-checked="true"] { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.card-groups { display: flex; flex-direction: column; gap: 28px; }
+/* 묶음은 상자가 아니라 제목 줄과 구분선 — 카드 안에 카드가 들어간 모양을 만들지 않는다(frontend-design: 같은 둥근 카드로 쪼개기) */
+.card-group { display: flex; flex-direction: column; gap: 14px; }
+.card-group > .experience-list { padding: 0; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); } /* 카드 한 장 묶음도 다른 묶음과 같은 폭, 좁은 폰에선 한 줄 */
+.card-group__head { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border-default); }
+.card-group__toggle { flex: 1; min-width: 0; margin-left: -10px; display: grid; grid-template-columns: 24px minmax(0, auto) 1fr; grid-template-areas: "chev title counts" ". bar bar"; align-items: center; gap: 4px 10px; min-height: var(--control-touch-size); padding: 10px; border-radius: var(--control-radius); text-align: left; }
+.card-group__toggle:hover { background: var(--bg-subtle); }
+.card-group__chev { grid-area: chev; color: var(--text-tertiary); transform: rotate(-90deg); transition: transform var(--motion-fast, .15s) var(--ease-standard, ease); }
+.card-group--open .card-group__chev { transform: none; }
+.card-group__title { grid-area: title; font-size: 16px; font-weight: var(--heading-weight); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-group__counts { grid-area: counts; font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-group__bar { grid-area: bar; height: 4px; max-width: 280px; border-radius: 999px; background: var(--border-default); overflow: hidden; }
+.card-group__bar i { display: block; height: 100%; border-radius: inherit; background: var(--accent-point); }
+@media (max-width: 767px) {
+  .card-group__toggle { grid-template-columns: 24px minmax(0, 1fr); grid-template-areas: "chev title" ". counts" ". bar"; }
+  .card-group__go { display: none; }
+}
+.card-fill { display: flex; align-items: center; gap: 10px; }
+.card-fill__bar { flex: 1; height: 5px; border-radius: 999px; background: var(--border-default); overflow: hidden; }
+.card-fill__bar i { display: block; height: 100%; border-radius: inherit; background: var(--field-low-text); }
+.card-fill--full .card-fill__bar i { background: var(--accent-point); }
+.card-fill__text { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.gcard--confirmed { border-color: var(--border-selected) !important; }
+/* "확정됨" 같은 작은 배지가 진한 배경 위에서 번져 보이던 것 — 자간을 풀고 글자를 반 픽셀 키운다 */
+.badge { font-size: 12px; letter-spacing: 0; -webkit-font-smoothing: antialiased; }
+
+/* ───────── 카드 화면: 제목 옆 연필, 바깥 링크 ───────── */
+.title-edit { display: inline-grid; place-items: center; width: var(--control-touch-size); height: var(--control-touch-size); margin-left: -6px; border-radius: var(--control-radius); color: var(--text-tertiary); }
+.page-title:has(> .title-edit) { flex-wrap: nowrap; align-items: flex-start; }
+.page-title:has(> .title-edit) h1 { min-width: 0; flex: 0 1 auto; width: auto; } /* 모바일의 h1 width:100% 를 풀어 연필이 제목 바로 옆에 오게 */
+.title-edit { flex: 0 0 auto; margin-top: -2px; }
+.title-edit:hover, .title-edit:focus-visible { color: var(--text-accent); background: var(--bg-subtle); }
+.star__edit { color: var(--text-accent); gap: 4px; font-size: 13px; padding-inline: 10px; }
+.star__edit:hover:not(:disabled) { color: var(--text-primary); }
+.crumb__ext, .aside-link { display: inline-flex; align-items: center; gap: 3px; color: inherit; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.crumb__ext:hover, .aside-link:hover { color: var(--text-accent); text-decoration-color: currentColor; }
+
+/* ───────── 근거: 버튼 하나 + 팝업 ───────── */
+.evidence-open { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; min-height: 36px; padding: 6px 12px; border-radius: var(--control-radius); background: var(--evidence-commit-bg); border: 1px solid var(--border-default); color: var(--evidence-commit-text); font-size: 12px; font-weight: var(--control-weight); }
+.evidence-open svg { color: var(--evidence-commit-label); }
+.evidence-open:hover { border-color: var(--border-selected); }
+.evidence-print { display: none; }
+.evidence-dialog__sentence { font-size: 14px; line-height: 22px; color: var(--text-secondary); padding: 12px 14px; border-radius: var(--radius-md); background: var(--bg-paper); }
+.evidence-dialog__list { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 767px) { .evidence-open { align-self: stretch; justify-content: center; min-height: var(--control-touch-size); } }
+@media print { .evidence-open { display: none; } .evidence-print { display: flex; flex-direction: column; gap: 6px; } }
+
+/* ───────── 분석: AI 가 지금 하는 일 ───────── */
+.agent-now { display: flex; align-items: flex-start; gap: 8px; font-size: 16px; line-height: 23px; font-weight: 500; color: var(--text-primary); }
+.agent-now svg { flex: 0 0 auto; margin-top: 4px; color: var(--accent-point); }
+.stage__agent { font-size: 13px; line-height: 19px; color: var(--text-strong); }
+.stage--WAIT .stage__agent { color: var(--text-tertiary); }
+.stage--NOW .stage__agent { color: var(--text-primary); font-weight: 500; }
+
+/* ───────── AI 대기 한 줄 ───────── */
+.ai-wait { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; } /* 감싸는 상자 없이 점과 문장만 — 카드 안에 상자가 또 생기지 않게 */
+.ai-wait__dots { display: inline-flex; gap: 4px; padding-top: 7px; flex: 0 0 auto; }
+.ai-wait__dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-accent); animation: ai-dot 1.2s ease-in-out infinite; }
+.ai-wait__dots i:nth-child(2) { animation-delay: .15s; }
+.ai-wait__dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes ai-dot { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+.ai-wait__text { display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 21px; font-weight: 500; color: var(--text-strong); }
+.ai-wait__long { font-size: 12px; line-height: 19px; font-weight: 400; color: var(--text-secondary); }
+@media (prefers-reduced-motion: reduce) { .ai-wait__dots i { animation: none; opacity: .7; } }
+
+/* 사이드바 최근 카드 — ✎ 글자 대신 고정 폭 점이라 제목 시작선이 맞는다. 채운 점 = 작성 중 */
+.sidebar__recent a { display: flex !important; align-items: center; gap: 8px; }
+.sidebar__recent a > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-dot { flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--border-strong); }
+.recent-dot--draft { background: var(--field-low-text); border-color: var(--field-low-text); }
+
+/* 메뉴 묶음 사이는 제목 대신 간격으로 나눈다(제목은 화면 읽기 프로그램용 aria-label 로만) */
+.menu-group + .menu-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-default); }
+
+/* ───────── 프로필 메뉴 (로그아웃·테마) ───────── */
+.profile-menu { position: relative; }
+.profile-menu--sidebar { width: 100%; }
+.profile-menu__trigger { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--control-touch-size); padding: 6px 8px; border-radius: var(--control-radius); text-align: left; color: var(--sidebar-text); }
+.profile-menu__trigger:hover, .profile-menu__trigger[aria-expanded="true"] { background: var(--bg-subtle); }
+.profile-menu__name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.profile-menu__chev { color: var(--text-tertiary); flex: 0 0 auto; }
+.profile-menu__pop { position: absolute; z-index: 50; min-width: 200px; padding: 6px; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-default); box-shadow: var(--shadow-menu); animation: menu-in .15s cubic-bezier(.4, 0, .2, 1); }
+.profile-menu--sidebar .profile-menu__pop { left: 0; right: 0; bottom: calc(100% + 6px); }
+.profile-menu--mobile .profile-menu__pop { right: 0; top: calc(100% + 6px); }
+@keyframes menu-in { from { opacity: 0; transform: translateY(4px) scale(.98); } }
+.profile-menu__item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border-radius: var(--control-radius); font-size: 14px; font-weight: 500; color: var(--text-strong); text-align: left; }
+.profile-menu__item svg { color: var(--text-secondary); }
+.profile-menu__item:hover, .profile-menu__item:focus-visible { background: var(--bg-subtle); }
+.profile-menu__item--danger, .profile-menu__item--danger svg { color: var(--state-failed-text); }
+.profile-menu__item--danger:hover, .profile-menu__item--danger:focus-visible { background: var(--state-failed-bg); }
+.profile-menu__sep { height: 1px; margin: 4px 6px; background: var(--border-default); }
+.profile-menu--mobile .profile-menu__trigger { width: auto; min-height: 36px; padding: 4px 6px; gap: 8px; }
+.profile-menu--mobile .profile-menu__name { font-size: 12px; font-weight: 500; color: var(--text-secondary); max-width: 40vw; }
+.shell--rail .profile-menu__name, .shell--rail .profile-menu__chev { display: none; }
+.shell--rail .profile-menu__trigger { justify-content: center; padding-inline: 0; }
+.shell--rail .profile-menu--sidebar .profile-menu__pop { right: auto; width: 200px; }
+@media (prefers-reduced-motion: reduce) { .profile-menu__pop { animation: none; } }
+/* 태블릿 접힌 사이드바: responsive.css 가 프로필 안 글자 묶음(> div)을 숨기므로 메뉴 자체는 되살리고 아바타만 남긴다 */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .sidebar__profile > .profile-menu { display: block !important; }
+  .profile-menu__name, .profile-menu__chev { display: none; }
+  .profile-menu__trigger { justify-content: center; padding-inline: 0; }
+  .profile-menu--sidebar .profile-menu__pop { right: auto; width: 200px; }
+}
+
+/* ───────── GitHub 연결 끊김 띠 ───────── */
+.gh-banner { display: flex; align-items: center; gap: 12px; margin: 16px clamp(16px, 3vw, 56px) 0; padding: 12px 16px; border-radius: var(--radius-lg); background: var(--state-open-bg); border: 1px solid var(--field-low-border); }
+.gh-banner__icon { color: var(--state-open-text); flex: 0 0 auto; }
+.gh-banner__text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.gh-banner__text strong { font-size: 14px; line-height: 20px; font-weight: var(--heading-weight); color: var(--state-open-text); }
+.gh-banner__text span { font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+@media (max-width: 560px) { .gh-banner { flex-wrap: wrap; } .gh-banner .btn { width: 100%; } }
+
+/* ───────── 홈: 다시 온 사용자의 "새 경험 카드 만들기" ───────── */
+.home-start__head { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; }
+.home-start__head h2 { font-size: 20px; line-height: 26px; font-weight: var(--heading-weight); letter-spacing: var(--text-tracking); }
+.home-start__head p { font-size: 14px; line-height: 21px; color: var(--text-secondary); }
+.home-start__row { display: contents; }
+.home-page--returning .prompt { padding: var(--space-24); border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--bg-surface); }
+.home-page--returning .home-start__row { display: flex; align-items: flex-start; gap: 12px; width: 100%; flex-wrap: wrap; }
+.home-page--returning .prompt__card { flex: 1 1 360px; max-width: 640px; box-shadow: none; background: var(--bg-paper); }
+.home-page--returning .prompt__chips { flex-wrap: nowrap; align-self: center; }
+@media (max-width: 767px) {
+  .home-page--returning .prompt { padding: var(--space-16); }
+  .home-page--returning .prompt__chips { flex-wrap: wrap; }
+}
+.home-cards__head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.home-cards__head .section-head { flex: 1 1 240px; min-width: 0; }
+.home-cards__search { width: 240px; }
+@media (max-width: 767px) {
+  .home-cards__head .section-head { flex: 1 1 0; }
+  .home-cards__search { width: 100%; order: 3; }
+}
+
+/* ───────── 오류 화면 ───────── */
+.error-screen { max-width: 560px; margin: 96px auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.error-screen__title { font-size: 28px; line-height: 34px; font-weight: var(--heading-weight); letter-spacing: var(--text-tracking); }
+.error-screen__desc { color: var(--text-secondary); font-size: 14px; line-height: 22px; }
+.error-screen__detail { margin-top: 8px; color: var(--text-tertiary); font-size: 12px; }
+.error-screen__detail summary { cursor: pointer; min-height: var(--control-touch-size); display: list-item; padding-block: 12px; }
+.error-screen__detail pre { font-size: 12px; background: var(--bg-subtle); padding: 12px; border-radius: 10px; overflow: auto; white-space: pre-wrap; }
+
+/* ───────── 커밋 레일 — Gitory 의 한 가지 얼굴 ─────────
+ * STAR 문장 왼쪽에 커밋 그래프 같은 세로 선. 커밋이 받치는 칸은 그 수를 적은 점, 내 답변만 있는 칸은 속 빈 원, 빈 칸은 점선 원과 끊긴 선.
+ * "근거 없는 문장은 화면에 뜨지 않는다 — 빈 칸이 제품의 증거"를 한눈에 보이게 한다. 나머지 화면은 조용히 둔다.
+ * 숫자는 근거 버튼에도 있으니 읽기 프로그램에는 점을 읽히지 않는다(content 의 대체 텍스트 ""). */
+.evidence-rail { --rail-x: 36px; --rail-dot: 24px; }
+.evidence-rail:not(.evidence-rail--rows) { padding-left: var(--rail-x); }
+.evidence-rail > [data-commits] { position: relative; overflow: visible; }
+.evidence-rail > [data-commits]::before {
+  content: attr(data-commits) / ""; position: absolute; z-index: 1; display: grid; place-items: center;
+  width: var(--rail-dot); height: var(--rail-dot); border-radius: 50%;
+  font-size: 11px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+  background: var(--accent-point); color: var(--text-on-ink); box-shadow: 0 0 0 4px var(--bg-canvas);
+}
+/* 내 답변으로만 채운 칸: 속 빈 원(커밋 근거는 없지만 비어 있지는 않다). 빈 칸: 점선 원 */
+.evidence-rail > [data-rail="user"]::before { content: "" / ""; background: var(--bg-canvas); border: 2px solid var(--accent-point); box-sizing: border-box; }
+.evidence-rail > [data-rail="empty"]::before { content: "" / ""; background: var(--bg-canvas); border: 2px dashed var(--border-strong); box-sizing: border-box; }
+.evidence-rail > [data-commits]:not(:last-child)::after {
+  content: ""; position: absolute; width: 2px; background: var(--accent-point);
+}
+/* 근거 없는 칸으로 들어가거나 나오는 선은 끊어 그린다 */
+.evidence-rail > [data-rail="empty"]:not(:last-child)::after,
+.evidence-rail > [data-commits]:has(+ [data-rail="empty"])::after {
+  background: repeating-linear-gradient(to bottom, var(--border-strong) 0 5px, transparent 5px 10px);
+}
+/* 작성 중 카드: 칸마다 떨어진 카드 — 레일은 카드 바깥 왼쪽 */
+.evidence-rail:not(.evidence-rail--rows) > [data-commits]::before { left: calc(-1 * var(--rail-x)); top: 16px; }
+.evidence-rail:not(.evidence-rail--rows) > [data-commits]:not(:last-child)::after { left: calc(-1 * var(--rail-x) + var(--rail-dot) / 2 - 1px); top: calc(16px + var(--rail-dot)); bottom: -28px; }
+/* 확정 카드: 한 카드 안의 줄들 — 레일은 줄 안 왼쪽 */
+.evidence-rail--rows > [data-commits] { padding-left: calc(20px + var(--rail-x)); }
+.evidence-rail--rows > [data-commits]::before { left: 20px; top: 24px; box-shadow: 0 0 0 4px var(--bg-surface); }
+.evidence-rail--rows > [data-rail="user"]::before, .evidence-rail--rows > [data-rail="empty"]::before { background: var(--bg-surface); }
+.evidence-rail--rows > [data-commits]:not(:last-child)::after { left: calc(20px + var(--rail-dot) / 2 - 1px); top: calc(24px + var(--rail-dot)); bottom: -24px; }
+@media (max-width: 767px) {
+  .evidence-rail { --rail-x: 28px; --rail-dot: 20px; }
+  .evidence-rail--rows > [data-commits] { padding-left: calc(16px + var(--rail-x)); }
+  .evidence-rail--rows > [data-commits]::before { left: 12px; }
+  .evidence-rail--rows > [data-commits]:not(:last-child)::after { left: calc(12px + var(--rail-dot) / 2 - 1px); }
+}
+@media print { .evidence-rail > [data-commits]::before, .evidence-rail > [data-commits]::after { display: none; } .evidence-rail:not(.evidence-rail--rows) { padding-left: 0; } }

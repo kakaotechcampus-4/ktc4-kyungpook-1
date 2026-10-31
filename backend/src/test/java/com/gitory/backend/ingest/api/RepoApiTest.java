@@ -4,6 +4,7 @@ import com.gitory.backend.consent.domain.GithubNotConnectedException;
 import com.gitory.backend.consent.domain.GithubRateLimitedException;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
+import com.gitory.backend.consent.port.GithubCountTarget;
 import com.gitory.backend.consent.port.GithubOwnerResponse;
 import com.gitory.backend.consent.port.GithubRepositoryCount;
 import com.gitory.backend.consent.port.GithubRepositoryResponse;
@@ -12,6 +13,7 @@ import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -28,10 +30,12 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.LongStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.closeTo;
@@ -40,6 +44,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -55,7 +60,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
         "spring.security.oauth2.client.registration.github.client-secret=test-client-secret",
         "gitory.consent.token-key=test-encryption-key",
-        "gitory.consent.token-salt=5c0744940b5c369b"
+        "gitory.consent.token-salt=5c0744940b5c369b",
+        // 상세의 예상 시간이 경험 그룹화 설정을 따르는지 보려고 켠다
+        "gitory.analysis.grouping.enabled=true"
 })
 @AutoConfigureMockMvc
 @Testcontainers
@@ -147,7 +154,7 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("쓸 수 있는 GitHub 연결이 없으면 200 으로 저장된 저장소를 모두 주인·이름순으로 주고, 저장된 개수와 센 시각 그대로이며 개수를 다시 세지 않는다")
+    @DisplayName("쓸 수 있는 GitHub 연결이 없으면 200 으로 저장된 저장소를 주인·이름순으로 주고, 저장된 개수와 센 시각 그대로이며 개수를 다시 세지 않는다")
     void withoutConnectionListsStoredRepositories() throws Exception {
 
         connectCounted(100L, "grow22", "gitory");
@@ -299,6 +306,31 @@ class RepoApiTest {
     }
 
     @Test
+    @DisplayName("센 저장소가 하나도 없으면 최근에 활동한 저장소 20개만 세고 나머지는 다음 조회로 미룬다")
+    void firstCountCoversOnlyTwentyRecentRepositories() throws Exception {
+
+        githubReturns(pushedOnDays(25));
+
+        repos(myUserId).andExpect(jsonPath("$.data.length()").value(25));
+
+        assertThat(countedRepoIds()).containsExactlyElementsOf(LongStream.iterate(25, day -> day - 1).limit(20).boxed().toList());
+
+    }
+
+    @Test
+    @DisplayName("센 저장소가 하나라도 있으면 아직 안 센 저장소를 모두 센다")
+    void laterCountsCoverEveryUncountedRepository() throws Exception {
+
+        connectCounted(500L, "grow22", "counted-before");
+        githubReturns(pushedOnDays(25));
+
+        repos(myUserId);
+
+        assertThat(countedRepoIds()).hasSize(25);
+
+    }
+
+    @Test
     @DisplayName("GitHub 에 마지막 push 시각이 없으면 activeTo 는 저장소를 만든 시각이다")
     void activeToFallsBackToCreatedAt() throws Exception {
 
@@ -349,6 +381,87 @@ class RepoApiTest {
 
     }
 
+    @Test
+    @DisplayName("커밋이 하나도 없다고 센 빈 저장소는 목록에서 빠지고, 내 커밋만 없는 저장소는 남는다")
+    void hidesCountedEmptyRepository() throws Exception {
+
+        githubReturns(repo(100L, "grow22", "gitory"), repo(200L, "grow22", "empty"));
+        given(github.countActivity(anyLong(), any())).willReturn(List.of(
+                new GithubRepositoryCount(100L, 197, 0, 58, 23, 11),
+                new GithubRepositoryCount(200L, 0, 0, 0, 0, 0)));
+
+        repos(myUserId).andExpect(jsonPath("$.data[*].name", contains("gitory")));
+
+    }
+
+    @Test
+    @DisplayName("내 아이디와 이름이 같은 프로필 저장소는 대소문자가 달라도 목록에서 빠진다")
+    void hidesProfileRepository() throws Exception {
+
+        githubReturns(repo(100L, "Grow22", "Grow22"), repo(200L, "Grow22", "gitory"));
+
+        repos(myUserId).andExpect(jsonPath("$.data[*].name", contains("gitory")));
+
+    }
+
+    @Test
+    @DisplayName("남의 저장소는 이름이 주인 아이디나 내 아이디와 같아도 프로필 저장소가 아니라 목록에 남는다")
+    void keepsSameNamedRepositoryOfOthers() throws Exception {
+
+        githubReturns(repo(100L, "rails", "rails"), repo(200L, "other", "other"), repo(300L, "grow22", "gitory"), repo(400L, "study-org", "grow22"));
+
+        repos(myUserId).andExpect(jsonPath("$.data[*].name", contains("gitory", "other", "rails", "grow22")));
+
+    }
+
+    @Test
+    @DisplayName("연결이 없어 저장된 저장소를 줄 때도 빈 저장소와 내 프로필 저장소는 빠진다")
+    void storedListHidesEmptyAndProfileRepositories() throws Exception {
+
+        UUID visible = connectCounted(100L, "grow22", "gitory");
+        jdbc.update("UPDATE user_repository SET own_commit_count = 0 WHERE public_id = ?", visible);
+        UUID empty = UUID.randomUUID();
+        fixtures.insertUserRepository(empty, myUserId, fixtures.insertRepository(200L, "grow22", "empty"));
+        jdbc.update("UPDATE user_repository SET counted_at = now() WHERE public_id = ?", empty);
+        fixtures.insertUserRepository(myUserId, fixtures.insertRepository(300L, "grow22", "Grow22"));
+        fixtures.insertUserRepository(myUserId, fixtures.insertRepository(400L, "rails", "rails"));
+        fixtures.insertUserRepository(myUserId, fixtures.insertRepository(500L, "study-org", "grow22"));
+        given(github.repositories(anyLong())).willThrow(new GithubNotConnectedException());
+
+        repos(myUserId).andExpect(jsonPath("$.data[*].name", contains("gitory", "rails", "grow22")));
+
+    }
+
+    @Test
+    @DisplayName("저장 목록은 GitHub 을 부르지 않고, 연결이 없어도 저장된 내 저장소를 최신 목록과 같은 칸으로 준다")
+    void savedListReadsOnlyDatabase() throws Exception {
+
+        connectCounted(100L, "grow22", "gitory");
+        connectCounted(300L, "kakao", "board");
+
+        Map<String, Object> repo = JsonPath.read(bodyOf(savedRepos()), "$.data[0]");
+
+        assertThat(repo).containsOnlyKeys(
+                "id", "owner", "name", "contribution", "prCount", "reviewCount", "language",
+                "activeFrom", "activeTo", "lastAnalyzedAt", "countedAt", "candidateCount", "cardCount", "recommended");
+        savedRepos()
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[*].name", contains("gitory", "board")))
+                .andExpect(jsonPath("$.data[0].contribution.mine").value(43));
+        verifyNoInteractions(github);
+
+    }
+
+    @Test
+    @DisplayName("로그인하지 않으면 저장 목록도 401 이다")
+    void savedListRequiresLogin() throws Exception {
+
+        mvc.perform(get("/api/repos/saved"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHENTICATED"));
+
+    }
+
     private void githubReturns(GithubRepositoryResponse... repositories) {
 
         given(github.repositories(anyLong())).willReturn(List.of(repositories));
@@ -366,7 +479,7 @@ class RepoApiTest {
     }
 
     @Test
-    @DisplayName("내 저장소 상세는 목록 한 줄과 같은 칸에 분석 전 안내(disclosure)를 더해 내려온다")
+    @DisplayName("내 저장소 상세는 목록 한 줄과 같은 칸에 분석 전 안내(disclosure)를 더하고, 경험 그룹화를 켠 서버의 예상 시간까지 담아 내려온다")
     void detailAddsDisclosureToSummary() throws Exception {
 
         UUID id = connectCounted(100L, "gitory");
@@ -381,8 +494,10 @@ class RepoApiTest {
                 .andExpect(jsonPath("$.data.id").value(id.toString()))
                 .andExpect(jsonPath("$.data.contribution.mine").value(43))
                 .andExpect(jsonPath("$.data.disclosure.reads[1]").value("카드에는 내 커밋 43개만 써요"))
+                .andExpect(jsonPath("$.data.disclosure.reads[2]")
+                        .value("최근 PR 50개·그보다 오래된 내 PR 최대 50개·최근 이슈 50개와 리뷰의 제목·본문 앞부분"))
                 .andExpect(jsonPath("$.data.disclosure.skips.length()").value(3))
-                .andExpect(jsonPath("$.data.disclosure.estimatedSeconds").value(73));
+                .andExpect(jsonPath("$.data.disclosure.estimatedSeconds").value(217));
 
     }
 
@@ -469,6 +584,24 @@ class RepoApiTest {
 
     }
 
+    private static GithubRepositoryResponse[] pushedOnDays(int days) {
+
+        return LongStream.rangeClosed(1, days)
+                .mapToObj(day -> new GithubRepositoryResponse(day, "repo-" + day, new GithubOwnerResponse("grow22"),
+                        false, "Java", "main", CREATED, CREATED.plus(Duration.ofDays(day))))
+                .toArray(GithubRepositoryResponse[]::new);
+
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Long> countedRepoIds() {
+
+        ArgumentCaptor<List<GithubCountTarget>> targets = ArgumentCaptor.forClass(List.class);
+        verify(github).countActivity(eq(myUserId), targets.capture());
+        return targets.getValue().stream().map(GithubCountTarget::githubRepoId).toList();
+
+    }
+
     private static GithubRepositoryResponse repo(long githubRepoId, String owner, String name) {
 
         return new GithubRepositoryResponse(githubRepoId, name, new GithubOwnerResponse(owner),
@@ -479,6 +612,12 @@ class RepoApiTest {
     private ResultActions repos(Long userId) throws Exception {
 
         return mvc.perform(get("/api/repos").with(loggedInAs(userId)));
+
+    }
+
+    private ResultActions savedRepos() throws Exception {
+
+        return mvc.perform(get("/api/repos/saved").with(loggedInAs(myUserId)));
 
     }
 

@@ -1,9 +1,12 @@
 package com.gitory.backend.job.domain;
 
+import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.ExperienceGroupingRequest;
 import com.gitory.backend.common.infra.ai.AiClientException;
+import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
+import com.gitory.backend.common.infra.ai.AiProgress;
 import com.gitory.backend.consent.domain.UserLoginService;
 import com.gitory.backend.consent.port.GithubCollectionAccessPort;
 import com.gitory.backend.ingest.domain.ActivityStoreService;
@@ -23,12 +26,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /**
  * 대기 중인 분석 Job 하나를 꺼내 AI 수집을 부르고, 경험 그룹화를 켰으면 저장한 수집 결과로 AI 경험 그룹화까지 부른 뒤 결과에 따라 끝내며, 카드 초안 Job 은 AI 초안을 켰을 때만 AI 를 불러 카드를 채운다
@@ -37,11 +42,11 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@EnableConfigurationProperties({JobGroupingProperties.class, JobDraftProperties.class})
+@EnableConfigurationProperties({JobGroupingProperties.class, JobDraftProperties.class, JobProgressProperties.class})
 public class JobRunner {
 
-    // 멈춘 Job 판정은 수집·묶기·카드 초안의 응답 대기 한도 중 큰 값에 이 여유를 더한 시간이다
-    // 묶기 직전에 갱신 시각을 새로 찍어 두 대기를 더하지 않아도 되고, 한도를 늘리면 판정도 같이 늦춰진다
+    // 멈춘 Job 판정은 수집·경험 그룹화·카드 초안 diff 근거·STAR 초안의 네 응답 대기 한도 중 큰 값에 이 여유를 더한 시간이다
+    // 경험 그룹화 직전에 갱신 시각을 새로 찍어 수집·경험 그룹화 두 대기를 더하지 않아도 되고, 한도를 늘리면 판정도 같이 늦춰진다
     private static final Duration STUCK_MARGIN = Duration.ofMinutes(5);
 
     private static final Set<String> GITHUB_FAILURES =
@@ -60,11 +65,17 @@ public class JobRunner {
     private final GithubCollectionAccessPort githubAccess;
     private final JobDraftProperties draftProperties;
     private final CardDraftRunner cardDrafts;
+    private final JobProgressProperties progressProperties;
+    private final Clock clock;
+    private final JobActivityLog activity;
 
     /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
     public Optional<AnalysisJob> claimNext() {
 
-        return transaction.execute(status -> startNext());
+        Optional<AnalysisJob> claimed = transaction.execute(status -> startNext());
+        claimed.ifPresent(job -> log.info("{} Job {} 을 접수 {}초 뒤에 시작한다",
+                kindOf(job), job.getId(), secondsSince(job.getStartedAt())));
+        return claimed;
 
     }
 
@@ -75,7 +86,7 @@ public class JobRunner {
                 aiProperties.starReadTimeout()));
         Instant before = Instant.now().minus(longestWait).minus(STUCK_MARGIN);
         transaction.executeWithoutResult(status -> jobs.findStuckForUpdate(before)
-                .forEach(job -> job.fail(JobErrorCode.INTERNAL_ERROR)));
+                .forEach(this::failStuck));
 
     }
 
@@ -86,7 +97,23 @@ public class JobRunner {
     public void requeueRunningJobs() {
 
         transaction.executeWithoutResult(status -> jobs.findWithLockByState(JobState.RUNNING)
-                .forEach(AnalysisJob::requeue));
+                .forEach(this::requeue));
+
+    }
+
+    private void failStuck(AnalysisJob job) {
+
+        JobErrorCode errorCode = JobErrorCode.INTERNAL_ERROR;
+        log.warn("{} Job {} 을 {}{}초 동안 진행이 없어 {} 로 끝낸다",
+                kindOf(job), job.getId(), runningStepOf(job), secondsSince(job.getUpdatedAt()), errorCode);
+        job.fail(errorCode);
+
+    }
+
+    private void requeue(AnalysisJob job) {
+
+        log.info("서버가 다시 떠서 {} Job {} 을 대기열에 되돌린다", kindOf(job), job.getId());
+        job.requeue();
 
     }
 
@@ -104,6 +131,16 @@ public class JobRunner {
      */
     public void run(AnalysisJob job) {
 
+        try {
+            AiCallContext.runForJob(job.getId(), () -> runInContext(job));
+        } finally {
+            activity.finish(job.getId());
+        }
+
+    }
+
+    private void runInContext(AnalysisJob job) {
+
         if (job.getType() == JobType.DRAFT) {
             runDraft(job);
             return;
@@ -112,12 +149,15 @@ public class JobRunner {
         try {
             IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
                     activityStore.knownCommitShas(job.getUserRepositoryId()));
-            CollectedActivity activity = activities.collect(request);
+            Consumer<AiProgress> progress = progressOf(job);
+            CollectedActivity activity = progress == null
+                    ? activities.collect(request)
+                    : activities.collect(request, progress);
             Instant limitResetAt = limitResetAtOf(job, activity.partialReason());
             Boolean startedGrouping = transaction.execute(
                     status -> storeCollection(job.getId(), request, activity, limitResetAt));
             if (Boolean.TRUE.equals(startedGrouping)) {
-                group(job, activity.partialReason(), limitResetAt);
+                group(job, activity.partialReason(), limitResetAt, progress);
             }
         } catch (RuntimeException failure) {
             JobErrorCode errorCode = errorCodeOf(failure);
@@ -156,7 +196,7 @@ public class JobRunner {
     }
 
     /**
-     * 수집 결과를 저장하고, 묶기를 켰으면 Job 을 끝내지 않고 묶기를 시작한 뒤 true 를 돌려준다
+     * 수집 결과를 저장하고, 경험 그룹화를 켰으면 Job 을 끝내지 않고 경험 그룹화를 시작한 뒤 true 를 돌려준다
      * AI 를 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 수집 결과를 저장하지 않는다
      */
     private boolean storeCollection(Long jobId, IngestRequest request, CollectedActivity activity,
@@ -168,8 +208,7 @@ public class JobRunner {
         }
 
         Long collectionRunId = activityStore.store(request, activity);
-        job.recordCollection(collectionRunId, activityStore.storedCommitCount(request.userRepositoryId()),
-                activity.pullRequests().size());
+        job.recordCollection(collectionRunId, activity.commits().size(), activity.pullRequests().size());
         if (groupingProperties.enabled()) {
             job.startGrouping();
             return true;
@@ -180,11 +219,19 @@ public class JobRunner {
 
     }
 
+    /** 실시간 진행을 끄면 빈 값을 돌려줘, 진행 없이 한 번에 받는 AI API 를 부르게 한다 */
+    private Consumer<AiProgress> progressOf(AnalysisJob job) {
+
+        return progressProperties.enabled() ? new JobProgressRecorder(job.getId(), jobs, transaction, clock, activity) : null;
+
+    }
+
     /**
-     * 저장된 내 커밋에서 손댄 후보의 커밋·PR 을 빼고 AI 후보 묶기를 불러 묶은 후보를 저장한다
-     * 보낼 요청이 지난번 묶었을 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다
+     * 저장된 내 커밋에서 손댄 후보의 커밋·PR 을 빼고 AI 경험 그룹화를 불러 만든 후보를 저장한다
+     * 보낼 요청이 지난번 경험 그룹화 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 둔다
      */
-    private void group(AnalysisJob job, PartialReason partialReason, Instant limitResetAt) {
+    private void group(AnalysisJob job, PartialReason partialReason, Instant limitResetAt,
+                       Consumer<AiProgress> progress) {
 
         Long userRepositoryId = job.getUserRepositoryId();
         String login = users.loginOf(job.getUserId());
@@ -200,7 +247,8 @@ public class JobRunner {
             return;
         }
 
-        List<GroupedCandidate> grouped = GroupingConverter.candidatesOf(grouping.group(request));
+        List<GroupedCandidate> grouped = GroupingConverter.candidatesOf(
+                progress == null ? grouping.group(request) : grouping.group(request, progress));
         transaction.executeWithoutResult(
                 status -> storeCandidates(job.getId(), fingerprint, grouped, partialReason, limitResetAt));
 
@@ -216,7 +264,7 @@ public class JobRunner {
 
     }
 
-    /** AI 를 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 묶은 후보를 저장하지 않는다 */
+    /** AI 를 기다리는 사이 취소돼 RUNNING 이 아니게 된 Job 이면 경험 그룹화로 만든 후보를 저장하지 않는다 */
     private void storeCandidates(Long jobId, String fingerprint, List<GroupedCandidate> grouped,
                                  PartialReason partialReason, Instant limitResetAt) {
 
@@ -257,17 +305,60 @@ public class JobRunner {
 
     }
 
-    /** 우리 상한은 다시 읽어도 같은 결과라 이어 읽기가 열리지 않도록 에러 코드를 남기지 않는다 */
+    private static String kindOf(AnalysisJob job) {
+
+        return job.getType() == JobType.DRAFT ? "카드 초안" : "분석";
+
+    }
+
+    // 멈춘 Job 정리는 워커가 Job 을 꺼내기 전에 돌아서, 여기서 예외가 나면 그 뒤 Job 을 하나도 꺼내지 못한다
+    // 그래서 진행 중인 단계를 못 찾으면 단계 없이 남긴다
+    private static String runningStepOf(AnalysisJob job) {
+
+        return job.getSteps().stream()
+                .filter(step -> step != null && step.state() == JobStepState.RUNNING)
+                .findFirst()
+                .map(JobStep::key)
+                .map(key -> key + " 단계에서 ")
+                .orElse("");
+
+    }
+
+    private static long secondsSince(Instant from) {
+
+        return Duration.between(from, Instant.now()).toSeconds();
+
+    }
+
+    /** 우리 상한은 다시 읽어도 같은 결과라 GITHUB_RATE_LIMITED 와 달리 다시 시도를 열지 않는 코드로 알린다 */
     private static JobErrorCode partialErrorCodeOf(PartialReason reason) {
 
-        return reason == PartialReason.GITHUB_RATE_LIMITED ? JobErrorCode.GITHUB_RATE_LIMITED : null;
+        if (reason == PartialReason.GITHUB_RATE_LIMITED) {
+            return JobErrorCode.GITHUB_RATE_LIMITED;
+        }
+
+        return reason == PartialReason.CAP_EXCEEDED ? JobErrorCode.COLLECTION_CAPPED : null;
 
     }
 
     private static JobErrorCode errorCodeOf(RuntimeException failure) {
 
+        // 토큰이 거절되거나 없어진 경우는 다시 해도 같아서 일시 장애와 나눠 다시 연결하라고 알린다
+        if (failure instanceof AiClientException ai && "GITHUB_UNAUTHORIZED".equals(ai.errorCode())) {
+            return JobErrorCode.GITHUB_UNAUTHORIZED;
+        }
+
+        // AI 는 GitHub 쪽 실패에도 다시 해 보라고 알리므로 GitHub 코드를 먼저 가른다
         if (failure instanceof AiClientException ai && GITHUB_FAILURES.contains(ai.errorCode())) {
             return JobErrorCode.GITHUB_UNAVAILABLE;
+        }
+
+        if (failure instanceof AiClientException ai && ai.temporary()) {
+            return JobErrorCode.AI_UNAVAILABLE;
+        }
+
+        if (failure instanceof AgentUnavailableException agent && agent.isRetryable()) {
+            return JobErrorCode.AI_UNAVAILABLE;
         }
 
         return JobErrorCode.INTERNAL_ERROR;

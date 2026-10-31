@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Generic, Literal, Optional, TypeVar
 
+import httpx
 from openai import (
     APIConnectionError,
     APIError,
@@ -27,8 +28,14 @@ from openai import (
 )
 from pydantic import BaseModel, ValidationError
 
+from services.usage import record_llm_call
+
 ReasoningEffort = Literal["none", "low", "medium", "high"]
 OutputT = TypeVar("OutputT", bound=BaseModel)
+
+# 운영 게이트웨이는 스트리밍이 아닌 답을 이 토큰 수까지만 기다리고, 더 큰 상한은 400 으로 거절한다.
+# 그보다 긴 답이 필요한 호출(공고 조건 뽑기)만 스트리밍으로 받는다.
+NON_STREAMING_MAX_COMPLETION_TOKENS = 2_000
 
 
 class LLMStructuredCallError(RuntimeError):
@@ -100,7 +107,24 @@ class StructuredLLMClient:
 
         ``timeout_seconds``를 주면 요청 전체 마감에 맞춰 이 호출만 그 시간 안에 끝내고,
         SDK 재시도도 하지 않는다. 재시도까지 하면 마감을 넘기기 때문이다.
+        실패한 호출도 요청의 LLM 호출 수에 세고, SDK 가 안에서 다시 보낸 요청은 따로 세지 않는다.
         """
+        try:
+            result = self._call(system_prompt, payload, output_model, max_completion_tokens, timeout_seconds)
+        except Exception:
+            record_llm_call(self._settings.model, None, None)
+            raise
+        record_llm_call(self._settings.model, result.prompt_tokens, result.completion_tokens)
+        return result
+
+    def _call(
+        self,
+        system_prompt: str,
+        payload: dict[str, Any],
+        output_model: type[OutputT],
+        max_completion_tokens: int,
+        timeout_seconds: Optional[float],
+    ) -> StructuredCallResult[OutputT]:
         started_at = time.perf_counter()
         client = (
             self._client
@@ -109,7 +133,7 @@ class StructuredLLMClient:
         )
         try:
             # GPT-5.6 계열은 temperature=0을 거절하므로 모든 모델에서 기본값을 쓴다.
-            completion = client.chat.completions.parse(
+            request = dict(
                 model=self._settings.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -119,6 +143,11 @@ class StructuredLLMClient:
                 max_completion_tokens=max_completion_tokens,
                 reasoning_effort=self._settings.reasoning_effort,
             )
+            if max_completion_tokens <= NON_STREAMING_MAX_COMPLETION_TOKENS:
+                completion = client.chat.completions.parse(**request)
+            else:
+                with client.chat.completions.stream(**request, stream_options={"include_usage": True}) as stream:
+                    completion = stream.get_final_completion()
         except RateLimitError as exc:
             raise LLMStructuredCallError("LLM 호출 한도를 초과했습니다.") from exc
         except (
@@ -131,6 +160,9 @@ class StructuredLLMClient:
             raise LLMNonRetryableError("LLM 키·권한·모델 이름 또는 요청 형식이 잘못됐습니다.") from exc
         except (APIConnectionError, APITimeoutError, APIError) as exc:
             raise LLMStructuredCallError("LLM 요청을 처리하지 못했습니다.") from exc
+        except httpx.TransportError as exc:
+            # SDK 는 스트림을 읽는 도중 끊긴 연결을 자기 오류로 감싸지 않아 여기서 다시 시도할 수 있는 실패로 바꾼다
+            raise LLMStructuredCallError("LLM 응답을 받는 중 연결이 끊겼습니다.") from exc
         except ValidationError as exc:
             raise LLMInvalidOutputError("LLM이 유효한 구조화 출력을 반환하지 않았습니다.") from exc
         except LengthFinishReasonError as exc:

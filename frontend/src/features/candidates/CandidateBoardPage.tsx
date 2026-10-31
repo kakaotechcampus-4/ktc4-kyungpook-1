@@ -12,7 +12,9 @@ import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActionGate } from '@/lib/useActionGate';
-import { Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { addTopRecommended, CARD_LIMIT_MESSAGE, MAX_CARDS_PER_REQUEST, splitRecommended } from '@/lib/candidatePicks';
+import { Braces, Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink, FileCode2, GitCommitHorizontal, MessageSquare, X } from 'lucide-react';
+import { MetaItem } from '@/components/MetaItem';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
 const loadSel = (repoId: string): Set<string> => {
@@ -37,9 +39,10 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const actions = useActionGate();
   const nav = useNavigate();
   const [q, setQ] = useState('');
-  const [hideUsed, setHideUsed] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => loadSel(repoId));
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [showWeak, setShowWeak] = useState(false);
+  const [showUsed, setShowUsed] = useState(false); // 이미 카드로 만든 후보 행을 목록 아래에 펼칠지
   useDocumentTitle(repo.data ? `${repo.data.name} 후보 보드` : '후보 보드');
 
   // 선택은 새로고침·이탈 후 복귀에도 남는다 (되돌릴 수 있는 결정이라 서버엔 안 쓴다)
@@ -47,15 +50,30 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   useEffect(() => { if (board.data && board.data.verdict !== 'EMPTY') track('candidates_shown', { repoId, count: board.data.candidates.length, partial: board.data.partial }); }, [board.data, repoId]);
 
   const cands = board.data?.candidates ?? [];
-  const visible = useMemo(() => cands.filter((c) => c.status !== 'EXCLUDED' && (!hideUsed || c.status !== 'USED') && (c.title + c.reason).toLowerCase().includes(q.toLowerCase())), [cands, hideUsed, q]);
+  // 이미 카드로 만든(USED) 후보는 다시 고를 수 없으니 기본 목록에서 빼고, 아래 접힌 구역에 개수와 함께 둔다("카드 보기"로 가는 길은 남긴다)
+  const needle = q.toLowerCase();
+  const matches = (c: Candidate) => (c.title + c.reason).toLowerCase().includes(needle);
+  const visible = useMemo(() => cands.filter((c) => c.status !== 'EXCLUDED' && c.status !== 'USED' && (c.title + c.reason).toLowerCase().includes(needle)), [cands, needle]);
+  const { recommended, more } = splitRecommended(visible);
+  const moreOpen = showWeak || !!q.trim();
+  const selectedMore = more.filter(c => selected.has(c.id)).length;
+  const usedList = cands.filter((c) => c.status === 'USED' && matches(c));
   const excluded = cands.filter((c) => c.status === 'EXCLUDED');
   const selectable = new Set(cands.filter((c) => c.status === 'NEW').map((c) => c.id));
   const chosen = [...selected].filter((id) => selectable.has(id));
+  const selectedOutsideSearch = chosen.filter(id => !visible.some(candidate => candidate.id === id)).length;
   const busy = actions.running || patch.isPending || create.isPending;
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
-  const crumbs = [{ label: '경험정리/홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }, { label: '후보 보드' }];
+  const crumbs = [{ label: '홈', to: '/' }, { label: repo.data?.name ?? '…', to: '/repos' }, { label: '후보 보드' }];
 
-  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const overLimit = chosen.length > MAX_CARDS_PER_REQUEST;
+  const toggle = (id: string) => {
+    if (!selected.has(id) && chosen.length >= MAX_CARDS_PER_REQUEST) {
+      toast(CARD_LIMIT_MESSAGE);
+      return;
+    }
+    setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
   const exclude = (c: Candidate) => {
     void actions.run(async () => {
       await patch.mutateAsync({ id: c.id, status: 'EXCLUDED' });
@@ -77,22 +95,34 @@ function CandidateBoard({ repoId }: { repoId: string }) {
     await actions.run(async () => {
       const results = await Promise.allSettled(excluded.map((c) => patch.mutateAsync({ id: c.id, status: 'NEW' })));
       const failures = results.filter((result) => result.status === 'rejected').length;
-      if (failures) toast(`${results.length - failures}개 복원 · ${failures}개는 다시 시도해 주세요`, { tone: 'danger' });
+      if (failures) toast(`${results.length - failures}개 복원, ${failures}개는 다시 시도해 주세요`, { tone: 'danger' });
     });
   };
+  const row = (c: Candidate) => (
+    <CandidateRow key={c.id} c={c} disabled={busy} selected={selected.has(c.id)} onToggle={() => toggle(c.id)} onExclude={() => exclude(c)}
+      expanded={expanded === c.id} onExpand={() => setExpanded(expanded === c.id ? null : c.id)}
+      onCommitToggle={(shas) => { void actions.run(async () => {
+        await patch.mutateAsync({ id: c.id, excludedShas: shas });
+        track('cluster_commit_excluded', { candidateId: c.id, excluded: shas.length });
+      }); }} />
+  );
   const makeCards = async () => {
     if (chosen.length === 0) return;
+    if (overLimit) {
+      toast(CARD_LIMIT_MESSAGE);
+      return;
+    }
     await actions.run(async () => {
     const { cardIds, jobId } = await create.mutateAsync(chosen);
     track('candidates_confirmed', { repoId, count: chosen.length, jobId });
     setSelected(new Set());
-    nav(`/cards/${cardIds[0]}`);
+    nav(cardIds.length ? `/cards/${encodeURIComponent(cardIds[0])}` : `/jobs/${encodeURIComponent(jobId)}`, { state: cardIds.length ? { cardOrder: cardIds } : undefined });
     });
   };
 
   if (board.isPending) return <main className="main"><Breadcrumb items={crumbs} /><Skeleton h={40} w={240} /><Skeleton h={300} /></main>;
   // 백그라운드 리페치만 실패했고 캐시에 보드가 있으면(방금 PATCH 응답을 합쳐 둔 상태) 보드를 그대로 보여준다.
-  if (board.isError && !board.data) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">저장소 목록</Link></main>;
+  if (board.isError && !board.data) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">레포 목록</Link></main>;
   const b = board.data!;
 
   // C2 — 후보 0개: 에러가 아니라 판정. 판정 근거 3줄 + 다음 행동 3개.
@@ -104,14 +134,14 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <RepoContext name={name} note="후보 0개" />
         <div className="verdict">
           <div className="stack grow" style={{ gap: 8 }}>
-            <span className="w-600" style={{ fontSize: 15 }}>파일을 보며 경험을 떠올려 보세요</span>
-            <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>· {r}</span>)}</div>
+            <span className="w-600" style={{ fontSize: 16 }}>파일을 보며 경험을 떠올려 보세요</span>
+            <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>• {r}</span>)}</div>
           </div>
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
             <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>
             <div className="row" style={{ gap: 8 }}>
               <Link to="/cards/new" className="btn btn--outline btn--sm">직접 입력</Link>
-              <Link to="/repos" className="btn btn--outline btn--sm">다른 저장소</Link>
+              <Link to="/repos" className="btn btn--outline btn--sm">다른 레포</Link>
             </div>
           </div>
         </div>
@@ -122,48 +152,56 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   return (
     <main className="main main--footer main--tight candidate-board">
       <Breadcrumb items={crumbs} />
-      <PageTitle>{b.partial ? `후보 ${cands.length}개 (부분 결과)` : `후보 ${cands.length}개`}</PageTitle>
+      <PageTitle lead="커밋과 PR에서 카드로 만들 만한 작업을 골라 뒀어요. 자소서에 쓸 것만 체크하면 카드 초안을 써 드려요.">{b.partial ? `후보 ${cands.length}개 (부분 결과)` : `후보 ${cands.length}개`}</PageTitle>
       <RepoContext name={name} note="카드로 만들 경험을 선택하세요."
-        right={<Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>분석 기준</Button>} />
+        right={<Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>정리 기준</Button>} />
 
       {b.partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 20px', background: 'var(--state-partial-bg)', border: 0, flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">부분 결과</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
             <span className="w-600" style={{ fontSize: 14 }}>읽은 기록에서 찾은 후보예요</span>
-            {b.readCoverage && <span className="t-12l c-2">{`커밋 ${b.readCoverage.commitsRead}/${b.readCoverage.commitsTotal} · PR ${b.readCoverage.prsRead}/${b.readCoverage.prsTotal} 읽음`}</span>}
+            {b.readCoverage && <span className="t-12l c-2">{`커밋 ${b.readCoverage.commitsRead}/${b.readCoverage.commitsTotal}, PR ${b.readCoverage.prsRead}/${b.readCoverage.prsTotal} 읽음`}</span>}
           </div>
           {sp.get('job') && <Link className="btn btn--outline btn--sm" to={`/repos/${repoId}/run?job=${encodeURIComponent(sp.get('job')!)}`}>작업 상태 보기</Link>}
         </div>
       )}
 
-      <Toolbar placeholder="후보 검색 (제목·추천 이유)" value={q} onChange={setQ}>
-        <Button variant="text" size="sm" onClick={() => setHideUsed((v) => !v)} aria-pressed={hideUsed}>{hideUsed ? '사용됨 보이기' : '사용됨 숨기기'}</Button>
+      <Toolbar placeholder="후보 검색 (제목, 추천 이유)" value={q} onChange={setQ}>
         <Button disabled={busy} onClick={() => setSp((current) => { current.set('add', '1'); return current; })}>+ 직접 추가</Button>
       </Toolbar>
       <SectionHead label="후보 선택" count={visible.length} right={
         <span className="row candidate-board__actions">
           {excluded.length > 0 && <Button variant="text" size="sm" disabled={busy} onClick={() => void restoreExcluded()}>제외 {excluded.length}개 복원</Button>}
-          <Button variant="outline" size="sm" disabled={busy || !visible.some((c) => c.status === 'NEW' && !c.weak)} onClick={() => setSelected((current) => new Set([...current, ...visible.filter((c) => c.status === 'NEW' && !c.weak).map((c) => c.id)]))} title="검색 결과의 추천 후보를 기존 선택에 추가"><CheckIcon size={16} aria-hidden />추천 후보 선택</Button>
+          <Button variant="outline" size="sm" disabled={busy || chosen.length >= MAX_CARDS_PER_REQUEST || !visible.some((c) => c.status === 'NEW' && !c.weak && !selected.has(c.id))} onClick={() => setSelected((current) => addTopRecommended(current, chosen.length, visible))} title={`검색 결과의 추천 후보를 점수 순으로 ${MAX_CARDS_PER_REQUEST}개까지 기존 선택에 추가`}><CheckIcon size={16} aria-hidden />추천 후보 선택</Button>
           {chosen.length > 0 && <Button variant="text" size="sm" disabled={busy} onClick={() => setSelected(new Set())}>선택 해제</Button>}
         </span>
       } />
 
       <div className="record-list">
-        {visible.map((c) => (
-          <CandidateRow key={c.id} c={c} disabled={busy} selected={selected.has(c.id)} onToggle={() => toggle(c.id)} onExclude={() => exclude(c)}
-            expanded={expanded === c.id} onExpand={() => setExpanded(expanded === c.id ? null : c.id)}
-            onCommitToggle={(shas) => { void actions.run(async () => {
-              await patch.mutateAsync({ id: c.id, excludedShas: shas });
-              track('cluster_commit_excluded', { candidateId: c.id, excluded: shas.length });
-            }); }} />
-        ))}
-        {visible.length === 0 && <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="검색 조건에 맞는 후보가 없어요" tone="inset" /><Button variant="outline" onClick={() => { setQ(''); setHideUsed(false); }}>검색 초기화</Button></div>}
+        {recommended.map((c) => row(c))}
+        {more.length > 0 && <>
+          <button type="button" className="record-list__more" aria-expanded={moreOpen} onClick={() => setShowWeak(open => !open)} disabled={!!q.trim()}>
+            <span>더 보기 후보 {more.length}개{selectedMore > 0 ? `, ${selectedMore}개 선택` : ''}{q.trim() ? ', 검색 결과' : moreOpen ? ' 접기' : ' 보기'}</span>
+            {moreOpen ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
+          </button>
+          {moreOpen && more.map(c => row(c))}
+        </>}
+        {visible.length === 0 && (q || usedList.length === 0
+          ? <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="검색 조건에 맞는 후보가 없어요" tone="inset" /><Button variant="outline" onClick={() => setQ('')}>검색 초기화</Button></div>
+          : <div className="stack" style={{ gap: 12, padding: 24 }}><Note strong="남은 후보가 없어요" tone="inset">후보를 모두 카드로 만들었어요. 아래에서 만든 카드를 볼 수 있어요.</Note></div>)}
+        {usedList.length > 0 && (
+          <button type="button" className="record-list__more" aria-expanded={showUsed} onClick={() => setShowUsed((open) => !open)}>
+            <span>이미 카드로 만든 후보 {usedList.length}개 {showUsed ? '접기' : '보기'}</span>
+            {showUsed ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
+          </button>
+        )}
+        {showUsed && usedList.map((c) => row(c))}
       </div>
 
-      <StickyFooter strong={`${chosen.length}개 선택`}>
+      <StickyFooter strong={`${chosen.length}/${MAX_CARDS_PER_REQUEST}개 선택`} sub={overLimit ? CARD_LIMIT_MESSAGE : selectedOutsideSearch ? `검색 밖 ${selectedOutsideSearch}개 포함` : undefined}>
         <Link to="/" className="btn btn--outline">취소</Link>
-        <Button size="lg" disabled={chosen.length === 0 || busy} loading={create.isPending} onClick={makeCards}>
+        <Button size="lg" disabled={chosen.length === 0 || overLimit || busy} loading={create.isPending} onClick={makeCards}>
           {chosen.length ? `선택한 ${chosen.length}개로 카드 만들기` : '후보를 선택하세요'}
         </Button>
       </StickyFooter>
@@ -189,7 +227,7 @@ function CandidateRow({ c, disabled, selected, onToggle, onExclude, expanded, on
           <h3 className="cand__title">{c.title}</h3>
           <div className="cand__actions">
             {used && c.usedByCardId && <Link to={`/cards/${c.usedByCardId}`} className="btn btn--outline btn--sm">카드 보기</Link>}
-            {!used && <button type="button" className="btn btn--text btn--sm cand__exclude" disabled={disabled} onClick={onExclude}>제외</button>}
+            {!used && <button type="button" className="btn btn--ghost btn--sm cand__exclude" disabled={disabled} onClick={onExclude}><X size={13} aria-hidden />제외</button>}
           </div>
         </div>
         <div className="cand__badges">
@@ -198,10 +236,15 @@ function CandidateRow({ c, disabled, selected, onToggle, onExclude, expanded, on
           {c.weak && !used && <Badge kind="NEUTRAL">추천도 낮음</Badge>}
         </div>
         <p className="cand__reason">{c.reason}</p>
-        <span className="cand__meta">커밋 {included}개 · 변경 파일 {c.meta.files}개{c.meta.reviewComments ? ` · 리뷰 코멘트 ${c.meta.reviewComments}건` : ''}{c.meta.codeRatio != null ? ` · 코드 비율 ${Math.round(c.meta.codeRatio * 100)}%` : ''}</span>
+        <span className="cand__meta cand__meta--icons">
+          <MetaItem icon={GitCommitHorizontal}>커밋 {included}개</MetaItem>
+          <MetaItem icon={FileCode2}>변경 파일 {c.meta.files}개</MetaItem>
+          {c.meta.reviewComments ? <MetaItem icon={MessageSquare}>리뷰 코멘트 {c.meta.reviewComments}건</MetaItem> : null}
+          {c.meta.codeRatio != null ? <MetaItem icon={Braces}>코드 비율 {Math.round(c.meta.codeRatio * 100)}%</MetaItem> : null}
+        </span>
         {cluster && (
           <div className="cand__warn">
-            <span>시간대·디렉터리로 묶은 커밋</span>
+            <span>시간대와 디렉터리로 묶은 커밋</span>
             {c.commits && c.commits.length > 0 && <button type="button" className="btn btn--text btn--sm cand__expand" onClick={onExpand} aria-expanded={expanded}>{expanded ? '접기' : `커밋 ${c.commits.length}개 펼치기`}{expanded ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}</button>}
           </div>
         )}
@@ -226,7 +269,7 @@ function ClusterCommits({ c, disabled, onChange }: { c: Candidate; disabled: boo
           <div className="commit-row__body">
             <div className="commit-row__heading"><span className="commit-row__sha">{shortSha(cm.sha)}</span>{!cm.included && <Badge kind="NEUTRAL">제외됨</Badge>}</div>
             <span className="commit-row__msg">{cm.message}</span>
-            <span className="commit-row__path">{cm.path} · {cm.at.slice(5, 16).replace('T', ' ')}</span>
+            <span className="commit-row__path">{cm.path}, {cm.at.slice(5, 16).replace('T', ' ')}</span>
           </div>
           <a href={cm.url} target="_blank" rel="noreferrer" className="commit-row__link" aria-label={`${shortSha(cm.sha)} GitHub에서 보기`}><ExternalLink size={16} aria-hidden /></a>
         </div>
@@ -235,7 +278,7 @@ function ClusterCommits({ c, disabled, onChange }: { c: Candidate; disabled: boo
   );
 }
 
-/** "분석 기준 보기" — 이 레포에서 무엇을 읽고 안 읽었는지 · 언제 정리했는지 · 다시 정리 */
+/** "정리 기준 보기" — 이 레포에서 무엇을 읽고 안 읽었는지 · 언제 정리했는지 · 다시 정리 */
 function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial: boolean; onClose: () => void }) {
   const repo = useRepo(repoId);
   const start = useStartAnalysis();
@@ -251,7 +294,7 @@ function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial:
     });
   };
   return (
-    <Modal title="이 보드의 분석 기준" width={720} onClose={() => { if (!start.isPending) onClose(); }}
+    <Modal title="이 보드의 정리 기준" width={720} onClose={() => { if (!start.isPending) onClose(); }}
       sub={r.lastAnalyzedAt ? `${ymdhm(r.lastAnalyzedAt)} 에 읽은 결과입니다.` : '아직 정리 기록이 없습니다.'}
       footer={{ strong: partial ? '재시도 가능 여부는 작업 상태에서 확인하세요' : '후보의 추천 이유와 근거를 확인하세요', actions: <><Button variant="outline" disabled={start.isPending} onClick={onClose}>닫기</Button><Button onClick={again} disabled={partial} loading={start.isPending}>다시 정리하기</Button></> }}>
       <PermissionGrid compact reads={r.disclosure.reads} skips={r.disclosure.skips} />

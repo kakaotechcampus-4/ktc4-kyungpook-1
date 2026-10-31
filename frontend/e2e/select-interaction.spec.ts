@@ -52,8 +52,12 @@ test('repository typeahead reaches the draft unchanged and locks after the first
 test('long repository menus scroll to the keyboard destination within the mobile viewport', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 600 });
   await loginAsDemo(page); await page.goto('/cards/new');
-  await expect(page.getByRole('combobox', { name: '관련 레포', exact: true })).toContainText('없음');
-  await page.evaluate(() => {
+  const initialRepo = page.getByRole('combobox', { name: '관련 레포', exact: true });
+  await initialRepo.click();
+  await expect(page.getByRole('option', { name: 'hong-dev/auth-service', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  // Seed before the reloaded app starts: in-flight reads in the old document can persist its previous DB.
+  await page.addInitScript(() => {
     const db = JSON.parse(sessionStorage.getItem('gitory.demo.db')!);
     db.repos = Array.from({ length: 40 }, (_, index) => ({ ...db.repos[0], id: `repo_${index}`, name: `repository-${index}` }));
     sessionStorage.setItem('gitory.demo.db', JSON.stringify(db));
@@ -63,6 +67,7 @@ test('long repository menus scroll to the keyboard destination within the mobile
   await repo.click();
   const menu = page.getByRole('listbox', { name: '관련 레포', exact: true });
   await expect(menu).toBeVisible();
+  await expect(menu.getByRole('option')).toHaveCount(41);
   await page.keyboard.press('End');
   const last = page.getByRole('option', { name: 'hong-dev/repository-39', exact: true });
   await expect(last).toBeFocused();

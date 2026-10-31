@@ -6,15 +6,27 @@
 .btn--outline { background: var(--bg-surface); color: var(--text-strong); border-color: var(--border-strong); }
 .btn--text { color: var(--text-secondary); padding-inline: 8px; }
 .btn--text:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-subtle); }
+/* 고스트 — 옅은 배경이 늘 깔려 있어 글자가 아니라 누르는 것으로 보인다 */
+.btn--ghost { background: var(--bg-subtle); color: var(--text-strong); border-color: var(--border-default); }
+.btn--ghost:hover:not(:disabled) { background: var(--bg-selected); border-color: var(--border-strong); color: var(--text-primary); }
+.btn--ghost svg { color: var(--text-secondary); flex: 0 0 auto; }
 .btn--danger { background: var(--bg-surface); color: var(--state-failed-text); border-color: var(--danger-300); }
 .btn:disabled, .btn--disabled { background: var(--bg-inset) !important; color: var(--text-tertiary) !important; border-color: transparent !important; }
 .btn--sm { padding: 7px 12px; font-size: 12px; line-height: 16px; }
 .btn--lg { padding: 12px 22px; }
 .btn--xl { padding: 15px 28px; font-size: 14px; }
-/* .btn:disabled 의 !important 색(0,2,0)이 .btn--loading(0,1,0)을 이기면 로딩 중에 회색 글씨가 그대로 보인다 — 같은 특이도로 올리고 뒤에 둔다. */
-.btn--loading, .btn--loading:disabled { position: relative; color: transparent !important; }
-.btn--loading::after { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; color: var(--text-secondary); animation: spin .7s linear infinite; } /* 로딩 중 버튼은 항상 disabled(회색 inset 배경)라 흰 스피너는 안 보인다 */
-.btn--outline.btn--loading::after, .btn--text.btn--loading::after { color: var(--text-secondary); }
+/*
+ * 로딩 중에도 글자와 버튼 색을 지킨다 — 글자를 지우고 회색 상자만 남기면 무엇이 진행 중인지 모르고 멈춘 것처럼 보인다.
+ * .btn:disabled 의 !important(0,2,0)를 같은 특이도로 덮으려고 변형 클래스와 묶어 뒤에 둔다.
+ */
+.btn--loading { cursor: progress; }
+.btn--loading::before { content: ''; width: 14px; height: 14px; flex: 0 0 auto; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+.btn--primary.btn--loading { background: var(--bg-ink-solid) !important; border-color: var(--bg-ink-solid) !important; color: var(--text-on-ink) !important; opacity: .82; }
+.btn--outline.btn--loading { background: var(--bg-surface) !important; border-color: var(--border-strong) !important; color: var(--text-strong) !important; }
+.btn--ghost.btn--loading { background: var(--bg-subtle) !important; border-color: var(--border-default) !important; color: var(--text-strong) !important; }
+.btn--text.btn--loading { background: transparent !important; color: var(--text-secondary) !important; }
+.btn--danger.btn--loading { background: var(--bg-surface) !important; border-color: var(--danger-300) !important; color: var(--state-failed-text) !important; }
+@media (prefers-reduced-motion: reduce) { .btn--loading::before { animation-duration: 1.6s; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ───────── 배지 (원본: radius 4 · 11 SemiBold · 이름 = enum) ───────── */
@@ -64,7 +76,7 @@ button.chip { min-height: var(--control-touch-size); }
 .card--low { border-color: var(--field-low-border); }
 .card--dropped { background: var(--field-dropped-bg); }
 .card--used { background: var(--bg-paper); }
-.note { display: flex; align-items: flex-start; gap: 10px; padding: 14px 18px; border-radius: var(--radius-lg); background: var(--bg-subtle); font-size: 12.5px; line-height: 20px; }
+.note { display: flex; align-items: flex-start; gap: 10px; padding: 14px 18px; border-radius: var(--radius-lg); background: var(--bg-subtle); font-size: 12px; line-height: 20px; }
 .note strong { font-weight: 600; color: var(--text-strong); flex: 0 0 auto; }
 .note span { color: var(--text-secondary); }
 .note--inset { background: var(--bg-inset); }
@@ -82,7 +94,7 @@ button.chip { min-height: var(--control-touch-size); }
 
 /* ───────── 입력 (원본 회색 입력 박스) ───────── */
 .field { display: flex; flex-direction: column; gap: 7px; }
-.field__label { font-size: 12.5px; line-height: 16px; font-weight: 600; color: var(--text-strong); display: flex; align-items: center; gap: 8px; }
+.field__label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-strong); display: flex; align-items: center; gap: 8px; }
 .input { width: 100%; padding: 11px 12px; border-radius: var(--control-radius); background: var(--bg-paper); border: 1px solid var(--border-strong); font-size: 13px; line-height: 20px; color: var(--text-primary); resize: vertical; min-height: var(--control-touch-size); }
 .input::placeholder { color: var(--text-tertiary); }
 .input:focus { border-color: var(--border-selected); box-shadow: inset 0 0 0 1px var(--border-selected); outline: 0; background: var(--bg-surface); }
@@ -91,16 +103,30 @@ button.chip { min-height: var(--control-touch-size); }
 /* ───────── 진행바 · STAR 키 · 근거 스트립 ───────── */
 .track { height: 6px; border-radius: var(--radius-full); background: var(--border-default); overflow: hidden; width: 100%; }
 .track > span { display: block; height: 100%; background: var(--bg-ink-solid); border-radius: inherit; transition: width .5s ease; min-width: 4px; }
+/* 진행 중임을 보이는 움직임 — 값(너비)은 그대로 두고 빛만 흘려 보낸다 */
+.track--live > span { position: relative; overflow: hidden; }
+.track--live > span::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .35), transparent); transform: translateX(-100%); animation: track-sheen 1.6s ease-in-out infinite; }
+@keyframes track-sheen { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .track--live > span::after { animation: none; } }
+.job-live { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0; }
 .star-key { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--bg-ink-solid); color: var(--text-on-ink); display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; flex: 0 0 auto; }
 .star-key--dropped { background: var(--bg-inset); color: var(--text-tertiary); }
-.star-key--sm { width: 22px; height: 22px; border-radius: 5px; font-size: 10.5px; }
-.evidence { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--evidence-commit-bg); color: var(--evidence-commit-text); font-size: 11.5px; line-height: 16px; font-weight: 500; text-decoration: none; }
-a.evidence { display: grid; grid-template-columns: 13px max-content minmax(0, 1fr) 16px; min-height: var(--control-touch-size); }
-.evidence__label { font-size: 10px; font-weight: 600; color: var(--evidence-commit-label); flex: 0 0 auto; }
-.evidence__sha { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-weight: 600; white-space: normal; overflow-wrap: anywhere; min-width: 0; flex: 0 0 auto; }
-.evidence__snippet { color: var(--evidence-commit-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-a.evidence .evidence__snippet { grid-column: 2 / 4; grid-row: 2; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 20px; }
-a.evidence .evidence__arrow { grid-column: 4; grid-row: 1; margin-left: 0; }
+.star-key--sm { width: 22px; height: 22px; border-radius: 5px; font-size: 11px; }
+.evidence { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius-md); background: var(--evidence-commit-bg); color: var(--evidence-commit-text); font-size: 12px; line-height: 16px; font-weight: 500; text-decoration: none; }
+/* 커밋 근거: 1행 = 무엇을 했는지(메시지), 2행 = 커밋 sha·GitHub 링크 안내. 아이콘·화살표는 1행에 고정. */
+.evidence--commit { display: grid; grid-template-columns: 13px minmax(0, 1fr) auto; column-gap: 8px; row-gap: 2px; align-items: start; min-height: var(--control-touch-size); padding: 10px 12px; }
+.evidence--commit .evidence__icon { margin-top: 3px; }
+.evidence__label { font-size: 11px; font-weight: 600; color: var(--evidence-commit-label); flex: 0 0 auto; }
+.evidence__sha { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-weight: 500; white-space: normal; overflow-wrap: anywhere; min-width: 0; flex: 0 0 auto; }
+.evidence__snippet { color: var(--evidence-commit-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.evidence--commit .evidence__snippet { grid-column: 2; grid-row: 1; font-size: 13px; line-height: 20px; font-weight: 500; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.evidence__message { grid-column: 2; font-size: 12px; line-height: 18px; color: var(--evidence-commit-muted); overflow-wrap: anywhere; }
+.evidence__meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; font-size: 11px; line-height: 16px; color: var(--evidence-commit-muted); }
+.evidence__meta .evidence__sha { flex: 0 1 auto; }
+.evidence--commit .evidence__arrow { grid-column: 3; grid-row: 1; margin: 3px 0 0; }
+.evidence__go { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; gap: 4px; margin-top: 1px; font-size: 12px; font-weight: 600; color: var(--evidence-commit-label); white-space: nowrap; }
+.evidence__kind { padding: 1px 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-default); font-size: 11px; font-weight: 600; color: var(--text-strong); }
+a.evidence--commit:hover .evidence__go { color: var(--text-accent); text-decoration: underline; text-underline-offset: 3px; }
 .evidence__arrow { margin-left: auto; color: var(--evidence-commit-muted); }
 a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .evidence--user { background: var(--evidence-user-bg); color: var(--evidence-user-text); border: 1px solid var(--border-default); }
@@ -112,7 +138,7 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .modal { width: 100%; max-width: 660px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-xl); box-shadow: var(--shadow-dialog); display: flex; flex-direction: column; animation: rise .18s ease; }
 @keyframes rise { from { transform: translateY(8px); opacity: 0; } }
 .modal__head { padding: 22px 24px 18px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--border-default); }
-.modal__title { font-size: 18px; line-height: 28px; font-weight: var(--heading-weight); display: flex; align-items: center; }
+.modal__title { font-size: 20px; line-height: 28px; font-weight: var(--heading-weight); display: flex; align-items: center; }
 .modal__close { margin-left: auto; width: 32px; height: 32px; border-radius: var(--radius-md); display: grid; place-items: center; color: var(--text-tertiary); font-size: 14px; }
 .modal__close:hover { background: var(--bg-subtle); color: var(--text-primary); }
 .modal__sub { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
@@ -120,7 +146,7 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .modal__foot { padding: 16px 24px 18px; display: flex; align-items: center; gap: 12px; background: var(--bg-paper); border-top: 1px solid var(--border-default); border-radius: 0 0 var(--radius-xl) var(--radius-xl); }
 .modal__foot-text { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .modal__foot-text strong { font-size: 13px; line-height: 20px; font-weight: 600; }
-.modal__foot-text span { font-size: 11.5px; line-height: 16px; color: var(--text-secondary); }
+.modal__foot-text span { font-size: 12px; line-height: 16px; color: var(--text-secondary); }
 
 /* ───────── 페이지 헤더 · 브레드크럼 · 섹션 헤드 · 툴바 · 스티키 푸터 ───────── */
 .crumb { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 16px; color: var(--text-secondary); flex-wrap: wrap; }
@@ -148,14 +174,15 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .toolbar__toggle span:first-child { background: var(--bg-ink-solid); }
 .sticky-footer { position: sticky; bottom: 0; margin: 0 calc(-1 * var(--main-px)) calc(-1 * var(--main-pb)); padding: 18px var(--main-px); background: var(--bg-surface); border-top: 1px solid var(--border-default); display: flex; align-items: center; gap: 12px; min-height: var(--size-footer); z-index: 5; }
 .sticky-footer__text { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.sticky-footer__text strong { font-size: 13.5px; line-height: 20px; font-weight: var(--heading-weight); }
-.sticky-footer__text span { font-size: 11.5px; line-height: 16px; color: var(--text-secondary); }
+.sticky-footer__text strong { font-size: 14px; line-height: 20px; font-weight: var(--heading-weight); }
+.sticky-footer__text span { font-size: 12px; line-height: 16px; color: var(--text-secondary); }
 .repo-ctx { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
 .repo-ctx__icon { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--border-strong); flex: 0 0 auto; }
-.repo-ctx__name { font-size: 15px; line-height: 20px; font-weight: var(--heading-weight); }
+.repo-ctx__name { font-size: 16px; line-height: 20px; font-weight: var(--heading-weight); }
 .repo-ctx__note { font-size: 12px; line-height: 19px; color: var(--text-secondary); }
 
 .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-default); border-top-color: var(--text-primary); animation: spin .8s linear infinite; }
+.spinner--sm { width: 12px; height: 12px; }
 .skeleton { background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-inset) 50%, var(--bg-subtle) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius-md); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
@@ -167,7 +194,7 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .toast__action { color: var(--text-on-toast); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .toast__close { color: var(--toast-muted); font-size: 12px; padding: 2px 4px; }
 .toast__close:hover { color: var(--text-on-toast); }
-.skip-link { position: absolute; left: 8px; top: -48px; z-index: 100; padding: 8px 12px; border-radius: 8px; background: var(--bg-ink-solid); color: var(--text-on-ink); font-weight: 600; }
+.skip-link { position: absolute; left: 8px; top: -48px; z-index: 100; padding: 8px 12px; border-radius: 10px; background: var(--bg-ink-solid); color: var(--text-on-ink); font-weight: 600; }
 .skip-link:focus { top: 8px; }
 .select-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; max-width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--control-radius); background: var(--bg-surface); color: var(--text-strong); font-size: 13px; line-height: 20px; font-weight: var(--control-weight); text-align: left; }
 .select-trigger > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -182,4 +209,15 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .select-menu__option[data-disabled] { opacity: .5; cursor: not-allowed; }
 .select-menu__check { position: absolute; right: 12px; display: flex; color: var(--text-strong); }
 .select-menu__scroll { display: flex; align-items: center; justify-content: center; height: 24px; background: var(--bg-surface); color: var(--text-secondary); }
-.kbd { display: inline-block; padding: 0 5px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; font: 600 10.5px/16px ui-monospace, monospace; color: var(--text-secondary); }
+.kbd { display: inline-block; padding: 0 5px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; font: 600 11px/16px ui-monospace, monospace; color: var(--text-secondary); }
+
+/* 아이콘 + 글자 한 덩어리(MetaItem) — 정보 종류가 아이콘으로 먼저 보이게 한다 */
+.meta-i { display: inline-flex; align-items: center; gap: 5px; }
+.meta-i > svg { flex: none; color: var(--text-tertiary); }
+.meta-i--strong { color: var(--text-primary); font-weight: 600; }
+.cand__meta--icons { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.repo-row__stats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.mine-chip > svg { flex: none; align-self: center; }
+.match-meta, .match-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.match-card__go { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text-accent); font-weight: 600; }
+.prompt__icon { flex: none; color: var(--text-tertiary); }

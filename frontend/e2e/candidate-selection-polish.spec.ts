@@ -19,17 +19,20 @@ test('reading and toggling an expanded commit never selects its parent candidate
   const commitCheck = cluster.locator('.commit-row').first().getByRole('checkbox');
   await commitCheck.click(); await expect(commitCheck).toHaveAttribute('aria-checked','false');
   await expect(parentCheck).toHaveAttribute('aria-checked','false');
-  await expect(page.locator('.sticky-footer__text')).toContainText('0개 선택');
+  await expect(page.locator('.sticky-footer__text')).toContainText('0/8개 선택');
 });
 
-test('recommendation respects server eligibility and leaves used and weak candidates unselected', async ({ page }) => {
+test('recommendation picks the eight highest-scoring eligible candidates and leaves used and weak ones unselected', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/repos/r_auth/candidates');
   await expect(page.locator('.cand').first()).toBeVisible();
-  const candidates = await page.evaluate(async () => (await (await fetch('/api/repos/r_auth/candidates')).json()).data.candidates as {title:string;status:string;weak:boolean}[]);
+  const candidates = await page.evaluate(async () => (await (await fetch('/api/repos/r_auth/candidates')).json()).data.candidates as {id:string;title:string;status:string;weak:boolean;score:number}[]);
+  const top=new Set(candidates.filter(c=>c.status==='NEW'&&!c.weak).sort((a,b)=>b.score-a.score).slice(0,8).map(c=>c.id));
   await page.getByRole('button',{name:'추천 후보 선택',exact:true}).click();
+  await page.getByRole('button',{name:/더 보기 후보 \d+개/}).click();
+  await page.getByRole('button',{name:/이미 카드로 만든 후보 \d+개 보기/}).click(); // 이미 카드로 만든 후보는 눌러야 펼쳐진다
   for(const candidate of candidates.filter(c=>c.status!=='EXCLUDED')) {
     const check=page.getByRole('checkbox',{name:`${candidate.title} 선택`,exact:true});
-    await expect(check).toHaveAttribute('aria-checked',String(candidate.status==='NEW'&&!candidate.weak));
+    await expect(check).toHaveAttribute('aria-checked',String(top.has(candidate.id)));
     if(candidate.status==='USED')await expect(check).toBeDisabled();
   }
 });

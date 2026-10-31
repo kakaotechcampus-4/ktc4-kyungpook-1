@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from schemas.analysis import StarAnalysisRequest
+from schemas.analysis import StarAnalysisRequest, StarAnalysisResponse
 from services.analysis_pipeline import AnalysisPipeline
 from services.llm_structured_client import (
     LLMContentFilterError,
@@ -142,14 +142,54 @@ def test_drops_unknown_shas_and_removes_claims_without_any_evidence() -> None:
     assert result.missing_fields == ["S", "T", "R"]
 
 
-def test_allows_text_backed_only_by_confirmed_answers() -> None:
+def test_keeps_cells_whose_cited_sha_was_copied_with_a_typo() -> None:
+    real = "0409013fb1905a33719fd42efbe7b03f07c61c9b"
+    client = _FakeClient(_output(
+        S=_field("FILLED", "관계없는 시험이 메모리 부족으로 실패했다.", [real + "9"]),
+        A=_field("FILLED", "시험 JVM 의 최대 메모리를 올렸다.", [real, real + "9"]),
+    ))
+
+    result = _run(StarGenerator(client), _request(_evidence(real)))
+
+    # 응답에는 모델이 적은 글자가 아니라 입력의 40자 번호를 싣고, 같은 커밋으로 맞춰진 두 번호는 한 번만 싣는다.
+    assert [result.star[slot].status for slot in ("S", "A")] == ["FILLED", "FILLED"]
+    assert [ref.sha for ref in result.star["S"].evidence] == [real]
+    assert [ref.sha for ref in result.star["A"].evidence] == [real]
+    assert result.removed_claims == []
+
+
+def test_text_backed_only_by_confirmed_answers_is_kept_for_user_review() -> None:
     client = _FakeClient(_output(R=_field("FILLED", "배포 후 로그인 오류 문의가 사라졌다.", [])))
 
     result = _run(StarGenerator(client), _request(_evidence(SHA_A), answers=["배포 후 로그인 오류 문의가 사라졌어요"]))
 
-    assert result.star["R"].status == "FILLED"
+    assert (result.star["R"].status, result.star["R"].confidence) == ("NEEDS_REVIEW", "LOW")
+    assert "답변" in result.star["R"].review_reason
     assert result.star["R"].evidence == []
     assert result.removed_claims == []
+    assert "R" not in result.missing_fields
+
+
+def test_code_name_needs_review_even_without_the_repair_loop() -> None:
+    """고쳐 쓰기 루프를 켜지 않아도 카드 문장에 남은 프로젝트 안 이름은 확인 필요로 내려 사용자가 보게 한다."""
+    client = _FakeClient(_output(A=_field("FILLED", "MyPageResponse 를 둘로 나눴다.", [SHA_A])))
+    request = _request(_evidence(SHA_A, changed_paths=["backend/api/MyPageResponse.java"]))
+
+    result = _run(StarGenerator(client), request)
+
+    assert (result.star["A"].status, result.star["A"].text) == ("NEEDS_REVIEW", "MyPageResponse 를 둘로 나눴다.")
+    assert "MyPageResponse" in result.star["A"].review_reason
+
+
+
+def test_number_reason_comes_before_code_name_reason() -> None:
+    """근거 없는 수치와 프로젝트 안 이름이 한 칸에 함께 걸리면, 더 중요한 수치 이유를 보인다."""
+    client = _FakeClient(_output(R=_field("FILLED", "MyPageResponse 응답이 40% 빨라졌다.", [SHA_A])))
+    request = _request(_evidence(SHA_A, changed_paths=["backend/api/MyPageResponse.java"]))
+
+    result = _run(StarGenerator(client), request)
+
+    assert "40%" in result.star["R"].review_reason
 
 
 def test_marks_unsourced_numeric_draft_for_user_review_without_dropping_it() -> None:
@@ -266,7 +306,7 @@ def test_filled_without_text_becomes_empty() -> None:
 
 
 def test_clips_long_text_and_redacts_secrets() -> None:
-    client = _FakeClient(_output(A=_field("FILLED", f"토큰 {FAKE_TOKEN} " + "가" * 400, [SHA_A])))
+    client = _FakeClient(_output(A=_field("FILLED", f"토큰 {FAKE_TOKEN} " + "가" * 1_200, [SHA_A])))
     request = _request(
         _evidence(SHA_A, message=f"chore: {FAKE_TOKEN}"),
         answers=[f"키는 {FAKE_TOKEN} 였어요"],
@@ -277,7 +317,8 @@ def test_clips_long_text_and_redacts_secrets() -> None:
     sent = repr(client.calls[0]["payload"])
     assert FAKE_TOKEN not in sent
     assert FAKE_TOKEN not in result.model_dump_json()
-    assert len(result.star["A"].text) == 200
+    # 칸 길이는 프롬프트가 정하고, 코드는 Spring 이 칸에 저장하는 상한(1,000자)에서만 자른다.
+    assert len(result.star["A"].text) == 1_000
 
 
 def test_dedupes_evidence_and_ignores_blank_answers() -> None:
@@ -367,3 +408,144 @@ def test_passes_remaining_deadline_as_call_timeout() -> None:
     _run(StarGenerator(client, StarGenerationLimits(deadline_seconds=60)), _request(_evidence(SHA_A)))
 
     assert 50 < client.calls[0]["timeout_seconds"] <= 60
+
+
+def test_prompt_carries_pr_body_writing_and_reinforcement_rules() -> None:
+    assert "S·T는 1~2문장(250자 이내), A·R은 2~3문장(450자 이내)" in SYSTEM_PROMPT
+    assert "150자 이내 한 문장" not in SYSTEM_PROMPT
+    for heading in ("PR 본문 활용:", "문장 쓰기 규칙:", "보강 규칙:"):
+        assert heading in SYSTEM_PROMPT
+    assert SYSTEM_PROMPT.endswith("반드시 제공된 구조화 출력 스키마로만 응답하세요.")
+
+
+def test_puts_cleaned_pull_request_body_right_after_source_ref() -> None:
+    client = _FakeClient(_output())
+    body = f"## 고민한 점\n\n- 폴링을   골랐다.\n키 {FAKE_TOKEN} · 문의 dev@example.com"
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A), pull_request_body=body))
+
+    payload = client.calls[0]["payload"]
+    assert list(payload) == ["title", "source_ref", "pull_request_body", "evidence", "confirmed_answers"]
+    assert payload["pull_request_body"] == "## 고민한 점 - 폴링을 골랐다. 키 [REDACTED] · 문의 [이메일]"
+
+
+@pytest.mark.parametrize("body", [None, "  \n "])
+def test_leaves_out_missing_or_blank_pull_request_body(body: str | None) -> None:
+    client = _FakeClient(_output())
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A), pull_request_body=body))
+
+    assert "pull_request_body" not in client.calls[0]["payload"]
+
+
+@pytest.mark.parametrize(
+    ("body", "sent"),
+    [
+        # 1,000자에서 'uuu1856@naver.' 로 잘려 이메일 모양이 깨지므로, '@' 가 든 끝 낱말을 지운다.
+        ("가" * 985 + " uuu1856@naver.com 로 연락", "가" * 985),
+        # 상한에 닿지 않은 본문의 멘션은 그대로 둔다.
+        ("리뷰어 @octo", "리뷰어 @octo"),
+    ],
+)
+def test_clips_pull_request_body_and_drops_a_cut_off_email(body: str, sent: str) -> None:
+    client = _FakeClient(_output())
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A), pull_request_body=body))
+
+    assert client.calls[0]["payload"]["pull_request_body"] == sent
+
+
+@pytest.mark.parametrize(("churn", "kind"), [("+71/-0", "새로 더함"), ("+10/-2", "기존 줄 바꿈"), ("71줄", None)])
+def test_marks_each_commit_new_or_edited_from_its_deleted_lines(churn: str, kind: str | None) -> None:
+    client = _FakeClient(_output())
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A, churn=churn)))
+
+    item = client.calls[0]["payload"]["evidence"][0]
+    assert item.get("change_kind") == kind
+    if kind is not None:
+        keys = list(item)
+        assert keys[keys.index("churn") + 1] == "change_kind"
+
+
+def test_numbers_in_pull_request_body_support_the_sentence() -> None:
+    text = "조회 시간을 30% 줄였다."
+
+    with_body = _run(
+        StarGenerator(_FakeClient(_output(R=_field("FILLED", text, [SHA_A])))),
+        _request(_evidence(SHA_A), pull_request_body="목록만 물어 조회 시간이 30% 줄었습니다."),
+    )
+    without_body = _run(StarGenerator(_FakeClient(_output(R=_field("FILLED", text, [SHA_A])))), _request(_evidence(SHA_A)))
+
+    assert with_body.star["R"].status == "FILLED"
+    assert without_body.star["R"].status == "NEEDS_REVIEW"
+
+
+def _tagged(areas: list[str], techs: list[str]) -> StarDraftOutput:
+    return _output(A=_field("FILLED", "필터를 추가했다.", [SHA_A])).model_copy(update={"areas": areas, "techs": techs})
+
+
+def test_sends_changed_paths_to_the_model_clipped_and_leaves_them_out_when_empty() -> None:
+    client = _FakeClient(_output(), _output())
+    long_path = "src/" + "d" * 200 + "/Main.java"
+
+    _run(StarGenerator(client), _request(_evidence(SHA_A, changed_paths=[long_path] + ["a.py"] * 59), _evidence(SHA_B)))
+
+    with_paths, without = client.calls[0]["payload"]["evidence"]
+    assert len(with_paths["changed_paths"]) == 50
+    assert len(with_paths["changed_paths"][0]) == 150
+    assert "changed_paths" not in without
+
+
+def test_tags_drop_duplicates_and_keep_the_leading_ones_up_to_the_limit() -> None:
+    client = _FakeClient(_tagged(
+        ["BACKEND", "BACKEND", "DB", "TEST"],
+        ["JAVA", "JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS", "PYTHON"],
+    ))
+
+    result = _run(StarGenerator(client), _request(_evidence(SHA_A)))
+
+    assert result.areas == ["BACKEND", "DB"]
+    assert result.techs == ["JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS"]
+
+
+def test_docs_area_is_dropped_when_a_code_area_comes_with_it() -> None:
+    mixed = _run(StarGenerator(_FakeClient(_tagged(["DOCS", "BACKEND", "FRONTEND"], []))), _request(_evidence(SHA_A)))
+    docs_only = _run(StarGenerator(_FakeClient(_tagged(["DOCS"], []))), _request(_evidence(SHA_A)))
+
+    assert mixed.areas == ["BACKEND", "FRONTEND"]
+    assert docs_only.areas == ["DOCS"]
+
+
+def test_tags_outside_the_allowed_lists_are_filtered_again_before_the_response() -> None:
+    client = _FakeClient(_tagged(["BACKEND", "GAMES"], ["JAVA", "SPRING"]))
+
+    result = _run(StarGenerator(client), _request(_evidence(SHA_A)))
+
+    assert (result.areas, result.techs) == (["BACKEND"], ["JAVA"])
+
+
+def test_model_output_schema_only_allows_listed_tags() -> None:
+    areas = ["BACKEND", "FRONTEND", "MOBILE", "DEVOPS", "AI", "DB", "TEST", "DOCS"]
+    techs = [
+        "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART",
+        "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS",
+    ]
+
+    for model in (StarDraftOutput, StarAnalysisResponse):
+        properties = model.model_json_schema()["properties"]
+        assert properties["areas"]["items"]["enum"] == areas
+        assert properties["techs"]["items"]["enum"] == techs
+
+
+def test_timed_out_response_has_no_tags() -> None:
+    result = _run(StarGenerator(_FakeClient(), StarGenerationLimits(deadline_seconds=0)), _request(_evidence(SHA_A)))
+
+    assert (result.areas, result.techs) == ([], [])
+
+
+def test_prompt_carries_the_tag_rules() -> None:
+    assert "분야·기술 태그 규칙:" in SYSTEM_PROMPT
+    assert "DOCS는 코드 분야가 하나도 없을 때만" in SYSTEM_PROMPT
+    assert "그 파일 이름으로 기술을 짐작하지 않는다" in SYSTEM_PROMPT
+    assert "기능 코드와 함께 더한 시험으로는 쓰지 않는다" in SYSTEM_PROMPT

@@ -57,8 +57,8 @@ GitHub 수집을 직접 호출할 때 실제 토큰을 예시·스크린샷·exp
 `GET /health` 응답은 `{"status":"ok","service":"gitory-ai","version":"0.0.1"}`입니다.
 이는 FastAPI 프로세스 생존만 뜻합니다. GitHub 연결, LLM 설정, 카드 생성 준비 상태를
 보장하지 않습니다. A 그룹화·diff 근거·STAR 초안은 LLM 환경변수가 없거나 호출에
-실패하면 503 `LLM_UNAVAILABLE`입니다. B 질문 생성은 템플릿, 답변 평가는 규칙 기반이며 LLM 판정기는 연결되지
-않았습니다. 등록되지 않은 matching/RAG stub은 API 문서에 나타나지 않습니다.
+실패하면 503 `LLM_UNAVAILABLE`입니다. B 되묻기는 다음 칸·질문·예상 답을 LLM 이 정하고(`services/interview_llm.py`), LLM 이 실패하거나
+설정이 없으면 틀 질문으로 대신합니다. 답변 평가는 아직 규칙 기반이며 LLM 판정기는 연결되지 않았습니다.
 
 서버·DB·GitHub·LLM 없이 문서 JSON을 내보낼 수 있습니다. 저장소 루트에서 실행합니다.
 
@@ -74,7 +74,7 @@ python ai/scripts/export_openapi.py --output docs/openapi/ai.json
 `INVALID_PAYLOAD`입니다. FastAPI 기본 422 문서는 실제 400 핸들러에 맞게 제거했습니다.
 수집의 404(`RESOURCE_NOT_FOUND`)·502(`GITHUB_API_ERROR`)도 공통 오류 봉투로
 문서화했습니다. 분석 API의 LLM 실패는 503 `LLM_UNAVAILABLE` 봉투이고, 처리하지 못한
-내부 예외만 기본 서버 오류(500, text/plain)입니다.
+내부 예외도 500 `INTERNAL_ERROR`(재시도 불가) 봉투입니다.
 
 문서 설정과 추가 응답 정의는 FastAPI 공식 문서의
 [Metadata and Docs URLs](https://fastapi.tiangolo.com/tutorial/metadata/),
@@ -96,6 +96,11 @@ python ai/scripts/export_openapi.py --output docs/openapi/ai.json
 확인하되 저장된 SHA의 상세 조회를 생략합니다. 따라서 개인 브랜치에서 과거에
 작성됐다가 나중에 기본 브랜치에 합쳐진 commit도 누락되지 않습니다. 응답에는
 현재 기본 브랜치의 `head_sha`를 포함하며 Spring이 저장소 상태로 보관합니다.
+커밋이 하나도 없는 빈 저장소는 실패가 아니라 `head_sha`가 null인 커밋 0개 응답입니다.
+
+PR은 누구 것이든 최근 갱신순 50개를 모으고, 그 밖에서는 내 PR만 50개까지 더 모읍니다.
+남의 오래된 PR이 빠진 것은 부분 수집으로 표시하지 않고, 내 PR이 잘렸을 수 있을 때만
+`partial_reason=CAP_EXCEEDED`로 표시합니다. 커밋·이슈 상한 초과는 지금처럼 부분 수집입니다.
 
 `POST /internal/collect/candidate-details`는 A가 선택한 `commit_shas`
 또는 `github_pr_number`만 다시 조회해 제한된 diff patch를 반환합니다.
@@ -143,9 +148,84 @@ LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 
 |---|---|
 | `GITORY_LLM_BASE_URL`, `GITORY_LLM_API_KEY` | 필수 |
 | `GITORY_LLM_TIMEOUT_SECONDS` | `120` |
+| `GITORY_GITHUB_API_BASE_URL` | `https://api.github.com` |
 | `GITORY_GROUPING_MODEL`, `GITORY_GROUPING_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_DIFF_MODEL`, `GITORY_DIFF_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_STAR_MODEL`, `GITORY_STAR_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
+| `GITORY_JOB_POSTING_MODEL`, `GITORY_JOB_POSTING_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 
 프롬프트와 출력 스키마는 `evals/tasks/diff_summary.py`·`star_draft.py` 모델 비교에서
 검증한 것과 같은 코드를 공유합니다.
+
+## 기업·직무 공고 RAG
+
+`POST /internal/job-postings/extract`는 Spring이 전달한 공고 상세 본문에서 직무 조건을 뽑습니다.
+AI는 원문에 그대로 존재하는 `source_quote`가 있는 담당업무(`RESPONSIBILITY`)·필수(`REQUIRED`)·우대(`PREFERRED`) 조건만 반환하고(기술 항목은 속한 문단 기준으로 필수 또는 우대로 넣고, 문단을 알 수 없으면 뺍니다),
+Spring은 원문 전체 대신 정규화 조건과 SHA-256 본문 해시를 저장합니다. 같은 해시면 LLM
+추출을 생략하고 `criteria`는 빈 배열, 직무 분류·경력은 `null`로 보냅니다(`UNCHANGED`). Spring이 `previous_content_hash`를 비워 보내면 다시 뽑습니다. 직무 분류(`job_category`)는 9개 값 중 하나, 경력(`experience`)은 공고마다 하나(`ENTRY`·`EXPERIENCED`+`min_years`·`UNSPECIFIED`)입니다. 경력은 원문 인용으로 확인되지 않으면(인용이 원문에 없거나, 연차가 인용에 없는 경우) 공고를 거절하지 않고 그 경력만 `UNSPECIFIED`로 냅니다. 경력 0년 이상과 '1년 미만'처럼 상한만 있는 경력은 최소가 0년이라 `ENTRY`이고 `ENTRY`에는 `min_years`가 없습니다. 인용이 원문에 없는 조건은 필수(`REQUIRED`)이면 공고 전체를
+`EVIDENCE_MISMATCH`(422)로 거절하고, 담당업무·우대이면 그 조건만 빼고 나머지를 돌려줍니다.
+`text`에 인용에 없는 낱말이 있으면 거절하지 않고 `text`를 원문 인용으로 바꿔 돌려줍니다(이때 `text`와 `source_quote`가 같습니다). `text`에 '필수'·'우대' 같은 표시어를 넣지 말라는 지시는 LLM이 만든 요약에만 적용되고 원문 인용으로 바꾼 경우는 원문 그대로입니다.
+`text` 길이 상한(1000자)을 넘는 인용은 근거 없는 조건처럼 다루고, 모델이 조건을 냈는데 전부 빠지면 422로 거절합니다.
+공고를 어디서 어떻게 가져올지는 Spring이 정하며 AI는 본문만 받습니다.
+
+Spring이 상세 직무 조건을 저장한 뒤 `POST /internal/matching/postings/index`로
+`posting_id`·`status`·`criteria[{criterion_id, criterion_type, text}]`를 보내면 AI는 조건 문장을
+임베딩해 조건 id와 벡터만 ChromaDB 파생 색인에 저장합니다. `ACTIVE`이고 `criteria`가 있으면 그 공고의
+벡터를 교체하고, `EXPIRED`·`REMOVED`이거나 `criteria`가 빈 배열이면 그 공고의 벡터를 지웁니다.
+색인 요청은 요청에 든 공고만 바꿉니다. 목록 밖 공고의 벡터는 `POST /internal/matching/postings/prune`에
+남길 공고 `keep_posting_ids`(1~10,000개)를 보내 지웁니다(응답 `kept_postings`·`removed_postings`). id는 모두 Spring이 정한 0보다 큰 정수이고 같은 요청 안에서 겹치면 400입니다.
+
+`POST /internal/matching/search`는 Spring이 검증한 확정 STAR 문장 `statements[{statement_id, body}]`
+1~200개를 받습니다. STAR 원문은 ChromaDB에 저장하지 않고 요청 동안만 임베딩하며, 응답에는 거리 기준
+(`GITORY_MATCH_MAX_DISTANCE`) 안에 드는 `matches[{criterion_id, statement_id, distance}]`를 상한 없이
+모두 담고, 색인에 든 전체 조건 수 `collection_criteria`를 함께 보냅니다. 근사 검색은 가까운 조건을
+빠뜨릴 수 있어 저장된 벡터를 한 번 읽어 모든 거리를 계산합니다. 공고별 묶음과 등급은 Spring이 셉니다.
+색인 모음 이름에 임베딩 모델 이름이 들어가 모델을 바꾸면 새 모음에서 시작하고(옛 모음은 남아 있고
+쓰이지 않음), 임베딩 모델과 색인 연결은 처음 요청 때 한 번 만들어 재사용합니다.
+
+`extract`·`postings/index`·`postings/prune`·`search`의 실패는 모두 `success=false` 오류 응답으로 돌려줍니다.
+LLM·임베딩 설정 누락, 키·권한 오류, 임베딩 하루 한도는 503 `retryable=false`, 일시 실패는 503
+`retryable=true`, 예상하지 못한 오류는 500 `INTERNAL_ERROR`입니다. 임베딩 일시 실패의 503(`retryable=true`)은 OpenAI 호환
+임베딩을 쓸 때 나가고, 기본 로컬 임베딩(`chroma-default`, 첫 호출 때 모델을 내려받음)의 실패는
+500 `INTERNAL_ERROR`입니다.
+
+필요한 환경변수는 다음과 같습니다.
+
+```bash
+export GITORY_EMBEDDING_PROVIDER='chroma-default'       # 운영 초기값
+export GITORY_LOCAL_EMBEDDING_CACHE='.chroma/models/all-MiniLM-L6-v2'
+export GITORY_CHROMA_PATH='.chroma'                     # 기본값
+export GITORY_MATCH_MAX_DISTANCE='0.4'                 # 평가 후 확정
+```
+
+Elice의 Luna는 Text Generation 모델이라 임베딩 API를 제공하지 않는다. 따라서
+공고 조건 추출은 Luna를 그대로 사용하고 벡터화는 로컬 ONNX
+`all-MiniLM-L6-v2`가 담당한다. 최초 실행 때 약 80MB 모델을 내려받는다.
+나중에 OpenAI 호환 임베딩 모델을 사용하면 아래 설정으로 구현을 바꾸지 않고
+교체할 수 있다.
+
+```bash
+export GITORY_EMBEDDING_PROVIDER='openai'
+export GITORY_EMBEDDING_API_KEY='임베딩 API 키'
+export GITORY_EMBEDDING_BASE_URL='OpenAI 호환 API URL'
+export GITORY_EMBEDDING_MODEL='text-embedding-3-small'
+```
+
+30개 합성 공고 검색 평가는 실제 기업 추천이 아니라 검색 품질 회귀 확인용입니다.
+
+```bash
+cd ai
+python -m scripts.evaluate_job_matching \
+  --output evals/results/job_matching.json
+```
+
+API 키 없이 실제 벡터·거리 분포를 먼저 확인하려면 Chroma 기본 ONNX 임베딩을
+사용할 수 있습니다. 이 결과는 운영 임베딩 모델 선정 결과가 아니므로, 운영 모델이
+정해지면 동일 fixture를 `--provider openai`로 다시 실행해 거리 상한을 확정합니다.
+
+```bash
+python -m scripts.evaluate_job_matching \
+  --provider chroma-default \
+  --maximum-distance 0.4 \
+  --output evals/results/job_matching-chroma-default.json
+```

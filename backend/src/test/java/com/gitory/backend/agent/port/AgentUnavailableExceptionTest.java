@@ -15,11 +15,11 @@ class AgentUnavailableExceptionTest {
 
         IllegalStateException cause = new IllegalStateException("AI 호출 실패");
 
-        AgentUnavailableException failure = new AgentUnavailableException("묶기 실패", retryable, invalidResponse, cause);
+        AgentUnavailableException failure = new AgentUnavailableException("경험 그룹화 실패", retryable, invalidResponse, cause);
 
         assertThat(failure.isRetryable()).isEqualTo(retryable);
         assertThat(failure.isInvalidResponse()).isEqualTo(invalidResponse);
-        assertThat(failure.getMessage()).isEqualTo("묶기 실패");
+        assertThat(failure.getMessage()).isEqualTo("경험 그룹화 실패");
         assertThat(failure.getCause()).isSameAs(cause);
 
     }

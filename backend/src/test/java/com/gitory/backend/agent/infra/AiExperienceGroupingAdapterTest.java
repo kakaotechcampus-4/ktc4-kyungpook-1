@@ -16,6 +16,7 @@ import com.gitory.backend.common.infra.ai.AiHttpClient;
 import com.gitory.backend.support.AiTestProperties;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.gitory.backend.common.infra.ai.AiProgress;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -41,11 +42,12 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** 공유 계약 예시와 가짜 AI 응답으로 후보 묶기의 요청·응답 경계를 검사한다 */
+/** 공유 계약 예시와 가짜 AI 응답으로 경험 그룹화의 요청·응답 경계를 검사한다 */
 class AiExperienceGroupingAdapterTest {
 
     private static final String C1 = "3f2a9c1e7b4d58f60a1c2e3d4b5f6a7980b1c2d3";
@@ -110,7 +112,7 @@ class AiExperienceGroupingAdapterTest {
     }
 
     @Test
-    @DisplayName("묶기 요청은 GitHub 토큰 없이 /internal/analysis/groups 로 보내고, 본문은 공유 계약 예시와 칸 이름·값이 모두 같다")
+    @DisplayName("경험 그룹화 요청은 GitHub 토큰 없이 /internal/analysis/groups 로 보내고, 본문은 공유 계약 예시와 칸 이름·값이 모두 같다")
     void sendsContractRequestWithoutToken() {
 
         adapter().group(request());
@@ -123,7 +125,26 @@ class AiExperienceGroupingAdapterTest {
     }
 
     @Test
-    @DisplayName("다른 AI 호출의 대기 시간이 짧아도 묶기 전용 대기 시간까지 기다린다")
+    @DisplayName("진행을 받으면 /internal/analysis/groups/stream 로 보내 진행을 넘기고, 결과는 스트리밍 없는 그룹화와 같게 읽는다")
+    void streamsProgressAndReadsSameResult() {
+
+        List<AiProgress> received = new ArrayList<>();
+        responseContentType = "application/x-ndjson";
+        responseBody = "{\"type\":\"progress\",\"step\":\"COMPRESS\",\"done\":1,\"total\":2}\n"
+                + "{\"type\":\"result\",\"status\":200,\"body\":" + success(data) + "}\n";
+
+        ExperienceGroupingResponse streamed = adapter().group(request(), received::add);
+
+        assertThat(requestPath).isEqualTo("/internal/analysis/groups/stream");
+        assertThat(received).containsExactly(new AiProgress("COMPRESS", 1, 2));
+        responseContentType = "application/json";
+        responseBody = success(data);
+        assertThat(streamed).isEqualTo(adapter().group(request()));
+
+    }
+
+    @Test
+    @DisplayName("다른 AI 호출의 대기 시간이 짧아도 경험 그룹화 전용 대기 시간까지 기다린다")
     void waitsForGroupsReadTimeout() {
 
         responseDelayMs = 300;
@@ -136,7 +157,7 @@ class AiExperienceGroupingAdapterTest {
     }
 
     @Test
-    @DisplayName("묶기 전용 대기 시간을 넘기면 다시 시도할 수 있는 실패로 끝난다")
+    @DisplayName("경험 그룹화 전용 대기 시간을 넘기면 다시 시도할 수 있는 실패로 끝난다")
     void groupsReadTimeoutIsRetryable() {
 
         responseDelayMs = 300;
@@ -481,7 +502,7 @@ class AiExperienceGroupingAdapterTest {
                 .isInstanceOfSatisfying(AgentUnavailableException.class, failure -> {
                     assertThat(failure.isRetryable()).isEqualTo(retryable);
                     assertThat(failure.isInvalidResponse()).isEqualTo(invalid);
-                    assertThat(failure.getMessage()).contains(code).doesNotContain("그룹화");
+                    assertThat(failure.getMessage()).isEqualTo("AI 경험 그룹화 실패 (" + code + ")");
                 });
 
     }

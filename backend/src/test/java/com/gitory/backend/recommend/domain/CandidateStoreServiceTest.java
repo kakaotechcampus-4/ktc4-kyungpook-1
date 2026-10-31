@@ -53,7 +53,7 @@ import java.util.concurrent.TimeUnit;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class CandidateStoreServiceTest {
 
-    // application.yml 의 값과 다른 묶기 버전을 걸어 설정값을 읽는지 본다
+    // application.yml 의 값과 다른 경험 그룹화 버전을 걸어 설정값을 읽는지 본다
     static final int VERSION = 7;
 
     private static final String SHA_A = "a".repeat(40);
@@ -123,7 +123,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("처음 묶으면 AI 가 준 후보를 받은 순서대로 NEW 후보로 저장하고 ref·대표 PR·PR 번호 목록·이슈 번호 목록·제목·이유·점수·카드감 낮음을 받은 값 그대로 담는다")
+    @DisplayName("처음 경험 그룹화를 하면 AI 가 준 후보를 받은 순서대로 NEW 후보로 저장하고 ref·대표 PR·PR 번호 목록·이슈 번호 목록·제목·이유·점수·카드감 낮음을 받은 값 그대로 담는다")
     void storesGroupsInGivenOrderAsNewCandidates() {
 
         commit(SHA_A);
@@ -187,7 +187,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("다시 묶으면 손대지 않은 NEW 후보와 그 커밋 연결을 지우고 새 결과로 바꾼다")
+    @DisplayName("다시 경험 그룹화를 하면 손대지 않은 NEW 후보와 그 커밋 연결을 지우고 새 결과로 바꾼다")
     void replacesUntouchedCandidatesOnRegrouping() {
 
         Long first = commit(SHA_A);
@@ -208,7 +208,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("손댄 후보(USED·EXCLUDED·손댄 표시가 켜진 NEW·직접 추가)는 다시 묶어도 지우지 않고 칸과 커밋 연결을 그대로 둔다")
+    @DisplayName("손댄 후보(USED·EXCLUDED·손댄 표시가 켜진 NEW·직접 추가)는 다시 경험 그룹화를 해도 지우지 않고 칸과 커밋 연결을 그대로 둔다")
     void keepsTouchedCandidatesAndTheirCommits() {
 
         Long used = candidate(userRepositoryId, "PR", 42, "USED", false, "{42}", commit(SHA_A));
@@ -356,7 +356,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("저장하면 묶은 기록에 지문·설정한 묶기 버전·묶은 시각을 남기고, 다시 저장하면 그 기록을 이번 값으로 바꾼다")
+    @DisplayName("저장하면 경험 그룹화 기록에 지문·설정한 경험 그룹화 버전·경험 그룹화 시각을 남기고, 다시 저장하면 그 기록을 이번 값으로 바꾼다")
     void recordsGroupingWithConfiguredVersion() {
 
         commit(SHA_A);
@@ -381,7 +381,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("이 저장소에 저장되지 않은 커밋이 든 묶음이 오면 후보와 묶은 기록을 하나도 바꾸지 않고 실패한다")
+    @DisplayName("이 저장소에 저장되지 않은 커밋이 든 묶음이 오면 후보와 경험 그룹화 기록을 하나도 바꾸지 않고 실패한다")
     void failsWithoutChangesOnUnstoredCommit() {
 
         commit(SHA_A);
@@ -421,7 +421,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("AI 가 후보를 하나도 주지 않으면 손대지 않은 후보를 모두 지우고 손댄 후보와 묶은 기록만 남긴다")
+    @DisplayName("AI 가 후보를 하나도 주지 않으면 손대지 않은 후보를 모두 지우고 손댄 후보와 경험 그룹화 기록만 남긴다")
     void emptyResultRemovesUntouchedCandidates() {
 
         candidate(userRepositoryId, "COMMIT_CLUSTER", null, "NEW", false, "{}", commit(SHA_A));
@@ -435,7 +435,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("묶기에 보내지 않을 것으로 손댄 후보에 포함된 커밋의 sha 와 손댄 후보에 든 모든 PR 번호를 돌려준다")
+    @DisplayName("경험 그룹화에 보내지 않을 것으로 손댄 후보에 포함된 커밋의 sha 와 손댄 후보에 든 모든 PR 번호를 돌려준다")
     void lockedSourcesHoldTouchedCommitsAndPullRequests() {
 
         candidate(userRepositoryId, "PR", 42, "USED", false, "{42,45}", commit(SHA_A));
@@ -451,7 +451,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("손대지 않은 NEW 후보의 커밋·PR, 손댄 후보에서 사용자가 뺀 커밋, 다른 사용자 연결의 후보는 묶기에서 빼지 않는다")
+    @DisplayName("손대지 않은 NEW 후보의 커밋·PR, 손댄 후보에서 사용자가 뺀 커밋, 다른 사용자 연결의 후보는 경험 그룹화에서 빼지 않는다")
     void lockedSourcesSkipUntouchedAndTakenOut() {
 
         candidate(userRepositoryId, "PR", 60, "NEW", false, "{60}", commit(SHA_A));
@@ -467,7 +467,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("회상 도우미로 만든 후보는 커밋이 없어도 손댄 후보라 다시 묶어도 지우거나 바꾸지 않고, 묶기에서 뺄 커밋과 PR 도 늘리지 않는다")
+    @DisplayName("회상 도우미로 만든 후보는 커밋이 없어도 손댄 후보라 다시 경험 그룹화를 해도 지우거나 바꾸지 않고, 경험 그룹화에서 뺄 커밋과 PR 도 늘리지 않는다")
     void keepsRecallCandidateWithoutLockingAnything() {
 
         Long recall = candidates.save(Candidate.manual(userRepositoryId, "RECALL", "/main/java/ 작업", "로그인을 맡았다", CandidateMeta.of(List.of()))).getId();
@@ -516,7 +516,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("손댄 후보가 없으면 묶기에서 뺄 커밋과 PR 이 없다")
+    @DisplayName("손댄 후보가 없으면 경험 그룹화에서 뺄 커밋과 PR 이 없다")
     void lockedSourcesAreEmptyWithoutTouchedCandidates() {
 
         candidate(userRepositoryId, "PR", 60, "NEW", false, "{60}", commit(SHA_A));
@@ -529,7 +529,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("지난번 묶었을 때와 지문·묶기 버전이 같으면 true 이고 후보는 그대로 둔 채 묶은 시각만 지금으로 바꾼다")
+    @DisplayName("지난번 경험 그룹화 때와 지문·경험 그룹화 버전이 같으면 true 이고 후보는 그대로 둔 채 경험 그룹화 시각만 지금으로 바꾼다")
     void keepsLastCandidatesWhenInputIsSame() {
 
         Long kept = candidate(userRepositoryId, "COMMIT_CLUSTER", null, "NEW", false, "{}", commit(SHA_A));
@@ -547,7 +547,7 @@ class CandidateStoreServiceTest {
 
     @ParameterizedTest
     @CsvSource({"true, " + (VERSION - 1), "false, " + VERSION})
-    @DisplayName("지난번 묶었을 때와 지문이나 묶기 버전이 다르면 false 이고 묶은 기록을 바꾸지 않는다")
+    @DisplayName("지난번 경험 그룹화 때와 지문이나 경험 그룹화 버전이 다르면 false 이고 경험 그룹화 기록을 바꾸지 않는다")
     void regroupsWhenInputOrVersionDiffers(boolean sameFingerprint, int storedVersion) {
 
         String stored = sameFingerprint ? FINGERPRINT : OTHER_FINGERPRINT;
@@ -563,7 +563,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("묶은 기록이 없으면 false 이고 기록을 만들지 않는다")
+    @DisplayName("경험 그룹화 기록이 없으면 false 이고 기록을 만들지 않는다")
     void regroupsWhenNeverGrouped() {
 
         assertThat(service.keepIfSameInput(userRepositoryId, FINGERPRINT)).isFalse();
@@ -573,7 +573,7 @@ class CandidateStoreServiceTest {
     }
 
     @Test
-    @DisplayName("지문은 보낼 요청과 설정한 묶기 버전으로 만든다")
+    @DisplayName("지문은 보낼 요청과 설정한 경험 그룹화 버전으로 만든다")
     void fingerprintUsesConfiguredVersion() {
 
         String request = "{\"repository_id\":\"1\",\"commits\":[]}";

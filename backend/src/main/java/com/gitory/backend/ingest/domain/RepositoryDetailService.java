@@ -15,11 +15,12 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-@EnableConfigurationProperties(IngestLimits.class)
+@EnableConfigurationProperties({IngestLimits.class, IngestGroupingProperties.class})
 public class RepositoryDetailService {
 
     private final ConnectedRepositoryRepository connections;
     private final IngestLimits limits;
+    private final IngestGroupingProperties grouping;
     private final RepositoryWorkCounter workCounter;
     private final RepositoryOwnershipService ownership;
 
@@ -31,7 +32,7 @@ public class RepositoryDetailService {
                 .orElseThrow(ConnectedRepositoryNotFoundException::new);
         RepositorySummary summary = workCounter.fill(List.of(found)).get(0);
 
-        return new RepositoryDetail(summary, Disclosure.of(summary, limits));
+        return new RepositoryDetail(summary, Disclosure.of(summary, limits, grouping.enabled()));
 
     }
 }

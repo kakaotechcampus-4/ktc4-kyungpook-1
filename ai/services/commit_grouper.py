@@ -17,6 +17,7 @@ from schemas.analysis import (
     ExperienceSourceType,
     PullRequestContext,
 )
+from services.github_collector import LOCKFILES
 
 #: LLM이 점수 규칙을 보조하려고 주는 카드감 판단.
 CardWorthHint = Literal["HIGH", "LOW"]
@@ -34,7 +35,14 @@ HINT_SCORE: dict[str, float] = {"HIGH": 0.05, "LOW": -0.05}
 MIN_CARD_CHURN = 20
 
 _DOC_OR_CONFIG_SUFFIXES = frozenset({".md", ".rst", ".adoc", ".yml", ".yaml", ".toml", ".ini"})
-_DOC_OR_CONFIG_NAMES = frozenset({".editorconfig", ".gitignore", "dockerfile"})
+_DOC_OR_CONFIG_NAMES = frozenset({".editorconfig", ".gitignore"})
+#: 후보로 만들지 않는 문서·저장소 설정. 추천도 낮음 판정보다 좁게 둬서 설정이 핵심인 작업을 지우지 않는다.
+_DOC_SUFFIXES = frozenset({".md", ".rst", ".adoc"})
+_DOC_NAME_PREFIXES = ("readme", "license", "changelog")
+_REPO_SETTING_NAMES = frozenset({".editorconfig", ".gitignore", ".gitattributes"})
+_DEPENDENCY_MANIFESTS = frozenset(
+    {"package.json", "build.gradle", "build.gradle.kts", "pyproject.toml", "pom.xml", "go.mod", "cargo.toml", "gemfile"}
+) | LOCKFILES
 
 
 @dataclass
@@ -302,14 +310,54 @@ class CommitGrouper:
         churn = cls._known_churn(group.members)
         return churn is not None and churn < MIN_CARD_CHURN
 
-    @staticmethod
-    def _is_documentation_or_config(path: str) -> bool:
+    @classmethod
+    def is_unusable(cls, group: CommitGroup) -> bool:
+        """카드·자소서에 쓸 수 없어 후보로 만들지 않을 묶음인지 판정한다.
+
+        문서·저장소 설정만, 또는 의존성 목록만 바꿨으면 참이다. 파일 목록을 모르는 커밋이
+        하나라도 있으면 무엇을 바꿨는지 알 수 없으므로 빼지 않는다.
+        """
+        if any(not commit.files for commit in group.members):
+            return False
+        paths = [changed.path for commit in group.members for changed in commit.files]
+        return all(cls._is_documentation(path) for path in paths) or all(
+            cls._is_dependency_manifest(path) for path in paths
+        )
+
+    @classmethod
+    def _is_documentation_or_config(cls, path: str) -> bool:
         normalized = path.replace("\\", "/").strip("/").casefold()
         parts = PurePosixPath(normalized).parts
         name = parts[-1] if parts else ""
+        if cls._is_infrastructure(parts, name):
+            return False
         return (
             "docs" in parts[:-1]
             or name.startswith("readme")
             or PurePosixPath(name).suffix in _DOC_OR_CONFIG_SUFFIXES
             or name in _DOC_OR_CONFIG_NAMES
         )
+
+    @staticmethod
+    def _is_infrastructure(parts: tuple[str, ...], name: str) -> bool:
+        """CI 워크플로·컨테이너 구성은 YAML 이어도 배포·운영 작업의 본체라 코드처럼 본다."""
+        return parts[:2] == (".github", "workflows") or (
+            name.startswith(("docker-compose", "compose")) and PurePosixPath(name).suffix in {".yml", ".yaml"}
+        )
+
+    @staticmethod
+    def _is_documentation(path: str) -> bool:
+        normalized = path.replace("\\", "/").strip("/").casefold()
+        parts = PurePosixPath(normalized).parts
+        name = parts[-1] if parts else ""
+        return (
+            "docs" in parts[:-1]
+            or name.startswith(_DOC_NAME_PREFIXES)
+            or PurePosixPath(name).suffix in _DOC_SUFFIXES
+            or name in _REPO_SETTING_NAMES
+        )
+
+    @staticmethod
+    def _is_dependency_manifest(path: str) -> bool:
+        name = PurePosixPath(path.replace("\\", "/").casefold()).name
+        return name in _DEPENDENCY_MANIFESTS or (name.startswith("requirements") and name.endswith(".txt"))

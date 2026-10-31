@@ -288,6 +288,104 @@ class MigrationUpgradeTest {
 
     }
 
+    @Test
+    @DisplayName("V19 는 Job 에러 코드 5개를 그대로 두고 COLLECTION_CAPPED 를 허용하며 목록 밖 값은 계속 막고 제약은 같은 이름 하나로 다시 만든다")
+    void v19AllowsCollectionCapped() {
+
+        migrateTo("18");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        List<String> previous = List.of("GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING",
+                "INTERNAL_ERROR");
+        for (String errorCode : previous) {
+            insertJob(userId, userRepositoryId, errorCode);
+        }
+
+        migrateTo("19");
+
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM pg_constraint WHERE conname = 'analysis_job_error_code_check' AND conrelid = 'analysis_job'::regclass",
+                Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT error_code FROM analysis_job", String.class))
+                .containsExactlyInAnyOrderElementsOf(previous);
+        insertJob(userId, userRepositoryId, "COLLECTION_CAPPED");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM analysis_job WHERE error_code = 'COLLECTION_CAPPED'", Integer.class)).isEqualTo(1);
+        assertThatThrownBy(() -> insertJob(userId, userRepositoryId, "RATE_LIMITED"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    @Test
+    @DisplayName("V24 는 Job 에러 코드 6개를 그대로 두고 AI_UNAVAILABLE 을 허용하며 목록 밖 값은 계속 막고 제약은 같은 이름 하나로 다시 만든다")
+    void v24AllowsAiUnavailable() {
+
+        migrateTo("19");
+        Long userId = fixtures.insertUser(1L, "grow22");
+        Long userRepositoryId = fixtures.insertUserRepository(userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        List<String> previous = List.of("GITHUB_UNAVAILABLE", "GITHUB_RATE_LIMITED", "DRAFT_TIMEOUT", "EVIDENCE_MISSING",
+                "INTERNAL_ERROR", "COLLECTION_CAPPED");
+        for (String errorCode : previous) {
+            insertJob(userId, userRepositoryId, errorCode);
+        }
+
+        migrateTo("24");
+
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM pg_constraint WHERE conname = 'analysis_job_error_code_check' AND conrelid = 'analysis_job'::regclass",
+                Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT error_code FROM analysis_job", String.class))
+                .containsExactlyInAnyOrderElementsOf(previous);
+        insertJob(userId, userRepositoryId, "AI_UNAVAILABLE");
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM analysis_job WHERE error_code = 'AI_UNAVAILABLE'", Integer.class)).isEqualTo(1);
+        assertThatThrownBy(() -> insertJob(userId, userRepositoryId, "RATE_LIMITED"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    @Test
+    @DisplayName("V25 는 옛 질문을 답 버튼 null·예상 답변 빈 배열로 남기고, MEASURED 는 답 글과 출처가 있어야 하며 NOT_MEASURED 는 답 없이 허용한다")
+    void v25AddsInterviewLoopColumns() {
+
+        migrateTo("24");
+        Long cardId = fixtures.insertCard(UUID.fromString("11111111-1111-4111-8111-111111111111"),
+                fixtures.insertUser(1L, "grow22"));
+        insertTurn(cardId, 1, "ANSWERED", "답", "TYPED");
+        insertTurn(cardId, 2, "LATER", null, null);
+        insertTurn(cardId, 3, "SKIPPED", null, null);
+        insertTurn(cardId, 4, "INSUFFICIENT", "모자란 답", "TYPED");
+
+        migrateTo("25");
+
+        assertThat(jdbc.queryForList(
+                "SELECT outcome || ':' || coalesce(answer_mode, 'null') || ':' || cardinality(suggested_answers) FROM interview_turn ORDER BY seq",
+                String.class)).containsExactly("ANSWERED:null:0", "LATER:null:0", "SKIPPED:null:0", "INSUFFICIENT:null:0");
+        insertTurn(cardId, 5, "MEASURED", "3초에서 0.4초로 줄였다", "TYPED");
+        insertTurn(cardId, 6, "NOT_MEASURED", null, null);
+        assertThatThrownBy(() -> insertTurn(cardId, 7, "MEASURED", null, null))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> jdbc.update("UPDATE interview_turn SET answer_mode = 'OTHER' WHERE seq = 1"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    private void insertTurn(Long cardId, int seq, String outcome, String answerText, String answerSource) {
+
+        jdbc.update(
+                "INSERT INTO interview_turn (card_id, seq, star_slot, question_type, trigger_source, question_text, outcome, answer_text, answer_source) VALUES (?, ?, 'R', 'EVIDENCE_GAP', 'USER', '질문', ?, ?, ?)",
+                cardId, seq, outcome, answerText, answerSource);
+
+    }
+
+    private void insertJob(Long userId, Long userRepositoryId, String errorCode) {
+
+        jdbc.update(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, state, error_code) VALUES (?, ?, ?, 'FAILED', ?)",
+                userId, userRepositoryId, errorCode, errorCode);
+
+    }
+
     private int updateRetryAfterSec(int seconds) {
 
         return jdbc.update("UPDATE analysis_job SET retry_after_sec = ?", seconds);

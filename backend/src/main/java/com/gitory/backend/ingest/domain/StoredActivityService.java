@@ -8,9 +8,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
-/** 저장소 연결 하나에 저장된 커밋·바뀐 파일·PR 줄 댓글 수를 다른 모듈이 읽는 조회로, AI 가 묶은 후보를 저장하는 recommend 가 쓴다 */
+/** 저장소 연결 하나에 저장된 커밋·바뀐 파일·PR·PR 줄 댓글 수를 다른 모듈이 읽는 조회로, 후보를 저장하는 recommend 와 카드 초안을 만드는 job 이 쓴다 */
 @Service
 @RequiredArgsConstructor
 public class StoredActivityService {
@@ -45,6 +46,14 @@ public class StoredActivityService {
 
         return storedActivity.countReviewComments(userRepositoryId, pullRequestNumbers).stream()
                 .collect(Collectors.toMap(ReviewCommentCount::pullRequestNumber, ReviewCommentCount::count));
+
+    }
+
+    /** 저장된 PR 이 없으면 빈 값이다 */
+    @Transactional(readOnly = true)
+    public Optional<StoredPullRequest> findPullRequest(Long userRepositoryId, int number) {
+
+        return storedActivity.findPullRequest(userRepositoryId, number);
 
     }
 

@@ -1,6 +1,6 @@
 """확정된 경험의 diff를 LLM 입력용 근거로 압축한다.
 
-전처리(비밀값 가리기·생성·민감 파일 제외·patch 상한)와 후처리(입력에 없는 SHA 제거·
+전처리(비밀값 가리기·생성·민감 파일 제외·patch 상한)와 후처리(입력 커밋과 맞출 수 없는 SHA 제거·
 누락 커밋 보충·길이 제한)는 코드로 확정하고, 변경 의도 요약만 LLM에 맡긴다.
 프롬프트와 입력 형식은 ``evals/tasks/diff_summary.py`` 모델 비교에서 검증한 것과 같다.
 """
@@ -17,6 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.analysis import DiffEvidence
 from schemas.collection import CandidateCommitDetail, CandidateDetailResult, CandidateFileDiff
+from services.evidence_checks import match_commit_sha
+from services.llm_executors import CARD_DRAFT_EXECUTOR, LLMCallSkipped, run_llm_call
 from services.llm_structured_client import (
     LLMContentFilterError,
     LLMInvalidOutputError,
@@ -112,6 +114,8 @@ class DiffAnalysisLimits:
     #: 커밋 하나에서 목록으로 보내는 파일 수. 넘는 파일과 생성 파일은 개수만 보낸다.
     max_files_per_commit: int = 20
     max_path_chars: int = 150
+    #: 근거에 담아 STAR 태그 판단에 쓰는, 커밋당 바뀐 파일 경로 수.
+    max_changed_paths: int = 50
     # 한 호출의 커밋 수를 제한해 출력 한도를 넘지 않게 하고, 넘으면 절반씩 나눠 다시 부른다.
     max_commits_per_call: int = 8
     max_concurrent_calls: int = 3
@@ -290,17 +294,19 @@ class DiffAnalyzer:
             timeout = budget.take_call()
             try:
                 result = await asyncio.wait_for(
-                    asyncio.to_thread(
+                    run_llm_call(
+                        CARD_DRAFT_EXECUTOR,
                         self._client.call,
                         SYSTEM_PROMPT,
                         payload,
                         DiffSummaryOutput,
                         self._limits.max_completion_tokens,
-                        timeout,
+                        deadline=budget.deadline,
+                        min_seconds=self._limits.min_call_seconds,
                     ),
                     timeout=timeout + 1,
                 )
-            except asyncio.TimeoutError as exc:
+            except (asyncio.TimeoutError, LLMCallSkipped) as exc:
                 raise _Stop from exc
             except LLMInvalidOutputError as exc:
                 if attempt == self._limits.max_attempts:
@@ -324,14 +330,25 @@ class DiffAnalyzer:
         payload: dict[str, Any],
         output: DiffSummaryOutput,
     ) -> list[DiffEvidence]:
-        """입력에 없는 SHA는 버리고, 쓸 수 없는 요약과 patch를 보지 못한 요약은 커밋 메시지로 대신한다."""
+        """입력 커밋과 맞출 수 없는 SHA는 버리고, 쓸 수 없는 요약과 patch를 보지 못한 요약은 커밋 메시지로 대신한다."""
+        known = [commit.sha for commit in commits]
+        exact = {sha.casefold(): sha for sha in known}
         summaries: dict[str, CommitSummary] = {}
+        # 같은 커밋을 두 번 적으면 글자까지 같은 번호의 요약이 이겨야 하므로 정확 일치를 먼저 붙인다.
         for item in output.commits:
-            summaries.setdefault(item.sha.strip().casefold(), item)
+            matched = exact.get(item.sha.strip().casefold())
+            if matched is not None:
+                summaries.setdefault(matched, item)
+        for item in output.commits:
+            if item.sha.strip().casefold() in exact:
+                continue
+            matched = match_commit_sha(item.sha, known, "diff 요약")
+            if matched is not None:
+                summaries.setdefault(matched, item)
 
         evidence = []
         for commit, sent in zip(commits, payload["commits"]):
-            item = summaries.get(commit.sha.casefold())
+            item = summaries.get(commit.sha)
             if item is None or not _has_patch(sent):
                 # patch 없이 쓴 요약은 diff 근거가 아니다. DIFF로 두면 STAR 신뢰도가 HIGH가 된다.
                 evidence.append(self._fallback(commit, sent))
@@ -350,6 +367,7 @@ class DiffAnalyzer:
                     summary=summary,
                     summary_source="DIFF",
                     technical_points=points,
+                    changed_paths=_changed_paths(commit, self._limits),
                     url=commit.html_url,
                 )
             )
@@ -367,6 +385,7 @@ class DiffAnalyzer:
             summary=_clip(_headline(sent["message"]), self._limits.max_summary_chars),
             summary_source="COMMIT_MESSAGE",
             technical_points=points or [],
+            changed_paths=_changed_paths(commit, self._limits),
             url=commit.html_url,
         )
 
@@ -391,6 +410,16 @@ def _unique_commits(commits: list[CandidateCommitDetail]) -> list[CandidateCommi
             seen.add(key)
             unique.append(commit)
     return unique
+
+
+def _changed_paths(commit: CandidateCommitDetail, limits: DiffAnalysisLimits) -> list[str]:
+    """GitHub 파일 목록에서 모델을 거치지 않고 뽑은 경로로, 요약에서도 빼는 생성 파일은 제외한다."""
+    paths = [
+        _clip(file.path, limits.max_path_chars)
+        for file in commit.files
+        if not GENERATED_FILE_PATTERN.search(file.path)
+    ]
+    return paths[: limits.max_changed_paths]
 
 
 def _has_patch(sent: dict[str, Any]) -> bool:

@@ -119,6 +119,8 @@ class InterviewTurnPersistenceTest {
         interviews.insertTurn(cardId, 3, "A", "RECALL_AID", "USER", "질문", "SKIPPED", null, null);
         interviews.insertTurn(cardId, 4, "R", "EVIDENCE_GAP", "AUTO", "질문", "INSUFFICIENT", "남은 답", "TYPED");
         interviews.insertTurn(cardId, 5, "S", "FOLLOWUP", "USER", "질문", "ANSWERED", "답", "SELECTED");
+        interviews.insertTurn(cardId, 6, "R", "EVIDENCE_GAP", "USER", "질문", "MEASURED", "3초에서 0.4초로 줄였다", "TYPED");
+        interviews.insertTurn(cardId, 7, "R", "EVIDENCE_GAP", "AUTO", "질문", "NOT_MEASURED", null, null);
 
         List<InterviewTurn> read = turns.findByCardIdOrderBySeqAsc(cardId);
 
@@ -187,7 +189,7 @@ class InterviewTurnPersistenceTest {
         InterviewTurn turn = turns.findByCardIdAndSeq(cardId, (short) 1).orElseThrow();
         Instant askedAt = turn.getAskedAt();
 
-        turn.answerTyped("  쓴 그대로의 답  ");
+        turn.answer("  쓴 그대로의 답  ", AnswerSource.TYPED);
         entityManager.flush();
         entityManager.clear();
 

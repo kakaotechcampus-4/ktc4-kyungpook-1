@@ -20,7 +20,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * AI 가 묶은 후보를 저장소 연결 하나의 후보로 저장하며, 사용자가 손댄 후보와 그 커밋은 다시 묶어도 지우거나 바꾸지 않는다
+ * AI 경험 그룹화로 만든 후보를 저장소 연결 하나의 후보로 저장하며, 사용자가 손댄 후보와 그 커밋은 다시 경험 그룹화를 해도 지우거나 바꾸지 않는다
  * 손대지 않은 NEW 후보는 새 결과로 통째로 바꿔 후보 id 가 새로 생기므로, 보낼 요청이 지난번과 같으면 AI 를 다시 부르지 않게 지문을 남긴다
  */
 @Service
@@ -48,14 +48,14 @@ public class CandidateStoreService {
 
     }
 
-    /** 보낼 요청을 JSON 글자 그대로 받아, 설정한 묶기 버전과 함께 지문을 만든다 */
+    /** 보낼 요청을 JSON 글자 그대로 받아, 설정한 경험 그룹화 버전과 함께 지문을 만든다 */
     public String fingerprint(String request) {
 
         return CandidateGrouping.fingerprintOf(request, properties.version());
 
     }
 
-    /** 지난번 묶었을 때와 같은 요청이면 후보를 그대로 두고 묶은 시각만 지금으로 바꿔 true 를 돌려주며, 이때는 AI 를 부르지 않는다 */
+    /** 지난번 경험 그룹화 때와 같은 요청이면 후보를 그대로 두고 경험 그룹화 시각만 지금으로 바꿔 true 를 돌려주며, 이때는 AI 를 부르지 않는다 */
     @Transactional
     public boolean keepIfSameInput(Long userRepositoryId, String fingerprint) {
 
@@ -68,8 +68,8 @@ public class CandidateStoreService {
     }
 
     /**
-     * 저장소 후보를 잠근 뒤 손대지 않은 NEW 후보를 지우고, AI 가 묶은 후보를 받은 순서로 저장한 다음 지문을 남긴다
-     * 잠근 뒤 다시 읽은 손댄 후보의 포함된 커밋과 겹치는 묶음은 AI 를 기다리는 사이 사용자가 손댄 것이라 버리고, 그 묶음의 나머지 커밋은 다음 분석 때 다시 묶인다
+     * 저장소 후보를 잠근 뒤 손대지 않은 NEW 후보를 지우고, AI 경험 그룹화가 준 후보를 받은 순서로 저장한 다음 지문을 남긴다
+     * 잠근 뒤 다시 읽은 손댄 후보의 포함된 커밋과 겹치는 묶음은 AI 를 기다리는 사이 사용자가 손댄 것이라 버리고, 그 묶음의 나머지 커밋은 다음 분석 때 다시 경험 그룹화에 들어간다
      */
     @Transactional
     public void store(Long userRepositoryId, String fingerprint, List<GroupedCandidate> grouped) {
@@ -107,7 +107,7 @@ public class CandidateStoreService {
 
     }
 
-    /** 사용자가 손댄 후보에서 뺀 커밋은 그 경험이 아니라는 표시일 뿐이라, 다른 후보로 다시 묶일 수 있게 넣지 않는다 */
+    /** 사용자가 손댄 후보에서 뺀 커밋은 그 경험이 아니라는 표시일 뿐이라, 다음 경험 그룹화에서 다른 후보에 들어갈 수 있게 넣지 않는다 */
     private List<Long> includedCommitIdsOf(List<Candidate> touched) {
 
         return candidateCommits.findByCandidateIdInAndIncludedTrue(touched.stream().map(Candidate::getId).toList())
@@ -117,7 +117,7 @@ public class CandidateStoreService {
 
     }
 
-    /** AI 는 보낸 커밋으로만 묶으므로 저장되지 않은 커밋이 오면 후보 커밋으로 이을 수 없어, 아무것도 저장하지 않고 실패한다 */
+    /** AI 는 보낸 커밋으로만 후보를 만들므로 저장되지 않은 커밋이 오면 후보 커밋으로 이을 수 없어, 아무것도 저장하지 않고 실패한다 */
     private Map<String, StoredCommit> commitsOf(Long userRepositoryId, List<GroupedCandidate> grouped) {
 
         Set<String> shas = grouped.stream()

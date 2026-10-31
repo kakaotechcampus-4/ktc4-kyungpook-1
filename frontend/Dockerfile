@@ -8,6 +8,14 @@ RUN npm ci
 COPY . .
 # 목 API 를 끄고 같은 오리진의 /api 로 요청한다 (R-10).
 ENV VITE_API_MOCK=false
+# 카드 제목·기간 수정 API(#186)가 서버에 있어 실서버에서도 켠다.
+ENV VITE_CARD_METADATA_ENABLED=true
+# 매칭 API·운영 공고 데이터가 준비돼 실서버에서도 매칭 화면을 연다.
+ENV VITE_MATCH_ENABLED=true
+# 인적사항 API(#552)가 서버에 들어가 실서버에서도 인적사항 화면을 연다.
+ENV VITE_PROFILE_ENABLED=true
+ARG VITE_SITE_URL
+ENV VITE_SITE_URL=$VITE_SITE_URL
 RUN npm run build
 
 FROM caddy:2-alpine

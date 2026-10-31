@@ -1,6 +1,9 @@
 package com.gitory.backend.card.domain.interview;
 
+import com.gitory.backend.agent.port.InterviewAnswerMode;
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.CardThemePort;
+import com.gitory.backend.agent.port.InterviewCardKind;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
 import com.gitory.backend.agent.port.InterviewConfidence;
 import com.gitory.backend.agent.port.InterviewMissingSlot;
@@ -15,8 +18,15 @@ import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
+import com.gitory.backend.card.domain.CardThemeSuggester;
+import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
+import com.gitory.backend.card.domain.VersionSlots;
+import com.gitory.backend.card.infra.CardRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
+import com.gitory.backend.common.infra.ai.AiCallContext;
+import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
+import com.gitory.backend.recommend.domain.CandidateReferenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Named;
@@ -26,7 +36,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
-import org.mockito.MockedStatic;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -36,19 +46,22 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -64,29 +77,35 @@ class InterviewAskServiceTest {
     private final CardOwnershipService ownership = mock(CardOwnershipService.class);
     private final CardGenerationGuard generation = mock(CardGenerationGuard.class);
     private final InterviewTurnRepository turns = mock(InterviewTurnRepository.class);
+    private final CandidateReferenceService candidates = mock(CandidateReferenceService.class);
     private final InterviewContextAssembler assembler = mock(InterviewContextAssembler.class);
     private final InterviewQuestionPort port = mock(InterviewQuestionPort.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    private final CardVersionReader reader = mock(CardVersionReader.class);
+    private final CardThemeSuggester themeSuggester = new CardThemeSuggester(mock(CardRepository.class), reader,
+            mock(CardThemePort.class), mock(ApplicationEventPublisher.class), transactionManager);
     private final List<TransactionStatus> statuses = new ArrayList<>();
 
     private InterviewQuestionRequest request;
+    private Card card;
 
     @BeforeEach
     void setUp() {
 
-        Card card = Card.startManual(USER_ID, 11L, "카드", null, "key-1");
+        card = Card.startManual(USER_ID, 11L, null, "카드", null, "key-1");
         ReflectionTestUtils.setField(card, "id", CARD_ID);
         when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(card);
         when(ownership.lockOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(card);
 
         request = new InterviewQuestionRequest(CARD_ID, null,
-                List.of(new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of())),
-                0, 2, InterviewCardSourceType.DIRECT_CARD);
-        when(assembler.assemble(any(Card.class), any(StarField.class), anyInt())).thenReturn(request);
+                List.of(new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, null, List.of())),
+                0, 2, InterviewCardSourceType.DIRECT_CARD, InterviewCardKind.QUALITATIVE, null, List.of(), List.of());
+        when(assembler.assemble(any(Card.class), anyList(), any(), anyList())).thenReturn(request);
         when(port.nextQuestion(request)).thenReturn(question(InterviewStarSlot.T));
 
         when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of());
         when(turns.save(any(InterviewTurn.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reader.read(anyLong(), anyShort())).thenReturn(new VersionSlots((short) 1, Map.of()));
 
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenAnswer(invocation -> {
             TransactionStatus status = new SimpleTransactionStatus();
@@ -106,7 +125,7 @@ class InterviewAskServiceTest {
         InOrder order = inOrder(transactionManager, ownership, assembler, port, turns);
         order.verify(transactionManager).getTransaction(definitions.capture());
         order.verify(ownership).findOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD);
-        order.verify(assembler).assemble(any(Card.class), any(StarField.class), anyInt());
+        order.verify(assembler).assemble(any(Card.class), anyList(), any(), anyList());
         order.verify(transactionManager).commit(statuses.get(0));
         order.verify(port).nextQuestion(request);
         order.verify(transactionManager).getTransaction(definitions.capture());
@@ -120,6 +139,23 @@ class InterviewAskServiceTest {
         TransactionDefinition write = definitions.getAllValues().get(1);
         assertThat(write.isReadOnly()).isFalse();
         assertThat(write.getIsolationLevel()).isEqualTo(TransactionDefinition.ISOLATION_DEFAULT);
+
+    }
+
+    @Test
+    @DisplayName("되묻기 질문을 받으려고 부른 AI 호출에는 그 카드가 붙고, 질문을 받은 뒤에는 떼어 낸다")
+    void marksAiCallWithTheCard() {
+
+        AtomicReference<Long> seen = new AtomicReference<>();
+        when(port.nextQuestion(request)).thenAnswer(invocation -> {
+            seen.set(AiCallContext.cardId());
+            return question(InterviewStarSlot.T);
+        });
+
+        service(2).ask(PUBLIC_ID, USER_ID, "T");
+
+        assertThat(seen.get()).isEqualTo(CARD_ID);
+        assertThat(AiCallContext.cardId()).isNull();
 
     }
 
@@ -232,20 +268,6 @@ class InterviewAskServiceTest {
     }
 
     @Test
-    @DisplayName("돌려주는 질문의 출처 종류는 InterviewSourceType.of 한 곳에서 받은 값이다")
-    void viewTakesSourceTypeFromTheSingleMethod() {
-
-        try (MockedStatic<InterviewSourceType> source = mockStatic(InterviewSourceType.class, CALLS_REAL_METHODS)) {
-            source.when(() -> InterviewSourceType.of(any(Card.class))).thenReturn(InterviewSourceType.PR);
-
-            InterviewTurnView view = service(2).ask(PUBLIC_ID, USER_ID, "T");
-
-            assertThat(view.sourceType()).isEqualTo(InterviewSourceType.PR);
-        }
-
-    }
-
-    @Test
     @DisplayName("AI 가 다시 시도해도 되는 실패를 주면 원인을 담은 InterviewAiUnavailableException 이고 저장 트랜잭션은 열지 않는다")
     void retryableFailureBecomesUnavailable() {
 
@@ -292,13 +314,63 @@ class InterviewAskServiceTest {
 
     }
 
+    @Test
+    @DisplayName("같은 칸을 이미 두 번 물었으면 상한이 남아도 그 칸을 지정하면 InterviewFieldClosedException 이고 AI 를 부르지 않는다")
+    void sameSlotTwiceIsClosed() {
+
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(answered(1, StarField.T), answered(2, StarField.T)));
+
+        assertThatThrownBy(() -> service(3).ask(PUBLIC_ID, USER_ID, "T"))
+                .isInstanceOf(InterviewFieldClosedException.class);
+        verifyNoInteractions(port);
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 그 칸이 넘김으로 닫혔으면 저장하지 않고 InterviewFieldClosedException 이다")
+    void slotClosedWhileWaitingForAi() {
+
+        InterviewTurn skipped = InterviewTurn.ask(CARD_ID, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+        ReflectionTestUtils.setField(skipped, "outcome", TurnOutcome.SKIPPED);
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(), List.of(skipped));
+
+        assertThatThrownBy(() -> service(3).ask(PUBLIC_ID, USER_ID, null))
+                .isInstanceOf(InterviewFieldClosedException.class);
+        verify(turns, never()).save(any(InterviewTurn.class));
+
+    }
+
+    @Test
+    @DisplayName("AI 가 끝을 고르는 사이 다른 창에서 새 질문이 생겼으면 끝낸 이유를 카드에 남기지 않고 null 을 돌려준다")
+    void endReasonIsNotKeptWhenQuestionOpenedMeanwhile() {
+
+        InterviewTurn open = InterviewTurn.ask(CARD_ID, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(), List.of(open));
+        when(port.nextQuestion(request)).thenReturn(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null,
+                null, null, null, null, List.of(), "네 칸 모두 근거가 있어 마칠게요", List.of()));
+
+        assertThat(service(3).ask(PUBLIC_ID, USER_ID, null)).isNull();
+        assertThat(card.getInterviewEndReason()).isNull();
+
+    }
+
+    private static InterviewTurn answered(int seq, StarField slot) {
+
+        InterviewTurn turn = InterviewTurn.ask(CARD_ID, (short) seq, slot, QuestionType.EVIDENCE_GAP, "질문");
+        turn.answer("답", AnswerSource.TYPED);
+
+        return turn;
+
+    }
+
     static Stream<Arguments> unusableResults() {
 
         return Stream.of(
                 arguments(Named.of("COMPLETE", new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null,
-                        null, null))),
+                        null, null, null, List.of(), null, List.of()))),
                 arguments(Named.of("질문 칸이 차 있는 COMPLETE", new InterviewQuestionResult(
-                        InterviewNextAction.COMPLETE, InterviewStarSlot.T, 1, InterviewQuestionType.RECALL_AID, "글"))),
+                        InterviewNextAction.COMPLETE, InterviewStarSlot.T, 1, InterviewQuestionType.RECALL_AID, "글",
+                        InterviewAnswerMode.TEXT, List.of(), null, List.of()))),
                 arguments(Named.of("다른 칸의 질문", question(InterviewStarSlot.A))));
 
     }
@@ -306,7 +378,7 @@ class InterviewAskServiceTest {
     private static InterviewQuestionResult question(InterviewStarSlot slot) {
 
         return new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN, slot, 1, InterviewQuestionType.RECALL_AID,
-                "묻는 글");
+                "묻는 글", InterviewAnswerMode.TEXT, List.of(), null, List.of());
 
     }
 
@@ -319,8 +391,8 @@ class InterviewAskServiceTest {
 
     private InterviewAskService service(int maxTurns) {
 
-        return new InterviewAskService(ownership, generation, turns, assembler, port, new InterviewLimits(maxTurns),
-                transactionManager);
+        return new InterviewAskService(ownership, generation, turns, candidates, assembler, port, new InterviewLimits(maxTurns),
+                transactionManager, mock(UserRateLimiter.class), reader, themeSuggester);
 
     }
 }

@@ -1,4 +1,4 @@
-# 로컬 개발용 PostgreSQL. 운영 구성이 아니다.
+# 로컬 개발용 PostgreSQL·Redis. 운영 구성이 아니다.
 #   docker compose up -d
 services:
   db:
@@ -16,6 +16,18 @@ services:
       retries: 10
     volumes:
       - gitory-db:/var/lib/postgresql/data
+
+  # 호출 제한을 로컬에서 켜 볼 때만 쓴다(RATE_LIMIT_ENABLED=true). 꺼 두면 백엔드는 Redis 없이 뜬다
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   gitory-db:

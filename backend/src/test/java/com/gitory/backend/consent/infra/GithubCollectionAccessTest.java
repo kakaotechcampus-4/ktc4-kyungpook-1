@@ -218,6 +218,84 @@ class GithubCollectionAccessTest {
     }
 
     @Test
+    @DisplayName("접근할 수 있는 저장소 뒤에 기여한 저장소를 더하고, 같은 저장소는 '/user/repos' 값을 쓰며 GitHub id 순으로 돌려준다")
+    void mergesContributedRepositoriesInIdOrder() {
+
+        connectionExpiringAt(null);
+        GithubRepositoryResponse own = repository(1340154160L, "grow22", "gitory", "Java");
+        GithubRepositoryResponse collaborated = repository(1147975002L, "pigmal24", "team", "Java");
+        GithubRepositoryResponse organization = repository(1250219277L, "kakaotechcampus-4", "ktc4-kyungpook-1", "Java");
+        when(github.fetchRepositories(TOKEN)).thenReturn(List.of(own, collaborated));
+        when(github.fetchContributedRepositories(TOKEN))
+                .thenReturn(List.of(organization, repository(1340154160L, "grow22", "gitory-renamed", "Kotlin")));
+
+        assertThat(access.repositories(USER_ID)).containsExactly(collaborated, organization, own);
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("contributedFailures")
+    @DisplayName("기여한 저장소 찾기가 5xx·시간 초과·401·403·429·응답 모양 이상으로 실패해도 예외 없이 접근할 수 있는 저장소만 돌려주고 연결은 해제하지 않는다")
+    void keepsListedRepositoriesWhenContributedFails(RuntimeException failure) {
+
+        connectionExpiringAt(null);
+        List<GithubRepositoryResponse> listed = List.of(repository(100L, "grow22", "gitory", "Java"));
+        when(github.fetchRepositories(TOKEN)).thenReturn(listed);
+        when(github.fetchContributedRepositories(TOKEN)).thenThrow(failure);
+
+        assertThat(access.repositories(USER_ID)).isEqualTo(listed);
+        verifyNoInteractions(disconnects);
+
+    }
+
+    @Test
+    @DisplayName("기여한 저장소 찾기에서 난 프로그램 오류(NPE 등)는 숨기지 않고 그대로 던진다")
+    void doesNotHideProgrammingErrorsInContributed() {
+
+        connectionExpiringAt(null);
+        when(github.fetchRepositories(TOKEN)).thenReturn(List.of());
+        when(github.fetchContributedRepositories(TOKEN)).thenThrow(new NullPointerException());
+
+        assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(NullPointerException.class);
+
+    }
+
+    @Test
+    @DisplayName("기여한 저장소 찾기가 실패하면 경고에 예외 종류는 남기고 토큰과 응답 본문은 남기지 않는다")
+    void logsContributedFailureWithoutTokenOrBody(CapturedOutput output) {
+
+        connectionExpiringAt(null);
+        when(github.fetchRepositories(TOKEN)).thenReturn(List.of());
+        String message = "403 Forbidden: \"{\"message\": \"secret-body " + TOKEN + "\"}\"";
+        when(github.fetchContributedRepositories(TOKEN)).thenThrow(new HttpClientErrorException(message,
+                HttpStatus.FORBIDDEN, "Forbidden", new HttpHeaders(), new byte[0], StandardCharsets.UTF_8));
+
+        access.repositories(USER_ID);
+
+        assertThat(output.getOut() + output.getErr())
+                .contains("기여한 저장소를 찾지 못해")
+                .contains("사용자 " + USER_ID + ", HttpClientErrorException")
+                .doesNotContain(TOKEN)
+                .doesNotContain("secret-body");
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {401, 403, 429, 502})
+    @DisplayName("'/user/repos' 가 401·403·429·5xx 로 실패하면 기여한 저장소는 찾지 않는다")
+    void skipsContributedWhenListingFails(int statusCode) {
+
+        connectionExpiringAt(null);
+        HttpStatus status = HttpStatus.valueOf(statusCode);
+        RuntimeException failure = status.is5xxServerError() ? new HttpServerErrorException(status) : githubRejects(status);
+        when(github.fetchRepositories(TOKEN)).thenThrow(failure);
+
+        assertThatThrownBy(() -> access.repositories(USER_ID)).isInstanceOf(RuntimeException.class);
+        verify(github, never()).fetchContributedRepositories(any());
+
+    }
+
+    @Test
     @DisplayName("개수를 세다가 GitHub 이 401 을 줘도 연결 해제는 요청하지 않는다")
     void countRejectionDoesNotRevoke() {
 
@@ -645,6 +723,43 @@ class GithubCollectionAccessTest {
     }
 
     @Test
+    @DisplayName("내 PR 검색과 리뷰 검색은 서로, 그리고 저장소 커밋 수 세기와도 동시에 돌고, 검색한 PR 수는 마지막에 채운다")
+    void searchesRunAlongsideCommitCounting() {
+
+        connectionExpiringAt(null);
+        when(counter.viewerId(TOKEN)).thenReturn(VIEWER_ID);
+        CountDownLatch reviewedStarted = new CountDownLatch(1);
+        CountDownLatch commitsStarted = new CountDownLatch(1);
+        when(counter.countPullRequests(TOKEN, "is:pr author:grow22")).thenAnswer(invocation -> {
+            awaitTogether(reviewedStarted);
+            awaitTogether(commitsStarted);
+            return Map.of("kakao/gitory", 23);
+        });
+        when(counter.countPullRequests(TOKEN, "is:pr reviewed-by:grow22 -author:grow22")).thenAnswer(invocation -> {
+            reviewedStarted.countDown();
+            awaitTogether(commitsStarted);
+            return Map.of("kakao/gitory", 11);
+        });
+        when(counter.countCommits(eq(TOKEN), eq(VIEWER_ID), any(), any())).thenAnswer(invocation -> {
+            commitsStarted.countDown();
+            return Map.of(100L, new GithubRepositoryTotals(188, 43, 58, 0));
+        });
+
+        List<GithubRepositoryCount> counts = access.countActivity(USER_ID, List.of(new GithubCountTarget(100L, "kakao", "gitory")));
+
+        assertThat(counts).containsExactly(new GithubRepositoryCount(100L, 188, 43, 58, 23, 11));
+
+    }
+
+    private static void awaitTogether(CountDownLatch started) throws InterruptedException {
+
+        if (!started.await(2, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("함께 돌아야 할 요청이 시작되지 않았다");
+        }
+
+    }
+
+    @Test
     @DisplayName("검색 결과를 다 받지 못하면 어느 저장소의 개수도 돌려주지 않고 예외를 그대로 던진다")
     void passesThroughIncompleteSearch() {
 
@@ -733,6 +848,24 @@ class GithubCollectionAccessTest {
         assertThat(connection.isActive()).isTrue();
         verify(connections, never()).save(any());
         verifyNoInteractions(disconnects);
+
+    }
+
+    private static Stream<RuntimeException> contributedFailures() {
+
+        return Stream.of(
+                new HttpServerErrorException(HttpStatus.BAD_GATEWAY),
+                new ResourceAccessException("Read timed out"),
+                githubRejects(HttpStatus.UNAUTHORIZED),
+                githubRejects(HttpStatus.FORBIDDEN),
+                githubRejects(HttpStatus.TOO_MANY_REQUESTS),
+                new GithubResponseShapeException("GitHub 이 기여한 저장소 목록을 주지 않았다"));
+
+    }
+
+    private static GithubRepositoryResponse repository(long id, String owner, String name, String language) {
+
+        return new GithubRepositoryResponse(id, name, new GithubOwnerResponse(owner), false, language, "main", null, null);
 
     }
 

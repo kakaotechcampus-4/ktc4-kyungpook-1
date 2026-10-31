@@ -21,7 +21,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 /**
- * 저장된 묶기 재료를 AI 후보 묶기 요청으로, AI 가 묶은 후보를 저장할 후보로 바꾼다
+ * 저장된 커밋·PR·이슈를 AI 경험 그룹화 요청으로, 그 응답의 후보를 저장할 후보로 바꾼다
  * recommend 는 agent 를 참조할 수 없어 두 모듈을 엮는 job 이 바꾼다
  */
 final class GroupingConverter {
@@ -55,7 +55,7 @@ final class GroupingConverter {
 
     /**
      * 열쇠·판정·AI 가 뺀 커밋은 옮기지 않는다
-     * 다시 묶으면 손대지 않은 후보를 통째로 바꾸고, 판정은 저장된 후보로 Spring 이 정한다
+     * 다시 경험 그룹화를 하면 손대지 않은 후보를 통째로 바꾸고, 판정은 저장된 후보로 Spring 이 정한다
      */
     static List<GroupedCandidate> candidatesOf(ExperienceGroupingResponse response) {
 
@@ -64,7 +64,7 @@ final class GroupingConverter {
     }
 
     /**
-     * 작성자 이메일은 저장하지 않고 커밋의 저장소 id 는 AI 묶기가 쓰지 않아 비운다
+     * 작성자 이메일은 저장하지 않고 커밋의 저장소 id 는 AI 경험 그룹화가 쓰지 않아 비운다
      * 제외 판정도 비워 AI 가 작성자 로그인으로 내 커밋인지 한 번 더 거르게 한다
      */
     private static GroupingCommit commitOf(MaterialCommit commit) {
@@ -77,7 +77,7 @@ final class GroupingConverter {
 
     }
 
-    /** 바뀐 코드 내용은 묶기에 쓰지 않아 보내지 않는다 */
+    /** 바뀐 코드 내용은 경험 그룹화에 쓰지 않아 보내지 않는다 */
     private static GroupingFile fileOf(MaterialFile file) {
 
         return new GroupingFile(file.path(), GroupingFileStatus.valueOf(file.status().name()), file.additions(),

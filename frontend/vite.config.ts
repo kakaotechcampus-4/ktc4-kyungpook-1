@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
+import { siteMetadataPlugin } from './tooling/siteMetadataPlugin';
 
 /**
  * 두 모드로 돈다. 프론트 코드는 어느 쪽이든 fetch('/api/...') 만 한다.
@@ -16,7 +17,7 @@ export default defineConfig(({ mode }) => {
   const apiOrigin = env.VITE_API_ORIGIN ?? 'http://localhost:8080';
 
   return {
-    plugins: [react()],
+    plugins: [react(), siteMetadataPlugin(env.VITE_SITE_URL)],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     server: {
       port: 5173,

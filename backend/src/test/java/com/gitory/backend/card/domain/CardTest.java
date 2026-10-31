@@ -11,7 +11,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -36,7 +38,7 @@ class CardTest {
     @DisplayName("직접 작성 카드는 정성·직접 작성·작성 중·현재 버전 1·가리기 규칙 없음으로 시작하고 제목은 앞뒤 공백까지 그대로 둔다")
     void startsManualDraft() {
 
-        Card card = Card.startManual(USER_ID, REPO_LINK_ID, "  첫 카드  ", PERIOD, "key-1");
+        Card card = Card.startManual(USER_ID, REPO_LINK_ID, null, "  첫 카드  ", PERIOD, "key-1");
 
         assertThat(card.getCardType()).isEqualTo(CardKind.QUALITATIVE);
         assertThat(card.getOrigin()).isEqualTo(CardOrigin.MANUAL);
@@ -58,7 +60,7 @@ class CardTest {
     @DisplayName("제목이 null·빈 글·공백뿐(NBSP·U+2007·U+202F·BOM 포함)이거나 U+0000 이 있거나 256자를 넘으면 카드 시작과 제목 바꾸기 모두 InvalidCardInputException 이고 카드는 그대로다")
     void rejectsInvalidTitle(String title) {
 
-        assertThatThrownBy(() -> Card.startManual(USER_ID, null, title, null, null))
+        assertThatThrownBy(() -> Card.startManual(USER_ID, null, null, title, null, null))
                 .isInstanceOf(InvalidCardInputException.class);
 
         Card card = draft();
@@ -75,7 +77,7 @@ class CardTest {
 
         String title = "가".repeat(256);
 
-        assertThat(Card.startManual(USER_ID, null, title, null, null).getTitle()).isEqualTo(title);
+        assertThat(Card.startManual(USER_ID, null, null, title, null, null).getTitle()).isEqualTo(title);
 
         Card card = draft();
         card.rename(title);
@@ -88,7 +90,7 @@ class CardTest {
     @DisplayName("기간이 null·빈 글·공백뿐(NBSP·U+2007·U+202F·BOM 포함)이면 카드 시작과 기간 바꾸기 모두 기간을 비운다")
     void blankPeriodBecomesNull(String period) {
 
-        assertThat(Card.startManual(USER_ID, null, TITLE, period, null).getPeriod()).isNull();
+        assertThat(Card.startManual(USER_ID, null, null, TITLE, period, null).getPeriod()).isNull();
 
         Card card = draft();
         card.changePeriod(period);
@@ -101,7 +103,7 @@ class CardTest {
     @DisplayName("기간이 50자를 넘거나 U+0000 이 있으면 카드 시작과 기간 바꾸기 모두 InvalidCardInputException 이고 카드는 그대로다")
     void rejectsInvalidPeriod(String period) {
 
-        assertThatThrownBy(() -> Card.startManual(USER_ID, null, TITLE, period, null))
+        assertThatThrownBy(() -> Card.startManual(USER_ID, null, null, TITLE, period, null))
                 .isInstanceOf(InvalidCardInputException.class);
 
         Card card = draft();
@@ -117,7 +119,7 @@ class CardTest {
     @DisplayName("정확히 50자인 기간과 앞뒤에 공백이 있는 기간은 카드 시작과 기간 바꾸기 모두 받은 그대로 둔다")
     void keepsPeriodAsGiven(String period) {
 
-        assertThat(Card.startManual(USER_ID, null, TITLE, period, null).getPeriod()).isEqualTo(period);
+        assertThat(Card.startManual(USER_ID, null, null, TITLE, period, null).getPeriod()).isEqualTo(period);
 
         Card card = draft();
         card.changePeriod(period);
@@ -127,20 +129,56 @@ class CardTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("changes")
-    @DisplayName("확정된 카드에 제목·기간·가리기 규칙 바꾸기, 편집 표시, 새 버전 전환을 하면 CardConfirmedException 이고 아무것도 바뀌지 않는다")
-    void confirmedCardRejectsChanges(Consumer<Card> change) {
+    @DisplayName("확정된 카드도 다시 열지 않고 제목·기간·가리기 규칙 바꾸기, 편집 표시, 새 버전 전환을 하며 확정으로 남는다")
+    void confirmedCardAcceptsChangesAndStaysConfirmed(Consumer<Card> change) {
 
         Card card = confirmed();
         age(card);
 
-        assertThatThrownBy(() -> change.accept(card)).isInstanceOf(CardConfirmedException.class);
+        change.accept(card);
 
         assertThat(card.getStatus()).isEqualTo(CardStatus.CONFIRMED);
-        assertThat(card.getTitle()).isEqualTo(TITLE);
-        assertThat(card.getPeriod()).isEqualTo(PERIOD);
-        assertThat(card.getMaskRules()).isEmpty();
-        assertThat(card.getCurrentVersion()).isEqualTo((short) 1);
-        assertThat(card.getUpdatedAt()).isEqualTo(OLD);
+        assertThat(card.getConfirmedAt()).isNotNull();
+        assertThat(card.getUpdatedAt()).isAfter(OLD);
+
+    }
+
+    @Test
+    @DisplayName("작성 중 카드는 네 칸이 확인 필요 없이 모두 찬 글로 정할 때만 확정되고, 확인 필요 칸이나 빈 칸이 하나라도 있으면 작성 중으로 남는다")
+    void draftIsConfirmedOnlyWhenAllFourSlotsAreFilledWithoutReview() {
+
+        Card complete = draft();
+        complete.settle(slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH));
+        assertThat(complete.getStatus()).isEqualTo(CardStatus.CONFIRMED);
+        assertThat(complete.getConfirmedAt()).isNotNull();
+
+        Card needsReview = draft();
+        needsReview.settle(slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.LOW));
+        assertThat(needsReview.getStatus()).isEqualTo(CardStatus.DRAFT);
+
+        Card emptyTask = draft();
+        emptyTask.settle(slots(Confidence.HIGH, null, Confidence.HIGH, Confidence.HIGH));
+        assertThat(emptyTask.getStatus()).isEqualTo(CardStatus.DRAFT);
+        assertThat(emptyTask.getConfirmedAt()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("확정된 카드는 확인 필요 칸이나 빈 맡은 일·결과가 있어도 확정으로 남고, 상황이나 행동이 비면 작성 중으로 돌아가 확정 시각이 지워진다")
+    void confirmedCardReturnsToDraftOnlyWhenSituationOrActionIsEmpty() {
+
+        Card reviewed = confirmed();
+        reviewed.settle(slots(Confidence.HIGH, null, Confidence.HIGH, Confidence.LOW));
+        assertThat(reviewed.getStatus()).isEqualTo(CardStatus.CONFIRMED);
+
+        Card noAction = confirmed();
+        noAction.settle(slots(Confidence.HIGH, Confidence.HIGH, null, Confidence.HIGH));
+        assertThat(noAction.getStatus()).isEqualTo(CardStatus.DRAFT);
+        assertThat(noAction.getConfirmedAt()).isNull();
+
+        Card noSituation = confirmed();
+        noSituation.settle(slots(null, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH));
+        assertThat(noSituation.getStatus()).isEqualTo(CardStatus.DRAFT);
 
     }
 
@@ -382,7 +420,7 @@ class CardTest {
 
     private static Card draft() {
 
-        return Card.startManual(USER_ID, null, TITLE, PERIOD, null);
+        return Card.startManual(USER_ID, null, null, TITLE, PERIOD, null);
 
     }
 
@@ -392,6 +430,61 @@ class CardTest {
         card.confirm();
 
         return card;
+
+    }
+
+    @Test
+    @DisplayName("AI 가 고른 문항 유형은 경험 카드에만 붙고 updatedAt 을 바꾸지 않으며, 아무것도 고르지 못했으면 앞서 붙인 유형을 지우지 않는다")
+    void suggestedThemesStickOnlyToExperienceCards() {
+
+        Card experience = Card.startManual(USER_ID, REPO_LINK_ID, null, TITLE, PERIOD, "key-1");
+        Card tech = Card.startFromCandidate(USER_ID, REPO_LINK_ID, 3L, TITLE, CardKind.TECH, null);
+        age(experience);
+
+        experience.suggestThemes(List.of(CardTheme.GROWTH, CardTheme.CONFLICT));
+        experience.suggestThemes(List.of());
+        tech.suggestThemes(List.of(CardTheme.GROWTH));
+
+        assertThat(experience.themeTags()).containsExactly(CardTheme.GROWTH, CardTheme.CONFLICT);
+        assertThat(experience.getUpdatedAt()).isEqualTo(OLD);
+        assertThat(experience.needsThemes()).isFalse();
+        assertThat(tech.themeTags()).isEmpty();
+        assertThat(tech.needsThemes()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("사용자가 한 번 고른 문항 유형은 빈 배열이어도 AI 가 덮어쓰지 않고, 기술 카드에는 유형을 고를 수 없다")
+    void chosenThemesAreKeptFromAi() {
+
+        Card experience = Card.startManual(USER_ID, REPO_LINK_ID, null, TITLE, PERIOD, "key-1");
+        Card tech = Card.startFromCandidate(USER_ID, REPO_LINK_ID, 3L, TITLE, CardKind.TECH, null);
+
+        assertThat(experience.needsThemes()).isTrue();
+        experience.chooseThemes(List.of());
+        experience.suggestThemes(List.of(CardTheme.GROWTH));
+
+        assertThat(experience.themeTags()).isEmpty();
+        assertThat(experience.needsThemes()).isFalse();
+        assertThatThrownBy(() -> tech.chooseThemes(List.of(CardTheme.GROWTH)))
+                .isInstanceOf(InvalidCardInputException.class);
+
+    }
+
+    // 칸마다 확신도를 주고, null 이면 빈 칸이다
+    private static VersionSlots slots(Confidence s, Confidence t, Confidence a, Confidence r) {
+
+        Map<StarField, SlotContent> slots = new EnumMap<>(StarField.class);
+        Confidence[] confidences = {s, t, a, r};
+        StarField[] fields = {StarField.S, StarField.T, StarField.A, StarField.R};
+        for (int i = 0; i < fields.length; i++) {
+            if (confidences[i] != null) {
+                slots.put(fields[i], new SlotContent(fields[i], "글", EvidenceType.USER_STATED, confidences[i], null,
+                        List.of()));
+            }
+        }
+
+        return new VersionSlots((short) 1, slots);
 
     }
 

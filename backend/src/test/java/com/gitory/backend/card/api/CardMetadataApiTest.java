@@ -251,7 +251,7 @@ class CardMetadataApiTest {
                 .andReturn();
 
         Map<String, Object> data = JsonPath.read(edited.getResponse().getContentAsString(), "$.data");
-        assertThat(data).containsOnlyKeys("cardId", "title", "period", "updatedAt");
+        assertThat(data).containsOnlyKeys("cardId", "title", "period", "themes", "updatedAt");
         assertThat(data.get("cardId")).isEqualTo(MY_CARD.toString());
         assertThat(data.get("title")).isEqualTo(title);
         assertThat(data.get("period")).isEqualTo(period);
@@ -531,6 +531,84 @@ class CardMetadataApiTest {
                 arguments(Named.of("스페이스", "   ")),
                 arguments(Named.of("탭·줄바꿈", "\t\n")),
                 arguments(Named.of("257자", "가".repeat(257))));
+
+    }
+
+    @Test
+    @DisplayName("문항 유형만 보내면 확정 카드도 바꾸고 사용자가 고른 것으로 남기며, 카드 글이 아니라 updatedAt 은 그대로다")
+    void themesAloneChangeEvenAConfirmedCard() throws Exception {
+
+        Long cardId = draftCard(MY_CARD, myUserId, "제목", "2024.04");
+        fixtures.confirmCard(cardId);
+        age(cardId);
+
+        edit(MY_CARD, "{\"themes\":[\"CONFLICT\",\"GROWTH\"]}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.themes[0]").value("CONFLICT"))
+                .andExpect(jsonPath("$.data.themes[1]").value("GROWTH"));
+
+        assertThat(themesOf(cardId)).containsEntry("themes", "CONFLICT,GROWTH").containsEntry("themes_by_user", true);
+        assertThat(cardUpdatedAt(cardId)).isEqualTo(OLD);
+
+    }
+
+    @Test
+    @DisplayName("빈 배열을 보내면 문항 유형을 비우고, 사용자가 고른 것으로 남겨 뒤에 AI 가 붙이지 않게 한다")
+    void emptyThemesClearAndStayChosen() throws Exception {
+
+        Long cardId = draftCard(MY_CARD, myUserId, "제목", "2024.04");
+        jdbc.update("UPDATE card SET themes = '{GROWTH}' WHERE id = ?", cardId);
+
+        edit(MY_CARD, "{\"themes\":[]}").andExpect(status().isOk()).andExpect(jsonPath("$.data.themes").isEmpty());
+
+        assertThat(themesOf(cardId)).containsEntry("themes", "").containsEntry("themes_by_user", true);
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidThemes")
+    @DisplayName("문항 유형이 셋 이상·겹침·모르는 값·빈 값이면 400 INVALID_REQUEST 이고 카드는 그대로다")
+    void invalidThemesAreRejected(String body) throws Exception {
+
+        Long cardId = draftCard(MY_CARD, myUserId, "제목", "2024.04");
+
+        edit(MY_CARD, body)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(themesOf(cardId)).containsEntry("themes", "").containsEntry("themes_by_user", false);
+
+    }
+
+    @Test
+    @DisplayName("기술 카드에 문항 유형을 붙이면 400 INVALID_REQUEST 이다")
+    void techCardCannotTakeThemes() throws Exception {
+
+        Long cardId = draftCard(MY_CARD, myUserId, "제목", "2024.04");
+        jdbc.update("UPDATE card SET card_type = 'TECH' WHERE id = ?", cardId);
+
+        edit(MY_CARD, "{\"themes\":[\"GROWTH\"]}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(themesOf(cardId)).containsEntry("themes", "").containsEntry("themes_by_user", false);
+
+    }
+
+    static Stream<Arguments> invalidThemes() {
+
+        return Stream.of(
+                arguments(Named.of("셋", "{\"themes\":[\"GROWTH\",\"CONFLICT\",\"FAILURE\"]}")),
+                arguments(Named.of("겹침", "{\"themes\":[\"GROWTH\",\"GROWTH\"]}")),
+                arguments(Named.of("모르는 값", "{\"themes\":[\"SINGING\"]}")),
+                arguments(Named.of("빈 값", "{\"themes\":[null]}")));
+
+    }
+
+    private Map<String, Object> themesOf(Long cardId) {
+
+        return jdbc.queryForMap("SELECT array_to_string(themes, ',') AS themes, themes_by_user FROM card WHERE id = ?",
+                cardId);
 
     }
 

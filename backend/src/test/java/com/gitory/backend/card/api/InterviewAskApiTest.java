@@ -609,7 +609,7 @@ class InterviewAskApiTest {
                    {"star_slot": "T", "statement_seq": 1, "body": null, "confidence": "LOW", "review_reason": null, "linked_commits": []},
                    {"star_slot": "A", "statement_seq": 1, "body": null, "confidence": "LOW", "review_reason": null, "linked_commits": []},
                    {"star_slot": "R", "statement_seq": 1, "body": null, "confidence": "LOW", "review_reason": null, "linked_commits": []}],
-                 "existing_turn_count": 0, "max_turns": 2, "source_type": "DIRECT_CARD",
+                 "existing_turn_count": 0, "max_turns": 2, "source_type": "DIRECT_CARD", "card_kind": "QUALITATIVE",
                  "target_star_slot": "T", "allowed_slots": ["S", "T", "A", "R"], "previous_turns": []}
                 """.formatted(cardId));
         assertThat((Object) sentRequest()).isEqualTo(expected);
@@ -812,6 +812,23 @@ class InterviewAskApiTest {
                 .andExpect(jsonPath("$.data").value(nullValue()));
 
         assertThat(endReasonOf(cardId)).isEqualTo("네 칸 모두 근거가 있어 마칠게요");
+
+    }
+
+    @Test
+    @DisplayName("경험 카드에서 AI 가 그만 묻기로 하며 고른 문항 유형을 카드에 붙인다")
+    void keepsAiThemesWhenTheInterviewEnds() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAnswered(cardId, 1, "S", "첫 답", "TYPED");
+        ObjectNode ended = MAPPER.createObjectNode().put("card_id", cardId).put("next_action", "COMPLETE");
+        ended.putArray("themes").add("GROWTH").add("COLLABORATION");
+        AI.replyWith(request -> FakeInterviewAi.success(ended));
+
+        send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
+
+        assertThat(jdbc.queryForObject("SELECT array_to_string(themes, ',') FROM card WHERE id = ?", String.class,
+                cardId)).isEqualTo("GROWTH,COLLABORATION");
 
     }
 

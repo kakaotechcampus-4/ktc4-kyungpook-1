@@ -9,8 +9,10 @@ STAR 문장 작성만 LLM에 맡기고, 근거 SHA 실재 확인·근거 없는 
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Protocol, get_args
 
@@ -42,8 +44,10 @@ from services.llm_structured_client import (
     LLMStructuredOutputTooLongError,
     StructuredCallResult,
 )
+from services.progress import is_listening
 from services.secret_redaction import mask_emails, redact_secrets
 from services.star_check import DraftSlot, SlotCheck, check_draft
+from services.star_progress import ReportedSteps, SlotStreamer
 from services.star_review import ReviewFinding, ReviewSources, StarReviewer
 from services.usage import record_repair_round, record_tool_call
 
@@ -262,7 +266,7 @@ class _Timeout(Exception):
 
 
 class StructuredCaller(Protocol):
-    """``StructuredLLMClient``와 같은 호출 계약. 테스트 대역도 이 형태를 따른다."""
+    """``StructuredLLMClient``와 같은 호출 계약. 테스트 대역도 이 형태를 따르고, on_partial 은 스트리밍 API 가 들을 때만 넘긴다."""
 
     def call(
         self,
@@ -271,6 +275,7 @@ class StructuredCaller(Protocol):
         output_model: type[BaseModel],
         max_completion_tokens: int,
         timeout_seconds: Optional[float] = None,
+        on_partial: Optional[Callable[[dict[str, Any]], None]] = None,
     ) -> StructuredCallResult[Any]: ...
 
 
@@ -335,10 +340,11 @@ class StarGenerator:
         payload = self.build_payload(request, evidence)
         deadline = asyncio.get_running_loop().time() + self._limits.deadline_seconds
         try:
-            output = await self._call(SYSTEM_PROMPT, payload, deadline)
+            output = await self._call(SYSTEM_PROMPT, payload, deadline, stream_round=0)
         except _Timeout:
             return self._timed_out(request)
-        steps = [StarStep(round=0, actor="MODEL", kind="DRAFT")]
+        steps = ReportedSteps()
+        steps.append(StarStep(round=0, actor="MODEL", kind="DRAFT"))
         still_reversed: frozenset[StarSlot] = frozenset()
         opened: list[Material] = []
         if self._repair_enabled:
@@ -374,21 +380,31 @@ class StarGenerator:
         ]
         return payload
 
-    async def _call(self, system_prompt: str, payload: dict[str, Any], deadline: float) -> StarDraftOutput:
+    async def _call(
+        self,
+        system_prompt: str,
+        payload: dict[str, Any],
+        deadline: float,
+        stream_round: Optional[int] = None,
+        stream_slots: frozenset[StarSlot] | set[StarSlot] = frozenset(SLOTS),
+    ) -> StarDraftOutput:
         """스키마에 맞지 않는 응답만 다시 요청한다. 각 호출은 남은 마감 시간 안에서만 기다린다.
 
         키·모델 이름·콘텐츠 필터 오류와 출력 길이 초과는 다시 해도 같으므로 retryable=false로 올린다.
+        stream_round 를 주고 스트리밍 API 가 듣고 있으면 stream_slots 칸의 글을 쓰는 동안 흘려보낸다.
         """
         loop = asyncio.get_running_loop()
         for attempt in range(1, self._limits.max_attempts + 1):
             timeout = deadline - loop.time()
             if timeout < self._limits.min_call_seconds:
                 raise _Timeout
+            streamer = SlotStreamer(stream_round, stream_slots) if stream_round is not None and is_listening() else None
+            call = self._client.call if streamer is None else functools.partial(self._client.call, on_partial=streamer.feed)
             try:
                 result = await asyncio.wait_for(
                     run_llm_call(
                         CARD_DRAFT_EXECUTOR,
-                        self._client.call,
+                        call,
                         system_prompt,
                         payload,
                         StarDraftOutput,
@@ -413,6 +429,8 @@ class StarGenerator:
                 if deadline - loop.time() < 1:
                     raise _Timeout from exc
                 raise StarGenerationError("STAR LLM 호출에 실패했습니다.", retryable=True) from exc
+            if streamer is not None:
+                streamer.finish(result.output)
             return result.output
         raise StarGenerationError("STAR 초안을 생성하지 못했습니다.", retryable=True)
 
@@ -489,7 +507,8 @@ class StarGenerator:
                 rewrite_payload["opened_materials"] = [material.opened() for material in opened]
             try:
                 rewritten = await self._call(
-                    MATERIAL_REWRITE_SYSTEM_PROMPT if opened else REWRITE_SYSTEM_PROMPT, rewrite_payload, deadline
+                    MATERIAL_REWRITE_SYSTEM_PROMPT if opened else REWRITE_SYSTEM_PROMPT, rewrite_payload, deadline,
+                    stream_round=round_index + 1, stream_slots=rewrite_slots,
                 )
             except (_Timeout, StarGenerationError) as exc:
                 logger.warning("STAR 초안을 고쳐 쓰지 못해 지금 초안으로 만든다: %s", type(exc).__name__)

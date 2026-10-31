@@ -82,7 +82,8 @@ test('등급이 있는 목록은 그대로 근거 등급 순과 마감 순을 �
   await loginAsDemo(page);
   await page.goto('/match');
   await expect(page.locator('.match-card')).toHaveCount(5);
-  await expect(page.locator('.match-fit').first()).toBeVisible();
+  // 등급은 목록 카드에 그리지 않고 상세에서만 보여 주므로, 정렬 선택지로만 확인한다
+  await expect(page.locator('.match-fit')).toHaveCount(0);
   await expect(sortMenu(page)).toContainText('근거 등급 순');
   await sortMenu(page).click();
   await expect(page.getByRole('option')).toHaveText(['근거 등급 순', '마감 순']);

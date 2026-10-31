@@ -56,7 +56,7 @@ function mount(path = '/match', { me }: Setup = {}) {
   );
   return client;
 }
-const companies = () => [...document.querySelectorAll('.match-card .match-company')].map((el) => el.textContent);
+const companies = () => [...document.querySelectorAll('.match-card .match-company-link__name')].map((el) => el.textContent);
 const sortSelect = () => screen.getByLabelText('공고 정렬');
 const sortValue = () => sortSelect().getAttribute('data-value');
 const sortOptions = () => [...sortSelect().querySelectorAll('[data-option]')].map((el) => el.textContent);
@@ -150,9 +150,9 @@ describe('목록에 등급이 섞여 있거나 모두 있을 때는 지금과 �
     expect(sortOptions()).toEqual(['근거 등급 순', '마감 순']);
     // 등급 순: A, B, C, D 다음에 등급이 없는 공고
     expect(companies()).toEqual(['가온소프트', '나래랩스', '라온모빌리티', '마루데이터', '다온페이']);
-    expect(screen.getByLabelText('근거 등급 A')).toBeInTheDocument();
-    expect(document.querySelectorAll('.match-fit')).toHaveLength(4);
-    expect(document.querySelectorAll('.match-counts')).toHaveLength(4);
+    // 등급과 채운 개수는 목록 카드에 그리지 않고 상세에서만 보여 준다
+    expect(document.querySelector('.match-fit')).toBeNull();
+    expect(document.querySelector('.match-counts')).toBeNull();
   });
 
   it('sort=deadline 은 그대로 마감 순이다', async () => {
@@ -163,13 +163,13 @@ describe('목록에 등급이 섞여 있거나 모두 있을 때는 지금과 �
     expect(companies().slice(0, 3)).toEqual(['가온소프트', '라온모빌리티', '나래랩스']);
   });
 
-  it('등급이 모두 있으면 확정 카드 수를 모르는 동안에도 등급과 개수를 그대로 보여 준다', async () => {
+  it('등급이 모두 있으면 확정 카드 수를 모르는 동안에도 안내를 띄우지 않고, 등급과 개수는 목록 카드에 그리지 않는다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(shuffled((x) => x.fit as 'A' | 'B' | 'C' | 'D'));
     mount('/match', { me: 'pending' });
     await screen.findByText('가온소프트');
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
-    expect(document.querySelectorAll('.match-fit')).toHaveLength(5);
-    expect(document.querySelectorAll('.match-counts')).toHaveLength(5);
+    expect(document.querySelector('.match-fit')).toBeNull();
+    expect(document.querySelector('.match-counts')).toBeNull();
   });
 });
 

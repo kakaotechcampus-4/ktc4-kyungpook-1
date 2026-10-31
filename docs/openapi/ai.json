@@ -5369,7 +5369,7 @@
                 "type": "null"
               }
             ],
-            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다",
+            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 3,000자). Spring 이 PR 작성자를 확인해 보낸다",
             "title": "Pull Request Body"
           },
           "source_ref": {

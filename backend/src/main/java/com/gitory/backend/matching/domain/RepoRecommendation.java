@@ -20,7 +20,7 @@ import static lombok.AccessLevel.PROTECTED;
 
 /**
  * 레포 화면이 그대로 읽는 그 레포의 추천 기업이며, 새 공고가 들어와도 다시 계산하기 전까지 바뀌지 않는다
- * 계산이 모두 실패하면 앞서 계산한 기업은 남기고 상태만 실패로 둔다
+ * 계산하는 사이에 확정 카드가 또 바뀌면 staleSince 가 남아 있어 끝나도 COMPUTING 으로 두고, 다음 계산이 다시 한다
  */
 @Entity
 @Getter
@@ -32,6 +32,8 @@ public class RepoRecommendation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long userId;
+
     private Long userRepositoryId;
 
     @Enumerated(EnumType.STRING)
@@ -42,38 +44,44 @@ public class RepoRecommendation {
 
     private Instant computedAt;
 
-    public static RepoRecommendation ready(Long userRepositoryId, List<RecommendedCompany> companies, Instant now) {
+    private Instant staleSince;
 
-        RepoRecommendation recommendation = new RepoRecommendation();
-        recommendation.userRepositoryId = userRepositoryId;
-        recommendation.companies = new ArrayList<>();
+    public static RepoRecommendation ready(Long userId, Long userRepositoryId, List<RecommendedCompany> companies,
+                                           Instant now) {
+
+        RepoRecommendation recommendation = new RepoRecommendation(userId, userRepositoryId);
         recommendation.refresh(companies, now);
         return recommendation;
 
     }
 
-    public static RepoRecommendation failed(Long userRepositoryId, Instant now) {
+    public static RepoRecommendation failed(Long userId, Long userRepositoryId, Instant now) {
 
-        RepoRecommendation recommendation = new RepoRecommendation();
-        recommendation.userRepositoryId = userRepositoryId;
-        recommendation.companies = new ArrayList<>();
+        RepoRecommendation recommendation = new RepoRecommendation(userId, userRepositoryId);
         recommendation.fail(now);
         return recommendation;
 
     }
 
+    private RepoRecommendation(Long userId, Long userRepositoryId) {
+        this.userId = userId;
+        this.userRepositoryId = userRepositoryId;
+        this.companies = new ArrayList<>();
+    }
+
     public void refresh(List<RecommendedCompany> companies, Instant now) {
 
         this.companies = new ArrayList<>(companies);
-        this.status = RepoRecommendationStatus.READY;
         this.computedAt = now;
+        this.status = staleSince == null ? RepoRecommendationStatus.READY : RepoRecommendationStatus.COMPUTING;
 
     }
 
+    /** 앞서 계산한 기업은 남겨, 화면이 실패를 알리면서도 지난 추천을 보여 줄 수 있게 한다 */
     public void fail(Instant now) {
 
-        this.status = RepoRecommendationStatus.FAILED;
         this.computedAt = now;
+        this.status = staleSince == null ? RepoRecommendationStatus.FAILED : RepoRecommendationStatus.COMPUTING;
 
     }
 }

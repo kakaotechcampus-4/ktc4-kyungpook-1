@@ -24,6 +24,7 @@ import com.gitory.backend.ingest.domain.StoredPullRequest;
 import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.matching.domain.RepoRecommendationTrigger;
 import com.gitory.backend.recommend.domain.CandidateDraftSource;
 import com.gitory.backend.recommend.domain.CandidateDraftSourceService;
 import lombok.RequiredArgsConstructor;
@@ -61,6 +62,7 @@ public class CardDraftRunner {
     private final StarDraftPort star;
     private final CardDraftWriter writer;
     private final CommitSummaryService commitSummaries;
+    private final RepoRecommendationTrigger recommendations;
 
     public void run(AnalysisJob job) {
 
@@ -233,6 +235,8 @@ public class CardDraftRunner {
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() == JobState.RUNNING) {
             job.finishDraft(results);
+            // 카드마다 알리지 않고 다 만든 뒤 한 번에 그 레포 추천을 다시 계산한다
+            recommendations.requestNow(job.getUserId(), job.getUserRepositoryId());
         }
 
     }

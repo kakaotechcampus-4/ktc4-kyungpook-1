@@ -3,7 +3,8 @@
  * 분석 Job 처럼 진행은 타이머가 아니라 "읽는 순간의 경과 시간"으로 정한다. 카드 고르기 6초, 질문 만들기 4초.
  * AI 가 한 일(`steps.assign`)은 경과 시간만큼 한 줄씩 늘어난다 — 실서버도 폴링마다 줄이 쌓인다.
  */
-import { COVER_LETTER_LIMITS as L, type QuestionTheme } from '@/api/coverLetters';
+import { ANSWER_MAX, COVER_LETTER_LIMITS as L, DRAFT_MAX, MATERIAL_ITEMS, type QuestionTheme } from '@/api/coverLetters';
+import { BLANK_TEXT, blanksIn, countableLength } from '@/lib/draftText';
 import { db, nextId, STAR, FIELD_KEY } from './store';
 import { now } from './fixtures';
 
@@ -15,7 +16,9 @@ const invalid = (message: string) => fail(400, 'INVALID_REQUEST', message);
 const notFound = () => fail(404, 'NOT_FOUND', '자소서를 찾을 수 없습니다.');
 const badState = (message: string) => fail(409, 'INVALID_STATE', message);
 
-const ASSIGN_SEC = 6, ASK_SEC = 4;
+const ASSIGN_SEC = 6, ASK_SEC = 4, DRAFT_SEC = 8;
+/** 같은 카드로 받은 답은 카드에 기억한다(#585). 다음 자소서에서 AI 가 다시 묻지 않고 미리 채운다 */
+const REMEMBERED = ['SITUATION', 'ACTION', 'RESULT', 'LEARNING', 'TRIGGER'];
 export const COVER_LETTER_POLL_MS = 1500;
 
 /** 다음 카드 고르기 하나를 실패시킨다(시나리오 'cover-letter-failed'). 다시 시도하면 된다 */
@@ -95,19 +98,86 @@ function settleAssignment(letter: Any) {
   }
 }
 
-/** 질문 만들기(가짜 AI) — 중심 카드에서 빈 칸을 묻는다. #518 화면 전까지는 모양만 맞춘다 */
+/** 질문 만들기(가짜 AI) — 중심 카드에 없는 재료를 묻고, 같은 카드로 전에 받은 답은 묻지 않고 끝에 미리 채운다 */
 function settleAsks(letter: Any) {
+  const memory: Record<string, Record<string, string>> = db.cardMaterialAnswers;
   for (const q of letter.questions) {
     const card = cardById(q.primaryCardId);
     const v = card ? latest(card) : null;
+    const known = (card && memory[card.id]) || {};
     const asks: Any[] = [];
-    if (!v?.result) asks.push({ item: 'RESULT', question: '이 일로 무엇이 얼마나 나아졌나요?', templates: ['___ 를 ___ 로 줄였어요'], required: true });
-    asks.push({ item: 'LEARNING', question: '이 경험에서 무엇을 배웠나요?', templates: [], required: q.theme === 'GROWTH' || q.theme === 'FAILURE' });
+    if (!v?.result && !known.RESULT) asks.push({ item: 'RESULT', question: '이 일로 무엇이 얼마나 나아졌나요?', templates: card ? ['___를 ___만큼 줄였어요'] : [], required: true });
+    if (!card) asks.push({ item: 'SITUATION', question: '어떤 상황에서 있었던 일인가요?', templates: [], required: true }, { item: 'ACTION', question: '그때 직접 한 일은 무엇인가요?', templates: [], required: true });
+    if (!known.LEARNING) asks.push({ item: 'LEARNING', question: '이 경험에서 무엇을 배웠나요?', templates: ['___을 겪으며 ___의 중요성을 배웠어요'], required: q.theme === 'GROWTH' || q.theme === 'FAILURE' });
     if (q.theme === 'MOTIVATION') asks.push({ item: 'REASON', question: '이 회사를 고른 이유는 무엇인가요?', templates: [], required: true });
     q.asks = asks.slice(0, 4);
     q.answers = [];
+    for (const [item, text] of Object.entries(known)) {
+      if (q.asks.some((a: Any) => a.item === item)) continue;
+      q.asks.push({ item, question: null, templates: [], required: false });
+      q.answers.push({ item, text, skipped: false, reused: true });
+    }
   }
 }
+
+/** 초안 쓰기(가짜 AI) — 카드 문장과 답으로 쓰고, 필수 재료가 없으면 빈칸을 남긴다. 줄(steps.draft)마다 보일 시각을 붙인다 */
+function planDrafts(letter: Any) {
+  const steps: Any[] = [];
+  let at = 0.6;
+  const push = (x: Any, gap = 0.6) => { steps.push({ ...x, at }); at += gap; };
+  for (const q of letter.questions) {
+    const card = cardById(q.primaryCardId);
+    const v: Any = card ? latest(card) : {};
+    const answer = (item: string) => q.answers?.find((a: Any) => a.item === item && !a.skipped)?.text as string | undefined;
+    const parts: string[] = [];
+    const add = (item: string, fromCard?: string | null) => {
+      const t = answer(item) ?? fromCard ?? null;
+      if (t) parts.push(t.trim().replace(/[.]?$/, '.'));
+      else if (q.asks?.some((a: Any) => a.item === item && a.required)) parts.push(BLANK_TEXT[item as keyof typeof BLANK_TEXT]);
+    };
+    if (q.theme === 'MOTIVATION') add('REASON');
+    add('TRIGGER'); add('SITUATION', v.situation); add('ACTION', v.action); add('RESULT', v.result); add('LEARNING');
+    let text = parts.join(' ');
+    const short = countableLength(text) < q.charLimit * 0.7;
+    if (short) text += ' [더 쓸 거리: 그때 팀에서 맡은 역할과 함께 일한 사람을 적어 보세요]';
+    const sentences = text.split(/(?<=[.])\s+/).filter(Boolean).map((t, i) => ({ seq: i + 1, text: t }));
+    const sourced = Object.values(v).filter((f): f is string => typeof f === 'string').join(' ');
+    const numbered = sentences.find((x) => { const m = x.text.match(/\d+%/); return !!m && !sourced.includes(m[0]); });
+    const marks = numbered ? [{ sentenceSeq: numbered.seq, code: 'UNSOURCED_NUMBER', value: numbered.text.match(/\d+%/)![0] }] : [];
+    q._draft = { text, aiText: text, sentences, marks, source: card ? 'LLM' : 'SKELETON' };
+    push({ kind: 'WROTE', actor: 'SUB_AGENT', questionSeq: q.seq, value: String(countableLength(text)) });
+    if (short) {
+      push({ kind: 'CHECK_FAILED', actor: 'CODE', questionSeq: q.seq, code: 'UNDER_LENGTH', value: String(Math.round(q.charLimit * 0.7) - countableLength(text)) });
+      push({ kind: 'DECIDED', actor: 'SUB_AGENT', questionSeq: q.seq, action: 'KEEP', reason: '카드와 답에 더 쓸 사실이 없어 쓸 거리를 빈칸으로 남겼어요' });
+    } else push({ kind: 'CHECK_PASSED', actor: 'CODE', questionSeq: q.seq, value: String(countableLength(text)) });
+    if (marks.length) push({ kind: 'MARKED', actor: 'SUB_AGENT', questionSeq: q.seq, code: marks[0].code, value: marks[0].value, sentenceSeq: marks[0].sentenceSeq });
+  }
+  push({ kind: 'REVIEWED', actor: 'SUPERVISOR', questionSeq: null, value: '0' });
+  letter._draftSteps = steps.map((x, i) => ({ ...x, seq: i + 1 }));
+}
+
+function settleDrafts(letter: Any) {
+  for (const q of letter.questions) {
+    if (!q._draft) continue;
+    q.draft = { ...q._draft };
+    // 답을 카드에 기억한다. 지원 이유, 직무 연결은 회사마다 달라 기억하지 않는다
+    const card = cardById(q.primaryCardId);
+    if (card) for (const a of q.answers ?? []) {
+      if (!a.skipped && REMEMBERED.includes(a.item)) (db.cardMaterialAnswers[card.id] ??= {})[a.item] = a.text;
+    }
+  }
+}
+
+/** 고친 글로 글자 수, 넘은 수, 남은 빈칸을 다시 센다. 문장과 확인 필요 표시는 AI 원본 기준 그대로 */
+const draftView = (q: Any) => {
+  const d = q.draft;
+  if (!d) return null;
+  const charCount = countableLength(d.text);
+  return {
+    text: d.text, aiText: d.aiText, edited: d.text !== d.aiText, charCount, overBy: Math.max(0, charCount - q.charLimit),
+    sentences: d.sentences, marks: d.marks, blanks: blanksIn(d.text), source: d.source,
+  };
+};
 
 // ───────────────────────────── 응답 모양 ─────────────────────────────
 const cardRef = (id: string | null) => {
@@ -130,6 +200,10 @@ function advance(letter: Any) {
   if (letter.stage === 'ASKING' && elapsed(letter) >= ASK_SEC) {
     settleAsks(letter);
     Object.assign(letter, { stage: 'ASKED', updatedAt: now() });
+  }
+  if (letter.stage === 'DRAFTING' && elapsed(letter) >= DRAFT_SEC) {
+    settleDrafts(letter);
+    Object.assign(letter, { stage: 'DRAFTED', updatedAt: now() });
   }
 }
 
@@ -167,10 +241,17 @@ function view(letter: Any) {
           const ans: Any | undefined = answers.get(a.item) as Any | undefined;
           return { ...a, answer: ans && !ans.skipped ? { text: ans.text, reused: !!ans.reused } : null, skipped: !!ans?.skipped };
         }),
-        draft: null,
+        draft: draftView(q),
       };
     }),
-    steps: { assign, draft: [] },
+    steps: {
+      assign,
+      draft: (letter._draftSteps ?? []).filter((x: Any) => x.at <= (letter.stage === 'DRAFTING' ? elapsed(letter) : Infinity)).map((x: Any) => ({
+        seq: x.seq, actor: x.actor, kind: x.kind,
+        questionId: x.questionSeq != null ? letter.questions.find((q: Any) => q.seq === x.questionSeq)?.id ?? null : null,
+        code: x.code ?? null, value: x.value ?? null, sentenceSeq: x.sentenceSeq ?? null, action: x.action ?? null, reason: x.reason ?? null,
+      })),
+    },
   };
 }
 
@@ -258,3 +339,53 @@ export function deleteCoverLetter(id: string): CoverLetterResult {
   return ok({ ok: true });
 }
 
+
+export function saveAnswers(id: string, questionId: string, body: Any): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  advance(l);
+  if (l.stage !== 'ASKED') return badState('답은 질문을 받은 뒤에만 저장할 수 있습니다.');
+  const list = body?.answers;
+  if (!Array.isArray(list)) return invalid('답 목록이 없습니다.');
+  const asked = new Set((q.asks ?? []).map((a: Any) => a.item));
+  const before = new Map<string, Any>((q.answers ?? []).map((a: Any) => [a.item, a]));
+  const seen = new Set<string>();
+  const next: Any[] = [];
+  for (const a of list) {
+    if (!a || !(MATERIAL_ITEMS as readonly string[]).includes(a.item)) return invalid('답의 항목이 올바르지 않습니다.');
+    if (!asked.has(a.item)) return invalid('이 문항의 질문에 없는 항목입니다: ' + a.item);
+    if (seen.has(a.item)) return invalid('같은 항목의 답이 두 번 있습니다: ' + a.item);
+    seen.add(a.item);
+    if (a.skipped === true) { next.push({ item: a.item, text: null, skipped: true, reused: false }); continue; }
+    if (typeof a.text !== 'string' || a.text.trim() === '' || a.text.length > ANSWER_MAX || a.text.includes('\u0000')) return invalid('답 칸을 확인해 주세요.');
+    const prev = before.get(a.item);
+    next.push({ item: a.item, text: a.text, skipped: false, reused: !!prev?.reused && prev.text === a.text });
+  }
+  q.answers = next;
+  l.updatedAt = now();
+  return ok(view(l));
+}
+
+export function startDrafting(id: string): CoverLetterResult {
+  const l = own(id);
+  if (!l) return notFound();
+  advance(l);
+  if (l.stage !== 'ASKED') return badState('초안은 질문을 받은 뒤에만 쓸 수 있습니다.');
+  planDrafts(l);
+  Object.assign(l, { stage: 'DRAFTING', startedAt: Date.now(), updatedAt: now() });
+  return ok(view(l));
+}
+
+export function saveDraft(id: string, questionId: string, body: Any): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  advance(l);
+  if (l.stage !== 'DRAFTED' || !q.draft) return badState('초안을 받은 뒤에만 고칠 수 있습니다.');
+  const text = body?.text;
+  if (typeof text !== 'string' || text.length > DRAFT_MAX || text.includes('\u0000')) return invalid('글을 확인해 주세요.');
+  q.draft.text = text;
+  l.updatedAt = now();
+  return ok(view(l));
+}

@@ -122,6 +122,12 @@ export type CoverLetterSummary = z.infer<typeof CoverLetterSummary>;
 export const isCoverLetterRunning = (stage: CoverLetterStage) => stage === 'ASSIGNING' || stage === 'ASKING' || stage === 'DRAFTING';
 
 // ───────────────────────────── 요청 ─────────────────────────────
+/** 답 하나. 넘겼으면 text 는 null, 아니면 1~1,000자 */
+export type AnswerInput = { item: string; text: string | null; skipped: boolean };
+export const ANSWER_MAX = 1_000;
+/** 고친 초안은 10,000자까지 */
+export const DRAFT_MAX = 10_000;
+
 export type NewCoverLetter = { jobRole: string; memo: string | null; questions: { text: string; charLimit: number | null }[] };
 
 export const coverLetterApi = {
@@ -134,6 +140,15 @@ export const coverLetterApi = {
       { method: 'PUT', body: { primaryCardId, supportingCardId } }),
   startAsking: (id: string) => api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/asks`, { method: 'POST' }),
   retry: (id: string) => api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/retry`, { method: 'POST' }),
+  /** 그 문항의 답 전체를 바꾼다. 미리 채운 지난 답(reused)도 다시 보내야 남는다 */
+  saveAnswers: (id: string, questionId: string, answers: AnswerInput[]) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/answers`, { method: 'PUT', body: { answers } }),
+  /** 답하지 않은 질문은 넘긴 것으로 본다. ASKED 에서만 */
+  startDrafting: (id: string) => api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/drafts`, { method: 'POST' }),
+  /** 고친 글 저장. AI 원본(aiText)은 그대로 남는다. DRAFTED 에서만 */
+  saveDraft: (id: string, questionId: string, text: string) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}`, { method: 'PATCH', body: { text } }),
+  remove: (id: string) => api(z.object({ ok: z.boolean() }), `/cover-letters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
 // ───────────────────────────── 조회·변경 ─────────────────────────────
@@ -180,3 +195,8 @@ export const useChooseCards = (id: string) =>
     coverLetterApi.chooseCards(id, questionId, primaryCardId, supportingCardId));
 export const useStartAsking = (id: string) => useLetterMutation(() => coverLetterApi.startAsking(id));
 export const useRetryCoverLetter = (id: string) => useLetterMutation(() => coverLetterApi.retry(id));
+export const useSaveAnswers = (id: string) =>
+  useLetterMutation(({ questionId, answers }: { questionId: string; answers: AnswerInput[] }) => coverLetterApi.saveAnswers(id, questionId, answers), true);
+export const useStartDrafting = (id: string) => useLetterMutation(() => coverLetterApi.startDrafting(id));
+export const useSaveDraft = (id: string) =>
+  useLetterMutation(({ questionId, text }: { questionId: string; text: string }) => coverLetterApi.saveDraft(id, questionId, text), true);

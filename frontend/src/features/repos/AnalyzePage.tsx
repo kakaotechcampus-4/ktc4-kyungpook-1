@@ -8,6 +8,7 @@ import { JobLiveness } from '@/components/JobLiveness';
 import { AiWait } from '@/components/ui/AiWait';
 import { Sparkles } from 'lucide-react';
 import { agentHeadline, agentLine } from '@/lib/agentNarration';
+import { stepLines, useActivityFeed, type ActivityLine } from '@/lib/agentActivity';
 import { minutes } from '@/lib/format';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
 import { isTerminal, type Job } from '@/api/schemas';
@@ -33,6 +34,7 @@ export function AnalyzePage() {
 
   const j = job.data;
   const { waitSec, canRetry } = useJobRetry(j);
+  const feed = useActivityFeed(j);
 
   // 새로고침으로 ?job= 을 잃어도 서버가 진행 중인 작업을 안다 — 그걸 다시 붙인다
   useEffect(() => {
@@ -48,15 +50,17 @@ export function AnalyzePage() {
     return () => releaseJobToast(jobId);
   }, [jobId]);
 
-  // 다 읽었고 부분도 아니면 후보 보드로. 후보 0개(verdict EMPTY)도 보드가 판정을 보여준다
+  // 다 읽었고 부분도 아니면 후보 보드로. 후보 0개(verdict EMPTY)도 보드가 판정을 보여준다.
+  // AI 가 고른 이유가 아직 차례로 나오는 중이면 다 보여 준 뒤에 넘어간다
   useEffect(() => {
     if (!j || !jobId || !isTerminal(j.state)) return;
     if (j.state === 'SUCCEEDED' && !j.partial) {
+      if (!feed.drained) return;
       const t = setTimeout(() => nav(`/repos/${repoId}/candidates`, { replace: true }), 600);
       return () => clearTimeout(t);
     }
     if (j.state === 'CANCELED') nav('/repos', { replace: true });
-  }, [j, jobId, nav, repoId]);
+  }, [j, jobId, nav, repoId, feed.drained]);
 
 
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
@@ -213,6 +217,7 @@ export function AnalyzePage() {
                     <div className="stack grow" style={{ gap: 3 }}>
                       <span className="stage__label">{jobStepLabel[s.key]}</span>
                       <span className="stage__agent">{agentLine(s, j)}</span>
+                      <StageFeed lines={stepLines(feed.lines, s.key, status === 'NOW')} />
                       <span className="stage__detail">{stepDetail(s.done, s.total, jobStepUnit[s.key], s.state)}</span>
                     </div>
                     <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s, j)}</Badge>
@@ -231,6 +236,22 @@ export function AnalyzePage() {
         </div>
       </div>
     </main>
+  );
+}
+
+/** AI 가 방금 읽은 PR·커밋과 판단한 줄. 맨 아래가 가장 최근이다 */
+function StageFeed({ lines }: { lines: ActivityLine[] }) {
+  if (!lines.length) return null;
+  return (
+    <ul className="stage__feed">
+      {lines.map((l) => (
+        <li key={l.seq} className={`feed-line feed-line--${l.tone}`}>
+          {l.tag && <span className="feed-line__tag">{l.tag}</span>}
+          <span className="feed-line__text">{l.text}</span>
+          {l.meta && <span className="feed-line__meta">{l.meta}</span>}
+        </li>
+      ))}
+    </ul>
   );
 }
 

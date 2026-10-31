@@ -5,11 +5,27 @@ import { db, cardView } from "./store";
 import { Card } from "@/api/schemas";
 import { applyMask } from "@/lib/mask";
 
+/**
+ * Mock server only: 응답 계약의 companyId·logoUrl. 예시 JSON 은 서버와 같은 모양을 지키는 문서라 건드리지 않고 여기서 얹는다.
+ * 로고는 한 곳만 https 주소다 — 지어낸 예시 호스트라 실제로는 불러오지 못하고 화면이 이니셜로 되돌린다(이미지 요청이 실패하는 길도 데모에서 그대로 보인다).
+ */
+const MOCK_COMPANY: Record<string, { companyId: string; logoUrl: string | null }> = {
+  [listExample.data[0].id]: { companyId: "gaon", logoUrl: "https://logo.example.com/gaon.svg" },
+  [listExample.data[1].id]: { companyId: "narae", logoUrl: null },
+  [listExample.data[2].id]: { companyId: "daon", logoUrl: null },
+  [listExample.data[3].id]: { companyId: "raon", logoUrl: null },
+  [listExample.data[4].id]: { companyId: "maru", logoUrl: null },
+};
+const scenario = (index: number) => {
+  const example = listExample.data[index];
+  return MatchTarget.parse({ ...example, ...MOCK_COMPANY[example.id] });
+};
+
 /** Mock server only: supplied examples are scenarios, not a client-side matching algorithm. */
 export function mockMatchDetail(id: string): MatchDetail | null {
   const index = listExample.data.findIndex((x) => x.id === id);
   if (index < 0) return null;
-  const target = MatchTarget.parse(listExample.data[index]);
+  const target = scenario(index);
   const confirmed = db.cards.filter((c) => c.status === "CONFIRMED");
   const supports = confirmed.flatMap((c) => {
     const card = Card.parse(cardView(c));

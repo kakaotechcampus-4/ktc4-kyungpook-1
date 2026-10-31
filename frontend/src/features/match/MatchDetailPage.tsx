@@ -1,13 +1,18 @@
 import { useEffect } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 import { matchSupported, useMatch } from "@/api/matching";
 import { Badge, PageTitle, Skeleton } from "@/components/ui";
 import { cardKindLabel } from "@/lib/labels";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { CompanyMark } from "./CompanyMark";
+import { matchViewFromParams } from "./CompanyList";
 import { Fit, MatchFailure, MatchUnavailable } from "./shared";
 import {
   categoryLabel,
+  companyLabel,
+  companyPath,
   dateLabel,
   deadlineLabel,
   experienceLabel,
@@ -36,7 +41,7 @@ export function MatchDetailPage() {
   return (
     <main className="main matching-page">
       <Link to={`/match${sp.size ? `?${sp}` : ""}`} className="match-back">
-        ← 공고 목록
+        {matchViewFromParams(sp) === "company" ? "← 기업 목록" : "← 공고 목록"}
       </Link>
       {query.isPending && <Skeleton h={240} />}
       {query.isError && (
@@ -49,9 +54,17 @@ export function MatchDetailPage() {
       {detail && (
         <>
           <div className="match-detail-head">
-            <div>
-              <p className="match-company">{detail.company}</p>
-              <PageTitle>{detail.role}</PageTitle>
+            <div className="match-detail-who">
+              <CompanyMark name={detail.company} logoUrl={detail.logoUrl} size={56} />
+              <div>
+                <p className="match-company">
+                  <Link className="match-company-link" to={companyPath(detail, sp)}>
+                    <span className="match-company-link__name">{companyLabel(detail.company)}</span>
+                    <ChevronRight size={14} aria-hidden />
+                  </Link>
+                </p>
+                <PageTitle>{detail.role}</PageTitle>
+              </div>
             </div>
             <Fit value={detail.fit} />
           </div>

@@ -53,7 +53,7 @@
   --pastel-blue: #E4F1FC; --pastel-lavender: #EEE8F6; --pastel-mint: #E1F1E6; --pastel-yellow: #F7F1D9;
   --bg-inset: #ECEEF1; --bg-selected: #E4F1FC; --bg-console: #242426;
   --bg-ink-solid: #202022; --bg-ink-hover: #38383C;
-  --text-primary: #202022; --text-strong: #323237; --text-secondary: #62626B; --text-tertiary: #70707A;
+  --text-primary: #202022; --text-strong: #323237; --text-secondary: #62626B; --text-tertiary: #6B6B75;
   --text-on-ink: #FFFFFF; --text-on-console: #FFFFFF;
   --text-accent: #202022; --accent-decoration: #BDD9F1;
   /* 포인트 — 화면마다 눈이 먼저 가야 할 한두 곳(주 행동, 강조 단어, 지금 메뉴)에만. 주 행동은 차콜, 파스텔은 배경으로만 사용 */

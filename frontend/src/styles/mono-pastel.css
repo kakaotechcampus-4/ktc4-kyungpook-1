@@ -1,6 +1,10 @@
 /* White surfaces, charcoal structure, and restrained semantic pastel accents. */
 :root { --shadow-card: 0 6px 24px rgb(28 28 36 / 3%); --heading-weight: 650; }
 .btn { border-radius: 12px; }
+/* 고르기 칸도 버튼과 같은 둥글기여야 한 줄에 놓였을 때 어긋나 보이지 않는다 */
+.select-trigger { border-radius: 12px; }
+/* 아직 안 한 단계 번호의 테두리는 흰 배경과 3:1 이상이어야 보인다 */
+:root:not([data-theme="dark"]) { --step-idle-border: #8E8E98; }
 .card, .modal { border-radius: 20px; }
 .btn--outline { border-color: var(--border-default); }
 .btn--outline:hover:not(:disabled) { border-color: var(--border-strong); }

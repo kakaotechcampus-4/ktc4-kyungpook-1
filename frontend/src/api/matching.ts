@@ -89,21 +89,22 @@ export type MatchDetail = z.infer<typeof MatchDetail>;
  *  - FAILED 여도 앞서 계산한 기업은 companies 에 남아 있다. 많아야 3곳이고 순위 순서다.
  *  - posting.closed 는 계산한 뒤 마감되거나 내려간 공고. 다시 계산하기 전까지 목록에 남는다.
  */
-export const RepoRecommendationStatus = z.enum(["COMPUTING", "READY", "FAILED", "NONE"]);
+export const RecommendationStatus = z.enum(["COMPUTING", "READY", "FAILED", "NONE"]);
+const recommendedPosting = z.object({
+  id: z.string(),
+  title: z.string(),
+  deadline: z.string().datetime({ offset: true }).nullable(),
+  closed: z.boolean(),
+});
 export const RepoRecommendation = z.object({
-  status: RepoRecommendationStatus,
+  status: RecommendationStatus,
   computedAt: z.string().datetime({ offset: true }).nullable(),
   companies: z.array(
     z.object({
       companyId,
       companyName: z.string(),
       logoUrl,
-      posting: z.object({
-        id: z.string(),
-        title: z.string(),
-        deadline: z.string().datetime({ offset: true }).nullable(),
-        closed: z.boolean(),
-      }),
+      posting: recommendedPosting,
       /** 이 레포 카드가 채운 조건의 기술 이름(카드 techs 와 같은 값), 많아야 3개 */
       techs: z.array(z.string()),
       requiredMet: z.number().int().nonnegative(),
@@ -112,6 +113,33 @@ export const RepoRecommendation = z.object({
   ),
 });
 export type RepoRecommendation = z.infer<typeof RepoRecommendation>;
+/**
+ * 공고 페이지 위쪽 '나와 맞는 기업'(#614, `GET /recommendations`). 서버는 '내 조건으로 매칭하기'(`POST /recommendations`, 같은 응답)를 누를 때만 계산한다.
+ *  - COMPUTING 동안 progress 로 '공고 15곳 중 6곳 확인' 을 그린다(그 밖에는 null). 계산은 1분 안팎이다.
+ *  - FAILED 는 실패했거나 계산이 멈춘 것이라 다시 누르면 새로 계산한다. 계산 중·실패여도 지난 기업은 companies 에 남아 있다.
+ *  - stale 이면 계산 뒤 확정 카드나 인적사항이 바뀐 것 → '조건이 바뀌었어요 — 다시 매칭하기'.
+ *  - 기업은 많아야 5곳이고 순위 순서다. requiredMet / requiredTotal 로 '필수 4개 중 3개' 를 쓴다(학력·경력 같은 일반 조건은 세지 않는다).
+ */
+const count = z.number().int().nonnegative();
+export const OverallRecommendation = z.object({
+  status: RecommendationStatus,
+  computedAt: z.string().datetime({ offset: true }).nullable(),
+  stale: z.boolean(),
+  progress: z.object({ done: count, total: count }).nullable(),
+  companies: z.array(
+    z.object({
+      companyId,
+      companyName: z.string(),
+      logoUrl,
+      posting: recommendedPosting,
+      requiredMet: count,
+      requiredTotal: count,
+      preferredMet: count,
+      preferredTotal: count,
+    }),
+  ),
+});
+export type OverallRecommendation = z.infer<typeof OverallRecommendation>;
 type MatchEnv = { VITE_API_MOCK?: string; VITE_MATCH_ENABLED?: string };
 export const matchSupported = (
   env: MatchEnv = {

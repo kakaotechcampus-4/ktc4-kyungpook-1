@@ -1,4 +1,4 @@
-import type { AssignStep, CoverLetterQuestion, MaterialItem, QuestionTheme } from '@/api/coverLetters';
+import type { AssignStep, CoverLetterQuestion, DraftStep, MaterialItem, QuestionTheme } from '@/api/coverLetters';
 import { QUESTION_THEMES } from '@/api/coverLetters';
 
 /** 문항 유형 이름 */
@@ -83,3 +83,53 @@ export function assignLine(step: AssignStep, questions: Pick<CoverLetterQuestion
 
 /** 실패한 단계 이름 */
 export const FAILED_STEP_LABEL: Record<string, string> = { ASSIGN: '카드 고르기', ASK: '질문 만들기', DRAFT: '초안 쓰기' };
+
+// ───────────────────────────── ④ 질문 · ⑤ 쓰기 · ⑥ 초안 ─────────────────────────────
+
+/** 지난번 답으로 미리 채운 줄(question 이 null)의 제목 */
+export const reusedTitle = (item: MaterialItem) => `${ITEM_LABEL[item]} (지난번에 답한 내용)`;
+
+const quoted = (v: string | null) => (v ? `'${v}'` : null);
+/** 검사에 걸린 이유 — `marks[].code` 와 `steps.draft` 의 CHECK_FAILED 가 같은 말을 쓴다 */
+export function checkMessage(code: string | null, value: string | null): string {
+  const v = quoted(value);
+  switch (code) {
+    case 'UNSOURCED_NUMBER': return v ? `${v}는 카드에 없는 수치예요` : '카드에 없는 수치가 있어요';
+    case 'UNSOURCED_TERM': return v ? `${v}는 카드에 없는 낱말이에요` : '카드에 없는 낱말이 있어요';
+    case 'REPEATED': return '다른 문항과 같은 이야기예요';
+    case 'UNSUPPORTED_CLAIM': return '카드와 답에 없는 역할이나 성과예요';
+    case 'OFF_TOPIC': return '문항이 묻는 것을 벗어났어요';
+    case 'OVER_LIMIT': return value ? `글자 수를 ${value}자 넘었어요` : '글자 수를 넘었어요';
+    case 'UNDER_LENGTH': return value ? `목표보다 ${value}자 모자라요` : '목표보다 짧아요';
+    case 'MISSING_BLANK': return value && value in ITEM_LABEL ? `빈칸 '${ITEM_LABEL[value as MaterialItem]}'을 빠뜨렸어요` : '빈칸을 빠뜨렸어요';
+    default: return '확인이 필요해요';
+  }
+}
+
+/**
+ * ⑤ AI 가 한 일 — `steps.draft` 한 줄을 문장으로. 쓰기, 검사, 고칠지 정하기, 다시 쓰기, 감독 검토가 차례로 쌓인다.
+ * 모르는 kind 는 null(건너뛴다).
+ */
+export function draftLine(step: DraftStep, questions: Pick<CoverLetterQuestion, 'id' | 'seq'>[]): { text: string; reason: string | null; tone: 'work' | 'check' | 'fix' } | null {
+  const n = questions.find((q) => q.id === step.questionId)?.seq;
+  const q = n != null ? `${n}번 문항 ` : '';
+  const chars = step.value && /^\d+$/.test(step.value) ? `(${Number(step.value).toLocaleString()}자)` : '';
+  const reason = step.reason?.trim() || null;
+  switch (step.kind) {
+    case 'WROTE': return { text: `${q}초안을 썼어요${chars}`, reason: null, tone: 'work' };
+    case 'CHECK_PASSED': return { text: `${q}근거와 글자 수 검사를 통과했어요`, reason: null, tone: 'check' };
+    case 'CHECK_FAILED': return { text: `${q}검사: ${checkMessage(step.code, step.value)}`, reason: null, tone: 'fix' };
+    case 'DECIDED': return { text: step.action === 'KEEP' ? `${q}그대로 두기로 했어요` : `${q}고치기로 했어요`, reason, tone: 'check' };
+    case 'REWROTE': return { text: `${q}고쳐서 다시 썼어요${chars}`, reason: null, tone: 'work' };
+    case 'REVERTED': return { text: `${q}다시 쓴 글이 새 문제를 만들어 앞 초안으로 돌렸어요`, reason: null, tone: 'fix' };
+    case 'MARKED': return { text: `${q}${step.value ? `'${step.value}'에 ` : ''}확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' };
+    case 'SKELETON': return { text: `${q}초안을 쓰지 못해 카드 문장으로 뼈대를 만들었어요`, reason: null, tone: 'fix' };
+    case 'REVIEWED': {
+      const count = Number(step.value);
+      return { text: count > 0 ? `모든 문항을 함께 읽고 ${count}문장을 다시 보게 했어요` : '모든 문항을 함께 읽고 확인했어요', reason, tone: 'check' };
+    }
+    case 'SENT_BACK': return { text: `${q}${step.sentenceSeq != null ? `${step.sentenceSeq}번째 문장을 ` : ''}다시 쓰게 했어요`, reason: reason ?? checkMessage(step.code, null), tone: 'fix' };
+    case 'FAILED': return { text: q ? `${q}초안 쓰기를 마치지 못했어요` : '전체 검토를 하지 못했어요', reason: null, tone: 'fix' };
+    default: return null;
+  }
+}

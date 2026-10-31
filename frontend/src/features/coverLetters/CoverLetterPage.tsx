@@ -5,10 +5,12 @@ import { useCoverLetter, useRetryCoverLetter, useStartAsking, type CoverLetter, 
 import { Badge, Breadcrumb, Button, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { ASSIGNED_BY_LABEL, CHECK_ITEMS, FAILED_STEP_LABEL, ITEM_LABEL, THEME_LABEL, assignLine, primaryState } from '@/lib/coverLetterCopy';
+import { ASSIGNED_BY_LABEL, CHECK_ITEMS, FAILED_STEP_LABEL, ITEM_LABEL, THEME_LABEL, assignLine, draftLine, primaryState } from '@/lib/coverLetterCopy';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { AnswerQuestions } from './AnswerQuestions';
 import { CardPicker } from './CardPicker';
+import { DraftEditor } from './DraftEditor';
 import './coverLetters.css';
 
 /** 자소서 한 편 — 응답의 stage 가 화면을 정한다. #517 은 ② 기다림, ③ 카드 확인, 실패까지 */
@@ -36,7 +38,10 @@ export function CoverLetterPage() {
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}
       {l.stage === 'ASSIGNED' && <AssignReview letter={l} />}
       {l.stage === 'FAILED' && <Failed letter={l} />}
-      {(l.stage === 'ASKING' || l.stage === 'ASKED' || l.stage === 'DRAFTING' || l.stage === 'DRAFTED') && <NextSteps letter={l} />}
+      {l.stage === 'ASKING' && <AskWait letter={l} />}
+      {l.stage === 'ASKED' && <AnswerQuestions key={l.id} letter={l} />}
+      {l.stage === 'DRAFTING' && <DraftWait letter={l} />}
+      {l.stage === 'DRAFTED' && <DraftEditor key={l.id} letter={l} />}
     </main>
   );
 }
@@ -191,19 +196,47 @@ function Failed({ letter }: { letter: CoverLetter }) {
   );
 }
 
-/** ④ 이후는 #518 에서 붙인다. 그 전까지는 지금 단계와 고른 카드만 보인다 */
-function NextSteps({ letter }: { letter: CoverLetter }) {
+/** ④ 질문을 만드는 동안 — 문항과 쓸 카드를 보여 준다 */
+function AskWait({ letter }: { letter: CoverLetter }) {
   return (
     <>
-      <PageTitle sub={`${letter.jobRole}, 문항 ${letter.questions.length}개`}>
-        {letter.stage === 'ASKING' ? '카드에 모자란 재료를 찾고 있어요' : letter.stage === 'DRAFTING' ? '초안을 쓰고 있어요' : '다음 단계 화면을 준비하고 있어요'}
-      </PageTitle>
-      {letter.pollAfterMs != null && <AiWait label={letter.stage === 'ASKING' ? '문항마다 무엇을 더 물어볼지 정하고 있어요' : '문항마다 초안을 쓰고 검사하고 있어요'} />}
+      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개`}>카드에 모자란 재료를 찾고 있어요</PageTitle>
       <ol className="cl-qlist">
         {letter.questions.map((q) => (
           <li key={q.id}><span className="cl-q__no" aria-hidden>{q.seq}</span><span className="grow">{q.text}</span><span className="c-3 t-12">{q.primaryCard?.title ?? '카드 없음'}</span></li>
         ))}
       </ol>
+      <section className="cl-agent" aria-label="AI가 하는 일">
+        <AiWait label="문항마다 카드를 읽고 무엇을 더 물어볼지 정하고 있어요" />
+      </section>
+    </>
+  );
+}
+
+/** ⑤ AI 가 문항마다 쓰고, 검사하고, 걸리면 다시 쓰고, 마지막에 감독이 함께 검토한다 — 그 줄이 폴링마다 쌓인다 */
+function DraftWait({ letter }: { letter: CoverLetter }) {
+  const lines = letter.steps.draft
+    .map((s) => ({ seq: s.seq, line: draftLine(s, letter.questions) }))
+    .filter((x): x is { seq: number; line: NonNullable<ReturnType<typeof draftLine>> } => !!x.line);
+  return (
+    <>
+      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개`}>초안을 쓰고 있어요</PageTitle>
+      <ol className="cl-qlist">
+        {letter.questions.map((q) => <li key={q.id}><span className="cl-q__no" aria-hidden>{q.seq}</span><span>{q.text}</span></li>)}
+      </ol>
+      <section className="cl-agent" aria-label="AI가 한 일">
+        <AiWait label="문항마다 초안을 쓰고 근거와 글자 수를 검사하고 있어요" />
+        {lines.length > 0 && (
+          <ul className="cl-feed">
+            {lines.map(({ seq, line }) => (
+              <li key={seq} className={`cl-feed__line cl-feed__line--${line.tone}`}>
+                <span className="cl-feed__text">{line.text}</span>
+                {line.reason && <span className="cl-feed__reason">{line.reason}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </>
   );
 }

@@ -1,6 +1,6 @@
 /*
  * Gitory 디자인 토큰 — 기존 의미 토큰 이름을 유지하고 사용자 팔레트를 연결한다.
- * 브랜드는 세이지 그린/말차 나이트. 앰버 = 확인 필요 · 브릭 = 실패.
+ * 브랜드는 화이트/차콜과 파스텔 포인트. 앰버 = 확인 필요 · 브릭 = 실패.
  * 상태 토큰 이름은 스펙 enum 과 같다 (status/draft · candidate/used · field/dropped …).
  *
  * 테마: 기본은 라이트 고정. OS 다크모드를 자동으로 따라가지 않는다.
@@ -43,24 +43,25 @@
   --step-idle-text: var(--text-strong);
   --step-idle-border: var(--border-strong);
   --shadow-dialog: 0 24px 80px rgba(0, 0, 0, .24);
-  --focus: 0 0 0 3px rgba(70, 112, 78, .24);
+  --focus: 0 0 0 3px rgba(78, 128, 190, .3);
 
   /* 2. Semantic — Light (기본) */
   color-scheme: light;
-  --bg-paper: var(--matcha-mist); --bg-canvas: var(--matcha-mist); --bg-surface: var(--ink-0); --bg-subtle: #EDF4EF;
-  --bg-inset: #E5EFE8; --bg-selected: #DFEDE3; --bg-console: var(--matcha-deep);
-  --bg-ink-solid: var(--matcha-green); --bg-ink-hover: var(--matcha-deep);
-  --text-primary: #1C2B21; --text-strong: #344B3B; --text-secondary: #51695A; --text-tertiary: #586C5E;
-  --text-on-ink: var(--ink-0); --text-on-console: var(--matcha-mist);
-  --text-accent: var(--matcha-green); --accent-decoration: var(--matcha-sage);
-  /* 포인트 — 화면마다 눈이 먼저 가야 할 한두 곳(주 행동, 강조 단어, 지금 메뉴)에만. 흰 글자 대비 4.8:1 */
-  --accent-point: #4F7F24; --accent-point-hover: var(--matcha-deep); --accent-point-soft: rgba(79, 127, 36, .12);
-  --border-default: #D5E2D9; --border-strong: #7C9081; --border-selected: var(--matcha-green);
-  --nav-active-bg: var(--bg-selected); --nav-active-text: var(--matcha-deep);
+  --bg-paper: #FAFAFB; --bg-canvas: #FAFAFB; --bg-surface: #FFFFFF; --bg-subtle: #F3F4F6;
+  --pastel-blue: #E4F1FC; --pastel-lavender: #EEE8F6; --pastel-mint: #E1F1E6; --pastel-yellow: #F7F1D9;
+  --bg-inset: #ECEEF1; --bg-selected: #E4F1FC; --bg-console: #242426;
+  --bg-ink-solid: #202022; --bg-ink-hover: #38383C;
+  --text-primary: #202022; --text-strong: #323237; --text-secondary: #62626B; --text-tertiary: #70707A;
+  --text-on-ink: #FFFFFF; --text-on-console: #FFFFFF;
+  --text-accent: #202022; --accent-decoration: #BDD9F1;
+  /* 포인트 — 화면마다 눈이 먼저 가야 할 한두 곳(주 행동, 강조 단어, 지금 메뉴)에만. 주 행동은 차콜, 파스텔은 배경으로만 사용 */
+  --accent-point: #202022; --accent-point-hover: #38383C; --accent-point-soft: #E4F1FC;
+  --border-default: #E5E5EA; --border-strong: #94949E; --border-selected: #565660;
+  --nav-active-bg: #E4F1FC; --nav-active-text: #202022;
   --sidebar-text: var(--ink-900);
-  --bg-feature: var(--matcha-deep); --text-on-feature: var(--matcha-mist); --text-on-feature-muted: #D7E6DB;
-  --feature-button-bg: var(--matcha-mist); --feature-button-hover: var(--ink-0); --feature-button-text: var(--matcha-deep);
-  --toast-bg: var(--matcha-deep); --toast-success-bg: var(--matcha-deep); --text-on-toast: var(--ink-0); --toast-muted: #DDEAE1;
+  --bg-feature: #242426; --text-on-feature: #FFFFFF; --text-on-feature-muted: #CDCDD4;
+  --feature-button-bg: #E4F1FC; --feature-button-hover: #F2F8FE; --feature-button-text: #202022;
+  --toast-bg: #242426; --toast-success-bg: #242426; --text-on-toast: #FFFFFF; --toast-muted: #D6D6DE;
 
   --status-draft-bg: var(--bg-subtle); --status-draft-text: var(--text-strong);
   --status-confirmed-bg: var(--bg-ink-solid); --status-confirmed-text: var(--text-on-ink);
@@ -77,24 +78,25 @@
   --dim: rgba(23, 23, 23, .42);
 }
 
-/* Matcha Night — explicit opt-in; the user's selected theme remains persistent.
+/* Neutral Night — explicit opt-in; the user's selected theme remains persistent.
  * 화면에만 적용한다: 인쇄는 흰 종이라, 다크 토큰이 남으면 밝은 글씨가 흰 종이에 찍혀 읽을 수 없다(면접 직전 복습용 인쇄). */
 @media screen {
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg-paper: var(--matcha-night); --bg-canvas: var(--matcha-night); --bg-surface: var(--matcha-surface); --bg-subtle: var(--matcha-inset);
-  --bg-inset: var(--matcha-inset); --bg-selected: var(--matcha-inset); --bg-console: var(--matcha-inset);
-  --bg-ink-solid: var(--matcha-highlight); --bg-ink-hover: #B8D18F;
-  --text-primary: #EDF2E4; --text-strong: #DCE6CF; --text-secondary: #C1CBB4; --text-tertiary: #AEB9A0;
-  --text-on-ink: var(--matcha-night); --text-on-console: #EDF2E4;
-  --text-accent: var(--matcha-highlight); --accent-decoration: var(--matcha-highlight);
-  --accent-point: var(--matcha-highlight); --accent-point-hover: #B8D18F; --accent-point-soft: rgba(168, 196, 124, .14);
-  --border-default: #343D2A; --border-strong: #65734F; --border-selected: var(--matcha-highlight);
-  --nav-active-bg: var(--matcha-inset); --nav-active-text: var(--matcha-highlight);
+  --bg-paper: #171719; --bg-canvas: #171719; --bg-surface: #232326; --bg-subtle: #2D2D32;
+  --pastel-blue: #25394C; --pastel-lavender: #393047; --pastel-mint: #273F34; --pastel-yellow: #413D2A;
+  --bg-inset: #303036; --bg-selected: #25394C; --bg-console: #303036;
+  --bg-ink-solid: #E4F1FC; --bg-ink-hover: #FFFFFF;
+  --text-primary: #F5F5F7; --text-strong: #E4E4E9; --text-secondary: #BDBDC8; --text-tertiary: #ABABB8;
+  --text-on-ink: #202022; --text-on-console: #F5F5F7;
+  --text-accent: #E4F1FC; --accent-decoration: #6C8EAC;
+  --accent-point: #E4F1FC; --accent-point-hover: #FFFFFF; --accent-point-soft: #25394C;
+  --border-default: #3C3C44; --border-strong: #737380; --border-selected: #BDD9F1;
+  --nav-active-bg: #E4F1FC; --nav-active-text: #202022;
   --sidebar-text: var(--text-primary);
-  --bg-feature: var(--matcha-inset); --text-on-feature: #EDF2E4; --text-on-feature-muted: #C1D2A8;
-  --feature-button-bg: var(--matcha-highlight); --feature-button-hover: #B8D18F; --feature-button-text: var(--matcha-night);
-  --toast-bg: #26351E; --toast-success-bg: var(--matcha-night-deep); --text-on-toast: #EDF2E4; --toast-muted: #D8E5C4;
+  --bg-feature: #2D2D32; --text-on-feature: #F5F5F7; --text-on-feature-muted: #BDBDC8;
+  --feature-button-bg: #E4F1FC; --feature-button-hover: #FFFFFF; --feature-button-text: #202022;
+  --toast-bg: #303036; --toast-success-bg: #303036; --text-on-toast: #F5F5F7; --toast-muted: #CDCDD4;
   --status-draft-bg: var(--bg-subtle); --status-draft-text: var(--text-secondary);
   --status-confirmed-bg: var(--bg-ink-solid); --status-confirmed-text: var(--text-on-ink);
   --candidate-new-bg: var(--bg-surface); --candidate-new-text: var(--text-secondary); --candidate-new-border: var(--border-default);
@@ -102,11 +104,11 @@
   --candidate-excluded-bg: var(--bg-paper); --candidate-excluded-text: var(--text-tertiary);
   --field-low-bg: var(--caution-900); --field-low-text: var(--caution-300); --field-low-border: var(--caution-300);
   --field-dropped-bg: var(--bg-paper); --field-dropped-text: var(--text-tertiary);
-  --evidence-commit-bg: var(--matcha-inset); --evidence-commit-text: #DCE9C8; --evidence-commit-label: var(--matcha-highlight); --evidence-commit-muted: #C5D8A7;
+  --evidence-commit-bg: #2D2D32; --evidence-commit-text: #E4E4E9; --evidence-commit-label: #BDD9F1; --evidence-commit-muted: #BDBDC8;
   --evidence-user-bg: var(--bg-surface); --evidence-user-text: var(--text-secondary);
   --state-failed-bg: var(--danger-900); --state-failed-text: var(--danger-300);
   --state-partial-bg: var(--bg-subtle); --state-partial-text: var(--text-secondary);
-  --focus: 0 0 0 3px rgba(168, 196, 124, .3);
+  --focus: 0 0 0 3px rgba(189, 217, 241, .4);
   --state-open-bg: var(--caution-900); --state-open-text: var(--caution-300);
   --dim: rgba(0, 0, 0, .6);
 }

@@ -5479,6 +5479,14 @@
             "title": "Star",
             "type": "object"
           },
+          "steps": {
+            "description": "초안이 거친 단계 순서대로. 고쳐 쓰기를 끄면 첫 초안과 첫 검사만, 마감으로 비운 카드는 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/StarStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
           "techs": {
             "description": "카드 기술 태그. 최대 4개, 중요한 것부터. 판단할 수 없으면 빈 배열",
             "items": {
@@ -5674,6 +5682,117 @@
           }
         },
         "title": "StarMaterials",
+        "type": "object"
+      },
+      "StarStep": {
+        "description": "STAR 초안이 거친 단계 하나로, 문장은 화면이 값으로 만든다.",
+        "properties": {
+          "actor": {
+            "enum": [
+              "MODEL",
+              "CODE"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FLAG 의 문제 코드(NO_EVIDENCE·UNSOURCED_NUMBER·REVERSED_MEANING·EMPTY)",
+            "title": "Code"
+          },
+          "kind": {
+            "enum": [
+              "DRAFT",
+              "FLAG",
+              "OPEN",
+              "RETRY",
+              "KEEP",
+              "REWRITE",
+              "PASS",
+              "REVERT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ISSUE",
+                  "REVIEW",
+                  "OWNER_REPLY"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OPEN 일 때 연 자료 종류",
+            "title": "Material"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "모델이 고른 행동(OPEN·RETRY·KEEP)의 이유 한 줄(60자 이내)",
+            "title": "Reason"
+          },
+          "round": {
+            "description": "0 은 첫 초안과 첫 검사, 1·2 는 고쳐 쓴 바퀴",
+            "minimum": 0.0,
+            "title": "Round",
+            "type": "integer"
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "enum": [
+                  "S",
+                  "T",
+                  "A",
+                  "R"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 전체 단계(DRAFT)는 null",
+            "title": "Slot"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "걸린 수치나 연 자료 제목",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "round",
+          "actor",
+          "kind"
+        ],
+        "title": "StarStep",
         "type": "object"
       },
       "StatementTarget": {

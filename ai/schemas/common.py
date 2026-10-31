@@ -58,6 +58,13 @@ AnalysisVerdict = Literal["OK", "EMPTY", "PARTIAL"]
 #: 프론트 StarFieldState와 같게 두어 별도 문자열 번역을 만들지 않는다.
 StarStatus = Literal["FILLED", "EMPTY", "NEEDS_REVIEW"]
 
+#: STAR 초안을 고쳐 쓸 때 AI 가 골라 열 수 있는 자료 종류.
+StarMaterialKind = Literal["ISSUE", "REVIEW", "OWNER_REPLY"]
+
+#: STAR 초안이 거친 단계를 누가 했고 무엇을 했는지로, Spring 이 card_draft_step 의 CHECK 값으로 그대로 저장한다.
+StarStepActor = Literal["MODEL", "CODE"]
+StarStepKind = Literal["DRAFT", "FLAG", "OPEN", "RETRY", "KEEP", "REWRITE", "PASS", "REVERT"]
+
 #: 요청이 어떻게 끝났는지. PARTIAL 은 마감·누락으로 일부만, FALLBACK 은 LLM 대신 정해 둔 길로 끝난 것이다.
 EndedBy = Literal["COMPLETED", "PARTIAL", "FALLBACK", "FAILED"]
 

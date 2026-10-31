@@ -8,7 +8,9 @@ import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarEvidenceSource;
+import com.gitory.backend.agent.port.StarIssueMaterial;
 import com.gitory.backend.agent.port.StarMaterialKind;
+import com.gitory.backend.agent.port.StarMaterials;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
@@ -165,7 +167,7 @@ class AiStarDraftAdapterTest {
                 List.of("src/main/java/SessionConfig.java"));
         StarDraftRequest empty = request();
         adapter.draft(new StarDraftRequest(empty.candidateId(), empty.targetLogin(), empty.title(), empty.sourceType(),
-                empty.sourceRef(), List.of(withPaths, base), null));
+                empty.sourceRef(), List.of(withPaths, base), null, null));
 
         JsonNode evidence = MAPPER.readTree(requestBody).path("evidence");
         assertThat(evidence.path(0).path("changed_paths").get(0).asString()).isEqualTo("src/main/java/SessionConfig.java");
@@ -217,7 +219,7 @@ class AiStarDraftAdapterTest {
 
         StarDraftRequest base = request();
         adapter.draft(new StarDraftRequest(base.candidateId(), base.targetLogin(), base.title(), base.sourceType(),
-                base.sourceRef(), base.evidence(), "## 고민한 점 폴링을 골랐다"));
+                base.sourceRef(), base.evidence(), "## 고민한 점 폴링을 골랐다", null));
 
         assertThat(MAPPER.readTree(requestBody).path("pull_request_body").asString()).isEqualTo("## 고민한 점 폴링을 골랐다");
 
@@ -264,6 +266,24 @@ class AiStarDraftAdapterTest {
         }));
 
         assertThat(adapter.draft(request()).steps()).hasSize(60).last().extracting(StarStep::code).isEqualTo("C59");
+
+    }
+
+    @Test
+    @DisplayName("자료가 있으면 materials 로 이슈 번호·제목·본문과 리뷰·카드 주인 답 댓글을 싣는다(없으면 키를 싣지 않는 것은 위 시험의 JSON 이 확인한다)")
+    void sendsMaterialsWhenPresent() {
+
+        StarDraftRequest base = request();
+        adapter.draft(new StarDraftRequest(base.candidateId(), base.targetLogin(), base.title(), base.sourceType(),
+                base.sourceRef(), base.evidence(), null, new StarMaterials(
+                List.of(new StarIssueMaterial(98, "세션 만료", "30분 뒤 풀림")), List.of("남의 리뷰"), List.of("내 답"))));
+
+        JsonNode materials = MAPPER.readTree(requestBody).path("materials");
+        assertThat(materials.path("issues").get(0).path("number").asInt()).isEqualTo(98);
+        assertThat(materials.path("issues").get(0).path("title").asString()).isEqualTo("세션 만료");
+        assertThat(materials.path("issues").get(0).path("body").asString()).isEqualTo("30분 뒤 풀림");
+        assertThat(materials.path("reviews").get(0).asString()).isEqualTo("남의 리뷰");
+        assertThat(materials.path("owner_replies").get(0).asString()).isEqualTo("내 답");
 
     }
 
@@ -522,7 +542,7 @@ class AiStarDraftAdapterTest {
 
         return new StarDraftRequest("cand-1", "grow22", TITLE, StarSourceType.PR, "#17",
                 List.of(new StarEvidence(SHA, MESSAGE, "grow22", "+71/-0", REQUEST_TEXT, StarEvidenceSource.DIFF,
-                        List.of("Spring Session JDBC"), URL, List.of())), null);
+                        List.of("Spring Session JDBC"), URL, List.of())), null, null);
 
     }
 

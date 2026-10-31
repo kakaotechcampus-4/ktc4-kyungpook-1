@@ -4,6 +4,8 @@ import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.StarDraft;
 import com.gitory.backend.agent.port.StarDraftPort;
 import com.gitory.backend.agent.port.StarDraftRequest;
+import com.gitory.backend.agent.port.StarIssueMaterial;
+import com.gitory.backend.agent.port.StarMaterials;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceSource;
 import com.gitory.backend.agent.port.StarSourceType;
@@ -110,7 +112,8 @@ public class CardDraftRunner {
             }
 
             String body = pullRequestBodyOf(job.getUserRepositoryId(), source.get(), login);
-            StarDraft draft = star.draft(requestOf(source.get(), card, login, evidence, body));
+            StarMaterials materials = materialsOf(job.getUserRepositoryId(), source.get(), login);
+            StarDraft draft = star.draft(requestOf(source.get(), card, login, evidence, body, materials));
             return finishCard(job.getId(), done, total, () -> written(card, draft, commits));
         } catch (RuntimeException failure) {
             log.warn("카드 초안 Job {} 의 카드 {} 를 채우지 못했다", job.getId(), card.id(), failure);
@@ -252,14 +255,35 @@ public class CardDraftRunner {
 
     }
 
-    // 사용자가 쓴 확인 답변은 보내지 않아, AI 는 커밋 근거와 카드 주인이 쓴 PR 본문으로 칸을 채운다
+    // 첫 쓰기에는 쓰지 않고 AI 가 걸리거나 빈 칸에서 골라 여는 자료라, PR 본문처럼 카드 주인이 쓴 PR 의 것만 보낸다
+    // 자료가 없으면 칸을 빼서, 이 칸을 모르는 AI 가 모르는 칸으로 요청을 거절하지 않게 한다
+    private StarMaterials materialsOf(Long userRepositoryId, CandidateDraftSource source, String login) {
+
+        if (source.githubPrNumber() == null) {
+            return null;
+        }
+
+        return storedActivity.findOwnPullRequestMaterials(userRepositoryId, source.githubPrNumber(), login)
+                .filter(materials -> !materials.isEmpty())
+                .map(materials -> new StarMaterials(
+                        materials.issues().stream()
+                                .map(issue -> new StarIssueMaterial(issue.number(), issue.title(), issue.body()))
+                                .toList(),
+                        materials.reviews(), materials.ownerReplies()))
+                .orElse(null);
+
+    }
+
+    // 사용자가 쓴 확인 답변은 보내지 않아, AI 는 커밋 근거와 카드 주인이 쓴 PR 본문·자료로 칸을 채운다
     private static StarDraftRequest requestOf(CandidateDraftSource source, GeneratedCard card, String login,
-                                              DiffEvidenceResult evidence, String pullRequestBody) {
+                                              DiffEvidenceResult evidence, String pullRequestBody,
+                                              StarMaterials materials) {
 
         String sourceRef = source.sourceRef() == null || source.sourceRef().isBlank() ? null : source.sourceRef();
         return new StarDraftRequest(source.publicId().toString(), login, card.title(),
                 StarSourceType.valueOf(source.type().name()), sourceRef,
-                evidence.evidence().stream().map(CardDraftRunner::starEvidenceOf).toList(), pullRequestBody);
+                evidence.evidence().stream().map(CardDraftRunner::starEvidenceOf).toList(), pullRequestBody,
+                materials);
 
     }
 

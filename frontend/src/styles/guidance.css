@@ -205,3 +205,43 @@
 @keyframes feed-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .feed-line { animation: none; } }
 @media (max-width: 640px) { .feed-line--read .feed-line__meta { display: none; } }
+
+/* ───────── 커밋 레일 — Gitory 의 한 가지 얼굴 ─────────
+ * STAR 문장 왼쪽에 커밋 그래프 같은 세로 선. 커밋이 받치는 칸은 그 수를 적은 점, 내 답변만 있는 칸은 속 빈 원, 빈 칸은 점선 원과 끊긴 선.
+ * "근거 없는 문장은 화면에 뜨지 않는다 — 빈 칸이 제품의 증거"를 한눈에 보이게 한다. 나머지 화면은 조용히 둔다.
+ * 숫자는 근거 버튼에도 있으니 읽기 프로그램에는 점을 읽히지 않는다(content 의 대체 텍스트 ""). */
+.evidence-rail { --rail-x: 36px; --rail-dot: 24px; }
+.evidence-rail:not(.evidence-rail--rows) { padding-left: var(--rail-x); }
+.evidence-rail > [data-commits] { position: relative; overflow: visible; }
+.evidence-rail > [data-commits]::before {
+  content: attr(data-commits) / ""; position: absolute; z-index: 1; display: grid; place-items: center;
+  width: var(--rail-dot); height: var(--rail-dot); border-radius: 50%;
+  font-size: 11px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+  background: var(--accent-point); color: var(--text-on-ink); box-shadow: 0 0 0 4px var(--bg-canvas);
+}
+/* 내 답변으로만 채운 칸: 속 빈 원(커밋 근거는 없지만 비어 있지는 않다). 빈 칸: 점선 원 */
+.evidence-rail > [data-rail="user"]::before { content: "" / ""; background: var(--bg-canvas); border: 2px solid var(--accent-point); box-sizing: border-box; }
+.evidence-rail > [data-rail="empty"]::before { content: "" / ""; background: var(--bg-canvas); border: 2px dashed var(--border-strong); box-sizing: border-box; }
+.evidence-rail > [data-commits]:not(:last-child)::after {
+  content: ""; position: absolute; width: 2px; background: var(--accent-point);
+}
+/* 근거 없는 칸으로 들어가거나 나오는 선은 끊어 그린다 */
+.evidence-rail > [data-rail="empty"]:not(:last-child)::after,
+.evidence-rail > [data-commits]:has(+ [data-rail="empty"])::after {
+  background: repeating-linear-gradient(to bottom, var(--border-strong) 0 5px, transparent 5px 10px);
+}
+/* 작성 중 카드: 칸마다 떨어진 카드 — 레일은 카드 바깥 왼쪽 */
+.evidence-rail:not(.evidence-rail--rows) > [data-commits]::before { left: calc(-1 * var(--rail-x)); top: 16px; }
+.evidence-rail:not(.evidence-rail--rows) > [data-commits]:not(:last-child)::after { left: calc(-1 * var(--rail-x) + var(--rail-dot) / 2 - 1px); top: calc(16px + var(--rail-dot)); bottom: -28px; }
+/* 확정 카드: 한 카드 안의 줄들 — 레일은 줄 안 왼쪽 */
+.evidence-rail--rows > [data-commits] { padding-left: calc(20px + var(--rail-x)); }
+.evidence-rail--rows > [data-commits]::before { left: 20px; top: 24px; box-shadow: 0 0 0 4px var(--bg-surface); }
+.evidence-rail--rows > [data-rail="user"]::before, .evidence-rail--rows > [data-rail="empty"]::before { background: var(--bg-surface); }
+.evidence-rail--rows > [data-commits]:not(:last-child)::after { left: calc(20px + var(--rail-dot) / 2 - 1px); top: calc(24px + var(--rail-dot)); bottom: -24px; }
+@media (max-width: 767px) {
+  .evidence-rail { --rail-x: 28px; --rail-dot: 20px; }
+  .evidence-rail--rows > [data-commits] { padding-left: calc(16px + var(--rail-x)); }
+  .evidence-rail--rows > [data-commits]::before { left: 12px; }
+  .evidence-rail--rows > [data-commits]:not(:last-child)::after { left: calc(12px + var(--rail-dot) / 2 - 1px); }
+}
+@media print { .evidence-rail > [data-commits]::before, .evidence-rail > [data-commits]::after { display: none; } .evidence-rail:not(.evidence-rail--rows) { padding-left: 0; } }

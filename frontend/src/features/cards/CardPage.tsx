@@ -21,7 +21,7 @@ import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
 import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
 import { matchSupported } from '@/api/matching';
-import { StarBlock, applyMask } from './StarBlock';
+import { StarBlock, applyMask, railKind } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -139,12 +139,12 @@ export function CardPage() {
           <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast('다시 편집할 수 있습니다. 확정 버전은 히스토리에 남습니다.'); } })}>수정하기</Button>
         </>} />
         <div className="two-col two-col--340">
-          <div className="card star-read">
+          <div className="card star-read evidence-rail evidence-rail--rows">
             {STAR_FIELDS.map((f) => {
               const t = card.version[fieldKey[f]];
               const ev = card.evidence.filter((e) => e.field === f);
               return (
-                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'}>
+                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'} rail={{ commits: ev.filter((e) => e.type === 'COMMIT').length, kind: railKind(!t, ev) }}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했습니다</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
@@ -238,7 +238,8 @@ export function CardPage() {
       )}
 
       <div className="two-col card-detail-layout">
-        <div className="stack" style={{ gap: 12 }}>
+        {/* 커밋 레일 — 문장마다 몇 개의 커밋이 받치는지, 근거 없는 칸은 선이 끊긴다. Gitory 의 한 가지 얼굴 */}
+        <div className="stack evidence-rail" style={{ gap: 12 }}>
           {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
         <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>

@@ -966,6 +966,34 @@
         },
         "type" : "object"
       },
+      "CardDraftLive" : {
+        "properties" : {
+          "cardId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "slots" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Slot"
+            },
+            "type" : "array"
+          },
+          "state" : {
+            "enum" : [ "WAITING", "READING", "WRITING", "DONE", "FAILED" ],
+            "type" : "string"
+          },
+          "steps" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DraftStep"
+            },
+            "type" : "array"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CardDraftResponse" : {
         "description" : "임시 저장 결과. 칸은 저장된 글이고 비운 칸은 null 입니다.",
         "properties" : {
@@ -1729,6 +1757,40 @@
         },
         "type" : "object"
       },
+      "DraftStep" : {
+        "properties" : {
+          "actor" : {
+            "enum" : [ "MODEL", "CODE" ],
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "field" : {
+            "enum" : [ "S", "T", "A", "R" ],
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "DRAFT", "FLAG", "OPEN", "RETRY", "KEEP", "REWRITE", "PASS", "REVERT" ],
+            "type" : "string"
+          },
+          "material" : {
+            "enum" : [ "ISSUE", "REVIEW", "OWNER_REPLY" ],
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "round" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "DraftStepResponse" : {
         "description" : "AI 초안이 거친 단계 하나로, 화면이 값으로 문장을 만든다",
         "properties" : {
@@ -2075,6 +2137,13 @@
             "description" : "AI 가 방금 읽거나 판단한 줄, 오래된 것부터. 읽기 줄(PULL_REQUEST·COMMIT)은 단계마다 최근 20줄, 판단 줄(GROUPED·DESCRIBED)은 모두 싣고, Job 이 끝나고 10분 뒤나 서버가 다시 시작되면 빈 목록이다. seq 는 Job 안에서 1부터 늘어나 이미 받은 줄을 가를 수 있다",
             "items" : {
               "$ref" : "#/components/schemas/JobActivity"
+            },
+            "type" : "array"
+          },
+          "drafts" : {
+            "description" : "카드 초안 Job 이 쓰는 카드를 쓰는 순서대로. 카드마다 state 는 WAITING → READING(코드 읽는 중) → WRITING(칸 쓰는 중) → DONE·FAILED, slots 는 칸마다 지금까지 쓴 전체 글 하나로 다시 쓰면 round 가 올라가며 done 인데 text 가 빈 글이면 AI 가 근거가 없어 비운 칸이다. steps 는 카드 상세 draftSteps 와 같은 모양이다. 카드 초안 Job 이 아니거나, Job 이 끝나고 10분 뒤나 서버가 다시 시작되면 빈 목록이다",
+            "items" : {
+              "$ref" : "#/components/schemas/CardDraftLive"
             },
             "type" : "array"
           },
@@ -3100,6 +3169,25 @@
               "$ref" : "#/components/schemas/CoverLetterAnswerInput"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "Slot" : {
+        "properties" : {
+          "done" : {
+            "type" : "boolean"
+          },
+          "field" : {
+            "enum" : [ "S", "T", "A", "R" ],
+            "type" : "string"
+          },
+          "round" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
           }
         },
         "type" : "object"

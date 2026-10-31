@@ -98,7 +98,7 @@ class InterviewAskServiceTest {
         when(ownership.lockOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(card);
 
         request = new InterviewQuestionRequest(CARD_ID, null,
-                List.of(new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of())),
+                List.of(new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, null, List.of())),
                 0, 2, InterviewCardSourceType.DIRECT_CARD, InterviewCardKind.QUALITATIVE, null, List.of(), List.of());
         when(assembler.assemble(any(Card.class), anyList(), any(), anyList())).thenReturn(request);
         when(port.nextQuestion(request)).thenReturn(question(InterviewStarSlot.T));

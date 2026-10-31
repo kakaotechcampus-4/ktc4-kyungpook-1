@@ -1,6 +1,7 @@
 .card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
 .card-tags li { padding: 3px 8px; border-radius: 6px; color: var(--text-secondary); background: var(--bg-subtle); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .card-tags .card-tags__area { color: var(--text-primary); font-weight: 500; }
+.card-tags .card-tags__more { padding-inline: 2px; background: none; color: var(--text-secondary); font-weight: 700; }
 .experience-item .card-tags { margin-top: 0; }
 .card-page-header__identity { min-width: 0; }
 .card-tag-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

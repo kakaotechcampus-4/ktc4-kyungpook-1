@@ -105,6 +105,7 @@
       "existing_turn_count": 0,
       "max_turns": 8,
       "source_type": "PR",
+      "card_kind": "TECH",
       "target_star_slot": "A",
       "allowed_slots": [
         "S",

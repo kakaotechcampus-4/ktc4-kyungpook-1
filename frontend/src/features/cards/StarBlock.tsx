@@ -27,7 +27,7 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
   const shown = masked ? applyMask(text ?? '', card.maskRules) : text;
 
   return (
-    <section className={`card star ${isDropped ? 'card--dropped star--dropped' : ''} ${low ? 'card--low' : ''}`} aria-labelledby={`star-${field}`}>
+    <section className={`card star ${isDropped ? 'card--dropped star--dropped' : ''} ${low ? 'card--low' : ''}`} aria-labelledby={`star-${field}`} data-commits={ev.filter((e) => e.type === 'COMMIT').length} data-rail={railKind(isDropped, ev)}>
       <div className="star__head">
         <StarKey field={field} dropped={isDropped} />
         <span className="star__name" id={`star-${field}`}>{starFieldName[field]}</span>
@@ -64,4 +64,10 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
       )}
     </section>
   );
+}
+
+/** 커밋 레일의 칸 상태 — 커밋이 받치면 commit, 내 답변만 있으면 user, 비었으면 empty */
+export function railKind(empty: boolean, ev: { type: string }[]): 'commit' | 'user' | 'empty' {
+  if (empty) return 'empty';
+  return ev.some((e) => e.type === 'COMMIT') ? 'commit' : 'user';
 }

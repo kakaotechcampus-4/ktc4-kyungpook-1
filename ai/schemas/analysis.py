@@ -27,8 +27,11 @@ from schemas.common import (
     EmptyReasonCode,
     EvidenceSummarySource,
     StarArea,
+    StarMaterialKind,
     StarSlot,
     StarStatus,
+    StarStepActor,
+    StarStepKind,
     StarTech,
     StatementConfidence,
 )
@@ -263,6 +266,30 @@ class DependencyFile(StrictRequestModel):
     content: str
 
 
+class StarIssueMaterial(StrictRequestModel):
+    """후보 PR 에 연결된 이슈 하나."""
+
+    number: PositiveInt
+    title: str = Field(..., min_length=1)
+    body: str | None = Field(None, description="저장된 이슈 본문(앞 1,000자). 없으면 제목만 쓴다")
+
+
+class StarMaterials(StrictRequestModel):
+    """첫 쓰기에는 넣지 않고, 검사에 걸리거나 빈 칸에서 AI 가 골라 여는 자료."""
+
+    issues: list[StarIssueMaterial] = Field(
+        default_factory=list, description="후보 PR 에 연결된 이슈. 앞 3개만 쓰고 S·T 칸에만 쓸 수 있다"
+    )
+    reviews: list[str] = Field(
+        default_factory=list,
+        description="다른 사람이 그 PR 에 단 리뷰와 줄 댓글. 앞 5개를 300자까지 쓰고 S·T 칸에만 쓸 수 있다",
+    )
+    owner_replies: list[str] = Field(
+        default_factory=list,
+        description="카드 주인이 그 PR 에 단 리뷰와 줄 댓글. 앞 5개를 300자까지 쓰고 모든 칸에 쓸 수 있다",
+    )
+
+
 class StarAnalysisRequest(StrictRequestModel):
     """확정된 경험의 STAR 분석을 요청한다."""
 
@@ -278,6 +305,9 @@ class StarAnalysisRequest(StrictRequestModel):
     confirmed_answers: list[str] = Field(default_factory=list)
     pull_request_body: str | None = Field(
         None, description="카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다"
+    )
+    materials: StarMaterials | None = Field(
+        None, description="카드 주인이 쓴 PR 의 연결 이슈·리뷰. 자료가 없으면 보내지 않는다"
     )
 
 
@@ -303,6 +333,19 @@ class StarFieldResult(BaseModel):
     review_reason: str | None = None
 
 
+class StarStep(BaseModel):
+    """STAR 초안이 거친 단계 하나로, 문장은 화면이 값으로 만든다."""
+
+    round: int = Field(..., ge=0, description="0 은 첫 초안과 첫 검사, 1·2 는 고쳐 쓴 바퀴")
+    actor: StarStepActor
+    kind: StarStepKind
+    slot: StarSlot | None = Field(None, description="카드 전체 단계(DRAFT)는 null")
+    code: str | None = Field(None, description="FLAG 의 문제 코드(NO_EVIDENCE·UNSOURCED_NUMBER·REVERSED_MEANING·EMPTY)")
+    value: str | None = Field(None, description="걸린 수치나 연 자료 제목")
+    material: StarMaterialKind | None = Field(None, description="OPEN 일 때 연 자료 종류")
+    reason: str | None = Field(None, description="모델이 고른 행동(OPEN·RETRY·KEEP)의 이유 한 줄(60자 이내)")
+
+
 class StarAnalysisResponse(BaseModel):
     """근거 검증을 마친 STAR 분석 결과."""
 
@@ -316,4 +359,8 @@ class StarAnalysisResponse(BaseModel):
     )
     techs: list[StarTech] = Field(
         default_factory=list, description="카드 기술 태그. 최대 4개, 중요한 것부터. 판단할 수 없으면 빈 배열"
+    )
+    steps: list[StarStep] = Field(
+        default_factory=list,
+        description="초안이 거친 단계 순서대로. 고쳐 쓰기를 끄면 첫 초안과 첫 검사만, 마감으로 비운 카드는 빈 배열",
     )

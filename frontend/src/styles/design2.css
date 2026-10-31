@@ -3,7 +3,7 @@
 .iconbox--ink { background: var(--bg-ink-solid); color: var(--text-on-ink); }
 .iconbox--paper { background: var(--bg-surface); border: 1px solid var(--border-default); color: var(--text-tertiary); }
 .stardots { display: inline-grid; grid-template-columns: repeat(4, minmax(22px, 1fr)); gap: 4px; min-width: 100px; }
-.stardot { min-width: 0; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 9.5px; font-weight: 700; color: var(--text-tertiary); background: var(--bg-canvas); border: 1px dashed var(--border-strong); }
+.stardot { min-width: 0; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: var(--bg-canvas); border: 1px dashed var(--border-strong); }
 .stardot--on { background: var(--bg-ink-solid); color: var(--text-on-ink); border: 1px solid var(--bg-ink-solid); }
 .stardot--low { background: var(--field-low-bg); color: var(--field-low-text); border: 1px solid var(--field-low-border); }
 .stardots--labeled { width: min(100%, 240px); min-width: 200px; gap: 6px; }
@@ -12,7 +12,7 @@
 .stardots--labeled .stardot--on .stardot__letter { border-style: solid; border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
 .stardots--labeled .stardot--low .stardot__letter { border-style: solid; border-color: var(--field-low-border); background: var(--field-low-bg); color: var(--field-low-text); }
 .stardot__letter { line-height: 1; }
-.stardot__label { font-size: 8px; line-height: 12px; font-weight: 600; color: currentColor; opacity: .72; }
+.stardot__label { font-size: 11px; line-height: 12px; font-weight: 600; color: currentColor; opacity: .72; }
 .chip--static { color: var(--text-tertiary); background: var(--bg-paper); cursor: default; }
 .page-lead { font-size: 14px; line-height: 22px; color: var(--text-secondary); max-width: 720px; }
 .evidence__icon { color: var(--evidence-commit-label); flex: 0 0 auto; }
@@ -24,12 +24,12 @@
 
 /* 카드 그리드 · 이어서 하기 · 히어로 */
 .experience-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-.experience-item.gcard { min-height: 220px; gap: 18px; padding: 24px; border: 1px solid var(--border-default); border-radius: 18px; box-shadow: none; background: var(--bg-surface); transform: none; }
+.experience-item.gcard { min-height: 220px; gap: 18px; padding: 24px; border: 1px solid var(--border-default); border-radius: 16px; box-shadow: none; background: var(--bg-surface); transform: none; }
 /* 개수가 홀수면 마지막 칸이 반만 차서 오른쪽이 빈 채로 남는다 — 한 줄을 다 쓰게 한다 */
 /* hover 에서 border-color 를 건드리지 않는다. 여기 테두리는 카드 테두리가 아니라 칸 사이 격자선이라
    투명하게 만들면 마우스를 올린 칸 둘레의 선이 통째로 사라진다 (칸이 따로 놀던 시절의 잔재였다). */
 .experience-item:hover, .experience-item:focus-visible { background: var(--bg-canvas); box-shadow: none; transform: none; }
-.experience-item__meta, .experience-item__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-tertiary); font-size: 11.5px; line-height: 18px; }
+.experience-item__meta, .experience-item__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-tertiary); font-size: 12px; line-height: 18px; }
 .experience-item__footer { margin-top: 0; }
 .experience-item .gcard__title { margin: 0; }
 .experience-item .stardots--labeled { width: 100%; max-width: 280px; margin-top: auto; }
@@ -40,7 +40,7 @@
 .status-tab:hover { color: var(--text-primary); }
 .settings-page { gap: 32px; }
 .profile-summary { display: flex; align-items: center; gap: 20px; min-height: 76px; padding: 4px 2px; }
-.settings-section { padding: 24px; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-surface); box-shadow: none; }
+.settings-section { padding: 24px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); box-shadow: none; }
 .settings-row { display: flex; align-items: center; gap: 14px; padding: 15px 0; border-top: 1px solid var(--border-default); }
 .settings-row:first-of-type { border-top: 0; }
 .settings-row--muted { color: var(--text-tertiary); }
@@ -53,7 +53,7 @@
  * 그래서 행 hover 에서 border 를 건드리면 안 된다 — 칸막이선 하나만 변해 어긋나 보인다.
  * 행 hover 는 배경만 바꾸고, 흰 표면 위이므로 --bg-canvas 를 쓴다.
  */
-.record-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-surface); }
+.record-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
 .record-list > .card { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .record-list > .card { position: relative; }
 .record-list > .card:first-child { border-top-left-radius: 17px; border-top-right-radius: 17px; }
@@ -87,7 +87,7 @@
 .landing__top { width: 100%; max-width: 1080px; display: flex; align-items: center; justify-content: space-between; }
 .landing__hero { width: 100%; max-width: 1000px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .82fr); gap: 44px; align-items: start; margin-top: 8px; }
 .landing__h1 { font-size: 40px; line-height: 50px; font-weight: var(--heading-weight); letter-spacing: var(--text-tracking); text-align: left; }
-.landing__lead { font-size: 15px; line-height: 26px; color: var(--text-secondary); max-width: 460px; }
+.landing__lead { font-size: 16px; line-height: 26px; color: var(--text-secondary); max-width: 460px; }
 .demo-card { display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: var(--radius-xl); background: var(--bg-surface); border: 1px solid var(--border-default); box-shadow: 0 24px 60px rgba(0, 0, 0, .08); }
 .demo-card__row { display: flex; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-default); }
 .demo-card__row--gap { background: var(--field-dropped-bg); margin: 0 -20px; padding: 10px 20px; }
@@ -97,5 +97,5 @@
   .landing__h1 { font-size: 30px; line-height: 38px; }
   .landing { padding: 20px 18px 40px; gap: 36px; }
 }
-.repo-row__warn { font-size: 11.5px; line-height: 17px; color: var(--text-tertiary); }
+.repo-row__warn { font-size: 12px; line-height: 17px; color: var(--text-tertiary); }
 .repo-row--sel .repo-row__warn { color: var(--text-secondary); }

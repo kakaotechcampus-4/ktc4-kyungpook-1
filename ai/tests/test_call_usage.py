@@ -21,7 +21,7 @@ from services.llm_executors import run_llm_call
 from services.llm_structured_client import LLMSettings, LLMStructuredCallError, StructuredLLMClient
 from services.star_generator import StarGenerationError
 from schemas.common import ModelUsage
-from services.usage import metering, usage_meta
+from services.usage import metering, record_repair_round, usage_meta
 
 client = TestClient(app)
 
@@ -139,6 +139,15 @@ def test_model_usage_lists_each_model_once_in_first_called_order_and_adds_up_to_
     assert sum(u.llm_calls for u in meta.model_usage) == meta.llm_calls
     assert sum(u.input_tokens for u in meta.model_usage) == meta.input_tokens
     assert sum(u.output_tokens for u in meta.model_usage) == meta.output_tokens
+
+
+def test_repair_rounds_recorded_in_a_request_reach_meta() -> None:
+    with metering():
+        record_repair_round()
+        record_repair_round()
+        meta = usage_meta(None, "COMPLETED")
+
+    assert meta.repair_rounds == 2
 
 
 def test_error_response_carries_llm_calls_made_before_failure(star_pipeline) -> None:

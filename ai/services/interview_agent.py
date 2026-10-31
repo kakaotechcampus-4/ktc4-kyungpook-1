@@ -30,7 +30,7 @@ from schemas.interview import (
     ReviewContext,
     StarSlot,
 )
-from services.interview_llm import InterviewLLM, InterviewLLMUnavailable, has_metric
+from services.interview_llm import EndedQuestions, InterviewLLM, InterviewLLMUnavailable, has_metric
 
 #: 모든 질문에 반드시 들어가는 탈출구 문구.
 _ESCAPE_HATCH = "기억나지 않거나 단순 정리였다면 넘어가도 괜찮아요."
@@ -87,8 +87,9 @@ class InterviewAgent:
             written = await self._llm.write_question(request, fixed)
         except InterviewLLMUnavailable:
             return self._template_turn(request, fixed or allowed[0]), True
-        if written is None:
-            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE"), False
+        if isinstance(written, EndedQuestions):
+            return InterviewTurnResult(card_id=request.card_id, next_action="COMPLETE", reason=written.reason,
+                                       themes=list(written.themes)), False
         slot = self._missing_slot(request, written.star_slot)
         return InterviewTurnResult(
             card_id=request.card_id,
@@ -100,12 +101,22 @@ class InterviewAgent:
             next_action="ASK_AGAIN",
             answer_mode=written.answer_mode,
             suggested_answers=written.suggested_answers,
+            # 화면이 정한 칸은 사용자가 고른 것이라 판단 이유를 보이지 않는다
+            reason=written.reason if request.target_star_slot is None else None,
         ), False
 
     @staticmethod
     def _first_slot(request: InterviewTurnRequest, allowed: list[StarSlot]) -> Optional[StarSlot]:
-        """첫 질문은 R 에 확인된 수치가 없으면 R 로 정하고, 그 밖은 LLM 이 고르게 둔다."""
-        if request.previous_turns or "R" not in allowed:
+        """첫 질문을 정하고, 그 밖은 LLM 이 고르게 둔다.
+
+        경험 카드는 사용자 답이 곧 이야기라 S 가 비어 있으면 S 부터, 기술 카드는 R 에 확인된 수치가 없으면 R 부터 묻는다.
+        """
+        if request.previous_turns:
+            return None
+        if request.card_kind == "QUALITATIVE":
+            situation = InterviewAgent._missing_slot(request, "S") if "S" in allowed else None
+            return "S" if situation is not None and not situation.body else None
+        if "R" not in allowed:
             return None
         result = InterviewAgent._missing_slot(request, "R")
         return None if has_metric(result.body) else "R"

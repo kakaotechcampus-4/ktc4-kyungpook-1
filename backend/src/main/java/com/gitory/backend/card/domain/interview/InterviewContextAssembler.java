@@ -1,6 +1,7 @@
 package com.gitory.backend.card.domain.interview;
 
 import com.gitory.backend.agent.port.InterviewCandidate;
+import com.gitory.backend.agent.port.InterviewCardKind;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
 import com.gitory.backend.agent.port.InterviewCommit;
 import com.gitory.backend.agent.port.InterviewConfidence;
@@ -83,7 +84,7 @@ public class InterviewContextAssembler {
 
         if (source.isEmpty()) {
             return new InterviewQuestionRequest(card.getId(), null, missingSlots, asked.size(), limits.maxTurns(),
-                    InterviewCardSourceType.DIRECT_CARD, targetSlot, allowedSlots, previousTurns);
+                    InterviewCardSourceType.DIRECT_CARD, kindOf(card), targetSlot, allowedSlots, previousTurns);
         }
 
         CandidateDraftSource found = source.get();
@@ -91,7 +92,7 @@ public class InterviewContextAssembler {
                 commitsOf(candidateCommitIds, summaries), List.of(), List.of());
 
         return new InterviewQuestionRequest(card.getId(), candidate, missingSlots, asked.size(), limits.maxTurns(),
-                InterviewCardSourceType.valueOf(InterviewSourceType.of(found.type()).name()), targetSlot, allowedSlots,
+                InterviewCardSourceType.valueOf(InterviewSourceType.of(found.type()).name()), kindOf(card), targetSlot, allowedSlots,
                 previousTurns);
 
     }
@@ -107,6 +108,12 @@ public class InterviewContextAssembler {
     }
 
     // 결과가 정해진 질문만 보내고, 지금 쓰지 않는 LATER·INSUFFICIENT 는 AI 계약에 없어 뺀다
+    private static InterviewCardKind kindOf(Card card) {
+
+        return InterviewCardKind.valueOf(card.getCardType().name());
+
+    }
+
     private static List<InterviewPreviousTurn> previousTurnsOf(List<InterviewTurn> asked) {
 
         List<InterviewPreviousTurn> previous = new ArrayList<>();

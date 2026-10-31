@@ -49,6 +49,8 @@ public class CardDraftWriter {
     private final StatementEvidenceRepository evidence;
     private final CardSlotNoteRepository notes;
     private final CardDraftStepRepository steps;
+    private final CardVersionReader reader;
+    private final CardThemeSuggester themeSuggester;
 
     /** 서버가 다시 켜져 같은 Job 이 다시 돌 때 이미 초안을 담은 카드를 건너뛰게 하며, 1번 버전이 없는 카드도 건너뛴다 */
     public boolean isDrafted(Long cardId) {
@@ -62,6 +64,7 @@ public class CardDraftWriter {
     /**
      * 칸마다 AI 문장을 근거 커밋과 함께, 비운 칸은 비운 이유를, 확인이 필요한 칸은 그 이유를 저장한다
      * 시간이 모자라 비운 칸이 있으면 카드를 일부만 만든 카드로 표시하고 true 를 돌려준다
+     * 네 칸이 확인 필요 없이 모두 찼으면 사용자가 확정을 누르지 않아도 바로 쓰이도록 확정한다
      */
     public boolean writeStar(Long cardId, StarDraft draft, Map<String, Long> commitIdsBySha) {
 
@@ -93,6 +96,7 @@ public class CardDraftWriter {
         if (timedOut) {
             card.markGenerationPartial();
         }
+        themeSuggester.settle(card, reader.read(cardId, card.getCurrentVersion()));
 
         return timedOut;
 

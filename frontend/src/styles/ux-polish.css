@@ -1,7 +1,7 @@
 /* Focus the reading surface on writing; supporting evidence remains discoverable. */
 a.evidence { border: 1px solid var(--border-default); }
 a.evidence:hover { border-color: var(--border-selected); }
-.star__text { font-size: 15px; line-height: 1.75; }
+.star__text { font-size: 16px; line-height: 1.75; }
 .experience-item__meta, .experience-item__footer { font-size: 12px; line-height: 20px; }
 .card-detail-layout { grid-template-columns: minmax(0, 1fr) 220px; }
 .card-detail-layout > aside { align-self: start; }

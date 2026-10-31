@@ -30,6 +30,7 @@ public class CardHistoryService {
     private final CardStatementRepository statements;
     private final CardVersionWriter writer;
     private final CardVersionReader reader;
+    private final CardThemeSuggester themeSuggester;
     private final CardDetailService details;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -68,20 +69,20 @@ public class CardHistoryService {
 
     }
 
-    /** 예전 버전을 고르면 확정된 카드도 다시 열면서 되살리고, 없는 번호면 롤백돼 다시 연 것까지 되돌아간 채 404 로 답하게 한다 */
+    /** 예전 버전을 새 버전으로 되살린 뒤 그 글로 카드 상태를 다시 정하고, 없는 번호면 아무것도 바꾸지 않은 채 404 로 답하게 한다 */
     @Transactional
     public CardDetail restore(UUID publicId, Long userId, int versionNo) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         short restored = checkedVersionNo(versionNo);
 
-        // 지금 버전을 되살려도 같은 내용의 버전만 하나 늘어나므로, 새 버전을 만들지 않고 확정한 카드도 다시 열지 않는다
+        // 지금 버전을 되살려도 같은 내용의 버전만 하나 늘어나므로 새 버전을 만들지 않는다
         if (restored == card.getCurrentVersion()) {
             return details.load(publicId, userId);
         }
 
-        card.reopen();
-        writer.copyToNext(card, restored, VersionSource.RESTORE);
+        CardVersion copied = writer.copyToNext(card, restored, VersionSource.RESTORE);
+        themeSuggester.settle(card, reader.read(card.getId(), copied.getVersionNo()));
 
         return details.load(publicId, userId);
 

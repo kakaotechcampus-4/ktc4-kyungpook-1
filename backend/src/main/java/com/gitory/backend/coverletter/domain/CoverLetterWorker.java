@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @ConditionalOnProperty(name = "gitory.cover-letter.worker.enabled", havingValue = "true")
 public class CoverLetterWorker {
 
-    private final CoverLetterAssignRunner runner;
+    private final CoverLetterRunner runner;
     private final CoverLetterWorkerProperties properties;
     private final ExecutorService pool = Executors.newCachedThreadPool();
     private final AtomicInteger running = new AtomicInteger();

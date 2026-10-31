@@ -65,7 +65,7 @@
     "considered": [{ "cardId", "title", "note": "…" | null }],
     "materials": ["SITUATION", "ACTION"],
     // ④ 질문 — ASKED 부터
-    "asks": [{ "item": "RESULT", "question": "…" | null, "required": true,
+    "asks": [{ "item": "RESULT", "question": "…" | null, "templates": ["___ 를 줄였어요"], "required": true,
                "answer": { "text": "…", "reused": false } | null, "skipped": false }],
     // ⑥ 초안 — DRAFTED
     "draft": { "text": "…", "aiText": "…", "edited": false, "charCount": 642, "overBy": 0,
@@ -83,11 +83,12 @@
 - `primaryCardDeleted: true` 는 배정된 중심 카드를 사용자가 지운 것이다(`primaryCard` 는 `null`). 화면은 "고른 카드가 지워졌어요. 다시 골라 주세요" 처럼 다시 고르게 안내한다.
 - `considered`: AI 가 견준 카드 최대 3장과 짧은 평. 화면 ②·③에서 'AI 가 무엇을 보고 골랐는지'를 보여 줄 때 쓴다.
 - `materials`: 중심 카드의 상황·행동·결과 문장과 같은 카드로 전에 받은 답에 이미 있는 재료(`SITUATION` · `ACTION` · `RESULT` · `LEARNING` · `TRIGGER`). 화면 ③ '재료 점검'에 쓴다. 무엇이 꼭 필요한지는 ④의 `required` 가 정한다.
-- `asks`: AI 가 묻는 항목은 문항마다 최대 3개다. `required: true` 는 없으면 초안에 빈칸이 남는 항목이다. 같은 카드로 전에 답한 상황·행동·결과·배운 점·계기는 AI 가 다시 묻지 않고, 서버가 `asks` 끝에 `question: null` · `answer: { text, reused: true }` 로 붙인다 — 화면은 항목 이름으로 제목을 만들고("배운 점 (지난번에 답한 내용)") 사용자는 고쳐서 저장할 수 있다. 직무 연결·지원 이유는 회사마다 달라 미리 채우지 않는다.
+- `asks`: AI 가 묻는 항목은 문항마다 최대 4개다. `templates` 는 질문마다 답을 돕는 빈칸 틀 0~2개로, 카드에 적힌 사실만 들어 있고 사용자가 채울 곳은 `___` 다. 지난 답으로 미리 채운 줄(`question: null`)은 `[]` 다. `required: true` 는 없으면 초안에 빈칸이 남는 항목이다. 같은 카드로 전에 답한 상황·행동·결과·배운 점·계기는 AI 가 다시 묻지 않고, 서버가 `asks` 끝에 `question: null` · `answer: { text, reused: true }` 로 붙인다 — 화면은 항목 이름으로 제목을 만들고("배운 점 (지난번에 답한 내용)") 사용자는 고쳐서 저장할 수 있다. 직무 연결·지원 이유는 회사마다 달라 미리 채우지 않는다.
 - 항목(`item`): `SITUATION` 상황 · `ACTION` 행동 · `RESULT` 결과 · `LEARNING` 배운 점 · `TRIGGER` 계기 · `JOB_LINK` 지원 직무와 이어지는 점 · `REASON` 지원 이유.
 - `draft.text` 는 지금 글(고쳤으면 고친 글), `aiText` 는 AI 원본이다. `sentences` · `marks` 는 `aiText` 의 문장 번호를 가리킨다. 고친 뒤 표시를 어떻게 보일지는 화면이 정한다.
-- `draft.charCount` 는 공백 포함 글자 수이고 `[항목: …]` 빈칸은 세지 않는다. `overBy` 는 넘은 만큼(넘지 않으면 0). 2번 다시 써도 넘치면 자르지 않고 그대로 보낸다.
+- `draft.charCount` 는 공백 포함 글자 수이고 `[항목: …]` 빈칸과 `[더 쓸 거리: …]` 는 세지 않는다. `overBy` 는 넘은 만큼(넘지 않으면 0). 2번 다시 써도 넘치면 자르지 않고 그대로 보낸다.
 - `draft.blanks`: 재료가 없어 `[배운 점: 배운 점을 적어 주세요]` 처럼 빈칸으로 남긴 항목. 사용자가 채운다.
+- 글이 목표(글자 수 상한의 70%)보다 짧은데 카드·답에 더 쓸 사실이 없으면, AI 가 모자란 내용 자리에 `[더 쓸 거리: 무엇을 쓰면 되는지]` 를 한두 개 넣는다. 항목이 아니라 `blanks` 에는 없으므로, 화면은 글에서 이 모양을 찾아 강조한다.
 - `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것은 `null`.
 - `draft.source: SKELETON` 은 AI 가 쓰지 못해 카드 문장과 빈칸으로 만든 뼈대다.
 
@@ -115,7 +116,7 @@
 |---|---|---|
 | `WROTE` | 초안을 썼다 · 글자 수 | "1번 문항 초안을 썼어요(642자)" |
 | `CHECK_PASSED` | 검사를 통과했다 · 글자 수 | "근거와 글자 수 검사를 통과했어요" |
-| `CHECK_FAILED` | 검사에 걸렸다 · 걸린 값(`code` 위와 같음 + `OVER_LIMIT` 넘은 글자 수 · `MISSING_BLANK` 빠뜨린 빈칸 항목) | "'30%'는 카드에 없는 수치예요" |
+| `CHECK_FAILED` | 검사에 걸렸다 · 걸린 값(`code` 위와 같음 + `OVER_LIMIT` 넘은 글자 수 · `UNDER_LENGTH` 목표에 모자란 글자 수 · `MISSING_BLANK` 빠뜨린 빈칸 항목) | "'30%'는 카드에 없는 수치예요" |
 | `DECIDED` | 걸린 것을 고칠지(`action: FIX`) 둘지(`KEEP`, 검사기가 잘못 건 것) 정했다 · `reason` | "'Kubernetes'는 카드의 'k8s'와 같은 뜻이라 그대로 뒀어요" |
 | `REWROTE` | 다시 썼다 · 글자 수 | "고쳐서 다시 썼어요(598자)" |
 | `REVERTED` | 다시 쓴 글이 새 문제를 만들어 앞 글로 되돌렸다 | "다시 쓴 글이 새 문제를 만들어 앞 초안으로 돌렸어요" |

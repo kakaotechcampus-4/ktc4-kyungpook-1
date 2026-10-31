@@ -21,7 +21,9 @@
 
   --space-2: 2px; --space-4: 4px; --space-6: 6px; --space-8: 8px; --space-12: 12px; --space-16: 16px;
   --space-20: 20px; --space-24: 24px; --space-32: 32px; --space-40: 40px; --space-48: 48px; --space-64: 64px; --space-80: 80px;
-  --radius-xs: 4px; --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-2xl: 24px; --radius-full: 999px;
+  /* 둥글기는 크기에 따라 세 단계만: 컨트롤 10 · 카드 16 · 큰 상자 20 (작은 표식 4·6, 알약 999 는 따로). 다른 값은 쓰지 않는다 */
+  --radius-xs: 4px; --radius-sm: 6px; --radius-md: 10px; --radius-lg: 16px; --radius-xl: 20px; --radius-2xl: 20px; --radius-full: 999px;
+  /* 글자 크기 단계: 11(배지·점 안 글자) 12 13 14 16 20 28, 랜딩 큰 제목만 30~40. 사이 값은 쓰지 않는다 */
   --size-sidebar: 220px; --size-topbar: 72px; --size-content: 780px; --size-container: 1440px; --size-footer: 84px;
   --control-touch-size: 44px;
   --control-radius: 10px;

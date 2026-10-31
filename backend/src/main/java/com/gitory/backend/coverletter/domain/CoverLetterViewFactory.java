@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -54,7 +55,8 @@ class CoverLetterViewFactory {
                 letter.getErrorCode(), retryable(letter), letter.isRunning(), letter.getJobRole(), letter.getMemo(),
                 letter.getCreatedAt(), letter.getUpdatedAt(),
                 loaded.stream().map(question -> question(question, labels, slots, remembered)).toList(),
-                letter.getAssignSteps().stream().map(step -> step(step, questionIds, labels)).toList());
+                letter.getAssignSteps().stream().map(step -> step(step, questionIds, labels)).toList(),
+                letter.getDraftSteps().stream().map(step -> writingStep(step, questionIds)).toList());
 
     }
 
@@ -88,10 +90,44 @@ class CoverLetterViewFactory {
                         labels.get(card.cardId()).title(), card.note()))
                 .toList();
 
+        // 지운 카드는 liveLabels 에 없어서, 배정된 중심 카드가 라벨에 없으면 사용자가 지운 것이다
+        boolean primaryCardDeleted = question.getPrimaryCardId() != null
+                && !labels.containsKey(question.getPrimaryCardId());
+
         return new CoverLetterView.Question(question.getPublicId(), question.getSeq(), question.getText(),
                 question.getCharLimit(), question.getTheme(), cardRef(labelOf(labels, question.getPrimaryCardId())),
-                cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
-                question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered));
+                primaryCardDeleted, cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
+                question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered),
+                asks(question), draft(question));
+
+    }
+
+    private static CoverLetterView.QuestionDraft draft(CoverLetterQuestion question) {
+
+        if (question.getAiText() == null) {
+            return null;
+        }
+
+        return new CoverLetterView.QuestionDraft(question.getDraftText(), question.getAiText(), question.isEdited(),
+                question.getCharCount(), question.getOverBy(), question.getSentences(), question.getMarks(),
+                question.getBlanks(), question.getDraftSource());
+
+    }
+
+    private static List<CoverLetterView.Ask> asks(CoverLetterQuestion question) {
+
+        Map<MaterialItem, MaterialAnswer> answers = question.getAnswers().stream()
+                .collect(Collectors.toMap(MaterialAnswer::item, Function.identity()));
+        return question.getAsks().stream().map(ask -> ask(ask, answers.get(ask.item()))).toList();
+
+    }
+
+    private static CoverLetterView.Ask ask(MaterialAsk ask, MaterialAnswer answer) {
+
+        boolean skipped = answer != null && answer.skipped();
+        CoverLetterView.Answer written = answer == null || skipped ? null
+                : new CoverLetterView.Answer(answer.text(), answer.reused());
+        return new CoverLetterView.Ask(ask.item(), ask.question(), ask.templates(), ask.required(), written, skipped);
 
     }
 
@@ -132,7 +168,15 @@ class CoverLetterViewFactory {
         CardLabel card = labelOf(labels, step.cardId());
         return new CoverLetterView.Step(step.seq(), step.actor(), step.kind(),
                 step.questionSeq() == null ? null : questionIds.get(step.questionSeq()),
-                card == null ? null : card.publicId(), step.reason());
+                card == null ? null : card.publicId(), card == null ? null : card.title(), step.reason());
+
+    }
+
+    private static CoverLetterView.WritingStep writingStep(DraftStep step, Map<Integer, UUID> questionIds) {
+
+        return new CoverLetterView.WritingStep(step.seq(), step.actor(), step.kind(),
+                step.questionSeq() == null ? null : questionIds.get(step.questionSeq()), step.code(), step.value(),
+                step.sentenceSeq(), step.action(), step.reason());
 
     }
 }

@@ -239,3 +239,17 @@
   .home-lower .home-cards__head .btn { padding-inline: 6px; font-size: 10px; }
   .home-lower .resume__item { flex-wrap: wrap; }
 }
+
+/* Preserve develop's STAR tile progress now that its legacy fill bar is removed. */
+.home-workspace__content .experience-item .stardots--labeled {
+  display: grid;
+  grid-column: 2;
+  grid-row: 2;
+  width: 100%;
+  min-width: 0;
+  gap: 3px;
+  align-self: center;
+}
+.home-workspace__content .experience-item .stardots--labeled .stardot { height: auto; gap: 3px; }
+.home-workspace__content .experience-item .stardots--labeled .stardot__letter { width: 22px; height: 22px; font-size: 11px; }
+.home-workspace__content .experience-item .stardots--labeled .stardot__label { font-size: 9px; line-height: 14px; }

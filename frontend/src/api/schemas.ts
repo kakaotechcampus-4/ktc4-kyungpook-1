@@ -294,11 +294,17 @@ export const DraftSteps = z.array(z.unknown())
   .catch([]);
 
 export const CardArea = z.enum(['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'AI', 'DB', 'TEST', 'DOCS']);
-export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON', 'GO', 'RUST', 'SWIFT', 'DART', 'TYPESCRIPT', 'JAVASCRIPT', 'REACT', 'SQL', 'DOCKER', 'GITHUB_ACTIONS']);
+export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON', 'GO', 'RUST', 'SWIFT', 'DART',
+  'TYPESCRIPT', 'JAVASCRIPT', 'SCALA', 'SPRING', 'JPA', 'NODEJS', 'NESTJS', 'EXPRESS', 'DJANGO', 'FASTAPI', 'FLASK',
+  'DOTNET', 'REACT', 'NEXTJS', 'VUE', 'ANGULAR', 'ANDROID', 'IOS', 'FLUTTER', 'REACT_NATIVE', 'SQL', 'MYSQL',
+  'POSTGRESQL', 'ORACLE', 'MONGODB', 'REDIS', 'ELASTICSEARCH', 'KAFKA', 'RABBITMQ', 'SPARK', 'AIRFLOW', 'HADOOP',
+  'DOCKER', 'KUBERNETES', 'AWS', 'GCP', 'AZURE', 'TERRAFORM', 'LINUX', 'NGINX', 'CI_CD', 'GITHUB_ACTIONS', 'JENKINS',
+  'PROMETHEUS', 'GRAFANA', 'LLM', 'PYTORCH', 'TENSORFLOW', 'SCIKIT_LEARN', 'LANGCHAIN', 'GRAPHQL', 'GRPC', 'MSA',
+  'UNITY', 'UNREAL']);
 // Optional only for existing snapshots / rolling deployments; never infer absent tags.
 export const CardTagFields = {
   areas: z.array(CardArea).max(2).optional(),
-  techs: z.array(CardTech).max(4).optional(),
+  techs: z.array(CardTech).max(8).optional(),
 };
 
 export const Card = z.object({

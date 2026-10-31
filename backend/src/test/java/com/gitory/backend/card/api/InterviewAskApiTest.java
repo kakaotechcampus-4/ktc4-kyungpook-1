@@ -609,7 +609,7 @@ class InterviewAskApiTest {
                    {"star_slot": "T", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []},
                    {"star_slot": "A", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []},
                    {"star_slot": "R", "statement_seq": 1, "body": null, "confidence": "LOW", "linked_commits": []}],
-                 "existing_turn_count": 0, "max_turns": 2, "source_type": "DIRECT_CARD",
+                 "existing_turn_count": 0, "max_turns": 2, "source_type": "DIRECT_CARD", "card_kind": "QUALITATIVE",
                  "target_star_slot": "T", "allowed_slots": ["S", "T", "A", "R"], "previous_turns": []}
                 """.formatted(cardId));
         assertThat((Object) sentRequest()).isEqualTo(expected);
@@ -816,6 +816,23 @@ class InterviewAskApiTest {
     }
 
     @Test
+    @DisplayName("경험 카드에서 AI 가 그만 묻기로 하며 고른 문항 유형을 카드에 붙인다")
+    void keepsAiThemesWhenTheInterviewEnds() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAnswered(cardId, 1, "S", "첫 답", "TYPED");
+        ObjectNode ended = MAPPER.createObjectNode().put("card_id", cardId).put("next_action", "COMPLETE");
+        ended.putArray("themes").add("GROWTH").add("COLLABORATION");
+        AI.replyWith(request -> FakeInterviewAi.success(ended));
+
+        send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
+
+        assertThat(jdbc.queryForObject("SELECT array_to_string(themes, ',') FROM card WHERE id = ?", String.class,
+                cardId)).isEqualTo("GROWTH,COLLABORATION");
+
+    }
+
+    @Test
     @DisplayName("끝낸 이유가 남은 카드에 새 질문을 만들면 그 이유를 지운다")
     void newQuestionClearsTheEndReason() throws Exception {
 
@@ -826,6 +843,29 @@ class InterviewAskApiTest {
         ask(myUserId, MY_CARD.toString(), "T").andExpect(status().isOk());
 
         assertThat(endReasonOf(cardId)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("되묻기가 끝나면 그 글로 카드 상태를 정해, 네 칸이 확인 필요 없이 모두 찬 카드는 확정하고 빈 칸이 있는 카드는 작성 중으로 둔다")
+    void interviewEndConfirmsOnlyCompleteCard() throws Exception {
+
+        Long complete = fixtures.insertCard(MY_CARD, myUserId);
+        for (String slot : List.of("S", "T", "A", "R")) {
+            fixtures.insertStatement(complete, 1, slot, slot + " 글", "USER_STATED", null);
+        }
+        UUID partialId = UUID.randomUUID();
+        Long partial = fixtures.insertCard(partialId, myUserId);
+        fixtures.insertStatement(partial, 1, "S", "상황 글", "USER_STATED", null);
+        AI.replyWith(request -> FakeInterviewAi.complete(request.path("card_id").longValue()));
+
+        send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
+        send(myUserId, partialId.toString(), "{}").andExpect(status().isOk());
+
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, complete))
+                .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, partial))
+                .isEqualTo("DRAFT");
 
     }
 

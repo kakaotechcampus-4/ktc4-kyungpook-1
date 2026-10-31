@@ -20,7 +20,7 @@ export function DraftProgress({
         <span className="w-600">
           {known
             ? `카드 초안 ${done} / ${total}장`
-            : `카드 초안 ${done}장 완료 · 전체 확인 중`}
+            : `카드 초안 ${done}장 완료, 전체 개수 확인 중`}
         </span>
         {known && (
           <span className="c-2">{Math.round((done / total) * 100)}%</span>

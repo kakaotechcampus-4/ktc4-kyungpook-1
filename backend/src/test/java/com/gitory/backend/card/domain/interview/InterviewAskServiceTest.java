@@ -2,6 +2,8 @@ package com.gitory.backend.card.domain.interview;
 
 import com.gitory.backend.agent.port.InterviewAnswerMode;
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.CardThemePort;
+import com.gitory.backend.agent.port.InterviewCardKind;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
 import com.gitory.backend.agent.port.InterviewConfidence;
 import com.gitory.backend.agent.port.InterviewMissingSlot;
@@ -16,7 +18,11 @@ import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
+import com.gitory.backend.card.domain.CardThemeSuggester;
+import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
+import com.gitory.backend.card.domain.VersionSlots;
+import com.gitory.backend.card.infra.CardRepository;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
@@ -30,6 +36,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -39,6 +46,7 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -49,6 +57,8 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -71,6 +81,9 @@ class InterviewAskServiceTest {
     private final InterviewContextAssembler assembler = mock(InterviewContextAssembler.class);
     private final InterviewQuestionPort port = mock(InterviewQuestionPort.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
+    private final CardVersionReader reader = mock(CardVersionReader.class);
+    private final CardThemeSuggester themeSuggester = new CardThemeSuggester(mock(CardRepository.class), reader,
+            mock(CardThemePort.class), mock(ApplicationEventPublisher.class), transactionManager);
     private final List<TransactionStatus> statuses = new ArrayList<>();
 
     private InterviewQuestionRequest request;
@@ -86,12 +99,13 @@ class InterviewAskServiceTest {
 
         request = new InterviewQuestionRequest(CARD_ID, null,
                 List.of(new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of())),
-                0, 2, InterviewCardSourceType.DIRECT_CARD, null, List.of(), List.of());
+                0, 2, InterviewCardSourceType.DIRECT_CARD, InterviewCardKind.QUALITATIVE, null, List.of(), List.of());
         when(assembler.assemble(any(Card.class), anyList(), any(), anyList())).thenReturn(request);
         when(port.nextQuestion(request)).thenReturn(question(InterviewStarSlot.T));
 
         when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of());
         when(turns.save(any(InterviewTurn.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reader.read(anyLong(), anyShort())).thenReturn(new VersionSlots((short) 1, Map.of()));
 
         when(transactionManager.getTransaction(any(TransactionDefinition.class))).thenAnswer(invocation -> {
             TransactionStatus status = new SimpleTransactionStatus();
@@ -333,7 +347,7 @@ class InterviewAskServiceTest {
         InterviewTurn open = InterviewTurn.ask(CARD_ID, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
         when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(), List.of(open));
         when(port.nextQuestion(request)).thenReturn(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null,
-                null, null, null, null, List.of(), "네 칸 모두 근거가 있어 마칠게요"));
+                null, null, null, null, List.of(), "네 칸 모두 근거가 있어 마칠게요", List.of()));
 
         assertThat(service(3).ask(PUBLIC_ID, USER_ID, null)).isNull();
         assertThat(card.getInterviewEndReason()).isNull();
@@ -353,10 +367,10 @@ class InterviewAskServiceTest {
 
         return Stream.of(
                 arguments(Named.of("COMPLETE", new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null,
-                        null, null, null, List.of(), null))),
+                        null, null, null, List.of(), null, List.of()))),
                 arguments(Named.of("질문 칸이 차 있는 COMPLETE", new InterviewQuestionResult(
                         InterviewNextAction.COMPLETE, InterviewStarSlot.T, 1, InterviewQuestionType.RECALL_AID, "글",
-                        InterviewAnswerMode.TEXT, List.of(), null))),
+                        InterviewAnswerMode.TEXT, List.of(), null, List.of()))),
                 arguments(Named.of("다른 칸의 질문", question(InterviewStarSlot.A))));
 
     }
@@ -364,7 +378,7 @@ class InterviewAskServiceTest {
     private static InterviewQuestionResult question(InterviewStarSlot slot) {
 
         return new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN, slot, 1, InterviewQuestionType.RECALL_AID,
-                "묻는 글", InterviewAnswerMode.TEXT, List.of(), null);
+                "묻는 글", InterviewAnswerMode.TEXT, List.of(), null, List.of());
 
     }
 
@@ -378,7 +392,7 @@ class InterviewAskServiceTest {
     private InterviewAskService service(int maxTurns) {
 
         return new InterviewAskService(ownership, generation, turns, candidates, assembler, port, new InterviewLimits(maxTurns),
-                transactionManager, mock(UserRateLimiter.class));
+                transactionManager, mock(UserRateLimiter.class), reader, themeSuggester);
 
     }
 }

@@ -8,7 +8,7 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActiveJobFeed } from '@/lib/activeJobFeed';
 import { jobResultLink, jobResultState } from '@/lib/jobLinks';
 import { jobErrorHint, jobErrorTitle, jobStateLabel, jobStepLabel, jobTypeLabel } from '@/lib/labels';
-import { stepBadge } from '@/lib/jobView';
+import { isHalted, stepBadge } from '@/lib/jobView';
 import { agentLine } from '@/lib/agentNarration';
 import { DraftProgress } from '@/features/cards/DraftProgress';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -21,7 +21,7 @@ export function JobStatusPage() {
   const running = active.data?.jobs.find((job) => job.jobId === jobId);
   useEffect(() => { if (jobId && running?.userRepositoryId) remembered.current = { jobId, repoId: running.userRepositoryId }; }, [jobId, running?.userRepositoryId]);
   useEffect(() => { if (jobId) suppressJobToast(jobId); return () => { if (jobId) releaseJobToast(jobId); }; }, [jobId]);
-  const title = query.data?.state === 'SUCCEEDED' ? (query.data.partial ? '일부 분석 완료' : '작업 완료') : query.data?.state === 'FAILED' ? '작업 실패' : query.data?.state === 'CANCELED' ? '작업 취소됨' : '작업 진행';
+  const title = query.data?.state === 'SUCCEEDED' ? (query.data.partial ? '일부 정리 완료' : '작업 완료') : query.data?.state === 'FAILED' ? '작업 실패' : query.data?.state === 'CANCELED' ? '작업 취소됨' : '작업 진행';
   useDocumentTitle(title);
   if (query.isError && !query.data) return <main className="main"><QueryFailure error={query.error} retry={() => query.refetch()} pending={query.isFetching} /><Link to="/" className="btn btn--outline">홈으로</Link></main>;
   if (!query.data) return <main className="main"><Skeleton h={32} /><Skeleton h={200} /></main>;
@@ -35,12 +35,12 @@ export function JobStatusPage() {
     {job.errorCode && <Note strong={jobErrorTitle[job.errorCode]} tone={job.state === 'FAILED' ? 'danger' : 'inset'}>{jobErrorHint[job.errorCode]}</Note>}
     {job.state === 'CANCELED' && <Note strong="작업이 취소됐어요" tone="inset" />}
     {job.type === 'DRAFT' ? <DraftProgress job={job} checkedAt={query.dataUpdatedAt} /> : <div className="stack job-status-steps">{job.steps.map((step) => <div className="card job-status-step" key={step.key}>
-      <span className="stack" style={{ gap: 2, minWidth: 0 }}><strong>{jobStepLabel[step.key]}</strong><span className="stage__agent">{agentLine(step)}</span></span><span className="row t-12 c-2">{step.state === 'RUNNING' && step.total == null && <Spinner />}{step.state === 'SKIPPED' ? '해당 없음' : step.total == null ? `${step.done}개 처리` : `${step.done} / ${step.total}`}</span><Badge kind="NEUTRAL">{stepBadge(step)}</Badge>
+      <span className="stack" style={{ gap: 2, minWidth: 0 }}><strong>{jobStepLabel[step.key]}</strong><span className="stage__agent">{agentLine(step, job)}</span></span><span className="row t-12 c-2">{step.state === 'RUNNING' && !isHalted(job) && step.total == null && <Spinner />}{step.state === 'SKIPPED' ? '해당 없음' : step.total == null ? `${step.done}개 처리` : `${step.done} / ${step.total}`}</span><Badge kind="NEUTRAL">{stepBadge(step, job)}</Badge>
     </div>)}</div>}
     <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
       <Link to="/" className="btn btn--outline">홈으로</Link>
       {result && <Link to={result} state={jobResultState(job)} className="btn btn--primary">{job.state === 'FAILED' || job.partial || job.state === 'CANCELED' ? '상세 상태 보기' : '결과 보기'}</Link>}
-      {done && !result && <Link to="/repos" className="btn btn--outline">저장소 목록</Link>}
+      {done && !result && <Link to="/repos" className="btn btn--outline">레포 목록</Link>}
       {(job.errorCode === 'GITHUB_UNAVAILABLE' || job.errorCode === 'GITHUB_UNAUTHORIZED') && <Button variant="outline" onClick={reconnectGithub}>GitHub 다시 연결</Button>}
       {job.state === 'FAILED' && <Link to="/cards/new" className="btn btn--ghost">직접 쓰기</Link>}
     </div>

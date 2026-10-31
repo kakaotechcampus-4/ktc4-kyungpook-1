@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 
-@Schema(description = "자소서 한 편과 문항별 배정 카드")
+@Schema(description = "자소서 한 편과 문항별 배정 카드·질문과 답")
 public record CoverLetterResponse(
         @Schema(format = "uuid") String id,
         CoverLetterStage stage,
@@ -26,7 +26,7 @@ public record CoverLetterResponse(
     // AI 가 도는 단계를 화면이 조금 늦게 보여도 되는 만큼만 자주 읽는다
     static final int POLL_AFTER_MS = 1500;
 
-    public record Steps(List<CoverLetterView.Step> assign) {
+    public record Steps(List<CoverLetterView.Step> assign, List<CoverLetterView.WritingStep> draft) {
     }
 
     static CoverLetterResponse from(CoverLetterView letter) {
@@ -42,6 +42,6 @@ public record CoverLetterResponse(
                 letter.createdAt(),
                 letter.updatedAt(),
                 letter.questions(),
-                new Steps(letter.assignSteps()));
+                new Steps(letter.assignSteps(), letter.draftSteps()));
     }
 }

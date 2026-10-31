@@ -33,9 +33,21 @@ public class CardThemeSuggester {
     private final CardThemePort themes;
     private final ApplicationEventPublisher events;
     private final PlatformTransactionManager transactionManager;
+    private final ConfirmedCardChanges changes;
 
     /** 지금 버전 글로 카드 상태를 정하고({@link Card#settle}), 이번에 확정됐으면 유형을 묻게 한다 */
     public void settle(Card card, VersionSlots slots) {
+
+        boolean wasConfirmed = card.isConfirmed();
+        settleInDraftJob(card, slots);
+        if (wasConfirmed || card.isConfirmed()) {
+            changes.announce(card);
+        }
+
+    }
+
+    /** 초안 Job 은 끝날 때 레포 추천을 한 번에 다시 계산하므로, 카드마다 확정 카드가 바뀌었다고 알리지 않는다 */
+    public void settleInDraftJob(Card card, VersionSlots slots) {
 
         if (card.settle(slots)) {
             askAfterCommit(card);

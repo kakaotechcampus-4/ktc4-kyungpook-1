@@ -19,6 +19,7 @@ public class CardMaskService {
     private final CardOwnershipService ownership;
     private final CardVersionWriter writer;
     private final CardDetailService details;
+    private final ConfirmedCardChanges changes;
 
     /** 화면은 규칙이 그대로여도 적용을 누를 때마다 보내므로, 저장된 규칙과 순서까지 같으면 버전을 만들지 않는다 */
     @Transactional
@@ -28,6 +29,9 @@ public class CardMaskService {
 
         if (card.replaceMaskRules(rules)) {
             writer.copyToNext(card, card.getCurrentVersion(), VersionSource.MASK);
+            if (card.isConfirmed()) {
+                changes.announce(card);
+            }
         }
 
         return details.load(publicId, userId);

@@ -19,6 +19,7 @@ import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.CardThemeSuggester;
+import com.gitory.backend.card.domain.ConfirmedCardChanges;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.domain.VersionSlots;
@@ -83,7 +84,8 @@ class InterviewAskServiceTest {
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final CardVersionReader reader = mock(CardVersionReader.class);
     private final CardThemeSuggester themeSuggester = new CardThemeSuggester(mock(CardRepository.class), reader,
-            mock(CardThemePort.class), mock(ApplicationEventPublisher.class), transactionManager);
+            mock(CardThemePort.class), mock(ApplicationEventPublisher.class), transactionManager,
+            mock(ConfirmedCardChanges.class));
     private final List<TransactionStatus> statuses = new ArrayList<>();
 
     private InterviewQuestionRequest request;

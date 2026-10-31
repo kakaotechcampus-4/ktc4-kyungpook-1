@@ -171,6 +171,8 @@ export const Job = z.object({
   finishedAt: z.string().nullable(),
   result: JobResult.nullable(),
   pollAfterMs: z.number(),       // 다음 폴링까지 기다릴 시간 — 간격은 서버가 정한다
+  /** 카드 초안 Job 이 쓰는 카드별 진행(#617). 카드 초안 Job 이 아니거나 서버가 진행을 잃으면 [] → 화면은 진행 막대만 그린다 */
+  drafts: z.lazy(() => DraftLives).optional(),
 });
 export type Job = z.infer<typeof Job>;
 
@@ -291,6 +293,35 @@ export type DraftStep = z.infer<typeof DraftStep>;
 /** 배열이 아니거나 null 이면 []. 걸러진 단계가 있어도 남은 단계의 순서는 서버 순서 그대로다 */
 export const DraftSteps = z.array(z.unknown())
   .transform((items) => items.flatMap((item) => { const step = DraftStep.safeParse(item); return step.success ? [step.data] : []; }))
+  .catch([]);
+
+// ───────────────────────────── 카드 초안 실시간 (#617 Job.drafts) ─────────────────────────────
+/** WAITING 차례 전 · READING 코드 읽는 중 · WRITING 칸 쓰는 중 · DONE · FAILED. 서버는 카드를 한 장씩 차례로 쓴다 */
+export const DraftLiveState = z.enum(['WAITING', 'READING', 'WRITING', 'DONE', 'FAILED']);
+export type DraftLiveState = z.infer<typeof DraftLiveState>;
+/**
+ * 칸 하나의 지금까지 쓴 전체 글(늘어난 부분이 아니다). 끝난 문장까지만 오므로 화면이 일정한 속도로 펼친다.
+ *  - 다시 쓰면 round 가 올라가고 text 가 새 글로 바뀐다.
+ *  - done 인데 text 가 '' 이면 AI 가 근거가 없어 비운 칸이다.
+ */
+export const DraftLiveSlot = z.object({
+  field: StarField,
+  round: z.number().int().nonnegative(),
+  text: z.string(),
+  done: z.boolean(),
+});
+export type DraftLiveSlot = z.infer<typeof DraftLiveSlot>;
+export const DraftLive = z.object({
+  cardId: z.string(),
+  title: z.string(),
+  state: DraftLiveState,
+  slots: z.array(DraftLiveSlot),
+  steps: DraftSteps,
+});
+export type DraftLive = z.infer<typeof DraftLive>;
+/** 모양이 틀린 카드는 버린다. 진행은 화면 표시용이라 Job 전체를 깨지 않는다 */
+export const DraftLives = z.array(z.unknown())
+  .transform((items) => items.flatMap((item) => { const live = DraftLive.safeParse(item); return live.success ? [live.data] : []; }))
   .catch([]);
 
 export const CardArea = z.enum(['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'AI', 'DB', 'TEST', 'DOCS']);

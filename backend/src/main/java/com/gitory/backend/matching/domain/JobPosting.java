@@ -162,4 +162,11 @@ public class JobPosting {
         this.indexedContentHash = null;
 
     }
+
+    /** 저장해 둔 추천이 가리키는 공고가 그 뒤 마감되거나 내려갔는지로, 다시 계산하지 않고 마감으로 보여 줄 때 쓴다 */
+    public boolean isClosedAt(Instant now) {
+
+        return status != JobPostingStatus.ACTIVE || (expiresAt != null && !expiresAt.isAfter(now));
+
+    }
 }

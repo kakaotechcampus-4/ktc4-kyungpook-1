@@ -64,12 +64,10 @@ public class RepoRecommendationQueryService {
         if (posting == null) {
             return null;
         }
-        boolean closed = posting.getStatus() != JobPostingStatus.ACTIVE
-                || (posting.getExpiresAt() != null && !posting.getExpiresAt().isAfter(now));
         return new RepoRecommendationView.Company(company.companyId(), company.companyName(),
                 companies.of(posting.getCompanyKey(), posting.getCompanyName()).logoUrl(),
                 new RepoRecommendationView.Posting(posting.getPublicId(), posting.getTitle(), posting.getExpiresAt(),
-                        closed),
+                        posting.isClosedAt(now)),
                 company.techs(), company.requiredMet(), company.preferredMet());
 
     }

@@ -79,6 +79,12 @@ public class Card {
     @JdbcTypeCode(SqlTypes.ARRAY)
     private List<String> techs;
 
+    // 사용자가 한 번 고르면 themesByUser 가 참이 되어, 뒤에 AI 가 고른 유형으로 덮어쓰지 않는다
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<String> themes;
+
+    private boolean themesByUser;
+
     private Instant createdAt;
     private Instant updatedAt;
     private Instant confirmedAt;
@@ -102,6 +108,7 @@ public class Card {
         this.generationPartial = false;
         this.areas = List.of();
         this.techs = List.of();
+        this.themes = List.of();
         this.createdAt = now;
         this.updatedAt = now;
     }
@@ -197,16 +204,20 @@ public class Card {
     /**
      * 칸 글이 바뀐 뒤 지금 버전 글로 상태를 다시 정하고, 화면이 자동 저장하므로 확정본은 남기지 않는다
      * 작성 중은 네 칸이 확인 필요 없이 모두 차야 확정하고, 확정은 상황·행동이 빌 때만 작성 중으로 돌린다
+     * 이번 호출로 확정됐으면 참을 돌려준다
      */
-    public void settle(VersionSlots slots) {
+    public boolean settle(VersionSlots slots) {
 
         if (!isConfirmed() && slots.isComplete()) {
             this.status = CardStatus.CONFIRMED;
             this.confirmedAt = CardTime.now();
             changed();
-        } else if (isConfirmed() && !slots.isConfirmable()) {
+            return true;
+        }
+        if (isConfirmed() && !slots.isConfirmable()) {
             reopen();
         }
+        return false;
 
     }
 
@@ -271,6 +282,42 @@ public class Card {
     public List<CardTech> techTags() {
 
         return techs.stream().map(CardTech::valueOf).toList();
+
+    }
+
+    /**
+     * AI 가 고른 문항 유형으로, 경험 카드에만 붙이고 사용자가 고른 적이 있으면 덮어쓰지 않으며 updatedAt 도 바꾸지 않는다
+     * AI 가 아무것도 고르지 못했으면 앞서 붙인 유형을 지우지 않는다
+     */
+    public void suggestThemes(List<CardTheme> suggested) {
+
+        if (cardType == CardKind.QUALITATIVE && !themesByUser && !suggested.isEmpty()) {
+            this.themes = suggested.stream().map(Enum::name).toList();
+        }
+
+    }
+
+    /** 사용자가 고른 문항 유형으로, 카드 글이 아니라 자소서에 쓸 카드를 고르는 표시라 확정 카드도 바꿀 수 있다 */
+    public void chooseThemes(List<CardTheme> chosen) {
+
+        if (cardType != CardKind.QUALITATIVE && !chosen.isEmpty()) {
+            throw new InvalidCardInputException("문항 유형은 경험 카드에만 붙일 수 있어요.");
+        }
+        this.themes = chosen.stream().map(Enum::name).toList();
+        this.themesByUser = true;
+
+    }
+
+    public List<CardTheme> themeTags() {
+
+        return themes.stream().map(CardTheme::valueOf).toList();
+
+    }
+
+    /** 확정할 때 AI 에게 유형을 물을 카드로, 사용자가 고른 적 없이 비어 있는 경험 카드다 */
+    public boolean needsThemes() {
+
+        return cardType == CardKind.QUALITATIVE && !themesByUser && themes.isEmpty();
 
     }
 

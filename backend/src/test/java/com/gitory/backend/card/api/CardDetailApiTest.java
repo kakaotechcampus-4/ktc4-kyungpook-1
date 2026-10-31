@@ -52,7 +52,7 @@ class CardDetailApiTest {
     private static final UUID MY_REPO = UUID.fromString("33333333-3333-4333-8333-333333333333");
 
     // FE schemas.ts 의 Card·CardVersion·Evidence 가 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
-    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "period", "repo",
+    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "themes", "period", "repo",
             "activity", "candidate", "version", "evidence", "lowConfidenceFields", "droppedFields", "draftSteps",
             "maskRules", "generation", "draftFailure", "interviewTurns", "interviewEndReason", "confirmedAt", "createdAt"};
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",
@@ -91,6 +91,20 @@ class CardDetailApiTest {
         myRepoId = fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
         firstCommit = fixtures.insertCommit(repositoryId, "1111111111111111111111111111111111111111");
         secondCommit = fixtures.insertCommit(repositoryId, "2222222222222222222222222222222222222222");
+
+    }
+
+    @Test
+    @DisplayName("경험 카드의 문항 유형을 저장된 순서대로 themes 로 보낸다")
+    void sendsThemes() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        jdbc.update("UPDATE card SET themes = '{CONFLICT,GROWTH}' WHERE id = ?", cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.themes[0]").value("CONFLICT"))
+                .andExpect(jsonPath("$.data.themes[1]").value("GROWTH"));
 
     }
 

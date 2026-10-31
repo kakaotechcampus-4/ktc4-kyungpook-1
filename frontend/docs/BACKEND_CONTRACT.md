@@ -158,7 +158,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ### 카드
 | | 요청 | 응답 |
 |---|---|---|
-| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount, repo }`. `repo`는 카드 상세의 `repo`와 같은 `{ id, owner, name }`이고, 저장소 없이 직접 쓴 카드는 null이다(#457). `activity`는 카드가 속한 활동 `{ id, name, type }`이고 활동 밖 카드는 null이다(#477). `repo`·`activity` 가 둘 다 값이 있는 카드는 없다. `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
+| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, themes, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount, repo }`. `repo`는 카드 상세의 `repo`와 같은 `{ id, owner, name }`이고, 저장소 없이 직접 쓴 카드는 null이다(#457). `activity`는 카드가 속한 활동 `{ id, name, type }`이고 활동 밖 카드는 null이다(#477). `repo`·`activity` 가 둘 다 값이 있는 카드는 없다. `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
 | `POST /cards/manual/draft` | `{ title, period, repoId|null, activityId|null }`, 헤더 `Idempotency-Key: <UUID v4>` | **구현됨.** `Card` — 빈 `USER_EDIT` v1 DRAFT. 같은 사용자·같은 키는 처음 만든 카드의 **현재** 상세를 반환 |
 | `PATCH /cards/{id}/draft` | `{ situation, task, action, result }` **네 키 필수**, string/null | **구현됨.** `{ cardId, versionNo, situation, task, action, result, savedAt }` — 임시 저장 |
 | `GET /cards/{id}` | | **구현됨.** `Card` (아래) |
@@ -197,7 +197,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 
 **제목·기간 수정 — #186 확정, #219 활성화 검증 (2026-10-15)**
 
-기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 확정 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string | null }`에서 전달한 필드만 수정한다. period는 자유 문자열이고, 빈 글 `""`이 기간 삭제다. FE는 비운 기간을 `""`로 보낸다(#420). 기간 생략이나 `null`은 기존 값 유지이고(둘 다 바꿀 것이 없으면 400) 검증 실패는 400 `INVALID_REQUEST`다. 응답은 `{ cardId, title, period: string | null, updatedAt }`이며 상세 `GET /cards/{id}`에도 period가 반환된다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
+기존 `PATCH /cards/{id}/draft`의 STAR 저장 규약을 확장하거나 바꾸지 않는다. 확정 경로는 `PATCH /cards/{id}/metadata`이며 `{ title?: string, period?: string | null, themes?: Theme[] }`에서 전달한 필드만 수정한다. period는 자유 문자열이고, 빈 글 `""`이 기간 삭제다. FE는 비운 기간을 `""`로 보낸다(#420). 기간 생략이나 `null`은 기존 값 유지이고(둘 다 바꿀 것이 없으면 400) 검증 실패는 400 `INVALID_REQUEST`다. 응답은 `{ cardId, title, period: string | null, themes, updatedAt }`이며 상세 `GET /cards/{id}`에도 period가 반환된다. 제목은 공백만 있는 값을 거절하고 소유권·DRAFT를 검사한다. `themes`(경험 카드 문항 유형, #482)는 0~2개·겹침 없음·아는 값만 받고 `[]` 가 비우기이며, 기술 카드에 붙이면 400 이다. 유형만 보낸 요청은 확정 카드도 바꾸고 updatedAt 을 바꾸지 않으며, 사용자가 한 번 고른 뒤로 AI 는 덮어쓰지 않는다. AI 는 되묻기를 스스로 끝낼 때와, 유형이 빈 경험 카드를 확정할 때 유형을 붙인다(확정 때 AI 가 늦거나 실패하면 빈 유형으로 확정). STAR·근거·현재 버전·AI 원본은 변경하지 않는다.
 
 Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드에서는 `VITE_CARD_METADATA_ENABLED=true`를 명시하기 전 호출하지 않으며, 계약과 서버 구현 확인 후 활성화한다. 기존 기간이 누락돼도 제목만 수정하면 기간 삭제를 전송하지 않는다. 자유 입력 기간을 날짜로 억지 변환하지 않는다. [요청 댓글](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/pull/61#issuecomment-5969111285)과 [작업 문서](2026-10-03-CARD_WORKFLOW.md)를 참고한다.
 
@@ -224,6 +224,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 { "id", "kind": "TECH|QUALITATIVE", "status": "DRAFT|CONFIRMED", "title",
   "areas": ["BACKEND|FRONTEND|MOBILE|DEVOPS|AI|DB|TEST|DOCS"],  // 최대 2개, 없으면 []
   "techs": ["C|CPP|CSHARP|JAVA|KOTLIN|PYTHON|GO|RUST|SWIFT|DART|TYPESCRIPT|JAVASCRIPT|REACT|SQL|DOCKER|GITHUB_ACTIONS"],  // 최대 4개, 없으면 []
+  "themes": ["COLLABORATION|CONFLICT|PROBLEM_SOLVING|LEADERSHIP|CHALLENGE|FAILURE|GROWTH"],  // 경험 카드의 문항 유형 최대 2개, 기술 카드·없으면 []
   "period": "자유 글" | null,
   "repo": { "id", "owner", "name" } | null,
   "activity": { "id", "name", "type": "CLUB|EXTERNAL|CONTEST|INTERNSHIP|EDUCATION|PART_TIME|VOLUNTEER|STUDY|OTHER" } | null,  // repo 와 함께 값이 있는 카드는 없다

@@ -2,6 +2,7 @@ package com.gitory.backend.job.domain;
 
 import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.CardThemePort;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.StarConfidence;
 import com.gitory.backend.agent.port.StarDraft;
@@ -21,6 +22,7 @@ import com.gitory.backend.agent.port.StarStepActor;
 import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
+import com.gitory.backend.card.domain.CardThemeSuggester;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.common.infra.ai.AiCallContext;
@@ -94,6 +96,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, CardVersionReader.class, JobCancelService.class,
+        CardThemeSuggester.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
@@ -137,6 +140,9 @@ class CardDraftRunnerTest {
 
     @MockitoBean
     GithubCollectionAccessPort githubAccess;
+
+    @MockitoBean
+    CardThemePort themes;
 
     private TestFixtures fixtures;
     private CandidateCardFixtures cardFixtures;

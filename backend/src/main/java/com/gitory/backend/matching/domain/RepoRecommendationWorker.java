@@ -33,7 +33,8 @@ public class RepoRecommendationWorker {
     @Autowired
     public RepoRecommendationWorker(RepoRecommendationRepository recommendations, RepoRecommendationService service,
                                     Clock clock) {
-        this(recommendations, service, clock, Executors.newSingleThreadExecutor());
+        this(recommendations, service, clock,
+                Executors.newSingleThreadExecutor(Thread.ofPlatform().daemon().name("repo-recommend").factory()));
     }
 
     RepoRecommendationWorker(RepoRecommendationRepository recommendations, RepoRecommendationService service,

@@ -3,6 +3,8 @@ package com.gitory.backend.matching.domain;
 import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.card.domain.MatchingCard;
 import com.gitory.backend.card.domain.MatchingCardReader;
+import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
+import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.OverallRecommendationRepository;
 import com.gitory.backend.profile.domain.ProfileService;
@@ -53,6 +55,7 @@ class OverallRecommendationServiceTest {
     private final MatchJudgementService judgements = mock(MatchJudgementService.class);
     private final OverallRecommendationRepository recommendations = mock(OverallRecommendationRepository.class);
     private final ProfileService profiles = mock(ProfileService.class);
+    private final UserRateLimiter rateLimiter = mock(UserRateLimiter.class);
     private final OverallRecommendation saved = mock(OverallRecommendation.class);
     private final List<Runnable> started = new ArrayList<>();
     private final AtomicInteger judgeTasks = new AtomicInteger();
@@ -61,7 +64,7 @@ class OverallRecommendationServiceTest {
         task.run();
     };
     private final OverallRecommendationService service = new OverallRecommendationService(cards, shortlist, criteria,
-            judgements, recommendations, profiles, new TransactionTemplate(mock(PlatformTransactionManager.class)),
+            judgements, recommendations, profiles, rateLimiter, new TransactionTemplate(mock(PlatformTransactionManager.class)),
             Clock.fixed(NOW, ZoneOffset.UTC), started::add, judgeCalls);
 
     private final List<ShortlistedCompany> companies = new ArrayList<>();
@@ -213,6 +216,26 @@ class OverallRecommendationServiceTest {
 
         started.getFirst().run();
         verify(cards).confirmedOf(USER);
+
+    }
+
+    @Test
+    @DisplayName("이미 계산 중이면 호출 한도를 세지 않고 시작도 하지 않으며, 새로 시작할 때만 한도를 한 번 센다")
+    void countsTheLimitOnlyWhenItReallyStarts() {
+
+        OverallRecommendation running = mock(OverallRecommendation.class);
+        when(running.getStatus()).thenReturn(OverallRecommendationStatus.COMPUTING);
+        when(running.isStuck(NOW)).thenReturn(false);
+        when(recommendations.findByUserId(USER)).thenReturn(Optional.of(running));
+        service.start(USER);
+        verify(rateLimiter, never()).acquire(any(), any(), anyInt());
+        verify(recommendations, never()).start(any(), any(), any());
+
+        when(running.isStuck(NOW)).thenReturn(true);
+        when(recommendations.start(USER, NOW, NOW.minus(OverallRecommendation.STUCK_AFTER))).thenReturn(1);
+        service.start(USER);
+        verify(rateLimiter).acquire(RateLimitedAction.MATCH_OVERALL, USER, 1);
+        assertThat(started).hasSize(1);
 
     }
 

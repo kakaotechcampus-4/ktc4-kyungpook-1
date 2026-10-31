@@ -29,6 +29,7 @@ import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
 import { DraftSteps } from './DraftSteps';
+import { folderPath } from '@/lib/cardFolders';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -85,7 +86,8 @@ export function CardPage() {
   const card = q.data!;
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
-  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel, href: candidateGithubUrl(card) }];
+  // 활동 안의 카드는 경험 카드 목록 다음에 그 활동 폴더가 온다(#522)
+  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : card.activity ? [{ label: '경험 카드', to: '/cards' }, { label: card.activity.name, to: folderPath.activity(card.activity.id) }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel, href: candidateGithubUrl(card) }];
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
@@ -161,6 +163,7 @@ export function CardPage() {
               <div className="stack" style={{ gap: 4 }}>
                 <span className="t-12 w-600 c-3">출처</span>
                 <span className="t-12l">
+                  {card.activity ? <>활동 <Link className="aside-link" to={folderPath.activity(card.activity.id)}>{card.activity.name}</Link>, </> : null}
                   {card.repo ? <a className="aside-link" href={`https://github.com/${card.repo.owner}/${card.repo.name}`} target="_blank" rel="noreferrer">{repoName}<ExternalLink size={12} aria-hidden /></a> : null}
                   {card.repo && srcLabel ? ', ' : ''}
                   {(() => { const href = candidateGithubUrl(card); return href ? <a className="aside-link" href={href} target="_blank" rel="noreferrer">{srcLabel}<ExternalLink size={12} aria-hidden /></a> : srcLabel; })()}

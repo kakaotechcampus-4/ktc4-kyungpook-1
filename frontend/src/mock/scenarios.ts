@@ -54,7 +54,7 @@ export function createScenario(scenario: Scenario) {
         const me = result.data as { github?: object };
         return { ...result, data: { ...me, github: { ...me.github, connected: false, connectedAt: null } } };
       }
-      if (scenario === 'empty' && (path === '/cards' || path === '/repos')) return { ...result, data: [] };
+      if (scenario === 'empty' && (path === '/cards' || path === '/repos' || path === '/activities')) return { ...result, data: [] };
       if (scenario === 'minimal-summary' && path === '/cards' && Array.isArray(result.data)) return { ...result, data: result.data.map(({ id, kind, status, title, versionNo, star, updatedAt }) => ({ id, kind, status, title, versionNo, star, updatedAt })) };
       if (scenario !== 'sparse') return result;
       if (path === '/me' && result.data && typeof result.data === 'object') return { ...result, data: { ...result.data, avatarUrl: null } };

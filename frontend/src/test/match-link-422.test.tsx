@@ -62,7 +62,7 @@ it('shows each evidence card kind on the match detail', async () => {
   mount(`/match/${detail.id}`);
   const sentence = await screen.findByText(firstSupport.sentence);
   const link = sentence.closest('a')!;
-  expect(within(link).getByText(firstSupport.cardKind === 'TECH' ? '기술 카드' : '정성 카드')).toBeInTheDocument();
+  expect(within(link).getByText(firstSupport.cardKind === 'TECH' ? '기술 카드' : '경험 카드')).toBeInTheDocument();
 });
 
 async function confirmCard() {

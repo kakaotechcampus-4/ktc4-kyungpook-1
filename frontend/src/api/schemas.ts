@@ -21,6 +21,8 @@ export const ManualDraftInput = z.object({
   period: z.string().nullable().transform((text) => text === null || isBlankCardText(text) ? null : text)
     .pipe(cardText(CONFIG.CARD_PERIOD_MAX).nullable()),
   repoId: z.string().nullable(),
+  /** 활동 안에서 만들 때만 싣는다(#477). repoId 와 함께 보내면 서버가 400 이라 둘 중 하나만 값이 있다. 생략하면 활동 밖 카드다 */
+  activityId: z.string().nullable().optional(),
 });
 export type ManualDraftInput = z.infer<typeof ManualDraftInput>;
 export const ManualDraftKey = nonBlankCardText(255);
@@ -293,6 +295,16 @@ export const DraftSteps = z.array(z.unknown())
   .transform((items) => items.flatMap((item) => { const step = DraftStep.safeParse(item); return step.success ? [step.data] : []; }))
   .catch([]);
 
+// ───────────────────────────── 활동 (#477, 계약 #475 1·2절) ─────────────────────────────
+export const ACTIVITY_TYPES = ['CLUB', 'EXTERNAL', 'CONTEST', 'INTERNSHIP', 'EDUCATION', 'PART_TIME', 'VOLUNTEER', 'STUDY', 'OTHER'] as const;
+export const ActivityType = z.enum(ACTIVITY_TYPES);
+export type ActivityType = z.infer<typeof ActivityType>;
+/** 응답의 종류. 서버가 새 종류를 더해도 카드·활동 목록이 통째로 깨지지 않게, 모르는 종류는 null 로 읽는다(화면은 종류 이름 없이 '활동'만 쓴다) */
+export const ActivityTypeRead = ActivityType.nullable().catch(null);
+/** 카드가 속한 활동. 카드는 레포와 활동 중 하나에만 속하거나 둘 다 아니다 */
+export const CardActivity = z.object({ id: z.string(), name: z.string(), type: ActivityTypeRead });
+export type CardActivity = z.infer<typeof CardActivity>;
+
 export const CardArea = z.enum(['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'AI', 'DB', 'TEST', 'DOCS']);
 export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON', 'GO', 'RUST', 'SWIFT', 'DART',
   'TYPESCRIPT', 'JAVASCRIPT', 'SCALA', 'SPRING', 'JPA', 'NODEJS', 'NESTJS', 'EXPRESS', 'DJANGO', 'FASTAPI', 'FLASK',
@@ -315,6 +327,8 @@ export const Card = z.object({
   title: z.string(),
   period: z.string().nullish(),
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullable(),
+  /** #477: 어느 활동 안의 카드인지. 없음(undefined) = 이전 서버라 모름, null = 활동 밖 카드 */
+  activity: CardActivity.nullish(),
   candidate: z.object({ id: z.string(), type: CandidateType, ref: z.string(), title: z.string() }).nullable(),
   version: CardVersion,
   evidence: z.array(Evidence),
@@ -353,6 +367,8 @@ export const CardSummary = z.object({
   userStatedCount: z.number().nonnegative().nullish(),
   /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
+  /** #477: 카드 상세와 같은 값. 없음(undefined) = 이전 서버라 모름, null = 활동 밖 카드 */
+  activity: CardActivity.nullish(),
 });
 export type CardSummary = z.infer<typeof CardSummary>;
 

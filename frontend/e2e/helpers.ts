@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 /**
  * 목 DB 를 테스트 시작 시 딱 한 번만 시드로 되돌린다.
@@ -25,4 +25,14 @@ export async function loginAsDemo(page: Page) {
 /** 로그인 없이 시드만 초기화 — 랜딩부터 시작하는 테스트용 */
 export async function freshSeed(page: Page) {
   await page.addInitScript(SEED, false);
+}
+
+/**
+ * 경험 카드 목록의 기본 보기는 레포·활동별 폴더다(#522). 카드 타일 자체를 보는 시험은 목록을 연 뒤 이 보기로 바꾼다.
+ * 고른 보기는 브라우저가 기억하므로 같은 시험 안의 다음 이동에도 이어진다.
+ */
+export async function showCardTiles(page: Page) {
+  const recent = page.getByRole('radio', { name: '최근순', exact: true });
+  await recent.click();
+  await expect(recent).toHaveAttribute('aria-checked', 'true');
 }

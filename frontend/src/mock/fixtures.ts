@@ -305,6 +305,48 @@ export const seedCards = [
     lowConfidenceFields: [{ field: 'R', why: '결과가 문서 갱신이라 정량 수치가 없습니다' }], droppedFields: [], maskRules: [],
     generation: null, interviewTurns: 0, confirmedAt: daysAgo(1), createdAt: daysAgo(2),
   },
+  // ── 활동 안의 경험 카드(#477) — 레포가 없고 activityId 로 활동에 묶인다. 직접 쓴 정성 카드라 근거는 모두 '내 답변'이다.
+  // 날짜는 레포 카드보다 오래전으로 둬 목록·홈의 앞쪽 순서(최근순)를 바꾸지 않는다
+  {
+    id: 'card_a1', kind: 'QUALITATIVE', status: 'CONFIRMED', title: '코드 리뷰 문화를 동아리에 만든 경험',
+    repo: null, activityId: 'act_club', candidate: null,
+    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: daysAgo(12),
+      situation: '동아리 프로젝트에서 리뷰 없이 바로 합쳐서 같은 버그가 반복됐다',
+      task: '파트장으로서 부담 없이 지킬 수 있는 리뷰 규칙을 정해야 했다',
+      action: '풀 리퀘스트 템플릿과 하루 안에 첫 리뷰를 남기는 규칙을 제안하고, 첫 두 주는 내가 먼저 모든 풀 리퀘스트를 읽었다',
+      result: '반복되던 버그 제보가 한 달 뒤 절반 아래로 줄었고, 부원 모두가 리뷰를 남기게 됐다' }],
+    evidence: [said('S', 1), said('T', 1), said('A', 2), said('R', 2)],
+    lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 2, confirmedAt: daysAgo(11), createdAt: daysAgo(12),
+  },
+  {
+    id: 'card_a2', kind: 'QUALITATIVE', status: 'DRAFT', title: '스터디 일정이 밀렸을 때 범위를 줄인 경험',
+    repo: null, activityId: 'act_club', candidate: null,
+    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: daysAgo(13),
+      situation: '학기 중반에 부원들의 시험 기간이 겹쳐 스터디 진도가 계속 밀렸다',
+      task: '남은 주 안에 발표까지 끝낼 방법을 정해야 했다',
+      action: null, result: null }],
+    evidence: [said('S', 1), said('T', 1)],
+    lowConfidenceFields: [], droppedFields: [{ field: 'A', reason: 'NO_EVIDENCE' }, { field: 'R', reason: 'NO_EVIDENCE' }],
+    maskRules: [], generation: null, interviewTurns: 1, confirmedAt: null, createdAt: daysAgo(13),
+  },
+  {
+    id: 'card_a3', kind: 'QUALITATIVE', status: 'CONFIRMED', title: '팀 프로젝트에서 서로 다른 일정을 맞춘 경험',
+    repo: null, activityId: 'act_edu', candidate: null,
+    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: daysAgo(15),
+      situation: '교육 과정 팀 프로젝트에서 팀원마다 가능한 시간이 달라 회의가 자주 어긋났다',
+      task: '모두가 같은 정보를 보고 움직일 수 있는 진행 방식이 필요했다',
+      action: '매일 아침 십 분 비동기 공유 글과 주간 한 번의 짧은 회의로 바꾸고, 결정 사항은 한곳에 적어 두었다',
+      result: '회의에 오지 못한 팀원도 결정을 놓치지 않았고, 마감 전날 몰리던 작업이 주중에 나뉘었다' }],
+    evidence: [said('S', 1), said('T', 1), said('A', 2), said('R', 2)],
+    lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 2, confirmedAt: daysAgo(14), createdAt: daysAgo(15),
+  },
+];
+
+export const seedActivities = [
+  { id: 'act_club', name: '교내 개발 동아리', type: 'CLUB', startMonth: '2025-03', endMonth: null, role: '백엔드 파트장', createdAt: daysAgo(40) },
+  { id: 'act_edu', name: '카카오테크캠퍼스', type: 'EDUCATION', startMonth: '2025-09', endMonth: '2026-02', role: '팀 프로젝트 팀원', createdAt: daysAgo(30) },
+  // 카드가 아직 없는 활동 — 폴더에는 '경험 카드 없음'이 보이고, 지울 때는 "안에 카드가 없어요"가 나온다
+  { id: 'act_contest', name: '해커톤 참가', type: 'CONTEST', startMonth: '2026-05', endMonth: '2026-06', role: null, createdAt: daysAgo(20) },
 ];
 
 export const seedInterview: Record<string, unknown[]> = {

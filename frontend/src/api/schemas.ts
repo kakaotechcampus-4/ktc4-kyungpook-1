@@ -353,6 +353,8 @@ export const CardSummary = z.object({
   userStatedCount: z.number().nonnegative().nullish(),
   /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
+  /** #482: 경험 카드의 문항 유형(최대 2개). 자소서 예시 문항 순서에 쓴다. 이전 서버는 없음 */
+  themes: z.array(z.string()).nullish(),
 });
 export type CardSummary = z.infer<typeof CardSummary>;
 

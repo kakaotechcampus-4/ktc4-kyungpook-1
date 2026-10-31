@@ -15,6 +15,7 @@ export const db = {
   candidates: clone(seedCandidates) as Any[],
   cards: clone(seedCards) as Any[],
   interview: clone(seedInterview) as Record<string, Any[]>,
+  coverLetters: [] as Any[], // 자소서(#492 계약) — mock/coverLetters.ts 가 다룬다
   profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
@@ -59,7 +60,7 @@ function hydrateCards() {
 export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
-  db.profile = emptyProfile();
+  db.profile = emptyProfile(); db.coverLetters = [];
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.seq = 100;
   hydrateCards();
 }
@@ -278,7 +279,7 @@ export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
   return {
     id: c.id, kind: c.kind, status: c.status, title: c.title,
-    versionNo: v.versionNo, star: starStates(c), areas: c.areas ?? [], techs: c.techs ?? [],
+    versionNo: v.versionNo, star: starStates(c), areas: c.areas ?? [], techs: c.techs ?? [], themes: c.themes ?? [],
     sourceLabel: c.candidate ? c.candidate.ref : c.interviewTurns > 0 ? 'INTERVIEW' : 'MANUAL',
     sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
@@ -438,7 +439,7 @@ export function settlePending() {
  */
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, profile: db.profile,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters,
     jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], seq: db.seq,
   });
 }
@@ -448,6 +449,7 @@ export function restore(raw: string): boolean {
     if (!s?.cards || !s?.repos) return false;
     db.user = s.user; db.repos = s.repos; db.candidates = s.candidates;
     db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
+    db.coverLetters = Array.isArray(s.coverLetters) ? s.coverLetters : [];
     const profile = Profile.safeParse(s.profile); // 인적사항이 생기기 전에 저장된 데모 DB 는 빈 값으로 이어진다
     db.profile = profile.success ? profile.data : emptyProfile();
     db.jobs.clear();

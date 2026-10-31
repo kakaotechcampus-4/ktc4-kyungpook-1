@@ -12,7 +12,9 @@ import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarEvidenceSource;
+import com.gitory.backend.agent.port.StarIssueMaterial;
 import com.gitory.backend.agent.port.StarMaterialKind;
+import com.gitory.backend.agent.port.StarMaterials;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
@@ -304,7 +306,7 @@ class CardDraftRunnerTest {
         assertThat(sent.get()).isEqualTo(new StarDraftRequest(cardFixtures.publicIdOf(candidateId).toString(), LOGIN,
                 "후보 카드", StarSourceType.PR, "#17", List.of(new StarEvidence(SHA_A, "feat: 세션 DB 저장", LOGIN,
                 "+10/-0", "세션을 옮겼다", StarEvidenceSource.COMMIT_MESSAGE, List.of("JDBC"),
-                "https://github.com/grow22/gitory/commit/a", List.of("src/main/java/SessionConfig.java"))), null));
+                "https://github.com/grow22/gitory/commit/a", List.of("src/main/java/SessionConfig.java"))), null, null));
 
     }
 
@@ -356,6 +358,90 @@ class CardDraftRunnerTest {
         runNext();
 
         assertThat(sent.get().pullRequestBody()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("카드 주인이 쓴 PR 이면 연결 이슈를 연결한 순서대로 저장된 것만 한 번씩, 리뷰·줄 댓글은 단 시각 순서로 남이 쓴 것과 주인이 쓴 것(로그인 대소문자는 가리지 않음)을 나눠 싣고 취소된 리뷰와 본문이 빈 리뷰는 뺀다")
+    void sendsMaterialsOfOwnPullRequest() {
+
+        insertPullRequest(repositoryId, "Grow22", "{5,99,5,6}");
+        insertIssue(5, "세션 만료", "30분 뒤 풀림");
+        insertIssue(6, "로그 정리", null);
+        insertReview(1, "taehun0208", "CHANGES_REQUESTED", "세션을 매번 DB 에서 읽어요", "10:00");
+        insertReview(2, "taehun0208", "DISMISSED", "취소된 리뷰", "10:05");
+        insertReview(3, "taehun0208", "COMMENTED", "  ", "10:10");
+        insertReview(4, LOGIN, "COMMENTED", "캐시로 바꿨습니다", "11:00");
+        insertReviewComment(10, "taehun0208", "여기 N+1", "09:00");
+        insertReviewComment(11, LOGIN, "IN 조회로 고쳤습니다", "10:30");
+        insertReviewComment(12, null, "탈퇴한 사람의 댓글", "12:00");
+        insertReviewComment(13, "GROW22", "대문자 로그인으로 단 답", "13:00");
+
+        StarDraftRequest sent = draftRequestFor(prCandidate());
+
+        assertThat(sent.materials()).isEqualTo(new StarMaterials(
+                List.of(new StarIssueMaterial(5, "세션 만료", "30분 뒤 풀림"), new StarIssueMaterial(6, "로그 정리", null)),
+                List.of("여기 N+1", "세션을 매번 DB 에서 읽어요", "탈퇴한 사람의 댓글"),
+                List.of("IN 조회로 고쳤습니다", "캐시로 바꿨습니다", "대문자 로그인으로 단 답")));
+
+    }
+
+    @Test
+    @DisplayName("연결 이슈는 3개까지, 남이 쓴 리뷰·댓글과 주인이 쓴 댓글은 이른 것부터 5개씩까지만 싣는다")
+    void capsMaterials() {
+
+        insertPullRequest(repositoryId, LOGIN, "{1,2,3,4}");
+        for (int number = 1; number <= 4; number++) {
+            insertIssue(number, "이슈 " + number, null);
+        }
+        for (int minute = 0; minute < 6; minute++) {
+            insertReviewComment(20 + minute, "taehun0208", "남 " + minute, "10:0" + minute);
+            insertReviewComment(30 + minute, LOGIN, "나 " + minute, "11:0" + minute);
+        }
+
+        StarMaterials sent = draftRequestFor(prCandidate()).materials();
+
+        assertThat(sent.issues()).extracting(StarIssueMaterial::number).containsExactly(1, 2, 3);
+        assertThat(sent.reviews()).containsExactly("남 0", "남 1", "남 2", "남 3", "남 4");
+        assertThat(sent.ownerReplies()).containsExactly("나 0", "나 1", "나 2", "나 3", "나 4");
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("withoutMaterials")
+    @DisplayName("남이 쓴 PR·다른 저장소의 PR·자료가 하나도 없는 PR·PR 이 아닌 후보는 STAR 요청에 자료를 싣지 않는다")
+    void sendsNoMaterialsUnlessOwnPullRequestHasThem(String author, boolean otherRepository, boolean stored,
+                                                     boolean pullRequestCandidate) {
+
+        Long pullRequestRepositoryId = repositoryId;
+        if (otherRepository) {
+            pullRequestRepositoryId = fixtures.insertRepository(101L, LOGIN, "other");
+            fixtures.insertUserRepository(userId, pullRequestRepositoryId);
+        }
+        insertPullRequest(pullRequestRepositoryId, author, "{}");
+        if (stored) {
+            jdbc.update("INSERT INTO pr_review_comment (repository_id, github_pr_number, github_comment_id, author_login,"
+                    + " body_excerpt, commented_at) VALUES (?, 17, 40, 'taehun0208', '리뷰', now())", pullRequestRepositoryId);
+        }
+        Long candidateId = pullRequestCandidate
+                ? prCandidate()
+                : cardFixtures.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "5.12", "후보", "USED");
+        if (!pullRequestCandidate) {
+            cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
+            cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        }
+
+        assertThat(draftRequestFor(candidateId).materials()).isNull();
+
+    }
+
+    static Stream<Arguments> withoutMaterials() {
+
+        return Stream.of(
+                argumentSet("남이 쓴 PR", "taehun0208", false, true, true),
+                argumentSet("다른 저장소에 있는 같은 번호의 PR", LOGIN, true, true, true),
+                argumentSet("자료가 없는 내 PR", LOGIN, false, false, true),
+                argumentSet("PR 이 아닌 후보", LOGIN, false, true, false));
 
     }
 
@@ -926,6 +1012,60 @@ class CardDraftRunnerTest {
         verifyNoInteractions(star);
         assertThat(areasOf(cardId)).isEmpty();
         assertThat(techsOf(cardId)).isEmpty();
+
+    }
+
+    private Long prCandidate() {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "PR", 17, "#17", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
+        cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        return candidateId;
+
+    }
+
+    private StarDraftRequest draftRequestFor(Long candidateId) {
+
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
+        given(star.draft(any())).willAnswer(invocation -> {
+            sent.set(invocation.getArgument(0));
+            return allEmpty(StarEmptyReason.NO_EVIDENCE);
+        });
+        runNext();
+        return sent.get();
+
+    }
+
+    private void insertPullRequest(Long pullRequestRepositoryId, String author, String linkedIssues) {
+
+        jdbc.update("INSERT INTO pull_request (repository_id, github_pr_number, title, body_excerpt, state, author_login,"
+                + " base_branch, head_branch, opened_at, linked_issue_numbers)"
+                + " VALUES (?, 17, 'PR', '본문', 'CLOSED', ?, 'develop', 'feature', now(), ?::int[])",
+                pullRequestRepositoryId, author, linkedIssues);
+
+    }
+
+    private void insertIssue(int number, String title, String body) {
+
+        jdbc.update("INSERT INTO issue (repository_id, github_issue_number, title, body_excerpt, state, opened_at)"
+                + " VALUES (?, ?, ?, ?, 'CLOSED', now())", repositoryId, number, title, body);
+
+    }
+
+    private void insertReview(long reviewId, String author, String state, String body, String time) {
+
+        jdbc.update("INSERT INTO pr_review (repository_id, github_pr_number, github_review_id, state, author_login,"
+                + " body_excerpt, submitted_at) VALUES (?, 17, ?, ?, ?, ?, ?::timestamptz)",
+                repositoryId, reviewId, state, author, body, "2026-10-01T" + time + ":00Z");
+
+    }
+
+    private void insertReviewComment(long commentId, String author, String body, String time) {
+
+        jdbc.update("INSERT INTO pr_review_comment (repository_id, github_pr_number, github_comment_id, author_login,"
+                + " body_excerpt, commented_at) VALUES (?, 17, ?, ?, ?, ?::timestamptz)",
+                repositoryId, commentId, author, body, "2026-10-01T" + time + ":00Z");
 
     }
 

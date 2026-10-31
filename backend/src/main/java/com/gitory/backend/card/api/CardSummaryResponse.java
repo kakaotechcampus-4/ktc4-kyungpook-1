@@ -18,7 +18,7 @@ public record CardSummaryResponse(
         CardStatus status,
         String title,
         @Schema(description = "AI 초안이 고른 분야를 중요한 순서로 최대 2개. 태그가 없는 카드는 빈 배열") List<CardArea> areas,
-        @Schema(description = "AI 초안이 고른 기술을 중요한 순서로 최대 4개. 태그가 없는 카드는 빈 배열") List<CardTech> techs,
+        @Schema(description = "AI 초안이 고른 기술을 중요한 순서로 최대 8개. 태그가 없는 카드는 빈 배열") List<CardTech> techs,
         @Schema(description = "경험 카드의 자소서 문항 유형을 잘 맞는 순서로 최대 2개. 기술 카드와 유형이 없는 카드는 빈 배열") List<CardTheme> themes,
         int versionNo,
         StarStatesResponse star,

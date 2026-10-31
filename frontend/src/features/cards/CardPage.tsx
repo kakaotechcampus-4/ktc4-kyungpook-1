@@ -1,5 +1,6 @@
 import { Copy, ExternalLink, History, ListChecks, Pencil, Printer } from 'lucide-react';
 import { DraftProgress } from './DraftProgress';
+import { LiveCardDraft } from './LiveCardDraft';
 import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -17,6 +18,7 @@ import { reconnectGithub } from '@/lib/githubReconnect';
 import { track } from '@/lib/track';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { useLiveDraft } from '@/lib/useLiveDraft';
 import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
 import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
@@ -80,6 +82,10 @@ export function CardPage() {
     return () => { if (jid) releaseJobToast(jid); }; // 화면을 떠나면 억제도 같이 풀어야 전역 알림이 계속 죽어있지 않는다
   }, [q.data?.generation?.jobId, job.data, cardId]);
 
+  // 초안을 쓰는 동안 AI 가 칸을 쓰는 모습(#617). Job 이 끝나도 마지막 카드를 다 펼칠 때까지 이 화면을 붙잡는다(live.holding)
+  const generating = !!q.data?.generation && !q.data.generation.partial;
+  const live = useLiveDraft({ scope: cardId, jobId: q.data?.generation?.jobId, generating });
+
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
   if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   const card = q.data!;
@@ -96,14 +102,15 @@ export function CardPage() {
   const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
 
   // ── D1 · D3 생성 중
-  if (card.generation && !card.generation.partial) {
-    const j = job.data;
+  if (generating || live.holding) {
+    const j = job.data ?? live.job; // 카드가 완성으로 바뀌어 카드의 Job 조회가 꺼져도 마지막 진행을 그린다
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs.slice(0, -1), { label: '초안 생성 중' }]} />
         <PageTitle>고른 후보의 카드 초안을 쓰고 있어요</PageTitle>
         {job.isError && <QueryFailure error={job.error} retry={() => job.refetch()} pending={job.isFetching} />}
         <DraftProgress job={j} checkedAt={job.dataUpdatedAt} />
+        <LiveCardDraft view={live.view} instant={{ on: live.manualInstant, toggle: live.reducedMotion ? null : () => live.setManualInstant((on) => !on) }} />
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
           <span className="c-2 t-14">끝나면 알려드릴게요</span>
           <div className="right row" style={{ gap: 8 }}>

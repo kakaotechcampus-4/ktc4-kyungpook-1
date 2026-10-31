@@ -7,8 +7,10 @@ import com.gitory.backend.agent.port.JobPostingExtractionRequest;
 import com.gitory.backend.agent.port.JobPostingExtractionResult;
 import com.gitory.backend.agent.port.PostingContentStatus;
 import com.gitory.backend.agent.port.PostingCriterionType;
+import com.gitory.backend.agent.port.PostingEducationLevel;
 import com.gitory.backend.agent.port.PostingExperienceLevel;
 import com.gitory.backend.agent.port.PostingExtractionUnavailableException;
+import com.gitory.backend.agent.port.PostingGeneralType;
 import com.gitory.backend.agent.port.PostingJobCategory;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.JobPostingRepository;
@@ -98,7 +100,7 @@ class JobPostingExtractionServiceTest {
         service().extractAll(List.of(target("1", TEXT)));
 
         assertThat(calls).containsExactly(new JobPostingExtractionRequest("acme", "1", "Software Engineer, Backend",
-                "https://jobs.example.com/1", TEXT, null, null));
+                "https://jobs.example.com/1", TEXT, null, null, null));
 
     }
 
@@ -114,6 +116,77 @@ class JobPostingExtractionServiceTest {
             assertThat(call.previousContentHash()).isEqualTo(OLD_HASH);
             assertThat(call.previousContentStatus()).isEqualTo(PostingContentStatus.METADATA_ONLY);
         });
+
+    }
+
+    @Test
+    @DisplayName("저장된 뽑기 버전이 있으면 다음 요청에 함께 보낸다")
+    void sendsStoredExtractionVersion() {
+
+        JobPosting posting = JobPosting.discovered("acme", "1", "에이크미", "Software Engineer, Backend",
+                "https://jobs.example.com/1", null, null, EARLIER);
+        posting.extracted(JobCategory.DATA, ExperienceLevel.UNSPECIFIED, null, null, List.of(), 2,
+                JobPostingContentStatus.READY, OLD_HASH, EARLIER);
+        postings.save(posting);
+
+        service().extractAll(List.of(target("1", TEXT)));
+
+        assertThat(calls).singleElement().extracting(JobPostingExtractionRequest::previousExtractionVersion)
+                .isEqualTo(2);
+
+    }
+
+    @Test
+    @DisplayName("다시 읽은 결과의 뽑기 버전을 저장하고, 바뀐 것 없음이면 저장된 버전을 그대로 둔다")
+    void storesVersionOnUpdateAndKeepsItOnUnchanged() {
+
+        seedPending("1");
+        answers.put("1", () -> updated(NEW_HASH, List.of(), 2,
+                criterion(PostingCriterionType.REQUIRED, "Java 경험", "Java 경험")));
+        service().extractAll(List.of(target("1", TEXT)));
+        answers.put("1", () -> JobPostingExtractionResult.unchanged(NEW_HASH, PostingContentStatus.READY));
+
+        service().extractAll(List.of(target("1", TEXT)));
+
+        assertThat(reload("1").getExtractionVersion()).isEqualTo(2);
+        assertThat(calls).extracting(JobPostingExtractionRequest::previousExtractionVersion).containsExactly(null, 2);
+
+    }
+
+    @Test
+    @DisplayName("조건 기술과 팀 기술은 65개 목록에 있는 이름만 한 번씩 순서대로 저장하고 목록 밖 이름은 버린다")
+    void storesKnownTechsOnceAndDropsUnknown() {
+
+        seedPending("1");
+        answers.put("1", () -> updated(NEW_HASH, List.of("KAFKA", "COBOL", "KAFKA", "DOCKER"), 1,
+                new ExtractedCriterion(PostingCriterionType.REQUIRED, "Java 경험", "Java 경험", null,
+                        List.of("JAVA", "PHP", "SPRING", "JAVA"), null, false)));
+
+        service().extractAll(List.of(target("1", TEXT)));
+
+        JobPosting posting = reload("1");
+        assertThat(posting.getTeamTechs()).containsExactly("KAFKA", "DOCKER");
+        assertThat(criteriaOf(posting)).extracting(row -> row.get("techs")).containsExactly("JAVA,SPRING");
+
+    }
+
+    @Test
+    @DisplayName("일반 조건 종류와 학력 수준·예외를 조건마다 저장한다")
+    void storesGeneralTypeAndEducation() {
+
+        seedPending("1");
+        answers.put("1", () -> updated(NEW_HASH,
+                new ExtractedCriterion(PostingCriterionType.REQUIRED, "학사 이상", "Java 경험",
+                        PostingGeneralType.EDUCATION, List.of(), PostingEducationLevel.BACHELOR, true),
+                new ExtractedCriterion(PostingCriterionType.PREFERRED, "영어 회화", "AWS 경험",
+                        PostingGeneralType.LANGUAGE, List.of(), null, false)));
+
+        service().extractAll(List.of(target("1", TEXT)));
+
+        assertThat(criteriaOf(reload("1")))
+                .extracting(row -> row.get("general_type"), row -> row.get("education_level"),
+                        row -> row.get("education_exempt"))
+                .containsExactly(tuple("EDUCATION", "BACHELOR", true), tuple("LANGUAGE", null, false));
 
     }
 
@@ -184,7 +257,8 @@ class JobPostingExtractionServiceTest {
 
         seedExtracted("1", JobPostingContentStatus.READY, 2);
         answers.put("1", () -> JobPostingExtractionResult.updated(NEW_HASH, PostingContentStatus.METADATA_ONLY,
-                List.of(), PostingJobCategory.ETC, new ExtractedExperience(PostingExperienceLevel.UNSPECIFIED, null, null)));
+                List.of(), PostingJobCategory.ETC, new ExtractedExperience(PostingExperienceLevel.UNSPECIFIED, null, null),
+                List.of(), null));
 
         service().extractAll(List.of(target("1", TEXT)));
 
@@ -457,9 +531,16 @@ class JobPostingExtractionServiceTest {
 
     private static JobPostingExtractionResult updated(String hash, ExtractedCriterion... criteria) {
 
+        return updated(hash, List.of(), null, criteria);
+
+    }
+
+    private static JobPostingExtractionResult updated(String hash, List<String> teamTechs, Integer version,
+                                                      ExtractedCriterion... criteria) {
+
         return JobPostingExtractionResult.updated(hash, PostingContentStatus.READY, List.of(criteria),
                 PostingJobCategory.BACKEND,
-                new ExtractedExperience(PostingExperienceLevel.EXPERIENCED, 3, "경력 3년 이상"));
+                new ExtractedExperience(PostingExperienceLevel.EXPERIENCED, 3, "경력 3년 이상"), teamTechs, version);
 
     }
 
@@ -492,7 +573,8 @@ class JobPostingExtractionServiceTest {
 
         JobPosting posting = JobPosting.discovered("acme", externalId, "에이크미", "Software Engineer, Backend",
                 "https://jobs.example.com/" + externalId, null, null, EARLIER);
-        posting.extracted(JobCategory.DATA, ExperienceLevel.UNSPECIFIED, null, null, status, OLD_HASH, EARLIER);
+        posting.extracted(JobCategory.DATA, ExperienceLevel.UNSPECIFIED, null, null, List.of(), null, status, OLD_HASH,
+                EARLIER);
         JobPosting saved = postings.save(posting);
         for (int seq = 1; seq <= criteriaCount; seq++) {
             criteria.save(JobPostingCriterion.extracted(saved.getId(), CriterionType.REQUIRED, seq, "옛 조건 " + seq,
@@ -509,7 +591,8 @@ class JobPostingExtractionServiceTest {
 
     private List<Map<String, Object>> criteriaOf(JobPosting posting) {
 
-        return jdbc.queryForList("select seq, type, text, quote, public_id from job_posting_criterion "
+        return jdbc.queryForList("select seq, type, text, quote, public_id, array_to_string(techs, ',') as techs, "
+                + "general_type, education_level, education_exempt from job_posting_criterion "
                 + "where job_posting_id = ? order by seq", posting.getId());
 
     }

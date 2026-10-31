@@ -1211,9 +1211,9 @@
             "type" : "string"
           },
           "techs" : {
-            "description" : "AI 초안이 고른 기술을 중요한 순서로 최대 4개. 태그가 없는 카드는 빈 배열",
+            "description" : "AI 초안이 고른 기술을 중요한 순서로 최대 8개. 태그가 없는 카드는 빈 배열",
             "items" : {
-              "enum" : [ "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART", "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS" ],
+              "enum" : [ "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART", "TYPESCRIPT", "JAVASCRIPT", "SCALA", "SPRING", "JPA", "NODEJS", "NESTJS", "EXPRESS", "DJANGO", "FASTAPI", "FLASK", "DOTNET", "REACT", "NEXTJS", "VUE", "ANGULAR", "ANDROID", "IOS", "FLUTTER", "REACT_NATIVE", "SQL", "MYSQL", "POSTGRESQL", "ORACLE", "MONGODB", "REDIS", "ELASTICSEARCH", "KAFKA", "RABBITMQ", "SPARK", "AIRFLOW", "HADOOP", "DOCKER", "KUBERNETES", "AWS", "GCP", "AZURE", "TERRAFORM", "LINUX", "NGINX", "CI_CD", "GITHUB_ACTIONS", "JENKINS", "PROMETHEUS", "GRAFANA", "LLM", "PYTORCH", "TENSORFLOW", "SCIKIT_LEARN", "LANGCHAIN", "GRAPHQL", "GRPC", "MSA", "UNITY", "UNREAL" ],
               "type" : "string"
             },
             "type" : "array"
@@ -1286,9 +1286,9 @@
             "type" : "string"
           },
           "techs" : {
-            "description" : "AI 초안이 고른 기술을 중요한 순서로 최대 4개. 태그가 없는 카드는 빈 배열",
+            "description" : "AI 초안이 고른 기술을 중요한 순서로 최대 8개. 태그가 없는 카드는 빈 배열",
             "items" : {
-              "enum" : [ "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART", "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS" ],
+              "enum" : [ "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART", "TYPESCRIPT", "JAVASCRIPT", "SCALA", "SPRING", "JPA", "NODEJS", "NESTJS", "EXPRESS", "DJANGO", "FASTAPI", "FLASK", "DOTNET", "REACT", "NEXTJS", "VUE", "ANGULAR", "ANDROID", "IOS", "FLUTTER", "REACT_NATIVE", "SQL", "MYSQL", "POSTGRESQL", "ORACLE", "MONGODB", "REDIS", "ELASTICSEARCH", "KAFKA", "RABBITMQ", "SPARK", "AIRFLOW", "HADOOP", "DOCKER", "KUBERNETES", "AWS", "GCP", "AZURE", "TERRAFORM", "LINUX", "NGINX", "CI_CD", "GITHUB_ACTIONS", "JENKINS", "PROMETHEUS", "GRAFANA", "LLM", "PYTORCH", "TENSORFLOW", "SCIKIT_LEARN", "LANGCHAIN", "GRAPHQL", "GRPC", "MSA", "UNITY", "UNREAL" ],
               "type" : "string"
             },
             "type" : "array"

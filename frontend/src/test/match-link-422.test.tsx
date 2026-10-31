@@ -34,7 +34,7 @@ function mount(path: string, seed?: (client: QueryClient) => void) {
 }
 
 const detail = MatchDetail.parse(sampleDetail.data);
-const firstSupport = detail.conditions.flatMap((condition) => condition.supports)[0];
+const firstMet = detail.conditions.flatMap((condition) => condition.metBy)[0];
 
 it('sends match_opened once when the match list loads', async () => {
   vi.spyOn(matchingApi, 'list').mockResolvedValue(sampleList.data.map((x) => MatchTarget.parse(x)));
@@ -47,22 +47,22 @@ it('sends match_opened once when the match list loads', async () => {
 it('sends match_opened for the detail and records evidence card and source clicks', async () => {
   vi.spyOn(matchingApi, 'detail').mockResolvedValue(detail);
   mount(`/match/${detail.id}`);
-  await screen.findByText(firstSupport.sentence);
+  await screen.findByText(firstMet.reason);
   await waitFor(() => expect(track).toHaveBeenCalledWith('match_opened', { view: 'detail', matchId: detail.id, fit: detail.fit }));
 
   fireEvent.click(screen.getByRole('link', { name: /공고 원문 보기/ }));
   expect(track).toHaveBeenCalledWith('match_source_opened', { matchId: detail.id });
 
   fireEvent.click(screen.getAllByRole('link', { name: /카드 보기/ })[0]);
-  expect(track).toHaveBeenCalledWith('match_card_opened', { matchId: detail.id, cardId: firstSupport.cardId, field: firstSupport.field });
+  expect(track).toHaveBeenCalledWith('match_card_opened', { matchId: detail.id, cardId: firstMet.cardId });
 });
 
 it('shows each evidence card kind on the match detail', async () => {
   vi.spyOn(matchingApi, 'detail').mockResolvedValue(detail);
   mount(`/match/${detail.id}`);
-  const sentence = await screen.findByText(firstSupport.sentence);
-  const link = sentence.closest('a')!;
-  expect(within(link).getByText(firstSupport.cardKind === 'TECH' ? '기술 카드' : '정성 카드')).toBeInTheDocument();
+  const reason = await screen.findByText(firstMet.reason);
+  const link = reason.closest('a')!;
+  expect(within(link).getByText(firstMet.cardKind === 'TECH' ? '기술 카드' : '정성 카드')).toBeInTheDocument();
 });
 
 async function confirmCard() {

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, ContractError } from "./client";
 import { CardKind } from "./schemas";
 
@@ -20,6 +20,7 @@ const counts = z
     met: z.number().int().nonnegative(),
   })
   .refine((x) => x.met <= x.total);
+const count = z.number().int().nonnegative();
 const experience = z.object({
   level: z.enum(["ENTRY", "EXPERIENCED", "UNSPECIFIED"]),
   minYears: z.number().nonnegative().nullable(),
@@ -61,21 +62,41 @@ export const MatchTarget = z.object({
     expiresAt: z.string().datetime({ offset: true }).nullable(),
   }),
 });
+/**
+ * 공고 상세의 조건 판단(#615). 상세를 열 때 서버는 저장된 판단만 읽고, AI 는 '이 공고와 맞춰 보기'(`POST /matches/{id}/judgement`)에서만 부른다.
+ *  - 기술·경험 조건: MET(확정 카드가 채움, metBy 에 카드) · NOT_MET(채운 카드 없음) · UNJUDGED(아직 맞춰 보지 않았거나 카드가 바뀜)
+ *  - 학력: 인적사항과 견줘 MET · NOT_MET · UNKNOWN(인적사항에 학력 없음), '또는 그에 준하는 경력' 처럼 예외가 적힌 학력은 못 미쳐도 CHECK
+ *  - 병역·어학·자격증·지역 같은 일반 조건은 CHECK(직접 확인), 담당 업무는 null
+ *  - experience.status 는 인적사항 경력과 공고의 경력 연수를 견준 것(연수 요구가 없으면 null)
+ */
+export const ConditionStatus = z.enum(["MET", "NOT_MET", "UNJUDGED", "UNKNOWN", "CHECK"]);
+/** 일반 조건의 종류. 기술·경험 조건과 담당 업무는 null */
+export const GeneralType = z.enum(["EDUCATION", "MILITARY", "LANGUAGE", "CERTIFICATE", "LOCATION", "OTHER"]);
 export const MatchDetail = MatchTarget.extend({
-  experience: experience.extend({ quote: z.string().nullable() }),
+  experience: experience.extend({
+    quote: z.string().nullable(),
+    status: ConditionStatus.nullable(),
+  }),
+  /** true 면 아직 맞춰 보지 않은 조건이 있어 '이 공고와 맞춰 보기' 를 보인다 */
+  needsJudgement: z.boolean(),
+  /** '필수 조건 N개 중 M개' — 기술·경험 필수 조건만 센다. needsJudgement 면 null */
+  summary: z.object({ requiredMet: count, requiredTotal: count }).nullable(),
   conditions: z.array(
     z.object({
       id: z.string(),
       type: z.enum(["REQUIRED", "PREFERRED", "RESPONSIBILITY"]),
       text: z.string(),
       quote: z.string(),
-      supports: z.array(
+      generalType: GeneralType.nullable(),
+      status: ConditionStatus.nullable(),
+      metBy: z.array(
         z.object({
           cardId: z.string(),
           cardTitle: z.string(),
           cardKind: CardKind,
-          field: z.enum(["A", "R"]),
-          sentence: z.string(),
+          /** 이 카드가 나온 레포. 직접 쓴 카드는 null */
+          repoId: z.string().nullable(),
+          reason: z.string(),
         }),
       ),
     }),
@@ -83,6 +104,8 @@ export const MatchDetail = MatchTarget.extend({
 });
 export type MatchTarget = z.infer<typeof MatchTarget>;
 export type MatchDetail = z.infer<typeof MatchDetail>;
+export type ConditionStatus = z.infer<typeof ConditionStatus>;
+export type GeneralType = z.infer<typeof GeneralType>;
 /**
  * 레포 화면의 추천 기업(#613, `GET /repos/{repoId}/recommendations`). 서버는 화면을 열 때 계산하지 않고 저장된 값을 준다.
  *  - COMPUTING 은 계산을 기다리거나 하는 중(확정 카드가 바뀌면 1분 뒤 다시 계산), NONE 은 아직 계산한 적 없음.
@@ -120,7 +143,6 @@ export type RepoRecommendation = z.infer<typeof RepoRecommendation>;
  *  - stale 이면 계산 뒤 확정 카드나 인적사항이 바뀐 것 → '조건이 바뀌었어요 — 다시 매칭하기'.
  *  - 기업은 많아야 5곳이고 순위 순서다. requiredMet / requiredTotal 로 '필수 4개 중 3개' 를 쓴다(학력·경력 같은 일반 조건은 세지 않는다).
  */
-const count = z.number().int().nonnegative();
 export const OverallRecommendation = z.object({
   status: RecommendationStatus,
   computedAt: z.string().datetime({ offset: true }).nullable(),
@@ -164,6 +186,17 @@ export const matchingApi = {
       ]);
     return detail;
   },
+  /** 서버는 AI 판단을 최대 90초 기다리므로 기본 시간 제한보다 길게 둔다 */
+  judge: async (id: string, env?: MatchEnv) => {
+    if (!matchSupported(env)) throw unavailable();
+    const path = `/matches/${encodeURIComponent(id)}/judgement`;
+    const detail = await api(MatchDetail, path, { method: "POST", timeoutMs: 100_000 });
+    if (detail.id !== id)
+      throw new ContractError(path, [
+        { path: ["id"], message: "Mismatched posting" },
+      ]);
+    return detail;
+  },
 };
 export const matchKeys = {
   all: ["matches"] as const,
@@ -200,3 +233,10 @@ export const useMatch = (id: string) =>
     enabled: matchSupported() && !!id,
     ...policy,
   });
+export const useJudgeMatch = (id: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchingApi.judge(id),
+    onSuccess: (detail) => client.setQueryData(matchKeys.detail(id), detail),
+  });
+};

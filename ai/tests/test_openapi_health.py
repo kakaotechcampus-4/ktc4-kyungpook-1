@@ -33,6 +33,7 @@ INTERNAL_PATHS = {
     "/internal/matching/postings/index",
     "/internal/matching/postings/prune",
     "/internal/matching/search",
+    "/internal/matching/judgements",
     "/internal/cover-letter-assignments",
     "/internal/cover-letter-questions",
     "/internal/cover-letter-drafts",

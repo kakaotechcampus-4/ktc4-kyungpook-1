@@ -37,6 +37,7 @@ public class InterviewAnswerController {
             이미 결과가 정해진 질문에 같은 요청(같은 종류에 같은 답)이 오면 아무것도 바꾸지 않고 지금 카드를 200 으로 돌려주고, 다른 요청이면 409 INVALID_STATE 입니다.
             확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.
             답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다. 답을 저장해도 다음 질문은 만들지 않으며, 다음 질문은 질문 요청에서 AI 가 앞 답을 읽고 고릅니다.
+            경험 카드의 다듬은 문장을 저장할 때는 다듬기 전 사용자 답을 original 로 함께 보내면 TEXT 답에만 남겨 지난 질문 목록의 answer.original 로 돌려줍니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
     @ApiResponses({
@@ -61,7 +62,7 @@ public class InterviewAnswerController {
             @RequestBody InterviewAnswerRequest request) {
 
         CardDetail saved = interviewAnswer.answer(toUuid(id), loginUser.id(), turnNo, request.kind(), request.text(),
-                request.source());
+                request.source(), request.original());
 
         return ApiResponse.ok(CardResponse.from(saved));
 

@@ -49,6 +49,8 @@ public class InterviewTurn {
 
     private String answerText;
 
+    private String answerOriginal;
+
     @Enumerated(EnumType.STRING)
     private AnswerSource answerSource;
 
@@ -131,6 +133,14 @@ public class InterviewTurn {
     public void answer(String text, AnswerSource source) {
 
         close(TurnOutcome.ANSWERED, text, source);
+
+    }
+
+    /** 다듬기 미리 보기를 거친 답은 다듬기 전 사용자 답도 남겨 '내 답 → 다듬은 문장' 을 다시 보여 준다 */
+    public void answer(String text, AnswerSource source, String original) {
+
+        close(TurnOutcome.ANSWERED, text, source);
+        this.answerOriginal = original;
 
     }
 

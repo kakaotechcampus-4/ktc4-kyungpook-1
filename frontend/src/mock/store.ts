@@ -297,6 +297,7 @@ export function cardView(c: Any) {
   const v = c.versions[c.versions.length - 1];
   const { versions, userId, ...rest } = c;
   const { _metadata, _confirmed, ...version } = v;
+  settleThemes(c); rest.themes = c.themes ?? []; delete rest.themesByUser; delete rest.themesDueAt; // 문항 유형(#564): 목 안의 표시는 내보내지 않는다
   void versions;
   void userId; void _metadata; void _confirmed;
   // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
@@ -319,9 +320,10 @@ export function starStates(c: Any) {
 
 export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
+  settleThemes(c);
   return {
     id: c.id, kind: c.kind, status: c.status, title: c.title,
-    versionNo: v.versionNo, star: starStates(c), areas: c.areas ?? [], techs: c.techs ?? [],
+    versionNo: v.versionNo, star: starStates(c), areas: c.areas ?? [], techs: c.techs ?? [], themes: c.themes ?? [],
     sourceLabel: c.candidate ? c.candidate.ref : c.interviewTurns > 0 ? 'INTERVIEW' : 'MANUAL',
     sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
@@ -502,5 +504,28 @@ export function restore(raw: string): boolean {
     return true;
   } catch { return false; }
 }
+
+/**
+ * 문항 유형(#564). 실서버처럼 경험 카드를 확정한 직후에는 [] 이고, 몇 초 뒤 AI 가 골라 붙인다(계약 #475 3절).
+ * 목은 타이머 없이 "때가 지난 뒤 처음 읽을 때" 채운다. 사용자가 한 번 고르면(themesByUser) AI 가 덮어쓰지 않는다.
+ */
+export const MOCK_THEME_AI_DELAY_MS = 3_000;
+const THEME_WORDS: [string, RegExp][] = [
+  ['CONFLICT', /갈등|의견|합의|조율|설득/], ['COLLABORATION', /팀|협업|함께|동료/], ['PROBLEM_SOLVING', /문제|해결|장애|오류|롤백/],
+  ['LEADERSHIP', /주도|이끌|리드|파트장/], ['CHALLENGE', /도전|목표/], ['FAILURE', /실패|극복/], ['GROWTH', /배우|배웠|성장|깨달/],
+];
+export function queueAiThemes(c: Any) {
+  if (c.kind === 'QUALITATIVE' && !c.themesByUser && !(c.themes?.length)) c.themesDueAt = Date.now() + MOCK_THEME_AI_DELAY_MS;
+}
+export function settleThemes(c: Any) {
+  if (!c.themesDueAt || Date.now() < c.themesDueAt) return;
+  delete c.themesDueAt;
+  if (c.themesByUser || c.themes?.length) return;
+  const v = c.versions[c.versions.length - 1];
+  const text = [c.title, ...STAR.map((f) => v[FIELD_KEY[f]] ?? '')].join(' ');
+  const picked = THEME_WORDS.filter(([, word]) => word.test(text)).map(([theme]) => theme).slice(0, 2);
+  c.themes = picked.length ? picked : ['GROWTH'];
+}
+export function chooseThemes(c: Any, themes: string[]) { c.themes = themes; c.themesByUser = true; delete c.themesDueAt; }
 
 hydrateCards();

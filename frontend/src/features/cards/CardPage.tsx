@@ -4,6 +4,7 @@ import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CardTags } from '@/components/cards/CardTags';
+import { CardThemes } from '@/components/cards/CardThemes';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { CardStatusMark, cardStarStates } from '@/components/cards/CardStatusMark';
 import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
@@ -278,7 +279,8 @@ function CardHeader({ card, right, titleAction, statusOverride, note }: { card: 
         {statusOverride ?? <CardStatusMark status={card.status} star={cardStarStates(card)} reviewWithStatus={false} />}
         <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : isDraftMetadataPending(card) ? '본문 저장됨' : cardContentLabel[card.version.source])}</span>
       </>} after={titleAction}>{card.title}</PageTitle>
-      <CardTags areas={card.areas} techs={card.techs} /></div>
+      <CardTags areas={card.areas} techs={card.techs} />
+      <CardThemes key={card.id} card={card} editable={!statusOverride} /></div>
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>
   );

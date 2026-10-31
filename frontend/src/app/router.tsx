@@ -16,6 +16,9 @@ const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() =
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
 const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
+const CoverLettersPage = L(() => import('@/features/coverLetters/CoverLettersPage'), 'CoverLettersPage');
+const CoverLetterNewPage = L(() => import('@/features/coverLetters/CoverLetterNewPage'), 'CoverLetterNewPage');
+const CoverLetterPage = L(() => import('@/features/coverLetters/CoverLetterPage'), 'CoverLetterPage');
 const MatchDetailPage = L(() => import('@/features/match/MatchDetailPage'), 'MatchDetailPage');
 const CompanyPage = L(() => import('@/features/match/CompanyPage'), 'CompanyPage');
 const ReposPage = L(() => import('@/features/repos/ReposPage'), 'ReposPage');
@@ -46,6 +49,9 @@ export const router = createBrowserRouter([
       { path: '/match', element: <S><MatchListPage /></S> },
       { path: '/match/company/:companyId', element: <S><CompanyPage /></S> },
       { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },
+      { path: '/cover-letters', element: <S><CoverLettersPage /></S> },
+      { path: '/cover-letters/new', element: <S><CoverLetterNewPage /></S> },
+      { path: '/cover-letters/:coverLetterId', element: <S><CoverLetterPage /></S> },
       { path: '/repos', element: <S><ReposPage /></S> },
       { path: '/repos/:repoId/run', element: <S><AnalyzePage /></S> },
       { path: '/jobs/:jobId', element: <S><JobStatusPage /></S> },

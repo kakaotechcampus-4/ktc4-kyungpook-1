@@ -1,0 +1,77 @@
+/* 자소서 화면(#517). 색은 시맨틱 토큰만, 글자 크기는 11·12·13·14·16·20 단계만 쓴다. 문항은 상자 안 상자 대신 구분선으로 나눈다 */
+
+.cl-error { font-size: 12px; line-height: 18px; color: var(--state-failed-text); }
+.cl-icon-btn { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: 10px; background: transparent; color: var(--text-tertiary); cursor: pointer; }
+.cl-icon-btn:hover { background: var(--bg-subtle); color: var(--text-primary); }
+.cl-link-btn { border: 0; background: none; padding: 0 4px; color: var(--text-secondary); text-decoration: underline; cursor: pointer; }
+
+/* ① 입력 */
+.cl-form { gap: 20px; }
+.cl-questions { display: flex; flex-direction: column; gap: 12px; }
+.cl-questions__head { display: flex; align-items: baseline; justify-content: space-between; }
+.cl-question-input { display: flex; align-items: flex-start; gap: 12px; padding-top: 12px; border-top: 1px solid var(--border-default); }
+.cl-question-input__meta { gap: 12px; align-items: center; }
+.cl-limit { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.cl-limit .input { width: 84px; height: 34px; padding: 0 10px; text-align: right; }
+.cl-examples { display: flex; flex-direction: column; gap: 8px; }
+.cl-examples__chips { gap: 6px; flex-wrap: wrap; align-items: center; }
+.cl-actions { gap: 12px; flex-wrap: wrap; align-items: center; }
+
+/* 문항 번호 */
+.cl-q__no { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-top: 2px; border-radius: 6px; background: var(--bg-inset); color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+
+/* ② 기다림 */
+.cl-qlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cl-qlist li { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-default); font-size: 14px; line-height: 21px; }
+.cl-qlist li:first-child { border-top: 0; }
+.cl-agent { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
+.cl-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.cl-feed__line { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 2px 10px; border-left: 2px solid var(--accent-point); animation: cl-feed-in .18s ease-out; }
+.cl-feed__text { font-size: 13px; line-height: 20px; font-weight: 500; color: var(--text-strong); }
+.cl-feed__reason { font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+@keyframes cl-feed-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cl-feed__line { animation: none; } }
+
+/* ③ 카드 확인 — 문항마다 구분선 */
+.cl-review { display: flex; flex-direction: column; }
+.cl-q { display: flex; flex-direction: column; gap: 14px; padding: 22px 0; border-top: 1px solid var(--border-default); }
+.cl-q:first-child { border-top: 0; padding-top: 4px; }
+.cl-q__head { display: flex; align-items: flex-start; gap: 12px; }
+.cl-q__text { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-primary); }
+.cl-cards { display: flex; flex-direction: column; gap: 8px; padding-left: 36px; }
+.cl-card-line { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14px; }
+.cl-card-line__role { flex: 0 0 auto; width: 32px; font-size: 12px; color: var(--text-tertiary); }
+.cl-card-line__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); font-weight: 500; }
+.cl-reason { margin: 2px 0 0 42px; padding-left: 10px; border-left: 2px solid var(--accent-point); font-size: 13px; line-height: 20px; color: var(--text-strong); }
+.cl-q > .note { margin-left: 36px; }
+.cl-materials { display: flex; flex-direction: column; gap: 6px; padding-left: 36px; }
+.cl-materials ul { list-style: none; margin: 0; padding: 0; gap: 6px; flex-wrap: wrap; }
+.cl-material { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--border-strong); font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.cl-material--have { border-style: solid; border-color: transparent; background: var(--accent-point-soft); color: var(--text-strong); }
+.cl-considered { padding-left: 36px; font-size: 13px; }
+.cl-considered summary { cursor: pointer; color: var(--text-secondary); }
+.cl-considered ul { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; line-height: 20px; }
+
+/* 카드 바꾸기 */
+.cl-pick { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--border-default); border-radius: 10px; overflow: hidden; }
+.cl-pick li + li { border-top: 1px solid var(--border-default); }
+.cl-pick__row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; background: var(--bg-surface); color: var(--text-primary); text-align: left; font-size: 14px; cursor: pointer; }
+.cl-pick__row:hover:not(:disabled) { background: var(--bg-subtle); }
+.cl-pick__row[aria-checked="true"] { background: var(--bg-selected); }
+.cl-pick__row:disabled { opacity: .45; cursor: not-allowed; }
+.cl-pick__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 목록 */
+.cl-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cl-list li + li { border-top: 1px solid var(--border-default); }
+.cl-list__row { display: flex; align-items: center; gap: 16px; padding: 16px 4px; color: inherit; text-decoration: none; }
+.cl-list__row:hover .w-600 { text-decoration: underline; }
+.cl-list__first { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .cl-cards, .cl-materials, .cl-considered { padding-left: 0; }
+  .cl-reason { margin-left: 0; }
+  .cl-q > .note { margin-left: 0; }
+  .cl-q__head { flex-wrap: wrap; }
+}
+.cl-inline-link { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }

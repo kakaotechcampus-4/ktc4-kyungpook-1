@@ -433,6 +433,44 @@ class CardTest {
 
     }
 
+    @Test
+    @DisplayName("AI 가 고른 문항 유형은 경험 카드에만 붙고 updatedAt 을 바꾸지 않으며, 아무것도 고르지 못했으면 앞서 붙인 유형을 지우지 않는다")
+    void suggestedThemesStickOnlyToExperienceCards() {
+
+        Card experience = Card.startManual(USER_ID, REPO_LINK_ID, null, TITLE, PERIOD, "key-1");
+        Card tech = Card.startFromCandidate(USER_ID, REPO_LINK_ID, 3L, TITLE, CardKind.TECH, null);
+        age(experience);
+
+        experience.suggestThemes(List.of(CardTheme.GROWTH, CardTheme.CONFLICT));
+        experience.suggestThemes(List.of());
+        tech.suggestThemes(List.of(CardTheme.GROWTH));
+
+        assertThat(experience.themeTags()).containsExactly(CardTheme.GROWTH, CardTheme.CONFLICT);
+        assertThat(experience.getUpdatedAt()).isEqualTo(OLD);
+        assertThat(experience.needsThemes()).isFalse();
+        assertThat(tech.themeTags()).isEmpty();
+        assertThat(tech.needsThemes()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("사용자가 한 번 고른 문항 유형은 빈 배열이어도 AI 가 덮어쓰지 않고, 기술 카드에는 유형을 고를 수 없다")
+    void chosenThemesAreKeptFromAi() {
+
+        Card experience = Card.startManual(USER_ID, REPO_LINK_ID, null, TITLE, PERIOD, "key-1");
+        Card tech = Card.startFromCandidate(USER_ID, REPO_LINK_ID, 3L, TITLE, CardKind.TECH, null);
+
+        assertThat(experience.needsThemes()).isTrue();
+        experience.chooseThemes(List.of());
+        experience.suggestThemes(List.of(CardTheme.GROWTH));
+
+        assertThat(experience.themeTags()).isEmpty();
+        assertThat(experience.needsThemes()).isFalse();
+        assertThatThrownBy(() -> tech.chooseThemes(List.of(CardTheme.GROWTH)))
+                .isInstanceOf(InvalidCardInputException.class);
+
+    }
+
     // 칸마다 확신도를 주고, null 이면 빈 칸이다
     private static VersionSlots slots(Confidence s, Confidence t, Confidence a, Confidence r) {
 

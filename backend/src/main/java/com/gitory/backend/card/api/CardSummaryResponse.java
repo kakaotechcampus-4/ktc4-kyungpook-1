@@ -5,6 +5,7 @@ import com.gitory.backend.card.domain.CardKind;
 import com.gitory.backend.card.domain.CardStatus;
 import com.gitory.backend.card.domain.CardSummary;
 import com.gitory.backend.card.domain.CardTech;
+import com.gitory.backend.card.domain.CardTheme;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -18,6 +19,7 @@ public record CardSummaryResponse(
         String title,
         @Schema(description = "AI 초안이 고른 분야를 중요한 순서로 최대 2개. 태그가 없는 카드는 빈 배열") List<CardArea> areas,
         @Schema(description = "AI 초안이 고른 기술을 중요한 순서로 최대 8개. 태그가 없는 카드는 빈 배열") List<CardTech> techs,
+        @Schema(description = "경험 카드의 자소서 문항 유형을 잘 맞는 순서로 최대 2개. 기술 카드와 유형이 없는 카드는 빈 배열") List<CardTheme> themes,
         int versionNo,
         StarStatesResponse star,
         @Schema(description = "카드 내용을 마지막으로 바꾼 시각") Instant updatedAt,
@@ -38,6 +40,7 @@ public record CardSummaryResponse(
                 card.title(),
                 card.areas(),
                 card.techs(),
+                card.themes(),
                 card.versionNo(),
                 StarStatesResponse.from(card.star()),
                 card.updatedAt(),

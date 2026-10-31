@@ -16,6 +16,7 @@ public record CardDetail(
         String title,
         List<CardArea> areas,
         List<CardTech> techs,
+        List<CardTheme> themes,
         String period,
         RepositoryReference repository,
         ActivityReference activity,

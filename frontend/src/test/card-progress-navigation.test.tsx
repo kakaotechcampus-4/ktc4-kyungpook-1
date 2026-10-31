@@ -41,7 +41,7 @@ it('draft progress counts finished cards using REASON rather than analysis stage
 it('unknown total does not fabricate a percentage or duration', () => {
   render(<DraftProgress job={job(null)} checkedAt={Date.now()} />);
   expect(
-    screen.getByText('카드 초안 10장 완료 · 전체 확인 중'),
+    screen.getByText('카드 초안 10장 완료, 전체 개수 확인 중'),
   ).toBeInTheDocument();
   expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
 });

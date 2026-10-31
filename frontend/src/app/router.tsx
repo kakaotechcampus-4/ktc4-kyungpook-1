@@ -17,6 +17,7 @@ const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage'
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
 const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
 const MatchDetailPage = L(() => import('@/features/match/MatchDetailPage'), 'MatchDetailPage');
+const CompanyPage = L(() => import('@/features/match/CompanyPage'), 'CompanyPage');
 const ReposPage = L(() => import('@/features/repos/ReposPage'), 'ReposPage');
 const AnalyzePage = L(() => import('@/features/repos/AnalyzePage'), 'AnalyzePage');
 const JobStatusPage = L(() => import('@/features/jobs/JobStatusPage'), 'JobStatusPage');
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <S><HomePage /></S> },
       { path: '/match', element: <S><MatchListPage /></S> },
+      { path: '/match/company/:companyId', element: <S><CompanyPage /></S> },
       { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },
       { path: '/repos', element: <S><ReposPage /></S> },
       { path: '/repos/:repoId/run', element: <S><AnalyzePage /></S> },

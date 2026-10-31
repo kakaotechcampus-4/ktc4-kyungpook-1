@@ -603,6 +603,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseProfileResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ProfileResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseRecallResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -1022,11 +1036,18 @@
         "type" : "object"
       },
       "CardMetadataRequest" : {
-        "description" : "고칠 제목·기간. 키가 없거나 null 인 칸은 그대로 둡니다.",
+        "description" : "고칠 제목·기간·문항 유형. 키가 없거나 null 인 칸은 그대로 둡니다.",
         "properties" : {
           "period" : {
             "description" : "자유 글 50자까지이고, 빈 글이나 공백뿐이면 기간을 지움",
             "type" : "string"
+          },
+          "themes" : {
+            "description" : "경험 카드의 자소서 문항 유형 0~2개. 빈 배열은 비우기이고, 확정 카드도 바꿀 수 있음",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "title" : {
             "description" : "공백뿐이면 안 되고 256자까지",
@@ -1036,7 +1057,7 @@
         "type" : "object"
       },
       "CardMetadataResponse" : {
-        "description" : "고친 뒤의 제목·기간. 기간이 없으면 period 는 null 입니다.",
+        "description" : "고친 뒤의 제목·기간·문항 유형. 기간이 없으면 period 는 null 입니다.",
         "properties" : {
           "cardId" : {
             "format" : "uuid",
@@ -1044,6 +1065,14 @@
           },
           "period" : {
             "type" : "string"
+          },
+          "themes" : {
+            "description" : "경험 카드의 자소서 문항 유형, 없으면 빈 배열",
+            "items" : {
+              "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH" ],
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "title" : {
             "type" : "string"
@@ -1189,6 +1218,14 @@
             },
             "type" : "array"
           },
+          "themes" : {
+            "description" : "경험 카드의 자소서 문항 유형을 잘 맞는 순서로 최대 2개. 기술 카드와 유형이 없는 카드는 빈 배열",
+            "items" : {
+              "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "title" : {
             "type" : "string"
           },
@@ -1256,6 +1293,14 @@
             },
             "type" : "array"
           },
+          "themes" : {
+            "description" : "경험 카드의 자소서 문항 유형을 잘 맞는 순서로 최대 2개. 기술 카드와 유형이 없는 카드는 빈 배열",
+            "items" : {
+              "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "title" : {
             "type" : "string"
           },
@@ -1303,6 +1348,41 @@
           "versionNo" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "Career" : {
+        "properties" : {
+          "company" : {
+            "type" : "string"
+          },
+          "endMonth" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "startMonth" : {
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "FULL_TIME", "CONTRACT", "INTERN", "PART_TIME", "FREELANCE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "Certification" : {
+        "properties" : {
+          "acquiredMonth" : {
+            "type" : "string"
+          },
+          "issuer" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -1715,6 +1795,37 @@
         },
         "type" : "object"
       },
+      "Education" : {
+        "properties" : {
+          "endMonth" : {
+            "type" : "string"
+          },
+          "gpa" : {
+            "type" : "number"
+          },
+          "gpaMax" : {
+            "type" : "number"
+          },
+          "level" : {
+            "enum" : [ "HIGH_SCHOOL", "ASSOCIATE", "BACHELOR", "MASTER", "DOCTOR" ],
+            "type" : "string"
+          },
+          "major" : {
+            "type" : "string"
+          },
+          "school" : {
+            "type" : "string"
+          },
+          "startMonth" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "ENROLLED", "ON_LEAVE", "GRADUATION_EXPECTED", "GRADUATED", "DROPPED_OUT" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "EvidenceResponse" : {
         "properties" : {
           "authoredBy" : {
@@ -2068,6 +2179,24 @@
         },
         "type" : "object"
       },
+      "LanguageScore" : {
+        "properties" : {
+          "acquiredMonth" : {
+            "type" : "string"
+          },
+          "score" : {
+            "type" : "string"
+          },
+          "test" : {
+            "enum" : [ "TOEIC", "TOEIC_SPEAKING", "OPIC", "TOEFL", "IELTS", "TEPS", "JLPT", "JPT", "HSK", "OTHER" ],
+            "type" : "string"
+          },
+          "testName" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "LowConfidenceResponse" : {
         "properties" : {
           "field" : {
@@ -2350,6 +2479,183 @@
           "sentence" : {
             "description" : "수치를 넣은 R 문장으로, 측정 결과에 숫자가 없으면 null",
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProfileCareerRequest" : {
+        "properties" : {
+          "company" : {
+            "description" : "회사 이름, 50자까지",
+            "type" : "string"
+          },
+          "endMonth" : {
+            "description" : "퇴사 달 YYYY-MM, 재직 중이면 null",
+            "example" : "2024-12",
+            "type" : "string"
+          },
+          "role" : {
+            "description" : "직무, 50자까지. 없으면 null",
+            "type" : "string"
+          },
+          "startMonth" : {
+            "description" : "입사 달 YYYY-MM",
+            "example" : "2024-07",
+            "type" : "string"
+          },
+          "type" : {
+            "description" : "FULL_TIME · CONTRACT · INTERN · PART_TIME · FREELANCE",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProfileCertificationRequest" : {
+        "properties" : {
+          "acquiredMonth" : {
+            "description" : "취득 달 YYYY-MM, 없으면 null",
+            "type" : "string"
+          },
+          "issuer" : {
+            "description" : "발급 기관, 50자까지. 없으면 null",
+            "type" : "string"
+          },
+          "name" : {
+            "description" : "자격증 이름, 50자까지",
+            "example" : "정보처리기사",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProfileEducationRequest" : {
+        "properties" : {
+          "endMonth" : {
+            "description" : "졸업(예정) 달 YYYY-MM, 없으면 null",
+            "example" : "2027-02",
+            "type" : "string"
+          },
+          "gpa" : {
+            "description" : "학점. 만점과 함께 보내거나 둘 다 null",
+            "example" : 3.8,
+            "type" : "number"
+          },
+          "gpaMax" : {
+            "description" : "학점 만점 4.0 · 4.3 · 4.5 · 100",
+            "example" : 4.5,
+            "type" : "number"
+          },
+          "level" : {
+            "description" : "HIGH_SCHOOL · ASSOCIATE · BACHELOR · MASTER · DOCTOR",
+            "type" : "string"
+          },
+          "major" : {
+            "description" : "전공, 50자까지. 없으면 null",
+            "type" : "string"
+          },
+          "school" : {
+            "description" : "학교 이름, 50자까지",
+            "type" : "string"
+          },
+          "startMonth" : {
+            "description" : "입학 달 YYYY-MM, 없으면 null",
+            "example" : "2021-03",
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "ENROLLED · ON_LEAVE · GRADUATION_EXPECTED · GRADUATED · DROPPED_OUT",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProfileLanguageRequest" : {
+        "properties" : {
+          "acquiredMonth" : {
+            "description" : "취득 달 YYYY-MM, 없으면 null",
+            "type" : "string"
+          },
+          "score" : {
+            "description" : "점수·등급 20자까지",
+            "example" : "IH",
+            "type" : "string"
+          },
+          "test" : {
+            "description" : "TOEIC · TOEIC_SPEAKING · OPIC · TOEFL · IELTS · TEPS · JLPT · JPT · HSK · OTHER",
+            "type" : "string"
+          },
+          "testName" : {
+            "description" : "OTHER 일 때 시험 이름 50자까지. 그 밖에는 보내도 저장하지 않음",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProfileRequest" : {
+        "description" : "인적사항 네 목록을 통째로 보냅니다. 네 목록 모두 꼭 보내고, 없으면 빈 목록([])입니다.",
+        "properties" : {
+          "careers" : {
+            "description" : "경력, 10개까지",
+            "items" : {
+              "$ref" : "#/components/schemas/ProfileCareerRequest"
+            },
+            "type" : "array"
+          },
+          "certifications" : {
+            "description" : "자격증, 20개까지",
+            "items" : {
+              "$ref" : "#/components/schemas/ProfileCertificationRequest"
+            },
+            "type" : "array"
+          },
+          "educations" : {
+            "description" : "학력, 5개까지",
+            "items" : {
+              "$ref" : "#/components/schemas/ProfileEducationRequest"
+            },
+            "type" : "array"
+          },
+          "languages" : {
+            "description" : "어학, 10개까지",
+            "items" : {
+              "$ref" : "#/components/schemas/ProfileLanguageRequest"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ProfileResponse" : {
+        "description" : "인적사항. 목록 칸 모양은 요청과 같고, 비운 칸은 null 입니다.",
+        "properties" : {
+          "careers" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Career"
+            },
+            "type" : "array"
+          },
+          "certifications" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Certification"
+            },
+            "type" : "array"
+          },
+          "educations" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Education"
+            },
+            "type" : "array"
+          },
+          "languages" : {
+            "items" : {
+              "$ref" : "#/components/schemas/LanguageScore"
+            },
+            "type" : "array"
+          },
+          "savedAt" : {
+            "description" : "마지막으로 저장한 시각. 한 번도 저장하지 않았으면 null 이라, 화면은 처음 입력을 띄웁니다",
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
           }
         },
         "type" : "object"
@@ -4681,7 +4987,7 @@
     },
     "/api/cards/{id}/metadata" : {
       "patch" : {
-        "description" : "보낸 칸만 고칩니다. 키가 없거나 null 인 칸은 그대로 두고, 기간을 빈 글이나 공백뿐인 글로 보내면 기간을 지웁니다.\n제목은 공백뿐이면 안 되고 256자까지, 기간은 50자까지이며 둘 다 받은 글 그대로 저장합니다.\n보낸 값이 모두 지금 값과 같으면(기간이 없는 카드에 빈 기간을 보낸 경우 포함) 아무것도 바꾸지 않고 updatedAt 도 그대로인 지금 값을 돌려줍니다.\n제목과 기간을 모두 보내지 않으면 400 입니다. 네 칸·근거·버전은 바꾸지 않고, 확정한 카드도 다시 열지 않고 고칩니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "보낸 칸만 고칩니다. 키가 없거나 null 인 칸은 그대로 두고, 기간을 빈 글이나 공백뿐인 글로 보내면 기간을 지웁니다.\n제목은 공백뿐이면 안 되고 256자까지, 기간은 50자까지이며 둘 다 받은 글 그대로 저장합니다.\n보낸 값이 모두 지금 값과 같으면(기간이 없는 카드에 빈 기간을 보낸 경우 포함) 아무것도 바꾸지 않고 updatedAt 도 그대로인 지금 값을 돌려줍니다.\n제목·기간·문항 유형을 모두 보내지 않으면 400 입니다. 네 칸·근거·버전은 바꾸지 않고, 확정한 카드도 다시 열지 않고 고칩니다.\n문항 유형(themes)은 경험 카드에만 0~2개 붙이고 빈 배열이면 비웁니다. 카드 글이 아니라 자소서에 쓸 카드를 고르는 표시라\nupdatedAt 을 바꾸지 않으며, 사용자가 고른 뒤로 AI 는 덮어쓰지 않습니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "edit",
         "parameters" : [ {
           "description" : "카드 id",
@@ -4722,7 +5028,7 @@
                 }
               }
             },
-            "description" : "INVALID_REQUEST: 바꿀 칸이 없음, 제목이 공백뿐이거나 256자를 넘음, 기간이 50자를 넘음, 제목·기간에 U+0000 이 있음"
+            "description" : "INVALID_REQUEST: 바꿀 칸이 없음, 제목이 공백뿐이거나 256자를 넘음, 기간이 50자를 넘음, 제목·기간에 U+0000 이 있음, 문항 유형이 셋 이상·겹침·모르는 값이거나 기술 카드에 붙임"
           },
           "401" : {
             "content" : {
@@ -4785,7 +5091,7 @@
             "description" : "Service Unavailable"
           }
         },
-        "summary" : "카드 제목·기간 수정",
+        "summary" : "카드 제목·기간·문항 유형 수정",
         "tags" : [ "Cards" ]
       }
     },
@@ -5405,7 +5711,7 @@
       },
       "get" : {
         "description" : "AI 가 도는 단계(ASSIGNING·ASKING·DRAFTING)면 pollAfterMs 마다 다시 부릅니다.",
-        "operationId" : "get",
+        "operationId" : "get_1",
         "parameters" : [ {
           "description" : "자소서 id",
           "in" : "path",
@@ -6455,6 +6761,74 @@
         "tags" : [ "Session" ]
       }
     },
+    "/api/profile" : {
+      "get" : {
+        "description" : "한 번도 저장하지 않았으면 네 목록이 비고 savedAt 이 null 입니다. 화면은 이것으로 처음 입력을 띄울지 정합니다.",
+        "operationId" : "get",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "내 인적사항",
+        "tags" : [ "Profile" ]
+      },
+      "put" : {
+        "description" : "네 목록을 통째로 바꿉니다. 처음 입력을 건너뛰면 빈 목록 네 개를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n글은 앞뒤 공백을 지우고, 빈 글은 null 로 저장합니다. 목록 순서는 보낸 그대로입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "replace",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseProfileResponse"
+                }
+              }
+            },
+            "description" : "저장한 인적사항"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 목록이 빠짐, 개수를 넘음, 필수 칸이 비었음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 학점·만점이 맞지 않음, 글이 길거나 U+0000 이 있음. 메시지에 어느 목록의 몇 번째인지 적습니다"
+          }
+        },
+        "summary" : "내 인적사항 저장",
+        "tags" : [ "Profile" ]
+      }
+    },
     "/api/repos" : {
       "get" : {
         "description" : "부를 때마다 GitHub 에서 접근할 수 있는 저장소와 최근에 커밋한 남의 공개 저장소(조직 소유 포함)를 다시 받아 반영한 뒤, 이번에 받은 저장소만 돌려줍니다. 커밋한 저장소를 찾지 못하면 접근할 수 있는 저장소만 돌려줍니다. 쓸 수 있는 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 돌려줍니다. 어느 경우든 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠집니다.",
@@ -7244,6 +7618,9 @@
   }, {
     "description" : "본인 카드 작성과 조회",
     "name" : "Cards"
+  }, {
+    "description" : "학력·경력·어학·자격증 인적사항",
+    "name" : "Profile"
   }, {
     "description" : "선택한 저장소의 분석 Job 접수",
     "name" : "Repositories"

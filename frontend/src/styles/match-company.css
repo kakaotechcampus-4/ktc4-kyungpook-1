@@ -1,0 +1,245 @@
+/*
+ * 기업별 보기 · 기업 이니셜 마크.
+ * 마크 색은 기존 토큰(--matcha-* · --caution-* · --danger-* · --ink-*)을 바탕색에 섞어 만든다 — 새 색을 들이지 않고,
+ * 글자는 항상 --text-primary 라서 라이트·다크 어느 쪽에서도 대비가 4.5:1 을 넘는다. 어느 기업이 어떤 색인지는 model.ts companyTone 이 이름에서 정한다.
+ */
+.company-mark {
+  --cm-size: 40px;
+  --cm-tone: var(--matcha-green);
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: var(--cm-size);
+  height: var(--cm-size);
+  border: 1px solid var(--border-default);
+  border-radius: calc(var(--cm-size) * 0.28);
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: calc(var(--cm-size) * 0.44);
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+@supports (background: color-mix(in srgb, red 10%, blue)) {
+  .company-mark {
+    background: color-mix(in srgb, var(--cm-tone) 32%, var(--bg-surface));
+    border-color: color-mix(in srgb, var(--cm-tone) 58%, var(--bg-surface));
+  }
+}
+.company-mark--0 { --cm-tone: var(--matcha-green); }
+.company-mark--1 { --cm-tone: var(--caution-500); }
+.company-mark--2 { --cm-tone: var(--matcha-highlight); }
+.company-mark--3 { --cm-tone: var(--danger-500); }
+.company-mark--4 { --cm-tone: var(--ink-500); }
+.company-mark--5 { --cm-tone: var(--matcha-sage); }
+.company-mark--6 { --cm-tone: color-mix(in srgb, var(--matcha-green) 50%, var(--caution-500)); }
+.company-mark--7 { --cm-tone: color-mix(in srgb, var(--danger-500) 50%, var(--ink-500)); }
+/* 로고 이미지 — 로고는 흰 바탕을 가정하고 만들어지므로 다크 모드에서도 흰색(--ink-0) 위에 올린다. 크기는 --cm-size 로 고정해 이미지가 오고 가도 레이아웃이 흔들리지 않는다. */
+.company-mark--logo {
+  background: var(--ink-0);
+  border-color: var(--border-default);
+  overflow: hidden;
+}
+.company-mark--logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: calc(var(--cm-size) * 0.12);
+  object-fit: contain;
+}
+
+/* 카드: 카드 전체가 공고 상세 링크(제목 링크를 카드만큼 펼침), 기업 이름만 위에 얹은 별도 링크 */
+.match-card {
+  position: relative;
+}
+.match-card__link {
+  color: inherit;
+  text-decoration: none;
+}
+.match-card__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+}
+.match-card__link:focus-visible {
+  outline: none;
+}
+.match-card__link:focus-visible::after {
+  outline: 2px solid var(--text-accent);
+  outline-offset: 4px;
+}
+.match-company-row {
+  margin: 0 0 8px;
+}
+.match-company-link {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.match-company-link:hover .match-company-link__name,
+.match-company-link:focus-visible .match-company-link__name {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.match-company-link:focus-visible {
+  outline: 2px solid var(--text-accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+.match-company-link__name {
+  min-width: 0;
+}
+
+/* 기업별 카드 */
+.match-company-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.match-company-head > div {
+  min-width: 0;
+}
+.match-card--company h2 {
+  overflow-wrap: anywhere;
+}
+.match-company-count {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.match-company-roles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.match-company-roles li {
+  overflow-wrap: anywhere;
+}
+.match-company-roles__rest {
+  color: var(--text-secondary);
+}
+.match-card--company .match-card__go {
+  margin-left: auto;
+}
+
+/* 공고별 / 기업별 */
+.match-view {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+.match-view__option {
+  min-height: var(--control-touch-size);
+  min-width: 88px;
+  padding: 0 18px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+.match-view__option + .match-view__option {
+  border-left: 1px solid var(--border-strong);
+}
+.match-view__option:hover {
+  color: var(--text-primary);
+}
+.match-view__option[aria-pressed="true"] {
+  background: var(--bg-selected);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--border-selected);
+}
+.match-view__option:focus-visible {
+  outline: 2px solid var(--text-accent);
+  outline-offset: -3px;
+}
+
+/* 기업 페이지 */
+.match-company-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.match-company-hero__who {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+.match-company-hero__who > div {
+  min-width: 0;
+}
+.match-company-hero__facts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.match-filter-note {
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+.match-filter-note p {
+  margin: 0;
+  line-height: 1.65;
+}
+.match-detail-who {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.match-detail-who > div {
+  min-width: 0;
+}
+.match-detail-who .match-company {
+  margin-bottom: 4px;
+}
+.match-detail-who .match-company-link {
+  z-index: auto;
+}
+
+@media (max-width: 700px), (pointer: coarse) {
+  .match-company-link {
+    min-height: 44px;
+  }
+  .match-detail-who {
+    gap: 12px;
+  }
+}
+@media (max-width: 700px) {
+  .match-view {
+    align-self: stretch;
+  }
+  .match-view__option {
+    flex: 1;
+  }
+}

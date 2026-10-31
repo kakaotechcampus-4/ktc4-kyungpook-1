@@ -9,9 +9,9 @@ import { profileSupported } from '@/api/capabilities';
 import { ProfileSettingsRow } from '@/features/profile/ProfileSettingsRow';
 
 const COLLECTED = [
-  ['GitHub 아이디 · 아바타', '로그인 식별', '보관'],
-  ['공개 저장소 원본 (커밋·PR·리뷰)', '재현성 · 근거 검증', '보관'],
-  ['확정한 경험 카드 · 버전', '서비스 핵심 데이터', '보관'],
+  ['GitHub 아이디와 프로필 사진', '로그인 식별', '보관'],
+  ['공개 레포 원본 (커밋, PR, 리뷰)', '재현성과 근거 검증', '보관'],
+  ['확정한 경험 카드와 버전', '서비스 핵심 데이터', '보관'],
   ['질문 답변 원문', '카드의 근거', '보관'],
   ['GitHub 액세스 토큰', '수집에만 사용', '탈퇴 시 즉시 파기'],
 ] as const;
@@ -35,12 +35,12 @@ export function MyPage() {
         <div className="profile-summary">
           <UserAvatar src={me.data.avatarUrl} login={me.data.login} size={64} />
           <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 18 }}>{me.data.login}</span>
+            <span className="w-600" style={{ fontSize: 20 }}>{me.data.login}</span>
           </div>
         </div>
       )}
       <section className="settings-section stack" style={{ gap: 14 }}>
-        <div className="row"><span className="w-600" style={{ fontSize: 14.5 }}>화면 테마</span></div>
+        <div className="row"><span className="w-600" style={{ fontSize: 14 }}>화면 테마</span></div>
         <div className="row" style={{ gap: 8 }} role="radiogroup" aria-label="테마">
           {(['light', 'dark'] as Theme[]).map((t) => (
             <Button key={t} variant={theme === t ? 'primary' : 'outline'} size="sm" role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>
@@ -50,12 +50,12 @@ export function MyPage() {
       <section className="settings-section settings-links stack">
         <ProfileSettingsRow />
         <Link to="/settings/github" className="kv" style={{ padding: '14px 0' }}>
-          <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13.5 }}>GitHub 연결 관리</span><span className="t-12 c-2">권한 확인, 다시 연결, 연결 해제</span></div>
+          <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>GitHub 연결 관리</span><span className="t-12 c-2">권한 확인, 다시 연결, 연결 해제</span></div>
           <span className="c-3" style={{ fontSize: 16 }}>›</span>
         </Link>
         {/* 아직 없는 기능은 눌러지는 것처럼 보이지 않게 — 화살표 없이 흐리게 */}
         <div className="kv" style={{ padding: '14px 0' }} aria-disabled="true">
-          <div className="stack grow" style={{ gap: 3 }}><span className="w-600 c-3" style={{ fontSize: 13.5 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-3">준비 중이에요</span></div>
+          <div className="stack grow" style={{ gap: 3 }}><span className="w-600 c-3" style={{ fontSize: 14 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-3">준비 중이에요</span></div>
         </div>
         <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="danger" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
       </section>
@@ -65,7 +65,7 @@ export function MyPage() {
         ))}
       </section>
       <details className="settings-section settings-storage">
-        <summary>저장·보관 정보</summary>
+        <summary>저장과 보관 정보</summary>
         <div className="stack" style={{ gap: 12, marginTop: 16 }}>
           {[...COLLECTED, ...(profileSupported() ? PROFILE_COLLECTED : [])].map(([name, why, keep]) => (
             <div key={name} className="kv settings-data-row">

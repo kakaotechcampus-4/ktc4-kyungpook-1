@@ -30,7 +30,20 @@ public class MatchingCardReader {
     @Transactional(readOnly = true)
     public List<MatchingCard> confirmedOf(Long userId, Long userRepositoryId) {
 
-        List<Long> ids = confirmedCards.findLiveConfirmedIdsOfRepository(userId, userRepositoryId);
+        return cardsOf(confirmedCards.findLiveConfirmedIdsOfRepository(userId, userRepositoryId));
+
+    }
+
+    /** 레포를 가리지 않고 그 사용자의 확정 카드를 모두 읽는다 */
+    @Transactional(readOnly = true)
+    public List<MatchingCard> confirmedOf(Long userId) {
+
+        return cardsOf(confirmedCards.findLiveConfirmedIdsOfUser(userId));
+
+    }
+
+    private List<MatchingCard> cardsOf(List<Long> ids) {
+
         if (ids.isEmpty()) {
             return List.of();
         }

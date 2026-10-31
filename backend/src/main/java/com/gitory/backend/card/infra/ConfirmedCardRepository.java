@@ -42,4 +42,11 @@ public interface ConfirmedCardRepository extends Repository<Card, Long> {
             """, nativeQuery = true)
     List<Long> findLiveConfirmedIdsOfRepository(@Param("userId") Long userId,
                                                 @Param("userRepositoryId") Long userRepositoryId);
+
+    @Query(value = """
+            SELECT id FROM card
+            WHERE user_id = :userId AND status = 'CONFIRMED' AND deleted_at IS NULL
+            ORDER BY id
+            """, nativeQuery = true)
+    List<Long> findLiveConfirmedIdsOfUser(@Param("userId") Long userId);
 }

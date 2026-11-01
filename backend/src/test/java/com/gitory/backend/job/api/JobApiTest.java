@@ -1,8 +1,15 @@
 package com.gitory.backend.job.api;
 
+import com.gitory.backend.agent.port.StarDraftListener;
+import com.gitory.backend.agent.port.StarSlot;
+import com.gitory.backend.agent.port.StarStep;
+import com.gitory.backend.agent.port.StarStepActor;
+import com.gitory.backend.agent.port.StarStepKind;
+import com.gitory.backend.card.domain.GeneratedCard;
 import com.gitory.backend.common.infra.ai.AiProgressItem;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.job.domain.AnalysisJob;
+import com.gitory.backend.job.domain.CardDraftLiveLog;
 import com.gitory.backend.job.domain.JobActivityLog;
 import com.gitory.backend.job.domain.JobErrorCode;
 import com.gitory.backend.job.domain.JobState;
@@ -28,6 +35,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -69,6 +77,9 @@ class JobApiTest {
 
     @Autowired
     JobActivityLog activity;
+
+    @Autowired
+    CardDraftLiveLog drafts;
 
     private TestFixtures fixtures;
 
@@ -150,6 +161,34 @@ class JobApiTest {
     }
 
     @Test
+    @DisplayName("카드 초안 Job 상세는 카드마다 상태와 칸마다 지금까지 쓴 글, 카드 상세와 같은 모양의 단계를 싣는다")
+    void returnsDraftProgressOfMyDraftJob() throws Exception {
+
+        AnalysisJob job = jobs.save(AnalysisJob.enqueueDraft(myUserId, myRepoId, KEY));
+        UUID cardId = UUID.randomUUID();
+        drafts.start(job.getId(), List.of(new GeneratedCard(1L, cardId, 10L, "결제 중복 승인 막기")));
+        StarDraftListener listener = drafts.write(job.getId(), 1L);
+        listener.slot(1, StarSlot.A, "주문마다 멱등 키를 두었다.", false);
+        listener.step(new StarStep(1, StarStepActor.MODEL, StarStepKind.REWRITE, StarSlot.A, null, null, null, null));
+
+        getJob(job.getPublicId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.drafts.length()").value(1))
+                .andExpect(jsonPath("$.data.drafts[0].cardId").value(cardId.toString()))
+                .andExpect(jsonPath("$.data.drafts[0].title").value("결제 중복 승인 막기"))
+                .andExpect(jsonPath("$.data.drafts[0].state").value("WRITING"))
+                .andExpect(jsonPath("$.data.drafts[0].slots[0].field").value("A"))
+                .andExpect(jsonPath("$.data.drafts[0].slots[0].round").value(1))
+                .andExpect(jsonPath("$.data.drafts[0].slots[0].text").value("주문마다 멱등 키를 두었다."))
+                .andExpect(jsonPath("$.data.drafts[0].slots[0].done").value(false))
+                .andExpect(jsonPath("$.data.drafts[0].steps[0].round").value(1))
+                .andExpect(jsonPath("$.data.drafts[0].steps[0].actor").value("MODEL"))
+                .andExpect(jsonPath("$.data.drafts[0].steps[0].kind").value("REWRITE"))
+                .andExpect(jsonPath("$.data.drafts[0].steps[0].field").value("A"));
+
+    }
+
+    @Test
     @DisplayName("끝난 Job 은 pollAfterMs 0 을 내려준다")
     void terminalJobStopsPolling() throws Exception {
 
@@ -220,7 +259,7 @@ class JobApiTest {
     }
 
     @Test
-    @DisplayName("값이 비어 있어도 프론트가 요구하는 키 14개는 모두 내려간다")
+    @DisplayName("값이 비어 있어도 프론트가 요구하는 키 15개는 모두 내려간다")
     void keepsEveryContractKey() throws Exception {
 
         UUID jobId = newJob(myUserId, myRepoId);
@@ -228,7 +267,7 @@ class JobApiTest {
         Map<String, Object> data = JsonPath.read(bodyOf(getJob(jobId)), "$.data");
 
         assertThat(data).containsOnlyKeys(
-                "jobId", "type", "state", "partial", "steps", "activity", "errorCode", "retryable",
+                "jobId", "type", "state", "partial", "steps", "activity", "drafts", "errorCode", "retryable",
                 "retryAfterSec", "startedAt", "updatedAt", "finishedAt", "result", "pollAfterMs");
     }
 
@@ -352,7 +391,7 @@ class JobApiTest {
     }
 
     @Test
-    @DisplayName("내 QUEUED Job 을 취소하면 CANCELED 로 바뀌고, 응답은 Job 조회 API 와 같은 14개 칸으로 내려온다")
+    @DisplayName("내 QUEUED Job 을 취소하면 CANCELED 로 바뀌고, 응답은 Job 조회 API 와 같은 15개 칸으로 내려온다")
     void cancelsMyQueuedJob() throws Exception {
 
         UUID jobId = newJob(myUserId, myRepoId);
@@ -367,7 +406,7 @@ class JobApiTest {
 
         Map<String, Object> data = JsonPath.read(bodyOf(response), "$.data");
         assertThat(data).containsOnlyKeys(
-                "jobId", "type", "state", "partial", "steps", "activity", "errorCode", "retryable",
+                "jobId", "type", "state", "partial", "steps", "activity", "drafts", "errorCode", "retryable",
                 "retryAfterSec", "startedAt", "updatedAt", "finishedAt", "result", "pollAfterMs");
 
     }

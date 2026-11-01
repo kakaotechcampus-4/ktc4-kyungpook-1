@@ -13,6 +13,8 @@ from typing import Annotated, Optional
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
 
+from schemas.common import TechTag
+
 
 class StrictModel(BaseModel):
     """오탈자 필드를 조용히 버리지 않는 내부 계약 모델."""
@@ -46,6 +48,16 @@ class GeneralConditionType(str, Enum):
     CERTIFICATE = "CERTIFICATE"
     LOCATION = "LOCATION"
     OTHER = "OTHER"
+
+
+class EducationLevel(str, Enum):
+    """지원할 수 있는 가장 낮은 학력으로, Spring 인적사항의 학력 단계와 같은 다섯 값이다."""
+
+    HIGH_SCHOOL = "HIGH_SCHOOL"
+    ASSOCIATE = "ASSOCIATE"
+    BACHELOR = "BACHELOR"
+    MASTER = "MASTER"
+    DOCTOR = "DOCTOR"
 
 
 class JobCategory(str, Enum):
@@ -85,12 +97,16 @@ class JobCriterion(StrictModel):
 
     ``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.
     담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.
+    ``techs`` 는 필수·우대 기술 조건에만, 학력 값은 학력 조건에만 남기고 그 밖은 추출기가 비운다.
     """
 
     criterion_type: JobCriterionType
     general_type: Optional[GeneralConditionType] = None
     text: str = Field(min_length=1, max_length=1000)
     source_quote: str = Field(min_length=1, max_length=4000)
+    techs: list[TechTag] = Field(default_factory=list, max_length=20)
+    education_level: Optional[EducationLevel] = None
+    education_exempt: bool = False
 
     @model_validator(mode="after")
     def check_general_type(self) -> "JobCriterion":
@@ -229,6 +245,7 @@ class JobPostingDetailExtractionRequest(StrictModel):
     source_url: AnyHttpUrl
     raw_text: str = Field(min_length=1, max_length=100_000)
     previous_content_hash: Optional[str] = Field(None, min_length=64, max_length=64)
+    previous_extraction_version: Optional[int] = Field(None, ge=1, strict=True)
     previous_content_status: JobPostingContentStatus = JobPostingContentStatus.READY
 
 
@@ -241,13 +258,15 @@ class JobPostingDetailExtractionResult(StrictModel):
     content_hash: str = Field(min_length=64, max_length=64)
     outcome: ExtractionOutcome
     content_status: JobPostingContentStatus
+    extraction_version: int = Field(ge=1, strict=True)
     criteria: list[JobCriterion] = Field(default_factory=list)
+    team_techs: list[TechTag] = Field(default_factory=list, max_length=20)
     job_category: Optional[JobCategory] = None
     experience: Optional[JobExperience] = None
 
     @model_validator(mode="after")
     def check_outcome_fields(self) -> "JobPostingDetailExtractionResult":
-        has_content = bool(self.criteria) or self.job_category or self.experience
+        has_content = bool(self.criteria) or bool(self.team_techs) or self.job_category or self.experience
         if self.outcome == ExtractionOutcome.UNCHANGED and has_content:
             raise ValueError("UNCHANGED 응답에는 조건·분류·경력을 다시 보내지 않습니다.")
         if self.outcome == ExtractionOutcome.UPDATED and (

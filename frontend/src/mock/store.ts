@@ -15,6 +15,8 @@ export const db = {
   candidates: clone(seedCandidates) as Any[],
   cards: clone(seedCards) as Any[],
   interview: clone(seedInterview) as Record<string, Any[]>,
+  coverLetters: [] as Any[], // 자소서(#492 계약) — mock/coverLetters.ts 가 다룬다
+  cardMaterialAnswers: {} as Record<string, Record<string, string>>, // 카드마다 기억한 자소서 답(#585)
   profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
@@ -59,7 +61,7 @@ function hydrateCards() {
 export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
-  db.profile = emptyProfile();
+  db.profile = emptyProfile(); db.coverLetters = []; db.cardMaterialAnswers = {};
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.seq = 100;
   hydrateCards();
 }
@@ -441,7 +443,7 @@ export function askTurn(c: Any, field: string) {
     turnNo: turns.length + 1, field, askedBy: 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
     found: found.length ? found : ['이 카드에 붙은 커밋 근거가 없습니다'],
-    missing: [bank.missing], question: bank.question, options: bank.options, answer: null,
+    missing: [bank.missing], question: bank.question, options: bank.options, answer: null, outcome: null,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };
@@ -453,6 +455,7 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
   if (!turn) return null;
   turn.answer = { text, source }; // 가공 없이 그대로
+  turn.outcome = 'ANSWERED';
   pushVersion(c, 'INTERVIEW', { [FIELD_KEY[turn.field]]: text });
   c.evidence.push({ field: turn.field, type: source, authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
   c.droppedFields = c.droppedFields.filter((d: Any) => d.field !== turn.field);
@@ -460,6 +463,13 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   c.interviewTurns = db.interview[c.id].filter((t) => t.answer).length;
   if (c.generation?.partial) c.generation = null;
   captureVersion(c);
+  return c;
+}
+
+export function skipTurn(c: Any, turnNo: number) {
+  const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
+  if (!turn) return null;
+  turn.outcome = 'SKIPPED';
   return c;
 }
 
@@ -483,7 +493,7 @@ export function settlePending() {
  */
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, profile: db.profile,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,
     jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], seq: db.seq,
   });
 }
@@ -493,6 +503,8 @@ export function restore(raw: string): boolean {
     if (!s?.cards || !s?.repos) return false;
     db.user = s.user; db.repos = s.repos; db.candidates = s.candidates;
     db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
+    db.coverLetters = Array.isArray(s.coverLetters) ? s.coverLetters : [];
+    db.cardMaterialAnswers = s.cardMaterialAnswers ?? {};
     const profile = Profile.safeParse(s.profile); // 인적사항이 생기기 전에 저장된 데모 DB 는 빈 값으로 이어진다
     db.profile = profile.success ? profile.data : emptyProfile();
     db.jobs.clear();

@@ -17,13 +17,17 @@ public class CardReopenService {
 
     private final CardOwnershipService ownership;
     private final CardDetailService details;
+    private final ConfirmedCardChanges changes;
 
     /** 이미 작성 중인 카드면 아무것도 바꾸지 않고 지금 카드를 돌려준다 */
     @Transactional
     public CardDetail reopen(UUID publicId, Long userId) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
-        card.reopen();
+        if (card.isConfirmed()) {
+            card.reopen();
+            changes.announce(card);
+        }
 
         return details.load(publicId, userId);
 

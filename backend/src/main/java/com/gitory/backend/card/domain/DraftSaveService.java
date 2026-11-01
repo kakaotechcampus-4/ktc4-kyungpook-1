@@ -30,6 +30,7 @@ public class DraftSaveService {
     private final CardSlotNoteRepository notes;
     private final CardVersionReader reader;
     private final CardVersionWriter writer;
+    private final CardThemeSuggester themeSuggester;
 
     @Transactional
     public SavedDraft save(UUID publicId, Long userId, Map<StarField, String> texts) {
@@ -51,7 +52,7 @@ public class DraftSaveService {
 
         CardVersion next = writer.startNext(card, VersionSource.USER_EDIT);
         fill(card.getId(), currentSlots, next.getVersionNo(), sent);
-        card.settle(reader.read(card.getId(), next.getVersionNo()));
+        themeSuggester.settle(card, reader.read(card.getId(), next.getVersionNo()));
 
         return new SavedDraft(card.getPublicId(), next.getVersionNo(), sent, next.getUpdatedAt());
 
@@ -69,7 +70,7 @@ public class DraftSaveService {
         fill(card.getId(), branchedFrom, current.getVersionNo(), sent);
         current.markSaved();
         card.markEdited();
-        card.settle(reader.read(card.getId(), current.getVersionNo()));
+        themeSuggester.settle(card, reader.read(card.getId(), current.getVersionNo()));
 
         return new SavedDraft(card.getPublicId(), current.getVersionNo(), sent, current.getUpdatedAt());
 

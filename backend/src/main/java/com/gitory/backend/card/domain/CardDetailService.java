@@ -68,7 +68,7 @@ public class CardDetailService {
                 .orElse(null);
 
         return new CardDetail(card.getPublicId(), card.getCardType(), card.getStatus(), card.getTitle(),
-                card.areaTags(), card.techTags(), card.getPeriod(), repository, activity, current.getSource(),
+                card.areaTags(), card.techTags(), card.themeTags(), card.getPeriod(), repository, activity, current.getSource(),
                 current.getUpdatedAt(), slots, card.getMaskRules(), card.getConfirmedAt(), card.getCreatedAt(),
                 candidate, generationOf(card), card.getGenerationFailure(), answeredCount(asked),
                 card.getInterviewEndReason(), turnNosOf(slots, asked), notesOf(card),

@@ -35,7 +35,8 @@ export function LandingPage() {
 
       <section className="landing__hero" inert={introActive}>
         <div className="landing__copy stack">
-          <h1 className="landing__h1">커밋과 PR을<br />자소서 경험으로</h1>
+          <span className="landing__eyebrow">코드에 남긴 기록, 나만의 경험으로</span>
+          <h1 className="landing__h1">커밋과 PR을<br /><span>자소서 경험으로</span></h1>
           <p className="landing__lead">
             저장소를 고르면 내가 한 작업을 찾아 상황, 과제, 행동, 결과로 정리해요.
             비어 있는 내용은 질문에 답하며 채우고, 자소서와 면접에 활용할 수 있어요.

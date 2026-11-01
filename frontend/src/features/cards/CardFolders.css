@@ -1,0 +1,49 @@
+/*
+ * 경험 카드 폴더(이슈 #522, 10/29 회의). 레포·활동마다 닫힌 폴더 하나, 카드는 폴더 밖으로 나오지 않는다.
+ * 색은 토큰만 쓴다(다크 모드는 토큰이 알아서 바뀐다): 뒤판·탭 --bg-ink-solid, 앞판 --bg-surface + --border-default, 숫자 --text-accent.
+ * 마우스를 올리거나 키보드로 닿으면 뒤판은 --bg-ink-hover, 앞판 테두리는 --border-selected 로 색만 바뀐다(움직임 없음).
+ * 폴더는 모두 같은 색 하나다. 레포마다 색을 달리하면 무지개처럼 보여 화면의 한 가지 강조색 규칙과 어긋난다.
+ */
+.folders { display: flex; flex-direction: column; gap: 14px; }
+.folders__bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+.folders__bar .right { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.folders__notice { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
+
+/* 한 줄에 둘 이상 들어가는 만큼만 열을 만든다. 390 이하에서는 한 줄에 폴더 하나(이름이 잘리지 않게) */
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 20px 16px; }
+
+.folder-grid > li { display: flex; min-width: 0; }
+.folder { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; padding-top: 20px; border-radius: var(--radius-lg); color: var(--text-primary); isolation: isolate; }
+.folder__back, .folder__back::before { background: var(--bg-ink-solid); }
+.folder__back { position: absolute; z-index: -1; top: 8px; right: 0; bottom: 0; left: 0; border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg); }
+/* 탭: 뒤판 왼쪽 위로 솟은 조각. 글은 넣지 않는다 */
+.folder__back::before { content: ''; position: absolute; top: -8px; left: 0; width: min(44%, 132px); height: 16px; border-radius: var(--radius-md) 0 0 0; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%); }
+.folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 128px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
+.folder:hover .folder__back, .folder:hover .folder__back::before,
+.folder:focus-visible .folder__back, .folder:focus-visible .folder__back::before { background: var(--bg-ink-hover); }
+.folder:hover .folder__front, .folder:focus-visible .folder__front { border-color: var(--border-selected); }
+
+.folder__owner { font-size: 12px; line-height: 16px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder__name { font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); color: var(--text-primary);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.folder__note { font-size: 12px; line-height: 16px; color: var(--text-tertiary); }
+.folder__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; }
+.folder__tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.folder__tag { padding: 3px 8px; border-radius: var(--radius-sm); background: var(--bg-subtle); color: var(--text-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
+.folder__count { display: flex; flex-direction: column; align-items: flex-end; flex: 0 0 auto; margin-left: auto; color: var(--text-secondary); font-size: 12px; line-height: 16px; }
+.folder__count-num { font-size: 28px; line-height: 32px; font-weight: 700; color: var(--text-accent); letter-spacing: 0; }
+
+/* ───── 폴더 안 ───── */
+.folder-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }
+.folder-head__identity { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.folder-head__owner { font-size: 12px; line-height: 16px; color: var(--text-secondary); }
+.folder-head__meta { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+.folder-head__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.folder-section { display: flex; flex-direction: column; gap: 14px; }
+.folder-section__empty { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 16px 18px; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); color: var(--text-secondary); font-size: 13px; line-height: 20px; }
+.folder-missing { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 24px 0; }
+
+@media (max-width: 560px) {
+  .folders__bar .right, .folder-head__actions { width: 100%; margin-left: 0; }
+  .folders__bar .right .btn, .folder-head__actions .btn { flex: 1 1 auto; }
+}

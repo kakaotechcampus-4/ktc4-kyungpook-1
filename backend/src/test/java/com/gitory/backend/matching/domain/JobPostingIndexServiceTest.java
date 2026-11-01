@@ -261,7 +261,7 @@ class JobPostingIndexServiceTest {
 
         JobPosting posting = JobPosting.discovered("acme", externalId, "에이크미", "Software Engineer, Backend",
                 "https://jobs.example.com/" + externalId, null, null, EARLIER);
-        posting.extracted(JobCategory.BACKEND, ExperienceLevel.UNSPECIFIED, null, null, contentStatus,
+        posting.extracted(JobCategory.BACKEND, ExperienceLevel.UNSPECIFIED, null, null, List.of(), null, contentStatus,
                 "%064x".formatted(externalId.hashCode() & 0xffffffffL), EARLIER);
         if (status == JobPostingStatus.EXPIRED) {
             posting.expire();

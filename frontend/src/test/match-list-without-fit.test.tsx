@@ -36,7 +36,7 @@ const meWith = (confirmedCards: number) => {
   return Me.parse({ ...base, stats: { ...base.stats, confirmedCards } });
 };
 const byCompany = (name: string) => sampleList.data.find((x) => x.company === name)!;
-// 서버가 준 순서: 마루데이터, 다온페이, 나래랩스, 라온모빌리티, 가온소프트. 마감은 가온 10/31, 라온 11/02, 나래 11/07, 다온·마루는 상시 채용
+// 서버가 준 순서: 마루데이터, 다온페이, 나래랩스, 라온모빌리티, 가온소프트. 마감은 가온 10/31, 라온 11/02, 나래 11/07, 다온·마루는 마감일 없음
 const shuffled = (fit: (x: (typeof sampleList.data)[number]) => 'A' | 'B' | 'C' | 'D' | null) =>
   ['마루데이터', '다온페이', '나래랩스', '라온모빌리티', '가온소프트'].map((name) => MatchTarget.parse({ ...byCompany(name), fit: fit(byCompany(name)) }));
 const allNull = () => shuffled(() => null);
@@ -56,7 +56,7 @@ function mount(path = '/match', { me }: Setup = {}) {
   );
   return client;
 }
-const companies = () => [...document.querySelectorAll('.match-card .match-company')].map((el) => el.textContent);
+const companies = () => [...document.querySelectorAll('.match-card .match-company-link__name')].map((el) => el.textContent);
 const sortSelect = () => screen.getByLabelText('공고 정렬');
 const sortValue = () => sortSelect().getAttribute('data-value');
 const sortOptions = () => [...sortSelect().querySelectorAll('[data-option]')].map((el) => el.textContent);
@@ -76,25 +76,33 @@ describe('목록의 등급이 전부 비어 있을 때', () => {
     expect(screen.getByText('공고 5건')).toBeInTheDocument();
   });
 
-  it('정렬은 마감 순만 남고 기본이 마감 순이다 (근거 등급 순 선택지 없음)', async () => {
+  it('등급이 없으면 서버가 준 순서가 기본 순서이고 마감 순을 고를 수 있다 (근거 등급 순 선택지 없음)', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(allNull());
     mount('/match', { me: 3 });
     await screen.findByText('가온소프트');
-    expect(sortValue()).toBe('deadline');
-    expect(sortOptions()).toEqual(['마감 순']);
+    expect(sortValue()).toBe('fit');
+    expect(sortOptions()).toEqual(['기본 순서', '마감 순']);
     expect(screen.queryByText('근거 등급 순')).not.toBeInTheDocument();
-    // 서버가 준 순서가 아니라 마감이 가까운 순, 상시 채용은 뒤
-    const order = companies();
-    expect(order.slice(0, 3)).toEqual(['가온소프트', '라온모빌리티', '나래랩스']);
-    expect(order.slice(3).sort()).toEqual(['다온페이', '마루데이터']);
+    // 서버가 정한 순서(마감 임박 먼저, 나머지는 회사마다 돌아가며)를 다시 정렬하지 않고 그대로 보여 준다
+    expect(companies()).toEqual(['마루데이터', '다온페이', '나래랩스', '라온모빌리티', '가온소프트']);
   });
 
-  it('주소에 sort=fit 이 남아 있어도 깨지지 않고 마감 순으로 본다', async () => {
+  it('주소에 sort=fit 이 있어도 기본 순서와 같다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(allNull());
     mount('/match?sort=fit', { me: 3 });
     await screen.findByText('가온소프트');
+    expect(sortValue()).toBe('fit');
+    expect(companies()).toEqual(['마루데이터', '다온페이', '나래랩스', '라온모빌리티', '가온소프트']);
+  });
+
+  it('등급이 없어도 sort=deadline 이면 마감이 가까운 순이고 마감일 없음은 뒤다', async () => {
+    vi.spyOn(matchingApi, 'list').mockResolvedValue(allNull());
+    mount('/match?sort=deadline', { me: 3 });
+    await screen.findByText('가온소프트');
     expect(sortValue()).toBe('deadline');
-    expect(companies().slice(0, 3)).toEqual(['가온소프트', '라온모빌리티', '나래랩스']);
+    const order = companies();
+    expect(order.slice(0, 3)).toEqual(['가온소프트', '라온모빌리티', '나래랩스']);
+    expect(order.slice(3).sort()).toEqual(['다온페이', '마루데이터']);
   });
 
   it('확정 카드가 0장일 때만 안내와 카드 확정 링크를 보여 준다', async () => {
@@ -142,9 +150,9 @@ describe('목록에 등급이 섞여 있거나 모두 있을 때는 지금과 �
     expect(sortOptions()).toEqual(['근거 등급 순', '마감 순']);
     // 등급 순: A, B, C, D 다음에 등급이 없는 공고
     expect(companies()).toEqual(['가온소프트', '나래랩스', '라온모빌리티', '마루데이터', '다온페이']);
-    expect(screen.getByLabelText('근거 등급 A')).toBeInTheDocument();
-    expect(document.querySelectorAll('.match-fit')).toHaveLength(4);
-    expect(document.querySelectorAll('.match-counts')).toHaveLength(4);
+    // 등급과 채운 개수는 목록 카드에 그리지 않고 상세에서만 보여 준다
+    expect(document.querySelector('.match-fit')).toBeNull();
+    expect(document.querySelector('.match-counts')).toBeNull();
   });
 
   it('sort=deadline 은 그대로 마감 순이다', async () => {
@@ -155,13 +163,13 @@ describe('목록에 등급이 섞여 있거나 모두 있을 때는 지금과 �
     expect(companies().slice(0, 3)).toEqual(['가온소프트', '라온모빌리티', '나래랩스']);
   });
 
-  it('등급이 모두 있으면 확정 카드 수를 모르는 동안에도 등급과 개수를 그대로 보여 준다', async () => {
+  it('등급이 모두 있으면 확정 카드 수를 모르는 동안에도 안내를 띄우지 않고, 등급과 개수는 목록 카드에 그리지 않는다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(shuffled((x) => x.fit as 'A' | 'B' | 'C' | 'D'));
     mount('/match', { me: 'pending' });
     await screen.findByText('가온소프트');
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
-    expect(document.querySelectorAll('.match-fit')).toHaveLength(5);
-    expect(document.querySelectorAll('.match-counts')).toHaveLength(5);
+    expect(document.querySelector('.match-fit')).toBeNull();
+    expect(document.querySelector('.match-counts')).toBeNull();
   });
 });
 

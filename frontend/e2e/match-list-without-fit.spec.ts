@@ -50,20 +50,20 @@ for (const width of [1440, 390]) {
     await expect(page.getByText('카드를 확정하면 등급이 나와요')).toHaveCount(0);
     await expect(page.locator('.match-fit')).toHaveCount(0);
     await expect(page.locator('.match-counts')).toHaveCount(0);
-    await expect(sortMenu(page)).toContainText('마감 순');
+    await expect(sortMenu(page)).toContainText('기본 순서');
     await sortMenu(page).click();
-    await expect(page.getByRole('option')).toHaveText(['마감 순']);
+    await expect(page.getByRole('option')).toHaveText(['기본 순서', '마감 순']);
     await page.keyboard.press('Escape');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 }
 
-test('주소에 sort=fit 이 남아 있어도 마감 순으로 목록을 보여 준다', async ({ page }) => {
+test('주소에 sort=fit 이 남아 있어도 기본 순서로 목록을 보여 준다', async ({ page }) => {
   await loginAsDemo(page);
   await serverWithoutFit(page, 3);
   await page.goto('/match?sort=fit');
   await expect(page.locator('.match-card')).toHaveCount(5);
-  await expect(sortMenu(page)).toContainText('마감 순');
+  await expect(sortMenu(page)).toContainText('기본 순서');
   await page.locator('.match-card').first().click();
   await page.getByRole('link', { name: '← 공고 목록' }).click();
   await expect(page.locator('.match-card')).toHaveCount(5);
@@ -82,7 +82,8 @@ test('등급이 있는 목록은 그대로 근거 등급 순과 마감 순을 �
   await loginAsDemo(page);
   await page.goto('/match');
   await expect(page.locator('.match-card')).toHaveCount(5);
-  await expect(page.locator('.match-fit').first()).toBeVisible();
+  // 등급은 목록 카드에 그리지 않고 상세에서만 보여 주므로, 정렬 선택지로만 확인한다
+  await expect(page.locator('.match-fit')).toHaveCount(0);
   await expect(sortMenu(page)).toContainText('근거 등급 순');
   await sortMenu(page).click();
   await expect(page.getByRole('option')).toHaveText(['근거 등급 순', '마감 순']);

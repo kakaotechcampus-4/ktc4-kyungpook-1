@@ -11,12 +11,18 @@ import { PageLoading } from '@/components/ui/PageLoading';
  *  B1 /repos · B3 /repos/:id/run · C1 /repos/:id/candidates · C4 /repos/:id/recall
  *  D1~D9·E2·E3 /cards/:id (모드는 쿼리) · D5 /cards/:id/interview · E4 /cards/new · E1 /
  *  F1 /settings/github · F2 /settings · F3 /settings/leave · F4 /settings/profile (인적사항, BE #552 계약)
+ *  폴더 /cards/repo/:repoId · /cards/activity/:activityId · /cards/direct (경험 카드 목록에서 폴더를 열면, #522)
+ *  활동 /activities · /activities/new · /activities/:activityId/edit (레포 밖 경험 묶음, BE #477 계약)
  */
 const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() => f().then((m) => ({ default: m[name] as React.ComponentType })));
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
 const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
+const CoverLettersPage = L(() => import('@/features/coverLetters/CoverLettersPage'), 'CoverLettersPage');
+const CoverLetterNewPage = L(() => import('@/features/coverLetters/CoverLetterNewPage'), 'CoverLetterNewPage');
+const CoverLetterPage = L(() => import('@/features/coverLetters/CoverLetterPage'), 'CoverLetterPage');
 const MatchDetailPage = L(() => import('@/features/match/MatchDetailPage'), 'MatchDetailPage');
+const CompanyPage = L(() => import('@/features/match/CompanyPage'), 'CompanyPage');
 const ReposPage = L(() => import('@/features/repos/ReposPage'), 'ReposPage');
 const AnalyzePage = L(() => import('@/features/repos/AnalyzePage'), 'AnalyzePage');
 const JobStatusPage = L(() => import('@/features/jobs/JobStatusPage'), 'JobStatusPage');
@@ -26,6 +32,12 @@ const CardsListPage = L(() => import('@/features/cards/CardsListPage'), 'CardsLi
 const CardPage = L(() => import('@/features/cards/CardPage'), 'CardPage');
 const InterviewPage = L(() => import('@/features/cards/InterviewPage'), 'InterviewPage');
 const NewCardPage = L(() => import('@/features/cards/NewCardPage'), 'NewCardPage');
+const RepoFolderPage = L(() => import('@/features/cards/FolderPage'), 'RepoFolderPage');
+const ActivityFolderPage = L(() => import('@/features/cards/FolderPage'), 'ActivityFolderPage');
+const DirectFolderPage = L(() => import('@/features/cards/FolderPage'), 'DirectFolderPage');
+const ActivitiesPage = L(() => import('@/features/activities/ActivitiesPage'), 'ActivitiesPage');
+const ActivityNewPage = L(() => import('@/features/activities/ActivityFormPage'), 'ActivityNewPage');
+const ActivityEditPage = L(() => import('@/features/activities/ActivityFormPage'), 'ActivityEditPage');
 const GithubSettingsPage = L(() => import('@/features/settings/GithubSettingsPage'), 'GithubSettingsPage');
 const MyPage = L(() => import('@/features/settings/MyPage'), 'MyPage');
 const ProfilePage = L(() => import('@/features/profile/ProfilePage'), 'ProfilePage');
@@ -43,7 +55,11 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <S><HomePage /></S> },
       { path: '/match', element: <S><MatchListPage /></S> },
+      { path: '/match/company/:companyId', element: <S><CompanyPage /></S> },
       { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },
+      { path: '/cover-letters', element: <S><CoverLettersPage /></S> },
+      { path: '/cover-letters/new', element: <S><CoverLetterNewPage /></S> },
+      { path: '/cover-letters/:coverLetterId', element: <S><CoverLetterPage /></S> },
       { path: '/repos', element: <S><ReposPage /></S> },
       { path: '/repos/:repoId/run', element: <S><AnalyzePage /></S> },
       { path: '/jobs/:jobId', element: <S><JobStatusPage /></S> },
@@ -51,6 +67,12 @@ export const router = createBrowserRouter([
       { path: '/repos/:repoId/recall', element: <S><RecallPage /></S> },
       { path: '/cards', element: <S><CardsListPage /></S> },
       { path: '/cards/new', element: <S><NewCardPage /></S> },
+      { path: '/cards/repo/:repoId', element: <S><RepoFolderPage /></S> },
+      { path: '/cards/activity/:activityId', element: <S><ActivityFolderPage /></S> },
+      { path: '/cards/direct', element: <S><DirectFolderPage /></S> },
+      { path: '/activities', element: <S><ActivitiesPage /></S> },
+      { path: '/activities/new', element: <S><ActivityNewPage /></S> },
+      { path: '/activities/:activityId/edit', element: <S><ActivityEditPage /></S> },
       { path: '/cards/:cardId', element: <S><CardPage /></S> },
       { path: '/cards/:cardId/interview', element: <S><InterviewPage /></S> },
       { path: '/settings', element: <S><MyPage /></S> },

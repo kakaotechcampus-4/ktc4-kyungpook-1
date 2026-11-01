@@ -30,6 +30,7 @@ public class CardHistoryService {
     private final CardStatementRepository statements;
     private final CardVersionWriter writer;
     private final CardVersionReader reader;
+    private final CardThemeSuggester themeSuggester;
     private final CardDetailService details;
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -81,7 +82,7 @@ public class CardHistoryService {
         }
 
         CardVersion copied = writer.copyToNext(card, restored, VersionSource.RESTORE);
-        card.settle(reader.read(card.getId(), copied.getVersionNo()));
+        themeSuggester.settle(card, reader.read(card.getId(), copied.getVersionNo()));
 
         return details.load(publicId, userId);
 

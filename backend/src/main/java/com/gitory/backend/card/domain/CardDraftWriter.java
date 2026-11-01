@@ -41,7 +41,7 @@ public class CardDraftWriter {
 
     static final short FIRST = 1;
     private static final int MAX_AREAS = 2;
-    private static final int MAX_TECHS = 4;
+    private static final int MAX_TECHS = 8;
 
     private final CardRepository cards;
     private final CardVersionRepository versions;
@@ -50,6 +50,7 @@ public class CardDraftWriter {
     private final CardSlotNoteRepository notes;
     private final CardDraftStepRepository steps;
     private final CardVersionReader reader;
+    private final CardThemeSuggester themeSuggester;
 
     /** 서버가 다시 켜져 같은 Job 이 다시 돌 때 이미 초안을 담은 카드를 건너뛰게 하며, 1번 버전이 없는 카드도 건너뛴다 */
     public boolean isDrafted(Long cardId) {
@@ -95,7 +96,7 @@ public class CardDraftWriter {
         if (timedOut) {
             card.markGenerationPartial();
         }
-        card.settle(reader.read(cardId, card.getCurrentVersion()));
+        themeSuggester.settleInDraftJob(card, reader.read(cardId, card.getCurrentVersion()));
 
         return timedOut;
 

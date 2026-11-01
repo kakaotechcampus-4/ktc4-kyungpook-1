@@ -1,5 +1,6 @@
 package com.gitory.backend.matching.domain;
 
+import com.gitory.backend.card.domain.CardTech;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,6 +10,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static lombok.AccessLevel.PROTECTED;
@@ -47,6 +49,13 @@ public class JobPosting {
     private Integer experienceMinYears;
     private String experienceQuote;
 
+    // 카드 techs 와 같은 enum 이름이고, Hibernate 가 INSERT 에 이 칸을 넣어 DB 기본값이 쓰이지 않으므로 빈 목록으로 시작한다
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<String> teamTechs;
+
+    // 비어 있으면 AI 가 버전을 주기 전에 읽은 공고라, AI 가 다음 실행에서 한 번 다시 읽는다
+    private Integer extractionVersion;
+
     @Enumerated(EnumType.STRING)
     private JobPostingStatus status;
 
@@ -81,6 +90,7 @@ public class JobPosting {
         this.sourceUpdatedAt = sourceUpdatedAt;
         this.expiresAt = deadlineOf(expiresAt, now);
         this.experienceLevel = ExperienceLevel.UNSPECIFIED;
+        this.teamTechs = List.of();
         this.status = JobPostingStatus.ACTIVE;
         this.contentStatus = JobPostingContentStatus.PENDING;
         this.firstSeenAt = now;
@@ -116,13 +126,15 @@ public class JobPosting {
 
     /** 조건이 바뀐 결과를 반영하며, 본문 글은 받지 않고 AI 가 준 해시만 남긴다 */
     public void extracted(JobCategory category, ExperienceLevel experienceLevel, Integer experienceMinYears,
-                          String experienceQuote, JobPostingContentStatus contentStatus, String contentHash,
-                          Instant now) {
+                          String experienceQuote, List<CardTech> teamTechs, Integer extractionVersion,
+                          JobPostingContentStatus contentStatus, String contentHash, Instant now) {
 
         this.category = category;
         this.experienceLevel = experienceLevel;
         this.experienceMinYears = experienceMinYears;
         this.experienceQuote = experienceQuote;
+        this.teamTechs = teamTechs.stream().map(Enum::name).toList();
+        this.extractionVersion = extractionVersion;
         this.contentStatus = contentStatus;
         this.contentHash = contentHash;
         this.extractedAt = now;
@@ -148,6 +160,13 @@ public class JobPosting {
 
         this.status = JobPostingStatus.EXPIRED;
         this.indexedContentHash = null;
+
+    }
+
+    /** 저장해 둔 추천이 가리키는 공고가 그 뒤 마감되거나 내려갔는지로, 다시 계산하지 않고 마감으로 보여 줄 때 쓴다 */
+    public boolean isClosedAt(Instant now) {
+
+        return status != JobPostingStatus.ACTIVE || (expiresAt != null && !expiresAt.isAfter(now));
 
     }
 }

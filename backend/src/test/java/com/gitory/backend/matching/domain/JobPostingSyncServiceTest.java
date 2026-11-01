@@ -504,7 +504,8 @@ class JobPostingSyncServiceTest {
         when(extractionPort.extract(any())).thenReturn(JobPostingExtractionResult.updated("1".repeat(64),
                 PostingContentStatus.READY,
                 List.of(new ExtractedCriterion(PostingCriterionType.REQUIRED, "Java 경험", "Java")),
-                PostingJobCategory.BACKEND, new ExtractedExperience(PostingExperienceLevel.UNSPECIFIED, null, null)));
+                PostingJobCategory.BACKEND, new ExtractedExperience(PostingExperienceLevel.UNSPECIFIED, null, null),
+                List.of(), null));
         service(greeting).sync();
         statuses.put("/ko/o/7", 503);
         boards.put("/ko/home", greetingPage("[{\"queryKey\":[\"openings\"],\"state\":{\"data\":["
@@ -584,7 +585,8 @@ class JobPostingSyncServiceTest {
         when(extractionPort.extract(any())).thenReturn(JobPostingExtractionResult.updated("1".repeat(64),
                 PostingContentStatus.READY,
                 List.of(new ExtractedCriterion(PostingCriterionType.REQUIRED, "Java 경험", "Java")),
-                PostingJobCategory.BACKEND, new ExtractedExperience(PostingExperienceLevel.UNSPECIFIED, null, null)));
+                PostingJobCategory.BACKEND, new ExtractedExperience(PostingExperienceLevel.UNSPECIFIED, null, null),
+                List.of(), null));
 
         service(ACME).sync();
 

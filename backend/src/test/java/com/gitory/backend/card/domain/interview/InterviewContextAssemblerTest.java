@@ -7,12 +7,14 @@ import com.gitory.backend.agent.port.InterviewMissingSlot;
 import com.gitory.backend.agent.port.InterviewQuestionRequest;
 import com.gitory.backend.agent.port.InterviewStarSlot;
 import com.gitory.backend.card.domain.Card;
+import com.gitory.backend.card.domain.CardSlotNote;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.Confidence;
 import com.gitory.backend.card.domain.EvidenceType;
 import com.gitory.backend.card.domain.SlotContent;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.domain.VersionSlots;
+import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.ingest.domain.CommitSummary;
 import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.DraftCommit;
@@ -52,6 +54,7 @@ class InterviewContextAssemblerTest {
     private final CardVersionReader reader = mock(CardVersionReader.class);
     private final CandidateDraftSourceService draftSources = mock(CandidateDraftSourceService.class);
     private final CommitSummaryService commitSummaries = mock(CommitSummaryService.class);
+    private final CardSlotNoteRepository notes = mock(CardSlotNoteRepository.class);
     private Card card;
 
     @BeforeEach
@@ -76,7 +79,7 @@ class InterviewContextAssemblerTest {
         assertThat(request.maxTurns()).isEqualTo(2);
         assertThat(request.sourceType()).isEqualTo(InterviewCardSourceType.DIRECT_CARD);
         assertThat(request.missingSlots()).containsExactly(
-                new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of()));
+                new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, null, List.of()));
 
     }
 
@@ -148,6 +151,42 @@ class InterviewContextAssemblerTest {
         slots(Map.of(StarField.T, slot(StarField.T, "글", EvidenceType.COMMIT, null, List.of(31L, 32L))));
 
         assertThat(confidenceSent(StarField.T)).isEqualTo(InterviewConfidence.LOW);
+
+    }
+
+    @Test
+    @DisplayName("확신도가 LOW 인 글은 카드의 지금 버전에 남은 확인이 필요한 이유 문장을 함께 보낸다")
+    void sendsReviewReasonOfLowConfidenceSlot() {
+
+        slots(Map.of(StarField.R, slot(StarField.R, "응답을 10초 줄였다", EvidenceType.COMMIT, Confidence.LOW, List.of())));
+        reviewNote(StarField.R, "근거에서 확인되지 않는 수치(10초)가 있어 사용자 확인이 필요합니다");
+
+        assertThat(reviewReasonSent(StarField.R)).isEqualTo("근거에서 확인되지 않는 수치(10초)가 있어 사용자 확인이 필요합니다");
+        verify(notes).findByCardIdAndVersionNo(CARD_ID, CURRENT_VERSION);
+
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(nullValues = "null", value = {"MEDIUM", "HIGH", "null"})
+    @DisplayName("확인이 필요한 칸이 아니면 이유 메모가 남아 있어도 보내지 않는다")
+    void sendsNoReviewReasonForSlotNotNeedingReview(Confidence confidence) {
+
+        slots(Map.of(StarField.R, slot(StarField.R, "글", EvidenceType.USER_STATED, confidence, List.of())));
+        reviewNote(StarField.R, "이유");
+
+        assertThat(reviewReasonSent(StarField.R)).isNull();
+
+    }
+
+    @Test
+    @DisplayName("빈 칸이나 이유 메모가 없는 칸은 이유를 null 로 보낸다")
+    void sendsNullReviewReasonWithoutNote() {
+
+        slots(Map.of(StarField.R, slot(StarField.R, "글", EvidenceType.COMMIT, Confidence.LOW, List.of())));
+        reviewNote(StarField.T, "다른 칸의 이유");
+
+        assertThat(reviewReasonSent(StarField.R)).isNull();
+        assertThat(reviewReasonSent(StarField.T)).isNull();
 
     }
 
@@ -243,6 +282,21 @@ class InterviewContextAssemblerTest {
 
     }
 
+    private String reviewReasonSent(StarField field) {
+
+        return assembler(2).assemble(card, List.of(field), field, asked(0)).missingSlots().get(0).reviewReason();
+
+    }
+
+    private void reviewNote(StarField field, String reason) {
+
+        CardSlotNote note = mock(CardSlotNote.class);
+        when(note.getStarSlot()).thenReturn(field);
+        when(note.getReviewReason()).thenReturn(reason);
+        when(notes.findByCardIdAndVersionNo(CARD_ID, CURRENT_VERSION)).thenReturn(List.of(note));
+
+    }
+
     private void slots(Map<StarField, SlotContent> slots) {
 
         when(reader.read(CARD_ID, CURRENT_VERSION)).thenReturn(new VersionSlots(CURRENT_VERSION, slots));
@@ -290,7 +344,8 @@ class InterviewContextAssemblerTest {
 
     private InterviewContextAssembler assembler(int maxTurns) {
 
-        return new InterviewContextAssembler(reader, draftSources, commitSummaries, new InterviewLimits(maxTurns));
+        return new InterviewContextAssembler(reader, draftSources, commitSummaries, notes,
+                new InterviewLimits(maxTurns));
 
     }
 

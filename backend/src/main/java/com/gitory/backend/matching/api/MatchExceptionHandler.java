@@ -5,6 +5,7 @@ import com.gitory.backend.common.api.ErrorCode;
 import com.gitory.backend.matching.domain.InvalidMatchingResponseException;
 import com.gitory.backend.matching.domain.MatchPostingNotFoundException;
 import com.gitory.backend.matching.domain.MatchingAiUnavailableException;
+import com.gitory.backend.matching.domain.RecommendationRepositoryNotFoundException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,14 @@ public class MatchExceptionHandler {
     public ApiResponse<Void> handleNotFound() {
 
         return ApiResponse.fail(ErrorCode.NOT_FOUND, "공고를 찾을 수 없습니다.");
+
+    }
+
+    @ExceptionHandler(RecommendationRepositoryNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleRepositoryNotFound() {
+
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "레포를 찾을 수 없습니다.");
 
     }
 

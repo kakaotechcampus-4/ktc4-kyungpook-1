@@ -1,9 +1,11 @@
 import { Copy, ExternalLink, History, ListChecks, Pencil, Printer } from 'lucide-react';
 import { DraftProgress } from './DraftProgress';
+import { LiveCardDraft } from './LiveCardDraft';
 import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { CardTags } from '@/components/cards/CardTags';
+import { CardThemes } from '@/components/cards/CardThemes';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { CardStatusMark, cardStarStates } from '@/components/cards/CardStatusMark';
 import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
@@ -17,11 +19,12 @@ import { reconnectGithub } from '@/lib/githubReconnect';
 import { track } from '@/lib/track';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { useLiveDraft } from '@/lib/useLiveDraft';
 import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
 import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
 import { matchSupported } from '@/api/matching';
-import { StarBlock, applyMask } from './StarBlock';
+import { StarBlock, applyMask, railKind } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -29,6 +32,7 @@ import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
 import { DraftSteps } from './DraftSteps';
+import { folderPath } from '@/lib/cardFolders';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -80,12 +84,17 @@ export function CardPage() {
     return () => { if (jid) releaseJobToast(jid); }; // 화면을 떠나면 억제도 같이 풀어야 전역 알림이 계속 죽어있지 않는다
   }, [q.data?.generation?.jobId, job.data, cardId]);
 
+  // 초안을 쓰는 동안 AI 가 칸을 쓰는 모습(#617). Job 이 끝나도 마지막 카드를 다 펼칠 때까지 이 화면을 붙잡는다(live.holding)
+  const generating = !!q.data?.generation && !q.data.generation.partial;
+  const live = useLiveDraft({ scope: cardId, jobId: q.data?.generation?.jobId, generating });
+
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
   if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   const card = q.data!;
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
-  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel, href: candidateGithubUrl(card) }];
+  // 활동 안의 카드는 경험 카드 목록 다음에 그 활동 폴더가 온다(#522)
+  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : card.activity ? [{ label: '경험 카드', to: '/cards' }, { label: card.activity.name, to: folderPath.activity(card.activity.id) }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel, href: candidateGithubUrl(card) }];
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
@@ -96,14 +105,15 @@ export function CardPage() {
   const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
 
   // ── D1 · D3 생성 중
-  if (card.generation && !card.generation.partial) {
-    const j = job.data;
+  if (generating || live.holding) {
+    const j = job.data ?? live.job; // 카드가 완성으로 바뀌어 카드의 Job 조회가 꺼져도 마지막 진행을 그린다
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs.slice(0, -1), { label: '초안 생성 중' }]} />
         <PageTitle>고른 후보의 카드 초안을 쓰고 있어요</PageTitle>
         {job.isError && <QueryFailure error={job.error} retry={() => job.refetch()} pending={job.isFetching} />}
         <DraftProgress job={j} checkedAt={job.dataUpdatedAt} />
+        <LiveCardDraft view={live.view} instant={{ on: live.manualInstant, toggle: live.reducedMotion ? null : () => live.setManualInstant((on) => !on) }} />
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
           <span className="c-2 t-14">끝나면 알려드릴게요</span>
           <div className="right row" style={{ gap: 8 }}>
@@ -139,12 +149,12 @@ export function CardPage() {
           <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast('다시 편집할 수 있습니다. 확정 버전은 히스토리에 남습니다.'); } })}>수정하기</Button>
         </>} />
         <div className="two-col two-col--340">
-          <div className="card star-read">
+          <div className="card star-read evidence-rail evidence-rail--rows">
             {STAR_FIELDS.map((f) => {
               const t = card.version[fieldKey[f]];
               const ev = card.evidence.filter((e) => e.field === f);
               return (
-                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'}>
+                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'} rail={{ commits: ev.filter((e) => e.type === 'COMMIT').length, kind: railKind(!t, ev) }}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했습니다</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
@@ -161,6 +171,7 @@ export function CardPage() {
               <div className="stack" style={{ gap: 4 }}>
                 <span className="t-12 w-600 c-3">출처</span>
                 <span className="t-12l">
+                  {card.activity ? <>활동 <Link className="aside-link" to={folderPath.activity(card.activity.id)}>{card.activity.name}</Link>, </> : null}
                   {card.repo ? <a className="aside-link" href={`https://github.com/${card.repo.owner}/${card.repo.name}`} target="_blank" rel="noreferrer">{repoName}<ExternalLink size={12} aria-hidden /></a> : null}
                   {card.repo && srcLabel ? ', ' : ''}
                   {(() => { const href = candidateGithubUrl(card); return href ? <a className="aside-link" href={href} target="_blank" rel="noreferrer">{srcLabel}<ExternalLink size={12} aria-hidden /></a> : srcLabel; })()}
@@ -238,7 +249,8 @@ export function CardPage() {
       )}
 
       <div className="two-col card-detail-layout">
-        <div className="stack" style={{ gap: 12 }}>
+        {/* 커밋 레일 — 문장마다 몇 개의 커밋이 받치는지, 근거 없는 칸은 선이 끊긴다. Gitory 의 한 가지 얼굴 */}
+        <div className="stack evidence-rail" style={{ gap: 12 }}>
           {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
         <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
@@ -277,7 +289,8 @@ function CardHeader({ card, right, titleAction, statusOverride, note }: { card: 
         {statusOverride ?? <CardStatusMark status={card.status} star={cardStarStates(card)} reviewWithStatus={false} />}
         <span className="t-12 c-3">{note ?? (card.status === 'CONFIRMED' && card.confirmedAt ? `${ymd(card.confirmedAt)} 확정` : isDraftMetadataPending(card) ? '본문 저장됨' : cardContentLabel[card.version.source])}</span>
       </>} after={titleAction}>{card.title}</PageTitle>
-      <CardTags areas={card.areas} techs={card.techs} /></div>
+      <CardTags areas={card.areas} techs={card.techs} />
+      <CardThemes key={card.id} card={card} editable={!statusOverride} /></div>
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>
   );

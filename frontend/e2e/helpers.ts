@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 /**
  * 목 DB 를 테스트 시작 시 딱 한 번만 시드로 되돌린다.
@@ -18,6 +18,11 @@ const SEED = (login: boolean) => {
 };
 
 /** 데모 모드 로그인 — 실서버에서는 Spring 이 OAuth 콜백에서 세션 쿠키를 세우는 자리. */
+/** 홈의 레포 검색칸은 '레포 검색하기' 를 눌러야 열린다 */
+export async function openRepoSearch(page: Page) {
+  await page.getByRole('button', { name: '레포 검색하기', exact: true }).click();
+}
+
 export async function loginAsDemo(page: Page) {
   await page.addInitScript(SEED, true);
 }
@@ -25,4 +30,14 @@ export async function loginAsDemo(page: Page) {
 /** 로그인 없이 시드만 초기화 — 랜딩부터 시작하는 테스트용 */
 export async function freshSeed(page: Page) {
   await page.addInitScript(SEED, false);
+}
+
+/**
+ * 경험 카드 목록의 기본 보기는 레포·활동별 폴더다(#522). 카드 타일 자체를 보는 시험은 목록을 연 뒤 이 보기로 바꾼다.
+ * 고른 보기는 브라우저가 기억하므로 같은 시험 안의 다음 이동에도 이어진다.
+ */
+export async function showCardTiles(page: Page) {
+  const recent = page.getByRole('radio', { name: '최근순', exact: true });
+  await recent.click();
+  await expect(recent).toHaveAttribute('aria-checked', 'true');
 }

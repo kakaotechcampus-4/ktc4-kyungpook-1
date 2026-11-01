@@ -89,7 +89,8 @@ describe('#430 되묻기에서 AI 판단을 보여 주기', () => {
     const asked = InterviewTurnSchema.parse(handle('POST', '/cards/card_01/interview', new URLSearchParams(), {}, true).data);
     expect(asked.field).toBe('R');
     expect(asked.reason).toBe('결과 칸이 비어 있어 먼저 물어볼게요');
-    handle('POST', `/cards/card_01/interview/${asked.turnNo}/answer`, new URLSearchParams(), { text: '응답 시간을 절반으로 줄였다', source: 'USER_STATED' }, true);
+    // 답으로 네 칸이 차면 답에서 바로 확정되므로, AI 가 끝내는 경우는 질문 없이 칸이 채워진 초안으로 본다
+    stored.versions[stored.versions.length - 1].result = '응답 시간을 절반으로 줄였다';
 
     expect(handle('POST', '/cards/card_01/interview', new URLSearchParams(), {}, true).data).toBeNull();
     const ended = CardSchema.parse(handle('GET', '/cards/card_01', new URLSearchParams(), {}, true).data);

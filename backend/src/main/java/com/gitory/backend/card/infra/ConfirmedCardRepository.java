@@ -33,4 +33,20 @@ public interface ConfirmedCardRepository extends Repository<Card, Long> {
             WHERE public_id = :publicId AND user_id = :userId AND status = 'CONFIRMED' AND deleted_at IS NULL
             """, nativeQuery = true)
     Optional<Long> findLiveConfirmedId(@Param("userId") Long userId, @Param("publicId") UUID publicId);
+
+    @Query(value = """
+            SELECT id FROM card
+            WHERE user_id = :userId AND user_repository_id = :userRepositoryId AND status = 'CONFIRMED'
+              AND deleted_at IS NULL
+            ORDER BY id
+            """, nativeQuery = true)
+    List<Long> findLiveConfirmedIdsOfRepository(@Param("userId") Long userId,
+                                                @Param("userRepositoryId") Long userRepositoryId);
+
+    @Query(value = """
+            SELECT id FROM card
+            WHERE user_id = :userId AND status = 'CONFIRMED' AND deleted_at IS NULL
+            ORDER BY id
+            """, nativeQuery = true)
+    List<Long> findLiveConfirmedIdsOfUser(@Param("userId") Long userId);
 }

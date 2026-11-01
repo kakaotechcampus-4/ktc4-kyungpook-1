@@ -34,13 +34,16 @@ public class InterviewAnswerService {
     private final CardVersionWriter writer;
     private final CardStatementRepository statements;
     private final CardDetailService details;
+    private final CardVersionReader reader;
+    private final CardThemeSuggester themeSuggester;
 
     /**
      * 카드 행을 잠근 뒤 질문 번호, 초안을 만드는 중인지, 이미 한 답, 확정 여부, 답의 모양 순서로 확인하고, 이 순서가 응답 코드의 우선순위다
      * 답 글과 출처는 모양이 틀린 값도 여기까지 들어오므로 카드에 대한 확인을 끝낸 뒤에야 거절한다
      */
     @Transactional
-    public CardDetail answer(UUID publicId, Long userId, int turnNo, String kind, String text, String source) {
+    public CardDetail answer(UUID publicId, Long userId, int turnNo, String kind, String text, String source,
+                             String original) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         InterviewTurn turn = turnOf(card, turnNo);
@@ -66,8 +69,9 @@ public class InterviewAnswerService {
             case SKIP -> turn.skip();
             case TEXT -> {
                 AnswerSource answerSource = checkedAnswer(text, source);
+                String checkedOriginal = checkedOriginal(original);
                 replaceSlot(card, turn, text, answerSource);
-                turn.answer(text, answerSource);
+                turn.answer(text, answerSource, checkedOriginal);
             }
             case MEASURED -> {
                 AnswerSource answerSource = checkedAnswer(text, source);
@@ -76,6 +80,8 @@ public class InterviewAnswerService {
             }
             case NOT_MEASURED -> recordNotMeasured(card, turn, text, source);
         }
+        // 되묻기 화면은 칸을 골라 묻기만 해서 '되묻기 끝' 판정이 오지 않으므로, 답으로 네 칸이 확인 필요 없이 다 차면 여기서 확정한다
+        themeSuggester.settle(card, reader.read(card.getId(), card.getCurrentVersion()));
 
         return details.load(publicId, userId);
 
@@ -120,6 +126,20 @@ public class InterviewAnswerService {
 
         statements.save(CardStatement.answered(card.getId(), next.getVersionNo(), slot, text,
                 answerSource.evidenceType(), turn.getId()));
+
+    }
+
+    private static String checkedOriginal(String original) {
+
+        if (original == null || CardText.isBlank(original)) {
+            return null;
+        }
+        CardText.requireNoNul(original, "다듬기 전 답");
+        if (original.length() > DraftSaveService.SLOT_MAX_LENGTH) {
+            throw new InvalidCardInputException("다듬기 전 답은 " + DraftSaveService.SLOT_MAX_LENGTH + "자를 넘을 수 없습니다.");
+        }
+
+        return original;
 
     }
 

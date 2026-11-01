@@ -132,7 +132,7 @@ class ApplicantTest {
 
         JobPosting oneYear = posting(JobCategory.BACKEND, ExperienceLevel.EXPERIENCED, 1);
         Applicant saved = applicant(profile(List.of(), List.of()));
-        Applicant neverSaved = Applicant.of(new ProfileView(List.of(), List.of(), List.of(), List.of(), null),
+        Applicant neverSaved = Applicant.of(new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), null),
                 Set.of(), THIS_MONTH);
 
         assertThat(saved.allows(oneYear, List.of())).isFalse();
@@ -148,7 +148,7 @@ class ApplicantTest {
 
     private static ProfileView profile(List<Education> educations, List<Career> careers) {
 
-        return new ProfileView(educations, careers, List.of(), List.of(), NOW);
+        return new ProfileView(educations, careers, List.of(), List.of(), List.of(), NOW);
 
     }
 

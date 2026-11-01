@@ -73,8 +73,8 @@ class OverallRecommendationServiceTest {
     void setUp() {
 
         when(cards.confirmedOf(USER)).thenReturn(List.of(CARD));
-        when(profiles.of(USER)).thenReturn(new ProfileView(List.of(), List.of(), List.of(), List.of(), PROFILE_SAVED));
-        when(shortlist.shortlist(eq(USER), any(), any(), anyInt())).thenReturn(companies);
+        when(profiles.of(USER)).thenReturn(new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), PROFILE_SAVED));
+        when(shortlist.shortlist(eq(USER), any(), anyInt())).thenReturn(companies);
         when(criteria.findByJobPostingIdInOrderByJobPostingIdAscSeqAsc(any())).thenReturn(allCriteria);
         when(judgements.judge(any(), anyList(), anyList()))
                 .thenAnswer(call -> verdicts.get(((JobPosting) call.getArgument(0)).getId()));
@@ -96,7 +96,7 @@ class OverallRecommendationServiceTest {
 
         service.compute(USER);
 
-        verify(shortlist).shortlist(USER, Set.of(CardTech.JAVA, CardTech.SPRING), Set.of(), 15);
+        verify(shortlist).shortlist(USER, Set.of(CardTech.JAVA, CardTech.SPRING), 15);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<JobPostingCriterion>> asked = ArgumentCaptor.forClass(List.class);
         verify(judgements).judge(eq(posting), asked.capture(), eq(List.of(CARD)));
@@ -238,7 +238,7 @@ class OverallRecommendationServiceTest {
 
         service.compute(USER);
 
-        verify(shortlist, never()).shortlist(any(), any(), any(), anyInt());
+        verify(shortlist, never()).shortlist(any(), any(), anyInt());
         verify(judgements, never()).judge(any(), anyList(), anyList());
         assertThat(refreshed()).isEmpty();
 

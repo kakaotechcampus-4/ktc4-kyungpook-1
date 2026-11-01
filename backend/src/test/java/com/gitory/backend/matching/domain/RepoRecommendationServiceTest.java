@@ -58,7 +58,7 @@ class RepoRecommendationServiceTest {
         when(cards.confirmedOf(USER, REPO)).thenReturn(List.of(new MatchingCard(11L, REPO, "결제 API", null, null,
                 "Spring 으로 결제 API 를 만들었다", null,
                 List.of(CardTech.JAVA, CardTech.SPRING, CardTech.JPA, CardTech.REDIS))));
-        when(shortlist.shortlist(eq(USER), any(), any(), anyInt())).thenReturn(companies);
+        when(shortlist.shortlist(eq(USER), any(), anyInt())).thenReturn(companies);
         when(criteria.findByJobPostingIdInOrderByJobPostingIdAscSeqAsc(any())).thenReturn(allCriteria);
         when(judgements.judge(any(), anyList(), anyList()))
                 .thenAnswer(call -> verdicts.get(((JobPosting) call.getArgument(0)).getId()));

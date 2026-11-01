@@ -34,20 +34,22 @@ public class ProfileService {
         List<Career> careers = ProfileRules.careers(input.careers());
         List<LanguageScore> languages = ProfileRules.languages(input.languages());
         List<Certification> certifications = ProfileRules.certifications(input.certifications());
+        List<InterestCategory> interests = ProfileRules.interests(input.interests());
 
         try {
-            return transaction.execute(status -> save(userId, educations, careers, languages, certifications));
+            return transaction.execute(status -> save(userId, educations, careers, languages, certifications, interests));
         } catch (DataIntegrityViolationException firstSaveRace) {
-            return transaction.execute(status -> save(userId, educations, careers, languages, certifications));
+            return transaction.execute(status -> save(userId, educations, careers, languages, certifications, interests));
         }
 
     }
 
     private ProfileView save(Long userId, List<Education> educations, List<Career> careers,
-                             List<LanguageScore> languages, List<Certification> certifications) {
+                             List<LanguageScore> languages, List<Certification> certifications,
+                             List<InterestCategory> interests) {
 
         Profile profile = profiles.findWithLockByUserId(userId).orElseGet(() -> Profile.of(userId));
-        profile.replace(educations, careers, languages, certifications);
+        profile.replace(educations, careers, languages, certifications, interests);
 
         return profiles.saveAndFlush(profile).view();
 

@@ -89,7 +89,7 @@ public class RepoRecommendationService {
                 .limit(SHOWN_COMPANIES)
                 .map(Scored::company)
                 .toList();
-        save(userRepositoryId, allFailed, shown);
+        save(userId, userRepositoryId, allFailed, shown);
 
     }
 
@@ -129,11 +129,18 @@ public class RepoRecommendationService {
 
     }
 
-    private void save(Long userRepositoryId, boolean allFailed, List<RecommendedCompany> shown) {
+    /** 계산이 예상하지 못한 이유로 멈췄을 때 부르며, 앞서 계산한 기업은 남긴다 */
+    public void markFailed(Long userId, Long userRepositoryId) {
+
+        save(userId, userRepositoryId, true, List.of());
+
+    }
+
+    private void save(Long userId, Long userRepositoryId, boolean allFailed, List<RecommendedCompany> shown) {
 
         Instant now = Instant.now(clock);
         transaction.executeWithoutResult(status -> {
-            Optional<RepoRecommendation> saved = recommendations.findByUserRepositoryId(userRepositoryId);
+            Optional<RepoRecommendation> saved = recommendations.findWithLockByUserRepositoryId(userRepositoryId);
             if (saved.isPresent()) {
                 if (allFailed) {
                     saved.get().fail(now);
@@ -142,8 +149,8 @@ public class RepoRecommendationService {
                 }
                 return;
             }
-            recommendations.save(allFailed ? RepoRecommendation.failed(userRepositoryId, now)
-                    : RepoRecommendation.ready(userRepositoryId, shown, now));
+            recommendations.save(allFailed ? RepoRecommendation.failed(userId, userRepositoryId, now)
+                    : RepoRecommendation.ready(userId, userRepositoryId, shown, now));
         });
 
     }

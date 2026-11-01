@@ -62,7 +62,7 @@ class RepoRecommendationServiceTest {
         when(criteria.findByJobPostingIdInOrderByJobPostingIdAscSeqAsc(any())).thenReturn(allCriteria);
         when(judgements.judge(any(), anyList(), anyList()))
                 .thenAnswer(call -> verdicts.get(((JobPosting) call.getArgument(0)).getId()));
-        when(recommendations.findByUserRepositoryId(REPO)).thenReturn(Optional.empty());
+        when(recommendations.findWithLockByUserRepositoryId(REPO)).thenReturn(Optional.empty());
 
     }
 
@@ -137,8 +137,8 @@ class RepoRecommendationServiceTest {
     void keepsPreviousCompaniesAndFailsWhenEveryAskedPostingFails() {
 
         RecommendedCompany previous = new RecommendedCompany("old", "옛 회사", 99L, 1, 0, List.of("JAVA"), List.of(1L));
-        RepoRecommendation existing = RepoRecommendation.ready(REPO, List.of(previous), NOW.minusSeconds(3600));
-        when(recommendations.findByUserRepositoryId(REPO)).thenReturn(Optional.of(existing));
+        RepoRecommendation existing = RepoRecommendation.ready(USER, REPO, List.of(previous), NOW.minusSeconds(3600));
+        when(recommendations.findWithLockByUserRepositoryId(REPO)).thenReturn(Optional.of(existing));
         JobPosting failing = company("a");
         criterion(failing, CriterionType.REQUIRED, null, CardTech.SPRING);
         verdicts.put(failing.getId(), Optional.empty());

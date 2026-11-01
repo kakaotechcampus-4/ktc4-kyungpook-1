@@ -83,6 +83,35 @@ export const MatchDetail = MatchTarget.extend({
 });
 export type MatchTarget = z.infer<typeof MatchTarget>;
 export type MatchDetail = z.infer<typeof MatchDetail>;
+/**
+ * 레포 화면의 추천 기업(#613, `GET /repos/{repoId}/recommendations`). 서버는 화면을 열 때 계산하지 않고 저장된 값을 준다.
+ *  - COMPUTING 은 계산을 기다리거나 하는 중(확정 카드가 바뀌면 1분 뒤 다시 계산), NONE 은 아직 계산한 적 없음.
+ *  - FAILED 여도 앞서 계산한 기업은 companies 에 남아 있다. 많아야 3곳이고 순위 순서다.
+ *  - posting.closed 는 계산한 뒤 마감되거나 내려간 공고. 다시 계산하기 전까지 목록에 남는다.
+ */
+export const RepoRecommendationStatus = z.enum(["COMPUTING", "READY", "FAILED", "NONE"]);
+export const RepoRecommendation = z.object({
+  status: RepoRecommendationStatus,
+  computedAt: z.string().datetime({ offset: true }).nullable(),
+  companies: z.array(
+    z.object({
+      companyId,
+      companyName: z.string(),
+      logoUrl,
+      posting: z.object({
+        id: z.string(),
+        title: z.string(),
+        deadline: z.string().datetime({ offset: true }).nullable(),
+        closed: z.boolean(),
+      }),
+      /** 이 레포 카드가 채운 조건의 기술 이름(카드 techs 와 같은 값), 많아야 3개 */
+      techs: z.array(z.string()),
+      requiredMet: z.number().int().nonnegative(),
+      preferredMet: z.number().int().nonnegative(),
+    }),
+  ),
+});
+export type RepoRecommendation = z.infer<typeof RepoRecommendation>;
 type MatchEnv = { VITE_API_MOCK?: string; VITE_MATCH_ENABLED?: string };
 export const matchSupported = (
   env: MatchEnv = {

@@ -23,6 +23,7 @@ public class CardDeleteService {
     private final CandidateUseService candidates;
     private final CardRepository cards;
     private final AuditLog auditLog;
+    private final ConfirmedCardChanges changes;
 
     @Transactional
     public void delete(UUID publicId, Long userId) {
@@ -35,6 +36,9 @@ public class CardDeleteService {
             candidates.release(card.getCandidateId());
         }
         cards.delete(card);
+        if (card.isConfirmed()) {
+            changes.announce(card);
+        }
         auditLog.ok(userId, AuditAction.DELETE_CARD, card.getId());
 
     }

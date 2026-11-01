@@ -24,6 +24,7 @@ import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.CardThemeSuggester;
+import com.gitory.backend.card.domain.ConfirmedCardChanges;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.card.domain.StarField;
@@ -44,6 +45,7 @@ import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.matching.domain.RepoRecommendationTrigger;
 import com.gitory.backend.recommend.domain.CandidateDraftSourceService;
 import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
 import com.gitory.backend.recommend.domain.CandidateStoreService;
@@ -99,7 +101,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, CardVersionReader.class, JobCancelService.class,
-        CardThemeSuggester.class,
+        CardThemeSuggester.class, ConfirmedCardChanges.class, RepoRecommendationTrigger.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
@@ -337,6 +339,23 @@ class CardDraftRunnerTest {
         assertThat(firstVersionSourceOf(cardId)).isEqualTo("USER_EDIT");
         assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job().isPartial()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 이 끝나면 그 레포 추천을 1분 기다리지 않고 다음 차례에 다시 계산하게 표시한다")
+    void requestsRepoRecommendationRightAfterTheJob() {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "MANUAL", null, "MANUAL", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), false);
+        cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+
+        runNext();
+
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM repo_recommendation
+                WHERE user_repository_id = ? AND status = 'COMPUTING' AND stale_since <= now() - interval '50 seconds'
+                """, Integer.class, userRepositoryId)).isEqualTo(1);
 
     }
 

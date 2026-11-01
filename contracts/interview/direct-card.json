@@ -29,6 +29,7 @@
           "statement_seq": 1,
           "body": "S 칸에 이미 쓴 글",
           "confidence": "HIGH",
+          "review_reason": null,
           "linked_commits": []
         },
         {
@@ -36,6 +37,7 @@
           "statement_seq": 1,
           "body": null,
           "confidence": "LOW",
+          "review_reason": null,
           "linked_commits": []
         },
         {
@@ -43,6 +45,7 @@
           "statement_seq": 1,
           "body": "A 칸에 이미 쓴 글",
           "confidence": "HIGH",
+          "review_reason": null,
           "linked_commits": []
         },
         {
@@ -50,12 +53,14 @@
           "statement_seq": 1,
           "body": "R 칸에 이미 쓴 글",
           "confidence": "HIGH",
+          "review_reason": null,
           "linked_commits": []
         }
       ],
       "existing_turn_count": 0,
       "max_turns": 8,
       "source_type": "DIRECT_CARD",
+      "card_kind": "QUALITATIVE",
       "target_star_slot": "T",
       "allowed_slots": [
         "S",

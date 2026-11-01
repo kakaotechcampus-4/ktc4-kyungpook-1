@@ -1520,6 +1520,46 @@
         "title": "CommitInput",
         "type": "object"
       },
+      "ConditionJudgement": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "met_by": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionSupport"
+            },
+            "title": "Met By",
+            "type": "array"
+          }
+        },
+        "required": [
+          "condition_id"
+        ],
+        "title": "ConditionJudgement",
+        "type": "object"
+      },
+      "ConditionSupport": {
+        "additionalProperties": false,
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "reason"
+        ],
+        "title": "ConditionSupport",
+        "type": "object"
+      },
       "ConsideredCard": {
         "properties": {
           "card_id": {
@@ -2252,6 +2292,18 @@
         "title": "DraftsResult",
         "type": "object"
       },
+      "EducationLevel": {
+        "description": "지원할 수 있는 가장 낮은 학력으로, Spring 인적사항의 학력 단계와 같은 다섯 값이다.",
+        "enum": [
+          "HIGH_SCHOOL",
+          "ASSOCIATE",
+          "BACHELOR",
+          "MASTER",
+          "DOCTOR"
+        ],
+        "title": "EducationLevel",
+        "type": "string"
+      },
       "Envelope_AssignmentResult_": {
         "properties": {
           "data": {
@@ -2657,6 +2709,43 @@
           "meta"
         ],
         "title": "Envelope[JobPostingPruneResult]",
+        "type": "object"
+      },
+      "Envelope_MatchJudgementResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchJudgementResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[MatchJudgementResult]",
         "type": "object"
       },
       "Envelope_MatchingResponse_": {
@@ -3743,10 +3832,25 @@
       },
       "JobCriterion": {
         "additionalProperties": false,
-        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.",
+        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.\n``techs`` 는 필수·우대 기술 조건에만, 학력 값은 학력 조건에만 남기고 그 밖은 추출기가 비운다.",
         "properties": {
           "criterion_type": {
             "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "education_exempt": {
+            "default": false,
+            "title": "Education Exempt",
+            "type": "boolean"
+          },
+          "education_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EducationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "general_type": {
             "anyOf": [
@@ -3763,6 +3867,81 @@
             "minLength": 1,
             "title": "Source Quote",
             "type": "string"
+          },
+          "techs": {
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
+                "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
+                "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
+                "DOCKER",
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Techs",
+            "type": "array"
           },
           "text": {
             "maxLength": 1000,
@@ -3871,6 +4050,18 @@
             "$ref": "#/components/schemas/JobPostingContentStatus",
             "default": "READY"
           },
+          "previous_extraction_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Extraction Version"
+          },
           "raw_text": {
             "maxLength": 100000,
             "minLength": 1,
@@ -3934,6 +4125,11 @@
             "title": "External Posting Id",
             "type": "string"
           },
+          "extraction_version": {
+            "minimum": 1.0,
+            "title": "Extraction Version",
+            "type": "integer"
+          },
           "job_category": {
             "anyOf": [
               {
@@ -3956,6 +4152,81 @@
             "minLength": 1,
             "title": "Source Url",
             "type": "string"
+          },
+          "team_techs": {
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
+                "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
+                "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
+                "DOCKER",
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Team Techs",
+            "type": "array"
           }
         },
         "required": [
@@ -3964,7 +4235,8 @@
           "source_url",
           "content_hash",
           "outcome",
-          "content_status"
+          "content_status",
+          "extraction_version"
         ],
         "title": "JobPostingDetailExtractionResult",
         "type": "object"
@@ -4067,6 +4339,112 @@
         "title": "JobPostingStatus",
         "type": "string"
       },
+      "JudgeCard": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "card_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Card Id",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "situation": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Situation"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task"
+          },
+          "techs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Techs",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "title"
+        ],
+        "title": "JudgeCard",
+        "type": "object"
+      },
+      "JudgeCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "criterion_type": {
+            "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "condition_id",
+          "criterion_type",
+          "text"
+        ],
+        "title": "JudgeCondition",
+        "type": "object"
+      },
       "KnownAnswer": {
         "additionalProperties": false,
         "properties": {
@@ -4108,6 +4486,67 @@
           "text"
         ],
         "title": "KnownAnswer",
+        "type": "object"
+      },
+      "MatchJudgementRequest": {
+        "additionalProperties": false,
+        "description": "조건은 필수·우대만 받는다. 학력·어학 같은 일반 조건은 Spring 이 인적사항으로 비교하므로 보내지 않는다.",
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCard"
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "title": "Cards",
+            "type": "array"
+          },
+          "company_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCondition"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Conditions",
+            "type": "array"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_name",
+          "job_title",
+          "conditions",
+          "cards"
+        ],
+        "title": "MatchJudgementRequest",
+        "type": "object"
+      },
+      "MatchJudgementResult": {
+        "additionalProperties": false,
+        "properties": {
+          "judgements": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionJudgement"
+            },
+            "title": "Judgements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "judgements"
+        ],
+        "title": "MatchJudgementResult",
         "type": "object"
       },
       "MatchingRequest": {
@@ -4370,6 +4809,18 @@
             },
             "title": "Linked Commits",
             "type": "array"
+          },
+          "review_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "확인이 필요한 칸이면 그 이유 문장. 이유가 없거나 확인이 필요 없는 칸이면 null",
+            "title": "Review Reason"
           },
           "star_slot": {
             "enum": [
@@ -5369,7 +5820,7 @@
                 "type": "null"
               }
             ],
-            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다",
+            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 3,000자). Spring 이 PR 작성자를 확인해 보낸다",
             "title": "Pull Request Body"
           },
           "source_ref": {
@@ -5479,8 +5930,16 @@
             "title": "Star",
             "type": "object"
           },
+          "steps": {
+            "description": "초안이 거친 단계 순서대로. 고쳐 쓰기를 끄면 첫 초안과 첫 검사만, 마감으로 비운 카드는 빈 배열",
+            "items": {
+              "$ref": "#/components/schemas/StarStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
           "techs": {
-            "description": "카드 기술 태그. 최대 4개, 중요한 것부터. 판단할 수 없으면 빈 배열",
+            "description": "카드 기술 태그. 최대 8개, 중요한 것부터. 판단할 수 없으면 빈 배열",
             "items": {
               "enum": [
                 "C",
@@ -5495,10 +5954,59 @@
                 "DART",
                 "TYPESCRIPT",
                 "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
                 "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
                 "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
                 "DOCKER",
-                "GITHUB_ACTIONS"
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
               ],
               "type": "string"
             },
@@ -5674,6 +6182,117 @@
           }
         },
         "title": "StarMaterials",
+        "type": "object"
+      },
+      "StarStep": {
+        "description": "STAR 초안이 거친 단계 하나로, 문장은 화면이 값으로 만든다.",
+        "properties": {
+          "actor": {
+            "enum": [
+              "MODEL",
+              "CODE"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "FLAG 의 문제 코드(NO_EVIDENCE·UNSOURCED_NUMBER·REVERSED_MEANING·EMPTY)",
+            "title": "Code"
+          },
+          "kind": {
+            "enum": [
+              "DRAFT",
+              "FLAG",
+              "OPEN",
+              "RETRY",
+              "KEEP",
+              "REWRITE",
+              "PASS",
+              "REVERT"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "material": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ISSUE",
+                  "REVIEW",
+                  "OWNER_REPLY"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OPEN 일 때 연 자료 종류",
+            "title": "Material"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "모델이 고른 행동(OPEN·RETRY·KEEP)의 이유 한 줄(60자 이내)",
+            "title": "Reason"
+          },
+          "round": {
+            "description": "0 은 첫 초안과 첫 검사, 1·2 는 고쳐 쓴 바퀴",
+            "minimum": 0.0,
+            "title": "Round",
+            "type": "integer"
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "enum": [
+                  "S",
+                  "T",
+                  "A",
+                  "R"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "카드 전체 단계(DRAFT)는 null",
+            "title": "Slot"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "걸린 수치나 연 자료 제목",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "round",
+          "actor",
+          "kind"
+        ],
+        "title": "StarStep",
         "type": "object"
       },
       "StatementTarget": {
@@ -6196,6 +6815,73 @@
           }
         },
         "summary": "A 확정 경험의 STAR 초안 생성",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
+    "/internal/analysis/star/stream": {
+      "post": {
+        "description": "`/internal/analysis/star` 와 같은 초안을 만들면서, 모델이 칸 글을 쓰는 동안과 초안이 단계를 거칠 때마다 진행을 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 `{\"type\":\"progress\",\"step\":\"STAR\",\"done\":0,\"total\":null,\"item\":{...}}` 입니다. `item` 은 칸 글 `{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S|T|A|R\",\"text\":\"...\",\"done\":false}` 이거나 단계 `{\"kind\":\"STEP\",\"step\":{...}}` 입니다. 칸 글은 모델이 그 칸을 쓰는 동안 문장이 끝날 때마다(칸마다 0.5초에 한 번까지) 그때까지 쓴 글 전체를 보내고, 칸이 끝나면 done=true 와 완성된 글을 보냅니다. round 0 은 첫 초안, 1 부터는 검사에 걸린 칸을 다시 쓴 바퀴이며, 글은 비밀값을 가리고 400자에서 자릅니다. 단계의 step 은 응답 steps 항목과 같은 모양으로 생기는 대로 보냅니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 이고, `status`·`body` 는 같은 요청을 `/internal/analysis/star` 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "analyze_star_stream_internal_analysis_star_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StarAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 처리하지 못한 내부 오류. 재시도 불가."
+          }
+        },
+        "summary": "A 확정 경험의 STAR 초안 생성 (진행 스트리밍)",
         "tags": [
           "analysis"
         ]
@@ -7078,6 +7764,77 @@
         "summary": "Extract Job Posting Detail",
         "tags": [
           "job-postings"
+        ]
+      }
+    },
+    "/internal/matching/judgements": {
+      "post": {
+        "description": "공고 하나의 필수·우대 조건(최대 30개)과 카드(최대 40장)를 받아, 조건마다 채우는 카드와 한 줄 이유를 모두 돌려줍니다. met_by 에 없는 (카드, 조건) 짝은 못 채움입니다. 기술 이름만 같은 카드는 채움이 아니고, 연차·학위 같은 꼬리 조건은 보지 않습니다. 마감 안에 규칙에 맞는 답을 받지 못하면 503 LLM_UNAVAILABLE 이고, 저장은 Spring 이 합니다.",
+        "operationId": "judge_conditions_internal_matching_judgements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchJudgementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MatchJudgementResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
+          }
+        },
+        "summary": "공고 조건마다 그 조건을 실제로 채우는 카드 고르기",
+        "tags": [
+          "matching"
         ]
       }
     },

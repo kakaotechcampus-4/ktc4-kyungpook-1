@@ -8,5 +8,6 @@ import tools.jackson.databind.annotation.JsonNaming;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record JobPostingExtractionRequest(String source, String externalPostingId, String jobTitle, String sourceUrl,
                                           String rawText, String previousContentHash,
-                                          PostingContentStatus previousContentStatus) {
+                                          PostingContentStatus previousContentStatus,
+                                          Integer previousExtractionVersion) {
 }

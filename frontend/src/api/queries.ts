@@ -159,6 +159,21 @@ export function useSaveMetadata(cardId: string) {
     onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); void client.resetQueries({ queryKey: matchKeys.all }); } });
 }
 
+/**
+ * 문항 유형(#482)만 고친다. 제목·기간과 달리 확정 카드도 다시 열지 않고 바로 고친다.
+ * 실패는 고른 자리(CardThemes)가 보여 주므로 전역 알림은 띄우지 않는다.
+ * 서버가 확인한 값을 카드·목록 캐시에 넣고 목록을 다시 불러온다. 목록은 자소서 카드 고르기와 같은 캐시다.
+ * 공고 매칭은 문항 유형을 쓰지 않아 건드리지 않는다.
+ */
+export function useSaveThemes(cardId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    meta: { errorPresentation: 'inline' },
+    mutationFn: (themes: import('./schemas').CardTheme[]) => endpoints.saveMetadata(cardId, { themes }),
+    onSuccess: async (metadata) => { await cacheCardMetadata(client, metadata); void client.invalidateQueries({ queryKey: keys.cards }); },
+  });
+}
+
 export function usePatchCandidate(repoId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -227,7 +242,7 @@ export function useRegenerateField(id: string) {
 export function useAskInterview(cardId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (field: StarField) => endpoints.askInterview(cardId, field),
+    mutationFn: (field?: StarField) => endpoints.askInterview(cardId, field),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.interview(cardId) }),
   });
 }
@@ -240,6 +255,17 @@ export function useAnswerInterview(cardId: string) {
       qc.setQueryData(keys.card(cardId), card);
       void qc.invalidateQueries({ queryKey: keys.interview(cardId) });
       void qc.invalidateQueries({ queryKey: keys.versions(cardId) });
+    },
+  });
+}
+
+export function useSkipInterview(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (turnNo: number) => endpoints.answerInterview(cardId, turnNo, { kind: 'SKIP' }),
+    onSuccess: (card) => {
+      qc.setQueryData(keys.card(cardId), card);
+      void qc.invalidateQueries({ queryKey: keys.interview(cardId) });
     },
   });
 }

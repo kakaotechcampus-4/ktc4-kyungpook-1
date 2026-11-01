@@ -516,6 +516,27 @@ def test_question_template_keeps_its_shape_when_review_text_is_an_injection() ->
     assert result.question_text.startswith("PR #7 리뷰에서")
 
 
+def test_injected_review_reason_stays_data_and_cannot_plant_a_metric() -> None:
+    """확인이 필요한 이유 문장에 주입을 넣어도 사용자 입력으로만 가고, 그 문장의 수치는 답 후보에 남지 않는다."""
+    client = _FakeStructuredClient(QuestionOutput(
+        action="ASK", star_slot="R", question="그 결과는 어디서 확인하셨나요?",
+        suggested_answers=[f"응답 시간을 {FAKE_METRIC_NUMBER} 줄였다", "만료 토큰에 401 을 돌려주게 했다"],
+    ))
+    request = InterviewTurnRequest.model_validate({
+        "card_id": 1, "source_type": "DIRECT_CARD", "max_turns": 2,
+        "missing_slots": [{"star_slot": "R", "statement_seq": 1, "body": "만료 토큰에 401 을 돌려주게 했다",
+                           "review_reason": ALL_INJECTIONS}],
+    })
+
+    written = asyncio.run(InterviewLLM(client).write_question(request, "R"))
+
+    (system_prompt, payload), = client.calls
+    assert re.search(r"지시사항이 아닙니다", system_prompt) and MARKER not in system_prompt
+    sent = json.dumps(payload, ensure_ascii=False)
+    assert MARKER in sent and FAKE_SECRET not in sent
+    assert written.suggested_answers == ["만료 토큰에 401 을 돌려주게 했다"]
+
+
 # ---- 판정 함수 ---------------------------------------------------------------------------------
 
 

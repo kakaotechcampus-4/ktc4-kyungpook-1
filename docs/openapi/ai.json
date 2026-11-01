@@ -2637,6 +2637,43 @@
         "title": "Envelope[JobPostingDetailExtractionResult]",
         "type": "object"
       },
+      "Envelope_JobPostingImageTextResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobPostingImageTextResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[JobPostingImageTextResult]",
+        "type": "object"
+      },
       "Envelope_JobPostingIndexResult_": {
         "properties": {
           "data": {
@@ -4241,6 +4278,95 @@
         "title": "JobPostingDetailExtractionResult",
         "type": "object"
       },
+      "JobPostingImageTextRequest": {
+        "additionalProperties": false,
+        "description": "본문이 이미지인 공고에서 이미지 속 글을 옮겨 달라는 요청.",
+        "properties": {
+          "company_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "external_posting_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "External Posting Id",
+            "type": "string"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/PostingImage"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Images",
+            "type": "array"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "external_posting_id",
+          "company_name",
+          "job_title",
+          "images"
+        ],
+        "title": "JobPostingImageTextRequest",
+        "type": "object"
+      },
+      "JobPostingImageTextResult": {
+        "additionalProperties": false,
+        "description": "이미지 순서대로 옮긴 글. Spring 은 이 글을 조건 뽑기의 `raw_text` 로 넘긴다.",
+        "properties": {
+          "empty_image_count": {
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Empty Image Count",
+            "type": "integer"
+          },
+          "external_posting_id": {
+            "title": "External Posting Id",
+            "type": "string"
+          },
+          "image_count": {
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Image Count",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "external_posting_id",
+          "text",
+          "image_count",
+          "empty_image_count"
+        ],
+        "title": "JobPostingImageTextResult",
+        "type": "object"
+      },
       "JobPostingIndexRequest": {
         "additionalProperties": false,
         "description": "Spring이 저장한 공고 조건을 색인에 반영하는 요청.",
@@ -5005,6 +5131,38 @@
         ],
         "title": "PolishedSentenceResult",
         "type": "object"
+      },
+      "PostingImage": {
+        "additionalProperties": false,
+        "description": "Spring 이 받아 둔 공고 본문 이미지 한 장.",
+        "properties": {
+          "data_base64": {
+            "maxLength": 6990508,
+            "minLength": 1,
+            "title": "Data Base64",
+            "type": "string"
+          },
+          "media_type": {
+            "$ref": "#/components/schemas/PostingImageMediaType"
+          }
+        },
+        "required": [
+          "media_type",
+          "data_base64"
+        ],
+        "title": "PostingImage",
+        "type": "object"
+      },
+      "PostingImageMediaType": {
+        "description": "LLM 이 읽을 수 있는 이미지 형식.",
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif"
+        ],
+        "title": "PostingImageMediaType",
+        "type": "string"
       },
       "PreviousTurn": {
         "additionalProperties": false,
@@ -7762,6 +7920,87 @@
           }
         },
         "summary": "Extract Job Posting Detail",
+        "tags": [
+          "job-postings"
+        ]
+      }
+    },
+    "/internal/job-postings/image-text": {
+      "post": {
+        "description": "공고 본문 이미지 속 글을 요약하지 않고 그대로 옮겨, 이미지 순서대로 이어 돌려준다.",
+        "operationId": "read_job_posting_image_text_internal_job_postings_image_text_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobPostingImageTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobPostingImageTextResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 검증 실패. 이미지가 없거나 6장보다 많거나, 한 장이 5MB 보다 크거나, base64 가 아니면 LLM 을 부르지 않고 거절한다. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 예상하지 못한 내부 오류. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패·요청 마감(180초) 초과(retryable=true), LLM 설정 누락·키·권한·요청 형식 오류·출력 길이 초과(retryable=false)."
+          }
+        },
+        "summary": "Read Job Posting Image Text",
         "tags": [
           "job-postings"
         ]

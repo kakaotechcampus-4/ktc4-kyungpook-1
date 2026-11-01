@@ -1,10 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
 import { loginAsDemo } from './helpers';
 
-/** 인적사항(BE #552 계약) — 홈 첫 방문 안내 → 입력 → 저장 → 새로고침 → 마이페이지. 목 서버가 브라우저 안에서 돈다. */
+/** 인적사항(BE #552 계약, 관심 분야 #656) — 처음 입력 창 → 저장 → 새로고침 → 마이페이지 폼. 목 서버가 브라우저 안에서 돈다. */
 
 const noHorizontalOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const banner = (page: Page) => page.getByRole('region', { name: '매칭에 쓸 인적사항을 입력해 주세요' });
+const dialog = (page: Page) => page.getByRole('dialog', { name: /인적사항 입력/ });
+/** 처음 입력 창을 지나간 상태로 만든다 — 관심 분야 하나만 저장(목 서버가 브라우저 안에서 돌아 페이지에서 PUT 한다) */
+async function seedInterests(page: Page) {
+  await page.goto('/settings');
+  await page.evaluate(async () => {
+    await fetch('/api/profile', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND'] }) });
+  });
+}
 /** 진짜 Radix 선택칸에서 보이는 말(한국어 라벨)로 고른다 */
 async function choose(page: Page, name: string, option: string) {
   await page.getByRole('combobox', { name, exact: true }).click();
@@ -13,7 +20,7 @@ async function choose(page: Page, name: string, option: string) {
 async function addEducation(page: Page, n: number, values: { school: string; major: string; level?: string; status?: string; start?: string; end?: string; gpa?: string; gpaMax?: string }) {
   await page.getByRole('button', { name: '학력 추가', exact: true }).click();
   await choose(page, `학력 ${n} 학력 구분`, values.level ?? '학사');
-  await page.getByLabel(`학력 ${n} 학교`, { exact: true }).fill(values.school);
+  await page.getByLabel(`학력 ${n} 학교 (선택)`, { exact: true }).fill(values.school);
   await page.getByLabel(`학력 ${n} 전공 (선택)`, { exact: true }).fill(values.major);
   await choose(page, `학력 ${n} 상태`, values.status ?? '졸업');
   await page.getByLabel(`학력 ${n} 입학 월 (선택)`, { exact: true }).fill(values.start ?? '2018-03');
@@ -47,18 +54,50 @@ const savedProfile = (page: Page) => page.evaluate(() => JSON.parse(sessionStora
 
 test.beforeEach(async ({ page }) => { await loginAsDemo(page); });
 
-test('home prompt → form → save → reload keeps it → prompt is gone → MyPage link works', async ({ page }) => {
+test('first entry: the dialog takes the five steps over the home page, then the MyPage form opens with what was saved', async ({ page }) => {
   await page.goto('/');
-  await expect(banner(page)).toBeVisible();
-  await expect(banner(page).getByRole('button', { name: '인적사항 입력 건너뛰기', exact: true })).toBeVisible();
-  await banner(page).getByRole('link', { name: '입력하기', exact: true }).click();
-  await expect(page).toHaveURL(/\/settings\/profile$/);
-  await expect(page.getByRole('heading', { name: '인적사항', level: 1 })).toBeVisible();
-  await expect(status(page)).toHaveText('고친 곳이 없어요');
+  await expect(dialog(page)).toBeVisible();
+  await expect(dialog(page).getByRole('button', { name: '닫기', exact: true })).toHaveCount(0);
+  await expect(dialog(page)).toContainText('1/5 단계');
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await expect(page.getByText('관심 분야를 1개 이상 골라 주세요')).toBeVisible();
+  await page.getByRole('checkbox', { name: '백엔드', exact: true }).check();
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await expect(dialog(page)).toContainText('2/5 단계');
+  await page.getByRole('button', { name: '경력 없음', exact: true }).click();
+  await expect(dialog(page)).toContainText('3/5 단계');
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await expect(page.getByText('학력을 1개 이상 입력해 주세요')).toBeVisible();
+  await page.getByRole('radio', { name: '학사', exact: true }).check();
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await expect(page.getByText('상태를 선택해 주세요')).toBeVisible();
+  await page.getByRole('radio', { name: '졸업', exact: true }).check();
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await page.getByRole('checkbox', { name: '토익', exact: true }).check();
+  await page.getByLabel('토익 점수', { exact: true }).fill('900');
+  await page.getByRole('button', { name: '다음', exact: true }).click();
+  await expect(dialog(page)).toContainText('5/5 단계');
+  await page.getByRole('button', { name: '자격증 없음', exact: true }).click();
+  await expect(dialog(page)).toHaveCount(0);
+  const afterSetup = await savedProfile(page);
+  expect(afterSetup.interests).toEqual(['BACKEND']);
+  expect(afterSetup.educations).toHaveLength(1);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '홈', level: 1 })).toBeVisible();
+  await expect(dialog(page)).toHaveCount(0);
 
-  await addEducation(page, 1, { school: '샘플대학교', major: '컴퓨터공학', gpa: '3.8', gpaMax: '4.5' });
+  await page.goto('/settings/profile');
+  await expect(page.getByRole('heading', { name: '인적사항', level: 1 })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: '백엔드', exact: true })).toBeChecked();
+  await expect(status(page)).toHaveText('고친 곳이 없어요');
+  // 창에서 고른 학력 구분·상태 위에 학교·전공·학점을 마이페이지 폼에서 더 적는다
+  await page.getByLabel('학력 1 학교 (선택)', { exact: true }).fill('샘플대학교');
+  await page.getByLabel('학력 1 전공 (선택)', { exact: true }).fill('컴퓨터공학');
+  await page.getByLabel('학력 1 입학 월 (선택)', { exact: true }).fill('2018-03');
+  await page.getByLabel('학력 1 졸업(예정) 월 (선택)', { exact: true }).fill('2022-02');
+  await page.getByLabel('학력 1 학점 (선택)', { exact: true }).fill('3.8');
+  await choose(page, '학력 1 학점 만점 (선택)', '4.5');
   await addCareer(page, 1, { company: '샘플컴퍼니', role: '백엔드 개발' });
-  await addLanguage(page, 1, { score: '900' });
   await addCertificate(page, 1, { name: '정보처리기사', issuer: '한국산업인력공단' });
   await expect(status(page)).toHaveText('저장하지 않은 변경이 있어요');
   await page.getByRole('button', { name: '저장', exact: true }).click();
@@ -67,7 +106,7 @@ test('home prompt → form → save → reload keeps it → prompt is gone → M
   expect((await savedProfile(page)).savedAt).not.toBeNull();
 
   await page.reload();
-  await expect(page.getByLabel('학력 1 학교', { exact: true })).toHaveValue('샘플대학교');
+  await expect(page.getByLabel('학력 1 학교 (선택)', { exact: true })).toHaveValue('샘플대학교');
   await expect(page.getByRole('combobox', { name: '학력 1 학력 구분', exact: true })).toContainText('학사');
   await expect(page.getByRole('combobox', { name: '학력 1 상태', exact: true })).toContainText('졸업');
   await expect(page.getByLabel('학력 1 학점 (선택)', { exact: true })).toHaveValue('3.8');
@@ -82,50 +121,43 @@ test('home prompt → form → save → reload keeps it → prompt is gone → M
   // 영어 열거 이름이 화면에 나오지 않는다
   await expect(page.getByRole('main')).not.toContainText(/GRADUATED|BACHELOR|FULL_TIME|TOEIC_SPEAKING|ON_LEAVE/);
 
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: '홈', level: 1 })).toBeVisible();
-  await expect(banner(page)).toHaveCount(0);
-
   await page.goto('/settings');
   const row = page.getByRole('link', { name: /인적사항/ });
+  await expect(row).toContainText('관심 백엔드');
   await expect(row).toContainText('학력 1 · 경력 1 · 어학 1 · 자격증 1');
   await row.click();
   await expect(page).toHaveURL(/\/settings\/profile$/);
   await expect(page.getByLabel('학력 1 전공 (선택)', { exact: true })).toHaveValue('컴퓨터공학');
 });
 
-test('"건너뛰기" saves four empty lists, closes the prompt for good without blocking anything, and MyPage still opens the form', async ({ page }) => {
+test('the dialog cannot be dismissed: Escape, clicking outside and a reload all keep it, and nothing is saved until the last step', async ({ page }) => {
   await page.goto('/');
-  await expect(banner(page)).toBeVisible();
-  // 안내가 있어도 주 흐름은 그대로다
-  await expect(page.getByRole('link', { name: '레포 연결하기', exact: true })).toBeVisible();
-  expect((await savedProfile(page)).savedAt).toBeNull();
-  await banner(page).getByRole('button', { name: '인적사항 입력 건너뛰기', exact: true }).click();
-  await expect(banner(page)).toHaveCount(0);
-  await expect(page.getByText('마이페이지에서 언제든 인적사항을 입력할 수 있어요.')).toBeVisible();
-  // 서버가 기억한다: 빈 목록 네 개가 저장되어 savedAt 이 생겼고, 브라우저에는 아무 표시도 남기지 않는다
-  const saved = await savedProfile(page);
-  expect(saved.savedAt).not.toBeNull();
-  expect([saved.educations, saved.careers, saved.languages, saved.certifications]).toEqual([[], [], [], []]);
-  expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('gitory.profile')))).toEqual([]);
+  await expect(dialog(page)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog(page)).toBeVisible();
+  await page.mouse.click(8, 8);
+  await expect(dialog(page)).toBeVisible();
+  await page.getByRole('checkbox', { name: '백엔드', exact: true }).check();
+  await page.getByRole('button', { name: '다음', exact: true }).click();
   await page.reload();
-  await expect(page.getByRole('heading', { name: '홈', level: 1 })).toBeVisible();
-  await expect(banner(page)).toHaveCount(0);
-  await page.goto('/settings');
-  await expect(page.getByRole('link', { name: /인적사항/ })).toContainText('입력한 정보가 없어요');
-  await page.getByRole('link', { name: /인적사항/ }).click();
-  await expect(page.getByRole('heading', { name: '인적사항', level: 1 })).toBeVisible();
+  await expect(dialog(page)).toBeVisible();
+  await expect(dialog(page)).toContainText('1/5 단계'); // 저장 전이라 처음부터
+  expect((await savedProfile(page)).savedAt).toBeNull();
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('gitory.profile')))).toEqual([]);
 });
 
-test('the prompt also appears for a first-time user with no cards, without blocking the start actions', async ({ page }) => {
+test('the dialog also appears for a first-time user with no cards, and the home start actions are there once it is done', async ({ page }) => {
   await page.goto('/?demoScenario=empty');
-  await expect(banner(page)).toBeVisible();
-  // 안내가 있어도 시작 행동은 그대로 쓸 수 있다
+  await expect(dialog(page)).toBeVisible();
+  await seedInterests(page);
+  await page.goto('/?demoScenario=empty');
+  await expect(dialog(page)).toHaveCount(0);
   await expect(page.getByRole('link', { name: '레포 연결하기', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '레포 검색하기', exact: true })).toBeEnabled();
 });
 
 test('a failed save keeps the input and the retry saves it', async ({ page }) => {
+  await seedInterests(page);
   await page.goto('/settings/profile?demoScenario=save-error');
   await addCertificate(page, 1, { name: '정보처리기사' });
   await page.getByRole('button', { name: '저장', exact: true }).click();
@@ -139,18 +171,19 @@ test('a failed save keeps the input and the retry saves it', async ({ page }) =>
 });
 
 test('invalid input is explained next to the field and nothing is saved', async ({ page }) => {
+  await seedInterests(page);
   await page.goto('/settings/profile');
   await page.getByRole('button', { name: '학력 추가', exact: true }).click();
   await page.getByRole('button', { name: '저장', exact: true }).click();
-  await expect(page.getByText('학교 이름을 입력해 주세요')).toBeVisible();
+  await expect(page.getByText('학력 구분을 선택해 주세요')).toBeVisible();
   await expect(page.getByRole('combobox', { name: '학력 1 학력 구분', exact: true })).toBeFocused();
-  await expect(page.getByRole('alert')).toContainText('3곳');
+  await expect(page.getByRole('alert')).toContainText('2곳');
   // 진짜 Radix 선택칸도 오류를 스크린리더에 전한다(단위 시험의 모의 select 로는 볼 수 없다)
   const statusSelect = page.getByRole('combobox', { name: '학력 1 상태', exact: true });
   await expect(statusSelect).toHaveAttribute('aria-invalid', 'true');
   await expect(statusSelect).toHaveAccessibleDescription('상태를 선택해 주세요');
   await choose(page, '학력 1 학력 구분', '석사');
-  await page.getByLabel('학력 1 학교', { exact: true }).fill('샘플대학교');
+  await page.getByLabel('학력 1 학교 (선택)', { exact: true }).fill('샘플대학교');
   await choose(page, '학력 1 상태', '졸업');
   await expect(statusSelect).not.toHaveAttribute('aria-invalid', 'true');
   await page.getByLabel('학력 1 입학 월 (선택)', { exact: true }).fill('2022-03');
@@ -160,11 +193,12 @@ test('invalid input is explained next to the field and nothing is saved', async 
   await expect(page.getByText('졸업(예정) 월은 입학 월과 같거나 뒤여야 해요')).toBeVisible();
   await expect(page.getByText('학점을 적었다면 만점도 골라 주세요')).toBeVisible();
   const saved = await savedProfile(page);
-  expect(saved.savedAt).toBeNull();
   expect(saved.educations ?? []).toEqual([]);
+  expect(saved.interests).toEqual(['BACKEND']); // 처음 입력 창에서 저장한 것만 남아 있다
 });
 
 test('a test that is not on the list asks for its name, and the name is sent only then', async ({ page }) => {
+  await seedInterests(page);
   await page.goto('/settings/profile');
   await page.getByRole('button', { name: '어학 추가', exact: true }).click();
   await expect(page.getByLabel('어학 1 시험 이름', { exact: true })).toHaveCount(0);
@@ -184,6 +218,7 @@ test('a test that is not on the list asks for its name, and the name is sent onl
 });
 
 test('leaving with unsaved input asks first', async ({ page }) => {
+  await seedInterests(page);
   await page.goto('/settings/profile');
   await addCertificate(page, 1, { name: '정보처리기사' });
   await page.getByRole('link', { name: '마이페이지로', exact: true }).click();
@@ -198,6 +233,7 @@ test('leaving with unsaved input asks first', async ({ page }) => {
 });
 
 test('rows can be removed and each list stops at its own limit (5 / 10 / 10 / 20)', async ({ page }) => {
+  await seedInterests(page);
   await page.goto('/settings/profile');
   for (const [noun, max] of [['학력', 5], ['경력', 10], ['어학', 10], ['자격증', 20]] as const) {
     const add = page.getByRole('button', { name: `${noun} 추가`, exact: true });
@@ -211,15 +247,16 @@ test('rows can be removed and each list stops at its own limit (5 / 10 / 10 / 20
 });
 
 for (const width of [390, 320]) {
-  test(`mobile ${width}: banner, filled form and MyPage have no horizontal scroll and touch-sized controls`, async ({ page }) => {
+  test(`mobile ${width}: dialog, filled form and MyPage have no horizontal scroll and touch-sized controls`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/');
-    await expect(banner(page)).toBeVisible();
+    await expect(dialog(page)).toBeVisible();
     expect(await noHorizontalOverflow(page)).toBe(true);
-    for (const control of [banner(page).getByRole('link', { name: '입력하기', exact: true }), banner(page).getByRole('button', { name: '인적사항 입력 건너뛰기', exact: true })]) {
+    for (const control of [dialog(page).locator('.interest-tile').first(), dialog(page).getByRole('button', { name: '다음', exact: true })]) {
       expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     }
 
+    await seedInterests(page);
     await page.goto('/settings/profile');
     for (let n = 1; n <= 3; n++) {
       await addEducation(page, n, { school: `아주아주 긴 이름의 대학교 ${n} 캠퍼스 대학원 일반대학원 협동과정`, major: '컴퓨터공학과 소프트웨어 융합 전공 심화 과정', gpa: '3.85', gpaMax: '4.5' });
@@ -236,7 +273,7 @@ for (const width of [390, 320]) {
     const inputs = page.locator('.profile-page input:not([type="checkbox"])');
     const widths = await inputs.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().right));
     expect(Math.max(...widths)).toBeLessThanOrEqual(width);
-    expect(await page.locator('.profile-page input').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16); // iOS 확대 방지
+    expect(await page.locator('.profile-page input:not([type="checkbox"])').first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeGreaterThanOrEqual(16); // iOS 확대 방지
 
     await page.getByRole('button', { name: '저장', exact: true }).click();
     await expect(status(page)).toHaveText('저장했어요');
@@ -248,6 +285,7 @@ for (const width of [390, 320]) {
 
 test('mobile 390: the sticky save bar does not hide the last section', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await seedInterests(page);
   await page.goto('/settings/profile');
   await page.getByRole('button', { name: '자격증 추가', exact: true }).scrollIntoViewIfNeeded();
   const add = await page.getByRole('button', { name: '자격증 추가', exact: true }).boundingBox();
@@ -256,7 +294,7 @@ test('mobile 390: the sticky save bar does not hide the last section', async ({ 
 });
 
 for (const width of [1440, 390]) {
-  test(`dark theme ${width}: prompt, form and errors stay readable`, async ({ page }) => {
+  test(`dark theme ${width}: dialog, form and errors stay readable`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(() => localStorage.setItem('gitory.theme', 'dark'));
     const contrast = (pairs: { text: string; surface: string }[]) => pairs.map(({ text: foreground, surface: background }) => {
@@ -270,12 +308,16 @@ for (const width of [1440, 390]) {
     });
     await page.goto('/');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(banner(page)).toBeVisible();
-    for (const value of await page.evaluate(contrast, [{ text: '.profile-prompt__text h2', surface: '.profile-prompt' }, { text: '.profile-prompt__text p', surface: '.profile-prompt' }, { text: '.profile-prompt .btn--primary', surface: '.profile-prompt .btn--primary' }])) {
-      expect(value).toBeGreaterThanOrEqual(4.5);
-    }
+    await expect(dialog(page)).toBeVisible();
+    await page.getByRole('checkbox', { name: '백엔드', exact: true }).check();
+    for (const value of await page.evaluate(contrast, [
+      { text: '.modal__title', surface: '.modal' }, { text: '.modal__sub', surface: '.modal' }, { text: '.setup-steps li[aria-current="step"]', surface: '.modal' },
+      { text: '.interest-tile.is-on span', surface: '.interest-tile.is-on' }, { text: '.interest-tile:not(.is-on) span', surface: '.interest-tile:not(.is-on)' },
+      { text: '.modal__foot .btn--primary', surface: '.modal__foot .btn--primary' },
+    ])) expect(value).toBeGreaterThanOrEqual(4.5);
     expect(await noHorizontalOverflow(page)).toBe(true);
 
+    await seedInterests(page);
     await page.goto('/settings/profile');
     await page.getByRole('button', { name: '학력 추가', exact: true }).click();
     await page.getByRole('button', { name: '저장', exact: true }).click();

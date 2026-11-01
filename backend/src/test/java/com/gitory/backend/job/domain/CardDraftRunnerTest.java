@@ -6,6 +6,7 @@ import com.gitory.backend.agent.port.CardThemePort;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.StarConfidence;
 import com.gitory.backend.agent.port.StarDraft;
+import com.gitory.backend.agent.port.StarDraftListener;
 import com.gitory.backend.agent.port.StarDraftPort;
 import com.gitory.backend.agent.port.StarDraftRequest;
 import com.gitory.backend.agent.port.StarEmptyReason;
@@ -25,6 +26,7 @@ import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.CardThemeSuggester;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
@@ -64,6 +66,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
@@ -98,7 +101,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, CardVersionReader.class, JobCancelService.class,
         CardThemeSuggester.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
-        StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
+        StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
         CommitSummaryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
@@ -125,6 +128,9 @@ class CardDraftRunnerTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @MockitoSpyBean
+    CardDraftLiveLog liveLog;
 
     @MockitoBean
     RepositoryActivityPort activities;
@@ -171,7 +177,7 @@ class CardDraftRunnerTest {
         Long cardId = cardWithCommits(commit(SHA_A, 30, 10));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         AtomicReference<List<Long>> seen = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             seen.set(Arrays.asList(AiCallContext.jobId(), AiCallContext.cardId()));
             return allSlots(SHA_A);
         });
@@ -183,6 +189,58 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("카드 진행은 코드를 읽는 동안 READING, AI 가 쓰는 동안 받은 칸 글과 함께 WRITING 이고, 다 쓰면 저장할 초안의 글로 DONE 이 된다")
+    void showsSlotTextWhileWritingAndDraftTextWhenDone() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 30, 10));
+        AtomicReference<List<CardDraftLive>> whileReading = new AtomicReference<>();
+        given(activities.diffEvidence(any())).willAnswer(invocation -> {
+            whileReading.set(liveLog.of(job().getId()));
+            return evidenceOf(SHA_A);
+        });
+        AtomicReference<List<CardDraftLive>> whileWriting = new AtomicReference<>();
+        given(star.draft(any(), any())).willAnswer(invocation -> {
+            StarDraftListener listener = invocation.getArgument(1);
+            listener.slot(0, StarSlot.S, "로그인이 재시작 때", false);
+            whileWriting.set(liveLog.of(job().getId()));
+            return draftOf(Map.of(
+                    StarSlot.S, filled(SHA_A, "로그인이 재시작 때 풀렸다", StarConfidence.HIGH),
+                    StarSlot.T, filled(SHA_A, "세션을 오래 유지해야 했다", StarConfidence.HIGH),
+                    StarSlot.A, filled(SHA_A, "세션을 DB 에 저장했다", StarConfidence.HIGH),
+                    StarSlot.R, empty(StarEmptyReason.NO_EVIDENCE)));
+        });
+
+        runNext();
+
+        assertThat(whileReading.get()).extracting(CardDraftLive::state).containsExactly(CardDraftLiveState.READING);
+        assertThat(whileWriting.get()).singleElement().satisfies(card -> {
+            assertThat(card.state()).isEqualTo(CardDraftLiveState.WRITING);
+            assertThat(card.slots()).containsExactly(new CardDraftLive.Slot(StarField.S, 0, "로그인이 재시작 때", false));
+        });
+        assertThat(liveLog.of(job().getId())).singleElement().satisfies(card -> {
+            assertThat(card.cardId()).isEqualTo(jdbc.queryForObject("SELECT public_id FROM card WHERE id = ?", UUID.class, cardId));
+            assertThat(card.state()).isEqualTo(CardDraftLiveState.DONE);
+            assertThat(card.slots()).extracting(CardDraftLive.Slot::text)
+                    .containsExactly("로그인이 재시작 때 풀렸다", "세션을 오래 유지해야 했다", "세션을 DB 에 저장했다", "");
+        });
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 이 끝나면 카드별 진행에 끝난 시각을 남겨, 10분 뒤 메모리에서 지워지게 한다")
+    void marksLiveProgressFinishedWhenJobEnds() {
+
+        cardWithCommits(commit(SHA_A, 30, 10));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
+
+        runNext();
+
+        verify(liveLog).finish(job().getId());
+
+    }
+
+    @Test
     @DisplayName("AI 초안을 켜면 카드의 칸을 근거 커밋과 함께 1번 버전에 저장하고 비운 칸에는 이유를 남기며, 1번 버전을 AI 초안으로 바꾸고 Job 을 완료로 끝낸다")
     void fillsCardAndSucceeds() {
 
@@ -190,7 +248,7 @@ class CardDraftRunnerTest {
         Long commitB = commit(SHA_B, 5, 0);
         Long cardId = cardWithCommits(commitA, commitB);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A, SHA_B));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled(SHA_A, "로그인이 재시작 때 풀렸다", StarConfidence.HIGH),
                 StarSlot.T, filled(SHA_B, "세션을 오래 유지해야 했다", StarConfidence.MEDIUM),
                 StarSlot.A, filled(SHA_A, "세션을 DB 에 저장했다", StarConfidence.HIGH),
@@ -294,7 +352,7 @@ class CardDraftRunnerTest {
                 List.of("src/main/java/SessionConfig.java"));
         given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(evidence), false, null, List.of()));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return allEmpty(StarEmptyReason.NO_EVIDENCE);
         });
@@ -323,7 +381,7 @@ class CardDraftRunnerTest {
         }
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return allEmpty(StarEmptyReason.NO_EVIDENCE);
         });
@@ -348,7 +406,7 @@ class CardDraftRunnerTest {
         cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return allEmpty(StarEmptyReason.NO_EVIDENCE);
         });
@@ -380,7 +438,7 @@ class CardDraftRunnerTest {
         Long cardId = cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         StarDraft empty = allEmpty(StarEmptyReason.NO_EVIDENCE);
-        given(star.draft(any())).willReturn(new StarDraft(empty.title(), empty.slots(), empty.missingFields(), null,
+        given(star.draft(any(), any())).willReturn(new StarDraft(empty.title(), empty.slots(), empty.missingFields(), null,
                 List.of(), List.of(), List.of(), List.of(
                         new StarStep(0, StarStepActor.MODEL, StarStepKind.DRAFT, null, null, null, null, null),
                         new StarStep(0, StarStepActor.CODE, StarStepKind.FLAG, StarSlot.R, "UNSOURCED_NUMBER", "50%",
@@ -418,7 +476,7 @@ class CardDraftRunnerTest {
         cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return allEmpty(StarEmptyReason.NO_EVIDENCE);
         });
@@ -459,7 +517,7 @@ class CardDraftRunnerTest {
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         fixtures.insertStatement(cardId, 1, "T", "내가 쓴 과제", "USER_STATED", null);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled(SHA_A, "상황", StarConfidence.HIGH),
                 StarSlot.T, empty(StarEmptyReason.TIMEOUT),
                 StarSlot.A, filled(SHA_A, "행동", StarConfidence.HIGH),
@@ -489,7 +547,7 @@ class CardDraftRunnerTest {
                 summary(SHA_A, " 세션 저장소를 DB 로 옮겼다 ", DiffEvidenceSource.DIFF),
                 summary(SHA_B, "feat: 세션 저장", DiffEvidenceSource.COMMIT_MESSAGE),
                 summary(shaC, "  ", DiffEvidenceSource.DIFF)), false, null, List.of()));
-        given(star.draft(any())).willReturn(allSlots(SHA_A));
+        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
 
         runNext();
 
@@ -508,7 +566,7 @@ class CardDraftRunnerTest {
         cardWithCommits(commitA);
         given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(
                 summary(SHA_A, "새 요약", DiffEvidenceSource.DIFF)), false, null, List.of()));
-        given(star.draft(any())).willReturn(allSlots(SHA_A));
+        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
 
         runNext();
 
@@ -522,7 +580,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled("f".repeat(40), "지어낸 상황", StarConfidence.HIGH),
                 StarSlot.T, filled(SHA_A, "과제", StarConfidence.HIGH),
                 StarSlot.A, filled(SHA_A, "행동", StarConfidence.HIGH),
@@ -547,7 +605,7 @@ class CardDraftRunnerTest {
         Long thirdId = commit(third, 10, 0);
         Long cardId = cardWithCommits(firstId, secondId, thirdId);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(first, second, third));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled("DEF5678", "상황", StarConfidence.HIGH),
                 StarSlot.T, filled("abc12340", "과제", StarConfidence.HIGH),
                 StarSlot.A, filled("abc1234", "행동", StarConfidence.HIGH),
@@ -568,7 +626,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled(SHA_A, "상황", StarConfidence.HIGH),
                 StarSlot.T, filled(SHA_A, "과제", StarConfidence.HIGH),
                 StarSlot.A, needsReview(SHA_A, "30% 빨라졌다", "근거에 없는 수치: 30%"),
@@ -591,7 +649,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allSlots(SHA_A));
+        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
 
         runNext();
 
@@ -606,7 +664,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled(SHA_A, "상황", StarConfidence.HIGH),
                 StarSlot.T, filled(SHA_A, "과제", StarConfidence.HIGH),
                 StarSlot.A, filled(SHA_A, "행동", StarConfidence.HIGH),
@@ -630,7 +688,7 @@ class CardDraftRunnerTest {
         given(activities.diffEvidence(any()))
                 .willThrow(new AiClientException("GITHUB_API_ERROR", true, 502))
                 .willReturn(evidenceOf(SHA_B));
-        given(star.draft(any())).willReturn(allFilled(SHA_B));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_B));
 
         runNext();
 
@@ -652,7 +710,7 @@ class CardDraftRunnerTest {
         Long first = cardWithCommits(commit(SHA_A, 10, 0));
         Long second = cardWithCommits(commit(SHA_B, 10, 0));
         given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A, SHA_B));
-        given(star.draft(any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", true, false, null));
+        given(star.draft(any(), any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", true, false, null));
 
         runNext();
 
@@ -688,7 +746,7 @@ class CardDraftRunnerTest {
 
         Long card = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A));
-        given(star.draft(any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", false, true, null));
+        given(star.draft(any(), any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", false, true, null));
 
         runNext();
 
@@ -707,7 +765,7 @@ class CardDraftRunnerTest {
         given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A, SHA_B));
         AtomicInteger calls = new AtomicInteger();
         AtomicReference<List<JobStep>> whileSecond = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             if (calls.incrementAndGet() == 2) {
                 whileSecond.set(job().getSteps());
             }
@@ -736,14 +794,14 @@ class CardDraftRunnerTest {
         Long first = cardWithCommits(commit(SHA_A, 10, 0));
         Long second = cardWithCommits(commit(SHA_B, 10, 0));
         given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A, SHA_B));
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             cancelService.cancel(jobId, userId, LOGIN);
             return allFilled(SHA_A);
         });
 
         runNext();
 
-        verify(star, times(1)).draft(any());
+        verify(star, times(1)).draft(any(), any());
         verify(activities, times(1)).diffEvidence(any());
         assertThat(statementsOf(first)).isEmpty();
         assertThat(statementsOf(second)).isEmpty();
@@ -775,7 +833,7 @@ class CardDraftRunnerTest {
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allFilled(SHA_A));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_A));
 
         runNext();
 
@@ -792,7 +850,7 @@ class CardDraftRunnerTest {
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allFilled(SHA_A));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_A));
 
         runNext();
 
@@ -824,7 +882,7 @@ class CardDraftRunnerTest {
         fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
         jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allFilled(SHA_A));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_A));
 
         runNext();
 
@@ -838,7 +896,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("DB", "BACKEND"), List.of("SQL", "JAVA")));
+        given(star.draft(any(), any())).willReturn(taggedDraft(SHA_A, List.of("DB", "BACKEND"), List.of("SQL", "JAVA")));
 
         runNext();
 
@@ -853,14 +911,14 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("backend", "BACKEND"), List.of("SPRING", "JAVA")));
+        given(star.draft(any(), any())).willReturn(taggedDraft(SHA_A, List.of("backend", "BACKEND"), List.of("PHP", "JAVA")));
 
         runNext();
 
         assertThat(areasOf(cardId)).containsExactly("BACKEND");
         assertThat(techsOf(cardId)).containsExactly("JAVA");
         assertThat(output.getAll()).contains("CardArea 목록 밖의 값 1개를 버린다: [backend]")
-                .contains("CardTech 목록 밖의 값 1개를 버린다: [SPRING]");
+                .contains("CardTech 목록 밖의 값 1개를 버린다: [PHP]");
         assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
 
     }
@@ -871,7 +929,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "BACKEND"),
+        given(star.draft(any(), any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "BACKEND"),
                 List.of("JAVA", "SQL", "JAVA")));
 
         runNext();
@@ -882,18 +940,18 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("분야가 2개, 기술이 4개를 넘으면 앞에서부터 그 개수만 남긴다")
+    @DisplayName("분야가 2개, 기술이 8개를 넘으면 앞에서부터 그 개수만 남긴다")
     void keepsTagsUpToLimit() {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "DB", "DEVOPS"),
-                List.of("JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS", "PYTHON")));
+        given(star.draft(any(), any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "DB", "DEVOPS"),
+                List.of("JAVA", "SPRING", "JPA", "MYSQL", "REDIS", "KAFKA", "DOCKER", "AWS", "GITHUB_ACTIONS")));
 
         runNext();
 
         assertThat(areasOf(cardId)).containsExactly("BACKEND", "DB");
-        assertThat(techsOf(cardId)).containsExactly("JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS");
+        assertThat(techsOf(cardId)).containsExactly("JAVA", "SPRING", "JPA", "MYSQL", "REDIS", "KAFKA", "DOCKER", "AWS");
 
     }
 
@@ -903,7 +961,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allFilled(SHA_A));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_A));
 
         runNext();
 

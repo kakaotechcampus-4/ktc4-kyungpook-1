@@ -58,4 +58,17 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
             ORDER BY c.seq
             """)
     List<PostingCondition> findMatchableDetail(@Param("publicId") UUID publicId, @Param("now") Instant now);
+
+    // 매칭 1단계는 색인을 쓰지 않아 색인 해시를 보지 않고, 조건을 뽑은 마감 전 공고의 필수·우대 조건을 한 쿼리로 읽는다
+    @Query("""
+            SELECT new com.gitory.backend.matching.infra.PostingCondition(p, c)
+            FROM JobPosting p JOIN JobPostingCriterion c ON c.jobPostingId = p.id
+            WHERE p.status = com.gitory.backend.matching.domain.JobPostingStatus.ACTIVE
+              AND p.contentStatus = com.gitory.backend.matching.domain.JobPostingContentStatus.READY
+              AND (p.expiresAt IS NULL OR p.expiresAt > :now)
+              AND c.type IN (com.gitory.backend.matching.domain.CriterionType.REQUIRED,
+                             com.gitory.backend.matching.domain.CriterionType.PREFERRED)
+            ORDER BY p.id, c.seq
+            """)
+    List<PostingCondition> findShortlistConditions(@Param("now") Instant now);
 }

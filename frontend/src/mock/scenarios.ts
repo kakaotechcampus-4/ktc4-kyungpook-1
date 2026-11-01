@@ -1,4 +1,5 @@
 import type { MockResult } from './router';
+import { failNextCoverLetterAssign } from './coverLetters';
 
 export const SCENARIOS = {
   normal: { label: '기본', delayMs: 160 },
@@ -13,6 +14,7 @@ export const SCENARIOS = {
   'candidate-error': { label: '첫 후보 변경·카드 생성 실패', delayMs: 160 },
   'github-disconnected': { label: 'GitHub 연결 끊김', delayMs: 160 },
   'github-unauthorized': { label: 'GitHub 토큰 무효(분석 403)', delayMs: 160 },
+  'cover-letter-failed': { label: '자소서 카드 고르기 실패', delayMs: 160 },
 } as const;
 export type Scenario = keyof typeof SCENARIOS;
 export function parseScenario(value: string | null): Scenario {
@@ -41,6 +43,8 @@ export function createScenario(scenario: Scenario) {
         failedSave = true; return fault('INTERNAL_ERROR');
       }
       if (scenario === 'conflict' && method === 'POST' && path.endsWith('/analyze')) return fault('IDEMPOTENCY_KEY_MISMATCH', 409);
+      // 자소서 카드 고르기를 한 번 실패시킨다 — 실패 안내와 다시 시도를 눈으로 보려는 시나리오
+      if (scenario === 'cover-letter-failed' && method === 'POST' && path === '/cover-letters') failNextCoverLetterAssign();
       if ((scenario === 'github-disconnected' || scenario === 'github-unauthorized') && method === 'POST' && path.endsWith('/analyze')) return fault('GITHUB_UNAUTHORIZED', 403);
       return undefined;
     },

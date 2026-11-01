@@ -125,12 +125,16 @@ def test_per_call_timeout_disables_sdk_retries() -> None:
 
 
 class _FakeStream:
-    def __init__(self, completion=None, error: Exception | None = None) -> None:
+    def __init__(self, completion=None, error: Exception | None = None, events: list | None = None) -> None:
         self._completion = completion
         self._error = error
+        self._events = events or []
 
     def __enter__(self):
         return self
+
+    def __iter__(self):
+        return iter(self._events)
 
     def __exit__(self, *_):
         return False
@@ -172,10 +176,54 @@ def test_budget_above_gateway_ceiling_is_streamed_with_usage() -> None:
     assert "parse" not in calls
 
 
+def test_streamed_partial_outputs_reach_on_partial_and_a_broken_listener_does_not_stop_the_call() -> None:
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(parsed=_Output(value="ok")))],
+        usage=SimpleNamespace(prompt_tokens=7, completion_tokens=5),
+    )
+    events = [
+        SimpleNamespace(type="chunk", parsed=None),
+        SimpleNamespace(type="content.delta", parsed={"value": "o"}),
+        SimpleNamespace(type="content.delta", parsed=None),
+        SimpleNamespace(type="content.delta", parsed={"value": "ok"}),
+    ]
+    seen: list[dict] = []
+
+    def on_partial(parsed: dict) -> None:
+        seen.append(parsed)
+        raise RuntimeError("화면 쪽 고장")
+
+    result = _client_streaming(_FakeStream(completion, events=events), {}).call(
+        "system", {}, _Output, 6000, on_partial=on_partial
+    )
+
+    assert seen == [{"value": "o"}, {"value": "ok"}]
+    assert result.output.value == "ok"
+
+
 def test_budget_within_gateway_ceiling_is_not_streamed() -> None:
     result = _client_returning(_Output(value="ok")).call("system", {}, _Output, 2000)
 
     assert result.output.value == "ok"
+
+
+def test_images_follow_the_json_input_as_image_parts_and_text_only_calls_stay_a_string() -> None:
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(parsed=_Output(value="ok")))],
+        usage=SimpleNamespace(prompt_tokens=7, completion_tokens=5),
+    )
+    calls: dict = {}
+    client = _client_streaming(_FakeStream(completion), calls)
+
+    client.call("system", {"n": 1}, _Output, 6000, images=["data:image/png;base64,AAAA"])
+
+    user = calls["stream"]["messages"][1]["content"]
+    assert user == [
+        {"type": "text", "text": '{"n": 1}'},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA", "detail": "high"}},
+    ]
+    client.call("system", {"n": 1}, _Output, 6000)
+    assert calls["stream"]["messages"][1]["content"] == '{"n": 1}'
 
 
 def test_streamed_reply_cut_at_budget_is_too_long_error() -> None:

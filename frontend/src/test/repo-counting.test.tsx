@@ -148,6 +148,7 @@ describe('홈 · 설정 · 분석 화면', () => {
       client.setQueryData(keys.cards, []);
       client.setQueryData(keys.activeJobs, { jobs: [] });
     });
+    fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
     fireEvent.change(screen.getByPlaceholderText('레포 검색'), { target: { value: 'side-project' } });
     const option = screen.getByRole('option', { name: /side-project-new/ });
     expect(option).toHaveTextContent('개수 세는 중');
@@ -159,6 +160,7 @@ describe('홈 · 설정 · 분석 화면', () => {
       client.setQueryData(keys.cards, []);
       client.setQueryData(keys.activeJobs, { jobs: [] });
     });
+    fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
     fireEvent.change(screen.getByPlaceholderText('레포 검색'), { target: { value: 'auth-service' } });
     expect(screen.getByRole('option', { name: /auth-service/ })).toHaveTextContent('내 커밋 214 / 팀 402');
   });

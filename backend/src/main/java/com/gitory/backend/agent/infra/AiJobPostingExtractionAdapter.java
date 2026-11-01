@@ -7,8 +7,10 @@ import com.gitory.backend.agent.port.JobPostingExtractionRequest;
 import com.gitory.backend.agent.port.JobPostingExtractionResult;
 import com.gitory.backend.agent.port.PostingContentStatus;
 import com.gitory.backend.agent.port.PostingCriterionType;
+import com.gitory.backend.agent.port.PostingEducationLevel;
 import com.gitory.backend.agent.port.PostingExperienceLevel;
 import com.gitory.backend.agent.port.PostingExtractionUnavailableException;
+import com.gitory.backend.agent.port.PostingGeneralType;
 import com.gitory.backend.agent.port.PostingJobCategory;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
@@ -102,7 +104,8 @@ public class AiJobPostingExtractionAdapter implements JobPostingExtractionPort {
             throw AiClientException.invalidResponse();
         }
         return JobPostingExtractionResult.updated(contentHash, contentStatus, criteria,
-                category(string(data, "job_category")), experience(data.path("experience")));
+                category(string(data, "job_category")), experience(data.path("experience")),
+                names(data.path("team_techs")), optionalVersion(data.path("extraction_version")));
 
     }
 
@@ -113,10 +116,65 @@ public class AiJobPostingExtractionAdapter implements JobPostingExtractionPort {
             if (!node.isObject()) {
                 throw AiClientException.invalidResponse();
             }
+            PostingGeneralType generalType = generalType(node.path("general_type"));
+            boolean education = generalType == PostingGeneralType.EDUCATION;
             criteria.add(new ExtractedCriterion(PostingCriterionType.valueOf(string(node, "criterion_type")),
-                    text(node, "text", MAX_CRITERION_TEXT), text(node, "source_quote", MAX_CRITERION_QUOTE)));
+                    text(node, "text", MAX_CRITERION_TEXT), text(node, "source_quote", MAX_CRITERION_QUOTE),
+                    generalType, names(node.path("techs")),
+                    education ? educationLevel(node.path("education_level")) : null,
+                    education && optionalFlag(node.path("education_exempt"))));
         }
         return List.copyOf(criteria);
+
+    }
+
+    // AI 가 종류를 하나 늘려도 공고 전체가 이상한 응답이 되지 않게 모르는 종류는 기타 조건으로 둔다
+    private static PostingGeneralType generalType(JsonNode value) {
+
+        String name = optionalString(value);
+        if (name == null) {
+            return null;
+        }
+        try {
+            return PostingGeneralType.valueOf(name);
+        } catch (IllegalArgumentException unknown) {
+            return PostingGeneralType.OTHER;
+        }
+
+    }
+
+    // 모르는 학력 수준을 다른 단계로 읽으면 맞는 사람을 거를 수 있어 수준 없음으로 둔다
+    private static PostingEducationLevel educationLevel(JsonNode value) {
+
+        String name = optionalString(value);
+        if (name == null) {
+            return null;
+        }
+        try {
+            return PostingEducationLevel.valueOf(name);
+        } catch (IllegalArgumentException unknown) {
+            return null;
+        }
+
+    }
+
+    // 기술 이름이 65개 목록에 있는지는 목록을 아는 매칭 쪽이 거른다
+    private static List<String> names(JsonNode value) {
+
+        if (value.isMissingNode() || value.isNull()) {
+            return List.of();
+        }
+        if (!value.isArray()) {
+            throw AiClientException.invalidResponse();
+        }
+        List<String> names = new ArrayList<>();
+        for (JsonNode name : value) {
+            if (!name.isString()) {
+                throw AiClientException.invalidResponse();
+            }
+            names.add(name.asString());
+        }
+        return List.copyOf(names);
 
     }
 
@@ -162,6 +220,42 @@ public class AiJobPostingExtractionAdapter implements JobPostingExtractionPort {
             throw AiClientException.invalidResponse();
         }
         return value.intValue();
+
+    }
+
+    private static Integer optionalVersion(JsonNode value) {
+
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        if (!value.isInt() || value.intValue() < 1) {
+            throw AiClientException.invalidResponse();
+        }
+        return value.intValue();
+
+    }
+
+    private static boolean optionalFlag(JsonNode value) {
+
+        if (value.isMissingNode() || value.isNull()) {
+            return false;
+        }
+        if (!value.isBoolean()) {
+            throw AiClientException.invalidResponse();
+        }
+        return value.booleanValue();
+
+    }
+
+    private static String optionalString(JsonNode value) {
+
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        if (!value.isString()) {
+            throw AiClientException.invalidResponse();
+        }
+        return value.asString();
 
     }
 

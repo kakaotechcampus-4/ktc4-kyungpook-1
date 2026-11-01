@@ -14,7 +14,7 @@ class InterviewMissingSlotTest {
     @DisplayName("확신도가 없는 칸은 만들 수 없다 — AI 가 null 확신도를 400 으로 거절한다")
     void refusesNullConfidence() {
 
-        assertThatThrownBy(() -> new InterviewMissingSlot(InterviewStarSlot.T, 1, null, null, List.of()))
+        assertThatThrownBy(() -> new InterviewMissingSlot(InterviewStarSlot.T, 1, null, null, null, List.of()))
                 .isInstanceOf(NullPointerException.class);
 
     }
@@ -23,7 +23,7 @@ class InterviewMissingSlotTest {
     @DisplayName("확신도가 있으면 본문이 비어 있어도 칸을 만들 수 있다")
     void acceptsEmptyBodyWithConfidence() {
 
-        InterviewMissingSlot slot = new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW,
+        InterviewMissingSlot slot = new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, null,
                 List.of());
 
         assertThat(slot.confidence()).isEqualTo(InterviewConfidence.LOW);

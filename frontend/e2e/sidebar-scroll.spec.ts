@@ -8,7 +8,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/');
     await page.getByRole('button', { name: '사이드바 접기', exact: true }).click();
     const sidebar = page.locator('.sidebar');
-    await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(64);
+    await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(72);
     await page.keyboard.press('Tab');
     for (const [width, height] of [[1440, 960], [1920, 960], [1440, 390]]) {
       await page.setViewportSize({ width, height });
@@ -59,7 +59,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/');
     await page.getByRole('button', { name: '사이드바 접기', exact: true }).click();
     const sidebar = page.locator('.sidebar');
-    await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(64);
+    await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(72);
     const dimensions = await sidebar.evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth, clientHeight: element.clientHeight, scrollHeight: element.scrollHeight }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
     expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight);

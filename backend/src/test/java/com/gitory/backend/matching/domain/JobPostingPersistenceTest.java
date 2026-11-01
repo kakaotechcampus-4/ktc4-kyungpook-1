@@ -3,15 +3,18 @@ package com.gitory.backend.matching.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
+import com.gitory.backend.matching.infra.PostingCondition;
 import jakarta.persistence.EntityManager;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +29,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -83,6 +87,8 @@ class JobPostingPersistenceTest {
         assertThat(found.getContentHash()).isNull();
         assertThat(found.getIndexedContentHash()).isNull();
         assertThat(found.getExtractedAt()).isNull();
+        assertThat(found.getTeamTechs()).isEmpty();
+        assertThat(found.getExtractionVersion()).isNull();
         assertThat(found.getUpdatedAt()).isNotNull();
 
     }
@@ -129,7 +135,8 @@ class JobPostingPersistenceTest {
 
         JobPosting posting = persistPosting("acme", "1001");
         JobPostingCriterion saved = criteria.saveAndFlush(JobPostingCriterion.extracted(posting.getId(),
-                CriterionType.REQUIRED, 1, "Spring Boot 개발 경험", "Spring Boot 로 서비스를 개발해 본 분"));
+                CriterionType.REQUIRED, 1, "Spring Boot 개발 경험", "Spring Boot 로 서비스를 개발해 본 분",
+                GeneralConditionType.EDUCATION, List.of(CardTech.JAVA, CardTech.SPRING), EducationLevel.BACHELOR, true));
 
         em.clear();
         JobPostingCriterion found = criteria.findById(saved.getId()).orElseThrow();
@@ -140,6 +147,44 @@ class JobPostingPersistenceTest {
         assertThat(found.getSeq()).isEqualTo(1);
         assertThat(found.getText()).isEqualTo("Spring Boot 개발 경험");
         assertThat(found.getQuote()).isEqualTo("Spring Boot 로 서비스를 개발해 본 분");
+        assertThat(found.getGeneralType()).isEqualTo(GeneralConditionType.EDUCATION);
+        assertThat(found.getTechs()).containsExactly("JAVA", "SPRING");
+        assertThat(found.getEducationLevel()).isEqualTo(EducationLevel.BACHELOR);
+        assertThat(found.isEducationExempt()).isTrue();
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("criterionLabelValues")
+    @DisplayName("조건의 일반 조건 종류와 학력 수준은 자바 enum 값을 모두 저장하고 다시 읽는다")
+    void savesEveryGeneralTypeAndEducationLevel(GeneralConditionType generalType, EducationLevel level) {
+
+        JobPosting posting = persistPosting("acme", "1001");
+        JobPostingCriterion saved = criteria.saveAndFlush(JobPostingCriterion.extracted(posting.getId(),
+                CriterionType.REQUIRED, 1, "가", "가", generalType, List.of(), level, false));
+
+        em.clear();
+        JobPostingCriterion found = criteria.findById(saved.getId()).orElseThrow();
+
+        assertThat(found.getGeneralType()).isEqualTo(generalType);
+        assertThat(found.getEducationLevel()).isEqualTo(level);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {"NULL, BACHELOR, false", "LANGUAGE, NULL, true"}, nullValues = "NULL")
+    @DisplayName("학력이 아닌 조건에는 학력 수준과 예외 표시를 둘 수 없다")
+    void rejectsEducationOnNonEducationCriterion(String generalType, String level, boolean exempt) {
+
+        JobPosting posting = persistPosting("acme", "1001");
+        JobPostingCriterion saved = criteria.saveAndFlush(
+                JobPostingCriterion.extracted(posting.getId(), CriterionType.REQUIRED, 1, "가", "가"));
+
+        assertThatThrownBy(() -> jdbc.update("""
+                UPDATE job_posting_criterion SET general_type = ?, education_level = ?, education_exempt = ?
+                WHERE id = ?
+                """, generalType, level, exempt, saved.getId()))
+                .isInstanceOf(DataIntegrityViolationException.class);
 
     }
 
@@ -242,6 +287,31 @@ class JobPostingPersistenceTest {
     }
 
     @Test
+    @DisplayName("매칭 1단계는 조건을 뽑은 마감 전 활성 공고의 필수·우대 조건만 색인 여부와 상관없이 읽는다")
+    void shortlistReadsOnlyOpenExtractedPostings() {
+
+        JobPosting open = persistExtracted("acme", "1001", null);
+        JobPosting expired = persistExtracted("acme", "1002", NOW.minusSeconds(1));
+        JobPosting removed = persistExtracted("acme", "1003", null);
+        JobPosting pending = persistPosting("acme", "1004");
+        for (JobPosting posting : List.of(open, expired, removed, pending)) {
+            for (CriterionType type : CriterionType.values()) {
+                criteria.save(JobPostingCriterion.extracted(posting.getId(), type, type.ordinal() + 1, "조건", "조건"));
+            }
+        }
+        removed.markRemoved();
+        em.flush();
+        em.clear();
+
+        List<PostingCondition> rows = postings.findShortlistConditions(NOW);
+
+        assertThat(rows).extracting(row -> row.posting().getExternalId()).containsOnly("1001");
+        assertThat(rows).extracting(row -> row.criterion().getType())
+                .containsExactly(CriterionType.REQUIRED, CriterionType.PREFERRED);
+
+    }
+
+    @Test
     @DisplayName("회사별 가져오기 시도 시각이 저장되고 다시 읽힌다")
     void savesSourceAttempt() {
 
@@ -267,6 +337,17 @@ class JobPostingPersistenceTest {
                         (Function<JobPosting, Enum<?>>) JobPosting::getContentStatus));
 
         return Stream.of(categories, statuses, contentStatuses).flatMap(s -> s);
+
+    }
+
+    static Stream<Arguments> criterionLabelValues() {
+
+        Stream<Arguments> generalTypes = Arrays.stream(GeneralConditionType.values())
+                .map(type -> Arguments.of(type, null));
+        Stream<Arguments> levels = Arrays.stream(EducationLevel.values())
+                .map(level -> Arguments.of(GeneralConditionType.EDUCATION, level));
+
+        return Stream.concat(generalTypes, levels);
 
     }
 
@@ -298,6 +379,20 @@ class JobPostingPersistenceTest {
 
         JobPosting posting = JobPosting.discovered(companyKey, externalId, "에이크미", "백엔드 개발자",
                 "https://jobs.example.com/" + externalId, null, null, NOW);
+
+        em.persist(posting);
+        em.flush();
+
+        return posting;
+
+    }
+
+    private JobPosting persistExtracted(String companyKey, String externalId, Instant expiresAt) {
+
+        JobPosting posting = JobPosting.discovered(companyKey, externalId, "에이크미", "백엔드 개발자",
+                "https://jobs.example.com/" + externalId, null, expiresAt, NOW);
+        posting.extracted(JobCategory.BACKEND, ExperienceLevel.UNSPECIFIED, null, null, List.of(), 2,
+                JobPostingContentStatus.READY, "a".repeat(64), NOW);
 
         em.persist(posting);
         em.flush();

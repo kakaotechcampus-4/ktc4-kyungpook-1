@@ -1,11 +1,9 @@
 import type { AssignStep, CoverLetterQuestion, MaterialItem, QuestionTheme } from '@/api/coverLetters';
 import { QUESTION_THEMES } from '@/api/coverLetters';
+import { themeLabel } from '@/lib/cardThemes';
 
-/** 문항 유형 이름 */
-export const THEME_LABEL: Record<QuestionTheme, string> = {
-  MOTIVATION: '지원 동기', PROBLEM_SOLVING: '문제 해결', COLLABORATION: '협업', CONFLICT: '갈등 조율',
-  LEADERSHIP: '리더십', CHALLENGE: '도전', FAILURE: '실패 극복', GROWTH: '성장',
-};
+/** 문항 유형 이름 — 카드 유형 7개는 카드 화면과 같은 이름을 쓰고, 지원 동기만 자소서에서 더한다 */
+export const THEME_LABEL: Record<QuestionTheme, string> = { MOTIVATION: '지원 동기', ...themeLabel };
 
 /** 재료 항목 이름 */
 export const ITEM_LABEL: Record<MaterialItem, string> = {

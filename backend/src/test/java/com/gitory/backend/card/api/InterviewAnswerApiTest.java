@@ -1293,6 +1293,87 @@ class InterviewAnswerApiTest {
 
     }
 
+    @Test
+    @DisplayName("다듬은 문장을 TEXT 답으로 저장하며 다듬기 전 답(original)을 함께 남기고, 지난 질문 목록의 answer.original 로 돌려준다")
+    void savesTheOriginalOfAPolishedAnswer() throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+
+        send(myUserId, MY_CARD.toString(), "1", originalBody("TEXT", "과제를 나눠 맡았다.", "과제 나눠서 했어요"))
+                .andExpect(status().isOk());
+
+        assertThat(originalOf(cardId)).isEqualTo("과제 나눠서 했어요");
+        mvc.perform(get("/api/cards/{id}/interview", MY_CARD).with(loggedInAs(myUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].answer.text").value("과제를 나눠 맡았다."))
+                .andExpect(jsonPath("$.data[0].answer.original").value("과제 나눠서 했어요"));
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("answersKeepingNoOriginal")
+    @DisplayName("다듬기 전 답은 TEXT 답에만 남기고, 공백뿐이면 남기지 않는다")
+    void originalIsKeptOnlyForTextAnswers(String body) throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+
+        send(myUserId, MY_CARD.toString(), "1", body).andExpect(status().isOk());
+
+        assertThat(originalOf(cardId)).isNull();
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidOriginals")
+    @DisplayName("다듬기 전 답이 1,000자를 넘거나 U+0000 이 있으면 400 INVALID_REQUEST 이고 답을 저장하지 않는다")
+    void invalidOriginalIsRejected(String original) throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+
+        send(myUserId, MY_CARD.toString(), "1", originalBody("TEXT", "과제를 나눠 맡았다.", original))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        assertThat(jdbc.queryForObject("SELECT outcome FROM interview_turn WHERE card_id = ?", String.class, cardId))
+                .isNull();
+
+    }
+
+    static Stream<Arguments> answersKeepingNoOriginal() {
+
+        return Stream.of(
+                Arguments.of(Named.of("넘기기", "{\"kind\":\"SKIP\",\"original\":\"과제 나눠서 했어요\"}")),
+                Arguments.of(Named.of("공백뿐인 원래 답",
+                        "{\"kind\":\"TEXT\",\"text\":\"과제를 나눠 맡았다.\",\"source\":\"USER_STATED\",\"original\":\"   \"}")));
+
+    }
+
+    static Stream<Arguments> invalidOriginals() {
+
+        return Stream.of(
+                Arguments.of(Named.of("1,001자", OVER_LIMIT_TEXT)),
+                Arguments.of(Named.of("U+0000", "과제\u0000나눠서 했어요")));
+
+    }
+
+    private String originalOf(Long cardId) {
+
+        return jdbc.queryForObject("SELECT answer_original FROM interview_turn WHERE card_id = ?", String.class, cardId);
+
+    }
+
+    private String originalBody(String kind, String text, String original) {
+
+        Map<String, String> fields = new LinkedHashMap<>();
+        fields.put("kind", kind);
+        fields.put("text", text);
+        fields.put("source", USER_STATED);
+        fields.put("original", original);
+
+        return mapper.writeValueAsString(fields);
+
+    }
+
     private Long cardWithOpenTurn() {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);

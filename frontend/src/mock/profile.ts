@@ -10,7 +10,7 @@ import { now } from './fixtures';
 export type PutProfileResult = { ok: true; profile: Profile } | { ok: false; message: string };
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
-const LIST_NAME: Record<string, string> = { educations: '학력', careers: '경력', languages: '어학', certifications: '자격증' };
+const LIST_NAME: Record<string, string> = { educations: '학력', careers: '경력', languages: '어학', certifications: '자격증', interests: '관심 분야' };
 
 /** 서버처럼 어느 목록의 몇 번째인지만 적는다 — 값은 담지 않는다 */
 function describe(issues: ProfileIssue[]): string {
@@ -22,7 +22,7 @@ function describe(issues: ProfileIssue[]): string {
 
 export const getProfile = (): Profile => clone(db.profile);
 
-/** 네 목록을 통째로 바꾼다. 빈 목록 네 개도 저장이다(`savedAt` 이 생겨 다음부터 처음 입력을 띄우지 않는다) */
+/** 네 목록과 관심 분야를 통째로 바꾼다. 관심 분야가 1개 이상이어야 저장된다 — 처음 입력 창은 관심 분야가 비어 있으면 뜬다 */
 export function putProfile(body: unknown): PutProfileResult {
   const parsed = ProfileInput.safeParse(body);
   if (!parsed.success) return { ok: false, message: describe(issuesOf(parsed.error)) };

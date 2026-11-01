@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Profile, emptyInput, emptyProfile } from '@/api/profile';
+import { Profile, emptyProfile } from '@/api/profile';
 import { handle } from '@/mock/router';
 import { createScenario } from '@/mock/scenarios';
 import { db, resetDb, restore, snapshot } from '@/mock/store';
-import { sampleInput } from './profileHarness';
+import { minimalInput, sampleInput } from './profileHarness';
 
 const request = (method: string, body: unknown = {}, session = true) => handle(method, '/profile', new URLSearchParams(), body as Record<string, unknown>, session);
 const get = () => request('GET');
@@ -33,11 +33,11 @@ describe('mock server: GET·PUT /profile (BE #552 contract)', () => {
     expect(get().data).toEqual(saved.data);
   });
 
-  it('skipping (four empty lists) is a save: savedAt appears so the first-visit prompt stops', () => {
-    const skipped = put(emptyInput());
-    expect(skipped.status).toBe(200);
-    expect((skipped.data as Profile).savedAt).toBe('2026-10-29T03:00:00.000Z');
-    expect(Profile.parse(get().data)).toMatchObject({ ...emptyInput(), savedAt: '2026-10-29T03:00:00.000Z' });
+  it('interests alone are a save: savedAt appears and the first-entry dialog has what it needs', () => {
+    const saved = put(minimalInput());
+    expect(saved.status).toBe(200);
+    expect((saved.data as Profile).savedAt).toBe('2026-10-29T03:00:00.000Z');
+    expect(Profile.parse(get().data)).toMatchObject({ ...minimalInput(), savedAt: '2026-10-29T03:00:00.000Z' });
   });
 
   it('replaces rather than merges: a changed document moves savedAt and drops removed rows', () => {
@@ -49,14 +49,14 @@ describe('mock server: GET·PUT /profile (BE #552 contract)', () => {
     expect(saved.certifications).toEqual([]);
     expect(saved.savedAt).toBe('2026-10-30T03:00:00.000Z');
   });
-  it('lets four empty lists clear everything that was saved', () => {
+  it('lets four empty lists clear every row that was saved — the interests sent with them stay', () => {
     put(sampleInput());
-    const cleared = put(emptyInput()).data as Profile;
-    expect(cleared).toMatchObject({ educations: [], careers: [], languages: [], certifications: [] });
+    const cleared = put(minimalInput()).data as Profile;
+    expect(cleared).toMatchObject({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND'] });
     expect((get().data as Profile).educations).toEqual([]);
   });
   it('returns trimmed values and null for blanks, like the real server', () => {
-    const body = { educations: [{ level: 'MASTER', school: '  샘플대학교 ', major: '  ', status: 'ENROLLED', startMonth: '', endMonth: null, gpa: null, gpaMax: null }], careers: [], languages: [], certifications: [] };
+    const body = { educations: [{ level: 'MASTER', school: '  샘플대학교 ', major: '  ', status: 'ENROLLED', startMonth: '', endMonth: null, gpa: null, gpaMax: null }], careers: [], languages: [], certifications: [], interests: ['BACKEND'] };
     const saved = put(body).data as Profile;
     expect(saved.educations[0]).toMatchObject({ school: '샘플대학교', major: null, startMonth: null });
   });
@@ -68,11 +68,16 @@ describe('mock server: GET·PUT /profile (BE #552 contract)', () => {
     expect(put(partial)).toMatchObject({ status: 400, data: null, error: { code: 'INVALID_REQUEST' } });
     expect(JSON.stringify(db.profile)).toBe(before);
   });
+  it('rejects a body without any interest with 400 naming 관심 분야, and saves nothing', () => {
+    const result = put({ ...sampleInput(), interests: [] });
+    expect(result).toMatchObject({ status: 400, error: { code: 'INVALID_REQUEST', message: '관심 분야 목록을 확인해 주세요.' } });
+    expect(db.profile).toEqual(emptyProfile());
+  });
   it('rejects invalid input with 400 INVALID_REQUEST and one Korean sentence — no per-field list, like #552 — and saves nothing', () => {
     put(sampleInput());
     const before = JSON.stringify(db.profile);
     const bad = sampleInput();
-    bad.educations[0].school = '';
+    (bad.educations[0] as { level: string }).level = 'PHD'; // 모르는 학력 구분
     bad.careers[0].endMonth = '2020-01'; // startMonth 2022-03 보다 앞
     const result = put(bad);
     expect(result).toMatchObject({ status: 400, data: null, error: { code: 'INVALID_REQUEST', message: '학력 1번째 항목을 확인해 주세요.' } });

@@ -20,7 +20,6 @@ import { JobCalendar } from './JobCalendar';
 import { HomeRecommendations } from './HomeRecommendations';
 import { HomeActivity } from './HomeActivity';
 import { matchSupported, useMatches } from '@/api/matching';
-import { ProfilePrompt } from '@/features/profile/ProfilePrompt';
 
 /**
  * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 버튼 → 이어서 하기 → 카드.
@@ -81,7 +80,6 @@ export function HomePage() {
         <div className="overview-tile overview-tile--yellow"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchSupported() && matches.isSuccess ? matches.data.length : '—'}<small>개</small></strong><p>경험과 연결되는 다음 기회</p></div>
       </section>
       <ActiveJobsList />
-      <ProfilePrompt />
       <section className="prompt" id="home-repo-search" hidden={!repoSearchOpen}>
         {returning ? (
           <div className="home-start__head">

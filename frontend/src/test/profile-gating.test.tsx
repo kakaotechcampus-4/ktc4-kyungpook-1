@@ -1,11 +1,11 @@
 import { act, cleanup, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { emptyInput, emptyProfile, profileApi } from '@/api/profile';
+import { emptyProfile, profileApi } from '@/api/profile';
 import { ProfilePage } from '@/features/profile/ProfilePage';
 import { MyPage } from '@/features/settings/MyPage';
 import { putProfile } from '@/mock/profile';
 import { resetDb } from '@/mock/store';
-import { connectMockServer, mountApp, page, sampleInput } from './profileHarness';
+import { connectMockServer, minimalInput, mountApp, page, sampleInput } from './profileHarness';
 
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 
@@ -34,8 +34,8 @@ describe('real-server mode (the endpoint does not exist yet)', () => {
     await profileApi.get();
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(String(fetcher.mock.calls[0][0])).toBe('/api/profile');
-    await profileApi.save(emptyInput());
-    expect(fetcher.mock.calls[1][1]).toMatchObject({ method: 'PUT', body: JSON.stringify({ educations: [], careers: [], languages: [], certifications: [] }) });
+    await profileApi.save(minimalInput());
+    expect(fetcher.mock.calls[1][1]).toMatchObject({ method: 'PUT', body: JSON.stringify(minimalInput()) });
   });
 
   it('the page says the feature is not open yet, offers a way back, and sends no request', async () => {
@@ -78,9 +78,9 @@ describe('mock mode', () => {
     const row = await screen.findByRole('link', { name: /인적사항/ });
     await waitFor(() => expect(row).toHaveTextContent('아직 입력하지 않았어요'));
   });
-  it('MyPage tells a skipped profile (saved, all lists empty) apart from a never-saved one', async () => {
+  it('MyPage tells a profile with interests only (saved, all lists empty) apart from a never-saved one', async () => {
     connectMockServer();
-    putProfile(emptyInput());
+    putProfile(minimalInput());
     mountApp([page(<MyPage />, '/settings')], '/settings');
     const row = await screen.findByRole('link', { name: /인적사항/ });
     await waitFor(() => expect(row).toHaveTextContent('입력한 정보가 없어요'));

@@ -14,6 +14,8 @@ import { isBlankCardText } from './schemas';
 export const PROFILE_LIMITS = {
   /** 목록마다 최대 개수 */
   MAX_ITEMS: { educations: 5, careers: 10, languages: 10, certifications: 20 },
+  /** 관심 분야는 1개부터 3개까지 */
+  INTERESTS: 3,
   /** 글(학교·전공·회사·직무·시험 이름·자격증·발급 기관): 앞뒤 공백을 뺀 50자까지 */
   TEXT: 50,
   /** 어학 점수·등급은 20자까지 */
@@ -39,6 +41,12 @@ export type LanguageTest = z.infer<typeof LanguageTest>;
 /** 학점 만점은 이 넷 중 하나. 학점과 함께 보내거나 둘 다 비운다 */
 export const GPA_MAXES = [4, 4.3, 4.5, 100] as const;
 
+/** 관심 분야 = 공고 직무 분류 이름(BE `JobCategory`). 매칭 1단계가 이 직무의 공고만 후보에 올린다 */
+export const INTERESTS = ['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'DATA', 'AI_ML', 'SECURITY', 'QA', 'ETC'] as const;
+export const Interest = z.enum(INTERESTS);
+export type Interest = z.infer<typeof Interest>;
+const isInterest = (value: string): value is Interest => (INTERESTS as readonly string[]).includes(value);
+
 /**
  * 검증 오류 코드 — 화면(lib/profileForm.ts)이 코드마다 문구를 만든다.
  * BE 는 지금 400 에 한국어 문장 하나만 줘서 FE 가 먼저 검사해 이 코드를 쓴다. BE 가 칸별 코드를 주면 같은 어휘로 받는다.
@@ -54,7 +62,7 @@ const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/;
 const nullish = <T extends z.ZodTypeAny>(schema: T) => schema.nullish().transform((value): z.output<T> | null => value ?? null);
 const month = z.string().regex(MONTH);
 const EducationOut = z.object({
-  level: EducationLevel, school: z.string(), major: nullish(z.string()), status: EducationStatus,
+  level: EducationLevel, school: nullish(z.string()), major: nullish(z.string()), status: EducationStatus,
   startMonth: nullish(month), endMonth: nullish(month), gpa: nullish(z.number()), gpaMax: nullish(z.number()),
 });
 const CareerOut = z.object({ company: z.string(), role: nullish(z.string()), type: CareerType, startMonth: month, endMonth: nullish(month) });
@@ -63,11 +71,13 @@ const CertificationOut = z.object({ name: z.string(), issuer: nullish(z.string()
 export const Profile = z.object({
   educations: z.array(EducationOut), careers: z.array(CareerOut),
   languages: z.array(LanguageOut), certifications: z.array(CertificationOut),
+  /** 관심 분야 1~3개. 처음 입력 창은 이 칸이 비어 있을 때 뜬다. 칸이 없는 옛 응답과 모르는 값은 버린다 */
+  interests: z.array(z.string()).catch([]).transform((values) => values.filter(isInterest)),
   /** 마지막으로 저장한 시각. 한 번도 저장하지 않았으면 null — 화면은 이것으로 처음 입력을 띄울지 정한다 */
   savedAt: z.string().datetime({ offset: true }).nullable(),
 });
 export type Profile = z.infer<typeof Profile>;
-export const emptyProfile = (): Profile => ({ educations: [], careers: [], languages: [], certifications: [], savedAt: null });
+export const emptyProfile = (): Profile => ({ educations: [], careers: [], languages: [], certifications: [], interests: [], savedAt: null });
 /** 네 목록이 모두 비었다. 저장한 적이 있는지(`savedAt`)와는 다르다 — 건너뛰면 빈 목록으로 저장된다 */
 export const isProfileEmpty = (p: Pick<Profile, 'educations' | 'careers' | 'languages' | 'certifications'>) =>
   p.educations.length + p.careers.length + p.languages.length + p.certifications.length === 0;
@@ -111,7 +121,7 @@ const gpaMaxNumber = z.number({ invalid_type_error: 'INVALID_VALUE' }).nullable(
   .superRefine((value, ctx) => issue(ctx, value == null || (GPA_MAXES as readonly number[]).includes(value) ? null : 'INVALID_VALUE'));
 
 const EducationIn = z.object({
-  level: choice(EDUCATION_LEVELS), school: text(PROFILE_LIMITS.TEXT), major: optionalText(PROFILE_LIMITS.TEXT), status: choice(EDUCATION_STATUSES),
+  level: choice(EDUCATION_LEVELS), school: optionalText(PROFILE_LIMITS.TEXT), major: optionalText(PROFILE_LIMITS.TEXT), status: choice(EDUCATION_STATUSES),
   startMonth: optionalMonth, endMonth: optionalMonth, gpa: gpaNumber, gpaMax: gpaMaxNumber,
 }).superRefine((row, ctx) => {
   orderOk(ctx, row.startMonth, row.endMonth);
@@ -121,7 +131,7 @@ const EducationIn = z.object({
   if (!hasGpa && hasMax) add(ctx, 'gpa', 'REQUIRED');
   if (hasGpa && hasMax && (GPA_MAXES as readonly number[]).includes(row.gpaMax!) && (row.gpa! < 0 || row.gpa! > row.gpaMax!)) add(ctx, 'gpa', 'OUT_OF_RANGE');
 }).transform((row) => ({
-  level: row.level as EducationLevel, school: trim(row.school), major: trimOrNull(row.major), status: row.status as EducationStatus,
+  level: row.level as EducationLevel, school: trimOrNull(row.school), major: trimOrNull(row.major), status: row.status as EducationStatus,
   startMonth: blankToNull(row.startMonth), endMonth: blankToNull(row.endMonth), gpa: row.gpa ?? null, gpaMax: row.gpaMax ?? null,
 }));
 const CareerIn = z.object({
@@ -144,9 +154,13 @@ const CertificationIn = z.object({
   name: text(PROFILE_LIMITS.TEXT), issuer: optionalText(PROFILE_LIMITS.TEXT), acquiredMonth: optionalMonth,
 }).transform((row) => ({ name: trim(row.name), issuer: trimOrNull(row.issuer), acquiredMonth: blankToNull(row.acquiredMonth) }));
 const list = <T extends z.ZodTypeAny>(item: T, max: number) => z.array(item, required).max(max, 'TOO_MANY');
+/** 관심 분야는 1개부터 3개까지, 겹치지 않게. 비어 있으면 REQUIRED — 처음 입력 창이 이 칸으로 '다 했는지'를 판단한다 */
+const interestsIn = z.array(choice(INTERESTS), required).min(1, 'REQUIRED').max(PROFILE_LIMITS.INTERESTS, 'TOO_MANY')
+  .superRefine((values, ctx) => { if (new Set(values).size !== values.length) issue(ctx, 'INVALID_VALUE'); })
+  .transform((values) => values as Interest[]);
 
 /**
- * PUT 본문. 네 목록을 모두 보낸다(빠지면 400 — 통째로 바꾸므로 빠진 목록을 `[]` 로 읽으면 저장된 값이 지워진다). 모르는 키는 무시한다.
+ * PUT 본문. 네 목록과 관심 분야를 모두 보낸다(목록이 빠지면 400 — 통째로 바꾸므로 빠진 목록을 `[]` 로 읽으면 저장된 값이 지워진다). 모르는 키는 무시한다.
  * 통과한 값(`z.output`)은 앞뒤 공백을 지우고, 비운 선택 칸을 null 로 맞춘 정규형이다.
  */
 export const ProfileInput = z.object({
@@ -154,10 +168,9 @@ export const ProfileInput = z.object({
   careers: list(CareerIn, PROFILE_LIMITS.MAX_ITEMS.careers),
   languages: list(LanguageIn, PROFILE_LIMITS.MAX_ITEMS.languages),
   certifications: list(CertificationIn, PROFILE_LIMITS.MAX_ITEMS.certifications),
+  interests: interestsIn,
 });
 export type ProfileInput = z.output<typeof ProfileInput>;
-/** '건너뛰기' — 빈 목록 네 개를 저장해 다음부터 처음 입력을 띄우지 않는다 */
-export const emptyInput = (): ProfileInput => ({ educations: [], careers: [], languages: [], certifications: [] });
 
 const pathOf = (segments: (string | number)[]) =>
   segments.reduce<string>((acc, part) => (typeof part === 'number' ? `${acc}[${part}]` : acc ? `${acc}.${part}` : part), '');
@@ -185,7 +198,7 @@ const unavailable = () => new ApiError('FEATURE_UNAVAILABLE', '인적사항 입�
 export const profileApi = {
   /** 저장한 적이 없어도 200 + 빈 목록 네 개 + `savedAt: null` */
   get: (env?: Env) => (profileSupported(env) ? api(Profile, '/profile') : Promise.reject(unavailable())),
-  /** 통째로 바꾼다(PUT). 네 목록을 항상 모두 보낸다 */
+  /** 통째로 바꾼다(PUT). 네 목록과 관심 분야를 항상 모두 보낸다 */
   save: (input: ProfileInput, env?: Env) =>
     profileSupported(env) ? api(Profile, '/profile', { method: 'PUT', body: input }) : Promise.reject(unavailable()),
 };
@@ -208,19 +221,5 @@ export function useSaveProfile() {
     meta: { errorPresentation: 'inline' }, // 실패는 입력한 자리에서 보인다(토스트로 흩어지지 않게)
     mutationFn: (input: ProfileInput) => profileApi.save(input),
     onSuccess: (saved) => { client.setQueryData(profileKeys.me, saved); },
-  });
-}
-
-/** 처음 입력 건너뛰기 — 빈 목록 네 개를 저장한다. 다른 탭·기기에서 이미 저장했다면 그 값을 덮어쓰지 않고 그대로 둔다 */
-export function useSkipProfile() {
-  const client = useQueryClient();
-  return useMutation({
-    retry: false,
-    meta: { errorPresentation: 'inline' },
-    mutationFn: async () => {
-      const current = await profileApi.get();
-      return current.savedAt !== null ? current : profileApi.save(emptyInput());
-    },
-    onSuccess: (profile) => { client.setQueryData(profileKeys.me, profile); },
   });
 }

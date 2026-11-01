@@ -45,4 +45,7 @@ export const sampleInput = (): ProfileInput => ({
   careers: [{ company: '샘플컴퍼니', role: '백엔드 개발', type: 'FULL_TIME', startMonth: '2022-03', endMonth: null }],
   languages: [{ test: 'TOEIC', testName: null, score: '900', acquiredMonth: '2021-08' }],
   certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: '2021-11' }],
+  interests: ['BACKEND', 'DEVOPS'],
 });
+/** 저장이 되는 가장 작은 본문 — 관심 분야 하나, 목록은 모두 비움 */
+export const minimalInput = (): ProfileInput => ({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND'] });

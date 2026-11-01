@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, openRepoSearch } from './helpers';
 
 for (const legacy of [false, true]) {
   test(`repository Enter during ${legacy ? 'legacy keyCode 229' : 'IME composition'} keeps the query and stays on home`, async ({ page }) => {
-    await loginAsDemo(page); await page.goto('/');
+    await loginAsDemo(page); await page.goto('/'); await openRepoSearch(page);
     const search = page.getByLabel('레포 검색', { exact: true });
     await search.fill('auth-service');
     await expect(page.getByRole('option').first()).toBeVisible();
@@ -17,7 +17,7 @@ for (const legacy of [false, true]) {
 }
 
 test('repository navigation keys during composition preserve the active suggestion', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/');
+  await loginAsDemo(page); await page.goto('/'); await openRepoSearch(page);
   const search = page.getByLabel('레포 검색', { exact: true });
   await search.fill('a');
   const first = page.getByRole('option').first();

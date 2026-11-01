@@ -153,6 +153,7 @@ LLM 설정은 그룹화와 함께 `services/llm_settings.py`가 환경변수로 
 | `GITORY_DIFF_MODEL`, `GITORY_DIFF_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_STAR_MODEL`, `GITORY_STAR_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 | `GITORY_JOB_POSTING_MODEL`, `GITORY_JOB_POSTING_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
+| `GITORY_MATCH_JUDGE_MODEL`, `GITORY_MATCH_JUDGE_REASONING_EFFORT` | `gpt-5.6-luna`, `medium` |
 
 프롬프트와 출력 스키마는 `evals/tasks/diff_summary.py`·`star_draft.py` 모델 비교에서
 검증한 것과 같은 코드를 공유합니다.

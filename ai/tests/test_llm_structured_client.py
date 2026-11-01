@@ -125,12 +125,16 @@ def test_per_call_timeout_disables_sdk_retries() -> None:
 
 
 class _FakeStream:
-    def __init__(self, completion=None, error: Exception | None = None) -> None:
+    def __init__(self, completion=None, error: Exception | None = None, events: list | None = None) -> None:
         self._completion = completion
         self._error = error
+        self._events = events or []
 
     def __enter__(self):
         return self
+
+    def __iter__(self):
+        return iter(self._events)
 
     def __exit__(self, *_):
         return False
@@ -170,6 +174,31 @@ def test_budget_above_gateway_ceiling_is_streamed_with_usage() -> None:
     assert calls["stream"]["max_completion_tokens"] == 6000
     assert calls["stream"]["stream_options"] == {"include_usage": True}
     assert "parse" not in calls
+
+
+def test_streamed_partial_outputs_reach_on_partial_and_a_broken_listener_does_not_stop_the_call() -> None:
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(parsed=_Output(value="ok")))],
+        usage=SimpleNamespace(prompt_tokens=7, completion_tokens=5),
+    )
+    events = [
+        SimpleNamespace(type="chunk", parsed=None),
+        SimpleNamespace(type="content.delta", parsed={"value": "o"}),
+        SimpleNamespace(type="content.delta", parsed=None),
+        SimpleNamespace(type="content.delta", parsed={"value": "ok"}),
+    ]
+    seen: list[dict] = []
+
+    def on_partial(parsed: dict) -> None:
+        seen.append(parsed)
+        raise RuntimeError("화면 쪽 고장")
+
+    result = _client_streaming(_FakeStream(completion, events=events), {}).call(
+        "system", {}, _Output, 6000, on_partial=on_partial
+    )
+
+    assert seen == [{"value": "o"}, {"value": "ok"}]
+    assert result.output.value == "ok"
 
 
 def test_budget_within_gateway_ceiling_is_not_streamed() -> None:

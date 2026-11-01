@@ -5,8 +5,8 @@ import { installContractFixture } from './contract-fixture';
 test('unreleased profile is hidden: no home prompt, no MyPage row, a direct route says not open, and no /profile request is ever sent', async ({ page }) => {
   const http = await installContractFixture(page);
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /오늘은 어떤 경험을 정리해 볼까요/, level: 1 })).toBeVisible();
-  await expect(page.getByRole('combobox', { name: '레포 검색' })).toBeVisible(); // 홈이 다 그려진 뒤에 안내가 없음을 본다
+  await expect(page.getByRole('heading', { name: '홈', level: 1 })).toBeVisible();
+  await expect(page.getByRole('region', { name: '취업 준비 현황' })).toBeVisible(); // 홈이 다 그려진 뒤에 안내가 없음을 본다
   await expect(page.getByRole('region', { name: '매칭에 쓸 인적사항을 입력해 주세요' })).toHaveCount(0);
 
   await page.goto('/settings');

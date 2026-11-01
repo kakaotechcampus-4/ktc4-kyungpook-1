@@ -40,7 +40,8 @@ public class InterviewAnswerService {
      * 답 글과 출처는 모양이 틀린 값도 여기까지 들어오므로 카드에 대한 확인을 끝낸 뒤에야 거절한다
      */
     @Transactional
-    public CardDetail answer(UUID publicId, Long userId, int turnNo, String kind, String text, String source) {
+    public CardDetail answer(UUID publicId, Long userId, int turnNo, String kind, String text, String source,
+                             String original) {
 
         Card card = ownership.lockOwned(publicId, userId, AuditAction.EDIT_CARD);
         InterviewTurn turn = turnOf(card, turnNo);
@@ -66,8 +67,9 @@ public class InterviewAnswerService {
             case SKIP -> turn.skip();
             case TEXT -> {
                 AnswerSource answerSource = checkedAnswer(text, source);
+                String checkedOriginal = checkedOriginal(original);
                 replaceSlot(card, turn, text, answerSource);
-                turn.answer(text, answerSource);
+                turn.answer(text, answerSource, checkedOriginal);
             }
             case MEASURED -> {
                 AnswerSource answerSource = checkedAnswer(text, source);
@@ -120,6 +122,20 @@ public class InterviewAnswerService {
 
         statements.save(CardStatement.answered(card.getId(), next.getVersionNo(), slot, text,
                 answerSource.evidenceType(), turn.getId()));
+
+    }
+
+    private static String checkedOriginal(String original) {
+
+        if (original == null || CardText.isBlank(original)) {
+            return null;
+        }
+        CardText.requireNoNul(original, "다듬기 전 답");
+        if (original.length() > DraftSaveService.SLOT_MAX_LENGTH) {
+            throw new InvalidCardInputException("다듬기 전 답은 " + DraftSaveService.SLOT_MAX_LENGTH + "자를 넘을 수 없습니다.");
+        }
+
+        return original;
 
     }
 

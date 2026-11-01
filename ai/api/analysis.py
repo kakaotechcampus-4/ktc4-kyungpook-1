@@ -195,6 +195,33 @@ async def collect_diff_evidence(
 
 
 @router.post(
+    "/star/stream",
+    response_class=StreamingResponse,
+    summary="A 확정 경험의 STAR 초안 생성 (진행 스트리밍)",
+    description=(
+        "`/internal/analysis/star` 와 같은 초안을 만들면서, 모델이 칸 글을 쓰는 동안과 초안이 단계를 거칠 때마다 진행을 보냅니다. "
+        "본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 "
+        '`{"type":"progress","step":"STAR","done":0,"total":null,"item":{...}}` 입니다. '
+        '`item` 은 칸 글 `{"kind":"SLOT","round":0,"slot":"S|T|A|R","text":"...","done":false}` 이거나 '
+        '단계 `{"kind":"STEP","step":{...}}` 입니다. '
+        "칸 글은 모델이 그 칸을 쓰는 동안 문장이 끝날 때마다(칸마다 0.5초에 한 번까지) 그때까지 쓴 글 전체를 보내고, "
+        "칸이 끝나면 done=true 와 완성된 글을 보냅니다. round 0 은 첫 초안, 1 부터는 검사에 걸린 칸을 다시 쓴 바퀴이며, "
+        "글은 비밀값을 가리고 400자에서 자릅니다. 단계의 step 은 응답 steps 항목과 같은 모양으로 생기는 대로 보냅니다. "
+        '마지막 줄은 `{"type":"result","status":200,"body":{...}}` 이고, `status`·`body` 는 같은 요청을 '
+        "`/internal/analysis/star` 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. "
+        "응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다."
+    ),
+    responses={200: {"description": "진행 줄들과 마지막 결과 줄", "content": {NDJSON: {}}}},
+)
+async def analyze_star_stream(
+    request: StarAnalysisRequest,
+    pipeline: AnalysisPipeline = Depends(get_analysis_pipeline),
+) -> StreamingResponse:
+    """STAR 초안 API 와 같은 처리·마감·오류 응답을 쓰고, 그 사이 칸 글과 단계만 줄로 더 보낸다."""
+    return stream_with_progress("/internal/analysis/star/stream", lambda: analyze_star(request, pipeline))
+
+
+@router.post(
     "/star", response_model=Envelope[StarAnalysisResponse],
     summary="A 확정 경험의 STAR 초안 생성",
     description=(

@@ -275,6 +275,7 @@ export const seedCards = [
   },
   {
     id: 'card_04', kind: 'QUALITATIVE', status: 'CONFIRMED', title: '팀원과 토큰 저장 위치로 갈린 경험',
+    themes: ['CONFLICT', 'COLLABORATION'], // 경험 카드의 문항 유형(#482)
     repo: { id: 'r_auth', owner: 'hong-dev', name: 'auth-service' }, candidate: null,
     versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: daysAgo(6),
       situation: '리프레시 토큰을 쿠키에 둘지 로컬 스토리지에 둘지로 팀원과 의견이 갈렸다',

@@ -11,10 +11,13 @@ import com.gitory.backend.agent.port.InterviewQuestionRequest;
 import com.gitory.backend.agent.port.InterviewStarSlot;
 import com.gitory.backend.agent.port.InterviewTurnOutcome;
 import com.gitory.backend.card.domain.Card;
+import com.gitory.backend.card.domain.CardSlotNote;
 import com.gitory.backend.card.domain.CardVersionReader;
+import com.gitory.backend.card.domain.Confidence;
 import com.gitory.backend.card.domain.EvidenceType;
 import com.gitory.backend.card.domain.SlotContent;
 import com.gitory.backend.card.domain.StarField;
+import com.gitory.backend.card.infra.CardSlotNoteRepository;
 import com.gitory.backend.ingest.domain.CommitSummary;
 import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.DraftCommit;
@@ -25,6 +28,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +56,7 @@ public class InterviewContextAssembler {
     private final CardVersionReader reader;
     private final CandidateDraftSourceService draftSources;
     private final CommitSummaryService commitSummaries;
+    private final CardSlotNoteRepository notes;
     private final InterviewLimits limits;
 
     /**
@@ -74,9 +79,10 @@ public class InterviewContextAssembler {
                 .flatMap(content -> content.commitIds().stream())
                 .toList();
         Map<Long, CommitSummary> summaries = summariesOf(candidateCommitIds, linkedCommitIds);
+        Map<StarField, String> reviewReasons = reviewReasonsOf(card);
 
         List<InterviewMissingSlot> missingSlots = allowed.stream()
-                .map(slot -> missingSlotOf(slot, slots.get(slot), summaries))
+                .map(slot -> missingSlotOf(slot, slots.get(slot), reviewReasons.get(slot), summaries))
                 .toList();
         List<InterviewStarSlot> allowedSlots = allowed.stream().map(slot -> InterviewStarSlot.valueOf(slot.name())).toList();
         InterviewStarSlot targetSlot = target == null ? null : InterviewStarSlot.valueOf(target.name());
@@ -97,13 +103,37 @@ public class InterviewContextAssembler {
 
     }
 
-    private static InterviewMissingSlot missingSlotOf(StarField slot, SlotContent content,
+    private static InterviewMissingSlot missingSlotOf(StarField slot, SlotContent content, String reviewReason,
                                                       Map<Long, CommitSummary> summaries) {
 
         List<Long> linked = content == null ? List.of() : content.commitIds();
 
         return new InterviewMissingSlot(InterviewStarSlot.valueOf(slot.name()), ONLY_STATEMENT_SEQ, bodyOf(content),
-                confidenceOf(content), commitsOf(linked, summaries));
+                confidenceOf(content), reviewReasonOf(content, reviewReason), commitsOf(linked, summaries));
+
+    }
+
+    private Map<StarField, String> reviewReasonsOf(Card card) {
+
+        Map<StarField, String> reasons = new EnumMap<>(StarField.class);
+        for (CardSlotNote note : notes.findByCardIdAndVersionNo(card.getId(), card.getCurrentVersion())) {
+            if (note.getReviewReason() != null) {
+                reasons.put(note.getStarSlot(), note.getReviewReason());
+            }
+        }
+
+        return reasons;
+
+    }
+
+    // 카드 화면의 확인 필요 칸과 같게, 확신도가 LOW 인 글에만 이유를 실어 AI 가 무엇이 약한지 짚어 묻게 한다
+    private static String reviewReasonOf(SlotContent content, String reviewReason) {
+
+        if (content == null || content.confidence() != Confidence.LOW || reviewReason == null || isBlank(reviewReason)) {
+            return null;
+        }
+
+        return reviewReason;
 
     }
 

@@ -61,17 +61,18 @@ class InterviewTurnResponseTest {
 
     @ParameterizedTest(name = "{0} → {1}")
     @CsvSource({"TYPED, USER_STATED", "SELECTED, USER_SELECTED"})
-    @DisplayName("저장된 TYPED 답은 USER_STATED 로, SELECTED 답은 USER_SELECTED 로 바꿔 answer.source 에 담는다")
+    @DisplayName("저장된 TYPED 답은 USER_STATED 로, SELECTED 답은 USER_SELECTED 로 바꿔 answer.source 에 담고, 다듬기 전 답은 answer.original 로 옮긴다")
     void mapsAnswerSource(AnswerSource stored, EvidenceType expected) {
 
         InterviewTurnView view = new InterviewTurnView(1, StarField.T, TriggerSource.USER,
                 InterviewSourceType.DIRECT_CARD, QuestionType.EVIDENCE_GAP, "질문", null,
-                AnswerMode.TEXT, List.of(), TurnOutcome.ANSWERED, new InterviewAnswer("  답  ", stored), 1, 2);
+                AnswerMode.TEXT, List.of(), TurnOutcome.ANSWERED, new InterviewAnswer("  답  ", stored, "원래 답"), 1, 2);
 
         InterviewAnswerResponse answer = InterviewTurnResponse.from(view).answer();
 
         assertThat(answer.text()).isEqualTo("  답  ");
         assertThat(answer.source()).isEqualTo(expected);
+        assertThat(answer.original()).isEqualTo("원래 답");
 
     }
 

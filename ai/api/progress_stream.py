@@ -40,12 +40,17 @@ def stream_with_progress(path: str, run: Callable[[], Awaitable[Any]]) -> Stream
 
 async def _lines(path: str, run: Callable[[], Awaitable[Any]]) -> AsyncIterator[str]:
     queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    loop = asyncio.get_running_loop()
 
     def on_progress(step: str, done: int, total: int | None, item: ProgressItem | None) -> None:
         line: dict[str, Any] = {"type": "progress", "step": step, "done": done, "total": total}
         if item is not None:
             line["item"] = item
-        queue.put_nowait(line)
+        # LLM 호출 스레드에서 알린 진행은 큐가 스레드에 안전하지 않아 이벤트 루프에 넘겨 넣는다
+        if _running_loop() is loop:
+            queue.put_nowait(line)
+        else:
+            loop.call_soon_threadsafe(queue.put_nowait, line)
 
     with listening(on_progress):
         task = asyncio.ensure_future(run())
@@ -65,6 +70,13 @@ async def _lines(path: str, run: Callable[[], Awaitable[Any]]) -> AsyncIterator[
         # 호출자가 끊어 스트림이 닫히면 남은 GitHub·LLM 호출을 내보내지 않는다
         if not task.done():
             task.cancel()
+
+
+def _running_loop() -> asyncio.AbstractEventLoop | None:
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return None
 
 
 def _result(path: str, task: asyncio.Future[Any]) -> dict[str, Any]:

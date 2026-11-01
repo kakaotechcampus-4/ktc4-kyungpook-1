@@ -18,6 +18,7 @@ class JobViewFactory {
     private final CandidateEmptyReasons emptyReasons;
     private final GeneratedCardQueryService generatedCards;
     private final JobActivityLog activity;
+    private final CardDraftLiveLog drafts;
 
     JobView of(AnalysisJob job, String login) {
 
@@ -27,7 +28,7 @@ class JobViewFactory {
                 : List.of();
 
         return JobView.from(job, repoId, cardIds, () -> emptyReasons.of(repoId, job.getUserId(), login),
-                activity.recent(job.getId()));
+                activity.recent(job.getId()), drafts.of(job.getId()));
 
     }
 }

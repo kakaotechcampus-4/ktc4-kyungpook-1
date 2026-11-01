@@ -96,7 +96,7 @@ import java.util.function.Consumer;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
-        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class,
+        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class,
         CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -431,7 +431,7 @@ class JobRunnerTest {
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.getSteps()).extracting(JobStep::key, JobStep::state).endsWith(
                 tuple(JobStepKey.COMPRESS, JobStepState.SKIPPED), tuple(JobStepKey.REASON, JobStepState.SKIPPED));
-        assertThat(JobView.from(job, UUID.randomUUID(), List.of(), List::of, List.of()).result().verdict()).isNull();
+        assertThat(JobView.from(job, UUID.randomUUID(), List.of(), List::of, List.of(), List.of()).result().verdict()).isNull();
         assertThat(countOf("candidate_grouping")).isZero();
 
     }

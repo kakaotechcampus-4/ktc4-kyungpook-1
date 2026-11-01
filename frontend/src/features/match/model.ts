@@ -55,7 +55,7 @@ export const dateLabel = (date: string) =>
     timeZone: "Asia/Seoul",
   }).format(new Date(date));
 export const deadlineLabel = (value: string | null) =>
-  value === null ? "상시 채용" : `${dateLabel(value)} 마감`;
+  value === null ? "마감일 없음" : `${dateLabel(value)} 마감`;
 
 // ───────── 기업별 보기 ─────────
 // 서버(#556)가 공고마다 companyId(같은 회사를 묶는 id)와 logoUrl 을 준다. companyId 로 묶고, 그 칸이 없는 응답(구서버·목)일 때만 이름(companyKey)으로 묶는다.

@@ -22,7 +22,7 @@ public record InterviewTurnView(
     static InterviewTurnView of(InterviewTurn turn, InterviewSourceType sourceType, int maxTurns) {
 
         InterviewAnswer answer = turn.isAnswered()
-                ? new InterviewAnswer(turn.getAnswerText(), turn.getAnswerSource())
+                ? new InterviewAnswer(turn.getAnswerText(), turn.getAnswerSource(), turn.getAnswerOriginal())
                 : null;
 
         return new InterviewTurnView(turn.getSeq(), turn.getStarSlot(), turn.getTriggerSource(), sourceType,

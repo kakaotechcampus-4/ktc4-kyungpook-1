@@ -10,6 +10,8 @@ export type EventName =
   | 'card_confirmed' | 'card_reopened' | 'version_restored' | 'manual_card_created' | 'field_regenerated'
   | 'recall_answered' | 'github_disconnected' | 'card_exported'
   | 'match_opened' | 'match_card_opened' | 'match_source_opened'
+  // 문항 유형 — props 는 cardId 와 개수만. 어떤 유형을 골랐는지는 싣지 않는다
+  | 'card_themes_edited'
   // 인적사항(개인정보) — props 는 개수·참거짓만. 학교·회사·점수 같은 값은 절대 싣지 않는다 (docs/2026-10-29-PROFILE.md)
   | 'profile_prompt_accepted' | 'profile_prompt_dismissed' | 'profile_saved';
 

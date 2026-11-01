@@ -371,10 +371,10 @@ class AiInterviewQuestionAdapterTest {
                 .path("springToAi").path("expectedRequest");
         responseBody = success(askAgain(data -> data.put("target_star_slot", "T").put("target_statement_seq", 1)));
         InterviewQuestionRequest request = new InterviewQuestionRequest(104, null,
-                List.of(new InterviewMissingSlot(InterviewStarSlot.S, 1, "S 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of()),
-                        new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of()),
-                        new InterviewMissingSlot(InterviewStarSlot.A, 1, "A 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of()),
-                        new InterviewMissingSlot(InterviewStarSlot.R, 1, "R 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of())),
+                List.of(new InterviewMissingSlot(InterviewStarSlot.S, 1, "S 칸에 이미 쓴 글", InterviewConfidence.HIGH, null, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, null, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.A, 1, "A 칸에 이미 쓴 글", InterviewConfidence.HIGH, null, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.R, 1, "R 칸에 이미 쓴 글", InterviewConfidence.HIGH, null, List.of())),
                 0, 8, InterviewCardSourceType.DIRECT_CARD, InterviewCardKind.QUALITATIVE, InterviewStarSlot.T,
                 List.of(InterviewStarSlot.S, InterviewStarSlot.T, InterviewStarSlot.A, InterviewStarSlot.R), List.of());
 
@@ -393,7 +393,8 @@ class AiInterviewQuestionAdapterTest {
                 List.of(new InterviewReview(21, 7, InterviewReviewState.CHANGES_REQUESTED, "쿼리 수를 줄여 주세요")),
                 List.of(new InterviewIssue(3, "목록이 느리다", null)));
         InterviewMissingSlot slot = new InterviewMissingSlot(InterviewStarSlot.R, 2, "응답이 빨라졌다",
-                InterviewConfidence.MEDIUM, List.of(new InterviewCommit(12, "def5678", "perf: 캐시 추가")));
+                InterviewConfidence.MEDIUM, "근거에서 확인되지 않는 수치가 있어 사용자 확인이 필요합니다",
+                List.of(new InterviewCommit(12, "def5678", "perf: 캐시 추가")));
 
         adapter.nextQuestion(new InterviewQuestionRequest(CARD_ID, candidate, List.of(slot), 1, 2,
                 InterviewCardSourceType.COMMIT_CLUSTER, InterviewCardKind.TECH, InterviewStarSlot.R, List.of(InterviewStarSlot.R),
@@ -414,6 +415,7 @@ class AiInterviewQuestionAdapterTest {
                     "statement_seq": 2,
                     "body": "응답이 빨라졌다",
                     "confidence": "MEDIUM",
+                    "review_reason": "근거에서 확인되지 않는 수치가 있어 사용자 확인이 필요합니다",
                     "linked_commits": [{"commit_id": 12, "sha": "def5678", "message": "perf: 캐시 추가"}]
                   }],
                   "existing_turn_count": 1,
@@ -601,7 +603,7 @@ class AiInterviewQuestionAdapterTest {
     private static InterviewQuestionRequest request() {
 
         return new InterviewQuestionRequest(CARD_ID, null,
-                List.of(new InterviewMissingSlot(InterviewStarSlot.R, 2, REQUEST_TEXT, InterviewConfidence.MEDIUM,
+                List.of(new InterviewMissingSlot(InterviewStarSlot.R, 2, REQUEST_TEXT, InterviewConfidence.MEDIUM, null,
                         List.of())),
                 0, 2, InterviewCardSourceType.DIRECT_CARD, InterviewCardKind.QUALITATIVE, null, List.of(), List.of());
 

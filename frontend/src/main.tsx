@@ -21,6 +21,8 @@ import './styles/ux-polish.css';
 import './styles/landing-intro.css';
 import './styles/guidance.css';
 import './styles/card-tile.css';
+import './styles/mono-pastel.css';
+import './styles/job-calendar.css';
 
 applyTheme(getTheme());
 installChunkReload();

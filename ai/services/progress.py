@@ -15,10 +15,13 @@ PULL_REQUESTS = "PR_REVIEW"
 COMMITS = "COMMITS"
 COMPRESS = "COMPRESS"
 REASON = "REASON"
+#: STAR 초안 진행은 Spring 카드 초안 Job 이 카드마다 받는다.
+STAR = "STAR"
 
 # 화면이 한 줄로 보여 주는 값이라 길이를 자른다.
 TITLE_MAX_CHARS = 100
 REASON_MAX_CHARS = 200
+SLOT_TEXT_MAX_CHARS = 400
 
 ProgressItem = dict[str, Any]
 ProgressListener = Callable[[str, int, "int | None", "ProgressItem | None"], None]
@@ -32,6 +35,11 @@ def report_progress(step: str, done: int, total: int | None, item: ProgressItem 
     listener = _listener.get()
     if listener is not None:
         listener(step, done, total, item)
+
+
+def is_listening() -> bool:
+    """듣는 쪽이 있을 때만 진행을 만들도록, 만드는 데 드는 일을 아낄 때 쓴다."""
+    return _listener.get() is not None
 
 
 @contextmanager
@@ -65,6 +73,17 @@ def grouped_item(units: int, experiences: int) -> ProgressItem:
 
 def described_item(title: str, reason: str) -> ProgressItem:
     return {"kind": "DESCRIBED", "title": _text(title, TITLE_MAX_CHARS), "reason": _text(reason, REASON_MAX_CHARS)}
+
+
+def slot_item(round_no: int, slot: str, text: str, done: bool) -> ProgressItem:
+    return {"kind": "SLOT", "round": round_no, "slot": slot, "text": _text(text, SLOT_TEXT_MAX_CHARS), "done": done}
+
+
+def step_item(step: dict[str, Any]) -> ProgressItem:
+    return {
+        "kind": "STEP",
+        "step": {key: _text(value, REASON_MAX_CHARS) if isinstance(value, str) else value for key, value in step.items()},
+    }
 
 
 def _text(text: str, limit: int) -> str:

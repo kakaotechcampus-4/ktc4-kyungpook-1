@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, openRepoSearch } from './helpers';
 
 test('search has one focus boundary, Escape clears and returns typing focus', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/');
@@ -25,14 +25,6 @@ test('select menus are styled, support keyboard selection and restore focus on E
   const triggerStyle = await style(sort), buttonStyle = await style(create);
   expect(triggerStyle.radius).toBe(buttonStyle.radius); expect(triggerStyle.height).toBeGreaterThanOrEqual(44);
   expect(Math.abs(triggerStyle.height - buttonStyle.height)).toBeLessThanOrEqual(1);
-});
-
-test('desktop resume and the new-card box share their left and right boundaries', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 }); await loginAsDemo(page); await page.goto('/');
-  await expect(page.locator('.home-resume')).toBeVisible();
-  const resume = await page.locator('.home-resume').boundingBox(), prompt = await page.locator('.prompt').boundingBox();
-  expect(Math.abs(resume!.x - prompt!.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(resume!.x + resume!.width - prompt!.x - prompt!.width)).toBeLessThanOrEqual(1);
 });
 
 test('STAR editors begin at the same left edge as the field letter on desktop and mobile', async ({ page }) => {
@@ -68,7 +60,7 @@ test('mobile repository select keeps its menu in view and roundtrips the empty c
 });
 
 test('repository autocomplete exposes its active option and closes without losing the query', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/');
+  await loginAsDemo(page); await page.goto('/'); await openRepoSearch(page);
   const search = page.getByRole('combobox', { name: '레포 검색', exact: true }); await search.fill('auth-service');
   await expect(search).toHaveAttribute('aria-expanded', 'true'); await search.press('ArrowDown');
   const active = await search.getAttribute('aria-activedescendant'); expect(active).toBeTruthy();

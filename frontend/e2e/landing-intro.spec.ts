@@ -13,7 +13,7 @@ for (const width of [320, 390, 768, 1440]) {
     expect(brand!.x).toBeGreaterThanOrEqual(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     await page.getByRole('button', { name: '샘플로 체험하기', exact: true }).click();
-    await expect(page.getByRole('heading', { name: '경험 정리', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '홈', exact: true })).toBeVisible();
   });
 }
 

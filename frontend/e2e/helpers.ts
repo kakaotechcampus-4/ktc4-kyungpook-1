@@ -18,6 +18,11 @@ const SEED = (login: boolean) => {
 };
 
 /** 데모 모드 로그인 — 실서버에서는 Spring 이 OAuth 콜백에서 세션 쿠키를 세우는 자리. */
+/** 홈의 레포 검색칸은 '레포 검색하기' 를 눌러야 열린다 */
+export async function openRepoSearch(page: Page) {
+  await page.getByRole('button', { name: '레포 검색하기', exact: true }).click();
+}
+
 export async function loginAsDemo(page: Page) {
   await page.addInitScript(SEED, true);
 }

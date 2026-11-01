@@ -7,6 +7,7 @@ import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
+import com.gitory.backend.matching.infra.PostingCondition;
 import jakarta.persistence.EntityManager;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
@@ -286,6 +287,31 @@ class JobPostingPersistenceTest {
     }
 
     @Test
+    @DisplayName("매칭 1단계는 조건을 뽑은 마감 전 활성 공고의 필수·우대 조건만 색인 여부와 상관없이 읽는다")
+    void shortlistReadsOnlyOpenExtractedPostings() {
+
+        JobPosting open = persistExtracted("acme", "1001", null);
+        JobPosting expired = persistExtracted("acme", "1002", NOW.minusSeconds(1));
+        JobPosting removed = persistExtracted("acme", "1003", null);
+        JobPosting pending = persistPosting("acme", "1004");
+        for (JobPosting posting : List.of(open, expired, removed, pending)) {
+            for (CriterionType type : CriterionType.values()) {
+                criteria.save(JobPostingCriterion.extracted(posting.getId(), type, type.ordinal() + 1, "조건", "조건"));
+            }
+        }
+        removed.markRemoved();
+        em.flush();
+        em.clear();
+
+        List<PostingCondition> rows = postings.findShortlistConditions(NOW);
+
+        assertThat(rows).extracting(row -> row.posting().getExternalId()).containsOnly("1001");
+        assertThat(rows).extracting(row -> row.criterion().getType())
+                .containsExactly(CriterionType.REQUIRED, CriterionType.PREFERRED);
+
+    }
+
+    @Test
     @DisplayName("회사별 가져오기 시도 시각이 저장되고 다시 읽힌다")
     void savesSourceAttempt() {
 
@@ -353,6 +379,20 @@ class JobPostingPersistenceTest {
 
         JobPosting posting = JobPosting.discovered(companyKey, externalId, "에이크미", "백엔드 개발자",
                 "https://jobs.example.com/" + externalId, null, null, NOW);
+
+        em.persist(posting);
+        em.flush();
+
+        return posting;
+
+    }
+
+    private JobPosting persistExtracted(String companyKey, String externalId, Instant expiresAt) {
+
+        JobPosting posting = JobPosting.discovered(companyKey, externalId, "에이크미", "백엔드 개발자",
+                "https://jobs.example.com/" + externalId, null, expiresAt, NOW);
+        posting.extracted(JobCategory.BACKEND, ExperienceLevel.UNSPECIFIED, null, null, List.of(), 2,
+                JobPostingContentStatus.READY, "a".repeat(64), NOW);
 
         em.persist(posting);
         em.flush();

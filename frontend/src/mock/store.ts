@@ -385,7 +385,7 @@ export function pushVersion(c: Any, source: string, fields: Any) {
 /** 되묻기 턴 생성 — "코드에서 찾은 것"은 카드 근거에서 조립 */
 export const INTERVIEW_MAX_TURNS = 8; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
 
-export function askTurn(c: Any, field: string) {
+export function askTurn(c: Any, field: string, reason: string | null = null) {
   const bank = interviewBank[field];
   const turns = (db.interview[c.id] ??= []);
   // PR 이 없는 커밋 묶음도, 코드가 아예 없는 직접 작성 카드도 되묻기 대상이다
@@ -396,11 +396,13 @@ export function askTurn(c: Any, field: string) {
     turnNo: turns.length + 1, field, askedBy: 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
     found: found.length ? found : ['이 카드에 붙은 커밋 근거가 없습니다'],
-    missing: [bank.missing], question: bank.question, options: bank.options, answer: null, outcome: null,
+    missing: [bank.missing], question: bank.question, options: bank.options, answer: null, outcome: null, reason,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };
   turns.push(turn);
+  // 실서버처럼 새 질문을 만들면 지난번에 끝낸 이유는 지운다
+  c.interviewEndReason = null;
   return turn;
 }
 

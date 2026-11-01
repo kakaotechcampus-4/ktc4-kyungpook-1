@@ -228,7 +228,11 @@ export function useAskInterview(cardId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (field?: StarField) => endpoints.askInterview(cardId, field),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.interview(cardId) }),
+    onSuccess: (turn) => {
+      void qc.invalidateQueries({ queryKey: keys.interview(cardId) });
+      // AI 가 끝내면 서버가 끝낸 이유를 남기고 카드 상태(확정)를 다시 정하므로 카드를 다시 읽는다
+      if (turn === null) void qc.invalidateQueries({ queryKey: keys.card(cardId) });
+    },
   });
 }
 export function useAnswerInterview(cardId: string) {

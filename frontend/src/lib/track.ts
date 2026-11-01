@@ -13,7 +13,9 @@ export type EventName =
   // 문항 유형 — props 는 cardId 와 개수만. 어떤 유형을 골랐는지는 싣지 않는다
   | 'card_themes_edited'
   // 인적사항(개인정보) — props 는 개수·참거짓만. 학교·회사·점수 같은 값은 절대 싣지 않는다 (docs/2026-10-29-PROFILE.md)
-  | 'profile_prompt_accepted' | 'profile_prompt_dismissed' | 'profile_saved';
+  | 'profile_prompt_accepted' | 'profile_prompt_dismissed' | 'profile_saved'
+  // 자소서(#517) — props 는 id·개수만. 직무·문항 글은 싣지 않는다
+  | 'cover_letter_created' | 'cover_letter_cards_changed' | 'cover_letter_asks_started';
 
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
 

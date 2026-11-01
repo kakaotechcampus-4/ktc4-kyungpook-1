@@ -27,8 +27,11 @@ from schemas.common import (
     EmptyReasonCode,
     EvidenceSummarySource,
     StarArea,
+    StarMaterialKind,
     StarSlot,
     StarStatus,
+    StarStepActor,
+    StarStepKind,
     TechTag,
     StatementConfidence,
 )
@@ -330,6 +333,19 @@ class StarFieldResult(BaseModel):
     review_reason: str | None = None
 
 
+class StarStep(BaseModel):
+    """STAR 초안이 거친 단계 하나로, 문장은 화면이 값으로 만든다."""
+
+    round: int = Field(..., ge=0, description="0 은 첫 초안과 첫 검사, 1·2 는 고쳐 쓴 바퀴")
+    actor: StarStepActor
+    kind: StarStepKind
+    slot: StarSlot | None = Field(None, description="카드 전체 단계(DRAFT)는 null")
+    code: str | None = Field(None, description="FLAG 의 문제 코드(NO_EVIDENCE·UNSOURCED_NUMBER·REVERSED_MEANING·EMPTY)")
+    value: str | None = Field(None, description="걸린 수치나 연 자료 제목")
+    material: StarMaterialKind | None = Field(None, description="OPEN 일 때 연 자료 종류")
+    reason: str | None = Field(None, description="모델이 고른 행동(OPEN·RETRY·KEEP)의 이유 한 줄(60자 이내)")
+
+
 class StarAnalysisResponse(BaseModel):
     """근거 검증을 마친 STAR 분석 결과."""
 
@@ -343,4 +359,8 @@ class StarAnalysisResponse(BaseModel):
     )
     techs: list[TechTag] = Field(
         default_factory=list, description="카드 기술 태그. 최대 8개, 중요한 것부터. 판단할 수 없으면 빈 배열"
+    )
+    steps: list[StarStep] = Field(
+        default_factory=list,
+        description="초안이 거친 단계 순서대로. 고쳐 쓰기를 끄면 첫 초안과 첫 검사만, 마감으로 비운 카드는 빈 배열",
     )

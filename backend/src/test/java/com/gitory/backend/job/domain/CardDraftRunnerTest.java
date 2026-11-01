@@ -2,6 +2,7 @@ package com.gitory.backend.job.domain;
 
 import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.CardThemePort;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.StarConfidence;
 import com.gitory.backend.agent.port.StarDraft;
@@ -21,6 +22,7 @@ import com.gitory.backend.agent.port.StarStepActor;
 import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
+import com.gitory.backend.card.domain.CardThemeSuggester;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.common.infra.ai.AiCallContext;
@@ -94,6 +96,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, CardVersionReader.class, JobCancelService.class,
+        CardThemeSuggester.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
@@ -137,6 +140,9 @@ class CardDraftRunnerTest {
 
     @MockitoBean
     GithubCollectionAccessPort githubAccess;
+
+    @MockitoBean
+    CardThemePort themes;
 
     private TestFixtures fixtures;
     private CandidateCardFixtures cardFixtures;
@@ -847,14 +853,14 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("backend", "BACKEND"), List.of("SPRING", "JAVA")));
+        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("backend", "BACKEND"), List.of("PHP", "JAVA")));
 
         runNext();
 
         assertThat(areasOf(cardId)).containsExactly("BACKEND");
         assertThat(techsOf(cardId)).containsExactly("JAVA");
         assertThat(output.getAll()).contains("CardArea 목록 밖의 값 1개를 버린다: [backend]")
-                .contains("CardTech 목록 밖의 값 1개를 버린다: [SPRING]");
+                .contains("CardTech 목록 밖의 값 1개를 버린다: [PHP]");
         assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
 
     }
@@ -876,18 +882,18 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("분야가 2개, 기술이 4개를 넘으면 앞에서부터 그 개수만 남긴다")
+    @DisplayName("분야가 2개, 기술이 8개를 넘으면 앞에서부터 그 개수만 남긴다")
     void keepsTagsUpToLimit() {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "DB", "DEVOPS"),
-                List.of("JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS", "PYTHON")));
+                List.of("JAVA", "SPRING", "JPA", "MYSQL", "REDIS", "KAFKA", "DOCKER", "AWS", "GITHUB_ACTIONS")));
 
         runNext();
 
         assertThat(areasOf(cardId)).containsExactly("BACKEND", "DB");
-        assertThat(techsOf(cardId)).containsExactly("JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS");
+        assertThat(techsOf(cardId)).containsExactly("JAVA", "SPRING", "JPA", "MYSQL", "REDIS", "KAFKA", "DOCKER", "AWS");
 
     }
 

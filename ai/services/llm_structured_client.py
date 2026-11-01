@@ -7,7 +7,9 @@ B-2 판정기 외의 LLM 작업(diff 분석, STAR 초안, 질문 생성)이 같�
 from __future__ import annotations
 
 import json
+import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Generic, Literal, Optional, TypeVar
 
@@ -29,6 +31,8 @@ from openai import (
 from pydantic import BaseModel, ValidationError
 
 from services.usage import record_llm_call
+
+logger = logging.getLogger(__name__)
 
 ReasoningEffort = Literal["none", "low", "medium", "high"]
 OutputT = TypeVar("OutputT", bound=BaseModel)
@@ -102,15 +106,19 @@ class StructuredLLMClient:
         output_model: type[OutputT],
         max_completion_tokens: int,
         timeout_seconds: Optional[float] = None,
+        on_partial: Optional[Callable[[dict[str, Any]], None]] = None,
     ) -> StructuredCallResult[OutputT]:
         """입력은 지시가 아닌 데이터로 격리하기 위해 JSON 문자열로만 전달한다.
 
         ``timeout_seconds``를 주면 요청 전체 마감에 맞춰 이 호출만 그 시간 안에 끝내고,
         SDK 재시도도 하지 않는다. 재시도까지 하면 마감을 넘기기 때문이다.
         실패한 호출도 요청의 LLM 호출 수에 세고, SDK 가 안에서 다시 보낸 요청은 따로 세지 않는다.
+        ``on_partial`` 을 주면 스트리밍으로 받는 동안 지금까지 받은 출력을 부분 파싱한 dict 로 여러 번 부른다.
         """
         try:
-            result = self._call(system_prompt, payload, output_model, max_completion_tokens, timeout_seconds)
+            result = self._call(
+                system_prompt, payload, output_model, max_completion_tokens, timeout_seconds, on_partial
+            )
         except Exception:
             record_llm_call(self._settings.model, None, None)
             raise
@@ -124,6 +132,7 @@ class StructuredLLMClient:
         output_model: type[OutputT],
         max_completion_tokens: int,
         timeout_seconds: Optional[float],
+        on_partial: Optional[Callable[[dict[str, Any]], None]] = None,
     ) -> StructuredCallResult[OutputT]:
         started_at = time.perf_counter()
         client = (
@@ -147,6 +156,10 @@ class StructuredLLMClient:
                 completion = client.chat.completions.parse(**request)
             else:
                 with client.chat.completions.stream(**request, stream_options={"include_usage": True}) as stream:
+                    if on_partial is not None:
+                        for event in stream:
+                            if event.type == "content.delta" and isinstance(event.parsed, dict):
+                                _report_partial(on_partial, event.parsed)
                     completion = stream.get_final_completion()
         except RateLimitError as exc:
             raise LLMStructuredCallError("LLM 호출 한도를 초과했습니다.") from exc
@@ -183,3 +196,11 @@ class StructuredLLMClient:
             completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started_at) * 1000),
         )
+
+
+def _report_partial(on_partial: Callable[[dict[str, Any]], None], parsed: dict[str, Any]) -> None:
+    """진행을 알리다 실패해도 LLM 응답을 받는 일은 끝까지 한다."""
+    try:
+        on_partial(parsed)
+    except Exception as exc:
+        logger.warning("부분 출력 진행을 알리지 못했다: %s", type(exc).__name__)

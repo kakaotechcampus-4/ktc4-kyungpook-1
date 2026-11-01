@@ -149,6 +149,26 @@ export const JobStep = z.object({
 });
 export type JobStep = z.infer<typeof JobStep>;
 
+/**
+ * AI 가 방금 읽거나 판단한 줄(#493, #496). 오래된 줄부터 오고 seq 는 Job 안에서 1부터 늘어난다.
+ * 종류에 없는 칸은 null. 새 종류가 생겨도 화면이 깨지지 않게 kind·step 은 글자로 받고 모르는 줄은 그리지 않는다.
+ */
+export const JobActivity = z.object({
+  seq: z.number(),
+  step: z.string(),
+  kind: z.string(),
+  number: z.number().nullish(),      // PULL_REQUEST
+  title: z.string().nullish(),       // PULL_REQUEST, COMMIT(메시지 첫 줄), DESCRIBED(경험 제목)
+  reviews: z.number().nullish(),     // PULL_REQUEST
+  sha: z.string().nullish(),         // COMMIT(7자)
+  files: z.number().nullish(),       // COMMIT
+  excluded: z.string().nullish(),    // COMMIT — BOT|MERGE_COMMIT|LOCKFILE_ONLY|NOT_OWN, 빼지 않았으면 null
+  units: z.number().nullish(),       // GROUPED
+  experiences: z.number().nullish(), // GROUPED
+  reason: z.string().nullish(),      // DESCRIBED
+});
+export type JobActivity = z.infer<typeof JobActivity>;
+
 /** verdict EMPTY 는 실패가 아니다. 판정이고, 판정 근거를 reasons 로 준다. */
 export const JobResult = z.object({
   repoId: z.string().nullish(),
@@ -163,6 +183,7 @@ export const Job = z.object({
   state: JobState,
   partial: z.boolean(),          // 부분 완료는 별도 상태가 아니라 SUCCEEDED + partial
   steps: z.array(JobStep),
+  activity: z.array(JobActivity).nullish(), // 이전 서버, 카드 초안 Job, 끝나고 10분 뒤에는 없거나 []
   errorCode: JobErrorCode.nullable(),
   retryable: z.boolean().nullable(),
   retryAfterSec: z.number().nullable(), // GITHUB_RATE_LIMITED 에서만 의미가 있다
@@ -307,8 +328,23 @@ export const CardTagFields = {
   techs: z.array(CardTech).max(8).optional(),
 };
 
+// ───────────────────────────── 문항 유형 themes (#482, 계약 #475 3절) ─────────────────────────────
+// 값과 이름은 BE #564 의 `CardTheme`·`themes` 와 같아야 한다.
+export const CARD_THEMES = ['COLLABORATION', 'CONFLICT', 'PROBLEM_SOLVING', 'LEADERSHIP', 'CHALLENGE', 'FAILURE', 'GROWTH'] as const;
+export const CardTheme = z.enum(CARD_THEMES);
+export type CardTheme = z.infer<typeof CardTheme>;
+/** 카드 하나에 붙는 문항 유형의 상한(서버가 3개부터 400 으로 막는다) */
+export const CARD_THEME_LIMIT = 2;
+/**
+ * 응답의 `themes`. 칸이 없으면(옛 서버) undefined — 비어 있음([])과 다르다. 화면은 undefined 면 이 영역을 숨기고 아무것도 짐작하지 않는다.
+ * 서버가 새 유형을 추가해도 카드 응답 전체가 깨지지 않게 모르는 코드만 빼고, 칸의 모양이 틀리면 칸이 없는 것으로 읽는다.
+ */
+const knownThemes = z.array(z.string()).transform((items) => items.filter((item): item is CardTheme => CardTheme.safeParse(item).success)).optional().catch(undefined);
+export const CardThemeFields = { themes: knownThemes };
+
 export const Card = z.object({
   ...CardTagFields,
+  ...CardThemeFields,
   id: z.string(),
   kind: CardKind,
   status: CardStatus,
@@ -338,6 +374,7 @@ export type StarStates = z.infer<typeof StarStates>;
 
 export const CardSummary = z.object({
   ...CardTagFields,
+  ...CardThemeFields,
   id: z.string(),
   kind: CardKind,
   status: CardStatus,
@@ -359,11 +396,15 @@ export type CardSummary = z.infer<typeof CardSummary>;
 /** Shared by manual creation and metadata PATCH: blank periods clear to null. */
 export const CardPeriodInput = ManualDraftInput.shape.period;
 /** #186/#420 server contract: omitted or null fields stay unchanged; an empty string clears period, so a cleared period goes out as ''. */
-export const CardMetadataPatch = z.object({ title: ManualDraftInput.shape.title.optional(), period: CardPeriodInput.transform((period) => period ?? '').optional() })
-  .refine((value) => value.title !== undefined || value.period !== undefined);
+export const CardMetadataPatch = z.object({
+  title: ManualDraftInput.shape.title.optional(),
+  period: CardPeriodInput.transform((period) => period ?? '').optional(),
+  /** #482: 문항 유형 0~2개, 겹침 없음. `[]` 는 비우기다(생략과 다르다). 확정 카드도 바로 고친다 */
+  themes: z.array(CardTheme).max(CARD_THEME_LIMIT).refine((items) => new Set(items).size === items.length, { message: 'Duplicate themes' }).optional(),
+}).refine((value) => value.title !== undefined || value.period !== undefined || value.themes !== undefined);
 /** Screen input: a blank or null period means "clear it". */
 export type CardMetadataPatch = z.input<typeof CardMetadataPatch>;
-export const CardMetadata = z.object({ cardId: z.string(), title: z.string(), period: z.string().nullable(), updatedAt: z.string().datetime({ offset: true }) });
+export const CardMetadata = z.object({ cardId: z.string(), title: z.string(), period: z.string().nullable(), ...CardThemeFields, updatedAt: z.string().datetime({ offset: true }) });
 export type CardMetadata = z.infer<typeof CardMetadata>;
 
 export const VersionListItem = z.object({

@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Briefcase, Check as CheckIcon, Minus } from 'lucide-react';
-import { useCoverLetter, useRetryCoverLetter, useStartAsking, type CoverLetter, type CoverLetterPosting, type CoverLetterQuestion } from '@/api/coverLetters';
+import { useCoverLetter, useRetryCoverLetter, useStartAsking, type AssignStep, type CoverLetter, type CoverLetterPosting, type CoverLetterQuestion } from '@/api/coverLetters';
 import { Badge, Breadcrumb, Button, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { ASSIGNED_BY_LABEL, CHECK_ITEMS, FAILED_STEP_LABEL, ITEM_LABEL, THEME_LABEL, assignLine, draftLine, primaryState } from '@/lib/coverLetterCopy';
+import { ASSIGNED_BY_LABEL, CHECK_ITEMS, FAILED_STEP_LABEL, ITEM_LABEL, THEME_LABEL, primaryState } from '@/lib/coverLetterCopy';
+import { buildAssignNotes } from '@/lib/coverLetterNotes';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { AnswerQuestions } from './AnswerQuestions';
 import { CardPicker } from './CardPicker';
 import { DraftEditor } from './DraftEditor';
+import { DraftPaper } from './paper/DraftPaper';
+import { NoteCard } from './paper/MarginNotes';
 import './coverLetters.css';
 
 /** 자소서 한 편 — 응답의 stage 가 화면을 정한다. #517 은 ② 기다림, ③ 카드 확인, 실패까지 */
@@ -21,7 +24,8 @@ export function CoverLetterPage() {
   useDocumentTitle(l ? `${l.jobRole} 자소서` : '자소서');
   const crumbs = [{ label: '홈', to: '/' }, { label: '자소서', to: '/cover-letters' }, { label: l?.jobRole ?? '…' }];
 
-  if (letter.isError) {
+  // 받아 둔 자소서가 있으면 잠깐의 조회 실패(배포 재시작 5xx)에도 화면을 유지하고 다음 조회가 이어 간다
+  if (letter.isError && !l) {
     return (
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
@@ -59,30 +63,12 @@ function PostingLine({ posting }: { posting: CoverLetterPosting }) {
   );
 }
 
-/** ② AI 가 문항마다 카드를 고르는 동안 — 고른 줄이 폴링마다 쌓인다 */
+/** ② AI 가 문항마다 카드를 고르는 동안 — 종이의 문항 옆에 고른 카드와 이유가 메모로 생기는 대로 붙는다(#618) */
 function AssignWait({ letter }: { letter: CoverLetter }) {
-  const lines = letter.steps.assign
-    .map((s) => ({ seq: s.seq, line: assignLine(s, letter.questions) }))
-    .filter((x): x is { seq: number; line: NonNullable<ReturnType<typeof assignLine>> } => !!x.line);
   return (
     <>
-      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개`}>문항마다 쓸 카드를 고르고 있어요</PageTitle>
-      <ol className="cl-qlist">
-        {letter.questions.map((q) => <li key={q.id}><span className="cl-q__no" aria-hidden>{q.seq}</span><span>{q.text}</span></li>)}
-      </ol>
-      <section className="cl-agent" aria-label="AI가 한 일">
-        <AiWait label="확정한 카드를 문항과 견주어 보고 있어요" />
-        {lines.length > 0 && (
-          <ul className="cl-feed">
-            {lines.map(({ seq, line }) => (
-              <li key={seq} className="cl-feed__line">
-                <span className="cl-feed__text">{line.text}</span>
-                {line.reason && <span className="cl-feed__reason">{line.reason}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개 · 확정한 카드를 문항과 견주어 보고 있어요`}>문항마다 쓸 카드를 고르고 있어요</PageTitle>
+      <DraftPaper letter={letter} mode="assign" />
     </>
   );
 }
@@ -102,7 +88,7 @@ function AssignReview({ letter }: { letter: CoverLetter }) {
     <>
       <PageTitle sub="AI가 고른 카드를 확인해 주세요. 바꾸고 싶으면 문항마다 바꿀 수 있어요.">문항마다 쓸 카드</PageTitle>
       <div className="cl-review">
-        {letter.questions.map((q) => <QuestionReview key={q.id} q={q} onPick={() => setPicking(q)} />)}
+        {letter.questions.map((q) => <QuestionReview key={q.id} q={q} steps={letter.steps.assign} onPick={() => setPicking(q)} />)}
       </div>
       <StickyFooter strong="카드를 확인했으면 질문을 받아요" sub={empty ? `카드가 없는 문항 ${empty}개는 질문으로 재료를 모아요. 질문을 받으면 카드는 바꿀 수 없어요.` : '질문을 받으면 카드는 바꿀 수 없어요.'}>
         <Button onClick={next} loading={start.isPending}>다음: 질문 받기</Button>
@@ -112,9 +98,10 @@ function AssignReview({ letter }: { letter: CoverLetter }) {
   );
 }
 
-function QuestionReview({ q, onPick }: { q: CoverLetterQuestion; onPick: () => void }) {
+function QuestionReview({ q, steps, onPick }: { q: CoverLetterQuestion; steps: AssignStep[]; onPick: () => void }) {
   const state = primaryState(q);
   const have = new Set(q.materials);
+  const note = buildAssignNotes(q, steps, false).questionNote;
   return (
     <section className="cl-q" aria-labelledby={`q-${q.id}`}>
       <header className="cl-q__head">
@@ -161,6 +148,8 @@ function QuestionReview({ q, onPick }: { q: CoverLetterQuestion; onPick: () => v
           {CHECK_ITEMS.some((i) => !have.has(i)) && <span className="t-12 c-3">없는 재료는 다음 단계에서 물어봐요.</span>}
         </div>
       )}
+
+      {note && <div className="cl-indent"><NoteCard thread={note} focused={false} /></div>}
 
       {q.considered.length > 0 && (
         <details className="cl-considered">
@@ -226,30 +215,12 @@ function AskWait({ letter }: { letter: CoverLetter }) {
   );
 }
 
-/** ⑤ AI 가 문항마다 쓰고, 검사하고, 걸리면 다시 쓰고, 마지막에 감독이 함께 검토한다 — 그 줄이 폴링마다 쌓인다 */
+/** ⑤ AI 가 문항마다 쓰고, 검사하고, 걸리면 다시 쓰고, 마지막에 검토 AI 가 함께 본다 — 종이 위에 글이 써지고 여백에 메모가 붙는다(#618) */
 function DraftWait({ letter }: { letter: CoverLetter }) {
-  const lines = letter.steps.draft
-    .map((s) => ({ seq: s.seq, line: draftLine(s, letter.questions) }))
-    .filter((x): x is { seq: number; line: NonNullable<ReturnType<typeof draftLine>> } => !!x.line);
   return (
     <>
-      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개`}>초안을 쓰고 있어요</PageTitle>
-      <ol className="cl-qlist">
-        {letter.questions.map((q) => <li key={q.id}><span className="cl-q__no" aria-hidden>{q.seq}</span><span>{q.text}</span></li>)}
-      </ol>
-      <section className="cl-agent" aria-label="AI가 한 일">
-        <AiWait label="문항마다 초안을 쓰고 근거와 글자 수를 검사하고 있어요" />
-        {lines.length > 0 && (
-          <ul className="cl-feed">
-            {lines.map(({ seq, line }) => (
-              <li key={seq} className={`cl-feed__line cl-feed__line--${line.tone}`}>
-                <span className="cl-feed__text">{line.text}</span>
-                {line.reason && <span className="cl-feed__reason">{line.reason}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개 · 문항마다 초안을 쓰고 근거와 글자 수를 검사하고 있어요`}>초안을 쓰고 있어요</PageTitle>
+      <DraftPaper letter={letter} mode="live" />
     </>
   );
 }

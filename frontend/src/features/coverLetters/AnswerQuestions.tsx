@@ -41,6 +41,7 @@ function insertTemplate(el: HTMLTextAreaElement | null, current: string, templat
 /**
  * ④ 질문(#518). AI 가 카드에 모자란 재료를 문항마다 최대 4개 묻는다. 답하거나 넘기고 '초안 쓰기'.
  * 답은 칸을 벗어날 때 그 문항 전체를 저장하고, '초안 쓰기' 전에 남은 것을 모두 저장한다.
+ * 같은 문항의 저장은 한 줄로 세운다 — 저장 응답이 오는 사이에 더 쓴 답을 '저장됨' 으로 보이지 않게, 보낼 때의 버전이 그대로일 때만 표시를 지운다.
  */
 export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
   const [answers, setAnswers] = useState<Answers>(() => fromServer(letter));
@@ -52,22 +53,27 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
   // 넘기기처럼 바꾼 직후 저장할 때도 방금 바꾼 값을 읽게, 저장은 늘 최신 값을 본다
   const latest = useRef({ answers, dirty });
   useEffect(() => { latest.current = { answers, dirty }; }, [answers, dirty]);
+  const version = useRef<Record<string, number>>({});
+  const inflight = useRef<Record<string, Promise<boolean> | undefined>>({});
 
   const edit = (qid: string, item: string, patch: Partial<Draft>) => {
     setAnswers((all) => ({ ...all, [qid]: { ...all[qid], [item]: { ...all[qid]?.[item] ?? { text: '', skipped: false }, ...patch } } }));
     setDirty((d) => new Set(d).add(qid));
     setState((s) => ({ ...s, [qid]: 'idle' }));
+    version.current[qid] = (version.current[qid] ?? 0) + 1;
   };
 
-  const saveQuestion = async (q: CoverLetterQuestion) => {
+  const sendQuestion = async (q: CoverLetterQuestion) => {
     if (!latest.current.dirty.has(q.id)) return true;
+    const sent = version.current[q.id] ?? 0;
     const body = answersFor(q, latest.current.answers[q.id]);
     if (body.some((a) => a.text != null && a.text.length > ANSWER_MAX)) return false;
     setState((s) => ({ ...s, [q.id]: 'saving' }));
     try {
       await save.mutateAsync({ questionId: q.id, answers: body });
-      setDirty((d) => { const n = new Set(d); n.delete(q.id); return n; });
-      setState((s) => ({ ...s, [q.id]: 'saved' }));
+      const untouched = (version.current[q.id] ?? 0) === sent;
+      if (untouched) setDirty((d) => { const n = new Set(d); n.delete(q.id); return n; });
+      setState((s) => ({ ...s, [q.id]: untouched ? 'saved' : 'idle' }));
       return true;
     } catch (e) {
       setState((s) => ({ ...s, [q.id]: 'failed' }));
@@ -75,15 +81,33 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
       return false;
     }
   };
+  /** 같은 문항의 저장은 앞 저장이 끝난 뒤에 보낸다 */
+  const saveQuestion = (q: CoverLetterQuestion) => {
+    const next = (inflight.current[q.id] ?? Promise.resolve(true)).then(() => sendQuestion(q));
+    inflight.current[q.id] = next;
+    return next;
+  };
 
-  const missing = letter.questions.reduce((n, q) => n + q.asks.filter((a) => a.required && !answers[q.id]?.[a.item]?.text.trim()).length, 0);
+  const missing = letter.questions.reduce((n, q) => n + q.asks.filter((a) => {
+    const d = answers[q.id]?.[a.item];
+    return a.required && (!d || d.skipped || !d.text.trim());
+  }).length, 0);
+  // 저장을 기다리는 동안에도 누른 것이 보이고, 두 번 눌러도 초안 쓰기는 한 번만 보낸다
+  const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
   const write = async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
     setError(null);
-    for (const q of letter.questions) if (!(await saveQuestion(q))) return;
     try {
+      for (const q of letter.questions) if (!(await saveQuestion(q))) return;
       await draft.mutateAsync(undefined);
       track('cover_letter_drafts_started', { coverLetterId: letter.id, emptyRequired: missing });
-    } catch { /* 전역 안내 */ }
+    } catch { /* 전역 안내 */ } finally {
+      startingRef.current = false;
+      setStarting(false);
+    }
   };
 
   return (
@@ -98,7 +122,7 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
       {error && <Note strong="답을 저장하지 못했어요" tone="danger">{error} 쓴 답은 화면에 그대로 있어요.</Note>}
       <StickyFooter strong={missing ? `꼭 필요한 재료 ${missing}개가 비어 있어요` : '답을 다 했으면 초안을 써요'}
         sub={missing ? '비운 채로 쓰면 그 자리에 빈칸을 남겨요. 초안에서 채울 수 있어요.' : '답하지 않은 질문은 넘긴 것으로 봐요.'}>
-        <Button onClick={write} loading={draft.isPending || save.isPending}>초안 쓰기</Button>
+        <Button onClick={write} loading={starting || draft.isPending}>초안 쓰기</Button>
       </StickyFooter>
     </>
   );

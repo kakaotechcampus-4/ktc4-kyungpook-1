@@ -8,7 +8,8 @@ import java.util.Objects;
 
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record InterviewMissingSlot(InterviewStarSlot starSlot, int statementSeq, String body,
-                                   InterviewConfidence confidence, List<InterviewCommit> linkedCommits) {
+                                   InterviewConfidence confidence, String reviewReason,
+                                   List<InterviewCommit> linkedCommits) {
 
     public InterviewMissingSlot {
 

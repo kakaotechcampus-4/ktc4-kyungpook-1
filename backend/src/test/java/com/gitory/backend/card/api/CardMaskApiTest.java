@@ -74,7 +74,7 @@ class CardMaskApiTest {
     private static final Map<String, String> COMPANY_RULE = Map.of("from", "A사", "to", "");
 
     // FE schemas.ts 의 Card·CardVersion 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
-    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "period", "repo",
+    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "themes", "period", "repo",
             "activity", "candidate", "version", "evidence", "lowConfidenceFields", "droppedFields", "draftSteps",
             "maskRules", "generation", "draftFailure", "interviewTurns", "interviewEndReason", "confirmedAt", "createdAt"};
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",

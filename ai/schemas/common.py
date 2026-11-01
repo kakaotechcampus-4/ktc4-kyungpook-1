@@ -41,11 +41,20 @@ EmptyReasonCode = Literal["NO_EVIDENCE", "OVERCLAIM", "UNSOURCED_NUMBER", "TIMEO
 #: diff 근거에서 요청한 커밋 일부가 빠진 이유.
 DiffEvidencePartialReason = Literal["CAP_EXCEEDED", "GITHUB_RATE_LIMITED", "COMMIT_UNAVAILABLE"]
 
-#: 카드 목록에 보이는 분야·기술 태그로, 목록 밖의 값은 보내지 않는다.
+#: 카드 목록에 보이는 분야 태그로, 목록 밖의 값은 보내지 않는다.
 StarArea = Literal["BACKEND", "FRONTEND", "MOBILE", "DEVOPS", "AI", "DB", "TEST", "DOCS"]
-StarTech = Literal[
-    "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART",
-    "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS",
+
+#: 카드와 공고가 같이 쓰는 기술 이름표로, Spring 의 CardTech·화면의 CardTech 와 같은 65개다.
+#: 값을 더하거나 빼면 세 곳을 같이 바꿔야 서로 모르는 값을 거절하지 않는다.
+TechTag = Literal[
+    "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART", "TYPESCRIPT",
+    "JAVASCRIPT", "SCALA", "SPRING", "JPA", "NODEJS", "NESTJS", "EXPRESS", "DJANGO", "FASTAPI",
+    "FLASK", "DOTNET", "REACT", "NEXTJS", "VUE", "ANGULAR", "ANDROID", "IOS", "FLUTTER",
+    "REACT_NATIVE", "SQL", "MYSQL", "POSTGRESQL", "ORACLE", "MONGODB", "REDIS", "ELASTICSEARCH",
+    "KAFKA", "RABBITMQ", "SPARK", "AIRFLOW", "HADOOP", "DOCKER", "KUBERNETES", "AWS", "GCP",
+    "AZURE", "TERRAFORM", "LINUX", "NGINX", "CI_CD", "GITHUB_ACTIONS", "JENKINS", "PROMETHEUS",
+    "GRAFANA", "LLM", "PYTORCH", "TENSORFLOW", "SCIKIT_LEARN", "LANGCHAIN", "GRAPHQL", "GRPC",
+    "MSA", "UNITY", "UNREAL",
 ]
 
 #: card_statement.confidence 및 DB CHECK 제약과 같은 세 값.
@@ -57,6 +66,13 @@ AnalysisVerdict = Literal["OK", "EMPTY", "PARTIAL"]
 #: Spring이 AI 결과를 카드에 저장할 때 그대로 사용할 STAR 칸 상태.
 #: 프론트 StarFieldState와 같게 두어 별도 문자열 번역을 만들지 않는다.
 StarStatus = Literal["FILLED", "EMPTY", "NEEDS_REVIEW"]
+
+#: STAR 초안을 고쳐 쓸 때 AI 가 골라 열 수 있는 자료 종류.
+StarMaterialKind = Literal["ISSUE", "REVIEW", "OWNER_REPLY"]
+
+#: STAR 초안이 거친 단계를 누가 했고 무엇을 했는지로, Spring 이 card_draft_step 의 CHECK 값으로 그대로 저장한다.
+StarStepActor = Literal["MODEL", "CODE"]
+StarStepKind = Literal["DRAFT", "FLAG", "OPEN", "RETRY", "KEEP", "REWRITE", "PASS", "REVERT"]
 
 #: 요청이 어떻게 끝났는지. PARTIAL 은 마감·누락으로 일부만, FALLBACK 은 LLM 대신 정해 둔 길로 끝난 것이다.
 EndedBy = Literal["COMPLETED", "PARTIAL", "FALLBACK", "FAILED"]

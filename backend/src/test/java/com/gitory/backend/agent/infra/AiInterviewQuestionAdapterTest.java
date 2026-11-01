@@ -2,7 +2,9 @@ package com.gitory.backend.agent.infra;
 
 import com.gitory.backend.agent.port.InterviewAnswerMode;
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.ExperienceTheme;
 import com.gitory.backend.agent.port.InterviewCandidate;
+import com.gitory.backend.agent.port.InterviewCardKind;
 import com.gitory.backend.agent.port.InterviewCardSourceType;
 import com.gitory.backend.agent.port.InterviewCommit;
 import com.gitory.backend.agent.port.InterviewConfidence;
@@ -120,7 +122,7 @@ class AiInterviewQuestionAdapterTest {
         assertThat(requestPath).isEqualTo(PATH);
         assertThat(requestContentType).startsWith("application/json");
         assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN,
-                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null));
+                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null, List.of()));
 
     }
 
@@ -133,7 +135,7 @@ class AiInterviewQuestionAdapterTest {
 
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
-        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null));
+        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null, List.of()));
 
     }
 
@@ -147,7 +149,7 @@ class AiInterviewQuestionAdapterTest {
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
         assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.ASK_AGAIN,
-                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null));
+                InterviewStarSlot.R, 2, InterviewQuestionType.EVIDENCE_GAP, QUESTION, InterviewAnswerMode.TEXT, List.of(), null, List.of()));
 
     }
 
@@ -160,7 +162,22 @@ class AiInterviewQuestionAdapterTest {
 
         InterviewQuestionResult result = adapter.nextQuestion(request());
 
-        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null));
+        assertThat(result).isEqualTo(new InterviewQuestionResult(InterviewNextAction.COMPLETE, null, null, null, null, null, List.of(), null, List.of()));
+
+    }
+
+    @Test
+    @DisplayName("COMPLETE 의 문항 유형은 모르는 값·겹친 값을 버리고 앞에서부터 두 개까지 받고, 질문에서는 받지 않는다")
+    void readsThemesOnCompleteLeniently() {
+
+        responseBody = success(complete(data -> data.putArray("themes").add("GROWTH").add("SINGING").add("GROWTH")
+                .add(3).add("CONFLICT").add("LEADERSHIP")));
+        InterviewQuestionResult ended = adapter.nextQuestion(request());
+        responseBody = success(askAgain(data -> data.putArray("themes").add("GROWTH")));
+        InterviewQuestionResult asked = adapter.nextQuestion(request());
+
+        assertThat(ended.themes()).containsExactly(ExperienceTheme.GROWTH, ExperienceTheme.CONFLICT);
+        assertThat(asked.themes()).isEmpty();
 
     }
 
@@ -354,11 +371,11 @@ class AiInterviewQuestionAdapterTest {
                 .path("springToAi").path("expectedRequest");
         responseBody = success(askAgain(data -> data.put("target_star_slot", "T").put("target_statement_seq", 1)));
         InterviewQuestionRequest request = new InterviewQuestionRequest(104, null,
-                List.of(new InterviewMissingSlot(InterviewStarSlot.S, 1, "S 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of()),
-                        new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, List.of()),
-                        new InterviewMissingSlot(InterviewStarSlot.A, 1, "A 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of()),
-                        new InterviewMissingSlot(InterviewStarSlot.R, 1, "R 칸에 이미 쓴 글", InterviewConfidence.HIGH, List.of())),
-                0, 8, InterviewCardSourceType.DIRECT_CARD, InterviewStarSlot.T,
+                List.of(new InterviewMissingSlot(InterviewStarSlot.S, 1, "S 칸에 이미 쓴 글", InterviewConfidence.HIGH, null, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.T, 1, null, InterviewConfidence.LOW, null, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.A, 1, "A 칸에 이미 쓴 글", InterviewConfidence.HIGH, null, List.of()),
+                        new InterviewMissingSlot(InterviewStarSlot.R, 1, "R 칸에 이미 쓴 글", InterviewConfidence.HIGH, null, List.of())),
+                0, 8, InterviewCardSourceType.DIRECT_CARD, InterviewCardKind.QUALITATIVE, InterviewStarSlot.T,
                 List.of(InterviewStarSlot.S, InterviewStarSlot.T, InterviewStarSlot.A, InterviewStarSlot.R), List.of());
 
         adapter.nextQuestion(request);
@@ -376,10 +393,11 @@ class AiInterviewQuestionAdapterTest {
                 List.of(new InterviewReview(21, 7, InterviewReviewState.CHANGES_REQUESTED, "쿼리 수를 줄여 주세요")),
                 List.of(new InterviewIssue(3, "목록이 느리다", null)));
         InterviewMissingSlot slot = new InterviewMissingSlot(InterviewStarSlot.R, 2, "응답이 빨라졌다",
-                InterviewConfidence.MEDIUM, List.of(new InterviewCommit(12, "def5678", "perf: 캐시 추가")));
+                InterviewConfidence.MEDIUM, "근거에서 확인되지 않는 수치가 있어 사용자 확인이 필요합니다",
+                List.of(new InterviewCommit(12, "def5678", "perf: 캐시 추가")));
 
         adapter.nextQuestion(new InterviewQuestionRequest(CARD_ID, candidate, List.of(slot), 1, 2,
-                InterviewCardSourceType.COMMIT_CLUSTER, InterviewStarSlot.R, List.of(InterviewStarSlot.R),
+                InterviewCardSourceType.COMMIT_CLUSTER, InterviewCardKind.TECH, InterviewStarSlot.R, List.of(InterviewStarSlot.R),
                 List.of(new InterviewPreviousTurn(InterviewStarSlot.S, "상황은요?", InterviewTurnOutcome.ANSWERED, "느렸다"))));
 
         assertThat((Object) MAPPER.readTree(requestBody)).isEqualTo(MAPPER.readTree("""
@@ -397,11 +415,13 @@ class AiInterviewQuestionAdapterTest {
                     "statement_seq": 2,
                     "body": "응답이 빨라졌다",
                     "confidence": "MEDIUM",
+                    "review_reason": "근거에서 확인되지 않는 수치가 있어 사용자 확인이 필요합니다",
                     "linked_commits": [{"commit_id": 12, "sha": "def5678", "message": "perf: 캐시 추가"}]
                   }],
                   "existing_turn_count": 1,
                   "max_turns": 2,
                   "source_type": "COMMIT_CLUSTER",
+                  "card_kind": "TECH",
                   "target_star_slot": "R",
                   "allowed_slots": ["R"],
                   "previous_turns": [{"star_slot": "S", "question_text": "상황은요?", "outcome": "ANSWERED",
@@ -422,7 +442,7 @@ class AiInterviewQuestionAdapterTest {
                 List.of(new InterviewReview(7_000_000_000L, 7, InterviewReviewState.COMMENTED, "리뷰")), List.of());
 
         adapter.nextQuestion(new InterviewQuestionRequest(cardId, candidate, List.of(), 0, 2,
-                InterviewCardSourceType.COMMIT_CLUSTER, null, List.of(), List.of()));
+                InterviewCardSourceType.COMMIT_CLUSTER, InterviewCardKind.TECH, null, List.of(), List.of()));
 
         JsonNode sent = MAPPER.readTree(requestBody);
         assertThat(sent.path("card_id").longValue()).isEqualTo(cardId);
@@ -583,9 +603,9 @@ class AiInterviewQuestionAdapterTest {
     private static InterviewQuestionRequest request() {
 
         return new InterviewQuestionRequest(CARD_ID, null,
-                List.of(new InterviewMissingSlot(InterviewStarSlot.R, 2, REQUEST_TEXT, InterviewConfidence.MEDIUM,
+                List.of(new InterviewMissingSlot(InterviewStarSlot.R, 2, REQUEST_TEXT, InterviewConfidence.MEDIUM, null,
                         List.of())),
-                0, 2, InterviewCardSourceType.DIRECT_CARD, null, List.of(), List.of());
+                0, 2, InterviewCardSourceType.DIRECT_CARD, InterviewCardKind.QUALITATIVE, null, List.of(), List.of());
 
     }
 

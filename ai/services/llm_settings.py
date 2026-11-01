@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import threading
+from collections.abc import Callable
 from typing import Any, Optional
 
 from services.llm_structured_client import (
@@ -86,9 +87,10 @@ class EnvironmentLLMClient:
         output_model: type,
         max_completion_tokens: int,
         timeout_seconds: Optional[float] = None,
+        on_partial: Optional[Callable[[dict[str, Any]], None]] = None,
     ) -> StructuredCallResult:
         return self._get_client().call(
-            system_prompt, payload, output_model, max_completion_tokens, timeout_seconds
+            system_prompt, payload, output_model, max_completion_tokens, timeout_seconds, on_partial
         )
 
     def _get_client(self) -> StructuredLLMClient:

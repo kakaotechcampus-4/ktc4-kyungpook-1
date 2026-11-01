@@ -66,7 +66,8 @@ export function resetDb() {
 
 // ───────────────────────────── Job ─────────────────────────────
 const ANALYZE_SEC = 12, DRAFT_SEC = 8;
-const POLL_MS = 1200;
+const POLL_MS = 1000;        // Job 상세 — 실서버도 줄을 실시간으로 보여 주려고 1초(#496)
+const ACTIVE_POLL_MS = 2000; // 진행 중 Job 목록은 2초 그대로
 const STEP_KEYS = ['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON'] as const;
 
 /**
@@ -105,7 +106,7 @@ export function activeJobs() {
         jobId: j.id, state: v!.state, type: j.type,
         userRepositoryId: j.payload.repoId ?? null,
         repoName: repo ? repo.owner + '/' + repo.name : null,
-        startedAt: v!.startedAt, pollAfterMs: POLL_MS,
+        startedAt: v!.startedAt, pollAfterMs: ACTIVE_POLL_MS,
       };
     });
   return { jobs };
@@ -134,6 +135,47 @@ function analyzeSteps(repo: Any, progress: number, candidates: number | null) {
     const state = local >= 1 ? 'DONE' : local > 0 ? 'RUNNING' : 'QUEUED';
     return step(key, state, done, total);
   });
+}
+
+const PR_TITLES = ['로그인 세션 만료 처리', '토큰 재발급 인터셉터', '권한 체크 미들웨어', '검색 인덱스 재구성', '알림 발송 재시도', '캐시 무효화 정리', '결제 롤백 대응', 'CI 캐시 설정'];
+const COMMIT_TITLES = ['fix: 토큰 만료 시 재로그인 막기', 'feat(auth): refresh token rotation', 'refactor: 세션 저장소 분리', 'test: 만료 경계 테스트 추가', 'docs: 인증 흐름 정리', 'chore: 의존성 정리', 'perf: 조회 쿼리 인덱스 추가'];
+const EXCLUDE_CYCLE = ['BOT', 'MERGE_COMMIT', 'LOCKFILE_ONLY', 'NOT_OWN'];
+const DESCRIBED = [
+  ['로그인 세션 처리', '리뷰가 14건 오가고 3주 동안 고친 작업'],
+  ['결제 롤백 대응', 'PR 없이 같은 날 /payment 아래 6커밋을 몰아서 고친 장애 대응'],
+  ['토큰 재발급 인터셉터', 'PR 본문에 응답 시간이 800ms에서 120ms로 줄었다고 남아 있음'],
+  ['권한 체크 미들웨어', '여러 화면이 함께 쓰는 공통 코드를 새로 만듦'],
+  ['검색 인덱스 재구성', '리뷰어가 설계를 두 번 되물은 작업'],
+  ['알림 발송 재시도', '실패 처리와 테스트를 같이 넣음'],
+  ['캐시 무효화 정리', '버그 수정 커밋이 이어서 4건 붙음'],
+  ['CI 캐시 설정', '빌드 시간을 줄인 설정 변경'],
+  ['세션 저장소 분리', '구조를 나눈 리팩터링'],
+  ['인증 흐름 문서', '팀이 같이 본 설계 문서'],
+];
+const hex = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, '0').slice(0, 7);
+
+/**
+ * 실서버 activity(#496)처럼 읽은 만큼 줄을 낸다. seq 는 같은 진행이면 늘 같은 값이라 폴링마다 겹친 줄을 화면이 거른다.
+ * 읽기 줄(PR·커밋)은 단계마다 최근 20줄만, 판단 줄(묶음·고른 이유)은 모두 — 고른 이유는 8개씩 한꺼번에.
+ */
+function analyzeActivity(repo: Any, steps: Any[]) {
+  const at = (key: string) => steps.find((x) => x.key === key)!;
+  const out: Any[] = [];
+  let seq = 0;
+  const pr = at('PR_REVIEW'), commits = at('COMMITS'), grouped = at('COMPRESS'), reason = at('REASON');
+  const reads: Any[] = [];
+  for (let i = 0; i < pr.done; i++) reads.push({ seq: ++seq, step: 'PR_REVIEW', kind: 'PULL_REQUEST', number: repo.prCount - i, title: PR_TITLES[i % PR_TITLES.length], reviews: (i * 3) % 7 });
+  out.push(...reads.slice(-20));
+  const creads: Any[] = [];
+  for (let i = 0; i < commits.done; i++) creads.push({ seq: ++seq, step: 'COMMITS', kind: 'COMMIT', sha: hex(i + 1), title: COMMIT_TITLES[i % COMMIT_TITLES.length], files: 1 + ((i * 5) % 9), excluded: i % 9 === 4 ? EXCLUDE_CYCLE[(i / 9 | 0) % 4] : null });
+  out.push(...creads.slice(-20));
+  seq = repo.prCount + repo.contribution.mine; // 읽기 줄 수가 바뀌어도 판단 줄 seq 는 그 뒤에서 늘 같게
+  if (grouped.state === 'DONE' && grouped.done > 0) { // 묶음 결과는 단계가 끝날 때 한 줄
+    out.push({ seq: ++seq, step: 'COMPRESS', kind: 'GROUPED', units: Math.max(grouped.done, Math.round((commits.done + pr.done) / 3)), experiences: grouped.done });
+  }
+  const described = reason.state === 'DONE' ? Math.min(reason.done, DESCRIBED.length) : Math.min(DESCRIBED.length, Math.floor(reason.done / 8) * 8);
+  for (let i = 0; i < described; i++) out.push({ seq: ++seq, step: 'REASON', kind: 'DESCRIBED', title: DESCRIBED[i][0], reason: DESCRIBED[i][1] });
+  return out;
 }
 
 const emptyReasons = (repo: Any) => [
@@ -181,13 +223,14 @@ export function viewJob(id: string): Any | null {
     if (done) settle(j, () => materializeCandidates(repo, false));
     const count = db.candidates.filter((c) => c.repoId === repo.id).length;
     const steps = analyzeSteps(repo, progress, count || null);
+    const activity = analyzeActivity(repo, steps);
     if (done) {
       const empty = count === 0;
       // 후보 0개는 실패가 아니다. 판정이고, 판정 근거를 같이 준다
-      return ended({ state: 'SUCCEEDED', partial: false, steps, errorCode: null, retryable: null, retryAfterSec: null,
+      return ended({ state: 'SUCCEEDED', partial: false, steps, activity, errorCode: null, retryable: null, retryAfterSec: null,
         result: { repoId: repo.id, verdict: empty ? 'EMPTY' : 'OK', reasons: empty ? emptyReasons(repo) : [] } });
     }
-    return { ...base, state: elapsed < 0.3 ? 'QUEUED' : 'RUNNING', partial: false, steps,
+    return { ...base, state: elapsed < 0.3 ? 'QUEUED' : 'RUNNING', partial: false, steps, activity,
       errorCode: null, retryable: null, retryAfterSec: null, finishedAt: null, result: null, pollAfterMs: POLL_MS };
   }
 
@@ -254,6 +297,7 @@ export function cardView(c: Any) {
   const v = c.versions[c.versions.length - 1];
   const { versions, userId, ...rest } = c;
   const { _metadata, _confirmed, ...version } = v;
+  settleThemes(c); rest.themes = c.themes ?? []; delete rest.themesByUser; delete rest.themesDueAt; // 문항 유형(#564): 목 안의 표시는 내보내지 않는다
   void versions;
   void userId; void _metadata; void _confirmed;
   // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
@@ -276,9 +320,10 @@ export function starStates(c: Any) {
 
 export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
+  settleThemes(c);
   return {
     id: c.id, kind: c.kind, status: c.status, title: c.title,
-    versionNo: v.versionNo, star: starStates(c), areas: c.areas ?? [], techs: c.techs ?? [],
+    versionNo: v.versionNo, star: starStates(c), areas: c.areas ?? [], techs: c.techs ?? [], themes: c.themes ?? [],
     sourceLabel: c.candidate ? c.candidate.ref : c.interviewTurns > 0 ? 'INTERVIEW' : 'MANUAL',
     sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
@@ -396,7 +441,7 @@ export function askTurn(c: Any, field: string) {
     turnNo: turns.length + 1, field, askedBy: 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
     found: found.length ? found : ['이 카드에 붙은 커밋 근거가 없습니다'],
-    missing: [bank.missing], question: bank.question, options: bank.options, answer: null,
+    missing: [bank.missing], question: bank.question, options: bank.options, answer: null, outcome: null,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };
@@ -408,6 +453,7 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
   if (!turn) return null;
   turn.answer = { text, source }; // 가공 없이 그대로
+  turn.outcome = 'ANSWERED';
   pushVersion(c, 'INTERVIEW', { [FIELD_KEY[turn.field]]: text });
   c.evidence.push({ field: turn.field, type: source, authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
   c.droppedFields = c.droppedFields.filter((d: Any) => d.field !== turn.field);
@@ -415,6 +461,13 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   c.interviewTurns = db.interview[c.id].filter((t) => t.answer).length;
   if (c.generation?.partial) c.generation = null;
   captureVersion(c);
+  return c;
+}
+
+export function skipTurn(c: Any, turnNo: number) {
+  const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
+  if (!turn) return null;
+  turn.outcome = 'SKIPPED';
   return c;
 }
 
@@ -459,5 +512,28 @@ export function restore(raw: string): boolean {
     return true;
   } catch { return false; }
 }
+
+/**
+ * 문항 유형(#564). 실서버처럼 경험 카드를 확정한 직후에는 [] 이고, 몇 초 뒤 AI 가 골라 붙인다(계약 #475 3절).
+ * 목은 타이머 없이 "때가 지난 뒤 처음 읽을 때" 채운다. 사용자가 한 번 고르면(themesByUser) AI 가 덮어쓰지 않는다.
+ */
+export const MOCK_THEME_AI_DELAY_MS = 3_000;
+const THEME_WORDS: [string, RegExp][] = [
+  ['CONFLICT', /갈등|의견|합의|조율|설득/], ['COLLABORATION', /팀|협업|함께|동료/], ['PROBLEM_SOLVING', /문제|해결|장애|오류|롤백/],
+  ['LEADERSHIP', /주도|이끌|리드|파트장/], ['CHALLENGE', /도전|목표/], ['FAILURE', /실패|극복/], ['GROWTH', /배우|배웠|성장|깨달/],
+];
+export function queueAiThemes(c: Any) {
+  if (c.kind === 'QUALITATIVE' && !c.themesByUser && !(c.themes?.length)) c.themesDueAt = Date.now() + MOCK_THEME_AI_DELAY_MS;
+}
+export function settleThemes(c: Any) {
+  if (!c.themesDueAt || Date.now() < c.themesDueAt) return;
+  delete c.themesDueAt;
+  if (c.themesByUser || c.themes?.length) return;
+  const v = c.versions[c.versions.length - 1];
+  const text = [c.title, ...STAR.map((f) => v[FIELD_KEY[f]] ?? '')].join(' ');
+  const picked = THEME_WORDS.filter(([, word]) => word.test(text)).map(([theme]) => theme).slice(0, 2);
+  c.themes = picked.length ? picked : ['GROWTH'];
+}
+export function chooseThemes(c: Any, themes: string[]) { c.themes = themes; c.themesByUser = true; delete c.themesDueAt; }
 
 hydrateCards();

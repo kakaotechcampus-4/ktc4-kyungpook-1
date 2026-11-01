@@ -1,4 +1,6 @@
 package com.gitory.backend.card.domain;
 
-public record GeneratedCard(Long id, Long candidateId, String title) {
+import java.util.UUID;
+
+public record GeneratedCard(Long id, UUID publicId, Long candidateId, String title) {
 }

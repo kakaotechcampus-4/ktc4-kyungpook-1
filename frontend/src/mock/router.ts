@@ -7,8 +7,9 @@ import { getProfile, putProfile } from './profile';
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
+import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
 import { now } from './fixtures';
+import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
 
 type Any = Record<string, any>;
@@ -195,17 +196,19 @@ on('PATCH', '/cards/:id/draft', ({ params, body }) => {
 on('PATCH', '/cards/:id/metadata', ({ params, body }) => {
   const card = findCard(params[0]);
   if (!card) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  if (card.status !== 'DRAFT') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
   // 실서버처럼 null 인 칸은 보내지 않은 것으로 보고, 빈 기간은 지운다(#420)
   const patch = Object.fromEntries(Object.entries(body).filter(([, value]) => value !== null));
-  const titleProvided = Object.hasOwn(patch, 'title'), periodProvided = Object.hasOwn(patch, 'period');
+  const titleProvided = Object.hasOwn(patch, 'title'), periodProvided = Object.hasOwn(patch, 'period'), themesProvided = Object.hasOwn(patch, 'themes');
+  // 문항 유형만 고치는 요청은 확정 카드도 다시 열지 않고 받는다(#564). 제목·기간은 지금처럼 작성 중 카드만 받는다
+  if (card.status !== 'DRAFT' && (titleProvided || periodProvided)) return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
   const parsed = CardMetadataPatch.safeParse(patch);
-  if (!parsed.success) return fail(400, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
+  if (!parsed.success) return fail(400, 'INVALID_REQUEST', themesProvided ? '문항 유형을 확인해 주세요' : '제목과 기간을 확인해 주세요');
+  if (themesProvided && card.kind !== 'QUALITATIVE' && parsed.data.themes!.length) return fail(400, 'INVALID_REQUEST', '문항 유형은 경험 카드에만 붙일 수 있어요');
   if (titleProvided) card.title = parsed.data.title!;
   if (periodProvided) card.period = parsed.data.period || null;
-  card.metadataUpdatedAt = now();
-  card.updatedAt = card.metadataUpdatedAt;
-  return ok({ cardId: card.id, title: card.title, period: card.period ?? null, updatedAt: card.metadataUpdatedAt });
+  if (titleProvided || periodProvided) { card.metadataUpdatedAt = now(); card.updatedAt = card.metadataUpdatedAt; }
+  if (themesProvided) chooseThemes(card, parsed.data.themes!); // 카드 글이 아니라 고르는 표시라 updatedAt 은 그대로다
+  return ok({ cardId: card.id, title: card.title, period: card.period ?? null, themes: card.themes ?? [], updatedAt: card.updatedAt ?? cardSummary(card).updatedAt });
 });
 on('GET', '/cards/:id', ({ params }) => {
   const c = findCard(params[0]);
@@ -258,6 +261,7 @@ on('POST', '/cards/:id/confirm', ({ params }) => {
   // 계약: "S·A 없으면 422" — 클라이언트 규칙(canConfirmCard)과 같게 둘 다 있어야 한다. 하나만 있어도 통과하던 건 어긋남이었다.
   if (v.situation == null || isCardBlank(v.situation) || v.action == null || isCardBlank(v.action)) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
   c.status = 'CONFIRMED'; c.confirmedAt = now(); c.updatedAt = c.confirmedAt;
+  queueAiThemes(c); // 유형이 빈 경험 카드는 확정을 저장한 뒤 몇 초 안에 AI 가 붙인다(#564)
   v._confirmed = true; // 현재 버전을 고정한다 — 같은 내용의 가짜 이력을 추가하지 않는다
   const used = c.candidate ? [c.candidate.id] : [];
   used.forEach((id) => { const cand = db.candidates.find((x) => x.id === id); if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; } });
@@ -299,15 +303,25 @@ on('POST', '/cards/:id/interview', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 되물을 수 있습니다');
-  const answered = (db.interview[c.id] ?? []).filter((t: Any) => t.answer).length;
-  if (answered >= INTERVIEW_MAX_TURNS) return fail(409, 'INTERVIEW_CAP', '이 카드의 되묻기 상한에 닿았습니다');
+  // 실서버처럼 넘긴 질문도 상한에 세고, 넘긴 칸은 다시 묻지 않는다
+  const asked = db.interview[c.id] ?? [];
+  if (asked.length >= INTERVIEW_MAX_TURNS) return fail(409, 'INTERVIEW_CAP', '이 카드의 되묻기 상한에 닿았습니다');
+  if (asked.some((t: Any) => t.field === body.field && t.outcome === 'SKIPPED')) return fail(409, 'INTERVIEW_FIELD_CLOSED', '넘긴 칸은 다시 묻지 않습니다');
+  if (body.field === undefined || body.field === null) {
+    // 실서버처럼 field 가 없으면 빈 칸 중 아직 닫히지 않은 칸을 고르고, 없으면 더 물을 것이 없다(null)
+    const v = c.versions[c.versions.length - 1];
+    const next = STAR.find((f) => isCardBlank(v[FIELD_KEY[f]] ?? '') && !asked.some((t: Any) => t.field === f && t.outcome === 'SKIPPED'));
+    return ok(next ? askTurn(c, next) : null);
+  }
   if (!['S', 'T', 'A', 'R'].includes(body.field)) return fail(400, 'BAD_FIELD', 'field 는 S/T/A/R 중 하나여야 합니다');
   return ok(askTurn(c, body.field));
 });
 on('POST', '/cards/:id/interview/:turn/answer', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  const updated = answerTurn(c, Number(params[1]), String(body.text ?? ''), body.source ?? 'USER_STATED');
+  // 실서버처럼 넘기기는 칸을 바꾸지 않고 질문만 넘김으로 남긴다
+  const updated = body.kind === 'SKIP' ? skipTurn(c, Number(params[1]))
+    : answerTurn(c, Number(params[1]), String(body.text ?? ''), body.source ?? 'USER_STATED');
   return updated ? ok(cardView(updated)) : fail(404, 'TURN_NOT_FOUND', '질문을 찾을 수 없습니다');
 });
 

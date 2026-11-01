@@ -9,8 +9,10 @@ STAR 문장 작성만 LLM에 맡기고, 근거 SHA 실재 확인·근거 없는 
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal, Optional, Protocol, get_args
 
@@ -23,12 +25,15 @@ from schemas.analysis import (
     StarAnalysisResponse,
     StarFieldResult,
     StarMaterials,
+    StarStep,
 )
 from schemas.common import (
     EmptyReasonCode,
     StarArea,
+    StarMaterialKind,
     StarSlot,
-    StarTech,
+    StarStepKind,
+    TechTag,
     StatementConfidence,
 )
 from services.llm_executors import CARD_DRAFT_EXECUTOR, LLMCallSkipped, run_llm_call
@@ -39,8 +44,10 @@ from services.llm_structured_client import (
     LLMStructuredOutputTooLongError,
     StructuredCallResult,
 )
+from services.progress import is_listening
 from services.secret_redaction import mask_emails, redact_secrets
 from services.star_check import DraftSlot, SlotCheck, check_draft
+from services.star_progress import ReportedSteps, SlotStreamer
 from services.star_review import ReviewFinding, ReviewSources, StarReviewer
 from services.usage import record_repair_round, record_tool_call
 
@@ -91,7 +98,7 @@ PR 본문 활용:
 
 분야·기술 태그 규칙:
 - areas(분야): evidence의 changed_paths(바뀐 파일 경로)와 요약으로 이 카드의 변경이 주로 어느 분야인지 고른다. 최대 2개이고 비중이 큰 것부터 적는다. AI는 모델·프롬프트·임베딩·LLM 호출을 다루는 변경일 때만 쓰고, AI 서비스의 일반 API 코드는 BACKEND다. DOCS는 코드 분야가 하나도 없을 때만 쓴다. TEST는 시험 코드·시험 설정·E2E가 이 변경의 중심일 때만 쓰고, 기능 코드와 함께 더한 시험으로는 쓰지 않는다.
-- techs(기술): changed_paths의 확장자·Dockerfile·.github/workflows 같은 경로와 요약에 직접 드러난 것만 최대 4개 고르고 중요한 것부터 적는다. 바뀐 파일이 의존성·빌드 설정 파일(build.gradle·package.json·requirements.txt·pyproject.toml·pom.xml 등)뿐이면 그 파일 이름으로 기술을 짐작하지 않는다. REACT는 .tsx·.jsx 화면 코드를 바꿨을 때 TYPESCRIPT나 JAVASCRIPT와 함께 쓸 수 있다. 근거로 판단할 수 없으면 빈 배열로 둔다.
+- techs(기술): 이 카드의 커밋에 드러난 기술만 최대 8개 고르고 이 일에서 중요한 것부터 적는다. changed_paths의 확장자·Dockerfile·.github/workflows 같은 경로로 언어·도구를 고르고(예: .java → JAVA, Dockerfile → DOCKER), 요약·커밋 메시지·PR 본문에 그 기술을 실제로 쓴 흔적이 있으면 프레임워크·저장소·도구도 고른다(예: JpaRepository → JPA, Redis 캐시를 붙임 → REDIS, Kafka 소비자 → KAFKA, @SpringBootApplication·Spring Boot 설정 → SPRING). 바뀐 파일이 의존성·빌드 설정 파일(build.gradle·package.json·requirements.txt·pyproject.toml·pom.xml 등)뿐이면 그 파일 내용만으로 기술을 짐작하지 않는다. REACT는 .tsx·.jsx 화면 코드를 바꿨을 때 TYPESCRIPT나 JAVASCRIPT와 함께 쓸 수 있다. 근거로 판단할 수 없으면 빈 배열로 둔다.
 
 반드시 제공된 구조화 출력 스키마로만 응답하세요."""
 
@@ -144,9 +151,11 @@ _REVERSED_CODE = "REVERSED_MEANING"
 _REPAIR_CODES = frozenset({"NO_EVIDENCE", "UNSOURCED_NUMBER", "CODE_NAME"})
 _EMPTY_CODE = "EMPTY"
 _EMPTY_PROBLEM_REASON = "이 칸이 비어 있습니다."
+_MAX_STEP_REASON_CHARS = 60
 
-MaterialKind = Literal["ISSUE", "REVIEW", "OWNER_REPLY"]
 SlotAction = Literal["OPEN", "REWRITE", "KEEP"]
+#: 고르기의 REWRITE 는 '자료 없이 고쳐 쓰기로 함' 이라, 실제로 다시 쓴 단계(REWRITE)와 이름을 나눈다.
+_CHOICE_KINDS: dict[SlotAction, StarStepKind] = {"OPEN": "OPEN", "REWRITE": "RETRY", "KEEP": "KEEP"}
 #: 이슈는 작업 전에, 리뷰는 다른 사람이 쓴 글이라 내가 한 일(A)과 결과(R)를 받칠 수 없다.
 _MATERIAL_SLOTS: dict[str, tuple[StarSlot, ...]] = {
     "ISSUE": ("S", "T"),
@@ -163,9 +172,9 @@ _CHANGE_KIND_EDIT = "기존 줄 바꿈"
 _CHURN = re.compile(r"\+(\d+)/-(\d+)")
 
 MAX_AREAS = 2
-MAX_TECHS = 4
+MAX_TECHS = 8
 _AREAS = frozenset(get_args(StarArea))
-_TECHS = frozenset(get_args(StarTech))
+_TECHS = frozenset(get_args(TechTag))
 _NON_CODE_AREA = "DOCS"
 
 
@@ -190,7 +199,7 @@ class StarDraftOutput(BaseModel):
     A: StarField
     R: StarField
     areas: list[StarArea] = Field(default_factory=list)
-    techs: list[StarTech] = Field(default_factory=list)
+    techs: list[TechTag] = Field(default_factory=list)
 
 
 class SlotChoice(BaseModel):
@@ -217,7 +226,7 @@ class Material:
     """첫 쓰기에는 넣지 않고 고르기에서 열 수 있는 자료 하나로, slots 는 이 자료로 쓸 수 있는 칸이다."""
 
     id: str
-    kind: MaterialKind
+    kind: StarMaterialKind
     title: str
     body: str
     slots: tuple[StarSlot, ...]
@@ -234,6 +243,16 @@ class Material:
         return f"[{_MATERIAL_LABELS[self.kind]}] {self.body}"
 
 
+@dataclass(frozen=True)
+class _Choice:
+    """칸 하나에 정한 행동으로, 모델이 고른 행동을 코드가 그대로 받았을 때만 by_model 이고 이유가 붙는다."""
+
+    action: SlotAction
+    material: Optional[Material] = None
+    reason: Optional[str] = None
+    by_model: bool = False
+
+
 class StarGenerationError(RuntimeError):
     """STAR 초안을 만들 수 없을 때 발생한다. ``retryable``은 다시 시도해 나아질 수 있는지다."""
 
@@ -247,7 +266,7 @@ class _Timeout(Exception):
 
 
 class StructuredCaller(Protocol):
-    """``StructuredLLMClient``와 같은 호출 계약. 테스트 대역도 이 형태를 따른다."""
+    """``StructuredLLMClient``와 같은 호출 계약. 테스트 대역도 이 형태를 따르고, on_partial 은 스트리밍 API 가 들을 때만 넘긴다."""
 
     def call(
         self,
@@ -256,6 +275,7 @@ class StructuredCaller(Protocol):
         output_model: type[BaseModel],
         max_completion_tokens: int,
         timeout_seconds: Optional[float] = None,
+        on_partial: Optional[Callable[[dict[str, Any]], None]] = None,
     ) -> StructuredCallResult[Any]: ...
 
 
@@ -310,7 +330,8 @@ class StarGenerator:
 
         마감 안에 초안을 받지 못하면 실패 대신 네 칸을 TIMEOUT으로 비운 결과를 돌려준다.
         고쳐 쓰기를 켰으면 첫 초안 뒤에 코드 검사에 걸린 칸만, 검토도 받았으면 검토가 뒤집혔다고 본 칸까지 고쳐 쓰게 하고,
-        자료도 받았으면 걸리거나 빈 칸에서 자료를 골라 열게 한다.
+        자료도 받았으면 걸리거나 빈 칸에서 자료를 골라 열게 한다. 거친 단계는 steps 에 순서대로 남기고, 고쳐 쓰기를 껐으면
+        첫 초안과 첫 검사만 남는다.
         """
         if self._client is None:
             raise StarGenerationError("STAR 생성에 사용할 LLM이 설정되지 않았습니다.", retryable=False)
@@ -319,17 +340,26 @@ class StarGenerator:
         payload = self.build_payload(request, evidence)
         deadline = asyncio.get_running_loop().time() + self._limits.deadline_seconds
         try:
-            output = await self._call(SYSTEM_PROMPT, payload, deadline)
+            output = await self._call(SYSTEM_PROMPT, payload, deadline, stream_round=0)
         except _Timeout:
             return self._timed_out(request)
+        steps = ReportedSteps()
+        steps.append(StarStep(round=0, actor="MODEL", kind="DRAFT"))
         still_reversed: frozenset[StarSlot] = frozenset()
         opened: list[Material] = []
         if self._repair_enabled:
             materials = _materials(request.materials, self._limits)
             output, still_reversed, opened = await self._repair(
-                self._reviewer, evidence, payload, output, deadline, materials
+                self._reviewer, evidence, payload, output, deadline, materials, steps
             )
-        return self._to_response(request, evidence, payload, output, still_reversed, opened)
+        else:
+            written = self._written(output)
+            checks = check_draft(
+                written, {item.sha: item for item in evidence}, payload["confirmed_answers"],
+                payload.get("pull_request_body"),
+            )
+            steps.extend(_check_steps(0, set(SLOTS), written, _repair_problems(checks, {})))
+        return self._to_response(request, evidence, payload, output, still_reversed, opened, steps)
 
     def build_payload(
         self, request: StarAnalysisRequest, evidence: list[DiffEvidence]
@@ -350,21 +380,31 @@ class StarGenerator:
         ]
         return payload
 
-    async def _call(self, system_prompt: str, payload: dict[str, Any], deadline: float) -> StarDraftOutput:
+    async def _call(
+        self,
+        system_prompt: str,
+        payload: dict[str, Any],
+        deadline: float,
+        stream_round: Optional[int] = None,
+        stream_slots: frozenset[StarSlot] | set[StarSlot] = frozenset(SLOTS),
+    ) -> StarDraftOutput:
         """스키마에 맞지 않는 응답만 다시 요청한다. 각 호출은 남은 마감 시간 안에서만 기다린다.
 
         키·모델 이름·콘텐츠 필터 오류와 출력 길이 초과는 다시 해도 같으므로 retryable=false로 올린다.
+        stream_round 를 주고 스트리밍 API 가 듣고 있으면 stream_slots 칸의 글을 쓰는 동안 흘려보낸다.
         """
         loop = asyncio.get_running_loop()
         for attempt in range(1, self._limits.max_attempts + 1):
             timeout = deadline - loop.time()
             if timeout < self._limits.min_call_seconds:
                 raise _Timeout
+            streamer = SlotStreamer(stream_round, stream_slots) if stream_round is not None and is_listening() else None
+            call = self._client.call if streamer is None else functools.partial(self._client.call, on_partial=streamer.feed)
             try:
                 result = await asyncio.wait_for(
                     run_llm_call(
                         CARD_DRAFT_EXECUTOR,
-                        self._client.call,
+                        call,
                         system_prompt,
                         payload,
                         StarDraftOutput,
@@ -389,6 +429,8 @@ class StarGenerator:
                 if deadline - loop.time() < 1:
                     raise _Timeout from exc
                 raise StarGenerationError("STAR LLM 호출에 실패했습니다.", retryable=True) from exc
+            if streamer is not None:
+                streamer.finish(result.output)
             return result.output
         raise StarGenerationError("STAR 초안을 생성하지 못했습니다.", retryable=True)
 
@@ -400,6 +442,7 @@ class StarGenerator:
         output: StarDraftOutput,
         deadline: float,
         materials: list[Material],
+        steps: list[StarStep],
     ) -> tuple[StarDraftOutput, frozenset[StarSlot], list[Material]]:
         """검사·검토에 걸린 칸만 이유와 함께 다시 쓰게 하고, 다시 쓴 칸만 다시 검사·검토한다.
 
@@ -407,6 +450,7 @@ class StarGenerator:
         있는 자료만 상한까지 열어 붙인다. 다시 쓴 칸이 앞 글에 없던 문제로 검사에 걸리거나 비면 앞 글로 되돌려 남은 횟수
         안에서 다시 쓰게 하고, 검토·다시 쓰기 호출이 실패하거나 마감이 가까우면 지금 초안에서 멈춘다. 돌려주는 칸 목록은
         마지막 검토에서도 뒤집혔다고 본 칸과 뒤집혔는데 그대로 두기로 한 칸이라, 검토가 틀렸을 수 있어 지우지 않고 확인 필요로 내린다.
+        검사 결과·고른 행동·다시 쓴 칸·되돌린 칸은 바퀴 번호와 함께 steps 에 더한다.
         """
         by_sha = {item.sha: item for item in evidence}
         targets: set[StarSlot] = set(SLOTS)
@@ -415,6 +459,9 @@ class StarGenerator:
         for round_index in range(self._limits.max_repair_rounds + 1):
             written = {slot: draft for slot, draft in self._written(output).items() if slot in targets}
             empties = {slot for slot in targets if slot not in written and self._can_open(materials, opened, slot)}
+            checks = check_draft(
+                written, by_sha, payload["confirmed_answers"], payload.get("pull_request_body"), _extra_sources(opened)
+            )
             reversed_slots: dict[StarSlot, ReviewFinding] = {}
             if written and reviewer is not None:
                 try:
@@ -427,21 +474,23 @@ class StarGenerator:
                 except Exception as exc:
                     # 검토 모델 설정·호출·형식이 어떻게 실패하든 카드는 지금 초안으로 만든다
                     logger.warning("STAR 초안 검토가 실패해 고쳐 쓰기를 멈춘다: %s", type(exc).__name__)
+                    steps.extend(_check_steps(round_index, targets, written, _repair_problems(checks, {})))
                     return output, frozenset(kept_reversed), opened
-            checks = check_draft(
-                written, by_sha, payload["confirmed_answers"], payload.get("pull_request_body"), _extra_sources(opened)
-            )
             problems = _repair_problems(checks, reversed_slots)
+            steps.extend(_check_steps(round_index, targets, written, problems))
             flagged = {problem["slot"] for problem in problems}
             still_reversed = frozenset(kept_reversed | set(reversed_slots))
             if (not flagged and not empties) or round_index == self._limits.max_repair_rounds:
                 return output, still_reversed, opened
-            plan, to_open = await self._choose(payload["title"], output, problems, flagged, empties,
-                                               materials, opened, deadline)
+            plan, to_open, asked = await self._choose(payload["title"], output, problems, flagged, empties,
+                                                      materials, opened, deadline)
+            # 고를 자료가 없어 모델에게 묻지 않은 바퀴는 고쳐 쓰기뿐이라, 행동 단계 없이 다시 쓴 칸만 남긴다
+            if asked:
+                steps.extend(_choice_step(round_index + 1, slot, choice) for slot, choice in plan.items())
             for material in to_open:
                 opened.append(material)
                 record_tool_call()
-            rewrite_slots = {slot for slot, action in plan.items() if action != "KEEP"}
+            rewrite_slots = {slot for slot, choice in plan.items() if choice.action != "KEEP"}
             kept_reversed |= {slot for slot in reversed_slots if slot not in rewrite_slots}
             if not rewrite_slots:
                 return output, still_reversed, opened
@@ -458,14 +507,25 @@ class StarGenerator:
                 rewrite_payload["opened_materials"] = [material.opened() for material in opened]
             try:
                 rewritten = await self._call(
-                    MATERIAL_REWRITE_SYSTEM_PROMPT if opened else REWRITE_SYSTEM_PROMPT, rewrite_payload, deadline
+                    MATERIAL_REWRITE_SYSTEM_PROMPT if opened else REWRITE_SYSTEM_PROMPT, rewrite_payload, deadline,
+                    stream_round=round_index + 1, stream_slots=rewrite_slots,
                 )
             except (_Timeout, StarGenerationError) as exc:
                 logger.warning("STAR 초안을 고쳐 쓰지 못해 지금 초안으로 만든다: %s", type(exc).__name__)
                 return output, still_reversed, opened
             record_repair_round()
-            kept = {slot for slot in rewrite_slots if not self._worse(slot, problems, rewritten, by_sha, payload, opened)}
-            output = output.model_copy(update={slot: getattr(rewritten, slot) for slot in kept})
+            steps.extend(
+                StarStep(round=round_index + 1, actor="MODEL", kind="REWRITE", slot=slot)
+                for slot in SLOTS
+                if slot in rewrite_slots
+            )
+            worse = {slot: self._worse(slot, problems, rewritten, by_sha, payload, opened) for slot in rewrite_slots}
+            steps.extend(
+                StarStep(round=round_index + 1, actor="CODE", kind="REVERT", slot=slot, code=worse[slot])
+                for slot in SLOTS
+                if worse.get(slot)
+            )
+            output = output.model_copy(update={slot: getattr(rewritten, slot) for slot in rewrite_slots if not worse[slot]})
             targets = rewrite_slots
         return output, frozenset(kept_reversed), opened
 
@@ -485,8 +545,8 @@ class StarGenerator:
         materials: list[Material],
         opened: list[Material],
         deadline: float,
-    ) -> tuple[dict[StarSlot, SlotAction], list[Material]]:
-        """걸린 칸과 빈 칸의 행동을 정한다. 걸린 칸이 쓸 수 있는 자료가 없으면 모델을 부르지 않고 고쳐 쓰기로 둔다."""
+    ) -> tuple[dict[StarSlot, _Choice], list[Material], bool]:
+        """걸린 칸과 빈 칸의 행동과 모델에게 물었는지를 정한다. 쓸 수 있는 자료가 없으면 모델을 부르지 않고 고쳐 쓰기로 둔다."""
         targets = flagged | empties
         offered = {
             material.id: material
@@ -495,7 +555,7 @@ class StarGenerator:
         }
         opens_left = self._limits.max_material_opens - len(opened)
         if not offered or opens_left <= 0:
-            return _plan(None, flagged, empties, {}, 0)
+            return *_plan(None, flagged, empties, {}, 0), False
         texts = self._texts(output)
         slots = [
             {
@@ -516,7 +576,7 @@ class StarGenerator:
             "materials": [material.offer() for material in offered.values()],
             "opens_left": opens_left,
         }
-        return _plan(await self._decide(payload, deadline), flagged, empties, offered, opens_left)
+        return *_plan(await self._decide(payload, deadline), flagged, empties, offered, opens_left), True
 
     async def _decide(self, payload: dict[str, Any], deadline: float) -> Optional[SlotChoiceOutput]:
         """고르기가 없어도 자료 없이 걸린 칸만 고쳐 쓰면 되므로, 어떤 실패든 빈 값으로 돌려준다."""
@@ -550,15 +610,19 @@ class StarGenerator:
         by_sha: dict[str, DiffEvidence],
         payload: dict[str, Any],
         opened: list[Material],
-    ) -> bool:
-        """다시 쓴 칸이 앞 글보다 나빠졌는지 본다. 근거가 없어 걸린 칸은 비우는 것이 고친 것이다."""
+    ) -> Optional[str]:
+        """다시 쓴 칸이 앞 글보다 나빠졌으면 그렇게 만든 문제 코드를, 아니면 None 을 돌려준다.
+
+        근거가 없어 걸린 칸은 비우는 것이 고친 것이고, 그 밖의 칸이 비면 EMPTY 다.
+        """
         before = {problem["code"] for problem in problems if problem["slot"] == slot}
         written = self._written(rewritten)
         if slot not in written:
-            return "NO_EVIDENCE" not in before
+            return None if "NO_EVIDENCE" in before else _EMPTY_CODE
         check = check_draft({slot: written[slot]}, by_sha, payload["confirmed_answers"],
                             payload.get("pull_request_body"), _extra_sources(opened))
-        return any(problem.code in _REPAIR_CODES and problem.code not in before for problem in check[slot].problems)
+        return next((problem.code for problem in check[slot].problems
+                     if problem.code in _REPAIR_CODES and problem.code not in before), None)
 
     def _texts(self, output: StarDraftOutput) -> dict[StarSlot, str]:
         return {
@@ -590,6 +654,7 @@ class StarGenerator:
         output: StarDraftOutput,
         still_reversed: frozenset[StarSlot] = frozenset(),
         opened: Optional[list[Material]] = None,
+        steps: Optional[list[StarStep]] = None,
     ) -> StarAnalysisResponse:
         by_sha = {item.sha: item for item in evidence}
         removed_claims: list[str] = []
@@ -653,6 +718,7 @@ class StarGenerator:
             removed_claims=removed_claims,
             areas=_clean_tags(output.areas, _AREAS, MAX_AREAS, drop_docs=True),
             techs=_clean_tags(output.techs, _TECHS, MAX_TECHS),
+            steps=steps or [],
         )
 
     def _empty(self, reason: Optional[str], code: EmptyReasonCode) -> StarFieldResult:
@@ -786,35 +852,87 @@ def _plan(
     empties: set[StarSlot],
     offered: dict[str, Material],
     opens_left: int,
-) -> tuple[dict[StarSlot, SlotAction], list[Material]]:
+) -> tuple[dict[StarSlot, _Choice], list[Material]]:
     """모델이 고른 행동을 코드가 지킬 규칙에 맞추고, 열 자료를 고른 순서대로 모은다.
 
     목록에 없는 자료·그 칸에 쓸 수 없는 자료·상한을 넘는 열기와 모델이 빠뜨린 칸은 걸린 칸이면 고쳐 쓰기로,
     빈 칸이면 그대로 두기로 바꾼다. 빈 칸은 고칠 문장이 없어 새 자료 없이 다시 쓰지 않는다.
+    코드가 바꾼 행동에는 모델의 이유를 붙이지 않는다.
     """
     picked: dict[StarSlot, SlotChoice] = {}
     for choice in decision.slots if decision is not None else []:
         picked.setdefault(choice.slot, choice)
-    plan: dict[StarSlot, SlotAction] = {}
+    plan: dict[StarSlot, _Choice] = {}
     to_open: list[Material] = []
     for slot in SLOTS:
         if slot not in flagged and slot not in empties:
             continue
-        fallback: SlotAction = "REWRITE" if slot in flagged else "KEEP"
+        fallback = _Choice("REWRITE" if slot in flagged else "KEEP")
         choice = picked.get(slot)
-        action: SlotAction = choice.action if choice is not None else fallback
-        if action == "OPEN":
-            material = offered.get(choice.material_id or "") if choice is not None else None
+        if choice is None or (choice.action == "REWRITE" and slot not in flagged):
+            plan[slot] = fallback
+            continue
+        material = None
+        if choice.action == "OPEN":
+            material = offered.get(choice.material_id or "")
             if material is None or slot not in material.slots or (
                 material not in to_open and len(to_open) >= opens_left
             ):
-                action = fallback
-            elif material not in to_open:
+                plan[slot] = fallback
+                continue
+            if material not in to_open:
                 to_open.append(material)
-        if action == "REWRITE" and slot not in flagged:
-            action = "KEEP"
-        plan[slot] = action
+        plan[slot] = _Choice(choice.action, material, _step_reason(choice.reason), by_model=True)
     return plan, to_open
+
+
+def _check_steps(
+    round_no: int, slots: set[StarSlot], written: dict[StarSlot, DraftSlot], problems: list[dict[str, Any]]
+) -> list[StarStep]:
+    """검사·검토 결과를 칸 순서대로 남긴다. 걸린 칸은 문제마다, 빈 칸은 EMPTY 로, 통과한 칸은 다시 쓴 뒤에만 남긴다.
+
+    뒤집힘은 검토 모델이 찾아 MODEL 이고, 값은 화면 문장에 쓰는 걸린 수치·이름만 보내고 긴 원문 문장은 보내지 않는다.
+    """
+    steps: list[StarStep] = []
+    for slot in SLOTS:
+        if slot not in slots:
+            continue
+        found = [problem for problem in problems if problem["slot"] == slot]
+        if found:
+            steps.extend(
+                StarStep(
+                    round=round_no,
+                    actor="MODEL" if problem["code"] == _REVERSED_CODE else "CODE",
+                    kind="FLAG",
+                    slot=slot,
+                    code=problem["code"],
+                    value=None if problem["code"] == _REVERSED_CODE else problem["value"],
+                )
+                for problem in found
+            )
+        elif slot not in written:
+            steps.append(StarStep(round=round_no, actor="CODE", kind="FLAG", slot=slot, code=_EMPTY_CODE))
+        elif round_no > 0:
+            steps.append(StarStep(round=round_no, actor="CODE", kind="PASS", slot=slot))
+    return steps
+
+
+def _choice_step(round_no: int, slot: StarSlot, choice: _Choice) -> StarStep:
+    material = choice.material
+    return StarStep(
+        round=round_no,
+        actor="MODEL" if choice.by_model else "CODE",
+        kind=_CHOICE_KINDS[choice.action],
+        slot=slot,
+        value=material.title if material is not None else None,
+        material=material.kind if material is not None else None,
+        reason=choice.reason,
+    )
+
+
+def _step_reason(reason: str) -> Optional[str]:
+    """모델이 쓴 이유는 화면에 그대로 나가므로 비밀값·이메일을 가린 뒤에 자른다."""
+    return _clip(mask_emails(redact_secrets(" ".join(reason.split()))), _MAX_STEP_REASON_CHARS) or None
 
 
 def _extra_sources(opened: list[Material]) -> dict[StarSlot, list[str]]:

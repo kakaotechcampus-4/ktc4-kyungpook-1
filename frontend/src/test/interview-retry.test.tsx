@@ -63,6 +63,7 @@ describe('interview retry and pending answer', () => {
     let turns: InterviewTurn[] = [{ ...template, field: 'R', turnNo: 1, question: 'R question', answer: null }];
     vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
     vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, answer) => {
+      if (!('text' in answer)) throw new Error('이 시험은 글 답만 보낸다');
       turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer } : turn);
       return { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' };
     });

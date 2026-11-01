@@ -1,5 +1,5 @@
 import { CardMetadataPatch } from '@/api/schemas';
-import { mockMatchDetail, mockMatchList } from './matching';
+import { mockMatchDetail, mockMatchList, mockStartGapFill } from './matching';
 import { getProfile, putProfile } from './profile';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
@@ -36,8 +36,16 @@ on('GET', '/matches/:id', ({ params }) => {
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
 });
 on('POST', '/matches/:id/judgement', ({ params }) => {
-  const detail=mockMatchDetail(params[0]);
+  const detail=mockMatchDetail(params[0], true);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
+});
+// 모자란 조건 채우기 시작 — 몸체의 conditionIds 가 있으면 그 조건만 다시 찾는다([그래도 찾아보기]). 오류 코드는 서버와 아직 맞추지 않았다
+on('POST', '/matches/:id/gap-fill', ({ params, body }) => {
+  const ids = Array.isArray(body.conditionIds) ? body.conditionIds.filter((x: unknown): x is string => typeof x === 'string') : undefined;
+  const r = mockStartGapFill(params[0], ids);
+  if (r === 'NOT_FOUND') return fail(404, 'NOT_FOUND', '공고를 찾을 수 없습니다.');
+  if (r === 'NOT_JUDGED') return fail(409, 'NOT_JUDGED', '먼저 이 공고와 맞춰 봐야 합니다.');
+  return ok(r);
 });
 // 인적사항 — BE #552 계약. 한 사용자당 한 문서이고 PUT 이 네 목록을 통째로 바꾼다
 on('GET', '/profile', () => ok(getProfile())); // 저장한 적이 없어도 200 + 빈 목록 + savedAt:null

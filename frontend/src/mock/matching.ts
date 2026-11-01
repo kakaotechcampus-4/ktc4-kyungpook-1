@@ -4,6 +4,7 @@ import { MatchDetail, MatchTarget } from "@/api/matching";
 import { db, cardView } from "./store";
 import { Card } from "@/api/schemas";
 import { applyMask } from "@/lib/mask";
+import { gapFillOf, isJudged, markJudged, proposalsOf, startGapFill } from "./matchState";
 
 /**
  * Mock server only: 응답 계약의 companyId·logoUrl. 예시 JSON 은 서버와 같은 모양을 지키는 문서라 건드리지 않고 여기서 얹는다.
@@ -21,30 +22,51 @@ const scenario = (index: number) => {
   return MatchTarget.parse({ ...example, ...MOCK_COMPANY[example.id] });
 };
 
+type MetBy = MatchDetail["conditions"][number]["metBy"][number];
+const metByOf = (c: (typeof db.cards)[number]): MetBy | null => {
+  const card = Card.parse(cardView(c));
+  const reason = [card.version.action, card.version.result].find((x) => x?.trim());
+  return reason
+    ? {
+        cardId: card.id,
+        cardTitle: applyMask(card.title, card.maskRules),
+        cardKind: card.kind,
+        repoId: card.repo?.id ?? null,
+        reason: applyMask(reason, card.maskRules),
+      }
+    : null;
+};
+
+/** 채우기 제안을 따라 만들거나 마저 채운 카드가 확정됐으면, 그 조건은 다시 맞춰 볼 때 그 카드로 채워진다 */
+const filledBy = (id: string, now: number) => {
+  const filled = new Map<string, MetBy>();
+  for (const { conditionId, proposal } of proposalsOf(id, now)) {
+    const card = db.cards.find((c) =>
+      c.status === "CONFIRMED" &&
+      (proposal.action === "CREATE_CARD" ? c.candidate?.id === proposal.candidateId : proposal.action === "CONTINUE_CARD" ? c.id === proposal.cardId : false),
+    );
+    const metBy = card ? metByOf(card) : null;
+    if (metBy) filled.set(conditionId, metBy);
+  }
+  return filled;
+};
+
 /**
  * Mock server only: supplied examples are scenarios, not a client-side matching algorithm.
- * 목은 늘 맞춰 본 뒤의 상세를 준다(needsJudgement false) — 앞쪽 met 개 조건은 확정 카드의 행동·결과 문장으로 채운다.
+ * 상세는 처음엔 맞춰 보기 전(needsJudgement true)이고, 맞춰 보기(judge)를 누른 공고만 판단을 보인다 — 확정 카드가 바뀌면 실서버처럼 다시 맞춰 보기 전으로 돌아간다.
+ * 맞춰 본 뒤에는 앞쪽 met 개 조건을 확정 카드의 행동·결과 문장으로 채운다.
  */
-export function mockMatchDetail(id: string): MatchDetail | null {
+export function mockMatchDetail(id: string, judge = false): MatchDetail | null {
   const index = listExample.data.findIndex((x) => x.id === id);
   if (index < 0) return null;
+  const now = Date.now();
   const target = scenario(index);
   const confirmed = db.cards.filter((c) => c.status === "CONFIRMED");
-  const metBy = confirmed.flatMap((c) => {
-    const card = Card.parse(cardView(c));
-    const reason = [card.version.action, card.version.result].find((x) => x?.trim());
-    return reason
-      ? [
-          {
-            cardId: card.id,
-            cardTitle: applyMask(card.title, card.maskRules),
-            cardKind: card.kind,
-            repoId: card.repo?.id ?? null,
-            reason: applyMask(reason, card.maskRules),
-          },
-        ]
-      : [];
-  });
+  const signature = confirmed.map((c) => c.id).sort().join(",");
+  if (judge) markJudged(id, signature);
+  const judged = isJudged(id, signature);
+  const metBy = confirmed.flatMap((c) => metByOf(c) ?? []);
+  const filled = judged ? filledBy(id, now) : new Map<string, MetBy>();
   const seed = MatchDetail.parse(detailExample.data);
   const conditions: MatchDetail["conditions"] = [];
   for (const type of ["REQUIRED", "PREFERRED"] as const) {
@@ -52,13 +74,16 @@ export function mockMatchDetail(id: string): MatchDetail | null {
     const count = type === "REQUIRED" ? target.required : target.preferred;
     for (let i = 0; i < count.total; i++) {
       const template = templates[i % templates.length];
+      const conditionId = `${id}-${type}-${i}`;
       const met = i < count.met && metBy.length > 0;
+      const check = template.status === "CHECK";
+      const extra = filled.get(conditionId);
       conditions.push({
         ...template,
-        id: `${id}-${type}-${i}`,
+        id: conditionId,
         generalType: met ? null : template.generalType,
-        status: met ? "MET" : template.status === "CHECK" ? "CHECK" : "NOT_MET",
-        metBy: met ? metBy.slice(0, 2) : [],
+        status: check ? "CHECK" : !judged ? "UNJUDGED" : met ? "MET" : extra ? "MET" : "NOT_MET",
+        metBy: !judged || check ? [] : met ? metBy.slice(0, 2) : extra ? [extra] : [],
       });
     }
   }
@@ -96,24 +121,36 @@ export function mockMatchDetail(id: string): MatchDetail | null {
           : target.experience.minYears === null
             ? null
             : `${target.experience.minYears}년 이상의 경력`,
-      status: target.experience.minYears === null ? null : "UNKNOWN",
+      status: judged && target.experience.minYears !== null ? "UNKNOWN" : null,
     },
-    needsJudgement: false,
-    summary: {
-      requiredMet: required.filter((c) => c.status === "MET").length,
-      requiredTotal: required.length,
-    },
+    needsJudgement: !judged,
+    summary: judged
+      ? {
+          requiredMet: required.filter((c) => c.status === "MET").length,
+          requiredTotal: required.length,
+        }
+      : null,
     conditions,
+    gapFill: gapFillOf(id, now),
   };
+}
+/** 채우기 시작(또는 고른 조건만 다시 찾기). 맞춰 보기 전이면 시작하지 않는다 */
+export function mockStartGapFill(id: string, conditionIds?: string[]): MatchDetail | "NOT_FOUND" | "NOT_JUDGED" {
+  const detail = mockMatchDetail(id);
+  if (!detail) return "NOT_FOUND";
+  if (detail.needsJudgement) return "NOT_JUDGED";
+  startGapFill(id, detail.conditions, Date.now(), conditionIds);
+  return mockMatchDetail(id)!;
 }
 export function mockMatchList() {
   return listExample.data
     .map((x) => {
       const detail = mockMatchDetail(x.id)!;
-      const { conditions, experience, needsJudgement, summary, ...target } = detail;
+      const { conditions, experience, needsJudgement, summary, gapFill, ...target } = detail;
       void conditions;
       void needsJudgement;
       void summary;
+      void gapFill;
       const { quote, status, ...level } = experience;
       void quote;
       void status;

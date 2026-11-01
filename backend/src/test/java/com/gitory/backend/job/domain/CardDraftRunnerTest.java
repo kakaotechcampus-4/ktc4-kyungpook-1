@@ -6,13 +6,16 @@ import com.gitory.backend.agent.port.CardThemePort;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
 import com.gitory.backend.agent.port.StarConfidence;
 import com.gitory.backend.agent.port.StarDraft;
+import com.gitory.backend.agent.port.StarDraftListener;
 import com.gitory.backend.agent.port.StarDraftPort;
 import com.gitory.backend.agent.port.StarDraftRequest;
 import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarEvidenceSource;
+import com.gitory.backend.agent.port.StarIssueMaterial;
 import com.gitory.backend.agent.port.StarMaterialKind;
+import com.gitory.backend.agent.port.StarMaterials;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
@@ -23,8 +26,10 @@ import com.gitory.backend.agent.port.StarStepKind;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.CardDraftWriter;
 import com.gitory.backend.card.domain.CardThemeSuggester;
+import com.gitory.backend.card.domain.ConfirmedCardChanges;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
+import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
@@ -42,6 +47,7 @@ import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
+import com.gitory.backend.matching.domain.RepoRecommendationTrigger;
 import com.gitory.backend.recommend.domain.CandidateDraftSourceService;
 import com.gitory.backend.recommend.domain.CandidateEmptyReasons;
 import com.gitory.backend.recommend.domain.CandidateStoreService;
@@ -64,6 +70,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
@@ -96,9 +103,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, CardDraftRunner.class, CardDraftWriter.class, CardVersionReader.class, JobCancelService.class,
-        CardThemeSuggester.class,
+        CardThemeSuggester.class, ConfirmedCardChanges.class, RepoRecommendationTrigger.class,
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
-        StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class,
+        StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
         CommitSummaryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
@@ -125,6 +132,9 @@ class CardDraftRunnerTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @MockitoSpyBean
+    CardDraftLiveLog liveLog;
 
     @MockitoBean
     RepositoryActivityPort activities;
@@ -171,7 +181,7 @@ class CardDraftRunnerTest {
         Long cardId = cardWithCommits(commit(SHA_A, 30, 10));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         AtomicReference<List<Long>> seen = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             seen.set(Arrays.asList(AiCallContext.jobId(), AiCallContext.cardId()));
             return allSlots(SHA_A);
         });
@@ -183,6 +193,58 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("카드 진행은 코드를 읽는 동안 READING, AI 가 쓰는 동안 받은 칸 글과 함께 WRITING 이고, 다 쓰면 저장할 초안의 글로 DONE 이 된다")
+    void showsSlotTextWhileWritingAndDraftTextWhenDone() {
+
+        Long cardId = cardWithCommits(commit(SHA_A, 30, 10));
+        AtomicReference<List<CardDraftLive>> whileReading = new AtomicReference<>();
+        given(activities.diffEvidence(any())).willAnswer(invocation -> {
+            whileReading.set(liveLog.of(job().getId()));
+            return evidenceOf(SHA_A);
+        });
+        AtomicReference<List<CardDraftLive>> whileWriting = new AtomicReference<>();
+        given(star.draft(any(), any())).willAnswer(invocation -> {
+            StarDraftListener listener = invocation.getArgument(1);
+            listener.slot(0, StarSlot.S, "로그인이 재시작 때", false);
+            whileWriting.set(liveLog.of(job().getId()));
+            return draftOf(Map.of(
+                    StarSlot.S, filled(SHA_A, "로그인이 재시작 때 풀렸다", StarConfidence.HIGH),
+                    StarSlot.T, filled(SHA_A, "세션을 오래 유지해야 했다", StarConfidence.HIGH),
+                    StarSlot.A, filled(SHA_A, "세션을 DB 에 저장했다", StarConfidence.HIGH),
+                    StarSlot.R, empty(StarEmptyReason.NO_EVIDENCE)));
+        });
+
+        runNext();
+
+        assertThat(whileReading.get()).extracting(CardDraftLive::state).containsExactly(CardDraftLiveState.READING);
+        assertThat(whileWriting.get()).singleElement().satisfies(card -> {
+            assertThat(card.state()).isEqualTo(CardDraftLiveState.WRITING);
+            assertThat(card.slots()).containsExactly(new CardDraftLive.Slot(StarField.S, 0, "로그인이 재시작 때", false));
+        });
+        assertThat(liveLog.of(job().getId())).singleElement().satisfies(card -> {
+            assertThat(card.cardId()).isEqualTo(jdbc.queryForObject("SELECT public_id FROM card WHERE id = ?", UUID.class, cardId));
+            assertThat(card.state()).isEqualTo(CardDraftLiveState.DONE);
+            assertThat(card.slots()).extracting(CardDraftLive.Slot::text)
+                    .containsExactly("로그인이 재시작 때 풀렸다", "세션을 오래 유지해야 했다", "세션을 DB 에 저장했다", "");
+        });
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 이 끝나면 카드별 진행에 끝난 시각을 남겨, 10분 뒤 메모리에서 지워지게 한다")
+    void marksLiveProgressFinishedWhenJobEnds() {
+
+        cardWithCommits(commit(SHA_A, 30, 10));
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
+
+        runNext();
+
+        verify(liveLog).finish(job().getId());
+
+    }
+
+    @Test
     @DisplayName("AI 초안을 켜면 카드의 칸을 근거 커밋과 함께 1번 버전에 저장하고 비운 칸에는 이유를 남기며, 1번 버전을 AI 초안으로 바꾸고 Job 을 완료로 끝낸다")
     void fillsCardAndSucceeds() {
 
@@ -190,7 +252,7 @@ class CardDraftRunnerTest {
         Long commitB = commit(SHA_B, 5, 0);
         Long cardId = cardWithCommits(commitA, commitB);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A, SHA_B));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled(SHA_A, "로그인이 재시작 때 풀렸다", StarConfidence.HIGH),
                 StarSlot.T, filled(SHA_B, "세션을 오래 유지해야 했다", StarConfidence.MEDIUM),
                 StarSlot.A, filled(SHA_A, "세션을 DB 에 저장했다", StarConfidence.HIGH),
@@ -283,6 +345,23 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("카드 초안 Job 이 끝나면 그 레포 추천을 1분 기다리지 않고 다음 차례에 다시 계산하게 표시한다")
+    void requestsRepoRecommendationRightAfterTheJob() {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "MANUAL", null, "MANUAL", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), false);
+        cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+
+        runNext();
+
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM repo_recommendation
+                WHERE user_repository_id = ? AND status = 'COMPUTING' AND stale_since <= now() - interval '50 seconds'
+                """, Integer.class, userRepositoryId)).isEqualTo(1);
+
+    }
+
+    @Test
     @DisplayName("STAR 요청에는 후보 공개 id·내 로그인·카드 제목·후보 종류·ref 와 받은 diff 근거를 그대로 보낸다")
     void sendsStarRequestFromCandidateAndEvidence() {
 
@@ -294,7 +373,7 @@ class CardDraftRunnerTest {
                 List.of("src/main/java/SessionConfig.java"));
         given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(evidence), false, null, List.of()));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return allEmpty(StarEmptyReason.NO_EVIDENCE);
         });
@@ -304,7 +383,7 @@ class CardDraftRunnerTest {
         assertThat(sent.get()).isEqualTo(new StarDraftRequest(cardFixtures.publicIdOf(candidateId).toString(), LOGIN,
                 "후보 카드", StarSourceType.PR, "#17", List.of(new StarEvidence(SHA_A, "feat: 세션 DB 저장", LOGIN,
                 "+10/-0", "세션을 옮겼다", StarEvidenceSource.COMMIT_MESSAGE, List.of("JDBC"),
-                "https://github.com/grow22/gitory/commit/a", List.of("src/main/java/SessionConfig.java"))), null));
+                "https://github.com/grow22/gitory/commit/a", List.of("src/main/java/SessionConfig.java"))), null, null));
 
     }
 
@@ -323,7 +402,7 @@ class CardDraftRunnerTest {
         }
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return allEmpty(StarEmptyReason.NO_EVIDENCE);
         });
@@ -348,7 +427,7 @@ class CardDraftRunnerTest {
         cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return allEmpty(StarEmptyReason.NO_EVIDENCE);
         });
@@ -356,6 +435,105 @@ class CardDraftRunnerTest {
         runNext();
 
         assertThat(sent.get().pullRequestBody()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("카드 주인이 쓴 PR 이면 연결 이슈를 연결한 순서대로 저장된 것만 한 번씩, 리뷰·줄 댓글은 단 시각 순서로 남이 쓴 것과 주인이 쓴 것(로그인 대소문자는 가리지 않음)을 나눠 싣고 취소된 리뷰와 본문이 빈 리뷰는 뺀다")
+    void sendsMaterialsOfOwnPullRequest() {
+
+        insertPullRequest(repositoryId, "Grow22", "{5,99,5,6}");
+        insertIssue(5, "세션 만료", "30분 뒤 풀림");
+        insertIssue(6, "로그 정리", null);
+        insertReview(1, "taehun0208", "CHANGES_REQUESTED", "세션을 매번 DB 에서 읽어요", "10:00");
+        insertReview(2, "taehun0208", "DISMISSED", "취소된 리뷰", "10:05");
+        insertReview(3, "taehun0208", "COMMENTED", "  ", "10:10");
+        insertReview(4, LOGIN, "COMMENTED", "캐시로 바꿨습니다", "11:00");
+        insertReviewComment(10, "taehun0208", "여기 N+1", "09:00");
+        insertReviewComment(11, LOGIN, "IN 조회로 고쳤습니다", "10:30");
+        insertReviewComment(12, null, "탈퇴한 사람의 댓글", "12:00");
+        insertReviewComment(13, "GROW22", "대문자 로그인으로 단 답", "13:00");
+
+        StarDraftRequest sent = draftRequestFor(prCandidate());
+
+        assertThat(sent.materials()).isEqualTo(new StarMaterials(
+                List.of(new StarIssueMaterial(5, "세션 만료", "30분 뒤 풀림"), new StarIssueMaterial(6, "로그 정리", null)),
+                List.of("여기 N+1", "세션을 매번 DB 에서 읽어요", "탈퇴한 사람의 댓글"),
+                List.of("IN 조회로 고쳤습니다", "캐시로 바꿨습니다", "대문자 로그인으로 단 답")));
+
+    }
+
+    @Test
+    @DisplayName("연결 이슈는 3개까지, 남이 쓴 리뷰·댓글과 주인이 쓴 댓글은 이른 것부터 5개씩까지만 싣는다")
+    void capsMaterials() {
+
+        insertPullRequest(repositoryId, LOGIN, "{1,2,3,4}");
+        for (int number = 1; number <= 4; number++) {
+            insertIssue(number, "이슈 " + number, null);
+        }
+        for (int minute = 0; minute < 6; minute++) {
+            insertReviewComment(20 + minute, "taehun0208", "남 " + minute, "10:0" + minute);
+            insertReviewComment(30 + minute, LOGIN, "나 " + minute, "11:0" + minute);
+        }
+
+        StarMaterials sent = draftRequestFor(prCandidate()).materials();
+
+        assertThat(sent.issues()).extracting(StarIssueMaterial::number).containsExactly(1, 2, 3);
+        assertThat(sent.reviews()).containsExactly("남 0", "남 1", "남 2", "남 3", "남 4");
+        assertThat(sent.ownerReplies()).containsExactly("나 0", "나 1", "나 2", "나 3", "나 4");
+
+    }
+
+    @Test
+    @DisplayName("봇이 단 리뷰와 줄 댓글은 로그인 대소문자와 상관없이 STAR 자료에 싣지 않는다")
+    void leavesOutBotReviews() {
+
+        insertPullRequest(repositoryId, LOGIN, "{}");
+        insertReview(1, "coderabbitai[bot]", "COMMENTED", "봇 요약", "10:00");
+        insertReviewComment(10, "Copilot-Pull-Request-Reviewer[BOT]", "봇 지적", "10:05");
+        insertReviewComment(11, "taehun0208", "사람 리뷰", "10:10");
+
+        StarMaterials sent = draftRequestFor(prCandidate()).materials();
+
+        assertThat(sent.reviews()).containsExactly("사람 리뷰");
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("withoutMaterials")
+    @DisplayName("남이 쓴 PR·다른 저장소의 PR·자료가 하나도 없는 PR·PR 이 아닌 후보는 STAR 요청에 자료를 싣지 않는다")
+    void sendsNoMaterialsUnlessOwnPullRequestHasThem(String author, boolean otherRepository, boolean stored,
+                                                     boolean pullRequestCandidate) {
+
+        Long pullRequestRepositoryId = repositoryId;
+        if (otherRepository) {
+            pullRequestRepositoryId = fixtures.insertRepository(101L, LOGIN, "other");
+            fixtures.insertUserRepository(userId, pullRequestRepositoryId);
+        }
+        insertPullRequest(pullRequestRepositoryId, author, "{}");
+        if (stored) {
+            jdbc.update("INSERT INTO pr_review_comment (repository_id, github_pr_number, github_comment_id, author_login,"
+                    + " body_excerpt, commented_at) VALUES (?, 17, 40, 'taehun0208', '리뷰', now())", pullRequestRepositoryId);
+        }
+        Long candidateId = pullRequestCandidate
+                ? prCandidate()
+                : cardFixtures.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "5.12", "후보", "USED");
+        if (!pullRequestCandidate) {
+            cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
+            cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        }
+
+        assertThat(draftRequestFor(candidateId).materials()).isNull();
+
+    }
+
+    static Stream<Arguments> withoutMaterials() {
+
+        return Stream.of(
+                argumentSet("남이 쓴 PR", "taehun0208", false, true, true),
+                argumentSet("다른 저장소에 있는 같은 번호의 PR", LOGIN, true, true, true),
+                argumentSet("자료가 없는 내 PR", LOGIN, false, false, true),
+                argumentSet("PR 이 아닌 후보", LOGIN, false, true, false));
 
     }
 
@@ -380,7 +558,7 @@ class CardDraftRunnerTest {
         Long cardId = cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         StarDraft empty = allEmpty(StarEmptyReason.NO_EVIDENCE);
-        given(star.draft(any())).willReturn(new StarDraft(empty.title(), empty.slots(), empty.missingFields(), null,
+        given(star.draft(any(), any())).willReturn(new StarDraft(empty.title(), empty.slots(), empty.missingFields(), null,
                 List.of(), List.of(), List.of(), List.of(
                         new StarStep(0, StarStepActor.MODEL, StarStepKind.DRAFT, null, null, null, null, null),
                         new StarStep(0, StarStepActor.CODE, StarStepKind.FLAG, StarSlot.R, "UNSOURCED_NUMBER", "50%",
@@ -418,7 +596,7 @@ class CardDraftRunnerTest {
         cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
         AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return allEmpty(StarEmptyReason.NO_EVIDENCE);
         });
@@ -459,7 +637,7 @@ class CardDraftRunnerTest {
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         fixtures.insertStatement(cardId, 1, "T", "내가 쓴 과제", "USER_STATED", null);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled(SHA_A, "상황", StarConfidence.HIGH),
                 StarSlot.T, empty(StarEmptyReason.TIMEOUT),
                 StarSlot.A, filled(SHA_A, "행동", StarConfidence.HIGH),
@@ -489,7 +667,7 @@ class CardDraftRunnerTest {
                 summary(SHA_A, " 세션 저장소를 DB 로 옮겼다 ", DiffEvidenceSource.DIFF),
                 summary(SHA_B, "feat: 세션 저장", DiffEvidenceSource.COMMIT_MESSAGE),
                 summary(shaC, "  ", DiffEvidenceSource.DIFF)), false, null, List.of()));
-        given(star.draft(any())).willReturn(allSlots(SHA_A));
+        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
 
         runNext();
 
@@ -508,7 +686,7 @@ class CardDraftRunnerTest {
         cardWithCommits(commitA);
         given(activities.diffEvidence(any())).willReturn(new DiffEvidenceResult(List.of(
                 summary(SHA_A, "새 요약", DiffEvidenceSource.DIFF)), false, null, List.of()));
-        given(star.draft(any())).willReturn(allSlots(SHA_A));
+        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
 
         runNext();
 
@@ -522,7 +700,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled("f".repeat(40), "지어낸 상황", StarConfidence.HIGH),
                 StarSlot.T, filled(SHA_A, "과제", StarConfidence.HIGH),
                 StarSlot.A, filled(SHA_A, "행동", StarConfidence.HIGH),
@@ -547,7 +725,7 @@ class CardDraftRunnerTest {
         Long thirdId = commit(third, 10, 0);
         Long cardId = cardWithCommits(firstId, secondId, thirdId);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(first, second, third));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled("DEF5678", "상황", StarConfidence.HIGH),
                 StarSlot.T, filled("abc12340", "과제", StarConfidence.HIGH),
                 StarSlot.A, filled("abc1234", "행동", StarConfidence.HIGH),
@@ -568,7 +746,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled(SHA_A, "상황", StarConfidence.HIGH),
                 StarSlot.T, filled(SHA_A, "과제", StarConfidence.HIGH),
                 StarSlot.A, needsReview(SHA_A, "30% 빨라졌다", "근거에 없는 수치: 30%"),
@@ -591,7 +769,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allSlots(SHA_A));
+        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
 
         runNext();
 
@@ -606,7 +784,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(draftOf(Map.of(
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
                 StarSlot.S, filled(SHA_A, "상황", StarConfidence.HIGH),
                 StarSlot.T, filled(SHA_A, "과제", StarConfidence.HIGH),
                 StarSlot.A, filled(SHA_A, "행동", StarConfidence.HIGH),
@@ -630,7 +808,7 @@ class CardDraftRunnerTest {
         given(activities.diffEvidence(any()))
                 .willThrow(new AiClientException("GITHUB_API_ERROR", true, 502))
                 .willReturn(evidenceOf(SHA_B));
-        given(star.draft(any())).willReturn(allFilled(SHA_B));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_B));
 
         runNext();
 
@@ -652,7 +830,7 @@ class CardDraftRunnerTest {
         Long first = cardWithCommits(commit(SHA_A, 10, 0));
         Long second = cardWithCommits(commit(SHA_B, 10, 0));
         given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A, SHA_B));
-        given(star.draft(any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", true, false, null));
+        given(star.draft(any(), any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", true, false, null));
 
         runNext();
 
@@ -688,7 +866,7 @@ class CardDraftRunnerTest {
 
         Long card = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A));
-        given(star.draft(any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", false, true, null));
+        given(star.draft(any(), any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", false, true, null));
 
         runNext();
 
@@ -707,7 +885,7 @@ class CardDraftRunnerTest {
         given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A, SHA_B));
         AtomicInteger calls = new AtomicInteger();
         AtomicReference<List<JobStep>> whileSecond = new AtomicReference<>();
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             if (calls.incrementAndGet() == 2) {
                 whileSecond.set(job().getSteps());
             }
@@ -736,14 +914,14 @@ class CardDraftRunnerTest {
         Long first = cardWithCommits(commit(SHA_A, 10, 0));
         Long second = cardWithCommits(commit(SHA_B, 10, 0));
         given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A, SHA_B));
-        given(star.draft(any())).willAnswer(invocation -> {
+        given(star.draft(any(), any())).willAnswer(invocation -> {
             cancelService.cancel(jobId, userId, LOGIN);
             return allFilled(SHA_A);
         });
 
         runNext();
 
-        verify(star, times(1)).draft(any());
+        verify(star, times(1)).draft(any(), any());
         verify(activities, times(1)).diffEvidence(any());
         assertThat(statementsOf(first)).isEmpty();
         assertThat(statementsOf(second)).isEmpty();
@@ -775,7 +953,7 @@ class CardDraftRunnerTest {
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allFilled(SHA_A));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_A));
 
         runNext();
 
@@ -792,7 +970,7 @@ class CardDraftRunnerTest {
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allFilled(SHA_A));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_A));
 
         runNext();
 
@@ -824,7 +1002,7 @@ class CardDraftRunnerTest {
         fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
         jdbc.update("UPDATE card SET generation_failure = 'AI_UNAVAILABLE' WHERE id = ?", cardId);
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allFilled(SHA_A));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_A));
 
         runNext();
 
@@ -838,7 +1016,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("DB", "BACKEND"), List.of("SQL", "JAVA")));
+        given(star.draft(any(), any())).willReturn(taggedDraft(SHA_A, List.of("DB", "BACKEND"), List.of("SQL", "JAVA")));
 
         runNext();
 
@@ -853,7 +1031,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("backend", "BACKEND"), List.of("PHP", "JAVA")));
+        given(star.draft(any(), any())).willReturn(taggedDraft(SHA_A, List.of("backend", "BACKEND"), List.of("PHP", "JAVA")));
 
         runNext();
 
@@ -871,7 +1049,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "BACKEND"),
+        given(star.draft(any(), any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "BACKEND"),
                 List.of("JAVA", "SQL", "JAVA")));
 
         runNext();
@@ -887,7 +1065,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "DB", "DEVOPS"),
+        given(star.draft(any(), any())).willReturn(taggedDraft(SHA_A, List.of("BACKEND", "DB", "DEVOPS"),
                 List.of("JAVA", "SPRING", "JPA", "MYSQL", "REDIS", "KAFKA", "DOCKER", "AWS", "GITHUB_ACTIONS")));
 
         runNext();
@@ -903,7 +1081,7 @@ class CardDraftRunnerTest {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any())).willReturn(allFilled(SHA_A));
+        given(star.draft(any(), any())).willReturn(allFilled(SHA_A));
 
         runNext();
 
@@ -926,6 +1104,60 @@ class CardDraftRunnerTest {
         verifyNoInteractions(star);
         assertThat(areasOf(cardId)).isEmpty();
         assertThat(techsOf(cardId)).isEmpty();
+
+    }
+
+    private Long prCandidate() {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "PR", 17, "#17", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), true);
+        cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        return candidateId;
+
+    }
+
+    private StarDraftRequest draftRequestFor(Long candidateId) {
+
+        given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
+        AtomicReference<StarDraftRequest> sent = new AtomicReference<>();
+        given(star.draft(any(), any())).willAnswer(invocation -> {
+            sent.set(invocation.getArgument(0));
+            return allEmpty(StarEmptyReason.NO_EVIDENCE);
+        });
+        runNext();
+        return sent.get();
+
+    }
+
+    private void insertPullRequest(Long pullRequestRepositoryId, String author, String linkedIssues) {
+
+        jdbc.update("INSERT INTO pull_request (repository_id, github_pr_number, title, body_excerpt, state, author_login,"
+                + " base_branch, head_branch, opened_at, linked_issue_numbers)"
+                + " VALUES (?, 17, 'PR', '본문', 'CLOSED', ?, 'develop', 'feature', now(), ?::int[])",
+                pullRequestRepositoryId, author, linkedIssues);
+
+    }
+
+    private void insertIssue(int number, String title, String body) {
+
+        jdbc.update("INSERT INTO issue (repository_id, github_issue_number, title, body_excerpt, state, opened_at)"
+                + " VALUES (?, ?, ?, ?, 'CLOSED', now())", repositoryId, number, title, body);
+
+    }
+
+    private void insertReview(long reviewId, String author, String state, String body, String time) {
+
+        jdbc.update("INSERT INTO pr_review (repository_id, github_pr_number, github_review_id, state, author_login,"
+                + " body_excerpt, submitted_at) VALUES (?, 17, ?, ?, ?, ?, ?::timestamptz)",
+                repositoryId, reviewId, state, author, body, "2026-10-01T" + time + ":00Z");
+
+    }
+
+    private void insertReviewComment(long commentId, String author, String body, String time) {
+
+        jdbc.update("INSERT INTO pr_review_comment (repository_id, github_pr_number, github_comment_id, author_login,"
+                + " body_excerpt, commented_at) VALUES (?, 17, ?, ?, ?, ?::timestamptz)",
+                repositoryId, commentId, author, body, "2026-10-01T" + time + ":00Z");
 
     }
 

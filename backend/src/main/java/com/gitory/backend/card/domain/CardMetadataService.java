@@ -21,6 +21,7 @@ public class CardMetadataService {
     private static final int MAX_THEMES = 2;
 
     private final CardOwnershipService ownership;
+    private final ConfirmedCardChanges changes;
 
     /**
      * null 인 칸은 그대로 두고, 셋 다 null 이면 바꿀 것이 없어 400 으로 답하게 한다
@@ -36,8 +37,12 @@ public class CardMetadataService {
             throw new InvalidCardInputException("바꿀 제목·기간·문항 유형을 보내 주세요.");
         }
 
+        // 제목은 매칭 AI 가 읽는 카드 글이라 확정 카드의 제목이 바뀌면 추천을 다시 계산하게 하고, 기간·문항 유형은 읽지 않는다
         if (title != null && !title.equals(card.getTitle())) {
             card.rename(title);
+            if (card.isConfirmed()) {
+                changes.announce(card);
+            }
         }
 
         if (period != null && !Objects.equals(storedPeriod(period), card.getPeriod())) {

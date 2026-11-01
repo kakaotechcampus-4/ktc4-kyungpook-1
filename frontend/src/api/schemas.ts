@@ -21,6 +21,8 @@ export const ManualDraftInput = z.object({
   period: z.string().nullable().transform((text) => text === null || isBlankCardText(text) ? null : text)
     .pipe(cardText(CONFIG.CARD_PERIOD_MAX).nullable()),
   repoId: z.string().nullable(),
+  /** 활동 안에서 만들 때만 싣는다(#477). repoId 와 함께 보내면 서버가 400 이라 둘 중 하나만 값이 있다. 생략하면 활동 밖 카드다 */
+  activityId: z.string().nullable().optional(),
 });
 export type ManualDraftInput = z.infer<typeof ManualDraftInput>;
 export const ManualDraftKey = nonBlankCardText(255);
@@ -79,11 +81,12 @@ export const ApiErrorBody = z.object({
 });
 export type ApiErrorBody = z.infer<typeof ApiErrorBody>;
 
-export const envelope = <T extends z.ZodTypeAny>(data: T) =>
+export const envelope = <T extends z.ZodTypeAny>(data: T, options: { allowNullData?: boolean } = {}) =>
   z.object({ data: data.nullable(), error: ApiErrorBody.nullable() })
     // data·error 가 둘 다 null이면 2xx 성공 규칙("data 반환")을 어긴 것이다 — 통과시키면 호출부가
     // null을 T로 오인해 조용히 깨진다. 계약 위반은 ContractError 로 즉시 드러나야 한다.
-    .refine((v) => v.error != null || v.data !== null, { message: '2xx 응답의 data·error 가 모두 null입니다' });
+    // 되묻기 질문처럼 null 이 정상 결과('더 물을 것 없음')인 API 만 allowNullData 로 허용한다.
+    .refine((v) => options.allowNullData || v.error != null || v.data !== null, { message: '2xx 응답의 data·error 가 모두 null입니다' });
 
 // ───────────────────────────── 사용자 ─────────────────────────────
 export const Me = z.object({
@@ -192,6 +195,8 @@ export const Job = z.object({
   finishedAt: z.string().nullable(),
   result: JobResult.nullable(),
   pollAfterMs: z.number(),       // 다음 폴링까지 기다릴 시간 — 간격은 서버가 정한다
+  /** 카드 초안 Job 이 쓰는 카드별 진행(#617). 카드 초안 Job 이 아니거나 서버가 진행을 잃으면 [] → 화면은 진행 막대만 그린다 */
+  drafts: z.lazy(() => DraftLives).optional(),
 });
 export type Job = z.infer<typeof Job>;
 
@@ -314,6 +319,44 @@ export const DraftSteps = z.array(z.unknown())
   .transform((items) => items.flatMap((item) => { const step = DraftStep.safeParse(item); return step.success ? [step.data] : []; }))
   .catch([]);
 
+// ───────────────────────────── 활동 (#477, 계약 #475 1·2절) ─────────────────────────────
+export const ACTIVITY_TYPES = ['CLUB', 'EXTERNAL', 'CONTEST', 'INTERNSHIP', 'EDUCATION', 'PART_TIME', 'VOLUNTEER', 'STUDY', 'OTHER'] as const;
+export const ActivityType = z.enum(ACTIVITY_TYPES);
+export type ActivityType = z.infer<typeof ActivityType>;
+/** 응답의 종류. 서버가 새 종류를 더해도 카드·활동 목록이 통째로 깨지지 않게, 모르는 종류는 null 로 읽는다(화면은 종류 이름 없이 '활동'만 쓴다) */
+export const ActivityTypeRead = ActivityType.nullable().catch(null);
+/** 카드가 속한 활동. 카드는 레포와 활동 중 하나에만 속하거나 둘 다 아니다 */
+export const CardActivity = z.object({ id: z.string(), name: z.string(), type: ActivityTypeRead });
+export type CardActivity = z.infer<typeof CardActivity>;
+// ───────────────────────────── 카드 초안 실시간 (#617 Job.drafts) ─────────────────────────────
+/** WAITING 차례 전 · READING 코드 읽는 중 · WRITING 칸 쓰는 중 · DONE · FAILED. 서버는 카드를 한 장씩 차례로 쓴다 */
+export const DraftLiveState = z.enum(['WAITING', 'READING', 'WRITING', 'DONE', 'FAILED']);
+export type DraftLiveState = z.infer<typeof DraftLiveState>;
+/**
+ * 칸 하나의 지금까지 쓴 전체 글(늘어난 부분이 아니다). 끝난 문장까지만 오므로 화면이 일정한 속도로 펼친다.
+ *  - 다시 쓰면 round 가 올라가고 text 가 새 글로 바뀐다.
+ *  - done 인데 text 가 '' 이면 AI 가 근거가 없어 비운 칸이다.
+ */
+export const DraftLiveSlot = z.object({
+  field: StarField,
+  round: z.number().int().nonnegative(),
+  text: z.string(),
+  done: z.boolean(),
+});
+export type DraftLiveSlot = z.infer<typeof DraftLiveSlot>;
+export const DraftLive = z.object({
+  cardId: z.string(),
+  title: z.string(),
+  state: DraftLiveState,
+  slots: z.array(DraftLiveSlot),
+  steps: DraftSteps,
+});
+export type DraftLive = z.infer<typeof DraftLive>;
+/** 모양이 틀린 카드는 버린다. 진행은 화면 표시용이라 Job 전체를 깨지 않는다 */
+export const DraftLives = z.array(z.unknown())
+  .transform((items) => items.flatMap((item) => { const live = DraftLive.safeParse(item); return live.success ? [live.data] : []; }))
+  .catch([]);
+
 export const CardArea = z.enum(['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'AI', 'DB', 'TEST', 'DOCS']);
 export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON', 'GO', 'RUST', 'SWIFT', 'DART',
   'TYPESCRIPT', 'JAVASCRIPT', 'SCALA', 'SPRING', 'JPA', 'NODEJS', 'NESTJS', 'EXPRESS', 'DJANGO', 'FASTAPI', 'FLASK',
@@ -351,6 +394,8 @@ export const Card = z.object({
   title: z.string(),
   period: z.string().nullish(),
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullable(),
+  /** #477: 어느 활동 안의 카드인지. 없음(undefined) = 이전 서버라 모름, null = 활동 밖 카드 */
+  activity: CardActivity.nullish(),
   candidate: z.object({ id: z.string(), type: CandidateType, ref: z.string(), title: z.string() }).nullable(),
   version: CardVersion,
   evidence: z.array(Evidence),
@@ -390,6 +435,8 @@ export const CardSummary = z.object({
   userStatedCount: z.number().nonnegative().nullish(),
   /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
+  /** #477: 카드 상세와 같은 값. 없음(undefined) = 이전 서버라 모름, null = 활동 밖 카드 */
+  activity: CardActivity.nullish(),
 });
 export type CardSummary = z.infer<typeof CardSummary>;
 
@@ -416,6 +463,7 @@ export const VersionListItem = z.object({
 });
 
 // ───────────────────────────── 되묻기 ─────────────────────────────
+export const TurnOutcome = z.enum(['ANSWERED', 'LATER', 'SKIPPED', 'INSUFFICIENT', 'MEASURED', 'NOT_MEASURED']);
 export const InterviewTurn = z.object({
   turnNo: z.number(),
   field: StarField,
@@ -427,10 +475,15 @@ export const InterviewTurn = z.object({
   question: z.string(),
   options: z.array(z.string()), // USER_SELECTED 보기
   answer: z.object({ text: z.string(), source: EvidenceType }).nullable(),
+  // 질문이 어떻게 끝났는지. 답 전이면 null 이고, 데모 데이터처럼 값이 없으면 null 로 본다
+  outcome: TurnOutcome.nullable().optional().transform((value) => value ?? null),
   remaining: z.number(),
   maxTurns: z.number(), // 상한은 서버 정책이다. 화면 상수로 두지 않는다
 });
 export type InterviewTurn = z.infer<typeof InterviewTurn>;
+/** 서버의 InterviewTurn.isClosed 와 같은 규칙: 답·넘김·측정으로 끝나지 않았으면(LATER·INSUFFICIENT 포함) 아직 답을 기다린다 */
+export const isOpenTurn = (turn: Pick<InterviewTurn, 'answer' | 'outcome'>) =>
+  !turn.answer && (turn.outcome == null || turn.outcome === 'LATER' || turn.outcome === 'INSUFFICIENT');
 
 export const ConfirmResult = z.object({
   cardId: z.string(),

@@ -149,6 +149,10 @@ gitory:
       enabled: ${COVER_LETTER_WORKER_ENABLED:true}
       concurrency: ${COVER_LETTER_WORKER_CONCURRENCY:2}
   matching:
+    recommend:
+      worker:
+        # 끄면 확정 카드가 바뀌어도 레포 추천을 다시 계산하지 않으며, 계산은 공고마다 AI 를 부른다
+        enabled: ${MATCHING_RECOMMEND_WORKER_ENABLED:true}
     sync:
       # 켜면 매일 새벽 5시(서울)에 회사 채용 공고를 가져오고 서버가 뜰 때 24시간 넘게 안 돌았으면 바로 한 번 돈다
       # 켜기 전에 회사별 이용 조건을 확인하며 서버가 여러 대여도 DB 잠금으로 한 곳에서만 돈다

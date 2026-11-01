@@ -1,13 +1,14 @@
-import { CardMetadataPatch } from '@/api/schemas';
+import { ACTIVITY_TYPES, CardMetadataPatch } from '@/api/schemas';
 import { mockMatchDetail, mockMatchList } from './matching';
 import { getProfile, putProfile } from './profile';
+import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
+import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
 import { now } from './fixtures';
 import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
@@ -36,6 +37,18 @@ on('GET', '/matches/:id', ({ params }) => {
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
 });
 // 인적사항 — BE #552 계약. 한 사용자당 한 문서이고 PUT 이 네 목록을 통째로 바꾼다
+// 자소서(#492) — 계약 검증과 진행은 mock/coverLetters.ts
+const letter = (r: CoverLetterResult): MockResult => (r.ok ? ok(r.data) : fail(r.status, r.code, r.message));
+on('POST', '/cover-letters', ({ body, headers }) => letter(createCoverLetter(body, headers['idempotency-key'])));
+on('GET', '/cover-letters', () => letter(listCoverLetters()));
+on('GET', '/cover-letters/:id', ({ params }) => letter(getCoverLetter(params[0])));
+on('PUT', '/cover-letters/:id/questions/:qid/cards', ({ params, body }) => letter(chooseCards(params[0], params[1], body)));
+on('POST', '/cover-letters/:id/asks', ({ params }) => letter(startAsking(params[0])));
+on('PUT', '/cover-letters/:id/questions/:qid/answers', ({ params, body }) => letter(saveAnswers(params[0], params[1], body)));
+on('POST', '/cover-letters/:id/drafts', ({ params }) => letter(startDrafting(params[0])));
+on('PATCH', '/cover-letters/:id/questions/:qid', ({ params, body }) => letter(saveDraft(params[0], params[1], body)));
+on('POST', '/cover-letters/:id/retry', ({ params }) => letter(retryCoverLetter(params[0])));
+on('DELETE', '/cover-letters/:id', ({ params }) => letter(deleteCoverLetter(params[0])));
 on('GET', '/profile', () => ok(getProfile())); // 저장한 적이 없어도 200 + 빈 목록 + savedAt:null
 on('PUT', '/profile', ({ body }) => {
   const saved = putProfile(body);
@@ -154,14 +167,72 @@ on('POST', '/jobs/:id/cancel', ({ params }) => {
   return j ? ok(j) : fail(404, 'JOB_NOT_FOUND', '작업을 찾을 수 없습니다');
 });
 
+// ───────────────────────────── 활동 (#477) ─────────────────────────────
+const myActivity = (id: string) => db.activities.find((a) => a.id === id && (a.userId == null || a.userId === db.user.id));
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const okText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max && !value.includes('\0');
+/**
+ * 계약의 입력 규칙(openapi ActivityRequest). 만들 때는 빠진 값이 기본(끝난 달 없음 = 진행 중, 역할 없음)이고,
+ * 고칠 때(base 있음)는 키가 없거나 null 이면 그대로, 끝난 달·역할은 빈 글이 비우기다. 규칙에 어긋나면 null.
+ */
+function activityFields(body: Any, base: Any | null): Any | null {
+  const keep = (key: string) => body[key] === undefined || body[key] === null;
+  const name = keep('name') ? base?.name : body.name;
+  const type = keep('type') ? base?.type : body.type;
+  const startMonth = keep('startMonth') ? base?.startMonth : body.startMonth;
+  const blank = (value: unknown) => typeof value === 'string' && value.trim() === '';
+  const endMonth = keep('endMonth') ? (base ? base.endMonth : null) : blank(body.endMonth) ? null : body.endMonth;
+  const role = keep('role') ? (base ? base.role : null) : blank(body.role) ? null : body.role;
+  if (!okText(name, CONFIG.CARD_TITLE_MAX) || isCardBlank(name) || name.trim().length > 50) return null;
+  if (!ACTIVITY_TYPES.includes(type) || typeof startMonth !== 'string' || !MONTH.test(startMonth)) return null;
+  if (endMonth !== null && (typeof endMonth !== 'string' || !MONTH.test(endMonth) || endMonth < startMonth)) return null;
+  if (role !== null && (!okText(role, 100) || role.trim().length > 50)) return null;
+  return { name: name.trim(), type, startMonth, endMonth, role: role === null ? null : role.trim() };
+}
+const invalidActivity = () => fail(400, 'INVALID_REQUEST', '활동 입력을 확인해 주세요');
+const NO_ACTIVITY = () => fail(404, 'NOT_FOUND', '활동을 찾을 수 없습니다');
+on('GET', '/activities', () => ok(db.activities.filter((a) => a.userId == null || a.userId === db.user.id).map(activityView)
+  .sort((a, b) => b.startMonth.localeCompare(a.startMonth) || b.createdAt.localeCompare(a.createdAt)))); // 시작한 달이 최근인 순, 카드 0장인 활동도 온다
+on('POST', '/activities', ({ body, headers }) => {
+  const rawKey = headers['idempotency-key'];
+  const key = rawKey && !isCardBlank(rawKey) ? rawKey : null;
+  if (key && key.length > 255) return invalidActivity();
+  const scopedKey = key ? JSON.stringify([db.user.id, key]) : null;
+  const existing = scopedKey ? myActivity(db.activityIdem.get(scopedKey) ?? '') : undefined;
+  if (existing) return ok(activityView(existing)); // 같은 키는 처음 만든 활동을 돌려주고 다시 보낸 값은 쓰지 않는다
+  const fields = activityFields(body, null);
+  if (!fields) return invalidActivity();
+  const activity = { id: nextId('act'), userId: db.user.id, ...fields, createdAt: now() };
+  db.activities.push(activity);
+  if (scopedKey) db.activityIdem.set(scopedKey, activity.id);
+  return ok(activityView(activity));
+});
+on('PATCH', '/activities/:id', ({ params, body }) => {
+  const activity = myActivity(params[0]);
+  if (!activity) return NO_ACTIVITY();
+  if (['name', 'type', 'startMonth', 'endMonth', 'role'].every((key) => body[key] === undefined || body[key] === null)) return invalidActivity(); // 바꿀 값이 없으면 400
+  const fields = activityFields(body, activity);
+  if (!fields) return invalidActivity();
+  Object.assign(activity, fields);
+  return ok(activityView(activity));
+});
+on('DELETE', '/activities/:id', ({ params }) => {
+  if (!myActivity(params[0])) return NO_ACTIVITY();
+  removeActivity(params[0]);
+  return ok({ ok: true });
+});
+
 // ───────────────────────────── 카드 ─────────────────────────────
 const findCard = (id: string) => db.cards.find((c) => c.id === id && (c.userId == null || c.userId === db.user.id));
 const invalid = () => fail(400, 'INVALID_REQUEST', '카드 입력을 확인해 주세요');
 const validText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max && !value.includes('\0');
 on('GET', '/cards', () => ok(db.cards.filter(c => c.userId == null || c.userId === db.user.id).map(cardSummary).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))));
 on('POST', '/cards/manual/draft', ({ body, headers }) => {
+  if (body.repoId != null && body.activityId != null) return invalid(); // 레포와 활동은 둘 중 하나만
   const repo = body.repoId == null ? null : db.repos.find((r) => r.id === body.repoId && r.userId === db.user.id);
   if (body.repoId != null && !repo) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
+  const activity = body.activityId == null ? null : myActivity(body.activityId);
+  if (body.activityId != null && !activity) return NO_ACTIVITY();
   const rawKey = headers['idempotency-key'];
   const key = rawKey && !isCardBlank(rawKey) ? rawKey : null;
   if (key && key.length > 255) return invalid();
@@ -172,7 +243,7 @@ on('POST', '/cards/manual/draft', ({ body, headers }) => {
   if (!validText(body.title, CONFIG.CARD_TITLE_MAX) || isCardBlank(body.title) || (period != null && !validText(period, CONFIG.CARD_PERIOD_MAX))) return invalid();
   const card: Any = {
     id: nextId('card'), userId: db.user.id, kind: 'QUALITATIVE', status: 'DRAFT', title: body.title, period,
-    repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
+    repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, activityId: activity?.id ?? null, candidate: null,
     versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: null, task: null, action: null, result: null, _confirmed: false }],
     evidence: [], lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(), updatedAt: now(),
   };
@@ -303,15 +374,25 @@ on('POST', '/cards/:id/interview', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 되물을 수 있습니다');
-  const answered = (db.interview[c.id] ?? []).filter((t: Any) => t.answer).length;
-  if (answered >= INTERVIEW_MAX_TURNS) return fail(409, 'INTERVIEW_CAP', '이 카드의 되묻기 상한에 닿았습니다');
+  // 실서버처럼 넘긴 질문도 상한에 세고, 넘긴 칸은 다시 묻지 않는다
+  const asked = db.interview[c.id] ?? [];
+  if (asked.length >= INTERVIEW_MAX_TURNS) return fail(409, 'INTERVIEW_CAP', '이 카드의 되묻기 상한에 닿았습니다');
+  if (asked.some((t: Any) => t.field === body.field && t.outcome === 'SKIPPED')) return fail(409, 'INTERVIEW_FIELD_CLOSED', '넘긴 칸은 다시 묻지 않습니다');
+  if (body.field === undefined || body.field === null) {
+    // 실서버처럼 field 가 없으면 빈 칸 중 아직 닫히지 않은 칸을 고르고, 없으면 더 물을 것이 없다(null)
+    const v = c.versions[c.versions.length - 1];
+    const next = STAR.find((f) => isCardBlank(v[FIELD_KEY[f]] ?? '') && !asked.some((t: Any) => t.field === f && t.outcome === 'SKIPPED'));
+    return ok(next ? askTurn(c, next) : null);
+  }
   if (!['S', 'T', 'A', 'R'].includes(body.field)) return fail(400, 'BAD_FIELD', 'field 는 S/T/A/R 중 하나여야 합니다');
   return ok(askTurn(c, body.field));
 });
 on('POST', '/cards/:id/interview/:turn/answer', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  const updated = answerTurn(c, Number(params[1]), String(body.text ?? ''), body.source ?? 'USER_STATED');
+  // 실서버처럼 넘기기는 칸을 바꾸지 않고 질문만 넘김으로 남긴다
+  const updated = body.kind === 'SKIP' ? skipTurn(c, Number(params[1]))
+    : answerTurn(c, Number(params[1]), String(body.text ?? ''), body.source ?? 'USER_STATED');
   return updated ? ok(cardView(updated)) : fail(404, 'TURN_NOT_FOUND', '질문을 찾을 수 없습니다');
 });
 

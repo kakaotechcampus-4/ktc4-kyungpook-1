@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCreateManualDraft, useRepos } from '@/api/queries';
+import { useActivities } from '@/api/activities';
 import { keys } from '@/api/keys';
 import { useQueryClient } from '@tanstack/react-query';
 import { endpoints } from '@/api/endpoints';
@@ -41,6 +42,8 @@ export function NewCardPage() {
   useDocumentTitle('직접 작성');
   const nav = useNavigate();
   const repos = useRepos();
+  const activities = useActivities();
+  const [sp] = useSearchParams(); // 폴더 안에서 오면 ?repo=·?activity= 로 어디에 쓸지 미리 정해져 있다
   const createDraft = useCreateManualDraft();
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [cardId, setCardId] = useState<string | null>(null);
@@ -50,13 +53,15 @@ export function NewCardPage() {
   const confirmedReplay = useRef(false);
   const [blockedCard, setBlockedCard] = useState<Card | null>(null);
   const [acknowledgedRepo, setAcknowledgedRepo] = useState<Card['repo']>(null);
+  const [acknowledgedActivity, setAcknowledgedActivity] = useState<Card['activity']>(null);
   const canEditMetadata = cardMetadataSupported();
   const qc = useQueryClient();
   const mountedRef = useRef(true);
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const [title, setTitle] = useState('');
   const [period, setPeriod] = useState('');
-  const [repoId, setRepoId] = useState<string>('');
+  const [repoId, setRepoId] = useState<string>(() => sp.get('repo') ?? '');
+  const [activityId, setActivityId] = useState<string>(() => sp.get('repo') ? '' : sp.get('activity') ?? ''); // 레포와 활동은 함께 보낼 수 없다(서버 400)
   const [f, setF] = useState<Record<StarField, string>>({ S: '', T: '', A: '', R: '' });
   const latestFields = useRef(f);
   latestFields.current = f;
@@ -65,7 +70,7 @@ export function NewCardPage() {
   const canConfirm = !blockedCard && !isBlankCardText(f.S) && !isBlankCardText(f.A) && !isBlankCardText(title);
   const missing = [isBlankCardText(title) && '제목', isBlankCardText(f.S) && '상황', isBlankCardText(f.A) && '행동'].filter(Boolean).join(', ');
 
-  const snapshot = { title, period, repoId, fields: toDraftFields(f) };
+  const snapshot = { title, period, repoId, activityId, fields: toDraftFields(f) };
   const acknowledgedInput = useRef<typeof snapshot | null>(null);
   const save = useCallback(async (body: typeof snapshot) => {
     if (confirmedReplay.current) throw new ApiError('CARD_CONFIRMED', '이미 확정된 카드입니다.', 409);
@@ -73,16 +78,16 @@ export function NewCardPage() {
     let effective = body;
     let result: unknown;
     if (!cardIdRef.current) {
-      const card = await createDraft.mutateAsync({ input: { title: body.title, period: body.period, repoId: body.repoId || null }, idempotencyKey });
+      const card = await createDraft.mutateAsync({ input: { title: body.title, period: body.period, repoId: body.repoId || null, ...(body.activityId ? { activityId: body.activityId } : {}) }, idempotencyKey });
       if (!mountedRef.current) return card;
       cardIdRef.current = card.id;
-      const canonical = { title: card.title, period: card.period ?? '', repoId: card.repo?.id ?? '' };
+      const canonical = { title: card.title, period: card.period ?? '', repoId: card.repo?.id ?? '', activityId: card.activity?.id ?? '' };
       savedMetadata.current = { title: canonical.title, period: canonical.period };
       const returnedFields = Object.fromEntries(STAR_FIELDS.map(key => [key, card.version[fieldKey[key]] ?? ''])) as Record<StarField, string>;
       const merged = Object.fromEntries(STAR_FIELDS.map(key => [key, editedFields.current.has(key) ? latestFields.current[key] : returnedFields[key]])) as Record<StarField, string>;
       savedFields.current = JSON.stringify(toDraftFields(returnedFields));
       flushSync(() => {
-        setCardId(card.id); setTitle(canonical.title); setPeriod(canonical.period); setRepoId(canonical.repoId); setAcknowledgedRepo(card.repo);
+        setCardId(card.id); setTitle(canonical.title); setPeriod(canonical.period); setRepoId(canonical.repoId); setActivityId(canonical.activityId); setAcknowledgedRepo(card.repo); setAcknowledgedActivity(card.activity ?? null);
         if (card.status === 'CONFIRMED') { confirmedReplay.current = true; setBlockedCard(card); }
         else { latestFields.current = merged; setF(merged); }
       });
@@ -136,6 +141,14 @@ export function NewCardPage() {
   };
   const repoOptions = [{ value: '', label: '없음' }, ...(repos.data ?? []).map(r => ({ value: r.id, label: `${r.owner}/${r.name}` }))];
   if (acknowledgedRepo && !repoOptions.some(option => option.value === acknowledgedRepo.id)) repoOptions.push({ value: acknowledgedRepo.id, label: `${acknowledgedRepo.owner}/${acknowledgedRepo.name}` });
+  const activityOptions = [{ value: '', label: '없음' }, ...(activities.data ?? []).map(a => ({ value: a.id, label: a.name }))];
+  if (acknowledgedActivity && !activityOptions.some(option => option.value === acknowledgedActivity.id)) activityOptions.push({ value: acknowledgedActivity.id, label: acknowledgedActivity.name });
+  // 주소로 받은 레포·활동이 없는 것으로 확인되면 비운다(목록을 읽기 전에는 그대로 둔다). 첫 저장 뒤에는 서버가 정한 값이다
+  useEffect(() => {
+    if (cardId) return;
+    if (repoId && repos.data && !repos.data.some(r => r.id === repoId)) setRepoId('');
+    if (activityId && activities.data && !activities.data.some(a => a.id === activityId)) setActivityId('');
+  }, [cardId, repoId, activityId, repos.data, activities.data]);
 
   return (
     <main className="main main--footer main--tight manual-card-page">
@@ -151,11 +164,17 @@ export function NewCardPage() {
         <div><Field label="기간"><Input maxLength={CONFIG.CARD_PERIOD_MAX} value={period} disabled={saving || !!blockedCard || (!!cardId && !canEditMetadata)} onChange={(e) => setPeriod(e.target.value)} placeholder="2024.04" /></Field></div>
         <div>
           <Field label="관련 레포 (선택)">
-            <Select className="select-trigger--field" value={repoId} onChange={setRepoId} label="관련 레포" disabled={!!cardId || saving}
+            <Select className="select-trigger--field" value={repoId} onChange={(next) => { setRepoId(next); if (next) setActivityId(''); }} label="관련 레포" disabled={!!cardId || saving}
               options={repoOptions} />
           </Field>
         </div>
-        {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목, 기간, 레포는 첫 저장 후 바꿀 수 없어요.'}</p>}
+        <div style={{ gridColumn: '1 / -1' }}>
+          <Field label="활동 (선택)" hint="동아리, 인턴처럼 레포 밖에서 한 경험이라면 활동 안에 둘 수 있어요. 레포와 활동은 하나만 고를 수 있어요.">
+            <Select className="select-trigger--field" value={activityId} onChange={(next) => { setActivityId(next); if (next) setRepoId(''); }} label="활동" disabled={!!cardId || saving}
+              options={activityOptions} />
+          </Field>
+        </div>
+        {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포와 활동은 첫 저장 후 바꿀 수 없어요.' : '제목, 기간, 레포, 활동은 첫 저장 후 바꿀 수 없어요.'}</p>}
       </div>
 
       <div className="manual-save-row">

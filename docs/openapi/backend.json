@@ -673,6 +673,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseRepoRecommendationResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RepoRecommendationResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseStartedResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -976,6 +990,34 @@
         "properties" : {
           "ok" : {
             "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "CardDraftLive" : {
+        "properties" : {
+          "cardId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "slots" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Slot"
+            },
+            "type" : "array"
+          },
+          "state" : {
+            "enum" : [ "WAITING", "READING", "WRITING", "DONE", "FAILED" ],
+            "type" : "string"
+          },
+          "steps" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DraftStep"
+            },
+            "type" : "array"
+          },
+          "title" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -1446,6 +1488,41 @@
         },
         "type" : "object"
       },
+      "Company" : {
+        "properties" : {
+          "companyId" : {
+            "type" : "string"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "logoUrl" : {
+            "description" : "https 로고 주소. 없으면 null",
+            "type" : "string"
+          },
+          "posting" : {
+            "$ref" : "#/components/schemas/Posting"
+          },
+          "preferredMet" : {
+            "description" : "이 레포 카드가 채웠다고 AI 가 판단한 우대 조건 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requiredMet" : {
+            "description" : "이 레포 카드가 채웠다고 AI 가 판단한 필수 조건 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "techs" : {
+            "description" : "이 레포 카드가 채운 조건의 기술 이름(카드 techs 와 같은 값), 많아야 3개",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "ConfirmResultResponse" : {
         "description" : "카드 확정 결과",
         "properties" : {
@@ -1738,6 +1815,40 @@
             "type" : "integer"
           },
           "text" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftStep" : {
+        "properties" : {
+          "actor" : {
+            "enum" : [ "MODEL", "CODE" ],
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "field" : {
+            "enum" : [ "S", "T", "A", "R" ],
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "DRAFT", "FLAG", "OPEN", "RETRY", "KEEP", "REWRITE", "PASS", "REVERT" ],
+            "type" : "string"
+          },
+          "material" : {
+            "enum" : [ "ISSUE", "REVIEW", "OWNER_REPLY" ],
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "round" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "value" : {
             "type" : "string"
           }
         },
@@ -2097,6 +2208,13 @@
             "description" : "AI 가 방금 읽거나 판단한 줄, 오래된 것부터. 읽기 줄(PULL_REQUEST·COMMIT)은 단계마다 최근 20줄, 판단 줄(GROUPED·DESCRIBED)은 모두 싣고, Job 이 끝나고 10분 뒤나 서버가 다시 시작되면 빈 목록이다. seq 는 Job 안에서 1부터 늘어나 이미 받은 줄을 가를 수 있다",
             "items" : {
               "$ref" : "#/components/schemas/JobActivity"
+            },
+            "type" : "array"
+          },
+          "drafts" : {
+            "description" : "카드 초안 Job 이 쓰는 카드를 쓰는 순서대로. 카드마다 state 는 WAITING → READING(코드 읽는 중) → WRITING(칸 쓰는 중) → DONE·FAILED, slots 는 칸마다 지금까지 쓴 전체 글 하나로 다시 쓰면 round 가 올라가며 done 인데 text 가 빈 글이면 AI 가 근거가 없어 비운 칸이다. steps 는 카드 상세 draftSteps 와 같은 모양이다. 카드 초안 Job 이 아니거나, Job 이 끝나고 10분 뒤나 서버가 다시 시작되면 빈 목록이다",
+            "items" : {
+              "$ref" : "#/components/schemas/CardDraftLive"
             },
             "type" : "array"
           },
@@ -2533,6 +2651,27 @@
               "type" : "string"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "Posting" : {
+        "properties" : {
+          "closed" : {
+            "description" : "계산한 뒤 마감되거나 사라진 공고면 true",
+            "type" : "boolean"
+          },
+          "deadline" : {
+            "description" : "마감 시각. 상시 채용이면 null",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "대표 공고 id, 매칭 상세 주소에 쓴다",
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -3081,6 +3220,28 @@
         },
         "type" : "object"
       },
+      "RepoRecommendationResponse" : {
+        "properties" : {
+          "companies" : {
+            "description" : "추천 기업. 많아야 3곳이고 순위 순서",
+            "items" : {
+              "$ref" : "#/components/schemas/Company"
+            },
+            "type" : "array"
+          },
+          "computedAt" : {
+            "description" : "마지막으로 계산을 마친 시각. 계산한 적이 없으면 null",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "status" : {
+            "description" : "COMPUTING 은 계산을 기다리거나 하는 중, NONE 은 아직 계산한 적 없음",
+            "enum" : [ "COMPUTING", "READY", "FAILED", "NONE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "RepoSummaryResponse" : {
         "description" : "분석할 저장소를 고르는 목록의 한 줄. 커밋 수는 GitHub 기본 브랜치 기준입니다.",
         "properties" : {
@@ -3154,6 +3315,25 @@
               "$ref" : "#/components/schemas/CoverLetterAnswerInput"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "Slot" : {
+        "properties" : {
+          "done" : {
+            "type" : "boolean"
+          },
+          "field" : {
+            "enum" : [ "S", "T", "A", "R" ],
+            "type" : "string"
+          },
+          "round" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -7771,6 +7951,76 @@
         },
         "summary" : "회상 답을 직접 추가 후보로 저장",
         "tags" : [ "Candidates" ]
+      }
+    },
+    "/api/repos/{repoId}/recommendations" : {
+      "get" : {
+        "description" : "그 레포의 확정 카드로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 카드 초안이 끝나거나 확정 카드가 바뀌고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 입니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다.",
+        "operationId" : "recommendations",
+        "parameters" : [ {
+          "description" : "레포 목록 응답의 id",
+          "in" : "path",
+          "name" : "repoId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoRecommendationResponse"
+                }
+              }
+            },
+            "description" : "추천 상태와 기업. 계산한 적이 없으면 NONE 과 빈 배열"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "UUID 가 아니거나 없는 레포이거나 남의 레포"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "레포 추천 기업 조회",
+        "tags" : [ "Matches" ]
       }
     }
   },

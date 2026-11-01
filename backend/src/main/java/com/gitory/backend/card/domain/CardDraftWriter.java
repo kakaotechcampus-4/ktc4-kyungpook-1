@@ -96,7 +96,7 @@ public class CardDraftWriter {
         if (timedOut) {
             card.markGenerationPartial();
         }
-        themeSuggester.settle(card, reader.read(cardId, card.getCurrentVersion()));
+        themeSuggester.settleInDraftJob(card, reader.read(cardId, card.getCurrentVersion()));
 
         return timedOut;
 

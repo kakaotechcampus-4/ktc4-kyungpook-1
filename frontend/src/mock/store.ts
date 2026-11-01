@@ -1,9 +1,10 @@
 /**
  * 인메모리 상태 + Job 시뮬레이터.
  * Job 진행률은 타이머가 아니라 "읽는 순간의 경과 시간"으로 계산한다 — 결정적이고 폴링 간격과 무관.
- * 데모 속도: ANALYZE 12초 · DRAFT 8초 (스펙 목표 30초/3분보다 빠르게).
+ * 데모 속도: ANALYZE 12초, DRAFT 는 카드 한 장에 10초쯤(읽고 생각 8초 + 네 칸 쓰기 2초, 카드가 많으면 전체 36초 안으로) — 스펙 목표 30초/3분보다 빠르게.
  */
-import { seedCards, seedCandidates, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
+import { seedActivities, seedCards, seedCandidates, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
+import { draftPlans, draftSchedule, draftStepsOf, draftTexts, liveDraftOf, type DraftPlan } from './draftLive';
 import { Profile, emptyProfile } from '@/api/profile';
 
 type Any = Record<string, any>;
@@ -14,11 +15,15 @@ export const db = {
   repos: clone(seedRepos) as Any[],
   candidates: clone(seedCandidates) as Any[],
   cards: clone(seedCards) as Any[],
+  activities: clone(seedActivities) as Any[], // 활동(#477) — 카드는 activityId 로 가리킨다
   interview: clone(seedInterview) as Record<string, Any[]>,
+  coverLetters: [] as Any[], // 자소서(#492 계약) — mock/coverLetters.ts 가 다룬다
+  cardMaterialAnswers: {} as Record<string, Record<string, string>>, // 카드마다 기억한 자소서 답(#585)
   profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
+  activityIdem: new Map<string, string>(), // JSON [userId, key] → activityId
   seq: 100,
 };
 export const nextId = (p: string) => `${p}_${++db.seq}`;
@@ -44,6 +49,7 @@ const legacyUpdatedAt = (c: Any): string => [c.metadataUpdatedAt, c.confirmedAt]
 /** 오래된 스냅샷의 현재 근거만 보존한다. 같은 글이어도 과거 버전의 출처는 추정하지 않는다. */
 function hydrateCards() {
   db.repos.forEach(r => { r.userId ??= db.user.id; });
+  db.activities.forEach(a => { a.userId ??= db.user.id; });
   db.cards.forEach(c => {
     c.userId ??= db.user.id;
     const current = c.versions[c.versions.length - 1];
@@ -59,13 +65,14 @@ function hydrateCards() {
 export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
-  db.profile = emptyProfile();
-  db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.seq = 100;
+  db.activities = clone(seedActivities);
+  db.profile = emptyProfile(); db.coverLetters = []; db.cardMaterialAnswers = {};
+  db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.activityIdem.clear(); db.seq = 100;
   hydrateCards();
 }
 
 // ───────────────────────────── Job ─────────────────────────────
-const ANALYZE_SEC = 12, DRAFT_SEC = 8;
+const ANALYZE_SEC = 12;
 const POLL_MS = 1000;        // Job 상세 — 실서버도 줄을 실시간으로 보여 주려고 1초(#496)
 const ACTIVE_POLL_MS = 2000; // 진행 중 Job 목록은 2초 그대로
 const STEP_KEYS = ['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON'] as const;
@@ -188,10 +195,14 @@ const emptyReasons = (repo: Any) => [
 export function viewJob(id: string): Any | null {
   const j = db.jobs.get(id);
   if (!j) return null;
-  const totalSec = j.type === 'ANALYZE' ? ANALYZE_SEC : DRAFT_SEC;
+  // 카드 초안은 카드를 한 장씩 차례로 쓰므로 걸리는 시간이 카드 수와 카드마다의 대본에 따른다(draftLive.ts)
+  const plans = j.type === 'DRAFT' ? draftPlans((j.payload.cardIds as string[]).length, j.payload.timeout === true) : [];
+  const schedule = draftSchedule(plans);
+  const totalSec = j.type === 'ANALYZE' ? ANALYZE_SEC : Math.max(1, schedule.total);
   const elapsed = (Date.now() - j.startedAt) / 1000;
   let progress = Math.min(1, elapsed / totalSec);
-  const base = { jobId: id, type: j.type, startedAt: iso(j.startedAt), updatedAt: iso(Date.now()) };
+  // drafts: 실서버는 카드 초안 Job 이 아니면 빈 배열이다(#617)
+  const base = { jobId: id, type: j.type, startedAt: iso(j.startedAt), updatedAt: iso(Date.now()), drafts: [] as Any[] };
   const ended = (extra: Any) => ({ ...base, finishedAt: iso(Date.now()), pollAfterMs: 0, ...extra });
 
   if (j.type === 'ANALYZE') {
@@ -234,23 +245,29 @@ export function viewJob(id: string): Any | null {
       errorCode: null, retryable: null, retryAfterSec: null, finishedAt: null, result: null, pollAfterMs: POLL_MS };
   }
 
-  // DRAFT — 카드 초안 생성
+  // DRAFT — 카드 초안 생성. 카드를 한 장씩 차례로 쓴다: 장마다 읽고 생각한 뒤 네 칸을 몰아 쓴다(draftLive.ts)
   const cardIds: string[] = j.payload.cardIds;
   const timeout = j.payload.timeout === true;
   const done = progress >= 1;
-  if (done) settle(j, () => cardIds.forEach((cid) => fillDraft(cid, timeout)));
+  if (done) settle(j, () => cardIds.forEach((cid, i) => fillDraft(cid, timeout, plans[i])));
+  const drafts = cardIds.flatMap((cid, i) => {
+    const c = db.cards.find((x) => x.id === cid);
+    if (!c) return []; // 지워진 카드는 진행에서 빠진다
+    return [liveDraftOf({ cardId: cid, title: c.title, plan: plans[i], texts: draftSource(c).texts, think: schedule.think, scale: schedule.scale, since: done ? Infinity : elapsed - schedule.starts[i] })];
+  });
+  const finished = drafts.filter((d) => d.state === 'DONE' || d.state === 'FAILED').length;
   const steps = STEP_KEYS.map((key) => {
     if (key === 'PR_REVIEW') return step(key, 'SKIPPED', 0, 0); // 초안 단계에선 PR 을 다시 읽지 않는다
-    const order = key === 'COMMITS' ? 0 : key === 'COMPRESS' ? 1 : 2;
-    const local = Math.min(1, Math.max(0, (progress - order / 3) * 3));
+    if (key === 'REASON') return step(key, finished >= cardIds.length ? 'DONE' : 'RUNNING', finished, cardIds.length); // 끝난 카드 수 = 'n / m장'
+    const local = Math.min(1, Math.max(0, (elapsed - (key === 'COMMITS' ? 0 : 1)) / 1.5)); // 카드를 쓰기 전에 읽는 단계는 처음 몇 초에 끝난다
     return step(key, local >= 1 ? 'DONE' : local > 0 ? 'RUNNING' : 'QUEUED', Math.floor(cardIds.length * local), cardIds.length);
   });
   if (done) {
-    return ended({ state: 'SUCCEEDED', partial: timeout, steps,
+    return ended({ state: 'SUCCEEDED', partial: timeout, steps, drafts,
       errorCode: timeout ? 'DRAFT_TIMEOUT' : null, retryable: timeout ? true : null, retryAfterSec: null,
       result: { cardIds, verdict: timeout ? 'PARTIAL' : 'OK' } });
   }
-  return { ...base, state: 'RUNNING', partial: false, steps, errorCode: null, retryable: null, retryAfterSec: null,
+  return { ...base, state: 'RUNNING', partial: false, steps, drafts, errorCode: null, retryable: null, retryAfterSec: null,
     finishedAt: null, result: { cardIds }, pollAfterMs: POLL_MS };
 }
 
@@ -293,15 +310,36 @@ export function boardFor(repoId: string) {
 }
 
 // ───────────────────────────── 카드 ─────────────────────────────
+/** 카드가 속한 활동. 이름·종류는 활동에서 읽어 이름을 고치면 카드에도 바로 반영된다(서버와 같다). 활동 밖 카드는 null */
+export function activityRef(c: Any) {
+  const activity = c.activityId ? db.activities.find((a) => a.id === c.activityId) : null;
+  return activity ? { id: activity.id, name: activity.name, type: activity.type } : null;
+}
+/** 활동 응답: 안의 카드 수와 그중 확정 카드 수는 지금 카드에서 센다 */
+export function activityView(a: Any): Any {
+  const { userId, ...rest } = a;
+  void userId;
+  const inside = db.cards.filter((c) => c.activityId === a.id);
+  return { ...rest, cardCount: inside.length, confirmedCount: inside.filter((c) => c.status === 'CONFIRMED').length };
+}
+/** 활동을 지우면 안의 카드도 버전·근거·되묻기까지 모두 지운다(확정 카드 포함). 지운 카드 수를 돌려준다 */
+export function removeActivity(id: string) {
+  const gone = db.cards.filter((c) => c.activityId === id);
+  db.cards = db.cards.filter((c) => c.activityId !== id);
+  gone.forEach((c) => { delete db.interview[c.id]; });
+  db.activities = db.activities.filter((a) => a.id !== id);
+  return gone.length;
+}
+
 export function cardView(c: Any) {
   const v = c.versions[c.versions.length - 1];
-  const { versions, userId, ...rest } = c;
+  const { versions, userId, activityId, ...rest } = c;
   const { _metadata, _confirmed, ...version } = v;
   settleThemes(c); rest.themes = c.themes ?? []; delete rest.themesByUser; delete rest.themesDueAt; // 문항 유형(#564): 목 안의 표시는 내보내지 않는다
   void versions;
-  void userId; void _metadata; void _confirmed;
+  void userId; void activityId; void _metadata; void _confirmed;
   // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
-  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], version });
+  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], activity: activityRef(c), version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.
@@ -330,6 +368,7 @@ export function cardSummary(c: Any) {
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
     updatedAt: c.updatedAt ?? legacyUpdatedAt(c),
     repo: c.repo ? { id: c.repo.id, owner: c.repo.owner, name: c.repo.name } : null,
+    activity: activityRef(c),
   };
 }
 
@@ -382,18 +421,35 @@ export function createDraftCards(repoId: string, candidateIds: string[]) {
   return { jobId, cardIds: cards.map((c) => c.id) };
 }
 
-/** 초안 채우기 — 근거 없는 칸은 비운다. 약한 후보(문서만)면 T·R 을 못 채워 E-6/E-7 로 간다. */
-function fillDraft(cardId: string, timeout: boolean) {
+/** 카드 초안에 쓰는 자료 — 후보와 커밋. 라이브 drafts 와 저장되는 카드가 같은 글을 쓰도록 한 곳에서 만든다 */
+function draftSource(c: Any) {
+  const cand = db.candidates.find((x) => x.id === c.candidate?.id);
+  const shas = (cand?.commits?.length ? cand.commits : [{ sha: 'a3f21c9', message: `${cand?.title ?? ''} 구현` }, { sha: '9c02de1', message: '검증 로직 분리' }]).slice(0, 3);
+  return { cand, shas, texts: draftTexts({ repoName: c.repo.name, title: cand?.title ?? '작업', commits: shas.length }) };
+}
+
+/**
+ * 초안 채우기 — 근거 없는 칸은 비운다. 약한 후보(문서만)면 T·R 을 못 채워 E-6/E-7 로 간다.
+ * plan 이 FAIL 이면 AI 가 끊긴 카드(실서버의 draftFailure): 쓴 글은 저장되지 않고 카드에 실패 이유만 남는다.
+ */
+function fillDraft(cardId: string, timeout: boolean, plan: DraftPlan = 'OK') {
   const c = db.cards.find((x) => x.id === cardId);
   if (!c) return;
-  const cand = db.candidates.find((x) => x.id === c.candidate?.id);
+  const { cand, shas, texts } = draftSource(c);
   const owner = c.repo.owner, repo = c.repo.name;
   const sha = (s: string) => ({ url: `https://github.com/${owner}/${repo}/commit/${s}` });
-  const shas = (cand?.commits?.length ? cand.commits : [{ sha: 'a3f21c9', message: `${cand?.title ?? ''} 구현` }, { sha: '9c02de1', message: '검증 로직 분리' }]).slice(0, 3);
   const v = c.versions[0];
   v.createdAt = now();
-  v.situation = `${c.repo.name} 에서 ${cand?.title ?? '작업'} 이 필요한 상황이었다`;
-  v.action = `${cand?.title ?? '해당 작업'} 을 구현했다. ${shas.length}개 커밋에 걸쳐 나눠 반영했다`;
+  if (plan === 'FAIL' && !timeout) {
+    c.draftFailure = 'AI_UNAVAILABLE';
+    c.generation = null;
+    if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; }
+    c.updatedAt = v.createdAt; captureVersion(c);
+    return;
+  }
+  v.situation = texts.S;
+  v.action = texts.A;
+  c.draftSteps = draftStepsOf(timeout ? 'PARTIAL' : plan, cand?.title ?? '작업'); // 라이브로 보여 준 과정이 카드 상세 'AI 가 한 일'로 남는다
   c.evidence = [
     { field: 'S', type: 'COMMIT', authoredBy: 'AI', sha: shas[0].sha.slice(0, 7), ...sha(shas[0].sha), snippet: shas[0].message, turnNo: null },
     ...shas.map((s: Any) => ({ field: 'A', type: 'COMMIT', authoredBy: 'AI', sha: s.sha.slice(0, 7), ...sha(s.sha), snippet: s.message, turnNo: null })),
@@ -406,7 +462,7 @@ function fillDraft(cardId: string, timeout: boolean) {
     c.generation = null;
   } else {
     v.task = null; // T 는 코드에 안 남는다 — 비워둔다
-    v.result = `${cand?.title ?? '작업'} 이후 관련 수정 커밋이 줄었다`;
+    v.result = texts.R;
     c.evidence.push({ field: 'R', type: 'COMMIT', authoredBy: 'AI', sha: shas[shas.length - 1].sha.slice(0, 7), ...sha(shas[shas.length - 1].sha), snippet: shas[shas.length - 1].message, turnNo: null });
     c.droppedFields = [{ field: 'T', reason: 'NO_EVIDENCE' }];
     c.lowConfidenceFields = [{ field: 'R', why: '수치가 없고 근거 커밋이 1건뿐입니다' }];
@@ -441,7 +497,7 @@ export function askTurn(c: Any, field: string) {
     turnNo: turns.length + 1, field, askedBy: 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
     found: found.length ? found : ['이 카드에 붙은 커밋 근거가 없습니다'],
-    missing: [bank.missing], question: bank.question, options: bank.options, answer: null,
+    missing: [bank.missing], question: bank.question, options: bank.options, answer: null, outcome: null,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };
@@ -453,6 +509,7 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
   if (!turn) return null;
   turn.answer = { text, source }; // 가공 없이 그대로
+  turn.outcome = 'ANSWERED';
   pushVersion(c, 'INTERVIEW', { [FIELD_KEY[turn.field]]: text });
   c.evidence.push({ field: turn.field, type: source, authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
   c.droppedFields = c.droppedFields.filter((d: Any) => d.field !== turn.field);
@@ -465,6 +522,13 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
     c.status = 'CONFIRMED';
     c.confirmedAt = now();
   }
+  return c;
+}
+
+export function skipTurn(c: Any, turnNo: number) {
+  const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
+  if (!turn) return null;
+  turn.outcome = 'SKIPPED';
   return c;
 }
 
@@ -488,8 +552,8 @@ export function settlePending() {
  */
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, profile: db.profile,
-    jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], seq: db.seq,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,
+    jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], activityIdem: [...db.activityIdem.entries()], seq: db.seq,
   });
 }
 export function restore(raw: string): boolean {
@@ -498,12 +562,16 @@ export function restore(raw: string): boolean {
     if (!s?.cards || !s?.repos) return false;
     db.user = s.user; db.repos = s.repos; db.candidates = s.candidates;
     db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
+    db.activities = Array.isArray(s.activities) ? s.activities : []; // 활동이 생기기 전에 저장된 데모 DB 는 활동 없이 이어진다
+    db.coverLetters = Array.isArray(s.coverLetters) ? s.coverLetters : [];
+    db.cardMaterialAnswers = s.cardMaterialAnswers ?? {};
     const profile = Profile.safeParse(s.profile); // 인적사항이 생기기 전에 저장된 데모 DB 는 빈 값으로 이어진다
     db.profile = profile.success ? profile.data : emptyProfile();
     db.jobs.clear();
     (s.jobs ?? []).forEach((j: Any) => db.jobs.set(j.id, j));
     db.idem = new Map(s.idem ?? []);
     db.manualIdem = new Map(s.manualIdem ?? []);
+    db.activityIdem = new Map(s.activityIdem ?? []);
     hydrateCards();
     settlePending();
     return true;

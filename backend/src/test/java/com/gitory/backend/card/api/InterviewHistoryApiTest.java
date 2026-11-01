@@ -41,7 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
         "spring.security.oauth2.client.registration.github.client-secret=test-client-secret",
         "gitory.consent.token-key=test-encryption-key",
-        "gitory.consent.token-salt=5c0744940b5c369b"
+        "gitory.consent.token-salt=5c0744940b5c369b",
+        "gitory.interview.max-turns=2"
 })
 @AutoConfigureMockMvc
 @Testcontainers
@@ -53,7 +54,7 @@ class InterviewHistoryApiTest {
 
     // FE schemas.ts 의 InterviewTurn 이 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
     private static final String[] TURN_KEYS = {"turnNo", "field", "askedBy", "sourceType", "questionType", "found",
-            "missing", "question", "options", "answer", "remaining", "maxTurns"};
+            "missing", "question", "reason", "options", "answerMode", "outcome", "answer", "remaining", "maxTurns"};
 
     @Container
     @ServiceConnection
@@ -79,6 +80,23 @@ class InterviewHistoryApiTest {
 
         myUserId = fixtures.insertUser(1L, "grow22");
         othersUserId = fixtures.insertUser(2L, "someone-else");
+
+    }
+
+    @Test
+    @DisplayName("지난 질문 목록에도 AI 가 그 칸을 고른 이유를 담고, 이유가 없는 질문은 null 이다")
+    void historyCarriesTheChoiceReason() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAnswered(cardId, 1, "S", "배포가 느렸다", "TYPED");
+        interviews.insertAsked(cardId, 2, "T", "EVIDENCE_GAP", "USER", "맡은 일은요?");
+        jdbc.update("UPDATE interview_turn SET choice_reason = '상황이 비어 있어 먼저 물어요' WHERE card_id = ? AND seq = 1",
+                cardId);
+
+        history(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].reason").value("상황이 비어 있어 먼저 물어요"))
+                .andExpect(jsonPath("$.data[1].reason").value(nullValue()));
 
     }
 
@@ -177,7 +195,7 @@ class InterviewHistoryApiTest {
     }
 
     @Test
-    @DisplayName("질문 하나는 FE InterviewTurn 의 12개 키를 모두 담고, 질문 번호는 seq·질문 글은 저장된 그대로이며 출처는 DIRECT_CARD 이고 근거·보기는 빈 배열이다")
+    @DisplayName("질문 하나는 FE InterviewTurn 의 13개 키를 모두 담고, 질문 번호는 seq·질문 글은 저장된 그대로이며 출처는 DIRECT_CARD 이고 근거·보기는 빈 배열이다")
     void exposesTwelveKeysOfOneTurn() throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
@@ -262,9 +280,10 @@ class InterviewHistoryApiTest {
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
         Map<String, Object> answer = JsonPath.read(body, "$.data[0].answer");
-        assertThat(answer).containsOnlyKeys("text", "source")
+        assertThat(answer).containsOnlyKeys("text", "source", "original")
                 .containsEntry("text", "  앞뒤 공백까지 쓴 답  ")
-                .containsEntry("source", expected);
+                .containsEntry("source", expected)
+                .containsEntry("original", null);
 
     }
 

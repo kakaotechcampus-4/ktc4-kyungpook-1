@@ -27,24 +27,24 @@ public class CardMetadataController {
     private final CardMetadataService cardMetadata;
 
     @PatchMapping("/api/cards/{id}/metadata")
-    @Operation(summary = "카드 제목·기간 수정", description = """
+    @Operation(summary = "카드 제목·기간·문항 유형 수정", description = """
             보낸 칸만 고칩니다. 키가 없거나 null 인 칸은 그대로 두고, 기간을 빈 글이나 공백뿐인 글로 보내면 기간을 지웁니다.
             제목은 공백뿐이면 안 되고 256자까지, 기간은 50자까지이며 둘 다 받은 글 그대로 저장합니다.
             보낸 값이 모두 지금 값과 같으면(기간이 없는 카드에 빈 기간을 보낸 경우 포함) 아무것도 바꾸지 않고 updatedAt 도 그대로인 지금 값을 돌려줍니다.
-            제목과 기간을 모두 보내지 않으면 400 입니다. 네 칸·근거·버전은 바꾸지 않습니다.
+            제목·기간·문항 유형을 모두 보내지 않으면 400 입니다. 네 칸·근거·버전은 바꾸지 않고, 확정한 카드도 다시 열지 않고 고칩니다.
+            문항 유형(themes)은 경험 카드에만 0~2개 붙이고 빈 배열이면 비웁니다. 카드 글이 아니라 자소서에 쓸 카드를 고르는 표시라
+            updatedAt 을 바꾸지 않으며, 사용자가 고른 뒤로 AI 는 덮어쓰지 않습니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "고친 뒤의 제목·기간과 카드를 마지막으로 바꾼 시각"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 바꿀 칸이 없음, 제목이 공백뿐이거나 256자를 넘음, 기간이 50자를 넘음, 제목·기간에 U+0000 이 있음",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 바꿀 칸이 없음, 제목이 공백뿐이거나 256자를 넘음, 기간이 50자를 넘음, 제목·기간에 U+0000 이 있음, 문항 유형이 셋 이상·겹침·모르는 값이거나 기술 카드에 붙임",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "CSRF 토큰 없음 또는 불일치",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID 또는 본인 카드 없음",
-                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "CARD_CONFIRMED: 확정된 카드는 다시 열어야 수정할 수 있음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<CardMetadataResponse> edit(
@@ -54,7 +54,7 @@ public class CardMetadataController {
             @RequestBody CardMetadataRequest request) {
 
         return ApiResponse.ok(CardMetadataResponse.from(
-                cardMetadata.edit(toUuid(id), loginUser.id(), request.title(), request.period())));
+                cardMetadata.edit(toUuid(id), loginUser.id(), request.title(), request.period(), request.themes())));
 
     }
 

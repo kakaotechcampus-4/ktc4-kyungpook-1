@@ -43,7 +43,7 @@ export const JobStepKey = z.enum(['COMMITS', 'PR_REVIEW', 'COMPRESS', 'REASON'])
 export const StepState = z.enum(['QUEUED', 'RUNNING', 'DONE', 'SKIPPED']);
 export const Verdict = z.enum(['OK', 'EMPTY', 'PARTIAL']);
 export const DropReason = z.enum(['NO_EVIDENCE', 'OVERCLAIM', 'UNSOURCED_NUMBER', 'TIMEOUT']);
-export const JobErrorCode = z.enum(['GITHUB_UNAVAILABLE', 'GITHUB_RATE_LIMITED', 'DRAFT_TIMEOUT', 'EVIDENCE_MISSING', 'INTERNAL_ERROR']);
+export const JobErrorCode = z.enum(['GITHUB_UNAVAILABLE', 'GITHUB_RATE_LIMITED', 'GITHUB_UNAUTHORIZED', 'AI_UNAVAILABLE', 'COLLECTION_CAPPED', 'DRAFT_TIMEOUT', 'EVIDENCE_MISSING', 'INTERNAL_ERROR']);
 export const ContributionLevel = z.enum(['NONE', 'PARTIAL', 'SHARED', 'MAJOR']);
 /** 문장을 누가 썼는가. AI 문장은 근거가 1개 이상 필요하고, USER 문장은 근거 없이도 허용된다. */
 export const AuthoredBy = z.enum(['AI', 'USER']);
@@ -124,6 +124,8 @@ export const RepoSummary = z.object({
   activeFrom: z.string(),
   activeTo: z.string(),
   lastAnalyzedAt: z.string().nullable(),
+  /** 기여 개수(커밋·PR·리뷰)를 센 시각. null 이면 아직 한 번도 못 센 것이라 개수 0 이 실제 0 이 아니다. 생략된 응답은 센 것으로 본다 → lib/repoCounts. */
+  countedAt: z.string().nullish(),
   candidateCount: z.number().nullable(),
   cardCount: z.number(),
   recommended: z.boolean(),
@@ -147,6 +149,26 @@ export const JobStep = z.object({
 });
 export type JobStep = z.infer<typeof JobStep>;
 
+/**
+ * AI 가 방금 읽거나 판단한 줄(#493, #496). 오래된 줄부터 오고 seq 는 Job 안에서 1부터 늘어난다.
+ * 종류에 없는 칸은 null. 새 종류가 생겨도 화면이 깨지지 않게 kind·step 은 글자로 받고 모르는 줄은 그리지 않는다.
+ */
+export const JobActivity = z.object({
+  seq: z.number(),
+  step: z.string(),
+  kind: z.string(),
+  number: z.number().nullish(),      // PULL_REQUEST
+  title: z.string().nullish(),       // PULL_REQUEST, COMMIT(메시지 첫 줄), DESCRIBED(경험 제목)
+  reviews: z.number().nullish(),     // PULL_REQUEST
+  sha: z.string().nullish(),         // COMMIT(7자)
+  files: z.number().nullish(),       // COMMIT
+  excluded: z.string().nullish(),    // COMMIT — BOT|MERGE_COMMIT|LOCKFILE_ONLY|NOT_OWN, 빼지 않았으면 null
+  units: z.number().nullish(),       // GROUPED
+  experiences: z.number().nullish(), // GROUPED
+  reason: z.string().nullish(),      // DESCRIBED
+});
+export type JobActivity = z.infer<typeof JobActivity>;
+
 /** verdict EMPTY 는 실패가 아니다. 판정이고, 판정 근거를 reasons 로 준다. */
 export const JobResult = z.object({
   repoId: z.string().nullish(),
@@ -161,6 +183,7 @@ export const Job = z.object({
   state: JobState,
   partial: z.boolean(),          // 부분 완료는 별도 상태가 아니라 SUCCEEDED + partial
   steps: z.array(JobStep),
+  activity: z.array(JobActivity).nullish(), // 이전 서버, 카드 초안 Job, 끝나고 10분 뒤에는 없거나 []
   errorCode: JobErrorCode.nullable(),
   retryable: z.boolean().nullable(),
   retryAfterSec: z.number().nullable(), // GITHUB_RATE_LIMITED 에서만 의미가 있다
@@ -239,6 +262,11 @@ export const Evidence = z.object({
   url: z.string().nullable(),
   snippet: z.string().nullable(),
   turnNo: z.number().nullable(),
+  // #455·#456: 커밋 근거에만 오는 부가 정보. 이전 서버·이전 카드는 생략하거나 null 이라 모두 선택이다.
+  /** AI 가 커밋 diff 를 읽고 쓴 한 줄 요약. 화면은 summary ?? snippet(커밋 메시지) 순서로 보여 준다 */
+  summary: z.string().nullish(),
+  committedAt: z.string().nullish(),
+  changedFiles: z.number().int().nonnegative().nullish(),
 });
 export type Evidence = z.infer<typeof Evidence>;
 
@@ -256,7 +284,67 @@ export type CardVersion = z.infer<typeof CardVersion>;
 export const DroppedField = z.object({ field: StarField, reason: DropReason });
 export const LowConfidence = z.object({ field: StarField, why: z.string() });
 
+// ───────────────────────────── AI 가 한 일 (#479 draftSteps) ─────────────────────────────
+export const DraftStepKind = z.enum(['DRAFT', 'FLAG', 'OPEN', 'RETRY', 'KEEP', 'REWRITE', 'PASS']);
+export const DraftStepActor = z.enum(['MODEL', 'CODE']);
+export const DraftMaterial = z.enum(['ISSUE', 'REVIEW', 'OWNER_REPLY']);
+export type DraftStepKind = z.infer<typeof DraftStepKind>;
+export type DraftStepActor = z.infer<typeof DraftStepActor>;
+export type DraftMaterial = z.infer<typeof DraftMaterial>;
+/** 비었거나 모양이 틀린 글은 null. 공백만 있는 글을 값으로 오인해 빈 문장을 그리지 않는다 */
+const stepText = z.string().nullable().catch(null).transform((text) => text?.trim() || null);
+/**
+ * 단계 하나. 서버가 새 값을 추가해도 카드 전체가 깨지지 않게 느슨하게 읽는다.
+ *  - 모르는 kind·고장 난 round 는 단계를 통째로 버린다(무슨 일을 했는지 알 수 없으니 지어내지 않는다).
+ *  - 모르는 actor·field·material 과 글은 null 로 둔다. 화면이 null 을 보고 그 부분만 건너뛴다.
+ */
+export const DraftStep = z.object({
+  round: z.number().int().nonnegative(),
+  actor: DraftStepActor.nullable().catch(null),
+  kind: DraftStepKind,
+  field: StarField.nullable().catch(null),
+  code: stepText,
+  value: stepText,
+  material: DraftMaterial.nullable().catch(null),
+  reason: stepText,
+});
+export type DraftStep = z.infer<typeof DraftStep>;
+/** 배열이 아니거나 null 이면 []. 걸러진 단계가 있어도 남은 단계의 순서는 서버 순서 그대로다 */
+export const DraftSteps = z.array(z.unknown())
+  .transform((items) => items.flatMap((item) => { const step = DraftStep.safeParse(item); return step.success ? [step.data] : []; }))
+  .catch([]);
+
+export const CardArea = z.enum(['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'AI', 'DB', 'TEST', 'DOCS']);
+export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON', 'GO', 'RUST', 'SWIFT', 'DART',
+  'TYPESCRIPT', 'JAVASCRIPT', 'SCALA', 'SPRING', 'JPA', 'NODEJS', 'NESTJS', 'EXPRESS', 'DJANGO', 'FASTAPI', 'FLASK',
+  'DOTNET', 'REACT', 'NEXTJS', 'VUE', 'ANGULAR', 'ANDROID', 'IOS', 'FLUTTER', 'REACT_NATIVE', 'SQL', 'MYSQL',
+  'POSTGRESQL', 'ORACLE', 'MONGODB', 'REDIS', 'ELASTICSEARCH', 'KAFKA', 'RABBITMQ', 'SPARK', 'AIRFLOW', 'HADOOP',
+  'DOCKER', 'KUBERNETES', 'AWS', 'GCP', 'AZURE', 'TERRAFORM', 'LINUX', 'NGINX', 'CI_CD', 'GITHUB_ACTIONS', 'JENKINS',
+  'PROMETHEUS', 'GRAFANA', 'LLM', 'PYTORCH', 'TENSORFLOW', 'SCIKIT_LEARN', 'LANGCHAIN', 'GRAPHQL', 'GRPC', 'MSA',
+  'UNITY', 'UNREAL']);
+// Optional only for existing snapshots / rolling deployments; never infer absent tags.
+export const CardTagFields = {
+  areas: z.array(CardArea).max(2).optional(),
+  techs: z.array(CardTech).max(8).optional(),
+};
+
+// ───────────────────────────── 문항 유형 themes (#482, 계약 #475 3절) ─────────────────────────────
+// 값과 이름은 BE #564 의 `CardTheme`·`themes` 와 같아야 한다.
+export const CARD_THEMES = ['COLLABORATION', 'CONFLICT', 'PROBLEM_SOLVING', 'LEADERSHIP', 'CHALLENGE', 'FAILURE', 'GROWTH'] as const;
+export const CardTheme = z.enum(CARD_THEMES);
+export type CardTheme = z.infer<typeof CardTheme>;
+/** 카드 하나에 붙는 문항 유형의 상한(서버가 3개부터 400 으로 막는다) */
+export const CARD_THEME_LIMIT = 2;
+/**
+ * 응답의 `themes`. 칸이 없으면(옛 서버) undefined — 비어 있음([])과 다르다. 화면은 undefined 면 이 영역을 숨기고 아무것도 짐작하지 않는다.
+ * 서버가 새 유형을 추가해도 카드 응답 전체가 깨지지 않게 모르는 코드만 빼고, 칸의 모양이 틀리면 칸이 없는 것으로 읽는다.
+ */
+const knownThemes = z.array(z.string()).transform((items) => items.filter((item): item is CardTheme => CardTheme.safeParse(item).success)).optional().catch(undefined);
+export const CardThemeFields = { themes: knownThemes };
+
 export const Card = z.object({
+  ...CardTagFields,
+  ...CardThemeFields,
   id: z.string(),
   kind: CardKind,
   status: CardStatus,
@@ -268,8 +356,12 @@ export const Card = z.object({
   evidence: z.array(Evidence),
   lowConfidenceFields: z.array(LowConfidence),
   droppedFields: z.array(DroppedField),
+  /** AI 가 초안을 만든 단계(카드 상세에만 온다) → 'AI 가 한 일'. 이전 서버·이전 스냅샷은 키가 없어 선택이다. 있는데 고장 난 값은 [] 로 읽는다 */
+  draftSteps: DraftSteps.optional(),
   maskRules: z.array(z.object({ from: z.string(), to: z.string() })),
   generation: z.object({ jobId: z.string(), partial: z.boolean() }).nullable(), // D1 · D3
+  // AI 초안을 채우지 못한 이유(#419). 데모 데이터처럼 값이 없으면 실패 없음이다
+  draftFailure: z.enum(['GITHUB_UNAUTHORIZED', 'AI_UNAVAILABLE', 'INTERNAL_ERROR']).nullable().optional(),
   interviewTurns: z.number(),
   confirmedAt: z.string().nullable(),
   createdAt: z.string(),
@@ -281,6 +373,8 @@ export const StarStates = z.object({ S: StarFieldState, T: StarFieldState, A: St
 export type StarStates = z.infer<typeof StarStates>;
 
 export const CardSummary = z.object({
+  ...CardTagFields,
+  ...CardThemeFields,
   id: z.string(),
   kind: CardKind,
   status: CardStatus,
@@ -294,16 +388,23 @@ export const CardSummary = z.object({
   period: z.string().nullish(),
   evidenceCount: z.number().nonnegative().nullish(),
   userStatedCount: z.number().nonnegative().nullish(),
+  /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
+  repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
 });
 export type CardSummary = z.infer<typeof CardSummary>;
 
 /** Shared by manual creation and metadata PATCH: blank periods clear to null. */
 export const CardPeriodInput = ManualDraftInput.shape.period;
-/** #186 confirmed contract: omitted fields stay unchanged; explicit null clears period. */
-export const CardMetadataPatch = z.object({ title: ManualDraftInput.shape.title.optional(), period: CardPeriodInput.optional() })
-  .refine((value) => value.title !== undefined || value.period !== undefined);
-export type CardMetadataPatch = z.infer<typeof CardMetadataPatch>;
-export const CardMetadata = z.object({ cardId: z.string(), title: z.string(), period: z.string().nullable(), updatedAt: z.string().datetime({ offset: true }) });
+/** #186/#420 server contract: omitted or null fields stay unchanged; an empty string clears period, so a cleared period goes out as ''. */
+export const CardMetadataPatch = z.object({
+  title: ManualDraftInput.shape.title.optional(),
+  period: CardPeriodInput.transform((period) => period ?? '').optional(),
+  /** #482: 문항 유형 0~2개, 겹침 없음. `[]` 는 비우기다(생략과 다르다). 확정 카드도 바로 고친다 */
+  themes: z.array(CardTheme).max(CARD_THEME_LIMIT).refine((items) => new Set(items).size === items.length, { message: 'Duplicate themes' }).optional(),
+}).refine((value) => value.title !== undefined || value.period !== undefined || value.themes !== undefined);
+/** Screen input: a blank or null period means "clear it". */
+export type CardMetadataPatch = z.input<typeof CardMetadataPatch>;
+export const CardMetadata = z.object({ cardId: z.string(), title: z.string(), period: z.string().nullable(), ...CardThemeFields, updatedAt: z.string().datetime({ offset: true }) });
 export type CardMetadata = z.infer<typeof CardMetadata>;
 
 export const VersionListItem = z.object({

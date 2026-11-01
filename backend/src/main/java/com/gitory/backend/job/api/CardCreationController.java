@@ -37,12 +37,14 @@ public class CardCreationController {
             고른 후보마다 카드(1번 버전, 출처 직접 수정)를 만들고 후보를 카드로 쓴 상태로 바꾸며, 카드를 묶는 카드 초안 Job 하나를 돌려줍니다.
             포함된 커밋이 없는 후보는 정성 카드, 있으면 기술 카드로 시작하고 제목은 후보 제목이며 기간은 비워 둡니다.
             직접 추가하거나 회상으로 만든 후보는 그 글을 과제(T) 칸에 사용자 진술로 넣고 나머지 칸은 비워 둡니다.
+            한 요청에 만들 수 있는 카드는 8장(gitory.cards.max-per-request)까지이고, 중복을 뺀 후보가 그보다 많으면 아무것도 만들지 않고 400(INVALID_REQUEST)입니다.
             같은 후보를 여러 번 보내면 한 번으로 세고, 하나라도 이 저장소의 후보가 아니면 아무것도 만들지 않고 404, 이미 카드로 쓴 후보나 제외한 후보가 섞여 있으면 409(INVALID_STATE)입니다.
+            카드 초안(CARD_AI_DRAFT_ENABLED)이 켜져 있으면 만들 카드 수만큼 사용자별 하루 한도를 세고, 남은 횟수를 넘으면 아무것도 만들지 않고 429(RATE_LIMITED)입니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
             """)
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "만든 카드 id(보낸 순서)와 초안 Job id"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "NO_CANDIDATES: 후보를 보내지 않았거나 빈 목록",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "NO_CANDIDATES: 후보를 보내지 않았거나 빈 목록, INVALID_REQUEST: 중복을 뺀 후보가 한 번에 만들 수 있는 수(8개)를 넘음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
@@ -51,6 +53,8 @@ public class CardCreationController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID 이거나 본인 저장소가 아님, 또는 이 저장소의 후보가 아닌 id 가 있음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: 이미 카드로 쓴 후보나 제외한 후보가 섞여 있음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 카드 초안이 켜져 있고 만들 카드 수가 하루 남은 횟수를 넘음. details.retryAfterSec 와 Retry-After 헤더에 기다릴 초가 있음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<CardCreationResponse> create(

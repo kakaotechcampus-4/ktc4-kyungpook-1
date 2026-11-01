@@ -14,7 +14,7 @@ from ports.repository_activity import RepositoryActivityExecution
 from schemas.collection import CandidateDetailResult
 from services.analysis_pipeline import AnalysisPipeline
 from services.diff_analyzer import CommitSummary, DiffAnalyzer, DiffSummaryOutput
-from services.github_collector import GithubApiError, GithubResourceNotFound
+from services.github_collector import GithubApiError, GithubResourceNotFound, GithubUnauthorized
 from services.llm_settings import LLMConfigError
 from services.llm_structured_client import (
     LLMNonRetryableError,
@@ -159,10 +159,10 @@ def test_diff_evidence_returns_evidence_without_patch(override) -> None:
     assert data["evidence"][0] == {
         "sha": SHA, "message": "feat: jwt 필터", "author_login": "octo", "churn": "+3/-1",
         "summary": "JWT 필터를 추가했다.", "summary_source": "DIFF",
-        "technical_points": ["OncePerRequestFilter"], "url": None,
+        "technical_points": ["OncePerRequestFilter"], "changed_paths": ["Filter.java"], "url": None,
     }
     assert (data["partial"], data["partial_reason"], data["missing_commit_shas"]) == (False, None, [])
-    assert body["meta"]["tool_calls_made"] == 4
+    assert (body["meta"]["github_calls"], body["meta"]["tool_calls_made"], body["meta"]["ended_by"]) == (4, 0, "COMPLETED")
     assert port.tokens == [TOKEN]
     assert port.skip_flags == [True]
     # PR 번호로 커밋을 다시 고르지 않고 본인 커밋 SHA만 조회한다.
@@ -186,6 +186,7 @@ def test_more_than_50_shas_are_cut_and_reported_as_partial(override) -> None:
     response = _post_diff(_diff_body(commit_shas=shas))
 
     assert response.status_code == 200
+    assert response.json()["meta"]["ended_by"] == "PARTIAL"
     data = response.json()["data"]
     assert port.requests[0].commit_shas == shas[:50]
     assert len(data["evidence"]) == 50
@@ -247,7 +248,7 @@ def test_diff_evidence_output_is_valid_star_input(override) -> None:
     ("error", "status", "code", "retryable"),
     [
         (GithubResourceNotFound("x"), 404, "RESOURCE_NOT_FOUND", False),
-        (GithubApiError("x", 401), 502, "GITHUB_API_ERROR", False),
+        (GithubUnauthorized("x", 401), 401, "GITHUB_UNAUTHORIZED", False),
         (GithubApiError("x", 403), 502, "GITHUB_API_ERROR", False),
         (GithubApiError("x", 403, secondary_rate_limited=True), 502, "GITHUB_API_ERROR", True),
         (GithubApiError("x", 422), 502, "GITHUB_API_ERROR", False),

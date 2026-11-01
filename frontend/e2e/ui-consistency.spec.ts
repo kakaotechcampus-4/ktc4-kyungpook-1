@@ -65,11 +65,8 @@ test('홀수 경험 카드도 다른 카드와 같은 폭을 유지한다', asyn
   await loginAsDemo(page);
   await page.goto('/cards');
   await page.locator('.experience-list > *').first().waitFor();
-  const geo = await page.evaluate(() => {
-    const list = document.querySelector('.experience-list')!;
-    const kids = Array.from(list.children);
-    return { count: kids.length, lastW: kids[kids.length - 1].getBoundingClientRect().width, firstW: kids[0].getBoundingClientRect().width };
-  });
-  expect(geo.count % 2).toBe(1);                       // 시드가 홀수여야 이 검사가 의미 있다
-  expect(Math.abs(geo.lastW - geo.firstW)).toBeLessThanOrEqual(1);
+  // 레포별 묶음은 카드 1장·4장처럼 홀짝이 섞인다 — 묶음이 달라도, 혼자 남은 카드도 모두 같은 폭이어야 한다
+  const widths = await page.locator('.experience-list > *').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+  expect(widths.length % 2).toBe(1);                   // 시드가 홀수여야 이 검사가 의미 있다
+  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
 });

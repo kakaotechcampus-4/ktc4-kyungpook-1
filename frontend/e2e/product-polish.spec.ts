@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { freshSeed, loginAsDemo } from './helpers';
 
-test('landing explains GitHub records and card output with a compact session notice', async ({ page }) => {
+test('sample landing explains GitHub records and card output without a false expired-session notice', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await freshSeed(page); await page.goto('/login?reason=expired');
   await expect(page.getByLabel('GitHub 기록 예시')).toBeVisible();
   await expect(page.getByLabel('경험 카드 예시')).toBeVisible();
-  const notice = await page.getByRole('status').boundingBox();
-  expect(notice!.height).toBeLessThan(55);
+  await expect(page.getByText('로그인이 만료됐어요. 다시 시작해 주세요.')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '샘플로 체험하기', exact: true })).toBeVisible();
 });
 
 test('first, middle and last selected repository rows retain geometry and rounded end corners', async ({ page }) => {
@@ -36,9 +36,13 @@ test('first, middle and last selected repository rows retain geometry and rounde
 test('desktop experiences have individual card boundaries and gaps', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsDemo(page); await page.goto('/cards');
-  const first = await page.locator('.experience-item').nth(0).boundingBox();
-  const second = await page.locator('.experience-item').nth(1).boundingBox();
-  expect(second!.x - (first!.x + first!.width)).toBeGreaterThanOrEqual(16);
+  // 레포별 묶음이라 처음 두 장이 한 줄이라는 보장이 없다 — 같은 줄(같은 top)에 나란히 놓인 두 장의 간격을 잰다
+  await expect(page.locator('.experience-item')).toHaveCount(5);
+  const boxes = await page.locator('.experience-item').evaluateAll(items => items.map(item => item.getBoundingClientRect()).map(r => ({ top: Math.round(r.top), x: r.x, right: r.right })));
+  const pair = boxes.find((a, i) => boxes.slice(i + 1).some(b => b.top === a.top));
+  expect(pair).toBeDefined();
+  const neighbor = boxes.find(b => b !== pair && b.top === pair!.top && b.x > pair!.x)!;
+  expect(neighbor.x - pair!.right).toBeGreaterThanOrEqual(16);
 });
 
 test('large and short desktop dialogs remain centered with visible actions', async ({ page }) => {
@@ -70,7 +74,7 @@ test('suggested selections add to previously selected hidden candidates', async 
   await loginAsDemo(page); await page.goto('/repos/r_auth/candidates');
   const first = page.getByRole('checkbox', { name: '로그인 세션 처리 선택' });
   await first.check();
-  await page.getByRole('textbox', { name: '후보 검색 (제목·추천 이유)' }).fill('로그인 API');
+  await page.getByRole('textbox', { name: '후보 검색 (제목, 추천 이유)' }).fill('로그인 API');
   await page.getByRole('button', { name: '추천 후보 선택' }).click();
   await page.getByRole('button', { name: '검색 지우기' }).click();
   await expect(first).toBeChecked();
@@ -87,7 +91,7 @@ test('bulk restore attempts every excluded candidate despite request failures', 
   });
   await page.goto('/repos/r_auth/candidates?demoScenario=candidate-error');
   await page.getByRole('button', { name: '제외 3개 복원' }).click();
-  await expect(page.locator('.toast').filter({ hasText: '0개 복원 · 3개는 다시 시도해 주세요' })).toBeVisible();
+  await expect(page.locator('.toast').filter({ hasText: '0개 복원, 3개는 다시 시도해 주세요' })).toBeVisible();
   await page.getByRole('button', { name: '제외 3개 복원' }).click();
   await expect(page.getByRole('button', { name: /제외 \d+개 복원/ })).toHaveCount(0);
 });

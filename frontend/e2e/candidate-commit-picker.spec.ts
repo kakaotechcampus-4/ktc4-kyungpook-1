@@ -107,7 +107,7 @@ test('commit picker Space and child clicks preserve exact selected SHAs through 
   await expect(dialog).toHaveCount(0);
   const saved = page.locator('.cand').filter({ has: page.getByRole('heading', { name: '커밋 선택 검증', exact: true }) });
   await expect(saved.locator('.cand__meta')).toContainText('커밋 2개');
-  await expect(page.locator('.sticky-footer__text')).toContainText('0개 선택');
+  await expect(page.locator('.sticky-footer__text')).toContainText('0/8개 선택');
 });
 
 test('320px picker wraps long messages for commits that have no existing candidate', async ({ page }) => {

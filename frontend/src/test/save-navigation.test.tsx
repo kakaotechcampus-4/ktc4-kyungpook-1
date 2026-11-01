@@ -41,7 +41,8 @@ describe('writing route save protection', () => {
     render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: 'Manual cache' } });
     fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Saved manual situation' } });
-    fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
+    fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
+    fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/cards/manual-cache'));
     await waitFor(() => expect(client.getQueryState(keys.card('manual-cache'))?.status).toBe('error'));
     expect(screen.getByText('Saved manual situation')).toBeInTheDocument();
@@ -77,7 +78,7 @@ describe('writing route save protection', () => {
     const router = mount();
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: '  Original title  ' } });
     fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: '  original\n' } });
-    fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
+    fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
     await screen.findByRole('button', { name: '다시 저장' });
     expect(router.state.location.pathname).toBe('/new');
     expect(save).toHaveBeenCalledWith('returned-card', expect.objectContaining({ situation: '  original\n' }));

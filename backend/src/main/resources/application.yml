@@ -20,6 +20,14 @@ spring:
     enabled: true
     baseline-on-migrate: false
 
+  data:
+    redis:
+      # 호출 제한(gitory.rate-limit)만 쓴다. 스위치가 꺼져 있으면 붙지 않는다
+      host: ${REDIS_HOST:localhost}
+      # Redis 가 멈춰도 요청이 오래 붙들리지 않고 제한을 건너뛰어 통과하도록 짧게 둔다
+      connect-timeout: 500ms
+      timeout: 500ms
+
   http:
     clients:
       # GitHub 호출 하나가 오래 멈춰도 저장소 목록 요청이 프론트 제한(30초) 안에 끝나게 한다.
@@ -67,6 +75,10 @@ management:
       exposure:
         # 헬스체크만 연다. env·configprops 는 비밀값이 새는 경로다.
         include: health
+  health:
+    redis:
+      # Redis 는 호출 제한에만 쓰고 멈추면 제한을 건너뛴다. health 에 섞이면 compose --wait 와 배포 확인이 Redis 때문에 실패한다
+      enabled: false
   endpoint:
     health:
       show-details: never
@@ -98,15 +110,25 @@ gitory:
     connect-timeout: ${AI_CONNECT_TIMEOUT:3s}
     read-timeout: ${AI_READ_TIMEOUT:180s}
     # AI 가 커밋마다 GitHub 를 차례로 불러 커밋 1000개 저장소는 180초를 넘기므로 수집만 따로 길게 둔다
-    # 멈춘 Job 판정은 이 값과 묶기 대기 중 큰 값에 여유를 더해 계산하므로, 이 값을 늘리면 판정도 같이 늦춰진다
+    # 멈춘 Job 판정은 이 값을 포함한 네 대기 한도 중 큰 값에 여유를 더해 계산하므로, 이 값이 가장 크면 늘릴수록 판정도 같이 늦춰진다
     collect-read-timeout: ${AI_COLLECT_READ_TIMEOUT:600s}
-    # 후보 묶기는 AI 가 LLM 을 여러 번 차례로 불러 오래 걸리므로 따로 길게 둔다
+    # 경험 그룹화는 AI 가 LLM 을 여러 번 차례로 불러 오래 걸리므로 따로 길게 둔다
     groups-read-timeout: ${AI_GROUPS_READ_TIMEOUT:600s}
     # 프론트가 요청을 30초에 끊으므로 되묻기는 그 전에 AI 응답을 받아야 한다
     interview-read-timeout: 20s
     # 카드 초안의 diff 근거·STAR 초안은 AI 가 240초·150초 안에 정리해 답하므로, 그 답을 놓치지 않게 조금 더 기다린다
     diff-evidence-read-timeout: ${AI_DIFF_EVIDENCE_READ_TIMEOUT:300s}
     star-read-timeout: ${AI_STAR_READ_TIMEOUT:180s}
+    # AI 는 LLM 대기 120초에 시간 초과 뒤 한 번 더 시도해 최악 약 240초가 걸린다
+    # 새벽 배치라 기다려도 되므로 그보다 길게 기다려, Spring 이 먼저 끊는 바람에 AI 가 계속 돌다 결과가 버려지는 일이 없게 한다
+    posting-extract-read-timeout: ${AI_POSTING_EXTRACT_READ_TIMEOUT:300s}
+    # 매칭 목록은 프론트가 요청을 30초에 끊으므로 AI 검색은 그 전에 답을 받아야 한다
+    matching-search-read-timeout: 25s
+    # 공고를 20개씩 임베딩해 색인하는 호출이라 새벽 배치에서 넉넉히 기다린다
+    matching-index-read-timeout: ${AI_MATCHING_INDEX_READ_TIMEOUT:120s}
+  github:
+    # E2E 시험에서 가짜 GitHub 서버로 바꿀 수 있게 둔 값이며 운영은 기본값을 쓴다
+    api-base-url: ${GITHUB_API_BASE_URL:https://api.github.com}
   consent:
     # GitHub 액세스 토큰 암호화 키·솔트. 코드·설정 파일에 값을 적지 않는다 —
     # 배포 환경의 비밀 관리에서 환경변수로 주입한다(security-privacy.md).
@@ -119,12 +141,96 @@ gitory:
     worker:
       # 끄면 접수된 Job 이 실행되지 않는다. 테스트는 test 리소스의 config/application.yml 에서 끈다
       enabled: ${JOB_WORKER_ENABLED:true}
-      # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job 은 이 수와 상관없이 하나씩 실행한다
+      # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
+  cover-letter:
+    worker:
+      # 끄면 자소서의 AI 단계가 돌지 않는다. 분석 Job 과 자리를 나눠, 오래 걸리는 분석이 자소서를 막지 않는다
+      enabled: ${COVER_LETTER_WORKER_ENABLED:true}
+      concurrency: ${COVER_LETTER_WORKER_CONCURRENCY:2}
+  matching:
+    sync:
+      # 켜면 매일 새벽 5시(서울)에 회사 채용 공고를 가져오고 서버가 뜰 때 24시간 넘게 안 돌았으면 바로 한 번 돈다
+      # 켜기 전에 회사별 이용 조건을 확인하며 서버가 여러 대여도 DB 잠금으로 한 곳에서만 돈다
+      enabled: ${MATCHING_SYNC_ENABLED:false}
+    sources:
+      # 쿠팡은 회사 채용 사이트가 공고 경로에서 채용 집계 봇을 막고 있어 그 뜻을 따라 넣지 않는다
+      - { key: daangn, name: 당근, type: GREENHOUSE, board: daangn, logo: 'https://about.daangn.com/icons/icon-72x72.png?v=7ecc65aad435f5c3e7bed69e5a7a6219' }
+      - { key: krafton, name: 크래프톤, type: GREENHOUSE, board: krafton, logo: 'https://s2-recruiting.cdn.greenhouse.io/external_greenhouse_job_boards/logos/400/963/700/original/KRAFTON_1_Primary_Wordmark_Black_260112.png?1772068780' }
+      - { key: furiosaai, name: 퓨리오사AI, type: GREENHOUSE, board: furiosaai }
+      - { key: moloco, name: 몰로코, type: GREENHOUSE, board: moloco }
+      - { key: sendbird, name: 센드버드, type: GREENHOUSE, board: sendbird }
+      - { key: lgairesearch, name: LG AI연구원, type: GREENHOUSE, board: lgairesearch, logo: 'https://www.lgresearch.ai/img/common/logo_en.png' }
+      - { key: seoulrobotics, name: 서울로보틱스, type: GREENHOUSE, board: seoulrobotics, logo: 'https://s8-recruiting.cdn.greenhouse.io/external_greenhouse_job_boards/logos/400/355/700/original/SR_Logo_CMYK_Black.png?1762160770' }
+      - { key: commvault, name: Commvault, type: GREENHOUSE, board: commvault }
+      - { key: overdare, name: OVERDARE, type: GREENHOUSE, board: overdare }
+      - { key: bluehole, name: 블루홀스튜디오, type: GREENHOUSE, board: bluehole, logo: 'https://s2-recruiting.cdn.greenhouse.io/external_greenhouse_job_boards/logos/400/963/900/original/Logo_Bluehole_blue.png?1627873354' }
+      - { key: ujet, name: UJET, type: GREENHOUSE, board: ujet }
+      - { key: riotgames, name: Riot Games 코리아, type: GREENHOUSE, board: riotgames }
+      # 그리팅은 board 에 목록 페이지 주소를 적으며 리다이렉트를 따르지 않아 이동이 끝난 주소여야 한다
+      - { key: upstage, name: 업스테이지, type: GREETING, board: 'https://careers.upstage.ai/ko/upstage', logo: 'https://opening-attachments.greetinghr.com/2026-02-26/5b2540f1-bf17-4c76-a3bd-4548cdcc7ea5/Variant4.png' }
+      - { key: kakaopay, name: 카카오페이, type: GREETING, board: 'https://careers.kakaopay.com/ko/main', logo: 'https://opening-attachments.greetinghr.com/2024-01-29/e0bfa911-92d7-4d67-8add-ec3f680e6897/BI_recruit.png' }
+      - { key: hyundai-autoever, name: 현대오토에버, type: GREETING, board: 'https://career.hyundai-autoever.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2026-06-22/532f95ec-9b58-4a2a-9756-cb71a04ad530/.jpg' }
+      - { key: stradvision, name: 스트라드비젼, type: GREETING, board: 'https://stradvision.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2024-06-07/c4aa3fa9-2ad2-4e24-aa33-0ad32626e142/STRADVISION-logo_2024-06-04-003132_duxy.jpg' }
+      - { key: deepx, name: 딥엑스, type: GREETING, board: 'https://deepx.career.greetinghr.com/ko/career', logo: 'https://opening-attachments.greetinghr.com/2025-02-04/6ee8d430-29a9-4d44-aa63-c9a9c3bf8a03/-.png' }
+      - { key: nextsecurities, name: 넥스트증권, type: GREETING, board: 'https://nextsecurities.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2025-12-03/5a7b31d2-9f1e-4e4a-8499-2ce18f8d1754/Logo_NextS_Primary_Black.png' }
+      - { key: interxlab, name: 인터엑스, type: GREETING, board: 'https://interxlab.career.greetinghr.com/ko/interxlab', logo: 'https://profiles.greetinghr.com/group/bfef70eb-ad56-43e0-a53e-848bd5c403a3' }
+      - { key: rebellions, name: 리벨리온, type: GREETING, board: 'https://rebellions.career.greetinghr.com/ko/accelerate-your-career', logo: 'https://opening-attachments.greetinghr.com/2025-08-13/b6cc2665-29e7-418e-a640-9061cb9232b0/Rebellions_logo_positive_primary_RGB.png' }
+      - { key: ex-em, name: 엑셈, type: GREETING, board: 'https://ex-em.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2025-12-10/0c90e898-f259-453a-9a28-360ff6d08486/Groupware_LoginIMG(300x150).png' }
+      - { key: realworld, name: 리얼월드, type: GREETING, board: 'https://realworld.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2025-12-22/c31e70f9-eeed-4ca8-bb92-919bb8eed2cc/favi.png' }
+      - { key: xcena, name: 엑시나, type: GREETING, board: 'https://xcena.career.greetinghr.com/en/intro', logo: 'https://opening-attachments.greetinghr.com/2024-12-03/f3f88511-77b0-4964-9ec8-27036ea4f027/XCENA-Logo_Basic.png' }
+      - { key: kurly, name: 컬리, type: GREETING, board: 'https://kurly.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2026-02-23/23bb5db7-3937-4bef-998b-867b25bceae7/logo.png' }
+      - { key: kakaomobility, name: 카카오모빌리티, type: GREETING, board: 'https://kakaomobility.career.greetinghr.com/ko/guide', logo: 'https://opening-attachments.greetinghr.com/2025-02-06/0e82fcb5-f39c-4d8f-8aee-f20e3efaa187/111.png' }
+      - { key: makinarocks, name: 마키나락스, type: GREETING, board: 'https://makinarocks.career.greetinghr.com/ko/home', logo: 'https://profiles.greetinghr.com/group/900e83ac-2ad7-42aa-9f2a-306e88914acf' }
+      - { key: supercent, name: 슈퍼센트, type: GREETING, board: 'https://supercent.career.greetinghr.com/ko/career', logo: 'https://opening-attachments.greetinghr.com/20230511/6b4be44e-7a39-4129-b4a2-3de24a0309a2/1_CI_supercent_BLACK3.png' }
+      - { key: mangoboost, name: 망고부스트, type: GREETING, board: 'https://mangoboost.career.greetinghr.com/en/careers', logo: 'https://opening-attachments.greetinghr.com/2025-01-02/153adda7-5a20-4381-99ad-90d5b262bb05/MangoBoost_Logo_Hori_YellowGrey_rgb_2x.png' }
+      - { key: healingpaper, name: 강남언니(힐링페이퍼), type: GREETING, board: 'https://career.gangnamunni.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2026-07-09/95eb1454-eeab-4936-ad2b-26bad37752f8/Group15270(6).png' }
+      - { key: autocrypt, name: 아우토크립트, type: GREETING, board: 'https://autocrypt.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2026-10-27/15dbd0f9-5c6f-4268-9cae-f22e5eff5244/CI_AUTOCRYPT(BK).png' }
+      - { key: wrtn, name: 뤼튼테크놀로지스, type: GREETING, board: 'https://career.wrtn.io/ko/career', logo: 'https://opening-attachments.greetinghr.com/2026-02-04/7541c46c-0f18-4a14-9fd9-2f9c4cea4192/logo_full_profile_dark.png' }
+      - { key: pfct, name: PFCT, type: GREETING, board: 'https://pfct.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2024-03-15/7571cea3-cf7e-4b64-ba9f-ebb66b143f6f/logo_gnb.png' }
+      - { key: riibotics, name: 리보틱스, type: GREETING, board: 'https://riibotics.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2025-07-31/ec525cb2-37dd-473b-9229-838dc639a587/Asset2-8.png' }
+      - { key: estfamily, name: 이스트소프트·이스트시큐리티, type: GREETING, board: 'https://estfamily.career.greetinghr.com/ko/home', logo: 'https://profiles.greetinghr.com/group/afb477e2-0ac7-49b4-9797-fb177531be92' }
+      - { key: gccompany, name: 여기어때컴퍼니, type: GREETING, board: 'https://gccompany.career.greetinghr.com/ko/apply', logo: 'https://opening-attachments.greetinghr.com/2024-11-12/fa483b86-7b4d-43cb-8880-6bf46c7688d2/icn_yds_brand_logo.png' }
+      - { key: nuua, name: 누아, type: GREETING, board: 'https://nuua.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/20230831/85ecba8b-bfd5-4214-81ce-516772685276/_256x65.png' }
+      - { key: moreh, name: 모레, type: GREETING, board: 'https://moreh.career.greetinghr.com/ko/jobs', logo: 'https://profiles.greetinghr.com/group/2a79989e-53a7-4c80-8c9f-0af7d8677a38' }
+      - { key: linqalpha, name: 링크알파, type: GREETING, board: 'https://linqalpha.career.greetinghr.com/en/intro', logo: 'https://opening-attachments.greetinghr.com/2026-07-02/2b81a010-009e-4a01-9229-300ce8b4c299/Frame1171277053.png' }
+      - { key: ezcaretech, name: 이지케어텍, type: GREETING, board: 'https://ezcaretech.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2024-07-30/40d52c6d-fc31-43a2-ab17-3174fd3e52d9/CI.png' }
+      - { key: finda, name: 핀다, type: GREETING, board: 'https://finda.career.greetinghr.com/ko/career', logo: 'https://opening-attachments.greetinghr.com/2026-02-04/48bfc7d6-89ba-4495-9750-dae9abd738cb/findaLogo(1).jpg' }
+      - { key: sionicai, name: 사이오닉에이아이, type: GREETING, board: 'https://sionicai.career.greetinghr.com/en/career', logo: 'https://profiles.greetinghr.com/group/f7b3fc29-e610-4ceb-b00f-27c18934b2fd' }
+      - { key: mobilint, name: 모빌린트, type: GREETING, board: 'https://mobilinthire.career.greetinghr.com/ko/recruit', logo: 'https://opening-attachments.greetinghr.com/2024-02-02/1aca7674-4ddb-4aa3-8690-8eaabf87cdc0/-.png' }
+      - { key: buzzvil, name: 버즈빌, type: GREETING, board: 'https://buzzvil.career.greetinghr.com/ko/home', logo: 'https://profiles.greetinghr.com/group/f23ad931-b183-40f1-9b66-01770fc87960' }
+      - { key: featuring, name: 피처링, type: GREETING, board: 'https://featuring.career.greetinghr.com/ko/info', logo: 'https://opening-attachments.greetinghr.com/2025-02-06/19076cd3-2e88-4a8b-addd-01ea40a6a369/logo.png' }
+      - { key: neubility, name: 뉴빌리티, type: GREETING, board: 'https://neubility.career.greetinghr.com/ko/about', logo: 'https://opening-attachments.greetinghr.com/2026-08-08/178328c1-4e7a-492e-aaaa-bebd6084b8a3/NBCareers.png' }
+      - { key: ineeji, name: 이니지, type: GREETING, board: 'https://ineeji.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2024-11-15/a9cc5f16-1434-4de1-a547-aca45c9c8388/4.jpg' }
+      - { key: lawcompany, name: 로앤컴퍼니, type: GREETING, board: 'https://lawcompany.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2025-06-18/73a75253-7aae-464e-bc45-495620f0ec89/.png' }
+      - { key: medistream, name: 메디스트림, type: GREETING, board: 'https://medistream.career.greetinghr.com/ko/career', logo: 'https://profiles.greetinghr.com/group/a7810191-1eb2-4cd1-b2a5-66356d2c17a6' }
+      - { key: masangsoft, name: 마상소프트, type: GREETING, board: 'https://masangsoft.career.greetinghr.com/ko/careers', logo: 'https://opening-attachments.greetinghr.com/2023-11-01/9b211f6c-7436-4d69-b653-ebcb349cc4b2/logo.jpg' }
+      - { key: shoplive, name: 샵라이브코리아, type: GREETING, board: 'https://shoplive.career.greetinghr.com/ko/intro', logo: 'https://opening-attachments.greetinghr.com/2025-09-30/faab90a9-2ef5-42f1-9326-2c67dd558f80/basic-logo_on-light-bg-.png' }
+      - { key: sianalytics, name: 에스아이에이, type: GREETING, board: 'https://sianalytics.career.greetinghr.com/ko/home', logo: 'https://opening-attachments.greetinghr.com/2024-11-19/52f4f0ea-dfac-46a0-900b-1e975a2e5c8d/SIA_CI_.png' }
+      - { key: deepauto-ai, name: 딥오토에이아이, type: GREETING, board: 'https://deepauto-ai.career.greetinghr.com/ko/career', logo: 'https://opening-attachments.greetinghr.com/2026-03-25/ce3c89e3-bd3b-4c1f-9f8f-199fdf499a50/Frame4.png' }
+      # 자체 채용 사이트는 회사마다 읽는 모양이 달라 회사 하나가 종류 하나이고, board 에는 목록 주소를 적는다(카카오는 page 를 뺀 주소)
+      - { key: toss, name: 토스, type: TOSS, board: 'https://api-public.toss.im/api/v3/ipd-eggnog/career/jobs' }
+      - { key: lineplus, name: 라인플러스, type: LINE, board: 'https://careers.linecorp.com/page-data/ko/jobs/page-data.json' }
+      - { key: kakao, name: 카카오, type: KAKAO, board: 'https://careers.kakao.com/public/api/job-list?part=TECHNOLOGY&company=KAKAO' }
+      - { key: kt, name: KT, type: KT, board: 'https://recruit.kt.com/api/recruit?currentPage=1&pageSize=100&isInProgress=true&isContainsContents=true' }
+      - { key: pearlabyss, name: 펄어비스, type: PEARL_ABYSS, board: 'https://www.pearlabyss.com/ko-KR/Company/Careers/List' }
+      # 스마일게이트는 목록을 조회용 POST 로만 주어 board 에 그 주소를 적는다
+      - { key: smilegate, name: 스마일게이트, type: SMILEGATE, board: 'https://careers.smilegate.com/api/apply/announce/guest' }
+      # 로켓펀치는 한 곳에서 여러 회사의 공고를 주고, 공고마다 API 가 준 회사 이름으로 저장한다(웹 화면은 읽지 않고 API 만 쓴다)
+      - { key: rocketpunch, name: 로켓펀치, type: ROCKETPUNCH, board: 'https://openapi.rocketpunch.com' }
+    rocketpunch:
+      # 키가 비어 있으면 로켓펀치는 건너뛴다. 로컬·CI 는 키 없이 돈다
+      api-key: ${ROCKETPUNCH_API_KEY:}
+      # 회사 채용 페이지를 위 sources 로 따로 읽는 회사의 로켓펀치 회사 id(handle). 같은 공고가 두 번 들어가지 않게 한다
+      # 10/24 확인: 라인플러스는 라인 채용 사이트로, 이스트게임즈는 이스트패밀리 그리팅([ESTgames] 공고)으로 이미 읽는다
+      skip-company-ids: [lineplus, estgames]
   ingest:
-    # api-data-assumptions.md '1차 구현 경계'. 초과분은 버리지 않고 partial=true 로 표시한다.
+    # 아래 수집 상한은 AI 에 보내지 않아 바꾸면 AI 의 CollectionLimits 기본값도 같은 값으로 바꾼다
+    # 커밋·이슈·최근 PR 밖의 내 PR 이 상한을 넘거나 PR 목록이 10쪽(1000개)을 채우면 partial=true 로 표시하고
+    # 최근 max-pull-requests 개 밖의 남의 PR 은 표시 없이 읽지 않는다
     max-commits: 1000
     max-pull-requests: 50
+    max-own-pull-requests: 50
     max-issues: 50
     max-diff-bytes: 1048576
   retention:
@@ -133,21 +239,46 @@ gitory:
     # 계정 삭제 요청 시 서비스 데이터에서 삭제까지
     account-deletion-days: 7
   interview:
-    # 카드당 되묻기 질문 최대 횟수.
+    # 카드당 되묻기 질문 최대 횟수(넘긴 질문도 센다).
     # AI 에는 요청의 max_turns, 프론트에는 응답의 maxTurns 로 내려준다.
-    max-turns: 2
+    # 네 칸을 칸마다 두 번(InterviewAskService.MAX_ASKS_PER_SLOT)까지 물을 수 있는 수다.
+    max-turns: 8
   analysis:
     grouping:
-      # 켜면 분석 Job 이 수집 뒤 AI 로 후보를 묶고, 끄면 후보 추리기·추천 이유를 건너뛴다
+      # 켜면 분석 Job 이 수집 뒤 AI 로 경험 그룹화를 해 후보를 만들고, 끄면 후보 추리기·추천 이유를 건너뛴다
       # 운영 AI 에 LLM 설정이 없으면 모든 분석이 실패하므로 그 설정을 넣고 한 번 확인한 뒤 켠다
       enabled: ${ANALYSIS_GROUPING_ENABLED:false}
-      # AI 의 묶기 규칙이 바뀌면 올려, 보낼 요청이 지난번과 같아도 모든 저장소를 다시 묶게 한다
+      # AI 의 경험 그룹화 규칙이 바뀌면 올려, 보낼 요청이 지난번과 같아도 모든 저장소를 다시 경험 그룹화하게 한다
       version: 1
+    live-progress:
+      # 켜면 AI 수집·경험 그룹화를 진행 스트리밍 API 로 불러 분석 단계에 읽은 수/전체를 실시간으로 남기고, 끄면 한 번에 받는 API 로 부른다
+      enabled: ${ANALYSIS_LIVE_PROGRESS_ENABLED:true}
   cards:
+    # 후보로 카드 만들기 한 요청에 만들 수 있는 카드 수. 화면은 같은 값으로 선택을 막는다(CandidateBoardPage)
+    max-per-request: 8
     ai-draft:
       # 켜면 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채우고, 끄면 빈 카드로 끝낸다
       # 운영 AI 에 LLM 설정이 없으면 모든 초안이 실패하므로 그 설정을 넣고 한 번 확인한 뒤 켠다
       enabled: ${CARD_AI_DRAFT_ENABLED:false}
+  rate-limit:
+    # LLM 을 부르는 요청의 사용자별 호출 한도로, 하루는 서울 자정에 바뀐다. 숫자는 써 보며 조정한다
+    # Redis 가 있는 운영에서만 켜고, 시험·로컬·E2E 는 끈 채로 Redis 없이 돈다
+    enabled: ${RATE_LIMIT_ENABLED:false}
+    # 되묻기 질문. 남아 있던 질문을 돌려줄 때는 세지 않는다
+    interview-ask:
+      per-minute: 10
+      per-day: 100
+    # '재 봤어요' 수치 문장 미리 보기(입력에 숫자가 있어 LLM 을 부를 때만)와 경험 카드 답 다듬기 미리 보기
+    interview-answer:
+      per-minute: 10
+      per-day: 100
+    # 카드 만들기. CARD_AI_DRAFT_ENABLED 가 켜졌을 때만 한 요청의 카드 수만큼 센다
+    card-draft:
+      per-day: 100
+    # 자소서 만들기와 다시 시도. 한 편에 AI 를 여러 번 부르므로 다른 요청보다 적게 둔다
+    cover-letter:
+      per-minute: 2
+      per-day: 10
 
 logging:
   level:

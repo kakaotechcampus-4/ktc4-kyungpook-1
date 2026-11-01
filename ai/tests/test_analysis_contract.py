@@ -29,7 +29,7 @@ _EVIDENCE = {
 class _FakeAnalysisPipeline:
     """라우터 봉투 계약만 검증하기 위한 테스트 대역."""
 
-    async def group_experiences(self, request) -> ExperienceGroupingResponse:
+    async def group_experiences(self, request, deadline=None) -> ExperienceGroupingResponse:
         return ExperienceGroupingResponse(verdict="PARTIAL")
 
     async def analyze_star(self, request) -> StarAnalysisResponse:
@@ -77,6 +77,7 @@ def test_grouping_response_uses_envelope_and_allows_partial() -> None:
     assert body["data"]["verdict"] == "PARTIAL"
     assert body["error"] is None
     assert body["meta"]["processing_ms"] >= 0
+    assert body["meta"]["ended_by"] == "PARTIAL"
 
 
 def test_star_response_uses_filled_and_db_confidence_values() -> None:

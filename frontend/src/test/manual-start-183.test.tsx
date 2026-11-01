@@ -70,13 +70,15 @@ describe('manual startup contract #183', () => {
   it('creates a fresh key for the next writing entry', async () => {
     const create = vi.spyOn(endpoints, 'createManualDraft').mockImplementation(async input => card({ title: input.title, period: input.period ?? null }));
     vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ cardId: id, versionNo: 1, ...fields, savedAt: '2026-10-12T00:00:01Z' }));
-    const router = mount(); change('카드 제목', '첫 카드'); fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
-    await screen.findByText('기존 카드 화면');
+    const router = mount(); change('카드 제목', '첫 카드'); fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
+    fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
+    await screen.findByText('기존 카드 화면', {}, { timeout: 5000 });
     await act(async () => { await router.navigate('/new'); });
-    change('카드 제목', '다음 카드'); fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
-    await screen.findByText('기존 카드 화면');
+    change('카드 제목', '다음 카드'); fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
+    fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
+    await screen.findByText('기존 카드 화면', {}, { timeout: 5000 });
     expect(create).toHaveBeenCalledTimes(2); expect(create.mock.calls[0][1]).not.toBe(create.mock.calls[1][1]);
-  });
+  }, 20000); // 만들기·저장·화면 이동을 두 번 거쳐, 전체 시험이 한꺼번에 돌 때는 화면 이동이 1초를 넘길 때가 있다
 
   it('keeps untouched server STAR slots when replay already contains writing', async () => {
     const returned = card({ title: '이미 만든 카드', version: { ...card().version, situation: '서버에서 이어 쓴 상황', task: '서버 과제', action: null, result: null } });

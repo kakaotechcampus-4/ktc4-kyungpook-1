@@ -26,10 +26,11 @@ for (const theme of ['light', 'dark'] as const) {
       const selected = getComputedStyle(document.querySelector('.menu-item[aria-current=page]')!);
       return { background: root.backgroundColor, action: button.backgroundColor, selection: selected.backgroundColor, surface: card.backgroundColor };
     });
-    expect(palette.background).toBe(theme === 'light' ? 'rgb(242, 247, 244)' : 'rgb(18, 20, 15)');
-    expect(palette.action).toBe(theme === 'light' ? 'rgb(70, 112, 78)' : 'rgb(168, 196, 124)');
-    expect(palette.selection).toBe(theme === 'light' ? 'rgb(223, 237, 227)' : 'rgb(31, 39, 25)');
-    expect(palette.surface).toBe(theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(26, 29, 22)');
+    expect(palette.background).toBe(theme === 'light' ? 'rgb(250, 250, 251)' : 'rgb(23, 23, 25)');
+    // 주 행동은 포인트 색(--accent-point): 라이트 차콜 #202022, 다크 파스텔 블루
+    expect(palette.action).toBe(theme === 'light' ? 'rgb(32, 32, 34)' : 'rgb(228, 241, 252)');
+    expect(palette.selection).toBe('rgb(228, 241, 252)');
+    expect(palette.surface).toBe(theme === 'light' ? 'rgb(255, 255, 255)' : 'rgb(35, 35, 38)');
     const contrasts = await page.evaluate(readContrasts, [
       { text: 'h1', surface: 'html' }, { text: '.btn--primary', surface: '.btn--primary' },
       { text: '.experience-item .c-2', surface: '.experience-item' },

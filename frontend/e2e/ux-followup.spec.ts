@@ -15,7 +15,7 @@ test('failed reads show unknown counts while a confirmed empty response shows ze
 test('drafts lead to answering missing fields while confirmation remains available', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards/card_01');
   const next = page.locator('.sticky-footer .btn--primary');
-  await expect(next).toHaveText('답변으로 보완');
+  await expect(next).toHaveText('답변하기');
   await expect(page.getByRole('button', { name: '확정', exact: true })).toBeEnabled();
   await next.click();
   await expect(page).toHaveURL(/\/interview\?field=T$/);
@@ -44,16 +44,16 @@ test('mobile landing shows the output before another screen and expands complete
   await expect(page.locator('.github-snapshot__commits li')).toHaveCount(3);
 });
 
-test('returning home starts with drafts and keeps one entry for each new-card action', async ({ page }) => {
+test('returning home shows drafts and keeps one entry for each new-card action', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAsDemo(page); await page.goto('/');
   await expect(page.locator('.home-resume')).toBeVisible();
-  const resume = (await page.locator('.home-resume').boundingBox())!;
-  const start = (await page.locator('.prompt').boundingBox())!;
-  expect(resume.y).toBeLessThan(start.y);
   const main = page.locator('main');
+  await expect(main.getByRole('link', { name: '레포 연결하기', exact: true })).toHaveCount(1);
+  await expect(main.getByRole('button', { name: '레포 검색하기', exact: true })).toHaveCount(1);
+  await main.getByRole('button', { name: '레포 검색하기', exact: true }).click();
   await expect(main.getByRole('link', { name: '직접 작성', exact: true })).toHaveCount(1);
-  await expect(main.getByRole('link', { name: '레포 고르기', exact: true })).toHaveCount(1);
+  await expect(main.getByRole('link', { name: '모든 레포 보기', exact: true })).toHaveCount(1);
 });
 
 test('settings prioritizes controls and keeps storage details available on demand', async ({ page }) => {
@@ -63,6 +63,6 @@ test('settings prioritizes controls and keeps storage details available on deman
   expect((await dark.boundingBox())!.y).toBeLessThan(500);
   await expect(page.getByText('Free Plan', { exact: true })).toHaveCount(0);
   await expect(page.getByText('GitHub 액세스 토큰', { exact: true })).toBeHidden();
-  await page.locator('summary').filter({ hasText: '저장·보관 정보' }).click();
+  await page.locator('summary').filter({ hasText: '저장과 보관 정보' }).click();
   await expect(page.getByText('GitHub 액세스 토큰', { exact: true })).toBeVisible();
 });

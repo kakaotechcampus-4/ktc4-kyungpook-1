@@ -23,7 +23,7 @@
 ```
 바깥  기능별 수직 분할 (모듈러 모놀리스)   consent · ingest · evidence · …
 안    3층 레이어드                        api · domain · infra
-문    포트/어댑터                         ingest.port · agent.port  — 두 곳만
+문    포트/어댑터                         agent·card·consent·ingest·recommend 의 port  — 필요한 곳만
 ```
 
 ### 최상위를 레이어드로 두지 않은 이유
@@ -59,12 +59,14 @@
 |---|---|---|
 | `agent.port` | **모델 제공자가 미확정이다.** 스펙은 `gpt-4.1-mini`, 실측은 `claude -p` 로 돌았고, 스펙은 "학습 사용 비활성화를 계약으로 확인 못 하는 제공자는 안 쓴다"고 못 박았다 | 비밀값·원문이 프롬프트로 새는 것 |
 | `ingest.port` | GitHub API 버전 · 증분 수집 전략 | **선택 안 한 저장소 접근**(ADR-0003). 범위 제한이 흩어지면 안 된다 |
+| `consent.port` | GitHub 에 접근하는 방식 | **GitHub 토큰이 consent 밖으로 나가는 것.** 토큰이 필요한 호출은 consent 안에서 하고 결과만 돌려준다 |
 
-나머지 일곱 모듈은 갈아끼울 대상이 없다. `card` 의 저장소를 PostgreSQL 말고 뭘로 바꾸겠나.
-거기 포트를 달면 코드만 늘고 얻는 게 없다.
+나머지 모듈은 갈아끼울 대상이 없다. `card` 의 저장소를 PostgreSQL 말고 뭘로 바꾸겠나.
+거기 포트를 달면 코드만 늘고 얻는 게 없다. `card.port`·`recommend.port` 와 `consent`·`ingest` 의 일부 포트(`MeStatsPort`·`RepositoryCandidateCardPort`)는
+갈아끼우려는 게 아니라, 다른 모듈 타입을 몰라야 해서 인터페이스만 두고 구현은 `job` 이 맡는 자리다.
 
 **한 줄 요약** — 모듈러 모놀리스 + 선택적 포트. 수직 경계는 도메인 결합을 막으려고,
-수평 3층은 각 모듈 안의 읽는 순서 때문에, 포트는 진짜 갈아끼울 두 곳에만.
+수평 3층은 각 모듈 안의 읽는 순서 때문에, 포트는 갈아끼울 곳과 모듈 의존 방향을 지켜야 하는 곳에만.
 `agent` 를 별도 서비스로 떼는 길은 이미 열려 있다 — **필요해지면 그때 옮기고,
 지금부터 그 비용을 내지는 않는다.**
 
@@ -77,7 +79,7 @@
 |---|---|
 | `interview` → `card` 로 합침 | `interview_turn.card_id → card.id` 로 종속되는데 거꾸로 `card_statement.source_turn_id → interview_turn.id` 로 돌아온다. **모듈로 가르면 양방향 의존이 되어 순환 참조 금지 규칙을 스스로 위반한다** |
 | `evidence` → `card` 로 합침 | 소유 테이블이 0개였다. `git_commit` 은 `ingest` 것, `candidate_commit` 은 `recommend` 것, `statement_evidence` 만 `card` 것이다. 가진 게 없는 모듈은 계층이다 |
-| `matching` 삭제 | ERD 에도 프론트 라우트 맵에도 없다. 빈 패키지를 미리 만들어 두는 건 비용만 있다. 기업 매칭까지 가면 그때 패키지 하나 + 테이블 하나면 된다 |
+| `matching` 삭제 → 기업 매칭을 하게 되어 다시 신설 | 처음에는 ERD 에도 프론트 라우트 맵에도 없어 빈 패키지를 미리 두지 않았다. 기업 매칭이 1차 출시 범위에 들어와 공고와 조건 표를 소유하는 모듈로 다시 만들었다 |
 | `job` 신설 | `analysis_job` 이 살 곳이 없었다. `ingest → recommend → card` 를 엮는 오케스트레이션은 그 자체로 책임이다 |
 
 `evidence` 를 합치면서 **그것이 지키던 규칙 하나가 최상위에서 사라진다.** `card` 는 초안을
@@ -104,17 +106,19 @@ ktc4-kyungpook-1/
 │     ├─ main/java/com/gitory/backend/
 │     │  ├─ GitoryApplication.java
 │     │  ├─ common/api/             ApiResponse · ErrorCode · CursorPage
-│     │  ├─ consent/                연결·동의 경계
+│     │  ├─ consent/                연결·동의 경계          (+ port/)
 │     │  ├─ ingest/                 수집·정규화·기여 집계   (+ port/)
-│     │  ├─ recommend/              후보 저장·보존 (경험 그룹화는 agent)
+│     │  ├─ recommend/              후보 저장·보존 (경험 그룹화는 agent) (+ port/)
 │     │  ├─ agent/                  LLM 경계                (+ port/)
-│     │  ├─ card/                   카드·되묻기·근거
+│     │  ├─ card/                   카드·되묻기·근거        (+ port/)
 │     │  │  └─ domain/
 │     │  │     ├─ compose/          초안 조립      — agent 호출
 │     │  │     ├─ interview/        되묻기 턴      — agent 호출
 │     │  │     └─ evidence/         sha 실재 검증  ★ agent 금지
 │     │  ├─ job/                    분석 오케스트레이터 (비동기)
-│     │  └─ audit/                  정책·감사
+│     │  ├─ audit/                  정책·감사
+│     │  ├─ usage/                  화면 사용 지표
+│     │  └─ matching/               기업 채용 공고·조건 저장과 매칭 (조건 뽑기는 agent)
 │     ├─ main/resources/
 │     │  ├─ application.yml
 │     │  └─ db/migration/
@@ -134,7 +138,7 @@ ktc4-kyungpook-1/
 | `api` | 컨트롤러 · 요청/응답 DTO | 엔티티를 직접 노출하지 않는다 |
 | `domain` | 엔티티 · 도메인 서비스 | `api` 를 참조하지 않는다 |
 | `infra` | 리포지토리 · 외부 클라이언트 | **같은 모듈 밖에서 참조 불가** |
-| `port` | 모듈 간 계약 인터페이스 | `agent`·`ingest` 에만 있다 |
+| `port` | 모듈 간 계약 인터페이스 | `agent`·`card`·`consent`·`ingest`·`recommend` 에만 있다 |
 
 ## 모듈 경계 — 테스트로 강제되는 것
 
@@ -179,7 +183,7 @@ BUILD SUCCESSFUL
         │
         ▼
       job  ─────────── 오케스트레이션. 여기서만 아래를 호출한다 (읽기 전용 조회는 허용 — 아래 참고)
-        ├─ 수집·정규화·기여 집계   ingest      (GitHub 을 보는 유일한 곳)
+        ├─ 수집·정규화·기여 집계   ingest      (GitHub 호출은 토큰을 가진 consent 의 포트를 거친다)
         ├─ 경험 그룹화             agent       (LLM. AI 의 경험 그룹화 API 를 부른다)
         └─ 후보 저장·보존          recommend   (결정적. 사용자가 손댄 후보는 다시 분석해도 지킨다)
         │
@@ -201,7 +205,7 @@ BUILD SUCCESSFUL
 의존 방향은 `job → ingest·agent·recommend·card` 한 방향이다. 역방향은 경계 테스트가 막는다 —
 그게 뚫리면 분석 흐름을 바꿀 때마다 전 모듈이 흔들린다.
 읽기 전용 조회는 허용한다 — `card` 는 `ingest`·`recommend` 를 그 모듈 `domain` 의 조회 메서드로 읽기만 하고,
-다른 모듈의 표를 SQL 로 직접 읽지 않는다. Job 을 만드는 요청(후보로 카드 만들기·칸 다시 생성)은 `job.api` 에 둔다.
+다른 모듈의 표를 SQL 로 직접 읽지 않는다. `matching` 도 `card` 의 확정 문장 조회 서비스(`ConfirmedStatementReader`)로 읽기만 한다. Job 을 만드는 요청(후보로 카드 만들기·칸 다시 생성)은 `job.api` 에 둔다.
 
 ## 비동기 — 왜 Job 인가
 
@@ -276,6 +280,8 @@ ERD 를 그대로 따랐고, 스펙이 요구하는데 없던 것만 더했다.
 | `card` | `card` · `card_version` · `card_statement` · `statement_evidence` · `interview_turn` · `interview_option` |
 | `job` | `analysis_job` |
 | `audit` | `audit_event` |
+| `usage` | `usage_event` |
+| `matching` | `job_posting` · `job_posting_criterion` · `job_posting_source` |
 | `agent` | — (경계 모듈. 테이블이 없는 게 존재 이유다) |
 | `common` | — |
 
@@ -419,7 +425,7 @@ S/T/A/R 텍스트만 받고 인터뷰를 안 거친다. V1 은 이 경로를 통
 |---|---|---|---|
 | 2 | `needsReview` 계산 위치 | **서버.** 세 화면이 같은 규칙을 쓴다 | 프론트 제안대로 |
 | 3 | `lowCardWorth` 규칙 vs 모델 | **규칙.** 문서 전용 변경·변경량 임계·근거 1건은 전부 정수 비교 | 팀·개인 판정이 552토큰 메타데이터로 3/3 정답. 근거값이 전부 정수·문자열이었다 |
-| 4 | `myCommitCount`/`teamCommitCount` 세는 법 | `recommend` 모듈. 함정 셋을 밟아야 한다 | ↓ |
+| 4 | `myCommitCount`/`teamCommitCount` 세는 법 | `ingest`(`RepositoryContributionService`)가 셀 저장소를 고르고 결과를 저장한다. GitHub 질의와 머지 커밋 빼기는 토큰 때문에 `consent`(`GithubCountClient`·`GithubCollectionAccess`)에 있다. 함정 셋을 밟아야 한다 | ↓ |
 
 **#4 의 함정 셋** — 실측에서 전부 밟았다.
 
@@ -479,21 +485,17 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 
 ## 아직 정하지 않은 것
 
-- **기업 매칭 테이블이 없다.** PRD 7단계(기업 매칭)에 해당하는 테이블이 ERD 에도,
-  프론트 계약(`BACKEND_CONTRACT.md`)에도 없다. **팀이 범위에서 뺀 것으로 보고 V1 에 넣지 않았다.**
-  넣을 거면 `company_context`(공개 출처 URL · 직무 · 인재상 태그 · 확인일 필수, 만료 시 추천 제외)가
-  스펙이 요구하는 모양이다.
 - **토큰 암호화 키 관리.** `github_connection.token_enc` 는 암호화된 값을 전제한다.
   키를 어디서 주입할지(배포 환경 비밀 관리) 아직 안 정했다. 스펙은 "장기 토큰을 별도
   데이터베이스에 평문 저장하지 않는다"고 못 박았다.
 - **`fit_*` 등급을 무엇이 매기나.** ERD 주석은 "코드를 통해 매긴 등급"이라고만 한다.
   규칙인지 모델인지에 따라 `recommend` 냐 `agent` 냐가 갈리고, 모듈 경계 테스트가
   그 결정을 강제한다. **`lowCardWorth` 와 같은 종류의 질문이고, 같은 이유로 규칙이 낫다.**
-- **지표 테이블이 없다.** 스펙 목록의 `event_log` 자리를 `audit_event` 가 대신하고 있는데
-  **둘은 목적이 다르다.** `audit_event.action` 은 `CONNECT`·`REVOKE`·`ANALYZE`·
-  `CONFIRM_CARD`·`DELETE_DATA` — 보안 감사다. 후보 편집 같은 **사용자 개입이 행으로 남지
-  않아서 오탐률·놓침률을 계산할 근거가 없다.** 3~4주차 게이트가 여기 걸려 있다.
-  (핵심 설계 결정 3 — *"사용자 개입을 행으로 남긴다"*)
+- **퍼널 숫자는 아직 SQL 로만 센다.** 화면 사용 지표는 `usage` 모듈이 `POST /api/events` 로 받아
+  `usage_event`(V20)에 쌓는다. `audit_event` 는 보안 감사(`CONNECT`·`REVOKE`·`ANALYZE`·
+  `CONFIRM_CARD`·`DELETE_DATA`)라 목적이 다르다. 지표 이름은 자바 허용 목록에만 있어서 화면이
+  이름을 더하면 목록도 같이 고쳐야 한다(거절은 400·415 와 이유 코드만 담은 WARN 로그 한 줄이고, 모르는 이름은 이름도 함께 남는다). 오탐률·놓침률 같은
+  집계 화면은 만들지 않았다.
 - **`analysis_cache` 를 Redis 에 둘지 DB 에 둘지.** 필요한 테이블이라는 데는 합의했고
   초반엔 어느 쪽이든 성능 문제가 없다. `raw_event` 는 목적부터 정해야 한다.
 - **종료 상태의 무결성을 DB 가 안 잡는다.** `state` 가 `SUCCEEDED`/`FAILED`/`CANCELED` 인데

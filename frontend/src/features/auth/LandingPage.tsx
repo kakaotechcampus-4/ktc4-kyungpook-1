@@ -1,14 +1,15 @@
+import { useCallback, useState, type CSSProperties } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
-import { Wordmark } from '@/components/layout/AppShell';
+import { LANDING_HOLD_EXTENSION_MS, LandingBrand, shouldPlayLandingIntro } from './LandingBrand';
 import { useLogin } from './useLogin';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { LandingExample } from './LandingExample';
 
 const READS = ['내가 올린 커밋', '내가 만든 PR', '내가 남긴 리뷰 코멘트'];
-const SKIPS = ['비공개 저장소', '다른 사람만 작업한 내용'];
+const SKIPS = ['비공개 레포', '다른 사람만 작업한 내용'];
 
 /**
  * A1 랜딩 · A2 동의 안내(모달).
@@ -22,18 +23,22 @@ export function LandingPage() {
   const error = sp.get('error');
   const reason = sp.get('reason');
   const login = useLogin();
+  const [introRequested, setIntroRequested] = useState(() => shouldPlayLandingIntro(sp));
+  const finishIntro = useCallback(() => setIntroRequested(false), []);
+  const introActive = introRequested && !consent;
 
   return (
-    <main className="landing">
+    <main className="landing" data-intro={introActive ? 'playing' : 'done'} style={{ '--intro-hold-extension': `${LANDING_HOLD_EXTENSION_MS}ms` } as CSSProperties}>
       <header className="landing__top">
-        <Wordmark height={34} />
+        <LandingBrand active={introActive} onComplete={finishIntro} />
       </header>
 
-      <section className="landing__hero">
+      <section className="landing__hero" inert={introActive}>
         <div className="landing__copy stack">
-          <h1 className="landing__h1">커밋과 PR을<br />자소서 경험으로</h1>
+          <span className="landing__eyebrow">코드에 남긴 기록, 나만의 경험으로</span>
+          <h1 className="landing__h1">커밋과 PR을<br /><span>자소서 경험으로</span></h1>
           <p className="landing__lead">
-            저장소를 고르면 내가 한 작업을 찾아 상황·과제·행동·결과로 정리해요.
+            저장소를 고르면 내가 한 작업을 찾아 상황, 과제, 행동, 결과로 정리해요.
             비어 있는 내용은 질문에 답하며 채우고, 자소서와 면접에 활용할 수 있어요.
           </p>
 
@@ -42,7 +47,7 @@ export function LandingPage() {
           </div>
           {error === 'access_denied' && <p className="landing-notice" role="status">GitHub에서 동의를 취소하셨네요</p>}
           {error && error !== 'access_denied' && <p className="landing-notice landing-notice--error" role="alert">GitHub 연결에 실패했어요. 다시 시작해 주세요.</p>}
-          {reason === 'expired' && !error && <p className="landing-notice" role="status">로그인이 만료됐어요. 다시 시작해 주세요.</p>}
+          {reason === 'expired' && !error && !login.isDemo && <p className="landing-notice" role="status">로그인이 만료됐어요. 다시 시작해 주세요.</p>}
           {login.failure && <p className="landing-notice landing-notice--error" role="alert">{login.failure}</p>}
 
           {!login.isDemo && <details className="landing__permissions" aria-label="GitHub 접근 범위 자세히 보기">
@@ -59,7 +64,7 @@ export function LandingPage() {
           onClose={() => setSp({})}
           footer={{ strong: '쓰기 권한은 요청하지 않아요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>GitHub으로 이동</Button></> }}>
           {login.failure && <Note strong="시작하지 못했어요" tone="danger">{login.failure}</Note>}
-          <p className="t-14">프로필 정보와 공개 저장소만 읽어요.</p>
+          <p className="t-14">프로필 정보와 공개 레포만 읽어요.</p>
         </Modal>
       )}
     </main>
@@ -70,7 +75,7 @@ export function PermissionGrid({ reads, skips, compact }: { reads: string[]; ski
     <div className={`perm ${compact ? 'perm--compact' : ''}`}>
       <div className="perm__col">
         <h3>이건 읽어요</h3>
-        {reads.map((r) => <div key={r} className="perm__row"><b>·</b><span>{r}</span></div>)}
+        {reads.map((r) => <div key={r} className="perm__row"><b aria-hidden>•</b><span>{r}</span></div>)}
       </div>
       <div className="perm__col perm__col--skip">
         <h3>이건 안 읽어요</h3>

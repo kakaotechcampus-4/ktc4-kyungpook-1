@@ -205,7 +205,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("같은 GitHub 저장소에 연결한 팀원의 후보와 묶은 기록과 분석 시각은 내 보드에 영향을 주지 않는다")
+    @DisplayName("같은 GitHub 저장소에 연결한 팀원의 후보와 경험 그룹화 기록과 분석 시각은 내 보드에 영향을 주지 않는다")
     void ignoresTeammateConnectedToTheSameGithubRepository() throws Exception {
 
         Long shared = activity.insertCommit(repositoryId, sha('a'), Instant.parse("2026-09-01T00:00:00Z"), 1);
@@ -222,7 +222,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("내가 후보와 묶은 기록과 분석 시각이 있어도 같은 GitHub 저장소의 팀원 보드는 그대로 빈 보드다")
+    @DisplayName("내 후보와 경험 그룹화 기록과 분석 시각이 있어도 같은 GitHub 저장소의 팀원 보드는 그대로 빈 보드다")
     void teammateBoardStaysEmptyWhenOnlyIHaveCandidates() throws Exception {
 
         Long shared = activity.insertCommit(repositoryId, sha('a'), Instant.parse("2026-09-01T00:00:00Z"), 1);
@@ -239,7 +239,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("팀원이 마지막 분석 뒤에 묶었어도 내가 묶은 기록이 없으면 내 빈 보드는 '아직 이 저장소의 후보를 만들지 못했어요' 한 줄이다")
+    @DisplayName("팀원이 마지막 분석 뒤에 경험 그룹화를 했어도 내 경험 그룹화 기록이 없으면 내 빈 보드는 '아직 이 저장소의 후보를 만들지 못했어요' 한 줄이다")
     void ignoresTeammateGroupingWhenIHaveNone() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
@@ -264,7 +264,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("분석했지만 묶은 기록이 없는 빈 보드는 '아직 이 저장소의 후보를 만들지 못했어요' 한 줄이다")
+    @DisplayName("분석했지만 경험 그룹화 기록이 없는 빈 보드는 '아직 이 저장소의 후보를 만들지 못했어요' 한 줄이다")
     void explainsAnalyzedButNeverGrouped() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
@@ -277,7 +277,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("묶은 시각이 마지막 분석보다 이르면 빈 보드는 '아직 이 저장소의 후보를 만들지 못했어요' 한 줄이다")
+    @DisplayName("경험 그룹화 시각이 마지막 분석보다 이르면 빈 보드는 '아직 이 저장소의 후보를 만들지 못했어요' 한 줄이다")
     void explainsGroupedBeforeLastAnalysis() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
@@ -291,7 +291,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("마지막 분석 뒤에 묶었는데 후보가 0개면 EMPTY 이고 개수를 못 센 저장소의 이유 줄은 '내 커밋 수를 아직 세지 못했어요' 하나다")
+    @DisplayName("마지막 분석 뒤에 경험 그룹화를 했는데 후보가 0개면 EMPTY 이고 개수를 못 센 저장소의 이유 줄은 '내 커밋 수를 아직 세지 못했어요' 하나다")
     void explainsUncountedRepositoryWhenGroupedAfterLastAnalysis() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
@@ -305,7 +305,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("묶은 시각이 마지막 분석 시각과 같으면 이르지 않으므로 묶은 보드의 이유 줄을 준다")
+    @DisplayName("경험 그룹화 시각이 마지막 분석 시각과 같으면 이르지 않으므로 경험 그룹화를 한 보드의 이유 줄을 준다")
     void explainsGroupedBoardWhenGroupedAtTheSameInstantAsLastAnalysis() throws Exception {
 
         board.setLastAnalyzedAt(myRepoId, ANALYZED_AT);
@@ -318,7 +318,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("후보가 있으면 묶은 시각이 오래돼도 OK 이고 이유 줄을 붙이지 않는다")
+    @DisplayName("후보가 있으면 경험 그룹화 시각이 오래돼도 OK 이고 이유 줄을 붙이지 않는다")
     void addsNoReasonWhenCandidatesExist() throws Exception {
 
         board.insertCandidate(myRepoId, "PR", 42, "NEW", "로그인 개선", "0.9");
@@ -370,7 +370,7 @@ class CandidateBoardApiTest {
     }
 
     @Test
-    @DisplayName("meta.commits 는 포함된 커밋만 세고 나머지 숫자는 묶을 때 저장한 칸 그대로다")
+    @DisplayName("meta.commits 는 포함된 커밋만 세고 나머지 숫자는 경험 그룹화 때 저장한 칸 그대로다")
     void countsOnlyIncludedCommitsAndReadsStoredMeta() throws Exception {
 
         Long pr = board.insertCandidate(myRepoId, "PR", 42, "NEW", "로그인 개선", "0.9");

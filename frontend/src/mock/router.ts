@@ -1,4 +1,6 @@
 import { CardMetadataPatch } from '@/api/schemas';
+import { mockMatchDetail, mockMatchList } from './matching';
+import { getProfile, putProfile } from './profile';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
@@ -7,6 +9,7 @@ import { CardMetadataPatch } from '@/api/schemas';
  */
 import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
 import { now } from './fixtures';
+import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
 
 type Any = Record<string, any>;
@@ -27,6 +30,31 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 // ───────────────────────────── 인증 ─────────────────────────────
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
+on('GET', '/matches', () => ok(mockMatchList()));
+on('GET', '/matches/:id', ({ params }) => {
+  const detail=mockMatchDetail(params[0]);
+  return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
+});
+// 인적사항 — BE #552 계약. 한 사용자당 한 문서이고 PUT 이 네 목록을 통째로 바꾼다
+on('GET', '/profile', () => ok(getProfile())); // 저장한 적이 없어도 200 + 빈 목록 + savedAt:null
+on('PUT', '/profile', ({ body }) => {
+  const saved = putProfile(body);
+  return saved.ok ? ok(saved.profile) : fail(400, 'INVALID_REQUEST', saved.message); // 실제 서버처럼 문장 하나뿐(칸별 목록 없음)
+});
+on('DELETE', '/cards/:id', ({ params }) => {
+  const index = db.cards.findIndex(card => card.id === params[0]);
+  if (index < 0) return fail(404, 'NOT_FOUND', '카드를 찾을 수 없습니다');
+  const card = db.cards[index];
+  const job = card.generation && db.jobs.get(card.generation.jobId);
+  if (job && ['QUEUED', 'RUNNING'].includes(job.state)) return fail(409, 'INVALID_STATE', '초안을 만드는 중입니다');
+  if (card.candidate) {
+    const candidate = db.candidates.find(candidate => candidate.id === card.candidate.id);
+    if (candidate) candidate.status = 'NEW';
+  }
+  db.cards.splice(index, 1);
+  delete db.interview[card.id];
+  return ok({ ok: true });
+});
 on('POST', '/auth/logout', () => ok({ ok: true }));
 on('GET', '/me', () => {
   const confirmed = db.cards.filter((c) => c.status === 'CONFIRMED').length;
@@ -63,12 +91,14 @@ on('GET', '/repos/:id/candidates', ({ params }) => {
   return ok(boardFor(r.id)); // 후보 0개도 200 — 판정이다
 });
 on('POST', '/repos/:id/candidates', ({ params, body }) => {
+  if (!db.repos.some((r) => r.id === params[0])) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다'); // 입력 검사보다 먼저, 실서버와 같다
   const c = { id: nextId('c'), repoId: params[0], type: 'MANUAL', status: 'NEW', ref: 'MANUAL', title: body.title, reason: body.summary,
     meta: { commits: body.shas?.length ?? 0, files: 0, reviewComments: 0, days: null, codeRatio: null }, weak: false, score: 0, commits: null, usedByCardId: null };
   db.candidates.push(c);
   return ok(c);
 });
 on('POST', '/repos/:id/cards', ({ params, body }) => {
+  if (!db.repos.some((r) => r.id === params[0])) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
   const ids: string[] = body.candidateIds ?? [];
   if (!ids.length) return fail(400, 'NO_CANDIDATES', '후보를 하나 이상 선택해야 합니다');
   return ok(createDraftCards(params[0], ids));
@@ -87,8 +117,12 @@ on('GET', '/repos/:id/commits', ({ params, search }) => {
   });
   return ok([...fromClusters, ...synth].filter((c) => !q || c.message.toLowerCase().includes(q) || c.sha.startsWith(q)).slice(0, 20));
 });
-on('GET', '/repos/:id/recall', ({ params }) => ok(recallFor(params[0])));
+on('GET', '/repos/:id/recall', ({ params }) => {
+  if (!db.repos.some((r) => r.id === params[0])) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
+  return ok(recallFor(params[0]));
+});
 on('POST', '/repos/:id/recall/answers', ({ params, body }) => {
+  if (!db.repos.some((r) => r.id === params[0])) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
   const c = { id: nextId('c'), repoId: params[0], type: 'MANUAL', status: 'NEW', ref: 'RECALL', title: `${body.path} 작업`, reason: `회상 답변: "${body.text}"`,
     meta: { commits: 0, files: 0, reviewComments: 0, days: null, codeRatio: null }, weak: false, score: 1, commits: null, usedByCardId: null };
   db.candidates.push(c);
@@ -162,21 +196,33 @@ on('PATCH', '/cards/:id/draft', ({ params, body }) => {
 on('PATCH', '/cards/:id/metadata', ({ params, body }) => {
   const card = findCard(params[0]);
   if (!card) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  if (card.status !== 'DRAFT') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
-  const titleProvided = Object.hasOwn(body, 'title'), periodProvided = Object.hasOwn(body, 'period');
-  const parsed = CardMetadataPatch.safeParse(body);
-  if (!parsed.success) return fail(400, 'INVALID_REQUEST', '제목과 기간을 확인해 주세요');
+  // 실서버처럼 null 인 칸은 보내지 않은 것으로 보고, 빈 기간은 지운다(#420)
+  const patch = Object.fromEntries(Object.entries(body).filter(([, value]) => value !== null));
+  const titleProvided = Object.hasOwn(patch, 'title'), periodProvided = Object.hasOwn(patch, 'period'), themesProvided = Object.hasOwn(patch, 'themes');
+  // 문항 유형만 고치는 요청은 확정 카드도 다시 열지 않고 받는다(#564). 제목·기간은 지금처럼 작성 중 카드만 받는다
+  if (card.status !== 'DRAFT' && (titleProvided || periodProvided)) return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
+  const parsed = CardMetadataPatch.safeParse(patch);
+  if (!parsed.success) return fail(400, 'INVALID_REQUEST', themesProvided ? '문항 유형을 확인해 주세요' : '제목과 기간을 확인해 주세요');
+  if (themesProvided && card.kind !== 'QUALITATIVE' && parsed.data.themes!.length) return fail(400, 'INVALID_REQUEST', '문항 유형은 경험 카드에만 붙일 수 있어요');
   if (titleProvided) card.title = parsed.data.title!;
-  if (periodProvided) card.period = parsed.data.period!;
-  card.metadataUpdatedAt = now();
-  card.updatedAt = card.metadataUpdatedAt;
-  return ok({ cardId: card.id, title: card.title, period: card.period ?? null, updatedAt: card.metadataUpdatedAt });
+  if (periodProvided) card.period = parsed.data.period || null;
+  if (titleProvided || periodProvided) { card.metadataUpdatedAt = now(); card.updatedAt = card.metadataUpdatedAt; }
+  if (themesProvided) chooseThemes(card, parsed.data.themes!); // 카드 글이 아니라 고르는 표시라 updatedAt 은 그대로다
+  return ok({ cardId: card.id, title: card.title, period: card.period ?? null, themes: card.themes ?? [], updatedAt: card.updatedAt ?? cardSummary(card).updatedAt });
 });
 on('GET', '/cards/:id', ({ params }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
   if (c.generation) viewJob(c.generation.jobId); // 폴링 없이 열어도 시간이 지났으면 채워진다
   return ok(cardView(c));
+});
+// 실서버처럼 초안 실패가 남은 카드만 다시 초안을 만들고, 시작하면 실패 이유를 지운다(#419)
+on('POST', '/cards/:id/draft/retry', ({ params }) => {
+  const c = findCard(params[0]);
+  if (!c) return fail(404, 'NOT_FOUND', '카드를 찾을 수 없습니다');
+  if (!c.draftFailure) return fail(409, 'INVALID_STATE', '다시 초안을 만들 수 있는 카드가 아닙니다.');
+  c.draftFailure = null;
+  return ok({ jobId: `job_retry_${c.id}` });
 });
 on('POST', '/cards/:id/regenerate', ({ params, body }) => {
   const c = findCard(params[0]);
@@ -215,6 +261,7 @@ on('POST', '/cards/:id/confirm', ({ params }) => {
   // 계약: "S·A 없으면 422" — 클라이언트 규칙(canConfirmCard)과 같게 둘 다 있어야 한다. 하나만 있어도 통과하던 건 어긋남이었다.
   if (v.situation == null || isCardBlank(v.situation) || v.action == null || isCardBlank(v.action)) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
   c.status = 'CONFIRMED'; c.confirmedAt = now(); c.updatedAt = c.confirmedAt;
+  queueAiThemes(c); // 유형이 빈 경험 카드는 확정을 저장한 뒤 몇 초 안에 AI 가 붙인다(#564)
   v._confirmed = true; // 현재 버전을 고정한다 — 같은 내용의 가짜 이력을 추가하지 않는다
   const used = c.candidate ? [c.candidate.id] : [];
   used.forEach((id) => { const cand = db.candidates.find((x) => x.id === id); if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; } });

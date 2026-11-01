@@ -1,0 +1,55 @@
+{
+  "case": "Spring이 저장한 공고 조건을 id 기준으로 색인에 반영하고, 확정 STAR 문장과 가까운 조건 id를 모두 돌려받는다",
+  "id_rules": "posting_id·criterion_id·statement_id는 Spring이 정한 정수이고 0보다 크다. 같은 요청 안에서 같은 id를 두 번 보내면 400이다.",
+  "index": {
+    "method": "POST",
+    "path": "/internal/matching/postings/index",
+    "rule": "ACTIVE이고 criteria가 있으면 그 공고의 벡터를 새 조건으로 교체한다. EXPIRED·REMOVED이거나 criteria가 빈 배열이면 그 공고의 벡터를 지운다. 요청에 없는 공고의 벡터는 건드리지 않으므로 목록 밖 공고 지우기는 prune으로 따로 한다.",
+    "spring_to_ai": {
+      "postings": [
+        {
+          "posting_id": 101,
+          "status": "ACTIVE",
+          "criteria": [
+            {"criterion_id": 1001, "criterion_type": "RESPONSIBILITY", "text": "Spring Boot 기반 REST API 개발"},
+            {"criterion_id": 1002, "criterion_type": "REQUIRED", "text": "Java 개발 경험"}
+          ]
+        },
+        {"posting_id": 102, "status": "EXPIRED", "criteria": []}
+      ]
+    },
+    "ai_to_spring": {
+      "indexed_postings": 1,
+      "indexed_criteria": 2,
+      "deactivated_postings": 1
+    }
+  },
+  "prune": {
+    "method": "POST",
+    "path": "/internal/matching/postings/prune",
+    "rule": "Spring이 모든 색인 묶음을 보낸 뒤 한 번 부른다. keep_posting_ids(1~10,000개, 중복 없음, 0보다 큰 정수)는 지금 ACTIVE·READY인 공고 id 전부이고, 색인 묶음이 실패한 공고도 넣어 옛 벡터를 지킨다. 목록에 없는 공고의 벡터는 모두 지운다. kept_postings는 목록에 있고 색인에 벡터가 있는 공고 수, removed_postings는 벡터를 지운 공고 수이다. 목록이 비면 400이므로 남길 공고가 없을 때는 부르지 않는다.",
+    "spring_to_ai": {
+      "keep_posting_ids": [101, 103]
+    },
+    "ai_to_spring": {
+      "kept_postings": 1,
+      "removed_postings": 3
+    }
+  },
+  "search": {
+    "method": "POST",
+    "path": "/internal/matching/search",
+    "rule": "문장 1~200개를 보내면 거리 기준(GITORY_MATCH_MAX_DISTANCE) 안에 드는 문장·조건 쌍을 상한 없이 모두 돌려준다. 같은 공고의 두 조건에 맞으면 둘 다 돌려준다. 색인이 비어 있으면 질의하지 않고 matches를 빈 배열로, collection_criteria를 0으로 돌려준다. 공고별로 묶거나 등급을 세는 일은 Spring이 한다.",
+    "spring_to_ai": {
+      "statements": [
+        {"statement_id": 501, "body": "Spring Boot API의 응답 시간을 개선했습니다."}
+      ]
+    },
+    "ai_to_spring": {
+      "matches": [
+        {"criterion_id": 1001, "statement_id": 501, "distance": 0.21}
+      ],
+      "collection_criteria": 2
+    }
+  }
+}

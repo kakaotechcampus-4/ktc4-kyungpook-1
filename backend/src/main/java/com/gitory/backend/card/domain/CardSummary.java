@@ -1,9 +1,11 @@
 package com.gitory.backend.card.domain;
 
+import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.recommend.domain.CandidateReference;
 
 import java.time.Instant;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -12,6 +14,9 @@ public record CardSummary(
         CardKind kind,
         CardStatus status,
         String title,
+        List<CardArea> areas,
+        List<CardTech> techs,
+        List<CardTheme> themes,
         short versionNo,
         Map<StarField, StarFieldState> star,
         Instant updatedAt,
@@ -19,9 +24,12 @@ public record CardSummary(
         String sourceType,
         String period,
         int evidenceCount,
-        int userStatedCount) {
+        int userStatedCount,
+        RepositoryReference repository,
+        ActivityReference activity) {
 
-    static CardSummary of(Card card, VersionSlots current, CandidateReference candidate, boolean interviewed) {
+    static CardSummary of(Card card, VersionSlots current, CandidateReference candidate, RepositoryReference repository,
+                          ActivityReference activity, boolean interviewed) {
 
         Map<StarField, StarFieldState> star = new EnumMap<>(StarField.class);
         for (StarField field : StarField.values()) {
@@ -33,6 +41,9 @@ public record CardSummary(
                 card.getCardType(),
                 card.getStatus(),
                 card.getTitle(),
+                card.areaTags(),
+                card.techTags(),
+                card.themeTags(),
                 card.getCurrentVersion(),
                 star,
                 card.getUpdatedAt(),
@@ -40,7 +51,9 @@ public record CardSummary(
                 candidate == null ? null : candidate.type().name(),
                 card.getPeriod(),
                 evidenceCountOf(current),
-                userStatedCountOf(current));
+                userStatedCountOf(current),
+                repository,
+                activity);
 
     }
 

@@ -18,12 +18,25 @@ from services.github_collector import GithubApiError, GithubResourceNotFound
 
 INTERNAL_PATHS = {
     "/internal/collect",
+    "/internal/collect/stream",
     "/internal/collect/candidate-details",
     "/internal/analysis/groups",
+    "/internal/analysis/groups/stream",
     "/internal/analysis/diff-evidence",
     "/internal/analysis/star",
+    "/internal/analysis/star/stream",
     "/internal/interview-turns",
+    "/internal/interview-measured-sentence",
+    "/internal/interview-polished-sentence",
+    "/internal/card-themes",
     "/internal/interview-answer-evaluations",
+    "/internal/job-postings/extract",
+    "/internal/matching/postings/index",
+    "/internal/matching/postings/prune",
+    "/internal/matching/search",
+    "/internal/cover-letter-assignments",
+    "/internal/cover-letter-questions",
+    "/internal/cover-letter-drafts",
 }
 
 
@@ -66,6 +79,7 @@ def test_openapi_documents_actual_validation_and_collection_errors() -> None:
         operation = document["paths"][path]["post"]
         assert "미구현" not in operation["summary"]
         assert "LLM_UNAVAILABLE" in operation["responses"]["503"]["description"]
+        assert operation["responses"]["500"]["content"]["application/json"]["schema"]["$ref"].endswith("/ErrorEnvelope")
 
 
 @pytest.mark.parametrize("setting", ["false", "0", "off"])
@@ -159,3 +173,28 @@ def test_offline_export_matches_running_schema_when_docs_are_disabled(tmp_path) 
     )
 
     assert json.loads(output.read_text(encoding="utf-8")) == create_app(docs_enabled=True).openapi()
+
+
+SNAPSHOT = Path(__file__).resolve().parents[2] / "docs" / "openapi" / "ai.json"
+UPDATE_HINT = (
+    "docs/openapi/ai.json 이 지금 코드의 문서와 다릅니다. ai 폴더에서 "
+    "UPDATE_OPENAPI=1 python -m pytest tests/test_openapi_health.py 로 다시 만든 뒤 커밋하세요 "
+    "(PowerShell: $env:UPDATE_OPENAPI=1; python -m pytest tests/test_openapi_health.py; Remove-Item Env:UPDATE_OPENAPI). "
+    "다시 만들었는데도 CI 에서 다르면 설치된 FastAPI·Pydantic 버전이 다른 것이니 "
+    "pip install -r requirements.txt 를 다시 한 뒤 만드세요"
+)
+
+
+def test_committed_snapshot_matches_running_schema() -> None:
+    document = create_app(docs_enabled=True).openapi()
+    if os.environ.get("UPDATE_OPENAPI") == "1":
+        # 스냅샷 형식은 export_openapi.py 한 곳에서만 정한다
+        script = Path(__file__).resolve().parents[1] / "scripts" / "export_openapi.py"
+        subprocess.run(
+            [sys.executable, str(script), "--output", str(SNAPSHOT)],
+            check=True, capture_output=True, text=True,
+        )
+        return
+
+    assert SNAPSHOT.exists(), UPDATE_HINT
+    assert json.loads(SNAPSHOT.read_text(encoding="utf-8")) == document, UPDATE_HINT

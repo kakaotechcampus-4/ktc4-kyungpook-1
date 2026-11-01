@@ -24,7 +24,7 @@ class JobViewTest {
 
         AnalysisJob job = groupedJob(candidateCount, partial);
 
-        assertThat(JobView.from(job, REPO_ID, List.of(), () -> REASONS).result().verdict()).isEqualTo(verdict);
+        assertThat(JobView.from(job, REPO_ID, List.of(), () -> REASONS, List.of()).result().verdict()).isEqualTo(verdict);
 
     }
 
@@ -39,7 +39,7 @@ class JobViewTest {
         JobResult result = JobView.from(job, REPO_ID, List.of(), () -> {
             calls.incrementAndGet();
             return REASONS;
-        }).result();
+        }, List.of()).result();
 
         assertThat(result).isEqualTo(new JobResult(REPO_ID.toString(), null, result.verdict(), List.of()));
         assertThat(calls).hasValue(0);
@@ -53,13 +53,13 @@ class JobViewTest {
 
         AnalysisJob job = groupedJob(0, partial);
 
-        assertThat(JobView.from(job, REPO_ID, List.of(), () -> REASONS).result())
+        assertThat(JobView.from(job, REPO_ID, List.of(), () -> REASONS, List.of()).result())
                 .isEqualTo(new JobResult(REPO_ID.toString(), null, "EMPTY", REASONS));
 
     }
 
     @Test
-    @DisplayName("묶기를 건너뛰었거나 후보 추리기가 끝나지 않은 Job 은 판정과 이유를 비우고 이유를 만들지도 않는다")
+    @DisplayName("경험 그룹화를 건너뛰었거나 후보 추리기가 끝나지 않은 Job 은 판정과 이유를 비우고 이유를 만들지도 않는다")
     void leavesVerdictEmptyUntilCandidatesAreStored() {
 
         AtomicInteger calls = new AtomicInteger();
@@ -70,10 +70,24 @@ class JobViewTest {
         failedWhileGrouping.fail(JobErrorCode.INTERNAL_ERROR);
 
         JobResult noVerdict = new JobResult(REPO_ID.toString(), null, null, null);
-        assertThat(JobView.from(skipped, REPO_ID, List.of(), () -> countedReasons(calls)).result()).isEqualTo(noVerdict);
-        assertThat(JobView.from(failedWhileGrouping, REPO_ID, List.of(), () -> countedReasons(calls)).result())
+        assertThat(JobView.from(skipped, REPO_ID, List.of(), () -> countedReasons(calls), List.of()).result()).isEqualTo(noVerdict);
+        assertThat(JobView.from(failedWhileGrouping, REPO_ID, List.of(), () -> countedReasons(calls), List.of()).result())
                 .isEqualTo(noVerdict);
         assertThat(calls).hasValue(0);
+
+    }
+
+    @Test
+    @DisplayName("AI 가 잠시 못 해서 실패한 Job 은 다시 시도할 수 있고 기다릴 시간은 모르니 남은 초는 비어 있다")
+    void aiUnavailableJobIsRetryableWithoutWaitTime() {
+
+        AnalysisJob job = collectedJob();
+        job.fail(JobErrorCode.AI_UNAVAILABLE);
+
+        JobView view = JobView.from(job, REPO_ID, List.of(), () -> REASONS, List.of());
+
+        assertThat(view.retryable()).isTrue();
+        assertThat(view.retryAfterSec()).isNull();
 
     }
 
@@ -112,7 +126,7 @@ class JobViewTest {
         UUID first = UUID.fromString("33333333-3333-4333-8333-333333333333");
         UUID second = UUID.fromString("44444444-4444-4444-8444-444444444444");
 
-        assertThat(JobView.from(draft, REPO_ID, List.of(first, second), () -> REASONS).result())
+        assertThat(JobView.from(draft, REPO_ID, List.of(first, second), () -> REASONS, List.of()).result())
                 .isEqualTo(new JobResult(REPO_ID.toString(), List.of(first.toString(), second.toString()), null, null));
 
     }
@@ -124,7 +138,7 @@ class JobViewTest {
         AnalysisJob skipped = collectedJob();
         skipped.succeed(false, null);
 
-        assertThat(JobView.from(skipped, REPO_ID, List.of(UUID.randomUUID()), () -> REASONS).result().cardIds()).isNull();
+        assertThat(JobView.from(skipped, REPO_ID, List.of(UUID.randomUUID()), () -> REASONS, List.of()).result().cardIds()).isNull();
 
     }
 }

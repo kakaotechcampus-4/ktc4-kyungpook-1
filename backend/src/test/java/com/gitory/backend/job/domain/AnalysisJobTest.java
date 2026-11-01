@@ -107,18 +107,64 @@ class AnalysisJobTest {
     }
 
     @Test
-    @DisplayName("start 는 Job 상태와 COMMITS 단계를 RUNNING 으로 바꾼다")
-    void startMarksCommitStepRunning() {
+    @DisplayName("분석 Job 은 AI 가 읽는 순서대로 PR·리뷰 읽기 → 커밋 읽기 → 후보 추리기 → 추천 이유 단계를 두고, start 하면 PR·리뷰 읽기가 진행 중이다")
+    void analyzeStepsFollowReadingOrder() {
 
         AnalysisJob job = running();
 
-        assertThat(job.getSteps()).extracting(JobStep::state)
-                .containsExactly(JobStepState.RUNNING, JobStepState.QUEUED, JobStepState.QUEUED, JobStepState.QUEUED);
+        assertThat(job.getSteps()).containsExactly(
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.RUNNING, 0, null),
+                new JobStep(JobStepKey.COMMITS, JobStepState.QUEUED, 0, null),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.QUEUED, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.QUEUED, 0, null));
 
     }
 
     @Test
-    @DisplayName("수집 기록을 남기면 커밋·PR 읽기 단계는 읽은 개수로 완료되고, 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
+    @DisplayName("카드 초안 Job 은 대기 중에도 시작한 뒤에도 커밋 읽기가 첫 단계라 순서가 튀지 않는다")
+    void draftStepsKeepCommitsFirst() {
+
+        AnalysisJob job = AnalysisJob.enqueueDraft(1L, 10L, KEY);
+        assertThat(job.getSteps()).extracting(JobStep::key)
+                .containsExactly(JobStepKey.COMMITS, JobStepKey.PR_REVIEW, JobStepKey.COMPRESS, JobStepKey.REASON);
+
+        job.start();
+
+        assertThat(job.getSteps().getFirst()).isEqualTo(new JobStep(JobStepKey.COMMITS, JobStepState.RUNNING, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("진행을 받으면 그 단계는 진행 중으로 읽은 수/전체를 남기고, 앞 단계는 전체 수로 완료하며 뒤 단계는 그대로 둔다")
+    void recordProgressMovesStepsInOrder() {
+
+        AnalysisJob job = running();
+        job.recordProgress(JobStepKey.PR_REVIEW, 3, 4);
+
+        job.recordProgress(JobStepKey.COMMITS, 12, 30);
+
+        assertThat(job.getSteps()).containsExactly(
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 4, 4),
+                new JobStep(JobStepKey.COMMITS, JobStepState.RUNNING, 12, 30),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.QUEUED, 0, null),
+                new JobStep(JobStepKey.REASON, JobStepState.QUEUED, 0, null));
+
+    }
+
+    @Test
+    @DisplayName("카드 초안 Job 이나 RUNNING 이 아닌 Job 에는 진행을 남길 수 없다")
+    void recordProgressOnlyForRunningAnalyzeJob() {
+
+        AnalysisJob draft = AnalysisJob.enqueueDraft(1L, 10L, KEY);
+        draft.start();
+
+        assertThatThrownBy(() -> draft.recordProgress(JobStepKey.COMMITS, 1, 2)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> queued().recordProgress(JobStepKey.PR_REVIEW, 1, 2)).isInstanceOf(IllegalStateException.class);
+
+    }
+
+    @Test
+    @DisplayName("수집 기록을 남기면 PR·커밋 읽기 단계는 이번에 읽은 수(읽은 수 = 전체)로 완료되고, 후보 추리기·추천 이유 단계는 SKIPPED 상태로 나타낸다")
     void recordCollectionFinishesCollectionSteps() {
 
         AnalysisJob job = running();
@@ -127,15 +173,15 @@ class AnalysisJobTest {
 
         assertThat(job.getCollectionRunId()).isEqualTo(5L);
         assertThat(job.getSteps()).containsExactly(
-                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, null),
-                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, 3),
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, 12),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.SKIPPED, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
 
     }
 
     @Test
-    @DisplayName("묶기를 시작하면 후보 추리기는 진행 중, 추천 이유는 대기로 바뀌고 수집 두 단계는 그대로다")
+    @DisplayName("경험 그룹화를 시작하면 후보 추리기는 진행 중, 추천 이유는 대기로 바뀌고 수집 두 단계는 그대로다")
     void startGroupingMarksCompressRunning() {
 
         AnalysisJob job = running();
@@ -145,8 +191,8 @@ class AnalysisJobTest {
 
         assertThat(job.getState()).isEqualTo(JobState.RUNNING);
         assertThat(job.getSteps()).containsExactly(
-                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, null),
-                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, 3),
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, 12),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.RUNNING, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.QUEUED, 0, null));
 
@@ -164,10 +210,30 @@ class AnalysisJobTest {
         job.recordCandidates(candidateCount);
 
         assertThat(job.getSteps()).containsExactly(
-                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, null),
-                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, 3),
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, 12),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, candidateCount, null),
                 new JobStep(JobStepKey.REASON, JobStepState.DONE, candidateCount, null));
+
+    }
+
+    @Test
+    @DisplayName("진행을 받은 후보 추리기·추천 이유는 후보 수가 아니라 받은 전체 수로 완료한다")
+    void recordCandidatesUsesProgressTotals() {
+
+        AnalysisJob job = running();
+        job.recordCollection(5L, 12, 3);
+        job.startGrouping();
+        job.recordProgress(JobStepKey.COMPRESS, 40, 40);
+        job.recordProgress(JobStepKey.REASON, 5, 12);
+
+        job.recordCandidates(15);
+
+        assertThat(job.getSteps()).containsExactly(
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, 3),
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, 12),
+                new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, 40, 40),
+                new JobStep(JobStepKey.REASON, JobStepState.DONE, 12, 12));
 
     }
 
@@ -182,15 +248,15 @@ class AnalysisJobTest {
         job.recordCandidates(0);
 
         assertThat(job.getSteps()).containsExactly(
-                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, null),
-                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 3, 3),
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 12, 12),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, 0, null),
                 new JobStep(JobStepKey.REASON, JobStepState.SKIPPED, 0, null));
 
     }
 
     @Test
-    @DisplayName("RUNNING 이 아닌 Job 은 묶기를 시작하거나 후보 수를 남길 수 없다")
+    @DisplayName("RUNNING 이 아닌 Job 은 경험 그룹화를 시작하거나 후보 수를 남길 수 없다")
     void groupingStepsRequireRunning() {
 
         AnalysisJob finished = running();
@@ -367,7 +433,7 @@ class AnalysisJobTest {
 
         assertThat(job.getType()).isEqualTo(JobType.DRAFT);
         assertThat(job.getState()).isEqualTo(JobState.QUEUED);
-        assertThat(job.getSteps()).isEqualTo(queued().getSteps());
+        assertThat(job.getSteps()).extracting(JobStep::state).containsOnly(JobStepState.QUEUED);
         assertThat(queued().getType()).isEqualTo(JobType.ANALYZE);
 
     }

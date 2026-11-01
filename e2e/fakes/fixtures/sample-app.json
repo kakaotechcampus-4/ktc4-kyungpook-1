@@ -1,0 +1,254 @@
+{
+  "repo": {
+    "id": 900000,
+    "name": "sample-app",
+    "default_branch": "main",
+    "language": "TypeScript",
+    "created_at": "2026-09-20T00:00:00Z",
+    "pushed_at": "2026-10-12T08:00:00Z"
+  },
+  "commits": [
+    {
+      "key": "c10",
+      "sha": "b044ac108bef03e0238a970af1cd73f87e600f8c",
+      "message": "chore: 의존성 정리",
+      "date": "2026-10-12T08:00:00Z",
+      "files": [
+        {
+          "filename": "build.gradle",
+          "status": "modified",
+          "additions": 3,
+          "deletions": 3,
+          "patch": "@@ -1,3 +1,3 @@\n-old build.gradle\n+new build.gradle"
+        }
+      ]
+    },
+    {
+      "key": "c09",
+      "sha": "ae543f91aa934e52ba0a42fbcf517c821d49b929",
+      "message": "docs: README 에 실행 방법 추가",
+      "date": "2026-10-11T08:00:00Z",
+      "files": [
+        {
+          "filename": "README.md",
+          "status": "modified",
+          "additions": 12,
+          "deletions": 1,
+          "patch": "@@ -1,1 +1,12 @@\n-old README.md\n+new README.md"
+        }
+      ]
+    },
+    {
+      "key": "c08",
+      "sha": "0e07cb03b249a29997b8d76d83a68d5544b48318",
+      "message": "refactor: 에러 코드 분리",
+      "date": "2026-10-10T08:00:00Z",
+      "files": [
+        {
+          "filename": "src/auth/error-code.ts",
+          "status": "added",
+          "additions": 18,
+          "deletions": 0,
+          "patch": "@@ -1,1 +1,18 @@\n-old src/auth/error-code.ts\n+new src/auth/error-code.ts"
+        },
+        {
+          "filename": "src/auth/login.ts",
+          "status": "modified",
+          "additions": 6,
+          "deletions": 9,
+          "patch": "@@ -1,9 +1,6 @@\n-old src/auth/login.ts\n+new src/auth/login.ts"
+        }
+      ]
+    },
+    {
+      "key": "c07",
+      "sha": "432101f59bb08008ede10b4040de774902c686ce",
+      "message": "test: 로그인 실패 테스트 추가",
+      "date": "2026-10-09T08:00:00Z",
+      "files": [
+        {
+          "filename": "src/auth/login.test.ts",
+          "status": "added",
+          "additions": 30,
+          "deletions": 0,
+          "patch": "@@ -1,1 +1,30 @@\n-old src/auth/login.test.ts\n+new src/auth/login.test.ts"
+        }
+      ]
+    },
+    {
+      "key": "c06",
+      "sha": "9cb34b316ea359b49c328ab43646db5698eba6bd",
+      "message": "fix: 로그인 버튼 글자색을 #000 으로 고정",
+      "date": "2026-10-08T08:00:00Z",
+      "files": [
+        {
+          "filename": "src/auth/login-button.ts",
+          "status": "modified",
+          "additions": 5,
+          "deletions": 5,
+          "patch": "@@ -1,5 +1,5 @@\n-old src/auth/login-button.ts\n+new src/auth/login-button.ts"
+        }
+      ]
+    },
+    {
+      "key": "c05",
+      "sha": "7c95368583a2fa7b4bcce3d35a3e98c69c9a4bbb",
+      "message": "fix: 로그인 실패 시 에러 메시지 정리",
+      "date": "2026-10-07T08:00:00Z",
+      "files": [
+        {
+          "filename": "src/auth/login.ts",
+          "status": "modified",
+          "additions": 14,
+          "deletions": 6,
+          "patch": "@@ -1,6 +1,14 @@\n-old src/auth/login.ts\n+new src/auth/login.ts"
+        }
+      ]
+    },
+    {
+      "key": "c04",
+      "sha": "6a74e8dc02f6ef45422dbd4a54bf1f67b83555fa",
+      "message": "refactor: 세션 조회 코드 정리",
+      "date": "2026-10-06T08:00:00Z",
+      "files": [
+        {
+          "filename": "src/session/query.ts",
+          "status": "modified",
+          "additions": 9,
+          "deletions": 12,
+          "patch": "@@ -1,12 +1,9 @@\n-old src/session/query.ts\n+new src/session/query.ts"
+        }
+      ]
+    },
+    {
+      "key": "c03",
+      "sha": "ee146d7952622f55b1ec8b49392fbedf55632dd8",
+      "message": "test: 세션 조회 테스트 추가",
+      "date": "2026-10-05T08:00:00Z",
+      "files": [
+        {
+          "filename": "src/session/query.test.ts",
+          "status": "added",
+          "additions": 40,
+          "deletions": 0,
+          "patch": "@@ -1,1 +1,40 @@\n-old src/session/query.test.ts\n+new src/session/query.test.ts"
+        }
+      ]
+    },
+    {
+      "key": "c02",
+      "sha": "8cfeaf98e6f0620fa41ea29e078d3658599efc8e",
+      "message": "feat: 세션 조회 서비스에 캐시 적용",
+      "date": "2026-10-04T08:00:00Z",
+      "files": [
+        {
+          "filename": "src/session/cache.ts",
+          "status": "added",
+          "additions": 35,
+          "deletions": 0,
+          "patch": "@@ -1,1 +1,35 @@\n-old src/session/cache.ts\n+new src/session/cache.ts"
+        },
+        {
+          "filename": "src/session/query.ts",
+          "status": "modified",
+          "additions": 8,
+          "deletions": 2,
+          "patch": "@@ -1,2 +1,8 @@\n-old src/session/query.ts\n+new src/session/query.ts"
+        }
+      ]
+    },
+    {
+      "key": "c01",
+      "sha": "b224d3c26b01f77fd17e9764e1eadb3dafaa3745",
+      "message": "feat: 세션 테이블에 조회 인덱스 추가 (#7)",
+      "date": "2026-10-03T08:00:00Z",
+      "files": [
+        {
+          "filename": "src/session/schema.sql",
+          "status": "modified",
+          "additions": 14,
+          "deletions": 2,
+          "patch": "@@ -1,2 +1,14 @@\n-old src/session/schema.sql\n+new src/session/schema.sql"
+        }
+      ]
+    }
+  ],
+  "pulls": [
+    {
+      "number": 5,
+      "title": "로그인 실패 처리 개선",
+      "body": "로그인 실패 때 에러 메시지를 정리하고 에러 코드를 분리했다.",
+      "state": "closed",
+      "base": "main",
+      "head": "fix/login-error",
+      "created_at": "2026-10-07T09:00:00Z",
+      "merged_at": "2026-10-10T12:00:00Z",
+      "commits": [
+        "c05",
+        "c06",
+        "c07",
+        "c08"
+      ],
+      "reviews": [
+        {
+          "id": 7001,
+          "state": "APPROVED",
+          "body": "에러 코드를 분리해서 읽기 쉬워졌어요.",
+          "user": "e2e-reviewer",
+          "submitted_at": "2026-10-10T10:00:00Z"
+        }
+      ],
+      "comments": []
+    },
+    {
+      "number": 3,
+      "title": "세션 조회 성능 개선",
+      "body": "세션 조회에 인덱스와 캐시를 적용했다. Closes #7",
+      "state": "closed",
+      "base": "main",
+      "head": "feature/session-index",
+      "created_at": "2026-10-03T09:00:00Z",
+      "merged_at": "2026-10-06T12:00:00Z",
+      "commits": [
+        "c01",
+        "c02",
+        "c03",
+        "c04"
+      ],
+      "reviews": [
+        {
+          "id": 7002,
+          "state": "COMMENTED",
+          "body": "캐시 만료 기준을 한 번 더 확인해 주세요.",
+          "user": "e2e-reviewer",
+          "submitted_at": "2026-10-05T12:00:00Z"
+        }
+      ],
+      "comments": [
+        {
+          "id": 7101,
+          "review_id": 7002,
+          "body": "이 키는 사용자별로 나눠야 할 것 같아요.",
+          "path": "src/session/cache.ts",
+          "line": 12,
+          "user": "e2e-reviewer",
+          "created_at": "2026-10-05T11:50:00Z"
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "number": 7,
+      "title": "세션 조회가 느립니다",
+      "body": "로그인 뒤 첫 화면에서 응답이 오래 걸립니다.",
+      "state": "closed",
+      "user": "e2e-reporter",
+      "labels": [
+        "performance"
+      ],
+      "created_at": "2026-10-02T08:00:00Z",
+      "closed_at": "2026-10-06T12:00:00Z"
+    }
+  ]
+}

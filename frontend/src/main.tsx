@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom';
 import { queryClient } from './app/queryClient';
 import { router } from './app/router';
 import { applyTheme, getTheme } from './lib/theme';
+import { installChunkReload } from './lib/chunkReload';
 import { Toaster } from './lib/toast';
 import { installDemoApi } from './mock/browser';
 import './styles/tokens.css';
@@ -16,8 +17,15 @@ import './styles/design2.css';
 import './styles/layout-tio.css';
 import './styles/product.css';
 import './styles/responsive.css';
+import './styles/ux-polish.css';
+import './styles/landing-intro.css';
+import './styles/guidance.css';
+import './styles/card-tile.css';
+import './styles/mono-pastel.css';
+import './styles/job-calendar.css';
 
 applyTheme(getTheme());
+installChunkReload();
 installDemoApi(); // VITE_API_MOCK=false 면 아무것도 하지 않는다 (fetch 가 그대로 /api 로 나간다)
 
 createRoot(document.getElementById('root')!).render(

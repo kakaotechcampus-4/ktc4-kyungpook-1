@@ -5,7 +5,7 @@ test('demo starts in one action without repeating mode explanations', async ({ p
   await freshSeed(page); await page.goto('/login');
   const trigger = page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' });
   await trigger.click();
-  await expect(page.getByRole('heading', { name: '경험 정리', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '홈', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
@@ -37,7 +37,7 @@ test('lost analysis response retries the same request without another job', asyn
 test('409 leaves the analysis action in place and creates no job', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/repos?select=r_auth&disclose=1&demoScenario=conflict');
   await page.getByRole('button', { name: '정리 시작' }).click();
-  await expect(page.locator('.toast')).toContainText('다른 저장소에 사용된 요청');
+  await expect(page.locator('.toast')).toContainText('다른 레포에 쓰인 요청');
   await expect(page).toHaveURL(/disclose=1/);
   const jobs = await page.evaluate(async () => (await (await fetch('/api/jobs?active=true')).json()).data.jobs);
   expect(jobs).toHaveLength(0);

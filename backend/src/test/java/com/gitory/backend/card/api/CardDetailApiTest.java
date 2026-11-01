@@ -29,6 +29,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -51,12 +52,13 @@ class CardDetailApiTest {
     private static final UUID MY_REPO = UUID.fromString("33333333-3333-4333-8333-333333333333");
 
     // FE schemas.ts 의 Card·CardVersion·Evidence 가 요구하는 키로, 값이 null 이어도 키는 빠지면 안 된다
-    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "period", "repo", "candidate",
-            "version", "evidence", "lowConfidenceFields", "droppedFields", "maskRules", "generation", "interviewTurns",
-            "confirmedAt", "createdAt"};
+    private static final String[] CARD_KEYS = {"id", "kind", "status", "title", "areas", "techs", "themes", "period", "repo",
+            "activity", "candidate", "version", "evidence", "lowConfidenceFields", "droppedFields", "draftSteps",
+            "maskRules", "generation", "draftFailure", "interviewTurns", "interviewEndReason", "confirmedAt", "createdAt"};
     private static final String[] VERSION_KEYS = {"versionNo", "source", "createdAt", "situation", "task", "action",
             "result"};
-    private static final String[] EVIDENCE_KEYS = {"field", "type", "authoredBy", "sha", "url", "snippet", "turnNo"};
+    private static final String[] EVIDENCE_KEYS = {"field", "type", "authoredBy", "sha", "url", "snippet", "committedAt",
+            "changedFiles", "summary", "turnNo"};
 
     @Container
     @ServiceConnection
@@ -89,6 +91,69 @@ class CardDetailApiTest {
         myRepoId = fixtures.insertUserRepository(MY_REPO, myUserId, repositoryId);
         firstCommit = fixtures.insertCommit(repositoryId, "1111111111111111111111111111111111111111");
         secondCommit = fixtures.insertCommit(repositoryId, "2222222222222222222222222222222222222222");
+
+    }
+
+    @Test
+    @DisplayName("경험 카드의 문항 유형을 저장된 순서대로 themes 로 보낸다")
+    void sendsThemes() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        jdbc.update("UPDATE card SET themes = '{CONFLICT,GROWTH}' WHERE id = ?", cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.themes[0]").value("CONFLICT"))
+                .andExpect(jsonPath("$.data.themes[1]").value("GROWTH"));
+
+    }
+
+    @Test
+    @DisplayName("AI 가 되묻기를 그만두기로 한 이유가 카드에 남아 있으면 interviewEndReason 으로, 없으면 null 로 보낸다")
+    void sendsInterviewEndReason() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        card(myUserId, MY_CARD.toString())
+                .andExpect(jsonPath("$.data.interviewEndReason").value(nullValue()));
+        jdbc.update("UPDATE card SET interview_end_reason = '네 칸 모두 근거가 있어 마칠게요' WHERE id = ?", cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.interviewEndReason").value("네 칸 모두 근거가 있어 마칠게요"));
+
+    }
+
+    @Test
+    @DisplayName("AI 초안 단계는 사용자가 고쳐 버전이 늘어도 1번 버전 것을 순서대로 보내고, 없는 값은 null 로 보낸다")
+    void sendsDraftStepsOfFirstVersion() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
+        jdbc.update("""
+                INSERT INTO card_draft_step (card_id, version_no, seq, round_no, actor, kind, star_slot, code, detail,
+                                             material, reason)
+                VALUES (?, 1, 1, 1, 'MODEL', 'OPEN', 'S', NULL, '이슈 #98', 'ISSUE', '문제 상황이 있을 것 같음'),
+                       (?, 1, 0, 0, 'MODEL', 'DRAFT', NULL, NULL, NULL, NULL, NULL),
+                       (?, 1, 2, 1, 'CODE', 'PASS', 'S', NULL, NULL, NULL, NULL)
+                """, cardId, cardId, cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.version.versionNo").value(2))
+                .andExpect(jsonPath("$.data.draftSteps", hasSize(3)))
+                .andExpect(jsonPath("$.data.draftSteps[0].round").value(0))
+                .andExpect(jsonPath("$.data.draftSteps[0].actor").value("MODEL"))
+                .andExpect(jsonPath("$.data.draftSteps[0].kind").value("DRAFT"))
+                .andExpect(jsonPath("$.data.draftSteps[0].field").value(nullValue()))
+                .andExpect(jsonPath("$.data.draftSteps[0].reason").value(nullValue()))
+                .andExpect(jsonPath("$.data.draftSteps[1].round").value(1))
+                .andExpect(jsonPath("$.data.draftSteps[1].kind").value("OPEN"))
+                .andExpect(jsonPath("$.data.draftSteps[1].field").value("S"))
+                .andExpect(jsonPath("$.data.draftSteps[1].code").value(nullValue()))
+                .andExpect(jsonPath("$.data.draftSteps[1].value").value("이슈 #98"))
+                .andExpect(jsonPath("$.data.draftSteps[1].material").value("ISSUE"))
+                .andExpect(jsonPath("$.data.draftSteps[1].reason").value("문제 상황이 있을 것 같음"))
+                .andExpect(jsonPath("$.data.draftSteps[2].kind").value("PASS"));
 
     }
 
@@ -134,6 +199,35 @@ class CardDetailApiTest {
                 .andExpect(jsonPath("$.data.maskRules[1].to").value(""))
                 .andExpect(jsonPath("$.data.confirmedAt").value(nullValue()))
                 .andExpect(jsonPath("$.data.createdAt").value("2026-01-01T00:00:00Z"));
+
+    }
+
+    @Test
+    @DisplayName("카드에 저장된 분야·기술 태그를 순서대로 싣는다")
+    void sendsTags() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        jdbc.update("UPDATE card SET areas = '{DB,BACKEND}', techs = '{SQL,JAVA}' WHERE id = ?", cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.areas").value(contains("DB", "BACKEND")))
+                .andExpect(jsonPath("$.data.techs").value(contains("SQL", "JAVA")));
+
+    }
+
+    @Test
+    @DisplayName("태그가 없는 카드는 분야·기술을 null 이 아닌 빈 배열로 싣는다")
+    void sendsEmptyTags() throws Exception {
+
+        fixtures.insertCard(MY_CARD, myUserId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.areas").isArray())
+                .andExpect(jsonPath("$.data.areas").isEmpty())
+                .andExpect(jsonPath("$.data.techs").isArray())
+                .andExpect(jsonPath("$.data.techs").isEmpty());
 
     }
 
@@ -185,8 +279,70 @@ class CardDetailApiTest {
                         tuple("R", "COMMIT", "AI"));
         assertThat(evidence).allSatisfy(row -> assertThat(row).containsOnlyKeys(EVIDENCE_KEYS));
         assertThat(evidence.subList(0, 2)).allSatisfy(row -> assertThat(row)
-                .containsEntry("sha", null).containsEntry("url", null).containsEntry("snippet", null));
+                .containsEntry("sha", null).containsEntry("url", null).containsEntry("snippet", null)
+                .containsEntry("committedAt", null).containsEntry("changedFiles", null).containsEntry("summary", null));
         assertThat(evidence).extracting(row -> row.get("turnNo")).containsExactly(null, 1, null, null, null);
+
+    }
+
+    @Test
+    @DisplayName("커밋 근거는 저장된 커밋의 메시지 첫 줄·작성 시각·바뀐 파일 수를 싣는다")
+    void commitEvidenceCarriesMessageDateAndFileCount() throws Exception {
+
+        jdbc.update("UPDATE git_commit SET message = ?, authored_at = ?, changed_files = ? WHERE id = ?",
+                "fix: 만료 직전 토큰 갱신\n\n자세한 설명", java.sql.Timestamp.from(java.time.Instant.parse("2026-05-12T03:00:00Z")),
+                3, firstCommit);
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long action = fixtures.insertStatement(cardId, 1, "A", "커밋으로 쓴 행동", "COMMIT", "HIGH");
+        fixtures.insertStatementEvidence(action, firstCommit);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence[0].snippet").value("fix: 만료 직전 토큰 갱신"))
+                .andExpect(jsonPath("$.data.evidence[0].committedAt").value("2026-05-12T03:00:00Z"))
+                .andExpect(jsonPath("$.data.evidence[0].changedFiles").value(3));
+
+    }
+
+    @Test
+    @DisplayName("커밋 근거는 저장된 diff 요약을 summary 로 싣고, 요약이 없는 커밋은 null 이다")
+    void commitEvidenceCarriesStoredDiffSummary() throws Exception {
+
+        jdbc.update("UPDATE git_commit SET diff_summary = ? WHERE id = ?", "만료 직전에 토큰을 갱신하는 인터셉터 추가", firstCommit);
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long action = fixtures.insertStatement(cardId, 1, "A", "커밋으로 쓴 행동", "COMMIT", "HIGH");
+        fixtures.insertStatementEvidence(action, firstCommit);
+        fixtures.insertStatementEvidence(action, secondCommit);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence[0].summary").value("만료 직전에 토큰을 갱신하는 인터셉터 추가"))
+                .andExpect(jsonPath("$.data.evidence[1].summary").value(nullValue()));
+
+    }
+
+    @Test
+    @DisplayName("커밋 근거는 그 커밋의 앞 7자리 sha 와 카드 저장소의 GitHub 커밋 주소를 싣고, 저장소가 없는 카드는 sha 만 싣고 주소를 지어내지 않는다")
+    void commitEvidenceCarriesShortShaAndGithubUrl() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        jdbc.update("UPDATE card SET user_repository_id = ? WHERE id = ?", myRepoId, cardId);
+        Long action = fixtures.insertStatement(cardId, 1, "A", "커밋으로 쓴 행동", "COMMIT", "HIGH");
+        fixtures.insertStatementEvidence(action, firstCommit);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence", hasSize(1)))
+                .andExpect(jsonPath("$.data.evidence[0].sha").value("1111111"))
+                .andExpect(jsonPath("$.data.evidence[0].url")
+                        .value("https://github.com/grow22/gitory/commit/1111111111111111111111111111111111111111"));
+
+        jdbc.update("UPDATE card SET user_repository_id = NULL WHERE id = ?", cardId);
+
+        card(myUserId, MY_CARD.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.evidence[0].sha").value("1111111"))
+                .andExpect(jsonPath("$.data.evidence[0].url").value(nullValue()));
 
     }
 

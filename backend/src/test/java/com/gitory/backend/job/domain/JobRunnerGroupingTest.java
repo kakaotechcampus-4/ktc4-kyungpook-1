@@ -9,6 +9,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.ExperienceCandidate;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
@@ -80,8 +81,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 묶기 스위치를 켠 분석 Job 이 수집 저장 → 묶기 재료 → AI 묶기 → 후보 저장 → 단계·판정까지 잇는지 본다
- * 갱신 시각 테스트는 16분 전 Job 이 멈춘 Job 기준(두 대기 중 큰 값 + 5분)을 넘어야 뜻이 있어, 두 대기를 기본값·환경변수와 상관없이 10분으로 고정한다
+ * 경험 그룹화를 켠 분석 Job 이 수집 저장 → 경험 그룹화 요청 만들기 → AI 경험 그룹화 → 후보 저장 → 단계·판정까지 잇는지 본다
+ * 갱신 시각 테스트는 16분 전 Job 이 멈춘 Job 기준(네 대기 한도 중 큰 값 + 5분)을 넘어야 뜻이 있어
+ * 수집·경험 그룹화 대기를 10분으로 고정하고, diff 근거·STAR 대기는 기본값이 그보다 짧아 그대로 둔다
  */
 @DataJpaTest(properties = {
         "gitory.ai.collect-read-timeout=10m",
@@ -91,9 +93,9 @@ import java.util.concurrent.atomic.AtomicReference;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @ExtendWith(OutputCaptureExtension.class)
-@Import({JobRunner.class, JobCancelService.class, JobQueryService.class, ActivityStoreService.class,
+@Import({ClockConfig.class, JobRunner.class, JobCancelService.class, JobQueryService.class, ActivityStoreService.class,
         GroupingMaterialService.class, CandidateStoreService.class, StoredActivityService.class, UserLoginService.class,
-        JobViewFactory.class, CandidateEmptyReasons.class, CollectionStatsService.class,
+        JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class, CollectionStatsService.class,
         GeneratedCardQueryService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -176,7 +178,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("묶기를 켜면 수집을 저장한 뒤 AI 가 묶은 후보를 저장하고, 묶은 기록을 남긴 채 SUCCEEDED 로 끝낸다")
+    @DisplayName("경험 그룹화를 켜면 수집을 저장한 뒤 AI 가 만든 후보를 저장하고, 경험 그룹화 기록을 남긴 채 SUCCEEDED 로 끝낸다")
     void storesGroupedCandidatesAndSucceeds() {
 
         Long jobId = enqueue(KEY_1);
@@ -242,7 +244,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("AI 가 묶는 동안 수집 결과는 이미 저장돼 있고, Job 은 RUNNING 에 후보 추리기 진행 중·추천 이유 대기로 보인다")
+    @DisplayName("AI 가 경험 그룹화를 하는 동안 수집 결과는 이미 저장돼 있고, Job 은 RUNNING 에 후보 추리기 진행 중·추천 이유 대기로 보인다")
     void showsGroupingStepsWhileWaitingForAi() {
 
         Long jobId = enqueue(KEY_1);
@@ -271,7 +273,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("수집이 오래 걸려도 묶기 직전에 갱신 시각을 새로 찍어, 묶는 동안에는 멈춘 Job 으로 끝내지 않는다")
+    @DisplayName("수집이 오래 걸려도 경험 그룹화 직전에 갱신 시각을 새로 찍어, 경험 그룹화 동안에는 멈춘 Job 으로 끝내지 않는다")
     void touchesUpdatedAtBeforeGrouping() {
 
         Long jobId = enqueue(KEY_1);
@@ -294,7 +296,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("묶은 뒤 후보 추리기·추천 이유는 상태와 상관없이 그 저장소 연결의 후보 수로 완료되고 판정은 OK 다")
+    @DisplayName("경험 그룹화 뒤 후보 추리기·추천 이유는 상태와 상관없이 그 저장소 연결의 후보 수로 완료되고 판정은 OK 다")
     void finishesCandidateStepsWithConnectionCandidateCount() {
 
         candidateRows.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "EXCLUDED");
@@ -309,8 +311,8 @@ class JobRunnerGroupingTest {
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         assertThat(job.getSteps()).containsExactly(
-                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 1, null),
-                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 1, null),
+                new JobStep(JobStepKey.PR_REVIEW, JobStepState.DONE, 1, 1),
+                new JobStep(JobStepKey.COMMITS, JobStepState.DONE, 1, 1),
                 new JobStep(JobStepKey.COMPRESS, JobStepState.DONE, 2, null),
                 new JobStep(JobStepKey.REASON, JobStepState.DONE, 2, null));
         assertThat(resultOf(job)).isEqualTo(new JobResult(userRepositoryPublicId(), null, "OK", List.of()));
@@ -339,7 +341,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("부분 수집이면 AI 에 부분 수집으로 알리고, 묶은 뒤에도 부분 완료와 GitHub 한도 에러 코드를 남기며 판정은 PARTIAL 이다")
+    @DisplayName("부분 수집이면 AI 에 부분 수집으로 알리고, 경험 그룹화 뒤에도 부분 완료와 GitHub 한도 에러 코드를 남기며 판정은 PARTIAL 이다")
     void keepsPartialCollectionThroughGrouping() {
 
         Long jobId = enqueue(KEY_1);
@@ -358,6 +360,23 @@ class JobRunnerGroupingTest {
         assertThat(job.isPartial()).isTrue();
         assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.GITHUB_RATE_LIMITED);
         assertThat(resultOf(job)).isEqualTo(new JobResult(userRepositoryPublicId(), null, "PARTIAL", List.of()));
+
+    }
+
+    @Test
+    @DisplayName("우리 상한에 걸린 수집은 경험 그룹화를 마친 뒤에도 부분 완료와 COLLECTION_CAPPED 를 남긴다")
+    void keepsCappedCollectionThroughGrouping() {
+
+        Long jobId = enqueue(KEY_1);
+        given(activities.collect(any())).willReturn(activity(PartialReason.CAP_EXCEEDED, commit(SHA_A)));
+        given(grouping.group(any())).willAnswer(invocation -> groupedAsPullRequest(invocation.getArgument(0)));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(job.isPartial()).isTrue();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.COLLECTION_CAPPED);
 
     }
 
@@ -420,7 +439,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("보낼 요청이 지난번 묶었을 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 두며, 단계를 완료하고 묶은 시각을 새로 찍는다")
+    @DisplayName("보낼 요청이 지난번 경험 그룹화 때와 같으면 AI 를 부르지 않고 지난 후보를 그대로 두며, 단계를 완료하고 경험 그룹화 시각을 새로 찍는다")
     void skipsAiWhenInputIsSame() {
 
         given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
@@ -447,7 +466,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("보낼 요청이 지난번과 다르면 AI 를 다시 불러 손대지 않은 후보를 새로 묶은 후보로 바꾼다")
+    @DisplayName("보낼 요청이 지난번과 다르면 AI 를 다시 불러 손대지 않은 후보를 새로 만든 후보로 바꾼다")
     void regroupsWhenInputChanges() {
 
         given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
@@ -471,22 +490,22 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("AI 묶기가 실패하면 수집 결과와 전에 만든 후보는 남기고, 다시 부르지 않은 채 다시 시도할 수 없는 INTERNAL_ERROR 로 끝낸다")
-    void groupingFailureKeepsCollectionAndOldCandidates() {
+    @DisplayName("AI 경험 그룹화가 다시 해 볼 만한 이유로 실패하면 수집 결과와 전에 만든 후보는 남기고, 다시 부르지 않은 채 다시 시도할 수 있는 AI_UNAVAILABLE 로 끝낸다")
+    void temporaryGroupingFailureKeepsCollectionAndOldCandidates() {
 
         Long oldCandidate = candidateRows.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "NEW");
         Long jobId = enqueue(KEY_1);
         given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
         given(grouping.group(any())).willThrow(
-                new AgentUnavailableException("AI 후보 묶기 실패 (LLM_UNAVAILABLE)", true, false, null));
+                new AgentUnavailableException("AI 경험 그룹화 실패 (LLM_UNAVAILABLE)", true, false, null));
 
         runNext();
 
         AnalysisJob job = jobs.findById(jobId).orElseThrow();
         verify(grouping, times(1)).group(any());
         assertThat(job.getState()).isEqualTo(JobState.FAILED);
-        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
-        assertThat(jobQuery.load(job.getPublicId(), userId, LOGIN).retryable()).isFalse();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.AI_UNAVAILABLE);
+        assertThat(jobQuery.load(job.getPublicId(), userId, LOGIN).retryable()).isTrue();
         assertThat(job.getCollectionRunId()).isNotNull();
         assertThat(countOf("collection_run")).isEqualTo(1);
         assertThat(countOf("git_commit")).isEqualTo(1);
@@ -496,7 +515,23 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("묶은 후보를 저장하다 실패하면 후보를 하나도 바꾸지 않고 수집 결과는 남긴 채 INTERNAL_ERROR 로 끝낸다")
+    @DisplayName("AI 가 이상한 응답을 줘서 경험 그룹화가 실패하면 다시 시도할 수 없는 INTERNAL_ERROR 로 끝낸다")
+    void invalidGroupingResponseEndsAsInternalError() {
+
+        Long jobId = enqueue(KEY_1);
+        given(activities.collect(any())).willReturn(activity(null, commit(SHA_A)));
+        given(grouping.group(any())).willThrow(
+                new AgentUnavailableException("AI 경험 그룹화 실패 (AI_INVALID_RESPONSE)", false, true, null));
+
+        runNext();
+
+        AnalysisJob job = jobs.findById(jobId).orElseThrow();
+        assertThat(job.getErrorCode()).isEqualTo(JobErrorCode.INTERNAL_ERROR);
+
+    }
+
+    @Test
+    @DisplayName("경험 그룹화로 만든 후보를 저장하다 실패하면 후보를 하나도 바꾸지 않고 수집 결과는 남긴 채 INTERNAL_ERROR 로 끝낸다")
     void storeFailureKeepsOldCandidates() {
 
         Long oldCandidate = candidateRows.insertCandidate(userRepositoryId, "COMMIT_CLUSTER", null, "NEW");
@@ -517,7 +552,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("AI 가 묶는 동안 취소되면 묶은 후보를 저장하지 않고 CANCELED 로 두며, 실패로 끝냈다고 기록하지 않는다")
+    @DisplayName("AI 가 경험 그룹화를 하는 동안 취소되면 후보를 저장하지 않고 CANCELED 로 두며, 실패로 끝냈다고 기록하지 않는다")
     void discardsCandidatesWhenCanceledDuringGrouping(CapturedOutput output) {
 
         Long jobId = enqueue(KEY_1);
@@ -560,7 +595,7 @@ class JobRunnerGroupingTest {
     }
 
     @Test
-    @DisplayName("수집을 기다리는 사이 취소되면 AI 묶기를 부르지 않는다")
+    @DisplayName("수집을 기다리는 사이 취소되면 AI 경험 그룹화를 부르지 않는다")
     void doesNotGroupJobCanceledDuringCollection() {
 
         Long jobId = enqueue(KEY_1);
@@ -636,7 +671,7 @@ class JobRunnerGroupingTest {
 
     }
 
-    /** 받은 커밋을 모두 PR 7 후보 하나로 묶은 AI 응답 */
+    /** 받은 커밋을 모두 PR 7 후보 하나로 그룹화한 AI 응답 */
     private static ExperienceGroupingResponse groupedAsPullRequest(ExperienceGroupingRequest request) {
 
         return new ExperienceGroupingResponse(GroupingVerdict.OK,

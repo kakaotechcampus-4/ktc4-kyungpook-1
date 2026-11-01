@@ -139,6 +139,30 @@ def test_matches_sha_case_insensitively() -> None:
     assert evidence[0].summary == "요약"
 
 
+def test_keeps_summary_whose_sha_was_copied_with_a_typo() -> None:
+    real = "0409013fb1905a33719fd42efbe7b03f07c61c9b"
+    client = _FakeClient(_output((real + "9", "시험 JVM 의 최대 메모리를 올렸다.", [])))
+
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(real, "fix: 시험 메모리", [_file("build.gradle", "+x")])))
+
+    assert evidence[0].sha == real
+    assert evidence[0].summary == "시험 JVM 의 최대 메모리를 올렸다."
+    assert evidence[0].summary_source == "DIFF"
+
+
+@pytest.mark.parametrize("typo_first", [True, False])
+def test_exact_sha_summary_wins_over_typo_sha_written_for_same_commit(typo_first: bool) -> None:
+    real = "0409013fb1905a33719fd42efbe7b03f07c61c9b"
+    typo = ("틀린 번호의 요약", real + "9")
+    exact = ("정확한 번호의 요약", real)
+    items = (typo, exact) if typo_first else (exact, typo)
+    client = _FakeClient(_output(*((sha, summary, []) for summary, sha in items)))
+
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(real, "fix: 시험 메모리", [_file("build.gradle", "+x")])))
+
+    assert evidence[0].summary == "정확한 번호의 요약"
+
+
 def test_redacts_secrets_in_payload_and_output() -> None:
     client = _FakeClient(_output((SHA_A, f"토큰 {FAKE_TOKEN} 을 설정했다.", [f"키 {FAKE_TOKEN}"])))
     detail = _detail(_commit(SHA_A, f"chore: {FAKE_TOKEN}", [_file("conf.py", f'+TOKEN = "{FAKE_TOKEN}"')]))
@@ -519,3 +543,43 @@ def test_keeps_whole_call_input_under_char_cap() -> None:
     payload = client.calls[0]["payload"]
     assert len(json.dumps(payload, ensure_ascii=False)) <= 6_000
     assert all(f["truncated"] for c in payload["commits"] for f in c["files"])
+
+
+def test_evidence_lists_changed_paths_in_order_without_generated_files() -> None:
+    client = _FakeClient(_output((SHA_A, "요약", [])))
+    detail = _detail(_commit(SHA_A, "m", [
+        _file("src/app.ts", "+code"),
+        _file("frontend/package-lock.json", "+lock", 900, 300),
+        _file("README.md", None),
+        _file("assets/logo.PNG", "binary"),
+    ]))
+
+    evidence = _run(DiffAnalyzer(client), detail)
+
+    assert evidence[0].changed_paths == ["src/app.ts", "README.md"]
+
+
+def test_changed_paths_are_capped_at_50_per_commit_and_clipped_to_150_chars() -> None:
+    client = _FakeClient(_output((SHA_A, "요약", [])))
+    long_path = "src/" + "d" * 200 + "/Main.java"
+    locks = [_file(f"lock{index}/package-lock.json", "+lock", 900, 300) for index in range(3)]
+    files = locks + [_file(long_path, "+code")] + [_file(f"src/f{index}.py", None) for index in range(59)]
+
+    evidence = _run(DiffAnalyzer(client), _detail(_commit(SHA_A, "m", files)))
+
+    paths = evidence[0].changed_paths
+    # 앞쪽 생성 파일은 상한을 쓰지 않고, 모델에는 파일을 20개까지만 보내지만 경로는 50개까지 담는다.
+    assert evidence[0].summary_source == "DIFF"
+    assert len(paths) == 50
+    assert len(paths[0]) == 150 and paths[0].endswith("…")
+    assert paths[1] == "src/f0.py"
+
+
+def test_commit_message_fallback_evidence_also_carries_changed_paths() -> None:
+    client = _FakeClient(_output((SHA_A, "patch 없이 쓴 요약", [])))
+    detail = _detail(_commit(SHA_A, "chore: 설정 변경", [_file(".env", "+MODE=dev"), _file("Dockerfile", None)]))
+
+    evidence = _run(DiffAnalyzer(client), detail)
+
+    assert evidence[0].summary_source == "COMMIT_MESSAGE"
+    assert evidence[0].changed_paths == [".env", "Dockerfile"]

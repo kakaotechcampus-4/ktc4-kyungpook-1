@@ -13,9 +13,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -51,6 +53,23 @@ class RepositoryReferenceServiceTest {
         assertThat(service.find(gitory)).contains(new RepositoryReference(GITORY, "grow22", "gitory"));
         assertThat(service.find(docs)).contains(new RepositoryReference(DOCS, "kakaotechcampus-4", "docs"));
         assertThat(service.find(docs + 1000)).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("저장소 연결 id 여러 개를 한 번에 찾으면 id 마다 그 연결의 공개 id 와 owner·이름을 묶고, 없는 id 는 뺀다")
+    void findsAllReferencesByConnectionIds() {
+
+        TestFixtures fixtures = new TestFixtures(jdbc);
+        Long userId = fixtures.insertUser(1L, "grow22");
+        fixtures.insertRepository(9L, "someone", "not-connected");
+        Long gitory = fixtures.insertUserRepository(GITORY, userId, fixtures.insertRepository(1L, "grow22", "gitory"));
+        Long docs = fixtures.insertUserRepository(DOCS, userId,
+                fixtures.insertRepository(2L, "kakaotechcampus-4", "docs"));
+
+        assertThat(service.findAll(List.of(gitory, docs, docs + 1000))).containsOnly(
+                entry(gitory, new RepositoryReference(GITORY, "grow22", "gitory")),
+                entry(docs, new RepositoryReference(DOCS, "kakaotechcampus-4", "docs")));
 
     }
 }

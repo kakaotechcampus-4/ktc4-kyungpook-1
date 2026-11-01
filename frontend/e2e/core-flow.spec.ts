@@ -7,21 +7,21 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login/);
   await page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' }).click();
-  await expect(page.getByRole('heading', { name: '경험 정리', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '홈', exact: true })).toBeVisible();
 
-  await page.getByRole('link', { name: '레포 고르기', exact: true }).click();
+  await page.getByRole('link', { name: '레포 연결하기', exact: true }).click();
   await page.getByRole('radio', { name: /algorithm-study/ }).click(); // PR 0건 레포 — 커밋 묶음 경로
   await page.getByRole('button', { name: '다음' }).click();
   await expect(page.getByRole('heading', { name: '이건 안 읽어요' })).toBeVisible(); // 사전 고지
   await page.getByRole('button', { name: '정리 시작' }).click();
 
-  await expect(page.getByRole('heading', { name: '읽고 있습니다' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
   await expect(page).toHaveURL(/\/candidates/, { timeout: 30_000 });
   await expect(page.getByText('커밋 묶음', { exact: true }).first()).toBeVisible(); // COMMIT_CLUSTER 출처 라벨
 
   await page.getByRole('checkbox', { disabled: false }).first().click(); // 사용된 후보는 비활성이라 건너뛴다
   await page.getByRole('button', { name: /선택한 1개로 카드 만들기/ }).click();
-  await expect(page.getByRole('heading', { name: '고른 후보의 코드를 읽고 있습니다' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' })).toBeVisible();
   await expect(page.getByText('근거를 찾지 못해 비워 두었습니다')).toBeVisible({ timeout: 30_000 }); // 빈 칸이 증거
 
   await page.getByRole('button', { name: '확정', exact: true }).click();

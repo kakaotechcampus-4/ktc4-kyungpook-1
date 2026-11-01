@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, openRepoSearch } from './helpers';
 
 test('search has one focus boundary, Escape clears and returns typing focus', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/');
@@ -13,25 +13,18 @@ test('search has one focus boundary, Escape clears and returns typing focus', as
 });
 
 test('select menus are styled, support keyboard selection and restore focus on Escape', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/cards');
+  // 카드 목록의 정렬 칸은 묶어 보기로 바뀌어 레포 고르기의 정렬 칸으로 검사한다
+  await loginAsDemo(page); await page.goto('/repos');
   const sort = page.getByRole('combobox', { name: '정렬', exact: true });
   await sort.click(); const menu = page.getByRole('listbox', { name: '정렬', exact: true }); await expect(menu).toBeVisible();
-  await page.keyboard.press('End'); await expect(page.getByRole('option', { name: '이름순', exact: true })).toBeFocused();
-  await page.keyboard.press('Enter'); await expect(sort).toContainText('이름순');
+  await page.keyboard.press('End'); await expect(page.getByRole('option', { name: '이름 순', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter'); await expect(sort).toContainText('이름 순');
   await sort.click(); await page.keyboard.press('Escape'); await expect(menu).toHaveCount(0); await expect(sort).toBeFocused();
-  const create = page.getByRole('button', { name: '레포에서 만들기', exact: true });
+  const create = page.getByRole('link', { name: '취소', exact: true });
   const style = async (element: typeof sort) => element.evaluate(node => ({ radius: getComputedStyle(node).borderRadius, height: node.getBoundingClientRect().height }));
   const triggerStyle = await style(sort), buttonStyle = await style(create);
   expect(triggerStyle.radius).toBe(buttonStyle.radius); expect(triggerStyle.height).toBeGreaterThanOrEqual(44);
   expect(Math.abs(triggerStyle.height - buttonStyle.height)).toBeLessThanOrEqual(1);
-});
-
-test('desktop resume and new-experience input share their left and right boundaries', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 1000 }); await loginAsDemo(page); await page.goto('/');
-  await expect(page.locator('.home-resume')).toBeVisible();
-  const resume = await page.locator('.home-resume').boundingBox(), prompt = await page.locator('.prompt__card').boundingBox();
-  expect(Math.abs(resume!.x - prompt!.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(resume!.x + resume!.width - prompt!.x - prompt!.width)).toBeLessThanOrEqual(1);
 });
 
 test('STAR editors begin at the same left edge as the field letter on desktop and mobile', async ({ page }) => {
@@ -67,7 +60,7 @@ test('mobile repository select keeps its menu in view and roundtrips the empty c
 });
 
 test('repository autocomplete exposes its active option and closes without losing the query', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/');
+  await loginAsDemo(page); await page.goto('/'); await openRepoSearch(page);
   const search = page.getByRole('combobox', { name: '레포 검색', exact: true }); await search.fill('auth-service');
   await expect(search).toHaveAttribute('aria-expanded', 'true'); await search.press('ArrowDown');
   const active = await search.getAttribute('aria-activedescendant'); expect(active).toBeTruthy();

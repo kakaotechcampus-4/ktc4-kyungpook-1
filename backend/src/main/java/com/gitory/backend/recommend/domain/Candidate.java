@@ -91,7 +91,7 @@ public class Candidate {
         this.userModified = false;
     }
 
-    /** AI 가 묶은 후보를 사용자가 아직 손대지 않은 NEW 후보로 만든다 */
+    /** AI 경험 그룹화로 만든 후보를 사용자가 아직 손대지 않은 NEW 후보로 만든다 */
     public static Candidate grouped(Long userRepositoryId, CandidateType sourceType, Integer githubPrNumber,
                                     String sourceRef, List<Integer> pullRequestNumbers, List<Integer> issueNumbers,
                                     String title, String reasonText, BigDecimal score, boolean lowCardWorth,
@@ -130,6 +130,15 @@ public class Candidate {
         }
 
         this.status = CandidateStatus.USED;
+
+    }
+
+    /** 이 후보로 만든 카드를 지웠을 때 후보 보드에 다시 나타나게 하며, 카드로 쓴 후보가 아니면 그대로 둔다 */
+    public void release() {
+
+        if (status == CandidateStatus.USED) {
+            this.status = CandidateStatus.NEW;
+        }
 
     }
 

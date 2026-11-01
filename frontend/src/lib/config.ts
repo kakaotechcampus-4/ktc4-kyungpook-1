@@ -5,7 +5,7 @@ export const CONFIG = {
   ACTIVE_JOB_IDLE_POLL_MS: 15_000,
   POLL_MIN_MS: 500,
   /** 되묻기 상한의 표시용 기본값. 실제 상한은 서버가 턴마다 maxTurns 로 준다 — 이 값은 응답 전 자리 지킴용이다. */
-  INTERVIEW_MAX_TURNS_FALLBACK: 2,
+  INTERVIEW_MAX_TURNS_FALLBACK: 8,
   /** 후보 보드 목표 응답 시간(초) · 카드 초안 목표(초) — 비기능 요구사항 */
   BOARD_TARGET_SEC: 30,
   DRAFT_TARGET_SEC: 180,

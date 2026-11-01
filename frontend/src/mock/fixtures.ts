@@ -15,7 +15,7 @@ export const seedRepos = [
     id: 'r_auth', owner: 'hong-dev', name: 'auth-service',
     contribution: { mine: 214, team: 402, ratio: 0.347, level: 'SHARED' },
     prCount: 31, reviewCount: 88, language: 'Java', activeFrom: '2024-03-02', activeTo: '2024-08-30',
-    lastAnalyzedAt: daysAgo(1), candidateCount: 20, cardCount: 2, recommended: true,
+    lastAnalyzedAt: daysAgo(1), countedAt: daysAgo(1), candidateCount: 20, cardCount: 2, recommended: true,
     disclosure: {
       reads: ['내 커밋 214개 — 봇·머지 커밋 제외', '내가 만든 PR 31건', '내가 남긴 리뷰 코멘트 88건', '연결된 이슈'],
       skips: ['다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '비공개 저장소 — 권한 자체를 요청하지 않습니다', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -26,7 +26,7 @@ export const seedRepos = [
     id: 'r_web', owner: 'hong-dev', name: 'web-client',
     contribution: { mine: 96, team: 140, ratio: 0.407, level: 'SHARED' },
     prCount: 24, reviewCount: 31, language: 'TypeScript', activeFrom: '2024-01-10', activeTo: '2024-05-22',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: true,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
     disclosure: {
       reads: ['내 커밋 96개 — 봇·머지 커밋 제외', '내가 만든 PR 24건', '내가 남긴 리뷰 코멘트 31건', '연결된 이슈'],
       skips: ['다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '비공개 저장소 — 권한 자체를 요청하지 않습니다', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -38,7 +38,7 @@ export const seedRepos = [
     id: 'r_fts', owner: 'TaeHuiKKIM', name: 'free-tier-sleep',
     contribution: { mine: 21, team: 118, ratio: 0.151, level: 'PARTIAL' },
     prCount: 1, reviewCount: 0, language: 'C#', activeFrom: '2026-05-20', activeTo: '2026-06-02',
-    lastAnalyzedAt: daysAgo(2), candidateCount: 4, cardCount: 1, recommended: false,
+    lastAnalyzedAt: daysAgo(2), countedAt: daysAgo(1), candidateCount: 4, cardCount: 1, recommended: false,
     disclosure: {
       reads: ['내 커밋 21개 — 머지 커밋 31개 제외', '내가 만든 PR 1건', '내가 남긴 리뷰 코멘트 0건'],
       skips: ['다른 사람 커밋 118개', 'Unity 메타·씬 바이너리 · 자동 생성 파일', '비공개 저장소 — 권한 자체를 요청하지 않습니다', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -50,7 +50,7 @@ export const seedRepos = [
     id: 'r_board', owner: 'kbu-capstone', name: 'team-board',
     contribution: { mine: 3, team: 183, ratio: 0.016, level: 'PARTIAL' },
     prCount: 0, reviewCount: 2, language: 'Python', activeFrom: '2023-09-04', activeTo: '2023-12-15',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
     disclosure: {
       reads: ['내 커밋 3개', '내가 남긴 리뷰 코멘트 2건'],
       skips: ['다른 사람 커밋 183개', '다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -62,7 +62,7 @@ export const seedRepos = [
     id: 'r_algo', owner: 'hong-dev', name: 'algorithm-study',
     contribution: { mine: 41, team: 0, ratio: 1, level: 'MAJOR' },
     prCount: 0, reviewCount: 0, language: 'Java', activeFrom: '2023-03-01', activeTo: '2023-07-20',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: true,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
     disclosure: {
       reads: ['내 커밋 41개'],
       skips: ['PR — 이 레포에는 없습니다. 커밋을 시간대·디렉터리로 묶습니다', 'lockfile · 자동 생성 파일', '코드 원문 — 이 단계에서는 읽지 않습니다'],
@@ -74,7 +74,7 @@ export const seedRepos = [
     id: 'r_fail', owner: 'hong-dev', name: 'legacy-monolith',
     contribution: { mine: 12, team: 340, ratio: 0.034, level: 'PARTIAL' },
     prCount: 4, reviewCount: 1, language: 'PHP', activeFrom: '2022-06-01', activeTo: '2022-11-30',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
     disclosure: { reads: ['내 커밋 12개', '내가 만든 PR 4건'], skips: ['다른 사람 커밋 340개', '코드 원문'], estimatedSeconds: 25 },
   },
   {
@@ -82,8 +82,24 @@ export const seedRepos = [
     id: 'r_ratelimit', owner: 'hong-dev', name: 'data-pipeline',
     contribution: { mine: 158, team: 220, ratio: 0.418, level: 'SHARED' },
     prCount: 19, reviewCount: 12, language: 'Python', activeFrom: '2024-06-01', activeTo: '2024-08-15',
-    lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
     disclosure: { reads: ['내 커밋 158개', '내가 만든 PR 19건', '리뷰 12건'], skips: ['다른 사람 커밋 220개', '코드 원문'], estimatedSeconds: 45 },
+  },
+  {
+    // 개수를 아직 못 센 레포 — countedAt 이 null 이라 개수 0 은 실제 0 이 아니다 ("내 기여 0%"·"PR 0건"을 띄우면 안 된다)
+    id: 'r_counting', owner: 'hong-dev', name: 'side-project-new',
+    contribution: { mine: 0, team: 0, ratio: 0, level: 'NONE' },
+    prCount: 0, reviewCount: 0, language: 'TypeScript', activeFrom: '2026-09-20', activeTo: '2026-10-08',
+    lastAnalyzedAt: null, countedAt: null, candidateCount: null, cardCount: 0, recommended: false,
+    disclosure: { reads: ['내 커밋 — 개수를 세는 중입니다'], skips: ['코드 원문 — 이 단계에서는 읽지 않습니다'], estimatedSeconds: 20 },
+  },
+  {
+    // 수집 상한에 걸리는 시나리오 — SUCCEEDED + partial + errorCode COLLECTION_CAPPED (재시도는 열지 않는다)
+    id: 'r_capped', owner: 'hong-dev', name: 'big-monorepo',
+    contribution: { mine: 480, team: 910, ratio: 0.527, level: 'MAJOR' },
+    prCount: 62, reviewCount: 140, language: 'Java', activeFrom: '2023-01-10', activeTo: '2026-09-30',
+    lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
+    disclosure: { reads: ['내 커밋 480개 — 봇·머지 커밋 제외', '내가 만든 PR 62건', '내가 남긴 리뷰 코멘트 140건'], skips: ['다른 사람만 작업한 PR', 'lockfile · 자동 생성 파일', '코드 원문 — 이 단계에서는 읽지 않습니다'], estimatedSeconds: 60 },
   },
 ];
 
@@ -159,21 +175,42 @@ const filler = [
   ['PR', '#61', '로그 레벨 조정', '변경 파일 1개', 2.9, 1],
 ] as const;
 filler.forEach(([type, ref, title, reason, score, codeRatio], i) => {
+  // Explicit evidence in the sample copy is authoritative; keep the numeric
+  // summary in sync when that copy changes, rather than inventing another count.
+  const reviewCount = reason.match(/리뷰 코멘트 (\d+)건/);
+  const fileCount = reason.match(/변경 파일 (\d+)개/);
+  const commitCount = `${title} ${reason}`.match(/(\d+)커밋|커밋 (\d+)건/);
+  const dayCount = reason.match(/(\d+)일간/);
   seedCandidates.push({
     id: `c_f${i}`, repoId: 'r_auth', type, status: 'NEW', ref, title, reason,
-    meta: { commits: 2 + (i % 5), files: 1 + (i % 7), reviewComments: type === 'PR' ? (i % 9) : 0, days: i % 12, codeRatio },
+    meta: {
+      commits: commitCount ? Number(commitCount[1] ?? commitCount[2]) : 2 + (i % 5),
+      files: fileCount ? Number(fileCount[1]) : 1 + (i % 7),
+      reviewComments: reviewCount ? Number(reviewCount[1]) : type === 'PR' ? (i % 9) : 0,
+      days: dayCount ? Number(dayCount[1]) : i % 12,
+      codeRatio,
+    },
     weak: score < 7, score, commits: type === 'COMMIT_CLUSTER' ? [] : null, usedByCardId: null,
   });
 });
 
-const ev = (field: string, sha: string, snippet: string, owner = 'hong-dev', repo = 'auth-service') => ({
-  field, type: 'COMMIT', authoredBy: 'AI', sha, url: gh(owner, repo, sha), snippet, turnNo: null,
+const ev = (field: string, sha: string, snippet: string, owner = 'hong-dev', repo = 'auth-service', extra: { summary?: string; committedAt?: string; changedFiles?: number } = {}) => ({
+  field, type: 'COMMIT', authoredBy: 'AI', sha, url: gh(owner, repo, sha), snippet, turnNo: null, ...extra,
 });
+/** #455·#456 이후 서버처럼 요약·시각·파일 수가 붙은 근거. 샘플 카드(card_01)에만 쓴다 — 실측 카드(card_05)에 지어 넣지 않는다 */
+const evFull = (field: string, sha: string, snippet: string, summary: string, committedAt: string, changedFiles: number) =>
+  ev(field, sha, snippet, 'hong-dev', 'auth-service', { summary, committedAt, changedFiles });
 const said = (field: string, turnNo: number) => ({ field, type: 'USER_STATED', authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
+/**
+ * 'AI 가 한 일'(draftSteps) 데모 값. 실서버가 보내는 모양 그대로이고 문장은 화면이 만든다.
+ * 실측 카드(card_05)에는 지어 넣지 않는다 — 샘플 카드 card_01(전 과정)과 card_03(첫 검사만)에만 쓴다.
+ */
+const step = (round: number, actor: 'MODEL' | 'CODE', kind: string, field: string | null, rest: { code?: string; value?: string; material?: string; reason?: string } = {}) =>
+  ({ round, actor, kind, field, code: null, value: null, material: null, reason: null, ...rest });
 
 export const seedCards = [
   {
-    id: 'card_01', kind: 'TECH', status: 'DRAFT', title: '로그인 세션 처리',
+    id: 'card_01', areas: ['BACKEND'], techs: ['JAVA'], kind: 'TECH', status: 'DRAFT', title: '로그인 세션 처리',
     repo: { id: 'r_auth', owner: 'hong-dev', name: 'auth-service' },
     candidate: { id: 'c_42', type: 'PR', ref: '#42', title: '로그인 세션 처리' },
     versions: [{
@@ -183,9 +220,25 @@ export const seedCards = [
       action: '인증 모듈의 세션 처리를 담당했다',
       result: '재로그인 요청이 줄었다',
     }],
-    evidence: [ev('S', 'a3f21c9', '로그인 세션 처리 추가'), ev('A', 'a3f21c9', '로그인 세션 처리 추가'), ev('A', '9c02de1', '리프레시 토큰 검증 분리'), ev('R', '7f3e9a2', '세션 만료 로그 추가')],
+    evidence: [
+      evFull('S', 'a3f21c9', '로그인 세션 처리 추가', '세션 쿠키를 발급하고 만료 시 로그인 화면으로 보내는 필터를 추가', '2024-03-14T05:20:00Z', 4),
+      evFull('A', 'a3f21c9', '로그인 세션 처리 추가', '세션 쿠키를 발급하고 만료 시 로그인 화면으로 보내는 필터를 추가', '2024-03-14T05:20:00Z', 4),
+      evFull('A', '9c02de1', '리프레시 토큰 검증 분리', '리프레시 토큰 검증을 인증 필터에서 떼어 별도 서비스로 옮김', '2024-03-18T09:02:00Z', 3),
+      ev('R', '7f3e9a2', '세션 만료 로그 추가'),
+    ],
     lowConfidenceFields: [{ field: 'R', why: '수치가 없고 근거 커밋이 1건뿐입니다' }],
     droppedFields: [{ field: 'T', reason: 'NO_EVIDENCE' }],
+    // 첫 초안(DRAFT) → 코드가 문제를 찾음(FLAG) → AI 가 자료를 열지, 그대로 둘지, 자료 없이 고칠지 고름(OPEN·KEEP·RETRY) → 다시 씀 → 다시 검사
+    draftSteps: [
+      step(0, 'MODEL', 'DRAFT', null),
+      step(0, 'CODE', 'FLAG', 'T', { code: 'NO_EVIDENCE' }),
+      step(0, 'CODE', 'FLAG', 'R', { code: 'UNSOURCED_NUMBER', value: '50%' }),
+      step(1, 'MODEL', 'OPEN', 'T', { value: '이슈 #98 세션 만료 시 작성 글 사라짐', material: 'ISSUE', reason: '과제가 이슈 본문에 적혀 있을 것 같음' }),
+      step(1, 'MODEL', 'KEEP', 'T', { reason: '이슈에도 맡은 일이 적혀 있지 않음' }),
+      step(1, 'MODEL', 'RETRY', 'R', { reason: '50% 를 뒷받침할 자료가 없어 숫자를 뺌' }),
+      step(1, 'MODEL', 'REWRITE', 'R'),
+      step(1, 'CODE', 'PASS', 'R'),
+    ],
     maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: daysAgo(1),
   },
   {
@@ -213,9 +266,16 @@ export const seedCards = [
     ],
     evidence: [ev('S', '5d1e8b0', '토큰 만료 시 401 처리'), ev('A', '5d1e8b0', '토큰 만료 시 401 처리'), ev('A', '8a7c2f4', '리프레시 인터셉터 추가'), said('T', 1), said('R', 2)],
     lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 2, confirmedAt: daysAgo(3), createdAt: daysAgo(4),
+    // 고쳐 쓰기를 켜기 전 운영처럼 첫 초안과 첫 검사만 남은 카드. 이후 답변·수정으로 버전이 늘었어도 초안을 만든 과정이라 그대로 온다
+    draftSteps: [
+      step(0, 'MODEL', 'DRAFT', null),
+      step(0, 'CODE', 'FLAG', 'T', { code: 'EMPTY' }),
+      step(0, 'CODE', 'FLAG', 'R', { code: 'EMPTY' }),
+    ],
   },
   {
     id: 'card_04', kind: 'QUALITATIVE', status: 'CONFIRMED', title: '팀원과 토큰 저장 위치로 갈린 경험',
+    themes: ['CONFLICT', 'COLLABORATION'], // 경험 카드의 문항 유형(#482)
     repo: { id: 'r_auth', owner: 'hong-dev', name: 'auth-service' }, candidate: null,
     versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: daysAgo(6),
       situation: '리프레시 토큰을 쿠키에 둘지 로컬 스토리지에 둘지로 팀원과 의견이 갈렸다',
@@ -253,23 +313,23 @@ export const seedInterview: Record<string, unknown[]> = {
     turnNo: 1, field: 'S', askedBy: 'USER_REQUEST', sourceType: 'PR', questionType: 'EVIDENCE_GAP',
     found: ['Revert 커밋 2건 (4.02)', '결제 롤백 이슈 #31'], missing: ['그때 왜 되돌렸고, 어떻게 다시 붙였는지'],
     question: '그때 의견이 갈린 지점은 무엇이었나요?', options: [],
-    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 1, maxTurns: 2,
+    answer: { text: '결제 기능을 붙인 직후 일부 주문이 두 번 결제되는 문제가 있었다', source: 'USER_STATED' }, remaining: 7, maxTurns: 8,
   }],
 };
 
 // 되묻기 질문 은행 — 칸별 · "코드에서 찾은 것"은 카드의 근거에서 조립
 export const interviewBank: Record<string, { question: string; missing: string; options: string[] }> = {
   S: { question: '이 작업을 시작하게 된 계기가 무엇이었나요?', missing: '왜 이 작업이 필요했는지 (코드에는 계기가 남지 않습니다)', options: ['운영 중 버그 제보가 들어왔어요', '기획이 바뀌어서 새로 필요해졌어요', '리뷰에서 지적을 받았어요'] },
-  T: { question: '그때 무엇을 해내야 하는 상황이었나요?', missing: '팀 안에서 본인 범위가 어디까지였는지', options: ['이 기능을 처음부터 끝까지 맡았어요', '팀원 코드를 이어받아 마무리했어요', '특정 부분만 맡았어요'] },
-  A: { question: '가장 오래 붙잡았던 부분은 무엇이었나요?', missing: '구현 과정에서 막혔던 지점과 판단 근거', options: ['테스트를 먼저 붙이고 고쳤어요', '설계를 바꿔서 다시 짰어요', '문서와 로그를 보며 원인을 좁혔어요'] },
-  R: { question: '되돌린 뒤 어떤 방법으로 다시 붙였나요?', missing: '이 작업의 결과와 이후 변화', options: ['트랜잭션을 나눠 실패 지점만 재시도하게 했어요', '결제 검증을 별도 단계로 분리했어요', '되돌린 뒤 테스트를 먼저 붙였어요'] },
+  T: { question: '그때 무엇을 해내야 하는 상황이었나요?', missing: '본인이 달성해야 했던 목표와 제약', options: ['사용자가 다시 로그인하지 않도록 해야 했어요', '반복되는 오류를 해결해야 했어요', '정해진 기한 안에 기능을 완성해야 했어요'] },
+  A: { question: '문제를 해결하기 위해 어떤 방법을 썼나요?', missing: '구현 과정에서 막혔던 지점과 판단 근거', options: ['테스트를 먼저 붙이고 고쳤어요', '설계를 바꿔서 다시 짰어요', '문서와 로그를 보며 원인을 좁혔어요'] },
+  R: { question: '작업을 마친 뒤 무엇이 달라졌나요?', missing: '이 작업의 결과와 이후 변화', options: ['오류가 줄었어요', '사용자가 작업을 더 빠르게 마칠 수 있게 됐어요', '아직 결과를 확인하지 못했어요'] },
 };
 
 export const seedRecall = {
   repoId: 'r_board',
-  note: '내 커밋 3개 · 메시지 평균 4글자. 대신 어떤 파일을 만졌는지로 기억을 끌어냅니다. 답한 내용은 그대로 정성 카드의 근거가 됩니다.',
+  note: '어떤 파일을 만졌는지 살펴보며 작업을 떠올려 보세요. 답한 내용은 그대로 정성 카드의 근거가 됩니다.',
   dirs: [
-    { path: '/src/api/', filesChanged: 6, myCommits: 2, files: ['user_router.py', 'auth.py', 'schema.py'], question: '이 파일들을 만졌을 때, 무엇을 해내려던 중이었나요?', options: ['로그인 기능을 맡았어요', '팀원 코드를 이어받았어요', '급하게 버그를 고쳤어요'] },
+    { path: '/src/api/', filesChanged: 6, myCommits: 2, files: ['user_router.py', 'auth.py', 'schema.py'], question: '이 파일들을 만졌을 때, 무엇을 해내려던 중이었나요?', options: ['로그인이 정상적으로 동작하게 하려 했어요', '기존 기능을 완성하려 했어요', '반복되는 오류를 해결하려 했어요'] },
     { path: '/src/ui/', filesChanged: 3, myCommits: 1, files: ['board.jsx', 'card.jsx'], question: '이 화면 파일을 고친 이유가 기억나시나요?', options: ['디자인 수정 요청이 있었어요', '버그를 고쳤어요'] },
     { path: '/docs/', filesChanged: 2, myCommits: 0, files: ['api-spec.md'], question: '문서만 만졌다면, 누구를 위해 쓴 문서였나요?', options: ['팀원 온보딩용', '발표 자료용'] },
   ],

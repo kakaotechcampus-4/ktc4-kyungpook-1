@@ -3,14 +3,16 @@ package com.gitory.backend.ingest.infra;
 import com.gitory.backend.ingest.domain.CommitFile;
 import com.gitory.backend.ingest.domain.GitCommit;
 import com.gitory.backend.ingest.domain.ReviewCommentCount;
+import com.gitory.backend.ingest.domain.StoredPullRequest;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
-/** 다른 모듈에 내어 주는 저장된 수집 결과 조회를 모았고, 커밋·리뷰 댓글은 저장소 연결이 가리키는 저장소의 행만 읽는다 */
+/** 다른 모듈에 내어 주는 저장된 수집 결과 조회를 모았고, 커밋·PR·리뷰 댓글은 저장소 연결이 가리키는 저장소의 행만 읽는다 */
 public interface StoredActivityRepository extends Repository<GitCommit, Long> {
 
     @Query("""
@@ -34,4 +36,12 @@ public interface StoredActivityRepository extends Repository<GitCommit, Long> {
             """)
     List<ReviewCommentCount> countReviewComments(@Param("userRepositoryId") Long userRepositoryId,
                                                  @Param("pullRequestNumbers") Collection<Integer> pullRequestNumbers);
+
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.StoredPullRequest(p.authorLogin, p.bodyExcerpt)
+            FROM PullRequest p JOIN ConnectedRepository ur ON ur.repositoryId = p.repositoryId
+            WHERE ur.id = :userRepositoryId AND p.githubPrNumber = :number
+            """)
+    Optional<StoredPullRequest> findPullRequest(@Param("userRepositoryId") Long userRepositoryId,
+                                                @Param("number") int number);
 }

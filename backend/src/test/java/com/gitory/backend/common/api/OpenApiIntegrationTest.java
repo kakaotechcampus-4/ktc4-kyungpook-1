@@ -14,7 +14,11 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +49,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 class OpenApiIntegrationTest {
 
+    // 시험은 backend 폴더에서 돌아서 저장소 루트의 docs 는 한 단계 위에 있다
+    private static final Path SNAPSHOT = Path.of("..", "docs", "openapi", "backend.json");
+    private static final String UPDATE_HINT = "docs/openapi/backend.json 이 지금 코드의 문서와 다릅니다. "
+            + "backend 폴더에서 UPDATE_OPENAPI=1 ./gradlew test --tests '*OpenApiIntegrationTest' 로 다시 만든 뒤 커밋하세요"
+            + " (PowerShell: $env:UPDATE_OPENAPI=1; ./gradlew test --tests '*OpenApiIntegrationTest'; Remove-Item Env:UPDATE_OPENAPI)";
+    // 키를 정렬해 써서 다시 만들 때 바뀐 API 만 diff 에 남게 한다
+    private static final JsonMapper SNAPSHOT_JSON = JsonMapper.builder()
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .build();
+
     @Container
     @ServiceConnection
     static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
@@ -74,6 +89,26 @@ class OpenApiIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(document).doesNotContain("LoginUser", "test-client-secret", StubGithubConfig.ACCESS_TOKEN);
+    }
+
+    @Test
+    @DisplayName("저장소의 OpenAPI 스냅샷은 지금 코드의 문서와 같고, UPDATE_OPENAPI=1 이면 실패 대신 스냅샷을 새로 쓴다")
+    void committedSnapshotMatchesGeneratedDocs() throws Exception {
+
+        String generated = mvc.perform(get("/api/docs"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Object document = SNAPSHOT_JSON.readValue(generated, Object.class);
+
+        if ("1".equals(System.getenv("UPDATE_OPENAPI"))) {
+            Files.writeString(SNAPSHOT, SNAPSHOT_JSON.writeValueAsString(document).replace("\r\n", "\n") + "\n");
+            return;
+        }
+
+        assertThat(SNAPSHOT).as(UPDATE_HINT).exists();
+        assertThat(SNAPSHOT_JSON.readValue(Files.readString(SNAPSHOT), Object.class)).as(UPDATE_HINT)
+                .isEqualTo(document);
+
     }
 
     @Test

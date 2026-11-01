@@ -1,5 +1,6 @@
 package com.gitory.backend.consent.infra;
 
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
@@ -10,6 +11,7 @@ import java.util.Optional;
 
 /** GitHub 에 토큰 주인의 REST 호출 한도가 풀리는 시각을 묻는다 */
 @Component
+@EnableConfigurationProperties(GithubApiProperties.class)
 public class GithubRateLimitClient {
 
     // 한도가 남았는데도 막혔다면 이 조회에 보이지 않는 2차 한도라 풀리는 시각을 알 수 없어 이만큼만 기다리게 한다
@@ -17,9 +19,9 @@ public class GithubRateLimitClient {
 
     private final RestClient restClient;
 
-    public GithubRateLimitClient(RestClient.Builder builder) {
+    public GithubRateLimitClient(RestClient.Builder builder, GithubApiProperties properties) {
         this.restClient = builder
-                .baseUrl("https://api.github.com")
+                .baseUrl(properties.apiBaseUrl())
                 .defaultHeader("Accept", "application/vnd.github+json")
                 .defaultHeader("X-GitHub-Api-Version", "2022-11-28")
                 .build();

@@ -1,5 +1,6 @@
 package com.gitory.backend.card.domain;
 
+import com.gitory.backend.ingest.domain.CommitSummary;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.recommend.domain.CandidateReference;
 
@@ -13,8 +14,12 @@ public record CardDetail(
         CardKind kind,
         CardStatus status,
         String title,
+        List<CardArea> areas,
+        List<CardTech> techs,
+        List<CardTheme> themes,
         String period,
         RepositoryReference repository,
+        ActivityReference activity,
         VersionSource source,
         Instant versionSavedAt,
         VersionSlots slots,
@@ -23,7 +28,11 @@ public record CardDetail(
         Instant createdAt,
         CandidateReference candidate,
         CardGeneration generation,
+        CardDraftFailure draftFailure,
         int interviewTurns,
+        String interviewEndReason,
         Map<StarField, Integer> turnNos,
-        Map<StarField, SlotNote> notes) {
+        Map<StarField, SlotNote> notes,
+        Map<Long, CommitSummary> commits,
+        List<DraftStep> draftSteps) {
 }

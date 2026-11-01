@@ -1,33 +1,51 @@
 """되묻기(interview-turns) API 엔드포인트 — B-1/B-2.
 
-`POST /internal/interview-turns`: STAR 카드의 보강 대상 칸에 대해
-결정적 템플릿 질문을 생성한다. 이번 PR에서는 LLM/DB/GitHub API를 호출하지
-않는다(services.interview_agent.InterviewAgent 참고).
+`POST /internal/interview-turns`: 고를 수 있는 칸 중 다음에 물을 칸과 질문·예상 답변을 LLM 으로 정한다.
+LLM 이 없거나 실패하면 틀 질문으로 대신한다(services.interview_agent.InterviewAgent 참고).
+`POST /internal/interview-measured-sentence`: '재 봤어요' 에 쓴 측정 결과로 R 문장을 다시 쓴다.
+`POST /internal/interview-polished-sentence`: 경험 카드 답을 표현만 다듬는다.
+`POST /internal/card-themes`: 확정할 때 경험 카드의 자소서 문항 유형을 고른다.
 """
 
 from __future__ import annotations
 
+import logging
 import time
 
 from fastapi import APIRouter
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
 from api.openapi import INVALID_PAYLOAD_RESPONSE
-from schemas.common import Envelope, Meta
+from schemas.common import Envelope, ErrorDetail, ErrorEnvelope
 from schemas.interview import (
+    CardThemesRequest,
+    CardThemesResult,
     InterviewAnswerRequest,
     InterviewAnswerResult,
     InterviewTurnRequest,
     InterviewTurnResult,
+    MeasuredSentenceRequest,
+    MeasuredSentenceResult,
+    PolishedSentenceRequest,
+    PolishedSentenceResult,
 )
 from services.interview_answer_service import InterviewAnswerService
 from services.interview_agent import InterviewAgent
+from services.interview_llm import InterviewLLM, InterviewLLMUnavailable
+from services.llm_settings import EnvironmentLLMClient
+from services.usage import usage_meta
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/internal", tags=["interview-turns"],
     responses={400: INVALID_PAYLOAD_RESPONSE},
 )
 
-_agent = InterviewAgent()
+# 화면에서 기다리는 요청이라 추론 강도를 low 로 시작한다(GITORY_INTERVIEW_REASONING_EFFORT 로 바꾼다)
+_llm = InterviewLLM(EnvironmentLLMClient("INTERVIEW", default_reasoning_effort="low"))
+_agent = InterviewAgent(llm=_llm)
 _answer_service = InterviewAnswerService(question_agent=_agent)
 
 
@@ -35,9 +53,10 @@ _answer_service = InterviewAnswerService(question_agent=_agent)
     "/interview-turns", response_model=Envelope[InterviewTurnResult],
     summary="B-1 STAR 보강 질문 생성",
     description=(
-        "현재 결정적 템플릿으로 보강 질문 또는 COMPLETE를 반환합니다. "
-        "LLM·DB·GitHub를 호출하지 않습니다. DIRECT_CARD는 candidate=null이어야 합니다. "
-        "질문 순번·최종 횟수 제한·영속 저장은 Spring이 관리합니다."
+        "고를 수 있는 칸(allowed_slots, 없으면 missing_slots 전부) 안에서 LLM 이 다음 칸·질문·예상 답변을 정하고, "
+        "칸을 지정하지 않았으면 더 물을 것이 없을 때 COMPLETE 를 반환합니다. 첫 질문은 R 에 수치가 없으면 R 입니다. "
+        "LLM 이 없거나 12초 안에 쓸 만한 답을 못 주면 틀 질문으로 대신하므로 이 API 는 LLM 실패로 오류를 내지 않습니다. "
+        "DIRECT_CARD는 candidate=null이어야 합니다. 질문 순번·최종 횟수 제한·영속 저장은 Spring이 관리합니다."
     ),
 )
 async def create_interview_turn(request: InterviewTurnRequest) -> Envelope[InterviewTurnResult]:
@@ -51,15 +70,123 @@ async def create_interview_turn(request: InterviewTurnRequest) -> Envelope[Inter
         최종 횟수 제한은 Spring이 저장 시점에 관리한다.
     """
     started = time.perf_counter()
-    result = _agent.build_turn(request)
-    processing_ms = int((time.perf_counter() - started) * 1000)
+    result, fell_back = await _agent.next_turn(request)
 
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=processing_ms),
+        meta=usage_meta(started, "FALLBACK" if fell_back else "COMPLETED"),
         error=None,
     )
+
+
+@router.post(
+    "/interview-measured-sentence",
+    response_model=Envelope[MeasuredSentenceResult],
+    summary="'재 봤어요' 측정 결과로 R 문장 다시 쓰기",
+    description=(
+        "사용자가 자유롭게 쓴 측정 결과와 지금 R 문장으로 결과 문장 하나를 씁니다. 저장하지 않습니다. "
+        "문장 속 수치가 사용자 글에 있는지는 Spring 이 확인하고, 실패하면 Spring 이 틀 문장으로 대신합니다."
+    ),
+    responses={
+        503: {
+            "model": ErrorEnvelope,
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 문장을 받지 못함(retryable=true).",
+        },
+    },
+)
+async def write_measured_sentence(request: MeasuredSentenceRequest):
+    """측정 결과를 넣은 R 문장을 돌려주거나, 받지 못하면 503 을 돌려준다."""
+    started = time.perf_counter()
+    try:
+        sentence = await _llm.write_sentence(request)
+    except InterviewLLMUnavailable:
+        envelope = Envelope(
+            success=False,
+            data=None,
+            meta=usage_meta(started, "FAILED"),
+            error=ErrorDetail(code="LLM_UNAVAILABLE", message="수치 문장을 만들지 못했습니다.", retryable=True),
+        )
+        return JSONResponse(status_code=503, content=jsonable_encoder(envelope))
+    return Envelope(
+        success=True,
+        data=MeasuredSentenceResult(card_id=request.card_id, sentence=sentence),
+        meta=usage_meta(started, "COMPLETED"),
+        error=None,
+    )
+
+
+@router.post(
+    "/interview-polished-sentence",
+    response_model=Envelope[PolishedSentenceResult],
+    summary="경험 카드 답을 표현만 다듬기",
+    description=(
+        "사용자 답을 사실을 더하거나 빼지 않고 그 칸의 문장으로 다듬습니다. 저장하지 않습니다. "
+        "다듬은 문장에 답에 없는 숫자가 생기면 한 번 고쳐 쓰게 하고, 그래도 남은 숫자를 unsourced_numbers 로 돌려줍니다. "
+        "실패하면 Spring 이 사용자 답을 그대로 보여 줍니다."
+    ),
+    responses={
+        503: {
+            "model": ErrorEnvelope,
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 문장을 받지 못함(retryable=true).",
+        },
+    },
+)
+async def polish_answer(request: PolishedSentenceRequest):
+    """다듬은 문장을 돌려주거나, 받지 못하면 503 을 돌려준다."""
+    started = time.perf_counter()
+    try:
+        polished = await _llm.polish(request)
+    except InterviewLLMUnavailable:
+        return _unavailable(started, "답을 다듬지 못했습니다.")
+    return Envelope(
+        success=True,
+        data=PolishedSentenceResult(
+            card_id=request.card_id, sentence=polished.sentence, unsourced_numbers=polished.unsourced_numbers
+        ),
+        meta=usage_meta(started, "COMPLETED"),
+        error=None,
+    )
+
+
+@router.post(
+    "/card-themes",
+    response_model=Envelope[CardThemesResult],
+    summary="경험 카드의 자소서 문항 유형 고르기",
+    description=(
+        "확정할 때 문항 유형이 빈 경험 카드의 제목·칸 문장으로 유형을 최대 2개 고릅니다. 저장하지 않습니다. "
+        "실패하면 Spring 이 빈 유형으로 확정합니다."
+    ),
+    responses={
+        503: {
+            "model": ErrorEnvelope,
+            "description": "LLM_UNAVAILABLE: LLM 설정이 없거나 12초 안에 쓸 만한 답을 받지 못함(retryable=true).",
+        },
+    },
+)
+async def choose_card_themes(request: CardThemesRequest):
+    """고른 문항 유형을 돌려주거나, 받지 못하면 503 을 돌려준다."""
+    started = time.perf_counter()
+    try:
+        themes = await _llm.card_themes(request)
+    except InterviewLLMUnavailable:
+        return _unavailable(started, "문항 유형을 고르지 못했습니다.")
+    return Envelope(
+        success=True,
+        data=CardThemesResult(card_id=request.card_id, themes=themes),
+        meta=usage_meta(started, "COMPLETED"),
+        error=None,
+    )
+
+
+def _unavailable(started: float, message: str) -> JSONResponse:
+    envelope = Envelope(
+        success=False,
+        data=None,
+        meta=usage_meta(started, "FAILED"),
+        error=ErrorDetail(code="LLM_UNAVAILABLE", message=message, retryable=True),
+    )
+    return JSONResponse(status_code=503, content=jsonable_encoder(envelope))
 
 
 @router.post(
@@ -78,11 +205,10 @@ async def evaluate_interview_answer(
     """사용자 답변을 평가해 STAR 문장과 다음 인터뷰 행동을 반환한다."""
     started = time.perf_counter()
     result = _answer_service.process_answer(request)
-    processing_ms = int((time.perf_counter() - started) * 1000)
 
     return Envelope(
         success=True,
         data=result,
-        meta=Meta(model=None, tool_calls_made=0, processing_ms=processing_ms),
+        meta=usage_meta(started, "COMPLETED"),
         error=None,
     )

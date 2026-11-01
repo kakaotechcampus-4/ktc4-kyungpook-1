@@ -1,6 +1,9 @@
-fastapi>=0.115,<1.0
+# OpenAPI 스냅샷(docs/openapi/ai.json)이 설치 버전마다 달라지지 않게 문서를 만드는 셋은 정확히 고정한다
+fastapi==0.161.1
+starlette==1.9.0
 uvicorn>=0.30,<1.0
-pydantic>=2.10,<3.0
+pydantic==2.14.1
 httpx>=0.27,<1.0
 openai>=1.0,<3.0
 chromadb>=0.5,<2.0
+numpy>=1.26,<3.0

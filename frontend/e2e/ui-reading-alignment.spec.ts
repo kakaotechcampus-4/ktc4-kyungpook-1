@@ -4,9 +4,14 @@ import { loginAsDemo } from './helpers';
 test('desktop cards with different title lengths share STAR and footer baselines', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards');
   await expect(page.locator('.experience-item')).toHaveCount(5);
-  const bounds = await page.locator('.experience-item').evaluateAll(items => items.slice(0,3).map(item=>({star:item.querySelector('.stardots--labeled')!.getBoundingClientRect().top,footer:item.querySelector('.experience-item__footer')!.getBoundingClientRect().top})));
-  expect(Math.max(...bounds.map(b=>b.star))-Math.min(...bounds.map(b=>b.star))).toBeLessThanOrEqual(1);
-  expect(Math.max(...bounds.map(b=>b.footer))-Math.min(...bounds.map(b=>b.footer))).toBeLessThanOrEqual(1);
+  // 레포별 묶음이라 화면의 처음 3장이 한 줄이라는 보장이 없다 — 같은 줄(같은 top)에 놓인 카드끼리 기준선을 비교한다
+  const bounds = await page.locator('.experience-item').evaluateAll(items => items.map(item=>({top:Math.round(item.getBoundingClientRect().top),star:item.querySelector('.stardots--labeled')!.getBoundingClientRect().top,footer:item.querySelector('.experience-item__footer')!.getBoundingClientRect().top})));
+  const rows = Object.values(bounds.reduce<Record<number, typeof bounds>>((acc, b) => ((acc[b.top] ??= []).push(b), acc), {})).filter(row => row.length > 1);
+  expect(rows.length).toBeGreaterThan(0);
+  for (const row of rows) {
+    expect(Math.max(...row.map(b=>b.star))-Math.min(...row.map(b=>b.star))).toBeLessThanOrEqual(1);
+    expect(Math.max(...row.map(b=>b.footer))-Math.min(...row.map(b=>b.footer))).toBeLessThanOrEqual(1);
+  }
 });
 
 test('all three repository step labels are visible without horizontal scrolling at 320px', async ({ page }) => {
@@ -18,7 +23,9 @@ test('all three repository step labels are visible without horizontal scrolling 
 
 test('mobile evidence links are easy to press and expose long snippets without truncation', async ({ page }) => {
   await page.setViewportSize({width:320,height:900}); await loginAsDemo(page); await page.goto('/cards/card_01');
-  const evidence=page.locator('a.evidence').first(); await expect(evidence).toBeVisible();
+  // 근거는 칸마다 버튼 하나로 접혀 있고 팝업에서 본다
+  const open=page.getByRole('button',{name:/근거 커밋 \d+개 확인하기/}).first(); expect((await open.boundingBox())!.height).toBeGreaterThanOrEqual(44); await open.click();
+  const evidence=page.getByRole('dialog').locator('a.evidence').first(); await expect(evidence).toBeVisible();
   expect((await evidence.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await evidence.locator('.evidence__sha').evaluate(e=>{e.textContent='abcdef0123456789abcdef0123456789abcdef0123';});
   await evidence.locator('.evidence__snippet').evaluate(e=>{e.textContent='긴 커밋 설명과 경로를 화면에서 모두 읽을 수 있어야 합니다. '.repeat(4);});

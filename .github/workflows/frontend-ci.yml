@@ -9,7 +9,7 @@ on:
   pull_request:
   push:
     branches: [develop, main]
-    paths: ['frontend/**', 'contracts/**', '.github/workflows/frontend-ci.yml']
+    paths: ['frontend/**', 'contracts/**', '.github/workflows/frontend-ci.yml', '.github/scripts/prepare-playwright-apt.sh']
 permissions:
   contents: read
 concurrency:
@@ -35,7 +35,7 @@ jobs:
         run: |
           if [ "$EVENT" != pull_request ] \
             || git diff --name-only HEAD^1 HEAD \
-               | grep -qE '^(frontend/|contracts/|\.github/workflows/frontend-ci\.yml$)'; then
+               | grep -qE '^(frontend/|contracts/|\.github/workflows/frontend-ci\.yml$|\.github/scripts/prepare-playwright-apt\.sh$)'; then
             echo "frontend=true" >> "$GITHUB_OUTPUT"
           else
             echo "frontend 변경 없음 — 검사를 건너뛴다"
@@ -62,8 +62,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Prefer the official Ubuntu archive for browser dependencies
+        run: bash ../.github/scripts/prepare-playwright-apt.sh
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e:static
+      - run: npm run e2e:mobile
       - run: npm run e2e:real
       - uses: actions/upload-artifact@v4
         if: failure()
@@ -95,6 +98,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Prefer the official Ubuntu archive for browser dependencies
+        run: bash ../.github/scripts/prepare-playwright-apt.sh
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e:static
       - run: npm run e2e:real

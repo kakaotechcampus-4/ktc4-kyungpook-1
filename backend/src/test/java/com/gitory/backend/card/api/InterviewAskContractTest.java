@@ -1,7 +1,9 @@
 package com.gitory.backend.card.api;
 
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.support.CandidateCardFixtures;
 import com.gitory.backend.support.FakeInterviewAi;
+import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,8 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 공유 계약 사례(contracts/interview/direct-card.json)의 카드를 DB 에 넣고 같은 요청을 보낸다
- * 카드 번호가 사례의 고정 번호(104)여야 해서, 번호를 만드는 순번과 겹치지 않도록 다른 행을 만들지 않는 이 클래스에서만 다룬다
+ * 공유 계약 사례(contracts/interview/)의 카드를 DB 에 넣고 같은 요청을 보낸다
+ * 카드·커밋 번호가 사례의 고정 번호여야 해서, 같은 표에 순번으로 행을 만드는 다른 테스트와 섞지 않으려고 이 클래스에서만 다룬다
  */
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.github.client-id=test-client-id",
@@ -87,10 +89,28 @@ class InterviewAskContractTest {
     void sendsWhatTheSharedCaseExpects() throws Exception {
 
         JsonNode contract = MAPPER.readTree(Path.of("../contracts/interview/direct-card.json"));
+        insertGivenCard(contract.path("givenCard"));
+
+        assertSharedCase(contract);
+
+    }
+
+    @Test
+    @DisplayName("계약 사례의 PR 후보 카드(A칸에 근거 커밋 하나)에 같은 요청을 보내면 AI 에는 사례의 요청과 같은 JSON 을 보내고, 응답의 출처는 PR 이다")
+    void sendsWhatTheSharedPrCandidateCaseExpects() throws Exception {
+
+        JsonNode contract = MAPPER.readTree(Path.of("../contracts/interview/pr-candidate-card.json"));
+        insertGivenCandidateCard(contract.path("givenCard"));
+
+        assertSharedCase(contract);
+
+    }
+
+    private void assertSharedCase(JsonNode contract) throws Exception {
+
         JsonNode card = contract.path("givenCard");
         long userId = card.path("userId").longValue();
         long cardId = card.path("id").longValue();
-        insertGivenCard(card);
 
         JsonNode frontend = contract.path("frontendToSpring").path("request");
         LoginUser principal = new LoginUser(userId, "grow22", null);
@@ -124,6 +144,42 @@ class InterviewAskContractTest {
         for (String slot : new String[]{"S", "A", "R"}) {
             jdbc.update("INSERT INTO card_statement (card_id, version_no, star_slot, seq, body, evidence_type) VALUES (?, 1, ?, 1, ?, 'USER_STATED')",
                     card.path("id").longValue(), slot, slot + " 칸에 이미 쓴 글");
+        }
+
+    }
+
+    // 후보의 두 커밋은 모두 포함으로 두고, 칸 근거는 사례의 slotA 가 가리키는 커밋이다
+    private void insertGivenCandidateCard(JsonNode card) {
+
+        TestFixtures fixtures = new TestFixtures(jdbc);
+        CandidateCardFixtures candidates = new CandidateCardFixtures(jdbc);
+        long cardId = card.path("id").longValue();
+        JsonNode candidate = card.path("candidate");
+        JsonNode slot = card.path("slotA");
+
+        jdbc.update("INSERT INTO users (id, github_user_id, github_login) OVERRIDING SYSTEM VALUE VALUES (?, 1, 'grow22')",
+                card.path("userId").longValue());
+        Long repositoryId = fixtures.insertRepository(100L, "grow22", "gitory");
+        Long userRepositoryId = fixtures.insertUserRepository(card.path("userId").longValue(), repositoryId);
+        for (JsonNode commit : card.path("commits")) {
+            jdbc.update("INSERT INTO git_commit (id, repository_id, sha, message, additions, deletions) OVERRIDING SYSTEM VALUE VALUES (?, ?, ?, ?, ?, ?)",
+                    commit.path("id").longValue(), repositoryId, commit.path("sha").asString(),
+                    commit.path("message").asString(), commit.path("additions").intValue(),
+                    commit.path("deletions").intValue());
+        }
+        Long candidateId = candidates.insertCandidate(userRepositoryId, candidate.path("sourceType").asString(),
+                candidate.path("githubPrNumber").intValue(), "7", "세션 조회 개선", "USED");
+        for (JsonNode commit : card.path("commits")) {
+            candidates.insertCandidateCommit(candidateId, commit.path("id").longValue(), true);
+        }
+        jdbc.update("INSERT INTO card (id, public_id, user_id, user_repository_id, candidate_id, card_type, origin, title) OVERRIDING SYSTEM VALUE VALUES (?, ?::uuid, ?, ?, ?, 'TECH', ?, '후보 카드')",
+                cardId, card.path("publicId").asString(), card.path("userId").longValue(), userRepositoryId, candidateId,
+                card.path("origin").asString());
+        jdbc.update("INSERT INTO card_version (card_id, version_no, source) VALUES (?, 1, 'USER_EDIT')", cardId);
+        Long statementId = fixtures.insertStatement(cardId, 1, "A", slot.path("body").asString(),
+                slot.path("evidenceType").asString(), slot.path("confidence").asString());
+        for (JsonNode commitId : slot.path("evidenceCommitIds")) {
+            fixtures.insertStatementEvidence(statementId, commitId.longValue());
         }
 
     }

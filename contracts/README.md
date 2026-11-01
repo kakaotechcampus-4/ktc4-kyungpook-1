@@ -4,8 +4,10 @@ FE·BE·AI 세 파트가 같은 사례를 보고 있는지 테스트로 고정�
 
 - `interview/direct-card.json` — 후보 없이 직접 작성한 카드의 되묻기 사례.
   - FE: 목 응답의 `sourceType`이 파일 값과 같은지 (`frontend/src/test/`)
-  - AI: `springToAi.expectedRequest`를 라우터가 받아들이는지 (`ai/tests/`)
+  - AI: `springToAi.expectedRequest`를 요청 모델이 받아들이는지 (`ai/tests/test_interview_contract.py`)
   - BE: `givenCard`를 DB에 넣고 `POST /api/cards/{id}/interview` 요청으로 실제로 이 값을 AI에 보내는지 (`InterviewAskContractTest`)
+
+- `interview/pr-candidate-card.json` — PR 후보로 만든 카드의 되묻기 사례(후보 커밋과 칸의 근거 커밋을 함께 보낸다). BE 는 `InterviewAskContractTest`, AI 는 `ai/tests/test_interview_contract.py` 에서 확인한다(FE 테스트는 아직 읽지 않는다).
 
 - `ingest/repository-activity.json` — Spring이 AI의 `/internal/collect`를 호출하고
   AI가 A의 후보 그룹화에 필요한 GitHub 활동을 정규화해 돌려주는 대표 사례.
@@ -23,6 +25,26 @@ FE·BE·AI 세 파트가 같은 사례를 보고 있는지 테스트로 고정�
   - 바이너리·GitHub 미제공 patch는 `null`로 두고, 상한으로 잘리면
     `patch_truncated: true`로 표시한다.
   - 이 응답은 A의 diff 해석용이며 원본 patch를 DB에 영속 저장하지 않는다.
+
+- `matching/job-posting-detail.json` — 공개 채용공고 상세 본문을 직무 조건으로
+  정규화하는 Spring → AI 계약.
+  - 상세 본문은 공개 공고 API(Greenhouse 등)나 robots.txt와 사용 허용을 확인한 기업 채용 페이지에서 Spring이 가져와 전달한다.
+  - 조건 종류는 RESPONSIBILITY·REQUIRED·PREFERRED 3개이고, 경력(`experience`)과 직무 분류(`job_category`, 9개 값)는 공고마다 하나씩 따로 돌려준다.
+  - 본문 해시가 같으면(`UNCHANGED`) `criteria`는 빈 배열, `job_category`와 `experience`는 `null`로 보낸다.
+  - Spring이 `previous_content_hash`를 비워 보내면 AI가 다시 뽑는다.
+  - 경력은 원문 인용으로 확인되지 않으면 공고를 거절하지 않고 `UNSPECIFIED`로 돌려준다. `ENTRY`는 `min_years` 없이, `UNSPECIFIED`는 연차와 인용 없이 보낸다.
+  - AI는 원문에 실제 존재하는 `source_quote`가 있는 조건만 반환한다.
+  - Spring은 원문 전체가 아니라 정규화 조건·인용·본문 해시를 저장한다.
+
+- `matching/job-matching.json` — Spring이 저장한 공고 조건을 id 기준으로 Chroma 파생 색인에
+  반영하고, 사용자가 확정한 STAR 문장과 가까운 조건 id를 돌려받는 대표 사례.
+  - Spring DB가 공고·조건의 단일 출처이고 ChromaDB는 조건 id와 벡터만 가진 재생성 가능한 색인이다.
+  - 색인은 `posting_id`·`status`·`criteria[{criterion_id, criterion_type, text}]`이고, `ACTIVE`이면서 `criteria`가 있으면 교체, `EXPIRED`·`REMOVED`이거나 `criteria`가 비면 그 공고의 벡터를 지운다.
+  - 색인 요청은 요청에 든 공고만 바꾸고 나머지는 건드리지 않는다. 목록 밖 공고의 벡터는 `/internal/matching/postings/prune`에 `keep_posting_ids`(1~10,000개)를 보내 지우며, Spring이 모든 색인 묶음을 보낸 뒤 한 번 부르고, 목록은 지금 ACTIVE·READY 공고 전부(색인 묶음이 실패한 공고 포함)이다. `kept_postings`는 목록에 있고 벡터가 있는 공고 수, `removed_postings`는 벡터를 지운 공고 수이다.
+  - 검색은 `statements[{statement_id, body}]` 1~200개를 받아 거리 기준 안의 `matches[{criterion_id, statement_id, distance}]`를 상한 없이 모두 돌려주고, 색인에 든 전체 조건 수 `collection_criteria`를 함께 보낸다.
+  - 모든 id는 Spring이 정한 0보다 큰 정수이고, 같은 요청에 같은 id가 두 번 있으면 400이다.
+  - STAR 원문은 ChromaDB에 저장하지 않고 요청 동안만 임베딩한다.
+  - 공고별 묶음과 등급은 AI가 아니라 Spring이 세므로 검색 응답에 공고·등급 칸이 없다.
 
 이 JSON은 **AI → Spring 전송 계약**이며 모든 필드를 그대로 영속 저장하라는 DB
 스키마는 아니다. 초기 수집에서는 전체 본문과 diff patch를 보내지 않고 제한된

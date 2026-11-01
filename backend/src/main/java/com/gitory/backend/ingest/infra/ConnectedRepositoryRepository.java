@@ -21,12 +21,21 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
     // 소유자를 보지 않으므로 남의 저장소인지 가려 거절 기록을 남길 때만 쓴다
     Optional<ConnectedRepository> findByPublicId(UUID publicId);
 
+    boolean existsByUserIdAndCountedAtIsNotNull(Long userId);
+
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositoryReference(c.publicId, r.ownerLogin, r.name)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.id = :id
             """)
     Optional<RepositoryReference> findReference(@Param("id") Long id);
+
+    @Query("""
+            SELECT c.id AS id, c.publicId AS publicId, r.ownerLogin AS ownerLogin, r.name AS name
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.id IN :ids
+            """)
+    List<ReferenceRow> findReferences(@Param("ids") Collection<Long> ids);
 
     @Modifying
     @Query(value = """
@@ -36,6 +45,8 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """, nativeQuery = true)
     void connectIfAbsent(@Param("userId") Long userId, @Param("githubRepoId") long githubRepoId);
 
+    // 두 목록 쿼리 모두 커밋이 없는 빈 저장소와 내 프로필 README 저장소(login/login)는 카드로 만들 경험이 없어 뺀다
+    // 아직 못 센 저장소는 빈 저장소인지 알 수 없어 그대로 보여 준다
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
                 c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
@@ -43,10 +54,13 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
                 c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId AND r.githubRepoId IN :githubRepoIds
+              AND (c.countedAt IS NULL OR c.commitCount > 0)
+              AND NOT (LOWER(r.ownerLogin) = LOWER(:login) AND LOWER(r.name) = LOWER(:login))
             ORDER BY r.ownerLogin, r.name
             """)
     List<RepositorySummary> findSummaries(@Param("userId") Long userId,
-                                          @Param("githubRepoIds") Collection<Long> githubRepoIds);
+                                          @Param("githubRepoIds") Collection<Long> githubRepoIds,
+                                          @Param("login") String login);
 
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
@@ -55,9 +69,11 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
                 c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId
+              AND (c.countedAt IS NULL OR c.commitCount > 0)
+              AND NOT (LOWER(r.ownerLogin) = LOWER(:login) AND LOWER(r.name) = LOWER(:login))
             ORDER BY r.ownerLogin, r.name
             """)
-    List<RepositorySummary> findAllSummaries(@Param("userId") Long userId);
+    List<RepositorySummary> findAllSummaries(@Param("userId") Long userId, @Param("login") String login);
 
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(
@@ -80,4 +96,15 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """)
     List<ContributionTarget> findUncounted(@Param("userId") Long userId,
                                            @Param("githubRepoIds") Collection<Long> githubRepoIds);
+
+    interface ReferenceRow {
+
+        Long getId();
+
+        UUID getPublicId();
+
+        String getOwnerLogin();
+
+        String getName();
+    }
 }

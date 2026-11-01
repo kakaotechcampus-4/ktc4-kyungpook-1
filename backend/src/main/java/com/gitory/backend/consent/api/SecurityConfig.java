@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -23,6 +24,7 @@ import org.springframework.security.web.authentication.AuthenticationFailureHand
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.util.StringUtils;
 import tools.jackson.databind.ObjectMapper;
 
@@ -45,6 +47,9 @@ public class SecurityConfig {
 
     private static final String CALLBACK_PATH = "/api/auth/github/callback";
     private static final String LOGOUT_PATH = "/api/auth/logout";
+
+    // sendBeacon 은 CSRF 헤더를 붙일 수 없는데 이 주소는 JSON 본문만 받고 CORS 가 닫혀 있어 다른 출처가 지표를 넣을 수 없다
+    private static final String USAGE_EVENTS_PATH = "/api/events";
 
     private final ObjectMapper objectMapper;
 
@@ -74,7 +79,8 @@ public class SecurityConfig {
                             .anyRequest().permitAll();
                 })
 
-                .csrf(csrf -> csrf.spa())
+                .csrf(csrf -> csrf.spa().ignoringRequestMatchers(
+                        PathPatternRequestMatcher.pathPattern(HttpMethod.POST, USAGE_EVENTS_PATH)))
 
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(unauthenticatedEntryPoint())

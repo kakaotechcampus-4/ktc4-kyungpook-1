@@ -28,6 +28,10 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
     // 저장소를 가리지 않으므로 남의 후보인지 가려 거절 기록을 남길 때만 쓴다
     List<Candidate> findByPublicIdIn(Collection<UUID> publicIds);
 
+    // 소유자를 보지 않으므로 이미 소유권을 확인한 카드가 가리키는 후보를 되돌릴 때만 쓴다
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Candidate> findWithLockById(Long id);
+
     long countByUserRepositoryId(Long userRepositoryId);
 
     long countByUserRepositoryIdAndStatus(Long userRepositoryId, CandidateStatus status);

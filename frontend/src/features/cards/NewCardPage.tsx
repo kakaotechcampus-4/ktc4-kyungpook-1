@@ -63,7 +63,7 @@ export function NewCardPage() {
   const editedFields = useRef(new Set<StarField>());
 
   const canConfirm = !blockedCard && !isBlankCardText(f.S) && !isBlankCardText(f.A) && !isBlankCardText(title);
-  const missing = [isBlankCardText(title) && '제목', isBlankCardText(f.S) && '상황', isBlankCardText(f.A) && '행동'].filter(Boolean).join(' · ');
+  const missing = [isBlankCardText(title) && '제목', isBlankCardText(f.S) && '상황', isBlankCardText(f.A) && '행동'].filter(Boolean).join(', ');
 
   const snapshot = { title, period, repoId, fields: toDraftFields(f) };
   const acknowledgedInput = useRef<typeof snapshot | null>(null);
@@ -139,7 +139,7 @@ export function NewCardPage() {
 
   return (
     <main className="main main--footer main--tight manual-card-page">
-      <Breadcrumb items={[{ label: '경험정리/홈', to: '/' }, { label: '경험 카드', to: '/cards' }, { label: '직접 작성' }]} />
+      <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, { label: '직접 작성' }]} />
       <PageTitle>직접 작성</PageTitle>
 
       <div className="card manual-metadata">
@@ -155,20 +155,19 @@ export function NewCardPage() {
               options={repoOptions} />
           </Field>
         </div>
-        {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목·기간·레포는 첫 저장 후 바꿀 수 없어요.'}</p>}
+        {!cardId && <p className="manual-metadata__hint t-12 c-2">{canEditMetadata ? '관련 레포는 첫 저장 후 바꿀 수 없어요.' : '제목, 기간, 레포는 첫 저장 후 바꿀 수 없어요.'}</p>}
       </div>
 
       <div className="manual-save-row">
         <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
         {!blockedCard && (cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
-        {!cardId && <Button variant="outline" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button>}
       </div>
       {blockedCard && <p role="alert">이미 확정된 카드입니다. 현재 입력은 이 화면에 남아 있습니다. <Link to={`/cards/${blockedCard.id}`}>기존 카드 보기</Link></p>}
 
       <div className="card star-read">
         {STAR_FIELDS.map((k, i) => (
           <StarEditorField key={k} field={k} dropped={i > 0 && !f[k]}
-            label={<>{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> · 필수</span>}</>}
+            label={<>{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> (필수)</span>}</>}
             maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements"
             value={f[k]} onChange={(e) => { editedFields.current.add(k); const next = { ...latestFields.current, [k]: e.target.value }; latestFields.current = next; setF(next); }} placeholder={HINT[k]} aria-label={starFieldName[k]} />
         ))}
@@ -177,8 +176,10 @@ export function NewCardPage() {
       <StickyFooter
         strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장됩니다' : '제목부터 저장해 주세요'}>
         <Link to="/" className="btn btn--text">나가기</Link>
-        <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
-        <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave(true)}>확정</Button>
+        {!cardId ? <Button size="lg" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button> : <>
+          <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
+          <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave(true)}>확정</Button>
+        </>}
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={saving} flush={flush} />
     </main>

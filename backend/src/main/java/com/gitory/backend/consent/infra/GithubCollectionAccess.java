@@ -3,6 +3,7 @@ package com.gitory.backend.consent.infra;
 import com.gitory.backend.common.infra.ai.AiClientException;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
+import com.gitory.backend.common.infra.ai.AiProgress;
 import com.gitory.backend.consent.domain.GithubConnection;
 import com.gitory.backend.consent.domain.GithubDisconnectService;
 import com.gitory.backend.consent.domain.GithubNotConnectedException;
@@ -19,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Clock;
@@ -28,11 +30,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /** consent 안에서 연결 상태를 확인하고, 복호화한 토큰은 HTTP 헤더에만 쓴다. */
 @Slf4j
@@ -54,6 +59,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     private static final Duration COUNT_TIME_LIMIT = Duration.ofSeconds(15);
 
     private static final String DIFF_EVIDENCE_PATH = "/internal/analysis/diff-evidence";
+    private static final String GITHUB_UNAUTHORIZED = "GITHUB_UNAUTHORIZED";
 
     private final UserRepository users;
     private final GithubConnectionRepository connections;
@@ -69,12 +75,26 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     @Override
     public JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas) {
 
+        return collect(userId, target, knownCommitShas, null);
+
+    }
+
+    /** progress 가 없으면 진행 없이 한 번에 받는 수집 API 를 부른다 */
+    @Override
+    public JsonNode collect(Long userId, GithubCollectionTarget target, List<String> knownCommitShas,
+                            Consumer<AiProgress> progress) {
+
         User user = activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
-        String token = activeToken(userId).orElseThrow(GithubCollectionAccess::unavailable);
+        UsableToken token = activeUsableToken(userId).orElseThrow(GithubCollectionAccess::unauthorized);
         AiCollectRequest request = new AiCollectRequest(target.userRepositoryId(), target.repository(),
                 new AiCollectActor(user.getGithubLogin(), List.of()), target.branches(), knownCommitShas);
 
-        return ai.collect(request, token);
+        try {
+            return progress == null ? ai.collect(request, token.value())
+                    : ai.collectStreaming(request, token.value(), progress);
+        } catch (AiClientException failed) {
+            throw revokedIfRejected(userId, token, failed);
+        }
 
     }
 
@@ -82,12 +102,17 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     public DiffEvidenceResult diffEvidence(Long userId, DiffEvidenceTarget target) {
 
         activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
-        String token = activeToken(userId).orElseThrow(GithubCollectionAccess::unavailable);
+        UsableToken token = activeUsableToken(userId).orElseThrow(GithubCollectionAccess::unauthorized);
         AiDiffEvidenceRequest request = new AiDiffEvidenceRequest(target.userRepositoryId(), target.repository(),
                 target.commitShas(), target.githubPrNumber(), target.title());
 
-        JsonNode data = ai.postWithGithubToken(DIFF_EVIDENCE_PATH, request, token,
-                aiProperties.diffEvidenceReadTimeout());
+        JsonNode data;
+        try {
+            data = ai.postWithGithubToken(DIFF_EVIDENCE_PATH, request, token.value(),
+                    aiProperties.diffEvidenceReadTimeout());
+        } catch (AiClientException failed) {
+            throw revokedIfRejected(userId, token, failed);
+        }
         return DiffEvidenceReader.read(data, target.userRepositoryId());
 
     }
@@ -106,8 +131,9 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         activeUser(userId).orElseThrow(GithubNotConnectedException::new);
         UsableToken token = activeUsableToken(userId).orElseThrow(GithubNotConnectedException::new);
 
+        List<GithubRepositoryResponse> listed;
         try {
-            return github.fetchRepositories(token.value());
+            listed = github.fetchRepositories(token.value());
         } catch (HttpClientErrorException.Unauthorized rejected) {
             disconnects.revokeRejected(userId, token.encrypted());
             throw new GithubNotConnectedException();
@@ -117,6 +143,8 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
             }
             throw failed;
         }
+
+        return withContributed(userId, token.value(), listed);
 
     }
 
@@ -131,9 +159,6 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         String viewerId = counter.viewerId(token);
         // 내 PR 에 달린 리뷰 댓글에 답글만 달아도 GitHub 이 내 리뷰로 기록해 내 PR 이 섞이므로 내가 쓴 PR 은 뺀다
         String reviewedQuery = "is:pr reviewed-by:" + login + " -author:" + login;
-        GithubSearchCounts searches = new GithubSearchCounts(
-                counter.countPullRequests(token, "is:pr author:" + login),
-                counter.countPullRequests(token, reviewedQuery));
 
         int countable = Math.min(targets.size(), COUNT_BATCH_SIZE * COUNT_BATCH_LIMIT);
         if (countable < targets.size()) {
@@ -141,20 +166,33 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         }
 
         List<GithubRepositoryCount> counts = new ArrayList<>();
-        GithubCountRun run = new GithubCountRun(token, viewerId, searches, deadline, new AtomicReference<>(), new AtomicInteger());
         // 실행기를 요청마다 만들어 다른 사용자의 개수 세기를 기다리지 않게 하고, 응답 전에 닫아 스레드를 남기지 않는다
-        try (ExecutorService pool = Executors.newFixedThreadPool(COUNT_CONCURRENCY)) {
+        try (ExecutorService pool = Executors.newFixedThreadPool(COUNT_CONCURRENCY);
+             ExecutorService searchPool = Executors.newFixedThreadPool(2)) {
+            // 검색 결과는 저장소별 PR 수를 채울 때만 쓰여, 검색이 끝나기를 기다리지 않고 커밋 수부터 센다
+            CompletableFuture<GithubSearchCounts> searches = CompletableFuture
+                    .supplyAsync(() -> counter.countPullRequests(token, "is:pr author:" + login), searchPool)
+                    .thenCombine(CompletableFuture.supplyAsync(() -> counter.countPullRequests(token, reviewedQuery), searchPool),
+                            GithubSearchCounts::new);
+            GithubCountRun run = new GithubCountRun(token, viewerId, searches, deadline, new AtomicReference<>(), new AtomicInteger());
             List<CompletableFuture<List<GithubRepositoryCount>>> batchCounts = new ArrayList<>();
             for (int from = 0; from < countable; from += COUNT_BATCH_SIZE) {
                 List<GithubCountTarget> batch = targets.subList(from, Math.min(from + COUNT_BATCH_SIZE, countable));
                 batchCounts.add(CompletableFuture.supplyAsync(() -> countBatch(run, batch), pool));
             }
             batchCounts.forEach(batchCount -> counts.addAll(batchCount.join()));
-        }
+            searches.join();
 
-        GithubCountStop stopped = run.stopped().get();
-        if (stopped != null) {
-            log.warn(stopped.message, run.skipped().get());
+            GithubCountStop stopped = run.stopped().get();
+            if (stopped != null) {
+                log.warn(stopped.message, run.skipped().get());
+            }
+        } catch (CompletionException failed) {
+            // 검색이 다 받지 못했거나 한도로 막힌 예외를 감싸지 않고 넘겨, 지금까지처럼 아무 개수도 저장되지 않게 한다
+            if (failed.getCause() instanceof RuntimeException cause) {
+                throw cause;
+            }
+            throw failed;
         }
 
         return counts;
@@ -177,6 +215,25 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
             log.warn("GitHub 호출 한도를 조회하지 못했다: 사용자 {}, {}", userId, failed.getClass().getSimpleName());
             return Optional.empty();
         }
+
+    }
+
+    /**
+     * '/user/repos' 에는 조직이 승인하지 않은 앱이면 조직 소유 저장소가 빠져 기여한 저장소를 더하고, 그 찾기가 실패하면 '/user/repos' 결과만 돌려준다
+     * 찾기 실패는 403 을 모두 한도로 보는 판정에 태우지 않아 연결 해제·한도 예외로 바꾸지 않는다
+     * 같은 저장소는 '/user/repos' 값을 쓰고, 여러 사용자가 같은 저장소 행을 저장하다 서로 막히지 않게 GitHub id 순으로 돌려준다
+     */
+    private List<GithubRepositoryResponse> withContributed(Long userId, String token, List<GithubRepositoryResponse> listed) {
+
+        Map<Long, GithubRepositoryResponse> merged = new TreeMap<>();
+        listed.forEach(repository -> merged.put(repository.id(), repository));
+        try {
+            github.fetchContributedRepositories(token).forEach(repository -> merged.putIfAbsent(repository.id(), repository));
+        } catch (RestClientException | GithubResponseShapeException failed) {
+            log.warn("GitHub 에서 기여한 저장소를 찾지 못해 접근할 수 있는 저장소만 돌려준다: 사용자 {}, {}", userId, failed.getClass().getSimpleName());
+        }
+
+        return List.copyOf(merged.values());
 
     }
 
@@ -221,7 +278,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         for (GithubCountTarget target : batch) {
             GithubRepositoryTotals total = totals.get(target.githubRepoId());
             if (total != null) {
-                counts.add(countOf(target, total, run.searches()));
+                counts.add(countOf(target, total, run.searches().join()));
             }
         }
         // 내 커밋 이어 받기가 멈춰 결과에서 빠진 저장소도 건너뛴 수에 넣어야 마지막 로그가 맞다
@@ -291,7 +348,22 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     }
 
+    /** GitHub 이 이 토큰을 거절했다고 AI 가 알리면 연결을 해제로 남겨 다시 연결하라는 표시가 뜨게 하고, 받은 예외는 그대로 돌려준다 */
+    private AiClientException revokedIfRejected(Long userId, UsableToken token, AiClientException failed) {
+
+        if (GITHUB_UNAUTHORIZED.equals(failed.errorCode())) {
+            disconnects.revokeRejected(userId, token.encrypted());
+        }
+        return failed;
+
+    }
+
     private static AiClientException unavailable() {
         return new AiClientException("GITHUB_CONNECTION_UNAVAILABLE", false, null);
+    }
+
+    // 연결이 해제됐거나 토큰이 만료돼 쓸 토큰이 없으면 AI 가 거절을 받은 것과 같이 다시 연결해야 한다
+    private static AiClientException unauthorized() {
+        return new AiClientException(GITHUB_UNAUTHORIZED, false, null);
     }
 }

@@ -1,0 +1,90 @@
+{
+  "data": [
+    {
+      "id": "3f6c2a10-6b1d-4c2e-9a51-0d7e8b4f1a01",
+      "company": "가온소프트",
+      "companyId": "gaon",
+      "logoUrl": null,
+      "role": "백엔드 엔지니어 (Java·Spring)",
+      "category": "BACKEND",
+      "fit": "A",
+      "required": { "total": 3, "met": 3 },
+      "preferred": { "total": 2, "met": 1 },
+      "experience": { "level": "ENTRY", "minYears": null },
+      "source": {
+        "url": "https://careers.example.com/gaon/jobs/1001",
+        "collectedAt": "2026-10-19T20:05:12Z",
+        "expiresAt": "2026-10-31T14:59:59Z"
+      }
+    },
+    {
+      "id": "8a1e5c34-2f7b-4d90-b6c3-5e2f9a7d3b02",
+      "company": "나래랩스",
+      "companyId": "narae",
+      "logoUrl": null,
+      "role": "서버 개발자 (신입)",
+      "category": "BACKEND",
+      "fit": "B",
+      "required": { "total": 4, "met": 2 },
+      "preferred": { "total": 2, "met": 1 },
+      "experience": { "level": "ENTRY", "minYears": null },
+      "source": {
+        "url": "https://careers.example.com/narae/jobs/2002",
+        "collectedAt": "2026-10-19T20:05:12Z",
+        "expiresAt": "2026-11-07T14:59:59Z"
+      }
+    },
+    {
+      "id": "c47b9e21-0a3d-4f65-8e12-7b9c4d2e5f03",
+      "company": "다온페이",
+      "companyId": "daon",
+      "logoUrl": null,
+      "role": "플랫폼 엔지니어",
+      "category": "DEVOPS",
+      "fit": "B",
+      "required": { "total": 0, "met": 0 },
+      "preferred": { "total": 2, "met": 1 },
+      "experience": { "level": "UNSPECIFIED", "minYears": null },
+      "source": {
+        "url": "https://careers.example.com/daon/jobs/3003",
+        "collectedAt": "2026-10-19T20:05:12Z",
+        "expiresAt": null
+      }
+    },
+    {
+      "id": "5d2f8b63-9c4e-4a17-a2d8-1f6e3b9c7a04",
+      "company": "라온모빌리티",
+      "companyId": "raon",
+      "logoUrl": null,
+      "role": "안드로이드 개발자",
+      "category": "MOBILE",
+      "fit": "C",
+      "required": { "total": 3, "met": 1 },
+      "preferred": { "total": 2, "met": 0 },
+      "experience": { "level": "EXPERIENCED", "minYears": 3 },
+      "source": {
+        "url": "https://careers.example.com/raon/jobs/4004",
+        "collectedAt": "2026-10-19T20:05:12Z",
+        "expiresAt": "2026-11-02T14:59:59Z"
+      }
+    },
+    {
+      "id": "e91a4c75-3b8f-4d26-9f40-2c7d5e8a1b05",
+      "company": "마루데이터",
+      "companyId": "maru",
+      "logoUrl": null,
+      "role": "데이터 엔지니어",
+      "category": "DATA",
+      "fit": "D",
+      "required": { "total": 2, "met": 0 },
+      "preferred": { "total": 1, "met": 0 },
+      "experience": { "level": "EXPERIENCED", "minYears": 2 },
+      "source": {
+        "url": "https://careers.example.com/maru/jobs/5005",
+        "collectedAt": "2026-10-19T20:05:12Z",
+        "expiresAt": null
+      }
+    }
+  ],
+  "error": null
+}

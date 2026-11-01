@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import PurePosixPath
 
 from schemas.analysis import CommitInput
 from services.github_collector import LOCKFILES
+
+_REVERT_TITLE = re.compile(r'^Revert "(.+)"$')
+_REVERTS_SHA = re.compile(r"This reverts commit ([0-9a-fA-F]{7,40})")
+
+
+def _first_line(message: str) -> str:
+    return message.strip().splitlines()[0].strip() if message.strip() else ""
 
 
 class CommitSelector:
@@ -41,8 +49,8 @@ class CommitSelector:
         """
         normalized_target = target_login.strip().casefold()
 
-        selected: list[CommitInput] = []
-        excluded_shas: list[str] = []
+        unique: list[CommitInput] = []
+        excluded: set[str] = set()
         seen_shas: set[str] = set()
 
         for commit in commits:
@@ -50,13 +58,41 @@ class CommitSelector:
             if normalized_sha in seen_shas:
                 continue
             seen_shas.add(normalized_sha)
+            unique.append(commit)
 
             if self._should_exclude(commit, normalized_target):
-                excluded_shas.append(commit.sha)
-            else:
-                selected.append(commit)
+                excluded.add(normalized_sha)
 
+        excluded |= self._reverted_pairs([c for c in unique if c.sha.casefold() not in excluded])
+        selected = [commit for commit in unique if commit.sha.casefold() not in excluded]
+        excluded_shas = [commit.sha for commit in unique if commit.sha.casefold() in excluded]
         return selected, excluded_shas
+
+    @staticmethod
+    def _reverted_pairs(commits: list[CommitInput]) -> set[str]:
+        """되돌린 커밋과 그 원래 커밋의 SHA. 둘 다 결과가 남지 않은 작업이라 경험이 되지 않는다.
+
+        원래 커밋은 git 이 본문에 남기는 'This reverts commit <sha>' 로 찾고, 그 줄이 없을 때만
+        같은 제목으로 찾는다. 원래 커밋이 수집되지 않았으면 되돌린 커밋만 뺀다.
+        """
+        shas = [commit.sha.casefold() for commit in commits]
+        by_title: dict[str, str] = {}
+        for commit in commits:
+            by_title.setdefault(_first_line(commit.message), commit.sha.casefold())
+
+        dropped: set[str] = set()
+        for commit in commits:
+            title = _REVERT_TITLE.match(_first_line(commit.message))
+            if title is None:
+                continue
+            dropped.add(commit.sha.casefold())
+            target = _REVERTS_SHA.search(commit.message)
+            if target is not None:
+                prefix = target.group(1).casefold()
+                dropped.update(sha for sha in shas if sha.startswith(prefix))
+            elif title.group(1) in by_title:
+                dropped.add(by_title[title.group(1)])
+        return dropped
 
     def _should_exclude(self, commit: CommitInput, target_login: str) -> bool:
         if commit.is_excluded:

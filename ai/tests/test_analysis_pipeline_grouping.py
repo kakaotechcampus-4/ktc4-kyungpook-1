@@ -12,6 +12,7 @@ import api.analysis as analysis_api
 from api.analysis import get_analysis_pipeline
 from main import create_app
 from schemas.analysis import (
+    ChangedFile,
     CommitInput,
     ExperienceCandidate,
     ExperienceGroupingRequest,
@@ -29,6 +30,8 @@ class FakeGroupingLlm:
         self.merge_all = merge_all
         self.units: list[CommitGroup] = []
         self.described: list[CommitGroup] = []
+        self.describe_kwargs: dict = {}
+        self.describe_called_at = 0.0
 
     async def group_units(self, units: list[CommitGroup], **kwargs) -> list[list[CommitGroup]]:
         self.units = units
@@ -40,6 +43,8 @@ class FakeGroupingLlm:
 
     async def describe(self, groups, **kwargs):
         self.described = groups
+        self.describe_kwargs = kwargs
+        self.describe_called_at = asyncio.get_running_loop().time()
         return {
             group.group_key: (f"{group.source_type} 기능", "커밋 근거로 선정")
             for group in groups
@@ -225,8 +230,44 @@ def test_llm_failure_returns_llm_unavailable_envelope(error, retryable, caplog) 
     assert body["error"]["retryable"] is retryable
     assert "secret-detail" not in response.text
     assert "GITORY_LLM_API_KEY" not in response.text
-    # 응답에 싣지 않는 원인은 운영에서 찾을 수 있게 서버 로그에만 남긴다.
-    assert [record.exc_info[1] for record in caplog.records if record.name == "api.analysis"] == [error]
+    # 원인은 예외 종류로만 남긴다. 예외 문구·traceback 에는 모델 출력 조각이 실릴 수 있다(#421).
+    records = [record for record in caplog.records if record.name == "api.analysis"]
+    assert len(records) == 1
+    line = records[0].getMessage()
+    assert line.startswith("경험 그룹화 실패:")
+    assert "path=/internal/analysis/groups" in line
+    assert f"exc={type(error).__name__}" in line
+    assert f"retryable={str(retryable).lower()}" in line
+    assert "secret-detail" not in caplog.text
+    assert "GITORY_LLM_API_KEY" not in caplog.text
+    assert records[0].exc_info is None
+
+
+def test_grouping_request_deadline_reaches_description_step() -> None:
+    fake = FakeGroupingLlm()
+    app = create_app()
+    app.dependency_overrides[get_analysis_pipeline] = lambda: AnalysisPipeline(grouping_llm=fake)
+
+    response = TestClient(app).post(
+        "/internal/analysis/groups",
+        json={
+            "repository_id": "repo-1",
+            "target_login": "minseo",
+            "commits": [
+                {
+                    "sha": "a" * 40,
+                    "message": "feat: 기능",
+                    "author_login": "minseo",
+                    "authored_at": "2026-09-01T00:00:00Z",
+                    "parent_count": 1,
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    seconds_left = fake.describe_kwargs["deadline"] - fake.describe_called_at
+    assert 0 < seconds_left <= analysis_api.GROUPING_DEADLINE_SECONDS
 
 
 class SlowGroupingLlm(FakeGroupingLlm):
@@ -296,3 +337,35 @@ def test_client_disconnect_cancels_remaining_llm_calls(monkeypatch) -> None:
     asyncio.run(run())
 
     assert calls == [0]
+
+
+def _docs_only_request() -> ExperienceGroupingRequest:
+    code = commit("a" * 40, pr=17).model_copy(
+        update={"files": [ChangedFile(path="src/login.py", additions=40, deletions=0)]}
+    )
+    docs = commit("b" * 40).model_copy(
+        update={"files": [ChangedFile(path="README.md", additions=40, deletions=0)]}
+    )
+    return ExperienceGroupingRequest(
+        repository_id="repo-1",
+        target_login="minseo",
+        commits=[code, docs],
+        pull_requests=[PullRequestContext(number=17, title="로그인 개선")],
+    )
+
+
+def test_unusable_group_commits_are_reported_as_excluded() -> None:
+    result = asyncio.run(
+        AnalysisPipeline(grouping_llm=FakeGroupingLlm()).group_experiences(_docs_only_request())
+    )
+
+    assert [candidate.group_key for candidate in result.candidates] == ["pr:17"]
+    assert result.excluded_commit_shas == ["b" * 40]
+
+
+def test_unusable_group_is_not_sent_for_title_and_reason() -> None:
+    fake = FakeGroupingLlm()
+
+    asyncio.run(AnalysisPipeline(grouping_llm=fake).group_experiences(_docs_only_request()))
+
+    assert [group.group_key for group in fake.described] == ["pr:17"]

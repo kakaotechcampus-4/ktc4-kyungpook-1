@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from ports.repository_activity import RepositoryActivityPort
+from services.progress import listening
 from schemas.collection import (
     CandidateDetailRequest,
     CollectedFileChange,
@@ -22,6 +23,7 @@ from services.github_collector import (
     GithubApiError,
     GithubCollector,
     GithubResourceNotFound,
+    GithubUnauthorized,
     _contribution_decision,
     _issue_numbers,
     _primary_pull_by_sha,
@@ -215,6 +217,31 @@ def test_collects_commit_diff_pull_review_and_issue() -> None:
     assert result.issues[0].body_excerpt == "응답 시간이 오래 걸립니다."
     assert not hasattr(result.commits[0].files[0], "patch")
     assert result.head_sha == "abc1234567890"
+
+
+def test_collect_reports_pull_requests_then_commits_progress() -> None:
+    """PR 을 하나 읽을 때마다 번호·제목·리뷰 수를, 그다음 커밋 상세를 하나 받을 때마다 커밋 값을 실어 알리고 PR 이 먼저다."""
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(_success_handler),
+    )
+    events: list[tuple] = []
+
+    async def run() -> None:
+        with listening(lambda step, done, total, item: events.append((step, done, total, item))):
+            await collector.collect(_request(), "live-secret")
+
+    asyncio.run(run())
+
+    assert events == [
+        ("PR_REVIEW", 0, 1, None),
+        ("PR_REVIEW", 1, 1, {"kind": "PULL_REQUEST", "number": 17, "title": "세션 조회 성능 개선", "reviews": 1}),
+        ("COMMITS", 0, 1, None),
+        (
+            "COMMITS", 1, 1,
+            {"kind": "COMMIT", "sha": "abc1234", "title": "feat: 세션 인덱스 추가 (#42)", "files": 2, "excluded": None},
+        ),
+    ]
 
 
 def test_issue_numbers_drop_zero_references() -> None:
@@ -738,6 +765,16 @@ def test_missing_repository_is_not_hidden_as_rate_limit() -> None:
         asyncio.run(collector.collect(_request(), "live-secret"))
 
 
+def test_rejected_token_is_unauthorized_not_a_temporary_error() -> None:
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(lambda _: httpx.Response(401)),
+    )
+
+    with pytest.raises(GithubUnauthorized):
+        asyncio.run(collector.collect(_request(), "live-secret"))
+
+
 def test_permission_failure_is_an_api_error() -> None:
     collector = GithubCollector(
         base_url="https://api.github.test",
@@ -762,7 +799,9 @@ def test_blank_token_is_rejected_before_network_call() -> None:
 def test_limit_marks_result_partial() -> None:
     collector = GithubCollector(
         base_url="https://api.github.test",
-        limits=CollectionLimits(max_pull_requests=0, max_commits=1, max_issues=1),
+        limits=CollectionLimits(
+            max_pull_requests=0, max_own_pull_requests=0, max_commits=1, max_issues=1
+        ),
         transport=httpx.MockTransport(_success_handler),
     )
 
@@ -770,6 +809,188 @@ def test_limit_marks_result_partial() -> None:
 
     assert execution.result.partial is True
     assert execution.result.partial_reason == PartialReason.CAP_EXCEEDED
+
+
+def _empty_repository_handler(request: httpx.Request) -> httpx.Response:
+    """GitHub 이 커밋이 하나도 없는 공개 저장소에 돌려주는 응답."""
+    path = request.url.path
+    if path in ("/repos/grow22/gitory/pulls", "/repos/grow22/gitory/issues"):
+        return httpx.Response(200, json=[])
+    if path == "/repos/grow22/gitory/branches/develop":
+        return httpx.Response(404, json={"message": "Branch not found"})
+    if path == "/repos/grow22/gitory/commits":
+        return httpx.Response(409, json={"message": "Git Repository is empty."})
+    return httpx.Response(500, json={"unexpected": str(request.url)})
+
+
+def _default_branch_request() -> RepositoryCollectionRequest:
+    payload = _request().model_dump(mode="json")
+    payload["branches"] = []
+    return RepositoryCollectionRequest.model_validate(payload)
+
+
+def test_empty_repository_is_collected_as_zero_commits() -> None:
+    """빈 저장소는 기본 브랜치 조회가 404 여도 실패가 아니라 커밋 0개 성공으로 돌려준다."""
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(_empty_repository_handler),
+    )
+
+    result = asyncio.run(collector.collect(_default_branch_request(), "live-secret")).result
+
+    assert result.partial is False
+    assert result.commits == []
+    assert result.pull_requests == []
+    assert result.head_sha is None
+
+
+def test_missing_default_branch_of_non_empty_repository_still_fails() -> None:
+    """기본 브랜치만 없고 커밋은 있는 저장소는 빈 저장소로 넘기지 않고 지금처럼 실패한다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/repos/grow22/gitory/commits":
+            return httpx.Response(200, json=[{"sha": "abc1234567890"}])
+        return _empty_repository_handler(request)
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(GithubResourceNotFound):
+        asyncio.run(collector.collect(_default_branch_request(), "live-secret"))
+
+
+def test_missing_repository_is_not_treated_as_empty() -> None:
+    """기본 브랜치 404 뒤 커밋 목록도 404 면(지워졌거나 권한 없음) 빈 저장소로 넘기지 않고 실패한다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/repos/grow22/gitory/commits":
+            return httpx.Response(404, json={"message": "Not Found"})
+        return _empty_repository_handler(request)
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(GithubResourceNotFound):
+        asyncio.run(collector.collect(_default_branch_request(), "live-secret"))
+
+
+def _pull(number: int, author: str) -> dict:
+    return {
+        "number": number,
+        "title": f"PR {number}",
+        "body": None,
+        "state": "closed",
+        "user": {"login": author},
+        "base": {"ref": "develop"},
+        "head": {"ref": f"feature/{number}"},
+        "created_at": "2026-09-20T10:00:00Z",
+        "merged_at": None,
+    }
+
+
+def _pull_list_handler(pages: list[list[dict]], calls: list[httpx.Request]):
+    """PR 목록을 쪽마다 돌려주고, PR 하나의 커밋·리뷰·줄 댓글은 비어 있다고 답한다."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        path = request.url.path
+        if path == "/repos/grow22/gitory/pulls":
+            page = int(request.url.params.get("page", "1"))
+            return httpx.Response(200, json=pages[page - 1] if page <= len(pages) else [])
+        if path.startswith("/repos/grow22/gitory/pulls/"):
+            return httpx.Response(200, json=[])
+        if path == "/repos/grow22/gitory/commits":
+            return httpx.Response(200, json=[])
+        return _success_handler(request)
+
+    return handler
+
+
+def test_own_pull_requests_beyond_recent_cap_are_collected() -> None:
+    """최근 갱신 상한 밖이어도 내 PR 은 모으고, 남의 PR 만 빠졌으면 부분 수집이 아니다."""
+    calls: list[httpx.Request] = []
+    pages = [[_pull(30, "teammate"), _pull(29, "teammate"), _pull(17, "Grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, calls)),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [30, 17]
+    assert result.partial is False
+    assert not any(call.url.path.startswith("/repos/grow22/gitory/pulls/29/") for call in calls)
+
+
+def test_own_pull_requests_on_later_pages_are_collected() -> None:
+    """PR 목록을 마지막 쪽까지 읽어 뒤쪽에 있는 내 PR 도 모은다."""
+    calls: list[httpx.Request] = []
+    pages = [[_pull(200 - i, "teammate") for i in range(100)], [_pull(17, "grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, calls)),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [200, 17]
+    assert result.partial is False
+    list_calls = [call for call in calls if call.url.path == "/repos/grow22/gitory/pulls"]
+    assert [call.url.params["page"] for call in list_calls] == ["1", "2"]
+    assert {call.url.params["per_page"] for call in list_calls} == {"100"}
+
+
+def test_own_pull_requests_over_own_cap_mark_partial() -> None:
+    """내 PR 이 상한을 넘어 잘리면 부분 수집으로 알린다."""
+    pages = [[_pull(30, "teammate"), _pull(18, "grow22"), _pull(17, "grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=1, max_own_pull_requests=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, [])),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [30, 18]
+    assert result.partial_reason == PartialReason.CAP_EXCEEDED
+
+
+def test_own_pull_requests_within_recent_cap_do_not_use_own_cap() -> None:
+    """최근 상한 안의 내 PR 은 내 PR 상한에 세지 않고, 그 밖에서 내 PR 을 상한만큼 더 모은다."""
+    pages = [[_pull(30, "grow22"), _pull(29, "grow22"), _pull(18, "teammate"), _pull(17, "grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=2, max_own_pull_requests=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, [])),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [30, 29, 17]
+    assert result.partial is False
+
+
+def test_pull_request_pages_over_page_cap_mark_partial() -> None:
+    """읽을 쪽 상한에 닿았는데 다음 쪽이 남았으면 내 PR 이 더 있을 수 있어 부분 수집으로 알린다."""
+    calls: list[httpx.Request] = []
+    pages = [[_pull(300 - i, "teammate") for i in range(100)], [_pull(17, "grow22")]]
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        limits=CollectionLimits(max_pull_requests=1, max_pull_request_pages=1),
+        transport=httpx.MockTransport(_pull_list_handler(pages, calls)),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    assert [pull.number for pull in result.pull_requests] == [300]
+    assert result.partial_reason == PartialReason.CAP_EXCEEDED
+    assert [call.url.params["page"] for call in calls if call.url.path == "/repos/grow22/gitory/pulls"] == ["1"]
 
 
 @pytest.mark.parametrize(
@@ -864,3 +1085,223 @@ def test_commit_in_feature_and_release_pr_maps_to_narrowest_pr() -> None:
     mapping = _primary_pull_by_sha([release, feature_a, feature_b])
 
     assert mapping == {"a" * 40: 17, "b" * 40: 17, "c" * 40: 18, "d" * 40: 30}
+
+
+def test_github_api_base_url_env_is_used_for_requests(monkeypatch) -> None:
+    monkeypatch.setenv("GITORY_GITHUB_API_BASE_URL", "https://fake-github.test/")
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return _success_handler(request)
+
+    collector = GithubCollector(transport=httpx.MockTransport(handler))
+    asyncio.run(collector.collect(_request(), "live-secret"))
+
+    assert seen and all(url.startswith("https://fake-github.test/repos/") for url in seen)
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_github_api_base_url_defaults_when_env_missing_or_blank(monkeypatch, value) -> None:
+    if value is None:
+        monkeypatch.delenv("GITORY_GITHUB_API_BASE_URL", raising=False)
+    else:
+        monkeypatch.setenv("GITORY_GITHUB_API_BASE_URL", value)
+
+    assert GithubCollector()._base_url == "https://api.github.com"
+
+
+def test_github_api_base_url_ignores_trailing_slash(monkeypatch) -> None:
+    monkeypatch.setenv("GITORY_GITHUB_API_BASE_URL", "https://fake-github.test/gh/")
+
+    assert GithubCollector()._base_url == "https://fake-github.test/gh"
+
+
+COMMIT_DETAIL_PREFIX = "/repos/grow22/gitory/commits/"
+
+
+def _commit_detail(sha: str) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "sha": sha,
+            "author": {"login": "grow22", "type": "User"},
+            "commit": {
+                "message": f"feat: {sha}",
+                "author": {"name": "Grow", "email": "grow22@example.com", "date": "2026-09-20T09:00:00Z"},
+            },
+            "parents": [{"sha": "parent"}],
+            "stats": {"additions": 1, "deletions": 0},
+            "files": [],
+        },
+    )
+
+
+def _detail_collector(pulls: list[int], shas: list[str], answer, calls: list[str]) -> GithubCollector:
+    """PR 목록·커밋 목록은 바로 주고, PR 하나의 커밋·리뷰·줄 댓글과 커밋 상세는 answer 가 답하는 가짜 GitHub."""
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        calls.append(path)
+        if path == "/repos/grow22/gitory/pulls":
+            return httpx.Response(200, json=[_pull(number, "teammate") for number in pulls])
+        if path == "/repos/grow22/gitory/branches/develop":
+            return httpx.Response(200, json={"name": "develop", "commit": {"sha": "dead000"}})
+        if path == "/repos/grow22/gitory/commits":
+            return httpx.Response(200, json=[{"sha": sha} for sha in shas])
+        if path == "/repos/grow22/gitory/issues":
+            return httpx.Response(200, json=[])
+        return await answer(path)
+
+    return GithubCollector(base_url="https://api.github.test", transport=httpx.MockTransport(handler))
+
+
+def _collect_listening(collector: GithubCollector, events: list[tuple]):
+    """진행 알림을 events 에 모으며 수집하고, 멈춰 버리면 2초 뒤 시간 초과로 실패한다."""
+
+    async def run():
+        with listening(lambda step, done, total, item: events.append((step, done, total, item))):
+            return await asyncio.wait_for(collector.collect(_request(), "live-secret"), 2)
+
+    return asyncio.run(run())
+
+
+async def _wait_until(condition) -> None:
+    while not condition():
+        await asyncio.sleep(0.001)
+
+
+def _read_pulls(events: list[tuple]) -> list[int]:
+    return [item["number"] for step, _, _, item in events if step == "PR_REVIEW" and item]
+
+
+def _read_commits(events: list[tuple]) -> list[str]:
+    return [item["sha"] for step, _, _, item in events if step == "COMMITS" and item]
+
+
+def _finishing_backwards(pulls: list[int], shas: list[str], events: list[tuple]):
+    """목록의 앞 것은 바로 뒤의 것을 다 읽었다는 진행 알림이 온 뒤에 답해, 뒤에서부터 끝나게 한다."""
+
+    async def answer(path: str) -> httpx.Response:
+        if path.startswith(COMMIT_DETAIL_PREFIX):
+            sha = path.removeprefix(COMMIT_DETAIL_PREFIX)
+            index = shas.index(sha)
+            if index + 1 < len(shas):
+                await _wait_until(lambda: shas[index + 1][:7] in _read_commits(events))
+            return _commit_detail(sha)
+        number = int(path.split("/")[5])
+        index = pulls.index(number)
+        if path.endswith("/reviews") and index + 1 < len(pulls):
+            await _wait_until(lambda: pulls[index + 1] in _read_pulls(events))
+        return httpx.Response(200, json=[])
+
+    return answer
+
+
+def test_reads_pull_requests_and_commits_four_at_a_time() -> None:
+    """PR 상세와 커밋 상세는 4개까지 동시에 읽고 그보다 많이 읽지 않는다."""
+    in_flight = {"pulls": 0, "commits": 0}
+    peak = {"pulls": 0, "commits": 0}
+
+    async def answer(path: str) -> httpx.Response:
+        kind = "commits" if path.startswith(COMMIT_DETAIL_PREFIX) else "pulls"
+        in_flight[kind] += 1
+        peak[kind] = max(peak[kind], in_flight[kind])
+        await asyncio.sleep(0.02)
+        in_flight[kind] -= 1
+        if kind == "commits":
+            return _commit_detail(path.removeprefix(COMMIT_DETAIL_PREFIX))
+        return httpx.Response(200, json=[])
+
+    shas = [f"c{i}00000" for i in range(1, 7)]
+    collector = _detail_collector([60, 50, 40, 30, 20, 10], shas, answer, [])
+
+    result = _collect_listening(collector, []).result
+
+    assert peak == {"pulls": 4, "commits": 4}
+    assert len(result.pull_requests) == 6
+    assert len(result.commits) == 6
+
+
+def test_results_keep_list_order_when_later_reads_finish_first() -> None:
+    """뒤의 것이 먼저 끝나도 PR 은 PR 목록 순서로, 커밋은 커밋 목록 순서로 모은다."""
+    pulls = [40, 30, 20, 10]
+    shas = ["c100000", "c200000", "c300000", "c400000"]
+    events: list[tuple] = []
+    collector = _detail_collector(pulls, shas, _finishing_backwards(pulls, shas, events), [])
+
+    result = _collect_listening(collector, events).result
+
+    assert _read_pulls(events) == [10, 20, 30, 40]
+    assert [pull.number for pull in result.pull_requests] == pulls
+    assert [commit.sha for commit in result.commits] == shas
+
+
+def test_progress_counts_finished_reads_and_reports_them_as_they_finish() -> None:
+    """진행 숫자는 다 읽은 개수라 1씩 늘고, 함께 싣는 PR·커밋은 끝난 순서로 나온다."""
+    pulls = [40, 30, 20, 10]
+    shas = ["c100000", "c200000", "c300000", "c400000"]
+    events: list[tuple] = []
+    collector = _detail_collector(pulls, shas, _finishing_backwards(pulls, shas, events), [])
+
+    _collect_listening(collector, events)
+
+    assert [(done, total) for step, done, total, _ in events if step == "PR_REVIEW"] == [(i, 4) for i in range(5)]
+    assert [(done, total) for step, done, total, _ in events if step == "COMMITS"] == [(i, 4) for i in range(5)]
+    assert _read_pulls(events) == [10, 20, 30, 40]
+    assert _read_commits(events) == ["c400000", "c300000", "c200000", "c100000"]
+
+
+@pytest.mark.parametrize("reading_pulls", [True, False])
+def test_rate_limit_stops_new_reads_and_keeps_finished_ones_in_list_order(reading_pulls: bool) -> None:
+    """한도에 걸리면 아직 안 읽은 PR·커밋은 요청하지 않고 읽던 것은 멈추며, 그때까지 다 읽은 것만 목록 순서로 부분 결과에 담고 다음 단계로 가지 않는다."""
+    keys: list = [80, 70, 60, 50, 40, 30, 20, 10] if reading_pulls else [f"c{i}00000" for i in range(1, 9)]
+    events: list[tuple] = []
+    calls: list[str] = []
+
+    def read() -> list:
+        return _read_pulls(events) if reading_pulls else _read_commits(events)
+
+    def key_of(path: str):
+        if reading_pulls:
+            return int(path.split("/")[5]) if path.startswith("/repos/grow22/gitory/pulls/") else None
+        return path.removeprefix(COMMIT_DETAIL_PREFIX) if path.startswith(COMMIT_DETAIL_PREFIX) else None
+
+    async def answer(path: str) -> httpx.Response:
+        key = key_of(path) if not reading_pulls or path.endswith("/commits") else None
+        if key == keys[0]:
+            await _wait_until(lambda: keys[1] in read())
+        elif key == keys[2]:
+            await _wait_until(lambda: len(read()) == 2)
+            return httpx.Response(429)
+        elif key is not None and key != keys[1]:
+            await asyncio.sleep(5)
+        return httpx.Response(200, json=[]) if reading_pulls else _commit_detail(path.removeprefix(COMMIT_DETAIL_PREFIX))
+
+    pulls, shas = (keys, []) if reading_pulls else ([], keys)
+    result = _collect_listening(_detail_collector(pulls, shas, answer, calls), events).result
+
+    collected = [pull.number for pull in result.pull_requests] if reading_pulls else [commit.sha for commit in result.commits]
+    requested = {key_of(path) for path in calls} - {None}
+    assert collected == keys[:2]
+    assert result.partial_reason == PartialReason.GITHUB_RATE_LIMITED
+    assert requested.isdisjoint(keys[6:])
+    assert "/repos/grow22/gitory/issues" not in calls
+
+
+def test_rejected_token_while_reading_together_fails_the_whole_collection() -> None:
+    """여럿을 동시에 읽다가 GitHub 이 토큰을 거절하면 읽던 것을 멈추고 수집 전체를 실패로 끝낸다."""
+    shas = [f"c{i}00000" for i in range(1, 7)]
+    calls: list[str] = []
+
+    async def answer(path: str) -> httpx.Response:
+        if path.removeprefix(COMMIT_DETAIL_PREFIX) == shas[0]:
+            return httpx.Response(401)
+        await asyncio.sleep(5)
+        return _commit_detail(path.removeprefix(COMMIT_DETAIL_PREFIX))
+
+    with pytest.raises(GithubUnauthorized):
+        _collect_listening(_detail_collector([], shas, answer, calls), [])
+
+    requested = {path.removeprefix(COMMIT_DETAIL_PREFIX) for path in calls if path.startswith(COMMIT_DETAIL_PREFIX)}
+    assert requested.isdisjoint(shas[4:])

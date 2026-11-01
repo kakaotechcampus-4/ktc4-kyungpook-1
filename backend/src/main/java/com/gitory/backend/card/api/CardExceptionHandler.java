@@ -1,5 +1,6 @@
 package com.gitory.backend.card.api;
 
+import com.gitory.backend.card.domain.ActivityNotFoundException;
 import com.gitory.backend.card.domain.CardConfirmedException;
 import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardNotConfirmableException;
@@ -8,6 +9,7 @@ import com.gitory.backend.card.domain.CardVersionNotFoundException;
 import com.gitory.backend.card.domain.InvalidCardInputException;
 import com.gitory.backend.card.domain.interview.InterviewAiUnavailableException;
 import com.gitory.backend.card.domain.interview.InterviewCapReachedException;
+import com.gitory.backend.card.domain.interview.InterviewFieldClosedException;
 import com.gitory.backend.card.domain.interview.InterviewTurnAnsweredException;
 import com.gitory.backend.card.domain.interview.InterviewTurnNotFoundException;
 import com.gitory.backend.card.domain.interview.InvalidInterviewFieldException;
@@ -32,6 +34,14 @@ public class CardExceptionHandler {
 
     }
 
+    @ExceptionHandler(ActivityNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleActivityNotFound() {
+
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "활동을 찾을 수 없습니다.");
+
+    }
+
     @ExceptionHandler(CardVersionNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public ApiResponse<Void> handleCardVersionNotFound() {
@@ -53,7 +63,7 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleCardGenerating() {
 
         return ApiResponse.fail(ErrorCode.INVALID_STATE,
-                "초안을 만드는 중인 카드는 초안이 만들어진 뒤에 질문하거나 답할 수 있습니다.");
+                "초안을 만드는 중인 카드입니다. 초안이 만들어진 뒤에 다시 시도해 주세요.");
 
     }
 
@@ -62,6 +72,14 @@ public class CardExceptionHandler {
     public ApiResponse<Void> handleNotConfirmable() {
 
         return ApiResponse.fail(ErrorCode.NOT_CONFIRMABLE, "상황과 행동을 채워야 확정할 수 있습니다.");
+
+    }
+
+    @ExceptionHandler(InterviewFieldClosedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ApiResponse<Void> handleInterviewFieldClosed() {
+
+        return ApiResponse.fail(ErrorCode.INTERVIEW_FIELD_CLOSED, "이 칸은 더 물을 수 없습니다. 칸 내용은 직접 고칠 수 있어요.");
 
     }
 

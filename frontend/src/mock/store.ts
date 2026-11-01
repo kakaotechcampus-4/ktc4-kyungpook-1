@@ -4,6 +4,7 @@
  * 데모 속도: ANALYZE 12초 · DRAFT 8초 (스펙 목표 30초/3분보다 빠르게).
  */
 import { seedCards, seedCandidates, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
+import { Profile, emptyProfile } from '@/api/profile';
 
 type Any = Record<string, any>;
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -14,6 +15,7 @@ export const db = {
   candidates: clone(seedCandidates) as Any[],
   cards: clone(seedCards) as Any[],
   interview: clone(seedInterview) as Record<string, Any[]>,
+  profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
@@ -57,14 +59,16 @@ function hydrateCards() {
 export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
+  db.profile = emptyProfile();
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.seq = 100;
   hydrateCards();
 }
 
 // ───────────────────────────── Job ─────────────────────────────
 const ANALYZE_SEC = 12, DRAFT_SEC = 8;
-const POLL_MS = 1200;
-const STEP_KEYS = ['COMMITS', 'PR_REVIEW', 'COMPRESS', 'REASON'] as const;
+const POLL_MS = 1000;        // Job 상세 — 실서버도 줄을 실시간으로 보여 주려고 1초(#496)
+const ACTIVE_POLL_MS = 2000; // 진행 중 Job 목록은 2초 그대로
+const STEP_KEYS = ['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON'] as const;
 
 /**
  * 분석 시작. 두 경우에 새 Job 을 만들지 않는다 — 실서버와 같은 규칙이다.
@@ -102,7 +106,7 @@ export function activeJobs() {
         jobId: j.id, state: v!.state, type: j.type,
         userRepositoryId: j.payload.repoId ?? null,
         repoName: repo ? repo.owner + '/' + repo.name : null,
-        startedAt: v!.startedAt, pollAfterMs: POLL_MS,
+        startedAt: v!.startedAt, pollAfterMs: ACTIVE_POLL_MS,
       };
     });
   return { jobs };
@@ -125,12 +129,53 @@ function analyzeSteps(repo: Any, progress: number, candidates: number | null) {
   const totals: Record<string, number | null> = { COMMITS: repo.contribution.mine, PR_REVIEW: repo.prCount, COMPRESS: null, REASON: null };
   return STEP_KEYS.map((key, i) => {
     const local = Math.min(1, Math.max(0, (progress - i * share) / share));
-    if (key === 'PR_REVIEW' && repo.prCount === 0) return step(key, progress > share ? 'SKIPPED' : 'QUEUED', 0, 0);
+    if (key === 'PR_REVIEW' && repo.prCount === 0) return step(key, progress > i * share ? 'SKIPPED' : 'QUEUED', 0, 0);
     const total = totals[key];
     const done = total != null ? Math.floor(total * local) : Math.round((candidates ?? 20) * local);
     const state = local >= 1 ? 'DONE' : local > 0 ? 'RUNNING' : 'QUEUED';
     return step(key, state, done, total);
   });
+}
+
+const PR_TITLES = ['로그인 세션 만료 처리', '토큰 재발급 인터셉터', '권한 체크 미들웨어', '검색 인덱스 재구성', '알림 발송 재시도', '캐시 무효화 정리', '결제 롤백 대응', 'CI 캐시 설정'];
+const COMMIT_TITLES = ['fix: 토큰 만료 시 재로그인 막기', 'feat(auth): refresh token rotation', 'refactor: 세션 저장소 분리', 'test: 만료 경계 테스트 추가', 'docs: 인증 흐름 정리', 'chore: 의존성 정리', 'perf: 조회 쿼리 인덱스 추가'];
+const EXCLUDE_CYCLE = ['BOT', 'MERGE_COMMIT', 'LOCKFILE_ONLY', 'NOT_OWN'];
+const DESCRIBED = [
+  ['로그인 세션 처리', '리뷰가 14건 오가고 3주 동안 고친 작업'],
+  ['결제 롤백 대응', 'PR 없이 같은 날 /payment 아래 6커밋을 몰아서 고친 장애 대응'],
+  ['토큰 재발급 인터셉터', 'PR 본문에 응답 시간이 800ms에서 120ms로 줄었다고 남아 있음'],
+  ['권한 체크 미들웨어', '여러 화면이 함께 쓰는 공통 코드를 새로 만듦'],
+  ['검색 인덱스 재구성', '리뷰어가 설계를 두 번 되물은 작업'],
+  ['알림 발송 재시도', '실패 처리와 테스트를 같이 넣음'],
+  ['캐시 무효화 정리', '버그 수정 커밋이 이어서 4건 붙음'],
+  ['CI 캐시 설정', '빌드 시간을 줄인 설정 변경'],
+  ['세션 저장소 분리', '구조를 나눈 리팩터링'],
+  ['인증 흐름 문서', '팀이 같이 본 설계 문서'],
+];
+const hex = (n: number) => ((n * 2654435761) >>> 0).toString(16).padStart(8, '0').slice(0, 7);
+
+/**
+ * 실서버 activity(#496)처럼 읽은 만큼 줄을 낸다. seq 는 같은 진행이면 늘 같은 값이라 폴링마다 겹친 줄을 화면이 거른다.
+ * 읽기 줄(PR·커밋)은 단계마다 최근 20줄만, 판단 줄(묶음·고른 이유)은 모두 — 고른 이유는 8개씩 한꺼번에.
+ */
+function analyzeActivity(repo: Any, steps: Any[]) {
+  const at = (key: string) => steps.find((x) => x.key === key)!;
+  const out: Any[] = [];
+  let seq = 0;
+  const pr = at('PR_REVIEW'), commits = at('COMMITS'), grouped = at('COMPRESS'), reason = at('REASON');
+  const reads: Any[] = [];
+  for (let i = 0; i < pr.done; i++) reads.push({ seq: ++seq, step: 'PR_REVIEW', kind: 'PULL_REQUEST', number: repo.prCount - i, title: PR_TITLES[i % PR_TITLES.length], reviews: (i * 3) % 7 });
+  out.push(...reads.slice(-20));
+  const creads: Any[] = [];
+  for (let i = 0; i < commits.done; i++) creads.push({ seq: ++seq, step: 'COMMITS', kind: 'COMMIT', sha: hex(i + 1), title: COMMIT_TITLES[i % COMMIT_TITLES.length], files: 1 + ((i * 5) % 9), excluded: i % 9 === 4 ? EXCLUDE_CYCLE[(i / 9 | 0) % 4] : null });
+  out.push(...creads.slice(-20));
+  seq = repo.prCount + repo.contribution.mine; // 읽기 줄 수가 바뀌어도 판단 줄 seq 는 그 뒤에서 늘 같게
+  if (grouped.state === 'DONE' && grouped.done > 0) { // 묶음 결과는 단계가 끝날 때 한 줄
+    out.push({ seq: ++seq, step: 'COMPRESS', kind: 'GROUPED', units: Math.max(grouped.done, Math.round((commits.done + pr.done) / 3)), experiences: grouped.done });
+  }
+  const described = reason.state === 'DONE' ? Math.min(reason.done, DESCRIBED.length) : Math.min(DESCRIBED.length, Math.floor(reason.done / 8) * 8);
+  for (let i = 0; i < described; i++) out.push({ seq: ++seq, step: 'REASON', kind: 'DESCRIBED', title: DESCRIBED[i][0], reason: DESCRIBED[i][1] });
+  return out;
 }
 
 const emptyReasons = (repo: Any) => [
@@ -155,13 +200,19 @@ export function viewJob(id: string): Any | null {
       return ended({ state: 'CANCELED', partial: false, steps: analyzeSteps(repo, progress, null),
         errorCode: null, retryable: null, retryAfterSec: null, result: { repoId: repo.id } });
     }
-    const failAt = repo.id === 'r_fail' ? 0.45 : repo.id === 'r_ratelimit' ? 0.62 : null;
+    const failAt = repo.id === 'r_fail' ? 0.45 : repo.id === 'r_ratelimit' ? 0.62 : repo.id === 'r_capped' ? 0.4 : null; // 상한은 수집(PR 읽기) 도중에 걸린다
     if (failAt !== null && progress >= failAt) {
       progress = failAt;
       const rateLimited = repo.id === 'r_ratelimit';
-      settle(j, () => { if (rateLimited) materializeCandidates(repo, true); });
+      const capped = repo.id === 'r_capped';
+      settle(j, () => { if (rateLimited || capped) materializeCandidates(repo, true); });
       const steps = analyzeSteps(repo, progress, null);
-      // 부분 완료는 별도 상태가 아니다 — SUCCEEDED + partial: true
+      // 부분 완료는 별도 상태가 아니다 — SUCCEEDED + partial: true. 이유는 errorCode 로 구분한다
+      if (capped) {
+        // 수집 상한에 걸리면 다시 읽어도 같은 상한이라 서버가 재시도를 열지 않는다(retryable false)
+        return ended({ state: 'SUCCEEDED', partial: true, steps, errorCode: 'COLLECTION_CAPPED', retryable: false, retryAfterSec: null,
+          result: { repoId: repo.id, verdict: 'PARTIAL', reasons: [] } });
+      }
       return ended(rateLimited
         ? { state: 'SUCCEEDED', partial: true, steps, errorCode: 'GITHUB_RATE_LIMITED', retryable: true, retryAfterSec: 720,
             result: { repoId: repo.id, verdict: 'PARTIAL', reasons: [] } }
@@ -172,13 +223,14 @@ export function viewJob(id: string): Any | null {
     if (done) settle(j, () => materializeCandidates(repo, false));
     const count = db.candidates.filter((c) => c.repoId === repo.id).length;
     const steps = analyzeSteps(repo, progress, count || null);
+    const activity = analyzeActivity(repo, steps);
     if (done) {
       const empty = count === 0;
       // 후보 0개는 실패가 아니다. 판정이고, 판정 근거를 같이 준다
-      return ended({ state: 'SUCCEEDED', partial: false, steps, errorCode: null, retryable: null, retryAfterSec: null,
+      return ended({ state: 'SUCCEEDED', partial: false, steps, activity, errorCode: null, retryable: null, retryAfterSec: null,
         result: { repoId: repo.id, verdict: empty ? 'EMPTY' : 'OK', reasons: empty ? emptyReasons(repo) : [] } });
     }
-    return { ...base, state: elapsed < 0.3 ? 'QUEUED' : 'RUNNING', partial: false, steps,
+    return { ...base, state: elapsed < 0.3 ? 'QUEUED' : 'RUNNING', partial: false, steps, activity,
       errorCode: null, retryable: null, retryAfterSec: null, finishedAt: null, result: null, pollAfterMs: POLL_MS };
   }
 
@@ -229,11 +281,11 @@ export function boardFor(repoId: string) {
   const repo = db.repos.find((r) => r.id === repoId)!;
   const cands = db.candidates.filter((c) => c.repoId === repoId).sort((a, b) => b.score - a.score);
   const lastJob = [...db.jobs.values()].filter((j) => j.type === 'ANALYZE' && j.payload.repoId === repoId).sort((a, b) => b.startedAt - a.startedAt)[0];
-  const partial = repoId === 'r_ratelimit' && !!lastJob;
+  const partial = (repoId === 'r_ratelimit' || repoId === 'r_capped') && !!lastJob; // 요청 한도 · 수집 상한
   const verdict = cands.length === 0 ? 'EMPTY' : partial ? 'PARTIAL' : 'OK';
   return {
     repoId, verdict, partial,
-    retryAfterSeconds: partial ? 720 : null,
+    retryAfterSeconds: partial && repoId === 'r_ratelimit' ? 720 : null, // 상한은 기다린다고 풀리지 않는다
     readCoverage: partial ? { commitsRead: 96, commitsTotal: repo.contribution.mine, prsRead: 12, prsTotal: repo.prCount } : null,
     emptyReasons: verdict === 'EMPTY' ? [`내 커밋 ${repo.contribution.mine}개 / 팀 전체 ${repo.contribution.team}개`, '커밋 메시지 평균 4글자', 'PR 참여 없음'] : [],
     candidates: cands,
@@ -245,9 +297,11 @@ export function cardView(c: Any) {
   const v = c.versions[c.versions.length - 1];
   const { versions, userId, ...rest } = c;
   const { _metadata, _confirmed, ...version } = v;
+  settleThemes(c); rest.themes = c.themes ?? []; delete rest.themesByUser; delete rest.themesDueAt; // 문항 유형(#564): 목 안의 표시는 내보내지 않는다
   void versions;
   void userId; void _metadata; void _confirmed;
-  return clone({ ...rest, version });
+  // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
+  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.
@@ -266,14 +320,16 @@ export function starStates(c: Any) {
 
 export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
+  settleThemes(c);
   return {
     id: c.id, kind: c.kind, status: c.status, title: c.title,
-    versionNo: v.versionNo, star: starStates(c),
+    versionNo: v.versionNo, star: starStates(c), areas: c.areas ?? [], techs: c.techs ?? [], themes: c.themes ?? [],
     sourceLabel: c.candidate ? c.candidate.ref : c.interviewTurns > 0 ? 'INTERVIEW' : 'MANUAL',
     sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
     updatedAt: c.updatedAt ?? legacyUpdatedAt(c),
+    repo: c.repo ? { id: c.repo.id, owner: c.repo.owner, name: c.repo.name } : null,
   };
 }
 
@@ -372,7 +428,7 @@ export function pushVersion(c: Any, source: string, fields: Any) {
 }
 
 /** 되묻기 턴 생성 — "코드에서 찾은 것"은 카드 근거에서 조립 */
-export const INTERVIEW_MAX_TURNS = 2; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
+export const INTERVIEW_MAX_TURNS = 8; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
 
 export function askTurn(c: Any, field: string) {
   const bank = interviewBank[field];
@@ -427,7 +483,7 @@ export function settlePending() {
  */
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, profile: db.profile,
     jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], seq: db.seq,
   });
 }
@@ -437,6 +493,8 @@ export function restore(raw: string): boolean {
     if (!s?.cards || !s?.repos) return false;
     db.user = s.user; db.repos = s.repos; db.candidates = s.candidates;
     db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
+    const profile = Profile.safeParse(s.profile); // 인적사항이 생기기 전에 저장된 데모 DB 는 빈 값으로 이어진다
+    db.profile = profile.success ? profile.data : emptyProfile();
     db.jobs.clear();
     (s.jobs ?? []).forEach((j: Any) => db.jobs.set(j.id, j));
     db.idem = new Map(s.idem ?? []);
@@ -446,5 +504,28 @@ export function restore(raw: string): boolean {
     return true;
   } catch { return false; }
 }
+
+/**
+ * 문항 유형(#564). 실서버처럼 경험 카드를 확정한 직후에는 [] 이고, 몇 초 뒤 AI 가 골라 붙인다(계약 #475 3절).
+ * 목은 타이머 없이 "때가 지난 뒤 처음 읽을 때" 채운다. 사용자가 한 번 고르면(themesByUser) AI 가 덮어쓰지 않는다.
+ */
+export const MOCK_THEME_AI_DELAY_MS = 3_000;
+const THEME_WORDS: [string, RegExp][] = [
+  ['CONFLICT', /갈등|의견|합의|조율|설득/], ['COLLABORATION', /팀|협업|함께|동료/], ['PROBLEM_SOLVING', /문제|해결|장애|오류|롤백/],
+  ['LEADERSHIP', /주도|이끌|리드|파트장/], ['CHALLENGE', /도전|목표/], ['FAILURE', /실패|극복/], ['GROWTH', /배우|배웠|성장|깨달/],
+];
+export function queueAiThemes(c: Any) {
+  if (c.kind === 'QUALITATIVE' && !c.themesByUser && !(c.themes?.length)) c.themesDueAt = Date.now() + MOCK_THEME_AI_DELAY_MS;
+}
+export function settleThemes(c: Any) {
+  if (!c.themesDueAt || Date.now() < c.themesDueAt) return;
+  delete c.themesDueAt;
+  if (c.themesByUser || c.themes?.length) return;
+  const v = c.versions[c.versions.length - 1];
+  const text = [c.title, ...STAR.map((f) => v[FIELD_KEY[f]] ?? '')].join(' ');
+  const picked = THEME_WORDS.filter(([, word]) => word.test(text)).map(([theme]) => theme).slice(0, 2);
+  c.themes = picked.length ? picked : ['GROWTH'];
+}
+export function chooseThemes(c: Any, themes: string[]) { c.themes = themes; c.themesByUser = true; delete c.themesDueAt; }
 
 hydrateCards();

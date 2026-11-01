@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { freshSeed, loginAsDemo } from './helpers';
+import { freshSeed, loginAsDemo, showCardTiles } from './helpers';
 
 test('sample landing explains GitHub records and card output without a false expired-session notice', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -35,9 +35,9 @@ test('first, middle and last selected repository rows retain geometry and rounde
 
 test('desktop experiences have individual card boundaries and gaps', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await loginAsDemo(page); await page.goto('/cards');
-  // 레포별 묶음이라 처음 두 장이 한 줄이라는 보장이 없다 — 같은 줄(같은 top)에 나란히 놓인 두 장의 간격을 잰다
-  await expect(page.locator('.experience-item')).toHaveCount(5);
+  await loginAsDemo(page); await page.goto('/cards'); await showCardTiles(page);
+  // 묶음별로 나뉘어 처음 두 장이 한 줄이라는 보장이 없다 — 같은 줄(같은 top)에 나란히 놓인 두 장의 간격을 잰다
+  await expect(page.locator('.experience-item')).toHaveCount(8);
   const boxes = await page.locator('.experience-item').evaluateAll(items => items.map(item => item.getBoundingClientRect()).map(r => ({ top: Math.round(r.top), x: r.x, right: r.right })));
   const pair = boxes.find((a, i) => boxes.slice(i + 1).some(b => b.top === a.top));
   expect(pair).toBeDefined();

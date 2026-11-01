@@ -31,6 +31,7 @@ INTERNAL_PATHS = {
     "/internal/card-themes",
     "/internal/interview-answer-evaluations",
     "/internal/job-postings/extract",
+    "/internal/job-postings/image-text",
     "/internal/matching/postings/index",
     "/internal/matching/postings/prune",
     "/internal/matching/search",

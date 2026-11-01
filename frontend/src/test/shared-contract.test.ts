@@ -29,7 +29,7 @@ it('sends the shared direct-card request and parses the actual Mock response', a
   const turn = await endpoints.askInterview(card.id, StarField.parse(request.body.field));
   expect(fetcher).toHaveBeenCalledTimes(1);
   expect(turn).toMatchObject(fixture.frontendToSpring.expectedResponseFields);
-  expect(turn.field).toBe(request.body.field);
+  expect(turn?.field).toBe(request.body.field);
 });
 
 it('keeps MANUAL candidates distinct from DIRECT_CARD interview targets', () => {

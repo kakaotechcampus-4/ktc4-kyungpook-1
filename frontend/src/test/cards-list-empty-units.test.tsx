@@ -19,6 +19,8 @@ function mount(cards?: unknown) {
   render(<QueryClientProvider client={client}><MemoryRouter><CardsListPage /></MemoryRouter></QueryClientProvider>);
 }
 const seeded = () => handle('GET', '/cards', new URLSearchParams(), {}, true).data;
+/** 기본 보기는 폴더다(#522). 묶음 요약과 카드 타일을 보는 시험은 최근순 보기에서 본다 */
+const recentView = () => localStorage.setItem('gitory.cards.view', JSON.stringify('recent'));
 const primaries = () => document.querySelectorAll('.btn--primary');
 
 it('카드가 하나도 없으면 주 버튼은 하나이고, 의미 없는 탭은 숨기고, 직접 작성 길을 한 줄로 알려 준다', () => {
@@ -47,6 +49,7 @@ it('건수를 아직 모르는 동안(조회 중)에는 빈 상태로 보지 않
 });
 
 it('카드가 있으면 상단 도구와 탭이 그대로 보이고, 묶음 요약 단위가 모두 붙는다', () => {
+  recentView();
   mount(seeded());
   expect(primaries()).toHaveLength(1);
   expect(screen.getByRole('button', { name: '레포에서 만들기' })).toBeInTheDocument();
@@ -57,6 +60,7 @@ it('카드가 있으면 상단 도구와 탭이 그대로 보이고, 묶음 요�
 });
 
 it('검색 결과가 없을 때는 필터 초기화가 다음 행동이고, 같은 이름의 주 버튼을 또 만들지 않는다', () => {
+  recentView();
   mount(seeded());
   fireEvent.change(screen.getByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: 'no-such-card-title' } });
   expect(screen.getByText('조건에 맞는 카드가 없어요')).toBeInTheDocument();

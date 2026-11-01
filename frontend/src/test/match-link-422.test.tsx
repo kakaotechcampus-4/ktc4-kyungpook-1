@@ -61,7 +61,7 @@ it('shows each evidence card kind on the match detail', async () => {
   vi.spyOn(matchingApi, 'detail').mockResolvedValue(detail);
   mount(`/match/${detail.id}`);
   const link = await screen.findByTitle(firstMet.reason);
-  expect(within(link).getByText(firstMet.cardKind === 'TECH' ? '기술 카드' : '정성 카드')).toBeInTheDocument();
+  expect(within(link).getByText(firstMet.cardKind === 'TECH' ? '기술 카드' : '경험 카드')).toBeInTheDocument();
 });
 
 async function confirmCard() {

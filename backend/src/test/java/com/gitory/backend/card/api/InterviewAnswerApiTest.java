@@ -604,6 +604,42 @@ class InterviewAnswerApiTest {
     }
 
     @Test
+    @DisplayName("답으로 네 칸이 확인 필요 없이 모두 차면 되묻기 끝을 기다리지 않고 답 저장과 함께 카드가 확정된다")
+    void answerThatCompletesAllFourSlotsConfirmsTheCard() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAsked(cardId, 1, "R", "EVIDENCE_GAP", "USER", "결과는 어땠나요?");
+        for (String slot : List.of("S", "T", "A")) {
+            fixtures.insertStatement(cardId, 1, slot, slot + " 글", "USER_STATED", null);
+        }
+
+        answer(MY_CARD, 1, "응답 시간을 절반으로 줄였다", USER_STATED)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId))
+                .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT confirmed_at IS NOT NULL FROM card WHERE id = ?", Boolean.class, cardId))
+                .isTrue();
+
+    }
+
+    @Test
+    @DisplayName("답을 저장해도 확인 필요 칸이 남으면 카드는 작성 중 그대로다")
+    void answerLeavingAReviewSlotKeepsTheCardDraft() throws Exception {
+
+        Rich rich = richCard();
+
+        answer(MY_CARD, 2, "새로 쓴 행동", USER_STATED)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, rich.cardId()))
+                .isEqualTo("DRAFT");
+
+    }
+
+    @Test
     @DisplayName("답한 칸은 옛 글의 확인 필요 표시와 커밋 근거를 잃고 질문 번호가 붙은 사용자 근거 하나가 되며, 다른 칸의 확인 필요 표시와 근거는 남고, 답한 질문은 모두 센다")
     void answeredSlotLosesReviewMarkAndCommitEvidence() throws Exception {
 

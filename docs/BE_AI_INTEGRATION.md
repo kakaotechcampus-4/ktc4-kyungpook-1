@@ -117,6 +117,31 @@ AI만 내보내려면:
 
 AI는 한 문장에 둘 이상의 조건이 있으면 각각 나눈다. 예를 들어 `4년제 졸업 및 병역필 또는 면제자`는 `EDUCATION`과 `MILITARY` 조건 두 개로 반환하며, 두 조건이 같은 `source_quote`를 가져도 된다. `RESPONSIBILITY`는 담당 업무 설명이므로 `general_type`이 항상 `null`이다. Spring은 이 값을 조건과 함께 저장하고, #532에서 일반 조건을 STAR 카드 벡터 색인에서 빼 인적사항 1차 필터에 사용한다.
 
+## 공고 본문 이미지 글 옮기기 (#372)
+
+본문이 이미지인 공고(KT·그리팅 일부 등)는 글이 없어 조건을 뽑지 못한다. Spring 이 본문 이미지를 받아 `POST /internal/job-postings/image-text` 로 넘기면, AI 가 이미지 속 글을 요약·해석하지 않고 그대로 옮겨 돌려준다. Spring 은 그 글을 지금처럼 `POST /internal/job-postings/extract` 의 `raw_text` 로 넘긴다(Spring 쪽은 #365). 요청·응답 예는 `contracts/matching/job-posting-image-text.json` 이다.
+
+| 칸 | 뜻 |
+|---|---|
+| 요청 `source`·`external_posting_id`·`company_name`·`job_title` | 공고 식별과 LLM 에 함께 보내는 회사·공고 이름 |
+| 요청 `images[]` | `media_type`(`image/jpeg`·`image/png`·`image/webp`·`image/gif`)과 `data_base64`. 1~6장, 한 장 5MB(디코딩한 바이트)까지 |
+| 응답 `text` | 이미지 순서대로 옮긴 글을 빈 줄 하나로 이은 것. 100,000자(조건 뽑기 `raw_text` 상한)를 넘으면 뒤를 자른다 |
+| 응답 `image_count`·`empty_image_count` | 읽은 이미지 수와 그중 글이 없던 이미지 수 |
+
+- 상한(6장)은 Spring `PostingImages.MAX_IMAGES` 와 같다. 한쪽을 바꾸면 다른 쪽도 바꾼다.
+- 이미지는 한 장씩 LLM 에 보낸다. 0단계(#365)에서 KT 이미지 한 장이 입력 18,045 토큰·출력 1,313 토큰·15.6초였다. 요청 마감은 180초라 Spring 의 응답 대기 제한은 그보다 길게 둔다(#365 에서 `gitory.ai.*` 로 정한다).
+- 모델은 `GITORY_JOB_POSTING_IMAGE_MODEL`(기본 `gpt-5.6-luna`)·`GITORY_JOB_POSTING_IMAGE_REASONING_EFFORT`(기본 `medium`)로 바꿀 수 있다.
+- 이미지 속 글은 데이터로만 다룬다. 이미지에 적힌 명령은 따르지 않고 다른 글처럼 옮기며, 조건 뽑기도 그 글을 데이터로 읽는다(`docs/GUARDRAILS.md`).
+
+| 실패 | HTTP | `code` | `retryable` |
+|---|---|---|---|
+| 이미지 없음·6장 초과·5MB 초과·base64 아님·모르는 형식 (LLM 을 부르지 않음) | 400 | `INVALID_PAYLOAD` | `false` |
+| 모든 이미지에서 글이 나오지 않음(빈 결과) | 422 | `EVIDENCE_MISMATCH` | `false` |
+| LLM 호출·출력 검증 실패, 요청 마감 180초 초과 | 503 | `LLM_UNAVAILABLE` | `true` |
+| LLM 설정 누락·키·권한·요청 형식 오류·출력 길이 초과 | 503 | `LLM_UNAVAILABLE` | `false` |
+
+빈 결과에 새 코드를 만들지 않은 것은 Spring 의 `AiHttpClient` 가 정해 둔 코드만 받기 때문이다. 조건 뽑기의 `EVIDENCE_MISMATCH` 처럼 공고를 조건 없이(`METADATA_ONLY`) 두면 된다.
+
 ## 연결 상태 확인
 
 ```bash

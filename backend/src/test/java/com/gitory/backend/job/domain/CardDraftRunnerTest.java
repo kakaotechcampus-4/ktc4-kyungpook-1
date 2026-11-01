@@ -465,6 +465,21 @@ class CardDraftRunnerTest {
 
     }
 
+    @Test
+    @DisplayName("봇이 단 리뷰와 줄 댓글은 로그인 대소문자와 상관없이 STAR 자료에 싣지 않는다")
+    void leavesOutBotReviews() {
+
+        insertPullRequest(repositoryId, LOGIN, "{}");
+        insertReview(1, "coderabbitai[bot]", "COMMENTED", "봇 요약", "10:00");
+        insertReviewComment(10, "Copilot-Pull-Request-Reviewer[BOT]", "봇 지적", "10:05");
+        insertReviewComment(11, "taehun0208", "사람 리뷰", "10:10");
+
+        StarMaterials sent = draftRequestFor(prCandidate()).materials();
+
+        assertThat(sent.reviews()).containsExactly("사람 리뷰");
+
+    }
+
     @ParameterizedTest
     @MethodSource("withoutMaterials")
     @DisplayName("남이 쓴 PR·다른 저장소의 PR·자료가 하나도 없는 PR·PR 이 아닌 후보는 STAR 요청에 자료를 싣지 않는다")

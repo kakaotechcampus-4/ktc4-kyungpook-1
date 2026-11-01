@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -69,6 +70,7 @@ public class StoredActivityService {
     /**
      * 카드 주인이 쓴 PR 의 연결 이슈와 리뷰·줄 댓글로, 남이 쓴 PR 이나 저장되지 않은 PR 이면 빈 값이다
      * 리뷰와 줄 댓글은 단 시각 순서로 남이 쓴 것과 카드 주인이 쓴 것을 나누고, 취소된 리뷰와 본문이 빈 리뷰는 넣지 않는다
+     * 봇이 단 리뷰·줄 댓글은 사람이 남긴 지적이 아니어서 넣지 않는다
      */
     @Transactional(readOnly = true)
     public Optional<PullRequestMaterials> findOwnPullRequestMaterials(Long userRepositoryId, int number,
@@ -90,6 +92,7 @@ public class StoredActivityService {
         storedActivity.findReviewComments(pullRequest.getRepositoryId(), pullRequest.getGithubPrNumber())
                 .forEach(comment -> notes.add(
                         new ReviewNote(comment.getCommentedAt(), comment.getAuthorLogin(), comment.getBodyExcerpt())));
+        notes.removeIf(ReviewNote::writtenByBot);
         notes.sort(Comparator.comparing(ReviewNote::at, Comparator.nullsLast(Comparator.naturalOrder())));
 
         return new PullRequestMaterials(linkedIssuesOf(pullRequest),
@@ -134,6 +137,12 @@ public class StoredActivityService {
         boolean writtenBy(String login) {
 
             return login.equalsIgnoreCase(authorLogin);
+
+        }
+
+        boolean writtenByBot() {
+
+            return authorLogin != null && authorLogin.toLowerCase(Locale.ROOT).endsWith("[bot]");
 
         }
     }

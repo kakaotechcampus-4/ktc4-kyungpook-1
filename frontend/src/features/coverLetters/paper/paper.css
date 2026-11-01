@@ -1,0 +1,101 @@
+/* 종이(#618) — ② 카드 고르기 · ⑤ 쓰는 중 · ⑥ 초안이 같은 한 장을 쓴다. 색·둥글기·글자 크기는 토큰 단계만 */
+.paper { --paper-margin: 272px; --paper-px: 56px; position: relative; display: grid; grid-template-columns: minmax(0, 1fr) var(--paper-margin); column-gap: 20px; align-items: start; }
+.paper::before { content: ''; grid-column: 1; grid-row: 1 / -1; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-sm); box-shadow: 0 1px 2px rgba(23, 23, 23, .04), 0 18px 44px rgba(23, 23, 23, .07); }
+:root[data-theme="dark"] .paper::before { box-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 18px 44px rgba(0, 0, 0, .4); }
+.paper--inline { grid-template-columns: minmax(0, 1fr); }
+.paper > * { grid-column: 1; position: relative; min-width: 0; }
+.paper > .pq__margin { grid-column: 2; }
+
+.paper__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 var(--paper-px); padding: 44px 0 18px; border-bottom: 2px solid var(--text-primary); }
+.paper__title { margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: var(--text-tracking); color: var(--text-primary); }
+.paper__meta { font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.paper__foot { display: flex; flex-direction: column; gap: 6px; margin: 0 var(--paper-px); padding: 18px 0 36px; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+.paper__foot--empty { padding-top: 0; }
+
+/* 문항 한 칸 — 'Q1.' · 문항 · 답 · 글자 수 */
+.pq { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; row-gap: 10px; margin: 0 var(--paper-px); padding: 28px 0 22px; border-bottom: 1px solid var(--border-default); }
+.pq--last { border-bottom: 0; }
+.pq__no { font-size: 13px; line-height: 24px; font-weight: 600; color: var(--text-tertiary); }
+.pq__head { grid-column: 2; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.pq__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-primary); }
+.pq__phase { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--text-secondary); white-space: nowrap; }
+.pq__phase .ai-wait__dots { padding-top: 0; gap: 3px; }
+.pq__phase .ai-wait__dots i { width: 4px; height: 4px; }
+.pq__answer { grid-column: 2; font-size: 14px; line-height: 26px; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; word-break: keep-all; min-height: 52px; }
+.pq__answer--empty { color: var(--text-tertiary); }
+.pq__card { grid-column: 2; display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 20px; color: var(--text-secondary); }
+.pq__card b { font-weight: 600; color: var(--text-primary); }
+.pq__foot { grid-column: 2; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.pq__count { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pq__count--over { color: var(--state-failed-text); font-weight: 600; }
+.pq__tools { grid-column: 2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pq__tools .right { margin-left: auto; }
+.pq__note { grid-column: 2; margin: 0; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+.pq > .cl-todo, .pq > .cl-original, .pq > .note { grid-column: 2; }
+
+/* 점검표 — 네 칸이 늘 같은 자리에, 글자로 상태를 말한다 */
+.pcheck { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.pcheck__cell { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: var(--radius-full); border: 1px solid var(--border-default); background: var(--bg-surface); font: inherit; font-size: 11px; line-height: 16px; color: var(--text-secondary); cursor: default; }
+.pcheck__cell b { font-weight: 600; color: var(--text-strong); }
+.pcheck__cell--checking { border-style: dashed; }
+.pcheck__cell--marked { background: var(--field-low-bg); border-color: transparent; color: var(--field-low-text); }
+.pcheck__cell--marked b { color: inherit; }
+.pcheck__cell--fixed { background: var(--pastel-mint); border-color: transparent; color: var(--text-strong); }
+.pcheck__cell--pass { color: var(--text-tertiary); }
+.pcheck__cell:enabled { cursor: pointer; }
+.pcheck__cell:enabled:hover { border-color: var(--border-strong); }
+
+/* 글 조각 — 쓰는 중·지움·걸린 문장·빈칸·커서 */
+.pseg--del { text-decoration: line-through; color: var(--text-tertiary); background: var(--state-failed-bg); border-radius: 2px; }
+.phl { border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.phl--open { background: var(--pastel-yellow); }
+.phl--marked { background: var(--field-low-bg); text-decoration: underline wavy var(--field-low-border); text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.phl--fixed-ai { background: var(--pastel-mint); }
+.phl--kept { text-decoration: underline dotted var(--border-strong); text-underline-offset: 4px; }
+.phl--focus { outline: 2px solid var(--accent-point); outline-offset: 2px; }
+.phl__value { font-weight: 600; }
+.pblank { background: var(--bg-inset); border-radius: var(--radius-xs); padding: 0 4px; color: var(--text-secondary); }
+.pcaret { display: inline-block; width: 2px; height: 1.15em; margin-left: 1px; vertical-align: -.22em; background: var(--accent-point); animation: pcaret 1s steps(2, start) infinite; }
+@keyframes pcaret { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .pcaret { animation: none; } }
+
+/* ⑥ 고치기 — 실제 글상자 뒤에 같은 글을 그린 층(칠하기). 글상자는 투명 */
+.pedit { grid-column: 2; position: relative; font-size: 14px; line-height: 26px; }
+.pedit__mirror { position: absolute; inset: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: keep-all; pointer-events: none; }
+/* 층의 글자는 전부 투명(mark 의 기본 글자색까지) — 칠하기·밑줄만 남고 글자는 위의 글상자가 그린다 */
+.pedit__mirror, .pedit__mirror * { color: transparent; }
+/* 층은 글상자와 줄바꿈이 같아야 한다 — 글자 폭을 바꾸는 꾸밈(빈칸 여백·굵기)은 층에서 끈다 */
+.pedit__mirror .pblank { padding: 0; }
+.pedit__mirror .phl__value { font-weight: inherit; text-decoration: underline; text-decoration-color: var(--field-low-border); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.pedit__area { position: relative; z-index: 1; display: block; width: 100%; min-height: 52px; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--text-primary); font: inherit; line-height: inherit; letter-spacing: inherit; resize: none; overflow: hidden; outline: none; overflow-wrap: anywhere; word-break: keep-all; caret-color: var(--accent-point); }
+.pedit__area:focus-visible { box-shadow: none; }
+.pedit:focus-within { box-shadow: -8px 0 0 -6px var(--accent-point); }
+
+/* 여백 메모 — 데스크톱은 오른쪽 여백에 걸린 문장 높이로, 모바일·inline 은 문항 아래 */
+.pq__margin { position: relative; }
+.pnote { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--bg-surface); border: 1px solid var(--border-default); border-left: 3px solid var(--border-strong); font-size: 12px; line-height: 18px; color: var(--text-primary); }
+.pq__margin .pnote { position: absolute; left: 0; right: 0; transition: top .25s ease; }
+.pnote--open { border-left-color: var(--caution-500); }
+.pnote--marked { border-left-color: var(--field-low-border); }
+.pnote--fixed-ai, .pnote--fixed-user { border-left-color: var(--border-selected); }
+.pnote--focus { box-shadow: var(--focus); }
+.pnote__head { display: flex; align-items: center; gap: 6px; font-size: 11px; line-height: 16px; color: var(--text-tertiary); }
+.pnote__status { margin-left: auto; font-weight: 600; color: var(--text-secondary); }
+.pnote--marked .pnote__status { color: var(--field-low-text); }
+.pnote__orig { margin: 0; font-size: 11px; line-height: 16px; color: var(--text-tertiary); }
+.pnote__item { display: flex; flex-direction: column; gap: 1px; }
+.pnote__who { font-size: 11px; line-height: 16px; font-weight: 600; color: var(--text-strong); }
+.pnote__reason { color: var(--text-secondary); }
+.pnotes-inline { grid-column: 2; display: flex; flex-direction: column; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { .pq__margin .pnote { transition: none; } }
+
+@media (max-width: 1100px) {
+  .paper { grid-template-columns: minmax(0, 1fr); }
+  .paper > .pq__margin { display: none; }
+}
+@media (max-width: 640px) {
+  .paper { --paper-px: 18px; }
+  .paper__head { padding-top: 26px; }
+  .pq { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
+  .pq__head, .pq__answer, .pq__card, .pq__foot, .pq__tools, .pq__note, .pedit, .pnotes-inline, .pq > .cl-todo, .pq > .cl-original, .pq > .note { grid-column: 1; }
+}

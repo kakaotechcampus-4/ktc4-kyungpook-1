@@ -154,7 +154,9 @@ export function InterviewPage() {
             </>
           ) : ask.isPending ? <AiWait label={`카드와 커밋을 읽고 ${ask.variables ? starFieldShort[ask.variables] : ''} 칸에 맞는 질문을 만드는 중이에요`} /> : (
             <>
-              {capReached ? (
+              {card.status === 'CONFIRMED' ? (
+                <Note strong="네 칸이 모두 차서 카드를 확정했어요" tone="inset">확정한 카드는 공고 매칭에 쓰여요. 카드에서 바로 고칠 수 있어요</Note>
+              ) : capReached ? (
                 <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채우시면 돼요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>

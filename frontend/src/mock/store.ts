@@ -415,6 +415,11 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   c.interviewTurns = db.interview[c.id].filter((t) => t.answer).length;
   if (c.generation?.partial) c.generation = null;
   captureVersion(c);
+  // 실서버처럼 답으로 네 칸이 확인 필요 없이 모두 차면 확정한다(확정본은 남기지 않는다)
+  if (Object.values(starStates(c)).every((state) => state === 'FILLED')) {
+    c.status = 'CONFIRMED';
+    c.confirmedAt = now();
+  }
   return c;
 }
 

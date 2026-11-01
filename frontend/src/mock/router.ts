@@ -1,4 +1,4 @@
-import { ACTIVITY_TYPES, CardMetadataPatch } from '@/api/schemas';
+import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas';
 import { mockMatchDetail, mockMatchList } from './matching';
 import { getProfile, putProfile } from './profile';
 import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
@@ -8,10 +8,11 @@ import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, list
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
+import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, starStates } from './store';
 import { now } from './fixtures';
 import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
+import { starFieldShort } from '@/lib/labels';
 
 type Any = Record<string, any>;
 export type MockResult = { status: number; data: unknown; error: { code: string; message: string } | null };
@@ -382,7 +383,13 @@ on('POST', '/cards/:id/interview', ({ params, body }) => {
     // 실서버처럼 field 가 없으면 빈 칸 중 아직 닫히지 않은 칸을 고르고, 없으면 더 물을 것이 없다(null)
     const v = c.versions[c.versions.length - 1];
     const next = STAR.find((f) => isCardBlank(v[FIELD_KEY[f]] ?? '') && !asked.some((t: Any) => t.field === f && t.outcome === 'SKIPPED'));
-    return ok(next ? askTurn(c, next) : null);
+    if (next) return ok(askTurn(c, next, `${starFieldShort[next as StarField]} 칸이 비어 있어 먼저 물어볼게요`));
+    // 실서버처럼 AI 가 끝내면 이유를 남기고, 네 칸이 확인 필요 없이 다 찼으면 확정한다
+    c.interviewEndReason = '더 물을 빈 칸이 없어 질문을 마칠게요';
+    if (Object.values(starStates(c)).every((state) => state === 'FILLED')) {
+      c.status = 'CONFIRMED'; c.confirmedAt = now();
+    }
+    return ok(null);
   }
   if (!['S', 'T', 'A', 'R'].includes(body.field)) return fail(400, 'BAD_FIELD', 'field 는 S/T/A/R 중 하나여야 합니다');
   return ok(askTurn(c, body.field));

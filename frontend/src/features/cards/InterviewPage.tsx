@@ -105,6 +105,8 @@ export function InterviewPage() {
   const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}`, state: location.state }, { label: '답변하기' }];
   const askable = STAR_FIELDS.filter((f) => !closedFields.has(f));
   const weakFields = askable.filter((f) => !card.version[fieldKey[f]] || card.lowConfidenceFields.some((l) => l.field === f));
+  const confirmed = card.status === 'CONFIRMED';
+  const endReason = card.interviewEndReason ?? null;
   const anyFilled = STAR_FIELDS.some((f) => card.version[fieldKey[f]]);
 
   return (
@@ -166,6 +168,8 @@ export function InterviewPage() {
             <>
               <div className="stack" style={{ gap: 6 }}>
                 <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{open.field} 칸</Badge><span className="t-12 c-2">{starFieldName[open.field]}</span></div>
+                {/* AI 가 쓴 글이라 카드 문장과 섞이지 않게 'AI 판단' 으로 따로 보인다 */}
+                {open.reason && <p className="row t-12 c-2" style={{ gap: 6, margin: 0 }}><Badge kind="NEUTRAL">AI 판단</Badge>{open.reason}</p>}
                 <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
                 <details className="interview-evidence"><summary>질문 근거 보기</summary>
                 <div className="found" style={{ gridTemplateColumns: '1fr' }}>
@@ -192,13 +196,15 @@ export function InterviewPage() {
             </>
           ) : ask.isPending ? <AiWait label={`카드와 커밋을 읽고 ${ask.variables ? starFieldShort[ask.variables] : ''} 칸에 맞는 질문을 만드는 중이에요`} /> : (
             <>
-              {card.status === 'CONFIRMED' ? (
-                <Note strong="네 칸이 모두 차서 카드를 확정했어요" tone="inset">확정한 카드는 공고 매칭에 쓰여요. 카드에서 바로 고칠 수 있어요</Note>
+              {confirmed ? (
+                <Note strong="네 칸이 모두 차서 카드를 확정했어요" tone="inset">
+                  {endReason && <>AI 판단: {endReason}<br /></>}확정한 카드는 공고 매칭에 쓰여요. 카드에서 바로 고칠 수 있어요
+                </Note>
               ) : capReached ? (
                 <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채우시면 돼요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
-                  {aiDone && <Note strong="AI 가 더 물을 것이 없다고 판단했어요" tone="inset">카드를 확인하고 확정하세요. 더 채우고 싶은 칸이 있으면 골라서 물을 수 있어요.</Note>}
+                  {aiDone && <Note strong="AI 가 더 물을 것이 없다고 판단했어요" tone="inset">{endReason && <>AI 판단: {endReason}<br /></>}카드를 확인하고 확정하세요. 더 채우고 싶은 칸이 있으면 골라서 물을 수 있어요.</Note>}
                   <span className="w-600" style={{ fontSize: 14 }}>{aiDone ? '더 묻고 싶은 칸' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                     {!aiDone && <Button variant="outline" size="sm" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</Button>}
@@ -207,7 +213,9 @@ export function InterviewPage() {
                 </div>
               )}
               <div className="row" style={{ gap: 8 }}>
-                {aiDone || capReached
+                {confirmed
+                  ? <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
+                  : aiDone || capReached
                   ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 확인하고 확정하기</Button>
                   : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
                 <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정</Button>

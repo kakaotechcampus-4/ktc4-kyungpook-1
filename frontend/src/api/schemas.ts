@@ -409,6 +409,8 @@ export const Card = z.object({
   // AI 초안을 채우지 못한 이유(#419). 데모 데이터처럼 값이 없으면 실패 없음이다
   draftFailure: z.enum(['GITHUB_UNAUTHORIZED', 'AI_UNAVAILABLE', 'INTERNAL_ERROR']).nullable().optional(),
   interviewTurns: z.number(),
+  // AI 가 되묻기를 그만두기로 한 이유 한 줄(#430). 끝내지 않았거나 그 뒤 새 질문을 만들었으면 null 이다
+  interviewEndReason: z.string().nullish(),
   confirmedAt: z.string().nullable(),
   createdAt: z.string(),
 });
@@ -478,6 +480,8 @@ export const InterviewTurn = z.object({
   answer: z.object({ text: z.string(), source: EvidenceType }).nullable(),
   // 질문이 어떻게 끝났는지. 답 전이면 null 이고, 데모 데이터처럼 값이 없으면 null 로 본다
   outcome: TurnOutcome.nullable().optional().transform((value) => value ?? null),
+  // AI 가 이 칸을 고른 이유 한 줄(#430). 사용자가 칸을 골랐거나 AI 가 실패해 틀 질문을 썼으면 null 이다
+  reason: z.string().nullable().optional().transform((value) => value ?? null),
   remaining: z.number(),
   maxTurns: z.number(), // 상한은 서버 정책이다. 화면 상수로 두지 않는다
 });

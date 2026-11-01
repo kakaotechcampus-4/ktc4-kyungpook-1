@@ -1520,6 +1520,46 @@
         "title": "CommitInput",
         "type": "object"
       },
+      "ConditionJudgement": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "met_by": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionSupport"
+            },
+            "title": "Met By",
+            "type": "array"
+          }
+        },
+        "required": [
+          "condition_id"
+        ],
+        "title": "ConditionJudgement",
+        "type": "object"
+      },
+      "ConditionSupport": {
+        "additionalProperties": false,
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "reason"
+        ],
+        "title": "ConditionSupport",
+        "type": "object"
+      },
       "ConsideredCard": {
         "properties": {
           "card_id": {
@@ -2657,6 +2697,43 @@
           "meta"
         ],
         "title": "Envelope[JobPostingPruneResult]",
+        "type": "object"
+      },
+      "Envelope_MatchJudgementResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchJudgementResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[MatchJudgementResult]",
         "type": "object"
       },
       "Envelope_MatchingResponse_": {
@@ -4067,6 +4144,112 @@
         "title": "JobPostingStatus",
         "type": "string"
       },
+      "JudgeCard": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "card_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Card Id",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "situation": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Situation"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task"
+          },
+          "techs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Techs",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "title"
+        ],
+        "title": "JudgeCard",
+        "type": "object"
+      },
+      "JudgeCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "criterion_type": {
+            "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "condition_id",
+          "criterion_type",
+          "text"
+        ],
+        "title": "JudgeCondition",
+        "type": "object"
+      },
       "KnownAnswer": {
         "additionalProperties": false,
         "properties": {
@@ -4108,6 +4291,67 @@
           "text"
         ],
         "title": "KnownAnswer",
+        "type": "object"
+      },
+      "MatchJudgementRequest": {
+        "additionalProperties": false,
+        "description": "조건은 필수·우대만 받는다. 학력·어학 같은 일반 조건은 Spring 이 인적사항으로 비교하므로 보내지 않는다.",
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCard"
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "title": "Cards",
+            "type": "array"
+          },
+          "company_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCondition"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Conditions",
+            "type": "array"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_name",
+          "job_title",
+          "conditions",
+          "cards"
+        ],
+        "title": "MatchJudgementRequest",
+        "type": "object"
+      },
+      "MatchJudgementResult": {
+        "additionalProperties": false,
+        "properties": {
+          "judgements": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionJudgement"
+            },
+            "title": "Judgements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "judgements"
+        ],
+        "title": "MatchJudgementResult",
         "type": "object"
       },
       "MatchingRequest": {
@@ -7276,6 +7520,77 @@
         "summary": "Extract Job Posting Detail",
         "tags": [
           "job-postings"
+        ]
+      }
+    },
+    "/internal/matching/judgements": {
+      "post": {
+        "description": "공고 하나의 필수·우대 조건(최대 30개)과 카드(최대 40장)를 받아, 조건마다 채우는 카드와 한 줄 이유를 모두 돌려줍니다. met_by 에 없는 (카드, 조건) 짝은 못 채움입니다. 기술 이름만 같은 카드는 채움이 아니고, 연차·학위 같은 꼬리 조건은 보지 않습니다. 마감 안에 규칙에 맞는 답을 받지 못하면 503 LLM_UNAVAILABLE 이고, 저장은 Spring 이 합니다.",
+        "operationId": "judge_conditions_internal_matching_judgements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchJudgementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MatchJudgementResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
+          }
+        },
+        "summary": "공고 조건마다 그 조건을 실제로 채우는 카드 고르기",
+        "tags": [
+          "matching"
         ]
       }
     },

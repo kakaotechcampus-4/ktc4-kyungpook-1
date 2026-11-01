@@ -46,6 +46,7 @@ UNCHANGED_RESULT = {
     "content_hash": "a" * 64,
     "outcome": "UNCHANGED",
     "content_status": "READY",
+    "extraction_version": 2,
 }
 
 
@@ -59,16 +60,21 @@ class FakeExtractionModel:
         criteria: list[JobCriterion],
         extracted_experience: ExtractedExperience | None = None,
         job_category: str = "BACKEND",
+        team_techs: list[str] | None = None,
     ) -> None:
         self.criteria = criteria
         self.experience = extracted_experience or experience()
         self.job_category = job_category
+        self.team_techs = team_techs or []
         self.calls = 0
 
     def extract(self, request):
         self.calls += 1
         return ExtractedPosting(
-            criteria=self.criteria, experience=self.experience, job_category=self.job_category
+            criteria=self.criteria,
+            team_techs=self.team_techs,
+            experience=self.experience,
+            job_category=self.job_category,
         )
 
 
@@ -359,22 +365,116 @@ def test_english_word_inside_a_longer_word_does_not_count_as_in_the_quote() -> N
     assert [c.text for c in result.criteria] == ["JavaScript 개발 경험이 필요합니다."]
 
 
-def test_same_content_hash_skips_llm_call() -> None:
+def test_same_content_hash_and_extraction_version_skips_llm_call() -> None:
     model = FakeExtractionModel(valid_criteria())
     extractor = JobPostingDetailExtractor(model)
     content_hash = hashlib.sha256(RAW_TEXT.strip().encode("utf-8")).hexdigest()
 
     result = extractor.extract(
         JobPostingDetailExtractionRequest.model_validate(
-            request_payload(previous_content_hash=content_hash)
+            request_payload(previous_content_hash=content_hash, previous_extraction_version=2)
         )
     )
 
     assert result.outcome == "UNCHANGED"
+    assert result.extraction_version == 2
     assert result.criteria == []
     assert result.experience is None
     assert result.job_category is None
     assert model.calls == 0
+
+
+@pytest.mark.parametrize("previous_version", [None, 1], ids=["버전 없음(지금 서버)", "옛 버전"])
+def test_same_content_hash_with_missing_or_older_version_is_read_again(previous_version) -> None:
+    """읽는 방식이 바뀌면 본문이 그대로인 공고도 한 번 다시 읽어, 새로 뽑는 값이 빈 공고가 남지 않게 한다."""
+    model = FakeExtractionModel(valid_criteria())
+    content_hash = hashlib.sha256(RAW_TEXT.strip().encode("utf-8")).hexdigest()
+    payload = request_payload(previous_content_hash=content_hash)
+    if previous_version is not None:
+        payload["previous_extraction_version"] = previous_version
+
+    result = JobPostingDetailExtractor(model).extract(JobPostingDetailExtractionRequest.model_validate(payload))
+
+    assert model.calls == 1
+    assert result.outcome == "UPDATED"
+    assert result.extraction_version == 2
+
+
+def test_tech_labels_stay_only_on_required_and_preferred_technical_criteria() -> None:
+    """담당 업무·일반 조건에 붙은 이름표는 지우고, 같은 이름표는 한 번만 남겨 기술 겹침을 부풀리지 않는다."""
+    raw_text = "담당 업무\nSpring 서버 개발\n자격 요건\nJava, Spring Boot 경험\n영어로 Java 문서 작성 가능\n우대 사항\nKafka 경험"
+    criteria = [
+        JobCriterion(criterion_type="RESPONSIBILITY", text="Spring 서버 개발", source_quote="Spring 서버 개발",
+                     techs=["SPRING"]),
+        JobCriterion(criterion_type="REQUIRED", text="Java, Spring Boot 경험", source_quote="Java, Spring Boot 경험",
+                     techs=["JAVA", "SPRING", "JAVA"]),
+        JobCriterion(criterion_type="REQUIRED", general_type="LANGUAGE", text="영어로 Java 문서 작성 가능",
+                     source_quote="영어로 Java 문서 작성 가능", techs=["JAVA"]),
+        JobCriterion(criterion_type="PREFERRED", text="Kafka 경험", source_quote="Kafka 경험", techs=["KAFKA"]),
+    ]
+
+    result = JobPostingDetailExtractor(FakeExtractionModel(criteria)).extract(
+        JobPostingDetailExtractionRequest.model_validate(request_payload(raw_text=raw_text))
+    )
+
+    assert [criterion.techs for criterion in result.criteria] == [[], ["JAVA", "SPRING"], [], ["KAFKA"]]
+
+
+def test_team_techs_come_back_with_duplicates_removed() -> None:
+    model = FakeExtractionModel(valid_criteria(), team_techs=["KOTLIN", "SPRING", "KOTLIN", "AWS"])
+
+    result = JobPostingDetailExtractor(model).extract(
+        JobPostingDetailExtractionRequest.model_validate(request_payload())
+    )
+
+    assert result.team_techs == ["KOTLIN", "SPRING", "AWS"]
+
+
+def test_education_level_and_exemption_stay_only_on_education_criteria() -> None:
+    """학력이 아닌 조건에 붙은 학력 값은 지워, 인적사항 거르기가 엉뚱한 조건으로 사람을 거르지 않게 한다."""
+    raw_text = "자격 요건\n학사 이상 또는 그에 준하는 경력\nJava 경험\n석사 이상"
+    criteria = [
+        JobCriterion(criterion_type="REQUIRED", general_type="EDUCATION", text="학사 이상 또는 그에 준하는 경력",
+                     source_quote="학사 이상 또는 그에 준하는 경력", education_level="BACHELOR",
+                     education_exempt=True),
+        JobCriterion(criterion_type="REQUIRED", text="Java 경험", source_quote="Java 경험",
+                     education_level="MASTER", education_exempt=True),
+        JobCriterion(criterion_type="PREFERRED", general_type="EDUCATION", text="석사 이상",
+                     source_quote="석사 이상", education_level="MASTER"),
+    ]
+
+    result = JobPostingDetailExtractor(FakeExtractionModel(criteria)).extract(
+        JobPostingDetailExtractionRequest.model_validate(request_payload(raw_text=raw_text))
+    )
+
+    assert [(c.education_level, c.education_exempt) for c in result.criteria] == [
+        ("BACHELOR", True),
+        (None, False),
+        ("MASTER", False),
+    ]
+
+
+def test_request_rejects_an_extraction_version_below_one() -> None:
+    with pytest.raises(ValidationError):
+        JobPostingDetailExtractionRequest.model_validate(request_payload(previous_extraction_version=0))
+
+
+def test_unknown_tech_label_is_rejected_by_model_output_schema() -> None:
+    payload = {
+        "criteria": [
+            {"criterion_type": "REQUIRED", "text": "PHP", "source_quote": "PHP", "techs": ["PHP"]}
+        ],
+        "experience": {"level": "UNSPECIFIED"},
+        "job_category": "BACKEND",
+    }
+
+    with pytest.raises(ValidationError):
+        ExtractedPosting.model_validate(payload)
+
+
+def test_unchanged_result_cannot_carry_team_techs() -> None:
+    with pytest.raises(ValidationError):
+        JobPostingDetailExtractionResult.model_validate({**UNCHANGED_RESULT, "team_techs": ["JAVA"]})
 
 
 def test_no_explicit_condition_marks_posting_metadata_only() -> None:

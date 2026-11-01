@@ -441,7 +441,7 @@ export function askTurn(c: Any, field: string) {
     turnNo: turns.length + 1, field, askedBy: 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
     found: found.length ? found : ['이 카드에 붙은 커밋 근거가 없습니다'],
-    missing: [bank.missing], question: bank.question, options: bank.options, answer: null,
+    missing: [bank.missing], question: bank.question, options: bank.options, answer: null, outcome: null,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };
@@ -453,6 +453,7 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
   if (!turn) return null;
   turn.answer = { text, source }; // 가공 없이 그대로
+  turn.outcome = 'ANSWERED';
   pushVersion(c, 'INTERVIEW', { [FIELD_KEY[turn.field]]: text });
   c.evidence.push({ field: turn.field, type: source, authoredBy: 'USER', sha: null, url: null, snippet: null, turnNo });
   c.droppedFields = c.droppedFields.filter((d: Any) => d.field !== turn.field);
@@ -460,6 +461,13 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   c.interviewTurns = db.interview[c.id].filter((t) => t.answer).length;
   if (c.generation?.partial) c.generation = null;
   captureVersion(c);
+  return c;
+}
+
+export function skipTurn(c: Any, turnNo: number) {
+  const turn = db.interview[c.id]?.find((t) => t.turnNo === turnNo);
+  if (!turn) return null;
+  turn.outcome = 'SKIPPED';
   return c;
 }
 

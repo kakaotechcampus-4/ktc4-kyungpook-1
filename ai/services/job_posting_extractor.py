@@ -10,9 +10,11 @@ from typing import Optional, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from schemas.common import TechTag
 from schemas.matching import (
     ExperienceLevel,
     ExtractionOutcome,
+    GeneralConditionType,
     JobCategory,
     JobCriterion,
     JobCriterionType,
@@ -24,6 +26,10 @@ from schemas.matching import (
 from services.llm_settings import EnvironmentLLMClient
 from services.llm_structured_client import LLMStructuredCallError
 
+
+# 프롬프트나 뽑는 값이 바뀌면 올린다
+# Spring 이 보낸 번호가 다르면 본문이 같아도 다시 읽으므로, 올린 직후 한 번 모든 공고를 다시 읽는다
+EXTRACTION_VERSION = 2
 
 # 추론 토큰도 이 상한 안에 세고 조건마다 원문 인용이 붙어, 조건이 많은 긴 공고도 답이 잘리지 않게 넉넉히 둔다
 MAX_COMPLETION_TOKENS = 6_000
@@ -50,6 +56,16 @@ text에는 source_quote에 나온 말만 사용해 요약하고, 인용에 없�
 text에 '필수', '우대', '자격 요건' 같은 문단 표시어를 넣지 않는다. 종류는 criterion_type으로만 나타낸다.
 경력 요건은 criteria에 넣지 않고 experience에만 적는다.
 광고 문구, 복지, 회사 소개, 채용 담당자 개인정보는 제외한다.
+
+techs: REQUIRED·PREFERRED 기술 조건마다 source_quote에 이름이 나온 기술만 출력 형식의 기술 이름표로 적는다.
+표기가 달라도 같은 기술이면 같은 이름표를 쓴다. 예: 스프링부트·Spring Boot → SPRING, k8s → KUBERNETES, Postgres → POSTGRESQL, Node → NODEJS.
+기술 이름이 없는 조건(예: "메시지 큐 운영 경험", "대용량 트래픽 처리 경험")은 짐작해 붙이지 않고 빈 배열로 둔다. 이름표 목록에 없는 기술은 적지 않는다.
+RESPONSIBILITY와 일반 조건(general_type이 있는 조건)의 techs는 빈 배열이다.
+team_techs: 자격 요건·우대 사항 문단 밖의 '기술 스택'·'사용 기술'·'Tech Stack' 목록에 적힌 기술을 같은 이름표로 적는다. 그런 목록이 없으면 빈 배열이다.
+education_level: EDUCATION 조건에만, 지원할 수 있는 가장 낮은 학력을 적는다.
+- HIGH_SCHOOL(고졸), ASSOCIATE(전문학사·2~3년제), BACHELOR(학사·4년제 졸업), MASTER(석사), DOCTOR(박사)
+- 학력 수준이 적혀 있지 않은 학력 조건(예: 컴퓨터 관련 전공)은 null이다.
+education_exempt: EDUCATION 조건의 같은 문장에 '또는 그에 준하는 경력', '동등 이상의 경력', '학력 무관', '전공 무관' 같은 예외가 있으면 true, 없으면 false다.
 
 experience: 공고마다 하나다. 본문에 적힌 경력만 쓴다.
 신입이 지원할 수 있다고 적은 표현(신입 지원 가능·경력 무관·인턴·최소 0년)이 하나라도 있으면 level은 ENTRY이고 min_years는 비운다.
@@ -102,6 +118,7 @@ class ExtractedPosting(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     criteria: list[JobCriterion] = Field(default_factory=list, max_length=100)
+    team_techs: list[TechTag] = Field(default_factory=list, max_length=20)
     experience: ExtractedExperience
     job_category: JobCategory
 
@@ -151,7 +168,10 @@ class JobPostingDetailExtractor:
     ) -> JobPostingDetailExtractionResult:
         raw_text = request.raw_text.strip()
         content_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
-        if request.previous_content_hash == content_hash:
+        if (
+            request.previous_content_hash == content_hash
+            and request.previous_extraction_version == EXTRACTION_VERSION
+        ):
             return JobPostingDetailExtractionResult(
                 source=request.source,
                 external_posting_id=request.external_posting_id,
@@ -159,6 +179,7 @@ class JobPostingDetailExtractor:
                 content_hash=content_hash,
                 outcome=ExtractionOutcome.UNCHANGED,
                 content_status=request.previous_content_status,
+                extraction_version=EXTRACTION_VERSION,
                 criteria=[],
             )
 
@@ -179,7 +200,9 @@ class JobPostingDetailExtractor:
                 if criteria
                 else JobPostingContentStatus.METADATA_ONLY
             ),
+            extraction_version=EXTRACTION_VERSION,
             criteria=criteria,
+            team_techs=_unique(extracted.team_techs),
             job_category=extracted.job_category,
             experience=self._validate_experience(
                 extracted.experience, raw_text, request.external_posting_id
@@ -238,7 +261,7 @@ class JobPostingDetailExtractor:
             key = (criterion.criterion_type.value, criterion.general_type, text.casefold())
             if key not in seen:
                 seen.add(key)
-                result.append(criterion.model_copy(update={"text": text}))
+                result.append(criterion.model_copy(update={"text": text, **_labels(criterion)}))
         if dropped:
             logger.warning(
                 "공고 조건 제외: posting=%s count=%d types=%s",
@@ -256,6 +279,27 @@ class JobPostingDetailExtractor:
             # 모델이 조건을 냈는데 전부 빠진 결과를 저장하면 해시가 남아 다음 수집에서 다시 뽑지 않는다.
             raise JobPostingEvidenceMismatch("추출된 조건이 모두 근거 검증에서 빠졌습니다.")
         return result
+
+
+def _labels(criterion: JobCriterion) -> dict:
+    """기술 이름표는 필수·우대 기술 조건에만, 학력 값은 학력 조건에만 남긴다.
+
+    매칭은 이름표로 기술 겹침을, 학력 값으로 인적사항 거르기를 하므로 엉뚱한 조건에 붙은 값은 점수와 거르기를 틀리게 한다.
+    """
+    technical = (
+        criterion.criterion_type is not JobCriterionType.RESPONSIBILITY
+        and criterion.general_type is None
+    )
+    education = criterion.general_type is GeneralConditionType.EDUCATION
+    return {
+        "techs": _unique(criterion.techs) if technical else [],
+        "education_level": criterion.education_level if education else None,
+        "education_exempt": criterion.education_exempt if education else False,
+    }
+
+
+def _unique(tags: list[TechTag]) -> list[TechTag]:
+    return list(dict.fromkeys(tags))
 
 
 def _checked_experience(experience: ExtractedExperience, raw_text: str) -> Optional[dict]:

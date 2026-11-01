@@ -276,12 +276,16 @@ class QuestionWriter:
         return target_length(question.char_limit, self._limits.target_ratio)
 
     async def _write(self, payload: dict[str, Any], deadline: float, qid: int, round_no: int) -> str:
-        """round_no 0 은 첫 초안, 1 부터는 고쳐 쓰는 바퀴이고, 스트리밍 API 가 들으면 쓰는 도중의 글을 보낸다."""
+        """round_no 0 은 첫 초안, 1 부터는 고쳐 쓰는 바퀴이고, 스트리밍 API 가 들으면 글을 보낸다.
+
+        고쳐 쓰는 바퀴는 다 쓴 글만 보낸다. 새 글을 첫 문장부터 보내면 화면이 앞 글 전체와 새 글 앞부분을 견줘
+        바뀌지 않은 문장까지 지운 것으로 보이기 때문이다.
+        """
         streamer = text_streamer(qid, round_no)
         output: WriteOutput = await call_until_valid(
             self._write_client, WRITE_PROMPT, payload, WriteOutput, self._limits.write_max_completion_tokens,
             lambda out: None if out.text.strip() else "빈 초안", deadline, self._limits, "문항 쓰기",
-            on_partial=None if streamer is None else streamer.feed,
+            on_partial=None if streamer is None or round_no > 0 else streamer.feed,
         )
         text = output.text.strip()
         if streamer is not None:

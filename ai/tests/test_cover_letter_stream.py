@@ -135,6 +135,22 @@ def test_rewritten_text_is_sent_as_the_next_round() -> None:
     assert sent == [(0, True), (1, True)]
 
 
+def test_a_rewrite_round_sends_only_the_finished_text() -> None:
+    """첫 초안은 쓰는 도중의 문장을 보내지만, 고쳐 쓰는 바퀴는 다 쓴 글만 보내 화면이 앞 글과 통째로 견주게 한다."""
+    client = FakeClient({
+        WriteOutput: [WriteOutput(text="주문 처리량을 30% 늘렸습니다."), WriteOutput(text="주문 처리량을 늘렸습니다.")],
+        DecideOutput: [DecideOutput(decisions=[DecisionItem(index=1, action="FIX")])],
+        ReviewOutput: [ReviewOutput(findings=[])],
+    }, partials=[{"text": "주문 처리량을 늘렸습니다. 다음"}])
+    sent: list[tuple[int, bool]] = []
+
+    with listening(lambda step, done, total, item: sent.append((item["round"], item["done"]))
+                   if item["kind"] == "DRAFT_TEXT" else None):
+        asyncio.run(CoverLetterDrafter(client, client, NO_TARGET).draft(DraftsRequest.model_validate(DRAFTS_REQUEST)))
+
+    assert sent == [(0, False), (0, True), (1, True)]
+
+
 def test_reverted_rewrite_sends_the_kept_text_again() -> None:
     """검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 남긴 앞 글을 그 바퀴의 글로 다시 보내, 화면에 버린 글이 남지 않게 한다."""
     kept = "배포를 자동화했습니다."

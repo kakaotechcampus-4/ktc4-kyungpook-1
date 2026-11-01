@@ -7,7 +7,7 @@
  *  - 모르는 값(kind·code·material)과 비어 있는 값은 지어내지 않고 그 부분만 뺀다.
  *  - 문구는 이 기능에만 쓰여 labels.ts 를 건드리지 않으려고 여기 둔다(다른 PR 과 겹치는 파일을 줄이려고).
  */
-import type { DraftMaterial, DraftStep, DraftStepKind } from '@/api/schemas';
+import type { DraftMaterial, DraftStep, DraftStepKind, StarField } from '@/api/schemas';
 import { starFieldShort } from '@/lib/labels';
 
 /** 한 줄로 그릴 단계 */
@@ -40,23 +40,27 @@ const flagText = (code: string | null, value: string | null): string => {
 /** 목적어를 같이 둬 받침에 따라 을/를 을 가를 일이 없게 한다 */
 const openedText: Record<DraftMaterial, string> = { ISSUE: '이슈를 열어 봤어요', REVIEW: '리뷰를 열어 봤어요', OWNER_REPLY: '답글을 열어 봤어요' };
 
-/** 단계 하나의 문장. 칸 단계인데 칸을 모르면 무엇에 대한 말인지 알 수 없어 null(건너뜀) */
-function lineOf(step: DraftStep, index: number): DraftStepLine | null {
+/**
+ * 단계 하나의 문장. 칸 단계인데 칸을 모르면 무엇에 대한 말인지 알 수 없어 null(건너뜀).
+ * bare 면 "결과 칸:" 머리말을 떼고 한 일만 쓴다 — 이미 칸 옆에 붙여 보여 줄 때(카드를 쓰는 동안의 화면, #617) 칸 이름이 겹쳐 읽히지 않게 한다.
+ */
+function lineOf(step: DraftStep, index: number, bare = false): DraftStepLine | null {
   const { kind, field } = step;
   const base = { index, kind, detail: null as string | null, reason: null as string | null };
   if (kind === 'DRAFT') return { ...base, text: 'GitHub 기록으로 초안을 썼어요' };
   if (!field) return null;
   const where = `${starFieldShort[field]} 칸`;
+  const say = (phrase: string) => bare ? phrase : `${where}: ${phrase}`;
   // AI 가 쓴 글은 코드가 한 단계에 붙어 오면 계약 위반이다. 누가 쓴 글인지 확인할 수 없으니 AI 의 판단으로 내세우지 않는다
   const reason = step.actor === 'CODE' ? null : step.reason?.trim() || null;
   const value = step.value?.trim() || null;
   switch (kind) {
-    case 'FLAG': return { ...base, reason, text: `${where}: ${flagText(step.code, value)}` };
-    case 'OPEN': return { ...base, reason, detail: value, text: `${where}: ${step.material ? openedText[step.material] : '자료를 열어 봤어요'}` };
-    case 'RETRY': return { ...base, reason, text: `${where}: 자료 없이 고쳐 쓰기로 했어요` };
-    case 'KEEP': return { ...base, reason, text: `${where}: 그대로 두기로 했어요` };
-    case 'REWRITE': return { ...base, reason, text: `${where}을 다시 썼어요` };
-    case 'PASS': return { ...base, reason, text: `${where}: 다시 검사해서 통과했어요` };
+    case 'FLAG': return { ...base, reason, text: say(flagText(step.code, value)) };
+    case 'OPEN': return { ...base, reason, detail: value, text: say(step.material ? openedText[step.material] : '자료를 열어 봤어요') };
+    case 'RETRY': return { ...base, reason, text: say('자료 없이 고쳐 쓰기로 했어요') };
+    case 'KEEP': return { ...base, reason, text: say('그대로 두기로 했어요') };
+    case 'REWRITE': return { ...base, reason, text: bare ? '다시 썼어요' : `${where}을 다시 썼어요` };
+    case 'PASS': return { ...base, reason, text: say('다시 검사해서 통과했어요') };
     default: return null; // 타입에는 없지만 스키마를 거치지 않은 값이 와도 화면은 깨지지 않는다
   }
 }
@@ -64,11 +68,13 @@ function lineOf(step: DraftStep, index: number): DraftStepLine | null {
 /**
  * 서버가 준 단계 → 화면 묶음. 값이 없거나 그릴 단계가 하나도 없으면 [] 라서 구역 자체를 그리지 않는다.
  * 바퀴가 둘 이상일 때만 바퀴 이름을 붙인다(첫 초안만 있는 카드에 '첫 초안과 검사' 제목은 군더더기다).
+ * onlyField 를 주면 그 칸의 단계만 골라 "결과 칸:" 머리말 없이 쓴다(칸 하나에 붙여 보일 때). 카드 전체 단계(초안 쓰기)는 칸이 없어 빠진다.
  */
-export function draftStepGroups(steps: readonly DraftStep[] | null | undefined): DraftStepGroup[] {
+export function draftStepGroups(steps: readonly DraftStep[] | null | undefined, onlyField?: StarField): DraftStepGroup[] {
   const groups: DraftStepGroup[] = [];
   (steps ?? []).forEach((step, index) => {
-    const line = lineOf(step, index);
+    if (onlyField && step.field !== onlyField) return;
+    const line = lineOf(step, index, !!onlyField);
     if (!line) return;
     const last = groups[groups.length - 1];
     if (last && last.round === step.round) last.lines.push(line);

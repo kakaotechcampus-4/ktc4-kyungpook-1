@@ -41,6 +41,7 @@ export function errorView(error: unknown, context: 'read' | 'write' = 'write'): 
     const messages: Record<string, string> = {
       CARD_CONFIRMED: '확정된 카드는 다시 열어야 수정할 수 있어요.',
       INTERVIEW_CAP: '질문 횟수를 모두 사용했어요. 남은 내용은 직접 수정해 주세요.',
+      INTERVIEW_FIELD_CLOSED: '넘긴 칸은 다시 묻지 않아요. 다른 칸을 골라 주세요.',
       NOT_CONFIRMABLE: '상황과 행동을 작성한 뒤 확정해 주세요.',
       BAD_FIELD: '보완할 항목을 다시 선택해 주세요.',
       NO_CANDIDATES: '카드로 만들 경험을 먼저 선택해 주세요.',

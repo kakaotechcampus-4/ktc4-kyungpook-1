@@ -31,6 +31,7 @@ for (const width of [320, 390, 1440]) test(`weak candidates search, manual selec
 });
 
 test('created cards keep only the new batch as their navigation order', async ({ page }) => {
+  test.setTimeout(120_000); // 데모는 카드를 한 장씩 차례로 쓰고(#617) 마지막 카드까지 펼친 뒤에 완성된 카드 화면으로 넘어간다
   await loginAsDemo(page);
   await page.goto('/repos/r_auth/candidates');
   await page.getByRole('button', { name: '추천 후보 선택', exact: true }).click();
@@ -39,6 +40,6 @@ test('created cards keep only the new batch as their navigation order', async ({
   const order = await page.evaluate(() => window.history.state.usr.cardOrder as string[]);
   expect(order.length).toBeGreaterThan(1);
   expect(page.url()).toContain(`/cards/${order[0]}`);
-  await expect(page.getByRole('link', { name: /다음 카드/ })).toBeVisible({ timeout: 30000 });
+  await expect(page.getByRole('link', { name: /다음 카드/ })).toBeVisible({ timeout: 90_000 });
   await expect(page.getByRole('link', { name: /다음 카드/ })).toHaveAttribute('href', `/cards/${order[1]}`);
 });

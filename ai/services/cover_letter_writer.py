@@ -44,12 +44,14 @@ from services.cover_letter_llm import (
     call_until_valid,
     clip,
 )
+from services.cover_letter_posting import company_facts, met_conditions
 from services.llm_executors import COVER_LETTER_JUDGE_EXECUTOR
 
 WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소개서 문항 하나의 답을 씁니다.
 입력으로 문항(question: 문장·유형·글자 수 상한 char_limit·목표 글자 수 target_chars), 지원 직무(job_role), 메모(memo), 프로필(profile),
 이 문항에 쓸 카드(cards: 중심 PRIMARY·보조 SUPPORTING 의 STAR 문장), 사용자가 답한 재료(answers: 항목·답·어느 카드의 답인지 about),
 글에 그대로 넣을 빈칸(blanks), 다시 쓸 때만 고칠 점(fix: 앞 초안 previous_draft 와 problems)이 주어집니다.
+공고에서 시작한 자소서면 지원하는 공고(posting: 회사 company·제목 title·주요 업무 responsibilities·이 문항 카드가 채운 공고 조건 met_conditions)도 주어집니다.
 
 - text: 한국어 자기소개서 문체('~습니다') 한 편. 공백 포함 글자 수가 char_limit 를 넘지 않게 하고, target_chars 이상을 목표로 씁니다.
   카드·답·메모에 있는 사실을 빠짐없이 풀어 씁니다(상황의 배경과 문제가 끼친 영향, 행동의 방법과 그렇게 한 이유, 결과, 배운 점이나 직무와 이어지는 점).
@@ -63,7 +65,12 @@ WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소
 - 사실은 카드·답·프로필·메모에 있는 것만 씁니다. 숫자와 기술 이름은 입력에 적힌 그대로 쓰고, 새 숫자를 계산하거나 지어내지 않습니다.
   보조 카드의 답(about=SUPPORTING)은 보조 카드의 일로만 씁니다.
 - 주어와 정도를 바꾸지 않습니다. 팀이 한 일을 내가 한 일로, '조금' 을 '크게' 로 바꾸지 않고, 입력에 없는 역할(팀장 등)이나 성과를 더하지 않습니다.
-- 회사에 대한 사실(사업·규모·서비스)은 메모나 답에 있는 것만 씁니다. 지원 동기 문항도 회사 이야기는 짧게 두고 내 경험과 직무를 잇는 데 글자 수를 씁니다.
+- 회사에 대한 사실(사업·규모·서비스)은 메모·답과 공고 주요 업무에 있는 것만 씁니다. 지원 동기 문항도 회사 이야기는 짧게 두고 내 경험과 직무를 잇는 데 글자 수를 씁니다.
+- posting 이 있으면 지원 동기 문항(theme MOTIVATION)은 내가 기여할 수 있는 점을 중심으로 씁니다. 첫 문장에 주요 업무 중 기여하고 싶은 일을 짧게 짚고,
+  그 근거로 카드·답의 사실을 짧게 쓴 뒤, 입사 후 그 일에 어떻게 기여할지로 맺습니다. 주요 업무 문장을 길게 옮기지 않습니다.
+  경험 문항은 경험을 중심으로 쓰고, 공고 이야기는 마지막 한 문장에서 자연스러울 때만 씁니다.
+- met_conditions 는 이 문항 카드가 채운 공고 조건입니다. 조건에 맞춰 경험을 부풀리지 않고(조건의 연차·규모를 내 것으로 쓰지 않음) 카드·답에 있는 사실로만 잇습니다.
+  주요 업무는 회사가 하는 일이라, 카드·답에 없으면 그 일을 해 봤다고 쓰지 않습니다.
 - 읽는 사람이 'AI 가 쓴 글' 로 여기는 버릇을 피합니다. 문단을 넘길 때마다 '~을 바탕으로' 로 잇기, '~뿐만 아니라 ~까지' 로 장점 늘어놓기,
   같은 뜻의 낱말 겹쳐 쓰기('능동적이고 주도적으로 적극'), 학생 경험에 '전략 수립'·'의사결정 지원' 같은 임원급 낱말,
   '다양한 능력을 키웠다' 처럼 무엇을 했는지 없이 뭉뚱그리기를 쓰지 않고, 무엇을 어떻게 했는지 구체적인 동사와 목적어로 씁니다.
@@ -73,7 +80,7 @@ WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소
 
 DECIDE_PROMPT = """당신은 자기소개서 초안이 검사기에 걸린 곳마다, 고쳐 쓸지 그대로 두고 사용자 확인을 받을지 정합니다.
 입력으로 초안 문장(sentences: 번호·문장), 검사에 걸린 곳(problems: 번호 index·종류 code·걸린 값 value·문장 번호 sentence_seq),
-근거 글(sources: 카드 문장·답·프로필·메모)이 주어집니다.
+근거 글(sources: 카드 문장·답·프로필·메모·공고의 회사와 주요 업무)이 주어집니다.
 종류: UNSOURCED_NUMBER(근거에 없는 숫자) · UNSOURCED_TERM(근거에 없는 영문 낱말·기술 이름)
 
 - decisions: problems 마다 하나씩. action 은 FIX(고쳐 씀) 또는 KEEP(그대로 두고 표시).
@@ -317,7 +324,7 @@ class QuestionWriter:
             for role, card in (("PRIMARY", question.primary_card), ("SUPPORTING", question.supporting_card))
             if card is not None
         ]
-        return {
+        payload: dict[str, Any] = {
             "question": {"text": clip(question.text, limit), "theme": question.question_theme,
                          "char_limit": question.char_limit, "target_chars": self._target(question)},
             "job_role": clip(request.job_role, limit),
@@ -331,6 +338,17 @@ class QuestionWriter:
             ],
             "blanks": [blank(item) for item in blanks],
         }
+        if request.posting is not None:
+            # 채우지 못한 조건은 넘기지 않는다. 받은 답(직무 연결)에 있을 때만 쓰게 해서 해 본 것처럼 쓰는 일을 막는다
+            cards_here = [card.card_id for card in (question.primary_card, question.supporting_card) if card is not None]
+            payload["posting"] = {
+                "company": clip(request.posting.company, limit),
+                "title": clip(request.posting.title, limit),
+                "responsibilities": [clip(text, limit) for text in request.posting.responsibilities],
+                "met_conditions": [{"type": met["type"], "text": clip(met["text"], limit)}
+                                   for met in met_conditions(request.posting, cards_here)],
+            }
+        return payload
 
 
 def blank_items(request: DraftsRequest, question: DraftQuestion) -> list[MaterialItem]:
@@ -341,7 +359,10 @@ def blank_items(request: DraftsRequest, question: DraftQuestion) -> list[Materia
 
 
 def source_text(request: DraftsRequest, question: DraftQuestion) -> str:
-    """초안의 수치·낱말을 견줄 근거 글. 모델이 받은 것과 같은 재료다."""
+    """초안의 수치·낱말을 견줄 근거 글. 모델이 받은 것 가운데 공고 조건 문장만 빼서, 조건을 해 본 것처럼 쓰면 걸리게 한다.
+
+    다음 행동 판단은 이 글을 앞에서부터 잘라 받으므로, 공고 글은 카드·답이 밀려나지 않게 맨 뒤에 둔다.
+    """
     parts = [question.text, request.job_role]
     for card in (question.primary_card, question.supporting_card):
         if card is not None:
@@ -351,6 +372,7 @@ def source_text(request: DraftsRequest, question: DraftQuestion) -> str:
     parts.extend(item.text for item in request.profile)
     if request.memo:
         parts.append(request.memo)
+    parts.extend(company_facts(request.posting))
     return "\n".join(parts)
 
 

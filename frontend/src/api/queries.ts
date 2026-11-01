@@ -242,7 +242,7 @@ export function useRegenerateField(id: string) {
 export function useAskInterview(cardId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (field: StarField) => endpoints.askInterview(cardId, field),
+    mutationFn: (field?: StarField) => endpoints.askInterview(cardId, field),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.interview(cardId) }),
   });
 }
@@ -255,6 +255,17 @@ export function useAnswerInterview(cardId: string) {
       qc.setQueryData(keys.card(cardId), card);
       void qc.invalidateQueries({ queryKey: keys.interview(cardId) });
       void qc.invalidateQueries({ queryKey: keys.versions(cardId) });
+    },
+  });
+}
+
+export function useSkipInterview(cardId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (turnNo: number) => endpoints.answerInterview(cardId, turnNo, { kind: 'SKIP' }),
+    onSuccess: (card) => {
+      qc.setQueryData(keys.card(cardId), card);
+      void qc.invalidateQueries({ queryKey: keys.interview(cardId) });
     },
   });
 }

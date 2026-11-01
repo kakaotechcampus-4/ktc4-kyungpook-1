@@ -13,6 +13,7 @@ def posting(criteria: list[dict]) -> JobPostingDetailExtractionResult:
             "content_hash": "a" * 64,
             "outcome": "UPDATED",
             "content_status": "READY",
+            "extraction_version": 2,
             "criteria": criteria,
             "job_category": "BACKEND",
             "experience": {"level": "UNSPECIFIED"},

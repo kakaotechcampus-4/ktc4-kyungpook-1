@@ -16,6 +16,7 @@ final class UsageEventNames {
             "field_regenerated",
             "recall_answered", "github_disconnected", "card_exported",
             "match_opened", "match_card_opened", "match_source_opened", "cover_letter_created", "cover_letter_copied", "cover_letter_edited",
+            "cover_letter_cards_changed", "cover_letter_asks_started", "cover_letter_drafts_started",
             "profile_prompt_accepted", "profile_prompt_dismissed", "profile_saved");
 
     private UsageEventNames() {

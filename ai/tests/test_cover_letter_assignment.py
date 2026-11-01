@@ -67,11 +67,13 @@ def _request(*questions: str, cards: Optional[list[dict]] = None) -> AssignmentR
 
 def _pick(first: Optional[int], second: Optional[int] = None, *, supporting: Optional[int] = None,
           theme: str = "COLLABORATION", considered: Optional[list[int]] = None,
-          note: Optional[str] = None, reason: Optional[str] = None) -> PickOutput:
+          note: Optional[str] = None, reason: Optional[str] = None,
+          fits: Optional[dict[int, str]] = None) -> PickOutput:
     ids = considered if considered is not None else list(dict.fromkeys(card for card in (first, second) if card is not None))
     return PickOutput(
         question_theme=theme,
-        considered=[ConsideredOutput(card_id=card, note=note or "견줄 만함") for card in ids],
+        considered=[ConsideredOutput(card_id=card, note=note or "견줄 만함", fit=(fits or {}).get(card, "MEDIUM"))
+                    for card in ids],
         first_card_id=first,
         first_reason=None if first is None else (reason or "가장 맞음"),
         second_card_id=second,
@@ -208,10 +210,10 @@ def test_code_resolution_rules(picks: list[Pick], expected: dict) -> None:
         pytest.param(_pick(None, 2), id="1순위 없이 2순위"),
         pytest.param(_pick(1, considered=[1, 2, 3, 4]), id="견준 카드가 4장"),
         pytest.param(_pick(1, note="가" * 81), id="평이 너무 김"),
-        pytest.param(PickOutput(question_theme="COLLABORATION", considered=[ConsideredOutput(card_id=1, note="평")],
+        pytest.param(PickOutput(question_theme="COLLABORATION", considered=[ConsideredOutput(card_id=1, note="평", fit="MEDIUM")],
                                 first_card_id=1), id="1순위 이유가 없음"),
         pytest.param(PickOutput(question_theme="COLLABORATION",
-                                considered=[ConsideredOutput(card_id=1, note="평"), ConsideredOutput(card_id=2, note="평")],
+                                considered=[ConsideredOutput(card_id=1, note="평", fit="MEDIUM"), ConsideredOutput(card_id=2, note="평", fit="MEDIUM")],
                                 first_card_id=1, first_reason="맞음", second_card_id=2), id="2순위 이유가 없음"),
         pytest.param(_pick(1, supporting=1), id="1순위와 보조가 같음"),
         pytest.param(_pick(1, note=" "), id="평이 비었음"),
@@ -254,8 +256,8 @@ def test_text_with_unsourced_number_is_dropped() -> None:
     """카드 요약에 없는 수치가 든 평·이유는 화면에 지어낸 수치가 뜨므로 버리고, 요약에 있는 수치는 둔다."""
     pick = PickOutput(
         question_theme="PROBLEM_SOLVING",
-        considered=[ConsideredOutput(card_id=2, note="40분에서 12분으로 줄임"),
-                    ConsideredOutput(card_id=3, note="응답 30% 단축")],
+        considered=[ConsideredOutput(card_id=2, note="40분에서 12분으로 줄임", fit="MEDIUM"),
+                    ConsideredOutput(card_id=3, note="응답 30% 단축", fit="MEDIUM")],
         first_card_id=2, first_reason="배포를 50% 줄임", second_card_id=3, second_reason="중복 요청을 막음",
     )
     client = RoutedClient({"문제 해결 경험": [pick]})
@@ -271,7 +273,7 @@ def test_text_borrowing_numbers_from_another_card_is_dropped() -> None:
     """카드 평·이유의 수치는 그 카드 요약에만 있어야 한다. 다른 카드의 '40분에서 12분' 을 빌려 쓴 평은 버린다."""
     pick = PickOutput(
         question_theme="PROBLEM_SOLVING",
-        considered=[ConsideredOutput(card_id=3, note="배포를 40분에서 12분으로 줄임")],
+        considered=[ConsideredOutput(card_id=3, note="배포를 40분에서 12분으로 줄임", fit="MEDIUM")],
         first_card_id=3, first_reason="결제 시간을 12분 줄임",
     )
     client = RoutedClient({"문제 해결 경험": [pick]})

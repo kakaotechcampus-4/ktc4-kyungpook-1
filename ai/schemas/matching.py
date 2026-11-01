@@ -6,10 +6,14 @@ Spring은 채용공고와 조건의 단일 출처이고, AI는 조건 id와 벡�
 
 from __future__ import annotations
 
+import base64
+import binascii
 from enum import Enum
 from typing import Annotated, Optional
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
+
+from schemas.common import TechTag
 
 
 class StrictModel(BaseModel):
@@ -44,6 +48,16 @@ class GeneralConditionType(str, Enum):
     CERTIFICATE = "CERTIFICATE"
     LOCATION = "LOCATION"
     OTHER = "OTHER"
+
+
+class EducationLevel(str, Enum):
+    """지원할 수 있는 가장 낮은 학력으로, Spring 인적사항의 학력 단계와 같은 다섯 값이다."""
+
+    HIGH_SCHOOL = "HIGH_SCHOOL"
+    ASSOCIATE = "ASSOCIATE"
+    BACHELOR = "BACHELOR"
+    MASTER = "MASTER"
+    DOCTOR = "DOCTOR"
 
 
 class JobCategory(str, Enum):
@@ -83,12 +97,16 @@ class JobCriterion(StrictModel):
 
     ``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.
     담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.
+    ``techs`` 는 필수·우대 기술 조건에만, 학력 값은 학력 조건에만 남기고 그 밖은 추출기가 비운다.
     """
 
     criterion_type: JobCriterionType
     general_type: Optional[GeneralConditionType] = None
     text: str = Field(min_length=1, max_length=1000)
     source_quote: str = Field(min_length=1, max_length=4000)
+    techs: list[TechTag] = Field(default_factory=list, max_length=20)
+    education_level: Optional[EducationLevel] = None
+    education_exempt: bool = False
 
     @model_validator(mode="after")
     def check_general_type(self) -> "JobCriterion":
@@ -227,6 +245,7 @@ class JobPostingDetailExtractionRequest(StrictModel):
     source_url: AnyHttpUrl
     raw_text: str = Field(min_length=1, max_length=100_000)
     previous_content_hash: Optional[str] = Field(None, min_length=64, max_length=64)
+    previous_extraction_version: Optional[int] = Field(None, ge=1, strict=True)
     previous_content_status: JobPostingContentStatus = JobPostingContentStatus.READY
 
 
@@ -239,13 +258,15 @@ class JobPostingDetailExtractionResult(StrictModel):
     content_hash: str = Field(min_length=64, max_length=64)
     outcome: ExtractionOutcome
     content_status: JobPostingContentStatus
+    extraction_version: int = Field(ge=1, strict=True)
     criteria: list[JobCriterion] = Field(default_factory=list)
+    team_techs: list[TechTag] = Field(default_factory=list, max_length=20)
     job_category: Optional[JobCategory] = None
     experience: Optional[JobExperience] = None
 
     @model_validator(mode="after")
     def check_outcome_fields(self) -> "JobPostingDetailExtractionResult":
-        has_content = bool(self.criteria) or self.job_category or self.experience
+        has_content = bool(self.criteria) or bool(self.team_techs) or self.job_category or self.experience
         if self.outcome == ExtractionOutcome.UNCHANGED and has_content:
             raise ValueError("UNCHANGED 응답에는 조건·분류·경력을 다시 보내지 않습니다.")
         if self.outcome == ExtractionOutcome.UPDATED and (
@@ -253,3 +274,62 @@ class JobPostingDetailExtractionResult(StrictModel):
         ):
             raise ValueError("UPDATED 응답에는 job_category와 experience가 필요합니다.")
         return self
+
+
+#: Spring 이 공고 하나에서 찾는 본문 이미지 상한(`PostingImages.MAX_IMAGES`)과 같은 값이다.
+MAX_POSTING_IMAGES = 6
+#: 0단계에서 잰 KT 본문 이미지가 3.2MB 였다. 그보다 넉넉히 두되 요청 하나가 수십 MB 가 되지 않게 막는다.
+MAX_POSTING_IMAGE_BYTES = 5 * 1024 * 1024
+#: 조건 뽑기 요청의 `raw_text` 상한과 같아야 옮긴 글을 그대로 넘길 수 있다.
+MAX_POSTING_IMAGE_TEXT_CHARS = 100_000
+
+
+class PostingImageMediaType(str, Enum):
+    """LLM 이 읽을 수 있는 이미지 형식."""
+
+    JPEG = "image/jpeg"
+    PNG = "image/png"
+    WEBP = "image/webp"
+    GIF = "image/gif"
+
+
+class PostingImage(StrictModel):
+    """Spring 이 받아 둔 공고 본문 이미지 한 장."""
+
+    media_type: PostingImageMediaType
+    data_base64: str = Field(min_length=1, max_length=(MAX_POSTING_IMAGE_BYTES + 2) // 3 * 4)
+
+    @model_validator(mode="after")
+    def check_image(self) -> "PostingImage":
+        try:
+            decoded = base64.b64decode(self.data_base64, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("data_base64 가 올바른 base64 가 아닙니다.") from exc
+        if not decoded:
+            raise ValueError("빈 이미지는 받지 않습니다.")
+        if len(decoded) > MAX_POSTING_IMAGE_BYTES:
+            raise ValueError(f"이미지 한 장은 {MAX_POSTING_IMAGE_BYTES} 바이트까지 받습니다.")
+        return self
+
+    def data_url(self) -> str:
+        return f"data:{self.media_type.value};base64,{self.data_base64}"
+
+
+class JobPostingImageTextRequest(StrictModel):
+    """본문이 이미지인 공고에서 이미지 속 글을 옮겨 달라는 요청."""
+
+    source: str = Field(min_length=1, max_length=50)
+    external_posting_id: str = Field(min_length=1, max_length=255)
+    company_name: str = Field(min_length=1, max_length=255)
+    job_title: str = Field(min_length=1, max_length=255)
+    images: list[PostingImage] = Field(min_length=1, max_length=MAX_POSTING_IMAGES)
+
+
+class JobPostingImageTextResult(StrictModel):
+    """이미지 순서대로 옮긴 글. Spring 은 이 글을 조건 뽑기의 `raw_text` 로 넘긴다."""
+
+    source: str
+    external_posting_id: str
+    text: str = Field(min_length=1, max_length=MAX_POSTING_IMAGE_TEXT_CHARS)
+    image_count: int = Field(ge=1, le=MAX_POSTING_IMAGES)
+    empty_image_count: int = Field(ge=0, le=MAX_POSTING_IMAGES)

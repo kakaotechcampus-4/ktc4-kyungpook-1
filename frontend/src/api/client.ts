@@ -44,7 +44,7 @@ function readCookie(name: string): string | null {
 export async function api<T extends z.ZodTypeAny>(
   schema: T,
   path: string,
-  init: { method?: Method; body?: unknown; signal?: AbortSignal; headers?: Record<string, string>; timeoutMs?: number } = {},
+  init: { method?: Method; body?: unknown; signal?: AbortSignal; headers?: Record<string, string>; timeoutMs?: number; allowNullData?: boolean } = {},
 ): Promise<z.infer<T>> {
   const method = init.method ?? 'GET';
   const headers: Record<string, string> = { Accept: 'application/json', ...init.headers };
@@ -90,7 +90,7 @@ export async function api<T extends z.ZodTypeAny>(
     throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? (res.status >= 500 ? '서버 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.' : res.statusText), res.status, err?.details);
   }
 
-  const parsed = envelope(schema).safeParse(json);
+  const parsed = envelope(schema, { allowNullData: init.allowNullData }).safeParse(json);
   if (!parsed.success) {
     // Avoid logging response bodies: they can contain user writing or repository data.
     throw new ContractError(path, parsed.error.issues);

@@ -85,6 +85,17 @@
             "description": "사용자 메모(지원 이유 등). 없으면 null",
             "title": "Memo"
           },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공고 상세에서 시작한 자소서면 그 공고, 아니면 null"
+          },
           "profile": {
             "description": "학력·자격증·어학. 비어도 된다",
             "items": {
@@ -2235,6 +2246,16 @@
             ],
             "title": "Memo"
           },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "profile": {
             "items": {
               "$ref": "#/components/schemas/ProfileItem"
@@ -2291,6 +2312,18 @@
         ],
         "title": "DraftsResult",
         "type": "object"
+      },
+      "EducationLevel": {
+        "description": "지원할 수 있는 가장 낮은 학력으로, Spring 인적사항의 학력 단계와 같은 다섯 값이다.",
+        "enum": [
+          "HIGH_SCHOOL",
+          "ASSOCIATE",
+          "BACHELOR",
+          "MASTER",
+          "DOCTOR"
+        ],
+        "title": "EducationLevel",
+        "type": "string"
       },
       "Envelope_AssignmentResult_": {
         "properties": {
@@ -2623,6 +2656,43 @@
           "meta"
         ],
         "title": "Envelope[JobPostingDetailExtractionResult]",
+        "type": "object"
+      },
+      "Envelope_JobPostingImageTextResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobPostingImageTextResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[JobPostingImageTextResult]",
         "type": "object"
       },
       "Envelope_JobPostingIndexResult_": {
@@ -3820,10 +3890,25 @@
       },
       "JobCriterion": {
         "additionalProperties": false,
-        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.",
+        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.\n``techs`` 는 필수·우대 기술 조건에만, 학력 값은 학력 조건에만 남기고 그 밖은 추출기가 비운다.",
         "properties": {
           "criterion_type": {
             "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "education_exempt": {
+            "default": false,
+            "title": "Education Exempt",
+            "type": "boolean"
+          },
+          "education_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EducationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "general_type": {
             "anyOf": [
@@ -3840,6 +3925,81 @@
             "minLength": 1,
             "title": "Source Quote",
             "type": "string"
+          },
+          "techs": {
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
+                "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
+                "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
+                "DOCKER",
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Techs",
+            "type": "array"
           },
           "text": {
             "maxLength": 1000,
@@ -3948,6 +4108,18 @@
             "$ref": "#/components/schemas/JobPostingContentStatus",
             "default": "READY"
           },
+          "previous_extraction_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Extraction Version"
+          },
           "raw_text": {
             "maxLength": 100000,
             "minLength": 1,
@@ -4011,6 +4183,11 @@
             "title": "External Posting Id",
             "type": "string"
           },
+          "extraction_version": {
+            "minimum": 1.0,
+            "title": "Extraction Version",
+            "type": "integer"
+          },
           "job_category": {
             "anyOf": [
               {
@@ -4033,6 +4210,81 @@
             "minLength": 1,
             "title": "Source Url",
             "type": "string"
+          },
+          "team_techs": {
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
+                "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
+                "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
+                "DOCKER",
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Team Techs",
+            "type": "array"
           }
         },
         "required": [
@@ -4041,9 +4293,99 @@
           "source_url",
           "content_hash",
           "outcome",
-          "content_status"
+          "content_status",
+          "extraction_version"
         ],
         "title": "JobPostingDetailExtractionResult",
+        "type": "object"
+      },
+      "JobPostingImageTextRequest": {
+        "additionalProperties": false,
+        "description": "본문이 이미지인 공고에서 이미지 속 글을 옮겨 달라는 요청.",
+        "properties": {
+          "company_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "external_posting_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "External Posting Id",
+            "type": "string"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/PostingImage"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Images",
+            "type": "array"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "external_posting_id",
+          "company_name",
+          "job_title",
+          "images"
+        ],
+        "title": "JobPostingImageTextRequest",
+        "type": "object"
+      },
+      "JobPostingImageTextResult": {
+        "additionalProperties": false,
+        "description": "이미지 순서대로 옮긴 글. Spring 은 이 글을 조건 뽑기의 `raw_text` 로 넘긴다.",
+        "properties": {
+          "empty_image_count": {
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Empty Image Count",
+            "type": "integer"
+          },
+          "external_posting_id": {
+            "title": "External Posting Id",
+            "type": "string"
+          },
+          "image_count": {
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Image Count",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "external_posting_id",
+          "text",
+          "image_count",
+          "empty_image_count"
+        ],
+        "title": "JobPostingImageTextResult",
         "type": "object"
       },
       "JobPostingIndexRequest": {
@@ -4811,6 +5153,133 @@
         "title": "PolishedSentenceResult",
         "type": "object"
       },
+      "Posting": {
+        "additionalProperties": false,
+        "description": "자소서를 공고 상세에서 시작했을 때 그 공고. 학력·병역 같은 일반 조건은 Spring 이 빼고 보낸다.",
+        "properties": {
+          "company": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Company",
+            "type": "string"
+          },
+          "conditions": {
+            "description": "기술·경험 조건",
+            "items": {
+              "$ref": "#/components/schemas/PostingCondition"
+            },
+            "maxItems": 60,
+            "title": "Conditions",
+            "type": "array"
+          },
+          "responsibilities": {
+            "description": "공고의 주요 업무, 한 줄 500자까지",
+            "items": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Responsibilities",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company",
+          "title"
+        ],
+        "title": "Posting",
+        "type": "object"
+      },
+      "PostingCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "met_by": {
+            "description": "이 조건을 채운 카드. MET 일 때만",
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "title": "Met By",
+            "type": "array"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "MET",
+                  "NOT_MET"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "매칭 판단. 판단이 없으면 null",
+            "title": "Status"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "REQUIRED",
+              "PREFERRED"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "PostingCondition",
+        "type": "object"
+      },
+      "PostingImage": {
+        "additionalProperties": false,
+        "description": "Spring 이 받아 둔 공고 본문 이미지 한 장.",
+        "properties": {
+          "data_base64": {
+            "maxLength": 6990508,
+            "minLength": 1,
+            "title": "Data Base64",
+            "type": "string"
+          },
+          "media_type": {
+            "$ref": "#/components/schemas/PostingImageMediaType"
+          }
+        },
+        "required": [
+          "media_type",
+          "data_base64"
+        ],
+        "title": "PostingImage",
+        "type": "object"
+      },
+      "PostingImageMediaType": {
+        "description": "LLM 이 읽을 수 있는 이미지 형식.",
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif"
+        ],
+        "title": "PostingImageMediaType",
+        "type": "string"
+      },
       "PreviousTurn": {
         "additionalProperties": false,
         "description": "이 카드에서 이미 끝난 질문 하나. 다음 칸을 고르고 예상 답변을 만드는 재료다.",
@@ -5260,6 +5729,16 @@
             ],
             "title": "Memo"
           },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "profile": {
             "items": {
               "$ref": "#/components/schemas/ProfileItem"
@@ -5625,7 +6104,7 @@
                 "type": "null"
               }
             ],
-            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다",
+            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 3,000자). Spring 이 PR 작성자를 확인해 보낸다",
             "title": "Pull Request Body"
           },
           "source_ref": {
@@ -5744,7 +6223,7 @@
             "type": "array"
           },
           "techs": {
-            "description": "카드 기술 태그. 최대 4개, 중요한 것부터. 판단할 수 없으면 빈 배열",
+            "description": "카드 기술 태그. 최대 8개, 중요한 것부터. 판단할 수 없으면 빈 배열",
             "items": {
               "enum": [
                 "C",
@@ -5759,10 +6238,59 @@
                 "DART",
                 "TYPESCRIPT",
                 "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
                 "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
                 "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
                 "DOCKER",
-                "GITHUB_ACTIONS"
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
               ],
               "type": "string"
             },
@@ -7518,6 +8046,87 @@
           }
         },
         "summary": "Extract Job Posting Detail",
+        "tags": [
+          "job-postings"
+        ]
+      }
+    },
+    "/internal/job-postings/image-text": {
+      "post": {
+        "description": "공고 본문 이미지 속 글을 요약하지 않고 그대로 옮겨, 이미지 순서대로 이어 돌려준다.",
+        "operationId": "read_job_posting_image_text_internal_job_postings_image_text_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobPostingImageTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobPostingImageTextResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 검증 실패. 이미지가 없거나 6장보다 많거나, 한 장이 5MB 보다 크거나, base64 가 아니면 LLM 을 부르지 않고 거절한다. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 예상하지 못한 내부 오류. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패·요청 마감(180초) 초과(retryable=true), LLM 설정 누락·키·권한·요청 형식 오류·출력 길이 초과(retryable=false)."
+          }
+        },
+        "summary": "Read Job Posting Image Text",
         "tags": [
           "job-postings"
         ]

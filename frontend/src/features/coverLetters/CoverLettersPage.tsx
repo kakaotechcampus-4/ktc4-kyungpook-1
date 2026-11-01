@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { Briefcase, FileText } from 'lucide-react';
 import { useCoverLetters, type CoverLetterStage } from '@/api/coverLetters';
 import { Badge, Breadcrumb, EmptyState, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { postingLine } from '@/lib/coverLetterCopy';
 import { ymd } from '@/lib/format';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import './coverLetters.css';
@@ -12,7 +13,7 @@ const STAGE_LABEL: Record<CoverLetterStage, string> = {
   DRAFTING: '초안 쓰는 중', DRAFTED: '초안 완성', FAILED: '멈춤',
 };
 
-/** 자소서 목록 — 최근 만든 순(서버 순서 그대로) */
+/** 자소서 목록 — 최근 만든 순(서버 순서 그대로). 공고에서 시작한 자소서는 직무 아래에 공고를 보인다(#637) */
 export function CoverLettersPage() {
   useDocumentTitle('자소서');
   const list = useCoverLetters();
@@ -27,20 +28,24 @@ export function CoverLettersPage() {
           <EmptyState icon={FileText} title="아직 쓴 자소서가 없어요" desc="지원 직무와 문항을 넣으면 AI가 문항마다 쓸 카드를 골라요.">{add}</EmptyState>
         ) : (
           <ul className="cl-list">
-            {list.data.map((l) => (
-              <li key={l.id}>
-                <Link to={`/cover-letters/${encodeURIComponent(l.id)}`} className="cl-list__row">
-                  <div className="stack grow" style={{ gap: 4, minWidth: 0 }}>
-                    <span className="w-600">{l.jobRole}</span>
-                    <span className="t-13 c-2 cl-list__first">{l.firstQuestion ?? ''}{l.questionCount > 1 ? ` 외 ${l.questionCount - 1}문항` : ''}</span>
-                  </div>
-                  <div className="stack" style={{ gap: 4, alignItems: 'flex-end' }}>
-                    <Badge kind={l.stage === 'DRAFTED' ? 'CONFIRMED' : 'NEUTRAL'}>{STAGE_LABEL[l.stage]}</Badge>
-                    <span className="t-12 c-3">{ymd(l.updatedAt)}</span>
-                  </div>
-                </Link>
-              </li>
-            ))}
+            {list.data.map((l) => {
+              const where = postingLine(l.posting, l.jobRole);
+              return (
+                <li key={l.id}>
+                  <Link to={`/cover-letters/${encodeURIComponent(l.id)}`} className="cl-list__row">
+                    <div className="stack grow" style={{ gap: 4, minWidth: 0 }}>
+                      <span className="w-600">{l.jobRole}</span>
+                      {where && <span className="t-12 c-3 cl-list__posting"><Briefcase size={12} aria-hidden />{where}</span>}
+                      <span className="t-13 c-2 cl-list__first">{l.firstQuestion ?? ''}{l.questionCount > 1 ? ` 외 ${l.questionCount - 1}문항` : ''}</span>
+                    </div>
+                    <div className="stack" style={{ gap: 4, alignItems: 'flex-end' }}>
+                      <Badge kind={l.stage === 'DRAFTED' ? 'CONFIRMED' : 'NEUTRAL'}>{STAGE_LABEL[l.stage]}</Badge>
+                      <span className="t-12 c-3">{ymd(l.updatedAt)}</span>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
     </main>

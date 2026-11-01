@@ -110,3 +110,21 @@
   .cl-indent, .cl-asks { padding-left: 0; }
 }
 .cl-gap { color: var(--field-low-text); }
+
+/* 지원 공고(#637) — ① 입력 블록, 자소서 화면 한 줄, 목록 둘째 줄 */
+.cl-posting { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-surface); }
+.cl-posting__label { font-size: 12px; line-height: 16px; color: var(--text-tertiary); }
+.cl-posting__title { font-size: 14px; line-height: 21px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-posting__title b { font-weight: 600; }
+.cl-posting__link { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 2px; font-size: 13px; color: var(--text-secondary); text-decoration: none; }
+.cl-posting__link:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 2px; }
+.cl-posting-line { display: flex; align-items: center; gap: 8px; margin: -4px 0; font-size: 13px; line-height: 20px; color: var(--text-secondary); min-width: 0; }
+.cl-posting-line__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.cl-posting-line__text b { font-weight: 600; }
+.cl-posting-line__link { flex: 0 0 auto; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 2px; }
+.cl-list__posting { display: inline-flex; align-items: center; gap: 4px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 640px) {
+  .cl-posting { flex-wrap: wrap; row-gap: 8px; }
+  .cl-posting__link { margin-left: 54px; }
+  .cl-posting-line { flex-wrap: wrap; row-gap: 2px; }
+}

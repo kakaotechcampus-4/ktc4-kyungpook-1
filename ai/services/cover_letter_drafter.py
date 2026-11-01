@@ -21,7 +21,8 @@ from services.cover_letter_llm import (
     call_until_valid,
     clip,
 )
-from services.cover_letter_writer import QuestionWriter, ReviewFinding, WrittenDraft, source_text
+from services.cover_letter_progress import report_step
+from services.cover_letter_writer import SENTENCE_MAX_CHARS, QuestionWriter, ReviewFinding, WrittenDraft, source_text
 from services.llm_executors import COVER_LETTER_JUDGE_EXECUTOR
 
 REVIEW_PROMPT = """당신은 자기소개서 여러 문항의 초안을 마지막으로 함께 읽는 감독입니다.
@@ -67,9 +68,11 @@ class CoverLetterDrafter:
         steps: list[DraftStep] = []
 
         def record(actor, kind, question_id: Optional[int] = None, *, code=None, value=None, sentence_seq=None,
-                   action=None, reason=None):
+                   action=None, reason=None, sentence=None):
             steps.append(DraftStep(seq=len(steps) + 1, actor=actor, kind=kind, question_id=question_id, code=code,
-                                   value=value, sentence_seq=sentence_seq, action=action, reason=reason))
+                                   value=value, sentence_seq=sentence_seq, action=action, reason=reason,
+                                   sentence=None if sentence is None else sentence[:SENTENCE_MAX_CHARS]))
+            report_step(steps[-1])
 
         deadline = asyncio.get_running_loop().time() + self._limits.draft_deadline_seconds
         questions = request.questions
@@ -92,7 +95,7 @@ class CoverLetterDrafter:
                 for found in findings.values():
                     for finding in found:
                         record("SUPERVISOR", "SENT_BACK", finding.question_id, code=finding.code,
-                               sentence_seq=finding.sentence_seq, reason=finding.reason)
+                               sentence_seq=finding.sentence_seq, reason=finding.reason, sentence=finding.sentence)
                 drafts = list(await asyncio.gather(*(
                     self._writer.rewrite_for_review(request, question, draft, findings.get(question.question_id, []),
                                                     deadline, record)

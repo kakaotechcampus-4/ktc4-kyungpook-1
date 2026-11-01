@@ -290,7 +290,8 @@ export const DroppedField = z.object({ field: StarField, reason: DropReason });
 export const LowConfidence = z.object({ field: StarField, why: z.string() });
 
 // ───────────────────────────── AI 가 한 일 (#479 draftSteps) ─────────────────────────────
-export const DraftStepKind = z.enum(['DRAFT', 'FLAG', 'OPEN', 'RETRY', 'KEEP', 'REWRITE', 'PASS']);
+// REVERT: 고쳐 쓴 글이 더 나빠 앞 글로 되돌림(서버 V35, AI star_generator). code 는 더 나빠지게 만든 검사 코드다
+export const DraftStepKind = z.enum(['DRAFT', 'FLAG', 'OPEN', 'RETRY', 'KEEP', 'REWRITE', 'PASS', 'REVERT']);
 export const DraftStepActor = z.enum(['MODEL', 'CODE']);
 export const DraftMaterial = z.enum(['ISSUE', 'REVIEW', 'OWNER_REPLY']);
 export type DraftStepKind = z.infer<typeof DraftStepKind>;

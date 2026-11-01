@@ -34,6 +34,8 @@ public class InterviewAnswerService {
     private final CardVersionWriter writer;
     private final CardStatementRepository statements;
     private final CardDetailService details;
+    private final CardVersionReader reader;
+    private final CardThemeSuggester themeSuggester;
 
     /**
      * 카드 행을 잠근 뒤 질문 번호, 초안을 만드는 중인지, 이미 한 답, 확정 여부, 답의 모양 순서로 확인하고, 이 순서가 응답 코드의 우선순위다
@@ -78,6 +80,8 @@ public class InterviewAnswerService {
             }
             case NOT_MEASURED -> recordNotMeasured(card, turn, text, source);
         }
+        // 되묻기 화면은 칸을 골라 묻기만 해서 '되묻기 끝' 판정이 오지 않으므로, 답으로 네 칸이 확인 필요 없이 다 차면 여기서 확정한다
+        themeSuggester.settle(card, reader.read(card.getId(), card.getCurrentVersion()));
 
         return details.load(publicId, userId);
 

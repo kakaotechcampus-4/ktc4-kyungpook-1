@@ -272,7 +272,7 @@ gitory:
     interview-ask:
       per-minute: 10
       per-day: 100
-    # '재 봤어요' 수치 문장 미리 보기. 입력에 숫자가 있어 LLM 을 부를 때만 센다
+    # '재 봤어요' 수치 문장 미리 보기(입력에 숫자가 있어 LLM 을 부를 때만)와 경험 카드 답 다듬기 미리 보기
     interview-answer:
       per-minute: 10
       per-day: 100

@@ -280,9 +280,10 @@ class InterviewHistoryApiTest {
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 
         Map<String, Object> answer = JsonPath.read(body, "$.data[0].answer");
-        assertThat(answer).containsOnlyKeys("text", "source")
+        assertThat(answer).containsOnlyKeys("text", "source", "original")
                 .containsEntry("text", "  앞뒤 공백까지 쓴 답  ")
-                .containsEntry("source", expected);
+                .containsEntry("source", expected)
+                .containsEntry("original", null);
 
     }
 

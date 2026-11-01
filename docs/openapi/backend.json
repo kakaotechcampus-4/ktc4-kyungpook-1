@@ -603,6 +603,20 @@
         },
         "type" : "object"
       },
+      "ApiResponsePolishedDraftResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PolishedDraftResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseProfileResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -976,6 +990,34 @@
         "properties" : {
           "ok" : {
             "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "CardDraftLive" : {
+        "properties" : {
+          "cardId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "slots" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Slot"
+            },
+            "type" : "array"
+          },
+          "state" : {
+            "enum" : [ "WAITING", "READING", "WRITING", "DONE", "FAILED" ],
+            "type" : "string"
+          },
+          "steps" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DraftStep"
+            },
+            "type" : "array"
+          },
+          "title" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -1778,6 +1820,40 @@
         },
         "type" : "object"
       },
+      "DraftStep" : {
+        "properties" : {
+          "actor" : {
+            "enum" : [ "MODEL", "CODE" ],
+            "type" : "string"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "field" : {
+            "enum" : [ "S", "T", "A", "R" ],
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "DRAFT", "FLAG", "OPEN", "RETRY", "KEEP", "REWRITE", "PASS", "REVERT" ],
+            "type" : "string"
+          },
+          "material" : {
+            "enum" : [ "ISSUE", "REVIEW", "OWNER_REPLY" ],
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "round" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "DraftStepResponse" : {
         "description" : "AI 초안이 거친 단계 하나로, 화면이 값으로 문장을 만든다",
         "properties" : {
@@ -1953,6 +2029,10 @@
             "enum" : [ "TEXT", "MEASURED", "NOT_MEASURED", "SKIP" ],
             "type" : [ "string", "null" ]
           },
+          "original" : {
+            "description" : "경험 카드의 다듬은 문장을 저장할 때 다듬기 전 사용자 답으로, 1,000자까지이며 TEXT 답에만 남긴다. 공백뿐이면 null 로 본다",
+            "type" : [ "string", "null" ]
+          },
           "source" : {
             "description" : "text 가 있을 때 직접 쓰거나 고친 답은 USER_STATED, 보기를 그대로 고른 답은 USER_SELECTED",
             "enum" : [ "USER_STATED", "USER_SELECTED" ],
@@ -1967,6 +2047,10 @@
       },
       "InterviewAnswerResponse" : {
         "properties" : {
+          "original" : {
+            "description" : "다듬기 미리 보기를 거쳐 저장한 답의 다듬기 전 사용자 답으로, 다듬지 않고 저장했으면 null",
+            "type" : [ "string", "null" ]
+          },
           "source" : {
             "description" : "직접 쓴 답이면 USER_STATED, 보기에서 고른 답이면 USER_SELECTED",
             "enum" : [ "COMMIT", "USER_STATED", "USER_SELECTED" ],
@@ -2124,6 +2208,13 @@
             "description" : "AI 가 방금 읽거나 판단한 줄, 오래된 것부터. 읽기 줄(PULL_REQUEST·COMMIT)은 단계마다 최근 20줄, 판단 줄(GROUPED·DESCRIBED)은 모두 싣고, Job 이 끝나고 10분 뒤나 서버가 다시 시작되면 빈 목록이다. seq 는 Job 안에서 1부터 늘어나 이미 받은 줄을 가를 수 있다",
             "items" : {
               "$ref" : "#/components/schemas/JobActivity"
+            },
+            "type" : "array"
+          },
+          "drafts" : {
+            "description" : "카드 초안 Job 이 쓰는 카드를 쓰는 순서대로. 카드마다 state 는 WAITING → READING(코드 읽는 중) → WRITING(칸 쓰는 중) → DONE·FAILED, slots 는 칸마다 지금까지 쓴 전체 글 하나로 다시 쓰면 round 가 올라가며 done 인데 text 가 빈 글이면 AI 가 근거가 없어 비운 칸이다. steps 는 카드 상세 draftSteps 와 같은 모양이다. 카드 초안 Job 이 아니거나, Job 이 끝나고 10분 뒤나 서버가 다시 시작되면 빈 목록이다",
+            "items" : {
+              "$ref" : "#/components/schemas/CardDraftLive"
             },
             "type" : "array"
           },
@@ -2528,6 +2619,38 @@
           "sentence" : {
             "description" : "수치를 넣은 R 문장으로, 측정 결과에 숫자가 없으면 null",
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PolishedDraftRequest" : {
+        "description" : "다듬을 경험 카드 답",
+        "properties" : {
+          "text" : {
+            "description" : "사용자가 쓴 답으로, 1,000자까지",
+            "type" : "string"
+          }
+        },
+        "required" : [ "text" ],
+        "type" : "object"
+      },
+      "PolishedDraftResponse" : {
+        "description" : "저장하지 않은 다듬은 문장 미리 보기",
+        "properties" : {
+          "polished" : {
+            "description" : "AI 가 다듬었으면 true, 다듬지 못해 사용자 답을 그대로 돌려줬으면 false",
+            "type" : "boolean"
+          },
+          "sentence" : {
+            "description" : "AI 가 표현만 다듬은 문장으로, 다듬지 못했으면 사용자 답 그대로",
+            "type" : "string"
+          },
+          "unsourcedNumbers" : {
+            "description" : "다듬은 문장에는 있는데 사용자 답에는 없는 숫자로, 화면이 강조해 지우거나 고치게 한다",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -3192,6 +3315,25 @@
               "$ref" : "#/components/schemas/CoverLetterAnswerInput"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "Slot" : {
+        "properties" : {
+          "done" : {
+            "type" : "boolean"
+          },
+          "field" : {
+            "enum" : [ "S", "T", "A", "R" ],
+            "type" : "string"
+          },
+          "round" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -4721,7 +4863,7 @@
     },
     "/api/cards/{id}/interview/{turnNo}/answer" : {
       "post" : {
-        "description" : "kind 가 TEXT(없으면 TEXT)면 답을 가공 없이 그 질문의 칸 글로 저장하고, 그 칸만 바꾼 INTERVIEW 새 버전을 현재 버전으로 삼아 카드 전체를 돌려줍니다.\n답한 칸은 옛 글의 근거 커밋과 확인 필요 표시를 잃고, 직접 쓴 답(USER_STATED)이나 보기를 그대로 고른 답(USER_SELECTED)이 되며, 나머지 세 칸은 그대로입니다.\nMEASURED·NOT_MEASURED 는 R 수치 질문(answerMode MEASURE)에만 받습니다. MEASURED 는 확정한 문장으로 TEXT 와 같이 R 칸을 바꿉니다.\nNOT_MEASURED 는 text 가 없으면 칸을 바꾸지 않고, text 가 있어도 R 이 커밋으로 확인된 문장이면 칸을 바꾸지 않고 답만 기록하며, 빈 R·확인 필요 R 일 때만 R 칸을 바꿉니다.\nkind 가 SKIP 이면 카드 칸을 바꾸지 않고 질문만 넘김(SKIPPED)으로 남기며 text·source 는 보지 않습니다. 넘긴 질문도 질문 상한에 세고, 그 칸은 다시 묻지 않습니다.\n이미 결과가 정해진 질문에 같은 요청(같은 종류에 같은 답)이 오면 아무것도 바꾸지 않고 지금 카드를 200 으로 돌려주고, 다른 요청이면 409 INVALID_STATE 입니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.\n답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다. 답을 저장해도 다음 질문은 만들지 않으며, 다음 질문은 질문 요청에서 AI 가 앞 답을 읽고 고릅니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "kind 가 TEXT(없으면 TEXT)면 답을 가공 없이 그 질문의 칸 글로 저장하고, 그 칸만 바꾼 INTERVIEW 새 버전을 현재 버전으로 삼아 카드 전체를 돌려줍니다.\n답한 칸은 옛 글의 근거 커밋과 확인 필요 표시를 잃고, 직접 쓴 답(USER_STATED)이나 보기를 그대로 고른 답(USER_SELECTED)이 되며, 나머지 세 칸은 그대로입니다.\nMEASURED·NOT_MEASURED 는 R 수치 질문(answerMode MEASURE)에만 받습니다. MEASURED 는 확정한 문장으로 TEXT 와 같이 R 칸을 바꿉니다.\nNOT_MEASURED 는 text 가 없으면 칸을 바꾸지 않고, text 가 있어도 R 이 커밋으로 확인된 문장이면 칸을 바꾸지 않고 답만 기록하며, 빈 R·확인 필요 R 일 때만 R 칸을 바꿉니다.\nkind 가 SKIP 이면 카드 칸을 바꾸지 않고 질문만 넘김(SKIPPED)으로 남기며 text·source 는 보지 않습니다. 넘긴 질문도 질문 상한에 세고, 그 칸은 다시 묻지 않습니다.\n이미 결과가 정해진 질문에 같은 요청(같은 종류에 같은 답)이 오면 아무것도 바꾸지 않고 지금 카드를 200 으로 돌려주고, 다른 요청이면 409 INVALID_STATE 입니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.\n답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다. 답을 저장해도 다음 질문은 만들지 않으며, 다음 질문은 질문 요청에서 AI 가 앞 답을 읽고 고릅니다.\n경험 카드의 다듬은 문장을 저장할 때는 다듬기 전 사용자 답을 original 로 함께 보내면 TEXT 답에만 남겨 지난 질문 목록의 answer.original 로 돌려줍니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "answer_1",
         "parameters" : [ {
           "description" : "카드 id",
@@ -4841,7 +4983,7 @@
     "/api/cards/{id}/interview/{turnNo}/measured-draft" : {
       "post" : {
         "description" : "R 수치 질문에 자유롭게 쓴 측정 결과로 R 문장을 만들어 돌려주고, 아무것도 저장하지 않습니다. 확정은 답 저장 API 로 합니다.\n측정 결과에 숫자가 없으면 AI 를 부르지 않고 sentence 가 null 이며, 화면은 수치를 대략이라도 적어 달라고 안내합니다.\nAI 가 쓴 문장에 측정 결과에 없는 숫자가 있거나 AI 가 응답하지 못하면 지금 R 문장 뒤에 측정 결과를 붙인 문장을 돌려줍니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 확정된 카드(409 CARD_CONFIRMED), 결과가 정해진 질문(409 INVALID_STATE), R 수치 질문이 아님(400 BAD_FIELD), 글의 모양(400) 입니다.\nAI 를 불러야 할 때 사용자별 호출 한도(답 평가와 같은 한도)를 넘었으면 429 RATE_LIMITED 입니다. 질문 상한에는 세지 않습니다.\n변경 요청과 같은 규칙으로 세션과 CSRF 헤더가 모두 필요합니다.\n",
-        "operationId" : "draft",
+        "operationId" : "draft_1",
         "parameters" : [ {
           "description" : "카드 id",
           "in" : "path",
@@ -4964,6 +5106,135 @@
           }
         },
         "summary" : "'재 봤어요' 수치 문장 미리 보기",
+        "tags" : [ "Cards" ]
+      }
+    },
+    "/api/cards/{id}/interview/{turnNo}/polished-draft" : {
+      "post" : {
+        "description" : "경험 카드의 글 질문에 쓴 답을 AI 가 표현만 다듬은 문장으로 돌려주고, 아무것도 저장하지 않습니다. 저장은 답 저장 API 에 다듬은 문장과 original 로 합니다.\nAI 는 답에 없는 사실을 더하지 않도록 지시받고, 다듬은 문장에 답에 없는 숫자가 있으면 unsourcedNumbers 로 알려 화면이 강조하게 합니다.\nAI 가 응답하지 못하면 오류가 아니라 polished 가 false 이고 sentence 가 사용자 답 그대로입니다.\n확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 확정된 카드(409 CARD_CONFIRMED), 결과가 정해진 질문(409 INVALID_STATE), 경험 카드의 글 질문이 아님(400 BAD_FIELD), 글의 모양(400) 입니다.\n사용자별 호출 한도('재 봤어요' 미리 보기와 같은 한도)를 넘었으면 429 RATE_LIMITED 입니다. 질문 상한에는 세지 않습니다.\n변경 요청과 같은 규칙으로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "draft",
+        "parameters" : [ {
+          "description" : "카드 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "질문 번호(되묻기 기록의 turnNo)",
+          "in" : "path",
+          "name" : "turnNo",
+          "required" : true,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PolishedDraftRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePolishedDraftResponse"
+                }
+              }
+            },
+            "description" : "다듬은 문장(다듬지 못했으면 사용자 답)과 답에 없는 숫자"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "BAD_FIELD: 경험 카드의 글 질문이 아님, INVALID_REQUEST: text 가 없거나 공백뿐이거나 1,000자를 넘거나 U+0000 이 있음"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID, 본인 카드 없음 또는 그 번호의 질문 없음"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: 초안을 만드는 중인 카드 또는 결과가 정해진 질문, CARD_CONFIRMED: 확정된 카드"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 사용자별 호출 한도를 넘음. details.retryAfterSec 와 Retry-After 헤더에 기다릴 초가 있음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "경험 카드 답 다듬기 미리 보기",
         "tags" : [ "Cards" ]
       }
     },

@@ -1,0 +1,36 @@
+/* 경험 카드의 자소서 문항 유형 — 제목 아래 태그 줄 밑에서 보이고, 수정을 누르면 같은 자리가 선택창으로 바뀐다 */
+.card-themes { margin-top: 10px; min-width: 0; }
+.card-themes__row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.card-themes__label { color: var(--text-tertiary); font-size: 12px; font-weight: 600; line-height: 1.5; }
+.card-themes__chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+/* 분야·기술 태그(테두리 없는 칩)와 구분되게 테두리를 둔다 */
+.card-themes__chips li { padding: 2px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg-surface); color: var(--text-primary); font-size: 12px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.card-themes__empty { color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+
+.card-themes__editor { min-width: 0; margin: 0; padding: 12px 16px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); }
+.card-themes__editor > legend { padding: 0 6px; margin-left: -6px; }
+.card-themes__options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 4px; }
+.card-themes__option { position: relative; display: flex; align-items: flex-start; gap: 10px; min-width: 0; min-height: var(--control-touch-size); padding: 8px 12px; border: 1px solid var(--border-default); border-radius: var(--control-radius); background: var(--bg-surface); cursor: pointer; }
+.card-themes__option:hover { background: var(--bg-canvas); border-color: var(--border-strong); }
+.card-themes__option[data-checked] { border-color: var(--border-selected); box-shadow: inset 0 0 0 1px var(--border-selected); background: var(--bg-subtle); }
+/* 진짜 체크박스를 칸 전체에 투명하게 덮어 둔다 — 누르는 곳이 곧 체크박스라 키보드, 스크린 리더, 음성 제어가 그대로 쓴다 */
+.card-themes__input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.card-themes__input:disabled { cursor: not-allowed; }
+.card-themes__option:has(.card-themes__input:focus-visible) { outline: 2px solid var(--border-selected); outline-offset: 2px; }
+.card-themes__box { flex: 0 0 auto; display: grid; place-items: center; width: 20px; height: 20px; margin-top: 1px; border: 1.5px solid var(--border-strong); border-radius: 5px; background: var(--bg-surface); color: transparent; }
+.card-themes__option[data-checked] .card-themes__box { border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
+.card-themes__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.card-themes__name { color: var(--text-primary); font-size: 13px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.card-themes__hint { color: var(--text-secondary); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+/* 2개를 다 골랐을 때 남은 유형: 색이 아니라 점선 테두리와 안내 글로도 막혀 있다고 알린다 */
+.card-themes__option:has(.card-themes__input:disabled) { border-style: dashed; background: transparent; cursor: not-allowed; }
+.card-themes__option:has(.card-themes__input:disabled):hover { background: transparent; border-color: var(--border-default); }
+.card-themes__option:has(.card-themes__input:disabled) .card-themes__name { color: var(--text-secondary); font-weight: 500; }
+.card-themes__note { margin: 10px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.card-themes__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-top: 10px; color: var(--text-secondary); font-size: 12px; }
+.card-themes > .row { margin-top: 6px; font-size: 12px; }
+
+@media (max-width: 767px) {
+  .card-themes__options { grid-template-columns: minmax(0, 1fr); }
+  .card-themes__editor { padding: 10px 12px 12px; }
+}

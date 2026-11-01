@@ -194,7 +194,7 @@ describe('① 입력 화면', () => {
     mount(null, '/cover-letters/new');
     fireEvent.click(screen.getByRole('button', { name: '지원 동기' }));
     expect(screen.getByLabelText('1번 문항')).toHaveValue('지원 동기와 입사 후 포부를 적어 주세요');
-    fireEvent.click(screen.getByRole('button', { name: '갈등 조율' }));
+    fireEvent.click(screen.getByRole('button', { name: '갈등 해결' }));
     expect(screen.getByLabelText('2번 문항')).toHaveValue('의견 차이를 조율해 해결한 경험을 적어 주세요');
   });
 

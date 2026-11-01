@@ -40,7 +40,7 @@ class InterviewTurnViewTest {
 
         InterviewTurnView view = InterviewTurnView.of(turn, InterviewSourceType.DIRECT_CARD, 2);
 
-        assertThat(view.answer()).isEqualTo(new InterviewAnswer("  앞뒤 공백까지 쓴 답  ", source));
+        assertThat(view.answer()).isEqualTo(new InterviewAnswer("  앞뒤 공백까지 쓴 답  ", source, null));
 
     }
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings, BriefcaseBusiness, FileText } from 'lucide-react';
 import { matchSupported } from '@/api/matching';
-import { useActiveJobs, useCards } from '@/api/queries';
+import { useActiveJobs } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { GithubBanner } from './GithubBanner';
@@ -38,14 +38,12 @@ const MOBILE_MENU = [
   { to: '/settings', label: '설정', icon: Settings },
 ];
 
-/** 앱 셸 — 접히는 레일 사이드바(브랜드 · 메뉴 그룹 · 최근 카드 · 프로필). 접힘 상태는 기억한다. */
+/** 앱 셸 — 접히는 레일 사이드바(브랜드 · 메뉴 그룹 · 프로필). 접힘 상태는 기억한다. */
 export function AppShell() {
 
-  const cards = useCards();
   const active = useActiveJobs();
   const [rail, setRail] = useState<boolean>(() => { try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem(RAIL_KEY, rail ? '1' : '0'); } catch { /* noop */ } }, [rail]);
-  const recent = [...(cards.data ?? [])].sort((a, b) => (a.status === 'DRAFT' ? -1 : 1) - (b.status === 'DRAFT' ? -1 : 1) || b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5);
 
   return (
     <div className={`shell ${rail ? 'shell--rail' : ''}`}>
@@ -69,11 +67,6 @@ export function AppShell() {
             ))}
           </nav>
         ))}
-        <div className="sidebar__recent">
-          <div className="sidebar__recent-title">최근 카드</div>
-          {recent.length === 0 && <div className="sidebar__recent-empty">최근 정리한 카드가 이곳에 표시돼요</div>}
-          {recent.map((c) => <Link key={c.id} to={`/cards/${c.id}`} title={c.title}><i className={`recent-dot ${c.status === 'DRAFT' ? 'recent-dot--draft' : ''}`} aria-hidden />{c.status === 'DRAFT' && <span className="sr-only">작성 중: </span>}<span>{c.title}</span></Link>)}
-        </div>
         <div style={{ marginTop: 'auto' }} />
         <div className="sidebar__profile"><ProfileMenu variant="sidebar" /></div>
       </aside>

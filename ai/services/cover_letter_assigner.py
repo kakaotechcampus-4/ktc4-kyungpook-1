@@ -33,6 +33,7 @@ from services.cover_letter_llm import (
 )
 from services.cover_letter_check import invented_numbers
 from services.cover_letter_posting import NO_CONDITION_RANK, company_facts, condition_ranks, met_conditions
+from services.cover_letter_progress import report_step
 from services.llm_executors import COVER_LETTER_JUDGE_EXECUTOR
 
 PICK_PROMPT = """당신은 자기소개서 문항 하나에 쓸 경험 카드를 고르는 담당입니다.
@@ -194,17 +195,12 @@ class CoverLetterAssigner:
         cards = self._cards_payload(request)
         ranks = condition_ranks(request.posting)
         picks = await asyncio.gather(*(
-            self._pick(request, question, cards, sources, ranks, deadline - reserve) for question in request.questions
+            self._pick_reported(seq, request, question, cards, sources, ranks, deadline - reserve)
+            for seq, question in enumerate(request.questions, start=1)
         ))
 
-        steps: list[AssignmentStep] = []
-        for question, pick in zip(request.questions, picks):
-            if pick is None:
-                steps.append(self._step(steps, "SUB_AGENT", "FAILED", question.question_id))
-            elif pick.first is None:
-                steps.append(self._step(steps, "SUB_AGENT", "NO_FIT", question.question_id))
-            else:
-                steps.append(self._step(steps, "SUB_AGENT", "PICKED", question.question_id, pick.first, pick.first_reason))
+        steps = [self._pick_step(seq, question, pick)
+                 for seq, (question, pick) in enumerate(zip(request.questions, picks), start=1)]
 
         claimants = [pick for pick in picks if pick is not None and pick.first is not None]
         choice: dict[int, Optional[int]] = {pick.question_id: pick.first for pick in picks if pick is not None}
@@ -215,15 +211,16 @@ class CoverLetterAssigner:
                 decisions = await self._supervise(request, claimants, deadline)
             except CoverLetterLLMUnavailable:
                 supervisor_failed = True
-                steps.append(self._step(steps, "SUPERVISOR", "FAILED"))
+                steps.append(_reported(self._step(steps, "SUPERVISOR", "FAILED")))
                 resolved = resolve_overlaps(claimants)
                 for pick in claimants:
                     decided_by[pick.question_id] = "CODE"
                     if resolved[pick.question_id] != pick.first:
                         choice[pick.question_id] = resolved[pick.question_id]
-                        steps.append(self._step(steps, "CODE", "RESOLVED", pick.question_id, resolved[pick.question_id]))
+                        steps.append(_reported(
+                            self._step(steps, "CODE", "RESOLVED", pick.question_id, resolved[pick.question_id])))
             else:
-                steps.append(self._step(steps, "SUPERVISOR", "CHECKED"))
+                steps.append(_reported(self._step(steps, "SUPERVISOR", "CHECKED")))
                 for pick in claimants:
                     decided_by[pick.question_id] = "SUPERVISOR"
                     decision = decisions[pick.question_id]
@@ -232,7 +229,7 @@ class CoverLetterAssigner:
                     card = pick.second if decision.choice == "SECOND" else None
                     choice[pick.question_id] = card
                     reason = sources.sourced(decision.reason, pick.first, pick.second, with_user=True)
-                    steps.append(self._step(steps, "SUPERVISOR", "SWITCHED", pick.question_id, card, reason))
+                    steps.append(_reported(self._step(steps, "SUPERVISOR", "SWITCHED", pick.question_id, card, reason)))
 
         assignments = [
             self._assignment(question, pick, choice, decided_by) for question, pick in zip(request.questions, picks)
@@ -247,6 +244,24 @@ class CoverLetterAssigner:
         else:
             ended_by = "COMPLETED"
         return AssignmentResult(cover_letter_id=request.cover_letter_id, assignments=assignments, steps=steps), ended_by
+
+    async def _pick_reported(
+        self, seq: int, request: AssignmentRequest, question: CoverLetterQuestion, cards: list[dict[str, Any]],
+        sources: "_Sources", ranks: dict[int, int], deadline: float,
+    ) -> Optional[Pick]:
+        """문항 순서를 단계 번호로 써, 다 끝난 뒤 돌려주는 과정과 같은 번호로 고른 즉시 보낸다."""
+        pick = await self._pick(request, question, cards, sources, ranks, deadline)
+        report_step(self._pick_step(seq, question, pick))
+        return pick
+
+    @staticmethod
+    def _pick_step(seq: int, question: CoverLetterQuestion, pick: Optional[Pick]) -> AssignmentStep:
+        if pick is None:
+            return AssignmentStep(seq=seq, actor="SUB_AGENT", kind="FAILED", question_id=question.question_id)
+        if pick.first is None:
+            return AssignmentStep(seq=seq, actor="SUB_AGENT", kind="NO_FIT", question_id=question.question_id)
+        return AssignmentStep(seq=seq, actor="SUB_AGENT", kind="PICKED", question_id=question.question_id,
+                              card_id=pick.first, reason=pick.first_reason)
 
     @staticmethod
     def _needs_supervisor(claimants: list[Pick]) -> bool:
@@ -445,6 +460,11 @@ class CoverLetterAssigner:
     ) -> AssignmentStep:
         return AssignmentStep(seq=len(steps) + 1, actor=actor, kind=kind, question_id=question_id,
                               card_id=card_id, reason=reason)
+
+
+def _reported(step: AssignmentStep) -> AssignmentStep:
+    report_step(step)
+    return step
 
 
 class _Sources:

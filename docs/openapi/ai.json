@@ -2181,6 +2181,18 @@
             ],
             "title": "Reason"
           },
+          "sentence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "sentence_seq 가 가리키는 문장 글(200자까지). 고치기 전 문장을 검토 기록으로 보이는 데 쓴다",
+            "title": "Sentence"
+          },
           "sentence_seq": {
             "anyOf": [
               {
@@ -2190,7 +2202,7 @@
                 "type": "null"
               }
             ],
-            "description": "SENT_BACK 이 건 문장 번호(검토할 때의 번호)",
+            "description": "CHECK_FAILED·DECIDED·MARKED·SENT_BACK 이 건 문장 번호(그때의 초안 기준). 글자 수·빈칸처럼 문장이 없으면 null",
             "title": "Sentence Seq"
           },
           "seq": {
@@ -7584,6 +7596,63 @@
         ]
       }
     },
+    "/internal/cover-letter-assignments/stream": {
+      "post": {
+        "description": "`/internal/cover-letter-assignments` 와 같은 배정을 만들면서, 문항마다 카드를 고르는 즉시와 감독이 정할 때마다 단계를 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 `{\"type\":\"progress\",\"step\":\"COVER_LETTER\",\"done\":0,\"total\":null,\"item\":{...}}` 입니다. `item` 은 단계 `{\"kind\":\"STEP\",\"step\":{...}}` 이고, step 은 응답 steps 항목과 같은 모양으로 생기는 대로 보냅니다(단계 글은 200자에서 자름). 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 이고, `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "assign_cards_stream_internal_cover_letter_assignments_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "자소서 문항마다 쓸 카드 고르기 (진행 스트리밍)",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
     "/internal/cover-letter-drafts": {
       "post": {
         "description": "문항마다 동시에 초안을 쓰고, 검사기(근거에 없는 수치·영문 낱말, 글자 수, 빈칸)에 걸리면 고쳐 쓰거나(FIX) 검사기가 잘못 건 것으로 보고 표시만 합니다(KEEP). 다시 쓰기는 문항마다 2번까지이고, 그 뒤 남은 수치·낱말은 marks 로 표시합니다. 모든 문항이 끝나면 감독이 함께 읽어 되풀이·근거 없는 역할·문항 벗어남을 문장 번호로 걸고, 걸린 문항만 한 번 더 씁니다. 글자 수가 넘친 채로 남으면 자르지 않고 over_by 로 알립니다. 쓰기 답을 못 받은 문항은 카드 문장과 빈칸으로 만든 뼈대(source=SKELETON)이며, 이 API 는 LLM 실패로 오류를 내지 않습니다.",
@@ -7640,6 +7709,63 @@
           }
         },
         "summary": "자소서 문항마다 초안 쓰기와 전체 검토",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
+    "/internal/cover-letter-drafts/stream": {
+      "post": {
+        "description": "`/internal/cover-letter-drafts` 와 같은 초안을 만들면서, 쓰기·검사·다음 행동·전체 검토의 단계와 쓰는 도중의 글을 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 `{\"type\":\"progress\",\"step\":\"COVER_LETTER\",\"done\":0,\"total\":null,\"item\":{...}}` 입니다. `item` 은 단계 `{\"kind\":\"STEP\",\"step\":{...}}` 이고, step 은 응답 steps 항목과 같은 모양으로 생기는 대로 보냅니다(단계 글은 200자에서 자름). 쓰는 도중의 글은 `{\"kind\":\"DRAFT_TEXT\",\"question_id\":1,\"round\":0,\"text\":\"...\",\"done\":false}` 이고, 문장이 끝날 때마다(문항마다 0.5초에 한 번까지) 그때까지 쓴 글 전체를 보내며, 다 쓰면 done=true 와 그 바퀴의 글을 보냅니다. round 0 은 첫 초안, 1 부터는 고쳐 쓴 바퀴이고 글은 비밀값을 가리고 5,000자에서 자릅니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 이고, `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "create_drafts_stream_internal_cover_letter_drafts_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "자소서 문항마다 초안 쓰기와 전체 검토 (진행 스트리밍)",
         "tags": [
           "cover-letters"
         ]

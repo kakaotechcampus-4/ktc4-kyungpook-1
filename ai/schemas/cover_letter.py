@@ -326,9 +326,14 @@ class DraftStep(BaseModel):
             "(수치·낱말 그대로, OVER_LIMIT 은 넘은 글자 수, MISSING_BLANK 는 항목 이름)"
         ),
     )
-    sentence_seq: Optional[int] = Field(None, description="SENT_BACK 이 건 문장 번호(검토할 때의 번호)")
+    sentence_seq: Optional[int] = Field(
+        None, description="CHECK_FAILED·DECIDED·MARKED·SENT_BACK 이 건 문장 번호(그때의 초안 기준). 글자 수·빈칸처럼 문장이 없으면 null",
+    )
     action: Optional[DraftAction] = Field(None, description="DECIDED 일 때 고친 쪽(FIX)인지 둔 쪽(KEEP)인지")
     reason: Optional[str] = None
+    sentence: Optional[str] = Field(
+        None, description="sentence_seq 가 가리키는 문장 글(200자까지). 고치기 전 문장을 검토 기록으로 보이는 데 쓴다",
+    )
 
 
 class DraftsResult(BaseModel):

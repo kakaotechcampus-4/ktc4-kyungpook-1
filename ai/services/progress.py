@@ -17,11 +17,15 @@ COMPRESS = "COMPRESS"
 REASON = "REASON"
 #: STAR 초안 진행은 Spring 카드 초안 Job 이 카드마다 받는다.
 STAR = "STAR"
+#: 자소서 카드 고르기·초안 쓰기 진행은 Spring 이 자소서마다 받는다.
+COVER_LETTER = "COVER_LETTER"
 
 # 화면이 한 줄로 보여 주는 값이라 길이를 자른다.
 TITLE_MAX_CHARS = 100
 REASON_MAX_CHARS = 200
 SLOT_TEXT_MAX_CHARS = 400
+# 자소서 문항 글자 수 상한(5,000자)과 같아, 쓰는 도중의 글을 자르지 않는다
+DRAFT_TEXT_MAX_CHARS = 5_000
 
 ProgressItem = dict[str, Any]
 ProgressListener = Callable[[str, int, "int | None", "ProgressItem | None"], None]
@@ -77,6 +81,11 @@ def described_item(title: str, reason: str) -> ProgressItem:
 
 def slot_item(round_no: int, slot: str, text: str, done: bool) -> ProgressItem:
     return {"kind": "SLOT", "round": round_no, "slot": slot, "text": _text(text, SLOT_TEXT_MAX_CHARS), "done": done}
+
+
+def draft_text_item(question_id: int, round_no: int, text: str, done: bool) -> ProgressItem:
+    return {"kind": "DRAFT_TEXT", "question_id": question_id, "round": round_no,
+            "text": _text(text, DRAFT_TEXT_MAX_CHARS), "done": done}
 
 
 def step_item(step: dict[str, Any]) -> ProgressItem:

@@ -59,7 +59,7 @@ export function InterestPicker({ value, onChange, error }: { value: Interest[]; 
   const toggle = (interest: Interest, on: boolean) => onChange(on ? [...value, interest] : value.filter((chosen) => chosen !== interest));
   return (
     <section className="settings-section profile-section" aria-label="관심 분야">
-      <SectionHead label="관심 분야" count={value.length} right={<span className="t-12 c-3">{max}개까지</span>} />
+      <SectionHead label="관심 분야" count={value.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
       <p className="profile-section__hint">관심 있는 직무를 1개부터 {max}개까지 골라 주세요. 공고 매칭이 이 직무의 공고를 먼저 찾아요.</p>
       <ul id={INTERESTS_ID} className="interest-grid" aria-describedby={error ? `${INTERESTS_ID}-error` : undefined}>
         {INTEREST_OPTIONS.map(({ value: interest, label }) => {
@@ -259,7 +259,7 @@ export function LanguageQuick({ state }: { state: ProfileFormState }) {
   };
   return (
     <section className="settings-section profile-section" aria-label="어학">
-      <SectionHead label="어학" count={rows.length} right={<span className="t-12 c-3">최대 {PROFILE_LIMITS.MAX_ITEMS.languages}개</span>} />
+      <SectionHead label="어학" count={rows.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
       <p className="profile-section__hint">가진 어학 시험을 누르고 점수나 등급을 적어 주세요. 없으면 아래 '어학 없음'으로 넘어가요.</p>
       <div className="quick-split">
         <ul className="interest-grid interest-grid--2">
@@ -342,7 +342,7 @@ export function CertificationQuick({ state }: { state: ProfileFormState }) {
   const others = rows.filter((row) => !common.includes(row.name));
   return (
     <section className="settings-section profile-section" aria-label="자격증">
-      <SectionHead label="자격증" count={rows.length} right={<span className="t-12 c-3">최대 {PROFILE_LIMITS.MAX_ITEMS.certifications}개</span>} />
+      <SectionHead label="자격증" count={rows.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
       <p className="profile-section__hint">가진 자격증을 누르거나 직접 적어 주세요. 발급 기관·취득 월은 마이페이지 인적사항에서 더 적을 수 있어요.</p>
       <ul className="interest-grid interest-grid--2">
         {COMMON_CERTIFICATIONS.map((name) => {

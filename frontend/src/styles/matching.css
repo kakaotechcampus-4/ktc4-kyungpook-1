@@ -668,6 +668,185 @@
   color: var(--text-tertiary);
 }
 
+/* 요약 카드의 'AI 가 한 일' — 맞춰 보기 결과를 펼치는 동안과 모자란 조건을 찾는 동안만 보인다 */
+.ai-log {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.ai-log li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  animation: gap-in 0.25s ease-out;
+}
+.ai-log li::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  transform: translateY(-1px);
+}
+.ai-log__retry,
+.gap-fill__again {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.ai-log__retry:hover,
+.gap-fill__again:hover {
+  color: var(--text-primary);
+}
+.posting-summary__alt {
+  margin: -4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 모자란 조건 아래 AI 가 한 일 — 조건 원문은 그대로 두고 그 아래 작은 글로만 이어진다 */
+.gap-fill {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  padding-left: 12px;
+  border-left: 2px solid var(--border-default);
+  color: var(--text-tertiary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.gap-fill > * {
+  animation: gap-in 0.25s ease-out;
+}
+.gap-fill p,
+.gap-fill ol {
+  margin: 0;
+}
+.gap-fill__decision {
+  color: var(--text-secondary);
+}
+.gap-fill__steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+}
+.gap-fill__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gap-fill__dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.gap-fill__dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  animation: ai-dot 1.2s ease-in-out infinite;
+}
+.gap-fill__dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.gap-fill__dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.gap-fill__proposal {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 8px 12px 10px 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.gap-fill__proposal.is-on {
+  border-color: var(--border-selected);
+}
+.gap-fill__proposal .check {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+}
+.gap-fill__nocheck {
+  flex: none;
+  width: 32px;
+}
+.gap-fill__proposal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 6px;
+}
+.gap-fill__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.gap-fill__title svg {
+  flex: none;
+  color: var(--text-tertiary);
+}
+.gap-fill__repo {
+  color: var(--text-tertiary);
+}
+.gap-fill__action {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.gap-fill__reason {
+  color: var(--text-secondary);
+}
+@keyframes gap-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-log li,
+  .gap-fill > * {
+    animation: none;
+  }
+  .gap-fill__dots i {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
 @media (max-width: 1000px) {
   .posting-detail {
     grid-template-columns: minmax(0, 1fr);

@@ -317,7 +317,7 @@ class CoverLetterRunnerTest {
             return new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1, "배포를 고쳤다. [직무 연결: 지원 직무와 이어지는 점을 적어 주세요]",
                             List.of(new CoverLetterDrafts.Sentence(1, "배포를 고쳤다.")), 8, 0,
                             List.of(new CoverLetterDrafts.Mark(1, "UNSOURCED_TERM", "CI")), List.of("JOB_LINK"), "LLM")),
-                    List.of(new CoverLetterDrafts.Step(1, "SUB_AGENT", "WROTE", 1, null, "8", null, null, null)));
+                    List.of(new CoverLetterDrafts.Step(1, "SUB_AGENT", "WROTE", 1, null, "8", null, null, null, null)));
         });
 
         runner.run(runner.claimNext().orElseThrow());

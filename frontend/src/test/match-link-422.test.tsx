@@ -47,21 +47,20 @@ it('sends match_opened once when the match list loads', async () => {
 it('sends match_opened for the detail and records evidence card and source clicks', async () => {
   vi.spyOn(matchingApi, 'detail').mockResolvedValue(detail);
   mount(`/match/${detail.id}`);
-  await screen.findByText(firstMet.reason);
+  await screen.findByTitle(firstMet.reason);
   await waitFor(() => expect(track).toHaveBeenCalledWith('match_opened', { view: 'detail', matchId: detail.id, fit: detail.fit }));
 
   fireEvent.click(screen.getByRole('link', { name: /공고 원문 보기/ }));
   expect(track).toHaveBeenCalledWith('match_source_opened', { matchId: detail.id });
 
-  fireEvent.click(screen.getAllByRole('link', { name: /카드 보기/ })[0]);
+  fireEvent.click(screen.getByTitle(firstMet.reason));
   expect(track).toHaveBeenCalledWith('match_card_opened', { matchId: detail.id, cardId: firstMet.cardId });
 });
 
 it('shows each evidence card kind on the match detail', async () => {
   vi.spyOn(matchingApi, 'detail').mockResolvedValue(detail);
   mount(`/match/${detail.id}`);
-  const reason = await screen.findByText(firstMet.reason);
-  const link = reason.closest('a')!;
+  const link = await screen.findByTitle(firstMet.reason);
   expect(within(link).getByText(firstMet.cardKind === 'TECH' ? '기술 카드' : '정성 카드')).toBeInTheDocument();
 });
 

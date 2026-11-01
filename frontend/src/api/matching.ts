@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, ContractError } from "./client";
-import { CardKind } from "./schemas";
+import { CardKind, CardTech } from "./schemas";
 
 export const MatchCategory = z.enum([
   "BACKEND",
@@ -40,6 +40,13 @@ const companyId = z
   .unknown()
   .transform((value) => (typeof value === "string" && value.trim() !== "" ? value : null));
 const logoUrl = z.unknown().transform((value) => (isHttpsUrl(value) ? value : null));
+// 목록 줄에 그리는 기술·학력. 구서버에는 두 칸이 없고, 모르는 기술 이름은 버린다 — 없으면 [] · null 이라 줄에서 그 자리를 비운다.
+const techs = z
+  .array(z.unknown())
+  .catch([])
+  .transform((values) => values.flatMap((value) => { const tech = CardTech.safeParse(value); return tech.success ? [tech.data] : []; }));
+export const EducationLevel = z.enum(["HIGH_SCHOOL", "ASSOCIATE", "BACHELOR", "MASTER", "DOCTOR"]);
+const education = z.object({ level: EducationLevel, exempt: z.boolean() }).nullable().catch(null);
 export const MatchTarget = z.object({
   id: z.string(),
   company: z.string(),
@@ -53,6 +60,10 @@ export const MatchTarget = z.object({
   required: counts,
   preferred: counts,
   experience,
+  /** 필수·우대 조건의 기술을 조건 순서대로 한 번씩. 카드 techs 와 같은 이름 */
+  techs,
+  /** 수준을 읽은 필수 학력 조건 중 가장 낮은 수준. exempt 는 '또는 그에 준하는 경력' 처럼 예외가 적힌 학력 */
+  education,
   source: z.object({
     url: z
       .string()

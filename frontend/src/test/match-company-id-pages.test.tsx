@@ -53,9 +53,9 @@ it("기업별 보기: companyId 로 묶는다 — 표기가 다른 같은 회사
   expect(headings()).toEqual(["오로라랩스", "카카오", "나래랩스", "토스"]);
   expect(screen.getByRole("status")).toHaveTextContent("기업 4곳 · 공고 6건");
   const kakao = screen.getByRole("link", { name: "카카오" }).closest("article")!;
-  expect(within(kakao).getByText("공고 2건")).toBeInTheDocument();
-  expect(within(kakao).getByRole("list", { name: "대표 직무" }).textContent).toContain("백엔드 개발자");
-  expect(within(kakao).getByRole("list", { name: "대표 직무" }).textContent).toContain("서버 개발자");
+  expect(within(kakao).getByText("채용 중 2건")).toBeInTheDocument();
+  expect(within(kakao).getByRole("list", { name: "공고" }).textContent).toContain("백엔드 개발자");
+  expect(within(kakao).getByRole("list", { name: "공고" }).textContent).toContain("서버 개발자");
   expect(screen.queryByRole("link", { name: "Kakao Corp." })).not.toBeInTheDocument();
   // 링크는 id 로: 콜론·한글은 인코딩된다
   expect(screen.getByRole("link", { name: "카카오" })).toHaveAttribute("href", "/match/company/kakao?view=company");
@@ -205,13 +205,13 @@ it("공고 상세 머리말: 로고 이미지(장식)와 companyId 기업 페이
   vi.spyOn(matchingApi, "detail").mockResolvedValue(detail);
   const { container, where } = mount(`/match/${detail.id}?category=BACKEND`, companyFixture);
   await screen.findByRole("heading", { level: 1, name: detail.role });
-  const logo = container.querySelector(".match-detail-head img")!;
+  const logo = container.querySelector(".posting-detail__head img")!;
   expect(logo).toHaveAttribute("src", LOGO);
   expect(logo).toHaveAttribute("alt", "");
   const link = screen.getByRole("link", { name: detail.company });
   expect(link).toHaveAttribute("href", "/match/company/kakao?category=BACKEND");
   expect(screen.queryByLabelText(/등급/)).not.toBeInTheDocument();
-  expect(screen.getByRole("heading", { level: 2, name: /필수 조건/ })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 2, name: "자격 요건" })).toBeInTheDocument();
   fireEvent.click(link);
   await screen.findByRole("heading", { level: 1, name: "카카오" });
   await waitFor(() => expect(where().path).toBe("/match/company/kakao"));

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { CompanyMark } from "./CompanyMark";
-import { companyLabel, companyPath, type CompanyGroup } from "./model";
+import { companyLabel, companyPath, deadlineOf, type CompanyGroup } from "./model";
 
 export type MatchView = "posting" | "company";
 export const matchViewFromParams = (params: URLSearchParams): MatchView =>
@@ -33,36 +33,43 @@ export function ViewToggle({ value, onChange }: { value: MatchView; onChange: (n
 
 const ROLES_SHOWN = 3;
 
-/** 기업별 보기 — 기업마다 카드 하나(마크·이름·공고 수·대표 직무). 카드를 누르면 그 기업의 페이지로 간다. 등급은 보이지 않는다(PostingCard 주석 참고). */
+/** 기업별 보기 — 기업마다 카드 하나(로고·이름·공고 수·앞쪽 공고와 마감). 카드를 누르면 그 기업의 페이지로 간다. 등급은 보이지 않는다(PostingCard 주석 참고). */
 export function CompanyList({ groups, search }: { groups: CompanyGroup[]; search: URLSearchParams }) {
   return (
-    <div className="match-grid">
+    <div className="match-grid match-grid--companies">
       {groups.map((group) => {
         const roles = group.postings.slice(0, ROLES_SHOWN);
         const rest = group.postings.length - roles.length;
         return (
-          <article key={group.key} className="match-card match-card--company">
-            <div className="match-card__head">
-              <div className="match-company-head">
-                <CompanyMark name={group.company} logoUrl={group.logoUrl} size={44} />
-                <div>
-                  <h2>
-                    <Link className="match-card__link" to={companyPath(group, search)}>
-                      {companyLabel(group.company)}
-                    </Link>
-                  </h2>
-                  <span className="match-company-count">공고 {group.postings.length}건</span>
-                </div>
+          <article key={group.key} className="match-card company-tile">
+            <div className="company-tile__head">
+              <CompanyMark name={group.company} logoUrl={group.logoUrl} size={48} />
+              <div>
+                <h2 className="company-tile__name">
+                  <Link className="match-card__link" to={companyPath(group, search)}>
+                    {companyLabel(group.company)}
+                  </Link>
+                </h2>
+                <span className="company-tile__count">채용 중 {group.postings.length}건</span>
               </div>
             </div>
-            <ul className="match-company-roles" aria-label="대표 직무">
-              {roles.map((posting) => (
-                <li key={posting.id}>{posting.role}</li>
-              ))}
-              {rest > 0 && <li className="match-company-roles__rest">외 {rest}건</li>}
+            <ul className="company-tile__roles" aria-label="공고">
+              {roles.map((posting) => {
+                const deadline = deadlineOf(posting.source.expiresAt);
+                return (
+                  <li key={posting.id}>
+                    <span className="company-tile__role">{posting.role}</span>
+                    {deadline.kind !== "none" && <span className={`deadline__badge deadline--${deadline.kind}`}>{deadline.badge}</span>}
+                  </li>
+                );
+              })}
             </ul>
-            <div className="match-card__foot">
-              <span className="match-card__go">기업 공고 보기<ArrowRight size={14} aria-hidden /></span>
+            <div className="company-tile__foot">
+              <span>{rest > 0 ? `외 ${rest}건` : ""}</span>
+              <span className="posting-tile__go" aria-hidden="true">
+                기업 공고 보기
+                <ChevronRight size={14} />
+              </span>
             </div>
           </article>
         );

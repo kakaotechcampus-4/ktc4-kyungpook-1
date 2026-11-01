@@ -78,21 +78,22 @@ export function InterviewPage() {
     if (!open || !text.trim() || answer.isPending) return false;
     try {
     const source: EvidenceType = picked === text ? 'USER_SELECTED' : 'USER_STATED';
-    await answer.mutateAsync({ turnNo: open.turnNo, text, source });
+    const saved = await answer.mutateAsync({ turnNo: open.turnNo, text, source });
     track('interview_answered', { cardId, field: open.field, source, turnNo: open.turnNo });
     toast(`${starFieldShort[open.field]} 답변을 저장했어요`, { tone: 'success' });
     setText(''); setPicked(null);
-    askNext(allTurns.length);
+    // 답으로 네 칸이 다 차면 서버가 바로 확정하고(#624) 확정 카드는 더 물을 수 없으므로 다음 질문을 요청하지 않는다
+    if (saved.status !== 'CONFIRMED') askNext(allTurns.length);
     return true;
     } catch { return false; }
   };
   const skipOpen = () => {
     if (!open || skip.isPending || answer.isPending) return;
     skip.mutate(open.turnNo, {
-      onSuccess: () => {
+      onSuccess: (saved) => {
         toast(`${starFieldShort[open.field]} 질문을 넘겼어요`);
         setText(''); setPicked(null);
-        askNext(allTurns.length);
+        if (saved.status !== 'CONFIRMED') askNext(allTurns.length);
       },
     });
   };

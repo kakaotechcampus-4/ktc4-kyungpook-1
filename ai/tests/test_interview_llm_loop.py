@@ -177,6 +177,30 @@ def test_suggestions_drop_invented_metrics_and_keep_two() -> None:
     assert result.suggested_answers == ["배포 대기를 없앴다", "목록 조회를 쿼리 한 번으로 바꿨다"]
 
 
+def test_review_reason_reaches_the_question_prompt() -> None:
+    """확인이 필요한 이유 문장을 칸과 함께 넘겨, 등급만이 아니라 무엇이 약한지 짚어 묻게 한다."""
+    weak = {**_slot("R", "검색 응답을 10초 줄였다", 4),
+            "review_reason": "근거에서 확인되지 않는 수치(10초)가 있어 사용자 확인이 필요합니다"}
+    client = FakeClient(_ask("R", question="그 10초는 어디서 재신 건가요?"))
+
+    _next(_agent(client), _request(missing_slots=[_slot("S"), weak]))
+
+    slots = {slot["slot"]: slot for slot in client.payloads[0]["slots"]}
+    assert slots["R"]["review_reason"] == "근거에서 확인되지 않는 수치(10초)가 있어 사용자 확인이 필요합니다"
+    assert slots["S"]["review_reason"] is None
+
+
+def test_metric_only_in_review_reason_is_not_a_source() -> None:
+    """이유가 짚는 수치는 확인되지 않은 수치라, 그 수치를 쓴 예상 답변·이유는 버린다."""
+    weak = {**_slot("R", "검색 응답을 줄였다", 4), "review_reason": "근거에 없는 수치(10초)가 있어 확인이 필요합니다"}
+    client = FakeClient(_ask("R", suggestions=["검색 응답을 10초 줄였다", "검색 응답을 줄였다"],
+                             reason="10초를 어디서 쟀는지 없어 물어요"))
+
+    result, _ = _next(_agent(client), _request(missing_slots=[weak]))
+
+    assert (result.suggested_answers, result.reason) == (["검색 응답을 줄였다"], None)
+
+
 ANSWERED_S = [{"star_slot": "S", "question_text": "상황은요?", "outcome": "ANSWERED", "answer_text": "배포가 느렸다"}]
 
 

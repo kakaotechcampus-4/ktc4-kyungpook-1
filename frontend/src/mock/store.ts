@@ -3,7 +3,7 @@
  * Job 진행률은 타이머가 아니라 "읽는 순간의 경과 시간"으로 계산한다 — 결정적이고 폴링 간격과 무관.
  * 데모 속도: ANALYZE 12초, DRAFT 는 카드 한 장에 10초쯤(읽고 생각 8초 + 네 칸 쓰기 2초, 카드가 많으면 전체 36초 안으로) — 스펙 목표 30초/3분보다 빠르게.
  */
-import { seedCards, seedCandidates, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
+import { seedActivities, seedCards, seedCandidates, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
 import { draftPlans, draftSchedule, draftStepsOf, draftTexts, liveDraftOf, type DraftPlan } from './draftLive';
 import { Profile, emptyProfile } from '@/api/profile';
 
@@ -15,6 +15,7 @@ export const db = {
   repos: clone(seedRepos) as Any[],
   candidates: clone(seedCandidates) as Any[],
   cards: clone(seedCards) as Any[],
+  activities: clone(seedActivities) as Any[], // 활동(#477) — 카드는 activityId 로 가리킨다
   interview: clone(seedInterview) as Record<string, Any[]>,
   coverLetters: [] as Any[], // 자소서(#492 계약) — mock/coverLetters.ts 가 다룬다
   cardMaterialAnswers: {} as Record<string, Record<string, string>>, // 카드마다 기억한 자소서 답(#585)
@@ -22,6 +23,7 @@ export const db = {
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
+  activityIdem: new Map<string, string>(), // JSON [userId, key] → activityId
   seq: 100,
 };
 export const nextId = (p: string) => `${p}_${++db.seq}`;
@@ -47,6 +49,7 @@ const legacyUpdatedAt = (c: Any): string => [c.metadataUpdatedAt, c.confirmedAt]
 /** 오래된 스냅샷의 현재 근거만 보존한다. 같은 글이어도 과거 버전의 출처는 추정하지 않는다. */
 function hydrateCards() {
   db.repos.forEach(r => { r.userId ??= db.user.id; });
+  db.activities.forEach(a => { a.userId ??= db.user.id; });
   db.cards.forEach(c => {
     c.userId ??= db.user.id;
     const current = c.versions[c.versions.length - 1];
@@ -62,8 +65,9 @@ function hydrateCards() {
 export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
+  db.activities = clone(seedActivities);
   db.profile = emptyProfile(); db.coverLetters = []; db.cardMaterialAnswers = {};
-  db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.seq = 100;
+  db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.activityIdem.clear(); db.seq = 100;
   hydrateCards();
 }
 
@@ -306,15 +310,36 @@ export function boardFor(repoId: string) {
 }
 
 // ───────────────────────────── 카드 ─────────────────────────────
+/** 카드가 속한 활동. 이름·종류는 활동에서 읽어 이름을 고치면 카드에도 바로 반영된다(서버와 같다). 활동 밖 카드는 null */
+export function activityRef(c: Any) {
+  const activity = c.activityId ? db.activities.find((a) => a.id === c.activityId) : null;
+  return activity ? { id: activity.id, name: activity.name, type: activity.type } : null;
+}
+/** 활동 응답: 안의 카드 수와 그중 확정 카드 수는 지금 카드에서 센다 */
+export function activityView(a: Any): Any {
+  const { userId, ...rest } = a;
+  void userId;
+  const inside = db.cards.filter((c) => c.activityId === a.id);
+  return { ...rest, cardCount: inside.length, confirmedCount: inside.filter((c) => c.status === 'CONFIRMED').length };
+}
+/** 활동을 지우면 안의 카드도 버전·근거·되묻기까지 모두 지운다(확정 카드 포함). 지운 카드 수를 돌려준다 */
+export function removeActivity(id: string) {
+  const gone = db.cards.filter((c) => c.activityId === id);
+  db.cards = db.cards.filter((c) => c.activityId !== id);
+  gone.forEach((c) => { delete db.interview[c.id]; });
+  db.activities = db.activities.filter((a) => a.id !== id);
+  return gone.length;
+}
+
 export function cardView(c: Any) {
   const v = c.versions[c.versions.length - 1];
-  const { versions, userId, ...rest } = c;
+  const { versions, userId, activityId, ...rest } = c;
   const { _metadata, _confirmed, ...version } = v;
   settleThemes(c); rest.themes = c.themes ?? []; delete rest.themesByUser; delete rest.themesDueAt; // 문항 유형(#564): 목 안의 표시는 내보내지 않는다
   void versions;
-  void userId; void _metadata; void _confirmed;
+  void userId; void activityId; void _metadata; void _confirmed;
   // draftSteps: 실서버처럼 AI 초안 기록이 없는 카드(직접 쓴 카드·새로 만든 카드)는 빈 배열
-  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], version });
+  return clone({ ...rest, areas: c.areas ?? [], techs: c.techs ?? [], draftSteps: c.draftSteps ?? [], activity: activityRef(c), version });
 }
 /**
  * 목록용 STAR 상태 — 현재 버전의 실제 칸 내용으로 판정한다.
@@ -343,6 +368,7 @@ export function cardSummary(c: Any) {
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
     updatedAt: c.updatedAt ?? legacyUpdatedAt(c),
     repo: c.repo ? { id: c.repo.id, owner: c.repo.owner, name: c.repo.name } : null,
+    activity: activityRef(c),
   };
 }
 
@@ -521,8 +547,8 @@ export function settlePending() {
  */
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,
-    jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], seq: db.seq,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,
+    jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], activityIdem: [...db.activityIdem.entries()], seq: db.seq,
   });
 }
 export function restore(raw: string): boolean {
@@ -531,6 +557,7 @@ export function restore(raw: string): boolean {
     if (!s?.cards || !s?.repos) return false;
     db.user = s.user; db.repos = s.repos; db.candidates = s.candidates;
     db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
+    db.activities = Array.isArray(s.activities) ? s.activities : []; // 활동이 생기기 전에 저장된 데모 DB 는 활동 없이 이어진다
     db.coverLetters = Array.isArray(s.coverLetters) ? s.coverLetters : [];
     db.cardMaterialAnswers = s.cardMaterialAnswers ?? {};
     const profile = Profile.safeParse(s.profile); // 인적사항이 생기기 전에 저장된 데모 DB 는 빈 값으로 이어진다
@@ -539,6 +566,7 @@ export function restore(raw: string): boolean {
     (s.jobs ?? []).forEach((j: Any) => db.jobs.set(j.id, j));
     db.idem = new Map(s.idem ?? []);
     db.manualIdem = new Map(s.manualIdem ?? []);
+    db.activityIdem = new Map(s.activityIdem ?? []);
     hydrateCards();
     settlePending();
     return true;

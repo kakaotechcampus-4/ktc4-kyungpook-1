@@ -1,4 +1,4 @@
-import { CardMetadataPatch } from '@/api/schemas';
+import { ACTIVITY_TYPES, CardMetadataPatch } from '@/api/schemas';
 import { mockMatchDetail, mockMatchList } from './matching';
 import { getProfile, putProfile } from './profile';
 import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
@@ -8,7 +8,7 @@ import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, list
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
+import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata } from './store';
 import { now } from './fixtures';
 import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
@@ -167,14 +167,72 @@ on('POST', '/jobs/:id/cancel', ({ params }) => {
   return j ? ok(j) : fail(404, 'JOB_NOT_FOUND', '작업을 찾을 수 없습니다');
 });
 
+// ───────────────────────────── 활동 (#477) ─────────────────────────────
+const myActivity = (id: string) => db.activities.find((a) => a.id === id && (a.userId == null || a.userId === db.user.id));
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const okText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max && !value.includes('\0');
+/**
+ * 계약의 입력 규칙(openapi ActivityRequest). 만들 때는 빠진 값이 기본(끝난 달 없음 = 진행 중, 역할 없음)이고,
+ * 고칠 때(base 있음)는 키가 없거나 null 이면 그대로, 끝난 달·역할은 빈 글이 비우기다. 규칙에 어긋나면 null.
+ */
+function activityFields(body: Any, base: Any | null): Any | null {
+  const keep = (key: string) => body[key] === undefined || body[key] === null;
+  const name = keep('name') ? base?.name : body.name;
+  const type = keep('type') ? base?.type : body.type;
+  const startMonth = keep('startMonth') ? base?.startMonth : body.startMonth;
+  const blank = (value: unknown) => typeof value === 'string' && value.trim() === '';
+  const endMonth = keep('endMonth') ? (base ? base.endMonth : null) : blank(body.endMonth) ? null : body.endMonth;
+  const role = keep('role') ? (base ? base.role : null) : blank(body.role) ? null : body.role;
+  if (!okText(name, CONFIG.CARD_TITLE_MAX) || isCardBlank(name) || name.trim().length > 50) return null;
+  if (!ACTIVITY_TYPES.includes(type) || typeof startMonth !== 'string' || !MONTH.test(startMonth)) return null;
+  if (endMonth !== null && (typeof endMonth !== 'string' || !MONTH.test(endMonth) || endMonth < startMonth)) return null;
+  if (role !== null && (!okText(role, 100) || role.trim().length > 50)) return null;
+  return { name: name.trim(), type, startMonth, endMonth, role: role === null ? null : role.trim() };
+}
+const invalidActivity = () => fail(400, 'INVALID_REQUEST', '활동 입력을 확인해 주세요');
+const NO_ACTIVITY = () => fail(404, 'NOT_FOUND', '활동을 찾을 수 없습니다');
+on('GET', '/activities', () => ok(db.activities.filter((a) => a.userId == null || a.userId === db.user.id).map(activityView)
+  .sort((a, b) => b.startMonth.localeCompare(a.startMonth) || b.createdAt.localeCompare(a.createdAt)))); // 시작한 달이 최근인 순, 카드 0장인 활동도 온다
+on('POST', '/activities', ({ body, headers }) => {
+  const rawKey = headers['idempotency-key'];
+  const key = rawKey && !isCardBlank(rawKey) ? rawKey : null;
+  if (key && key.length > 255) return invalidActivity();
+  const scopedKey = key ? JSON.stringify([db.user.id, key]) : null;
+  const existing = scopedKey ? myActivity(db.activityIdem.get(scopedKey) ?? '') : undefined;
+  if (existing) return ok(activityView(existing)); // 같은 키는 처음 만든 활동을 돌려주고 다시 보낸 값은 쓰지 않는다
+  const fields = activityFields(body, null);
+  if (!fields) return invalidActivity();
+  const activity = { id: nextId('act'), userId: db.user.id, ...fields, createdAt: now() };
+  db.activities.push(activity);
+  if (scopedKey) db.activityIdem.set(scopedKey, activity.id);
+  return ok(activityView(activity));
+});
+on('PATCH', '/activities/:id', ({ params, body }) => {
+  const activity = myActivity(params[0]);
+  if (!activity) return NO_ACTIVITY();
+  if (['name', 'type', 'startMonth', 'endMonth', 'role'].every((key) => body[key] === undefined || body[key] === null)) return invalidActivity(); // 바꿀 값이 없으면 400
+  const fields = activityFields(body, activity);
+  if (!fields) return invalidActivity();
+  Object.assign(activity, fields);
+  return ok(activityView(activity));
+});
+on('DELETE', '/activities/:id', ({ params }) => {
+  if (!myActivity(params[0])) return NO_ACTIVITY();
+  removeActivity(params[0]);
+  return ok({ ok: true });
+});
+
 // ───────────────────────────── 카드 ─────────────────────────────
 const findCard = (id: string) => db.cards.find((c) => c.id === id && (c.userId == null || c.userId === db.user.id));
 const invalid = () => fail(400, 'INVALID_REQUEST', '카드 입력을 확인해 주세요');
 const validText = (value: unknown, max: number) => typeof value === 'string' && value.length <= max && !value.includes('\0');
 on('GET', '/cards', () => ok(db.cards.filter(c => c.userId == null || c.userId === db.user.id).map(cardSummary).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))));
 on('POST', '/cards/manual/draft', ({ body, headers }) => {
+  if (body.repoId != null && body.activityId != null) return invalid(); // 레포와 활동은 둘 중 하나만
   const repo = body.repoId == null ? null : db.repos.find((r) => r.id === body.repoId && r.userId === db.user.id);
   if (body.repoId != null && !repo) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
+  const activity = body.activityId == null ? null : myActivity(body.activityId);
+  if (body.activityId != null && !activity) return NO_ACTIVITY();
   const rawKey = headers['idempotency-key'];
   const key = rawKey && !isCardBlank(rawKey) ? rawKey : null;
   if (key && key.length > 255) return invalid();
@@ -185,7 +243,7 @@ on('POST', '/cards/manual/draft', ({ body, headers }) => {
   if (!validText(body.title, CONFIG.CARD_TITLE_MAX) || isCardBlank(body.title) || (period != null && !validText(period, CONFIG.CARD_PERIOD_MAX))) return invalid();
   const card: Any = {
     id: nextId('card'), userId: db.user.id, kind: 'QUALITATIVE', status: 'DRAFT', title: body.title, period,
-    repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, candidate: null,
+    repo: repo ? { id: repo.id, owner: repo.owner, name: repo.name } : null, activityId: activity?.id ?? null, candidate: null,
     versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: now(), situation: null, task: null, action: null, result: null, _confirmed: false }],
     evidence: [], lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 0, confirmedAt: null, createdAt: now(), updatedAt: now(),
   };

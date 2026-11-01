@@ -81,6 +81,22 @@ class MatchingCardReaderTest {
 
     }
 
+    @Test
+    @DisplayName("레포를 가리지 않고 그 사용자의 지우지 않은 확정 카드만 id 순서로 읽고, 남의 확정 카드는 읽지 않는다")
+    void readsLiveConfirmedCardsOfEveryRepositoryOfTheUser() {
+
+        Long first = card(repo, true);
+        Long second = card(otherRepo, true);
+        card(repo, false);
+        Long deleted = card(otherRepo, true);
+        jdbc.update("UPDATE card SET deleted_at = now() WHERE id = ?", deleted);
+        Long others = fixtures.insertCard(UUID.randomUUID(), fixtures.insertUser(2L, "taehun0208"));
+        fixtures.confirmCard(others);
+
+        assertThat(reader.confirmedOf(userId)).extracting(MatchingCard::id).containsExactly(first, second);
+
+    }
+
     private Long card(Long userRepositoryId, boolean confirmed) {
 
         Long card = fixtures.insertCard(UUID.randomUUID(), userId);

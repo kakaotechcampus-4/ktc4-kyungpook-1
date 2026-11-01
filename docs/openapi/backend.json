@@ -603,6 +603,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseOverallRecommendationResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/OverallRecommendationResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponsePolishedDraftResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -2623,6 +2637,36 @@
         },
         "type" : "object"
       },
+      "OverallRecommendationResponse" : {
+        "properties" : {
+          "companies" : {
+            "description" : "추천 기업. 많아야 5곳이고 순위 순서이며, 계산 중이거나 실패해도 지난 결과를 담는다",
+            "items" : {
+              "$ref" : "#/components/schemas/RankedCompany"
+            },
+            "type" : "array"
+          },
+          "computedAt" : {
+            "description" : "마지막으로 계산을 마친 시각. 계산한 적이 없으면 null",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "progress" : {
+            "$ref" : "#/components/schemas/RecommendationProgress",
+            "description" : "COMPUTING 일 때만 확인한 공고 수와 전체 수, 그 밖에는 null"
+          },
+          "stale" : {
+            "description" : "계산한 뒤 확정 카드나 인적사항이 바뀌었으면 true. 새 공고는 넣지 않는다",
+            "type" : "boolean"
+          },
+          "status" : {
+            "description" : "COMPUTING 은 계산 중, FAILED 는 실패했거나 계산이 멈춤(다시 요청하면 새로 계산), NONE 은 아직 계산한 적 없음",
+            "enum" : [ "COMPUTING", "READY", "FAILED", "NONE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "PolishedDraftRequest" : {
         "description" : "다듬을 경험 카드 답",
         "properties" : {
@@ -2960,6 +3004,44 @@
         },
         "type" : "object"
       },
+      "RankedCompany" : {
+        "properties" : {
+          "companyId" : {
+            "type" : "string"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "logoUrl" : {
+            "description" : "https 로고 주소. 없으면 null",
+            "type" : "string"
+          },
+          "posting" : {
+            "$ref" : "#/components/schemas/Posting"
+          },
+          "preferredMet" : {
+            "description" : "채웠다고 AI 가 판단한 우대 조건 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "preferredTotal" : {
+            "description" : "대표 공고의 우대 조건 수(일반 조건 제외)",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requiredMet" : {
+            "description" : "모든 확정 카드로 채웠다고 AI 가 판단한 필수 조건 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requiredTotal" : {
+            "description" : "대표 공고의 필수 조건 수(학력·경력 같은 일반 조건 제외)",
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "ReadCoverageResponse" : {
         "properties" : {
           "commitsRead" : {
@@ -3049,6 +3131,19 @@
             "description" : "저장소 id",
             "format" : "uuid",
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RecommendationProgress" : {
+        "properties" : {
+          "done" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         },
         "type" : "object"
@@ -7190,6 +7285,124 @@
         },
         "summary" : "내 인적사항 저장",
         "tags" : [ "Profile" ]
+      }
+    },
+    "/api/recommendations" : {
+      "get" : {
+        "description" : "'내 조건으로 매칭하기' 로 계산해 저장해 둔 기업을 돌려주며, 열 때 계산하지 않습니다. 계산 중이면 progress 로 확인한 공고 수를 담고, 계산 뒤 확정 카드나 인적사항이 바뀌었으면 stale 이 true 입니다.",
+        "operationId" : "overallRecommendations",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOverallRecommendationResponse"
+                }
+              }
+            },
+            "description" : "추천 상태와 기업. 계산한 적이 없으면 NONE 과 빈 배열"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "전체 추천 기업 조회",
+        "tags" : [ "Matches" ]
+      },
+      "post" : {
+        "description" : "모든 확정 카드로 맞는 기업을 배경에서 계산하기 시작하고 조회와 같은 응답을 돌려줍니다. 이미 계산 중이면 새로 시작하지 않습니다. 계산은 1분 안팎이며 화면은 조회 API 로 진행을 읽습니다.",
+        "operationId" : "startOverallRecommendation",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseOverallRecommendationResponse"
+                }
+              }
+            },
+            "description" : "시작한 뒤의 추천 상태(보통 COMPUTING)"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "전체 추천 계산 시작",
+        "tags" : [ "Matches" ]
       }
     },
     "/api/repos" : {

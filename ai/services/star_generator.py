@@ -33,7 +33,7 @@ from schemas.common import (
     StarMaterialKind,
     StarSlot,
     StarStepKind,
-    StarTech,
+    TechTag,
     StatementConfidence,
 )
 from services.llm_executors import CARD_DRAFT_EXECUTOR, LLMCallSkipped, run_llm_call
@@ -98,7 +98,7 @@ PR 본문 활용:
 
 분야·기술 태그 규칙:
 - areas(분야): evidence의 changed_paths(바뀐 파일 경로)와 요약으로 이 카드의 변경이 주로 어느 분야인지 고른다. 최대 2개이고 비중이 큰 것부터 적는다. AI는 모델·프롬프트·임베딩·LLM 호출을 다루는 변경일 때만 쓰고, AI 서비스의 일반 API 코드는 BACKEND다. DOCS는 코드 분야가 하나도 없을 때만 쓴다. TEST는 시험 코드·시험 설정·E2E가 이 변경의 중심일 때만 쓰고, 기능 코드와 함께 더한 시험으로는 쓰지 않는다.
-- techs(기술): changed_paths의 확장자·Dockerfile·.github/workflows 같은 경로와 요약에 직접 드러난 것만 최대 4개 고르고 중요한 것부터 적는다. 바뀐 파일이 의존성·빌드 설정 파일(build.gradle·package.json·requirements.txt·pyproject.toml·pom.xml 등)뿐이면 그 파일 이름으로 기술을 짐작하지 않는다. REACT는 .tsx·.jsx 화면 코드를 바꿨을 때 TYPESCRIPT나 JAVASCRIPT와 함께 쓸 수 있다. 근거로 판단할 수 없으면 빈 배열로 둔다.
+- techs(기술): 이 카드의 커밋에 드러난 기술만 최대 8개 고르고 이 일에서 중요한 것부터 적는다. changed_paths의 확장자·Dockerfile·.github/workflows 같은 경로로 언어·도구를 고르고(예: .java → JAVA, Dockerfile → DOCKER), 요약·커밋 메시지·PR 본문에 그 기술을 실제로 쓴 흔적이 있으면 프레임워크·저장소·도구도 고른다(예: JpaRepository → JPA, Redis 캐시를 붙임 → REDIS, Kafka 소비자 → KAFKA, @SpringBootApplication·Spring Boot 설정 → SPRING). 바뀐 파일이 의존성·빌드 설정 파일(build.gradle·package.json·requirements.txt·pyproject.toml·pom.xml 등)뿐이면 그 파일 내용만으로 기술을 짐작하지 않는다. REACT는 .tsx·.jsx 화면 코드를 바꿨을 때 TYPESCRIPT나 JAVASCRIPT와 함께 쓸 수 있다. 근거로 판단할 수 없으면 빈 배열로 둔다.
 
 반드시 제공된 구조화 출력 스키마로만 응답하세요."""
 
@@ -172,9 +172,9 @@ _CHANGE_KIND_EDIT = "기존 줄 바꿈"
 _CHURN = re.compile(r"\+(\d+)/-(\d+)")
 
 MAX_AREAS = 2
-MAX_TECHS = 4
+MAX_TECHS = 8
 _AREAS = frozenset(get_args(StarArea))
-_TECHS = frozenset(get_args(StarTech))
+_TECHS = frozenset(get_args(TechTag))
 _NON_CODE_AREA = "DOCS"
 
 
@@ -199,7 +199,7 @@ class StarDraftOutput(BaseModel):
     A: StarField
     R: StarField
     areas: list[StarArea] = Field(default_factory=list)
-    techs: list[StarTech] = Field(default_factory=list)
+    techs: list[TechTag] = Field(default_factory=list)
 
 
 class SlotChoice(BaseModel):

@@ -7,6 +7,7 @@ import com.gitory.backend.agent.port.JobPostingExtractionRequest;
 import com.gitory.backend.agent.port.JobPostingExtractionResult;
 import com.gitory.backend.agent.port.PostingContentStatus;
 import com.gitory.backend.agent.port.PostingExtractionUnavailableException;
+import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +17,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 이번 실행에서 본문을 받은 공고마다 AI 로 조건을 뽑아 저장한다
@@ -119,7 +123,8 @@ public class JobPostingExtractionService {
                 && posting.getContentHash() != null;
         return new JobPostingExtractionRequest(posting.getCompanyKey(), posting.getExternalId(), posting.getTitle(),
                 posting.getSourceUrl(), text, extractedBefore ? posting.getContentHash() : null,
-                extractedBefore ? PostingContentStatus.valueOf(posting.getContentStatus().name()) : null);
+                extractedBefore ? PostingContentStatus.valueOf(posting.getContentStatus().name()) : null,
+                posting.getExtractionVersion());
 
     }
 
@@ -131,6 +136,7 @@ public class JobPostingExtractionService {
             criteria.deleteAllByPostingId(postingId);
             posting.extracted(JobCategory.valueOf(result.category().name()),
                     ExperienceLevel.valueOf(experience.level().name()), experience.minYears(), experience.quote(),
+                    techsOf(result.teamTechs()), result.extractionVersion(),
                     JobPostingContentStatus.valueOf(result.contentStatus().name()), result.contentHash(),
                     clock.instant());
             List<JobPostingCriterion> saved = new ArrayList<>();
@@ -139,10 +145,39 @@ public class JobPostingExtractionService {
                     .toList();
             for (ExtractedCriterion criterion : ordered) {
                 saved.add(JobPostingCriterion.extracted(postingId, CriterionType.valueOf(criterion.type().name()),
-                        saved.size() + 1, criterion.text(), criterion.quote()));
+                        saved.size() + 1, criterion.text(), criterion.quote(), generalTypeOf(criterion),
+                        techsOf(criterion.techs()), educationLevelOf(criterion), criterion.educationExempt()));
             }
             criteria.saveAll(saved);
         });
+
+    }
+
+    private static GeneralConditionType generalTypeOf(ExtractedCriterion criterion) {
+
+        return criterion.generalType() == null ? null : GeneralConditionType.valueOf(criterion.generalType().name());
+
+    }
+
+    private static EducationLevel educationLevelOf(ExtractedCriterion criterion) {
+
+        return criterion.educationLevel() == null ? null : EducationLevel.valueOf(criterion.educationLevel().name());
+
+    }
+
+    // 목록 밖의 이름 하나 때문에 공고 전체를 버리지 않도록 그 이름만 빼고, 같은 이름은 한 번만 남긴다
+    private static List<CardTech> techsOf(List<String> names) {
+
+        Set<CardTech> kept = new LinkedHashSet<>();
+        List<String> unknown = new ArrayList<>();
+        for (String name : names) {
+            Arrays.stream(CardTech.values()).filter(known -> known.name().equals(name)).findFirst()
+                    .ifPresentOrElse(kept::add, () -> unknown.add(name));
+        }
+        if (!unknown.isEmpty()) {
+            log.warn("AI 가 준 공고 기술 중 목록 밖의 값 {}개를 버린다: {}", unknown.size(), unknown);
+        }
+        return List.copyOf(kept);
 
     }
 

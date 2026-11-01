@@ -3,6 +3,7 @@ package com.gitory.backend.agent.infra;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.StarConfidence;
 import com.gitory.backend.agent.port.StarDraft;
+import com.gitory.backend.agent.port.StarDraftListener;
 import com.gitory.backend.agent.port.StarDraftPort;
 import com.gitory.backend.agent.port.StarDraftRequest;
 import com.gitory.backend.agent.port.StarEmptyReason;
@@ -40,6 +41,8 @@ public class AiStarDraftAdapter implements StarDraftPort {
     private static final String PATH = "/internal/analysis/star";
     // 두 번 고쳐 써도 네 칸의 단계가 40개 안팎이라, 넘는 것은 AI 가 잘못 보낸 것으로 보고 자른다
     private static final int MAX_STEPS = 60;
+    // AI 가 칸 글을 이 길이로 잘라 보내므로, 넘는 줄은 AI 가 잘못 보낸 것이다
+    private static final int SLOT_TEXT_MAX_LENGTH = 400;
 
     private final AiHttpClient ai;
     private final AiClientProperties properties;
@@ -47,9 +50,20 @@ public class AiStarDraftAdapter implements StarDraftPort {
     @Override
     public StarDraft draft(StarDraftRequest request) {
 
+        return draft(request, null);
+
+    }
+
+    /** listener 가 없으면 칸 글을 흘려보내지 않는 STAR API 를 부른다 */
+    @Override
+    public StarDraft draft(StarDraftRequest request, StarDraftListener listener) {
+
         JsonNode data;
         try {
-            data = ai.post(PATH, request, properties.starReadTimeout());
+            data = listener == null
+                    ? ai.post(PATH, request, properties.starReadTimeout())
+                    : ai.postStreaming(PATH + "/stream", request, properties.starReadTimeout(),
+                            progress -> forward(progress.starItem(), listener));
         } catch (AiClientException failure) {
             throw unavailable(failure);
         }
@@ -58,6 +72,37 @@ public class AiStarDraftAdapter implements StarDraftPort {
         } catch (RuntimeException malformed) {
             // 응답 원문이 든 예외는 원인으로 넘기지 않는다
             throw unavailable(AiClientException.invalidResponse());
+        }
+
+    }
+
+    // 칸 글·단계 줄은 화면에 보여 줄 값이라 모양이 틀린 줄만 버리고 초안은 계속 받는다
+    private static void forward(JsonNode item, StarDraftListener listener) {
+
+        if (item == null) {
+            return;
+        }
+        if ("STEP".equals(item.path("kind").asString(""))) {
+            step(item.path("step")).ifPresent(listener::step);
+            return;
+        }
+        JsonNode round = item.path("round");
+        JsonNode text = item.path("text");
+        JsonNode done = item.path("done");
+        Optional<StarSlot> slot = slotOf(item.path("slot"));
+        if (round.isIntegralNumber() && round.asInt() >= 0 && slot.isPresent() && text.isString()
+                && text.asString().length() <= SLOT_TEXT_MAX_LENGTH && done.isBoolean()) {
+            listener.slot(round.asInt(), slot.get(), text.asString(), done.asBoolean());
+        }
+
+    }
+
+    private static Optional<StarSlot> slotOf(JsonNode value) {
+
+        try {
+            return Optional.of(StarSlot.valueOf(value.asString("")));
+        } catch (IllegalArgumentException unknown) {
+            return Optional.empty();
         }
 
     }

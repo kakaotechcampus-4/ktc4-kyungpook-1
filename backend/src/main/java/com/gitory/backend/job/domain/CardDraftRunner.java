@@ -63,6 +63,7 @@ public class CardDraftRunner {
     private final StarDraftPort star;
     private final CardDraftWriter writer;
     private final CommitSummaryService commitSummaries;
+    private final CardDraftLiveLog live;
 
     public void run(AnalysisJob job) {
 
@@ -73,17 +74,23 @@ public class CardDraftRunner {
             return;
         }
 
-        List<CardDraftResult> results = new ArrayList<>();
-        for (GeneratedCard card : cards) {
-            Optional<CardDraftResult> result = AiCallContext.callForCard(card.id(),
-                    () -> draft(job, card, login, results.size(), total));
-            if (result.isEmpty()) {
-                return;
+        live.start(job.getId(), cards);
+        try {
+            List<CardDraftResult> results = new ArrayList<>();
+            for (GeneratedCard card : cards) {
+                Optional<CardDraftResult> result = AiCallContext.callForCard(card.id(),
+                        () -> draft(job, card, login, results.size(), total));
+                if (result.isEmpty()) {
+                    return;
+                }
+                live.end(job.getId(), card.id(), result.get());
+                results.add(result.get());
             }
-            results.add(result.get());
-        }
 
-        transaction.executeWithoutResult(status -> finish(job.getId(), results));
+            transaction.executeWithoutResult(status -> finish(job.getId(), results));
+        } finally {
+            live.finish(job.getId());
+        }
 
     }
 
@@ -94,6 +101,7 @@ public class CardDraftRunner {
     private Optional<CardDraftResult> draft(AnalysisJob job, GeneratedCard card, String login, int done, int total) {
 
         try {
+            live.read(job.getId(), card.id());
             Optional<CandidateDraftSource> source = sourceOf(card);
             if (source.isEmpty()) {
                 return finishCard(job.getId(), done, total, () -> CardDraftResult.SKIPPED);
@@ -113,7 +121,9 @@ public class CardDraftRunner {
 
             String body = pullRequestBodyOf(job.getUserRepositoryId(), source.get(), login);
             StarMaterials materials = materialsOf(job.getUserRepositoryId(), source.get(), login);
-            StarDraft draft = star.draft(requestOf(source.get(), card, login, evidence, body, materials));
+            StarDraft draft = star.draft(requestOf(source.get(), card, login, evidence, body, materials),
+                    live.write(job.getId(), card.id()));
+            live.written(job.getId(), card.id(), draft);
             return finishCard(job.getId(), done, total, () -> written(card, draft, commits));
         } catch (RuntimeException failure) {
             log.warn("카드 초안 Job {} 의 카드 {} 를 채우지 못했다", job.getId(), card.id(), failure);

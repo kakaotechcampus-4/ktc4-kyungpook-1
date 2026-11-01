@@ -3,6 +3,7 @@ package com.gitory.backend.agent.infra;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.StarConfidence;
 import com.gitory.backend.agent.port.StarDraft;
+import com.gitory.backend.agent.port.StarDraftListener;
 import com.gitory.backend.agent.port.StarDraftRequest;
 import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidence;
@@ -43,6 +44,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -111,6 +113,54 @@ class AiStarDraftAdapterTest {
     void stopServer() {
 
         server.stop(0);
+
+    }
+
+    @Test
+    @DisplayName("listener 가 있으면 /internal/analysis/star/stream 으로 보내 칸 글과 단계를 받은 차례대로 넘기고, 초안은 스트리밍 없는 STAR 와 같게 읽는다")
+    void streamsSlotsAndStepsAndReadsSameDraft() {
+
+        List<Object> received = new ArrayList<>();
+        responseContentType = "application/x-ndjson";
+        responseBody = progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":\"로그인 세션이 사라졌다.\",\"done\":false}")
+                + progress("{\"kind\":\"STEP\",\"step\":{\"round\":0,\"actor\":\"MODEL\",\"kind\":\"DRAFT\",\"slot\":null}}")
+                + progress("{\"kind\":\"SLOT\",\"round\":1,\"slot\":\"A\",\"text\":\"\",\"done\":true}")
+                + "{\"type\":\"result\",\"status\":200,\"body\":" + success(draftData()) + "}\n";
+
+        StarDraft streamed = adapter.draft(request(), recorder(received));
+
+        assertThat(requestPath).isEqualTo(PATH + "/stream");
+        assertThat(received).containsExactly(
+                new SlotLine(0, StarSlot.S, "로그인 세션이 사라졌다.", false),
+                new StarStep(0, StarStepActor.MODEL, StarStepKind.DRAFT, null, null, null, null, null),
+                new SlotLine(1, StarSlot.A, "", true));
+        responseContentType = "application/json";
+        responseBody = success(draftData());
+        assertThat(streamed).isEqualTo(adapter.draft(request()));
+
+    }
+
+    @Test
+    @DisplayName("바퀴·칸·글·끝남 중 하나라도 모양이 틀린 칸 글 줄과 모르는 단계 줄은 버리고, 남은 줄과 초안은 그대로 받는다")
+    void dropsMalformedLinesAndKeepsTheDraft() {
+
+        List<Object> received = new ArrayList<>();
+        String longest = "가".repeat(400);
+        responseContentType = "application/x-ndjson";
+        responseBody = progress("{\"kind\":\"SLOT\",\"round\":-1,\"slot\":\"S\",\"text\":\"음수 바퀴\",\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":\"0\",\"slot\":\"S\",\"text\":\"글자 바퀴\",\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"X\",\"text\":\"모르는 칸\",\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":null,\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":\"" + "가".repeat(401) + "\",\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":\"끝남 없음\"}")
+                + progress("{\"kind\":\"STEP\",\"step\":{\"round\":0,\"actor\":\"MODEL\",\"kind\":\"GUESS\",\"slot\":null}}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":\"" + longest + "\",\"done\":true}")
+                + "{\"type\":\"result\",\"status\":200,\"body\":" + success(draftData()) + "}\n";
+
+        StarDraft streamed = adapter.draft(request(), recorder(received));
+
+        assertThat(received).containsExactly(new SlotLine(0, StarSlot.S, longest, true));
+        assertThat(streamed.title()).isEqualTo(TITLE);
 
     }
 
@@ -515,6 +565,36 @@ class AiStarDraftAdapterTest {
 
         return draft(data -> edit.accept((ObjectNode) data.path("star").path(name)));
 
+    }
+
+    private static String progress(String item) {
+
+        return "{\"type\":\"progress\",\"step\":\"STAR\",\"done\":0,\"total\":null,\"item\":" + item + "}\n";
+
+    }
+
+    private static StarDraftListener recorder(List<Object> received) {
+
+        return new StarDraftListener() {
+
+            @Override
+            public void slot(int round, StarSlot slot, String text, boolean done) {
+
+                received.add(new SlotLine(round, slot, text, done));
+
+            }
+
+            @Override
+            public void step(StarStep step) {
+
+                received.add(step);
+
+            }
+        };
+
+    }
+
+    private record SlotLine(int round, StarSlot slot, String text, boolean done) {
     }
 
     private static String success(ObjectNode data) {

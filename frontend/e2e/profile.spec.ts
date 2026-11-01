@@ -83,7 +83,7 @@ test('home prompt → form → save → reload keeps it → prompt is gone → M
   await expect(page.getByRole('main')).not.toContainText(/GRADUATED|BACHELOR|FULL_TIME|TOEIC_SPEAKING|ON_LEAVE/);
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: '경험 정리', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '홈', level: 1 })).toBeVisible();
   await expect(banner(page)).toHaveCount(0);
 
   await page.goto('/settings');
@@ -98,7 +98,7 @@ test('"건너뛰기" saves four empty lists, closes the prompt for good without 
   await page.goto('/');
   await expect(banner(page)).toBeVisible();
   // 안내가 있어도 주 흐름은 그대로다
-  await expect(page.getByRole('combobox', { name: '레포 검색' })).toBeEnabled();
+  await expect(page.getByRole('link', { name: '레포 연결하기', exact: true })).toBeVisible();
   expect((await savedProfile(page)).savedAt).toBeNull();
   await banner(page).getByRole('button', { name: '인적사항 입력 건너뛰기', exact: true }).click();
   await expect(banner(page)).toHaveCount(0);
@@ -109,7 +109,7 @@ test('"건너뛰기" saves four empty lists, closes the prompt for good without 
   expect([saved.educations, saved.careers, saved.languages, saved.certifications]).toEqual([[], [], [], []]);
   expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('gitory.profile')))).toEqual([]);
   await page.reload();
-  await expect(page.getByRole('heading', { name: '경험 정리', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '홈', level: 1 })).toBeVisible();
   await expect(banner(page)).toHaveCount(0);
   await page.goto('/settings');
   await expect(page.getByRole('link', { name: /인적사항/ })).toContainText('입력한 정보가 없어요');
@@ -117,14 +117,12 @@ test('"건너뛰기" saves four empty lists, closes the prompt for good without 
   await expect(page.getByRole('heading', { name: '인적사항', level: 1 })).toBeVisible();
 });
 
-test('the prompt also appears for a first-time user with no cards, above the start prompt', async ({ page }) => {
+test('the prompt also appears for a first-time user with no cards, without blocking the start actions', async ({ page }) => {
   await page.goto('/?demoScenario=empty');
   await expect(banner(page)).toBeVisible();
-  const hero = page.getByRole('heading', { name: /오늘은 어떤 경험을 정리해 볼까요/ });
-  await expect(hero).toBeVisible();
-  expect((await banner(page).boundingBox())!.y).toBeLessThan((await hero.boundingBox())!.y);
-  // 안내가 있어도 시작 입력은 그대로 쓸 수 있다
-  await expect(page.getByRole('combobox', { name: '레포 검색' })).toBeEnabled();
+  // 안내가 있어도 시작 행동은 그대로 쓸 수 있다
+  await expect(page.getByRole('link', { name: '레포 연결하기', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '레포 검색하기', exact: true })).toBeEnabled();
 });
 
 test('a failed save keeps the input and the retry saves it', async ({ page }) => {

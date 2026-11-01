@@ -1520,6 +1520,46 @@
         "title": "CommitInput",
         "type": "object"
       },
+      "ConditionJudgement": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "met_by": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionSupport"
+            },
+            "title": "Met By",
+            "type": "array"
+          }
+        },
+        "required": [
+          "condition_id"
+        ],
+        "title": "ConditionJudgement",
+        "type": "object"
+      },
+      "ConditionSupport": {
+        "additionalProperties": false,
+        "properties": {
+          "card_id": {
+            "title": "Card Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "reason"
+        ],
+        "title": "ConditionSupport",
+        "type": "object"
+      },
       "ConsideredCard": {
         "properties": {
           "card_id": {
@@ -2657,6 +2697,43 @@
           "meta"
         ],
         "title": "Envelope[JobPostingPruneResult]",
+        "type": "object"
+      },
+      "Envelope_MatchJudgementResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MatchJudgementResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[MatchJudgementResult]",
         "type": "object"
       },
       "Envelope_MatchingResponse_": {
@@ -4067,6 +4144,112 @@
         "title": "JobPostingStatus",
         "type": "string"
       },
+      "JudgeCard": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "card_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Card Id",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "situation": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Situation"
+          },
+          "task": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task"
+          },
+          "techs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Techs",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card_id",
+          "title"
+        ],
+        "title": "JudgeCard",
+        "type": "object"
+      },
+      "JudgeCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "criterion_type": {
+            "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "condition_id",
+          "criterion_type",
+          "text"
+        ],
+        "title": "JudgeCondition",
+        "type": "object"
+      },
       "KnownAnswer": {
         "additionalProperties": false,
         "properties": {
@@ -4108,6 +4291,67 @@
           "text"
         ],
         "title": "KnownAnswer",
+        "type": "object"
+      },
+      "MatchJudgementRequest": {
+        "additionalProperties": false,
+        "description": "조건은 필수·우대만 받는다. 학력·어학 같은 일반 조건은 Spring 이 인적사항으로 비교하므로 보내지 않는다.",
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCard"
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "title": "Cards",
+            "type": "array"
+          },
+          "company_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCondition"
+            },
+            "maxItems": 30,
+            "minItems": 1,
+            "title": "Conditions",
+            "type": "array"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company_name",
+          "job_title",
+          "conditions",
+          "cards"
+        ],
+        "title": "MatchJudgementRequest",
+        "type": "object"
+      },
+      "MatchJudgementResult": {
+        "additionalProperties": false,
+        "properties": {
+          "judgements": {
+            "items": {
+              "$ref": "#/components/schemas/ConditionJudgement"
+            },
+            "title": "Judgements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "judgements"
+        ],
+        "title": "MatchJudgementResult",
         "type": "object"
       },
       "MatchingRequest": {
@@ -6332,6 +6576,73 @@
         ]
       }
     },
+    "/internal/analysis/star/stream": {
+      "post": {
+        "description": "`/internal/analysis/star` 와 같은 초안을 만들면서, 모델이 칸 글을 쓰는 동안과 초안이 단계를 거칠 때마다 진행을 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 `{\"type\":\"progress\",\"step\":\"STAR\",\"done\":0,\"total\":null,\"item\":{...}}` 입니다. `item` 은 칸 글 `{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S|T|A|R\",\"text\":\"...\",\"done\":false}` 이거나 단계 `{\"kind\":\"STEP\",\"step\":{...}}` 입니다. 칸 글은 모델이 그 칸을 쓰는 동안 문장이 끝날 때마다(칸마다 0.5초에 한 번까지) 그때까지 쓴 글 전체를 보내고, 칸이 끝나면 done=true 와 완성된 글을 보냅니다. round 0 은 첫 초안, 1 부터는 검사에 걸린 칸을 다시 쓴 바퀴이며, 글은 비밀값을 가리고 400자에서 자릅니다. 단계의 step 은 응답 steps 항목과 같은 모양으로 생기는 대로 보냅니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 이고, `status`·`body` 는 같은 요청을 `/internal/analysis/star` 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "analyze_star_stream_internal_analysis_star_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StarAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 처리하지 못한 내부 오류. 재시도 불가."
+          }
+        },
+        "summary": "A 확정 경험의 STAR 초안 생성 (진행 스트리밍)",
+        "tags": [
+          "analysis"
+        ]
+      }
+    },
     "/internal/card-themes": {
       "post": {
         "description": "확정할 때 문항 유형이 빈 경험 카드의 제목·칸 문장으로 유형을 최대 2개 고릅니다. 저장하지 않습니다. 실패하면 Spring 이 빈 유형으로 확정합니다.",
@@ -7209,6 +7520,77 @@
         "summary": "Extract Job Posting Detail",
         "tags": [
           "job-postings"
+        ]
+      }
+    },
+    "/internal/matching/judgements": {
+      "post": {
+        "description": "공고 하나의 필수·우대 조건(최대 30개)과 카드(최대 40장)를 받아, 조건마다 채우는 카드와 한 줄 이유를 모두 돌려줍니다. met_by 에 없는 (카드, 조건) 짝은 못 채움입니다. 기술 이름만 같은 카드는 채움이 아니고, 연차·학위 같은 꼬리 조건은 보지 않습니다. 마감 안에 규칙에 맞는 답을 받지 못하면 503 LLM_UNAVAILABLE 이고, 저장은 Spring 이 합니다.",
+        "operationId": "judge_conditions_internal_matching_judgements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchJudgementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_MatchJudgementResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
+          }
+        },
+        "summary": "공고 조건마다 그 조건을 실제로 채우는 카드 고르기",
+        "tags": [
+          "matching"
         ]
       }
     },

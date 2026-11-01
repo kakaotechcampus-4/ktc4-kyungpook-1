@@ -24,6 +24,7 @@ INTERNAL_PATHS = {
     "/internal/analysis/groups/stream",
     "/internal/analysis/diff-evidence",
     "/internal/analysis/star",
+    "/internal/analysis/star/stream",
     "/internal/interview-turns",
     "/internal/interview-measured-sentence",
     "/internal/interview-polished-sentence",

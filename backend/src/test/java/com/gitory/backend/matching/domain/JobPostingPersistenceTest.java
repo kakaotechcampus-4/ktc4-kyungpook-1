@@ -3,6 +3,7 @@ package com.gitory.backend.matching.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -83,6 +86,8 @@ class JobPostingPersistenceTest {
         assertThat(found.getContentHash()).isNull();
         assertThat(found.getIndexedContentHash()).isNull();
         assertThat(found.getExtractedAt()).isNull();
+        assertThat(found.getTeamTechs()).isEmpty();
+        assertThat(found.getExtractionVersion()).isNull();
         assertThat(found.getUpdatedAt()).isNotNull();
 
     }
@@ -129,7 +134,8 @@ class JobPostingPersistenceTest {
 
         JobPosting posting = persistPosting("acme", "1001");
         JobPostingCriterion saved = criteria.saveAndFlush(JobPostingCriterion.extracted(posting.getId(),
-                CriterionType.REQUIRED, 1, "Spring Boot 개발 경험", "Spring Boot 로 서비스를 개발해 본 분"));
+                CriterionType.REQUIRED, 1, "Spring Boot 개발 경험", "Spring Boot 로 서비스를 개발해 본 분",
+                GeneralConditionType.EDUCATION, List.of(CardTech.JAVA, CardTech.SPRING), EducationLevel.BACHELOR, true));
 
         em.clear();
         JobPostingCriterion found = criteria.findById(saved.getId()).orElseThrow();
@@ -140,6 +146,44 @@ class JobPostingPersistenceTest {
         assertThat(found.getSeq()).isEqualTo(1);
         assertThat(found.getText()).isEqualTo("Spring Boot 개발 경험");
         assertThat(found.getQuote()).isEqualTo("Spring Boot 로 서비스를 개발해 본 분");
+        assertThat(found.getGeneralType()).isEqualTo(GeneralConditionType.EDUCATION);
+        assertThat(found.getTechs()).containsExactly("JAVA", "SPRING");
+        assertThat(found.getEducationLevel()).isEqualTo(EducationLevel.BACHELOR);
+        assertThat(found.isEducationExempt()).isTrue();
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("criterionLabelValues")
+    @DisplayName("조건의 일반 조건 종류와 학력 수준은 자바 enum 값을 모두 저장하고 다시 읽는다")
+    void savesEveryGeneralTypeAndEducationLevel(GeneralConditionType generalType, EducationLevel level) {
+
+        JobPosting posting = persistPosting("acme", "1001");
+        JobPostingCriterion saved = criteria.saveAndFlush(JobPostingCriterion.extracted(posting.getId(),
+                CriterionType.REQUIRED, 1, "가", "가", generalType, List.of(), level, false));
+
+        em.clear();
+        JobPostingCriterion found = criteria.findById(saved.getId()).orElseThrow();
+
+        assertThat(found.getGeneralType()).isEqualTo(generalType);
+        assertThat(found.getEducationLevel()).isEqualTo(level);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {"NULL, BACHELOR, false", "LANGUAGE, NULL, true"}, nullValues = "NULL")
+    @DisplayName("학력이 아닌 조건에는 학력 수준과 예외 표시를 둘 수 없다")
+    void rejectsEducationOnNonEducationCriterion(String generalType, String level, boolean exempt) {
+
+        JobPosting posting = persistPosting("acme", "1001");
+        JobPostingCriterion saved = criteria.saveAndFlush(
+                JobPostingCriterion.extracted(posting.getId(), CriterionType.REQUIRED, 1, "가", "가"));
+
+        assertThatThrownBy(() -> jdbc.update("""
+                UPDATE job_posting_criterion SET general_type = ?, education_level = ?, education_exempt = ?
+                WHERE id = ?
+                """, generalType, level, exempt, saved.getId()))
+                .isInstanceOf(DataIntegrityViolationException.class);
 
     }
 
@@ -267,6 +311,17 @@ class JobPostingPersistenceTest {
                         (Function<JobPosting, Enum<?>>) JobPosting::getContentStatus));
 
         return Stream.of(categories, statuses, contentStatuses).flatMap(s -> s);
+
+    }
+
+    static Stream<Arguments> criterionLabelValues() {
+
+        Stream<Arguments> generalTypes = Arrays.stream(GeneralConditionType.values())
+                .map(type -> Arguments.of(type, null));
+        Stream<Arguments> levels = Arrays.stream(EducationLevel.values())
+                .map(level -> Arguments.of(GeneralConditionType.EDUCATION, level));
+
+        return Stream.concat(generalTypes, levels);
 
     }
 

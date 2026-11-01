@@ -74,7 +74,9 @@
     "draft": { "text": "…", "aiText": "…", "edited": false, "charCount": 642, "overBy": 0,
                "sentences": [{ "seq": 1, "text": "…" }],
                "marks": [{ "sentenceSeq": 2, "code": "UNSOURCED_NUMBER", "value": "30%" }],
-               "blanks": ["LEARNING"], "source": "LLM|SKELETON" } | null
+               "blanks": ["LEARNING"], "source": "LLM|SKELETON" } | null,
+    // ⑥ 쓰는 중 — DRAFTING 동안만
+    "writing": { "text": "…", "round": 0 } | null
   }],
   "steps": { "assign": [ … ], "draft": [ … ] } }
 ```
@@ -94,12 +96,15 @@
 - 글이 목표(글자 수 상한의 70%)보다 짧은데 카드·답에 더 쓸 사실이 없으면, AI 가 모자란 내용 자리에 `[더 쓸 거리: 무엇을 쓰면 되는지]` 를 한두 개 넣는다. 항목이 아니라 `blanks` 에는 없으므로, 화면은 글에서 이 모양을 찾아 강조한다.
 - `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것은 `null`.
 - `draft.source: SKELETON` 은 AI 가 쓰지 못해 카드 문장과 빈칸으로 만든 뼈대다.
+- `writing`: 초안을 쓰는 동안(`DRAFTING`) AI 가 그 문항에 지금까지 쓴 글이다. 문장이 끝날 때마다 늘어나고, `round` 는 처음 쓴 글이 0 이며 고쳐 쓸 때마다 1씩 는다. 검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 앞 글로 돌아온다. 아직 쓰기 전이거나 단계가 끝나면(`DRAFTED`·`FAILED`) `null` 이고, 다 쓰면 `draft` 가 채워진다. 빠뜨린 빈칸은 다 쓴 뒤에 붙으므로 `writing` 에는 없을 수 있다.
 
 **`CoverLetterSummary`** — `{ id, stage, jobRole, posting, questionCount, firstQuestion, createdAt, updatedAt }` — `posting` 은 `CoverLetter` 와 같은 모양이고 공고 없이 만들었으면 `null`
 
 ## AI 가 한 일 (`steps`)
 
 서버는 값만 보내고 문장은 화면이 만든다. 순서는 `seq`(1부터)다. `questionId`·`cardId` 는 위와 같은 공개 id 다.
+
+카드 고르기·초안 쓰기가 도는 동안(`ASSIGNING`·`DRAFTING`)에도 AI 가 거친 단계가 생기는 대로 채워져, 조회할 때마다 늘어난다. 카드는 문항마다 동시에 골라 앞 번호가 나중에 끼어들 수 있으니 늘 `seq` 차례로 그린다. 단계가 끝나면 저장한 과정과 같고, 그 단계가 실패하면 그때까지 보이던 단계는 사라진다.
 
 **`steps.assign`** — `{ seq, actor, kind, questionId, cardId, cardTitle, reason }`. `cardTitle` 은 그 카드의 지금 제목이고, 지운 카드면 `null` 이다.
 
@@ -113,7 +118,7 @@
 | `SUPERVISOR` · `FAILED` | 감독 답을 받지 못했다 | "문항 전체를 함께 보지 못했어요" |
 | `CODE` · `RESOLVED` | 코드가 겹친 문항을 2순위 카드로 정리했다(`cardId`) | "겹치는 카드를 2순위 '배포 시간 단축'으로 정리했어요" |
 
-**`steps.draft`** — `{ seq, actor, kind, questionId, code, value, sentenceSeq, action, reason }`
+**`steps.draft`** — `{ seq, actor, kind, questionId, code, value, sentenceSeq, sentence, action, reason }`. `sentence` 는 `sentenceSeq` 가 가리키는 문장의 글(200자까지)로, 고쳐 쓰기 전 글의 문장이라 걸린 문장을 검토 기록으로 보여 줄 때 쓴다. `CHECK_FAILED`·`DECIDED`·`SENT_BACK`·`MARKED` 에만 있고, 문장을 가리키지 않는 것(`OVER_LIMIT` 등)은 `null` 이다.
 
 | `kind` | 뜻 · `value` | 문장 예시 |
 |---|---|---|

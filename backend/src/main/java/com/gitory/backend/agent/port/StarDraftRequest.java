@@ -9,5 +9,6 @@ import java.util.List;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record StarDraftRequest(String candidateId, String targetLogin, String title, StarSourceType sourceType,
                                String sourceRef, List<StarEvidence> evidence,
-                               @JsonInclude(JsonInclude.Include.NON_NULL) String pullRequestBody) {
+                               @JsonInclude(JsonInclude.Include.NON_NULL) String pullRequestBody,
+                               @JsonInclude(JsonInclude.Include.NON_NULL) StarMaterials materials) {
 }

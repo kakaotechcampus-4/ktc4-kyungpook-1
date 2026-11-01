@@ -85,6 +85,17 @@
             "description": "사용자 메모(지원 이유 등). 없으면 null",
             "title": "Memo"
           },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공고 상세에서 시작한 자소서면 그 공고, 아니면 null"
+          },
           "profile": {
             "description": "학력·자격증·어학. 비어도 된다",
             "items": {
@@ -2194,6 +2205,16 @@
               }
             ],
             "title": "Memo"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "profile": {
             "items": {
@@ -4567,6 +4588,101 @@
         "title": "PolishedSentenceResult",
         "type": "object"
       },
+      "Posting": {
+        "additionalProperties": false,
+        "description": "자소서를 공고 상세에서 시작했을 때 그 공고. 학력·병역 같은 일반 조건은 Spring 이 빼고 보낸다.",
+        "properties": {
+          "company": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Company",
+            "type": "string"
+          },
+          "conditions": {
+            "description": "기술·경험 조건",
+            "items": {
+              "$ref": "#/components/schemas/PostingCondition"
+            },
+            "maxItems": 60,
+            "title": "Conditions",
+            "type": "array"
+          },
+          "responsibilities": {
+            "description": "공고의 주요 업무, 한 줄 500자까지",
+            "items": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Responsibilities",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company",
+          "title"
+        ],
+        "title": "Posting",
+        "type": "object"
+      },
+      "PostingCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "met_by": {
+            "description": "이 조건을 채운 카드. MET 일 때만",
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "title": "Met By",
+            "type": "array"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "MET",
+                  "NOT_MET"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "매칭 판단. 판단이 없으면 null",
+            "title": "Status"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "REQUIRED",
+              "PREFERRED"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "PostingCondition",
+        "type": "object"
+      },
       "PreviousTurn": {
         "additionalProperties": false,
         "description": "이 카드에서 이미 끝난 질문 하나. 다음 칸을 고르고 예상 답변을 만드는 재료다.",
@@ -5015,6 +5131,16 @@
               }
             ],
             "title": "Memo"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "profile": {
             "items": {

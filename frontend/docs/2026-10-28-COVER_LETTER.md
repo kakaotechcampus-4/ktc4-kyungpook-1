@@ -21,7 +21,7 @@
 
 | | 요청 | 응답 |
 |---|---|---|
-| `POST /cover-letters` | `{ jobRole, memo, questions: [{ text, charLimit }] }`, 헤더 `Idempotency-Key: <UUID v4>` | `CoverLetter`(`stage: ASSIGNING`). 같은 사용자·같은 키는 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다. 화면은 입력을 고치면 새 키를 만든다(같은 키는 내용을 바꾸지 않은 재전송에만 쓴다) |
+| `POST /cover-letters` | `{ jobRole, memo, questions: [{ text, charLimit }], postingId }`, 헤더 `Idempotency-Key: <UUID v4>` | `CoverLetter`(`stage: ASSIGNING`). 같은 사용자·같은 키는 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다. 화면은 입력을 고치면 새 키를 만든다(같은 키는 내용을 바꾸지 않은 재전송에만 쓴다) |
 | `GET /cover-letters/{id}` | | `CoverLetter` |
 | `GET /cover-letters` | | `CoverLetterSummary[]` 최근 만든 순 |
 | `PUT /cover-letters/{id}/questions/{qid}/cards` | `{ primaryCardId, supportingCardId }` | `CoverLetter` — `ASSIGNED` 에서만 |
@@ -35,6 +35,7 @@
 **요청 값**
 - `jobRole` 1~100자. `memo` 1,000자 이하, 없으면 `null`(지원 동기 문항에서 '이 회사를 고른 이유'로 쓴다).
 - `questions` 1~10개. `text` 1~500자, `charLimit` 공백 포함 100~5,000 정수이고 `null` 이면 700.
+- `postingId` 는 공고 상세에서 '이 공고로 자소서 쓰기' 로 시작할 때만 그 공고 id(UUID), 아니면 `null`. 서버가 그때의 공고(회사·제목·주요 업무·기술 조건)와 맞춰 본 판단을 자소서에 남기고, 카드 고르기·질문·초안이 그 기준으로 돈다. 뒤에 카드나 공고가 바뀌어도 이 자소서의 기준은 그대로다. 맞춰 보기 전이어도 막지 않고 판단 없는 조건은 판단 없이 남긴다 — 버튼을 맞춰 보기 뒤에만 보이는 것은 화면 규칙이다.
 - `primaryCardId` · `supportingCardId` 는 카드 API 와 같은 공개 id(UUID)이고 `null` 이 될 수 있다. 내 확정 카드만 고를 수 있다. 다른 문항과 겹쳐도 막지 않는다. 중심과 보조가 같으면 400.
 - `answers[].item` 은 그 문항 `asks` 에 있는 항목만, 한 번씩. `skipped: true` 면 `text` 는 `null`. 넘기지 않은 답의 `text` 는 1~1,000자(공백뿐이면 400) — 화면은 입력 칸에 1,000자 제한을 건다.
 - `PATCH` 의 `text` 는 10,000자 이하. 저장하면 서버가 고친 글로 `charCount` · `overBy` · `blanks` 를 다시 센다(빈칸은 AI 가 넣은 `[항목: …]` 문구가 글자 그대로 남아 있는 항목). `sentences` · `marks` 는 `aiText` 기준 그대로다. `edited` 는 고친 글이 `aiText` 와 다르면 `true`.
@@ -42,7 +43,7 @@
 
 **오류**
 - 400 `INVALID_REQUEST` — 위 값 규칙을 어김.
-- 404 `NOT_FOUND` — 없는 자소서·문항, 남의 자소서.
+- 404 `NOT_FOUND` — 없는 자소서·문항, 남의 자소서. 만들기에서는 `postingId` 가 UUID 가 아니거나 공고 상세에서 열 수 없는 공고("공고를 찾을 수 없습니다.").
 - 409 `INVALID_STATE` — 그 단계가 아닐 때(예: `ASKED` 가 아닌데 답 저장).
 - 422 `NO_CONFIRMED_CARDS` — 확정 카드가 한 장도 없어 만들 수 없다. 화면은 "확정한 카드가 없어요" 와 카드 만들기로 안내한다.
 - 429 `RATE_LIMITED` — 만들기와 다시 시도만 센다(1분 2번 · 하루 10번). AI 를 새로 돌리는 요청이 이 둘뿐이다.
@@ -53,7 +54,9 @@
 { "id": "UUID", "stage": "ASSIGNING|ASSIGNED|ASKING|ASKED|DRAFTING|DRAFTED|FAILED",
   "failedStep": "ASSIGN|ASK|DRAFT" | null, "errorCode": "AI_UNAVAILABLE|INTERNAL_ERROR" | null, "retryable": true | false | null,
   "pollAfterMs": 1500 | null,
-  "jobRole": "백엔드 개발", "memo": "…" | null, "createdAt": "ISO", "updatedAt": "ISO",
+  "jobRole": "백엔드 개발", "memo": "…" | null,
+  "posting": { "id": "UUID", "company": "토스", "title": "Server Developer" } | null,  // 공고에서 시작한 자소서만
+  "createdAt": "ISO", "updatedAt": "ISO",
   "questions": [{
     "id": "UUID", "seq": 1, "text": "지원 동기와 입사 후 포부를 적어 주세요", "charLimit": 700,
     "theme": "COLLABORATION|CONFLICT|PROBLEM_SOLVING|LEADERSHIP|CHALLENGE|FAILURE|GROWTH|MOTIVATION" | null,
@@ -92,7 +95,7 @@
 - `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것은 `null`.
 - `draft.source: SKELETON` 은 AI 가 쓰지 못해 카드 문장과 빈칸으로 만든 뼈대다.
 
-**`CoverLetterSummary`** — `{ id, stage, jobRole, questionCount, firstQuestion, createdAt, updatedAt }`
+**`CoverLetterSummary`** — `{ id, stage, jobRole, posting, questionCount, firstQuestion, createdAt, updatedAt }` — `posting` 은 `CoverLetter` 와 같은 모양이고 공고 없이 만들었으면 `null`
 
 ## AI 가 한 일 (`steps`)
 

@@ -41,12 +41,8 @@ EmptyReasonCode = Literal["NO_EVIDENCE", "OVERCLAIM", "UNSOURCED_NUMBER", "TIMEO
 #: diff 근거에서 요청한 커밋 일부가 빠진 이유.
 DiffEvidencePartialReason = Literal["CAP_EXCEEDED", "GITHUB_RATE_LIMITED", "COMMIT_UNAVAILABLE"]
 
-#: 카드 목록에 보이는 분야·기술 태그로, 목록 밖의 값은 보내지 않는다.
+#: 카드 목록에 보이는 분야 태그로, 목록 밖의 값은 보내지 않는다.
 StarArea = Literal["BACKEND", "FRONTEND", "MOBILE", "DEVOPS", "AI", "DB", "TEST", "DOCS"]
-StarTech = Literal[
-    "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART",
-    "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS",
-]
 
 #: 카드와 공고가 같이 쓰는 기술 이름표로, Spring 의 CardTech·화면의 CardTech 와 같은 65개다.
 #: 값을 더하거나 빼면 세 곳을 같이 바꿔야 서로 모르는 값을 거절하지 않는다.

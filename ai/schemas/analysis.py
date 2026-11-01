@@ -29,7 +29,7 @@ from schemas.common import (
     StarArea,
     StarSlot,
     StarStatus,
-    StarTech,
+    TechTag,
     StatementConfidence,
 )
 
@@ -341,6 +341,6 @@ class StarAnalysisResponse(BaseModel):
     areas: list[StarArea] = Field(
         default_factory=list, description="카드 분야 태그. 최대 2개, 중요한 것부터. STAR를 만들지 못했으면 빈 배열"
     )
-    techs: list[StarTech] = Field(
-        default_factory=list, description="카드 기술 태그. 최대 4개, 중요한 것부터. 판단할 수 없으면 빈 배열"
+    techs: list[TechTag] = Field(
+        default_factory=list, description="카드 기술 태그. 최대 8개, 중요한 것부터. 판단할 수 없으면 빈 배열"
     )

@@ -6,10 +6,10 @@ import { TextRuns, type Highlight } from './TextRuns';
 
 /**
  * ⑤ 쓰는 중의 답 칸 — 서버 글을 사람이 치듯 따라붙여 보이고, 걸린 문장은 지금 보이는 글에서 찾아 칠한다.
- * 쓰는 문항(active)이거나 아직 따라잡는 중이면 끝에 커서가 깜빡인다.
+ * 첫 초안을 받는 중(composing)이거나 아직 따라잡는 중이면 끝에 커서가 깜빡인다.
  */
-export function LiveAnswer({ target, active, pollMs, threads, focusKey, onShown }: {
-  target: string; active: boolean; pollMs: number; threads: NoteThread[]; focusKey: string | null; onShown: (text: string) => void;
+export function LiveAnswer({ target, active, composing, pollMs, threads, focusKey, onShown }: {
+  target: string; active: boolean; composing: boolean; pollMs: number; threads: NoteThread[]; focusKey: string | null; onShown: (text: string) => void;
 }) {
   const { segs, text, typing } = useLiveText(target, { active, pollMs });
   useEffect(() => { onShown(text); }, [text, onShown]);
@@ -26,7 +26,7 @@ export function LiveAnswer({ target, active, pollMs, threads, focusKey, onShown 
     offset += visible.length;
     return node;
   });
-  const caret = active || typing;
+  const caret = composing || typing;
   return (
     <div className={`pq__answer${!text && !caret ? ' pq__answer--empty' : ''}`}>
       {nodes}

@@ -1,13 +1,16 @@
 /**
  * 종이 위의 글(#618) — 서버가 문장 단위로 보내는 글을 화면이 사람이 쓰듯 보이게 하는 순수 계산.
- * 문장 나누기는 목·서버(DraftText)와 같은 기준이라, 여기서 자른 문장이 서버의 `sentences`·`sentence` 와 맞는다.
+ * 문장 나누기는 AI 와 같은 기준이라, 여기서 자른 문장이 서버의 `sentences`·`sentence` 와 맞는다.
  */
 
 /** 서버가 단계의 sentence 를 자르는 길이 — 이보다 길면 잘린 글로 보고 앞부분으로 찾는다(규칙 6) */
 export const SENTENCE_MAX = 200;
 
-/** 마침표·물음표·느낌표 뒤 공백에서 나눈다. 조각을 이어 붙이면 원문 그대로다(앞 공백을 조각에 남긴다) */
-export const splitSentences = (text: string): string[] => (text === '' ? [] : text.split(/(?<=[.!?])(?=\s)/));
+/** 문장 끝 — AI(split_sentences)처럼 . ! ? … 뒤 공백이나 줄바꿈에서 끊는다 */
+const BREAK = /(?<=[.!?…])(?=\s)|(?<=[^\n])(?=\n)/;
+
+/** 문장 끝에서 나눈다. 조각을 이어 붙이면 원문 그대로다(앞 공백을 조각에 남긴다) */
+export const splitSentences = (text: string): string[] => (text === '' ? [] : text.split(BREAK));
 
 export type DiffOp = { kind: 'keep' | 'del' | 'add'; text: string };
 
@@ -37,15 +40,17 @@ export function sentenceDiff(prev: string, next: string): DiffOp[] {
  * 서버가 200자로 자른 문장이면 앞부분이 맞는 곳을 찾고 끝은 그 문장 끝(다음 문장 경계 또는 글 끝)까지 늘린다. 두 번 나오면 첫 번째.
  */
 export function locateSentence(text: string, probe: string | null | undefined): { start: number; end: number } | null {
-  const p = (probe ?? '').trim();
+  const raw = probe ?? '';
+  const p = raw.trim();
   if (!p) return null;
   const start = text.indexOf(p);
   if (start < 0) return null;
   let end = start + p.length;
-  if (p.length >= SENTENCE_MAX) {
-    const rest = text.slice(end);
-    const stop = rest.search(/(?<=[.!?])(?=\s)/);
-    end += stop >= 0 ? stop : rest.length;
+  // 잘렸는지는 다듬기 전 길이로 본다 — 서버는 다듬지 않고 자르므로 200번째 글자가 공백이면 다듬은 글은 199자다
+  if (raw.length >= SENTENCE_MAX) {
+    const stop = new RegExp(BREAK.source, 'g');
+    stop.lastIndex = end;
+    end = stop.exec(text)?.index ?? text.length;
   }
   return { start, end };
 }
@@ -75,19 +80,18 @@ export function liveFrom(prev: LiveState | null, target: string, now: number, in
     const segs = delta ? [...alive, { id: nextId++, kind: 'add' as const, text: delta, shown: 0, until: null }] : alive;
     return { target, segs, nextId, arrivedAt: now };
   }
-  const shownSoFar = alive.reduce((n, s) => n + s.shown, 0);
+  // 앞 글의 글자마다 이미 보였는지 — 다 치기 전에 새 글이 와도 그대로 둔 문장은 친 만큼만 보이고, 지운 문장은 보였던 만큼만 긋는다
+  const seen: boolean[] = [];
+  for (const s of alive) for (let k = 0; k < s.text.length; k++) seen.push(k < s.shown);
+  const shownAt = (from: number, length: number) => { let n = 0; while (n < length && seen[from + n]) n++; return n; };
   const segs: LiveSeg[] = [];
   let offset = 0;
   for (const op of sentenceDiff(before, target)) {
-    if (op.kind === 'del') { segs.push({ id: nextId++, kind: 'del', text: op.text, shown: op.text.length, until: now + DEL_MS }); continue; }
-    if (op.kind === 'keep') {
-      // 아직 다 보이지 않았던 글이면 그 자리부터 이어서 친다
-      const shown = Math.max(0, Math.min(op.text.length, shownSoFar - offset));
-      segs.push({ id: nextId++, kind: 'keep', text: op.text, shown, until: null });
-      offset += op.text.length;
-      continue;
-    }
-    segs.push({ id: nextId++, kind: 'add', text: op.text, shown: 0, until: null });
+    if (op.kind === 'add') { segs.push({ id: nextId++, kind: 'add', text: op.text, shown: 0, until: null }); continue; }
+    const shown = shownAt(offset, op.text.length);
+    offset += op.text.length;
+    if (op.kind === 'keep') segs.push({ id: nextId++, kind: 'keep', text: op.text, shown, until: null });
+    else if (shown > 0) segs.push({ id: nextId++, kind: 'del', text: op.text.slice(0, shown), shown, until: now + DEL_MS });
   }
   return { target, segs, nextId, arrivedAt: now };
 }

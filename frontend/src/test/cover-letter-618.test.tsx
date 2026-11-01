@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +10,7 @@ import { CardSummary } from '@/api/schemas';
 import { CoverLetterPage } from '@/features/coverLetters/CoverLetterPage';
 import { draftLine } from '@/lib/coverLetterCopy';
 import { buildAssignNotes, buildQuestionNotes, cellLabel } from '@/lib/coverLetterNotes';
-import { DEL_MS, advanceLive, isSettled, liveFrom, locateSentence, sentenceDiff, shownText } from '@/lib/draftPaper';
+import { DEL_MS, advanceLive, isSettled, liveFrom, locateSentence, sentenceDiff, shownText, splitSentences, type LiveState } from '@/lib/draftPaper';
 import { BLANK_TEXT } from '@/lib/draftText';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
@@ -149,6 +149,74 @@ describe('종이 위의 글 계산', () => {
     expect(after.segs.some((x) => x.kind === 'del')).toBe(false);
     expect(shownText(liveFrom(before, TEXT_B, 1000, true))).toBe(TEXT_B);
   });
+
+  it('다 치기 전에 고쳐 쓴 글이 와도 그대로 둔 문장은 친 만큼만 보이고, 지운 문장은 보였던 만큼만 긋는다', () => {
+    let s = liveFrom(liveFrom(null, S1, 0), TEXT, 0);
+    s = advanceLive(s, 100, 100, 1200);
+    const typed = shownText(s).length - S1.length;
+    expect(typed).toBeGreaterThan(0);
+    expect(typed).toBeLessThan(S2.length);
+    const next = liveFrom(s, TEXT_B, 100);
+    expect(next.segs.map((x) => [x.kind, x.shown])).toEqual([['keep', S1.length], ['del', typed], ['add', 0], ['keep', 0]]);
+    expect(next.segs[1].text).toBe(` ${S2}`.slice(0, typed));
+    expect(shownText(next)).toBe(S1);
+  });
+
+  it('문장 끝은 AI 처럼 … 와 줄바꿈에서도 끊는다', () => {
+    expect(splitSentences('그런데… 다음 문장!\n[결과: 적어 주세요]')).toEqual(['그런데…', ' 다음 문장!', '\n[결과: 적어 주세요]']);
+    const long = `${'가'.repeat(230)}…`;
+    expect(locateSentence(`${long} 뒤 문장.`, long.slice(0, 200))).toEqual({ start: 0, end: long.length });
+    expect(locateSentence(`${'가'.repeat(230)}\n다음 줄`, long.slice(0, 200))).toEqual({ start: 0, end: 230 });
+  });
+
+  it('잘린 문장은 200번째 글자가 공백이어도 잘린 것으로 보고 밑줄을 문장 끝까지 긋는다', () => {
+    const long = `${'가'.repeat(199)} ${'나'.repeat(30)}.`;
+    const clipped = long.slice(0, 200);
+    expect(clipped.trim().length).toBe(199);
+    expect(locateSentence(`앞 문장. ${long} 뒤 문장.`, clipped)).toEqual({ start: 6, end: 6 + long.length });
+  });
+
+  it('목은 첫 초안을 문장마다 늘리고 고쳐 쓴 글은 다 쓴 글로 한 번에(되돌림도 같은 바퀴로) 보내며, 화면은 바뀐 문장만 지우고 다시 친다', () => {
+    const l = askedLetter();
+    const q1 = l.questions[0];
+    req('PUT', `/cover-letters/${l.id}/questions/${q1.id}/answers`, { answers: [{ item: 'REASON', text: '장애를 30% 줄인 팀이라서', skipped: false }] });
+    req('POST', `/cover-letters/${l.id}/drafts`);
+    const writes: Record<string, { text: string; round: number }[]> = {};
+    for (let i = 0; i < 90; i++) {
+      for (const q of CoverLetter.parse(req('GET', `/cover-letters/${l.id}`).data).questions) {
+        const list = (writes[q.id] ??= []);
+        const last = list[list.length - 1];
+        if (q.writing && (!last || last.text !== q.writing.text || last.round !== q.writing.round)) list.push(q.writing);
+      }
+      advance(0.1);
+    }
+    for (const list of Object.values(writes)) {
+      const first = list.filter((w) => w.round === 0);
+      expect(first.length).toBeGreaterThan(1);
+      first.slice(1).forEach((w, i) => expect(w.text.startsWith(first[i].text)).toBe(true));
+      list.slice(1).forEach((w, i) => {
+        expect(w.round).toBeGreaterThanOrEqual(list[i].round);
+        if (w.round > 0) expect(splitSentences(w.text)).toHaveLength(splitSentences(list[i].text).length);
+      });
+    }
+    const mine = writes[q1.id];
+    expect(mine.some((w, i) => i > 0 && w.round > 0 && w.round === mine[i - 1].round)).toBe(true);
+    // 받은 차례대로 화면에 넣으면, 고쳐 쓴 글마다 바뀐 문장 하나만 긋고 다시 치고 나머지는 그대로 둔다
+    for (const list of Object.values(writes)) {
+      let state: LiveState = liveFrom(null, list[0].text, 0);
+      let now = 0;
+      for (const w of list.slice(1)) {
+        for (let k = 0; k < 200 && !(isSettled(state) && state.segs.every((x) => x.kind !== 'del')); k++) state = advanceLive(state, (now += 16), 16, 1200);
+        const before = state.target;
+        state = liveFrom(state, w.text, now);
+        if (w.text.startsWith(before)) continue;
+        const kinds = state.segs.map((x) => x.kind);
+        expect(kinds.filter((k) => k === 'del')).toHaveLength(1);
+        expect(kinds.filter((k) => k === 'add')).toHaveLength(1);
+        expect(kinds.filter((k) => k === 'keep')).toHaveLength(splitSentences(w.text).length - 1);
+      }
+    }
+  });
 });
 
 // ───────────────────────────── 메모·점검표 ─────────────────────────────
@@ -172,8 +240,8 @@ describe('여백 메모와 점검표', () => {
     expect(marked.threads[0].status).toBe('marked');
     expect(cellLabel(marked.checklist.evidence)).toBe('확인 필요 1');
     const kept = buildQuestionNotes(q, [step({ seq: 1, actor: 'CODE', kind: 'CHECK_FAILED', code: 'UNDER_LENGTH', value: '371' }), step({ seq: 2, kind: 'DECIDED', action: 'KEEP', reason: '더 쓸 사실이 없어요' })], TEXT, 'live');
-    expect(kept.questionNote).toMatchObject({ status: 'kept', group: 'length' });
-    expect(kept.questionNote?.items[1].reason).toBe('더 쓸 사실이 없어요');
+    expect(kept.questionNotes[0]).toMatchObject({ status: 'kept', group: 'length' });
+    expect(kept.questionNotes[0].items[1].reason).toBe('더 쓸 사실이 없어요');
     expect(cellLabel(kept.checklist.length)).toBe('통과');
     const sentBack = buildQuestionNotes(q, [step({ seq: 1, actor: 'SUPERVISOR', kind: 'SENT_BACK', code: 'REPEATED', sentenceSeq: 2, sentence: S2, reason: '1번 문항과 같은 이야기라서' }), step({ seq: 2, kind: 'REWROTE', value: '150' })], TEXT_B, 'live');
     expect(sentBack.threads[0]).toMatchObject({ group: 'repeat', status: 'fixed-ai' });
@@ -194,6 +262,55 @@ describe('여백 메모와 점검표', () => {
     expect(mine.status).toBe('fixed-user');
     expect(mine.items[mine.items.length - 1]).toMatchObject({ actor: 'USER' });
     expect(cellLabel(edited.checklist.evidence)).toBe('고침 2');
+  });
+
+  it('다 쓴 뒤에도 열린 메모는 확인 필요로 닫혀, 점검표가 검사 중으로 남지 않는다', () => {
+    const steps = [
+      step({ seq: 1, kind: 'WROTE', value: '760' }), step({ seq: 2, actor: 'CODE', kind: 'CHECK_FAILED', code: 'OVER_LIMIT', value: '60' }),
+      step({ seq: 3, kind: 'REWROTE', value: '720' }), step({ seq: 4, actor: 'CODE', kind: 'CHECK_FAILED', code: 'OVER_LIMIT', value: '20' }),
+      step({ seq: 5, actor: 'CODE', kind: 'CHECK_FAILED', code: 'UNSOURCED_TERM', value: 'k8s', sentenceSeq: 2, sentence: S2 }),
+    ];
+    const notes = buildQuestionNotes(question({ draft: draft(TEXT) }), steps, TEXT, 'edit');
+    expect(notes.threads[0].status).toBe('marked');
+    expect(notes.questionNotes.find((t) => t.group === 'length')?.status).toBe('marked');
+    expect(cellLabel(notes.checklist.evidence)).toBe('확인 필요 1');
+    expect(cellLabel(notes.checklist.length)).toBe('확인 필요 1');
+  });
+
+  it('되돌린 글에서 걸린 것은 되돌림으로 닫혀 확인 필요로 세지 않는다', () => {
+    const tried = '장애를 50% 넘게 줄인 팀이라서.';
+    const steps = [
+      step({ seq: 1, kind: 'WROTE' }), step({ seq: 2, actor: 'SUPERVISOR', kind: 'SENT_BACK', code: 'UNSUPPORTED_CLAIM', sentenceSeq: 1, sentence: S1, reason: '성과가 카드에 없어서' }),
+      step({ seq: 3, kind: 'REWROTE' }), step({ seq: 4, actor: 'CODE', kind: 'CHECK_FAILED', code: 'UNSOURCED_NUMBER', value: '50%', sentenceSeq: 1, sentence: tried }),
+      step({ seq: 5, actor: 'CODE', kind: 'CHECK_FAILED', code: 'OVER_LIMIT', value: '12' }), step({ seq: 6, actor: 'CODE', kind: 'REVERTED' }),
+      step({ seq: 7, actor: 'CODE', kind: 'MARKED', code: 'UNSUPPORTED_CLAIM', sentenceSeq: 1, sentence: S1 }),
+    ];
+    const notes = buildQuestionNotes(question({ draft: draft(TEXT, [{ sentenceSeq: 1, code: 'UNSUPPORTED_CLAIM', value: null }]) }), steps, TEXT, 'edit');
+    expect(notes.threads.find((t) => t.sentence === tried)?.status).toBe('reverted');
+    expect(notes.questionNotes.find((t) => t.group === 'length')?.status).toBe('reverted');
+    expect(cellLabel(notes.checklist.evidence)).toBe('확인 필요 1');
+    expect(cellLabel(notes.checklist.length)).toBe('통과');
+  });
+
+  it('문장에 걸리지 않는 검사는 점검표 칸마다 메모가 따로라, 빠뜨린 빈칸이 글자 수 검사에 덮이지 않는다', () => {
+    const steps = [
+      step({ seq: 1, kind: 'WROTE' }), step({ seq: 2, actor: 'CODE', kind: 'CHECK_FAILED', code: 'MISSING_BLANK', value: 'LEARNING' }),
+      step({ seq: 3, actor: 'CODE', kind: 'CHECK_FAILED', code: 'OVER_LIMIT', value: '30' }),
+    ];
+    const notes = buildQuestionNotes(q, steps, TEXT, 'live');
+    expect(notes.questionNotes.map((t) => t.key)).toEqual(['q:q1:evidence', 'q:q1:length']);
+    expect(cellLabel(notes.checklist.evidence)).toBe('검사 중');
+    expect(cellLabel(notes.checklist.length)).toBe('검사 중');
+  });
+
+  it('200자로 잘린 단계 문장과 전체 문장 표시는 메모 하나로 묶여 점검표에 한 번만 센다', () => {
+    const long = `${'가'.repeat(199)} ${'나'.repeat(30)} k8s를 썼다.`;
+    const text = `${S1} ${long}`;
+    const steps = [step({ seq: 1, actor: 'CODE', kind: 'CHECK_FAILED', code: 'UNSOURCED_TERM', value: 'k8s', sentenceSeq: 2, sentence: long.slice(0, 200) })];
+    const notes = buildQuestionNotes(question({ draft: draft(text, [{ sentenceSeq: 2, code: 'UNSOURCED_TERM', value: 'k8s' }]) }), steps, text, 'edit');
+    expect(notes.threads).toHaveLength(1);
+    expect(notes.threads[0].sentence).toBe(long);
+    expect(cellLabel(notes.checklist.evidence)).toBe('확인 필요 1');
   });
 
   it('점검표 글자는 검사 전 · 검사 중 · 통과 · 확인 필요 n · 고침 n 이다', () => {
@@ -239,6 +356,12 @@ describe('⑤ 종이 위에 쓰는 중', () => {
     await waitFor(() => expect(document.querySelector('.pq__answer')?.textContent?.length).toBeGreaterThan(S1.length));
     expect(document.querySelector('.pq__answer')?.textContent?.length).toBeLessThan(`${S1} ${S2}`.length);
     await waitFor(() => expect(document.querySelector('.pq__answer')?.textContent).toBe(`${S1} ${S2}`), { timeout: 3000 });
+  });
+
+  it('첫 초안을 다 쓴(WROTE) 문항은 따라 칠 글이 없으면 커서가 멈춘다', () => {
+    mount(letter({ questions: [question({ writing: { text: TEXT, round: 0 } })], steps: { assign: [], draft: [step({ seq: 1, kind: 'WROTE', value: '100' })] } }));
+    expect(document.querySelector('.pq__answer')?.textContent).toBe(TEXT);
+    expect(document.querySelector('.pcaret')).toBeNull();
   });
 });
 
@@ -315,6 +438,37 @@ describe('⑥ 같은 종이에서 고치기', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     expect(writeText.mock.calls[0][0]).toContain('아직 저장하지 않은 글.');
   });
+
+  it('글상자는 폭이 바뀌면 줄바꿈이 달라진 만큼 높이를 다시 잰다', () => {
+    const observers: { cb: ResizeObserverCallback; els: Element[] }[] = [];
+    vi.stubGlobal('ResizeObserver', class {
+      private o: { cb: ResizeObserverCallback; els: Element[] };
+      constructor(cb: ResizeObserverCallback) { this.o = { cb, els: [] }; observers.push(this.o); }
+      observe(el: Element) { this.o.els.push(el); }
+      unobserve() {}
+      disconnect() {}
+    });
+    try {
+      mount(drafted());
+      const area = screen.getByLabelText('1번 문항 초안') as HTMLTextAreaElement;
+      Object.defineProperty(area, 'scrollHeight', { configurable: true, get: () => 321 });
+      act(() => {
+        for (const o of observers) if (o.els.includes(area)) o.cb([{ contentRect: { width: 480 } } as ResizeObserverEntry], {} as ResizeObserver);
+      });
+      expect(area.style.height).toBe('321px');
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('움직임을 줄이면 점검표에서 메모로 갈 때 굴리지 않고 바로 간다', () => {
+    reduceMotion(true);
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      mount(drafted());
+      fireEvent.click(screen.getByRole('button', { name: /^근거\s?확인 필요 1$/ }));
+      expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }));
+    } finally { delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView; }
+  });
 });
 
 // ───────────────────────────── ④ 질문 보완 ─────────────────────────────
@@ -355,6 +509,26 @@ describe('④ 답 저장', () => {
     release();
     await waitFor(() => expect(log.some((x) => x.endsWith('/drafts'))).toBe(true));
     expect(log.findIndex((x) => x.endsWith('/drafts'))).toBeGreaterThan(log.findIndex((x) => x.startsWith('PUT')));
+  });
+
+  it("'초안 쓰기' 는 저장을 기다리는 동안 누른 것이 보이고, 두 번 눌러도 초안 쓰기는 한 번만 보낸다", async () => {
+    const l = askedLetter();
+    let release!: () => void;
+    const log: string[] = [];
+    stubFetch({ holdPut: new Promise<void>((r) => { release = r; }), log });
+    mount(l);
+    const area = screen.getByLabelText('이 회사를 고른 이유는 무엇인가요?');
+    fireEvent.change(area, { target: { value: '답' } });
+    fireEvent.blur(area);
+    await waitFor(() => expect(log.some((x) => x.startsWith('PUT'))).toBe(true));
+    const button = screen.getByRole('button', { name: '초안 쓰기' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(button).toHaveAttribute('aria-busy', 'true');
+    release();
+    await waitFor(() => expect(log.some((x) => x.endsWith('/drafts'))).toBe(true));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(log.filter((x) => x.endsWith('/drafts'))).toHaveLength(1);
   });
 
   it('글이 남아 있는 필수 재료라도 넘기면 비운 것으로 센다', () => {

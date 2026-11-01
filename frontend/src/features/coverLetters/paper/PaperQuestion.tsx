@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import type { AssignStep, CoverLetterQuestion, DraftStep } from '@/api/coverLetters';
 import { CHECK_GROUPS, GROUP_LABEL, buildAssignNotes, buildQuestionNotes, cellLabel, type CheckGroup, type Checklist as ChecklistT, type NoteThread } from '@/lib/coverLetterNotes';
 import { countableLength } from '@/lib/draftText';
+import { useReducedMotion } from '@/lib/useLiveText';
 import { EditAnswer } from './EditAnswer';
 import { LiveAnswer } from './LiveAnswer';
 import { MarginNotes, NoteCard } from './MarginNotes';
@@ -41,21 +42,27 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
   const blockRef = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState('');
   const [focusKey, setFocusKey] = useState<string | null>(null);
+  const reduced = useReducedMotion();
   const target = q.writing?.text ?? q.draft?.text ?? '';
   const current = mode === 'edit' ? text ?? '' : target;
   const active = mode === 'live' && q.writing != null;
+  // 커서는 첫 초안을 문장마다 받는 동안만 깜빡인다 — 다 쓴 뒤 고쳐 쓴 글은 한 번에 오므로 따라 치는 동안만 보인다
+  const composing = active && !draftSteps.some((s) => s.questionId === q.id && (s.kind === 'WROTE' || s.kind === 'SKELETON'));
 
-  const notes = useMemo(() => (mode === 'assign'
-    ? { ...buildAssignNotes(q, assignSteps, assigning), threads: [] as NoteThread[], checklist: null }
-    : buildQuestionNotes(q, draftSteps, current, mode === 'edit' ? 'edit' : 'live')), [mode, q, assignSteps, assigning, draftSteps, current]);
-  const all = useMemo(() => [...notes.threads, ...(notes.questionNote ? [notes.questionNote] : [])], [notes]);
+  const notes = useMemo(() => {
+    if (mode !== 'assign') return buildQuestionNotes(q, draftSteps, current, mode === 'edit' ? 'edit' : 'live');
+    const a = buildAssignNotes(q, assignSteps, assigning);
+    return { threads: [] as NoteThread[], questionNotes: a.questionNote ? [a.questionNote] : [], checklist: null, phase: a.phase };
+  }, [mode, q, assignSteps, assigning, draftSteps, current]);
+  const all = useMemo(() => [...notes.threads, ...notes.questionNotes], [notes]);
   const onShown = useCallback((t: string) => setShown(t), []);
 
   const focusGroup = (g: CheckGroup) => {
-    const t = notes.threads.find((x) => x.group === g) ?? (notes.questionNote?.group === g ? notes.questionNote : null);
+    const t = all.find((x) => x.group === g);
     setFocusKey(t?.key ?? null);
-    const el = t && blockRef.current?.querySelector<HTMLElement>(`[data-note="${t.key}"]`);
-    el?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    // 문항 전체 메모는 걸린 문장이 없어 문항 끝 표식으로 간다
+    const el = t && (blockRef.current?.querySelector<HTMLElement>(`[data-note="${t.key}"]`) ?? blockRef.current?.querySelector<HTMLElement>(`[data-note="q:${q.id}"]`));
+    el?.scrollIntoView?.({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
   };
 
   const count = countableLength(mode === 'edit' ? current : shown);
@@ -87,7 +94,7 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
         </div>
         {mode === 'live' && (
           <>
-            <LiveAnswer target={target} active={active} pollMs={pollMs} threads={notes.threads} focusKey={focusKey} onShown={onShown} />
+            <LiveAnswer target={target} active={active} composing={composing} pollMs={pollMs} threads={notes.threads} focusKey={focusKey} onShown={onShown} />
             {foot}
           </>
         )}

@@ -1,6 +1,6 @@
 import type { AssignStep, CoverLetterQuestion, DraftStep } from '@/api/coverLetters';
 import { assignLine, checkMessage, draftLine } from '@/lib/coverLetterCopy';
-import { locateSentence } from '@/lib/draftPaper';
+import { SENTENCE_MAX, locateSentence } from '@/lib/draftPaper';
 
 /**
  * 여백 메모와 점검표(#618 규칙 2·6·7) — `steps.draft` 와 `draft.marks` 를 문장별 스레드로 묶는다.
@@ -20,8 +20,8 @@ const GROUP_OF: Record<string, CheckGroup> = {
 export const groupOf = (code: string | null | undefined): CheckGroup | null => (code && GROUP_OF[code]) || null;
 
 export type NoteItem = { seq: number; actor: NoteActor; text: string; reason: string | null };
-/** open 걸려 있음(고치는 중) · fixed-ai 작성 AI 가 고침 · kept 그대로 두기로 함 · marked 확인 필요로 남김 · fixed-user 내가 고쳐 원문이 사라짐 */
-export type NoteStatus = 'open' | 'fixed-ai' | 'kept' | 'marked' | 'fixed-user';
+/** open 걸려 있음(고치는 중) · fixed-ai 작성 AI 가 고침 · kept 그대로 두기로 함 · marked 확인 필요로 남김 · fixed-user 내가 고쳐 원문이 사라짐 · reverted 되돌려 버린 글에서 걸림 */
+export type NoteStatus = 'open' | 'fixed-ai' | 'kept' | 'marked' | 'fixed-user' | 'reverted';
 export type NoteThread = {
   key: string;
   /** 걸린 문장 글. 문항 전체에 대한 메모면 null */
@@ -31,7 +31,7 @@ export type NoteThread = {
   items: NoteItem[];
   status: NoteStatus;
 };
-export const STATUS_LABEL: Record<NoteStatus, string> = { open: '보는 중', 'fixed-ai': '고침 · 작성 AI', kept: '그대로 둠', marked: '확인 필요', 'fixed-user': '고침 · 나' };
+export const STATUS_LABEL: Record<NoteStatus, string> = { open: '보는 중', 'fixed-ai': '고침 · 작성 AI', kept: '그대로 둠', marked: '확인 필요', 'fixed-user': '고침 · 나', reverted: '되돌림' };
 
 export type ChecklistCell = { phase: 'before' | 'checking' | 'done'; marked: number; fixed: number };
 export type Checklist = Record<CheckGroup, ChecklistCell>;
@@ -44,7 +44,7 @@ export function cellLabel(cell: ChecklistCell): string {
   return parts.length ? parts.join(' · ') : '통과';
 }
 
-export type QuestionNotes = { threads: NoteThread[]; questionNote: NoteThread | null; checklist: Checklist; phase: string | null };
+export type QuestionNotes = { threads: NoteThread[]; questionNotes: NoteThread[]; checklist: Checklist; phase: string | null };
 
 /** 단계 한 줄을 문항 번호 없이 — 메모는 이미 그 문항 옆에 있다 */
 const line = (step: DraftStep) => draftLine(step, [])?.text ?? null;
@@ -56,16 +56,29 @@ const line = (step: DraftStep) => draftLine(step, [])?.text ?? null;
 export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' | 'writing'>, steps: DraftStep[], currentText: string, mode: 'live' | 'edit'): QuestionNotes {
   const mine = steps.filter((s) => s.questionId === q.id).sort((a, b) => a.seq - b.seq);
   const threads = new Map<string, NoteThread>();
-  const questionNote: NoteThread = { key: `q:${q.id}`, sentence: null, value: null, group: null, items: [], status: 'kept' };
+  const general: NoteThread = { key: `q:${q.id}`, sentence: null, value: null, group: null, items: [], status: 'kept' };
+  // 문장에 걸리지 않는 검사(글자 수·빠뜨린 빈칸)는 점검표 칸마다 메모 하나 — 한 메모에 모으면 나중 검사가 앞 칸을 덮는다
+  const byGroup = new Map<CheckGroup, NoteThread>();
+  const questionNoteFor = (code: string | null) => {
+    const group = groupOf(code);
+    if (!group) return general;
+    let t = byGroup.get(group);
+    if (!t) { t = { key: `q:${q.id}:${group}`, sentence: null, value: null, group, items: [], status: 'open' }; byGroup.set(group, t); }
+    return t;
+  };
   const threadFor = (sentence: string, value: string | null, group: CheckGroup | null) => {
-    const key = sentence.trim();
+    // 단계의 문장은 200자로 잘려 오고 표시(marks)의 문장은 전체라, 앞 200자로 같은 문장을 묶는다
+    const key = sentence.slice(0, SENTENCE_MAX).trim();
     let t = threads.get(key);
-    if (!t) { t = { key: `s:${q.id}:${threads.size}`, sentence: key, value, group, items: [], status: 'open' }; threads.set(key, t); }
+    if (!t) { t = { key: `s:${q.id}:${threads.size}`, sentence, value, group, items: [], status: 'open' }; threads.set(key, t); }
+    else if (sentence.length > (t.sentence?.length ?? 0)) t.sentence = sentence;
     if (value && !t.value) t.value = value;
     if (group && !t.group) t.group = group;
     return t;
   };
   let lastOpen: NoteThread | null = null;
+  // 마지막으로 고쳐 쓴 뒤에 걸린 메모 — 그 글이 되돌려지면 걸린 것도 함께 사라진다
+  let sinceRewrite: NoteThread[] = [];
   let checked = false;
   let phase: string | null = null;
 
@@ -79,35 +92,41 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
       case 'CHECK_PASSED': checked = true; phase = null; break;
       case 'CHECK_FAILED': {
         checked = true;
-        if (s.sentence) { const t = threadFor(s.sentence, s.value, groupOf(s.code)); t.items.push({ ...item, text: checkMessage(s.code, s.value) }); t.status = 'open'; lastOpen = t; }
-        else { questionNote.items.push({ ...item, text: checkMessage(s.code, s.value) }); questionNote.group = groupOf(s.code); questionNote.status = 'open'; lastOpen = questionNote; }
+        const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : questionNoteFor(s.code);
+        t.items.push({ ...item, text: checkMessage(s.code, s.value) }); t.status = 'open'; lastOpen = t; sinceRewrite.push(t);
         phase = '검사 중';
         break;
       }
       case 'DECIDED': {
-        const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : lastOpen ?? questionNote;
+        const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : s.code ? questionNoteFor(s.code) : lastOpen ?? general;
         t.items.push(item);
         if (s.action === 'KEEP') { t.status = 'kept'; phase = null; } else phase = '다시 쓰는 중';
         break;
       }
       case 'REWROTE': {
-        for (const t of [...threads.values(), questionNote]) if (t.status === 'open') { t.status = 'fixed-ai'; t.items.push({ ...item, text: '고쳐서 다시 썼어요' }); }
+        for (const t of [...threads.values(), ...byGroup.values(), general]) if (t.status === 'open') { t.status = 'fixed-ai'; t.items.push({ ...item, text: '고쳐서 다시 썼어요' }); }
+        sinceRewrite = [];
         phase = '검사 중';
         break;
       }
-      case 'REVERTED': questionNote.items.push(item); phase = '검사 중'; break;
+      case 'REVERTED': {
+        for (const t of sinceRewrite) if (t.status === 'open') t.status = 'reverted';
+        sinceRewrite = [];
+        general.items.push(item); phase = '검사 중';
+        break;
+      }
       case 'MARKED': {
-        const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : questionNote;
+        const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : questionNoteFor(s.code);
         t.items.push(item); t.status = 'marked'; phase = null;
         break;
       }
       case 'SENT_BACK': {
-        const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : questionNote;
+        const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : questionNoteFor(s.code);
         t.items.push({ ...item, reason: s.reason?.trim() || checkMessage(s.code, null) }); t.status = 'open'; lastOpen = t;
         phase = '검토 AI 가 돌려보냄';
         break;
       }
-      case 'SKELETON': case 'FAILED': questionNote.items.push(item); phase = null; break;
+      case 'SKELETON': case 'FAILED': general.items.push(item); phase = null; break;
       default: break;
     }
   }
@@ -115,10 +134,12 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
   // 끝난 뒤의 확인 필요(marks) — 단계가 없는 옛 응답이면 여기서 스레드를 만든다
   if (q.draft) for (const m of q.draft.marks) {
     const sentence = q.draft.sentences.find((x) => x.seq === m.sentenceSeq)?.text ?? null;
-    const t = sentence ? threadFor(sentence, m.value, groupOf(m.code)) : questionNote;
+    const t = sentence ? threadFor(sentence, m.value, groupOf(m.code)) : questionNoteFor(m.code);
     if (t.items.length === 0) t.items.push({ seq: 0, actor: 'CODE', text: checkMessage(m.code, m.value), reason: null });
     if (t.status !== 'marked') t.status = 'marked';
   }
+  // 다 쓴 뒤에도 열린 메모는 AI 가 고쳐 쓰기를 다 쓰거나 포기해 그대로 남긴 것이다 — 확인 필요로 닫는다
+  if (q.draft) for (const t of [...threads.values(), ...byGroup.values()]) if (t.status === 'open') t.status = 'marked';
   // 내가 고쳐 원문이 사라진 것
   if (mode === 'edit') for (const t of threads.values()) {
     if (t.status === 'marked' && !locateSentence(currentText, t.sentence)) { t.status = 'fixed-user'; t.items.push({ seq: Number.MAX_SAFE_INTEGER, actor: 'USER', text: '이 문장을 고쳤어요', reason: null }); }
@@ -126,7 +147,8 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
 
   // 검사 단계가 아직 없고 걸린 메모도 없는 칸만 '검사 전' — 메모가 하나라도 있으면 그 칸은 이미 검사를 거친 것이다
   const checklist = Object.fromEntries(CHECK_GROUPS.map((g) => [g, { phase: checked || mode === 'edit' || q.draft ? 'done' : 'before', marked: 0, fixed: 0 }])) as Checklist;
-  for (const t of [...threads.values(), questionNote]) {
+  const questionNotes = [...byGroup.values(), ...(general.items.length ? [general] : [])];
+  for (const t of [...threads.values(), ...questionNotes]) {
     if (!t.group) continue;
     const cell = checklist[t.group];
     if (t.status === 'open') cell.phase = 'checking';
@@ -135,7 +157,7 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
     else if (t.status === 'fixed-ai' || t.status === 'fixed-user') cell.fixed += 1;
   }
   if (!phase && mode === 'live' && !checked) phase = q.writing ? '쓰는 중' : '차례를 기다리는 중';
-  return { threads: [...threads.values()], questionNote: questionNote.items.length ? questionNote : null, checklist, phase };
+  return { threads: [...threads.values()], questionNotes, checklist, phase };
 }
 
 /** ②·③ 카드 고르기 — 그 문항에 대한 단계를 메모 하나로, 상태 글은 마지막 단계로 */

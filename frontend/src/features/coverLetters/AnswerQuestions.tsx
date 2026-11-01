@@ -92,13 +92,22 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
     const d = answers[q.id]?.[a.item];
     return a.required && (!d || d.skipped || !d.text.trim());
   }).length, 0);
+  // 저장을 기다리는 동안에도 누른 것이 보이고, 두 번 눌러도 초안 쓰기는 한 번만 보낸다
+  const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
   const write = async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
     setError(null);
-    for (const q of letter.questions) if (!(await saveQuestion(q))) return;
     try {
+      for (const q of letter.questions) if (!(await saveQuestion(q))) return;
       await draft.mutateAsync(undefined);
       track('cover_letter_drafts_started', { coverLetterId: letter.id, emptyRequired: missing });
-    } catch { /* 전역 안내 */ }
+    } catch { /* 전역 안내 */ } finally {
+      startingRef.current = false;
+      setStarting(false);
+    }
   };
 
   return (
@@ -113,7 +122,7 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
       {error && <Note strong="답을 저장하지 못했어요" tone="danger">{error} 쓴 답은 화면에 그대로 있어요.</Note>}
       <StickyFooter strong={missing ? `꼭 필요한 재료 ${missing}개가 비어 있어요` : '답을 다 했으면 초안을 써요'}
         sub={missing ? '비운 채로 쓰면 그 자리에 빈칸을 남겨요. 초안에서 채울 수 있어요.' : '답하지 않은 질문은 넘긴 것으로 봐요.'}>
-        <Button onClick={write} loading={draft.isPending}>초안 쓰기</Button>
+        <Button onClick={write} loading={starting || draft.isPending}>초안 쓰기</Button>
       </StickyFooter>
     </>
   );

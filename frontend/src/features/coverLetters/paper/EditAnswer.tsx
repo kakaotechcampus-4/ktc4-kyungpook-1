@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Copy, RotateCcw } from 'lucide-react';
 import { DRAFT_MAX, useSaveDraft, type CoverLetterQuestion } from '@/api/coverLetters';
 import { errorView } from '@/api/errorView';
@@ -10,6 +10,11 @@ import { locateSentence } from '@/lib/draftPaper';
 import { blanksIn, moreToWrite } from '@/lib/draftText';
 import { track } from '@/lib/track';
 import { TextRuns, type Highlight } from './TextRuns';
+
+const fitHeight = (el: HTMLTextAreaElement) => {
+  el.style.height = '0px';
+  el.style.height = `${el.scrollHeight}px`;
+};
 
 /**
  * ⑥ 고치는 답 칸 — 실제 textarea 를 종이 모양으로 두고, 칠하기는 뒤에 같은 글을 그린 층이 맡는다(한국어 조합 입력이 깨지지 않게).
@@ -30,11 +35,22 @@ export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot 
 
   // 글상자는 안에서 스크롤하지 않고 글 높이만큼 자란다 — 뒤의 칠하기 층과 줄이 어긋나지 않게
   useLayoutEffect(() => {
-    const el = area.current;
-    if (!el) return;
-    el.style.height = '0px';
-    el.style.height = `${el.scrollHeight}px`;
+    if (area.current) fitHeight(area.current);
   }, [text]);
+  // 폭이 바뀌면(창 크기·메모 자리) 줄바꿈이 달라지니 다시 잰다 — 높이만 바뀐 알림은 맞춘 결과라 건너뛴다
+  useEffect(() => {
+    const el = area.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let width = -1;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry?.contentRect.width ?? 0;
+      if (w === width) return;
+      width = w;
+      fitHeight(el);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const highlights = useMemo<Highlight[]>(() => threads.flatMap((t) => {
     const r = locateSentence(text, t.sentence);

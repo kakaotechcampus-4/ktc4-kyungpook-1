@@ -1,0 +1,133 @@
+/* White surfaces, charcoal structure, and restrained semantic pastel accents. */
+:root { --shadow-card: 0 6px 24px rgb(28 28 36 / 3%); --heading-weight: 650; }
+.btn { border-radius: 12px; }
+/* 고르기 칸도 버튼과 같은 둥글기여야 한 줄에 놓였을 때 어긋나 보이지 않는다 */
+.select-trigger { border-radius: 12px; }
+/* 아직 안 한 단계 번호의 테두리는 흰 배경과 3:1 이상이어야 보인다 */
+:root:not([data-theme="dark"]) { --step-idle-border: #8E8E98; }
+.card, .modal { border-radius: 20px; }
+.btn--outline { border-color: var(--border-default); }
+.btn--outline:hover:not(:disabled) { border-color: var(--border-strong); }
+.hl { text-decoration-color: var(--accent-decoration); text-decoration-thickness: 3px; }
+
+/* The navigation stays dark in either theme, independent of content surfaces. */
+@media screen and (min-width: 768px) {
+  .sidebar {
+    --sidebar-text: #DBDBE2;
+    --text-primary: #F5F5F7; --text-strong: #F5F5F7;
+    --text-secondary: #C4C4CE; --text-tertiary: #AEAEBA;
+    --border-default: #3B3B41; --bg-subtle: #303035;
+    background: #232325; border-right: 0; padding-block: 24px;
+  }
+  .sidebar .brand-logo > .brand-logo__light { display: none; }
+  .sidebar .brand-logo > .brand-logo__dark { display: block; }
+  .sidebar .brand-logo--mark { background: #F7F1D9; border-radius: 10px; padding: 5px; box-sizing: content-box; }
+  .sidebar .brand-logo--mark > .brand-logo__dark { filter: brightness(0); }
+  .sidebar .menu-group__title, .sidebar__recent-title { color: #AEAEBA; letter-spacing: .02em; }
+  .sidebar .menu-item { min-height: 44px; margin-block: 3px; border-radius: 12px; }
+  .sidebar .menu-item[aria-current="page"] { background: #E4F1FC; color: #202022; }
+  .sidebar .menu-item[aria-current="page"] svg { color: #202022; }
+  .sidebar .sidebar__profile { background: transparent; }
+  .sidebar .profile-menu__trigger:hover { background: #303035; }
+  .sidebar .profile-menu__pop {
+    --text-primary: #202022; --text-strong: #323237; --text-secondary: #62626B;
+    --bg-surface: #FFFFFF; --bg-subtle: #F3F4F6; --border-default: #E5E5EA;
+    color: #202022; background: #FFFFFF;
+  }
+  .shell__main { background: var(--bg-surface); min-height: 100svh; }
+  .shell__main > .main { width: 100%; }
+}
+
+/* Landing: generous white space and a small framed product example. */
+.landing { background: var(--bg-surface); gap: clamp(48px, 9vh, 100px); }
+.landing__top { padding-bottom: 22px; border-bottom: 1px solid var(--border-default); }
+.landing__hero { align-items: center; }
+.landing__eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--pastel-lavender); color: var(--text-strong); border: 0;
+  padding: 8px 12px; font-size: 11px; font-weight: 600;
+}
+.landing__eyebrow::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.landing__h1 { font-weight: 750; letter-spacing: -.055em; line-height: 1.25; font-size: clamp(38px, 3.6vw, 54px); }
+.landing__h1 > span { text-decoration: underline; text-decoration-color: var(--pastel-blue); text-decoration-thickness: 12px; text-underline-offset: -4px; text-decoration-skip-ink: none; }
+.landing__lead { max-width: 390px; font-size: 15px; line-height: 1.9; }
+.landing__actions { margin-top: 8px; }
+.landing__actions .btn { min-height: 54px; padding-inline: 24px; gap: 24px; border-radius: 14px; }
+.landing-example-wrap { padding: 22px; border-radius: 28px; background: var(--bg-paper); border: 1px solid var(--border-default); box-shadow: 0 24px 64px rgb(30 30 45 / 7%); }
+.landing-example { gap: 10px; grid-template-columns: minmax(0, .94fr) 18px minmax(0, 1.12fr); }
+.github-snapshot { background: var(--pastel-blue); border: 0; }
+.github-snapshot .example-heading { border-color: rgb(30 30 45 / 8%); }
+.github-snapshot__commits { background: var(--bg-surface); border-color: transparent; }
+.github-snapshot__commits li + li { border-color: var(--border-default); }
+.github-snapshot__diff { background: var(--pastel-mint); color: var(--text-strong); }
+.landing-example__connector { color: var(--text-strong); }
+.landing-card { border: 0; box-shadow: none; background: var(--bg-surface); }
+.landing-card > .example-heading { background: #252527; color: #FFFFFF; border: 0; }
+.landing-card > .example-heading > span { color: #D5D5DE; }
+.landing-card h2 { font-weight: 700; font-size: 17px; }
+.landing-card__fields { gap: 8px; padding-bottom: 16px; }
+.landing-card__field { padding: 10px; border: 0; border-radius: 12px; background: var(--pastel-blue); }
+.landing-card__field[data-slot='T'] { background: var(--pastel-lavender); }
+.landing-card__field[data-slot='A'] { background: var(--pastel-mint); }
+.landing-card__field[data-slot='R'] { background: var(--pastel-yellow); }
+.landing-card__field p { font-size: 12px; line-height: 1.7; }
+.landing-card__field .star-key { background: var(--bg-surface); }
+.landing-card__evidence { background: var(--bg-surface); }
+
+/* Dashboard colours describe progress, rather than colouring every surface. */
+.home-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.overview-tile { display: flex; flex-direction: column; gap: 20px; padding: 24px; border-radius: 20px; min-width: 0; }
+.overview-tile--blue { background: var(--pastel-blue); }
+.overview-tile--lavender { background: var(--pastel-lavender); }
+.overview-tile--mint { background: var(--pastel-mint); }
+.overview-tile__label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; }
+.overview-tile__label svg { opacity: .65; flex-shrink: 0; }
+.overview-tile > strong { font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.overview-tile small { font-size: 13px; font-weight: 500; margin-left: 6px; }
+.overview-tile p { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+.home-page--returning .prompt { background: var(--bg-paper); border-color: var(--border-default); padding: 24px; }
+.home-page--returning .prompt__card { background: var(--bg-surface); border-radius: 14px; }
+.resume__item { background: var(--pastel-lavender); border-color: transparent; box-shadow: none; }
+.resume__item .iconbox { background: var(--bg-surface); color: var(--text-primary); }
+.experience-item.gcard { border-radius: 20px; box-shadow: none; }
+.experience-item:hover { background: var(--bg-paper); border-color: var(--border-strong); }
+.source .iconbox { color: var(--text-primary); background: var(--pastel-blue); }
+.source:nth-child(2) .iconbox { background: var(--pastel-lavender); }
+.source:nth-child(3) .iconbox { background: var(--pastel-mint); }
+@media (min-width: 1200px) {
+  .shell { --sb: 224px; }
+  .shell--rail { --sb: 72px; }
+  .shell__main { border-radius: 28px 0 0 28px; }
+  .shell { background: #232325; }
+  .main { --main-px: 40px; padding-top: 36px; gap: 24px; }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .landing__hero { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  .landing__copy { max-width: 640px; }
+  .landing__lead { max-width: 560px; }
+}
+@media (max-width: 767px) {
+  .landing { gap: 36px; padding-top: 20px; }
+  .landing__top { padding-bottom: 18px; }
+  .landing__h1 { font-size: clamp(30px, 8.5vw, 40px); }
+  .landing__h1 > span { text-decoration-thickness: 9px; }
+  .landing-example-wrap { padding: 12px; border-radius: 20px; box-shadow: none; }
+  .landing-example { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .landing-example__connector { justify-self: center; transform: rotate(90deg); }
+  .home-overview { gap: 8px; }
+  .overview-tile { padding: 16px 12px; gap: 16px; border-radius: 16px; }
+  .overview-tile__label { font-size: 11px; }
+  .overview-tile__label svg { display: none; }
+  .overview-tile > strong { font-size: 28px; }
+  .overview-tile p { font-size: 11px; }
+  .home-page--returning .prompt { padding: 18px; }
+  .mobile-nav a[aria-current='page'] { background: var(--pastel-blue); color: var(--text-primary); border-radius: 12px; }
+}
+@media print {
+  .home-overview { display: none; }
+  .shell, .shell__main { background: white; }
+}
+
+/* Keep sidebar navigation scrollable without showing a scrollbar. */
+.sidebar { scrollbar-width: none; }
+.sidebar::-webkit-scrollbar { display: none; width: 0; height: 0; }

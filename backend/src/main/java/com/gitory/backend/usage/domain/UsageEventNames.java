@@ -12,7 +12,8 @@ final class UsageEventNames {
             "repo_selected", "analysis_started", "candidates_shown", "candidate_excluded", "candidate_restored",
             "cluster_commit_excluded", "candidate_added_manually", "candidates_confirmed",
             "draft_generated", "interview_asked", "interview_answered", "card_edited", "card_masked",
-            "card_confirmed", "card_reopened", "version_restored", "manual_card_created", "field_regenerated",
+            "card_confirmed", "card_reopened", "card_themes_edited", "version_restored", "manual_card_created",
+            "field_regenerated",
             "recall_answered", "github_disconnected", "card_exported",
             "match_opened", "match_card_opened", "match_source_opened", "cover_letter_created", "cover_letter_copied", "cover_letter_edited",
             "profile_prompt_accepted", "profile_prompt_dismissed", "profile_saved");

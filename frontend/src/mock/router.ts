@@ -1,7 +1,7 @@
 import { CardMetadataPatch } from '@/api/schemas';
 import { mockMatchDetail, mockMatchList } from './matching';
 import { getProfile, putProfile } from './profile';
-import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, startAsking, type CoverLetterResult } from './coverLetters';
+import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
@@ -44,6 +44,9 @@ on('GET', '/cover-letters', () => letter(listCoverLetters()));
 on('GET', '/cover-letters/:id', ({ params }) => letter(getCoverLetter(params[0])));
 on('PUT', '/cover-letters/:id/questions/:qid/cards', ({ params, body }) => letter(chooseCards(params[0], params[1], body)));
 on('POST', '/cover-letters/:id/asks', ({ params }) => letter(startAsking(params[0])));
+on('PUT', '/cover-letters/:id/questions/:qid/answers', ({ params, body }) => letter(saveAnswers(params[0], params[1], body)));
+on('POST', '/cover-letters/:id/drafts', ({ params }) => letter(startDrafting(params[0])));
+on('PATCH', '/cover-letters/:id/questions/:qid', ({ params, body }) => letter(saveDraft(params[0], params[1], body)));
 on('POST', '/cover-letters/:id/retry', ({ params }) => letter(retryCoverLetter(params[0])));
 on('DELETE', '/cover-letters/:id', ({ params }) => letter(deleteCoverLetter(params[0])));
 on('GET', '/profile', () => ok(getProfile())); // 저장한 적이 없어도 200 + 빈 목록 + savedAt:null

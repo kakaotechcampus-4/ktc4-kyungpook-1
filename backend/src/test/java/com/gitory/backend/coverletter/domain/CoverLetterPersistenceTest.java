@@ -105,7 +105,7 @@ class CoverLetterPersistenceTest {
         CoverLetterQuestion found = questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst();
         assertThat(foundLetter.getAssignSteps()).containsExactly(new AssignStep(1, "SUB_AGENT", "PICKED", 1, 7L, "맞아서"));
         assertThat(foundLetter.getDraftSteps()).containsExactly(
-                new DraftStep(1, "CODE", "CHECK_FAILED", 1, "UNSOURCED_NUMBER", "30%", null, null, null));
+                new DraftStep(1, "CODE", "CHECK_FAILED", 1, "UNSOURCED_NUMBER", "30%", null, null, null, null));
         assertThat(found.getConsidered()).containsExactly(new ConsideredCard(7L, "결과가 분명함"));
         assertThat(found.getAsks()).containsExactly(
                 new MaterialAsk(MaterialItem.LEARNING, "무엇을 배웠나요?", true, List.of("___ 을 배웠다")),

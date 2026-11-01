@@ -3026,6 +3026,9 @@
           "theme" : {
             "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH", "MOTIVATION" ],
             "type" : "string"
+          },
+          "writing" : {
+            "$ref" : "#/components/schemas/Writing"
           }
         },
         "type" : "object"
@@ -3675,6 +3678,18 @@
         },
         "type" : "object"
       },
+      "Writing" : {
+        "properties" : {
+          "round" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "WritingStep" : {
         "properties" : {
           "action" : {
@@ -3694,6 +3709,9 @@
             "type" : "string"
           },
           "reason" : {
+            "type" : "string"
+          },
+          "sentence" : {
             "type" : "string"
           },
           "sentenceSeq" : {

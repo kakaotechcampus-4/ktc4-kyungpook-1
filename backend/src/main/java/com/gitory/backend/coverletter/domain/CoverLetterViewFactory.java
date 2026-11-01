@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -35,15 +36,24 @@ class CoverLetterViewFactory {
     private final CardMaterialAnswerRepository answers;
     private final CardLabelReader cardLabels;
     private final CardMaterialReader cardMaterials;
+    private final CoverLetterLiveLog liveLog;
 
+    /** 카드 고르기·초안 쓰기가 도는 동안에는 저장한 과정 대신 AI 가 지금까지 보낸 과정과 문항별 글을 싣는다 */
     CoverLetterView of(CoverLetter letter) {
 
         List<CoverLetterQuestion> loaded = questions.findByCoverLetterIdOrderBySeq(letter.getId());
+        Optional<CoverLetterLive.Snapshot> live = liveLog.of(letter.getId());
+        boolean assigning = letter.getStage() == CoverLetterStage.ASSIGNING && live.isPresent();
+        boolean drafting = letter.getStage() == CoverLetterStage.DRAFTING && live.isPresent();
+        List<AssignStep> assignSteps = assigning ? live.get().assignSteps() : letter.getAssignSteps();
+        List<DraftStep> draftSteps = drafting ? live.get().draftSteps() : letter.getDraftSteps();
+        Map<Integer, CoverLetterView.Writing> writing = drafting ? live.get().writing() : Map.of();
+
         Set<Long> primaryIds = loaded.stream()
                 .map(CoverLetterQuestion::getPrimaryCardId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<Long, CardLabel> labels = cardLabels.liveLabels(cardIdsOf(letter, loaded));
+        Map<Long, CardLabel> labels = cardLabels.liveLabels(cardIdsOf(loaded, assignSteps));
         Map<Long, Set<StarField>> slots = cardMaterials.filledSlots(primaryIds);
         Map<Long, Set<MaterialItem>> remembered = answers.findByCardIdIn(primaryIds).stream()
                 .collect(Collectors.groupingBy(CardMaterialAnswer::getCardId,
@@ -54,9 +64,12 @@ class CoverLetterViewFactory {
         return new CoverLetterView(letter.getPublicId(), letter.getStage(), letter.getFailedStep(),
                 letter.getErrorCode(), retryable(letter), letter.isRunning(), letter.getJobRole(), letter.getMemo(),
                 CoverLetterPosting.refOf(letter), letter.getCreatedAt(), letter.getUpdatedAt(),
-                loaded.stream().map(question -> question(question, labels, slots, remembered)).toList(),
-                letter.getAssignSteps().stream().map(step -> step(step, questionIds, labels)).toList(),
-                letter.getDraftSteps().stream().map(step -> writingStep(step, questionIds)).toList());
+                loaded.stream()
+                        .map(question -> question(question, labels, slots, remembered,
+                                writing.get((int) question.getSeq())))
+                        .toList(),
+                assignSteps.stream().map(step -> step(step, questionIds, labels)).toList(),
+                draftSteps.stream().map(step -> writingStep(step, questionIds)).toList());
 
     }
 
@@ -66,7 +79,7 @@ class CoverLetterViewFactory {
 
     }
 
-    private static Collection<Long> cardIdsOf(CoverLetter letter, List<CoverLetterQuestion> loaded) {
+    private static Collection<Long> cardIdsOf(List<CoverLetterQuestion> loaded, List<AssignStep> assignSteps) {
 
         Set<Long> ids = new HashSet<>();
         for (CoverLetterQuestion question : loaded) {
@@ -74,7 +87,7 @@ class CoverLetterViewFactory {
             ids.add(question.getSupportingCardId());
             question.getConsidered().forEach(card -> ids.add(card.cardId()));
         }
-        letter.getAssignSteps().forEach(step -> ids.add(step.cardId()));
+        assignSteps.forEach(step -> ids.add(step.cardId()));
         ids.remove(null);
         return ids;
 
@@ -82,7 +95,8 @@ class CoverLetterViewFactory {
 
     private static CoverLetterView.Question question(CoverLetterQuestion question, Map<Long, CardLabel> labels,
                                                      Map<Long, Set<StarField>> slots,
-                                                     Map<Long, Set<MaterialItem>> remembered) {
+                                                     Map<Long, Set<MaterialItem>> remembered,
+                                                     CoverLetterView.Writing writing) {
 
         List<CoverLetterView.Considered> considered = question.getConsidered().stream()
                 .filter(card -> labels.containsKey(card.cardId()))
@@ -98,7 +112,7 @@ class CoverLetterViewFactory {
                 question.getCharLimit(), question.getTheme(), cardRef(labelOf(labels, question.getPrimaryCardId())),
                 primaryCardDeleted, cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
                 question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered),
-                asks(question), draft(question));
+                asks(question), draft(question), writing);
 
     }
 
@@ -176,7 +190,7 @@ class CoverLetterViewFactory {
 
         return new CoverLetterView.WritingStep(step.seq(), step.actor(), step.kind(),
                 step.questionSeq() == null ? null : questionIds.get(step.questionSeq()), step.code(), step.value(),
-                step.sentenceSeq(), step.action(), step.reason());
+                step.sentenceSeq(), step.sentence(), step.action(), step.reason());
 
     }
 }

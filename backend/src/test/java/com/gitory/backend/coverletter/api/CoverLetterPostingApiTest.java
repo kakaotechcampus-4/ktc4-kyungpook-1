@@ -197,7 +197,7 @@ class CoverLetterPostingApiTest {
         createFromPosting(publicIdOf(posting)).andExpect(status().isOk());
         jdbc.update("DELETE FROM match_judgement");
         AtomicReference<CoverLetterAssignmentRequest> sent = new AtomicReference<>();
-        given(assignment.assign(any())).willAnswer(invocation -> {
+        given(assignment.assign(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return new CoverLetterAssignment(
                     List.of(new CoverLetterAssignment.Question(1, null, null, null, null, List.of(), "FAILED")), List.of());

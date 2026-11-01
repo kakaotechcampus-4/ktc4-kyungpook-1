@@ -3,6 +3,7 @@ package com.gitory.backend.agent.infra;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.CoverLetterAssignment;
 import com.gitory.backend.agent.port.CoverLetterAssignmentRequest;
+import com.gitory.backend.agent.port.CoverLetterPostingInput;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
 import com.gitory.backend.common.infra.ai.AiHttpClient;
 import com.gitory.backend.support.AiTestProperties;
@@ -34,7 +35,8 @@ class AiCoverLetterAssignmentAdapterTest {
                     new CoverLetterAssignmentRequest.Question(2, "실패 경험을 쓰세요", 500)),
             List.of(new CoverLetterAssignmentRequest.Card(11L, "배포 시간 단축", "TECH", "grow22/gitory", "2025.09",
                             "빌드를 병렬로 돌렸다"),
-                    new CoverLetterAssignmentRequest.Card(12L, "동아리 회계", "QUALITATIVE", null, null, "장부를 정리했다")));
+                    new CoverLetterAssignmentRequest.Card(12L, "동아리 회계", "QUALITATIVE", null, null, "장부를 정리했다")),
+            null);
 
     private final ObjectMapper mapper = JsonMapper.builder().build();
 
@@ -82,6 +84,7 @@ class AiCoverLetterAssignmentAdapterTest {
         assertThat(sent.path("questions").get(1).path("char_limit").asInt()).isEqualTo(500);
         assertThat(sent.path("cards").get(0).path("card_kind").asString()).isEqualTo("TECH");
         assertThat(sent.path("cards").get(0).path("source_name").asString()).isEqualTo("grow22/gitory");
+        assertThat(sent.has("posting")).isFalse();
         assertThat(result.assignments()).containsExactly(
                 new CoverLetterAssignment.Question(1, "COLLABORATION", 11L, 12L, "배포를 함께 고친 경험",
                         List.of(new CoverLetterAssignment.Considered(12L, "협업이 덜 드러남")), "SUPERVISOR"),
@@ -89,6 +92,26 @@ class AiCoverLetterAssignmentAdapterTest {
         assertThat(result.steps()).containsExactly(
                 new CoverLetterAssignment.Step(1, "SUB_AGENT", "PICKED", 1, 11L, "배포를 함께 고친 경험"),
                 new CoverLetterAssignment.Step(2, "SUPERVISOR", "CHECKED", null, null, null));
+
+    }
+
+    @Test
+    @DisplayName("공고에서 시작한 자소서면 공고의 회사·주요 업무·조건과 판단·채운 카드를 snake_case 로 함께 보낸다")
+    void sendsPostingInSnakeCase() {
+
+        CoverLetterAssignmentRequest withPosting = new CoverLetterAssignmentRequest(REQUEST.coverLetterId(),
+                REQUEST.jobRole(), REQUEST.memo(), REQUEST.questions(), REQUEST.cards(),
+                new CoverLetterPostingInput("나래랩스", "서버 개발자", List.of("결제 서버 개발"),
+                        List.of(new CoverLetterPostingInput.Condition("REQUIRED", "Spring 경험", "MET", List.of(11L)),
+                                new CoverLetterPostingInput.Condition("PREFERRED", "AWS 경험", null, List.of()))));
+
+        adapter().assign(withPosting);
+
+        JsonNode posting = mapper.readTree(requestBody).path("posting");
+        assertThat(posting.path("company").asString()).isEqualTo("나래랩스");
+        assertThat(posting.path("responsibilities").get(0).asString()).isEqualTo("결제 서버 개발");
+        assertThat(posting.path("conditions").get(0).path("met_by").get(0).asLong()).isEqualTo(11L);
+        assertThat(posting.path("conditions").get(1).path("status").isNull()).isTrue();
 
     }
 

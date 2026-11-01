@@ -53,14 +53,16 @@ public class CoverLetterService {
     private final CardMaterialAnswerRepository rememberedAnswers;
     private final CardMaterialReader cardMaterials;
     private final CardLabelReader cardLabels;
+    private final CoverLetterPostingReader postings;
     private final UserRateLimiter rateLimiter;
     private final AuditLog auditLog;
     private final CoverLetterViewFactory views;
     private final TransactionTemplate transaction;
 
     /** 같은 사용자·같은 요청 키면 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다 */
+    /** postingId 는 공고 상세에서 시작했을 때만 있고, 없는 공고면 만들지도 호출 제한을 세지도 않는다 */
     public CoverLetterView create(Long userId, String jobRole, String memo, List<NewQuestion> newQuestions,
-                                  String idempotencyKey) {
+                                  UUID postingId, String idempotencyKey) {
 
         String key = checkedKey(idempotencyKey);
         checkInput(jobRole, memo, newQuestions);
@@ -73,9 +75,10 @@ public class CoverLetterService {
         if (!cardMaterials.hasConfirmed(userId)) {
             throw new NoConfirmedCardsException();
         }
+        CoverLetterPosting posting = postingId == null ? null : postings.read(postingId, userId);
         rateLimiter.acquire(RateLimitedAction.COVER_LETTER, userId, 1);
 
-        return views.of(save(userId, jobRole, memo, newQuestions, key));
+        return views.of(save(userId, jobRole, memo, newQuestions, posting, key));
 
     }
 
@@ -202,11 +205,12 @@ public class CoverLetterService {
 
     }
 
-    private CoverLetter save(Long userId, String jobRole, String memo, List<NewQuestion> newQuestions, String key) {
+    private CoverLetter save(Long userId, String jobRole, String memo, List<NewQuestion> newQuestions,
+                             CoverLetterPosting posting, String key) {
 
         try {
             return transaction.execute(status -> {
-                CoverLetter letter = letters.save(CoverLetter.start(userId, jobRole, memo, key));
+                CoverLetter letter = letters.save(CoverLetter.start(userId, jobRole, memo, key, posting));
                 for (int seq = 1; seq <= newQuestions.size(); seq++) {
                     NewQuestion question = newQuestions.get(seq - 1);
                     questions.save(CoverLetterQuestion.of(letter.getId(), seq, question.text(),

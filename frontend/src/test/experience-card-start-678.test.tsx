@@ -35,7 +35,7 @@ describe('#678 경험 카드 만들기 첫 화면', () => {
   it('제목·기간·레포·활동만 받고, 제목을 적어야 질문 받으며 쓰기를 누를 수 있다', () => {
     mount();
     expect(screen.getByRole('heading', { level: 1, name: '경험 카드 만들기' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('상황 (Situation)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('상황')).not.toBeInTheDocument();
     const start = screen.getByRole('button', { name: '질문 받으며 쓰기' });
     expect(start).toBeDisabled();
     change('카드 제목', '동아리 축제 예약 웹');
@@ -64,8 +64,8 @@ describe('#678 경험 카드 만들기 첫 화면', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: '직접 작성' })).toBeInTheDocument();
     expect(screen.getByLabelText('카드 제목')).toHaveValue('동아리 축제 예약 웹');
-    expect(screen.getByLabelText('상황 (Situation)')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '임시 저장 시작' })).toBeEnabled();
+    expect(screen.getByLabelText('상황')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '작성 시작' })).toBeEnabled();
     expect(create).not.toHaveBeenCalled();
   });
 

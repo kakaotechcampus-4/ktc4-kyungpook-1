@@ -15,6 +15,7 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { matchesCompletion } from '@/lib/cardSummaryView';
 import { filledCount, groupCards, hasRepoInfo, type CardGroup, type CardView } from '@/lib/cardGroups';
+import './CardsList.css';
 
 type StatusTab = 'ALL' | 'DRAFT' | 'CONFIRMED' | 'NEEDS_WORK';
 const VIEW_KEY = 'gitory.cards.view';
@@ -92,7 +93,7 @@ export function CardsListPage() {
           ))}
         </div>}
       </div>}
-      {cards.data && filtering && <span className="t-12 c-2" role="status">{list.length}개 보기</span>}
+      {cards.data && filtering && <span className="t-12 c-2" role="status">카드 {list.length}장</span>}
       {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
       {cards.isSuccess && <SkippedCardsNotice />}
       {cards.isPending && <div className="grid-2">{[0, 1].map((i) => <Skeleton key={i} h={150} />)}</div>}

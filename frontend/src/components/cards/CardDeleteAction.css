@@ -2,7 +2,9 @@
 .experience-item-shell > .experience-item { width: 100%; }
 .experience-item-shell .experience-item__meta { padding-right: 40px; }
 .card-delete-trigger.btn { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; padding: 0; color: var(--text-secondary); }
-.card-delete-trigger.btn:hover, .card-delete-text.btn:hover { color: var(--color-danger, var(--text-primary)); }
+/* 되돌릴 수 없는 동작이라 진입 버튼부터 위험 색(글자 "카드 삭제"가 이름이고 색은 거들 뿐 — 실행은 확인 대화상자에서). --color-danger 는 정의된 적 없어 hover 도 늘 기본색이었다 */
+.card-delete-trigger.btn:hover, .card-delete-text.btn { color: var(--state-failed-text); }
+.card-delete-text.btn:hover:not(:disabled) { color: var(--state-failed-text); background: var(--state-failed-bg); }
 .card-delete-text.btn { align-self: flex-start; }
 .card-delete-title { color: var(--text-primary); font-weight: 600; overflow-wrap: anywhere; }
 @media print { .card-delete-trigger.btn, .card-delete-text.btn { display: none; } }

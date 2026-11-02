@@ -86,7 +86,7 @@ export function EditMode({ card, onDone, initialField }: { card: Card; onDone: (
             <StarEditorField key={f} field={f} label={starFieldName[f]} dropped={!draft[f]}
               metadata={dirty && <><Badge kind="CAUTION">고친 칸</Badge><button type="button" className="star-row__undo t-12 w-500 c-2" disabled={canceling} onClick={() => setDraft((d) => ({ ...d, [f]: baseRef.current[f] }))}>되돌리기</button></>}
               ref={(element) => { fields.current[f] = element; }} maxLength={CONFIG.MANUAL_FIELD_MAX} disabled={canceling} value={draft[f]} onChange={(e) => setDraft((d) => ({ ...d, [f]: e.target.value }))}
-              placeholder={ev.length ? '' : '여기 쓰시면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]}>
+              placeholder={ev.length ? '' : '여기에 쓰면 내가 쓴 문장으로 저장돼요'} aria-label={starFieldName[f]}>
               <EvidenceList items={ev} label={starFieldName[f]} sentence={draft[f] || null} />
               {dirty && ev.some((e) => e.type === 'COMMIT') && (
                 <div className="star__why"><strong>커밋에 없는 내용은 근거가 뒷받침하지 못해요</strong></div>
@@ -97,7 +97,7 @@ export function EditMode({ card, onDone, initialField }: { card: Card; onDone: (
       </div>
       <SaveStatus status={autosave.status} retry={flush} />
       <StickyFooter
-        strong={changed.length ? `${changed.length}칸 고침` : '직접 수정'}
+        strong={changed.length ? `${changed.length}칸 고침` : '수정'}
         sub={failed ? '연결을 확인하고 다시 눌러 주세요' : '쓰는 동안 알아서 저장돼요'}>
         <Button variant="text" disabled={saving || canceling} loading={canceling} onClick={() => void cancel()}>이번 수정 되돌리기</Button>
         <Button size="lg" disabled={canceling} loading={saving} onClick={done}>{failed ? '다시 저장하고 닫기' : '저장하고 닫기'}</Button>
@@ -137,7 +137,7 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
   };
   const apply = async () => {
     if (!await saveMask()) return;
-    toast(valid.length ? `마스킹 규칙 ${valid.length}개를 저장했습니다` : '마스킹을 해제했습니다', { tone: 'success' });
+    toast(valid.length ? `가리기 규칙 ${valid.length}개를 저장했어요` : '가리기를 해제했어요', { tone: 'success' });
     guard.allowNavigation();
     onDone();
   };
@@ -167,19 +167,19 @@ export function MaskMode({ card, onDone }: { card: Card; onDone: () => void }) {
           const after = applyMask(text, valid);
           const hit = after !== text;
           return (
-            <StarRow key={f} field={f} label={starFieldName[f]} metadata={hit && <Badge kind="CAUTION">마스킹 적용</Badge>}>
+            <StarRow key={f} field={f} label={starFieldName[f]} metadata={hit && <Badge kind="CAUTION">가리기 적용</Badge>}>
               <div className="cmp">
                 <div className="cmp__box"><span className="cmp__label">원문 (저장된 값)</span><span className="c-2">{text}</span></div>
-                <div className="cmp__box cmp__box--after"><span className="cmp__label">내보낼 때 (마스킹 적용)</span><span>{after}</span></div>
+                <div className="cmp__box cmp__box--after"><span className="cmp__label">내보낼 때 (가리기 적용)</span><span>{after}</span></div>
               </div>
             </StarRow>
           );
         })}
       </div>
-      {mask.isError && <p role="alert">마스킹을 저장하지 못했습니다. 다시 시도해 주세요.</p>}
-      <StickyFooter strong={!changed ? '변경한 규칙 없음' : hits.length ? `${hits.length}칸에 적용` : valid.length ? '현재 본문과 일치하는 문구 없음' : '마스킹 해제'} sub={changed && valid.length && !hits.length ? '규칙은 저장되며, 일치하는 문구가 생기면 적용됩니다' : '원문은 그대로 두고 표시할 때만 가림'}>
+      {mask.isError && <p role="alert">가리기를 저장하지 못했어요. 다시 시도해 주세요.</p>}
+      <StickyFooter strong={!changed ? '변경한 규칙 없음' : hits.length ? `${hits.length}칸에 적용` : valid.length ? '현재 본문과 일치하는 문구 없음' : '가리기 해제'} sub={changed && valid.length && !hits.length ? '규칙은 저장되고, 일치하는 문구가 생기면 적용돼요' : '원문은 그대로 두고 표시할 때만 가려요'}>
         <Button variant="outline" disabled={mask.isPending} onClick={onDone}>카드로 돌아가기</Button>
-        <Button disabled={locked || invalidRules || !changed} loading={mask.isPending} onClick={() => void apply()}>마스킹 적용</Button>
+        <Button disabled={locked || invalidRules || !changed} loading={mask.isPending} onClick={() => void apply()}>가리기 적용</Button>
       </StickyFooter>
       <UnsavedChangesDialog blocker={guard.blocker} saving={mask.isPending} flush={saveMask} />
     </>

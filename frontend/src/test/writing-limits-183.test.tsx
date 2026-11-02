@@ -20,7 +20,7 @@ function mount(element: React.ReactNode, client = new QueryClient({ defaultOptio
 }
 it('every edit STAR slot accepts the shared 1000 character limit', () => {
   mount(<EditMode card={card} onDone={vi.fn()} />);
-  for (const field of ['상황 (Situation)', '과제 (Task)', '행동 (Action)', '결과 (Result)']) expect(screen.getByLabelText(field)).toHaveAttribute('maxlength', '1000');
+  for (const field of ['상황', '과제', '행동', '결과']) expect(screen.getByLabelText(field)).toHaveAttribute('maxlength', '1000');
 });
 it('mask rule creation stops at 20 and both texts have 100 character limits', () => {
   mount(<MaskMode card={{ ...card, maskRules: Array.from({ length: 20 }, (_, index) => ({ from: `원문${index}`, to: '치환' })) }} onDone={vi.fn()} />);

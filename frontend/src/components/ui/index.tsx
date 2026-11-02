@@ -5,6 +5,7 @@ import { SearchField } from './SearchField';
 import type { Evidence as EvidenceT, StarField, CardKind } from '@/api/schemas';
 import { evidenceTypeLabel } from '@/lib/labels';
 import { starFillLabel } from '@/lib/starFillLabel';
+import { evidenceCountLabel } from '@/lib/evidenceCount';
 import { ymd } from '@/lib/format';
 import { readCommit } from '@/lib/commitMessage';
 import { Modal } from './Modal';
@@ -135,7 +136,7 @@ export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string
     <div className="evidence evidence--user">
       <MessageSquareQuote size={13} className="evidence__icon" aria-hidden />
       <span className="evidence__label">{evidenceTypeLabel[e.type]}</span>
-      <span className="grow" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{turnText ?? (e.turnNo ? `${e.turnNo}번째 답변` : '직접 작성한 내용')}</span>
+      <span className="grow" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{turnText ?? (e.turnNo ? `${e.turnNo}번째 질문` : '')}</span>
     </div>
   );
 }
@@ -149,9 +150,7 @@ export function EvidenceStrip({ e, turnText }: { e: EvidenceT; turnText?: string
 export function EvidenceList({ items, label, sentence }: { items: EvidenceT[]; label?: string; sentence?: string | null }) {
   const [open, setOpen] = useState(false);
   if (!items.length) return null;
-  const commits = items.filter((e) => e.type === 'COMMIT').length;
-  const said = items.length - commits;
-  const count = [commits && `근거 커밋 ${commits}개`, said && `내 답변 ${said}개`].filter(Boolean).join(', ');
+  const count = evidenceCountLabel(items);
   return (
     <>
       <button type="button" className="evidence-open" aria-haspopup="dialog" onClick={() => setOpen(true)}>

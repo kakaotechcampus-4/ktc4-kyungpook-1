@@ -5,6 +5,8 @@ import type { GapFill, GapFillCondition, GapFillProposal } from "@/api/matching"
 import { endpoints } from "@/api/endpoints";
 import { keys } from "@/api/keys";
 import { useStartAnalysis } from "@/api/queries";
+import { MAX_CARDS_PER_REQUEST } from "@/lib/candidatePicks";
+import { toast } from "@/lib/toast";
 
 export type GapStep = GapFillCondition["steps"][number];
 
@@ -89,7 +91,8 @@ export function useRevealed(keys: readonly string[], intervalMs: number, active:
   return seeded ? shown : new Set(keys);
 }
 
-// [진행하기] 뒤 돌아왔는지 — 서버는 어디서 왔는지 모르니 화면이 세션 저장소에 모자랐던 조건을 적어 두고, 돌아와서 한 번 읽고 지운다
+// [진행하기] 뒤 돌아왔는지 — 서버는 어디서 왔는지 모르니 화면이 세션 저장소에 모자랐던 조건을 적어 두고, 새 카드로 다시 맞춰 본 뒤에 지운다
+// 돌아왔을 때 새 카드가 아직 작성 중이면 지우지 않는다 — 지우면 나중에 확정하고 와도 '새로 채움' 이 붙지 않는다
 const returnKey = (matchId: string) => `gitory.gapfill.return:${matchId}`;
 export function rememberProceeded(matchId: string, notMetIds: string[]) {
   try {
@@ -98,30 +101,42 @@ export function rememberProceeded(matchId: string, notMetIds: string[]) {
     /* 저장소를 못 쓰면 돌아와서 다시 맞춰 보기만 건너뛴다 */
   }
 }
-export function takeProceeded(matchId: string): string[] | null {
+export function readProceeded(matchId: string): string[] | null {
   try {
     const raw = sessionStorage.getItem(returnKey(matchId));
     if (raw === null) return null;
-    sessionStorage.removeItem(returnKey(matchId));
     const ids: unknown = JSON.parse(raw);
     return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === "string") : [];
   } catch {
     return null;
   }
 }
+export function clearProceeded(matchId: string) {
+  try {
+    sessionStorage.removeItem(returnKey(matchId));
+  } catch {
+    /* 못 지우면 다음에 돌아왔을 때 한 번 더 견준다 */
+  }
+}
 
-/** 고른 제안을 지금 있는 API 로 넘길 묶음 — 후보로 카드 만들기는 레포마다 한 번씩 부른다 */
+/** 고른 제안을 지금 있는 API 로 넘길 묶음 — 후보로 카드 만들기는 레포마다 부르되, 서버가 한 번에 받는 수를 넘으면 나눠 부른다 */
 export function planProceed(chosen: GapFillProposal[]) {
-  const createCards = new Map<string, string[]>();
+  const createCards = new Map<string, Set<string>>();
   const continueCards: string[] = [];
   const analyzeRepos: string[] = [];
   for (const p of chosen.filter(canProceed)) {
-    if (p.action === "CREATE_CARD") createCards.set(p.repoId!, [...(createCards.get(p.repoId!) ?? []), p.candidateId!]);
+    if (p.action === "CREATE_CARD") createCards.set(p.repoId!, (createCards.get(p.repoId!) ?? new Set<string>()).add(p.candidateId!));
     else if (p.action === "CONTINUE_CARD") continueCards.push(p.cardId!);
     else analyzeRepos.push(p.repoId!);
   }
   return {
-    createCards: [...createCards].map(([repoId, candidateIds]) => ({ repoId, candidateIds })),
+    createCards: [...createCards].flatMap(([repoId, ids]) => {
+      const all = [...ids];
+      return Array.from({ length: Math.ceil(all.length / MAX_CARDS_PER_REQUEST) }, (_, i) => ({
+        repoId,
+        candidateIds: all.slice(i * MAX_CARDS_PER_REQUEST, (i + 1) * MAX_CARDS_PER_REQUEST),
+      }));
+    }),
     continueCards: [...new Set(continueCards)],
     analyzeRepos: [...new Set(analyzeRepos)],
   };
@@ -131,6 +146,7 @@ export type ProceedResult = {
   created: { repoId: string; candidateIds: string[]; jobId: string; cardIds: string[] }[];
   continueCards: string[];
   started: { repoId: string; jobId: string }[];
+  failed: number;
 };
 /** 넘긴 뒤 갈 곳 — 하나면 그 화면(카드 초안 · 되묻기 · 레포 분석)으로, 여럿이면 카드 목록에서 진행을 본다 */
 export function proceedDestinations(result: ProceedResult): { path: string; state?: unknown }[] {
@@ -145,7 +161,14 @@ export function proceedDestinations(result: ProceedResult): { path: string; stat
   ];
 }
 
-/** 고른 제안을 한 번에 넘긴다. 새 API 없이 카드 만들기 · 되묻기 화면 · 레포 분석 시작을 그대로 쓴다 */
+const fulfilled = <T>(results: PromiseSettledResult<T>[]) =>
+  results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+
+/**
+ * 고른 제안을 한 번에 넘긴다. 새 API 없이 카드 만들기 · 되묻기 화면 · 레포 분석 시작을 그대로 쓴다
+ * 일부만 실패해도 성공한 것(만들어진 카드, 시작한 분석)은 그 화면으로 보낸다 — 쓴 후보는 USED 라 다시 눌러도 같은 카드를 만들 수 없다
+ * 넘긴 것이 하나도 없을 때만 실패로 끝난다
+ */
 export function useProceed() {
   const qc = useQueryClient();
   const nav = useNavigate();
@@ -153,16 +176,21 @@ export function useProceed() {
   return useMutation({
     mutationFn: async (chosen: GapFillProposal[]): Promise<ProceedResult> => {
       const plan = planProceed(chosen);
-      const created = await Promise.all(
+      const createdAll = await Promise.allSettled(
         plan.createCards.map(async (g) => ({ ...g, ...(await endpoints.createCardsFromCandidates(g.repoId, g.candidateIds)) })),
       );
-      const started = await Promise.all(plan.analyzeRepos.map(async (repoId) => ({ repoId, jobId: (await analysis.mutateAsync(repoId)).jobId })));
-      return { created, continueCards: plan.continueCards, started };
+      const startedAll = await Promise.allSettled(plan.analyzeRepos.map(async (repoId) => ({ repoId, jobId: (await analysis.mutateAsync(repoId)).jobId })));
+      const created = fulfilled(createdAll);
+      const started = fulfilled(startedAll);
+      const failures = [...createdAll, ...startedAll].flatMap((r) => (r.status === "rejected" ? [r.reason] : []));
+      if (failures.length > 0 && created.length + started.length + plan.continueCards.length === 0) throw failures[0];
+      return { created, continueCards: plan.continueCards, started, failed: failures.length };
     },
     onSuccess: (result) => {
       void qc.invalidateQueries({ queryKey: keys.cards });
       void qc.invalidateQueries({ queryKey: keys.activeJobs });
       result.created.forEach((g) => void qc.invalidateQueries({ queryKey: keys.candidates(g.repoId) }));
+      if (result.failed > 0) toast(`${result.failed}개는 넘기지 못했어요. 공고로 돌아와 다시 골라 주세요.`, { tone: "danger" });
       const to = proceedDestinations(result);
       if (to.length === 1) nav(to[0].path, { state: to[0].state });
       else nav("/cards");

@@ -19,7 +19,7 @@ import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
 import { matchViewFromParams } from "./CompanyList";
 import { ConditionGapFill, Dots } from "./GapFillParts";
-import { canProceed, gapKey, gapKeys, gapSummary, rememberProceeded, revealIntervalMs, takeProceeded, useProceed, useRevealed } from "./gapFill";
+import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
 import { MatchFailure, MatchUnavailable } from "./shared";
 import {
@@ -201,16 +201,20 @@ export function MatchDetailPage() {
   const [filled, setFilled] = useState<ReadonlySet<string> | null>(null);
   const rejudged = useRef(false);
   useEffect(() => {
-    const ids = takeProceeded(matchId);
+    const ids = readProceeded(matchId);
     if (ids) setReturned(ids);
   }, [matchId]);
+  // 서버는 확정 카드가 바뀌어 판단할 짝이 생겼을 때만 needsJudgement 를 준다 — 새 카드가 아직 작성 중이면 다시 맞춰 보지 않는다
   useEffect(() => {
-    if (!returned || !detail || rejudged.current) return;
+    if (!returned || !detail?.needsJudgement || rejudged.current) return;
     rejudged.current = true;
     judge.mutate(undefined, {
-      onSuccess: (next) => setFilled(new Set(returned.filter((id) => next.conditions.find((c) => c.id === id)?.status === "MET"))),
+      onSuccess: (next) => {
+        clearProceeded(matchId);
+        setFilled(new Set(returned.filter((id) => next.conditions.find((c) => c.id === id)?.status === "MET")));
+      },
     });
-  }, [returned, detail, judge]);
+  }, [returned, detail, judge, matchId]);
   const gapState = detail?.gapFill?.state;
   useEffect(() => {
     if (gapState === "RUNNING") setGapLive(true);
@@ -269,7 +273,8 @@ export function MatchDetailPage() {
   const onProceed = () => {
     if (!detail) return;
     rememberProceeded(detail.id, detail.conditions.filter((c) => c.status === "NOT_MET").map((c) => c.id));
-    proceed.mutate(chosen);
+    // 하나도 못 넘겼으면 돌아와 견줄 것이 없다
+    proceed.mutate(chosen, { onError: () => clearProceeded(detail.id) });
   };
 
   if (!matchSupported()) return <MatchUnavailable />;
@@ -291,6 +296,7 @@ export function MatchDetailPage() {
   }
   if (returned && judge.isPending) log.push({ key: "rejudge", text: "새로 확정한 카드로 다시 맞춰 보고 있어요", live: true });
   if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
+  if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드를 확정하면 다시 맞춰 볼게요" });
   if (showGap && gapRunning) log.push({ key: "gap-running", text: `모자란 조건 ${gf.conditions.length}개를 채울 자료를 찾고 있어요`, live: true });
   if (showGap && gf.state === "DONE") log.push({ key: "gap-done", text: gapSummary(gf) });
   if (judgedData && settled && gapNeedsGithub) {

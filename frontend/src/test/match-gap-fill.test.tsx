@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MatchDetailPage } from '@/features/match/MatchDetailPage';
-import { planProceed, proceedDestinations, rememberProceeded, revealIntervalMs, stepText, takeProceeded } from '@/features/match/gapFill';
+import { planProceed, proceedDestinations, readProceeded, rememberProceeded, revealIntervalMs, stepText } from '@/features/match/gapFill';
+import { toast } from '@/lib/toast';
 import { gapFillPollMs, matchingApi, MatchDetail, type GapFill, type GapFillCondition, type GapFillProposal } from '@/api/matching';
 import { endpoints } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
@@ -12,6 +13,7 @@ import { db, resetDb } from '@/mock/store';
 import sampleDetail from '../../docs/examples/matching/detail.json';
 import sampleList from '../../docs/examples/matching/list.json';
 
+vi.mock('@/lib/toast', () => ({ toast: vi.fn() }));
 beforeEach(resetDb);
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); sessionStorage.clear(); });
 
@@ -219,7 +221,7 @@ it('고른 제안만 진행하기로 넘긴다 — 후보로 카드 만들기는
     proposalOf({ repoId: null }),
   ])).toEqual({ createCards: [{ repoId: 'r_auth', candidateIds: ['c_51', 'c_pay'] }], continueCards: [], analyzeRepos: ['r_counting'] });
   // 카드가 작업으로 만들어져 바로 받은 카드가 없으면 그 레포의 카드 폴더에서 진행을 본다
-  expect(proceedDestinations({ created: [{ repoId: 'r_auth', candidateIds: ['c_51'], jobId: 'job_9', cardIds: [] }], continueCards: [], started: [] }))
+  expect(proceedDestinations({ created: [{ repoId: 'r_auth', candidateIds: ['c_51'], jobId: 'job_9', cardIds: [] }], continueCards: [], started: [], failed: 0 }))
     .toEqual([{ path: '/cards/repo/r_auth' }]);
   const gapFill = done([
     condition(fiveIds[0], { result: 'PROPOSED', proposal: proposalOf() }),
@@ -237,7 +239,44 @@ it('고른 제안만 진행하기로 넘긴다 — 후보로 카드 만들기는
   expect(create).toHaveBeenCalledWith('r_auth', ['c_51', 'c_pay']);
   await screen.findByText('card page card_90');
   // 돌아와서 ✕ → ✓ 를 보이려고 모자랐던 조건을 적어 둔다
-  expect(takeProceeded(five.id)).toEqual(fiveIds);
+  expect(readProceeded(five.id)).toEqual(fiveIds);
+});
+
+it('한 레포에서 고른 후보가 서버가 한 번에 받는 8개를 넘으면 나눠 부르고, 같은 후보는 한 번만 넘긴다', () => {
+  const ids = Array.from({ length: 9 }, (_, i) => `c_${i}`);
+  const plan = planProceed([...ids, 'c_0'].map((candidateId) => proposalOf({ candidateId })));
+  expect(plan.createCards).toEqual([
+    { repoId: 'r_auth', candidateIds: ids.slice(0, 8) },
+    { repoId: 'r_auth', candidateIds: ['c_8'] },
+  ]);
+});
+
+it('넘기다 일부만 실패하면 성공한 카드 화면으로 가고 실패한 수만 알린다', async () => {
+  const gapFill = done([
+    condition(fiveIds[0], { result: 'PROPOSED', proposal: proposalOf() }),
+    condition(fiveIds[1], { result: 'PROPOSED', proposal: proposalOf({ candidateId: 'c_board', repoId: 'r_board', title: '보드 후보' }) }),
+  ]);
+  mount({ ...five, gapFill });
+  vi.spyOn(endpoints, 'createCardsFromCandidates').mockImplementation(async (repoId) => {
+    if (repoId === 'r_board') throw new ApiError('INTERNAL_ERROR', '실패', 500);
+    return { jobId: 'job_9', cardIds: ['card_90'] };
+  });
+  fireEvent.click(await screen.findByRole('checkbox', { name: '후보로 카드 만들기 — 로그인 API 응답 속도 개선' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 보드 후보' }));
+  fireEvent.click(screen.getByRole('button', { name: '고른 2개 진행하기' }));
+
+  await screen.findByText('card page card_90');
+  expect(toast).toHaveBeenCalledWith(expect.stringContaining('1개는 넘기지 못했어요'), { tone: 'danger' });
+});
+
+it('하나도 넘기지 못하면 공고에 남아 실패를 알리고, 돌아와 견줄 표시를 남기지 않는다', async () => {
+  mount({ ...five, gapFill: done([condition(fiveIds[0], { result: 'PROPOSED', proposal: proposalOf() })]) });
+  vi.spyOn(endpoints, 'createCardsFromCandidates').mockRejectedValue(new ApiError('INTERNAL_ERROR', '실패', 500));
+  fireEvent.click(await screen.findByRole('checkbox', { name: '후보로 카드 만들기 — 로그인 API 응답 속도 개선' }));
+  fireEvent.click(screen.getByRole('button', { name: '고른 1개 진행하기' }));
+
+  expect(await screen.findByText('제안을 넘기지 못했어요. 다시 눌러 주세요.')).toBeInTheDocument();
+  expect(readProceeded(five.id)).toBeNull();
 });
 
 it('진행하기 뒤 돌아오면 묻지 않고 새 카드로 다시 맞춰 보고, ✕ 였다가 ✓ 가 된 조건에 새로 채움을 붙인다', async () => {
@@ -252,7 +291,18 @@ it('진행하기 뒤 돌아오면 묻지 않고 새 카드로 다시 맞춰 보�
   expect(screen.getAllByText('새로 채움')).toHaveLength(1);
   // 돌아온 뒤에는 결과를 차례로 펼치지 않고 바로 다 보인다
   expect(tiles()).toBe(5);
-  expect(takeProceeded(base.id)).toBeNull();
+  expect(readProceeded(base.id)).toBeNull();
+});
+
+it('진행하기 뒤 돌아왔는데 새 카드가 아직 확정 전이면 다시 맞춰 보지 않고, 확정한 뒤 돌아올 때까지 표시를 남긴다', async () => {
+  const [docker, k8s] = notMet;
+  rememberProceeded(base.id, [docker.id, k8s.id]);
+  mount(base);
+  const judge = vi.spyOn(matchingApi, 'judge').mockResolvedValue(base);
+
+  await screen.findByText('새로 만든 카드를 확정하면 다시 맞춰 볼게요');
+  expect(judge).not.toHaveBeenCalled();
+  expect(readProceeded(base.id)).toEqual([docker.id, k8s.id]);
 });
 
 it('목은 맞춰 보기 전엔 판단을 숨기고, 채우기를 시작하면 시간이 지나며 찾음·찾지 않음·못 찾음·시간 초과가 한 번씩 나온 뒤 끝난다', () => {

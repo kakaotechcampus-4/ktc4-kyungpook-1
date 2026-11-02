@@ -40,19 +40,20 @@ it('카드가 하나도 없으면 주 버튼은 하나이고, 의미 없는 탭�
 });
 
 it('건수를 아직 모르는 동안(조회 중)에는 빈 상태로 보지 않고 탭을 그대로 둔다', () => {
+  recentView();
   vi.spyOn(endpoints, 'cards').mockReturnValue(new Promise(() => {}));
   mount();
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('경험 카드 —');
   expect(screen.getByRole('button', { name: '전체 —' })).toBeInTheDocument();
   expect(screen.queryByText('아직 카드가 없어요')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: '레포에서 만들기' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toBeInTheDocument();
 });
 
 it('카드가 있으면 상단 도구와 탭이 그대로 보이고, 묶음 요약 단위가 모두 붙는다', () => {
   recentView();
   mount(seeded());
   expect(primaries()).toHaveLength(1);
-  expect(screen.getByRole('button', { name: '레포에서 만들기' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new');
   for (const tab of ['전체', '작성 중', '확정됨', '보완 필요']) expect(screen.getByRole('button', { name: new RegExp(`^${tab}`) })).toBeInTheDocument();
   const summaries = [...document.querySelectorAll('.card-group__counts')].map((node) => node.textContent);
   expect(summaries.length).toBeGreaterThan(0);

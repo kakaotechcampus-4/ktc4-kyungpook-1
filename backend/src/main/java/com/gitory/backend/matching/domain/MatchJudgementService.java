@@ -167,6 +167,21 @@ public class MatchJudgementService {
 
     }
 
+    /** 지금 카드 글로 '맞음' 이라고 저장된 조건 id 들이며, 저장된 판단만 읽고 AI 는 부르지 않는다 */
+    public Set<Long> metCriteria(List<MatchingCard> cards) {
+
+        if (cards.isEmpty()) {
+            return Set.of();
+        }
+        Map<Long, String> hashes = cards.stream()
+                .collect(Collectors.toMap(MatchingCard::id, CardContentHash::of));
+        return judgements.findByCardIdInAndMetTrue(hashes.keySet()).stream()
+                .filter(judgement -> judgement.getCardHash().equals(hashes.get(judgement.getCardId())))
+                .map(MatchJudgement::getCriterionId)
+                .collect(Collectors.toSet());
+
+    }
+
     /** 저장된 판단만 읽고 AI 는 부르지 않으며, 지금 카드 글로 아직 판단하지 않은 카드가 남은 조건은 complete 가 false 다 */
     public Map<Long, StoredJudgement> stored(List<JobPostingCriterion> criteria, List<MatchingCard> cards) {
 

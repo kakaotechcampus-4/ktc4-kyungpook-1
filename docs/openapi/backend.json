@@ -2486,6 +2486,11 @@
             },
             "type" : "array"
           },
+          "education" : {
+            "$ref" : "#/components/schemas/MatchEducationResponse",
+            "description" : "목록과 같다: 수준을 읽은 필수 학력 중 가장 낮은 수준. 없으면 null",
+            "type" : "null"
+          },
           "experience" : {
             "$ref" : "#/components/schemas/MatchDetailExperienceResponse"
           },
@@ -2520,6 +2525,25 @@
             "$ref" : "#/components/schemas/MatchSummaryResponse",
             "description" : "needsJudgement 면 null",
             "type" : "null"
+          },
+          "techs" : {
+            "description" : "목록과 같다: 필수·우대 조건의 기술 이름을 조건 순서대로 한 번씩. 없으면 []",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "MatchEducationResponse" : {
+        "properties" : {
+          "exempt" : {
+            "type" : "boolean"
+          },
+          "level" : {
+            "enum" : [ "HIGH_SCHOOL", "ASSOCIATE", "BACHELOR", "MASTER", "DOCTOR" ],
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -2603,6 +2627,11 @@
             "description" : "같은 회사의 공고를 묶는 id. 회사 이름 표기가 달라도 같다",
             "type" : "string"
           },
+          "education" : {
+            "$ref" : "#/components/schemas/MatchEducationResponse",
+            "description" : "필수 학력 조건 중 가장 낮은 수준. exempt 는 '또는 그에 준하는 경력' 같은 예외가 적힌 학력이다. 수준을 읽은 필수 학력이 없으면 null",
+            "type" : "null"
+          },
           "experience" : {
             "$ref" : "#/components/schemas/MatchExperienceResponse"
           },
@@ -2628,6 +2657,13 @@
           },
           "source" : {
             "$ref" : "#/components/schemas/MatchSourceResponse"
+          },
+          "techs" : {
+            "description" : "필수·우대 조건의 기술 이름(카드 techs 와 같은 값)을 조건 순서대로 한 번씩. 없으면 []",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"

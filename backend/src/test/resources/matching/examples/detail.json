@@ -21,6 +21,12 @@
       "quote": "신입 지원 가능",
       "status": null
     },
+    "techs": [
+      "KOTLIN",
+      "SPRING",
+      "KAFKA"
+    ],
+    "education": null,
     "source": {
       "url": "https://careers.example.com/narae/jobs/2002",
       "collectedAt": "2026-10-19T20:05:12Z",

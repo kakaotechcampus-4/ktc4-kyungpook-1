@@ -74,7 +74,7 @@ it("does not render null grade as D and provides a card action", async () => {
     client.setQueryData(keys.me, { ...me, stats: { ...me.stats, confirmedCards: 0 } });
   });
   await screen.findByText(
-    "확정한 카드가 없어요. 카드를 확정하면 공고별 근거를 비교할 수 있어요.",
+    "확정한 카드가 없어요. 카드를 확정하면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.",
   );
   expect(screen.queryByLabelText("근거 등급 D")).not.toBeInTheDocument();
   expect(
@@ -113,14 +113,14 @@ it("shows each condition's judgement and hides only duplicate quote lines", asyn
   mount(`/match/${detail.id}?category=BACKEND`);
   await screen.findByText(detail.role);
   expect(screen.getAllByText(detail.conditions[0].text)).toHaveLength(1);
-  expect(screen.getByText("필수 조건 3개 중 2개가 맞아요.")).toBeInTheDocument();
-  expect(screen.getAllByText("맞는 카드가 없어요.")).toHaveLength(2);
-  expect(screen.getAllByText("어학 조건은 직접 확인해 주세요.")).toHaveLength(1);
-  // 조건마다 상태 표시가 붙고, 담당 업무에는 붙지 않는다
+  // 집계는 요약 카드와 절 제목 옆, 두 곳에 글자로만 — 설명 문장은 없다
+  expect(screen.getAllByText(/2\/3 맞음/)).toHaveLength(2);
+  expect(screen.queryByText(/맞는 카드가 없어요|직접 확인해 주세요/)).not.toBeInTheDocument();
+  // 맞음·모자람 조건에만 타일이 붙고, 직접 확인은 글 뒤 글자뿐이며, 담당 업무에는 아무것도 없다
   expect(screen.getAllByText("맞음")).toHaveLength(3);
   expect(screen.getAllByText("모자람")).toHaveLength(2);
   expect(screen.getAllByText("직접 확인")).toHaveLength(1);
-  expect(document.querySelectorAll(".match-mark")).toHaveLength(6);
+  expect(document.querySelectorAll(".posting-conditions .cond-tile")).toHaveLength(5);
   expect(screen.queryByRole("button", { name: "이 공고와 맞춰 보기" })).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "← 공고 목록" })).toHaveAttribute(
     "href",
@@ -143,13 +143,17 @@ it("judges the posting only on request and shows the new judgement", async () =>
   vi.spyOn(matchingApi, "detail").mockResolvedValue(unjudged(judged));
   const judge = vi.spyOn(matchingApi, "judge").mockResolvedValue(judged);
   mount(`/match/${judged.id}`);
-  expect(await screen.findAllByText("아직 맞춰 보지 않았어요.")).toHaveLength(5);
-  expect(screen.getAllByText("맞춰 보기 전")).toHaveLength(5);
+  await screen.findByRole("button", { name: "이 공고와 맞춰 보기" });
+  // 맞춰 보기 전에는 공고 원문만 보이고, 조건 옆 상태도 판단 문구도 없다
+  expect(screen.getByText(judged.conditions[0].quote)).toBeInTheDocument();
+  expect(document.querySelectorAll(".posting-conditions .cond-tile")).toHaveLength(0);
+  expect(document.querySelectorAll(".posting-conditions .cond-suffix")).toHaveLength(0);
+  expect(screen.queryByText(/2\/3 맞음/)).not.toBeInTheDocument();
   expect(judge).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "이 공고와 맞춰 보기" }));
-  expect(await screen.findByText("필수 조건 3개 중 2개가 맞아요.")).toBeInTheDocument();
+  expect(await screen.findAllByText(/2\/3 맞음/)).toHaveLength(2);
   expect(judge).toHaveBeenCalledWith(judged.id);
-  expect(screen.queryByText("아직 맞춰 보지 않았어요.")).not.toBeInTheDocument();
+  expect(document.querySelectorAll(".posting-conditions .cond-tile")).toHaveLength(5);
   expect(screen.queryByRole("button", { name: "이 공고와 맞춰 보기" })).not.toBeInTheDocument();
 });
 it("keeps the judge button and says so when judging fails", async () => {
@@ -160,7 +164,7 @@ it("keeps the judge button and says so when judging fails", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "이 공고와 맞춰 보기" }));
   expect(await screen.findByText("맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "이 공고와 맞춰 보기" })).toBeEnabled();
-  expect(screen.getAllByText("아직 맞춰 보지 않았어요.")).toHaveLength(5);
+  expect(document.querySelectorAll(".posting-conditions .cond-tile")).toHaveLength(0);
 });
 it("words an education mismatch as a profile check, not as a missing card", async () => {
   const detail = MatchDetail.parse(sampleDetail.data);
@@ -184,8 +188,10 @@ it("words an education mismatch as a profile check, not as a missing card", asyn
   expect(screen.getByText("인적사항에 학력을 적으면 비교할 수 있어요.")).toBeInTheDocument();
   expect(screen.getByText("인적사항 필요")).toBeInTheDocument();
   expect(screen.getByText("학력 조건은 직접 확인해 주세요.")).toBeInTheDocument();
-  expect(screen.getByText("병역 조건은 직접 확인해 주세요.")).toBeInTheDocument();
-  expect(screen.getAllByText("맞는 카드가 없어요.")).toHaveLength(1);
+  // 병역 같은 일반 조건은 '직접 확인' 표시만 붙고 문장은 없다. 기술 조건의 모자람도 표시만 둔다
+  expect(screen.queryByText(/병역 조건/)).not.toBeInTheDocument();
+  expect(screen.getAllByText("직접 확인")).toHaveLength(2);
+  expect(document.querySelectorAll(".posting-conditions .cond-tile--not_met")).toHaveLength(2);
 });
 it("404 detail offers list return without an invalid retry", async () => {
   vi.spyOn(matchingApi, "detail").mockRejectedValue(
@@ -267,22 +273,21 @@ it.each(["mask", "reopen", "confirm"] as const)(
   },
 );
 
-it("uses the right particle for each empty condition section", async () => {
-  const only = (types: string[]) => MatchDetail.parse({
+it("draws sections in posting order (duties, requirements, preferred) and skips sections without conditions", async () => {
+  const only = (types: string[], quote: string | null) => MatchDetail.parse({
     ...sampleDetail.data,
+    experience: { ...sampleDetail.data.experience, quote },
     conditions: sampleDetail.data.conditions.filter((c) => types.includes(c.type)),
   });
-  // 필수만 있을 때: 우대 조건이 · 담당 업무가
-  vi.spyOn(matchingApi, "detail").mockResolvedValue(only(["REQUIRED"]));
+  const sections = () => [...document.querySelectorAll(".posting-section h2")].map((h) => h.textContent);
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(only(["PREFERRED", "REQUIRED", "RESPONSIBILITY"], "신입 지원 가능"));
   mount(`/match/${sampleDetail.data.id}`);
-  expect(await screen.findByText("등록된 우대 조건이 없어요.")).toBeInTheDocument();
-  expect(screen.getByText("등록된 담당 업무가 없어요.")).toBeInTheDocument();
-  expect(screen.queryByText(/담당 업무이 없어요/)).not.toBeInTheDocument();
-  expect(screen.queryByText(/등록된 필수 조건/)).not.toBeInTheDocument();
+  await screen.findByRole("heading", { name: "자격 요건" });
+  expect(sections()).toEqual(["주요 업무", "자격 요건", "우대 사항"]);
   cleanup();
-  // 필수가 없을 때: 필수 조건이
-  vi.spyOn(matchingApi, "detail").mockResolvedValue(only(["PREFERRED", "RESPONSIBILITY"]));
+  // 우대 사항이 없으면 그 칸은 제목도 없다. 필수 조건이 없어도 경력 원문이 있으면 자격 요건 칸은 남는다
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(only(["RESPONSIBILITY"], "신입 지원 가능"));
   mount(`/match/${sampleDetail.data.id}`);
-  expect(await screen.findByText("등록된 필수 조건이 없어요.")).toBeInTheDocument();
-  expect(screen.queryByText(/우대 조건이 없어요|담당 업무가 없어요/)).not.toBeInTheDocument();
+  await screen.findByRole("heading", { name: "자격 요건" });
+  expect(sections()).toEqual(["주요 업무", "자격 요건"]);
 });

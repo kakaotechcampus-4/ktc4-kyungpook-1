@@ -10,6 +10,8 @@
     "required": { "total": 4, "met": 2 },
     "preferred": { "total": 2, "met": 1 },
     "experience": { "level": "ENTRY", "minYears": null, "quote": "신입 지원 가능", "status": null },
+    "techs": ["KOTLIN", "SPRING", "KAFKA"],
+    "education": null,
     "source": {
       "url": "https://careers.example.com/narae/jobs/2002",
       "collectedAt": "2026-10-19T20:05:12Z",

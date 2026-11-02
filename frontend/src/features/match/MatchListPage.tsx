@@ -12,6 +12,7 @@ import { isDemo } from '@/mock/browser';
 import { MatchFailure, MatchUnavailable } from "./shared";
 import { AiWait } from '@/components/ui/AiWait';
 import { CompanyList, matchViewFromParams, ViewToggle } from "./CompanyList";
+import { Pagination } from "./Pagination";
 import { PostingCard } from "./PostingCard";
 import {
   categoryLabel,
@@ -19,6 +20,9 @@ import {
   selectMatches,
   type MatchFilters,
 } from "./model";
+
+// 3열 격자가 꽉 차도록 3의 배수
+const PAGE_SIZE = 24;
 
 export function MatchListPage() {
   useDocumentTitle("공고 매칭");
@@ -58,16 +62,15 @@ export function MatchListPage() {
   };
   const list = useMemo(
     () => selectMatches(matches.data ?? [], filters),
-    [
-      matches.data,
-      filters.q,
-      filters.category,
-      filters.experience,
-      filters.sort,
-    ],
+    [matches.data, filters.q, filters.category, filters.experience, filters.sort],
   );
   const view = matchViewFromParams(sp);
   const groups = useMemo(() => (view === "company" ? groupByCompany(list) : []), [view, list]);
+  const total = view === "company" ? groups.length : list.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(pages, Math.max(1, Number(sp.get("page")) || 1));
+  const from = (page - 1) * PAGE_SIZE;
+  // 검색·필터·정렬·보기를 바꾸면 1쪽으로 돌아간다(page 를 지운다)
   const update = (key: string, value: string) =>
     setSp(
       (current) => {
@@ -75,34 +78,30 @@ export function MatchListPage() {
         if (query) next.set('q', query); else next.delete('q');
         if (!value || (value === "ALL" && key !== 'q')) next.delete(key);
         else next.set(key, value);
+        if (key !== "page") next.delete("page");
         return next;
       },
       { replace: true },
     );
+  const goPage = (next: number) => {
+    update("page", next === 1 ? "" : String(next));
+    window.scrollTo({ top: 0 });
+  };
   const filtered =
     !!filters.q || filters.category !== "ALL" || filters.experience !== "ALL";
   if (!matchSupported()) return <MatchUnavailable />;
   return (
     <main className="main matching-page">
       <PageTitle right={isDemo ? '예시 공고' : undefined}>공고 매칭</PageTitle>
-      <p className="match-intro">채용 조건과 연결되는 내 경험을 확인하세요. 등급은 조건마다 근거로 이어진 확정 카드가 많을수록 높아요(A가 가장 높음).</p>
-      <ViewToggle value={view} onChange={(next) => update("view", next === "company" ? next : "")} />
+      <p className="match-intro">개발 직군 채용 공고를 모아 보여 드려요. 공고를 열면 내 경험 카드로 조건을 맞춰 볼 수 있어요.</p>
+      <div className="match-toolbar">
+        <ViewToggle value={view} onChange={(next) => update("view", next === "company" ? next : "")} />
+      </div>
       <div className="match-controls">
         <SearchField
           value={filters.q}
           onChange={(value) => { setQuery(value); update('q', value); }}
           placeholder="기업이나 직무 검색"
-        />
-        <Select
-          label="경력"
-          value={filters.experience}
-          onChange={(x) => update("experience", x)}
-          options={[
-            { value: "ALL", label: "모든 경력" },
-            { value: "ENTRY", label: "신입 가능" },
-            { value: "EXPERIENCED", label: "경력" },
-            { value: "UNSPECIFIED", label: "경력 표시 없음" },
-          ]}
         />
         <Select
           label="직무 분류"
@@ -117,6 +116,17 @@ export function MatchListPage() {
           ]}
         />
         <Select
+          label="경력"
+          value={filters.experience}
+          onChange={(x) => update("experience", x)}
+          options={[
+            { value: "ALL", label: "모든 경력" },
+            { value: "ENTRY", label: "신입 가능" },
+            { value: "EXPERIENCED", label: "경력" },
+            { value: "UNSPECIFIED", label: "경력 표시 없음" },
+          ]}
+        />
+        <Select
           label="공고 정렬"
           value={filters.sort}
           onChange={(x) => update("sort", x)}
@@ -126,7 +136,12 @@ export function MatchListPage() {
           ]}
         />
       </div>
-      {matches.isPending && <><AiWait label="공고 목록을 불러오는 중이에요" /><div className="match-grid">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={200} />)}</div></>}
+      {matches.isPending && (
+        <>
+          <AiWait label="공고 목록을 불러오는 중이에요" />
+          <div className="match-grid match-grid--three">{[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} h={220} />)}</div>
+        </>
+      )}
       {matches.isError && (
         <MatchFailure
           error={matches.error}
@@ -139,7 +154,7 @@ export function MatchListPage() {
           {matches.data.length > 0 && !hasGrade && confirmedCards === 0 && (
               <div className="match-notice">
                 <p>
-                  확정한 카드가 없어요. 카드를 확정하면 공고별 근거를 비교할 수
+                  확정한 카드가 없어요. 카드를 확정하면 공고마다 내 경험과 조건을 맞춰 볼 수
                   있어요.
                 </p>
                 <Link to="/cards" className="btn btn--outline">
@@ -181,14 +196,15 @@ export function MatchListPage() {
               )}
             </div>
           ) : view === "company" ? (
-            <CompanyList groups={groups} search={search} />
+            <CompanyList groups={groups.slice(from, from + PAGE_SIZE)} search={search} />
           ) : (
-            <div className="match-grid">
-              {list.map((item) => (
+            <div className="match-grid match-grid--three">
+              {list.slice(from, from + PAGE_SIZE).map((item) => (
                 <PostingCard key={item.id} item={item} search={search} />
               ))}
             </div>
           )}
+          <Pagination page={page} pages={pages} onChange={goPage} />
         </>
       )}
     </main>

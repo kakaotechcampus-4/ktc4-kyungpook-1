@@ -1,4 +1,5 @@
-import { MatchCategory, type MatchTarget } from "@/api/matching";
+import { MatchCategory, type MatchDetail, type MatchTarget } from "@/api/matching";
+import type { CardSummary } from "@/api/schemas";
 export const categoryLabel = {
   BACKEND: "백엔드",
   FRONTEND: "프론트엔드",
@@ -56,6 +57,43 @@ export const dateLabel = (date: string) =>
   }).format(new Date(date));
 export const deadlineLabel = (value: string | null) =>
   value === null ? "마감일 없음" : `${dateLabel(value)} 마감`;
+
+const DAY = 86_400_000;
+/** 서울 날짜(자정 기준)의 일 번호 — 마감 시각이 밤 11시여도 그날을 D-0 으로 센다 */
+const seoulDay = (time: number) => {
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(time).split("-").map(Number);
+  return Date.UTC(y, m - 1, d) / DAY;
+};
+export type Deadline =
+  | { kind: "none"; badge: null; date: null }
+  | { kind: "closed" | "today" | "soon" | "later"; badge: string; date: string };
+/** 7일 안(오늘 포함)은 soon·today 로 강조한다. null 은 상시 채용·날짜를 못 읽음·1년 넘게 먼 날짜가 섞여 '마감일 없음'이다 */
+export function deadlineOf(value: string | null, now = Date.now()): Deadline {
+  if (value === null) return { kind: "none", badge: null, date: null };
+  const time = Date.parse(value);
+  const days = seoulDay(time) - seoulDay(now);
+  const date = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" }).format(time);
+  if (days < 0 || time < now) return { kind: "closed", badge: "마감", date };
+  if (days === 0) return { kind: "today", badge: "오늘 마감", date };
+  return { kind: days <= 7 ? "soon" : "later", badge: `D-${days}`, date };
+}
+
+/** 목록 줄의 짧은 경력 표시. 경력 표시가 없는 공고는 칸을 비운다(null) */
+export const experienceShort = (value: MatchTarget["experience"]) =>
+  value.level === "ENTRY" ? "신입" : value.level === "UNSPECIFIED" ? null : value.minYears === null ? "경력" : `경력 ${value.minYears}년↑`;
+const educationShortLabel = { HIGH_SCHOOL: "고졸↑", ASSOCIATE: "초대졸↑", BACHELOR: "학사↑", MASTER: "석사↑", DOCTOR: "박사↑" };
+/** 예외가 적힌 학력('또는 그에 준하는 경력')은 꼭 필요한 조건이 아니라 목록에서는 보이지 않고 상세에서 원문으로 본다 */
+export const educationShort = (value: MatchTarget["education"]) =>
+  value === null || value.exempt ? null : educationShortLabel[value.level];
+const educationLongLabel = { HIGH_SCHOOL: "고졸", ASSOCIATE: "초대졸", BACHELOR: "학사", MASTER: "석사", DOCTOR: "박사" };
+/** 상세 요약의 학력. 예외가 적힌 학력은 경력으로 대신할 수 있다고 함께 적는다 */
+export const educationLong = (value: NonNullable<MatchTarget["education"]>) =>
+  `${educationLongLabel[value.level]} 이상${value.exempt ? " (경력으로 대신 가능)" : ""}`;
+/** 목록 줄 한 줄 요약: 직무 · 경력 · 학력 (값 없는 칸과 '기타' 직무는 뺀다) */
+export const postingFacts = (item: MatchTarget) =>
+  [item.category === "ETC" ? null : categoryLabel[item.category], experienceShort(item.experience), educationShort(item.education)].filter(
+    (value): value is string => value !== null,
+  );
 
 // ───────── 기업별 보기 ─────────
 // 서버(#556)가 공고마다 companyId(같은 회사를 묶는 id)와 logoUrl 을 준다. companyId 로 묶고, 그 칸이 없는 응답(구서버·목)일 때만 이름(companyKey)으로 묶는다.
@@ -206,3 +244,36 @@ export function filtersFromParams(params: URLSearchParams): MatchFilters {
   };
 }
 export const isFiltered = (filters: MatchFilters) => !!filters.q.trim() || filters.category !== "ALL" || filters.experience !== "ALL";
+
+// ───────── 공고 상세 '맞춰 본 결과' 보드 ─────────
+// 숫자·칩·카드처럼 짧은 것만 보드에 올리고 긴 조건 문장은 원문 자리에 둔다.
+
+/**
+ * 공고 기술을 공고 순서 그대로, 확정 카드 중 하나라도 가진 기술(shared)과 아직 없는 기술(missing)로 나눈다.
+ * 카드로 한 AI 판단과는 다른 신호라(겹쳐도 조건은 모자랄 수 있다) 화면에서는 '겹친 기술' 이라고만 부른다.
+ */
+export function techOverlap(postingTechs: MatchTarget["techs"], cards: Pick<CardSummary, "status" | "techs">[]) {
+  const mine = new Set(cards.filter((card) => card.status === "CONFIRMED").flatMap((card) => card.techs ?? []));
+  return {
+    shared: postingTechs.filter((tech) => mine.has(tech)),
+    missing: postingTechs.filter((tech) => !mine.has(tech)),
+  };
+}
+
+export type SectionTally = { met: number; judged: number; check: number };
+/** 한 절의 집계 — 'm/n' 은 카드로 판단한(맞음·모자람) 조건만 세고, 직접 확인·인적사항 필요 조건은 분모에 넣지 않고 check 로 따로 센다 */
+export function sectionTally(conditions: MatchDetail["conditions"], type: MatchDetail["conditions"][number]["type"]): SectionTally {
+  const ofType = conditions.filter((c) => c.type === type);
+  const judged = ofType.filter((c) => c.status === "MET" || c.status === "NOT_MET");
+  return {
+    met: judged.filter((c) => c.status === "MET").length,
+    judged: judged.length,
+    check: ofType.filter((c) => c.status === "CHECK" || c.status === "UNKNOWN").length,
+  };
+}
+
+/** 요약 카드의 근무지 줄에 쓸 조건 — AI 가 근무지로 분류한 조건이 여럿이면 '근무' 가 적힌 것을 먼저 고른다('채용 형태' 같은 줄이 근무지로 섞여 올 때가 있다) */
+export const pickLocation = (conditions: MatchDetail["conditions"]) => {
+  const places = conditions.filter((c) => c.generalType === "LOCATION");
+  return places.find((c) => c.quote.includes("근무") || c.text.includes("근무")) ?? places[0] ?? null;
+};

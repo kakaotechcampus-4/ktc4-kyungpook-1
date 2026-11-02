@@ -17,7 +17,7 @@ const card = (overrides: Partial<Card> = {}): Card => ({
 beforeEach(() => { vi.stubEnv('VITE_API_MOCK', 'false'); vi.spyOn(endpoints, 'repos').mockResolvedValue(seedRepos.map(repo => RepoSummary.parse(repo))); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 function mount() {
-  const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:id', element: <p>기존 카드 화면</p> }, { path: '/', element: <p>홈</p> }], { initialEntries: ['/new'] });
+  const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:id', element: <p>기존 카드 화면</p> }, { path: '/', element: <p>홈</p> }], { initialEntries: ['/new?write=1'] });
   render(<StrictMode><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
   return router;
 }
@@ -73,7 +73,7 @@ describe('manual startup contract #183', () => {
     const router = mount(); change('카드 제목', '첫 카드'); fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
     fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
     await screen.findByText('기존 카드 화면', {}, { timeout: 5000 });
-    await act(async () => { await router.navigate('/new'); });
+    await act(async () => { await router.navigate('/new?write=1'); });
     change('카드 제목', '다음 카드'); fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
     fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
     await screen.findByText('기존 카드 화면', {}, { timeout: 5000 });

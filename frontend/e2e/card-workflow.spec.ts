@@ -67,7 +67,7 @@ test('copy preview offers plain STAR and evidence formats without modifying save
 });
 
 test('manual drafts can change title and period after the first save and clear the period explicitly', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/cards/new');
+  await loginAsDemo(page); await page.goto('/cards/new?write=1');
   await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('메타 수정 경험');
   const period = page.getByRole('textbox', { name: '기간', exact: true }); await period.fill('2024.04');
   await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();

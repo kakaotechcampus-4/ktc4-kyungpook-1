@@ -122,7 +122,7 @@ test('마스킹 — 원문은 그대로, 표시만 바뀐다', async ({ page }) 
 
 test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_STATED', async ({ page }) => {
   await login(page);
-  await page.goto('/cards/new');
+  await page.goto('/cards/new?write=1');
   await page.getByRole('textbox', { name: '카드 제목' }).fill('E2E 직접 작성 카드');
   await page.getByLabel('상황 (Situation)').fill('3인 팀에서 배포 담당이 없었다');
   await page.getByLabel('행동 (Action)').fill('GitHub Actions 로 배포 파이프라인을 직접 구성했다');

@@ -30,7 +30,7 @@ test('select menus are styled, support keyboard selection and restore focus on E
 test('STAR editors begin at the same left edge as the field letter on desktop and mobile', async ({ page }) => {
   await loginAsDemo(page);
   for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 900 }); await page.goto('/cards/new');
+    await page.setViewportSize({ width, height: 900 }); await page.goto('/cards/new?write=1');
     await expect(page.getByRole('textbox', { name: '상황 (Situation)', exact: true })).toBeVisible();
     const edges = await page.locator('.star-read__row').evaluateAll(rows => rows.map(row => ({ letter: row.querySelector('.star-key')!.getBoundingClientRect().left, input: row.querySelector('textarea')!.getBoundingClientRect().left })));
     expect(edges.every(edge => Math.abs(edge.letter - edge.input) <= 1)).toBe(true);
@@ -46,7 +46,7 @@ test('home and card list titles share their typography and use lighter weights',
 });
 
 test('mobile repository select keeps its menu in view and roundtrips the empty choice', async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 844 }); await loginAsDemo(page); await page.goto('/cards/new');
+  await page.setViewportSize({ width: 320, height: 844 }); await loginAsDemo(page); await page.goto('/cards/new?write=1');
   const repo = page.getByRole('combobox', { name: '관련 레포', exact: true });
   await repo.click(); const menu = page.getByRole('listbox', { name: '관련 레포', exact: true }); await expect(menu).toBeVisible();
   const bounds = await menu.boundingBox(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320);

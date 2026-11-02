@@ -6,6 +6,7 @@
 import { seedActivities, seedCards, seedCandidates, seedInterview, seedRecall, seedRepos, seedUser, interviewBank, now } from './fixtures';
 import { draftPlans, draftSchedule, draftStepsOf, draftTexts, liveDraftOf, type DraftPlan } from './draftLive';
 import { Profile, emptyProfile } from '@/api/profile';
+import { resetMatchState } from './matchState';
 
 type Any = Record<string, any>;
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -69,6 +70,7 @@ export function resetDb() {
   db.activities = clone(seedActivities);
   db.profile = emptyProfile(); db.coverLetters = []; db.cardMaterialAnswers = {}; db.overall = null;
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.activityIdem.clear(); db.seq = 100;
+  resetMatchState();
   hydrateCards();
 }
 

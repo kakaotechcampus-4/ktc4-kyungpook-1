@@ -1,20 +1,25 @@
-import { Fragment, useEffect } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Check, ChevronRight, GitCommitHorizontal, MessageSquareQuote, X } from "lucide-react";
 import {
   matchSupported,
+  useGapFill,
   useJudgeMatch,
   useMatch,
   type ConditionStatus,
+  type GapFillCondition,
   type MatchDetail,
 } from "@/api/matching";
 import { useCards } from "@/api/queries";
 import { Button, PageTitle, Skeleton } from "@/components/ui";
+import { isGithubUnauthorized, reconnectGithub } from "@/lib/githubReconnect";
 import { cardKindLabel } from "@/lib/labels";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
 import { matchViewFromParams } from "./CompanyList";
+import { ConditionGapFill, Dots } from "./GapFillParts";
+import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
 import { MatchFailure, MatchUnavailable } from "./shared";
 import {
@@ -98,7 +103,25 @@ const displayLines = (conditions: Condition[]) => {
 const tallyText = ({ met, judged, check }: SectionTally) =>
   [judged > 0 && `${met}/${judged} 맞음`, check > 0 && `직접 확인 ${check}`].filter(Boolean).join(" · ");
 
-function ConditionItem({ condition, line, judged, detailId }: { condition: Condition; line: string; judged: boolean; detailId: string }) {
+/** 맞춰 본 결과를 펼칠 때 요약 카드에 적는 두 줄 — 읽은 카드 수와 견준 조건 수 */
+const comparedText = (conditions: Condition[]) => {
+  const required = sectionTally(conditions, "REQUIRED").judged;
+  const preferred = sectionTally(conditions, "PREFERRED").judged;
+  if (required + preferred === 0) return "조건과 견줬어요";
+  return `${required > 0 ? `필수 ${required}개` : ""}${required > 0 && preferred > 0 ? "·" : ""}${preferred > 0 ? `우대 ${preferred}개` : ""}와 견줬어요`;
+};
+
+type GapProps = {
+  gap: GapFillCondition;
+  revealed: ReadonlySet<string>;
+  running: boolean;
+  picked: boolean;
+  onPick: (on: boolean) => void;
+  onAgain: () => void;
+  againPending: boolean;
+};
+
+function ConditionItem({ condition, line, judged, filled, detailId, gap }: { condition: Condition; line: string; judged: boolean; filled: boolean; detailId: string; gap: GapProps | null }) {
   const status = judged ? condition.status : null;
   const note = judged ? noteOf(condition) : null;
   return (
@@ -108,6 +131,7 @@ function ConditionItem({ condition, line, judged, detailId }: { condition: Condi
         <p className="posting-condition__text">
           {line}
           {status && !isTile(status) && <StatusSuffix status={status} />}
+          {status === "MET" && filled && <span className="cond-suffix">새로 채움</span>}
         </p>
         {judged && condition.metBy.length > 0 && (
           <p className="posting-condition__evidence">
@@ -132,6 +156,7 @@ function ConditionItem({ condition, line, judged, detailId }: { condition: Condi
           </p>
         )}
         {note && <p className="posting-condition__note">{note}</p>}
+        {gap && status === "NOT_MET" && <ConditionGapFill {...gap} />}
       </div>
     </li>
   );
@@ -147,11 +172,15 @@ function DetailSkeleton() {
   );
 }
 
+const GAP_REVEAL_MS = 800;
+
 export function MatchDetailPage() {
   const { matchId = "" } = useParams();
   const [sp] = useSearchParams();
   const query = useMatch(matchId);
   const judge = useJudgeMatch(matchId);
+  const gapFill = useGapFill(matchId);
+  const proceed = useProceed();
   const cards = useCards();
   const detail = query.data;
   useDocumentTitle(detail ? `${detail.company} - ${detail.role}` : "공고 상세");
@@ -161,30 +190,160 @@ export function MatchDetailPage() {
   useEffect(() => {
     if (openedId) track("match_opened", { view: "detail", matchId: openedId, fit: openedFit });
   }, [openedId, openedFit]);
-  if (!matchSupported()) return <MatchUnavailable />;
+
+  // 이 화면에서 맞춰 보기를 눌렀으면 결과를 조건마다 차례로 펼친다(새로고침해 다시 열면 저장된 결과라 바로 다 보인다)
+  const [revealing, setRevealing] = useState(false);
+  // 채우기가 이 화면에서 돌고 있으면 새로 생긴 일만 하나씩 펼친다. 끝난 결과를 열어 본 것이면 바로 다 보인다
+  const [gapLive, setGapLive] = useState(false);
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  // [진행하기] 뒤 돌아왔으면 모자랐던 조건 id — 새 카드만 다시 맞춰 보고 ✕ → ✓ 를 보인다
+  const [returned, setReturned] = useState<string[] | null>(null);
+  const [filled, setFilled] = useState<ReadonlySet<string> | null>(null);
+  const rejudged = useRef(false);
+  useEffect(() => {
+    const ids = readProceeded(matchId);
+    if (ids) setReturned(ids);
+  }, [matchId]);
+  // 서버는 확정 카드가 바뀌어 판단할 짝이 생겼을 때만 needsJudgement 를 준다 — 새 카드가 아직 작성 중이면 다시 맞춰 보지 않는다
+  useEffect(() => {
+    if (!returned || !detail?.needsJudgement || rejudged.current) return;
+    rejudged.current = true;
+    judge.mutate(undefined, {
+      onSuccess: (next) => {
+        clearProceeded(matchId);
+        setFilled(new Set(returned.filter((id) => next.conditions.find((c) => c.id === id)?.status === "MET")));
+      },
+    });
+  }, [returned, detail, judge, matchId]);
+  const gapState = detail?.gapFill?.state;
+  useEffect(() => {
+    if (gapState === "RUNNING") setGapLive(true);
+  }, [gapState]);
+
+  const startJudge = () => {
+    setRevealing(true);
+    judge.mutate(undefined, {
+      // ✕ 가 있으면 사용자가 다시 누르지 않아도 바로 채울 자료를 찾는다 — 결과를 펼치는 동안 AI 는 뒤에서 찾는다
+      onSuccess: (next) => {
+        if (next.conditions.some((c) => c.status === "NOT_MET")) {
+          setGapLive(true);
+          gapFill.mutate(undefined);
+        }
+      },
+      onError: () => setRevealing(false),
+    });
+  };
+
   // 확정 카드가 0장이면 서버는 기술 조건을 모두 NOT_MET 으로 준다 — 모자란 사람처럼 보이지 않게 원문만 두고 카드 확정을 안내한다. 카드 목록을 아직 못 받았으면 서버 응답대로 그린다
   const noConfirmedCards = cards.data !== undefined && !cards.data.some((card) => card.status === "CONFIRMED");
+  const judgedData = !!detail && !detail.needsJudgement && !noConfirmedCards;
+  const ordered = detail ? SECTIONS.flatMap(({ type }) => detail.conditions.filter((c) => c.type === type)) : [];
+  const revealKeys = judgedData
+    ? ["cards", "compared", ...(detail.experience.status ? ["exp"] : []), ...ordered.filter((c) => c.status !== null).map((c) => c.id)]
+    : [];
+  const revealed = useRevealed(revealKeys, revealIntervalMs(revealKeys.length), revealing);
+  const settled = !revealing || revealKeys.every((k) => revealed.has(k));
+  const conditionJudged = (key: string) => judgedData && (!revealing || revealed.has(key));
+
+  const gf = detail?.gapFill ?? null;
+  const showGap = gf !== null && judgedData && settled;
+  const gapRevealed = useRevealed(gf ? gapKeys(gf) : [], GAP_REVEAL_MS, gapLive);
+  const gapRunning = gf?.state === "RUNNING";
+  const proposals = showGap
+    ? gf.conditions.filter((c) => c.result === "PROPOSED" && c.proposal && gapRevealed.has(gapKey(c.conditionId, "result")))
+    : [];
+  const chosen = proposals.filter((c) => picked.has(c.conditionId) && canProceed(c.proposal!)).map((c) => c.proposal!);
+  const gapActive = showGap && (gapRunning || proposals.some((c) => canProceed(c.proposal!)));
+  // 새로 찾아야 하는데 쓸 수 있는 GitHub 연결이 없으면 서버가 403 GITHUB_UNAUTHORIZED 를 준다 — 레포 분석과 같은 '다시 연결' 로 잇는다
+  const gapNeedsGithub = isGithubUnauthorized(gapFill.error);
+  const gapFailed = (gapFill.isError && !gapNeedsGithub) || gf?.state === "FAILED";
+  const gapOf = (conditionId: string): GapProps | null => {
+    const gap = showGap ? gf.conditions.find((c) => c.conditionId === conditionId) : undefined;
+    if (!gap) return null;
+    return {
+      gap,
+      revealed: gapRevealed,
+      running: gapRunning,
+      picked: picked.has(conditionId),
+      onPick: (on) => setPicked((prev) => { const next = new Set(prev); if (on) next.add(conditionId); else next.delete(conditionId); return next; }),
+      onAgain: () => gapFill.mutate([conditionId]),
+      againPending: gapFill.isPending,
+    };
+  };
+  const onProceed = () => {
+    if (!detail) return;
+    rememberProceeded(detail.id, detail.conditions.filter((c) => c.status === "NOT_MET").map((c) => c.id));
+    // 하나도 못 넘겼으면 돌아와 견줄 것이 없다
+    proceed.mutate(chosen, { onError: () => clearProceeded(detail.id) });
+  };
+
+  if (!matchSupported()) return <MatchUnavailable />;
   // 맞춰 보기 전에는 공고 원문만 보이고, 맞춰 본 뒤에만 조건 옆에 표시가 붙는다
-  const judged = detail ? !detail.needsJudgement && !noConfirmedCards : false;
+  const judged = judgedData && settled;
   const location = detail ? pickLocation(detail.conditions) : null;
   const educationStatus = detail?.conditions.find((c) => c.generalType === "EDUCATION" && c.status !== null)?.status ?? null;
   const required = detail && judged ? sectionTally(detail.conditions, "REQUIRED") : null;
   const preferred = detail && judged ? sectionTally(detail.conditions, "PREFERRED") : null;
   // 머리글의 기술 칩에 확정 카드와 겹친 기술만 표시한다(카드 판단과 다른 신호라 '겹침' 이라고만 부른다). 카드 목록을 못 받으면 표시하지 않는다
   const matched = detail && judged && cards.data ? new Set(techOverlap(detail.techs, cards.data).shared) : undefined;
+  const confirmedCount = cards.data?.filter((card) => card.status === "CONFIRMED").length;
+
+  // 요약 카드의 'AI 가 한 일' — 결과를 펼치는 동안의 두 줄, 돌아와서 다시 맞춰 본 줄, 채우기 진행과 결론
+  const log: { key: string; text: ReactNode; live?: boolean }[] = [];
+  if (revealing && judgedData) {
+    if (revealed.has("cards")) log.push({ key: "cards", text: confirmedCount === undefined ? "확정 카드를 읽었어요" : `확정 카드 ${confirmedCount}장을 읽었어요` });
+    if (revealed.has("compared")) log.push({ key: "compared", text: comparedText(detail.conditions) });
+  }
+  if (returned && judge.isPending) log.push({ key: "rejudge", text: "새로 확정한 카드로 다시 맞춰 보고 있어요", live: true });
+  if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
+  if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드를 확정하면 다시 맞춰 볼게요" });
+  if (showGap && gapRunning) log.push({ key: "gap-running", text: `모자란 조건 ${gf.conditions.length}개를 채울 자료를 찾고 있어요`, live: true });
+  if (showGap && gf.state === "DONE") log.push({ key: "gap-done", text: gapSummary(gf) });
+  if (judgedData && settled && gapNeedsGithub) {
+    log.push({
+      key: "gap-github",
+      text: (
+        <>
+          자료를 찾으려면 GitHub 연결이 필요해요.
+          <button type="button" className="ai-log__retry" onClick={reconnectGithub}>다시 연결</button>
+        </>
+      ),
+    });
+  }
+  if (judgedData && settled && gapFailed) {
+    log.push({
+      key: "gap-failed",
+      text: (
+        <>
+          자료를 찾는 중에 문제가 생겼어요.
+          <button type="button" className="ai-log__retry" onClick={() => gapFill.mutate(undefined)} disabled={gapFill.isPending}>다시 찾아보기</button>
+        </>
+      ),
+    });
+  }
+
+  const coverLetter = detail && (
+    <Link className="btn btn--primary" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
+      이 공고로 자소서 쓰기
+    </Link>
+  );
   const action = detail && (
     noConfirmedCards ? (
       <Link className="btn btn--primary" to="/cards">
         경험 카드 보기
       </Link>
     ) : detail.needsJudgement ? (
-      <Button loading={judge.isPending} onClick={() => judge.mutate()}>
-        이 공고와 맞춰 보기
+      returned && !judge.isError ? null : (
+        <Button loading={judge.isPending} onClick={startJudge}>
+          이 공고와 맞춰 보기
+        </Button>
+      )
+    ) : !settled ? null : gapActive ? (
+      <Button loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
+        {chosen.length > 0 ? `고른 ${chosen.length}개 진행하기` : "제안을 골라 진행하기"}
       </Button>
     ) : (
-      <Link className="btn btn--primary" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
-        이 공고로 자소서 쓰기
-      </Link>
+      coverLetter
     )
   );
   return (
@@ -247,10 +406,20 @@ export function MatchDetailPage() {
                   </div>
                 )}
               </dl>
+              {log.length > 0 && (
+                <ol className="ai-log" aria-label="AI 가 한 일" aria-live="polite">
+                  {log.map((line) => (
+                    <li key={line.key}>
+                      <span>{line.text}</span>
+                      {line.live && <Dots />}
+                    </li>
+                  ))}
+                </ol>
+              )}
               {noConfirmedCards ? (
                 <p className="posting-summary__hint">경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.</p>
               ) : (
-                detail.needsJudgement && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
+                detail.needsJudgement && !returned && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
               )}
               <div className="posting-summary__actions">
                 {action}
@@ -264,7 +433,13 @@ export function MatchDetailPage() {
                   공고 원문 보기 ↗
                 </a>
               </div>
+              {judged && gapActive && (
+                <Link className="posting-summary__alt" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
+                  이 공고로 자소서 쓰기 →
+                </Link>
+              )}
               {judge.isError && <p role="alert" className="posting-summary__error">맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.</p>}
+              {proceed.isError && <p role="alert" className="posting-summary__error">제안을 넘기지 못했어요. 다시 눌러 주세요.</p>}
               <p className="posting-summary__collected">수집 {dateLabel(detail.source.collectedAt)}</p>
             </div>
           </aside>
@@ -276,7 +451,7 @@ export function MatchDetailPage() {
               if (conditions.length === 0 && !experience?.quote) return null;
               const lines = displayLines(conditions);
               const tally = judged ? sectionTally(conditions, type) : null;
-              const experienceStatus = judged ? experience?.status ?? null : null;
+              const experienceStatus = conditionJudged("exp") ? experience?.status ?? null : null;
               return (
                 <section className="posting-section" key={type} aria-labelledby={`match-${type}`}>
                   <div className="posting-section__head">
@@ -303,7 +478,15 @@ export function MatchDetailPage() {
                       </li>
                     )}
                     {conditions.map((condition, i) => (
-                      <ConditionItem key={condition.id} condition={condition} line={lines[i]} judged={judged} detailId={detail.id} />
+                      <ConditionItem
+                        key={condition.id}
+                        condition={condition}
+                        line={lines[i]}
+                        judged={conditionJudged(condition.id)}
+                        filled={filled?.has(condition.id) ?? false}
+                        detailId={detail.id}
+                        gap={gapOf(condition.id)}
+                      />
                     ))}
                   </ul>
                 </section>

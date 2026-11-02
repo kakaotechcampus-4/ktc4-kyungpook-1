@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -30,6 +31,7 @@ beforeEach(resetDb);
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 function mount(path = "/match", seed?: (client: QueryClient) => void, existing?: QueryClient) {
   const client = existing ?? new QueryClient({
@@ -150,9 +152,13 @@ it("judges the posting only on request and shows the new judgement", async () =>
   expect(document.querySelectorAll(".posting-conditions .cond-suffix")).toHaveLength(0);
   expect(screen.queryByText(/2\/3 맞음/)).not.toBeInTheDocument();
   expect(judge).not.toHaveBeenCalled();
+  // 맞춰 본 결과는 조건마다 차례로 펼쳐지므로(6초쯤) 시간을 앞으로 돌려 다 펼친 뒤를 본다
+  vi.useFakeTimers({ shouldAdvanceTime: true });
   fireEvent.click(screen.getByRole("button", { name: "이 공고와 맞춰 보기" }));
-  expect(await screen.findAllByText(/2\/3 맞음/)).toHaveLength(2);
-  expect(judge).toHaveBeenCalledWith(judged.id);
+  await waitFor(() => expect(judge).toHaveBeenCalledWith(judged.id));
+  // 타이머가 다음 타이머를 거는 구조라 조금씩 돌린다(한 번에 다 돌리면 act 가 한 단계만 반영한다)
+  for (let t = 0; t < 10_000; t += 250) await act(async () => { await vi.advanceTimersByTimeAsync(250); });
+  expect(screen.getAllByText(/2\/3 맞음/)).toHaveLength(2);
   expect(document.querySelectorAll(".posting-conditions .cond-tile")).toHaveLength(5);
   expect(screen.queryByRole("button", { name: "이 공고와 맞춰 보기" })).not.toBeInTheDocument();
 });
@@ -210,8 +216,9 @@ it("mock uses current confirmed masked A/R text and returns no cards without con
   version.action = "비밀회사에서 작업했다";
   confirmed.maskRules = [{ from: "비밀회사", to: "회사" }];
   const id = sampleList.data[0].id;
+  // 목은 맞춰 보기 전엔 판단을 숨기므로 먼저 맞춰 본다
   const detail = MatchDetail.parse(
-    handle("GET", `/matches/${id}`, new URLSearchParams(), {}, true).data,
+    handle("POST", `/matches/${id}/judgement`, new URLSearchParams(), {}, true).data,
   );
   const sentences = detail.conditions.flatMap((c) =>
     c.metBy.map((s) => s.reason),
@@ -220,7 +227,7 @@ it("mock uses current confirmed masked A/R text and returns no cards without con
   expect(sentences.some((x) => x.includes("비밀회사"))).toBe(false);
   db.cards.forEach((c) => (c.status = "DRAFT"));
   const missing = MatchDetail.parse(
-    handle("GET", `/matches/${id}`, new URLSearchParams(), {}, true).data,
+    handle("POST", `/matches/${id}/judgement`, new URLSearchParams(), {}, true).data,
   );
   expect(missing.fit).toBeNull();
   expect(missing.conditions.every((c) => c.metBy.length === 0)).toBe(true);

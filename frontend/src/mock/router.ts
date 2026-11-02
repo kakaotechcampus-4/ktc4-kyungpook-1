@@ -1,5 +1,5 @@
 import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas';
-import { mockMatchDetail, mockMatchList, mockOverall, startMockOverall } from './matching';
+import { mockMatchDetail, mockMatchList, mockOverall, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
 import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
@@ -40,8 +40,17 @@ on('GET', '/matches/:id', ({ params }) => {
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
 });
 on('POST', '/matches/:id/judgement', ({ params }) => {
-  const detail=mockMatchDetail(params[0]);
+  const detail=mockMatchDetail(params[0], true);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
+});
+// 모자란 조건 채우기 시작 — 몸체의 conditionIds 가 있으면 그 조건만 다시 찾는다([그래도 찾아보기], 서버 #652 와 같은 코드: 409 INVALID_STATE · 400 INVALID_REQUEST)
+on('POST', '/matches/:id/gap-fill', ({ params, body }) => {
+  const ids = Array.isArray(body.conditionIds) ? body.conditionIds.filter((x: unknown): x is string => typeof x === 'string') : undefined;
+  const r = mockStartGapFill(params[0], ids);
+  if (r === 'NOT_FOUND') return fail(404, 'NOT_FOUND', '공고를 찾을 수 없습니다.');
+  if (r === 'INVALID_STATE') return fail(409, 'INVALID_STATE', '맞춰 본 뒤 끝난 결과가 있어야 합니다.');
+  if (r === 'INVALID_REQUEST') return fail(400, 'INVALID_REQUEST', '찾지 않기로 한 조건만 다시 찾을 수 있습니다.');
+  return ok(r);
 });
 // 인적사항 — BE #552 계약. 한 사용자당 한 문서이고 PUT 이 네 목록을 통째로 바꾼다
 // 자소서(#492) — 계약 검증과 진행은 mock/coverLetters.ts

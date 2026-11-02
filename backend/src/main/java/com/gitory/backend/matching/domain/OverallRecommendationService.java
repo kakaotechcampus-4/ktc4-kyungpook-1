@@ -129,7 +129,7 @@ public class OverallRecommendationService {
                 .flatMap(card -> card.techs().stream())
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         List<ShortlistedCompany> candidates = techs.isEmpty() ? List.of()
-                : shortlist.shortlist(userId, techs, Set.of(), CANDIDATE_COMPANIES);
+                : shortlist.shortlist(userId, techs, CANDIDATE_COMPANIES);
         Map<Long, List<JobPostingCriterion>> byPosting = criteria.findByJobPostingIdInOrderByJobPostingIdAscSeqAsc(
                         candidates.stream().map(company -> company.representative().getId()).toList())
                 .stream()

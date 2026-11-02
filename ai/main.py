@@ -22,6 +22,7 @@ from api.cover_letters import router as cover_letters_router
 from api.interviews import router as interviews_router
 from api.health import SERVICE_VERSION, router as health_router
 from api.job_postings import router as job_postings_router
+from api.gap_fill import router as gap_fill_router
 from api.match_judgements import router as match_judgements_router
 from api.matching import router as matching_router
 from schemas.common import Envelope, ErrorDetail
@@ -136,6 +137,7 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
     application.include_router(job_postings_router)
     application.include_router(matching_router)
     application.include_router(match_judgements_router)
+    application.include_router(gap_fill_router)
     application.include_router(cover_letters_router)
     application.add_exception_handler(
         RequestValidationError, handle_request_validation_error

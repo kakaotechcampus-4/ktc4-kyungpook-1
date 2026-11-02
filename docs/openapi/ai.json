@@ -85,6 +85,17 @@
             "description": "사용자 메모(지원 이유 등). 없으면 null",
             "title": "Memo"
           },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "공고 상세에서 시작한 자소서면 그 공고, 아니면 null"
+          },
           "profile": {
             "description": "학력·자격증·어학. 비어도 된다",
             "items": {
@@ -2170,6 +2181,18 @@
             ],
             "title": "Reason"
           },
+          "sentence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "sentence_seq 가 가리키는 문장 글(200자까지). 고치기 전 문장을 검토 기록으로 보이는 데 쓴다",
+            "title": "Sentence"
+          },
           "sentence_seq": {
             "anyOf": [
               {
@@ -2179,7 +2202,7 @@
                 "type": "null"
               }
             ],
-            "description": "SENT_BACK 이 건 문장 번호(검토할 때의 번호)",
+            "description": "CHECK_FAILED·DECIDED·MARKED·SENT_BACK 이 건 문장 번호(그때의 초안 기준). 글자 수·빈칸처럼 문장이 없으면 null",
             "title": "Sentence Seq"
           },
           "seq": {
@@ -2234,6 +2257,16 @@
               }
             ],
             "title": "Memo"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "profile": {
             "items": {
@@ -2291,6 +2324,18 @@
         ],
         "title": "DraftsResult",
         "type": "object"
+      },
+      "EducationLevel": {
+        "description": "지원할 수 있는 가장 낮은 학력으로, Spring 인적사항의 학력 단계와 같은 다섯 값이다.",
+        "enum": [
+          "HIGH_SCHOOL",
+          "ASSOCIATE",
+          "BACHELOR",
+          "MASTER",
+          "DOCTOR"
+        ],
+        "title": "EducationLevel",
+        "type": "string"
       },
       "Envelope_AssignmentResult_": {
         "properties": {
@@ -2514,6 +2559,43 @@
         "title": "Envelope[ExperienceGroupingResponse]",
         "type": "object"
       },
+      "Envelope_GapFillResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapFillResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[GapFillResult]",
+        "type": "object"
+      },
       "Envelope_InterviewAnswerResult_": {
         "properties": {
           "data": {
@@ -2623,6 +2705,43 @@
           "meta"
         ],
         "title": "Envelope[JobPostingDetailExtractionResult]",
+        "type": "object"
+      },
+      "Envelope_JobPostingImageTextResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobPostingImageTextResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[JobPostingImageTextResult]",
         "type": "object"
       },
       "Envelope_JobPostingIndexResult_": {
@@ -3281,6 +3400,395 @@
         "title": "FileChangeStatus",
         "type": "string"
       },
+      "GapAction": {
+        "enum": [
+          "CREATE_CARD",
+          "CONTINUE_CARD",
+          "ANALYZE_REPO"
+        ],
+        "title": "GapAction",
+        "type": "string"
+      },
+      "GapCandidate": {
+        "additionalProperties": false,
+        "description": "분석한 레포에서 나왔지만 아직 카드로 만들지 않은 후보.",
+        "properties": {
+          "candidate_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "commit_messages": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Commit Messages",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "repo_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Repo Name",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "repo_name",
+          "title"
+        ],
+        "title": "GapCandidate",
+        "type": "object"
+      },
+      "GapCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "criterion_type": {
+            "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "condition_id",
+          "criterion_type",
+          "text"
+        ],
+        "title": "GapCondition",
+        "type": "object"
+      },
+      "GapConditionResult": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapDecision"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null 은 아직 정하는 중(스트리밍 도중에만)"
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Reason"
+          },
+          "forced": {
+            "default": false,
+            "description": "사용자가 다시 찾게 해 decision 이 SKIP 이어도 찾은 조건",
+            "title": "Forced",
+            "type": "boolean"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null 은 아직 찾는 중(스트리밍 도중에만)"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/GapStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "condition_id"
+        ],
+        "title": "GapConditionResult",
+        "type": "object"
+      },
+      "GapDecision": {
+        "enum": [
+          "SEARCH",
+          "SKIP"
+        ],
+        "title": "GapDecision",
+        "type": "string"
+      },
+      "GapFillRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/GapCandidate"
+            },
+            "maxItems": 100,
+            "title": "Candidates",
+            "type": "array"
+          },
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCard"
+            },
+            "maxItems": 40,
+            "title": "Cards",
+            "type": "array"
+          },
+          "company_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/GapCondition"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Conditions",
+            "type": "array"
+          },
+          "draft_cards": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCard"
+            },
+            "maxItems": 20,
+            "title": "Draft Cards",
+            "type": "array"
+          },
+          "force_condition_ids": {
+            "description": "사용자가 '찾지 않음' 으로 멈춘 조건을 그래도 찾아보라고 고른 것 — 첫 판단과 상관없이 찾는다",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Force Condition Ids",
+            "type": "array"
+          },
+          "github_login": {
+            "maxLength": 39,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9-]+$",
+            "title": "Github Login",
+            "type": "string"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          },
+          "repos": {
+            "items": {
+              "$ref": "#/components/schemas/GapRepo"
+            },
+            "maxItems": 300,
+            "title": "Repos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "company_name",
+          "job_title",
+          "conditions",
+          "github_login"
+        ],
+        "title": "GapFillRequest",
+        "type": "object"
+      },
+      "GapFillResult": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/GapConditionResult"
+            },
+            "title": "Conditions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "conditions"
+        ],
+        "title": "GapFillResult",
+        "type": "object"
+      },
+      "GapProposal": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/GapAction"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "target_id": {
+            "description": "CREATE_CARD 는 candidate_id, CONTINUE_CARD 는 card_id, ANALYZE_REPO 는 repo_id",
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "target_id",
+          "reason"
+        ],
+        "title": "GapProposal",
+        "type": "object"
+      },
+      "GapRepo": {
+        "additionalProperties": false,
+        "description": "사용자의 레포 목록. analyzed 가 false 인 레포만 분석하자고 제안할 수 있다.",
+        "properties": {
+          "analyzed": {
+            "title": "Analyzed",
+            "type": "boolean"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 3,
+            "pattern": "^[^/\\s]+/[^/\\s]+$",
+            "title": "Full Name",
+            "type": "string"
+          },
+          "repo_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Repo Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repo_id",
+          "full_name",
+          "analyzed"
+        ],
+        "title": "GapRepo",
+        "type": "object"
+      },
+      "GapResult": {
+        "enum": [
+          "PROPOSED",
+          "NOT_FOUND",
+          "SKIPPED",
+          "TIMED_OUT"
+        ],
+        "title": "GapResult",
+        "type": "string"
+      },
+      "GapStep": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "본 후보·카드 수, 찾은 커밋 수",
+            "title": "Count"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GapStepKind"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "GITHUB_SEARCHED·GITHUB_FAILED 의 검색어",
+            "title": "Query"
+          },
+          "repo_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OUTSIDE_REPO_FOUND 의 레포 — 내 레포 목록에 없어 분석할 수 없다",
+            "title": "Repo Name"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "GapStep",
+        "type": "object"
+      },
+      "GapStepKind": {
+        "enum": [
+          "CANDIDATES_CHECKED",
+          "DRAFT_CARDS_CHECKED",
+          "GITHUB_SEARCHED",
+          "GITHUB_FAILED",
+          "OUTSIDE_REPO_FOUND"
+        ],
+        "title": "GapStepKind",
+        "type": "string"
+      },
       "GeneralConditionType": {
         "description": "STAR 카드가 아닌 사용자의 인적사항으로 확인할 공고 조건 종류.",
         "enum": [
@@ -3820,10 +4328,25 @@
       },
       "JobCriterion": {
         "additionalProperties": false,
-        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.",
+        "description": "공고 원문에서 확인한 한 가지 조건과 정확한 인용.\n\n``general_type`` 이 있으면 STAR 카드가 아닌 인적사항으로 확인할 일반 조건이다.\n담당 업무는 지원 자격이 아니므로 일반 조건 분류를 붙이지 않는다.\n``techs`` 는 필수·우대 기술 조건에만, 학력 값은 학력 조건에만 남기고 그 밖은 추출기가 비운다.",
         "properties": {
           "criterion_type": {
             "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "education_exempt": {
+            "default": false,
+            "title": "Education Exempt",
+            "type": "boolean"
+          },
+          "education_level": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EducationLevel"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "general_type": {
             "anyOf": [
@@ -3840,6 +4363,81 @@
             "minLength": 1,
             "title": "Source Quote",
             "type": "string"
+          },
+          "techs": {
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
+                "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
+                "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
+                "DOCKER",
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Techs",
+            "type": "array"
           },
           "text": {
             "maxLength": 1000,
@@ -3948,6 +4546,18 @@
             "$ref": "#/components/schemas/JobPostingContentStatus",
             "default": "READY"
           },
+          "previous_extraction_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Extraction Version"
+          },
           "raw_text": {
             "maxLength": 100000,
             "minLength": 1,
@@ -4011,6 +4621,11 @@
             "title": "External Posting Id",
             "type": "string"
           },
+          "extraction_version": {
+            "minimum": 1.0,
+            "title": "Extraction Version",
+            "type": "integer"
+          },
           "job_category": {
             "anyOf": [
               {
@@ -4033,6 +4648,81 @@
             "minLength": 1,
             "title": "Source Url",
             "type": "string"
+          },
+          "team_techs": {
+            "items": {
+              "enum": [
+                "C",
+                "CPP",
+                "CSHARP",
+                "JAVA",
+                "KOTLIN",
+                "PYTHON",
+                "GO",
+                "RUST",
+                "SWIFT",
+                "DART",
+                "TYPESCRIPT",
+                "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
+                "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
+                "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
+                "DOCKER",
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
+              ],
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Team Techs",
+            "type": "array"
           }
         },
         "required": [
@@ -4041,9 +4731,99 @@
           "source_url",
           "content_hash",
           "outcome",
-          "content_status"
+          "content_status",
+          "extraction_version"
         ],
         "title": "JobPostingDetailExtractionResult",
+        "type": "object"
+      },
+      "JobPostingImageTextRequest": {
+        "additionalProperties": false,
+        "description": "본문이 이미지인 공고에서 이미지 속 글을 옮겨 달라는 요청.",
+        "properties": {
+          "company_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "external_posting_id": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "External Posting Id",
+            "type": "string"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/PostingImage"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Images",
+            "type": "array"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "external_posting_id",
+          "company_name",
+          "job_title",
+          "images"
+        ],
+        "title": "JobPostingImageTextRequest",
+        "type": "object"
+      },
+      "JobPostingImageTextResult": {
+        "additionalProperties": false,
+        "description": "이미지 순서대로 옮긴 글. Spring 은 이 글을 조건 뽑기의 `raw_text` 로 넘긴다.",
+        "properties": {
+          "empty_image_count": {
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Empty Image Count",
+            "type": "integer"
+          },
+          "external_posting_id": {
+            "title": "External Posting Id",
+            "type": "string"
+          },
+          "image_count": {
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Image Count",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "external_posting_id",
+          "text",
+          "image_count",
+          "empty_image_count"
+        ],
+        "title": "JobPostingImageTextResult",
         "type": "object"
       },
       "JobPostingIndexRequest": {
@@ -4811,6 +5591,133 @@
         "title": "PolishedSentenceResult",
         "type": "object"
       },
+      "Posting": {
+        "additionalProperties": false,
+        "description": "자소서를 공고 상세에서 시작했을 때 그 공고. 학력·병역 같은 일반 조건은 Spring 이 빼고 보낸다.",
+        "properties": {
+          "company": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Company",
+            "type": "string"
+          },
+          "conditions": {
+            "description": "기술·경험 조건",
+            "items": {
+              "$ref": "#/components/schemas/PostingCondition"
+            },
+            "maxItems": 60,
+            "title": "Conditions",
+            "type": "array"
+          },
+          "responsibilities": {
+            "description": "공고의 주요 업무, 한 줄 500자까지",
+            "items": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Responsibilities",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "company",
+          "title"
+        ],
+        "title": "Posting",
+        "type": "object"
+      },
+      "PostingCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "met_by": {
+            "description": "이 조건을 채운 카드. MET 일 때만",
+            "items": {
+              "exclusiveMinimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 100,
+            "title": "Met By",
+            "type": "array"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "MET",
+                  "NOT_MET"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "매칭 판단. 판단이 없으면 null",
+            "title": "Status"
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "REQUIRED",
+              "PREFERRED"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text"
+        ],
+        "title": "PostingCondition",
+        "type": "object"
+      },
+      "PostingImage": {
+        "additionalProperties": false,
+        "description": "Spring 이 받아 둔 공고 본문 이미지 한 장.",
+        "properties": {
+          "data_base64": {
+            "maxLength": 6990508,
+            "minLength": 1,
+            "title": "Data Base64",
+            "type": "string"
+          },
+          "media_type": {
+            "$ref": "#/components/schemas/PostingImageMediaType"
+          }
+        },
+        "required": [
+          "media_type",
+          "data_base64"
+        ],
+        "title": "PostingImage",
+        "type": "object"
+      },
+      "PostingImageMediaType": {
+        "description": "LLM 이 읽을 수 있는 이미지 형식.",
+        "enum": [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+          "image/gif"
+        ],
+        "title": "PostingImageMediaType",
+        "type": "string"
+      },
       "PreviousTurn": {
         "additionalProperties": false,
         "description": "이 카드에서 이미 끝난 질문 하나. 다음 칸을 고르고 예상 답변을 만드는 재료다.",
@@ -5260,6 +6167,16 @@
             ],
             "title": "Memo"
           },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "profile": {
             "items": {
               "$ref": "#/components/schemas/ProfileItem"
@@ -5625,7 +6542,7 @@
                 "type": "null"
               }
             ],
-            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 1,000자). Spring 이 PR 작성자를 확인해 보낸다",
+            "description": "카드 주인이 쓴 대표 PR 본문(저장된 앞 3,000자). Spring 이 PR 작성자를 확인해 보낸다",
             "title": "Pull Request Body"
           },
           "source_ref": {
@@ -5744,7 +6661,7 @@
             "type": "array"
           },
           "techs": {
-            "description": "카드 기술 태그. 최대 4개, 중요한 것부터. 판단할 수 없으면 빈 배열",
+            "description": "카드 기술 태그. 최대 8개, 중요한 것부터. 판단할 수 없으면 빈 배열",
             "items": {
               "enum": [
                 "C",
@@ -5759,10 +6676,59 @@
                 "DART",
                 "TYPESCRIPT",
                 "JAVASCRIPT",
+                "SCALA",
+                "SPRING",
+                "JPA",
+                "NODEJS",
+                "NESTJS",
+                "EXPRESS",
+                "DJANGO",
+                "FASTAPI",
+                "FLASK",
+                "DOTNET",
                 "REACT",
+                "NEXTJS",
+                "VUE",
+                "ANGULAR",
+                "ANDROID",
+                "IOS",
+                "FLUTTER",
+                "REACT_NATIVE",
                 "SQL",
+                "MYSQL",
+                "POSTGRESQL",
+                "ORACLE",
+                "MONGODB",
+                "REDIS",
+                "ELASTICSEARCH",
+                "KAFKA",
+                "RABBITMQ",
+                "SPARK",
+                "AIRFLOW",
+                "HADOOP",
                 "DOCKER",
-                "GITHUB_ACTIONS"
+                "KUBERNETES",
+                "AWS",
+                "GCP",
+                "AZURE",
+                "TERRAFORM",
+                "LINUX",
+                "NGINX",
+                "CI_CD",
+                "GITHUB_ACTIONS",
+                "JENKINS",
+                "PROMETHEUS",
+                "GRAFANA",
+                "LLM",
+                "PYTORCH",
+                "TENSORFLOW",
+                "SCIKIT_LEARN",
+                "LANGCHAIN",
+                "GRAPHQL",
+                "GRPC",
+                "MSA",
+                "UNITY",
+                "UNREAL"
               ],
               "type": "string"
             },
@@ -7056,6 +8022,63 @@
         ]
       }
     },
+    "/internal/cover-letter-assignments/stream": {
+      "post": {
+        "description": "`/internal/cover-letter-assignments` 와 같은 배정을 만들면서, 문항마다 카드를 고르는 즉시와 감독이 정할 때마다 단계를 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 `{\"type\":\"progress\",\"step\":\"COVER_LETTER\",\"done\":0,\"total\":null,\"item\":{...}}` 입니다. `item` 은 단계 `{\"kind\":\"STEP\",\"step\":{...}}` 이고, step 은 응답 steps 항목과 같은 모양으로 생기는 대로 보냅니다(단계 글은 200자에서 자름). 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 이고, `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "assign_cards_stream_internal_cover_letter_assignments_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "자소서 문항마다 쓸 카드 고르기 (진행 스트리밍)",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
     "/internal/cover-letter-drafts": {
       "post": {
         "description": "문항마다 동시에 초안을 쓰고, 검사기(근거에 없는 수치·영문 낱말, 글자 수, 빈칸)에 걸리면 고쳐 쓰거나(FIX) 검사기가 잘못 건 것으로 보고 표시만 합니다(KEEP). 다시 쓰기는 문항마다 2번까지이고, 그 뒤 남은 수치·낱말은 marks 로 표시합니다. 모든 문항이 끝나면 감독이 함께 읽어 되풀이·근거 없는 역할·문항 벗어남을 문장 번호로 걸고, 걸린 문항만 한 번 더 씁니다. 글자 수가 넘친 채로 남으면 자르지 않고 over_by 로 알립니다. 쓰기 답을 못 받은 문항은 카드 문장과 빈칸으로 만든 뼈대(source=SKELETON)이며, 이 API 는 LLM 실패로 오류를 내지 않습니다.",
@@ -7112,6 +8135,63 @@
           }
         },
         "summary": "자소서 문항마다 초안 쓰기와 전체 검토",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
+    "/internal/cover-letter-drafts/stream": {
+      "post": {
+        "description": "`/internal/cover-letter-drafts` 와 같은 초안을 만들면서, 쓰기·검사·다음 행동·전체 검토의 단계와 쓰는 도중의 글을 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 `{\"type\":\"progress\",\"step\":\"COVER_LETTER\",\"done\":0,\"total\":null,\"item\":{...}}` 입니다. `item` 은 단계 `{\"kind\":\"STEP\",\"step\":{...}}` 이고, step 은 응답 steps 항목과 같은 모양으로 생기는 대로 보냅니다(단계 글은 200자에서 자름). 쓰는 도중의 글은 `{\"kind\":\"DRAFT_TEXT\",\"question_id\":1,\"round\":0,\"text\":\"...\",\"done\":false}` 이고, 문장이 끝날 때마다(문항마다 0.5초에 한 번까지) 그때까지 쓴 글 전체를 보내며, 다 쓰면 done=true 와 그 바퀴의 글을 보냅니다. round 0 은 첫 초안, 1 부터는 고쳐 쓴 바퀴이고 글은 비밀값을 가리고 5,000자에서 자릅니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 이고, `status`·`body` 는 같은 요청을 스트리밍 없는 API 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다. 응답 헤더를 보낸 뒤에는 상태를 바꿀 수 없어, 오류도 HTTP 200 의 마지막 줄로 알립니다.",
+        "operationId": "create_drafts_stream_internal_cover_letter_drafts_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "자소서 문항마다 초안 쓰기와 전체 검토 (진행 스트리밍)",
         "tags": [
           "cover-letters"
         ]
@@ -7520,6 +8600,243 @@
         "summary": "Extract Job Posting Detail",
         "tags": [
           "job-postings"
+        ]
+      }
+    },
+    "/internal/job-postings/image-text": {
+      "post": {
+        "description": "공고 본문 이미지 속 글을 요약하지 않고 그대로 옮겨, 이미지 순서대로 이어 돌려준다.",
+        "operationId": "read_job_posting_image_text_internal_job_postings_image_text_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobPostingImageTextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_JobPostingImageTextResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 검증 실패. 이미지가 없거나 6장보다 많거나, 한 장이 5MB 보다 크거나, base64 가 아니면 LLM 을 부르지 않고 거절한다. 재시도 불가."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INTERNAL_ERROR: 예상하지 못한 내부 오류. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패·요청 마감(180초) 초과(retryable=true), LLM 설정 누락·키·권한·요청 형식 오류·출력 길이 초과(retryable=false)."
+          }
+        },
+        "summary": "Read Job Posting Image Text",
+        "tags": [
+          "job-postings"
+        ]
+      }
+    },
+    "/internal/matching/gap-fill": {
+      "post": {
+        "description": "못 채운 필수·우대 조건(최대 5개)과 지원자의 확정 카드·카드로 만들지 않은 후보·작성 중 카드·레포 목록을 받아, 조건마다 더 찾아볼지(SEARCH·SKIP)와 이유를 정합니다. 찾아보는 조건은 먼저 후보·작성 중 카드에서 고르고(CREATE_CARD·CONTINUE_CARD), 못 찾으면 지원자가 쓴 공개 커밋을 GitHub 에서 검색해 분석하지 않은 내 레포를 고릅니다(ANALYZE_REPO). 내 레포 목록에 없는 레포에서 찾은 것은 OUTSIDE_REPO_FOUND 단계로만 남깁니다. 사용자에게 묻는 단계는 없습니다. 첫 판단(찾아볼지)을 받지 못하면 503 LLM_UNAVAILABLE 이고, 그 뒤 단계가 마감이나 실패로 끝나지 못하면 그 조건은 TIMED_OUT 입니다. GitHub 검색이 막히면(토큰 거절·한도) 그 검색만 GITHUB_FAILED 단계로 남기고 이어 갑니다.",
+        "operationId": "fill_gaps_internal_matching_gap_fill_post",
+        "parameters": [
+          {
+            "description": "Spring 이 호출 중에만 전달하는 GitHub OAuth 토큰. 커밋 검색에만 쓰고 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring 이 호출 중에만 전달하는 GitHub OAuth 토큰. 커밋 검색에만 쓰고 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GapFillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_GapFillResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
+          }
+        },
+        "summary": "공고에서 못 채운 조건마다 채울 자료를 찾아 제안하기",
+        "tags": [
+          "matching"
+        ]
+      }
+    },
+    "/internal/matching/gap-fill/stream": {
+      "post": {
+        "description": "`/internal/matching/gap-fill` 과 같은 일을 하면서, 조건의 상태가 바뀔 때마다 그 조건의 지금 상태 전체를 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 `{\"type\":\"progress\",\"step\":\"GAP_FILL\",\"done\":1,\"total\":3,\"item\":{\"kind\":\"GAP_CONDITION\",\"condition\":{...}}}` 입니다. `condition` 은 응답 conditions 항목과 같은 모양이며, 찾는 동안에는 decision·result 가 null 일 수 있습니다. done 은 결론이 난 조건 수, total 은 조건 수입니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 이고, `status`·`body` 는 같은 요청을 `/internal/matching/gap-fill` 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다.",
+        "operationId": "fill_gaps_stream_internal_matching_gap_fill_stream_post",
+        "parameters": [
+          {
+            "description": "Spring 이 호출 중에만 전달하는 GitHub OAuth 토큰. 커밋 검색에만 쓰고 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring 이 호출 중에만 전달하는 GitHub OAuth 토큰. 커밋 검색에만 쓰고 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GapFillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "공고에서 못 채운 조건마다 채울 자료를 찾아 제안하기 (진행 스트리밍)",
+        "tags": [
+          "matching"
         ]
       }
     },

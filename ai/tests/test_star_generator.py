@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, get_args
 
 import pytest
 
 from schemas.analysis import StarAnalysisRequest, StarAnalysisResponse
+from schemas.common import TechTag
 from services.analysis_pipeline import AnalysisPipeline
 from services.llm_structured_client import (
     LLMContentFilterError,
@@ -441,11 +442,12 @@ def test_leaves_out_missing_or_blank_pull_request_body(body: str | None) -> None
 @pytest.mark.parametrize(
     ("body", "sent"),
     [
-        # 1,000자에서 'uuu1856@naver.' 로 잘려 이메일 모양이 깨지므로, '@' 가 든 끝 낱말을 지운다.
-        ("가" * 985 + " uuu1856@naver.com 로 연락", "가" * 985),
+        # 3,000자에서 'uuu1856@naver.' 로 잘려 이메일 모양이 깨지므로, '@' 가 든 끝 낱말을 지운다.
+        ("가" * 2_985 + " uuu1856@naver.com 로 연락", "가" * 2_985),
         # 상한에 닿지 않은 본문의 멘션은 그대로 둔다.
         ("리뷰어 @octo", "리뷰어 @octo"),
     ],
+    ids=["상한에서 잘린 이메일", "상한 안의 멘션"],
 )
 def test_clips_pull_request_body_and_drops_a_cut_off_email(body: str, sent: str) -> None:
     client = _FakeClient(_output())
@@ -500,13 +502,13 @@ def test_sends_changed_paths_to_the_model_clipped_and_leaves_them_out_when_empty
 def test_tags_drop_duplicates_and_keep_the_leading_ones_up_to_the_limit() -> None:
     client = _FakeClient(_tagged(
         ["BACKEND", "BACKEND", "DB", "TEST"],
-        ["JAVA", "JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS", "PYTHON"],
+        ["JAVA", "JAVA", "SPRING", "JPA", "MYSQL", "REDIS", "KAFKA", "DOCKER", "AWS", "GITHUB_ACTIONS"],
     ))
 
     result = _run(StarGenerator(client), _request(_evidence(SHA_A)))
 
     assert result.areas == ["BACKEND", "DB"]
-    assert result.techs == ["JAVA", "SQL", "DOCKER", "GITHUB_ACTIONS"]
+    assert result.techs == ["JAVA", "SPRING", "JPA", "MYSQL", "REDIS", "KAFKA", "DOCKER", "AWS"]
 
 
 def test_docs_area_is_dropped_when_a_code_area_comes_with_it() -> None:
@@ -518,7 +520,7 @@ def test_docs_area_is_dropped_when_a_code_area_comes_with_it() -> None:
 
 
 def test_tags_outside_the_allowed_lists_are_filtered_again_before_the_response() -> None:
-    client = _FakeClient(_tagged(["BACKEND", "GAMES"], ["JAVA", "SPRING"]))
+    client = _FakeClient(_tagged(["BACKEND", "GAMES"], ["JAVA", "PHP"]))
 
     result = _run(StarGenerator(client), _request(_evidence(SHA_A)))
 
@@ -527,10 +529,9 @@ def test_tags_outside_the_allowed_lists_are_filtered_again_before_the_response()
 
 def test_model_output_schema_only_allows_listed_tags() -> None:
     areas = ["BACKEND", "FRONTEND", "MOBILE", "DEVOPS", "AI", "DB", "TEST", "DOCS"]
-    techs = [
-        "C", "CPP", "CSHARP", "JAVA", "KOTLIN", "PYTHON", "GO", "RUST", "SWIFT", "DART",
-        "TYPESCRIPT", "JAVASCRIPT", "REACT", "SQL", "DOCKER", "GITHUB_ACTIONS",
-    ]
+    # 공고 이름표와 같은 65개라야 매칭 1단계가 카드와 공고의 기술을 같은 이름으로 견준다
+    techs = list(get_args(TechTag))
+    assert len(techs) == 65
 
     for model in (StarDraftOutput, StarAnalysisResponse):
         properties = model.model_json_schema()["properties"]
@@ -547,5 +548,6 @@ def test_timed_out_response_has_no_tags() -> None:
 def test_prompt_carries_the_tag_rules() -> None:
     assert "분야·기술 태그 규칙:" in SYSTEM_PROMPT
     assert "DOCS는 코드 분야가 하나도 없을 때만" in SYSTEM_PROMPT
-    assert "그 파일 이름으로 기술을 짐작하지 않는다" in SYSTEM_PROMPT
+    assert "그 파일 내용만으로 기술을 짐작하지 않는다" in SYSTEM_PROMPT
+    assert "실제로 쓴 흔적이 있으면 프레임워크·저장소·도구도 고른다" in SYSTEM_PROMPT
     assert "기능 코드와 함께 더한 시험으로는 쓰지 않는다" in SYSTEM_PROMPT

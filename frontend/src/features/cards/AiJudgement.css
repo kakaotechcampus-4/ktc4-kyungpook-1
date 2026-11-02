@@ -1,0 +1,28 @@
+/* 되묻기 'AI 판단' (#430). 색은 시맨틱 토큰만, 글자 크기는 12·13 단계만 쓴다 */
+.ai-judgement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid var(--border-selected);
+}
+/* .note span 같은 바깥 규칙이 글자색을 덮지 않게 한 겹 더 좁힌다 */
+.ai-judgement .ai-judgement__label { font-size: 12px; line-height: 20px; font-weight: 600; color: var(--text-accent); }
+.ai-judgement .ai-judgement__head { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-strong); overflow-wrap: anywhere; }
+.ai-judgement .ai-judgement__text {
+  flex: 1 0 100%;
+  min-width: 0;
+  quotes: '\201C' '\201D';
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+/* 낭독 영역이 비어 있을 때는 자리를 잡지 않는다(부모의 gap 이 한 칸 늘지 않게 흐름 밖으로 둔다). 접근성 트리에는 그대로 있다 */
+.ai-live { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ai-live:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }

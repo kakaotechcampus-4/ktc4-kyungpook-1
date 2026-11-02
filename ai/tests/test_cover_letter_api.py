@@ -46,7 +46,7 @@ def _post(path: str, payload: dict) -> dict:
 
 def test_assignment_api_returns_result_and_how_it_ended(monkeypatch: pytest.MonkeyPatch) -> None:
     """카드 고르기 API 는 배정과 끝난 방식을 공통 응답 형식으로 돌려준다."""
-    pick = PickOutput(question_theme="PROBLEM_SOLVING", considered=[ConsideredOutput(card_id=1, note="원인을 고친 과정")],
+    pick = PickOutput(question_theme="PROBLEM_SOLVING", considered=[ConsideredOutput(card_id=1, note="원인을 고친 과정", fit="MEDIUM")],
                       first_card_id=1, first_reason="문제 해결 과정이 있음")
     client = FixedClient({PickOutput: pick})
     monkeypatch.setattr(cover_letters_api, "_assigner", CoverLetterAssigner(client, client))

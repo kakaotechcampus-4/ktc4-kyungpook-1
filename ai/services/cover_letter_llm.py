@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 from concurrent.futures import Executor
 from dataclasses import dataclass
@@ -79,16 +80,18 @@ async def call_until_valid(
     limits: CoverLetterLimits,
     what: str,
     executor: Executor = COVER_LETTER_EXECUTOR,
+    on_partial: Optional[Callable[[dict[str, Any]], None]] = None,
 ) -> Any:
-    """``deadline``(이벤트 루프 시각)까지 규칙에 맞는 답을 받아 돌려준다."""
+    """``deadline``(이벤트 루프 시각)까지 규칙에 맞는 답을 받아 돌려준다. on_partial 은 모델이 쓰는 도중의 출력을 받는다."""
     loop = asyncio.get_running_loop()
+    call = client.call if on_partial is None else functools.partial(client.call, on_partial=on_partial)
     for attempt in range(1, limits.max_attempts + 1):
         timeout = deadline - loop.time()
         if timeout < limits.min_call_seconds:
             break
         try:
             result = await asyncio.wait_for(
-                run_llm_call(executor, client.call, prompt, payload, output_model, max_tokens,
+                run_llm_call(executor, call, prompt, payload, output_model, max_tokens,
                              deadline=deadline, min_seconds=limits.min_call_seconds),
                 timeout=timeout + 1,
             )

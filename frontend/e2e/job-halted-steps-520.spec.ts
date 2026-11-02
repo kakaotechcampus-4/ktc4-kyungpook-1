@@ -17,7 +17,7 @@ test('실패한 정리의 작업 상태 화면은 남은 단계를 "중단됨"�
 
   await test.step('남은 단계는 진행 중이 아니라 중단됨이고, 현재형 문장이 없다', async () => {
     // 아직 도는 동안은 "진행 중"이 맞다 — 폴링이 FAILED 를 받으면 제목이 바뀐다
-    await expect(main.getByRole('heading', { name: '작업 실패', exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(main.getByRole('heading', { name: '레포 정리 실패', exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(main.getByText('중단됨', { exact: true })).toBeVisible();
     await expect(main.getByText('진행 중', { exact: true })).toHaveCount(0);
     await expect(main.getByRole('status')).toHaveCount(0); // 돌아가는 스피너도 없다

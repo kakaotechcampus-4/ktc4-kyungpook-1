@@ -50,6 +50,7 @@ class ThreadRecordingExtractor:
             content_hash="0" * 64,
             outcome="UPDATED",
             content_status="METADATA_ONLY",
+            extraction_version=2,
             criteria=[],
             job_category="ETC",
             experience={"level": "UNSPECIFIED"},

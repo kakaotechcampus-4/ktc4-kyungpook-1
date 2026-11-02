@@ -31,13 +31,18 @@ INTERNAL_PATHS = {
     "/internal/card-themes",
     "/internal/interview-answer-evaluations",
     "/internal/job-postings/extract",
+    "/internal/job-postings/image-text",
     "/internal/matching/postings/index",
     "/internal/matching/postings/prune",
     "/internal/matching/search",
     "/internal/matching/judgements",
+    "/internal/matching/gap-fill",
+    "/internal/matching/gap-fill/stream",
     "/internal/cover-letter-assignments",
+    "/internal/cover-letter-assignments/stream",
     "/internal/cover-letter-questions",
     "/internal/cover-letter-drafts",
+    "/internal/cover-letter-drafts/stream",
 }
 
 

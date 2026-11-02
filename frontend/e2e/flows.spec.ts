@@ -55,7 +55,10 @@ test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채
   // 내부 enum 이 화면에 새지 않는다
   await expect(page.getByText('선택한 답변, 답변 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
-  await page.getByRole('button', { name: '카드로 돌아가기' }).click();
+  // 답하면 칸을 정하지 않고 다음 질문을 요청한다(#418). 이 카드는 T 가 마지막 빈 칸이라 AI 가 스스로 끝낸다
+  await expect(page.getByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeVisible();
+  await expect(page.getByRole('button', { name: '카드 확인하고 확정하기' })).toBeVisible();
+  await page.getByRole('link', { name: '카드로', exact: true }).click();
   await expect(page.locator('#star-T').locator('..').locator('..')).not.toContainText('근거를 찾지 못해');
 });
 
@@ -138,6 +141,6 @@ test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_S
 test('동의 취소는 랜딩으로 돌아와 안내를 보여준다', async ({ page }) => {
   await freshSeed(page);
   await page.goto('/login?error=access_denied');
-  await expect(page.getByText('GitHub에서 동의를 취소하셨네요')).toBeVisible();
+  await expect(page.getByText('GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.')).toBeVisible();
   await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toHaveCount(1);
 });

@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { Bot, CircleCheck, FilePenLine, FileSearch, Flag, Hand, PencilLine, RefreshCw, type LucideIcon } from 'lucide-react';
+import { Bot, CircleCheck, FilePenLine, FileSearch, Flag, Hand, PencilLine, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
 import type { DraftStep, DraftStepKind } from '@/api/schemas';
 import { IconBox } from '@/components/ui';
 import { draftStepGroups } from '@/lib/draftSteps';
@@ -7,7 +7,7 @@ import './DraftSteps.css';
 
 /** 아이콘은 장식이다. 무슨 단계인지는 문장이 말한다 */
 const kindIcon: Record<DraftStepKind, LucideIcon> = {
-  DRAFT: FilePenLine, FLAG: Flag, OPEN: FileSearch, RETRY: RefreshCw, KEEP: Hand, REWRITE: PencilLine, PASS: CircleCheck,
+  DRAFT: FilePenLine, FLAG: Flag, OPEN: FileSearch, RETRY: RefreshCw, KEEP: Hand, REWRITE: PencilLine, PASS: CircleCheck, REVERT: Undo2,
 };
 
 /**

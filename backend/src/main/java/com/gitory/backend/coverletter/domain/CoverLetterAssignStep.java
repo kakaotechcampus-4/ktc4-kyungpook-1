@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 class CoverLetterAssignStep {
 
     // AI 자소서 계약이 받는 카드 수의 상한이라, 넘으면 최근에 확정한 카드부터 보낸다
-    private static final int MAX_CARDS = 100;
+    static final int MAX_CARDS = 100;
 
     private final CoverLetterQuestionRepository questions;
     private final CardMaterialReader cardMaterials;
@@ -66,7 +66,8 @@ class CoverLetterAssignStep {
                 cards.stream()
                         .map(card -> new CoverLetterAssignmentRequest.Card(card.id(), card.title(), card.kind().name(),
                                 card.sourceName(), card.period(), CoverLetterCardSummary.of(card)))
-                        .toList());
+                        .toList(),
+                CoverLetterPosting.inputOf(letter));
 
     }
 }

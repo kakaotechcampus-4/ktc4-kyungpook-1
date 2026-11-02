@@ -8,7 +8,8 @@ import java.util.List;
 public record CreateCoverLetterRequest(
         @Schema(description = "지원 직무, 1~100자", example = "백엔드 개발") String jobRole,
         @Schema(description = "지원 이유 등 메모, 1,000자까지. 없으면 null") String memo,
-        @Schema(description = "문항 1~10개") List<Question> questions) {
+        @Schema(description = "문항 1~10개") List<Question> questions,
+        @Schema(description = "공고 상세에서 시작한 자소서면 그 공고 id, 아니면 null", format = "uuid") String postingId) {
 
     @Schema(name = "CoverLetterQuestionInput")
     public record Question(

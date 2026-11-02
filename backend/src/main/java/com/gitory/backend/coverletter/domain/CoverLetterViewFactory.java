@@ -53,7 +53,7 @@ class CoverLetterViewFactory {
 
         return new CoverLetterView(letter.getPublicId(), letter.getStage(), letter.getFailedStep(),
                 letter.getErrorCode(), retryable(letter), letter.isRunning(), letter.getJobRole(), letter.getMemo(),
-                letter.getCreatedAt(), letter.getUpdatedAt(),
+                CoverLetterPosting.refOf(letter), letter.getCreatedAt(), letter.getUpdatedAt(),
                 loaded.stream().map(question -> question(question, labels, slots, remembered)).toList(),
                 letter.getAssignSteps().stream().map(step -> step(step, questionIds, labels)).toList(),
                 letter.getDraftSteps().stream().map(step -> writingStep(step, questionIds)).toList());

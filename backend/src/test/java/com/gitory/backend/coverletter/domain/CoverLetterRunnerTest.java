@@ -7,6 +7,7 @@ import com.gitory.backend.agent.port.CoverLetterAssignmentRequest;
 import com.gitory.backend.agent.port.CoverLetterDrafts;
 import com.gitory.backend.agent.port.CoverLetterDraftsPort;
 import com.gitory.backend.agent.port.CoverLetterDraftsRequest;
+import com.gitory.backend.agent.port.CoverLetterPostingInput;
 import com.gitory.backend.agent.port.CoverLetterQuestions;
 import com.gitory.backend.agent.port.CoverLetterQuestionsPort;
 import com.gitory.backend.agent.port.CoverLetterQuestionsRequest;
@@ -347,6 +348,34 @@ class CoverLetterRunnerTest {
     }
 
     @Test
+    @DisplayName("공고에서 시작한 자소서는 질문 만들기와 초안 쓰기에도 만들 때 남긴 공고를 그대로 보낸다")
+    void sendsStoredPostingToAskAndDraftSteps() {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        withPosting(askingLetter(new Pick(QuestionTheme.COLLABORATION, card, null)), card);
+        AtomicReference<CoverLetterQuestionsRequest> asked = new AtomicReference<>();
+        given(questionsPort.ask(any())).willAnswer(invocation -> {
+            asked.set(invocation.getArgument(0));
+            throw new AgentUnavailableException("AI 실패", true, false, null);
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        withPosting(draftingLetter(card, List.of(), List.of()), card);
+        AtomicReference<CoverLetterDraftsRequest> drafted = new AtomicReference<>();
+        given(draftsPort.write(any())).willAnswer(invocation -> {
+            drafted.set(invocation.getArgument(0));
+            throw new AgentUnavailableException("AI 실패", true, false, null);
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetterPostingInput expected = new CoverLetterPostingInput("나래랩스", "서버 개발자", List.of("결제 서버 개발"),
+                List.of(new CoverLetterPostingInput.Condition("REQUIRED", "Spring 경험", "MET", List.of(card))));
+        assertThat(asked.get().posting()).isEqualTo(expected);
+        assertThat(drafted.get().posting()).isEqualTo(expected);
+
+    }
+
+    @Test
     @DisplayName("초안 쓰기 AI 호출이 실패하면 초안 단계 실패로 끝낸다")
     void failsDraftStepWhenAiFails() {
 
@@ -448,6 +477,16 @@ class CoverLetterRunnerTest {
         letter.asked();
         letter.startDrafting();
         return letters.save(letter);
+
+    }
+
+    // 공고에서 시작한 자소서처럼 만들 때 남긴 공고를 넣는다
+    private void withPosting(CoverLetter letter, Long card) {
+
+        jdbc.update("UPDATE cover_letter SET posting = ?::jsonb WHERE id = ?", """
+                {"id": "%s", "company": "나래랩스", "title": "서버 개발자", "responsibilities": ["결제 서버 개발"],
+                 "conditions": [{"type": "REQUIRED", "text": "Spring 경험", "status": "MET", "metBy": [%d]}]}
+                """.formatted(UUID.randomUUID(), card), letter.getId());
 
     }
 

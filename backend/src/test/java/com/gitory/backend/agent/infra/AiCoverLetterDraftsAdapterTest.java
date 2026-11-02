@@ -38,7 +38,8 @@ class AiCoverLetterDraftsAdapterTest {
                                     new CoverLetterQuestionsRequest.KnownAnswer("REASON", "결제를 다뤄 보고 싶다", null)),
                             List.of("LEARNING")),
                     new CoverLetterDraftsRequest.Question(2, "실패 경험을 쓰세요", 500, null, null, null, List.of(),
-                            List.of())));
+                            List.of())),
+            null);
 
     private final ObjectMapper mapper = JsonMapper.builder().build();
 
@@ -82,6 +83,7 @@ class AiCoverLetterDraftsAdapterTest {
 
         JsonNode first = mapper.readTree(requestBody).path("questions").get(0);
         assertThat(requestPath).isEqualTo("/internal/cover-letter-drafts");
+        assertThat(mapper.readTree(requestBody).has("posting")).isFalse();
         assertThat(first.path("missing_items").get(0).asString()).isEqualTo("LEARNING");
         assertThat(first.path("answers").get(0).path("card_id").asLong()).isEqualTo(11L);
         assertThat(first.path("answers").get(1).path("card_id").isNull()).isTrue();

@@ -54,7 +54,8 @@ public class CoverLetterQueryService {
 
     private static CoverLetterSummary summary(CoverLetter letter, List<CoverLetterQuestion> loaded) {
 
-        return new CoverLetterSummary(letter.getPublicId(), letter.getStage(), letter.getJobRole(), loaded.size(),
+        return new CoverLetterSummary(letter.getPublicId(), letter.getStage(), letter.getJobRole(),
+                CoverLetterPosting.refOf(letter), loaded.size(),
                 loaded.getFirst().getText(), letter.getCreatedAt(), letter.getUpdatedAt());
 
     }

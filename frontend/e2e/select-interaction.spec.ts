@@ -32,7 +32,7 @@ test('repository menus support keyboard selection and outside dismissal without 
 });
 
 test('repository typeahead reaches the draft unchanged and locks after the first save', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/cards/new');
+  await loginAsDemo(page); await page.goto('/cards/new?write=1');
   const repo = page.getByRole('combobox', { name: '관련 레포', exact: true });
   await repo.click(); await page.keyboard.type('Tae');
   await expect(page.getByRole('option', { name: 'TaeHuiKKIM/free-tier-sleep', exact: true })).toBeFocused();
@@ -51,7 +51,7 @@ test('repository typeahead reaches the draft unchanged and locks after the first
 
 test('long repository menus scroll to the keyboard destination within the mobile viewport', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 600 });
-  await loginAsDemo(page); await page.goto('/cards/new');
+  await loginAsDemo(page); await page.goto('/cards/new?write=1');
   const initialRepo = page.getByRole('combobox', { name: '관련 레포', exact: true });
   await initialRepo.click();
   await expect(page.getByRole('option', { name: 'hong-dev/auth-service', exact: true })).toBeVisible();

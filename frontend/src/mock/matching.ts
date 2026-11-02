@@ -162,3 +162,42 @@ export function mockMatchList() {
         (a.source.expiresAt ?? "Z").localeCompare(b.source.expiresAt ?? "Z"),
     );
 }
+
+const OVERALL_SEC = 6;
+/** Mock server only: 예시 공고에서 필수 조건을 많이 채운 순서로 기업마다 대표 공고 하나씩, 5곳까지 */
+function overallCompanies() {
+  const seen = new Set<string>();
+  const ratio = (x: { required: { met: number; total: number } }) => x.required.met / Math.max(1, x.required.total);
+  return [...mockMatchList()]
+    .sort((a, b) => ratio(b) - ratio(a))
+    .filter((x) => { const key = x.companyId ?? x.company; if (seen.has(key)) return false; seen.add(key); return true; })
+    .slice(0, 5)
+    .map((x) => ({
+      companyId: x.companyId, companyName: x.company, logoUrl: x.logoUrl,
+      posting: { id: x.id, title: x.role, deadline: x.source.expiresAt, closed: false },
+      requiredMet: x.required.met, requiredTotal: x.required.total, preferredMet: x.preferred.met, preferredTotal: x.preferred.total,
+    }));
+}
+/** Mock server only: 실서버처럼 누르면 배경에서 기업을 하나씩 확인하고(진행 개수), 다시 계산하는 동안에는 지난 기업을 그대로 준다 */
+export function mockOverall() {
+  const state = db.overall;
+  if (!state) return { status: "NONE", computedAt: null, stale: false, progress: null, companies: [] };
+  const companies = overallCompanies();
+  const elapsed = (Date.now() - state.startedAt) / 1000;
+  if (elapsed < OVERALL_SEC) {
+    return { status: "COMPUTING", computedAt: state.computedAt, stale: false,
+      progress: { done: Math.floor((elapsed / OVERALL_SEC) * companies.length), total: companies.length },
+      companies: state.computedAt ? companies : [] };
+  }
+  state.computedAt = new Date(state.startedAt + OVERALL_SEC * 1000).toISOString();
+  return { status: "READY", computedAt: state.computedAt, stale: false, progress: null, companies };
+}
+/** Mock server only: 이미 계산 중이면 새로 시작하지 않는다(실서버 규칙) */
+export function startMockOverall() {
+  const state = db.overall;
+  if (!state || (Date.now() - state.startedAt) / 1000 >= OVERALL_SEC) {
+    if (state) mockOverall(); // 끝난 계산의 시각을 남겨 둔다
+    db.overall = { startedAt: Date.now(), computedAt: state?.computedAt ?? null };
+  }
+  return mockOverall();
+}

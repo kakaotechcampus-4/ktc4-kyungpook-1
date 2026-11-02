@@ -173,7 +173,6 @@ src/lib/track.ts      퍼널 이벤트 (스펙 §추가 지표)
 | `/` | E1 · A3 | 홈 카드 그리드 · 첫 진입(이력 0) |
 | `/repos` | B1 · B2 | 레포 선택(정렬·필터) · 사전 고지(모달, `?select=&disclose=1`) |
 | `/repos/:id/run` | B3 · B4 · B5 | 분석 진행 · 수집 실패(E-1) · 요청 한도(E-2) |
-| `/jobs/:jobId` | — | 홈 활성 작업의 상세 상태·결과 연결 (새로고침 가능) |
 | `/repos/:id/candidates` | C1 · C2 · C3 · C5 | 후보 보드〔게이트 1〕· EMPTY · 커밋 묶음 펼치기(E-4) · 직접 추가+커밋 찾기(`?add=1`) · 분석 기준(`?criteria=1`) · 제외 실행취소 |
 | `/repos/:id/recall` | C4 | 회상 도우미 |
 | `/cards/:id` | D1~D4 · D6~D9 · E2 · E3 | 생성 중 → 초안 STAR → (편집·자동저장 `?mode=edit` · 마스킹 `?mode=mask` · 확정 `?confirm=1` · 버전 `?versions=1`) → 확정 읽기 · 복사 · 인쇄 |

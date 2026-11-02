@@ -62,7 +62,7 @@ function mount(path: string, list: MatchTarget[] = postings, load?: () => Promis
   return { router, where, ...result };
 }
 const enc = encodeURIComponent;
-const cardHeadings = () => screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+const cardHeadings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.overall-match')).map((h) => h.textContent); // 위의 '나와 맞는 기업' 칸 제목은 빼고 센다
 
 it("목록 카드: 기업 이름은 기업 페이지로, 제목은 공고 상세로 가고 둘 다 목록의 검색·필터·정렬을 이어 간다", async () => {
   const { where } = mount("/match?sort=deadline&experience=ENTRY");

@@ -34,7 +34,8 @@ class AiCoverLetterQuestionsAdapterTest {
                                     List.of(new CoverLetterQuestionsRequest.Statement("A", "빌드를 병렬로 돌렸다"))),
                             null,
                             List.of(new CoverLetterQuestionsRequest.KnownAnswer("LEARNING", "작게 나눠 배포하게 됐다", 11L))),
-                    new CoverLetterQuestionsRequest.Question(2, "실패 경험을 쓰세요", 500, null, null, null, List.of())));
+                    new CoverLetterQuestionsRequest.Question(2, "실패 경험을 쓰세요", 500, null, null, null, List.of())),
+            null);
 
     private final ObjectMapper mapper = JsonMapper.builder().build();
 
@@ -79,6 +80,7 @@ class AiCoverLetterQuestionsAdapterTest {
         JsonNode sent = mapper.readTree(requestBody);
         JsonNode first = sent.path("questions").get(0);
         assertThat(requestPath).isEqualTo("/internal/cover-letter-questions");
+        assertThat(sent.has("posting")).isFalse();
         assertThat(sent.path("cover_letter_id").asLong()).isEqualTo(7L);
         assertThat(first.path("question_theme").asString()).isEqualTo("COLLABORATION");
         assertThat(first.path("primary_card").path("statements").get(0).path("star_slot").asString()).isEqualTo("A");

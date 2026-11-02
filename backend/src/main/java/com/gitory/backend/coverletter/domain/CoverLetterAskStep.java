@@ -61,7 +61,7 @@ class CoverLetterAskStep {
         }
 
         CoverLetterQuestions result = questionsPort.ask(new CoverLetterQuestionsRequest(claimed.getId(),
-                claimed.getJobRole(), claimed.getMemo(), sent));
+                claimed.getJobRole(), claimed.getMemo(), sent, CoverLetterPosting.inputOf(claimed)));
         return letter -> save(letter, result, known);
 
     }

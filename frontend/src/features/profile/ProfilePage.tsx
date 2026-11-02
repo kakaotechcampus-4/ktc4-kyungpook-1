@@ -18,7 +18,7 @@ export function ProfileUnavailable() {
   );
 }
 
-/** F4 인적사항 — 학력·경력·어학·자격증을 입력하고 마이페이지에서 고친다. 홈의 첫 방문 안내가 여기로 온다. */
+/** F4 인적사항 — 관심 분야·학력·경력·어학·자격증을 마이페이지에서 고친다. 처음 입력 창(ProfileSetupModal)과 같은 칸을 쓴다. */
 export function ProfilePage() {
   useDocumentTitle('인적사항');
   const profile = useProfile();
@@ -26,7 +26,7 @@ export function ProfilePage() {
   return (
     <main className="main main--footer main--tight profile-page">
       <Breadcrumb items={[{ label: '마이페이지', to: '/settings' }, { label: '인적사항' }]} />
-      <PageTitle lead="학력·경력·어학·자격증을 적어 두면 공고 매칭에서 지원 자격을 비교할 때 써요. 모두 선택 사항이고, 나중에 언제든 고칠 수 있어요.">인적사항</PageTitle>
+      <PageTitle lead="관심 분야는 공고 매칭이 공고를 고를 때, 학력·경력·어학·자격증은 지원 자격을 비교할 때 써요. 관심 분야는 꼭 골라야 하고 나머지는 없으면 비워 둬도 되며, 나중에 언제든 고칠 수 있어요.">인적사항</PageTitle>
       {profile.isPending && <div className="stack" style={{ gap: 12 }} aria-busy="true">{[0, 1, 2].map((i) => <Skeleton key={i} h={120} />)}</div>}
       {profile.isError && <QueryFailure error={profile.error} retry={() => profile.refetch()} pending={profile.isFetching} />}
       {profile.isSuccess && <ProfileForm initial={profile.data} />}

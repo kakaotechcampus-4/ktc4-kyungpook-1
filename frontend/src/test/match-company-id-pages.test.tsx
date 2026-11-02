@@ -43,7 +43,7 @@ function mount(path: string, list: MatchTarget[] = companyFixture) {
   return { router, where, ...result };
 }
 const enc = encodeURIComponent;
-const headings = () => screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+const headings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.overall-match')).map((h) => h.textContent); // 위의 '나와 맞는 기업' 칸 제목은 빼고 센다
 const imgsIn = (root: ParentNode) => [...root.querySelectorAll("img")];
 
 it("기업별 보기: companyId 로 묶는다 — 표기가 다른 같은 회사가 한 카드, 로켓펀치 id 도 한 카드", async () => {

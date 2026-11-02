@@ -105,7 +105,7 @@ it('explicit list refresh invalidates previously visited details', async () => {
   vi.spyOn(matchingApi,'list').mockResolvedValue(sampleList.data.map(x=>MatchTarget.parse(x)));
   const client=mount();await screen.findByText('가온소프트');
   client.setQueryData(matchKeys.detail(sampleDetail.data.id),sampleDetail.data);
-  fireEvent.click(screen.getByRole('button',{name:'매칭 새로고침'}));
+  fireEvent.click(screen.getByRole('button',{name:'목록 새로고침'}));
   await waitFor(()=>expect(client.getQueryState(matchKeys.detail(sampleDetail.data.id))?.isInvalidated).toBe(true));
 });
 it("shows each condition's judgement and hides only duplicate quote lines", async () => {

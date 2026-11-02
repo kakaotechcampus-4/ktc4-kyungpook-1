@@ -12,13 +12,13 @@ import { resetDb } from '@/mock/store';
 let card: Card;
 beforeEach(() => { resetDb(); card = handle('GET', '/cards/card_01', new URLSearchParams(), {}, true).data as Card; });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
-function mount(element: React.ReactNode) {
+function mount(element: React.ReactNode, entry = '/') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  render(<QueryClientProvider client={client}><RouterProvider router={createMemoryRouter([{ path: '/', element }])} /></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><RouterProvider router={createMemoryRouter([{ path: '/', element }], { initialEntries: [entry] })} /></QueryClientProvider>);
 }
 it('offers one initial save action while STAR remains writable', () => {
   vi.spyOn(endpoints, 'repos').mockResolvedValue([]);
-  mount(<NewCardPage />);
+  mount(<NewCardPage />, '/?write=1');
   expect(screen.getAllByRole('button', { name: '임시 저장 시작' })).toHaveLength(1);
   expect(screen.queryByRole('button', { name: '저장 후 종료' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '확정' })).not.toBeInTheDocument();

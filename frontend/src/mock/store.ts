@@ -21,6 +21,7 @@ export const db = {
   coverLetters: [] as Any[], // 자소서(#492 계약) — mock/coverLetters.ts 가 다룬다
   cardMaterialAnswers: {} as Record<string, Record<string, string>>, // 카드마다 기억한 자소서 답(#585)
   profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
+  overall: null as { startedAt: number; computedAt: string | null } | null, // 전체 매칭(#614) — 누른 적이 없으면 null
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
@@ -67,7 +68,7 @@ export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
   db.activities = clone(seedActivities);
-  db.profile = emptyProfile(); db.coverLetters = []; db.cardMaterialAnswers = {};
+  db.profile = emptyProfile(); db.coverLetters = []; db.cardMaterialAnswers = {}; db.overall = null;
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.activityIdem.clear(); db.seq = 100;
   resetMatchState();
   hydrateCards();
@@ -559,6 +560,11 @@ export function settlePending() {
  * sessionStorage 직렬화. 진행 중인 Job 도 같이 담는다 —
  * 실서버에서 Job 은 서버에 있어 새로고침해도 살아 있고, 데모도 그렇게 굴러야 복구 화면을 믿을 수 있다.
  */
+/** 시드 데이터는 레포·카드가 있는 기존 사용자라, 브라우저 데모를 새로 열면 처음 입력(관심 분야)을 마친 사람으로 둔다 */
+export function seedSetUpProfile() {
+  db.profile = { ...emptyProfile(), interests: ['BACKEND'], savedAt: now() };
+}
+
 export function snapshot(): string {
   return JSON.stringify({
     user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,

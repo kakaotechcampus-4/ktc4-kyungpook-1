@@ -22,17 +22,17 @@ function mount(element: React.ReactElement, path = '/') {
   }
   render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}>{element}</MemoryRouter></QueryClientProvider>);
 }
-it('shows a bounded recent-card preview and a full collection link on home', () => {
+it('keeps recent card tiles off the home dashboard', () => {
   mount(<HomePage />);
-  expect(document.querySelectorAll('.experience-item')).toHaveLength(3);
-  expect(screen.getByRole('link', { name: /모든 카드 보기/ })).toHaveAttribute('href', '/cards');
+  expect(document.querySelectorAll('.experience-item')).toHaveLength(0);
+  expect(screen.queryByRole('link', { name: /모든 카드 보기/ })).not.toBeInTheDocument();
 });
-it('counts every card on home even though only three are previewed', () => {
+it('keeps the full card count in the home overview', () => {
   mount(<HomePage />);
   const total = (handle('GET', '/cards', new URLSearchParams(), {}, true).data as unknown[]).length;
   expect(total).toBeGreaterThan(3);
-  const head = screen.getByRole('heading', { name: '최근 경험 카드' }).parentElement!;
-  expect(head.querySelector('.section-head__count')).toHaveTextContent(String(total));
+  const tile = screen.getByText('작성한 경험 카드').closest('.overview-tile')!;
+  expect(tile.querySelector('strong')).toHaveTextContent(String(total));
 });
 it('explains search misses without claiming a private-repository permission problem', () => {
   mount(<ReposPage />, '/repos');

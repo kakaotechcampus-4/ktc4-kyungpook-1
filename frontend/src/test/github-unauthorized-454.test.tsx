@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import { Job } from '@/api/schemas';
-import { JobStatusPage } from '@/features/jobs/JobStatusPage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { reconnectGithubTo } from '@/lib/githubReconnect';
 
@@ -34,11 +33,11 @@ describe('#454 a job GitHub rejected the token for', () => {
     vi.spyOn(endpoints, 'job').mockResolvedValue(job);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
     client.setQueryData(keys.job(job.jobId), job);
-    const router = createMemoryRouter([{ path: '/jobs/:jobId', element: <JobStatusPage /> }], { initialEntries: [`/jobs/${job.jobId}`] });
+    const router = createMemoryRouter([{ path: '/repos/:repoId/run', element: <AnalyzePage /> }], { initialEntries: [`/repos/r_auth/run?job=${job.jobId}`] });
     render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 
-    expect(screen.getByText('GitHub 연결을 다시 해 주세요')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'GitHub 다시 연결' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'GitHub 연결을 다시 해 주세요' })).toBeInTheDocument();
+    expect(screen.queryByText('서버에서 처리하지 못했어요')).not.toBeInTheDocument();
   });
 
   // 실패한 작업 화면으로 돌아오면 다시 시도할 수 없는 오류라 시작 버튼이 없다 — 시작 버튼이 있는 화면으로 돌아오게 한다

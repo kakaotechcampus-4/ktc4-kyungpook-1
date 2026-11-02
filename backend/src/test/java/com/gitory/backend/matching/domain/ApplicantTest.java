@@ -167,7 +167,7 @@ class ApplicantTest {
 
         Applicant twoYears = applicant(profile(List.of(),
                 List.of(job(EmploymentType.FULL_TIME, "2024-01", "2025-12"))));
-        Applicant unsaved = Applicant.of(new ProfileView(List.of(), List.of(), List.of(), List.of(), null), Set.of(),
+        Applicant unsaved = Applicant.of(new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), null), Set.of(),
                 THIS_MONTH);
 
         assertThat(twoYears.careerOf(posting(JobCategory.BACKEND, ExperienceLevel.ENTRY, null))).isNull();

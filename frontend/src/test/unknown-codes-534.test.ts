@@ -94,7 +94,7 @@ describe('남긴 칸 — 모르는 값은 검증 실패이고, 화면은 "응답
   const card = () => raw('/cards/card_01') as Json;
   const board = () => raw('/repos/r_auth/candidates') as Json;
   const detail = () => clone(sampleDetail.data) as Json;
-  const supported = (d: Json) => d.conditions.find((c: Json) => c.supports.length).supports[0];
+  const supported = (d: Json) => d.conditions.find((c: Json) => c.metBy.length).metBy[0];
   const profile = (extra: Json = {}, row: Json = {}) => ({
     educations: [{ level: 'BACHELOR', school: '가온대', major: null, status: 'GRADUATED', startMonth: null, endMonth: null, gpa: null, gpaMax: null, ...row }],
     careers: [], languages: [], certifications: [], savedAt: null, ...extra,
@@ -123,8 +123,8 @@ describe('남긴 칸 — 모르는 값은 검증 실패이고, 화면은 "응답
     ['ConfirmResult.status: 확정됐는지 알 수 없다', () => endpoints.confirm('card_01', { edited: false, maskedFields: [] }), { cardId: 'card_01', status: 'ARCHIVED', versionNo: 1, usedCandidateIds: [], remainingCandidates: 0, repoId: null }],
     ['MatchTarget.fit: null("카드를 확정하면 등급이 나와요")로 읽으면 확정한 카드가 있어도 틀린 이유를 댄다', () => matchingApi.list(), [{ ...sampleList.data[0], fit: 'E' }]],
     ['MatchDetail.conditions[].type: 필수·우대 칸에 못 들어가 조건이 사라지고 N/M 이 어긋난다', () => matchingApi.detail(sampleDetail.data.id), set(detail(), (d) => { d.conditions[0].type = 'BONUS'; })],
-    ['MatchDetail.supports[].field: 어느 문장이 조건을 받치는지 알 수 없다', () => matchingApi.detail(sampleDetail.data.id), set(detail(), (d) => { supported(d).field = 'S'; })],
-    ['MatchDetail.supports[].cardKind: 카드 종류 이름표를 지어낼 수 없다', () => matchingApi.detail(sampleDetail.data.id), set(detail(), (d) => { supported(d).cardKind = 'HYBRID'; })],
+    ['MatchDetail.conditions[].status: 맞음·모자람 어느 쪽으로 읽어도 조건 판단을 지어낸다', () => matchingApi.detail(sampleDetail.data.id), set(detail(), (d) => { d.conditions[0].status = 'PARTIAL'; })],
+    ['MatchDetail.metBy[].cardKind: 카드 종류 이름표를 지어낼 수 없다', () => matchingApi.detail(sampleDetail.data.id), set(detail(), (d) => { supported(d).cardKind = 'HYBRID'; })],
     ['Profile 학력 수준: 모르는 값을 다른 값으로 읽고 저장하면 서버 값을 덮어쓴다', () => profileApi.get(), profile({}, { level: 'POST_DOCTOR' })],
     ['Profile 경력 형태: 같은 이유로 덮어쓸 수 있다', () => profileApi.get(), profile({ careers: [{ company: '가온', role: null, type: 'DISPATCH', startMonth: '2024-01', endMonth: null }] })],
     ['Profile 어학 시험: 같은 이유로 덮어쓸 수 있다', () => profileApi.get(), profile({ languages: [{ test: 'DELF', testName: null, score: '800', acquiredMonth: null }] })],

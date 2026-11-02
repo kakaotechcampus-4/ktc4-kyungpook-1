@@ -192,6 +192,10 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .toast { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--toast-bg); color: var(--text-on-toast); font-size: 13px; line-height: 20px; box-shadow: 0 12px 40px rgba(0,0,0,.28); animation: rise .18s ease; }
 .toast--danger { background: var(--danger-600); }
 .toast--success { background: var(--toast-success-bg); }
+/* 글자 크기와 토스트 높이는 그대로 두고, 누를 수 있는 영역만 44px 안팎으로 넓힌다(터치 타겟). 닫기는 토스트 오른쪽 안쪽 여백까지 쓴다 */
+.toast__action, .toast__close { position: relative; }
+.toast__action::after { content: ''; position: absolute; inset: -12px -6px; }
+.toast__close::after { content: ''; position: absolute; inset: -12px -14px -12px -13px; }
 .toast__action { color: var(--text-on-toast); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .toast__close { color: var(--toast-muted); font-size: 12px; padding: 2px 4px; }
 .toast__close:hover { color: var(--text-on-toast); }

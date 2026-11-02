@@ -69,7 +69,7 @@ describe('mock mode', () => {
     mountApp([page(<MyPage />, '/settings')], '/settings');
     const row = await screen.findByRole('link', { name: /인적사항/ });
     expect(row).toHaveAttribute('href', '/settings/profile');
-    await waitFor(() => expect(row).toHaveTextContent('학력 1 · 경력 1 · 어학 1 · 자격증 1'));
+    await waitFor(() => expect(row).toHaveTextContent('학력 1, 경력 1, 어학 1, 자격증 1'));
     expect(server.profileCalls()).toHaveLength(1);
   });
   it('MyPage invites a never-saved profile without pretending anything is saved', async () => {
@@ -90,7 +90,7 @@ describe('mock mode', () => {
     connectMockServer();
     mountApp([page(<MyPage />, '/settings')], '/settings');
     await screen.findByRole('link', { name: /인적사항/ });
-    const line = screen.getByText('인적사항 (학력·경력·어학·자격증)').closest('.settings-data-row')!;
+    const line = screen.getByText('인적사항 (학력, 경력, 어학, 자격증)').closest('.settings-data-row')!;
     expect(line).toHaveTextContent('공고 매칭의 지원 자격 비교');
     expect(line).toHaveTextContent('자소서 AI 참고');
   });

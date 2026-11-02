@@ -36,15 +36,15 @@ export function GithubSettingsPage() {
           <UserAvatar src={me.data.avatarUrl} login={me.data.login} size={48} />
           <div className="stack grow" style={{ gap: 6 }}>
             <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 20 }}>{me.data.login}</span><Badge kind={gh?.connected ? 'CONFIRMED' : 'NEUTRAL'}>{login.isDemo ? '샘플 계정' : gh?.connected ? '연결됨' : '연결 안 됨'}</Badge></div>
-            <span className="t-12l c-2">{login.isDemo ? '샘플 데이터로 연결 관리 화면을 둘러보고 있어요.' : gh?.connectedAt ? `${ymd(gh.connectedAt)} 연결` : '연결되어 있지 않습니다 — 새로 정리하려면 다시 연결하세요'}{gh?.lastCollectedAt ? `, 마지막 수집 ${ymdhm(gh.lastCollectedAt)}` : ''}</span>
+            <span className="t-12l c-2">{login.isDemo ? '샘플 데이터로 연결 관리 화면을 둘러보고 있어요.' : gh?.connectedAt ? `${ymd(gh.connectedAt)} 연결` : '연결되어 있지 않아요'}{gh?.lastCollectedAt ? `, 마지막 수집 ${ymdhm(gh.lastCollectedAt)}` : ''}</span>
           </div>
           {login.isDemo ? <span className="t-12 c-2">샘플 계정이라 실제 GitHub에는 연결되지 않아요</span> : <a href={endpoints.githubStartUrl()} className={`btn ${gh?.connected ? 'btn--outline' : 'btn--primary'}`}>{gh?.connected ? '재연동' : '연결하기'}</a>}
         </div>
       )}
-      {gh && !gh.connected && <Note strong="연결 해제됨 — 새 정리는 다시 연결 후" tone="inset" />}
+      {gh && !gh.connected && <Note strong="연결이 해제됐어요. 새로 정리하려면 다시 연결해 주세요" tone="inset" />}
 
       <section className="settings-section stack" style={{ gap: 4 }}>
-        <div className="row"><span className="w-600" style={{ fontSize: 14 }}>{login.isDemo ? '권한 안내 (샘플)' : '허용한 권한'}</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않습니다</span></div>
+        <div className="row"><span className="w-600" style={{ fontSize: 14 }}>{login.isDemo ? '권한 안내 (샘플)' : '허용한 권한'}</span><span className="right t-12 c-3">쓰기 권한은 요청하지 않아요</span></div>
         {SCOPES.map((s) => (
           <div key={s.scope} className={`settings-row settings-permission ${s.granted ? '' : 'settings-row--muted'}`}>
             <span className="settings-permission__scope"><code className="scope-code">{s.scope}</code></span>
@@ -57,7 +57,7 @@ export function GithubSettingsPage() {
       <section className="settings-section stack">
         <span className="w-600" style={{ fontSize: 14, marginBottom: 6 }}>{login.isDemo ? '샘플 수집 이력' : '수집 이력'}</span>
         {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
-        {repos.isSuccess && analyzed.length === 0 && <span className="t-12l c-3">아직 정리한 레포가 없습니다.</span>}
+        {repos.isSuccess && analyzed.length === 0 && <span className="t-12l c-3">아직 정리한 레포가 없어요.</span>}
         {analyzed.map((r) => (
           <div key={r.id} className="kv collection-row">
             <span className="w-600 collection-row__name">{r.name}</span>
@@ -77,10 +77,10 @@ export function GithubSettingsPage() {
       </div>}
 
       {!login.isDemo && asking && (
-        <ConfirmActionDialog title="GitHub 연결을 해제할까요?" sub="토큰은 유예 없이 즉시 파기됩니다." actionLabel="연결 해제" danger loading={disconnect.isPending}
+        <ConfirmActionDialog title="GitHub 연결을 해제할까요?" sub="토큰은 바로 지워요." actionLabel="연결 해제" danger loading={disconnect.isPending}
           onClose={() => setAsking(false)}
-          onConfirm={async () => { await disconnect.mutateAsync(); track('github_disconnected'); toast('GitHub 연결을 해제했습니다. 토큰은 파기됐습니다.'); setAsking(false); }}
-          body={<Note strong="카드는 남고, 토큰만 파기됩니다" tone="inset" />} />
+          onConfirm={async () => { await disconnect.mutateAsync(); track('github_disconnected'); toast('GitHub 연결을 해제했어요. 토큰은 지워졌어요.'); setAsking(false); }}
+          body={<Note strong="카드는 남고, 토큰만 지워져요" tone="inset" />} />
       )}
     </main>
   );

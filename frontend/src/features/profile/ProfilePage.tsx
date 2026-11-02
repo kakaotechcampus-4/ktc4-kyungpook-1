@@ -12,7 +12,7 @@ export function ProfileUnavailable() {
   return (
     <main className="main">
       <PageTitle>인적사항 입력을 준비 중이에요</PageTitle>
-      <p className="c-2">서버 준비가 끝나면 학력·경력·어학·자격증을 입력해 공고 매칭에 쓸 수 있어요.</p>
+      <p className="c-2">서버 준비가 끝나면 학력, 경력, 어학, 자격증을 입력해 공고 매칭에 쓸 수 있어요.</p>
       <Link to="/settings" className="btn btn--outline">마이페이지로</Link>
     </main>
   );
@@ -26,7 +26,7 @@ export function ProfilePage() {
   return (
     <main className="main main--footer main--tight profile-page">
       <Breadcrumb items={[{ label: '마이페이지', to: '/settings' }, { label: '인적사항' }]} />
-      <PageTitle lead="관심 분야는 공고 매칭이 공고를 고를 때, 학력·경력·어학·자격증은 지원 자격을 비교할 때 써요. 관심 분야는 꼭 골라야 하고 나머지는 없으면 비워 둬도 되며, 나중에 언제든 고칠 수 있어요.">인적사항</PageTitle>
+      <PageTitle lead="관심 분야는 공고 매칭이 공고를 고를 때, 학력, 경력, 어학, 자격증은 지원 자격을 비교할 때 써요. 관심 분야는 꼭 골라야 하고 나머지는 없으면 비워 둬도 되며, 나중에 언제든 고칠 수 있어요.">인적사항</PageTitle>
       {profile.isPending && <div className="stack" style={{ gap: 12 }} aria-busy="true">{[0, 1, 2].map((i) => <Skeleton key={i} h={120} />)}</div>}
       {profile.isError && <QueryFailure error={profile.error} retry={() => profile.refetch()} pending={profile.isFetching} />}
       {profile.isSuccess && <ProfileForm initial={profile.data} />}

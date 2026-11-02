@@ -61,6 +61,8 @@ function lineOf(step: DraftStep, index: number, bare = false): DraftStepLine | n
     case 'KEEP': return { ...base, reason, text: say('그대로 두기로 했어요') };
     case 'REWRITE': return { ...base, reason, text: bare ? '다시 썼어요' : `${where}을 다시 썼어요` };
     case 'PASS': return { ...base, reason, text: say('다시 검사해서 통과했어요') };
+    // 이유는 FLAG 와 같은 검사 코드다. AI 는 숫자(value)를 싣지 않아 '근거 없는 숫자를 찾았어요' 처럼 숫자 없이 쓴다
+    case 'REVERT': return { ...base, reason, text: say(`고쳐 쓴 글이 더 나빠(${flagText(step.code, value)}) 앞 글로 되돌렸어요`) };
     default: return null; // 타입에는 없지만 스키마를 거치지 않은 값이 와도 화면은 깨지지 않는다
   }
 }

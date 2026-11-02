@@ -189,6 +189,42 @@ describe('#617 다시 쓰기', () => {
     expect(slotOf(pb, 'S').text).toBe(ko(10, '나'));
   });
 
+  it('S 를 다시 쓰는 동안 T·A·R 은 끝난 글 그대로 보인다', () => {
+    const pb = player([card('a', 'WRITING', four(40))]);
+    pb.advance(T0 + 5000); // 네 칸 다 보임
+    const rewrite = [slot('S', ko(40, '나'), { round: 1, done: false }), ...four(40).slice(1)];
+    pb.receive([card('a', 'WRITING', rewrite)], { ended: false, now: T0 + 5000 });
+    for (const at of [100, 600, 1200]) {
+      pb.advance(T0 + 5000 + at);
+      const slots = pb.view().current!.slots;
+      expect(slots.map((s) => s.phase)).toEqual(['REWRITING', 'DONE', 'DONE', 'DONE']);
+      expect(slots.slice(1).map((s) => s.text)).toEqual([ko(40), ko(40), ko(40)]);
+      expect(cursors(pb)).toEqual(['S']);
+    }
+  });
+
+  it('다시 쓰는 칸은 서버가 done 을 보내기 전에는 끝나지 않는다', () => {
+    const pb = player([card('a', 'WRITING', four(40))]);
+    pb.advance(T0 + 5000);
+    pb.receive([card('a', 'WRITING', [slot('S', ko(40, '나'), { round: 1, done: false }), ...four(40).slice(1)])], { ended: false, now: T0 + 5000 });
+    pb.advance(T0 + 5000 + REWRITE_MAX_MS + 1000); // 다시 쓴 글이 다 보임
+    expect(slotOf(pb, 'S').text).toBe(ko(40, '나'));
+    expect(slotOf(pb, 'S').phase).toBe('REWRITING');
+    expect(cursors(pb)).toEqual(['S']);
+    pb.receive([card('a', 'WRITING', [slot('S', ko(40, '나'), { round: 1, done: true }), ...four(40).slice(1)])], { ended: false, now: T0 + 9100 });
+    expect(slotOf(pb, 'S').phase).toBe('DONE');
+    expect(cursors(pb)).toEqual([]);
+  });
+
+  it('서버 카드가 WRITING 이면 화면 글이 다 펼쳐져도 카드는 다 쓴 것으로 보이지 않는다', () => {
+    const pb = player([card('a', 'WRITING', four(40))]);
+    pb.advance(T0 + 5000); // 글은 다 보였지만 서버는 검사 중
+    expect(pb.view().current!.slots.map((s) => s.phase)).toEqual(['DONE', 'DONE', 'DONE', 'DONE']);
+    expect(pb.view().current!.state).toBe('WRITING');
+    pb.receive([card('a', 'DONE', four(40))], { ended: false, now: T0 + 5100 });
+    expect(pb.view().current!.state).toBe('DONE');
+  });
+
   it('칸에 한 과정은 칸을 다 쓴 뒤에만 보인다', () => {
     const steps = [step({ kind: 'FLAG', field: 'R', actor: 'CODE', code: 'UNSOURCED_NUMBER', value: '50%' }), step({ round: 1, kind: 'REWRITE', field: 'R' })];
     const pb = player([card('a', 'WRITING', [slot('R', ko(40), { round: 1 })], steps)]);

@@ -47,10 +47,10 @@
 |---|---|---|---|
 | 후보 | AI가 레포 기록에서 골라 둔, 아직 카드가 되지 않은 항목(PR, 이슈, 커밋 묶음, 직접 추가) | 화면 이름은 "후보 보드"(`features/candidates/CandidateBoardPage.tsx:46`, `:67`), 항목은 "후보 N개"(`:155`), 고르기는 "후보 선택"(`:173`), 넣기는 "후보 직접 추가"(`:325`), 카드가 된 뒤는 "이미 카드로 만든 후보"(`:195`) | 이미 카드가 된 것, 카드 안의 내용 |
 | 추천 후보 | 후보 중 점수 순으로 위에 오는 것 | 선택 단축 버튼 한 곳(`features/candidates/CandidateBoardPage.tsx:176` "추천 후보 선택") | 제목, 소제목, 안내 |
-| 카드, 경험 카드 | 후보를 골라 만든 결과물. 종류는 기술 카드와 정성 카드(`lib/labels.ts:12`) | 목록, 메뉴, 제목은 "경험 카드"(`components/layout/AppShell.tsx:15`, `features/cards/CardsListPage.tsx:29`, `features/home/HomePage.tsx:147`). 문장 속에서는 "카드"(`features/cards/CardsListPage.tsx:107` "카드 N장", `features/candidates/CandidateBoardPage.tsx:205` "카드 만들기") | 후보를 가리킬 때 |
+| 카드, 경험 카드 | 후보를 골라 만든 결과물. 종류는 기술 카드와 경험 카드(`lib/labels.ts:12`, API 값은 `TECH`·`QUALITATIVE`) | 목록, 메뉴, 제목은 "경험 카드"(`components/layout/AppShell.tsx:15`, `features/cards/CardsListPage.tsx:29`, `features/home/HomePage.tsx:147`). 문장 속에서는 "카드"(`features/cards/CardsListPage.tsx:107` "카드 N장", `features/candidates/CandidateBoardPage.tsx:205` "카드 만들기") | 후보를 가리킬 때 |
 | 경험 | 카드 안에 담기는, 내가 한 일 자체 | "이 경험과 맞는 공고 보기"(`features/cards/CardPage.tsx:132`), "파일을 보며 경험을 떠올려 보세요"(`features/candidates/RecallPage.tsx:78`), "자소서 경험으로"(`features/auth/LandingPage.tsx:38`) | 체크박스로 고르는 항목 |
 
-"정성 카드"는 설명이 어디에도 없다(`features/candidates/CandidateBoardPage.tsx:326` "정성 카드로 생성됩니다"). 문장에 쓰려면 한 번 풀어 쓴다(예: 경험을 직접 쓰는 카드).
+"정성 카드"는 쓰지 않는다. 직접 쓴 카드(`QUALITATIVE`)의 종류 이름은 "경험 카드"다(#625, #647. 후보 보드는 `features/candidates/CandidateBoardPage.tsx:326` "경험 카드로 생성됩니다"). 메뉴 이름 "경험 카드"(카드 전체)와 종류 이름이 같은 말인 것은 시안도 같아서 그대로 둔다. 둘을 가려야 하는 문장에서는 종류를 한 번 풀어 쓴다(예: 경험을 직접 쓴 카드).
 
 ## 2. 말투 규칙
 
@@ -172,7 +172,7 @@ develop 기준이다. 줄 번호와 문구는 develop 코드와 대조했다. �
 | 띄어쓰기 | `features/cards/CardPage.tsx:106`, `features/repos/AnalyzePage.tsx:233` | "알려드릴게요", 앞말과 띄운 "까지 읽었어요" | "알려 드릴게요", "9/12개까지 읽었어요" |
 | 서버, AI, 목 | `ai/services/star_generator.py:93`, `:94` | "근거는 있으나 해석이 불확실해 사용자 확인이 필요합니다.", "근거 커밋 없이 사용자 답변으로만 채워 사용자 확인이 필요합니다." | 해요체로 요청 |
 | 서버, AI, 목 | `backend/src/main/java/com/gitory/backend/card/domain/CardHistoryService.java:118`, `:122`, `:126`, `backend/src/main/java/com/gitory/backend/recommend/domain/CandidateEmptyReasons.java:64` | `joining(" · ")`, `" · 원본(잠김)"`, `" · 확정"`, `건 · 리뷰 ` | 글자 S/T/A/R 대신 한국어 칸 이름, 쉼표 |
-| 서버, AI, 목 | `mock/fixtures.ts:223`, `:306`, `:21` | "수치가 없고 근거 커밋이 1건뿐입니다", "답한 내용은 그대로 정성 카드의 근거가 됩니다.", "비공개 저장소 — 권한 자체를 요청하지 않습니다" | 해요체, 커밋은 개, 레포 |
+| 서버, AI, 목 | `mock/fixtures.ts:223`, `:306`, `:21` | "수치가 없고 근거 커밋이 1건뿐입니다", "답한 내용은 그대로 경험 카드의 근거가 됩니다.", "비공개 저장소 — 권한 자체를 요청하지 않습니다" | 해요체, 커밋은 개, 레포 |
 | 단위 | `features/cards/CardPage.tsx:167`, `features/cards/CardDialogs.tsx:41`, `features/candidates/CandidateBoardPage.tsx:326` | "근거 커밋 N건", `${commits}건`, "커밋 N건이 붙어 있습니다" | 개 |
 | 단위 | `features/repos/ReposPage.tsx:130`, `features/cards/CardsListPage.tsx:78` | "카드 N건", "N개 보기" | 장 |
 | 단위 | `features/home/HomePage.tsx:72`, `features/cards/CardPage.tsx:126` | "빈 칸 N개", "비어 있는 항목 N개" | 칸 |

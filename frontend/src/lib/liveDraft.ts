@@ -77,10 +77,15 @@ type SlotRun = {
   erasing: string[] | null;
   eraseDeadline: number | null;
   rewriteDeadline: number | null;
+  /**
+   * 이 칸을 다 펼쳐 끝난 모습으로 보인 적이 있다. 앞 칸을 다시 쓰는 동안에도 이 칸은 대기로 돌아가지 않고 보이던 글 그대로 둔다.
+   * 이 칸도 다시 쓰이면 차례가 왔을 때 보이던 글에서 지우고 새로 쓴다
+   */
+  finished: boolean;
 };
 type Run = { cardId: string; slots: Record<StarField, SlotRun>; completedAt: number | null };
 
-const emptySlot = (): SlotRun => ({ present: false, chars: [], round: 0, done: false, pos: 0, eraseTo: null, erasing: null, eraseDeadline: null, rewriteDeadline: null });
+const emptySlot = (): SlotRun => ({ present: false, chars: [], round: 0, done: false, pos: 0, eraseTo: null, erasing: null, eraseDeadline: null, rewriteDeadline: null, finished: false });
 /** 화면에 보이는 글자들. 지우는 동안은 지워지는 앞 글, 아니면 서버가 준 글 */
 const onScreen = (slot: SlotRun) => slot.eraseTo !== null && slot.erasing ? slot.erasing : slot.chars;
 const stopErasing = (slot: SlotRun) => { slot.eraseTo = null; slot.erasing = null; slot.eraseDeadline = null; };
@@ -186,9 +191,11 @@ export class DraftPlayback {
     const slots = LIVE_FIELDS.map((field, at): LiveSlot => {
       const slot = run.slots[field];
       const full = slot.chars.join('');
-      if (at > reached || reached < 0) return { field, phase: 'WAITING', text: '', full, cursor: false, steps: [] };
+      // 앞 칸을 다시 쓰느라 차례가 앞으로 돌아가도, 이미 끝난 모습으로 보인 뒤 칸은 대기로 되돌리지 않는다
+      const shownBefore = at > reached && reached >= 0 && slot.finished;
+      if ((at > reached || reached < 0) && !shownBefore) return { field, phase: 'WAITING', text: '', full, cursor: false, steps: [] };
       const text = onScreen(slot).slice(0, Math.floor(slot.pos)).join('');
-      if (at < reached) {
+      if (at < reached || shownBefore) {
         const phase = this.settledPhase(card, slot);
         return { field, phase, text, full, cursor: false, steps: phase === 'DONE' || phase === 'BLANK' ? card.steps.filter((step) => step.field === field) : [] };
       }
@@ -260,6 +267,7 @@ export class DraftPlayback {
       this.version += 1;
     }
     if (this.instant) this.flush(run);
+    this.markFinished(run);
   }
 
   // ───────────── 시간 흘리기 ─────────────
@@ -306,6 +314,7 @@ export class DraftPlayback {
       }
     }
     if (this.ended && this.endedAt !== null && now >= this.endedAt + ENDED_MAX_MS) this.flush(run);
+    this.markFinished(run);
     // 틱이 굵어도 쉬는 시간은 글이 다 보인 때부터 센다
     if (run.completedAt === null && this.complete(run)) { run.completedAt = now - Math.max(0, ms); this.version += 1; }
   }
@@ -317,6 +326,16 @@ export class DraftPlayback {
       stopErasing(slot);
       slot.rewriteDeadline = null;
     }
+    this.markFinished(run);
+  }
+
+  /** 지금 쓸 칸 앞의 칸은 끝난 모습으로 보였다고 적어 둔다 */
+  private markFinished(run: Run) {
+    const card = this.cards.find((c) => c.cardId === run.cardId);
+    if (!card) return;
+    const active = this.activeField(run, card);
+    const end = active ? LIVE_FIELDS.indexOf(active) : LIVE_FIELDS.length;
+    for (const field of LIVE_FIELDS.slice(0, end)) run.slots[field].finished = true;
   }
 
   // ───────────── 카드 넘기기 ─────────────
@@ -374,8 +393,10 @@ export class DraftPlayback {
     return isOver(card) || this.ended;
   }
 
+  /** 서버가 이 칸 뒤로 넘어갔는가. 다시 쓰는 칸(round 가 오름)은 뒤 칸에 첫 바퀴 글이 있어도 넘어간 것이 아니다 */
   private laterPresent(run: Run, field: StarField) {
-    return LIVE_FIELDS.slice(LIVE_FIELDS.indexOf(field) + 1).some((later) => run.slots[later].present);
+    const round = run.slots[field].round;
+    return LIVE_FIELDS.slice(LIVE_FIELDS.indexOf(field) + 1).some((later) => run.slots[later].present && run.slots[later].round >= round);
   }
 
   /** 글을 다 보였고 서버도 이 칸을 끝냈는가. 서버가 다음 칸으로 넘어갔거나 카드가 끝났으면 끝난 것으로 본다 */
@@ -405,7 +426,9 @@ export class DraftPlayback {
   private shownState(card: DraftLive, done: boolean): LiveCardState {
     if (!done) return card.state === 'READING' || card.state === 'WAITING' ? card.state : 'WRITING';
     if (card.state === 'FAILED') return 'FAILED';
-    return card.state === 'READING' || card.state === 'WAITING' ? card.state : 'DONE';
+    if (card.state === 'READING' || card.state === 'WAITING') return card.state;
+    // 글이 다 보여도 서버가 검사·고쳐 쓰기 중(WRITING)이면 아직 다 쓴 것이 아니다
+    return isOver(card) || this.ended ? 'DONE' : 'WRITING';
   }
 }
 

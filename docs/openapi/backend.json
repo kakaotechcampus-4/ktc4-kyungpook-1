@@ -2867,8 +2867,8 @@
             "type" : "string"
           },
           "school" : {
-            "description" : "학교 이름, 50자까지",
-            "type" : "string"
+            "description" : "학교 이름, 50자까지. 비우면 null",
+            "type" : [ "string", "null" ]
           },
           "startMonth" : {
             "description" : "입학 달 YYYY-MM, 없으면 null",
@@ -2928,6 +2928,13 @@
             },
             "type" : "array"
           },
+          "interests" : {
+            "description" : "관심 분야 — 공고 직무 분류 이름(BACKEND · FRONTEND · MOBILE · DEVOPS · DATA · AI_ML · SECURITY · QA · ETC) 3개까지, 겹치지 않게. 안 보내면 저장된 값을 그대로 둡니다",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          },
           "languages" : {
             "description" : "어학, 10개까지",
             "items" : {
@@ -2956,6 +2963,14 @@
           "educations" : {
             "items" : {
               "$ref" : "#/components/schemas/Education"
+            },
+            "type" : "array"
+          },
+          "interests" : {
+            "description" : "관심 분야 직무 분류 이름, 3개까지. 아직 고르지 않았으면 []",
+            "items" : {
+              "enum" : [ "BACKEND", "FRONTEND", "MOBILE", "DEVOPS", "DATA", "AI_ML", "SECURITY", "QA", "ETC" ],
+              "type" : "string"
             },
             "type" : "array"
           },
@@ -7405,7 +7420,7 @@
         "tags" : [ "Profile" ]
       },
       "put" : {
-        "description" : "네 목록을 통째로 바꿉니다. 처음 입력을 건너뛰면 빈 목록 네 개를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n글은 앞뒤 공백을 지우고, 빈 글은 null 로 저장합니다. 목록 순서는 보낸 그대로입니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "네 목록을 통째로 바꿉니다. 처음 입력을 건너뛰면 빈 목록 네 개를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n글은 앞뒤 공백을 지우고, 빈 글은 null 로 저장합니다. 목록 순서는 보낸 그대로입니다.\n관심 분야(interests)는 보내면 통째로 바꾸고, 안 보내면 저장된 값을 그대로 둡니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "replace",
         "requestBody" : {
           "content" : {
@@ -7436,7 +7451,7 @@
                 }
               }
             },
-            "description" : "INVALID_REQUEST: 목록이 빠짐, 개수를 넘음, 필수 칸이 비었음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 학점·만점이 맞지 않음, 글이 길거나 U+0000 이 있음. 메시지에 어느 목록의 몇 번째인지 적습니다"
+            "description" : "INVALID_REQUEST: 목록이 빠짐, 개수를 넘음, 필수 칸이 비었음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 학점·만점이 맞지 않음, 글이 길거나 U+0000 이 있음, 관심 분야가 4개 이상이거나 겹치거나 모르는 값임. 메시지에 어느 목록의 몇 번째인지 적습니다"
           }
         },
         "summary" : "내 인적사항 저장",

@@ -78,10 +78,26 @@ describe('#617 목 Job 의 drafts', () => {
   });
 
   it('카드가 2장이면 실패하는 카드가 없다', () => {
-    expect(draftPlans(2, false)).toEqual(['REWRITE', 'OK']);
+    expect(draftPlans(2, false)).toEqual(['REWRITE', 'REWRITE_S']);
     expect(draftPlans(1, false)).toEqual(['REWRITE']);
-    expect(draftPlans(3, false)).toEqual(['REWRITE', 'FAIL', 'OK']);
+    expect(draftPlans(3, false)).toEqual(['REWRITE', 'FAIL', 'REWRITE_S']);
+    expect(draftPlans(4, false)).toEqual(['REWRITE', 'FAIL', 'REWRITE_S', 'OK']);
     expect(draftPlans(3, true)).toEqual(['PARTIAL', 'PARTIAL', 'PARTIAL']);
+  });
+
+  it('#644 둘째로 쓰는 카드는 네 칸을 다 쓴 뒤 상황 칸만 다시 쓰고, 다시 쓴 글이 먼저 오고 끝은 조금 뒤에 온다', () => {
+    const { jobId } = start(2);
+    const schedule = draftSchedule(draftPlans(2, false));
+    const after = (sec: number) => at(jobId, schedule.starts[1] + schedule.think + sec * schedule.scale).drafts![1];
+    const slotOf = (sec: number, field: string) => after(sec).slots.find((s) => s.field === field)!;
+    const first = after(2);
+    expect(first.slots.map((s) => [s.field, s.round])).toEqual([['S', 0], ['T', 0], ['A', 0], ['R', 0]]);
+    expect(slotOf(2, 'S').text).toContain('100건');
+    expect(slotOf(4, 'S')).toMatchObject({ round: 1, done: false });
+    expect(slotOf(4, 'S').text).not.toContain('100건');
+    expect(slotOf(5, 'S')).toMatchObject({ round: 1, done: true });
+    expect(['T', 'A', 'R'].map((f) => slotOf(5, f).round)).toEqual([0, 0, 0]);
+    expect(after(6).state).toBe('DONE');
   });
 
   it('끝나면 SUCCEEDED 이고 drafts 가 마지막 모습으로 남는다. 끝난 카드 수가 n / m장 이다', () => {

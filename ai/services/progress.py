@@ -17,11 +17,17 @@ COMPRESS = "COMPRESS"
 REASON = "REASON"
 #: STAR 초안 진행은 Spring 카드 초안 Job 이 카드마다 받는다.
 STAR = "STAR"
+#: 자소서 카드 고르기·초안 쓰기 진행은 Spring 이 자소서마다 받는다.
+COVER_LETTER = "COVER_LETTER"
+#: 모자란 조건 채우기 진행은 Spring 이 공고 상세 응답에 싣는다.
+GAP_FILL = "GAP_FILL"
 
 # 화면이 한 줄로 보여 주는 값이라 길이를 자른다.
 TITLE_MAX_CHARS = 100
 REASON_MAX_CHARS = 200
 SLOT_TEXT_MAX_CHARS = 400
+# 자소서 문항 글자 수 상한(5,000자)과 같아, 쓰는 도중의 글을 자르지 않는다
+DRAFT_TEXT_MAX_CHARS = 5_000
 
 ProgressItem = dict[str, Any]
 ProgressListener = Callable[[str, int, "int | None", "ProgressItem | None"], None]
@@ -79,11 +85,21 @@ def slot_item(round_no: int, slot: str, text: str, done: bool) -> ProgressItem:
     return {"kind": "SLOT", "round": round_no, "slot": slot, "text": _text(text, SLOT_TEXT_MAX_CHARS), "done": done}
 
 
+def draft_text_item(question_id: int, round_no: int, text: str, done: bool) -> ProgressItem:
+    return {"kind": "DRAFT_TEXT", "question_id": question_id, "round": round_no,
+            "text": _text(text, DRAFT_TEXT_MAX_CHARS), "done": done}
+
+
 def step_item(step: dict[str, Any]) -> ProgressItem:
     return {
         "kind": "STEP",
         "step": {key: _text(value, REASON_MAX_CHARS) if isinstance(value, str) else value for key, value in step.items()},
     }
+
+
+def gap_condition_item(condition: dict[str, Any]) -> ProgressItem:
+    """조건 하나의 지금 상태 전체를 보낸다. 받는 쪽은 같은 조건의 앞 줄을 이 줄로 바꾸기만 하면 된다."""
+    return {"kind": "GAP_CONDITION", "condition": condition}
 
 
 def _text(text: str, limit: int) -> str:

@@ -42,7 +42,7 @@ test.describe('반응형 레이아웃', () => {
     await expect(nav.getByText('홈', { exact: true })).toBeVisible();
     await expect(nav.getByText('레포', { exact: true })).toBeVisible();
     await expect(nav.getByText('카드', { exact: true })).toBeVisible();
-    await expect(nav.getByText('설정', { exact: true })).toBeVisible();
+    await expect(nav.getByText('마이페이지', { exact: true })).toBeVisible();
     await expect(page.locator('.sidebar')).toBeHidden();
     await expectNoHorizontalOverflow(page);
   });

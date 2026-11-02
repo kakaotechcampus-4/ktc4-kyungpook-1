@@ -54,7 +54,7 @@ class SlotStreamer:
     def _progress(self, slot: str, text: str) -> None:
         if slot in self._done:
             return
-        sentences = _complete_sentences(text)
+        sentences = complete_sentences(text)
         if not sentences or sentences == self._sent.get(slot):
             return
         now = self._clock()
@@ -86,6 +86,6 @@ class ReportedSteps(list[StarStep]):
             self.append(step)
 
 
-def _complete_sentences(text: str) -> str:
+def complete_sentences(text: str) -> str:
     ends = list(_SENTENCE_END.finditer(text))
     return text[: ends[-1].end()] if ends else ""

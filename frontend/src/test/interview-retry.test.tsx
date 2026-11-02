@@ -72,7 +72,7 @@ describe('interview retry and pending answer', () => {
     fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
     expect(await screen.findByText('네 칸이 모두 차서 카드를 확정했어요')).toBeInTheDocument();
     expect(screen.queryByText('이어서 물을까요?')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드로 돌아가기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
   });
 
   it('locks option chips while an answer is being saved', async () => {
@@ -95,7 +95,7 @@ describe('interview retry and pending answer', () => {
     mount([{ ...template, answer: null }]);
     fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
     fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
-    expect(await screen.findByText('입력 내용과 현재 상태를 확인해 주세요.')).toBeInTheDocument();
+    expect(await screen.findByText('입력한 내용을 확인한 뒤 다시 시도해 주세요. 같으면 화면을 새로고침해 주세요.')).toBeInTheDocument();
     expect(screen.queryByText(/연결을 확인/)).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '답변' })).toHaveValue('T answer');
   });

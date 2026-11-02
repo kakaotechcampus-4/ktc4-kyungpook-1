@@ -39,9 +39,9 @@ describe('정리 시작 화면 — 레포를 못 찾거나 조회에 실패했�
     expect(await screen.findByRole('heading', { name: '레포를 확인하지 못했어요' })).toBeInTheDocument();
     expect(screen.getByText('요청한 항목을 찾을 수 없어요')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '레포 목록으로' })).toHaveAttribute('href', '/repos');
-    // 누르면 토스트로만 실패하던 버튼과 "진행 중인 작업이 없어요" 는 없다
+    // 누르면 토스트로만 실패하던 버튼과 "진행 중인 정리가 없어요" 는 없다
     expect(screen.queryByRole('button', { name: '정리 시작' })).not.toBeInTheDocument();
-    expect(screen.queryByText(/진행 중인 작업이 없어요/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/진행 중인 정리가 없어요/)).not.toBeInTheDocument();
     // 이름 자리에 '…' 가 영구히 남지 않는다
     expect(screen.getByRole('navigation').textContent).not.toContain('…');
     // 탭 제목도 진행 중이라고 하지 않는다

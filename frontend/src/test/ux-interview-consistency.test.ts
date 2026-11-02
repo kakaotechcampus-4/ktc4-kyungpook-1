@@ -23,7 +23,7 @@ describe('sample interview and evidence consistency', () => {
     const api = recall.dirs.find((dir) => dir.path === '/src/api/')!;
     expect(api.question).toContain('무엇을 해내려던');
     expect(api.options).toEqual(['로그인이 정상적으로 동작하게 하려 했어요', '기존 기능을 완성하려 했어요', '반복되는 오류를 해결하려 했어요']);
-    expect(recall.note).toBe('어떤 파일을 만졌는지 살펴보며 작업을 떠올려 보세요. 답한 내용은 그대로 정성 카드의 근거가 됩니다.');
+    expect(recall.note).toBe('어떤 파일을 만졌는지 살펴보며 작업을 떠올려 보세요. 답한 내용은 그대로 경험 카드의 근거가 됩니다.');
   });
 
   it.each(seedCandidates)('$id counts agree with explicit sample evidence', (candidate) => {

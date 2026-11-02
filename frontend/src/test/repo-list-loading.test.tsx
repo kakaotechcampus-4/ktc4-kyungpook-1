@@ -23,7 +23,7 @@ describe('레포 고르기 — GitHub 에서 목록을 읽어 오는 동안', ()
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => { /* GitHub 가 응답하지 않는다 */ })));
     mount(new QueryClient({ defaultOptions: { queries: { retry: false } } }));
     expect(screen.getByRole('status')).toHaveTextContent('GitHub 에서 내 레포 목록을 불러오는 중이에요');
-    expect(screen.getByRole('heading', { name: '레포 고르기' }).textContent).toBe('레포 고르기 ');
+    expect(screen.getByRole('heading', { name: '레포' }).textContent).toBe('레포 ');
     expect(screen.queryByText('레포가 없어요')).not.toBeInTheDocument();
     expect(screen.queryByText('아직 불러온 레포가 없어요')).not.toBeInTheDocument();
   });
@@ -58,6 +58,6 @@ describe('레포 고르기 — GitHub 에서 목록을 읽어 오는 동안', ()
     await wait(0); // 가짜 타이머에서는 구독자 알림도 타이머 한 번을 돌려야 반영된다
     expect(screen.queryByText(SLOW)).not.toBeInTheDocument();
     expect(screen.queryByText(/GitHub 에서 내 레포 목록을 불러오는 중/)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: new RegExp(`레포 고르기\\s*${data.length}`) })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: new RegExp(`레포\\s*${data.length}`) })).toBeInTheDocument();
   });
 });

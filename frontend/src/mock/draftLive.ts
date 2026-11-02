@@ -8,6 +8,7 @@
  * 데모 대본 (카드 순서대로)
  *  - 첫 카드: 결과 칸을 '근거 없는 숫자'로 써서 검사에 걸리고, 몇 초 뒤 이슈를 열어 본 뒤 다시 쓴다(round 1). 과제 칸은 근거가 없어 비운다.
  *  - 카드가 3장 이상이면 둘째 카드는 도중에 AI 가 끊겨 FAILED 로 끝난다(쓴 칸은 남는다).
+ *  - 그다음 카드: 상황 칸을 '근거 없는 숫자'로 써서 네 칸을 다 쓴 뒤 상황 칸만 다시 쓴다(#644). 다시 쓴 글은 먼저 오고 끝(done)은 조금 뒤에 온다.
  *  - 나머지 카드: 과제 칸만 비우고 한 번에 쓴다.
  *  - 약한 후보가 섞여 일부만 쓴 Job(partial): 상황과 행동 칸만 쓰고 나머지 칸은 주지 않는다.
  * 카드가 많아도 데모는 DEMO_DRAFT_MAX_SEC 안에 끝나게 모든 시간을 같은 비율로 줄인다.
@@ -18,10 +19,10 @@ type Field = 'S' | 'T' | 'A' | 'R';
 export const THINK_SEC = 8;
 export const DEMO_DRAFT_MAX_SEC = 36;
 
-export type DraftPlan = 'REWRITE' | 'OK' | 'FAIL' | 'PARTIAL';
+export type DraftPlan = 'REWRITE' | 'REWRITE_S' | 'OK' | 'FAIL' | 'PARTIAL';
 
 /** 읽고 생각한 뒤 쓰는 구간의 길이(초). 네 칸은 앞 2초 안에 몰아 쓰고, 다시 쓰는 카드는 검사와 고쳐 쓰기가 그 몇 초 뒤에 이어진다 */
-const WRITE_SEC: Record<DraftPlan, number> = { OK: 2, PARTIAL: 2, FAIL: 0.8, REWRITE: 5.2 };
+const WRITE_SEC: Record<DraftPlan, number> = { OK: 2, PARTIAL: 2, FAIL: 0.8, REWRITE: 5.2, REWRITE_S: 5.2 };
 
 /** 카드마다 시작 시각과 읽는 시간, 전체 길이. 장수가 많으면 전체를 DEMO_DRAFT_MAX_SEC 안으로 같은 비율로 줄인다 */
 export function draftSchedule(plans: readonly DraftPlan[]) {
@@ -34,11 +35,13 @@ export function draftSchedule(plans: readonly DraftPlan[]) {
 }
 
 export function draftPlans(count: number, partial: boolean): DraftPlan[] {
-  let rewritten = false;
+  let rewritten = 0;
   return Array.from({ length: count }, (_, index): DraftPlan => {
     if (partial) return 'PARTIAL';
     if (count >= 3 && index === 1) return 'FAIL';
-    if (!rewritten) { rewritten = true; return 'REWRITE'; }
+    rewritten += 1;
+    if (rewritten === 1) return 'REWRITE';
+    if (rewritten === 2) return 'REWRITE_S';
     return 'OK';
   });
 }
@@ -52,6 +55,7 @@ export function draftTexts(input: { repoName: string; title: string; commits: nu
     R: `${title} 이후 관련 수정 커밋이 줄었다`,
     /** 검사에 걸리기 전의 첫 글 — 근거 없는 숫자가 들어 있다 */
     firstR: `${title} 이후 관련 수정 커밋이 50% 줄었다`,
+    firstS: `${repoName} 에서 하루 100건씩 ${title} 이 필요한 상황이었다`,
   };
 }
 
@@ -63,6 +67,16 @@ export function draftStepsOf(plan: DraftPlan, title: string): Any[] {
   if (plan === 'FAIL') return [];
   if (plan === 'PARTIAL') return [step(0, 'MODEL', 'DRAFT', null)];
   const keepT = step(1, 'MODEL', 'KEEP', 'T', { reason: '이슈에도 맡은 일이 적혀 있지 않음' });
+  if (plan === 'REWRITE_S') {
+    return [
+      step(0, 'MODEL', 'DRAFT', null),
+      step(0, 'CODE', 'FLAG', 'T', { code: 'NO_EVIDENCE' }),
+      step(0, 'CODE', 'FLAG', 'S', { code: 'UNSOURCED_NUMBER', value: '100건' }),
+      keepT,
+      step(1, 'MODEL', 'REWRITE', 'S'),
+      step(1, 'CODE', 'PASS', 'S'),
+    ];
+  }
   if (plan === 'OK') {
     return [step(0, 'MODEL', 'DRAFT', null), step(0, 'CODE', 'FLAG', 'T', { code: 'NO_EVIDENCE' }), keepT];
   }
@@ -96,6 +110,16 @@ function events(plan: DraftPlan, texts: ReturnType<typeof draftTexts>, steps: An
     { at: 0.8, slot: slot('A', firstSentence, false) }, { at: 1.1, slot: slot('A', texts.A) },
   ];
   if (plan === 'OK') return [...burst, { at: 1.4, slot: slot('R', texts.R) }, { at: 1.6, step: steps[2] }, { at: 2, end: 'DONE' }];
+  if (plan === 'REWRITE_S') {
+    // 네 칸을 다 쓴 뒤 검사에서 상황 칸이 걸려 상황 칸만 다시 쓴다. 과제·행동·결과는 첫 바퀴 글 그대로다
+    return [
+      { at: 0, step: steps[0] }, { at: 0.2, slot: slot('S', texts.firstS) }, { at: 0.5, slot: slot('T', ''), step: steps[1] },
+      { at: 0.8, slot: slot('A', firstSentence, false) }, { at: 1.1, slot: slot('A', texts.A) }, { at: 1.4, slot: slot('R', texts.R) },
+      { at: 1.6, step: steps[2] }, { at: 3.2, step: steps[3] },
+      { at: 3.6, slot: slot('S', texts.S, false, 1), step: steps[4] }, { at: 4.8, slot: slot('S', texts.S, true, 1), step: steps[5] },
+      { at: 5.2, end: 'DONE' },
+    ];
+  }
   return [
     ...burst,
     { at: 1.4, slot: slot('R', texts.firstR), step: steps[2] },

@@ -230,7 +230,9 @@ export function MatchDetailPage() {
     });
   };
 
-  const judgedData = !!detail && !detail.needsJudgement;
+  // 확정 카드가 0장이면 서버는 기술 조건을 모두 NOT_MET 으로 준다 — 모자란 사람처럼 보이지 않게 원문만 두고 카드 확정을 안내한다. 카드 목록을 아직 못 받았으면 서버 응답대로 그린다
+  const noConfirmedCards = cards.data !== undefined && !cards.data.some((card) => card.status === "CONFIRMED");
+  const judgedData = !!detail && !detail.needsJudgement && !noConfirmedCards;
   const ordered = detail ? SECTIONS.flatMap(({ type }) => detail.conditions.filter((c) => c.type === type)) : [];
   const revealKeys = judgedData
     ? ["cards", "compared", ...(detail.experience.status ? ["exp"] : []), ...ordered.filter((c) => c.status !== null).map((c) => c.id)]
@@ -320,7 +322,11 @@ export function MatchDetailPage() {
     </Link>
   );
   const action = detail && (
-    detail.needsJudgement ? (
+    noConfirmedCards ? (
+      <Link className="btn btn--primary" to="/cards">
+        경험 카드 보기
+      </Link>
+    ) : detail.needsJudgement ? (
       returned && !judge.isError ? null : (
         <Button loading={judge.isPending} onClick={startJudge}>
           이 공고와 맞춰 보기
@@ -404,7 +410,11 @@ export function MatchDetailPage() {
                   ))}
                 </ol>
               )}
-              {detail.needsJudgement && !returned && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>}
+              {noConfirmedCards ? (
+                <p className="posting-summary__hint">경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.</p>
+              ) : (
+                detail.needsJudgement && !returned && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
+              )}
               <div className="posting-summary__actions">
                 {action}
                 <a

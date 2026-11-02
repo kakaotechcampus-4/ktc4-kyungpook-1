@@ -104,8 +104,9 @@ describe('실패한 분석 화면 — 다시 시도할 수 없으면 그 항목�
       expect(screen.queryByText('다시 시도')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
       expect(screen.queryByText(/시도할 수 없어요/)).not.toBeInTheDocument();
-      expect(screen.getByText('이렇게 해 보시겠어요')).toBeInTheDocument();
-      expect(screen.getAllByRole('link', { name: '이동' })).toHaveLength(2);     // 다른 저장소 고르기 · 직접 쓰기
+      expect(screen.getByText('이렇게 해 볼 수 있어요')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: '레포 목록으로' })).toHaveAttribute('href', '/repos');     // 다른 레포 고르기
+      expect(screen.getByRole('link', { name: '직접 작성하기' })).toHaveAttribute('href', '/cards/new'); // GitHub 없이 시작
     }
   });
 

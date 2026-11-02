@@ -25,6 +25,12 @@ const cardLabel: Record<LiveCard['state'], string> = {
 const unsettled = (phase: SlotPhase) => phase === 'WAITING' || phase === 'NEXT' || phase === 'WRITING' || phase === 'REWRITING';
 
 const titleOf = (card: LiveCard) => card.title.trim() || `${card.index + 1}번째 카드`;
+/**
+ * 서버가 AI 에 보내지 않고 건너뛴 카드(커밋이 없는 후보로 만든 카드, CardDraftResult.SKIPPED). 칸 글 없이 DONE 으로 끝나 네 칸이 모두 EMPTY 다.
+ * AI 가 근거가 없어 일부러 비운 칸(BLANK)과 다르다
+ */
+const skippedByAi = (card: LiveCard) => card.state === 'DONE' && card.slots.every((slot) => slot.phase === 'EMPTY');
+const SKIPPED_LABEL = '커밋이 없어 AI 초안 없이 만들었어요';
 
 /**
  * 칸에 한 AI 의 과정. 카드 상세의 'AI 가 한 일'과 같은 문장·순서·구분 규칙(draftStepGroups)을 쓰되 칸 이름은 칸 제목이 말해서 뗀다.
@@ -87,7 +93,7 @@ function FinishedCard({ card }: { card: LiveCard }) {
     <details className="live-finished__item" data-state={card.state}>
       <summary className="live-finished__summary">
         <span className="live-finished__title">{titleOf(card)}</span>
-        <span className="live-finished__state">{failed ? '완성하지 못했어요' : blanks ? `다 썼어요, 비운 칸 ${blanks}개` : '다 썼어요'}</span>
+        <span className="live-finished__state">{failed ? '완성하지 못했어요' : skippedByAi(card) ? SKIPPED_LABEL : blanks ? `다 썼어요, 비운 칸 ${blanks}개` : '다 썼어요'}</span>
       </summary>
       <div className="live-finished__body"><Slots card={card} /></div>
     </details>
@@ -140,7 +146,7 @@ export function LiveCardDraft({ view, instant }: {
       <article className="live-card" data-state={current.state} aria-labelledby={cardTitleId}>
         <header className="live-card__head">
           <h3 id={cardTitleId} className="live-card__title">{titleOf(current)}</h3>
-          <span className="live-card__state">{cardLabel[current.state]}</span>
+          <span className="live-card__state">{skippedByAi(current) ? SKIPPED_LABEL : cardLabel[current.state]}</span>
         </header>
         <Slots card={current} />
       </article>

@@ -30,9 +30,15 @@ export function AnalyzePage() {
   const nav = useNavigate();
   const restart = useStartAnalysis();
   const cancel = useCancelJob();
-  useDocumentTitle(repo.data ? `${repo.data.name} 정리 중` : !jobId && repo.isError ? '레포를 확인하지 못했어요' : '정리 중');
 
   const j = job.data;
+  // 탭 제목도 화면이 말하는 상태와 같게(#520 G-13) — 시작 전에 "정리 중"이라고 하지 않는다. 분기 순서는 아래 화면 분기와 같다.
+  const subject = repo.data ? `${repo.data.name} ` : '';
+  useDocumentTitle(job.isError || (!jobId && active.isError) ? '정리 상태를 확인하지 못했어요'
+    : !jobId ? (repo.isError ? '레포를 확인하지 못했어요' : `${subject}정리 시작`)
+    : j?.state === 'FAILED' ? `${subject}정리 실패`
+    : j?.state === 'SUCCEEDED' ? `${subject}${j.partial ? '일부만 정리' : '정리 완료'}`
+    : `${subject}정리 중`);
   const { waitSec, canRetry } = useJobRetry(j);
   const feed = useActivityFeed(j);
 
@@ -78,13 +84,13 @@ export function AnalyzePage() {
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '연결 끊김' }]} />
-        <PageTitle>작업 상태를 확인하지 못했어요</PageTitle>
+        <PageTitle>정리 상태를 확인하지 못했어요</PageTitle>
         <QueryFailure error={jobId ? job.error : active.error} retry={() => jobId ? job.refetch() : active.refetch()} pending={jobId ? job.isFetching : active.isFetching} />
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
-            <span className="w-600" style={{ fontSize: 16 }}>조회 실패는 정리 완료를 뜻하지 않아요</span>
-            <span className="c-2" style={{ fontSize: 14, lineHeight: '21px' }}>정리를 새로 시작하지 않고 기존 작업의 상태를 확인해 주세요.</span>
+            <span className="w-600" style={{ fontSize: 16 }}>정리가 끝났는지 아직 알 수 없어요</span>
+            <span className="c-2" style={{ fontSize: 14, lineHeight: '21px' }}>정리를 새로 시작하지 말고, 상태를 다시 불러와 확인해 주세요.</span>
           </div>
         </div>
         <div className="row" style={{ gap: 8 }}>
@@ -116,7 +122,7 @@ export function AnalyzePage() {
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '정리' }]} />
         <PageTitle>정리를 시작할까요</PageTitle>
-        <RepoContext name={name} note={disconnected ? 'GitHub 연결이 끊겨서 지금은 읽을 수 없어요.' : restart.isPending ? '정리를 요청하고 있어요. 곧 읽기 시작해요.' : active.isPending ? '진행 중인 작업을 확인하고 있어요…' : '진행 중인 작업이 없어요.'}
+        <RepoContext name={name} note={disconnected ? 'GitHub 연결이 끊겨서 지금은 읽을 수 없어요.' : restart.isPending ? '정리를 요청하고 있어요. 곧 읽기 시작해요.' : active.isPending ? '진행 중인 정리를 확인하고 있어요…' : '진행 중인 정리가 없어요.'}
           right={disconnected
             ? <Button onClick={reconnectGithub}>GitHub 다시 연결</Button>
             : <Button onClick={retry} loading={restart.isPending} disabled={active.isPending}>정리 시작</Button>} />
@@ -141,16 +147,16 @@ export function AnalyzePage() {
         </div>
         {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
         <div className="card stack" style={{ gap: 10, padding: '18px 20px' }}>
-          <span className="w-600" style={{ fontSize: 14 }}>이렇게 해 보시겠어요</span>
+          <span className="w-600" style={{ fontSize: 14 }}>이렇게 해 볼 수 있어요</span>
           {[
-            ...(blocked || canRetry ? [['다시 시도', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : '정리를 다시 요청해요',
+            ...(blocked || canRetry ? [['이 레포 다시 정리하기', blocked ? `${minutes(waitSec)} 뒤에 눌러 주세요` : '같은 레포로 정리를 다시 요청해요',
               <Button key="a" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>{blocked ? minutes(waitSec) : '다시 시도'}</Button>]] : []),
-            ...(code === 'GITHUB_UNAVAILABLE' ? [['GitHub 다시 연결', '다시 시도해도 같으면 연결이 끊겼을 수 있어요',
+            ...(code === 'GITHUB_UNAVAILABLE' ? [['GitHub 연결 확인', '다시 시도해도 같으면 연결이 끊겼을 수 있어요',
               <Button key="g" variant="outline" size="sm" onClick={reconnectGithub}>다시 연결</Button>]] : []),
-            ...(code === 'GITHUB_UNAUTHORIZED' ? [['GitHub 다시 연결', '다시 연결하면 정리를 시작하는 화면으로 돌아와요',
+            ...(code === 'GITHUB_UNAUTHORIZED' ? [['GitHub 연결 새로 하기', '다시 연결하면 정리를 시작하는 화면으로 돌아와요',
               <Button key="u" size="sm" onClick={() => reconnectGithubTo(`/repos/${repoId}/run`)}>다시 연결</Button>]] : []),
-            ['다른 레포 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">이동</Link>],
-            ['직접 쓰기', 'GitHub 없이 바로 쓸 수 있어요', <Link key="c" to="/cards/new" className="btn btn--outline btn--sm">이동</Link>],
+            ['다른 레포 고르기', '이 레포에서만 반복되면 레포 쪽 문제일 수 있어요', <Link key="b" to="/repos" className="btn btn--outline btn--sm">레포 목록으로</Link>],
+            ['GitHub 없이 시작', 'GitHub 없이 바로 쓸 수 있어요', <Link key="c" to="/cards/new" className="btn btn--outline btn--sm">직접 작성하기</Link>],
           ].map(([t, d, b], i) => (
             <div key={i} className="card card--paper row" style={{ gap: 14, padding: '12px 14px', border: 0 }}>
               <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 13 }}>{t}</span><span className="t-12 c-2">{d}</span></div>{b}
@@ -168,11 +174,11 @@ export function AnalyzePage() {
         <Breadcrumb items={[...crumbs, { label: '후보 보드' }]} />
         <PageTitle>읽은 데까지 정리했어요</PageTitle>
         {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
-        <div className="card row" style={{ gap: 16, padding: '18px 20px', background: 'var(--state-partial-bg)', border: 0 }}>
+        <div className="card partial-card">
           <Badge kind="NEUTRAL">부분 결과</Badge>
-          <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 16 }}>{code ? jobErrorTitle[code] : '일부 기록만 정리했어요'}</span>
-            <span className="c-2" style={{ fontSize: 12, lineHeight: '20px' }}>{readNote(j)} {code && jobErrorHint[code]}</span>
+          <div className="partial-card__body">
+            <span className="partial-card__title">{code ? jobErrorTitle[code] : '일부 기록만 정리했어요'}</span>
+            <span className="partial-card__note">{readNote(j)} {code && jobErrorHint[code]}</span>
           </div>
           {(canRetry || waitSec > 0) && (
             <Button variant="outline" size="sm" onClick={retry} loading={restart.isPending} disabled={!canRetry}>
@@ -231,7 +237,7 @@ export function AnalyzePage() {
       <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
         <span className="c-2 t-14">끝나면 알려 드릴게요</span>
         <div className="right row" style={{ gap: 8 }}>
-          <Link to="/" className="btn btn--outline">다른 작업 하러 가기</Link>
+          <Link to="/" className="btn btn--outline">다른 일 하러 가기</Link>
           <Button variant="ghost" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>
         </div>
       </div>
@@ -257,8 +263,8 @@ function StageFeed({ lines }: { lines: ActivityLine[] }) {
 
 /** total 을 모르면(null) 분모를 지어내지 않는다 — "82개 읽음"으로만 쓴다. */
 function RetryTimeNotice({ refresh, pending }: { refresh: () => Promise<unknown>; pending: boolean }) {
-  return <div className="query-failure" role="alert"><p>대기 시간을 확인하지 못했어요. 작업 상태를 다시 불러와 주세요.</p>
-    <Button variant="outline" loading={pending} onClick={() => void refresh()}>작업 상태 새로고침</Button></div>;
+  return <div className="query-failure" role="alert"><p>대기 시간을 확인하지 못했어요. 정리 상태를 다시 불러와 주세요.</p>
+    <Button variant="outline" loading={pending} onClick={() => void refresh()}>정리 상태 새로고침</Button></div>;
 }
 function stepDetail(done: number, total: number | null, unit: string, state: string) {
   if (state === 'SKIPPED') return '읽을 게 없어 건너뛰었어요';
@@ -271,5 +277,5 @@ function stepDetail(done: number, total: number | null, unit: string, state: str
 /** 어디까지 읽고 멈췄는지. 단계 진행값이 그대로 근거가 된다. */
 function readNote(j: Job) {
   const read = j.steps.filter((s) => s.done > 0).map((s) => `${jobStepLabel[s.key]} ${s.done}${s.total != null ? `/${s.total}` : ''}${jobStepUnit[s.key]}`);
-  return read.length ? `${read.join(', ')} 까지 읽었어요.` : '아직 아무것도 읽지 못했어요.';
+  return read.length ? `${read.join(', ')}까지 읽었어요.` : '아직 아무것도 읽지 못했어요.';
 }

@@ -102,6 +102,21 @@ describe('#521 sentences and order', () => {
     ]);
   });
 
+  it('REVERT 단계는 칸과 되돌린 이유로 문장이 된다', () => {
+    expect(textOf(
+      { kind: 'REVERT', field: 'R', code: 'UNSOURCED_NUMBER', actor: 'CODE', round: 1 },
+      { kind: 'REVERT', field: 'S', code: 'EMPTY', actor: 'CODE', round: 1 },
+      { kind: 'REVERT', field: 'A', code: 'FUTURE_CODE', actor: 'CODE', round: 1 },
+    )).toEqual([
+      '결과 칸: 고쳐 쓴 글이 더 나빠(근거 없는 숫자를 찾았어요) 앞 글로 되돌렸어요',
+      '상황 칸: 고쳐 쓴 글이 더 나빠(비어 있어요) 앞 글로 되돌렸어요',
+      '행동 칸: 고쳐 쓴 글이 더 나빠(문제를 발견했어요) 앞 글로 되돌렸어요',
+    ]);
+    // 칸 옆에 붙일 때(카드를 쓰는 동안의 화면)는 칸 이름을 뗀다
+    const live = draftStepGroups([parsed({ kind: 'REVERT', field: 'R', code: 'UNSOURCED_NUMBER', actor: 'CODE', round: 1 })], 'R');
+    expect(live.flatMap((g) => g.lines.map((l) => l.text))).toEqual(['고쳐 쓴 글이 더 나빠(근거 없는 숫자를 찾았어요) 앞 글로 되돌렸어요']);
+  });
+
   it('falls back to a plain "problem found" for an unknown flag code and never invents the number', () => {
     expect(textOf({ kind: 'FLAG', field: 'A', code: 'FUTURE_CODE' })).toEqual(['행동 칸: 문제를 발견했어요']);
     expect(textOf({ kind: 'FLAG', field: 'A', code: null })).toEqual(['행동 칸: 문제를 발견했어요']);

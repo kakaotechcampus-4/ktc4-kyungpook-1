@@ -6,7 +6,6 @@ import { AuthGate } from '@/app/AuthGate';
 import { CardPage } from '@/features/cards/CardPage';
 import { CardsListPage } from '@/features/cards/CardsListPage';
 import { HomePage } from '@/features/home/HomePage';
-import { JobStatusPage } from '@/features/jobs/JobStatusPage';
 import { MatchListPage } from '@/features/match/MatchListPage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { ReposPage } from '@/features/repos/ReposPage';
@@ -84,14 +83,6 @@ describe('정리 실패 화면 — 서버가 모르는 오류 코드를 보내�
     mount(<AnalyzePage />, '/repos/r_auth/run?job=job_x', '/repos/:repoId/run');
     expect(await screen.findByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
     expect(screen.getByText(/서버가 작업을 끝내지 못했어요|서버에서 처리하지 못했어요/)).toBeInTheDocument();
-  });
-
-  it('작업 상태 화면도 같다 — 일반 오류 문구가 뜨고 연결 버튼은 없다', async () => {
-    serve({ '/jobs/job_x': job({ errorCode: 'GITHUB_QUOTA_EXCEEDED' }) });
-    mount(<JobStatusPage />, '/jobs/job_x', '/jobs/:jobId');
-    expect(await screen.findByText(/서버가 작업을 끝내지 못했어요|서버에서 처리하지 못했어요/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'GitHub 다시 연결' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '홈으로' })).toBeInTheDocument();
   });
 
   it('남긴 칸(작업 상태)을 모르면 정리가 끝난 것처럼 그리지 않고 "응답을 확인하지 못했어요"로 떨어진다', async () => {
@@ -174,17 +165,18 @@ describe('그 밖의 화면 — 모르는 값 하나로 앱이 막히지 않는�
     expect(alerts()).toHaveLength(0);
   });
 
-  it('공고의 분야·경력 구분을 몰라도 목록이 열리고 기타·경력 표시 없음으로 보인다', async () => {
+  it('공고의 분야·경력 구분을 몰라도 목록이 열리고, 기타·경력 표시 없음으로 읽어 지어내지 않는다', async () => {
     const list = sampleList.data.map((x, i) => (i === 0 ? { ...x, category: 'LEGAL', experience: { level: 'ANY', minYears: null } } : x));
     serve({ '/matches': list });
     mount(<MatchListPage />, '/match');
     const card = (await screen.findByRole('heading', { name: list[0].role })).closest('article') as HTMLElement;
-    expect(within(card).getByText('기타')).toBeInTheDocument();
-    expect(within(card).getByText('경력 표시 없음')).toBeInTheDocument();
+    // 목록 카드의 한 줄 요약은 '기타' 분야와 '경력 표시 없음' 을 그리지 않는다 — 원래 값(백엔드·신입)을 지어내지 않고 학력만 남는다
+    const facts = [...card.querySelectorAll('.posting-facts span')].map((el) => el.textContent);
+    expect(facts).toEqual(['학사↑']);
     // 아는 값의 공고는 그대로다
     const other = (await screen.findByRole('heading', { name: list[1].role })).closest('article') as HTMLElement;
     expect(within(other).getByText('백엔드')).toBeInTheDocument();
-    expect(within(other).getByText('신입 가능')).toBeInTheDocument();
+    expect(within(other).getByText('신입')).toBeInTheDocument();
   });
 
   it('레포의 기여 구분을 몰라도 레포 목록이 열린다', async () => {

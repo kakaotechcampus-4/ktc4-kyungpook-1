@@ -1636,6 +1636,24 @@
         },
         "type" : "object"
       },
+      "CoverLetterPostingResponse" : {
+        "description" : "자소서를 시작한 공고",
+        "properties" : {
+          "company" : {
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "공고 상세의 공고 id",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "title" : {
+            "description" : "공고 제목",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CoverLetterQuestionInput" : {
         "properties" : {
           "charLimit" : {
@@ -1681,6 +1699,10 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "posting" : {
+            "$ref" : "#/components/schemas/CoverLetterPostingResponse",
+            "description" : "공고 상세에서 시작한 자소서면 그 공고, 아니면 null"
+          },
           "questions" : {
             "items" : {
               "$ref" : "#/components/schemas/Question"
@@ -1722,6 +1744,10 @@
           "jobRole" : {
             "type" : "string"
           },
+          "posting" : {
+            "$ref" : "#/components/schemas/CoverLetterPostingResponse",
+            "description" : "공고 상세에서 시작한 자소서면 그 공고, 아니면 null"
+          },
           "questionCount" : {
             "format" : "int32",
             "type" : "integer"
@@ -1747,6 +1773,11 @@
           },
           "memo" : {
             "description" : "지원 이유 등 메모, 1,000자까지. 없으면 null",
+            "type" : "string"
+          },
+          "postingId" : {
+            "description" : "공고 상세에서 시작한 자소서면 그 공고 id, 아니면 null",
+            "format" : "uuid",
             "type" : "string"
           },
           "questions" : {
@@ -2486,6 +2517,11 @@
             },
             "type" : "array"
           },
+          "education" : {
+            "$ref" : "#/components/schemas/MatchEducationResponse",
+            "description" : "목록과 같다: 수준을 읽은 필수 학력 중 가장 낮은 수준. 없으면 null",
+            "type" : "null"
+          },
           "experience" : {
             "$ref" : "#/components/schemas/MatchDetailExperienceResponse"
           },
@@ -2520,6 +2556,25 @@
             "$ref" : "#/components/schemas/MatchSummaryResponse",
             "description" : "needsJudgement 면 null",
             "type" : "null"
+          },
+          "techs" : {
+            "description" : "목록과 같다: 필수·우대 조건의 기술 이름을 조건 순서대로 한 번씩. 없으면 []",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "MatchEducationResponse" : {
+        "properties" : {
+          "exempt" : {
+            "type" : "boolean"
+          },
+          "level" : {
+            "enum" : [ "HIGH_SCHOOL", "ASSOCIATE", "BACHELOR", "MASTER", "DOCTOR" ],
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -2603,6 +2658,11 @@
             "description" : "같은 회사의 공고를 묶는 id. 회사 이름 표기가 달라도 같다",
             "type" : "string"
           },
+          "education" : {
+            "$ref" : "#/components/schemas/MatchEducationResponse",
+            "description" : "필수 학력 조건 중 가장 낮은 수준. exempt 는 '또는 그에 준하는 경력' 같은 예외가 적힌 학력이다. 수준을 읽은 필수 학력이 없으면 null",
+            "type" : "null"
+          },
           "experience" : {
             "$ref" : "#/components/schemas/MatchExperienceResponse"
           },
@@ -2628,6 +2688,13 @@
           },
           "source" : {
             "$ref" : "#/components/schemas/MatchSourceResponse"
+          },
+          "techs" : {
+            "description" : "필수·우대 조건의 기술 이름(카드 techs 와 같은 값)을 조건 순서대로 한 번씩. 없으면 []",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -3010,6 +3077,9 @@
           "theme" : {
             "enum" : [ "COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH", "MOTIVATION" ],
             "type" : "string"
+          },
+          "writing" : {
+            "$ref" : "#/components/schemas/Writing"
           }
         },
         "type" : "object"
@@ -3659,6 +3729,18 @@
         },
         "type" : "object"
       },
+      "Writing" : {
+        "properties" : {
+          "round" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "WritingStep" : {
         "properties" : {
           "action" : {
@@ -3678,6 +3760,9 @@
             "type" : "string"
           },
           "reason" : {
+            "type" : "string"
+          },
+          "sentence" : {
             "type" : "string"
           },
           "sentenceSeq" : {
@@ -6066,7 +6151,7 @@
         "tags" : [ "Cover letters" ]
       },
       "post" : {
-        "description" : "직무·메모·문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING).\n같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.\n화면은 입력을 고치면 새 키를 만듭니다.\n",
+        "description" : "직무·메모·문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING).\n공고 상세에서 시작하면 postingId 를 보내며, 그때의 공고와 맞춰 본 판단을 자소서에 남겨 카드 고르기·질문·초안이 그 기준으로 AI 를 부릅니다.\n같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.\n화면은 입력을 고치면 새 키를 만듭니다.\n",
         "operationId" : "create_1",
         "parameters" : [ {
           "description" : "응답을 못 받고 다시 보내도 자소서가 한 편만 생기도록, 만들 때마다 새로 만들어 보내는 255자까지의 키",
@@ -6112,11 +6197,11 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                  "$ref" : "#/components/schemas/ApiResponse"
                 }
               }
             },
-            "description" : "Not Found"
+            "description" : "NOT_FOUND: postingId 가 UUID 가 아니거나 공고 상세에서 열 수 없는 공고"
           },
           "409" : {
             "content" : {

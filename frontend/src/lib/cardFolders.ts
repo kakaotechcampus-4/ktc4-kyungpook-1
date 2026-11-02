@@ -33,8 +33,6 @@ export type CardFolder = {
   experienceCount: number;
   /** 가장 많은 카드에 붙은 기술 둘(같으면 최근 카드 쪽이 앞). 카드에 태그가 없으면 [] — 지어내지 않는다 */
   techs: CardTech[];
-  /** 검색·상태로 거른 보기에서 조건에 맞는 카드 수. 거르지 않으면 undefined */
-  matched?: number;
   /** 폴더를 정렬하는 시각 */
   touchedAt: string;
 };
@@ -103,14 +101,6 @@ export function buildFolders(cards: readonly CardSummary[], activities?: readonl
 /** 경험 카드(직접 쓴 정성 카드)가 한 장도 없는 폴더. 앞판에 '경험 카드 없음'을 적어 더 쓸 곳을 보여 준다. 직접 쓴 카드 폴더는 해당 없다 */
 export const lacksExperience = (folder: CardFolder) => folder.kind !== 'direct' && folder.experienceCount === 0;
 
-/** 검색·상태로 거른 보기: 맞는 카드가 있는 폴더만 남기고 그 수를 `matched` 에 둔다. 폴더 자체의 카드와 장 수는 그대로다 */
-export function withMatches(folders: readonly CardFolder[], matchedIds: ReadonlySet<string>): CardFolder[] {
-  return folders.flatMap((folder) => {
-    const matched = folder.cards.filter((card) => matchedIds.has(card.id)).length;
-    return matched > 0 ? [{ ...folder, matched }] : [];
-  });
-}
-
 /** 폴더의 화면용 이름. 이름 없는 활동(모르는 값)이 빈 글로 보이지 않게 한다 */
 export const folderTitle = (folder: Pick<CardFolder, 'kind' | 'name'>) => folder.name || (folder.kind === 'activity' ? '이름 없는 활동' : '이름 없는 폴더');
 
@@ -121,8 +111,7 @@ export const folderOwnerLine = (folder: Pick<CardFolder, 'owner'>) => folder.own
 /** 폴더 앞판에 적힌 글(소유자, 이름, 장 수, 경험 카드 없음, 기술)을 모두 담은 링크 이름. 보이는 글이 이름에 들어 있어야 한다(WCAG 2.5.3) */
 export function folderLabel(folder: CardFolder): string {
   const kind = folder.kind === 'repo' ? '레포 ' : '';
-  const parts = [`${kind}${folderOwnerLine(folder)}`, folderTitle(folder),
-    folder.matched === undefined ? `카드 ${folder.cards.length}장` : `맞는 카드 ${folder.matched}장, 전체 ${folder.cards.length}장`];
+  const parts = [`${kind}${folderOwnerLine(folder)}`, folderTitle(folder), `카드 ${folder.cards.length}장`];
   if (lacksExperience(folder)) parts.push('경험 카드 없음');
   if (folder.techs.length) parts.push(`기술 ${folder.techs.map((tech) => techLabels[tech] ?? tech).join(', ')}`);
   return parts.join(', ');

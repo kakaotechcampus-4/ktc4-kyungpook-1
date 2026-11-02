@@ -114,7 +114,7 @@ describe('후보 보드 (C-01, C-02, C-03, C-06, C-09)', () => {
   it('후보가 하나도 없는 화면의 제목도 "후보"이고, 글을 직접 쓰는 길은 "직접 작성"이다', () => {
     mountBoard('r_web');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('자동으로 찾은 후보가 없어요');
-    expect(screen.getByRole('link', { name: '직접 작성' })).toHaveAttribute('href', '/cards/new');
+    expect(screen.getByRole('link', { name: '직접 작성' })).toHaveAttribute('href', '/cards/new?repo=r_web'); // 그 레포가 붙은 쓰기 화면(#673)
     expect(screen.queryByRole('link', { name: '직접 입력' })).not.toBeInTheDocument();
   });
 
@@ -176,6 +176,7 @@ describe('경험 카드 목록 (CL-03)', () => {
     const qc = client();
     qc.setQueryData(keys.cards, (req('GET', '/cards') as unknown[]).map((c) => CardSummary.parse(c)));
     render(<QueryClientProvider client={qc}><MemoryRouter><CardsListPage /></MemoryRouter></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('radio', { name: '최근순' })); // 상태 탭은 최근순·기술별 보기에만 있다(#687)
     fireEvent.click(screen.getByRole('button', { name: /^확정됨/ }));
     expect(screen.getByRole('status')).toHaveTextContent(/^카드 \d+장$/);
     expect(screen.queryByText(/개 보기/)).not.toBeInTheDocument();
@@ -300,7 +301,7 @@ describe('되묻기 (IV-02, IV-03)', () => {
 
 describe('직접 작성 (NC-01, NC-03)', () => {
   it('시작 버튼은 "작성 시작"이고, 필수 표시는 제목과 칸 모두 "(필수)"로 같다', () => {
-    const router = createMemoryRouter([{ path: '/cards/new', element: <NewCardPage /> }], { initialEntries: ['/cards/new'] });
+    const router = createMemoryRouter([{ path: '/cards/new', element: <NewCardPage /> }], { initialEntries: ['/cards/new?write=1'] }); // 네 칸 양식(#678)
     vi.spyOn(endpoints, 'repos').mockResolvedValue([]);
     render(<QueryClientProvider client={client()}><RouterProvider router={router} /></QueryClientProvider>);
     const footer = document.querySelector('.sticky-footer') as HTMLElement;

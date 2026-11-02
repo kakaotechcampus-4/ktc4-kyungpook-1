@@ -1,6 +1,15 @@
-import type { AssignStep, CoverLetterQuestion, DraftStep, MaterialItem, QuestionTheme } from '@/api/coverLetters';
-import { QUESTION_THEMES } from '@/api/coverLetters';
+import type { AssignStep, CoverLetterPosting, CoverLetterQuestion, DraftStep, MaterialItem, QuestionTheme } from '@/api/coverLetters';
+import { COVER_LETTER_LIMITS as L, QUESTION_THEMES } from '@/api/coverLetters';
 import { themeLabel } from '@/lib/cardThemes';
+
+/** ① 공고에서 시작하면 직무 칸에 미리 채우는 공고 제목 — 직무 칸 한도에 맞춰 자른다 */
+export const prefillJobRole = (title: string) => title.trim().slice(0, L.JOB_ROLE);
+
+/** 목록 둘째 줄 — 직무가 미리 채운 공고 제목 그대로면 회사만 적어 같은 글자가 두 줄에 나오지 않게 한다 */
+export function postingLine(posting: CoverLetterPosting | null, jobRole: string): string | null {
+  if (!posting) return null;
+  return prefillJobRole(posting.title) === jobRole.trim() ? posting.company : `${posting.company} · ${posting.title}`;
+}
 
 /** 문항 유형 이름 — 카드 유형 7개는 카드 화면과 같은 이름을 쓰고, 지원 동기만 자소서에서 더한다 */
 export const THEME_LABEL: Record<QuestionTheme, string> = { MOTIVATION: '지원 동기', ...themeLabel };
@@ -106,9 +115,11 @@ export function checkMessage(code: string | null, value: string | null): string 
 
 /**
  * ⑤ AI 가 한 일 — `steps.draft` 한 줄을 문장으로. 쓰기, 검사, 고칠지 정하기, 다시 쓰기, 감독 검토가 차례로 쌓인다.
- * 모르는 kind 는 null(건너뛴다).
+ * 모르는 actor·kind 는 null(건너뛴다).
  */
-export function draftLine(step: DraftStep, questions: Pick<CoverLetterQuestion, 'id' | 'seq'>[]): { text: string; reason: string | null; tone: 'work' | 'check' | 'fix' } | null {
+type DraftLineStep = Pick<DraftStep, 'actor' | 'kind' | 'questionId' | 'code' | 'value' | 'sentenceSeq' | 'action' | 'reason'>;
+export function draftLine(step: DraftLineStep, questions: Pick<CoverLetterQuestion, 'id' | 'seq'>[]): { text: string; reason: string | null; tone: 'work' | 'check' | 'fix' } | null {
+  if (step.actor !== 'SUB_AGENT' && step.actor !== 'SUPERVISOR' && step.actor !== 'CODE') return null;
   const n = questions.find((q) => q.id === step.questionId)?.seq;
   const q = n != null ? `${n}번 문항 ` : '';
   const chars = step.value && /^\d+$/.test(step.value) ? `(${Number(step.value).toLocaleString()}자)` : '';

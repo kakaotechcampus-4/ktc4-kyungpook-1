@@ -11,18 +11,20 @@ import { INTERESTS_ID, addId, fieldId, type ProfileFormState } from './useProfil
 
 export const EDU_LEVEL_ID = 'p-edu-level';
 
-const SECTION_NOUN: Record<SectionKey, string> = { educations: '학력', careers: '경력', languages: '어학', certifications: '자격증' };
-const SECTION_HINT: Record<SectionKey, string> = {
+/** 줄마다 칸을 채우는 영역 — 자격증은 이름만 받아 CertificationQuick 으로 고른다 */
+type RowSection = Exclude<SectionKey, 'certifications'>;
+
+const SECTION_NOUN: Record<RowSection, string> = { educations: '학력', careers: '경력', languages: '어학' };
+const SECTION_HINT: Record<RowSection, string> = {
   educations: "다니고 있거나 마친 학교를 적어 주세요. 학력 구분·학교·상태만 꼭 필요하고 나머지는 비워 둬도 돼요. 졸업을 앞두고 있다면 상태에서 '졸업 예정'을 골라 주세요.",
   careers: "회사에서 한 일과 기간을 적어 주세요. 인턴·계약직도 괜찮아요. 일하고 있다면 '재직 중'을 골라 주세요.",
   languages: "공인 어학 시험을 적어 주세요. 점수나 등급은 시험에 나온 그대로 적으면 돼요. 목록에 없는 시험은 '기타'를 고르고 이름을 적어 주세요.",
-  certifications: '취득한 자격증을 적어 주세요. 발급 기관과 취득 월은 몰라도 괜찮아요.',
 };
 type Span = 'half' | 'wide' | 'full';
 type ControlProps = { id: string; 'aria-label': string; 'aria-invalid'?: true; 'aria-describedby'?: string; autoComplete: string; spellCheck: boolean };
 
 function Section({ section, title, hint, count, onAdd, error, children }: {
-  section: SectionKey; title: string; hint: string; count: number; onAdd: () => void; error?: string; children: ReactNode;
+  section: RowSection; title: string; hint: string; count: number; onAdd: () => void; error?: string; children: ReactNode;
 }) {
   const max = PROFILE_LIMITS.MAX_ITEMS[section];
   const full = count >= max;
@@ -81,7 +83,7 @@ export function InterestPicker({ value, onChange, error }: { value: Interest[]; 
 }
 
 /** 네 목록 가운데 하나의 편집기 — 마이페이지 폼과 처음 입력 창이 같은 칸·검증·초점 규칙을 쓴다 */
-export function SectionEditor({ section, state }: { section: SectionKey; state: ProfileFormState }) {
+export function SectionEditor({ section, state }: { section: RowSection; state: ProfileFormState }) {
   const { form, errors, edit, add, remove } = state;
 
   /**
@@ -173,18 +175,6 @@ export function SectionEditor({ section, state }: { section: SectionKey; state: 
               {other && f.text('testName', '시험 이름', row.testName, PROFILE_LIMITS.TEXT, (testName) => edit('languages', i, { testName }), { span: 'wide', placeholder: '예) TOPIK' })}
               {f.text('score', '점수 또는 등급', row.score, PROFILE_LIMITS.SCORE, (score) => edit('languages', i, { score }), { span, placeholder: scorePlaceholder(row.test) })}
               {f.month('acquiredMonth', '취득 월', row.acquiredMonth, (acquiredMonth) => edit('languages', i, { acquiredMonth }), { span, optional: true })}
-            </Row>
-          );
-        });
-      case 'certifications':
-        return form.certifications.map((row, i) => {
-          const f = kit(i, row.key);
-          const n = i + 1;
-          return (
-            <Row key={row.key} title={`자격증 ${n}`} removeLabel={`자격증 ${n} 삭제`} onRemove={() => remove('certifications', i)}>
-              {f.text('name', '이름', row.name, PROFILE_LIMITS.TEXT, (name) => edit('certifications', i, { name }), { placeholder: '예) 정보처리기사' })}
-              {f.text('issuer', '발급 기관', row.issuer, PROFILE_LIMITS.TEXT, (issuer) => edit('certifications', i, { issuer }), { optional: true, placeholder: '예) 한국산업인력공단' })}
-              {f.month('acquiredMonth', '취득 월', row.acquiredMonth, (acquiredMonth) => edit('certifications', i, { acquiredMonth }), { optional: true })}
             </Row>
           );
         });
@@ -326,7 +316,7 @@ function LanguageScore({ index, state }: { index: number; state: ProfileFormStat
   );
 }
 
-/** 처음 입력 창의 자격증 — 흔한 자격증은 타일로, 그 밖은 직접 적어 더한다. 발급 기관·취득 월은 마이페이지 폼에서 */
+/** 자격증 — 흔한 자격증은 타일로, 그 밖은 직접 적어 더한다(처음 입력 창과 마이페이지가 같이 쓴다) */
 export function CertificationQuick({ state }: { state: ProfileFormState }) {
   const rows = state.form.certifications;
   const [custom, setCustom] = useState('');
@@ -343,8 +333,8 @@ export function CertificationQuick({ state }: { state: ProfileFormState }) {
   return (
     <section className="settings-section profile-section" aria-label="자격증">
       <SectionHead label="자격증" count={rows.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
-      <p className="profile-section__hint">가진 자격증을 누르거나 직접 적어 주세요. 발급 기관·취득 월은 마이페이지 인적사항에서 더 적을 수 있어요.</p>
-      <ul className="interest-grid interest-grid--2">
+      <p className="profile-section__hint">가진 자격증을 누르거나 직접 적어 주세요.</p>
+      <ul className="interest-grid interest-grid--2 cert-grid">
         {COMMON_CERTIFICATIONS.map((name) => {
           const on = has(name);
           return (

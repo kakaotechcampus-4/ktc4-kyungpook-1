@@ -13,7 +13,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useActionGate } from '@/lib/useActionGate';
 import { addTopRecommended, CARD_LIMIT_MESSAGE, MAX_CARDS_PER_REQUEST, splitRecommended } from '@/lib/candidatePicks';
-import { Braces, Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink, FileCode2, GitCommitHorizontal, MessageSquare, X } from 'lucide-react';
+import { Braces, Check as CheckIcon, ChevronDown, ChevronUp, ExternalLink, FileCode2, GitCommitHorizontal, MessageSquare, PenLine, X } from 'lucide-react';
 import { MetaItem } from '@/components/MetaItem';
 
 const selKey = (repoId: string) => `gitory.sel.${repoId}`;
@@ -118,7 +118,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
     const { cardIds, jobId } = await create.mutateAsync(chosen);
     track('candidates_confirmed', { repoId, count: chosen.length, jobId });
     setSelected(new Set());
-    nav(cardIds.length ? `/cards/${encodeURIComponent(cardIds[0])}` : `/jobs/${encodeURIComponent(jobId)}`, { state: cardIds.length ? { cardOrder: cardIds } : undefined });
+    nav(cardIds.length ? `/cards/${encodeURIComponent(cardIds[0])}` : `/cards/repo/${encodeURIComponent(repoId)}`, { state: cardIds.length ? { cardOrder: cardIds } : undefined });
     });
   };
 
@@ -142,7 +142,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
             <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>
             <div className="row" style={{ gap: 8 }}>
-              <Link to="/cards/new" className="btn btn--outline btn--sm">직접 작성</Link>
+              <Link to={`/cards/new?repo=${encodeURIComponent(repoId)}`} className="btn btn--outline btn--sm">직접 작성</Link>
               <Link to="/repos" className="btn btn--outline btn--sm">다른 레포</Link>
             </div>
           </div>
@@ -156,7 +156,10 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       <Breadcrumb items={crumbs} />
       <PageTitle lead="커밋과 PR에서 카드로 만들 만한 후보를 골라 뒀어요. 자소서에 쓸 것만 체크하면 카드 초안을 써 드려요.">{b.partial ? `후보 ${open.length}개 (부분 결과)` : `후보 ${open.length}개`}</PageTitle>
       <RepoContext name={name} note="카드로 만들 후보를 골라 주세요."
-        right={<Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>정리 기준</Button>} />
+        right={<div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <Link to={`/cards/new?repo=${encodeURIComponent(repoId)}`} className="btn btn--outline btn--sm"><PenLine size={14} aria-hidden />경험 카드 직접 쓰기</Link>
+          <Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>정리 기준</Button>
+        </div>} />
 
       {b.partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 20px', background: 'var(--state-partial-bg)', border: 0, flexWrap: 'wrap' }}>

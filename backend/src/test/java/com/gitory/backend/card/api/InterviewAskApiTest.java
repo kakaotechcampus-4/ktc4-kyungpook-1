@@ -732,7 +732,7 @@ class InterviewAskApiTest {
     @DisplayName("field 없이 요청하면 AI 가 고른 칸의 질문을 저장하고, 누가 물었나는 AUTO(FOLLOW_UP)이며 바로 앞 질문을 부모로 남긴다")
     void askWithoutFieldSavesAiChosenSlot() throws Exception {
 
-        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long cardId = techCard();
         Long previous = interviews.insertAnswered(cardId, 1, "S", "배포가 느렸다", "TYPED");
         AI.replyWith(request -> reply(cardId, "R", "MEASURE", "얼마나 빨라졌나요?", "배포 시간을 줄였다"));
 
@@ -890,7 +890,7 @@ class InterviewAskApiTest {
     @DisplayName("넘김으로 끝난 칸은 고를 수 있는 칸과 AI 에 보내는 칸 글에서 빠진다")
     void closedSlotIsNotSentToAi() throws Exception {
 
-        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        Long cardId = techCard();
         interviews.insertTurn(cardId, 1, "T", "EVIDENCE_GAP", "USER", "맡은 일은요?", "SKIPPED", null, null);
 
         send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
@@ -898,6 +898,21 @@ class InterviewAskApiTest {
         JsonNode sent = sentRequest();
         assertThat((Object) sent.path("allowed_slots")).isEqualTo(MAPPER.readTree("[\"S\", \"A\", \"R\"]"));
         assertThat(sent.path("missing_slots").findValuesAsString("star_slot")).containsExactly("S", "A", "R");
+
+    }
+
+    @Test
+    @DisplayName("경험 카드에서 field 없이 요청하면 마지막으로 물은 칸과 순서상 첫 빈 칸만 고를 칸으로 AI 에 보낸다")
+    void experienceCardOffersTheLastAndTheNextEmptySlot() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        fixtures.insertStatement(cardId, 1, "S", "배포가 느렸다", "USER_STATED", null);
+        interviews.insertAnswered(cardId, 1, "S", "배포가 느렸다", "TYPED");
+        AI.replyWith(request -> reply(cardId, "T", "TEXT", "그때 맡은 일은 무엇이었나요?"));
+
+        send(myUserId, MY_CARD.toString(), "{}").andExpect(status().isOk());
+
+        assertThat((Object) sentRequest().path("allowed_slots")).isEqualTo(MAPPER.readTree("[\"S\", \"T\"]"));
 
     }
 
@@ -1233,5 +1248,15 @@ class InterviewAskApiTest {
     }
 
     private record AuditRow(Long userId, String action, Long subjectId, String outcome) {
+    }
+
+    // 경험 카드는 칸 순서대로 좁혀 묻으므로, AI 가 아무 칸이나 고르는 경우를 보는 시험은 기술 카드로 본다
+    private Long techCard() {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        jdbc.update("UPDATE card SET card_type = 'TECH' WHERE id = ?", cardId);
+
+        return cardId;
+
     }
 }

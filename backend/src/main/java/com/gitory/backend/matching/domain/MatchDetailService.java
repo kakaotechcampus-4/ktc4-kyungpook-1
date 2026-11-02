@@ -116,7 +116,7 @@ public class MatchDetailService {
                 .map(JobPostingCriterion::getId)
                 .collect(Collectors.toSet());
         List<MatchableCondition> graded = rows.stream()
-                .map(row -> new MatchableCondition(row.posting(), row.criterion().getId(), row.criterion().getType()))
+                .map(row -> MatchableCondition.of(row.posting(), row.criterion()))
                 .toList();
 
         // 등급은 목록처럼 화면에서 뺐으므로 fit 은 늘 null 이다

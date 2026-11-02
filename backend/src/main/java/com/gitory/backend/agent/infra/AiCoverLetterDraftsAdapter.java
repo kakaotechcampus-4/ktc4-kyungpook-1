@@ -2,6 +2,7 @@ package com.gitory.backend.agent.infra;
 
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.CoverLetterDrafts;
+import com.gitory.backend.agent.port.CoverLetterDraftsListener;
 import com.gitory.backend.agent.port.CoverLetterDraftsPort;
 import com.gitory.backend.agent.port.CoverLetterDraftsRequest;
 import com.gitory.backend.common.infra.ai.AiClientException;
@@ -13,6 +14,7 @@ import tools.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -36,6 +38,8 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
     private static final Set<String> KINDS = Set.of("WROTE", "CHECK_PASSED", "CHECK_FAILED", "DECIDED", "REWROTE",
             "REVERTED", "MARKED", "SKELETON", "REVIEWED", "SENT_BACK", "FAILED");
     private static final Set<String> ACTIONS = Set.of("FIX", "KEEP");
+    // AI 가 쓰는 도중의 글을 이 길이로 잘라 보내므로, 넘는 줄은 AI 가 잘못 보낸 것이다
+    private static final int LIVE_TEXT_MAX_LENGTH = 5_000;
 
     private final AiHttpClient ai;
     private final AiClientProperties properties;
@@ -43,9 +47,21 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
     @Override
     public CoverLetterDrafts write(CoverLetterDraftsRequest request) {
 
+        return write(request, null);
+
+    }
+
+    /** listener 가 없으면 글을 흘려보내지 않는 초안 쓰기 API 를 부른다 */
+    @Override
+    public CoverLetterDrafts write(CoverLetterDraftsRequest request, CoverLetterDraftsListener listener) {
+
+        Set<Integer> questionIds = Set.copyOf(questionIdsOf(request));
         JsonNode data;
         try {
-            data = ai.post(PATH, request, properties.readTimeout());
+            data = listener == null
+                    ? ai.post(PATH, request, properties.readTimeout())
+                    : ai.postStreaming(PATH + "/stream", request, properties.readTimeout(),
+                            progress -> forward(progress.liveItem(), questionIds, listener));
         } catch (AiClientException failure) {
             throw unavailable(failure);
         }
@@ -58,9 +74,47 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
 
     }
 
+    // 글·단계 줄은 화면에 보여 줄 값이라 모양이 틀린 줄만 버리고 초안은 계속 받는다
+    private static void forward(JsonNode item, Set<Integer> questionIds, CoverLetterDraftsListener listener) {
+
+        if (item == null) {
+            return;
+        }
+        String kind = item.path("kind").asString("");
+        if ("STEP".equals(kind)) {
+            liveStep(item.path("step"), questionIds).ifPresent(listener::step);
+            return;
+        }
+        JsonNode questionId = item.path("question_id");
+        JsonNode round = item.path("round");
+        JsonNode text = item.path("text");
+        if ("DRAFT_TEXT".equals(kind) && questionId.isIntegralNumber() && questionId.canConvertToInt()
+                && questionIds.contains(questionId.intValue()) && round.isIntegralNumber() && round.canConvertToInt()
+                && round.intValue() >= 0 && text.isString() && text.asString().length() <= LIVE_TEXT_MAX_LENGTH) {
+            listener.text(questionId.intValue(), round.intValue(), text.asString());
+        }
+
+    }
+
+    private static Optional<CoverLetterDrafts.Step> liveStep(JsonNode node, Set<Integer> questionIds) {
+
+        try {
+            return Optional.of(step(node, questionIds));
+        } catch (RuntimeException malformed) {
+            return Optional.empty();
+        }
+
+    }
+
+    private static List<Integer> questionIdsOf(CoverLetterDraftsRequest request) {
+
+        return request.questions().stream().map(CoverLetterDraftsRequest.Question::questionId).toList();
+
+    }
+
     private static CoverLetterDrafts response(JsonNode data, CoverLetterDraftsRequest request) {
 
-        List<Integer> sent = request.questions().stream().map(CoverLetterDraftsRequest.Question::questionId).toList();
+        List<Integer> sent = questionIdsOf(request);
         List<CoverLetterDrafts.Draft> drafts = new ArrayList<>();
         for (JsonNode node : array(data, "drafts")) {
             drafts.add(draft(node));
@@ -117,7 +171,8 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
         return new CoverLetterDrafts.Step(positiveInt(node, "seq"), oneOf(node, "actor", ACTORS),
                 oneOf(node, "kind", KINDS), questionId, optionalOneOf(node, "code", STEP_CODES),
                 optionalString(node, "value"), optionalPositiveInt(node, "sentence_seq"),
-                optionalOneOf(node, "action", ACTIONS), optionalString(node, "reason"));
+                optionalString(node, "sentence"), optionalOneOf(node, "action", ACTIONS),
+                optionalString(node, "reason"));
 
     }
 

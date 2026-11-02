@@ -17,7 +17,7 @@ const card = (overrides: Partial<Card> = {}): Card => ({
 beforeEach(() => { vi.stubEnv('VITE_API_MOCK', 'false'); vi.spyOn(endpoints, 'repos').mockResolvedValue(seedRepos.map(repo => RepoSummary.parse(repo))); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 function mount() {
-  const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:id', element: <p>기존 카드 화면</p> }, { path: '/', element: <p>홈</p> }], { initialEntries: ['/new'] });
+  const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:id', element: <p>기존 카드 화면</p> }, { path: '/', element: <p>홈</p> }], { initialEntries: ['/new?write=1'] });
   render(<StrictMode><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
   return router;
 }
@@ -72,13 +72,13 @@ describe('manual startup contract #183', () => {
     vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ cardId: id, versionNo: 1, ...fields, savedAt: '2026-10-12T00:00:01Z' }));
     const router = mount(); change('카드 제목', '첫 카드'); fireEvent.click(screen.getByRole('button', { name: '작성 시작' }));
     fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
-    await screen.findByText('기존 카드 화면', {}, { timeout: 5000 });
-    await act(async () => { await router.navigate('/new'); });
+    await screen.findByText('기존 카드 화면', {}, { timeout: 10_000 });
+    await act(async () => { await router.navigate('/new?write=1'); });
     change('카드 제목', '다음 카드'); fireEvent.click(screen.getByRole('button', { name: '작성 시작' }));
     fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
-    await screen.findByText('기존 카드 화면', {}, { timeout: 5000 });
+    await screen.findByText('기존 카드 화면', {}, { timeout: 10_000 });
     expect(create).toHaveBeenCalledTimes(2); expect(create.mock.calls[0][1]).not.toBe(create.mock.calls[1][1]);
-  }, 20000); // 만들기·저장·화면 이동을 두 번 거쳐, 전체 시험이 한꺼번에 돌 때는 화면 이동이 1초를 넘길 때가 있다
+  }, 25_000); // 만들기·저장·화면 이동을 두 번 거쳐, 전체 시험이 한꺼번에 돌 때는 화면 이동이 5초를 넘길 때가 있다(CI Node 24)
 
   it('keeps untouched server STAR slots when replay already contains writing', async () => {
     const returned = card({ title: '이미 만든 카드', version: { ...card().version, situation: '서버에서 이어 쓴 상황', task: '서버 과제', action: null, result: null } });

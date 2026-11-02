@@ -14,7 +14,9 @@ import tools.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -39,9 +41,23 @@ public class AiCoverLetterAssignmentAdapter implements CoverLetterAssignmentPort
     @Override
     public CoverLetterAssignment assign(CoverLetterAssignmentRequest request) {
 
+        return assign(request, null);
+
+    }
+
+    /** onStep 이 없으면 단계를 흘려보내지 않는 카드 고르기 API 를 부른다 */
+    @Override
+    public CoverLetterAssignment assign(CoverLetterAssignmentRequest request,
+                                        Consumer<CoverLetterAssignment.Step> onStep) {
+
+        Set<Integer> questionIds = Set.copyOf(questionIdsOf(request));
+        Set<Long> sentCards = cardIdsOf(request);
         JsonNode data;
         try {
-            data = ai.post(PATH, request, properties.readTimeout());
+            data = onStep == null
+                    ? ai.post(PATH, request, properties.readTimeout())
+                    : ai.postStreaming(PATH + "/stream", request, properties.readTimeout(),
+                            progress -> forward(progress.liveItem(), questionIds, sentCards, onStep));
         } catch (AiClientException failure) {
             throw unavailable(failure);
         }
@@ -54,12 +70,31 @@ public class AiCoverLetterAssignmentAdapter implements CoverLetterAssignmentPort
 
     }
 
+    // 단계 줄은 화면에 보여 줄 값이라 모양이 틀린 줄만 버리고 배정은 계속 받는다
+    private static void forward(JsonNode item, Set<Integer> questionIds, Set<Long> sentCards,
+                                Consumer<CoverLetterAssignment.Step> onStep) {
+
+        if (item != null && "STEP".equals(item.path("kind").asString(""))) {
+            liveStep(item.path("step"), questionIds, sentCards).ifPresent(onStep);
+        }
+
+    }
+
+    private static Optional<CoverLetterAssignment.Step> liveStep(JsonNode node, Set<Integer> questionIds,
+                                                                 Set<Long> sentCards) {
+
+        try {
+            return Optional.of(step(node, questionIds, sentCards));
+        } catch (RuntimeException malformed) {
+            return Optional.empty();
+        }
+
+    }
+
     private static CoverLetterAssignment response(JsonNode data, CoverLetterAssignmentRequest request) {
 
-        List<Integer> sentQuestions = request.questions().stream().map(CoverLetterAssignmentRequest.Question::questionId)
-                .toList();
-        Set<Long> sentCards = request.cards().stream().map(CoverLetterAssignmentRequest.Card::cardId)
-                .collect(Collectors.toSet());
+        List<Integer> sentQuestions = questionIdsOf(request);
+        Set<Long> sentCards = cardIdsOf(request);
 
         List<CoverLetterAssignment.Question> assignments = new ArrayList<>();
         for (JsonNode node : array(data, "assignments")) {
@@ -76,6 +111,18 @@ public class AiCoverLetterAssignmentAdapter implements CoverLetterAssignmentPort
         }
 
         return new CoverLetterAssignment(List.copyOf(assignments), List.copyOf(steps));
+
+    }
+
+    private static List<Integer> questionIdsOf(CoverLetterAssignmentRequest request) {
+
+        return request.questions().stream().map(CoverLetterAssignmentRequest.Question::questionId).toList();
+
+    }
+
+    private static Set<Long> cardIdsOf(CoverLetterAssignmentRequest request) {
+
+        return request.cards().stream().map(CoverLetterAssignmentRequest.Card::cardId).collect(Collectors.toSet());
 
     }
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, ContractError } from "./client";
-import { CardKind, unknownAs } from "./schemas";
+import { CardKind, CardTech, unknownAs } from "./schemas";
 
 export const MatchCategory = z.enum([
   "BACKEND",
@@ -41,6 +41,13 @@ const companyId = z
   .unknown()
   .transform((value) => (typeof value === "string" && value.trim() !== "" ? value : null));
 const logoUrl = z.unknown().transform((value) => (isHttpsUrl(value) ? value : null));
+// 목록 줄에 그리는 기술·학력. 구서버에는 두 칸이 없고, 모르는 기술 이름은 버린다 — 없으면 [] · null 이라 줄에서 그 자리를 비운다.
+const techs = z
+  .array(z.unknown())
+  .catch([])
+  .transform((values) => values.flatMap((value) => { const tech = CardTech.safeParse(value); return tech.success ? [tech.data] : []; }));
+export const EducationLevel = z.enum(["HIGH_SCHOOL", "ASSOCIATE", "BACHELOR", "MASTER", "DOCTOR"]);
+const education = z.object({ level: EducationLevel, exempt: z.boolean() }).nullable().catch(null);
 export const MatchTarget = z.object({
   id: z.string(),
   company: z.string(),
@@ -55,6 +62,10 @@ export const MatchTarget = z.object({
   required: counts,
   preferred: counts,
   experience,
+  /** 필수·우대 조건의 기술을 조건 순서대로 한 번씩. 카드 techs 와 같은 이름 */
+  techs,
+  /** 수준을 읽은 필수 학력 조건 중 가장 낮은 수준. exempt 는 '또는 그에 준하는 경력' 처럼 예외가 적힌 학력 */
+  education,
   source: z.object({
     url: z
       .string()
@@ -199,10 +210,19 @@ export const matchingApi = {
       ]);
     return detail;
   },
+  recommendations: (env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(OverallRecommendation, "/recommendations")
+      : Promise.reject(unavailable()),
+  startRecommendations: (env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(OverallRecommendation, "/recommendations", { method: "POST" })
+      : Promise.reject(unavailable()),
 };
 export const matchKeys = {
   all: ["matches"] as const,
   list: ["matches", "list"] as const,
+  overall: ["matches", "overall"] as const,
   details: ["matches", "detail"] as const,
   detail: (id: string) => ["matches", "detail", id] as const,
 };
@@ -240,5 +260,25 @@ export const useJudgeMatch = (id: string) => {
   return useMutation({
     mutationFn: () => matchingApi.judge(id),
     onSuccess: (detail) => client.setQueryData(matchKeys.detail(id), detail),
+  });
+};
+/**
+ * 전체 매칭(#614) — 서버가 배경에서 계산하고 화면은 저장된 결과를 읽는다. 읽기는 AI 를 부르지 않아 열 때마다 다시 읽고,
+ * 계산 중에는 확인한 공고 수가 바뀌므로 2초마다 다시 읽는다. 화면을 떠나도 계산은 서버에서 이어진다.
+ */
+export const useOverallRecommendation = () =>
+  useQuery({
+    queryKey: matchKeys.overall,
+    queryFn: () => matchingApi.recommendations(),
+    enabled: matchSupported(),
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => (query.state.data?.status === "COMPUTING" ? 2000 : false),
+  });
+export const useStartOverallRecommendation = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchingApi.startRecommendations(),
+    onSuccess: (data) => client.setQueryData(matchKeys.overall, data),
   });
 };

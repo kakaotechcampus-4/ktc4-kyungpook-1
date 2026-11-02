@@ -3,6 +3,7 @@ import { api } from './client';
 import * as S from './schemas';
 import { cardMetadataSupported, cardRegenerationSupported } from './capabilities';
 import { ApiError, ContractError } from './client';
+import { reportSkipped } from '@/lib/skippedItems';
 
 /** 엔드포인트 함수 — 화면은 이 파일 밖의 URL 을 모른다. */
 export const endpoints = {
@@ -41,7 +42,12 @@ export const endpoints = {
     api(S.Candidate, `/repos/${repoId}/recall/answers`, { method: 'POST', body }),
 
   // 카드
-  cards: () => api(z.array(S.CardSummary), '/cards'),
+  /** 읽을 수 없는 카드가 섞여 있으면 그 장만 빼고 돌려준다. 몇 장을 뺐는지는 화면이 알린다(lib/skippedItems) */
+  cards: async () => {
+    const { items, skipped } = await api(S.CardSummaryList, '/cards');
+    reportSkipped('cards', skipped);
+    return items;
+  },
   card: (id: string) => api(S.Card, `/cards/${id}`),
   deleteCard: (id: string) => api(z.object({ ok: z.literal(true) }), `/cards/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   /** 직접 작성 첫 진입: 제목만으로 DRAFT 를 먼저 만들어 cardId 를 얻는다. 이후 입력은 PATCH 로만 간다. */

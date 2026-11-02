@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, ContractError } from "./client";
-import { CardKind } from "./schemas";
+import { CardKind, unknownAs } from "./schemas";
 
 export const MatchCategory = z.enum([
   "BACKEND",
@@ -21,7 +21,8 @@ const counts = z
   })
   .refine((x) => x.met <= x.total);
 const experience = z.object({
-  level: z.enum(["ENTRY", "EXPERIENCED", "UNSPECIFIED"]),
+  // 모르는 경력 구분은 "경력 표시 없음"(UNSPECIFIED)으로 읽는다 — 신입 가능·경력 몇 년이라고 지어내지 않는다
+  level: unknownAs(z.enum(["ENTRY", "EXPERIENCED", "UNSPECIFIED"]), "UNSPECIFIED"),
   minYears: z.number().nonnegative().nullable(),
 });
 /** 이미지·링크 주소는 https 만 받는다(http·javascript:·data:·주소에 적힌 계정 정보는 거부). 화면에 그리는 쪽도 같은 규칙으로 다시 거른다. */
@@ -47,7 +48,8 @@ export const MatchTarget = z.object({
   /** 회사 로고 https 주소. 없거나 https 가 아니면 null. */
   logoUrl,
   role: z.string(),
-  category: MatchCategory,
+  // 모르는 분야는 "기타". 내보낸 MatchCategory 는 주소의 category 검사에 쓰므로 그대로 엄격하다
+  category: unknownAs(MatchCategory, "ETC"),
   fit: z.enum(["A", "B", "C", "D"]).nullable(),
   required: counts,
   preferred: counts,

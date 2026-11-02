@@ -210,10 +210,19 @@ export const matchingApi = {
       ]);
     return detail;
   },
+  recommendations: (env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(OverallRecommendation, "/recommendations")
+      : Promise.reject(unavailable()),
+  startRecommendations: (env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(OverallRecommendation, "/recommendations", { method: "POST" })
+      : Promise.reject(unavailable()),
 };
 export const matchKeys = {
   all: ["matches"] as const,
   list: ["matches", "list"] as const,
+  overall: ["matches", "overall"] as const,
   details: ["matches", "detail"] as const,
   detail: (id: string) => ["matches", "detail", id] as const,
 };
@@ -251,5 +260,25 @@ export const useJudgeMatch = (id: string) => {
   return useMutation({
     mutationFn: () => matchingApi.judge(id),
     onSuccess: (detail) => client.setQueryData(matchKeys.detail(id), detail),
+  });
+};
+/**
+ * 전체 매칭(#614) — 서버가 배경에서 계산하고 화면은 저장된 결과를 읽는다. 읽기는 AI 를 부르지 않아 열 때마다 다시 읽고,
+ * 계산 중에는 확인한 공고 수가 바뀌므로 2초마다 다시 읽는다. 화면을 떠나도 계산은 서버에서 이어진다.
+ */
+export const useOverallRecommendation = () =>
+  useQuery({
+    queryKey: matchKeys.overall,
+    queryFn: () => matchingApi.recommendations(),
+    enabled: matchSupported(),
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => (query.state.data?.status === "COMPUTING" ? 2000 : false),
+  });
+export const useStartOverallRecommendation = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchingApi.startRecommendations(),
+    onSuccess: (data) => client.setQueryData(matchKeys.overall, data),
   });
 };

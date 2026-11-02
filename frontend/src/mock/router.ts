@@ -1,5 +1,5 @@
 import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas';
-import { mockMatchDetail, mockMatchList } from './matching';
+import { mockMatchDetail, mockMatchList, mockOverall, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
 import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
@@ -33,6 +33,8 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
 on('GET', '/matches', () => ok(mockMatchList()));
+on('GET', '/recommendations', () => ok(mockOverall()));
+on('POST', '/recommendations', () => ok(startMockOverall()));
 on('GET', '/matches/:id', ({ params }) => {
   const detail=mockMatchDetail(params[0]);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');

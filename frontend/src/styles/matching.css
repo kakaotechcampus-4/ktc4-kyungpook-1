@@ -713,3 +713,74 @@
     width: auto;
   }
 }
+
+/* 공고 페이지 위 '나와 맞는 기업'(전체 매칭) */
+.overall-match {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: var(--bg-surface);
+}
+.overall-match__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.overall-match__title h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.overall-match__title p,
+.overall-match__empty {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.overall-match__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.overall-match__company {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--bg-subtle);
+  color: inherit;
+  text-decoration: none;
+}
+.overall-match__company:hover {
+  background: var(--bg-selected);
+}
+.overall-match__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.overall-match__text strong {
+  font-size: 15px;
+}
+.overall-match__meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.overall-match__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}

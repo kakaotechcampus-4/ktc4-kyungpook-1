@@ -14,6 +14,7 @@ import { AiWait } from '@/components/ui/AiWait';
 import { CompanyList, matchViewFromParams, ViewToggle } from "./CompanyList";
 import { Pagination } from "./Pagination";
 import { PostingCard } from "./PostingCard";
+import { OverallMatch } from "./OverallMatch";
 import {
   categoryLabel,
   groupByCompany,
@@ -94,6 +95,7 @@ export function MatchListPage() {
     <main className="main matching-page">
       <PageTitle right={isDemo ? '예시 공고' : undefined}>공고 매칭</PageTitle>
       <p className="match-intro">개발 직군 채용 공고를 모아 보여 드려요. 공고를 열면 내 경험 카드로 조건을 맞춰 볼 수 있어요.</p>
+      <OverallMatch />
       <div className="match-toolbar">
         <ViewToggle value={view} onChange={(next) => update("view", next === "company" ? next : "")} />
       </div>
@@ -172,7 +174,7 @@ export function MatchListPage() {
               aria-busy={matches.isFetching || undefined}
             >
               <RefreshCw size={14} className={matches.isFetching ? "spin" : undefined} aria-hidden />
-              매칭 새로고침
+              목록 새로고침
             </Button>
           </div>
           {list.length === 0 ? (

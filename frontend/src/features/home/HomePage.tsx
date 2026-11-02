@@ -13,6 +13,7 @@ import { track } from '@/lib/track';
 import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { errorView } from '@/api/errorView';
 import { CardTags } from '@/components/cards/CardTags';
 import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
@@ -22,6 +23,8 @@ import { HomeRecommendations } from './HomeRecommendations';
 import { HomeActivity } from './HomeActivity';
 import { matchSupported, useMatches } from '@/api/matching';
 import { ProfilePrompt } from '@/features/profile/ProfilePrompt';
+
+const failureText = (error: unknown) => { const view = errorView(error, 'read'); return `${view.title} ${view.message}`; };
 
 /**
  * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 버튼 → 이어서 하기 → 카드.
@@ -47,6 +50,7 @@ export function HomePage() {
   const empty = cards.isSuccess && cards.data.length === 0;
   // 카드 목록을 아직 모르면(불러오는 중, 실패) 처음 온 사람으로 단정하지 않는다 — 첫 방문 문구가 잠깐 떴다 사라지지 않게
   const returning = cards.isSuccess ? cards.data.length > 0 : true;
+  const sameFailure = cards.isError && repos.isError && failureText(cards.error) === failureText(repos.error);
   const sugg = useMemo(() => {
     const xs = repos.data ?? [];
     const t = rq.trim().toLowerCase();
@@ -66,8 +70,9 @@ export function HomePage() {
 
   return (
     <main className={`main home-page ${returning ? 'home-page--returning' : ''}`}>
-      {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
-      {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
+      {/* 카드와 레포가 같은 이유로 함께 실패하면 같은 안내가 두 번 나오지 않게 하나로 합친다(#520 G-08) */}
+      {cards.isError && <QueryFailure error={cards.error} retry={() => sameFailure ? Promise.all([cards.refetch(), repos.refetch()]) : cards.refetch()} pending={cards.isFetching || (sameFailure && repos.isFetching)} />}
+      {repos.isError && !sameFailure && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
       <PageTitle lead="관심 기업의 일정과 나의 준비 현황을 한곳에서 관리하세요.">홈</PageTitle>
       {cards.isSuccess && <SkippedCardsNotice />}
       <div className="home-workspace">
@@ -143,9 +148,9 @@ export function HomePage() {
       {empty ? (
         <>
           <div className="sources">
-            <SourceRow icon={FolderGit2} title="레포에서 정리하기" desc="커밋과 PR에서 경험을 찾습니다" onClick={() => nav('/repos')} />
-            <SourceRow icon={Search} title="파일 보며 찾기" desc="수정한 파일을 보며 경험을 떠올립니다" onClick={() => nav('/repos?filter=nopr')} />
-            <SourceRow icon={MessageSquareQuote} title="직접 작성" desc="코드에 남지 않은 경험을 적습니다" onClick={() => nav('/cards/new')} />
+            <SourceRow icon={FolderGit2} title="레포에서 정리하기" desc="커밋과 PR에서 경험을 찾아 줘요" onClick={() => nav('/repos')} />
+            <SourceRow icon={Search} title="파일 보며 찾기" desc="수정한 파일을 보며 경험을 떠올려요" onClick={() => nav('/repos?filter=nopr')} />
+            <SourceRow icon={MessageSquareQuote} title="직접 작성" desc="코드에 남지 않은 경험을 직접 적어요" onClick={() => nav('/cards/new')} />
           </div>
         </>
       ) : (
@@ -158,7 +163,7 @@ export function HomePage() {
           </div>
           {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
           <div className="experience-list">{preview.map((c) => <CardGridItem key={c.id} c={c} cardOrder={list.map(card => card.id)} />)}</div>
-          {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}" 에 맞는 카드가 없습니다`} desc="다른 이름으로 찾아보세요." />}
+          {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}"에 맞는 카드가 없어요`} desc="다른 이름으로 검색해 주세요." />}
         </>
       )}
       </section>

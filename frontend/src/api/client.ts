@@ -22,7 +22,7 @@ export class ApiError extends Error {
 }
 export class AuthError extends ApiError {
   constructor() {
-    super('UNAUTHENTICATED', '로그인이 필요합니다', 401);
+    super('UNAUTHENTICATED', '로그인이 필요해요', 401);
     this.name = 'AuthError';
   }
 }
@@ -68,7 +68,7 @@ export async function api<T extends z.ZodTypeAny>(
   } catch (e) {
     if (timedOut) throw new ApiError('TIMEOUT', '서버 응답을 기다리는 시간이 초과됐어요.', 0);
     if ((e as Error).name === 'AbortError') throw e;
-    throw new ApiError('NETWORK', '서버에 연결할 수 없습니다. 네트워크를 확인해 주세요.', 0);
+    throw new ApiError('NETWORK', '서버에 연결할 수 없어요. 네트워크를 확인해 주세요.', 0);
   } finally {
     clearTimeout(timer);
     init.signal?.removeEventListener('abort', abort);
@@ -79,7 +79,7 @@ export async function api<T extends z.ZodTypeAny>(
   let json: unknown = null;
   if (text) {
     try { json = JSON.parse(text); }
-    catch { throw new ApiError(`HTTP_${res.status}`, '응답을 해석할 수 없습니다', res.status); }
+    catch { throw new ApiError(`HTTP_${res.status}`, '응답을 해석할 수 없어요', res.status); }
   }
 
   if (!res.ok) {
@@ -87,7 +87,7 @@ export async function api<T extends z.ZodTypeAny>(
     // 그대로 캐스팅해 잘못된 모양의 ApiError 를 조용히 만드는 대신, 정해진 폴백으로 떨어진다.
     const parsedErr = ApiErrorBody.safeParse((json as { error?: unknown } | null)?.error);
     const err = parsedErr.success ? parsedErr.data : undefined;
-    throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? (res.status >= 500 ? '서버 오류가 났습니다. 잠시 뒤 다시 시도해 주세요.' : res.statusText), res.status, err?.details);
+    throw new ApiError(err?.code ?? `HTTP_${res.status}`, err?.message ?? (res.status >= 500 ? '서버 오류가 났어요. 잠시 뒤 다시 시도해 주세요.' : res.statusText), res.status, err?.details);
   }
 
   const parsed = envelope(schema, { allowNullData: init.allowNullData }).safeParse(json);

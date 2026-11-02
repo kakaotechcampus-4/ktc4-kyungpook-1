@@ -134,7 +134,8 @@
         "status": null,
         "metBy": []
       }
-    ]
+    ],
+    "gapFill": null
   },
   "error": null
 }

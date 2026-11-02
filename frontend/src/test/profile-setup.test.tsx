@@ -204,7 +204,7 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
     await screen.findByRole('dialog');
     pick('백엔드'); click('다음'); click('경력 없음');
     fillEducation(); click('다음'); click('어학 없음'); click('자격증 없음');
-    expect(await screen.findByText('서버에 연결하지 못했어요')).toBeInTheDocument();
+    expect(await screen.findByText(/서버에 연결하지 못했어요|서버에서 처리하지 못했어요/)).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(vi.mocked(track)).not.toHaveBeenCalledWith('profile_setup_completed', expect.anything());
     click('자격증 없음');

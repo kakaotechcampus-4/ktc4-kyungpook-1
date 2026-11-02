@@ -139,7 +139,8 @@
 .profile-menu__item--danger, .profile-menu__item--danger svg { color: var(--state-failed-text); }
 .profile-menu__item--danger:hover, .profile-menu__item--danger:focus-visible { background: var(--state-failed-bg); }
 .profile-menu__sep { height: 1px; margin: 4px 6px; background: var(--border-default); }
-.profile-menu--mobile .profile-menu__trigger { width: auto; min-height: 36px; padding: 4px 6px; gap: 8px; }
+.profile-menu--mobile .profile-menu__trigger { width: auto; min-height: var(--control-touch-size); padding: 4px 6px; gap: 8px; }
+.mobile-brand > a { display: inline-flex; align-items: center; min-height: var(--control-touch-size); }
 .profile-menu--mobile .profile-menu__name { font-size: 12px; font-weight: 500; color: var(--text-secondary); max-width: 40vw; }
 .shell--rail .profile-menu__name, .shell--rail .profile-menu__chev { display: none; }
 .shell--rail .profile-menu__trigger { justify-content: center; padding-inline: 0; }

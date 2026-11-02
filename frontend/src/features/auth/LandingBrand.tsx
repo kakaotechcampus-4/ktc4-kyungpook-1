@@ -81,7 +81,7 @@ export function LandingBrand({ active, onComplete }: { active: boolean; onComple
   return <>
     {active && <div className="landing-intro" ref={veil}>
       <div className="landing-intro__wash" aria-hidden="true" />
-      <button className="landing-intro__skip" onClick={complete}>건너뛰기 <span aria-hidden="true">↗</span></button>
+      <button className="landing-intro__skip" onClick={complete}>건너뛰기</button>
     </div>}
     <div className="landing-brand" ref={brand} role="img" aria-label="Gitory">
       <div className="landing-brand__glyph" aria-hidden="true"><Wordmark height={34} /></div>

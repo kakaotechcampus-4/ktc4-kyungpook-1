@@ -29,7 +29,7 @@ for (const state of ['FAILED', 'SUCCEEDED'] as const) {
     if (state === 'FAILED' && retryable !== true) {
       expect(screen.queryByText('이 작업은 다시 시도할 수 없어요')).not.toBeInTheDocument();
       expect(screen.getByText('다른 레포 고르기')).toBeInTheDocument(); // 대신 할 수 있는 일은 그대로 있다
-      expect(screen.getByText('직접 쓰기')).toBeInTheDocument();
+      expect(screen.getByText('GitHub 없이 시작')).toBeInTheDocument();
     }
     client.clear();
   });

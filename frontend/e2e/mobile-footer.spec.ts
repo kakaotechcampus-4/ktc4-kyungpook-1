@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { loginAsDemo } from './helpers';
 
-const routes = ['/repos', '/repos/r_auth/candidates', '/cards/new', '/cards/card_01?mode=edit', '/cards/card_01?mode=mask', '/cards/card_01'];
+const routes = ['/repos', '/repos/r_auth/candidates', '/cards/new', '/cards/new?write=1', '/cards/card_01?mode=edit', '/cards/card_01?mode=mask', '/cards/card_01'];
 for (const [width, height] of [[320, 740], [390, 844], [767, 844], [768, 1024], [1024, 768], [1440, 900], [320, 480], [390, 480]]) {
   test(`shared footer keeps content clear at ${width}x${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height });

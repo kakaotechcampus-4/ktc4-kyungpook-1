@@ -49,7 +49,7 @@ test.describe('반응형 레이아웃', () => {
 
   test('주요 라우트는 모바일·태블릿·데스크톱에서 가로로 넘치지 않는다', async ({ page }) => {
     await loginAsDemo(page);
-    const routes = ['/', '/repos', '/repos/r_auth/candidates', '/cards', '/cards/card_01', '/cards/card_01/interview?field=T', '/cards/new', '/settings', '/settings/github'];
+    const routes = ['/', '/repos', '/repos/r_auth/candidates', '/cards', '/cards/card_01', '/cards/card_01/interview?field=T', '/cards/new', '/cards/new?write=1', '/settings', '/settings/github'];
     for (const viewport of [
       { width: 390, height: 844 },
       { width: 768, height: 1024 },

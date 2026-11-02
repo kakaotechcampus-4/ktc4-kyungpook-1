@@ -392,7 +392,7 @@ describe('활동 안에서 경험 카드 만들기', () => {
 
   it('?activity= 로 오면 활동이 골라져 있고, 첫 저장 요청에 activityId 를 싣는다(레포는 싣지 않는다)', async () => {
     const server = connectMockServer();
-    mountApp(routes(), '/cards/new?activity=act_club');
+    mountApp(routes(), '/cards/new?activity=act_club&write=1');
     await waitFor(() => expect(screen.getByRole('combobox', { name: '활동' })).toHaveValue('act_club'));
     expect(screen.getByRole('combobox', { name: '관련 레포' })).toHaveValue('');
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: '동아리 발표 경험' } });

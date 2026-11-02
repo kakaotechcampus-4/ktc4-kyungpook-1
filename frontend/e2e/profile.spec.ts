@@ -126,7 +126,7 @@ test('first entry: the dialog takes the five steps over the home page, then the 
   await page.goto('/settings');
   const row = page.getByRole('link', { name: /인적사항/ });
   await expect(row).toContainText('관심 백엔드');
-  await expect(row).toContainText('학력 1 · 경력 1 · 어학 1 · 자격증 1');
+  await expect(row).toContainText('학력 1, 경력 1, 어학 1, 자격증 1');
   await row.click();
   await expect(page).toHaveURL(/\/settings\/profile$/);
   await expect(page.getByLabel('학력 1 전공 (선택)', { exact: true })).toHaveValue('컴퓨터공학');
@@ -280,7 +280,7 @@ for (const width of [390, 320]) {
     await page.getByRole('button', { name: '저장', exact: true }).click();
     await expect(status(page)).toHaveText('저장했어요');
     await page.goto('/settings');
-    await expect(page.getByRole('link', { name: /인적사항/ })).toContainText('학력 3 · 경력 3 · 어학 3 · 자격증 3');
+    await expect(page.getByRole('link', { name: /인적사항/ })).toContainText('학력 3, 경력 3, 어학 3, 자격증 3');
     expect(await noHorizontalOverflow(page)).toBe(true);
   });
 }

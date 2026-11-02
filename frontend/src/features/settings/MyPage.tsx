@@ -18,7 +18,7 @@ const COLLECTED = [
 ] as const;
 
 /** 인적사항은 서버 지원이 열린 환경에서만 수집한다 — 안 받는 정보를 받는다고 적지 않는다 */
-const PROFILE_COLLECTED = [['인적사항 (학력·경력·어학·자격증)', '공고 매칭의 지원 자격 비교, 자소서 AI 참고', '보관']] as const;
+const PROFILE_COLLECTED = [['인적사항 (학력, 경력, 어학, 자격증)', '공고 매칭의 지원 자격 비교, 자소서 AI 참고', '보관']] as const;
 
 /** F2 마이페이지 — 수집 항목 투명 공개. 지표·크레딧 UI 없음 (과금 단위 미정). */
 export function MyPage() {
@@ -61,7 +61,7 @@ export function MyPage() {
         <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="danger" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
       </section>
       <section className="settings-section stat-grid">
-        {[['확정한 카드', s ? `${s.confirmedCards}장` : '-'], ['정리한 레포', s ? `${s.analyzedRepos}개` : '-'], ['작성한 답변', s ? `${s.interviewTurns}개` : '-'], ['남은 후보', s ? `${s.remainingCandidates}개` : '-']].map(([k, v]) => (
+        {[['확정한 카드', s ? `${s.confirmedCards}장` : '—'], ['정리한 레포', s ? `${s.analyzedRepos}개` : '—'], ['작성한 답변', s ? `${s.interviewTurns}개` : '—'], ['남은 후보', s ? `${s.remainingCandidates}개` : '—']].map(([k, v]) => (
           <div key={k} className="stat"><span className="t-12 c-2">{k}</span><b>{v}</b></div>
         ))}
       </section>

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Breadcrumb, PageTitle } from '@/components/ui';
+import { useDocumentTitle } from '@/lib/useDocumentTitle';
 
 export function LeavePage() {
+  useDocumentTitle('탈퇴와 데이터 삭제');
   return (
     <main className="main main--tight">
       <Breadcrumb items={[{ label: '마이페이지', to: '/settings' }, { label: '탈퇴와 데이터 삭제' }]} />
@@ -11,7 +13,7 @@ export function LeavePage() {
         <p className="t-12l c-2">현재 이 화면에서는 탈퇴와 데이터 삭제를 진행할 수 없어요.</p>
       </div>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-        <Link to="/settings" className="btn btn--outline">설정으로 돌아가기</Link>
+        <Link to="/settings" className="btn btn--outline">마이페이지로 돌아가기</Link>
         <Link to="/cards" className="btn btn--outline">카드 목록</Link>
       </div>
     </main>

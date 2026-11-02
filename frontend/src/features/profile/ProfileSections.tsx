@@ -13,8 +13,8 @@ export const EDU_LEVEL_ID = 'p-edu-level';
 
 const SECTION_NOUN: Record<SectionKey, string> = { educations: '학력', careers: '경력', languages: '어학', certifications: '자격증' };
 const SECTION_HINT: Record<SectionKey, string> = {
-  educations: "다니고 있거나 마친 학교를 적어 주세요. 학력 구분·학교·상태만 꼭 필요하고 나머지는 비워 둬도 돼요. 졸업을 앞두고 있다면 상태에서 '졸업 예정'을 골라 주세요.",
-  careers: "회사에서 한 일과 기간을 적어 주세요. 인턴·계약직도 괜찮아요. 일하고 있다면 '재직 중'을 골라 주세요.",
+  educations: "다니고 있거나 마친 학교를 적어 주세요. 학력 구분, 학교, 상태만 꼭 필요하고 나머지는 비워 둬도 돼요. 졸업을 앞두고 있다면 상태에서 '졸업 예정'을 골라 주세요.",
+  careers: "회사에서 한 일과 기간을 적어 주세요. 인턴이나 계약직도 괜찮아요. 일하고 있다면 '재직 중'을 골라 주세요.",
   languages: "공인 어학 시험을 적어 주세요. 점수나 등급은 시험에 나온 그대로 적으면 돼요. 목록에 없는 시험은 '기타'를 고르고 이름을 적어 주세요.",
   certifications: '취득한 자격증을 적어 주세요. 발급 기관과 취득 월은 몰라도 괜찮아요.',
 };
@@ -214,7 +214,7 @@ export function EducationQuick({ state }: { state: ProfileFormState }) {
   return (
     <section className="settings-section profile-section" aria-label="학력">
       <SectionHead label="학력" />
-      <p className="profile-section__hint">최종 학력과 지금 상태만 골라 주세요. 학교 이름·전공·학점은 마이페이지 인적사항에서 더 적을 수 있어요.</p>
+      <p className="profile-section__hint">최종 학력과 지금 상태만 골라 주세요. 학교 이름, 전공, 학점은 마이페이지 인적사항에서 더 적을 수 있어요.</p>
       <fieldset className="quick-group">
         <legend className="quick-group__label">학력 구분</legend>
         <ul id={EDU_LEVEL_ID} className="interest-grid interest-grid--5" aria-describedby={levelError ? `${EDU_LEVEL_ID}-error` : undefined}>
@@ -343,7 +343,7 @@ export function CertificationQuick({ state }: { state: ProfileFormState }) {
   return (
     <section className="settings-section profile-section" aria-label="자격증">
       <SectionHead label="자격증" count={rows.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
-      <p className="profile-section__hint">가진 자격증을 누르거나 직접 적어 주세요. 발급 기관·취득 월은 마이페이지 인적사항에서 더 적을 수 있어요.</p>
+      <p className="profile-section__hint">가진 자격증을 누르거나 직접 적어 주세요. 발급 기관과 취득 월은 마이페이지 인적사항에서 더 적을 수 있어요.</p>
       <ul className="interest-grid interest-grid--2">
         {COMMON_CERTIFICATIONS.map((name) => {
           const on = has(name);

@@ -21,9 +21,6 @@
 .cl-q__no { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-top: 2px; border-radius: 6px; background: var(--bg-inset); color: var(--text-secondary); font-size: 12px; font-weight: 600; }
 
 /* ② 기다림 */
-.cl-qlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.cl-qlist li { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-default); font-size: 14px; line-height: 21px; }
-.cl-qlist li:first-child { border-top: 0; }
 .cl-agent { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
 .cl-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .cl-feed__line { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 2px 10px; border-left: 2px solid var(--accent-point); animation: cl-feed-in .18s ease-out; }
@@ -44,6 +41,7 @@
 .cl-card-line__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); font-weight: 500; }
 .cl-reason { margin: 2px 0 0 42px; padding-left: 10px; border-left: 2px solid var(--accent-point); font-size: 13px; line-height: 20px; color: var(--text-strong); }
 .cl-q > .note { margin-left: 36px; }
+.cl-q__ask-note { margin: 0; padding-left: 36px; font-size: 14px; line-height: 21px; color: var(--text-secondary); }
 .cl-materials { display: flex; flex-direction: column; gap: 6px; padding-left: 36px; }
 .cl-materials ul { list-style: none; margin: 0; padding: 0; gap: 6px; flex-wrap: wrap; }
 .cl-material { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--border-strong); font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
@@ -69,7 +67,7 @@
 .cl-list__first { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 640px) {
-  .cl-cards, .cl-materials, .cl-considered { padding-left: 0; }
+  .cl-cards, .cl-materials, .cl-considered, .cl-q__ask-note { padding-left: 0; }
   .cl-reason { margin-left: 0; }
   .cl-q > .note { margin-left: 0; }
   .cl-q__head { flex-wrap: wrap; }

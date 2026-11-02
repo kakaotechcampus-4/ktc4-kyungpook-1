@@ -54,10 +54,20 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     // 앞판 글: 경험 카드가 없는 폴더에만 '경험 카드 없음', 장식(뒤판·탭)은 접근성 트리에서 뺀다
     expect(screen.getAllByText('경험 카드 없음')).toHaveLength(2);
     expect(auth.querySelector('.folder__back')).toHaveAttribute('aria-hidden', 'true');
-    // 직접 쓴 카드가 없으니 그 폴더도 없다. 활동을 만들고 관리하는 길은 폴더 위에 있다
+    // 직접 쓴 카드가 없으니 그 폴더도 없다
     expect(screen.queryByRole('link', { name: /직접 쓴 카드/ })).not.toBeInTheDocument();
+  });
+
+  it('폴더 보기에는 상태 탭과 검색이 없고, 만들기는 폴더 위의 경험 카드 만들기와 활동 만들기 둘뿐이다', async () => {
+    connectMockServer();
+    mountApp(routes(), '/cards');
+    await screen.findByRole('link', { name: FOLDERS.auth });
+    expect(screen.queryByRole('textbox', { name: '카드 이름으로 검색' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^(전체|작성 중|확정됨|보완 필요)/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new');
     expect(screen.getByRole('link', { name: '활동 만들기' })).toHaveAttribute('href', '/activities/new');
-    expect(screen.getByRole('link', { name: '활동 관리' })).toHaveAttribute('href', '/activities');
+    for (const gone of ['활동 관리', '직접 작성', '레포에서 만들기']) expect(screen.queryByRole('link', { name: gone })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '레포에서 만들기' })).not.toBeInTheDocument();
   });
 
   it('예전에 고른 레포별 보기는 폴더로 읽고, 최근순을 고르면 카드 타일이 나온다(활동 카드 포함)', async () => {
@@ -80,19 +90,19 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(direct.parentElement!.parentElement!.lastElementChild).toBe(direct.parentElement); // 맨 뒤
   });
 
-  it('검색하면 맞는 카드가 있는 폴더만 남고, 숫자는 맞는 카드 수라고 밝힌다', async () => {
+  it('목록 보기에서 고른 검색어와 탭은 폴더 보기에 걸리지 않는다 — 폴더 보기에는 그것을 풀 칸이 없다', async () => {
     connectMockServer();
     mountApp(routes(), '/cards');
     await screen.findByRole('link', { name: FOLDERS.auth });
-    fireEvent.change(screen.getByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: '토큰' } });
-    const link = await screen.findByRole('link', { name: '레포 hong-dev, auth-service, 맞는 카드 2장, 전체 4장, 기술 Java' });
-    expect(within(link).getByText('맞는 카드')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /free-tier-sleep/ })).not.toBeInTheDocument();
-    expect(screen.queryByText('경험 카드 없음')).not.toBeInTheDocument();
-    // 맞는 카드가 하나도 없으면 폴더 대신 기존 안내가 나온다
-    fireEvent.change(screen.getByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: 'no-such-card' } });
+    fireEvent.click(screen.getByRole('radio', { name: '최근순' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: 'no-such-card' } });
+    fireEvent.click(screen.getByRole('button', { name: /^확정됨/ }));
     expect(await screen.findByText('조건에 맞는 카드가 없어요')).toBeInTheDocument();
-    expect(document.querySelector('.folder-grid')).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: '폴더' }));
+    expect(await screen.findByRole('link', { name: FOLDERS.auth })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: FOLDERS.fts })).toBeInTheDocument();
+    expect(screen.queryByText('조건에 맞는 카드가 없어요')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\d+개 보기$/)).not.toBeInTheDocument();
   });
 
   it('서버가 레포 정보를 주지 않으면(이전 서버) 폴더 보기를 숨기고 최근순으로 본다', async () => {
@@ -392,7 +402,7 @@ describe('활동 안에서 경험 카드 만들기', () => {
 
   it('?activity= 로 오면 활동이 골라져 있고, 첫 저장 요청에 activityId 를 싣는다(레포는 싣지 않는다)', async () => {
     const server = connectMockServer();
-    mountApp(routes(), '/cards/new?activity=act_club');
+    mountApp(routes(), '/cards/new?activity=act_club&write=1');
     await waitFor(() => expect(screen.getByRole('combobox', { name: '활동' })).toHaveValue('act_club'));
     expect(screen.getByRole('combobox', { name: '관련 레포' })).toHaveValue('');
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: '동아리 발표 경험' } });

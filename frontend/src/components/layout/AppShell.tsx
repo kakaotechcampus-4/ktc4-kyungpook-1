@@ -7,6 +7,7 @@ import { JobWatcher } from '@/lib/jobWatcher';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { GithubBanner } from './GithubBanner';
 import { ProfileMenu } from './ProfileMenu';
+import { ProfileSetupModal } from '@/features/profile/ProfileSetupModal';
 
 const MENU = [
   { group: '커리어 관리', items: [
@@ -80,6 +81,7 @@ export function AppShell() {
         ))}
       </nav>
       <JobWatcher active={active} />
+      <ProfileSetupModal />
     </div>
   );
 }

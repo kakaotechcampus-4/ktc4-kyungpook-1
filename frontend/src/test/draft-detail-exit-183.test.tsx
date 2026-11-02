@@ -48,7 +48,7 @@ function mount() {
 
 async function typeAndAutosave(text: string) {
   vi.useFakeTimers();
-  fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: text } });
+  fireEvent.change(screen.getByLabelText('상황'), { target: { value: text } });
   await act(async () => { await vi.advanceTimersByTimeAsync(CONFIG.DRAFT_AUTOSAVE_MS + 1); });
   vi.useRealTimers();
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('저장됨'));
@@ -60,10 +60,10 @@ describe('saved draft metadata when returning to card detail (#183)', () => {
     await typeAndAutosave('Acknowledged situation');
     expect(detail).not.toHaveBeenCalled();
     expect(isDraftMetadataPending(client.getQueryData<Card>(keys.card(card.id)))).toBe(true);
-    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Acknowledged situation');
+    expect(screen.getByLabelText('상황')).toHaveValue('Acknowledged situation');
     if (exit === 'cancel') fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     else {
-      if (exit === 'guard') fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Guard acknowledged situation' } });
+      if (exit === 'guard') fireEvent.change(screen.getByLabelText('상황'), { target: { value: 'Guard acknowledged situation' } });
       await act(async () => { await router.navigate(-1); });
       if (exit === 'guard') fireEvent.click(screen.getByRole('button', { name: '저장하고 이동' }));
     }
@@ -85,7 +85,7 @@ describe('saved draft metadata when returning to card detail (#183)', () => {
     await typeAndAutosave('Acknowledged situation');
     if (exit === 'cancel') fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     else {
-      if (exit === 'guard') fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Guard acknowledged situation' } });
+      if (exit === 'guard') fireEvent.change(screen.getByLabelText('상황'), { target: { value: 'Guard acknowledged situation' } });
       await act(async () => { await router.navigate(-1); });
       if (exit === 'guard') fireEvent.click(screen.getByRole('button', { name: '저장하고 이동' }));
     }
@@ -101,7 +101,7 @@ describe('saved draft metadata when returning to card detail (#183)', () => {
     await act(async () => { await router.navigate(`/cards/${card.id}?versions=0`); });
     expect(detail).toHaveBeenCalledTimes(1);
     await act(async () => { await router.navigate(`/cards/${card.id}?mode=edit`); });
-    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue(expected);
+    expect(screen.getByLabelText('상황')).toHaveValue(expected);
     expect(save).toHaveBeenCalledTimes(exit === 'back' ? 1 : 2);
   });
 
@@ -117,10 +117,14 @@ describe('saved draft metadata when returning to card detail (#183)', () => {
     const { router, detail, server } = mount();
     let resolve!: (value: Card) => void;
     detail.mockImplementation(() => new Promise<Card>((accept) => { resolve = accept; }));
-    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Close acknowledged situation' } });
+    fireEvent.change(screen.getByLabelText('상황'), { target: { value: 'Close acknowledged situation' } });
     fireEvent.click(screen.getByRole('button', { name: '저장하고 닫기' }));
     await waitFor(() => expect(router.state.location.search).toBe(''));
     expect(screen.getByText('Close acknowledged situation')).toBeInTheDocument();
+    expect(detail).toHaveBeenCalledTimes(1);
+    // 화면이 바뀐 뒤 CardPage 의 효과가 돌아 진행 중인 요청에 합류한 다음에 응답을 준다. 부하가 걸려 효과보다 응답이 먼저 도착하면
+    // 합류할 요청이 이미 끝나 가는 순간이라 GET 이 한 번 더 나가고 이 시험이 흔들린다(앱 동작이 아니라 시험의 순서 문제).
+    await act(async () => {});
     expect(detail).toHaveBeenCalledTimes(1);
     await act(async () => { resolve(server()); });
     await screen.findByText(/Saved evidence/);

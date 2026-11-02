@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, ContractError } from "./client";
-import { CardKind, unknownAs } from "./schemas";
+import { CardKind, CardTech, unknownAs } from "./schemas";
+import { CONFIG } from "@/lib/config";
 
 export const MatchCategory = z.enum([
   "BACKEND",
@@ -41,6 +42,13 @@ const companyId = z
   .unknown()
   .transform((value) => (typeof value === "string" && value.trim() !== "" ? value : null));
 const logoUrl = z.unknown().transform((value) => (isHttpsUrl(value) ? value : null));
+// 목록 줄에 그리는 기술·학력. 구서버에는 두 칸이 없고, 모르는 기술 이름은 버린다 — 없으면 [] · null 이라 줄에서 그 자리를 비운다.
+const techs = z
+  .array(z.unknown())
+  .catch([])
+  .transform((values) => values.flatMap((value) => { const tech = CardTech.safeParse(value); return tech.success ? [tech.data] : []; }));
+export const EducationLevel = z.enum(["HIGH_SCHOOL", "ASSOCIATE", "BACHELOR", "MASTER", "DOCTOR"]);
+const education = z.object({ level: EducationLevel, exempt: z.boolean() }).nullable().catch(null);
 export const MatchTarget = z.object({
   id: z.string(),
   company: z.string(),
@@ -55,6 +63,10 @@ export const MatchTarget = z.object({
   required: counts,
   preferred: counts,
   experience,
+  /** 필수·우대 조건의 기술을 조건 순서대로 한 번씩. 카드 techs 와 같은 이름 */
+  techs,
+  /** 수준을 읽은 필수 학력 조건 중 가장 낮은 수준. exempt 는 '또는 그에 준하는 경력' 처럼 예외가 적힌 학력 */
+  education,
   source: z.object({
     url: z
       .string()
@@ -74,6 +86,48 @@ export const MatchTarget = z.object({
 export const ConditionStatus = z.enum(["MET", "NOT_MET", "UNJUDGED", "UNKNOWN", "CHECK"]);
 /** 일반 조건의 종류. 기술·경험 조건과 담당 업무는 null */
 export const GeneralType = z.enum(["EDUCATION", "MILITARY", "LANGUAGE", "CERTIFICATE", "LOCATION", "OTHER"]);
+/**
+ * 맞춰 본 뒤 모자란(✕) 조건을 채울 자료를 AI 가 찾는 흐름(#653). 화면이 `POST /matches/{id}/gap-fill` 을 스스로 부르고, 도는 동안 `pollAfterMs` 마다 상세를 다시 읽는다.
+ *  - conditions 는 ✕ 조건마다 하나(공고 조건 순서). decision 이 null 이면 찾아볼지 아직 정하는 중
+ *  - steps 는 AI 가 한 일이 생기는 대로 늘어난다. kind 값 목록은 서버가 정하는 중이라 모르는 값도 받는다(화면은 일반 문장으로 보인다)
+ *  - result 는 끝났을 때의 결론 — PROPOSED 면 proposal 이 있고, 찾지 않기로 했으면 SKIPPED, 못 찾았으면 NOT_FOUND, 시간을 넘기면 TIMED_OUT
+ *  - proposal 의 id 는 action 에 따라 candidateId · cardId · repoId 중 하나다. 후보로 카드를 만들 때는 그 후보의 레포 id(repoId)도 필요하다
+ *  - 아직 시작하지 않았거나 이 칸이 없는 구서버 응답은 null
+ */
+export const GapFillAction = z.enum(["CREATE_CARD", "CONTINUE_CARD", "ANALYZE_REPO"]);
+export const GapFillResult = z.enum(["PROPOSED", "NOT_FOUND", "SKIPPED", "TIMED_OUT"]);
+export const GapFillProposal = z.object({
+  action: GapFillAction,
+  candidateId: z.string().nullish(),
+  cardId: z.string().nullish(),
+  repoId: z.string().nullish(),
+  title: z.string(),
+  repoName: z.string().nullable(),
+  reason: z.string(),
+});
+export const GapFillCondition = z.object({
+  conditionId: z.string(),
+  decision: z.enum(["SEARCH", "SKIP"]).nullable(),
+  decisionReason: z.string().nullable(),
+  /** [그래도 찾아보기] 로 다시 찾은 조건. decision 은 AI 가 SKIP 이라 본 그대로라 SKIP + PROPOSED 조합이 온다 */
+  forced: z.boolean().default(false),
+  steps: z.array(
+    z.object({
+      kind: z.string(),
+      count: count.nullable().default(null),
+      query: z.string().nullable().default(null),
+      /** OUTSIDE_REPO_FOUND 에서 분석할 수 없는 남의 레포(owner/name) */
+      repoName: z.string().nullable().default(null),
+    }),
+  ),
+  proposal: GapFillProposal.nullable(),
+  result: GapFillResult.nullable(),
+});
+export const GapFill = z.object({
+  state: z.enum(["RUNNING", "DONE", "FAILED"]),
+  pollAfterMs: z.number().nullable(),
+  conditions: z.array(GapFillCondition),
+});
 export const MatchDetail = MatchTarget.extend({
   experience: experience.extend({
     quote: z.string().nullable(),
@@ -103,11 +157,15 @@ export const MatchDetail = MatchTarget.extend({
       ),
     }),
   ),
+  gapFill: GapFill.nullable().default(null),
 });
 export type MatchTarget = z.infer<typeof MatchTarget>;
 export type MatchDetail = z.infer<typeof MatchDetail>;
 export type ConditionStatus = z.infer<typeof ConditionStatus>;
 export type GeneralType = z.infer<typeof GeneralType>;
+export type GapFill = z.infer<typeof GapFill>;
+export type GapFillCondition = z.infer<typeof GapFillCondition>;
+export type GapFillProposal = z.infer<typeof GapFillProposal>;
 /**
  * 레포 화면의 추천 기업(#613, `GET /repos/{repoId}/recommendations`). 서버는 화면을 열 때 계산하지 않고 저장된 값을 준다.
  *  - COMPUTING 은 계산을 기다리거나 하는 중(확정 카드가 바뀌면 1분 뒤 다시 계산), NONE 은 아직 계산한 적 없음.
@@ -199,10 +257,33 @@ export const matchingApi = {
       ]);
     return detail;
   },
+  /** ✕ 조건을 채울 자료 찾기 시작. conditionIds 를 주면 그 조건만 다시 찾는다([그래도 찾아보기]) — 이 몸체 모양은 서버와 아직 맞추지 않았다 */
+  gapFill: async (id: string, conditionIds?: string[], env?: MatchEnv) => {
+    if (!matchSupported(env)) throw unavailable();
+    const path = `/matches/${encodeURIComponent(id)}/gap-fill`;
+    const detail = await api(MatchDetail, path, { method: "POST", body: conditionIds ? { conditionIds } : undefined });
+    if (detail.id !== id)
+      throw new ContractError(path, [
+        { path: ["id"], message: "Mismatched posting" },
+      ]);
+    return detail;
+  },
+  recommendations: (env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(OverallRecommendation, "/recommendations")
+      : Promise.reject(unavailable()),
+  startRecommendations: (env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(OverallRecommendation, "/recommendations", { method: "POST" })
+      : Promise.reject(unavailable()),
 };
+/** 채우기가 도는 동안만 서버가 준 간격으로 상세를 다시 읽는다. 간격이 없으면 1.5초, 하한은 다른 폴링과 같다 */
+export const gapFillPollMs = (detail: MatchDetail | undefined): number | false =>
+  detail?.gapFill?.state === "RUNNING" ? Math.max(CONFIG.POLL_MIN_MS, detail.gapFill.pollAfterMs ?? 1500) : false;
 export const matchKeys = {
   all: ["matches"] as const,
   list: ["matches", "list"] as const,
+  overall: ["matches", "overall"] as const,
   details: ["matches", "detail"] as const,
   detail: (id: string) => ["matches", "detail", id] as const,
 };
@@ -234,11 +315,40 @@ export const useMatch = (id: string) =>
     queryFn: () => matchingApi.detail(id),
     enabled: matchSupported() && !!id,
     ...policy,
+    refetchInterval: (q) => gapFillPollMs(q.state.data),
+    refetchIntervalInBackground: true,
   });
 export const useJudgeMatch = (id: string) => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => matchingApi.judge(id),
     onSuccess: (detail) => client.setQueryData(matchKeys.detail(id), detail),
+  });
+};
+export const useGapFill = (id: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (conditionIds?: string[]) => matchingApi.gapFill(id, conditionIds),
+    onSuccess: (detail) => client.setQueryData(matchKeys.detail(id), detail),
+  });
+};
+/**
+ * 전체 매칭(#614) — 서버가 배경에서 계산하고 화면은 저장된 결과를 읽는다. 읽기는 AI 를 부르지 않아 열 때마다 다시 읽고,
+ * 계산 중에는 확인한 공고 수가 바뀌므로 2초마다 다시 읽는다. 화면을 떠나도 계산은 서버에서 이어진다.
+ */
+export const useOverallRecommendation = () =>
+  useQuery({
+    queryKey: matchKeys.overall,
+    queryFn: () => matchingApi.recommendations(),
+    enabled: matchSupported(),
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => (query.state.data?.status === "COMPUTING" ? 2000 : false),
+  });
+export const useStartOverallRecommendation = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchingApi.startRecommendations(),
+    onSuccess: (data) => client.setQueryData(matchKeys.overall, data),
   });
 };

@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { freshSeed, loginAsDemo } from './helpers';
+import { freshSeed, loginAsDemo, showCardTiles } from './helpers';
 
 test('failed reads show unknown counts while a confirmed empty response shows zero', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards?demoScenario=read-error');
   await expect(page.getByRole('heading', { name: '서버에서 처리하지 못했어요' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('경험 카드 —');
+  await showCardTiles(page); // 상태 탭은 목록 보기에만 있다
   await expect(page.getByRole('button', { name: '전체 —', exact: true })).toBeVisible();
   await expect(page.locator('.query-failure')).not.toContainText('입력한 내용');
   await page.goto('/cards?demoScenario=empty');
@@ -25,11 +26,11 @@ test('drafts lead to answering missing fields while confirmation remains availab
 test('field edit has a phone-sized target and focuses the requested field', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAsDemo(page); await page.goto('/cards/card_01');
-  const edit = page.getByRole('region', { name: '행동 (Action)', exact: true }).getByRole('button', { name: '행동 수정', exact: true });
+  const edit = page.getByRole('region', { name: '행동', exact: true }).getByRole('button', { name: '행동 수정', exact: true });
   await expect(edit).toBeVisible();
   expect((await edit.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await edit.click();
-  await expect(page.getByRole('textbox', { name: '행동 (Action)', exact: true })).toBeFocused();
+  await expect(page.getByRole('textbox', { name: '행동', exact: true })).toBeFocused();
   await expect(page).toHaveURL(/mode=edit&field=A/);
 });
 

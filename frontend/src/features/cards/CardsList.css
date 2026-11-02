@@ -1,0 +1,4 @@
+/* 모바일 터치 44px — 묶어 보기 전환은 38px, 상태 탭은 "전체 5" 가 폭 36px 로 남아 있었다(#520 CL-03).
+   공용 .view-switch / .status-tab 은 다른 화면과 겹쳐서 건드리지 않고, 경험 카드 목록 안에서만 맞춘다. */
+.cards-list .view-switch__item { min-height: var(--control-touch-size); min-width: var(--control-touch-size); }
+.cards-list .status-tab { min-width: var(--control-touch-size); }

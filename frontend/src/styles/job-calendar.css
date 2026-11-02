@@ -61,6 +61,8 @@
 .selected-event > button { display: flex; align-items: flex-start; gap: 8px; text-align: left; flex: 1; min-width: 0; }
 .selected-event .calendar-dot { margin-top: 6px; }
 .selected-event > a { padding: 8px; }
+.selected-event > .selected-event__remove { flex: none; padding: 8px; color: var(--text-secondary); }
+.selected-event > .selected-event__remove:hover { color: var(--text-primary); }
 .calendar-storage-note { margin-top: 18px; color: var(--text-tertiary); font-size: 11px; }
 .calendar-form { display: flex; flex-direction: column; gap: 16px; }
 .calendar-form label { display: flex; flex-direction: column; gap: 7px; font-size: 12px; font-weight: 550; min-width: 0; }

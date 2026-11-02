@@ -9,11 +9,9 @@ import { Job, RepoDetail } from '@/api/schemas';
 import { AppShell } from '@/components/layout/AppShell';
 import { LandingPage } from '@/features/auth/LandingPage';
 import { HomePage } from '@/features/home/HomePage';
-import { JobStatusPage } from '@/features/jobs/JobStatusPage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { ReposPage } from '@/features/repos/ReposPage';
 import { LandingBrand } from '@/features/auth/LandingBrand';
-import { jobTitle } from '@/lib/jobView';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -50,62 +48,6 @@ function stubApi(fail: (path: string) => number | undefined, empty: string[] = [
   return fetchMock;
 }
 const callsTo = (fetchMock: ReturnType<typeof stubApi>, path: string) => fetchMock.mock.calls.filter(([url]) => String(url).endsWith(path)).length;
-
-describe('작업 상태 화면의 제목 (#520 A-02 · G-13)', () => {
-  it('유형 이름 뒤에 상태를 붙이고 "작업"이라는 말을 쓰지 않는다', () => {
-    const cases: [string, Record<string, unknown>][] = [
-      ['레포 정리 대기 중', { state: 'QUEUED' }], ['레포 정리 진행 중', { state: 'RUNNING' }],
-      ['레포 정리 완료', { state: 'SUCCEEDED' }], ['레포 정리 일부 완료', { state: 'SUCCEEDED', partial: true }],
-      ['레포 정리 실패', { state: 'FAILED' }], ['레포 정리 취소됨', { state: 'CANCELED' }],
-      ['카드 초안 생성 진행 중', { type: 'DRAFT', state: 'RUNNING' }], ['카드 초안 생성 실패', { type: 'DRAFT', state: 'FAILED' }],
-    ];
-    for (const [title, overrides] of cases) {
-      expect(jobTitle(job(overrides))).toBe(title);
-      expect(title).not.toMatch(/작업/);
-    }
-  });
-
-  function mountJob(data: Job | Error) {
-    if (data instanceof Error) vi.spyOn(endpoints, 'job').mockRejectedValue(data);
-    else vi.spyOn(endpoints, 'job').mockResolvedValue(data);
-    vi.spyOn(endpoints, 'activeJobs').mockResolvedValue({ jobs: [] });
-    const client = quiet();
-    if (!(data instanceof Error)) client.setQueryData(keys.job(data.jobId), data);
-    const router = createMemoryRouter([{ path: '/jobs/:jobId', element: <JobStatusPage /> }], { initialEntries: ['/jobs/job'] });
-    return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
-  }
-
-  it('카드 초안 작업을 "정리"라고 부르지 않는다: 제목, 탭 제목, 현재 위치가 모두 유형을 따른다', () => {
-    mountJob(job({ type: 'DRAFT', state: 'FAILED', errorCode: 'DRAFT_TIMEOUT', steps: [{ key: 'REASON', state: 'RUNNING', done: 3, total: 10 }] }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('카드 초안 생성 실패');
-    expect(document.title).toBe('카드 초안 생성 실패 · Gitory');
-    expect(within(screen.getByRole('navigation', { name: 'breadcrumb' })).getByText('카드 초안 생성')).toBeInTheDocument();
-    expect(screen.queryByText(/작업/)).not.toBeInTheDocument();
-  });
-
-  it('일부만 끝난 정리는 제목과 배지가 같은 말(일부 완료)이다', () => {
-    mountJob(job({ state: 'SUCCEEDED', partial: true, finishedAt: '2026-10-30T00:02:00Z' }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('레포 정리 일부 완료');
-    expect(screen.getByText('일부 완료', { selector: '.badge' })).toBeInTheDocument();
-    expect(screen.queryByText('부분 완료')).not.toBeInTheDocument();
-  });
-
-  it('취소 안내와 직접 작성 링크도 유형과 용어집을 따른다', () => {
-    mountJob(job({ state: 'CANCELED', finishedAt: '2026-10-30T00:02:00Z' }));
-    expect(screen.getByText('레포 정리가 취소됐어요')).toBeInTheDocument();
-    cleanup();
-    mountJob(job({ state: 'FAILED', errorCode: 'INTERNAL_ERROR', finishedAt: '2026-10-30T00:02:00Z' }));
-    expect(screen.getByRole('link', { name: '직접 작성' })).toHaveAttribute('href', '/cards/new');
-    expect(screen.queryByRole('link', { name: '직접 쓰기' })).not.toBeInTheDocument();
-  });
-
-  it('상태를 못 불러온 화면에도 제목(h1)이 있다 (G-07)', async () => {
-    mountJob(new ApiError('INTERNAL_ERROR', 'x', 503));
-    expect(await screen.findByRole('heading', { level: 1, name: '진행 상태를 확인하지 못했어요' })).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent('서버에서 처리하지 못했어요');
-    expect(document.title).toBe('진행 상태를 확인하지 못했어요 · Gitory');
-  });
-});
 
 describe('정리 화면 (#520 G-13 · A-04 · A-05 · A-08 · A-09 · A-12)', () => {
   function mountAnalyze(path: string, data?: Job, activeJobs: unknown = { jobs: [] }) {

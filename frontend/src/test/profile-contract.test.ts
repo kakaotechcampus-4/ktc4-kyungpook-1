@@ -2,13 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { profileSupported } from '@/api/capabilities';
 import {
   CAREER_TYPES, EDUCATION_LEVELS, EDUCATION_STATUSES, GPA_MAXES, LANGUAGE_TESTS, PROFILE_ISSUE_CODES, PROFILE_LIMITS, Profile, ProfileInput,
-  emptyInput, emptyProfile, isProfileEmpty, issuesOf, serverIssues,
+  emptyProfile, isProfileEmpty, issuesOf, serverIssues,
 } from '@/api/profile';
 import {
   CAREER_TYPE_LABEL, GPA_MAX_OPTIONS, LEVEL_LABEL, STATUS_LABEL, TEST_LABEL, attachableErrors, blankCareer, blankEducation, blankLanguage, blankCertification, issueMessage, toDraft, toForm,
   type ProfileForm,
 } from '@/lib/profileForm';
-import { sampleInput } from './profileHarness';
+import { minimalInput, sampleInput } from './profileHarness';
 
 afterEach(() => { vi.unstubAllEnvs(); });
 
@@ -41,21 +41,35 @@ describe('capability gate', () => {
 
 describe('PUT body (ProfileInput) follows BE #552', () => {
   it('uses the BE list names and accepts a complete document, keeping order', () => {
-    expect(Object.keys(ProfileInput.parse(sampleInput()))).toEqual(['educations', 'careers', 'languages', 'certifications']);
+    expect(Object.keys(ProfileInput.parse(sampleInput()))).toEqual(['educations', 'careers', 'languages', 'certifications', 'interests']);
     expect(ProfileInput.parse(sampleInput())).toEqual(sampleInput());
   });
-  it('accepts four empty lists — that is "skip", and also how a user clears everything', () => {
-    expect(ProfileInput.safeParse(emptyInput()).success).toBe(true);
-    expect(emptyInput()).toEqual({ educations: [], careers: [], languages: [], certifications: [] });
+  it('accepts four empty lists as long as one interest is chosen — interests are the one thing that cannot be empty', () => {
+    expect(ProfileInput.safeParse(minimalInput()).success).toBe(true);
+    expect(check({ educations: [], careers: [], languages: [], certifications: [], interests: [] })).toEqual([{ path: 'interests', code: 'REQUIRED' }]);
   });
-  it('trims text and turns blank optional values into null; only level, school and status are required for a school', () => {
+  describe('interests (one to three job categories, no repeats)', () => {
+    it('accepts every job category and rejects anything else', () => {
+      for (const value of ['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'DATA', 'AI_ML', 'SECURITY', 'QA', 'ETC']) expect(check({ interests: [value] })).toEqual([]);
+      expect(first({ interests: ['GAME'] })).toEqual({ path: 'interests[0]', code: 'INVALID_VALUE' });
+    });
+    it('stops at three and refuses the same category twice', () => {
+      expect(check({ interests: ['BACKEND', 'FRONTEND', 'MOBILE'] })).toEqual([]);
+      expect(first({ interests: ['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS'] })).toEqual({ path: 'interests', code: 'TOO_MANY' });
+      expect(first({ interests: ['BACKEND', 'BACKEND'] })).toEqual({ path: 'interests', code: 'INVALID_VALUE' });
+    });
+  });
+  it('trims text and turns blank optional values into null; only level and status are required for a school — the name may be blank', () => {
     const parsed = ProfileInput.parse({
       educations: [{ level: 'MASTER', school: '  샘플대학교  ', major: '   ', status: 'ENROLLED' }],
       careers: [{ company: ' 회사 ', role: '  ', type: 'INTERN', startMonth: '2024-01', endMonth: null }],
       languages: [{ test: 'OPIC', score: ' IH ', acquiredMonth: '' }],
       certifications: [{ name: ' 정보처리기사 ', issuer: '   ', acquiredMonth: null }],
+      interests: ['BACKEND'],
     });
     expect(parsed.educations[0]).toEqual({ level: 'MASTER', school: '샘플대학교', major: null, status: 'ENROLLED', startMonth: null, endMonth: null, gpa: null, gpaMax: null });
+    expect(check(education({ school: '   ' }))).toEqual([]);
+    expect(ProfileInput.parse({ ...sampleInput(), ...education({ school: '   ' }) }).educations[0].school).toBeNull();
     expect(parsed.careers[0]).toEqual({ company: '회사', role: null, type: 'INTERN', startMonth: '2024-01', endMonth: null });
     expect(parsed.languages[0]).toEqual({ test: 'OPIC', testName: null, score: 'IH', acquiredMonth: null });
     expect(parsed.certifications[0]).toEqual({ name: '정보처리기사', issuer: null, acquiredMonth: null });
@@ -73,7 +87,7 @@ describe('PUT body (ProfileInput) follows BE #552', () => {
 
   describe('lengths (50 characters; language score 20)', () => {
     it.each([
-      ['educations', 'school', PROFILE_LIMITS.TEXT, true], ['educations', 'major', PROFILE_LIMITS.TEXT, false],
+      ['educations', 'school', PROFILE_LIMITS.TEXT, false], ['educations', 'major', PROFILE_LIMITS.TEXT, false],
       ['careers', 'company', PROFILE_LIMITS.TEXT, true], ['careers', 'role', PROFILE_LIMITS.TEXT, false],
       ['languages', 'score', PROFILE_LIMITS.SCORE, true],
       ['certifications', 'name', PROFILE_LIMITS.TEXT, true], ['certifications', 'issuer', PROFILE_LIMITS.TEXT, false],
@@ -204,15 +218,15 @@ describe('PUT body (ProfileInput) follows BE #552', () => {
       careers: [{ company: '', role: null, type: '', startMonth: '2023-05', endMonth: '2023-01' }],
     });
     expect(issues.map((i) => i.path)).toEqual([
-      'educations[0].level', 'educations[0].school', 'educations[0].status', 'educations[0].gpa', 'careers[0].company', 'careers[0].type', 'careers[0].endMonth',
+      'educations[0].level', 'educations[0].status', 'educations[0].gpa', 'careers[0].company', 'careers[0].type', 'careers[0].endMonth',
     ]);
   });
 });
 
 describe('form → body (toDraft) always sends all four lists', () => {
-  const emptyForm: ProfileForm = { educations: [], careers: [], languages: [], certifications: [] };
-  it('an empty form is four empty lists, not a partial body', () => {
-    expect(toDraft(emptyForm)).toEqual({ educations: [], careers: [], languages: [], certifications: [] });
+  const emptyForm: ProfileForm = { educations: [], careers: [], languages: [], certifications: [], interests: [] };
+  it('an empty form is four empty lists and an empty interest list, not a partial body', () => {
+    expect(toDraft(emptyForm)).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: [] });
   });
   it('maps the screen-only "still working" box to endMonth null, and a blank end month without it stays blank', () => {
     const row = { ...blankCareer(), company: 'A', type: 'INTERN' as const, startMonth: '2024-01' };
@@ -244,7 +258,9 @@ describe('response (Profile) and helpers', () => {
   const saved = () => ({ ...sampleInput(), savedAt: '2026-10-30T03:00:00Z' });
   it('parses a saved document and an empty one', () => {
     expect(Profile.parse(saved()).careers[0].endMonth).toBeNull();
-    expect(Profile.parse(emptyProfile())).toEqual({ educations: [], careers: [], languages: [], certifications: [], savedAt: null });
+    expect(Profile.parse(emptyProfile())).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: [], savedAt: null });
+    expect(Profile.parse({ ...saved(), interests: undefined }).interests).toEqual([]); // 관심 분야 칸이 없던 때의 응답
+    expect(Profile.parse({ ...saved(), interests: ['BACKEND', 'GAME'] }).interests).toEqual(['BACKEND']); // 모르는 값은 버린다
   });
   it('reads a column the server left out as null', () => {
     const lean = { ...saved(), educations: [{ level: 'BACHELOR', school: 'A', status: 'ENROLLED' }], careers: [{ company: 'B', type: 'INTERN', startMonth: '2024-01' }], languages: [{ test: 'HSK', score: '5급' }], certifications: [{ name: 'C' }] };
@@ -268,7 +284,7 @@ describe('response (Profile) and helpers', () => {
   it('is empty only when all four lists are empty — and "empty" is not "never saved"', () => {
     expect(isProfileEmpty(emptyProfile())).toBe(true);
     expect(isProfileEmpty({ ...emptyProfile(), certifications: sampleInput().certifications })).toBe(false);
-    expect(Profile.parse({ ...emptyInput(), savedAt: '2026-10-30T03:00:00Z' }).savedAt).not.toBeNull();
+    expect(Profile.parse({ ...minimalInput(), savedAt: '2026-10-30T03:00:00Z' }).savedAt).not.toBeNull();
   });
 });
 
@@ -286,7 +302,7 @@ describe('server field errors (what we ask BE for; #552 sends only a Korean sent
     expect(serverIssues({ message: '학력 1번째 학교 이름이 비었어요', fields: [{ path: 'educations[0].school', code: 'REQUIRED', message: '서버 문구' }] })).toEqual([{ path: 'educations[0].school', code: 'REQUIRED' }]);
   });
   it('attaches only to fields that exist on screen, in either path style', () => {
-    const form: ProfileForm = { educations: [blankEducation()], careers: [blankCareer()], languages: [blankLanguage()], certifications: [blankCertification()] };
+    const form: ProfileForm = { educations: [blankEducation()], careers: [blankCareer()], languages: [blankLanguage()], certifications: [blankCertification()], interests: [] };
     const out = attachableErrors([
       { path: 'educations[0].school', code: 'REQUIRED' }, { path: 'careers.0.company', code: 'REQUIRED' },
       { path: 'educations[3].school', code: 'REQUIRED' }, // 없는 줄

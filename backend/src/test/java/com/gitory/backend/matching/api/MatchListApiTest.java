@@ -194,6 +194,29 @@ class MatchListApiTest {
     }
 
     @Test
+    @DisplayName("목록 쿼리 한 번으로 읽은 조건의 기술과 필수 학력이 응답의 techs·education 에 실린다")
+    void carriesTechsAndEducationFromConditions() throws Exception {
+
+        Long posting = posting("가온소프트", "백엔드", "BACKEND", "ENTRY", null, null);
+        jdbc.update("""
+                INSERT INTO job_posting_criterion (job_posting_id, type, seq, text, quote, techs)
+                VALUES (?, 'REQUIRED', 1, 'Java·Spring 경험', '원문', '{JAVA,SPRING}'),
+                       (?, 'PREFERRED', 2, 'Kafka 경험', '원문', '{KAFKA,JAVA}')
+                """, posting, posting);
+        jdbc.update("""
+                INSERT INTO job_posting_criterion (job_posting_id, type, seq, text, quote, general_type, education_level)
+                VALUES (?, 'REQUIRED', 3, '학사 이상', '원문', 'EDUCATION', 'BACHELOR')
+                """, posting);
+
+        mvc.perform(get("/api/matches").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].techs", contains("JAVA", "SPRING", "KAFKA")))
+                .andExpect(jsonPath("$.data[0].education.level").value("BACHELOR"))
+                .andExpect(jsonPath("$.data[0].education.exempt").value(false));
+
+    }
+
+    @Test
     @DisplayName("확정 카드가 있어도 응답의 칸 이름과 중첩이 FE 계약 예시(list-no-cards.json)와 같다")
     void responseShapeMatchesContractExample() throws Exception {
 

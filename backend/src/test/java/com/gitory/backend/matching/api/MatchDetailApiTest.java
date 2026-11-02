@@ -360,6 +360,7 @@ class MatchDetailApiTest {
         criterion(posting, "RESPONSIBILITY", 7, "업무 하나", null);
         criterion(posting, "RESPONSIBILITY", 8, "업무 둘", null);
         meets(Map.of(required1, first, required2, second, preferred1, third));
+        jdbc.update("UPDATE job_posting_criterion SET techs = '{KOTLIN,SPRING,KAFKA}' WHERE id = ?", required1);
 
         JsonNode actual = MAPPER.readTree(mvc.perform(post("/api/matches/" + publicIdOf(posting) + "/judgement")
                         .with(loggedIn()).with(csrf()))

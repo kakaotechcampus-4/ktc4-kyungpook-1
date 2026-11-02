@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 매칭 AI 판단에 보낼 확정 카드의 지금 버전 글을 사용자가 정한 가리기를 적용해 칸마다 한 덩어리로 읽는다
+ * 매칭 AI 에 보낼 확정 카드·작성 중 카드의 지금 버전 글을 사용자가 정한 가리기를 적용해 칸마다 한 덩어리로 읽는다
  * 매칭은 이 글로 판단을 저장해 두므로, 가리기를 바꾸면 보내는 글이 달라져 판단을 다시 묻게 된다
  */
 @Service
@@ -40,6 +40,14 @@ public class MatchingCardReader {
     public List<MatchingCard> confirmedOf(Long userId) {
 
         return cardsOf(confirmedCards.findLiveConfirmedIdsOfUser(userId));
+
+    }
+
+    /** 작성 중 카드 중 최근에 고친 limit 장을 카드 id 순으로 읽는다 */
+    @Transactional(readOnly = true)
+    public List<MatchingCard> draftsOf(Long userId, int limit) {
+
+        return cardsOf(confirmedCards.findLiveDraftIdsRecentFirst(userId, limit));
 
     }
 

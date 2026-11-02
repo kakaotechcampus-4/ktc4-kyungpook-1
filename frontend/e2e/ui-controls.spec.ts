@@ -30,8 +30,8 @@ test('select menus are styled, support keyboard selection and restore focus on E
 test('STAR editors begin at the same left edge as the field letter on desktop and mobile', async ({ page }) => {
   await loginAsDemo(page);
   for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 900 }); await page.goto('/cards/new');
-    await expect(page.getByRole('textbox', { name: '상황 (Situation)', exact: true })).toBeVisible();
+    await page.setViewportSize({ width, height: 900 }); await page.goto('/cards/new?write=1');
+    await expect(page.getByRole('textbox', { name: '상황', exact: true })).toBeVisible();
     const edges = await page.locator('.star-read__row').evaluateAll(rows => rows.map(row => ({ letter: row.querySelector('.star-key')!.getBoundingClientRect().left, input: row.querySelector('textarea')!.getBoundingClientRect().left })));
     expect(edges.every(edge => Math.abs(edge.letter - edge.input) <= 1)).toBe(true);
   }
@@ -46,14 +46,14 @@ test('home and card list titles share their typography and use lighter weights',
 });
 
 test('mobile repository select keeps its menu in view and roundtrips the empty choice', async ({ page }) => {
-  await page.setViewportSize({ width: 320, height: 844 }); await loginAsDemo(page); await page.goto('/cards/new');
+  await page.setViewportSize({ width: 320, height: 844 }); await loginAsDemo(page); await page.goto('/cards/new?write=1');
   const repo = page.getByRole('combobox', { name: '관련 레포', exact: true });
   await repo.click(); const menu = page.getByRole('listbox', { name: '관련 레포', exact: true }); await expect(menu).toBeVisible();
   const bounds = await menu.boundingBox(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320);
   await page.getByRole('option', { name: 'hong-dev/auth-service', exact: true }).click(); await expect(repo).toContainText('hong-dev/auth-service');
   await repo.click(); await page.getByRole('option', { name: '없음', exact: true }).click(); await expect(repo).toContainText('없음');
   await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('선택값 보존 검사');
-  await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click(); await expect(repo).toBeDisabled();
+  await page.getByRole('button', { name: '작성 시작', exact: true }).click(); await expect(repo).toBeDisabled();
   await page.getByRole('button', { name: '저장 후 종료', exact: true }).click(); await expect(page).toHaveURL(/\/cards\/[^/?]+$/);
   const saved = await page.evaluate(async () => (await (await fetch('/api' + location.pathname)).json()).data);
   expect(saved.repo).toBeNull();

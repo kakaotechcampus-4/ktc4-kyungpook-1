@@ -44,13 +44,14 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(
       page.getByRole("heading", { name: "서버 개발자 (신입)", exact: true }),
     ).toBeVisible();
+    // 맞춰 보기 전에는 공고 원문(자격 요건 절)만 보이고, 주 버튼은 '이 공고와 맞춰 보기' 다
     await expect(
-      page.getByRole("heading", { name: /필수 조건/ }),
+      page.getByRole("heading", { name: "자격 요건", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText("맞는 카드가 없어요.").first(),
+      page.getByRole("button", { name: "이 공고와 맞춰 보기" }),
     ).toBeVisible();
-    await expect(page.locator(".match-support-link").first()).toBeVisible();
+    await expect(page.locator(".posting-condition__evidence a")).toHaveCount(0);
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -63,7 +64,9 @@ for (const width of [320, 390, 768, 1440]) {
     ).toContainText("신입 가능");
     if (width === 390) {
       await page.locator(".match-card").click();
-      await page.locator(".match-support-link").first().click();
+      // 맞춰 보면 결과가 차례로 펼쳐진 뒤(6초쯤) 조건 아래 근거 카드 링크가 생긴다
+      await page.getByRole("button", { name: "이 공고와 맞춰 보기" }).click();
+      await page.locator(".posting-condition__evidence a").first().click({ timeout: 20_000 });
       await expect(page).toHaveURL(/\/cards\//);
     }
   });

@@ -9,7 +9,7 @@ test('failed manual candidate submission retains the draft in its dialog', async
   await page.getByRole('button', { name: '+ 직접 추가', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('textbox', { name: '후보 이름' }).fill('직접 만든 배포 도구');
-  await dialog.getByRole('textbox', { name: '무엇을 한 작업인가요' }).fill('배포 확인 도구를 만들었다');
+  await dialog.getByRole('textbox', { name: '어떤 일을 했나요' }).fill('배포 확인 도구를 만들었다');
   await dialog.getByRole('button', { name: '후보 추가', exact: true }).click();
   await expect(page.locator('.toast--danger')).toBeVisible();
   await expect(dialog.getByRole('textbox', { name: '후보 이름' })).toHaveValue('직접 만든 배포 도구');

@@ -138,7 +138,7 @@ export function proceedDestinations(result: ProceedResult): { path: string; stat
     ...result.created.map((g) =>
       g.cardIds.length
         ? { path: `/cards/${encodeURIComponent(g.cardIds[0])}`, state: { cardOrder: g.cardIds } }
-        : { path: `/jobs/${encodeURIComponent(g.jobId)}` },
+        : { path: `/cards/repo/${encodeURIComponent(g.repoId)}` },
     ),
     ...result.continueCards.map((id) => ({ path: `/cards/${encodeURIComponent(id)}/interview` })),
     ...result.started.map((s) => ({ path: `/repos/${encodeURIComponent(s.repoId)}/run?job=${encodeURIComponent(s.jobId)}` })),

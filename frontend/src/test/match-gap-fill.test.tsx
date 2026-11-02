@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MatchDetailPage } from '@/features/match/MatchDetailPage';
-import { planProceed, rememberProceeded, revealIntervalMs, stepText, takeProceeded } from '@/features/match/gapFill';
+import { planProceed, proceedDestinations, rememberProceeded, revealIntervalMs, stepText, takeProceeded } from '@/features/match/gapFill';
 import { gapFillPollMs, matchingApi, MatchDetail, type GapFill, type GapFillCondition, type GapFillProposal } from '@/api/matching';
 import { endpoints } from '@/api/endpoints';
 import { ApiError } from '@/api/client';
@@ -218,6 +218,9 @@ it('고른 제안만 진행하기로 넘긴다 — 후보로 카드 만들기는
     proposalOf({ action: 'ANALYZE_REPO', candidateId: null, repoId: 'r_counting' }),
     proposalOf({ repoId: null }),
   ])).toEqual({ createCards: [{ repoId: 'r_auth', candidateIds: ['c_51', 'c_pay'] }], continueCards: [], analyzeRepos: ['r_counting'] });
+  // 카드가 작업으로 만들어져 바로 받은 카드가 없으면 그 레포의 카드 폴더에서 진행을 본다
+  expect(proceedDestinations({ created: [{ repoId: 'r_auth', candidateIds: ['c_51'], jobId: 'job_9', cardIds: [] }], continueCards: [], started: [] }))
+    .toEqual([{ path: '/cards/repo/r_auth' }]);
   const gapFill = done([
     condition(fiveIds[0], { result: 'PROPOSED', proposal: proposalOf() }),
     condition(fiveIds[1], { result: 'PROPOSED', proposal: proposalOf({ candidateId: 'c_pay', title: '5.12 결제모듈 6커밋' }) }),

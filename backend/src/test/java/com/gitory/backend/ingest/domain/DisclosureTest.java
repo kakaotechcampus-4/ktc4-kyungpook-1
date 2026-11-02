@@ -19,7 +19,7 @@ class DisclosureTest {
         Disclosure disclosure = Disclosure.of(counted(188, 43, 58, 20), new IngestLimits(1000, 50, 40, 30), false);
 
         assertThat(disclosure.reads()).containsExactly(
-                "기본 브랜치 커밋 기록 (다른 사람 커밋 포함, 최대 1000개)",
+                "기본 브랜치 커밋 기록 (최대 1000개, 내용은 내 커밋만)",
                 "카드에는 내 커밋 43개만 써요",
                 "최근 PR 50개·그보다 오래된 내 PR 최대 40개·최근 이슈 30개와 리뷰의 제목·본문 앞부분",
                 "카드로 고른 커밋의 코드 변경 부분");
@@ -28,10 +28,10 @@ class DisclosureTest {
     }
 
     @Test
-    @DisplayName("경험 그룹화를 끈 서버의 예상 시간은 기본 5초에 GitHub 호출(커밋 수 + PR 수 × 3)마다 0.4초를 더해 반올림한다")
+    @DisplayName("경험 그룹화를 끈 서버의 예상 시간은 기본 5초에 GitHub 호출(커밋 목록 100개당 1번 + 내 커밋 수 + PR 수 × 3)마다 0.4초를 더해 반올림한다")
     void estimatesSecondsFromGithubCalls() {
 
-        assertThat(Disclosure.of(counted(187, 43, 30, 10), LIMITS, false).estimatedSeconds()).isEqualTo(116);
+        assertThat(Disclosure.of(counted(187, 43, 30, 10), LIMITS, false).estimatedSeconds()).isEqualTo(59);
 
     }
 
@@ -39,15 +39,15 @@ class DisclosureTest {
     @DisplayName("경험 그룹화를 켰으면 기본 15초에 내 PR 수 × 2.7초를 더한다")
     void addsGroupingSecondsWhenGroupingIsEnabled() {
 
-        assertThat(Disclosure.of(counted(188, 43, 30, 10), LIMITS, true).estimatedSeconds()).isEqualTo(158);
+        assertThat(Disclosure.of(counted(188, 43, 30, 10), LIMITS, true).estimatedSeconds()).isEqualTo(101);
 
     }
 
     @Test
-    @DisplayName("커밋 수는 수집 상한(1000개)까지만 계산에 넣는다")
+    @DisplayName("커밋 목록과 내 커밋 수는 수집 상한(1000개)까지만 계산에 넣는다")
     void capsCommitsAtCollectionLimit() {
 
-        assertThat(Disclosure.of(counted(5000, 100, 30, 10), LIMITS, false).estimatedSeconds()).isEqualTo(441);
+        assertThat(Disclosure.of(counted(5000, 3000, 30, 10), LIMITS, false).estimatedSeconds()).isEqualTo(445);
 
     }
 

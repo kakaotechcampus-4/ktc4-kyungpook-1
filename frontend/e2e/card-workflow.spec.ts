@@ -11,9 +11,9 @@ test('minimal API summaries never imply a manual source or invented evidence cou
 test('cards with all four STAR fields filled drop the text status badge; incomplete cards keep it', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards'); await showCardTiles(page);
   const tile = (id: string) => page.locator(`.experience-item[href="/cards/${id}"]`);
-  // 네 칸이 다 찬 확정 카드 — 글자 대신 체크 아이콘(이름 "확정됨"). card_05 는 확인 필요 표시가 있어도 확정 카드라 같다
+  // 네 칸이 다 찬 확정 카드 — 눈에 보이는 표시 없이 화면 읽기 프로그램용 "확정됨"만. card_05 는 확인 필요 표시가 있어도 확정 카드라 같다
   for (const id of ['card_03', 'card_04', 'card_05']) {
-    await expect(tile(id).getByRole('img', { name: '확정됨' })).toBeVisible();
+    await expect(tile(id).locator('.sr-only')).toHaveText('확정됨');
     await expect(tile(id).locator('.badge')).toHaveCount(0);
   }
   // 빈 칸이 있는 작성 중 카드는 그대로 — 작성 중 + 확인 필요 + 빈 칸 수

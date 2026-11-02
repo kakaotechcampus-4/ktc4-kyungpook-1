@@ -178,6 +178,27 @@ function overallCompanies() {
       requiredMet: x.required.met, requiredTotal: x.required.total, preferredMet: x.preferred.met, preferredTotal: x.preferred.total,
     }));
 }
+/**
+ * Mock server only: 레포의 확정 카드가 없으면 계산한 적 없음(NONE), 있으면 기업마다 공고 하나씩 3곳.
+ * 실서버는 카드 글로 AI 가 판단하므로, 그 카드 기술과 겹치는 공고를 앞에 두고 남는 자리는 다른 공고로 채운다
+ */
+export function mockRepoRecommendation(repoId: string) {
+  const confirmed = db.cards.filter((c) => c.repo?.id === repoId && c.status === "CONFIRMED");
+  if (confirmed.length === 0) return { status: "NONE", computedAt: null, companies: [] };
+  const mine = new Set<string>(confirmed.flatMap((c) => (c.techs ?? []) as string[]));
+  const seen = new Set<string>();
+  const companies = mockMatchList()
+    .map((x) => ({ x, techs: x.techs.filter((tech) => mine.has(tech)).slice(0, 3) }))
+    .sort((a, b) => b.techs.length - a.techs.length)
+    .filter(({ x }) => { const key = x.companyId ?? x.company; if (seen.has(key)) return false; seen.add(key); return true; })
+    .slice(0, 3)
+    .map(({ x, techs }) => ({
+      companyId: x.companyId, companyName: x.company, logoUrl: x.logoUrl,
+      posting: { id: x.id, title: x.role, deadline: x.source.expiresAt, closed: false },
+      techs, requiredMet: Math.max(1, techs.length), preferredMet: 0,
+    }));
+  return { status: "READY", computedAt: new Date().toISOString(), companies };
+}
 /** Mock server only: 실서버처럼 누르면 배경에서 기업을 하나씩 확인하고(진행 개수), 다시 계산하는 동안에는 지난 기업을 그대로 준다 */
 export function mockOverall() {
   const state = db.overall;

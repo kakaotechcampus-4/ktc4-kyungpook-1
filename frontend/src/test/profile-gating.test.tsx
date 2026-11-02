@@ -98,7 +98,7 @@ describe('mock mode', () => {
     let fail = true;
     connectMockServer((call) => (call.path === '/profile' && fail ? new Response(JSON.stringify({ data: null, error: { code: 'INTERNAL_ERROR', message: 'x' } }), { status: 503 }) : undefined));
     mountApp([page(<ProfilePage />, '/settings/profile')], '/settings/profile');
-    expect(await screen.findByRole('alert')).toHaveTextContent('서버에 연결하지 못했어요');
+    expect(await screen.findByRole('alert')).toHaveTextContent('서버에서 처리하지 못했어요');
     fail = false;
     screen.getByRole('button', { name: '다시 불러오기' }).click();
     expect(await screen.findByRole('button', { name: '학력 추가' })).toBeInTheDocument();

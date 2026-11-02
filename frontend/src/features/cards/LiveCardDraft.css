@@ -1,0 +1,82 @@
+/* 카드 초안을 쓰는 동안의 STAR 네 칸 (#617). 색은 시맨틱 토큰만, 글자 크기는 12·13·14·16 단계만 쓴다.
+   상태는 색으로만 가르지 않는다: 칸 이름 옆 글자(대기, 쓸 차례, 쓰는 중, 완료, 비움)와 윤곽·채움이 함께 말한다. */
+.live-draft { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
+.live-draft__head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+.live-draft__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); }
+.live-draft__count { margin-right: auto; font-size: 12px; line-height: 18px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* 카드 한 장 틀 */
+.live-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); overflow: hidden; }
+.live-card__head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 14px 18px; border-bottom: 1px solid var(--border-default); }
+.live-card__title { margin: 0; min-width: 0; font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); overflow-wrap: anywhere; }
+.live-card__state { margin-left: auto; font-size: 12px; line-height: 18px; font-weight: 600; color: var(--text-secondary); }
+.live-card[data-state='WRITING'] .live-card__state, .live-card[data-state='READING'] .live-card__state { color: var(--text-accent); }
+.live-card[data-state='FAILED'] .live-card__state { color: var(--state-failed-text); }
+
+/* 네 칸. 좁은 화면에서는 한 줄에 한 칸이 세로로 쌓이고, 넓으면 2열이다. 칸 사이 가는 선은 칸 틈에 비치는 배경이다 */
+.live-slots { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; margin: 0; padding: 0; list-style: none; background: var(--border-default); }
+@media (min-width: 760px) { .live-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.live-slot { position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 16px 18px; background: var(--bg-surface); color: var(--text-primary); }
+.live-slot__head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.live-slot__name { font-size: 13px; line-height: 20px; font-weight: 700; }
+.live-slot__status { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 18px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+
+/* 글. 보이지 않는 전체 글(ghost)과 같은 칸에 겹쳐 높이를 미리 잡고, 보이는 글(typed)이 그 위에서 자란다 */
+.live-slot__body { display: grid; margin: 0; min-width: 0; min-height: 52px; font-size: 16px; line-height: 1.75; overflow-wrap: anywhere; }
+.live-slot__body > * { grid-area: 1 / 1; min-width: 0; }
+.live-slot__ghost { visibility: hidden; user-select: none; pointer-events: none; }
+.live-slot__note { font-size: 14px; line-height: 24px; color: var(--text-secondary); }
+
+.live-cursor { display: inline-block; width: 2px; height: 1.15em; margin-left: 2px; vertical-align: text-bottom; background: var(--text-accent); animation: live-cursor-blink 1.05s steps(1, end) infinite; }
+@keyframes live-cursor-blink { 50% { opacity: 0; } }
+
+/* 아직 안 쓴 칸은 비워 둔다 */
+.live-slot[data-phase='WAITING'] { background: var(--bg-paper); }
+.live-slot[data-phase='WAITING'] .live-slot__name, .live-slot[data-phase='WAITING'] .live-slot__status { color: var(--text-tertiary); }
+/* 지금 쓰는 칸은 두꺼운 윤곽으로 강조한다. 바탕은 비워 두어 '다 쓴 칸'의 채움과 겹쳐 보이지 않게 한다 */
+.live-slot[data-phase='NEXT'], .live-slot[data-phase='WRITING'], .live-slot[data-phase='REWRITING'] { background: var(--bg-surface); box-shadow: inset 0 0 0 2px var(--border-selected); z-index: 1; }
+.live-slot[data-phase='NEXT'] .live-slot__status, .live-slot[data-phase='WRITING'] .live-slot__status, .live-slot[data-phase='REWRITING'] .live-slot__status { color: var(--text-accent); }
+/* 다 쓴 칸은 색을 채운다. 왼쪽 띠는 장식이고 뜻은 '완료' 글자가 말한다 */
+.live-slot[data-phase='DONE'] { background: var(--bg-selected); }
+.live-slot[data-phase='DONE']::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--accent-point); }
+.live-slot[data-phase='DONE'] .live-slot__status { color: var(--text-accent); }
+/* 근거가 없어 비운 칸과 주지 않은 칸 */
+.live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'] { background: var(--field-dropped-bg); }
+.live-slot[data-phase='BLANK'] .live-slot__note, .live-slot[data-phase='EMPTY'] .live-slot__note { color: var(--field-dropped-text); }
+.live-slot[data-phase='MISSED'] { background: var(--state-failed-bg); }
+.live-slot[data-phase='MISSED'] .live-slot__status, .live-slot[data-phase='MISSED'] .live-slot__note { color: var(--state-failed-text); }
+.live-slot[data-phase='DONE'], .live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'], .live-slot[data-phase='MISSED'] { transition: background-color .3s; }
+
+/* 칸에 한 AI 의 과정. 좁으면 줄바꿈된다 */
+.live-steps { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 2px; margin: 0; padding: 8px 0 0; list-style: none; border-top: 1px dashed var(--border-strong); }
+.live-step { display: inline-flex; align-items: flex-start; gap: 2px; min-width: 0; font-size: 13px; line-height: 20px; color: var(--text-strong); }
+.live-step__sep { flex: 0 0 auto; margin-top: 3px; color: var(--text-tertiary); }
+.live-step__body { display: flex; flex-direction: column; min-width: 0; }
+.live-step__round { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-tertiary); }
+.live-step__text { font-weight: 500; overflow-wrap: anywhere; }
+.live-step__detail { font-size: 12px; line-height: 18px; color: var(--text-secondary); overflow-wrap: anywhere; }
+
+/* 앞서 쓴 카드 — 접어 둔다 */
+.live-finished { display: flex; flex-direction: column; gap: 8px; }
+.live-finished__heading { margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-secondary); }
+.live-finished__item { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); overflow: hidden; }
+.live-finished__summary { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; min-height: var(--control-touch-size); padding: 8px 14px; cursor: pointer; }
+.live-finished__summary:focus-visible { outline: 2px solid var(--border-selected); outline-offset: -2px; }
+.live-finished__title { min-width: 0; font-size: 14px; line-height: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.live-finished__state { margin-left: auto; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
+.live-finished__item[data-state='FAILED'] .live-finished__state { color: var(--state-failed-text); }
+.live-finished__body { border-top: 1px solid var(--border-default); }
+
+@media (max-width: 767px) {
+  .live-draft { padding: 20px; }
+  .live-slot { padding: 14px 16px; }
+  .live-card__head { padding: 12px 16px; }
+}
+
+/* 동작 줄이기: 커서도 깜빡이지 않고 색 바뀜도 없다(글은 펼치지 않고 한 번에 보인다) */
+@media (prefers-reduced-motion: reduce) {
+  .live-cursor { animation: none; }
+  .live-slot { transition: none; }
+}
+@media print { .live-draft { display: none; } }

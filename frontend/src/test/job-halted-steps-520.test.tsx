@@ -148,7 +148,7 @@ describe('작업 상태 화면 — 목의 실패 작업(r_fail)', () => {
     const failed = failedByMock();
     mount(`/jobs/${failed.jobId}`, '/jobs/:jobId', <JobStatusPage />, failed);
 
-    expect(screen.getByRole('heading', { name: '작업 실패' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '레포 정리 실패' })).toBeInTheDocument();
     expect(screen.queryByText('진행 중')).not.toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument(); // 스피너
     const running = failed.steps.filter((s) => s.state === 'RUNNING');

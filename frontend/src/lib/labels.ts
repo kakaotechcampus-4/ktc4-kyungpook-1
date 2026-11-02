@@ -1,5 +1,7 @@
 /**
- * enum → 화면 문구. 한국어는 이 파일 밖으로 새지 않는다.
+ * enum → 화면 문구. 여러 화면이 같은 enum 을 같은 말로 부르도록 한곳에 모았다.
+ * 버튼, 제목, 안내 같은 화면 전용 문구는 각 화면 파일에 직접 있다 — 문구를 고칠 때는 이 파일만 보지 말고 그 말을 검색할 것.
+ * 용어와 말투 기준은 docs/2026-10-29-TERMINOLOGY.md.
  * 로직은 절대 여기 문자열을 비교하지 않는다 — 문구를 다듬어도 로직이 깨지지 않게.
  */
 import type { AuthoredBy, CandidateStatus, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobState, JobType, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
@@ -9,8 +11,10 @@ export const jobTypeLabel: Record<JobType, string> = { ANALYZE: '레포 정리',
 
 export const candidateStatusLabel: Record<CandidateStatus, string> = { NEW: '후보', USED: '사용됨', EXCLUDED: '제외됨' };
 export const candidateTypeLabel: Record<CandidateType, string> = { PR: 'PR', ISSUE: '이슈', COMMIT_CLUSTER: '커밋 묶음', MANUAL: '직접 추가' };
-export const cardKindLabel: Record<CardKind, string> = { TECH: '기술 카드', QUALITATIVE: '정성 카드' };
-export const cardKindShort: Record<CardKind, string> = { TECH: '기술', QUALITATIVE: '정성' };
+// 직접 쓴 정성 카드의 화면 이름은 '경험 카드'다 — 계약(2026-10-28-EXPERIENCE_CARDS.md)과 10/29 폴더 시안이 기술 카드와 짝으로 그렇게 부른다(#522).
+// 메뉴 이름 '경험 카드'(카드 전체)와 같은 말이지만 폴더 안 두 구역(기술 카드, 경험 카드)과 타일 이름이 한 화면에서 어긋나지 않게 맞췄다.
+export const cardKindLabel: Record<CardKind, string> = { TECH: '기술 카드', QUALITATIVE: '경험 카드' };
+export const cardKindShort: Record<CardKind, string> = { TECH: '기술', QUALITATIVE: '경험' };
 export const cardStatusLabel: Record<CardStatus, string> = { DRAFT: '작성 중', CONFIRMED: '확정됨' };
 export const versionSourceLabel: Record<VersionSource, string> = {
   AI_DRAFT: '첫 초안', USER_EDIT: '직접 수정', INTERVIEW: '답변 반영', MASK: '정보 가림', RESTORE: '이전 내용 복원',
@@ -50,7 +54,7 @@ export const jobErrorTitle: Record<JobErrorCode, string> = {
   COLLECTION_CAPPED: '한 번에 읽는 상한까지만 읽었어요',
   DRAFT_TIMEOUT: '시간 안에 다 채우지 못했어요',
   EVIDENCE_MISSING: '근거가 없어서 채우지 않았어요',
-  INTERNAL_ERROR: '서버가 작업을 끝내지 못했어요',
+  INTERNAL_ERROR: '서버에서 처리하지 못했어요',
 };
 /** 한 줄 설명. 왜 이렇게 됐는지와, 지금 눌러도 되는지까지만. */
 export const jobErrorHint: Record<JobErrorCode, string> = {
@@ -61,7 +65,7 @@ export const jobErrorHint: Record<JobErrorCode, string> = {
   COLLECTION_CAPPED: '기록이 많은 레포는 정해진 상한까지만 읽어요. 읽은 범위의 후보는 지금 볼 수 있어요.',
   DRAFT_TIMEOUT: '채운 칸까지 보여 드려요. 나머지는 칸 하나씩 다시 해 볼 수 있어요.',
   EVIDENCE_MISSING: '근거를 찾지 못한 칸은 직접 쓰거나 질문에 답해 채울 수 있어요.',
-  INTERNAL_ERROR: '작업을 처리하지 못했어요. 다른 레포를 고르거나 직접 작성해 주세요.',
+  INTERNAL_ERROR: '이번 요청은 끝내지 못했어요. 다른 레포를 고르거나 직접 작성해 주세요.',
 };
 
 /** 후보 라벨 — "PR #42" / "커밋 묶음" / "이슈 #31". COMMIT_CLUSTER 를 PR 로 부르지 않는다. */

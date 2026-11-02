@@ -1,0 +1,65 @@
+{
+  "case": "본문이 이미지인 공고에서 Spring 이 받은 이미지를 넘기고, AI 가 이미지 속 글을 그대로 옮겨 돌려준다. Spring 은 그 글을 /internal/job-postings/extract 의 raw_text 로 넘긴다",
+  "limits": {
+    "max_images": 6,
+    "max_image_bytes": 5242880,
+    "media_types": [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif"
+    ],
+    "deadline_seconds": 180,
+    "note": "상한을 넘거나 base64 가 아니면 LLM 을 부르지 않고 400 INVALID_PAYLOAD. 이미지는 한 장씩 읽어 순서대로 빈 줄 하나로 잇는다."
+  },
+  "spring_to_ai": {
+    "method": "POST",
+    "path": "/internal/job-postings/image-text",
+    "request": {
+      "source": "COMPANY_CAREER_PAGE",
+      "external_posting_id": "kt-2026-01",
+      "company_name": "KT",
+      "job_title": "2026 신입 공채",
+      "images": [
+        {
+          "media_type": "image/png",
+          "data_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        },
+        {
+          "media_type": "image/jpeg",
+          "data_base64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+        }
+      ]
+    }
+  },
+  "ai_to_spring": {
+    "data": {
+      "source": "COMPANY_CAREER_PAGE",
+      "external_posting_id": "kt-2026-01",
+      "text": "모집 분야\n클라우드 개발 | 서울\n\n지원 자격\n- 2027년 2월 졸업 예정자\n- 병역필 또는 면제자",
+      "image_count": 2,
+      "empty_image_count": 0
+    }
+  },
+  "ai_to_spring_empty": {
+    "success": false,
+    "data": null,
+    "meta": {
+      "model": "gpt-5.6-luna",
+      "model_usage": [],
+      "tool_calls_made": 0,
+      "llm_calls": 2,
+      "input_tokens": 36090,
+      "output_tokens": 40,
+      "repair_rounds": 0,
+      "github_calls": 0,
+      "ended_by": "FAILED",
+      "processing_ms": 21000
+    },
+    "error": {
+      "code": "EVIDENCE_MISMATCH",
+      "message": "공고 이미지에서 옮길 글을 찾지 못했습니다.",
+      "retryable": false
+    }
+  }
+}

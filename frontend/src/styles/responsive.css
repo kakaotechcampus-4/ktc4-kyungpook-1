@@ -191,7 +191,7 @@ body { overflow-x: hidden; }
     align-items: center;
     justify-content: space-between;
     min-height: 56px;
-    padding: 12px 18px;
+    padding: 8px 18px;
     border-bottom: 1px solid var(--border-default);
     background: color-mix(in srgb, var(--bg-surface) 94%, transparent);
     backdrop-filter: blur(12px);
@@ -208,7 +208,7 @@ body { overflow-x: hidden; }
     background: color-mix(in srgb, var(--bg-surface) 96%, transparent);
     backdrop-filter: blur(16px);
   }
-  .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 11px; font-weight: 600; }
+  .mobile-nav a { display: flex; min-width: 0; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 10px; color: var(--text-tertiary); font-size: 12px; font-weight: 600; }
   .mobile-nav a[aria-current="page"] { background: var(--nav-active-bg); color: var(--nav-active-text); }
   .main { --main-px: 16px; --main-pb: 24px; gap: 16px; padding: 20px var(--main-px) var(--main-pb); }
   /* Match the actual padding so the shared footer cannot pull content under itself. */

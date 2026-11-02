@@ -207,6 +207,25 @@ def test_budget_within_gateway_ceiling_is_not_streamed() -> None:
     assert result.output.value == "ok"
 
 
+def test_images_follow_the_json_input_as_image_parts_and_text_only_calls_stay_a_string() -> None:
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(parsed=_Output(value="ok")))],
+        usage=SimpleNamespace(prompt_tokens=7, completion_tokens=5),
+    )
+    calls: dict = {}
+    client = _client_streaming(_FakeStream(completion), calls)
+
+    client.call("system", {"n": 1}, _Output, 6000, images=["data:image/png;base64,AAAA"])
+
+    user = calls["stream"]["messages"][1]["content"]
+    assert user == [
+        {"type": "text", "text": '{"n": 1}'},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA", "detail": "high"}},
+    ]
+    client.call("system", {"n": 1}, _Output, 6000)
+    assert calls["stream"]["messages"][1]["content"] == '{"n": 1}'
+
+
 def test_streamed_reply_cut_at_budget_is_too_long_error() -> None:
     from openai import LengthFinishReasonError
 

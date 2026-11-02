@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo, freshSeed } from './helpers';
+import { loginAsDemo, freshSeed, showCardTiles } from './helpers';
 
 test('demo starts in one action without repeating mode explanations', async ({ page }) => {
   await freshSeed(page); await page.goto('/login');
@@ -11,7 +11,7 @@ test('demo starts in one action without repeating mode explanations', async ({ p
 
 test('failed list requests show a recovery action instead of empty results', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards?demoScenario=read-error');
-  await expect(page.getByRole('heading', { name: '서버에 연결하지 못했어요' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: '서버에서 처리하지 못했어요' })).toBeVisible({ timeout: 15000 });
   await expect(page.getByRole('button', { name: '다시 불러오기' })).toBeVisible();
   await expect(page.getByText('아직 카드가 없어요')).toHaveCount(0);
 });
@@ -69,6 +69,7 @@ test('unsent interview answer is guarded during navigation', async ({ page }) =>
 test('long sparse data remains readable at mobile width', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 }); await loginAsDemo(page);
   await page.goto('/cards?demoScenario=sparse');
+  await showCardTiles(page);
   await expect(page.locator('.experience-item').first()).toContainText('긴 제목');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
   expect(overflow).toBe(false);

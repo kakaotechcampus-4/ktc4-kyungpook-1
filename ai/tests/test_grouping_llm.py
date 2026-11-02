@@ -448,6 +448,23 @@ def test_describe_sends_every_pr_and_issue_of_the_experience_as_reference() -> N
     }
 
 
+def test_describe_sends_only_first_1000_chars_of_pr_body() -> None:
+    """PR 본문은 카드 초안을 위해 3,000자까지 모으지만, 제목·이유를 쓰는 묶기 입력에는 앞 1,000자만 보낸다."""
+    item = commit("a" * 40, 0)
+    experience = CommitGroup("pr:17", "PR", "#17", [item], pull_request_numbers=[17])
+    fake = FakeModelClient([{"descriptions": [{"group_key": "pr:17", "title": "제목", "reason": "근거"}]}])
+
+    asyncio.run(
+        GroupingLlm(fake).describe(
+            [experience],
+            pull_requests=[PullRequestContext(number=17, title="로그인 API", body_excerpt="가" * 3_000)],
+        )
+    )
+
+    sent = fake.calls[0]["payload"]["groups"][0]["reference"]["pull_requests"][0]["body_excerpt"]
+    assert sent == "가" * 1_000
+
+
 def description(group: CommitGroup, title: str = "기능", reason: str = "근거") -> dict:
     return {"group_key": group.group_key, "title": title, "reason": reason}
 

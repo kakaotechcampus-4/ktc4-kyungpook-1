@@ -3,6 +3,7 @@ import { api } from './client';
 import * as S from './schemas';
 import { cardMetadataSupported, cardRegenerationSupported } from './capabilities';
 import { ApiError, ContractError } from './client';
+import { reportSkipped } from '@/lib/skippedItems';
 
 /** 엔드포인트 함수 — 화면은 이 파일 밖의 URL 을 모른다. */
 export const endpoints = {
@@ -41,7 +42,12 @@ export const endpoints = {
     api(S.Candidate, `/repos/${repoId}/recall/answers`, { method: 'POST', body }),
 
   // 카드
-  cards: () => api(z.array(S.CardSummary), '/cards'),
+  /** 읽을 수 없는 카드가 섞여 있으면 그 장만 빼고 돌려준다. 몇 장을 뺐는지는 화면이 알린다(lib/skippedItems) */
+  cards: async () => {
+    const { items, skipped } = await api(S.CardSummaryList, '/cards');
+    reportSkipped('cards', skipped);
+    return items;
+  },
   card: (id: string) => api(S.Card, `/cards/${id}`),
   deleteCard: (id: string) => api(z.object({ ok: z.literal(true) }), `/cards/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   /** 직접 작성 첫 진입: 제목만으로 DRAFT 를 먼저 만들어 cardId 를 얻는다. 이후 입력은 PATCH 로만 간다. */
@@ -77,7 +83,10 @@ export const endpoints = {
 
   // 되묻기
   interviewTurns: (cardId: string) => api(z.array(S.InterviewTurn), `/cards/${cardId}/interview`),
-  askInterview: (cardId: string, field: S.StarField) => api(S.InterviewTurn, `/cards/${cardId}/interview`, { method: 'POST', body: { field } }),
-  answerInterview: (cardId: string, turnNo: number, body: { text: string; source: S.EvidenceType }) =>
+  /** field 를 비우면 AI 가 다음 칸을 고르고, 더 물을 것이 없으면 null 이다 */
+  askInterview: (cardId: string, field?: S.StarField) =>
+    api(S.InterviewTurn.nullable(), `/cards/${cardId}/interview`, { method: 'POST', body: field ? { field } : {}, allowNullData: true }),
+  /** 글 답은 { text, source }, 넘기기는 { kind: 'SKIP' } — 넘긴 질문은 칸을 바꾸지 않고 다시 묻지 않는다 */
+  answerInterview: (cardId: string, turnNo: number, body: { text: string; source: S.EvidenceType } | { kind: 'SKIP' }) =>
     api(S.Card, `/cards/${cardId}/interview/${turnNo}/answer`, { method: 'POST', body }),
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, Settings, BriefcaseBusiness } from 'lucide-react';
+import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, BriefcaseBusiness, FileText } from 'lucide-react';
 import { matchSupported } from '@/api/matching';
 import { useActiveJobs } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
@@ -11,9 +11,10 @@ import { ProfileMenu } from './ProfileMenu';
 const MENU = [
   { group: '커리어 관리', items: [
     { to: '/', label: '홈', icon: Home, end: true },
-    { to: '/repos', label: '레포 정리', icon: FolderGit2 },
+    { to: '/repos', label: '레포', icon: FolderGit2 },
     { to: '/cards', label: '경험 카드', icon: Layers },
     ...(matchSupported() ? [{ to: '/match', label: '공고 매칭', icon: BriefcaseBusiness }] : []),
+    { to: '/cover-letters', label: '자소서', icon: FileText },
   ] },
   { group: '설정', items: [
     { to: '/settings/github', label: 'GitHub 연결', icon: Github },
@@ -33,7 +34,8 @@ const MOBILE_MENU = [
   { to: '/repos', label: '레포', icon: FolderGit2 },
   { to: '/cards', label: '카드', icon: Layers },
   ...(matchSupported() ? [{ to: '/match', label: '매칭', icon: BriefcaseBusiness }] : []),
-  { to: '/settings', label: '설정', icon: Settings },
+  { to: '/cover-letters', label: '자소서', icon: FileText },
+  { to: '/settings', label: '마이페이지', icon: UserRound },
 ];
 
 /** 앱 셸 — 접히는 레일 사이드바(브랜드 · 메뉴 그룹 · 프로필). 접힘 상태는 기억한다. */

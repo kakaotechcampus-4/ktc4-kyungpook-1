@@ -150,6 +150,7 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 
 /* ───────── 페이지 헤더 · 브레드크럼 · 섹션 헤드 · 툴바 · 스티키 푸터 ───────── */
 .crumb { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 16px; color: var(--text-secondary); flex-wrap: wrap; }
+.crumb a { padding: 14px 6px; margin: -14px -6px; } /* 글줄 16px 은 그대로, 눌리는 자리만 44px(위아래 14px씩) */
 .crumb a:hover { color: var(--text-primary); text-decoration: underline; }
 .crumb__sep { color: var(--border-strong); }
 .crumb__cur { font-weight: 600; color: var(--text-strong); }
@@ -194,7 +195,7 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .toast__action { color: var(--text-on-toast); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .toast__close { color: var(--toast-muted); font-size: 12px; padding: 2px 4px; }
 .toast__close:hover { color: var(--text-on-toast); }
-.skip-link { position: absolute; left: 8px; top: -48px; z-index: 100; padding: 8px 12px; border-radius: 10px; background: var(--bg-ink-solid); color: var(--text-on-ink); font-weight: 600; }
+.skip-link { position: absolute; left: 8px; top: -48px; z-index: 100; display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 8px 12px; border-radius: 10px; background: var(--bg-ink-solid); color: var(--text-on-ink); font-weight: 600; }
 .skip-link:focus { top: 8px; }
 .select-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; max-width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--control-radius); background: var(--bg-surface); color: var(--text-strong); font-size: 13px; line-height: 20px; font-weight: var(--control-weight); text-align: left; }
 .select-trigger > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

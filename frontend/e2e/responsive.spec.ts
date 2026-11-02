@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { freshSeed, loginAsDemo } from './helpers';
+import { freshSeed, loginAsDemo, showCardTiles } from './helpers';
 
 async function expectNoHorizontalOverflow(page: Page) {
   const metrics = await page.evaluate(() => ({
@@ -42,7 +42,7 @@ test.describe('반응형 레이아웃', () => {
     await expect(nav.getByText('홈', { exact: true })).toBeVisible();
     await expect(nav.getByText('레포', { exact: true })).toBeVisible();
     await expect(nav.getByText('카드', { exact: true })).toBeVisible();
-    await expect(nav.getByText('설정', { exact: true })).toBeVisible();
+    await expect(nav.getByText('마이페이지', { exact: true })).toBeVisible();
     await expect(page.locator('.sidebar')).toBeHidden();
     await expectNoHorizontalOverflow(page);
   });
@@ -108,7 +108,8 @@ test.describe('반응형 레이아웃', () => {
 
     for (const path of ['/', '/cards']) {
       await page.goto(path);
-      // 홈은 경험 목록 하나, 카드 목록은 레포별 묶음 안에 같은 경험 목록을 쓴다
+      if (path === '/cards') await showCardTiles(page);
+      // 홈은 경험 목록 하나, 카드 목록은 묶음 안에 같은 경험 목록을 쓴다(기본 보기는 폴더라 최근순으로 바꿔 본다)
       await expect(page.locator(path === '/' ? '.experience-list' : '.card-groups')).toHaveCount(1);
       await expect(page.locator('.experience-item').first()).toBeVisible();
       const itemShadow = await page.locator('.experience-item').first().evaluate((el) => getComputedStyle(el).boxShadow);

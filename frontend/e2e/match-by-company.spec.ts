@@ -113,9 +113,9 @@ test("공고 카드에 근거 등급 배지와 필수·우대 줄이 없다 — 
   await expect(page.locator(".match-card .match-fit, .match-card .match-fit-empty, .match-card .match-counts")).toHaveCount(0);
   await expect(page.locator(".match-card").filter({ hasText: /필수|우대|근거 등급/ })).toHaveCount(0);
   await page.locator(".match-card").filter({ hasText: "서버 개발자 (신입)" }).click();
-  // 상세는 원문 절(자격 요건) 위에 판단 표시와 근거 카드 링크가 얹힌다
+  // 상세는 원문 절(자격 요건)과 '이 공고와 맞춰 보기' 버튼으로 시작한다
   await expect(page.getByRole("heading", { name: "자격 요건", exact: true })).toBeVisible();
-  await expect(page.locator(".posting-condition__evidence a").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "이 공고와 맞춰 보기" })).toBeVisible();
 });
 
 test("기업 페이지 주소는 companyId 이고, 이름으로 만든 옛 주소도 같은 기업으로 간다", async ({ page }) => {

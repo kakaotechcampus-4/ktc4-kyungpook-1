@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { HomePage } from '@/features/home/HomePage';
 import { JobCalendar } from '@/features/home/JobCalendar';
@@ -8,6 +9,8 @@ import { connectMockServer, mountApp, page } from './profileHarness';
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 beforeEach(() => { resetDb(); localStorage.clear(); });
 afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+// 캘린더는 공고에서 담은 일정을 누르면 그 공고로 가서 라우터 안에서 띄운다
+const calendar = (userId: string) => render(<MemoryRouter><JobCalendar userId={userId} /></MemoryRouter>);
 
 it('keeps the latest first-visit profile flow beside the new home dashboard', async () => {
   connectMockServer();
@@ -23,7 +26,7 @@ it('keeps the latest first-visit profile flow beside the new home dashboard', as
 });
 
 it('persists a hiring date for its owner and keeps another account separate', () => {
-  let view = render(<JobCalendar userId="owner" />);
+  let view = calendar("owner");
   fireEvent.click(screen.getByRole('button', { name: '일정 등록' }));
   const modal = screen.getByRole('dialog', { name: '공고 일정 등록' });
   fireEvent.change(within(modal).getByLabelText(/기업명/), { target: { value: '달력 테스트 기업' } });
@@ -31,10 +34,10 @@ it('persists a hiring date for its owner and keeps another account separate', ()
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(JSON.parse(localStorage.getItem('gitory.job-calendar.v1.owner')!)[0].company).toBe('달력 테스트 기업');
   view.unmount();
-  view = render(<JobCalendar userId="another-owner" />);
+  view = calendar("another-owner");
   expect(screen.queryByRole('button', { name: '달력 테스트 기업 · 지원 마감' })).not.toBeInTheDocument();
   view.unmount();
-  render(<JobCalendar userId="owner" />);
+  calendar("owner");
   fireEvent.click(screen.getByRole('button', { name: '달력 테스트 기업 · 지원 마감' }));
   fireEvent.click(within(screen.getByRole('dialog', { name: '공고 일정 수정' })).getByRole('button', { name: '삭제' }));
   expect(JSON.parse(localStorage.getItem('gitory.job-calendar.v1.owner')!)).toEqual([]);

@@ -119,6 +119,24 @@ it('머리글의 기술 칩은 맞춰 본 뒤 카드 목록이 있으면 겹친 
   expect(plain.getByText('Java').closest('li')).not.toHaveClass('is-on');
 });
 
+it('확정 카드가 0장이면 서버가 모자람으로 줘도 ✕·집계·자소서 버튼 대신 원문과 카드 확정 안내·경험 카드 보기를 보인다', async () => {
+  const drafts = demoCards().map((card) => ({ ...card, status: 'DRAFT' as const }));
+  mount(base, (client) => client.setQueryData(keys.cards, drafts));
+  await screen.findByText('경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.');
+  expect(screen.getByRole('link', { name: '경험 카드 보기' })).toHaveAttribute('href', '/cards');
+  expect(screen.queryByRole('link', { name: '이 공고로 자소서 쓰기' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '이 공고와 맞춰 보기' })).not.toBeInTheDocument();
+  expect(document.querySelectorAll('.posting-conditions .cond-tile')).toHaveLength(0);
+  expect(summary().queryByText('자격 요건')).not.toBeInTheDocument();
+  expect(screen.getByText(base.conditions.find((c) => c.status === 'NOT_MET')!.quote)).toBeInTheDocument();
+  // 확정 카드가 있으면 서버 판단대로 ✕ 와 집계가 보인다
+  cleanup();
+  mount(base, (client) => client.setQueryData(keys.cards, demoCards()));
+  await screen.findByRole('link', { name: '이 공고로 자소서 쓰기' });
+  expect(document.querySelectorAll('.posting-conditions .cond-tile--not_met').length).toBeGreaterThan(0);
+  expect(screen.queryByText('경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.')).not.toBeInTheDocument();
+});
+
 it('겹친 기술은 공고 순서대로 확정 카드가 가진 기술이고, 나머지는 공고에만 있는 기술이다 — 작성 중 카드의 기술은 세지 않는다', () => {
   const cards = [
     { status: 'CONFIRMED' as const, techs: ['SPRING' as const, 'REDIS' as const, 'JAVA' as const] },

@@ -162,8 +162,10 @@ export function MatchDetailPage() {
     if (openedId) track("match_opened", { view: "detail", matchId: openedId, fit: openedFit });
   }, [openedId, openedFit]);
   if (!matchSupported()) return <MatchUnavailable />;
+  // 확정 카드가 0장이면 서버는 기술 조건을 모두 NOT_MET 으로 준다 — 모자란 사람처럼 보이지 않게 원문만 두고 카드 확정을 안내한다. 카드 목록을 아직 못 받았으면 서버 응답대로 그린다
+  const noConfirmedCards = cards.data !== undefined && !cards.data.some((card) => card.status === "CONFIRMED");
   // 맞춰 보기 전에는 공고 원문만 보이고, 맞춰 본 뒤에만 조건 옆에 표시가 붙는다
-  const judged = detail ? !detail.needsJudgement : false;
+  const judged = detail ? !detail.needsJudgement && !noConfirmedCards : false;
   const location = detail ? pickLocation(detail.conditions) : null;
   const educationStatus = detail?.conditions.find((c) => c.generalType === "EDUCATION" && c.status !== null)?.status ?? null;
   const required = detail && judged ? sectionTally(detail.conditions, "REQUIRED") : null;
@@ -171,7 +173,11 @@ export function MatchDetailPage() {
   // 머리글의 기술 칩에 확정 카드와 겹친 기술만 표시한다(카드 판단과 다른 신호라 '겹침' 이라고만 부른다). 카드 목록을 못 받으면 표시하지 않는다
   const matched = detail && judged && cards.data ? new Set(techOverlap(detail.techs, cards.data).shared) : undefined;
   const action = detail && (
-    detail.needsJudgement ? (
+    noConfirmedCards ? (
+      <Link className="btn btn--primary" to="/cards">
+        경험 카드 보기
+      </Link>
+    ) : detail.needsJudgement ? (
       <Button loading={judge.isPending} onClick={() => judge.mutate()}>
         이 공고와 맞춰 보기
       </Button>
@@ -241,7 +247,11 @@ export function MatchDetailPage() {
                   </div>
                 )}
               </dl>
-              {detail.needsJudgement && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>}
+              {noConfirmedCards ? (
+                <p className="posting-summary__hint">경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.</p>
+              ) : (
+                detail.needsJudgement && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
+              )}
               <div className="posting-summary__actions">
                 {action}
                 <a

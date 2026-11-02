@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Check as CheckIcon, Minus } from 'lucide-react';
-import { useCoverLetter, useRetryCoverLetter, useStartAsking, type CoverLetter, type CoverLetterQuestion } from '@/api/coverLetters';
+import { Briefcase, Check as CheckIcon, Minus } from 'lucide-react';
+import { useCoverLetter, useRetryCoverLetter, useStartAsking, type CoverLetter, type CoverLetterPosting, type CoverLetterQuestion } from '@/api/coverLetters';
 import { Badge, Breadcrumb, Button, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -35,6 +35,7 @@ export function CoverLetterPage() {
   return (
     <main className="main main--tight">
       <Breadcrumb items={crumbs} />
+      {l.posting && <PostingLine posting={l.posting} />}
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}
       {l.stage === 'ASSIGNED' && <AssignReview letter={l} />}
       {l.stage === 'FAILED' && <Failed letter={l} />}
@@ -43,6 +44,18 @@ export function CoverLetterPage() {
       {l.stage === 'DRAFTING' && <DraftWait letter={l} />}
       {l.stage === 'DRAFTED' && <DraftEditor key={l.id} letter={l} />}
     </main>
+  );
+}
+
+/** 공고에서 시작한 자소서(#637) — 어느 공고에 쓰는지 단계와 상관없이 같은 자리에 보인다 */
+function PostingLine({ posting }: { posting: CoverLetterPosting }) {
+  return (
+    <p className="cl-posting-line">
+      <Briefcase size={14} aria-hidden />
+      <span className="c-3">지원 공고</span>
+      <span className="cl-posting-line__text"><b>{posting.company}</b> · {posting.title}</span>
+      <Link to={`/match/${encodeURIComponent(posting.id)}`} className="cl-posting-line__link">공고 보기</Link>
+    </p>
   );
 }
 

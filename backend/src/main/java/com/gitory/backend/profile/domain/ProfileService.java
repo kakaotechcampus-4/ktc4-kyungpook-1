@@ -2,6 +2,7 @@ package com.gitory.backend.profile.domain;
 
 import com.gitory.backend.profile.infra.ProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ public class ProfileService {
 
     private final ProfileRepository profiles;
     private final TransactionTemplate transaction;
+    private final ApplicationEventPublisher events;
 
     @Transactional(readOnly = true)
     public ProfileView of(Long userId) {
@@ -50,8 +52,11 @@ public class ProfileService {
 
         Profile profile = profiles.findWithLockByUserId(userId).orElseGet(() -> Profile.of(userId));
         profile.replace(educations, careers, languages, certifications, interests);
+        ProfileView saved = profiles.saveAndFlush(profile).view();
+        // 매칭이 관심 분야·학력·경력으로 공고를 거르므로 알리고, 롤백된 저장은 듣는 쪽이 받지 않는다
+        events.publishEvent(new ProfileChanged(userId));
 
-        return profiles.saveAndFlush(profile).view();
+        return saved;
 
     }
 }

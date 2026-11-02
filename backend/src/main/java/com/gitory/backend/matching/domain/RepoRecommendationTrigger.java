@@ -2,6 +2,7 @@ package com.gitory.backend.matching.domain;
 
 import com.gitory.backend.card.domain.ConfirmedCardChanged;
 import com.gitory.backend.matching.infra.RepoRecommendationRepository;
+import com.gitory.backend.profile.domain.ProfileChanged;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -31,6 +32,15 @@ public class RepoRecommendationTrigger {
     public void confirmedCardChanged(ConfirmedCardChanged event) {
 
         recommendations.markStale(event.userId(), event.userRepositoryId(), Instant.now(clock));
+
+    }
+
+    // 회사 후보를 관심 분야·학력·경력으로 거르므로, 인적사항이 바뀌면 그 사용자가 이미 받은 레포 추천을 모두 다시 계산한다
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void profileChanged(ProfileChanged event) {
+
+        recommendations.markStaleOfUser(event.userId(), Instant.now(clock));
 
     }
 

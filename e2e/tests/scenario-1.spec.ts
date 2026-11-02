@@ -102,10 +102,10 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
 
     await test.step('6. 상황·행동 직접 쓰기', async () => {
       // 과제는 비워 둬서 되묻기에 쓴다
-      // 하단 "직접 수정"은 없앴다(#452). 칸마다 있는 버튼으로 편집에 들어간다 — 상황이 채워져 있으면 "상황 수정", 비어 있으면 "상황 직접 쓰기"
-      await page.getByRole('button', { name: /^상황 (수정|직접 쓰기)$/ }).click();
-      await page.getByRole('textbox', { name: '상황 (Situation)' }).fill(SITUATION);
-      await page.getByRole('textbox', { name: '행동 (Action)' }).fill(ACTION);
+      // 하단 "직접 수정"은 없앴다(#452). 칸마다 있는 버튼으로 편집에 들어간다 — 상황이 채워져 있으면 "상황 수정", 비어 있으면 "상황 직접 작성"
+      await page.getByRole('button', { name: /^상황 (수정|직접 작성)$/ }).click();
+      await page.getByRole('textbox', { name: '상황', exact: true }).fill(SITUATION);
+      await page.getByRole('textbox', { name: '행동', exact: true }).fill(ACTION);
       await expect(page.getByText('저장됨', { exact: true })).toBeVisible({ timeout: 15_000 });
       await page.getByRole('button', { name: '저장하고 닫기' }).click();
     });
@@ -116,9 +116,10 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       await expect(page.getByRole('heading', { name: /^Q1\. \S/ })).toBeVisible({ timeout: SLOW });
       await page.getByRole('textbox', { name: '답변' }).fill(ANSWER);
       await page.getByRole('button', { name: '답변 저장' }).click();
-      await expect(page.getByText('답변 저장됨')).toBeVisible({ timeout: 15_000 });
-      await page.getByRole('link', { name: '카드로' }).first().click();
-      await expect(page.getByRole('region', { name: '과제 (Task)' })).toContainText(ANSWER);
+      await expect(page.getByText('내 답변, 저장됨')).toBeVisible({ timeout: 15_000 });
+      // 질문이 끝나면 "카드로" 링크를 두지 않아서(AI 가 더 묻지 않기로 하면 열린 질문이 없다) 카드 주소로 바로 간다
+      await page.goto(`/cards/${cardId}`);
+      await expect(page.getByRole('region', { name: '과제', exact: true })).toContainText(ANSWER);
     });
 
     await test.step('8. 확정', async () => {

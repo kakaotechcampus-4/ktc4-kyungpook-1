@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -119,13 +119,11 @@ it('머리글의 기술 칩은 맞춰 본 뒤 카드 목록이 있으면 겹친 
   expect(plain.getByText('Java').closest('li')).not.toHaveClass('is-on');
 });
 
-it('확정 카드가 0장이면 서버가 모자람으로 줘도 ✕·집계·자소서 버튼 대신 원문과 카드 확정 안내·경험 카드 보기를 보인다', async () => {
+it('확정 카드가 0장이면 서버가 모자람으로 줘도 ✕·집계·자소서 버튼 없이 원문과 맞춰 보기 버튼만 보인다', async () => {
   const drafts = demoCards().map((card) => ({ ...card, status: 'DRAFT' as const }));
   mount(base, (client) => client.setQueryData(keys.cards, drafts));
-  await screen.findByText('경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.');
-  expect(screen.getByRole('link', { name: '경험 카드 보기' })).toHaveAttribute('href', '/cards');
+  await screen.findByRole('button', { name: '이 공고와 맞춰 보기' });
   expect(screen.queryByRole('link', { name: '이 공고로 자소서 쓰기' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: '이 공고와 맞춰 보기' })).not.toBeInTheDocument();
   expect(document.querySelectorAll('.posting-conditions .cond-tile')).toHaveLength(0);
   expect(summary().queryByText('자격 요건')).not.toBeInTheDocument();
   expect(screen.getByText(base.conditions.find((c) => c.status === 'NOT_MET')!.quote)).toBeInTheDocument();
@@ -134,7 +132,24 @@ it('확정 카드가 0장이면 서버가 모자람으로 줘도 ✕·집계·�
   mount(base, (client) => client.setQueryData(keys.cards, demoCards()));
   await screen.findByRole('link', { name: '이 공고로 자소서 쓰기' });
   expect(document.querySelectorAll('.posting-conditions .cond-tile--not_met').length).toBeGreaterThan(0);
-  expect(screen.queryByText('경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.')).not.toBeInTheDocument();
+});
+
+it('확정 카드 없이 맞춰 보기를 누르면 서버를 부르지 않고 카드가 없다고 알리며, 작성 중 카드가 있으면 카드 목록으로 잇는다', async () => {
+  const judge = vi.spyOn(matchingApi, 'judge');
+  const drafts = demoCards().map((card) => ({ ...card, status: 'DRAFT' as const }));
+  mount({ ...base, needsJudgement: true, summary: null }, (client) => client.setQueryData(keys.cards, drafts));
+  fireEvent.click(await screen.findByRole('button', { name: '이 공고와 맞춰 보기' }));
+
+  expect(screen.getByRole('status')).toHaveTextContent('맞춰 볼 확정 카드가 없어요.');
+  expect(screen.getByRole('link', { name: '작성 중인 카드 확정하기' })).toHaveAttribute('href', '/cards');
+  expect(judge).not.toHaveBeenCalled();
+});
+
+it('카드가 하나도 없이 맞춰 보기를 누르면 레포 분석으로 카드를 만들러 가게 잇는다', async () => {
+  mount(base, (client) => client.setQueryData(keys.cards, []));
+  fireEvent.click(await screen.findByRole('button', { name: '이 공고와 맞춰 보기' }));
+
+  expect(screen.getByRole('link', { name: '레포 분석으로 카드 만들기' })).toHaveAttribute('href', '/repos');
 });
 
 it('겹친 기술은 공고 순서대로 확정 카드가 가진 기술이고, 나머지는 공고에만 있는 기술이다 — 작성 중 카드의 기술은 세지 않는다', () => {

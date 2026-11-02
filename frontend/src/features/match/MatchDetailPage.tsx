@@ -197,6 +197,7 @@ export function MatchDetailPage() {
   // 채우기가 이 화면에서 돌고 있으면 새로 생긴 일만 하나씩 펼친다. 끝난 결과를 열어 본 것이면 바로 다 보인다
   const [gapLive, setGapLive] = useState(false);
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const [noCardsTried, setNoCardsTried] = useState(false);
   // [진행하기] 뒤 돌아왔으면 모자랐던 조건 id — 새 카드만 다시 맞춰 보고 ✕ → ✓ 를 보인다
   const [returned, setReturned] = useState<string[] | null>(null);
   const [filled, setFilled] = useState<ReadonlySet<string> | null>(null);
@@ -328,11 +329,12 @@ export function MatchDetailPage() {
       이 공고로 자소서 쓰기
     </Link>
   );
+  // 확정 카드가 없어도 맞춰 보기 버튼은 그대로 두어 이 화면에서 매칭을 한다는 것이 보이게 하고, 누르면 서버를 부르지 않고 카드가 없다고 알린다
   const action = detail && (
     noConfirmedCards ? (
-      <Link className="btn btn--primary" to="/cards">
-        경험 카드 보기
-      </Link>
+      <Button onClick={() => setNoCardsTried(true)}>
+        이 공고와 맞춰 보기
+      </Button>
     ) : detail.needsJudgement ? (
       returned && !judge.isError ? null : (
         <Button loading={judge.isPending} onClick={startJudge}>
@@ -418,7 +420,14 @@ export function MatchDetailPage() {
                 </ol>
               )}
               {noConfirmedCards ? (
-                <p className="posting-summary__hint">경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.</p>
+                noCardsTried ? (
+                  <p role="status" className="posting-summary__hint">
+                    맞춰 볼 확정 카드가 없어요.{" "}
+                    {cards.data?.length ? <Link to="/cards">작성 중인 카드 확정하기</Link> : <Link to="/repos">레포 분석으로 카드 만들기</Link>}
+                  </p>
+                ) : (
+                  <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
+                )
               ) : (
                 detail.needsJudgement && !returned && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
               )}

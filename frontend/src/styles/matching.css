@@ -529,6 +529,12 @@
   font-size: 13px;
   line-height: 20px;
 }
+.posting-summary__hint a {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .posting-summary__actions {
   display: flex;
   flex-direction: column;

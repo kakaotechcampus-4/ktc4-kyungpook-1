@@ -2,10 +2,13 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CandidateBoardPage } from '@/features/candidates/CandidateBoardPage';
 import { RepoFolderPage } from '@/features/cards/FolderPage';
+import { CARD_LIMIT_MESSAGE, MAX_CARDS_PER_REQUEST } from '@/lib/candidatePicks';
+import { toast } from '@/lib/toast';
 import { db, resetDb } from '@/mock/store';
 import { connectMockServer, mountApp, page } from './profileHarness';
 
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
+vi.mock('@/lib/toast', () => ({ toast: vi.fn() }));
 beforeEach(() => { resetDb(); sessionStorage.clear(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
@@ -45,5 +48,18 @@ describe('#689 레포 안에서 커밋을 골라 기술 카드 만들기', () =>
     const created = db.candidates.find((c) => c.title === '직접 만든 배포 도구')!;
     await waitFor(() => expect(screen.getByRole('button', { name: '선택한 1개로 카드 만들기' })).toBeEnabled());
     expect(JSON.parse(sessionStorage.getItem('gitory.sel.r_auth') ?? '[]')).toEqual([created.id]);
+  });
+
+  it('이미 8개를 골라 둔 뒤 직접 추가한 후보는 고르지 않고 한도 안내를 보인다', async () => {
+    const picked = db.candidates.filter((c) => c.repoId === 'r_auth' && c.status === 'NEW').slice(0, MAX_CARDS_PER_REQUEST).map((c) => c.id);
+    expect(picked).toHaveLength(MAX_CARDS_PER_REQUEST);
+    sessionStorage.setItem('gitory.sel.r_auth', JSON.stringify(picked));
+    connectMockServer();
+    mountApp(routes(), '/repos/r_auth/candidates?add=1');
+    await addCandidate('직접 만든 배포 도구');
+
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringContaining(CARD_LIMIT_MESSAGE)));
+    expect(JSON.parse(sessionStorage.getItem('gitory.sel.r_auth') ?? '[]')).toEqual(picked);
+    expect(screen.getByRole('button', { name: `선택한 ${MAX_CARDS_PER_REQUEST}개로 카드 만들기` })).toBeEnabled();
   });
 });

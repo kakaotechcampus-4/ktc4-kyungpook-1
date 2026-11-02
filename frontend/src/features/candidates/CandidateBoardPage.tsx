@@ -126,9 +126,17 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const b = board.data!;
 
   // 직접 추가한 후보는 바로 골라 둔다 — 추가한 사람이 그 후보로 카드를 만들려는 것이라 다시 찾아 체크하지 않게 한다
+  // 이미 한 번에 만들 수 있는 만큼 골랐으면 고르지 않는다 — 고르면 카드 만들기가 막힌다
   const openAdd = () => setSp((current) => { current.set('add', '1'); return current; });
   const addDialog = sp.get('add') === '1' && <AddCandidateDialog repoId={repoId}
-    onAdded={(id) => setSelected((current) => new Set(current).add(id))}
+    onAdded={(c) => {
+      if (chosen.length >= MAX_CARDS_PER_REQUEST) {
+        toast(`"${c.title}" 을 후보에 추가했어요. ${CARD_LIMIT_MESSAGE}`);
+        return;
+      }
+      setSelected((current) => new Set(current).add(c.id));
+      toast(`"${c.title}" 을 후보에 추가하고 골라 두었어요`, { tone: 'success' });
+    }}
     onClose={() => setSp((current) => { current.delete('add'); return current; })} />;
 
   // C2 — 후보 0개: 에러가 아니라 판정. 판정 근거 3줄 + 다음 행동 3개.
@@ -317,7 +325,7 @@ function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial:
 }
 
 /** C5 — GitHub 에 없는 작업 덩어리. 커밋을 붙이면 COMMIT, 안 붙이면 USER_STATED 근거. */
-function AddCandidateDialog({ repoId, onAdded, onClose }: { repoId: string; onAdded: (id: string) => void; onClose: () => void }) {
+function AddCandidateDialog({ repoId, onAdded, onClose }: { repoId: string; onAdded: (c: Candidate) => void; onClose: () => void }) {
   const add = useAddCandidate(repoId);
   const actions = useActionGate();
   const [title, setTitle] = useState('');
@@ -330,8 +338,7 @@ function AddCandidateDialog({ repoId, onAdded, onClose }: { repoId: string; onAd
     await actions.run(async () => {
     const c = await add.mutateAsync({ title: title.trim(), summary: summary.trim(), shas: shas.map((s) => s.sha) });
     track('candidate_added_manually', { repoId, withCommits: shas.length });
-    toast(`"${c.title}" 을 후보에 추가하고 골라 두었어요`, { tone: 'success' });
-    onAdded(c.id);
+    onAdded(c);
     onClose();
     });
   };

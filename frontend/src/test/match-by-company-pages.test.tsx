@@ -118,17 +118,18 @@ it("공고별 / 기업별 전환: ?view=company 로 기업 카드를 보이고 �
   expect(cardHeadings()).toHaveLength(7);
 });
 
-it("기업별 카드: 마크·공고 수·대표 직무(3개까지)·외 N건, 등급은 보이지 않는다", async () => {
+it("기업별 카드: 마크·채용 중 공고 수·앞쪽 공고(3개까지)·외 N건, 등급은 보이지 않는다", async () => {
   mount("/match?view=company");
   const gaon = (await screen.findByRole("link", { name: "가온소프트" })).closest("article")!;
-  expect(within(gaon).getByText("공고 4건")).toBeInTheDocument();
+  expect(within(gaon).getByText("채용 중 4건")).toBeInTheDocument();
   expect(gaon.querySelector(".company-mark")).toHaveAttribute("aria-hidden", "true");
-  const roles = within(within(gaon).getByRole("list", { name: "대표 직무" })).getAllByRole("listitem");
-  // 정렬(근거 등급 순)대로 A·B·C 의 직무, 나머지는 외 1건
-  expect(roles.map((li) => li.textContent)).toEqual(["프론트엔드 개발자", "백엔드 엔지니어", "데이터 분석가", "외 1건"]);
+  const roles = within(gaon).getByRole("list", { name: "공고" }).querySelectorAll(".company-tile__role");
+  // 목록 정렬(마감 임박순, 마감이 같으면 받은 등급 순)대로 앞의 3개, 나머지는 외 1건
+  expect([...roles].map((el) => el.textContent)).toEqual(["프론트엔드 개발자", "백엔드 엔지니어", "데이터 분석가"]);
+  expect(within(gaon).getByText("외 1건")).toBeInTheDocument();
 
   const maru = screen.getByRole("link", { name: "마루데이터" }).closest("article")!;
-  expect(within(maru).getByText("공고 1건")).toBeInTheDocument();
+  expect(within(maru).getByText("채용 중 1건")).toBeInTheDocument();
   // 어느 기업 카드에도 등급(A~D)도, 평가 전 안내도 없다 — 최고 등급은 목록 단계 값이라 쓰지 않는다
   expect(screen.queryByLabelText(/등급/)).not.toBeInTheDocument();
   const cards = screen.getAllByRole("article");
@@ -281,7 +282,7 @@ it("공고 상세 머리말: 기업 마크는 장식이고, 기업 이름 링크
   await screen.findByRole("heading", { level: 1, name: detail.role });
   const link = screen.getByRole("link", { name: detail.company });
   expect(link).toHaveAttribute("href", `/match/company/${enc(detail.company)}?category=BACKEND`);
-  const mark = container.querySelector(".match-detail-head .company-mark");
+  const mark = container.querySelector(".posting-detail__head .company-mark");
   expect(mark).toHaveAttribute("aria-hidden", "true");
   expect(mark).toHaveTextContent(detail.company.trim()[0]);
   expect(screen.getByRole("link", { name: "← 공고 목록" })).toHaveAttribute("href", "/match?category=BACKEND");

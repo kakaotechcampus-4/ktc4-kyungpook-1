@@ -18,7 +18,7 @@ for (const width of [320, 390, 1440]) {
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('list', { name: '진행 단계' })).toHaveCount(0);
     await dialog.getByRole('button', { name: '취소', exact: true }).click();
-    await page.goto('/cards/new');
+    await page.goto('/cards/new?write=1');
     await expect(page.getByRole('heading', { name: '직접 작성', exact: true })).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: '임시 저장 시작' })).toHaveCount(1);
     await expect(page.getByRole('button', { name: '확정', exact: true })).toHaveCount(0);

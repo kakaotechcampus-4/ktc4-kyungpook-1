@@ -94,6 +94,10 @@ const DraftStep = z.object({
 });
 export type DraftStep = z.infer<typeof DraftStep>;
 
+/** 공고에서 시작한 자소서만 있다(#637). 조건·판단은 내려오지 않는다 */
+const Posting = z.object({ id: z.string(), company: z.string(), title: z.string() });
+export type CoverLetterPosting = z.infer<typeof Posting>;
+
 export const CoverLetter = z.object({
   id: z.string(),
   stage: CoverLetterStage,
@@ -105,6 +109,7 @@ export const CoverLetter = z.object({
   pollAfterMs: nullable(z.number()),
   jobRole: z.string(),
   memo: text,
+  posting: nullable(Posting),
   createdAt: z.string(),
   updatedAt: z.string(),
   questions: z.array(Question),
@@ -114,7 +119,7 @@ export const CoverLetter = z.object({
 export type CoverLetter = z.infer<typeof CoverLetter>;
 
 export const CoverLetterSummary = z.object({
-  id: z.string(), stage: CoverLetterStage, jobRole: z.string(), questionCount: z.number(),
+  id: z.string(), stage: CoverLetterStage, jobRole: z.string(), posting: nullable(Posting), questionCount: z.number(),
   firstQuestion: text, createdAt: z.string(), updatedAt: z.string(),
 });
 export type CoverLetterSummary = z.infer<typeof CoverLetterSummary>;
@@ -128,7 +133,8 @@ export const ANSWER_MAX = 1_000;
 /** 고친 초안은 10,000자까지 */
 export const DRAFT_MAX = 10_000;
 
-export type NewCoverLetter = { jobRole: string; memo: string | null; questions: { text: string; charLimit: number | null }[] };
+/** postingId 는 공고 상세에서 시작할 때만 그 공고 id, 아니면 null. 없는 공고면 서버가 404 NOT_FOUND */
+export type NewCoverLetter = { jobRole: string; memo: string | null; questions: { text: string; charLimit: number | null }[]; postingId: string | null };
 
 export const coverLetterApi = {
   create: (input: NewCoverLetter, idempotencyKey: string) =>

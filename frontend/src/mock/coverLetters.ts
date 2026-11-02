@@ -7,6 +7,7 @@ import { ANSWER_MAX, COVER_LETTER_LIMITS as L, DRAFT_MAX, MATERIAL_ITEMS, type Q
 import { BLANK_TEXT, blanksIn, countableLength } from '@/lib/draftText';
 import { db, nextId, STAR, FIELD_KEY } from './store';
 import { now } from './fixtures';
+import { mockMatchDetail } from './matching';
 
 type Any = Record<string, any>;
 export type CoverLetterResult = { ok: true; data: unknown } | { ok: false; status: number; code: string; message: string };
@@ -224,7 +225,7 @@ function view(letter: Any) {
     id: letter.id, stage: letter.stage, failedStep: letter.failedStep ?? null, errorCode: letter.errorCode ?? null,
     retryable: letter.stage === 'FAILED' ? letter.errorCode === 'AI_UNAVAILABLE' : null,
     pollAfterMs: running ? COVER_LETTER_POLL_MS : null,
-    jobRole: letter.jobRole, memo: letter.memo, createdAt: letter.createdAt, updatedAt: letter.updatedAt,
+    jobRole: letter.jobRole, memo: letter.memo, posting: letter.posting ?? null, createdAt: letter.createdAt, updatedAt: letter.updatedAt,
     questions: letter.questions.map((q: Any) => {
       const primary = assigned ? cardRef(q.primaryCardId) : null;
       const answers = new Map((q.answers ?? []).map((a: Any) => [a.item, a]));
@@ -274,10 +275,17 @@ export function createCoverLetter(body: Any, key: string | undefined): CoverLett
   const existing = key ? letters().find((l) => l.key === key) : null;
   if (existing) return ok(view(existing)); // 같은 키는 보낸 내용과 상관없이 처음 자소서
   if (!confirmedCards().length) return fail(422, 'NO_CONFIRMED_CARDS', '확정한 카드가 없어 자소서를 만들 수 없습니다.');
+  // 공고는 만들 때 한 번 저장한다(#637) — 뒤에 공고가 마감돼도 이 자소서의 공고는 그대로다
+  let posting: Any | null = null;
+  if (body.postingId != null) {
+    const p = typeof body.postingId === 'string' ? mockMatchDetail(body.postingId) : null;
+    if (!p) return fail(404, 'NOT_FOUND', '공고를 찾을 수 없습니다.');
+    posting = { id: p.id, company: p.company, title: p.role };
+  }
   const at = now();
   const letter: Any = {
     id: nextId('cl'), key: key || null, stage: 'ASSIGNING', failedStep: null, errorCode: null,
-    jobRole: body.jobRole.trim(), memo: body.memo?.trim() || null, createdAt: at, updatedAt: at, startedAt: Date.now(),
+    jobRole: body.jobRole.trim(), memo: body.memo?.trim() || null, posting, createdAt: at, updatedAt: at, startedAt: Date.now(),
     questions: body.questions.map((q: Any, i: number) => ({ id: nextId('clq'), seq: i + 1, text: q.text.trim(), charLimit: q.charLimit ?? L.CHAR_DEFAULT })),
     _failAssign: failNextAssign,
   };
@@ -289,7 +297,7 @@ export function createCoverLetter(body: Any, key: string | undefined): CoverLett
 
 export const listCoverLetters = (): CoverLetterResult => ok(letters().map((l) => {
   advance(l);
-  return { id: l.id, stage: l.stage, jobRole: l.jobRole, questionCount: l.questions.length, firstQuestion: l.questions[0]?.text ?? null, createdAt: l.createdAt, updatedAt: l.updatedAt };
+  return { id: l.id, stage: l.stage, jobRole: l.jobRole, posting: l.posting ?? null, questionCount: l.questions.length, firstQuestion: l.questions[0]?.text ?? null, createdAt: l.createdAt, updatedAt: l.updatedAt };
 }));
 
 export function getCoverLetter(id: string): CoverLetterResult {

@@ -44,13 +44,14 @@ for (const width of [320, 390, 768, 1440]) {
     await expect(
       page.getByRole("heading", { name: "서버 개발자 (신입)", exact: true }),
     ).toBeVisible();
+    // 목은 맞춰 본 뒤 상세를 준다 — 원문 절(자격 요건) 위에 표시가 얹히고 주 버튼은 '이 공고로 자소서 쓰기' 다
     await expect(
-      page.getByRole("heading", { name: /필수 조건/ }),
+      page.getByRole("heading", { name: "자격 요건", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText("맞는 카드가 없어요.").first(),
+      page.getByRole("link", { name: "이 공고로 자소서 쓰기" }),
     ).toBeVisible();
-    await expect(page.locator(".match-support-link").first()).toBeVisible();
+    await expect(page.locator(".posting-condition__evidence a").first()).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -63,7 +64,8 @@ for (const width of [320, 390, 768, 1440]) {
     ).toContainText("신입 가능");
     if (width === 390) {
       await page.locator(".match-card").click();
-      await page.locator(".match-support-link").first().click();
+      // 조건 아래 근거 카드 링크로 카드 상세에 간다
+      await page.locator(".posting-condition__evidence a").first().click();
       await expect(page).toHaveURL(/\/cards\//);
     }
   });

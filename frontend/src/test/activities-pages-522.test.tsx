@@ -131,14 +131,14 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
 });
 
 describe('폴더 안', () => {
-  it('레포 폴더: 위에 소유자·이름·카드 수·후보 보드, 아래 기술 카드와 경험 카드 두 구역', async () => {
+  it('레포 폴더: 위에 소유자·이름·카드 수·후보 보드·경험 카드 만들기, 아래 기술 카드와 경험 카드 두 구역', async () => {
     connectMockServer();
     mountApp(routes(), '/cards/repo/r_auth');
     expect(await screen.findByRole('heading', { level: 1, name: 'auth-service' })).toBeInTheDocument();
     expect(screen.getByText('hong-dev')).toBeInTheDocument();
     expect(screen.getByText('카드 4장')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '후보 보드' })).toHaveAttribute('href', '/repos/r_auth/candidates');
-    expect(screen.getByRole('link', { name: '직접 작성' })).toHaveAttribute('href', '/cards/new?repo=r_auth');
+    expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new?repo=r_auth');
     const tech = screen.getByRole('region', { name: '기술 카드' });
     const experience = screen.getByRole('region', { name: '경험 카드' });
     expect(tiles(tech)).toHaveLength(2);
@@ -152,8 +152,8 @@ describe('폴더 안', () => {
     mountApp(routes(), '/cards/repo/r_fts');
     const experience = await screen.findByRole('region', { name: '경험 카드' });
     expect(within(experience).getByText(/아직 경험 카드가 없어요/)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: '직접 작성' })).toHaveLength(1); // 머리의 버튼과 같은 이름의 링크를 또 두지 않는다
-    expect(screen.getByRole('link', { name: '직접 작성' })).toHaveAttribute('href', '/cards/new?repo=r_fts');
+    expect(screen.getAllByRole('link', { name: '경험 카드 만들기' })).toHaveLength(1); // 머리의 버튼과 같은 이름의 링크를 또 두지 않는다
+    expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new?repo=r_fts');
     expect(tiles(screen.getByRole('region', { name: '기술 카드' }))).toHaveLength(1);
   });
 
@@ -392,7 +392,7 @@ describe('활동 안에서 경험 카드 만들기', () => {
 
   it('?activity= 로 오면 활동이 골라져 있고, 첫 저장 요청에 activityId 를 싣는다(레포는 싣지 않는다)', async () => {
     const server = connectMockServer();
-    mountApp(routes(), '/cards/new?activity=act_club');
+    mountApp(routes(), '/cards/new?activity=act_club&write=1');
     await waitFor(() => expect(screen.getByRole('combobox', { name: '활동' })).toHaveValue('act_club'));
     expect(screen.getByRole('combobox', { name: '관련 레포' })).toHaveValue('');
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: '동아리 발표 경험' } });

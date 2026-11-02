@@ -37,8 +37,8 @@ test('active analysis is visible on home and can be reopened after refresh', asy
   await page.reload();
   const jobs = page.getByRole('region', { name: '진행 중인 작업' }); await expect(jobs).toBeVisible();
   await jobs.getByRole('link', { name: '진행 상황 보기', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp('/jobs/' + jobId + '$'));
-  await expect(page.getByRole('heading', { name: /^레포 정리 (진행|대기) 중$/ })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp('/repos/r_auth/run\\?job=' + jobId + '$'));
+  await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
 });
 
 test('review and missing-field filters use the current server STAR states', async ({ page }) => {
@@ -67,7 +67,7 @@ test('copy preview offers plain STAR and evidence formats without modifying save
 });
 
 test('manual drafts can change title and period after the first save and clear the period explicitly', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/cards/new');
+  await loginAsDemo(page); await page.goto('/cards/new?write=1');
   await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('메타 수정 경험');
   const period = page.getByRole('textbox', { name: '기간', exact: true }); await period.fill('2024.04');
   await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();

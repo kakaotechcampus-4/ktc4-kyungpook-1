@@ -106,7 +106,7 @@ class MatchListServiceTest {
     private static MatchTarget target(String company, String role, MatchGrade fit, Instant expiresAt) {
 
         return new MatchTarget(UUID.randomUUID(), company, company, null, role, null, fit, null, null, null, null, null, null,
-                expiresAt);
+                expiresAt, List.of(), null);
 
     }
 

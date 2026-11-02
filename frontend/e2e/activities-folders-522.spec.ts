@@ -41,6 +41,7 @@ test('활동 만들기, 활동 안에서 카드 만들기, 폴더 보기, 지우
   await page.getByRole('link', { name: '경험 카드 만들기' }).click();
   await expect(page.getByRole('combobox', { name: '활동', exact: true })).toContainText('알고리즘 스터디');
   await page.getByLabel('카드 제목').fill('스터디를 운영한 경험');
+  await page.getByRole('button', { name: '네 칸 직접 쓰기' }).click();
   await page.getByRole('button', { name: /임시 저장 시작|작성 시작/ }).click();
   await expect(page.getByRole('combobox', { name: '활동', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '저장 후 종료' }).click();
@@ -161,7 +162,7 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark'] as c
 
 test('활동 목록과 만들기 화면은 모바일에서도 넘치지 않는다', async ({ page }) => {
   await loginAsDemo(page);
-  const screens: [string, RegExp][] = [['/activities', /^활동/], ['/activities/new', /^활동 만들기$/], ['/activities/act_club/edit', /^활동 고치기$/], ['/cards/new?activity=act_club', /^직접 작성$/]];
+  const screens: [string, RegExp][] = [['/activities', /^활동/], ['/activities/new', /^활동 만들기$/], ['/activities/act_club/edit', /^활동 고치기$/], ['/cards/new?activity=act_club', /^경험 카드 만들기$/]];
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const [path, heading] of screens) {

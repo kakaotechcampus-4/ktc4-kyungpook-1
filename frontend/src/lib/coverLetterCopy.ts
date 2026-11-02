@@ -1,6 +1,15 @@
-import type { AssignStep, CoverLetterQuestion, DraftStep, MaterialItem, QuestionTheme } from '@/api/coverLetters';
-import { QUESTION_THEMES } from '@/api/coverLetters';
+import type { AssignStep, CoverLetterPosting, CoverLetterQuestion, DraftStep, MaterialItem, QuestionTheme } from '@/api/coverLetters';
+import { COVER_LETTER_LIMITS as L, QUESTION_THEMES } from '@/api/coverLetters';
 import { themeLabel } from '@/lib/cardThemes';
+
+/** ① 공고에서 시작하면 직무 칸에 미리 채우는 공고 제목 — 직무 칸 한도에 맞춰 자른다 */
+export const prefillJobRole = (title: string) => title.trim().slice(0, L.JOB_ROLE);
+
+/** 목록 둘째 줄 — 직무가 미리 채운 공고 제목 그대로면 회사만 적어 같은 글자가 두 줄에 나오지 않게 한다 */
+export function postingLine(posting: CoverLetterPosting | null, jobRole: string): string | null {
+  if (!posting) return null;
+  return prefillJobRole(posting.title) === jobRole.trim() ? posting.company : `${posting.company} · ${posting.title}`;
+}
 
 /** 문항 유형 이름 — 카드 유형 7개는 카드 화면과 같은 이름을 쓰고, 지원 동기만 자소서에서 더한다 */
 export const THEME_LABEL: Record<QuestionTheme, string> = { MOTIVATION: '지원 동기', ...themeLabel };

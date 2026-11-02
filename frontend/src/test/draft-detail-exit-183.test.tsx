@@ -122,6 +122,10 @@ describe('saved draft metadata when returning to card detail (#183)', () => {
     await waitFor(() => expect(router.state.location.search).toBe(''));
     expect(screen.getByText('Close acknowledged situation')).toBeInTheDocument();
     expect(detail).toHaveBeenCalledTimes(1);
+    // 화면이 바뀐 뒤 CardPage 의 효과가 돌아 진행 중인 요청에 합류한 다음에 응답을 준다. 부하가 걸려 효과보다 응답이 먼저 도착하면
+    // 합류할 요청이 이미 끝나 가는 순간이라 GET 이 한 번 더 나가고 이 시험이 흔들린다(앱 동작이 아니라 시험의 순서 문제).
+    await act(async () => {});
+    expect(detail).toHaveBeenCalledTimes(1);
     await act(async () => { resolve(server()); });
     await screen.findByText(/Saved evidence/);
     expect(detail).toHaveBeenCalledTimes(1);

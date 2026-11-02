@@ -60,7 +60,7 @@ describe('#430 되묻기에서 AI 판단을 보여 주기', () => {
 
     expect(await screen.findByText('네 칸 모두 근거가 있어 질문을 마칠게요')).toBeInTheDocument();
     expect(screen.getByText('AI 판단')).toBeInTheDocument();
-    expect(screen.getByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeInTheDocument();
+    expect(screen.getByText('추가 질문을 마쳤어요')).toBeInTheDocument();
     expect(ask).toHaveBeenCalledWith(card.id, undefined);
   });
 
@@ -75,9 +75,9 @@ describe('#430 되묻기에서 AI 판단을 보여 주기', () => {
     mount(turns);
     await answerOpenTurn();
 
-    expect(await screen.findByText('네 칸이 모두 차서 카드를 확정했어요')).toBeInTheDocument();
+    expect(await screen.findByText('경험 카드가 확정됐어요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '카드 확인하고 확정하기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '카드 검토하기' })).not.toBeInTheDocument();
     expect(ask).not.toHaveBeenCalled();
   });
 

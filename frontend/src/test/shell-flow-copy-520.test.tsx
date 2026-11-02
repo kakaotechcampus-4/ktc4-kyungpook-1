@@ -158,22 +158,13 @@ describe('홈 (#520 G-08 · H-01 · H-03)', () => {
     await waitFor(() => expect(failureBlocks()).toHaveLength(1));
   });
 
-  it('처음 온 사람에게 보이는 세 시작 방법은 해요체다 (H-01)', async () => {
-    stubApi(() => undefined, ['/cards']);
-    home();
-    const sources = await waitFor(() => { const el = document.querySelector('.sources'); expect(el).not.toBeNull(); return el as HTMLElement; });
-    expect(sources.textContent).toContain('커밋과 PR에서 경험을 찾아 줘요');
-    expect(sources.textContent).toContain('수정한 파일을 보며 경험을 떠올려요');
-    expect(sources.textContent).toContain('코드에 남지 않은 경험을 직접 적어요');
-    expect(sources.textContent).not.toMatch(/(습니다|합니다)/);
-  });
-
-  it('카드 검색 결과가 없을 때도 해요체이고 따옴표와 조사가 붙는다', async () => {
+  it('홈에는 최근 경험 카드와 카드 검색을 표시하지 않는다', async () => {
     stubApi(() => undefined);
     home();
-    fireEvent.change(await screen.findByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: '없는이름' } });
-    expect(await screen.findByText('"없는이름"에 맞는 카드가 없어요')).toBeInTheDocument();
-    expect(screen.queryByText(/없습니다/)).not.toBeInTheDocument();
+    await screen.findByRole('heading', { name: '홈', level: 1 });
+    expect(screen.queryByRole('textbox', { name: '카드 이름으로 검색' })).not.toBeInTheDocument();
+    expect(screen.queryByText('최근 경험 카드')).not.toBeInTheDocument();
+    expect(document.querySelector('.home-recent')).toBeNull();
   });
 
   it('탭 제목은 화면 제목과 같다', async () => {

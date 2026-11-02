@@ -1,3 +1,4 @@
+import { recordCareerActivity } from '@/lib/careerActivity';
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { endpoints } from './endpoints';
@@ -149,7 +150,11 @@ export function useCreateManualDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ input, idempotencyKey }: { input: Parameters<typeof endpoints.createManualDraft>[0]; idempotencyKey: string }) => endpoints.createManualDraft(input, idempotencyKey),
-    onSuccess: (card) => { qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards }); },
+    onSuccess: (card) => {
+      const user = qc.getQueryData<{ id: string }>(keys.me);
+      if (user?.id) recordCareerActivity(user.id, 'card', card.id);
+      qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards });
+    },
   });
 }
 
@@ -200,7 +205,9 @@ export function useCreateCards(repoId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (candidateIds: string[]) => endpoints.createCardsFromCandidates(repoId, candidateIds),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      const user = qc.getQueryData<{ id: string }>(keys.me);
+      if (user?.id) result.cardIds.forEach(id => recordCareerActivity(user.id, 'card', id));
       void qc.invalidateQueries({ queryKey: keys.candidates(repoId) });
       void qc.invalidateQueries({ queryKey: keys.cards });
     },

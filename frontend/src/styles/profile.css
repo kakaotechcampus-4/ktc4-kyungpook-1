@@ -11,7 +11,7 @@
 .interest-tile { position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); font-size: 13.5px; line-height: 20px; color: var(--text-strong); cursor: pointer; }
 .interest-tile input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .interest-tile::before { content: ""; width: 18px; height: 18px; flex: 0 0 auto; border: 1.5px solid var(--border-strong); border-radius: 50%; }
-.interest-tile.is-on { background: var(--bg-selected); border-color: var(--border-selected); }
+.interest-tile.is-on { background: var(--bg-selected); border-color: var(--border-default); }
 .interest-tile.is-on::before { border-color: var(--accent-point); background: var(--accent-point); box-shadow: inset 0 0 0 3px var(--bg-selected); }
 .interest-tile.is-off { opacity: .45; }
 .interest-tile.is-off input { cursor: not-allowed; }

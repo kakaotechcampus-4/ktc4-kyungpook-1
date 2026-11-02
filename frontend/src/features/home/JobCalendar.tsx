@@ -1,6 +1,6 @@
 import { useId, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, Plus } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { calendarStorageKey, dateKey, daysUntil, monthDays, readSchedules, safeScheduleUrl, scheduleKinds, type JobSchedule, type ScheduleKind } from './calendarModel';
@@ -34,7 +34,8 @@ export function JobCalendar({ userId }: { userId: string }) {
     } catch { setError('일정을 저장하지 못했어요. 브라우저 저장 공간과 설정을 확인해 주세요.'); return false; }
   };
   const add = () => setEditing({ id: '', company: '', role: '', date: selected, kind: 'deadline', url: '', note: '' });
-  // 공고에서 담은 일정은 그 공고로 간다(빼기는 공고 상세에서). 직접 등록한 일정은 고치기 창을 연다
+  // 공고에서 담은 일정은 그 공고로 간다(빼기는 공고 상세와 선택한 날짜 목록에서). 직접 등록한 일정은 고치기 창을 연다
+  // 날짜 목록의 빼기는 공고가 지워져 상세가 열리지 않을 때도 일정을 지울 수 있게 둔다
   const open = (event: JobSchedule) => { if (event.matchId) nav(`/match/${encodeURIComponent(event.matchId)}`); else { setSelected(event.date); setEditing(event); } };
   const moveMonth = (offset: number) => {
     const next = new Date(month.getFullYear(), month.getMonth() + offset, 1);
@@ -82,7 +83,7 @@ export function JobCalendar({ userId }: { userId: string }) {
             return <button type="button" className="agenda-event" key={event.id} onClick={() => open(event)}><span className={`agenda-event__count agenda-event__count--${event.kind}`}>{diff === 0 ? '오늘' : `D-${diff}`}</span><span><strong>{event.company}</strong><small>{event.role || scheduleKinds[event.kind]}</small><small>{readableDate(event.date)} · {scheduleKinds[event.kind]}</small></span></button>;
           }) : <div className="calendar-empty"><CalendarDays size={28} strokeWidth={1.4} /><strong>다음 기회를 준비해요</strong><p>관심 기업의 공고 마감일을<br />첫 일정으로 등록해 보세요.</p><Button variant="outline" size="sm" onClick={add} disabled={Boolean(initial.error)}><Plus size={14} /> 첫 일정 등록</Button></div>}
         </div>
-        <div className="calendar-agenda__selected"><h3>{readableDate(selected)}</h3>{selectedEvents.length ? selectedEvents.map(event => <div className="selected-event" key={event.id}><button type="button" onClick={() => open(event)}><i className={`calendar-dot calendar-dot--${event.kind}`} /><span><strong>{event.company}</strong><small>{event.role ? `${event.role} · ` : ''}{scheduleKinds[event.kind]}</small></span></button>{event.url && <a href={event.url} target="_blank" rel="noopener noreferrer" aria-label={`${event.company} 공고 보기`}><ExternalLink size={15} /></a>}</div>) : <p className="calendar-agenda__none">등록된 일정이 없어요.</p>}</div>
+        <div className="calendar-agenda__selected"><h3>{readableDate(selected)}</h3>{selectedEvents.length ? selectedEvents.map(event => <div className="selected-event" key={event.id}><button type="button" onClick={() => open(event)}><i className={`calendar-dot calendar-dot--${event.kind}`} /><span><strong>{event.company}</strong><small>{event.role ? `${event.role} · ` : ''}{scheduleKinds[event.kind]}</small></span></button>{event.url && <a href={event.url} target="_blank" rel="noopener noreferrer" aria-label={`${event.company} 공고 보기`}><ExternalLink size={15} /></a>}{event.matchId && <button type="button" className="selected-event__remove" aria-label={`${event.company} 일정 캘린더에서 빼기`} title="캘린더에서 빼기" onClick={() => write(events.filter(item => item.id !== event.id))}><X size={15} /></button>}</div>) : <p className="calendar-agenda__none">등록된 일정이 없어요.</p>}</div>
       </aside>
     </div>
     <p className="calendar-storage-note">직접 등록한 일정은 이 브라우저에 저장돼요.</p>

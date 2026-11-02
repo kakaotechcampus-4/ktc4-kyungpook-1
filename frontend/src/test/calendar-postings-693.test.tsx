@@ -72,4 +72,19 @@ describe('#693 공고 마감일을 홈 캘린더에 담기', () => {
     await act(async () => { await Promise.resolve(); });
     expect(router.state.location.pathname).toBe('/match/m1');
   });
+
+  it('공고에서 담은 일정은 선택한 날짜 목록에서 뺄 수 있다 — 공고가 지워져 상세가 열리지 않아도 지울 길이 남는다', () => {
+    const today = dateKey(new Date());
+    localStorage.setItem(calendarStorageKey('owner'), JSON.stringify([
+      event({ id: 'manual', date: today }),
+      event({ id: 'posting', company: '가온소프트', date: today, matchId: 'm1' }),
+    ]));
+    mountApp([page(<JobCalendar userId="owner" />, '/')], '/');
+
+    expect(screen.queryByRole('button', { name: '직접 기업 일정 캘린더에서 빼기' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '가온소프트 일정 캘린더에서 빼기' }));
+
+    expect(JSON.parse(localStorage.getItem(calendarStorageKey('owner')) ?? '[]').map((e: { id: string }) => e.id)).toEqual(['manual']);
+    expect(screen.queryByRole('button', { name: '가온소프트 · 지원 마감' })).not.toBeInTheDocument();
+  });
 });

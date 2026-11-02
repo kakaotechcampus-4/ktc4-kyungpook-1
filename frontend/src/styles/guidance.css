@@ -80,6 +80,8 @@
 .page-title:has(> .title-edit) h1 { min-width: 0; flex: 0 1 auto; width: auto; } /* 모바일의 h1 width:100% 를 풀어 연필이 제목 바로 옆에 오게 */
 .title-edit { flex: 0 0 auto; margin-top: -2px; }
 .title-edit:hover, .title-edit:focus-visible { color: var(--text-accent); background: var(--bg-subtle); }
+.star__pencil { display: inline-grid; place-items: center; flex: 0 0 auto; width: var(--control-touch-size); height: var(--control-touch-size); margin: -10px 0 -10px -8px; border-radius: var(--control-radius); color: var(--text-tertiary); }
+.star__pencil:hover, .star__pencil:focus-visible { color: var(--text-accent); background: var(--bg-subtle); }
 .star__edit { color: var(--text-accent); gap: 4px; font-size: 13px; padding-inline: 10px; }
 .star__edit:hover:not(:disabled) { color: var(--text-primary); }
 .crumb__ext, .aside-link { display: inline-flex; align-items: center; gap: 3px; color: inherit; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }

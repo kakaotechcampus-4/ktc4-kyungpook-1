@@ -35,6 +35,15 @@ public interface RepoRecommendationRepository extends JpaRepository<RepoRecommen
     void markStale(@Param("userId") Long userId, @Param("userRepositoryId") Long userRepositoryId,
                    @Param("staleSince") Instant staleSince);
 
+    // 이미 추천이 있는 레포만 표시하고, 아직 없는 레포는 확정 카드가 생길 때 만든다
+    @Transactional
+    @Modifying
+    @Query(value = """
+            UPDATE repo_recommendation SET status = 'COMPUTING', stale_since = :staleSince
+            WHERE user_id = :userId
+            """, nativeQuery = true)
+    void markStaleOfUser(@Param("userId") Long userId, @Param("staleSince") Instant staleSince);
+
     // 표시를 지운 쪽만 계산해, 같은 레포를 두 번 계산하지 않는다
     @Transactional
     @Modifying

@@ -4,6 +4,7 @@ import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.matching.domain.CompanyShortlistService.CandidatePosting;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.PostingCondition;
+import com.gitory.backend.profile.domain.InterestCategory;
 import com.gitory.backend.profile.domain.ProfileService;
 import com.gitory.backend.profile.domain.ProfileView;
 import org.junit.jupiter.api.DisplayName;
@@ -38,9 +39,28 @@ class CompanyShortlistServiceTest {
                 new PostingCondition(java, required(CardTech.JAVA)),
                 new PostingCondition(react, required(CardTech.REACT))));
 
-        List<ShortlistedCompany> companies = service(postings).shortlist(1L, Set.of(CardTech.JAVA), Set.of(), 10);
+        List<ShortlistedCompany> companies = service(postings).shortlist(1L, Set.of(CardTech.JAVA), 10);
 
         assertThat(companies).extracting(ShortlistedCompany::companyId).containsExactly("toss");
+
+    }
+
+    @Test
+    @DisplayName("인적사항에 저장된 관심 분야가 있으면 그 직무의 공고만 후보에 남긴다")
+    void keepsOnlyPostingsInStoredInterests() {
+
+        JobPosting backend = posting("toss", "토스", null, JobCategory.BACKEND);
+        JobPosting frontend = posting("kakao", "카카오", null, JobCategory.FRONTEND);
+        JobPostingRepository postings = mock(JobPostingRepository.class);
+        when(postings.findShortlistConditions(any())).thenReturn(List.of(
+                new PostingCondition(backend, required(CardTech.JAVA)),
+                new PostingCondition(frontend, required(CardTech.JAVA))));
+        ProfileView frontendOnly = new ProfileView(List.of(), List.of(), List.of(), List.of(),
+                List.of(InterestCategory.FRONTEND), NOW);
+
+        List<ShortlistedCompany> companies = service(postings, frontendOnly).shortlist(1L, Set.of(CardTech.JAVA), 10);
+
+        assertThat(companies).extracting(ShortlistedCompany::companyId).containsExactly("kakao");
 
     }
 
@@ -94,8 +114,14 @@ class CompanyShortlistServiceTest {
 
     private static CompanyShortlistService service(JobPostingRepository postings) {
 
+        return service(postings, new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), null));
+
+    }
+
+    private static CompanyShortlistService service(JobPostingRepository postings, ProfileView profile) {
+
         ProfileService profiles = mock(ProfileService.class);
-        when(profiles.of(any())).thenReturn(new ProfileView(List.of(), List.of(), List.of(), List.of(), null));
+        when(profiles.of(any())).thenReturn(profile);
         CompanyDirectory companies = mock(CompanyDirectory.class);
         when(companies.of(anyString(), anyString()))
                 .thenAnswer(call -> new MatchCompany(call.getArgument(0), null));
@@ -119,9 +145,15 @@ class CompanyShortlistServiceTest {
 
     private static JobPosting posting(String companyKey, String companyName, Instant expiresAt) {
 
+        return posting(companyKey, companyName, expiresAt, JobCategory.BACKEND);
+
+    }
+
+    private static JobPosting posting(String companyKey, String companyName, Instant expiresAt, JobCategory category) {
+
         JobPosting posting = JobPosting.discovered(companyKey, companyKey + "-1", companyName, "백엔드 개발자",
                 "https://jobs.example.com/" + companyKey, null, expiresAt, NOW);
-        posting.extracted(JobCategory.BACKEND, ExperienceLevel.ENTRY, null, null, List.<CardTech>of(), 2,
+        posting.extracted(category, ExperienceLevel.ENTRY, null, null, List.<CardTech>of(), 2,
                 JobPostingContentStatus.READY, "a".repeat(64), NOW);
         return posting;
 

@@ -323,7 +323,7 @@ function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () =
   };
   return (
     <Modal title="후보 직접 추가" onClose={() => { if (!add.isPending) onClose(); }}
-      footer={{ strong: shas.length ? '기술 카드로 생성됩니다' : '정성 카드로 생성됩니다', sub: shas.length ? `커밋 ${shas.length}건이 붙어 있습니다` : undefined,
+      footer={{ strong: shas.length ? '기술 카드로 생성됩니다' : '경험 카드로 생성됩니다', sub: shas.length ? `커밋 ${shas.length}건이 붙어 있습니다` : undefined,
         actions: <><Button variant="outline" disabled={add.isPending} onClick={onClose}>취소</Button><Button disabled={!title.trim() || !summary.trim()} loading={add.isPending} onClick={submit}>후보 추가</Button></> }}>
       <Field label="후보 이름"><Input autoFocus disabled={add.isPending} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예) 배포 파이프라인 직접 구축" maxLength={80} /></Field>
       <Field label="무엇을 한 작업인가요"><Textarea disabled={add.isPending} rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="한 줄로 적어주세요." maxLength={300} /></Field>

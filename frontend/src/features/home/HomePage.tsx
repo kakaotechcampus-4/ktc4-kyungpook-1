@@ -14,6 +14,7 @@ import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CardTags } from '@/components/cards/CardTags';
+import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
 import { JobCalendar } from './JobCalendar';
@@ -68,6 +69,7 @@ export function HomePage() {
       {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
       <PageTitle lead="관심 기업의 일정과 나의 준비 현황을 한곳에서 관리하세요.">홈</PageTitle>
+      {cards.isSuccess && <SkippedCardsNotice />}
       <div className="home-workspace">
       <div className="home-workspace__content">
       <section className="home-welcome">

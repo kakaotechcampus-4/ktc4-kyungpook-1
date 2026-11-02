@@ -486,7 +486,11 @@ export function pushVersion(c: Any, source: string, fields: Any) {
 /** 되묻기 턴 생성 — "코드에서 찾은 것"은 카드 근거에서 조립 */
 export const INTERVIEW_MAX_TURNS = 8; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
 
-export function askTurn(c: Any, field: string) {
+/** 앞 결과 답에 숫자가 없어 AI 가 같은 칸을 다시 물을 때의 데모 질문(#430). 실제 AI 의 글이 아니다 */
+const AGAIN_RESULT = { question: '그 변화를 숫자로 말하면 어느 정도였나요? 대략이라도 괜찮아요', missing: '결과를 뒷받침하는 수치' };
+
+/** ai 가 있으면 AI 가 고른 칸이다(서버의 FOLLOW_UP + reason). 없으면 사용자가 칸을 골랐다(USER_REQUEST, reason null) */
+export function askTurn(c: Any, field: string, ai?: { reason: string; again?: boolean }) {
   const bank = interviewBank[field];
   const turns = (db.interview[c.id] ??= []);
   // PR 이 없는 커밋 묶음도, 코드가 아예 없는 직접 작성 카드도 되묻기 대상이다
@@ -494,14 +498,17 @@ export function askTurn(c: Any, field: string) {
   const seen = new Set<string>();
   const found = c.evidence.filter((e: Any) => e.type === 'COMMIT' && !seen.has(e.sha) && seen.add(e.sha)).slice(0, 3).map((e: Any) => `커밋 ${e.sha} "${e.snippet}"`);
   const turn = {
-    turnNo: turns.length + 1, field, askedBy: 'USER_REQUEST', sourceType,
+    turnNo: turns.length + 1, field, askedBy: ai ? 'FOLLOW_UP' : 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
     found: found.length ? found : ['이 카드에 붙은 커밋 근거가 없습니다'],
-    missing: [bank.missing], question: bank.question, options: bank.options, answer: null, outcome: null,
+    missing: [ai?.again ? AGAIN_RESULT.missing : bank.missing], question: ai?.again ? AGAIN_RESULT.question : bank.question,
+    options: ai?.again ? [] : bank.options, answer: null, outcome: null, reason: ai?.reason ?? null,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };
   turns.push(turn);
+  // 실서버처럼 새 질문을 만들면 지난번에 끝낸 이유는 지운다
+  c.interviewEndReason = null;
   return turn;
 }
 

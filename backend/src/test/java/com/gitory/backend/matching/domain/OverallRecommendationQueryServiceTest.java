@@ -154,7 +154,7 @@ class OverallRecommendationQueryServiceTest {
 
     private static ProfileView profile(Instant savedAt) {
 
-        return new ProfileView(List.of(), List.of(), List.of(), List.of(), savedAt);
+        return new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), savedAt);
 
     }
 }

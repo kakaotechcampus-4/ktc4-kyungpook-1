@@ -4,6 +4,7 @@ import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.PostingCondition;
 import com.gitory.backend.profile.domain.ProfileService;
+import com.gitory.backend.profile.domain.ProfileView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,13 +51,19 @@ public class CompanyShortlistService {
     private final CompanyDirectory companies;
     private final Clock clock;
 
-    /** techs 는 부르는 쪽이 고른 카드들의 기술 이름표이며, 겹친 기술이 하나도 없는 공고는 후보에 넣지 않는다 */
+    /**
+     * techs 는 부르는 쪽이 고른 카드들의 기술 이름표이며, 겹친 기술이 하나도 없는 공고는 후보에 넣지 않는다
+     * 관심 분야는 저장된 인적사항에서 읽어 그 직무의 공고만 남기고, 아직 고르지 않았으면 거르지 않는다
+     */
     @Transactional(readOnly = true)
-    public List<ShortlistedCompany> shortlist(Long userId, Set<CardTech> techs, Set<JobCategory> interests,
-                                              int limit) {
+    public List<ShortlistedCompany> shortlist(Long userId, Set<CardTech> techs, int limit) {
 
         Instant now = Instant.now(clock);
-        Applicant applicant = Applicant.of(profiles.of(userId), interests, YearMonth.from(now.atZone(SEOUL)));
+        ProfileView profile = profiles.of(userId);
+        Set<JobCategory> interests = profile.interests().stream()
+                .map(interest -> JobCategory.valueOf(interest.name()))
+                .collect(Collectors.toSet());
+        Applicant applicant = Applicant.of(profile, interests, YearMonth.from(now.atZone(SEOUL)));
         Set<String> mine = techs.stream().map(Enum::name).collect(Collectors.toSet());
 
         Map<UUID, List<PostingCondition>> byPosting = postings.findShortlistConditions(now).stream()

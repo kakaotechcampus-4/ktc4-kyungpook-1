@@ -19,6 +19,7 @@ final class ProfileRules {
     static final int MAX_CAREERS = 10;
     static final int MAX_LANGUAGES = 10;
     static final int MAX_CERTIFICATIONS = 20;
+    static final int MAX_INTERESTS = 3;
     private static final int TEXT_MAX_LENGTH = 50;
     private static final int SCORE_MAX_LENGTH = 20;
     // 국내 대학이 쓰는 학점 만점과 100점 환산이다
@@ -36,7 +37,7 @@ final class ProfileRules {
             requireOrdered(startMonth, endMonth, at);
             requireGpa(input.gpa(), input.gpaMax(), at);
             return new Education(oneOf(EducationLevel.class, input.level(), at + " 학력 구분"),
-                    requiredText(input.school(), at + " 학교 이름", TEXT_MAX_LENGTH),
+                    optionalText(input.school(), at + " 학교 이름", TEXT_MAX_LENGTH),
                     optionalText(input.major(), at + " 전공", TEXT_MAX_LENGTH),
                     oneOf(EducationStatus.class, input.status(), at + " 상태"),
                     startMonth, endMonth, input.gpa(), input.gpaMax());
@@ -82,6 +83,28 @@ final class ProfileRules {
 
     private interface Check<I, O> {
         O apply(I input, String at);
+    }
+
+    /** 관심 분야는 안 보내면(null) 저장된 값을 그대로 두고, 보내면 통째로 바꾼다 — 지금 배포된 화면이 아직 이 칸을 보내지 않아서다 */
+    static List<InterestCategory> interests(List<String> inputs) {
+
+        if (inputs == null) {
+            return null;
+        }
+        if (inputs.size() > MAX_INTERESTS) {
+            throw new InvalidProfileInputException("관심 분야는 " + MAX_INTERESTS + "개까지 고를 수 있습니다.");
+        }
+        List<InterestCategory> checked = new ArrayList<>();
+        for (int index = 0; index < inputs.size(); index++) {
+            String at = "관심 분야 " + (index + 1) + "번째";
+            InterestCategory category = oneOf(InterestCategory.class, inputs.get(index), at);
+            if (checked.contains(category)) {
+                throw new InvalidProfileInputException(at + "가 앞의 것과 겹칩니다.");
+            }
+            checked.add(category);
+        }
+        return List.copyOf(checked);
+
     }
 
     // 목록을 통째로 바꾸는 요청이라 빠진 목록을 빈 목록으로 보면 실수로 보낸 요청이 저장된 값을 지우므로, 네 목록 모두 보내야 한다

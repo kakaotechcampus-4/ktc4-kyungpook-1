@@ -11,12 +11,14 @@ public record ProfileRequest(
         @Schema(description = "학력, 5개까지") List<EducationRequest> educations,
         @Schema(description = "경력, 10개까지") List<CareerRequest> careers,
         @Schema(description = "어학, 10개까지") List<LanguageRequest> languages,
-        @Schema(description = "자격증, 20개까지") List<CertificationRequest> certifications) {
+        @Schema(description = "자격증, 20개까지") List<CertificationRequest> certifications,
+        @Schema(description = "관심 분야 — 공고 직무 분류 이름(BACKEND · FRONTEND · MOBILE · DEVOPS · DATA · AI_ML · SECURITY · QA · ETC) 3개까지, 겹치지 않게. 안 보내면 저장된 값을 그대로 둡니다", nullable = true)
+        List<String> interests) {
 
     @Schema(name = "ProfileEducationRequest")
     public record EducationRequest(
             @Schema(description = "HIGH_SCHOOL · ASSOCIATE · BACHELOR · MASTER · DOCTOR") String level,
-            @Schema(description = "학교 이름, 50자까지") String school,
+            @Schema(description = "학교 이름, 50자까지. 비우면 null", nullable = true) String school,
             @Schema(description = "전공, 50자까지. 없으면 null") String major,
             @Schema(description = "ENROLLED · ON_LEAVE · GRADUATION_EXPECTED · GRADUATED · DROPPED_OUT") String status,
             @Schema(description = "입학 달 YYYY-MM, 없으면 null", example = "2021-03") String startMonth,
@@ -61,7 +63,8 @@ public record ProfileRequest(
                 languages == null ? null : languages.stream().map(l -> l == null ? null
                         : new ProfileInput.LanguageInput(l.test(), l.testName(), l.score(), l.acquiredMonth())).toList(),
                 certifications == null ? null : certifications.stream().map(c -> c == null ? null
-                        : new ProfileInput.CertificationInput(c.name(), c.issuer(), c.acquiredMonth())).toList());
+                        : new ProfileInput.CertificationInput(c.name(), c.issuer(), c.acquiredMonth())).toList(),
+                interests);
 
     }
 }

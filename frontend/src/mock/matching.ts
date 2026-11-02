@@ -21,29 +21,29 @@ const scenario = (index: number) => {
   return MatchTarget.parse({ ...example, ...MOCK_COMPANY[example.id] });
 };
 
-/** Mock server only: supplied examples are scenarios, not a client-side matching algorithm. */
+/**
+ * Mock server only: supplied examples are scenarios, not a client-side matching algorithm.
+ * 목은 늘 맞춰 본 뒤의 상세를 준다(needsJudgement false) — 앞쪽 met 개 조건은 확정 카드의 행동·결과 문장으로 채운다.
+ */
 export function mockMatchDetail(id: string): MatchDetail | null {
   const index = listExample.data.findIndex((x) => x.id === id);
   if (index < 0) return null;
   const target = scenario(index);
   const confirmed = db.cards.filter((c) => c.status === "CONFIRMED");
-  const supports = confirmed.flatMap((c) => {
+  const metBy = confirmed.flatMap((c) => {
     const card = Card.parse(cardView(c));
-    return (["A", "R"] as const).flatMap((field) => {
-      const sentence =
-        field === "A" ? card.version.action : card.version.result;
-      return sentence?.trim()
-        ? [
-            {
-              cardId: card.id,
-              cardTitle: applyMask(card.title, card.maskRules),
-              cardKind: card.kind,
-              field,
-              sentence: applyMask(sentence, card.maskRules),
-            },
-          ]
-        : [];
-    });
+    const reason = [card.version.action, card.version.result].find((x) => x?.trim());
+    return reason
+      ? [
+          {
+            cardId: card.id,
+            cardTitle: applyMask(card.title, card.maskRules),
+            cardKind: card.kind,
+            repoId: card.repo?.id ?? null,
+            reason: applyMask(reason, card.maskRules),
+          },
+        ]
+      : [];
   });
   const seed = MatchDetail.parse(detailExample.data);
   const conditions: MatchDetail["conditions"] = [];
@@ -52,22 +52,22 @@ export function mockMatchDetail(id: string): MatchDetail | null {
     const count = type === "REQUIRED" ? target.required : target.preferred;
     for (let i = 0; i < count.total; i++) {
       const template = templates[i % templates.length];
+      const met = i < count.met && metBy.length > 0;
       conditions.push({
         ...template,
         id: `${id}-${type}-${i}`,
-        supports: i < count.met ? supports.slice(0, 2) : [],
+        generalType: met ? null : template.generalType,
+        status: met ? "MET" : template.status === "CHECK" ? "CHECK" : "NOT_MET",
+        metBy: met ? metBy.slice(0, 2) : [],
       });
     }
   }
   conditions.push(
     ...seed.conditions
       .filter((c) => c.type === "RESPONSIBILITY")
-      .map((c) => ({
-        ...c,
-        id: `${id}-${c.id}`,
-        supports: c.supports.length ? supports.slice(0, 1) : [],
-      })),
+      .map((c) => ({ ...c, id: `${id}-${c.id}` })),
   );
+  const required = conditions.filter((c) => c.type === "REQUIRED" && c.status !== "CHECK");
   const source = {
     ...target.source,
     collectedAt: new Date().toISOString(),
@@ -79,14 +79,14 @@ export function mockMatchDetail(id: string): MatchDetail | null {
   return {
     ...target,
     source,
-    fit: confirmed.length ? (supports.length ? target.fit : "D") : null,
+    fit: confirmed.length ? (metBy.length ? target.fit : "D") : null,
     required: {
       ...target.required,
-      met: supports.length ? target.required.met : 0,
+      met: metBy.length ? target.required.met : 0,
     },
     preferred: {
       ...target.preferred,
-      met: supports.length ? target.preferred.met : 0,
+      met: metBy.length ? target.preferred.met : 0,
     },
     experience: {
       ...target.experience,
@@ -96,6 +96,12 @@ export function mockMatchDetail(id: string): MatchDetail | null {
           : target.experience.minYears === null
             ? null
             : `${target.experience.minYears}년 이상의 경력`,
+      status: target.experience.minYears === null ? null : "UNKNOWN",
+    },
+    needsJudgement: false,
+    summary: {
+      requiredMet: required.filter((c) => c.status === "MET").length,
+      requiredTotal: required.length,
     },
     conditions,
   };
@@ -104,11 +110,14 @@ export function mockMatchList() {
   return listExample.data
     .map((x) => {
       const detail = mockMatchDetail(x.id)!;
-      const { conditions, experience, ...target } = detail;
+      const { conditions, experience, needsJudgement, summary, ...target } = detail;
       void conditions;
-      const { quote, ...summary } = experience;
+      void needsJudgement;
+      void summary;
+      const { quote, status, ...level } = experience;
       void quote;
-      return { ...target, experience: summary };
+      void status;
+      return { ...target, experience: level };
     })
     .sort(
       (a, b) =>

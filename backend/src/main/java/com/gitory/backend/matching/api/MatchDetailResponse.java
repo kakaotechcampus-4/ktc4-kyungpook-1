@@ -14,6 +14,8 @@ public record MatchDetailResponse(String id, String company,
                                   String role, JobCategory category, MatchGrade fit,
                                   MatchCountResponse required, MatchCountResponse preferred,
                                   MatchDetailExperienceResponse experience, MatchSourceResponse source,
+                                  @Schema(description = "아직 판단하지 않은 기술·경험 조건이 있거나 카드가 바뀌어 다시 판단할 짝이 남았으면 true. 화면은 '이 공고와 맞춰 보기' 를 보인다") boolean needsJudgement,
+                                  @Schema(description = "needsJudgement 면 null", nullable = true) MatchSummaryResponse summary,
                                   List<MatchConditionResponse> conditions) {
 
     public static MatchDetailResponse from(MatchDetail detail) {
@@ -24,8 +26,9 @@ public record MatchDetailResponse(String id, String company,
                 target.role(), target.category(),
                 target.fit(), MatchCountResponse.from(target.required()), MatchCountResponse.from(target.preferred()),
                 new MatchDetailExperienceResponse(target.experienceLevel(), target.experienceMinYears(),
-                        detail.experienceQuote()),
+                        detail.experienceQuote(), detail.experienceStatus()),
                 new MatchSourceResponse(target.sourceUrl(), target.collectedAt(), target.expiresAt()),
+                detail.needsJudgement(), detail.summary() == null ? null : MatchSummaryResponse.from(detail.summary()),
                 detail.conditions().stream().map(MatchConditionResponse::from).toList());
 
     }

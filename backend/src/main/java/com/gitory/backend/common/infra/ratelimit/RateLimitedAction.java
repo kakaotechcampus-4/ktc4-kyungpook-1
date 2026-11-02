@@ -5,7 +5,9 @@ public enum RateLimitedAction {
     INTERVIEW_ASK("interview-ask"),
     INTERVIEW_ANSWER("interview-answer"),
     CARD_DRAFT("card-draft"),
-    COVER_LETTER("cover-letter");
+    COVER_LETTER("cover-letter"),
+    MATCH_JUDGEMENT("match-judgement"),
+    MATCH_OVERALL("match-overall");
 
     private final String key;
 

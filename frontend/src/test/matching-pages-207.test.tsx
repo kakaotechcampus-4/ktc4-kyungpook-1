@@ -106,14 +106,22 @@ it('explicit list refresh invalidates previously visited details', async () => {
   fireEvent.click(screen.getByRole('button',{name:'매칭 새로고침'}));
   await waitFor(()=>expect(client.getQueryState(matchKeys.detail(sampleDetail.data.id))?.isInvalidated).toBe(true));
 });
-it("keeps conditions with no supports and hides only duplicate quote lines", async () => {
+it("shows each condition's judgement and hides only duplicate quote lines", async () => {
   const detail = MatchDetail.parse(sampleDetail.data);
   detail.conditions[0].quote = detail.conditions[0].text;
   vi.spyOn(matchingApi, "detail").mockResolvedValue(detail);
   mount(`/match/${detail.id}?category=BACKEND`);
   await screen.findByText(detail.role);
   expect(screen.getAllByText(detail.conditions[0].text)).toHaveLength(1);
-  expect(screen.getAllByText("아직 연결된 경험이 없어요.")).toHaveLength(4);
+  expect(screen.getByText("필수 조건 3개 중 2개가 맞아요.")).toBeInTheDocument();
+  expect(screen.getAllByText("맞는 카드가 없어요.")).toHaveLength(2);
+  expect(screen.getAllByText("어학 조건은 직접 확인해 주세요.")).toHaveLength(1);
+  // 조건마다 상태 표시가 붙고, 담당 업무에는 붙지 않는다
+  expect(screen.getAllByText("맞음")).toHaveLength(3);
+  expect(screen.getAllByText("모자람")).toHaveLength(2);
+  expect(screen.getAllByText("직접 확인")).toHaveLength(1);
+  expect(document.querySelectorAll(".match-mark")).toHaveLength(6);
+  expect(screen.queryByRole("button", { name: "이 공고와 맞춰 보기" })).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "← 공고 목록" })).toHaveAttribute(
     "href",
     "/match?category=BACKEND",
@@ -121,6 +129,63 @@ it("keeps conditions with no supports and hides only duplicate quote lines", asy
   expect(
     screen.getByRole("link", { name: "공고 원문 보기 ↗" }),
   ).toHaveAttribute("rel", "noopener noreferrer");
+});
+const unjudged = (detail: MatchDetail): MatchDetail => ({
+  ...detail,
+  needsJudgement: true,
+  summary: null,
+  conditions: detail.conditions.map((c) =>
+    c.status === "MET" || c.status === "NOT_MET" ? { ...c, status: "UNJUDGED", metBy: [] } : c,
+  ),
+});
+it("judges the posting only on request and shows the new judgement", async () => {
+  const judged = MatchDetail.parse(sampleDetail.data);
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(unjudged(judged));
+  const judge = vi.spyOn(matchingApi, "judge").mockResolvedValue(judged);
+  mount(`/match/${judged.id}`);
+  expect(await screen.findAllByText("아직 맞춰 보지 않았어요.")).toHaveLength(5);
+  expect(screen.getAllByText("맞춰 보기 전")).toHaveLength(5);
+  expect(judge).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "이 공고와 맞춰 보기" }));
+  expect(await screen.findByText("필수 조건 3개 중 2개가 맞아요.")).toBeInTheDocument();
+  expect(judge).toHaveBeenCalledWith(judged.id);
+  expect(screen.queryByText("아직 맞춰 보지 않았어요.")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "이 공고와 맞춰 보기" })).not.toBeInTheDocument();
+});
+it("keeps the judge button and says so when judging fails", async () => {
+  const judged = MatchDetail.parse(sampleDetail.data);
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(unjudged(judged));
+  vi.spyOn(matchingApi, "judge").mockRejectedValue(new ApiError("AI_UNAVAILABLE", "unavailable", 503));
+  mount(`/match/${judged.id}`);
+  fireEvent.click(await screen.findByRole("button", { name: "이 공고와 맞춰 보기" }));
+  expect(await screen.findByText("맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "이 공고와 맞춰 보기" })).toBeEnabled();
+  expect(screen.getAllByText("아직 맞춰 보지 않았어요.")).toHaveLength(5);
+});
+it("words an education mismatch as a profile check, not as a missing card", async () => {
+  const detail = MatchDetail.parse(sampleDetail.data);
+  const school = (id: string, status: "MET" | "NOT_MET" | "UNKNOWN" | "CHECK", text: string) => ({
+    ...detail.conditions[0], id, text, quote: text, generalType: "EDUCATION" as const, status, metBy: [],
+  });
+  vi.spyOn(matchingApi, "detail").mockResolvedValue({
+    ...detail,
+    conditions: [
+      school("e1", "NOT_MET", "석사 이상"),
+      school("e2", "MET", "학사 이상"),
+      school("e3", "UNKNOWN", "전문학사 이상"),
+      school("e4", "CHECK", "학사 이상 또는 그에 준하는 경력"),
+      { ...detail.conditions[0], id: "m1", text: "병역 필 또는 면제", quote: "병역 필 또는 면제", generalType: "MILITARY", status: "CHECK", metBy: [] },
+      { ...detail.conditions[2], generalType: null, status: "NOT_MET", metBy: [] },
+    ],
+  });
+  mount(`/match/${detail.id}`);
+  expect(await screen.findByText("인적사항과 맞지 않아요 — 지원 자격을 확인해 보세요.")).toBeInTheDocument();
+  expect(screen.getByText("인적사항의 학력과 맞아요.")).toBeInTheDocument();
+  expect(screen.getByText("인적사항에 학력을 적으면 비교할 수 있어요.")).toBeInTheDocument();
+  expect(screen.getByText("인적사항 필요")).toBeInTheDocument();
+  expect(screen.getByText("학력 조건은 직접 확인해 주세요.")).toBeInTheDocument();
+  expect(screen.getByText("병역 조건은 직접 확인해 주세요.")).toBeInTheDocument();
+  expect(screen.getAllByText("맞는 카드가 없어요.")).toHaveLength(1);
 });
 it("404 detail offers list return without an invalid retry", async () => {
   vi.spyOn(matchingApi, "detail").mockRejectedValue(
@@ -133,7 +198,7 @@ it("404 detail offers list return without an invalid retry", async () => {
     screen.queryByRole("button", { name: "다시 불러오기" }),
   ).not.toBeInTheDocument();
 });
-it("mock uses current confirmed masked A/R text and returns null without confirmed cards", () => {
+it("mock uses current confirmed masked A/R text and returns no cards without confirmed cards", () => {
   const confirmed = db.cards.find((c) => c.status === "CONFIRMED")!;
   const version = confirmed.versions.at(-1);
   version.action = "비밀회사에서 작업했다";
@@ -143,7 +208,7 @@ it("mock uses current confirmed masked A/R text and returns null without confirm
     handle("GET", `/matches/${id}`, new URLSearchParams(), {}, true).data,
   );
   const sentences = detail.conditions.flatMap((c) =>
-    c.supports.map((s) => s.sentence),
+    c.metBy.map((s) => s.reason),
   );
   expect(sentences.some((x) => x === "회사에서 작업했다")).toBe(true);
   expect(sentences.some((x) => x.includes("비밀회사"))).toBe(false);
@@ -152,7 +217,7 @@ it("mock uses current confirmed masked A/R text and returns null without confirm
     handle("GET", `/matches/${id}`, new URLSearchParams(), {}, true).data,
   );
   expect(missing.fit).toBeNull();
-  expect(missing.conditions.every((c) => c.supports.length === 0)).toBe(true);
+  expect(missing.conditions.every((c) => c.metBy.length === 0)).toBe(true);
 });
 it.each(["mask", "reopen", "confirm"] as const)(
   "%s clears old matching data after card mutation",

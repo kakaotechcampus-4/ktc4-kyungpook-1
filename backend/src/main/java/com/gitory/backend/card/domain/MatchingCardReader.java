@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,20 @@ public class MatchingCardReader {
     public List<MatchingCard> confirmedOf(Long userId) {
 
         return cardsOf(confirmedCards.findLiveConfirmedIdsOfUser(userId));
+
+    }
+
+    /** 매칭 화면이 '이 조건을 채운 카드' 로 보여 줄 이름표로, 카드 주인에게만 보이므로 가리기 전 제목이다 */
+    @Transactional(readOnly = true)
+    public Map<Long, MatchingCardLabel> labelsOf(Collection<Long> ids) {
+
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+
+        return cards.findAllById(ids).stream()
+                .collect(Collectors.toMap(Card::getId, card -> new MatchingCardLabel(card.getPublicId(),
+                        card.getTitle(), card.getCardType(), card.getUserRepositoryId())));
 
     }
 

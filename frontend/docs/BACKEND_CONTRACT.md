@@ -276,7 +276,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 |---|---|---|
 | `GET /cards/{id}/interview` | | **구현됨(#172).** `InterviewTurn[]`, 질문 번호순. 없으면 빈 배열; 없는 카드·남의 카드·잘못된 UUID는 404 |
 | `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED`. 이렇게 되묻기가 끝나(`null`) 네 칸이 확인 필요 없이 모두 차 있으면 서버가 카드를 `CONFIRMED` 로 바꾸므로(#568) 화면은 카드를 다시 읽는다 |
-| `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다 |
+| `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다. 답으로 네 칸이 확인 필요 없이 모두 차면 되묻기 끝을 기다리지 않고 답 저장과 함께 `CONFIRMED` 로 바꾼다(#624) — 화면은 응답 `status` 가 `CONFIRMED` 면 확정 안내를 보이고 더 묻지 않는다 |
 | `POST /cards/{id}/interview/{turnNo}/polished-draft` | `{ text }` | **새로 만듦(#482).** `{ sentence, polished, unsourcedNumbers: string[] }` — 경험 카드 글 질문의 답 다듬기 미리 보기. **아무것도 저장하지 않고** 질문 상한에 세지 않는다. AI 는 표현만 다듬고, 다듬은 문장에 답에 없는 숫자가 생기면 한 번 고쳐 쓰게 한 뒤에도 남은 숫자를 서버가 견줘 `unsourcedNumbers` 로 알린다. AI 가 응답하지 못하면 오류가 아니라 `polished: false` 와 답 그대로의 `sentence` 다. 오류 순서는 `measured-draft` 와 같고, 경험 카드의 글 질문이 아니면 400 `BAD_FIELD` 다 |
 | `POST /cards/{id}/interview/{turnNo}/measured-draft` | `{ text }` | **새로 만듦.** `{ sentence }` — '재 봤어요' 미리 보기. **아무것도 저장하지 않는다.** 입력에 수치(아라비아 숫자)가 없으면 AI 를 부르지 않고 `sentence: null` 이고, 화면은 "수치를 찾지 못했어요. 대략이라도 적어 주세요" 를 보인다. 질문 상한에 세지 않는다 |
 
@@ -327,14 +327,15 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 | | 응답 `data` |
 |---|---|
 | `GET /matches` | `MatchTarget[]` — **AI 를 부르지 않는다.** 모든 공고의 `fit` 은 null, `required`·`preferred` 의 `met` 은 0 이고 `total` 은 공고의 조건 수다(#581). 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다. `?companyId=` 를 주면 그 회사 공고만 오고(없는 회사면 빈 배열), 비어 있으면 거르지 않는다 |
-| `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote` · `conditions[]`. 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
+| `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote`·`status` · `needsJudgement` · `summary` · `conditions[]`. **AI 를 부르지 않고 저장된 판단만 읽는다.** 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
+| `POST /matches/{id}/judgement` | 같은 `MatchDetail`. 아직 판단하지 않은 (카드, 조건) 짝만 AI 에게 묻고(최대 90초) 새 상세를 돌려준다. 물을 짝이 없으면 AI 를 부르지 않고 호출 한도도 세지 않는다 |
 
 **MatchTarget**
 ```jsonc
 { "id", "company", "companyId", "logoUrl": "https://…" | null,   // companyId = 같은 회사의 공고를 묶는 id
   "role",                                          // role = 공고 원문의 직무명
   "category": "BACKEND|FRONTEND|MOBILE|DEVOPS|DATA|AI_ML|SECURITY|QA|ETC",
-  "fit": "A|B|C|D" | null,                         // 목록은 늘 null(판정하지 않음). 상세에서 null = 확정 카드가 하나도 없음
+  "fit": "A|B|C|D" | null,                         // 목록·상세 모두 늘 null(등급을 매기지 않음)
   "required": { "total", "met" }, "preferred": { "total", "met" },
   "experience": { "level": "ENTRY|EXPERIENCED|UNSPECIFIED", "minYears": n | null },
   "source": { "url", "collectedAt", "expiresAt": "ISO" | null } }   // expiresAt null = 마감일 없음(아래 참고)
@@ -342,24 +343,31 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 **MatchDetail** 에 더하는 칸
 ```jsonc
-{ "experience": { "level", "minYears", "quote": "경력 원문" | null },
+{ "experience": { "level", "minYears", "quote": "경력 원문" | null,
+                  "status": "MET|NOT_MET|UNKNOWN" | null },        // 인적사항 경력과 견줌. 연수 요구가 없으면 null
+  "needsJudgement": true | false,                                   // true = 아직 맞춰 보지 않은 조건이 있음
+  "summary": { "requiredMet", "requiredTotal" } | null,             // 기술·경험 필수 조건만. needsJudgement 면 null
   "conditions": [{ "id", "type": "REQUIRED|PREFERRED|RESPONSIBILITY", "text", "quote",   // quote = 공고 원문 인용
-                   "supports": [{ "cardId", "cardTitle", "cardKind": "TECH|QUALITATIVE", "field": "A|R", "sentence" }] }] }
+                   "generalType": "EDUCATION|MILITARY|LANGUAGE|CERTIFICATE|LOCATION|OTHER" | null,   // null = 기술·경험 조건·담당 업무
+                   "status": "MET|NOT_MET|UNJUDGED|UNKNOWN|CHECK" | null,
+                   "metBy": [{ "cardId", "cardTitle", "cardKind": "TECH|QUALITATIVE", "repoId": "…" | null, "reason" }] }] }
 ```
 
 - **매칭 기준은 공고 조건이다.** 인재상 태그는 쓰지 않는다. 조건은 필수(REQUIRED) → 우대(PREFERRED) → 담당 업무(RESPONSIBILITY) 순이고, 같은 종류 안에서는 원문 순서다.
-- **근거는 확정 카드의 지금 확정 버전에서 행동(A)·결과(R) 칸 문장뿐이다.** 카드의 가리기를 적용한 문장을 보낸다. 같은 카드의 A·R 이 둘 다 맞으면 둘 다 담는다. `supports` 가 빈 조건은 근거가 없는 빈 칸이고, 숨기지 않는다.
-- **등급(`fit`)은 상세에서만 서버가 규칙으로 센다.** `met` 은 근거가 하나 이상 있는 조건 수다. 필수 조건 중 `met` 의 비율이 전부면 A · 절반 이상 B · 1개 이상 C · 0개 D 다. 필수가 없는 공고는 우대로 같은 규칙을 쓴다. 한 카드가 여러 조건을 채워도 된다. 우대는 등급에 넣지 않고 `preferred` 로 따로 보여 준다. 담당 업무와 경력은 등급에 넣지 않는다.
-- **상세에서 확정 카드가 하나도 없으면 `fit` 은 null, `met` 은 0, `supports` 는 모두 빈 배열이다.** D 는 '카드는 있는데 맞는 근거가 없음' 이다. 목록의 `fit` 은 늘 null 이라 '확정 카드가 없음' 과 같은 뜻이 아니다 — 확정 카드 수는 내 정보 `stats.confirmedCards` 로 본다.
-- **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 비슷한 내 카드 문장이 있으면 `supports` 로 함께 온다.
+- **기술·경험 조건의 `status` 는 확정 카드로 AI 가 판단한 결과다.** MET 이면 채운 카드가 `metBy` 에 오고 `reason` 은 그 카드가 조건을 채운 이유다(`repoId` 는 카드가 나온 레포, 직접 쓴 카드는 null). NOT_MET 은 채운 카드가 없음, UNJUDGED 는 아직 맞춰 보지 않았거나 그 뒤 카드 글이 바뀐 것이다. 판단은 (카드, 카드 글, 조건) 마다 저장해 레포 추천·전체 추천·상세가 같이 쓰므로, 카드 글이 바뀌기 전에는 다시 묻지 않는다.
+- **일반 조건은 `generalType` 으로 구분한다.** 화면은 같은 NOT_MET 이어도 기술·경험 조건('맞는 카드가 없음')과 학력('인적사항과 맞지 않음')을 이 칸으로 나눠 쓴다.
+- **학력은 인적사항과 견준다** — MET · NOT_MET · UNKNOWN(인적사항에 학력이 없음). '또는 그에 준하는 경력' 처럼 예외가 적힌 학력은 못 미쳐도 CHECK 다. 병역·어학·자격증·지역 같은 일반 조건은 CHECK(직접 확인)이다. `summary` 는 일반 조건을 세지 않는다.
+- **등급(`fit`)은 상세에서도 null 이다.** `required`·`preferred` 의 `met` 은 상태가 MET 인 조건 수다.
+- **확정 카드가 하나도 없으면** 기술·경험 조건은 모두 NOT_MET 이고 `needsJudgement` 는 false 다. 확정 카드 수는 내 정보 `stats.confirmedCards` 로 본다.
+- **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 판단하지 않는다(`status` null, `metBy` 빈 배열).
 - **경력은 원문에 적혀 있을 때만 나온다.** `ENTRY` = 신입·경력 무관·인턴·최소 0년(상한만 있는 '1년 미만'·'3년 이하' 도 포함), `EXPERIENCED` = 최소 N년(`minYears`), `UNSPECIFIED` = 경력 얘기가 없거나 원문으로 확인할 수 없을 때. 경력 조건은 `conditions` 에 넣지 않는다.
 - **정렬**: 목록은 등급이 없으므로 마감이 7일 안에 남은 공고를 마감이 가까운 순으로 앞에 두고, 나머지는 `expiresAt` 이 가까운 순을 지키며 회사마다 한 건씩 돌아가며 놓고, 마감일이 없는(null) 공고는 뒤로 내려준다. 화면의 '마감 순' 보기는 받은 목록을 다시 정렬한다.
 - **필터(경력: 전체·신입 가능·경력·경력 표시 없음, 직무 분류)도 화면에서 한다.** '경력 표시 없음'은 `experience.level` 이 `UNSPECIFIED` 인 공고라, 경력 조건을 알 수 없는 공고를 따로 걸러 볼 수 있게 한다. 서버 쿼리 파라미터는 기업 페이지용 `companyId` 하나뿐이다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
 - **회사(`companyId` · `logoUrl`)**: `companyId` 는 서버 회사 설정의 키(예: `daangn`)이고, 여러 회사의 공고를 주는 출처(로켓펀치)는 `rocketpunch:회사이름` 이다. 기업별로 묶을 때 회사 이름 대신 이 값을 쓴다. `logoUrl` 은 회사 설정에 적은 공식 로고 https 주소이고, 없으면 null 이라 화면은 이니셜을 보인다. 이미지를 불러오지 못할 때도 이니셜로 되돌린다.
 - **마감일(`source.expiresAt`)**: null 은 '마감일 없음' 이다. 출처가 상시 채용이라 마감일을 주지 않은 공고, 출처가 준 날짜를 읽지 못한 공고, 1년 넘게 먼 날짜를 준 공고가 함께 null 이라 화면은 '상시 채용' 보다 '마감일 없음' 이 맞다. 마감된 공고는 회사 채용 목록에서 사라지면 다음 가져오기에서 목록에서 빠진다.
 - **회사 이름(`company`)**: 같은 `companyId` 면 이름도 늘 같다. 회사 설정 출처는 설정의 이름 하나를 쓰고, 로켓펀치는 회사 이름이 `companyId` 안에 들어 있다.
-- **오류**: 목록은 401 `UNAUTHENTICATED` 뿐이다. 상세는 401 · 404 `NOT_FOUND` · 503 `AI_UNAVAILABLE`(근거를 찾는 AI 검색이 잠시 실패, 다시 시도할 수 있다).
-- **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급을 셀 때의 예시로, 지금 목록 응답과 값이 다르다) · `list-no-cards.json`(지금 목록 응답과 같은 모양 — `fit` null, `met` 0) · `detail.json`(근거가 있는 조건과 빈 조건) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
+- **오류**: 목록은 401 `UNAUTHENTICATED` 뿐이다. 상세는 401 · 404 `NOT_FOUND` 이다. 맞춰 보기는 401 · 404 · 429 `RATE_LIMITED`(1분 10번 · 하루 100번) · 503 `AI_UNAVAILABLE`(AI 판단이 잠시 실패, 다시 누를 수 있다)이다.
+- **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급을 셀 때의 예시로, 지금 목록 응답과 값이 다르다) · `list-no-cards.json`(지금 목록 응답과 같은 모양 — `fit` null, `met` 0) · `detail.json`(맞춰 본 뒤의 상세) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
 - 한 줄 소개(`summary`), 인재상 태그(`matchedTags`·`gapTags`), 카드 수 기준 칸(`supportedTagCount`·`independentTagCount`)은 없다. `source.verifiedAt` 대신 `source.collectedAt`(공고를 가져온 시각)이다.
 
 ### 아직 서버 쪽에 남은 일 (FE 기대 계약)

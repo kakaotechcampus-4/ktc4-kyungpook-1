@@ -57,6 +57,32 @@ class CoverLetterQuestion(StrictRequestModel):
     char_limit: int = Field(..., ge=100, le=5_000, strict=True, description="글자 수 상한(공백 포함)")
 
 
+class PostingCondition(StrictRequestModel):
+    type: Literal["REQUIRED", "PREFERRED"]
+    text: NonBlankText = Field(..., max_length=500)
+    status: Optional[Literal["MET", "NOT_MET"]] = Field(None, description="매칭 판단. 판단이 없으면 null")
+    met_by: list[PositiveId] = Field(default_factory=list, max_length=100, description="이 조건을 채운 카드. MET 일 때만")
+
+    @model_validator(mode="after")
+    def _met_by_only_when_met(self) -> "PostingCondition":
+        if self.met_by and self.status != "MET":
+            raise ValueError("met_by 는 status 가 MET 일 때만 보낼 수 있습니다.")
+        if len(set(self.met_by)) != len(self.met_by):
+            raise ValueError("met_by 에 같은 card_id 가 두 번 있습니다.")
+        return self
+
+
+class Posting(StrictRequestModel):
+    """자소서를 공고 상세에서 시작했을 때 그 공고. 학력·병역 같은 일반 조건은 Spring 이 빼고 보낸다."""
+
+    company: NonBlankText = Field(..., max_length=100)
+    title: NonBlankText = Field(..., max_length=300)
+    responsibilities: list[Annotated[NonBlankText, StringConstraints(max_length=500)]] = Field(
+        default_factory=list, max_length=30, description="공고의 주요 업무, 한 줄 500자까지",
+    )
+    conditions: list[PostingCondition] = Field(default_factory=list, max_length=60, description="기술·경험 조건")
+
+
 class CardSummary(StrictRequestModel):
     card_id: PositiveId
     title: NonBlankText = Field(..., max_length=256)
@@ -76,6 +102,7 @@ class AssignmentRequest(StrictRequestModel):
     job_role: NonBlankText = Field(..., max_length=100, description="지원 직무")
     memo: Optional[str] = Field(None, max_length=1_000, description="사용자 메모(지원 이유 등). 없으면 null")
     profile: list[ProfileItem] = Field(default_factory=list, max_length=30, description="학력·자격증·어학. 비어도 된다")
+    posting: Optional[Posting] = Field(None, description="공고 상세에서 시작한 자소서면 그 공고, 아니면 null")
     questions: list[CoverLetterQuestion] = Field(..., min_length=1, max_length=10)
     cards: list[CardSummary] = Field(default_factory=list, max_length=100, description="확정 카드 전부(초안 카드 제외)")
 
@@ -167,6 +194,7 @@ class QuestionsRequest(StrictRequestModel):
     job_role: NonBlankText = Field(..., max_length=100)
     memo: Optional[str] = Field(None, max_length=1_000)
     profile: list[ProfileItem] = Field(default_factory=list, max_length=30)
+    posting: Optional[Posting] = None
     questions: list[QuestionMaterial] = Field(..., min_length=1, max_length=10)
 
     @model_validator(mode="after")
@@ -252,6 +280,7 @@ class DraftsRequest(StrictRequestModel):
     job_role: NonBlankText = Field(..., max_length=100)
     memo: Optional[str] = Field(None, max_length=1_000)
     profile: list[ProfileItem] = Field(default_factory=list, max_length=30)
+    posting: Optional[Posting] = None
     questions: list[DraftQuestion] = Field(..., min_length=1, max_length=10)
 
     @model_validator(mode="after")
@@ -297,9 +326,14 @@ class DraftStep(BaseModel):
             "(수치·낱말 그대로, OVER_LIMIT 은 넘은 글자 수, MISSING_BLANK 는 항목 이름)"
         ),
     )
-    sentence_seq: Optional[int] = Field(None, description="SENT_BACK 이 건 문장 번호(검토할 때의 번호)")
+    sentence_seq: Optional[int] = Field(
+        None, description="CHECK_FAILED·DECIDED·MARKED·SENT_BACK 이 건 문장 번호(그때의 초안 기준). 글자 수·빈칸처럼 문장이 없으면 null",
+    )
     action: Optional[DraftAction] = Field(None, description="DECIDED 일 때 고친 쪽(FIX)인지 둔 쪽(KEEP)인지")
     reason: Optional[str] = None
+    sentence: Optional[str] = Field(
+        None, description="sentence_seq 가 가리키는 문장 글(200자까지). 고치기 전 문장을 검토 기록으로 보이는 데 쓴다",
+    )
 
 
 class DraftsResult(BaseModel):

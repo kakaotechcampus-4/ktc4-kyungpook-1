@@ -48,7 +48,7 @@ for (const width of [320, 390, 768, 1440]) {
       page.getByRole("heading", { name: /필수 조건/ }),
     ).toBeVisible();
     await expect(
-      page.getByText("아직 연결된 경험이 없어요.").first(),
+      page.getByText("맞는 카드가 없어요.").first(),
     ).toBeVisible();
     await expect(page.locator(".match-support-link").first()).toBeVisible();
     expect(

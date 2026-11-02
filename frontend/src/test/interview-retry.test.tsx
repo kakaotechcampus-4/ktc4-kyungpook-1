@@ -59,6 +59,22 @@ describe('interview retry and pending answer', () => {
     expect(screen.getByRole('heading', { name: /R question/ })).toBeInTheDocument();
   });
 
+  it('says the card is confirmed and stops offering slots when the answer completes the card', async () => {
+    let turns: InterviewTurn[] = [{ ...template, field: 'R', turnNo: 1, question: 'R question', answer: null }];
+    vi.spyOn(endpoints, 'interviewTurns').mockImplementation(async () => turns);
+    vi.spyOn(endpoints, 'answerInterview').mockImplementation(async (_id, no, answer) => {
+      if (!('text' in answer)) throw new Error('이 시험은 글 답만 보낸다');
+      turns = turns.map((turn) => turn.turnNo === no ? { ...turn, answer } : turn);
+      return { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' };
+    });
+    mount(turns);
+    fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'R answer' } });
+    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    expect(await screen.findByText('네 칸이 모두 차서 카드를 확정했어요')).toBeInTheDocument();
+    expect(screen.queryByText('이어서 물을까요?')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
+  });
+
   it('locks option chips while an answer is being saved', async () => {
     let resolve!: (value: Card) => void;
     vi.spyOn(endpoints, 'answerInterview').mockImplementation(() => new Promise<Card>((r) => { resolve = r; }));
@@ -79,7 +95,7 @@ describe('interview retry and pending answer', () => {
     mount([{ ...template, answer: null }]);
     fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
     fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
-    expect(await screen.findByText('입력 내용과 현재 상태를 확인해 주세요.')).toBeInTheDocument();
+    expect(await screen.findByText('입력한 내용을 확인한 뒤 다시 시도해 주세요. 같으면 화면을 새로고침해 주세요.')).toBeInTheDocument();
     expect(screen.queryByText(/연결을 확인/)).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '답변' })).toHaveValue('T answer');
   });

@@ -27,13 +27,36 @@ describe("#207 matching contract", () => {
       null,
     ]);
     const parsed = MatchDetail.parse(detail.data);
-    expect(
-      parsed.conditions.filter((c) => c.supports.length === 0),
-    ).toHaveLength(4);
-    expect(parsed.conditions[1].supports.map((s) => s.field)).toEqual([
-      "A",
-      "R",
+    expect(parsed.conditions.map((c) => c.status)).toEqual([
+      "MET",
+      "MET",
+      "NOT_MET",
+      "CHECK",
+      "MET",
+      "NOT_MET",
+      null,
+      null,
     ]);
+    expect(parsed.conditions.map((c) => c.generalType)).toEqual([
+      null,
+      null,
+      null,
+      "LANGUAGE",
+      null,
+      null,
+      null,
+      null,
+    ]);
+    expect(
+      parsed.conditions.filter((c) => c.metBy.length === 0),
+    ).toHaveLength(5);
+    expect(parsed.conditions[1].metBy[0].repoId).toBeNull();
+    expect(
+      MatchDetail.safeParse({
+        ...detail.data,
+        conditions: [{ ...detail.data.conditions[0], status: "PARTIAL" }],
+      }).success,
+    ).toBe(false);
   });
   it("sorts locally without mutating the server array; rolling vacancies remain last", () => {
     const items = list.data.map((x) => MatchTarget.parse(x));
@@ -110,6 +133,9 @@ describe("#207 matching contract", () => {
     ).rejects.toMatchObject({ code: "FEATURE_UNAVAILABLE" });
     await expect(
       matchingApi.detail("x", { VITE_API_MOCK: "false" }),
+    ).rejects.toMatchObject({ code: "FEATURE_UNAVAILABLE" });
+    await expect(
+      matchingApi.judge("x", { VITE_API_MOCK: "false" }),
     ).rejects.toMatchObject({ code: "FEATURE_UNAVAILABLE" });
     expect(fetcher).not.toHaveBeenCalled();
   });

@@ -3,6 +3,8 @@ package com.gitory.backend.matching.domain;
 import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.card.domain.MatchingCard;
 import com.gitory.backend.card.domain.MatchingCardReader;
+import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
+import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.OverallRecommendationRepository;
 import com.gitory.backend.profile.domain.ProfileService;
@@ -53,6 +55,7 @@ public class OverallRecommendationService {
     private final MatchJudgementService judgements;
     private final OverallRecommendationRepository recommendations;
     private final ProfileService profiles;
+    private final UserRateLimiter rateLimiter;
     private final TransactionTemplate transaction;
     private final Clock clock;
     private final Executor runner;
@@ -62,8 +65,8 @@ public class OverallRecommendationService {
     public OverallRecommendationService(MatchingCardReader cards, CompanyShortlistService shortlist,
                                         JobPostingCriterionRepository criteria, MatchJudgementService judgements,
                                         OverallRecommendationRepository recommendations, ProfileService profiles,
-                                        TransactionTemplate transaction, Clock clock) {
-        this(cards, shortlist, criteria, judgements, recommendations, profiles, transaction, clock,
+                                        UserRateLimiter rateLimiter, TransactionTemplate transaction, Clock clock) {
+        this(cards, shortlist, criteria, judgements, recommendations, profiles, rateLimiter, transaction, clock,
                 Executors.newFixedThreadPool(PARALLEL_USERS,
                         Thread.ofPlatform().daemon().name("overall-recommend-", 1).factory()),
                 Executors.newFixedThreadPool(PARALLEL_JUDGEMENTS,
@@ -73,23 +76,32 @@ public class OverallRecommendationService {
     OverallRecommendationService(MatchingCardReader cards, CompanyShortlistService shortlist,
                                  JobPostingCriterionRepository criteria, MatchJudgementService judgements,
                                  OverallRecommendationRepository recommendations, ProfileService profiles,
-                                 TransactionTemplate transaction, Clock clock, Executor runner, Executor judgeCalls) {
+                                 UserRateLimiter rateLimiter, TransactionTemplate transaction, Clock clock,
+                                 Executor runner, Executor judgeCalls) {
         this.cards = cards;
         this.shortlist = shortlist;
         this.criteria = criteria;
         this.judgements = judgements;
         this.recommendations = recommendations;
         this.profiles = profiles;
+        this.rateLimiter = rateLimiter;
         this.transaction = transaction;
         this.clock = clock;
         this.runner = runner;
         this.judgeCalls = judgeCalls;
     }
 
-    /** 이미 계산 중이면 새로 시작하지 않고, 시작했으면 배경에서 계산한다 */
+    /** 이미 계산 중이면 호출 한도를 세지 않고 그대로 두며, 새로 시작할 때만 한도를 센 뒤 배경에서 계산한다 */
     public void start(Long userId) {
 
         Instant now = Instant.now(clock);
+        boolean running = recommendations.findByUserId(userId)
+                .filter(saved -> saved.getStatus() == OverallRecommendationStatus.COMPUTING && !saved.isStuck(now))
+                .isPresent();
+        if (running) {
+            return;
+        }
+        rateLimiter.acquire(RateLimitedAction.MATCH_OVERALL, userId, 1);
         if (recommendations.start(userId, now, now.minus(OverallRecommendation.STUCK_AFTER)) == 0) {
             return;
         }

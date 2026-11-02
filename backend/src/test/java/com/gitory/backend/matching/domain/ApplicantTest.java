@@ -140,6 +140,46 @@ class ApplicantTest {
 
     }
 
+    @Test
+    @DisplayName("상세의 학력 조건은 내 학력이 같거나 높으면 MET, 낮으면 NOT_MET 이고, 예외가 적혔거나 수준을 못 읽었으면 CHECK, 학력을 모르면 UNKNOWN 이다")
+    void comparesEducationConditionForDetail() {
+
+        Applicant bachelor = applicant(profile(List.of(school(EducationLevel.BACHELOR, EducationStatus.GRADUATED)),
+                List.of()));
+        Applicant noEducation = applicant(profile(List.of(), List.of()));
+
+        assertThat(bachelor.educationOf(education(CriterionType.REQUIRED, EducationLevel.BACHELOR, false)))
+                .isEqualTo(MatchConditionStatus.MET);
+        assertThat(bachelor.educationOf(education(CriterionType.REQUIRED, EducationLevel.MASTER, false)))
+                .isEqualTo(MatchConditionStatus.NOT_MET);
+        assertThat(bachelor.educationOf(education(CriterionType.REQUIRED, EducationLevel.MASTER, true)))
+                .isEqualTo(MatchConditionStatus.CHECK);
+        assertThat(bachelor.educationOf(education(CriterionType.REQUIRED, null, false)))
+                .isEqualTo(MatchConditionStatus.CHECK);
+        assertThat(noEducation.educationOf(education(CriterionType.REQUIRED, EducationLevel.BACHELOR, false)))
+                .isEqualTo(MatchConditionStatus.UNKNOWN);
+
+    }
+
+    @Test
+    @DisplayName("상세의 경력 연수는 요구가 없으면 null, 인적사항을 저장한 적이 없으면 UNKNOWN, 연수가 모자라면 NOT_MET 이다")
+    void comparesCareerYearsForDetail() {
+
+        Applicant twoYears = applicant(profile(List.of(),
+                List.of(job(EmploymentType.FULL_TIME, "2024-01", "2025-12"))));
+        Applicant unsaved = Applicant.of(new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), null), Set.of(),
+                THIS_MONTH);
+
+        assertThat(twoYears.careerOf(posting(JobCategory.BACKEND, ExperienceLevel.ENTRY, null))).isNull();
+        assertThat(twoYears.careerOf(posting(JobCategory.BACKEND, ExperienceLevel.EXPERIENCED, 2)))
+                .isEqualTo(MatchConditionStatus.MET);
+        assertThat(twoYears.careerOf(posting(JobCategory.BACKEND, ExperienceLevel.EXPERIENCED, 3)))
+                .isEqualTo(MatchConditionStatus.NOT_MET);
+        assertThat(unsaved.careerOf(posting(JobCategory.BACKEND, ExperienceLevel.EXPERIENCED, 3)))
+                .isEqualTo(MatchConditionStatus.UNKNOWN);
+
+    }
+
     private static Applicant applicant(ProfileView profile) {
 
         return Applicant.of(profile, Set.of(), THIS_MONTH);

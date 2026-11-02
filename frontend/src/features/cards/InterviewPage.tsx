@@ -7,6 +7,7 @@ import { StarField as StarFieldSchema, isOpenTurn, type EvidenceType, type StarF
 import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldName, starFieldShort } from '@/lib/labels';
+import { askJudgement, cleanAiText } from '@/lib/interviewReason';
 import { CONFIG } from '@/lib/config';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
@@ -15,6 +16,7 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 import { StarRow } from '@/components/ui/StarRow';
 import { UnsavedChangesDialog } from '@/components/SaveStatus';
+import { AiJudgement, AiLive } from './AiJudgement';
 
 /**
  * D5 되묻기 — 레퍼런스(TIO 경험 정리) 구조: 좌측 캔버스에 카드가 채워지고, 우측 패널이 한 번에 하나씩 묻는다.
@@ -105,7 +107,14 @@ export function InterviewPage() {
   const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}`, state: location.state }, { label: '답변하기' }];
   const askable = STAR_FIELDS.filter((f) => !closedFields.has(f));
   const weakFields = askable.filter((f) => !card.version[fieldKey[f]] || card.lowConfidenceFields.some((l) => l.field === f));
+  const confirmed = card.status === 'CONFIRMED';
   const anyFilled = STAR_FIELDS.some((f) => card.version[fieldKey[f]]);
+  // 'AI 판단'(#430): AI 가 칸을 고른 질문의 이유(사용자가 칸을 골랐으면 없다)와 AI 가 끝낸 이유. 이유가 없으면 아무것도 더하지 않는다.
+  // 끝낸 이유는 카드에 남아 있으므로(새 질문을 만들면 서버가 지운다) 화면을 다시 열어도 AI 가 끝낸 상태로 본다
+  const judged = open ? askJudgement(open, allTurns) : null;
+  const endReason = cleanAiText(card.interviewEndReason);
+  const ended = aiDone || endReason !== null;
+  const showEnded = !open && !ask.isPending && (confirmed || (!capReached && ended));
 
   return (
     <main className="main main--tight">
@@ -162,6 +171,19 @@ export function InterviewPage() {
             </div>
           ))}
 
+          {/* AI 판단 — 새 질문의 이유나 끝난 알림이 오면 한 번만 읽어 주는 낭독 영역이 여기 하나다 */}
+          <AiLive>
+            {open && judged && <AiJudgement key={open.turnNo} head={judged.head}>{judged.reason}</AiJudgement>}
+            {showEnded && (
+              <>
+                {confirmed
+                  ? <Note strong="네 칸이 모두 차서 카드를 확정했어요" tone="inset">확정한 카드는 공고 매칭에 쓰여요. 카드에서 바로 고칠 수 있어요</Note>
+                  : <Note strong="AI 가 더 물을 것이 없다고 판단했어요" tone="inset">카드를 확인하고 확정하세요. 더 채우고 싶은 칸이 있으면 골라서 물을 수 있어요.</Note>}
+                {endReason && <AiJudgement>{endReason}</AiJudgement>}
+              </>
+            )}
+          </AiLive>
+
           {open ? (
             <>
               <div className="stack" style={{ gap: 6 }}>
@@ -192,20 +214,21 @@ export function InterviewPage() {
             </>
           ) : ask.isPending ? <AiWait label={`카드와 커밋을 읽고 ${ask.variables ? starFieldShort[ask.variables] : ''} 칸에 맞는 질문을 만드는 중이에요`} /> : (
             <>
-              {capReached ? (
+              {confirmed ? null : capReached ? (
                 <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채우시면 돼요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
-                  {aiDone && <Note strong="AI 가 더 물을 것이 없다고 판단했어요" tone="inset">카드를 확인하고 확정하세요. 더 채우고 싶은 칸이 있으면 골라서 물을 수 있어요.</Note>}
-                  <span className="w-600" style={{ fontSize: 14 }}>{aiDone ? '더 묻고 싶은 칸' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
+                  <span className="w-600" style={{ fontSize: 14 }}>{ended ? '더 묻고 싶은 칸' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                    {!aiDone && <Button variant="outline" size="sm" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</Button>}
+                    {!ended && <Button variant="outline" size="sm" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</Button>}
                     {(weakFields.length ? weakFields : askable).map((f) => <Button key={f} variant="outline" size="sm" onClick={() => askMore(f)}>{starFieldShort[f]}{card.version[fieldKey[f]] ? (card.lowConfidenceFields.some((l) => l.field === f) ? ' (확인 필요)' : '') : ' (비어 있음)'}</Button>)}
                   </div>
                 </div>
               )}
               <div className="row" style={{ gap: 8 }}>
-                {aiDone || capReached
+                {confirmed
+                  ? <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
+                  : ended || capReached
                   ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 확인하고 확정하기</Button>
                   : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
                 <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정</Button>

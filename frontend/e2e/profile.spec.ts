@@ -163,7 +163,7 @@ test('a failed save keeps the input and the retry saves it', async ({ page }) =>
   await page.goto('/settings/profile?demoScenario=save-error');
   await addCertificate(page, 1, { name: '정보처리기사' });
   await page.getByRole('button', { name: '저장', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('서버에 연결하지 못했어요');
+  await expect(page.getByRole('alert')).toContainText('서버에서 처리하지 못했어요');
   await expect(status(page)).toHaveText('저장하지 못했어요. 입력한 내용은 그대로예요');
   await expect(page.getByLabel('자격증 1 이름', { exact: true })).toHaveValue('정보처리기사');
   await expect(page.getByRole('button', { name: '다시 저장', exact: true })).toBeFocused();

@@ -1,5 +1,7 @@
 /**
- * enum → 화면 문구. 한국어는 이 파일 밖으로 새지 않는다.
+ * enum → 화면 문구. 여러 화면이 같은 enum 을 같은 말로 부르도록 한곳에 모았다.
+ * 버튼, 제목, 안내 같은 화면 전용 문구는 각 화면 파일에 직접 있다 — 문구를 고칠 때는 이 파일만 보지 말고 그 말을 검색할 것.
+ * 용어와 말투 기준은 docs/2026-10-29-TERMINOLOGY.md.
  * 로직은 절대 여기 문자열을 비교하지 않는다 — 문구를 다듬어도 로직이 깨지지 않게.
  */
 import type { AuthoredBy, CandidateStatus, CandidateType, CardKind, CardStatus, DropReason, EvidenceType, JobErrorCode, JobState, JobType, JobStepKey, StarField, StarFieldState, VersionSource } from '@/api/schemas';
@@ -52,7 +54,7 @@ export const jobErrorTitle: Record<JobErrorCode, string> = {
   COLLECTION_CAPPED: '한 번에 읽는 상한까지만 읽었어요',
   DRAFT_TIMEOUT: '시간 안에 다 채우지 못했어요',
   EVIDENCE_MISSING: '근거가 없어서 채우지 않았어요',
-  INTERNAL_ERROR: '서버가 작업을 끝내지 못했어요',
+  INTERNAL_ERROR: '서버에서 처리하지 못했어요',
 };
 /** 한 줄 설명. 왜 이렇게 됐는지와, 지금 눌러도 되는지까지만. */
 export const jobErrorHint: Record<JobErrorCode, string> = {
@@ -63,7 +65,7 @@ export const jobErrorHint: Record<JobErrorCode, string> = {
   COLLECTION_CAPPED: '기록이 많은 레포는 정해진 상한까지만 읽어요. 읽은 범위의 후보는 지금 볼 수 있어요.',
   DRAFT_TIMEOUT: '채운 칸까지 보여 드려요. 나머지는 칸 하나씩 다시 해 볼 수 있어요.',
   EVIDENCE_MISSING: '근거를 찾지 못한 칸은 직접 쓰거나 질문에 답해 채울 수 있어요.',
-  INTERNAL_ERROR: '작업을 처리하지 못했어요. 다른 레포를 고르거나 직접 작성해 주세요.',
+  INTERNAL_ERROR: '이번 요청은 끝내지 못했어요. 다른 레포를 고르거나 직접 작성해 주세요.',
 };
 
 /** 후보 라벨 — "PR #42" / "커밋 묶음" / "이슈 #31". COMMIT_CLUSTER 를 PR 로 부르지 않는다. */

@@ -182,6 +182,28 @@ describe('#617 다 쓴 카드와 조작', () => {
     expect(item.querySelector('.live-slot[data-field="R"] [data-live-text]')).toHaveTextContent(R_TEXT);
   });
 
+  it('네 칸이 모두 비어 끝난 카드는 다 썼다고 보이지 않는다', () => {
+    // 커밋이 없는 후보로 만든 카드는 서버가 AI 에 보내지 않고 칸 없이 DONE 으로 끝낸다
+    const pb = new DraftPlayback();
+    pb.receive([card('a', 'DONE'), card('b', 'WRITING', [slot('S', '나', { done: false })])], { ended: false, now: T0 });
+    const { container } = render(<LiveCardDraft view={pb.view()} instant={noInstant} />);
+    const item = container.querySelector('details.live-finished__item') as HTMLDetailsElement;
+    expect(item.querySelector('.live-finished__state')).toHaveTextContent('커밋이 없어 AI 초안 없이 만들었어요');
+    expect(item.querySelector('summary')).not.toHaveTextContent('다 썼어요');
+    // 펼쳐도 빈 네 칸은 쓰는 중이 아니라 쓰지 않은 칸으로 보인다
+    expect([...item.querySelectorAll('.live-slot')].map((el) => el.getAttribute('data-phase'))).toEqual(['EMPTY', 'EMPTY', 'EMPTY', 'EMPTY']);
+    expect(item).not.toHaveTextContent('쓰는 중');
+    expect(item.querySelectorAll('.live-cursor')).toHaveLength(0);
+  });
+
+  it('AI 가 근거가 없어 비운 칸이 있는 카드는 그대로 다 썼다고 쓰고 비운 칸 수를 단다', () => {
+    const pb = new DraftPlayback();
+    const blank = (['S', 'T', 'A', 'R'] as const).map((field) => slot(field, ''));
+    pb.receive([card('a', 'DONE', blank), card('b', 'WRITING', [slot('S', '나', { done: false })])], { ended: false, now: T0 });
+    render(<LiveCardDraft view={pb.view()} instant={noInstant} />);
+    expect(screen.getByText('다 썼어요, 비운 칸 4개', { selector: '.live-finished__state' })).toBeInTheDocument();
+  });
+
   it('실패한 카드는 목록에서도 완성하지 못했다고 쓴다', () => {
     const pb = new DraftPlayback();
     pb.receive([card('a', 'READING'), card('b', 'WAITING')], { ended: false, now: T0 });

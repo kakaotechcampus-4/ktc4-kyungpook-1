@@ -830,6 +830,14 @@
 .gap-fill__reason {
   color: var(--text-secondary);
 }
+.gap-fill__card-link {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 @keyframes gap-in {
   from {
     opacity: 0;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import type { GapFill, GapFillCondition, GapFillProposal } from "@/api/matching";
 import { endpoints } from "@/api/endpoints";
@@ -41,6 +41,18 @@ export const resultText: Partial<Record<NonNullable<GapFillCondition["result"]>,
   NOT_FOUND: "채울 자료를 찾지 못했어요.",
   TIMED_OUT: "시간이 부족해 여기까지 찾았어요.",
 };
+
+/**
+ * 제안의 후보 중 이미 카드로 쓰인 것 — 채우기 결과는 찾은 때 그대로 저장돼 있어, 지금 후보 보드에서 상태를 읽는다.
+ * 쓰인 후보 id → 그 후보로 만든 카드 id(모르면 null)
+ */
+export function useUsedCandidates(proposals: GapFillProposal[]): ReadonlyMap<string, string | null> {
+  const repoIds = [...new Set(proposals.filter((p) => p.action === "CREATE_CARD" && p.candidateId && p.repoId).map((p) => p.repoId!))];
+  const boards = useQueries({ queries: repoIds.map((repoId) => ({ queryKey: keys.candidates(repoId), queryFn: () => endpoints.candidates(repoId) })) });
+  const used = new Map<string, string | null>();
+  for (const board of boards) for (const c of board.data?.candidates ?? []) if (c.status === "USED") used.set(c.id, c.usedByCardId);
+  return used;
+}
 
 /** 제안을 지금 있는 API 로 넘길 수 있는지 — 후보로 카드를 만들려면 후보와 그 레포 id 가, 카드를 마저 채우려면 카드 id 가, 레포 분석에는 레포 id 가 있어야 한다 */
 export const canProceed = (p: GapFillProposal) =>

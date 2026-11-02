@@ -1,4 +1,5 @@
 import { FolderGit2, GitCommitHorizontal, MessageSquareQuote } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { GapFillCondition, GapFillProposal } from "@/api/matching";
 import { Check } from "@/components/ui";
 import { actionLabel, canProceed, gapKey, resultText, stepText } from "./gapFill";
@@ -14,11 +15,11 @@ export const Dots = () => (
   </span>
 );
 
-function Proposal({ proposal, picked, onPick }: { proposal: GapFillProposal; picked: boolean; onPick: (on: boolean) => void }) {
+function Proposal({ proposal, picked, onPick, used }: { proposal: GapFillProposal; picked: boolean; onPick: (on: boolean) => void; used: { cardId: string | null } | null }) {
   const Icon = ACTION_ICON[proposal.action];
-  const selectable = canProceed(proposal);
+  const selectable = canProceed(proposal) && !used;
   return (
-    <div className={`gap-fill__proposal${picked ? " is-on" : ""}`}>
+    <div className={`gap-fill__proposal${picked && selectable ? " is-on" : ""}`}>
       {selectable ? (
         <Check checked={picked} onChange={onPick} label={`${actionLabel[proposal.action]} — ${proposal.title}`} />
       ) : (
@@ -29,9 +30,14 @@ function Proposal({ proposal, picked, onPick }: { proposal: GapFillProposal; pic
           <Icon size={14} aria-hidden />
           <span>{proposal.title}</span>
           {proposal.repoName && <span className="gap-fill__repo">· {proposal.repoName}</span>}
-          <span className="gap-fill__action">{actionLabel[proposal.action]}</span>
+          <span className="gap-fill__action">{used ? "카드로 만들었어요" : actionLabel[proposal.action]}</span>
         </p>
         <p className="gap-fill__reason">{proposal.reason}</p>
+        {used?.cardId && (
+          <Link className="gap-fill__card-link" to={`/cards/${encodeURIComponent(used.cardId)}`}>
+            만든 카드 보기 →
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -49,6 +55,7 @@ export function ConditionGapFill({
   onPick,
   onAgain,
   againPending,
+  used,
 }: {
   gap: GapFillCondition;
   revealed: ReadonlySet<string>;
@@ -57,6 +64,7 @@ export function ConditionGapFill({
   onPick: (on: boolean) => void;
   onAgain: () => void;
   againPending: boolean;
+  used: { cardId: string | null } | null;
 }) {
   const key = (kind: "decision" | "step" | "result", index = 0) => gapKey(gap.conditionId, kind, index);
   const decisionShown = gap.decision !== null && revealed.has(key("decision"));
@@ -97,7 +105,7 @@ export function ConditionGapFill({
           <Dots /> 찾고 있어요
         </p>
       )}
-      {result === "PROPOSED" && gap.proposal && <Proposal proposal={gap.proposal} picked={picked} onPick={onPick} />}
+      {result === "PROPOSED" && gap.proposal && <Proposal proposal={gap.proposal} picked={picked} onPick={onPick} used={used} />}
       {result && resultText[result] && <p className="gap-fill__result">{resultText[result]}</p>}
     </div>
   );

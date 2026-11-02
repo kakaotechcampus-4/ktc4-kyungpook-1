@@ -16,6 +16,7 @@ import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
 import { matchViewFromParams } from "./CompanyList";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
+import { CalendarToggle } from "./CalendarToggle";
 import { MatchFailure, MatchUnavailable } from "./shared";
 import {
   categoryLabel,
@@ -263,6 +264,7 @@ export function MatchDetailPage() {
                 >
                   공고 원문 보기 ↗
                 </a>
+                <CalendarToggle posting={{ id: detail.id, company: companyLabel(detail.company), role: detail.role, expiresAt: detail.source.expiresAt }} />
               </div>
               {judge.isError && <p role="alert" className="posting-summary__error">맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.</p>}
               <p className="posting-summary__collected">수집 {dateLabel(detail.source.collectedAt)}</p>

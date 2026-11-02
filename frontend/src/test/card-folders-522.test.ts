@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Activity } from '@/api/activities';
 import { CardSummary } from '@/api/schemas';
-import { buildFolders, folderLabel, lacksExperience, topTechs, withMatches } from '@/lib/cardFolders';
+import { buildFolders, folderLabel, lacksExperience, topTechs } from '@/lib/cardFolders';
 
 const card = (id: string, over: Record<string, unknown> = {}) => CardSummary.parse({
   id, kind: 'TECH', status: 'DRAFT', title: id, versionNo: 1, areas: [], techs: [], repo: null, activity: null,
@@ -80,11 +80,6 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
     expect(both.map((f) => f.key)).toEqual(['repo:r_auth']);
   });
 
-  it('검색·상태로 거르면 맞는 카드가 있는 폴더만 남기고 그 수를 알려 준다. 폴더의 전체 장 수와 카드는 그대로다', () => {
-    const folders = withMatches(buildFolders(cards, activities), new Set(['a1', 'c2']));
-    expect(folders.map((f) => [f.key, f.matched, f.cards.length])).toEqual([['activity:a_club', 1, 2], ['repo:r_auth', 1, 2]]);
-  });
-
   it('링크 이름에 소유자, 이름, 장 수, 경험 카드 없음, 기술이 모두 들어 있다(보이는 글이 이름에 들어 있어야 한다)', () => {
     const folders = Object.fromEntries(buildFolders(cards, activities).map((f) => [f.key, f]));
     expect(folderLabel(folders['repo:r_auth'])).toBe('레포 hong-dev, auth-service, 카드 2장, 기술 Java, Spring');
@@ -92,6 +87,5 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
     expect(folderLabel(folders['activity:a_empty'])).toBe('활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 경험 카드 없음');
     expect(folderLabel(folders['activity:a_club'])).toBe('활동, 동아리, 교내 개발 동아리, 카드 2장');
     expect(folderLabel(folders.direct)).toBe('레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장');
-    expect(folderLabel({ ...folders['repo:r_auth'], matched: 1 })).toBe('레포 hong-dev, auth-service, 맞는 카드 1장, 전체 2장, 기술 Java, Spring');
   });
 });

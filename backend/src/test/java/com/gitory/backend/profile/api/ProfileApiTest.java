@@ -90,7 +90,7 @@ class ProfileApiTest {
     }
 
     @Test
-    @DisplayName("한 번도 저장하지 않았으면 네 목록이 비고 savedAt 이 null 이다")
+    @DisplayName("한 번도 저장하지 않았으면 네 목록과 관심 분야가 비고 savedAt 이 null 이다")
     void neverSavedProfileIsEmptyWithoutSavedAt() throws Exception {
 
         profile(myUserId)
@@ -99,6 +99,7 @@ class ProfileApiTest {
                 .andExpect(jsonPath("$.data.careers", hasSize(0)))
                 .andExpect(jsonPath("$.data.languages", hasSize(0)))
                 .andExpect(jsonPath("$.data.certifications", hasSize(0)))
+                .andExpect(jsonPath("$.data.interests", hasSize(0)))
                 .andExpect(jsonPath("$.data.savedAt").value(nullValue()));
 
     }
@@ -156,6 +157,45 @@ class ProfileApiTest {
 
     }
 
+    @Test
+    @DisplayName("학력은 학력 구분과 상태만 있으면 저장되고, 비운 학교 이름은 null 로 읽는다 — 처음 입력 창이 학교를 받지 않는다")
+    void savesEducationWithoutSchoolName() throws Exception {
+
+        save(myUserId, education("\"level\":\"BACHELOR\",\"school\":\"\\u00a0 \",\"status\":\"GRADUATED\"") .replace("\"certifications\":[]}", "\"certifications\":[],\"interests\":[\"BACKEND\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.educations[0].level").value("BACHELOR"))
+                .andExpect(jsonPath("$.data.educations[0].school").value(nullValue()));
+
+    }
+
+    @Test
+    @DisplayName("관심 분야는 보낸 순서대로 남고, 다시 보내면 통째로 바뀐다")
+    void savesInterestsAsSentAndReplacesThemWhole() throws Exception {
+
+        save(myUserId, interests("[\"BACKEND\",\"DEVOPS\"]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.interests").value(contains("BACKEND", "DEVOPS")));
+
+        save(myUserId, interests("[\"DATA\"]")).andExpect(status().isOk());
+
+        profile(myUserId).andExpect(jsonPath("$.data.interests").value(contains("DATA")));
+
+    }
+
+    @Test
+    @DisplayName("interests 를 보내지 않으면 저장된 관심 분야를 그대로 두고 네 목록만 바꾼다")
+    void keepsStoredInterestsWhenOmitted() throws Exception {
+
+        save(myUserId, interests("[\"BACKEND\"]")).andExpect(status().isOk());
+
+        save(myUserId, FULL).andExpect(status().isOk());
+
+        profile(myUserId)
+                .andExpect(jsonPath("$.data.educations", hasSize(1)))
+                .andExpect(jsonPath("$.data.interests").value(contains("BACKEND")));
+
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("invalidBodies")
     @DisplayName("규칙을 어기면 400 INVALID_REQUEST 로 어느 칸인지 알려 주고 아무것도 저장하지 않는다")
@@ -176,8 +216,6 @@ class ProfileApiTest {
                         {"educations":[],"careers":[],"languages":[]}""", "자격증 목록을 보내 주세요"),
                 invalid("모르는 학력 구분", education("\"level\":\"PHD\",\"school\":\"경북대\",\"status\":\"GRADUATED\""),
                         "학력 1번째 학력 구분"),
-                invalid("학교 이름 공백뿐", education("\"level\":\"BACHELOR\",\"school\":\"\\u00a0 \",\"status\":\"GRADUATED\""),
-                        "학력 1번째 학교 이름을 입력해 주세요"),
                 invalid("학점만 있고 만점 없음",
                         education("\"level\":\"BACHELOR\",\"school\":\"경북대\",\"status\":\"GRADUATED\",\"gpa\":3.5"),
                         "학점과 만점은 함께"),
@@ -209,7 +247,16 @@ class ProfileApiTest {
                 invalid("자격증 21개", """
                         {"educations":[],"careers":[],"languages":[],"certifications":[%s]}""".formatted(
                                 String.join(",", Collections.nCopies(21, "{\"name\":\"자격증\"}"))),
-                        "20개까지"));
+                        "20개까지"),
+                invalid("관심 분야 4개", interests("[\"BACKEND\",\"FRONTEND\",\"MOBILE\",\"DEVOPS\"]"), "3개까지"),
+                invalid("모르는 관심 분야", interests("[\"GAME\"]"), "관심 분야 1번째"),
+                invalid("관심 분야 겹침", interests("[\"BACKEND\",\"BACKEND\"]"), "관심 분야 2번째가 앞의 것과 겹칩니다"));
+
+    }
+
+    private static String interests(String interests) {
+
+        return "{\"educations\":[],\"careers\":[],\"languages\":[],\"certifications\":[],\"interests\":" + interests + "}";
 
     }
 

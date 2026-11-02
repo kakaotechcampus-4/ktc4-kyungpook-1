@@ -12,6 +12,7 @@ import { CardFolders } from './CardFolders';
 import { cardStatusLabel } from '@/lib/labels';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
+import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { matchesCompletion } from '@/lib/cardSummaryView';
 import { filledCount, groupCards, hasRepoInfo, type CardGroup, type CardView } from '@/lib/cardGroups';
 
@@ -96,6 +97,7 @@ export function CardsListPage() {
       </div>}
       {cards.data && !isEmpty && (q || status !== 'ALL') && <span className="t-12 c-2" role="status">{list.length}개 보기</span>}
       {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
+      {cards.isSuccess && <SkippedCardsNotice />}
       {cards.isPending && <div className="grid-2">{[0, 1].map((i) => <Skeleton key={i} h={150} />)}</div>}
       {cards.isSuccess && list.length === 0 && (
         <div className="stack" style={{ alignItems: 'center', gap: 14, padding: '48px 0' }}>

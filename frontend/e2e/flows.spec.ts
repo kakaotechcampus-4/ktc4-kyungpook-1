@@ -141,6 +141,6 @@ test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_S
 test('동의 취소는 랜딩으로 돌아와 안내를 보여준다', async ({ page }) => {
   await freshSeed(page);
   await page.goto('/login?error=access_denied');
-  await expect(page.getByText('GitHub에서 동의를 취소하셨네요')).toBeVisible();
+  await expect(page.getByText('GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.')).toBeVisible();
   await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toHaveCount(1);
 });

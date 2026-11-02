@@ -43,6 +43,12 @@
 @keyframes pulse { 50% { border-color: var(--bg-ink-solid); } }
 .fail-card { display: flex; align-items: center; gap: 18px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--state-failed-bg); }
 .fail-card__bang { font-size: 20px; font-weight: 800; color: var(--state-failed-text); flex: 0 0 auto; }
+/* 일부만 정리된 결과(B5): 배지, 글, 버튼이 가로로 놓인다. 좁은 폭에서는 버튼 글자가 여러 줄로 쪼개지므로 세로로 쌓는다(#520 A-06) */
+.partial-card { display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 0; background: var(--state-partial-bg); }
+.partial-card__body { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: 5px; }
+.partial-card__title { font-size: 16px; font-weight: 600; }
+.partial-card__note { font-size: 12px; line-height: 20px; color: var(--text-secondary); }
+@media (max-width: 480px) { .partial-card { flex-direction: column; align-items: flex-start; } .partial-card > .btn { align-self: stretch; } }
 
 /* ───────── 후보 보드 (C1 · C3) ───────── */
 .cand { display: grid; grid-template-columns: var(--control-touch-size) minmax(0, 1fr); gap: 12px; padding: 20px; align-items: start; }

@@ -451,7 +451,7 @@ describe('profile form — failure keeps the input', () => {
     type(cert.name(), '정보처리기사'); type(cert.month(), '2021-11');
     await save();
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('서버에 연결하지 못했어요');
+    expect(alert).toHaveTextContent('서버에서 처리하지 못했어요');
     expect(alert).toHaveTextContent('입력한 내용은 이 화면에 남아 있어요');
     expect(screen.getByLabelText(cert.name())).toHaveValue('정보처리기사');
     expect(screen.getByLabelText(cert.month())).toHaveValue('2021-11');

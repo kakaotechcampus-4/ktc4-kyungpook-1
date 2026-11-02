@@ -41,7 +41,7 @@ test('failed exclusion keeps selection and has no false success or unhandled rej
   const row = page.locator('.cand').filter({ has: page.getByRole('checkbox', { disabled: false }) }).first();
   await row.getByRole('checkbox').check();
   await row.getByRole('button', { name: '제외', exact: true }).click();
-  await expect(page.locator('.toast')).toContainText('연결');
+  await expect(page.locator('.toast')).toContainText('잠시 뒤 다시 시도해 주세요'); // 5xx: 연결이 아니라 서버가 처리하지 못한 것
   await expect(row.getByRole('checkbox')).toBeChecked();
   await expect(page.getByRole('button', { name: '실행 취소' })).toHaveCount(0);
   await row.getByRole('button', { name: '제외', exact: true }).click();
@@ -57,7 +57,7 @@ test('failed card generation preserves selection for deliberate retry', async ({
   const checkbox = page.getByRole('checkbox', { disabled: false }).first();
   await checkbox.check();
   await page.getByRole('button', { name: '선택한 1개로 카드 만들기' }).click();
-  await expect(page.locator('.toast')).toContainText('연결');
+  await expect(page.locator('.toast')).toContainText('잠시 뒤 다시 시도해 주세요'); // 5xx: 연결이 아니라 서버가 처리하지 못한 것
   await expect(checkbox).toBeChecked();
   await expect(page).toHaveURL(/candidates/);
   await page.getByRole('button', { name: '선택한 1개로 카드 만들기' }).click();

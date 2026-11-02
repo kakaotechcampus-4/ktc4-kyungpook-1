@@ -18,7 +18,7 @@ it('keeps edits after HTTP 400 and allows a deliberate retry with null period', 
   fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: '수정 제목' } });
   fireEvent.change(screen.getByLabelText('기간'), { target: { value: '' } });
   fireEvent.click(screen.getByRole('button', { name: '저장' }));
-  await screen.findByText('기본 정보를 저장하지 못했습니다');
+  await screen.findByText('기본 정보를 저장하지 못했어요');
   expect(screen.getByLabelText('카드 제목')).toHaveValue('수정 제목');
   expect(screen.getByLabelText('기간')).toHaveValue('');
   expect(close).not.toHaveBeenCalled(); expect(save).toHaveBeenCalledTimes(1);

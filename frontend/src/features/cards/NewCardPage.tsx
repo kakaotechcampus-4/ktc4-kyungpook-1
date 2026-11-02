@@ -73,7 +73,7 @@ export function NewCardPage() {
   const snapshot = { title, period, repoId, activityId, fields: toDraftFields(f) };
   const acknowledgedInput = useRef<typeof snapshot | null>(null);
   const save = useCallback(async (body: typeof snapshot) => {
-    if (confirmedReplay.current) throw new ApiError('CARD_CONFIRMED', '이미 확정된 카드입니다.', 409);
+    if (confirmedReplay.current) throw new ApiError('CARD_CONFIRMED', '이미 확정된 카드예요.', 409);
     if (isBlankCardText(body.title)) throw new Error('TITLE_REQUIRED');
     let effective = body;
     let result: unknown;
@@ -91,7 +91,7 @@ export function NewCardPage() {
         if (card.status === 'CONFIRMED') { confirmedReplay.current = true; setBlockedCard(card); }
         else { latestFields.current = merged; setF(merged); }
       });
-      if (card.status === 'CONFIRMED') throw new ApiError('CARD_CONFIRMED', '이미 확정된 카드입니다.', 409);
+      if (card.status === 'CONFIRMED') throw new ApiError('CARD_CONFIRMED', '이미 확정된 카드예요.', 409);
       effective = { ...canonical, fields: toDraftFields(merged) };
       result = card;
       track('manual_card_created', { cardId: card.id });
@@ -157,7 +157,7 @@ export function NewCardPage() {
 
       <div className="card manual-metadata">
         <div className="manual-metadata__title">
-          <Field label="카드 제목 *">
+          <Field label="카드 제목 (필수)">
             <Input autoFocus required maxLength={CONFIG.CARD_TITLE_MAX} aria-label="카드 제목" aria-describedby="manual-requirements" value={title} disabled={saving || !!blockedCard || (!!cardId && !canEditMetadata)} onChange={(e) => setTitle(e.target.value)} placeholder="예) 로그인 세션 개선" />
           </Field>
         </div>
@@ -181,7 +181,7 @@ export function NewCardPage() {
         <p id="manual-requirements" className="t-12 c-2" aria-live="polite">{missing ? `확정까지: ${missing}` : '확정할 수 있어요'}</p>
         {!blockedCard && (cardId || autosave.status === 'error') && <SaveStatus status={autosave.status} retry={flush} />}
       </div>
-      {blockedCard && <p role="alert">이미 확정된 카드입니다. 현재 입력은 이 화면에 남아 있습니다. <Link to={`/cards/${blockedCard.id}`}>기존 카드 보기</Link></p>}
+      {blockedCard && <p role="alert">이미 확정된 카드예요. 현재 입력은 이 화면에 남아 있어요. <Link to={`/cards/${blockedCard.id}`}>기존 카드 보기</Link></p>}
 
       <div className="card star-read">
         {STAR_FIELDS.map((k, i) => (
@@ -193,9 +193,9 @@ export function NewCardPage() {
       </div>
 
       <StickyFooter
-        strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장됩니다' : '제목부터 저장해 주세요'}>
+        strong={saving ? '저장 중' : autosave.failed ? '저장 상태를 확인해 주세요' : cardId ? '본문은 자동으로 저장돼요' : '제목을 적고 작성을 시작해 주세요'}>
         <Link to="/" className="btn btn--text">나가기</Link>
-        {!cardId ? <Button size="lg" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>임시 저장 시작</Button> : <>
+        {!cardId ? <Button size="lg" disabled={isBlankCardText(title)} loading={saving} onClick={() => void flush()}>작성 시작</Button> : <>
           <Button variant="outline" disabled={!!blockedCard || isBlankCardText(title)} loading={saving} onClick={() => void leave(false)}>저장 후 종료</Button>
           <Button size="lg" disabled={!canConfirm} loading={saving} onClick={() => void leave(true)}>확정</Button>
         </>}

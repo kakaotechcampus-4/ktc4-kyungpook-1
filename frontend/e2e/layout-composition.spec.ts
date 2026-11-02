@@ -4,7 +4,7 @@ import { loginAsDemo } from './helpers';
 test('desktop initial save action does not stretch across the writing canvas', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginAsDemo(page); await page.goto('/cards/new');
-  const save = await page.getByRole('button', { name: '임시 저장 시작' }).boundingBox();
+  const save = await page.getByRole('button', { name: '작성 시작' }).boundingBox();
   expect(save!.width).toBeLessThan(250);
 });
 
@@ -50,7 +50,7 @@ test('dialog actions stay visible on a short landscape viewport', async ({ page 
 test('last mobile writing field remains reachable above footer and navigation', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   await loginAsDemo(page); await page.goto('/cards/new');
-  const field = page.getByRole('textbox', { name: '결과 (Result)' });
+  const field = page.getByRole('textbox', { name: '결과', exact: true });
   await field.scrollIntoViewIfNeeded();
   const fieldBox = await field.boundingBox();
   const footer = await page.locator('.sticky-footer').boundingBox();

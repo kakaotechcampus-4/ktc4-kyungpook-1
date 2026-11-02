@@ -22,7 +22,7 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await page.getByRole('checkbox', { disabled: false }).first().click(); // 사용된 후보는 비활성이라 건너뛴다
   await page.getByRole('button', { name: /선택한 1개로 카드 만들기/ }).click();
   await expect(page.getByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' })).toBeVisible();
-  await expect(page.getByText('근거를 찾지 못해 비워 두었습니다')).toBeVisible({ timeout: 30_000 }); // 빈 칸이 증거
+  await expect(page.getByText('근거를 찾지 못해 비워 뒀어요')).toBeVisible({ timeout: 30_000 }); // 빈 칸이 증거
 
   await page.getByRole('button', { name: '확정', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
@@ -35,7 +35,7 @@ test('후보 0개는 에러가 아니라 판정이다 (verdict EMPTY)', async ({
   await loginAsDemo(page);
   await page.goto('/repos?select=r_board&disclose=1');
   await page.getByRole('button', { name: '정리 시작' }).click();
-  await expect(page.getByRole('heading', { name: '자동으로 찾은 경험이 없어요' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('heading', { name: '자동으로 찾은 후보가 없어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('PR 참여 없음')).toBeVisible();
   await expect(page.getByRole('link', { name: '파일 보며 찾기' })).toBeVisible();
 });

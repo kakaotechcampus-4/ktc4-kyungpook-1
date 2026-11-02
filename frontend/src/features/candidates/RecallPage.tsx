@@ -32,7 +32,7 @@ function RecallSession({ repoId }: { repoId: string }) {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const { blocker, allowNavigation } = useUnsavedChanges(Object.values(drafts).some((value) => value.trim()) || pendingPath !== null);
   const [done, setDone] = useState<Set<string>>(new Set());
-  useDocumentTitle('회상 도우미');
+  useDocumentTitle('파일 보며 찾기');
 
   const dirs = recall.data?.dirs ?? [];
   const cur = dirs[open];
@@ -57,7 +57,7 @@ function RecallSession({ repoId }: { repoId: string }) {
       await answer.mutateAsync({ path, text });
       if (!mounted.current) return;
       track('recall_answered', { repoId, path });
-      toast('후보로 추가했습니다', { tone: 'success' });
+      toast('후보로 추가했어요', { tone: 'success' });
       setDrafts((previous) => { const next = { ...previous }; delete next[path]; return next; });
       setDone((d) => new Set(d).add(path));
       if (selected.current === index) {
@@ -73,8 +73,8 @@ function RecallSession({ repoId }: { repoId: string }) {
 
   return (
     <main className="main main--tight recall-page">
-      <Breadcrumb items={[{ label: '홈', to: '/' }, { label: repo.data?.name ?? '…', to: `/repos/${repoId}/candidates` }, { label: '회상 도우미' }]} />
-      <PageTitle>파일부터 되짚어 볼까요</PageTitle>
+      <Breadcrumb items={[{ label: '홈', to: '/' }, { label: repo.data?.name ?? '…', to: `/repos/${repoId}/candidates` }, { label: '파일 보며 찾기' }]} />
+      <PageTitle>파일 보며 찾기</PageTitle>
       {recall.data && <Note strong="파일을 보며 경험을 떠올려 보세요">{recall.data.note}</Note>}
       {recall.isPending && <Skeleton h={200} />}
       {recall.isError && <QueryFailure error={recall.error} retry={() => recall.refetch()} pending={recall.isFetching} />}
@@ -87,7 +87,7 @@ function RecallSession({ repoId }: { repoId: string }) {
                 <span className="repo-ctx__icon" style={{ width: 16, height: 16, borderRadius: 4 }} aria-hidden />
                 <span className="w-600" style={{ fontSize: 16 }}>{d.path}</span>
                 <span className="t-12 c-3">변경 파일 {d.filesChanged}개, 내 커밋 {d.myCommits}개</span>
-                <button type="button" className="right t-12 w-600 c-2" onClick={() => goTo(i)}>{done.has(d.path) ? '답함' : active ? '답하는 중' : '펼치기'}</button>
+                <Button variant="text" size="sm" className="right" onClick={() => goTo(i)}>{done.has(d.path) ? '답함' : active ? '답하는 중' : '펼치기'}</Button>
               </div>
               <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{d.files.map((f) => <Chip key={f} fill>{f}</Chip>)}</div>
               {active && (
@@ -99,7 +99,7 @@ function RecallSession({ repoId }: { repoId: string }) {
                     <>
                       <span className="t-12 c-2">기억나는 만큼만 한 줄로</span>
                       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{d.options.map((o) => <Chip key={o} disabled={pendingPath === d.path} onClick={() => setText(o)}>{o}</Chip>)}</div>
-                      <Textarea aria-labelledby={`recall-question-${i}`} disabled={pendingPath === d.path} rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="직접 입력 — 보기를 누르면 채워지고, 그대로 고칠 수 있습니다" />
+                      <Textarea aria-labelledby={`recall-question-${i}`} disabled={pendingPath === d.path} rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="보기를 누르면 채워지고, 그대로 고칠 수 있어요" />
                       {errors[d.path] && <span role="alert" className="t-12 c-2">{errors[d.path]}</span>}
                     </>
                   )}
@@ -117,7 +117,7 @@ function RecallSession({ repoId }: { repoId: string }) {
         })}
       </div>
       <div className="row"><Link to={`/repos/${repoId}/candidates`} className="btn btn--outline">후보 보드로</Link></div>
-      {blocker.state === 'blocked' && <ConfirmActionDialog title="입력한 내용을 버리고 이동할까요?" sub="제출하지 않은 회상 입력은 저장되지 않습니다. 진행 중인 요청은 완료될 수 있습니다." body={<p>계속 작성하려면 이 화면에 머물러 주세요.</p>} actionLabel="입력 버리고 이동" danger onClose={() => blocker.reset()} onConfirm={() => blocker.proceed()} />}
+      {blocker.state === 'blocked' && <ConfirmActionDialog title="입력한 내용을 버리고 이동할까요?" sub="후보로 만들기를 누르지 않은 입력은 저장되지 않아요. 이미 보낸 요청은 끝까지 처리될 수 있어요." body={<p>계속 작성하려면 이 화면에 머물러 주세요.</p>} actionLabel="입력 버리고 이동" danger onClose={() => blocker.reset()} onConfirm={() => blocker.proceed()} />}
     </main>
   );
 }

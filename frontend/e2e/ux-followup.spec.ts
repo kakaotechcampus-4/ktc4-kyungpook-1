@@ -25,11 +25,11 @@ test('drafts lead to answering missing fields while confirmation remains availab
 test('field edit has a phone-sized target and focuses the requested field', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await loginAsDemo(page); await page.goto('/cards/card_01');
-  const edit = page.getByRole('region', { name: '행동 (Action)', exact: true }).getByRole('button', { name: '행동 수정', exact: true });
+  const edit = page.getByRole('region', { name: '행동', exact: true }).getByRole('button', { name: '행동 수정', exact: true });
   await expect(edit).toBeVisible();
   expect((await edit.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   await edit.click();
-  await expect(page.getByRole('textbox', { name: '행동 (Action)', exact: true })).toBeFocused();
+  await expect(page.getByRole('textbox', { name: '행동', exact: true })).toBeFocused();
   await expect(page).toHaveURL(/mode=edit&field=A/);
 });
 

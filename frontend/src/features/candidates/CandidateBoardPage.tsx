@@ -53,7 +53,9 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   // 이미 카드로 만든(USED) 후보는 다시 고를 수 없으니 기본 목록에서 빼고, 아래 접힌 구역에 개수와 함께 둔다("카드 보기"로 가는 길은 남긴다)
   const needle = q.toLowerCase();
   const matches = (c: Candidate) => (c.title + c.reason).toLowerCase().includes(needle);
-  const visible = useMemo(() => cands.filter((c) => c.status !== 'EXCLUDED' && c.status !== 'USED' && (c.title + c.reason).toLowerCase().includes(needle)), [cands, needle]);
+  // 제목의 "후보 N개"와 "후보 선택" 옆 수는 같은 기준(카드로 만들지 않았고 제외하지 않은 후보)이다. 만든 것은 아래 "이미 카드로 만든 후보", 뺀 것은 "제외 N개 복원"에서 센다
+  const open = useMemo(() => cands.filter((c) => c.status !== 'EXCLUDED' && c.status !== 'USED'), [cands]);
+  const visible = useMemo(() => open.filter((c) => (c.title + c.reason).toLowerCase().includes(needle)), [open, needle]);
   const { recommended, more } = splitRecommended(visible);
   const moreOpen = showWeak || !!q.trim();
   const selectedMore = more.filter(c => selected.has(c.id)).length;
@@ -79,9 +81,9 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       await patch.mutateAsync({ id: c.id, status: 'EXCLUDED' });
       setSelected((s) => { const n = new Set(s); n.delete(c.id); return n; });
       track('candidate_excluded', { candidateId: c.id, type: c.type });
-      toast(`"${c.title}" 을 제외했습니다`, { action: { label: '실행 취소', onClick: () => {
+      toast(`"${c.title}" 을 제외했어요`, { action: { label: '실행 취소', onClick: () => {
         if (actions.isLocked()) {
-          toast('진행 중인 작업이 끝난 뒤 실행 취소를 눌러 주세요.');
+          toast('진행 중인 요청이 끝난 뒤 실행 취소를 눌러 주세요.');
           return false;
         }
         void actions.run(async () => {
@@ -130,7 +132,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
     return (
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
-        <PageTitle>자동으로 찾은 경험이 없어요</PageTitle>
+        <PageTitle>자동으로 찾은 후보가 없어요</PageTitle>
         <RepoContext name={name} note="후보 0개" />
         <div className="verdict">
           <div className="stack grow" style={{ gap: 8 }}>
@@ -140,7 +142,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
             <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>
             <div className="row" style={{ gap: 8 }}>
-              <Link to="/cards/new" className="btn btn--outline btn--sm">직접 입력</Link>
+              <Link to="/cards/new" className="btn btn--outline btn--sm">직접 작성</Link>
               <Link to="/repos" className="btn btn--outline btn--sm">다른 레포</Link>
             </div>
           </div>
@@ -152,8 +154,8 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   return (
     <main className="main main--footer main--tight candidate-board">
       <Breadcrumb items={crumbs} />
-      <PageTitle lead="커밋과 PR에서 카드로 만들 만한 작업을 골라 뒀어요. 자소서에 쓸 것만 체크하면 카드 초안을 써 드려요.">{b.partial ? `후보 ${cands.length}개 (부분 결과)` : `후보 ${cands.length}개`}</PageTitle>
-      <RepoContext name={name} note="카드로 만들 경험을 선택하세요."
+      <PageTitle lead="커밋과 PR에서 카드로 만들 만한 후보를 골라 뒀어요. 자소서에 쓸 것만 체크하면 카드 초안을 써 드려요.">{b.partial ? `후보 ${open.length}개 (부분 결과)` : `후보 ${open.length}개`}</PageTitle>
+      <RepoContext name={name} note="카드로 만들 후보를 골라 주세요."
         right={<Button variant="outline" size="sm" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>정리 기준</Button>} />
 
       {b.partial && (
@@ -182,7 +184,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         {recommended.map((c) => row(c))}
         {more.length > 0 && <>
           <button type="button" className="record-list__more" aria-expanded={moreOpen} onClick={() => setShowWeak(open => !open)} disabled={!!q.trim()}>
-            <span>더 보기 후보 {more.length}개{selectedMore > 0 ? `, ${selectedMore}개 선택` : ''}{q.trim() ? ', 검색 결과' : moreOpen ? ' 접기' : ' 보기'}</span>
+            <span>추천도 낮은 후보 {more.length}개{selectedMore > 0 ? `, ${selectedMore}개 선택` : ''}{q.trim() ? ', 검색 결과' : moreOpen ? ' 접기' : ' 보기'}</span>
             {moreOpen ? <ChevronUp size={16} aria-hidden /> : <ChevronDown size={16} aria-hidden />}
           </button>
           {moreOpen && more.map(c => row(c))}
@@ -202,7 +204,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       <StickyFooter strong={`${chosen.length}/${MAX_CARDS_PER_REQUEST}개 선택`} sub={overLimit ? CARD_LIMIT_MESSAGE : selectedOutsideSearch ? `검색 밖 ${selectedOutsideSearch}개 포함` : undefined}>
         <Link to="/" className="btn btn--outline">취소</Link>
         <Button size="lg" disabled={chosen.length === 0 || overLimit || busy} loading={create.isPending} onClick={makeCards}>
-          {chosen.length ? `선택한 ${chosen.length}개로 카드 만들기` : '후보를 선택하세요'}
+          {chosen.length ? `선택한 ${chosen.length}개로 카드 만들기` : '후보를 골라 주세요'}
         </Button>
       </StickyFooter>
 
@@ -295,10 +297,10 @@ function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial:
   };
   return (
     <Modal title="이 보드의 정리 기준" width={720} onClose={() => { if (!start.isPending) onClose(); }}
-      sub={r.lastAnalyzedAt ? `${ymdhm(r.lastAnalyzedAt)} 에 읽은 결과입니다.` : '아직 정리 기록이 없습니다.'}
-      footer={{ strong: partial ? '재시도 가능 여부는 작업 상태에서 확인하세요' : '후보의 추천 이유와 근거를 확인하세요', actions: <><Button variant="outline" disabled={start.isPending} onClick={onClose}>닫기</Button><Button onClick={again} disabled={partial} loading={start.isPending}>다시 정리하기</Button></> }}>
+      sub={r.lastAnalyzedAt ? `${ymdhm(r.lastAnalyzedAt)} 에 읽은 결과예요.` : '아직 정리 기록이 없어요.'}
+      footer={{ strong: partial ? '재시도 가능 여부는 작업 상태에서 확인해 주세요' : '후보의 추천 이유와 근거를 확인해 주세요', actions: <><Button variant="outline" disabled={start.isPending} onClick={onClose}>닫기</Button><Button onClick={again} disabled={partial} loading={start.isPending}>다시 정리하기</Button></> }}>
       <PermissionGrid compact reads={r.disclosure.reads} skips={r.disclosure.skips} />
-      <p className="t-12l c-2">추천 이유와 연결된 커밋을 확인한 후 카드로 만들 후보를 선택하세요.</p>
+      <p className="t-12l c-2">추천 이유와 연결된 커밋을 확인한 뒤 카드로 만들 후보를 골라 주세요.</p>
     </Modal>
   );
 }
@@ -317,16 +319,16 @@ function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () =
     await actions.run(async () => {
     const c = await add.mutateAsync({ title: title.trim(), summary: summary.trim(), shas: shas.map((s) => s.sha) });
     track('candidate_added_manually', { repoId, withCommits: shas.length });
-    toast(`"${c.title}" 을 후보에 추가했습니다`, { tone: 'success' });
+    toast(`"${c.title}" 을 후보에 추가했어요`, { tone: 'success' });
     onClose();
     });
   };
   return (
     <Modal title="후보 직접 추가" onClose={() => { if (!add.isPending) onClose(); }}
-      footer={{ strong: shas.length ? '기술 카드로 생성됩니다' : '경험 카드로 생성됩니다', sub: shas.length ? `커밋 ${shas.length}건이 붙어 있습니다` : undefined,
+      footer={{ strong: shas.length ? '기술 카드로 만들어져요' : '경험을 직접 쓰는 카드(정성 카드)로 만들어져요', sub: shas.length ? `커밋 ${shas.length}개가 붙어 있어요` : undefined,
         actions: <><Button variant="outline" disabled={add.isPending} onClick={onClose}>취소</Button><Button disabled={!title.trim() || !summary.trim()} loading={add.isPending} onClick={submit}>후보 추가</Button></> }}>
       <Field label="후보 이름"><Input autoFocus disabled={add.isPending} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예) 배포 파이프라인 직접 구축" maxLength={80} /></Field>
-      <Field label="무엇을 한 작업인가요"><Textarea disabled={add.isPending} rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="한 줄로 적어주세요." maxLength={300} /></Field>
+      <Field label="어떤 일을 했나요"><Textarea disabled={add.isPending} rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="한 줄로 적어 주세요." maxLength={300} /></Field>
       <Field label="관련 커밋 (선택)">
         <Input disabled={add.isPending} value={cq} onChange={(e) => setCq(e.target.value)} placeholder="커밋 메시지나 sha 로 검색" />
       </Field>
@@ -334,7 +336,7 @@ function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () =
         <div className="stack" style={{ gap: 6, maxHeight: 200, overflowY: 'auto' }}>
           {search.isPending && <Skeleton h={40} />}
           {search.isError && <QueryFailure error={search.error} retry={() => search.refetch()} pending={search.isFetching} />}
-          {search.data?.length === 0 && <span className="t-12 c-3">맞는 커밋이 없습니다</span>}
+          {search.data?.length === 0 && <span className="t-12 c-3">맞는 커밋이 없어요</span>}
           {search.data?.map((cm) => {
             const on = shas.some((s) => s.sha === cm.sha);
             return (

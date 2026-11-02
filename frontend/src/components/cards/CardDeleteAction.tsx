@@ -47,7 +47,7 @@ function CardDeleteDialog({ card, onClose, onDeleted }: {
       <div className="stack" style={{ gap: 12 }}>
         <p className="card-delete-title">{card.title}</p>
         {card.status === 'CONFIRMED' && <p>지우면 매칭 결과에서도 빠져요.</p>}
-        {candidate && <p>이 레포의 후보 목록에서 다시 골라 카드를 만들 수 있어요.</p>}
+        {candidate && <p>이 레포의 후보 보드에서 다시 골라 카드를 만들 수 있어요.</p>}
         {message && <p role="alert">{message}</p>}
       </div>
     </Modal>;

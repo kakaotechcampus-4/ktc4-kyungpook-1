@@ -39,7 +39,7 @@ test('repository typeahead reaches the draft unchanged and locks after the first
   await page.keyboard.press('Enter');
   await expect(repo).toContainText('TaeHuiKKIM/free-tier-sleep');
   await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('레포 선택 저장 검사');
-  await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();
+  await page.getByRole('button', { name: '작성 시작', exact: true }).click();
   await expect(repo).toBeDisabled();
   await repo.dispatchEvent('click');
   await expect(page.getByRole('listbox', { name: '관련 레포', exact: true })).toHaveCount(0);

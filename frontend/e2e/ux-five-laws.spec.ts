@@ -20,11 +20,11 @@ for (const width of [320, 390, 1440]) {
     await dialog.getByRole('button', { name: '취소', exact: true }).click();
     await page.goto('/cards/new');
     await expect(page.getByRole('heading', { name: '직접 작성', exact: true })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: '임시 저장 시작' })).toHaveCount(1);
+    await expect(page.getByRole('button', { name: '작성 시작' })).toHaveCount(1);
     await expect(page.getByRole('button', { name: '확정', exact: true })).toHaveCount(0);
     await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('UX 확인 카드');
-    await page.getByRole('textbox', { name: '상황 (Situation)', exact: true }).fill('작성한 상황');
-    await page.getByRole('button', { name: '임시 저장 시작' }).click();
+    await page.getByRole('textbox', { name: '상황', exact: true }).fill('작성한 상황');
+    await page.getByRole('button', { name: '작성 시작' }).click();
     await expect(page.getByRole('button', { name: '저장 후 종료' })).toBeVisible();
     await expect(page.getByRole('status').filter({ hasText: '저장됨' })).toBeVisible();
     await page.getByRole('button', { name: '저장 후 종료' }).click();
@@ -45,9 +45,9 @@ test('version restore waits for explicit confirmation and keeps history unchange
   await loginAsDemo(page); await page.goto('/cards/card_03');
   await page.getByRole('button', { name: '작성 이력', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: /이 버전|복원/ }).first().click();
+  await dialog.getByRole('button', { name: '이 버전으로 되돌리기' }).first().click();
   // Choosing a historical summary must never be a mutation by itself.
   const current = await page.evaluate(async () => (await (await fetch('/api/cards/card_03')).json()).data.version.versionNo);
   expect(current).toBe(3);
-  await expect(dialog.getByRole('button', { name: /복원하기|복원$/, exact: false })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '이 버전으로 되돌리기' })).toBeVisible();
 });

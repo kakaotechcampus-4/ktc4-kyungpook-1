@@ -328,6 +328,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 |---|---|
 | `GET /matches` | `MatchTarget[]` — **AI 를 부르지 않는다.** 모든 공고의 `fit` 은 null, `required`·`preferred` 의 `met` 은 0 이고 `total` 은 공고의 조건 수다(#581). 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다. `?companyId=` 를 주면 그 회사 공고만 오고(없는 회사면 빈 배열), 비어 있으면 거르지 않는다 |
 | `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote`·`status` · `needsJudgement` · `summary` · `conditions[]`. **AI 를 부르지 않고 저장된 판단만 읽는다.** 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
+| `GET /matches/summary` | `{ "matchedPostings": n }` — 홈의 '매칭된 공고'(#711). 전체 매칭·레포 추천·공고 상세 맞춰 보기가 저장한 (카드, 조건) 판단 중, **지금 확정 카드 글로** 필수 기술·경험 조건을 하나 이상 채운 마감 전 공고 수다. 공고마다 한 번만 세고, AI 를 부르지 않으며 호출 한도도 세지 않는다. 확정 카드가 없으면 0 |
 | `POST /matches/{id}/judgement` | 같은 `MatchDetail`. 아직 판단하지 않은 (카드, 조건) 짝만 AI 에게 묻고(최대 90초) 새 상세를 돌려준다. 물을 짝이 없으면 AI 를 부르지 않고 호출 한도도 세지 않는다 |
 | `POST /matches/{id}/gap-fill` | 같은 `MatchDetail`. 맞춰 본 뒤 못 채운 조건을 AI 가 **배경에서** 찾기 시작하고 바로 돌려준다(`gapFill.state` 는 보통 RUNNING). 화면은 `gapFill.pollAfterMs` 마다 `GET /matches/{id}` 를 다시 읽는다. 찾는 중이거나 카드·후보·레포가 그대로인 공고는 다시 찾지 않고 호출 한도도 세지 않는다. 못 채운 조건이 없으면 AI 없이 바로 DONE(빈 `conditions`)이다. 본문 `{ "conditionIds": ["…"] }` 를 주면 끝난 결과에서 SKIPPED 인 그 조건만 다시 찾는다([그래도 찾아보기], 아래) |
 

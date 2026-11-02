@@ -172,6 +172,8 @@ export type GapFillProposal = z.infer<typeof GapFillProposal>;
  *  - FAILED 여도 앞서 계산한 기업은 companies 에 남아 있다. 많아야 3곳이고 순위 순서다.
  *  - posting.closed 는 계산한 뒤 마감되거나 내려간 공고. 다시 계산하기 전까지 목록에 남는다.
  */
+/** 홈의 '매칭된 공고'(#711, `GET /matches/summary`). 전체 매칭·레포 추천·공고 상세 맞춰 보기가 쌓은 판단 중, 지금 확정 카드로 필수 기술·경험 조건을 채운 마감 전 공고 수 */
+export const MatchedPostings = z.object({ matchedPostings: z.number().int().nonnegative() });
 export const RecommendationStatus = z.enum(["COMPUTING", "READY", "FAILED", "NONE"]);
 const recommendedPosting = z.object({
   id: z.string(),
@@ -268,6 +270,10 @@ export const matchingApi = {
       ]);
     return detail;
   },
+  matchedPostings: (env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(MatchedPostings, "/matches/summary")
+      : Promise.reject(unavailable()),
   repoRecommendations: (repoId: string, env?: MatchEnv) =>
     matchSupported(env)
       ? api(RepoRecommendation, `/repos/${encodeURIComponent(repoId)}/recommendations`)
@@ -289,6 +295,7 @@ export const matchKeys = {
   list: ["matches", "list"] as const,
   overall: ["matches", "overall"] as const,
   repo: (repoId: string) => ["matches", "repo", repoId] as const,
+  summary: ["matches", "summary"] as const,
   details: ["matches", "detail"] as const,
   detail: (id: string) => ["matches", "detail", id] as const,
 };
@@ -337,6 +344,9 @@ export const useGapFill = (id: string) => {
     onSuccess: (detail) => client.setQueryData(matchKeys.detail(id), detail),
   });
 };
+/** 홈의 '매칭된 공고' 수(#712). AI 를 부르지 않는 가벼운 조회라 홈을 열 때마다 다시 읽어, 그사이 쌓인 매칭 판단이 바로 반영된다 */
+export const useMatchedPostings = () =>
+  useQuery({ queryKey: matchKeys.summary, queryFn: () => matchingApi.matchedPostings(), enabled: matchSupported(), retry: false });
 /** 레포 폴더의 추천 기업(#709). 서버가 그 레포의 확정 카드가 바뀌면 배경에서 다시 계산하므로, 계산 중에만 2초마다 다시 읽는다 */
 export const useRepoRecommendation = (repoId: string | undefined) =>
   useQuery({

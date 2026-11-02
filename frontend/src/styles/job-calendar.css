@@ -170,6 +170,8 @@
 .home-workspace__content .overview-tile--lavender svg { background: var(--pastel-lavender); }
 .home-workspace__content .overview-tile--mint svg { background: var(--pastel-mint); }
 .home-workspace__content .overview-tile--yellow svg { background: var(--pastel-yellow); }
+.home-workspace__content .overview-tile--link { color: inherit; text-decoration: none; }
+.home-workspace__content .overview-tile--link:hover, .home-workspace__content .overview-tile--link:focus-visible { border-color: var(--border-strong); }
 .home-workspace__content .overview-tile > strong { font-size: 30px; }
 .home-workspace__content .overview-tile p { font-size: 10px; line-height: 16px; }
 .home-page .prompt[hidden] { display: none; }

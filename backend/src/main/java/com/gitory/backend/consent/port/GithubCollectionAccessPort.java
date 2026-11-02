@@ -24,6 +24,12 @@ public interface GithubCollectionAccessPort {
     /** 후보 커밋의 diff 를 AI 가 읽어 커밋별 근거로 요약하며, 토큰은 이 호출 안의 헤더에만 쓴다 */
     DiffEvidenceResult diffEvidence(Long userId, DiffEvidenceTarget target);
 
+    /**
+     * 공고에서 못 채운 조건을 채울 자료를 AI 가 사용자의 공개 커밋에서도 찾게 하며, 토큰은 이 호출의 헤더에만 쓴다
+     * request 는 AI 모자란 조건 채우기 API 의 요청 본문이고, AI 가 조건 상태를 바꿀 때마다 진행을 progress 로 받는다
+     */
+    JsonNode gapFill(Long userId, Object request, Consumer<AiProgress> progress);
+
     /** 쓸 수 있는 GitHub 연결이 없으면 GithubNotConnectedException 을 던지고, GitHub 은 부르지 않는다 */
     void requireUsableConnection(Long userId);
 

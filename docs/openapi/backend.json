@@ -1537,6 +1537,44 @@
         },
         "type" : "object"
       },
+      "Condition" : {
+        "properties" : {
+          "conditionId" : {
+            "type" : "string"
+          },
+          "decision" : {
+            "description" : "찾아볼지. null 은 아직 정하는 중",
+            "enum" : [ "SEARCH", "SKIP" ],
+            "type" : [ "string", "null" ]
+          },
+          "decisionReason" : {
+            "description" : "찾아볼지 정한 이유 한 줄",
+            "type" : [ "string", "null" ]
+          },
+          "forced" : {
+            "description" : "사용자가 그래도 찾아보기로 다시 찾게 한 조건. decision 은 AI 판단 그대로라 SKIP 이어도 찾은 결과가 온다",
+            "type" : "boolean"
+          },
+          "proposal" : {
+            "$ref" : "#/components/schemas/Proposal",
+            "description" : "찾았으면 제안 하나, 못 찾았으면 null",
+            "type" : "null"
+          },
+          "result" : {
+            "description" : "끝났을 때의 결론. null 은 아직 찾는 중",
+            "enum" : [ "PROPOSED", "NOT_FOUND", "SKIPPED", "TIMED_OUT" ],
+            "type" : [ "string", "null" ]
+          },
+          "steps" : {
+            "description" : "AI 가 한 일. 생기는 대로 늘어난다",
+            "items" : {
+              "$ref" : "#/components/schemas/Step"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "ConfirmResultResponse" : {
         "description" : "카드 확정 결과",
         "properties" : {
@@ -2529,6 +2567,11 @@
             "enum" : [ "A", "B", "C", "D" ],
             "type" : "string"
           },
+          "gapFill" : {
+            "$ref" : "#/components/schemas/MatchGapFillResponse",
+            "description" : "모자란 조건 채우기. 아직 시작하지 않았으면 null",
+            "type" : "null"
+          },
           "id" : {
             "type" : "string"
           },
@@ -2588,6 +2631,41 @@
           "minYears" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "MatchGapFillRequest" : {
+        "properties" : {
+          "conditionIds" : {
+            "description" : "'찾지 않음' 으로 멈춘 조건 가운데 그래도 찾아볼 조건 id. 비었거나 없으면 처음부터 찾는다",
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : [ "array", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "MatchGapFillResponse" : {
+        "properties" : {
+          "conditions" : {
+            "description" : "찾아본 조건마다 하나, 공고 조건 순서. 못 채운 필수 조건(없으면 우대 조건) 최대 5개",
+            "items" : {
+              "$ref" : "#/components/schemas/Condition"
+            },
+            "type" : "array"
+          },
+          "pollAfterMs" : {
+            "description" : "RUNNING 일 때만 다음 조회까지 기다릴 밀리초. 끝났으면 null",
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "state" : {
+            "description" : "RUNNING 은 찾는 중, DONE 은 끝남, FAILED 는 실패했거나 찾기가 멈춤(다시 시작하면 새로 찾음)",
+            "enum" : [ "RUNNING", "DONE", "FAILED" ],
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -3015,6 +3093,38 @@
             "description" : "마지막으로 저장한 시각. 한 번도 저장하지 않았으면 null 이라, 화면은 처음 입력을 띄웁니다",
             "format" : "date-time",
             "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "Proposal" : {
+        "properties" : {
+          "action" : {
+            "enum" : [ "CREATE_CARD", "CONTINUE_CARD", "ANALYZE_REPO" ],
+            "type" : "string"
+          },
+          "candidateId" : {
+            "description" : "CREATE_CARD 일 때 카드로 만들 후보 id",
+            "type" : [ "string", "null" ]
+          },
+          "cardId" : {
+            "description" : "CONTINUE_CARD 일 때 마저 채울 작성 중 카드 id",
+            "type" : [ "string", "null" ]
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "repoId" : {
+            "description" : "ANALYZE_REPO 는 분석할 레포 id, CREATE_CARD 는 후보가 나온 레포 id(카드 만들기 API 경로에 쓴다). CONTINUE_CARD 는 null",
+            "type" : [ "string", "null" ]
+          },
+          "repoName" : {
+            "description" : "후보가 나온 레포나 분석할 레포(owner/name). CONTINUE_CARD 는 null",
+            "type" : [ "string", "null" ]
+          },
+          "title" : {
+            "description" : "후보 제목·작성 중 카드 제목·레포 이름(owner/name)",
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -7207,6 +7317,16 @@
             },
             "description" : "공고 배열. 없으면 빈 배열"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -7217,6 +7337,16 @@
             },
             "description" : "로그인 세션 없음"
           },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
           "404" : {
             "content" : {
               "*/*" : {
@@ -7226,6 +7356,16 @@
               }
             },
             "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
           },
           "500" : {
             "content" : {
@@ -7254,7 +7394,7 @@
     },
     "/api/matches/{id}" : {
       "get" : {
-        "description" : "열 때 AI 를 부르지 않고, 레포·전체 추천과 같이 저장해 둔 (카드, 조건) AI 판단으로 조건마다 status·metBy 를 붙입니다. 학력·경력은 인적사항과 견줍니다. 아직 판단하지 않은 조건이 있으면 needsJudgement 가 true 이고 그 조건은 UNJUDGED 입니다. fit 은 늘 null 입니다.",
+        "description" : "열 때 AI 를 부르지 않고, 레포·전체 추천과 같이 저장해 둔 (카드, 조건) AI 판단으로 조건마다 status·metBy 를 붙입니다. 학력·경력은 인적사항과 견줍니다. 아직 판단하지 않은 조건이 있으면 needsJudgement 가 true 이고 그 조건은 UNJUDGED 입니다. fit 은 늘 null 입니다. gapFill 은 모자란 조건 채우기의 진행·결과이고, 찾는 중이면 pollAfterMs 마다 다시 읽습니다.",
         "operationId" : "match",
         "parameters" : [ {
           "description" : "목록 응답의 공고 id",
@@ -7277,6 +7417,16 @@
             },
             "description" : "공고 상세"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -7287,6 +7437,16 @@
             },
             "description" : "로그인 세션 없음"
           },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
           "404" : {
             "content" : {
               "*/*" : {
@@ -7296,6 +7456,16 @@
               }
             },
             "description" : "UUID 가 아니거나 없는 공고이거나 목록 대상이 아닌 공고(마감·사라짐·필수·우대 조건 없음)"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
           },
           "500" : {
             "content" : {
@@ -7319,6 +7489,125 @@
           }
         },
         "summary" : "기업·직무 매칭 상세 조회",
+        "tags" : [ "Matches" ]
+      }
+    },
+    "/api/matches/{id}/gap-fill" : {
+      "post" : {
+        "description" : "맞춰 본 뒤 못 채운 필수 조건(없으면 우대 조건) 최대 5개를 AI 가 배경에서 찾기 시작하고 상세와 같은 응답을 돌려줍니다. AI 는 조건마다 찾아볼지 정하고, 카드로 만들지 않은 후보·작성 중 카드를 먼저 본 뒤 내 공개 커밋을 GitHub 에서 검색해 카드 만들기·카드 마저 채우기·레포 분석을 제안합니다. 사용자에게 묻지 않습니다. 찾는 중이거나 카드·후보·레포가 그대로인 공고는 다시 찾지 않고 호출 한도도 세지 않으며, 못 채운 조건이 없으면 AI 없이 DONE 입니다. 본문에 conditionIds 를 주면 끝난 결과에서 '찾지 않음'(result SKIPPED)으로 멈춘 그 조건만 AI 판단과 상관없이 찾고(forced), 나머지 조건은 앞 결과 그대로 둡니다. 화면은 gapFill.pollAfterMs 마다 상세 조회로 진행을 읽습니다.",
+        "operationId" : "fillGaps",
+        "parameters" : [ {
+          "description" : "목록 응답의 공고 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MatchGapFillRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            },
+            "description" : "채우기를 시작한 뒤의 상세(gapFill 은 보통 RUNNING)"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: conditionIds 에 끝난 결과에서 '찾지 않음' 으로 멈춘 조건이 아니거나 지금 못 채운 조건이 아닌 id 가 있음, 또는 본문을 읽을 수 없음"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "GITHUB_UNAUTHORIZED: 새로 찾아야 하는데 쓸 수 있는 GitHub 연결이 없음(저장한 결과를 다시 쓰거나 못 채운 조건이 없으면 연결을 보지 않음)"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "UUID 가 아니거나 없는 공고이거나 목록 대상이 아닌 공고"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: 아직 맞춰 보지 않은 조건이 있음(needsJudgement), 또는 conditionIds 를 줬는데 끝난(DONE) 채우기 결과가 없음"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "호출 한도를 넘음"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "공고에서 못 채운 조건 채우기 시작",
         "tags" : [ "Matches" ]
       }
     },
@@ -7347,6 +7636,16 @@
             },
             "description" : "판단을 붙인 공고 상세"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -7357,6 +7656,16 @@
             },
             "description" : "로그인 세션 없음"
           },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
           "404" : {
             "content" : {
               "*/*" : {
@@ -7366,6 +7675,16 @@
               }
             },
             "description" : "UUID 가 아니거나 없는 공고이거나 목록 대상이 아닌 공고"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
           },
           "429" : {
             "content" : {
@@ -7522,6 +7841,16 @@
             },
             "description" : "추천 상태와 기업. 계산한 적이 없으면 NONE 과 빈 배열"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -7532,6 +7861,16 @@
             },
             "description" : "로그인 세션 없음"
           },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
           "404" : {
             "content" : {
               "*/*" : {
@@ -7541,6 +7880,16 @@
               }
             },
             "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
           },
           "500" : {
             "content" : {
@@ -7580,6 +7929,16 @@
             },
             "description" : "시작한 뒤의 추천 상태(보통 COMPUTING)"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -7590,6 +7949,16 @@
             },
             "description" : "로그인 세션 없음"
           },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
           "404" : {
             "content" : {
               "*/*" : {
@@ -7599,6 +7968,16 @@
               }
             },
             "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
           },
           "500" : {
             "content" : {
@@ -8411,6 +8790,16 @@
             },
             "description" : "추천 상태와 기업. 계산한 적이 없으면 NONE 과 빈 배열"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -8421,6 +8810,16 @@
             },
             "description" : "로그인 세션 없음"
           },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
           "404" : {
             "content" : {
               "*/*" : {
@@ -8430,6 +8829,16 @@
               }
             },
             "description" : "UUID 가 아니거나 없는 레포이거나 남의 레포"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
           },
           "500" : {
             "content" : {

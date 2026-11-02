@@ -49,4 +49,12 @@ public interface ConfirmedCardRepository extends Repository<Card, Long> {
             ORDER BY id
             """, nativeQuery = true)
     List<Long> findLiveConfirmedIdsOfUser(@Param("userId") Long userId);
+
+    @Query(value = """
+            SELECT id FROM card
+            WHERE user_id = :userId AND status = 'DRAFT' AND deleted_at IS NULL
+            ORDER BY updated_at DESC, id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Long> findLiveDraftIdsRecentFirst(@Param("userId") Long userId, @Param("limit") int limit);
 }

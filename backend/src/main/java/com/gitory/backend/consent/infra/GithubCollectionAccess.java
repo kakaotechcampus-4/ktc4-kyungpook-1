@@ -59,6 +59,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     private static final Duration COUNT_TIME_LIMIT = Duration.ofSeconds(15);
 
     private static final String DIFF_EVIDENCE_PATH = "/internal/analysis/diff-evidence";
+    private static final String GAP_FILL_PATH = "/internal/matching/gap-fill/stream";
     private static final String GITHUB_UNAUTHORIZED = "GITHUB_UNAUTHORIZED";
 
     private final UserRepository users;
@@ -114,6 +115,20 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
             throw revokedIfRejected(userId, token, failed);
         }
         return DiffEvidenceReader.read(data, target.userRepositoryId());
+
+    }
+
+    @Override
+    public JsonNode gapFill(Long userId, Object request, Consumer<AiProgress> progress) {
+
+        activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
+        UsableToken token = activeUsableToken(userId).orElseThrow(GithubCollectionAccess::unauthorized);
+        try {
+            return ai.postStreamingWithGithubToken(GAP_FILL_PATH, request, token.value(), aiProperties.readTimeout(),
+                    progress);
+        } catch (AiClientException failed) {
+            throw revokedIfRejected(userId, token, failed);
+        }
 
     }
 

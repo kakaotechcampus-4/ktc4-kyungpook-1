@@ -291,6 +291,10 @@ gitory:
     match-overall:
       per-minute: 2
       per-day: 20
+    # 공고 상세 '모자란 조건 채우기'. 같은 자료로 이미 채운 공고와 채우는 중인 공고는 세지 않는다
+    match-gap-fill:
+      per-minute: 3
+      per-day: 40
 
 logging:
   level:

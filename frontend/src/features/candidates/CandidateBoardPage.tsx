@@ -127,6 +127,20 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   if (board.isError && !board.data) return <main className="main"><QueryFailure error={board.error} retry={() => board.refetch()} pending={board.isFetching} /><Link to="/repos" className="btn btn--outline">레포 목록</Link></main>;
   const b = board.data!;
 
+  // 직접 추가한 후보는 바로 골라 둔다 — 추가한 사람이 그 후보로 카드를 만들려는 것이라 다시 찾아 체크하지 않게 한다
+  // 이미 한 번에 만들 수 있는 만큼 골랐으면 고르지 않는다 — 고르면 카드 만들기가 막힌다
+  const openAdd = () => setSp((current) => { current.set('add', '1'); return current; });
+  const addDialog = sp.get('add') === '1' && <AddCandidateDialog repoId={repoId}
+    onAdded={(c) => {
+      if (chosen.length >= MAX_CARDS_PER_REQUEST) {
+        toast(`"${c.title}" 을 후보에 추가했어요. ${CARD_LIMIT_MESSAGE}`);
+        return;
+      }
+      setSelected((current) => new Set(current).add(c.id));
+      toast(`"${c.title}" 을 후보에 추가하고 골라 두었어요`, { tone: 'success' });
+    }}
+    onClose={() => setSp((current) => { current.delete('add'); return current; })} />;
+
   // C2 — 후보 0개: 에러가 아니라 판정. 판정 근거 3줄 + 다음 행동 3개.
   if (b.verdict === 'EMPTY') {
     return (
@@ -140,13 +154,17 @@ function CandidateBoard({ repoId }: { repoId: string }) {
             <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>• {r}</span>)}</div>
           </div>
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
-            <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>
+            <div className="row" style={{ gap: 8 }}>
+              <Button variant="outline" size="sm" onClick={openAdd}>+ 직접 추가</Button>
+              <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>
+            </div>
             <div className="row" style={{ gap: 8 }}>
               <Link to={`/cards/new?repo=${encodeURIComponent(repoId)}`} className="btn btn--outline btn--sm">직접 작성</Link>
               <Link to="/repos" className="btn btn--outline btn--sm">다른 레포</Link>
             </div>
           </div>
         </div>
+        {addDialog}
       </main>
     );
   }
@@ -173,7 +191,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
       )}
 
       <Toolbar placeholder="후보 검색 (제목, 추천 이유)" value={q} onChange={setQ}>
-        <Button disabled={busy} onClick={() => setSp((current) => { current.set('add', '1'); return current; })}>+ 직접 추가</Button>
+        <Button disabled={busy} onClick={openAdd}>+ 직접 추가</Button>
       </Toolbar>
       <SectionHead label="후보 선택" count={visible.length} right={
         <span className="row candidate-board__actions">
@@ -211,7 +229,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         </Button>
       </StickyFooter>
 
-      {sp.get('add') === '1' && <AddCandidateDialog repoId={repoId} onClose={() => setSp((current) => { current.delete('add'); return current; })} />}
+      {addDialog}
       {sp.get('criteria') === '1' && repo.data && <CriteriaDialog repoId={repoId} partial={b.partial} onClose={() => setSp((current) => { current.delete('criteria'); return current; })} />}
     </main>
   );
@@ -309,7 +327,7 @@ function CriteriaDialog({ repoId, partial, onClose }: { repoId: string; partial:
 }
 
 /** C5 — GitHub 에 없는 작업 덩어리. 커밋을 붙이면 COMMIT, 안 붙이면 USER_STATED 근거. */
-function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () => void }) {
+function AddCandidateDialog({ repoId, onAdded, onClose }: { repoId: string; onAdded: (c: Candidate) => void; onClose: () => void }) {
   const add = useAddCandidate(repoId);
   const actions = useActionGate();
   const [title, setTitle] = useState('');
@@ -322,7 +340,7 @@ function AddCandidateDialog({ repoId, onClose }: { repoId: string; onClose: () =
     await actions.run(async () => {
     const c = await add.mutateAsync({ title: title.trim(), summary: summary.trim(), shas: shas.map((s) => s.sha) });
     track('candidate_added_manually', { repoId, withCommits: shas.length });
-    toast(`"${c.title}" 을 후보에 추가했어요`, { tone: 'success' });
+    onAdded(c);
     onClose();
     });
   };

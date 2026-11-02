@@ -11,6 +11,8 @@
       "required": { "total": 3, "met": 3 },
       "preferred": { "total": 2, "met": 1 },
       "experience": { "level": "ENTRY", "minYears": null },
+      "techs": ["JAVA", "SPRING", "POSTGRESQL", "REDIS"],
+      "education": { "level": "BACHELOR", "exempt": false },
       "source": {
         "url": "https://careers.example.com/gaon/jobs/1001",
         "collectedAt": "2026-10-19T20:05:12Z",
@@ -28,6 +30,8 @@
       "required": { "total": 4, "met": 2 },
       "preferred": { "total": 2, "met": 1 },
       "experience": { "level": "ENTRY", "minYears": null },
+      "techs": ["KOTLIN", "SPRING", "KAFKA"],
+      "education": null,
       "source": {
         "url": "https://careers.example.com/narae/jobs/2002",
         "collectedAt": "2026-10-19T20:05:12Z",
@@ -45,6 +49,8 @@
       "required": { "total": 0, "met": 0 },
       "preferred": { "total": 2, "met": 1 },
       "experience": { "level": "UNSPECIFIED", "minYears": null },
+      "techs": ["KUBERNETES", "TERRAFORM", "AWS"],
+      "education": null,
       "source": {
         "url": "https://careers.example.com/daon/jobs/3003",
         "collectedAt": "2026-10-19T20:05:12Z",
@@ -62,6 +68,8 @@
       "required": { "total": 3, "met": 1 },
       "preferred": { "total": 2, "met": 0 },
       "experience": { "level": "EXPERIENCED", "minYears": 3 },
+      "techs": ["KOTLIN", "ANDROID"],
+      "education": { "level": "BACHELOR", "exempt": true },
       "source": {
         "url": "https://careers.example.com/raon/jobs/4004",
         "collectedAt": "2026-10-19T20:05:12Z",
@@ -79,6 +87,8 @@
       "required": { "total": 2, "met": 0 },
       "preferred": { "total": 1, "met": 0 },
       "experience": { "level": "EXPERIENCED", "minYears": 2 },
+      "techs": ["PYTHON", "SPARK", "AIRFLOW", "SQL"],
+      "education": null,
       "source": {
         "url": "https://careers.example.com/maru/jobs/5005",
         "collectedAt": "2026-10-19T20:05:12Z",

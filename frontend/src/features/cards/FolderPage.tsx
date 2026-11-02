@@ -48,6 +48,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
           <p className="c-2">{message}</p>
           <div className="folder-head__actions">
             {kind === 'repo' && <Link to={`/repos/${encodeURIComponent(id ?? '')}/candidates`} className="btn btn--outline">후보 보드</Link>}
+            {kind === 'repo' && <Link to={`/repos/${encodeURIComponent(id ?? '')}/candidates?add=1`} className="btn btn--outline">기술 카드 만들기</Link>}
             {kind === 'direct' && <Link to="/cards/new" className="btn btn--primary"><PenLine size={14} aria-hidden />직접 작성</Link>}
             <Link to="/cards" className="btn btn--outline">경험 카드 목록</Link>
           </div>
@@ -76,6 +77,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
         </div>
         <div className="folder-head__actions">
           {boardLink && <Link to={boardLink} className="btn btn--outline">후보 보드</Link>}
+          {boardLink && <Link to={`${boardLink}?add=1`} className="btn btn--outline">기술 카드 만들기</Link>}
           {kind === 'activity' && <Link to={newCard} className="btn btn--primary"><PenLine size={14} aria-hidden />경험 카드 만들기</Link>}
           {kind === 'activity' && <Link to={`/activities/${encodeURIComponent(id ?? '')}/edit`} className="btn btn--outline">활동 고치기</Link>}
           {kind === 'activity' && <Button variant="danger" onClick={() => setDeleting(true)}>활동 삭제</Button>}
@@ -86,7 +88,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
 
       {(kind === 'repo' || techCards.length > 0) && (
         <CardSection title="기술 카드" cards={techCards} order={order}
-          empty={emptyHint("아직 기술 카드가 없어요. 위의 '후보 보드'에서 후보를 골라 만들 수 있어요.")} />
+          empty={emptyHint("아직 기술 카드가 없어요. 위의 '기술 카드 만들기'에서 커밋을 골라 만들 수 있어요.")} />
       )}
       <CardSection title="경험 카드" cards={experienceCards} order={order}
         empty={emptyHint(kind === 'activity'

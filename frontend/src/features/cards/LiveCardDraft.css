@@ -48,14 +48,24 @@
 .live-slot[data-phase='MISSED'] .live-slot__status, .live-slot[data-phase='MISSED'] .live-slot__note { color: var(--state-failed-text); }
 .live-slot[data-phase='DONE'], .live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'], .live-slot[data-phase='MISSED'] { transition: background-color .3s; }
 
-/* 칸에 한 AI 의 과정. 좁으면 줄바꿈된다 */
-.live-steps { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 2px; margin: 0; padding: 8px 0 0; list-style: none; border-top: 1px dashed var(--border-strong); }
-.live-step { display: inline-flex; align-items: flex-start; gap: 2px; min-width: 0; font-size: 13px; line-height: 20px; color: var(--text-strong); }
-.live-step__sep { flex: 0 0 auto; margin-top: 3px; color: var(--text-tertiary); }
+/* 칸에 한 AI 의 과정. 카드 상세 'AI 가 한 일'과 같은 세로 모양이다. 왼쪽 선과 아이콘은 장식이고 순서는 목록(ol)이 말한다 */
+.live-steps { display: flex; flex-direction: column; margin: 0; padding: 10px 0 0; list-style: none; border-top: 1px dashed var(--border-strong); }
+.live-step { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 8px; padding-bottom: 8px; min-width: 0; font-size: 13px; line-height: 20px; color: var(--text-strong); }
+.live-step:last-child { padding-bottom: 0; }
+.live-step:not(:last-child)::before { content: ''; position: absolute; left: 9px; top: 22px; bottom: 2px; width: 1px; background: var(--border-default); }
+.live-step__icon { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--radius-full); background: var(--bg-subtle); border: 1px solid var(--border-default); color: var(--text-secondary); }
+/* 바퀴 이름이 첫 줄에 있으면 아이콘은 그 아래 글 줄에 맞춘다 */
+.live-step[data-round] .live-step__icon { margin-top: 16px; }
+.live-step[data-round]:not(:last-child)::before { top: 38px; }
+/* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 'AI 의 판단' 글자가 따로 말한다 */
+.live-step[data-judged] .live-step__icon { background: var(--accent-point-soft); border-color: var(--border-selected); color: var(--text-accent); }
 .live-step__body { display: flex; flex-direction: column; min-width: 0; }
 .live-step__round { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-tertiary); }
 .live-step__text { font-weight: 500; overflow-wrap: anywhere; }
 .live-step__detail { font-size: 12px; line-height: 18px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.live-step__reason { display: flex; flex-direction: column; margin-top: 4px; padding-left: 8px; border-left: 2px solid var(--border-selected); }
+.live-step__reason-label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-accent); }
+.live-step__reason q { quotes: '\201C' '\201D'; font-size: 12px; line-height: 18px; color: var(--text-strong); overflow-wrap: anywhere; }
 
 /* 앞서 쓴 카드 — 접어 둔다 */
 .live-finished { display: flex; flex-direction: column; gap: 8px; }

@@ -85,15 +85,30 @@ describe('#617 카드를 쓰는 화면', () => {
     const lines = within(list).getAllByRole('listitem').map((li) => li.textContent);
     expect(lines).toEqual([
       '첫 초안과 검사근거 없는 숫자(50%)를 찾았어요',
-      '1번째 고쳐 쓰기이슈를 열어 봤어요이슈 #98 세션 만료',
+      '1번째 고쳐 쓰기이슈를 열어 봤어요이슈 #98 세션 만료AI 의 판단결과 수치가 이슈에 있을 것 같음',
       '다시 썼어요',
       '다시 검사해서 통과했어요',
     ]);
     // 카드 전체 단계(초안 쓰기)는 어느 칸에도 붙지 않고, 다른 칸에는 과정이 없다
     expect(container.querySelectorAll('.live-steps')).toHaveLength(1);
     expect(screen.queryByText('GitHub 기록으로 초안을 썼어요')).not.toBeInTheDocument();
-    expect(list.querySelectorAll('svg')).toHaveLength(3);
+    // 단계마다 장식 아이콘이 하나씩이다
+    expect(list.querySelectorAll('svg')).toHaveLength(4);
     for (const icon of list.querySelectorAll('svg')) expect(icon).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('AI 가 스스로 고르고 이유를 남긴 단계에만 "AI 의 판단" 이름표와 이유가 붙고, 코드가 한 단계에는 이유가 있어도 붙지 않는다', () => {
+    const steps = [
+      step({ kind: 'KEEP', field: 'T', reason: '커밋에 과제가 드러나지 않아서' }),
+      step({ kind: 'FLAG', field: 'T', actor: 'CODE', code: 'EMPTY', reason: '코드가 쓴 글은 AI 의 판단이 아니다' }),
+    ];
+    const { container } = render(<LiveCardDraft view={viewAt([card('a', 'DONE', four, steps)], 10_000)} instant={noInstant} />);
+    const list = screen.getByRole('list', { name: '과제 칸에서 AI 가 한 일' });
+    expect(within(list).getAllByText('AI 의 판단')).toHaveLength(1);
+    expect(within(list).getByText('커밋에 과제가 드러나지 않아서')).toBeInTheDocument();
+    expect(within(list).queryByText('코드가 쓴 글은 AI 의 판단이 아니다')).not.toBeInTheDocument();
+    // 이유는 카드 문장 칸(글) 안에 섞이지 않는다
+    expect(container.querySelector('.live-slot[data-field="T"] .live-slot__body')).not.toHaveTextContent('AI 의 판단');
   });
 
   it('칸을 다 쓰기 전에는 과정을 붙이지 않는다', () => {

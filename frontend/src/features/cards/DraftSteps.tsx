@@ -6,7 +6,7 @@ import { draftStepGroups } from '@/lib/draftSteps';
 import './DraftSteps.css';
 
 /** 아이콘은 장식이다. 무슨 단계인지는 문장이 말한다 */
-const kindIcon: Record<DraftStepKind, LucideIcon> = {
+export const kindIcon: Record<DraftStepKind, LucideIcon> = {
   DRAFT: FilePenLine, FLAG: Flag, OPEN: FileSearch, RETRY: RefreshCw, KEEP: Hand, REWRITE: PencilLine, PASS: CircleCheck, REVERT: Undo2,
 };
 

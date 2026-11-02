@@ -6,7 +6,6 @@ import { AuthGate } from '@/app/AuthGate';
 import { CardPage } from '@/features/cards/CardPage';
 import { CardsListPage } from '@/features/cards/CardsListPage';
 import { HomePage } from '@/features/home/HomePage';
-import { JobStatusPage } from '@/features/jobs/JobStatusPage';
 import { MatchListPage } from '@/features/match/MatchListPage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { ReposPage } from '@/features/repos/ReposPage';
@@ -84,14 +83,6 @@ describe('정리 실패 화면 — 서버가 모르는 오류 코드를 보내�
     mount(<AnalyzePage />, '/repos/r_auth/run?job=job_x', '/repos/:repoId/run');
     expect(await screen.findByRole('button', { name: '읽은 범위의 후보 보기' })).toBeInTheDocument();
     expect(screen.getByText(/서버가 작업을 끝내지 못했어요|서버에서 처리하지 못했어요/)).toBeInTheDocument();
-  });
-
-  it('작업 상태 화면도 같다 — 일반 오류 문구가 뜨고 연결 버튼은 없다', async () => {
-    serve({ '/jobs/job_x': job({ errorCode: 'GITHUB_QUOTA_EXCEEDED' }) });
-    mount(<JobStatusPage />, '/jobs/job_x', '/jobs/:jobId');
-    expect(await screen.findByText(/서버가 작업을 끝내지 못했어요|서버에서 처리하지 못했어요/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'GitHub 다시 연결' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '홈으로' })).toBeInTheDocument();
   });
 
   it('남긴 칸(작업 상태)을 모르면 정리가 끝난 것처럼 그리지 않고 "응답을 확인하지 못했어요"로 떨어진다', async () => {

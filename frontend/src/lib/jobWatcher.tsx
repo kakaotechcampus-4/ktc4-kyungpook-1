@@ -50,7 +50,7 @@ export function JobWatcher({ active: shared }: { active?: ActiveJobFeed } = {}) 
           if (!isTerminal(j.state)) continue;
           seen.current.delete(w.jobId);
           const repoId = j.result?.repoId ?? w.userRepositoryId;
-          const href = jobResultLink(j, repoId) ?? `/jobs/${encodeURIComponent(j.jobId)}`;
+          const href = jobResultLink(j, repoId) ?? '/repos';
           if (repoId) { void qc.invalidateQueries({ queryKey: keys.candidates(repoId) }); void qc.invalidateQueries({ queryKey: keys.repos }); }
           j.result?.cardIds?.forEach((id) => void qc.invalidateQueries({ queryKey: keys.card(id) }));
           void qc.invalidateQueries({ queryKey: keys.cards });

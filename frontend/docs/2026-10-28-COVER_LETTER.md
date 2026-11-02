@@ -96,7 +96,7 @@
 - 글이 목표(글자 수 상한의 70%)보다 짧은데 카드·답에 더 쓸 사실이 없으면, AI 가 모자란 내용 자리에 `[더 쓸 거리: 무엇을 쓰면 되는지]` 를 한두 개 넣는다. 항목이 아니라 `blanks` 에는 없으므로, 화면은 글에서 이 모양을 찾아 강조한다.
 - `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것은 `null`.
 - `draft.source: SKELETON` 은 AI 가 쓰지 못해 카드 문장과 빈칸으로 만든 뼈대다.
-- `writing`: 초안을 쓰는 동안(`DRAFTING`) AI 가 그 문항에 지금까지 쓴 글이다. 문장이 끝날 때마다 늘어나고, `round` 는 처음 쓴 글이 0 이며 고쳐 쓸 때마다 1씩 는다. 검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 앞 글로 돌아온다. 아직 쓰기 전이거나 단계가 끝나면(`DRAFTED`·`FAILED`) `null` 이고, 다 쓰면 `draft` 가 채워진다. 빠뜨린 빈칸은 다 쓴 뒤에 붙으므로 `writing` 에는 없을 수 있다.
+- `writing`: 초안을 쓰는 동안(`DRAFTING`) AI 가 그 문항에 지금까지 쓴 글이다. 첫 초안(`round` 0)은 문장이 끝날 때마다 늘어나고, 고쳐 쓸 때는 `round` 가 1씩 늘며 다 쓴 새 글로 한 번에 바뀐다(화면은 앞 글과 문장 단위로 견줘 바뀐 문장만 다시 그린다). 검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 앞 글로 돌아온다. 아직 쓰기 전이거나 단계가 끝나면(`DRAFTED`·`FAILED`) `null` 이고, 다 쓰면 `draft` 가 채워진다. 빠뜨린 빈칸은 다 쓴 뒤에 붙으므로 `writing` 에는 없을 수 있다.
 
 **`CoverLetterSummary`** — `{ id, stage, jobRole, posting, questionCount, firstQuestion, createdAt, updatedAt }` — `posting` 은 `CoverLetter` 와 같은 모양이고 공고 없이 만들었으면 `null`
 

@@ -34,7 +34,7 @@ public class AiHttpClient {
     private static final Set<String> ERROR_CODES = Set.of("INVALID_PAYLOAD", "UNAUTHORIZED",
             "RESOURCE_NOT_FOUND", "NO_TOOL_CALL", "EVIDENCE_MISMATCH", "LLM_RATE_LIMIT",
             "GITHUB_API_ERROR", "GITHUB_UNAUTHORIZED", "LLM_UNAVAILABLE", "INTERNAL_ERROR");
-    private static final Set<String> STAR_ITEM_KINDS = Set.of("SLOT", "STEP");
+    private static final Set<String> LIVE_ITEM_KINDS = Set.of("SLOT", "STEP", "DRAFT_TEXT", "GAP_CONDITION");
 
     private final AiClientProperties properties;
     private final RestClient collectionClient;
@@ -105,6 +105,20 @@ public class AiHttpClient {
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("X-GitHub-Token", githubToken)
                 .body(request), null);
+
+    }
+
+    /** {@link #postWithGithubToken} 과 같은 호출을 진행 스트리밍 경로로 부르고, 받은 진행을 progress 에 넘긴다 */
+    public JsonNode postStreamingWithGithubToken(String path, Object request, String githubToken,
+                                                 Duration readTimeout, Consumer<AiProgress> progress) {
+
+        requireInternalPath(path);
+        requireHeaderSafe(githubToken);
+        RestClient postClient = postClients.computeIfAbsent(readTimeout, timeout -> client(properties, timeout));
+        return recorded(path, postClient.post().uri(path)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-GitHub-Token", githubToken)
+                .body(request), progress);
 
     }
 
@@ -249,7 +263,7 @@ public class AiHttpClient {
         }
         JsonNode item = line.path("item");
         return Optional.of(new AiProgress(step.asString(), done.asInt(), total.isIntegralNumber() ? total.asInt() : null,
-                itemOf(item), STAR_ITEM_KINDS.contains(item.path("kind").asString("")) ? item : null));
+                itemOf(item), LIVE_ITEM_KINDS.contains(item.path("kind").asString("")) ? item : null));
     }
 
     // 종류가 없는 값은 버리고 숫자만 남겨, 화면에 줄 하나가 빠질 뿐 진행은 계속 보이게 한다

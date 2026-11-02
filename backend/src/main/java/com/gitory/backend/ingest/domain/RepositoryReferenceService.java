@@ -3,9 +3,11 @@ package com.gitory.backend.ingest.domain;
 import com.gitory.backend.ingest.infra.ConnectedRepositoryRepository;
 import com.gitory.backend.ingest.infra.ConnectedRepositoryRepository.ReferenceRow;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -29,6 +31,13 @@ public class RepositoryReferenceService {
         return connections.findReferences(userRepositoryIds).stream()
                 .collect(Collectors.toMap(ReferenceRow::getId,
                         row -> new RepositoryReference(row.getPublicId(), row.getOwnerLogin(), row.getName())));
+
+    }
+
+    /** 저장소 목록 화면에 보이는 저장소(빈 저장소·프로필 README 저장소 제외)를 분석한 저장소부터 limit 개까지 돌려준다 */
+    public List<ConnectedRepositoryReference> connectedOf(Long userId, String login, int limit) {
+
+        return connections.findConnected(userId, login, Limit.of(limit));
 
     }
 }

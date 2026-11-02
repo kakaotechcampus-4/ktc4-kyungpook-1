@@ -150,20 +150,21 @@ export function InterviewPage() {
 
         {/* 우측 패널 — 한 번에 하나만 묻는다 */}
         <aside className="card iv__panel">
-          <div className="row" style={{ gap: 8 }}>
+          {/* 질문이 없을 때는 아래 "카드로 돌아가기"가 같은 길이라, 여기서는 질문 중(또는 질문을 만드는 중)에만 둔다 */}
+          {(open || ask.isPending) && <div className="row" style={{ gap: 8 }}>
             <Link to={`/cards/${cardId}`} state={location.state} className="btn btn--ghost btn--sm"><ArrowLeft size={14} aria-hidden /> 카드로</Link>
-          </div>
+          </div>}
           {answer.isError && <Note strong="답변이 저장되지 않았어요" tone="danger">{errorView(answer.error).message}</Note>}
           {skip.isError && <Note strong="질문을 넘기지 못했어요" tone="danger">{errorView(skip.error).message}</Note>}
           {ask.isError && <QueryFailure error={ask.error} retry={() => ask.variables && askMore(ask.variables)} pending={ask.isPending} />}
 
           {finished.map((t) => (
             <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 16, background: 'var(--bg-paper)' }}>
-              <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 11 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{t.field} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
+              <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 11 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{starFieldShort[t.field]} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
               {t.answer ? (
                 <>
                   <span style={{ fontSize: 13, lineHeight: '20px' }}>{t.answer.text}</span>
-                  <span className="t-12 c-3">{evidenceTypeLabel[t.answer.source]}, 답변 저장됨</span>
+                  <span className="t-12 c-3">{evidenceTypeLabel[t.answer.source]}, 저장됨</span>
                 </>
               ) : (
                 <span className="t-12 c-3">{t.outcome === 'SKIPPED' ? '넘긴 질문' : '측정하지 않음으로 기록'}</span>
@@ -187,7 +188,7 @@ export function InterviewPage() {
           {open ? (
             <>
               <div className="stack" style={{ gap: 6 }}>
-                <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{open.field} 칸</Badge><span className="t-12 c-2">{starFieldName[open.field]}</span></div>
+                <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{starFieldShort[open.field]} 칸</Badge></div>
                 <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
                 <details className="interview-evidence"><summary>질문 근거 보기</summary>
                 <div className="found" style={{ gridTemplateColumns: '1fr' }}>
@@ -198,7 +199,7 @@ export function InterviewPage() {
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>
-                  <span className="t-12 w-600 c-3" style={{ fontSize: 11 }}>이 중에 고르셔도 돼요</span>
+                  <span className="t-12 w-600 c-3" style={{ fontSize: 11 }}>이 중에서 골라도 돼요</span>
                   {open.options.map((o) => <button key={o} type="button" className="chip chip--option" disabled={answer.isPending} aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
                 </div>
               )}
@@ -215,7 +216,7 @@ export function InterviewPage() {
           ) : ask.isPending ? <AiWait label={`카드와 커밋을 읽고 ${ask.variables ? starFieldShort[ask.variables] : ''} 칸에 맞는 질문을 만드는 중이에요`} /> : (
             <>
               {confirmed ? null : capReached ? (
-                <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채우시면 돼요</Note>
+                <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채울 수 있어요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
                   <span className="w-600" style={{ fontSize: 14 }}>{ended ? '더 묻고 싶은 칸' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
@@ -231,7 +232,7 @@ export function InterviewPage() {
                   : ended || capReached
                   ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 확인하고 확정하기</Button>
                   : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
-                <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정</Button>
+                <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>카드 수정</Button>
               </div>
             </>
           )}

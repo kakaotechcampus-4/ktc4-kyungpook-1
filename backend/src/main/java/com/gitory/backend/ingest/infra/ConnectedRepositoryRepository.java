@@ -1,9 +1,11 @@
 package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.ingest.domain.ConnectedRepository;
+import com.gitory.backend.ingest.domain.ConnectedRepositoryReference;
 import com.gitory.backend.ingest.domain.ContributionTarget;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositorySummary;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -74,6 +76,20 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             ORDER BY r.ownerLogin, r.name
             """)
     List<RepositorySummary> findAllSummaries(@Param("userId") Long userId, @Param("login") String login);
+
+    // 저장소 목록 화면과 같은 저장소를 고르되, 상한에 걸려도 후보가 있는 분석한 저장소가 빠지지 않게 분석한 저장소부터 둔다
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.ConnectedRepositoryReference(
+                c.id, c.publicId, r.ownerLogin, r.name, c.lastAnalyzedAt)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.userId = :userId
+              AND (c.countedAt IS NULL OR c.commitCount > 0)
+              AND NOT (LOWER(r.ownerLogin) = LOWER(:login) AND LOWER(r.name) = LOWER(:login))
+            ORDER BY CASE WHEN c.lastAnalyzedAt IS NULL THEN 1 ELSE 0 END,
+                     COALESCE(r.githubPushedAt, r.githubCreatedAt) DESC NULLS LAST, c.id
+            """)
+    List<ConnectedRepositoryReference> findConnected(@Param("userId") Long userId, @Param("login") String login,
+                                                     Limit limit);
 
     @Query("""
             SELECT new com.gitory.backend.ingest.domain.RepositorySummary(

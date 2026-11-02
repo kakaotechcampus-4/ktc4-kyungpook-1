@@ -1,12 +1,16 @@
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { ChevronRight, FileSearch, Plus, X } from 'lucide-react';
 import { useCards } from '@/api/queries';
 import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
 import { COVER_LETTER_LIMITS as L, useCreateCoverLetter, type NewCoverLetter, type QuestionTheme } from '@/api/coverLetters';
-import { Breadcrumb, Button, Chip, Field, Input, Note, PageTitle, Textarea } from '@/components/ui';
-import { EXAMPLE_QUESTION, THEME_LABEL, exampleThemes } from '@/lib/coverLetterCopy';
+import { matchSupported, useMatch, type MatchTarget } from '@/api/matching';
+import { Breadcrumb, Button, Chip, EmptyState, Field, Input, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
+import { QueryFailure } from '@/components/ui/QueryFailure';
+import { CompanyMark } from '@/features/match/CompanyMark';
+import { companyLabel } from '@/features/match/model';
+import { EXAMPLE_QUESTION, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
 import { newIdempotencyKey } from '@/lib/uuid';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -24,13 +28,21 @@ function charLimitOf(raw: string): { value: number | null; error: string | null 
   return { value: n, error: null };
 }
 
+/** 공고를 읽을 때(ⓐ)와 만들 때(ⓑ) 모두 404 는 '없는 공고' 다 — 마감·내려감·잘못된 id */
+const postingNotFound = (e: unknown) => e instanceof ApiError && e.status === 404;
+
 /**
  * 자소서 ① 입력(#517). 지원 직무, 메모, 문항(1~10개, 글자 수)을 받아 만든다.
  * 같은 요청 키는 "내용을 바꾸지 않은 재전송"에만 쓴다 — 입력을 고치면 새 키를 만든다(계약: 같은 키는 처음 자소서를 돌려준다).
+ * 공고 상세에서 왔으면(`?postingId=`, #637) 그 공고를 보이고 직무를 공고 제목으로 채워 두며, 만들기에 공고 id 를 함께 보낸다.
  */
 export function CoverLetterNewPage() {
   useDocumentTitle('새 자소서');
   const nav = useNavigate();
+  const [sp] = useSearchParams();
+  // 매칭이 꺼진 빌드에서는 공고를 읽을 길이 없어 공고 없이 시작한 것으로 본다
+  const postingId = matchSupported() ? sp.get('postingId')?.trim() || null : null;
+  const posting = useMatch(postingId ?? '');
   const cards = useCards();
   const create = useCreateCoverLetter();
   const [jobRole, setJobRole] = useState('');
@@ -42,6 +54,10 @@ export function CoverLetterNewPage() {
 
   const edit = (fn: () => void) => { fn(); setKey(newIdempotencyKey()); create.reset(); };
   const setRow = (i: number, patch: Partial<Row>) => edit(() => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r))));
+
+  // 직무 칸은 공고 제목으로 채우되, 사용자가 먼저 적었으면 덮지 않는다
+  const postingTitle = postingId ? posting.data?.role : undefined;
+  useEffect(() => { if (postingTitle) setJobRole((v) => (v === '' ? prefillJobRole(postingTitle) : v)); }, [postingTitle]);
 
   const confirmed = cards.data?.filter((c) => c.status === 'CONFIRMED').length;
   const noCards = confirmed === 0 || (create.error instanceof ApiError && create.error.code === 'NO_CONFIRMED_CARDS');
@@ -71,21 +87,46 @@ export function CoverLetterNewPage() {
       jobRole: jobRole.trim(),
       memo: memo.trim() || null,
       questions: rows.map((r) => ({ text: r.text.trim(), charLimit: charLimitOf(r.charLimit).value })),
+      postingId,
     };
     try {
       const letter = await create.mutateAsync({ input, key });
-      track('cover_letter_created', { coverLetterId: letter.id, questionCount: input.questions.length });
+      track('cover_letter_created', { coverLetterId: letter.id, questionCount: input.questions.length, withPosting: !!postingId });
       nav(`/cover-letters/${encodeURIComponent(letter.id)}`);
     } catch { /* 아래에서 그 자리 안내로 보인다 */ }
   };
 
-  const failure = create.error && !(create.error instanceof ApiError && create.error.code === 'NO_CONFIRMED_CARDS') ? errorView(create.error) : null;
+  const crumbs = [{ label: '홈', to: '/' }, { label: '자소서', to: '/cover-letters' }, { label: '새 자소서' }];
+  const postingMissing = !!postingId && (postingNotFound(posting.error) || postingNotFound(create.error));
+  if (postingMissing) {
+    return (
+      <main className="main main--tight">
+        <Breadcrumb items={crumbs} />
+        <EmptyState icon={FileSearch} title="공고를 찾을 수 없어요" desc="마감되었거나 내려간 공고예요. 다른 공고를 고르거나, 공고 없이 새 자소서를 쓸 수 있어요.">
+          <Link to="/match" className="btn btn--primary">공고 목록으로</Link>
+          <Link to="/cover-letters/new" className="btn btn--outline">공고 없이 새 자소서 쓰기</Link>
+        </EmptyState>
+      </main>
+    );
+  }
+
+  // 확정 카드 없음은 위 안내가, 없는 공고(404)는 '찾을 수 없음' 화면이 맡는다 — '공고 없이 새 자소서 쓰기' 로 돌아와도 그 실패가 남지 않게
+  const failure = create.error && !(create.error instanceof ApiError && create.error.code === 'NO_CONFIRMED_CARDS') && !postingNotFound(create.error) ? errorView(create.error) : null;
   const show = (msg: string | null) => (tried ? msg : null);
+  const sub = postingId
+    ? '이 공고의 조건과 맞춰 본 결과를 AI가 함께 봐요. 문항마다 쓸 카드도 공고에 맞춰 골라 드려요.'
+    : '문항마다 내 확정 카드 중 쓸 만한 것을 AI가 먼저 골라 드려요. 고른 카드는 다음 화면에서 바꿀 수 있어요.';
 
   return (
     <main className="main main--tight">
-      <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '자소서', to: '/cover-letters' }, { label: '새 자소서' }]} />
-      <PageTitle sub="문항마다 내 확정 카드 중 쓸 만한 것을 AI가 먼저 골라 드려요. 고른 카드는 다음 화면에서 바꿀 수 있어요.">새 자소서</PageTitle>
+      <Breadcrumb items={crumbs} />
+      <PageTitle sub={sub}>새 자소서</PageTitle>
+
+      {postingId && (
+        posting.data ? <PostingBanner posting={posting.data} />
+        : posting.isError ? <QueryFailure error={posting.error} retry={() => posting.refetch()} pending={posting.isFetching} />
+        : <Skeleton h={70} />
+      )}
 
       {noCards && (
         <Note strong="확정한 카드가 없어요" tone="caution">
@@ -154,5 +195,20 @@ export function CoverLetterNewPage() {
         <Button className="right" onClick={submit} loading={create.isPending} disabled={noCards}>카드 고르기 시작</Button>
       </div>
     </main>
+  );
+}
+
+/** 어느 공고에 쓰는 자소서인지 — 회사 마크·회사·공고 제목과 공고 상세로 가는 링크. 공고를 빼는 버튼은 없다(공고 없이 쓰려면 '새 자소서') */
+function PostingBanner({ posting }: { posting: Pick<MatchTarget, 'id' | 'company' | 'role' | 'logoUrl'> }) {
+  const company = companyLabel(posting.company);
+  return (
+    <section className="cl-posting" aria-label="지원 공고">
+      <CompanyMark name={company} logoUrl={posting.logoUrl} size={40} />
+      <div className="stack grow" style={{ gap: 2, minWidth: 0 }}>
+        <span className="cl-posting__label">지원 공고</span>
+        <span className="cl-posting__title"><b>{company}</b> · {posting.role}</span>
+      </div>
+      <Link to={`/match/${encodeURIComponent(posting.id)}`} className="cl-posting__link">공고 보기 <ChevronRight size={14} aria-hidden /></Link>
+    </section>
   );
 }

@@ -45,11 +45,13 @@ async function addLanguage(page: Page, n: number, values: { test?: string; testN
   await page.getByLabel(`어학 ${n} 점수 또는 등급`, { exact: true }).fill(values.score);
   await page.getByLabel(`어학 ${n} 취득 월 (선택)`, { exact: true }).fill(values.month ?? '2021-08');
 }
-async function addCertificate(page: Page, n: number, values: { name: string; issuer?: string; month?: string }) {
-  await page.getByRole('button', { name: '자격증 추가', exact: true }).click();
-  await page.getByLabel(`자격증 ${n} 이름`, { exact: true }).fill(values.name);
-  if (values.issuer) await page.getByLabel(`자격증 ${n} 발급 기관 (선택)`, { exact: true }).fill(values.issuer);
-  await page.getByLabel(`자격증 ${n} 취득 월 (선택)`, { exact: true }).fill(values.month ?? '2021-11');
+/** 자격증은 이름만 고른다 — 흔한 자격증은 타일, 그 밖은 직접 적어 칩으로 더한다 */
+const certificates = (page: Page) => page.getByRole('region', { name: '자격증', exact: true });
+async function addCertificate(page: Page, name: string) {
+  const tile = certificates(page).getByRole('checkbox', { name, exact: true });
+  if (await tile.count()) return tile.check();
+  await certificates(page).getByLabel('자격증 직접 입력', { exact: true }).fill(name);
+  await certificates(page).getByRole('button', { name: '추가', exact: true }).click();
 }
 const status = (page: Page) => page.locator('.sticky-footer strong');
 const savedProfile = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem('gitory.demo.db') ?? '{}').profile);
@@ -100,7 +102,7 @@ test('first entry: the dialog takes the five steps over the home page, then the 
   await page.getByLabel('학력 1 학점 (선택)', { exact: true }).fill('3.8');
   await choose(page, '학력 1 학점 만점 (선택)', '4.5');
   await addCareer(page, 1, { company: '샘플컴퍼니', role: '백엔드 개발' });
-  await addCertificate(page, 1, { name: '정보처리기사', issuer: '한국산업인력공단' });
+  await addCertificate(page, '정보처리기사');
   await expect(status(page)).toHaveText('저장하지 않은 변경이 있어요');
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await expect(status(page)).toHaveText('저장했어요');
@@ -118,7 +120,7 @@ test('first entry: the dialog takes the five steps over the home page, then the 
   await expect(page.getByLabel('경력 1 퇴사 월', { exact: true })).toBeDisabled();
   await expect(page.getByRole('combobox', { name: '어학 1 시험', exact: true })).toContainText('토익');
   await expect(page.getByLabel('어학 1 점수 또는 등급', { exact: true })).toHaveValue('900');
-  await expect(page.getByLabel('자격증 1 발급 기관 (선택)', { exact: true })).toHaveValue('한국산업인력공단');
+  await expect(certificates(page).getByRole('checkbox', { name: '정보처리기사', exact: true })).toBeChecked();
   await expect(status(page)).toHaveText('고친 곳이 없어요');
   // 영어 열거 이름이 화면에 나오지 않는다
   await expect(page.getByRole('main')).not.toContainText(/GRADUATED|BACHELOR|FULL_TIME|TOEIC_SPEAKING|ON_LEAVE/);
@@ -161,11 +163,11 @@ test('the dialog also appears for a first-time user with no cards, and the home 
 test('a failed save keeps the input and the retry saves it', async ({ page }) => {
   await seedInterests(page);
   await page.goto('/settings/profile?demoScenario=save-error');
-  await addCertificate(page, 1, { name: '정보처리기사' });
+  await addCertificate(page, '정보처리기사');
   await page.getByRole('button', { name: '저장', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('서버에서 처리하지 못했어요');
   await expect(status(page)).toHaveText('저장하지 못했어요. 입력한 내용은 그대로예요');
-  await expect(page.getByLabel('자격증 1 이름', { exact: true })).toHaveValue('정보처리기사');
+  await expect(certificates(page).getByRole('checkbox', { name: '정보처리기사', exact: true })).toBeChecked();
   await expect(page.getByRole('button', { name: '다시 저장', exact: true })).toBeFocused();
   await page.getByRole('button', { name: '다시 저장', exact: true }).click();
   await expect(status(page)).toHaveText('저장했어요');
@@ -222,22 +224,22 @@ test('a test that is not on the list asks for its name, and the name is sent onl
 test('leaving with unsaved input asks first', async ({ page }) => {
   await seedInterests(page);
   await page.goto('/settings/profile');
-  await addCertificate(page, 1, { name: '정보처리기사' });
+  await addCertificate(page, '정보처리기사');
   await page.getByRole('link', { name: '마이페이지로', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '아직 저장되지 않은 내용이 있어요' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: '계속 작성', exact: true }).click();
   await expect(page).toHaveURL(/\/settings\/profile$/);
-  await expect(page.getByLabel('자격증 1 이름', { exact: true })).toHaveValue('정보처리기사');
+  await expect(certificates(page).getByRole('checkbox', { name: '정보처리기사', exact: true })).toBeChecked();
   await page.getByRole('link', { name: '마이페이지로', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: '저장하지 않고 나가기', exact: true }).click();
   await expect(page).toHaveURL(/\/settings$/);
 });
 
-test('rows can be removed and each list stops at its own limit (5 / 10 / 10 / 20)', async ({ page }) => {
+test('rows can be removed and each list stops at its own limit (5 / 10 / 10)', async ({ page }) => {
   await seedInterests(page);
   await page.goto('/settings/profile');
-  for (const [noun, max] of [['학력', 5], ['경력', 10], ['어학', 10], ['자격증', 20]] as const) {
+  for (const [noun, max] of [['학력', 5], ['경력', 10], ['어학', 10]] as const) {
     const add = page.getByRole('button', { name: `${noun} 추가`, exact: true });
     for (let i = 0; i < max; i++) await add.click();
     await expect(add).toBeDisabled();
@@ -265,7 +267,7 @@ for (const width of [390, 320]) {
       await addCareer(page, n, { company: `매우 긴 이름의 주식회사 ${n} 소프트웨어 연구소`, role: '백엔드 서버 개발 및 인프라 운영 담당' });
       // 시험 이름 칸이 함께 나오는 '기타'로 가장 넓은 줄을 만든다
       await addLanguage(page, n, { test: '기타', testName: 'TOPIK 한국어능력시험 고급 읽기 쓰기', score: 'Level 7 / IH / N1 1급' });
-      await addCertificate(page, n, { name: '정보처리기사 실기 필기 통합 자격', issuer: '한국산업인력공단 서울지역본부' });
+      await addCertificate(page, `정보처리기사 실기 필기 통합 자격 한국산업인력공단 서울지역본부 ${n}`);
     }
     expect(await noHorizontalOverflow(page)).toBe(true);
     const controls = page.locator('.profile-page input:not([type="checkbox"]), .profile-page .select-trigger, .profile-page .btn');
@@ -289,8 +291,8 @@ test('mobile 390: the sticky save bar does not hide the last section', async ({ 
   await page.setViewportSize({ width: 390, height: 844 });
   await seedInterests(page);
   await page.goto('/settings/profile');
-  await page.getByRole('button', { name: '자격증 추가', exact: true }).scrollIntoViewIfNeeded();
-  const add = await page.getByRole('button', { name: '자격증 추가', exact: true }).boundingBox();
+  await certificates(page).getByRole('button', { name: '추가', exact: true }).scrollIntoViewIfNeeded();
+  const add = await certificates(page).getByRole('button', { name: '추가', exact: true }).boundingBox();
   const footer = await page.locator('.sticky-footer').boundingBox();
   expect(add!.y + add!.height).toBeLessThanOrEqual(footer!.y + 1);
 });

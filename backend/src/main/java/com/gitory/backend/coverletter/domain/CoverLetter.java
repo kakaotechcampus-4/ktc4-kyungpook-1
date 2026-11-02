@@ -54,12 +54,25 @@ public class CoverLetter {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<DraftStep> draftSteps;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    private CoverLetterPosting posting;
+
     private String idempotencyKey;
     private Instant createdAt;
     private Instant updatedAt;
 
-    /** 만들자마자 카드 고르기를 기다리고, 메모가 비어 있으면 없음으로 둔다 */
     public static CoverLetter start(Long userId, String jobRole, String memo, String idempotencyKey) {
+
+        return start(userId, jobRole, memo, idempotencyKey, null);
+
+    }
+
+    /**
+     * 만들자마자 카드 고르기를 기다리고, 메모가 비어 있으면 없음으로 둔다
+     * posting 은 공고 상세에서 시작했을 때만 있고, 뒤에 카드나 공고가 바뀌어도 이 값으로 AI 를 부른다
+     */
+    public static CoverLetter start(Long userId, String jobRole, String memo, String idempotencyKey,
+                                    CoverLetterPosting posting) {
 
         CoverLetter letter = new CoverLetter();
         Instant now = CoverLetterTime.now();
@@ -70,6 +83,7 @@ public class CoverLetter {
         letter.stage = CoverLetterStage.ASSIGNING;
         letter.assignSteps = new ArrayList<>();
         letter.draftSteps = new ArrayList<>();
+        letter.posting = posting;
         letter.idempotencyKey = idempotencyKey;
         letter.createdAt = now;
         letter.updatedAt = now;

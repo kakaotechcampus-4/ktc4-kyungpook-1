@@ -2,6 +2,7 @@ package com.gitory.backend.agent.infra;
 
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.CoverLetterDrafts;
+import com.gitory.backend.agent.port.CoverLetterDraftsListener;
 import com.gitory.backend.agent.port.CoverLetterDraftsRequest;
 import com.gitory.backend.agent.port.CoverLetterQuestionsRequest;
 import com.gitory.backend.common.infra.ai.AiClientProperties;
@@ -22,6 +23,7 @@ import tools.jackson.databind.node.ObjectNode;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,7 +40,8 @@ class AiCoverLetterDraftsAdapterTest {
                                     new CoverLetterQuestionsRequest.KnownAnswer("REASON", "결제를 다뤄 보고 싶다", null)),
                             List.of("LEARNING")),
                     new CoverLetterDraftsRequest.Question(2, "실패 경험을 쓰세요", 500, null, null, null, List.of(),
-                            List.of())));
+                            List.of())),
+            null);
 
     private final ObjectMapper mapper = JsonMapper.builder().build();
 
@@ -82,6 +85,7 @@ class AiCoverLetterDraftsAdapterTest {
 
         JsonNode first = mapper.readTree(requestBody).path("questions").get(0);
         assertThat(requestPath).isEqualTo("/internal/cover-letter-drafts");
+        assertThat(mapper.readTree(requestBody).has("posting")).isFalse();
         assertThat(first.path("missing_items").get(0).asString()).isEqualTo("LEARNING");
         assertThat(first.path("answers").get(0).path("card_id").asLong()).isEqualTo(11L);
         assertThat(first.path("answers").get(1).path("card_id").isNull()).isTrue();
@@ -95,10 +99,10 @@ class AiCoverLetterDraftsAdapterTest {
                         List.of(new CoverLetterDrafts.Sentence(1, "[상황: 언제, 어디서, 무슨 일이었는지 적어 주세요]")),
                         0, 0, List.of(), List.of("SITUATION"), "SKELETON"));
         assertThat(result.steps()).containsExactly(
-                new CoverLetterDrafts.Step(1, "SUB_AGENT", "WROTE", 1, null, "24", null, null, null),
-                new CoverLetterDrafts.Step(2, "SUB_AGENT", "DECIDED", 1, "UNSOURCED_NUMBER", "30%", null, "KEEP",
+                new CoverLetterDrafts.Step(1, "SUB_AGENT", "WROTE", 1, null, "24", null, null, null, null),
+                new CoverLetterDrafts.Step(2, "SUB_AGENT", "DECIDED", 1, "UNSOURCED_NUMBER", "30%", null, null, "KEEP",
                         "카드의 숫자와 같다"),
-                new CoverLetterDrafts.Step(3, "SUPERVISOR", "REVIEWED", null, null, "0", null, null, null));
+                new CoverLetterDrafts.Step(3, "SUPERVISOR", "REVIEWED", null, null, "0", null, null, null, null));
 
     }
 
@@ -148,7 +152,7 @@ class AiCoverLetterDraftsAdapterTest {
         CoverLetterDrafts result = adapter().write(REQUEST);
 
         assertThat(result.steps()).last().isEqualTo(
-                new CoverLetterDrafts.Step(4, "CODE", "CHECK_FAILED", 1, "UNDER_LENGTH", "447", null, null, null));
+                new CoverLetterDrafts.Step(4, "CODE", "CHECK_FAILED", 1, "UNDER_LENGTH", "447", null, null, null, null));
 
     }
 
@@ -163,6 +167,96 @@ class AiCoverLetterDraftsAdapterTest {
         assertThatThrownBy(() -> adapter().write(REQUEST))
                 .isInstanceOfSatisfying(AgentUnavailableException.class,
                         failure -> assertThat(failure.isRetryable()).isTrue());
+
+    }
+
+    @Test
+    @DisplayName("listener 가 있으면 /internal/cover-letter-drafts/stream 으로 보내 문항별 글과 걸린 문장이 든 단계를 받은 차례대로 넘기고, 초안은 스트리밍 없는 API 와 같게 읽는다")
+    void streamsTextAndStepsAndReadsSameDrafts() {
+
+        List<Object> received = new ArrayList<>();
+        responseBody = progress(text(1, 0, "\"배포를 함께 고쳤다.\""))
+                + progress("{\"kind\":\"STEP\",\"step\":{\"seq\":1,\"actor\":\"CODE\",\"kind\":\"CHECK_FAILED\","
+                + "\"question_id\":1,\"code\":\"UNSOURCED_NUMBER\",\"value\":\"30%\",\"sentence_seq\":2,"
+                + "\"sentence\":\"배포가 30% 빨라졌다.\"}}")
+                + progress(text(1, 1, "\"배포를 함께 고쳤다. 배포가 빨라졌다.\""))
+                + result(validData());
+
+        CoverLetterDrafts streamed = adapter().write(REQUEST, recorder(received));
+
+        assertThat(requestPath).isEqualTo("/internal/cover-letter-drafts/stream");
+        assertThat(received).containsExactly(
+                new TextLine(1, 0, "배포를 함께 고쳤다."),
+                new CoverLetterDrafts.Step(1, "CODE", "CHECK_FAILED", 1, "UNSOURCED_NUMBER", "30%", 2,
+                        "배포가 30% 빨라졌다.", null, null),
+                new TextLine(1, 1, "배포를 함께 고쳤다. 배포가 빨라졌다."));
+        responseBody = success(validData());
+        assertThat(streamed).isEqualTo(adapter().write(REQUEST));
+
+    }
+
+    @Test
+    @DisplayName("보내지 않은 문항·음수 바퀴·글이 아니거나 5,000자를 넘는 글 줄과 STAR 칸 글 줄, 모르는 단계 줄은 버리고, 남은 줄과 초안은 그대로 받는다")
+    void dropsMalformedLinesAndKeepsTheDrafts() {
+
+        List<Object> received = new ArrayList<>();
+        String longest = "가".repeat(5_000);
+        responseBody = progress(text(9, 0, "\"보내지 않은 문항\""))
+                + progress(text(1, -1, "\"음수 바퀴\""))
+                + progress(text(1, 0, "null"))
+                + progress(text(1, 0, "\"" + "가".repeat(5_001) + "\""))
+                + progress("{\"kind\":\"SLOT\",\"question_id\":1,\"round\":0,\"slot\":\"S\",\"text\":\"STAR 칸\",\"done\":false}")
+                + progress("{\"kind\":\"STEP\",\"step\":{\"seq\":1,\"actor\":\"CODE\",\"kind\":\"GUESSED\",\"question_id\":1}}")
+                + progress(text(1, 0, "\"" + longest + "\""))
+                + result(validData());
+
+        CoverLetterDrafts streamed = adapter().write(REQUEST, recorder(received));
+
+        assertThat(received).containsExactly(new TextLine(1, 0, longest));
+        assertThat(streamed.drafts()).hasSize(2);
+
+    }
+
+    private static String text(int questionId, int round, String text) {
+
+        return "{\"kind\":\"DRAFT_TEXT\",\"question_id\":%d,\"round\":%d,\"text\":%s,\"done\":false}"
+                .formatted(questionId, round, text);
+
+    }
+
+    private static CoverLetterDraftsListener recorder(List<Object> received) {
+
+        return new CoverLetterDraftsListener() {
+
+            @Override
+            public void text(int questionId, int round, String text) {
+
+                received.add(new TextLine(questionId, round, text));
+
+            }
+
+            @Override
+            public void step(CoverLetterDrafts.Step step) {
+
+                received.add(step);
+
+            }
+        };
+
+    }
+
+    private record TextLine(int questionId, int round, String text) {
+    }
+
+    private static String progress(String item) {
+
+        return "{\"type\":\"progress\",\"step\":\"COVER_LETTER\",\"done\":0,\"total\":null,\"item\":" + item + "}\n";
+
+    }
+
+    private String result(ObjectNode data) {
+
+        return "{\"type\":\"result\",\"status\":200,\"body\":" + success(data) + "}\n";
 
     }
 

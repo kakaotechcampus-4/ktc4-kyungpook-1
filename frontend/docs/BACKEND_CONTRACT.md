@@ -329,6 +329,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 | `GET /matches` | `MatchTarget[]` — **AI 를 부르지 않는다.** 모든 공고의 `fit` 은 null, `required`·`preferred` 의 `met` 은 0 이고 `total` 은 공고의 조건 수다(#581). 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다. `?companyId=` 를 주면 그 회사 공고만 오고(없는 회사면 빈 배열), 비어 있으면 거르지 않는다 |
 | `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote`·`status` · `needsJudgement` · `summary` · `conditions[]`. **AI 를 부르지 않고 저장된 판단만 읽는다.** 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
 | `POST /matches/{id}/judgement` | 같은 `MatchDetail`. 아직 판단하지 않은 (카드, 조건) 짝만 AI 에게 묻고(최대 90초) 새 상세를 돌려준다. 물을 짝이 없으면 AI 를 부르지 않고 호출 한도도 세지 않는다 |
+| `POST /matches/{id}/gap-fill` | 같은 `MatchDetail`. 맞춰 본 뒤 못 채운 조건을 AI 가 **배경에서** 찾기 시작하고 바로 돌려준다(`gapFill.state` 는 보통 RUNNING). 화면은 `gapFill.pollAfterMs` 마다 `GET /matches/{id}` 를 다시 읽는다. 찾는 중이거나 카드·후보·레포가 그대로인 공고는 다시 찾지 않고 호출 한도도 세지 않는다. 못 채운 조건이 없으면 AI 없이 바로 DONE(빈 `conditions`)이다. 본문 `{ "conditionIds": ["…"] }` 를 주면 끝난 결과에서 SKIPPED 인 그 조건만 다시 찾는다([그래도 찾아보기], 아래) |
 
 **MatchTarget**
 ```jsonc
@@ -338,6 +339,8 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
   "fit": "A|B|C|D" | null,                         // 목록·상세 모두 늘 null(등급을 매기지 않음)
   "required": { "total", "met" }, "preferred": { "total", "met" },
   "experience": { "level": "ENTRY|EXPERIENCED|UNSPECIFIED", "minYears": n | null },
+  "techs": ["JAVA", "SPRING", …],                  // 필수·우대 조건의 기술을 조건 순서대로 한 번씩. 없으면 []
+  "education": { "level": "HIGH_SCHOOL|ASSOCIATE|BACHELOR|MASTER|DOCTOR", "exempt": bool } | null,
   "source": { "url", "collectedAt", "expiresAt": "ISO" | null } }   // expiresAt null = 마감일 없음(아래 참고)
 ```
 
@@ -350,7 +353,25 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
   "conditions": [{ "id", "type": "REQUIRED|PREFERRED|RESPONSIBILITY", "text", "quote",   // quote = 공고 원문 인용
                    "generalType": "EDUCATION|MILITARY|LANGUAGE|CERTIFICATE|LOCATION|OTHER" | null,   // null = 기술·경험 조건·담당 업무
                    "status": "MET|NOT_MET|UNJUDGED|UNKNOWN|CHECK" | null,
-                   "metBy": [{ "cardId", "cardTitle", "cardKind": "TECH|QUALITATIVE", "repoId": "…" | null, "reason" }] }] }
+                   "metBy": [{ "cardId", "cardTitle", "cardKind": "TECH|QUALITATIVE", "repoId": "…" | null, "reason" }] }],
+  "gapFill": { … } | null }                                         // 모자란 조건 채우기. 시작한 적이 없으면 null (아래)
+```
+
+**MatchDetail.gapFill** — 모자란 조건 채우기 (#652)
+```jsonc
+{ "state": "RUNNING|DONE|FAILED",
+  "pollAfterMs": 1500 | null,                     // RUNNING 일 때만 값이 있다
+  "conditions": [{                                // 찾아본 조건마다 하나, 공고 조건 순서
+    "conditionId": "…",                           // conditions[].id 와 같다
+    "decision": "SEARCH|SKIP" | null,             // 찾아볼지. null = 아직 정하는 중
+    "decisionReason": "…" | null,
+    "forced": false,                              // [그래도 찾아보기]로 다시 찾은 조건. decision 은 AI 판단 그대로다
+    "steps": [{ "kind": "CANDIDATES_CHECKED|DRAFT_CARDS_CHECKED|GITHUB_SEARCHED|GITHUB_FAILED|OUTSIDE_REPO_FOUND",
+                "count": 12 | null, "query": "kafka" | null, "repoName": "owner/name" | null }],
+    "proposal": { "action": "CREATE_CARD|CONTINUE_CARD|ANALYZE_REPO",
+                  "candidateId": "…" | null, "cardId": "…" | null, "repoId": "…" | null,   // action 에 맞는 칸만 값이 있다(CREATE_CARD 는 candidateId·repoId)
+                  "title", "repoName": "owner/name" | null, "reason" } | null,
+    "result": "PROPOSED|NOT_FOUND|SKIPPED|TIMED_OUT" | null }] }   // null = 아직 찾는 중
 ```
 
 - **매칭 기준은 공고 조건이다.** 인재상 태그는 쓰지 않는다. 조건은 필수(REQUIRED) → 우대(PREFERRED) → 담당 업무(RESPONSIBILITY) 순이고, 같은 종류 안에서는 원문 순서다.
@@ -360,13 +381,21 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - **등급(`fit`)은 상세에서도 null 이다.** `required`·`preferred` 의 `met` 은 상태가 MET 인 조건 수다.
 - **확정 카드가 하나도 없으면** 기술·경험 조건은 모두 NOT_MET 이고 `needsJudgement` 는 false 다. 확정 카드 수는 내 정보 `stats.confirmedCards` 로 본다.
 - **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 판단하지 않는다(`status` null, `metBy` 빈 배열).
+- **모자란 조건 채우기(`gapFill`)는 사용자에게 묻지 않는다.** 화면은 맞춰 보기(`/judgement`) 응답에 NOT_MET 이 있으면 `/gap-fill` 을 자동으로 부르고, `pollAfterMs` 마다 상세를 다시 읽는다. 찾는 조건은 못 채운 기술·경험 필수 조건이고, 필수를 다 채운 공고만 못 채운 우대 조건을 찾는다. 많아야 5개이고 학력·어학 같은 일반 조건은 찾지 않는다.
+  - `decision`: 조건 문장과 내 카드·후보를 보고 AI 가 찾아볼지 정한 것이다. SKIP 이면 `result` 는 SKIPPED 이고 `decisionReason` 이 그 이유다.
+  - `steps`: AI 가 한 일이며 생기는 대로 늘어난다. CANDIDATES_CHECKED = 카드로 만들지 않은 후보 `count` 개를 봄, DRAFT_CARDS_CHECKED = 작성 중 카드 `count` 장을 봄, GITHUB_SEARCHED = 검색어 `query` 로 내 공개 커밋을 찾아 분석한 레포의 커밋을 빼고 `count` 개를 찾음, GITHUB_FAILED = `query` 검색이 막힘(토큰 거절·GitHub 한도), OUTSIDE_REPO_FOUND = 내 레포 목록에 없는 레포 `repoName` 에서 찾아 분석할 수 없음.
+  - `proposal`: 찾았으면 하나다. CREATE_CARD = 후보 `candidateId` 로 카드 만들기(`repoId`·`repoName` 은 후보가 나온 레포라 `POST /repos/{repoId}/cards` 에 쓴다, `title` 은 후보 제목), CONTINUE_CARD = 작성 중 카드 `cardId` 마저 채우기(`title` 은 카드 제목, `repoName` null), ANALYZE_REPO = 분석하지 않은 내 레포 `repoId` 분석하기(`title`·`repoName` 은 레포 이름). [진행하기] 는 지금 있는 API(카드 만들기·되묻기·레포 분석)로 넘긴다.
+  - `result`: PROPOSED = 제안이 있음, NOT_FOUND = 찾아봤지만 없음, SKIPPED = 찾지 않기로 함, TIMED_OUT = 시간(90초)이 모자라 찾은 데까지만 봄.
+  - **[그래도 찾아보기]**: DONE 결과에서 `result` 가 SKIPPED 인 조건을 `conditionIds` 로 보내면 그 조건만 AI 판단과 상관없이 찾는다(호출 한도 1번). 찾는 동안 나머지 조건은 앞 결과 그대로 보이고, 끝나면 그 조건만 새 결과로 바뀐다. 그 조건은 `forced` 가 true 이고 `decision`·`decisionReason` 은 AI 가 SKIP 이라 본 그대로라, 화면은 'AI 는 이렇게 봤지만 직접 찾아봤어요' 처럼 두 사실을 같이 보일 수 있다. 끝난 결과가 없으면(처음·찾는 중·FAILED) 409 `INVALID_STATE`, SKIPPED 가 아니거나 지금은 채운 조건이면 400 `INVALID_REQUEST` 다.
+  - 찾는 동안은 서버 메모리의 진행을 보여 주므로, 서버가 다시 시작되면 `decision`·`steps` 가 빈 조건으로 보일 수 있다. 5분이 지나도 끝나지 않은 찾기와 AI 가 실패한 찾기는 FAILED 이고, `/gap-fill` 을 다시 부르면 새로 찾는다. 확정 카드·작성 중 카드·카드로 만들지 않은 후보·레포 목록과 분석 여부가 그대로면 DONE 결과를 그대로 다시 쓴다.
 - **경력은 원문에 적혀 있을 때만 나온다.** `ENTRY` = 신입·경력 무관·인턴·최소 0년(상한만 있는 '1년 미만'·'3년 이하' 도 포함), `EXPERIENCED` = 최소 N년(`minYears`), `UNSPECIFIED` = 경력 얘기가 없거나 원문으로 확인할 수 없을 때. 경력 조건은 `conditions` 에 넣지 않는다.
 - **정렬**: 목록은 등급이 없으므로 마감이 7일 안에 남은 공고를 마감이 가까운 순으로 앞에 두고, 나머지는 `expiresAt` 이 가까운 순을 지키며 회사마다 한 건씩 돌아가며 놓고, 마감일이 없는(null) 공고는 뒤로 내려준다. 화면의 '마감 순' 보기는 받은 목록을 다시 정렬한다.
 - **필터(경력: 전체·신입 가능·경력·경력 표시 없음, 직무 분류)도 화면에서 한다.** '경력 표시 없음'은 `experience.level` 이 `UNSPECIFIED` 인 공고라, 경력 조건을 알 수 없는 공고를 따로 걸러 볼 수 있게 한다. 서버 쿼리 파라미터는 기업 페이지용 `companyId` 하나뿐이다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
+- **기술(`techs`) · 학력(`education`)**: 목록 카드에 그리는 값이다. `techs` 는 카드 `techs` 와 같은 이름이고 담당 업무 조건의 기술은 넣지 않는다. `education` 은 상세처럼 일반 조건 EDUCATION 중 수준을 읽은 것만 보고, 필수 학력 중 가장 낮은 수준을 준다. `exempt` 는 '또는 그에 준하는 경력' 같은 예외가 적힌 학력이라 화면은 목록에 보이지 않고 상세에서 원문으로 보인다. 수준을 읽은 필수 학력이 없으면 null 이다.
 - **회사(`companyId` · `logoUrl`)**: `companyId` 는 서버 회사 설정의 키(예: `daangn`)이고, 여러 회사의 공고를 주는 출처(로켓펀치)는 `rocketpunch:회사이름` 이다. 기업별로 묶을 때 회사 이름 대신 이 값을 쓴다. `logoUrl` 은 회사 설정에 적은 공식 로고 https 주소이고, 없으면 null 이라 화면은 이니셜을 보인다. 이미지를 불러오지 못할 때도 이니셜로 되돌린다.
 - **마감일(`source.expiresAt`)**: null 은 '마감일 없음' 이다. 출처가 상시 채용이라 마감일을 주지 않은 공고, 출처가 준 날짜를 읽지 못한 공고, 1년 넘게 먼 날짜를 준 공고가 함께 null 이라 화면은 '상시 채용' 보다 '마감일 없음' 이 맞다. 마감된 공고는 회사 채용 목록에서 사라지면 다음 가져오기에서 목록에서 빠진다.
 - **회사 이름(`company`)**: 같은 `companyId` 면 이름도 늘 같다. 회사 설정 출처는 설정의 이름 하나를 쓰고, 로켓펀치는 회사 이름이 `companyId` 안에 들어 있다.
-- **오류**: 목록은 401 `UNAUTHENTICATED` 뿐이다. 상세는 401 · 404 `NOT_FOUND` 이다. 맞춰 보기는 401 · 404 · 429 `RATE_LIMITED`(1분 10번 · 하루 100번) · 503 `AI_UNAVAILABLE`(AI 판단이 잠시 실패, 다시 누를 수 있다)이다.
+- **오류**: 목록은 401 `UNAUTHENTICATED` 뿐이다. 상세는 401 · 404 `NOT_FOUND` 이다. 맞춰 보기는 401 · 404 · 429 `RATE_LIMITED`(1분 10번 · 하루 100번) · 503 `AI_UNAVAILABLE`(AI 판단이 잠시 실패, 다시 누를 수 있다)이다. 채우기는 401 · 404 · 400 `INVALID_REQUEST`(다시 찾을 수 없는 조건을 `conditionIds` 로 보냄) · 403 `GITHUB_UNAUTHORIZED`(새로 찾아야 하는데 쓸 수 있는 GitHub 연결이 없음 — 레포 분석과 같이 'GitHub 다시 연결' 로 안내. 저장한 결과를 다시 쓰거나 못 채운 조건이 없으면 연결을 보지 않는다) · 409 `INVALID_STATE`(아직 맞춰 보지 않은 조건이 있음 — `needsJudgement` 가 true, 또는 `conditionIds` 를 줬는데 끝난 결과가 없음) · 429 `RATE_LIMITED`(1분 3번 · 하루 40번)이다. 채우기는 배경에서 돌아 AI 실패가 503 으로 오지 않고 `gapFill.state` FAILED 로 보인다.
 - **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급을 셀 때의 예시로, 지금 목록 응답과 값이 다르다) · `list-no-cards.json`(지금 목록 응답과 같은 모양 — `fit` null, `met` 0) · `detail.json`(맞춰 본 뒤의 상세) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
 - 한 줄 소개(`summary`), 인재상 태그(`matchedTags`·`gapTags`), 카드 수 기준 칸(`supportedTagCount`·`independentTagCount`)은 없다. `source.verifiedAt` 대신 `source.collectedAt`(공고를 가져온 시각)이다.
 

@@ -34,7 +34,7 @@ it('confirms directly without a self-attestation checkbox and keeps the API payl
 it('describes freezing the current version and matches the returned version number', async () => {
   vi.spyOn(endpoints, 'confirm').mockResolvedValue(result);
   const confirmed = mount();
-  expect(screen.getByText(`v${card.version.versionNo}, 현재 버전 확정`)).toBeInTheDocument();
+  expect(screen.getByText('확정할 버전').nextElementSibling).toHaveTextContent(`v${card.version.versionNo}`);
   expect(result.versionNo).toBe(card.version.versionNo);
   fireEvent.click(screen.getByRole('button', { name: '확정하기' }));
   await waitFor(() => expect(confirmed).toHaveBeenCalledWith(expect.objectContaining({ versionNo: card.version.versionNo })));
@@ -62,13 +62,14 @@ it('finishes the confirmation only after the card refetch, so the page never sho
 });
 it('reports fields that were never written as empty even when the server dropped none', () => {
   mount({ ...card, droppedFields: [], version: { ...card.version, task: null, result: null } });
-  expect(screen.getByText('2칸 — 빈 채로 확정됩니다')).toBeInTheDocument();
+  expect(screen.getByText('빈 칸').nextElementSibling).toHaveTextContent('2칸');
+  expect(screen.getByText('빈 칸은 빈 채로 확정돼요')).toBeInTheDocument();
 });
 it('keeps the confirmation open on a failed request', async () => {
   vi.spyOn(endpoints, 'confirm').mockRejectedValue(new Error('일시적인 오류'));
   const confirmed = mount();
   fireEvent.click(screen.getByRole('button', { name: '확정하기' }));
-  await screen.findByText('확정하지 못했습니다');
+  await screen.findByText('확정하지 못했어요');
   expect(screen.getByRole('dialog')).toBeInTheDocument();
   expect(confirmed).not.toHaveBeenCalled();
 });

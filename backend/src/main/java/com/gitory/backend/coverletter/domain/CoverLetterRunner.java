@@ -29,6 +29,7 @@ public class CoverLetterRunner {
     private final CoverLetterAssignStep assignStep;
     private final CoverLetterAskStep askStep;
     private final CoverLetterDraftStep draftStep;
+    private final CoverLetterLiveLog liveLog;
     private final TransactionTemplate transaction;
 
     /** 집은 자소서는 집은 시각을 커밋한 뒤에 돌려주고, 기다리는 자소서가 없으면 빈 값을 돌려준다 */
@@ -70,13 +71,15 @@ public class CoverLetterRunner {
 
     }
 
+    // 진행은 결과를 저장하거나 실패로 끝낸 뒤에 지워, 조회가 그 사이에 빈 과정을 보이지 않게 한다
     private void runStage(CoverLetter claimed) {
 
+        CoverLetterLive live = liveLog.start(claimed.getId());
         try {
             Consumer<CoverLetter> save = switch (claimed.getStage()) {
-                case ASSIGNING -> assignStep.run(claimed);
+                case ASSIGNING -> assignStep.run(claimed, live);
                 case ASKING -> askStep.run(claimed);
-                case DRAFTING -> draftStep.run(claimed);
+                case DRAFTING -> draftStep.run(claimed, live);
                 default -> throw new IllegalStateException("AI 단계가 아닌 자소서를 집었다: " + claimed.getStage());
             };
             transaction.executeWithoutResult(status -> stillClaimed(claimed).ifPresent(save));
@@ -88,6 +91,8 @@ public class CoverLetterRunner {
             log.warn("자소서 {} 의 {} 단계를 {} 로 끝낸다", claimed.getId(), claimed.getStage(),
                     CoverLetterError.INTERNAL_ERROR, failure);
             transaction.executeWithoutResult(status -> fail(claimed, CoverLetterError.INTERNAL_ERROR));
+        } finally {
+            liveLog.finish(claimed.getId(), live);
         }
 
     }

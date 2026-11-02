@@ -23,6 +23,10 @@
 
 /* ───────── 입력 화면 ───────── */
 .profile-page .page-lead { max-width: 62ch; }
+/* 마이페이지는 넓어서 자격증 타일을 한 줄에 더 놓는다(처음 입력 창은 두 줄 그대로) */
+.profile-page .cert-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .profile-page .cert-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .profile-page .cert-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .profile-fields { display: flex; flex-direction: column; gap: 20px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .profile-section { display: flex; flex-direction: column; gap: 16px; }
 .profile-section__hint { font-size: 12px; line-height: 20px; color: var(--text-secondary); }
@@ -69,8 +73,9 @@
 .quick-custom { display: flex; align-items: flex-end; gap: 8px; }
 .quick-custom .field { flex: 1 1 auto; min-width: 0; }
 .quick-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.quick-chips li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border-radius: 999px; background: var(--bg-selected); border: 1px solid var(--border-selected); font-size: 13px; line-height: 20px; color: var(--text-strong); }
-.quick-chips button { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--text-secondary); font-size: 12px; }
+.quick-chips li { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 8px 6px 12px; border-radius: 999px; background: var(--bg-selected); border: 1px solid var(--border-selected); font-size: 13px; line-height: 20px; color: var(--text-strong); }
+.quick-chips span { min-width: 0; overflow-wrap: anywhere; }
+.quick-chips button { flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--text-secondary); font-size: 12px; }
 .quick-chips button:hover { background: var(--bg-surface); color: var(--text-primary); }
 @media (max-width: 600px) {
   .interest-grid--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

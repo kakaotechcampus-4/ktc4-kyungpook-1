@@ -46,11 +46,11 @@ test('409 leaves the analysis action in place and creates no job', async ({ page
 test('failed save retains text and only successful retry permits leaving', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards/card_01?mode=edit&demoScenario=save-error');
   const text = '  실제 입력한 공백과 줄바꿈도\n그대로 보존합니다.  ';
-  await page.getByLabel('행동 (Action)').fill(text);
+  await page.getByLabel('행동', { exact: true }).fill(text);
   await page.getByRole('button', { name: '저장하고 닫기', exact: true }).click();
   await expect(page.locator('main').getByRole('status')).toContainText('저장이 안 됐어요');
   await expect(page).toHaveURL(/mode=edit/);
-  await expect(page.getByLabel('행동 (Action)')).toHaveValue(text);
+  await expect(page.getByLabel('행동', { exact: true })).toHaveValue(text);
   await page.getByRole('button', { name: '다시 저장하고 닫기' }).click();
   await expect(page).not.toHaveURL(/mode=edit/);
   const card = await page.evaluate(async () => (await (await fetch('/api/cards/card_01')).json()).data);

@@ -63,7 +63,7 @@ public class AiStarDraftAdapter implements StarDraftPort {
             data = listener == null
                     ? ai.post(PATH, request, properties.starReadTimeout())
                     : ai.postStreaming(PATH + "/stream", request, properties.starReadTimeout(),
-                            progress -> forward(progress.starItem(), listener));
+                            progress -> forward(progress.liveItem(), listener));
         } catch (AiClientException failure) {
             throw unavailable(failure);
         }

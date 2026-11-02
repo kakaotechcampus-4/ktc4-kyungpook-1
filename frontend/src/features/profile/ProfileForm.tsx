@@ -4,7 +4,7 @@ import type { Profile } from '@/api/profile';
 import { Button, Note, StickyFooter } from '@/components/ui';
 import { UnsavedChangesDialog } from '@/components/SaveStatus';
 import { isDemo } from '@/mock/browser';
-import { InterestPicker, SectionEditor } from './ProfileSections';
+import { CertificationQuick, InterestPicker, SectionEditor } from './ProfileSections';
 import { SAVE_ID, useProfileFormState } from './useProfileFormState';
 
 /**
@@ -32,7 +32,7 @@ export function ProfileForm({ initial }: { initial: Profile }) {
         <SectionEditor section="educations" state={state} />
         <SectionEditor section="careers" state={state} />
         <SectionEditor section="languages" state={state} />
-        <SectionEditor section="certifications" state={state} />
+        <CertificationQuick state={state} />
       </fieldset>
 
       <p className="sr-only" role="status" aria-live="polite">{statusText}</p>

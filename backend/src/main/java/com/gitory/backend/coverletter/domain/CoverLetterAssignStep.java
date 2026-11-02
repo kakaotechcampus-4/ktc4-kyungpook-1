@@ -21,17 +21,19 @@ import java.util.stream.Collectors;
 class CoverLetterAssignStep {
 
     // AI 자소서 계약이 받는 카드 수의 상한이라, 넘으면 최근에 확정한 카드부터 보낸다
-    private static final int MAX_CARDS = 100;
+    static final int MAX_CARDS = 100;
 
     private final CoverLetterQuestionRepository questions;
     private final CardMaterialReader cardMaterials;
     private final CoverLetterAssignmentPort assignment;
 
-    Consumer<CoverLetter> run(CoverLetter claimed) {
+    /** AI 가 단계를 거칠 때마다 live 에 남겨, 카드를 고르는 동안에도 조회가 과정을 보이게 한다 */
+    Consumer<CoverLetter> run(CoverLetter claimed, CoverLetterLive live) {
 
         List<CoverLetterQuestion> loaded = questions.findByCoverLetterIdOrderBySeq(claimed.getId());
         List<CardMaterial> cards = cardMaterials.read(claimed.getUserId(), MAX_CARDS);
-        CoverLetterAssignment result = assignment.assign(requestOf(claimed, loaded, cards));
+        CoverLetterAssignment result = assignment.assign(requestOf(claimed, loaded, cards),
+                step -> live.assignStep(stepOf(step)));
         return letter -> save(letter, result);
 
     }
@@ -47,10 +49,13 @@ class CoverLetterAssignStep {
                     picked.reason(),
                     picked.considered().stream().map(card -> new ConsideredCard(card.cardId(), card.note())).toList());
         }
-        letter.assigned(result.steps().stream()
-                .map(step -> new AssignStep(step.seq(), step.actor(), step.kind(), step.questionId(), step.cardId(),
-                        step.reason()))
-                .toList());
+        letter.assigned(result.steps().stream().map(CoverLetterAssignStep::stepOf).toList());
+
+    }
+
+    private static AssignStep stepOf(CoverLetterAssignment.Step step) {
+
+        return new AssignStep(step.seq(), step.actor(), step.kind(), step.questionId(), step.cardId(), step.reason());
 
     }
 
@@ -66,7 +71,8 @@ class CoverLetterAssignStep {
                 cards.stream()
                         .map(card -> new CoverLetterAssignmentRequest.Card(card.id(), card.title(), card.kind().name(),
                                 card.sourceName(), card.period(), CoverLetterCardSummary.of(card)))
-                        .toList());
+                        .toList(),
+                CoverLetterPosting.inputOf(letter));
 
     }
 }

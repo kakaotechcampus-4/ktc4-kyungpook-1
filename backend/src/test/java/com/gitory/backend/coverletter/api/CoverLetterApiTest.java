@@ -795,7 +795,7 @@ class CoverLetterApiTest {
         letter.asked();
         letter.startDrafting();
         letter.claim();
-        letter.drafted(List.of(new DraftStep(1, "SUB_AGENT", "WROTE", 1, null, "91", null, null, null)));
+        letter.drafted(List.of(new DraftStep(1, "SUB_AGENT", "WROTE", 1, null, "91", null, null, null, null)));
         return letters.save(letter);
 
     }

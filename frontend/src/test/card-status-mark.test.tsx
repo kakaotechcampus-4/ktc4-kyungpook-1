@@ -19,12 +19,10 @@ const mark = (status: CardStatus, star: StarStates, reviewWithStatus?: boolean) 
 const reviewBadge = () => screen.queryByText('확인 필요');
 
 describe('CardStatusMark — STAR 네 칸이 다 찬 카드', () => {
-  it('확정 카드는 글자 배지 대신 체크 아이콘만 두고, 읽어 주는 이름은 "확정됨"이다', () => {
+  it('확정 카드는 눈에 보이는 표시 없이 화면 읽기 프로그램용 "확정됨"만 둔다', () => {
     const { container } = mark('CONFIRMED', FILLED);
-    const check = screen.getByRole('img', { name: '확정됨' });
-    expect(check).toHaveAttribute('title', '확정됨');
-    expect(check.querySelector('svg')).toHaveAttribute('aria-hidden', 'true'); // 아이콘 자체는 장식 — 이름은 바깥 요소가 준다
-    expect(screen.queryByText('확정됨')).not.toBeInTheDocument();
+    expect(screen.getByText('확정됨')).toHaveClass('sr-only');
+    expect(container.querySelector('svg')).toBeNull();
     expect(screen.queryByText('작성 중')).not.toBeInTheDocument();
     expect(container.querySelector('.badge')).toBeNull();
     expect(reviewBadge()).not.toBeInTheDocument();
@@ -46,11 +44,10 @@ describe('CardStatusMark — 확인 필요 칸이 있는 카드', () => {
     expect(screen.queryByText('확정됨')).not.toBeInTheDocument();
   });
 
-  it('확정 카드는 목록의 "보완 필요" 탭과 같은 기준으로 "확인 필요"를 띄우지 않고, 확정 표시는 아이콘으로 남는다', () => {
+  it('확정 카드는 목록의 "보완 필요" 탭과 같은 기준으로 "확인 필요"를 띄우지 않고, 확정은 화면 읽기 프로그램용 글자로 남는다', () => {
     mark('CONFIRMED', review);
     expect(reviewBadge()).not.toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '확정됨' })).toBeInTheDocument();
-    expect(screen.queryByText('확정됨')).not.toBeInTheDocument();
+    expect(screen.getByText('확정됨')).toHaveClass('sr-only');
   });
 });
 
@@ -120,11 +117,11 @@ describe('경험 카드 목록', () => {
   it('칸이 다 찬 카드의 글자 배지는 걷히고 "확인 필요"만 남는다', () => {
     mountList();
     const done = within(tile('확정 완료 카드'));
-    expect(done.getByRole('img', { name: '확정됨' })).toBeInTheDocument();
-    expect(done.queryByText(/확정됨|작성 중|확인 필요/)).not.toBeInTheDocument();
+    expect(done.getByText('확정됨')).toHaveClass('sr-only');
+    expect(done.queryByText(/작성 중|확인 필요/)).not.toBeInTheDocument();
+    expect(tile('확정 완료 카드').querySelector('.badge')).toBeNull();
     const ready = within(tile('확정 대기 카드'));
     expect(ready.queryByText(/확정됨|작성 중|확인 필요/)).not.toBeInTheDocument();
-    expect(ready.queryByRole('img', { name: '확정됨' })).not.toBeInTheDocument();
     const review = within(tile('확인 필요 카드'));
     expect(review.getByText('확인 필요')).toBeInTheDocument();
     expect(review.queryByText(/확정됨|작성 중/)).not.toBeInTheDocument();
@@ -165,10 +162,9 @@ describe('카드 상세 머리글', () => {
     return document.querySelector('.card-page-header') as HTMLElement;
   }
 
-  it('칸이 다 찬 확정 카드는 체크 아이콘 + 확정일, 글자 배지는 없다', () => {
+  it('칸이 다 찬 확정 카드는 확정일만 보이고, 확정 표시는 화면 읽기 프로그램용 글자다', () => {
     const header = within(mountDetail(load('card_04')));
-    expect(header.getByRole('img', { name: '확정됨' })).toBeInTheDocument();
-    expect(header.queryByText('확정됨')).not.toBeInTheDocument();
+    expect(header.getByText('확정됨')).toHaveClass('sr-only');
     expect(header.getByText(/확정$/)).toBeInTheDocument(); // "2026-10-.. 확정"
   });
 
@@ -176,7 +172,6 @@ describe('카드 상세 머리글', () => {
     const base = load('card_01');
     const header = within(mountDetail({ ...base, droppedFields: [], lowConfidenceFields: [], version: { ...base.version, task: '팀 일정에 맞춰 세션 유지 방식을 정해야 했다', result: '재로그인 요청이 줄었다' } }));
     expect(header.queryByText(/작성 중|확정됨|확인 필요/)).not.toBeInTheDocument();
-    expect(header.queryByRole('img', { name: '확정됨' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '확정' })).toBeEnabled();
   });
 

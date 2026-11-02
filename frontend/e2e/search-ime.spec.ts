@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, showCardTiles } from './helpers';
 
 test('Escape during IME composition preserves the search query', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/cards');
+  await showCardTiles(page);
   const search = page.getByRole('textbox', { name: '카드 이름으로 검색', exact: true });
   await search.fill('로그인');
 
@@ -18,6 +19,7 @@ test('Escape during IME composition preserves the search query', async ({ page }
 test('Escape with the legacy IME keyCode preserves the search query', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/cards');
+  await showCardTiles(page);
   const search = page.getByRole('textbox', { name: '카드 이름으로 검색', exact: true });
   await search.fill('로그인');
 
@@ -32,6 +34,7 @@ test('Escape with the legacy IME keyCode preserves the search query', async ({ p
 test('ordinary Escape clears the search query and keeps focus in the search field', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/cards');
+  await showCardTiles(page);
   const search = page.getByRole('textbox', { name: '카드 이름으로 검색', exact: true });
   await search.fill('로그인');
   await search.press('Escape');

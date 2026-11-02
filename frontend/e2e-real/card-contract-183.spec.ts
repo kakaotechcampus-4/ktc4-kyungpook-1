@@ -55,7 +55,7 @@ test('lost manual response retries one UUID and adopts current server metadata w
   await page.getByRole('button', { name: '저장 후 종료', exact: true }).click();
   await expect(page).toHaveURL(`/cards/${CARD_ID}`);
   await page.getByRole('navigation', { name: '커리어 관리', exact: true }).getByRole('link', { name: '경험 카드', exact: true }).click();
-  await page.getByRole('link', { name: /직접 작성/ }).click();
+  await page.getByRole('link', { name: '경험 카드 만들기', exact: true }).click();
   await page.getByLabel('카드 제목', { exact: true }).fill('새 진입 제목');
   await page.getByRole('button', { name: '네 칸 직접 쓰기', exact: true }).click();
   await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();

@@ -6,6 +6,7 @@ import com.gitory.backend.matching.domain.GapFillService;
 import com.gitory.backend.matching.domain.MatchDetail;
 import com.gitory.backend.matching.domain.MatchDetailService;
 import com.gitory.backend.matching.domain.MatchListService;
+import com.gitory.backend.matching.domain.MatchedPostingService;
 import com.gitory.backend.matching.domain.MatchPostingNotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,6 +34,7 @@ public class MatchController {
     private final MatchListService matches;
     private final MatchDetailService details;
     private final GapFillService gapFills;
+    private final MatchedPostingService matched;
 
     @GetMapping("/api/matches")
     @Operation(summary = "기업·직무 매칭 목록 조회",
@@ -47,6 +49,21 @@ public class MatchController {
             @RequestParam(required = false) String companyId) {
 
         return ApiResponse.ok(matches.list(companyId).stream().map(MatchTargetResponse::from).toList());
+
+    }
+
+    @GetMapping("/api/matches/summary")
+    @Operation(summary = "나에게 매칭된 공고 수",
+            description = "전체 매칭·레포 추천·공고 상세 맞춰 보기가 저장한 (카드, 조건) 판단 중, 지금 확정 카드 글로 필수 기술·경험 조건을 하나 이상 채운 마감 전 공고 수입니다. AI 를 부르지 않고 호출 한도도 세지 않으며, 확정 카드가 없으면 0 입니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "매칭된 공고 수"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<MatchedPostingsResponse> summary(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser) {
+
+        return ApiResponse.ok(new MatchedPostingsResponse(matched.count(loginUser.id())));
 
     }
 

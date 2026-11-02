@@ -49,8 +49,8 @@
 .prompt__card { width: 100%; max-width: 620px; background: var(--bg-surface); border-radius: 20px; box-shadow: 0 14px 40px rgba(0, 0, 0, .08); border: 1px solid var(--border-default); display: flex; flex-direction: column; text-align: left; overflow: hidden; }
 /* 입력과 제안 목록이 같은 왼쪽 시작선을 쓰도록 패딩을 한 값으로 묶는다 */
 .prompt__card { --pad: 18px; }
-.prompt__row { display: flex; align-items: center; gap: 10px; padding: 16px var(--pad); }
-.prompt__input { flex: 1; min-width: 0; border: 0; outline: 0; font-size: 16px; line-height: 24px; background: transparent; padding: 0; }
+.prompt__row { display: flex; align-items: center; gap: 10px; padding: 0 var(--pad); }
+.prompt__input { flex: 1; min-width: 0; border: 0; outline: 0; font-size: 16px; line-height: 24px; background: transparent; padding: 16px 0; }
 .prompt__input::placeholder { color: var(--text-tertiary); }
 .prompt__go { width: var(--control-touch-size); height: var(--control-touch-size); flex: 0 0 auto; border-radius: var(--control-radius); background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; transition: background .12s; }
 .prompt__go:hover:not(:disabled) { background: var(--bg-ink-hover); }

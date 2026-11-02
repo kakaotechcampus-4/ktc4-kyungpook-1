@@ -11,6 +11,7 @@ public record CoverLetterSummaryResponse(
         @Schema(format = "uuid") String id,
         CoverLetterStage stage,
         String jobRole,
+        @Schema(description = "공고 상세에서 시작한 자소서면 그 공고, 아니면 null") CoverLetterPostingResponse posting,
         int questionCount,
         String firstQuestion,
         Instant createdAt,
@@ -18,6 +19,6 @@ public record CoverLetterSummaryResponse(
 
     static CoverLetterSummaryResponse from(CoverLetterSummary letter) {
         return new CoverLetterSummaryResponse(letter.id().toString(), letter.stage(), letter.jobRole(),
-                letter.questionCount(), letter.firstQuestion(), letter.createdAt(), letter.updatedAt());
+                CoverLetterPostingResponse.from(letter.posting()), letter.questionCount(), letter.firstQuestion(), letter.createdAt(), letter.updatedAt());
     }
 }

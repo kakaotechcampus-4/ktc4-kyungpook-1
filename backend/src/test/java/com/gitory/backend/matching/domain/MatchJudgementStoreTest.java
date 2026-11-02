@@ -30,6 +30,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -147,6 +148,31 @@ class MatchJudgementStoreTest {
         jdbc.update("DELETE FROM job_posting_criterion WHERE job_posting_id = ?", posting.getId());
 
         assertThat(jdbc.queryForObject("SELECT count(*) FROM match_judgement", Integer.class)).isZero();
+
+    }
+
+    @Test
+    @DisplayName("저장된 판단만 읽을 때는 AI 를 부르지 않고, 지금 카드 글로 모든 카드를 판단한 조건만 complete 이며 채운 카드를 카드 id 순으로 준다")
+    void readsStoredJudgementsWithoutAskingAndMarksIncompleteConditions() {
+
+        when(port.judge(any())).thenReturn(List.of(
+                new JudgedCondition(String.valueOf(spring.getId()),
+                        List.of(new ConditionSupport(String.valueOf(paymentCard), "결제 API 를 Spring 으로 만들었다"))),
+                new JudgedCondition(String.valueOf(redis.getId()), List.of())));
+        service.judge(posting, List.of(spring, redis), List.of(payment("결제 API"), cache("캐시")));
+        clearInvocations(port);
+
+        Map<Long, StoredJudgement> same = service.stored(List.of(spring, redis), List.of(payment("결제 API"), cache("캐시")));
+        Map<Long, StoredJudgement> changed = service.stored(List.of(spring, redis),
+                List.of(payment("결제 API"), cache("캐시 도입")));
+
+        verify(port, never()).judge(any());
+        assertThat(same.get(spring.getId())).isEqualTo(new StoredJudgement(
+                List.of(new JudgedSupport(paymentCard, "결제 API 를 Spring 으로 만들었다")), true));
+        assertThat(same.get(redis.getId())).isEqualTo(new StoredJudgement(List.of(), true));
+        assertThat(changed.get(spring.getId())).isEqualTo(new StoredJudgement(
+                List.of(new JudgedSupport(paymentCard, "결제 API 를 Spring 으로 만들었다")), false));
+        assertThat(changed.get(redis.getId())).isEqualTo(new StoredJudgement(List.of(), false));
 
     }
 

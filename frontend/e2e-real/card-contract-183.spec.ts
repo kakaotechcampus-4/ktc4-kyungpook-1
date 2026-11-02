@@ -6,7 +6,7 @@ const labels = ['상황 (Situation)', '과제 (Task)', '행동 (Action)', '결�
 
 test('lost manual response retries one UUID and adopts current server metadata while retaining local STAR', async ({ page }) => {
   const http = await installContractFixture(page, { loseFirstManualResponse: true });
-  await page.goto('/cards/new');
+  await page.goto('/cards/new?write=1');
   await page.getByLabel('카드 제목', { exact: true }).fill('첫 요청 제목');
   await page.getByPlaceholder('2024.04').fill('첫 요청 기간');
   const situation = '  내가 작성한 상황\n원문을 유지합니다.  ';
@@ -55,8 +55,9 @@ test('lost manual response retries one UUID and adopts current server metadata w
   await page.getByRole('button', { name: '저장 후 종료', exact: true }).click();
   await expect(page).toHaveURL(`/cards/${CARD_ID}`);
   await page.getByRole('navigation', { name: '커리어 관리', exact: true }).getByRole('link', { name: '경험 카드', exact: true }).click();
-  await page.getByRole('link', { name: /직접 작성/ }).click();
+  await page.getByRole('link', { name: '경험 카드 만들기', exact: true }).click();
   await page.getByLabel('카드 제목', { exact: true }).fill('새 진입 제목');
+  await page.getByRole('button', { name: '네 칸 직접 쓰기', exact: true }).click();
   await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();
   await expect(page.locator('main').getByRole('status')).toHaveText('저장됨');
   expect(http.manual()).toHaveLength(3);
@@ -67,7 +68,7 @@ test('lost manual response retries one UUID and adopts current server metadata w
 
 test('manual contract limits stay within desktop and mobile bounds in both themes', async ({ page }, testInfo) => {
   const http = await installContractFixture(page);
-  await page.goto('/cards/new');
+  await page.goto('/cards/new?write=1');
   await page.getByLabel('카드 제목', { exact: true }).fill('제'.repeat(256));
   await page.getByPlaceholder('2024.04').fill('기'.repeat(50));
   await page.getByLabel(labels[0], { exact: true }).fill('상'.repeat(1000));

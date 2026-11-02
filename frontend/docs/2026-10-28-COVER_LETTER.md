@@ -21,7 +21,7 @@
 
 | | 요청 | 응답 |
 |---|---|---|
-| `POST /cover-letters` | `{ jobRole, memo, questions: [{ text, charLimit }] }`, 헤더 `Idempotency-Key: <UUID v4>` | `CoverLetter`(`stage: ASSIGNING`). 같은 사용자·같은 키는 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다. 화면은 입력을 고치면 새 키를 만든다(같은 키는 내용을 바꾸지 않은 재전송에만 쓴다) |
+| `POST /cover-letters` | `{ jobRole, memo, questions: [{ text, charLimit }], postingId }`, 헤더 `Idempotency-Key: <UUID v4>` | `CoverLetter`(`stage: ASSIGNING`). 같은 사용자·같은 키는 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다. 화면은 입력을 고치면 새 키를 만든다(같은 키는 내용을 바꾸지 않은 재전송에만 쓴다) |
 | `GET /cover-letters/{id}` | | `CoverLetter` |
 | `GET /cover-letters` | | `CoverLetterSummary[]` 최근 만든 순 |
 | `PUT /cover-letters/{id}/questions/{qid}/cards` | `{ primaryCardId, supportingCardId }` | `CoverLetter` — `ASSIGNED` 에서만 |
@@ -35,6 +35,7 @@
 **요청 값**
 - `jobRole` 1~100자. `memo` 1,000자 이하, 없으면 `null`(지원 동기 문항에서 '이 회사를 고른 이유'로 쓴다).
 - `questions` 1~10개. `text` 1~500자, `charLimit` 공백 포함 100~5,000 정수이고 `null` 이면 700.
+- `postingId` 는 공고 상세에서 '이 공고로 자소서 쓰기' 로 시작할 때만 그 공고 id(UUID), 아니면 `null`. 서버가 그때의 공고(회사·제목·주요 업무·기술 조건)와 맞춰 본 판단을 자소서에 남기고, 카드 고르기·질문·초안이 그 기준으로 돈다. 뒤에 카드나 공고가 바뀌어도 이 자소서의 기준은 그대로다. 맞춰 보기 전이어도 막지 않고 판단 없는 조건은 판단 없이 남긴다 — 버튼을 맞춰 보기 뒤에만 보이는 것은 화면 규칙이다.
 - `primaryCardId` · `supportingCardId` 는 카드 API 와 같은 공개 id(UUID)이고 `null` 이 될 수 있다. 내 확정 카드만 고를 수 있다. 다른 문항과 겹쳐도 막지 않는다. 중심과 보조가 같으면 400.
 - `answers[].item` 은 그 문항 `asks` 에 있는 항목만, 한 번씩. `skipped: true` 면 `text` 는 `null`. 넘기지 않은 답의 `text` 는 1~1,000자(공백뿐이면 400) — 화면은 입력 칸에 1,000자 제한을 건다.
 - `PATCH` 의 `text` 는 10,000자 이하. 저장하면 서버가 고친 글로 `charCount` · `overBy` · `blanks` 를 다시 센다(빈칸은 AI 가 넣은 `[항목: …]` 문구가 글자 그대로 남아 있는 항목). `sentences` · `marks` 는 `aiText` 기준 그대로다. `edited` 는 고친 글이 `aiText` 와 다르면 `true`.
@@ -42,7 +43,7 @@
 
 **오류**
 - 400 `INVALID_REQUEST` — 위 값 규칙을 어김.
-- 404 `NOT_FOUND` — 없는 자소서·문항, 남의 자소서.
+- 404 `NOT_FOUND` — 없는 자소서·문항, 남의 자소서. 만들기에서는 `postingId` 가 UUID 가 아니거나 공고 상세에서 열 수 없는 공고("공고를 찾을 수 없습니다.").
 - 409 `INVALID_STATE` — 그 단계가 아닐 때(예: `ASKED` 가 아닌데 답 저장).
 - 422 `NO_CONFIRMED_CARDS` — 확정 카드가 한 장도 없어 만들 수 없다. 화면은 "확정한 카드가 없어요" 와 카드 만들기로 안내한다.
 - 429 `RATE_LIMITED` — 만들기와 다시 시도만 센다(1분 2번 · 하루 10번). AI 를 새로 돌리는 요청이 이 둘뿐이다.
@@ -53,7 +54,9 @@
 { "id": "UUID", "stage": "ASSIGNING|ASSIGNED|ASKING|ASKED|DRAFTING|DRAFTED|FAILED",
   "failedStep": "ASSIGN|ASK|DRAFT" | null, "errorCode": "AI_UNAVAILABLE|INTERNAL_ERROR" | null, "retryable": true | false | null,
   "pollAfterMs": 1500 | null,
-  "jobRole": "백엔드 개발", "memo": "…" | null, "createdAt": "ISO", "updatedAt": "ISO",
+  "jobRole": "백엔드 개발", "memo": "…" | null,
+  "posting": { "id": "UUID", "company": "토스", "title": "Server Developer" } | null,  // 공고에서 시작한 자소서만
+  "createdAt": "ISO", "updatedAt": "ISO",
   "questions": [{
     "id": "UUID", "seq": 1, "text": "지원 동기와 입사 후 포부를 적어 주세요", "charLimit": 700,
     "theme": "COLLABORATION|CONFLICT|PROBLEM_SOLVING|LEADERSHIP|CHALLENGE|FAILURE|GROWTH|MOTIVATION" | null,
@@ -71,7 +74,9 @@
     "draft": { "text": "…", "aiText": "…", "edited": false, "charCount": 642, "overBy": 0,
                "sentences": [{ "seq": 1, "text": "…" }],
                "marks": [{ "sentenceSeq": 2, "code": "UNSOURCED_NUMBER", "value": "30%" }],
-               "blanks": ["LEARNING"], "source": "LLM|SKELETON" } | null
+               "blanks": ["LEARNING"], "source": "LLM|SKELETON" } | null,
+    // ⑥ 쓰는 중 — DRAFTING 동안만
+    "writing": { "text": "…", "round": 0 } | null
   }],
   "steps": { "assign": [ … ], "draft": [ … ] } }
 ```
@@ -91,12 +96,15 @@
 - 글이 목표(글자 수 상한의 70%)보다 짧은데 카드·답에 더 쓸 사실이 없으면, AI 가 모자란 내용 자리에 `[더 쓸 거리: 무엇을 쓰면 되는지]` 를 한두 개 넣는다. 항목이 아니라 `blanks` 에는 없으므로, 화면은 글에서 이 모양을 찾아 강조한다.
 - `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것은 `null`.
 - `draft.source: SKELETON` 은 AI 가 쓰지 못해 카드 문장과 빈칸으로 만든 뼈대다.
+- `writing`: 초안을 쓰는 동안(`DRAFTING`) AI 가 그 문항에 지금까지 쓴 글이다. 첫 초안(`round` 0)은 문장이 끝날 때마다 늘어나고, 고쳐 쓸 때는 `round` 가 1씩 늘며 다 쓴 새 글로 한 번에 바뀐다(화면은 앞 글과 문장 단위로 견줘 바뀐 문장만 다시 그린다). 검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 앞 글로 돌아온다. 아직 쓰기 전이거나 단계가 끝나면(`DRAFTED`·`FAILED`) `null` 이고, 다 쓰면 `draft` 가 채워진다. 빠뜨린 빈칸은 다 쓴 뒤에 붙으므로 `writing` 에는 없을 수 있다.
 
-**`CoverLetterSummary`** — `{ id, stage, jobRole, questionCount, firstQuestion, createdAt, updatedAt }`
+**`CoverLetterSummary`** — `{ id, stage, jobRole, posting, questionCount, firstQuestion, createdAt, updatedAt }` — `posting` 은 `CoverLetter` 와 같은 모양이고 공고 없이 만들었으면 `null`
 
 ## AI 가 한 일 (`steps`)
 
 서버는 값만 보내고 문장은 화면이 만든다. 순서는 `seq`(1부터)다. `questionId`·`cardId` 는 위와 같은 공개 id 다.
+
+카드 고르기·초안 쓰기가 도는 동안(`ASSIGNING`·`DRAFTING`)에도 AI 가 거친 단계가 생기는 대로 채워져, 조회할 때마다 늘어난다. 카드는 문항마다 동시에 골라 앞 번호가 나중에 끼어들 수 있으니 늘 `seq` 차례로 그린다. 단계가 끝나면 저장한 과정과 같고, 그 단계가 실패하면 그때까지 보이던 단계는 사라진다.
 
 **`steps.assign`** — `{ seq, actor, kind, questionId, cardId, cardTitle, reason }`. `cardTitle` 은 그 카드의 지금 제목이고, 지운 카드면 `null` 이다.
 
@@ -110,7 +118,7 @@
 | `SUPERVISOR` · `FAILED` | 감독 답을 받지 못했다 | "문항 전체를 함께 보지 못했어요" |
 | `CODE` · `RESOLVED` | 코드가 겹친 문항을 2순위 카드로 정리했다(`cardId`) | "겹치는 카드를 2순위 '배포 시간 단축'으로 정리했어요" |
 
-**`steps.draft`** — `{ seq, actor, kind, questionId, code, value, sentenceSeq, action, reason }`
+**`steps.draft`** — `{ seq, actor, kind, questionId, code, value, sentenceSeq, sentence, action, reason }`. `sentence` 는 `sentenceSeq` 가 가리키는 문장의 글(200자까지)로, 고쳐 쓰기 전 글의 문장이라 걸린 문장을 검토 기록으로 보여 줄 때 쓴다. `CHECK_FAILED`·`DECIDED`·`SENT_BACK`·`MARKED` 에만 있고, 문장을 가리키지 않는 것(`OVER_LIMIT` 등)은 `null` 이다.
 
 | `kind` | 뜻 · `value` | 문장 예시 |
 |---|---|---|

@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -42,23 +43,32 @@ public class Profile {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<Certification> certifications;
 
+    // 공고 직무 분류 이름이며, profile 이 matching 을 참조하면 순환이라 이름 글로 둔다
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<String> interests;
+
     private Instant savedAt;
 
     static Profile of(Long userId) {
 
         Profile profile = new Profile();
         profile.userId = userId;
+        profile.interests = new ArrayList<>();
         return profile;
 
     }
 
+    /** interests 가 null 이면 저장된 관심 분야를 그대로 둔다 — 지금 배포된 화면은 이 칸을 아직 보내지 않는다 */
     void replace(List<Education> educations, List<Career> careers, List<LanguageScore> languages,
-                 List<Certification> certifications) {
+                 List<Certification> certifications, List<InterestCategory> interests) {
 
         this.educations = new ArrayList<>(educations);
         this.careers = new ArrayList<>(careers);
         this.languages = new ArrayList<>(languages);
         this.certifications = new ArrayList<>(certifications);
+        if (interests != null) {
+            this.interests = interests.stream().map(Enum::name).collect(Collectors.toCollection(ArrayList::new));
+        }
         // DB 가 µs 까지 저장해, 저장 직후 응답과 다시 읽은 값이 같게 자른다
         this.savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
 
@@ -67,7 +77,7 @@ public class Profile {
     ProfileView view() {
 
         return new ProfileView(List.copyOf(educations), List.copyOf(careers), List.copyOf(languages),
-                List.copyOf(certifications), savedAt);
+                List.copyOf(certifications), interests.stream().map(InterestCategory::valueOf).toList(), savedAt);
 
     }
 }

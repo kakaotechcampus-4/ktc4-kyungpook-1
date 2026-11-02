@@ -42,14 +42,14 @@ test.describe('반응형 레이아웃', () => {
     await expect(nav.getByText('홈', { exact: true })).toBeVisible();
     await expect(nav.getByText('레포', { exact: true })).toBeVisible();
     await expect(nav.getByText('카드', { exact: true })).toBeVisible();
-    await expect(nav.getByText('설정', { exact: true })).toBeVisible();
+    await expect(nav.getByText('마이페이지', { exact: true })).toBeVisible();
     await expect(page.locator('.sidebar')).toBeHidden();
     await expectNoHorizontalOverflow(page);
   });
 
   test('주요 라우트는 모바일·태블릿·데스크톱에서 가로로 넘치지 않는다', async ({ page }) => {
     await loginAsDemo(page);
-    const routes = ['/', '/repos', '/repos/r_auth/candidates', '/cards', '/cards/card_01', '/cards/card_01/interview?field=T', '/cards/new', '/settings', '/settings/github'];
+    const routes = ['/', '/repos', '/repos/r_auth/candidates', '/cards', '/cards/card_01', '/cards/card_01/interview?field=T', '/cards/new', '/cards/new?write=1', '/settings', '/settings/github'];
     for (const viewport of [
       { width: 390, height: 844 },
       { width: 768, height: 1024 },

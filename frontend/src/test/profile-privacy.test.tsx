@@ -3,7 +3,6 @@ import { join } from 'node:path';
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProfilePage } from '@/features/profile/ProfilePage';
-import { ProfilePrompt } from '@/features/profile/ProfilePrompt';
 import { resetDb } from '@/mock/store';
 import { track } from '@/lib/track';
 import { connectMockServer, jsonError, mountApp, page } from './profileHarness';
@@ -17,23 +16,24 @@ vi.mock('@/components/ui/Select', () => ({
 }));
 
 /** 화면에 쓸 법하지 않은 값 — 어디든 새어 나가면 이 조각으로 찾는다 */
-const SECRETS = ['비밀학교ZXQ', '극비전공ZXQ', '기밀회사ZXQ', '은밀직무ZXQ', '점수-ZXQ-777', '발급기관ZXQ', '시험ZXQ', '자격ZXQ'];
+const SECRETS = ['비밀학교ZXQ', '극비전공ZXQ', '기밀회사ZXQ', '은밀직무ZXQ', '점수-ZXQ-777', '시험ZXQ', '자격ZXQ'];
 
 beforeEach(() => { resetDb(); localStorage.clear(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.clearAllMocks(); localStorage.clear(); });
 const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 async function fillEverythingAndSave() {
-  mountApp([page(<><ProfilePrompt /><ProfilePage /></>, '/settings/profile')], '/settings/profile');
+  mountApp([page(<ProfilePage />, '/settings/profile')], '/settings/profile');
   await screen.findByRole('button', { name: '학력 추가' });
-  for (const name of ['학력 추가', '경력 추가', '어학 추가', '자격증 추가']) fireEvent.click(screen.getByRole('button', { name }));
+  fireEvent.click(screen.getByRole('checkbox', { name: '백엔드' }));
+  for (const name of ['학력 추가', '경력 추가', '어학 추가']) fireEvent.click(screen.getByRole('button', { name }));
   const choose = (label: string, value: string) => fireEvent.change(screen.getByRole('combobox', { name: label }), { target: { value } });
-  choose('학력 1 학력 구분', 'BACHELOR'); type('학력 1 학교', SECRETS[0]); type('학력 1 전공 (선택)', SECRETS[1]);
+  choose('학력 1 학력 구분', 'BACHELOR'); type('학력 1 학교 (선택)', SECRETS[0]); type('학력 1 전공 (선택)', SECRETS[1]);
   choose('학력 1 상태', 'GRADUATED'); type('학력 1 입학 월 (선택)', '2018-03'); type('학력 1 졸업(예정) 월 (선택)', '2022-02');
   type('학력 1 학점 (선택)', '3.8'); choose('학력 1 학점 만점 (선택)', '4.5');
   type('경력 1 회사', SECRETS[2]); choose('경력 1 고용 형태', 'FULL_TIME'); type('경력 1 직무 (선택)', SECRETS[3]); type('경력 1 입사 월', '2022-03'); fireEvent.click(screen.getByLabelText('경력 1 재직 중'));
-  choose('어학 1 시험', 'OTHER'); type('어학 1 시험 이름', SECRETS[6]); type('어학 1 점수 또는 등급', SECRETS[4]); type('어학 1 취득 월 (선택)', '2021-08');
-  type('자격증 1 이름', SECRETS[7]); type('자격증 1 발급 기관 (선택)', SECRETS[5]); type('자격증 1 취득 월 (선택)', '2021-11');
+  choose('어학 1 시험', 'OTHER'); type('어학 1 시험 이름', SECRETS[5]); type('어학 1 점수 또는 등급', SECRETS[4]); type('어학 1 취득 월 (선택)', '2021-08');
+  type('자격증 직접 입력', SECRETS[6]); fireEvent.click(screen.getByRole('button', { name: '추가' }));
   fireEvent.click(screen.getByRole('button', { name: '저장' }));
   await waitFor(() => expect(screen.getAllByRole('status').map((el) => el.textContent).join()).toContain('저장했어요'));
 }
@@ -56,7 +56,7 @@ describe('personal data stays out of analytics, logs, URLs and storage', () => {
       expect(name).toMatch(/^profile_/);
       for (const value of Object.values(props)) expect(['number', 'boolean']).toContain(typeof value); // 문자열 · null 도 허용하지 않는다
     }
-    expect(vi.mocked(track)).toHaveBeenCalledWith('profile_saved', { educationCount: 1, careerCount: 1, languageCount: 1, certificateCount: 1 });
+    expect(vi.mocked(track)).toHaveBeenCalledWith('profile_saved', { educationCount: 1, careerCount: 1, languageCount: 1, certificateCount: 1, interestCount: 1 });
     for (const secret of SECRETS) expect(serialized(calls)).not.toContain(secret);
 
     // 요청 주소·쿼리스트링에 값이 없다 — 값은 PUT 본문에만 있다
@@ -86,9 +86,9 @@ describe('personal data stays out of analytics, logs, URLs and storage', () => {
     const consoles = (['log', 'info', 'warn', 'error', 'debug'] as const).map((level) => vi.spyOn(console, level).mockImplementation(() => undefined));
     connectMockServer((call) => (call.method === 'PUT' ? jsonError(503, 'INTERNAL_ERROR') : undefined));
     mountApp([page(<ProfilePage />, '/settings/profile')], '/settings/profile');
-    await screen.findByRole('button', { name: '자격증 추가' });
-    fireEvent.click(screen.getByRole('button', { name: '자격증 추가' }));
-    type('자격증 1 이름', SECRETS[7]); type('자격증 1 취득 월 (선택)', '2021-11');
+    await screen.findByRole('button', { name: '학력 추가' });
+    fireEvent.click(screen.getByRole('checkbox', { name: '백엔드' }));
+    type('자격증 직접 입력', SECRETS[6]); fireEvent.click(screen.getByRole('button', { name: '추가' }));
     fireEvent.click(screen.getByRole('button', { name: '저장' }));
     await screen.findByRole('alert');
     await act(async () => { await Promise.resolve(); });
@@ -122,8 +122,8 @@ describe('source guard: profile code cannot call track() with anything but count
     const calls = files.flatMap((file) => trackCalls(readFileSync(file, 'utf8')).map((args) => ({ file, args })));
     expect(calls.length).toBeGreaterThan(0);
     for (const { file, args } of calls) {
-      const ok = /^'profile_(prompt_accepted|prompt_dismissed)'$/.test(args)
-        || /^'profile_saved', \{ educationCount: saved\.educations\.length, careerCount: saved\.careers\.length, languageCount: saved\.languages\.length, certificateCount: saved\.certifications\.length \}$/.test(args);
+      const ok = /^'profile_saved', \{ educationCount: saved\.educations\.length, careerCount: saved\.careers\.length, languageCount: saved\.languages\.length, certificateCount: saved\.certifications\.length, interestCount: saved\.interests\.length \}$/.test(args)
+        || /^'profile_setup_completed', \{ interestCount: saved\.interests\.length \}$/.test(args);
       expect(ok, `${file}: track(${args})`).toBe(true);
     }
   });

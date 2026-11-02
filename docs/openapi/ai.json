@@ -2559,6 +2559,43 @@
         "title": "Envelope[ExperienceGroupingResponse]",
         "type": "object"
       },
+      "Envelope_GapFillResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapFillResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[GapFillResult]",
+        "type": "object"
+      },
       "Envelope_InterviewAnswerResult_": {
         "properties": {
           "data": {
@@ -3361,6 +3398,395 @@
           "UNKNOWN"
         ],
         "title": "FileChangeStatus",
+        "type": "string"
+      },
+      "GapAction": {
+        "enum": [
+          "CREATE_CARD",
+          "CONTINUE_CARD",
+          "ANALYZE_REPO"
+        ],
+        "title": "GapAction",
+        "type": "string"
+      },
+      "GapCandidate": {
+        "additionalProperties": false,
+        "description": "분석한 레포에서 나왔지만 아직 카드로 만들지 않은 후보.",
+        "properties": {
+          "candidate_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "commit_messages": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Commit Messages",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "repo_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Repo Name",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "repo_name",
+          "title"
+        ],
+        "title": "GapCandidate",
+        "type": "object"
+      },
+      "GapCondition": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "criterion_type": {
+            "$ref": "#/components/schemas/JobCriterionType"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "condition_id",
+          "criterion_type",
+          "text"
+        ],
+        "title": "GapCondition",
+        "type": "object"
+      },
+      "GapConditionResult": {
+        "additionalProperties": false,
+        "properties": {
+          "condition_id": {
+            "title": "Condition Id",
+            "type": "string"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapDecision"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null 은 아직 정하는 중(스트리밍 도중에만)"
+          },
+          "decision_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Reason"
+          },
+          "forced": {
+            "default": false,
+            "description": "사용자가 다시 찾게 해 decision 이 SKIP 이어도 찾은 조건",
+            "title": "Forced",
+            "type": "boolean"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GapResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null 은 아직 찾는 중(스트리밍 도중에만)"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/GapStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "condition_id"
+        ],
+        "title": "GapConditionResult",
+        "type": "object"
+      },
+      "GapDecision": {
+        "enum": [
+          "SEARCH",
+          "SKIP"
+        ],
+        "title": "GapDecision",
+        "type": "string"
+      },
+      "GapFillRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/GapCandidate"
+            },
+            "maxItems": 100,
+            "title": "Candidates",
+            "type": "array"
+          },
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCard"
+            },
+            "maxItems": 40,
+            "title": "Cards",
+            "type": "array"
+          },
+          "company_name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Company Name",
+            "type": "string"
+          },
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/GapCondition"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Conditions",
+            "type": "array"
+          },
+          "draft_cards": {
+            "items": {
+              "$ref": "#/components/schemas/JudgeCard"
+            },
+            "maxItems": 20,
+            "title": "Draft Cards",
+            "type": "array"
+          },
+          "force_condition_ids": {
+            "description": "사용자가 '찾지 않음' 으로 멈춘 조건을 그래도 찾아보라고 고른 것 — 첫 판단과 상관없이 찾는다",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Force Condition Ids",
+            "type": "array"
+          },
+          "github_login": {
+            "maxLength": 39,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9-]+$",
+            "title": "Github Login",
+            "type": "string"
+          },
+          "job_title": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Job Title",
+            "type": "string"
+          },
+          "repos": {
+            "items": {
+              "$ref": "#/components/schemas/GapRepo"
+            },
+            "maxItems": 300,
+            "title": "Repos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "company_name",
+          "job_title",
+          "conditions",
+          "github_login"
+        ],
+        "title": "GapFillRequest",
+        "type": "object"
+      },
+      "GapFillResult": {
+        "additionalProperties": false,
+        "properties": {
+          "conditions": {
+            "items": {
+              "$ref": "#/components/schemas/GapConditionResult"
+            },
+            "title": "Conditions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "conditions"
+        ],
+        "title": "GapFillResult",
+        "type": "object"
+      },
+      "GapProposal": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/GapAction"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "target_id": {
+            "description": "CREATE_CARD 는 candidate_id, CONTINUE_CARD 는 card_id, ANALYZE_REPO 는 repo_id",
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "target_id",
+          "reason"
+        ],
+        "title": "GapProposal",
+        "type": "object"
+      },
+      "GapRepo": {
+        "additionalProperties": false,
+        "description": "사용자의 레포 목록. analyzed 가 false 인 레포만 분석하자고 제안할 수 있다.",
+        "properties": {
+          "analyzed": {
+            "title": "Analyzed",
+            "type": "boolean"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 3,
+            "pattern": "^[^/\\s]+/[^/\\s]+$",
+            "title": "Full Name",
+            "type": "string"
+          },
+          "repo_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Repo Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repo_id",
+          "full_name",
+          "analyzed"
+        ],
+        "title": "GapRepo",
+        "type": "object"
+      },
+      "GapResult": {
+        "enum": [
+          "PROPOSED",
+          "NOT_FOUND",
+          "SKIPPED",
+          "TIMED_OUT"
+        ],
+        "title": "GapResult",
+        "type": "string"
+      },
+      "GapStep": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "본 후보·카드 수, 찾은 커밋 수",
+            "title": "Count"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GapStepKind"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "GITHUB_SEARCHED·GITHUB_FAILED 의 검색어",
+            "title": "Query"
+          },
+          "repo_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OUTSIDE_REPO_FOUND 의 레포 — 내 레포 목록에 없어 분석할 수 없다",
+            "title": "Repo Name"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "GapStep",
+        "type": "object"
+      },
+      "GapStepKind": {
+        "enum": [
+          "CANDIDATES_CHECKED",
+          "DRAFT_CARDS_CHECKED",
+          "GITHUB_SEARCHED",
+          "GITHUB_FAILED",
+          "OUTSIDE_REPO_FOUND"
+        ],
+        "title": "GapStepKind",
         "type": "string"
       },
       "GeneralConditionType": {
@@ -8255,6 +8681,162 @@
         "summary": "Read Job Posting Image Text",
         "tags": [
           "job-postings"
+        ]
+      }
+    },
+    "/internal/matching/gap-fill": {
+      "post": {
+        "description": "못 채운 필수·우대 조건(최대 5개)과 지원자의 확정 카드·카드로 만들지 않은 후보·작성 중 카드·레포 목록을 받아, 조건마다 더 찾아볼지(SEARCH·SKIP)와 이유를 정합니다. 찾아보는 조건은 먼저 후보·작성 중 카드에서 고르고(CREATE_CARD·CONTINUE_CARD), 못 찾으면 지원자가 쓴 공개 커밋을 GitHub 에서 검색해 분석하지 않은 내 레포를 고릅니다(ANALYZE_REPO). 내 레포 목록에 없는 레포에서 찾은 것은 OUTSIDE_REPO_FOUND 단계로만 남깁니다. 사용자에게 묻는 단계는 없습니다. 첫 판단(찾아볼지)을 받지 못하면 503 LLM_UNAVAILABLE 이고, 그 뒤 단계가 마감이나 실패로 끝나지 못하면 그 조건은 TIMED_OUT 입니다. GitHub 검색이 막히면(토큰 거절·한도) 그 검색만 GITHUB_FAILED 단계로 남기고 이어 갑니다.",
+        "operationId": "fill_gaps_internal_matching_gap_fill_post",
+        "parameters": [
+          {
+            "description": "Spring 이 호출 중에만 전달하는 GitHub OAuth 토큰. 커밋 검색에만 쓰고 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring 이 호출 중에만 전달하는 GitHub OAuth 토큰. 커밋 검색에만 쓰고 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GapFillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_GapFillResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
+          }
+        },
+        "summary": "공고에서 못 채운 조건마다 채울 자료를 찾아 제안하기",
+        "tags": [
+          "matching"
+        ]
+      }
+    },
+    "/internal/matching/gap-fill/stream": {
+      "post": {
+        "description": "`/internal/matching/gap-fill` 과 같은 일을 하면서, 조건의 상태가 바뀔 때마다 그 조건의 지금 상태 전체를 보냅니다. 본문은 한 줄에 JSON 하나(NDJSON)이고, 진행 줄은 `{\"type\":\"progress\",\"step\":\"GAP_FILL\",\"done\":1,\"total\":3,\"item\":{\"kind\":\"GAP_CONDITION\",\"condition\":{...}}}` 입니다. `condition` 은 응답 conditions 항목과 같은 모양이며, 찾는 동안에는 decision·result 가 null 일 수 있습니다. done 은 결론이 난 조건 수, total 은 조건 수입니다. 마지막 줄은 `{\"type\":\"result\",\"status\":200,\"body\":{...}}` 이고, `status`·`body` 는 같은 요청을 `/internal/matching/gap-fill` 로 보냈을 때의 HTTP 상태와 응답 본문과 같습니다.",
+        "operationId": "fill_gaps_stream_internal_matching_gap_fill_stream_post",
+        "parameters": [
+          {
+            "description": "Spring 이 호출 중에만 전달하는 GitHub OAuth 토큰. 커밋 검색에만 쓰고 요청 본문이나 문서 예시에 넣지 않습니다.",
+            "in": "header",
+            "name": "X-GitHub-Token",
+            "required": true,
+            "schema": {
+              "description": "Spring 이 호출 중에만 전달하는 GitHub OAuth 토큰. 커밋 검색에만 쓰고 요청 본문이나 문서 예시에 넣지 않습니다.",
+              "minLength": 1,
+              "title": "X-Github-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GapFillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/x-ndjson": {}
+            },
+            "description": "진행 줄들과 마지막 결과 줄"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          }
+        },
+        "summary": "공고에서 못 채운 조건마다 채울 자료를 찾아 제안하기 (진행 스트리밍)",
+        "tags": [
+          "matching"
         ]
       }
     },

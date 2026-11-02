@@ -25,7 +25,7 @@ const REPOS_SLOW_MS = 3_000;
 
 /** B1 레포 목록·선택 (페이지) → B2 사전 고지 (모달) → 정리 시작 → B3 */
 export function ReposPage() {
-  useDocumentTitle('레포 선택');
+  useDocumentTitle('레포');
   const repos = useRepos();
   const [sp, setSp] = useSearchParams();
   const selectedId = sp.get('select');
@@ -70,7 +70,7 @@ export function ReposPage() {
       </ol>
       <div className="list-head">
         {/* 아직 못 받았으면 개수를 모른다 — 0 으로 보이면 "레포가 없다"로 읽힌다 */}
-        <PageTitle>레포 고르기 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
+        <PageTitle>레포 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />
@@ -94,7 +94,7 @@ export function ReposPage() {
         {list.map((r) => <RepoRow key={r.id} r={r} selected={r.id === selectedId} onSelect={() => select(r.id)} />)}
       </div>
 
-      <StickyFooter strong={selected ? `${selected.name}` : '레포를 하나 고르세요'}>
+      <StickyFooter strong={selected ? `${selected.name}` : '레포를 하나 골라 주세요'}>
         <Link to="/" className="btn btn--outline">취소</Link>
         <Button size="lg" disabled={!selected} onClick={openDisclose}>다음</Button>
       </StickyFooter>
@@ -110,7 +110,7 @@ export function ReposPage() {
                   <span className="w-600" style={{ fontSize: 14 }}>{selected.owner} / {selected.name}</span>
                   <span className="t-12 c-2">{isCounting(selected) ? `기여 개수를 ${COUNTING}이에요 — 0건이 아니라 집계 전이에요` : `내 커밋 ${selected.contribution.mine} / 팀 ${selected.contribution.team}, PR ${selected.prCount}, 리뷰 ${selected.reviewCount}`}</span>
                 </div>
-                <Badge kind="NEUTRAL">READ ONLY</Badge>
+                <Badge kind="NEUTRAL">읽기 전용</Badge>
               </div>
               {detail.isPending ? <Skeleton h={160} /> : detail.data && <PermissionGrid compact reads={detail.data.disclosure.reads} skips={detail.data.disclosure.skips} />}
               {detail.isError && <QueryFailure error={detail.error} retry={() => detail.refetch()} pending={detail.isFetching} />}
@@ -137,7 +137,7 @@ function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean;
           {low && <Badge kind="CAUTION">내 기여 {pct(r.contribution.ratio)}</Badge>}
           {counting && <Badge kind="NEUTRAL">{COUNTING}</Badge>}
           {!counting && r.prCount === 0 && <Badge kind="NEUTRAL">PR 0건</Badge>}
-          {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}건</Badge></span>}
+          {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}장</Badge></span>}
         </div>
         <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}><GitCommitHorizontal size={14} aria-hidden />{counting ? <>내 커밋 <span>{COUNTING}</span></> : <>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></>}</span>

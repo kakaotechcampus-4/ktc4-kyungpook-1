@@ -283,6 +283,14 @@ gitory:
     cover-letter:
       per-minute: 2
       per-day: 10
+    # 공고 상세 '이 공고와 맞춰 보기'. 아직 판단하지 않은 카드가 남아 AI 를 부를 때만 센다
+    match-judgement:
+      per-minute: 10
+      per-day: 100
+    # 공고 페이지 '내 조건으로 매칭하기'. 한 번에 공고 15곳을 물어 다른 요청보다 적게 두고, 이미 계산 중이면 세지 않는다
+    match-overall:
+      per-minute: 2
+      per-day: 20
 
 logging:
   level:

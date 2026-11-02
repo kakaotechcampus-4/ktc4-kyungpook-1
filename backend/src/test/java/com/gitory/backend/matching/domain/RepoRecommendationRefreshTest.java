@@ -8,6 +8,8 @@ import com.gitory.backend.card.domain.CardMetadataService;
 import com.gitory.backend.card.domain.CardReopenService;
 import com.gitory.backend.card.domain.MaskRule;
 import com.gitory.backend.matching.infra.RepoRecommendationRepository;
+import com.gitory.backend.profile.domain.ProfileInput;
+import com.gitory.backend.profile.domain.ProfileService;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -71,6 +73,9 @@ class RepoRecommendationRefreshTest {
 
     @Autowired
     CardDeleteService delete;
+
+    @Autowired
+    ProfileService profiles;
 
     @Autowired
     Clock clock;
@@ -176,6 +181,26 @@ class RepoRecommendationRefreshTest {
     }
 
     @Test
+    @DisplayName("인적사항을 저장하면 그 사용자가 받은 레포 추천을 모두 다시 계산할 차례로 두고, 다른 사용자 것은 그대로다")
+    void marksEveryRecommendationOfTheUserStaleWhenProfileChanges() {
+
+        Long blog = fixtures.insertUserRepository(userId, fixtures.insertRepository(11L, "grow22", "blog"));
+        Long otherUser = fixtures.insertUser(2L, "other");
+        Long otherRepo = fixtures.insertUserRepository(otherUser, fixtures.insertRepository(12L, "other", "shop"));
+        ready(userId, repo);
+        ready(userId, blog);
+        ready(otherUser, otherRepo);
+
+        profiles.replace(userId, new ProfileInput(List.of(), List.of(), List.of(), List.of(), List.of("BACKEND")));
+
+        assertThat(jdbc.queryForList("""
+                SELECT user_repository_id FROM repo_recommendation WHERE status = 'COMPUTING' AND stale_since IS NOT NULL
+                """, Long.class)).containsExactlyInAnyOrder(repo, blog);
+        assertThat(staleSince(otherRepo)).isNull();
+
+    }
+
+    @Test
     @DisplayName("초안 Job 이 끝나 바로 계산을 부탁하면 1분을 기다리지 않고 다음 차례에 계산한다")
     void requestNowIsComputedOnTheNextRound() {
 
@@ -200,6 +225,15 @@ class RepoRecommendationRefreshTest {
             fixtures.confirmCard(card);
         }
         return publicId;
+
+    }
+
+    private void ready(Long owner, Long userRepositoryId) {
+
+        jdbc.update("""
+                INSERT INTO repo_recommendation (user_id, user_repository_id, status, companies, stale_since)
+                VALUES (?, ?, 'READY', '[]', NULL)
+                """, owner, userRepositoryId);
 
     }
 

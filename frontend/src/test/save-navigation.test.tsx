@@ -26,7 +26,7 @@ function mount(element = <NewCardPage />) {
     { path: '/new', element },
     { path: '/', element: <p>Home destination</p> },
     { path: '/cards/:id', element: <p>Card destination</p> },
-  ], { initialEntries: ['/new'] });
+  ], { initialEntries: ['/new?write=1'] });
   render(<StrictMode><QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
   return router;
 }
@@ -37,7 +37,7 @@ describe('writing route save protection', () => {
     vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ ...fields, cardId: id, savedAt: card.version.createdAt, versionNo: 2 }));
     vi.spyOn(endpoints, 'card').mockRejectedValue(new Error('offline detail'));
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: ['/new'] });
+    const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: ['/new?write=1'] });
     render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: 'Manual cache' } });
     fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Saved manual situation' } });

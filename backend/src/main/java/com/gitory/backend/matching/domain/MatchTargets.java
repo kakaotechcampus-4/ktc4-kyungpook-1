@@ -2,6 +2,7 @@ package com.gitory.backend.matching.domain;
 
 import com.gitory.backend.matching.infra.MatchableCondition;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -25,7 +26,35 @@ public final class MatchTargets {
                 posting.getTitle(),
                 posting.getCategory(), fit, required, preferred, posting.getExperienceLevel(),
                 posting.getExperienceMinYears(), posting.getSourceUrl(), posting.getLastSeenAt(),
-                posting.getExpiresAt());
+                posting.getExpiresAt(), techsOf(conditions), educationOf(conditions));
+
+    }
+
+    // 필수·우대 조건을 조건 순서대로 훑어 처음 나온 순서로 한 번씩 둔다(상세 행에는 담당 업무 조건도 섞여 와서 종류로 거른다)
+    static List<String> techsOf(List<MatchableCondition> conditions) {
+
+        return conditions.stream()
+                .filter(condition -> condition.type() == CriterionType.REQUIRED || condition.type() == CriterionType.PREFERRED)
+                .flatMap(condition -> condition.techs().stream())
+                .distinct()
+                .toList();
+
+    }
+
+    /**
+     * 상세처럼 일반 조건 EDUCATION 중 수준을 읽은 것만 견줄 수 있는 학력으로 보고, 목록에는 필수 학력 중 가장 낮은 수준을 둔다
+     * 같은 수준에 예외('또는 그에 준하는 경력') 없는 조건이 하나라도 있으면 예외가 아니며, 그런 조건이 없으면 null 이다
+     */
+    static MatchEducation educationOf(List<MatchableCondition> conditions) {
+
+        return conditions.stream()
+                .filter(condition -> condition.type() == CriterionType.REQUIRED)
+                .filter(condition -> condition.generalType() == GeneralConditionType.EDUCATION)
+                .filter(condition -> condition.educationLevel() != null)
+                .min(Comparator.comparing(MatchableCondition::educationLevel)
+                        .thenComparing(MatchableCondition::educationExempt))
+                .map(condition -> new MatchEducation(condition.educationLevel(), condition.educationExempt()))
+                .orElse(null);
 
     }
 

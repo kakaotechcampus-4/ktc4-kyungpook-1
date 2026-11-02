@@ -122,7 +122,7 @@ test('마스킹 — 원문은 그대로, 표시만 바뀐다', async ({ page }) 
 
 test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_STATED', async ({ page }) => {
   await login(page);
-  await page.goto('/cards/new');
+  await page.goto('/cards/new?write=1');
   await page.getByRole('textbox', { name: '카드 제목' }).fill('E2E 직접 작성 카드');
   await page.getByLabel('상황 (Situation)').fill('3인 팀에서 배포 담당이 없었다');
   await page.getByLabel('행동 (Action)').fill('GitHub Actions 로 배포 파이프라인을 직접 구성했다');
@@ -141,6 +141,6 @@ test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_S
 test('동의 취소는 랜딩으로 돌아와 안내를 보여준다', async ({ page }) => {
   await freshSeed(page);
   await page.goto('/login?error=access_denied');
-  await expect(page.getByText('GitHub에서 동의를 취소하셨네요')).toBeVisible();
+  await expect(page.getByText('GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.')).toBeVisible();
   await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toHaveCount(1);
 });

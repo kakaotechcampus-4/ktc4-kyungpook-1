@@ -19,7 +19,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.addInitScript((value) => localStorage.setItem('gitory.theme', value), theme);
     await page.goto('/cards');
     await showCardTiles(page);
-    await expect(page.getByRole('button', { name: '레포에서 만들기' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '경험 카드 만들기' })).toBeVisible();
     const palette = await page.evaluate(() => {
       const button = getComputedStyle(document.querySelector('.btn--primary')!);
       const root = getComputedStyle(document.documentElement);

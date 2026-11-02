@@ -11,9 +11,9 @@ test('minimal API summaries never imply a manual source or invented evidence cou
 test('cards with all four STAR fields filled drop the text status badge; incomplete cards keep it', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards'); await showCardTiles(page);
   const tile = (id: string) => page.locator(`.experience-item[href="/cards/${id}"]`);
-  // 네 칸이 다 찬 확정 카드 — 글자 대신 체크 아이콘(이름 "확정됨"). card_05 는 확인 필요 표시가 있어도 확정 카드라 같다
+  // 네 칸이 다 찬 확정 카드 — 눈에 보이는 표시 없이 화면 읽기 프로그램용 "확정됨"만. card_05 는 확인 필요 표시가 있어도 확정 카드라 같다
   for (const id of ['card_03', 'card_04', 'card_05']) {
-    await expect(tile(id).getByRole('img', { name: '확정됨' })).toBeVisible();
+    await expect(tile(id).locator('.sr-only')).toHaveText('확정됨');
     await expect(tile(id).locator('.badge')).toHaveCount(0);
   }
   // 빈 칸이 있는 작성 중 카드는 그대로 — 작성 중 + 확인 필요 + 빈 칸 수
@@ -37,8 +37,8 @@ test('active analysis is visible on home and can be reopened after refresh', asy
   await page.reload();
   const jobs = page.getByRole('region', { name: '진행 중인 작업' }); await expect(jobs).toBeVisible();
   await jobs.getByRole('link', { name: '진행 상황 보기', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp('/jobs/' + jobId + '$'));
-  await expect(page.getByRole('heading', { name: '작업 진행', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(new RegExp('/repos/r_auth/run\\?job=' + jobId + '$'));
+  await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
 });
 
 test('review and missing-field filters use the current server STAR states', async ({ page }) => {
@@ -67,7 +67,7 @@ test('copy preview offers plain STAR and evidence formats without modifying save
 });
 
 test('manual drafts can change title and period after the first save and clear the period explicitly', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/cards/new');
+  await loginAsDemo(page); await page.goto('/cards/new?write=1');
   await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('메타 수정 경험');
   const period = page.getByRole('textbox', { name: '기간', exact: true }); await period.fill('2024.04');
   await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();

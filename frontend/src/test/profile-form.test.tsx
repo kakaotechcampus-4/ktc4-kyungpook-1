@@ -18,11 +18,10 @@ vi.mock('@/components/ui/Select', () => ({
 }));
 
 // 칸 이름 = "<영역> <번호> <화면에 보이는 이름>" (선택 칸은 이름 뒤에 "(선택)")
-const edu = { level: (n = 1) => `학력 ${n} 학력 구분`, school: (n = 1) => `학력 ${n} 학교`, major: (n = 1) => `학력 ${n} 전공 (선택)`, status: (n = 1) => `학력 ${n} 상태`,
+const edu = { level: (n = 1) => `학력 ${n} 학력 구분`, school: (n = 1) => `학력 ${n} 학교 (선택)`, major: (n = 1) => `학력 ${n} 전공 (선택)`, status: (n = 1) => `학력 ${n} 상태`,
   start: (n = 1) => `학력 ${n} 입학 월 (선택)`, end: (n = 1) => `학력 ${n} 졸업(예정) 월 (선택)`, gpa: (n = 1) => `학력 ${n} 학점 (선택)`, gpaMax: (n = 1) => `학력 ${n} 학점 만점 (선택)` };
 const car = { company: (n = 1) => `경력 ${n} 회사`, type: (n = 1) => `경력 ${n} 고용 형태`, role: (n = 1) => `경력 ${n} 직무 (선택)`, start: (n = 1) => `경력 ${n} 입사 월`, end: (n = 1) => `경력 ${n} 퇴사 월`, current: (n = 1) => `경력 ${n} 재직 중` };
 const lang = { test: (n = 1) => `어학 ${n} 시험`, testName: (n = 1) => `어학 ${n} 시험 이름`, score: (n = 1) => `어학 ${n} 점수 또는 등급`, month: (n = 1) => `어학 ${n} 취득 월 (선택)` };
-const cert = { name: (n = 1) => `자격증 ${n} 이름`, issuer: (n = 1) => `자격증 ${n} 발급 기관 (선택)`, month: (n = 1) => `자격증 ${n} 취득 월 (선택)` };
 
 const routes = () => [page(<ProfilePage />, '/settings/profile'), page(<p>마이페이지 화면</p>, '/settings'), page(<p>다른 화면</p>, '/elsewhere')];
 async function open() {
@@ -33,6 +32,10 @@ async function open() {
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const choose = (label: string, value: string) => fireEvent.change(screen.getByRole('combobox', { name: label }), { target: { value } });
+const pick = (label: string) => fireEvent.click(screen.getByRole('checkbox', { name: label }));
+// 자격증은 이름만 고른다 — 흔한 자격증은 타일, 그 밖은 직접 적어 칩으로 더한다
+const certTile = (name: string) => within(screen.getByRole('region', { name: '자격증' })).getByRole('checkbox', { name });
+const addCert = (name: string) => { type('자격증 직접 입력', name); click('추가'); };
 const status = () => screen.getAllByRole('status').map((el) => el.textContent).join('|');
 const save = async () => { click(/^(다시 )?저장$/); await act(async () => { await Promise.resolve(); }); };
 const puts = (server: ReturnType<typeof connectMockServer>) => server.profileCalls().filter((c) => c.method === 'PUT');
@@ -86,7 +89,7 @@ describe('profile form — rows', () => {
   });
 
   it.each([
-    ['학력', 5, '학력 5'], ['경력', 10, '경력 10'], ['어학', 10, '어학 10'], ['자격증', 20, '자격증 20'],
+    ['학력', 5, '학력 5'], ['경력', 10, '경력 10'], ['어학', 10, '어학 10'],
   ] as const)('%s stops at %i rows and says so', async (noun, max, lastTitle) => {
     connectMockServer();
     await open();
@@ -101,20 +104,35 @@ describe('profile form — rows', () => {
     expect(screen.getByRole('button', { name: `${noun} 추가` })).toBeEnabled();
   }, 20000);
 
+  it('자격증 stops at 20: the unticked tiles and the add button turn off, and removing one turns them back on', async () => {
+    connectMockServer();
+    await open();
+    const section = within(screen.getByRole('region', { name: '자격증' }));
+    const [spare, ...tiles] = section.getAllByRole('checkbox');
+    tiles.forEach((tile) => fireEvent.click(tile));
+    for (let i = tiles.length; i < PROFILE_LIMITS.MAX_ITEMS.certifications; i++) addCert(`직접 적은 자격증 ${i}`);
+    expect(spare).toBeDisabled();
+    type('자격증 직접 입력', '하나 더');
+    expect(screen.getByRole('button', { name: '추가' })).toBeDisabled();
+    click(`직접 적은 자격증 ${tiles.length} 삭제`);
+    expect(spare).toBeEnabled();
+    expect(screen.getByRole('button', { name: '추가' })).toBeEnabled();
+  });
+
   it('every control is named "<section> <row> <its visible label>", so voice control can say what it sees (WCAG 2.5.3)', async () => {
     connectMockServer();
     await open();
-    for (const name of ['학력 추가', '경력 추가', '어학 추가', '자격증 추가']) click(name);
+    for (const name of ['학력 추가', '경력 추가', '어학 추가']) click(name);
     choose(lang.test(), 'OTHER'); // 시험 이름 칸까지 나오게
-    const fields = [...document.querySelectorAll('label.field')];
-    expect(fields.length).toBe(8 + 5 + 4 + 3);
+    const fields = [...document.querySelectorAll('.profile-list label.field')];
+    expect(fields.length).toBe(8 + 5 + 4);
     for (const field of fields) {
       const visible = field.querySelector('.field__label')!.textContent!.trim();
       const control = field.querySelector('input, select')!;
-      expect(control.getAttribute('aria-label'), `visible label "${visible}"`).toMatch(new RegExp(`^(학력|경력|어학|자격증) 1 ${visible.replace(/[()]/g, '\\$&')}$`));
+      expect(control.getAttribute('aria-label'), `visible label "${visible}"`).toMatch(new RegExp(`^(학력|경력|어학) 1 ${visible.replace(/[()]/g, '\\$&')}$`));
     }
     expect(screen.getByLabelText(car.current())).toBeInTheDocument();
-    for (const name of ['학력 1 삭제', '경력 1 삭제', '어학 1 삭제', '자격증 1 삭제']) expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    for (const name of ['학력 1 삭제', '경력 1 삭제', '어학 1 삭제']) expect(screen.getByRole('button', { name })).toBeInTheDocument();
   });
 
   it('asks for a test name only when the test is "기타"', async () => {
@@ -188,26 +206,46 @@ describe('profile form — validation (same rules as BE, caught before sending)'
   it('does not shout while typing; on save it lists what is wrong, focuses the first field and sends nothing', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가');
     expect(screen.queryByText('학교 이름을 입력해 주세요')).not.toBeInTheDocument();
     server.fetcher.mockClear();
     await save();
-    for (const message of ['학력 구분을 선택해 주세요', '학교 이름을 입력해 주세요', '상태를 선택해 주세요']) expect(screen.getByText(message)).toBeInTheDocument();
+    for (const message of ['학력 구분을 선택해 주세요', '상태를 선택해 주세요']) expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('입력을 확인해 주세요');
-    expect(screen.getByRole('alert')).toHaveTextContent('3곳');
+    expect(screen.getByRole('alert')).toHaveTextContent('2곳');
     await waitFor(() => expect(screen.getByRole('combobox', { name: edu.level() })).toHaveFocus());
-    expect(screen.getByLabelText(edu.school())).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByLabelText(edu.school())).toHaveAccessibleDescription('학교 이름을 입력해 주세요');
+    expect(screen.getByLabelText(edu.school())).not.toHaveAttribute('aria-invalid'); // 학교 이름은 비워도 된다 — 처음 입력 창이 받지 않는다
+    expect(screen.getByRole('combobox', { name: edu.status() })).toHaveAccessibleDescription('상태를 선택해 주세요');
     expect(puts(server)).toEqual([]);
+  });
+
+  it('needs one to three interests: says so on save, and greys out the rest once three are chosen', async () => {
+    const server = connectMockServer();
+    await open();
+    click('학력 추가'); fillEducationRequired();
+    await save();
+    expect(screen.getByText('관심 분야를 1개 이상 골라 주세요')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('1곳');
+    expect(puts(server)).toEqual([]);
+    pick('백엔드'); pick('프론트엔드'); pick('데이터');
+    expect(screen.queryByText('관심 분야를 1개 이상 골라 주세요')).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '보안' })).toBeDisabled();
+    pick('프론트엔드');
+    expect(screen.getByRole('checkbox', { name: '보안' })).toBeEnabled();
+    await save();
+    await waitFor(() => expect(status()).toContain('저장했어요'));
+    expect((puts(server)[0].body as { interests: string[] }).interests).toEqual(['BACKEND', 'DATA']);
   });
 
   it('never complains about an optional box left empty', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가'); fillEducationRequired();
     click('경력 추가'); fillCareerRequired();
     click('어학 추가'); choose(lang.test(), 'TOEIC'); type(lang.score(), '900');
-    click('자격증 추가'); type(cert.name(), '정보처리기사');
+    fireEvent.click(certTile('정보처리기사'));
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
     expect(puts(server)[0].body).toEqual({
@@ -215,12 +253,14 @@ describe('profile form — validation (same rules as BE, caught before sending)'
       careers: [{ company: '샘플컴퍼니', role: null, type: 'FULL_TIME', startMonth: '2022-03', endMonth: null }],
       languages: [{ test: 'TOEIC', testName: null, score: '900', acquiredMonth: null }],
       certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: null }],
+      interests: ['BACKEND'],
     });
   });
 
   it('ties the select errors to their selects the way every other field is tied', async () => {
     connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가');
     await save();
     for (const [name, message] of [[edu.level(), '학력 구분을 선택해 주세요'], [edu.status(), '상태를 선택해 주세요']] as const) {
@@ -237,6 +277,7 @@ describe('profile form — validation (same rules as BE, caught before sending)'
   it('removes a message the moment its field is fixed', async () => {
     connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가');
     await save();
     type(edu.school(), '샘플대학교');
@@ -248,6 +289,7 @@ describe('profile form — validation (same rules as BE, caught before sending)'
   it('GPA goes with its maximum: asks for the missing half, and keeps the score between zero and the maximum', async () => {
     connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가'); fillEducationRequired();
     type(edu.gpa(), '3.8');
     await save();
@@ -289,6 +331,7 @@ describe('profile form — validation (same rules as BE, caught before sending)'
   it('a graduated school needs no end month and no other optional box', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가'); fillEducationRequired();
     choose(edu.status(), 'GRADUATED');
     await save();
@@ -316,15 +359,6 @@ describe('profile form — validation (same rules as BE, caught before sending)'
     for (const message of ['회사 이름을 입력해 주세요', '고용 형태를 선택해 주세요', '입사 월을 입력해 주세요']) expect(screen.getByText(message)).toBeInTheDocument();
   });
 
-  it('reports a section-wide problem under the section, and an optional issuer is not one', async () => {
-    connectMockServer();
-    await open();
-    click('자격증 추가');
-    await save();
-    expect(screen.getByText('자격증 이름을 입력해 주세요')).toBeInTheDocument();
-    expect(screen.queryByText('발급 기관을 입력해 주세요')).not.toBeInTheDocument();
-  });
-
   it('too-long text says the limit of that box (50, score 20)', async () => {
     connectMockServer();
     await open();
@@ -344,6 +378,7 @@ describe('profile form — saving', () => {
     const server = connectMockServer();
     await open();
     expect(status()).toContain('고친 곳이 없어요');
+    pick('백엔드'); pick('인프라, DevOps');
     click('학력 추가'); fillEducation(1, { school: '  샘플대학교  ' });
     type(edu.gpa(), '3.8'); choose(edu.gpaMax(), '4.5');
     expect(status()).toContain('저장하지 않은 변경이 있어요');
@@ -352,11 +387,10 @@ describe('profile form — saving', () => {
     fireEvent.click(screen.getByLabelText(car.current()));
     click('어학 추가');
     choose(lang.test(), 'TOEIC'); type(lang.score(), '900'); type(lang.month(), '2021-08');
-    click('자격증 추가');
-    type(cert.name(), '정보처리기사'); type(cert.issuer(), '   '); type(cert.month(), '2021-11');
+    fireEvent.click(certTile('정보처리기사'));
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
-    expect(puts(server)[0].body).toEqual(sampleInput());
+    expect(puts(server)[0].body).toEqual({ ...sampleInput(), certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: null }] });
     expect(screen.getByLabelText(edu.school())).toHaveValue('샘플대학교'); // 서버가 돌려준 정리된 값
     expect(screen.getByRole('button', { name: '저장' })).toHaveAttribute('aria-disabled', 'true');
     await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toHaveFocus());
@@ -365,21 +399,24 @@ describe('profile form — saving', () => {
     expect(puts(server)).toHaveLength(1);
   });
 
-  it('always sends all four lists, even when only one has rows (a missing list would be a 400)', async () => {
+  it('always sends all four lists and the interests, even when only one list has rows (a missing list would be a 400)', async () => {
     const server = connectMockServer();
     await open();
-    click('자격증 추가'); type(cert.name(), '정보처리기사');
+    pick('백엔드');
+    fireEvent.click(certTile('정보처리기사'));
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
     const body = puts(server)[0].body as Record<string, unknown>;
-    expect(Object.keys(body)).toEqual(['educations', 'careers', 'languages', 'certifications']);
+    expect(Object.keys(body)).toEqual(['educations', 'careers', 'languages', 'certifications', 'interests']);
     expect([body.educations, body.careers, body.languages]).toEqual([[], [], []]);
+    expect(body.interests).toEqual(['BACKEND']);
     expect(body.certifications).toEqual([{ name: '정보처리기사', issuer: null, acquiredMonth: null }]);
   });
 
   it('sends the test name only for "기타"', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('어학 추가'); click('어학 추가');
     choose(lang.test(1), 'TOEIC'); type(lang.score(1), '900');
     choose(lang.test(2), 'OTHER'); type(lang.testName(2), ' 토픽 '); type(lang.score(2), '6급');
@@ -396,6 +433,9 @@ describe('profile form — saving', () => {
     connectMockServer();
     putProfile(sampleInput());
     await open();
+    expect(screen.getByRole('checkbox', { name: '백엔드' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '인프라, DevOps' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '모바일' })).not.toBeChecked();
     expect(screen.getByLabelText(edu.school())).toHaveValue('샘플대학교');
     expect(screen.getByLabelText(edu.end())).toHaveValue('2022-02');
     expect(screen.getByLabelText(edu.gpa())).toHaveValue('3.8');
@@ -406,8 +446,22 @@ describe('profile form — saving', () => {
     expect(screen.getByLabelText(car.end())).toBeDisabled();
     expect(screen.getByRole('combobox', { name: car.type() })).toHaveValue('FULL_TIME');
     expect(screen.getByRole('combobox', { name: lang.test() })).toHaveValue('TOEIC');
-    expect(screen.getByLabelText(cert.issuer())).toHaveValue('');
+    expect(certTile('정보처리기사')).toBeChecked();
     expect(status()).toContain('고친 곳이 없어요');
+  });
+
+  it('keeps the issuer and month a saved certification already has, though the screen no longer asks for them', async () => {
+    const server = connectMockServer();
+    putProfile({ ...sampleInput(), certifications: [{ name: '정보처리기사', issuer: '한국산업인력공단', acquiredMonth: '2021-11' }] });
+    await open();
+    expect(screen.getByRole('region', { name: '자격증' })).not.toHaveTextContent(/발급 기관|취득 월/);
+    fireEvent.click(certTile('SQLD'));
+    await save();
+    await waitFor(() => expect(status()).toContain('저장했어요'));
+    expect((puts(server)[0].body as { certifications: unknown[] }).certifications).toEqual([
+      { name: '정보처리기사', issuer: '한국산업인력공단', acquiredMonth: '2021-11' },
+      { name: 'SQLD', issuer: null, acquiredMonth: null },
+    ]);
   });
 
   it('opens an empty, never-saved profile with nothing filled in', async () => {
@@ -430,15 +484,16 @@ describe('profile form — saving', () => {
     await waitFor(() => expect(status()).toContain('저장했어요'));
   });
 
-  it('clearing every row and saving sends four empty lists, with a warning first', async () => {
+  it('clearing every row and saving sends four empty lists (the interests stay), with a warning first', async () => {
     const server = connectMockServer();
     putProfile(sampleInput());
     await open();
-    for (const name of ['학력 1 삭제', '경력 1 삭제', '어학 1 삭제', '자격증 1 삭제']) click(name);
+    for (const name of ['학력 1 삭제', '경력 1 삭제', '어학 1 삭제']) click(name);
+    fireEvent.click(certTile('정보처리기사'));
     expect(status()).toContain('모두 지운 상태예요. 저장하면 입력한 정보가 삭제돼요');
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
-    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [] });
+    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS'] });
   });
 });
 
@@ -447,14 +502,13 @@ describe('profile form — failure keeps the input', () => {
     let failures = 1;
     const server = connectMockServer((call) => (call.method === 'PUT' && failures-- > 0 ? jsonError(503, 'INTERNAL_ERROR') : undefined));
     await open();
-    click('자격증 추가');
-    type(cert.name(), '정보처리기사'); type(cert.month(), '2021-11');
+    pick('백엔드');
+    fireEvent.click(certTile('정보처리기사'));
     await save();
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('서버에 연결하지 못했어요');
+    expect(alert).toHaveTextContent('서버에서 처리하지 못했어요');
     expect(alert).toHaveTextContent('입력한 내용은 이 화면에 남아 있어요');
-    expect(screen.getByLabelText(cert.name())).toHaveValue('정보처리기사');
-    expect(screen.getByLabelText(cert.month())).toHaveValue('2021-11');
+    expect(certTile('정보처리기사')).toBeChecked();
     expect(status()).toContain('저장하지 못했어요. 입력한 내용은 그대로예요');
     expect(screen.getByRole('button', { name: '다시 저장' })).toBeEnabled();
     await waitFor(() => expect(screen.getByRole('button', { name: '다시 저장' })).toHaveFocus());
@@ -483,6 +537,7 @@ describe('profile form — failure keeps the input', () => {
       ? jsonError(400, 'INVALID_REQUEST', { fields: [{ path: 'careers[0].role', code: 'TOO_LONG' }, { path: 'careers[0].startMonth', code: 'INVALID_FORMAT' }] })
       : undefined));
     await open();
+    pick('백엔드');
     click('경력 추가');
     fillCareerRequired(); type(car.role(), '개발');
     await save();
@@ -501,7 +556,8 @@ describe('profile form — failure keeps the input', () => {
       ? jsonError(400, 'INVALID_REQUEST', { fields: [{ path: 'educations[0].degree', code: 'REQUIRED' }, { path: 'educations[7].school', code: 'REQUIRED' }] })
       : undefined));
     await open();
-    click('자격증 추가'); type(cert.name(), '자격증');
+    pick('백엔드');
+    addCert('자격증');
     await save();
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('서버가 입력을 받지 못했어요');
@@ -514,15 +570,15 @@ describe('profile form — failure keeps the input', () => {
       ? new Response(JSON.stringify({ data: null, error: { code: 'INVALID_REQUEST', message: sentence } }), { status: 400 })
       : undefined));
     await open();
-    click('자격증 추가');
-    type(cert.name(), '자격증');
+    pick('백엔드');
+    addCert('자격증');
     await save();
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('서버가 입력을 받지 못했어요');
     expect(alert).toHaveTextContent('입력한 내용은 이 화면에 그대로 남아 있어요');
     expect(document.body.textContent).not.toContain('50자를 넘어요');
     expect(document.body.textContent).not.toContain(sentence);
-    expect(screen.getByLabelText(cert.name())).toHaveValue('자격증');
+    expect(screen.getByRole('list', { name: '직접 적은 자격증' })).toHaveTextContent('자격증');
     expect(screen.queryByRole('button', { name: '저장' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 저장' })).toBeEnabled();
   });
@@ -532,13 +588,12 @@ describe('profile form — leaving with unsaved changes', () => {
   it('asks before leaving a dirty form; staying keeps the input, leaving drops it', async () => {
     connectMockServer();
     const { router } = await open();
-    click('자격증 추가');
-    type(cert.name(), '정보처리기사');
+    fireEvent.click(certTile('정보처리기사'));
     await act(async () => { void router.navigate('/elsewhere'); });
     const dialog = await screen.findByRole('dialog', { name: '아직 저장되지 않은 내용이 있어요' });
     fireEvent.click(within(dialog).getByRole('button', { name: '계속 작성' }));
     expect(router.state.location.pathname).toBe('/settings/profile');
-    expect(screen.getByLabelText(cert.name())).toHaveValue('정보처리기사');
+    expect(certTile('정보처리기사')).toBeChecked();
     await act(async () => { void router.navigate('/elsewhere'); });
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '저장하지 않고 나가기' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/elsewhere'));
@@ -547,8 +602,8 @@ describe('profile form — leaving with unsaved changes', () => {
   it('"save and leave" saves first and then leaves', async () => {
     const server = connectMockServer();
     const { router } = await open();
-    click('자격증 추가');
-    type(cert.name(), '정보처리기사'); type(cert.month(), '2021-11');
+    pick('백엔드');
+    fireEvent.click(certTile('정보처리기사'));
     await act(async () => { void router.navigate('/elsewhere'); });
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '저장하고 이동' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/elsewhere'));
@@ -558,8 +613,7 @@ describe('profile form — leaving with unsaved changes', () => {
   it('"save and leave" with invalid input stays and explains why (not "check your connection")', async () => {
     const server = connectMockServer();
     const { router } = await open();
-    click('자격증 추가'); // 이름 없음
-    type(cert.issuer(), '한국산업인력공단');
+    click('경력 추가'); // 회사·고용 형태·입사 월 없음
     await act(async () => { void router.navigate('/elsewhere'); });
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '저장하고 이동' }));
     const why = await screen.findByText(/입력을 확인해야 저장할 수 있어요/);
@@ -580,8 +634,8 @@ describe('profile form — leaving with unsaved changes', () => {
   it('does not ask after a successful save', async () => {
     connectMockServer();
     const { router } = await open();
-    click('자격증 추가');
-    type(cert.name(), '정보처리기사'); type(cert.month(), '2021-11');
+    pick('백엔드');
+    fireEvent.click(certTile('정보처리기사'));
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
     await act(async () => { await router.navigate('/elsewhere'); });

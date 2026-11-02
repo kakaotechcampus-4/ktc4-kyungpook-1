@@ -11,6 +11,7 @@ import { MatchDetailPage } from '@/features/match/MatchDetailPage';
 import { MatchListPage } from '@/features/match/MatchListPage';
 import { track } from '@/lib/track';
 import { handle } from '@/mock/router';
+import { cardKindLabel } from '@/lib/labels';
 import { resetDb } from '@/mock/store';
 import sampleList from '../../docs/examples/matching/list.json';
 import sampleDetail from '../../docs/examples/matching/detail.json';
@@ -61,7 +62,7 @@ it('shows each evidence card kind on the match detail', async () => {
   vi.spyOn(matchingApi, 'detail').mockResolvedValue(detail);
   mount(`/match/${detail.id}`);
   const link = await screen.findByTitle(firstMet.reason);
-  expect(within(link).getByText(firstMet.cardKind === 'TECH' ? '기술 카드' : '경험 카드')).toBeInTheDocument();
+  expect(within(link).getByText(cardKindLabel[firstMet.cardKind])).toBeInTheDocument();
 });
 
 async function confirmCard() {

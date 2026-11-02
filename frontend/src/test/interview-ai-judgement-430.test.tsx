@@ -26,7 +26,7 @@ function mount(turns: InterviewTurn[]) {
   const router = createMemoryRouter([{ path: '/cards/:cardId/interview', element: <InterviewPage /> }], { initialEntries: [`/cards/${card.id}/interview`] });
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
 }
-const openTurn = (reason: string | null): InterviewTurn => ({ ...template, field: 'T', turnNo: 1, question: 'T question', answer: null, outcome: null, reason });
+const openTurn = (reason: string | null): InterviewTurn => ({ ...template, field: 'T', turnNo: 1, askedBy: 'FOLLOW_UP', question: 'T question', answer: null, outcome: null, reason });
 async function answerOpenTurn() {
   fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
   fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
@@ -58,7 +58,8 @@ describe('#430 되묻기에서 AI 판단을 보여 주기', () => {
     mount(turns);
     await answerOpenTurn();
 
-    expect(await screen.findByText(/AI 판단: 네 칸 모두 근거가 있어 질문을 마칠게요/)).toBeInTheDocument();
+    expect(await screen.findByText('네 칸 모두 근거가 있어 질문을 마칠게요')).toBeInTheDocument();
+    expect(screen.getByText('AI 판단')).toBeInTheDocument();
     expect(screen.getByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeInTheDocument();
     expect(ask).toHaveBeenCalledWith(card.id, undefined);
   });

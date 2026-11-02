@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { CARD_ID, REPO_ID, cardFixture, installContractFixture } from './contract-fixture';
 
 const uuidV4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const labels = ['상황 (Situation)', '과제 (Task)', '행동 (Action)', '결과 (Result)'];
+const labels = ['상황', '과제', '행동', '결과'];
 
 test('lost manual response retries one UUID and adopts current server metadata while retaining local STAR', async ({ page }) => {
   const http = await installContractFixture(page, { loseFirstManualResponse: true });
@@ -14,7 +14,7 @@ test('lost manual response retries one UUID and adopts current server metadata w
   await page.getByLabel(labels[0], { exact: true }).fill(situation);
   await page.getByLabel(labels[2], { exact: true }).fill(action);
   await page.getByLabel(labels[3], { exact: true }).fill(' \n\t\u001c\u001d\u001e\u001f ');
-  await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();
+  await page.getByRole('button', { name: '작성 시작', exact: true }).click();
   await expect(page.locator('main').getByRole('status')).toContainText('저장이 안 됐어요');
   expect(http.manual()).toHaveLength(1);
   expect(http.patches()).toHaveLength(0);
@@ -57,7 +57,7 @@ test('lost manual response retries one UUID and adopts current server metadata w
   await page.getByRole('navigation', { name: '커리어 관리', exact: true }).getByRole('link', { name: '경험 카드', exact: true }).click();
   await page.getByRole('link', { name: /직접 작성/ }).click();
   await page.getByLabel('카드 제목', { exact: true }).fill('새 진입 제목');
-  await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();
+  await page.getByRole('button', { name: '작성 시작', exact: true }).click();
   await expect(page.locator('main').getByRole('status')).toHaveText('저장됨');
   expect(http.manual()).toHaveLength(3);
   expect(http.manual()[2].headers['idempotency-key']).toMatch(uuidV4);
@@ -138,8 +138,8 @@ test('real partial timeout card offers writing and blocks unsupported regenerati
   await expect(page.getByText('빈칸은 답변하거나 직접 작성해 주세요.')).toBeVisible();
   await expect(page.getByRole('button', { name: /다시 생성/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '결과 답변하기', exact: true })).toBeVisible();
-  // 하단 "직접 수정" 대신 빈 칸마다 직접 쓰기가 있다
-  await expect(page.getByRole('button', { name: '결과 직접 쓰기', exact: true })).toBeVisible();
+  // 하단 "수정" 대신 빈 칸마다 직접 작성이 있다
+  await expect(page.getByRole('button', { name: '결과 직접 작성', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '기본 정보 수정', exact: true })).toHaveCount(0);
   const guarded = await page.evaluate(async id => {
     // Use the browser-loaded endpoint to prove the capability guard also prevents direct callers.

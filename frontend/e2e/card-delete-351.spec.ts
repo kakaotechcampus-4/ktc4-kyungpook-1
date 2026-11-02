@@ -16,7 +16,7 @@ for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']
     await remove.click();
     await expect(page).toHaveURL(/\/cards$/);
     const dialog = page.getByRole('dialog', { name: '카드를 삭제할까요?' });
-    await expect(dialog).toContainText('후보 목록에서 다시 골라');
+    await expect(dialog).toContainText('후보 보드에서 다시 골라');
     await dialog.getByRole('button', { name: '취소', exact: true }).click();
     await expect(page.locator('.experience-item')).toHaveCount(8);
     await remove.focus();

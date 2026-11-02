@@ -15,7 +15,7 @@ export const cardKindLabel: Record<CardKind, string> = { TECH: '기술 카드', 
 export const cardKindShort: Record<CardKind, string> = { TECH: '기술', QUALITATIVE: '경험' };
 export const cardStatusLabel: Record<CardStatus, string> = { DRAFT: '작성 중', CONFIRMED: '확정됨' };
 export const versionSourceLabel: Record<VersionSource, string> = {
-  AI_DRAFT: '첫 초안', USER_EDIT: '직접 수정', INTERVIEW: '답변 반영', MASK: '정보 가림', RESTORE: '이전 내용 복원',
+  AI_DRAFT: '첫 초안', USER_EDIT: '직접 수정', INTERVIEW: '답변 반영', MASK: '정보 가리기', RESTORE: '이전 내용 복원',
 };
 export const cardContentLabel: Record<VersionSource, string> = {
   AI_DRAFT: 'GitHub 기록에서 정리한 초안', USER_EDIT: '직접 작성한 내용', INTERVIEW: '답변을 반영한 내용',
@@ -23,14 +23,15 @@ export const cardContentLabel: Record<VersionSource, string> = {
 };
 export const interviewActionLabel = '답변하기';
 export const historyActionLabel = '작성 이력';
-export const evidenceTypeLabel: Record<EvidenceType, string> = { COMMIT: '근거', USER_STATED: '직접 쓴 답변', USER_SELECTED: '선택한 답변' };
-export const starFieldName: Record<StarField, string> = { S: '상황 (Situation)', T: '과제 (Task)', A: '행동 (Action)', R: '결과 (Result)' };
+export const evidenceTypeLabel: Record<EvidenceType, string> = { COMMIT: '근거', USER_STATED: '내 답변', USER_SELECTED: '선택한 답변' };
+/** 화면과 접근성 이름에 쓰는 칸 이름. 영어 병기 없이 한국어만(용어집 3.4). */
+export const starFieldName: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
 export const starFieldShort: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
 export const dropReasonLabel: Record<DropReason, string> = {
-  NO_EVIDENCE: '근거를 찾지 못해 비워 두었습니다',
-  OVERCLAIM: '기여도를 넘는 표현이라 비워 두었습니다',
-  UNSOURCED_NUMBER: '출처 없는 수치라 비워 두었습니다',
-  TIMEOUT: '시간 안에 채우지 못했습니다',
+  NO_EVIDENCE: '근거를 찾지 못해 비워 뒀어요',
+  OVERCLAIM: '기여도를 넘는 표현이라 비워 뒀어요',
+  UNSOURCED_NUMBER: '출처 없는 수치라 비워 뒀어요',
+  TIMEOUT: '시간 안에 채우지 못했어요',
 };
 export const authoredByLabel: Record<AuthoredBy, string> = { AI: '커밋에서 찾은 문장', USER: '내가 쓴 문장' };
 export const starStateLabel: Record<StarFieldState, string> = { FILLED: '채움', EMPTY: '비어 있음', NEEDS_REVIEW: '확인 필요' };

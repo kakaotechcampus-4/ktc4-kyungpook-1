@@ -40,14 +40,14 @@ describe('writing route save protection', () => {
     const router = createMemoryRouter([{ path: '/new', element: <NewCardPage /> }, { path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: ['/new'] });
     render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: 'Manual cache' } });
-    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Saved manual situation' } });
-    fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
+    fireEvent.change(screen.getByLabelText('상황'), { target: { value: 'Saved manual situation' } });
+    fireEvent.click(screen.getByRole('button', { name: '작성 시작' }));
     fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/cards/manual-cache'));
     await waitFor(() => expect(client.getQueryState(keys.card('manual-cache'))?.status).toBe('error'));
     expect(screen.getByText('Saved manual situation')).toBeInTheDocument();
     await act(async () => { await router.navigate('/cards/manual-cache?mode=edit'); });
-    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Saved manual situation');
+    expect(screen.getByLabelText('상황')).toHaveValue('Saved manual situation');
   });
   it.each(['guard', 'autosave'] as const)('keeps saved text across %s then Back and re-edit when detail refresh is unavailable', async (mode) => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } } });
@@ -57,7 +57,7 @@ describe('writing route save protection', () => {
     const router = createMemoryRouter([{ path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: [`/cards/${card.id}`, `/cards/${card.id}?mode=edit`], initialIndex: 1 });
     render(<StrictMode><QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider></StrictMode>);
     vi.useFakeTimers();
-    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Latest acknowledged situation' } });
+    fireEvent.change(screen.getByLabelText('상황'), { target: { value: 'Latest acknowledged situation' } });
     if (mode === 'autosave') await act(async () => { await vi.advanceTimersByTimeAsync(CONFIG.DRAFT_AUTOSAVE_MS + 1); });
     await act(async () => { await router.navigate(-1); });
     if (mode === 'guard') {
@@ -69,7 +69,7 @@ describe('writing route save protection', () => {
     expect(screen.getByText('Latest acknowledged situation')).toBeInTheDocument();
     await act(async () => { await client.invalidateQueries({ queryKey: keys.card(card.id), exact: true }); });
     await act(async () => { await router.navigate(`/cards/${card.id}?mode=edit`); });
-    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Latest acknowledged situation');
+    expect(screen.getByLabelText('상황')).toHaveValue('Latest acknowledged situation');
     expect(client.getQueryData<Card>(keys.card(card.id))?.version.versionNo).toBe(2);
   });
   it('uses returned ID immediately and keeps failed first save on the page for retry', async () => {
@@ -77,14 +77,14 @@ describe('writing route save protection', () => {
     const save = vi.spyOn(endpoints, 'saveDraft').mockRejectedValueOnce(new Error('offline')).mockImplementation(async (id, fields) => ({ ...fields, cardId: id, versionNo: 1, savedAt: card.version.createdAt }));
     const router = mount();
     fireEvent.change(screen.getByLabelText('카드 제목'), { target: { value: '  Original title  ' } });
-    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: '  original\n' } });
-    fireEvent.click(screen.getByRole('button', { name: '임시 저장 시작' }));
+    fireEvent.change(screen.getByLabelText('상황'), { target: { value: '  original\n' } });
+    fireEvent.click(screen.getByRole('button', { name: '작성 시작' }));
     await screen.findByRole('button', { name: '다시 저장' });
     expect(router.state.location.pathname).toBe('/new');
     expect(save).toHaveBeenCalledWith('returned-card', expect.objectContaining({ situation: '  original\n' }));
     expect(screen.getByLabelText('카드 제목')).toBeEnabled();
     expect(screen.getByLabelText('기간')).toBeEnabled();
-    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('  original\n');
+    expect(screen.getByLabelText('상황')).toHaveValue('  original\n');
     fireEvent.click(screen.getByRole('button', { name: '저장 후 종료' }));
     await screen.findByText('Card destination');
     expect(create).toHaveBeenCalledTimes(1);
@@ -117,11 +117,11 @@ describe('writing route save protection', () => {
     const done = vi.fn();
     vi.spyOn(endpoints, 'saveDraft').mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ ...card.version, cardId: card.id, savedAt: card.version.createdAt });
     mount(<EditMode card={card} onDone={done} />);
-    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Changed situation' } });
+    fireEvent.change(screen.getByLabelText('상황'), { target: { value: 'Changed situation' } });
     fireEvent.click(screen.getByRole('button', { name: '저장하고 닫기' }));
     await screen.findByRole('button', { name: '다시 저장하고 닫기' });
     expect(done).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Changed situation');
+    expect(screen.getByLabelText('상황')).toHaveValue('Changed situation');
     fireEvent.click(screen.getByRole('button', { name: '다시 저장하고 닫기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
   });

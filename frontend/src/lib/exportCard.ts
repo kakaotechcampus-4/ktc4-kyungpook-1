@@ -15,15 +15,15 @@ export function cardToText(card: Card, mask: (value: string) => string, format: 
 export function cardToMarkdown(card: Card, mask: (t: string) => string): string {
   const lines: string[] = [`# ${mask(card.title)}`, ''];
   if (card.repo) lines.push(`- 레포: ${card.repo.owner}/${card.repo.name}`);
-  if (card.candidate) lines.push(`- 출처: ${candidateRefLabel(card.candidate.type, card.candidate.ref)} · ${mask(card.candidate.title)}`);
-  lines.push(`- 상태: ${cardStatusLabel[card.status]} · v${card.version.versionNo}`, '');
+  if (card.candidate) lines.push(`- 출처: ${candidateRefLabel(card.candidate.type, card.candidate.ref)}, ${mask(card.candidate.title)}`);
+  lines.push(`- 상태: ${cardStatusLabel[card.status]}, v${card.version.versionNo}`, '');
   for (const f of STAR_FIELDS) {
     const t = card.version[fieldKey[f]];
     lines.push(`## ${starFieldName[f]}`);
     lines.push(t ? mask(t) : '_(미작성)_');
     const ev = card.evidence.filter((e) => e.field === f);
     for (const e of ev) {
-      lines.push(e.type === 'COMMIT' ? `- ${evidenceTypeLabel.COMMIT} \`${e.sha}\` ${e.snippet ? `"${mask(e.snippet)}"` : ''} ${e.url ?? ''}`.trimEnd() : `- ${evidenceTypeLabel[e.type]}${e.turnNo ? ` · 답변 ${e.turnNo}` : ''}`);
+      lines.push(e.type === 'COMMIT' ? `- ${evidenceTypeLabel.COMMIT} \`${e.sha}\` ${e.snippet ? `"${mask(e.snippet)}"` : ''} ${e.url ?? ''}`.trimEnd() : `- ${evidenceTypeLabel[e.type]}${e.turnNo ? `, ${e.turnNo}번째 질문` : ''}`);
     }
     lines.push('');
   }

@@ -31,7 +31,7 @@ test('STAR editors begin at the same left edge as the field letter on desktop an
   await loginAsDemo(page);
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 }); await page.goto('/cards/new');
-    await expect(page.getByRole('textbox', { name: '상황 (Situation)', exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: '상황', exact: true })).toBeVisible();
     const edges = await page.locator('.star-read__row').evaluateAll(rows => rows.map(row => ({ letter: row.querySelector('.star-key')!.getBoundingClientRect().left, input: row.querySelector('textarea')!.getBoundingClientRect().left })));
     expect(edges.every(edge => Math.abs(edge.letter - edge.input) <= 1)).toBe(true);
   }
@@ -53,7 +53,7 @@ test('mobile repository select keeps its menu in view and roundtrips the empty c
   await page.getByRole('option', { name: 'hong-dev/auth-service', exact: true }).click(); await expect(repo).toContainText('hong-dev/auth-service');
   await repo.click(); await page.getByRole('option', { name: '없음', exact: true }).click(); await expect(repo).toContainText('없음');
   await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('선택값 보존 검사');
-  await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click(); await expect(repo).toBeDisabled();
+  await page.getByRole('button', { name: '작성 시작', exact: true }).click(); await expect(repo).toBeDisabled();
   await page.getByRole('button', { name: '저장 후 종료', exact: true }).click(); await expect(page).toHaveURL(/\/cards\/[^/?]+$/);
   const saved = await page.evaluate(async () => (await (await fetch('/api' + location.pathname)).json()).data);
   expect(saved.repo).toBeNull();

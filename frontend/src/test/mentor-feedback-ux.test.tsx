@@ -148,7 +148,7 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
     for (const candidate of board.candidates.filter((c) => c.status === 'NEW' && !c.weak)) expect(screen.getByText(candidate.title)).toBeInTheDocument();
     const weak = board.candidates.filter(c => c.status === 'NEW' && c.weak);
     for (const candidate of weak) expect(screen.queryByText(candidate.title)).not.toBeInTheDocument();
-    const weakToggle = screen.getByRole('button', { name: /더 보기 후보 \d+개/ });
+    const weakToggle = screen.getByRole('button', { name: /추천도 낮은 후보 \d+개/ });
     fireEvent.click(weakToggle);
     for (const candidate of weak) expect(screen.getByText(candidate.title)).toBeInTheDocument();
     fireEvent.click(weakToggle);

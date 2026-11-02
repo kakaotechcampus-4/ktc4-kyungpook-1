@@ -9,7 +9,6 @@
 .btn--outline:hover:not(:disabled) { background: var(--bg-subtle); }
 .modal { border-radius: 20px; }
 .iconbox { border-radius: 10px; }
-.hl { color: var(--text-primary); text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px; text-decoration-color: var(--border-strong); }
 
 /* ───────── 사이드바: 접히는 레일 ───────── */
 .shell { grid-template-columns: var(--sb, 240px) minmax(0, 1fr); transition: grid-template-columns .18s ease; }

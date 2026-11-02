@@ -113,7 +113,7 @@ describe('recall drafts and honest settings', () => {
     mount(<LeavePage />);
     expect(screen.queryByText('합의된 3원칙')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '탈퇴 진행' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '설정으로 돌아가기' })).toHaveAttribute('href', '/settings');
+    expect(screen.getByRole('link', { name: '마이페이지로 돌아가기' })).toHaveAttribute('href', '/settings');
     expect(screen.getByRole('link', { name: '카드 목록' })).toHaveAttribute('href', '/cards');
   });
 });

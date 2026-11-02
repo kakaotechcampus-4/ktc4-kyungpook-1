@@ -18,7 +18,10 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
     public record Question(UUID id, int seq, String text, int charLimit, QuestionTheme theme, CardRef primaryCard,
                            boolean primaryCardDeleted, CardRef supportingCard, AssignedBy assignedBy, String pickReason,
                            List<Considered> considered, List<MaterialItem> materials, List<Ask> asks,
-                           QuestionDraft draft) {
+                           QuestionDraft draft, Writing writing) {
+    }
+
+    public record Writing(String text, int round) {
     }
 
     public record Ask(MaterialItem item, String question, List<String> templates, boolean required, Answer answer,
@@ -44,6 +47,6 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
     }
 
     public record WritingStep(int seq, String actor, String kind, UUID questionId, String code, String value,
-                              Integer sentenceSeq, String action, String reason) {
+                              Integer sentenceSeq, String sentence, String action, String reason) {
     }
 }

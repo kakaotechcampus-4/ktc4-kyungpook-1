@@ -22,6 +22,7 @@ import tools.jackson.databind.node.ObjectNode;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -157,6 +158,63 @@ class AiCoverLetterAssignmentAdapterTest {
         assertThatThrownBy(() -> adapter().assign(REQUEST))
                 .isInstanceOfSatisfying(AgentUnavailableException.class,
                         failure -> assertThat(failure.isRetryable()).isTrue());
+
+    }
+
+    @Test
+    @DisplayName("onStep 이 있으면 /internal/cover-letter-assignments/stream 으로 보내 단계를 받은 차례대로 넘기고, 배정은 스트리밍 없는 API 와 같게 읽는다")
+    void streamsStepsAndReadsSameAssignments() {
+
+        List<CoverLetterAssignment.Step> received = new ArrayList<>();
+        responseBody = progress(step(2, "SUB_AGENT", "NO_FIT", 2, null))
+                + progress(step(1, "SUB_AGENT", "PICKED", 1, 11))
+                + result(validData());
+
+        CoverLetterAssignment streamed = adapter().assign(REQUEST, received::add);
+
+        assertThat(requestPath).isEqualTo("/internal/cover-letter-assignments/stream");
+        assertThat(received).containsExactly(
+                new CoverLetterAssignment.Step(2, "SUB_AGENT", "NO_FIT", 2, null, "이유"),
+                new CoverLetterAssignment.Step(1, "SUB_AGENT", "PICKED", 1, 11L, "이유"));
+        responseBody = success(validData());
+        assertThat(streamed).isEqualTo(adapter().assign(REQUEST));
+
+    }
+
+    @Test
+    @DisplayName("보내지 않은 문항·카드를 가리키거나 모르는 종류인 단계 줄은 버리고, 남은 줄과 배정은 그대로 받는다")
+    void dropsStepLinesOutsideTheRequest() {
+
+        List<CoverLetterAssignment.Step> received = new ArrayList<>();
+        responseBody = progress(step(1, "SUB_AGENT", "PICKED", 9, 11))
+                + progress(step(2, "SUB_AGENT", "PICKED", 1, 99))
+                + progress(step(3, "SUB_AGENT", "GUESSED", 1, 11))
+                + progress(step(4, "SUB_AGENT", "PICKED", 1, 12))
+                + result(validData());
+
+        CoverLetterAssignment streamed = adapter().assign(REQUEST, received::add);
+
+        assertThat(received).containsExactly(new CoverLetterAssignment.Step(4, "SUB_AGENT", "PICKED", 1, 12L, "이유"));
+        assertThat(streamed.assignments()).hasSize(2);
+
+    }
+
+    private static String step(int seq, String actor, String kind, int questionId, Integer cardId) {
+
+        return "{\"kind\":\"STEP\",\"step\":{\"seq\":%d,\"actor\":\"%s\",\"kind\":\"%s\",\"question_id\":%d,\"card_id\":%s,\"reason\":\"이유\"}}"
+                .formatted(seq, actor, kind, questionId, cardId);
+
+    }
+
+    private static String progress(String item) {
+
+        return "{\"type\":\"progress\",\"step\":\"COVER_LETTER\",\"done\":0,\"total\":null,\"item\":" + item + "}\n";
+
+    }
+
+    private String result(ObjectNode data) {
+
+        return "{\"type\":\"result\",\"status\":200,\"body\":" + success(data) + "}\n";
 
     }
 

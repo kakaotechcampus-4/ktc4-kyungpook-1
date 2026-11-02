@@ -1,6 +1,7 @@
 package com.gitory.backend.coverletter.domain;
 
 import com.gitory.backend.agent.port.CoverLetterDrafts;
+import com.gitory.backend.agent.port.CoverLetterDraftsListener;
 import com.gitory.backend.agent.port.CoverLetterDraftsPort;
 import com.gitory.backend.agent.port.CoverLetterDraftsRequest;
 import com.gitory.backend.agent.port.CoverLetterQuestionsRequest;
@@ -34,7 +35,8 @@ class CoverLetterDraftStep {
     private final CardMaterialReader cardMaterials;
     private final CoverLetterDraftsPort drafts;
 
-    Consumer<CoverLetter> run(CoverLetter claimed) {
+    /** AI 가 글을 쓰거나 단계를 거칠 때마다 live 에 남겨, 초안을 쓰는 동안에도 조회가 글과 과정을 보이게 한다 */
+    Consumer<CoverLetter> run(CoverLetter claimed, CoverLetterLive live) {
 
         List<CoverLetterQuestion> loaded = questions.findByCoverLetterIdOrderBySeq(claimed.getId());
         Map<Long, CardMaterial> cards = cardMaterials.readOf(CoverLetterCardDetails.cardIdsOf(loaded)).stream()
@@ -42,8 +44,29 @@ class CoverLetterDraftStep {
 
         CoverLetterDrafts result = drafts.write(new CoverLetterDraftsRequest(claimed.getId(), claimed.getJobRole(),
                 claimed.getMemo(), loaded.stream().map(question -> requestOf(question, cards)).toList(),
-                CoverLetterPosting.inputOf(claimed)));
+                CoverLetterPosting.inputOf(claimed)), listenerOf(live));
         return letter -> save(letter, result);
+
+    }
+
+    private static CoverLetterDraftsListener listenerOf(CoverLetterLive live) {
+
+        return new CoverLetterDraftsListener() {
+
+            @Override
+            public void text(int questionId, int round, String text) {
+
+                live.write(questionId, round, text);
+
+            }
+
+            @Override
+            public void step(CoverLetterDrafts.Step step) {
+
+                live.draftStep(stepOf(step));
+
+            }
+        };
 
     }
 
@@ -58,10 +81,14 @@ class CoverLetterDraftStep {
                     draft.marks().stream().map(mark -> new DraftMark(mark.sentenceSeq(), mark.code(), mark.value())).toList(),
                     draft.blanks().stream().map(MaterialItem::valueOf).toList(), DraftSource.valueOf(draft.source()));
         }
-        letter.drafted(result.steps().stream()
-                .map(step -> new DraftStep(step.seq(), step.actor(), step.kind(), step.questionId(), step.code(),
-                        step.value(), step.sentenceSeq(), step.action(), step.reason()))
-                .toList());
+        letter.drafted(result.steps().stream().map(CoverLetterDraftStep::stepOf).toList());
+
+    }
+
+    private static DraftStep stepOf(CoverLetterDrafts.Step step) {
+
+        return new DraftStep(step.seq(), step.actor(), step.kind(), step.questionId(), step.code(), step.value(),
+                step.sentenceSeq(), step.sentence(), step.action(), step.reason());
 
     }
 

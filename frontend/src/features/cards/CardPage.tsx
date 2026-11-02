@@ -88,6 +88,17 @@ export function CardPage() {
   // 초안을 쓰는 동안 AI 가 칸을 쓰는 모습(#617). Job 이 끝나도 마지막 카드를 다 펼칠 때까지 이 화면을 붙잡는다(live.holding)
   const generating = !!q.data?.generation && !q.data.generation.partial;
   const live = useLiveDraft({ scope: cardId, jobId: q.data?.generation?.jobId, generating });
+  // 쓰는 화면을 보고 있다가 여러 장이 다 써졌으면 그 레포의 카드 폴더로 옮긴다 — 다음 일이 여러 장을 훑어 확정하는 것이다
+  const showingLive = generating || live.holding;
+  const wasShowingLive = useRef(false);
+  const draftRepoId = q.data?.repo?.id;
+  useEffect(() => {
+    const done = live.job;
+    if (wasShowingLive.current && !showingLive && done?.state === 'SUCCEEDED' && (done.result?.cardIds?.length ?? 0) > 1 && draftRepoId) {
+      nav(`/cards/repo/${encodeURIComponent(draftRepoId)}`, { replace: true });
+    }
+    wasShowingLive.current = showingLive;
+  }, [showingLive, live.job, draftRepoId, nav]);
 
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
   if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;

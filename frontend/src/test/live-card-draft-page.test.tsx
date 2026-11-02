@@ -45,7 +45,7 @@ function mount() {
   vi.spyOn(endpoints, 'job').mockImplementation(async () => serverJob);
   vi.spyOn(endpoints, 'cards').mockResolvedValue([]);
   client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  const router = createMemoryRouter([{ path: '/cards/:cardId', element: <CardPage /> }], { initialEntries: ['/cards/card_01'] });
+  const router = createMemoryRouter([{ path: '/cards/:cardId', element: <CardPage /> }, { path: '/cards/repo/:repoId', element: <p>레포 카드 폴더</p> }], { initialEntries: ['/cards/card_01'] });
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
   return router;
 }
@@ -260,6 +260,34 @@ describe('#617 초안 생성 중 화면의 카드 쓰기', () => {
     expect(generationScreen()).not.toBeInTheDocument();
     expect(document.querySelector('.live-draft')).toBeNull();
     expect(screen.getByText('결제 롤백 대응 경험')).toBeInTheDocument();
+  });
+
+  it('여러 장을 쓰는 화면을 보다가 다 써지면 그 레포의 카드 폴더로 옮긴다 (#704)', async () => {
+    stubReducedMotion(true);
+    serverCard = generating();
+    serverJob = job('RUNNING', [draft('a', 'WRITING', four(40)), draft('b', 'WAITING')]);
+    const router = mount();
+    await pass(100);
+    serverCard = finished();
+    serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40)), draft('b', 'DONE', four(40))], { result: { repoId: 'r_auth', cardIds: ['card_01', 'card_02'] } });
+    await pass(1100);
+
+    expect(screen.getByText('레포 카드 폴더')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(`/cards/repo/${encodeURIComponent(serverCard.repo!.id)}`);
+  });
+
+  it('한 장만 썼으면 다 써져도 그 카드에 머문다 (#704)', async () => {
+    stubReducedMotion(true);
+    serverCard = generating();
+    serverJob = job('RUNNING', [draft('a', 'WRITING', four(40))]);
+    const router = mount();
+    await pass(100);
+    serverCard = finished();
+    serverJob = job('SUCCEEDED', [draft('a', 'DONE', four(40))], { result: { repoId: 'r_auth', cardIds: ['card_01'] } });
+    await pass(1100);
+
+    expect(generationScreen()).not.toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/cards/card_01');
   });
 
   it('서버 글을 지표 이벤트, 주소, 콘솔에 싣지 않는다', async () => {

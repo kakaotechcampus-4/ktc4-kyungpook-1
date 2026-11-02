@@ -6,6 +6,7 @@ import { MatchDetailPage } from '@/features/match/MatchDetailPage';
 import { planProceed, rememberProceeded, revealIntervalMs, stepText, takeProceeded } from '@/features/match/gapFill';
 import { gapFillPollMs, matchingApi, MatchDetail, type GapFill, type GapFillCondition, type GapFillProposal } from '@/api/matching';
 import { endpoints } from '@/api/endpoints';
+import { ApiError } from '@/api/client';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
 import sampleDetail from '../../docs/examples/matching/detail.json';
@@ -25,7 +26,8 @@ const unjudged = (detail: MatchDetail): MatchDetail => ({
 const five: MatchDetail = { ...base, conditions: base.conditions.map((c) => (c.status === 'MET' ? { ...c, status: 'NOT_MET' as const, metBy: [] } : c)) };
 const fiveIds = five.conditions.filter((c) => c.status === 'NOT_MET').map((c) => c.id);
 const condition = (conditionId: string, over: Partial<GapFillCondition> = {}): GapFillCondition =>
-  ({ conditionId, decision: 'SEARCH', decisionReason: '관련 카드가 있어요', steps: [], proposal: null, result: null, ...over });
+  ({ conditionId, decision: 'SEARCH', decisionReason: '관련 카드가 있어요', forced: false, steps: [], proposal: null, result: null, ...over });
+const st = (kind: string, count: number | null = null, query: string | null = null, repoName: string | null = null) => ({ kind, count, query, repoName });
 const proposalOf = (over: Partial<GapFillProposal> = {}): GapFillProposal =>
   ({ action: 'CREATE_CARD', candidateId: 'c_51', repoId: 'r_auth', title: '로그인 API 응답 속도 개선', repoName: 'auth-service', reason: '응답 시간을 줄인 기록이 있어요', ...over });
 const done = (conditions: GapFillCondition[]): GapFill => ({ state: 'DONE', pollAfterMs: null, conditions });
@@ -105,17 +107,17 @@ it('✕ 가 있으면 화면이 채우기를 스스로 한 번 부르고, 다 �
 
 it('조건마다 찾아볼지와 이유 → 한 일 → 결론이 보이고, 찾지 않기로 한 조건에만 그래도 찾아보기가 있다', async () => {
   const gapFill = done([
-    condition(fiveIds[0], { steps: [{ kind: 'READ_CANDIDATES', count: 12, query: null }, { kind: 'SEARCH_COMMITS', count: 5, query: 'docker' }], result: 'PROPOSED', proposal: proposalOf() }),
+    condition(fiveIds[0], { steps: [st('CANDIDATES_CHECKED', 12, null), st('GITHUB_SEARCHED', 5, 'docker')], result: 'PROPOSED', proposal: proposalOf() }),
     condition(fiveIds[1], { decision: 'SKIP', decisionReason: '다른 분야의 일이라 거리가 멀어요', result: 'SKIPPED' }),
-    condition(fiveIds[2], { steps: [{ kind: 'SOMETHING_NEW', count: null, query: 'helm' }], result: 'NOT_FOUND' }),
-    condition(fiveIds[3], { steps: [{ kind: 'FOREIGN_REPO_COMMITS', count: 2, query: null }], result: 'TIMED_OUT' }),
+    condition(fiveIds[2], { steps: [st('SOMETHING_NEW', null, 'helm')], result: 'NOT_FOUND' }),
+    condition(fiveIds[3], { steps: [st('OUTSIDE_REPO_FOUND', 2, null, 'kbu-capstone/team-board')], result: 'TIMED_OUT' }),
   ]);
   mount({ ...five, gapFill });
   const again = vi.spyOn(matchingApi, 'gapFill').mockResolvedValue({ ...five, gapFill });
   await screen.findByText('카드로 안 만든 후보 12개를 읽었어요');
   expect(screen.getByText("GitHub 에서 'docker' 로 내 커밋을 찾았어요 · 5개")).toBeInTheDocument();
   expect(screen.getByText("'helm' 로 자료를 살펴봤어요")).toBeInTheDocument();
-  expect(screen.getByText('2개는 다른 사람 레포에 기여한 커밋이라 분석할 수 없어 뺐어요')).toBeInTheDocument();
+  expect(screen.getByText('kbu-capstone/team-board 는 다른 사람 레포라 분석할 수 없어 뺐어요 · 커밋 2개')).toBeInTheDocument();
   expect(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 로그인 API 응답 속도 개선' })).toBeInTheDocument();
   expect(screen.getByText('응답 시간을 줄인 기록이 있어요')).toBeInTheDocument();
   expect(screen.getByText(/^찾지 않기로 했어요 — 다른 분야의 일이라 거리가 멀어요/)).toBeInTheDocument();
@@ -128,6 +130,12 @@ it('조건마다 찾아볼지와 이유 → 한 일 → 결론이 보이고, 찾
   expect(buttons).toHaveLength(1);
   fireEvent.click(buttons[0]);
   await waitFor(() => expect(again).toHaveBeenCalledWith(five.id, [fiveIds[1]]));
+  // 다시 찾은 조건(forced)은 decision 이 SKIP 그대로여도 '다시 찾아봤어요' 로 보이고 버튼은 다시 두지 않는다
+  cleanup();
+  mount({ ...five, gapFill: done([condition(fiveIds[1], { decision: 'SKIP', decisionReason: '거리가 멀어요', forced: true, result: 'PROPOSED', proposal: proposalOf() })]) });
+  await screen.findByText(/^찾지 않기로 했지만 다시 찾아봤어요 — 거리가 멀어요/);
+  expect(screen.queryByRole('button', { name: '그래도 찾아보기' })).not.toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: /후보로 카드 만들기/ })).toBeInTheDocument();
 });
 
 it('도는 동안에도 결론이 난 조건에는 찾고 있어요를 붙이지 않고, 아직 정하는 중인 조건에만 점을 둔다', async () => {
@@ -136,7 +144,7 @@ it('도는 동안에도 결론이 난 조건에는 찾고 있어요를 붙이지
     conditions: [
       condition(fiveIds[0], { result: 'PROPOSED', proposal: proposalOf() }),
       condition(fiveIds[1], { decision: null, decisionReason: null }),
-      condition(fiveIds[2], { steps: [{ kind: 'READ_DRAFTS', count: 2, query: null }] }),
+      condition(fiveIds[2], { steps: [st('DRAFT_CARDS_CHECKED', 2, null)] }),
     ],
   };
   mount({ ...five, gapFill });
@@ -152,22 +160,37 @@ it('도는 동안에도 결론이 난 조건에는 찾고 있어요를 붙이지
   expect(screen.getByRole('button', { name: '제안을 골라 진행하기' })).toBeDisabled();
 });
 
+it('채우기 시작이 403 GITHUB_UNAUTHORIZED 로 막히면 다시 찾아보기 대신 GitHub 다시 연결을 보인다', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  mount(unjudged(base));
+  vi.spyOn(matchingApi, 'judge').mockResolvedValue(base);
+  vi.spyOn(matchingApi, 'gapFill').mockRejectedValue(new ApiError('GITHUB_UNAUTHORIZED', '쓸 수 있는 GitHub 연결이 없습니다.', 403));
+  fireEvent.click(await screen.findByRole('button', { name: '이 공고와 맞춰 보기' }));
+  await waitFor(() => expect(judgeButton()).not.toBeInTheDocument());
+  await advance(9000);
+  expect(screen.getByText('자료를 찾으려면 GitHub 연결이 필요해요.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '다시 연결' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '다시 찾아보기' })).not.toBeInTheDocument();
+});
+
 it('gapFill 칸이 없는 구서버 응답은 null 로 받고, 모르는 kind 의 한 일은 일반 문장으로 보인다', () => {
   expect(MatchDetail.parse(sampleDetail.data).gapFill).toBeNull();
   const parsed = MatchDetail.parse({
     ...sampleDetail.data,
     gapFill: { state: 'RUNNING', pollAfterMs: 1500, conditions: [{ conditionId: 'x', decision: null, decisionReason: null, steps: [{ kind: 'SOMETHING_NEW' }], proposal: null, result: null }] },
   });
-  expect(parsed.gapFill?.conditions[0].steps[0]).toEqual({ kind: 'SOMETHING_NEW', count: null, query: null });
-  expect(stepText({ kind: 'SOMETHING_NEW', count: null, query: null })).toBe('자료를 살펴봤어요');
-  expect(stepText({ kind: 'SOMETHING_NEW', count: 3, query: 'kafka' })).toBe("'kafka' 로 자료를 살펴봤어요 · 3개");
+  expect(parsed.gapFill?.conditions[0].steps[0]).toEqual(st('SOMETHING_NEW'));
+  expect(parsed.gapFill?.conditions[0].forced).toBe(false);
+  expect(stepText(st('SOMETHING_NEW'))).toBe('자료를 살펴봤어요');
+  expect(stepText(st('GITHUB_FAILED', null, 'kafka'))).toBe("GitHub 검색이 잠시 안 돼 'kafka' 로 찾는 건 건너뛰었어요");
+  expect(stepText(st('SOMETHING_NEW', 3, 'kafka'))).toBe("'kafka' 로 자료를 살펴봤어요 · 3개");
 });
 
 it('도는 동안은 pollAfterMs 마다 상세를 다시 읽고, 한꺼번에 온 일도 0.8초마다 하나씩 보이며 이미 보인 줄은 남는다', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   const [docker] = notMet;
   const first: MatchDetail = { ...base, gapFill: { state: 'RUNNING', pollAfterMs: 1000, conditions: [condition(docker.id, { decision: null, decisionReason: null })] } };
-  const second: MatchDetail = { ...base, gapFill: done([condition(docker.id, { steps: [{ kind: 'READ_CANDIDATES', count: 12, query: null }, { kind: 'READ_DRAFTS', count: 2, query: null }], result: 'PROPOSED', proposal: proposalOf() })]) };
+  const second: MatchDetail = { ...base, gapFill: done([condition(docker.id, { steps: [st('CANDIDATES_CHECKED', 12, null), st('DRAFT_CARDS_CHECKED', 2, null)], result: 'PROPOSED', proposal: proposalOf() })]) };
   const detail = vi.spyOn(matchingApi, 'detail').mockResolvedValueOnce(first).mockResolvedValue(second);
   mount(first, false);
   await screen.findByText('찾아볼지 정하고 있어요');
@@ -263,8 +286,12 @@ it('목은 맞춰 보기 전엔 판단을 숨기고, 채우기를 시작하면 �
   expect(again.gapFill!.conditions.map((c) => c.result)).toEqual(['PROPOSED', null, 'NOT_FOUND', 'TIMED_OUT']);
   vi.setSystemTime(new Date('2026-11-01T00:00:17Z'));
   const redone = read();
-  expect(redone.gapFill!.conditions[1]).toMatchObject({ decision: 'SEARCH', result: 'PROPOSED' });
+  expect(redone.gapFill!.conditions[1]).toMatchObject({ decision: 'SKIP', forced: true, result: 'PROPOSED' });
   expect(redone.gapFill!.conditions[1].proposal?.action).toBe('CONTINUE_CARD');
+  // 찾지 않기로 한 조건이 아니면 400, 도는 중이면 409
+  expect(handle('POST', `/matches/${id}/gap-fill`, q, { conditionIds: [end.gapFill!.conditions[0].conditionId] }, true).status).toBe(400);
+  handle('POST', `/matches/${id}/gap-fill`, q, {}, true);
+  expect(handle('POST', `/matches/${id}/gap-fill`, q, { conditionIds: [skipped] }, true).status).toBe(409);
 });
 
 it('목은 제안대로 만든 카드가 확정되면 다시 맞춰 보기 전으로 돌아가고, 다시 맞춰 보면 그 조건을 그 카드로 채운다', () => {

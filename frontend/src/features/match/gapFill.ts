@@ -8,19 +8,21 @@ import { useStartAnalysis } from "@/api/queries";
 
 export type GapStep = GapFillCondition["steps"][number];
 
-/** AI 가 한 일 한 줄. kind 값 목록은 서버와 정하는 중이라 모르는 값은 일반 문장으로 보인다 */
+/** AI 가 한 일 한 줄. kind 값은 서버(#652)가 정한 다섯 가지이고, 모르는 값은 일반 문장으로 보인다 */
 export function stepText(step: GapStep): string {
   const n = step.count;
   const q = step.query ? `'${step.query}' 로 ` : "";
   switch (step.kind) {
-    case "READ_CANDIDATES":
+    case "CANDIDATES_CHECKED":
       return n === null ? "카드로 안 만든 후보를 읽었어요" : `카드로 안 만든 후보 ${n}개를 읽었어요`;
-    case "READ_DRAFTS":
+    case "DRAFT_CARDS_CHECKED":
       return n === null ? "작성 중인 카드를 읽었어요" : `작성 중인 카드 ${n}장을 읽었어요`;
-    case "SEARCH_COMMITS":
+    case "GITHUB_SEARCHED":
       return `GitHub 에서 ${q}내 커밋을 찾았어요${n === null ? "" : ` · ${n}개`}`;
-    case "FOREIGN_REPO_COMMITS":
-      return n === null ? "다른 사람 레포에 기여한 커밋은 분석할 수 없어 뺐어요" : `${n}개는 다른 사람 레포에 기여한 커밋이라 분석할 수 없어 뺐어요`;
+    case "GITHUB_FAILED":
+      return `GitHub 검색이 잠시 안 돼 ${q}찾는 건 건너뛰었어요`;
+    case "OUTSIDE_REPO_FOUND":
+      return `${step.repoName ? `${step.repoName} 는 ` : ""}다른 사람 레포라 분석할 수 없어 뺐어요${n === null ? "" : ` · 커밋 ${n}개`}`;
     default:
       return `${q}자료를 살펴봤어요${n === null ? "" : ` · ${n}개`}`;
   }

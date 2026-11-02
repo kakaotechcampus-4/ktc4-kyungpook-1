@@ -134,13 +134,13 @@ export function mockMatchDetail(id: string, judge = false): MatchDetail | null {
     gapFill: gapFillOf(id, now),
   };
 }
-/** 채우기 시작(또는 고른 조건만 다시 찾기). 맞춰 보기 전이면 시작하지 않는다 */
-export function mockStartGapFill(id: string, conditionIds?: string[]): MatchDetail | "NOT_FOUND" | "NOT_JUDGED" {
+/** 채우기 시작(또는 고른 조건만 다시 찾기). 맞춰 보기 전이거나 끝난 결과가 없으면 INVALID_STATE, 다시 찾을 조건이 SKIPPED 가 아니면 INVALID_REQUEST */
+export function mockStartGapFill(id: string, conditionIds?: string[]): MatchDetail | "NOT_FOUND" | "INVALID_STATE" | "INVALID_REQUEST" {
   const detail = mockMatchDetail(id);
   if (!detail) return "NOT_FOUND";
-  if (detail.needsJudgement) return "NOT_JUDGED";
-  startGapFill(id, detail.conditions, Date.now(), conditionIds);
-  return mockMatchDetail(id)!;
+  if (detail.needsJudgement) return "INVALID_STATE";
+  const started = startGapFill(id, detail.conditions, Date.now(), conditionIds);
+  return started === "OK" ? mockMatchDetail(id)! : started;
 }
 export function mockMatchList() {
   return listExample.data

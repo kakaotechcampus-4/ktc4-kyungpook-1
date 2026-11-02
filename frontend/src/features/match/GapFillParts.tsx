@@ -65,7 +65,8 @@ export function ConditionGapFill({
   const result = resultShown ? gap.result : null;
   // 점은 서버가 정말 아직 안 정했거나 못 찾은 동안만 — 받았지만 차례가 안 온 결과를 '하는 중' 으로 꾸미지 않는다
   const undecided = running && gap.decision === null;
-  const searching = running && decisionShown && gap.decision === "SEARCH" && gap.result === null;
+  // [그래도 찾아보기] 로 다시 찾은 조건(forced)은 decision 이 SKIP 그대로여도 찾는 중이다
+  const searching = running && decisionShown && (gap.decision === "SEARCH" || gap.forced) && gap.result === null;
   return (
     <div className="gap-fill" aria-live="polite">
       {undecided && (
@@ -75,9 +76,9 @@ export function ConditionGapFill({
       )}
       {decisionShown && (
         <p className="gap-fill__decision">
-          {gap.decision === "SEARCH" ? "찾아볼게요" : "찾지 않기로 했어요"}
+          {gap.decision === "SEARCH" ? "찾아볼게요" : gap.forced ? "찾지 않기로 했지만 다시 찾아봤어요" : "찾지 않기로 했어요"}
           {gap.decisionReason && ` — ${gap.decisionReason}`}
-          {gap.decision === "SKIP" && resultShown && (
+          {gap.decision === "SKIP" && !gap.forced && resultShown && (
             <button type="button" className="gap-fill__again" onClick={onAgain} disabled={againPending}>
               그래도 찾아보기
             </button>

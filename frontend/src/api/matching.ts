@@ -107,7 +107,17 @@ export const GapFillCondition = z.object({
   conditionId: z.string(),
   decision: z.enum(["SEARCH", "SKIP"]).nullable(),
   decisionReason: z.string().nullable(),
-  steps: z.array(z.object({ kind: z.string(), count: count.nullable().default(null), query: z.string().nullable().default(null) })),
+  /** [그래도 찾아보기] 로 다시 찾은 조건. decision 은 AI 가 SKIP 이라 본 그대로라 SKIP + PROPOSED 조합이 온다 */
+  forced: z.boolean().default(false),
+  steps: z.array(
+    z.object({
+      kind: z.string(),
+      count: count.nullable().default(null),
+      query: z.string().nullable().default(null),
+      /** OUTSIDE_REPO_FOUND 에서 분석할 수 없는 남의 레포(owner/name) */
+      repoName: z.string().nullable().default(null),
+    }),
+  ),
   proposal: GapFillProposal.nullable(),
   result: GapFillResult.nullable(),
 });

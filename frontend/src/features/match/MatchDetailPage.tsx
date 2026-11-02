@@ -12,6 +12,7 @@ import {
 } from "@/api/matching";
 import { useCards } from "@/api/queries";
 import { Button, PageTitle, Skeleton } from "@/components/ui";
+import { isGithubUnauthorized, reconnectGithub } from "@/lib/githubReconnect";
 import { cardKindLabel } from "@/lib/labels";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
@@ -247,7 +248,9 @@ export function MatchDetailPage() {
     : [];
   const chosen = proposals.filter((c) => picked.has(c.conditionId) && canProceed(c.proposal!)).map((c) => c.proposal!);
   const gapActive = showGap && (gapRunning || proposals.some((c) => canProceed(c.proposal!)));
-  const gapFailed = gapFill.isError || gf?.state === "FAILED";
+  // 새로 찾아야 하는데 쓸 수 있는 GitHub 연결이 없으면 서버가 403 GITHUB_UNAUTHORIZED 를 준다 — 레포 분석과 같은 '다시 연결' 로 잇는다
+  const gapNeedsGithub = isGithubUnauthorized(gapFill.error);
+  const gapFailed = (gapFill.isError && !gapNeedsGithub) || gf?.state === "FAILED";
   const gapOf = (conditionId: string): GapProps | null => {
     const gap = showGap ? gf.conditions.find((c) => c.conditionId === conditionId) : undefined;
     if (!gap) return null;
@@ -288,6 +291,17 @@ export function MatchDetailPage() {
   if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
   if (showGap && gapRunning) log.push({ key: "gap-running", text: `모자란 조건 ${gf.conditions.length}개를 채울 자료를 찾고 있어요`, live: true });
   if (showGap && gf.state === "DONE") log.push({ key: "gap-done", text: gapSummary(gf) });
+  if (judgedData && settled && gapNeedsGithub) {
+    log.push({
+      key: "gap-github",
+      text: (
+        <>
+          자료를 찾으려면 GitHub 연결이 필요해요.
+          <button type="button" className="ai-log__retry" onClick={reconnectGithub}>다시 연결</button>
+        </>
+      ),
+    });
+  }
   if (judgedData && settled && gapFailed) {
     log.push({
       key: "gap-failed",

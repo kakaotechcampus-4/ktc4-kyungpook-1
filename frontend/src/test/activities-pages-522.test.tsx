@@ -67,7 +67,7 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     await screen.findByRole('link', { name: FOLDERS.auth });
     fireEvent.click(screen.getByRole('radio', { name: '최근순' }));
     await waitFor(() => expect(tiles()).toHaveLength(8));
-    expect(screen.getAllByText('경험 카드, 활동 교내 개발 동아리')).toHaveLength(2); // 활동 카드는 타일에서도 어느 활동인지 보인다
+    expect(screen.getAllByText('정성 카드, 활동 교내 개발 동아리')).toHaveLength(2); // 활동 카드는 타일에서도 어느 활동인지 보인다
     expect(localStorage.getItem('gitory.cards.view')).toBe('"recent"');
   });
 
@@ -434,7 +434,7 @@ describe('카드 상세의 활동 표시', () => {
     const crumbs = await screen.findByRole('navigation', { name: 'breadcrumb' });
     expect(within(crumbs).getByRole('link', { name: '경험 카드' })).toHaveAttribute('href', '/cards');
     expect(within(crumbs).getByRole('link', { name: '교내 개발 동아리' })).toHaveAttribute('href', '/cards/activity/act_club');
-    expect(screen.getByText('경험 카드', { selector: '.badge' })).toBeInTheDocument(); // 종류 이름도 폴더 안 구역 이름과 같다
+    expect(screen.getByText('정성 카드', { selector: '.badge' })).toBeInTheDocument(); // 종류 이름은 팀이 정할 때까지 이전 이름('정성 카드')이다. 폴더 안 구역 이름('경험 카드')과 다른 것은 알려진 불일치
     const source = screen.getByText('출처').parentElement!;
     expect(within(source).getByRole('link', { name: '교내 개발 동아리' })).toHaveAttribute('href', '/cards/activity/act_club');
     expect(source).toHaveTextContent('활동 교내 개발 동아리, 직접 작성');

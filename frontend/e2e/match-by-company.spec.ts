@@ -114,7 +114,7 @@ test("공고 카드에 근거 등급 배지와 필수·우대 줄이 없다 — 
   await expect(page.locator(".match-card").filter({ hasText: /필수|우대|근거 등급/ })).toHaveCount(0);
   await page.locator(".match-card").filter({ hasText: "서버 개발자 (신입)" }).click();
   await expect(page.getByRole("heading", { name: /필수 조건/ })).toBeVisible();
-  await expect(page.getByLabel(/^근거 등급 [A-D]$/)).toBeVisible();
+  await expect(page.getByText(/^필수 조건 \d+개 중 \d+개가 맞아요\.$/)).toBeVisible();
 });
 
 test("기업 페이지 주소는 companyId 이고, 이름으로 만든 옛 주소도 같은 기업으로 간다", async ({ page }) => {

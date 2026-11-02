@@ -19,6 +19,8 @@ REASON = "REASON"
 STAR = "STAR"
 #: 자소서 카드 고르기·초안 쓰기 진행은 Spring 이 자소서마다 받는다.
 COVER_LETTER = "COVER_LETTER"
+#: 모자란 조건 채우기 진행은 Spring 이 공고 상세 응답에 싣는다.
+GAP_FILL = "GAP_FILL"
 
 # 화면이 한 줄로 보여 주는 값이라 길이를 자른다.
 TITLE_MAX_CHARS = 100
@@ -93,6 +95,11 @@ def step_item(step: dict[str, Any]) -> ProgressItem:
         "kind": "STEP",
         "step": {key: _text(value, REASON_MAX_CHARS) if isinstance(value, str) else value for key, value in step.items()},
     }
+
+
+def gap_condition_item(condition: dict[str, Any]) -> ProgressItem:
+    """조건 하나의 지금 상태 전체를 보낸다. 받는 쪽은 같은 조건의 앞 줄을 이 줄로 바꾸기만 하면 된다."""
+    return {"kind": "GAP_CONDITION", "condition": condition}
 
 
 def _text(text: str, limit: int) -> str:

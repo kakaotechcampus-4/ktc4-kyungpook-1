@@ -7,8 +7,8 @@
  * 실서버로 붙일 때: VITE_API_MOCK=false → 이 파일이 아무것도 하지 않고 fetch 는 그대로 /api 로 나간다.
  */
 import { handle } from './router';
-import { restore, snapshot } from './store';
-import { createScenario, parseScenario, waitForMock } from './scenarios';
+import { restore, seedSetUpProfile, snapshot } from './store';
+import { PROFILE_FIRST_SCENARIOS, createScenario, parseScenario, waitForMock } from './scenarios';
 
 export const isDemo = import.meta.env.VITE_API_MOCK !== 'false';
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
@@ -38,6 +38,8 @@ export function installDemoApi() {
   // 새로고침해도 만든 카드가 남게 — 진행 중이던 초안은 완료 처리된다
   const saved = ss.get(DB_KEY);
   if (saved) restore(saved);
+  // 처음 입력 창은 빈 사용자(empty)·인적사항 미입력(no-profile) 장면으로 연 데모에서만 뜬다
+  else if (!PROFILE_FIRST_SCENARIOS.has(parseScenario(ss.get(SCENARIO_KEY)))) seedSetUpProfile();
 
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

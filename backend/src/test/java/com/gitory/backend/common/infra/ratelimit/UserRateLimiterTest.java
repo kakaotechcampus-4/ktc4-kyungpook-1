@@ -203,7 +203,7 @@ class UserRateLimiterTest {
 
     private static RateLimitProperties properties(boolean enabled, Limit limit) {
 
-        return new RateLimitProperties(enabled, limit, limit, limit, limit);
+        return new RateLimitProperties(enabled, limit, limit, limit, limit, limit, limit);
 
     }
 

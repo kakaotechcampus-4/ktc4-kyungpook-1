@@ -486,7 +486,11 @@ export function pushVersion(c: Any, source: string, fields: Any) {
 /** 되묻기 턴 생성 — "코드에서 찾은 것"은 카드 근거에서 조립 */
 export const INTERVIEW_MAX_TURNS = 8; // 서버 정책(gitory.interview.max-turns). 화면은 응답의 maxTurns 만 본다
 
-export function askTurn(c: Any, field: string, reason: string | null = null) {
+/** 앞 결과 답에 숫자가 없어 AI 가 같은 칸을 다시 물을 때의 데모 질문(#430). 실제 AI 의 글이 아니다 */
+const AGAIN_RESULT = { question: '그 변화를 숫자로 말하면 어느 정도였나요? 대략이라도 괜찮아요', missing: '결과를 뒷받침하는 수치' };
+
+/** ai 가 있으면 AI 가 고른 칸이다(서버의 FOLLOW_UP + reason). 없으면 사용자가 칸을 골랐다(USER_REQUEST, reason null) */
+export function askTurn(c: Any, field: string, ai?: { reason: string; again?: boolean }) {
   const bank = interviewBank[field];
   const turns = (db.interview[c.id] ??= []);
   // PR 이 없는 커밋 묶음도, 코드가 아예 없는 직접 작성 카드도 되묻기 대상이다
@@ -494,10 +498,11 @@ export function askTurn(c: Any, field: string, reason: string | null = null) {
   const seen = new Set<string>();
   const found = c.evidence.filter((e: Any) => e.type === 'COMMIT' && !seen.has(e.sha) && seen.add(e.sha)).slice(0, 3).map((e: Any) => `커밋 ${e.sha} "${e.snippet}"`);
   const turn = {
-    turnNo: turns.length + 1, field, askedBy: 'USER_REQUEST', sourceType,
+    turnNo: turns.length + 1, field, askedBy: ai ? 'FOLLOW_UP' : 'USER_REQUEST', sourceType,
     questionType: found.length ? 'FOLLOWUP' : sourceType === 'DIRECT_CARD' ? 'RECALL_AID' : 'EVIDENCE_GAP',
     found: found.length ? found : ['이 카드에 붙은 커밋 근거가 없습니다'],
-    missing: [bank.missing], question: bank.question, options: bank.options, answer: null, outcome: null, reason,
+    missing: [ai?.again ? AGAIN_RESULT.missing : bank.missing], question: ai?.again ? AGAIN_RESULT.question : bank.question,
+    options: ai?.again ? [] : bank.options, answer: null, outcome: null, reason: ai?.reason ?? null,
     remaining: Math.max(0, INTERVIEW_MAX_TURNS - turns.length - 1),
     maxTurns: INTERVIEW_MAX_TURNS,
   };
@@ -552,6 +557,11 @@ export function settlePending() {
  * sessionStorage 직렬화. 진행 중인 Job 도 같이 담는다 —
  * 실서버에서 Job 은 서버에 있어 새로고침해도 살아 있고, 데모도 그렇게 굴러야 복구 화면을 믿을 수 있다.
  */
+/** 시드 데이터는 레포·카드가 있는 기존 사용자라, 브라우저 데모를 새로 열면 처음 입력(관심 분야)을 마친 사람으로 둔다 */
+export function seedSetUpProfile() {
+  db.profile = { ...emptyProfile(), interests: ['BACKEND'], savedAt: now() };
+}
+
 export function snapshot(): string {
   return JSON.stringify({
     user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,

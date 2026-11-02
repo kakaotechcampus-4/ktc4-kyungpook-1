@@ -200,7 +200,7 @@ it("목록 카드에 등급·필수·우대 줄이 없다 — 서버가 fit·met
   expect(screen.queryByLabelText(/등급/)).not.toBeInTheDocument();
 });
 
-it("공고 상세 머리말: 로고 이미지(장식)와 companyId 기업 페이지 링크, 등급 칩은 상세에 그대로 있다", async () => {
+it("공고 상세 머리말: 로고 이미지(장식)와 companyId 기업 페이지 링크가 있고, 등급 칩은 상세에도 없다", async () => {
   const detail = MatchDetail.parse({ ...sampleDetail.data, companyId: "kakao", logoUrl: LOGO });
   vi.spyOn(matchingApi, "detail").mockResolvedValue(detail);
   const { container, where } = mount(`/match/${detail.id}?category=BACKEND`, companyFixture);
@@ -210,7 +210,7 @@ it("공고 상세 머리말: 로고 이미지(장식)와 companyId 기업 페이
   expect(logo).toHaveAttribute("alt", "");
   const link = screen.getByRole("link", { name: detail.company });
   expect(link).toHaveAttribute("href", "/match/company/kakao?category=BACKEND");
-  expect(screen.getByLabelText(/^근거 등급 [A-D]$/)).toBeInTheDocument(); // 상세는 그대로
+  expect(screen.queryByLabelText(/등급/)).not.toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 2, name: /필수 조건/ })).toBeInTheDocument();
   fireEvent.click(link);
   await screen.findByRole("heading", { level: 1, name: "카카오" });

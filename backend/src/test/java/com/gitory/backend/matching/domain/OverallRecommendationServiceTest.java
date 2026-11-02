@@ -3,6 +3,8 @@ package com.gitory.backend.matching.domain;
 import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.card.domain.MatchingCard;
 import com.gitory.backend.card.domain.MatchingCardReader;
+import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
+import com.gitory.backend.common.infra.ratelimit.UserRateLimiter;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.OverallRecommendationRepository;
 import com.gitory.backend.profile.domain.ProfileService;
@@ -53,6 +55,7 @@ class OverallRecommendationServiceTest {
     private final MatchJudgementService judgements = mock(MatchJudgementService.class);
     private final OverallRecommendationRepository recommendations = mock(OverallRecommendationRepository.class);
     private final ProfileService profiles = mock(ProfileService.class);
+    private final UserRateLimiter rateLimiter = mock(UserRateLimiter.class);
     private final OverallRecommendation saved = mock(OverallRecommendation.class);
     private final List<Runnable> started = new ArrayList<>();
     private final AtomicInteger judgeTasks = new AtomicInteger();
@@ -61,7 +64,7 @@ class OverallRecommendationServiceTest {
         task.run();
     };
     private final OverallRecommendationService service = new OverallRecommendationService(cards, shortlist, criteria,
-            judgements, recommendations, profiles, new TransactionTemplate(mock(PlatformTransactionManager.class)),
+            judgements, recommendations, profiles, rateLimiter, new TransactionTemplate(mock(PlatformTransactionManager.class)),
             Clock.fixed(NOW, ZoneOffset.UTC), started::add, judgeCalls);
 
     private final List<ShortlistedCompany> companies = new ArrayList<>();
@@ -73,8 +76,8 @@ class OverallRecommendationServiceTest {
     void setUp() {
 
         when(cards.confirmedOf(USER)).thenReturn(List.of(CARD));
-        when(profiles.of(USER)).thenReturn(new ProfileView(List.of(), List.of(), List.of(), List.of(), PROFILE_SAVED));
-        when(shortlist.shortlist(eq(USER), any(), any(), anyInt())).thenReturn(companies);
+        when(profiles.of(USER)).thenReturn(new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), PROFILE_SAVED));
+        when(shortlist.shortlist(eq(USER), any(), anyInt())).thenReturn(companies);
         when(criteria.findByJobPostingIdInOrderByJobPostingIdAscSeqAsc(any())).thenReturn(allCriteria);
         when(judgements.judge(any(), anyList(), anyList()))
                 .thenAnswer(call -> verdicts.get(((JobPosting) call.getArgument(0)).getId()));
@@ -96,7 +99,7 @@ class OverallRecommendationServiceTest {
 
         service.compute(USER);
 
-        verify(shortlist).shortlist(USER, Set.of(CardTech.JAVA, CardTech.SPRING), Set.of(), 15);
+        verify(shortlist).shortlist(USER, Set.of(CardTech.JAVA, CardTech.SPRING), 15);
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<JobPostingCriterion>> asked = ArgumentCaptor.forClass(List.class);
         verify(judgements).judge(eq(posting), asked.capture(), eq(List.of(CARD)));
@@ -217,6 +220,26 @@ class OverallRecommendationServiceTest {
     }
 
     @Test
+    @DisplayName("이미 계산 중이면 호출 한도를 세지 않고 시작도 하지 않으며, 새로 시작할 때만 한도를 한 번 센다")
+    void countsTheLimitOnlyWhenItReallyStarts() {
+
+        OverallRecommendation running = mock(OverallRecommendation.class);
+        when(running.getStatus()).thenReturn(OverallRecommendationStatus.COMPUTING);
+        when(running.isStuck(NOW)).thenReturn(false);
+        when(recommendations.findByUserId(USER)).thenReturn(Optional.of(running));
+        service.start(USER);
+        verify(rateLimiter, never()).acquire(any(), any(), anyInt());
+        verify(recommendations, never()).start(any(), any(), any());
+
+        when(running.isStuck(NOW)).thenReturn(true);
+        when(recommendations.start(USER, NOW, NOW.minus(OverallRecommendation.STUCK_AFTER))).thenReturn(1);
+        service.start(USER);
+        verify(rateLimiter).acquire(RateLimitedAction.MATCH_OVERALL, USER, 1);
+        assertThat(started).hasSize(1);
+
+    }
+
+    @Test
     @DisplayName("배경 계산이 예상하지 못한 이유로 멈추면 실패로 저장해 화면이 계속 기다리지 않게 한다")
     void savesFailureWhenBackgroundComputeBreaks() {
 
@@ -238,7 +261,7 @@ class OverallRecommendationServiceTest {
 
         service.compute(USER);
 
-        verify(shortlist, never()).shortlist(any(), any(), any(), anyInt());
+        verify(shortlist, never()).shortlist(any(), any(), anyInt());
         verify(judgements, never()).judge(any(), anyList(), anyList());
         assertThat(refreshed()).isEmpty();
 

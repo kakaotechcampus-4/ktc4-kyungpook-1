@@ -38,7 +38,7 @@ test('active analysis is visible on home and can be reopened after refresh', asy
   const jobs = page.getByRole('region', { name: '진행 중인 작업' }); await expect(jobs).toBeVisible();
   await jobs.getByRole('link', { name: '진행 상황 보기', exact: true }).click();
   await expect(page).toHaveURL(new RegExp('/jobs/' + jobId + '$'));
-  await expect(page.getByRole('heading', { name: '작업 진행', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^레포 정리 (진행|대기) 중$/ })).toBeVisible();
 });
 
 test('review and missing-field filters use the current server STAR states', async ({ page }) => {

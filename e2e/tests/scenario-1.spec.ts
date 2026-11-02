@@ -40,6 +40,25 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       expect(session?.httpOnly).toBe(true);
     });
 
+    await test.step('1-1. 처음 입력 창', async () => {
+      const setup = page.getByRole('dialog');
+      await expect(setup).toContainText('1/5 단계');
+      await setup.getByRole('checkbox', { name: '백엔드', exact: true }).check();
+      await setup.getByRole('button', { name: '다음', exact: true }).click();
+      await setup.getByRole('button', { name: '경력 없음', exact: true }).click();
+      await setup.getByRole('radio', { name: '학사', exact: true }).check();
+      await setup.getByRole('button', { name: '다음', exact: true }).click();
+      await setup.getByRole('radio', { name: '졸업', exact: true }).check();
+      await setup.getByRole('button', { name: '다음', exact: true }).click();
+      await setup.getByRole('button', { name: '어학 없음', exact: true }).click();
+      await setup.getByRole('button', { name: '자격증 없음', exact: true }).click();
+      await expect(setup).toHaveCount(0);
+
+      const profile = await dataOf(await page.request.get('/api/profile'));
+      expect(profile.interests).toEqual(['BACKEND']);
+      expect(profile.educations).toHaveLength(1);
+    });
+
     await test.step('2. 저장소 고르기와 개수', async () => {
       await page.goto('/repos');
       const row = page.getByRole('radio', { name: new RegExp(`${login} / sample-app`) });

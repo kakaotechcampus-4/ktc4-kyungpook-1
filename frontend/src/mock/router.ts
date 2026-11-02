@@ -37,6 +37,10 @@ on('GET', '/matches/:id', ({ params }) => {
   const detail=mockMatchDetail(params[0]);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
 });
+on('POST', '/matches/:id/judgement', ({ params }) => {
+  const detail=mockMatchDetail(params[0]);
+  return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');
+});
 // 인적사항 — BE #552 계약. 한 사용자당 한 문서이고 PUT 이 네 목록을 통째로 바꾼다
 // 자소서(#492) — 계약 검증과 진행은 mock/coverLetters.ts
 const letter = (r: CoverLetterResult): MockResult => (r.ok ? ok(r.data) : fail(r.status, r.code, r.message));

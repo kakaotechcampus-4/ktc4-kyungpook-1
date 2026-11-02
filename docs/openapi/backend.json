@@ -2400,17 +2400,28 @@
       },
       "MatchConditionResponse" : {
         "properties" : {
+          "generalType" : {
+            "description" : "학력·병역·어학·자격증·지역·기타 같은 일반 조건의 종류. 기술·경험 조건과 담당 업무는 null",
+            "enum" : [ "EDUCATION", "MILITARY", "LANGUAGE", "CERTIFICATE", "LOCATION", "OTHER" ],
+            "type" : [ "string", "null" ]
+          },
           "id" : {
             "type" : "string"
+          },
+          "metBy" : {
+            "description" : "이 조건을 채웠다고 AI 가 판단한 확정 카드. 기술·경험 조건이 MET 일 때만 있다",
+            "items" : {
+              "$ref" : "#/components/schemas/MatchMetByResponse"
+            },
+            "type" : "array"
           },
           "quote" : {
             "type" : "string"
           },
-          "supports" : {
-            "items" : {
-              "$ref" : "#/components/schemas/MatchSupportResponse"
-            },
-            "type" : "array"
+          "status" : {
+            "description" : "기술·경험 조건은 MET·NOT_MET·UNJUDGED(아직 판단 안 함), 학력은 MET·NOT_MET·UNKNOWN(인적사항 없음)·CHECK(수준을 못 읽었거나 예외가 적힘), 병역·어학·자격증·지역·기타는 CHECK, 담당 업무는 null",
+            "enum" : [ "MET", "NOT_MET", "UNJUDGED", "UNKNOWN", "CHECK" ],
+            "type" : [ "string", "null" ]
           },
           "text" : {
             "type" : "string"
@@ -2447,6 +2458,11 @@
           },
           "quote" : {
             "type" : "string"
+          },
+          "status" : {
+            "description" : "인적사항 경력과 견준 결과로 MET·NOT_MET·UNKNOWN(인적사항 없음), 연수 요구가 없으면 null",
+            "enum" : [ "MET", "NOT_MET", "UNJUDGED", "UNKNOWN", "CHECK" ],
+            "type" : [ "string", "null" ]
           }
         },
         "type" : "object"
@@ -2484,6 +2500,10 @@
             "description" : "회사 로고 https 주소. 없으면 null 이라 화면이 이니셜을 보인다",
             "type" : [ "string", "null" ]
           },
+          "needsJudgement" : {
+            "description" : "아직 판단하지 않은 기술·경험 조건이 있거나 카드가 바뀌어 다시 판단할 짝이 남았으면 true. 화면은 '이 공고와 맞춰 보기' 를 보인다",
+            "type" : "boolean"
+          },
           "preferred" : {
             "$ref" : "#/components/schemas/MatchCountResponse"
           },
@@ -2495,6 +2515,11 @@
           },
           "source" : {
             "$ref" : "#/components/schemas/MatchSourceResponse"
+          },
+          "summary" : {
+            "$ref" : "#/components/schemas/MatchSummaryResponse",
+            "description" : "needsJudgement 면 null",
+            "type" : "null"
           }
         },
         "type" : "object"
@@ -2508,6 +2533,29 @@
           "minYears" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "MatchMetByResponse" : {
+        "properties" : {
+          "cardId" : {
+            "type" : "string"
+          },
+          "cardKind" : {
+            "enum" : [ "TECH", "QUALITATIVE" ],
+            "type" : "string"
+          },
+          "cardTitle" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "description" : "이 카드가 조건을 채웠다고 AI 가 본 이유 한 줄",
+            "type" : "string"
+          },
+          "repoId" : {
+            "description" : "카드를 만든 레포 id. 레포 화면에서 들어왔을 때 '이 레포가 채움' 을 고르는 데 쓴다. 레포 없는 카드는 null",
+            "type" : [ "string", "null" ]
           }
         },
         "type" : "object"
@@ -2528,24 +2576,16 @@
         },
         "type" : "object"
       },
-      "MatchSupportResponse" : {
+      "MatchSummaryResponse" : {
+        "description" : "기술·경험 필수 조건 중 채운 수로, 학력·경력 같은 일반 조건은 세지 않는다. 모자란 수는 requiredTotal - requiredMet",
         "properties" : {
-          "cardId" : {
-            "type" : "string"
+          "requiredMet" : {
+            "format" : "int32",
+            "type" : "integer"
           },
-          "cardKind" : {
-            "enum" : [ "TECH", "QUALITATIVE" ],
-            "type" : "string"
-          },
-          "cardTitle" : {
-            "type" : "string"
-          },
-          "field" : {
-            "enum" : [ "S", "T", "A", "R" ],
-            "type" : "string"
-          },
-          "sentence" : {
-            "type" : "string"
+          "requiredTotal" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         },
         "type" : "object"
@@ -7129,7 +7169,7 @@
     },
     "/api/matches/{id}" : {
       "get" : {
-        "description" : "열 때 AI 검색으로 이 공고의 조건마다 근거가 되는 확정 카드의 행동(A)·결과(R) 문장을 거리가 가까운 순으로 돌려줍니다. 근거가 없는 조건도 빈 배열로 포함하고, 확정 카드가 없으면 fit 은 null 이고 근거는 모두 빈 배열입니다.",
+        "description" : "열 때 AI 를 부르지 않고, 레포·전체 추천과 같이 저장해 둔 (카드, 조건) AI 판단으로 조건마다 status·metBy 를 붙입니다. 학력·경력은 인적사항과 견줍니다. 아직 판단하지 않은 조건이 있으면 needsJudgement 가 true 이고 그 조건은 UNJUDGED 입니다. fit 은 늘 null 입니다.",
         "operationId" : "match",
         "parameters" : [ {
           "description" : "목록 응답의 공고 id",
@@ -7170,9 +7210,59 @@
                 }
               }
             },
-            "description" : "UUID 가 아니거나 없는 공고이거나 목록 대상이 아닌 공고(마감·사라짐·색인 안 됨·등급 조건 없음)"
+            "description" : "UUID 가 아니거나 없는 공고이거나 목록 대상이 아닌 공고(마감·사라짐·필수·우대 조건 없음)"
           },
           "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "기업·직무 매칭 상세 조회",
+        "tags" : [ "Matches" ]
+      }
+    },
+    "/api/matches/{id}/judgement" : {
+      "post" : {
+        "description" : "이 공고의 기술·경험 조건을 지금 확정 카드로 AI 에게 묻고 상세와 같은 응답을 돌려줍니다. 이미 판단한 (카드, 조건) 짝은 다시 묻지 않으며, 물을 짝이 남았을 때만 호출 한도를 셉니다. 최대 90초쯤 걸립니다.",
+        "operationId" : "judge",
+        "parameters" : [ {
+          "description" : "목록 응답의 공고 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            },
+            "description" : "판단을 붙인 공고 상세"
+          },
+          "401" : {
             "content" : {
               "*/*" : {
                 "schema" : {
@@ -7180,7 +7270,37 @@
                 }
               }
             },
-            "description" : "AI 검색이 다시 해도 같은 실패이거나 응답이 계약과 다름"
+            "description" : "로그인 세션 없음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "UUID 가 아니거나 없는 공고이거나 목록 대상이 아닌 공고"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "호출 한도를 넘음"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
           },
           "503" : {
             "content" : {
@@ -7190,10 +7310,10 @@
                 }
               }
             },
-            "description" : "AI 검색이 잠시 실패해 근거를 찾지 못함. 다시 시도할 수 있음"
+            "description" : "AI 가 잠시 답하지 못함. 다시 시도할 수 있음"
           }
         },
-        "summary" : "기업·직무 매칭 상세 조회",
+        "summary" : "공고 하나를 지금 매칭",
         "tags" : [ "Matches" ]
       }
     },

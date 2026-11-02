@@ -4,13 +4,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties("gitory.rate-limit")
 public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit interviewAnswer, Limit cardDraft,
-                                  Limit coverLetter) {
+                                  Limit coverLetter, Limit matchJudgement, Limit matchOverall) {
 
     public RateLimitProperties {
         interviewAsk = interviewAsk == null ? Limit.NONE : interviewAsk;
         interviewAnswer = interviewAnswer == null ? Limit.NONE : interviewAnswer;
         cardDraft = cardDraft == null ? Limit.NONE : cardDraft;
         coverLetter = coverLetter == null ? Limit.NONE : coverLetter;
+        matchJudgement = matchJudgement == null ? Limit.NONE : matchJudgement;
+        matchOverall = matchOverall == null ? Limit.NONE : matchOverall;
     }
 
     public Limit of(RateLimitedAction action) {
@@ -20,6 +22,8 @@ public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit int
             case INTERVIEW_ANSWER -> interviewAnswer;
             case CARD_DRAFT -> cardDraft;
             case COVER_LETTER -> coverLetter;
+            case MATCH_JUDGEMENT -> matchJudgement;
+            case MATCH_OVERALL -> matchOverall;
         };
 
     }

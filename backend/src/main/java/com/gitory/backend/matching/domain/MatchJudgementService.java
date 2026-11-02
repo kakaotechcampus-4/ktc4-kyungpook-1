@@ -55,13 +55,7 @@ public class MatchJudgementService {
 
         Map<Long, String> hashes = cards.stream()
                 .collect(Collectors.toMap(MatchingCard::id, CardContentHash::of));
-        Map<Pair, MatchJudgement> stored = new HashMap<>();
-        if (!cards.isEmpty() && !criteria.isEmpty()) {
-            judgements.findByCardIdInAndCriterionIdIn(hashes.keySet(), ids(criteria)).stream()
-                    .filter(judgement -> judgement.getCardHash().equals(hashes.get(judgement.getCardId())))
-                    .forEach(judgement -> stored.put(new Pair(judgement.getCardId(), judgement.getCriterionId()),
-                            judgement));
-        }
+        Map<Pair, MatchJudgement> stored = current(criteria, cards, hashes);
 
         List<MatchingCard> unjudgedCards = cards.stream()
                 .filter(card -> criteria.stream().anyMatch(c -> !stored.containsKey(new Pair(card.id(), c.getId()))))
@@ -170,6 +164,42 @@ public class MatchJudgementService {
             parts.add(items.subList(start, Math.min(items.size(), start + size)));
         }
         return parts;
+
+    }
+
+    /** 저장된 판단만 읽고 AI 는 부르지 않으며, 지금 카드 글로 아직 판단하지 않은 카드가 남은 조건은 complete 가 false 다 */
+    public Map<Long, StoredJudgement> stored(List<JobPostingCriterion> criteria, List<MatchingCard> cards) {
+
+        Map<Long, String> hashes = cards.stream()
+                .collect(Collectors.toMap(MatchingCard::id, CardContentHash::of));
+        Map<Pair, MatchJudgement> current = current(criteria, cards, hashes);
+        List<MatchingCard> byId = cards.stream().sorted(Comparator.comparing(MatchingCard::id)).toList();
+        Map<Long, StoredJudgement> stored = new LinkedHashMap<>();
+        for (JobPostingCriterion criterion : criteria) {
+            List<JudgedSupport> metBy = byId.stream()
+                    .map(card -> support(new Pair(card.id(), criterion.getId()), current, Map.of()))
+                    .flatMap(Optional::stream)
+                    .toList();
+            boolean complete = byId.stream()
+                    .allMatch(card -> current.containsKey(new Pair(card.id(), criterion.getId())));
+            stored.put(criterion.getId(), new StoredJudgement(metBy, complete));
+        }
+        return stored;
+
+    }
+
+    // 카드 글이 바뀐 뒤의 판단은 쓰지 않도록, 지금 카드 글의 해시로 저장된 판단만 (카드, 조건) 짝마다 모은다
+    private Map<Pair, MatchJudgement> current(List<JobPostingCriterion> criteria, List<MatchingCard> cards,
+                                              Map<Long, String> hashes) {
+
+        Map<Pair, MatchJudgement> current = new HashMap<>();
+        if (!cards.isEmpty() && !criteria.isEmpty()) {
+            judgements.findByCardIdInAndCriterionIdIn(hashes.keySet(), ids(criteria)).stream()
+                    .filter(judgement -> judgement.getCardHash().equals(hashes.get(judgement.getCardId())))
+                    .forEach(judgement -> current.put(new Pair(judgement.getCardId(), judgement.getCriterionId()),
+                            judgement));
+        }
+        return current;
 
     }
 

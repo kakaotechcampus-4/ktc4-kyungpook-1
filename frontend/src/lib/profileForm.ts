@@ -5,8 +5,8 @@
  * 여기 값은 개인정보라 지표·로그·URL 에 넣지 않는다.
  */
 import {
-  CAREER_TYPES, EDUCATION_LEVELS, EDUCATION_STATUSES, GPA_MAXES, LANGUAGE_TESTS, PROFILE_LIMITS, ProfileInput, issuesOf,
-  type CareerType, type EducationLevel, type EducationStatus, type LanguageTest, type Profile, type ProfileIssue, type ProfileIssueCode,
+  CAREER_TYPES, EDUCATION_LEVELS, EDUCATION_STATUSES, GPA_MAXES, INTERESTS, LANGUAGE_TESTS, PROFILE_LIMITS, ProfileInput, issuesOf,
+  type CareerType, type EducationLevel, type EducationStatus, type Interest, type LanguageTest, type Profile, type ProfileIssue, type ProfileIssueCode,
 } from '@/api/profile';
 
 export type SectionKey = 'educations' | 'careers' | 'languages' | 'certifications';
@@ -18,7 +18,7 @@ export type CareerRow = Keyed & { company: string; type: CareerType | ''; role: 
 /** `testName` 은 시험이 '기타'일 때만 보내고 저장한다 */
 export type LanguageRow = Keyed & { test: LanguageTest | ''; testName: string; score: string; acquiredMonth: string };
 export type CertificationRow = Keyed & { name: string; issuer: string; acquiredMonth: string };
-export type ProfileForm = { educations: EducationRow[]; careers: CareerRow[]; languages: LanguageRow[]; certifications: CertificationRow[] };
+export type ProfileForm = { educations: EducationRow[]; careers: CareerRow[]; languages: LanguageRow[]; certifications: CertificationRow[]; interests: Interest[] };
 
 let seq = 0;
 /** 줄을 구분하는 화면용 키. 값에서 만들지 않는다(개인정보가 DOM id 에 새지 않게) */
@@ -32,7 +32,7 @@ export const blankCertification = (): CertificationRow => ({ key: newRowKey(), n
 const text = (value: string | null) => value ?? '';
 export const toForm = (profile: Profile): ProfileForm => ({
   educations: profile.educations.map((r) => ({
-    key: newRowKey(), level: r.level, school: r.school, major: text(r.major), status: r.status,
+    key: newRowKey(), level: r.level, school: text(r.school), major: text(r.major), status: r.status,
     startMonth: text(r.startMonth), endMonth: text(r.endMonth), gpa: r.gpa === null ? '' : String(r.gpa), gpaMax: r.gpaMax === null ? '' : String(r.gpaMax),
   })),
   careers: profile.careers.map((r) => ({
@@ -40,6 +40,7 @@ export const toForm = (profile: Profile): ProfileForm => ({
   })),
   languages: profile.languages.map((r) => ({ key: newRowKey(), test: r.test, testName: text(r.testName), score: r.score, acquiredMonth: text(r.acquiredMonth) })),
   certifications: profile.certifications.map((r) => ({ key: newRowKey(), name: r.name, issuer: text(r.issuer), acquiredMonth: text(r.acquiredMonth) })),
+  interests: [...profile.interests],
 });
 
 /** 저장 응답으로 폼을 맞출 때 줄 키를 그대로 이어 쓴다 — 입력칸이 다시 만들어져 초점을 잃지 않게 */
@@ -48,6 +49,7 @@ export function reconcile(saved: ProfileForm, previous: ProfileForm): ProfileFor
   return {
     educations: keep(saved.educations, previous.educations), careers: keep(saved.careers, previous.careers),
     languages: keep(saved.languages, previous.languages), certifications: keep(saved.certifications, previous.certifications),
+    interests: saved.interests,
   };
 }
 
@@ -69,16 +71,17 @@ const gpaNumber = (value: string): number | null => {
  * 계약에 맞는 본문 후보. 맞는지는 ProfileInput 이 판단한다.
  * 빈 필수 칸은 ''(REQUIRED)로 두고, 비운 선택 칸은 null 이다. 경력의 퇴사 월만 예외로 — 재직 중이 아닌데 비어 있으면 ''(REQUIRED)로 둔다.
  * 계약에서 null 이 재직 중이라, 고르지 않은 채 null 로 보내면 재직 중으로 저장되기 때문이다.
- * 네 목록은 항상 모두 보낸다(빠지면 400).
+ * 네 목록과 관심 분야는 항상 모두 보낸다(목록이 빠지면 400).
  */
 export const toDraft = (form: ProfileForm) => ({
   educations: form.educations.map((r) => ({
-    level: r.level, school: r.school, major: nullIfBlank(r.major), status: r.status,
+    level: r.level, school: nullIfBlank(r.school), major: nullIfBlank(r.major), status: r.status,
     startMonth: nullIfBlank(r.startMonth), endMonth: nullIfBlank(r.endMonth), gpa: gpaNumber(r.gpa), gpaMax: r.gpaMax === '' ? null : Number(r.gpaMax),
   })),
   careers: form.careers.map((r) => ({ company: r.company, role: nullIfBlank(r.role), type: r.type, startMonth: r.startMonth, endMonth: r.current ? null : r.endMonth })),
   languages: form.languages.map((r) => ({ test: r.test, testName: r.test === 'OTHER' ? r.testName : null, score: r.score, acquiredMonth: nullIfBlank(r.acquiredMonth) })),
   certifications: form.certifications.map((r) => ({ name: r.name, issuer: nullIfBlank(r.issuer), acquiredMonth: nullIfBlank(r.acquiredMonth) })),
+  interests: form.interests,
 });
 
 export type Validation = { ok: true; input: ProfileInput } | { ok: false; issues: ProfileIssue[] };
@@ -111,6 +114,7 @@ export function attachableErrors(issues: ProfileIssue[], form: ProfileForm): Rec
   for (const { path, code } of issues) {
     const key = fieldKey(path);
     const [section, index, field, ...rest] = key.split('.');
+    if (section === 'interests') { if (index === undefined) out[key] ??= issueMessage(key, code); continue; } // 관심 분야는 목록 전체의 오류만 붙는다
     if (!(Object.keys(FIELDS) as string[]).includes(section) || rest.length > 0) continue;
     const name = section as SectionKey;
     const wholeList = index === undefined; // 목록 전체의 오류(TOO_MANY)는 목록 아래에 붙는다
@@ -131,6 +135,11 @@ export const CAREER_TYPE_LABEL: Record<CareerType, string> = { FULL_TIME: '정�
 export const TEST_LABEL: Record<LanguageTest, string> = {
   TOEIC: '토익', TOEIC_SPEAKING: '토익 스피킹', OPIC: '오픽', TOEFL: '토플', IELTS: '아이엘츠', TEPS: '텝스', JLPT: 'JLPT', JPT: 'JPT', HSK: 'HSK', OTHER: '기타',
 };
+/** 관심 분야 이름표 — 매칭 화면의 직무 이름표(features/match/model.ts)와 같은 글이어야 한다(시험이 맞춘다) */
+export const INTEREST_LABEL: Record<Interest, string> = {
+  BACKEND: '백엔드', FRONTEND: '프론트엔드', MOBILE: '모바일', DEVOPS: '인프라, DevOps', DATA: '데이터', AI_ML: 'AI, 머신러닝', SECURITY: '보안', QA: 'QA', ETC: '기타',
+};
+export const INTEREST_OPTIONS = INTERESTS.map((value) => ({ value, label: INTEREST_LABEL[value] }));
 export const LEVEL_OPTIONS = choices(EDUCATION_LEVELS, LEVEL_LABEL, '선택');
 export const STATUS_OPTIONS = choices(EDUCATION_STATUSES, STATUS_LABEL, '선택');
 export const CAREER_TYPE_OPTIONS = choices(CAREER_TYPES, CAREER_TYPE_LABEL, '선택');
@@ -142,6 +151,15 @@ const SCORE_EXAMPLE: Partial<Record<LanguageTest, string>> = {
   TOEIC: '900', TOEIC_SPEAKING: '레벨 7', OPIC: 'IH', TOEFL: '100', IELTS: '7.0', TEPS: '400', JLPT: 'N1', JPT: '800', HSK: '6급',
 };
 export const scorePlaceholder = (test: LanguageTest | ''): string => (test && SCORE_EXAMPLE[test] ? `예) ${SCORE_EXAMPLE[test]}` : '점수나 등급');
+/** 등급으로 적는 시험 — 처음 입력 창은 목록에서 고르게 한다(마이페이지 폼은 글로 적는다). 점수 시험은 글 칸이다 */
+export const LANGUAGE_GRADES: Partial<Record<LanguageTest, readonly string[]>> = {
+  OPIC: ['IL', 'IM1', 'IM2', 'IM3', 'IH', 'AL'], TOEIC_SPEAKING: ['IL', 'IM1', 'IM2', 'IM3', 'IH', 'AL'],
+  JLPT: ['N1', 'N2', 'N3', 'N4', 'N5'], HSK: ['6급', '5급', '4급', '3급', '2급', '1급'],
+};
+/** 처음 입력 창의 자격증 타일 — 개발 직군 지원자가 흔히 가진 것. 그 밖은 직접 적는다 */
+export const COMMON_CERTIFICATIONS = [
+  '정보처리기사', '정보처리산업기사', 'SQLD', 'ADsP', '빅데이터분석기사', '리눅스마스터 2급', '네트워크관리사 2급', '정보보안기사', 'AWS Solutions Architect Associate', '컴퓨터활용능력 1급',
+] as const;
 
 const REQUIRED_TEXT: Record<string, string> = {
   'educations.level': '학력 구분을 선택해 주세요', 'educations.school': '학교 이름을 입력해 주세요', 'educations.status': '상태를 선택해 주세요',
@@ -157,6 +175,10 @@ const fieldOf = (key: string) => key.replace(/\.\d+\./, '.');
 
 export function issueMessage(key: string, code: ProfileIssueCode): string {
   const field = fieldOf(key);
+  if (field === 'interests') {
+    return code === 'TOO_MANY' ? `관심 분야는 ${PROFILE_LIMITS.INTERESTS}개까지 고를 수 있어요`
+      : code === 'REQUIRED' ? '관심 분야를 1개 이상 골라 주세요' : '관심 분야는 목록에서 골라 주세요';
+  }
   switch (code) {
     case 'REQUIRED': return REQUIRED_TEXT[field] ?? '꼭 필요한 항목이에요';
     case 'TOO_LONG': return `${MAX_BY_FIELD[field] ?? PROFILE_LIMITS.TEXT}자 이하로 입력해 주세요`;

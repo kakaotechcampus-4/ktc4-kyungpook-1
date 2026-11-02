@@ -18,7 +18,7 @@ vi.mock('@/components/ui/Select', () => ({
 }));
 
 // 칸 이름 = "<영역> <번호> <화면에 보이는 이름>" (선택 칸은 이름 뒤에 "(선택)")
-const edu = { level: (n = 1) => `학력 ${n} 학력 구분`, school: (n = 1) => `학력 ${n} 학교`, major: (n = 1) => `학력 ${n} 전공 (선택)`, status: (n = 1) => `학력 ${n} 상태`,
+const edu = { level: (n = 1) => `학력 ${n} 학력 구분`, school: (n = 1) => `학력 ${n} 학교 (선택)`, major: (n = 1) => `학력 ${n} 전공 (선택)`, status: (n = 1) => `학력 ${n} 상태`,
   start: (n = 1) => `학력 ${n} 입학 월 (선택)`, end: (n = 1) => `학력 ${n} 졸업(예정) 월 (선택)`, gpa: (n = 1) => `학력 ${n} 학점 (선택)`, gpaMax: (n = 1) => `학력 ${n} 학점 만점 (선택)` };
 const car = { company: (n = 1) => `경력 ${n} 회사`, type: (n = 1) => `경력 ${n} 고용 형태`, role: (n = 1) => `경력 ${n} 직무 (선택)`, start: (n = 1) => `경력 ${n} 입사 월`, end: (n = 1) => `경력 ${n} 퇴사 월`, current: (n = 1) => `경력 ${n} 재직 중` };
 const lang = { test: (n = 1) => `어학 ${n} 시험`, testName: (n = 1) => `어학 ${n} 시험 이름`, score: (n = 1) => `어학 ${n} 점수 또는 등급`, month: (n = 1) => `어학 ${n} 취득 월 (선택)` };
@@ -33,6 +33,7 @@ async function open() {
 const click = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 const type = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 const choose = (label: string, value: string) => fireEvent.change(screen.getByRole('combobox', { name: label }), { target: { value } });
+const pick = (label: string) => fireEvent.click(screen.getByRole('checkbox', { name: label }));
 const status = () => screen.getAllByRole('status').map((el) => el.textContent).join('|');
 const save = async () => { click(/^(다시 )?저장$/); await act(async () => { await Promise.resolve(); }); };
 const puts = (server: ReturnType<typeof connectMockServer>) => server.profileCalls().filter((c) => c.method === 'PUT');
@@ -188,22 +189,42 @@ describe('profile form — validation (same rules as BE, caught before sending)'
   it('does not shout while typing; on save it lists what is wrong, focuses the first field and sends nothing', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가');
     expect(screen.queryByText('학교 이름을 입력해 주세요')).not.toBeInTheDocument();
     server.fetcher.mockClear();
     await save();
-    for (const message of ['학력 구분을 선택해 주세요', '학교 이름을 입력해 주세요', '상태를 선택해 주세요']) expect(screen.getByText(message)).toBeInTheDocument();
+    for (const message of ['학력 구분을 선택해 주세요', '상태를 선택해 주세요']) expect(screen.getByText(message)).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('입력을 확인해 주세요');
-    expect(screen.getByRole('alert')).toHaveTextContent('3곳');
+    expect(screen.getByRole('alert')).toHaveTextContent('2곳');
     await waitFor(() => expect(screen.getByRole('combobox', { name: edu.level() })).toHaveFocus());
-    expect(screen.getByLabelText(edu.school())).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByLabelText(edu.school())).toHaveAccessibleDescription('학교 이름을 입력해 주세요');
+    expect(screen.getByLabelText(edu.school())).not.toHaveAttribute('aria-invalid'); // 학교 이름은 비워도 된다 — 처음 입력 창이 받지 않는다
+    expect(screen.getByRole('combobox', { name: edu.status() })).toHaveAccessibleDescription('상태를 선택해 주세요');
     expect(puts(server)).toEqual([]);
+  });
+
+  it('needs one to three interests: says so on save, and greys out the rest once three are chosen', async () => {
+    const server = connectMockServer();
+    await open();
+    click('학력 추가'); fillEducationRequired();
+    await save();
+    expect(screen.getByText('관심 분야를 1개 이상 골라 주세요')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('1곳');
+    expect(puts(server)).toEqual([]);
+    pick('백엔드'); pick('프론트엔드'); pick('데이터');
+    expect(screen.queryByText('관심 분야를 1개 이상 골라 주세요')).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '보안' })).toBeDisabled();
+    pick('프론트엔드');
+    expect(screen.getByRole('checkbox', { name: '보안' })).toBeEnabled();
+    await save();
+    await waitFor(() => expect(status()).toContain('저장했어요'));
+    expect((puts(server)[0].body as { interests: string[] }).interests).toEqual(['BACKEND', 'DATA']);
   });
 
   it('never complains about an optional box left empty', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가'); fillEducationRequired();
     click('경력 추가'); fillCareerRequired();
     click('어학 추가'); choose(lang.test(), 'TOEIC'); type(lang.score(), '900');
@@ -215,12 +236,14 @@ describe('profile form — validation (same rules as BE, caught before sending)'
       careers: [{ company: '샘플컴퍼니', role: null, type: 'FULL_TIME', startMonth: '2022-03', endMonth: null }],
       languages: [{ test: 'TOEIC', testName: null, score: '900', acquiredMonth: null }],
       certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: null }],
+      interests: ['BACKEND'],
     });
   });
 
   it('ties the select errors to their selects the way every other field is tied', async () => {
     connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가');
     await save();
     for (const [name, message] of [[edu.level(), '학력 구분을 선택해 주세요'], [edu.status(), '상태를 선택해 주세요']] as const) {
@@ -237,6 +260,7 @@ describe('profile form — validation (same rules as BE, caught before sending)'
   it('removes a message the moment its field is fixed', async () => {
     connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가');
     await save();
     type(edu.school(), '샘플대학교');
@@ -248,6 +272,7 @@ describe('profile form — validation (same rules as BE, caught before sending)'
   it('GPA goes with its maximum: asks for the missing half, and keeps the score between zero and the maximum', async () => {
     connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가'); fillEducationRequired();
     type(edu.gpa(), '3.8');
     await save();
@@ -289,6 +314,7 @@ describe('profile form — validation (same rules as BE, caught before sending)'
   it('a graduated school needs no end month and no other optional box', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('학력 추가'); fillEducationRequired();
     choose(edu.status(), 'GRADUATED');
     await save();
@@ -344,6 +370,7 @@ describe('profile form — saving', () => {
     const server = connectMockServer();
     await open();
     expect(status()).toContain('고친 곳이 없어요');
+    pick('백엔드'); pick('인프라, DevOps');
     click('학력 추가'); fillEducation(1, { school: '  샘플대학교  ' });
     type(edu.gpa(), '3.8'); choose(edu.gpaMax(), '4.5');
     expect(status()).toContain('저장하지 않은 변경이 있어요');
@@ -365,21 +392,24 @@ describe('profile form — saving', () => {
     expect(puts(server)).toHaveLength(1);
   });
 
-  it('always sends all four lists, even when only one has rows (a missing list would be a 400)', async () => {
+  it('always sends all four lists and the interests, even when only one list has rows (a missing list would be a 400)', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('자격증 추가'); type(cert.name(), '정보처리기사');
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
     const body = puts(server)[0].body as Record<string, unknown>;
-    expect(Object.keys(body)).toEqual(['educations', 'careers', 'languages', 'certifications']);
+    expect(Object.keys(body)).toEqual(['educations', 'careers', 'languages', 'certifications', 'interests']);
     expect([body.educations, body.careers, body.languages]).toEqual([[], [], []]);
+    expect(body.interests).toEqual(['BACKEND']);
     expect(body.certifications).toEqual([{ name: '정보처리기사', issuer: null, acquiredMonth: null }]);
   });
 
   it('sends the test name only for "기타"', async () => {
     const server = connectMockServer();
     await open();
+    pick('백엔드');
     click('어학 추가'); click('어학 추가');
     choose(lang.test(1), 'TOEIC'); type(lang.score(1), '900');
     choose(lang.test(2), 'OTHER'); type(lang.testName(2), ' 토픽 '); type(lang.score(2), '6급');
@@ -396,6 +426,9 @@ describe('profile form — saving', () => {
     connectMockServer();
     putProfile(sampleInput());
     await open();
+    expect(screen.getByRole('checkbox', { name: '백엔드' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '인프라, DevOps' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: '모바일' })).not.toBeChecked();
     expect(screen.getByLabelText(edu.school())).toHaveValue('샘플대학교');
     expect(screen.getByLabelText(edu.end())).toHaveValue('2022-02');
     expect(screen.getByLabelText(edu.gpa())).toHaveValue('3.8');
@@ -430,7 +463,7 @@ describe('profile form — saving', () => {
     await waitFor(() => expect(status()).toContain('저장했어요'));
   });
 
-  it('clearing every row and saving sends four empty lists, with a warning first', async () => {
+  it('clearing every row and saving sends four empty lists (the interests stay), with a warning first', async () => {
     const server = connectMockServer();
     putProfile(sampleInput());
     await open();
@@ -438,7 +471,7 @@ describe('profile form — saving', () => {
     expect(status()).toContain('모두 지운 상태예요. 저장하면 입력한 정보가 삭제돼요');
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
-    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [] });
+    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS'] });
   });
 });
 
@@ -447,6 +480,7 @@ describe('profile form — failure keeps the input', () => {
     let failures = 1;
     const server = connectMockServer((call) => (call.method === 'PUT' && failures-- > 0 ? jsonError(503, 'INTERNAL_ERROR') : undefined));
     await open();
+    pick('백엔드');
     click('자격증 추가');
     type(cert.name(), '정보처리기사'); type(cert.month(), '2021-11');
     await save();
@@ -483,6 +517,7 @@ describe('profile form — failure keeps the input', () => {
       ? jsonError(400, 'INVALID_REQUEST', { fields: [{ path: 'careers[0].role', code: 'TOO_LONG' }, { path: 'careers[0].startMonth', code: 'INVALID_FORMAT' }] })
       : undefined));
     await open();
+    pick('백엔드');
     click('경력 추가');
     fillCareerRequired(); type(car.role(), '개발');
     await save();
@@ -501,6 +536,7 @@ describe('profile form — failure keeps the input', () => {
       ? jsonError(400, 'INVALID_REQUEST', { fields: [{ path: 'educations[0].degree', code: 'REQUIRED' }, { path: 'educations[7].school', code: 'REQUIRED' }] })
       : undefined));
     await open();
+    pick('백엔드');
     click('자격증 추가'); type(cert.name(), '자격증');
     await save();
     const alert = await screen.findByRole('alert');
@@ -514,6 +550,7 @@ describe('profile form — failure keeps the input', () => {
       ? new Response(JSON.stringify({ data: null, error: { code: 'INVALID_REQUEST', message: sentence } }), { status: 400 })
       : undefined));
     await open();
+    pick('백엔드');
     click('자격증 추가');
     type(cert.name(), '자격증');
     await save();
@@ -547,6 +584,7 @@ describe('profile form — leaving with unsaved changes', () => {
   it('"save and leave" saves first and then leaves', async () => {
     const server = connectMockServer();
     const { router } = await open();
+    pick('백엔드');
     click('자격증 추가');
     type(cert.name(), '정보처리기사'); type(cert.month(), '2021-11');
     await act(async () => { void router.navigate('/elsewhere'); });
@@ -580,6 +618,7 @@ describe('profile form — leaving with unsaved changes', () => {
   it('does not ask after a successful save', async () => {
     connectMockServer();
     const { router } = await open();
+    pick('백엔드');
     click('자격증 추가');
     type(cert.name(), '정보처리기사'); type(cert.month(), '2021-11');
     await save();

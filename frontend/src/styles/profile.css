@@ -1,15 +1,24 @@
-/* 인적사항(학력·경력·어학·자격증) — 입력 화면과 홈 첫 방문 안내. 색은 토큰만 쓴다(다크 테마 자동). */
+/* 인적사항(관심 분야·학력·경력·어학·자격증) — 입력 화면과 처음 입력 창. 색은 토큰만 쓴다(다크 테마 자동). */
 
-/* ───────── 홈 첫 방문 안내 ───────── */
-.profile-prompt { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--bg-surface); }
-.profile-prompt__text { display: flex; flex-direction: column; gap: 4px; flex: 1 1 auto; min-width: 0; }
-.profile-prompt__text h2 { font-size: 15px; line-height: 22px; font-weight: var(--heading-weight); letter-spacing: var(--text-tracking); color: var(--text-primary); }
-.profile-prompt__text p { font-size: 13px; line-height: 20px; color: var(--text-secondary); max-width: 62ch; }
-.profile-prompt__actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-@media (max-width: 767px) {
-  .profile-prompt { flex-wrap: wrap; align-items: flex-start; gap: 12px; padding: 16px; }
-  .profile-prompt__actions { width: 100%; }
-  .profile-prompt__actions .btn { flex: 1 1 0; }
+/* ───────── 처음 입력 창 (ProfileSetupModal) ───────── */
+.setup-steps { display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.setup-steps li { flex: 1 1 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 12px; line-height: 16px; color: var(--text-tertiary); }
+.setup-steps li::before { content: ""; height: 4px; border-radius: 2px; background: var(--border-default); }
+.setup-steps li.is-done::before, .setup-steps li[aria-current="step"]::before { background: var(--accent-point); }
+.setup-steps li[aria-current="step"] { color: var(--text-primary); font-weight: 600; }
+.setup-steps li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.interest-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.interest-tile { position: relative; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); font-size: 13.5px; line-height: 20px; color: var(--text-strong); cursor: pointer; }
+.interest-tile input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.interest-tile::before { content: ""; width: 18px; height: 18px; flex: 0 0 auto; border: 1.5px solid var(--border-strong); border-radius: 50%; }
+.interest-tile.is-on { background: var(--bg-selected); border-color: var(--border-selected); }
+.interest-tile.is-on::before { border-color: var(--accent-point); background: var(--accent-point); box-shadow: inset 0 0 0 3px var(--bg-selected); }
+.interest-tile.is-off { opacity: .45; }
+.interest-tile.is-off input { cursor: not-allowed; }
+.interest-tile:has(input:focus-visible) { outline: 2px solid var(--border-selected); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .interest-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .setup-steps li span { display: none; }
 }
 
 /* ───────── 입력 화면 ───────── */
@@ -46,3 +55,24 @@
   .profile-cell, .profile-cell--half, .profile-cell--wide, .profile-cell--full { grid-column: 1 / -1; }
 }
 .profile-cell input[type="month"] { min-width: 0; }
+
+/* 처음 입력 창의 빠른 입력 — 학력 타일 두 줄, 어학 타일 + 점수 칸, 자격증 타일 + 직접 입력 */
+.interest-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.interest-grid--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.quick-group { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.quick-group__label { padding: 0; font-size: 12.5px; line-height: 18px; font-weight: 600; color: var(--text-secondary); }
+.quick-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.quick-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.quick-score { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-paper); }
+.quick-score__name { font-size: 13px; line-height: 20px; font-weight: var(--heading-weight); color: var(--text-strong); }
+.quick-score .profile-cell { grid-column: auto; }
+.quick-custom { display: flex; align-items: flex-end; gap: 8px; }
+.quick-custom .field { flex: 1 1 auto; min-width: 0; }
+.quick-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.quick-chips li { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border-radius: 999px; background: var(--bg-selected); border: 1px solid var(--border-selected); font-size: 13px; line-height: 20px; color: var(--text-strong); }
+.quick-chips button { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: var(--text-secondary); font-size: 12px; }
+.quick-chips button:hover { background: var(--bg-surface); color: var(--text-primary); }
+@media (max-width: 600px) {
+  .interest-grid--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-split { grid-template-columns: minmax(0, 1fr); }
+}

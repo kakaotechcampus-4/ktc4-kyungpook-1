@@ -115,9 +115,11 @@ export function checkMessage(code: string | null, value: string | null): string 
 
 /**
  * ⑤ AI 가 한 일 — `steps.draft` 한 줄을 문장으로. 쓰기, 검사, 고칠지 정하기, 다시 쓰기, 감독 검토가 차례로 쌓인다.
- * 모르는 kind 는 null(건너뛴다).
+ * 모르는 actor·kind 는 null(건너뛴다).
  */
-export function draftLine(step: DraftStep, questions: Pick<CoverLetterQuestion, 'id' | 'seq'>[]): { text: string; reason: string | null; tone: 'work' | 'check' | 'fix' } | null {
+type DraftLineStep = Pick<DraftStep, 'actor' | 'kind' | 'questionId' | 'code' | 'value' | 'sentenceSeq' | 'action' | 'reason'>;
+export function draftLine(step: DraftLineStep, questions: Pick<CoverLetterQuestion, 'id' | 'seq'>[]): { text: string; reason: string | null; tone: 'work' | 'check' | 'fix' } | null {
+  if (step.actor !== 'SUB_AGENT' && step.actor !== 'SUPERVISOR' && step.actor !== 'CODE') return null;
   const n = questions.find((q) => q.id === step.questionId)?.seq;
   const q = n != null ? `${n}번 문항 ` : '';
   const chars = step.value && /^\d+$/.test(step.value) ? `(${Number(step.value).toLocaleString()}자)` : '';

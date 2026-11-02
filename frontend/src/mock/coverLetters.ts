@@ -1,7 +1,7 @@
 /**
  * 자소서 Mock 서버 — docs/2026-10-28-COVER_LETTER.md 계약(#492·#549)을 서버처럼 검증하고 진행한다.
  * 분석 Job 처럼 진행은 타이머가 아니라 "읽는 순간의 경과 시간"으로 정한다. 카드 고르기 6초, 질문 만들기 4초.
- * AI 가 한 일(`steps.assign`)은 경과 시간만큼 한 줄씩 늘어난다 — 실서버도 폴링마다 줄이 쌓인다.
+ * AI 가 한 일(`steps.assign`·`steps.draft`)과 쓰는 글(`writing`)은 경과 시간만큼 늘어난다 — 지금 서버는 단계가 끝날 때 한 번에 저장하고, #618 서버부터 조회마다 쌓인다.
  */
 import { ANSWER_MAX, COVER_LETTER_LIMITS as L, DRAFT_MAX, MATERIAL_ITEMS, type QuestionTheme } from '@/api/coverLetters';
 import { BLANK_TEXT, blanksIn, countableLength } from '@/lib/draftText';
@@ -121,12 +121,20 @@ function settleAsks(letter: Any) {
   }
 }
 
-/** 초안 쓰기(가짜 AI) — 카드 문장과 답으로 쓰고, 필수 재료가 없으면 빈칸을 남긴다. 줄(steps.draft)마다 보일 시각을 붙인다 */
+/**
+ * 초안 쓰기(가짜 AI, #618) — AI 와 같은 차례로 쌓는다. 첫 초안(round 0)은 문항마다 0.5초에 한 문장씩 늘고, 고쳐 쓴 글은 다 쓴 뒤 한 번에 바뀐다.
+ * 검토가 돌려보낸 문장을 고쳐 쓴 글이 새 문제를 만들면 같은 바퀴(round)에서 앞 글로 되돌리고, 끝에 확인 필요를 남긴다.
+ * 카드 문장과 답으로 쓰고, 필수 재료가 없으면 빈칸을 남긴다. 문항 2개면 8초 안에 끝난다(시험은 9초를 민다)
+ */
 function planDrafts(letter: Any) {
   const steps: Any[] = [];
-  let at = 0.6;
-  const push = (x: Any, gap = 0.6) => { steps.push({ ...x, at }); at += gap; };
-  for (const q of letter.questions) {
+  const texts: Any[] = [];
+  let at = 0.5;
+  const push = (x: Any, gap = 0.2) => { steps.push({ ...x, at }); at += gap; };
+  const typed = (q: Any, sentences: string[], round: number) => texts.push({ at, questionSeq: q.seq, text: sentences.join(' '), round });
+  const split = (text: string) => text.split(/(?<=[.])\s+/).filter(Boolean);
+  const chars = (sentences: string[]) => String(countableLength(sentences.join(' ')));
+  const plans = letter.questions.map((q: Any) => {
     const card = cardById(q.primaryCardId);
     const v: Any = card ? latest(card) : {};
     const answer = (item: string) => q.answers?.find((a: Any) => a.item === item && !a.skipped)?.text as string | undefined;
@@ -141,20 +149,82 @@ function planDrafts(letter: Any) {
     let text = parts.join(' ');
     const short = countableLength(text) < q.charLimit * 0.7;
     if (short) text += ' [더 쓸 거리: 그때 팀에서 맡은 역할과 함께 일한 사람을 적어 보세요]';
-    const sentences = text.split(/(?<=[.])\s+/).filter(Boolean).map((t, i) => ({ seq: i + 1, text: t }));
     const sourced = Object.values(v).filter((f): f is string => typeof f === 'string').join(' ');
-    const numbered = sentences.find((x) => { const m = x.text.match(/\d+%/); return !!m && !sourced.includes(m[0]); });
-    const marks = numbered ? [{ sentenceSeq: numbered.seq, code: 'UNSOURCED_NUMBER', value: numbered.text.match(/\d+%/)![0] }] : [];
-    q._draft = { text, aiText: text, sentences, marks, source: card ? 'LLM' : 'SKELETON' };
-    push({ kind: 'WROTE', actor: 'SUB_AGENT', questionSeq: q.seq, value: String(countableLength(text)) });
-    if (short) {
-      push({ kind: 'CHECK_FAILED', actor: 'CODE', questionSeq: q.seq, code: 'UNDER_LENGTH', value: String(Math.round(q.charLimit * 0.7) - countableLength(text)) });
-      push({ kind: 'DECIDED', actor: 'SUB_AGENT', questionSeq: q.seq, action: 'KEEP', reason: '카드와 답에 더 쓸 사실이 없어 쓸 거리를 빈칸으로 남겼어요' });
-    } else push({ kind: 'CHECK_PASSED', actor: 'CODE', questionSeq: q.seq, value: String(countableLength(text)) });
-    if (marks.length) push({ kind: 'MARKED', actor: 'SUB_AGENT', questionSeq: q.seq, code: marks[0].code, value: marks[0].value, sentenceSeq: marks[0].sentenceSeq });
+    return { q, card, short, sentences: split(text), sourced, round: 0 };
+  });
+
+  // 1) 첫 초안 — 문항들이 함께 쓰므로 문장이 번갈아 늘고, 문항마다 0.5초에 한 문장이다
+  const beat = 0.5 / Math.max(1, plans.length);
+  const cursor = plans.map(() => 0);
+  let left = plans.reduce((n: number, p: Any) => n + p.sentences.length, 0);
+  while (left > 0) for (let i = 0; i < plans.length; i++) {
+    const p = plans[i];
+    if (cursor[i] >= p.sentences.length) continue;
+    cursor[i]++; left--;
+    typed(p.q, p.sentences.slice(0, cursor[i]), 0);
+    at += beat;
   }
-  push({ kind: 'REVIEWED', actor: 'SUPERVISOR', questionSeq: null, value: '0' });
+  at += 0.2;
+
+  // 2) 문항마다 검사 — 카드에 없는 수치는 작성 AI 가 고쳐 쓰고, 짧으면 그대로 두기로 한다
+  for (const p of plans) {
+    const { q } = p;
+    push({ kind: 'WROTE', actor: 'SUB_AGENT', questionSeq: q.seq, value: chars(p.sentences) });
+    const idx = p.sentences.findIndex((s: string) => { const m = s.match(/\d+%/); return !!m && !p.sourced.includes(m[0]); });
+    if (idx >= 0) {
+      const found = { code: 'UNSOURCED_NUMBER', value: p.sentences[idx].match(/\d+%/)![0], sentenceSeq: idx + 1, sentence: p.sentences[idx] };
+      push({ kind: 'CHECK_FAILED', actor: 'CODE', questionSeq: q.seq, ...found });
+      push({ kind: 'DECIDED', actor: 'SUB_AGENT', questionSeq: q.seq, ...found, action: 'FIX', reason: '카드에 없는 수치라 표현을 바꿔 볼게요' });
+      p.sentences = p.sentences.map((s: string, i: number) => (i === idx ? s.replace(/\d+%/, '크게') : s));
+      typed(q, p.sentences, ++p.round);
+      push({ kind: 'REWROTE', actor: 'SUB_AGENT', questionSeq: q.seq, value: chars(p.sentences) }, 0.4);
+      push({ kind: 'CHECK_PASSED', actor: 'CODE', questionSeq: q.seq, value: chars(p.sentences) });
+      p.fixed = idx;
+    } else if (p.short) {
+      push({ kind: 'CHECK_FAILED', actor: 'CODE', questionSeq: q.seq, code: 'UNDER_LENGTH', value: String(Math.round(q.charLimit * 0.7) - countableLength(p.sentences.join(' '))) });
+      push({ kind: 'DECIDED', actor: 'SUB_AGENT', questionSeq: q.seq, action: 'KEEP', reason: '카드와 답에 더 쓸 사실이 없어 쓸 거리를 빈칸으로 남겼어요' });
+    } else push({ kind: 'CHECK_PASSED', actor: 'CODE', questionSeq: q.seq, value: chars(p.sentences) });
+  }
+
+  // 3) 검토 AI — 고친 문장의 성과가 카드에 없다고, 두 번째 문항의 두 번째 문장이 앞 문항과 겹친다고 돌려보낸다
+  const findings: Any[] = plans.filter((p: Any) => p.fixed != null).map((p: Any) => ({ p, idx: p.fixed, code: 'UNSUPPORTED_CLAIM', reason: '줄였다는 성과가 카드와 답에 없어서' }));
+  if (plans[1]?.sentences.length >= 2) findings.push({ p: plans[1], idx: 1, code: 'REPEATED', reason: '1번 문항과 같은 이야기라서' });
+  push({ kind: 'REVIEWED', actor: 'SUPERVISOR', questionSeq: null, value: String(findings.length) });
+  for (const f of findings) push({ kind: 'SENT_BACK', actor: 'SUPERVISOR', questionSeq: f.p.q.seq, code: f.code, sentenceSeq: f.idx + 1, sentence: f.p.sentences[f.idx], reason: f.reason });
+  for (const { p, idx, code } of findings) {
+    if (code === 'UNSUPPORTED_CLAIM') {
+      // 고쳐 쓴 글이 카드에 없는 수치를 새로 만들어 앞 글로 되돌린다 — 되돌린 글은 같은 바퀴로 온다
+      const attempt = p.sentences.map((s: string, i: number) => (i === idx ? s.replace('크게', '50% 넘게') : s));
+      typed(p.q, attempt, ++p.round);
+      push({ kind: 'REWROTE', actor: 'SUB_AGENT', questionSeq: p.q.seq, value: chars(attempt) }, 0.4);
+      push({ kind: 'CHECK_FAILED', actor: 'CODE', questionSeq: p.q.seq, code: 'UNSOURCED_NUMBER', value: '50%', sentenceSeq: idx + 1, sentence: attempt[idx] });
+      typed(p.q, p.sentences, p.round);
+      push({ kind: 'REVERTED', actor: 'CODE', questionSeq: p.q.seq });
+      p.marks = [{ sentenceSeq: idx + 1, code, value: null }];
+    } else {
+      p.sentences = p.sentences.map((s: string, i: number) => (i === idx ? `${s.replace(/\.$/, '')}고, 그 과정에서 제가 맡은 역할을 분명히 했습니다.` : s));
+      typed(p.q, p.sentences, ++p.round);
+      push({ kind: 'REWROTE', actor: 'SUB_AGENT', questionSeq: p.q.seq, value: chars(p.sentences) }, 0.4);
+      push({ kind: 'CHECK_PASSED', actor: 'CODE', questionSeq: p.q.seq, value: chars(p.sentences) });
+    }
+  }
+
+  // 4) 끝내며 고치지 못한 문장에 확인 필요를 남긴다
+  for (const p of plans) {
+    for (const m of p.marks ?? []) push({ kind: 'MARKED', actor: 'CODE', questionSeq: p.q.seq, ...m, sentence: p.sentences[m.sentenceSeq - 1] });
+    const text = p.sentences.join(' ');
+    p.q._draft = { text, aiText: text, sentences: p.sentences.map((t: string, i: number) => ({ seq: i + 1, text: t })), marks: p.marks ?? [], source: p.card ? 'LLM' : 'SKELETON' };
+  }
   letter._draftSteps = steps.map((x, i) => ({ ...x, seq: i + 1 }));
+  letter._draftTexts = texts;
+  letter._draftSec = at + 0.2;
+}
+
+/** DRAFTING 동안 그 문항에 지금까지 쓴 글 — 아직 한 문장도 없으면 null */
+function writingOf(letter: Any, q: Any, seen: number) {
+  const mine = (letter._draftTexts ?? []).filter((t: Any) => t.questionSeq === q.seq && t.at <= seen);
+  const last = mine[mine.length - 1];
+  return last ? { text: last.text, round: last.round } : null;
 }
 
 function settleDrafts(letter: Any) {
@@ -202,7 +272,7 @@ function advance(letter: Any) {
     settleAsks(letter);
     Object.assign(letter, { stage: 'ASKED', updatedAt: now() });
   }
-  if (letter.stage === 'DRAFTING' && elapsed(letter) >= DRAFT_SEC) {
+  if (letter.stage === 'DRAFTING' && elapsed(letter) >= (letter._draftSec ?? DRAFT_SEC)) {
     settleDrafts(letter);
     Object.assign(letter, { stage: 'DRAFTED', updatedAt: now() });
   }
@@ -243,6 +313,7 @@ function view(letter: Any) {
           return { ...a, answer: ans && !ans.skipped ? { text: ans.text, reused: !!ans.reused } : null, skipped: !!ans?.skipped };
         }),
         draft: draftView(q),
+        writing: letter.stage === 'DRAFTING' ? writingOf(letter, q, elapsed(letter)) : null,
       };
     }),
     steps: {
@@ -250,7 +321,7 @@ function view(letter: Any) {
       draft: (letter._draftSteps ?? []).filter((x: Any) => x.at <= (letter.stage === 'DRAFTING' ? elapsed(letter) : Infinity)).map((x: Any) => ({
         seq: x.seq, actor: x.actor, kind: x.kind,
         questionId: x.questionSeq != null ? letter.questions.find((q: Any) => q.seq === x.questionSeq)?.id ?? null : null,
-        code: x.code ?? null, value: x.value ?? null, sentenceSeq: x.sentenceSeq ?? null, action: x.action ?? null, reason: x.reason ?? null,
+        code: x.code ?? null, value: x.value ?? null, sentenceSeq: x.sentenceSeq ?? null, sentence: x.sentence ?? null, action: x.action ?? null, reason: x.reason ?? null,
       })),
     },
   };

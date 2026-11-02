@@ -80,6 +80,8 @@ const Question = z.object({
   materials: items,
   asks: list(Ask),
   draft: nullable(Draft),
+  /** DRAFTING 동안 그 문항에 지금까지 쓴 글(#618). 문장이 끝날 때마다 늘고, round 는 첫 초안 0·고쳐 쓸 때마다 +1. 다 쓰면 null 이고 draft 가 채워진다 */
+  writing: nullable(z.object({ text: z.string(), round: z.number().catch(0) })),
 });
 export type CoverLetterQuestion = z.infer<typeof Question>;
 
@@ -90,7 +92,10 @@ const AssignStep = z.object({
 export type AssignStep = z.infer<typeof AssignStep>;
 const DraftStep = z.object({
   seq: z.number(), actor: z.string(), kind: z.string(), questionId: text,
-  code: text, value: text, sentenceSeq: nullable(z.number()), action: text, reason: text,
+  code: text, value: text, sentenceSeq: nullable(z.number()),
+  /** sentenceSeq 가 가리키는 문장 글(200자까지, 고쳐 쓰기 전 글 기준). 번호는 초안마다 달라지므로 화면은 이 글로 문장을 찾는다 */
+  sentence: text,
+  action: text, reason: text,
 });
 export type DraftStep = z.infer<typeof DraftStep>;
 

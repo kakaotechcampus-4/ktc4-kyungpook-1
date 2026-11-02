@@ -1,14 +1,16 @@
 import { useId, useState, type FormEvent } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CalendarDays, ChevronLeft, ChevronRight, ExternalLink, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
-import { dateKey, daysUntil, monthDays, readSchedules, safeScheduleUrl, scheduleKinds, type JobSchedule, type ScheduleKind } from './calendarModel';
+import { calendarStorageKey, dateKey, daysUntil, monthDays, readSchedules, safeScheduleUrl, scheduleKinds, type JobSchedule, type ScheduleKind } from './calendarModel';
 
 const weekdayNames = ['일', '월', '화', '수', '목', '금', '토'];
 const readableDate = (key: string) => new Date(`${key}T12:00:00`).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
 
 export function JobCalendar({ userId }: { userId: string }) {
-  const storageKey = `gitory.job-calendar.v1.${userId}`;
+  const storageKey = calendarStorageKey(userId);
+  const nav = useNavigate();
   const [initial] = useState(() => {
     try { return { events: readSchedules(localStorage.getItem(storageKey)), error: '' }; }
     catch { return { events: [] as JobSchedule[], error: '저장된 일정을 불러오지 못했어요. 새로고침 후 다시 확인해 주세요.' }; }
@@ -32,6 +34,9 @@ export function JobCalendar({ userId }: { userId: string }) {
     } catch { setError('일정을 저장하지 못했어요. 브라우저 저장 공간과 설정을 확인해 주세요.'); return false; }
   };
   const add = () => setEditing({ id: '', company: '', role: '', date: selected, kind: 'deadline', url: '', note: '' });
+  // 공고에서 담은 일정은 그 공고로 간다(빼기는 공고 상세와 선택한 날짜 목록에서). 직접 등록한 일정은 고치기 창을 연다
+  // 날짜 목록의 빼기는 공고가 지워져 상세가 열리지 않을 때도 일정을 지울 수 있게 둔다
+  const open = (event: JobSchedule) => { if (event.matchId) nav(`/match/${encodeURIComponent(event.matchId)}`); else { setSelected(event.date); setEditing(event); } };
   const moveMonth = (offset: number) => {
     const next = new Date(month.getFullYear(), month.getMonth() + offset, 1);
     setMonth(next); setSelected(dateKey(next));
@@ -64,7 +69,7 @@ export function JobCalendar({ userId }: { userId: string }) {
             const key = dateKey(day); const dayEvents = events.filter(event => event.date === key);
             return <div key={key} className={`calendar-day ${day.getMonth() !== month.getMonth() ? 'calendar-day--outside' : ''} ${key === selected ? 'calendar-day--selected' : ''}`}>
               <button type="button" className={`calendar-day__number ${key === today ? 'calendar-day__number--today' : ''}`} aria-label={`${readableDate(key)}, 일정 ${dayEvents.length}개`} aria-pressed={key === selected} aria-current={key === today ? 'date' : undefined} onClick={() => { setSelected(key); if (day.getMonth() !== month.getMonth()) setMonth(new Date(day.getFullYear(), day.getMonth(), 1)); }}>{day.getDate()}</button>
-              {dayEvents.slice(0, 2).map(event => <button type="button" key={event.id} className={`calendar-event calendar-event--${event.kind}`} title={`${event.company} · ${scheduleKinds[event.kind]}`} aria-label={`${event.company} · ${scheduleKinds[event.kind]}`} onClick={() => { setSelected(key); setEditing(event); }}><span>{event.company}</span><span>{scheduleKinds[event.kind]}</span></button>)}
+              {dayEvents.slice(0, 2).map(event => <button type="button" key={event.id} className={`calendar-event calendar-event--${event.kind}`} title={`${event.company} · ${scheduleKinds[event.kind]}`} aria-label={`${event.company} · ${scheduleKinds[event.kind]}`} onClick={() => open(event)}><span>{event.company}</span><span>{scheduleKinds[event.kind]}</span></button>)}
               {dayEvents.length > 2 && <button type="button" className="calendar-day__more" onClick={() => setSelected(key)}>+{dayEvents.length - 2}개 더 보기</button>}
             </div>;
           })}
@@ -75,10 +80,10 @@ export function JobCalendar({ userId }: { userId: string }) {
         <div className="calendar-agenda__upcoming"><span className="home-eyebrow">UP NEXT</span><h3>다가오는 일정 <span>{upcoming.length}</span></h3>
           {upcoming.length ? upcoming.map(event => {
             const diff = daysUntil(event.date, today);
-            return <button type="button" className="agenda-event" key={event.id} onClick={() => { setSelected(event.date); setEditing(event); }}><span className={`agenda-event__count agenda-event__count--${event.kind}`}>{diff === 0 ? '오늘' : `D-${diff}`}</span><span><strong>{event.company}</strong><small>{event.role || scheduleKinds[event.kind]}</small><small>{readableDate(event.date)} · {scheduleKinds[event.kind]}</small></span></button>;
+            return <button type="button" className="agenda-event" key={event.id} onClick={() => open(event)}><span className={`agenda-event__count agenda-event__count--${event.kind}`}>{diff === 0 ? '오늘' : `D-${diff}`}</span><span><strong>{event.company}</strong><small>{event.role || scheduleKinds[event.kind]}</small><small>{readableDate(event.date)} · {scheduleKinds[event.kind]}</small></span></button>;
           }) : <div className="calendar-empty"><CalendarDays size={28} strokeWidth={1.4} /><strong>다음 기회를 준비해요</strong><p>관심 기업의 공고 마감일을<br />첫 일정으로 등록해 보세요.</p><Button variant="outline" size="sm" onClick={add} disabled={Boolean(initial.error)}><Plus size={14} /> 첫 일정 등록</Button></div>}
         </div>
-        <div className="calendar-agenda__selected"><h3>{readableDate(selected)}</h3>{selectedEvents.length ? selectedEvents.map(event => <div className="selected-event" key={event.id}><button type="button" onClick={() => setEditing(event)}><i className={`calendar-dot calendar-dot--${event.kind}`} /><span><strong>{event.company}</strong><small>{event.role ? `${event.role} · ` : ''}{scheduleKinds[event.kind]}</small></span></button>{event.url && <a href={event.url} target="_blank" rel="noopener noreferrer" aria-label={`${event.company} 공고 보기`}><ExternalLink size={15} /></a>}</div>) : <p className="calendar-agenda__none">등록된 일정이 없어요.</p>}</div>
+        <div className="calendar-agenda__selected"><h3>{readableDate(selected)}</h3>{selectedEvents.length ? selectedEvents.map(event => <div className="selected-event" key={event.id}><button type="button" onClick={() => open(event)}><i className={`calendar-dot calendar-dot--${event.kind}`} /><span><strong>{event.company}</strong><small>{event.role ? `${event.role} · ` : ''}{scheduleKinds[event.kind]}</small></span></button>{event.url && <a href={event.url} target="_blank" rel="noopener noreferrer" aria-label={`${event.company} 공고 보기`}><ExternalLink size={15} /></a>}{event.matchId && <button type="button" className="selected-event__remove" aria-label={`${event.company} 일정 캘린더에서 빼기`} title="캘린더에서 빼기" onClick={() => write(events.filter(item => item.id !== event.id))}><X size={15} /></button>}</div>) : <p className="calendar-agenda__none">등록된 일정이 없어요.</p>}</div>
       </aside>
     </div>
     <p className="calendar-storage-note">직접 등록한 일정은 이 브라우저에 저장돼요.</p>

@@ -21,6 +21,7 @@ import { matchViewFromParams } from "./CompanyList";
 import { ConditionGapFill, Dots } from "./GapFillParts";
 import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
+import { CalendarToggle } from "./CalendarToggle";
 import { MatchFailure, MatchUnavailable } from "./shared";
 import {
   categoryLabel,
@@ -432,6 +433,7 @@ export function MatchDetailPage() {
                 >
                   공고 원문 보기 ↗
                 </a>
+                <CalendarToggle posting={{ id: detail.id, company: companyLabel(detail.company), role: detail.role, expiresAt: detail.source.expiresAt }} />
               </div>
               {judged && gapActive && (
                 <Link className="posting-summary__alt" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>

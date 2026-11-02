@@ -1,6 +1,10 @@
 export const scheduleKinds = { deadline: '지원 마감', interview: '면접', result: '결과 발표', other: '기타' } as const;
 export type ScheduleKind = keyof typeof scheduleKinds;
-export type JobSchedule = { id: string; company: string; role: string; date: string; kind: ScheduleKind; url: string; note: string };
+/** matchId 는 공고 상세에서 담은 일정에만 있다 — 캘린더에서 누르면 고치기 창 대신 그 공고로 간다 */
+export type JobSchedule = { id: string; company: string; role: string; date: string; kind: ScheduleKind; url: string; note: string; matchId?: string };
+export const calendarStorageKey = (userId: string) => `gitory.job-calendar.v1.${userId}`;
+/** 서버가 준 마감 시각(시간대 포함)을 서울 날짜로 — 밤 11시에 마감되는 공고도 그날 칸에 둔다 */
+export const seoulDateKey = (iso: string) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(iso));
 export const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 export function validDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -26,7 +30,8 @@ export function readSchedules(raw: string | null): JobSchedule[] {
     const item = s as Record<string, unknown>;
     return ['id', 'company', 'role', 'date', 'kind', 'url', 'note'].every(k => typeof item[k] === 'string')
       && Boolean(item.id) && Boolean((item.company as string).trim()) && validDate(item.date as string)
-      && Object.hasOwn(scheduleKinds, item.kind as string) && safeScheduleUrl(item.url as string);
+      && Object.hasOwn(scheduleKinds, item.kind as string) && safeScheduleUrl(item.url as string)
+      && (item.matchId === undefined || (typeof item.matchId === 'string' && item.matchId !== ''));
   })) throw new Error('Invalid calendar data');
   return parsed as JobSchedule[];
 }

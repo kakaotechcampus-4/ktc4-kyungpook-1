@@ -5,6 +5,8 @@ import { loginAsDemo } from './helpers';
 
 const noHorizontalOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
 const dialog = (page: Page) => page.getByRole('dialog', { name: /인적사항 입력/ });
+/** 시드 사용자는 처음 입력을 마친 사람이라, 처음 입력 창은 인적사항 미입력 장면으로 새로 연 데모에서 본다 */
+const NO_PROFILE = '/?demoScenario=no-profile';
 /** 처음 입력 창을 지나간 상태로 만든다 — 관심 분야 하나만 저장(목 서버가 브라우저 안에서 돌아 페이지에서 PUT 한다) */
 async function seedInterests(page: Page) {
   await page.goto('/settings');
@@ -55,7 +57,7 @@ const savedProfile = (page: Page) => page.evaluate(() => JSON.parse(sessionStora
 test.beforeEach(async ({ page }) => { await loginAsDemo(page); });
 
 test('first entry: the dialog takes the five steps over the home page, then the MyPage form opens with what was saved', async ({ page }) => {
-  await page.goto('/');
+  await page.goto(NO_PROFILE);
   await expect(dialog(page)).toBeVisible();
   await expect(dialog(page).getByRole('button', { name: '닫기', exact: true })).toHaveCount(0);
   await expect(dialog(page)).toContainText('1/5 단계');
@@ -131,7 +133,7 @@ test('first entry: the dialog takes the five steps over the home page, then the 
 });
 
 test('the dialog cannot be dismissed: Escape, clicking outside and a reload all keep it, and nothing is saved until the last step', async ({ page }) => {
-  await page.goto('/');
+  await page.goto(NO_PROFILE);
   await expect(dialog(page)).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog(page)).toBeVisible();
@@ -249,7 +251,7 @@ test('rows can be removed and each list stops at its own limit (5 / 10 / 10 / 20
 for (const width of [390, 320]) {
   test(`mobile ${width}: dialog, filled form and MyPage have no horizontal scroll and touch-sized controls`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    await page.goto('/');
+    await page.goto(NO_PROFILE);
     await expect(dialog(page)).toBeVisible();
     expect(await noHorizontalOverflow(page)).toBe(true);
     for (const control of [dialog(page).locator('.interest-tile').first(), dialog(page).getByRole('button', { name: '다음', exact: true })]) {
@@ -306,7 +308,7 @@ for (const width of [1440, 390]) {
       const surface = luminance(getComputedStyle(document.querySelector(background)!).backgroundColor);
       return (Math.max(text, surface) + 0.05) / (Math.min(text, surface) + 0.05);
     });
-    await page.goto('/');
+    await page.goto(NO_PROFILE);
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expect(dialog(page)).toBeVisible();
     await page.getByRole('checkbox', { name: '백엔드', exact: true }).check();

@@ -15,8 +15,11 @@ export const SCENARIOS = {
   'github-disconnected': { label: 'GitHub 연결 끊김', delayMs: 160 },
   'github-unauthorized': { label: 'GitHub 토큰 무효(분석 403)', delayMs: 160 },
   'cover-letter-failed': { label: '자소서 카드 고르기 실패', delayMs: 160 },
+  'no-profile': { label: '인적사항 미입력(처음 입력 창)', delayMs: 160 },
 } as const;
 export type Scenario = keyof typeof SCENARIOS;
+/** 이 장면으로 새로 연 데모만 관심 분야가 비어 처음 입력 창이 뜬다 */
+export const PROFILE_FIRST_SCENARIOS: ReadonlySet<Scenario> = new Set<Scenario>(['empty', 'no-profile']);
 export function parseScenario(value: string | null): Scenario {
   return value && Object.hasOwn(SCENARIOS, value) ? value as Scenario : 'normal';
 }

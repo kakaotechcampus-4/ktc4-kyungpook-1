@@ -545,6 +545,11 @@ export function settlePending() {
  * sessionStorage 직렬화. 진행 중인 Job 도 같이 담는다 —
  * 실서버에서 Job 은 서버에 있어 새로고침해도 살아 있고, 데모도 그렇게 굴러야 복구 화면을 믿을 수 있다.
  */
+/** 시드 데이터는 레포·카드가 있는 기존 사용자라, 브라우저 데모를 새로 열면 처음 입력(관심 분야)을 마친 사람으로 둔다 */
+export function seedSetUpProfile() {
+  db.profile = { ...emptyProfile(), interests: ['BACKEND'], savedAt: now() };
+}
+
 export function snapshot(): string {
   return JSON.stringify({
     user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,

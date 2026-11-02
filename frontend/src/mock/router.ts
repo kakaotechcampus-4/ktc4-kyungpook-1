@@ -386,8 +386,13 @@ on('POST', '/cards/:id/interview', ({ params, body }) => {
   if (body.field === undefined || body.field === null) {
     // 실서버처럼 field 가 없으면 빈 칸 중 아직 닫히지 않은 칸을 고르고, 없으면 더 물을 것이 없다(null)
     const v = c.versions[c.versions.length - 1];
+    // 앞 결과 답에 숫자가 없으면 AI 가 그 칸을 한 번 더 묻는다(서버 규칙: 같은 칸은 두 번까지). 데모에서 '같은 칸 다시 묻기' 를 보이려는 규칙이다
+    const lastAnswered = [...asked].reverse().find((t: Any) => t.answer);
+    if (lastAnswered?.field === 'R' && !/\d/.test(lastAnswered.answer.text) && asked.filter((t: Any) => t.field === 'R').length < 2) {
+      return ok(askTurn(c, 'R', { reason: '앞 답에 결과 수치가 빠져 있어요', again: true }));
+    }
     const next = STAR.find((f) => isCardBlank(v[FIELD_KEY[f]] ?? '') && !asked.some((t: Any) => t.field === f && t.outcome === 'SKIPPED'));
-    if (next) return ok(askTurn(c, next, `${starFieldShort[next as StarField]} 칸이 비어 있어 먼저 물어볼게요`));
+    if (next) return ok(askTurn(c, next, { reason: `${starFieldShort[next as StarField]} 칸이 비어 있어 먼저 물어볼게요` }));
     // 실서버처럼 AI 가 끝내면 이유를 남기고, 네 칸이 확인 필요 없이 다 찼으면 확정한다
     c.interviewEndReason = '더 물을 빈 칸이 없어 질문을 마칠게요';
     if (Object.values(starStates(c)).every((state) => state === 'FILLED')) {

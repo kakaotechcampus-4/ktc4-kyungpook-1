@@ -181,7 +181,7 @@ export function InterviewPage() {
                   <strong>{confirmed ? '경험 카드가 확정됐어요' : '추가 질문을 마쳤어요'}</strong>
                   <p>{confirmed ? '완성한 카드를 확인하거나 수정할 수 있어요.' : '작성된 카드를 검토해 주세요. 필요한 내용은 질문을 더 받거나 직접 수정할 수 있어요.'}</p>
                 </div>
-                {endReason && <details className="interview-complete__reason"><summary>질문을 마친 이유</summary><AiJudgement>{endReason}</AiJudgement></details>}
+                {endReason && <details className="interview-complete__reason" open><summary>질문을 마친 이유</summary><AiJudgement>{endReason}</AiJudgement></details>}
               </div>
             )}
           </AiLive>

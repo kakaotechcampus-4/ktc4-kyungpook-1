@@ -102,6 +102,10 @@
 .match-view {
   align-self: flex-start;
 }
+/* 공통 view-switch 칸(38px)보다 커야 손가락으로 누르기 쉽다 */
+.match-view .match-view__option {
+  min-height: var(--control-touch-size);
+}
 .match-view__option:hover {
   color: var(--text-primary);
 }

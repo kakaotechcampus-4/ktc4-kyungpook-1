@@ -17,7 +17,8 @@ import { CardTags } from '@/components/cards/CardTags';
 import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
-import { JobCalendar } from './JobCalendar';
+import { JobCalendar, type CalendarPosting } from './JobCalendar';
+import { useOverallRecommendation } from '@/api/matching';
 import { HomeRecommendations } from './HomeRecommendations';
 import { HomeActivity } from './HomeActivity';
 import { matchSupported, useMatches } from '@/api/matching';
@@ -40,6 +41,11 @@ export function HomePage() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(true);
   const suggestionId = useId();
   const nav = useNavigate();
+  const overall = useOverallRecommendation();
+  // 캘린더에는 공고 목록 전체(운영 수백 개)가 아니라 '나와 맞는 기업' 으로 추천된 공고의 마감일만 자동으로 띄운다
+  const recommendedPostings = useMemo<CalendarPosting[]>(() => overall.data?.status === 'READY'
+    ? overall.data.companies.filter(c => !c.posting.closed).map(c => ({ id: c.posting.id, company: c.companyName, role: c.posting.title, expiresAt: c.posting.deadline, url: null }))
+    : [], [overall.data]);
 
   const drafts = (cards.data ?? []).filter((c) => c.status === 'DRAFT').slice(0, 3);
   // 카드 목록을 아직 모르면(불러오는 중, 실패) 처음 온 사람으로 단정하지 않는다 — 첫 방문 문구가 잠깐 떴다 사라지지 않게
@@ -160,7 +166,7 @@ export function HomePage() {
       </aside>
       </div>
       </div>
-      <aside className="home-workspace__calendar" aria-label="공고 일정">{me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={matches.data} postingsLoading={matchSupported() && matches.isPending} postingsError={matches.isError} onRetryPostings={() => void matches.refetch()} />}<HomeRecommendations /></aside>
+      <aside className="home-workspace__calendar" aria-label="공고 일정">{me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={recommendedPostings} postingsLoading={matchSupported() && overall.isPending} postingsError={overall.isError} onRetryPostings={() => void overall.refetch()} />}<HomeRecommendations /></aside>
       </div>
     </main>
   );

@@ -102,22 +102,23 @@ test.describe('반응형 레이아웃', () => {
     expect(geometry.logoHeight).toBe(34);
   });
 
-  test('홈과 카드 목록은 하나의 여유 있는 경험 목록과 정렬된 STAR를 쓴다', async ({ page }) => {
+  test('카드 목록은 하나의 여유 있는 경험 목록과 정렬된 STAR를 쓴다', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await loginAsDemo(page);
 
-    for (const path of ['/', '/cards']) {
-      await page.goto(path);
-      if (path === '/cards') await showCardTiles(page);
-      // 홈은 경험 목록 하나, 카드 목록은 묶음 안에 같은 경험 목록을 쓴다(기본 보기는 폴더라 최근순으로 바꿔 본다)
-      await expect(page.locator(path === '/' ? '.experience-list' : '.card-groups')).toHaveCount(1);
-      await expect(page.locator('.experience-item').first()).toBeVisible();
-      const itemShadow = await page.locator('.experience-item').first().evaluate((el) => getComputedStyle(el).boxShadow);
-      expect(itemShadow).toBe('none');
-      const widths = await page.locator('.experience-item').first().locator('.stardot').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
-      expect(new Set(widths.map((width) => Math.round(width))).size).toBe(1);
-      await expect(page.locator('.experience-item').first().locator('.stardot__label')).toHaveCount(4);
-    }
+    // 홈은 카드 목록을 두지 않는다. 카드 목록은 묶음 안에 경험 목록을 쓴다(기본 보기는 폴더라 최근순으로 바꿔 본다)
+    await page.goto('/');
+    await expect(page.locator('.overview-tile').first()).toBeVisible();
+    await expect(page.locator('.experience-item')).toHaveCount(0);
+    await page.goto('/cards');
+    await showCardTiles(page);
+    await expect(page.locator('.card-groups')).toHaveCount(1);
+    await expect(page.locator('.experience-item').first()).toBeVisible();
+    const itemShadow = await page.locator('.experience-item').first().evaluate((el) => getComputedStyle(el).boxShadow);
+    expect(itemShadow).toBe('none');
+    const widths = await page.locator('.experience-item').first().locator('.stardot').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    expect(new Set(widths.map((width) => Math.round(width))).size).toBe(1);
+    await expect(page.locator('.experience-item').first().locator('.stardot__label')).toHaveCount(4);
   });
 
   test('설정은 관련 정보를 큰 섹션으로 묶고 선택 경계는 유지한다', async ({ page }) => {

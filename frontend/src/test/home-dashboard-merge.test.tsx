@@ -47,8 +47,8 @@ it('shows API deadlines on their date, links to the posting, and omits undated o
   const today = new Date();
   const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   localStorage.setItem('gitory.job-calendar.v1.owner', JSON.stringify([{ id: 'saved', matchId: 'deadline-test', company: '마감 테스트 기업', role: '개발자', date: key, kind: 'deadline', url: '', note: '' }]));
-  const posting = { id: 'deadline-test', company: '마감 테스트 기업', companyId: null, logoUrl: null, role: '개발자', category: 'FRONTEND' as const, fit: null, required: { total: 0, met: 0 }, preferred: { total: 0, met: 0 }, experience: { level: 'ENTRY' as const, minYears: null }, techs: [], education: null, source: { url: 'https://example.com/job', collectedAt: today.toISOString(), expiresAt: today.toISOString() } };
-  render(<MemoryRouter><JobCalendar userId="owner" postings={[posting, { ...posting, id: 'open', company: '상시 기업', source: { ...posting.source, expiresAt: null } }]} /></MemoryRouter>);
+  const posting = { id: 'deadline-test', company: '마감 테스트 기업', role: '개발자', expiresAt: today.toISOString(), url: 'https://example.com/job' };
+  render(<MemoryRouter><JobCalendar userId="owner" postings={[posting, { ...posting, id: 'open', company: '상시 기업', expiresAt: null }]} /></MemoryRouter>);
   fireEvent.click(screen.getByRole('button', { name: new RegExp(`일정 1개`) }));
   const agenda = screen.getByRole('complementary', { name: '채용 일정 목록' });
   expect(within(agenda).getByRole('link', { name: /마감 테스트 기업 개발자/ })).toHaveAttribute('href', '/match/deadline-test');

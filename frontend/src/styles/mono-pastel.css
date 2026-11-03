@@ -134,7 +134,8 @@
 /* 펼치면 로고 오른쪽, 접히면 로고 아래에 토글을 둔다. */
 @media (min-width: 1200px) {
   .sidebar__top { gap: 12px; }
-  .sidebar__top .sidebar__toggle { display: grid; place-items: center; flex: none; width: 32px; height: 32px; min-width: 0; min-height: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #AEAEBA; box-shadow: none; }
+  /* 눌리는 범위는 44px 이고 보이는 배경은 안쪽 32px 만 칠한다 — 바깥 6px 은 음수 여백으로 자리를 차지하지 않는다 */
+  .sidebar__top .sidebar__toggle { display: grid; place-items: center; flex: none; width: 44px; height: 44px; min-width: 0; min-height: 0; margin: -6px; padding: 6px; border: 0; border-radius: 14px; background: transparent; background-clip: content-box; color: #AEAEBA; box-shadow: none; }
   .sidebar__top .sidebar__toggle:hover { background: #303035; color: #F5F5F7; }
   .sidebar__top .sidebar__toggle:focus-visible { outline: 2px solid #AEAEBA; outline-offset: 2px; }
   .shell--rail .sidebar { padding-inline: 8px; }

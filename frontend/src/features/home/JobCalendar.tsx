@@ -5,12 +5,13 @@ import { Button } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { calendarStorageKey, dateKey, daysUntil, monthDays, readSchedules, safeScheduleUrl, scheduleKinds, type JobSchedule, type ScheduleKind } from './calendarModel';
 
-import type { MatchTarget } from '@/api/matching';
+/** 마감일을 캘린더에 자동으로 띄울 공고 — 홈은 공고 목록 전체가 아니라 '나와 맞는 기업' 의 공고만 넘긴다 */
+export type CalendarPosting = { id: string; company: string; role: string; expiresAt: string | null; url: string | null };
 
 const weekdayNames = ['일', '월', '화', '수', '목', '금', '토'];
 const readableDate = (key: string) => new Date(`${key}T12:00:00`).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
 
-export function JobCalendar({ userId, postings = [], postingsLoading = false, postingsError = false, onRetryPostings }: { userId: string; postings?: MatchTarget[]; postingsLoading?: boolean; postingsError?: boolean; onRetryPostings?: () => void }) {
+export function JobCalendar({ userId, postings = [], postingsLoading = false, postingsError = false, onRetryPostings }: { userId: string; postings?: CalendarPosting[]; postingsLoading?: boolean; postingsError?: boolean; onRetryPostings?: () => void }) {
   const storageKey = calendarStorageKey(userId);
   const nav = useNavigate();
   const [initial] = useState(() => {
@@ -27,9 +28,9 @@ export function JobCalendar({ userId, postings = [], postingsLoading = false, po
   const days = monthDays(month);
   // API의 마감일만 표시한다. 마감일 없는 상시 공고는 날짜를 추정하지 않는다.
   const deadlines: JobSchedule[] = postings.flatMap(posting => {
-    const expiresAt = posting.source.expiresAt;
+    const { expiresAt } = posting;
     if (!expiresAt || !Number.isFinite(Date.parse(expiresAt))) return [];
-    return [{ id: `posting:${posting.id}`, matchId: posting.id, company: posting.company, role: posting.role, date: dateKey(new Date(expiresAt)), kind: 'deadline' as const, url: posting.source.url, note: '' }];
+    return [{ id: `posting:${posting.id}`, matchId: posting.id, company: posting.company, role: posting.role, date: dateKey(new Date(expiresAt)), kind: 'deadline' as const, url: posting.url ?? '', note: '' }];
   });
   const automaticIds = new Set(deadlines.map(event => event.id));
   const allEvents = [...deadlines, ...events.filter(event => !event.matchId || !deadlines.some(deadline => deadline.matchId === event.matchId && deadline.date === event.date && event.kind === 'deadline'))];

@@ -21,14 +21,13 @@ for (const text of ['abcdef', 'backend developer', '프론트엔드 개발자'])
   });
 }
 
-test('검색어를 친 뒤 필터를 바꿔도 검색어가 입력과 URL 에 남아요', async ({ page }) => {
+test('검색어를 친 뒤 직무 칩을 바꿔도 검색어가 입력과 URL 에 남아요', async ({ page }) => {
   await page.goto('/match');
   await expect(page.locator('.match-card').first()).toBeVisible();
   const search = page.getByPlaceholder('기업이나 직무 검색');
   await search.pressSequentially('abc', { delay: 0 });
-  await page.getByRole('combobox', { name: '공고 정렬', exact: true }).click();
-  await page.getByRole('option', { name: '마감 순', exact: true }).click();
-  await expect.poll(() => new URL(page.url()).searchParams.get('sort')).toBe('deadline');
+  await page.getByRole('group', { name: '직무' }).getByRole('button', { name: '백엔드', exact: true }).click();
+  await expect.poll(() => new URL(page.url()).searchParams.get('category')).toBe('BACKEND');
   await expect(search).toHaveValue('abc');
   expect(urlQuery(page.url())).toBe('abc');
 });

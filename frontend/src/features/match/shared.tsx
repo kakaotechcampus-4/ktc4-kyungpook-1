@@ -19,15 +19,12 @@ export function MatchUnavailable() {
     </main>
   );
 }
-/**
- * 목록으로 돌아가는 링크 — 공고 상세와 기업 페이지가 같이 쓴다. 글자 화살표(←) 대신 아이콘을 쓴다(장식이라 화면 읽기 프로그램은 읽지 않는다).
- * fromCompanyView: 기업별 보기에서 왔으면 돌아갈 곳이 기업 목록이라 글자도 그렇게 쓴다.
- */
-export function MatchBack({ to, fromCompanyView }: { to: string; fromCompanyView: boolean }) {
+/** 목록으로 돌아가는 링크 — 공고 상세와 기업 페이지가 같이 쓴다. 글자 화살표(←) 대신 아이콘을 쓴다(장식이라 화면 읽기 프로그램은 읽지 않는다). */
+export function MatchBack({ to }: { to: string }) {
   return (
     <Link to={to} className="match-back">
       <ChevronLeft size={16} aria-hidden />
-      {fromCompanyView ? "기업 목록으로" : "공고 목록으로"}
+      공고 목록으로
     </Link>
   );
 }

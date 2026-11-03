@@ -1,4 +1,4 @@
-import { MatchCategory, type MatchDetail, type MatchTarget } from "@/api/matching";
+import { MatchCategory, type MatchDetail, type MatchTarget, type OverallRecommendation } from "@/api/matching";
 import type { CardSummary } from "@/api/schemas";
 export const categoryLabel = {
   BACKEND: "백엔드",
@@ -95,7 +95,37 @@ export const postingFacts = (item: MatchTarget) =>
     (value): value is string => value !== null,
   );
 
-// ───────── 기업별 보기 ─────────
+// ───────── 맞춰 본 결과로 목록 나누기 ─────────
+
+type FitCounts = Pick<OverallRecommendation["companies"][number], "requiredMet" | "requiredTotal" | "preferredMet" | "preferredTotal">;
+
+/** 공고 타일 안의 맞는 정도 한 줄. 학력·경력 같은 일반 조건은 서버가 세지 않아, 기술·경험 필수 조건이 없는 공고를 0개 중 0개라고 쓰지 않는다 */
+export function fitLine(c: FitCounts) {
+  const preferred = c.preferredTotal ? `, 우대 ${c.preferredTotal}개 중 ${c.preferredMet}개가 맞아요` : "";
+  if (c.requiredTotal === 0) return `기술·경험 필수 조건이 없어요${preferred}`;
+  if (c.requiredMet >= c.requiredTotal) return `필수 조건 ${c.requiredTotal}개를 모두 채웠어요${preferred}`;
+  return `필수 조건 ${c.requiredTotal}개 중 ${c.requiredMet}개를 채웠어요`;
+}
+
+export type FitPosting = { item: MatchTarget; counts: FitCounts };
+
+/**
+ * 맞춰 본 기업(순위 순)의 공고를 목록에서 찾아 '나와 맞는 공고'(fit)와 필수 조건을 하나도 못 채운 '아직 부족한 공고'(gap)로 나누고, 나머지를 rest 로 둔다.
+ * 목록에 없는 공고(검색·직무로 걸러졌거나 목록에서 빠진 공고)는 묶음에 넣지 않는다.
+ */
+export function splitByFit(list: readonly MatchTarget[], companies: OverallRecommendation["companies"]) {
+  const byId = new Map(list.map((item) => [item.id, item]));
+  const fit: FitPosting[] = [];
+  const gap: FitPosting[] = [];
+  for (const counts of companies) {
+    const item = byId.get(counts.posting.id);
+    if (item) (counts.requiredTotal > 0 && counts.requiredMet === 0 ? gap : fit).push({ item, counts });
+  }
+  const grouped = new Set([...fit, ...gap].map((x) => x.item.id));
+  return { fit, gap, rest: list.filter((item) => !grouped.has(item.id)) };
+}
+
+// ───────── 기업 묶기(기업 페이지) ─────────
 // 서버(#556)가 공고마다 companyId(같은 회사를 묶는 id)와 logoUrl 을 준다. companyId 로 묶고, 그 칸이 없는 응답(구서버·목)일 때만 이름(companyKey)으로 묶는다.
 // 목록 단계의 등급(fit)·충족 개수(met)는 근거가 얕아 기업 묶음에서는 쓰지 않는다 — 기업 순서도 공고 수와 이름처럼 서버가 준 사실로만 정한다.
 

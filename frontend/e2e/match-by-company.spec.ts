@@ -41,7 +41,7 @@ test("목록 → 기업 페이지 → 공고 상세 → 뒤로: 기업 페이지
 });
 
 for (const width of [390, 1440]) {
-  test(`기업별 보기: 이름 순 카드(등급 없음), 기업 페이지 이동, 기업 목록으로 복귀 (${width}px)`, async ({ page }) => {
+  test(`기업 페이지는 타일의 회사 이름으로 가고, 공고 목록으로 돌아온다 (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/match");
     await expect(page.locator(".match-card")).toHaveCount(5);
@@ -51,35 +51,14 @@ for (const width of [390, 1440]) {
         expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       }
     }
-    const toggle = page.getByRole("group", { name: "보기 방식" });
-    await expect(toggle.getByRole("button", { name: "공고별" })).toHaveAttribute("aria-pressed", "true");
-    await toggle.getByRole("button", { name: "기업별" }).click();
-    await expect(page).toHaveURL(/[?&]view=company/);
-    await expect(toggle.getByRole("button", { name: "기업별" })).toHaveAttribute("aria-pressed", "true");
-
-    const cards = page.locator(".company-tile");
-    await expect(cards).toHaveCount(5);
-    // 공고 수가 모두 1건이라 이름 순. 등급은 보이지 않는다
-    await expect(cards.getByRole("heading", { level: 2 })).toHaveText(["가온소프트", "나래랩스", "다온페이", "라온모빌리티", "마루데이터"]);
-    await expect(cards.first().getByText("채용 중 1건")).toBeVisible();
-    await expect(page.locator(".match-card").getByText("등급")).toHaveCount(0);
-    expect(await overflowFree(page)).toBe(true);
-
-    // 누르기 쉬운 크기(44px)
-    for (const button of await toggle.getByRole("button").all()) {
-      const box = (await button.boundingBox())!;
-      expect(box.height).toBeGreaterThanOrEqual(44);
-    }
-
-    await cards.filter({ hasText: "다온페이" }).click();
+    await page.getByRole("link", { name: "다온페이", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "다온페이" })).toBeVisible();
     await expect(page.locator(".match-card").getByText("등급")).toHaveCount(0);
     expect(await overflowFree(page)).toBe(true);
 
-    await page.getByRole("link", { name: "기업 목록으로" }).click();
-    await expect(page).toHaveURL(/[?&]view=company/);
-    await expect(page.locator(".company-tile")).toHaveCount(5);
-    await expect(page.getByRole("group", { name: "보기 방식" }).getByRole("button", { name: "기업별" })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("link", { name: "공고 목록으로" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "공고 매칭" })).toBeVisible();
+    await expect(page.locator(".match-card")).toHaveCount(5);
   });
 }
 

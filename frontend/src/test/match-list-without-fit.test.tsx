@@ -13,19 +13,9 @@ import { resetDb } from '@/mock/store';
 import sampleList from '../../docs/examples/matching/list.json';
 
 // 서버가 목록에서 등급(fit)을 비워 보내도, 확정 카드가 없다고 말하지 않는다. 확정 카드 수는 내 정보(me)에서만 읽는다.
-// 목록의 순서가 마감 순과 달라야 정렬 시험이 의미가 있어서, 아래 목록은 일부러 섞어 둔다.
+// 목록의 순서가 마감 순과 달라야 '서버 순서 그대로' 시험이 의미가 있어서, 아래 목록은 일부러 섞어 둔다.
 const NOTICE = /확정한 카드가 없어요/;
 const EMPTY_CHIP = '카드를 확정하면 등급이 나와요';
-
-// Radix Select 는 jsdom 에서 열면 이벤트 루프가 몇 초씩 멈춰서, 고른 값과 선택지만 그대로 그리는 대역으로 바꾼다.
-// 실제 드롭다운이 열리는지는 e2e/match-list-without-fit.spec.ts 가 맡는다.
-vi.mock('@/components/ui/Select', () => ({
-  Select: ({ label, value, options }: { label: string; value: string; options: { value: string; label: string }[] }) => (
-    <div aria-label={label} data-value={value}>
-      {options.map((option) => <span key={option.value} data-option={option.value}>{option.label}</span>)}
-    </div>
-  ),
-}));
 
 beforeEach(resetDb);
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -57,9 +47,6 @@ function mount(path = '/match', { me }: Setup = {}) {
   return client;
 }
 const companies = () => [...document.querySelectorAll('.match-card .match-company-link__name')].map((el) => el.textContent);
-const sortSelect = () => screen.getByLabelText('공고 정렬');
-const sortValue = () => sortSelect().getAttribute('data-value');
-const sortOptions = () => [...sortSelect().querySelectorAll('[data-option]')].map((el) => el.textContent);
 
 describe('목록의 등급이 전부 비어 있을 때', () => {
   it('확정 카드가 있으면 "확정한 카드가 없어요" 없이 공고만 보여 준다', async () => {
@@ -76,33 +63,18 @@ describe('목록의 등급이 전부 비어 있을 때', () => {
     expect(screen.getByText('공고 5건')).toBeInTheDocument();
   });
 
-  it('등급이 없으면 서버가 준 순서가 기본 순서이고 마감 순을 고를 수 있다 (근거 등급 순 선택지 없음)', async () => {
+  it('등급이 없으면 서버가 준 순서(마감 임박 먼저, 나머지는 회사마다 돌아가며)를 다시 정렬하지 않고 그대로 보여 준다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(allNull());
     mount('/match', { me: 3 });
     await screen.findByText('가온소프트');
-    expect(sortValue()).toBe('fit');
-    expect(sortOptions()).toEqual(['기본 순서', '마감 순']);
-    expect(screen.queryByText('근거 등급 순')).not.toBeInTheDocument();
-    // 서버가 정한 순서(마감 임박 먼저, 나머지는 회사마다 돌아가며)를 다시 정렬하지 않고 그대로 보여 준다
     expect(companies()).toEqual(['마루데이터', '다온페이', '나래랩스', '라온모빌리티', '가온소프트']);
   });
 
-  it('주소에 sort=fit 이 있어도 기본 순서와 같다', async () => {
+  it('예전 주소의 sort=deadline · experience 는 읽지 않아 서버 순서 그대로 다 보인다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(allNull());
-    mount('/match?sort=fit', { me: 3 });
+    mount('/match?sort=deadline&experience=ENTRY', { me: 3 });
     await screen.findByText('가온소프트');
-    expect(sortValue()).toBe('fit');
     expect(companies()).toEqual(['마루데이터', '다온페이', '나래랩스', '라온모빌리티', '가온소프트']);
-  });
-
-  it('등급이 없어도 sort=deadline 이면 마감이 가까운 순이고 마감일 없음은 뒤다', async () => {
-    vi.spyOn(matchingApi, 'list').mockResolvedValue(allNull());
-    mount('/match?sort=deadline', { me: 3 });
-    await screen.findByText('가온소프트');
-    expect(sortValue()).toBe('deadline');
-    const order = companies();
-    expect(order.slice(0, 3)).toEqual(['가온소프트', '라온모빌리티', '나래랩스']);
-    expect(order.slice(3).sort()).toEqual(['다온페이', '마루데이터']);
   });
 
   it('확정 카드가 0장일 때만 안내와 카드 확정 링크를 보여 준다', async () => {
@@ -141,26 +113,16 @@ describe('목록에 등급이 섞여 있거나 모두 있을 때는 지금과 �
   // 다온페이만 등급이 비어 있다
   const mixed = () => shuffled((x) => (x.company === '다온페이' ? null : (x.fit as 'A' | 'B' | 'C' | 'D')));
 
-  it('안내 없이 근거 등급 순이 기본이고 두 선택지가 모두 있다', async () => {
+  it('안내 없이 근거 등급 순으로 보인다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(mixed());
     mount('/match', { me: 3 });
     await screen.findByText('가온소프트');
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
-    expect(sortValue()).toBe('fit');
-    expect(sortOptions()).toEqual(['근거 등급 순', '마감 순']);
     // 등급 순: A, B, C, D 다음에 등급이 없는 공고
     expect(companies()).toEqual(['가온소프트', '나래랩스', '라온모빌리티', '마루데이터', '다온페이']);
     // 등급과 채운 개수는 목록 카드에 그리지 않고 상세에서만 보여 준다
     expect(document.querySelector('.match-fit')).toBeNull();
     expect(document.querySelector('.match-counts')).toBeNull();
-  });
-
-  it('sort=deadline 은 그대로 마감 순이다', async () => {
-    vi.spyOn(matchingApi, 'list').mockResolvedValue(mixed());
-    mount('/match?sort=deadline', { me: 3 });
-    await screen.findByText('가온소프트');
-    expect(sortValue()).toBe('deadline');
-    expect(companies().slice(0, 3)).toEqual(['가온소프트', '라온모빌리티', '나래랩스']);
   });
 
   it('등급이 모두 있으면 확정 카드 수를 모르는 동안에도 안내를 띄우지 않고, 등급과 개수는 목록 카드에 그리지 않는다', async () => {
@@ -174,12 +136,10 @@ describe('목록에 등급이 섞여 있거나 모두 있을 때는 지금과 �
 });
 
 describe('목록을 받는 중', () => {
-  it('목록 조회에 대해서만 말하고 정렬은 두 선택지를 그대로 둔다', async () => {
+  it('목록 조회에 대해서만 말한다', async () => {
     vi.spyOn(matchingApi, 'list').mockReturnValue(new Promise(() => {}));
     mount('/match', { me: 3 });
     expect(await screen.findByText('공고 목록을 불러오는 중이에요')).toBeInTheDocument();
     expect(screen.queryByText(/맞춰 보는 중/)).not.toBeInTheDocument();
-    expect(sortValue()).toBe('fit');
-    expect(sortOptions()).toEqual(['근거 등급 순', '마감 순']);
   });
 });

@@ -8,6 +8,7 @@ import {
   useMatch,
   type ConditionStatus,
   type GapFillCondition,
+  type GapFillProposal,
   type MatchDetail,
 } from "@/api/matching";
 import { useCards } from "@/api/queries";
@@ -19,7 +20,7 @@ import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
 import { matchViewFromParams } from "./CompanyList";
 import { ConditionGapFill, Dots } from "./GapFillParts";
-import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed } from "./gapFill";
+import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed, useUsedCandidates } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
 import { CalendarToggle } from "./CalendarToggle";
 import { MatchFailure, MatchUnavailable } from "./shared";
@@ -120,6 +121,7 @@ type GapProps = {
   onPick: (on: boolean) => void;
   onAgain: () => void;
   againPending: boolean;
+  used: { cardId: string | null } | null;
 };
 
 function ConditionItem({ condition, line, judged, filled, detailId, gap }: { condition: Condition; line: string; judged: boolean; filled: boolean; detailId: string; gap: GapProps | null }) {
@@ -254,8 +256,12 @@ export function MatchDetailPage() {
   const proposals = showGap
     ? gf.conditions.filter((c) => c.result === "PROPOSED" && c.proposal && gapRevealed.has(gapKey(c.conditionId, "result")))
     : [];
-  const chosen = proposals.filter((c) => picked.has(c.conditionId) && canProceed(c.proposal!)).map((c) => c.proposal!);
-  const gapActive = showGap && (gapRunning || proposals.some((c) => canProceed(c.proposal!)));
+  // 이미 카드로 쓴 후보의 제안은 다시 넘기면 서버가 거절하므로 고를 수 없게 하고 만든 카드로 잇는다
+  const used = useUsedCandidates(gf?.conditions.flatMap((c) => (c.proposal ? [c.proposal] : [])) ?? []);
+  const usedCardOf = (p: GapFillProposal) => (p.action === "CREATE_CARD" && p.candidateId && used.has(p.candidateId) ? { cardId: used.get(p.candidateId) ?? null } : null);
+  const selectable = (p: GapFillProposal) => canProceed(p) && !usedCardOf(p);
+  const chosen = proposals.filter((c) => picked.has(c.conditionId) && selectable(c.proposal!)).map((c) => c.proposal!);
+  const gapActive = showGap && (gapRunning || proposals.some((c) => selectable(c.proposal!)));
   // 새로 찾아야 하는데 쓸 수 있는 GitHub 연결이 없으면 서버가 403 GITHUB_UNAUTHORIZED 를 준다 — 레포 분석과 같은 '다시 연결' 로 잇는다
   const gapNeedsGithub = isGithubUnauthorized(gapFill.error);
   const gapFailed = (gapFill.isError && !gapNeedsGithub) || gf?.state === "FAILED";
@@ -270,6 +276,7 @@ export function MatchDetailPage() {
       onPick: (on) => setPicked((prev) => { const next = new Set(prev); if (on) next.add(conditionId); else next.delete(conditionId); return next; }),
       onAgain: () => gapFill.mutate([conditionId]),
       againPending: gapFill.isPending,
+      used: gap.proposal ? usedCardOf(gap.proposal) : null,
     };
   };
   const onProceed = () => {

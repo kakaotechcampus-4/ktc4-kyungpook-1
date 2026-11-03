@@ -7,6 +7,7 @@ import { planProceed, proceedDestinations, readProceeded, rememberProceeded, rev
 import { toast } from '@/lib/toast';
 import { gapFillPollMs, matchingApi, MatchDetail, type GapFill, type GapFillCondition, type GapFillProposal } from '@/api/matching';
 import { endpoints } from '@/api/endpoints';
+import type { CandidateBoard } from '@/api/schemas';
 import { ApiError } from '@/api/client';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
@@ -240,6 +241,21 @@ it('고른 제안만 진행하기로 넘긴다 — 후보로 카드 만들기는
   await screen.findByText('card page card_90');
   // 돌아와서 ✕ → ✓ 를 보이려고 모자랐던 조건을 적어 둔다
   expect(readProceeded(five.id)).toEqual(fiveIds);
+});
+
+it('이미 카드로 쓴 후보의 제안은 고를 수 없고, 카드로 만들었어요와 만든 카드로 가는 링크를 보인다', async () => {
+  vi.spyOn(endpoints, 'candidates').mockResolvedValue({
+    candidates: [{ id: 'c_51', status: 'USED', usedByCardId: 'card_90' }, { id: 'c_pay', status: 'NEW', usedByCardId: null }],
+  } as unknown as CandidateBoard);
+  mount({ ...five, gapFill: done([
+    condition(fiveIds[0], { result: 'PROPOSED', proposal: proposalOf() }),
+    condition(fiveIds[1], { result: 'PROPOSED', proposal: proposalOf({ candidateId: 'c_pay', title: '5.12 결제모듈 6커밋' }) }),
+  ]) });
+
+  expect(await screen.findByText('카드로 만들었어요')).toBeInTheDocument();
+  expect(screen.queryByRole('checkbox', { name: '후보로 카드 만들기 — 로그인 API 응답 속도 개선' })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '만든 카드 보기 →' })).toHaveAttribute('href', '/cards/card_90');
+  expect(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 5.12 결제모듈 6커밋' })).toBeInTheDocument();
 });
 
 it('한 레포에서 고른 후보가 서버가 한 번에 받는 8개를 넘으면 나눠 부르고, 같은 후보는 한 번만 넘긴다', () => {

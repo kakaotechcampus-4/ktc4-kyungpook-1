@@ -197,12 +197,14 @@ export function AnalyzePage() {
   // B3 — 진행. 누를 것이 없다. 떠나도 된다.
   const doneCount = j ? doneSteps(j) : 0;
   const progress = stepProgress(j);
+  // 다 읽었어도 고른 이유가 차례로 나오는 동안은 이 화면에 남는다 — 그때는 "읽고 있어요"라고 하지 않고 취소도 막는다
+  const finished = j?.state === 'SUCCEEDED';
   return (
     <main className="main">
-      <Breadcrumb items={[...crumbs, { label: '정리 중' }]} />
-      <PageTitle right="떠나도 돼요">레포를 읽고 있어요</PageTitle>
-      <RepoContext name={name} note="새 기록을 읽는 중이에요"
-        right={<Badge kind={j?.state === 'SUCCEEDED' ? 'CONFIRMED' : 'NEUTRAL'}>{j?.state === 'SUCCEEDED' ? '완료' : '진행 중'}</Badge>} />
+      <Breadcrumb items={[...crumbs, { label: finished ? '정리 완료' : '정리 중' }]} />
+      <PageTitle right={finished ? undefined : '떠나도 돼요'}>{finished ? '레포를 다 읽었어요' : '레포를 읽고 있어요'}</PageTitle>
+      <RepoContext name={name} note={finished ? '후보를 골랐어요' : '새 기록을 읽는 중이에요'}
+        right={<Badge kind={finished ? 'CONFIRMED' : 'NEUTRAL'}>{finished ? '완료' : '진행 중'}</Badge>} />
       <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
         {!j ? <AiWait label="레포를 읽을 준비를 하고 있어요. 곧 PR부터 읽기 시작해요." /> : (
           <>
@@ -235,11 +237,22 @@ export function AnalyzePage() {
         )}
       </div>
       <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
-        <span className="c-2 t-14">끝나면 알려 드릴게요</span>
-        <div className="right row" style={{ gap: 8 }}>
-          <Link to="/" className="btn btn--outline">다른 일 하러 가기</Link>
-          <Button variant="ghost" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>
-        </div>
+        {finished ? (
+          <>
+            <span className="c-2 t-14">고른 이유를 다 보여 드리면 후보 보드로 가요</span>
+            <div className="right row" style={{ gap: 8 }}>
+              <Link to={`/repos/${repoId}/candidates`} replace className="btn btn--primary">후보 보드로 바로 가기</Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="c-2 t-14">끝나면 알려 드릴게요</span>
+            <div className="right row" style={{ gap: 8 }}>
+              <Link to="/" className="btn btn--outline">다른 일 하러 가기</Link>
+              <Button variant="ghost" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>
+            </div>
+          </>
+        )}
       </div>
     </main>
   );

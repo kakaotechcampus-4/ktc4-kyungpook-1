@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AiCoverLetterAssignmentAdapterTest {
 
     private static final CoverLetterAssignmentRequest REQUEST = new CoverLetterAssignmentRequest(7L, "백엔드 개발",
-            null,
+            null, List.of("METICULOUS"),
             List.of(new CoverLetterAssignmentRequest.Question(1, "협업 경험을 쓰세요", 700),
                     new CoverLetterAssignmentRequest.Question(2, "실패 경험을 쓰세요", 500)),
             List.of(new CoverLetterAssignmentRequest.Card(11L, "배포 시간 단축", "TECH", "grow22/gitory", "2025.09",
@@ -83,6 +83,7 @@ class AiCoverLetterAssignmentAdapterTest {
         assertThat(requestPath).isEqualTo("/internal/cover-letter-assignments");
         assertThat(sent.path("cover_letter_id").asLong()).isEqualTo(7L);
         assertThat(sent.path("questions").get(1).path("char_limit").asInt()).isEqualTo(500);
+        assertThat(sent.path("strengths").get(0).asString()).isEqualTo("METICULOUS");
         assertThat(sent.path("cards").get(0).path("card_kind").asString()).isEqualTo("TECH");
         assertThat(sent.path("cards").get(0).path("source_name").asString()).isEqualTo("grow22/gitory");
         assertThat(sent.has("posting")).isFalse();
@@ -101,7 +102,7 @@ class AiCoverLetterAssignmentAdapterTest {
     void sendsPostingInSnakeCase() {
 
         CoverLetterAssignmentRequest withPosting = new CoverLetterAssignmentRequest(REQUEST.coverLetterId(),
-                REQUEST.jobRole(), REQUEST.memo(), REQUEST.questions(), REQUEST.cards(),
+                REQUEST.jobRole(), REQUEST.memo(), REQUEST.strengths(), REQUEST.questions(), REQUEST.cards(),
                 new CoverLetterPostingInput("나래랩스", "서버 개발자", List.of("결제 서버 개발"),
                         List.of(new CoverLetterPostingInput.Condition("REQUIRED", "Spring 경험", "MET", List.of(11L)),
                                 new CoverLetterPostingInput.Condition("PREFERRED", "AWS 경험", null, List.of()))));

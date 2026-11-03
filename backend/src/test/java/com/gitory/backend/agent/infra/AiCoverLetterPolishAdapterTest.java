@@ -30,7 +30,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AiCoverLetterPolishAdapterTest {
 
-    private static final CoverLetterPolishRequest REQUEST = new CoverLetterPolishRequest(7L, "백엔드 개발", null, null,
+    private static final CoverLetterPolishRequest REQUEST = new CoverLetterPolishRequest(7L, "백엔드 개발", null,
+            List.of("METICULOUS"), null,
             List.of(new CoverLetterPolishRequest.Other(2, "지원 동기를 쓰세요", "결제를 다뤄 보고 싶다.")),
             new CoverLetterPolishRequest.Target(1, "협업 경험을 쓰세요", 700, "COLLABORATION",
                     new CoverLetterQuestionsRequest.CardDetail(11L, "배포 시간 단축", "TECH", null,
@@ -81,6 +82,7 @@ class AiCoverLetterPolishAdapterTest {
 
         JsonNode sent = mapper.readTree(requestBody);
         assertThat(requestPath).isEqualTo("/internal/cover-letter-polish");
+        assertThat(sent.path("strengths").get(0).asString()).isEqualTo("METICULOUS");
         assertThat(sent.path("cover_letter_id").asLong()).isEqualTo(7L);
         assertThat(sent.has("posting")).isFalse();
         assertThat(sent.path("others").get(0).path("question_id").asInt()).isEqualTo(2);

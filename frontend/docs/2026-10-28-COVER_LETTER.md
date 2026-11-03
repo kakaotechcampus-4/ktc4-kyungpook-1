@@ -6,7 +6,7 @@
 
 | 화면 | 사용자가 하는 일 | `stage` |
 |---|---|---|
-| ① 입력 | 지원 직무·메모·문항(글자 수)을 넣고 시작 | (만들면 바로 ②) |
+| ① 입력 | 지원 직무·지원 이유·강점(0~3개)·문항(글자 수)을 넣고 시작 | (만들면 바로 ②) |
 | ② 기다림 | AI 가 문항마다 쓸 카드를 고른다 | `ASSIGNING` |
 | ③ 카드 확인 | 문항별 중심·보조 카드를 확인하거나 바꾸고 '다음' | `ASSIGNED` |
 | ④ 질문 | AI 가 카드에 모자란 재료를 묻는다. 답하거나 넘기고 '쓰기' | `ASKING` → `ASKED` |
@@ -21,7 +21,7 @@
 
 | | 요청 | 응답 |
 |---|---|---|
-| `POST /cover-letters` | `{ jobRole, memo, questions: [{ text, charLimit }], postingId }`, 헤더 `Idempotency-Key: <UUID v4>` | `CoverLetter`(`stage: ASSIGNING`). 같은 사용자·같은 키는 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다. 화면은 입력을 고치면 새 키를 만든다(같은 키는 내용을 바꾸지 않은 재전송에만 쓴다) |
+| `POST /cover-letters` | `{ jobRole, memo, strengths, questions: [{ text, charLimit }], postingId }`, 헤더 `Idempotency-Key: <UUID v4>` | `CoverLetter`(`stage: ASSIGNING`). 같은 사용자·같은 키는 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다. 화면은 입력을 고치면 새 키를 만든다(같은 키는 내용을 바꾸지 않은 재전송에만 쓴다) |
 | `GET /cover-letters/{id}` | | `CoverLetter` |
 | `GET /cover-letters` | | `CoverLetterSummary[]` 최근 만든 순 |
 | `PUT /cover-letters/{id}/questions/{qid}/cards` | `{ primaryCardId, supportingCardId }` | `CoverLetter` — `ASSIGNED` 에서만 |
@@ -41,7 +41,9 @@
 | `DELETE /cover-letters/{id}` | | `{ ok: true }` — 어느 단계에서든 지운다. AI 가 돌던 결과는 버린다 |
 
 **요청 값**
-- `jobRole` 1~100자. `memo` 1,000자 이하, 없으면 `null`(지원 동기 문항에서 '이 회사를 고른 이유'로 쓴다).
+- `jobRole` 1~100자.
+- `memo`(지원 이유)는 **필수**이고 1,000자 이하, 아래 [지원 이유 규칙](#지원-이유-규칙--강점-738)을 지켜야 한다(지원 동기 문항에서 '이 회사를 고른 이유'로 쓴다). 이미 만든 자소서의 `memo: null` 은 그대로 읽고, 다시 시도(`POST …/retry`)는 memo 를 다시 검사하지 않는다.
+- `strengths` 는 강점 코드 0~3개, 겹치지 않게. 빠지면 `[]`. 모르는 코드·4개 이상·중복은 400.
 - `questions` 1~10개. `text` 1~500자, `charLimit` 공백 포함 100~5,000 정수이고 `null` 이면 700.
 - `postingId` 는 공고 상세에서 '이 공고로 자소서 쓰기' 로 시작할 때만 그 공고 id(UUID), 아니면 `null`. 서버가 그때의 공고(회사·제목·주요 업무·기술 조건)와 맞춰 본 판단을 자소서에 남기고, 카드 고르기·질문·초안이 그 기준으로 돈다. 뒤에 카드나 공고가 바뀌어도 이 자소서의 기준은 그대로다. 맞춰 보기 전이어도 막지 않고 판단 없는 조건은 판단 없이 남긴다 — 버튼을 맞춰 보기 뒤에만 보이는 것은 화면 규칙이다.
 - `primaryCardId` · `supportingCardId` 는 카드 API 와 같은 공개 id(UUID)이고 `null` 이 될 수 있다. 내 확정 카드만 고를 수 있다. 다른 문항과 겹쳐도 막지 않는다. 중심과 보조가 같으면 400.
@@ -65,6 +67,8 @@
   "failedStep": "ASSIGN|ASK|DRAFT" | null, "errorCode": "AI_UNAVAILABLE|INTERNAL_ERROR" | null, "retryable": true | false | null,
   "pollAfterMs": 1500 | null,
   "jobRole": "백엔드 개발", "memo": "…" | null,
+  "strengths": ["METICULOUS", "USER_FOCUS"],   // 고른 강점 코드, 없으면 []
+  "memoUsable": true | false | null,            // 질문 단계가 지원 이유를 글로 쓸 만하다고 봤는지. 판정 전·memo 없음이면 null
   "posting": { "id": "UUID", "company": "토스", "title": "Server Developer" } | null,  // 공고에서 시작한 자소서만
   "createdAt": "ISO", "updatedAt": "ISO",
   "questions": [{
@@ -167,6 +171,28 @@
 | `FAILED` | 그 단계가 실패했다 | "전체 검토를 하지 못했어요" |
 
 `actor` 는 `SUB_AGENT`(문항 담당) · `SUPERVISOR`(감독) · `CODE`(코드) 중 하나다. 모르는 값이 오면 그 줄을 건너뛴다.
+
+## 지원 이유 규칙 · 강점 (#738)
+
+지원 이유(`memo`)는 화면(`src/lib/reasonCheck.ts`)·서버·Mock 이 같은 규칙, 같은 순서로 검사한다. 화면은 처음 걸린 규칙 하나를 칸 아래 한 줄로 보이고, 다 지켜야 시작 버튼을 켠다. 서버는 400 `INVALID_REQUEST` 와 처음 걸린 규칙의 한 문장을 준다(1,000자를 넘으면 그보다 먼저 "지원 이유는 1000자를 넘을 수 없습니다.").
+
+| 순서 | 규칙 | 서버 메시지 |
+|---|---|---|
+| 1 | 공백(줄바꿈 포함)을 뺀 길이 20자 이상. 빠지면(`null`) 여기서 걸린다 | 지원 이유를 20자 이상 적어 주세요. |
+| 2 | 한글(가-힣)이 하나 이상 | 지원 이유는 한국어로 적어 주세요. |
+| 3 | 공백·숫자가 아닌 같은 글자 5번 이상, 또는 공백·숫자 없는 같은 2~3자 조각 5번 이상 이어짐('ㅋㅋㅋㅋㅋ' 막음, 'ㅋㅋㅋㅋ' 둠). 숫자는 세지 않는다('10000000원'·'2024' 는 둔다) | 지원 이유에 같은 글자를 5번 이상 이어 쓸 수 없습니다. |
+| 4 | URL 꼴 — `http://`·`https://`·`www.`(대소문자 무시). 글 속 'http' 낱말이나 'naver.com' 같은 이름은 둔다 | 지원 이유에는 URL 을 넣을 수 없습니다. |
+| 5 | 이메일 꼴 — `\S+@\S+\.\S+` 토큰 | 지원 이유에는 이메일 주소를 넣을 수 없습니다. |
+| 6 | 가-힣·ㄱ-ㅎ·ㅏ-ㅣ·A-Za-z·0-9·공백과 흔한 문장부호 `. , ! ? · ' " ( ) - : ; / % & ~ … [ ] + # 「 」` 와 백틱만. U+0000·이모지·다른 나라 문자는 막는다 | 지원 이유에는 한글·영문·숫자·흔한 문장부호만 쓸 수 있습니다. |
+
+- 위 검사는 코드 가드다. 질문 단계(AI)가 한 번 더 '지원 이유로 읽히는 글인가' 를 보고 결과를 `memoUsable` 에 남긴다. `false` 면 서버는 그 뒤 AI 요청(쓰기·첨삭·대화·채우기)에 memo 를 보내지 않아 지원 동기 문항에 `[지원 이유: …]` 빈칸이 남고, 화면은 초안 알림 줄에 '지원 이유가 글로 쓰기 어려워서 채팅에서 다시 물어요 → 채우기' 를 띄운다. 판정 전이거나 memo 가 없는 옛 자소서는 `null` 이다.
+
+강점은 12개 중 최대 3개. API 는 코드만 주고받고(응답 `strengths` 는 고른 순서) 한국어 이름은 화면(`src/lib/coverLetterCopy.ts` 의 `STRENGTHS`)에만 둔다. AI 요청(카드 고르기·질문·쓰기·첨삭·대화·채우기)에도 `strengths` 로 함께 보낸다.
+
+| 묶음 | 코드 → 화면 |
+|---|---|
+| 일하는 방식 | `METICULOUS` 꼼꼼함 · `PERSISTENT` 끈기 · `PROACTIVE` 주도성 · `FAST_LEARNER` 빠른 학습 · `RESPONSIBLE` 책임감 · `PROBLEM_SOLVING` 문제 해결 |
+| 사람과 일할 때 | `COMMUNICATION` 소통 · `COLLABORATION` 협업 · `PERSUASION` 설득 · `CONSIDERATE` 배려 · `USER_FOCUS` 사용자 관점 · `DOCUMENTING` 기록과 공유 |
 
 ## 예시 문항 버튼 (서버 일 없음)
 

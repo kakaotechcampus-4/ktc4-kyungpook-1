@@ -12,7 +12,7 @@
 .folders__notice { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
 
 /* 한 줄에 셋 안팎 — 타일이 커야 이름이 주인공이 되고 부채꼴 겹침이 어지럽지 않다. 390 이하에서는 한 줄에 폴더 하나 */
-.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 22px 18px; }
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 26px 18px; }
 
 .folder-grid > li { display: flex; min-width: 0; }
 /* 부채꼴 자리(위·오른쪽)는 모든 폴더에 같이 비워 둔다 — 겹친 수에 따라 앞판 크기가 달라지면 줄이 들쭉날쭉해진다 */
@@ -24,8 +24,8 @@
 .folder[data-deck="1"] .folder__back::after { display: block; transform: rotate(3deg); }
 .folder[data-deck="2"] .folder__back::after { display: block; transform: rotate(3deg); }
 .folder[data-deck="2"] .folder__back::before { display: block; transform: rotate(6deg); }
-.folder:hover .folder__back::after, .folder:focus-visible .folder__back::after { transform: rotate(4.5deg); }
-.folder:hover .folder__back::before, .folder:focus-visible .folder__back::before { transform: rotate(9deg); }
+.folder:hover .folder__back::after, .folder:focus-visible .folder__back::after { transform: rotate(4deg); }
+.folder:hover .folder__back::before, .folder:focus-visible .folder__back::before { transform: rotate(7deg); }
 @media (prefers-reduced-motion: reduce) { .folder__back::before, .folder__back::after { transition: none; } }
 .folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 136px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 .folder[data-empty] .folder__front { border-style: dashed; border-color: var(--border-strong); }

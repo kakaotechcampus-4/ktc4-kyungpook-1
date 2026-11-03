@@ -81,23 +81,6 @@
   min-width: 0;
 }
 
-/* 공고별 / 기업별 */
-/* 경험 카드의 공통 view-switch 스타일을 사용한다. */
-.match-view {
-  align-self: flex-start;
-}
-/* 공통 view-switch 칸(38px)보다 커야 손가락으로 누르기 쉽다 */
-.match-view .match-view__option {
-  min-height: var(--control-touch-size);
-}
-.match-view__option:hover {
-  color: var(--text-primary);
-}
-.match-view__option:focus-visible {
-  outline: 2px solid var(--text-accent);
-  outline-offset: -3px;
-}
-
 /* 기업 페이지 */
 .match-company-hero {
   display: flex;
@@ -142,13 +125,5 @@
 @media (max-width: 700px), (pointer: coarse) {
   .match-company-link {
     min-height: 44px;
-  }
-}
-@media (max-width: 700px) {
-  .match-view {
-    align-self: stretch;
-  }
-  .match-view__option {
-    flex: 1;
   }
 }

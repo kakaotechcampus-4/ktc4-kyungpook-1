@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { Check, ChevronRight, CircleDashed, Minus, PencilLine, RefreshCw, TriangleAlert, type LucideIcon } from 'lucide-react';
+import { Check, CircleDashed, Minus, PencilLine, RefreshCw, TriangleAlert, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { draftStepGroups } from '@/lib/draftSteps';
+import { kindIcon } from './DraftSteps';
 import { starFieldShort } from '@/lib/labels';
 import type { LiveCard, LiveSlot, LiveView, SlotPhase } from '@/lib/liveDraft';
 import './LiveCardDraft.css';
@@ -33,8 +34,8 @@ const skippedByAi = (card: LiveCard) => card.state === 'DONE' && card.slots.ever
 const SKIPPED_LABEL = '커밋이 없어 AI 초안 없이 만들었어요';
 
 /**
- * 칸에 한 AI 의 과정. 카드 상세의 'AI 가 한 일'과 같은 문장·순서·구분 규칙(draftStepGroups)을 쓰되 칸 이름은 칸 제목이 말해서 뗀다.
- * 글은 모두 텍스트로만 그린다.
+ * 칸에 한 AI 의 과정. 카드 상세의 'AI 가 한 일'과 같은 문장·순서·구분 규칙(draftStepGroups)과 같은 세로 모양을 쓰되 칸 이름은 칸 제목이 말해서 뗀다.
+ * AI 가 스스로 고르고 이유를 남긴 단계는 카드 상세처럼 'AI 의 판단' 이름표를 달아 카드 문장과 섞이지 않게 한다. 글은 모두 텍스트로만 그린다.
  */
 function SlotSteps({ slot }: { slot: LiveSlot }) {
   const groups = draftStepGroups(slot.steps, slot.field);
@@ -42,16 +43,20 @@ function SlotSteps({ slot }: { slot: LiveSlot }) {
   if (!lines.length) return null;
   return (
     <ol className="live-steps" aria-label={`${starFieldShort[slot.field]} 칸에서 AI 가 한 일`}>
-      {lines.map(({ line, round }, at) => (
-        <li key={line.index} className="live-step">
-          {at > 0 && <ChevronRight className="live-step__sep" size={14} aria-hidden />}
-          <span className="live-step__body">
-            {round && <span className="live-step__round">{round}</span>}
-            <span className="live-step__text">{line.text}</span>
-            {line.detail && <span className="live-step__detail">{line.detail}</span>}
-          </span>
-        </li>
-      ))}
+      {lines.map(({ line, round }) => {
+        const Icon = kindIcon[line.kind];
+        return (
+          <li key={line.index} className="live-step" data-judged={line.reason ? '' : undefined} data-round={round ? '' : undefined}>
+            <span className="live-step__icon" aria-hidden><Icon size={12} aria-hidden /></span>
+            <span className="live-step__body">
+              {round && <span className="live-step__round">{round}</span>}
+              <span className="live-step__text">{line.text}</span>
+              {line.detail && <span className="live-step__detail">{line.detail}</span>}
+              {line.reason && <span className="live-step__reason"><span className="live-step__reason-label">AI 의 판단</span><q>{line.reason}</q></span>}
+            </span>
+          </li>
+        );
+      })}
     </ol>
   );
 }

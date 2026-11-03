@@ -79,10 +79,9 @@ test('카드가 차례로 채워지고, 읽는 동안은 커서만, 글은 일�
   await expect(page.getByText('카드 초안 2 / 2장')).toBeVisible();
   await expect(generationHeading(page)).toBeVisible(); // 다 쓴 모습을 잠깐 보여 준다
   await expect(generationHeading(page)).toHaveCount(0, { timeout: 10_000 });
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  // 여러 장을 다 쓰면 그 레포의 카드 폴더로 옮겨 여러 장을 한눈에 본다 (#704)
+  await expect(page).toHaveURL(/\/cards\/repo\/r_auth$/);
   await expect(page.locator('.live-draft')).toHaveCount(0);
-  // 첫 카드의 'AI 가 한 일'이 카드 상세에도 남아 있다
-  await expect(page.getByRole('region', { name: 'AI 가 한 일' })).toBeVisible();
 });
 
 test('동작 줄이기를 켜면 글을 펼치지 않고 오는 대로 한 번에 보이고, 끝나면 바로 완성된 카드로 넘어간다', async ({ page }) => {
@@ -106,5 +105,7 @@ test('동작 줄이기를 켜면 글을 펼치지 않고 오는 대로 한 번�
   await expect(slot(page, 'S')).toHaveAttribute('data-phase', 'DONE', { timeout: 30_000 });
   await expect(generationHeading(page)).toHaveCount(0, { timeout: 30_000 });
   expect(await page.evaluate(() => (window as unknown as { __partial: boolean }).__partial)).toBe(false);
+  // 한 장만 썼으면 그 카드에 머물고, 'AI 가 한 일'이 카드 상세에도 남아 있다
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'AI 가 한 일' })).toBeVisible();
 });

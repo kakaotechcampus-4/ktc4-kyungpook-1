@@ -21,7 +21,7 @@ import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
 import { JobCalendar } from './JobCalendar';
 import { HomeRecommendations } from './HomeRecommendations';
 import { HomeActivity } from './HomeActivity';
-import { matchSupported, useMatches } from '@/api/matching';
+import { matchSupported, useMatchedPostings } from '@/api/matching';
 
 const failureText = (error: unknown) => { const view = errorView(error, 'read'); return `${view.title} ${view.message}`; };
 
@@ -32,7 +32,7 @@ const failureText = (error: unknown) => { const view = errorView(error, 'read');
 export function HomePage() {
   useDocumentTitle('홈');
   const me = useMe();
-  const matches = useMatches();
+  const matched = useMatchedPostings();
   const [repoSearchOpen, setRepoSearchOpen] = useState(false);
   const cards = useCards();
   const repos = useRepos();
@@ -67,6 +67,13 @@ export function HomePage() {
     nav(`/repos?select=${target}&disclose=1`);
   };
 
+  // '매칭된 공고' 는 공고 전체 수가 아니라 AI 가 내 확정 카드로 맞춰 본 공고 중 필수 조건이 맞은 공고 수다
+  const confirmedCount = cards.isSuccess ? cards.data.filter((c) => c.status === 'CONFIRMED').length : undefined;
+  const matchedCount = matchSupported() && confirmedCount !== 0 && matched.isSuccess ? matched.data.matchedPostings : undefined;
+  const matchedNote = !matchSupported() || confirmedCount === undefined ? '경험과 연결되는 다음 기회'
+    : confirmedCount === 0 ? '카드를 확정하면 매칭할 수 있어요'
+    : matchedCount === undefined ? '경험과 연결되는 다음 기회'
+    : matchedCount === 0 ? '전체 매칭을 하면 맞는 공고를 찾아요' : 'AI 가 내 카드로 맞춰 본 공고 중 맞는 공고';
   return (
     <main className={`main home-page ${returning ? 'home-page--returning' : ''}`}>
       {/* 카드와 레포가 같은 이유로 함께 실패하면 같은 안내가 두 번 나오지 않게 하나로 합친다(#520 G-08) */}
@@ -84,7 +91,7 @@ export function HomePage() {
         <div className="overview-tile overview-tile--blue"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
         <div className="overview-tile overview-tile--lavender"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
         <div className="overview-tile overview-tile--mint"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
-        <div className="overview-tile overview-tile--yellow"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchSupported() && matches.isSuccess ? matches.data.length : '—'}<small>개</small></strong><p>경험과 연결되는 다음 기회</p></div>
+        <Link to="/match" className="overview-tile overview-tile--yellow overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
       </section>
       <ActiveJobsList />
       <section className="prompt" id="home-repo-search" hidden={!repoSearchOpen}>

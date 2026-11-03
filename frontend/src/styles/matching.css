@@ -529,6 +529,12 @@
   font-size: 13px;
   line-height: 20px;
 }
+.posting-summary__hint a {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .posting-summary__actions {
   display: flex;
   flex-direction: column;
@@ -829,6 +835,14 @@
 }
 .gap-fill__reason {
   color: var(--text-secondary);
+}
+.gap-fill__card-link {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 @keyframes gap-in {
   from {

@@ -8,6 +8,7 @@ import {
   useMatch,
   type ConditionStatus,
   type GapFillCondition,
+  type GapFillProposal,
   type MatchDetail,
 } from "@/api/matching";
 import { useCards } from "@/api/queries";
@@ -19,7 +20,7 @@ import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
 import { matchViewFromParams } from "./CompanyList";
 import { ConditionGapFill, Dots } from "./GapFillParts";
-import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed } from "./gapFill";
+import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed, useUsedCandidates } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
 import { CalendarToggle } from "./CalendarToggle";
 import { MatchFailure, MatchUnavailable } from "./shared";
@@ -120,6 +121,7 @@ type GapProps = {
   onPick: (on: boolean) => void;
   onAgain: () => void;
   againPending: boolean;
+  used: { cardId: string | null } | null;
 };
 
 function ConditionItem({ condition, line, judged, filled, detailId, gap }: { condition: Condition; line: string; judged: boolean; filled: boolean; detailId: string; gap: GapProps | null }) {
@@ -197,6 +199,7 @@ export function MatchDetailPage() {
   // 채우기가 이 화면에서 돌고 있으면 새로 생긴 일만 하나씩 펼친다. 끝난 결과를 열어 본 것이면 바로 다 보인다
   const [gapLive, setGapLive] = useState(false);
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const [noCardsTried, setNoCardsTried] = useState(false);
   // [진행하기] 뒤 돌아왔으면 모자랐던 조건 id — 새 카드만 다시 맞춰 보고 ✕ → ✓ 를 보인다
   const [returned, setReturned] = useState<string[] | null>(null);
   const [filled, setFilled] = useState<ReadonlySet<string> | null>(null);
@@ -253,8 +256,12 @@ export function MatchDetailPage() {
   const proposals = showGap
     ? gf.conditions.filter((c) => c.result === "PROPOSED" && c.proposal && gapRevealed.has(gapKey(c.conditionId, "result")))
     : [];
-  const chosen = proposals.filter((c) => picked.has(c.conditionId) && canProceed(c.proposal!)).map((c) => c.proposal!);
-  const gapActive = showGap && (gapRunning || proposals.some((c) => canProceed(c.proposal!)));
+  // 이미 카드로 쓴 후보의 제안은 다시 넘기면 서버가 거절하므로 고를 수 없게 하고 만든 카드로 잇는다
+  const used = useUsedCandidates(gf?.conditions.flatMap((c) => (c.proposal ? [c.proposal] : [])) ?? []);
+  const usedCardOf = (p: GapFillProposal) => (p.action === "CREATE_CARD" && p.candidateId && used.has(p.candidateId) ? { cardId: used.get(p.candidateId) ?? null } : null);
+  const selectable = (p: GapFillProposal) => canProceed(p) && !usedCardOf(p);
+  const chosen = proposals.filter((c) => picked.has(c.conditionId) && selectable(c.proposal!)).map((c) => c.proposal!);
+  const gapActive = showGap && (gapRunning || proposals.some((c) => selectable(c.proposal!)));
   // 새로 찾아야 하는데 쓸 수 있는 GitHub 연결이 없으면 서버가 403 GITHUB_UNAUTHORIZED 를 준다 — 레포 분석과 같은 '다시 연결' 로 잇는다
   const gapNeedsGithub = isGithubUnauthorized(gapFill.error);
   const gapFailed = (gapFill.isError && !gapNeedsGithub) || gf?.state === "FAILED";
@@ -269,6 +276,7 @@ export function MatchDetailPage() {
       onPick: (on) => setPicked((prev) => { const next = new Set(prev); if (on) next.add(conditionId); else next.delete(conditionId); return next; }),
       onAgain: () => gapFill.mutate([conditionId]),
       againPending: gapFill.isPending,
+      used: gap.proposal ? usedCardOf(gap.proposal) : null,
     };
   };
   const onProceed = () => {
@@ -295,6 +303,8 @@ export function MatchDetailPage() {
     if (revealed.has("cards")) log.push({ key: "cards", text: confirmedCount === undefined ? "확정 카드를 읽었어요" : `확정 카드 ${confirmedCount}장을 읽었어요` });
     if (revealed.has("compared")) log.push({ key: "compared", text: comparedText(detail.conditions) });
   }
+  // 처음 맞춰 보는 동안(서버가 AI 에게 묻고 최대 90초) 버튼의 돌림 표시만 있으면 멈춘 것처럼 보인다
+  if (!returned && judge.isPending) log.push({ key: "judging", text: confirmedCount === undefined ? "확정 카드를 읽고 조건과 견주고 있어요" : `확정 카드 ${confirmedCount}장을 읽고 조건과 견주고 있어요`, live: true });
   if (returned && judge.isPending) log.push({ key: "rejudge", text: "새로 확정한 카드로 다시 맞춰 보고 있어요", live: true });
   if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
   if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드를 확정하면 다시 맞춰 볼게요" });
@@ -328,11 +338,12 @@ export function MatchDetailPage() {
       이 공고로 자소서 쓰기
     </Link>
   );
+  // 확정 카드가 없어도 맞춰 보기 버튼은 그대로 두어 이 화면에서 매칭을 한다는 것이 보이게 하고, 누르면 서버를 부르지 않고 카드가 없다고 알린다
   const action = detail && (
     noConfirmedCards ? (
-      <Link className="btn btn--primary" to="/cards">
-        경험 카드 보기
-      </Link>
+      <Button onClick={() => setNoCardsTried(true)}>
+        이 공고와 맞춰 보기
+      </Button>
     ) : detail.needsJudgement ? (
       returned && !judge.isError ? null : (
         <Button loading={judge.isPending} onClick={startJudge}>
@@ -418,9 +429,18 @@ export function MatchDetailPage() {
                 </ol>
               )}
               {noConfirmedCards ? (
-                <p className="posting-summary__hint">경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.</p>
+                noCardsTried ? (
+                  <p role="status" className="posting-summary__hint">
+                    맞춰 볼 확정 카드가 없어요.{" "}
+                    {cards.data?.length ? <Link to="/cards">작성 중인 카드 확정하기</Link> : <Link to="/repos">레포 분석으로 카드 만들기</Link>}
+                  </p>
+                ) : (
+                  <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
+                )
               ) : (
-                detail.needsJudgement && !returned && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
+                detail.needsJudgement && !returned && (
+                  <p className="posting-summary__hint">{judge.isPending ? "조건이 많으면 1분쯤 걸려요." : "확정한 경험 카드로 조건마다 맞는지 맞춰 봐요."}</p>
+                )
               )}
               <div className="posting-summary__actions">
                 {action}

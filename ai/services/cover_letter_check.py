@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from schemas.cover_letter import CardDetail, DraftProblemCode, KnownAnswer, MaterialItem
+from services.cover_letter_evidence import PLAIN_LATIN_WORDS
 from services.evidence_checks import unsupported_metrics
 
 #: 문항을 쓰려면 꼭 있어야 하는 항목으로, 지원 동기 문항은 지원 이유다.
@@ -46,6 +47,8 @@ _MORE_BLANK = re.compile(r"\[더 쓸 거리: [^\[\]\n]{1,60}\]")
 
 #: 영문으로 시작하는 낱말(React, Node.js, C++, k8s). 한 글자는 낱말로 보지 않는다.
 _LATIN_TERM = re.compile(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9+#.\-]*[A-Za-z0-9+#]")
+#: 한 칸씩 띄어 이어진 영문 낱말들로, 'Spring Boot'·'GitHub Actions' 를 한 이름으로 센다
+_LATIN_RUN = re.compile(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9+#.\-]*[A-Za-z0-9+#](?: [A-Za-z][A-Za-z0-9+#.\-]*[A-Za-z0-9+#])*")
 #: 영문·숫자에 붙지 않은 숫자(v2·k8s·OAuth2 의 숫자는 제외). 뒤에 붙은 단위는 화면에 보일 값으로만 쓴다.
 _NUMBER = re.compile(r"(?<![A-Za-z0-9_.,])(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)(?![0-9A-Za-z])(%p|%|[가-힣]{1,2})?")
 #: 문장 끝(. ! ? …) 뒤 공백이나 줄바꿈에서 나눈다. 40.5% 의 점은 뒤에 공백이 없어 나누지 않는다.
@@ -154,15 +157,51 @@ def invented_numbers(text: str, source: str) -> list[str]:
     return numbers
 
 
-def check_draft(text: str, *, source: str, char_limit: int, missing_items: list[MaterialItem]) -> list[DraftIssue]:
-    """초안에서 걸린 곳을 찾고, 수치·낱말은 그 값이 처음 나온 문장 번호를 함께 돌려준다."""
+def check_draft(
+    text: str, *, source: str, char_limit: int, missing_items: list[MaterialItem],
+    tech_limit: Optional[int] = None, known_names: str = "",
+) -> list[DraftIssue]:
+    """초안에서 걸린 곳을 찾고, 수치·낱말은 그 값이 처음 나온 문장 번호를 함께 돌려준다.
+
+    tech_limit 를 주면 기술 이름이 그보다 많은 글을 OFF_TOPIC 으로 걸고, 기술 이름이 가장 많은 문장을 가리킨다.
+    """
     issues = [DraftIssue("UNSOURCED_NUMBER", value, sentence_of(value, text)) for value in invented_numbers(text, source)]
     issues += [DraftIssue("UNSOURCED_TERM", term, sentence_of(term, text)) for term in unsourced_terms(text, source)]
     issues += [DraftIssue("MISSING_BLANK", item, None) for item in missing_items if blank(item) not in text]
     over = countable_length(text) - char_limit
     if over > 0:
         issues.append(DraftIssue("OVER_LIMIT", str(over), None))
+    names = tech_names(text, known_names)
+    if tech_limit is not None and len(names) > tech_limit:
+        issues.append(DraftIssue("OFF_TOPIC", f"기술 이름 {len(names)}개 (상한 {tech_limit})", _densest(text, known_names)))
     return issues
+
+
+def tech_names(text: str, known_names: str) -> list[str]:
+    """글에 쓴 기술 이름을 하나씩. 띄어 쓴 영문 낱말이 이어지면('Spring Boot') 한 이름이다.
+
+    카드 출처·회사·문항에 있는 낱말과 인사 담당자도 아는 줄임말(AI·PR 등)은 세지 않는다.
+    """
+    found: list[str] = []
+    for name in _names_in(text, known_names):
+        if name not in found:
+            found.append(name)
+    return found
+
+
+def _names_in(text: str, known_names: str) -> list[str]:
+    skip = {term.casefold() for term in _LATIN_TERM.findall(known_names)} | PLAIN_LATIN_WORDS
+    names: list[str] = []
+    for run in _LATIN_RUN.finditer(text):
+        kept = [term for term in run.group(0).split(" ") if term.casefold() not in skip]
+        if kept:
+            names.append(" ".join(kept).casefold())
+    return names
+
+
+def _densest(text: str, known_names: str) -> Optional[int]:
+    counts = [len(_names_in(sentence, known_names)) for sentence in split_sentences(text)]
+    return counts.index(max(counts)) + 1 if counts and max(counts) > 0 else None
 
 
 def sentence_of(value: str, text: str) -> Optional[int]:

@@ -13,7 +13,14 @@ from schemas.cover_letter import DraftsRequest
 from services.cover_letter_check import blank
 from services.cover_letter_drafter import CoverLetterDrafter, FindingOutput, ReviewOutput
 from services.cover_letter_llm import CoverLetterLimits
-from services.cover_letter_writer import DecideOutput, DecisionItem, ReadinessOutput, SupportedOutput, WriteOutput
+from services.cover_letter_writer import (
+    DecideOutput,
+    DecisionItem,
+    ReadinessOutput,
+    SupportedOutput,
+    WriteOutput,
+    length_cap,
+)
 from cover_letter_fakes import all_evidence
 from services.llm_settings import LLMConfigError
 from services.llm_structured_client import LLMStructuredCallError, StructuredCallResult
@@ -581,12 +588,13 @@ def test_writing_goes_ahead_when_readiness_cannot_be_judged() -> None:
 
 
 @pytest.mark.parametrize(
-    ("theme", "first_evidence", "deep"),
-    [("COLLABORATION", "함께 일한 상대와 상황(의견이 갈렸다면 어떻게 갈렸나)", False),
-     ("PROBLEM_SOLVING", "문제를 구체적으로 정의한 것", True)],
+    ("theme", "first_evidence", "deep", "tech_names"),
+    [("COLLABORATION", "함께 일한 상대와 상황(의견이 갈렸다면 어떻게 갈렸나)", False, 1),
+     ("PROBLEM_SOLVING", "문제를 구체적으로 정의한 것", True, 2)],
 )
-def test_write_payload_carries_evidence_and_tech_of_the_theme(theme: str, first_evidence: str, deep: bool) -> None:
-    """쓰기는 문항 유형의 행동증거와 기술 이야기를 얼마나 쓸지를 함께 받아, 협업 문항은 기술 세부를 줄이고 문제 해결 문항은 살린다."""
+def test_write_payload_carries_evidence_and_tech_of_the_theme(theme: str, first_evidence: str, deep: bool,
+                                                              tech_names: int) -> None:
+    """쓰기는 문항 유형의 행동증거와 기술 이야기를 얼마나 쓸지, 기술 이름을 몇 개까지 쓸지(협업 1·문제 해결 2)를 함께 받는다."""
     client = DraftClient({"문제 해결 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS])
 
     _draft(client, _request(_question(theme=theme)))
@@ -594,6 +602,7 @@ def test_write_payload_carries_evidence_and_tech_of_the_theme(theme: str, first_
     question = client.write_payloads[0]["question"]
     assert question["evidence"][0] == first_evidence
     assert ("깊이를 살립니다" in question["tech"]) is deep
+    assert question["tech_name_limit"] == tech_names
 
 
 #: 재료에 없는 해석(다시 한다면 다르게 할 점)으로, 작성 AI 가 추론으로 밝히는 문장
@@ -801,3 +810,39 @@ def test_repeated_introduction_is_sent_back_to_mention_briefly() -> None:
         "1번 문장이 다른 문항과 같은 이야기입니다(같은 프로젝트 소개). 이 문항의 카드 내용으로 바꾸세요. "
         "프로젝트·회사 소개나 포부를 되풀이한 것이면 소개는 짧게 짚기만 하세요.",
     ]
+
+
+@pytest.mark.parametrize(
+    ("char_limit", "material_chars", "cap"),
+    [(700, 60, 220), (700, 300, 450), (500, 400, 500)],
+    ids=["재료가 적으면 220자", "재료의 1.5배", "문항 글자 수를 넘지 않음"],
+)
+def test_length_cap_follows_material(char_limit: int, material_chars: int, cap: int) -> None:
+    """글 길이 상한은 재료 글자 수의 1.5배로 두되, 220자보다 짧게 하지 않고 문항 글자 수 상한을 넘지 않는다."""
+    assert length_cap(char_limit, material_chars) == cap
+
+
+#: 기술 이름 둘(Redis·Kafka)이 든 카드로, 협업 문항(기술 이름 1개까지)에 그대로 쓰면 걸린다
+TECH_CARD = {**API_CARD, "statements": [*API_CARD["statements"], {"star_slot": "A", "text": "Redis 와 Kafka 를 붙였다"}]}
+TECHY = "Redis 와 Kafka 를 붙여 의견을 모았습니다. 한 가지 모양으로 정했습니다."
+
+
+def test_draft_over_the_tech_name_cap_is_rewritten_in_plain_words() -> None:
+    """기술 이름이 문항 유형의 상한을 넘으면 기술 이름이 가장 많은 문장을 짚어 쉬운 말로 풀어 다시 쓰게 한다."""
+    client = DraftClient({"협업 경험": [TECHY, GOOD_API]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question("협업 경험", card=TECH_CARD, theme="COLLABORATION")))
+
+    assert client.write_payloads[1]["fix"]["problems"] == [
+        "1번 문장 등에서 기술 이름 2개 (상한 1)입니다. 핵심만 남기고 나머지는 쉬운 말로 풀어 쓰세요.",
+    ]
+    assert (result.drafts[0].text, result.drafts[0].rewrites) == (GOOD_API, 1)
+
+
+def test_tech_names_left_after_rewrites_are_not_marked() -> None:
+    """다시 써도 기술 이름이 상한을 넘으면 그대로 두고, 사용자에게 보일 표시는 달지 않는다."""
+    client = DraftClient({"협업 경험": [TECHY, TECHY, TECHY]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question("협업 경험", card=TECH_CARD, theme="COLLABORATION")))
+
+    assert (result.drafts[0].text, result.drafts[0].rewrites, result.drafts[0].marks) == (TECHY, 2, [])

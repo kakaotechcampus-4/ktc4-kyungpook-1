@@ -58,7 +58,8 @@ from services.cover_letter_progress import report_text, text_streamer
 from services.llm_executors import COVER_LETTER_JUDGE_EXECUTOR
 
 WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소개서 문항 하나의 답을 씁니다.
-입력으로 문항(question: 문장·유형·글자 수 상한 char_limit·이 유형에서 글이 보여 줘야 하는 행동증거 evidence·기술 이야기를 얼마나 쓸지 tech),
+입력으로 문항(question: 문장·유형·글자 수 상한 char_limit·재료에 맞춘 글 길이 상한 length_cap·이 유형에서 글이 보여 줘야 하는 행동증거 evidence·
+기술 이야기를 얼마나 쓸지 tech·쓸 수 있는 기술 이름 수 tech_name_limit),
 지원 직무(job_role), 메모(memo), 프로필(profile),
 이 문항에 쓸 카드(cards: 중심 PRIMARY·보조 SUPPORTING 의 STAR 문장), 사용자가 답한 재료(answers: 항목·답·어느 카드의 답인지 about),
 글에 그대로 넣을 빈칸(blanks), 재료에 없어 빈칸으로 둘 사실 증거(missing_evidence, 없을 수 있음),
@@ -66,13 +67,19 @@ WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소
 다시 쓸 때만 고칠 점(fix: 앞 초안 previous_draft·앞 초안의 추론 문장 previous_inferred·problems)이 주어집니다.
 공고에서 시작한 자소서면 지원하는 공고(posting: 회사 company·제목 title·주요 업무 responsibilities·이 문항 카드가 채운 공고 조건 met_conditions)도 주어집니다.
 
-- text: 한국어 자기소개서 문체('~습니다') 한 편. 공백 포함 글자 수가 char_limit 를 넘지 않게 하고, 길이는 재료만큼만 씁니다.
-  재료가 모자라 짧아져도 다른 카드 문장이나 일반론('책임감을 배웠습니다' 같은)으로 늘려 쓰지 않습니다.
+- text: 한국어 자기소개서 문체('~습니다') 한 편. 공백 포함 글자 수는 length_cap 안에서 재료만큼만 씁니다(char_limit 은 넘지 않음).
+  재료가 적으면 짧게 끝냅니다. 늘리려고 기술 설명이나 개수를 보태지 않고, 다른 카드 문장이나 일반론('책임감을 배웠습니다' 같은)으로 늘려 쓰지 않습니다.
 - inferred: text 안에서 재료에 없는 해석을 지어 쓴 문장을 text 에 쓴 글자 그대로 하나씩 담은 목록입니다. 없으면 빈 배열입니다.
 - 회사는 문항마다 evidence 의 행동증거가 몇 개 드러나는지로 읽습니다. 증거마다 재료의 어느 사실이 그것을 보여 주는지 생각해, 증거가 드러나게 씁니다.
   증거와 상관없는 카드 문장은 쓰지 않습니다.
-- 중심 카드에서 문항에 맞는 장면 하나만 고르고 나머지 문장은 버립니다. 카드 문장을 빠짐없이 옮기지 않습니다.
-- 기술 이야기는 question.tech 를 따릅니다.
+- 중심 카드에서 문항에 맞는 장면 하나만 고르고, 왜 그 일이 생겼나 → 무엇을 보고 어떻게 정했나(판단) → 한 일 한두 가지 → 달라진 것 →
+  그 일이 나에게 남긴 것 순서로 씁니다. 사실은 두세 개면 충분하고, 남은 카드 사실은 덧붙이지 않고 버립니다. 구현 단계나 설정을 늘어놓지 않습니다.
+- 기술 이야기는 question.tech 를 따릅니다. 읽는 사람은 개발자가 아닌 인사 담당자입니다. 기술 이름(영문 라이브러리·설정·도구 이름)은 글 전체에서
+  tech_name_limit 개까지만, 그 문장에 꼭 필요할 때만 쓰고 나머지는 쉬운 말로 풉니다
+  (예: 'DISTINCT Fetch Join·@BatchSize 적용' → '조회를 한 번에 묶어 가져오게 바꿨다', 'Principal 인증 예외' → '잘못된 로그인 정보는 바로 거절하게').
+  카드 출처의 프로젝트·회사 이름은 기술 이름으로 세지 않습니다.
+- 숫자는 무엇이 얼마나 달라졌는지 보여 줄 때만 씁니다(전·후, 시간, 비율, 사용자 수).
+  일의 양을 세는 숫자(시험 458개 통과, 커밋 2개·3개, PR 3개, 모듈 5개)는 쓰지 않습니다.
 - missing_evidence 는 재료에 없는 사실이라, 그 증거마다 '[더 쓸 거리: 무엇을 쓰면 되는지]' 를 하나씩 넣고 그 내용을 지어내지 않습니다
   (예: '[더 쓸 거리: 상대 의견을 들은 방법]'). 그 밖에도 꼭 필요한데 재료가 없는 사실 자리는 같은 빈칸을 넣습니다.
   빈칸은 문장 가운데 끼우지 않고, 그 증거가 들어갈 문단 끝에 따로 한 줄(한 문장)로 둡니다.
@@ -132,6 +139,9 @@ _JUDGED_CODES = ("UNSOURCED_NUMBER", "UNSOURCED_TERM")
 NOT_READY_REASON = "문항이 보려는 경험 재료가 모자라 뼈대로 둠"
 #: 단계에 싣는 걸린 문장의 길이로, 진행 줄이 단계 글을 자르는 길이와 같다
 SENTENCE_MAX_CHARS = 200
+#: 재료가 적어도 한 장면을 쓸 만큼 두는 글 길이 상한의 바닥과, 재료 글자 수에 곱하는 비율
+MIN_LENGTH_CAP = 220
+LENGTH_PER_MATERIAL = 1.5
 #: 사용자가 답하지 않은 배운 점을 빈칸 대신 추론 문장으로 쓰게 넘길 때의 증거 이름
 LEARNING_EVIDENCE = "배운 점"
 #: 추론 문장에 들면 사실을 섞은 것으로 보는 숫자·영문 낱말(검사기의 영문 낱말과 같은 모양)
@@ -150,6 +160,8 @@ _FIX_TEXT: dict[str, str] = {
                 "프로젝트·회사 소개나 포부를 되풀이한 것이면 소개는 짧게 짚기만 하세요.",
     "UNSUPPORTED_CLAIM": "{seq}번 문장에 입력에 없는 역할이나 성과가 있습니다({reason}). 입력에 있는 사실로만 쓰세요.",
     "OFF_TOPIC": "{seq}번 문장이 문항이 묻는 것을 벗어났습니다({reason}). 문항에 답하는 내용으로 바꾸세요.",
+    # 검사기가 건 OFF_TOPIC 은 기술 이름이 상한을 넘은 글이다
+    "TECH_NAMES": "{seq}번 문장 등에서 {value}입니다. 핵심만 남기고 나머지는 쉬운 말로 풀어 쓰세요.",
     # 감독이 찾은 추론 가운데 사실이 섞인 문장만 돌려보낸다. 해석만 담은 추론은 표시만 단다
     "INFERRED": "{seq}번 문장은 사실과 해석이 섞여 있습니다. 해석('느꼈다·배웠다·생각했다' 부분)을 사실 문장에서 떼어 "
                 "따로 한 문장으로 쓰고 inferred 에 넣으세요.",
@@ -252,7 +264,8 @@ class QuestionWriter:
         kept: set[tuple[str, Optional[str]]] = set()
         while True:
             issues = [issue for issue in check_draft(text, source=source, char_limit=question.char_limit,
-                                                     missing_items=written_blanks)
+                                                     missing_items=written_blanks, tech_limit=guide.tech_names,
+                                                     known_names=known_names(request, question))
                       if (issue.code, issue.value) not in kept]
             if not issues:
                 record("CODE", "CHECK_PASSED", qid, value=str(countable_length(text)))
@@ -301,9 +314,12 @@ class QuestionWriter:
             return draft
         record("SUB_AGENT", "REWROTE", qid, value=str(countable_length(text)))
         source = source_text(request, question)
-        before = {_issue_key(issue) for issue in check_draft(
-            draft.text, source=source, char_limit=question.char_limit, missing_items=draft.blanks)}
-        issues = check_draft(text, source=source, char_limit=question.char_limit, missing_items=draft.blanks)
+        limits: dict[str, Any] = {
+            "char_limit": question.char_limit, "missing_items": draft.blanks,
+            "tech_limit": guide_for(question.question_theme).tech_names, "known_names": known_names(request, question),
+        }
+        before = {_issue_key(issue) for issue in check_draft(draft.text, source=source, **limits)}
+        issues = check_draft(text, source=source, **limits)
         for issue in issues:
             record("CODE", "CHECK_FAILED", qid, code=issue.code, value=issue.value, **_located(text, issue.sentence_seq))
         if any(_issue_key(issue) not in before for issue in issues):
@@ -485,7 +501,10 @@ class QuestionWriter:
         ]
         payload: dict[str, Any] = {
             "question": {"text": clip(question.text, limit), "theme": question.question_theme,
-                         "char_limit": question.char_limit, "evidence": list(guide.evidence), "tech": guide.tech},
+                         "char_limit": question.char_limit,
+                         "length_cap": length_cap(question.char_limit,
+                                                  sum(len(line) for line in readiness_material(request, question))),
+                         "evidence": list(guide.evidence), "tech": guide.tech, "tech_name_limit": guide.tech_names},
             "job_role": clip(request.job_role, limit),
             "memo": clip(request.memo, limit),
             "profile": [{"kind": item.kind, "text": clip(item.text, limit)} for item in request.profile],
@@ -519,6 +538,20 @@ def blank_items(request: DraftsRequest, question: DraftQuestion) -> list[Materia
     group = item_group(question.question_theme, question.text)
     items = required_missing(group, question.primary_card, question.answers, request.memo)
     return items + [item for item in question.missing_items if item not in items]
+
+
+def length_cap(char_limit: int, material_chars: int) -> int:
+    """재료만큼만 쓰게 하는 글 길이 상한으로, 재료가 적어도 한 장면을 쓸 만큼은 두고 문항 글자 수 상한은 넘지 않는다."""
+    return min(char_limit, max(MIN_LENGTH_CAP, round(LENGTH_PER_MATERIAL * material_chars)))
+
+
+def known_names(request: DraftsRequest, question: DraftQuestion) -> str:
+    """기술 이름으로 세지 않을 이름들: 문항 문장, 카드 출처(프로젝트) 이름, 지원 회사."""
+    parts = [question.text]
+    parts += [card.source_name or "" for card in (question.primary_card, question.supporting_card) if card is not None]
+    if request.posting is not None:
+        parts.append(request.posting.company)
+    return "\n".join(parts)
 
 
 def readiness_material(request: DraftsRequest, question: DraftQuestion) -> list[str]:
@@ -609,11 +642,13 @@ def _located(text: str, sentence_seq: Optional[int]) -> dict[str, Any]:
 
 
 def _issue_key(issue: DraftIssue) -> tuple[str, Optional[str]]:
-    # 넘친 글자 수는 다시 쓰면 값이 바뀌므로 넘쳤는지로만 견준다
-    return (issue.code, None if issue.code == "OVER_LIMIT" else issue.value)
+    # 넘친 글자 수·기술 이름 수는 다시 쓰면 값이 바뀌므로 넘쳤는지로만 견준다
+    return (issue.code, None if issue.code in ("OVER_LIMIT", "OFF_TOPIC") else issue.value)
 
 
 def _describe(issue: DraftIssue) -> str:
+    if issue.code == "OFF_TOPIC":
+        return _FIX_TEXT["TECH_NAMES"].format(seq=issue.sentence_seq, value=issue.value)
     value = blank(issue.value) if issue.code == "MISSING_BLANK" else issue.value  # type: ignore[arg-type]
     return _FIX_TEXT[issue.code].format(value=value)
 

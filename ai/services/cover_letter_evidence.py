@@ -17,6 +17,8 @@ READY_EVIDENCE = 3
 PARTIAL_EVIDENCE = 1
 #: 인용으로 칠 가장 짧은 글자 수. '했다' 같은 짧은 말은 어느 문장에나 있어 증거가 되지 않는다
 MIN_QUOTE_CHARS = 8
+#: 인사 담당자도 아는 영문 줄임말이라 기술 이름 상한에 세지 않는 말
+PLAIN_LATIN_WORDS = frozenset({"ai", "pr", "api", "http", "url", "db", "it", "ui", "ux", "sql", "os", "pc", "ci"})
 
 Readiness = Literal["READY", "PARTIAL", "NOT_READY"]
 
@@ -31,6 +33,8 @@ class ThemeGuide:
     angles: dict[str, str]
     tech: str
     deep_tech: bool
+    #: 글 한 편에 쓸 기술 이름(영문 낱말) 수. 읽는 사람이 개발자가 아닌 인사 담당자라 나머지는 쉬운 말로 푼다
+    tech_names: int
 
     def angles_for(self, items: Iterable[str]) -> dict[str, str]:
         return {item: self.angles[item] for item in items if item in self.angles}
@@ -55,6 +59,7 @@ _COLLABORATION = ThemeGuide(
             "RESULT": "어떻게 합의했거나 일이 이어졌고, 그 뒤 팀이 일하는 방식이나 관계가 어떻게 달라졌는지"},
     tech=_LIGHT_TECH,
     deep_tech=False,
+    tech_names=1,
 )
 _LEADERSHIP = ThemeGuide(
     evidence=("방향·목표를 정한 것", "일을 나누고 사람을 움직인 방법", "막히거나 부딪힌 걸 푼 행동", "팀의 결과"),
@@ -66,6 +71,7 @@ _LEADERSHIP = ThemeGuide(
             "RESULT": "팀이 무엇을 해냈고 팀원에게 무엇이 달라졌는지"},
     tech=_LIGHT_TECH,
     deep_tech=False,
+    tech_names=1,
 )
 _PROBLEM_SOLVING = ThemeGuide(
     evidence=("문제를 구체적으로 정의한 것", "선택지와 그걸 고른 기술적 근거", "해결 과정에서 막힌 곳과 넘은 방법",
@@ -76,8 +82,9 @@ _PROBLEM_SOLVING = ThemeGuide(
             "SITUATION": "무엇이 문제였고 누구에게 어떤 영향을 줬는지",
             "ACTION": "어떤 방법들을 견줬고 왜 그 방법을 골랐는지, 하다가 어디서 막혔고 어떻게 넘었는지",
             "RESULT": "결과가 어땠고, 아쉬웠던 점이나 다시 한다면 다르게 할 점"},
-    tech="기술 깊이를 살립니다. 견준 선택지와 고른 근거를 쓰고, 핵심 기술 이름은 처음 나올 때 무엇인지 쉬운 말로 풉니다.",
+    tech="판단의 깊이를 살립니다. 견준 선택지와 고른 근거를 쓰되, 기술 이름은 핵심만 쓰고 처음 나올 때 무엇인지 쉬운 말로 풉니다.",
     deep_tech=True,
+    tech_names=2,
 )
 _FAILURE = ThemeGuide(
     evidence=("무엇이 잘못됐나", "원인을 돌아본 것", "그 뒤 바꾼 행동", "바꾼 뒤 달라진 점"),
@@ -90,6 +97,7 @@ _FAILURE = ThemeGuide(
             "RESULT": "바꾼 뒤 무엇이 달라졌는지"},
     tech="원인을 설명하는 데 필요한 만큼만 기술을 씁니다.",
     deep_tech=False,
+    tech_names=1,
 )
 _GROWTH = ThemeGuide(
     evidence=("부족함을 느낀 계기", "꾸준히 익힌 행동", "달라진 점", "입사 후 쓸 곳"),
@@ -102,6 +110,7 @@ _GROWTH = ThemeGuide(
             "RESULT": "익힌 뒤 무엇을 할 수 있게 됐는지"},
     tech="배운 기술은 이름 정도만 쓰고 구현 세부는 쓰지 않습니다.",
     deep_tech=False,
+    tech_names=1,
 )
 _MOTIVATION = ThemeGuide(
     evidence=("관심을 가진 계기", "그동안 준비한 노력", "맞는 이유(경험 한 장면)", "입사 후 기여"),
@@ -113,6 +122,7 @@ _MOTIVATION = ThemeGuide(
             "RESULT": "그 준비로 할 수 있게 된 일"},
     tech="경험 한 장면 안에서만 기술을 짧게 씁니다.",
     deep_tech=False,
+    tech_names=1,
 )
 _DEFAULT = ThemeGuide(
     evidence=("어떤 상황이었나", "내가 한 행동과 그렇게 한 이유", "결과", "배운 점이나 직무와 이어지는 점"),
@@ -124,6 +134,7 @@ _DEFAULT = ThemeGuide(
             "RESULT": "그 뒤 무엇이 달라졌는지"},
     tech="문항이 기술을 묻지 않으면 기술 세부는 한두 문장으로 줄입니다.",
     deep_tech=False,
+    tech_names=1,
 )
 _GUIDES: dict[str, ThemeGuide] = {
     "COLLABORATION": _COLLABORATION,

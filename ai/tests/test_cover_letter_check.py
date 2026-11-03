@@ -63,3 +63,17 @@ def test_sentences_split_at_sentence_end_not_at_decimal_point() -> None:
     assert split_sentences("응답을 40.5% 줄였습니다. 그런데… 다음 문장입니다!\n[결과: 적어 주세요]") == [
         "응답을 40.5% 줄였습니다.", "그런데…", "다음 문장입니다!", "[결과: 적어 주세요]",
     ]
+
+
+def test_tech_names_over_the_cap_are_flagged_except_known_names() -> None:
+    """기술 이름이 상한보다 많으면 개수와 함께 OFF_TOPIC 으로 걸고, 문항·카드 출처 이름과 AI 같은 줄임말은 세지 않으며,
+    띄어 쓴 두 낱말 이름(Spring Boot)은 하나로 센다."""
+    text = "gitory 에서 AI 로 React 화면을 나눴습니다. Spring Boot 빌드와 React 배포를 바꿨습니다."
+
+    source = f"{SOURCE}\ngitory AI Spring Boot"
+
+    within = check_draft(text, source=source, char_limit=1_000, missing_items=[], tech_limit=2, known_names="gitory")
+    over = check_draft(text, source=source, char_limit=1_000, missing_items=[], tech_limit=1, known_names="gitory")
+
+    assert within == []
+    assert [(i.code, i.value, i.sentence_seq) for i in over] == [("OFF_TOPIC", "기술 이름 2개 (상한 1)", 2)]

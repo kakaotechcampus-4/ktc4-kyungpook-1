@@ -1,0 +1,127 @@
+/* ⑥ 초안 옆 패널(#727) — 종이 오른쪽 한 칸. 860px 아래는 아래 막대 + 반 높이 시트. 색·둥글기는 토큰만
+   색은 둘만 쓴다: 주황(caution · field-low) = 확인해 주세요, 파랑(pastel-blue · accent-decoration · focus) = 지금 보는 것. 끝난 상태는 색 없이 */
+.cl-draft { display: grid; grid-template-columns: minmax(0, 1fr) min(440px, 40vw); gap: 24px; align-items: start; }
+.cl-draft__paper { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.cl-draft .pq { position: relative; scroll-margin-top: 24px; }
+.cl-draft .pq--active::before { content: ''; position: absolute; left: -26px; top: 32px; width: 3px; height: 20px; border-radius: 2px; background: var(--accent-decoration); }
+/* 패널에서 고른 문장(살펴볼 곳 · 점검표) — 파랑 테두리 */
+.cl-draft .phl--focus { outline: 2px solid var(--accent-decoration); outline-offset: 2px; }
+/* 초안 종이는 끝난 것을 색으로 보이지 않는다 — AI 가 고친 문장은 칠하지 않고, 글자 수 넘침은 확인해 주세요(주황) */
+.cl-draft .phl--fixed-ai { background: transparent; }
+.cl-draft .pq__count--over { color: var(--field-low-text); }
+
+/* scroll-padding — 탭 이동·굴리기로 닿는 줄이 위에 붙은 머리줄(약 44px) 아래에 놓이게 */
+.clp { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; overscroll-behavior: contain; scroll-padding-top: 56px; scroll-padding-bottom: 88px; display: flex; flex-direction: column; gap: 12px; padding: 2px 4px 8px 2px; }
+.clp-head { position: sticky; top: -2px; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 10px 2px; background: var(--bg-surface); }
+.clp-head b { font-size: 16px; line-height: 24px; font-weight: 600; white-space: nowrap; }
+.clp-head__sub { flex: 1; min-width: 0; font-size: 13px; color: var(--text-tertiary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clp-head__x { width: var(--control-touch-size); padding: 0; }
+.clp-card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 16px; }
+.clp-lead { margin: 4px 0 14px; font-size: 16px; line-height: 1.6; color: var(--text-strong); }
+.clp-sub { margin: 0 0 12px; font-size: 14px; color: var(--text-secondary); }
+.clp-muted { margin: 0; font-size: 14px; color: var(--text-tertiary); }
+.clp-note { margin: 12px 0 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+.clp-note--error { margin: 0 0 12px; color: var(--field-low-text); }
+/* 포커스 — 진한 테두리(대비 3:1 이상) 위에 파란 번짐을 겹친다. 어두운 테마의 border-selected 는 파랑이다 */
+.clp :focus-visible, .clp-bar :focus-visible { outline: 2px solid var(--border-selected); outline-offset: 2px; box-shadow: var(--focus); }
+.clp-block { width: 100%; min-height: 52px; font-size: 16px; font-weight: 600; }
+.clp-link { display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 0 4px; border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* 두세 칸 고르기 — 패널 탭, 아쉬운 점 | 잘한 점 */
+.clp-seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--bg-subtle); margin-bottom: 10px; }
+.clp-seg button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: var(--control-touch-size); border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; cursor: pointer; }
+.clp-seg button[aria-selected="true"], .clp-seg button[aria-pressed="true"] { background: var(--bg-surface); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.clp-tabs { margin: 0; }
+.clp-tabs button { font-size: 13px; padding: 0 2px; }
+.clp-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-full); background: var(--field-low-bg); color: var(--field-low-text); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+
+/* 알림 줄 — 살펴볼 것이 있을 때만 */
+.clp-notices { display: flex; flex-direction: column; gap: 6px; }
+.clp-notice { position: relative; display: flex; padding: 8px 6px 2px 12px; border-radius: var(--radius-md); background: var(--field-low-bg); }
+.clp-notice__body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.clp-notice__t { padding-right: 40px; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-primary); }
+.clp-notice__w { font-size: 12px; line-height: 20px; color: var(--text-secondary); }
+.clp-notice__go { display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 0 4px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; vertical-align: middle; cursor: pointer; }
+.clp-notice__x { position: absolute; top: 0; right: 0; min-width: var(--control-touch-size); min-height: var(--control-touch-size); padding: 0 8px; border: 0; border-radius: var(--radius-md); background: transparent; font: inherit; font-size: 13px; color: var(--text-tertiary); cursor: pointer; }
+.clp-notice__x:hover { color: var(--text-primary); }
+
+/* 진단·첨삭 — 기다림 두 단계 */
+.clp-steps { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.clp-steps li { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--text-tertiary); }
+.clp-steps li.is-now { color: var(--text-primary); font-weight: 600; }
+.clp-steps li.is-done { color: var(--text-secondary); }
+.clp-steps__dot { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border-strong); }
+.clp-steps li.is-now .clp-steps__dot { border-color: transparent; }
+.clp-steps li.is-now .ai-wait__dots { padding-top: 0; gap: 2px; }
+.clp-steps li.is-now .ai-wait__dots i { width: 4px; height: 4px; }
+.clp-steps li.is-done .clp-steps__dot { border-color: var(--text-secondary); color: var(--text-secondary); }
+
+/* 결과 — 종합 평가 · 포인트 · 고친 글 */
+.clp-box, .clp-sec { scroll-margin-top: 56px; }
+.clp-box { padding: 14px 16px; border-radius: var(--radius-md); background: var(--bg-subtle); }
+.clp-box h4 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--text-strong); }
+.clp-box p { margin: 0; font-size: 15px; line-height: 1.6; }
+.clp-sec { display: flex; align-items: baseline; gap: 8px; margin: 20px 0 8px; font-size: 14px; font-weight: 600; color: var(--text-strong); }
+.clp-sec small { font-size: 12px; font-weight: 500; color: var(--text-tertiary); }
+.clp-pts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.clp-pt { display: block; width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); font: inherit; text-align: left; color: var(--text-primary); cursor: pointer; }
+.clp-pt:hover { border-color: var(--border-strong); }
+.clp-pt--open { border-color: var(--accent-decoration); background: var(--bg-selected); }
+.clp-pt__row { display: flex; align-items: center; gap: 8px; }
+.clp-pt__t { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clp-pt--open .clp-pt__t { white-space: normal; }
+.clp-pt__chev { flex: none; color: var(--text-tertiary); transition: transform .2s; }
+.clp-pt--open .clp-pt__chev { transform: rotate(180deg); }
+.clp-pt__w { display: block; margin-top: 6px; font-size: 14px; color: var(--text-secondary); }
+.clp-chip { flex: none; display: inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 12px; line-height: 18px; font-weight: 600; color: var(--text-strong); background: var(--bg-subtle); }
+.clp-rewrite { padding: 14px 16px; border: 1px solid var(--border-default); border-radius: var(--radius-md); font-size: 15px; line-height: 1.8; word-break: keep-all; white-space: pre-wrap; }
+.clp-rewrite p { margin: 0 0 10px; }
+.clp-rewrite p.clp-rewrite__count { margin: 0; text-align: right; font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: normal; }
+.clp-rs { border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; transition: background .25s, box-shadow .25s; }
+.clp-rs--changed { text-decoration: underline dotted var(--accent-decoration); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.clp-rs--lit { background: var(--pastel-blue); box-shadow: 0 0 0 2px var(--pastel-blue); }
+.clp-actions { position: sticky; bottom: -8px; z-index: 2; display: flex; gap: 8px; margin-top: 12px; padding: 12px 0 8px; background: var(--bg-surface); border-top: 1px solid var(--border-default); }
+.clp-actions .btn { min-height: 52px; font-size: 15px; }
+.clp-actions .clp-actions__main { flex: 1; font-size: 16px; font-weight: 600; }
+.clp-applied { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 8px 16px; border-radius: var(--radius-md); background: var(--bg-subtle); color: var(--text-strong); font-size: 15px; font-weight: 600; }
+.clp-applied > span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* 첨삭 전 살펴볼 곳 — 주 버튼은 '첨삭 받기' 하나라 줄은 글자 버튼으로 */
+.clp-flags { margin-top: 8px; }
+.clp-flags__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.clp-flag { position: relative; display: block; width: 100%; min-height: var(--control-touch-size); padding: 10px 4px 10px 16px; border: 0; border-bottom: 1px solid var(--border-default); background: transparent; font: inherit; font-size: 14px; line-height: 20px; text-align: left; color: var(--text-strong); cursor: pointer; }
+.clp-flag:hover { background: var(--bg-subtle); }
+.clp-flag::before { content: ''; position: absolute; left: 4px; top: 50%; width: 4px; height: 16px; margin-top: -8px; border-radius: 2px; background: var(--caution-300); }
+.clp-flags__list li:last-child .clp-flag { border-bottom: 0; }
+
+/* 짐작 확인 */
+.clp-infs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.clp-inf { padding: 12px; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
+.clp-inf__go { display: block; width: 100%; min-height: var(--control-touch-size); padding: 0; border: 0; background: transparent; font: inherit; text-align: left; color: var(--text-primary); cursor: pointer; }
+.clp-inf__lab { display: block; font-size: 12px; font-weight: 600; color: var(--field-low-text); }
+.clp-inf__t { display: block; margin-top: 4px; font-size: 15px; line-height: 1.55; }
+.clp-inf__t mark { background: var(--field-low-bg); color: inherit; box-shadow: inset 0 -2px 0 var(--caution-300); border-radius: 3px; }
+.clp-inf__acts { display: flex; gap: 4px; margin-top: 8px; }
+
+.clp-grab, .clp-bar { display: none; }
+@media (prefers-reduced-motion: reduce) { .clp-rs, .clp-pt__chev { transition: none; } }
+
+/* 860px 아래 — 아래 막대 세 칸, 누르면 반 높이 시트. 767px 아래는 앱 메뉴 막대 위에 놓는다 */
+@media (max-width: 859.98px) {
+  .cl-draft { grid-template-columns: minmax(0, 1fr); padding-bottom: 72px; }
+  .cl-draft .pq--active::before { left: -12px; top: 30px; }
+  .clp-bar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; gap: 2px; padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); background: var(--bg-surface); border-top: 1px solid var(--border-default); }
+  .clp-bar button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; border: 0; border-radius: 12px; background: transparent; font: inherit; font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+  .clp-bar button[aria-pressed="true"] { background: var(--bg-selected); color: var(--text-primary); font-weight: 600; }
+  .clp-bar .clp-badge { position: absolute; top: 4px; left: calc(50% + 8px); }
+  .clp--sheet { position: fixed; left: 0; right: 0; top: auto; bottom: calc(64px + env(safe-area-inset-bottom)); z-index: 22; height: 55svh; max-height: none; gap: 0; padding: 0 16px; background: var(--bg-surface); border-radius: var(--radius-xl) var(--radius-xl) 0 0; box-shadow: var(--shadow-dialog); }
+  .clp--sheet .clp-head { top: 0; padding: 16px 0 8px; background: var(--bg-surface); }
+  .clp--sheet .clp-grab { display: block; position: absolute; top: 6px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: var(--radius-full); background: var(--border-strong); }
+  .clp--sheet .clp-card { border: 0; border-radius: 0; padding: 4px 0 0; }
+  .clp--sheet .clp-actions { bottom: 0; margin: 12px -16px 0; padding: 10px 16px 12px; }
+}
+@media (max-width: 767px) {
+  .clp-bar { bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom)); }
+  .clp--sheet { bottom: calc(var(--mobile-nav-height) + 64px + env(safe-area-inset-bottom)); height: 50svh; }
+  .cl-draft { padding-bottom: 80px; }
+}

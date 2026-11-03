@@ -1,12 +1,8 @@
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { ACTOR_LABEL, GROUP_LABEL, STATUS_LABEL, type NoteThread } from '@/lib/coverLetterNotes';
 
-/** AI 추론 문장 메모의 세 가지 — 고치는 화면(⑥)에서만 있고 쓰는 중(⑤)에는 없다 */
-export type NoteActions = { confirming: boolean; onConfirm: () => void; onFix: () => void; onRemove: () => void };
-export type NoteActionsFor = (thread: NoteThread) => NoteActions | null;
-
 /** 메모 한 장 — 누가 · 무엇을 · 왜. 원문이 사라진 메모는 원래 문장을 작게 보인다(규칙 6) */
-export function NoteCard({ thread, focused, style, cardRef, actions }: { thread: NoteThread; focused: boolean; style?: React.CSSProperties; cardRef?: (el: HTMLElement | null) => void; actions?: NoteActions | null }) {
+export function NoteCard({ thread, focused, style, cardRef }: { thread: NoteThread; focused: boolean; style?: React.CSSProperties; cardRef?: (el: HTMLElement | null) => void }) {
   return (
     <article ref={cardRef} className={`pnote pnote--${thread.status}${focused ? ' pnote--focus' : ''}`} style={style} data-note-card={thread.key}>
       <header className="pnote__head">
@@ -21,13 +17,6 @@ export function NoteCard({ thread, focused, style, cardRef, actions }: { thread:
           {i.reason && <span className="pnote__reason">{i.reason}</span>}
         </div>
       ))}
-      {actions && (
-        <div className="pnote__actions" role="group" aria-label="AI 추론 문장 처리">
-          <button type="button" className="pnote__action pnote__action--primary" onClick={actions.onConfirm} disabled={actions.confirming} aria-busy={actions.confirming || undefined}>확인</button>
-          <button type="button" className="pnote__action" onClick={actions.onFix}>고치기</button>
-          <button type="button" className="pnote__action" onClick={actions.onRemove}>빼기</button>
-        </div>
-      )}
     </article>
   );
 }
@@ -36,7 +25,7 @@ export function NoteCard({ thread, focused, style, cardRef, actions }: { thread:
  * 오른쪽 여백 메모 — 걸린 문장(`data-note`)의 세로 위치를 재서 그 높이에 놓고, 겹치면 아래로 민다.
  * 문장을 못 찾은 메모(원문이 사라짐·문항 전체 메모)는 문항 끝의 표식에 붙는다. 글이 늘어 자리가 바뀌면 다시 잰다.
  */
-export function MarginNotes({ blockRef, threads, focusKey, revision, actionsFor }: { blockRef: RefObject<HTMLDivElement | null>; threads: NoteThread[]; focusKey: string | null; revision: number; actionsFor?: NoteActionsFor }) {
+export function MarginNotes({ blockRef, threads, focusKey, revision }: { blockRef: RefObject<HTMLDivElement | null>; threads: NoteThread[]; focusKey: string | null; revision: number }) {
   const [tops, setTops] = useState<Record<string, number>>({});
   const [height, setHeight] = useState(0);
   const cards = useRef<Record<string, HTMLElement | null>>({});
@@ -77,7 +66,7 @@ export function MarginNotes({ blockRef, threads, focusKey, revision, actionsFor 
   return (
     <div className="pq__margin-col" style={{ position: 'relative', minHeight: height }}>
       {threads.map((t) => (
-        <NoteCard key={t.key} thread={t} focused={focusKey === t.key} style={{ top: tops[t.key] ?? 0 }} cardRef={(el) => { cards.current[t.key] = el; }} actions={actionsFor?.(t)} />
+        <NoteCard key={t.key} thread={t} focused={focusKey === t.key} style={{ top: tops[t.key] ?? 0 }} cardRef={(el) => { cards.current[t.key] = el; }} />
       ))}
     </div>
   );

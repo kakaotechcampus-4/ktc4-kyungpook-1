@@ -1,5 +1,5 @@
 import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas';
-import { mockMatchDetail, mockMatchList, mockOverall, mockStartGapFill, startMockOverall } from './matching';
+import { mockMatchDetail, mockMatchList, mockOverall, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
 import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
@@ -35,6 +35,7 @@ on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (ap
 on('GET', '/matches', () => ok(mockMatchList()));
 on('GET', '/recommendations', () => ok(mockOverall()));
 on('POST', '/recommendations', () => ok(startMockOverall()));
+on('GET', '/repos/:id/recommendations', ({ params }) => ok(mockRepoRecommendation(params[0])));
 on('GET', '/matches/:id', ({ params }) => {
   const detail=mockMatchDetail(params[0]);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');

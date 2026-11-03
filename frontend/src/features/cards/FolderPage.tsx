@@ -7,6 +7,7 @@ import type { CardSummary } from '@/api/schemas';
 import { Breadcrumb, Button, PageTitle, SectionHead, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { ActivityDeleteDialog } from '@/features/activities/ActivityDeleteDialog';
+import { RepoMatch } from '@/features/match/RepoMatch';
 import { CardGridItem } from '@/features/home/HomePage';
 import { activityMeta } from '@/lib/activityLabels';
 import { buildFolders, folderOwnerLine, folderTitle, type FolderKind } from '@/lib/cardFolders';
@@ -86,6 +87,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
         </div>
       </div>
 
+      {kind === 'repo' && id && <RepoMatch repoId={id} confirmedCards={confirmed} />}
       {(kind === 'repo' || techCards.length > 0) && (
         <CardSection title="기술 카드" cards={techCards} order={order}
           empty={emptyHint("아직 기술 카드가 없어요. 위의 '기술 카드 만들기'에서 커밋을 골라 만들 수 있어요.")} />

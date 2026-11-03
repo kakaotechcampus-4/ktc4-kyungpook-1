@@ -80,6 +80,11 @@ public class CoverLetterQuestion {
     @Enumerated(EnumType.STRING)
     private DraftSource draftSource;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    private QuestionPolish polish;
+
+    private int polishAppliedCount;
+
     public static CoverLetterQuestion of(Long coverLetterId, int seq, String text, int charLimit) {
 
         CoverLetterQuestion question = new CoverLetterQuestion();
@@ -152,9 +157,14 @@ public class CoverLetterQuestion {
 
     }
 
-    /** 고친 글로 글자 수·넘은 수·남은 빈칸을 다시 세며, 문장 번호와 '확인 필요' 표시는 AI 원본 기준으로 둔다 */
+    /** 고친 글로 글자 수·넘은 수·남은 빈칸을 다시 세며, 문장 번호와 '확인 필요' 표시는 AI 가 마지막으로 준 글 기준으로 둔다 */
     public void edit(String text) {
 
+        // 첨삭은 그때 글 기준이라 글이 바뀌면 미리 보기를 버린다
+        // 두면 적용하기가 직접 고친 글을 옛 글로 만든 첨삭 글로 덮는다
+        if (!text.strip().equals(draftText.strip())) {
+            polish = null;
+        }
         draftText = text;
         edited = !text.equals(aiText);
         charCount = DraftText.countableLength(text);
@@ -173,6 +183,38 @@ public class CoverLetterQuestion {
             throw new CoverLetterStateException("그 문장에는 확인할 AI 추론 표시가 없습니다.");
         }
         marks = new ArrayList<>(left);
+
+    }
+
+    /** 앞 첨삭 결과는 덮으며, 적용하기 전까지 지금 글·문장·표시는 그대로 둔다 */
+    public void polished(QuestionPolish polish) {
+
+        this.polish = polish;
+
+    }
+
+    /** 첨삭한 글로 지금 글·문장·표시·빈칸을 바꾸고 첨삭 결과를 비우며, AI 원본은 그대로 둬 원본 보기·되돌리기가 남는다 */
+    public void applyPolish() {
+
+        if (polish == null) {
+            throw new CoverLetterStateException("적용할 첨삭 결과가 없습니다.");
+        }
+        PolishedDraft draft = polish.draft();
+        draftText = draft.text();
+        edited = false;
+        charCount = draft.charCount();
+        overBy = draft.overBy();
+        sentences = new ArrayList<>(draft.sentences());
+        marks = new ArrayList<>(draft.marks());
+        blanks = new ArrayList<>(draft.blanks());
+        polishAppliedCount++;
+        polish = null;
+
+    }
+
+    public void discardPolish() {
+
+        polish = null;
 
     }
 

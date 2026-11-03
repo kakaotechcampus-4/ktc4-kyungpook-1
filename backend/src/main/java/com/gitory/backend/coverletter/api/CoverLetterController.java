@@ -3,6 +3,7 @@ package com.gitory.backend.coverletter.api;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.coverletter.domain.CoverLetterNotFoundException;
+import com.gitory.backend.coverletter.domain.CoverLetterPolishService;
 import com.gitory.backend.coverletter.domain.CoverLetterPostingNotFoundException;
 import com.gitory.backend.coverletter.domain.CoverLetterQueryService;
 import com.gitory.backend.coverletter.domain.CoverLetterService;
@@ -36,6 +37,7 @@ import java.util.UUID;
 public class CoverLetterController {
 
     private final CoverLetterService coverLetters;
+    private final CoverLetterPolishService polishes;
     private final CoverLetterQueryService coverLetterQuery;
 
     @PostMapping("/api/cover-letters")
@@ -229,6 +231,71 @@ public class CoverLetterController {
 
         return ApiResponse.ok(CoverLetterResponse.from(coverLetters.confirmInference(toUuid(id), toUuid(questionId),
                 loginUser.id(), sentenceSeq)));
+
+    }
+
+    @PostMapping("/api/cover-letters/{id}/questions/{questionId}/polish")
+    @Operation(summary = "문항 첨삭 받기", description = """
+            초안을 받은 뒤(DRAFTED)에 문항의 지금 글(text)을 진단하고 고쳐 쓴 글을 받아 문항의 polish 에 둡니다. 앞 첨삭 결과는 덮습니다.
+            AI 를 기다렸다가 답하므로 수십 초 걸릴 수 있고, 지금 글·문장·표시는 적용하기 전까지 그대로입니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 지금 글이 비었음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서·문항, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 첨삭 받기가 1분 3번, 하루 30번을 넘음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI_UNAVAILABLE: AI 가 잠시 응답하지 못함. 저장한 것이 없어 다시 요청해도 된다",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterResponse> polish(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
+            @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId) {
+
+        return ApiResponse.ok(CoverLetterResponse.from(polishes.polish(toUuid(id), toUuid(questionId), loginUser.id())));
+
+    }
+
+    @PostMapping("/api/cover-letters/{id}/questions/{questionId}/polish/apply")
+    @Operation(summary = "문항 첨삭 적용", description = """
+            첨삭한 글로 문항의 지금 글(text)·문장(sentences)·확인 필요 표시(marks)·빈칸·글자 수를 바꾸고 polish 를 비웁니다.
+            edited 는 false, polishAppliedCount 는 1 늘고, AI 원본(aiText)은 그대로입니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서·문항, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님, 적용할 첨삭 결과가 없음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterResponse> applyPolish(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
+            @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId) {
+
+        return ApiResponse.ok(CoverLetterResponse.from(polishes.applyPolish(toUuid(id), toUuid(questionId),
+                loginUser.id())));
+
+    }
+
+    @DeleteMapping("/api/cover-letters/{id}/questions/{questionId}/polish")
+    @Operation(summary = "문항 첨삭 버리기", description = "문항의 첨삭 결과(polish)를 비웁니다. 없으면 그대로 돌려줍니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서·문항, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterResponse> discardPolish(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
+            @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId) {
+
+        return ApiResponse.ok(CoverLetterResponse.from(polishes.discardPolish(toUuid(id), toUuid(questionId),
+                loginUser.id())));
 
     }
 

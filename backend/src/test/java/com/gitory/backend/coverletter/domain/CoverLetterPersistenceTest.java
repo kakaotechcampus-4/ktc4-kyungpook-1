@@ -118,6 +118,33 @@ class CoverLetterPersistenceTest {
     }
 
     @Test
+    @DisplayName("첨삭 결과(진단 포인트·고친 글·받은 시각)는 저장한 그대로 다시 읽히고, 비우면 칸이 NULL 이 되며 적용 횟수는 처음에 0 이다")
+    void polishIsReadBackAsSavedAndClearedToNull() {
+
+        CoverLetter letter = letters.saveAndFlush(CoverLetter.start(userId, "백엔드 개발", null, null));
+        CoverLetterQuestion question = questions.saveAndFlush(CoverLetterQuestion.of(letter.getId(), 1, "협업 경험", 700));
+        QuestionPolish polish = new QuestionPolish("과정이 잘 보입니다.",
+                List.of(new PolishPoint(1, PolishKind.WEAK, PolishCategory.EVIDENCE, "결과가 안 보여요", "한 가지 적어요",
+                        List.of(2)),
+                        new PolishPoint(2, PolishKind.GOOD, PolishCategory.FIT, "끝까지 파고들어요", "문항과 맞아요", List.of())),
+                new PolishedDraft("원인을 찾았다. 응답이 빨라졌다.",
+                        List.of(new DraftSentence(1, "원인을 찾았다."), new DraftSentence(2, "응답이 빨라졌다.")), 17, 0,
+                        List.of(new DraftMark(2, "INFERRED", null)), List.of(MaterialItem.LEARNING)),
+                CoverLetterTime.now());
+        assertThat(questions.findById(question.getId()).orElseThrow().getPolishAppliedCount()).isZero();
+
+        question.polished(polish);
+        questions.saveAndFlush(question);
+
+        assertThat(questions.findById(question.getId()).orElseThrow().getPolish()).isEqualTo(polish);
+        question.discardPolish();
+        questions.saveAndFlush(question);
+        assertThat(jdbc.queryForObject("SELECT polish IS NULL FROM cover_letter_question WHERE id = ?", Boolean.class,
+                question.getId())).isTrue();
+
+    }
+
+    @Test
     @DisplayName("같은 사용자가 같은 키로 두 번 만들 수 없고, 키가 없으면 여러 편을 만들 수 있다")
     void idempotencyKeyIsUniquePerUser() {
 

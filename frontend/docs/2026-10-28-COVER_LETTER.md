@@ -30,6 +30,9 @@
 | `POST /cover-letters/{id}/drafts` | | `CoverLetter`(`stage: DRAFTING`) — 답하지 않은 질문은 넘긴 것으로 본다. `ASKED` 에서만 |
 | `PATCH /cover-letters/{id}/questions/{qid}` | `{ text }` | `CoverLetter` — 고친 글을 저장한다. AI 원본(`aiText`)은 그대로 남는다. `DRAFTED` 에서만 |
 | `DELETE /cover-letters/{id}/questions/{qid}/marks/{sentenceSeq}` | | `CoverLetter` — AI 추론 문장을 맞다고 확인해 그 문장의 `INFERRED` 표시만 지운다(#719). 글은 그대로. `DRAFTED` 에서만, 그 문장에 `INFERRED` 표시가 없으면 409 |
+| `POST /cover-letters/{id}/questions/{qid}/polish` | | `CoverLetter` — 문항의 지금 글(`draft.text`)을 진단하고 고쳐 쓴 글을 받아 그 문항 `polish` 에 둔다. 앞 결과는 덮는다. AI 를 기다렸다가 답해 수십 초 걸릴 수 있다. 지금 글·문장·표시는 적용 전까지 그대로. `DRAFTED` 에서만, 지금 글이 비었으면 400 |
+| `POST /cover-letters/{id}/questions/{qid}/polish/apply` | | `CoverLetter` — 첨삭한 글로 `draft` 의 `text`·`sentences`·`marks`·`blanks`·`charCount`·`overBy` 를 바꾸고 `edited: false`, `polishAppliedCount` +1, `polish: null`. `aiText` 는 그대로. `DRAFTED` 에서만, `polish` 가 없으면 409 |
+| `DELETE /cover-letters/{id}/questions/{qid}/polish` | | `CoverLetter` — `polish` 를 비운다. 없어도 200. `DRAFTED` 에서만 |
 | `POST /cover-letters/{id}/retry` | | `CoverLetter` — 실패한 단계만 다시 돈다. `FAILED` 에서만 |
 | `DELETE /cover-letters/{id}` | | `{ ok: true }` — 어느 단계에서든 지운다. AI 가 돌던 결과는 버린다 |
 
@@ -45,9 +48,10 @@
 **오류**
 - 400 `INVALID_REQUEST` — 위 값 규칙을 어김.
 - 404 `NOT_FOUND` — 없는 자소서·문항, 남의 자소서. 만들기에서는 `postingId` 가 UUID 가 아니거나 공고 상세에서 열 수 없는 공고("공고를 찾을 수 없습니다.").
-- 409 `INVALID_STATE` — 그 단계가 아닐 때(예: `ASKED` 가 아닌데 답 저장).
+- 409 `INVALID_STATE` — 그 단계가 아닐 때(예: `ASKED` 가 아닌데 답 저장), 첨삭 결과 없이 적용.
 - 422 `NO_CONFIRMED_CARDS` — 확정 카드가 한 장도 없어 만들 수 없다. 화면은 "확정한 카드가 없어요" 와 카드 만들기로 안내한다.
-- 429 `RATE_LIMITED` — 만들기와 다시 시도만 센다(1분 2번 · 하루 10번). AI 를 새로 돌리는 요청이 이 둘뿐이다.
+- 429 `RATE_LIMITED` — 만들기와 다시 시도를 합쳐 센다(1분 2번 · 하루 10번). 첨삭 받기는 따로 센다(1분 3번 · 하루 30번). 적용·버리기는 세지 않는다.
+- 503 `AI_UNAVAILABLE` — 첨삭 받기에서 AI 가 잠시 응답하지 못함. 저장한 것이 없어 다시 요청해도 된다. AI 응답이 계약과 달라 다시 해도 같으면 500 `INTERNAL_ERROR`.
 
 ## `CoverLetter`
 
@@ -77,7 +81,15 @@
                "marks": [{ "sentenceSeq": 2, "code": "UNSOURCED_NUMBER", "value": "30%" }],
                "blanks": ["LEARNING"], "source": "LLM|SKELETON" } | null,
     // ⑥ 쓰는 중 — DRAFTING 동안만
-    "writing": { "text": "…", "round": 0 } | null
+    "writing": { "text": "…", "round": 0 } | null,
+    // ⑥ 첨삭 미리 보기 — DRAFTED 에서 첨삭을 받은 뒤 적용·버리기 전까지
+    "polish": { "summary": "…",
+                "points": [{ "seq": 1, "kind": "GOOD|WEAK", "category": "FIT|EVIDENCE|READABILITY|OVERLAP|TECH_TERMS",
+                             "title": "…", "detail": "…", "sentenceSeqs": [6] }],
+                "draft": { "text": "…", "sentences": [{ "seq": 1, "text": "…" }], "charCount": 640, "overBy": 0,
+                           "marks": [{ "sentenceSeq": 2, "code": "INFERRED", "value": null }], "blanks": [] },
+                "createdAt": "ISO" } | null,
+    "polishAppliedCount": 0
   }],
   "steps": { "assign": [ … ], "draft": [ … ] } }
 ```
@@ -98,6 +110,10 @@
 - `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남) · `INFERRED`(AI 가 재료에 없는 해석 — 배운 점·판단 이유·직무 연결·포부 — 을 추론해 쓴 문장. 사용자가 확인하면 위 `DELETE` 로 지운다). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것과 `INFERRED` 는 `null`.
 - `draft.source: SKELETON` 은 AI 가 쓰지 못해 카드 문장과 빈칸으로 만든 뼈대다.
 - `writing`: 초안을 쓰는 동안(`DRAFTING`) AI 가 그 문항에 지금까지 쓴 글이다. 첫 초안(`round` 0)은 문장이 끝날 때마다 늘어나고, 고쳐 쓸 때는 `round` 가 1씩 늘며 다 쓴 새 글로 한 번에 바뀐다(화면은 앞 글과 문장 단위로 견줘 바뀐 문장만 다시 그린다). 검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 앞 글로 돌아온다. 아직 쓰기 전이거나 단계가 끝나면(`DRAFTED`·`FAILED`) `null` 이고, 다 쓰면 `draft` 가 채워진다. 빠뜨린 빈칸은 다 쓴 뒤에 붙으므로 `writing` 에는 없을 수 있다.
+
+- `polish`: 첨삭 미리 보기. `points` 는 아쉬운 점(`WEAK`) 최대 4개 · 잘한 점(`GOOD`) 최대 3개이고, `category` 는 `FIT` 문항 적합성 · `EVIDENCE` 근거 · `READABILITY` 읽기 쉬움 · `OVERLAP` 겹침 · `TECH_TERMS` 기술 용어다. `sentenceSeqs` 는 **고친 글(`polish.draft.sentences`)의 문장 번호**다(없으면 `[]`). `polish.draft` 의 `marks`·`blanks`·`charCount` 는 `draft` 와 같은 규칙으로 고친 글 기준이다.
+- 글을 직접 고쳐 저장하면(PATCH) 첨삭 미리 보기는 사라진다(`polish: null`). 앞뒤 공백만 다른 글은 그대로 둔다.
+- `polishAppliedCount`: 첨삭을 적용한 횟수. 화면은 `n + 1` 판으로 보일 수 있다. 적용 뒤 `draft.sentences`·`marks` 는 적용한 글 기준이고 `aiText` 는 첫 AI 원본 그대로다.
 
 **`CoverLetterSummary`** — `{ id, stage, jobRole, posting, questionCount, firstQuestion, createdAt, updatedAt }` — `posting` 은 `CoverLetter` 와 같은 모양이고 공고 없이 만들었으면 `null`
 

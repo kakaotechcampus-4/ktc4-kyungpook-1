@@ -102,22 +102,22 @@ describe('레포 목록 화면', () => {
   it('못 센 레포는 숫자 대신 "세는 중"을 보이고 "내 기여 0%"·"PR 0건"을 띄우지 않는다', () => {
     mount('/repos', <ReposPage />, '/repos', seedRepos);
     const row = rowOf(/side-project-new/);
-    expect(within(row).getAllByText(/세는 중/).length).toBeGreaterThanOrEqual(2);   // 배지 · 내 커밋 칩 · PR/리뷰 줄
+    expect(within(row).getByText(/기여 개수를 세는 중이에요/)).toBeInTheDocument();   // #756 숫자 줄 대신 문장 한 줄
     expect(within(row).getByText(/집계 전이에요/)).toBeInTheDocument();
     expect(within(row).queryByText(/내 기여/)).not.toBeInTheDocument();
     expect(within(row).queryByText('PR 0건')).not.toBeInTheDocument();
     expect(within(row).queryByText(/부풀린 것처럼/)).not.toBeInTheDocument();
-    expect(within(row).queryByText(/PR이 없어서/)).not.toBeInTheDocument();
+    expect(within(row).queryByText(/PR 없이/)).not.toBeInTheDocument();
     expect(within(row).queryByText(/내 커밋 0/)).not.toBeInTheDocument();
   });
 
   it('실제로 0 인 레포는 그대로 0 과 경고를 보인다 (세는 중과 구분)', () => {
     mount('/repos', <ReposPage />, '/repos', seedRepos);
     const real = rowOf(/algorithm-study/);                 // PR 0건 · 개수를 센 레포
-    expect(within(real).getByText('PR 0건')).toBeInTheDocument();
+    expect(within(real).getByText(/^PR 없이 커밋 \d+개를 올린 레포라/)).toBeInTheDocument();
     expect(within(real).queryByText(/세는 중/)).not.toBeInTheDocument();
-    expect(within(rowOf(/team-board/)).getByText(/내 기여 2%/)).toBeInTheDocument();   // 센 결과가 낮은 기여
-    expect(screen.getAllByText('PR 0건')).toHaveLength(2);                              // 못 센 레포는 세지 않는다
+    expect(within(rowOf(/team-board/)).getByText(/^내 커밋이 \d+개$/)).toBeInTheDocument();   // 센 결과가 낮은 기여
+    expect(within(rowOf(/side-project-new/)).queryByText(/PR 없이/)).not.toBeInTheDocument();  // 못 센 레포는 PR 없음으로 말하지 않는다
   });
 
   it('"PR 0건"·"PR 있는 레포" 필터는 못 센 레포를 넣지 않는다', () => {

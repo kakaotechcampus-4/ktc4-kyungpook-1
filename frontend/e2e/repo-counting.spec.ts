@@ -11,10 +11,9 @@ test('개수를 못 센 레포는 숫자 대신 "세는 중"이고, 0 으로 오
   await expect(counting).toContainText('세는 중');
   await expect(counting).toContainText('집계 전이에요');
   await expect(counting).not.toContainText('내 기여');
-  await expect(counting).not.toContainText('PR 0건');
+  await expect(counting).not.toContainText('PR 없이');
   // 실제로 센 0 은 그대로 보인다 — 구분이 사라지면 안 된다
-  await expect(page.getByRole('radio', { name: /algorithm-study/ })).toContainText('PR 0건');
-  expect(await page.getByText('PR 0건', { exact: true }).count()).toBe(2);   // algorithm-study · team-board, 못 센 레포는 세지 않는다
+  await expect(page.getByRole('radio', { name: /algorithm-study/ })).toContainText(/PR 없이 커밋 \d+개를 올린 레포라/);
 
   await counting.click();
   await page.getByRole('button', { name: '다음', exact: true }).click();

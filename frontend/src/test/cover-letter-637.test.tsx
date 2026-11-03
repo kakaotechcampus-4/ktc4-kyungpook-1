@@ -73,7 +73,7 @@ describe('① 공고에서 시작한 입력 화면', () => {
     expect(screen.getByRole('region', { name: '지원 공고' })).toHaveTextContent('가온소프트');
     expect(screen.getByRole('link', { name: /공고 보기/ })).toHaveAttribute('href', `/match/${POSTING.id}`);
     fillQuestion();
-    fireEvent.click(screen.getByRole('button', { name: '카드 고르기 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '카드 고르기' }));
     await waitFor(() => expect(db.coverLetters).toHaveLength(1));
     expect(db.coverLetters[0].posting).toEqual(POSTING);
   });
@@ -92,7 +92,7 @@ describe('① 공고에서 시작한 입력 화면', () => {
     mount(`/cover-letters/new?postingId=${POSTING.id}`);
     await waitFor(() => expect(jobInput()).toHaveValue(POSTING.title));
     fillQuestion();
-    fireEvent.click(screen.getByRole('button', { name: '카드 고르기 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '카드 고르기' }));
     await screen.findByText('공고를 찾을 수 없어요');
     expect(db.coverLetters).toHaveLength(0);
     // 같은 화면으로 돌아오므로 적어 둔 문항은 남고, 공고 때문에 난 실패 안내는 사라진다

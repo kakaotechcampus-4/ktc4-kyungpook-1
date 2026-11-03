@@ -295,6 +295,8 @@ export function MatchDetailPage() {
     if (revealed.has("cards")) log.push({ key: "cards", text: confirmedCount === undefined ? "확정 카드를 읽었어요" : `확정 카드 ${confirmedCount}장을 읽었어요` });
     if (revealed.has("compared")) log.push({ key: "compared", text: comparedText(detail.conditions) });
   }
+  // 처음 맞춰 보는 동안(서버가 AI 에게 묻고 최대 90초) 버튼의 돌림 표시만 있으면 멈춘 것처럼 보인다
+  if (!returned && judge.isPending) log.push({ key: "judging", text: confirmedCount === undefined ? "확정 카드를 읽고 조건과 견주고 있어요" : `확정 카드 ${confirmedCount}장을 읽고 조건과 견주고 있어요`, live: true });
   if (returned && judge.isPending) log.push({ key: "rejudge", text: "새로 확정한 카드로 다시 맞춰 보고 있어요", live: true });
   if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
   if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드를 확정하면 다시 맞춰 볼게요" });
@@ -420,7 +422,9 @@ export function MatchDetailPage() {
               {noConfirmedCards ? (
                 <p className="posting-summary__hint">경험 카드를 확정하면 조건마다 맞춰 볼 수 있어요.</p>
               ) : (
-                detail.needsJudgement && !returned && <p className="posting-summary__hint">확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.</p>
+                detail.needsJudgement && !returned && (
+                  <p className="posting-summary__hint">{judge.isPending ? "조건이 많으면 1분쯤 걸려요." : "확정한 경험 카드로 조건마다 맞는지 맞춰 봐요."}</p>
+                )
               )}
               <div className="posting-summary__actions">
                 {action}

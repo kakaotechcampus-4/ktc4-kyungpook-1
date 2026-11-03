@@ -13,7 +13,7 @@
 .cand-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 14px; }
 .cand-tile { display: flex; flex-direction: column; min-width: 0; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
 .cand-tile:hover { border-color: var(--border-strong); }
-.cand-tile--on, .cand-tile--on:hover { border-color: var(--border-accent); box-shadow: inset 0 0 0 1px var(--border-accent); background: var(--bg-selected); }
+.cand-tile--on, .cand-tile--on:hover { border-color: var(--border-accent); box-shadow: inset 0 0 0 1px var(--border-accent); background: var(--bg-accent); }
 .cand-tile--open { grid-column: 1 / -1; }
 .cand-tile__pick { flex: 1; display: flex; flex-direction: column; gap: 6px; width: 100%; min-height: var(--control-touch-size); padding: 16px 16px 14px; border: 0; border-radius: inherit; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .cand-tile__pick:disabled { cursor: default; }

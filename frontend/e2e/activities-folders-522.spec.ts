@@ -89,24 +89,24 @@ test('확정 카드가 든 활동을 지우면 확정 카드도 지워진다고 
   await expect(page.locator('.experience-item')).toHaveCount(6); // 8장 중 활동 카드 2장이 함께 지워졌다
 });
 
-test('폴더는 키보드로 열고, 위에 두면 색만 바뀐다', async ({ page }) => {
+test('폴더는 키보드로 열고, 위에 두면 테두리 색이 바뀌고 부채꼴이 조금 벌어진다', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/cards');
   const auth = folder(page, /^레포 hong-dev, auth-service/);
   await expect(auth).toBeVisible();
-  const before = await auth.evaluate((el) => {
+  const read = (el: Element) => {
     const back = el.querySelector('.folder__back')!, front = el.querySelector('.folder__front')!;
-    return { back: getComputedStyle(back).backgroundColor, tab: getComputedStyle(back, '::before').backgroundColor, border: getComputedStyle(front).borderColor, box: JSON.stringify(el.getBoundingClientRect()), transform: getComputedStyle(el).transform };
-  });
+    return { layer: getComputedStyle(back, '::before').borderTopColor, layer2: getComputedStyle(back, '::after').borderTopColor, border: getComputedStyle(front).borderColor, box: JSON.stringify(el.getBoundingClientRect()), transform: getComputedStyle(el).transform };
+  };
+  const fan = (el: Element) => getComputedStyle(el.querySelector('.folder__back')!, '::before').transform;
+  const before = await auth.evaluate(read), fanBefore = await auth.evaluate(fan);
   await auth.hover();
-  const after = await auth.evaluate((el) => {
-    const back = el.querySelector('.folder__back')!, front = el.querySelector('.folder__front')!;
-    return { back: getComputedStyle(back).backgroundColor, tab: getComputedStyle(back, '::before').backgroundColor, border: getComputedStyle(front).borderColor, box: JSON.stringify(el.getBoundingClientRect()), transform: getComputedStyle(el).transform };
-  });
-  expect(after.back).not.toBe(before.back); // 뒤판 --bg-ink-hover
-  expect(after.tab).toBe(after.back); // 탭은 뒤판과 한 색
-  expect(after.border).not.toBe(before.border); // 앞판 테두리 초록
-  expect(after.box).toBe(before.box); // 움직임 없음
+  const after = await auth.evaluate(read);
+  await expect.poll(() => auth.evaluate(fan)).not.toBe(fanBefore); // 부채꼴이 조금 더 벌어진다
+  expect(after.border).not.toBe(before.border); // 맨 위 카드 테두리
+  expect(after.layer).not.toBe(before.layer); // 겹친 카드 테두리
+  expect(after.layer2).toBe(after.layer); // 겹친 카드는 한 색
+  expect(after.box).toBe(before.box); // 폴더 자리는 그대로
   expect(after.transform).toBe(before.transform);
 
   await page.mouse.move(0, 0);
@@ -135,12 +135,12 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark'] as c
     for (const box of await folders.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()))) {
       expect(box.height).toBeGreaterThanOrEqual(44); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.right).toBeLessThanOrEqual(width);
     }
-    // 앞판의 글은 읽을 수 있는 대비다(숫자·소유자·경험 카드 없음·기술 태그)
+    // 앞판의 글은 읽을 수 있는 대비다(장 수·소유자·안내 한 줄·기술 태그)
     for (const value of await page.evaluate(readContrasts, [
       { text: '.folder__owner', surface: '.folder__front' }, { text: '.folder__name', surface: '.folder__front' }, { text: '.folder__note', surface: '.folder__front' },
       { text: '.folder__count-num', surface: '.folder__front' }, { text: '.folder__tag', surface: '.folder__tag' },
     ])) expect(value).toBeGreaterThanOrEqual(4.5);
-    // 활동 폴더 앞판 첫 줄은 '활동, 종류'이고, 경험 카드가 없는 폴더에만 '경험 카드 없음'이 있다
+    // 활동 폴더 앞판 첫 줄은 '활동, 종류'이고, 안내 한 줄은 기술 카드만 있는 폴더와 빈 폴더에만 있다
     await expect(page.locator('.folder__note')).toHaveCount(2);
     await expect(page.getByText('활동, 동아리', { exact: true })).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/folders-${width}-${theme}.png`, fullPage: true, animations: 'disabled' });

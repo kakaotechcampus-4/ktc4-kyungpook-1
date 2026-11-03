@@ -346,7 +346,7 @@ export const seedCards = [
 export const seedActivities = [
   { id: 'act_club', name: '교내 개발 동아리', type: 'CLUB', startMonth: '2025-03', endMonth: null, role: '백엔드 파트장', createdAt: daysAgo(40) },
   { id: 'act_edu', name: '카카오테크캠퍼스', type: 'EDUCATION', startMonth: '2025-09', endMonth: '2026-02', role: '팀 프로젝트 팀원', createdAt: daysAgo(30) },
-  // 카드가 아직 없는 활동 — 폴더에는 '경험 카드 없음'이 보이고, 지울 때는 "안에 카드가 없어요"가 나온다
+  // 카드가 아직 없는 활동 — 폴더에는 '아직 카드가 없어요'가 보이고, 지울 때는 "안에 카드가 없어요"가 나온다
   { id: 'act_contest', name: '해커톤 참가', type: 'CONTEST', startMonth: '2026-05', endMonth: '2026-06', role: null, createdAt: daysAgo(20) },
 ];
 

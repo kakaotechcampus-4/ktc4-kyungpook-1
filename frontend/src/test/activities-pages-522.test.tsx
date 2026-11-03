@@ -31,10 +31,10 @@ const routes = () => [
 ];
 const FOLDERS = {
   auth: '레포 hong-dev, auth-service, 카드 4장, 기술 Java',
-  fts: '레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 경험 카드 없음',
+  fts: '레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 기술 카드만 있어요',
   club: '활동, 동아리, 교내 개발 동아리, 카드 2장',
   edu: '활동, 교육 과정, 카카오테크캠퍼스, 카드 1장',
-  contest: '활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 경험 카드 없음',
+  contest: '활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요 · 열어서 만들기',
 };
 const tiles = (root: ParentNode = document) => root.querySelectorAll('.experience-item');
 const button = (name: string | RegExp) => screen.getByRole('button', { name });
@@ -51,9 +51,21 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(screen.getByRole('link', { name: FOLDERS.contest })).toHaveAttribute('href', '/cards/activity/act_contest');
     expect(screen.getByRole('radio', { name: '폴더' })).toHaveAttribute('aria-checked', 'true');
     expect(tiles()).toHaveLength(0);
-    // 앞판 글: 경험 카드가 없는 폴더에만 '경험 카드 없음', 장식(뒤판·탭)은 접근성 트리에서 뺀다
-    expect(screen.getAllByText('경험 카드 없음')).toHaveLength(2);
+    // 앞판 글: 기술 카드만 있는 폴더와 빈 폴더에 안내 한 줄, 장식(뒤에 겹친 카드)은 접근성 트리에서 뺀다
+    expect(screen.getByText('기술 카드만 있어요')).toBeInTheDocument();
+    expect(screen.getByText('아직 카드가 없어요 · 열어서 만들기')).toBeInTheDocument();
+    // 장 수는 종류 아이콘 옆 작은 글이고, 빈 폴더에는 없다(0장 대신 안내 한 줄이 말한다)
+    expect(auth.querySelector('.folder__head .folder__count')).toHaveTextContent(/^4장$/);
+    expect(screen.getByRole('link', { name: FOLDERS.contest }).querySelector('.folder__count')).toBeNull();
     expect(auth.querySelector('.folder__back')).toHaveAttribute('aria-hidden', 'true');
+    // 뒤로 겹쳐 보이는 카드는 장 수를 따르고(4장 두 겹, 2장 한 겹, 1장 없음), 카드가 없는 폴더만 점선(data-empty)이다
+    expect(auth).toHaveAttribute('data-deck', '2');
+    expect(screen.getByRole('link', { name: FOLDERS.club })).toHaveAttribute('data-deck', '1');
+    expect(screen.getByRole('link', { name: FOLDERS.fts })).toHaveAttribute('data-deck', '0');
+    expect(screen.getByRole('link', { name: FOLDERS.contest })).toHaveAttribute('data-empty', 'true');
+    expect(auth).not.toHaveAttribute('data-empty');
+    // 종류 아이콘도 장식이다
+    expect(auth.querySelector('.folder__kind')).toHaveAttribute('aria-hidden', 'true');
     // 직접 쓴 카드가 없으니 그 폴더도 없다
     expect(screen.queryByRole('link', { name: /직접 쓴 카드/ })).not.toBeInTheDocument();
   });

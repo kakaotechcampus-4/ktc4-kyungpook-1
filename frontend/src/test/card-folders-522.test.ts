@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Activity } from '@/api/activities';
 import { CardSummary } from '@/api/schemas';
-import { buildFolders, folderLabel, lacksExperience, topTechs } from '@/lib/cardFolders';
+import { buildFolders, deckLayers, folderLabel, folderNote, topTechs } from '@/lib/cardFolders';
 
 const card = (id: string, over: Record<string, unknown> = {}) => CardSummary.parse({
   id, kind: 'TECH', status: 'DRAFT', title: id, versionNo: 1, areas: [], techs: [], repo: null, activity: null,
@@ -47,9 +47,9 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
     expect(buildFolders([card('x')], []).map((f) => f.kind)).toEqual(['direct']);
   });
 
-  it('경험 카드 없음은 정성 카드가 한 장도 없는 레포·활동 폴더에만 붙는다. 직접 쓴 카드 폴더는 해당 없다', () => {
-    const byKey = Object.fromEntries(buildFolders(cards, activities).map((f) => [f.key, lacksExperience(f)]));
-    expect(byKey).toEqual({ 'activity:a_empty': true, 'repo:r_fts': true, 'activity:a_club': false, 'repo:r_auth': false, direct: false });
+  it('앞판 안내 한 줄: 빈 폴더는 만들러 들어오게, 기술 카드만 있는 레포·활동 폴더는 그 사실을 적고, 경험 카드가 있거나 직접 쓴 카드 폴더는 없다', () => {
+    const byKey = Object.fromEntries(buildFolders(cards, activities).map((f) => [f.key, folderNote(f)]));
+    expect(byKey).toEqual({ 'activity:a_empty': '아직 카드가 없어요 · 열어서 만들기', 'repo:r_fts': '기술 카드만 있어요', 'activity:a_club': null, 'repo:r_auth': null, direct: null });
   });
 
   it('앞판 기술은 가장 많은 카드에 붙은 둘이다. 같으면 최근 카드의 것이 앞이고, 태그가 없으면 비어 있다(지어내지 않는다)', () => {
@@ -80,12 +80,18 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
     expect(both.map((f) => f.key)).toEqual(['repo:r_auth']);
   });
 
-  it('링크 이름에 소유자, 이름, 장 수, 경험 카드 없음, 기술이 모두 들어 있다(보이는 글이 이름에 들어 있어야 한다)', () => {
+  it('링크 이름에 소유자, 이름, 장 수, 안내 한 줄, 기술이 모두 들어 있다(보이는 글이 이름에 들어 있어야 한다)', () => {
     const folders = Object.fromEntries(buildFolders(cards, activities).map((f) => [f.key, f]));
     expect(folderLabel(folders['repo:r_auth'])).toBe('레포 hong-dev, auth-service, 카드 2장, 기술 Java, Spring');
-    expect(folderLabel(folders['repo:r_fts'])).toBe('레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 경험 카드 없음, 기술 TypeScript');
-    expect(folderLabel(folders['activity:a_empty'])).toBe('활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 경험 카드 없음');
+    expect(folderLabel(folders['repo:r_fts'])).toBe('레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 기술 카드만 있어요, 기술 TypeScript');
+    expect(folderLabel(folders['activity:a_empty'])).toBe('활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요 · 열어서 만들기');
     expect(folderLabel(folders['activity:a_club'])).toBe('활동, 동아리, 교내 개발 동아리, 카드 2장');
     expect(folderLabel(folders.direct)).toBe('레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장');
+  });
+});
+
+describe('폴더 앞판 뒤로 겹쳐 보이는 카드 수 (#522)', () => {
+  it('한 장은 겹치지 않고 둘은 한 겹, 셋 이상은 두 겹으로 멈춘다', () => {
+    expect([0, 1, 2, 3, 4, 8, 100].map(deckLayers)).toEqual([0, 0, 1, 2, 2, 2, 2]);
   });
 });

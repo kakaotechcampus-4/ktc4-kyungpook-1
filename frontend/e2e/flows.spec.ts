@@ -19,25 +19,13 @@ test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 
   await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // GITHUB_RATE_LIMITED
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
-  await expect(page.getByRole('heading', { name: /후보 \d+개 \(부분 결과\)/ })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: / 에서 찾은 일$/ })).toBeVisible();
   await expect(page.getByText('읽은 기록에서 찾은 후보예요')).toBeVisible();
   await page.getByRole('button', { name: '정리 기준' }).click();
   await expect(page.getByRole('button', { name: '다시 정리하기' })).toBeDisabled();
   await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).last().click();
   await page.getByRole('link', { name: '작업 상태 보기' }).click();
   await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
-});
-
-test('후보 제외는 실행 취소할 수 있다', async ({ page }) => {
-  await login(page);
-  await page.goto('/repos/r_auth/candidates');
-  const first = page.locator('.cand').first();
-  const title = await first.locator('.cand__title').textContent();
-  await first.getByRole('button', { name: '제외' }).click();
-  await expect(page.locator('.toast')).toContainText('제외했어요');
-  await expect(page.locator('.cand').first().locator('.cand__title')).not.toHaveText(title!);
-  await page.getByRole('button', { name: '실행 취소' }).click();
-  await expect(page.locator('.cand__title', { hasText: title! })).toBeVisible();
 });
 
 test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채워진다', async ({ page }) => {
@@ -56,8 +44,8 @@ test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채
   await expect(page.getByText('선택한 답변, 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
   // 답하면 칸을 정하지 않고 다음 질문을 요청한다(#418). 이 카드는 T 가 마지막 빈 칸이라 AI 가 스스로 끝낸다
-  await expect(page.getByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeVisible();
-  await expect(page.getByRole('button', { name: '카드 확인하고 확정하기' })).toBeVisible();
+  await expect(page.getByText('추가 질문을 마쳤어요')).toBeVisible();
+  await expect(page.getByRole('button', { name: '카드 검토하기' })).toBeVisible();
   // 질문이 끝난 뒤에는 "카드로" 링크를 또 두지 않는다(확정 버튼이 카드로 가는 길). 여기서는 칸이 채워졌는지만 본다
   await page.goto('/cards/card_01');
   await expect(page.locator('#star-T').locator('..').locator('..')).not.toContainText('근거를 찾지 못해');

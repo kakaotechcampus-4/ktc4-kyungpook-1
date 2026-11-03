@@ -162,6 +162,11 @@ public class CoverLetterQuestion {
     /** 고친 글로 글자 수·넘은 수·남은 빈칸을 다시 세며, 문장 번호와 '확인 필요' 표시는 AI 가 마지막으로 준 글 기준으로 둔다 */
     public void edit(String text) {
 
+        // 첨삭은 그때 글 기준이라 글이 바뀌면 미리 보기를 버린다
+        // 두면 적용하기가 직접 고친 글을 옛 글로 만든 첨삭 글로 덮는다
+        if (!text.strip().equals(draftText.strip())) {
+            polish = null;
+        }
         draftText = text;
         edited = !text.equals(aiText);
         charCount = DraftText.countableLength(text);

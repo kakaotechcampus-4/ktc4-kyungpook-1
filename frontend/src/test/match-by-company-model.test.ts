@@ -5,8 +5,6 @@ import {
   companyLabel,
   companyMonogram,
   companyPath,
-  companyTone,
-  COMPANY_TONES,
   filtersFromParams,
   findCompany,
   groupByCompany,
@@ -135,25 +133,11 @@ describe("기업 마크 — 이니셜과 색", () => {
     expect(companyMonogram("---")).toBe("·");
   });
 
-  it("같은 이름은 언제나 같은 이니셜·색이고, 표기만 다른 이름도 같다", () => {
-    for (const name of ["가온소프트", "나래랩스", "Toss", "(주)카카오"]) {
-      expect(companyTone(name)).toBe(companyTone(name));
-      expect(companyMonogram(name)).toBe(companyMonogram(name));
-    }
-    expect(companyTone(" toss ")).toBe(companyTone("TOSS"));
-    expect(companyTone("(주)카카오")).toBe(companyTone("카카오"));
-    expect(companyTone("㈜카카오")).toBe(companyTone("카카오"));
-  });
-
-  it("색 번호는 0 ~ 7 정수이고, 이름이 다르면 여러 색으로 흩어진다", () => {
-    const names = Array.from({ length: 24 }, (_, i) => `기업${i}`);
-    const tones = names.map(companyTone);
-    expect(tones.every((t) => Number.isInteger(t) && t >= 0 && t < COMPANY_TONES)).toBe(true);
-    expect(new Set(tones).size).toBeGreaterThanOrEqual(4);
-  });
-
-  it("색 배정이 배포 사이에 바뀌지 않는다 — 기업의 색이 곧 기억이다", () => {
-    expect(list.data.map((x) => companyTone(x.company))).toEqual([0, 2, 1, 7, 4]);
+  it("같은 이름은 언제나 같은 이니셜이고, 표기만 다른 이름도 같다", () => {
+    for (const name of ["가온소프트", "나래랩스", "Toss", "(주)카카오"]) expect(companyMonogram(name)).toBe(companyMonogram(name));
+    expect(companyMonogram(" toss ")).toBe(companyMonogram("TOSS"));
+    expect(companyMonogram("(주)카카오")).toBe(companyMonogram("카카오"));
+    expect(companyMonogram("㈜카카오")).toBe(companyMonogram("카카오"));
   });
 });
 

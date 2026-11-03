@@ -70,17 +70,6 @@ test('dark logo is visible on mobile, expanded and collapsed navigation', async 
   await expect(page.locator('.mobile-brand .brand-logo__dark')).toBeVisible();
 });
 
-test('suggested selections add to previously selected hidden candidates', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/repos/r_auth/candidates');
-  const first = page.getByRole('checkbox', { name: '로그인 세션 처리 선택' });
-  await first.check();
-  await page.getByRole('textbox', { name: '후보 검색 (제목, 추천 이유)' }).fill('로그인 API');
-  await page.getByRole('button', { name: '추천 후보 선택' }).click();
-  await page.getByRole('button', { name: '검색 지우기' }).click();
-  await expect(first).toBeChecked();
-  await expect(page.getByRole('button', { name: '선택한 2개로 카드 만들기' })).toBeVisible();
-});
-
 test('bulk restore attempts every excluded candidate despite request failures', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/repos/r_auth/candidates');
   await page.evaluate(async () => {

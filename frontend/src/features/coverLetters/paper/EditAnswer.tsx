@@ -9,7 +9,10 @@ import { unconfirmedInferences, type NoteThread } from '@/lib/coverLetterNotes';
 import { locateSentence } from '@/lib/draftPaper';
 import { blanksIn, moreToWrite } from '@/lib/draftText';
 import { track } from '@/lib/track';
+import { useReducedMotion } from '@/lib/useLiveText';
 import { TextRuns, type Highlight } from './TextRuns';
+
+const FLASH_MS = 2_400;
 
 const fitHeight = (el: HTMLTextAreaElement) => {
   el.style.height = '0px';
@@ -27,20 +30,22 @@ export type DraftEditing = {
 };
 
 /**
- * ⑥ 고치는 답 칸의 글상자·저장 상태. 여백 메모의 '고치기'(글상자에서 문장 고르기)·'빼기'(빼고 저장)도 같은 글상자와 저장을 써서,
- * 메모를 그리는 PaperQuestion 이 갖고 EditAnswer 에 넘긴다. 아직 저장하지 않았으면 서버 글을 저장된 글로 본다.
+ * ⑥ 고치는 답 칸의 글상자·저장 상태 — PaperQuestion 이 갖고 EditAnswer 에 넘긴다. 아직 저장하지 않았으면 서버 글을 저장된 글로 본다.
+ * 저장한 뒤 서버 글이 다른 길(첨삭 적용·패널의 빼기)로 바뀌면 그 서버 글이 저장된 글이다 — 안 그러면 바뀐 글을 고친 글로 보고 다시 보낸다.
  */
 export function useDraftEditing(letterId: string, q: CoverLetterQuestion, text: string): DraftEditing {
-  const [saved, setSaved] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ server: string; text: string } | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const area = useRef<HTMLTextAreaElement>(null);
   const save = useSaveDraft(letterId);
-  const base = saved ?? q.draft?.text ?? '';
+  const server = q.draft?.text ?? '';
+  const base = saved && saved.server === server ? saved.text : server;
   const persist = async (next: string = text) => {
     if (next === base || next.length > DRAFT_MAX) return;
     try {
       const letter = await save.mutateAsync({ questionId: q.id, text: next });
-      setSaved(letter.questions.find((x) => x.id === q.id)?.draft?.text ?? next);
+      const after = letter.questions.find((x) => x.id === q.id)?.draft?.text;
+      setSaved({ server: after ?? server, text: after ?? next });
       setNote(null);
       track('cover_letter_edited', { coverLetterId: letterId, questionSeq: q.seq });
     } catch (e) { setNote(`${errorView(e).message} 고친 글은 화면에 그대로 있어요.`); }
@@ -52,8 +57,9 @@ export function useDraftEditing(letterId: string, q: CoverLetterQuestion, text: 
  * ⑥ 고치는 답 칸 — 실제 textarea 를 종이 모양으로 두고, 칠하기는 뒤에 같은 글을 그린 층이 맡는다(한국어 조합 입력이 깨지지 않게).
  * 저장(칸을 벗어날 때·버튼)·복사·AI 원본·채울 곳은 예전 ⑥ 과 같은 규칙이고 자리만 옮겼다.
  */
-export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot, editing }: {
+export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot, editing, flash = null }: {
   letterId: string; q: CoverLetterQuestion; text: string; onText: (text: string) => void; threads: NoteThread[]; focusKey: string | null; foot: ReactNode; editing: DraftEditing;
+  flash?: { sentence: string | null; n: number } | null;
 }) {
   const d = q.draft!;
   const [showOriginal, setShowOriginal] = useState(false);
@@ -80,10 +86,29 @@ export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot,
     return () => ro.disconnect();
   }, [area]);
 
-  const highlights = useMemo<Highlight[]>(() => threads.flatMap((t) => {
-    const r = locateSentence(text, t.sentence);
-    return r ? [{ key: t.key, ...r, status: t.status, value: t.value, focus: focusKey === t.key }] : [];
-  }), [threads, text, focusKey]);
+  // 채우기로 다시 쓴 문장은 잠깐 파랑으로 칠하고 그 자리로 간다 — 겹치는 메모보다 앞에 둔다
+  const reduced = useReducedMotion();
+  const [lit, setLit] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flash) return;
+    setLit(flash.sentence);
+    const frame = requestAnimationFrame(() => {
+      const el = area.current?.closest('[data-question]');
+      (el?.querySelector('[data-note="fill"]') ?? el)?.scrollIntoView?.({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+    });
+    const t = setTimeout(() => setLit(null), FLASH_MS);
+    return () => { cancelAnimationFrame(frame); clearTimeout(t); };
+  }, [flash?.n]);
+  const highlights = useMemo<Highlight[]>(() => {
+    const fill = lit ? locateSentence(text, lit) : null;
+    return [
+      ...(fill ? [{ key: 'fill', ...fill, status: 'open' as const, value: null, focus: false, flash: true }] : []),
+      ...threads.flatMap((t) => {
+        const r = locateSentence(text, t.sentence);
+        return r ? [{ key: t.key, ...r, status: t.status, value: t.value, focus: focusKey === t.key }] : [];
+      }),
+    ];
+  }, [threads, text, focusKey, lit]);
 
   const copy = async () => {
     const ok = await copyText(text);
@@ -103,9 +128,9 @@ export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot,
       </div>
       {foot}
       <div className="pq__tools">
-        {text !== d.aiText && <span className="t-12 c-3">고친 글</span>}
+        {q.polishAppliedCount > 0 ? <span className="t-12 c-3">{q.polishAppliedCount + 1}판</span> : text !== d.aiText && <span className="t-12 c-3">고친 글</span>}
         <span className="right row" style={{ gap: 6 }}>
-          <Button variant="ghost" size="sm" onClick={() => setShowOriginal((v) => !v)}>{showOriginal ? 'AI 원본 닫기' : 'AI 원본 보기'}</Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowOriginal((v) => !v)}>{`${q.polishAppliedCount > 0 ? '' : 'AI '}원본 ${showOriginal ? '닫기' : '보기'}`}</Button>
           <Button variant="outline" size="sm" onClick={copy}><Copy size={14} aria-hidden /> 복사</Button>
           <Button size="sm" onClick={() => void persist()} loading={editing.saving} disabled={!dirty}>{dirty ? '저장' : '저장됨'}</Button>
         </span>

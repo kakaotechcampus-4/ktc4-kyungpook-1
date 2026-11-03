@@ -18,17 +18,13 @@ test('분석이 도는 동안 경과 시간과 마지막 확인이 흐르고 진
   await expect(page).toHaveURL(/\/repos\/r_auth\/candidates/, { timeout: 30_000 });
 });
 
-test('후보 보드는 이미 카드로 만든 후보를 기본 목록에서 빼고, 개수가 적힌 행을 눌러야 펼친다', async ({ page }) => {
+test('후보 보드는 이미 카드로 만든 후보를 고르는 타일에서 빼고, 아래 한 줄 목록의 카드 보기로 그 카드를 연다', async ({ page }) => {
   await login(page);
   await page.goto('/repos/r_auth/candidates');
-  await expect(page.locator('.cand').first()).toBeVisible();
+  await expect(page.locator('.cand-tile').first()).toBeVisible();
   await expect(page.getByRole('button', { name: /사용됨 (보이기|숨기기)/ })).toHaveCount(0);   // 뒤바뀌는 글자의 버튼이 없다
-  const toggle = page.getByRole('button', { name: '이미 카드로 만든 후보 1개 보기' });
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');                                // 기본은 접힘
-  await expect(page.locator('.cand', { hasText: '토큰 만료 처리' })).toHaveCount(0);
-  await toggle.click();
-  await expect(page.locator('.record-list')).toHaveCount(1);                                    // 별도 목록이 아니라 같은 묶음 안
-  const link = page.locator('.cand', { hasText: '토큰 만료 처리' }).getByRole('link', { name: '카드 보기' });
+  await expect(page.locator('.cand-tile', { hasText: '토큰 만료 처리' })).toHaveCount(0);
+  const link = page.locator('.cand-made__row', { hasText: '토큰 만료 처리' }).getByRole('link', { name: '카드 보기' });
   await expect(link).toBeVisible();
   await link.click();
   await expect(page).toHaveURL(/\/cards\//);

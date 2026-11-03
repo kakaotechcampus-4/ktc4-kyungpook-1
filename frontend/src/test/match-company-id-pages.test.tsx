@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -43,28 +43,10 @@ function mount(path: string, list: MatchTarget[] = companyFixture) {
   return { router, where, ...result };
 }
 const enc = encodeURIComponent;
-const headings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.overall-match')).map((h) => h.textContent); // 위의 '나와 맞는 기업' 칸 제목은 빼고 센다
+const headings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.match-group__head')).map((h) => h.textContent); // 목록의 묶음 제목은 빼고 센다
 const imgsIn = (root: ParentNode) => [...root.querySelectorAll("img")];
 
-it("기업별 보기: companyId 로 묶는다 — 표기가 다른 같은 회사가 한 카드, 로켓펀치 id 도 한 카드", async () => {
-  mount("/match?view=company");
-  await screen.findByRole("link", { name: "카카오" });
-  // 공고 많은 순(2건: 오로라랩스·카카오 → 이름 순) → 1건(나래랩스·토스)
-  expect(headings()).toEqual(["오로라랩스", "카카오", "나래랩스", "토스"]);
-  expect(screen.getByRole("status")).toHaveTextContent("기업 4곳 · 공고 6건");
-  const kakao = screen.getByRole("link", { name: "카카오" }).closest("article")!;
-  expect(within(kakao).getByText("채용 중 2건")).toBeInTheDocument();
-  expect(within(kakao).getByRole("list", { name: "공고" }).textContent).toContain("백엔드 개발자");
-  expect(within(kakao).getByRole("list", { name: "공고" }).textContent).toContain("서버 개발자");
-  expect(screen.queryByRole("link", { name: "Kakao Corp." })).not.toBeInTheDocument();
-  // 링크는 id 로: 콜론·한글은 인코딩된다
-  expect(screen.getByRole("link", { name: "카카오" })).toHaveAttribute("href", "/match/company/kakao?view=company");
-  expect(screen.getByRole("link", { name: "오로라랩스" })).toHaveAttribute("href", `/match/company/rocketpunch%3A${enc("오로라랩스")}?view=company`);
-  // id 가 없는 공고는 이름으로
-  expect(screen.getByRole("link", { name: "나래랩스" })).toHaveAttribute("href", `/match/company/${enc("나래랩스")}?view=company`);
-});
-
-it("공고별 보기: 같은 회사의 두 표기 공고가 같은 기업 페이지로 간다", async () => {
+it("목록: 같은 회사의 두 표기 공고가 같은 기업 페이지로 간다", async () => {
   mount("/match");
   await screen.findByRole("link", { name: "Kakao Corp." });
   expect(screen.getByRole("link", { name: "카카오" })).toHaveAttribute("href", "/match/company/kakao");
@@ -72,7 +54,7 @@ it("공고별 보기: 같은 회사의 두 표기 공고가 같은 기업 페이
 });
 
 it("기업 페이지 /match/company/:companyId — 두 표기 공고를 모두 모으고, 이름은 처음 나온 표기, 로고가 머리말에 뜬다", async () => {
-  const { where } = mount("/match/company/kakao?view=company");
+  const { where } = mount("/match/company/kakao");
   await screen.findByRole("heading", { level: 1, name: "카카오" });
   expect(screen.getByRole("status")).toHaveTextContent("공고 2건");
   expect(headings().sort()).toEqual(["백엔드 개발자", "서버 개발자"]);
@@ -81,7 +63,7 @@ it("기업 페이지 /match/company/:companyId — 두 표기 공고를 모두 �
   expect(logo).toHaveAttribute("src", LOGO);
   expect(logo).toHaveAttribute("alt", "");
   expect(hero.querySelector(".company-mark")).toHaveAttribute("aria-hidden", "true");
-  expect(screen.getByRole("link", { name: "← 기업 목록" })).toHaveAttribute("href", "/match?view=company");
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toHaveAttribute("href", "/match");
   expect(where().path).toBe("/match/company/kakao");
   expect(document.title).toContain("카카오");
 });
@@ -110,18 +92,18 @@ it("옛 이름 기반 주소로 들어와도 같은 기업을 찾는다(어느 �
   mount(`/match/company/${enc("나래랩스")}`);
   await screen.findByRole("heading", { level: 1, name: "나래랩스" });
   cleanup();
-  mount(`/match/company/${enc("없는회사")}?view=company`);
+  mount(`/match/company/${enc("없는회사")}`);
   expect(await screen.findByText("이 기업의 공고를 찾지 못했어요")).toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 1, name: "없는회사" })).toBeInTheDocument();
   expect(document.querySelector(".company-mark")).toBeNull();
-  expect(screen.getByRole("link", { name: "← 기업 목록" })).toHaveAttribute("href", "/match?view=company");
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toHaveAttribute("href", "/match");
 });
 
 it("옛 이름 주소에서 필터를 걸면 '모두 보기' 링크는 companyId 주소로 간다", async () => {
   mount(`/match/company/${enc("Kakao Corp.")}?category=BACKEND`);
   await screen.findByRole("heading", { level: 1, name: "카카오" });
   expect(screen.getByRole("status")).toHaveTextContent("공고 1건");
-  expect(screen.getByText("검색·필터가 적용돼 이 기업의 공고 2건 중 1건만 보여요.")).toBeInTheDocument();
+  expect(screen.getByText("검색과 필터가 적용돼 이 기업의 공고 2건 중 1건만 보여요.")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "이 기업 공고 모두 보기" })).toHaveAttribute("href", "/match/company/kakao");
 });
 
@@ -175,17 +157,6 @@ it("로고는 그 로고가 있는 공고 카드에만 뜨고, 이미지는 장�
   expect(card.querySelector(".company-mark")).toHaveTextContent("카");
 });
 
-it("기업별 카드의 마크는 묶음의 로고를 쓴다(다른 표기 공고에 로고가 있어도)", async () => {
-  // 로고 없는 표기(Kakao Corp.)가 먼저 나오고, 로고는 뒤의 공고에만 있다 — 같은 등급이라 받은 순서 그대로다
-  const [k1, , k2] = companyFixture;
-  const { container } = mount("/match?view=company", [{ ...k2, fit: "A" }, { ...k1, fit: "A" }]);
-  await screen.findByRole("link", { name: "Kakao Corp." });
-  const card = screen.getByRole("link", { name: "Kakao Corp." }).closest("article")!;
-  expect(imgsIn(card)).toHaveLength(1);
-  expect(imgsIn(card)[0]).toHaveAttribute("src", LOGO);
-  expect(imgsIn(container)).toHaveLength(1);
-});
-
 it("목록 카드에 등급·필수·우대 줄이 없다 — 서버가 fit·met 을 채워 줘도, 비워 줘도", async () => {
   const filled = companyFixture.map((x) => ({ ...x, fit: "A" as const, required: { total: 3, met: 3 }, preferred: { total: 2, met: 1 } }));
   const { container } = mount("/match", filled);
@@ -194,7 +165,7 @@ it("목록 카드에 등급·필수·우대 줄이 없다 — 서버가 fit·met
   expect(container.querySelector(".match-fit, .match-fit-empty, .match-counts")).toBeNull();
   cleanup();
   const blank = companyFixture.map((x) => ({ ...x, fit: null, required: { total: 0, met: 0 }, preferred: { total: 0, met: 0 } }));
-  mount("/match?view=company", blank);
+  mount("/match", blank);
   await screen.findAllByRole("link", { name: "카카오" });
   for (const card of screen.getAllByRole("article")) expect(card.textContent).not.toMatch(/등급|필수|우대|\d+ \/ \d+|카드를 확정/);
   expect(screen.queryByLabelText(/등급/)).not.toBeInTheDocument();
@@ -223,7 +194,7 @@ it("로고 주소는 분석 이벤트·주소창에 들어가지 않는다", asy
   const { where, router } = mount("/match");
   fireEvent.click((await screen.findAllByRole("link", { name: "카카오" }))[0]);
   await screen.findByRole("heading", { level: 1, name: "카카오" });
-  await router.navigate(`/match/${detail.id}?view=company`);
+  await router.navigate(`/match/${detail.id}?category=BACKEND`);
   await screen.findByRole("heading", { level: 1, name: detail.role });
   expect(vi.mocked(track).mock.calls.length).toBeGreaterThan(0);
   expect(JSON.stringify(vi.mocked(track).mock.calls)).not.toMatch(/logo|https?:/i);

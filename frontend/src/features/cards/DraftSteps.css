@@ -1,13 +1,9 @@
-/* 카드 상세 'AI 가 한 일' (#521). 색은 시맨틱 토큰만, 글자 크기는 11·12·13·14·16 단계만 쓴다 */
-.draft-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 18px 20px;
-  max-width: var(--size-content);
-}
-.draft-steps__head { display: flex; align-items: flex-start; gap: 12px; }
-.draft-steps__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); }
+/* 카드 상세 '만든 과정' (#521, #746). 색은 시맨틱 토큰만, 글자 크기는 11·12·13·14·16 단계만 쓴다 */
+.draft-process { gap: 10px; padding: 16px 18px; }
+.draft-process__title { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; }
+/* 글자 버튼이지만 눌리는 범위는 44px 이다. 글자 왼쪽 끝을 위 목록과 맞추려 안쪽 여백만큼 당긴다 */
+.draft-process .draft-process__more { align-self: flex-start; margin-left: -8px; color: var(--text-accent); }
+.draft-steps { display: flex; flex-direction: column; gap: 18px; }
 .draft-steps__lead { margin: 0; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
 .draft-steps__group { display: flex; flex-direction: column; gap: 10px; }
 .draft-steps__round { margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-tertiary); }
@@ -18,7 +14,7 @@
 .draft-step:last-child { padding-bottom: 0; }
 .draft-step:not(:last-child)::before { content: ''; position: absolute; left: 14px; top: 32px; bottom: 4px; width: 1px; background: var(--border-default); }
 .draft-step__icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-full); background: var(--bg-subtle); border: 1px solid var(--border-default); color: var(--text-secondary); }
-/* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 'AI 의 판단' 글자가 따로 말한다 */
+/* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 '판단 이유' 글자가 따로 말한다 */
 .draft-step--judged .draft-step__icon { background: var(--accent-point-soft); border-color: var(--border-selected); color: var(--text-accent); }
 .draft-step__body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .draft-step__text { margin: 0; padding-top: 3px; font-size: 14px; line-height: 22px; font-weight: 500; color: var(--text-primary); overflow-wrap: anywhere; }
@@ -27,4 +23,4 @@
 .draft-step__reason-label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-accent); }
 .draft-step__reason q { quotes: '\201C' '\201D'; font-size: 13px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
 
-@media print { .draft-steps { display: none; } }
+@media print { .draft-process { display: none; } }

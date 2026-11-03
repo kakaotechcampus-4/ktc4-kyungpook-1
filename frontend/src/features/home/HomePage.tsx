@@ -1,10 +1,9 @@
 import { useId, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowUp, Check, ChevronRight, FolderGit2, Github, GitCommitHorizontal, GitPullRequest, CircleDot, Layers, MessageSquareQuote, PenLine, Search } from 'lucide-react';
+import { ArrowRight, ArrowUp, Check, ChevronRight, FolderGit2, Github, GitCommitHorizontal, GitPullRequest, CircleDot, Layers, PenLine, Search } from 'lucide-react';
 import { useCards, useMe, useRepos } from '@/api/queries';
 import type { CardSummary, StarField } from '@/api/schemas';
-import { EmptyState, IconBox, KindIcon, PageTitle, SectionHead, Skeleton, StarDots } from '@/components/ui';
-import { SearchField } from '@/components/ui/SearchField';
+import { IconBox, KindIcon, PageTitle, SectionHead, StarDots } from '@/components/ui';
 import { CardStatusMark } from '@/components/cards/CardStatusMark';
 import { cardKindShort } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
@@ -18,7 +17,8 @@ import { CardTags } from '@/components/cards/CardTags';
 import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
-import { JobCalendar } from './JobCalendar';
+import { JobCalendar, type CalendarPosting } from './JobCalendar';
+import { useOverallRecommendation } from '@/api/matching';
 import { HomeRecommendations } from './HomeRecommendations';
 import { HomeActivity } from './HomeActivity';
 import { matchSupported, useMatchedPostings } from '@/api/matching';
@@ -36,17 +36,18 @@ export function HomePage() {
   const [repoSearchOpen, setRepoSearchOpen] = useState(false);
   const cards = useCards();
   const repos = useRepos();
-  const [q, setQ] = useState('');
   const [rq, setRq] = useState('');
   const [hi, setHi] = useState(0);
   const [suggestionsOpen, setSuggestionsOpen] = useState(true);
   const suggestionId = useId();
   const nav = useNavigate();
+  const overall = useOverallRecommendation();
+  // 캘린더에는 공고 목록 전체(운영 수백 개)가 아니라 '나와 맞는 기업' 으로 추천된 공고의 마감일만 자동으로 띄운다
+  const recommendedPostings = useMemo<CalendarPosting[]>(() => overall.data?.status === 'READY'
+    ? overall.data.companies.filter(c => !c.posting.closed).map(c => ({ id: c.posting.id, company: c.companyName, role: c.posting.title, expiresAt: c.posting.deadline, url: null }))
+    : [], [overall.data]);
 
-  const list = useMemo(() => (cards.data ?? []).filter((c) => c.title.toLowerCase().includes(q.toLowerCase())), [cards.data, q]);
-  const preview = q.trim() ? list : list.slice(0, 3);
   const drafts = (cards.data ?? []).filter((c) => c.status === 'DRAFT').slice(0, 3);
-  const empty = cards.isSuccess && cards.data.length === 0;
   // 카드 목록을 아직 모르면(불러오는 중, 실패) 처음 온 사람으로 단정하지 않는다 — 첫 방문 문구가 잠깐 떴다 사라지지 않게
   const returning = cards.isSuccess ? cards.data.length > 0 : true;
   const sameFailure = cards.isError && repos.isError && failureText(cards.error) === failureText(repos.error);
@@ -88,10 +89,10 @@ export function HomePage() {
         <div className="home-welcome__visual" aria-hidden="true"><div className="activity-float activity-float--commit"><GitCommitHorizontal size={20} /><span>Commit<small>쌓아온 작업 기록</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--pr"><GitPullRequest size={20} /><span>Pull Request<small>함께 해결한 문제</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--issue"><CircleDot size={20} /><span>Experience<small>나만의 경험 카드로</small></span><Check size={17} /></div><Github className="home-welcome__github" size={52} strokeWidth={1.4} /></div>
       </section>
       <section className="home-overview" aria-label="취업 준비 현황">
-        <div className="overview-tile overview-tile--blue"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
-        <div className="overview-tile overview-tile--lavender"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
-        <div className="overview-tile overview-tile--mint"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
-        <Link to="/match" className="overview-tile overview-tile--yellow overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
+        <div className="overview-tile"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
+        <div className="overview-tile"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
+        <div className="overview-tile"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
+        <Link to="/match" className="overview-tile overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
       </section>
       <ActiveJobsList />
       <section className="prompt" id="home-repo-search" hidden={!repoSearchOpen}>
@@ -149,31 +150,8 @@ export function HomePage() {
       </section>
 
       <div className="home-lower">
-      <section className="home-recent">
-      {empty ? (
-        <>
-          <div className="sources">
-            <SourceRow icon={FolderGit2} title="레포에서 정리하기" desc="커밋과 PR에서 경험을 찾아 줘요" onClick={() => nav('/repos')} />
-            <SourceRow icon={Search} title="파일 보며 찾기" desc="수정한 파일을 보며 경험을 떠올려요" onClick={() => nav('/repos?filter=nopr')} />
-            <SourceRow icon={MessageSquareQuote} title="직접 작성" desc="코드에 남지 않은 경험을 직접 적어요" onClick={() => nav('/cards/new')} />
-          </div>
-        </>
-      ) : (
-        <>
-          {/* 카드 검색은 카드 목록의 일이라 그 제목 줄에 둔다 — 위의 레포 검색과 입력칸이 두 개 연달아 보이지 않게 */}
-          <div className="home-cards__head">
-            <SectionHead label={q.trim() ? '카드 검색 결과' : '최근 경험 카드'} count={q.trim() ? list.length : cards.data?.length} />
-            <SearchField className="home-cards__search" value={q} onChange={setQ} placeholder="카드 이름으로 검색" />
-            <Link to="/cards" className="btn btn--ghost btn--sm">모든 카드 보기<ArrowRight size={14} aria-hidden /></Link>
-          </div>
-          {cards.isPending && <div className="grid-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} h={150} />)}</div>}
-          <div className="experience-list">{preview.map((c) => <CardGridItem key={c.id} c={c} cardOrder={list.map(card => card.id)} />)}</div>
-          {cards.isSuccess && list.length === 0 && <EmptyState icon={Search} title={`"${q}"에 맞는 카드가 없어요`} desc="다른 이름으로 검색해 주세요." />}
-        </>
-      )}
-      </section>
       <aside className="home-insights">
-      <HomeActivity cards={cards.data ?? []} />
+      <HomeActivity key={me.data?.id} userId={me.data?.id} />
       {drafts.length > 0 && (
         <section className="stack home-resume" style={{ gap: 16 }}>
           <SectionHead label="진행 중인 작업" count={drafts.length} />
@@ -195,7 +173,7 @@ export function HomePage() {
       </aside>
       </div>
       </div>
-      <aside className="home-workspace__calendar" aria-label="공고 일정">{me.data && <JobCalendar key={me.data.id} userId={me.data.id} />}<HomeRecommendations /></aside>
+      <aside className="home-workspace__calendar" aria-label="공고 일정">{me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={recommendedPostings} postingsLoading={matchSupported() && overall.isPending} postingsError={overall.isError} onRetryPostings={() => void overall.refetch()} />}<HomeRecommendations /></aside>
       </div>
     </main>
   );

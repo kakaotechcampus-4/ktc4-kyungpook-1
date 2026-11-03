@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -57,6 +58,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -222,6 +224,40 @@ class CoverLetterPolishApiTest {
     }
 
     @Test
+    @DisplayName("첨삭을 받은 뒤 글을 직접 고쳐 저장하면 첨삭 결과를 비우고, 그 뒤 적용하면 409 이고 고친 글이 남는다")
+    void editAfterPolishDropsThePolish() throws Exception {
+
+        CoverLetter letter = draftedLetter(myUserId);
+        withPolish(letter);
+
+        editDraft(letter, "{\"text\": \"직접 고친 글이다.\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.questions[0].draft.text").value("직접 고친 글이다."))
+                .andExpect(jsonPath("$.data.questions[0].polish").value(nullValue()));
+        apply(letter).andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+
+        CoverLetterQuestion saved = questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst();
+        assertThat(saved.getDraftText()).isEqualTo("직접 고친 글이다.");
+        assertThat(saved.getPolishAppliedCount()).isZero();
+
+    }
+
+    @Test
+    @DisplayName("첨삭을 받은 뒤 같은 글로 저장하면 첨삭 결과를 그대로 둔다")
+    void editWithSameTextKeepsThePolish() throws Exception {
+
+        CoverLetter letter = draftedLetter(myUserId);
+        QuestionPolish polish = withPolish(letter);
+
+        editDraft(letter, "{\"text\": \"" + EDITED_TEXT + "\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.questions[0].polish.draft.text").value("고친 글이다. 결과가 나왔다."));
+
+        assertThat(questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst().getPolish()).isEqualTo(polish);
+
+    }
+
+    @Test
     @DisplayName("초안을 다 쓰기 전에는 첨삭 받기·적용·버리기가 409 이고, AI 를 부르지도 호출 제한을 세지도 않는다")
     void rejectsBeforeDrafted() throws Exception {
 
@@ -379,6 +415,13 @@ class CoverLetterPolishApiTest {
 
         return mvc.perform(post("/api/cover-letters/{id}/questions/{qid}/polish/apply", letter.getPublicId(),
                 questionIdOf(letter)).with(loggedInAs(myUserId)).with(csrf()));
+
+    }
+
+    private ResultActions editDraft(CoverLetter letter, String body) throws Exception {
+
+        return mvc.perform(patch("/api/cover-letters/{id}/questions/{qid}", letter.getPublicId(), questionIdOf(letter))
+                .with(loggedInAs(myUserId)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body));
 
     }
 

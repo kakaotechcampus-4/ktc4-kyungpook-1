@@ -52,12 +52,13 @@ test('목록 행에 마우스를 올리면 배경만 바뀐다 — 칸막이선�
     return { border: cs.borderTopColor, bg: cs.backgroundColor };
   });
   await row.hover();
+  // 배경은 짧은 전환(.15s)으로 바뀌므로 전환이 끝날 때까지 기다려 읽는다
+  await expect.poll(() => row.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(before.bg); // 배경은 눈에 띄게 바뀐다
   const after = await row.evaluate((el) => {
     const cs = getComputedStyle(el);
     return { border: cs.borderTopColor, bg: cs.backgroundColor };
   });
   expect(after.border).toBe(before.border);  // 선은 그대로
-  expect(after.bg).not.toBe(before.bg);      // 배경은 눈에 띄게 바뀐다
 });
 
 test('홀수 경험 카드도 다른 카드와 같은 폭을 유지한다', async ({ page }) => {

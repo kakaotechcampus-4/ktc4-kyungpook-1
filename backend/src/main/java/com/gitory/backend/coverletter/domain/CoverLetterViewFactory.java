@@ -63,6 +63,7 @@ class CoverLetterViewFactory {
 
         return new CoverLetterView(letter.getPublicId(), letter.getStage(), letter.getFailedStep(),
                 letter.getErrorCode(), retryable(letter), letter.isRunning(), letter.getJobRole(), letter.getMemo(),
+                List.copyOf(letter.getStrengths()), letter.getMemoUsable(),
                 CoverLetterPosting.refOf(letter), letter.getCreatedAt(), letter.getUpdatedAt(),
                 loaded.stream()
                         .map(question -> question(question, labels, slots, remembered,

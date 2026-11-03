@@ -153,8 +153,8 @@ public class CoverLetterTurnService {
                 material.supportingCard(), material.answers(), material.currentText(),
                 DraftText.blankTextsIn(material.currentText()), List.of());
 
-        return new CoverLetterTurnRequest(letter.getId(), letter.getJobRole(), letter.getMemo(),
-                CoverLetterPosting.inputOf(letter), question, CoverLetterPolishService.othersOf(loaded, target),
+        return new CoverLetterTurnRequest(letter.getId(), letter.getJobRole(), letter.memoForWriting(),
+                letter.strengthCodes(), CoverLetterPosting.inputOf(letter), question, CoverLetterPolishService.othersOf(loaded, target),
                 List.copyOf(thread), trigger.name());
 
     }
@@ -201,8 +201,8 @@ public class CoverLetterTurnService {
         MaterialItem item = MaterialItem.valueOf(reply.answer().item());
         remember(target, item, target.fillAnswer(item, reply.answer().text()));
 
-        return new Saved(new CoverLetterFillRequest(letter.getId(), letter.getJobRole(), letter.getMemo(),
-                CoverLetterPosting.inputOf(letter), CoverLetterPolishService.othersOf(loaded, target),
+        return new Saved(new CoverLetterFillRequest(letter.getId(), letter.getJobRole(), letter.memoForWriting(),
+                letter.strengthCodes(), CoverLetterPosting.inputOf(letter), CoverLetterPolishService.othersOf(loaded, target),
                 CoverLetterPolishService.targetOf(target, CoverLetterPolishService.cardsOf(cardMaterials, target)),
                 item.name(), blankFor(target.getDraftText(), item)), null);
 

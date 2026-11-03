@@ -61,7 +61,8 @@ class CoverLetterAskStep {
         }
 
         CoverLetterQuestions result = questionsPort.ask(new CoverLetterQuestionsRequest(claimed.getId(),
-                claimed.getJobRole(), claimed.getMemo(), sent, CoverLetterPosting.inputOf(claimed)));
+                claimed.getJobRole(), claimed.getMemo(), claimed.strengthCodes(), sent,
+                CoverLetterPosting.inputOf(claimed)));
         return letter -> save(letter, result, known);
 
     }
@@ -75,6 +76,9 @@ class CoverLetterAskStep {
             bySeq.get(asked.questionId()).asked(asksOf(asked, reused), reused.stream()
                     .map(answer -> new MaterialAnswer(answer.getItem(), answer.getText(), false, true))
                     .toList());
+        }
+        if (result.memoUsable() != null) {
+            letter.memoJudged(result.memoUsable());
         }
         letter.asked();
 

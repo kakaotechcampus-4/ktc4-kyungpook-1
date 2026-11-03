@@ -133,7 +133,7 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
 
     }
 
-    private static CoverLetterDrafts.Draft draft(JsonNode node) {
+    static CoverLetterDrafts.Draft draft(JsonNode node) {
 
         List<CoverLetterDrafts.Sentence> sentences = new ArrayList<>();
         for (JsonNode sentence : array(node, "sentences")) {
@@ -161,7 +161,7 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
 
     }
 
-    private static CoverLetterDrafts.Step step(JsonNode node, Set<Integer> questionIds) {
+    static CoverLetterDrafts.Step step(JsonNode node, Set<Integer> questionIds) {
 
         Integer questionId = optionalPositiveInt(node, "question_id");
         if (questionId != null && !questionIds.contains(questionId)) {
@@ -176,7 +176,7 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
 
     }
 
-    private static JsonNode array(JsonNode node, String field) {
+    static JsonNode array(JsonNode node, String field) {
 
         JsonNode value = node.path(field);
         if (!value.isArray()) {
@@ -186,7 +186,7 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
 
     }
 
-    private static int positiveInt(JsonNode node, String field) {
+    static int positiveInt(JsonNode node, String field) {
 
         int value = nonNegativeInt(node, field);
         if (value == 0) {
@@ -221,7 +221,7 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
 
     }
 
-    private static String text(JsonNode node, String field) {
+    static String text(JsonNode node, String field) {
 
         JsonNode value = node.path(field);
         if (!value.isString() || value.asString().isBlank()) {
@@ -231,7 +231,7 @@ public class AiCoverLetterDraftsAdapter implements CoverLetterDraftsPort {
 
     }
 
-    private static String oneOf(JsonNode node, String field, Set<String> allowed) {
+    static String oneOf(JsonNode node, String field, Set<String> allowed) {
 
         JsonNode value = node.path(field);
         if (!value.isString() || !allowed.contains(value.asString())) {

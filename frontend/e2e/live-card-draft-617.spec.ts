@@ -105,7 +105,7 @@ test('동작 줄이기를 켜면 글을 펼치지 않고 오는 대로 한 번�
   await expect(slot(page, 'S')).toHaveAttribute('data-phase', 'DONE', { timeout: 30_000 });
   await expect(generationHeading(page)).toHaveCount(0, { timeout: 30_000 });
   expect(await page.evaluate(() => (window as unknown as { __partial: boolean }).__partial)).toBe(false);
-  // 한 장만 썼으면 그 카드에 머물고, 'AI 가 한 일'이 카드 상세에도 남아 있다
+  // 한 장만 썼으면 그 카드에 머물고, 쓴 과정이 카드 상세 오른쪽 '만든 과정'에도 남아 있다
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'AI 가 한 일' })).toBeVisible();
+  await expect(page.getByRole('region', { name: '만든 과정' }).getByRole('button', { name: '자세히' })).toBeVisible();
 });

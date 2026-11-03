@@ -152,7 +152,7 @@ describe('④ ⑥ 화면', () => {
     const area = screen.getByLabelText('2번 문항 초안');
     fireEvent.change(area, { target: { value: `짧은 글 ${BLANK_TEXT.RESULT}` } });
     expect(screen.getByText(/^5 \/ 1,000자/)).toBeInTheDocument();
-    expect(screen.getByText(/결과/, { selector: 'b' })).toBeInTheDocument();
+    expect(screen.getByText(/결과/, { selector: '.cl-todo b' })).toBeInTheDocument();
     const saveBtns = screen.getAllByRole('button', { name: '저장' });
     expect(saveBtns).toHaveLength(1);
     fireEvent.click(saveBtns[0]);

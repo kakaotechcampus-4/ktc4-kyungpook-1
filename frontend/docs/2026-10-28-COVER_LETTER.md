@@ -148,6 +148,28 @@
 
 `actor` 는 `SUB_AGENT`(문항 담당) · `SUPERVISOR`(감독) · `CODE`(코드) 중 하나다. 모르는 값이 오면 그 줄을 건너뛴다.
 
+## 채우기 대화 — 화면이 읽는 것 (#733)
+
+초안(`DRAFTED`) 옆 패널의 채우기 탭이 부른다. 자소서 하나에 대화 하나이고, 말마다 어느 문항 얘기인지(`questionId`)가 붙는다. 화면은 `src/api/coverLetters.ts` 의 `useTurns` · `useOpenTurn` · `useReplyTurn` · `useSkipTurn` 으로 읽는다.
+
+| | 요청 | 응답 |
+|---|---|---|
+| `GET /cover-letters/{id}/turns` | | `{ turns: Turn[] }` 오래된 것부터. 화면은 패널이 열릴 때 한 번 읽고, 뒤로는 아래 응답의 `turns` 로 바꾼다 |
+| `POST /cover-letters/{id}/questions/{qid}/turns/open` | | `TurnReply` — 그 문항 이야기를 시작한다(AI 말 하나) |
+| `POST /cover-letters/{id}/questions/{qid}/turns` | `{ text }` 1~500자 | `TurnReply` — 내 말 + AI 말. `FILLED` 면 서버가 그 문항을 다시 써서 `question.draft` 가 바뀌어 온다. 수십 초가 걸릴 수 있어 화면은 100초를 기다린다 |
+| `POST /cover-letters/{id}/questions/{qid}/turns/skip` | | `TurnReply` — 지금 질문을 넘긴다 |
+
+```jsonc
+// Turn
+{ "seq": 3, "role": "AI", "questionId": "<문항 id>", "text": "알려 준 대로 그 자리를 다시 썼어요.\n…", "item": "ACTION", "status": "FILLED", "createdAt": "…" }
+// TurnReply
+{ "turns": [Turn], "question": Question, "rewriteFailed": false }
+```
+- `role` 은 `AI` · `USER`. `status` 는 AI 말에만 있다: `ASKING`(질문이 열림) · `FILLED`(이 답으로 그 문항을 다시 씀) · `DONE`(이 문항은 더 묻지 않음) · `OFF_TOPIC`(재료가 아닌 말이라 돌려보냄, 질문은 그대로 열림). 모르는 `status`·`item` 은 `null` 로 읽고, 모양이 다른 말은 그 말만 버린다.
+- 화면은 마지막 AI 말이 `DONE` 이 아니면 입력을 연다. `FILLED` 다음에 물을 게 남았으면 같은 말에 다음 질문이 붙어 오고, 없으면 `DONE` 말이 하나 더 붙어 온다.
+- `question` 은 `CoverLetter.questions[]` 와 같은 모양이고 화면은 자소서 캐시의 그 문항 자리에 넣는다. `rewriteFailed: true` 면 답은 저장됐지만 글은 그대로다.
+- 오류: 400(글 규칙) · 409 `INVALID_STATE`(초안 단계가 아님, 열린 질문 없음) · 429 `RATE_LIMITED` · 503 `LLM_UNAVAILABLE`. 화면은 429(1분)·503·연결 실패를 '잠시 뒤 다시 보내 주세요' 한 줄과 다시 보내기로, 하루 한도는 그 말로 알린다.
+
 ## 예시 문항 버튼 (서버 일 없음)
 
 ① 문항 칸 옆 예시 버튼의 문장. 모두에게 같다. 화면은 카드 목록의 문항 유형(`themes`)을 세어 많은 유형 3개와 지원 동기를 먼저 보이고, 나머지는 '더 보기'에 둔다. 카드가 없거나 유형이 모자라면 아래 순서로 채운다.

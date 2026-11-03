@@ -158,6 +158,31 @@ export const CoverLetter = z.object({
 });
 export type CoverLetter = z.infer<typeof CoverLetter>;
 
+/** 채우기 대화(#733) — 자소서 하나에 대화 하나. 말마다 어느 문항 얘기인지(questionId)가 붙는다 */
+export const TURN_ROLES = ['AI', 'USER'] as const;
+export const TURN_STATUSES = ['ASKING', 'FILLED', 'DONE', 'OFF_TOPIC'] as const;
+export type TurnStatus = (typeof TURN_STATUSES)[number];
+const isTurnStatus = (v: unknown): v is TurnStatus => (TURN_STATUSES as readonly unknown[]).includes(v);
+export const CoverLetterTurn = z.object({
+  seq: z.number(),
+  role: z.enum(TURN_ROLES),
+  questionId: z.string(),
+  text: z.string(),
+  item: z.unknown().transform((v) => (isItem(v) ? v : null)),
+  /** AI 말에만 있다. 모르는 값은 null 로 읽고 질문이 열린 말로 본다 */
+  status: z.unknown().transform((v) => (isTurnStatus(v) ? v : null)),
+  createdAt: text,
+});
+export type CoverLetterTurn = z.infer<typeof CoverLetterTurn>;
+/** 모양이 다른 말은 그 말만 버린다 */
+const turnList = z.array(z.unknown()).nullish().catch(null)
+  .transform((v) => (v ?? []).flatMap((t) => { const r = CoverLetterTurn.safeParse(t); return r.success ? [r.data] : []; }));
+export const TurnsResponse = z.object({ turns: turnList });
+/** open·답·넘기기의 응답 — 대화 전체와 그 문항. 답으로 그 문항을 다시 쓰다 실패하면 rewriteFailed 이고 글은 그대로다 */
+export const TurnReply = z.object({ turns: turnList, question: Question, rewriteFailed: z.boolean().nullish().catch(null).transform((v) => v === true) });
+export type TurnReply = z.infer<typeof TurnReply>;
+export const TURN_TEXT_MAX = 500;
+
 export const CoverLetterSummary = z.object({
   id: z.string(), stage: CoverLetterStage, jobRole: z.string(), posting: nullable(Posting), questionCount: z.number(),
   firstQuestion: text, createdAt: z.string(), updatedAt: z.string(),
@@ -207,12 +232,21 @@ export const coverLetterApi = {
   discardPolish: (id: string, questionId: string) =>
     api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'DELETE' }),
   remove: (id: string) => api(z.object({ ok: z.boolean() }), `/cover-letters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  turns: (id: string) => api(TurnsResponse, `/cover-letters/${encodeURIComponent(id)}/turns`),
+  openTurn: (id: string, questionId: string) =>
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/open`, { method: 'POST' }),
+  /** 답이 충분하면 서버가 그 문항을 다시 쓴 뒤에 답한다 — 수십 초가 걸릴 수 있어 첨삭과 같은 100초를 준다 */
+  replyTurn: (id: string, questionId: string, text: string) =>
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns`, { method: 'POST', body: { text }, timeoutMs: 150_000 }),
+  skipTurn: (id: string, questionId: string) =>
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/skip`, { method: 'POST' }),
 };
 
 // ───────────────────────────── 조회·변경 ─────────────────────────────
 export const coverLetterKeys = {
   all: ['coverLetters'] as const,
   one: (id: string) => ['coverLetters', id] as const,
+  turns: (id: string) => ['coverLetters', id, 'turns'] as const,
 };
 const POLL_MIN_MS = 500;
 
@@ -266,3 +300,25 @@ export const useApplyPolish = (id: string) =>
   useLetterMutation(({ questionId }: { questionId: string }) => coverLetterApi.applyPolish(id, questionId), true);
 export const useDiscardPolish = (id: string) =>
   useLetterMutation(({ questionId }: { questionId: string }) => coverLetterApi.discardPolish(id, questionId), true);
+
+/** 대화는 패널이 열릴 때 한 번 읽고, 뒤로는 각 응답의 turns 로 바꾼다 */
+export const useTurns = (id: string) =>
+  useQuery({ queryKey: coverLetterKeys.turns(id), queryFn: () => coverLetterApi.turns(id).then((r) => r.turns), staleTime: Infinity });
+
+/** 응답의 대화로 대화 캐시를 바꾸고, 응답의 문항을 자소서 캐시의 그 문항 자리에 넣는다 */
+function useTurnMutation<V>(id: string, fn: (vars: V) => Promise<TurnReply>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    meta: { errorPresentation: 'inline' },
+    onSuccess: (r) => {
+      client.setQueryData(coverLetterKeys.turns(id), r.turns);
+      client.setQueryData<CoverLetter>(coverLetterKeys.one(id), (l) => (l ? { ...l, questions: l.questions.map((q) => (q.id === r.question.id ? r.question : q)) } : l));
+      void client.invalidateQueries({ queryKey: coverLetterKeys.all, exact: true });
+    },
+  });
+}
+export const useOpenTurn = (id: string) => useTurnMutation(id, ({ questionId }: { questionId: string }) => coverLetterApi.openTurn(id, questionId));
+export const useReplyTurn = (id: string) =>
+  useTurnMutation(id, ({ questionId, text }: { questionId: string; text: string }) => coverLetterApi.replyTurn(id, questionId, text));
+export const useSkipTurn = (id: string) => useTurnMutation(id, ({ questionId }: { questionId: string }) => coverLetterApi.skipTurn(id, questionId));

@@ -47,7 +47,7 @@
 .cards-controls { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; }
 .view-switch { display: inline-flex; padding: 3px; border-radius: var(--control-radius); background: var(--bg-inset); }
 .view-switch__item { min-height: 38px; padding: 6px 14px; border-radius: 10px; font-size: 13px; font-weight: var(--control-weight); color: var(--text-secondary); }
-.view-switch__item[aria-checked="true"] { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+.view-switch__item[aria-checked="true"], .view-switch__item[aria-pressed="true"] { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
 .card-groups { display: flex; flex-direction: column; gap: 28px; }
 /* 묶음은 상자가 아니라 제목 줄과 구분선 — 카드 안에 카드가 들어간 모양을 만들지 않는다(frontend-design: 같은 둥근 카드로 쪼개기) */
 .card-group { display: flex; flex-direction: column; gap: 14px; }

@@ -56,8 +56,8 @@ test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채
   await expect(page.getByText('선택한 답변, 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
   // 답하면 칸을 정하지 않고 다음 질문을 요청한다(#418). 이 카드는 T 가 마지막 빈 칸이라 AI 가 스스로 끝낸다
-  await expect(page.getByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeVisible();
-  await expect(page.getByRole('button', { name: '카드 확인하고 확정하기' })).toBeVisible();
+  await expect(page.getByText('추가 질문을 마쳤어요')).toBeVisible();
+  await expect(page.getByRole('button', { name: '카드 검토하기' })).toBeVisible();
   // 질문이 끝난 뒤에는 "카드로" 링크를 또 두지 않는다(확정 버튼이 카드로 가는 길). 여기서는 칸이 채워졌는지만 본다
   await page.goto('/cards/card_01');
   await expect(page.locator('#star-T').locator('..').locator('..')).not.toContainText('근거를 찾지 못해');

@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo, openRepoSearch } from './helpers';
+import { loginAsDemo, openRepoSearch, showCardTiles } from './helpers';
 
 test('search has one focus boundary, Escape clears and returns typing focus', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/');
+  // 카드 검색은 경험 카드 목록에 있다(폴더 보기에는 검색이 없어 최근순으로 바꿔 본다)
+  await loginAsDemo(page); await page.goto('/cards'); await showCardTiles(page);
   const search = page.getByRole('textbox', { name: '카드 이름으로 검색', exact: true });
   await search.fill('로그인');
   const focus = await search.evaluate(element => ({ outline: getComputedStyle(element).outlineStyle, shadow: getComputedStyle(element).boxShadow }));

@@ -98,33 +98,16 @@
 }
 
 /* 공고별 / 기업별 */
+/* 경험 카드의 공통 view-switch 스타일을 사용한다. */
 .match-view {
-  display: inline-flex;
   align-self: flex-start;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--bg-surface);
 }
-.match-view__option {
+/* 공통 view-switch 칸(38px)보다 커야 손가락으로 누르기 쉽다 */
+.match-view .match-view__option {
   min-height: var(--control-touch-size);
-  min-width: 88px;
-  padding: 0 18px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-}
-.match-view__option + .match-view__option {
-  border-left: 1px solid var(--border-strong);
 }
 .match-view__option:hover {
   color: var(--text-primary);
-}
-.match-view__option[aria-pressed="true"] {
-  background: var(--bg-selected);
-  color: var(--text-primary);
-  font-weight: 600;
-  box-shadow: inset 0 0 0 1px var(--border-selected);
 }
 .match-view__option:focus-visible {
   outline: 2px solid var(--text-accent);

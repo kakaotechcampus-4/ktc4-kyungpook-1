@@ -20,7 +20,8 @@
 .calendar-weekdays > span:last-child { color: #4A6C9E; }
 .calendar-day { min-height: 88px; padding: 4px; border-bottom: 1px solid var(--border-default); border-right: 1px solid var(--border-default); min-width: 0; }
 .calendar-day:nth-child(7n) { border-right: 0; }
-.calendar-day--selected { background: var(--bg-paper); box-shadow: inset 0 0 0 1px var(--border-selected); border-radius: 8px; }
+.calendar-day--selected { background: transparent; }
+.calendar-day__number[aria-pressed="true"]:not(.calendar-day__number--today) { background: var(--bg-inset); color: var(--text-primary); }
 .calendar-day__number { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; font-size: 12px; margin: 0 auto 3px; }
 .calendar-day__number:hover { background: var(--bg-inset); }
 .calendar-day__number--today, .calendar-day__number--today:hover { background: var(--bg-ink-solid); color: var(--text-on-ink); }
@@ -257,3 +258,66 @@
 .home-workspace__content .experience-item .stardots--labeled .stardot { height: auto; gap: 3px; }
 .home-workspace__content .experience-item .stardots--labeled .stardot__letter { width: 22px; height: 22px; font-size: 11px; }
 .home-workspace__content .experience-item .stardots--labeled .stardot__label { font-size: 9px; line-height: 14px; }
+
+.selected-event__posting { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; border-radius: 8px; padding-block: 6px; }
+.selected-event__posting:hover strong { text-decoration: underline; }
+.selected-event__posting:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
+
+/* 마감 공고가 많은 날에도 캘린더 높이는 유지하고 목록만 스크롤한다. */
+.calendar-agenda__list {
+  max-height: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  padding-inline: 4px;
+  margin-inline: -4px;
+}
+.calendar-agenda__list:focus-visible {
+  outline: 2px solid var(--border-selected);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+@media (max-width: 767px) {
+  .calendar-agenda__list { max-height: min(320px, 45svh); }
+}
+
+/* 활동량에 따라 짙어지는 주 단위 잔디. 좁은 카드에서는 내부 가로 스크롤. */
+.career-grass-scroll { padding: 4px; margin: 18px -4px 0; }
+.career-grass { display: grid; grid-template-columns: 18px minmax(0, 1fr); grid-template-rows: 16px auto; gap: 4px 6px; width: 100%; min-width: 0; --grass-gap: clamp(1px, .15vw, 2px); }
+.career-grass__months { grid-column: 2; display: grid; grid-template-columns: repeat(var(--grass-weeks), minmax(0, 1fr)); gap: var(--grass-gap); color: var(--text-tertiary); font-size: clamp(7px, .7vw, 10px); }
+.career-grass__weekdays { display: grid; grid-template-rows: repeat(7, minmax(0, 1fr)); row-gap: var(--grass-gap); min-height: 0; align-items: center; color: var(--text-tertiary); font-size: 9px; line-height: 1; }
+.career-grass__grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, auto); min-width: 0; min-height: 0; align-self: start; grid-template-columns: repeat(var(--grass-weeks), minmax(0, 1fr)); gap: var(--grass-gap); }
+.career-grass__day, .career-grass__legend i { --grass: var(--bg-inset); background: var(--grass); border: 1px solid rgb(0 0 0 / 5%); border-radius: 3px; aspect-ratio: 1; }
+.career-grass [data-level="1"], .career-grass__legend [data-level="1"] { --grass: #DCE9DF; }
+.career-grass [data-level="2"], .career-grass__legend [data-level="2"] { --grass: #A9C5B0; }
+.career-grass [data-level="3"], .career-grass__legend [data-level="3"] { --grass: #739A7E; }
+.career-grass [data-level="4"], .career-grass__legend [data-level="4"] { --grass: #42694D; }
+.career-grass__day:disabled { cursor: default; }
+.career-grass__day[data-outside] { visibility: hidden; }
+.career-grass__day[aria-pressed="true"] { outline: 2px solid var(--text-primary); outline-offset: 1px; }
+.career-grass__day:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+.career-grass__legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 10px; color: var(--text-secondary); font-size: 10px; }
+.career-grass__legend i { width: 11px; }
+.career-grass__detail { padding-top: 16px; margin-top: 14px; border-top: 1px solid var(--border-default); font-size: 12px; }
+.career-grass__detail strong { font-weight: 600; }
+.career-grass__detail strong > span { margin-left: 8px; color: var(--text-secondary); font-weight: 400; }
+.career-grass__detail > div { display: flex; gap: 8px 16px; flex-wrap: wrap; margin-top: 10px; color: var(--text-secondary); font-size: 11px; }
+.career-grass__detail b { margin-left: 4px; color: var(--text-primary); font-weight: 600; }
+
+/* GitHub처럼 작은 고정 크기의 칸으로, 넓은 화면에서도 늘어나지 않는다. */
+.career-grass__day { box-sizing: border-box; width: 100%; height: auto; aspect-ratio: 1; min-width: 0; min-height: 0; padding: 0; line-height: 1; border-radius: 2px; }
+.career-grass__legend { justify-content: flex-start; margin-top: 8px; }
+.career-grass__detail { padding-top: 10px; margin-top: 10px; font-size: 11px; }
+.career-grass__detail > div { margin-top: 6px; font-size: 10px; }
+
+.home-lower .home-insights { grid-column: 1 / -1; }
+
+.career-grass__months > span { white-space: nowrap; }
+
+.career-grass__weekdays { contain: size; }
+@media (max-width: 480px) {
+  .career-grass { grid-template-columns: 12px minmax(0, 1fr); column-gap: 4px; }
+  .career-grass__weekdays { font-size: 7px; }
+}

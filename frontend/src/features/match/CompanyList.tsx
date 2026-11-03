@@ -15,12 +15,12 @@ const VIEWS: { value: MatchView; label: string }[] = [
 /** 공고별 / 기업별 보기 전환. 값은 주소(?view=company)에 담겨 새로고침·뒤로 가기·링크 공유에서도 유지된다. */
 export function ViewToggle({ value, onChange }: { value: MatchView; onChange: (next: MatchView) => void }) {
   return (
-    <div className="match-view" role="group" aria-label="보기 방식">
+    <div className="match-view view-switch" role="group" aria-label="보기 방식">
       {VIEWS.map((view) => (
         <button
           key={view.value}
           type="button"
-          className="match-view__option"
+          className="match-view__option view-switch__item"
           aria-pressed={value === view.value}
           onClick={() => onChange(view.value)}
         >

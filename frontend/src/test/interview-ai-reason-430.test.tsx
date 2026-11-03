@@ -171,18 +171,18 @@ describe('AI 가 끝낸 이유', () => {
 
   it('AI 가 끝내면 그만 묻는 이유를 AI 판단으로 보이고, 끝난 알림과 같은 낭독 영역 안에 둔다', async () => {
     finish([aiTurn('T', 1, null, { askedBy: 'USER_REQUEST' })], '네 칸이 모두 채워져서 질문을 마칠게요');
-    expect(await screen.findByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeInTheDocument();
+    expect(await screen.findByText('추가 질문을 마쳤어요')).toBeInTheDocument();
     const block = (await screen.findByText('네 칸이 모두 채워져서 질문을 마칠게요')).closest('p')!;
     expect(within(block).getByText('AI 판단')).toBeInTheDocument();
     expect(liveRegions()).toHaveLength(1);
-    expect(liveRegions()[0]).toContainElement(screen.getByText('AI 가 더 물을 것이 없다고 판단했어요'));
+    expect(liveRegions()[0]).toContainElement(screen.getByText('추가 질문을 마쳤어요'));
     expect(liveRegions()[0]).toContainElement(block);
   });
 
   it('이유가 없으면 지금 문구 그대로이고 AI 판단을 지어내지 않는다', async () => {
     finish([aiTurn('T', 1, null, { askedBy: 'USER_REQUEST' })], null);
-    expect(await screen.findByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeInTheDocument();
-    expect(screen.getByText(/카드를 확인하고 확정하세요/)).toBeInTheDocument();
+    expect(await screen.findByText('추가 질문을 마쳤어요')).toBeInTheDocument();
+    expect(screen.getByText(/작성된 카드를 검토해 주세요/)).toBeInTheDocument();
     expect(screen.queryByText('AI 판단')).not.toBeInTheDocument();
   });
 
@@ -191,10 +191,10 @@ describe('AI 가 끝낸 이유', () => {
     const ask = vi.spyOn(endpoints, 'askInterview').mockResolvedValue(null);
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue(turns);
     mount(turns, { card: { ...card, interviewEndReason: '네 칸이 모두 채워져서 질문을 마칠게요' } });
-    expect(screen.getByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeInTheDocument();
+    expect(screen.getByText('추가 질문을 마쳤어요')).toBeInTheDocument();
     expect(screen.getByText('네 칸이 모두 채워져서 질문을 마칠게요')).toBeInTheDocument();
-    expect(screen.getByText('더 묻고 싶은 칸')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 확인하고 확정하기' })).toBeInTheDocument();
+    expect(screen.getByText('더 보완하고 싶다면')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드 검토하기' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'AI 가 고르게 하기' })).not.toBeInTheDocument();
     expect(ask).not.toHaveBeenCalled();
   });
@@ -204,12 +204,12 @@ describe('AI 가 끝낸 이유', () => {
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue(turns);
     mount(turns, { card: { ...card, interviewEndReason: null } });
     expect(screen.getByText('이어서 물을까요?')).toBeInTheDocument();
-    expect(screen.queryByText('AI 가 더 물을 것이 없다고 판단했어요')).not.toBeInTheDocument();
+    expect(screen.queryByText('추가 질문을 마쳤어요')).not.toBeInTheDocument();
   });
 
   it('이유가 있어도 질문이 열려 있으면 끝난 알림을 보이지 않는다', () => {
     mount([aiTurn('R', 1, '앞 답에 수치가 없어요')], { card: { ...card, interviewEndReason: '지난 이유' } });
-    expect(screen.queryByText('AI 가 더 물을 것이 없다고 판단했어요')).not.toBeInTheDocument();
+    expect(screen.queryByText('추가 질문을 마쳤어요')).not.toBeInTheDocument();
     expect(screen.queryByText('지난 이유')).not.toBeInTheDocument();
   });
 
@@ -218,7 +218,7 @@ describe('AI 가 끝낸 이유', () => {
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue(turns);
     const confirmedCard = { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' } as Card;
     mount(turns, { card: { ...confirmedCard, interviewEndReason: null } });
-    expect(liveRegions()[0]).toContainElement(screen.getByText('네 칸이 모두 차서 카드를 확정했어요'));
+    expect(liveRegions()[0]).toContainElement(screen.getByText('경험 카드가 확정됐어요'));
     expect(screen.queryByText('AI 판단')).not.toBeInTheDocument(); // 답으로 확정된 카드는 AI 가 끝낸 것이 아니다
     cleanup();
 
@@ -226,7 +226,7 @@ describe('AI 가 끝낸 이유', () => {
     expect(liveRegions()[0]).toContainElement(screen.getByText('네 칸이 모두 채워져서 질문을 마칠게요'));
     expect(screen.getByText('AI 판단')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
-    expect(screen.queryByText('AI 가 더 물을 것이 없다고 판단했어요')).not.toBeInTheDocument();
+    expect(screen.queryByText('추가 질문을 마쳤어요')).not.toBeInTheDocument();
   });
 });
 

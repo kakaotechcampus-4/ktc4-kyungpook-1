@@ -51,7 +51,7 @@ describe('interview retry and pending answer', () => {
       fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
       fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
     }
-    fireEvent.click(await screen.findByRole('button', { name: /결과 \(비어 있음\)/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /결과 질문 받기 · 미작성/ }));
     const retry = await screen.findByRole('button', { name: /다시/ });
     fireEvent.click(retry);
     await waitFor(() => expect(ask.mock.calls.map((call) => call[1])).toEqual(suffix ? ['T', undefined, 'R', 'R'] : [undefined, 'R', 'R']));
@@ -70,7 +70,7 @@ describe('interview retry and pending answer', () => {
     mount(turns);
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'R answer' } });
     fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
-    expect(await screen.findByText('네 칸이 모두 차서 카드를 확정했어요')).toBeInTheDocument();
+    expect(await screen.findByText('경험 카드가 확정됐어요')).toBeInTheDocument();
     expect(screen.queryByText('이어서 물을까요?')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
   });
@@ -136,7 +136,7 @@ describe('#417 skip saves SKIP instead of leaving the question open', () => {
 
     await screen.findByText('이어서 물을까요?');
     expect(screen.queryByRole('button', { name: /^과제/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /결과 \(비어 있음\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /결과 질문 받기 · 미작성/ })).toBeInTheDocument();
   });
 
   it('keeps the question open and explains why when skipping fails', async () => {
@@ -195,8 +195,8 @@ describe('#418 AI picks the next field and ends the interview by itself', () => 
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'T answer' } });
     fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
 
-    expect(await screen.findByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 확인하고 확정하기' })).toBeInTheDocument();
+    expect(await screen.findByText('추가 질문을 마쳤어요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드 검토하기' })).toBeInTheDocument();
   });
 
   it('continues with the next question after skipping', async () => {
@@ -211,7 +211,7 @@ describe('#418 AI picks the next field and ends the interview by itself', () => 
 
     fireEvent.click(await screen.findByRole('button', { name: '건너뛰기' }));
 
-    await screen.findByText('AI 가 더 물을 것이 없다고 판단했어요');
+    await screen.findByText('추가 질문을 마쳤어요');
     expect(ask).toHaveBeenCalledWith(card.id, undefined);
   });
 

@@ -56,9 +56,8 @@ export function AppShell() {
       <aside className="sidebar" aria-label="주 메뉴">
         <div className="sidebar__top">
           <Link to="/" className="brand" aria-label="Gitory 홈">{rail ? <Mark /> : <Wordmark height={26} />}</Link>
-          {!rail && <button type="button" className="sidebar__toggle" onClick={() => setRail(true)} aria-label="사이드바 접기" title="사이드바 접기"><PanelLeft size={16} /></button>}
+          <button type="button" className="sidebar__toggle sidebar__toggle--edge" onClick={() => setRail(value => !value)} aria-label={rail ? '사이드바 펼치기' : '사이드바 접기'} title={rail ? '사이드바 펼치기' : '사이드바 접기'} aria-expanded={!rail}><PanelLeft size={16} /></button>
         </div>
-        {rail && <button type="button" className="sidebar__toggle" style={{ alignSelf: 'center' }} onClick={() => setRail(false)} aria-label="사이드바 펼치기" title="사이드바 펼치기"><PanelLeft size={16} /></button>}
         {MENU.map((g) => (
           <nav key={g.group} className="menu-group" aria-label={g.group}>
             {g.items.map((it) => (

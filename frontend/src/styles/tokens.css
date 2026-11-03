@@ -50,14 +50,14 @@
   /* 2. Semantic — Light (기본) */
   color-scheme: light;
   --bg-paper: #FAFAFB; --bg-canvas: #FAFAFB; --bg-surface: #FFFFFF; --bg-subtle: #F3F4F6;
-  --pastel-blue: #E4F1FC; --pastel-lavender: #EEE8F6; --pastel-mint: #E1F1E6; --pastel-yellow: #F7F1D9;
-  --bg-inset: #ECEEF1; --bg-selected: #E4F1FC; --bg-console: #242426;
+  --pastel-blue: #EDF1F4; --pastel-lavender: #F0EFF3; --pastel-mint: #EDF1EE; --pastel-yellow: #F3F1EB;
+  --bg-inset: #ECEEF1; --bg-selected: #F5F6F7; --bg-console: #242426;
   --bg-ink-solid: #202022; --bg-ink-hover: #38383C;
   --text-primary: #202022; --text-strong: #323237; --text-secondary: #62626B; --text-tertiary: #6B6B75;
   --text-on-ink: #FFFFFF; --text-on-console: #FFFFFF;
   --text-accent: #202022; --accent-decoration: #BDD9F1;
   /* 포인트 — 화면마다 눈이 먼저 가야 할 한두 곳(주 행동, 강조 단어, 지금 메뉴)에만. 주 행동은 차콜, 파스텔은 배경으로만 사용 */
-  --accent-point: #202022; --accent-point-hover: #38383C; --accent-point-soft: #E4F1FC;
+  --accent-point: #202022; --accent-point-hover: #38383C; --accent-point-soft: #F0F1F3;
   --border-default: #E5E5EA; --border-strong: #94949E; --border-selected: #565660;
   --nav-active-bg: #E4F1FC; --nav-active-text: #202022;
   --sidebar-text: var(--ink-900);
@@ -86,13 +86,13 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg-paper: #171719; --bg-canvas: #171719; --bg-surface: #232326; --bg-subtle: #2D2D32;
-  --pastel-blue: #25394C; --pastel-lavender: #393047; --pastel-mint: #273F34; --pastel-yellow: #413D2A;
-  --bg-inset: #303036; --bg-selected: #25394C; --bg-console: #303036;
+  --pastel-blue: #30363D; --pastel-lavender: #343239; --pastel-mint: #303833; --pastel-yellow: #38362F;
+  --bg-inset: #303036; --bg-selected: #2E2F34; --bg-console: #303036;
   --bg-ink-solid: #E4F1FC; --bg-ink-hover: #FFFFFF;
   --text-primary: #F5F5F7; --text-strong: #E4E4E9; --text-secondary: #BDBDC8; --text-tertiary: #ABABB8;
   --text-on-ink: #202022; --text-on-console: #F5F5F7;
   --text-accent: #E4F1FC; --accent-decoration: #6C8EAC;
-  --accent-point: #E4F1FC; --accent-point-hover: #FFFFFF; --accent-point-soft: #25394C;
+  --accent-point: #E4F1FC; --accent-point-hover: #FFFFFF; --accent-point-soft: #36363D;
   --border-default: #3C3C44; --border-strong: #737380; --border-selected: #BDD9F1;
   --nav-active-bg: #E4F1FC; --nav-active-text: #202022;
   --sidebar-text: var(--text-primary);

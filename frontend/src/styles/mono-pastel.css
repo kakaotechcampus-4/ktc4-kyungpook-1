@@ -20,8 +20,8 @@
   }
   .sidebar .brand-logo > .brand-logo__light { display: none; }
   .sidebar .brand-logo > .brand-logo__dark { display: block; }
-  .sidebar .brand-logo--mark { background: #F7F1D9; border-radius: 10px; padding: 5px; box-sizing: content-box; }
-  .sidebar .brand-logo--mark > .brand-logo__dark { filter: brightness(0); }
+  .sidebar .brand-logo--mark { background: transparent; padding: 0; }
+
   .sidebar .menu-group__title, .sidebar__recent-title { color: #AEAEBA; letter-spacing: .02em; }
   .sidebar .menu-item { min-height: 44px; margin-block: 3px; border-radius: 12px; }
   .sidebar .menu-item[aria-current="page"] { background: #E4F1FC; color: #202022; }
@@ -130,3 +130,15 @@
 /* Keep sidebar navigation scrollable without showing a scrollbar. */
 .sidebar { scrollbar-width: none; }
 .sidebar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* 펼치면 로고 오른쪽, 접히면 로고 아래에 토글을 둔다. */
+@media (min-width: 1200px) {
+  .sidebar__top { gap: 12px; }
+  /* 눌리는 범위는 44px 이고 보이는 배경은 안쪽 32px 만 칠한다 — 바깥 6px 은 음수 여백으로 자리를 차지하지 않는다 */
+  .sidebar__top .sidebar__toggle { display: grid; place-items: center; flex: none; width: 44px; height: 44px; min-width: 0; min-height: 0; margin: -6px; padding: 6px; border: 0; border-radius: 14px; background: transparent; background-clip: content-box; color: #AEAEBA; box-shadow: none; }
+  .sidebar__top .sidebar__toggle:hover { background: #303035; color: #F5F5F7; }
+  .sidebar__top .sidebar__toggle:focus-visible { outline: 2px solid #AEAEBA; outline-offset: 2px; }
+  .shell--rail .sidebar { padding-inline: 8px; }
+  .shell--rail .sidebar__top { flex-direction: column; align-items: center; justify-content: center; gap: 12px; margin-inline: 0; padding-inline: 0; }
+  .shell--rail .sidebar__top .brand { flex: none; width: 32px; padding: 0; }
+}

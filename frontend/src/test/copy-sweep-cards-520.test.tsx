@@ -293,7 +293,7 @@ describe('되묻기 (IV-02, IV-03)', () => {
     mountInterview([turn({ answer: { text: '답', source: 'USER_STATED', answeredAt: '2026-10-29T00:00:00Z' } })]);
     expect(screen.getByRole('button', { name: '카드로 돌아가기' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /^카드로$/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 수정' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '직접 수정하기' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '직접 수정' })).not.toBeInTheDocument();
     expect(screen.getByText('과제 칸')).toBeInTheDocument();
   });

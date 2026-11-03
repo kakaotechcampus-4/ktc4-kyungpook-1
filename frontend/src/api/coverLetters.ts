@@ -63,6 +63,37 @@ const Draft = z.object({
   blanks: items,
   source: z.string().catch('LLM'),
 });
+/** 첨삭(#727) — 포인트의 종류(아쉬운 점·잘한 점)와 분류. 모르는 값의 포인트는 그 포인트만 버린다 */
+export const POLISH_KINDS = ['WEAK', 'GOOD'] as const;
+export type PolishKind = (typeof POLISH_KINDS)[number];
+export const POLISH_CATEGORIES = ['FIT', 'EVIDENCE', 'READABILITY', 'OVERLAP', 'TECH_TERMS'] as const;
+export type PolishCategory = (typeof POLISH_CATEGORIES)[number];
+const PolishPoint = z.object({
+  seq: z.number(),
+  kind: z.enum(POLISH_KINDS),
+  category: z.enum(POLISH_CATEGORIES),
+  title: z.string(),
+  detail: text,
+  /** 고친 글(polish.draft.sentences)의 문장 번호 */
+  sentenceSeqs: list(z.number()),
+});
+export type PolishPoint = z.infer<typeof PolishPoint>;
+const QuestionPolish = z.object({
+  summary: z.string(),
+  points: z.array(z.unknown()).nullish().catch(null)
+    .transform((v) => (v ?? []).flatMap((p) => { const r = PolishPoint.safeParse(p); return r.success ? [r.data] : []; })),
+  draft: z.object({
+    text: z.string(),
+    sentences: list(z.object({ seq: z.number(), text: z.string() })),
+    charCount: z.number().catch(0),
+    overBy: z.number().catch(0),
+    marks: list(z.object({ sentenceSeq: z.number().nullish(), code: z.string(), value: text })),
+    blanks: items,
+  }),
+  createdAt: text,
+});
+export type QuestionPolish = z.infer<typeof QuestionPolish>;
+
 const Question = z.object({
   id: z.string(),
   seq: z.number(),
@@ -82,6 +113,10 @@ const Question = z.object({
   draft: nullable(Draft),
   /** DRAFTING 동안 그 문항에 지금까지 쓴 글(#618). 문장이 끝날 때마다 늘고, round 는 첫 초안 0·고쳐 쓸 때마다 +1. 다 쓰면 null 이고 draft 가 채워진다 */
   writing: nullable(z.object({ text: z.string(), round: z.number().catch(0) })),
+  /** 적용하지 않은 첨삭 결과. 적용하거나 지우면 null */
+  polish: nullable(QuestionPolish),
+  /** 첨삭을 적용한 횟수 — 0 이면 아직 AI 원본 그대로의 판이다 */
+  polishAppliedCount: z.number().nullish().catch(null).transform((v) => v ?? 0),
 });
 export type CoverLetterQuestion = z.infer<typeof Question>;
 
@@ -162,6 +197,14 @@ export const coverLetterApi = {
   /** AI 추론 문장(marks 의 INFERRED)을 맞다고 확인해 그 표시만 지운다. 글은 그대로. DRAFTED 에서만, 그 문장에 추론 표시가 없으면 409 */
   confirmInference: (id: string, questionId: string, sentenceSeq: number) =>
     api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/marks/${sentenceSeq}`, { method: 'DELETE' }),
+  /** 지금 글로 첨삭을 받는다. 결과는 question.polish 에 남고 글은 그대로. DRAFTED 에서만 */
+  polish: (id: string, questionId: string) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'POST' }),
+  /** 첨삭 글로 지금 글·문장·표시를 바꾼다. AI 원본(aiText)은 그대로, polishAppliedCount 가 하나 는다 */
+  applyPolish: (id: string, questionId: string) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish/apply`, { method: 'POST' }),
+  discardPolish: (id: string, questionId: string) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'DELETE' }),
   remove: (id: string) => api(z.object({ ok: z.boolean() }), `/cover-letters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
@@ -216,3 +259,9 @@ export const useSaveDraft = (id: string) =>
   useLetterMutation(({ questionId, text }: { questionId: string; text: string }) => coverLetterApi.saveDraft(id, questionId, text), true);
 export const useConfirmInference = (id: string) =>
   useLetterMutation(({ questionId, sentenceSeq }: { questionId: string; sentenceSeq: number }) => coverLetterApi.confirmInference(id, questionId, sentenceSeq), true);
+export const usePolish = (id: string) =>
+  useLetterMutation(({ questionId }: { questionId: string }) => coverLetterApi.polish(id, questionId), true);
+export const useApplyPolish = (id: string) =>
+  useLetterMutation(({ questionId }: { questionId: string }) => coverLetterApi.applyPolish(id, questionId), true);
+export const useDiscardPolish = (id: string) =>
+  useLetterMutation(({ questionId }: { questionId: string }) => coverLetterApi.discardPolish(id, questionId), true);

@@ -7,7 +7,7 @@ import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
 import { matchViewFromParams } from "./CompanyList";
 import { PostingCard } from "./PostingCard";
-import { MatchFailure, MatchUnavailable } from "./shared";
+import { MatchBack, MatchFailure, MatchUnavailable } from "./shared";
 import {
   companyLabel,
   companyPath,
@@ -41,7 +41,7 @@ export function CompanyPage() {
   );
   // 이름은 걸러지기 전 공고에서 정한 값이라 필터를 바꿔도 같다. 못 찾았으면 주소의 글자를 그대로 보인다.
   const label = companyLabel(company ? company.company : segment);
-  useDocumentTitle(matches.isSuccess ? `${label} · 기업 공고` : "기업 공고");
+  useDocumentTitle(matches.isSuccess ? `${label} 공고` : "기업 공고");
 
   if (!matchSupported()) return <MatchUnavailable />;
 
@@ -54,9 +54,7 @@ export function CompanyPage() {
 
   return (
     <main className="main matching-page">
-      <Link to={backTo} className="match-back">
-        {fromCompanyView ? "← 기업 목록" : "← 공고 목록"}
-      </Link>
+      <MatchBack to={backTo} fromCompanyView={fromCompanyView} />
       {matches.isPending && (
         <>
           <AiWait label="확정한 카드와 공고 조건을 하나씩 맞춰 보는 중이에요" />
@@ -64,7 +62,11 @@ export function CompanyPage() {
         </>
       )}
       {matches.isError && (
-        <MatchFailure error={matches.error} retry={() => matches.refetch()} pending={matches.isFetching} />
+        <>
+          {/* 조회에 실패해도 화면의 제목(h1)은 남긴다 */}
+          <PageTitle>기업 공고</PageTitle>
+          <MatchFailure error={matches.error} retry={() => matches.refetch()} pending={matches.isFetching} />
+        </>
       )}
       {matches.isSuccess && (
         <>
@@ -86,7 +88,7 @@ export function CompanyPage() {
               {filtered && all.length > shown.length && (
                 <div className="match-filter-note">
                   <p>
-                    검색·필터가 적용돼 이 기업의 공고 {all.length}건 중 {shown.length}건만 보여요.
+                    검색과 필터가 적용돼 이 기업의 공고 {all.length}건 중 {shown.length}건만 보여요.
                   </p>
                   <Link to={unfilteredTo} className="btn btn--outline">
                     이 기업 공고 모두 보기
@@ -101,7 +103,7 @@ export function CompanyPage() {
             </>
           ) : all.length > 0 ? (
             <div className="match-empty">
-              <EmptyState title="조건에 맞는 공고가 없어요" desc="적용된 검색·필터에 맞는 이 기업의 공고가 없어요." />
+              <EmptyState title="조건에 맞는 공고가 없어요" desc="적용된 검색과 필터에 맞는 이 기업의 공고가 없어요." />
               <Link to={unfilteredTo} className="btn btn--outline">
                 이 기업 공고 모두 보기
               </Link>

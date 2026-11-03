@@ -231,7 +231,7 @@ it('고른 제안만 진행하기로 넘긴다 — 후보로 카드 만들기는
   mount({ ...five, gapFill });
   const create = vi.spyOn(endpoints, 'createCardsFromCandidates').mockResolvedValue({ jobId: 'job_9', cardIds: ['card_90', 'card_91'] });
   expect(await screen.findByRole('button', { name: '제안을 골라 진행하기' })).toBeDisabled();
-  expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기 →' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 로그인 API 응답 속도 개선' }));
   fireEvent.click(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 5.12 결제모듈 6커밋' }));
   fireEvent.click(screen.getByRole('button', { name: '고른 2개 진행하기' }));

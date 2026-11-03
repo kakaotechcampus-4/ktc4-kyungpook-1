@@ -51,7 +51,7 @@ it("기업별 보기: companyId 로 묶는다 — 표기가 다른 같은 회사
   await screen.findByRole("link", { name: "카카오" });
   // 공고 많은 순(2건: 오로라랩스·카카오 → 이름 순) → 1건(나래랩스·토스)
   expect(headings()).toEqual(["오로라랩스", "카카오", "나래랩스", "토스"]);
-  expect(screen.getByRole("status")).toHaveTextContent("기업 4곳 · 공고 6건");
+  expect(screen.getByRole("status")).toHaveTextContent("기업 4곳, 공고 6건");
   const kakao = screen.getByRole("link", { name: "카카오" }).closest("article")!;
   expect(within(kakao).getByText("채용 중 2건")).toBeInTheDocument();
   expect(within(kakao).getByRole("list", { name: "공고" }).textContent).toContain("백엔드 개발자");
@@ -81,7 +81,7 @@ it("기업 페이지 /match/company/:companyId — 두 표기 공고를 모두 �
   expect(logo).toHaveAttribute("src", LOGO);
   expect(logo).toHaveAttribute("alt", "");
   expect(hero.querySelector(".company-mark")).toHaveAttribute("aria-hidden", "true");
-  expect(screen.getByRole("link", { name: "← 기업 목록" })).toHaveAttribute("href", "/match?view=company");
+  expect(screen.getByRole("link", { name: "기업 목록으로" })).toHaveAttribute("href", "/match?view=company");
   expect(where().path).toBe("/match/company/kakao");
   expect(document.title).toContain("카카오");
 });
@@ -114,14 +114,14 @@ it("옛 이름 기반 주소로 들어와도 같은 기업을 찾는다(어느 �
   expect(await screen.findByText("이 기업의 공고를 찾지 못했어요")).toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 1, name: "없는회사" })).toBeInTheDocument();
   expect(document.querySelector(".company-mark")).toBeNull();
-  expect(screen.getByRole("link", { name: "← 기업 목록" })).toHaveAttribute("href", "/match?view=company");
+  expect(screen.getByRole("link", { name: "기업 목록으로" })).toHaveAttribute("href", "/match?view=company");
 });
 
 it("옛 이름 주소에서 필터를 걸면 '모두 보기' 링크는 companyId 주소로 간다", async () => {
   mount(`/match/company/${enc("Kakao Corp.")}?category=BACKEND`);
   await screen.findByRole("heading", { level: 1, name: "카카오" });
   expect(screen.getByRole("status")).toHaveTextContent("공고 1건");
-  expect(screen.getByText("검색·필터가 적용돼 이 기업의 공고 2건 중 1건만 보여요.")).toBeInTheDocument();
+  expect(screen.getByText("검색과 필터가 적용돼 이 기업의 공고 2건 중 1건만 보여요.")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "이 기업 공고 모두 보기" })).toHaveAttribute("href", "/match/company/kakao");
 });
 

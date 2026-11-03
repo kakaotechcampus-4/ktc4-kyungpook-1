@@ -57,7 +57,7 @@ for (const width of [320, 390, 768, 1440]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await page.getByRole("link", { name: "← 공고 목록" }).click();
+    await page.getByRole("link", { name: "공고 목록으로" }).click();
     await expect(page.getByPlaceholder("기업이나 직무 검색")).toHaveValue("나래");
     await expect(
       page.getByRole("combobox", { name: "경력", exact: true }),

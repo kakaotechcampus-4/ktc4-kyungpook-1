@@ -34,7 +34,7 @@ test("목록 → 기업 페이지 → 공고 상세 → 뒤로: 기업 페이지
   await expect(page.getByRole("heading", { level: 1, name: "나래랩스" })).toBeVisible();
 
   // 돌아가는 링크 → 같은 검색어의 목록
-  await page.getByRole("link", { name: "← 공고 목록" }).click();
+  await page.getByRole("link", { name: "공고 목록으로" }).click();
   await expect(page.getByRole("heading", { name: "공고 매칭", exact: true })).toBeVisible();
   await expect(search).toHaveValue("나래");
   await expect(page.locator(".match-card")).toHaveCount(1);
@@ -76,7 +76,7 @@ for (const width of [390, 1440]) {
     await expect(page.locator(".match-card").getByText("등급")).toHaveCount(0);
     expect(await overflowFree(page)).toBe(true);
 
-    await page.getByRole("link", { name: "← 기업 목록" }).click();
+    await page.getByRole("link", { name: "기업 목록으로" }).click();
     await expect(page).toHaveURL(/[?&]view=company/);
     await expect(page.locator(".company-tile")).toHaveCount(5);
     await expect(page.getByRole("group", { name: "보기 방식" }).getByRole("button", { name: "기업별" })).toHaveAttribute("aria-pressed", "true");

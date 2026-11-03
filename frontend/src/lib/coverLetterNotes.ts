@@ -144,7 +144,7 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
       case 'SENT_BACK': {
         const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : questionNoteFor(s.code);
         t.items.push({ ...item, reason: s.reason?.trim() || checkMessage(s.code, null) }); t.status = 'open'; lastOpen = t;
-        phase = '검토 AI 가 돌려보냄';
+        phase = '다시 쓰는 중';
         break;
       }
       case 'SKELETON': case 'FAILED': general.items.push(item); phase = null; break;
@@ -209,6 +209,19 @@ export function buildAssignNotes(q: Pick<CoverLetterQuestion, 'id' | 'seq' | 'pr
     if (assigning) phase = s.kind === 'NO_FIT' ? '맞는 카드가 없어요' : s.kind === 'FAILED' ? '카드를 고르지 못했어요' : '카드를 골랐어요';
   }
   return { questionNote: items.length ? { key: `q:${q.id}`, sentence: null, value: null, group: null, items, status: 'kept' } : null, phase };
+}
+
+/** 기다리는 종이(②·④·⑤)의 문항마다 상태 한 줄(#745) — wait 차례 기다림 · now 하는 중 · done 끝남(✓) · end 끝났지만 고르지 못함 */
+export type PaperStatus = { text: string; tone: 'wait' | 'now' | 'done' | 'end' };
+export function paperStatus(mode: 'assign' | 'ask' | 'live', q: Pick<CoverLetterQuestion, 'primaryCard' | 'asks'>, phase: string | null): PaperStatus {
+  if (mode === 'ask') return q.asks.length > 0 ? { text: '물어볼 것을 골랐어요', tone: 'done' } : { text: '물어볼 것을 고르는 중', tone: 'now' };
+  if (mode === 'assign') {
+    if (phase === '카드를 고르는 중') return { text: phase, tone: 'now' };
+    if (phase === '카드를 골랐어요' || (phase == null && q.primaryCard)) return { text: '카드를 골랐어요', tone: 'done' };
+    return { text: phase ?? '맞는 카드가 없어요', tone: 'end' };
+  }
+  if (phase == null) return { text: '다 썼어요', tone: 'done' };
+  return { text: phase, tone: phase === '차례를 기다리는 중' ? 'wait' : 'now' };
 }
 
 /** 문항에 속하지 않는 단계(검토 AI 의 전체 검토·실패, 카드 고르기의 전체 확인) — 종이 아래 한 줄로 */

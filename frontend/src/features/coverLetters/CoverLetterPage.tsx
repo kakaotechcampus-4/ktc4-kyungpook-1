@@ -1,19 +1,17 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Briefcase, Check as CheckIcon, Minus } from 'lucide-react';
-import { useCoverLetter, useRetryCoverLetter, useStartAsking, type AssignStep, type CoverLetter, type CoverLetterPosting, type CoverLetterQuestion } from '@/api/coverLetters';
-import { Badge, Breadcrumb, Button, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
-import { AiWait } from '@/components/ui/AiWait';
+import { Briefcase } from 'lucide-react';
+import { useCoverLetter, useRetryCoverLetter, useStartAsking, type CoverLetter, type CoverLetterCardRef, type CoverLetterPosting, type CoverLetterQuestion } from '@/api/coverLetters';
+import { Breadcrumb, Button, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { ASSIGNED_BY_LABEL, CHECK_ITEMS, FAILED_STEP_LABEL, ITEM_LABEL, THEME_LABEL, primaryState } from '@/lib/coverLetterCopy';
-import { buildAssignNotes } from '@/lib/coverLetterNotes';
+import { FAILED_STEP_LABEL, THEME_LABEL, flowStep, materialLine, primaryState } from '@/lib/coverLetterCopy';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { AnswerQuestions } from './AnswerQuestions';
 import { CardPicker } from './CardPicker';
 import { DraftEditor } from './DraftEditor';
 import { DraftPaper } from './paper/DraftPaper';
-import { NoteCard } from './paper/MarginNotes';
+import { Stepper } from './Stepper';
 import './coverLetters.css';
 
 /** 자소서 한 편 — 응답의 stage 가 화면을 정한다. #517 은 ② 기다림, ③ 카드 확인, 실패까지 */
@@ -39,6 +37,7 @@ export function CoverLetterPage() {
   return (
     <main className="main main--tight">
       <Breadcrumb items={crumbs} />
+      <Stepper current={flowStep(l.stage, l.failedStep)} />
       {l.posting && <PostingLine posting={l.posting} />}
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}
       {l.stage === 'ASSIGNED' && <AssignReview letter={l} />}
@@ -63,17 +62,20 @@ function PostingLine({ posting }: { posting: CoverLetterPosting }) {
   );
 }
 
-/** ② AI 가 문항마다 카드를 고르는 동안 — 종이의 문항 옆에 고른 카드와 이유가 메모로 생기는 대로 붙는다(#618) */
+/** 기다리는 화면 세 곳(②·④·⑤)의 제목 아래 한 줄 — 서버가 진행률을 주지 않아 걸리는 시간만 어림으로 말한다 */
+const WaitNote = () => <span className="cl-wait-note">보통 1~2분 걸려요 · 떠나도 돼요</span>;
+
+/** ② 문항마다 카드를 고르는 동안 — 종이의 문항마다 상태 한 줄, 고른 카드와 이유는 여백 메모로 붙는다(#618) */
 function AssignWait({ letter }: { letter: CoverLetter }) {
   return (
     <>
-      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개 · 확정한 카드를 문항과 견주어 보고 있어요`}>문항마다 쓸 카드를 고르고 있어요</PageTitle>
+      <PageTitle sub={<WaitNote />}>문항마다 쓸 카드를 고르고 있어요</PageTitle>
       <DraftPaper letter={letter} mode="assign" />
     </>
   );
 }
 
-/** ③ 문항별 중심·보조 카드 확인과 바꾸기, 재료 점검. '다음'은 질문 만들기를 시작한다 */
+/** ③ 문항마다 고른 카드 확인과 바꾸기. '다음'은 질문 만들기를 시작한다 */
 function AssignReview({ letter }: { letter: CoverLetter }) {
   const [picking, setPicking] = useState<CoverLetterQuestion | null>(null);
   const start = useStartAsking(letter.id);
@@ -86,11 +88,11 @@ function AssignReview({ letter }: { letter: CoverLetter }) {
   };
   return (
     <>
-      <PageTitle sub="AI가 고른 카드를 확인해 주세요. 바꾸고 싶으면 문항마다 바꿀 수 있어요.">문항마다 쓸 카드</PageTitle>
+      <PageTitle sub="고른 카드를 확인해 주세요. 문항마다 바꿀 수 있어요.">문항마다 쓸 카드</PageTitle>
       <div className="cl-review">
-        {letter.questions.map((q) => <QuestionReview key={q.id} q={q} steps={letter.steps.assign} onPick={() => setPicking(q)} />)}
+        {letter.questions.map((q) => <QuestionReview key={q.id} q={q} onPick={() => setPicking(q)} />)}
       </div>
-      <StickyFooter strong="카드를 확인했으면 질문을 받아요" sub={empty ? `카드가 없는 문항 ${empty}개는 질문으로 재료를 모아요. 질문을 받으면 카드는 바꿀 수 없어요.` : '질문을 받으면 카드는 바꿀 수 없어요.'}>
+      <StickyFooter strong="카드를 확인했으면 질문을 받아요" sub={empty ? `카드가 없는 문항 ${empty}개는 질문으로 재료를 모아요. 질문을 받은 뒤에는 카드를 바꿀 수 없어요.` : '질문을 받은 뒤에는 카드를 바꿀 수 없어요'}>
         <Button onClick={next} loading={start.isPending}>다음: 질문 받기</Button>
       </StickyFooter>
       {picking && <CardPicker letterId={letter.id} question={picking} onClose={() => setPicking(null)} />}
@@ -98,92 +100,91 @@ function AssignReview({ letter }: { letter: CoverLetter }) {
   );
 }
 
-function QuestionReview({ q, steps, onPick }: { q: CoverLetterQuestion; steps: AssignStep[]; onPick: () => void }) {
+const kindLabel = (kind: string) => (kind === 'TECH' ? '기술' : '경험');
+
+/** 문항 한 줄 — 왼쪽은 문항, 오른쪽은 고른 카드 타일과 고른 이유 한 줄, 재료 한 줄. 좁으면 위아래로 */
+function QuestionReview({ q, onPick }: { q: CoverLetterQuestion; onPick: () => void }) {
   const state = primaryState(q);
-  const note = buildAssignNotes(q, steps, false).questionNote;
+  const [compared, setCompared] = useState(false);
+  const why = q.pickReason ?? (q.assignedBy === 'USER' ? '직접 고른 카드예요.' : null);
+  const listId = `cl-considered-${q.id}`;
   return (
-    <section className="cl-q" aria-labelledby={`q-${q.id}`}>
-      <QuestionHead q={q} action={<Button variant="outline" size="sm" onClick={onPick}>카드 바꾸기</Button>} />
-
-      {state === 'picked' && q.primaryCard && (
-        <div className="cl-cards">
-          <CardLine slot="중심" card={q.primaryCard} />
-          {q.supportingCard ? <CardLine slot="보조" card={q.supportingCard} /> : <div className="cl-card-line"><span className="cl-card-line__role">보조</span><span className="c-3">없음</span></div>}
-          {(q.pickReason || q.assignedBy) && (
-            <p className="cl-reason">
-              {q.pickReason && <span>{q.pickReason}</span>}
-              {q.assignedBy && ASSIGNED_BY_LABEL[q.assignedBy] && <span className="c-3"> ({ASSIGNED_BY_LABEL[q.assignedBy]})</span>}
-            </p>
-          )}
+    <section className="cl-ac" aria-labelledby={`q-${q.id}`}>
+      <div className="cl-ac__q">
+        <span className="cl-q__no" aria-hidden>{q.seq}</span>
+        <div className="stack" style={{ gap: 2 }}>
+          <h2 id={`q-${q.id}`} className="cl-q__text">{q.text}</h2>
+          <span className="t-13 c-3">{[q.theme && THEME_LABEL[q.theme], `${q.charLimit.toLocaleString()}자 이내`].filter(Boolean).join(' · ')}</span>
         </div>
-      )}
-      {state === 'deleted' && <Note strong="고른 카드가 지워졌어요" tone="caution">다시 골라 주세요. 고르지 않으면 질문으로 재료를 모아요.</Note>}
-      {state === 'failed' && <Note strong="이 문항은 카드를 고르지 못했어요" tone="caution">직접 골라 주세요.</Note>}
-      {state === 'no-fit' && (
-        <Note strong="맞는 카드가 없어요" tone="inset">
-          {q.theme ? `${THEME_LABEL[q.theme]} 경험을 카드로 만들어 두면 다음에 쓸 수 있어요. ` : ''}
-          이번에는 질문으로 재료를 모아 써요. <Link to="/cards/new" className="cl-inline-link">경험 카드 만들기</Link>
-        </Note>
-      )}
+        <Button variant="text" className="cl-ac__change" onClick={onPick} aria-label={`${q.seq}번 문항 카드 바꾸기`}>카드 바꾸기</Button>
+      </div>
 
-      {state === 'picked' && <MaterialCheck q={q} hint="없는 재료는 다음 단계에서 물어봐요." />}
+      <div className="cl-ac__cards">
+        {state === 'picked' && q.primaryCard && <CardDeck main={q.primaryCard} sub={q.supportingCard} />}
+        {state === 'deleted' && <Note strong="고른 카드가 지워졌어요" tone="caution">다시 골라 주세요. 고르지 않으면 질문으로 재료를 모아요.</Note>}
+        {state === 'failed' && <Note strong="이 문항은 카드를 고르지 못했어요" tone="caution">직접 골라 주세요.</Note>}
+        {state === 'no-fit' && (
+          <Note strong="맞는 카드가 없어요" tone="inset">
+            {q.theme ? `${THEME_LABEL[q.theme]} 경험을 카드로 만들어 두면 다음에 쓸 수 있어요. ` : ''}
+            이번에는 질문으로 재료를 모아 써요. <Link to="/cards/new" className="cl-inline-link">경험 카드 만들기</Link>
+          </Note>
+        )}
 
-      {note && <div className="cl-indent"><NoteCard thread={note} focused={false} /></div>}
-
-      {q.considered.length > 0 && (
-        <details className="cl-considered">
-          <summary>AI가 견준 카드 {q.considered.length}장</summary>
-          <ul>
-            {q.considered.map((c) => (
-              <li key={c.cardId}><Link to={`/cards/${encodeURIComponent(c.cardId)}`}>{c.title}</Link>{c.note && <span className="c-3"> {c.note}</span>}</li>
-            ))}
+        {(why || q.considered.length > 0) && (
+          <p className="cl-ac__why">
+            {why}{why && q.considered.length > 0 && ' '}
+            {q.considered.length > 0 && (
+              <button type="button" className="cl-ac__link" aria-expanded={compared} aria-controls={listId} onClick={() => setCompared((v) => !v)}>견준 카드 {q.considered.length}장</button>
+            )}
+          </p>
+        )}
+        {compared && (
+          <ul className="cl-compared" id={listId}>
+            {q.considered.map((c) => {
+              const chosen = c.cardId === q.primaryCard?.id;
+              return (
+                <li key={c.cardId} className={chosen ? 'cl-compared--picked' : undefined}>
+                  <Link to={`/cards/${encodeURIComponent(c.cardId)}`}>{c.title}</Link>{chosen && <span className="cl-compared__tag"> · 고름</span>}
+                  {c.note && <span className="cl-compared__note">{c.note}</span>}
+                </li>
+              );
+            })}
           </ul>
-        </details>
-      )}
+        )}
+        {state === 'picked' && <MaterialLine q={q} />}
+      </div>
     </section>
   );
 }
 
-/** 문항 번호, 문항, 주제와 글자 수. action 은 오른쪽 끝 버튼 */
-function QuestionHead({ q, action }: { q: CoverLetterQuestion; action?: ReactNode }) {
+/** 고른 카드 — 경험 카드 덱 모양 타일. 덧붙일 경험이 있으면 그 아래에 작게 끼우고 뒤에 기운 카드 한 장을 둔다 */
+function CardDeck({ main, sub }: { main: CoverLetterCardRef; sub: CoverLetterCardRef | null }) {
   return (
-    <header className="cl-q__head">
-      <span className="cl-q__no" aria-hidden>{q.seq}</span>
-      <div className="stack grow" style={{ gap: 4 }}>
-        <h2 id={`q-${q.id}`} className="cl-q__text">{q.text}</h2>
-        <span className="t-12 c-3">{[q.theme && THEME_LABEL[q.theme], `${q.charLimit.toLocaleString()}자 이내`].filter(Boolean).join(', ')}</span>
+    <div className={`cl-deck${sub ? ' cl-deck--sub' : ''}`}>
+      <div className="cl-deck__main">
+        <article className="cl-tile" aria-label={`이 경험으로 써요: ${main.title}`}>
+          <Link to={`/cards/${encodeURIComponent(main.id)}`} className="cl-tile__title">{main.title}</Link>
+          <span className="cl-kind">{kindLabel(main.kind)}</span>
+        </article>
       </div>
-      {action}
-    </header>
-  );
-}
-
-/** 고른 카드에 상황, 행동, 결과, 배운 점이 있는지. 없는 칸은 점선이고 글자로도 '없음'이라고 읽힌다 */
-function MaterialCheck({ q, hint }: { q: CoverLetterQuestion; hint: string }) {
-  const have = new Set(q.materials);
-  return (
-    <div className="cl-materials">
-      <span className="t-12 c-2">재료 점검</span>
-      <ul className="row">
-        {CHECK_ITEMS.map((item) => (
-          <li key={item} className={`cl-material ${have.has(item) ? 'cl-material--have' : ''}`}>
-            {have.has(item) ? <CheckIcon size={12} aria-hidden /> : <Minus size={12} aria-hidden />}
-            {ITEM_LABEL[item]}<span className="sr-only">{have.has(item) ? ' 있음' : ' 없음'}</span>
-          </li>
-        ))}
-      </ul>
-      {CHECK_ITEMS.some((i) => !have.has(i)) && <span className="t-12 c-3">{hint}</span>}
+      {sub && (
+        <div className="cl-tile cl-tile--sub">
+          <span className="cl-tile__lab">덧붙일 경험</span>
+          <Link to={`/cards/${encodeURIComponent(sub.id)}`} className="cl-tile__subtitle" title={sub.title}>{sub.title}</Link>
+          <span className="cl-kind">{kindLabel(sub.kind)}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function CardLine({ slot, card }: { slot: string; card: { id: string; title: string; kind: string } }) {
+/** '재료 3/5 · 배운 점, 계기는 다음에 물어요' — 빠진 이름만 호박색 */
+function MaterialLine({ q }: { q: CoverLetterQuestion }) {
+  const m = materialLine(q.materials);
   return (
-    <div className="cl-card-line">
-      <span className="cl-card-line__role">{slot}</span>
-      <Link to={`/cards/${encodeURIComponent(card.id)}`} className="cl-card-line__title">{card.title}</Link>
-      <Badge kind="NEUTRAL">{card.kind === 'TECH' ? '기술' : '경험'}</Badge>
-    </div>
+    <p className="cl-ready">
+      재료 {m.have}/{m.total} · {m.missing.length > 0 && <span className="cl-ready__miss">{m.missing.join(', ')}</span>}{m.rest}
+    </p>
   );
 }
 
@@ -191,7 +192,7 @@ function CardLine({ slot, card }: { slot: string; card: { id: string; title: str
 function Failed({ letter }: { letter: CoverLetter }) {
   const retry = useRetryCoverLetter(letter.id);
   const step = letter.failedStep ? FAILED_STEP_LABEL[letter.failedStep] ?? '이 단계' : '이 단계';
-  const why = letter.errorCode === 'AI_UNAVAILABLE' ? 'AI가 잠시 응답하지 않았어요. 잠시 뒤 다시 시도해 주세요.' : '서버가 작업을 끝내지 못했어요.';
+  const why = letter.errorCode === 'AI_UNAVAILABLE' ? '잠시 응답을 받지 못했어요. 잠시 뒤 다시 시도해 주세요.' : '서버가 작업을 끝내지 못했어요.';
   return (
     <>
       <PageTitle sub={`${letter.jobRole}, 문항 ${letter.questions.length}개`}>{step}를 마치지 못했어요</PageTitle>
@@ -210,44 +211,21 @@ function Failed({ letter }: { letter: CoverLetter }) {
   );
 }
 
-/**
- * ④ 질문을 만드는 동안 — 문항마다 쓸 카드와 재료 점검을 ③ 과 같은 모양으로 보여 주고, 무엇이 비었는지 보며 물을 것을 정하고 있다고 말한다.
- * 진행률은 서버가 주지 않으므로 만들지 않는다. 화면에 있는 말은 ③ 에서 받은 값뿐이다.
- */
+/** ④ 질문을 고르는 동안 — ②와 같은 종이에 문항마다 쓰는 카드 한 줄과 상태 한 줄. 진행률은 서버가 주지 않으므로 만들지 않는다 */
 function AskWait({ letter }: { letter: CoverLetter }) {
   return (
     <>
-      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개`}>카드에 모자란 재료를 찾고 있어요</PageTitle>
-      <section className="cl-agent" aria-label="AI가 하는 일">
-        <AiWait label="문항마다 카드를 읽고 무엇을 더 물어볼지 정하고 있어요" />
-      </section>
-      <div className="cl-review">
-        {letter.questions.map((q) => (
-          <section key={q.id} className="cl-q" aria-labelledby={`q-${q.id}`}>
-            <QuestionHead q={q} />
-            {q.primaryCard ? (
-              <>
-                <div className="cl-cards">
-                  <CardLine slot="중심" card={q.primaryCard} />
-                  {q.supportingCard && <CardLine slot="보조" card={q.supportingCard} />}
-                </div>
-                <MaterialCheck q={q} hint="없는 재료를 어떻게 물을지 정하고 있어요." />
-              </>
-            ) : (
-              <p className="cl-q__ask-note">고른 카드가 없어서 질문으로 재료를 모아요.</p>
-            )}
-          </section>
-        ))}
-      </div>
+      <PageTitle sub={<WaitNote />}>더 물어볼 것을 고르고 있어요</PageTitle>
+      <DraftPaper letter={letter} mode="ask" />
     </>
   );
 }
 
-/** ⑤ AI 가 문항마다 쓰고, 검사하고, 걸리면 다시 쓰고, 마지막에 검토 AI 가 함께 본다 — 종이 위에 글이 써지고 여백에 메모가 붙는다(#618) */
+/** ⑤ 문항마다 쓰고 검사하는 동안 — 종이 위에 글이 써지고, 문항마다 상태 한 줄과 여백 메모가 붙는다(#618) */
 function DraftWait({ letter }: { letter: CoverLetter }) {
   return (
     <>
-      <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개 · 문항마다 초안을 쓰고 근거와 글자 수를 검사하고 있어요`}>초안을 쓰고 있어요</PageTitle>
+      <PageTitle sub={<WaitNote />}>초안을 쓰고 있어요</PageTitle>
       <DraftPaper letter={letter} mode="live" />
     </>
   );

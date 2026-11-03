@@ -4,9 +4,12 @@ import { locateSentence } from '@/lib/draftPaper';
 import { useLiveText } from '@/lib/useLiveText';
 import { TextRuns, type Highlight } from './TextRuns';
 
+/** 아직 글이 없는 자리 — 종이 뼈대 세 줄 */
+export const PaperSkeleton = () => <span className="pq__sk" aria-hidden><i /><i /><i /></span>;
+
 /**
  * ⑤ 쓰는 중의 답 칸 — 서버 글을 사람이 치듯 따라붙여 보이고, 걸린 문장은 지금 보이는 글에서 찾아 칠한다.
- * 첫 초안을 받는 중(composing)이거나 아직 따라잡는 중이면 끝에 커서가 깜빡인다.
+ * 첫 초안을 받는 중(composing)이거나 아직 따라잡는 중이면 끝에 커서가 깜빡인다. 아직 글이 없으면 종이 뼈대 세 줄을 둔다.
  */
 export function LiveAnswer({ target, active, composing, pollMs, threads, focusKey, onShown }: {
   target: string; active: boolean; composing: boolean; pollMs: number; threads: NoteThread[]; focusKey: string | null; onShown: (text: string) => void;
@@ -29,7 +32,7 @@ export function LiveAnswer({ target, active, composing, pollMs, threads, focusKe
   const caret = composing || typing;
   return (
     <div className={`pq__answer${!text && !caret ? ' pq__answer--empty' : ''}`}>
-      {nodes}
+      {!text && !caret ? <PaperSkeleton /> : nodes}
       {caret && <span className="pcaret" aria-hidden />}
     </div>
   );

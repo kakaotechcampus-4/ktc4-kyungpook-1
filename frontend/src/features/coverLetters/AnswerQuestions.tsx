@@ -26,20 +26,8 @@ export function answersFor(q: Pick<CoverLetterQuestion, 'asks'>, input: Record<s
   });
 }
 
-/** 틀을 넣는다 — 비었으면 틀만, 이미 쓴 글이 있으면 뒤에 이어 붙인다. 채울 곳(___)에 커서를 둔다 */
-function insertTemplate(el: HTMLTextAreaElement | null, current: string, template: string): string {
-  const next = current.trim() ? `${current.trimEnd()} ${template}` : template;
-  requestAnimationFrame(() => {
-    if (!el) return;
-    const at = next.indexOf(TEMPLATE_GAP, next.length - template.length);
-    el.focus();
-    if (at >= 0) el.setSelectionRange(at, at + TEMPLATE_GAP.length);
-  });
-  return next;
-}
-
 /**
- * ④ 질문(#518). AI 가 카드에 모자란 재료를 문항마다 최대 4개 묻는다. 답하거나 넘기고 '초안 쓰기'.
+ * ④ 질문(#518). 카드에 모자란 재료를 문항마다 최대 4개 묻는다. 질문 아래 '예:' 한 줄을 보이고, 답하거나 넘기고 '초안 쓰기'.
  * 답은 칸을 벗어날 때 그 문항 전체를 저장하고, '초안 쓰기' 전에 남은 것을 모두 저장한다.
  * 같은 문항의 저장은 한 줄로 세운다 — 저장 응답이 오는 사이에 더 쓴 답을 '저장됨' 으로 보이지 않게, 보낼 때의 버전이 그대로일 때만 표시를 지운다.
  */
@@ -112,7 +100,7 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
 
   return (
     <>
-      <PageTitle sub="카드에 없는 재료를 AI가 물어봐요. 아는 만큼 답하고, 모르면 넘겨도 돼요. 비운 필수 재료는 초안에 빈칸으로 남아요.">조금만 더 알려 주세요</PageTitle>
+      <PageTitle sub="카드에 없는 것만 물어요. 아는 만큼 답하고, 모르면 넘겨도 돼요.">조금만 더 알려 주세요</PageTitle>
       <div className="cl-review">
         {letter.questions.map((q) => (
           <QuestionAsks key={q.id} q={q} input={answers[q.id] ?? {}} saveState={state[q.id] ?? 'idle'}
@@ -121,7 +109,7 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
       </div>
       {error && <Note strong="답을 저장하지 못했어요" tone="danger">{error} 쓴 답은 화면에 그대로 있어요.</Note>}
       <StickyFooter strong={missing ? `꼭 필요한 재료 ${missing}개가 비어 있어요` : '답을 다 했으면 초안을 써요'}
-        sub={missing ? '비운 채로 쓰면 그 자리에 빈칸을 남겨요. 초안에서 채울 수 있어요.' : '답하지 않은 질문은 넘긴 것으로 봐요.'}>
+        sub={missing ? '비운 채로 쓰면 그 자리에 빈칸을 남겨요. 초안에서 채울 수 있어요.' : '답하지 않은 질문은 넘긴 것으로 봐요'}>
         <Button onClick={write} loading={starting || draft.isPending}>초안 쓰기</Button>
       </StickyFooter>
     </>
@@ -132,7 +120,6 @@ function QuestionAsks({ q, input, saveState, onEdit, onLeave }: {
   q: CoverLetterQuestion; input: Record<string, Draft>; saveState: SaveState;
   onEdit: (item: string, patch: Partial<Draft>) => void; onLeave: () => void;
 }) {
-  const refs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   return (
     <section className="cl-q" aria-labelledby={`q-${q.id}`}>
       <header className="cl-q__head">
@@ -149,6 +136,7 @@ function QuestionAsks({ q, input, saveState, onEdit, onLeave }: {
           const d = input[a.item] ?? { text: '', skipped: false };
           const label = a.question ?? reusedTitle(a.item as MaterialItem);
           const id = `ask-${q.id}-${a.item}`;
+          const example = a.question != null ? ITEM_EXAMPLE[a.item as MaterialItem] : undefined;
           return (
             <li key={a.item} className={`cl-ask ${d.skipped ? 'cl-ask--skipped' : ''}`}>
               <div className="cl-ask__head">
@@ -156,15 +144,9 @@ function QuestionAsks({ q, input, saveState, onEdit, onLeave }: {
                 <span className="cl-ask__item">{ITEM_LABEL[a.item as MaterialItem] ?? a.item}{a.required && <b> 꼭 필요</b>}</span>
               </div>
               {a.question == null && <span className="t-12 c-3">지난번에 답한 내용이에요. 고쳐서 쓸 수 있어요.</span>}
-              {!d.skipped && a.templates.length > 0 && (
-                <div className="row cl-templates">
-                  {a.templates.map((t) => (
-                    <button key={t} type="button" className="cl-template" onClick={() => onEdit(a.item, { text: insertTemplate(refs.current[a.item], d.text, t) })}>{t}</button>
-                  ))}
-                </div>
-              )}
-              <Textarea id={id} ref={(el) => { refs.current[a.item] = el; }} rows={3} maxLength={ANSWER_MAX} disabled={d.skipped}
-                value={d.skipped ? '' : d.text} placeholder={d.skipped ? '넘긴 질문이에요' : ITEM_EXAMPLE[a.item as MaterialItem] ?? '떠오르는 대로 적어 주세요'}
+              {example && <span className="cl-ask__ex" id={`${id}-ex`}>{example}</span>}
+              <Textarea id={id} rows={3} maxLength={ANSWER_MAX} disabled={d.skipped} aria-describedby={example ? `${id}-ex` : undefined}
+                value={d.skipped ? '' : d.text} placeholder={d.skipped ? '넘긴 질문이에요' : '떠오르는 대로 적어 주세요'}
                 onChange={(e) => onEdit(a.item, { text: e.target.value })} onBlur={onLeave} />
               <div className="row cl-ask__foot">
                 <button type="button" className="cl-link-btn t-12" onClick={() => { onEdit(a.item, { skipped: !d.skipped }); setTimeout(onLeave); }}>

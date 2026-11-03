@@ -50,7 +50,7 @@ function stubFetch(sent: unknown[]) {
   });
 }
 const reasonBox = () => screen.getByLabelText('지원 이유');
-const start = () => screen.getByRole('button', { name: '카드 고르기 시작' });
+const start = () => screen.getByRole('button', { name: '카드 고르기' });
 const fillForm = (memo: string) => {
   fireEvent.change(screen.getByPlaceholderText('예: 백엔드 개발'), { target: { value: '백엔드 개발' } });
   fireEvent.change(reasonBox(), { target: { value: memo } });

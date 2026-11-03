@@ -60,16 +60,23 @@ const firstOpenAsk = (letter: CoverLetter) => {
 beforeEach(() => { resetDb(); shift = 0; Date.now = realNow; });
 afterEach(() => { cleanup(); Date.now = realNow; vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
-describe('예시는 흐린 안내로만 보이고 값으로 보내지 않는다', () => {
-  it('답 칸마다 그 항목의 예시를 placeholder 로 보이고, 저장에는 쓴 글만 간다', async () => {
+describe('예시는 안내로만 보이고 값으로 보내지 않는다', () => {
+  // #749 부터 예시는 placeholder 가 아니라 새로 묻는 질문 아래 '예:' 한 줄이고, 답 칸이 그 줄을 설명으로 가리킨다. 지난번 답을 다시 쓰는 칸에는 없다
+  it('새로 묻는 답 칸마다 그 항목의 예시 한 줄을 보이고, 저장에는 쓴 글만 간다', async () => {
     const letter = askedLetter();
     mountLetter(letter);
     const server = connectMockServer();
     const asks = letter.questions.flatMap((q) => q.asks.map((a) => ({ q, a })));
-    expect(asks.length).toBeGreaterThan(0);
+    expect(asks.some(({ a }) => a.question != null)).toBe(true);
     for (const { q, a } of asks) {
       const area = document.getElementById(`ask-${q.id}-${a.item}`) as HTMLTextAreaElement;
-      expect(area.placeholder).toBe(ITEM_EXAMPLE[a.item as MaterialItem]);
+      const example = document.getElementById(`ask-${q.id}-${a.item}-ex`);
+      if (a.question != null) {
+        expect(example).toHaveTextContent(ITEM_EXAMPLE[a.item as MaterialItem]);
+        expect(area).toHaveAttribute('aria-describedby', example!.id);
+      } else {
+        expect(example).toBeNull();
+      }
       expect(area.value).toBe(a.answer?.text ?? '');
     }
     const { q, a, area } = firstOpenAsk(letter);

@@ -333,7 +333,7 @@ describe('여백 메모와 점검표', () => {
 
 // ───────────────────────────── ⑤ 쓰는 중 ─────────────────────────────
 describe('⑤ 종이 위에 쓰는 중', () => {
-  it('움직임을 줄이면 글이 바로 다 보이고, 걸린 문장은 칠해지고 여백 메모와 점검표가 붙는다', () => {
+  it('움직임을 줄이면 글이 바로 다 보이고, 걸린 문장은 칠해지고 여백 메모와 상태 한 줄이 붙는다', () => {
     reduceMotion(true);
     mount(letter({ questions: [question({ writing: { text: TEXT, round: 0 } })], steps: { assign: [], draft: [
       step({ seq: 1, kind: 'WROTE', value: '100' }), step({ seq: 2, actor: 'CODE', kind: 'CHECK_FAILED', code: 'UNSOURCED_NUMBER', value: '30%', sentenceSeq: 1, sentence: S1 }),
@@ -343,9 +343,8 @@ describe('⑤ 종이 위에 쓰는 중', () => {
     const mark = document.querySelector('.pq__answer mark[data-note]');
     expect(mark?.textContent).toBe(S1);
     expect(document.querySelector('.pq__answer')?.textContent).toBe(TEXT);
-    expect(screen.getByRole('button', { name: /^근거\s?검사 중$/ })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('검사 중');
     expect(screen.getByText("'30%' — 카드에 없는 숫자예요")).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`^${TEXT.length} / 700자`))).toBeInTheDocument();
   });
 
   it('이미 있던 글은 바로 보이고 늘어난 글만 따라 치며 커서가 깜빡인다', async () => {
@@ -375,16 +374,9 @@ describe('②·③ 카드 고르기 메모', () => {
     expect(screen.getByRole('status')).toHaveTextContent('카드를 골랐어요');
   });
 
-  it('③ 카드 확인에도 같은 메모가 보인다', () => {
-    mount(letter({ stage: 'ASSIGNED', pollAfterMs: null, steps: { assign: [picked], draft: [] } }));
-    expect(screen.getByText('문항마다 쓸 카드')).toBeInTheDocument();
-    expect(screen.getByText("'토큰 만료 자동 재발급' 카드를 골랐어요")).toBeInTheDocument();
-    expect(screen.getByText('직무와 이어져서')).toBeInTheDocument();
-  });
-
   it('카드 바꾸기는 중심 카드를 고르기 전에는 보조 카드를 못 고른다', async () => {
     mount(letter({ stage: 'ASSIGNED', pollAfterMs: null, questions: [question({ primaryCard: null, assignedBy: 'SUB_AGENT' })] }));
-    fireEvent.click(screen.getByRole('button', { name: '카드 바꾸기' }));
+    fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
     const support = await screen.findByRole('radiogroup', { name: '보조 카드' });
     expect(within(support).getAllByRole('radio').every((r) => (r as HTMLButtonElement).disabled)).toBe(true);
     expect(screen.getByText('중심 카드를 먼저 골라 주세요.')).toBeInTheDocument();
@@ -394,7 +386,7 @@ describe('②·③ 카드 고르기 메모', () => {
 
   it('확정을 푼 카드는 카드 바꾸기의 기본값으로 남지 않는다', async () => {
     mount(letter({ stage: 'ASSIGNED', pollAfterMs: null, questions: [question({ primaryCard: { id: 'card_99', title: '확정 푼 카드', kind: 'TECH' } })] }));
-    fireEvent.click(screen.getByRole('button', { name: '카드 바꾸기' }));
+    fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
     const primary = await screen.findByRole('radiogroup', { name: '중심 카드' });
     expect(within(primary).queryByRole('radio', { checked: true })).toBeNull();
     expect(screen.getByRole('button', { name: '바꾸기' })).toBeEnabled();

@@ -158,13 +158,12 @@ describe('③ 카드 확인 화면', () => {
     expect(screen.getByText(/카드가 없는 문항 3개는 질문으로 재료를 모아요/)).toBeInTheDocument();
   });
 
-  it('고른 카드와 이유, 재료 점검을 보이고 카드 바꾸기에서 같은 카드를 보조로 고르지 못하게 한다', async () => {
+  it('고른 카드와 이유, 재료 한 줄을 보이고 카드 바꾸기에서 같은 카드를 보조로 고르지 못하게 한다', async () => {
     mount(letter());
     expect(screen.getByRole('link', { name: '팀원과 토큰 저장 위치로 갈린 경험' })).toHaveAttribute('href', '/cards/card_04');
     expect(screen.getByText('의견을 맞춘 과정이 분명해서')).toBeInTheDocument();
-    expect(screen.getByText('결과').closest('li')).not.toHaveClass('cl-material--have');
-    expect(screen.getByText('상황').closest('li')).toHaveClass('cl-material--have');
-    fireEvent.click(screen.getByRole('button', { name: '카드 바꾸기' }));
+    expect(document.querySelector('.cl-ready')).toHaveTextContent('재료 2/5 · 결과, 배운 점, 계기는 다음에 물어요');
+    fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
     const support = await screen.findByRole('radiogroup', { name: '보조 카드' });
     expect(within(support).getByRole('radio', { name: /팀원과 토큰 저장 위치로 갈린 경험/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: '바꾸기' })).toBeDisabled(); // 바꾼 게 없으면 저장하지 않는다
@@ -184,10 +183,14 @@ describe('① 입력 화면', () => {
   it('빈 칸과 글자 수 범위를 그 자리에서 알리고 보내지 않는다', () => {
     mount(null, '/cover-letters/new');
     fireEvent.change(screen.getByLabelText('지원 이유'), { target: { value: input.memo } });
+    fireEvent.click(screen.getByRole('button', { name: /^1번 문항 답 700자 이내/ }));
     fireEvent.change(screen.getByLabelText('1번 문항 글자 수'), { target: { value: '50' } });
-    fireEvent.click(screen.getByRole('button', { name: '카드 고르기 시작' }));
+    fireEvent.keyDown(screen.getByLabelText('1번 문항 글자 수'), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: '카드 고르기' }));
     expect(screen.getByText('지원 직무를 적어 주세요')).toBeInTheDocument();
     expect(screen.getByText('문항을 적어 주세요')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('1번 문항'), { target: { value: input.questions[0].text } });
+    expect(screen.getByText('100부터 5000까지 숫자로 적어 주세요')).toBeInTheDocument();
     expect((db as { coverLetters: unknown[] }).coverLetters).toHaveLength(0);
   });
 
@@ -203,6 +206,6 @@ describe('① 입력 화면', () => {
     db.cards.forEach((c) => { c.status = 'DRAFT'; });
     mount(null, '/cover-letters/new');
     await waitFor(() => expect(screen.getByText('확정한 카드가 없어요')).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: '카드 고르기 시작' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '카드 고르기' })).toBeDisabled();
   });
 });

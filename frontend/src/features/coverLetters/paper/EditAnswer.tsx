@@ -148,7 +148,7 @@ export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot,
       {showOriginal && (
         <div className="cl-original">
           <div className="row" style={{ gap: 8 }}>
-            <span className="t-12 c-2">AI가 쓴 원본</span>
+            <span className="t-12 c-2">처음 초안</span>
             {text !== d.aiText && <button type="button" className="cl-link-btn t-12 right" onClick={() => onText(d.aiText)}><RotateCcw size={12} aria-hidden /> 원본으로 되돌리기</button>}
           </div>
           <p>{d.aiText}</p>

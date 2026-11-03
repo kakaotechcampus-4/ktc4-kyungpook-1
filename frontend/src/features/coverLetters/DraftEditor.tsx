@@ -55,7 +55,7 @@ export function DraftEditor({ letter }: { letter: CoverLetter }) {
   };
   return (
     <>
-      <PageTitle sub={`${letter.jobRole}, 문항 ${letter.questions.length}개. 고친 글은 저장하면 남고, AI가 쓴 원본도 언제든 다시 볼 수 있어요.`}
+      <PageTitle sub={`${letter.jobRole}, 문항 ${letter.questions.length}개. 고친 글은 저장하면 남고, 처음 초안도 언제든 다시 볼 수 있어요.`}
         right={<Button variant="outline" size="sm" onClick={copyAll}><Copy size={14} aria-hidden /> 전체 복사</Button>}>초안이 나왔어요</PageTitle>
       {copied && <p className="t-13 c-2" role="status">{copied}</p>}
       <div className={`cl-draft${mobile ? ' cl-draft--sheet' : ''}`}>

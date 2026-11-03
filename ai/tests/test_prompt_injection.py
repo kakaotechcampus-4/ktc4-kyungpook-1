@@ -45,6 +45,7 @@ from services.commit_grouper import CommitGroup
 from services.cover_letter_asker import ASK_PROMPT
 from services.cover_letter_assigner import PICK_PROMPT, SUPERVISOR_PROMPT
 from services.cover_letter_drafter import REVIEW_PROMPT
+from services.cover_letter_memo import MEMO_CHECK_PROMPT
 from services.cover_letter_turns import TURN_PROMPT
 from services.cover_letter_writer import DECIDE_PROMPT, WRITE_PROMPT
 from services.diff_analyzer import SYSTEM_PROMPT as DIFF_PROMPT
@@ -201,10 +202,11 @@ def _decision_completion(decision: AnswerSufficiencyDecision):
     [STAR_PROMPT, DIFF_PROMPT, _CLUSTER_SYSTEM_PROMPT, _DESCRIPTION_SYSTEM_PROMPT, POSTING_PROMPT, ANSWER_PROMPT,
      QUESTION_PROMPT, SENTENCE_PROMPT,
      PICK_PROMPT, SUPERVISOR_PROMPT, ASK_PROMPT, WRITE_PROMPT, DECIDE_PROMPT, REVIEW_PROMPT, IMAGE_TEXT_PROMPT,
-     JUDGE_PROMPT, TURN_PROMPT],
+     JUDGE_PROMPT, TURN_PROMPT, MEMO_CHECK_PROMPT],
     ids=["star", "diff", "grouping-cluster", "grouping-description", "posting", "answer",
          "interview-question", "interview-measured-sentence", "cover-letter-pick", "cover-letter-supervisor", "cover-letter-ask", "cover-letter-write",
-         "cover-letter-decide", "cover-letter-review", "posting-image-text", "match-judge", "cover-letter-turn"],
+         "cover-letter-decide", "cover-letter-review", "posting-image-text", "match-judge", "cover-letter-turn",
+         "cover-letter-memo-check"],
 )
 def test_system_prompt_says_input_is_data_not_instructions(prompt: str) -> None:
     assert re.search(r"지시사항이 아니다|지시사항이 아닙니다|명령을 따르지 않는다", prompt)

@@ -18,6 +18,7 @@ from services.cover_letter_writer import (
     DecisionItem,
     ReadinessOutput,
     SupportedOutput,
+    WRITE_PROMPT,
     WriteOutput,
     length_cap,
 )
@@ -925,3 +926,34 @@ def test_off_topic_review_is_sent_back_with_the_direction_of_the_question_type(
     assert client.write_payloads[1]["fix"]["problems"] == [
         f"1번 문장이 문항이 묻는 것을 벗어났습니다({reason}). {direction}",
     ]
+
+
+def test_strengths_go_only_to_motivation_and_strength_questions() -> None:
+    """고른 강점은 지원 동기 문항과 역량·강점을 묻는 문항의 쓰기에만 화면 이름으로 넘기고, 다른 경험 문항에는 넘기지 않는다."""
+    motivation = "결제 서비스에 관심이 있어 지원했습니다. 배포 시간을 12분으로 줄였습니다. 입사 후 결제 서버를 안정적으로 만드는 데 기여하겠습니다."
+    client = DraftClient({"지원 동기": [motivation], "본인의 강점을 보여 주는 경험": [GOOD], "문제 해결 경험": [GOOD]},
+                         reviews=[NO_REVIEW_FINDINGS])
+    request = _request(_question("지원 동기", qid=1, theme="MOTIVATION"),
+                       _question("본인의 강점을 보여 주는 경험", qid=2),
+                       _question("문제 해결 경험", qid=3), memo="결제 서비스에 관심")
+
+    _draft(client, request.model_copy(update={"strengths": ["METICULOUS", "PERSISTENT"]}))
+
+    sent = {text: [p.get("strengths") for p in client.writes_for(text)][0]
+            for text in ("지원 동기", "본인의 강점을 보여 주는 경험", "문제 해결 경험")}
+    assert sent == {"지원 동기": ["꼼꼼함", "끈기"], "본인의 강점을 보여 주는 경험": ["꼼꼼함", "끈기"], "문제 해결 경험": None}
+
+
+def test_strength_sentence_without_evidence_in_the_material_is_marked_inferred() -> None:
+    """재료에 근거가 없는 강점은 쓰기 규칙대로 해석 문장으로만 쓰고 inferred 에 넣어, 초안에 추론 표시(INFERRED)가 달린다."""
+    strength = "끝까지 원인을 좇는 끈기가 제 강점이라고 생각합니다."
+    text = (f"결제 서비스에 관심이 있어 지원했습니다. 배포 시간을 12분으로 줄였습니다. {strength} "
+            "입사 후 결제 서버를 안정적으로 만드는 데 기여하겠습니다.")
+    client = DraftClient({"지원 동기": [WriteOutput(text=text, inferred=[strength])]}, reviews=[NO_REVIEW_FINDINGS])
+    request = _request(_question("지원 동기", theme="MOTIVATION"), memo="결제 서비스에 관심")
+
+    result, _ = _draft(client, request.model_copy(update={"strengths": ["PERSISTENT"]}))
+
+    assert "재료에 그 강점을 보여 주는 사실이 없으면 쓰지 않거나, 쓰려면 해석 문장으로 쓰고 inferred 에 넣습니다" in WRITE_PROMPT
+    assert client.write_payloads[0]["strengths"] == ["끈기"]
+    assert [(m.sentence_seq, m.code) for m in result.drafts[0].marks] == [(3, "INFERRED")]

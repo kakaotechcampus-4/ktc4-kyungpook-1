@@ -294,3 +294,14 @@ def test_diagnosis_pointing_at_missing_sentence_is_asked_again() -> None:
     result = _polish(client)
 
     assert (len(client.payloads[DiagnoseOutput]), result.points[0].kind) == (2, "GOOD")
+
+
+def test_strengths_go_to_diagnosis_and_rewrite_of_a_strength_question() -> None:
+    """역량·강점을 묻는 문항을 첨삭하면 고른 강점을 진단과 고쳐 쓰기에 화면 이름으로 그대로 넘긴다."""
+    client = PolishClient([_diagnosis(_point(seqs=(2,)))], writes=[REWRITTEN])
+    payload = _payload(strengths=["PERSISTENT"])
+    payload["target"]["text"] = "본인의 강점을 보여 주는 경험"
+
+    _polish(client, payload)
+
+    assert (client.payloads[DiagnoseOutput][0]["strengths"], client.writes[0]["strengths"]) == (["끈기"], ["끈기"])

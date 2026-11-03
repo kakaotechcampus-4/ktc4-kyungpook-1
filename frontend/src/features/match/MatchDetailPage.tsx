@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { Check, ChevronRight, GitCommitHorizontal, MessageSquareQuote, X } from "lucide-react";
+import { Check, ChevronRight, ExternalLink, GitCommitHorizontal, MessageSquareQuote, X } from "lucide-react";
 import {
   matchSupported,
   useGapFill,
@@ -23,7 +23,7 @@ import { ConditionGapFill, Dots } from "./GapFillParts";
 import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed, useUsedCandidates } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
 import { CalendarToggle } from "./CalendarToggle";
-import { MatchFailure, MatchUnavailable } from "./shared";
+import { MatchBack, MatchFailure, MatchUnavailable } from "./shared";
 import {
   categoryLabel,
   companyLabel,
@@ -360,16 +360,18 @@ export function MatchDetailPage() {
   );
   return (
     <main className="main matching-page">
-      <Link to={`/match${sp.size ? `?${sp}` : ""}`} className="match-back">
-        {matchViewFromParams(sp) === "company" ? "← 기업 목록" : "← 공고 목록"}
-      </Link>
+      <MatchBack to={`/match${sp.size ? `?${sp}` : ""}`} fromCompanyView={matchViewFromParams(sp) === "company"} />
       {query.isPending && <DetailSkeleton />}
       {query.isError && (
-        <MatchFailure
-          error={query.error}
-          retry={() => query.refetch()}
-          pending={query.isFetching}
-        />
+        <>
+          {/* 조회에 실패해도 화면의 제목(h1)은 남겨, 화면 읽기 프로그램이 지금 어디인지 알게 한다 */}
+          <PageTitle>공고 상세</PageTitle>
+          <MatchFailure
+            error={query.error}
+            retry={() => query.refetch()}
+            pending={query.isFetching}
+          />
+        </>
       )}
       {detail && (
         <div className="posting-detail">
@@ -451,13 +453,14 @@ export function MatchDetailPage() {
                   className="btn btn--outline"
                   onClick={() => track("match_source_opened", { matchId: detail.id })}
                 >
-                  공고 원문 보기 ↗
+                  공고 원문 보기
+                  <ExternalLink size={14} aria-hidden />
                 </a>
                 <CalendarToggle posting={{ id: detail.id, company: companyLabel(detail.company), role: detail.role, expiresAt: detail.source.expiresAt }} />
               </div>
               {judged && gapActive && (
                 <Link className="posting-summary__alt" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
-                  이 공고로 자소서 쓰기 →
+                  이 공고로 자소서 쓰기
                 </Link>
               )}
               {judge.isError && <p role="alert" className="posting-summary__error">맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.</p>}

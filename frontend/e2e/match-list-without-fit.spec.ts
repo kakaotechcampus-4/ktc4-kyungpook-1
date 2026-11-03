@@ -65,7 +65,7 @@ test('주소에 sort=fit 이 남아 있어도 기본 순서로 목록을 보여 
   await expect(page.locator('.match-card')).toHaveCount(5);
   await expect(sortMenu(page)).toContainText('기본 순서');
   await page.locator('.match-card').first().click();
-  await page.getByRole('link', { name: '← 공고 목록' }).click();
+  await page.getByRole('link', { name: '공고 목록으로' }).click();
   await expect(page.locator('.match-card')).toHaveCount(5);
 });
 

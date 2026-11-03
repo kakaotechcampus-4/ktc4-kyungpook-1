@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigationType, useSearchParams } from "react-rou
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
 import { useMe } from "@/api/queries";
 import { RefreshCw } from "lucide-react";
-import { Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
+import { Badge, Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
 import { Select } from "@/components/ui/Select";
 import { track } from "@/lib/track";
@@ -93,8 +93,8 @@ export function MatchListPage() {
   if (!matchSupported()) return <MatchUnavailable />;
   return (
     <main className="main matching-page">
-      <PageTitle right={isDemo ? '예시 공고' : undefined}>공고 매칭</PageTitle>
-      <p className="match-intro">개발 직군 채용 공고를 모아 보여 드려요. 공고를 열면 내 경험 카드로 조건을 맞춰 볼 수 있어요.</p>
+      <PageTitle after={isDemo ? <Badge kind="NEUTRAL">예시 공고</Badge> : undefined}>공고 매칭</PageTitle>
+      <p className="match-intro">개발 직군 공고를 모아 보여 드려요. 공고를 열면 내 경험 카드로 조건을 맞춰 볼 수 있어요.</p>
       <OverallMatch />
       <div className="match-toolbar">
         <ViewToggle value={view} onChange={(next) => update("view", next === "company" ? next : "")} />
@@ -165,7 +165,7 @@ export function MatchListPage() {
               </div>
             )}
           <div className="match-results">
-            <span role="status">{view === "company" && `기업 ${groups.length}곳 · `}공고 {list.length}건</span>
+            <span role="status">{view === "company" && `기업 ${groups.length}곳, `}공고 {list.length}건</span>
             <Button
               variant="ghost"
               size="sm"

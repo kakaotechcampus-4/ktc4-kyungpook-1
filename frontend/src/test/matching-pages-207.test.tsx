@@ -124,12 +124,12 @@ it("shows each condition's judgement and hides only duplicate quote lines", asyn
   expect(screen.getAllByText("직접 확인")).toHaveLength(1);
   expect(document.querySelectorAll(".posting-conditions .cond-tile")).toHaveLength(5);
   expect(screen.queryByRole("button", { name: "이 공고와 맞춰 보기" })).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "← 공고 목록" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toHaveAttribute(
     "href",
     "/match?category=BACKEND",
   );
   expect(
-    screen.getByRole("link", { name: "공고 원문 보기 ↗" }),
+    screen.getByRole("link", { name: "공고 원문 보기" }),
   ).toHaveAttribute("rel", "noopener noreferrer");
 });
 const unjudged = (detail: MatchDetail): MatchDetail => ({
@@ -205,7 +205,7 @@ it("404 detail offers list return without an invalid retry", async () => {
   );
   mount("/match/missing");
   await screen.findByRole("alert");
-  expect(screen.getByRole("link", { name: "← 공고 목록" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "다시 불러오기" }),
   ).not.toBeInTheDocument();

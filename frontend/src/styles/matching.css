@@ -130,6 +130,7 @@
   min-height: 44px;
   display: inline-flex;
   align-items: center;
+  gap: 4px;
 }
 @media (max-width: 1000px) {
   .match-controls {

@@ -149,6 +149,10 @@ export const CoverLetter = z.object({
   pollAfterMs: nullable(z.number()),
   jobRole: z.string(),
   memo: text,
+  /** 고른 강점 코드(최대 3). 이 칸이 없던 응답은 [] 로 읽는다 */
+  strengths: list(z.string()),
+  /** 질문 단계가 지원 이유를 글로 쓸 만하다고 봤는지. 판정 전이면 null, false 면 채팅에서 다시 묻는다 */
+  memoUsable: nullable(z.boolean()),
   posting: nullable(Posting),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -198,8 +202,8 @@ export const ANSWER_MAX = 1_000;
 /** 고친 초안은 10,000자까지 */
 export const DRAFT_MAX = 10_000;
 
-/** postingId 는 공고 상세에서 시작할 때만 그 공고 id, 아니면 null. 없는 공고면 서버가 404 NOT_FOUND */
-export type NewCoverLetter = { jobRole: string; memo: string | null; questions: { text: string; charLimit: number | null }[]; postingId: string | null };
+/** postingId 는 공고 상세에서 시작할 때만 그 공고 id, 아니면 null. 없는 공고면 서버가 404 NOT_FOUND. memo(지원 이유)는 필수이고 규칙은 lib/reasonCheck.ts, strengths 는 강점 코드 최대 3개 */
+export type NewCoverLetter = { jobRole: string; memo: string; strengths: string[]; questions: { text: string; charLimit: number | null }[]; postingId: string | null };
 
 export const coverLetterApi = {
   create: (input: NewCoverLetter, idempotencyKey: string) =>

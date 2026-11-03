@@ -22,7 +22,8 @@ from services.cover_letter_assigner import (
 from services.cover_letter_drafter import CoverLetterDrafter, FindingOutput, ReviewOutput
 from services.cover_letter_llm import CoverLetterLimits
 from services.cover_letter_progress import DraftTextStreamer
-from services.cover_letter_writer import DecideOutput, DecisionItem, WriteOutput
+from services.cover_letter_writer import DecideOutput, DecisionItem, ReadinessOutput, WriteOutput
+from cover_letter_fakes import all_evidence
 from services.llm_structured_client import StructuredCallResult
 from services.progress import listening
 
@@ -55,6 +56,8 @@ class FakeClient:
         self.partial_callbacks: list[Any] = []
 
     def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None, on_partial=None):
+        if output_model is ReadinessOutput:
+            return StructuredCallResult(output=all_evidence(payload), prompt_tokens=1, completion_tokens=1, latency_ms=1)
         with self._lock:
             answer = self._answers[output_model].pop(0)
             if output_model is WriteOutput:

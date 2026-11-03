@@ -1949,7 +1949,8 @@
               "MISSING_BLANK",
               "REPEATED",
               "UNSUPPORTED_CLAIM",
-              "OFF_TOPIC"
+              "OFF_TOPIC",
+              "INFERRED"
             ],
             "title": "Code",
             "type": "string"
@@ -2132,7 +2133,8 @@
                   "MISSING_BLANK",
                   "REPEATED",
                   "UNSUPPORTED_CLAIM",
-                  "OFF_TOPIC"
+                  "OFF_TOPIC",
+                  "INFERRED"
                 ],
                 "type": "string"
               },

@@ -157,6 +157,26 @@ class AiCoverLetterDraftsAdapterTest {
     }
 
     @Test
+    @DisplayName("AI 가 재료에 없는 해석을 지어 쓴 문장의 추론 표시(INFERRED)와 그 표시를 단 과정을 받아 돌려준다")
+    void readsInferredMarkAndStep() {
+
+        ObjectNode data = validData();
+        ((ObjectNode) data.withArray("drafts").get(0)).withArray("marks").addObject().put("sentence_seq", 1)
+                .put("code", "INFERRED").putNull("value");
+        data.withArray("steps").addObject().put("seq", 4).put("actor", "SUB_AGENT").put("kind", "MARKED")
+                .put("question_id", 1).put("code", "INFERRED").put("sentence_seq", 1).put("sentence", "배포를 함께 고쳤다.");
+        responseBody = success(data);
+
+        CoverLetterDrafts result = adapter().write(REQUEST);
+
+        assertThat(result.drafts().getFirst().marks()).last()
+                .isEqualTo(new CoverLetterDrafts.Mark(1, "INFERRED", null));
+        assertThat(result.steps()).last().isEqualTo(new CoverLetterDrafts.Step(4, "SUB_AGENT", "MARKED", 1, "INFERRED",
+                null, 1, "배포를 함께 고쳤다.", null, null));
+
+    }
+
+    @Test
     @DisplayName("AI 가 잠시 못 한다고 알리면 다시 시도할 수 있는 실패로 넘긴다")
     void passesTemporaryFailureAsRetryable() {
 

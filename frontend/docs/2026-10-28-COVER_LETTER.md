@@ -29,6 +29,7 @@
 | `PUT /cover-letters/{id}/questions/{qid}/answers` | `{ answers: [{ item, text, skipped }] }` | `CoverLetter` — 그 문항의 답 전체를 바꾼다. 보내지 않은 항목은 답이 없는 것으로 남으므로, 미리 채운 지난 답(`reused: true`)도 다시 보내야 남는다. `ASKED` 에서만 |
 | `POST /cover-letters/{id}/drafts` | | `CoverLetter`(`stage: DRAFTING`) — 답하지 않은 질문은 넘긴 것으로 본다. `ASKED` 에서만 |
 | `PATCH /cover-letters/{id}/questions/{qid}` | `{ text }` | `CoverLetter` — 고친 글을 저장한다. AI 원본(`aiText`)은 그대로 남는다. `DRAFTED` 에서만 |
+| `DELETE /cover-letters/{id}/questions/{qid}/marks/{sentenceSeq}` | | `CoverLetter` — AI 추론 문장을 맞다고 확인해 그 문장의 `INFERRED` 표시만 지운다(#719). 글은 그대로. `DRAFTED` 에서만, 그 문장에 `INFERRED` 표시가 없으면 409 |
 | `POST /cover-letters/{id}/retry` | | `CoverLetter` — 실패한 단계만 다시 돈다. `FAILED` 에서만 |
 | `DELETE /cover-letters/{id}` | | `{ ok: true }` — 어느 단계에서든 지운다. AI 가 돌던 결과는 버린다 |
 
@@ -94,7 +95,7 @@
 - `draft.charCount` 는 공백 포함 글자 수이고 `[항목: …]` 빈칸과 `[더 쓸 거리: …]` 는 세지 않는다. `overBy` 는 넘은 만큼(넘지 않으면 0). 2번 다시 써도 넘치면 자르지 않고 그대로 보낸다.
 - `draft.blanks`: 재료가 없어 `[배운 점: 배운 점을 적어 주세요]` 처럼 빈칸으로 남긴 항목. 사용자가 채운다.
 - 글이 목표(글자 수 상한의 70%)보다 짧은데 카드·답에 더 쓸 사실이 없으면, AI 가 모자란 내용 자리에 `[더 쓸 거리: 무엇을 쓰면 되는지]` 를 한두 개 넣는다. 항목이 아니라 `blanks` 에는 없으므로, 화면은 글에서 이 모양을 찾아 강조한다.
-- `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것은 `null`.
+- `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남) · `INFERRED`(AI 가 재료에 없는 해석 — 배운 점·판단 이유·직무 연결·포부 — 을 추론해 쓴 문장. 사용자가 확인하면 위 `DELETE` 로 지운다). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것과 `INFERRED` 는 `null`.
 - `draft.source: SKELETON` 은 AI 가 쓰지 못해 카드 문장과 빈칸으로 만든 뼈대다.
 - `writing`: 초안을 쓰는 동안(`DRAFTING`) AI 가 그 문항에 지금까지 쓴 글이다. 첫 초안(`round` 0)은 문장이 끝날 때마다 늘어나고, 고쳐 쓸 때는 `round` 가 1씩 늘며 다 쓴 새 글로 한 번에 바뀐다(화면은 앞 글과 문장 단위로 견줘 바뀐 문장만 다시 그린다). 검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 앞 글로 돌아온다. 아직 쓰기 전이거나 단계가 끝나면(`DRAFTED`·`FAILED`) `null` 이고, 다 쓰면 `draft` 가 채워진다. 빠뜨린 빈칸은 다 쓴 뒤에 붙으므로 `writing` 에는 없을 수 있다.
 
@@ -128,7 +129,7 @@
 | `DECIDED` | 걸린 것을 고칠지(`action: FIX`) 둘지(`KEEP`, 검사기가 잘못 건 것) 정했다 · `reason` | "'Kubernetes'는 카드의 'k8s'와 같은 뜻이라 그대로 뒀어요" |
 | `REWROTE` | 다시 썼다 · 글자 수 | "고쳐서 다시 썼어요(598자)" |
 | `REVERTED` | 다시 쓴 글이 새 문제를 만들어 앞 글로 되돌렸다 | "다시 쓴 글이 새 문제를 만들어 앞 초안으로 돌렸어요" |
-| `MARKED` | 고치지 못한 것을 '확인 필요'로 표시했다 · 걸린 값 | "'30%'에 확인 필요 표시를 남겼어요" |
+| `MARKED` | 고치지 못한 것을 '확인 필요'로 표시했다 · 걸린 값. `code: INFERRED` 면 작성 AI·감독이 추론 문장에 단 표시다 | "'30%'에 확인 필요 표시를 남겼어요" · "추론한 문장이라 확인 필요 표시를 남겼어요" |
 | `SKELETON` | AI 가 쓰지 못해 뼈대로 대신했다 | "초안을 쓰지 못해 카드 문장으로 뼈대를 만들었어요" |
 | `REVIEWED` | 감독이 모든 문항을 함께 검토했다 · 걸린 문장 수 | "모든 문항을 함께 읽고 2문장을 다시 보게 했어요" |
 | `SENT_BACK` | 감독이 그 문장을 돌려보냈다 · `code`·`sentenceSeq`·`reason` | "2번 문항 3번째 문장이 1번 문항과 같은 이야기라 다시 쓰게 했어요" |

@@ -324,6 +324,16 @@ def test_supporting_card_that_became_primary_is_dropped() -> None:
     assert (result.assignments[1].primary_card_id, result.assignments[1].supporting_card_id) == (3, None)
 
 
+def test_supporting_card_used_elsewhere_is_dropped() -> None:
+    """보조 카드가 다른 문항의 중심 카드이거나 앞 문항이 이미 보조로 쓴 카드면 빼서, 한 자소서에서 같은 경험이 되풀이되지 않게 한다."""
+    client = RoutedClient({"협업 경험": [_pick(1, supporting=2)], "문제 해결 경험": [_pick(2, supporting=4)],
+                           "리더십 경험": [_pick(3, supporting=4)]})
+
+    result, _ = _assign(client, _request("협업 경험", "문제 해결 경험", "리더십 경험"))
+
+    assert [a.supporting_card_id for a in result.assignments] == [None, 4, None]
+
+
 def test_only_questions_with_a_card_go_to_supervisor() -> None:
     """맞는 카드가 없는 문항은 감독에게 보내지 않고 NO_FIT 으로 남는다."""
     client = RoutedClient(

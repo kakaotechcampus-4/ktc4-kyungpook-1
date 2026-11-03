@@ -13,7 +13,8 @@ from services.cover_letter_asker import AskItemOutput, AskOutput, CoverLetterAsk
 from services.cover_letter_assigner import ConsideredOutput, CoverLetterAssigner, PickOutput
 from services.cover_letter_drafter import CoverLetterDrafter, ReviewOutput
 from services.cover_letter_llm import CoverLetterLimits
-from services.cover_letter_writer import WriteOutput
+from services.cover_letter_writer import ReadinessOutput, WriteOutput
+from cover_letter_fakes import all_evidence
 from services.llm_structured_client import LLMStructuredCallError, StructuredCallResult
 
 SUMMARY = {"card_id": 1, "title": "배포 시간 단축", "summary": "배포 시간을 40분에서 12분으로 줄였다"}
@@ -31,7 +32,7 @@ class FixedClient:
         self._answers = answers
 
     def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
-        answer = self._answers[output_model]
+        answer = all_evidence(payload) if output_model is ReadinessOutput else self._answers[output_model]
         if isinstance(answer, dict):
             answer = answer[payload["question"]["text"]]
         if isinstance(answer, Exception):

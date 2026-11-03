@@ -3,6 +3,8 @@ import { Copy } from 'lucide-react';
 import type { CoverLetter } from '@/api/coverLetters';
 import { Button, PageTitle } from '@/components/ui';
 import { copyText } from '@/lib/clipboard';
+import { copiedExtras } from '@/lib/coverLetterCopy';
+import { unconfirmedInferences } from '@/lib/coverLetterNotes';
 import { blanksIn } from '@/lib/draftText';
 import { track } from '@/lib/track';
 import { DraftPaper } from './paper/DraftPaper';
@@ -19,8 +21,12 @@ export function DraftEditor({ letter }: { letter: CoverLetter }) {
   const copyAll = async () => {
     const all = letter.questions.map((q) => `${q.seq}. ${q.text}\n\n${texts[q.id] ?? ''}`).join('\n\n\n');
     const ok = await copyText(all);
-    setCopied(ok ? '모든 문항을 복사했어요' : '복사하지 못했어요. 글을 직접 선택해 복사해 주세요.');
-    if (ok) track('cover_letter_copied', { coverLetterId: letter.id, scope: 'all', blanks: letter.questions.reduce((n, q) => n + blanksIn(texts[q.id] ?? '').length, 0) });
+    if (!ok) { setCopied('복사하지 못했어요. 글을 직접 선택해 복사해 주세요.'); return; }
+    const blanks = letter.questions.reduce((n, q) => n + blanksIn(texts[q.id] ?? '').length, 0);
+    const inferred = letter.questions.reduce((n, q) => n + unconfirmedInferences(q.draft, texts[q.id] ?? ''), 0);
+    const extra = copiedExtras(inferred, blanks);
+    setCopied(extra ? `모든 문항을 복사했어요. ${extra}` : '모든 문항을 복사했어요');
+    track('cover_letter_copied', { coverLetterId: letter.id, scope: 'all', blanks, inferred });
   };
   return (
     <>

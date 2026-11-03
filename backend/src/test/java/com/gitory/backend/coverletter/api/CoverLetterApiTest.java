@@ -624,6 +624,78 @@ class CoverLetterApiTest {
     }
 
     @Test
+    @DisplayName("AI 추론 문장을 확인하면 그 문장의 INFERRED 표시만 지우고, 글과 같은 문장의 다른 표시는 그대로 둔 자소서를 돌려준다")
+    void confirmingInferenceRemovesOnlyThatInferredMark() throws Exception {
+
+        CoverLetter letter = draftedLetter(myUserId, "초안", List.of(new DraftMark(1, "UNSOURCED_NUMBER", "90"),
+                new DraftMark(1, "INFERRED", null), new DraftMark(2, "INFERRED", null)));
+
+        confirmInference(letter, questionIdOf(letter), 1)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.questions[0].draft.text").value("초안"))
+                .andExpect(jsonPath("$.data.questions[0].draft.aiText").value("초안"))
+                .andExpect(jsonPath("$.data.questions[0].draft.marks.length()").value(2))
+                .andExpect(jsonPath("$.data.questions[0].draft.marks[0].code").value("UNSOURCED_NUMBER"))
+                .andExpect(jsonPath("$.data.questions[0].draft.marks[1].sentenceSeq").value(2))
+                .andExpect(jsonPath("$.data.questions[0].draft.marks[1].code").value("INFERRED"));
+
+    }
+
+    @Test
+    @DisplayName("그 문장 번호에 INFERRED 표시가 없으면(다른 표시만 있거나 표시가 없으면) 409 이고 표시를 지우지 않는다")
+    void rejectsConfirmingWhereNoInferredMark() throws Exception {
+
+        CoverLetter letter = draftedLetter("초안");
+
+        confirmInference(letter, questionIdOf(letter), 1)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+        confirmInference(letter, questionIdOf(letter), 2)
+                .andExpect(status().isConflict());
+
+        assertThat(questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst().getMarks())
+                .containsExactly(new DraftMark(1, "UNSOURCED_NUMBER", "90"));
+
+    }
+
+    @Test
+    @DisplayName("남의 자소서의 추론 문장은 404 로 확인할 수 없고 거절로 남긴다")
+    void othersInferenceIsNotFound() throws Exception {
+
+        CoverLetter others = draftedLetter(othersUserId, "초안", List.of(new DraftMark(1, "INFERRED", null)));
+
+        confirmInference(others, questionIdOf(others), 1)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        assertThat(questions.findByCoverLetterIdOrderBySeq(others.getId()).getFirst().getMarks())
+                .containsExactly(new DraftMark(1, "INFERRED", null));
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM audit_event WHERE action = 'EDIT_COVER_LETTER' AND outcome = 'DENIED'",
+                Integer.class)).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("초안을 다 쓰기 전에는 추론 표시가 있어도 409 로 확인할 수 없다")
+    void rejectsConfirmingBeforeDrafted() throws Exception {
+
+        CoverLetter asked = askedLetter();
+        CoverLetterQuestion question = questions.findByCoverLetterIdOrderBySeq(asked.getId()).getFirst();
+        question.drafted("배웠다.", List.of(new DraftSentence(1, "배웠다.")), 4, 0,
+                List.of(new DraftMark(1, "INFERRED", null)), List.of(), DraftSource.LLM);
+        questions.save(question);
+
+        confirmInference(asked, questionIdOf(asked), 1)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+
+        assertThat(questions.findByCoverLetterIdOrderBySeq(asked.getId()).getFirst().getMarks())
+                .containsExactly(new DraftMark(1, "INFERRED", null));
+
+    }
+
+    @Test
     @DisplayName("목록은 내 자소서만 최근에 만든 것부터 문항 수·첫 문항과 함께 주고, 없으면 빈 목록이다")
     void listsMyLettersNewestFirst() throws Exception {
 
@@ -783,10 +855,16 @@ class CoverLetterApiTest {
 
     private CoverLetter draftedLetter(String aiText) {
 
-        CoverLetter letter = letters.save(CoverLetter.start(myUserId, "백엔드 개발", null, null));
+        return draftedLetter(myUserId, aiText, List.of(new DraftMark(1, "UNSOURCED_NUMBER", "90")));
+
+    }
+
+    private CoverLetter draftedLetter(Long userId, String aiText, List<DraftMark> marks) {
+
+        CoverLetter letter = letters.save(CoverLetter.start(userId, "백엔드 개발", null, null));
         CoverLetterQuestion question = CoverLetterQuestion.of(letter.getId(), 1, "협업 경험을 쓰세요", 100);
         question.drafted(aiText, List.of(new DraftSentence(1, "가".repeat(90))), 91, 0,
-                List.of(new DraftMark(1, "UNSOURCED_NUMBER", "90")), List.of(MaterialItem.LEARNING), DraftSource.LLM);
+                marks, List.of(MaterialItem.LEARNING), DraftSource.LLM);
         questions.save(question);
         letter.claim();
         letter.assigned(List.of());
@@ -864,6 +942,13 @@ class CoverLetterApiTest {
 
         return mvc.perform(patch("/api/cover-letters/{id}/questions/{qid}", letter.getPublicId(), questionId)
                 .with(loggedInAs(myUserId)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body));
+
+    }
+
+    private ResultActions confirmInference(CoverLetter letter, String questionId, int sentenceSeq) throws Exception {
+
+        return mvc.perform(delete("/api/cover-letters/{id}/questions/{qid}/marks/{seq}", letter.getPublicId(),
+                questionId, sentenceSeq).with(loggedInAs(myUserId)).with(csrf()));
 
     }
 

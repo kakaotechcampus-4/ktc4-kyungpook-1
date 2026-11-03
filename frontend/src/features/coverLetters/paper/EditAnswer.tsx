@@ -1,11 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Copy, RotateCcw } from 'lucide-react';
 import { DRAFT_MAX, useSaveDraft, type CoverLetterQuestion } from '@/api/coverLetters';
 import { errorView } from '@/api/errorView';
 import { Button } from '@/components/ui';
 import { copyText } from '@/lib/clipboard';
-import { ITEM_LABEL } from '@/lib/coverLetterCopy';
-import type { NoteThread } from '@/lib/coverLetterNotes';
+import { ITEM_LABEL, copiedExtras } from '@/lib/coverLetterCopy';
+import { unconfirmedInferences, type NoteThread } from '@/lib/coverLetterNotes';
 import { locateSentence } from '@/lib/draftPaper';
 import { blanksIn, moreToWrite } from '@/lib/draftText';
 import { track } from '@/lib/track';
@@ -16,27 +16,55 @@ const fitHeight = (el: HTMLTextAreaElement) => {
   el.style.height = `${el.scrollHeight}px`;
 };
 
+export type DraftEditing = {
+  area: RefObject<HTMLTextAreaElement | null>;
+  dirty: boolean;
+  saving: boolean;
+  /** 지금 글(또는 next)을 저장한다. 저장된 글과 같거나 한도를 넘으면 보내지 않는다 */
+  persist: (next?: string) => Promise<void>;
+  note: string | null;
+  setNote: (note: string | null) => void;
+};
+
+/**
+ * ⑥ 고치는 답 칸의 글상자·저장 상태. 여백 메모의 '고치기'(글상자에서 문장 고르기)·'빼기'(빼고 저장)도 같은 글상자와 저장을 써서,
+ * 메모를 그리는 PaperQuestion 이 갖고 EditAnswer 에 넘긴다. 아직 저장하지 않았으면 서버 글을 저장된 글로 본다.
+ */
+export function useDraftEditing(letterId: string, q: CoverLetterQuestion, text: string): DraftEditing {
+  const [saved, setSaved] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const area = useRef<HTMLTextAreaElement>(null);
+  const save = useSaveDraft(letterId);
+  const base = saved ?? q.draft?.text ?? '';
+  const persist = async (next: string = text) => {
+    if (next === base || next.length > DRAFT_MAX) return;
+    try {
+      const letter = await save.mutateAsync({ questionId: q.id, text: next });
+      setSaved(letter.questions.find((x) => x.id === q.id)?.draft?.text ?? next);
+      setNote(null);
+      track('cover_letter_edited', { coverLetterId: letterId, questionSeq: q.seq });
+    } catch (e) { setNote(`${errorView(e).message} 고친 글은 화면에 그대로 있어요.`); }
+  };
+  return { area, dirty: text !== base, saving: save.isPending, persist, note, setNote };
+}
+
 /**
  * ⑥ 고치는 답 칸 — 실제 textarea 를 종이 모양으로 두고, 칠하기는 뒤에 같은 글을 그린 층이 맡는다(한국어 조합 입력이 깨지지 않게).
  * 저장(칸을 벗어날 때·버튼)·복사·AI 원본·채울 곳은 예전 ⑥ 과 같은 규칙이고 자리만 옮겼다.
  */
-export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot }: {
-  letterId: string; q: CoverLetterQuestion; text: string; onText: (text: string) => void; threads: NoteThread[]; focusKey: string | null; foot: ReactNode;
+export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot, editing }: {
+  letterId: string; q: CoverLetterQuestion; text: string; onText: (text: string) => void; threads: NoteThread[]; focusKey: string | null; foot: ReactNode; editing: DraftEditing;
 }) {
   const d = q.draft!;
-  const [saved, setSaved] = useState(d.text);
   const [showOriginal, setShowOriginal] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-  const area = useRef<HTMLTextAreaElement>(null);
-  const save = useSaveDraft(letterId);
-  const dirty = text !== saved;
+  const { area, dirty, persist, note, setNote } = editing;
   const blanks = blanksIn(text);
   const more = moreToWrite(text);
 
   // 글상자는 안에서 스크롤하지 않고 글 높이만큼 자란다 — 뒤의 칠하기 층과 줄이 어긋나지 않게
   useLayoutEffect(() => {
     if (area.current) fitHeight(area.current);
-  }, [text]);
+  }, [area, text]);
   // 폭이 바뀌면(창 크기·메모 자리) 줄바꿈이 달라지니 다시 잰다 — 높이만 바뀐 알림은 맞춘 결과라 건너뛴다
   useEffect(() => {
     const el = area.current;
@@ -50,27 +78,20 @@ export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot 
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [area]);
 
   const highlights = useMemo<Highlight[]>(() => threads.flatMap((t) => {
     const r = locateSentence(text, t.sentence);
     return r ? [{ key: t.key, ...r, status: t.status, value: t.value, focus: focusKey === t.key }] : [];
   }), [threads, text, focusKey]);
 
-  const persist = async () => {
-    if (!dirty || text.length > DRAFT_MAX) return;
-    try {
-      const letter = await save.mutateAsync({ questionId: q.id, text });
-      setSaved(letter.questions.find((x) => x.id === q.id)?.draft?.text ?? text);
-      setNote(null);
-      track('cover_letter_edited', { coverLetterId: letterId, questionSeq: q.seq });
-    } catch (e) { setNote(`${errorView(e).message} 고친 글은 화면에 그대로 있어요.`); }
-  };
   const copy = async () => {
     const ok = await copyText(text);
     if (!ok) { area.current?.select(); setNote('복사하지 못했어요. 글이 선택돼 있으니 직접 복사해 주세요.'); return; }
-    setNote(blanks.length ? `복사했어요. 아직 채우지 않은 빈칸 ${blanks.length}개가 함께 복사됐어요.` : '복사했어요.');
-    track('cover_letter_copied', { coverLetterId: letterId, scope: 'question', blanks: blanks.length });
+    const inferred = unconfirmedInferences(d, text);
+    const extra = copiedExtras(inferred, blanks.length);
+    setNote(extra ? `복사했어요. ${extra}` : '복사했어요.');
+    track('cover_letter_copied', { coverLetterId: letterId, scope: 'question', blanks: blanks.length, inferred });
   };
 
   return (
@@ -86,7 +107,7 @@ export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot 
         <span className="right row" style={{ gap: 6 }}>
           <Button variant="ghost" size="sm" onClick={() => setShowOriginal((v) => !v)}>{showOriginal ? 'AI 원본 닫기' : 'AI 원본 보기'}</Button>
           <Button variant="outline" size="sm" onClick={copy}><Copy size={14} aria-hidden /> 복사</Button>
-          <Button size="sm" onClick={persist} loading={save.isPending} disabled={!dirty}>{dirty ? '저장' : '저장됨'}</Button>
+          <Button size="sm" onClick={() => void persist()} loading={editing.saving} disabled={!dirty}>{dirty ? '저장' : '저장됨'}</Button>
         </span>
       </div>
       {note && <p className="pq__note" role="status">{note}</p>}

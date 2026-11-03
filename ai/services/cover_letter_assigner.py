@@ -48,6 +48,10 @@ PICK_PROMPT = """당신은 자기소개서 문항 하나에 쓸 경험 카드를
   평은 카드 요약에 있는 사실로만 씁니다.
   fit 은 STRONG(문항이 묻는 장면이 분명하고 상황·행동·결과가 보여 쓸 거리가 많음) · MEDIUM(장면은 있지만 일부만 보이거나 짧음) ·
   WEAK(문항이 묻는 장면이 거의 없음) 중 하나입니다. fit 은 문항에 맞는 정도만 보고 매기며, 공고 조건을 채웠는지는 넣지 않습니다.
+  COLLABORATION·CONFLICT 문항의 fit 은 사람 사이의 일(상대의 사정, 제안·조율, 설득, 역할 나누기, 의견 차이)로 매깁니다.
+  요약 문장 가운데 사람 사이의 일을 말하는 문장이 절반이 안 되는 카드(코드·설정을 바꾼 일이 대부분이고 '팀에 알렸다'·'작업을 이어받았다' 정도만 있는 카드)는
+  기술 작업 카드입니다. 사람 사이의 일이 중심인 카드가 하나라도 있으면 그 카드가 짧아도 기술 작업 카드보다 높게 매기고 기술 작업 카드는 WEAK 로,
+  그런 카드가 없을 때만 기술 작업 카드를 MEDIUM 까지 매깁니다.
 - first_card_id·first_reason: 중심 경험으로 가장 맞는 카드와 고른 이유 한 줄(40자 안팎).
   문항이 묻는 장면(갈등 문항이면 의견이 갈린 장면, 문제 해결 문항이면 원인을 찾아 고친 과정)이 요약에 드러난 카드를 고릅니다.
   1순위는 considered 중 fit 이 가장 높은 카드이고 WEAK 카드는 고르지 않습니다.
@@ -170,6 +174,24 @@ def resolve_overlaps(picks: list[Pick]) -> dict[int, Optional[int]]:
     return choice
 
 
+def drop_shared_supporting(assignments: list[QuestionAssignment]) -> list[QuestionAssignment]:
+    """다른 문항의 중심 카드이거나 앞 문항이 이미 보조로 쓴 카드는 보조에서 뺀다.
+
+    보조 카드도 글에 들어가므로, 겹치면 한 자소서 안에서 같은 경험이 여러 문항에 되풀이된다.
+    """
+    primaries = {assignment.primary_card_id for assignment in assignments if assignment.primary_card_id is not None}
+    used: set[int] = set()
+    kept: list[QuestionAssignment] = []
+    for assignment in assignments:
+        card = assignment.supporting_card_id
+        if card is not None and (card in primaries or card in used):
+            assignment = assignment.model_copy(update={"supporting_card_id": None})
+        elif card is not None:
+            used.add(card)
+        kept.append(assignment)
+    return kept
+
+
 def _first_overlap(order: list[int], choice: dict[int, Optional[int]]) -> Optional[int]:
     for qid in order:
         card = choice[qid]
@@ -231,9 +253,9 @@ class CoverLetterAssigner:
                     reason = sources.sourced(decision.reason, pick.first, pick.second, with_user=True)
                     steps.append(_reported(self._step(steps, "SUPERVISOR", "SWITCHED", pick.question_id, card, reason)))
 
-        assignments = [
+        assignments = drop_shared_supporting([
             self._assignment(question, pick, choice, decided_by) for question, pick in zip(request.questions, picks)
-        ]
+        ])
         failed = sum(1 for pick in picks if pick is None)
         if failed == len(picks):
             ended_by: EndedBy = "FALLBACK"

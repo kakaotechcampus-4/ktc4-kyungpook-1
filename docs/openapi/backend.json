@@ -6917,6 +6917,94 @@
         "tags" : [ "Cover letters" ]
       }
     },
+    "/api/cover-letters/{id}/questions/{questionId}/marks/{sentenceSeq}" : {
+      "delete" : {
+        "description" : "초안을 받은 뒤(DRAFTED)에 사용자가 맞다고 확인한 AI 추론 문장의 표시(marks 의 code INFERRED)만 지웁니다.\n글(text·aiText)과 다른 표시는 그대로이며, 응답은 초안 고치기와 같은 자소서 전체입니다.\n",
+        "operationId" : "confirmInference",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "문항 id",
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "확인한 문장의 번호(sentences 의 seq)",
+          "in" : "path",
+          "name" : "sentenceSeq",
+          "required" : true,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서·문항, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: DRAFTED 가 아님, 그 문장 번호에 INFERRED 표시가 없음(이미 확인함·다른 표시만 있음)"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          }
+        },
+        "summary" : "AI 추론 문장 확인",
+        "tags" : [ "Cover letters" ]
+      }
+    },
     "/api/cover-letters/{id}/retry" : {
       "post" : {
         "description" : "실패한 자소서(FAILED)의 실패한 단계만 다시 줄 세웁니다.",

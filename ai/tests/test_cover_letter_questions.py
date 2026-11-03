@@ -9,7 +9,7 @@ from typing import Any, Optional
 import pytest
 
 from schemas.cover_letter import QuestionsRequest
-from services.cover_letter_asker import AskItemOutput, AskOutput, CoverLetterAsker
+from services.cover_letter_asker import AskItemOutput, AskOutput, CoveredOutput, CoverLetterAsker
 from services.cover_letter_llm import CoverLetterLimits
 from services.llm_structured_client import LLMStructuredCallError, StructuredCallResult
 
@@ -280,25 +280,40 @@ def test_card_items_already_answered_are_not_asked_deeper() -> None:
     assert client.payloads[0]["deepen"] == ["SITUATION"]
 
 
-def test_templates_without_blank_or_with_unsourced_number_are_dropped() -> None:
-    """빈칸 없는 틀·입력에 없는 수치가 든 틀·너무 긴 틀·같은 틀은 버리고, 남은 틀은 2개까지 준다."""
-    templates = [
-        "빌드 캐시를 나눈 이유는 ___ 때문이었다",
-        "배포가 30% 빨라진 이유는 ___ 이었다",
-        "빌드 캐시를 나눴다",
-        "빌드 캐시를 나눈 이유는 ___ 때문이었다",
-        "___ 때문에 " + "가" * 80,
-        "___ 방법도 생각했지만 ___ 때문에 빌드 캐시를 나눴다",
-        "바뀐 모듈만 빌드한 뒤 ___ 이 달라졌다",
-    ]
-    ask = AskItemOutput(item="RESULT", question="결과로 무엇이 달라졌나요?", templates=templates)
-    client = RoutedClient({"문제 해결 경험": [AskOutput(asks=[ask])]})
+def test_llm_asks_carry_no_templates() -> None:
+    """빈칸 틀은 답을 조각내므로 만들지 않고, 장면을 떠올리게 하는 질문만 준다."""
+    client = RoutedClient({"문제 해결 경험": [_asks("RESULT", "LEARNING")]})
 
     result, _ = _ask(client, _request(_question()))
 
-    assert result.questions[0].asks[0].templates == [
-        "빌드 캐시를 나눈 이유는 ___ 때문이었다", "___ 방법도 생각했지만 ___ 때문에 빌드 캐시를 나눴다",
-    ]
+    assert [a.templates for a in result.questions[0].asks] == [[], []]
+
+
+def test_item_whose_evidence_the_card_already_shows_is_not_asked() -> None:
+    """모델이 이미 있다고 한 증거는 인용이 카드에 그대로 있을 때만 쳐서, 그 증거만 묻는 항목은 묻지 않고 지어낸 인용의 항목은 묻는다."""
+    covered = [CoveredOutput(evidence=1, quote="배포 한 번에 40분이 걸려   하루 배포 횟수가 적었다"),
+               CoveredOutput(evidence=2, quote="바뀐 모듈만 빌드하는 방법을 세 가지 견줬다")]
+    asks = AskOutput(asks=_asks("RESULT", "SITUATION", "ACTION").asks, covered=covered)
+    client = RoutedClient({"문제 해결 경험": [asks]})
+
+    result, _ = _ask(client, _request(_question()))
+
+    assert [a.item for a in result.questions[0].asks] == ["RESULT", "ACTION"]
+
+
+@pytest.mark.parametrize(
+    ("theme", "deep"),
+    [("PROBLEM_SOLVING", True), ("CHALLENGE", True), ("COLLABORATION", False), ("LEADERSHIP", False), ("GROWTH", False)],
+)
+def test_deep_tech_questions_only_for_problem_solving_and_challenge(theme: str, deep: bool) -> None:
+    """기술의 원리·구현을 깊게 묻는 건 문제 해결·도전 문항뿐이고, 다른 유형은 그 유형의 관점으로 묻게 한다."""
+    client = RoutedClient({"경험": [_asks("RESULT", "LEARNING")]})
+
+    _ask(client, _request(_question("경험", theme)))
+
+    payload = client.payloads[0]
+    assert payload["deep_tech"] is deep
+    assert set(payload["item_angles"]) >= {"RESULT", "ACTION"}
 
 
 def test_template_questions_have_no_templates() -> None:

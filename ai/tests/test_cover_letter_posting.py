@@ -16,7 +16,8 @@ from services.cover_letter_assigner import ConsideredOutput, CoverLetterAssigner
 from services.cover_letter_check import check_draft
 from services.cover_letter_drafter import CoverLetterDrafter, ReviewOutput
 from services.cover_letter_llm import CoverLetterLimits
-from services.cover_letter_writer import DecideOutput, WriteOutput, source_text
+from services.cover_letter_writer import DecideOutput, ReadinessOutput, WriteOutput, source_text
+from cover_letter_fakes import all_evidence
 from services.llm_structured_client import LLMStructuredCallError, StructuredCallResult
 
 POSTING = {
@@ -339,6 +340,8 @@ class DraftClient:
         self.review_payloads: list[dict[str, Any]] = []
 
     def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
+        if output_model is ReadinessOutput:
+            return _result(all_evidence(payload))
         if output_model is WriteOutput:
             self.write_payloads.append(payload)
             return _result(WriteOutput(text=self._text))

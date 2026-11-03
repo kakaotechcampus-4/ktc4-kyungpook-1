@@ -1,16 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { AssignStep, CoverLetterQuestion, DraftStep } from '@/api/coverLetters';
+import { useConfirmInference, type AssignStep, type CoverLetterQuestion, type DraftStep } from '@/api/coverLetters';
+import { errorView } from '@/api/errorView';
 import { CHECK_GROUPS, GROUP_LABEL, buildAssignNotes, buildQuestionNotes, cellLabel, type CheckGroup, type Checklist as ChecklistT, type NoteThread } from '@/lib/coverLetterNotes';
+import { locateSentence, withoutSentence } from '@/lib/draftPaper';
 import { countableLength } from '@/lib/draftText';
 import { useReducedMotion } from '@/lib/useLiveText';
-import { EditAnswer } from './EditAnswer';
+import { EditAnswer, useDraftEditing } from './EditAnswer';
 import { LiveAnswer } from './LiveAnswer';
-import { MarginNotes, NoteCard } from './MarginNotes';
+import { MarginNotes, NoteCard, type NoteActionsFor } from './MarginNotes';
 
 export type PaperMode = 'live' | 'edit' | 'assign';
 export type PaperLayout = 'margin' | 'inline';
 
-/** 점검표 네 칸 — 걸린 칸을 누르면 그 메모로 간다. 상태는 글자로 말한다(규칙 7) */
+/** 점검표 다섯 칸 — 걸린 칸을 누르면 그 메모로 간다. 상태는 글자로 말한다(규칙 7) */
 function Checklist({ checklist, onFocus }: { checklist: ChecklistT; onFocus: (group: CheckGroup) => void }) {
   return (
     <ul className="pcheck" aria-label="점검표">
@@ -56,6 +58,31 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
   }, [mode, q, assignSteps, assigning, draftSteps, current]);
   const all = useMemo(() => [...notes.threads, ...notes.questionNotes], [notes]);
   const onShown = useCallback((t: string) => setShown(t), []);
+  const editing = useDraftEditing(letterId, q, current);
+  const confirm = useConfirmInference(letterId);
+
+  // AI 추론 문장 메모의 확인 · 고치기 · 빼기 — 고치는 화면에서만. 확인은 서버가 표시를 지워 메모가 사라지고, 빼기는 뺀 글을 바로 저장한다
+  const actionsFor: NoteActionsFor | undefined = mode !== 'edit' ? undefined : (t) => {
+    const seq = t.sentenceSeq;
+    if (t.status !== 'inferred' || seq == null) return null;
+    return {
+      confirming: confirm.isPending && confirm.variables?.sentenceSeq === seq,
+      onConfirm: () => confirm.mutate({ questionId: q.id, sentenceSeq: seq }, { onError: (e) => editing.setNote(errorView(e).message) }),
+      onFix: () => {
+        const r = locateSentence(current, t.sentence);
+        const el = editing.area.current;
+        if (!r || !el) return;
+        el.focus();
+        el.setSelectionRange(r.start, r.end);
+      },
+      onRemove: () => {
+        const next = withoutSentence(current, t.sentence);
+        if (next == null) return;
+        onText?.(q.id, next);
+        void editing.persist(next);
+      },
+    };
+  };
 
   const focusGroup = (g: CheckGroup) => {
     const t = all.find((x) => x.group === g);
@@ -99,7 +126,7 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
           </>
         )}
         {mode === 'edit' && q.draft && (
-          <EditAnswer letterId={letterId} q={q} text={current} onText={(t) => onText?.(q.id, t)} threads={notes.threads} focusKey={focusKey} foot={foot} />
+          <EditAnswer letterId={letterId} q={q} text={current} onText={(t) => onText?.(q.id, t)} threads={notes.threads} focusKey={focusKey} foot={foot} editing={editing} />
         )}
         {mode === 'assign' && (
           <div className="pq__card">
@@ -109,13 +136,13 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
           </div>
         )}
         {layout === 'inline' && all.length > 0 && (
-          <div className="pnotes-inline">{all.map((t) => <NoteCard key={t.key} thread={t} focused={focusKey === t.key} />)}</div>
+          <div className="pnotes-inline">{all.map((t) => <NoteCard key={t.key} thread={t} focused={focusKey === t.key} actions={actionsFor?.(t)} />)}</div>
         )}
         {mode !== 'assign' && <span data-note={`q:${q.id}`} aria-hidden />}
       </div>
       {layout === 'margin' && (
         <aside className="pq__margin" aria-label={`${q.seq}번 문항 메모`}>
-          <MarginNotes blockRef={blockRef} threads={all} focusKey={focusKey} revision={(mode === 'edit' ? current : shown).length} />
+          <MarginNotes blockRef={blockRef} threads={all} focusKey={focusKey} revision={(mode === 'edit' ? current : shown).length} actionsFor={actionsFor} />
         </aside>
       )}
     </>

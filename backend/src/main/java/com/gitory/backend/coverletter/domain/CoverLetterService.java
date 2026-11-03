@@ -180,6 +180,24 @@ public class CoverLetterService {
 
     }
 
+    /** 초안을 받은 뒤에만 부르며, 사용자가 맞다고 확인한 AI 추론 문장의 표시를 지우고 글은 건드리지 않는다 */
+    @Transactional
+    public CoverLetterView confirmInference(UUID letterId, UUID questionId, Long userId, int sentenceSeq) {
+
+        CoverLetter letter = lockOwned(letterId, userId, AuditAction.EDIT_COVER_LETTER);
+        CoverLetterQuestion question = questions.findByPublicIdAndCoverLetterId(questionId, letter.getId())
+                .orElseThrow(CoverLetterNotFoundException::new);
+        if (letter.getStage() != CoverLetterStage.DRAFTED) {
+            throw new CoverLetterStateException("AI 추론 문장은 초안을 다 쓴 뒤에만 확인할 수 있습니다.");
+        }
+
+        question.confirmInference(sentenceSeq);
+        letter.touch();
+
+        return views.of(letter);
+
+    }
+
     /** 어느 단계에서든 지우며, 워커가 돌리던 단계의 결과는 자소서가 없어 저장되지 않는다 */
     @Transactional
     public void delete(UUID letterId, Long userId) {

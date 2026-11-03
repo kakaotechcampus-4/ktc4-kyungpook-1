@@ -29,6 +29,7 @@ from services.cover_letter_check import (
     ITEM_LABELS,
     answer_about,
     answers_about_primary,
+    instruction_like,
     invented_numbers,
     item_group,
     unsourced_terms,
@@ -88,18 +89,6 @@ FILLED_LINE = "이 내용을 Q{qid} 글에 넣을게요."
 DONE_NOTHING = "이 문항은 더 물을 게 없어요. 글은 지금도 완성이에요."
 DONE_SKIPPED = "알겠어요, 빈칸은 그대로 둘게요. 글은 지금도 완성이에요."
 DONE_CAP = "이 문항은 여기까지 물을게요. 남은 빈칸은 그대로 둘게요. 글은 지금도 완성이에요."
-#: 사용자의 말 가운데 LLM 에 보내지 않고 돌려보낼 지시문 모양. 갈등 이야기의 '팀원 의견을 무시하고' 같은 말은 잡지 않게 대상을 붙여 본다
-_INSTRUCTION_LIKE = re.compile(
-    r"(?:이전|앞|위|기존|모든)\s*(?:의\s*)?(?:지시|명령|규칙|설정)"
-    r"|(?:지시|명령|규칙|프롬프트)\S{0,3}\s*무시"
-    r"|(?:시스템|system)\s*(?:프롬프트|prompt|메시지|message)"
-    r"|프롬프트\S{0,2}\s*(?:알려|보여|출력|공개)"
-    r"|너는\s*이제|지금부터\s*너는|역할을\s*(?:바꿔|바꾸|맡아)"
-    r"|ignore\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier)"
-    r"|disregard\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier)"
-    r"|you\s+are\s+now|jailbreak|developer\s+mode",
-    re.IGNORECASE,
-)
 #: 답 정리가 '~다' 로 끝나는 평서문인지 본다
 _DECLARATIVE = re.compile(r"다[.!]?$")
 _MORE_BLANK_TEXT = re.compile(r"^\[더 쓸 거리: (.+)\]$")
@@ -341,10 +330,6 @@ def follow_ups_of(thread: list[ThreadTurn], qid: int, item: Optional[str]) -> in
             break
         count += 1
     return max(0, count - 1)
-
-
-def instruction_like(text: str) -> bool:
-    return _INSTRUCTION_LIKE.search(text) is not None
 
 
 def open_items(question: TurnQuestion, guide: ThemeGuide) -> list[MaterialItem]:

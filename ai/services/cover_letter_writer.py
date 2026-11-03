@@ -26,6 +26,7 @@ from schemas.cover_letter import (
 )
 from services.cover_letter_check import (
     ITEM_OF_SLOT,
+    STRENGTH_LABELS,
     DraftIssue,
     answer_about,
     answers_about_primary,
@@ -37,6 +38,7 @@ from services.cover_letter_check import (
     item_group,
     required_missing,
     split_sentences,
+    strength_question,
 )
 from services.cover_letter_evidence import (
     Readiness,
@@ -66,6 +68,7 @@ WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소
 재료에 없어 추론 문장으로 쓸 해석 증거(inferable_evidence, 없을 수 있음),
 다시 쓸 때만 고칠 점(fix: 앞 초안 previous_draft·앞 초안의 추론 문장 previous_inferred·problems)이 주어집니다.
 공고에서 시작한 자소서면 지원하는 공고(posting: 회사 company·제목 title·주요 업무 responsibilities·이 문항 카드가 채운 공고 조건 met_conditions)도 주어집니다.
+지원 동기·역량 문항에는 사용자가 고른 자기 강점(strengths)이 주어질 수 있습니다.
 
 - text: 한국어 자기소개서 문체('~습니다') 한 편. 공백 포함 글자 수는 length_cap 안에서 재료만큼만 씁니다(char_limit 은 넘지 않음).
   재료가 적으면 짧게 끝냅니다. 늘리려고 기술 설명이나 개수를 보태지 않고, 다른 카드 문장이나 일반론('책임감을 배웠습니다' 같은)으로 늘려 쓰지 않습니다.
@@ -99,6 +102,9 @@ WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소
 - 사실(일어난 일·행동·결과·숫자·역할·이름·기술·수상)은 추론하지 않습니다. 추론 문장에는 재료에 있더라도 숫자·영문 이름·기술 이름을 넣지 않습니다.
   사실은 inferred 에 넣지 않은 다른 문장에 두고, 해석만 따로 한 문장으로 씁니다.
 - 지원 이유는 추론하지 않습니다. 메모·답에 없으면 빈칸으로 둡니다.
+- strengths 가 있으면 그중 재료(카드·답·메모)의 사실이 보여 주는 강점 하나만 골라, 그 사실과 이어 한 문장으로만 씁니다.
+  강점을 둘 이상 쓰거나 강점 이름을 늘어놓지 않습니다('저는 꼼꼼하고 끈기 있고 책임감이 강합니다' 같은 문장은 쓰지 않음).
+  재료에 그 강점을 보여 주는 사실이 없으면 쓰지 않거나, 쓰려면 해석 문장으로 쓰고 inferred 에 넣습니다.
 - 내용에 따라 1~4개 문단으로 나누고, 문단 사이는 빈 줄 하나로 띄웁니다.
 - 첫 문장에 문항이 묻는 답의 핵심을 씁니다. 보조 카드는 중심 경험에 결과나 숫자를 보탤 때 한 문장 이하로만 씁니다.
 - 프로필(학력·자격증·어학)은 진로나 경험과 이어지는 맥락에서만 한 번 씁니다('경영학과 졸업 후 개발을 배우며' 같은).
@@ -602,6 +608,8 @@ class QuestionWriter:
             ],
             "blanks": [blank(item) for item in blanks],
         }
+        if request.strengths and strength_question(question.question_theme, question.text):
+            payload["strengths"] = [STRENGTH_LABELS[code] for code in request.strengths]
         if missing_evidence:
             payload["missing_evidence"] = missing_evidence
         if inferable_evidence:

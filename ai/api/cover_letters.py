@@ -94,7 +94,8 @@ async def assign_cards(request: AssignmentRequest) -> Envelope[AssignmentResult]
     description=(
         "꼭 있어야 하는 항목(경험 문항은 상황·행동·결과, 지원 동기는 지원 이유) 중 중심 카드 문장·이미 받은 답·메모에 없는 것을 "
         "required_missing 으로 돌려주고, 질문은 최대 3개로 그 항목을 모두 묻습니다. "
-        "LLM 답을 못 받으면 required_missing 만 틀 질문으로 묻고(source=TEMPLATE), 물을 항목이 없으면 LLM 을 부르지 않습니다(source=NONE)."
+        "LLM 답을 못 받으면 required_missing 만 틀 질문으로 묻고(source=TEMPLATE), 물을 항목이 없으면 LLM 을 부르지 않습니다(source=NONE). "
+        "메모는 먼저 지원 이유로 쓸 만한지 판정해 memo_usable·memo_problem 으로 돌려주고, 쓸 수 없으면 메모가 없는 것으로 보고 묻습니다."
     ),
 )
 async def create_questions(request: QuestionsRequest) -> Envelope[QuestionsResult]:

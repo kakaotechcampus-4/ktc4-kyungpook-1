@@ -113,6 +113,30 @@
             "minItems": 1,
             "title": "Questions",
             "type": "array"
+          },
+          "strengths": {
+            "default": [],
+            "description": "사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "METICULOUS",
+                "PERSISTENT",
+                "PROACTIVE",
+                "FAST_LEARNER",
+                "RESPONSIBLE",
+                "PROBLEM_SOLVING",
+                "COMMUNICATION",
+                "COLLABORATION",
+                "PERSUASION",
+                "CONSIDERATE",
+                "USER_FOCUS",
+                "DOCUMENTING"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Strengths",
+            "type": "array"
           }
         },
         "required": [
@@ -2286,6 +2310,30 @@
             "minItems": 1,
             "title": "Questions",
             "type": "array"
+          },
+          "strengths": {
+            "default": [],
+            "description": "사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "METICULOUS",
+                "PERSISTENT",
+                "PROACTIVE",
+                "FAST_LEARNER",
+                "RESPONSIBLE",
+                "PROBLEM_SOLVING",
+                "COMMUNICATION",
+                "COLLABORATION",
+                "PERSUASION",
+                "CONSIDERATE",
+                "USER_FOCUS",
+                "DOCUMENTING"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Strengths",
+            "type": "array"
           }
         },
         "required": [
@@ -3586,6 +3634,30 @@
                 "type": "null"
               }
             ]
+          },
+          "strengths": {
+            "default": [],
+            "description": "사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "METICULOUS",
+                "PERSISTENT",
+                "PROACTIVE",
+                "FAST_LEARNER",
+                "RESPONSIBLE",
+                "PROBLEM_SOLVING",
+                "COMMUNICATION",
+                "COLLABORATION",
+                "PERSUASION",
+                "CONSIDERATE",
+                "USER_FOCUS",
+                "DOCUMENTING"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Strengths",
+            "type": "array"
           },
           "target": {
             "$ref": "#/components/schemas/PolishTarget",
@@ -5866,6 +5938,30 @@
               }
             ]
           },
+          "strengths": {
+            "default": [],
+            "description": "사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "METICULOUS",
+                "PERSISTENT",
+                "PROACTIVE",
+                "FAST_LEARNER",
+                "RESPONSIBLE",
+                "PROBLEM_SOLVING",
+                "COMMUNICATION",
+                "COLLABORATION",
+                "PERSUASION",
+                "CONSIDERATE",
+                "USER_FOCUS",
+                "DOCUMENTING"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Strengths",
+            "type": "array"
+          },
           "target": {
             "$ref": "#/components/schemas/PolishTarget"
           }
@@ -6691,6 +6787,30 @@
             "minItems": 1,
             "title": "Questions",
             "type": "array"
+          },
+          "strengths": {
+            "default": [],
+            "description": "사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "METICULOUS",
+                "PERSISTENT",
+                "PROACTIVE",
+                "FAST_LEARNER",
+                "RESPONSIBLE",
+                "PROBLEM_SOLVING",
+                "COMMUNICATION",
+                "COLLABORATION",
+                "PERSUASION",
+                "CONSIDERATE",
+                "USER_FOCUS",
+                "DOCUMENTING"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Strengths",
+            "type": "array"
           }
         },
         "required": [
@@ -6707,6 +6827,25 @@
           "cover_letter_id": {
             "title": "Cover Letter Id",
             "type": "integer"
+          },
+          "memo_problem": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "memo_usable 이 false 일 때 쓸 수 없는 까닭 한 줄(40자 안). memo 가 없으면 null",
+            "title": "Memo Problem"
+          },
+          "memo_usable": {
+            "default": false,
+            "description": "memo 가 지원 이유로 쓸 만한 글인지. memo 가 없거나 비었으면 false 이고 memo_problem 은 null",
+            "title": "Memo Usable",
+            "type": "boolean"
           },
           "questions": {
             "description": "요청 문항 순서 그대로",
@@ -7850,6 +7989,30 @@
           },
           "question": {
             "$ref": "#/components/schemas/TurnQuestion"
+          },
+          "strengths": {
+            "default": [],
+            "description": "사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열",
+            "items": {
+              "enum": [
+                "METICULOUS",
+                "PERSISTENT",
+                "PROACTIVE",
+                "FAST_LEARNER",
+                "RESPONSIBLE",
+                "PROBLEM_SOLVING",
+                "COMMUNICATION",
+                "COLLABORATION",
+                "PERSUASION",
+                "CONSIDERATE",
+                "USER_FOCUS",
+                "DOCUMENTING"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Strengths",
+            "type": "array"
           },
           "thread": {
             "description": "자소서 하나의 대화 전체, 오래된 것부터",
@@ -9209,7 +9372,7 @@
     },
     "/internal/cover-letter-questions": {
       "post": {
-        "description": "꼭 있어야 하는 항목(경험 문항은 상황·행동·결과, 지원 동기는 지원 이유) 중 중심 카드 문장·이미 받은 답·메모에 없는 것을 required_missing 으로 돌려주고, 질문은 최대 3개로 그 항목을 모두 묻습니다. LLM 답을 못 받으면 required_missing 만 틀 질문으로 묻고(source=TEMPLATE), 물을 항목이 없으면 LLM 을 부르지 않습니다(source=NONE).",
+        "description": "꼭 있어야 하는 항목(경험 문항은 상황·행동·결과, 지원 동기는 지원 이유) 중 중심 카드 문장·이미 받은 답·메모에 없는 것을 required_missing 으로 돌려주고, 질문은 최대 3개로 그 항목을 모두 묻습니다. LLM 답을 못 받으면 required_missing 만 틀 질문으로 묻고(source=TEMPLATE), 물을 항목이 없으면 LLM 을 부르지 않습니다(source=NONE). 메모는 먼저 지원 이유로 쓸 만한지 판정해 memo_usable·memo_problem 으로 돌려주고, 쓸 수 없으면 메모가 없는 것으로 보고 묻습니다.",
         "operationId": "create_questions_internal_cover_letter_questions_post",
         "requestBody": {
           "content": {

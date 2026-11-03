@@ -43,6 +43,9 @@ class CoverLetterLimits:
     # 문항별 고르기가 마감까지 끌어도 감독이 부를 시간을 남긴다
     supervisor_reserve_seconds: float = 25.0
     ask_deadline_seconds: float = 60.0
+    # 지원 이유 판정은 질문 만들기 앞에 한 번 도는 짧은 분류라, 끌어도 질문 만들 시간을 남긴다
+    memo_check_deadline_seconds: float = 15.0
+    memo_check_max_completion_tokens: int = 1_000
     draft_deadline_seconds: float = 150.0
     # 문항별 쓰기가 마감까지 끌어도 전체 검토와 한 번 더 쓰기를 할 시간을 남긴다
     review_reserve_seconds: float = 45.0

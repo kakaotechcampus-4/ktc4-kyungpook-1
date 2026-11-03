@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 #: 카드의 자소서 문항 유형. 프론트 계약 `themes` 와 같은 값이다.
 CardTheme = Literal["COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH"]
@@ -36,6 +36,12 @@ StepKind = Literal["PICKED", "NO_FIT", "FAILED", "CHECKED", "SWITCHED", "RESOLVE
 #: NONE 은 물을 항목이 없어 LLM 을 부르지 않았다.
 AskSource = Literal["LLM", "TEMPLATE", "NONE"]
 
+#: 사용자가 고른 강점. 화면 이름은 FE 에만 두고 API 는 코드만 주고받는다.
+Strength = Literal[
+    "METICULOUS", "PERSISTENT", "PROACTIVE", "FAST_LEARNER", "RESPONSIBLE", "PROBLEM_SOLVING",
+    "COMMUNICATION", "COLLABORATION", "PERSUASION", "CONSIDERATE", "USER_FOCUS", "DOCUMENTING",
+]
+
 PositiveId = Annotated[int, Field(strict=True, gt=0)]
 NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -44,6 +50,19 @@ class StrictRequestModel(BaseModel):
     """알 수 없는 요청 필드를 조용히 버리지 않는 내부 API 입력 모델."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+def _no_duplicate_strengths(strengths: list[str]) -> list[str]:
+    if len(set(strengths)) != len(strengths):
+        raise ValueError("strengths 에 같은 값이 두 번 있습니다.")
+    return strengths
+
+
+Strengths = Annotated[
+    list[Strength],
+    Field(max_length=3, description="사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열"),
+    AfterValidator(_no_duplicate_strengths),
+]
 
 
 class ProfileItem(StrictRequestModel):
@@ -105,6 +124,7 @@ class AssignmentRequest(StrictRequestModel):
     posting: Optional[Posting] = Field(None, description="공고 상세에서 시작한 자소서면 그 공고, 아니면 null")
     questions: list[CoverLetterQuestion] = Field(..., min_length=1, max_length=10)
     cards: list[CardSummary] = Field(default_factory=list, max_length=100, description="확정 카드 전부(초안 카드 제외)")
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _ids_are_unique(self) -> "AssignmentRequest":
@@ -196,6 +216,7 @@ class QuestionsRequest(StrictRequestModel):
     profile: list[ProfileItem] = Field(default_factory=list, max_length=30)
     posting: Optional[Posting] = None
     questions: list[QuestionMaterial] = Field(..., min_length=1, max_length=10)
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _ids_are_unique(self) -> "QuestionsRequest":
@@ -227,6 +248,12 @@ class QuestionsResult(BaseModel):
 
     cover_letter_id: int
     questions: list[QuestionAsks] = Field(..., description="요청 문항 순서 그대로")
+    memo_usable: bool = Field(
+        False, description="memo 가 지원 이유로 쓸 만한 글인지. memo 가 없거나 비었으면 false 이고 memo_problem 은 null",
+    )
+    memo_problem: Optional[str] = Field(
+        None, max_length=40, description="memo_usable 이 false 일 때 쓸 수 없는 까닭 한 줄(40자 안). memo 가 없으면 null",
+    )
 
 
 #: 초안에서 걸린 문제. REPEATED·UNSUPPORTED_CLAIM·OFF_TOPIC 은 전체 검토(감독)가, 나머지는 검사기(코드)가 찾는다.
@@ -283,6 +310,7 @@ class DraftsRequest(StrictRequestModel):
     profile: list[ProfileItem] = Field(default_factory=list, max_length=30)
     posting: Optional[Posting] = None
     questions: list[DraftQuestion] = Field(..., min_length=1, max_length=10)
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _ids_are_unique(self) -> "DraftsRequest":
@@ -392,6 +420,7 @@ class PolishRequest(StrictRequestModel):
     posting: Optional[Posting] = None
     others: list[PolishOther] = Field(default_factory=list, max_length=9, description="같은 자소서의 다른 문항")
     target: PolishTarget
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _ids_are_unique(self) -> "PolishRequest":
@@ -476,6 +505,7 @@ class TurnRequest(StrictRequestModel):
     others: list[PolishOther] = Field(default_factory=list, max_length=9, description="같은 자소서의 다른 문항")
     thread: list[ThreadTurn] = Field(default_factory=list, max_length=300, description="자소서 하나의 대화 전체, 오래된 것부터")
     trigger: TurnTrigger
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _check_thread(self) -> "TurnRequest":
@@ -525,6 +555,7 @@ class FillRequest(StrictRequestModel):
     blank: Optional[Annotated[NonBlankText, StringConstraints(max_length=200)]] = Field(
         None, description="채울 빈칸(빈칸 글 전체나 그 안의 글). 없으면 그 항목 자리에 한 문장까지 더한다",
     )
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _check_ids_and_answer(self) -> "FillRequest":

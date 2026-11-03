@@ -39,6 +39,26 @@ _BLANK_HINTS: dict[str, str] = {
     "JOB_LINK": "지원 직무와 이어지는 점을 적어 주세요",
     "REASON": "이 회사를 고른 이유를 적어 주세요",
 }
+#: 강점 코드를 모델에 넘길 때의 말로, 영문 코드를 넘기면 글에 그대로 옮겨 근거 없는 영문 낱말로 걸린다
+STRENGTH_LABELS: dict[str, str] = {
+    "METICULOUS": "꼼꼼함", "PERSISTENT": "끈기", "PROACTIVE": "주도성", "FAST_LEARNER": "빠른 학습",
+    "RESPONSIBLE": "책임감", "PROBLEM_SOLVING": "문제 해결", "COMMUNICATION": "소통", "COLLABORATION": "협업",
+    "PERSUASION": "설득", "CONSIDERATE": "배려", "USER_FOCUS": "사용자 관점", "DOCUMENTING": "기록과 공유",
+}
+#: 지원 동기가 아닌데도 고른 강점을 이어 쓸 문항(역량·강점을 묻는 문항)을 알아보는 말.
+_STRENGTH_QUESTION_WORDS = ("역량", "강점", "장점")
+#: 사용자 글 가운데 LLM 에 보내지 않고 돌려보낼 지시문 모양. 갈등 이야기의 '팀원 의견을 무시하고' 같은 말은 잡지 않게 대상을 붙여 본다
+_INSTRUCTION_LIKE = re.compile(
+    r"(?:이전|앞|위|기존|모든)\s*(?:의\s*)?(?:지시|명령|규칙|설정)"
+    r"|(?:지시|명령|규칙|프롬프트)\S{0,3}\s*무시"
+    r"|(?:시스템|system)\s*(?:프롬프트|prompt|메시지|message)"
+    r"|프롬프트\S{0,2}\s*(?:알려|보여|출력|공개)"
+    r"|너는\s*이제|지금부터\s*너는|역할을\s*(?:바꿔|바꾸|맡아)"
+    r"|ignore\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier)"
+    r"|disregard\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier)"
+    r"|you\s+are\s+now|jailbreak|developer\s+mode",
+    re.IGNORECASE,
+)
 #: 카드 고르기 답을 못 받아 유형을 모를 때 지원 동기 문항을 알아보는 말.
 _MOTIVATION_WORDS = ("지원 동기", "지원한 동기", "지원 이유", "지원한 이유", "지원하게 된", "입사 후", "포부")
 _LESSON_WORDS = ("성장", "실패", "배운")
@@ -92,6 +112,15 @@ def item_group(theme: Optional[str], question_text: str) -> str:
     if any(word in question_text for word in _MOTIVATION_WORDS):
         return "MOTIVATION"
     return "LESSON" if any(word in question_text for word in _LESSON_WORDS) else "EXPERIENCE"
+
+
+def strength_question(theme: Optional[str], question_text: str) -> bool:
+    """고른 강점을 한 문장으로 이어 쓸 문항으로, 지원 동기 문항과 역량·강점을 묻는 문항이다."""
+    return item_group(theme, question_text) == "MOTIVATION" or any(word in question_text for word in _STRENGTH_QUESTION_WORDS)
+
+
+def instruction_like(text: str) -> bool:
+    return _INSTRUCTION_LIKE.search(text) is not None
 
 
 def answers_about_primary(answers: list[KnownAnswer], primary: Optional[CardDetail]) -> list[KnownAnswer]:

@@ -42,14 +42,14 @@ const mountMatch = (path: string) => {
 };
 
 describe('M-02 공고 매칭 화면의 말투와 용어', () => {
-  it('목록 안내는 "채용" 과 명령형을 쓰지 않고, 공고를 열면 조건을 맞춰 볼 수 있다고 알려 준다', async () => {
+  it('머리 한 줄은 "채용" 과 명령형을 쓰지 않고, 무엇으로 맞는 공고를 고르는지 알려 준다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(sampleList.data.map((x) => MatchTarget.parse(x)));
     const { container } = mountMatch('/match');
     await screen.findByText('가온소프트');
-    const intro = container.querySelector('.match-intro')!.textContent!;
-    expect(intro).toContain('공고를 열면');
-    expect(intro).not.toMatch(/채용|하세요|확인하세요/);
-    expect(intro).not.toMatch(FORMAL);
+    const sub = container.querySelector('.match-head__sub')!.textContent!;
+    expect(sub).toContain('확정한 경험 카드와 인적사항');
+    expect(sub).not.toMatch(/채용|하세요|확인하세요/);
+    expect(sub).not.toMatch(FORMAL);
   });
 
   it('준비 중 화면도 "채용공고" 대신 "공고" 라고 쓴다', () => {
@@ -63,10 +63,10 @@ describe('가운뎃점·글자 화살표 없이도 같은 정보가 읽힌다', 
   it('공고 상세: 돌아가는 링크와 원문 링크의 이름에 화살표 글자가 없다', async () => {
     const detail = MatchDetail.parse(sampleDetail.data);
     vi.spyOn(matchingApi, 'detail').mockResolvedValue(detail);
-    mountMatch(`/match/${detail.id}?view=company`);
+    mountMatch(`/match/${detail.id}?category=BACKEND`);
     await screen.findByRole('heading', { level: 1, name: detail.role });
-    const back = screen.getByRole('link', { name: '기업 목록으로' });
-    expect(back).toHaveAttribute('href', '/match?view=company');
+    const back = screen.getByRole('link', { name: '공고 목록으로' });
+    expect(back).toHaveAttribute('href', '/match?category=BACKEND');
     expect(back.textContent).not.toMatch(ARROWS);
     // 장식 아이콘은 화면 읽기 프로그램이 읽지 않는다
     expect(back.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
@@ -77,20 +77,13 @@ describe('가운뎃점·글자 화살표 없이도 같은 정보가 읽힌다', 
     expect(source.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('공고 상세: 공고 목록에서 왔으면 도착할 곳이 공고 목록이다', async () => {
+  it('공고 상세: 예전 기업별 보기 주소(view=company)로 들어와도 돌아가는 링크는 공고 목록이다', async () => {
     const detail = MatchDetail.parse(sampleDetail.data);
     vi.spyOn(matchingApi, 'detail').mockResolvedValue(detail);
-    mountMatch(`/match/${detail.id}?category=BACKEND`);
+    mountMatch(`/match/${detail.id}?view=company`);
     await screen.findByRole('heading', { level: 1, name: detail.role });
-    expect(screen.getByRole('link', { name: '공고 목록으로' })).toHaveAttribute('href', '/match?category=BACKEND');
+    expect(screen.getByRole('link', { name: '공고 목록으로' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '기업 목록으로' })).not.toBeInTheDocument();
-  });
-
-  it('기업별 보기의 건수는 쉼표로 잇는다', async () => {
-    vi.spyOn(matchingApi, 'list').mockResolvedValue(sampleList.data.map((x) => MatchTarget.parse(x)));
-    mountMatch('/match?view=company');
-    await screen.findByText('가온소프트');
-    expect(screen.getByRole('status').textContent).toMatch(/^기업 \d+곳, 공고 \d+건$/);
   });
 });
 

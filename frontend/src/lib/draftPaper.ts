@@ -55,6 +55,21 @@ export function locateSentence(text: string, probe: string | null | undefined): 
   return { start, end };
 }
 
+/**
+ * 걸린 문장을 뺀 글 — 메모의 '빼기'. 문장 사이 띄어쓰기는 하나만 남기고, 줄 첫 문장이면 줄바꿈을 겹치지 않는다.
+ * 문장을 못 찾으면 null(이미 고쳤거나 뺀 글).
+ */
+export function withoutSentence(text: string, probe: string | null | undefined): string | null {
+  const r = locateSentence(text, probe);
+  if (!r) return null;
+  const left = text.slice(0, r.start).replace(/[ \t]+$/, '');
+  const right = text.slice(r.end).replace(/^[ \t]+/, '');
+  if (!left) return right.replace(/^\s+/, '');
+  if (!right.trim()) return left.replace(/\s+$/, '');
+  if (left.endsWith('\n')) return left + right.replace(/^\s+/, '');
+  return right.startsWith('\n') ? left + right : `${left} ${right}`;
+}
+
 // ───────────────────────────── 타이핑 ─────────────────────────────
 export type LiveSeg = { id: number; kind: 'keep' | 'add' | 'del'; text: string; shown: number; until: number | null };
 export type LiveState = { target: string; segs: LiveSeg[]; nextId: number; arrivedAt: number };

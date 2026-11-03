@@ -159,6 +159,9 @@ export const coverLetterApi = {
   /** 고친 글 저장. AI 원본(aiText)은 그대로 남는다. DRAFTED 에서만 */
   saveDraft: (id: string, questionId: string, text: string) =>
     api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}`, { method: 'PATCH', body: { text } }),
+  /** AI 추론 문장(marks 의 INFERRED)을 맞다고 확인해 그 표시만 지운다. 글은 그대로. DRAFTED 에서만, 그 문장에 추론 표시가 없으면 409 */
+  confirmInference: (id: string, questionId: string, sentenceSeq: number) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/marks/${sentenceSeq}`, { method: 'DELETE' }),
   remove: (id: string) => api(z.object({ ok: z.boolean() }), `/cover-letters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
@@ -211,3 +214,5 @@ export const useSaveAnswers = (id: string) =>
 export const useStartDrafting = (id: string) => useLetterMutation(() => coverLetterApi.startDrafting(id));
 export const useSaveDraft = (id: string) =>
   useLetterMutation(({ questionId, text }: { questionId: string; text: string }) => coverLetterApi.saveDraft(id, questionId, text), true);
+export const useConfirmInference = (id: string) =>
+  useLetterMutation(({ questionId, sentenceSeq }: { questionId: string; sentenceSeq: number }) => coverLetterApi.confirmInference(id, questionId, sentenceSeq), true);

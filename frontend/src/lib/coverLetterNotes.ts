@@ -10,18 +10,20 @@ export type NoteActor = 'CODE' | 'SUB_AGENT' | 'SUPERVISOR' | 'USER';
 export const ACTOR_LABEL: Record<NoteActor, string> = { CODE: '검사기', SUB_AGENT: '작성 AI', SUPERVISOR: '검토 AI', USER: '나' };
 const isActor = (v: unknown): v is NoteActor => v === 'CODE' || v === 'SUB_AGENT' || v === 'SUPERVISOR';
 
-export type CheckGroup = 'evidence' | 'repeat' | 'fit' | 'length';
-export const CHECK_GROUPS: CheckGroup[] = ['evidence', 'repeat', 'fit', 'length'];
-export const GROUP_LABEL: Record<CheckGroup, string> = { evidence: '근거', repeat: '중복', fit: '문항 적합', length: '글자 수' };
+export type CheckGroup = 'evidence' | 'repeat' | 'fit' | 'length' | 'inference';
+export const CHECK_GROUPS: CheckGroup[] = ['evidence', 'repeat', 'fit', 'length', 'inference'];
+export const GROUP_LABEL: Record<CheckGroup, string> = { evidence: '근거', repeat: '중복', fit: '문항 적합', length: '글자 수', inference: '추론' };
+/** AI 가 재료에 없는 해석(배운 점·판단 이유·직무 연결·포부)을 지어 쓴 문장 — 사용자가 확인하기 전까지 남는다(#719) */
+export const INFERRED = 'INFERRED';
 const GROUP_OF: Record<string, CheckGroup> = {
   UNSOURCED_NUMBER: 'evidence', UNSOURCED_TERM: 'evidence', UNSUPPORTED_CLAIM: 'evidence', MISSING_BLANK: 'evidence',
-  REPEATED: 'repeat', OFF_TOPIC: 'fit', OVER_LIMIT: 'length', UNDER_LENGTH: 'length',
+  REPEATED: 'repeat', OFF_TOPIC: 'fit', OVER_LIMIT: 'length', UNDER_LENGTH: 'length', INFERRED: 'inference',
 };
 export const groupOf = (code: string | null | undefined): CheckGroup | null => (code && GROUP_OF[code]) || null;
 
 export type NoteItem = { seq: number; actor: NoteActor; text: string; reason: string | null };
-/** open 걸려 있음(고치는 중) · fixed-ai 작성 AI 가 고침 · kept 그대로 두기로 함 · marked 확인 필요로 남김 · fixed-user 내가 고쳐 원문이 사라짐 · reverted 되돌려 버린 글에서 걸림 */
-export type NoteStatus = 'open' | 'fixed-ai' | 'kept' | 'marked' | 'fixed-user' | 'reverted';
+/** open 걸려 있음(고치는 중) · fixed-ai 작성 AI 가 고침 · kept 그대로 두기로 함 · marked 확인 필요로 남김 · inferred AI 가 추론해 쓴 문장 · fixed-user 내가 고쳐 원문이 사라짐 · reverted 되돌려 버린 글에서 걸림 */
+export type NoteStatus = 'open' | 'fixed-ai' | 'kept' | 'marked' | 'inferred' | 'fixed-user' | 'reverted';
 export type NoteThread = {
   key: string;
   /** 걸린 문장 글. 문항 전체에 대한 메모면 null */
@@ -30,8 +32,10 @@ export type NoteThread = {
   group: CheckGroup | null;
   items: NoteItem[];
   status: NoteStatus;
+  /** 추론 표시가 달린 초안 문장 번호 — 확인 API 가 이 번호로 표시를 지운다 */
+  sentenceSeq?: number;
 };
-export const STATUS_LABEL: Record<NoteStatus, string> = { open: '보는 중', 'fixed-ai': '고침 · 작성 AI', kept: '그대로 둠', marked: '확인 필요', 'fixed-user': '고침 · 나', reverted: '되돌림' };
+export const STATUS_LABEL: Record<NoteStatus, string> = { open: '보는 중', 'fixed-ai': '고침 · 작성 AI', kept: '그대로 둠', marked: '확인 필요', inferred: 'AI 추론 · 확인 필요', 'fixed-user': '고침 · 나', reverted: '되돌림' };
 
 export type ChecklistCell = { phase: 'before' | 'checking' | 'done'; marked: number; fixed: number };
 export type Checklist = Record<CheckGroup, ChecklistCell>;
@@ -76,6 +80,15 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
     if (group && !t.group) t.group = group;
     return t;
   };
+  // 추론 문장은 같은 문장의 다른 검사와 따로 둔다 — 확인하면 추론 메모만 사라지고 다른 검사 메모는 남는다
+  const inferred = new Map<string, NoteThread>();
+  const inferredFor = (sentence: string) => {
+    const key = sentence.slice(0, SENTENCE_MAX).trim();
+    let t = inferred.get(key);
+    if (!t) { t = { key: `i:${q.id}:${inferred.size}`, sentence, value: null, group: 'inference', items: [], status: 'inferred' }; inferred.set(key, t); }
+    else if (sentence.length > (t.sentence?.length ?? 0)) t.sentence = sentence;
+    return t;
+  };
   let lastOpen: NoteThread | null = null;
   // 마지막으로 고쳐 쓴 뒤에 걸린 메모 — 그 글이 되돌려지면 걸린 것도 함께 사라진다
   let sinceRewrite: NoteThread[] = [];
@@ -116,6 +129,7 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
         break;
       }
       case 'MARKED': {
+        if (s.code === INFERRED && s.sentence) { inferredFor(s.sentence).items.push(item); break; }
         const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : questionNoteFor(s.code);
         t.items.push(item); t.status = 'marked'; phase = null;
         break;
@@ -134,30 +148,46 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
   // 끝난 뒤의 확인 필요(marks) — 단계가 없는 옛 응답이면 여기서 스레드를 만든다
   if (q.draft) for (const m of q.draft.marks) {
     const sentence = q.draft.sentences.find((x) => x.seq === m.sentenceSeq)?.text ?? null;
+    if (m.code === INFERRED && sentence && m.sentenceSeq != null) {
+      const t = inferredFor(sentence);
+      if (t.items.length === 0) t.items.push({ seq: 0, actor: 'CODE', text: checkMessage(m.code, null), reason: null });
+      t.sentenceSeq = m.sentenceSeq;
+      continue;
+    }
     const t = sentence ? threadFor(sentence, m.value, groupOf(m.code)) : questionNoteFor(m.code);
     if (t.items.length === 0) t.items.push({ seq: 0, actor: 'CODE', text: checkMessage(m.code, m.value), reason: null });
     if (t.status !== 'marked') t.status = 'marked';
   }
+  // 다 쓴 뒤 표시가 없는 추론 메모는 사용자가 확인했거나 AI 가 그 문장을 고쳐 쓴 것이다
+  if (q.draft) for (const [k, t] of inferred) if (t.sentenceSeq == null) inferred.delete(k);
   // 다 쓴 뒤에도 열린 메모는 AI 가 고쳐 쓰기를 다 쓰거나 포기해 그대로 남긴 것이다 — 확인 필요로 닫는다
   if (q.draft) for (const t of [...threads.values(), ...byGroup.values()]) if (t.status === 'open') t.status = 'marked';
   // 내가 고쳐 원문이 사라진 것
-  if (mode === 'edit') for (const t of threads.values()) {
-    if (t.status === 'marked' && !locateSentence(currentText, t.sentence)) { t.status = 'fixed-user'; t.items.push({ seq: Number.MAX_SAFE_INTEGER, actor: 'USER', text: '이 문장을 고쳤어요', reason: null }); }
+  if (mode === 'edit') for (const t of [...threads.values(), ...inferred.values()]) {
+    if ((t.status === 'marked' || t.status === 'inferred') && !locateSentence(currentText, t.sentence)) { t.status = 'fixed-user'; t.items.push({ seq: Number.MAX_SAFE_INTEGER, actor: 'USER', text: '이 문장을 고쳤어요', reason: null }); }
   }
 
   // 검사 단계가 아직 없고 걸린 메모도 없는 칸만 '검사 전' — 메모가 하나라도 있으면 그 칸은 이미 검사를 거친 것이다
   const checklist = Object.fromEntries(CHECK_GROUPS.map((g) => [g, { phase: checked || mode === 'edit' || q.draft ? 'done' : 'before', marked: 0, fixed: 0 }])) as Checklist;
   const questionNotes = [...byGroup.values(), ...(general.items.length ? [general] : [])];
-  for (const t of [...threads.values(), ...questionNotes]) {
+  const sentenceNotes = [...threads.values(), ...inferred.values()];
+  for (const t of [...sentenceNotes, ...questionNotes]) {
     if (!t.group) continue;
     const cell = checklist[t.group];
     if (t.status === 'open') cell.phase = 'checking';
     else if (cell.phase === 'before') cell.phase = 'done';
-    if (t.status === 'marked') cell.marked += 1;
+    if (t.status === 'marked' || t.status === 'inferred') cell.marked += 1;
     else if (t.status === 'fixed-ai' || t.status === 'fixed-user') cell.fixed += 1;
   }
   if (!phase && mode === 'live' && !checked) phase = q.writing ? '쓰는 중' : '차례를 기다리는 중';
-  return { threads: [...threads.values()], questionNotes, checklist, phase };
+  return { threads: sentenceNotes, questionNotes, checklist, phase };
+}
+
+/** 지금 글에 남아 있는 확인하지 않은 AI 추론 문장 수 — 복사 알림에 빈칸과 함께 센다(막지는 않는다) */
+export function unconfirmedInferences(draft: CoverLetterQuestion['draft'], text: string): number {
+  if (!draft) return 0;
+  return draft.marks.filter((m) => m.code === INFERRED
+    && locateSentence(text, draft.sentences.find((x) => x.seq === m.sentenceSeq)?.text)).length;
 }
 
 /** ②·③ 카드 고르기 — 그 문항에 대한 단계를 메모 하나로, 상태 글은 마지막 단계로 */

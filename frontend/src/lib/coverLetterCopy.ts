@@ -106,6 +106,7 @@ export function checkMessage(code: string | null, value: string | null): string 
     case 'REPEATED': return '다른 문항과 같은 이야기예요';
     case 'UNSUPPORTED_CLAIM': return '카드와 답에 없는 역할이나 성과예요';
     case 'OFF_TOPIC': return '문항이 묻는 것을 벗어났어요';
+    case 'INFERRED': return 'AI가 재료를 바탕으로 추론해 쓴 문장이에요. 맞으면 확인, 다르면 고치거나 빼 주세요.';
     case 'OVER_LIMIT': return value ? `글자 수를 ${value}자 넘었어요` : '글자 수를 넘었어요';
     case 'UNDER_LENGTH': return value ? `목표보다 ${value}자 모자라요` : '목표보다 짧아요';
     case 'MISSING_BLANK': return value && value in ITEM_LABEL ? `빈칸 '${ITEM_LABEL[value as MaterialItem]}'을 빠뜨렸어요` : '빈칸을 빠뜨렸어요';
@@ -131,7 +132,9 @@ export function draftLine(step: DraftLineStep, questions: Pick<CoverLetterQuesti
     case 'DECIDED': return { text: step.action === 'KEEP' ? `${q}그대로 두기로 했어요` : `${q}고치기로 했어요`, reason, tone: 'check' };
     case 'REWROTE': return { text: `${q}고쳐서 다시 썼어요${chars}`, reason: null, tone: 'work' };
     case 'REVERTED': return { text: `${q}다시 쓴 글이 새 문제를 만들어 앞 초안으로 돌렸어요`, reason: null, tone: 'fix' };
-    case 'MARKED': return { text: `${q}${step.value ? `'${step.value}'에 ` : ''}확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' };
+    case 'MARKED': return step.code === 'INFERRED'
+      ? { text: `${q}추론한 문장이라 확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' }
+      : { text: `${q}${step.value ? `'${step.value}'에 ` : ''}확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' };
     case 'SKELETON': return { text: `${q}초안을 쓰지 못해 카드 문장으로 뼈대를 만들었어요`, reason: null, tone: 'fix' };
     case 'REVIEWED': {
       const count = Number(step.value);
@@ -141,4 +144,12 @@ export function draftLine(step: DraftLineStep, questions: Pick<CoverLetterQuesti
     case 'FAILED': return { text: q ? `${q}초안 쓰기를 마치지 못했어요` : '전체 검토를 하지 못했어요', reason: null, tone: 'fix' };
     default: return null;
   }
+}
+
+/** 복사 알림 뒤에 붙는 말 — 확인하지 않은 AI 추론 문장과 채우지 않은 빈칸이 함께 복사됐음을 알린다(복사는 막지 않는다). 둘 다 없으면 null */
+export function copiedExtras(inferred: number, blanks: number): string | null {
+  if (inferred > 0 && blanks > 0) return `확인하지 않은 AI 추론 문장 ${inferred}개와 빈칸 ${blanks}개가 함께 복사됐어요.`;
+  if (inferred > 0) return `확인하지 않은 AI 추론 문장 ${inferred}개가 함께 복사됐어요.`;
+  if (blanks > 0) return `아직 채우지 않은 빈칸 ${blanks}개가 함께 복사됐어요.`;
+  return null;
 }

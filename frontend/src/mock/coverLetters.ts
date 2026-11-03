@@ -134,6 +134,8 @@ function planDrafts(letter: Any) {
   const typed = (q: Any, sentences: string[], round: number) => texts.push({ at, questionSeq: q.seq, text: sentences.join(' '), round });
   const split = (text: string) => text.split(/(?<=[.])\s+/).filter(Boolean);
   const chars = (sentences: string[]) => String(countableLength(sentences.join(' ')));
+  // 배운 점 답이 없는 첫 문항 하나에만 AI 가 추론해 쓴 배운 점 문장을 넣고 추론 표시(INFERRED)를 단다(#719)
+  let inferredLeft = 1;
   const plans = letter.questions.map((q: Any) => {
     const card = cardById(q.primaryCardId);
     const v: Any = card ? latest(card) : {};
@@ -146,11 +148,14 @@ function planDrafts(letter: Any) {
     };
     if (q.theme === 'MOTIVATION') add('REASON');
     add('TRIGGER'); add('SITUATION', v.situation); add('ACTION', v.action); add('RESULT', v.result); add('LEARNING');
+    const short = countableLength(parts.join(' ')) < q.charLimit * 0.7;
+    const learned = card && inferredLeft > 0 && !answer('LEARNING') && !parts.includes(BLANK_TEXT.LEARNING)
+      ? '이 일을 겪으며 문제를 작게 나눠 하나씩 확인하는 습관이 중요하다는 것을 배웠습니다.' : null;
+    if (learned) { parts.push(learned); inferredLeft--; }
     let text = parts.join(' ');
-    const short = countableLength(text) < q.charLimit * 0.7;
     if (short) text += ' [더 쓸 거리: 그때 팀에서 맡은 역할과 함께 일한 사람을 적어 보세요]';
     const sourced = Object.values(v).filter((f): f is string => typeof f === 'string').join(' ');
-    return { q, card, short, sentences: split(text), sourced, round: 0 };
+    return { q, card, short, sentences: split(text), sourced, round: 0, learned };
   });
 
   // 1) 첫 초안 — 문항들이 함께 쓰므로 문장이 번갈아 늘고, 문항마다 0.5초에 한 문장이다
@@ -170,6 +175,11 @@ function planDrafts(letter: Any) {
   for (const p of plans) {
     const { q } = p;
     push({ kind: 'WROTE', actor: 'SUB_AGENT', questionSeq: q.seq, value: chars(p.sentences) });
+    if (p.learned) {
+      const inferred = { code: 'INFERRED', value: null, sentenceSeq: p.sentences.indexOf(p.learned) + 1, sentence: p.learned };
+      push({ kind: 'MARKED', actor: 'SUB_AGENT', questionSeq: q.seq, ...inferred });
+      p.inferred = inferred;
+    }
     const idx = p.sentences.findIndex((s: string) => { const m = s.match(/\d+%/); return !!m && !p.sourced.includes(m[0]); });
     if (idx >= 0) {
       const found = { code: 'UNSOURCED_NUMBER', value: p.sentences[idx].match(/\d+%/)![0], sentenceSeq: idx + 1, sentence: p.sentences[idx] };
@@ -213,7 +223,8 @@ function planDrafts(letter: Any) {
   for (const p of plans) {
     for (const m of p.marks ?? []) push({ kind: 'MARKED', actor: 'CODE', questionSeq: p.q.seq, ...m, sentence: p.sentences[m.sentenceSeq - 1] });
     const text = p.sentences.join(' ');
-    p.q._draft = { text, aiText: text, sentences: p.sentences.map((t: string, i: number) => ({ seq: i + 1, text: t })), marks: p.marks ?? [], source: p.card ? 'LLM' : 'SKELETON' };
+    const marks = [...(p.marks ?? []), ...(p.inferred ? [{ sentenceSeq: p.inferred.sentenceSeq, code: 'INFERRED', value: null }] : [])];
+    p.q._draft = { text, aiText: text, sentences: p.sentences.map((t: string, i: number) => ({ seq: i + 1, text: t })), marks, source: p.card ? 'LLM' : 'SKELETON' };
   }
   letter._draftSteps = steps.map((x, i) => ({ ...x, seq: i + 1 }));
   letter._draftTexts = texts;
@@ -453,6 +464,20 @@ export function startDrafting(id: string): CoverLetterResult {
   if (l.stage !== 'ASKED') return badState('초안은 질문을 받은 뒤에만 쓸 수 있습니다.');
   planDrafts(l);
   Object.assign(l, { stage: 'DRAFTING', startedAt: Date.now(), updatedAt: now() });
+  return ok(view(l));
+}
+
+/** AI 추론 문장을 맞다고 확인 — 그 문장의 INFERRED 표시만 지우고 글은 그대로 둔다(서버와 같은 409) */
+export function confirmInference(id: string, questionId: string, sentenceSeq: number): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  advance(l);
+  if (l.stage !== 'DRAFTED' || !q.draft) return badState('AI 추론 문장은 초안을 다 쓴 뒤에만 확인할 수 있습니다.');
+  const left = q.draft.marks.filter((m: Any) => !(m.code === 'INFERRED' && m.sentenceSeq === sentenceSeq));
+  if (left.length === q.draft.marks.length) return badState('그 문장에는 확인할 AI 추론 표시가 없습니다.');
+  q.draft.marks = left;
+  l.updatedAt = now();
   return ok(view(l));
 }
 

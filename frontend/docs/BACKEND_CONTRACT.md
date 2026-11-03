@@ -445,7 +445,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 ## 자소서 (#484, 계약만 · 서버 구현 전)
 
-문항 입력 → AI 카드 고르기 → 카드 확인 → 모자란 재료 질문 → AI 쓰기·검사·검토 → 초안 고치기의 `/cover-letters` API 와 단계(`stage`)·폴링 규칙은 [자소서 계약](2026-10-28-COVER_LETTER.md)을 따릅니다. 기존 Job API(`/jobs`)는 쓰지 않고 자소서 조회를 폴링합니다.
+문항 입력 → AI 카드 고르기 → 카드 확인 → 모자란 재료 질문 → AI 쓰기·검사·검토 → 초안 고치기의 `/cover-letters` API 와 단계(`stage`)·폴링 규칙은 [자소서 계약](2026-10-28-COVER_LETTER.md)을 따릅니다. 기존 Job API(`/jobs`)는 쓰지 않고 자소서 조회를 폴링합니다. 초안의 AI 추론 문장 표시(`marks[].code: INFERRED`)와 확인 API(`DELETE /cover-letters/{id}/questions/{qid}/marks/{sentenceSeq}`, #719)도 그 문서에 있습니다.
 
 ## 카드 분야·기술 태그 (#338 → #339, 선행 구현 대기)
 

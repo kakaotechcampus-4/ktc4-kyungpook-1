@@ -5,6 +5,7 @@
 카드에 한 문장뿐인 항목도 더 물을 수 있게 하고, 재료가 목표 글자 수에 모자란 만큼은 묻게 한다.
 무엇을 묻는지는 문항 유형의 행동증거를 따르고(cover_letter_evidence), 기술 깊이는 문제 해결·도전 문항에서만 묻는다.
 공고에서 시작한 자소서는 채운 카드가 없는 필수 조건을 지원 동기 문항(없으면 첫 문항)의 직무 연결 질문으로 묻는다.
+메모는 먼저 지원 이유로 쓸 만한지 판정해(cover_letter_memo), 쓸 수 없으면 없는 것으로 보고 묻는다.
 """
 
 from __future__ import annotations
@@ -41,6 +42,7 @@ from services.cover_letter_llm import (
     call_until_valid,
     clip,
 )
+from services.cover_letter_memo import judge_memo
 from services.cover_letter_posting import company_facts, gaps
 
 ASK_PROMPT = """당신은 자기소개서 문항 하나를 쓰기 전에, 카드에 모자란 재료를 사용자에게 묻는 질문을 만듭니다.
@@ -116,6 +118,10 @@ class CoverLetterAsker:
         self._limits = limits or CoverLetterLimits()
 
     async def ask(self, request: QuestionsRequest) -> tuple[QuestionsResult, EndedBy]:
+        verdict = await judge_memo(self._client, request.memo, request.job_role, request.posting, self._limits)
+        if not verdict.usable:
+            # 쓸 수 없는 메모는 없는 것으로 둬서 지원 동기 문항이 지원 이유를 묻고, 질문 만들기 모델에도 보내지 않는다
+            request = request.model_copy(update={"memo": None})
         deadline = asyncio.get_running_loop().time() + self._limits.ask_deadline_seconds
         posting_gaps = gaps(request.posting)
         gap_question = gap_question_id(request) if posting_gaps else None
@@ -130,7 +136,10 @@ class CoverLetterAsker:
             ended_by = "PARTIAL"
         else:
             ended_by = "FALLBACK"
-        return QuestionsResult(cover_letter_id=request.cover_letter_id, questions=list(results)), ended_by
+        return QuestionsResult(
+            cover_letter_id=request.cover_letter_id, questions=list(results),
+            memo_usable=verdict.usable, memo_problem=verdict.problem,
+        ), ended_by
 
     async def _ask(
         self, request: QuestionsRequest, question: QuestionMaterial, deadline: float, posting_gaps: list[str],

@@ -1,3 +1,6 @@
+import { queryClient } from '@/app/queryClient';
+import { keys } from '@/api/keys';
+import { recordCareerActivity } from './careerActivity';
 /**
  * 지표 이벤트 (스펙 §추가 지표 · api.logger).
  * 퍼널: 레포 선택 → 후보 제시 → 후보 확정 → 초안 생성 → 되묻기 → 카드 확정 → 공고 매칭.
@@ -21,6 +24,12 @@ export type EventName =
 const BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
 export function track(name: EventName, props: Record<string, string | number | boolean | null> = {}) {
+  const user = queryClient.getQueryData<{ id: string }>(keys.me);
+  if (user?.id) {
+    const kind = name === 'manual_card_created' || (name === 'draft_generated' && props.state === 'SUCCEEDED') ? 'card' : name === 'cover_letter_created' ? 'letter' : name === 'match_opened' ? 'posting' : null;
+    const id = kind === 'card' ? props.cardId : kind === 'letter' ? props.coverLetterId : props.matchId;
+    if (kind && typeof id === 'string') recordCareerActivity(user.id, kind, id);
+  }
   const body = JSON.stringify({ name, props, at: new Date().toISOString(), path: location.pathname });
   try {
     if (navigator.sendBeacon) { navigator.sendBeacon(`${BASE}/events`, new Blob([body], { type: 'application/json' })); return; }

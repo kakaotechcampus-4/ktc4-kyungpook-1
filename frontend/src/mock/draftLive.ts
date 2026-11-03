@@ -62,7 +62,7 @@ export function draftTexts(input: { repoName: string; title: string; commits: nu
 const step = (round: number, actor: 'MODEL' | 'CODE', kind: string, field: Field | null, rest: Record<string, string> = {}) =>
   ({ round, actor, kind, field, code: null, value: null, material: null, reason: null, ...rest });
 
-/** 카드 상세 'AI 가 한 일'(draftSteps)로도 저장되는 과정 */
+/** 카드 상세 '만든 과정'(draftSteps)으로도 저장되는 과정 */
 export function draftStepsOf(plan: DraftPlan, title: string): Any[] {
   if (plan === 'FAIL') return [];
   if (plan === 'PARTIAL') return [step(0, 'MODEL', 'DRAFT', null)];

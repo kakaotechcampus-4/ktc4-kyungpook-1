@@ -1,5 +1,5 @@
 /**
- * 'AI 가 한 일' — 서버가 준 단계 값(draftSteps, #479)으로 화면 문장을 만든다.
+ * 카드 상세 '만든 과정' — 서버가 준 단계 값(draftSteps, #479)으로 화면 문장을 만든다.
  * 서버는 값만 보내고 문장은 화면이 만든다(BACKEND_CONTRACT 'AI 가 한 일').
  *
  * 규칙
@@ -8,7 +8,7 @@
  *  - 문구는 이 기능에만 쓰여 labels.ts 를 건드리지 않으려고 여기 둔다(다른 PR 과 겹치는 파일을 줄이려고).
  */
 import type { DraftMaterial, DraftStep, DraftStepKind, StarField } from '@/api/schemas';
-import { starFieldShort } from '@/lib/labels';
+import { STAR_FIELDS, starFieldShort } from '@/lib/labels';
 
 /** 한 줄로 그릴 단계 */
 export type DraftStepLine = {
@@ -84,4 +84,30 @@ export function draftStepGroups(steps: readonly DraftStep[] | null | undefined, 
   });
   if (groups.length > 1) groups.forEach((group) => { group.label = draftRoundLabel(group.round); });
   return groups;
+}
+
+/**
+ * 카드 상세 오른쪽 '만든 과정' 세 줄 — 초안 → 고쳐 쓰기 → 검사 결과.
+ * 검사 결과는 칸마다 마지막 검사 단계로 정한다: 문제를 찾았거나(FLAG) 앞 글로 되돌렸으면(REVERT) 남은 문제, 다시 검사해 통과했으면(PASS) 해결이다.
+ * 그릴 단계가 없으면 [] 라서 화면이 '직접 쓴 카드' 같은 문장으로 대신한다.
+ */
+export function draftStepSummary(steps: readonly DraftStep[] | null | undefined): string[] {
+  if (!draftStepGroups(steps).length) return [];
+  const all = steps ?? [];
+  const order = (fields: Iterable<StarField>) => STAR_FIELDS.filter((f) => [...fields].includes(f)).map((f) => starFieldShort[f]).join(', ');
+  const lines: string[] = [];
+  if (all.some((s) => s.kind === 'DRAFT')) lines.push('GitHub 기록으로 초안을 썼어요');
+  const rewrites = all.filter((s) => s.kind === 'REWRITE' && s.field);
+  const rewritten = new Set(rewrites.map((s) => s.field!));
+  if (!rewrites.length) lines.push('고쳐 쓴 칸은 없어요');
+  else if (rewrites.length === 1) lines.push(`${order(rewritten)} 칸을 다시 썼어요`);
+  else lines.push(`${order(rewritten)} 칸을 ${rewrites.length}번 고쳐 썼어요`);
+  const open = new Set<StarField>();
+  for (const s of all) {
+    if (!s.field) continue;
+    if (s.kind === 'FLAG' || s.kind === 'REVERT') open.add(s.field);
+    if (s.kind === 'PASS') open.delete(s.field);
+  }
+  lines.push(open.size ? `${order(open)} 칸은 검사에서 문제가 남았어요` : '검사를 통과했어요');
+  return lines;
 }

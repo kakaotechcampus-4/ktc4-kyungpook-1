@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -62,22 +62,17 @@ function mount(path: string, list: MatchTarget[] = postings, load?: () => Promis
   return { router, where, ...result };
 }
 const enc = encodeURIComponent;
-const cardHeadings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.overall-match')).map((h) => h.textContent); // 위의 '나와 맞는 기업' 칸 제목은 빼고 센다
+const cardHeadings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.match-group__head')).map((h) => h.textContent); // 목록의 묶음 제목은 빼고 센다
 
-it("목록 카드: 기업 이름은 기업 페이지로, 제목은 공고 상세로 가고 둘 다 목록의 검색·필터·정렬을 이어 간다", async () => {
-  const { where } = mount("/match?sort=deadline&experience=ENTRY");
+it("목록 카드: 기업 이름은 기업 페이지로, 제목은 공고 상세로 가고 둘 다 목록의 검색·직무만 이어 간다(예전 주소의 정렬·경력·보기 값은 넘기지 않는다)", async () => {
+  const { where } = mount("/match?category=BACKEND&view=company&sort=deadline&experience=ENTRY");
   await screen.findAllByText("가온소프트");
-  const company = screen.getAllByRole("link", { name: "가온소프트" });
-  expect(company).toHaveLength(4);
-  for (const link of company)
-    expect(link).toHaveAttribute("href", `/match/company/${enc("가온소프트")}?sort=deadline&experience=ENTRY`);
-  expect(screen.getByRole("link", { name: "백엔드 엔지니어" })).toHaveAttribute("href", "/match/p1?sort=deadline&experience=ENTRY");
+  expect(screen.getByRole("link", { name: "가온소프트" })).toHaveAttribute("href", `/match/company/${enc("가온소프트")}?category=BACKEND`);
+  expect(screen.getByRole("link", { name: "백엔드 엔지니어" })).toHaveAttribute("href", "/match/p1?category=BACKEND");
   // 검색어도 이어 간다
   fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), { target: { value: "나래" } });
   const narae = screen.getByRole("link", { name: "나래랩스" });
-  expect(narae.getAttribute("href")).toContain(`/match/company/${enc("나래랩스")}?`);
-  expect(narae.getAttribute("href")).toContain(`q=${enc("나래")}`);
-  expect(narae.getAttribute("href")).toContain("sort=deadline");
+  expect(narae).toHaveAttribute("href", `/match/company/${enc("나래랩스")}?q=${enc("나래")}&category=BACKEND`);
   fireEvent.click(narae);
   await screen.findByRole("heading", { level: 1, name: "나래랩스" });
   expect(where().path).toBe(`/match/company/${enc("나래랩스")}`);
@@ -102,69 +97,15 @@ it("카드의 기업 마크는 장식(aria-hidden)이고 기업 이름은 글로
   expect(container.textContent).not.toMatch(/필수|우대|\d+ \/ \d+/);
 });
 
-it("공고별 / 기업별 전환: ?view=company 로 기업 카드를 보이고 다시 누르면 돌아온다", async () => {
-  const { where } = mount("/match");
+it("맞는 공고가 없을 때 초기화하면 검색어와 직무를 함께 지운다", async () => {
+  const { where } = mount("/match?category=BACKEND");
   await screen.findAllByText("나래랩스");
-  expect(screen.getByRole("button", { name: "공고별" })).toHaveAttribute("aria-pressed", "true");
-  expect(cardHeadings()).toHaveLength(7);
-  fireEvent.click(screen.getByRole("button", { name: "기업별" }));
-  expect(where().search).toBe("?view=company");
-  expect(screen.getByRole("button", { name: "기업별" })).toHaveAttribute("aria-pressed", "true");
-  expect(screen.getByRole("status")).toHaveTextContent("기업 4곳 · 공고 7건");
-  // 공고 많은 순 → 이름 순(등급은 보지 않는다)
-  expect(cardHeadings()).toEqual(["가온소프트", "나래랩스", "다온페이", "마루데이터"]);
-  fireEvent.click(screen.getByRole("button", { name: "공고별" }));
-  expect(where().search).toBe("");
-  expect(cardHeadings()).toHaveLength(7);
-});
-
-it("기업별 카드: 마크·채용 중 공고 수·앞쪽 공고(3개까지)·외 N건, 등급은 보이지 않는다", async () => {
-  mount("/match?view=company");
-  const gaon = (await screen.findByRole("link", { name: "가온소프트" })).closest("article")!;
-  expect(within(gaon).getByText("채용 중 4건")).toBeInTheDocument();
-  expect(gaon.querySelector(".company-mark")).toHaveAttribute("aria-hidden", "true");
-  const roles = within(gaon).getByRole("list", { name: "공고" }).querySelectorAll(".company-tile__role");
-  // 목록 정렬(마감 임박순, 마감이 같으면 받은 등급 순)대로 앞의 3개, 나머지는 외 1건
-  expect([...roles].map((el) => el.textContent)).toEqual(["프론트엔드 개발자", "백엔드 엔지니어", "데이터 분석가"]);
-  expect(within(gaon).getByText("외 1건")).toBeInTheDocument();
-
-  const maru = screen.getByRole("link", { name: "마루데이터" }).closest("article")!;
-  expect(within(maru).getByText("채용 중 1건")).toBeInTheDocument();
-  // 어느 기업 카드에도 등급(A~D)도, 평가 전 안내도 없다 — 최고 등급은 목록 단계 값이라 쓰지 않는다
-  expect(screen.queryByLabelText(/등급/)).not.toBeInTheDocument();
-  const cards = screen.getAllByRole("article");
-  expect(cards).toHaveLength(4);
-  for (const card of cards) expect(card.textContent).not.toMatch(/등급|카드를 확정/);
-});
-
-it("기업별 보기도 검색·필터를 따르고(공고 수·기업 수), 기업 링크가 필터와 view 를 함께 넘긴다", async () => {
-  const { where } = mount("/match?view=company&category=BACKEND");
-  await screen.findByRole("link", { name: "가온소프트" });
-  // BACKEND 공고만(p1·p2·p4·p5): 가온소프트는 4건 중 1건
-  expect(screen.getByRole("status")).toHaveTextContent("기업 4곳 · 공고 4건");
-  expect(cardHeadings()).toEqual(["가온소프트", "나래랩스", "다온페이", "마루데이터"]);
-  expect(screen.getByRole("link", { name: "가온소프트" })).toHaveAttribute(
-    "href",
-    `/match/company/${enc("가온소프트")}?view=company&category=BACKEND`,
-  );
-  fireEvent.click(screen.getByRole("link", { name: "가온소프트" }));
-  await screen.findByRole("heading", { level: 1, name: "가온소프트" });
-  expect(where().search).toBe("?view=company&category=BACKEND");
-});
-
-it("검색어를 쓴 채 기업별로 바꿔도 검색어가 남고, 초기화하면 보기 방식은 남긴다", async () => {
-  const { where } = mount("/match");
-  await screen.findAllByText("나래랩스");
-  fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), { target: { value: "나래" } });
-  fireEvent.click(screen.getByRole("button", { name: "기업별" }));
-  expect(new URLSearchParams(where().search).get("q")).toBe("나래");
-  expect(new URLSearchParams(where().search).get("view")).toBe("company");
-  expect(cardHeadings()).toEqual(["나래랩스"]);
   fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), { target: { value: "없는회사" } });
-  fireEvent.click(await screen.findByRole("button", { name: "검색과 필터 초기화" }));
-  expect(where().search).toBe("?view=company");
+  fireEvent.click(await screen.findByRole("button", { name: "검색과 직무 초기화" }));
+  expect(where().search).toBe("");
   expect(screen.getByPlaceholderText("기업이나 직무 검색")).toHaveValue("");
-  expect(screen.getByRole("button", { name: "기업별" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "전체" })).toHaveAttribute("aria-pressed", "true");
+  expect(cardHeadings()).toHaveLength(7);
 });
 
 it("기업 페이지: 그 기업 공고만, 공고 수·목록으로 돌아가는 링크, 공고 카드는 상세로 간다(등급 없음)", async () => {
@@ -174,7 +115,7 @@ it("기업 페이지: 그 기업 공고만, 공고 수·목록으로 돌아가�
   expect(screen.queryByLabelText(/등급/)).not.toBeInTheDocument();
   expect(screen.queryByText("서버 개발자")).not.toBeInTheDocument(); // 다른 기업 공고는 없다
   expect(cardHeadings()).toEqual(["프론트엔드 개발자", "백엔드 엔지니어", "데이터 분석가", "QA 엔지니어"]);
-  expect(screen.getByRole("link", { name: "← 공고 목록" })).toHaveAttribute("href", "/match?sort=deadline&category=ALL");
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toHaveAttribute("href", "/match?sort=deadline&category=ALL");
   const detail = screen.getByRole("link", { name: "백엔드 엔지니어" });
   expect(detail).toHaveAttribute("href", "/match/p1?sort=deadline&category=ALL");
   // 머리말에 기업이 있으니 카드마다 기업 이름·마크를 되풀이하지 않는다(마크는 머리말에 하나, 장식)
@@ -188,21 +129,15 @@ it("기업 페이지: 그 기업 공고만, 공고 수·목록으로 돌아가�
   expect(where().search).toBe("?sort=deadline&category=ALL");
 });
 
-it("기업별 보기에서 들어왔다면 되돌아가는 링크가 기업 목록이다(보기 방식을 이어 간다)", async () => {
-  mount(`/match/company/${enc("나래랩스")}?view=company&q=%EB%82%98`);
-  await screen.findByRole("heading", { level: 1, name: "나래랩스" });
-  expect(screen.getByRole("link", { name: "← 기업 목록" })).toHaveAttribute("href", "/match?view=company&q=%EB%82%98");
-});
-
 it("기업 페이지는 목록의 검색·필터를 따르고, 숨은 공고가 있으면 알리고 필터만 풀 수 있다", async () => {
-  mount(`/match/company/${enc("가온소프트")}?view=company&category=BACKEND&sort=deadline`);
+  mount(`/match/company/${enc("가온소프트")}?category=BACKEND&sort=deadline`);
   await screen.findByRole("heading", { level: 1, name: "가온소프트" });
   expect(screen.getByRole("status")).toHaveTextContent("공고 1건");
   expect(cardHeadings()).toEqual(["백엔드 엔지니어"]);
-  expect(screen.getByText("검색·필터가 적용돼 이 기업의 공고 4건 중 1건만 보여요.")).toBeInTheDocument();
+  expect(screen.getByText("검색과 필터가 적용돼 이 기업의 공고 4건 중 1건만 보여요.")).toBeInTheDocument();
   const all = screen.getByRole("link", { name: "이 기업 공고 모두 보기" });
-  // 필터만 풀고 정렬·보기는 둔다
-  expect(all).toHaveAttribute("href", `/match/company/${enc("가온소프트")}?view=company&sort=deadline`);
+  // 필터만 풀고 정렬은 둔다
+  expect(all).toHaveAttribute("href", `/match/company/${enc("가온소프트")}?sort=deadline`);
   fireEvent.click(all);
   await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("공고 4건"));
   expect(screen.queryByText(/만 보여요/)).not.toBeInTheDocument();
@@ -214,11 +149,11 @@ it("필터에 맞는 공고가 하나도 없으면 '조건에 맞는 공고 없�
   expect(screen.getByRole("link", { name: "이 기업 공고 모두 보기" })).toHaveAttribute("href", `/match/company/${enc("마루데이터")}`);
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
   cleanup();
-  mount(`/match/company/${enc("없는회사")}?view=company`);
+  mount(`/match/company/${enc("없는회사")}`);
   expect(await screen.findByText("이 기업의 공고를 찾지 못했어요")).toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 1, name: "없는회사" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "전체 공고 보기" })).toHaveAttribute("href", "/match");
-  expect(screen.getByRole("link", { name: "← 기업 목록" })).toHaveAttribute("href", "/match?view=company");
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toHaveAttribute("href", "/match");
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
   expect(document.querySelector(".company-mark")).toBeNull(); // 없는 기업에는 이니셜 마크를 만들어 주지 않는다
 });
@@ -285,19 +220,10 @@ it("공고 상세 머리말: 기업 마크는 장식이고, 기업 이름 링크
   const mark = container.querySelector(".posting-detail__head .company-mark");
   expect(mark).toHaveAttribute("aria-hidden", "true");
   expect(mark).toHaveTextContent(detail.company.trim()[0]);
-  expect(screen.getByRole("link", { name: "← 공고 목록" })).toHaveAttribute("href", "/match?category=BACKEND");
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toHaveAttribute("href", "/match?category=BACKEND");
   fireEvent.click(link);
   await screen.findByRole("heading", { level: 1, name: detail.company });
   expect(where().search).toBe("?category=BACKEND");
-});
-
-it("기업별 보기에서 들어온 공고 상세는 돌아가는 링크가 기업 목록이다(도착하는 화면과 글자가 같다)", async () => {
-  const detail = MatchDetail.parse(sampleDetail.data);
-  vi.spyOn(matchingApi, "detail").mockResolvedValue(detail);
-  mount(`/match/${detail.id}?view=company&category=BACKEND`);
-  await screen.findByRole("heading", { level: 1, name: detail.role });
-  expect(screen.getByRole("link", { name: "← 기업 목록" })).toHaveAttribute("href", "/match?view=company&category=BACKEND");
-  expect(screen.queryByRole("link", { name: "← 공고 목록" })).not.toBeInTheDocument();
 });
 
 it("기업 페이지도 목록을 한 번만 받는다(별도 요청 없음)", async () => {
@@ -308,12 +234,12 @@ it("기업 페이지도 목록을 한 번만 받는다(별도 요청 없음)", a
 
 it("목록을 못 받으면 오류와 다시 시도, 돌아가는 링크를 보인다(자동 재시도 없음)", async () => {
   let calls = 0;
-  mount(`/match/company/${enc("가온소프트")}?view=company`, postings, () =>
+  mount(`/match/company/${enc("가온소프트")}`, postings, () =>
     ++calls === 1 ? Promise.reject(new ApiError("AI_UNAVAILABLE", "x", 503)) : Promise.resolve(postings),
   );
   await screen.findByRole("alert");
   expect(calls).toBe(1);
-  expect(screen.getByRole("link", { name: "← 기업 목록" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
   await screen.findByRole("heading", { level: 1, name: "가온소프트" });
   expect(calls).toBe(2);

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { CompanyMark } from "@/features/match/CompanyMark";
-import { companyMonogram, companyTone } from "@/features/match/model";
+import { companyMonogram } from "@/features/match/model";
 import { LOGO } from "./match-company-fixtures";
 
 // jsdom 은 <img> 를 실제로 받지 않는다 — 이 시험은 네트워크로 나가지 않는다. 로드 실패는 error 이벤트로 재현한다.
@@ -27,14 +27,13 @@ it("https 로고 주소가 있으면 장식 이미지로 그린다 — alt 비�
   expect(img).not.toHaveAttribute("crossorigin");
 });
 
-it("로고가 없으면(null·undefined·빈 문자열) 이니셜과 이름에서 정해진 색을 그린다", () => {
+it("로고가 없으면(null·undefined·빈 문자열) 이니셜을 그리고, 기업마다 색을 나누지 않는다", () => {
   for (const logoUrl of [null, undefined, ""]) {
     const { container, unmount } = render(<CompanyMark name="나래랩스" logoUrl={logoUrl} />);
     const mark = markOf(container);
     expect(mark.querySelector("img")).toBeNull();
     expect(mark).toHaveTextContent(companyMonogram("나래랩스"));
-    expect(mark).toHaveClass(`company-mark--${companyTone("나래랩스")}`);
-    expect(mark).not.toHaveClass("company-mark--logo");
+    expect(mark.className).toBe("company-mark");
     expect(mark).toHaveAttribute("aria-hidden", "true");
     unmount();
   }
@@ -46,7 +45,7 @@ it("이미지를 불러오지 못하면(error) 이니셜로 되돌린다 — 이
   const mark = markOf(container);
   expect(mark.querySelector("img")).toBeNull();
   expect(mark).toHaveTextContent("카");
-  expect(mark).toHaveClass(`company-mark--${companyTone("카카오")}`);
+  expect(mark.className).toBe("company-mark");
   expect(mark).toHaveAttribute("aria-hidden", "true");
 });
 

@@ -3,6 +3,7 @@ package com.gitory.backend.coverletter.domain;
 import com.gitory.backend.coverletter.infra.CardMaterialAnswerRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterQuestionRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterRepository;
+import com.gitory.backend.coverletter.infra.CoverLetterTurnRepository;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +47,9 @@ class CoverLetterPersistenceTest {
 
     @Autowired
     CardMaterialAnswerRepository remembered;
+
+    @Autowired
+    CoverLetterTurnRepository turns;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -114,6 +118,33 @@ class CoverLetterPersistenceTest {
         assertThat(found.getSentences()).containsExactly(new DraftSentence(1, "첫 문장입니다."));
         assertThat(found.getMarks()).containsExactly(new DraftMark(1, "UNSOURCED_NUMBER", "30%"));
         assertThat(found.getBlanks()).containsExactly(MaterialItem.RESULT);
+
+    }
+
+    @Test
+    @DisplayName("첨삭 결과(진단 포인트·고친 글·받은 시각)는 저장한 그대로 다시 읽히고, 비우면 칸이 NULL 이 되며 적용 횟수는 처음에 0 이다")
+    void polishIsReadBackAsSavedAndClearedToNull() {
+
+        CoverLetter letter = letters.saveAndFlush(CoverLetter.start(userId, "백엔드 개발", null, null));
+        CoverLetterQuestion question = questions.saveAndFlush(CoverLetterQuestion.of(letter.getId(), 1, "협업 경험", 700));
+        QuestionPolish polish = new QuestionPolish("과정이 잘 보입니다.",
+                List.of(new PolishPoint(1, PolishKind.WEAK, PolishCategory.EVIDENCE, "결과가 안 보여요", "한 가지 적어요",
+                        List.of(2)),
+                        new PolishPoint(2, PolishKind.GOOD, PolishCategory.FIT, "끝까지 파고들어요", "문항과 맞아요", List.of())),
+                new PolishedDraft("원인을 찾았다. 응답이 빨라졌다.",
+                        List.of(new DraftSentence(1, "원인을 찾았다."), new DraftSentence(2, "응답이 빨라졌다.")), 17, 0,
+                        List.of(new DraftMark(2, "INFERRED", null)), List.of(MaterialItem.LEARNING)),
+                CoverLetterTime.now());
+        assertThat(questions.findById(question.getId()).orElseThrow().getPolishAppliedCount()).isZero();
+
+        question.polished(polish);
+        questions.saveAndFlush(question);
+
+        assertThat(questions.findById(question.getId()).orElseThrow().getPolish()).isEqualTo(polish);
+        question.discardPolish();
+        questions.saveAndFlush(question);
+        assertThat(jdbc.queryForObject("SELECT polish IS NULL FROM cover_letter_question WHERE id = ?", Boolean.class,
+                question.getId())).isTrue();
 
     }
 
@@ -206,6 +237,40 @@ class CoverLetterPersistenceTest {
         assertThatThrownBy(() -> jdbc.update(
                 "INSERT INTO card_material_answer (card_id, item, text, updated_at) VALUES (?, 'REASON', '이유', now())", card))
                 .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    @Test
+    @DisplayName("대화의 말은 자소서 안 순번이 겹칠 수 없고, 순번대로 다시 읽히며 AI 말만 항목·상태를 가진다")
+    void turnSeqIsUniqueWithinACoverLetter() {
+
+        CoverLetter letter = letters.saveAndFlush(CoverLetter.start(userId, "백엔드 개발", null, null));
+        turns.saveAndFlush(CoverLetterTurn.ai(letter.getId(), 1, 2, "그때 맡은 일을 알려 주세요", MaterialItem.ACTION,
+                TurnStatus.ASKING));
+        turns.saveAndFlush(CoverLetterTurn.user(letter.getId(), 2, 1, "로그를 같이 봤어요"));
+
+        assertThatThrownBy(() -> turns.saveAndFlush(CoverLetterTurn.user(letter.getId(), 1, 2, "같은 순번")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        List<CoverLetterTurn> found = turns.findByCoverLetterIdOrderBySeq(letter.getId());
+        assertThat(found).extracting(CoverLetterTurn::getSeq).containsExactly(1, 2);
+        assertThat(found.getFirst().getRole()).isEqualTo(TurnRole.USER);
+        assertThat(found.getFirst().getItem()).isNull();
+        assertThat(found.getFirst().getStatus()).isNull();
+        assertThat(found.getLast().getItem()).isEqualTo(MaterialItem.ACTION);
+        assertThat(found.getLast().getStatus()).isEqualTo(TurnStatus.ASKING);
+
+    }
+
+    @Test
+    @DisplayName("자소서를 지우면 그 대화도 함께 지워진다")
+    void deletingCoverLetterDropsItsTurns() {
+
+        CoverLetter letter = letters.saveAndFlush(CoverLetter.start(userId, "백엔드 개발", null, null));
+        turns.saveAndFlush(CoverLetterTurn.user(letter.getId(), 1, 1, "로그를 같이 봤어요"));
+
+        letters.delete(letter);
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter_turn", Integer.class)).isZero();
 
     }
 }

@@ -2,6 +2,7 @@ package com.gitory.backend.coverletter.api;
 
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
+import com.gitory.backend.coverletter.domain.CoverLetterAiUnavailableException;
 import com.gitory.backend.coverletter.domain.CoverLetterNotFoundException;
 import com.gitory.backend.coverletter.domain.CoverLetterPostingNotFoundException;
 import com.gitory.backend.coverletter.domain.CoverLetterStateException;
@@ -47,6 +48,14 @@ public class CoverLetterExceptionHandler {
     public ApiResponse<Void> handleState(CoverLetterStateException e) {
 
         return ApiResponse.fail(ErrorCode.INVALID_STATE, e.getMessage());
+
+    }
+
+    @ExceptionHandler(CoverLetterAiUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ApiResponse<Void> handleAiUnavailable(CoverLetterAiUnavailableException e) {
+
+        return ApiResponse.fail(ErrorCode.AI_UNAVAILABLE, e.getMessage());
 
     }
 

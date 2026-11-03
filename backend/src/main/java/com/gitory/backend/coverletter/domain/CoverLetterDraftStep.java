@@ -96,23 +96,33 @@ class CoverLetterDraftStep {
                                                                Map<Long, CardMaterial> cards) {
 
         CardMaterial primary = CoverLetterCardDetails.primaryOf(question, cards);
-        List<MaterialAnswer> written = question.getAnswers().stream().filter(answer -> !answer.skipped()).toList();
-        Set<MaterialItem> answered = written.stream().map(MaterialAnswer::item).collect(Collectors.toSet());
+        Set<MaterialItem> answered = question.getAnswers().stream()
+                .filter(answer -> !answer.skipped())
+                .map(MaterialAnswer::item)
+                .collect(Collectors.toSet());
 
         return new CoverLetterDraftsRequest.Question(question.getSeq(), question.getText(), question.getCharLimit(),
                 question.getTheme() == null ? null : question.getTheme().name(),
                 CoverLetterCardDetails.detail(primary),
                 CoverLetterCardDetails.detail(CoverLetterCardDetails.supportingOf(question, cards)),
-                written.stream()
-                        .map(answer -> new CoverLetterQuestionsRequest.KnownAnswer(answer.item().name(), answer.text(),
-                                primary != null && CARD_ITEMS.contains(answer.item()) ? primary.id() : null))
-                        .toList(),
+                answersOf(question, primary),
                 question.getAsks().stream()
                         .filter(MaterialAsk::required)
                         .map(MaterialAsk::item)
                         .filter(item -> !answered.contains(item))
                         .map(MaterialItem::name)
                         .toList());
+
+    }
+
+    static List<CoverLetterQuestionsRequest.KnownAnswer> answersOf(CoverLetterQuestion question,
+                                                                   CardMaterial primary) {
+
+        return question.getAnswers().stream()
+                .filter(answer -> !answer.skipped())
+                .map(answer -> new CoverLetterQuestionsRequest.KnownAnswer(answer.item().name(), answer.text(),
+                        primary != null && CARD_ITEMS.contains(answer.item()) ? primary.id() : null))
+                .toList();
 
     }
 }

@@ -164,11 +164,18 @@ export function mockMatchList() {
 }
 
 const OVERALL_SEC = 6;
-/** Mock server only: 예시 공고에서 필수 조건을 많이 채운 순서로 기업마다 대표 공고 하나씩, 5곳까지 */
+/**
+ * Mock server only: 예시 공고에서 필수 조건을 많이 채운 순서로 기업마다 대표 공고 하나씩, 5곳까지.
+ * 채운 개수는 예시 공고에 적힌 값 그대로라(가온 3/3 · 다온 필수 없음 · 마루 0/2), 데모에서 '나와 맞는 공고' 와 '아직 부족한 공고' 가 함께 보인다
+ */
 function overallCompanies() {
   const seen = new Set<string>();
   const ratio = (x: { required: { met: number; total: number } }) => x.required.met / Math.max(1, x.required.total);
-  return [...mockMatchList()]
+  return mockMatchList()
+    .map((x) => {
+      const { required, preferred } = scenario(listExample.data.findIndex((example) => example.id === x.id));
+      return { ...x, required, preferred };
+    })
     .sort((a, b) => ratio(b) - ratio(a))
     .filter((x) => { const key = x.companyId ?? x.company; if (seen.has(key)) return false; seen.add(key); return true; })
     .slice(0, 5)

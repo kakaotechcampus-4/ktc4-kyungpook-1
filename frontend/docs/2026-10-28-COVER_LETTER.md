@@ -30,6 +30,9 @@
 | `POST /cover-letters/{id}/drafts` | | `CoverLetter`(`stage: DRAFTING`) — 답하지 않은 질문은 넘긴 것으로 본다. `ASKED` 에서만 |
 | `PATCH /cover-letters/{id}/questions/{qid}` | `{ text }` | `CoverLetter` — 고친 글을 저장한다. AI 원본(`aiText`)은 그대로 남는다. `DRAFTED` 에서만 |
 | `DELETE /cover-letters/{id}/questions/{qid}/marks/{sentenceSeq}` | | `CoverLetter` — AI 추론 문장을 맞다고 확인해 그 문장의 `INFERRED` 표시만 지운다(#719). 글은 그대로. `DRAFTED` 에서만, 그 문장에 `INFERRED` 표시가 없으면 409 |
+| `POST /cover-letters/{id}/questions/{qid}/polish` | | `CoverLetter` — 그 문항의 지금 글로 첨삭(진단 + 고쳐 쓰기)을 받아 `question.polish` 에 둔다(#727). 글은 그대로, 앞 결과는 덮는다. `DRAFTED` 에서만 |
+| `POST /cover-letters/{id}/questions/{qid}/polish/apply` | | `CoverLetter` — `polish.draft` 로 `draft` 의 글·문장·표시를 바꾸고 `polishAppliedCount` 를 1 올리며 `polish` 를 비운다. `aiText` 는 그대로. 첨삭 결과가 없으면 409 |
+| `DELETE /cover-letters/{id}/questions/{qid}/polish` | | `CoverLetter` — `polish` 를 비운다. 없어도 200 |
 | `POST /cover-letters/{id}/retry` | | `CoverLetter` — 실패한 단계만 다시 돈다. `FAILED` 에서만 |
 | `DELETE /cover-letters/{id}` | | `{ ok: true }` — 어느 단계에서든 지운다. AI 가 돌던 결과는 버린다 |
 
@@ -77,7 +80,14 @@
                "marks": [{ "sentenceSeq": 2, "code": "UNSOURCED_NUMBER", "value": "30%" }],
                "blanks": ["LEARNING"], "source": "LLM|SKELETON" } | null,
     // ⑥ 쓰는 중 — DRAFTING 동안만
-    "writing": { "text": "…", "round": 0 } | null
+    "writing": { "text": "…", "round": 0 } | null,
+    // ⑥ 첨삭(#727) — 적용하지 않은 결과
+    "polish": { "summary": "…",
+                "points": [{ "seq": 1, "kind": "WEAK|GOOD", "category": "FIT|EVIDENCE|READABILITY|OVERLAP|TECH_TERMS",
+                             "title": "…", "detail": "…", "sentenceSeqs": [6] }],
+                "draft": { "text", "sentences", "charCount", "overBy", "marks", "blanks" },
+                "createdAt": "ISO" } | null,
+    "polishAppliedCount": 0
   }],
   "steps": { "assign": [ … ], "draft": [ … ] } }
 ```
@@ -97,6 +107,7 @@
 - 글이 목표(글자 수 상한의 70%)보다 짧은데 카드·답에 더 쓸 사실이 없으면, AI 가 모자란 내용 자리에 `[더 쓸 거리: 무엇을 쓰면 되는지]` 를 한두 개 넣는다. 항목이 아니라 `blanks` 에는 없으므로, 화면은 글에서 이 모양을 찾아 강조한다.
 - `draft.marks[].code`: `UNSOURCED_NUMBER`(근거에 없는 수치) · `UNSOURCED_TERM`(근거에 없는 영문 낱말) · `REPEATED`(다른 문항과 같은 이야기) · `UNSUPPORTED_CLAIM`(카드·답에 없는 역할·성과) · `OFF_TOPIC`(문항이 묻는 것을 벗어남) · `INFERRED`(AI 가 재료에 없는 해석 — 배운 점·판단 이유·직무 연결·포부 — 을 추론해 쓴 문장. 사용자가 확인하면 위 `DELETE` 로 지운다). `value` 는 걸린 수치·낱말 그대로, 감독이 찾은 것과 `INFERRED` 는 `null`.
 - `draft.source: SKELETON` 은 AI 가 쓰지 못해 카드 문장과 빈칸으로 만든 뼈대다.
+- `polish`(#727): 적용하지 않은 첨삭 결과. `points[].sentenceSeqs` 는 **고친 글(`polish.draft.sentences`)의 문장 번호**다(`WEAK` 는 고친 자리, `GOOD` 은 잘 쓴 자리). `polish.draft` 는 `draft` 와 같은 모양에서 `aiText`·`edited`·`source` 를 뺀 것이다. 화면은 모르는 `kind`·`category` 의 포인트만 버린다. `polishAppliedCount` 는 적용한 횟수(화면은 `n+1`판으로 보인다), 옛 응답에 없으면 0 으로 읽는다.
 - `writing`: 초안을 쓰는 동안(`DRAFTING`) AI 가 그 문항에 지금까지 쓴 글이다. 첫 초안(`round` 0)은 문장이 끝날 때마다 늘어나고, 고쳐 쓸 때는 `round` 가 1씩 늘며 다 쓴 새 글로 한 번에 바뀐다(화면은 앞 글과 문장 단위로 견줘 바뀐 문장만 다시 그린다). 검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 앞 글로 돌아온다. 아직 쓰기 전이거나 단계가 끝나면(`DRAFTED`·`FAILED`) `null` 이고, 다 쓰면 `draft` 가 채워진다. 빠뜨린 빈칸은 다 쓴 뒤에 붙으므로 `writing` 에는 없을 수 있다.
 
 **`CoverLetterSummary`** — `{ id, stage, jobRole, posting, questionCount, firstQuestion, createdAt, updatedAt }` — `posting` 은 `CoverLetter` 와 같은 모양이고 공고 없이 만들었으면 `null`

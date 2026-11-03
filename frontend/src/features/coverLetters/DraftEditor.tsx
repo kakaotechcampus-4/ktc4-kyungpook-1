@@ -26,6 +26,10 @@ export function DraftEditor({ letter }: { letter: CoverLetter }) {
   const [lock, setLock] = useState<string | null>(null);
   const [focus, setFocus] = useState<{ questionId: string; key: string; n: number } | null>(null);
   const onFlag = useCallback((questionId: string, key: string) => setFocus((f) => ({ questionId, key, n: (f?.n ?? 0) + 1 })), []);
+  const [talk, setTalk] = useState<{ questionId: string } | null>(null);
+  const onTalk = useCallback((questionId: string) => setTalk({ questionId }), []);
+  const onTalked = useCallback(() => setTalk(null), []);
+  const [flash, setFlash] = useState<{ questionId: string; sentence: string | null; n: number } | null>(null);
   const [activeId, setActive] = useActiveQuestion(paperRef, letter.questions.map((q) => q.id), lock);
   const mobile = useMatches(SHEET_QUERY);
   const reduced = useReducedMotion();
@@ -33,6 +37,11 @@ export function DraftEditor({ letter }: { letter: CoverLetter }) {
     setActive(id);
     document.querySelector(`[data-question="${id}"]`)?.scrollIntoView?.({ block: 'start', behavior: reduced ? 'auto' : 'smooth' });
   }, [setActive, reduced]);
+  // 채우기의 'Qn에 넣었어요 → 보기' — 종이의 그 문항으로 가서 다시 쓴 문장을 잠깐 칠한다(굴리기는 종이가 한다)
+  const showFilled = useCallback((questionId: string, sentence: string | null) => {
+    setActive(questionId);
+    setFlash((f) => ({ questionId, sentence, n: (f?.n ?? 0) + 1 }));
+  }, [setActive]);
 
   const copyAll = async () => {
     const all = letter.questions.map((q) => `${q.seq}. ${q.text}\n\n${texts[q.id] ?? ''}`).join('\n\n\n');
@@ -51,10 +60,11 @@ export function DraftEditor({ letter }: { letter: CoverLetter }) {
       {copied && <p className="t-13 c-2" role="status">{copied}</p>}
       <div className={`cl-draft${mobile ? ' cl-draft--sheet' : ''}`}>
         <div className="cl-draft__paper" ref={paperRef}>
-          {mobile && <Notices questions={letter.questions} texts={texts} onGo={goQuestion} />}
-          <DraftPaper letter={letter} mode="edit" texts={texts} onText={onText} activeId={activeId} focus={focus} />
+          {mobile && <Notices questions={letter.questions} texts={texts} onGo={goQuestion} onTalk={onTalk} />}
+          <DraftPaper letter={letter} mode="edit" texts={texts} onText={onText} activeId={activeId} focus={focus} flash={flash} />
         </div>
-        <DraftPanel letter={letter} texts={texts} onText={onText} activeId={activeId} mobile={mobile} onLock={setLock} onGo={goQuestion} onFlag={onFlag} />
+        <DraftPanel letter={letter} texts={texts} onText={onText} activeId={activeId} mobile={mobile} onLock={setLock} onGo={goQuestion} onFlag={onFlag}
+          talk={talk} onTalk={onTalk} onTalked={onTalked} onShowFilled={showFilled} />
       </div>
     </>
   );

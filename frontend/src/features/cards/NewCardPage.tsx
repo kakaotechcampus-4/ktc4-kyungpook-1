@@ -10,7 +10,7 @@ import { AuthError } from '@/api/client';
 import { redirectToLogin } from '@/app/queryClient';
 import { isBlankCardText, type Card, type StarField } from '@/api/schemas';
 import { Breadcrumb, Button, Field, Input, PageTitle, StickyFooter } from '@/components/ui';
-import { STAR_FIELDS, fieldKey, starFieldName, starFieldShort } from '@/lib/labels';
+import { STAR_FIELDS, fieldKey, starFieldExample, starFieldName, starFieldShort } from '@/lib/labels';
 import { CONFIG } from '@/lib/config';
 import { toDraftFields, useDraftAutosave } from '@/lib/useDraftAutosave';
 import { track } from '@/lib/track';
@@ -24,12 +24,6 @@ import { ApiError } from '@/api/client';
 import { Select } from '@/components/ui/Select';
 import { StarEditorField } from '@/components/ui/StarEditorField';
 
-const HINT: Record<StarField, string> = {
-  S: '어떤 상황이었나요?',
-  T: '무엇을 해내야 했나요?',
-  A: '내가 한 일을 적어 주세요.',
-  R: '무엇이 달라졌나요?',
-};
 const MAX = CONFIG.MANUAL_FIELD_MAX;
 
 /**
@@ -207,7 +201,7 @@ export function NewCardPage() {
           <StarEditorField key={k} field={k} dropped={i > 0 && !f[k]}
             label={<>{starFieldShort[k]}{(k === 'S' || k === 'A') && <span className="t-12 c-2"> (필수)</span>}</>}
             maxLength={MAX} aria-required={k === 'S' || k === 'A'} aria-describedby="manual-requirements"
-            value={f[k]} onChange={(e) => { editedFields.current.add(k); const next = { ...latestFields.current, [k]: e.target.value }; latestFields.current = next; setF(next); }} placeholder={HINT[k]} aria-label={starFieldName[k]} />
+            value={f[k]} onChange={(e) => { editedFields.current.add(k); const next = { ...latestFields.current, [k]: e.target.value }; latestFields.current = next; setF(next); }} placeholder={starFieldExample[k]} aria-label={starFieldName[k]} />
         ))}
       </div>
       </>}

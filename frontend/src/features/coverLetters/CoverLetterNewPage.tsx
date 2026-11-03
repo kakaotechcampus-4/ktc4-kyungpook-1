@@ -10,7 +10,7 @@ import { Breadcrumb, Button, Chip, EmptyState, Field, Input, Note, PageTitle, Sk
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CompanyMark } from '@/features/match/CompanyMark';
 import { companyLabel } from '@/features/match/model';
-import { EXAMPLE_QUESTION, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
+import { EXAMPLE_QUESTION, MEMO_EXAMPLE, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
 import { newIdempotencyKey } from '@/lib/uuid';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -141,7 +141,7 @@ export function CoverLetterNewPage() {
           {show(jobError) && <span className="cl-error">{jobError}</span>}
         </Field>
         <Field label="메모 (선택)" right={`${memo.length.toLocaleString()}/${L.MEMO.toLocaleString()}`} hint="지원 동기 문항에서 '이 회사를 고른 이유'로 써요.">
-          <Textarea value={memo} rows={3} maxLength={L.MEMO} placeholder="이 회사와 직무를 고른 이유가 있으면 적어 주세요"
+          <Textarea value={memo} rows={3} maxLength={L.MEMO} placeholder={MEMO_EXAMPLE}
             onChange={(e) => edit(() => setMemo(e.target.value))} />
         </Field>
 

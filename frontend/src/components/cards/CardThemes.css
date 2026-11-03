@@ -2,6 +2,7 @@
 .card-themes { margin-top: 10px; min-width: 0; }
 .card-themes__row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .card-themes__label { color: var(--text-tertiary); font-size: 12px; font-weight: 600; line-height: 1.5; }
+.card-themes__limit { margin-left: 4px; font-weight: 400; }
 .card-themes__chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 /* 분야·기술 태그(테두리 없는 칩)와 구분되게 테두리를 둔다 */
 .card-themes__chips li { padding: 2px 8px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg-surface); color: var(--text-primary); font-size: 12px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }

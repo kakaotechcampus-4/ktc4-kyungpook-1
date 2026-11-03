@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Briefcase, Check as CheckIcon, Minus } from 'lucide-react';
 import { useCoverLetter, useRetryCoverLetter, useStartAsking, type AssignStep, type CoverLetter, type CoverLetterPosting, type CoverLetterQuestion } from '@/api/coverLetters';
@@ -100,18 +100,10 @@ function AssignReview({ letter }: { letter: CoverLetter }) {
 
 function QuestionReview({ q, steps, onPick }: { q: CoverLetterQuestion; steps: AssignStep[]; onPick: () => void }) {
   const state = primaryState(q);
-  const have = new Set(q.materials);
   const note = buildAssignNotes(q, steps, false).questionNote;
   return (
     <section className="cl-q" aria-labelledby={`q-${q.id}`}>
-      <header className="cl-q__head">
-        <span className="cl-q__no" aria-hidden>{q.seq}</span>
-        <div className="stack grow" style={{ gap: 4 }}>
-          <h2 id={`q-${q.id}`} className="cl-q__text">{q.text}</h2>
-          <span className="t-12 c-3">{[q.theme && THEME_LABEL[q.theme], `${q.charLimit.toLocaleString()}자 이내`].filter(Boolean).join(', ')}</span>
-        </div>
-        <Button variant="outline" size="sm" onClick={onPick}>카드 바꾸기</Button>
-      </header>
+      <QuestionHead q={q} action={<Button variant="outline" size="sm" onClick={onPick}>카드 바꾸기</Button>} />
 
       {state === 'picked' && q.primaryCard && (
         <div className="cl-cards">
@@ -134,20 +126,7 @@ function QuestionReview({ q, steps, onPick }: { q: CoverLetterQuestion; steps: A
         </Note>
       )}
 
-      {state === 'picked' && (
-        <div className="cl-materials">
-          <span className="t-12 c-2">재료 점검</span>
-          <ul className="row">
-            {CHECK_ITEMS.map((item) => (
-              <li key={item} className={`cl-material ${have.has(item) ? 'cl-material--have' : ''}`}>
-                {have.has(item) ? <CheckIcon size={12} aria-hidden /> : <Minus size={12} aria-hidden />}
-                {ITEM_LABEL[item]}<span className="sr-only">{have.has(item) ? ' 있음' : ' 없음'}</span>
-              </li>
-            ))}
-          </ul>
-          {CHECK_ITEMS.some((i) => !have.has(i)) && <span className="t-12 c-3">없는 재료는 다음 단계에서 물어봐요.</span>}
-        </div>
-      )}
+      {state === 'picked' && <MaterialCheck q={q} hint="없는 재료는 다음 단계에서 물어봐요." />}
 
       {note && <div className="cl-indent"><NoteCard thread={note} focused={false} /></div>}
 
@@ -162,6 +141,39 @@ function QuestionReview({ q, steps, onPick }: { q: CoverLetterQuestion; steps: A
         </details>
       )}
     </section>
+  );
+}
+
+/** 문항 번호, 문항, 주제와 글자 수. action 은 오른쪽 끝 버튼 */
+function QuestionHead({ q, action }: { q: CoverLetterQuestion; action?: ReactNode }) {
+  return (
+    <header className="cl-q__head">
+      <span className="cl-q__no" aria-hidden>{q.seq}</span>
+      <div className="stack grow" style={{ gap: 4 }}>
+        <h2 id={`q-${q.id}`} className="cl-q__text">{q.text}</h2>
+        <span className="t-12 c-3">{[q.theme && THEME_LABEL[q.theme], `${q.charLimit.toLocaleString()}자 이내`].filter(Boolean).join(', ')}</span>
+      </div>
+      {action}
+    </header>
+  );
+}
+
+/** 고른 카드에 상황, 행동, 결과, 배운 점이 있는지. 없는 칸은 점선이고 글자로도 '없음'이라고 읽힌다 */
+function MaterialCheck({ q, hint }: { q: CoverLetterQuestion; hint: string }) {
+  const have = new Set(q.materials);
+  return (
+    <div className="cl-materials">
+      <span className="t-12 c-2">재료 점검</span>
+      <ul className="row">
+        {CHECK_ITEMS.map((item) => (
+          <li key={item} className={`cl-material ${have.has(item) ? 'cl-material--have' : ''}`}>
+            {have.has(item) ? <CheckIcon size={12} aria-hidden /> : <Minus size={12} aria-hidden />}
+            {ITEM_LABEL[item]}<span className="sr-only">{have.has(item) ? ' 있음' : ' 없음'}</span>
+          </li>
+        ))}
+      </ul>
+      {CHECK_ITEMS.some((i) => !have.has(i)) && <span className="t-12 c-3">{hint}</span>}
+    </div>
   );
 }
 
@@ -198,19 +210,35 @@ function Failed({ letter }: { letter: CoverLetter }) {
   );
 }
 
-/** ④ 질문을 만드는 동안 — 문항과 쓸 카드를 보여 준다 */
+/**
+ * ④ 질문을 만드는 동안 — 문항마다 쓸 카드와 재료 점검을 ③ 과 같은 모양으로 보여 주고, 무엇이 비었는지 보며 물을 것을 정하고 있다고 말한다.
+ * 진행률은 서버가 주지 않으므로 만들지 않는다. 화면에 있는 말은 ③ 에서 받은 값뿐이다.
+ */
 function AskWait({ letter }: { letter: CoverLetter }) {
   return (
     <>
       <PageTitle right="떠나도 돼요" sub={`${letter.jobRole}, 문항 ${letter.questions.length}개`}>카드에 모자란 재료를 찾고 있어요</PageTitle>
-      <ol className="cl-qlist">
-        {letter.questions.map((q) => (
-          <li key={q.id}><span className="cl-q__no" aria-hidden>{q.seq}</span><span className="grow">{q.text}</span><span className="c-3 t-12">{q.primaryCard?.title ?? '카드 없음'}</span></li>
-        ))}
-      </ol>
       <section className="cl-agent" aria-label="AI가 하는 일">
         <AiWait label="문항마다 카드를 읽고 무엇을 더 물어볼지 정하고 있어요" />
       </section>
+      <div className="cl-review">
+        {letter.questions.map((q) => (
+          <section key={q.id} className="cl-q" aria-labelledby={`q-${q.id}`}>
+            <QuestionHead q={q} />
+            {q.primaryCard ? (
+              <>
+                <div className="cl-cards">
+                  <CardLine slot="중심" card={q.primaryCard} />
+                  {q.supportingCard && <CardLine slot="보조" card={q.supportingCard} />}
+                </div>
+                <MaterialCheck q={q} hint="없는 재료를 어떻게 물을지 정하고 있어요." />
+              </>
+            ) : (
+              <p className="cl-q__ask-note">고른 카드가 없어서 질문으로 재료를 모아요.</p>
+            )}
+          </section>
+        ))}
+      </div>
     </>
   );
 }

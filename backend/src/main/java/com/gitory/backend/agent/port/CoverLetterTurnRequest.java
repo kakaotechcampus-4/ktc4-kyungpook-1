@@ -8,6 +8,7 @@ import java.util.List;
 
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record CoverLetterTurnRequest(long coverLetterId, String jobRole, String memo,
+                                     List<String> strengths,
                                      @JsonInclude(JsonInclude.Include.NON_NULL) CoverLetterPostingInput posting,
                                      Question question, List<CoverLetterPolishRequest.Other> others,
                                      List<Turn> thread, String trigger) {

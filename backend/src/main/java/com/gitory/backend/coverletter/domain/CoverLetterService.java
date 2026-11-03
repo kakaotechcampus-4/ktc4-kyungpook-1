@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class CoverLetterService {
 
     private static final int JOB_ROLE_MAX_LENGTH = 100;
-    private static final int MEMO_MAX_LENGTH = 1_000;
+    private static final int MAX_STRENGTHS = 3;
     private static final int MAX_QUESTIONS = 10;
     private static final int QUESTION_MAX_LENGTH = 500;
     private static final int MIN_CHAR_LIMIT = 100;
@@ -61,11 +61,12 @@ public class CoverLetterService {
 
     /** 같은 사용자·같은 요청 키면 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다 */
     /** postingId 는 공고 상세에서 시작했을 때만 있고, 없는 공고면 만들지도 호출 제한을 세지도 않는다 */
-    public CoverLetterView create(Long userId, String jobRole, String memo, List<NewQuestion> newQuestions,
-                                  UUID postingId, String idempotencyKey) {
+    public CoverLetterView create(Long userId, String jobRole, String memo, List<String> strengths,
+                                  List<NewQuestion> newQuestions, UUID postingId, String idempotencyKey) {
 
         String key = checkedKey(idempotencyKey);
         checkInput(jobRole, memo, newQuestions);
+        List<Strength> checkedStrengths = checkedStrengths(strengths);
 
         Optional<CoverLetter> existing = existing(userId, key);
         if (existing.isPresent()) {
@@ -78,7 +79,7 @@ public class CoverLetterService {
         CoverLetterPosting posting = postingId == null ? null : postings.read(postingId, userId);
         rateLimiter.acquire(RateLimitedAction.COVER_LETTER, userId, 1);
 
-        return views.of(save(userId, jobRole, memo, newQuestions, posting, key));
+        return views.of(save(userId, jobRole, memo, checkedStrengths, newQuestions, posting, key));
 
     }
 
@@ -223,12 +224,12 @@ public class CoverLetterService {
 
     }
 
-    private CoverLetter save(Long userId, String jobRole, String memo, List<NewQuestion> newQuestions,
-                             CoverLetterPosting posting, String key) {
+    private CoverLetter save(Long userId, String jobRole, String memo, List<Strength> strengths,
+                             List<NewQuestion> newQuestions, CoverLetterPosting posting, String key) {
 
         try {
             return transaction.execute(status -> {
-                CoverLetter letter = letters.save(CoverLetter.start(userId, jobRole, memo, key, posting));
+                CoverLetter letter = letters.save(CoverLetter.start(userId, jobRole, memo, strengths, key, posting));
                 for (int seq = 1; seq <= newQuestions.size(); seq++) {
                     NewQuestion question = newQuestions.get(seq - 1);
                     questions.save(CoverLetterQuestion.of(letter.getId(), seq, question.text(),
@@ -312,8 +313,9 @@ public class CoverLetterService {
     private static void checkInput(String jobRole, String memo, List<NewQuestion> newQuestions) {
 
         requireText(jobRole, "지원 직무 칸", JOB_ROLE_MAX_LENGTH);
-        if (memo != null) {
-            requireLength(memo, "메모 칸", MEMO_MAX_LENGTH);
+        String memoProblem = ReasonCheck.problem(memo);
+        if (memoProblem != null) {
+            throw new InvalidCoverLetterInputException(memoProblem);
         }
         if (newQuestions == null || newQuestions.isEmpty() || newQuestions.size() > MAX_QUESTIONS) {
             throw new InvalidCoverLetterInputException("문항은 1개부터 " + MAX_QUESTIONS + "개까지입니다.");
@@ -328,6 +330,36 @@ public class CoverLetterService {
                 throw new InvalidCoverLetterInputException(
                         "글자 수는 " + MIN_CHAR_LIMIT + "부터 " + MAX_CHAR_LIMIT + "까지입니다.");
             }
+        }
+
+    }
+
+    private static List<Strength> checkedStrengths(List<String> strengths) {
+
+        if (strengths == null) {
+            return List.of();
+        }
+        if (strengths.size() > MAX_STRENGTHS) {
+            throw new InvalidCoverLetterInputException("강점은 " + MAX_STRENGTHS + "개까지 고를 수 있습니다.");
+        }
+        List<Strength> checked = new ArrayList<>();
+        for (String strength : strengths) {
+            Strength known = strengthOf(strength);
+            if (checked.contains(known)) {
+                throw new InvalidCoverLetterInputException("같은 강점을 두 번 고를 수 없습니다.");
+            }
+            checked.add(known);
+        }
+        return List.copyOf(checked);
+
+    }
+
+    private static Strength strengthOf(String strength) {
+
+        try {
+            return Strength.valueOf(strength);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new InvalidCoverLetterInputException("고를 수 없는 강점이 있습니다.");
         }
 
     }

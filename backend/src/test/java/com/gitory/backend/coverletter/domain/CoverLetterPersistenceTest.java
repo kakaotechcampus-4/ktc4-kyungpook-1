@@ -80,6 +80,38 @@ class CoverLetterPersistenceTest {
     }
 
     @Test
+    @DisplayName("고른 강점과 지원 이유 판정은 그대로 다시 읽히고, 칸이 생기기 전에 만든 자소서는 강점 없음·판정 전으로 읽힌다")
+    void strengthsAndMemoJudgementAreReadBack() {
+
+        CoverLetter letter = CoverLetter.start(userId, "백엔드 개발", "결제 서비스를 직접 만들어 보고 싶어서 지원합니다",
+                List.of(Strength.USER_FOCUS, Strength.METICULOUS), null, null);
+        letter.memoJudged(false);
+        CoverLetter saved = letters.saveAndFlush(letter);
+        Long old = letters.saveAndFlush(CoverLetter.start(userId, "백엔드 개발", null, null)).getId();
+        jdbc.update("UPDATE cover_letter SET strengths = DEFAULT, memo_usable = NULL WHERE id = ?", old);
+
+        CoverLetter found = letters.findById(saved.getId()).orElseThrow();
+        assertThat(found.getStrengths()).containsExactly(Strength.USER_FOCUS, Strength.METICULOUS);
+        assertThat(found.getMemoUsable()).isFalse();
+        CoverLetter oldFound = letters.findById(old).orElseThrow();
+        assertThat(oldFound.getStrengths()).isEmpty();
+        assertThat(oldFound.getMemoUsable()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("지원 이유가 없는 옛 자소서는 질문 단계가 판정을 보내도 판정 전으로 둔다")
+    void memoJudgementIgnoredWithoutMemo() {
+
+        CoverLetter withoutMemo = CoverLetter.start(userId, "백엔드 개발", null, null);
+
+        withoutMemo.memoJudged(false);
+
+        assertThat(withoutMemo.getMemoUsable()).isNull();
+
+    }
+
+    @Test
     @DisplayName("JSONB 칸(과정·견준 카드·질문·답·문장·표시·빈칸)은 칸 이름 그대로 다시 읽히고, 빈칸 틀이 없던 옛 질문은 틀이 빈 목록으로 읽힌다")
     void jsonColumnsAreReadBackAsRecords() {
 

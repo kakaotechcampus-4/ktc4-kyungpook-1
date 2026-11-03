@@ -64,7 +64,7 @@ class CoverLetterAssignStep {
                                                           List<CardMaterial> cards) {
 
         return new CoverLetterAssignmentRequest(letter.getId(), letter.getJobRole(), letter.getMemo(),
-                loaded.stream()
+                letter.strengthCodes(), loaded.stream()
                         .map(question -> new CoverLetterAssignmentRequest.Question(question.getSeq(), question.getText(),
                                 question.getCharLimit()))
                         .toList(),

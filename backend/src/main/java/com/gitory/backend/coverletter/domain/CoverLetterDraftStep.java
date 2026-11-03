@@ -43,7 +43,7 @@ class CoverLetterDraftStep {
                 .collect(Collectors.toMap(CardMaterial::id, Function.identity()));
 
         CoverLetterDrafts result = drafts.write(new CoverLetterDraftsRequest(claimed.getId(), claimed.getJobRole(),
-                claimed.getMemo(), loaded.stream().map(question -> requestOf(question, cards)).toList(),
+                claimed.memoForWriting(), claimed.strengthCodes(), loaded.stream().map(question -> requestOf(question, cards)).toList(),
                 CoverLetterPosting.inputOf(claimed)), listenerOf(live));
         return letter -> save(letter, result);
 

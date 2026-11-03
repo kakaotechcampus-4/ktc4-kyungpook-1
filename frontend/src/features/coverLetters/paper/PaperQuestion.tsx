@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 import type { AssignStep, CoverLetterQuestion, DraftStep } from '@/api/coverLetters';
-import { CHECK_GROUPS, DRAFT_CHIP_GROUPS, GROUP_LABEL, buildAssignNotes, buildQuestionNotes, cellLabel, chipLabel, type CheckGroup, type Checklist as ChecklistT, type NoteThread } from '@/lib/coverLetterNotes';
+import { CHECK_GROUPS, DRAFT_CHIP_GROUPS, GROUP_LABEL, buildAssignNotes, buildQuestionNotes, cellLabel, chipLabel, paperStatus, type CheckGroup, type Checklist as ChecklistT, type NoteThread, type PaperStatus } from '@/lib/coverLetterNotes';
 import { countableLength } from '@/lib/draftText';
 import { useReducedMotion } from '@/lib/useLiveText';
 import { EditAnswer, useDraftEditing } from './EditAnswer';
-import { LiveAnswer } from './LiveAnswer';
+import { LiveAnswer, PaperSkeleton } from './LiveAnswer';
 import { MarginNotes, NoteCard } from './MarginNotes';
 
-export type PaperMode = 'live' | 'edit' | 'assign';
+export type PaperMode = 'live' | 'edit' | 'assign' | 'ask';
 export type PaperLayout = 'margin' | 'inline';
 
 /** 점검표 — 쓰는 중은 다섯 칸, 초안(compact)은 근거 · 겹침 · 짐작 세 칸. 걸린 칸을 누르면 그 문장으로 간다. 상태는 글자로 말한다(규칙 7) */
@@ -31,8 +31,20 @@ function Checklist({ checklist, onFocus, compact }: { checklist: ChecklistT; onF
   );
 }
 
+/** 기다리는 종이의 문항마다 상태 한 줄 — 차례 기다림(빈 동그라미) · 하는 중(점 셋) · 끝남(✓) */
+function StatusLine({ status }: { status: PaperStatus }) {
+  return (
+    <p className={`pq__status pq__status--${status.tone}`} role="status">
+      {status.tone === 'wait' && <span className="pq__pend" aria-hidden />}
+      {status.tone === 'now' && <span className="ai-wait__dots" aria-hidden><i /><i /><i /></span>}
+      {status.tone === 'done' && <Check size={14} aria-hidden />}
+      {status.text}
+    </p>
+  );
+}
+
 /**
- * 종이 위의 문항 한 칸 — 'Q1.' · 문항 · 답(쓰는 중 / 고치기 / 고른 카드) · 글자 수 · 점검표.
+ * 종이 위의 문항 한 칸 — 'Q1.' · 문항 · 상태 한 줄(기다리는 동안) · 답(쓰는 중 / 고치기) · 글자 수 · 칩(초안).
  * 메모는 여백(옆 칸)이나 문항 아래(inline)에 둔다. 두 칸(문항·여백)은 같은 그리드 줄이라 세로 위치가 맞는다.
  * 초안(edit)에는 메모를 두지 않는다 — 짐작 확인과 첨삭은 오른쪽 패널(#727)이 맡고, 종이에는 칠하기와 칩만 남는다.
  */
@@ -56,6 +68,7 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
   const composing = active && !draftSteps.some((s) => s.questionId === q.id && (s.kind === 'WROTE' || s.kind === 'SKELETON'));
 
   const notes = useMemo(() => {
+    if (mode === 'ask') return { threads: [] as NoteThread[], questionNotes: [] as NoteThread[], checklist: null, phase: null };
     if (mode !== 'assign') return buildQuestionNotes(q, draftSteps, current, mode === 'edit' ? 'edit' : 'live');
     const a = buildAssignNotes(q, assignSteps, assigning);
     return { threads: [] as NoteThread[], questionNotes: a.questionNote ? [a.questionNote] : [], checklist: null, phase: a.phase };
@@ -63,7 +76,8 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
   const all = useMemo(() => [...notes.threads, ...notes.questionNotes], [notes]);
   const onShown = useCallback((t: string) => setShown(t), []);
   const editing = useDraftEditing(letterId, q, current);
-  const notesShown = mode !== 'edit';
+  const notesShown = mode === 'live' || mode === 'assign';
+  const status = mode === 'edit' ? null : paperStatus(mode, q, notes.phase);
 
   const focusKeyed = (key: string | null) => {
     setFocusKey(key);
@@ -80,14 +94,13 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
 
   const count = countableLength(mode === 'edit' ? current : shown);
   const over = Math.max(0, count - q.charLimit);
+  // 점검표와 글자 수는 초안(edit)에만 — 쓰는 동안에는 상태 한 줄이 대신한다(#745)
   const foot = (
     <div className="pq__foot">
-      {notes.checklist && <Checklist checklist={notes.checklist} onFocus={focusGroup} compact={mode === 'edit'} />}
-      {mode !== 'assign' && (
-        <span className={`pq__count${over ? ' pq__count--over' : ''}`} aria-live="polite">
-          {count.toLocaleString()} / {q.charLimit.toLocaleString()}자{over ? `, ${over.toLocaleString()}자 넘음` : ''}
-        </span>
-      )}
+      {notes.checklist && <Checklist checklist={notes.checklist} onFocus={focusGroup} compact />}
+      <span className={`pq__count${over ? ' pq__count--over' : ''}`} aria-live="polite">
+        {count.toLocaleString()} / {q.charLimit.toLocaleString()}자{over ? `, ${over.toLocaleString()}자 넘음` : ''}
+      </span>
     </div>
   );
 
@@ -98,33 +111,22 @@ export function PaperQuestion({ letterId, q, draftSteps, assignSteps, mode, layo
         <div className="pq__head">
           {mode === 'assign' && <span data-note={`q:${q.id}`} aria-hidden />}
           <h2 className="pq__title" id={`q-${q.id}`}>{q.text}</h2>
-          {notes.phase && mode !== 'edit' && (
-            <span className="pq__phase" role="status">
-              {(active || (mode === 'assign' && assigning)) && <span className="ai-wait__dots" aria-hidden><i /><i /><i /></span>}
-              {notes.phase}
-            </span>
-          )}
         </div>
+        {(mode === 'live' || mode === 'ask') && (
+          <span className="pq__card">{q.primaryCard ? `${q.primaryCard.title} 카드로 써요` : mode === 'ask' ? '카드 없이 질문으로 재료를 모아요' : '카드 없이 답으로 써요'}</span>
+        )}
+        {status && <StatusLine status={status} />}
         {mode === 'live' && (
-          <>
-            <LiveAnswer target={target} active={active} composing={composing} pollMs={pollMs} threads={notes.threads} focusKey={focusKey} onShown={onShown} />
-            {foot}
-          </>
+          <LiveAnswer target={target} active={active} composing={composing} pollMs={pollMs} threads={notes.threads} focusKey={focusKey} onShown={onShown} />
         )}
         {mode === 'edit' && q.draft && (
           <EditAnswer letterId={letterId} q={q} text={current} onText={(t) => onText?.(q.id, t)} threads={notes.threads} focusKey={focusKey} foot={foot} editing={editing} flash={flash ?? null} />
         )}
-        {mode === 'assign' && (
-          <div className="pq__card">
-            {q.primaryCard
-              ? <><span>쓸 카드</span><b>{q.primaryCard.title}</b>{q.supportingCard && <span className="c-3">+ {q.supportingCard.title}</span>}</>
-              : <span className="c-3">{assigning ? <span className="pcaret" aria-hidden /> : '쓸 카드가 아직 없어요'}</span>}
-          </div>
-        )}
+        {(mode === 'assign' || mode === 'ask') && <div className={`pq__answer${status?.tone === 'now' || status?.tone === 'wait' ? '' : ' pq__answer--settled'}`}><PaperSkeleton /></div>}
         {notesShown && layout === 'inline' && all.length > 0 && (
           <div className="pnotes-inline">{all.map((t) => <NoteCard key={t.key} thread={t} focused={focusKey === t.key} />)}</div>
         )}
-        {mode !== 'assign' && <span data-note={`q:${q.id}`} aria-hidden />}
+        {mode !== 'assign' && mode !== 'ask' && <span data-note={`q:${q.id}`} aria-hidden />}
       </div>
       {notesShown && layout === 'margin' && (
         <aside className="pq__margin" aria-label={`${q.seq}번 문항 메모`}>

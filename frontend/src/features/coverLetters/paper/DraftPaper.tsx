@@ -19,7 +19,7 @@ export function useNarrow(): boolean {
 }
 
 /**
- * 자소서 종이 한 장(#618) — ② 카드 고르기 · ⑤ 쓰는 중 · ⑥ 고치기가 같은 종이를 쓴다. 문항 번호 → 문항 → 답 → 글자 수 순서의 실제 양식 모양.
+ * 자소서 종이 한 장(#618) — ② 카드 고르기 · ④ 질문 고르기 · ⑤ 쓰는 중 · ⑥ 고치기가 같은 종이를 쓴다. 문항 번호 → 문항 → 답 → 글자 수 순서의 실제 양식 모양.
  * 모든 문항이 한 장에 있고 쓰는 문항마다 커서가 움직인다. 메모는 오른쪽 여백, 좁은 화면에서는 문항 아래(규칙 8).
  */
 export function DraftPaper({ letter, mode, texts, onText, activeId, focus, flash }: {
@@ -29,7 +29,8 @@ export function DraftPaper({ letter, mode, texts, onText, activeId, focus, flash
 }) {
   // 초안(edit)은 오른쪽에 패널(#727)이 있어 여백 칸을 두지 않는다
   const narrow = useNarrow();
-  const layout: PaperLayout = narrow || mode === 'edit' ? 'inline' : 'margin';
+  // 질문 고르는 중(ask)은 메모가 없어 여백 칸도 두지 않는다
+  const layout: PaperLayout = narrow || mode === 'edit' || mode === 'ask' ? 'inline' : 'margin';
   const assigning = letter.stage === 'ASSIGNING';
   const foot = letterNotes(letter.steps.draft, mode === 'assign' ? letter.steps.assign : []);
   const meta = [letter.posting ? `${letter.posting.company} · ${letter.posting.title}` : letter.jobRole, `문항 ${letter.questions.length}개`].join(' · ');

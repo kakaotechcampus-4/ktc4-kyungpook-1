@@ -32,7 +32,7 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
-import { DraftSteps } from './DraftSteps';
+import { DraftProcess } from './DraftSteps';
 import { folderPath } from '@/lib/cardFolders';
 
 /**
@@ -115,6 +115,12 @@ export function CardPage() {
   const metadataDialog = metadataOpen && card.status === 'DRAFT' ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
   const exportMd = () => setCopyOpen(true);
   const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
+  // 확정 카드를 편집 상태로 되돌린다. 칸 연필로 열었으면 되돌린 뒤 그 칸부터 고친다
+  const reopenCard = (field?: StarField) => reopen.mutate(undefined, { onSuccess: () => {
+    track('card_reopened', { cardId });
+    toast(`다시 편집할 수 있어요. 확정했던 버전은 ${historyActionLabel}에 남아요.`);
+    if (field) setSp({ mode: 'edit', field });
+  } });
 
   // ── D1 · D3 생성 중
   if (generating || live.holding) {
@@ -158,7 +164,7 @@ export function CardPage() {
         )}
         <CardHeader card={card} right={<>
           <Button size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>
-          <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast(`다시 편집할 수 있어요. 확정했던 버전은 ${historyActionLabel}에 남아요.`); } })}>수정</Button>
+          <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopenCard()}>수정</Button>
         </>} />
         <div className="two-col two-col--340">
           <div className="card star-read evidence-rail evidence-rail--rows">
@@ -166,7 +172,7 @@ export function CardPage() {
               const t = card.version[fieldKey[f]];
               const ev = card.evidence.filter((e) => e.field === f);
               return (
-                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'} rail={{ commits: ev.filter((e) => e.type === 'COMMIT').length, kind: railKind(!t, ev) }}>
+                <StarRow key={f} field={f} label={starFieldShort[f]} action={t && <button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} 수정`} title={`${starFieldShort[f]} 수정`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={t ? undefined : 'star-read__row--gap'} rail={{ commits: ev.filter((e) => e.type === 'COMMIT').length, kind: railKind(!t, ev) }}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했어요</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
@@ -174,11 +180,8 @@ export function CardPage() {
             })}
           </div>
           <aside className="stack card-review-aside" style={{ gap: 16 }}>
-            {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 받을 질문, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
-            <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
-              <span className="w-600" style={{ fontSize: 14 }}>이 카드로 받을 수 있는 질문</span>
-              <ul className="aside-list">{interviewQuestions(card).map((qq) => <li key={qq} className="t-12l c-2">{qq}</li>)}</ul>
-            </div>
+            {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 만든 과정, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
+            <DraftProcess card={card} />
             <div className="card stack" style={{ gap: 12, padding: '16px 18px' }}>
               <div className="stack" style={{ gap: 4 }}>
                 <span className="t-12 w-600 c-3">출처</span>
@@ -199,7 +202,6 @@ export function CardPage() {
             <CardNavigation cardId={cardId} />
           </aside>
         </div>
-        <DraftSteps steps={card.draftSteps} />
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
         <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
@@ -265,7 +267,7 @@ export function CardPage() {
         <div className="stack evidence-rail" style={{ gap: 12 }}>
           {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
-        <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
+        <aside className="card-review-aside"><DraftProcess card={card} /><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <div className="stack" style={{ gap: 6 }}>
             <div className="card-tools">
               <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
@@ -277,7 +279,6 @@ export function CardPage() {
         </aside>
       </div>
 
-      <DraftSteps steps={card.draftSteps} />
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
@@ -306,15 +307,6 @@ function CardHeader({ card, right, titleAction, statusOverride, note }: { card: 
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>
   );
-}
-
-function interviewQuestions(card: Card): string[] {
-  const qs: string[] = [];
-  if (card.version.action) qs.push(`왜 그 방식을 택했나요? (${starFieldShort.A})`);
-  if (card.version.result) qs.push(`그 결과는 어떻게 측정했나요? (${starFieldShort.R})`);
-  if (card.evidence.some((e) => e.type !== 'COMMIT')) qs.push('코드에 안 남은 부분은 어떻게 증명하나요?');
-  if (card.droppedFields.length) qs.push(`${card.droppedFields.map((d) => starFieldShort[d.field]).join(', ')} 칸이 빈 이유를 설명할 수 있나요?`);
-  return qs.length ? qs : ['이 경험에서 가장 어려웠던 점은?'];
 }
 
 /** 후보가 PR·이슈면 그 GitHub 주소. 커밋 묶음은 한 주소로 가리킬 수 없어 링크를 만들지 않는다 */

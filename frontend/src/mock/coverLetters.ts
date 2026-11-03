@@ -5,6 +5,8 @@
  */
 import { ANSWER_MAX, COVER_LETTER_LIMITS as L, DRAFT_MAX, MATERIAL_ITEMS, type QuestionTheme } from '@/api/coverLetters';
 import { BLANK_TEXT, blanksIn, countableLength } from '@/lib/draftText';
+import { STRENGTHS, STRENGTH_LIMIT } from '@/lib/coverLetterCopy';
+import { checkReason } from '@/lib/reasonCheck';
 import { db, nextId, STAR, FIELD_KEY } from './store';
 import { now } from './fixtures';
 import { mockMatchDetail } from './matching';
@@ -34,9 +36,14 @@ const latest = (c: Any) => c.versions[c.versions.length - 1];
 // ───────────────────────────── 입력 검사 ─────────────────────────────
 const hasNul = (s: string) => s.includes('\u0000');
 const blank = (s: unknown) => typeof s !== 'string' || s.trim() === '';
+const STRENGTH_CODES: unknown[] = STRENGTHS.flatMap((g) => g.items.map((i) => i.code));
 function checkInput(body: Any): string | null {
   if (blank(body?.jobRole) || body.jobRole.length > L.JOB_ROLE || hasNul(body.jobRole)) return '지원 직무 칸을 확인해 주세요.';
-  if (body.memo != null && (typeof body.memo !== 'string' || body.memo.length > L.MEMO || hasNul(body.memo))) return '메모 칸을 확인해 주세요.';
+  if (typeof body?.memo !== 'string' || body.memo.length > L.MEMO) return '지원 이유를 20자 이상 한국어로 적어 주세요.';
+  const reason = checkReason(body.memo);
+  if (reason) return `지원 이유: ${reason}`;
+  const st = body.strengths;
+  if (st != null && (!Array.isArray(st) || st.length > STRENGTH_LIMIT || new Set(st).size !== st.length || st.some((c) => !STRENGTH_CODES.includes(c)))) return `강점은 정해진 것 중 ${STRENGTH_LIMIT}개까지 고를 수 있습니다.`;
   const qs = body.questions;
   if (!Array.isArray(qs) || qs.length < 1 || qs.length > L.QUESTIONS) return `문항은 1개부터 ${L.QUESTIONS}개까지입니다.`;
   for (const q of qs) {
@@ -281,7 +288,8 @@ function advance(letter: Any) {
   }
   if (letter.stage === 'ASKING' && elapsed(letter) >= ASK_SEC) {
     settleAsks(letter);
-    Object.assign(letter, { stage: 'ASKED', updatedAt: now() });
+    // 질문 단계의 지원 이유 판정 흉내 — '무시하고' 가 들어간 글은 쓸 수 없는 글로 본다(초안 화면 알림 시험용)
+    Object.assign(letter, { stage: 'ASKED', updatedAt: now(), memoUsable: letter.memo ? !letter.memo.includes('무시하고') : null });
   }
   if (letter.stage === 'DRAFTING' && elapsed(letter) >= (letter._draftSec ?? DRAFT_SEC)) {
     settleDrafts(letter);
@@ -306,7 +314,8 @@ function view(letter: Any) {
     id: letter.id, stage: letter.stage, failedStep: letter.failedStep ?? null, errorCode: letter.errorCode ?? null,
     retryable: letter.stage === 'FAILED' ? letter.errorCode === 'AI_UNAVAILABLE' : null,
     pollAfterMs: running ? COVER_LETTER_POLL_MS : null,
-    jobRole: letter.jobRole, memo: letter.memo, posting: letter.posting ?? null, createdAt: letter.createdAt, updatedAt: letter.updatedAt,
+    jobRole: letter.jobRole, memo: letter.memo, strengths: letter.strengths ?? [], memoUsable: letter.memoUsable ?? null,
+    posting: letter.posting ?? null, createdAt: letter.createdAt, updatedAt: letter.updatedAt,
     questions: letter.questions.map((q: Any) => {
       const primary = assigned ? cardRef(q.primaryCardId) : null;
       const answers = new Map((q.answers ?? []).map((a: Any) => [a.item, a]));
@@ -369,7 +378,7 @@ export function createCoverLetter(body: Any, key: string | undefined): CoverLett
   const at = now();
   const letter: Any = {
     id: nextId('cl'), key: key || null, stage: 'ASSIGNING', failedStep: null, errorCode: null,
-    jobRole: body.jobRole.trim(), memo: body.memo?.trim() || null, posting, createdAt: at, updatedAt: at, startedAt: Date.now(),
+    jobRole: body.jobRole.trim(), memo: body.memo.trim(), strengths: body.strengths ?? [], memoUsable: null, posting, createdAt: at, updatedAt: at, startedAt: Date.now(),
     questions: body.questions.map((q: Any, i: number) => ({ id: nextId('clq'), seq: i + 1, text: q.text.trim(), charLimit: q.charLimit ?? L.CHAR_DEFAULT })),
     _failAssign: failNextAssign,
   };

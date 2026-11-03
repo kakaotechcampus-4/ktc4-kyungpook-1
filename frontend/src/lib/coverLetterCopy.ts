@@ -177,3 +177,17 @@ export const POLISH_CATEGORY_LABEL: Record<PolishCategory, string> = {
   FIT: '문항 적합성', EVIDENCE: '근거', READABILITY: '읽기 쉬움', OVERLAP: '겹침', TECH_TERMS: '기술 용어',
 };
 export const POLISH_KIND_LABEL: Record<PolishKind, string> = { WEAK: '아쉬운 점', GOOD: '잘한 점' };
+
+// ───────────────────────────── ① 강점 칩(#738) ─────────────────────────────
+/** 강점 칩 — API 는 코드만 주고받고 한국어 이름은 여기에만 둔다 */
+export const STRENGTHS: { group: string; items: { code: string; label: string }[] }[] = [
+  { group: '일하는 방식', items: [
+    { code: 'METICULOUS', label: '꼼꼼함' }, { code: 'PERSISTENT', label: '끈기' }, { code: 'PROACTIVE', label: '주도성' },
+    { code: 'FAST_LEARNER', label: '빠른 학습' }, { code: 'RESPONSIBLE', label: '책임감' }, { code: 'PROBLEM_SOLVING', label: '문제 해결' },
+  ] },
+  { group: '사람과 일할 때', items: [
+    { code: 'COMMUNICATION', label: '소통' }, { code: 'COLLABORATION', label: '협업' }, { code: 'PERSUASION', label: '설득' },
+    { code: 'CONSIDERATE', label: '배려' }, { code: 'USER_FOCUS', label: '사용자 관점' }, { code: 'DOCUMENTING', label: '기록과 공유' },
+  ] },
+];
+export const STRENGTH_LIMIT = 3;

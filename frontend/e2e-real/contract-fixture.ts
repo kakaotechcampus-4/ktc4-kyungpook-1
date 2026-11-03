@@ -40,7 +40,8 @@ export async function installContractFixture(page: Page, options: { card?: Card;
       github: { connected: true, scopes: ['read:user'], connectedAt: timestamp, lastCollectedAt: timestamp },
       stats: { confirmedCards: 0, analyzedRepos: 0, interviewTurns: 0, remainingCandidates: 0 },
     });
-    if (method === 'GET' && path === '/repos') return ok(route, [{
+    // 저장 목록(/repos/saved)은 최신 목록이 오기 전 자리표시라 같은 레포를 준다 — 화면이 먼저 부르는 쪽이 이것이다
+    if (method === 'GET' && (path === '/repos' || path === '/repos/saved')) return ok(route, [{
       id: REPO_ID, owner: 'contract-user', name: 'server-repo', contribution: { mine: 1, team: 1, ratio: 1, level: 'MAJOR' },
       prCount: 0, reviewCount: 0, language: null, activeFrom: '2026-01-01', activeTo: '2026-10-12',
       lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,

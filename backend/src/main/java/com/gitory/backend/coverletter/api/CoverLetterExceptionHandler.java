@@ -53,9 +53,9 @@ public class CoverLetterExceptionHandler {
 
     @ExceptionHandler(CoverLetterAiUnavailableException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
-    public ApiResponse<Void> handleAiUnavailable() {
+    public ApiResponse<Void> handleAiUnavailable(CoverLetterAiUnavailableException e) {
 
-        return ApiResponse.fail(ErrorCode.AI_UNAVAILABLE, "첨삭을 받지 못했습니다. 잠시 뒤 다시 시도해 주세요.");
+        return ApiResponse.fail(ErrorCode.AI_UNAVAILABLE, e.getMessage());
 
     }
 

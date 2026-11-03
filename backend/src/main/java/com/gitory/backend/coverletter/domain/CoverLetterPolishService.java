@@ -1,6 +1,7 @@
 package com.gitory.backend.coverletter.domain;
 
 import com.gitory.backend.agent.port.AgentUnavailableException;
+import com.gitory.backend.agent.port.CoverLetterDrafts;
 import com.gitory.backend.agent.port.CoverLetterPolish;
 import com.gitory.backend.agent.port.CoverLetterPolishPort;
 import com.gitory.backend.agent.port.CoverLetterPolishRequest;
@@ -109,23 +110,39 @@ public class CoverLetterPolishService {
             throw new InvalidCoverLetterInputException("첨삭할 글이 비었습니다.");
         }
 
-        Map<Long, CardMaterial> cards = cardMaterials.readOf(CoverLetterCardDetails.cardIdsOf(List.of(target))).stream()
+        return new CoverLetterPolishRequest(letter.getId(), letter.getJobRole(), letter.getMemo(),
+                CoverLetterPosting.inputOf(letter), othersOf(loaded, target),
+                targetOf(target, cardsOf(cardMaterials, target)));
+
+    }
+
+    static Map<Long, CardMaterial> cardsOf(CardMaterialReader cardMaterials, CoverLetterQuestion target) {
+
+        return cardMaterials.readOf(CoverLetterCardDetails.cardIdsOf(List.of(target))).stream()
                 .collect(Collectors.toMap(CardMaterial::id, Function.identity()));
+
+    }
+
+    static List<CoverLetterPolishRequest.Other> othersOf(List<CoverLetterQuestion> loaded,
+                                                         CoverLetterQuestion target) {
+
+        return loaded.stream()
+                .filter(question -> question != target && question.getDraftText() != null)
+                .map(question -> new CoverLetterPolishRequest.Other(question.getSeq(), question.getText(),
+                        question.getDraftText()))
+                .toList();
+
+    }
+
+    static CoverLetterPolishRequest.Target targetOf(CoverLetterQuestion target, Map<Long, CardMaterial> cards) {
+
         CardMaterial primary = CoverLetterCardDetails.primaryOf(target, cards);
 
-        return new CoverLetterPolishRequest(letter.getId(), letter.getJobRole(), letter.getMemo(),
-                CoverLetterPosting.inputOf(letter),
-                loaded.stream()
-                        .filter(question -> question != target && question.getDraftText() != null)
-                        .map(question -> new CoverLetterPolishRequest.Other(question.getSeq(), question.getText(),
-                                question.getDraftText()))
-                        .toList(),
-                new CoverLetterPolishRequest.Target(target.getSeq(), target.getText(), target.getCharLimit(),
-                        target.getTheme() == null ? null : target.getTheme().name(),
-                        CoverLetterCardDetails.detail(primary),
-                        CoverLetterCardDetails.detail(CoverLetterCardDetails.supportingOf(target, cards)),
-                        CoverLetterDraftStep.answersOf(target, primary), target.getDraftText(),
-                        inferredSeqs(target)));
+        return new CoverLetterPolishRequest.Target(target.getSeq(), target.getText(), target.getCharLimit(),
+                target.getTheme() == null ? null : target.getTheme().name(),
+                CoverLetterCardDetails.detail(primary),
+                CoverLetterCardDetails.detail(CoverLetterCardDetails.supportingOf(target, cards)),
+                CoverLetterDraftStep.answersOf(target, primary), target.getDraftText(), inferredSeqs(target));
 
     }
 
@@ -165,16 +182,17 @@ public class CoverLetterPolishService {
                                 PolishCategory.valueOf(point.category()), point.title(), point.detail(),
                                 point.sentenceSeqs()))
                         .toList(),
-                new PolishedDraft(result.draft().text(),
-                        result.draft().sentences().stream()
-                                .map(sentence -> new DraftSentence(sentence.seq(), sentence.text()))
-                                .toList(),
-                        result.draft().charCount(), result.draft().overBy(),
-                        result.draft().marks().stream()
-                                .map(mark -> new DraftMark(mark.sentenceSeq(), mark.code(), mark.value()))
-                                .toList(),
-                        result.draft().blanks().stream().map(MaterialItem::valueOf).toList()),
-                CoverLetterTime.now());
+                draftOf(result.draft()), CoverLetterTime.now());
+
+    }
+
+    static PolishedDraft draftOf(CoverLetterDrafts.Draft draft) {
+
+        return new PolishedDraft(draft.text(),
+                draft.sentences().stream().map(sentence -> new DraftSentence(sentence.seq(), sentence.text())).toList(),
+                draft.charCount(), draft.overBy(),
+                draft.marks().stream().map(mark -> new DraftMark(mark.sentenceSeq(), mark.code(), mark.value())).toList(),
+                draft.blanks().stream().map(MaterialItem::valueOf).toList());
 
     }
 

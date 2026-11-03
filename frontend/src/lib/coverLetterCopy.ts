@@ -1,4 +1,4 @@
-import type { AssignStep, CoverLetterPosting, CoverLetterQuestion, DraftStep, MaterialItem, PolishCategory, PolishKind, QuestionTheme } from '@/api/coverLetters';
+import type { AssignStep, CoverLetterPosting, CoverLetterQuestion, CoverLetterStage, DraftStep, MaterialItem, PolishCategory, PolishKind, QuestionTheme } from '@/api/coverLetters';
 import { COVER_LETTER_LIMITS as L, QUESTION_THEMES } from '@/api/coverLetters';
 import { themeLabel } from '@/lib/cardThemes';
 
@@ -19,8 +19,23 @@ export const ITEM_LABEL: Record<MaterialItem, string> = {
   SITUATION: '상황', ACTION: '행동', RESULT: '결과', LEARNING: '배운 점', TRIGGER: '계기',
   JOB_LINK: '지원 직무와 이어지는 점', REASON: '지원 이유',
 };
+/** ④ 답 칸에 흐리게 보이는 예시 — 무엇을 쓰면 되는지만 보이고, 값으로 보내지 않는다 */
+export const ITEM_EXAMPLE: Record<MaterialItem, string> = {
+  SITUATION: '예: 배포가 늦어져 팀이 수정 사항을 몰아서 올리던 때였어요',
+  ACTION: '예: 로그를 보고 바뀐 모듈만 다시 빌드하게 설정을 고쳤어요',
+  RESULT: '예: 배포가 12분으로 줄어 하루 다섯 번 올릴 수 있게 됐어요',
+  LEARNING: '예: 느린 걸 참지 말고 어디서 시간이 드는지 먼저 재야 한다는 걸 배웠어요',
+  TRIGGER: '예: 팀 배포 담당을 맡으면서 시작했어요',
+  JOB_LINK: '예: 이 경험이 결제 시스템의 중복 처리 문제와 바로 이어져요',
+  REASON: '예: 실패해도 데이터가 어긋나지 않는 서비스를 만들고 싶어 지원했어요',
+};
 /** ① 지원 동기 메모 예시 */
 export const MEMO_EXAMPLE = '예: 매일 쓰는 서비스라 사용자가 겪는 불편을 직접 고쳐 보고 싶었어요';
+
+/** 답 하나가 초안에 보태는 글자 수 어림 — AI 가 몇 개를 물을지 셀 때 쓰는 값(cover_letter_asker.py ANSWER_CHARS)과 같게 둔다 */
+export const ANSWER_GOOD_CHARS = 100;
+/** ④ 답 칸 글자 수 옆 안내 — 저장을 막지 않는다 */
+export const answerLengthHint = (length: number) => (length >= ANSWER_GOOD_CHARS ? '충분해요' : `${ANSWER_GOOD_CHARS}자쯤 쓰면 글이 좋아져요`);
 
 /** ③ 재료 점검에 보이는 항목 — 카드와 지난 답으로 채울 수 있는 다섯 가지. 직무 연결과 지원 이유는 회사마다 달라 ④에서 묻는다 */
 export const CHECK_ITEMS: MaterialItem[] = ['SITUATION', 'ACTION', 'RESULT', 'LEARNING', 'TRIGGER'];
@@ -51,14 +66,6 @@ export function exampleThemes(cardThemes: readonly (readonly string[] | null | u
   const top: QuestionTheme[] = ['MOTIVATION', ...ranked.slice(0, 3)];
   return { top, more: ranked.slice(3) };
 }
-
-/** 누가 최종 배정을 정했는지 — ③ 카드 옆 작은 글 */
-export const ASSIGNED_BY_LABEL: Record<string, string> = {
-  SUPERVISOR: 'AI가 문항 전체를 보고 정함',
-  SUB_AGENT: 'AI가 고름',
-  CODE: '겹치는 카드를 정리함',
-  USER: '내가 고름',
-};
 
 /** ③ 중심 카드 자리의 상태 — 카드가 있음, 지움, 고르기 실패, 맞는 카드 없음 */
 export type PrimaryState = 'picked' | 'deleted' | 'failed' | 'no-fit';
@@ -176,3 +183,33 @@ export const STRENGTHS: { group: string; items: { code: string; label: string }[
   ] },
 ];
 export const STRENGTH_LIMIT = 3;
+
+// ───────────────────────────── 단계 표시줄 · 재료 한 줄(#745) ─────────────────────────────
+export const FLOW_STEPS = ['문항', '카드', '질문', '초안'] as const;
+export type FlowStep = 1 | 2 | 3 | 4;
+/** 자소서가 흐름의 몇 번째 단계에 있는지 — 실패는 실패한 단계에 머문다. 모르는 실패 단계는 처음 AI 단계(카드)로 본다 */
+export function flowStep(stage: CoverLetterStage, failedStep: string | null): FlowStep {
+  switch (stage) {
+    case 'ASKING': case 'ASKED': return 3;
+    case 'DRAFTING': case 'DRAFTED': return 4;
+    case 'FAILED': return failedStep === 'DRAFT' ? 4 : failedStep === 'ASK' ? 3 : 2;
+    default: return 2;
+  }
+}
+
+/** 낱말 끝 글자에 받침이 있으면 '은', 없으면 '는' */
+const topic = (word: string) => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code < 11172 && code % 28 !== 0 ? '은' : '는';
+};
+/** ③ 재료 한 줄 '재료 3/5 · 배운 점, 계기는 다음에 물어요' — 빠진 이름(missing)은 화면이 호박색으로 칠하고, rest 는 그 뒤에 붙는 말이다 */
+export function materialLine(materials: readonly MaterialItem[]): { have: number; total: number; missing: string[]; rest: string } {
+  const have = new Set(materials);
+  const missing = CHECK_ITEMS.filter((i) => !have.has(i)).map((i) => ITEM_LABEL[i]);
+  return {
+    have: CHECK_ITEMS.length - missing.length,
+    total: CHECK_ITEMS.length,
+    missing,
+    rest: missing.length ? `${topic(missing[missing.length - 1])} 다음에 물어요` : '다 있어요',
+  };
+}

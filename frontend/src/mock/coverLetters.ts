@@ -256,7 +256,7 @@ const draftView = (q: Any) => {
   if (!d) return null;
   const charCount = countableLength(d.text);
   return {
-    text: d.text, aiText: d.aiText, edited: d.text !== d.aiText, charCount, overBy: Math.max(0, charCount - q.charLimit),
+    text: d.text, aiText: d.aiText, edited: d.edited ?? d.text !== d.aiText, charCount, overBy: Math.max(0, charCount - q.charLimit),
     sentences: d.sentences, marks: d.marks, blanks: blanksIn(d.text), source: d.source,
   };
 };
@@ -325,6 +325,8 @@ function view(letter: Any) {
         }),
         draft: draftView(q),
         writing: letter.stage === 'DRAFTING' ? writingOf(letter, q, elapsed(letter)) : null,
+        polish: q.polish ?? null,
+        polishAppliedCount: q.polishAppliedCount ?? 0,
       };
     }),
     steps: {
@@ -490,6 +492,91 @@ export function saveDraft(id: string, questionId: string, body: Any): CoverLette
   const text = body?.text;
   if (typeof text !== 'string' || text.length > DRAFT_MAX || text.includes('\u0000')) return invalid('글을 확인해 주세요.');
   q.draft.text = text;
+  delete q.draft.edited;
   l.updatedAt = now();
+  return ok(view(l));
+}
+
+// ───────────────────────────── 첨삭(#727) ─────────────────────────────
+/** 첨삭 받기는 실제로 AI 를 기다리는 요청이라 데모(mock/browser.ts)는 이만큼 더 기다린다 — 진행 표시 두 단계가 보이게 */
+export const POLISH_DELAY_MS = 1200;
+const POLISH_RESULT = '그 결과 같은 문제가 다시 생기지 않았습니다.';
+
+/** 쉼표가 가운데에 가장 가까운 자리에서 문장을 둘로 나눈다. '…했고,' 는 '…했습니다.' 로 맺는다. 쉼표가 없으면 null */
+function splitLong(sentence: string): [string, string] | null {
+  const commas = [...sentence.matchAll(/, /g)].map((m) => m.index);
+  if (!commas.length) return null;
+  const at = commas.reduce((a, b) => (Math.abs(b - sentence.length / 2) < Math.abs(a - sentence.length / 2) ? b : a));
+  const left = sentence.slice(0, at), right = sentence.slice(at + 2).trim();
+  return [left.endsWith('고') ? `${left.slice(0, -1)}습니다.` : `${left}.`, right];
+}
+
+/**
+ * 가짜 첨삭 — 지금 글에서 가장 긴 문장을 둘로 나누고 결과 문장 하나를 보탠다. 포인트는 아쉬운 점 2 · 잘한 점 1, 문장 번호는 고친 글 기준.
+ * 표시(marks)는 바뀌지 않은 문장에만 그대로 옮긴다 — 확인해 지운 짐작 표시는 다시 달지 않는다.
+ */
+export function polishQuestion(id: string, questionId: string): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  advance(l);
+  if (l.stage !== 'DRAFTED' || !q.draft) return badState('첨삭은 초안을 다 쓴 뒤에만 받을 수 있습니다.');
+  const before: string[] = q.draft.text.split(/(?<=[.])\s+/).filter(Boolean);
+  const longest = before.reduce((a, b, i) => (b.length > before[a].length ? i : a), 0);
+  const halves = before.length ? splitLong(before[longest]) : null;
+  const after = halves ? [...before.slice(0, longest), ...halves, ...before.slice(longest + 1)] : [...before];
+  // 결과 문장은 글 끝의 빈칸(`[더 쓸 거리: …]`) 앞에 둔다
+  const resultAt = after.length && /^\[[^\]]*\]$/.test(after[after.length - 1]) ? after.length - 1 : after.length;
+  after.splice(resultAt, 0, POLISH_RESULT);
+  const sentences = after.map((t, i) => ({ seq: i + 1, text: t }));
+  const seqOf = (oldSeq: number) => {
+    const t = before[oldSeq - 1];
+    if (t == null || (halves && oldSeq - 1 === longest)) return null;
+    return after.indexOf(t) + 1 || null;
+  };
+  const marks = q.draft.marks.flatMap((m: Any) => {
+    if (m.sentenceSeq == null) return [m];
+    const seq = seqOf(m.sentenceSeq);
+    return seq ? [{ ...m, sentenceSeq: seq }] : [];
+  });
+  const text = after.join(' ');
+  const charCount = countableLength(text);
+  const points = [
+    halves
+      ? { kind: 'WEAK', category: 'READABILITY', title: '한 문장이 길어요', detail: '두 문장으로 나누면 읽기 쉬워요', sentenceSeqs: [longest + 1, longest + 2] }
+      : { kind: 'WEAK', category: 'TECH_TERMS', title: '쓴 기술 이름이 안 보여요', detail: '실제로 쓴 기술 하나를 붙여요', sentenceSeqs: [1] },
+    { kind: 'WEAK', category: 'EVIDENCE', title: '결과가 얼마나 나아졌는지 안 보여요', detail: '고친 뒤 달라진 점을 한 가지 적어요', sentenceSeqs: [resultAt + 1] },
+    { kind: 'GOOD', category: 'FIT', title: '문항이 묻는 흐름대로 썼어요', detail: '겪은 일과 한 일이 차례로 보여요', sentenceSeqs: [1] },
+  ].map((p, i) => ({ seq: i + 1, ...p }));
+  q.polish = {
+    summary: '겪은 일과 한 일이 차례로 보여요. 결과를 한 줄 더하고 긴 문장을 나누면 더 읽기 쉬워요.',
+    points,
+    draft: { text, sentences, charCount, overBy: Math.max(0, charCount - q.charLimit), marks, blanks: blanksIn(text) },
+    createdAt: now(),
+  };
+  l.updatedAt = now();
+  return ok(view(l));
+}
+
+/** 첨삭 글로 지금 글·문장·표시를 바꾼다. AI 원본은 그대로 두고 적용 횟수를 센다 */
+export function applyPolish(id: string, questionId: string): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  advance(l);
+  if (l.stage !== 'DRAFTED' || !q.draft || !q.polish) return badState('적용할 첨삭 결과가 없습니다.');
+  const p = q.polish.draft;
+  Object.assign(q.draft, { text: p.text, sentences: p.sentences, marks: p.marks, edited: false });
+  q.polishAppliedCount = (q.polishAppliedCount ?? 0) + 1;
+  q.polish = null;
+  l.updatedAt = now();
+  return ok(view(l));
+}
+
+export function discardPolish(id: string, questionId: string): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  q.polish = null;
   return ok(view(l));
 }

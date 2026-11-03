@@ -119,6 +119,7 @@
 - `polish`: 첨삭 미리 보기. `points` 는 아쉬운 점(`WEAK`) 최대 4개 · 잘한 점(`GOOD`) 최대 3개이고, `category` 는 `FIT` 문항 적합성 · `EVIDENCE` 근거 · `READABILITY` 읽기 쉬움 · `OVERLAP` 겹침 · `TECH_TERMS` 기술 용어다. `sentenceSeqs` 는 **고친 글(`polish.draft.sentences`)의 문장 번호**다(없으면 `[]`). `polish.draft` 의 `marks`·`blanks`·`charCount` 는 `draft` 와 같은 규칙으로 고친 글 기준이다.
 - 글을 직접 고쳐 저장하면(PATCH) 첨삭 미리 보기는 사라진다(`polish: null`). 앞뒤 공백만 다른 글은 그대로 둔다.
 - `polishAppliedCount`: 첨삭을 적용한 횟수. 화면은 `n + 1` 판으로 보일 수 있다. 적용 뒤 `draft.sentences`·`marks` 는 적용한 글 기준이고 `aiText` 는 첫 AI 원본 그대로다.
+- 화면(#727)은 모르는 `kind`·`category` 의 포인트만 버리고, 옛 응답에 `polishAppliedCount` 가 없으면 0 으로 읽는다.
 
 **`Turn`** — 채우기 대화의 말 한 줄
 ```jsonc

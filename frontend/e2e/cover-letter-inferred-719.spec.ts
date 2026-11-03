@@ -2,11 +2,11 @@ import { expect, test } from '@playwright/test';
 import { loginAsDemo } from './helpers';
 
 /**
- * #719 ② AI 추론 표시 — 목 서버가 배운 점 답이 없는 문항에 추론 문장 하나를 넣는다.
- * 고치는 화면에서 그 문장은 노란 형광펜, 메모는 'AI 추론 · 확인 필요' 이고 확인 · 고치기 · 빼기 버튼은 44px 이상이다.
- * 확인하면 형광펜과 메모가 사라지고 점검표 추론 칸이 통과로 바뀐다.
+ * #719 ② 짐작 표시 — 목 서버가 배운 점 답이 없는 문항에 짐작 문장 하나를 넣는다.
+ * 고치는 화면에서 그 문장은 노란 형광펜이고, 확인 · 고치기 · 빼기는 옆 패널의 짐작 확인 탭(#727)에 있으며 44px 이상이다.
+ * 확인하면 형광펜과 그 줄이 사라지고 종이 아래 칩이 '짐작 없음'으로 바뀐다.
  */
-test('AI 추론 문장은 노란 형광펜과 메모로 보이고, 확인하면 표시가 사라진다', async ({ page }) => {
+test('짐작 문장은 노란 형광펜으로 보이고, 짐작 확인 탭에서 확인하면 표시가 사라진다', async ({ page }) => {
   await loginAsDemo(page);
   await page.clock.install();
   await page.goto('/cover-letters/new');
@@ -22,18 +22,21 @@ test('AI 추론 문장은 노란 형광펜과 메모로 보이고, 확인하면 
 
   const mark = page.locator('.pedit__mirror mark.phl--inferred');
   await expect(mark).toHaveCount(1);
-  const note = page.locator('[data-note-card^="i:"]');
-  await expect(note).toContainText('AI 추론 · 확인 필요');
+  await expect(page.locator('[data-note-card]')).toHaveCount(0);
   const background = await mark.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(background).not.toBe('rgba(0, 0, 0, 0)');
+  await expect(page.getByRole('button', { name: '짐작 1' })).toBeEnabled();
+
+  await page.getByRole('tab', { name: /짐작 확인/ }).click();
+  const row = page.locator('.clp-inf');
+  await expect(row).toContainText('짐작해서 쓴 문장이에요');
   for (const name of ['확인', '고치기', '빼기']) {
-    const box = await note.getByRole('button', { name, exact: true }).boundingBox();
+    const box = await row.getByRole('button', { name, exact: true }).boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   }
-  await expect(page.getByRole('button', { name: /^추론\s?확인 필요 1$/ })).toBeEnabled();
 
-  await note.getByRole('button', { name: '확인', exact: true }).click();
+  await row.getByRole('button', { name: '확인', exact: true }).click();
   await expect(mark).toHaveCount(0);
-  await expect(note).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /^추론\s?통과$/ })).toBeVisible();
+  await expect(row).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '짐작 없음' })).toBeVisible();
 });

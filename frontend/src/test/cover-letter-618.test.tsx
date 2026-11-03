@@ -226,7 +226,7 @@ describe('여백 메모와 점검표', () => {
     const steps = [step({ seq: 1, kind: 'WROTE' }), step({ seq: 2, actor: 'CODE', kind: 'CHECK_FAILED', code: 'UNSOURCED_NUMBER', value: '30%', sentenceSeq: 1, sentence: S1 })];
     const open = buildQuestionNotes(q, steps, TEXT, 'live');
     expect(open.threads[0]).toMatchObject({ sentence: S1, value: '30%', group: 'evidence', status: 'open' });
-    expect(open.threads[0].items[0]).toMatchObject({ actor: 'CODE', text: "'30%'는 카드에 없는 수치예요" });
+    expect(open.threads[0].items[0]).toMatchObject({ actor: 'CODE', text: "'30%' — 카드에 없는 숫자예요" });
     expect(cellLabel(open.checklist.evidence)).toBe('검사 중');
     expect(open.phase).toBe('검사 중');
     const fixed = buildQuestionNotes(q, [...steps, step({ seq: 3, kind: 'DECIDED', action: 'FIX', reason: '표현을 바꿔요' }), step({ seq: 4, kind: 'REWROTE', value: '140' })], TEXT, 'live');
@@ -344,7 +344,7 @@ describe('⑤ 종이 위에 쓰는 중', () => {
     expect(mark?.textContent).toBe(S1);
     expect(document.querySelector('.pq__answer')?.textContent).toBe(TEXT);
     expect(screen.getByRole('button', { name: /^근거\s?검사 중$/ })).toBeDisabled();
-    expect(screen.getByText("'30%'는 카드에 없는 수치예요")).toBeInTheDocument();
+    expect(screen.getByText("'30%' — 카드에 없는 숫자예요")).toBeInTheDocument();
     expect(screen.getByText(new RegExp(`^${TEXT.length} / 700자`))).toBeInTheDocument();
   });
 
@@ -419,14 +419,13 @@ describe('⑥ 같은 종이에서 고치기', () => {
     expect(document.querySelector('.pedit__mirror mark[data-note]')?.textContent).toBe(S1);
   });
 
-  it('걸린 문장을 고쳐 원문이 사라지면 밑줄은 지우고 메모는 고침 · 나 로 남으며 점검표가 고침 1 이 된다', () => {
+  it('걸린 문장을 고쳐 원문이 사라지면 밑줄을 지우고 칩이 근거 확인 1 에서 근거 고침 1 로 바뀐다(⑥ 에는 여백 메모가 없다)', () => {
     mount(drafted());
-    expect(screen.getByText('확인 필요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '근거 확인 1' })).toBeEnabled();
+    expect(document.querySelector('[data-note-card]')).toBeNull();
     fireEvent.change(screen.getByLabelText('1번 문항 초안'), { target: { value: TEXT.replace(S1, '장애를 크게 줄인 팀이라서.') } });
     expect(document.querySelector('.pedit__mirror mark[data-note]')).toBeNull();
-    expect(screen.getByText('고침 · 나')).toBeInTheDocument();
-    expect(screen.getByText(`원래 문장: ${S1}`)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^근거\s?고침 1$/ })).toBeEnabled();
+    expect(screen.getAllByRole('button', { name: /^(근거|겹침|짐작) / }).map((b) => b.textContent)).toEqual(['근거 고침 1', '겹침 없음', '짐작 없음']);
   });
 
   it('전체 복사는 화면에 있는 지금 글로 만든다', async () => {
@@ -465,7 +464,7 @@ describe('⑥ 같은 종이에서 고치기', () => {
     Element.prototype.scrollIntoView = scroll;
     try {
       mount(drafted());
-      fireEvent.click(screen.getByRole('button', { name: /^근거\s?확인 필요 1$/ }));
+      fireEvent.click(screen.getByRole('button', { name: '근거 확인 1' }));
       expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }));
     } finally { delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView; }
   });

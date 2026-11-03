@@ -59,7 +59,7 @@ from services.llm_executors import COVER_LETTER_JUDGE_EXECUTOR
 
 WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소개서 문항 하나의 답을 씁니다.
 입력으로 문항(question: 문장·유형·글자 수 상한 char_limit·재료에 맞춘 글 길이 상한 length_cap·이 유형에서 글이 보여 줘야 하는 행동증거 evidence·
-기술 이야기를 얼마나 쓸지 tech·쓸 수 있는 기술 이름 수 tech_name_limit),
+기술 이야기를 얼마나 쓸지 tech·쓸 수 있는 기술 이름 수 tech_name_limit·쓸 수 있는 저장소 작업 말 수 repo_word_limit),
 지원 직무(job_role), 메모(memo), 프로필(profile),
 이 문항에 쓸 카드(cards: 중심 PRIMARY·보조 SUPPORTING 의 STAR 문장), 사용자가 답한 재료(answers: 항목·답·어느 카드의 답인지 about),
 글에 그대로 넣을 빈칸(blanks), 재료에 없어 빈칸으로 둘 사실 증거(missing_evidence, 없을 수 있음),
@@ -73,11 +73,19 @@ WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소
 - 회사는 문항마다 evidence 의 행동증거가 몇 개 드러나는지로 읽습니다. 증거마다 재료의 어느 사실이 그것을 보여 주는지 생각해, 증거가 드러나게 씁니다.
   증거와 상관없는 카드 문장은 쓰지 않습니다.
 - 중심 카드에서 문항에 맞는 장면 하나만 고르고, 왜 그 일이 생겼나 → 무엇을 보고 어떻게 정했나(판단) → 한 일 한두 가지 → 달라진 것 →
-  그 일이 나에게 남긴 것 순서로 씁니다. 사실은 두세 개면 충분하고, 남은 카드 사실은 덧붙이지 않고 버립니다. 구현 단계나 설정을 늘어놓지 않습니다.
+  그 일이 나에게 남긴 것 순서로 씁니다(협업·갈등과 지원 동기 문항은 아래 순서를 따릅니다). 사실은 두세 개면 충분하고,
+  남은 카드 사실은 덧붙이지 않고 버립니다. 구현 단계나 설정을 늘어놓지 않습니다.
+- 협업·갈등 문항(theme COLLABORATION·CONFLICT)은 사람 사이의 일을 씁니다. 누구와 무엇이 갈렸거나 막혔나 → 내가 한 말·물은 것·제안 →
+  어떻게 맞췄나 → 팀에 달라진 점 순서이고, 기술 작업은 한 문장 안의 한 구절('계약에 맞지 않는 부분을 고쳐')로만 쓰며
+  코드에서 바꾼 것을 늘어놓지 않습니다. 재료에 사람 사이의 일이 없으면 기술 작업으로 채우지 않고 빈칸으로 둡니다.
 - 기술 이야기는 question.tech 를 따릅니다. 읽는 사람은 개발자가 아닌 인사 담당자입니다. 기술 이름(영문 라이브러리·설정·도구 이름)은 글 전체에서
   tech_name_limit 개까지만, 그 문장에 꼭 필요할 때만 쓰고 나머지는 쉬운 말로 풉니다
   (예: 'DISTINCT Fetch Join·@BatchSize 적용' → '조회를 한 번에 묶어 가져오게 바꿨다', 'Principal 인증 예외' → '잘못된 로그인 정보는 바로 거절하게').
   카드 출처의 프로젝트·회사 이름은 기술 이름으로 세지 않습니다.
+- 코드 이름(@BatchSize·Page<Order>·findByUserId·user_id·'Menu 도메인'·'@Valid DTO' 처럼 코드에 쓰는 이름)은 카드에 있어도 쓰지 않고
+  뜻을 풀어 씁니다(예: '@BatchSize 적용' → '상품 목록을 한 번에 가져오게 설정').
+- 저장소 작업 말(PR·풀 리퀘스트·머지·develop·브랜치·커밋·리뷰 지적·이슈·저장소)은 글 전체에서 repo_word_limit 번까지만 쓰고 나머지는 풉니다
+  (예: PR → '동료의 수정 제안', 머지 → '팀 공용 코드에 반영', 리뷰 지적 → '검토 의견', 이슈 → '작업 요청').
 - 숫자는 무엇이 얼마나 달라졌는지 보여 줄 때만 씁니다(전·후, 시간, 비율, 사용자 수).
   일의 양을 세는 숫자(시험 458개 통과, 커밋 2개·3개, PR 3개, 모듈 5개)는 쓰지 않습니다.
 - missing_evidence 는 재료에 없는 사실이라, 그 증거마다 '[더 쓸 거리: 무엇을 쓰면 되는지]' 를 하나씩 넣고 그 내용을 지어내지 않습니다
@@ -99,9 +107,11 @@ WRITE_PROMPT = """당신은 사용자의 경험 카드와 답만으로 자기소
 - 사실은 카드·답·프로필·메모에 있는 것만 씁니다. 숫자와 기술 이름은 입력에 적힌 그대로 쓰고, 새 숫자를 계산하거나 지어내지 않습니다.
   보조 카드의 답(about=SUPPORTING)은 보조 카드의 일로만 씁니다.
 - 주어와 정도를 바꾸지 않습니다. 팀이 한 일을 내가 한 일로, '조금' 을 '크게' 로 바꾸지 않고, 입력에 없는 역할(팀장 등)이나 성과를 더하지 않습니다.
-- 회사에 대한 사실(사업·규모·서비스)은 메모·답과 공고 주요 업무에 있는 것만 씁니다. 지원 동기 문항도 회사 이야기는 짧게 두고 내 경험과 직무를 잇는 데 글자 수를 씁니다.
-- posting 이 있으면 지원 동기 문항(theme MOTIVATION)은 내가 기여할 수 있는 점을 중심으로 씁니다. 첫 문장에 주요 업무 중 기여하고 싶은 일을 짧게 짚고,
-  그 근거로 카드·답의 사실을 짧게 쓴 뒤, 입사 후 그 일에 어떻게 기여할지로 맺습니다. 주요 업무 문장을 길게 옮기지 않습니다.
+- 회사에 대한 사실(사업·규모·서비스)은 메모·답과 공고 주요 업무에 있는 것만 씁니다. 지원 동기 문항도 회사 이야기는 짧게 둡니다.
+- 지원 동기 문항(theme MOTIVATION)은 posting 이 있든 없든 ① 지원 이유(메모나 REASON 답에 있는 것, 공고가 있으면 주요 업무 중 하고 싶은 일을 짧게 짚어도 됨)
+  → ② 그 이유를 보여 주는 경험 한두 문장(결과 하나만, 과정·구현 단계 없이) → ③ 입사 후 하고 싶은 일(posting 이 있으면 주요 업무 중 기여하고 싶은 일,
+  없으면 메모·지원 직무의 방향) 순서로 씁니다. 경험 문장은 글의 3분의 1을 넘지 않고, 마지막 문장은 입사 후 하고 싶은 일('~하겠습니다',
+  '~에 기여하고 싶습니다')로 맺습니다. 주요 업무 문장을 길게 옮기지 않습니다.
   경험 문항은 경험을 중심으로 쓰고, 공고 이야기는 마지막 한 문장에서 자연스러울 때만 씁니다.
 - met_conditions 는 이 문항 카드가 채운 공고 조건입니다. 조건에 맞춰 경험을 부풀리지 않고(조건의 연차·규모를 내 것으로 쓰지 않음) 카드·답에 있는 사실로만 잇습니다.
   주요 업무는 회사가 하는 일이라, 카드·답에 없으면 그 일을 해 봤다고 쓰지 않습니다.
@@ -160,8 +170,19 @@ _FIX_TEXT: dict[str, str] = {
                 "프로젝트·회사 소개나 포부를 되풀이한 것이면 소개는 짧게 짚기만 하세요.",
     "UNSUPPORTED_CLAIM": "{seq}번 문장에 입력에 없는 역할이나 성과가 있습니다({reason}). 입력에 있는 사실로만 쓰세요.",
     "OFF_TOPIC": "{seq}번 문장이 문항이 묻는 것을 벗어났습니다({reason}). 문항에 답하는 내용으로 바꾸세요.",
-    # 검사기가 건 OFF_TOPIC 은 기술 이름이 상한을 넘은 글이다
+    # 감독의 OFF_TOPIC 은 문항 유형마다 고칠 방향을 덧붙인다
+    "OFF_TOPIC_COLLABORATION": "{seq}번 문장이 문항이 묻는 것을 벗어났습니다({reason}). 기술 작업 서술이면 재료에 있는 사람 이야기"
+                               "(누구와 무엇이 갈렸나·내가 한 말과 제안·어떻게 맞췄나·팀에 달라진 점)로 바꾸고, "
+                               "기술 작업은 한 문장 안의 한 구절로만 남기세요.",
+    "OFF_TOPIC_MOTIVATION": "{seq}번 문장이 문항이 묻는 것을 벗어났습니다({reason}). 경험 과정 서술이면 경험은 결과 한두 문장으로 줄이고, "
+                            "지원 이유와 입사 후 하고 싶은 일로 채우세요.",
+    # 검사기가 건 OFF_TOPIC 은 rule 로 고칠 점을 고른다
     "TECH_NAMES": "{seq}번 문장 등에서 {value}입니다. 핵심만 남기고 나머지는 쉬운 말로 풀어 쓰세요.",
+    "CODE_NAME": "'{value}' 는 코드 이름입니다. 뜻을 풀어 쓰세요(예: '상품 목록을 한 번에 가져오게 설정').",
+    "REPO_WORDS": "{seq}번 문장 등에서 {value}입니다. 저장소 작업 말은 풀어 쓰세요(예: PR → '동료의 수정 제안', "
+                  "머지 → '팀 공용 코드에 반영', 리뷰 지적 → '검토 의견', 이슈 → '작업 요청').",
+    "NO_AMBITION": "지원 동기 글이 입사 후 하고 싶은 일로 끝나지 않습니다. 마지막 문장을 입사 후 하고 싶은 일(공고가 있으면 주요 업무 중 "
+                   "기여하고 싶은 일, 없으면 메모·지원 직무의 방향)로 맺고, 재료에 없는 해석이면 inferred 에 넣으세요.",
     # 감독이 찾은 추론 가운데 사실이 섞인 문장만 돌려보낸다. 해석만 담은 추론은 표시만 단다
     "INFERRED": "{seq}번 문장은 사실과 해석이 섞여 있습니다. 해석('느꼈다·배웠다·생각했다' 부분)을 사실 문장에서 떼어 "
                 "따로 한 문장으로 쓰고 inferred 에 넣으세요.",
@@ -264,8 +285,7 @@ class QuestionWriter:
         kept: set[tuple[str, Optional[str]]] = set()
         while True:
             issues = [issue for issue in check_draft(text, source=source, char_limit=question.char_limit,
-                                                     missing_items=written_blanks, tech_limit=guide.tech_names,
-                                                     known_names=known_names(request, question))
+                                                     missing_items=written_blanks, **check_options(request, question))
                       if (issue.code, issue.value) not in kept]
             if not issues:
                 record("CODE", "CHECK_PASSED", qid, value=str(countable_length(text)))
@@ -305,7 +325,7 @@ class QuestionWriter:
             return draft
         qid = question.question_id
         fix = {"previous_draft": draft.text, "previous_inferred": list(draft.inferred),
-               "problems": [_describe_finding(finding) for finding in findings]}
+               "problems": [_describe_finding(finding, question) for finding in findings]}
         payload = self._payload(request, question, draft.blanks, list(draft.missing_evidence),
                                 list(draft.inferable_evidence))
         try:
@@ -315,8 +335,7 @@ class QuestionWriter:
         record("SUB_AGENT", "REWROTE", qid, value=str(countable_length(text)))
         source = source_text(request, question)
         limits: dict[str, Any] = {
-            "char_limit": question.char_limit, "missing_items": draft.blanks,
-            "tech_limit": guide_for(question.question_theme).tech_names, "known_names": known_names(request, question),
+            "char_limit": question.char_limit, "missing_items": draft.blanks, **check_options(request, question),
         }
         before = {_issue_key(issue) for issue in check_draft(draft.text, source=source, **limits)}
         issues = check_draft(text, source=source, **limits)
@@ -504,7 +523,8 @@ class QuestionWriter:
                          "char_limit": question.char_limit,
                          "length_cap": length_cap(question.char_limit,
                                                   sum(len(line) for line in readiness_material(request, question))),
-                         "evidence": list(guide.evidence), "tech": guide.tech, "tech_name_limit": guide.tech_names},
+                         "evidence": list(guide.evidence), "tech": guide.tech, "tech_name_limit": guide.tech_names,
+                         "repo_word_limit": guide.repo_words},
             "job_role": clip(request.job_role, limit),
             "memo": clip(request.memo, limit),
             "profile": [{"kind": item.kind, "text": clip(item.text, limit)} for item in request.profile],
@@ -543,6 +563,14 @@ def blank_items(request: DraftsRequest, question: DraftQuestion) -> list[Materia
 def length_cap(char_limit: int, material_chars: int) -> int:
     """재료만큼만 쓰게 하는 글 길이 상한으로, 재료가 적어도 한 장면을 쓸 만큼은 두고 문항 글자 수 상한은 넘지 않는다."""
     return min(char_limit, max(MIN_LENGTH_CAP, round(LENGTH_PER_MATERIAL * material_chars)))
+
+
+def check_options(request: DraftsRequest, question: DraftQuestion) -> dict[str, Any]:
+    """문항 유형마다 다른 검사기 상한(기술 이름·저장소 작업 말)과 지원 동기 글의 포부 문장 확인."""
+    guide = guide_for(question.question_theme)
+    return {"tech_limit": guide.tech_names, "known_names": known_names(request, question),
+            "repo_word_limit": guide.repo_words,
+            "ambition": item_group(question.question_theme, question.text) == "MOTIVATION"}
 
 
 def known_names(request: DraftsRequest, question: DraftQuestion) -> str:
@@ -641,17 +669,23 @@ def _located(text: str, sentence_seq: Optional[int]) -> dict[str, Any]:
     return {"sentence_seq": sentence_seq, "sentence": sentences[sentence_seq - 1]}
 
 
-def _issue_key(issue: DraftIssue) -> tuple[str, Optional[str]]:
-    # 넘친 글자 수·기술 이름 수는 다시 쓰면 값이 바뀌므로 넘쳤는지로만 견준다
-    return (issue.code, None if issue.code in ("OVER_LIMIT", "OFF_TOPIC") else issue.value)
+def _issue_key(issue: DraftIssue) -> tuple[str, Optional[str], Optional[str]]:
+    # 넘친 글자 수·기술 이름 수·저장소 작업 말 수는 다시 쓰면 값이 바뀌므로 넘쳤는지로만 견준다
+    counted = issue.code == "OVER_LIMIT" or issue.rule in ("TECH_NAMES", "REPO_WORDS")
+    return (issue.code, issue.rule, None if counted else issue.value)
 
 
 def _describe(issue: DraftIssue) -> str:
-    if issue.code == "OFF_TOPIC":
-        return _FIX_TEXT["TECH_NAMES"].format(seq=issue.sentence_seq, value=issue.value)
+    if issue.rule is not None:
+        return _FIX_TEXT[issue.rule].format(seq=issue.sentence_seq, value=issue.value)
     value = blank(issue.value) if issue.code == "MISSING_BLANK" else issue.value  # type: ignore[arg-type]
     return _FIX_TEXT[issue.code].format(value=value)
 
 
-def _describe_finding(finding: ReviewFinding) -> str:
-    return _FIX_TEXT[finding.code].format(seq=finding.sentence_seq, reason=finding.reason or "이유 없음")
+def _describe_finding(finding: ReviewFinding, question: DraftQuestion) -> str:
+    key: str = finding.code
+    if key == "OFF_TOPIC" and question.question_theme in ("COLLABORATION", "CONFLICT"):
+        key = "OFF_TOPIC_COLLABORATION"
+    elif key == "OFF_TOPIC" and item_group(question.question_theme, question.text) == "MOTIVATION":
+        key = "OFF_TOPIC_MOTIVATION"
+    return _FIX_TEXT[key].format(seq=finding.sentence_seq, reason=finding.reason or "이유 없음")

@@ -77,3 +77,66 @@ def test_tech_names_over_the_cap_are_flagged_except_known_names() -> None:
 
     assert within == []
     assert [(i.code, i.value, i.sentence_seq) for i in over] == [("OFF_TOPIC", "기술 이름 2개 (상한 1)", 2)]
+
+
+@pytest.mark.parametrize(
+    ("phrase", "name"),
+    [("@BatchSize 를", "@BatchSize"), ("Page<Order> 로", "Page<Order>"), ("findByUserId 로", "findByUserId"),
+     ("user_id 를", "user_id"), ("orderRepository.save( 를", "orderRepository.save("), ("`DISTINCT` 를", "`DISTINCT`"),
+     ("Menu 도메인을", "Menu 도메인"), ("Product 커머스 규격을", "Product 커머스 규격"), ("@Valid DTO 를", "@Valid")],
+    ids=["애너테이션", "제네릭", "camelCase", "snake_case", "메서드 호출", "백틱", "도메인", "규격", "애너테이션 DTO"],
+)
+def test_code_names_are_flagged_even_when_they_are_in_the_sources(phrase: str, name: str) -> None:
+    """코드에 쓰는 이름은 카드에 있어도 OFF_TOPIC 으로 걸고, 그 이름이 든 문장을 가리킨다."""
+    text = f"조회를 나눴습니다. {phrase} 바꿨습니다."
+
+    issues = check_draft(text, source=f"{SOURCE}\n{phrase}", char_limit=1_000, missing_items=[])
+
+    assert [(i.code, i.value, i.sentence_seq, i.rule) for i in issues] == [("OFF_TOPIC", name, 2, "CODE_NAME")]
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    ["API 규격", "AI 모듈", "JavaScript", "iOS", "my_shop"],
+    ids=["줄임말 규격", "줄임말 모듈", "기술 이름", "제품 이름", "카드 출처 이름"],
+)
+def test_plain_words_and_card_source_names_are_not_code_names(phrase: str) -> None:
+    """줄임말을 부르는 말·기술 이름·카드 출처 이름은 코드 이름이 아니다."""
+    text = f"{phrase} 에 맞춰 화면을 나눴습니다."
+
+    assert check_draft(text, source=f"{SOURCE}\n{phrase}", char_limit=1_000, missing_items=[], known_names="my_shop") == []
+
+
+def test_repository_words_over_the_cap_are_flagged() -> None:
+    """저장소 작업 말이 상한보다 많으면 개수와 함께 OFF_TOPIC 으로 걸고, 그 말이 가장 많은 문장을 가리킨다."""
+    text = "배포를 나눴습니다. PR 을 머지했습니다. 이슈로 남겼습니다."
+
+    def flagged(limit: int) -> list[tuple]:
+        return [(i.code, i.value, i.sentence_seq, i.rule) for i in check_draft(
+            text, source=f"{SOURCE}\nPR", char_limit=1_000, missing_items=[], repo_word_limit=limit)]
+
+    assert flagged(3) == []
+    assert flagged(2) == [("OFF_TOPIC", "저장소 작업 말 3번 (상한 2)", 2, "REPO_WORDS")]
+
+
+def test_lookalike_words_are_not_counted_as_repository_words() -> None:
+    """'나머지'·'머지않아'·'레포트' 와 사용자가 채울 빈칸 속 말은 저장소 작업 말로 세지 않는다."""
+    text = "나머지 일은 머지않아 끝냈고 레포트를 냈습니다. [더 쓸 거리: PR 에서 맡은 일]"
+
+    assert check_draft(text, source=f"{SOURCE}\nPR", char_limit=1_000, missing_items=[], repo_word_limit=0) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "flagged"),
+    [("결제에 관심이 생겼습니다. 정산 시간을 줄였습니다. 입사 후 결제 안정성에 기여하고 싶습니다.", False),
+     ("결제에 관심이 생겼습니다. 결제 흐름을 다듬겠습니다. 정산 시간을 줄였습니다.", False),
+     ("결제 흐름을 다듬겠습니다. 정산 시간을 줄였습니다.\n[더 쓸 거리: 지원 이유]", False),
+     ("결제에 관심이 생겼습니다. 정산 시간을 줄였습니다.", True)],
+    ids=["마지막 문장", "끝에서 두 번째 문장", "빈칸 줄은 건너뜀", "포부 없음"],
+)
+def test_motivation_draft_must_end_with_what_to_do_after_joining(text: str, flagged: bool) -> None:
+    """지원 동기 글은 빈칸 줄을 뺀 마지막 두 문장에 입사 후 하고 싶은 일('겠습니다'·'싶습니다'·'기여')이 없으면 걸린다."""
+    issues = check_draft(text, source=SOURCE, char_limit=1_000, missing_items=[], ambition=True)
+
+    expected = [("OFF_TOPIC", "지원 동기 문항의 포부 문장 없음", None, "NO_AMBITION")] if flagged else []
+    assert [(i.code, i.value, i.sentence_seq, i.rule) for i in issues] == expected

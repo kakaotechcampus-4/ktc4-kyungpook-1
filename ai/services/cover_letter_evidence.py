@@ -35,6 +35,8 @@ class ThemeGuide:
     deep_tech: bool
     #: 글 한 편에 쓸 기술 이름(영문 낱말) 수. 읽는 사람이 개발자가 아닌 인사 담당자라 나머지는 쉬운 말로 푼다
     tech_names: int
+    #: 글 한 편에 쓸 저장소 작업 말(PR·머지·커밋 등) 수. 모든 문항이 같은 저장소 이야기로 읽히지 않게 협업 문항만 넉넉히 둔다
+    repo_words: int = 1
 
     def angles_for(self, items: Iterable[str]) -> dict[str, str]:
         return {item: self.angles[item] for item in items if item in self.angles}
@@ -60,6 +62,7 @@ _COLLABORATION = ThemeGuide(
     tech=_LIGHT_TECH,
     deep_tech=False,
     tech_names=1,
+    repo_words=3,
 )
 _LEADERSHIP = ThemeGuide(
     evidence=("방향·목표를 정한 것", "일을 나누고 사람을 움직인 방법", "막히거나 부딪힌 걸 푼 행동", "팀의 결과"),

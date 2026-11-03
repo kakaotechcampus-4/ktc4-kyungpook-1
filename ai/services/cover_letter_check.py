@@ -53,6 +53,25 @@ _LATIN_RUN = re.compile(r"(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9+#.\-]*[A-Za-z0-9+#]
 _NUMBER = re.compile(r"(?<![A-Za-z0-9_.,])(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)(?![0-9A-Za-z])(%p|%|[가-힣]{1,2})?")
 #: 문장 끝(. ! ? …) 뒤 공백이나 줄바꿈에서 나눈다. 40.5% 의 점은 뒤에 공백이 없어 나누지 않는다.
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?…])\s+|\n+")
+#: 코드에 쓰는 이름(백틱·@애너테이션·Page<Order>·foo.bar(·camelCase·snake_case·'Menu 도메인' 같은 코드 구조 이름).
+#: 인사 담당자가 읽지 못하는 말이라 카드에 있어도 걸고, 한글 조사가 붙어도 이름만 잡게 \w 대신 영문·숫자만 쓴다
+_CODE_NAME = re.compile(
+    r"`[^`\n]+`"
+    r"|@[A-Za-z][A-Za-z0-9]*"
+    r"|(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9]*<[A-Za-z][A-Za-z0-9, ]*>"
+    r"|(?<![A-Za-z0-9.])[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*\("
+    r"|(?<![A-Za-z0-9])[a-z]{2,}[A-Z][a-z][A-Za-z0-9]*"
+    r"|(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+"
+    r"|(?<![A-Za-z0-9])[A-Za-z][A-Za-z0-9]*(?: [가-힣]{2,})? (?:도메인|엔티티|클래스|모듈|DTO|규격)"
+)
+#: 저장소 작업 말. 모든 문항이 같은 저장소 이야기로 읽히게 만드는 말이라 수를 센다('나머지'·'머지않아'·'레포트' 는 빼고 센다)
+_REPO_WORD = re.compile(
+    r"풀 ?리퀘스트|(?<![A-Za-z])PR(?![A-Za-z])|(?<!나)머지(?!않)"
+    r"|(?<![A-Za-z])develop(?: ?브랜치)?(?![A-Za-z])|(?<![A-Za-z])main ?브랜치|브랜치"
+    r"|커밋|리뷰 ?(?:지적|코멘트)|이슈|[레리]포지토리|레포(?!트)|저장소|(?<![A-Za-z])CI ?체크"
+)
+#: 지원 동기 글이 입사 후 하고 싶은 일로 맺었는지 보는 말
+_AMBITION_WORDS = ("겠습니다", "싶습니다", "기여")
 
 
 @dataclass(frozen=True)
@@ -60,6 +79,8 @@ class DraftIssue:
     code: DraftProblemCode
     value: Optional[str]
     sentence_seq: Optional[int]
+    #: 같은 code 로 거는 검사기 규칙을 가르는 AI 안의 이름으로, 고칠 점 문구만 고르고 Spring 에는 보내지 않는다
+    rule: Optional[str] = None
 
 
 def item_group(theme: Optional[str], question_text: str) -> str:
@@ -159,11 +180,13 @@ def invented_numbers(text: str, source: str) -> list[str]:
 
 def check_draft(
     text: str, *, source: str, char_limit: int, missing_items: list[MaterialItem],
-    tech_limit: Optional[int] = None, known_names: str = "",
+    tech_limit: Optional[int] = None, known_names: str = "", repo_word_limit: Optional[int] = None,
+    ambition: bool = False,
 ) -> list[DraftIssue]:
     """초안에서 걸린 곳을 찾고, 수치·낱말은 그 값이 처음 나온 문장 번호를 함께 돌려준다.
 
     tech_limit 를 주면 기술 이름이 그보다 많은 글을 OFF_TOPIC 으로 걸고, 기술 이름이 가장 많은 문장을 가리킨다.
+    코드 이름·저장소 작업 말 상한·포부 문장도 OFF_TOPIC 으로 걸어 Spring 이 아는 code 만 쓰고, 규칙은 rule 로 가른다.
     """
     issues = [DraftIssue("UNSOURCED_NUMBER", value, sentence_of(value, text)) for value in invented_numbers(text, source)]
     issues += [DraftIssue("UNSOURCED_TERM", term, sentence_of(term, text)) for term in unsourced_terms(text, source)]
@@ -173,8 +196,41 @@ def check_draft(
         issues.append(DraftIssue("OVER_LIMIT", str(over), None))
     names = tech_names(text, known_names)
     if tech_limit is not None and len(names) > tech_limit:
-        issues.append(DraftIssue("OFF_TOPIC", f"기술 이름 {len(names)}개 (상한 {tech_limit})", _densest(text, known_names)))
+        issues.append(DraftIssue("OFF_TOPIC", f"기술 이름 {len(names)}개 (상한 {tech_limit})",
+                                 _densest(text, known_names), "TECH_NAMES"))
+    issues += [DraftIssue("OFF_TOPIC", name, sentence_of(name, text), "CODE_NAME") for name in code_names(text, known_names)]
+    words = repo_words(text)
+    if repo_word_limit is not None and len(words) > repo_word_limit:
+        counts = [len(repo_words(sentence)) for sentence in split_sentences(text)]
+        issues.append(DraftIssue("OFF_TOPIC", f"저장소 작업 말 {len(words)}번 (상한 {repo_word_limit})",
+                                 counts.index(max(counts)) + 1, "REPO_WORDS"))
+    if ambition and not ends_with_ambition(text):
+        issues.append(DraftIssue("OFF_TOPIC", "지원 동기 문항의 포부 문장 없음", None, "NO_AMBITION"))
     return issues
+
+
+def code_names(text: str, known_names: str = "") -> list[str]:
+    """글에 쓴 코드 이름을 하나씩. 카드 출처·회사 이름이거나 'API 규격' 처럼 줄임말을 부르는 말은 코드 이름이 아니다."""
+    known = known_names.casefold()
+    found: list[str] = []
+    for match in _CODE_NAME.finditer(text):
+        name = match.group(0)
+        if name.casefold() in known or name.split(" ")[0].casefold() in PLAIN_LATIN_WORDS:
+            continue
+        if name not in found:
+            found.append(name)
+    return found
+
+
+def repo_words(text: str) -> list[str]:
+    # 사용자가 채울 빈칸 속 말은 글이 아니라서 세지 않는다
+    return _REPO_WORD.findall(_MORE_BLANK.sub("", text))
+
+
+def ends_with_ambition(text: str) -> bool:
+    """빈칸 줄을 뺀 마지막 두 문장에 입사 후 하고 싶은 일을 말하는 말이 있는지 본다."""
+    sentences = [sentence for sentence in split_sentences(text) if not has_blank(sentence)]
+    return any(word in sentence for sentence in sentences[-2:] for word in _AMBITION_WORDS)
 
 
 def tech_names(text: str, known_names: str) -> list[str]:

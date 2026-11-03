@@ -588,13 +588,14 @@ def test_writing_goes_ahead_when_readiness_cannot_be_judged() -> None:
 
 
 @pytest.mark.parametrize(
-    ("theme", "first_evidence", "deep", "tech_names"),
-    [("COLLABORATION", "함께 일한 상대와 상황(의견이 갈렸다면 어떻게 갈렸나)", False, 1),
-     ("PROBLEM_SOLVING", "문제를 구체적으로 정의한 것", True, 2)],
+    ("theme", "first_evidence", "deep", "tech_names", "repo_words"),
+    [("COLLABORATION", "함께 일한 상대와 상황(의견이 갈렸다면 어떻게 갈렸나)", False, 1, 3),
+     ("PROBLEM_SOLVING", "문제를 구체적으로 정의한 것", True, 2, 1)],
 )
 def test_write_payload_carries_evidence_and_tech_of_the_theme(theme: str, first_evidence: str, deep: bool,
-                                                              tech_names: int) -> None:
-    """쓰기는 문항 유형의 행동증거와 기술 이야기를 얼마나 쓸지, 기술 이름을 몇 개까지 쓸지(협업 1·문제 해결 2)를 함께 받는다."""
+                                                              tech_names: int, repo_words: int) -> None:
+    """쓰기는 문항 유형의 행동증거와 기술 이야기를 얼마나 쓸지, 기술 이름(협업 1·문제 해결 2)과 저장소 작업 말(협업 3·그 밖 1)을
+    몇 개까지 쓸지를 함께 받는다."""
     client = DraftClient({"문제 해결 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS])
 
     _draft(client, _request(_question(theme=theme)))
@@ -602,7 +603,7 @@ def test_write_payload_carries_evidence_and_tech_of_the_theme(theme: str, first_
     question = client.write_payloads[0]["question"]
     assert question["evidence"][0] == first_evidence
     assert ("깊이를 살립니다" in question["tech"]) is deep
-    assert question["tech_name_limit"] == tech_names
+    assert (question["tech_name_limit"], question["repo_word_limit"]) == (tech_names, repo_words)
 
 
 #: 재료에 없는 해석(다시 한다면 다르게 할 점)으로, 작성 AI 가 추론으로 밝히는 문장
@@ -846,3 +847,81 @@ def test_tech_names_left_after_rewrites_are_not_marked() -> None:
     result, _ = _draft(client, _request(_question("협업 경험", card=TECH_CARD, theme="COLLABORATION")))
 
     assert (result.drafts[0].text, result.drafts[0].rewrites, result.drafts[0].marks) == (TECHY, 2, [])
+
+
+#: 카드에 있는 코드 이름(@BatchSize)으로, 글에 그대로 옮기면 카드에 있어도 걸린다
+BATCH_CARD = {**DEPLOY_CARD, "statements": [*DEPLOY_CARD["statements"], {"star_slot": "A", "text": "@BatchSize 를 적용했다"}]}
+
+
+def test_code_name_from_the_card_is_rewritten_in_plain_words_without_asking_judge() -> None:
+    """카드에 있는 코드 이름도 글에 쓰면 다음 행동을 묻지 않고 뜻을 풀어 다시 쓰게 하며, 단계에는 Spring 이 아는 OFF_TOPIC 으로 남긴다."""
+    coded = GOOD.replace("바뀐 모듈만", "@BatchSize 로 바뀐 모듈만")
+    client = DraftClient({"문제 해결 경험": [coded, GOOD]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question(card=BATCH_CARD)))
+
+    assert client.write_payloads[1]["fix"]["problems"] == [
+        "'@BatchSize' 는 코드 이름입니다. 뜻을 풀어 쓰세요(예: '상품 목록을 한 번에 가져오게 설정').",
+    ]
+    failed = next(step for step in result.steps if step.kind == "CHECK_FAILED")
+    assert (failed.code, failed.value, failed.sentence_seq, client.decide_payloads) == ("OFF_TOPIC", "@BatchSize", 2, [])
+    assert (result.drafts[0].text, result.drafts[0].rewrites) == (GOOD, 1)
+
+
+#: 저장소 작업 말 둘(PR·머지)이 든 카드와, 그 말을 그대로 옮긴 글
+PR_CARD = {**API_CARD, "statements": [*API_CARD["statements"], {"star_slot": "A", "text": "PR 을 머지했다"}]}
+PR_TEXT = "API 응답 모양을 두고 갈린 의견을 회의로 견줬습니다. PR 을 머지했습니다."
+
+
+def test_repository_words_over_the_theme_cap_are_rewritten_with_plain_paraphrases() -> None:
+    """저장소 작업 말이 문항 유형의 상한(협업 3·그 밖 1)을 넘으면 풀어 쓸 말을 알려 다시 쓰게 하고, 상한 안이면 그대로 둔다."""
+    client = DraftClient({"협업 경험": [PR_TEXT], "문제 해결 경험": [PR_TEXT, GOOD_API]}, reviews=[NO_REVIEW_FINDINGS])
+    request = _request(_question("협업 경험", card=PR_CARD, theme="COLLABORATION"), _question(qid=2, card=PR_CARD))
+
+    result, _ = _draft(client, request)
+
+    assert len(client.writes_for("협업 경험")) == 1
+    assert client.writes_for("문제 해결 경험")[1]["fix"]["problems"] == [
+        "2번 문장 등에서 저장소 작업 말 2번 (상한 1)입니다. 저장소 작업 말은 풀어 쓰세요(예: PR → '동료의 수정 제안', "
+        "머지 → '팀 공용 코드에 반영', 리뷰 지적 → '검토 의견', 이슈 → '작업 요청').",
+    ]
+    assert result.drafts[1].text == GOOD_API
+
+
+def test_motivation_draft_without_what_to_do_after_joining_is_rewritten_to_end_with_it() -> None:
+    """지원 동기 글이 입사 후 하고 싶은 일로 끝나지 않으면 공고가 없어도 그 일로 맺도록 다시 쓰게 한다."""
+    plain = "결제 서비스에 관심이 있어 지원했습니다. 배포 시간을 12분으로 줄였습니다."
+    ending = f"{plain} 입사 후 결제 서버를 안정적으로 만드는 데 기여하겠습니다."
+    client = DraftClient({"지원 동기": [plain, ending]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question("지원 동기", theme="MOTIVATION"), memo="결제 서비스에 관심"))
+
+    assert client.write_payloads[1]["fix"]["problems"] == [
+        "지원 동기 글이 입사 후 하고 싶은 일로 끝나지 않습니다. 마지막 문장을 입사 후 하고 싶은 일(공고가 있으면 주요 업무 중 "
+        "기여하고 싶은 일, 없으면 메모·지원 직무의 방향)로 맺고, 재료에 없는 해석이면 inferred 에 넣으세요.",
+    ]
+    assert (result.drafts[0].text, result.drafts[0].rewrites) == (ending, 1)
+
+
+@pytest.mark.parametrize(
+    ("text", "theme", "reason", "direction"),
+    [("협업 경험", "COLLABORATION", "협업 문항의 기술 작업 서술",
+      "기술 작업 서술이면 재료에 있는 사람 이야기(누구와 무엇이 갈렸나·내가 한 말과 제안·어떻게 맞췄나·팀에 달라진 점)로 바꾸고, "
+      "기술 작업은 한 문장 안의 한 구절로만 남기세요."),
+     ("지원 동기", "MOTIVATION", "지원 동기 문항의 경험 서술이 절반 넘음",
+      "경험 과정 서술이면 경험은 결과 한두 문장으로 줄이고, 지원 이유와 입사 후 하고 싶은 일로 채우세요.")],
+    ids=["협업", "지원 동기"],
+)
+def test_off_topic_review_is_sent_back_with_the_direction_of_the_question_type(
+    text: str, theme: str, reason: str, direction: str,
+) -> None:
+    """감독이 건 OFF_TOPIC 은 협업 문항이면 사람 이야기로, 지원 동기 문항이면 경험을 줄이고 지원 이유·입사 후 할 일로 바꾸라고 돌려보낸다."""
+    draft = f"{GOOD_API} 입사 후 응답 모양을 먼저 맞추겠습니다."
+    finding = FindingOutput(question_id=1, sentence_seq=1, code="OFF_TOPIC", reason=reason)
+    client = DraftClient({text: [draft, draft]}, reviews=[ReviewOutput(findings=[finding])])
+
+    _draft(client, _request(_question(text, card=API_CARD, theme=theme), memo="결제 서비스에 관심"))
+
+    assert client.write_payloads[1]["fix"]["problems"] == [
+        f"1번 문장이 문항이 묻는 것을 벗어났습니다({reason}). {direction}",
+    ]

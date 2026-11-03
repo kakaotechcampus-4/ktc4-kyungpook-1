@@ -1,4 +1,4 @@
-"""자소서 카드 고르기(A1)·질문 만들기(A2)·초안 쓰기와 전체 검토(A3~A5) 요청/응답 모델.
+"""자소서 카드 고르기(A1)·질문 만들기(A2)·초안 쓰기와 전체 검토(A3~A5)·문항 첨삭 요청/응답 모델.
 
 AI 는 고르고 묻고 쓰기만 하고, 자소서·문항·답 저장과 이미 받은 답 중 다시 쓸 것을 고르는 일은 Spring 이 한다.
 """
@@ -342,4 +342,80 @@ class DraftsResult(BaseModel):
 
     cover_letter_id: int
     drafts: list[QuestionDraft] = Field(..., description="요청 문항 순서 그대로")
+    steps: list[DraftStep]
+
+
+#: 첨삭 포인트가 아쉬운 점(WEAK)인지 잘한 점(GOOD)인지.
+PolishKind = Literal["GOOD", "WEAK"]
+#: 첨삭 포인트 분류: 문항 적합성·근거·읽기 쉬움·다른 문항과 겹침·기술 용어.
+PolishCategory = Literal["FIT", "EVIDENCE", "READABILITY", "OVERLAP", "TECH_TERMS"]
+
+
+class PolishOther(StrictRequestModel):
+    question_id: PositiveId
+    text: NonBlankText = Field(..., max_length=500)
+    current_text: str = Field(..., max_length=10_000, description="그 문항의 지금 글. 겹침을 보는 데만 쓴다")
+
+
+class PolishTarget(StrictRequestModel):
+    question_id: PositiveId
+    text: NonBlankText = Field(..., max_length=500)
+    char_limit: int = Field(..., ge=100, le=5_000, strict=True)
+    question_theme: Optional[QuestionTheme] = None
+    primary_card: Optional[CardDetail] = None
+    supporting_card: Optional[CardDetail] = None
+    answers: list[KnownAnswer] = Field(default_factory=list, max_length=20)
+    current_text: NonBlankText = Field(..., max_length=10_000, description="첨삭할 지금 글. 사용자가 고친 글일 수 있다")
+    inferred_seqs: list[PositiveId] = Field(
+        default_factory=list, max_length=50,
+        description=(
+            "지금 INFERRED 표시가 달린(사용자가 아직 확인하지 않은) 문장 번호로, current_text 를 문장으로 나눈 번호다. "
+            "고친 글에 그대로 남은 문장은 표시 여부를 그대로 둔다 — 여기 있으면 INFERRED 를 남기고, 없으면(확인했거나 사실 문장) 다시 달지 않는다"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _check_cards_and_seqs(self) -> "PolishTarget":
+        if self.supporting_card is not None and self.primary_card is None:
+            raise ValueError("supporting_card 는 primary_card 가 있을 때만 보낼 수 있습니다.")
+        if len(set(self.inferred_seqs)) != len(self.inferred_seqs):
+            raise ValueError("inferred_seqs 에 같은 번호가 두 번 있습니다.")
+        return self
+
+
+class PolishRequest(StrictRequestModel):
+    """`POST /internal/cover-letter-polish` 요청 모델."""
+
+    cover_letter_id: PositiveId
+    job_role: NonBlankText = Field(..., max_length=100)
+    memo: Optional[str] = Field(None, max_length=1_000)
+    posting: Optional[Posting] = None
+    others: list[PolishOther] = Field(default_factory=list, max_length=9, description="같은 자소서의 다른 문항")
+    target: PolishTarget
+
+    @model_validator(mode="after")
+    def _ids_are_unique(self) -> "PolishRequest":
+        ids = [other.question_id for other in self.others] + [self.target.question_id]
+        if len(set(ids)) != len(ids):
+            raise ValueError("others 와 target 에 같은 question_id 가 두 번 있습니다.")
+        return self
+
+
+class PolishPoint(BaseModel):
+    seq: int = Field(..., description="1부터. 아쉬운 점(WEAK)이 먼저, 잘한 점(GOOD)이 뒤에 온다")
+    kind: PolishKind
+    category: PolishCategory
+    title: str = Field(..., max_length=30)
+    detail: str = Field(..., max_length=60)
+    sentence_seqs: list[int] = Field(
+        default_factory=list, description="고친 글(draft.sentences)의 문장 번호. WEAK 는 고친 자리, GOOD 은 잘 쓴 자리, 없으면 빈 배열",
+    )
+
+
+class PolishResult(BaseModel):
+    """`POST /internal/cover-letter-polish` 응답 `data` 모델."""
+
+    summary: str = Field(..., description="글 전체에 대한 한두 문장 평가")
+    points: list[PolishPoint] = Field(..., description="WEAK 최대 4개, GOOD 최대 3개")
+    draft: QuestionDraft = Field(..., description="고친 글. cover-letter-drafts 의 초안과 같은 검사·표시를 거쳤다")
     steps: list[DraftStep]

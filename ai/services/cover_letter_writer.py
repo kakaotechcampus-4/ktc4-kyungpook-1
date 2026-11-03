@@ -264,7 +264,6 @@ class QuestionWriter:
     ) -> WrittenDraft:
         qid = question.question_id
         blanks = blank_items(request, question)
-        source = source_text(request, question)
         guide = guide_for(question.question_theme)
         state, missing, inferable = await self._readiness(question, request, guide, deadline)
         if state == "NOT_READY":
@@ -281,11 +280,57 @@ class QuestionWriter:
             record("CODE", "SKELETON", qid)
             return WrittenDraft(qid, skeleton(request, question, blanks), blanks, 0, "SKELETON")
         record("SUB_AGENT", "WROTE", qid, value=str(countable_length(text)))
-        rewrites = 0
-        kept: set[tuple[str, Optional[str]]] = set()
+        text, inferred, rewrites = await self._check_and_fix(
+            request, question, payload, text, inferred, written_blanks, 0, set(), deadline, record,
+        )
+        return WrittenDraft(qid, text, written_blanks, rewrites, "LLM", missing_evidence=tuple(missing),
+                            inferable_evidence=tuple(inferable), inferred=tuple(inferred))
+
+    async def open_issues(
+        self, request: DraftsRequest, question: DraftQuestion, text: str, blanks: list[MaterialItem],
+        deadline: float, record: Recorder,
+    ) -> tuple[list[DraftIssue], set[tuple[str, Optional[str]]]]:
+        """이미 있는 글(첨삭할 글)에서 고칠 문제와, 다음 행동 판단이 그대로 두라고 한(KEEP) 수치·낱말을 돌려준다."""
+        qid = question.question_id
+        source = source_text(request, question)
+        issues = check_draft(text, source=source, char_limit=question.char_limit, missing_items=blanks,
+                             **check_options(request, question))
+        for issue in issues:
+            record("CODE", "CHECK_FAILED", qid, code=issue.code, value=issue.value, **_located(text, issue.sentence_seq))
+        judged = [issue for issue in issues if issue.code in _JUDGED_CODES]
+        actions = await self._decide(text, judged, source, deadline, record, qid) if judged else {}
+        kept = {(issue.code, issue.value) for issue in judged if actions[issue] == "KEEP"}
+        return [issue for issue in issues if actions.get(issue, "FIX") == "FIX"], kept
+
+    async def revise(
+        self, request: DraftsRequest, question: DraftQuestion, text: str, inferred: list[str],
+        blanks: list[MaterialItem], problems: list[str], kept: set[tuple[str, Optional[str]]],
+        deadline: float, record: Recorder,
+    ) -> WrittenDraft:
+        """이미 있는 글을 problems 대로 고쳐 쓰고, 첫 초안과 같은 검사·다음 행동·다시 쓰기를 거친다.
+
+        첫 고쳐 쓰기를 못 받으면 CoverLetterLLMUnavailable 을 그대로 올린다 — 첨삭은 사용자가 기다리는 요청이라 앞 글로 대신하지 않는다.
+        """
+        qid = question.question_id
+        payload = self._payload(request, question, blanks, [], [])
+        fix = {"previous_draft": text, "previous_inferred": inferred, "problems": problems}
+        text, inferred = await self._write({**payload, "fix": fix}, deadline, qid, 1)
+        record("SUB_AGENT", "REWROTE", qid, value=str(countable_length(text)))
+        text, inferred, rewrites = await self._check_and_fix(
+            request, question, payload, text, inferred, blanks, 1, set(kept), deadline, record,
+        )
+        return WrittenDraft(qid, text, blanks, rewrites, "LLM", inferred=tuple(inferred))
+
+    async def _check_and_fix(
+        self, request: DraftsRequest, question: DraftQuestion, payload: dict[str, Any], text: str, inferred: list[str],
+        blanks: list[MaterialItem], rewrites: int, kept: set[tuple[str, Optional[str]]], deadline: float,
+        record: Recorder,
+    ) -> tuple[str, list[str], int]:
+        qid = question.question_id
+        source = source_text(request, question)
         while True:
             issues = [issue for issue in check_draft(text, source=source, char_limit=question.char_limit,
-                                                     missing_items=written_blanks, **check_options(request, question))
+                                                     missing_items=blanks, **check_options(request, question))
                       if (issue.code, issue.value) not in kept]
             if not issues:
                 record("CODE", "CHECK_PASSED", qid, value=str(countable_length(text)))
@@ -302,15 +347,14 @@ class QuestionWriter:
             if not to_fix:
                 break
             fix = {"previous_draft": text, "previous_inferred": inferred,
-                   "problems": [_describe(issue) for issue in to_fix]}
+                   "problems": [describe_issue(issue) for issue in to_fix]}
             try:
                 text, inferred = await self._write({**payload, "fix": fix}, deadline, qid, rewrites + 1)
             except CoverLetterLLMUnavailable:
                 break
             rewrites += 1
             record("SUB_AGENT", "REWROTE", qid, value=str(countable_length(text)))
-        return WrittenDraft(qid, text, written_blanks, rewrites, "LLM", missing_evidence=tuple(missing),
-                            inferable_evidence=tuple(inferable), inferred=tuple(inferred))
+        return text, inferred, rewrites
 
     async def rewrite_for_review(
         self, request: DraftsRequest, question: DraftQuestion, draft: WrittenDraft,
@@ -325,7 +369,7 @@ class QuestionWriter:
             return draft
         qid = question.question_id
         fix = {"previous_draft": draft.text, "previous_inferred": list(draft.inferred),
-               "problems": [_describe_finding(finding, question) for finding in findings]}
+               "problems": [describe_finding(finding, question) for finding in findings]}
         payload = self._payload(request, question, draft.blanks, list(draft.missing_evidence),
                                 list(draft.inferable_evidence))
         try:
@@ -675,14 +719,14 @@ def _issue_key(issue: DraftIssue) -> tuple[str, Optional[str], Optional[str]]:
     return (issue.code, issue.rule, None if counted else issue.value)
 
 
-def _describe(issue: DraftIssue) -> str:
+def describe_issue(issue: DraftIssue) -> str:
     if issue.rule is not None:
         return _FIX_TEXT[issue.rule].format(seq=issue.sentence_seq, value=issue.value)
     value = blank(issue.value) if issue.code == "MISSING_BLANK" else issue.value  # type: ignore[arg-type]
     return _FIX_TEXT[issue.code].format(value=value)
 
 
-def _describe_finding(finding: ReviewFinding, question: DraftQuestion) -> str:
+def describe_finding(finding: ReviewFinding, question: DraftQuestion) -> str:
     key: str = finding.code
     if key == "OFF_TOPIC" and question.question_theme in ("COLLABORATION", "CONFLICT"):
         key = "OFF_TOPIC_COLLABORATION"

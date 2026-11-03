@@ -31,6 +31,8 @@ import static lombok.AccessLevel.PROTECTED;
 public class CoverLetterQuestion {
 
     private static final String INFERRED = "INFERRED";
+    // AI 가 답 하나를 받는 상한과 같아, 덧붙인 답이 다음 초안·첨삭 요청을 실패시키지 않는다
+    private static final int ANSWER_MAX_LENGTH = 1_000;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -199,7 +201,46 @@ public class CoverLetterQuestion {
         if (polish == null) {
             throw new CoverLetterStateException("적용할 첨삭 결과가 없습니다.");
         }
-        PolishedDraft draft = polish.draft();
+        replaceDraft(polish.draft());
+        polishAppliedCount++;
+        polish = null;
+
+    }
+
+    /**
+     * 대화에서 받은 답을 같은 항목의 앞 답 뒤에 덧붙여 꼬리 질문의 답이 앞 답을 지우지 않게 하고, 없던 항목이면 뒤에 더한다
+     * 질문 단계의 답 저장과 달리 질문에 없던 항목도 받는데, 대화는 초안의 빈 자리를 보고 묻기 때문이다
+     * 저장한 답 글을 돌려주며, 덧붙인 글은 1,000자에서 자른다
+     */
+    public String fillAnswer(MaterialItem item, String text) {
+
+        List<MaterialAnswer> next = new ArrayList<>(answers);
+        int at = next.stream().map(MaterialAnswer::item).toList().indexOf(item);
+        String before = at < 0 || next.get(at).skipped() ? null : next.get(at).text();
+        String joined = before == null || before.isBlank() || before.equals(text) ? text : before + " " + text;
+        String saved = joined.length() > ANSWER_MAX_LENGTH ? joined.substring(0, ANSWER_MAX_LENGTH).strip() : joined;
+        MaterialAnswer filled = new MaterialAnswer(item, saved, false, false);
+        if (at >= 0) {
+            next.set(at, filled);
+        } else {
+            next.add(filled);
+        }
+        answers = next;
+
+        return saved;
+
+    }
+
+    /** 대화의 답으로 AI 가 다시 쓴 글로 지금 글을 바꾸며, AI 원본은 그대로 두고 옛 글 기준의 첨삭 결과는 비운다 */
+    public void refill(PolishedDraft draft) {
+
+        replaceDraft(draft);
+        polish = null;
+
+    }
+
+    private void replaceDraft(PolishedDraft draft) {
+
         draftText = draft.text();
         edited = false;
         charCount = draft.charCount();
@@ -207,8 +248,6 @@ public class CoverLetterQuestion {
         sentences = new ArrayList<>(draft.sentences());
         marks = new ArrayList<>(draft.marks());
         blanks = new ArrayList<>(draft.blanks());
-        polishAppliedCount++;
-        polish = null;
 
     }
 

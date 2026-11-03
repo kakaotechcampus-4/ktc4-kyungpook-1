@@ -383,6 +383,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseCoverLetterTurnsResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CoverLetterTurnsResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseDisconnectResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -1811,6 +1825,50 @@
           "updatedAt" : {
             "format" : "date-time",
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CoverLetterTurnView" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "item" : {
+            "enum" : [ "SITUATION", "ACTION", "RESULT", "LEARNING", "TRIGGER", "JOB_LINK", "REASON" ],
+            "type" : "string"
+          },
+          "questionId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "role" : {
+            "enum" : [ "AI", "USER" ],
+            "type" : "string"
+          },
+          "seq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "status" : {
+            "enum" : [ "ASKING", "FILLED", "DONE", "OFF_TOPIC" ],
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CoverLetterTurnsResponse" : {
+        "description" : "자소서 하나의 채우기 대화 전체로, 오래된 말부터 온다",
+        "properties" : {
+          "turns" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CoverLetterTurnView"
+            },
+            "type" : "array"
           }
         },
         "type" : "object"
@@ -3762,6 +3820,16 @@
               "$ref" : "#/components/schemas/CoverLetterAnswerInput"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "SendTurnRequest" : {
+        "description" : "대화에서 사용자가 보낸 말",
+        "properties" : {
+          "text" : {
+            "description" : "1~500자, 공백만이면 안 된다",
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -7463,6 +7531,283 @@
         "tags" : [ "Cover letters" ]
       }
     },
+    "/api/cover-letters/{id}/questions/{questionId}/turns" : {
+      "post" : {
+        "description" : "초안을 받은 뒤(DRAFTED)에 사용자의 말과 AI 의 다음 말을 대화에 더합니다.\nAI 가 채울 수 있는 답이라고 하면(status FILLED) 그 답을 문항 답에 저장하고(같은 항목에 앞 답이 있으면 뒤에 덧붙이고 1,000자에서 자름), 상황·행동·결과·배운 점·계기면 중심 카드에도 기억한 뒤,\n그 답으로 문항의 지금 글만 다시 써 text·sentences·marks·blanks·글자 수를 바꿉니다(edited 는 false, aiText 는 그대로, 첨삭 결과는 비움).\n다시 쓰기에 실패했거나 AI 가 다시 쓴 글을 되돌렸거나 그사이 사용자가 글을 고쳤으면 대화와 답은 남기고 글은 그대로 두며 rewriteFailed 가 true 입니다.\n",
+        "operationId" : "sendTurn",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "문항 id",
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SendTurnRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 말이 없거나 공백뿐임, 500자를 넘음, U+0000 이 있음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서·문항, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: DRAFTED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "AI_UNAVAILABLE: AI 가 잠시 응답하지 못함. 보낸 말도 저장하지 않아 다시 보내도 된다"
+          }
+        },
+        "summary" : "대화에 답 보내기",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/questions/{questionId}/turns/open" : {
+      "post" : {
+        "description" : "초안을 받은 뒤(DRAFTED)에 그 문항의 빈 재료를 묻는 AI 의 첫 말을 받아 대화에 더합니다.\nAI 를 기다렸다가 답하므로 수십 초 걸릴 수 있습니다.\n",
+        "operationId" : "openTurn",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "문항 id",
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서·문항, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: DRAFTED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "AI_UNAVAILABLE: AI 가 잠시 응답하지 못함. 아무것도 저장하지 않아 다시 요청해도 된다"
+          }
+        },
+        "summary" : "문항 이야기 시작",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/questions/{questionId}/turns/skip" : {
+      "post" : {
+        "description" : "초안을 받은 뒤(DRAFTED)에 지금 질문을 넘기고, AI 의 다음 말(다음 빈 재료를 묻거나 마무리)을 대화에 더합니다.\n",
+        "operationId" : "skipTurn",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "description" : "문항 id",
+          "in" : "path",
+          "name" : "questionId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "없는 자소서·문항, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: DRAFTED 가 아님"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "AI_UNAVAILABLE: AI 가 잠시 응답하지 못함. 아무것도 저장하지 않아 다시 요청해도 된다"
+          }
+        },
+        "summary" : "질문 넘기기",
+        "tags" : [ "Cover letters" ]
+      }
+    },
     "/api/cover-letters/{id}/retry" : {
       "post" : {
         "description" : "실패한 자소서(FAILED)의 실패한 단계만 다시 줄 세웁니다.",
@@ -7540,6 +7885,86 @@
           }
         },
         "summary" : "실패한 단계 다시 시도",
+        "tags" : [ "Cover letters" ]
+      }
+    },
+    "/api/cover-letters/{id}/turns" : {
+      "get" : {
+        "description" : "자소서 하나의 채우기 대화 전체를 오래된 말부터 돌려줍니다. 말마다 어느 문항 이야기인지 questionId 를 답니다.\n어느 단계에서든 읽을 수 있고, 대화가 없으면 빈 배열입니다.\n",
+        "operationId" : "listTurns",
+        "parameters" : [ {
+          "description" : "자소서 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCoverLetterTurnsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID, 없는 자소서, 남의 자소서"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "422" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Unprocessable Content"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "채우기 대화 읽기",
         "tags" : [ "Cover letters" ]
       }
     },

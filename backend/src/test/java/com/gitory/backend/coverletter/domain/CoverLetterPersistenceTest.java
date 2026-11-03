@@ -3,6 +3,7 @@ package com.gitory.backend.coverletter.domain;
 import com.gitory.backend.coverletter.infra.CardMaterialAnswerRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterQuestionRepository;
 import com.gitory.backend.coverletter.infra.CoverLetterRepository;
+import com.gitory.backend.coverletter.infra.CoverLetterTurnRepository;
 import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,6 +47,9 @@ class CoverLetterPersistenceTest {
 
     @Autowired
     CardMaterialAnswerRepository remembered;
+
+    @Autowired
+    CoverLetterTurnRepository turns;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -233,6 +237,40 @@ class CoverLetterPersistenceTest {
         assertThatThrownBy(() -> jdbc.update(
                 "INSERT INTO card_material_answer (card_id, item, text, updated_at) VALUES (?, 'REASON', '이유', now())", card))
                 .isInstanceOf(DataIntegrityViolationException.class);
+
+    }
+
+    @Test
+    @DisplayName("대화의 말은 자소서 안 순번이 겹칠 수 없고, 순번대로 다시 읽히며 AI 말만 항목·상태를 가진다")
+    void turnSeqIsUniqueWithinACoverLetter() {
+
+        CoverLetter letter = letters.saveAndFlush(CoverLetter.start(userId, "백엔드 개발", null, null));
+        turns.saveAndFlush(CoverLetterTurn.ai(letter.getId(), 1, 2, "그때 맡은 일을 알려 주세요", MaterialItem.ACTION,
+                TurnStatus.ASKING));
+        turns.saveAndFlush(CoverLetterTurn.user(letter.getId(), 2, 1, "로그를 같이 봤어요"));
+
+        assertThatThrownBy(() -> turns.saveAndFlush(CoverLetterTurn.user(letter.getId(), 1, 2, "같은 순번")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        List<CoverLetterTurn> found = turns.findByCoverLetterIdOrderBySeq(letter.getId());
+        assertThat(found).extracting(CoverLetterTurn::getSeq).containsExactly(1, 2);
+        assertThat(found.getFirst().getRole()).isEqualTo(TurnRole.USER);
+        assertThat(found.getFirst().getItem()).isNull();
+        assertThat(found.getFirst().getStatus()).isNull();
+        assertThat(found.getLast().getItem()).isEqualTo(MaterialItem.ACTION);
+        assertThat(found.getLast().getStatus()).isEqualTo(TurnStatus.ASKING);
+
+    }
+
+    @Test
+    @DisplayName("자소서를 지우면 그 대화도 함께 지워진다")
+    void deletingCoverLetterDropsItsTurns() {
+
+        CoverLetter letter = letters.saveAndFlush(CoverLetter.start(userId, "백엔드 개발", null, null));
+        turns.saveAndFlush(CoverLetterTurn.user(letter.getId(), 1, 1, "로그를 같이 봤어요"));
+
+        letters.delete(letter);
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter_turn", Integer.class)).isZero();
 
     }
 }

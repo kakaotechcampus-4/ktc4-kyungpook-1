@@ -139,76 +139,49 @@ describe('후보 보드 — 카드로 만든 후보 (멘토 피드백: "사용�
     expect(screen.queryByRole('button', { name: /사용됨 (보이기|숨기기)/ })).not.toBeInTheDocument();
   });
 
-  it('이미 카드로 만든 후보는 기본 목록에서 빠지고, 개수와 하는 일이 적힌 행을 눌러야 아래로 펼쳐진다 (카드 보기 링크는 남는다)', () => {
+  it('이미 카드로 만든 후보는 고르는 타일에 없고, 아래 "이미 카드로 만든 일" 묶음에 한 줄씩 카드 보기 링크와 함께 있다', () => {
     const board = mountBoard();
     const used = board.candidates.filter((c) => c.status === 'USED');
     expect(used.length).toBeGreaterThan(0);
-    const toggle = screen.getByRole('button', { name: `이미 카드로 만든 후보 ${used.length}개 보기` });
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    for (const candidate of used) expect(screen.queryByText(candidate.title)).not.toBeInTheDocument();   // 기본은 안 보인다
-    for (const candidate of board.candidates.filter((c) => c.status === 'NEW' && !c.weak)) expect(screen.getByText(candidate.title)).toBeInTheDocument();
-    const weak = board.candidates.filter(c => c.status === 'NEW' && c.weak);
-    for (const candidate of weak) expect(screen.queryByText(candidate.title)).not.toBeInTheDocument();
-    const weakToggle = screen.getByRole('button', { name: /추천도 낮은 후보 \d+개/ });
-    fireEvent.click(weakToggle);
-    for (const candidate of weak) expect(screen.getByText(candidate.title)).toBeInTheDocument();
-    fireEvent.click(weakToggle);
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(toggle).toHaveTextContent('접기');
+    const group = screen.getByRole('region', { name: /이미 카드로 만든 일/ });
     for (const candidate of used) {
-      const row = screen.getByText(candidate.title).closest('.cand') as HTMLElement;
+      expect(screen.queryByRole('button', { name: new RegExp(candidate.title) })).not.toBeInTheDocument();
+      const row = within(group).getByText(candidate.title).closest('li') as HTMLElement;
       expect(within(row).getByRole('link', { name: '카드 보기' })).toHaveAttribute('href', `/cards/${candidate.usedByCardId}`);
-      expect(row.parentElement).toBe(toggle.parentElement);                // 별도 목록이 아니라 같은 묶음 목록 안이다
     }
-    fireEvent.click(toggle);
-    for (const candidate of used) expect(screen.queryByText(candidate.title)).not.toBeInTheDocument();
   });
 
-  it('후보 목록은 하나의 묶음이다 — 사용됨 행을 위한 두 번째 목록을 만들지 않는다', () => {
-    mountBoard();
-    fireEvent.click(screen.getByRole('button', { name: /이미 카드로 만든 후보 \d+개 보기/ }));
-    expect(document.querySelectorAll('.record-list')).toHaveLength(1);
+  it('첫 묶음 머리의 수는 고를 수 있는 후보만 센다 — 카드로 만든 후보와 제외한 후보는 빼고 "5개 · 전체 N개"', () => {
+    const board = mountBoard((b) => ({ ...b, candidates: b.candidates.map((c, i) => i === 0 && c.status === 'NEW' ? { ...c, status: 'EXCLUDED' as const } : c) }));
+    const open = board.candidates.filter((c) => c.status === 'NEW').length - 1;
+    const group = screen.getByRole('region', { name: /먼저 카드로 만들어 볼 경험/ });
+    expect(within(group).getByText(`5개 · 전체 ${open}개`)).toBeInTheDocument();
   });
 
-  it('목록 개수와 전체 선택은 고를 수 있는 후보만 센다', () => {
+  it('추천도 낮은 후보는 나머지 쪽에 있고, 타일 안에 "추천도 낮음"이 글자로만 붙는다', () => {
     const board = mountBoard();
-    const open = board.candidates.filter((c) => c.status !== 'USED' && c.status !== 'EXCLUDED');
-    expect(screen.getByText('후보 선택').parentElement).toHaveTextContent(String(open.length));
-    fireEvent.click(screen.getByRole('button', { name: '추천 후보 선택' }));
-    const chosen = Math.min(board.candidates.filter((c) => c.status === 'NEW' && !c.weak).length, 8);
-    expect(screen.getByText(`${chosen}/8개 선택`)).toBeInTheDocument();
+    const weak = board.candidates.find((c) => c.status === 'NEW' && c.weak)!;
+    expect(screen.queryByText(weak.title)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^나머지 \d+개 더 보기$/ }));
+    const tile = screen.getByText(weak.title).closest('.cand-tile') as HTMLElement;
+    expect(within(tile).getByText('추천도 낮음')).toHaveClass('cand-tile__weak');
   });
 
-  it('8개를 고른 뒤에는 다른 후보를 눌러도 고르지 않고, 추천 후보 선택도 꺼진다', () => {
-    const board = mountBoard();
-    fireEvent.click(screen.getByRole('button', { name: '추천 후보 선택' }));
-    expect(screen.getByText('8/8개 선택')).toBeInTheDocument();
-    const isChecked = (el: HTMLElement) => el.getAttribute('aria-checked') === 'true' || (el as HTMLInputElement).checked === true;
-    const left = board.candidates.find((c) => c.status === 'NEW' && !c.weak && !isChecked(screen.getByRole('checkbox', { name: `${c.title} 선택` })));
-    expect(left).toBeDefined();
-    fireEvent.click(screen.getByRole('checkbox', { name: `${left!.title} 선택` }));
-    expect(screen.getByRole('checkbox', { name: `${left!.title} 선택` })).not.toBeChecked();
-    expect(screen.getByText('8/8개 선택')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '추천 후보 선택' })).toBeDisabled();
-  });
-
-  it('쓸 수 있는 후보가 하나도 없고 전부 카드로 만들었으면 그렇게 말한다 (검색 결과 없음이 아니다)', () => {
+  it('쓸 수 있는 후보가 하나도 없고 전부 카드로 만들었으면 그렇게 말한다', () => {
     mountBoard((board) => ({ ...board, candidates: board.candidates.map((c) => ({ ...c, status: 'USED' as const, usedByCardId: 'card_03' })) }));
     expect(screen.getByText('남은 후보가 없어요')).toBeInTheDocument();
     expect(screen.getByText(/후보를 모두 카드로 만들었어요/)).toBeInTheDocument();
-    expect(screen.queryByText('검색 조건에 맞는 후보가 없어요')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /이미 카드로 만든 후보 \d+개 보기/ })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /이미 카드로 만든 일/ })).toBeInTheDocument();
   });
 
-  it('검색해서 없으면 검색 결과 없음이고, 초기화하면 돌아온다', () => {
-    const board = mountBoard();
-    fireEvent.change(screen.getByPlaceholderText('후보 검색 (제목, 추천 이유)'), { target: { value: '일치하는 후보가 없는 검색어' } });
-    expect(screen.getByText('검색 조건에 맞는 후보가 없어요')).toBeInTheDocument();
-    expect(screen.queryByText('남은 후보가 없어요')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /이미 카드로 만든 후보/ })).not.toBeInTheDocument();   // 검색에 걸리지 않은 사용됨 행도 남지 않는다
-    fireEvent.click(screen.getByRole('button', { name: '검색 초기화' }));
-    const firstOpen = board.candidates.find((c) => c.status === 'NEW')!;
-    expect(screen.getByText(firstOpen.title)).toBeInTheDocument();
+  it('후보마다 있던 제외 버튼·검색창·추천 후보 선택은 없고, 예전에 제외한 후보가 있을 때만 "제외 N개 복원"이 보인다', () => {
+    mountBoard();
+    expect(screen.queryByRole('button', { name: '제외' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '추천 후보 선택' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^제외 \d+개 복원$/ })).not.toBeInTheDocument();
+    cleanup();
+    mountBoard((b) => ({ ...b, candidates: b.candidates.map((c, i) => i < 2 && c.status === 'NEW' ? { ...c, status: 'EXCLUDED' as const } : c) }));
+    expect(screen.getByRole('button', { name: '제외 2개 복원' })).toBeInTheDocument();
   });
 });

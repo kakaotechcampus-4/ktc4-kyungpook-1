@@ -29,7 +29,9 @@ test('수집 상한에 걸리면 이유를 말하고, 서버가 열지 않은 "�
   await expect(page.getByText('일부 기록만 정리했어요')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /이어 읽기/ })).toHaveCount(0);   // retryable: false
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
-  await expect(page.getByRole('heading', { name: /후보 \d+개 \(부분 결과\)/ })).toBeVisible();
+  // 새 후보 보드는 제목이 '… 에서 찾은 일' 이고, 부분 결과는 위 띠의 표시로 알린다
+  await expect(page.getByRole('heading', { name: /에서 찾은 일$/ })).toBeVisible();
+  await expect(page.getByText('부분 결과', { exact: true }).first()).toBeVisible();
   await page.getByRole('link', { name: '작업 상태 보기' }).click();
   await expect(page.getByText('한 번에 읽는 상한까지만 읽었어요')).toBeVisible();
 });

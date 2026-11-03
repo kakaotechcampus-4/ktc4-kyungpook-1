@@ -76,9 +76,6 @@
 /* Dashboard colours describe progress, rather than colouring every surface. */
 .home-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .overview-tile { display: flex; flex-direction: column; gap: 20px; padding: 24px; border-radius: 20px; min-width: 0; }
-.overview-tile--blue { background: var(--pastel-blue); }
-.overview-tile--lavender { background: var(--pastel-lavender); }
-.overview-tile--mint { background: var(--pastel-mint); }
 .overview-tile__label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; }
 .overview-tile__label svg { opacity: .65; flex-shrink: 0; }
 .overview-tile > strong { font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }

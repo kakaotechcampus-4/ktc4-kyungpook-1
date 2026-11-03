@@ -35,8 +35,8 @@ export function HomeRecommendations() {
     {!supported ? <p className="home-panel-empty">공고 매칭 기능을 연결하면 추천 공고가 표시돼요.</p>
       : loading ? <p className="home-panel-empty" role="status">추천 공고를 불러오고 있어요.</p>
       : confirmed.length === 0 ? <p className="home-panel-empty">경험 카드를 확정하면 맞는 공고를 골라 드려요.</p>
-      : picks.length ? picks.map((pick, index) => <Link className="recommended-job" key={pick.posting.id} to={`/match/${encodeURIComponent(pick.posting.id)}`}>
-        <span className={`recommended-job__logo recommended-job__logo--${index}`}>{pick.companyName.slice(0, 1)}</span><span className="recommended-job__copy"><strong>{pick.posting.title}</strong><span>{pick.companyName}</span><small>{deadlineLabel(pick.posting.deadline)}</small></span><ChevronRight size={17} aria-hidden />
+      : picks.length ? picks.map((pick) => <Link className="recommended-job" key={pick.posting.id} to={`/match/${encodeURIComponent(pick.posting.id)}`}>
+        <span className="recommended-job__logo">{pick.companyName.slice(0, 1)}</span><span className="recommended-job__copy"><strong>{pick.posting.title}</strong><span>{pick.companyName}</span><small>{deadlineLabel(pick.posting.deadline)}</small></span><ChevronRight size={17} aria-hidden />
       </Link>)
       : <div className="home-panel-empty"><p>전체 매칭을 하면 내 카드와 맞는 공고를 골라 드려요.</p><Link to="/match" className="btn btn--outline btn--sm">전체 매칭 하기</Link></div>}
   </section>;

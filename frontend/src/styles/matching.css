@@ -265,8 +265,8 @@
 .deadline--today .deadline__badge,
 .deadline__badge.deadline--soon,
 .deadline__badge.deadline--today {
-  background: var(--state-failed-bg);
-  color: var(--state-failed-text);
+  background: var(--state-open-bg);
+  color: var(--state-open-text);
 }
 .deadline--closed .deadline__badge,
 .deadline__badge.deadline--closed {
@@ -464,7 +464,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--pastel-mint);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
   color: var(--text-primary);
 }
 .posting-detail__side {
@@ -572,12 +573,12 @@
   border-radius: 6px;
 }
 .cond-tile--met {
-  background: var(--pastel-mint);
+  background: var(--bg-subtle);
   color: var(--text-primary);
 }
 .cond-tile--not_met {
-  background: var(--state-failed-bg);
-  color: var(--state-failed-text);
+  background: var(--state-open-bg);
+  color: var(--state-open-text);
 }
 
 /* 원문 조건 목록 */

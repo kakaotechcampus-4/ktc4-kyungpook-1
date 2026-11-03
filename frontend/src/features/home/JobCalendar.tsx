@@ -9,6 +9,8 @@ import { calendarStorageKey, dateKey, daysUntil, monthDays, readSchedules, safeS
 export type CalendarPosting = { id: string; company: string; role: string; expiresAt: string | null; url: string | null };
 
 const weekdayNames = ['일', '월', '화', '수', '목', '금', '토'];
+// 색은 마감(호박)과 나머지(회색) 둘뿐이라 범례도 두 줄로 묶는다
+const legend = [['deadline', scheduleKinds.deadline], ['other', [scheduleKinds.interview, scheduleKinds.result, scheduleKinds.other].join(' · ')]] as const;
 const readableDate = (key: string) => new Date(`${key}T12:00:00`).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
 
 export function JobCalendar({ userId, postings = [], postingsLoading = false, postingsError = false, onRetryPostings }: { userId: string; postings?: CalendarPosting[]; postingsLoading?: boolean; postingsError?: boolean; onRetryPostings?: () => void }) {
@@ -87,7 +89,7 @@ export function JobCalendar({ userId, postings = [], postingsLoading = false, po
             </div>;
           })}
         </div>
-        <div className="calendar-legend">{Object.entries(scheduleKinds).map(([kind, label]) => <span key={kind}><i className={`calendar-dot calendar-dot--${kind}`} />{label}</span>)}</div>
+        <div className="calendar-legend">{legend.map(([kind, label]) => <span key={kind}><i className={`calendar-dot calendar-dot--${kind}`} />{label}</span>)}</div>
       </div>
       <aside className="calendar-agenda" data-has-events="true" aria-label="채용 일정 목록">
         <div className="calendar-agenda__upcoming"><span className="home-eyebrow">UP NEXT</span><h3>다가오는 일정 <span>{upcoming.length}</span></h3>

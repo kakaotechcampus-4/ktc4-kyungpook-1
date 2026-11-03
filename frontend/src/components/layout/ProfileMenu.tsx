@@ -47,7 +47,7 @@ export function ProfileMenu({ variant }: { variant: 'sidebar' | 'mobile' }) {
             {theme === 'dark' ? <Sun size={16} aria-hidden /> : <Moon size={16} aria-hidden />}{theme === 'dark' ? '라이트 모드로' : '다크 모드로'}
           </button>
           <div className="profile-menu__sep" role="separator" />
-          <button role="menuitem" type="button" className="profile-menu__item profile-menu__item--danger" disabled={logout.isPending} onClick={() => void signOut()}>
+          <button role="menuitem" type="button" className="profile-menu__item" disabled={logout.isPending} onClick={() => void signOut()}>
             <LogOut size={16} aria-hidden />{logout.isPending ? '로그아웃하는 중' : '로그아웃'}
           </button>
         </div>

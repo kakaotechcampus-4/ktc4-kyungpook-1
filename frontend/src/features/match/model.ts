@@ -212,25 +212,6 @@ export function companyMonogram(name: string) {
   return first ? first.toLocaleUpperCase("en") : "·";
 }
 
-/** 마크 색 가짓수 — match-company.css 의 .company-mark--0 ~ --7 과 맞춘다 */
-export const COMPANY_TONES = 8;
-
-/** 이름에서 색 번호를 정한다. 같은 기업은 언제나 같은 색(FNV-1a + 섞기). 표기만 다른 이름(공백·대소문자·(주))은 같은 색을 쓴다. */
-export function companyTone(name: string) {
-  let hash = 0x811c9dc5;
-  for (const ch of coreName(name)) {
-    hash ^= ch.codePointAt(0)!;
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  // 짧은 이름은 끝 글자만 달라도 아래 비트가 몰리기 쉬워 한 번 더 섞는다(murmur3 finalizer)
-  hash ^= hash >>> 16;
-  hash = Math.imul(hash, 0x85ebca6b) >>> 0;
-  hash ^= hash >>> 13;
-  hash = Math.imul(hash, 0xc2b2ae35) >>> 0;
-  hash ^= hash >>> 16;
-  return (hash >>> 0) % COMPANY_TONES;
-}
-
 /** 주소의 검색·필터·정렬 값을 목록 화면과 같은 규칙으로 읽는다(기업 페이지가 목록과 같은 공고를 보여 주려고) */
 export function filtersFromParams(params: URLSearchParams): MatchFilters {
   const category = MatchCategory.safeParse(params.get("category"));

@@ -14,6 +14,8 @@ public interface MatchJudgementRepository extends JpaRepository<MatchJudgement, 
 
     List<MatchJudgement> findByCardIdInAndCriterionIdIn(Collection<Long> cardIds, Collection<Long> criterionIds);
 
+    List<MatchJudgement> findByCardIdInAndMetTrue(Collection<Long> cardIds);
+
     // 두 계산이 같은 짝을 함께 판단하면 먼저 저장한 판단을 남긴다
     @Modifying
     @Query(value = """

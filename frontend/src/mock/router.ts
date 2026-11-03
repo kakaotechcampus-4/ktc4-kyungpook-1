@@ -1,5 +1,5 @@
 import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas';
-import { mockMatchDetail, mockMatchList, mockOverall, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
+import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
 import { chooseCards, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
@@ -33,6 +33,7 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
 on('GET', '/matches', () => ok(mockMatchList()));
+on('GET', '/matches/summary', () => ok(mockMatchedPostings())); // '/matches/:id' 보다 먼저 둬야 summary 를 공고 id 로 읽지 않는다
 on('GET', '/recommendations', () => ok(mockOverall()));
 on('POST', '/recommendations', () => ok(startMockOverall()));
 on('GET', '/repos/:id/recommendations', ({ params }) => ok(mockRepoRecommendation(params[0])));

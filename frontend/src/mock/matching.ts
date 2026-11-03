@@ -199,6 +199,25 @@ export function mockRepoRecommendation(repoId: string) {
     }));
   return { status: "READY", computedAt: new Date().toISOString(), companies };
 }
+/**
+ * Mock server only: 실서버처럼 맞춰 본 공고 · 전체 매칭 결과 · 레포 추천을 합쳐, 지금 확정 카드로 필수 조건이 맞은 공고를 한 번씩 센다.
+ * 맞춰 본 공고는 카드 묶음이 그때와 같을 때만 센다(카드가 바뀌면 실서버도 옛 판단을 쓰지 않는다)
+ */
+export function mockMatchedPostings() {
+  const confirmed = db.cards.filter((c) => c.status === "CONFIRMED");
+  if (confirmed.length === 0) return { matchedPostings: 0 };
+  const signature = confirmed.map((c) => c.id).sort().join(",");
+  const supported = confirmed.some((c) => metByOf(c) !== null);
+  const ids = new Set<string>();
+  listExample.data.forEach((x, index) => {
+    if (supported && isJudged(x.id, signature) && scenario(index).required.met > 0) ids.add(x.id);
+  });
+  const overall = mockOverall();
+  if (overall.status === "READY") overall.companies.forEach((c) => ids.add(c.posting.id));
+  new Set(confirmed.flatMap((c) => (c.repo?.id ? [c.repo.id as string] : []))).forEach((repoId) =>
+    mockRepoRecommendation(repoId).companies.forEach((c) => ids.add(c.posting.id)));
+  return { matchedPostings: ids.size };
+}
 /** Mock server only: 실서버처럼 누르면 배경에서 기업을 하나씩 확인하고(진행 개수), 다시 계산하는 동안에는 지난 기업을 그대로 준다 */
 export function mockOverall() {
   const state = db.overall;

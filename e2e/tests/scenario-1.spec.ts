@@ -63,9 +63,8 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       await page.goto('/repos');
       const row = page.getByRole('radio', { name: new RegExp(`${login} / sample-app`) });
       await row.click();
-      await expect(row).toContainText('내 커밋 10');
-      await expect(row).toContainText('PR 2');
-      await expect(row).toContainText('추천');
+      await expect(row).toContainText('PR 2개를 올린 레포예요');
+      await expect(row).toContainText('먼저 정리해 보기 좋아요');
 
       const repos = await dataOf(await page.request.get('/api/repos'));
       expect(repos).toHaveLength(1);

@@ -1,4 +1,4 @@
-"""자소서 초안이 근거를 벗어났거나 글자 수를 넘거나 목표에 못 미치는지 코드로 찾는다(검사기). 문항에 꼭 있어야 하는 재료도 여기서 정한다.
+"""자소서 초안이 근거를 벗어났거나 글자 수를 넘는지 코드로 찾는다(검사기). 문항에 꼭 있어야 하는 재료도 여기서 정한다.
 
 자소서에는 '5명·6개월·1위' 처럼 단위가 제각각인 수치가 많아, 카드 초안 검사(evidence_checks)의 성능 단위 수치와 함께
 따로 선 숫자가 근거에도 따로 선 숫자로 있는지 본다. 한글로 쓴 숫자·이름(다섯 명·레디스)은 코드로 잡지 못해 전체 검토가 본다.
@@ -41,7 +41,7 @@ _BLANK_HINTS: dict[str, str] = {
 #: 카드 고르기 답을 못 받아 유형을 모를 때 지원 동기 문항을 알아보는 말.
 _MOTIVATION_WORDS = ("지원 동기", "지원한 동기", "지원 이유", "지원한 이유", "지원하게 된", "입사 후", "포부")
 _LESSON_WORDS = ("성장", "실패", "배운")
-#: 재료가 모자라 목표 글자 수에 못 미칠 때 모델이 넣는 빈칸으로, 무엇을 더 쓰면 되는지를 사용자가 화면에서 보고 채운다.
+#: 재료가 모자란 자리에 모델이 넣는 빈칸으로, 무엇을 더 쓰면 되는지를 사용자가 화면에서 보고 채운다.
 _MORE_BLANK = re.compile(r"\[더 쓸 거리: [^\[\]\n]{1,60}\]")
 
 #: 영문으로 시작하는 낱말(React, Node.js, C++, k8s). 한 글자는 낱말로 보지 않는다.
@@ -154,9 +154,7 @@ def invented_numbers(text: str, source: str) -> list[str]:
     return numbers
 
 
-def check_draft(
-    text: str, *, source: str, char_limit: int, missing_items: list[MaterialItem], target: int = 0,
-) -> list[DraftIssue]:
+def check_draft(text: str, *, source: str, char_limit: int, missing_items: list[MaterialItem]) -> list[DraftIssue]:
     """초안에서 걸린 곳을 찾고, 수치·낱말은 그 값이 처음 나온 문장 번호를 함께 돌려준다."""
     issues = [DraftIssue("UNSOURCED_NUMBER", value, sentence_of(value, text)) for value in invented_numbers(text, source)]
     issues += [DraftIssue("UNSOURCED_TERM", term, sentence_of(term, text)) for term in unsourced_terms(text, source)]
@@ -164,9 +162,6 @@ def check_draft(
     over = countable_length(text) - char_limit
     if over > 0:
         issues.append(DraftIssue("OVER_LIMIT", str(over), None))
-    short = target - countable_length(text)
-    if short > 0 and not has_more_blank(text):
-        issues.append(DraftIssue("UNDER_LENGTH", str(short), None))
     return issues
 
 

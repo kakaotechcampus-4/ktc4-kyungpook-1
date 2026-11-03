@@ -231,9 +231,10 @@ class QuestionsResult(BaseModel):
 
 #: 초안에서 걸린 문제. REPEATED·UNSUPPORTED_CLAIM·OFF_TOPIC 은 전체 검토(감독)가, 나머지는 검사기(코드)가 찾는다.
 #: UNDER_LENGTH 는 글자 수가 목표에 못 미치는데 '[더 쓸 거리: …]' 빈칸도 없다는 뜻이다.
+#: INFERRED 는 문제가 아니라 AI 가 재료에 없는 해석을 지어 쓴 문장이라 사용자 확인이 필요하다는 표시다.
 DraftProblemCode = Literal[
     "UNSOURCED_NUMBER", "UNSOURCED_TERM", "OVER_LIMIT", "UNDER_LENGTH", "MISSING_BLANK", "REPEATED",
-    "UNSUPPORTED_CLAIM", "OFF_TOPIC",
+    "UNSUPPORTED_CLAIM", "OFF_TOPIC", "INFERRED",
 ]
 
 #: 초안을 누가 만들었는지. SKELETON 은 LLM 답을 받지 못해 카드 문장과 빈칸으로 만든 뼈대다.

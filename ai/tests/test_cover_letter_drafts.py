@@ -13,7 +13,8 @@ from schemas.cover_letter import DraftsRequest
 from services.cover_letter_check import blank
 from services.cover_letter_drafter import CoverLetterDrafter, FindingOutput, ReviewOutput
 from services.cover_letter_llm import CoverLetterLimits
-from services.cover_letter_writer import DecideOutput, DecisionItem, WriteOutput
+from services.cover_letter_writer import DecideOutput, DecisionItem, ReadinessOutput, SupportedOutput, WriteOutput
+from cover_letter_fakes import all_evidence
 from services.llm_settings import LLMConfigError
 from services.llm_structured_client import LLMStructuredCallError, StructuredCallResult
 
@@ -42,18 +43,23 @@ class DraftClient:
     """문항별 쓰기는 동시에 돌아 순서가 정해지지 않으므로 문항 문장으로 답을 고르고, 판단은 종류별로 차례로 돌려준다."""
 
     def __init__(self, writes: dict[str, list[Any]], decides: Optional[list[Any]] = None,
-                 reviews: Optional[list[Any]] = None) -> None:
+                 reviews: Optional[list[Any]] = None, readiness: Optional[dict[str, Any]] = None) -> None:
         self._writes = {text: list(answers) for text, answers in writes.items()}
         self._decides = list(decides or [])
         self._reviews = list(reviews or [])
+        self._readiness = readiness or {}
         self._lock = threading.Lock()
+        self.readiness_payloads: list[dict[str, Any]] = []
         self.write_payloads: list[dict[str, Any]] = []
         self.decide_payloads: list[dict[str, Any]] = []
         self.review_payloads: list[dict[str, Any]] = []
 
     def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
         with self._lock:
-            if output_model is WriteOutput:
+            if output_model is ReadinessOutput:
+                self.readiness_payloads.append(payload)
+                answer = self._readiness.get(payload["question"]["text"], all_evidence(payload))
+            elif output_model is WriteOutput:
                 self.write_payloads.append(payload)
                 answer = self._writes[payload["question"]["text"]].pop(0)
             elif output_model is DecideOutput:
@@ -507,17 +513,14 @@ def test_slow_question_does_not_take_the_review_time() -> None:
     assert "REVIEWED" in _kinds(result)
 
 
-def test_draft_below_target_length_is_rewritten_to_reach_it() -> None:
-    """초안이 목표 글자 수(상한의 70%)에 못 미치고 '[더 쓸 거리]' 빈칸도 없으면 사실을 풀어 써서 다시 쓰게 한다."""
-    long_draft = "배포 시간을 40분에서 12분으로 줄였습니다. " * 20
-    client = DraftClient({"문제 해결 경험": [GOOD, long_draft]}, reviews=[NO_REVIEW_FINDINGS])
+def test_short_draft_is_not_rewritten_to_fill_a_length_target() -> None:
+    """초안은 재료만큼만 쓰므로, 글자 수 상한의 70% 에 못 미쳐도 늘려 쓰라고 다시 쓰게 하지 않는다."""
+    client = DraftClient({"문제 해결 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS])
 
     result, _ = _draft(client, _request(_question()), CoverLetterLimits())
 
-    payloads = client.writes_for("문제 해결 경험")
-    assert payloads[0]["question"]["target_chars"] == 490
-    assert "글자 수가 목표보다" in payloads[1]["fix"]["problems"][0]
-    assert (result.drafts[0].text, result.drafts[0].rewrites) == (long_draft.strip(), 1)
+    assert (result.drafts[0].text, result.drafts[0].rewrites) == (GOOD, 0)
+    assert "target_chars" not in client.write_payloads[0]["question"]
 
 
 def test_short_draft_with_more_to_write_blank_passes_and_blank_is_not_counted() -> None:
@@ -532,14 +535,269 @@ def test_short_draft_with_more_to_write_blank_passes_and_blank_is_not_counted() 
     assert "CHECK_PASSED" in _kinds(result)
 
 
-def test_rewrite_after_review_that_is_still_short_is_not_reverted() -> None:
-    """검토 뒤 다시 쓴 글이 앞 초안처럼 목표 글자 수에 못 미칠 뿐이면 새 문제가 아니라서 되돌리지 않는다."""
-    claimed = GOOD.split(" 바뀐")[0] + " 팀장으로서 일정을 이끌었습니다."
-    fixed = GOOD + " 배포가 빨라졌습니다."
-    finding = FindingOutput(question_id=1, sentence_seq=2, code="UNSUPPORTED_CLAIM", reason="근거에 없는 팀장 역할")
-    client = DraftClient({"문제 해결 경험": [claimed, claimed, claimed, fixed]}, reviews=[ReviewOutput(findings=[finding])])
+def _supported(*pairs: tuple[int, str]) -> ReadinessOutput:
+    return ReadinessOutput(supported=[SupportedOutput(evidence=number, quote=quote) for number, quote in pairs])
 
-    result, _ = _draft(client, _request(_question()), CoverLetterLimits())
 
-    assert (result.drafts[0].text, result.drafts[0].rewrites) == (fixed, 3)
-    assert "REVERTED" not in _kinds(result)
+#: 배포 카드 문장. 증거 번호와 짝지어 '재료가 보여 주는 증거' 로 쓴다
+S_LINE, A_LINE, R_LINE = (s["text"] for s in DEPLOY_CARD["statements"])
+
+
+@pytest.mark.parametrize(
+    ("supported", "source", "missing"),
+    [
+        pytest.param(_supported((1, S_LINE), (2, A_LINE), (4, R_LINE)), "LLM", None, id="증거 3개 → 그대로 씀"),
+        pytest.param(_supported((1, S_LINE), (2, "캐시를 직접 설계해 빌드를 다시 짰다")), "LLM",
+                     ["선택지와 그걸 고른 기술적 근거", "해결 과정에서 막힌 곳과 넘은 방법"],
+                     id="재료에 없는 인용은 세지 않아 1개 → 빈칸 넣어 씀"),
+        pytest.param(_supported((2, "캐시를 직접 설계해 빌드를 다시 짰다"), (4, "배포가 세 배 빨라졌다")),
+                     "SKELETON", None, id="재료에 있는 증거 0개 → 뼈대"),
+    ],
+)
+def test_readiness_decides_how_to_write(supported: ReadinessOutput, source: str, missing: Optional[list[str]]) -> None:
+    """재료가 보여 주는 행동증거가 3개면 그대로, 1~2개면 모자란 사실 증거를 빈칸으로 넣어 쓰고, 하나도 없으면 쓰지 않고 뼈대로 둔다."""
+    client = DraftClient({"문제 해결 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS],
+                         readiness={"문제 해결 경험": supported})
+
+    result, ended_by = _draft(client, _request(_question()))
+
+    assert result.drafts[0].source == source
+    if source == "SKELETON":
+        assert client.write_payloads == []
+        step = next(step for step in result.steps if step.kind == "SKELETON")
+        assert (step.actor, step.reason, ended_by) == ("CODE", "문항이 보려는 경험 재료가 모자라 뼈대로 둠", "COMPLETED")
+    else:
+        assert client.write_payloads[0].get("missing_evidence") == missing
+
+
+def test_writing_goes_ahead_when_readiness_cannot_be_judged() -> None:
+    """준비도 판단을 못 받으면 쓸 수 있는 문항까지 뼈대가 되지 않게 막지 않고 쓴다."""
+    client = DraftClient({"문제 해결 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS],
+                         readiness={"문제 해결 경험": LLMStructuredCallError("실패")})
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert (result.drafts[0].source, "missing_evidence" in client.write_payloads[0]) == ("LLM", False)
+
+
+@pytest.mark.parametrize(
+    ("theme", "first_evidence", "deep"),
+    [("COLLABORATION", "함께 일한 상대와 상황(의견이 갈렸다면 어떻게 갈렸나)", False),
+     ("PROBLEM_SOLVING", "문제를 구체적으로 정의한 것", True)],
+)
+def test_write_payload_carries_evidence_and_tech_of_the_theme(theme: str, first_evidence: str, deep: bool) -> None:
+    """쓰기는 문항 유형의 행동증거와 기술 이야기를 얼마나 쓸지를 함께 받아, 협업 문항은 기술 세부를 줄이고 문제 해결 문항은 살린다."""
+    client = DraftClient({"문제 해결 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS])
+
+    _draft(client, _request(_question(theme=theme)))
+
+    question = client.write_payloads[0]["question"]
+    assert question["evidence"][0] == first_evidence
+    assert ("깊이를 살립니다" in question["tech"]) is deep
+
+
+#: 재료에 없는 해석(다시 한다면 다르게 할 점)으로, 작성 AI 가 추론으로 밝히는 문장
+INF = "다시 한다면 빌드 캐시를 먼저 살펴볼 것입니다."
+WITH_INF = f"{GOOD} {INF}"
+
+
+def test_inferred_sentence_the_writer_declares_is_marked_for_user_check() -> None:
+    """작성 AI 가 재료에 없는 해석으로 지어 썼다고 밝힌 문장에는 추론 표시(INFERRED)를 달고, 감독에게도 그 문장 번호를 알린다."""
+    client = DraftClient({"문제 해결 경험": [WriteOutput(text=WITH_INF, inferred=[INF])]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert [(m.sentence_seq, m.code, m.value) for m in result.drafts[0].marks] == [(3, "INFERRED", None)]
+    step = next(step for step in result.steps if step.kind == "MARKED")
+    assert (step.actor, step.code, step.sentence_seq, step.sentence) == ("SUB_AGENT", "INFERRED", 3, INF)
+    assert client.review_payloads[0]["questions"][0]["inferred"] == [3]
+
+
+@pytest.mark.parametrize(
+    ("claimed", "marked"),
+    [
+        pytest.param(["바뀐 모듈만"], [], id="문장 일부"),
+        pytest.param(["빌드 캐시를 먼저 살펴보겠습니다.", "바뀐 모듈만", INF], [3], id="버린 것은 2개 상한에 세지 않음"),
+        pytest.param(["다시 한다면  빌드 캐시를\n먼저 살펴볼 것입니다."], [3], id="띄어쓰기만 다름"),
+    ],
+)
+def test_only_whole_sentences_of_the_text_count_as_inferred(claimed: list[str], marked: list[int]) -> None:
+    """작성 AI 가 추론이라고 낸 것 가운데 글에 문장 그대로 있는 것만 추론으로 치고, 나머지는 오류 없이 버린다."""
+    client = DraftClient({"문제 해결 경험": [WriteOutput(text=WITH_INF, inferred=claimed)]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert ([m.sentence_seq for m in result.drafts[0].marks], len(client.write_payloads)) == (marked, 1)
+
+
+def test_more_than_two_inferred_sentences_are_asked_again() -> None:
+    """추론 문장이 문항에 2개를 넘으면 받아들이지 않고 다시 써 달라고 한다."""
+    second = "입사 후에도 배포 흐름부터 살피겠습니다."
+    third = "작은 단위로 나눠 보는 습관이 생겼습니다."
+    many = WriteOutput(text=" ".join([GOOD, INF, second, third]), inferred=[INF, second, third])
+    fewer = WriteOutput(text=" ".join([GOOD, INF, second]), inferred=[INF, second])
+    client = DraftClient({"문제 해결 경험": [many, fewer]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert len(client.write_payloads) == 2
+    assert [(m.sentence_seq, m.code) for m in result.drafts[0].marks] == [(3, "INFERRED"), (4, "INFERRED")]
+
+
+@pytest.mark.parametrize(
+    ("supported", "missing", "inferable"),
+    [
+        pytest.param(_supported((1, S_LINE), (2, A_LINE)), ["해결 과정에서 막힌 곳과 넘은 방법"], ["결과와 아쉬운 점·더 나은 방법"],
+                     id="증거 2개 → 사실은 빈칸, 해석은 추론"),
+        pytest.param(_supported((1, S_LINE), (2, A_LINE), (3, R_LINE)), None, ["결과와 아쉬운 점·더 나은 방법"],
+                     id="증거 3개 → 해석만 추론"),
+    ],
+)
+def test_missing_interpretation_is_inferred_and_missing_fact_is_left_blank(
+    supported: ReadinessOutput, missing: Optional[list[str]], inferable: list[str],
+) -> None:
+    """빠진 증거가 사실이면 빈칸으로(증거가 하나 모자랄 때만), 해석이면 빈칸 대신 추론 문장으로 쓰게 넘긴다."""
+    client = DraftClient({"문제 해결 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS], readiness={"문제 해결 경험": supported})
+
+    _draft(client, _request(_question()))
+
+    payload = client.write_payloads[0]
+    assert (payload.get("missing_evidence"), payload.get("inferable_evidence")) == (missing, inferable)
+
+
+def test_review_marks_undeclared_inference_without_rewriting() -> None:
+    """감독이 밝히지 않은 추론 문장을 찾으면 다시 쓰게 하지 않고, 그 문장에 감독이 단 추론 표시를 남긴다."""
+    finding = FindingOutput(question_id=1, sentence_seq=3, code="INFERRED", reason="근거에 없는 아쉬운 점")
+    client = DraftClient({"문제 해결 경험": [WITH_INF]}, reviews=[ReviewOutput(findings=[finding])])
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert (len(client.write_payloads), "SENT_BACK" in _kinds(result)) == (1, False)
+    assert [(m.sentence_seq, m.code) for m in result.drafts[0].marks] == [(3, "INFERRED")]
+    step = next(step for step in result.steps if step.kind == "MARKED")
+    assert (step.actor, step.code, step.sentence) == ("SUPERVISOR", "INFERRED", INF)
+
+
+def test_review_inference_mark_is_dropped_when_rewrite_removes_the_sentence() -> None:
+    """같은 문항이 다른 이유로 다시 쓰여 감독이 추론으로 본 문장이 없어지면, 다른 문장에 표시를 달지 않는다."""
+    findings = [FindingOutput(question_id=1, sentence_seq=3, code="INFERRED", reason="근거에 없는 아쉬운 점"),
+                FindingOutput(question_id=1, sentence_seq=4, code="OFF_TOPIC", reason="문항과 상관없음")]
+    client = DraftClient({"문제 해결 경험": [f"{WITH_INF} 회의실 예약도 맡았습니다.", GOOD]},
+                         reviews=[ReviewOutput(findings=findings)])
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert len(client.writes_for("문제 해결 경험")[1]["fix"]["problems"]) == 1
+    assert (result.drafts[0].text, result.drafts[0].marks) == (GOOD, [])
+
+
+def test_reverted_rewrite_keeps_the_inferred_marks_of_the_previous_draft() -> None:
+    """검토 뒤 다시 쓴 글을 되돌리면 앞 초안이 밝힌 추론 문장의 표시도 그대로 남는다."""
+    claimed = f"{WITH_INF} 팀장으로서 일정을 이끌었습니다."
+    finding = FindingOutput(question_id=1, sentence_seq=4, code="UNSUPPORTED_CLAIM", reason="근거에 없는 팀장 역할")
+    client = DraftClient({"문제 해결 경험": [WriteOutput(text=claimed, inferred=[INF]), GOOD + " 응답도 30% 빨라졌습니다."]},
+                         reviews=[ReviewOutput(findings=[finding])])
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert client.write_payloads[1]["fix"]["previous_inferred"] == [INF]
+    assert "REVERTED" in _kinds(result)
+    assert [(m.sentence_seq, m.code) for m in result.drafts[0].marks] == [(4, "UNSUPPORTED_CLAIM"), (3, "INFERRED")]
+
+
+def test_unanswered_learning_is_inferred_instead_of_blank() -> None:
+    """사용자가 답하지 않은 배운 점은 빈칸으로 넣게 하지 않고, 추론 문장으로 쓸 해석 증거로 넘긴다."""
+    client = DraftClient({"성장 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question("성장 경험", theme="GROWTH")))
+
+    payload = client.write_payloads[0]
+    assert (payload["blanks"], payload["inferable_evidence"], result.drafts[0].blanks) == ([], ["배운 점"], [])
+
+
+def test_fact_items_keep_their_blanks_when_learning_is_inferred() -> None:
+    """배운 점을 추론으로 돌려도, 재료에 없는 결과 같은 사실 항목은 그대로 빈칸으로 둔다."""
+    card = {**DEPLOY_CARD, "statements": DEPLOY_CARD["statements"][:2]}
+    text = f"배포 한 번에 40분이 걸려 바뀐 모듈만 다시 빌드했습니다.\n{blank('RESULT')}"
+    client = DraftClient({"성장 경험": [text]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question("성장 경험", theme="GROWTH", card=card)))
+
+    assert (client.write_payloads[0]["blanks"], result.drafts[0].blanks) == ([blank("RESULT")], ["RESULT"])
+
+
+def test_draft_without_learning_blank_is_not_sent_back_or_appended() -> None:
+    """배운 점 빈칸이 없는 글은 빈칸을 빠뜨렸다고 다시 쓰게 하지 않고, 끝에 배운 점 빈칸을 붙이지도 않는다."""
+    client = DraftClient({"성장 경험": [GOOD]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question("성장 경험", theme="GROWTH")))
+
+    assert (result.drafts[0].text, result.drafts[0].rewrites, "CHECK_FAILED" in _kinds(result)) == (GOOD, 0, False)
+
+
+#: 카드의 사실(k8s·12분)을 섞어 추론으로 밝힌 문장
+FACT_INF = "k8s 로 옮겨 12분으로 줄인 일에서 작게 나누는 법을 배웠습니다."
+
+
+def test_inferred_sentence_with_numbers_or_latin_terms_is_asked_again() -> None:
+    """추론 문장에 숫자·영문 낱말이 있으면 사실을 섞은 것으로 보고 다시 받고, 해석만 담은 추론은 그대로 받는다."""
+    mixed = WriteOutput(text=f"{GOOD} {FACT_INF}", inferred=[FACT_INF])
+    clean = WriteOutput(text=WITH_INF, inferred=[INF])
+    client = DraftClient({"문제 해결 경험": [mixed, clean]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert (len(client.write_payloads), result.drafts[0].text) == (2, WITH_INF)
+    assert [(m.sentence_seq, m.code) for m in result.drafts[0].marks] == [(3, "INFERRED")]
+
+
+def test_fact_mixed_inference_left_after_retries_stays_marked() -> None:
+    """다시 받아도 추론 문장에 사실이 섞여 있으면 글을 뼈대로 버리지 않고, 그 문장에 추론 표시를 단 채 둔다."""
+    mixed = WriteOutput(text=f"{GOOD} {FACT_INF}", inferred=[FACT_INF])
+    client = DraftClient({"문제 해결 경험": [mixed, mixed]}, reviews=[NO_REVIEW_FINDINGS])
+
+    result, _ = _draft(client, _request(_question()))
+
+    draft = result.drafts[0]
+    assert (draft.source, [(m.sentence_seq, m.code) for m in draft.marks]) == ("LLM", [(3, "INFERRED")])
+
+
+def test_review_inference_mixed_with_facts_is_sent_back_to_split() -> None:
+    """감독이 찾은 추론 문장에 숫자·영문 낱말(사실)이 섞여 있으면 표시만 달지 않고, 해석을 떼어 따로 쓰게 돌려보낸다."""
+    finding = FindingOutput(question_id=1, sentence_seq=3, code="INFERRED", reason="근거에 없는 배운 점")
+    client = DraftClient({"문제 해결 경험": [f"{GOOD} {FACT_INF}", WriteOutput(text=WITH_INF, inferred=[INF])]},
+                         reviews=[ReviewOutput(findings=[finding])])
+
+    result, _ = _draft(client, _request(_question()))
+
+    assert client.write_payloads[1]["fix"]["problems"] == [
+        "3번 문장은 사실과 해석이 섞여 있습니다. 해석('느꼈다·배웠다·생각했다' 부분)을 사실 문장에서 떼어 "
+        "따로 한 문장으로 쓰고 inferred 에 넣으세요.",
+    ]
+    marked = [(step.actor, step.sentence) for step in result.steps if step.kind == "MARKED"]
+    assert (result.drafts[0].text, marked) == (WITH_INF, [("SUB_AGENT", INF)])
+
+
+def test_mixed_review_inference_left_after_rewrite_is_still_marked() -> None:
+    """돌려보내도 사실이 섞인 그 문장이 그대로 남으면 감독의 추론 표시를 단다."""
+    finding = FindingOutput(question_id=1, sentence_seq=3, code="INFERRED", reason="근거에 없는 배운 점")
+    client = DraftClient({"문제 해결 경험": [f"{GOOD} {FACT_INF}", f"{GOOD} {FACT_INF}"]},
+                         reviews=[ReviewOutput(findings=[finding])])
+
+    result, _ = _draft(client, _request(_question()))
+
+    step = next(step for step in result.steps if step.kind == "MARKED")
+    assert (len(client.write_payloads), step.actor, step.code, step.sentence) == (2, "SUPERVISOR", "INFERRED", FACT_INF)
+
+
+def test_repeated_introduction_is_sent_back_to_mention_briefly() -> None:
+    """다른 문항과 되풀이한 문장은 이 문항의 카드 내용으로 바꾸고, 소개·포부의 되풀이면 짧게 짚기만 하라고 돌려보낸다."""
+    finding = FindingOutput(question_id=2, sentence_seq=1, code="REPEATED", reason="같은 프로젝트 소개")
+    client = DraftClient({"협업 경험": [GOOD_API], "문제 해결 경험": [GOOD, GOOD]}, reviews=[ReviewOutput(findings=[finding])])
+
+    _draft(client, _two_question_request())
+
+    assert client.writes_for("문제 해결 경험")[1]["fix"]["problems"] == [
+        "1번 문장이 다른 문항과 같은 이야기입니다(같은 프로젝트 소개). 이 문항의 카드 내용으로 바꾸세요. "
+        "프로젝트·회사 소개나 포부를 되풀이한 것이면 소개는 짧게 짚기만 하세요.",
+    ]

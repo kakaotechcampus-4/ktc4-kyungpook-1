@@ -22,17 +22,30 @@ from services.cover_letter_llm import (
     clip,
 )
 from services.cover_letter_progress import report_step
-from services.cover_letter_writer import SENTENCE_MAX_CHARS, QuestionWriter, ReviewFinding, WrittenDraft, source_text
+from services.cover_letter_writer import (
+    SENTENCE_MAX_CHARS,
+    QuestionWriter,
+    ReviewFinding,
+    WrittenDraft,
+    mixes_fact,
+    source_text,
+)
 from services.llm_executors import COVER_LETTER_JUDGE_EXECUTOR
 
 REVIEW_PROMPT = """당신은 자기소개서 여러 문항의 초안을 마지막으로 함께 읽는 감독입니다.
 입력으로 문항마다 문항 문장·유형(questions[].text·theme), 초안 문장(questions[].sentences: 번호·문장),
-그 문항의 근거 글(questions[].sources: 카드 문장·답), 지원 직무(job_role), 메모(memo), 프로필(profile)이 주어집니다.
+그 문항의 근거 글(questions[].sources: 카드 문장·답), 작성 AI 가 근거에 없는 해석으로 지어 썼다고 밝힌 문장 번호(questions[].inferred),
+지원 직무(job_role), 메모(memo), 프로필(profile)이 주어집니다.
 공고에서 시작한 자소서면 지원하는 공고(posting: 회사·제목·주요 업무)도 주어집니다.
 
 - findings: 고쳐야 할 문장마다 하나씩, 문항마다 최대 3개. code 는
-  REPEATED(다른 문항과 같은 일화를 크게 되풀이함) · UNSUPPORTED_CLAIM(그 문항의 근거 글·메모·프로필에 없는 역할·성과·사실, 예: 근거에 없는 '팀장으로서') ·
-  OFF_TOPIC(문항이 묻는 것과 상관없는 내용). reason 은 한 줄(40자 안팎).
+  REPEATED(다른 문항과 같은 일화를 크게 되풀이함. 다른 문항에 이미 나온 프로젝트·회사 소개나 포부 구절을 거의 그대로 되풀이한 문장도 여기에 듭니다 —
+  questions 순서로 처음 나온 문항은 소개해도 되고, 뒤 문항은 몇 마디로만 짚어야 합니다) · UNSUPPORTED_CLAIM(그 문항의 근거 글·메모·프로필에 없는 역할·성과·사실, 예: 근거에 없는 '팀장으로서') ·
+  OFF_TOPIC(문항이 묻는 것과 상관없는 내용 — 협업·갈등·리더십·지원 동기 문항에서 문항이 묻지 않는 기술 세부만 늘어놓은 문장도 여기에 듭니다) ·
+  INFERRED(근거 글·메모·프로필에 없는 해석 — 배운 점·그렇게 판단한 이유·직무와 이어지는 점·입사 후 포부 — 인데 inferred 에 없는 문장.
+  다시 쓰게 하지 않고 사용자 확인 표시만 답니다).
+  reason 은 한 줄(40자 안팎).
+- inferred 에 든 문장이 해석만 담고 있으면 문제가 아닙니다. inferred 에 든 문장이라도 근거 글에 없는 사실(숫자·역할·사건·기술·수상)이 들어 있으면 UNSUPPORTED_CLAIM 입니다.
 - 한글로 쓴 숫자('다섯 명', '세 배')와 한글로 쓴 기술·회사 이름도 근거 글에 없으면 UNSUPPORTED_CLAIM 입니다.
 - 근거 글에 같은 뜻이 있으면 표현이 달라도 UNSUPPORTED_CLAIM 이 아닙니다. 빈칸([항목: …])은 문제가 아닙니다.
 - 공고의 회사 이름과 주요 업무를 지원 이유나 기여하고 싶은 일로 쓰는 것은 문제가 아닙니다.
@@ -46,7 +59,7 @@ class FindingOutput(BaseModel):
 
     question_id: int
     sentence_seq: int
-    code: Literal["REPEATED", "UNSUPPORTED_CLAIM", "OFF_TOPIC"]
+    code: Literal["REPEATED", "UNSUPPORTED_CLAIM", "OFF_TOPIC", "INFERRED"]
     reason: str
 
 
@@ -91,13 +104,18 @@ class CoverLetterDrafter:
                 review_failed = True
                 record("SUPERVISOR", "FAILED")
             else:
-                record("SUPERVISOR", "REVIEWED", value=str(sum(len(found) for found in findings.values())))
-                for found in findings.values():
+                # 감독이 찾은 추론은 사용자가 확인할 것이라 표시만 단다. 사실이 섞인 문장만 해석을 떼어 쓰게 돌려보내고,
+                # 다시 써도 그 문장이 남으면 끝에 추론 표시가 달린다
+                sent_back = {qid: [finding for finding in found
+                                   if finding.code != "INFERRED" or mixes_fact(finding.sentence)]
+                             for qid, found in findings.items()}
+                record("SUPERVISOR", "REVIEWED", value=str(sum(len(found) for found in sent_back.values())))
+                for found in sent_back.values():
                     for finding in found:
                         record("SUPERVISOR", "SENT_BACK", finding.question_id, code=finding.code,
                                sentence_seq=finding.sentence_seq, reason=finding.reason, sentence=finding.sentence)
                 drafts = list(await asyncio.gather(*(
-                    self._writer.rewrite_for_review(request, question, draft, findings.get(question.question_id, []),
+                    self._writer.rewrite_for_review(request, question, draft, sent_back.get(question.question_id, []),
                                                     deadline, record)
                     for question, draft in zip(questions, drafts)
                 )))
@@ -106,7 +124,8 @@ class CoverLetterDrafter:
             self._writer.finish(request, question, draft, findings.get(question.question_id, []), record)
             for question, draft in zip(questions, drafts)
         ]
-        skeletons = sum(1 for draft in drafts if draft.source == "SKELETON")
+        # 재료가 모자라 일부러 뼈대로 둔 문항은 LLM 실패가 아니라서 끝난 모양을 낮추지 않는다
+        skeletons = sum(1 for draft in drafts if draft.source == "SKELETON" and not draft.not_ready)
         if skeletons == len(drafts):
             ended_by: EndedBy = "FALLBACK"
         elif skeletons or review_failed:
@@ -120,6 +139,9 @@ class CoverLetterDrafter:
     ) -> dict[int, list[ReviewFinding]]:
         limit = self._limits.max_material_chars
         sentences = {question.question_id: split_sentences(draft.text) for question, draft in reviewed}
+        declared = {question.question_id: [seq for seq, sentence in enumerate(sentences[question.question_id], start=1)
+                                           if sentence in draft.inferred]
+                    for question, draft in reviewed}
         payload: dict[str, Any] = {
             "job_role": clip(request.job_role, limit),
             "memo": clip(request.memo, limit),
@@ -132,6 +154,7 @@ class CoverLetterDrafter:
                     "sentences": [{"seq": index, "text": sentence}
                                   for index, sentence in enumerate(sentences[question.question_id], start=1)],
                     "sources": [clip(text, limit) for text in _question_sources(question)],
+                    "inferred": declared[question.question_id],
                 }
                 for question, _ in reviewed
             ],
@@ -153,6 +176,9 @@ class CoverLetterDrafter:
             sentence = sentences[found.question_id][found.sentence_seq - 1]
             # 빈칸 줄을 고치라고 돌려보내면 사용자가 채울 자리를 모델이 지어낸 내용으로 채운다
             if has_blank(sentence):
+                continue
+            # 작성 AI 가 이미 밝힌 추론은 표시가 달리므로 감독이 또 걸 필요가 없다
+            if found.code == "INFERRED" and found.sentence_seq in declared[found.question_id]:
                 continue
             reason = found.reason.strip()
             findings.setdefault(found.question_id, []).append(ReviewFinding(

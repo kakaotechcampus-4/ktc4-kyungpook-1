@@ -170,6 +170,24 @@ def resolve_overlaps(picks: list[Pick]) -> dict[int, Optional[int]]:
     return choice
 
 
+def drop_shared_supporting(assignments: list[QuestionAssignment]) -> list[QuestionAssignment]:
+    """다른 문항의 중심 카드이거나 앞 문항이 이미 보조로 쓴 카드는 보조에서 뺀다.
+
+    보조 카드도 글에 들어가므로, 겹치면 한 자소서 안에서 같은 경험이 여러 문항에 되풀이된다.
+    """
+    primaries = {assignment.primary_card_id for assignment in assignments if assignment.primary_card_id is not None}
+    used: set[int] = set()
+    kept: list[QuestionAssignment] = []
+    for assignment in assignments:
+        card = assignment.supporting_card_id
+        if card is not None and (card in primaries or card in used):
+            assignment = assignment.model_copy(update={"supporting_card_id": None})
+        elif card is not None:
+            used.add(card)
+        kept.append(assignment)
+    return kept
+
+
 def _first_overlap(order: list[int], choice: dict[int, Optional[int]]) -> Optional[int]:
     for qid in order:
         card = choice[qid]
@@ -231,9 +249,9 @@ class CoverLetterAssigner:
                     reason = sources.sourced(decision.reason, pick.first, pick.second, with_user=True)
                     steps.append(_reported(self._step(steps, "SUPERVISOR", "SWITCHED", pick.question_id, card, reason)))
 
-        assignments = [
+        assignments = drop_shared_supporting([
             self._assignment(question, pick, choice, decided_by) for question, pick in zip(request.questions, picks)
-        ]
+        ])
         failed = sum(1 for pick in picks if pick is None)
         if failed == len(picks):
             ended_by: EndedBy = "FALLBACK"

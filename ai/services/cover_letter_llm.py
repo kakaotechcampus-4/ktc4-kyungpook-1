@@ -54,19 +54,20 @@ class CoverLetterLimits:
     # 추론 토큰도 이 안에서 쓰므로 글자 수 상한(최대 5,000자)보다 넉넉히 둔다
     write_max_completion_tokens: int = 8_000
     decide_max_completion_tokens: int = 1_500
+    readiness_max_completion_tokens: int = 1_500
     review_max_completion_tokens: int = 2_500
     max_note_chars: int = 80
     max_question_chars: int = 150
     max_text_chars: int = 500
     max_material_chars: int = 1_000
-    # 자소서는 글자 수 상한 가까이 채우므로, 이 비율보다 짧으면 재료를 더 묻고 풀어 쓰거나 모자란 자리를 빈칸으로 알린다
+    # 재료가 이 비율보다 짧으면 질문을 더 한다. 초안은 이 길이를 채우려고 늘려 쓰지 않고 재료만큼만 쓴다
     target_ratio: float = 0.7
     max_considered: int = 3
     max_asks: int = 4
-    max_templates: int = 2
-    max_template_chars: int = 80
     max_rewrites: int = 2
     max_findings_per_question: int = 3
+    # 재료에 없는 해석을 지어 쓴 문장은 사용자가 하나씩 확인해야 해서 문항마다 이만큼만 둔다
+    max_inferred: int = 2
 
 
 async def call_until_valid(

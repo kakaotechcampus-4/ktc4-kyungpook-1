@@ -210,6 +210,28 @@ public class CoverLetterController {
 
     }
 
+    @DeleteMapping("/api/cover-letters/{id}/questions/{questionId}/marks/{sentenceSeq}")
+    @Operation(summary = "AI 추론 문장 확인", description = """
+            초안을 받은 뒤(DRAFTED)에 사용자가 맞다고 확인한 AI 추론 문장의 표시(marks 의 code INFERRED)만 지웁니다.
+            글(text·aiText)과 다른 표시는 그대로이며, 응답은 초안 고치기와 같은 자소서 전체입니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "없는 자소서·문항, 남의 자소서",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님, 그 문장 번호에 INFERRED 표시가 없음(이미 확인함·다른 표시만 있음)",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<CoverLetterResponse> confirmInference(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "자소서 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String id,
+            @Parameter(description = "문항 id", schema = @Schema(type = "string", format = "uuid")) @PathVariable String questionId,
+            @Parameter(description = "확인한 문장의 번호(sentences 의 seq)") @PathVariable int sentenceSeq) {
+
+        return ApiResponse.ok(CoverLetterResponse.from(coverLetters.confirmInference(toUuid(id), toUuid(questionId),
+                loginUser.id(), sentenceSeq)));
+
+    }
+
     @DeleteMapping("/api/cover-letters/{id}")
     @Operation(summary = "자소서 지우기", description = """
             어느 단계에서든 자소서와 문항·답·초안을 지웁니다. AI 가 돌던 단계의 결과는 저장하지 않고 버립니다.

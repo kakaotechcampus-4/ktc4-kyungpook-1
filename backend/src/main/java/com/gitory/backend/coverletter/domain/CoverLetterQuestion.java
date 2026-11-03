@@ -30,6 +30,8 @@ import static lombok.AccessLevel.PROTECTED;
 @Table(name = "cover_letter_question")
 public class CoverLetterQuestion {
 
+    private static final String INFERRED = "INFERRED";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -158,6 +160,19 @@ public class CoverLetterQuestion {
         charCount = DraftText.countableLength(text);
         overBy = Math.max(0, charCount - charLimit);
         blanks = new ArrayList<>(DraftText.blanksIn(text));
+
+    }
+
+    /** 사용자가 맞다고 확인한 AI 추론 문장의 표시만 지우며, 글은 그대로 둔다 */
+    public void confirmInference(int sentenceSeq) {
+
+        List<DraftMark> left = marks.stream()
+                .filter(mark -> !(mark.sentenceSeq() == sentenceSeq && INFERRED.equals(mark.code())))
+                .toList();
+        if (left.size() == marks.size()) {
+            throw new CoverLetterStateException("그 문장에는 확인할 AI 추론 표시가 없습니다.");
+        }
+        marks = new ArrayList<>(left);
 
     }
 

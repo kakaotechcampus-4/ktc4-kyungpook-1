@@ -39,7 +39,8 @@ class AiCoverLetterTurnAdapterTest {
     private static final List<CoverLetterPolishRequest.Other> OTHERS = List.of(
             new CoverLetterPolishRequest.Other(2, "지원 동기를 쓰세요", "결제를 다뤄 보고 싶다."));
     private static final CoverLetterTurnRequest REPLY = turnRequest("USER_REPLY");
-    private static final CoverLetterFillRequest FILL = new CoverLetterFillRequest(7L, "백엔드 개발", null, null, OTHERS,
+    private static final CoverLetterFillRequest FILL = new CoverLetterFillRequest(7L, "백엔드 개발", null,
+            List.of("METICULOUS"), null, OTHERS,
             new CoverLetterPolishRequest.Target(1, "협업 경험을 쓰세요", 700, "COLLABORATION", CARD, null,
                     List.of(new CoverLetterQuestionsRequest.KnownAnswer("ACTION", "로그를 같이 보며 원인을 좁혔다", 11L)),
                     "배포를 함께 고쳤다. " + BLANK, List.of()),
@@ -87,6 +88,7 @@ class AiCoverLetterTurnAdapterTest {
 
         JsonNode sent = mapper.readTree(requestBody);
         assertThat(requestPath).isEqualTo("/internal/cover-letter-turns");
+        assertThat(sent.path("strengths").get(0).asString()).isEqualTo("METICULOUS");
         assertThat(sent.path("cover_letter_id").asLong()).isEqualTo(7L);
         assertThat(sent.has("posting")).isFalse();
         assertThat(sent.path("trigger").asString()).isEqualTo("USER_REPLY");
@@ -119,6 +121,7 @@ class AiCoverLetterTurnAdapterTest {
 
         JsonNode sent = mapper.readTree(requestBody);
         assertThat(requestPath).isEqualTo("/internal/cover-letter-fill");
+        assertThat(sent.path("strengths").get(0).asString()).isEqualTo("METICULOUS");
         assertThat(sent.path("filled_item").asString()).isEqualTo("ACTION");
         assertThat(sent.path("blank").asString()).isEqualTo(BLANK);
         assertThat(sent.path("target").path("current_text").asString()).isEqualTo("배포를 함께 고쳤다. " + BLANK);
@@ -237,7 +240,7 @@ class AiCoverLetterTurnAdapterTest {
 
     private static CoverLetterTurnRequest turnRequest(String trigger) {
 
-        return new CoverLetterTurnRequest(7L, "백엔드 개발", null, null,
+        return new CoverLetterTurnRequest(7L, "백엔드 개발", null, List.of("METICULOUS"), null,
                 new CoverLetterTurnRequest.Question(1, "협업 경험을 쓰세요", 700, "COLLABORATION", CARD, null, List.of(),
                         "배포를 함께 고쳤다. " + BLANK, List.of(BLANK), List.of()),
                 OTHERS,

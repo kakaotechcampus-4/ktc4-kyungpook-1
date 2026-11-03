@@ -78,8 +78,10 @@ class CoverLetterApiTest {
 
     private static final String LEARNING_BLANK = "[배운 점: 배운 점을 적어 주세요]";
 
+    private static final String MEMO = "\"결제 서비스를 직접 만들어 보고 싶어서 이 회사에 지원합니다\"";
+
     private static final String BODY = """
-            {"jobRole": "백엔드 개발", "memo": "결제 서비스를 만들고 싶다",
+            {"jobRole": "백엔드 개발", "memo": "결제 서비스를 직접 만들어 보고 싶어서 이 회사에 지원합니다",
              "questions": [{"text": "협업 경험을 쓰세요", "charLimit": 500}, {"text": "실패 경험을 쓰세요", "charLimit": null}]}
             """;
 
@@ -164,17 +166,95 @@ class CoverLetterApiTest {
 
         String question = "{\"text\": \"협업 경험을 쓰세요\", \"charLimit\": 500}";
         return Stream.of(
-                Arguments.of(body("\"  \"", "null", question), "k"),
-                Arguments.of(body("\"" + "가".repeat(101) + "\"", "null", question), "k"),
+                Arguments.of(body("\"  \"", MEMO, question), "k"),
+                Arguments.of(body("\"" + "가".repeat(101) + "\"", MEMO, question), "k"),
                 Arguments.of(body("\"백엔드\"", "\"" + "가".repeat(1_001) + "\"", question), "k"),
-                Arguments.of(body("\"백엔드\"", "null", ""), "k"),
-                Arguments.of(body("\"백엔드\"", "null", String.join(",", java.util.Collections.nCopies(11, question))), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \" \", \"charLimit\": 500}"), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \"" + "가".repeat(501) + "\", \"charLimit\": 500}"), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \"문항\", \"charLimit\": 99}"), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \"문항\", \"charLimit\": 5001}"), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \"문\\u0000항\", \"charLimit\": 500}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, ""), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, String.join(",", java.util.Collections.nCopies(11, question))), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \" \", \"charLimit\": 500}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \"" + "가".repeat(501) + "\", \"charLimit\": 500}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \"문항\", \"charLimit\": 99}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \"문항\", \"charLimit\": 5001}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \"문\\u0000항\", \"charLimit\": 500}"), "k"),
                 Arguments.of(BODY, "k".repeat(256)));
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("unusableMemos")
+    @DisplayName("지원 이유가 없거나 짧거나 한글이 없거나, 같은 글자 반복·URL·이메일·쓸 수 없는 글자가 있으면 걸린 규칙을 알리는 400 이고 만들지 않는다")
+    void rejectsMemoBreakingReasonRules(String memo, String message) throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(body("\"백엔드\"", memo, "{\"text\": \"협업 경험을 쓰세요\", \"charLimit\": 500}"), "k")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.error.message").value(message));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter", Integer.class)).isZero();
+
+    }
+
+    static Stream<Arguments> unusableMemos() {
+
+        String tooShort = "지원 이유를 20자 이상 적어 주세요.";
+        return Stream.of(
+                Arguments.of("null", tooShort),
+                Arguments.of("\"결제 서비스를 만들고 싶어요\"", tooShort),
+                Arguments.of("\"I want to build payment services at this company\"", "지원 이유는 한국어로 적어 주세요."),
+                Arguments.of("\"결제 서비스를 만들고 싶어요 ㅋㅋㅋㅋㅋ 진짜로 지원합니다\"",
+                        "지원 이유에 같은 글자를 5번 이상 이어 쓸 수 없습니다."),
+                Arguments.of("\"결제 서비스 소개 글을 보고 지원합니다 https://gitory.dev/about\"",
+                        "지원 이유에는 URL 을 넣을 수 없습니다."),
+                Arguments.of("\"결제 서비스를 만들고 싶어 지원합니다 연락은 grow22@gitory.dev 로\"",
+                        "지원 이유에는 이메일 주소를 넣을 수 없습니다."),
+                Arguments.of("\"결제 서비스를 만들고 싶어 지원합니다 বাংলা\"",
+                        "지원 이유에는 한글·영문·숫자·흔한 문장부호만 쓸 수 있습니다."),
+                Arguments.of("\"결제 서비스를 만들고 싶어서 이 회사에\\u0000 지원합니다\"",
+                        "지원 이유에는 한글·영문·숫자·흔한 문장부호만 쓸 수 있습니다."));
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("unusableStrengths")
+    @DisplayName("강점이 3개를 넘거나 겹치거나 모르는 값이면 400 이고 만들지 않는다")
+    void rejectsStrengthsBreakingRules(String strengths, String message) throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(withStrengths(strengths), "k")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.error.message").value(message));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter", Integer.class)).isZero();
+
+    }
+
+    static Stream<Arguments> unusableStrengths() {
+
+        return Stream.of(
+                Arguments.of("[\"METICULOUS\", \"PERSISTENT\", \"PROACTIVE\", \"DOCUMENTING\"]",
+                        "강점은 3개까지 고를 수 있습니다."),
+                Arguments.of("[\"METICULOUS\", \"METICULOUS\"]", "같은 강점을 두 번 고를 수 없습니다."),
+                Arguments.of("[\"PATIENT\"]", "고를 수 없는 강점이 있습니다."));
+
+    }
+
+    @Test
+    @DisplayName("고른 강점은 고른 순서대로 저장해 응답에 싣고, 지원 이유 판정은 질문 단계 전이라 null 이다")
+    void createsLetterWithStrengths() throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(withStrengths("[\"USER_FOCUS\", \"METICULOUS\"]"), "key-1")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.strengths", contains("USER_FOCUS", "METICULOUS")))
+                .andExpect(jsonPath("$.data.memoUsable").value(nullValue()));
+
+        assertThat(jdbc.queryForObject("SELECT strengths::text FROM cover_letter", String.class))
+                .isEqualTo("[\"USER_FOCUS\", \"METICULOUS\"]");
 
     }
 
@@ -203,7 +283,8 @@ class CoverLetterApiTest {
         confirmedCard(myUserId, "배포 시간 단축", "A");
         String firstId = idOf(create(BODY, "key-1"));
 
-        create("{\"jobRole\": \"프론트엔드\", \"questions\": [{\"text\": \"다른 문항\"}]}", "key-1")
+        create("{\"jobRole\": \"프론트엔드\", \"memo\": " + MEMO + ", \"questions\": [{\"text\": \"다른 문항\"}]}",
+                "key-1")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(firstId))
                 .andExpect(jsonPath("$.data.jobRole").value("백엔드 개발"));
@@ -769,6 +850,11 @@ class CoverLetterApiTest {
 
     private static String body(String jobRole, String memo, String questions) {
         return "{\"jobRole\": " + jobRole + ", \"memo\": " + memo + ", \"questions\": [" + questions + "]}";
+    }
+
+    private static String withStrengths(String strengths) {
+        return "{\"jobRole\": \"백엔드\", \"memo\": " + MEMO + ", \"strengths\": " + strengths
+                + ", \"questions\": [{\"text\": \"협업 경험을 쓰세요\", \"charLimit\": 500}]}";
     }
 
     private Long confirmedCard(Long userId, String title, String... slots) {

@@ -178,7 +178,7 @@ class CoverLetterPostingApiTest {
         judge(Map.of(spring, card));
         createFromPosting(publicIdOf(posting)).andExpect(status().isOk());
         create("""
-                {"jobRole": "백엔드 개발", "memo": null, "questions": [{"text": "협업 경험을 쓰세요", "charLimit": 700}]}
+                {"jobRole": "백엔드 개발", "memo": "결제 서비스를 직접 만들어 보고 싶어서 이 회사에 지원합니다", "questions": [{"text": "협업 경험을 쓰세요", "charLimit": 700}]}
                 """, "key-plain").andExpect(status().isOk()).andExpect(jsonPath("$.data.posting").value(nullValue()));
 
         mvc.perform(get("/api/cover-letters").with(me()))
@@ -229,7 +229,7 @@ class CoverLetterPostingApiTest {
     private ResultActions createFromPosting(String postingId) throws Exception {
 
         return create("""
-                {"jobRole": "백엔드 개발", "memo": null, "questions": [{"text": "지원 동기를 쓰세요", "charLimit": 700}],
+                {"jobRole": "백엔드 개발", "memo": "결제 서비스를 직접 만들어 보고 싶어서 이 회사에 지원합니다", "questions": [{"text": "지원 동기를 쓰세요", "charLimit": 700}],
                  "postingId": "%s"}
                 """.formatted(postingId), "key-" + postingId);
 

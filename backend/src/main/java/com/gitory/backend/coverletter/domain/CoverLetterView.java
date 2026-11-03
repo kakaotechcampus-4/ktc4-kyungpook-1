@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.UUID;
 
 public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep failedStep, String errorCode,
-                              Boolean retryable, boolean running, String jobRole, String memo, PostingRef posting,
-                              Instant createdAt,
+                              Boolean retryable, boolean running, String jobRole, String memo,
+                              List<Strength> strengths, Boolean memoUsable, PostingRef posting, Instant createdAt,
                               Instant updatedAt, List<Question> questions, List<Step> assignSteps,
                               List<WritingStep> draftSteps) {
 

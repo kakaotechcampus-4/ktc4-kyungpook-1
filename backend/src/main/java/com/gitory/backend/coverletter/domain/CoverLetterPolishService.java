@@ -110,8 +110,8 @@ public class CoverLetterPolishService {
             throw new InvalidCoverLetterInputException("첨삭할 글이 비었습니다.");
         }
 
-        return new CoverLetterPolishRequest(letter.getId(), letter.getJobRole(), letter.getMemo(),
-                CoverLetterPosting.inputOf(letter), othersOf(loaded, target),
+        return new CoverLetterPolishRequest(letter.getId(), letter.getJobRole(), letter.memoForWriting(),
+                letter.strengthCodes(), CoverLetterPosting.inputOf(letter), othersOf(loaded, target),
                 targetOf(target, cardsOf(cardMaterials, target)));
 
     }

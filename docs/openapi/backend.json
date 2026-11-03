@@ -1759,6 +1759,10 @@
           "memo" : {
             "type" : "string"
           },
+          "memoUsable" : {
+            "description" : "질문 단계가 지원 이유를 글에 쓸 수 있다고 봤으면 true, 쓰기 어렵다고 봤으면 false(이때 초안은 지원 이유를 빈칸으로 두고 대화에서 다시 묻는다). 판정 전이거나 지원 이유가 없는 옛 자소서면 null",
+            "type" : "boolean"
+          },
           "pollAfterMs" : {
             "description" : "AI 가 도는 단계면 다음 조회 간격(밀리초), 아니면 null",
             "example" : 1500,
@@ -1785,6 +1789,14 @@
           },
           "steps" : {
             "$ref" : "#/components/schemas/Steps"
+          },
+          "strengths" : {
+            "description" : "만들 때 고른 강점, 0~3개. 고른 것이 없으면 빈 배열",
+            "items" : {
+              "enum" : [ "METICULOUS", "PERSISTENT", "PROACTIVE", "FAST_LEARNER", "RESPONSIBLE", "PROBLEM_SOLVING", "COMMUNICATION", "COLLABORATION", "PERSUASION", "CONSIDERATE", "USER_FOCUS", "DOCUMENTING" ],
+              "type" : "string"
+            },
+            "type" : "array"
           },
           "updatedAt" : {
             "format" : "date-time",
@@ -1882,7 +1894,7 @@
             "type" : "string"
           },
           "memo" : {
-            "description" : "지원 이유 등 메모, 1,000자까지. 없으면 null",
+            "description" : "지원 이유, 필수. 공백 뺀 20자 이상 1,000자까지이고 한글이 있어야 하며, 같은 글자(또는 2~3자 조각) 5번 이상 이어 쓰기·URL·이메일·한글/영문/숫자/문장부호 밖의 글자는 받지 않는다",
             "type" : "string"
           },
           "postingId" : {
@@ -1894,6 +1906,13 @@
             "description" : "문항 1~10개",
             "items" : {
               "$ref" : "#/components/schemas/CoverLetterQuestionInput"
+            },
+            "type" : "array"
+          },
+          "strengths" : {
+            "description" : "강점 코드 0~3개, 중복 없음. 없으면 null 또는 빈 배열",
+            "items" : {
+              "type" : "string"
             },
             "type" : "array"
           }
@@ -6456,7 +6475,7 @@
         "tags" : [ "Cover letters" ]
       },
       "post" : {
-        "description" : "직무·메모·문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING).\n공고 상세에서 시작하면 postingId 를 보내며, 그때의 공고와 맞춰 본 판단을 자소서에 남겨 카드 고르기·질문·초안이 그 기준으로 AI 를 부릅니다.\n같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.\n화면은 입력을 고치면 새 키를 만듭니다.\n",
+        "description" : "직무·지원 이유·강점·문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING).\n공고 상세에서 시작하면 postingId 를 보내며, 그때의 공고와 맞춰 본 판단을 자소서에 남겨 카드 고르기·질문·초안이 그 기준으로 AI 를 부릅니다.\n같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.\n화면은 입력을 고치면 새 키를 만듭니다.\n",
         "operationId" : "create_1",
         "parameters" : [ {
           "description" : "응답을 못 받고 다시 보내도 자소서가 한 편만 생기도록, 만들 때마다 새로 만들어 보내는 255자까지의 키",
@@ -6496,7 +6515,7 @@
                 }
               }
             },
-            "description" : "INVALID_REQUEST: 직무가 비었거나 100자를 넘음, 메모가 1,000자를 넘음, 문항이 0개거나 10개를 넘음, 문항이 비었거나 500자를 넘음, 글자 수가 100~5,000 이 아님, U+0000 이 있음, Idempotency-Key 가 255자를 넘음"
+            "description" : "INVALID_REQUEST: 직무가 비었거나 100자를 넘음, 지원 이유가 규칙(공백 뺀 20자 이상·1,000자 이하·한글 포함·5번 이상 같은 글자 반복 없음·URL/이메일 없음·한글/영문/숫자/문장부호만)을 어김, 강점이 3개를 넘거나 겹치거나 모르는 값임, 문항이 0개거나 10개를 넘음, 문항이 비었거나 500자를 넘음, 글자 수가 100~5,000 이 아님, U+0000 이 있음, Idempotency-Key 가 255자를 넘음"
           },
           "404" : {
             "content" : {

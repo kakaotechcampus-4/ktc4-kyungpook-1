@@ -25,10 +25,13 @@ const TAB_ICON: Record<PanelTab, ReactNode> = { fill: <MessageSquarePlus size={2
  * 860px 아래에서는 아래 막대 세 칸이 되고, 누르면 반 높이 시트로 열린다(종이는 가리지 않는다).
  * 첨삭 요청과 그 결과는 탭을 옮겨도 이어지도록 여기서 갖는다.
  */
-export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, onGo, onFlag }: {
+export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, onGo, onFlag, talk, onTalk, onTalked, onShowFilled }: {
   letter: CoverLetter; texts: Record<string, string>; onText: (id: string, text: string) => void;
   activeId: string; mobile: boolean; onLock: (id: string | null) => void; onGo: (questionId: string) => void;
   onFlag: (questionId: string, key: string) => void;
+  /** 알림 줄의 '→ Qn에 넣기'(#733) — 채우기 탭을 열고 그 문항 이야기를 시작한다 */
+  talk: { questionId: string } | null; onTalk: (questionId: string) => void; onTalked: () => void;
+  onShowFilled: (questionId: string, sentence: string | null) => void;
 }) {
   const [tab, setTab] = useState<PanelTab>('polish');
   const [sheet, setSheet] = useState<PanelTab | null>(null);
@@ -60,6 +63,11 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
     return () => window.removeEventListener('keydown', onKey);
   }, [sheet]);
   useEffect(() => { if (!mobile) setSheet(null); }, [mobile]);
+  useEffect(() => {
+    if (!talk) return;
+    if (mobile) setSheet('fill');
+    else setTab('fill');
+  }, [talk, mobile]);
   // 데스크톱 패널은 화면 아래에서 끝나게 높이를 맞춘다 — 그래야 아래에 붙은 '적용하기' 줄이 늘 보인다
   useEffect(() => {
     if (mobile) return;
@@ -151,7 +159,10 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   const flag = (key: string) => { if (mobile) setSheet(null); onFlag(q.id, key); };
   const view: PolishView = running === q.id ? 'running' : q.polish ? 'result' : applied[q.id] ? 'applied' : 'idle';
   const body = (t: PanelTab) => {
-    if (t === 'fill') return <FillTab />;
+    if (t === 'fill') {
+      return <FillTab letter={letter} activeId={q.id} texts={texts} onText={onText} talk={talk} onTalked={onTalked}
+        onShow={(id, sentence) => { if (mobile) setSheet(null); onShowFilled(id, sentence); }} />;
+    }
     if (t === 'inference') return <InferenceTab items={items} confirmingKey={confirmingKey} note={infNote} {...inference} />;
     return <PolishTab q={q} current={textOf(q)} view={view} step={step} error={error?.id === q.id ? error.message : null}
       applying={apply.isPending} flags={flags} onRun={() => void run(q)} onApply={() => applyTo(q)} onFlag={flag} />;
@@ -189,7 +200,7 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   }
   return (
     <aside ref={asideRef} className="clp clp-scroll" aria-label="다듬기 패널">
-      <Notices questions={letter.questions} texts={texts} onGo={onGo} />
+      <Notices questions={letter.questions} texts={texts} onGo={onGo} onTalk={onTalk} />
       {head()}
       <PanelTabs tab={tab} onTab={setTab} badge={items.length} />
       <section className="clp-card" role="tabpanel" id={tabPanelId(tab)} aria-labelledby={tabId(tab)}>{body(tab)}</section>

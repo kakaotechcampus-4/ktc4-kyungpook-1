@@ -40,6 +40,8 @@ export function useActiveQuestion(paperRef: RefObject<HTMLElement | null>, ids: 
       const inBand = new Map<string, boolean>();
       io = new IntersectionObserver((entries) => {
         for (const e of entries) { const id = idOf(e.target); if (id) inBand.set(id, e.isIntersecting); }
+        // 글상자에 들어가 있으면 그 문항이다 — 글상자로 들어가며 생긴 굴림이 띠의 다른 문항으로 되돌리지 않게
+        if (idOf(document.activeElement) && root.contains(document.activeElement)) return;
         const first = ids.find((id) => inBand.get(id));
         if (first) setActive(first);
       }, { rootMargin: '-35% 0px -55% 0px' });

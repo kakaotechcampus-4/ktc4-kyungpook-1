@@ -9,7 +9,10 @@ import { unconfirmedInferences, type NoteThread } from '@/lib/coverLetterNotes';
 import { locateSentence } from '@/lib/draftPaper';
 import { blanksIn, moreToWrite } from '@/lib/draftText';
 import { track } from '@/lib/track';
+import { useReducedMotion } from '@/lib/useLiveText';
 import { TextRuns, type Highlight } from './TextRuns';
+
+const FLASH_MS = 2_400;
 
 const fitHeight = (el: HTMLTextAreaElement) => {
   el.style.height = '0px';
@@ -54,8 +57,9 @@ export function useDraftEditing(letterId: string, q: CoverLetterQuestion, text: 
  * ⑥ 고치는 답 칸 — 실제 textarea 를 종이 모양으로 두고, 칠하기는 뒤에 같은 글을 그린 층이 맡는다(한국어 조합 입력이 깨지지 않게).
  * 저장(칸을 벗어날 때·버튼)·복사·AI 원본·채울 곳은 예전 ⑥ 과 같은 규칙이고 자리만 옮겼다.
  */
-export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot, editing }: {
+export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot, editing, flash = null }: {
   letterId: string; q: CoverLetterQuestion; text: string; onText: (text: string) => void; threads: NoteThread[]; focusKey: string | null; foot: ReactNode; editing: DraftEditing;
+  flash?: { sentence: string | null; n: number } | null;
 }) {
   const d = q.draft!;
   const [showOriginal, setShowOriginal] = useState(false);
@@ -82,10 +86,29 @@ export function EditAnswer({ letterId, q, text, onText, threads, focusKey, foot,
     return () => ro.disconnect();
   }, [area]);
 
-  const highlights = useMemo<Highlight[]>(() => threads.flatMap((t) => {
-    const r = locateSentence(text, t.sentence);
-    return r ? [{ key: t.key, ...r, status: t.status, value: t.value, focus: focusKey === t.key }] : [];
-  }), [threads, text, focusKey]);
+  // 채우기로 다시 쓴 문장은 잠깐 파랑으로 칠하고 그 자리로 간다 — 겹치는 메모보다 앞에 둔다
+  const reduced = useReducedMotion();
+  const [lit, setLit] = useState<string | null>(null);
+  useEffect(() => {
+    if (!flash) return;
+    setLit(flash.sentence);
+    const frame = requestAnimationFrame(() => {
+      const el = area.current?.closest('[data-question]');
+      (el?.querySelector('[data-note="fill"]') ?? el)?.scrollIntoView?.({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+    });
+    const t = setTimeout(() => setLit(null), FLASH_MS);
+    return () => { cancelAnimationFrame(frame); clearTimeout(t); };
+  }, [flash?.n]);
+  const highlights = useMemo<Highlight[]>(() => {
+    const fill = lit ? locateSentence(text, lit) : null;
+    return [
+      ...(fill ? [{ key: 'fill', ...fill, status: 'open' as const, value: null, focus: false, flash: true }] : []),
+      ...threads.flatMap((t) => {
+        const r = locateSentence(text, t.sentence);
+        return r ? [{ key: t.key, ...r, status: t.status, value: t.value, focus: focusKey === t.key }] : [];
+      }),
+    ];
+  }, [threads, text, focusKey, lit]);
 
   const copy = async () => {
     const ok = await copyText(text);

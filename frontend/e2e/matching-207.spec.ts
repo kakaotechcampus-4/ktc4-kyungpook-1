@@ -38,8 +38,8 @@ for (const width of [320, 390, 768, 1440]) {
     ).toBe(true);
     await page.getByPlaceholder("기업이나 직무 검색").fill("나래");
     await expect(page.locator(".match-card")).toHaveCount(1);
-    await page.getByRole("combobox", { name: "경력", exact: true }).click();
-    await page.getByRole("option", { name: "신입 가능", exact: true }).click();
+    const backend = page.getByRole("group", { name: "직무" }).getByRole("button", { name: "백엔드", exact: true });
+    await backend.click();
     await page.locator(".match-card").click();
     await expect(
       page.getByRole("heading", { name: "서버 개발자 (신입)", exact: true }),
@@ -57,11 +57,9 @@ for (const width of [320, 390, 768, 1440]) {
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await page.getByRole("link", { name: "← 공고 목록" }).click();
+    await page.getByRole("link", { name: "공고 목록으로" }).click();
     await expect(page.getByPlaceholder("기업이나 직무 검색")).toHaveValue("나래");
-    await expect(
-      page.getByRole("combobox", { name: "경력", exact: true }),
-    ).toContainText("신입 가능");
+    await expect(backend).toHaveAttribute("aria-pressed", "true");
     if (width === 390) {
       await page.locator(".match-card").click();
       // 맞춰 보면 결과가 차례로 펼쳐진 뒤(6초쯤) 조건 아래 근거 카드 링크가 생긴다
@@ -80,6 +78,6 @@ test("dark matching uses readable surfaces and preserves keyboard actions", asyn
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.getByPlaceholder("기업이나 직무 검색").fill("없는회사");
   await expect(page.getByText("조건에 맞는 공고가 없어요")).toBeVisible();
-  await page.getByRole("button", { name: "검색과 필터 초기화" }).click();
+  await page.getByRole("button", { name: "검색과 직무 초기화" }).click();
   await expect(page.locator(".match-card")).toHaveCount(5);
 });

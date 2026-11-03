@@ -1,4 +1,4 @@
-"""자소서 카드 고르기(A1)·질문 만들기(A2)·초안 쓰기와 전체 검토(A3~A5) 요청/응답 모델.
+"""자소서 카드 고르기(A1)·질문 만들기(A2)·초안 쓰기와 전체 검토(A3~A5)·문항 첨삭·채팅으로 재료 채우기 요청/응답 모델.
 
 AI 는 고르고 묻고 쓰기만 하고, 자소서·문항·답 저장과 이미 받은 답 중 다시 쓸 것을 고르는 일은 Spring 이 한다.
 """
@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 #: 카드의 자소서 문항 유형. 프론트 계약 `themes` 와 같은 값이다.
 CardTheme = Literal["COLLABORATION", "CONFLICT", "PROBLEM_SOLVING", "LEADERSHIP", "CHALLENGE", "FAILURE", "GROWTH"]
@@ -36,6 +36,12 @@ StepKind = Literal["PICKED", "NO_FIT", "FAILED", "CHECKED", "SWITCHED", "RESOLVE
 #: NONE 은 물을 항목이 없어 LLM 을 부르지 않았다.
 AskSource = Literal["LLM", "TEMPLATE", "NONE"]
 
+#: 사용자가 고른 강점. 화면 이름은 FE 에만 두고 API 는 코드만 주고받는다.
+Strength = Literal[
+    "METICULOUS", "PERSISTENT", "PROACTIVE", "FAST_LEARNER", "RESPONSIBLE", "PROBLEM_SOLVING",
+    "COMMUNICATION", "COLLABORATION", "PERSUASION", "CONSIDERATE", "USER_FOCUS", "DOCUMENTING",
+]
+
 PositiveId = Annotated[int, Field(strict=True, gt=0)]
 NonBlankText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -44,6 +50,19 @@ class StrictRequestModel(BaseModel):
     """알 수 없는 요청 필드를 조용히 버리지 않는 내부 API 입력 모델."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+def _no_duplicate_strengths(strengths: list[str]) -> list[str]:
+    if len(set(strengths)) != len(strengths):
+        raise ValueError("strengths 에 같은 값이 두 번 있습니다.")
+    return strengths
+
+
+Strengths = Annotated[
+    list[Strength],
+    Field(max_length=3, description="사용자가 고른 강점 최대 3개, 같은 값 없이. 없으면 빈 배열"),
+    AfterValidator(_no_duplicate_strengths),
+]
 
 
 class ProfileItem(StrictRequestModel):
@@ -105,6 +124,7 @@ class AssignmentRequest(StrictRequestModel):
     posting: Optional[Posting] = Field(None, description="공고 상세에서 시작한 자소서면 그 공고, 아니면 null")
     questions: list[CoverLetterQuestion] = Field(..., min_length=1, max_length=10)
     cards: list[CardSummary] = Field(default_factory=list, max_length=100, description="확정 카드 전부(초안 카드 제외)")
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _ids_are_unique(self) -> "AssignmentRequest":
@@ -196,6 +216,7 @@ class QuestionsRequest(StrictRequestModel):
     profile: list[ProfileItem] = Field(default_factory=list, max_length=30)
     posting: Optional[Posting] = None
     questions: list[QuestionMaterial] = Field(..., min_length=1, max_length=10)
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _ids_are_unique(self) -> "QuestionsRequest":
@@ -227,6 +248,12 @@ class QuestionsResult(BaseModel):
 
     cover_letter_id: int
     questions: list[QuestionAsks] = Field(..., description="요청 문항 순서 그대로")
+    memo_usable: bool = Field(
+        False, description="memo 가 지원 이유로 쓸 만한 글인지. memo 가 없거나 비었으면 false 이고 memo_problem 은 null",
+    )
+    memo_problem: Optional[str] = Field(
+        None, max_length=40, description="memo_usable 이 false 일 때 쓸 수 없는 까닭 한 줄(40자 안). memo 가 없으면 null",
+    )
 
 
 #: 초안에서 걸린 문제. REPEATED·UNSUPPORTED_CLAIM·OFF_TOPIC 은 전체 검토(감독)가, 나머지는 검사기(코드)가 찾는다.
@@ -283,6 +310,7 @@ class DraftsRequest(StrictRequestModel):
     profile: list[ProfileItem] = Field(default_factory=list, max_length=30)
     posting: Optional[Posting] = None
     questions: list[DraftQuestion] = Field(..., min_length=1, max_length=10)
+    strengths: Strengths = []
 
     @model_validator(mode="after")
     def _ids_are_unique(self) -> "DraftsRequest":
@@ -342,4 +370,207 @@ class DraftsResult(BaseModel):
 
     cover_letter_id: int
     drafts: list[QuestionDraft] = Field(..., description="요청 문항 순서 그대로")
+    steps: list[DraftStep]
+
+
+#: 첨삭 포인트가 아쉬운 점(WEAK)인지 잘한 점(GOOD)인지.
+PolishKind = Literal["GOOD", "WEAK"]
+#: 첨삭 포인트 분류: 문항 적합성·근거·읽기 쉬움·다른 문항과 겹침·기술 용어.
+PolishCategory = Literal["FIT", "EVIDENCE", "READABILITY", "OVERLAP", "TECH_TERMS"]
+
+
+class PolishOther(StrictRequestModel):
+    question_id: PositiveId
+    text: NonBlankText = Field(..., max_length=500)
+    current_text: str = Field(..., max_length=10_000, description="그 문항의 지금 글. 겹침을 보는 데만 쓴다")
+
+
+class PolishTarget(StrictRequestModel):
+    question_id: PositiveId
+    text: NonBlankText = Field(..., max_length=500)
+    char_limit: int = Field(..., ge=100, le=5_000, strict=True)
+    question_theme: Optional[QuestionTheme] = None
+    primary_card: Optional[CardDetail] = None
+    supporting_card: Optional[CardDetail] = None
+    answers: list[KnownAnswer] = Field(default_factory=list, max_length=20)
+    current_text: NonBlankText = Field(..., max_length=10_000, description="첨삭할 지금 글. 사용자가 고친 글일 수 있다")
+    inferred_seqs: list[PositiveId] = Field(
+        default_factory=list, max_length=50,
+        description=(
+            "지금 INFERRED 표시가 달린(사용자가 아직 확인하지 않은) 문장 번호로, current_text 를 문장으로 나눈 번호다. "
+            "고친 글에 그대로 남은 문장은 표시 여부를 그대로 둔다 — 여기 있으면 INFERRED 를 남기고, 없으면(확인했거나 사실 문장) 다시 달지 않는다"
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _check_cards_and_seqs(self) -> "PolishTarget":
+        if self.supporting_card is not None and self.primary_card is None:
+            raise ValueError("supporting_card 는 primary_card 가 있을 때만 보낼 수 있습니다.")
+        if len(set(self.inferred_seqs)) != len(self.inferred_seqs):
+            raise ValueError("inferred_seqs 에 같은 번호가 두 번 있습니다.")
+        return self
+
+
+class PolishRequest(StrictRequestModel):
+    """`POST /internal/cover-letter-polish` 요청 모델."""
+
+    cover_letter_id: PositiveId
+    job_role: NonBlankText = Field(..., max_length=100)
+    memo: Optional[str] = Field(None, max_length=1_000)
+    posting: Optional[Posting] = None
+    others: list[PolishOther] = Field(default_factory=list, max_length=9, description="같은 자소서의 다른 문항")
+    target: PolishTarget
+    strengths: Strengths = []
+
+    @model_validator(mode="after")
+    def _ids_are_unique(self) -> "PolishRequest":
+        ids = [other.question_id for other in self.others] + [self.target.question_id]
+        if len(set(ids)) != len(ids):
+            raise ValueError("others 와 target 에 같은 question_id 가 두 번 있습니다.")
+        return self
+
+
+class PolishPoint(BaseModel):
+    seq: int = Field(..., description="1부터. 아쉬운 점(WEAK)이 먼저, 잘한 점(GOOD)이 뒤에 온다")
+    kind: PolishKind
+    category: PolishCategory
+    title: str = Field(..., max_length=30)
+    detail: str = Field(..., max_length=60)
+    sentence_seqs: list[int] = Field(
+        default_factory=list, description="고친 글(draft.sentences)의 문장 번호. WEAK 는 고친 자리, GOOD 은 잘 쓴 자리, 없으면 빈 배열",
+    )
+
+
+class PolishResult(BaseModel):
+    """`POST /internal/cover-letter-polish` 응답 `data` 모델."""
+
+    summary: str = Field(..., description="글 전체에 대한 한두 문장 평가")
+    points: list[PolishPoint] = Field(..., description="WEAK 최대 4개, GOOD 최대 3개")
+    draft: QuestionDraft = Field(..., description="고친 글. cover-letter-drafts 의 초안과 같은 검사·표시를 거쳤다")
+    steps: list[DraftStep]
+
+
+#: 자소서 채팅 말풍선을 누가 했는지.
+TurnRole = Literal["AI", "USER"]
+#: OPEN 은 그 문항 이야기를 시작, USER_REPLY 는 사용자가 방금 답함, SKIP 은 사용자가 넘김.
+TurnTrigger = Literal["OPEN", "USER_REPLY", "SKIP"]
+#: ASKING 은 질문이 열림, FILLED 는 이 답으로 그 문항을 다시 쓸 수 있음, DONE 은 그 문항에 더 물을 게 없음,
+#: OFF_TOPIC 은 자소서 재료가 아닌 말이라 돌려보냄.
+TurnStatus = Literal["ASKING", "FILLED", "DONE", "OFF_TOPIC"]
+
+
+class TurnQuestion(StrictRequestModel):
+    question_id: PositiveId
+    text: NonBlankText = Field(..., max_length=500)
+    char_limit: int = Field(..., ge=100, le=5_000, strict=True)
+    question_theme: Optional[QuestionTheme] = None
+    primary_card: Optional[CardDetail] = None
+    supporting_card: Optional[CardDetail] = None
+    answers: list[KnownAnswer] = Field(default_factory=list, max_length=20)
+    current_text: NonBlankText = Field(..., max_length=10_000, description="지금 종이의 글")
+    blanks: list[Annotated[NonBlankText, StringConstraints(max_length=200)]] = Field(
+        default_factory=list, max_length=10,
+        description="지금 글에 남은 빈칸. '[더 쓸 거리: 꾸준히 익힌 행동]' 같은 빈칸 글 전체나 그 안의 글('꾸준히 익힌 행동')",
+    )
+    missing_evidence: list[Annotated[NonBlankText, StringConstraints(max_length=200)]] = Field(
+        default_factory=list, max_length=4, description="재료에 없어 글에 드러나지 않은 행동증거",
+    )
+
+    @model_validator(mode="after")
+    def _supporting_needs_primary(self) -> "TurnQuestion":
+        if self.supporting_card is not None and self.primary_card is None:
+            raise ValueError("supporting_card 는 primary_card 가 있을 때만 보낼 수 있습니다.")
+        return self
+
+
+class ThreadTurn(StrictRequestModel):
+    seq: PositiveId
+    role: TurnRole
+    question_id: PositiveId
+    text: NonBlankText = Field(..., max_length=2_000)
+    item: Optional[MaterialItem] = Field(None, description="AI 턴이 묻거나 받은 항목")
+    status: Optional[TurnStatus] = Field(
+        None, description="AI 턴의 status. 보내면 문항당 질문 수를 ASKING 턴으로 세고, 없으면 item 이 있는 AI 턴을 질문으로 센다",
+    )
+
+
+class TurnRequest(StrictRequestModel):
+    """`POST /internal/cover-letter-turns` 요청 모델."""
+
+    cover_letter_id: PositiveId
+    job_role: NonBlankText = Field(..., max_length=100)
+    memo: Optional[str] = Field(None, max_length=1_000)
+    posting: Optional[Posting] = None
+    question: TurnQuestion
+    others: list[PolishOther] = Field(default_factory=list, max_length=9, description="같은 자소서의 다른 문항")
+    thread: list[ThreadTurn] = Field(default_factory=list, max_length=300, description="자소서 하나의 대화 전체, 오래된 것부터")
+    trigger: TurnTrigger
+    strengths: Strengths = []
+
+    @model_validator(mode="after")
+    def _check_thread(self) -> "TurnRequest":
+        if self.question.question_id in {other.question_id for other in self.others}:
+            raise ValueError("others 와 question 에 같은 question_id 가 두 번 있습니다.")
+        if len({turn.seq for turn in self.thread}) != len(self.thread):
+            raise ValueError("thread 에 같은 seq 가 두 번 있습니다.")
+        if self.trigger == "USER_REPLY":
+            last = self.thread[-1] if self.thread else None
+            if last is None or last.role != "USER" or last.question_id != self.question.question_id:
+                raise ValueError("USER_REPLY 는 thread 의 마지막 턴이 이 문항의 USER 턴이어야 합니다.")
+        return self
+
+
+class TurnMessage(BaseModel):
+    text: str = Field(..., description="AI 말풍선 글. 질문은 세 줄 안(뭐가 비었는지·왜 필요한지·뭘 알려 달라는지와 예시)")
+    question_id: int
+    item: Optional[MaterialItem] = Field(None, description="묻거나 받은 항목. DONE 이면 null")
+
+
+class TurnAnswer(BaseModel):
+    item: MaterialItem
+    text: str = Field(..., description="사용자의 말을 '~다' 체 재료 문장으로 정리한 것. 사용자가 말한 사실만 담는다")
+    sufficient: bool = Field(..., description="false 면 같은 항목을 꼬리 질문으로 더 묻는다")
+
+
+class TurnResult(BaseModel):
+    """`POST /internal/cover-letter-turns` 응답 `data` 모델."""
+
+    message: TurnMessage
+    answer: Optional[TurnAnswer] = Field(
+        None, description="USER_REPLY 에서 받은 답. FILLED 면 Spring 이 저장하고 문항을 다시 쓴다",
+    )
+    status: TurnStatus
+
+
+class FillRequest(StrictRequestModel):
+    """`POST /internal/cover-letter-fill` 요청 모델."""
+
+    cover_letter_id: PositiveId
+    job_role: NonBlankText = Field(..., max_length=100)
+    memo: Optional[str] = Field(None, max_length=1_000)
+    posting: Optional[Posting] = None
+    others: list[PolishOther] = Field(default_factory=list, max_length=9, description="같은 자소서의 다른 문항")
+    target: PolishTarget = Field(..., description="다시 쓸 문항. answers 에는 방금 받은 답이 들어 있다")
+    filled_item: MaterialItem = Field(..., description="방금 받은 답의 항목. target.answers 에 이 항목의 답이 있어야 한다")
+    blank: Optional[Annotated[NonBlankText, StringConstraints(max_length=200)]] = Field(
+        None, description="채울 빈칸(빈칸 글 전체나 그 안의 글). 없으면 그 항목 자리에 한 문장까지 더한다",
+    )
+    strengths: Strengths = []
+
+    @model_validator(mode="after")
+    def _check_ids_and_answer(self) -> "FillRequest":
+        ids = [other.question_id for other in self.others] + [self.target.question_id]
+        if len(set(ids)) != len(ids):
+            raise ValueError("others 와 target 에 같은 question_id 가 두 번 있습니다.")
+        if all(answer.item != self.filled_item for answer in self.target.answers):
+            raise ValueError("target.answers 에 filled_item 의 답이 없습니다.")
+        return self
+
+
+class FillResult(BaseModel):
+    """`POST /internal/cover-letter-fill` 응답 `data` 모델."""
+
+    draft: QuestionDraft = Field(
+        ..., description="다시 쓴 글. 고쳐 써도 새 문제가 남거나 다른 문장을 여럿 바꾸면 앞 글로 되돌리고 steps 에 REVERTED 가 남는다",
+    )
     steps: list[DraftStep]

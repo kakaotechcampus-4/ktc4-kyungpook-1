@@ -63,9 +63,8 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       await page.goto('/repos');
       const row = page.getByRole('radio', { name: new RegExp(`${login} / sample-app`) });
       await row.click();
-      await expect(row).toContainText('내 커밋 10');
-      await expect(row).toContainText('PR 2');
-      await expect(row).toContainText('추천');
+      await expect(row).toContainText('PR 2개를 올린 레포예요');
+      await expect(row).toContainText('먼저 정리해 보기 좋아요');
 
       const repos = await dataOf(await page.request.get('/api/repos'));
       expect(repos).toHaveLength(1);
@@ -105,7 +104,7 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
         )
         .toEqual({ state: 'SUCCEEDED', partial: false, errorCode: null });
       await expect(page).toHaveURL(/\/candidates/, { timeout: SLOW });
-      await expect(page.getByRole('heading', { name: /^후보 \d+개/ })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /에서 찾은 일$/ })).toBeVisible();
       // 가짜 LLM 이 만든 제목이 보이면 LLM 경로를 탄 것이다
       await expect(page.getByText(CANDIDATE).first()).toBeVisible();
     });
@@ -113,8 +112,12 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
     let cardId: string;
     await test.step('5. 후보 하나로 카드 만들기', async () => {
       // 후보 순서는 AI 점수에 기대므로 이름으로 고른다
-      await page.getByRole('checkbox', { name: `${CANDIDATE} 선택` }).check();
-      await page.getByRole('button', { name: '선택한 1개로 카드 만들기' }).click();
+      // 처음엔 추천 5개만 보이므로 접힌 쪽에 있으면 먼저 편다. 타일 전체가 고르기 버튼이라 이름이 들어간 버튼을 누른다
+      const more = page.getByRole('button', { name: /^나머지 \d+개 더 보기$/ });
+      if (await more.isVisible()) await more.click();
+      await page.getByRole('button', { name: CANDIDATE }).click();
+      await expect(page.getByText('1개 골랐어요')).toBeVisible();
+      await page.getByRole('button', { name: '카드 만들기', exact: true }).click();
       await expect(page).toHaveURL(/\/cards\/[^/?]+$/, { timeout: SLOW });
       cardId = new URL(page.url()).pathname.split('/').pop()!;
     });

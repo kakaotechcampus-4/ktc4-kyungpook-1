@@ -6,13 +6,16 @@ import { loginAsDemo } from './helpers';
  * 영역은 ::after 로 넓히므로 getBoundingClientRect 로는 잴 수 없다 — 실제로 그 자리를 눌렀을 때 어느 요소가 받는지(elementFromPoint)로 잰다.
  */
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
-  test(`토스트의 닫기·실행 취소는 눈에 보이는 글자보다 넓은 영역을 눌러도 받는다 (${viewport.width}px)`, async ({ page }) => {
+  test(`토스트의 닫기·보기 버튼은 눈에 보이는 글자보다 넓은 영역을 눌러도 받는다 (${viewport.width}px)`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await loginAsDemo(page);
-    await page.goto('/repos/r_auth/candidates');
-    await page.locator('.cand').first().getByRole('button', { name: '제외' }).click();
-    const toast = page.locator('.toast');
-    await expect(toast).toBeVisible();
+    // 다른 화면에 있는 동안 정리가 끝나면 '보기'가 붙은 알림이 뜬다(후보 보드의 '제외' 실행 취소 알림은 #753 에서 없어졌다)
+    await page.goto('/repos?select=r_web&disclose=1');
+    await page.getByRole('button', { name: '정리 시작' }).click();
+    await expect(page).toHaveURL(/\/repos\/r_web\/run/);
+    await page.locator('.crumb').getByRole('link', { name: '홈' }).click();
+    const toast = page.locator('.toast').filter({ has: page.locator('.toast__action') });
+    await expect(toast).toBeVisible({ timeout: 30_000 });
     // 나타나는 움직임(위로 올라옴)이 끝난 뒤에 잰다
     await toast.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
 

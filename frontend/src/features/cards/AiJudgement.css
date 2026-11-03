@@ -26,3 +26,11 @@
 /* 낭독 영역이 비어 있을 때는 자리를 잡지 않는다(부모의 gap 이 한 칸 늘지 않게 흐름 밖으로 둔다). 접근성 트리에는 그대로 있다 */
 .ai-live { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .ai-live:empty { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+
+.interview-complete { padding: 18px 20px; border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-paper); }
+.interview-complete__summary { display: flex; flex-direction: column; gap: 6px; }
+.interview-complete__summary > strong { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-primary); }
+.interview-complete__summary > p { margin: 0; max-width: 48ch; font-size: 13px; line-height: 1.7; color: var(--text-secondary); word-break: keep-all; overflow-wrap: anywhere; }
+.interview-complete__reason { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-default); }
+.interview-complete__reason > summary { width: fit-content; cursor: pointer; font-size: 12px; line-height: 20px; color: var(--text-secondary); }
+.interview-complete__reason[open] > summary { margin-bottom: 10px; }

@@ -102,7 +102,7 @@ class CoverLetterDrafter:
         reviewed = [(question, draft) for question, draft in zip(questions, drafts) if draft.source == "LLM"]
         if reviewed:
             try:
-                findings = await self._review(request, reviewed, deadline)
+                findings = await self.review(request, reviewed, deadline)
             except CoverLetterLLMUnavailable:
                 review_failed = True
                 record("SUPERVISOR", "FAILED")
@@ -137,7 +137,7 @@ class CoverLetterDrafter:
             ended_by = "COMPLETED"
         return DraftsResult(cover_letter_id=request.cover_letter_id, drafts=results, steps=steps), ended_by
 
-    async def _review(
+    async def review(
         self, request: DraftsRequest, reviewed: list[tuple[DraftQuestion, WrittenDraft]], deadline: float,
     ) -> dict[int, list[ReviewFinding]]:
         limit = self._limits.max_material_chars

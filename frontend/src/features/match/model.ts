@@ -1,4 +1,4 @@
-import { MatchCategory, type MatchDetail, type MatchTarget } from "@/api/matching";
+import { MatchCategory, type MatchDetail, type MatchTarget, type OverallRecommendation } from "@/api/matching";
 import type { CardSummary } from "@/api/schemas";
 export const categoryLabel = {
   BACKEND: "백엔드",
@@ -95,7 +95,37 @@ export const postingFacts = (item: MatchTarget) =>
     (value): value is string => value !== null,
   );
 
-// ───────── 기업별 보기 ─────────
+// ───────── 맞춰 본 결과로 목록 나누기 ─────────
+
+type FitCounts = Pick<OverallRecommendation["companies"][number], "requiredMet" | "requiredTotal" | "preferredMet" | "preferredTotal">;
+
+/** 공고 타일 안의 맞는 정도 한 줄. 학력·경력 같은 일반 조건은 서버가 세지 않아, 기술·경험 필수 조건이 없는 공고를 0개 중 0개라고 쓰지 않는다 */
+export function fitLine(c: FitCounts) {
+  const preferred = c.preferredTotal ? `, 우대 ${c.preferredTotal}개 중 ${c.preferredMet}개가 맞아요` : "";
+  if (c.requiredTotal === 0) return `기술·경험 필수 조건이 없어요${preferred}`;
+  if (c.requiredMet >= c.requiredTotal) return `필수 조건 ${c.requiredTotal}개를 모두 채웠어요${preferred}`;
+  return `필수 조건 ${c.requiredTotal}개 중 ${c.requiredMet}개를 채웠어요`;
+}
+
+export type FitPosting = { item: MatchTarget; counts: FitCounts };
+
+/**
+ * 맞춰 본 기업(순위 순)의 공고를 목록에서 찾아 '나와 맞는 공고'(fit)와 필수 조건을 하나도 못 채운 '아직 부족한 공고'(gap)로 나누고, 나머지를 rest 로 둔다.
+ * 목록에 없는 공고(검색·직무로 걸러졌거나 목록에서 빠진 공고)는 묶음에 넣지 않는다.
+ */
+export function splitByFit(list: readonly MatchTarget[], companies: OverallRecommendation["companies"]) {
+  const byId = new Map(list.map((item) => [item.id, item]));
+  const fit: FitPosting[] = [];
+  const gap: FitPosting[] = [];
+  for (const counts of companies) {
+    const item = byId.get(counts.posting.id);
+    if (item) (counts.requiredTotal > 0 && counts.requiredMet === 0 ? gap : fit).push({ item, counts });
+  }
+  const grouped = new Set([...fit, ...gap].map((x) => x.item.id));
+  return { fit, gap, rest: list.filter((item) => !grouped.has(item.id)) };
+}
+
+// ───────── 기업 묶기(기업 페이지) ─────────
 // 서버(#556)가 공고마다 companyId(같은 회사를 묶는 id)와 logoUrl 을 준다. companyId 로 묶고, 그 칸이 없는 응답(구서버·목)일 때만 이름(companyKey)으로 묶는다.
 // 목록 단계의 등급(fit)·충족 개수(met)는 근거가 얕아 기업 묶음에서는 쓰지 않는다 — 기업 순서도 공고 수와 이름처럼 서버가 준 사실로만 정한다.
 
@@ -210,25 +240,6 @@ const coreName = (name: string) => {
 export function companyMonogram(name: string) {
   const first = Array.from(coreName(name)).find((ch) => /[\p{L}\p{N}]/u.test(ch));
   return first ? first.toLocaleUpperCase("en") : "·";
-}
-
-/** 마크 색 가짓수 — match-company.css 의 .company-mark--0 ~ --7 과 맞춘다 */
-export const COMPANY_TONES = 8;
-
-/** 이름에서 색 번호를 정한다. 같은 기업은 언제나 같은 색(FNV-1a + 섞기). 표기만 다른 이름(공백·대소문자·(주))은 같은 색을 쓴다. */
-export function companyTone(name: string) {
-  let hash = 0x811c9dc5;
-  for (const ch of coreName(name)) {
-    hash ^= ch.codePointAt(0)!;
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  // 짧은 이름은 끝 글자만 달라도 아래 비트가 몰리기 쉬워 한 번 더 섞는다(murmur3 finalizer)
-  hash ^= hash >>> 16;
-  hash = Math.imul(hash, 0x85ebca6b) >>> 0;
-  hash ^= hash >>> 13;
-  hash = Math.imul(hash, 0xc2b2ae35) >>> 0;
-  hash ^= hash >>> 16;
-  return (hash >>> 0) % COMPANY_TONES;
 }
 
 /** 주소의 검색·필터·정렬 값을 목록 화면과 같은 규칙으로 읽는다(기업 페이지가 목록과 같은 공고를 보여 주려고) */

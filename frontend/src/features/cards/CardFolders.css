@@ -1,7 +1,9 @@
 /*
- * 경험 카드 폴더(이슈 #522, 10/29 회의). 레포·활동마다 닫힌 폴더 하나, 카드는 폴더 밖으로 나오지 않는다.
- * 색은 토큰만 쓴다(다크 모드는 토큰이 알아서 바뀐다): 뒤판·탭 --bg-ink-solid, 앞판 --bg-surface + --border-default, 숫자 --text-accent.
- * 마우스를 올리거나 키보드로 닿으면 뒤판은 --bg-ink-hover, 앞판 테두리는 --border-selected 로 색만 바뀐다(움직임 없음).
+ * 경험 카드 폴더(이슈 #522, 10/29 회의). 레포·활동마다 카드 묶음 하나, 카드는 묶음 밖으로 나오지 않는다.
+ * 맨 위 카드는 경험 카드 타일과 같은 모양(바탕 --bg-surface, 테두리 --border-default, 모서리 --radius-lg)이고, 그 뒤로 겹쳐 보이는 카드 수가 장 수를 따른다
+ * (한 장은 겹침 없음, 두 장은 한 겹, 세 장 이상은 두 겹). 카드가 한 장도 없으면 점선 테두리다. 겹친 카드는 장식이라 글이 없다.
+ * 색은 토큰만 쓴다(다크 모드는 토큰이 알아서 바뀐다). 숫자는 --text-accent.
+ * 마우스를 올리거나 키보드로 닿으면 맨 위 카드와 겹친 카드의 테두리가 모두 --border-selected 로 색만 바뀐다(움직임 없음).
  * 폴더는 모두 같은 색 하나다. 레포마다 색을 달리하면 무지개처럼 보여 화면의 한 가지 강조색 규칙과 어긋난다.
  */
 .folders { display: flex; flex-direction: column; gap: 14px; }
@@ -9,29 +11,43 @@
 .folders__bar .right { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .folders__notice { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
 
-/* 한 줄에 둘 이상 들어가는 만큼만 열을 만든다. 390 이하에서는 한 줄에 폴더 하나(이름이 잘리지 않게) */
-.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 20px 16px; }
+/* 한 줄에 셋까지(340~400px) — max-width 가 없으면 넓은 화면에서 넷 이상이 된다. 중간 폭은 둘, 폰은 하나
+ * 줄 간격 36px 은 올렸을 때 뒤 카드가 솟는 높이(390px 폭·7°에서 약 30px)보다 커야 윗줄과 겹치지 않는다 */
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 36px 20px; max-width: 1200px; }
 
 .folder-grid > li { display: flex; min-width: 0; }
-.folder { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; padding-top: 20px; border-radius: var(--radius-lg); color: var(--text-primary); isolation: isolate; }
-.folder__back, .folder__back::before { background: var(--bg-ink-solid); }
-.folder__back { position: absolute; z-index: -1; top: 8px; right: 0; bottom: 0; left: 0; border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg); }
-/* 탭: 뒤판 왼쪽 위로 솟은 조각. 글은 넣지 않는다 */
-.folder__back::before { content: ''; position: absolute; top: -8px; left: 0; width: min(44%, 132px); height: 16px; border-radius: var(--radius-md) 0 0 0; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%); }
-.folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 128px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
-.folder:hover .folder__back, .folder:hover .folder__back::before,
-.folder:focus-visible .folder__back, .folder:focus-visible .folder__back::before { background: var(--bg-ink-hover); }
+/* 부채꼴 자리(위·오른쪽)는 모든 폴더에 같이 비워 둔다 — 겹친 수에 따라 앞판 크기가 달라지면 줄이 들쭉날쭉해진다 */
+.folder { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; padding: 10px 10px 8px 0; border-radius: var(--radius-lg); color: var(--text-primary); isolation: isolate; }
+/* 뒤로 겹친 카드는 손에 쥔 패처럼 3°·6° 돌아가 모서리가 오른쪽 위로 삐져나온다 — 아래로만 삐져나오면 그림자로 읽히고 다크에선 안 보인다 */
+.folder__back { position: absolute; z-index: -1; inset: 10px 10px 8px 0; pointer-events: none; }
+.folder__back::before, .folder__back::after { content: ''; position: absolute; display: none; inset: 0; background: var(--bg-subtle); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); transform-origin: 85% 100%; transition: transform .15s ease; }
+/* ::before 가 먼 카드, ::after 가 가까운 카드다(나중에 그려지는 쪽이 위). 아래쪽 오른편을 축으로 돌려 위와 오른쪽으로 펼쳐진다(시안 A 와 같은 각) */
+.folder[data-deck="1"] .folder__back::after { display: block; transform: rotate(3deg); }
+.folder[data-deck="2"] .folder__back::after { display: block; transform: rotate(3deg); }
+.folder[data-deck="2"] .folder__back::before { display: block; transform: rotate(6deg); }
+.folder:hover .folder__back::after, .folder:focus-visible .folder__back::after { transform: rotate(4deg); }
+.folder:hover .folder__back::before, .folder:focus-visible .folder__back::before { transform: rotate(7deg); }
+@media (prefers-reduced-motion: reduce) { .folder__back::before, .folder__back::after { transition: none; } }
+.folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 160px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
+.folder[data-empty] .folder__front { border-style: dashed; border-color: var(--border-strong); }
 .folder:hover .folder__front, .folder:focus-visible .folder__front { border-color: var(--border-selected); }
+.folder:hover .folder__back::before, .folder:hover .folder__back::after,
+.folder:focus-visible .folder__back::before, .folder:focus-visible .folder__back::after { border-color: var(--border-selected); }
 
+.folder__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.folder__meta { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.folder__kind { flex: 0 0 auto; color: var(--text-tertiary); }
 .folder__owner { font-size: 12px; line-height: 16px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.folder__name { font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); color: var(--text-primary);
+.folder__name { font-size: 18px; line-height: 26px; font-weight: var(--heading-weight); color: var(--text-primary);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.folder__peek { font-size: 13px; line-height: 18px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder__note { font-size: 12px; line-height: 16px; color: var(--text-tertiary); }
 .folder__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; }
 .folder__tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .folder__tag { padding: 3px 8px; border-radius: var(--radius-sm); background: var(--bg-subtle); color: var(--text-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
-.folder__count { display: flex; flex-direction: column; align-items: flex-end; flex: 0 0 auto; margin-left: auto; color: var(--text-secondary); font-size: 12px; line-height: 16px; }
-.folder__count-num { font-size: 28px; line-height: 32px; font-weight: 700; color: var(--text-accent); letter-spacing: 0; }
+/* 장 수는 겹침이 이미 보여 주므로 작게 — 큰 숫자가 이름보다 먼저 보이지 않게 */
+.folder__count { flex: 0 0 auto; color: var(--text-secondary); font-size: 12px; line-height: 16px; }
+.folder__count-num { font-size: 14px; line-height: 16px; font-weight: 600; color: var(--text-primary); }
 
 /* ───── 폴더 안 ───── */
 .folder-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }
@@ -47,3 +63,5 @@
   .folders__bar .right, .folder-head__actions { width: 100%; margin-left: 0; }
   .folders__bar .right .btn, .folder-head__actions .btn { flex: 1 1 auto; }
 }
+/* 한 열일 때 타일이 560~680px 까지 넓어지면 뒤 카드가 솟는 높이(폭 × 0.85 × sin 7°)가 줄 간격 36px 를 넘어 윗줄과 겹친다 — 440px 에서 멈추면 올렸을 때도 약 35px 라 들어온다 */
+@media (max-width: 960px) { .folder-grid > li { max-width: 440px; } }

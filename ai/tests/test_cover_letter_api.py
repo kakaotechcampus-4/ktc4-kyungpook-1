@@ -6,9 +6,18 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 import api.cover_letters as cover_letters_api
 from main import app
+from schemas.cover_letter import (
+    AssignmentRequest,
+    DraftsRequest,
+    FillRequest,
+    PolishRequest,
+    QuestionsRequest,
+    TurnRequest,
+)
 from services.cover_letter_asker import AskItemOutput, AskOutput, CoverLetterAsker
 from services.cover_letter_assigner import ConsideredOutput, CoverLetterAssigner, PickOutput
 from services.cover_letter_drafter import CoverLetterDrafter, ReviewOutput
@@ -128,3 +137,34 @@ def test_duplicate_missing_items_are_rejected() -> None:
     body = _post("/internal/cover-letter-drafts", payload)
 
     assert (body["status"], body["error"]["code"]) == (400, "INVALID_PAYLOAD")
+
+
+_TARGET = {"question_id": 1, "text": "지원 동기", "char_limit": 500, "current_text": "결제 서비스에 관심이 있어 지원했습니다."}
+STRENGTH_REQUESTS = {
+    "assignments": (AssignmentRequest, {"questions": [{"question_id": 1, "text": "지원 동기", "char_limit": 500}]}),
+    "questions": (QuestionsRequest, {"questions": [{"question_id": 1, "text": "지원 동기", "char_limit": 500}]}),
+    "drafts": (DraftsRequest, {"questions": [{"question_id": 1, "text": "지원 동기", "char_limit": 500}]}),
+    "polish": (PolishRequest, {"target": _TARGET}),
+    "turns": (TurnRequest, {"question": _TARGET, "trigger": "OPEN"}),
+    "fill": (FillRequest, {"target": _TARGET | {"answers": [{"item": "REASON", "text": "결제 서비스에 관심이 있다"}]},
+                           "filled_item": "REASON"}),
+}
+
+
+@pytest.mark.parametrize("name", list(STRENGTH_REQUESTS))
+@pytest.mark.parametrize(
+    ("strengths", "accepted"),
+    [([], True), (["METICULOUS", "PERSISTENT", "DOCUMENTING"], True), (["METICULOUS", "METICULOUS"], False),
+     (["METICULOUS", "PERSISTENT", "PROACTIVE", "DOCUMENTING"], False), (["HONEST"], False)],
+    ids=["없음", "3개", "같은 값 두 번", "4개", "모르는 값"],
+)
+def test_requests_take_up_to_three_distinct_known_strengths(name: str, strengths: list[str], accepted: bool) -> None:
+    """여섯 자소서 요청 모두 강점을 같은 값 없이 3개까지, 정해 둔 12개 값만 받는다."""
+    model, body = STRENGTH_REQUESTS[name]
+    payload = {"cover_letter_id": 9, "job_role": "백엔드 개발", **body, "strengths": strengths}
+
+    if accepted:
+        assert model.model_validate(payload).strengths == strengths
+    else:
+        with pytest.raises(ValidationError):
+            model.model_validate(payload)

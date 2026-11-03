@@ -197,9 +197,10 @@ export const coverLetterApi = {
   /** AI 추론 문장(marks 의 INFERRED)을 맞다고 확인해 그 표시만 지운다. 글은 그대로. DRAFTED 에서만, 그 문장에 추론 표시가 없으면 409 */
   confirmInference: (id: string, questionId: string, sentenceSeq: number) =>
     api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/marks/${sentenceSeq}`, { method: 'DELETE' }),
-  /** 지금 글로 첨삭을 받는다. 결과는 question.polish 에 남고 글은 그대로. DRAFTED 에서만 */
+  /** 지금 글로 첨삭을 받는다. 결과는 question.polish 에 남고 글은 그대로. DRAFTED 에서만.
+   *  서버가 AI 를 세 번 부르며 수십 초를 쓰므로 기본 30초로는 끊긴다 — 공고 매칭의 긴 호출과 같은 100초를 준다 */
   polish: (id: string, questionId: string) =>
-    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'POST' }),
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'POST', timeoutMs: 100_000 }),
   /** 첨삭 글로 지금 글·문장·표시를 바꾼다. AI 원본(aiText)은 그대로, polishAppliedCount 가 하나 는다 */
   applyPolish: (id: string, questionId: string) =>
     api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish/apply`, { method: 'POST' }),

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ANSWER_MAX, useSaveAnswers, useStartDrafting, type AnswerInput, type CoverLetter, type CoverLetterQuestion, type MaterialItem } from '@/api/coverLetters';
 import { errorView } from '@/api/errorView';
 import { Button, Note, PageTitle, StickyFooter, Textarea } from '@/components/ui';
-import { ITEM_LABEL, reusedTitle } from '@/lib/coverLetterCopy';
+import { ITEM_EXAMPLE, ITEM_LABEL, answerLengthHint, reusedTitle } from '@/lib/coverLetterCopy';
 import { TEMPLATE_GAP } from '@/lib/draftText';
 import { track } from '@/lib/track';
 
@@ -164,14 +164,14 @@ function QuestionAsks({ q, input, saveState, onEdit, onLeave }: {
                 </div>
               )}
               <Textarea id={id} ref={(el) => { refs.current[a.item] = el; }} rows={3} maxLength={ANSWER_MAX} disabled={d.skipped}
-                value={d.skipped ? '' : d.text} placeholder={d.skipped ? '넘긴 질문이에요' : '떠오르는 대로 적어 주세요'}
+                value={d.skipped ? '' : d.text} placeholder={d.skipped ? '넘긴 질문이에요' : ITEM_EXAMPLE[a.item as MaterialItem] ?? '떠오르는 대로 적어 주세요'}
                 onChange={(e) => onEdit(a.item, { text: e.target.value })} onBlur={onLeave} />
               <div className="row cl-ask__foot">
                 <button type="button" className="cl-link-btn t-12" onClick={() => { onEdit(a.item, { skipped: !d.skipped }); setTimeout(onLeave); }}>
                   {d.skipped ? '다시 답하기' : '넘기기'}
                 </button>
                 {!d.skipped && d.text.includes(TEMPLATE_GAP) && <span className="t-12 cl-gap">채울 곳({TEMPLATE_GAP})이 남아 있어요</span>}
-                {!d.skipped && <span className="right t-12 c-3">{d.text.length}/{ANSWER_MAX.toLocaleString()}</span>}
+                {!d.skipped && <span className="right t-12 c-3"><span aria-live="polite">{answerLengthHint(d.text.length)}</span> · {d.text.length}/{ANSWER_MAX.toLocaleString()}</span>}
               </div>
             </li>
           );

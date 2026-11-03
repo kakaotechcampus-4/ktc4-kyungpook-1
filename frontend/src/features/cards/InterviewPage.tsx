@@ -6,7 +6,7 @@ import { useAnswerInterview, useAskInterview, useCard, useInterview, useSkipInte
 import { StarField as StarFieldSchema, isOpenTurn, type EvidenceType, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
-import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldName, starFieldShort } from '@/lib/labels';
+import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldExample, starFieldName, starFieldShort } from '@/lib/labels';
 import { askJudgement, cleanAiText } from '@/lib/interviewReason';
 import { CONFIG } from '@/lib/config';
 import { toast } from '@/lib/toast';
@@ -205,7 +205,7 @@ export function InterviewPage() {
               )}
               <Textarea rows={4} value={text} disabled={answer.isPending} onChange={(e) => { setText(e.target.value); if (picked && e.target.value !== picked) setPicked(null); }}
                 onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submit(); }}
-                placeholder="한 문장으로" aria-label="답변" maxLength={500} />
+                placeholder={starFieldExample[open.field]} aria-label="답변" maxLength={500} />
               <div className="row" style={{ gap: 8 }}>
                 <span className="t-12 c-3 grow">{text ? `${text.length}/500` : ''}</span>
                 <Button variant="ghost" size="sm" loading={skip.isPending} disabled={answer.isPending} onClick={skipOpen}>건너뛰기</Button>

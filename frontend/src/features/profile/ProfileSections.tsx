@@ -61,7 +61,7 @@ export function InterestPicker({ value, onChange, error }: { value: Interest[]; 
   const toggle = (interest: Interest, on: boolean) => onChange(on ? [...value, interest] : value.filter((chosen) => chosen !== interest));
   return (
     <section className="settings-section profile-section" aria-label="관심 분야">
-      <SectionHead label="관심 분야" count={value.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
+      <SectionHead label="관심 분야" count={value.length} right={<span className="t-12 c-3">최대 {max}개</span>} />
       <p className="profile-section__hint">관심 있는 직무를 1개부터 {max}개까지 골라 주세요. 공고 매칭이 이 직무의 공고를 먼저 찾아요.</p>
       <ul id={INTERESTS_ID} className="interest-grid" aria-describedby={error ? `${INTERESTS_ID}-error` : undefined}>
         {INTEREST_OPTIONS.map(({ value: interest, label }) => {

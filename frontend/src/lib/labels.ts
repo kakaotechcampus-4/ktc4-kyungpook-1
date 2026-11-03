@@ -29,6 +29,14 @@ export const evidenceTypeLabel: Record<EvidenceType, string> = { COMMIT: '근거
 /** 화면과 접근성 이름에 쓰는 칸 이름. 영어 병기 없이 한국어만(용어집 3.4). */
 export const starFieldName: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
 export const starFieldShort: Record<StarField, string> = { S: '상황', T: '과제', A: '행동', R: '결과' };
+/** 카드 칸을 직접 쓰거나 되묻기에 답할 때 흐리게 보이는 예시 — 값으로 보내지 않는다.
+ *  직접 쓴 글은 그대로 카드 문장이 되므로 AI 가 만든 카드와 같은 '~했다' 체로 둔다 */
+export const starFieldExample: Record<StarField, string> = {
+  S: '예: 배포가 늦어져 팀이 수정 사항을 몰아서 올리던 때였다',
+  T: '예: 배포 시간을 줄여 하루에도 여러 번 올릴 수 있게 해야 했다',
+  A: '예: 로그를 보고 바뀐 모듈만 다시 빌드하게 설정을 고쳤다',
+  R: '예: 배포가 12분으로 줄어 하루 다섯 번 올릴 수 있게 됐다',
+};
 export const dropReasonLabel: Record<DropReason, string> = {
   NO_EVIDENCE: '근거를 찾지 못해 비워 뒀어요',
   OVERCLAIM: '기여도를 넘는 표현이라 비워 뒀어요',

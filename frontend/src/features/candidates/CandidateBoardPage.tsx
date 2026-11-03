@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useAddCandidate, useCandidates, useCreateCards, usePatchCandidate, useRepo, useRepoCommits, useStartAnalysis } from '@/api/queries';
-import type { Candidate } from '@/api/schemas';
+import { useActiveJobs, useAddCandidate, useCandidates, useCreateCards, usePatchCandidate, useRepo, useRepoCommits, useStartAnalysis } from '@/api/queries';
+import { isTerminal, type Candidate } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, Check, Chip, Field, Input, Note, PageTitle, RepoContext, SectionHead, Skeleton, StickyFooter, Textarea, Toolbar } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
@@ -34,6 +34,9 @@ function CandidateBoard({ repoId }: { repoId: string }) {
   const [sp, setSp] = useSearchParams();
   const repo = useRepo(repoId);
   const board = useCandidates(repoId);
+  // 분석이 아직 도는 중이면 보드가 비어 있어도 '후보 0개' 판정이 아니다(전역 감시가 이미 이 목록을 가져온다)
+  const active = useActiveJobs();
+  const running = active.data?.jobs.find((x) => x.userRepositoryId === repoId && x.type === 'ANALYZE' && !isTerminal(x.state)) ?? null;
   const patch = usePatchCandidate(repoId);
   const create = useCreateCards(repoId);
   const actions = useActionGate();
@@ -141,22 +144,37 @@ function CandidateBoard({ repoId }: { repoId: string }) {
     }}
     onClose={() => setSp((current) => { current.delete('add'); return current; })} />;
 
-  // C2 — 후보 0개: 에러가 아니라 판정. 판정 근거 3줄 + 다음 행동 3개.
-  if (b.verdict === 'EMPTY') {
+  // 분석 중: 결과가 아직 없을 뿐이다. 진행 화면으로 돌아가는 길을 준다
+  if (b.verdict === 'EMPTY' && running) {
     return (
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
-        <PageTitle>자동으로 찾은 후보가 없어요</PageTitle>
-        <RepoContext name={name} note="후보 0개" />
+        <PageTitle>아직 후보를 찾는 중이에요</PageTitle>
+        <RepoContext name={name} note="정리가 끝나면 여기에 후보가 나와요."
+          right={<Link to={`/repos/${repoId}/run?job=${encodeURIComponent(running.jobId)}`} className="btn btn--primary">진행 상황 보기</Link>} />
+      </main>
+    );
+  }
+  // C2 — 후보 0개: 에러가 아니라 판정. 판정 근거 3줄 + 다음 행동 3개.
+  // 한 번도 정리하지 않은 레포도 서버는 EMPTY 로 준다. 그때는 떠올릴 자료(저장된 내 커밋)도 없으므로 '파일 보며 찾기' 대신 정리부터 권한다
+  if (b.verdict === 'EMPTY') {
+    const neverAnalyzed = !!repo.data && !repo.data.lastAnalyzedAt;
+    return (
+      <main className="main main--tight">
+        <Breadcrumb items={crumbs} />
+        <PageTitle>{neverAnalyzed ? '아직 정리하지 않은 레포예요' : '자동으로 찾은 후보가 없어요'}</PageTitle>
+        <RepoContext name={name} note={neverAnalyzed ? '아직 정리 전' : '후보 0개'} />
         <div className="verdict">
           <div className="stack grow" style={{ gap: 8 }}>
-            <span className="w-600" style={{ fontSize: 16 }}>파일을 보며 경험을 떠올려 보세요</span>
+            <span className="w-600" style={{ fontSize: 16 }}>{neverAnalyzed ? '정리하면 커밋과 PR에서 후보를 찾아 드려요' : '파일을 보며 경험을 떠올려 보세요'}</span>
             <div className="verdict__reasons">{b.emptyReasons.map((r) => <span key={r}>• {r}</span>)}</div>
           </div>
           <div className="stack" style={{ gap: 8, alignItems: 'flex-end' }}>
             <div className="row" style={{ gap: 8 }}>
               <Button variant="outline" size="sm" onClick={openAdd}>+ 직접 추가</Button>
-              <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>
+              {neverAnalyzed
+                ? <Link to={`/repos/${repoId}/run`} className="btn btn--primary btn--sm">정리하러 가기</Link>
+                : <Link to={`/repos/${repoId}/recall`} className="btn btn--outline btn--sm">파일 보며 찾기</Link>}
             </div>
             <div className="row" style={{ gap: 8 }}>
               <Link to={`/cards/new?repo=${encodeURIComponent(repoId)}`} className="btn btn--outline btn--sm">직접 작성</Link>

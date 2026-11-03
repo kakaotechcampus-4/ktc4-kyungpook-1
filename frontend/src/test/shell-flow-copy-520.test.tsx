@@ -52,7 +52,7 @@ const callsTo = (fetchMock: ReturnType<typeof stubApi>, path: string) => fetchMo
 describe('정리 화면 (#520 G-13 · A-04 · A-05 · A-08 · A-09 · A-12)', () => {
   function mountAnalyze(path: string, data?: Job, activeJobs: unknown = { jobs: [] }) {
     const client = quiet();
-    client.setQueryData(keys.repo('r_auth'), RepoDetail.parse(req('/repos/r_auth').data));
+    client.setQueryData(keys.repo('r_auth'), { ...RepoDetail.parse(req('/repos/r_auth').data), lastAnalyzedAt: null }); // 시작 화면 문구를 본다(정리한 레포는 '지난 결과 보기' 화면)
     if (data) { client.setQueryData(keys.job(data.jobId), data); vi.spyOn(endpoints, 'job').mockResolvedValue(data); }
     vi.spyOn(endpoints, 'activeJobs').mockResolvedValue(activeJobs as never);
     render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><Routes><Route path="/repos/:repoId/run" element={<AnalyzePage />} /></Routes></MemoryRouter></QueryClientProvider>);

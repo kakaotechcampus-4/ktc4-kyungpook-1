@@ -93,7 +93,7 @@ describe('분석 화면에 AI 가 읽고 판단한 줄', () => {
 
   it('고른 이유는 한꺼번에 와도 차례로 나오고, 다 나온 뒤에 후보 보드로 넘어간다', async () => {
     mount(job({
-      state: 'SUCCEEDED', finishedAt: '2026-10-29T00:00:12Z', pollAfterMs: 0,
+      state: 'SUCCEEDED', finishedAt: new Date().toISOString(), pollAfterMs: 0, // 방금 끝난 작업만 차례로 재생한다(오래된 작업은 한꺼번에)
       steps: steps('REASON').map((s) => ({ ...s, state: 'DONE' })),
       activity: [described(10, '로그인 세션 처리'), described(11, '결제 롤백 대응'), described(12, '권한 체크 미들웨어')],
     }));

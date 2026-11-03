@@ -110,6 +110,15 @@ export function folderNote(folder: CardFolder): string | null {
   return lacksExperience(folder) ? '기술 카드만 있어요' : null;
 }
 
+/** 앞판 이름 아래 미리 보기 한 줄. 최근 카드 두 장의 제목이고, 더 있으면 남은 장 수를 붙인다. 빈 폴더는 null */
+export function folderPeek(folder: Pick<CardFolder, 'cards'>): string | null {
+  const { cards } = folder;
+  if (cards.length === 0) return null;
+  const titles = cards.slice(0, 2).map((card) => card.title);
+  if (cards.length > 2) titles.push(`+${cards.length - 2}`);
+  return titles.join(' · ');
+}
+
 /** 폴더의 화면용 이름. 이름 없는 활동(모르는 값)이 빈 글로 보이지 않게 한다 */
 export const folderTitle = (folder: Pick<CardFolder, 'kind' | 'name'>) => folder.name || (folder.kind === 'activity' ? '이름 없는 활동' : '이름 없는 폴더');
 
@@ -117,7 +126,8 @@ export const folderTitle = (folder: Pick<CardFolder, 'kind' | 'name'>) => folder
 export const DIRECT_OWNER = '레포와 활동 없이 쓴 카드';
 export const folderOwnerLine = (folder: Pick<CardFolder, 'owner'>) => folder.owner ?? DIRECT_OWNER;
 
-/** 폴더 앞판에 적힌 글(소유자, 이름, 장 수, 안내 한 줄, 기술)을 모두 담은 링크 이름. 보이는 글이 이름에 들어 있어야 한다(WCAG 2.5.3) */
+/** 폴더 앞판에 적힌 글(소유자, 이름, 장 수, 안내 한 줄, 기술)을 담은 링크 이름. 보이는 글이 이름에 들어 있어야 한다(WCAG 2.5.3)
+ *  미리 보기 줄(folderPeek)은 넣지 않는다 — 폴더 안 카드 제목이라 읽어 주면 이름이 길어지기만 한다 */
 export function folderLabel(folder: CardFolder): string {
   const kind = folder.kind === 'repo' ? '레포 ' : '';
   const parts = [`${kind}${folderOwnerLine(folder)}`, folderTitle(folder), `카드 ${folder.cards.length}장`];

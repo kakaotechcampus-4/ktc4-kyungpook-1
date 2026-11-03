@@ -31,8 +31,9 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
       <div className="star__head">
         <StarKey field={field} dropped={isDropped} />
         <span className="star__name" id={`star-${field}`}>{starFieldName[field]}</span>
+        {/* 카드 제목처럼 칸 이름 바로 옆 연필 하나로 고친다 — 무엇을 고치는지 위치가 말해 준다 */}
+        {!isDropped && onEdit && <button type="button" className="star__pencil" aria-label={`${starFieldShort[field]} 수정`} title={`${starFieldShort[field]} 수정`} onClick={onEdit}><Pencil size={16} aria-hidden /></button>}
         {low && !isDropped && <Badge kind="CAUTION">확인 필요</Badge>}
-        {!isDropped && onEdit && <Button variant="text" size="sm" className="star__edit right" aria-label={`${starFieldShort[field]} 수정`} onClick={onEdit}><Pencil size={14} aria-hidden />수정</Button>}
       </div>
       {isDropped ? (
         <>

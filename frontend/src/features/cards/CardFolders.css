@@ -11,8 +11,9 @@
 .folders__bar .right { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .folders__notice { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
 
-/* 한 줄에 셋 안팎 — 타일이 커야 이름이 주인공이 되고 부채꼴 겹침이 어지럽지 않다. 390 이하에서는 한 줄에 폴더 하나 */
-.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 26px 18px; }
+/* 한 줄에 셋까지(340~400px) — max-width 가 없으면 넓은 화면에서 넷 이상이 된다. 중간 폭은 둘, 폰은 하나
+ * 줄 간격 36px 은 올렸을 때 뒤 카드가 솟는 높이(390px 폭·7°에서 약 30px)보다 커야 윗줄과 겹치지 않는다 */
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 36px 20px; max-width: 1200px; }
 
 .folder-grid > li { display: flex; min-width: 0; }
 /* 부채꼴 자리(위·오른쪽)는 모든 폴더에 같이 비워 둔다 — 겹친 수에 따라 앞판 크기가 달라지면 줄이 들쭉날쭉해진다 */
@@ -27,7 +28,7 @@
 .folder:hover .folder__back::after, .folder:focus-visible .folder__back::after { transform: rotate(4deg); }
 .folder:hover .folder__back::before, .folder:focus-visible .folder__back::before { transform: rotate(7deg); }
 @media (prefers-reduced-motion: reduce) { .folder__back::before, .folder__back::after { transition: none; } }
-.folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 136px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
+.folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 160px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 .folder[data-empty] .folder__front { border-style: dashed; border-color: var(--border-strong); }
 .folder:hover .folder__front, .folder:focus-visible .folder__front { border-color: var(--border-selected); }
 .folder:hover .folder__back::before, .folder:hover .folder__back::after,
@@ -37,8 +38,9 @@
 .folder__meta { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .folder__kind { flex: 0 0 auto; color: var(--text-tertiary); }
 .folder__owner { font-size: 12px; line-height: 16px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.folder__name { font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); color: var(--text-primary);
+.folder__name { font-size: 18px; line-height: 26px; font-weight: var(--heading-weight); color: var(--text-primary);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.folder__peek { font-size: 13px; line-height: 18px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder__note { font-size: 12px; line-height: 16px; color: var(--text-tertiary); }
 .folder__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; }
 .folder__tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
@@ -61,3 +63,5 @@
   .folders__bar .right, .folder-head__actions { width: 100%; margin-left: 0; }
   .folders__bar .right .btn, .folder-head__actions .btn { flex: 1 1 auto; }
 }
+/* 한 열일 때 타일이 560~680px 까지 넓어지면 뒤 카드가 솟는 높이(폭 × 0.85 × sin 7°)가 줄 간격 36px 를 넘어 윗줄과 겹친다 — 440px 에서 멈추면 올렸을 때도 약 35px 라 들어온다 */
+@media (max-width: 960px) { .folder-grid > li { max-width: 440px; } }

@@ -101,8 +101,14 @@ export function buildFolders(cards: readonly CardSummary[], activities?: readonl
 /** 폴더 앞판 뒤로 겹쳐 보일 카드 수. 한 장이면 겹치지 않고, 둘이면 하나, 셋 이상은 둘이다(더 쌓아도 모양이 늘지 않게 한다). 정확한 수는 숫자가 말한다 */
 export const deckLayers = (count: number): 0 | 1 | 2 => (count >= 3 ? 2 : count === 2 ? 1 : 0);
 
-/** 경험 카드(직접 쓴 정성 카드)가 한 장도 없는 폴더. 앞판에 '경험 카드 없음'을 적어 더 쓸 곳을 보여 준다. 직접 쓴 카드 폴더는 해당 없다 */
+/** 경험 카드(직접 쓴 정성 카드)가 한 장도 없는 폴더. 직접 쓴 카드 폴더는 해당 없다 */
 export const lacksExperience = (folder: CardFolder) => folder.kind !== 'direct' && folder.experienceCount === 0;
+
+/** 앞판 이름 아래 한 줄. 빈 폴더는 열어서 첫 카드를 만들게, 기술 카드만 있는 레포·활동 폴더는 경험 카드를 더 쓸 곳임을 알린다 */
+export function folderNote(folder: CardFolder): string | null {
+  if (folder.cards.length === 0) return '아직 카드가 없어요 · 열어서 만들기';
+  return lacksExperience(folder) ? '기술 카드만 있어요' : null;
+}
 
 /** 폴더의 화면용 이름. 이름 없는 활동(모르는 값)이 빈 글로 보이지 않게 한다 */
 export const folderTitle = (folder: Pick<CardFolder, 'kind' | 'name'>) => folder.name || (folder.kind === 'activity' ? '이름 없는 활동' : '이름 없는 폴더');
@@ -111,11 +117,12 @@ export const folderTitle = (folder: Pick<CardFolder, 'kind' | 'name'>) => folder
 export const DIRECT_OWNER = '레포와 활동 없이 쓴 카드';
 export const folderOwnerLine = (folder: Pick<CardFolder, 'owner'>) => folder.owner ?? DIRECT_OWNER;
 
-/** 폴더 앞판에 적힌 글(소유자, 이름, 장 수, 경험 카드 없음, 기술)을 모두 담은 링크 이름. 보이는 글이 이름에 들어 있어야 한다(WCAG 2.5.3) */
+/** 폴더 앞판에 적힌 글(소유자, 이름, 장 수, 안내 한 줄, 기술)을 모두 담은 링크 이름. 보이는 글이 이름에 들어 있어야 한다(WCAG 2.5.3) */
 export function folderLabel(folder: CardFolder): string {
   const kind = folder.kind === 'repo' ? '레포 ' : '';
   const parts = [`${kind}${folderOwnerLine(folder)}`, folderTitle(folder), `카드 ${folder.cards.length}장`];
-  if (lacksExperience(folder)) parts.push('경험 카드 없음');
+  const note = folderNote(folder);
+  if (note) parts.push(note);
   if (folder.techs.length) parts.push(`기술 ${folder.techs.map((tech) => techLabels[tech] ?? tech).join(', ')}`);
   return parts.join(', ');
 }

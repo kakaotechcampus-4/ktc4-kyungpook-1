@@ -200,7 +200,7 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   }
   return (
     <aside ref={asideRef} className="clp clp-scroll" aria-label="다듬기 패널">
-      <Notices questions={letter.questions} texts={texts} onGo={onGo} onTalk={onTalk} />
+      <Notices questions={letter.questions} texts={texts} onGo={onGo} onTalk={onTalk} memoUsable={letter.memoUsable} />
       {head()}
       <PanelTabs tab={tab} onTab={setTab} badge={items.length} />
       <section className="clp-card" role="tabpanel" id={tabPanelId(tab)} aria-labelledby={tabId(tab)}>{body(tab)}</section>

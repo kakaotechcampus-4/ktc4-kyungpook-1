@@ -60,7 +60,7 @@ export function DraftEditor({ letter }: { letter: CoverLetter }) {
       {copied && <p className="t-13 c-2" role="status">{copied}</p>}
       <div className={`cl-draft${mobile ? ' cl-draft--sheet' : ''}`}>
         <div className="cl-draft__paper" ref={paperRef}>
-          {mobile && <Notices questions={letter.questions} texts={texts} onGo={goQuestion} onTalk={onTalk} />}
+          {mobile && <Notices questions={letter.questions} texts={texts} onGo={goQuestion} onTalk={onTalk} memoUsable={letter.memoUsable} />}
           <DraftPaper letter={letter} mode="edit" texts={texts} onText={onText} activeId={activeId} focus={focus} flash={flash} />
         </div>
         <DraftPanel letter={letter} texts={texts} onText={onText} activeId={activeId} mobile={mobile} onLock={setLock} onGo={goQuestion} onFlag={onFlag}

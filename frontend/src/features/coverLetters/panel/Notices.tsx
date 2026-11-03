@@ -11,11 +11,12 @@ type Notice = { key: string; questionId: string; title: string; line: string; go
 /**
  * 패널 맨 위 알림 줄 — 살펴볼 게 있을 때만. 다른 문항과 겹친다는 표시(REPEATED)가 남은 문항마다 하나('→ Qn 보기'),
  * 필수 재료 빈칸이 남은 문항마다 하나('→ Qn에 넣기', 누르면 채우기에서 그 문항 이야기를 시작한다 · #733).
+ * 질문 단계가 지원 이유를 글로 쓸 수 없다고 봤으면(memoUsable false · #738) 맨 위에 하나 — 지원 동기 문항(없으면 첫 문항)의 채우기를 연다.
  * 공고 조건이 어느 문항에도 없다는 알림은 응답에 공고 조건이 없어 아직 만들지 않는다.
  */
-export function Notices({ questions, texts, onGo, onTalk }: {
-  questions: Pick<CoverLetterQuestion, 'id' | 'seq' | 'draft'>[]; texts: Record<string, string>; onGo: (questionId: string) => void;
-  onTalk?: (questionId: string) => void;
+export function Notices({ questions, texts, onGo, onTalk, memoUsable }: {
+  questions: Pick<CoverLetterQuestion, 'id' | 'seq' | 'draft' | 'theme'>[]; texts: Record<string, string>; onGo: (questionId: string) => void;
+  onTalk?: (questionId: string) => void; memoUsable?: boolean | null;
 }) {
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const byQuestion = new Map<string, { seq: number; sentence: string }>();
@@ -30,6 +31,13 @@ export function Notices({ questions, texts, onGo, onTalk }: {
       line: `Q${seq}의 "${excerpt(sentence)}" 문장을 바꾸는 쪽이 쉬워요`, go: `→ Q${seq} 보기`, onClick: () => onGo(id),
     };
   });
+  const reasonQ = questions.find((q) => q.theme === 'MOTIVATION') ?? questions[0];
+  if (onTalk && memoUsable === false && reasonQ) {
+    list.unshift({
+      key: 'reason', questionId: reasonQ.id, title: '지원 이유가 글로 쓰기 어려워서 채팅에서 다시 물어요',
+      line: '', go: '→ 채우기', onClick: () => onTalk(reasonQ.id),
+    });
+  }
   if (onTalk) {
     for (const q of questions) {
       const item = blanksIn(texts[q.id] ?? q.draft?.text ?? '')[0];
@@ -49,7 +57,7 @@ export function Notices({ questions, texts, onGo, onTalk }: {
           <div className="clp-notice__body">
             <b className="clp-notice__t">{n.title}</b>
             <span className="clp-notice__w">
-              {n.line}{' '}
+              {n.line && `${n.line} `}
               <button type="button" className="clp-notice__go" onClick={n.onClick}>{n.go}</button>
             </span>
           </div>

@@ -10,7 +10,8 @@ import { Breadcrumb, Button, Chip, EmptyState, Field, Input, Note, PageTitle, Sk
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CompanyMark } from '@/features/match/CompanyMark';
 import { companyLabel } from '@/features/match/model';
-import { EXAMPLE_QUESTION, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
+import { EXAMPLE_QUESTION, MEMO_EXAMPLE, STRENGTHS, STRENGTH_LIMIT, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
+import { checkReason } from '@/lib/reasonCheck';
 import { newIdempotencyKey } from '@/lib/uuid';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
@@ -32,7 +33,7 @@ function charLimitOf(raw: string): { value: number | null; error: string | null 
 const postingNotFound = (e: unknown) => e instanceof ApiError && e.status === 404;
 
 /**
- * 자소서 ① 입력(#517). 지원 직무, 메모, 문항(1~10개, 글자 수)을 받아 만든다.
+ * 자소서 ① 입력(#517). 지원 직무, 지원 이유(필수, #738), 강점(최대 3개), 문항(1~10개, 글자 수)을 받아 만든다.
  * 같은 요청 키는 "내용을 바꾸지 않은 재전송"에만 쓴다 — 입력을 고치면 새 키를 만든다(계약: 같은 키는 처음 자소서를 돌려준다).
  * 공고 상세에서 왔으면(`?postingId=`, #637) 그 공고를 보이고 직무를 공고 제목으로 채워 두며, 만들기에 공고 id 를 함께 보낸다.
  */
@@ -47,6 +48,8 @@ export function CoverLetterNewPage() {
   const create = useCreateCoverLetter();
   const [jobRole, setJobRole] = useState('');
   const [memo, setMemo] = useState('');
+  const [strengths, setStrengths] = useState<string[]>([]);
+  const [strengthFull, setStrengthFull] = useState(false);
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [key, setKey] = useState(newIdempotencyKey);
   const [showMore, setShowMore] = useState(false);
@@ -73,7 +76,8 @@ export function CoverLetterNewPage() {
   }));
 
   const jobError = jobRole.trim() === '' ? '지원 직무를 적어 주세요' : jobRole.length > L.JOB_ROLE ? `${L.JOB_ROLE}자까지 적을 수 있어요` : null;
-  const memoError = memo.length > L.MEMO ? `${L.MEMO.toLocaleString()}자까지 적을 수 있어요` : null;
+  // 지원 이유는 서버와 같은 규칙(reasonCheck)을 다 지켜야 시작 버튼이 켜진다
+  const memoError = memo.length > L.MEMO ? `${L.MEMO.toLocaleString()}자까지 적을 수 있어요` : checkReason(memo);
   const rowErrors = rows.map((r) => ({
     text: r.text.trim() === '' ? '문항을 적어 주세요' : r.text.length > L.QUESTION ? `${L.QUESTION}자까지 적을 수 있어요` : null,
     limit: charLimitOf(r.charLimit).error,
@@ -85,7 +89,8 @@ export function CoverLetterNewPage() {
     if (invalid || noCards || create.isPending) return;
     const input: NewCoverLetter = {
       jobRole: jobRole.trim(),
-      memo: memo.trim() || null,
+      memo: memo.trim(),
+      strengths,
       questions: rows.map((r) => ({ text: r.text.trim(), charLimit: charLimitOf(r.charLimit).value })),
       postingId,
     };
@@ -113,6 +118,14 @@ export function CoverLetterNewPage() {
   // 확정 카드 없음은 위 안내가, 없는 공고(404)는 '찾을 수 없음' 화면이 맡는다 — '공고 없이 새 자소서 쓰기' 로 돌아와도 그 실패가 남지 않게
   const failure = create.error && !(create.error instanceof ApiError && create.error.code === 'NO_CONFIRMED_CARDS') && !postingNotFound(create.error) ? errorView(create.error) : null;
   const show = (msg: string | null) => (tried ? msg : null);
+  const memoHint = memo !== '' ? memoError : null; // 아직 아무것도 적지 않았으면 위 안내 문장만 보인다
+  /** 고른 칩을 누르면 빼고, 3개를 다 골랐으면 더 고르지 않고 안내만 한다 */
+  const toggleStrength = (code: string) => {
+    const on = strengths.includes(code);
+    if (!on && strengths.length >= STRENGTH_LIMIT) { setStrengthFull(true); return; }
+    setStrengthFull(false);
+    edit(() => setStrengths((xs) => (on ? xs.filter((x) => x !== code) : [...xs, code])));
+  };
   const sub = postingId
     ? '이 공고의 조건과 맞춰 본 결과를 AI가 함께 봐요. 문항마다 쓸 카드도 공고에 맞춰 골라 드려요.'
     : '문항마다 내 확정 카드 중 쓸 만한 것을 AI가 먼저 골라 드려요. 고른 카드는 다음 화면에서 바꿀 수 있어요.';
@@ -140,10 +153,26 @@ export function CoverLetterNewPage() {
             onChange={(e) => edit(() => setJobRole(e.target.value))} />
           {show(jobError) && <span className="cl-error">{jobError}</span>}
         </Field>
-        <Field label="메모 (선택)" right={`${memo.length.toLocaleString()}/${L.MEMO.toLocaleString()}`} hint="지원 동기 문항에서 '이 회사를 고른 이유'로 써요.">
-          <Textarea value={memo} rows={3} maxLength={L.MEMO} placeholder="이 회사와 직무를 고른 이유가 있으면 적어 주세요"
-            onChange={(e) => edit(() => setMemo(e.target.value))} />
+        <Field label="지원 이유 (필수)" right={`${memo.length.toLocaleString()}/${L.MEMO.toLocaleString()}`} hint="지원 동기 문항에서 '이 회사를 고른 이유'로 써요. 공백을 빼고 20자 이상 적어 주세요.">
+          <Textarea value={memo} rows={3} maxLength={L.MEMO} placeholder={MEMO_EXAMPLE} aria-label="지원 이유" aria-required
+            aria-invalid={!!memoHint} aria-describedby="cl-reason-hint" onChange={(e) => edit(() => setMemo(e.target.value))} />
+          <span id="cl-reason-hint" className="cl-reason-hint" aria-live="polite">{memoHint}</span>
         </Field>
+
+        <fieldset className="cl-strengths">
+          <legend className="field__label">내 강점 (선택) <span className="cl-strengths__limit">최대 {STRENGTH_LIMIT}개</span></legend>
+          {STRENGTHS.map((g) => (
+            <div key={g.group} className="cl-strengths__group" role="group" aria-label={g.group}>
+              <span className="t-12 c-2">{g.group}</span>
+              <div className="row cl-strengths__chips">
+                {g.items.map((it) => (
+                  <button key={it.code} type="button" className="chip cl-strength" aria-pressed={strengths.includes(it.code)} onClick={() => toggleStrength(it.code)}>{it.label}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <span className="cl-reason-hint" aria-live="polite">{strengthFull ? `${STRENGTH_LIMIT}개까지 고를 수 있어요. 하나를 빼고 골라 주세요` : null}</span>
+        </fieldset>
 
         <div className="cl-questions">
           <div className="cl-questions__head">
@@ -191,8 +220,8 @@ export function CoverLetterNewPage() {
       {failure && <Note strong={failure.title} tone="danger">{failure.message}</Note>}
 
       <div className="row cl-actions">
-        <span className="c-2 t-14">{invalid && tried ? '빠진 칸을 채워 주세요' : '만들면 AI가 문항마다 카드를 골라요'}</span>
-        <Button className="right" onClick={submit} loading={create.isPending} disabled={noCards}>카드 고르기 시작</Button>
+        <span className="c-2 t-14">{memoError ? '지원 이유를 적으면 시작할 수 있어요' : invalid && tried ? '빠진 칸을 채워 주세요' : '만들면 AI가 문항마다 카드를 골라요'}</span>
+        <Button className="right" onClick={submit} loading={create.isPending} disabled={noCards || !!memoError}>카드 고르기 시작</Button>
       </div>
     </main>
   );

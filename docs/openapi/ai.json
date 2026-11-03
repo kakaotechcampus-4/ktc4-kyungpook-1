@@ -2561,6 +2561,43 @@
         "title": "Envelope[ExperienceGroupingResponse]",
         "type": "object"
       },
+      "Envelope_FillResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FillResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[FillResult]",
+        "type": "object"
+      },
       "Envelope_GapFillResult_": {
         "properties": {
           "data": {
@@ -3116,6 +3153,43 @@
         "title": "Envelope[StarAnalysisResponse]",
         "type": "object"
       },
+      "Envelope_TurnResult_": {
+        "properties": {
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TurnResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/Meta"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success",
+          "meta"
+        ],
+        "title": "Envelope[TurnResult]",
+        "type": "object"
+      },
       "ErrorDetail": {
         "description": "공통 에러 형식(0-3)의 error 필드.",
         "properties": {
@@ -3438,6 +3512,116 @@
         ],
         "title": "FileChangeStatus",
         "type": "string"
+      },
+      "FillRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/cover-letter-fill` 요청 모델.",
+        "properties": {
+          "blank": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "채울 빈칸(빈칸 글 전체나 그 안의 글). 없으면 그 항목 자리에 한 문장까지 더한다",
+            "title": "Blank"
+          },
+          "cover_letter_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "filled_item": {
+            "description": "방금 받은 답의 항목. target.answers 에 이 항목의 답이 있어야 한다",
+            "enum": [
+              "SITUATION",
+              "ACTION",
+              "RESULT",
+              "LEARNING",
+              "TRIGGER",
+              "JOB_LINK",
+              "REASON"
+            ],
+            "title": "Filled Item",
+            "type": "string"
+          },
+          "job_role": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Job Role",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "others": {
+            "description": "같은 자소서의 다른 문항",
+            "items": {
+              "$ref": "#/components/schemas/PolishOther"
+            },
+            "maxItems": 9,
+            "title": "Others",
+            "type": "array"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "target": {
+            "$ref": "#/components/schemas/PolishTarget",
+            "description": "다시 쓸 문항. answers 에는 방금 받은 답이 들어 있다"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "job_role",
+          "target",
+          "filled_item"
+        ],
+        "title": "FillRequest",
+        "type": "object"
+      },
+      "FillResult": {
+        "description": "`POST /internal/cover-letter-fill` 응답 `data` 모델.",
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/QuestionDraft",
+            "description": "다시 쓴 글. 고쳐 써도 새 문제가 남거나 다른 문장을 여럿 바꾸면 앞 글로 되돌리고 steps 에 REVERTED 가 남는다"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/DraftStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "draft",
+          "steps"
+        ],
+        "title": "FillResult",
+        "type": "object"
       },
       "GapAction": {
         "enum": [
@@ -7360,6 +7544,376 @@
         "title": "StatementTarget",
         "type": "object"
       },
+      "ThreadTurn": {
+        "additionalProperties": false,
+        "properties": {
+          "item": {
+            "anyOf": [
+              {
+                "enum": [
+                  "SITUATION",
+                  "ACTION",
+                  "RESULT",
+                  "LEARNING",
+                  "TRIGGER",
+                  "JOB_LINK",
+                  "REASON"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI 턴이 묻거나 받은 항목",
+            "title": "Item"
+          },
+          "question_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "role": {
+            "enum": [
+              "AI",
+              "USER"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "seq": {
+            "exclusiveMinimum": 0.0,
+            "title": "Seq",
+            "type": "integer"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ASKING",
+                  "FILLED",
+                  "DONE",
+                  "OFF_TOPIC"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "AI 턴의 status. 보내면 문항당 질문 수를 ASKING 턴으로 세고, 없으면 item 이 있는 AI 턴을 질문으로 센다",
+            "title": "Status"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "role",
+          "question_id",
+          "text"
+        ],
+        "title": "ThreadTurn",
+        "type": "object"
+      },
+      "TurnAnswer": {
+        "properties": {
+          "item": {
+            "enum": [
+              "SITUATION",
+              "ACTION",
+              "RESULT",
+              "LEARNING",
+              "TRIGGER",
+              "JOB_LINK",
+              "REASON"
+            ],
+            "title": "Item",
+            "type": "string"
+          },
+          "sufficient": {
+            "description": "false 면 같은 항목을 꼬리 질문으로 더 묻는다",
+            "title": "Sufficient",
+            "type": "boolean"
+          },
+          "text": {
+            "description": "사용자의 말을 '~다' 체 재료 문장으로 정리한 것. 사용자가 말한 사실만 담는다",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item",
+          "text",
+          "sufficient"
+        ],
+        "title": "TurnAnswer",
+        "type": "object"
+      },
+      "TurnMessage": {
+        "properties": {
+          "item": {
+            "anyOf": [
+              {
+                "enum": [
+                  "SITUATION",
+                  "ACTION",
+                  "RESULT",
+                  "LEARNING",
+                  "TRIGGER",
+                  "JOB_LINK",
+                  "REASON"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "묻거나 받은 항목. DONE 이면 null",
+            "title": "Item"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "text": {
+            "description": "AI 말풍선 글. 질문은 세 줄 안(뭐가 비었는지·왜 필요한지·뭘 알려 달라는지와 예시)",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "question_id"
+        ],
+        "title": "TurnMessage",
+        "type": "object"
+      },
+      "TurnQuestion": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/KnownAnswer"
+            },
+            "maxItems": 20,
+            "title": "Answers",
+            "type": "array"
+          },
+          "blanks": {
+            "description": "지금 글에 남은 빈칸. '[더 쓸 거리: 꾸준히 익힌 행동]' 같은 빈칸 글 전체나 그 안의 글('꾸준히 익힌 행동')",
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Blanks",
+            "type": "array"
+          },
+          "char_limit": {
+            "maximum": 5000.0,
+            "minimum": 100.0,
+            "title": "Char Limit",
+            "type": "integer"
+          },
+          "current_text": {
+            "description": "지금 종이의 글",
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Current Text",
+            "type": "string"
+          },
+          "missing_evidence": {
+            "description": "재료에 없어 글에 드러나지 않은 행동증거",
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Missing Evidence",
+            "type": "array"
+          },
+          "primary_card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "question_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Question Id",
+            "type": "integer"
+          },
+          "question_theme": {
+            "anyOf": [
+              {
+                "enum": [
+                  "COLLABORATION",
+                  "CONFLICT",
+                  "PROBLEM_SOLVING",
+                  "LEADERSHIP",
+                  "CHALLENGE",
+                  "FAILURE",
+                  "GROWTH",
+                  "MOTIVATION"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question Theme"
+          },
+          "supporting_card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "text",
+          "char_limit",
+          "current_text"
+        ],
+        "title": "TurnQuestion",
+        "type": "object"
+      },
+      "TurnRequest": {
+        "additionalProperties": false,
+        "description": "`POST /internal/cover-letter-turns` 요청 모델.",
+        "properties": {
+          "cover_letter_id": {
+            "exclusiveMinimum": 0.0,
+            "title": "Cover Letter Id",
+            "type": "integer"
+          },
+          "job_role": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Job Role",
+            "type": "string"
+          },
+          "memo": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Memo"
+          },
+          "others": {
+            "description": "같은 자소서의 다른 문항",
+            "items": {
+              "$ref": "#/components/schemas/PolishOther"
+            },
+            "maxItems": 9,
+            "title": "Others",
+            "type": "array"
+          },
+          "posting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Posting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "question": {
+            "$ref": "#/components/schemas/TurnQuestion"
+          },
+          "thread": {
+            "description": "자소서 하나의 대화 전체, 오래된 것부터",
+            "items": {
+              "$ref": "#/components/schemas/ThreadTurn"
+            },
+            "maxItems": 300,
+            "title": "Thread",
+            "type": "array"
+          },
+          "trigger": {
+            "enum": [
+              "OPEN",
+              "USER_REPLY",
+              "SKIP"
+            ],
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cover_letter_id",
+          "job_role",
+          "question",
+          "trigger"
+        ],
+        "title": "TurnRequest",
+        "type": "object"
+      },
+      "TurnResult": {
+        "description": "`POST /internal/cover-letter-turns` 응답 `data` 모델.",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TurnAnswer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "USER_REPLY 에서 받은 답. FILLED 면 Spring 이 저장하고 문항을 다시 쓴다"
+          },
+          "message": {
+            "$ref": "#/components/schemas/TurnMessage"
+          },
+          "status": {
+            "enum": [
+              "ASKING",
+              "FILLED",
+              "DONE",
+              "OFF_TOPIC"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "status"
+        ],
+        "title": "TurnResult",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -8511,6 +9065,77 @@
         ]
       }
     },
+    "/internal/cover-letter-fill": {
+      "post": {
+        "description": "target.answers 에 든 filled_item 의 답으로 그 문항의 빈칸(blank) 자리만 다시 쓰고 나머지 문장은 그대로 둡니다. blank 가 null 이거나 글에 없으면 그 항목의 빈칸을 찾고, 그것도 없으면 그 내용이 들어갈 자리에 한 문장까지 더합니다. 초안 쓰기의 고치기 경로로 쓰므로 근거 없는 수치·낱말 검사와 추론(INFERRED) 표시가 초안과 같고, 새로 쓴 문장만 감독이 한 번 더 봅니다. 다시 쓴 글이 앞 글에 없던 문제로 검사에 걸리면 그 문제만 한 번 더 고쳐 쓰게 하고, 그래도 남거나 빈칸 자리 밖의 문장을 둘 이상 바꾸면 앞 글로 되돌리고 steps 에 REVERTED 를 남깁니다. 그대로 남은 문장은 INFERRED 여부를 그대로 둡니다(target.inferred_seqs). 쓰기 답을 60초 안에 받지 못하면 503 LLM_UNAVAILABLE(retryable=true)입니다.",
+        "operationId": "fill_question_internal_cover_letter_fill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_FillResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
+          }
+        },
+        "summary": "채팅에서 받은 답으로 자소서 문항 하나 다시 쓰기",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
     "/internal/cover-letter-polish": {
       "post": {
         "description": "문항 하나의 지금 글(target.current_text)을 읽고 종합 평가와 첨삭 포인트(아쉬운 점 WEAK 최대 4개 · 잘한 점 GOOD 최대 3개, 분류 FIT·EVIDENCE·READABILITY·OVERLAP·TECH_TERMS)를 만든 뒤, 아쉬운 점과 검사기 문제를 초안 쓰기의 고치기 경로로 고쳐 씁니다. 고친 글은 첫 초안과 같은 검사(근거 없는 수치·낱말, 기술 이름·코드 이름·저장소 말 상한)와 감독 검토(근거 없는 역할·문항 벗어남·밝히지 않은 추론, 걸리면 한 번 더 고쳐 씀)를 거쳐 문장 표시를 달고, points 의 sentence_seqs 는 고친 글(draft.sentences)의 문장 번호입니다. 다른 문항 글(others)은 겹침(OVERLAP)을 보는 데만 쓰며, 겹친 문장이 고친 글에 남으면 REPEATED 로 표시합니다. 고친 글에 그대로 남은 문장은 INFERRED 여부를 그대로 둡니다(inferred_seqs 에 있으면 남기고, 없으면 다시 달지 않음). 진단이나 고쳐 쓰기 답을 60초 안에 받지 못하면 뼈대로 대신하지 않고 503 LLM_UNAVAILABLE(retryable=true)을 돌려줍니다.",
@@ -8638,6 +9263,77 @@
           }
         },
         "summary": "자소서 문항마다 모자란 재료를 묻는 질문 만들기",
+        "tags": [
+          "cover-letters"
+        ]
+      }
+    },
+    "/internal/cover-letter-turns": {
+      "post": {
+        "description": "초안이 나온 뒤 문항 하나(question)에 넣을 재료를 한 번에 질문 하나로 묻습니다. trigger 가 OPEN 이면 첫 질문을, USER_REPLY 면 thread 마지막 사용자 말을 받아 주는 한 줄과 함께 답(answer: 항목·'~다' 체로 정리한 사용자의 사실·충분한지)을 돌려주고, 답이 얇으면 같은 항목 꼬리 질문(status ASKING, 같은 항목 2번까지 — 그 뒤엔 그대로 받음), 충분하면 status FILLED 입니다. SKIP 이면 LLM 없이 DONE 입니다. 질문은 세 줄 안(뭐가 비었는지·왜 필요한지·뭘 알려 달라는지와 예시)이고, 재료(카드 문장·받은 답)에 글자 그대로 있는 증거는 묻지 않습니다. 문항당 질문은 4번까지이고 넘으면 DONE 입니다. 지시문 같은 말이나 자소서 재료가 아닌 말은 정해진 글로 돌려보내고 묻던 질문을 다시 보입니다(OFF_TOPIC). 답 정리에 사용자가 말하지 않은 숫자·영문 이름이 들면 한 번 더 받고, 그래도 들면 사용자의 말을 그대로 씁니다(ended_by=PARTIAL). thread 의 AI 턴에 status 를 보내면 질문 수를 그것으로 셉니다. LLM 답을 20초 안에 받지 못하면 503 LLM_UNAVAILABLE(retryable=true)입니다.",
+        "operationId": "next_turn_internal_cover_letter_turns_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TurnResult_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "INVALID_PAYLOAD",
+                    "message": "요청 스키마가 명세와 일치하지 않습니다.",
+                    "retryable": false
+                  },
+                  "meta": {
+                    "ended_by": "FAILED",
+                    "github_calls": 0,
+                    "input_tokens": 0,
+                    "llm_calls": 0,
+                    "model_usage": [],
+                    "output_tokens": 0,
+                    "processing_ms": 0,
+                    "repair_rounds": 0,
+                    "tool_calls_made": 0
+                  },
+                  "success": false
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "INVALID_PAYLOAD: 요청 본문 또는 필수 헤더 검증 실패. 재시도 불가."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "LLM_UNAVAILABLE: LLM 호출·출력 검증 실패 또는 LLM 환경 설정 누락. 다시 시도할지는 retryable로 알린다(설정 누락·콘텐츠 필터·STAR 출력 길이 초과는 false)."
+          }
+        },
+        "summary": "자소서 채팅의 다음 AI 말 만들기",
         "tags": [
           "cover-letters"
         ]

@@ -80,6 +80,24 @@ class CoverLetterLimits:
     max_point_detail_chars: int = 60
     max_summary_chars: int = 150
     max_other_text_chars: int = 2_000
+    # 채팅 한 턴은 사용자가 보내고 기다리는 말이라 짧게 끊는다
+    turn_deadline_seconds: float = 20.0
+    turn_max_completion_tokens: int = 1_500
+    # 문항 하나에 질문을 이만큼 했으면 더 묻지 않고 끝내고, 같은 항목 꼬리 질문은 이만큼 뒤 받은 답을 그대로 받는다
+    max_turn_questions: int = 4
+    max_follow_ups: int = 2
+    max_turn_lines: int = 3
+    max_ack_chars: int = 80
+    max_example_chars: int = 60
+    max_answer_chars: int = 300
+    max_thread_turns: int = 30
+    # 답으로 문항을 다시 쓰는 것은 쓰기 한 번과 검사·감독 한 번이라 첨삭처럼 끊고, 감독 검토 시간을 남긴다
+    fill_deadline_seconds: float = 60.0
+    fill_review_reserve_seconds: float = 15.0
+    # 빈칸 자리를 쓰면서 이어지는 앞 문장 하나는 다듬어도 되고, 그보다 많이 바꾸면 앞 글로 되돌린다
+    max_fill_changed_sentences: int = 1
+    # 다시 쓴 글에 새로 생긴 문제(새 답의 기술 이름이 상한을 넘는 등)를 고쳐 쓸 기회
+    fill_fix_rounds: int = 1
 
 
 async def call_until_valid(

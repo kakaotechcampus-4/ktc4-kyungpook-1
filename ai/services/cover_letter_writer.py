@@ -367,31 +367,53 @@ class QuestionWriter:
         """
         if draft.source != "LLM" or not findings:
             return draft
-        qid = question.question_id
-        fix = {"previous_draft": draft.text, "previous_inferred": list(draft.inferred),
-               "problems": [describe_finding(finding, question) for finding in findings]}
-        payload = self._payload(request, question, draft.blanks, list(draft.missing_evidence),
-                                list(draft.inferable_evidence))
         try:
-            text, inferred = await self._write({**payload, "fix": fix}, deadline, qid, draft.rewrites + 1)
+            return await self.rewrite_with(request, question, draft,
+                                           [describe_finding(finding, question) for finding in findings], deadline, record)
         except CoverLetterLLMUnavailable:
             return draft
-        record("SUB_AGENT", "REWROTE", qid, value=str(countable_length(text)))
+
+    async def rewrite_with(
+        self, request: DraftsRequest, question: DraftQuestion, draft: WrittenDraft, problems: list[str],
+        deadline: float, record: Recorder, fix_rounds: int = 0, keep: tuple[str, ...] = (),
+    ) -> WrittenDraft:
+        """problems 대로 다시 쓰고, 앞 글에 없던 문제로 검사에 걸리면 그 문제만 fix_rounds 번 더 고쳐 쓰게 한 뒤 그래도 남으면 앞 글로 되돌린다.
+
+        keep 은 더 고쳐 쓰는 바퀴마다 문제 뒤에 함께 넣는 말이다(예: 새로 쓴 문장 안에서만 고치기).
+
+        첫 쓰기 답을 못 받으면 CoverLetterLLMUnavailable 을 올리고, 더 고쳐 쓰는 답을 못 받으면 앞 글로 되돌린다.
+        """
+        qid = question.question_id
+        payload = self._payload(request, question, draft.blanks, list(draft.missing_evidence),
+                                list(draft.inferable_evidence))
         source = source_text(request, question)
         limits: dict[str, Any] = {
             "char_limit": question.char_limit, "missing_items": draft.blanks, **check_options(request, question),
         }
         before = {_issue_key(issue) for issue in check_draft(draft.text, source=source, **limits)}
-        issues = check_draft(text, source=source, **limits)
-        for issue in issues:
-            record("CODE", "CHECK_FAILED", qid, code=issue.code, value=issue.value, **_located(text, issue.sentence_seq))
-        if any(_issue_key(issue) not in before for issue in issues):
-            record("CODE", "REVERTED", qid)
-            report_text(qid, draft.rewrites + 1, draft.text)
-            return replace(draft, rewrites=draft.rewrites + 1)
-        if not issues:
-            record("CODE", "CHECK_PASSED", qid, value=str(countable_length(text)))
-        return replace(draft, text=text, inferred=tuple(inferred), rewrites=draft.rewrites + 1)
+        text, inferred, rewrites = draft.text, list(draft.inferred), draft.rewrites
+        for round_no in range(fix_rounds + 1):
+            fix = {"previous_draft": text, "previous_inferred": inferred, "problems": problems}
+            try:
+                text, inferred = await self._write({**payload, "fix": fix}, deadline, qid, rewrites + 1)
+            except CoverLetterLLMUnavailable:
+                if round_no == 0:
+                    raise
+                break
+            rewrites += 1
+            record("SUB_AGENT", "REWROTE", qid, value=str(countable_length(text)))
+            issues = check_draft(text, source=source, **limits)
+            for issue in issues:
+                record("CODE", "CHECK_FAILED", qid, code=issue.code, value=issue.value, **_located(text, issue.sentence_seq))
+            new = [issue for issue in issues if _issue_key(issue) not in before]
+            if not new:
+                if not issues:
+                    record("CODE", "CHECK_PASSED", qid, value=str(countable_length(text)))
+                return replace(draft, text=text, inferred=tuple(inferred), rewrites=rewrites)
+            problems = [*(describe_issue(issue) for issue in new), *keep]
+        record("CODE", "REVERTED", qid)
+        report_text(qid, rewrites, draft.text)
+        return replace(draft, rewrites=rewrites)
 
     def finish(
         self, request: DraftsRequest, question: DraftQuestion, draft: WrittenDraft,

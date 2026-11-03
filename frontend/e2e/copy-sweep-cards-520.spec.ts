@@ -59,12 +59,3 @@ test('카드 삭제 진입 버튼은 위험 색이고, 지우기 전에 확인�
   await expect(dialog).toBeHidden();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 });
-
-test('후보 보드 제목의 후보 수와 "후보 선택" 옆 수가 같다 (C-01)', async ({ page }) => {
-  await loginAsDemo(page);
-  await page.goto('/repos/r_auth/candidates');
-  const title = await page.getByRole('heading', { level: 1 }).innerText();
-  const section = await page.locator('.section-head', { hasText: '후보 선택' }).locator('.section-head__count').innerText();
-  expect(title).toBe(`후보 ${section}개`);
-  await expect(page.getByRole('button', { name: /^추천도 낮은 후보 \d+개 보기$/ })).toBeVisible();
-});

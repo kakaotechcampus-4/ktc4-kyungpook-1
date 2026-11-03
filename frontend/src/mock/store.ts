@@ -277,6 +277,7 @@ export function viewJob(id: string): Any | null {
 function settle(j: Any, fn: () => void) { if (!j.settled) { j.settled = true; fn(); } }
 
 // ───────────────────────────── 후보 ─────────────────────────────
+const GENERATED_WORK = ['검색 인덱스를 다시 짠', '이미지 크기 줄이기를 파이프라인으로 만든', '권한 확인을 미들웨어 하나로 모은', '캐시를 비우는 때를 정리한', '알림이 실패하면 다시 보내게 만든', '로그 모으는 도구를 바꾼'];
 function materializeCandidates(repo: Any, partial: boolean) {
   repo.lastAnalyzedAt = now();
   const existing = db.candidates.filter((c) => c.repoId === repo.id);
@@ -289,7 +290,8 @@ function materializeCandidates(repo: Any, partial: boolean) {
       id: nextId('c'), repoId: repo.id, type: cluster ? 'COMMIT_CLUSTER' : 'PR', status: 'NEW',
       ref: cluster ? `2024-0${1 + (i % 8)}-1${i % 9}` : `#${10 + i * 3}`,
       title: cluster ? `${['/auth', '/board', '/api', '/ui', '/infra'][i % 5]} 아래 ${3 + (i % 4)}커밋 묶음` : ['검색 인덱스 재구성', '이미지 리사이즈 파이프라인', '권한 체크 미들웨어', '캐시 무효화 정리', '알림 발송 재시도', '로그 수집기 교체'][i % 6],
-      reason: cluster ? `같은 날 같은 디렉터리 아래 ${3 + (i % 4)}커밋 — PR 없이 main 직접 푸시` : `리뷰 코멘트 ${(i * 5) % 11}건 · ${2 + (i % 9)}일간 열림`,
+      reason: cluster ? `PR 없이 하루 만에 ${['/auth', '/board', '/api', '/ui', '/infra'][i % 5]} 아래에 커밋 ${3 + (i % 4)}개를 올린 일이에요`
+        : `${(i * 5) % 11 ? `리뷰를 ${(i * 5) % 11}번 주고받으며` : '리뷰 없이'} ${2 + (i % 9)}일 동안 ${GENERATED_WORK[i % 6]} 일이에요`,
       meta: { commits: 3 + (i % 4), files: 2 + (i % 6), reviewComments: cluster ? 0 : (i * 5) % 11, days: i % 9, codeRatio: 0.6 + (i % 4) * 0.1 },
       weak: i >= n - 2, score: 40 - i * 2.7, commits: cluster ? [] : null, usedByCardId: null,
     });

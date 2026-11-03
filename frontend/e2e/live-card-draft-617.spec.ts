@@ -14,8 +14,8 @@ const generationHeading = (page: Page) => page.getByRole('heading', { name: '고
 async function startCards(page: Page, count: number) {
   await loginAsDemo(page);
   await page.goto('/repos/r_auth/candidates');
-  for (let index = 0; index < count; index += 1) await page.getByRole('checkbox', { disabled: false }).nth(index).check();
-  await page.getByRole('button', { name: `선택한 ${count}개로 카드 만들기` }).click();
+  for (let index = 0; index < count; index += 1) await page.locator('.cand-tile__pick').nth(index).click();
+  await page.getByRole('button', { name: '카드 만들기', exact: true }).click();
 }
 
 test('카드가 차례로 채워지고, 읽는 동안은 커서만, 글은 일정한 속도로 펼쳐지며, 마지막 카드까지 펼친 뒤에 완성된 카드로 넘어간다', async ({ page }) => {

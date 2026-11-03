@@ -98,6 +98,9 @@ export function buildFolders(cards: readonly CardSummary[], activities?: readonl
   return folders;
 }
 
+/** 폴더 앞판 뒤로 겹쳐 보일 카드 수. 한 장이면 겹치지 않고, 둘이면 하나, 셋 이상은 둘이다(더 쌓아도 모양이 늘지 않게 한다). 정확한 수는 숫자가 말한다 */
+export const deckLayers = (count: number): 0 | 1 | 2 => (count >= 3 ? 2 : count === 2 ? 1 : 0);
+
 /** 경험 카드(직접 쓴 정성 카드)가 한 장도 없는 폴더. 앞판에 '경험 카드 없음'을 적어 더 쓸 곳을 보여 준다. 직접 쓴 카드 폴더는 해당 없다 */
 export const lacksExperience = (folder: CardFolder) => folder.kind !== 'direct' && folder.experienceCount === 0;
 

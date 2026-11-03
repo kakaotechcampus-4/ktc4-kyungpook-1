@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Activity } from '@/api/activities';
 import { CardSummary } from '@/api/schemas';
-import { buildFolders, folderLabel, lacksExperience, topTechs } from '@/lib/cardFolders';
+import { buildFolders, deckLayers, folderLabel, lacksExperience, topTechs } from '@/lib/cardFolders';
 
 const card = (id: string, over: Record<string, unknown> = {}) => CardSummary.parse({
   id, kind: 'TECH', status: 'DRAFT', title: id, versionNo: 1, areas: [], techs: [], repo: null, activity: null,
@@ -87,5 +87,11 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
     expect(folderLabel(folders['activity:a_empty'])).toBe('활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 경험 카드 없음');
     expect(folderLabel(folders['activity:a_club'])).toBe('활동, 동아리, 교내 개발 동아리, 카드 2장');
     expect(folderLabel(folders.direct)).toBe('레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장');
+  });
+});
+
+describe('폴더 앞판 뒤로 겹쳐 보이는 카드 수 (#522)', () => {
+  it('한 장은 겹치지 않고 둘은 한 겹, 셋 이상은 두 겹으로 멈춘다', () => {
+    expect([0, 1, 2, 3, 4, 8, 100].map(deckLayers)).toEqual([0, 0, 1, 2, 2, 2, 2]);
   });
 });

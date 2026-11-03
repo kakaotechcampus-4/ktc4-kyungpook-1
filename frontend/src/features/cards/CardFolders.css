@@ -1,7 +1,9 @@
 /*
- * 경험 카드 폴더(이슈 #522, 10/29 회의). 레포·활동마다 닫힌 폴더 하나, 카드는 폴더 밖으로 나오지 않는다.
- * 색은 토큰만 쓴다(다크 모드는 토큰이 알아서 바뀐다): 뒤판·탭 --bg-ink-solid, 앞판 --bg-surface + --border-default, 숫자 --text-accent.
- * 마우스를 올리거나 키보드로 닿으면 뒤판은 --bg-ink-hover, 앞판 테두리는 --border-selected 로 색만 바뀐다(움직임 없음).
+ * 경험 카드 폴더(이슈 #522, 10/29 회의). 레포·활동마다 카드 묶음 하나, 카드는 묶음 밖으로 나오지 않는다.
+ * 맨 위 카드는 경험 카드 타일과 같은 모양(바탕 --bg-surface, 테두리 --border-default, 모서리 --radius-lg)이고, 그 뒤로 겹쳐 보이는 카드 수가 장 수를 따른다
+ * (한 장은 겹침 없음, 두 장은 한 겹, 세 장 이상은 두 겹). 카드가 한 장도 없으면 점선 테두리다. 겹친 카드는 장식이라 글이 없다.
+ * 색은 토큰만 쓴다(다크 모드는 토큰이 알아서 바뀐다). 숫자는 --text-accent.
+ * 마우스를 올리거나 키보드로 닿으면 맨 위 카드와 겹친 카드의 테두리가 모두 --border-selected 로 색만 바뀐다(움직임 없음).
  * 폴더는 모두 같은 색 하나다. 레포마다 색을 달리하면 무지개처럼 보여 화면의 한 가지 강조색 규칙과 어긋난다.
  */
 .folders { display: flex; flex-direction: column; gap: 14px; }
@@ -13,16 +15,24 @@
 .folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 20px 16px; }
 
 .folder-grid > li { display: flex; min-width: 0; }
-.folder { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; padding-top: 20px; border-radius: var(--radius-lg); color: var(--text-primary); isolation: isolate; }
-.folder__back, .folder__back::before { background: var(--bg-ink-solid); }
-.folder__back { position: absolute; z-index: -1; top: 8px; right: 0; bottom: 0; left: 0; border-radius: 0 var(--radius-lg) var(--radius-lg) var(--radius-lg); }
-/* 탭: 뒤판 왼쪽 위로 솟은 조각. 글은 넣지 않는다 */
-.folder__back::before { content: ''; position: absolute; top: -8px; left: 0; width: min(44%, 132px); height: 16px; border-radius: var(--radius-md) 0 0 0; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%); }
+.folder { --peek: 8px; --peek-inset: 10px; position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; border-radius: var(--radius-lg); color: var(--text-primary); isolation: isolate; }
+.folder[data-deck="1"] { padding-bottom: var(--peek); }
+.folder[data-deck="2"] { padding-bottom: calc(var(--peek) * 2); }
+/* 뒤로 겹친 카드: 맨 위 카드보다 --peek 만큼 아래로 삐져나오고 양옆은 --peek-inset 씩 안쪽이다 */
+.folder__back { position: absolute; z-index: -1; inset: 0; pointer-events: none; }
+.folder__back::before, .folder__back::after { content: ''; position: absolute; display: none; top: 28px; background: var(--bg-subtle); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
+/* ::before 가 먼 카드, ::after 가 가까운 카드다(나중에 그려지는 쪽이 위) */
+.folder[data-deck="1"] .folder__back::after { display: block; right: var(--peek-inset); bottom: 0; left: var(--peek-inset); }
+.folder[data-deck="2"] .folder__back::after { display: block; right: var(--peek-inset); bottom: var(--peek); left: var(--peek-inset); }
+.folder[data-deck="2"] .folder__back::before { display: block; right: calc(var(--peek-inset) * 2); bottom: 0; left: calc(var(--peek-inset) * 2); }
 .folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 128px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
-.folder:hover .folder__back, .folder:hover .folder__back::before,
-.folder:focus-visible .folder__back, .folder:focus-visible .folder__back::before { background: var(--bg-ink-hover); }
+.folder[data-empty] .folder__front { border-style: dashed; border-color: var(--border-strong); }
 .folder:hover .folder__front, .folder:focus-visible .folder__front { border-color: var(--border-selected); }
+.folder:hover .folder__back::before, .folder:hover .folder__back::after,
+.folder:focus-visible .folder__back::before, .folder:focus-visible .folder__back::after { border-color: var(--border-selected); }
 
+.folder__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.folder__kind { flex: 0 0 auto; color: var(--text-tertiary); }
 .folder__owner { font-size: 12px; line-height: 16px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder__name { font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); color: var(--text-primary);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }

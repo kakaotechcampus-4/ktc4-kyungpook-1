@@ -94,18 +94,16 @@ test('폴더는 키보드로 열고, 위에 두면 색만 바뀐다', async ({ p
   await page.goto('/cards');
   const auth = folder(page, /^레포 hong-dev, auth-service/);
   await expect(auth).toBeVisible();
-  const before = await auth.evaluate((el) => {
+  const read = (el: Element) => {
     const back = el.querySelector('.folder__back')!, front = el.querySelector('.folder__front')!;
-    return { back: getComputedStyle(back).backgroundColor, tab: getComputedStyle(back, '::before').backgroundColor, border: getComputedStyle(front).borderColor, box: JSON.stringify(el.getBoundingClientRect()), transform: getComputedStyle(el).transform };
-  });
+    return { layer: getComputedStyle(back, '::before').borderTopColor, layer2: getComputedStyle(back, '::after').borderTopColor, border: getComputedStyle(front).borderColor, box: JSON.stringify(el.getBoundingClientRect()), transform: getComputedStyle(el).transform };
+  };
+  const before = await auth.evaluate(read);
   await auth.hover();
-  const after = await auth.evaluate((el) => {
-    const back = el.querySelector('.folder__back')!, front = el.querySelector('.folder__front')!;
-    return { back: getComputedStyle(back).backgroundColor, tab: getComputedStyle(back, '::before').backgroundColor, border: getComputedStyle(front).borderColor, box: JSON.stringify(el.getBoundingClientRect()), transform: getComputedStyle(el).transform };
-  });
-  expect(after.back).not.toBe(before.back); // 뒤판 --bg-ink-hover
-  expect(after.tab).toBe(after.back); // 탭은 뒤판과 한 색
-  expect(after.border).not.toBe(before.border); // 앞판 테두리 초록
+  const after = await auth.evaluate(read);
+  expect(after.border).not.toBe(before.border); // 맨 위 카드 테두리
+  expect(after.layer).not.toBe(before.layer); // 겹친 카드 테두리
+  expect(after.layer2).toBe(after.layer); // 겹친 카드는 한 색
   expect(after.box).toBe(before.box); // 움직임 없음
   expect(after.transform).toBe(before.transform);
 

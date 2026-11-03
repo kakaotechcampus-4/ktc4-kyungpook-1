@@ -51,9 +51,17 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(screen.getByRole('link', { name: FOLDERS.contest })).toHaveAttribute('href', '/cards/activity/act_contest');
     expect(screen.getByRole('radio', { name: '폴더' })).toHaveAttribute('aria-checked', 'true');
     expect(tiles()).toHaveLength(0);
-    // 앞판 글: 경험 카드가 없는 폴더에만 '경험 카드 없음', 장식(뒤판·탭)은 접근성 트리에서 뺀다
+    // 앞판 글: 경험 카드가 없는 폴더에만 '경험 카드 없음', 장식(뒤에 겹친 카드)은 접근성 트리에서 뺀다
     expect(screen.getAllByText('경험 카드 없음')).toHaveLength(2);
     expect(auth.querySelector('.folder__back')).toHaveAttribute('aria-hidden', 'true');
+    // 뒤로 겹쳐 보이는 카드는 장 수를 따르고(4장 두 겹, 2장 한 겹, 1장 없음), 카드가 없는 폴더만 점선(data-empty)이다
+    expect(auth).toHaveAttribute('data-deck', '2');
+    expect(screen.getByRole('link', { name: FOLDERS.club })).toHaveAttribute('data-deck', '1');
+    expect(screen.getByRole('link', { name: FOLDERS.fts })).toHaveAttribute('data-deck', '0');
+    expect(screen.getByRole('link', { name: FOLDERS.contest })).toHaveAttribute('data-empty', 'true');
+    expect(auth).not.toHaveAttribute('data-empty');
+    // 종류 아이콘도 장식이다
+    expect(auth.querySelector('.folder__kind')).toHaveAttribute('aria-hidden', 'true');
     // 직접 쓴 카드가 없으니 그 폴더도 없다
     expect(screen.queryByRole('link', { name: /직접 쓴 카드/ })).not.toBeInTheDocument();
   });

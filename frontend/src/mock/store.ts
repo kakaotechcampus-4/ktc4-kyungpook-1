@@ -452,7 +452,7 @@ function fillDraft(cardId: string, timeout: boolean, plan: DraftPlan = 'OK') {
   }
   v.situation = texts.S;
   v.action = texts.A;
-  c.draftSteps = draftStepsOf(timeout ? 'PARTIAL' : plan, cand?.title ?? '작업'); // 라이브로 보여 준 과정이 카드 상세 'AI 가 한 일'로 남는다
+  c.draftSteps = draftStepsOf(timeout ? 'PARTIAL' : plan, cand?.title ?? '작업'); // 라이브로 보여 준 과정이 카드 상세 '만든 과정'으로 남는다
   c.evidence = [
     { field: 'S', type: 'COMMIT', authoredBy: 'AI', sha: shas[0].sha.slice(0, 7), ...sha(shas[0].sha), snippet: shas[0].message, turnNo: null },
     ...shas.map((s: Any) => ({ field: 'A', type: 'COMMIT', authoredBy: 'AI', sha: s.sha.slice(0, 7), ...sha(s.sha), snippet: s.message, turnNo: null })),

@@ -1,32 +1,42 @@
-"""자소서 카드 고르기(A1)·질문 만들기(A2)·초안 쓰기와 전체 검토(A3~A5) API.
+"""자소서 카드 고르기(A1)·질문 만들기(A2)·초안 쓰기와 전체 검토(A3~A5)·문항 첨삭 API.
 
-세 API 는 LLM 이 없거나 실패해도 오류를 내지 않는다. 카드 고르기는 그 문항을 FAILED 로 돌려 사용자가 고르게 하고,
+앞의 세 API 는 LLM 이 없거나 실패해도 오류를 내지 않는다. 카드 고르기는 그 문항을 FAILED 로 돌려 사용자가 고르게 하고,
 질문 만들기는 꼭 물을 항목만 틀 질문으로 묻고, 초안 쓰기는 카드 문장과 빈칸으로 만든 뼈대를 돌려준다.
+첨삭은 사용자가 버튼을 누르고 기다리는 요청이라 실패를 숨기지 않고 503 LLM_UNAVAILABLE 로 알린다.
 """
 
 from __future__ import annotations
 
+import logging
 import time
 
 from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse, StreamingResponse
 
-from api.openapi import INVALID_PAYLOAD_RESPONSE
+from api.failure_log import log_failure
+from api.openapi import INVALID_PAYLOAD_RESPONSE, LLM_UNAVAILABLE_RESPONSE
 from api.progress_stream import NDJSON, stream_with_progress
-from schemas.common import Envelope
+from schemas.common import Envelope, ErrorDetail
 from schemas.cover_letter import (
     AssignmentRequest,
     AssignmentResult,
     DraftsRequest,
     DraftsResult,
+    PolishRequest,
+    PolishResult,
     QuestionsRequest,
     QuestionsResult,
 )
 from services.cover_letter_asker import CoverLetterAsker
 from services.cover_letter_assigner import CoverLetterAssigner
 from services.cover_letter_drafter import CoverLetterDrafter
+from services.cover_letter_llm import CoverLetterLLMUnavailable
+from services.cover_letter_polish import CoverLetterPolisher
 from services.llm_settings import EnvironmentLLMClient
 from services.usage import usage_meta
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/internal", tags=["cover-letters"], responses={400: INVALID_PAYLOAD_RESPONSE})
 
@@ -46,6 +56,9 @@ _judge = EnvironmentLLMClient("COVER_LETTER_REVIEW")
 _assigner = CoverLetterAssigner(EnvironmentLLMClient("COVER_LETTER_PICK"), _judge)
 _asker = CoverLetterAsker(EnvironmentLLMClient("COVER_LETTER_ASK"))
 _drafter = CoverLetterDrafter(EnvironmentLLMClient("COVER_LETTER_WRITE"), _judge)
+_polisher = CoverLetterPolisher(EnvironmentLLMClient("COVER_LETTER_POLISH"), _judge)
+
+_POLISH_PATH = "/internal/cover-letter-polish"
 
 
 @router.post(
@@ -94,6 +107,37 @@ async def create_drafts(request: DraftsRequest) -> Envelope[DraftsResult]:
     started = time.perf_counter()
     result, ended_by = await _drafter.draft(request)
     return Envelope(success=True, data=result, meta=usage_meta(started, ended_by), error=None)
+
+
+@router.post(
+    "/cover-letter-polish", response_model=Envelope[PolishResult],
+    responses={503: LLM_UNAVAILABLE_RESPONSE},
+    summary="자소서 문항 하나를 진단하고 고쳐 쓰기(첨삭)",
+    description=(
+        "문항 하나의 지금 글(target.current_text)을 읽고 종합 평가와 첨삭 포인트(아쉬운 점 WEAK 최대 4개 · 잘한 점 GOOD 최대 3개, "
+        "분류 FIT·EVIDENCE·READABILITY·OVERLAP·TECH_TERMS)를 만든 뒤, 아쉬운 점과 검사기 문제를 초안 쓰기의 고치기 경로로 고쳐 씁니다. "
+        "고친 글은 첫 초안과 같은 검사(근거 없는 수치·낱말, 기술 이름·코드 이름·저장소 말 상한)와 감독 검토(근거 없는 역할·문항 벗어남·"
+        "밝히지 않은 추론, 걸리면 한 번 더 고쳐 씀)를 거쳐 문장 표시를 달고, points 의 sentence_seqs 는 고친 글(draft.sentences)의 문장 번호입니다. "
+        "다른 문항 글(others)은 겹침(OVERLAP)을 보는 데만 쓰며, 겹친 문장이 고친 글에 남으면 REPEATED 로 표시합니다. "
+        "고친 글에 그대로 남은 문장은 INFERRED 여부를 그대로 둡니다(inferred_seqs 에 있으면 남기고, 없으면 다시 달지 않음). "
+        "진단이나 고쳐 쓰기 답을 60초 안에 받지 못하면 뼈대로 대신하지 않고 503 LLM_UNAVAILABLE(retryable=true)을 돌려줍니다."
+    ),
+)
+async def polish_question(request: PolishRequest):
+    started = time.perf_counter()
+    try:
+        result = await _polisher.polish(request)
+    except CoverLetterLLMUnavailable as exc:
+        log_failure(logger, "자소서 첨삭", path=_POLISH_PATH, code="LLM_UNAVAILABLE", retryable=True, exc=exc,
+                    started=started, cover_letter_id=request.cover_letter_id)
+        envelope = Envelope(
+            success=False,
+            data=None,
+            meta=usage_meta(started, "FAILED"),
+            error=ErrorDetail(code="LLM_UNAVAILABLE", message="자소서 첨삭 LLM 답을 받지 못했습니다.", retryable=True),
+        )
+        return JSONResponse(status_code=503, content=jsonable_encoder(envelope))
+    return Envelope(success=True, data=result, meta=usage_meta(started, "COMPLETED"), error=None)
 
 
 @router.post(

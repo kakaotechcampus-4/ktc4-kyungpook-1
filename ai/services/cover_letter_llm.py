@@ -68,6 +68,18 @@ class CoverLetterLimits:
     max_findings_per_question: int = 3
     # 재료에 없는 해석을 지어 쓴 문장은 사용자가 하나씩 확인해야 해서 문항마다 이만큼만 둔다
     max_inferred: int = 2
+    # 첨삭은 사용자가 버튼을 누르고 기다리는 동기 요청이라 초안보다 짧게 끊고, 진단이 끌어도 고쳐 쓸 시간을 남긴다
+    polish_deadline_seconds: float = 60.0
+    polish_rewrite_reserve_seconds: float = 35.0
+    # 고쳐 쓰기 바퀴가 끌어도 감독 검토와 한 번 더 고쳐 쓰기를 할 시간을 남긴다
+    polish_review_reserve_seconds: float = 15.0
+    diagnose_max_completion_tokens: int = 2_500
+    max_weak_points: int = 4
+    max_good_points: int = 3
+    max_point_title_chars: int = 30
+    max_point_detail_chars: int = 60
+    max_summary_chars: int = 150
+    max_other_text_chars: int = 2_000
 
 
 async def call_until_valid(

@@ -112,6 +112,7 @@
 - `writing`: 초안을 쓰는 동안(`DRAFTING`) AI 가 그 문항에 지금까지 쓴 글이다. 첫 초안(`round` 0)은 문장이 끝날 때마다 늘어나고, 고쳐 쓸 때는 `round` 가 1씩 늘며 다 쓴 새 글로 한 번에 바뀐다(화면은 앞 글과 문장 단위로 견줘 바뀐 문장만 다시 그린다). 검토 뒤 고쳐 쓴 글이 새 문제로 되돌려지면 앞 글로 돌아온다. 아직 쓰기 전이거나 단계가 끝나면(`DRAFTED`·`FAILED`) `null` 이고, 다 쓰면 `draft` 가 채워진다. 빠뜨린 빈칸은 다 쓴 뒤에 붙으므로 `writing` 에는 없을 수 있다.
 
 - `polish`: 첨삭 미리 보기. `points` 는 아쉬운 점(`WEAK`) 최대 4개 · 잘한 점(`GOOD`) 최대 3개이고, `category` 는 `FIT` 문항 적합성 · `EVIDENCE` 근거 · `READABILITY` 읽기 쉬움 · `OVERLAP` 겹침 · `TECH_TERMS` 기술 용어다. `sentenceSeqs` 는 **고친 글(`polish.draft.sentences`)의 문장 번호**다(없으면 `[]`). `polish.draft` 의 `marks`·`blanks`·`charCount` 는 `draft` 와 같은 규칙으로 고친 글 기준이다.
+- 글을 직접 고쳐 저장하면(PATCH) 첨삭 미리 보기는 사라진다(`polish: null`). 앞뒤 공백만 다른 글은 그대로 둔다.
 - `polishAppliedCount`: 첨삭을 적용한 횟수. 화면은 `n + 1` 판으로 보일 수 있다. 적용 뒤 `draft.sentences`·`marks` 는 적용한 글 기준이고 `aiText` 는 첫 AI 원본 그대로다.
 
 **`CoverLetterSummary`** — `{ id, stage, jobRole, posting, questionCount, firstQuestion, createdAt, updatedAt }` — `posting` 은 `CoverLetter` 와 같은 모양이고 공고 없이 만들었으면 `null`

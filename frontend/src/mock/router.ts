@@ -99,7 +99,10 @@ on('POST', '/github/disconnect', () => { db.user.github.connected = false; db.us
 
 // ───────────────────────────── 레포 ─────────────────────────────
 const stripDisclosure = ({ disclosure, userId, ...r }: Any) => { void disclosure; void userId; return r; };
-on('GET', '/repos', () => ok(db.repos.map((r) => ({ ...stripDisclosure(r), cardCount: db.cards.filter((c) => c.repo?.id === r.id && c.status === 'CONFIRMED').length }))));
+const repoList = () => db.repos.map((r) => ({ ...stripDisclosure(r), cardCount: db.cards.filter((c) => c.repo?.id === r.id && c.status === 'CONFIRMED').length }));
+on('GET', '/repos', () => ok(repoList()));
+// 실제 서버처럼 GitHub 을 거치지 않은 저장 목록. '/repos/:id' 보다 먼저 둬야 saved 가 id 로 잡히지 않는다
+on('GET', '/repos/saved', () => ok(repoList()));
 on('GET', '/repos/:id', ({ params }) => {
   const r = db.repos.find((x) => x.id === params[0]);
   if (!r) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');

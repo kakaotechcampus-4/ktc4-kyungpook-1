@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, Link } from 'react-router-dom';
+import { NavLink, Outlet, Link, useLocation, useNavigationType } from 'react-router-dom';
 import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, BriefcaseBusiness, FileText } from 'lucide-react';
 import { matchSupported } from '@/api/matching';
 import { useActiveJobs } from '@/api/queries';
@@ -19,7 +19,8 @@ const MENU = [
   ] },
   { group: '설정', items: [
     { to: '/settings/github', label: 'GitHub 연결', icon: Github },
-    { to: '/settings', label: '마이페이지', icon: UserRound, end: true },
+    // 인적사항·탈퇴는 마이페이지 아래 화면이다. GitHub 연결은 따로 강조되므로 end 로 막고 하위 화면만 더한다
+    { to: '/settings', label: '마이페이지', icon: UserRound, end: true, also: ['/settings/profile', '/settings/leave'] },
   ] },
 ];
 
@@ -43,6 +44,10 @@ const MOBILE_MENU = [
 export function AppShell() {
 
   const active = useActiveJobs();
+  const { pathname } = useLocation();
+  const navType = useNavigationType();
+  // 메뉴·링크로 새 화면에 가면 맨 위에서 시작한다. 뒤로·앞으로(POP)는 브라우저가 둔 자리를 그대로 쓴다
+  useEffect(() => { if (navType !== 'POP') window.scrollTo(0, 0); }, [pathname, navType]);
   const [rail, setRail] = useState<boolean>(() => { try { return localStorage.getItem(RAIL_KEY) === '1'; } catch { return false; } });
   useEffect(() => { try { localStorage.setItem(RAIL_KEY, rail ? '1' : '0'); } catch { /* noop */ } }, [rail]);
 
@@ -61,9 +66,11 @@ export function AppShell() {
         {MENU.map((g) => (
           <nav key={g.group} className="menu-group" aria-label={g.group}>
             {g.items.map((it) => (
-              <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.label}>
-                <it.icon size={16} /><span>{it.label}</span>
-              </NavLink>
+              'also' in it && it.also?.some((p) => pathname.startsWith(p))
+                ? <Link key={it.to} to={it.to} className="menu-item" title={it.label} aria-label={it.label} aria-current="page"><it.icon size={16} /><span>{it.label}</span></Link>
+                : <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.label}>
+                  <it.icon size={16} /><span>{it.label}</span>
+                </NavLink>
             ))}
           </nav>
         ))}

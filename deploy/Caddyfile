@@ -36,6 +36,8 @@
 		root * /srv
 		# SPA 라우팅: 없는 경로는 index.html 로 (vercel.json rewrites 와 같은 동작)
 		try_files {path} /index.html
+		# index.html 은 매번 서버에 새 버전이 있는지 묻게 한다(ETag 로 바뀌지 않았으면 304). 해시 파일은 위에서 오래 캐시한다
+		header Cache-Control "no-cache"
 		file_server
 	}
 }

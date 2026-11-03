@@ -6,7 +6,7 @@ import { useAnswerInterview, useAskInterview, useCard, useInterview, useSkipInte
 import { StarField as StarFieldSchema, isOpenTurn, type EvidenceType, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
-import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldName, starFieldShort } from '@/lib/labels';
+import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldExample, starFieldName, starFieldShort } from '@/lib/labels';
 import { askJudgement, cleanAiText } from '@/lib/interviewReason';
 import { CONFIG } from '@/lib/config';
 import { toast } from '@/lib/toast';
@@ -176,12 +176,13 @@ export function InterviewPage() {
           <AiLive>
             {open && judged && <AiJudgement key={open.turnNo} head={judged.head}>{judged.reason}</AiJudgement>}
             {showEnded && (
-              <>
-                {confirmed
-                  ? <Note strong="네 칸이 모두 차서 카드를 확정했어요" tone="inset">확정한 카드는 공고 매칭에 쓰여요. 카드에서 바로 고칠 수 있어요</Note>
-                  : <Note strong="AI 가 더 물을 것이 없다고 판단했어요" tone="inset">카드를 확인하고 확정하세요. 더 채우고 싶은 칸이 있으면 골라서 물을 수 있어요.</Note>}
-                {endReason && <AiJudgement>{endReason}</AiJudgement>}
-              </>
+              <div className="interview-complete">
+                <div className="interview-complete__summary">
+                  <strong>{confirmed ? '경험 카드가 확정됐어요' : '추가 질문을 마쳤어요'}</strong>
+                  <p>{confirmed ? '완성한 카드를 확인하거나 수정할 수 있어요.' : '작성된 카드를 검토해 주세요. 필요한 내용은 질문을 더 받거나 직접 수정할 수 있어요.'}</p>
+                </div>
+                {endReason && <details className="interview-complete__reason" open><summary>질문을 마친 이유</summary><AiJudgement>{endReason}</AiJudgement></details>}
+              </div>
             )}
           </AiLive>
 
@@ -190,12 +191,13 @@ export function InterviewPage() {
               <div className="stack" style={{ gap: 6 }}>
                 <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{starFieldShort[open.field]} 칸</Badge></div>
                 <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
-                <details className="interview-evidence"><summary>질문 근거 보기</summary>
+                {/* 근거가 둘 다 비면 펼쳐도 빈 칸뿐이라 열 거리 자체를 두지 않는다(#536) */}
+                {(open.found.length > 0 || open.missing.length > 0) && <details className="interview-evidence"><summary>질문 근거 보기</summary>
                 <div className="found" style={{ gridTemplateColumns: '1fr' }}>
                   <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>• {f}</span>)}</div>
                   <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>• {m}</span>)}</div>
                 </div>
-                </details>
+                </details>}
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>
@@ -205,7 +207,7 @@ export function InterviewPage() {
               )}
               <Textarea rows={4} value={text} disabled={answer.isPending} onChange={(e) => { setText(e.target.value); if (picked && e.target.value !== picked) setPicked(null); }}
                 onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submit(); }}
-                placeholder="한 문장으로" aria-label="답변" maxLength={500} />
+                placeholder={starFieldExample[open.field]} aria-label="답변" maxLength={500} />
               <div className="row" style={{ gap: 8 }}>
                 <span className="t-12 c-3 grow">{text ? `${text.length}/500` : ''}</span>
                 <Button variant="ghost" size="sm" loading={skip.isPending} disabled={answer.isPending} onClick={skipOpen}>건너뛰기</Button>
@@ -219,10 +221,10 @@ export function InterviewPage() {
                 <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채울 수 있어요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
-                  <span className="w-600" style={{ fontSize: 14 }}>{ended ? '더 묻고 싶은 칸' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
+                  <span className="w-600" style={{ fontSize: 14 }}>{ended ? '더 보완하고 싶다면' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
                   <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
                     {!ended && <Button variant="outline" size="sm" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</Button>}
-                    {(weakFields.length ? weakFields : askable).map((f) => <Button key={f} variant="outline" size="sm" onClick={() => askMore(f)}>{starFieldShort[f]}{card.version[fieldKey[f]] ? (card.lowConfidenceFields.some((l) => l.field === f) ? ' (확인 필요)' : '') : ' (비어 있음)'}</Button>)}
+                    {(weakFields.length ? weakFields : askable).map((f) => <Button key={f} variant="outline" size="sm" onClick={() => askMore(f)}>{starFieldShort[f]} 질문 받기{!card.version[fieldKey[f]] ? ' · 미작성' : card.lowConfidenceFields.some((l) => l.field === f) ? ' · 확인 필요' : ''}</Button>)}
                   </div>
                 </div>
               )}
@@ -230,9 +232,9 @@ export function InterviewPage() {
                 {confirmed
                   ? <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
                   : ended || capReached
-                  ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 확인하고 확정하기</Button>
+                  ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 검토하기</Button>
                   : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
-                <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>카드 수정</Button>
+                <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정하기</Button>
               </div>
             </>
           )}

@@ -108,10 +108,10 @@ const gh = (owner: string, repo: string, sha: string) => `https://github.com/${o
 export const seedCandidates = [
   // ── auth-service (20개 중 대표 6개 · 나머지는 generate 로 채움)
   { id: 'c_42', repoId: 'r_auth', type: 'PR', status: 'NEW', ref: '#42', title: '로그인 세션 처리',
-    reason: '리뷰 코멘트 14건 · 3주간 수정 6회 — 논의가 가장 길었던 작업',
+    reason: '리뷰를 14번 주고받으며 3주에 걸쳐 다듬은 일이에요',
     meta: { commits: 9, files: 12, reviewComments: 14, days: 21, codeRatio: 0.92 }, weak: false, score: 61.2, commits: null, usedByCardId: null },
   { id: 'c_pay', repoId: 'r_auth', type: 'COMMIT_CLUSTER', status: 'NEW', ref: '2024-05-12', title: '5.12 결제모듈 6커밋',
-    reason: 'PR 없이 main 직접 푸시 — 같은 날 /payment 아래 6커밋',
+    reason: 'PR 없이 하루 만에 결제 모듈에 커밋 6개를 올린 일이에요',
     meta: { commits: 6, files: 8, reviewComments: 0, days: 0, codeRatio: 0.83 }, weak: false, score: 38.5,
     commits: [
       { sha: 'a1f2c3d4e5f60718293a4b5c6d7e8f9012345678', message: '결제 요청 검증 추가', path: 'src/payment/validator.java', at: '2024-05-12T14:02:00+09:00', included: true, url: gh('hong-dev', 'auth-service', 'a1f2c3d') },
@@ -122,21 +122,21 @@ export const seedCandidates = [
       { sha: 'f6a8b9e0d1c2334455667788990011aabbccdd00', message: 'README 오타 수정', path: 'README.md', at: '2024-05-12T18:30:00+09:00', included: true, url: gh('hong-dev', 'auth-service', 'f6a8b9e') },
     ], usedByCardId: null },
   { id: 'c_31', repoId: 'r_auth', type: 'ISSUE', status: 'NEW', ref: '#31', title: '결제 롤백 대응',
-    reason: 'Revert 커밋 2건이 이 이슈에 연결되어 있습니다',
+    reason: '되돌린 커밋 2개가 이 이슈에 이어져 있어요',
     meta: { commits: 2, files: 3, reviewComments: 3, days: 4, codeRatio: 1 }, weak: false, score: 22.4, commits: null, usedByCardId: null },
   { id: 'c_57', repoId: 'r_auth', type: 'PR', status: 'NEW', ref: '#57', title: 'README 정리',
-    reason: '문서 변경만 — 카드로 쓰기엔 내용이 얇습니다',
+    reason: '문서 1개만 바꿔서 카드로 쓰기엔 내용이 적어요',
     meta: { commits: 2, files: 1, reviewComments: 0, days: 1, codeRatio: 0 }, weak: true, score: 4.1, commits: null, usedByCardId: null },
   { id: 'c_38', repoId: 'r_auth', type: 'PR', status: 'USED', ref: '#38', title: '토큰 만료 처리',
-    reason: '이미 카드로 만들었습니다',
+    reason: '9일 동안 리뷰를 6번 주고받으며 토큰이 끝나는 때를 다듬은 일이에요',
     meta: { commits: 5, files: 6, reviewComments: 6, days: 9, codeRatio: 0.95 }, weak: false, score: 33.0, commits: null, usedByCardId: 'card_03' },
   { id: 'c_51', repoId: 'r_auth', type: 'PR', status: 'NEW', ref: '#51', title: '로그인 API 응답 속도 개선',
-    reason: 'PR 본문에 측정 수치(800ms → 120ms)가 남아 있습니다',
+    reason: '응답 시간을 800ms 에서 120ms 로 줄였다는 기록이 PR 에 남아 있어요',
     meta: { commits: 4, files: 5, reviewComments: 5, days: 6, codeRatio: 1 }, weak: false, score: 29.7, commits: null, usedByCardId: null },
 
   // ── free-tier-sleep — 실측 프로토타입 후보 보드 그대로 (진짜 sha)
   { id: 'c_fts_intro', repoId: 'r_fts', type: 'COMMIT_CLUSTER', status: 'USED', ref: '2026-05-28', title: 'FreeTierSleep_Unity · 인트로 씬 연출 10커밋',
-    reason: '같은 날 Taehui 디렉터리 아래 10커밋 · 코드 비율 15% — 씬 파일이 커서 코드 비율은 낮지만 스크립트 6개를 새로 썼습니다',
+    reason: '하루 동안 인트로 화면을 만들며 커밋 10개를 올렸고, 스크립트 6개를 새로 썼어요',
     meta: { commits: 10, files: 62, reviewComments: 0, days: 0, codeRatio: 0.15 }, weak: false, score: 17.95,
     commits: [
       { sha: 'ea16f9b', message: 'feat: complete intro scene with procedural sfx, glitch transition', path: 'FreeTierSleep_Unity/Assets/_Project/Taehui/01.Scenes/Scene_Intro.unity', at: '2026-05-28T21:10:00+09:00', included: true, url: gh('TaeHuiKKIM', 'free-tier-sleep', 'ea16f9b') },
@@ -147,40 +147,40 @@ export const seedCandidates = [
       { sha: '9ca5acf', message: 'fix: resolve CS1513 compiler error due to missing closing namespace brace', path: 'FreeTierSleep_Unity/Assets/_Project/Taehui/02.Scripts/AdPopupManager.cs', at: '2026-05-28T17:05:00+09:00', included: true, url: gh('TaeHuiKKIM', 'free-tier-sleep', '9ca5acf') },
     ], usedByCardId: 'card_05' },
   { id: 'c_fts_start', repoId: 'r_fts', type: 'COMMIT_CLUSTER', status: 'NEW', ref: '2026-05-30', title: 'FreeTierSleep_Unity · 시작 화면(Start Scene) 3커밋',
-    reason: '4시간에 걸친 3커밋 · 44파일 · 코드 비율 25%',
+    reason: '4시간 동안 시작 화면에 커밋 3개를 올리며 파일 44개를 바꾼 일이에요',
     meta: { commits: 3, files: 44, reviewComments: 0, days: 0, codeRatio: 0.25 }, weak: false, score: 16.44, commits: [], usedByCardId: null },
   { id: 'c_fts_phase', repoId: 'r_fts', type: 'COMMIT_CLUSTER', status: 'NEW', ref: '2026-05-23', title: 'FreeTierSleep_Unity · phase 이동 구현 4커밋',
-    reason: '3시간 동안 27파일 · 코드 비율 7% — 씬·프리팹 위주라 카드감은 낮은 편',
+    reason: '3시간 동안 파일 27개를 바꿨지만 대부분 화면 파일이라 코드는 적어요',
     meta: { commits: 4, files: 27, reviewComments: 0, days: 0, codeRatio: 0.07 }, weak: true, score: 12.02, commits: [], usedByCardId: null },
   { id: 'c_fts_pr1', repoId: 'r_fts', type: 'PR', status: 'NEW', ref: '#1', title: 'Add AGENTS.md',
-    reason: '문서 1파일 — 카드로 쓰기엔 내용이 얇습니다',
+    reason: '문서 1개만 더해서 카드로 쓰기엔 내용이 적어요',
     meta: { commits: 1, files: 1, reviewComments: 0, days: 0, codeRatio: 0 }, weak: true, score: 8.71, commits: null, usedByCardId: null },
 ];
 
 // auth-service 나머지 후보 14개 자동 생성 — 20개 보드
 const filler = [
-  ['PR', '#33', '이메일 발송 비동기 처리', '가입 흐름을 막지 않게 큐로 분리', 27.1, 0.9],
-  ['PR', '#29', 'OAuth 콜백 예외 처리', '리뷰 코멘트 8건 — 에러 케이스 논의', 25.3, 1],
-  ['COMMIT_CLUSTER', '2024-06-03', '6.03 세션 저장소 Redis 전환 4커밋', 'PR 없이 main 직접 푸시 — 같은 날 /session 아래 4커밋', 21.8, 0.88],
-  ['PR', '#45', '비밀번호 재설정 토큰 만료', '리뷰 코멘트 4건', 18.9, 1],
-  ['ISSUE', '#27', '동시 로그인 제한', '커밋 3건이 이 이슈를 참조합니다', 17.2, 1],
-  ['PR', '#36', '회원 탈퇴 소프트 삭제', '리뷰 코멘트 3건 · 8일간 열림', 16.4, 0.95],
-  ['COMMIT_CLUSTER', '2024-04-18', '4.18 인증 필터 리팩터링 5커밋', '같은 날 /filter 아래 5커밋', 15.7, 1],
-  ['PR', '#48', '로그인 실패 횟수 제한', '리뷰 코멘트 2건', 14.1, 1],
-  ['PR', '#22', '프로필 이미지 업로드', '리뷰 코멘트 5건', 13.6, 0.7],
-  ['COMMIT_CLUSTER', '2024-07-09', '7.09 테스트 커버리지 보강 7커밋', '같은 날 /test 아래 7커밋', 12.2, 1],
-  ['PR', '#40', '헬스체크 엔드포인트', '변경 파일 2개 — 카드로 쓰기엔 얇습니다', 6.3, 1],
-  ['PR', '#54', 'CI 캐시 설정', '설정 파일만 — 카드감 낮음', 5.0, 0.2],
-  ['PR', '#59', '의존성 버전 정리', '설정 파일만 — 카드감 낮음', 3.8, 0],
-  ['PR', '#61', '로그 레벨 조정', '변경 파일 1개', 2.9, 1],
+  ['PR', '#33', '이메일 발송 비동기 처리', '가입이 멈추지 않도록 메일 보내기를 큐로 따로 뺀 일이에요', 27.1, 0.9],
+  ['PR', '#29', 'OAuth 콜백 예외 처리', '에러가 나는 경우를 두고 리뷰를 8번 주고받은 일이에요', 25.3, 1],
+  ['COMMIT_CLUSTER', '2024-06-03', '6.03 세션 저장소 Redis 전환 4커밋', '하루 동안 세션 저장소를 Redis 로 옮기며 커밋 4개를 남긴 일이에요', 21.8, 0.88],
+  ['PR', '#45', '비밀번호 재설정 토큰 만료', '리뷰를 4번 주고받으며 토큰이 끝나는 때를 다듬은 일이에요', 18.9, 1],
+  ['ISSUE', '#27', '동시 로그인 제한', '이 이슈를 풀려고 커밋 3개를 이어서 올린 일이에요', 17.2, 1],
+  ['PR', '#36', '회원 탈퇴 소프트 삭제', '8일 동안 리뷰를 3번 주고받으며 다듬은 일이에요', 16.4, 0.95],
+  ['COMMIT_CLUSTER', '2024-04-18', '4.18 인증 필터 리팩터링 5커밋', '하루 만에 인증 필터를 정리하며 커밋 5개를 남긴 일이에요', 15.7, 1],
+  ['PR', '#48', '로그인 실패 횟수 제한', '리뷰를 2번 주고받으며 로그인 실패를 막는 규칙을 만든 일이에요', 14.1, 1],
+  ['PR', '#22', '프로필 이미지 업로드', '리뷰를 5번 주고받으며 사진 올리기를 만든 일이에요', 13.6, 0.7],
+  ['COMMIT_CLUSTER', '2024-07-09', '7.09 테스트 커버리지 보강 7커밋', '하루 동안 테스트를 보강하며 커밋 7개를 남긴 일이에요', 12.2, 1],
+  ['PR', '#40', '헬스체크 엔드포인트', '파일 2개만 바꿔서 카드로 쓰기엔 내용이 적어요', 6.3, 1],
+  ['PR', '#54', 'CI 캐시 설정', '설정 파일만 바꿔서 카드로 쓰기엔 내용이 적어요', 5.0, 0.2],
+  ['PR', '#59', '의존성 버전 정리', '의존성 버전 숫자만 바꾼 일이라 카드로 쓰기엔 내용이 적어요', 3.8, 0],
+  ['PR', '#61', '로그 레벨 조정', '파일 1개만 바꾼 작은 일이에요', 2.9, 1],
 ] as const;
 filler.forEach(([type, ref, title, reason, score, codeRatio], i) => {
   // Explicit evidence in the sample copy is authoritative; keep the numeric
   // summary in sync when that copy changes, rather than inventing another count.
-  const reviewCount = reason.match(/리뷰 코멘트 (\d+)건/);
-  const fileCount = reason.match(/변경 파일 (\d+)개/);
-  const commitCount = `${title} ${reason}`.match(/(\d+)커밋|커밋 (\d+)건/);
-  const dayCount = reason.match(/(\d+)일간/);
+  const reviewCount = reason.match(/리뷰를 (\d+)번/);
+  const fileCount = reason.match(/(?:파일|문서) (\d+)개/);
+  const commitCount = `${title} ${reason}`.match(/(\d+)커밋|커밋 (\d+)개/);
+  const dayCount = reason.match(/(\d+)일 동안/);
   seedCandidates.push({
     id: `c_f${i}`, repoId: 'r_auth', type, status: 'NEW', ref, title, reason,
     meta: {
@@ -346,7 +346,7 @@ export const seedCards = [
 export const seedActivities = [
   { id: 'act_club', name: '교내 개발 동아리', type: 'CLUB', startMonth: '2025-03', endMonth: null, role: '백엔드 파트장', createdAt: daysAgo(40) },
   { id: 'act_edu', name: '카카오테크캠퍼스', type: 'EDUCATION', startMonth: '2025-09', endMonth: '2026-02', role: '팀 프로젝트 팀원', createdAt: daysAgo(30) },
-  // 카드가 아직 없는 활동 — 폴더에는 '경험 카드 없음'이 보이고, 지울 때는 "안에 카드가 없어요"가 나온다
+  // 카드가 아직 없는 활동 — 폴더에는 '아직 카드가 없어요'가 보이고, 지울 때는 "안에 카드가 없어요"가 나온다
   { id: 'act_contest', name: '해커톤 참가', type: 'CONTEST', startMonth: '2026-05', endMonth: '2026-06', role: null, createdAt: daysAgo(20) },
 ];
 

@@ -31,7 +31,7 @@ from services.cover_letter_llm import (
     call_until_valid,
     clip,
 )
-from services.cover_letter_check import invented_numbers
+from services.cover_letter_check import STRENGTH_LABELS, invented_numbers
 from services.cover_letter_posting import NO_CONDITION_RANK, company_facts, condition_ranks, met_conditions
 from services.cover_letter_progress import report_step
 from services.llm_executors import COVER_LETTER_JUDGE_EXECUTOR
@@ -40,6 +40,7 @@ PICK_PROMPT = """당신은 자기소개서 문항 하나에 쓸 경험 카드를
 입력으로 문항(question: 문장·글자 수), 지원 직무(job_role), 사용자 메모(memo, 없을 수 있음), 프로필(profile),
 사용자가 확정한 카드 요약 전부(cards: card_id·제목·종류·출처 이름·기간·문항 유형·요약·채운 공고 조건 posting_conditions_met)가 주어집니다.
 공고에서 시작한 자소서면 지원하는 공고(posting: 회사·제목·주요 업무 responsibilities)도 주어집니다.
+사용자가 고른 자기 강점(strengths, 없을 수 있음)도 주어질 수 있습니다.
 
 - question_theme: 문항이 묻는 유형 하나. COLLABORATION(협업) · CONFLICT(갈등) · PROBLEM_SOLVING(문제 해결) ·
   LEADERSHIP(리더십) · CHALLENGE(도전·목표 달성) · FAILURE(실패·극복) · GROWTH(성장·배움) ·
@@ -62,6 +63,8 @@ PICK_PROMPT = """당신은 자기소개서 문항 하나에 쓸 경험 카드를
   '성장 과정'처럼 자라 온 과정과 가치관을 묻는 문항은 GROWTH 로 두되, 카드의 일 경험으로 답하지 않으므로 둘 다 null.
 - second_card_id·second_reason: 1순위를 뺀 considered 중 fit 이 가장 높은 카드와 이유. WEAK 거나 없으면 null.
 - 고른 카드에 채운 공고 조건(posting_conditions_met)이 있으면 이유 끝에 그 조건을 숫자 없이 짧게 덧붙입니다(예: '… 공고의 Spring 조건도 채움').
+- strengths 가 있으면 fit 이 같은 카드끼리는 그 강점이 요약에 드러나는 카드를 먼저 고르고, 그렇게 골랐으면 이유에 그 강점을 짧게 적습니다
+  (예: '… 끈기가 드러남'). 강점 때문에 문항에 덜 맞는 카드를 고르거나 fit 을 올리지 않습니다.
 - first·second 카드는 considered 안에 있어야 합니다.
 - supporting_card_id: 중심 경험에 결과나 숫자를 보태 줄 다른 카드 하나. 없으면 null.
 - 카드의 문항 유형(themes)은 참고일 뿐이고 요약 내용을 보고 판단합니다. 카드가 없으면 considered 는 빈 배열입니다.
@@ -304,6 +307,8 @@ class CoverLetterAssigner:
             "profile": [{"kind": item.kind, "text": clip(item.text, limit)} for item in request.profile],
             "cards": cards,
         }
+        if request.strengths:
+            payload["strengths"] = [STRENGTH_LABELS[code] for code in request.strengths]
         if request.posting is not None:
             payload["posting"] = {
                 "company": clip(request.posting.company, limit),

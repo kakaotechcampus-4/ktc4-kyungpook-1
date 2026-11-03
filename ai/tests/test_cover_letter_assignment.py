@@ -385,3 +385,16 @@ def test_slow_question_does_not_take_the_supervisor_time() -> None:
     assert [(a.primary_card_id, a.decided_by) for a in result.assignments] == [
         (None, "FAILED"), (1, "SUPERVISOR"), (3, "SUPERVISOR"),
     ]
+
+
+@pytest.mark.parametrize(
+    ("strengths", "sent"), [([], None), (["PERSISTENT", "COLLABORATION"], ["끈기", "협업"])], ids=["강점 없음", "강점 둘"],
+)
+def test_chosen_strengths_go_to_card_picking_in_plain_words(strengths: list[str], sent: Optional[list[str]]) -> None:
+    """고른 강점은 영문 코드가 아니라 화면 이름으로 카드 고르기에 넘기고, 고르지 않았으면 칸을 넣지 않는다."""
+    client = RoutedClient({"협업 경험": [_pick(1)]})
+    request = _request("협업 경험").model_copy(update={"strengths": strengths})
+
+    _assign(client, request)
+
+    assert client.pick_payloads[0].get("strengths") == sent

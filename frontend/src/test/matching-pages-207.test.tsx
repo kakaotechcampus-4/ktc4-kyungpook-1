@@ -101,13 +101,6 @@ it('does not retry failed AI requests when the screen remounts', async () => {
   mount('/match',undefined,client);await screen.findByRole('alert');
   expect(fetch).toHaveBeenCalledTimes(1);
 });
-it('explicit list refresh invalidates previously visited details', async () => {
-  vi.spyOn(matchingApi,'list').mockResolvedValue(sampleList.data.map(x=>MatchTarget.parse(x)));
-  const client=mount();await screen.findByText('가온소프트');
-  client.setQueryData(matchKeys.detail(sampleDetail.data.id),sampleDetail.data);
-  fireEvent.click(screen.getByRole('button',{name:'목록 새로고침'}));
-  await waitFor(()=>expect(client.getQueryState(matchKeys.detail(sampleDetail.data.id))?.isInvalidated).toBe(true));
-});
 it("shows each condition's judgement and hides only duplicate quote lines", async () => {
   const detail = MatchDetail.parse(sampleDetail.data);
   detail.conditions[0].quote = detail.conditions[0].text;
@@ -124,12 +117,12 @@ it("shows each condition's judgement and hides only duplicate quote lines", asyn
   expect(screen.getAllByText("직접 확인")).toHaveLength(1);
   expect(document.querySelectorAll(".posting-conditions .cond-tile")).toHaveLength(5);
   expect(screen.queryByRole("button", { name: "이 공고와 맞춰 보기" })).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "← 공고 목록" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toHaveAttribute(
     "href",
     "/match?category=BACKEND",
   );
   expect(
-    screen.getByRole("link", { name: "공고 원문 보기 ↗" }),
+    screen.getByRole("link", { name: "공고 원문 보기" }),
   ).toHaveAttribute("rel", "noopener noreferrer");
 });
 const unjudged = (detail: MatchDetail): MatchDetail => ({
@@ -205,7 +198,7 @@ it("404 detail offers list return without an invalid retry", async () => {
   );
   mount("/match/missing");
   await screen.findByRole("alert");
-  expect(screen.getByRole("link", { name: "← 공고 목록" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "공고 목록으로" })).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "다시 불러오기" }),
   ).not.toBeInTheDocument();

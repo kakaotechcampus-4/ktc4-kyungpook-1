@@ -55,7 +55,7 @@
  */
 .record-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
 .record-list > .card { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.record-list > .card { position: relative; }
+.record-list > .card { position: relative; transition: background-color .15s ease; }
 .record-list > .card:first-child { border-top-left-radius: 17px; border-top-right-radius: 17px; }
 .record-list > .card:last-child { border-bottom-left-radius: 17px; border-bottom-right-radius: 17px; }
 .record-list > .card::before { content: ''; position: absolute; inset: 0; border: 2px solid transparent; border-radius: inherit; pointer-events: none; }
@@ -64,7 +64,7 @@
 .record-list > .cand { padding: 20px; }
 .record-list > .card:hover { background: var(--bg-canvas); box-shadow: none; }
 .record-list > .card--selected, .record-list > .card--selected:hover { background: var(--bg-selected); }
-.record-list > .card--selected::before { border-color: var(--border-selected); }
+.record-list > .card--selected::before { border-color: transparent; }
 .record-list > .card:focus-visible { outline-offset: -4px; }
 .resume { display: flex; flex-direction: column; gap: 8px; }
 .resume__item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-default); transition: border-color .12s, transform .12s; }
@@ -99,3 +99,18 @@
 }
 .repo-row__warn { font-size: 12px; line-height: 17px; color: var(--text-tertiary); }
 .repo-row--sel .repo-row__warn { color: var(--text-secondary); }
+/* #756 레포 줄 — 숫자는 문장 한 줄에, 강조색은 고른 줄의 파랑과 기여가 적을 때의 호박 둘만 쓴다 */
+.repo-row__body { gap: 2px; min-width: 0; text-align: left; }
+.repo-row__pick { font-size: 12px; line-height: 17px; color: var(--text-tertiary); }
+.repo-row__title { display: flex; flex-direction: column; min-width: 0; }
+.repo-row__owner { font-size: 12px; line-height: 17px; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.repo-row__name { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+.repo-row__line { display: block; margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
+.repo-row__caution { font-weight: 600; color: var(--field-low-text); }
+.repo-row__hint { color: var(--text-tertiary); }
+.repo-row__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; }
+.repo-row__meta { font-size: 12px; line-height: 17px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.record-list > .repo-row.card--selected::before { border-color: var(--border-accent); }
+.repo-row--sel .radio--checked { background: var(--border-accent); border-color: var(--border-accent); }
+/* 고른 레포 줄은 파랑 바탕 — 앱 공통 --bg-selected 는 회색이라 고른 것을 파랑으로 보이게 따로 둔다 */
+.record-list > .repo-row--sel, .record-list > .repo-row--sel:hover { background: var(--bg-accent); }

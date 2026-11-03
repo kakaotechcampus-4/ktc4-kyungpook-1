@@ -51,13 +51,13 @@ test('되묻기 — AI 가 고른 칸과 다시 묻는 이유가 AI 판단으로
 
   // 마지막 칸을 채우면 서버가 카드를 확정한다. AI 가 끝낸 것이 아니므로 끝낸 이유를 지어내지 않는다
   await answerWith(page, '테스트를 먼저 붙이고 고쳤다');
-  await expect(page.getByText('네 칸이 모두 차서 카드를 확정했어요')).toBeVisible();
+  await expect(page.getByText('경험 카드가 확정됐어요')).toBeVisible();
   await expect(panel(page).locator('.ai-judgement')).toHaveCount(0);
   // 저장하는 동안만 보이는 대기 문장(AiWait)이 사라진 뒤에는 낭독 영역이 이 한 곳뿐이고, 확정 안내가 그 안에 있다
   const live = panel(page).locator('[aria-live]');
   await expect(live).toHaveCount(1);
   await expect(live).toHaveAttribute('aria-live', 'polite');
-  await expect(live).toContainText('네 칸이 모두 차서 카드를 확정했어요');
+  await expect(live).toContainText('경험 카드가 확정됐어요');
 });
 
 test('되묻기 — AI 가 끝내며 남긴 이유가 AI 판단으로 보이고, 화면을 다시 열어도 같은 끝 화면이다', async ({ page }) => {
@@ -69,17 +69,19 @@ test('되묻기 — AI 가 끝내며 남긴 이유가 AI 판단으로 보이고,
   await expect(panel(page).locator('.ai-judgement')).toHaveCount(0);
   await answerWith(page, '코드 리뷰 때 합의한 대로 만료 처리를 맡았다');
 
-  await expect(page.getByText('AI 가 더 물을 것이 없다고 판단했어요')).toBeVisible();
+  await expect(page.getByText('추가 질문을 마쳤어요')).toBeVisible();
   const live = panel(page).locator('[aria-live]');
   await expect(live).toHaveCount(1);
-  await expect(live).toContainText('AI 가 더 물을 것이 없다고 판단했어요');
+  await expect(live).toContainText('추가 질문을 마쳤어요');
   await expect(live.locator('.ai-judgement')).toContainText('AI 판단');
   await expect(live.locator('.ai-judgement')).toContainText('더 물을 빈 칸이 없어 질문을 마칠게요');
+  // 끝낸 이유는 접을 수 있게 묶었지만 처음에는 펼쳐 둔다
+  await expect(live.locator('.ai-judgement')).toBeVisible();
 
   // 새로 고쳐도 카드에 남은 이유로 같은 끝 화면이 나오고, 눌러야 하는 것은 44px 이상이며 가로로 넘치지 않는다
   await page.goto('/cards/card_01/interview');
   await expect(panel(page).locator('.ai-live .ai-judgement')).toContainText('더 물을 빈 칸이 없어 질문을 마칠게요');
-  await expect(page.getByRole('button', { name: '카드 확인하고 확정하기' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '카드 검토하기' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'AI 가 고르게 하기' })).toHaveCount(0);
   expect(await overflows(page)).toBe(false);
   for (const control of await panel(page).locator('button, a').all()) {

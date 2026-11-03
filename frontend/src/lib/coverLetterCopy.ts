@@ -19,8 +19,23 @@ export const ITEM_LABEL: Record<MaterialItem, string> = {
   SITUATION: '상황', ACTION: '행동', RESULT: '결과', LEARNING: '배운 점', TRIGGER: '계기',
   JOB_LINK: '지원 직무와 이어지는 점', REASON: '지원 이유',
 };
+/** ④ 답 칸에 흐리게 보이는 예시 — 무엇을 쓰면 되는지만 보이고, 값으로 보내지 않는다 */
+export const ITEM_EXAMPLE: Record<MaterialItem, string> = {
+  SITUATION: '예: 배포가 늦어져 팀이 수정 사항을 몰아서 올리던 때였어요',
+  ACTION: '예: 로그를 보고 바뀐 모듈만 다시 빌드하게 설정을 고쳤어요',
+  RESULT: '예: 배포가 12분으로 줄어 하루 다섯 번 올릴 수 있게 됐어요',
+  LEARNING: '예: 느린 걸 참지 말고 어디서 시간이 드는지 먼저 재야 한다는 걸 배웠어요',
+  TRIGGER: '예: 팀 배포 담당을 맡으면서 시작했어요',
+  JOB_LINK: '예: 이 경험이 결제 시스템의 중복 처리 문제와 바로 이어져요',
+  REASON: '예: 실패해도 데이터가 어긋나지 않는 서비스를 만들고 싶어 지원했어요',
+};
 /** ① 지원 동기 메모 예시 */
 export const MEMO_EXAMPLE = '예: 매일 쓰는 서비스라 사용자가 겪는 불편을 직접 고쳐 보고 싶었어요';
+
+/** 답 하나가 초안에 보태는 글자 수 어림 — AI 가 몇 개를 물을지 셀 때 쓰는 값(cover_letter_asker.py ANSWER_CHARS)과 같게 둔다 */
+export const ANSWER_GOOD_CHARS = 100;
+/** ④ 답 칸 글자 수 옆 안내 — 저장을 막지 않는다 */
+export const answerLengthHint = (length: number) => (length >= ANSWER_GOOD_CHARS ? '충분해요' : `${ANSWER_GOOD_CHARS}자쯤 쓰면 글이 좋아져요`);
 
 /** ③ 재료 점검에 보이는 항목 — 카드와 지난 답으로 채울 수 있는 다섯 가지. 직무 연결과 지원 이유는 회사마다 달라 ④에서 묻는다 */
 export const CHECK_ITEMS: MaterialItem[] = ['SITUATION', 'ACTION', 'RESULT', 'LEARNING', 'TRIGGER'];

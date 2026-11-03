@@ -11,27 +11,30 @@
 .folders__bar .right { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .folders__notice { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
 
-/* 한 줄에 둘 이상 들어가는 만큼만 열을 만든다. 390 이하에서는 한 줄에 폴더 하나(이름이 잘리지 않게) */
-.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 20px 16px; }
+/* 한 줄에 셋 안팎 — 타일이 커야 이름이 주인공이 되고 부채꼴 겹침이 어지럽지 않다. 390 이하에서는 한 줄에 폴더 하나 */
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 22px 18px; }
 
 .folder-grid > li { display: flex; min-width: 0; }
-.folder { --peek: 8px; --peek-inset: 10px; position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; border-radius: var(--radius-lg); color: var(--text-primary); isolation: isolate; }
-.folder[data-deck="1"] { padding-bottom: var(--peek); }
-.folder[data-deck="2"] { padding-bottom: calc(var(--peek) * 2); }
-/* 뒤로 겹친 카드: 맨 위 카드보다 --peek 만큼 아래로 삐져나오고 양옆은 --peek-inset 씩 안쪽이다 */
-.folder__back { position: absolute; z-index: -1; inset: 0; pointer-events: none; }
-.folder__back::before, .folder__back::after { content: ''; position: absolute; display: none; top: 28px; background: var(--bg-subtle); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); }
-/* ::before 가 먼 카드, ::after 가 가까운 카드다(나중에 그려지는 쪽이 위) */
-.folder[data-deck="1"] .folder__back::after { display: block; right: var(--peek-inset); bottom: 0; left: var(--peek-inset); }
-.folder[data-deck="2"] .folder__back::after { display: block; right: var(--peek-inset); bottom: var(--peek); left: var(--peek-inset); }
-.folder[data-deck="2"] .folder__back::before { display: block; right: calc(var(--peek-inset) * 2); bottom: 0; left: calc(var(--peek-inset) * 2); }
-.folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 128px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
+/* 부채꼴 자리(위·오른쪽)는 모든 폴더에 같이 비워 둔다 — 겹친 수에 따라 앞판 크기가 달라지면 줄이 들쭉날쭉해진다 */
+.folder { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; padding: 10px 10px 8px 0; border-radius: var(--radius-lg); color: var(--text-primary); isolation: isolate; }
+/* 뒤로 겹친 카드는 손에 쥔 패처럼 3°·6° 돌아가 모서리가 오른쪽 위로 삐져나온다 — 아래로만 삐져나오면 그림자로 읽히고 다크에선 안 보인다 */
+.folder__back { position: absolute; z-index: -1; inset: 10px 10px 8px 0; pointer-events: none; }
+.folder__back::before, .folder__back::after { content: ''; position: absolute; display: none; inset: 0; background: var(--bg-subtle); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); transform-origin: 85% 100%; transition: transform .15s ease; }
+/* ::before 가 먼 카드, ::after 가 가까운 카드다(나중에 그려지는 쪽이 위). 아래쪽 오른편을 축으로 돌려 위와 오른쪽으로 펼쳐진다(시안 A 와 같은 각) */
+.folder[data-deck="1"] .folder__back::after { display: block; transform: rotate(3deg); }
+.folder[data-deck="2"] .folder__back::after { display: block; transform: rotate(3deg); }
+.folder[data-deck="2"] .folder__back::before { display: block; transform: rotate(6deg); }
+.folder:hover .folder__back::after, .folder:focus-visible .folder__back::after { transform: rotate(4.5deg); }
+.folder:hover .folder__back::before, .folder:focus-visible .folder__back::before { transform: rotate(9deg); }
+@media (prefers-reduced-motion: reduce) { .folder__back::before, .folder__back::after { transition: none; } }
+.folder__front { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-height: 136px; padding: 16px 16px 14px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
 .folder[data-empty] .folder__front { border-style: dashed; border-color: var(--border-strong); }
 .folder:hover .folder__front, .folder:focus-visible .folder__front { border-color: var(--border-selected); }
 .folder:hover .folder__back::before, .folder:hover .folder__back::after,
 .folder:focus-visible .folder__back::before, .folder:focus-visible .folder__back::after { border-color: var(--border-selected); }
 
 .folder__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.folder__meta { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 .folder__kind { flex: 0 0 auto; color: var(--text-tertiary); }
 .folder__owner { font-size: 12px; line-height: 16px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder__name { font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); color: var(--text-primary);
@@ -40,8 +43,9 @@
 .folder__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; }
 .folder__tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .folder__tag { padding: 3px 8px; border-radius: var(--radius-sm); background: var(--bg-subtle); color: var(--text-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
-.folder__count { display: flex; flex-direction: column; align-items: flex-end; flex: 0 0 auto; margin-left: auto; color: var(--text-secondary); font-size: 12px; line-height: 16px; }
-.folder__count-num { font-size: 28px; line-height: 32px; font-weight: 700; color: var(--text-accent); letter-spacing: 0; }
+/* 장 수는 겹침이 이미 보여 주므로 작게 — 큰 숫자가 이름보다 먼저 보이지 않게 */
+.folder__count { flex: 0 0 auto; color: var(--text-secondary); font-size: 12px; line-height: 16px; }
+.folder__count-num { font-size: 14px; line-height: 16px; font-weight: 600; color: var(--text-primary); }
 
 /* ───── 폴더 안 ───── */
 .folder-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }

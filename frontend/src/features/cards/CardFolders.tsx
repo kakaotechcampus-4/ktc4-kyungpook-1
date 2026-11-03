@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Flag, FolderGit2, FolderPlus, PenLine, type LucideIcon } from 'lucide-react';
 import { techLabels } from '@/lib/cardTags';
-import { deckLayers, folderLabel, folderOwnerLine, folderTitle, lacksExperience, type CardFolder, type FolderKind } from '@/lib/cardFolders';
+import { deckLayers, folderLabel, folderOwnerLine, folderNote, folderTitle, type CardFolder, type FolderKind } from '@/lib/cardFolders';
 import './CardFolders.css';
 
 const kindIcon: Record<FolderKind, LucideIcon> = { repo: FolderGit2, activity: Flag, direct: PenLine };
@@ -13,21 +13,22 @@ const kindIcon: Record<FolderKind, LucideIcon> = { repo: FolderGit2, activity: F
  */
 export function FolderTile({ folder }: { folder: CardFolder }) {
   const Icon = kindIcon[folder.kind];
+  const note = folderNote(folder);
   return (
     <Link to={folder.to} className="folder" aria-label={folderLabel(folder)} data-deck={deckLayers(folder.cards.length)} data-empty={folder.cards.length === 0 || undefined}>
       <span className="folder__back" aria-hidden />
       <span className="folder__front">
         <span className="folder__head">
           <span className="folder__owner">{folderOwnerLine(folder)}</span>
-          <Icon className="folder__kind" size={16} aria-hidden />
+          <span className="folder__meta">
+            {folder.cards.length > 0 && <span className="folder__count"><span className="folder__count-num">{folder.cards.length}</span>장</span>}
+            <Icon className="folder__kind" size={16} aria-hidden />
+          </span>
         </span>
         <span className="folder__name">{folderTitle(folder)}</span>
-        {lacksExperience(folder) && <span className="folder__note">경험 카드 없음</span>}
+        {note && <span className="folder__note">{note}</span>}
         <span className="folder__foot">
           <span className="folder__tags">{folder.techs.map((tech) => <span key={tech} className="folder__tag">{techLabels[tech] ?? tech}</span>)}</span>
-          <span className="folder__count">
-            <span><span className="folder__count-num">{folder.cards.length}</span>장</span>
-          </span>
         </span>
       </span>
     </Link>

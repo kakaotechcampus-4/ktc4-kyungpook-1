@@ -15,7 +15,7 @@ vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 
 const req = (method: string, path: string, body: unknown = {}, headers: Record<string, string> = {}) =>
   handle(method, path, new URLSearchParams(), body as Record<string, unknown>, true, headers);
-const input = { jobRole: '백엔드 개발', memo: null, questions: [{ text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }, { text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: 1000 }] };
+const input = { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [{ text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }, { text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: 1000 }] };
 /** Mock 진행은 경과 시간으로 정해진다 — 시계를 앞으로 민다 */
 const later = (sec: number) => { const real = Date.now; const base = real(); Date.now = () => base + sec * 1000; return () => { Date.now = real; }; };
 
@@ -183,6 +183,7 @@ describe('③ 카드 확인 화면', () => {
 describe('① 입력 화면', () => {
   it('빈 칸과 글자 수 범위를 그 자리에서 알리고 보내지 않는다', () => {
     mount(null, '/cover-letters/new');
+    fireEvent.change(screen.getByLabelText('지원 이유'), { target: { value: input.memo } });
     fireEvent.change(screen.getByLabelText('1번 문항 글자 수'), { target: { value: '50' } });
     fireEvent.click(screen.getByRole('button', { name: '카드 고르기 시작' }));
     expect(screen.getByText('지원 직무를 적어 주세요')).toBeInTheDocument();

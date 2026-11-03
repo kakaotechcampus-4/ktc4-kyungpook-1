@@ -15,7 +15,7 @@ vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 
 /** Mock 공고 첫 줄(docs/examples/matching/list.json) — 공고 API 의 role 이 자소서 응답의 posting.title 이다 */
 const POSTING = { id: '3f6c2a10-6b1d-4c2e-9a51-0d7e8b4f1a01', company: '가온소프트', title: '백엔드 엔지니어 (Java·Spring)' };
-const input = { jobRole: '백엔드 개발', memo: null, questions: [{ text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }] };
+const input = { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [{ text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }] };
 
 const req = (method: string, path: string, body: unknown = {}, headers: Record<string, string> = {}) =>
   handle(method, path, new URLSearchParams(), body as Record<string, unknown>, true, headers);
@@ -57,7 +57,10 @@ function mount(path: string, seed?: (client: QueryClient) => void) {
 }
 
 const jobInput = () => screen.getByPlaceholderText('예: 백엔드 개발');
-const fillQuestion = () => fireEvent.change(screen.getByLabelText('1번 문항'), { target: { value: input.questions[0].text } });
+const fillQuestion = () => {
+  fireEvent.change(screen.getByLabelText('지원 이유'), { target: { value: input.memo } });
+  fireEvent.change(screen.getByLabelText('1번 문항'), { target: { value: input.questions[0].text } });
+};
 
 beforeEach(resetDb);
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });

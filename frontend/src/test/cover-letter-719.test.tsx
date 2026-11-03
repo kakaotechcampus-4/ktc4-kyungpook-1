@@ -45,7 +45,7 @@ const advance = (sec: number) => { shift += sec * 1000; Date.now = () => realNow
 
 /** 목으로 만들기 → 카드 고르기 → 질문 → 초안까지 끝낸 자소서 */
 function draftedFromMock() {
-  const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, questions: [
+  const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [
     { text: '팀으로 함께 성과를 낸 경험을 적어 주세요', charLimit: null },
   ] }).data);
   advance(7);

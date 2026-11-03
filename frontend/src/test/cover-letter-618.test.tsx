@@ -46,7 +46,7 @@ const realNow = Date.now;
 const advance = (sec: number) => { shift += sec * 1000; Date.now = () => realNow() + shift; };
 /** 만들기 → 카드 고르기 → 질문까지 끝난 자소서(목) */
 function askedLetter() {
-  const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, questions: [
+  const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [
     { text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }, { text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: 1000 },
   ] }).data);
   advance(7);

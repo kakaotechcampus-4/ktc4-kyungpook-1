@@ -21,8 +21,7 @@ it('keeps the home dashboard whole without the old first-visit band — the firs
   expect(screen.queryByRole('link', { name: '입력하기' })).not.toBeInTheDocument();
   expect(screen.getByRole('heading', { name: '추천 공고' })).toBeInTheDocument();
   expect(screen.queryByRole('combobox', { name: '레포 검색' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
-  expect(screen.getByRole('combobox', { name: '레포 검색' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '레포 검색하기' })).not.toBeInTheDocument();
 });
 
 it('persists a hiring date for its owner and keeps another account separate', () => {

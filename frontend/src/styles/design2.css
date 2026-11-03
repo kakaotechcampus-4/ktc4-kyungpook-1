@@ -5,12 +5,12 @@
 .stardots { display: inline-grid; grid-template-columns: repeat(4, minmax(22px, 1fr)); gap: 4px; min-width: 100px; }
 .stardot { min-width: 0; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: var(--bg-canvas); border: 1px dashed var(--border-strong); }
 .stardot--on { background: var(--bg-ink-solid); color: var(--text-on-ink); border: 1px solid var(--bg-ink-solid); }
-.stardot--low { background: var(--field-low-bg); color: var(--field-low-text); border: 1px solid var(--field-low-border); }
+.stardot--low { background: var(--star-review-bg); color: var(--star-review-text); border: 1px solid var(--star-review-bg); }
 .stardots--labeled { width: min(100%, 240px); min-width: 200px; gap: 6px; }
 .stardots--labeled .stardot { height: 38px; grid-template-rows: 22px 14px; align-content: center; border: 0; background: transparent; color: var(--text-tertiary); }
 .stardots--labeled .stardot__letter { width: 22px; height: 22px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; border: 1px dashed var(--border-strong); background: var(--bg-paper); }
 .stardots--labeled .stardot--on .stardot__letter { border-style: solid; border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
-.stardots--labeled .stardot--low .stardot__letter { border-style: solid; border-color: var(--field-low-border); background: var(--field-low-bg); color: var(--field-low-text); }
+.stardots--labeled .stardot--low .stardot__letter { border-style: solid; border-color: var(--star-review-bg); background: var(--star-review-bg); color: var(--star-review-text); }
 .stardot__letter { line-height: 1; }
 .stardot__label { font-size: 11px; line-height: 12px; font-weight: 600; color: currentColor; opacity: .72; }
 .chip--static { color: var(--text-tertiary); background: var(--bg-paper); cursor: default; }

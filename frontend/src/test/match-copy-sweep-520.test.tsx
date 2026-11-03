@@ -46,7 +46,7 @@ describe('M-02 공고 매칭 화면의 말투와 용어', () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(sampleList.data.map((x) => MatchTarget.parse(x)));
     const { container } = mountMatch('/match');
     await screen.findByText('가온소프트');
-    const intro = container.querySelector('.match-intro')!.textContent!;
+    const intro = container.querySelector('.page-lead')!.textContent!;
     expect(intro).toContain('공고를 열면');
     expect(intro).not.toMatch(/채용|하세요|확인하세요/);
     expect(intro).not.toMatch(FORMAL);

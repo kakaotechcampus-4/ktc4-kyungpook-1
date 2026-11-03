@@ -10,6 +10,8 @@ import { CardsListPage } from '@/features/cards/CardsListPage';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
+vi.mock('@/components/ui/Select', () => import('./nativeSelect'));
+
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 beforeEach(() => { resetDb(); localStorage.clear(); });
 afterEach(cleanup);
@@ -140,14 +142,14 @@ describe('경험 카드 목록', () => {
 
   it('필터 탭의 이름과 개수, 걸러 내는 기준은 그대로다', () => {
     mountList();
-    const tabs = within(screen.getByLabelText('카드 작성 상태 필터'));
-    expect(tabs.getAllByRole('button').map((b) => b.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['전체 5', '작성 중 4', '확정됨 1', '보완 필요 3']);
+    const filter = screen.getByRole('combobox', { name: '카드 작성 상태 필터' });
+    expect(within(filter).getAllByRole('option').map((o) => o.textContent)).toEqual(['전체 5', '작성 중 4', '확정됨 1', '보완 필요 3']);
     const shown = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
-    fireEvent.click(tabs.getByRole('button', { name: /^작성 중/ }));
+    fireEvent.change(filter, { target: { value: 'DRAFT' } });
     expect(shown()).toEqual(['확정 대기 카드', '확인 필요 카드', '빈 칸 카드', '빈 칸과 확인 필요 카드']);
-    fireEvent.click(tabs.getByRole('button', { name: /^확정됨/ }));
+    fireEvent.change(filter, { target: { value: 'CONFIRMED' } });
     expect(shown()).toEqual(['확정 완료 카드']);
-    fireEvent.click(tabs.getByRole('button', { name: /^보완 필요/ }));
+    fireEvent.change(filter, { target: { value: 'NEEDS_WORK' } });
     expect(shown()).toEqual(['확인 필요 카드', '빈 칸 카드', '빈 칸과 확인 필요 카드']);
   });
 });

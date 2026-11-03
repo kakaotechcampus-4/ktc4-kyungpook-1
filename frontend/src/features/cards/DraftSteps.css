@@ -1,30 +1,44 @@
-/* 카드 상세 'AI 가 한 일' (#521). 색은 시맨틱 토큰만, 글자 크기는 11·12·13·14·16 단계만 쓴다 */
-.draft-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 18px 20px;
-  max-width: var(--size-content);
-}
-.draft-steps__head { display: flex; align-items: flex-start; gap: 12px; }
-.draft-steps__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); }
-.draft-steps__lead { margin: 0; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
-.draft-steps__group { display: flex; flex-direction: column; gap: 10px; }
-.draft-steps__round { margin: 0; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-tertiary); }
-.draft-steps__list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
-
-/* 왼쪽 세로선이 단계를 이어 읽게 한다. 선과 아이콘은 장식이고 순서는 목록(ol)이 말한다 */
-.draft-step { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 12px; padding-bottom: 14px; }
-.draft-step:last-child { padding-bottom: 0; }
-.draft-step:not(:last-child)::before { content: ''; position: absolute; left: 14px; top: 32px; bottom: 4px; width: 1px; background: var(--border-default); }
-.draft-step__icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--radius-full); background: var(--bg-subtle); border: 1px solid var(--border-default); color: var(--text-secondary); }
-/* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 'AI 의 판단' 글자가 따로 말한다 */
-.draft-step--judged .draft-step__icon { background: var(--accent-point-soft); border-color: var(--border-selected); color: var(--text-accent); }
-.draft-step__body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.draft-step__text { margin: 0; padding-top: 3px; font-size: 14px; line-height: 22px; font-weight: 500; color: var(--text-primary); overflow-wrap: anywhere; }
-.draft-step__detail { margin: 0; font-size: 12px; line-height: 18px; color: var(--text-secondary); overflow-wrap: anywhere; }
-.draft-step__reason { display: flex; flex-direction: column; gap: 1px; margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--border-selected); }
-.draft-step__reason-label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-accent); }
-.draft-step__reason q { quotes: '\201C' '\201D'; font-size: 13px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
-
+/* 상세 기록은 필요한 때만 펼쳐본다. */
+.draft-steps { padding: 16px 20px; width: 100%; max-width: none; min-width: 0; }
+.draft-steps__head { display: flex; align-items: center; }
+.draft-steps__title { margin: 0; font-size: 14px; line-height: 22px; font-weight: 600; }
+.draft-steps__lead { margin: 0; font-size: 12px; line-height: 20px; color: var(--text-secondary); }
+.draft-steps__expand > summary { display: flex; align-items: center; gap: 6px; width: fit-content; cursor: pointer; list-style: none; margin-top: 10px; padding-block: 4px; color: var(--text-secondary); font-size: 12px; }
+.draft-steps__expand > summary::-webkit-details-marker { display: none; }
+.draft-steps__expand[open] > summary svg { transform: rotate(180deg); }
+.draft-steps__expand > summary:focus-visible, .draft-step__reason > summary:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 3px; border-radius: 4px; }
+.draft-steps__group { margin-top: 16px; }
+.draft-steps__round { margin: 0 0 6px; font-size: 12px; line-height: 20px; font-weight: 600; color: var(--text-secondary); }
+.draft-steps__list { margin: 0; padding: 0; list-style: none; }
+.draft-step { padding: 10px 0; border-bottom: 1px solid var(--border-default); }
+.draft-step:last-child { border-bottom: 0; padding-bottom: 0; }
+.draft-step__body { min-width: 0; }
+.draft-step__text { margin: 0; font-size: 13px; line-height: 22px; font-weight: 400; color: var(--text-primary); overflow-wrap: anywhere; }
+.draft-step__detail { margin: 3px 0 0; font-size: 12px; line-height: 20px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.draft-step__reason { margin-top: 4px; color: var(--text-secondary); font-size: 12px; line-height: 20px; }
+.draft-step__reason > summary { cursor: pointer; width: fit-content; }
+.draft-step__reason > p { margin: 6px 0 0; padding: 8px 10px; border-radius: 6px; background: var(--bg-subtle); overflow-wrap: anywhere; }
 @media print { .draft-steps { display: none; } }
+
+/* 요약은 가볍게 강조하고, 펼친 기록은 작은 상태 점으로만 구분한다. */
+.draft-steps { background: linear-gradient(115deg, var(--bg-surface), var(--bg-paper)); border-radius: 16px; }
+.draft-steps__head { gap: 10px; }
+.draft-steps__mark { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 10px; background: var(--pastel-lavender); color: var(--text-secondary); }
+.draft-steps__title { font-size: 15px; }
+.draft-steps__expand > summary { padding: 6px 10px; margin-left: 46px; border-radius: 7px; background: var(--bg-subtle); color: var(--text-strong); }
+.draft-steps__group { padding: 12px 14px; border-radius: 10px; background: var(--bg-surface); border: 1px solid var(--border-default); }
+.draft-steps__round { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--text-strong); }
+.draft-steps__round::before { content: ''; width: 3px; height: 12px; background: var(--border-strong); border-radius: 2px; }
+.draft-step { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; padding-block: 9px; border: 0; }
+.draft-step__dot { width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--border-strong); }
+.draft-step[data-kind="PASS"] .draft-step__dot { background: #6B9278; }
+.draft-step[data-kind="FLAG"] .draft-step__dot, .draft-step[data-kind="REVERT"] .draft-step__dot { background: var(--field-low-text); }
+.draft-step__reason > summary { color: var(--text-tertiary); }
+
+.draft-steps__expand > .draft-steps__summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; margin: 0; padding: 0; background: transparent; border-radius: 0; }
+.draft-steps__summary .draft-steps__chevron { flex: none; color: var(--text-secondary); }
+.draft-steps__expand[open] > .draft-steps__summary svg { transform: none; }
+.draft-steps__expand[open] > .draft-steps__summary .draft-steps__chevron { transform: rotate(180deg); }
+
+.card-content-column { min-width: 0; align-self: start; }
+.card-content-column > .draft-steps { flex: none; margin: 0; }

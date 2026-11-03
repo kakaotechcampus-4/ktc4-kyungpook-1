@@ -10,6 +10,8 @@ import { summaryDetail } from '@/lib/cardSummaryView';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
+vi.mock('@/components/ui/Select', () => import('./nativeSelect'));
+
 beforeEach(() => { resetDb(); localStorage.clear(); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
@@ -44,7 +46,7 @@ it('건수를 아직 모르는 동안(조회 중)에는 빈 상태로 보지 않
   vi.spyOn(endpoints, 'cards').mockReturnValue(new Promise(() => {}));
   mount();
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('경험 카드 —');
-  expect(screen.getByRole('button', { name: '전체 —' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: '전체 —' })).toBeInTheDocument();
   expect(screen.queryByText('아직 카드가 없어요')).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toBeInTheDocument();
 });
@@ -54,7 +56,7 @@ it('카드가 있으면 상단 도구와 탭이 그대로 보이고, 묶음 요�
   mount(seeded());
   expect(primaries()).toHaveLength(1);
   expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new');
-  for (const tab of ['전체', '작성 중', '확정됨', '보완 필요']) expect(screen.getByRole('button', { name: new RegExp(`^${tab}`) })).toBeInTheDocument();
+  for (const tab of ['전체', '작성 중', '확정됨', '보완 필요']) expect(screen.getByRole('option', { name: new RegExp(`^${tab}`) })).toBeInTheDocument();
   const summaries = [...document.querySelectorAll('.card-group__counts')].map((node) => node.textContent);
   expect(summaries.length).toBeGreaterThan(0);
   for (const text of summaries) expect(text).toMatch(/^카드 \d+장, 확정 \d+장, 작성 중 \d+장$/);
@@ -67,8 +69,8 @@ it('검색 결과가 없을 때는 필터 초기화가 다음 행동이고, 같�
   expect(screen.getByText('조건에 맞는 카드가 없어요')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: '레포에서 카드 만들기' })).not.toBeInTheDocument();
   expect(primaries()).toHaveLength(1);
-  // 카드가 있으니 탭은 그대로 둔다
-  expect(screen.getByRole('button', { name: /^전체/ })).toBeInTheDocument();
+  // 카드가 있으니 필터는 그대로 둔다
+  expect(screen.getByRole('combobox', { name: '카드 작성 상태 필터' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: '필터 초기화' }));
   expect(screen.queryByText('조건에 맞는 카드가 없어요')).not.toBeInTheDocument();
   expect(within(document.querySelector('.card-groups')!).getAllByRole('link').length).toBeGreaterThan(0);

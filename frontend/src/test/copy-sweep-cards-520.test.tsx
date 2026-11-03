@@ -19,6 +19,8 @@ import { toast } from '@/lib/toast';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
+vi.mock('@/components/ui/Select', () => import('./nativeSelect'));
+
 /** #520 화면 점검 — 후보 보드, 회상, 경험 카드 목록·상세·편집·되묻기의 문구와 숫자 표기 */
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 vi.mock('@/lib/jobWatcher', () => ({ releaseJobToast: vi.fn(), suppressJobToast: vi.fn() }));
@@ -176,9 +178,8 @@ describe('경험 카드 목록 (CL-03)', () => {
     const qc = client();
     qc.setQueryData(keys.cards, (req('GET', '/cards') as unknown[]).map((c) => CardSummary.parse(c)));
     render(<QueryClientProvider client={qc}><MemoryRouter><CardsListPage /></MemoryRouter></QueryClientProvider>);
-    fireEvent.click(screen.getByRole('radio', { name: '최근순' })); // 상태 탭은 최근순·기술별 보기에만 있다(#687)
-    fireEvent.click(screen.getByRole('button', { name: /^확정됨/ }));
-    expect(screen.getByRole('status')).toHaveTextContent(/^카드 \d+장$/);
+    fireEvent.change(screen.getByRole('combobox', { name: '카드 작성 상태 필터' }), { target: { value: 'CONFIRMED' } });
+    expect(screen.getByText(/^카드 \d+장$/, { selector: '[role="status"]' })).toBeInTheDocument();
     expect(screen.queryByText(/개 보기/)).not.toBeInTheDocument();
   });
 });

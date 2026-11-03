@@ -1,0 +1,25 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, expect, it, vi } from 'vitest';
+import { keys } from '@/api/keys';
+import { CardSummary } from '@/api/schemas';
+import { CardsListPage } from '@/features/cards/CardsListPage';
+import { handle } from '@/mock/router';
+import { resetDb } from '@/mock/store';
+vi.mock('@/api/activities', () => ({ useActivities: () => ({ data: [], isPending: false, isError: false }) }));
+afterEach(() => { cleanup(); localStorage.clear(); });
+it('offers search and dropdown filters in folder view and filters by card title', () => {
+  resetDb(); localStorage.clear();
+  const cards = CardSummary.array().parse(handle('GET', '/cards', new URLSearchParams(), {}, true).data);
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
+  client.setQueryData(keys.cards, cards);
+  render(<QueryClientProvider client={client}><MemoryRouter><CardsListPage /></MemoryRouter></QueryClientProvider>);
+  expect(screen.getByRole('combobox', { name: '카드 보기 방식' })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: '카드 작성 상태 필터' })).toBeInTheDocument();
+  fireEvent.change(screen.getByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: '존재하지않는제목' } });
+  expect(screen.getByText('조건에 맞는 카드가 없어요')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '필터 초기화' }));
+  expect(screen.getByRole('textbox', { name: '카드 이름으로 검색' })).toHaveValue('');
+  expect(screen.queryByText('조건에 맞는 카드가 없어요')).not.toBeInTheDocument();
+});

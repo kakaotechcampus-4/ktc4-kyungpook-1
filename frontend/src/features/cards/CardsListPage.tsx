@@ -6,6 +6,7 @@ import { useCards } from '@/api/queries';
 import type { CardSummary } from '@/api/schemas';
 import { Button, PageTitle, Skeleton } from '@/components/ui';
 import { SearchField } from '@/components/ui/SearchField';
+import { Select } from '@/components/ui/Select';
 import { CardGridItem } from '@/features/home/HomePage';
 import { buildFolders } from '@/lib/cardFolders';
 import { CardFolders } from './CardFolders';
@@ -25,13 +26,7 @@ const needsWork = (c: CardSummary) => c.status === 'DRAFT' && (matchesCompletion
 const read = <T,>(key: string, fallback: T): T => { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback; } catch { return fallback; } };
 const write = (key: string, value: unknown) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* 저장 못 해도 이번 화면엔 적용 */ } };
 
-/**
- * 경험 카드 목록 — 카드를 "어떻게 묶어 볼지"(폴더·최근순·기술별)와 "어떤 상태만 볼지"(탭)만 고른다.
- * 분야·기술·정렬·보완 상태 선택 칸 다섯 개가 둘러보기보다 필터 화면처럼 보였다(팀 피드백 10/26).
- * 기본은 레포·활동별 폴더이고 누르면 폴더 안으로 들어간다(10/29 회의, FolderPage). 나머지 두 보기의 묶음은 접고 펼 수 있다.
- * 폴더 보기는 폴더를 고르는 화면이라 탭·검색이 없고, 만들기는 폴더 줄(CardFolders)에 둔다 — 다른 보기에서 고른 탭·검색어는 폴더 보기에 걸지 않는다.
- * 접힌 상태와 고른 보기는 기억한다.
- */
+/** 검색과 상태 필터를 모든 보기에 적용하고, 폴더·최근순·기술별로 묶어 본다. */
 export function CardsListPage() {
   useDocumentTitle('경험 카드');
   const cards = useCards();
@@ -50,13 +45,13 @@ export function CardsListPage() {
   const all = cards.data ?? [];
   // 서버가 "카드 0개"라고 알려 준 상태. 조회 중·실패(건수를 모름)와 다르다 — 그때는 아래 화면을 그대로 둔다
   const isEmpty = cards.isSuccess && all.length === 0;
-  const filtering = view !== 'folder' && (q !== '' || status !== 'ALL');
-  const list = useMemo(() => filtering ? all.filter((c) => c.title.toLowerCase().includes(q.toLowerCase())
+  const filtering = q.trim() !== '' || status !== 'ALL';
+  const list = useMemo(() => filtering ? all.filter((c) => c.title.toLowerCase().includes(q.trim().toLowerCase())
     && (status === 'ALL' || (status === 'NEEDS_WORK' ? needsWork(c) : c.status === status))) : all, [all, filtering, q, status]);
   const groups = useMemo(() => view === 'folder' ? [] : groupCards(list, view), [list, view]);
   const activities = useActivities(view === 'folder' || isEmpty); // 폴더와 빈 상태 안내에만 쓴다. 다른 보기는 활동 목록을 부르지 않는다
-  const folders = useMemo(() => view === 'folder' && cards.isSuccess ? buildFolders(cards.data, activities.data) : [],
-    [view, cards.isSuccess, cards.data, activities.data]);
+  const folders = useMemo(() => view === 'folder' && cards.isSuccess ? buildFolders(list, activities.data).filter(folder => !filtering || folder.cards.length > 0) : [],
+    [view, cards.isSuccess, list, activities.data, filtering]);
   // 활동 목록이 오기 전에는 카드가 없는 활동이 빠져 있다 — 폴더가 하나씩 끼어들지 않게 같이 보여 준다
   const foldersPending = view === 'folder' && cards.isSuccess && !isEmpty && activities.isPending;
   // 상세의 이전/다음 카드는 화면에 보이는 순서를 따른다(같은 카드가 여러 기술 묶음에 있어도 한 번만)
@@ -70,30 +65,19 @@ export function CardsListPage() {
   return (
     <main className="main cards-list">
       <div className="list-head">
-        <PageTitle>경험 카드 <span className="c-3 t-14">{counts.ALL ?? '—'}</span></PageTitle>
+        <PageTitle lead="쌓아온 경험을 카드로 정리하고 필요한 내용을 찾아보세요.">경험 카드 <span className="c-3 t-14">{counts.ALL ?? '—'}</span></PageTitle>
         {/* 카드가 하나도 없으면 검색·만들기 버튼은 아래 빈 상태가 한 번만 안내한다(같은 이름의 주 버튼이 둘이 되지 않게) */}
-        {!isEmpty && view !== 'folder' && (
-          <div className="right">
-            <SearchField className="list-search" value={q} onChange={setQ} placeholder="카드 검색" label="카드 이름으로 검색" />
+        {!isEmpty && (
+          <div className="right cards-list__tools">
+            <SearchField className="list-search" value={q} onChange={setQ} placeholder="카드 이름 검색" label="카드 이름으로 검색" />
+            <Select label="카드 보기 방식" value={view} onChange={pick} options={VIEWS.filter(v => v.value !== 'folder' || !cards.isSuccess || repoKnown)} />
+            <Select label="카드 작성 상태 필터" value={status} onChange={setStatus} options={(['ALL', 'DRAFT', 'CONFIRMED', 'NEEDS_WORK'] as const).map(value => ({ value, label: `${value === 'ALL' ? '전체' : value === 'NEEDS_WORK' ? '보완 필요' : cardStatusLabel[value]} ${counts[value] ?? '—'}` }))} />
+            <Link to="/activities/new" className="btn btn--outline"><FolderPlus size={14} aria-hidden /> 활동 만들기</Link>
             <Link to="/cards/new" className="btn btn--primary"><PenLine size={14} /> 경험 카드 만들기</Link>
           </div>
         )}
       </div>
-      {!isEmpty && <div className="cards-controls">
-        <div className="view-switch" role="radiogroup" aria-label="카드 묶어 보기">
-          {VIEWS.filter((v) => v.value !== 'folder' || !cards.isSuccess || repoKnown).map((v) => (
-            <button key={v.value} type="button" role="radio" aria-checked={view === v.value} className="view-switch__item" onClick={() => pick(v.value)}>{v.label}</button>
-          ))}
-        </div>
-        {view !== 'folder' && <div className="status-tabs" aria-label="카드 작성 상태 필터">
-          {(['ALL', 'DRAFT', 'CONFIRMED', 'NEEDS_WORK'] as const).map((s) => (
-            <button key={s} type="button" className="status-tab" aria-pressed={status === s} onClick={() => setStatus(s)}>
-              {s === 'ALL' ? '전체' : s === 'NEEDS_WORK' ? '보완 필요' : cardStatusLabel[s]} <span className="c-3">{counts[s] ?? '—'}</span>
-            </button>
-          ))}
-        </div>}
-      </div>}
-      {cards.data && filtering && <span className="t-12 c-2" role="status">카드 {list.length}장</span>}
+      {cards.data && <span className="t-12 c-2" role="status">카드 {list.length}장</span>}
       {cards.isError && <QueryFailure error={cards.error} retry={() => cards.refetch()} pending={cards.isFetching} />}
       {cards.isSuccess && <SkippedCardsNotice />}
       {cards.isPending && <div className="grid-2">{[0, 1].map((i) => <Skeleton key={i} h={150} />)}</div>}

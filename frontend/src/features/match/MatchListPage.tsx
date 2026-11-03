@@ -93,8 +93,7 @@ export function MatchListPage() {
   if (!matchSupported()) return <MatchUnavailable />;
   return (
     <main className="main matching-page">
-      <PageTitle after={isDemo ? <Badge kind="NEUTRAL">예시 공고</Badge> : undefined}>공고 매칭</PageTitle>
-      <p className="match-intro">개발 직군 공고를 모아 보여 드려요. 공고를 열면 내 경험 카드로 조건을 맞춰 볼 수 있어요.</p>
+      <PageTitle lead="개발 직군 공고를 모아 보여 드려요. 공고를 열면 내 경험 카드로 조건을 맞춰 볼 수 있어요." after={isDemo ? <Badge kind="NEUTRAL">예시 공고</Badge> : undefined}>공고 매칭</PageTitle>
       <OverallMatch />
       <div className="match-toolbar">
         <ViewToggle value={view} onChange={(next) => update("view", next === "company" ? next : "")} />
@@ -169,12 +168,14 @@ export function MatchListPage() {
             <Button
               variant="ghost"
               size="sm"
+              className="match-results__refresh"
+              aria-label="목록 새로고침"
+              title="목록 새로고침"
               onClick={() => void matches.refetch()}
               disabled={matches.isFetching}
               aria-busy={matches.isFetching || undefined}
             >
               <RefreshCw size={14} className={matches.isFetching ? "spin" : undefined} aria-hidden />
-              목록 새로고침
             </Button>
           </div>
           {list.length === 0 ? (

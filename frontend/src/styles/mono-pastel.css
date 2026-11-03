@@ -142,3 +142,76 @@
   .shell--rail .sidebar__top { flex-direction: column; align-items: center; justify-content: center; gap: 12px; margin-inline: 0; padding-inline: 0; }
   .shell--rail .sidebar__top .brand { flex: none; width: 32px; padding: 0; }
 }
+
+/* 검색·필터는 연한 회색 면으로 구분하고 포커스 때만 외곽선을 표시한다. */
+.search-field,
+.select-trigger:not(.select-trigger--field) {
+  border-color: transparent;
+  background: var(--bg-subtle);
+  box-shadow: none;
+}
+.search-field:hover,
+.select-trigger:not(.select-trigger--field):hover:not(:disabled),
+.select-trigger:not(.select-trigger--field)[data-state="open"] {
+  border-color: transparent;
+  background: var(--bg-inset);
+}
+.search-field:focus-within,
+.select-trigger:not(.select-trigger--field):focus-visible {
+  outline: 2px solid var(--border-selected);
+  outline-offset: 2px;
+}
+.home-page .prompt__card {
+  border-color: transparent;
+  background: var(--bg-subtle);
+  box-shadow: none;
+}
+.home-page .prompt__card:focus-within {
+  border-color: transparent;
+  outline: 2px solid var(--border-selected);
+  outline-offset: 2px;
+}
+
+/* 목록 제목 다음 줄에 검색과 필터를 모은다. */
+.list-head {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+}
+.list-head > .right {
+  width: 100%;
+  margin-left: 0;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.list-head .list-search {
+  width: min(100%, 320px);
+}
+
+/* 페이지 제목과 설명은 같은 간격·글자 크기로 읽힌다. */
+.page-header { gap: 8px; }
+.page-header .page-lead,
+.page-header__sub { margin: 0; color: var(--text-secondary); font-size: 14px; line-height: 24px; }
+@media screen and (min-width: 768px) {
+  .shell__main > .main { padding-top: 32px; gap: 24px; }
+}
+@media screen and (max-width: 767px) {
+  .shell__main > .main { padding-top: 20px; gap: 20px; }
+}
+
+/* 검색은 남은 너비를 채우고 필터는 내용에 맞는 폭을 유지한다. */
+.list-head > .right > .list-search {
+  flex: 1 1 240px;
+  width: auto;
+  min-width: 0;
+}
+.list-head > .right > .select-trigger,
+.list-head > .right > .btn {
+  flex: 0 0 auto;
+}
+@media (max-width: 767px) {
+  .list-head > .right > .list-search { flex-basis: 100%; }
+}
+
+.btn.card-action-icon { width: 36px; height: 36px; min-width: 0; min-height: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+@media (pointer: coarse) { .btn.card-action-icon { width: 44px; height: 44px; } }

@@ -165,8 +165,9 @@ describe('#521 the AI 가 한 일 section', () => {
 
   it('shows the steps in order under one named section', () => {
     render(<DraftSteps steps={steps} />);
-    const section = screen.getByRole('region', { name: 'AI 가 한 일' });
-    expect(within(section).getByRole('heading', { level: 2, name: 'AI 가 한 일' })).toBeInTheDocument();
+    const section = screen.getByRole('region', { name: 'AI 작업 기록 확인하기' });
+    expect(within(section).getByRole('heading', { level: 2, name: 'AI 작업 기록 확인하기' })).toBeInTheDocument();
+    expect(within(section).getByText('초안 작성·검토 8단계')).toBeInTheDocument();
     const rows = lines();
     expect(rows).toHaveLength(8);
     expect(rows[0]).toContain('GitHub 기록으로 초안을 썼어요');
@@ -179,30 +180,27 @@ describe('#521 the AI 가 한 일 section', () => {
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['첫 초안과 검사', '1번째 고쳐 쓰기']);
   });
 
-  it('labels the AI reason as the AI judgment, and only where the AI gave one', () => {
+  it('folds the AI reason under 판단 이유, and only where the AI gave one', () => {
     render(<DraftSteps steps={steps} />);
-    const labels = screen.getAllByText('AI 의 판단');
-    expect(labels).toHaveLength(3); // OPEN · KEEP · RETRY
+    expect(screen.getAllByText('판단 이유')).toHaveLength(3); // OPEN · KEEP · RETRY
     const open = screen.getAllByRole('listitem')[3];
-    expect(within(open).getByText('AI 의 판단')).toBeInTheDocument();
+    expect(within(open).getByText('판단 이유')).toBeInTheDocument();
     expect(within(open).getByText('과제가 이슈 본문에 적혀 있을 것 같음')).toBeInTheDocument();
     // 코드가 한 단계(FLAG·PASS)와 reason 이 없는 단계에는 이름표가 없다
-    expect(within(screen.getAllByRole('listitem')[1]).queryByText('AI 의 판단')).not.toBeInTheDocument();
-    expect(within(screen.getAllByRole('listitem')[7]).queryByText('AI 의 판단')).not.toBeInTheDocument();
-    // 카드 문장과 구분된다는 안내
-    expect(screen.getByText(/카드에 들어가는 문장이 아니에요/)).toBeInTheDocument();
+    expect(within(screen.getAllByRole('listitem')[1]).queryByText('판단 이유')).not.toBeInTheDocument();
+    expect(within(screen.getAllByRole('listitem')[7]).queryByText('판단 이유')).not.toBeInTheDocument();
   });
 
   it('does not present a reason that came with a step the code took as the AI judgment', () => {
     render(<DraftSteps steps={[parsed({ kind: 'FLAG', field: 'R', code: 'EMPTY', actor: 'CODE', reason: '코드가 쓴 이유일 리 없음' })]} />);
-    expect(screen.queryByText('AI 의 판단')).not.toBeInTheDocument();
+    expect(screen.queryByText('판단 이유')).not.toBeInTheDocument();
     expect(screen.queryByText('코드가 쓴 이유일 리 없음')).not.toBeInTheDocument();
     expect(screen.getByText('결과 칸: 비어 있어요')).toBeInTheDocument();
   });
 
   it('shows a reason whose actor is unknown, because only an explicit code step is excluded', () => {
     render(<DraftSteps steps={[parsed({ kind: 'KEEP', field: 'T', actor: 'ROBOT', reason: '그대로 둠' })]} />);
-    expect(screen.getByText('AI 의 판단')).toBeInTheDocument();
+    expect(screen.getByText('판단 이유')).toBeInTheDocument();
     expect(screen.getByText('그대로 둠')).toBeInTheDocument();
   });
 
@@ -248,10 +246,9 @@ describe('#521 on the card page', () => {
   }
   const card = (id: string, extra: Partial<Card> = {}) => ({ ...Card.parse(raw(id)), ...extra }) as Card;
 
-  it('shows it on a draft card that has steps', () => {
+  it('keeps a draft card to the card itself — the record shows once the card is confirmed', () => {
     mount(card('card_01'));
-    expect(screen.getByRole('region', { name: 'AI 가 한 일' })).toBeInTheDocument();
-    expect(screen.getByText('GitHub 기록으로 초안을 썼어요')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'AI 작업 기록 확인하기' })).not.toBeInTheDocument();
     // 카드 문장은 그대로 따로 있다
     expect(screen.getByText('인증 모듈의 세션 처리를 담당했다')).toBeInTheDocument();
   });
@@ -260,25 +257,25 @@ describe('#521 on the card page', () => {
     const confirmed = card('card_03');
     expect(confirmed.version.versionNo).toBe(3);
     mount(confirmed);
-    expect(screen.getByRole('region', { name: 'AI 가 한 일' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'AI 작업 기록 확인하기' })).toBeInTheDocument();
     expect(screen.getByText('과제 칸: 비어 있어요')).toBeInTheDocument();
   });
 
   it.each([['card_01', []], ['card_01', undefined], ['card_03', []], ['card_04', undefined]])('shows nothing for %s when draftSteps is %j', (id, draftSteps) => {
     mount(card(id, { draftSteps }));
-    expect(screen.queryByRole('region', { name: 'AI 가 한 일' })).not.toBeInTheDocument();
-    expect(screen.queryByText('AI 가 한 일')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'AI 작업 기록 확인하기' })).not.toBeInTheDocument();
+    expect(screen.queryByText('AI 작업 기록 확인하기')).not.toBeInTheDocument();
   });
 
   it('shows nothing live while the draft is still being generated', () => {
     mount(card('card_01', { generation: { jobId: 'job_1', partial: false } }));
-    expect(screen.queryByText('AI 가 한 일')).not.toBeInTheDocument();
+    expect(screen.queryByText('AI 작업 기록 확인하기')).not.toBeInTheDocument();
     expect(screen.getByText('고른 후보의 카드 초안을 쓰고 있어요')).toBeInTheDocument();
   });
 
   it('is not part of the edit screen', () => {
     mount(card('card_01'), '/cards/card_01?mode=edit');
-    expect(screen.queryByText('AI 가 한 일')).not.toBeInTheDocument();
+    expect(screen.queryByText('AI 작업 기록 확인하기')).not.toBeInTheDocument();
   });
 });
 

@@ -1,7 +1,6 @@
 import { useId } from 'react';
-import { Bot, CircleCheck, FilePenLine, FileSearch, Flag, Hand, PencilLine, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
+import { Sparkles, ChevronDown, CircleCheck, FilePenLine, FileSearch, Flag, Hand, PencilLine, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
 import type { DraftStep, DraftStepKind } from '@/api/schemas';
-import { IconBox } from '@/components/ui';
 import { draftStepGroups } from '@/lib/draftSteps';
 import './DraftSteps.css';
 
@@ -22,26 +21,29 @@ export function DraftSteps({ steps }: { steps: readonly DraftStep[] | null | und
   if (!groups.length) return null;
   return (
     <section className="card draft-steps" aria-labelledby={titleId}>
+      <details className="draft-steps__expand">
+      <summary className="draft-steps__summary" aria-label="AI 작업 기록 펼치기 또는 접기">
       <div className="draft-steps__head">
-        <IconBox icon={Bot} size={32} />
+        <span className="draft-steps__mark" aria-hidden><Sparkles size={18} /></span>
         <div className="stack" style={{ gap: 2 }}>
-          <h2 id={titleId} className="draft-steps__title">AI 가 한 일</h2>
-          <p className="draft-steps__lead">초안을 만들며 AI 가 거친 단계예요. 'AI 의 판단'은 AI 가 쓴 글이고, 카드에 들어가는 문장이 아니에요.</p>
+          <h2 id={titleId} className="draft-steps__title">AI 작업 기록 확인하기</h2>
+          <p className="draft-steps__lead">초안 작성·검토 {groups.reduce((count, group) => count + group.lines.length, 0)}단계</p>
         </div>
       </div>
+      <ChevronDown className="draft-steps__chevron" size={18} aria-hidden />
+      </summary>
       {groups.map((group) => (
         <div key={group.lines[0].index} className="draft-steps__group">
           {group.label && <h3 className="draft-steps__round">{group.label}</h3>}
           <ol className="draft-steps__list">
             {group.lines.map((line) => {
-              const Icon = kindIcon[line.kind];
               return (
-                <li key={line.index} className={line.reason ? 'draft-step draft-step--judged' : 'draft-step'}>
-                  <span className="draft-step__icon" aria-hidden><Icon size={14} /></span>
+                <li key={line.index} data-kind={line.kind} className={line.reason ? 'draft-step draft-step--judged' : 'draft-step'}>
+                  <span className="draft-step__dot" aria-hidden />
                   <div className="draft-step__body">
                     <p className="draft-step__text">{line.text}</p>
                     {line.detail && <p className="draft-step__detail">{line.detail}</p>}
-                    {line.reason && <p className="draft-step__reason"><span className="draft-step__reason-label">AI 의 판단</span><q>{line.reason}</q></p>}
+                    {line.reason && <details className="draft-step__reason"><summary>판단 이유</summary><p>{line.reason}</p></details>}
                   </div>
                 </li>
               );
@@ -49,6 +51,7 @@ export function DraftSteps({ steps }: { steps: readonly DraftStep[] | null | und
           </ol>
         </div>
       ))}
+      </details>
     </section>
   );
 }

@@ -157,10 +157,11 @@ export function CardPage() {
           </div>
         )}
         <CardHeader card={card} right={<>
-          <Button size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>
-          <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast(`다시 편집할 수 있어요. 확정했던 버전은 ${historyActionLabel}에 남아요.`); } })}>수정</Button>
+          <Button size="sm" className="card-action-icon" onClick={exportMd} aria-label="복사" title="가린 정보를 적용한 내용을 복사해요"><Copy size={17} aria-hidden /></Button>
+          <Button variant="outline" size="sm" className="card-action-icon" aria-label="수정" title="수정" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast(`다시 편집할 수 있어요. 확정했던 버전은 ${historyActionLabel}에 남아요.`); } })}><Pencil size={17} aria-hidden /></Button>
         </>} />
         <div className="two-col two-col--340">
+          <div className="stack card-content-column" style={{ gap: 16 }}>
           <div className="card star-read evidence-rail evidence-rail--rows">
             {STAR_FIELDS.map((f) => {
               const t = card.version[fieldKey[f]];
@@ -172,6 +173,8 @@ export function CardPage() {
                 </StarRow>
               );
             })}
+          </div>
+          <DraftSteps steps={card.draftSteps} />
           </div>
           <aside className="stack card-review-aside" style={{ gap: 16 }}>
             {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 받을 질문, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
@@ -199,7 +202,6 @@ export function CardPage() {
             <CardNavigation cardId={cardId} />
           </aside>
         </div>
-        <DraftSteps steps={card.draftSteps} />
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
         <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
@@ -269,7 +271,7 @@ export function CardPage() {
           <div className="stack" style={{ gap: 6 }}>
             <div className="card-tools">
               <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
-              <Button variant="ghost" size="sm" onClick={exportMd}><Copy size={15} aria-hidden />복사</Button>
+              <Button variant="ghost" size="sm" className="card-action-icon" aria-label="복사" title="복사" onClick={exportMd}><Copy size={17} aria-hidden /></Button>
             </div>
           </div>
         </div>
@@ -277,7 +279,6 @@ export function CardPage() {
         </aside>
       </div>
 
-      <DraftSteps steps={card.draftSteps} />
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}

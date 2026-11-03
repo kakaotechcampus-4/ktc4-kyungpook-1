@@ -1,3 +1,5 @@
+import { useId, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useOverallRecommendation, useStartOverallRecommendation, type OverallRecommendation } from "@/api/matching";
 import { errorView } from "@/api/errorView";
@@ -21,6 +23,14 @@ const metLine = (c: Company) =>
  * 지난 결과를 못 읽은 것은 공고 목록 오류처럼 크게 알리지 않는다(목록이 이 페이지의 본문이다).
  */
 export function OverallMatch() {
+  const [expanded, setExpanded] = useState(() => {
+    try { return localStorage.getItem('gitory.overall-match.expanded') !== 'false'; } catch { return true; }
+  });
+  const bodyId = useId();
+  const toggle = () => setExpanded(value => {
+    try { localStorage.setItem('gitory.overall-match.expanded', String(!value)); } catch { /* noop */ }
+    return !value;
+  });
   const overall = useOverallRecommendation();
   const start = useStartOverallRecommendation();
   const data = overall.data;
@@ -33,9 +43,13 @@ export function OverallMatch() {
           <h2 id="overall-match-title">나와 맞는 기업</h2>
           <p>{data?.computedAt ? `마지막 매칭 ${computedLabel(data.computedAt)}` : "확정한 경험 카드와 인적사항으로 맞는 기업을 골라 드려요. 1분쯤 걸려요."}</p>
         </div>
-        <Button onClick={() => start.mutate()} disabled={computing || overall.isPending} loading={start.isPending}>{label}</Button>
+        <div className="overall-match__actions">
+          <Button onClick={() => { setExpanded(true); start.mutate(); }} disabled={computing || overall.isPending} loading={start.isPending}>{label}</Button>
+          <button type="button" className="overall-match__toggle" onClick={toggle} aria-expanded={expanded} aria-controls={bodyId} aria-label={expanded ? '기업 목록 접기' : '기업 목록 펼치기'}><span>{expanded ? '접기' : `기업 ${data?.companies.length ?? 0}곳 보기`}</span><ChevronDown size={16} /></button>
+        </div>
       </div>
       {start.isError && <Note strong="매칭을 시작하지 못했어요" tone="danger">{errorView(start.error).message}</Note>}
+      <div id={bodyId} hidden={!expanded}>
       {overall.isPending ? <Skeleton h={96} />
         : overall.isError && !data ? (
           <p className="overall-match__empty">
@@ -44,6 +58,7 @@ export function OverallMatch() {
           </p>
         )
         : data && <OverallBody data={data} computing={computing} />}
+      </div>
     </section>
   );
 }

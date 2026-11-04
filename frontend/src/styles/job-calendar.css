@@ -176,7 +176,6 @@
 .home-workspace__content .experience-item__meta { grid-column: 1; font-size: 10px; line-height: 16px; }
 .home-workspace__content .experience-item .gcard__title { grid-column: 1; grid-row: 2; font-size: 15px; line-height: 22px; }
 .home-workspace__content .experience-item .card-tags { grid-column: 1; grid-row: 3; }
-.home-workspace__content .experience-item .stardots { display: none; }
 .home-workspace__content .experience-item .card-fill { grid-column: 2; grid-row: 2; margin: 0; align-self: center; }
 .home-workspace__content .experience-item__footer { grid-column: 2; grid-row: 3; justify-content: flex-start; align-self: center; }
 .home-workspace__content .experience-item__footer > .t-12 { display: none; }
@@ -237,20 +236,6 @@
   .home-lower .home-cards__head .btn { padding-inline: 6px; font-size: 10px; }
   .home-lower .resume__item { flex-wrap: wrap; }
 }
-
-/* Preserve develop's STAR tile progress now that its legacy fill bar is removed. */
-.home-workspace__content .experience-item .stardots--labeled {
-  display: grid;
-  grid-column: 2;
-  grid-row: 2;
-  width: 100%;
-  min-width: 0;
-  gap: 3px;
-  align-self: center;
-}
-.home-workspace__content .experience-item .stardots--labeled .stardot { height: auto; gap: 3px; }
-.home-workspace__content .experience-item .stardots--labeled .stardot__letter { width: 22px; height: 22px; font-size: 11px; }
-.home-workspace__content .experience-item .stardots--labeled .stardot__label { font-size: 9px; line-height: 14px; }
 
 .selected-event__posting { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; border-radius: 8px; padding-block: 6px; }
 .selected-event__posting:hover strong { text-decoration: underline; }

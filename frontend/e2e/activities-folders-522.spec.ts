@@ -35,16 +35,18 @@ test('활동 만들기, 활동 안에서 카드 만들기, 폴더 보기, 지우
   await expect(page).toHaveURL(/\/cards\/activity\/act_/);
   await expect(page.getByRole('heading', { level: 1, name: '알고리즘 스터디' })).toBeVisible();
   await expect(page.getByText('스터디, 2026년 3월부터 진행 중')).toBeVisible();
-  await expect(page.getByText('아직 카드가 없어요.')).toBeVisible();
+  await expect(page.locator('.experience-item')).toHaveCount(0);
 
-  // 활동 안에서 경험 카드 만들기 — 활동이 미리 골라져 있다
-  await page.getByRole('link', { name: '경험 카드 만들기' }).click();
-  await expect(page.getByRole('combobox', { name: '활동', exact: true })).toContainText('알고리즘 스터디');
-  await page.getByLabel('카드 제목').fill('스터디를 운영한 경험');
-  await page.getByRole('button', { name: '네 칸 직접 쓰기' }).click();
-  await page.getByRole('button', { name: /임시 저장 시작|작성 시작/ }).click();
-  await expect(page.getByRole('combobox', { name: '활동', exact: true })).toBeDisabled();
-  await page.getByRole('button', { name: '저장 후 종료' }).click();
+  // 활동 안에서 경험 카드 만들기 — 구역 끝의 점선 타일이 연 창에서 제목만 적고, 활동은 누른 폴더라 고르는 칸이 없다
+  await page.getByRole('button', { name: '경험 카드 만들기' }).click();
+  const create = page.getByRole('dialog', { name: '경험 카드 만들기' });
+  await expect(create).toContainText('알고리즘 스터디 폴더에 만들어요');
+  await expect(create.getByLabel(/카드 제목/)).toBeFocused();
+  await create.getByLabel(/카드 제목/).fill('스터디를 운영한 경험');
+  await create.getByRole('button', { name: '네 칸 직접 쓰기' }).click();
+  await expect(page).toHaveURL(/\/cards\/card_\d+\?mode=edit$/);
+  await expect(page.getByRole('navigation', { name: 'breadcrumb' })).toContainText('알고리즘 스터디');
+  await page.getByRole('button', { name: '저장하고 닫기' }).click();
   await expect(page).toHaveURL(/\/cards\/card_\d+$/);
   const crumbs = page.getByRole('navigation', { name: 'breadcrumb' });
   await expect(crumbs).toContainText('알고리즘 스터디');
@@ -52,7 +54,7 @@ test('활동 만들기, 활동 안에서 카드 만들기, 폴더 보기, 지우
   // 카드 상세의 활동 이름에서 폴더 안으로, 목록의 폴더에서도 같은 곳으로
   await crumbs.getByRole('link', { name: '알고리즘 스터디' }).click();
   await expect(page.locator('.experience-item')).toHaveCount(1);
-  await expect(page.getByText('카드 1장, 확정 0장')).toBeVisible();
+  await expect(page.getByText('카드 1장 · 확정 0장')).toBeVisible();
   await page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('link', { name: '경험 카드' }).click();
   await expect(folder(page, /^활동, 스터디, 알고리즘 스터디, 카드 1장/)).toBeVisible();
   await folder(page, /^활동, 스터디, 알고리즘 스터디/).click();
@@ -202,6 +204,47 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark'] as c
     }
   });
 }
+
+for (const theme of ['light', 'dark'] as const) test(`폴더 안 타일: 경험 카드는 종이색 바탕, 기술 카드는 흰 바탕, 점선 타일은 투명 바탕에 점선이다 (${theme})`, async ({ page }) => {
+  await page.addInitScript((value) => localStorage.setItem('gitory.theme', value), theme);
+  await loginAsDemo(page);
+  await page.goto('/cards/repo/r_auth');
+  await expect(page.locator('.experience-item')).toHaveCount(4);
+  const read = await page.evaluate(() => {
+    const token = (name: string) => { const probe = document.createElement('i'); probe.style.background = `var(${name})`; document.body.append(probe); const color = getComputedStyle(probe).backgroundColor; probe.remove(); return color; };
+    const style = (selector: string) => getComputedStyle(document.querySelector(selector)!);
+    return {
+      paper: token('--pastel-yellow'), surface: token('--bg-surface'), strong: token('--border-strong'),
+      tech: style('.experience-item:not(.gcard--experience)').backgroundColor, experience: style('.experience-item.gcard--experience').backgroundColor,
+      chip: (() => { // 목의 경험 카드에는 태그가 없어 칩 하나를 넣어 본다
+        document.querySelector('.gcard--experience')!.insertAdjacentHTML('beforeend', '<ul class="card-tags"><li>태그</li></ul>');
+        return style('.gcard--experience .card-tags li').backgroundColor;
+      })(),
+      add: { background: style('.experience-new').backgroundColor, border: style('.experience-new').borderTopStyle, color: style('.experience-new').borderTopColor },
+    };
+  });
+  expect(read.paper).not.toBe(read.surface);
+  expect(read.tech).toBe(read.surface);
+  expect(read.experience).toBe(read.paper);
+  expect(read.chip).toBe(read.surface);
+  expect(read.add).toEqual({ background: 'rgba(0, 0, 0, 0)', border: 'dashed', color: read.strong });
+});
+
+for (const width of [390, 320]) test(`폴더 안 경험 카드 만들기 창은 폰(${width})에서도 넘치지 않고 버튼이 44px 이상이다`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 700 });
+  await loginAsDemo(page);
+  await page.goto('/cards/repo/r_auth');
+  await page.getByRole('button', { name: '경험 카드 만들기' }).click();
+  const dialog = page.getByRole('dialog', { name: '경험 카드 만들기' });
+  await expect(dialog.getByRole('button', { name: '질문 받으며 쓰기' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  const box = await dialog.boundingBox();
+  for (const button of await dialog.locator('.new-card-dialog__actions .btn').all()) {
+    const rect = (await button.boundingBox())!;
+    expect(rect.height).toBeGreaterThanOrEqual(44);
+    expect(rect.x).toBeGreaterThanOrEqual(box!.x); expect(rect.x + rect.width).toBeLessThanOrEqual(box!.x + box!.width);
+  }
+});
 
 test('활동 목록과 만들기 화면은 모바일에서도 넘치지 않는다', async ({ page }) => {
   await loginAsDemo(page);

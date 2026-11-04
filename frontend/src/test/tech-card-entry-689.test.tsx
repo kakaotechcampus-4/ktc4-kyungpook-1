@@ -22,10 +22,10 @@ async function addCandidate(title: string) {
 }
 
 describe('#689 레포 안에서 커밋을 골라 기술 카드 만들기', () => {
-  it('레포 폴더의 기술 카드 만들기는 그 레포 후보 보드의 커밋 고르는 창으로 간다', async () => {
+  it('레포 폴더의 기술 카드 직접 만들기 타일은 그 레포 후보 보드의 커밋 고르는 창으로 간다', async () => {
     connectMockServer();
     mountApp(routes(), '/cards/repo/r_auth');
-    const link = await screen.findByRole('link', { name: '기술 카드 만들기' });
+    const link = await screen.findByRole('link', { name: '기술 카드 직접 만들기' });
     expect(link).toHaveAttribute('href', '/repos/r_auth/candidates?add=1');
   });
 

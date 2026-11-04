@@ -38,7 +38,7 @@ export function FolderTile({ folder }: { folder: CardFolder }) {
 }
 
 /**
- * 폴더 보기. `folders` 는 lib/cardFolders 가 만든 것이다. 새 카드와 활동을 만드는 길도 여기서 연다 — 활동 고치기·삭제는 활동 폴더 안에 있다.
+ * 폴더 보기. `folders` 는 lib/cardFolders 가 만든 것이다. 활동을 만드는 길도 여기서 연다 — 활동 고치기·삭제는 활동 폴더 안에 있고, 카드는 폴더 안에서 만든다(#773).
  * 활동 목록을 못 읽었으면(`activitiesFailed`) 카드에 적힌 활동만 폴더가 되므로 카드가 없는 활동은 빠진다 — 그 사실을 알리고 다시 불러오게 한다.
  */
 export function CardFolders({ folders, activitiesFailed, retryActivities }: { folders: CardFolder[]; activitiesFailed?: boolean; retryActivities?: () => void }) {
@@ -47,7 +47,6 @@ export function CardFolders({ folders, activitiesFailed, retryActivities }: { fo
       <div className="folders__bar">
         <span className="t-12 c-2">폴더 {folders.length}개</span>
         <div className="right">
-          <Link to="/cards/new" className="btn btn--ghost btn--sm"><PenLine size={14} aria-hidden />경험 카드 만들기</Link>
           <Link to="/activities/new" className="btn btn--ghost btn--sm"><FolderPlus size={14} aria-hidden />활동 만들기</Link>
         </div>
       </div>

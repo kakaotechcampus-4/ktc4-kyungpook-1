@@ -134,6 +134,18 @@ describe('카드 목록의 STAR 는 서버 판정값이다', () => {
   });
 });
 
+describe('카드 목록의 preview (#773)', () => {
+  it('현재 버전 결과 칸의 글이고, 결과가 비어 있으면 null 이다', () => {
+    const list = (req('GET', '/cards').data as unknown[]).map((c) => CardSummary.parse(c));
+    for (const summary of list) {
+      const detail = req('GET', `/cards/${summary.id}`).data as { version: { result: string | null } };
+      expect(summary.preview).toBe(detail.version.result || null);
+    }
+    expect(list.some((summary) => summary.preview === null)).toBe(true);
+    expect(list.some((summary) => typeof summary.preview === 'string')).toBe(true);
+  });
+});
+
 describe('직접 작성 — 근거 없이도 저장된다', () => {
   it('제목만으로 DRAFT 를 먼저 만들고, 이후 입력은 같은 버전을 덮어쓴다', () => {
     const card = req('POST', '/cards/manual/draft', { title: '팀 설득 경험', period: '2024.04', repoId: null }).data as { id: string; version: { versionNo: number } };

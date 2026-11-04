@@ -5,7 +5,7 @@ import { useCards, useMe, useRepos } from '@/api/queries';
 import type { CardSummary, StarField } from '@/api/schemas';
 import { IconBox, KindIcon, PageTitle, SectionHead, StarDots } from '@/components/ui';
 import { CardStatusMark } from '@/components/cards/CardStatusMark';
-import { cardKindShort } from '@/lib/labels';
+import { cardKindLabel } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
 import { periodLabel } from '@/lib/format';
 import { track } from '@/lib/track';
@@ -198,17 +198,20 @@ export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) =>
 export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
 
 export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: string[] }) {
-  const src = summarySource(c);
+  const experience = c.kind === 'QUALITATIVE';
+  const origin = experience ? c.activity?.name ?? cardKindLabel.QUALITATIVE : summarySource(c) ?? cardKindLabel.TECH;
   const sub = summaryDetail(c);
   return (
-    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : 'gcard--confirmed'}`}>
+    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : 'gcard--confirmed'}${experience ? ' gcard--experience' : ''}`}>
       <div className="experience-item__meta">
-        <span>{cardKindShort[c.kind]} 카드{src ? `, ${src}` : ''}</span>
-        {c.period && <span>{periodLabel(c.period)}</span>}
+        <KindIcon kind={c.kind} size={24} />
+        <span>{[origin, c.period && periodLabel(c.period)].filter(Boolean).join(' · ')}</span>
       </div>
-      <CardTags areas={c.areas} techs={c.techs} techLimit={4} />
       <h3 className="gcard__title">{c.title}</h3>
-      <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />
+      {c.preview !== undefined && (c.preview
+        ? <p className="experience-item__preview">{c.preview}</p>
+        : <p className="experience-item__preview experience-item__preview--empty">결과가 아직 없어요</p>)}
+      <CardTags areas={c.areas} techs={c.techs} techLimit={2} />
       <div className="experience-item__footer">
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <CardStatusMark status={c.status} star={c.star} />

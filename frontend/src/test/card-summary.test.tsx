@@ -32,5 +32,5 @@ it('keeps explicitly provided zero evidence distinct from unknown information', 
 
 it.each(['2024년 상반기', '2024.04 ~ 2024.06'])('shows acknowledged free-text period %s without losing it during date formatting', (period) => {
   render(<MemoryRouter><CardGridItem c={CardSummary.parse({ ...minimal, period })} /></MemoryRouter>);
-  expect(screen.getByText(period)).toBeInTheDocument();
+  expect(screen.getByText(`기술 카드 · ${period}`)).toBeInTheDocument();
 });

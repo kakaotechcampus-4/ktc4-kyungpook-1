@@ -363,6 +363,7 @@ export function starStates(c: Any) {
 
 export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
+  const result = v[FIELD_KEY.R];
   settleThemes(c);
   return {
     id: c.id, kind: c.kind, status: c.status, title: c.title,
@@ -371,6 +372,7 @@ export function cardSummary(c: Any) {
     sourceType: c.candidate?.type ?? null, period: c.period,
     evidenceCount: c.evidence.filter((e: Any) => e.type === 'COMMIT').length,
     userStatedCount: c.evidence.filter((e: Any) => e.type !== 'COMMIT').length,
+    preview: result == null || isCardBlank(result) ? null : result.trim(),
     updatedAt: c.updatedAt ?? legacyUpdatedAt(c),
     repo: c.repo ? { id: c.repo.id, owner: c.repo.owner, name: c.repo.name } : null,
     activity: activityRef(c),

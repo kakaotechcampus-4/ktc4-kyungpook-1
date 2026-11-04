@@ -164,7 +164,7 @@ describe('공고 매칭 결과 상자', () => {
     expect(titles(box())).toEqual(['공고1', '공고2', '공고3', '공고4']);
     expect(tiles().map((tile) => tile.querySelector('.star-key')?.textContent)).toEqual(['1', '2', '3', '4']);
     expect(within(tiles()[0]).getByRole('link', { name: '공고1' })).toHaveAttribute('href', '/match/p1');
-    expect(within(tiles()[0]).getByRole('link', { name: '회사1' })).toHaveAttribute('href', '/match/company/c1');
+    expect(within(tiles()[0]).getByText('회사1').closest('a')).toBeNull();
     expect(screen.queryByText('공고9')).not.toBeInTheDocument();
     expect(tiles()[0].querySelector('.posting-techs')).toBeNull();
   });

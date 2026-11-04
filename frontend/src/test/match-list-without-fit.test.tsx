@@ -46,7 +46,7 @@ function mount(path = '/match', { me }: Setup = {}) {
   );
   return client;
 }
-const companies = () => [...document.querySelectorAll('.match-card .match-company-link__name')].map((el) => el.textContent);
+const companies = () => [...document.querySelectorAll('.match-card .posting-company__name')].map((el) => el.textContent);
 
 describe('목록의 등급이 전부 비어 있을 때', () => {
   it('확정 카드가 있으면 "확정한 카드가 없어요" 없이 공고만 보여 준다', async () => {

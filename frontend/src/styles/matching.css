@@ -239,12 +239,23 @@
   min-height: 220px;
   padding: 20px;
 }
-.posting-tile .match-company-link {
+.posting-company {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  max-width: 100%;
+  min-width: 0;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
+  line-height: 1.4;
+}
+.posting-company__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.posting-tile .posting-company {
+  margin-bottom: 4px;
 }
 .posting-tile__foot {
   display: flex;
@@ -1008,12 +1019,6 @@
   gap: 8px;
   min-width: 0;
   margin-bottom: 2px;
-}
-.result-tile .match-company-link {
-  gap: 8px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
 }
 .result-tile__count {
   margin: 4px 0 0;

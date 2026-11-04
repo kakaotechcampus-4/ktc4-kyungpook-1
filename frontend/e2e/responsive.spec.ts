@@ -102,7 +102,7 @@ test.describe('반응형 레이아웃', () => {
     expect(geometry.logoHeight).toBe(34);
   });
 
-  test('카드 목록은 하나의 여유 있는 경험 목록과 정렬된 STAR를 쓴다', async ({ page }) => {
+  test('카드 목록은 하나의 여유 있는 경험 목록을 쓰고 타일은 STAR 칸 대신 결과 한 줄을 둔다', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await loginAsDemo(page);
 
@@ -116,9 +116,8 @@ test.describe('반응형 레이아웃', () => {
     await expect(page.locator('.experience-item').first()).toBeVisible();
     const itemShadow = await page.locator('.experience-item').first().evaluate((el) => getComputedStyle(el).boxShadow);
     expect(itemShadow).toBe('none');
-    const widths = await page.locator('.experience-item').first().locator('.stardot').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
-    expect(new Set(widths.map((width) => Math.round(width))).size).toBe(1);
-    await expect(page.locator('.experience-item').first().locator('.stardot__label')).toHaveCount(4);
+    await expect(page.locator('.experience-item .stardot')).toHaveCount(0);
+    await expect(page.locator('.experience-item__preview').first()).toBeVisible();
   });
 
   test('설정은 관련 정보를 큰 섹션으로 묶고 선택 경계는 유지한다', async ({ page }) => {

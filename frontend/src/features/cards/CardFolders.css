@@ -56,7 +56,11 @@
 .folder-head__meta { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
 .folder-head__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .folder-section { display: flex; flex-direction: column; gap: 14px; }
-.folder-section__empty { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; padding: 16px 18px; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); color: var(--text-secondary); font-size: 13px; line-height: 20px; }
+/* 점선 타일이 구역마다 늘 끝에 있어서 auto-fit 으로 두면 카드가 한두 장일 때 타일이 한 줄을 다 채운다 — 칸을 비워 둬서 타일 폭을 같게 한다 */
+.folder-section .experience-list { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
+.experience-new { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 170px; padding: 18px; border: 1px dashed var(--border-strong); border-radius: 20px; background: transparent; color: var(--text-secondary); font-size: 13px; line-height: 20px; text-align: center; overflow-wrap: anywhere; }
+.experience-new__title { font-size: 14px; line-height: 20px; font-weight: 600; color: var(--text-primary); }
+.experience-new:hover { border-color: var(--border-selected); }
 .folder-missing { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 24px 0; }
 
 @media (max-width: 560px) {
@@ -65,3 +69,12 @@
 }
 /* 한 열일 때 타일이 560~680px 까지 넓어지면 뒤 카드가 솟는 높이(폭 × 0.85 × sin 7°)가 줄 간격 36px 를 넘어 윗줄과 겹친다 — 440px 에서 멈추면 올렸을 때도 약 35px 라 들어온다 */
 @media (max-width: 960px) { .folder-grid > li { max-width: 440px; } }
+
+/* ───── 폴더 안 경험 카드 만들기 창(#773) ───── */
+.new-card-dialog__hint { margin: -4px 0 0; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.new-card-dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.new-card-dialog__actions .btn--text { margin-right: auto; }
+@media (max-width: 560px) {
+  .new-card-dialog__actions { flex-direction: column-reverse; }
+  .new-card-dialog__actions .btn--text { margin-right: 0; }
+}

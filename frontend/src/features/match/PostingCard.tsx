@@ -11,9 +11,9 @@ import { companyLabel, companyPath } from "./model";
  * 링크 안에 링크를 넣을 수 없어서 카드를 <a> 로 감싸지 않는다.
  * showCompany: 기업 페이지처럼 머리말에 이미 기업이 있으면 카드마다 되풀이하지 않는다.
  * 목록 응답의 근거 등급(fit)과 필수·우대 충족 개수(met)는 그리지 않는다: 목록 단계의 값은 판정 기준이 느슨해 오해를 줄 수 있고(경력 10년 이상 공고도 A 가 나왔다),
- * 서버도 목록의 AI 검색을 끈다. fitLine 은 '내 조건으로 맞춰 보기' 결과에서 온 한 줄이라 그 결과가 있는 공고에만 준다.
+ * 서버도 목록의 AI 검색을 끈다. '내 조건으로 맞춰 보기' 결과의 개수는 맞춰 본 결과 상자의 타일(ResultTile)이 그린다.
  */
-export function PostingCard({ item, search, showCompany = true, fitLine }: { item: MatchTarget; search: URLSearchParams; showCompany?: boolean; fitLine?: string }) {
+export function PostingCard({ item, search, showCompany = true }: { item: MatchTarget; search: URLSearchParams; showCompany?: boolean }) {
   return (
     <article className="match-card posting-tile">
       {showCompany && (
@@ -28,7 +28,6 @@ export function PostingCard({ item, search, showCompany = true, fitLine }: { ite
         </Link>
       </h2>
       <PostingFacts item={item} />
-      {fitLine && <p className="posting-fit">{fitLine}</p>}
       <TechChips techs={item.techs} max={3} />
       <div className="posting-tile__foot">
         <DeadlineMark expiresAt={item.source.expiresAt} />

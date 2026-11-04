@@ -1,5 +1,6 @@
 import { MatchCategory, type MatchDetail, type MatchTarget, type OverallRecommendation } from "@/api/matching";
 import type { CardSummary } from "@/api/schemas";
+import { techLabels } from "@/lib/cardTags";
 export const categoryLabel = {
   BACKEND: "백엔드",
   FRONTEND: "프론트엔드",
@@ -95,34 +96,61 @@ export const postingFacts = (item: MatchTarget) =>
     (value): value is string => value !== null,
   );
 
-// ───────── 맞춰 본 결과로 목록 나누기 ─────────
+// ───────── 맞춰 본 결과 상자 ─────────
 
-type FitCounts = Pick<OverallRecommendation["companies"][number], "requiredMet" | "requiredTotal" | "preferredMet" | "preferredTotal">;
-
-/** 공고 타일 안의 맞는 정도 한 줄. 학력·경력 같은 일반 조건은 서버가 세지 않아, 기술·경험 필수 조건이 없는 공고를 0개 중 0개라고 쓰지 않는다 */
-export function fitLine(c: FitCounts) {
-  const preferred = c.preferredTotal ? `, 우대 ${c.preferredTotal}개 중 ${c.preferredMet}개가 맞아요` : "";
-  if (c.requiredTotal === 0) return `기술·경험 필수 조건이 없어요${preferred}`;
-  if (c.requiredMet >= c.requiredTotal) return `필수 조건 ${c.requiredTotal}개를 모두 채웠어요${preferred}`;
-  return `필수 조건 ${c.requiredTotal}개 중 ${c.requiredMet}개를 채웠어요`;
-}
-
-export type FitPosting = { item: MatchTarget; counts: FitCounts };
+type OverallCompany = OverallRecommendation["companies"][number];
+type FitCounts = Pick<OverallCompany, "requiredMet" | "requiredTotal" | "preferredMet" | "preferredTotal">;
+type FitNames = Pick<OverallCompany, "requiredMet" | "requiredTotal" | "met" | "missing">;
 
 /**
- * 맞춰 본 기업(순위 순)의 공고를 목록에서 찾아 '나와 맞는 공고'(fit)와 필수 조건을 하나도 못 채운 '아직 부족한 공고'(gap)로 나누고, 나머지를 rest 로 둔다.
- * 목록에 없는 공고(검색·직무로 걸러졌거나 목록에서 빠진 공고)는 묶음에 넣지 않는다.
+ * 결과 타일의 개수 줄 — 학력·경력 같은 일반 조건은 서버가 세지 않아, 기술·경험 필수 조건이 없는 공고를 0개 중 0개라고 쓰지 않는다
+ * 우대는 맞은 개수만 붙인다(전체 개수를 붙이면 다 맞은 것처럼 읽힌다)
  */
-export function splitByFit(list: readonly MatchTarget[], companies: OverallRecommendation["companies"]) {
-  const byId = new Map(list.map((item) => [item.id, item]));
-  const fit: FitPosting[] = [];
-  const gap: FitPosting[] = [];
-  for (const counts of companies) {
-    const item = byId.get(counts.posting.id);
-    if (item) (counts.requiredTotal > 0 && counts.requiredMet === 0 ? gap : fit).push({ item, counts });
+export function fitSummary(c: FitCounts) {
+  if (c.requiredTotal === 0) {
+    const preferred = c.preferredTotal ? `, 우대 ${c.preferredTotal}개 중 ${c.preferredMet}개가 맞아요` : "";
+    return { done: false, text: `기술·경험 필수 조건이 없어요${preferred}`, extra: "" };
   }
-  const grouped = new Set([...fit, ...gap].map((x) => x.item.id));
-  return { fit, gap, rest: list.filter((item) => !grouped.has(item.id)) };
+  if (c.requiredMet >= c.requiredTotal) {
+    return { done: true, text: `필수 ${c.requiredTotal}개 모두 맞아요`, extra: c.preferredMet > 0 ? `우대 ${c.preferredMet}개` : "" };
+  }
+  return { done: false, text: `필수 ${c.requiredTotal}개 중 ${c.requiredMet}개 맞아요`, extra: "" };
+}
+
+const NAMES_SHOWN = 2;
+const techName = (tech: string) => (techLabels as Record<string, string>)[tech] ?? tech;
+// 서버의 text 는 공고에 적힌 조건 문장이라 '…경험' 으로 끝나는 일이 많고, 문장 끝에 '경험이' 를 다시 붙이므로 겹치지 않게 뗀다
+const conditionName = (condition: OverallCompany["met"][number]) =>
+  condition.techs.length > 0 ? condition.techs.map(techName).join("·") : condition.text.replace(/\s*경험$/, "").trim() || condition.text;
+
+/**
+ * 결과 타일의 이름 줄 — 필수를 다 채웠으면 맞은 조건, 아니면 모자란 조건을 2개까지 이름으로 쓰고 남으면 '등 N개' 로 줄인다(조건 사이는 쉼표, 한 조건의 기술 사이는 가운뎃점)
+ * N 은 이름 목록(서버가 3개까지만 준다)이 아니라 필수 개수에서 센다, 이름을 못 받은 옛 응답은 줄을 그리지 않는다(null)
+ */
+export function fitNames(c: FitNames) {
+  if (c.requiredTotal === 0) return null;
+  const done = c.requiredMet >= c.requiredTotal;
+  const conditions = done ? c.met : c.missing;
+  if (conditions.length === 0) return null;
+  const shown = conditions.slice(0, NAMES_SHOWN);
+  const total = Math.max(done ? c.requiredMet : c.requiredTotal - c.requiredMet, conditions.length);
+  const verb = done ? "맞아요" : "아직 없어요";
+  return {
+    names: shown.map(conditionName).join(", "),
+    tail: total > shown.length ? ` 등 ${total}개가 ${verb}` : ` 경험이 ${verb}`,
+    lacking: !done,
+  };
+}
+
+export type FitPosting = { item: MatchTarget; company: OverallCompany };
+
+/** 맞춰 본 기업(순위 순)의 공고를 목록에서 찾아 순위 순서 그대로 돌려준다. 목록에 없는 공고(마감되어 목록에서 빠진 공고)는 건너뛴다 */
+export function fitPostings(list: readonly MatchTarget[], companies: OverallRecommendation["companies"]): FitPosting[] {
+  const byId = new Map(list.map((item) => [item.id, item]));
+  return companies.flatMap((company) => {
+    const item = byId.get(company.posting.id);
+    return item ? [{ item, company }] : [];
+  });
 }
 
 // ───────── 기업 묶기(기업 페이지) ─────────

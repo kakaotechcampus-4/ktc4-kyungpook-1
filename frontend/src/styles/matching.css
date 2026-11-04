@@ -127,7 +127,8 @@
 
 /* ───────── 공고 목록: 공고 카드(posting-tile) · 마감 · 쪽 번호 ─────────
  * 카드는 내용이 비어도 같은 줄끼리 높이가 같게 최소 높이를 둔다. 마감 7일 안만 붉은 배지로 강조한다(대부분 마감일이 없어 차분하게 둔다). */
-.match-card .posting-title {
+.match-card .posting-title,
+.result-tile .posting-title {
   margin: 0;
   color: var(--text-primary);
   font-size: 16px;
@@ -140,7 +141,8 @@
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.posting-tile:hover .posting-title {
+.posting-tile:hover .posting-title,
+.result-tile:hover .posting-title {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -311,7 +313,8 @@
   .match-card.posting-tile {
     min-height: 0;
   }
-  .match-card .posting-title {
+  .match-card .posting-title,
+  .result-tile .posting-title {
     min-height: 0;
   }
 }
@@ -875,55 +878,174 @@
   font-size: 13px;
 }
 
-/* 공고 매칭 머리 · 검색과 직무 칩 · 묶음(나와 맞는 공고 / 아직 부족한 공고 / 그 밖의 공고) */
-.match-head {
+/* 공고 매칭: 맞춰 본 결과 상자 · 접힌 띠 · 결과 타일 · 검색과 직무 칩 · 모든 공고
+ * 상자는 회색 바탕에 흰 타일이라 '고른 것' 으로 읽히고, 아래 '모든 공고' 는 흰 바탕에 흰 타일이라 전체 목록으로 읽힌다 */
+.result-box {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 20px 24px 24px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  background: var(--bg-subtle);
+}
+.result-box__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px 16px;
   flex-wrap: wrap;
 }
-.match-head__main {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.result-box__title {
   flex: 1 1 260px;
   min-width: 0;
 }
-.match-head__sub,
-.match-head__progress {
+.result-box__title h2 {
   margin: 0;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
 }
-.match-head__progress {
+.result-box__count {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.result-box__meta {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.result-box__meta b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.result-box__progress {
   display: flex;
   flex-direction: column;
   gap: 8px;
   max-width: 420px;
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
 }
-.match-line {
+.result-box__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.result-box__line {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 20px;
 }
-.match-line strong {
+.result-box__line strong {
   color: var(--text-strong);
   font-weight: 600;
 }
-.match-line--danger strong {
+.result-box__line--danger strong {
   color: var(--state-failed-text);
 }
-.match-line__link {
-  display: inline-flex;
+.result-box__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.result-strip {
+  display: flex;
   align-items: center;
-  min-height: var(--control-touch-size);
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px 8px 20px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-subtle);
+}
+.result-strip strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.result-strip__day {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.result-strip .btn {
+  margin-left: auto;
+}
+.result-strip .btn--text,
+.result-box__actions .btn--text {
   color: var(--text-strong);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.result-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--text-primary);
+  transition: border-color 0.15s;
+}
+.result-tile:hover {
+  border-color: var(--text-accent);
+}
+.result-tile__co {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 2px;
+}
+.result-tile .match-company-link {
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.result-tile__count {
+  margin: 4px 0 0;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.result-tile__count svg {
+  display: inline-block;
+  margin-right: 5px;
+  vertical-align: -2px;
+}
+.result-tile__pref {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.result-tile__names {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.result-tile__names b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.result-tile__names b.is-lacking {
+  color: var(--state-open-text);
+}
+.result-tile .posting-tile__foot {
+  flex-wrap: wrap;
 }
 .match-tools {
   display: flex;
@@ -985,25 +1107,27 @@
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
-.match-group__sub {
-  margin: -6px 0 0;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
+.match-group .match-tools {
+  margin-bottom: 6px;
 }
-.match-group .match-group__more {
-  align-self: flex-start;
-  min-height: var(--control-touch-size);
-}
-.posting-fit {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.5;
+@media (max-width: 1000px) {
+  .result-box__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 700px) {
-  .match-head .btn {
+  .result-box {
+    padding: 16px;
+  }
+  .result-box__grid {
+    grid-template-columns: 1fr;
+  }
+  .result-box__actions {
     width: 100%;
+  }
+  .result-box__actions .btn--primary,
+  .result-box__actions .btn--outline {
+    flex: 1 1 auto;
   }
   .match-tools__search {
     max-width: none;

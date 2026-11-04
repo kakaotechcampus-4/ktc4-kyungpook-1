@@ -100,16 +100,16 @@ const displayLines = (conditions: Condition[]) => {
   });
 };
 
-/** 한 절의 집계 글 — '2/3 맞음 · 직접 확인 1'. 카드로 판단한 조건이 없으면 직접 확인 수만 */
+/** 한 절의 집계 글 — '2/3 맞음, 직접 확인 1'. 카드로 판단한 조건이 없으면 직접 확인 수만 */
 const tallyText = ({ met, judged, check }: SectionTally) =>
-  [judged > 0 && `${met}/${judged} 맞음`, check > 0 && `직접 확인 ${check}`].filter(Boolean).join(" · ");
+  [judged > 0 && `${met}/${judged} 맞음`, check > 0 && `직접 확인 ${check}`].filter(Boolean).join(", ");
 
 /** 맞춰 본 결과를 펼칠 때 요약 카드에 적는 두 줄 — 읽은 카드 수와 견준 조건 수 */
 const comparedText = (conditions: Condition[]) => {
   const required = sectionTally(conditions, "REQUIRED").judged;
   const preferred = sectionTally(conditions, "PREFERRED").judged;
   if (required + preferred === 0) return "조건과 견줬어요";
-  return `${required > 0 ? `필수 ${required}개` : ""}${required > 0 && preferred > 0 ? "·" : ""}${preferred > 0 ? `우대 ${preferred}개` : ""}와 견줬어요`;
+  return `${required > 0 ? `필수 ${required}개` : ""}${required > 0 && preferred > 0 ? ", " : ""}${preferred > 0 ? `우대 ${preferred}개` : ""}와 견줬어요`;
 };
 
 type GapProps = {
@@ -142,7 +142,7 @@ function ConditionItem({ condition, line, judged, filled, detailId, gap }: { con
               const KindIcon = card.cardKind === "TECH" ? GitCommitHorizontal : MessageSquareQuote;
               return (
                 <Fragment key={card.cardId}>
-                  {i > 0 && <span className="posting-condition__sep" aria-hidden="true">·</span>}
+                  {i > 0 && <span className="posting-condition__sep" aria-hidden="true">,</span>}
                   <Link
                     to={`/cards/${encodeURIComponent(card.cardId)}`}
                     title={card.reason}

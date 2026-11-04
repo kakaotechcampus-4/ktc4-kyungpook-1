@@ -17,7 +17,7 @@ export const reasonLength = (text: string) => text.replace(/\s/g, '').length;
 /** 처음 걸린 규칙의 안내 한 줄, 모두 지키면 null */
 export function checkReason(text: string): string | null {
   const n = reasonLength(text);
-  if (n < REASON_MIN) return `${REASON_MIN}자 이상 적어 주세요 · 지금 ${n}자`;
+  if (n < REASON_MIN) return `${REASON_MIN}자 이상 적어 주세요. 지금 ${n}자예요`;
   if (!/[가-힣]/.test(text)) return '한국어로 적어 주세요';
   if (REPEATED.test(text)) return '같은 글자를 반복하지 말아 주세요';
   if (URL_LIKE.test(text)) return 'URL 은 넣을 수 없어요';

@@ -62,10 +62,10 @@ afterEach(() => { cleanup(); Date.now = realNow; vi.restoreAllMocks(); });
 
 describe('지원 이유 규칙', () => {
   it('공백을 뺀 20자부터 통과하고, 모자라면 지금 글자 수를 알린다', () => {
-    expect(checkReason('이 회사 결제 서비스가 좋아요')).toBe('20자 이상 적어 주세요 · 지금 12자');
-    expect(checkReason('결제 서버를 직접 만들어 장애를 줄이고 싶어요')).toBe('20자 이상 적어 주세요 · 지금 19자');
+    expect(checkReason('이 회사 결제 서비스가 좋아요')).toBe('20자 이상 적어 주세요. 지금 12자예요');
+    expect(checkReason('결제 서버를 직접 만들어 장애를 줄이고 싶어요')).toBe('20자 이상 적어 주세요. 지금 19자예요');
     expect(checkReason('결제 서버를 직접 만들어 장애를 줄이고 싶었어요')).toBeNull(); // 공백 빼고 딱 20자
-    expect(checkReason('')).toBe('20자 이상 적어 주세요 · 지금 0자');
+    expect(checkReason('')).toBe('20자 이상 적어 주세요. 지금 0자예요');
   });
 
   it('한글이 하나도 없으면 막는다', () => {
@@ -112,7 +112,7 @@ describe('① 입력 화면 — 지원 이유와 강점', () => {
     expect(reasonBox()).toHaveAttribute('placeholder', '예: 매일 쓰는 서비스라 사용자가 겪는 불편을 직접 고쳐 보고 싶었어요');
     expect(document.getElementById('cl-reason-hint')).toBeEmptyDOMElement(); // 적기 전에는 비어 있다
     fireEvent.change(reasonBox(), { target: { value: '결제가 좋아서' } });
-    expect(document.getElementById('cl-reason-hint')).toHaveTextContent('20자 이상 적어 주세요 · 지금 6자');
+    expect(document.getElementById('cl-reason-hint')).toHaveTextContent('20자 이상 적어 주세요. 지금 6자예요');
     expect(start()).toBeDisabled();
     fireEvent.change(reasonBox(), { target: { value: REASON } });
     expect(document.getElementById('cl-reason-hint')).toBeEmptyDOMElement();

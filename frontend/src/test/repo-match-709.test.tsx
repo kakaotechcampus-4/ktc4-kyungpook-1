@@ -37,7 +37,7 @@ describe('#709 레포 폴더의 추천 기업', () => {
 
     const items = await screen.findAllByRole('listitem');
     expect(items.map((li) => within(li).getByRole('strong').textContent)).toEqual(['회사 1', '회사 2', '회사 3']);
-    expect(items[0]).toHaveTextContent('Java·Spring · 필수 2개·우대 1개 맞음');
+    expect(items[0]).toHaveTextContent('Java, Spring, 필수 2개, 우대 1개 맞음');
     expect(items[1]).toHaveTextContent('필수 2개 맞음');
     expect(within(items[0]).getByRole('link')).toHaveAttribute('href', '/match/p%201');
   });

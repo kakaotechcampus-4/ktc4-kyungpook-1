@@ -126,7 +126,7 @@ describe('자소서 화면과 목록', () => {
     ]));
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0]).getByText('가온소프트')).toBeInTheDocument();
-    expect(within(rows[1]).getByText('가온소프트 · 백엔드 엔지니어 (Java·Spring)')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('가온소프트, 백엔드 엔지니어 (Java·Spring)')).toBeInTheDocument();
     expect(within(rows[2]).queryByText(/가온소프트/)).not.toBeInTheDocument();
   });
 

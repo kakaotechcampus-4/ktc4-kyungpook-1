@@ -162,7 +162,7 @@ describe('③ 카드 확인 화면', () => {
     mount(letter());
     expect(screen.getByRole('link', { name: '팀원과 토큰 저장 위치로 갈린 경험' })).toHaveAttribute('href', '/cards/card_04');
     expect(screen.getByText('의견을 맞춘 과정이 분명해서')).toBeInTheDocument();
-    expect(document.querySelector('.cl-ready')).toHaveTextContent('재료 2/5 · 결과, 배운 점, 계기는 다음에 물어요');
+    expect(document.querySelector('.cl-ready')).toHaveTextContent('재료 2/5 (결과, 배운 점, 계기는 다음에 물어요)');
     fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
     const support = await screen.findByRole('radiogroup', { name: '보조 카드' });
     expect(within(support).getByRole('radio', { name: /팀원과 토큰 저장 위치로 갈린 경험/ })).toBeDisabled();

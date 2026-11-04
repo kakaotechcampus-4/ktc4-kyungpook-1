@@ -164,7 +164,7 @@ export function NewCardPage() {
     <main className="main main--footer main--tight manual-card-page">
       <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, { label: starting ? '경험 카드 만들기' : '직접 작성' }]} />
       {starting
-        ? <PageTitle lead="제목만 정하면 AI 가 상황부터 하나씩 묻고, 답한 내용으로 상황·과제·행동·결과 네 칸을 채워요.">경험 카드 만들기</PageTitle>
+        ? <PageTitle lead="제목만 정하면 AI 가 상황부터 하나씩 묻고, 답한 내용으로 상황, 과제, 행동, 결과 네 칸을 채워요.">경험 카드 만들기</PageTitle>
         : <PageTitle>직접 작성</PageTitle>}
 
       <div className="card manual-metadata">

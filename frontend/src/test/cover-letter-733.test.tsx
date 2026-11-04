@@ -125,7 +125,7 @@ describe('채우기 탭', () => {
     mount(l);
     openFill();
     const ai = await within(panel()).findByText(/빈칸이 하나 있어요/, SEEN);
-    expect(ai.closest('.clp-bub--ai')?.querySelector('.clp-qchip')?.textContent).toBe('Q1 · 행동');
+    expect(ai.closest('.clp-bub--ai')?.querySelector('.clp-qchip')?.textContent).toBe('Q1, 행동');
     expect(within(panel()).getByText('로그 봤어요', SEEN).className).toContain('clp-bub--me');
     expect(log).toContain(`GET /cover-letters/${l.id}/turns`);
   });
@@ -207,7 +207,7 @@ describe('채우기 탭', () => {
     const before = area(1).value;
     await startQ1();
     say('다시 쓰기가 실패하는 경우를 보려고 길게 적은 답이에요');
-    expect(await within(panel()).findByText('답은 저장했어요 · 글에는 넣지 못해서 첨삭 받기로 다시 시도해 보세요', SEEN)).toBeInTheDocument();
+    expect(await within(panel()).findByText('답은 저장했어요. 글에는 넣지 못해서 첨삭 받기로 다시 시도해 보세요', SEEN)).toBeInTheDocument();
     expect(within(panel()).queryByText(/에 넣었어요/, SEEN)).toBeNull();
     expect(within(panel()).queryByRole('button', { name: '다시 보내기' })).toBeNull();
     expect(area(1).value).toBe(before);
@@ -250,7 +250,7 @@ describe('채우기 탭', () => {
     fireEvent.focusIn(area(2));
     fireEvent.click(within(panel()).getByRole('button', { name: 'Q2 얘기하기' }));
     const bubble = await within(panel()).findByText(/Q2 얘기로 갈게요/, SEEN);
-    expect(bubble.closest('.clp-bub--ai')?.querySelector('.clp-qchip')?.textContent).toMatch(/^Q2 · /);
+    expect(bubble.closest('.clp-bub--ai')?.querySelector('.clp-qchip')?.textContent).toMatch(/^Q2, /);
     expect(log).toContain(`POST ${turnsPath(l, 1)}/open`);
     expect(within(panel()).queryByRole('button', { name: 'Q2 얘기하기' })).toBeNull();
   });
@@ -263,7 +263,7 @@ describe('채우기 탭', () => {
     db.coverLetters[0].questions[0].draft.text = text;
     const q = l.questions[0];
     mount({ ...l, questions: [{ ...q, draft: { ...q.draft!, text } }, l.questions[1]] });
-    expect(screen.getByRole('tab', { name: '진단·첨삭' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '진단과 첨삭' })).toHaveAttribute('aria-selected', 'true');
     const notices = screen.getByRole('region', { name: '살펴볼 것' });
     expect(within(notices).getByText("Q1에 '결과' 빈칸이 남아 있어요")).toBeInTheDocument();
     fireEvent.click(within(notices).getByRole('button', { name: '→ Q1에 넣기' }));

@@ -28,11 +28,11 @@ export function HomeActivity({ userId }: { userId?: string }) {
   });
   const total = entries.filter(item => item.date >= activityDate(first) && item.date <= activityDate(last) && item.date <= todayKey).length;
   return <section className="home-activity" aria-labelledby="home-activity-title">
-    <div className="home-panel-head"><h2 id="home-activity-title">나의 커리어 활동</h2><span>{year}년 · {total}건</span></div>
+    <div className="home-panel-head"><h2 id="home-activity-title">나의 커리어 활동</h2><span>{year}년, {total}건</span></div>
     <div className="career-grass-scroll"><div className="career-grass" style={{ '--grass-weeks': weeks } as CSSProperties}>
       <div className="career-grass__months" aria-hidden>{months.map(month => <span key={month.label} style={{ gridColumn: month.column }}>{month.label}</span>)}</div>
       <div className="career-grass__weekdays" aria-hidden>{['', '월', '', '수', '', '금', ''].map((label, i) => <span key={i}>{label}</span>)}</div>
-      <div className="career-grass__grid">{days.map(day => <span key={day.key} className="career-grass__day" role="img" data-level={day.level} data-outside={day.outside || undefined} aria-label={`${day.key}, 활동 ${day.count}건`} title={`${day.key} · 활동 ${day.count}건`} />)}</div>
+      <div className="career-grass__grid">{days.map(day => <span key={day.key} className="career-grass__day" role="img" data-level={day.level} data-outside={day.outside || undefined} aria-label={`${day.key}, 활동 ${day.count}건`} title={`${day.key}, 활동 ${day.count}건`} />)}</div>
     </div></div>
     <div className="career-grass__legend"><span>적음</span>{[0, 1, 2, 3, 4].map(level => <i key={level} data-level={level} title={level === 4 ? '4건 이상' : `${level}건`} />)}<span>많음</span></div>
   </section>;

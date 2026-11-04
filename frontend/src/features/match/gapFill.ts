@@ -20,13 +20,13 @@ export function stepText(step: GapStep): string {
     case "DRAFT_CARDS_CHECKED":
       return n === null ? "작성 중인 카드를 읽었어요" : `작성 중인 카드 ${n}장을 읽었어요`;
     case "GITHUB_SEARCHED":
-      return `GitHub 에서 ${q}내 커밋을 찾았어요${n === null ? "" : ` · ${n}개`}`;
+      return n === null ? `GitHub 에서 ${q}내 커밋을 찾았어요` : `GitHub 에서 ${q}내 커밋 ${n}개를 찾았어요`;
     case "GITHUB_FAILED":
       return `GitHub 검색이 잠시 안 돼 ${q}찾는 건 건너뛰었어요`;
     case "OUTSIDE_REPO_FOUND":
-      return `${step.repoName ? `${step.repoName} 는 ` : ""}다른 사람 레포라 분석할 수 없어 뺐어요${n === null ? "" : ` · 커밋 ${n}개`}`;
+      return `${step.repoName ? `${step.repoName} 는 ` : ""}다른 사람 레포라 분석할 수 없어 뺐어요${n === null ? "" : ` (커밋 ${n}개)`}`;
     default:
-      return `${q}자료를 살펴봤어요${n === null ? "" : ` · ${n}개`}`;
+      return n === null ? `${q}자료를 살펴봤어요` : `${q}자료 ${n}개를 살펴봤어요`;
   }
 }
 
@@ -77,7 +77,7 @@ export function gapSummary(gapFill: GapFill): string {
     [count("SKIPPED"), "찾지 않음"],
     [count("TIMED_OUT"), "시간 초과"],
   ] as const;
-  const text = parts.filter(([n]) => n > 0).map(([n, label]) => `${label} ${n}개`).join(" · ");
+  const text = parts.filter(([n]) => n > 0).map(([n, label]) => `${label} ${n}개`).join(", ");
   return text || "채울 조건이 없어요";
 }
 

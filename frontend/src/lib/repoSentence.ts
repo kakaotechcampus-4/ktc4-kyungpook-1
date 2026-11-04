@@ -26,7 +26,7 @@ export function repoMeta(r: Pick<RepoSummary, 'language' | 'activeFrom' | 'activ
   const from = dot(r.activeFrom);
   const to = dot(r.activeTo);
   const range = from && to ? `${from} ~ ${to}` : '';
-  return [r.language, range].filter(Boolean).join(' · ');
+  return [r.language, range].filter(Boolean).join(', ');
 }
 
 /** 기여가 적은 레포 — 화면의 호박색 주의 표시와 같은 조건이다 */

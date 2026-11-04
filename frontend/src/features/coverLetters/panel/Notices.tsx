@@ -26,7 +26,7 @@ export function Notices({ questions, texts, onGo, onTalk, memoUsable }: {
     return {
       key: id, questionId: id,
       title: others.length === 1
-        ? `Q${Math.min(seq, others[0].seq)}·Q${Math.max(seq, others[0].seq)}에 같은 이야기가 있어요`
+        ? `Q${Math.min(seq, others[0].seq)}, Q${Math.max(seq, others[0].seq)}에 같은 이야기가 있어요`
         : `Q${seq}에 다른 문항과 같은 이야기가 있어요`,
       line: `Q${seq}의 "${excerpt(sentence)}" 문장을 바꾸는 쪽이 쉬워요`, go: `→ Q${seq} 보기`, onClick: () => onGo(id),
     };

@@ -37,9 +37,8 @@
 /* 지금 쓰는 칸은 두꺼운 윤곽으로 강조한다. 바탕은 비워 두어 '다 쓴 칸'의 채움과 겹쳐 보이지 않게 한다 */
 .live-slot[data-phase='NEXT'], .live-slot[data-phase='WRITING'], .live-slot[data-phase='REWRITING'] { background: var(--bg-surface); box-shadow: inset 0 0 0 2px var(--border-selected); z-index: 1; }
 .live-slot[data-phase='NEXT'] .live-slot__status, .live-slot[data-phase='WRITING'] .live-slot__status, .live-slot[data-phase='REWRITING'] .live-slot__status { color: var(--text-accent); }
-/* 다 쓴 칸은 색을 채운다. 왼쪽 띠는 장식이고 뜻은 '완료' 글자가 말한다 */
+/* 다 쓴 칸은 색을 채운다. 뜻은 '완료' 글자가 말한다. 두꺼운 왼쪽 띠는 두지 않는다: 아래 칸의 두꺼운 윤곽(지금 쓰는 칸)과 이어져 긴 검은 줄처럼 깨져 보였다 */
 .live-slot[data-phase='DONE'] { background: var(--bg-selected); }
-.live-slot[data-phase='DONE']::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--accent-point); }
 .live-slot[data-phase='DONE'] .live-slot__status { color: var(--text-accent); }
 /* 근거가 없어 비운 칸과 주지 않은 칸 */
 .live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'] { background: var(--field-dropped-bg); }

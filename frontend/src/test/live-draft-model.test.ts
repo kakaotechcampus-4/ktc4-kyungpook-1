@@ -165,6 +165,39 @@ describe('#617 다시 쓰기', () => {
     expect(slotOf(pb, 'S').text).toBe(ko(500, '나'));
   });
 
+  it('상한이 가까워도 글은 한꺼번에 나타나지 않고 속도를 올려 매끄럽게 늘어난다', () => {
+    const pb = player([card('a', 'WRITING', [slot('S', ko(300))])]);
+    pb.advance(T0 + 60_000);
+    const at = T0 + 60_000;
+    pb.receive([card('a', 'WRITING', [slot('S', ko(500, '나'), { round: 1 })])], { ended: false, now: at });
+    // 지우는 데 600ms, 남은 2400ms 에 500자 — 초당 208자쯤으로 일정하게 쓴다
+    const series: number[] = [];
+    for (let t = 50; t <= REWRITE_MAX_MS; t += 50) { pb.advance(at + t); series.push(typed(pb, 'S')); }
+    const steps = series.slice(13).map((value, i) => value - series.slice(12)[i]); // 지운 뒤(650ms~)의 50ms 걸음
+    expect(Math.max(...steps)).toBeLessThanOrEqual(12);
+    expect(Math.min(...steps)).toBeGreaterThanOrEqual(8);
+    expect(series[series.length - 1]).toBe(500);
+    // 한가운데쯤에서도 글이 반쯤 보인다(처음에 조금 쓰고 끝에서 몰아 나타나지 않는다)
+    expect(series[Math.round(1800 / 50) - 1]).toBeGreaterThan(200);
+    expect(series[Math.round(1800 / 50) - 1]).toBeLessThan(320);
+  });
+
+  it('두 칸을 다시 써도 뒤 칸의 지움과 쓰기가 앞 칸을 쓰는 사이에 끝나 한꺼번에 바뀌지 않는다', () => {
+    const pb = player([card('a', 'WRITING', four(250))]);
+    pb.advance(T0 + 60_000);
+    const at = T0 + 60_000;
+    pb.receive([card('a', 'WRITING', [slot('S', ko(250, '나'), { round: 1 }), slot('T', ko(250, '다'), { round: 1 }), ...four(250).slice(2)])], { ended: false, now: at });
+    const t: number[] = [];
+    for (let ms = 50; ms <= 2 * REWRITE_MAX_MS + 200; ms += 50) { pb.advance(at + ms); t.push(typed(pb, 'T')); }
+    const jumps = t.slice(1).map((value, i) => value - t[i]);
+    // 뒤 칸(T)은 앞 칸(S)이 끝난 뒤 차례가 와서 지우고(초당 400자쯤) 쓴다(초당 100자쯤). 한 걸음(50ms)에 25자를 넘게 바뀌지 않는다
+    expect(Math.max(...jumps.map(Math.abs))).toBeLessThanOrEqual(25);
+    expect(slotOf(pb, 'S').text).toBe(ko(250, '나'));
+    expect(slotOf(pb, 'T').text).toBe(ko(250, '다'));
+    // 두 칸 모두 칸마다 상한(REWRITE_MAX_MS) 안에 끝난다
+    expect(t.findIndex((value) => value === 250 && t.indexOf(value) >= 0) * 50).toBeLessThanOrEqual(2 * REWRITE_MAX_MS + 200);
+  });
+
   it('아직 보이지 않은 칸의 글이 다시 쓰이면 지울 것 없이 새 글을 쓴다', () => {
     const pb = player([card('a', 'WRITING', [slot('S', ko(40)), slot('R', ko(40))])]);
     pb.advance(T0 + 500);

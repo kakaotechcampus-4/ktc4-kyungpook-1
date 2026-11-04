@@ -31,7 +31,7 @@ describe('#712 홈의 매칭된 공고', () => {
     connectMockServer();
     mountApp([page(<HomePage />, '/')], '/');
 
-    await vi.waitFor(async () => expect(await tile()).toHaveTextContent('카드를 확정하면 매칭할 수 있어요'));
+    await vi.waitFor(async () => expect(await tile()).toHaveTextContent('카드가 확정되면 매칭할 수 있어요'));
     const link = await tile();
     expect(link).toHaveAttribute('href', '/match');
     expect(link).toHaveTextContent('—개');
@@ -84,12 +84,12 @@ describe('#712 홈의 추천 공고', () => {
     expect(titles()).toEqual([]);
   });
 
-  it('확정 카드가 없으면 카드를 확정하면 골라 준다고 안내한다', async () => {
+  it('확정 카드가 없으면 카드가 확정되면 골라 준다고 안내한다', async () => {
     noConfirmedCards();
     connectMockServer();
     mountApp([page(<HomeRecommendations />, '/')], '/');
 
-    expect(await screen.findByText('경험 카드를 확정하면 맞는 공고를 골라 드려요.')).toBeInTheDocument();
+    expect(await screen.findByText('경험 카드가 확정되면 맞는 공고를 골라 드려요.')).toBeInTheDocument();
   });
 });
 

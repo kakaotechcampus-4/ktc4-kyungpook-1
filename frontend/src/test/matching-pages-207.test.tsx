@@ -76,7 +76,7 @@ it("does not render null grade as D and provides a card action", async () => {
     client.setQueryData(keys.me, { ...me, stats: { ...me.stats, confirmedCards: 0 } });
   });
   await screen.findByText(
-    "확정한 카드가 없어요. 카드를 확정하면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.",
+    "확정한 카드가 없어요. 카드가 확정되면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.",
   );
   expect(screen.queryByLabelText("근거 등급 D")).not.toBeInTheDocument();
   expect(

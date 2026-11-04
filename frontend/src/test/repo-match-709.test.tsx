@@ -27,7 +27,7 @@ describe('#709 레포 폴더의 추천 기업', () => {
     const read = vi.spyOn(matchingApi, 'repoRecommendations');
     mount(0);
 
-    expect(screen.getByText('카드를 확정하면 이 레포 카드로 맞는 기업을 골라 드려요.')).toBeInTheDocument();
+    expect(screen.getByText('카드가 확정되면 이 레포 카드로 맞는 기업을 골라 드려요.')).toBeInTheDocument();
     expect(read).not.toHaveBeenCalled();
   });
 

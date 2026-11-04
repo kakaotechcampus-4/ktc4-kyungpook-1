@@ -127,7 +127,7 @@ export function MatchListPage() {
         <>
           {matches.data.length > 0 && !hasGrade && confirmedCards === 0 && (
             <p className="match-line">
-              <span>확정한 카드가 없어요. 카드를 확정하면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.</span>{" "}
+              <span>확정한 카드가 없어요. 카드가 확정되면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.</span>{" "}
               <Link to="/cards" className="match-line__link">카드 확정하러 가기</Link>
             </p>
           )}

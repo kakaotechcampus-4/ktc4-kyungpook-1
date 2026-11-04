@@ -306,7 +306,7 @@ export function MatchDetailPage() {
   if (!returned && judge.isPending) log.push({ key: "judging", text: confirmedCount === undefined ? "확정 카드를 읽고 조건과 견주고 있어요" : `확정 카드 ${confirmedCount}장을 읽고 조건과 견주고 있어요`, live: true });
   if (returned && judge.isPending) log.push({ key: "rejudge", text: "새로 확정한 카드로 다시 맞춰 보고 있어요", live: true });
   if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
-  if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드를 확정하면 다시 맞춰 볼게요" });
+  if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드가 확정되면 다시 맞춰 볼게요" });
   if (showGap && gapRunning) log.push({ key: "gap-running", text: `모자란 조건 ${gf.conditions.length}개를 채울 자료를 찾고 있어요`, live: true });
   if (showGap && gf.state === "DONE") log.push({ key: "gap-done", text: gapSummary(gf) });
   if (judgedData && settled && gapNeedsGithub) {

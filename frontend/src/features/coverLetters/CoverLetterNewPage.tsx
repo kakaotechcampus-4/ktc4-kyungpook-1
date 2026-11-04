@@ -138,7 +138,7 @@ export function CoverLetterNewPage() {
 
       {noCards && (
         <Note strong="확정한 카드가 없어요" tone="caution">
-          자소서는 확정한 경험 카드로 써요. 카드를 하나 이상 확정한 뒤에 다시 와 주세요. <Link to="/cards" className="cl-inline-link">경험 카드로 가기</Link>
+          자소서는 확정한 경험 카드로 써요. 네 칸이 모두 차고 확인 필요한 칸이 없으면 카드가 자동으로 확정돼요. 확정된 카드가 하나 이상 생기면 다시 와 주세요. <Link to="/cards" className="cl-inline-link">경험 카드로 가기</Link>
         </Note>
       )}
 

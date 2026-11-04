@@ -25,6 +25,7 @@ public record CardSummary(
         String period,
         int evidenceCount,
         int userStatedCount,
+        String preview,
         RepositoryReference repository,
         ActivityReference activity) {
 
@@ -52,6 +53,7 @@ public record CardSummary(
                 card.getPeriod(),
                 evidenceCountOf(current),
                 userStatedCountOf(current),
+                previewOf(current),
                 repository,
                 activity);
 
@@ -85,6 +87,14 @@ public record CardSummary(
                 .filter(slot -> slot.evidenceType() == EvidenceType.USER_STATED
                         || slot.evidenceType() == EvidenceType.USER_SELECTED)
                 .count();
+
+    }
+
+    private static String previewOf(VersionSlots current) {
+
+        String result = current.textOf(StarField.R);
+
+        return result == null || CardText.isBlank(result) ? null : result.strip();
 
     }
 }

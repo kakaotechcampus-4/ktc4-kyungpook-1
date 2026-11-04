@@ -1364,6 +1364,10 @@
           "period" : {
             "type" : "string"
           },
+          "preview" : {
+            "description" : "현재 버전 결과(R) 칸의 글을 앞뒤 공백만 떼고 그대로 실은 값으로, 결과 칸이 비었거나 공백뿐이면 null",
+            "type" : "string"
+          },
           "repo" : {
             "$ref" : "#/components/schemas/CardRepoResponse",
             "description" : "카드를 만든 저장소로 카드 상세의 repo 와 같은 값이고, 저장소 없이 직접 쓴 카드는 null"

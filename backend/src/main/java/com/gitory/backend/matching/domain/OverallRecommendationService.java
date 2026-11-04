@@ -38,6 +38,8 @@ public class OverallRecommendationService {
 
     static final int CANDIDATE_COMPANIES = 15;
     static final int SHOWN_COMPANIES = 5;
+    // 타일 한 줄에 들어갈 만큼만 — 맞은·모자란 필수 조건을 각각 이만큼까지 이름으로 남긴다
+    static final int NAMED_CONDITIONS = 3;
     // AI 판단 한 번이 10초 안팎이라 공고를 이만큼씩 함께 물어, 15곳을 30초 안팎에 끝낸다
     static final int PARALLEL_JUDGEMENTS = 5;
     // 계산 하나가 1분 안팎이라, 여러 사용자가 같이 눌러도 앞사람이 끝나기를 오래 기다리지 않게 둘씩 돌린다
@@ -199,8 +201,28 @@ public class OverallRecommendationService {
         }
         return Optional.of(new Scored(new OverallCompany(company.companyId(), company.companyName(),
                 company.representative().getId(), requiredMet, total(conditions, CriterionType.REQUIRED),
-                met(conditions, CriterionType.PREFERRED, judged), total(conditions, CriterionType.PREFERRED)),
+                met(conditions, CriterionType.PREFERRED, judged), total(conditions, CriterionType.PREFERRED),
+                named(conditions, judged, true), named(conditions, judged, false)),
                 shortlistRank));
+
+    }
+
+    // 화면이 '무엇이 맞고 모자란지' 를 한 줄로 쓰는 재료라 필수 조건만, 공고에 적힌 순서로 몇 개만 남긴다
+    private static List<OverallCompany.Condition> named(List<JobPostingCriterion> conditions,
+                                                        Map<Long, List<JudgedSupport>> judged, boolean met) {
+
+        return conditions.stream()
+                .filter(c -> c.getType() == CriterionType.REQUIRED)
+                .filter(c -> supported(c, judged) == met)
+                .limit(NAMED_CONDITIONS)
+                .map(c -> new OverallCompany.Condition(c.getText(), c.getTechs()))
+                .toList();
+
+    }
+
+    private static boolean supported(JobPostingCriterion condition, Map<Long, List<JudgedSupport>> judged) {
+
+        return !judged.getOrDefault(condition.getId(), List.of()).isEmpty();
 
     }
 

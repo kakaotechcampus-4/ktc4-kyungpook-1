@@ -37,7 +37,7 @@ class RepositoryWorkCounterTest {
     private static RepositorySummary summary() {
 
         return new RepositorySummary(1L, UUID.randomUUID(), "grow22", "gitory", "Java", null, null,
-                Instant.parse("2026-10-08T05:00:00Z"), null, 0, 0, 0, 0, 0);
+                Instant.parse("2026-10-08T05:00:00Z"), null, 0, 0, 0, 0, 0, null, null, null);
 
     }
 }

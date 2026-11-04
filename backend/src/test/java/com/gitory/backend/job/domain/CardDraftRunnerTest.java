@@ -43,6 +43,7 @@ import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.CommitSummaryService;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
+import com.gitory.backend.ingest.domain.RepositoryReadmeService;
 import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.port.DiffEvidenceRequest;
 import com.gitory.backend.ingest.port.RepositoryActivityPort;
@@ -107,7 +108,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
-        CommitSummaryService.class})
+        CommitSummaryService.class, RepositoryReadmeService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ExtendWith(OutputCaptureExtension.class)

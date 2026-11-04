@@ -73,7 +73,7 @@ class RepositorySyncServiceTest {
     void savesRepositoryAndConnection() {
 
         githubReturns(new GithubRepositoryResponse(
-                100L, "gitory", new GithubOwnerResponse("grow22"), true, null, "develop", null, null));
+                100L, "gitory", new GithubOwnerResponse("grow22"), true, null, "develop", null, null, null));
 
         service.sync(userId);
 
@@ -118,6 +118,35 @@ class RepositorySyncServiceTest {
         assertThat(timeOf("github_created_at")).isEqualTo(created);
         assertThat(timeOf("github_pushed_at")).isEqualTo(Instant.parse("2026-10-05T01:00:00Z"));
 
+    }
+
+    @Test
+    @DisplayName("GitHub 저장소 설명이 사용자의 저장소에 저장되고, 다시 동기화하면 새 값으로 바뀌며 GitHub 에서 지우면 비운다")
+    void savesUpdatesAndClearsGithubDescription() {
+
+        githubReturns(repoDescribed(100L, "처음 설명"));
+        service.sync(userId);
+        assertThat(githubDescriptionOf(userId, 100L)).isEqualTo("처음 설명");
+
+        githubReturns(repoDescribed(100L, "고친 설명"));
+        service.sync(userId);
+        assertThat(githubDescriptionOf(userId, 100L)).isEqualTo("고친 설명");
+
+        githubReturns(repoDescribed(100L, null));
+        service.sync(userId);
+        assertThat(githubDescriptionOf(userId, 100L)).isNull();
+    }
+
+    @Test
+    @DisplayName("GitHub 저장소 설명은 앞뒤 공백을 떼고 500자에서 자르며, 이모지 가운데를 자르지 않고 공백뿐이면 비운다")
+    void trimsAndCutsGithubDescription() {
+
+        githubReturns(repoDescribed(100L, "  " + "a".repeat(499) + "😀😀" + "  "), repoDescribed(200L, "   "));
+
+        service.sync(userId);
+
+        assertThat(githubDescriptionOf(userId, 100L)).isEqualTo("a".repeat(499) + "😀");
+        assertThat(githubDescriptionOf(userId, 200L)).isNull();
     }
 
     @Test
@@ -213,12 +242,17 @@ class RepositorySyncServiceTest {
 
     private static GithubRepositoryResponse repo(long githubRepoId, String name) {
 
-        return new GithubRepositoryResponse(githubRepoId, name, new GithubOwnerResponse("grow22"), false, "Java", "main", null, null);
+        return new GithubRepositoryResponse(githubRepoId, name, new GithubOwnerResponse("grow22"), false, "Java", "main", null, null, null);
+    }
+
+    private static GithubRepositoryResponse repoDescribed(long githubRepoId, String description) {
+
+        return new GithubRepositoryResponse(githubRepoId, "repo-" + githubRepoId, new GithubOwnerResponse("grow22"), false, "Java", "main", null, null, description);
     }
 
     private static GithubRepositoryResponse repoPushedAt(Instant createdAt, Instant pushedAt) {
 
-        return new GithubRepositoryResponse(100L, "gitory", new GithubOwnerResponse("grow22"), false, "Java", "main", createdAt, pushedAt);
+        return new GithubRepositoryResponse(100L, "gitory", new GithubOwnerResponse("grow22"), false, "Java", "main", createdAt, pushedAt, null);
 
     }
 
@@ -227,6 +261,14 @@ class RepositorySyncServiceTest {
         return jdbc.queryForObject("SELECT " + column + " FROM repository WHERE github_repo_id = 100", Timestamp.class)
                 .toInstant();
 
+    }
+
+    private String githubDescriptionOf(Long userId, long githubRepoId) {
+
+        return jdbc.queryForObject("""
+                SELECT ur.github_description FROM user_repository ur JOIN repository r ON r.id = ur.repository_id
+                WHERE ur.user_id = ? AND r.github_repo_id = ?
+                """, String.class, userId, githubRepoId);
     }
 
     private String connectionStatusOf(Long userId, long githubRepoId) {

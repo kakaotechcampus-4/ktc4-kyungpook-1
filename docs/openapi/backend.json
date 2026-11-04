@@ -729,6 +729,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseRepoSummaryResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RepoSummaryResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseStartedResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -3643,6 +3657,16 @@
         },
         "type" : "object"
       },
+      "RepoDescriptionRequest" : {
+        "description" : "고칠 폴더 설명",
+        "properties" : {
+          "description" : {
+            "description" : "앞뒤 공백을 뗀 글이 120자까지이며, 비우거나 공백뿐이거나 null 이면 사용자가 쓴 설명을 지우고 GitHub 설명이나 README 문장을 보여 줌",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "RepoDetailResponse" : {
         "description" : "저장소 목록 한 줄과 같은 칸에 분석 전 안내(disclosure)를 더한 저장소 상세",
         "properties" : {
@@ -3672,6 +3696,15 @@
           "countedAt" : {
             "description" : "기여 개수를 센 시각. 아직 한 번도 못 셌으면 null 이라 개수가 0 이어도 실제 0 이 아니다",
             "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장 순으로 처음 있는 것이고 모두 없으면 null",
+            "type" : "string"
+          },
+          "descriptionSource" : {
+            "description" : "description 을 어디서 가져왔는지. description 이 null 이면 null",
+            "enum" : [ "USER", "GITHUB", "README" ],
             "type" : "string"
           },
           "disclosure" : {
@@ -3834,6 +3867,15 @@
           "countedAt" : {
             "description" : "기여 개수를 센 시각. 아직 한 번도 못 셌으면 null 이라 개수가 0 이어도 실제 0 이 아니다",
             "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "description" : "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장 순으로 처음 있는 것이고 모두 없으면 null",
+            "type" : "string"
+          },
+          "descriptionSource" : {
+            "description" : "description 을 어디서 가져왔는지. description 이 null 이면 null",
+            "enum" : [ "USER", "GITHUB", "README" ],
             "type" : "string"
           },
           "id" : {
@@ -9172,6 +9214,16 @@
             },
             "description" : "저장소 배열. 없으면 빈 배열. 쓸 수 있는 GitHub 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 돌려줌. 어느 경우든 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠짐"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -9221,6 +9273,16 @@
               }
             },
             "description" : "저장소 배열. 아직 GitHub 에서 목록을 받은 적이 없으면 빈 배열"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
           },
           "401" : {
             "content" : {
@@ -9272,6 +9334,16 @@
             },
             "description" : "저장소 상세"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -9294,6 +9366,84 @@
           }
         },
         "summary" : "저장소 상세 조회",
+        "tags" : [ "Repos" ]
+      },
+      "patch" : {
+        "description" : "경험 카드 폴더에 보이는 저장소 설명을 사용자가 직접 씁니다. 앞뒤 공백을 뗀 글이 120자까지이고,\n비우거나 공백뿐이거나 null 이면 사용자가 쓴 설명을 지워 GitHub 설명이나 README 문장을 다시 보여 줍니다.\n응답은 목록 한 줄과 같은 저장소 요약입니다. 변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "describe",
+        "parameters" : [ {
+          "description" : "목록 응답의 저장소 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RepoDescriptionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoSummaryResponse"
+                }
+              }
+            },
+            "description" : "고친 뒤의 저장소 요약"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 설명이 120자를 넘음, U+0000 이 있음, 본문을 읽을 수 없음"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "잘못된 UUID 또는 본인 저장소 없음"
+          }
+        },
+        "summary" : "저장소 폴더 설명 수정",
         "tags" : [ "Repos" ]
       }
     },
@@ -9683,6 +9833,16 @@
             },
             "description" : "찾은 커밋 배열. 없으면 빈 배열"
           },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
           "401" : {
             "content" : {
               "*/*" : {
@@ -9732,6 +9892,16 @@
               }
             },
             "description" : "커밋·PR 목록. 분석 전이면 둘 다 빈 배열"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
           },
           "401" : {
             "content" : {

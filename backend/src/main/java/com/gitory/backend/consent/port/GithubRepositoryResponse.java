@@ -10,5 +10,5 @@ import java.time.Instant;
 public record GithubRepositoryResponse(long id, String name, GithubOwnerResponse owner,
                                        @JsonProperty("private") boolean privateRepository,
                                        String language, String defaultBranch,
-                                       Instant createdAt, Instant pushedAt) {
+                                       Instant createdAt, Instant pushedAt, String description) {
 }

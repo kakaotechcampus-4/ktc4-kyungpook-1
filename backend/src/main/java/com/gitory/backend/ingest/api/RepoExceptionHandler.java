@@ -3,6 +3,7 @@ package com.gitory.backend.ingest.api;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
 import com.gitory.backend.ingest.domain.ConnectedRepositoryNotFoundException;
+import com.gitory.backend.ingest.domain.InvalidRepositoryDescriptionException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,14 @@ public class RepoExceptionHandler {
     public ApiResponse<Void> handleRepositoryNotFound() {
 
         return ApiResponse.fail(ErrorCode.NOT_FOUND, "저장소를 찾을 수 없습니다.");
+
+    }
+
+    @ExceptionHandler(InvalidRepositoryDescriptionException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleInvalidDescription(InvalidRepositoryDescriptionException e) {
+
+        return ApiResponse.fail(ErrorCode.INVALID_REQUEST, e.getMessage());
 
     }
 }

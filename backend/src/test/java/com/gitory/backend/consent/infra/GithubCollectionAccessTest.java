@@ -95,7 +95,7 @@ class GithubCollectionAccessTest {
 
         connectionExpiringAt(null);
         List<GithubRepositoryResponse> fetched = List.of(new GithubRepositoryResponse(
-                100L, "gitory", new GithubOwnerResponse("grow22"), false, "Java", "main", null, null));
+                100L, "gitory", new GithubOwnerResponse("grow22"), false, "Java", "main", null, null, null));
         when(github.fetchRepositories(TOKEN)).thenReturn(fetched);
 
         assertThat(access.repositories(USER_ID)).isEqualTo(fetched);
@@ -851,6 +851,42 @@ class GithubCollectionAccessTest {
 
     }
 
+    @Test
+    @DisplayName("쓸 수 있는 연결이면 복호화한 토큰으로 README 를 받아 온다")
+    void fetchesReadmeWithDecryptedToken() {
+
+        connectionExpiringAt(null);
+        when(github.fetchReadme(TOKEN, "grow22", "gitory")).thenReturn(Optional.of("# gitory"));
+
+        assertThat(access.readme(USER_ID, "grow22", "gitory")).contains("# gitory");
+
+    }
+
+    @Test
+    @DisplayName("쓸 수 있는 연결이 없으면 GitHub 을 부르지 않고 예외 없이 빈 값을 돌려준다")
+    void returnsEmptyReadmeWithoutUsableConnection() {
+
+        when(connections.findByUserIdAndRevokedAtIsNull(USER_ID)).thenReturn(Optional.empty());
+
+        assertThat(access.readme(USER_ID, "grow22", "gitory")).isEmpty();
+        verifyNoInteractions(github);
+
+    }
+
+    @Test
+    @DisplayName("README 를 받다 GitHub 이 401 로 거절하면 예외는 그대로 나고 연결은 해제하지 않는다")
+    void keepsConnectionWhenReadmeIsRejected() {
+
+        connectionExpiringAt(null);
+        when(github.fetchReadme(TOKEN, "grow22", "gitory")).thenThrow(HttpClientErrorException.create(
+                HttpStatus.UNAUTHORIZED, "Unauthorized", new HttpHeaders(), new byte[0], null));
+
+        assertThatThrownBy(() -> access.readme(USER_ID, "grow22", "gitory")).isInstanceOf(HttpClientErrorException.class);
+
+        verifyNoInteractions(disconnects);
+
+    }
+
     private static Stream<RuntimeException> contributedFailures() {
 
         return Stream.of(
@@ -865,7 +901,7 @@ class GithubCollectionAccessTest {
 
     private static GithubRepositoryResponse repository(long id, String owner, String name, String language) {
 
-        return new GithubRepositoryResponse(id, name, new GithubOwnerResponse(owner), false, language, "main", null, null);
+        return new GithubRepositoryResponse(id, name, new GithubOwnerResponse(owner), false, language, "main", null, null, null);
 
     }
 

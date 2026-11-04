@@ -16,7 +16,7 @@ const STAR_LABELS: Record<StarField, string> = { S: '상황', T: '과제', A: '�
 // ───────── Button ─────────
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** ghost = 아이콘 + 옅은 배경. 글자처럼 보이면 안 되는 보조 행동(새로고침, 복사, 수정)에 쓴다. */
-  variant?: 'primary' | 'outline' | 'ghost' | 'text' | 'danger';
+  variant?: 'primary' | 'outline' | 'ghost' | 'text' | 'danger' | 'danger-text';
   size?: 'sm' | 'md' | 'lg' | 'xl';
   loading?: boolean;
 };

@@ -2,7 +2,9 @@
 .experience-item-shell > .experience-item { width: 100%; }
 .experience-item-shell .experience-item__meta { padding-right: 40px; }
 .card-delete-trigger.btn { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; padding: 0; color: var(--text-secondary); }
-/* 진입 버튼은 다른 지우기·로그아웃과 같은 회색 글자 버튼(btn--text)이고, 빨강은 확인 창의 마지막 '삭제' 에만 쓴다 */
+/* 지우기를 여는 글자 버튼은 빨간 글자(btn--danger-text)이고(멘토 의견, #751 의 '회색 글자'를 바꿨다), 확인 창의 마지막 '삭제' 도 빨강이다.
+   카드 타일마다 붙는 X 는 평소에는 회색이고, 올리거나 키보드로 닿으면 빨갛게 바뀐다(타일 여러 개가 한꺼번에 오류처럼 빨갛지 않게) */
 .card-delete-text.btn { align-self: flex-start; }
+.card-delete-trigger.btn:hover:not(:disabled), .card-delete-trigger.btn:focus-visible { color: var(--state-failed-text); background: var(--state-failed-bg); }
 .card-delete-title { color: var(--text-primary); font-weight: 600; overflow-wrap: anywhere; }
 @media print { .card-delete-trigger.btn, .card-delete-text.btn { display: none; } }

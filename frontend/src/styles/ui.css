@@ -11,6 +11,9 @@
 .btn--ghost:hover:not(:disabled) { background: var(--bg-selected); border-color: var(--border-strong); color: var(--text-primary); }
 .btn--ghost svg { color: var(--text-secondary); flex: 0 0 auto; }
 .btn--danger { background: var(--bg-surface); color: var(--state-failed-text); border-color: var(--danger-300); }
+/* 지우기를 여는 글자 버튼('카드 삭제', '활동 삭제')은 빨간 글자다(멘토 의견). 회색 글자 버튼(btn--text)과 같은 크기이고 색만 다르다 */
+.btn--danger-text { color: var(--state-failed-text); padding-inline: 8px; }
+.btn--danger-text:hover:not(:disabled) { background: var(--state-failed-bg); }
 .btn:disabled, .btn--disabled { background: var(--bg-inset) !important; color: var(--text-tertiary) !important; border-color: transparent !important; }
 .btn--sm { padding: 7px 12px; font-size: 12px; line-height: 16px; }
 .btn--lg { padding: 12px 22px; }
@@ -26,6 +29,7 @@
 .btn--ghost.btn--loading { background: var(--bg-subtle) !important; border-color: var(--border-default) !important; color: var(--text-strong) !important; }
 .btn--text.btn--loading { background: transparent !important; color: var(--text-secondary) !important; }
 .btn--danger.btn--loading { background: var(--bg-surface) !important; border-color: var(--danger-300) !important; color: var(--state-failed-text) !important; }
+.btn--danger-text.btn--loading { background: transparent !important; color: var(--state-failed-text) !important; }
 @media (prefers-reduced-motion: reduce) { .btn--loading::before { animation-duration: 1.6s; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 

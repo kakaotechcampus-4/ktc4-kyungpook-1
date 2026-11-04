@@ -89,7 +89,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
           <div className="folder-head__actions">
             {boardLink && <Link to={boardLink} className="btn btn--primary">후보 보드</Link>}
             {kind === 'activity' && <Link to={`/activities/${encodeURIComponent(id ?? '')}/edit`} className="btn btn--outline">활동 고치기</Link>}
-            {kind === 'activity' && <Button variant="text" onClick={() => setDeleting(true)}>활동 삭제</Button>}
+            {kind === 'activity' && <Button variant="danger-text" onClick={() => setDeleting(true)}>활동 삭제</Button>}
           </div>
         )}
       </div>

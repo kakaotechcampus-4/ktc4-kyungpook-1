@@ -169,6 +169,9 @@ export const RepoSummary = z.object({
   candidateCount: z.number().nullable(),
   cardCount: z.number(),
   recommended: z.boolean(),
+  /** 폴더 타일에 보일 프로젝트 설명 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장 순이고 모두 없으면 null. 생략된 응답은 없는 것으로 본다 */
+  description: z.string().nullish(),
+  descriptionSource: z.enum(['USER', 'GITHUB', 'README']).nullish(),
 });
 export type RepoSummary = z.infer<typeof RepoSummary>;
 

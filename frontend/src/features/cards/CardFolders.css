@@ -40,7 +40,8 @@
 .folder__owner { font-size: 12px; line-height: 16px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder__name { font-size: 18px; line-height: 26px; font-weight: var(--heading-weight); color: var(--text-primary);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-.folder__peek { font-size: 13px; line-height: 18px; color: var(--text-tertiary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder__desc { min-height: 36px; font-size: 13px; line-height: 18px; color: var(--text-secondary);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .folder__note { font-size: 12px; line-height: 16px; color: var(--text-tertiary); }
 .folder__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; }
 .folder__tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }

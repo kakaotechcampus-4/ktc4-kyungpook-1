@@ -105,16 +105,26 @@ on('GET', '/me', () => {
 on('POST', '/github/disconnect', () => { db.user.github.connected = false; db.user.github.connectedAt = null; return ok({ ok: true }); });
 
 // ───────────────────────────── 레포 ─────────────────────────────
-const stripDisclosure = ({ disclosure, userId, ...r }: Any) => { void disclosure; void userId; return r; };
-const repoList = () => db.repos.map((r) => ({ ...stripDisclosure(r), cardCount: db.cards.filter((c) => c.repo?.id === r.id && c.status === 'CONFIRMED').length }));
-on('GET', '/repos', () => ok(repoList()));
+const stripDisclosure = ({ disclosure, userId, userDescription, ...r }: Any) => { void disclosure; void userId; void userDescription; return r; };
+/** 사용자가 쓴 설명이 있으면 그것이, 없으면 시드가 가진 GitHub 설명이나 README 문장이 보인다(실서버의 고르는 순서와 같다) */
+const withDescription = (r: Any) => r.userDescription ? { ...r, description: r.userDescription, descriptionSource: 'USER' } : r;
+const repoRow = (r: Any) => ({ ...stripDisclosure(withDescription(r)), cardCount: db.cards.filter((c) => c.repo?.id === r.id && c.status === 'CONFIRMED').length });
+on('GET', '/repos', () => ok(db.repos.map(repoRow)));
 // 실제 서버처럼 GitHub 을 거치지 않은 저장 목록. '/repos/:id' 보다 먼저 둬야 saved 가 id 로 잡히지 않는다
-on('GET', '/repos/saved', () => ok(repoList()));
+on('GET', '/repos/saved', () => ok(db.repos.map(repoRow)));
 on('GET', '/repos/:id', ({ params }) => {
   const r = db.repos.find((x) => x.id === params[0]);
   if (!r) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');
-  const { userId, ...publicRepo } = r; void userId;
+  const { userId, userDescription, ...publicRepo } = withDescription(r); void userId; void userDescription;
   return ok(publicRepo);
+});
+on('PATCH', '/repos/:id', ({ params, body }) => {
+  const r = db.repos.find((x) => x.id === params[0]);
+  if (!r) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다'); // 입력 검사보다 먼저, 실서버와 같다
+  const text = typeof body.description === 'string' ? body.description.trim() : '';
+  if ([...text].length > CONFIG.REPO_DESCRIPTION_MAX || text.includes('\0')) return fail(400, 'INVALID_REQUEST', `폴더 설명은 ${CONFIG.REPO_DESCRIPTION_MAX}자까지 쓸 수 있어요.`);
+  r.userDescription = text || null;
+  return ok(repoRow(r));
 });
 on('POST', '/repos/:id/analyze', ({ params, headers }) => {
   const r = db.repos.find((x) => x.id === params[0]);

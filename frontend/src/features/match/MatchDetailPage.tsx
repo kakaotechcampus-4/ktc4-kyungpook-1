@@ -18,7 +18,6 @@ import { cardKindLabel } from "@/lib/labels";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
-import { matchViewFromParams } from "./CompanyList";
 import { ConditionGapFill, Dots } from "./GapFillParts";
 import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed, useUsedCandidates } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
@@ -101,16 +100,16 @@ const displayLines = (conditions: Condition[]) => {
   });
 };
 
-/** 한 절의 집계 글 — '2/3 맞음 · 직접 확인 1'. 카드로 판단한 조건이 없으면 직접 확인 수만 */
+/** 한 절의 집계 글 — '2/3 맞음, 직접 확인 1'. 카드로 판단한 조건이 없으면 직접 확인 수만 */
 const tallyText = ({ met, judged, check }: SectionTally) =>
-  [judged > 0 && `${met}/${judged} 맞음`, check > 0 && `직접 확인 ${check}`].filter(Boolean).join(" · ");
+  [judged > 0 && `${met}/${judged} 맞음`, check > 0 && `직접 확인 ${check}`].filter(Boolean).join(", ");
 
 /** 맞춰 본 결과를 펼칠 때 요약 카드에 적는 두 줄 — 읽은 카드 수와 견준 조건 수 */
 const comparedText = (conditions: Condition[]) => {
   const required = sectionTally(conditions, "REQUIRED").judged;
   const preferred = sectionTally(conditions, "PREFERRED").judged;
   if (required + preferred === 0) return "조건과 견줬어요";
-  return `${required > 0 ? `필수 ${required}개` : ""}${required > 0 && preferred > 0 ? "·" : ""}${preferred > 0 ? `우대 ${preferred}개` : ""}와 견줬어요`;
+  return `${required > 0 ? `필수 ${required}개` : ""}${required > 0 && preferred > 0 ? ", " : ""}${preferred > 0 ? `우대 ${preferred}개` : ""}와 견줬어요`;
 };
 
 type GapProps = {
@@ -143,7 +142,7 @@ function ConditionItem({ condition, line, judged, filled, detailId, gap }: { con
               const KindIcon = card.cardKind === "TECH" ? GitCommitHorizontal : MessageSquareQuote;
               return (
                 <Fragment key={card.cardId}>
-                  {i > 0 && <span className="posting-condition__sep" aria-hidden="true">·</span>}
+                  {i > 0 && <span className="posting-condition__sep" aria-hidden="true">,</span>}
                   <Link
                     to={`/cards/${encodeURIComponent(card.cardId)}`}
                     title={card.reason}
@@ -307,7 +306,7 @@ export function MatchDetailPage() {
   if (!returned && judge.isPending) log.push({ key: "judging", text: confirmedCount === undefined ? "확정 카드를 읽고 조건과 견주고 있어요" : `확정 카드 ${confirmedCount}장을 읽고 조건과 견주고 있어요`, live: true });
   if (returned && judge.isPending) log.push({ key: "rejudge", text: "새로 확정한 카드로 다시 맞춰 보고 있어요", live: true });
   if (returned && filled) log.push({ key: "filled", text: `모자랐던 조건 ${returned.length}개 중 ${filled.size}개를 채웠어요` });
-  if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드를 확정하면 다시 맞춰 볼게요" });
+  if (returned && !filled && detail && !detail.needsJudgement) log.push({ key: "wait-confirm", text: "새로 만든 카드가 확정되면 다시 맞춰 볼게요" });
   if (showGap && gapRunning) log.push({ key: "gap-running", text: `모자란 조건 ${gf.conditions.length}개를 채울 자료를 찾고 있어요`, live: true });
   if (showGap && gf.state === "DONE") log.push({ key: "gap-done", text: gapSummary(gf) });
   if (judgedData && settled && gapNeedsGithub) {
@@ -360,7 +359,7 @@ export function MatchDetailPage() {
   );
   return (
     <main className="main matching-page">
-      <MatchBack to={`/match${sp.size ? `?${sp}` : ""}`} fromCompanyView={matchViewFromParams(sp) === "company"} />
+      <MatchBack to={`/match${sp.size ? `?${sp}` : ""}`} />
       {query.isPending && <DetailSkeleton />}
       {query.isError && (
         <>

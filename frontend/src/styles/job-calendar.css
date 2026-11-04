@@ -16,31 +16,29 @@
 .calendar-weekdays, .calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
 .calendar-weekdays { border-bottom: 1px solid var(--border-default); }
 .calendar-weekdays > span { text-align: center; padding: 10px 0; font-size: 11px; color: var(--text-secondary); }
-.calendar-weekdays > span:first-child { color: #AC4B51; }
-.calendar-weekdays > span:last-child { color: #4A6C9E; }
 .calendar-day { min-height: 88px; padding: 4px; border-bottom: 1px solid var(--border-default); border-right: 1px solid var(--border-default); min-width: 0; }
 .calendar-day:nth-child(7n) { border-right: 0; }
 .calendar-day--selected { background: transparent; }
-.calendar-day__number[aria-pressed="true"]:not(.calendar-day__number--today) { background: var(--bg-inset); color: var(--text-primary); }
-.calendar-day__number { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; font-size: 12px; margin: 0 auto 3px; }
-.calendar-day__number:hover { background: var(--bg-inset); }
-.calendar-day__number--today, .calendar-day__number--today:hover { background: var(--bg-ink-solid); color: var(--text-on-ink); }
+/* 누르는 범위는 칸 너비 × 44px 이고 동그라미는 ::before 로 안쪽에만 그린다 — 고른 날은 파랑, 오늘은 굵은 밑줄 */
+.calendar-day__number { position: relative; isolation: isolate; display: grid; place-items: center; width: 100%; height: var(--control-touch-size); border-radius: var(--control-radius); font-size: 12px; margin: 0 auto 3px; }
+.calendar-day__number::before { content: ''; position: absolute; z-index: -1; top: 50%; left: 50%; width: 32px; height: 32px; border-radius: 50%; transform: translate(-50%, -50%); }
+.calendar-day__number:hover::before { background: var(--bg-inset); }
+.calendar-day__number[aria-pressed="true"] { color: var(--nav-active-text); }
+.calendar-day__number[aria-pressed="true"]::before { background: var(--nav-active-bg); }
+.calendar-day__number--today { font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .calendar-day--outside .calendar-day__number { color: var(--text-tertiary); opacity: .5; }
 .calendar-event { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; padding: 3px 5px; margin-bottom: 3px; border-radius: 5px; text-align: left; color: var(--text-primary); font-size: 10px; line-height: 15px; }
 .calendar-event > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 550; }
 .calendar-event > span:last-child { font-size: 9px; white-space: nowrap; }
-.calendar-event--deadline, .agenda-event__count--deadline { background: var(--pastel-blue); }
-.calendar-event--interview, .agenda-event__count--interview { background: var(--pastel-lavender); }
-.calendar-event--result, .agenda-event__count--result { background: var(--pastel-mint); }
-.calendar-event--other, .agenda-event__count--other { background: var(--pastel-yellow); }
+/* 일정 종류는 글자로 구분하고 색은 마감(호박)과 나머지(회색) 둘만 쓴다 */
+.calendar-event, .agenda-event__count { background: var(--bg-subtle); }
+.calendar-event--deadline, .agenda-event__count--deadline { background: var(--state-open-bg); color: var(--state-open-text); }
 .calendar-day__more { color: var(--text-secondary); font-size: 10px; width: 100%; text-align: center; }
 .calendar-legend { display: flex; gap: 14px; flex-wrap: wrap; padding-top: 14px; }
 .calendar-legend > span { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-secondary); }
 .calendar-dot { display: inline-block; width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
-.calendar-dot--deadline { background: #82B6DC; }
-.calendar-dot--interview { background: #B5A0CE; }
-.calendar-dot--result { background: #86B99B; }
-.calendar-dot--other { background: #C6B86F; }
+.calendar-dot { background: var(--border-strong); }
+.calendar-dot--deadline { background: var(--field-low-border); }
 .calendar-agenda { border-left: 1px solid var(--border-default); padding-left: 24px; min-width: 0; }
 .calendar-agenda h3 { font-size: 14px; line-height: 22px; font-weight: 650; }
 .calendar-agenda h3 > span { color: var(--text-secondary); font-size: 11px; margin-left: 4px; }
@@ -85,7 +83,6 @@
   .calendar-month h3 { font-size: 16px; }
   .calendar-controls button { height: 44px; min-width: 40px; }
   .calendar-day { min-height: 82px; padding: 2px; }
-  .calendar-day__number { width: 100%; height: 36px; border-radius: 8px; }
   .calendar-event { font-size: 9px; padding: 3px; }
   .calendar-event > span:last-child { display: none; }
   .calendar-agenda { grid-template-columns: 1fr; gap: 20px; }
@@ -104,18 +101,20 @@
 .home-workspace__calendar .job-calendar__head { gap: 10px; margin-bottom: 20px; align-items: center; }
 .home-workspace__calendar .job-calendar__head h2 { font-size: 16px; line-height: 24px; }
 .home-workspace__calendar .job-calendar__head p, .home-workspace__calendar .job-calendar__head .home-eyebrow { display: none; }
-.home-workspace__calendar .job-calendar__head > .btn { font-size: 11px; min-height: 36px; padding: 8px 10px; gap: 4px; }
+.home-workspace__calendar .job-calendar__head > .btn { font-size: 11px; min-height: var(--control-touch-size); padding: 8px 10px; gap: 4px; }
 .home-workspace__calendar .job-calendar__layout { display: flex; flex-direction: column; gap: 20px; }
 .home-workspace__calendar .calendar-month { gap: 6px; }
 .home-workspace__calendar .calendar-month h3 { font-size: 14px; }
 .home-workspace__calendar .calendar-month > span { display: none; }
 .home-workspace__calendar .calendar-controls { gap: 2px; }
-.home-workspace__calendar .calendar-controls button { height: 32px; min-width: 28px; padding-inline: 6px; }
+.home-workspace__calendar .calendar-controls button { height: var(--control-touch-size); min-width: var(--control-touch-size); padding-inline: 6px; }
 .home-workspace__calendar .calendar-board__toolbar { padding-bottom: 8px; }
 .home-workspace__calendar .calendar-weekdays > span { padding-block: 6px; }
-.home-workspace__calendar .calendar-day { min-height: 54px; padding: 2px; border-right: 0; border-bottom: 0; }
-.home-workspace__calendar .calendar-day__number { width: 30px; height: 30px; margin-bottom: 2px; border-radius: 50%; }
-.home-workspace__calendar .calendar-event { height: 5px; min-height: 5px; padding: 0; border-radius: 3px; margin-bottom: 2px; border: 1px solid var(--border-default); }
+.home-workspace__calendar .calendar-day { min-height: 54px; padding: 0; border-right: 0; border-bottom: 0; }
+.home-workspace__calendar .calendar-day__number { margin-bottom: 2px; }
+.home-workspace__calendar .calendar-day__number::before { width: 30px; height: 30px; }
+.home-workspace__calendar .calendar-event { height: 5px; min-height: 5px; padding: 0; border-radius: 3px; margin-bottom: 2px; border: 1px solid var(--border-strong); background: var(--border-strong); }
+.home-workspace__calendar .calendar-event--deadline { background: var(--field-low-border); border-color: var(--field-low-border); }
 .home-workspace__calendar .calendar-event > span { display: none; }
 .home-workspace__calendar .calendar-day__more { font-size: 9px; line-height: 12px; }
 .home-workspace__calendar .calendar-legend { gap: 10px; padding-top: 8px; }
@@ -147,30 +146,26 @@
 .home-page { max-width: none; }
 .home-workspace { grid-template-columns: minmax(0, 1fr) 320px; }
 .home-workspace__calendar { display: flex; flex-direction: column; gap: 20px; position: static; }
-.home-welcome { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .8fr); align-items: center; min-height: 220px; padding: 22px 30px; gap: 16px; border: 1px solid var(--border-default); border-radius: 24px; background: color-mix(in srgb, var(--pastel-lavender) 35%, var(--bg-surface)); overflow: hidden; }
+.home-welcome { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, .8fr); align-items: center; min-height: 220px; padding: 22px 30px; gap: 16px; border: 1px solid var(--border-default); border-radius: 24px; background: var(--bg-paper); overflow: hidden; }
 .home-welcome__copy { position: relative; z-index: 1; }
 .home-welcome h2 { font-size: clamp(24px, 2.1vw, 32px); line-height: 1.35; font-weight: 600; letter-spacing: -.05em; }
 .home-welcome p { margin-top: 10px; font-size: 13px; line-height: 22px; color: var(--text-secondary); }
 .home-welcome__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .home-welcome__actions .btn { font-size: 12px; padding: 12px 14px; gap: 8px; }
 .home-welcome__visual { position: relative; min-height: 184px; isolation: isolate; }
-.home-welcome__visual::before { content: ''; position: absolute; inset: 18px 0 0 15px; border: 1px solid var(--border-default); border-radius: 26px; background: color-mix(in srgb, var(--pastel-blue) 70%, transparent); transform: rotate(-9deg); z-index: -1; }
+.home-welcome__visual::before { content: ''; position: absolute; inset: 18px 0 0 15px; border: 1px solid var(--border-default); border-radius: 26px; background: var(--bg-subtle); transform: rotate(-9deg); z-index: -1; }
 .activity-float { position: absolute; display: flex; align-items: center; gap: 10px; background: var(--bg-surface); padding: 12px 14px; width: 188px; border-radius: 13px; box-shadow: 0 10px 32px rgb(40 35 80 / 8%); border: 1px solid var(--border-default); transform: rotate(-7deg); font-size: 12px; font-weight: 650; }
-.activity-float > svg:first-child { color: var(--text-primary); padding: 4px; box-sizing: content-box; background: var(--pastel-lavender); border-radius: 7px; }
+.activity-float > svg:first-child { color: var(--text-primary); padding: 4px; box-sizing: content-box; background: var(--bg-subtle); border-radius: 7px; }
 .activity-float small { display: block; font-size: 9px; color: var(--text-secondary); font-weight: 400; padding-top: 3px; }
 .activity-float--commit { top: 0; right: 0; }
 .activity-float--pr { top: 62px; left: 0; }
 .activity-float--issue { top: 124px; left: 22px; }
-.activity-float--issue > svg { background: var(--pastel-mint) !important; }
-.activity-float__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pastel-lavender); margin-left: auto; }
+.activity-float__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-default); margin-left: auto; }
 .home-welcome__github { position: absolute; right: 4px; bottom: 18px; color: var(--text-tertiary); z-index: -1; }
 .home-workspace__content .home-overview { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .home-workspace__content .overview-tile { padding: 18px; gap: 15px; border: 1px solid var(--border-default); background: var(--bg-surface); border-radius: 18px; }
 .home-workspace__content .overview-tile__label { font-size: 11px; align-items: flex-start; }
-.home-workspace__content .overview-tile__label svg { padding: 7px; box-sizing: content-box; border-radius: 10px; opacity: 1; background: var(--pastel-blue); }
-.home-workspace__content .overview-tile--lavender svg { background: var(--pastel-lavender); }
-.home-workspace__content .overview-tile--mint svg { background: var(--pastel-mint); }
-.home-workspace__content .overview-tile--yellow svg { background: var(--pastel-yellow); }
+.home-workspace__content .overview-tile__label svg { padding: 7px; box-sizing: content-box; border-radius: 10px; opacity: 1; background: var(--bg-subtle); }
 .home-workspace__content .overview-tile--link { color: inherit; text-decoration: none; }
 .home-workspace__content .overview-tile--link:hover, .home-workspace__content .overview-tile--link:focus-visible { border-color: var(--border-strong); }
 .home-workspace__content .overview-tile > strong { font-size: 30px; }
@@ -181,7 +176,6 @@
 .home-workspace__content .experience-item__meta { grid-column: 1; font-size: 10px; line-height: 16px; }
 .home-workspace__content .experience-item .gcard__title { grid-column: 1; grid-row: 2; font-size: 15px; line-height: 22px; }
 .home-workspace__content .experience-item .card-tags { grid-column: 1; grid-row: 3; }
-.home-workspace__content .experience-item .stardots { display: none; }
 .home-workspace__content .experience-item .card-fill { grid-column: 2; grid-row: 2; margin: 0; align-self: center; }
 .home-workspace__content .experience-item__footer { grid-column: 2; grid-row: 3; justify-content: flex-start; align-self: center; }
 .home-workspace__content .experience-item__footer > .t-12 { display: none; }
@@ -199,9 +193,7 @@
 .home-recommendations__notice { font-size: 10px; color: var(--text-tertiary); margin-top: 6px; }
 .recommended-job { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 0; border-top: 1px solid var(--border-default); }
 .recommended-job:hover strong { text-decoration: underline; }
-.recommended-job__logo { display: grid; place-items: center; width: 44px; height: 48px; border-radius: 12px; background: var(--pastel-mint); font-size: 20px; font-weight: 650; flex-shrink: 0; }
-.recommended-job__logo--1 { background: var(--pastel-yellow); }
-.recommended-job__logo--2 { background: var(--pastel-lavender); }
+.recommended-job__logo { display: grid; place-items: center; width: 44px; height: 48px; border-radius: 12px; border: 1px solid var(--border-default); background: var(--bg-subtle); font-size: 20px; font-weight: 650; flex-shrink: 0; }
 .recommended-job__copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
 .recommended-job__copy strong { font-size: 12px; line-height: 18px; }
 .recommended-job__copy > span { color: var(--text-secondary); font-size: 11px; }
@@ -245,20 +237,6 @@
   .home-lower .resume__item { flex-wrap: wrap; }
 }
 
-/* Preserve develop's STAR tile progress now that its legacy fill bar is removed. */
-.home-workspace__content .experience-item .stardots--labeled {
-  display: grid;
-  grid-column: 2;
-  grid-row: 2;
-  width: 100%;
-  min-width: 0;
-  gap: 3px;
-  align-self: center;
-}
-.home-workspace__content .experience-item .stardots--labeled .stardot { height: auto; gap: 3px; }
-.home-workspace__content .experience-item .stardots--labeled .stardot__letter { width: 22px; height: 22px; font-size: 11px; }
-.home-workspace__content .experience-item .stardots--labeled .stardot__label { font-size: 9px; line-height: 14px; }
-
 .selected-event__posting { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; border-radius: 8px; padding-block: 6px; }
 .selected-event__posting:hover strong { text-decoration: underline; }
 .selected-event__posting:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 3px; }
@@ -290,10 +268,11 @@
 .career-grass__weekdays { display: grid; grid-template-rows: repeat(7, minmax(0, 1fr)); row-gap: var(--grass-gap); min-height: 0; align-items: center; color: var(--text-tertiary); font-size: 9px; line-height: 1; }
 .career-grass__grid { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, auto); min-width: 0; min-height: 0; align-self: start; grid-template-columns: repeat(var(--grass-weeks), minmax(0, 1fr)); gap: var(--grass-gap); }
 .career-grass__day, .career-grass__legend i { --grass: var(--bg-inset); background: var(--grass); border: 1px solid rgb(0 0 0 / 5%); border-radius: 3px; aspect-ratio: 1; }
-.career-grass [data-level="1"], .career-grass__legend [data-level="1"] { --grass: #DCE9DF; }
-.career-grass [data-level="2"], .career-grass__legend [data-level="2"] { --grass: #A9C5B0; }
-.career-grass [data-level="3"], .career-grass__legend [data-level="3"] { --grass: #739A7E; }
-.career-grass [data-level="4"], .career-grass__legend [data-level="4"] { --grass: #42694D; }
+/* 잔디는 한 색(기본 글자색)의 짙기로만 나눈다 — 라이트·다크 모두 바탕(--bg-inset)에서 글자색 쪽으로 짙어진다 */
+.career-grass [data-level="1"], .career-grass__legend [data-level="1"] { --grass: color-mix(in srgb, var(--text-primary) 22%, var(--bg-inset)); }
+.career-grass [data-level="2"], .career-grass__legend [data-level="2"] { --grass: color-mix(in srgb, var(--text-primary) 45%, var(--bg-inset)); }
+.career-grass [data-level="3"], .career-grass__legend [data-level="3"] { --grass: color-mix(in srgb, var(--text-primary) 70%, var(--bg-inset)); }
+.career-grass [data-level="4"], .career-grass__legend [data-level="4"] { --grass: var(--text-primary); }
 .career-grass__day:disabled { cursor: default; }
 .career-grass__day[data-outside] { visibility: hidden; }
 .career-grass__day[aria-pressed="true"] { outline: 2px solid var(--text-primary); outline-offset: 1px; }

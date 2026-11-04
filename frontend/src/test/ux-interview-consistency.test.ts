@@ -27,11 +27,11 @@ describe('sample interview and evidence consistency', () => {
   });
 
   it.each(seedCandidates)('$id counts agree with explicit sample evidence', (candidate) => {
-    const review = candidate.reason.match(/리뷰 코멘트 (\d+)건/);
-    const files = candidate.reason.match(/(?:변경 파일 |문서 )(\d+)(?:개|파일)/);
-    const commits = candidate.reason.match(/(\d+)커밋|커밋 (\d+)건/);
+    const review = candidate.reason.match(/리뷰를 (\d+)번/);
+    const files = candidate.reason.match(/(?:파일|문서) (\d+)개/);
+    const commits = candidate.reason.match(/(\d+)커밋|커밋 (\d+)개/);
     const titleCommits = candidate.title.match(/(\d+)커밋/);
-    const days = candidate.reason.match(/(\d+)일간/);
+    const days = candidate.reason.match(/(\d+)일 동안/);
     if (review) expect(candidate.meta.reviewComments).toBe(Number(review[1]));
     if (files) expect(candidate.meta.files).toBe(Number(files[1]));
     if (commits) expect(candidate.meta.commits).toBe(Number(commits[1] ?? commits[2]));

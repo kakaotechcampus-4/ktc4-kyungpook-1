@@ -83,7 +83,7 @@ class OverallRecommendationApiTest {
     }
 
     @Test
-    @DisplayName("계산 중인 전체 추천을 상태·확인한 공고 수·지난 기업과 대표 공고·필수와 우대 조건 수로 돌려준다")
+    @DisplayName("계산 중인 전체 추천을 상태·확인한 공고 수·지난 기업과 대표 공고·필수와 우대 조건 수·맞은과 모자란 조건 이름으로 돌려준다")
     void returnsComputingRecommendationInContractShape() throws Exception {
 
         JobPosting posting = posting("daangn", "당근");
@@ -95,7 +95,9 @@ class OverallRecommendationApiTest {
                     companies = CAST(? AS jsonb) WHERE user_id = ?
                 """, """
                 [{"companyId": "daangn", "companyName": "당근", "postingId": %d, "requiredMet": 3, "requiredTotal": 4,
-                  "preferredMet": 1, "preferredTotal": 2}]
+                  "preferredMet": 1, "preferredTotal": 2,
+                  "met": [{"text": "Spring 서버 개발 경험", "techs": ["SPRING"]}],
+                  "missing": [{"text": "Kafka 운영 경험", "techs": ["KAFKA"]}]}]
                 """.formatted(posting.getId()), myUserId);
 
         mvc.perform(get("/api/recommendations").with(loggedIn()))
@@ -105,7 +107,12 @@ class OverallRecommendationApiTest {
                 .andExpect(jsonPath("$.data.stale").value(false))
                 .andExpect(jsonPath("$.data.progress.done").value(6))
                 .andExpect(jsonPath("$.data.progress.total").value(15))
+                .andExpect(jsonPath("$.data.checked").value(15))
                 .andExpect(jsonPath("$.data.companies", hasSize(1)))
+                .andExpect(jsonPath("$.data.companies[0].met[0].text").value("Spring 서버 개발 경험"))
+                .andExpect(jsonPath("$.data.companies[0].met[0].techs[0]").value("SPRING"))
+                .andExpect(jsonPath("$.data.companies[0].missing[0].text").value("Kafka 운영 경험"))
+                .andExpect(jsonPath("$.data.companies[0].missing[0].techs[0]").value("KAFKA"))
                 .andExpect(jsonPath("$.data.companies[0].companyName").value("당근"))
                 .andExpect(jsonPath("$.data.companies[0].logoUrl").isString())
                 .andExpect(jsonPath("$.data.companies[0].posting.id").value(posting.getPublicId().toString()))
@@ -144,6 +151,7 @@ class OverallRecommendationApiTest {
                 .andExpect(jsonPath("$.data.computedAt").value(nullValue()))
                 .andExpect(jsonPath("$.data.stale").value(false))
                 .andExpect(jsonPath("$.data.progress").value(nullValue()))
+                .andExpect(jsonPath("$.data.checked").value(0))
                 .andExpect(jsonPath("$.data.companies", hasSize(0)));
 
     }

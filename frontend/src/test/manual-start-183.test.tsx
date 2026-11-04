@@ -76,8 +76,9 @@ describe('manual startup contract #183', () => {
     await act(async () => { await router.navigate('/new?write=1'); });
     change('카드 제목', '다음 카드'); fireEvent.click(screen.getByRole('button', { name: '작성 시작' }));
     fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
-    await screen.findByText('기존 카드 화면', {}, { timeout: 10_000 });
-    expect(create).toHaveBeenCalledTimes(2); expect(create.mock.calls[0][1]).not.toBe(create.mock.calls[1][1]);
+    // 두 번째는 화면 이동을 기다리지 않는다 — 키는 만들기 호출에 실려 가므로 호출이 두 번 된 시점이면 충분하고, 느린 CI 에서 화면 이동만 10초를 넘겨 깨지던 자리다
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(2), { timeout: 10_000 });
+    expect(create.mock.calls[0][1]).not.toBe(create.mock.calls[1][1]);
   }, 25_000); // 만들기·저장·화면 이동을 두 번 거쳐, 전체 시험이 한꺼번에 돌 때는 화면 이동이 5초를 넘길 때가 있다(CI Node 24)
 
   it('keeps untouched server STAR slots when replay already contains writing', async () => {

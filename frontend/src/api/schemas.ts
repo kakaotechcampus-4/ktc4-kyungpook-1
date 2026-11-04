@@ -475,6 +475,8 @@ export const CardSummary = z.object({
   period: z.string().nullish(),
   evidenceCount: z.number().nonnegative().nullish(),
   userStatedCount: z.number().nonnegative().nullish(),
+  /** #773: 현재 버전 결과 칸의 글이고, 없음(undefined)은 이전 서버라 모름, null 은 결과가 아직 비어 있음 */
+  preview: z.string().nullish(),
   /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
   /** #477: 카드 상세와 같은 값. 없음(undefined) = 이전 서버라 모름, null = 활동 밖 카드 */

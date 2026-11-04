@@ -19,8 +19,8 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await expect(page).toHaveURL(/\/candidates/, { timeout: 30_000 });
   await expect(page.getByText('커밋 묶음', { exact: true }).first()).toBeVisible(); // COMMIT_CLUSTER 출처 라벨
 
-  await page.getByRole('checkbox', { disabled: false }).first().click(); // 사용된 후보는 비활성이라 건너뛴다
-  await page.getByRole('button', { name: /선택한 1개로 카드 만들기/ }).click();
+  await page.locator('.cand-tile__pick').first().click(); // 이미 카드로 만든 후보는 타일이 아니라 아래 한 줄 목록에 있다
+  await page.getByRole('button', { name: '카드 만들기', exact: true }).click();
   await expect(page.getByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' })).toBeVisible();
   await expect(page.getByText('근거를 찾지 못해 비워 뒀어요')).toBeVisible({ timeout: 30_000 }); // 빈 칸이 증거
 

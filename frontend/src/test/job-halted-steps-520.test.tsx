@@ -98,7 +98,7 @@ describe('agentLine — 멈춘 작업의 단계 문장 (#459 뒤 남은 현재�
   it('끝난 단계와 건너뛴 단계의 문장은 그대로다', () => {
     for (const state of ['FAILED', 'CANCELED'] as const) {
       const j = job(state);
-      expect(agentLine(commits, j)).toBe('내 커밋을 모두 읽었어요');
+      expect(agentLine(commits, j)).toBe('커밋을 모두 읽었어요');
       expect(agentLine(reason, j)).toBe('이유를 붙일 후보가 없었어요');
     }
   });

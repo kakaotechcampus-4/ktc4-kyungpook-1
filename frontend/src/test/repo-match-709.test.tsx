@@ -27,7 +27,7 @@ describe('#709 레포 폴더의 추천 기업', () => {
     const read = vi.spyOn(matchingApi, 'repoRecommendations');
     mount(0);
 
-    expect(screen.getByText('카드를 확정하면 이 레포 카드로 맞는 기업을 골라 드려요.')).toBeInTheDocument();
+    expect(screen.getByText('카드가 확정되면 이 레포 카드로 맞는 기업을 골라 드려요.')).toBeInTheDocument();
     expect(read).not.toHaveBeenCalled();
   });
 
@@ -37,7 +37,7 @@ describe('#709 레포 폴더의 추천 기업', () => {
 
     const items = await screen.findAllByRole('listitem');
     expect(items.map((li) => within(li).getByRole('strong').textContent)).toEqual(['회사 1', '회사 2', '회사 3']);
-    expect(items[0]).toHaveTextContent('Java·Spring · 필수 2개·우대 1개 맞음');
+    expect(items[0]).toHaveTextContent('Java, Spring, 필수 2개, 우대 1개 맞음');
     expect(items[1]).toHaveTextContent('필수 2개 맞음');
     expect(within(items[0]).getByRole('link')).toHaveAttribute('href', '/match/p%201');
   });

@@ -6,6 +6,7 @@
  *
  * 실서버로 붙일 때: VITE_API_MOCK=false → 이 파일이 아무것도 하지 않고 fetch 는 그대로 /api 로 나간다.
  */
+import { POLISH_DELAY_MS, TURN_DELAY_MS } from './coverLetters';
 import { handle } from './router';
 import { restore, seedSetUpProfile, snapshot } from './store';
 import { PROFILE_FIRST_SCENARIOS, createScenario, parseScenario, waitForMock } from './scenarios';
@@ -57,6 +58,8 @@ export function installDemoApi() {
 
     const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
     await waitForMock(scenario.delayMs, signal);
+    if (method === 'POST' && /\/questions\/[^/]+\/polish$/.test(path)) await waitForMock(POLISH_DELAY_MS, signal);
+    if (method === 'POST' && /\/questions\/[^/]+\/turns(\/open|\/skip)?$/.test(path)) await waitForMock(TURN_DELAY_MS, signal);
 
     if (path === '/auth/logout') demoLogout();
     if (path === '/__reset') { ss.del(DB_KEY); }

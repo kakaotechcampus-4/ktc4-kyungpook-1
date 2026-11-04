@@ -18,13 +18,21 @@
 .pq__no { font-size: 13px; line-height: 24px; font-weight: 600; color: var(--text-tertiary); }
 .pq__head { grid-column: 2; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .pq__title { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-primary); }
-.pq__phase { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--text-secondary); white-space: nowrap; }
-.pq__phase .ai-wait__dots { padding-top: 0; gap: 3px; }
-.pq__phase .ai-wait__dots i { width: 4px; height: 4px; }
+/* 기다리는 동안 문항마다 상태 한 줄(#745) — 차례 기다림(빈 동그라미) · 하는 중(점 셋, 진하게) · 끝남(✓) */
+.pq__status { grid-column: 2; display: inline-flex; align-items: center; gap: 8px; min-height: 24px; margin: 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+.pq__status--now { color: var(--text-primary); font-weight: 600; }
+.pq__status--done, .pq__status--end { color: var(--text-secondary); }
+.pq__status .ai-wait__dots { padding-top: 0; gap: 3px; }
+.pq__status .ai-wait__dots i { width: 5px; height: 5px; }
+.pq__pend { display: inline-block; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; opacity: .6; }
+.pq__sk { display: flex; flex-direction: column; gap: 12px; padding-top: 6px; }
+.pq__sk i { display: block; height: 10px; border-radius: var(--radius-full); background: var(--bg-subtle); }
+.pq__sk i:nth-child(2) { width: 94%; }
+.pq__sk i:nth-child(3) { width: 70%; }
+.pq__answer--settled .pq__sk { opacity: .5; }
 .pq__answer { grid-column: 2; font-size: 14px; line-height: 26px; color: var(--text-primary); white-space: pre-wrap; overflow-wrap: anywhere; word-break: keep-all; min-height: 52px; }
 .pq__answer--empty { color: var(--text-tertiary); }
-.pq__card { grid-column: 2; display: flex; align-items: center; gap: 8px; font-size: 13px; line-height: 20px; color: var(--text-secondary); }
-.pq__card b { font-weight: 600; color: var(--text-primary); }
+.pq__card { grid-column: 2; margin-top: -8px; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
 .pq__foot { grid-column: 2; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
 .pq__count { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pq__count--over { color: var(--state-failed-text); font-weight: 600; }
@@ -40,7 +48,8 @@
 .pcheck__cell--checking { border-style: dashed; }
 .pcheck__cell--marked { background: var(--field-low-bg); border-color: transparent; color: var(--field-low-text); }
 .pcheck__cell--marked b { color: inherit; }
-.pcheck__cell--fixed { background: var(--pastel-mint); border-color: transparent; color: var(--text-strong); }
+.pcheck__cell--fixed { color: var(--text-secondary); }
+.pcheck__cell svg { flex: none; }
 .pcheck__cell--pass { color: var(--text-tertiary); }
 .pcheck__cell:enabled { cursor: pointer; }
 .pcheck__cell:enabled:hover { border-color: var(--border-strong); }
@@ -52,7 +61,7 @@
 .phl--marked { background: var(--field-low-bg); text-decoration: underline wavy var(--field-low-border); text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .phl--fixed-ai { background: var(--pastel-mint); }
 /* AI 추론 문장(#719) — 노란 형광펜: 옅은 노랑 위에 아래쪽 띠를 겹쳐, 검사 중(open)의 노랑과 구분한다 */
-.phl--inferred { background: var(--pastel-yellow); box-shadow: inset 0 -3px 0 var(--caution-300); }
+.phl--inferred { background: var(--field-low-bg); box-shadow: inset 0 -3px 0 var(--caution-300); }
 .phl--kept { text-decoration: underline dotted var(--border-strong); text-underline-offset: 4px; }
 .phl--focus { outline: 2px solid var(--accent-point); outline-offset: 2px; }
 .phl__value { font-weight: 600; }
@@ -86,13 +95,6 @@
 .pnote--marked .pnote__status { color: var(--field-low-text); }
 .pnote--inferred { border-left-color: var(--caution-500); }
 .pnote--inferred .pnote__status { color: var(--field-low-text); }
-.pnote__actions { display: flex; gap: 6px; }
-.pnote__action { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-strong); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-.pnote__action:hover:not(:disabled) { border-color: var(--border-strong); }
-.pnote__action:focus-visible { outline: none; box-shadow: var(--focus); }
-.pnote__action:disabled { opacity: .6; cursor: default; }
-.pnote__action--primary { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); color: var(--text-on-ink); }
-.pnote__action--primary:hover:not(:disabled) { background: var(--bg-ink-hover); border-color: var(--bg-ink-hover); }
 .pnote__orig { margin: 0; font-size: 11px; line-height: 16px; color: var(--text-tertiary); }
 .pnote__item { display: flex; flex-direction: column; gap: 1px; }
 .pnote__who { font-size: 11px; line-height: 16px; font-weight: 600; color: var(--text-strong); }
@@ -108,5 +110,5 @@
   .paper { --paper-px: 18px; }
   .paper__head { padding-top: 26px; }
   .pq { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
-  .pq__head, .pq__answer, .pq__card, .pq__foot, .pq__tools, .pq__note, .pedit, .pnotes-inline, .pq > .cl-todo, .pq > .cl-original, .pq > .note { grid-column: 1; }
+  .pq__head, .pq__answer, .pq__card, .pq__status, .pq__foot, .pq__tools, .pq__note, .pedit, .pnotes-inline, .pq > .cl-todo, .pq > .cl-original, .pq > .note { grid-column: 1; }
 }

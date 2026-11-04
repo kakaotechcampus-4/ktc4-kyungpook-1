@@ -19,22 +19,19 @@ export function MatchUnavailable() {
     </main>
   );
 }
-/**
- * 목록으로 돌아가는 링크 — 공고 상세와 기업 페이지가 같이 쓴다. 글자 화살표(←) 대신 아이콘을 쓴다(장식이라 화면 읽기 프로그램은 읽지 않는다).
- * fromCompanyView: 기업별 보기에서 왔으면 돌아갈 곳이 기업 목록이라 글자도 그렇게 쓴다.
- */
-export function MatchBack({ to, fromCompanyView }: { to: string; fromCompanyView: boolean }) {
+/** 목록으로 돌아가는 링크 — 공고 상세와 기업 페이지가 같이 쓴다. 글자 화살표(←) 대신 아이콘을 쓴다(장식이라 화면 읽기 프로그램은 읽지 않는다). */
+export function MatchBack({ to }: { to: string }) {
   return (
     <Link to={to} className="match-back">
       <ChevronLeft size={16} aria-hidden />
-      {fromCompanyView ? "기업 목록으로" : "공고 목록으로"}
+      공고 목록으로
     </Link>
   );
 }
 /** label: 기업 묶음처럼 여러 공고 중 대표 등급을 보일 때는 "최고 등급"으로 바꿔 쓴다 */
 export function Fit({ value, label = "근거 등급" }: { value: MatchTarget["fit"]; label?: string }) {
   return value === null ? (
-    <span className="match-fit-empty">카드를 확정하면 등급이 나와요</span>
+    <span className="match-fit-empty">카드가 확정되면 등급이 나와요</span>
   ) : (
     <span
       className={`match-fit match-fit--${value}`}

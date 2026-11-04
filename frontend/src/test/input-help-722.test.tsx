@@ -30,7 +30,7 @@ const realNow = Date.now;
 const advance = (sec: number) => { shift += sec * 1000; Date.now = () => realNow() + shift; };
 
 function askedLetter() {
-  const created = parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, questions: [
+  const created = parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [
     { text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }, { text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: 1000 },
   ] }));
   advance(7);
@@ -60,16 +60,23 @@ const firstOpenAsk = (letter: CoverLetter) => {
 beforeEach(() => { resetDb(); shift = 0; Date.now = realNow; });
 afterEach(() => { cleanup(); Date.now = realNow; vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
-describe('예시는 흐린 안내로만 보이고 값으로 보내지 않는다', () => {
-  it('답 칸마다 그 항목의 예시를 placeholder 로 보이고, 저장에는 쓴 글만 간다', async () => {
+describe('예시는 안내로만 보이고 값으로 보내지 않는다', () => {
+  // #749 부터 예시는 placeholder 가 아니라 새로 묻는 질문 아래 '예:' 한 줄이고, 답 칸이 그 줄을 설명으로 가리킨다. 지난번 답을 다시 쓰는 칸에는 없다
+  it('새로 묻는 답 칸마다 그 항목의 예시 한 줄을 보이고, 저장에는 쓴 글만 간다', async () => {
     const letter = askedLetter();
     mountLetter(letter);
     const server = connectMockServer();
     const asks = letter.questions.flatMap((q) => q.asks.map((a) => ({ q, a })));
-    expect(asks.length).toBeGreaterThan(0);
+    expect(asks.some(({ a }) => a.question != null)).toBe(true);
     for (const { q, a } of asks) {
       const area = document.getElementById(`ask-${q.id}-${a.item}`) as HTMLTextAreaElement;
-      expect(area.placeholder).toBe(ITEM_EXAMPLE[a.item as MaterialItem]);
+      const example = document.getElementById(`ask-${q.id}-${a.item}-ex`);
+      if (a.question != null) {
+        expect(example).toHaveTextContent(ITEM_EXAMPLE[a.item as MaterialItem]);
+        expect(area).toHaveAttribute('aria-describedby', example!.id);
+      } else {
+        expect(example).toBeNull();
+      }
       expect(area.value).toBe(a.answer?.text ?? '');
     }
     const { q, a, area } = firstOpenAsk(letter);
@@ -103,7 +110,7 @@ describe('답 칸 글자 수 안내', () => {
     const hint = () => area.closest('li')!.querySelector('[aria-live="polite"]')!; // 안내 문구만 읽어 주고, 바뀌는 글자 수는 읽지 않는다
     fireEvent.change(area, { target: { value: '가'.repeat(99) } });
     expect(hint().textContent).toBe('100자쯤 쓰면 글이 좋아져요'); // AI 가 답 하나를 100자로 어림한다
-    expect(hint().parentElement!.textContent).toBe('100자쯤 쓰면 글이 좋아져요 · 99/1,000');
+    expect(hint().parentElement!.textContent).toBe('100자쯤 쓰면 글이 좋아져요, 99/1,000');
     fireEvent.change(area, { target: { value: '가'.repeat(100) } });
     expect(hint().textContent).toBe('충분해요');
     fireEvent.change(area, { target: { value: '짧게' } });

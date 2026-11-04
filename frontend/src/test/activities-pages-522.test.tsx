@@ -31,10 +31,10 @@ const routes = () => [
 ];
 const FOLDERS = {
   auth: '레포 hong-dev, auth-service, 카드 4장, 기술 Java',
-  fts: '레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 경험 카드 없음',
+  fts: '레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 기술 카드만 있어요',
   club: '활동, 동아리, 교내 개발 동아리, 카드 2장',
   edu: '활동, 교육 과정, 카카오테크캠퍼스, 카드 1장',
-  contest: '활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 경험 카드 없음',
+  contest: '활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요 · 열어서 만들기',
 };
 const tiles = (root: ParentNode = document) => root.querySelectorAll('.experience-item');
 const button = (name: string | RegExp) => screen.getByRole('button', { name });
@@ -51,22 +51,37 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(screen.getByRole('link', { name: FOLDERS.contest })).toHaveAttribute('href', '/cards/activity/act_contest');
     expect(screen.getByRole('radio', { name: '폴더' })).toHaveAttribute('aria-checked', 'true');
     expect(tiles()).toHaveLength(0);
-    // 앞판 글: 경험 카드가 없는 폴더에만 '경험 카드 없음', 장식(뒤판·탭)은 접근성 트리에서 뺀다
-    expect(screen.getAllByText('경험 카드 없음')).toHaveLength(2);
+    // 앞판 글: 기술 카드만 있는 폴더와 빈 폴더에 안내 한 줄, 장식(뒤에 겹친 카드)은 접근성 트리에서 뺀다
+    expect(screen.getByText('기술 카드만 있어요')).toBeInTheDocument();
+    expect(screen.getByText('아직 카드가 없어요 · 열어서 만들기')).toBeInTheDocument();
+    // 장 수는 종류 아이콘 옆 작은 글이고, 빈 폴더에는 없다(0장 대신 안내 한 줄이 말한다)
+    expect(auth.querySelector('.folder__head .folder__count')).toHaveTextContent(/^4장$/);
+    expect(screen.getByRole('link', { name: FOLDERS.contest }).querySelector('.folder__count')).toBeNull();
+    // 이름 아래 미리 보기 한 줄: 최근 카드 두 장의 제목과 남은 장 수. 빈 폴더에는 없고, 링크 이름에도 들어가지 않는다(위 FOLDERS 그대로)
+    expect(auth.querySelector('.folder__peek')).toHaveTextContent(/^[^·]+ · [^·]+ · \+2$/);
+    expect(screen.getByRole('link', { name: FOLDERS.fts }).querySelector('.folder__peek')).toHaveTextContent(/^FreeTierSleep_Unity - 인트로 씬 연출 및 최적화 \(부분 기여\)$/);
+    expect(screen.getByRole('link', { name: FOLDERS.contest }).querySelector('.folder__peek')).toBeNull();
     expect(auth.querySelector('.folder__back')).toHaveAttribute('aria-hidden', 'true');
+    // 뒤로 겹쳐 보이는 카드는 장 수를 따르고(4장 두 겹, 2장 한 겹, 1장 없음), 카드가 없는 폴더만 점선(data-empty)이다
+    expect(auth).toHaveAttribute('data-deck', '2');
+    expect(screen.getByRole('link', { name: FOLDERS.club })).toHaveAttribute('data-deck', '1');
+    expect(screen.getByRole('link', { name: FOLDERS.fts })).toHaveAttribute('data-deck', '0');
+    expect(screen.getByRole('link', { name: FOLDERS.contest })).toHaveAttribute('data-empty', 'true');
+    expect(auth).not.toHaveAttribute('data-empty');
+    // 종류 아이콘도 장식이다
+    expect(auth.querySelector('.folder__kind')).toHaveAttribute('aria-hidden', 'true');
     // 직접 쓴 카드가 없으니 그 폴더도 없다
     expect(screen.queryByRole('link', { name: /직접 쓴 카드/ })).not.toBeInTheDocument();
   });
 
-  it('폴더 보기에는 상태 탭과 검색이 없고, 만들기는 폴더 위의 경험 카드 만들기와 활동 만들기 둘뿐이다', async () => {
+  it('폴더 보기에는 상태 탭과 검색이 없고, 만들기는 폴더 위의 활동 만들기 하나뿐이다. 경험 카드는 폴더 안에서 만든다', async () => {
     connectMockServer();
     mountApp(routes(), '/cards');
     await screen.findByRole('link', { name: FOLDERS.auth });
     expect(screen.queryByRole('textbox', { name: '카드 이름으로 검색' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^(전체|작성 중|확정됨|보완 필요)/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new');
     expect(screen.getByRole('link', { name: '활동 만들기' })).toHaveAttribute('href', '/activities/new');
-    for (const gone of ['활동 관리', '직접 작성', '레포에서 만들기']) expect(screen.queryByRole('link', { name: gone })).not.toBeInTheDocument();
+    for (const gone of ['경험 카드 만들기', '활동 관리', '직접 작성', '레포에서 만들기']) expect(screen.queryByRole('link', { name: gone })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '레포에서 만들기' })).not.toBeInTheDocument();
   });
 
@@ -77,7 +92,7 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     await screen.findByRole('link', { name: FOLDERS.auth });
     fireEvent.click(screen.getByRole('radio', { name: '최근순' }));
     await waitFor(() => expect(tiles()).toHaveLength(8));
-    expect(screen.getAllByText('경험 카드, 활동 교내 개발 동아리')).toHaveLength(2); // 활동 카드는 타일에서도 어느 활동인지 보인다
+    expect(screen.getAllByText('교내 개발 동아리', { selector: '.experience-item__meta span' })).toHaveLength(2); // 활동 카드는 타일에서도 어느 활동인지 보인다
     expect(localStorage.getItem('gitory.cards.view')).toBe('"recent"');
   });
 
@@ -141,14 +156,14 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
 });
 
 describe('폴더 안', () => {
-  it('레포 폴더: 위에 소유자·이름·카드 수·후보 보드·경험 카드 만들기, 아래 기술 카드와 경험 카드 두 구역', async () => {
+  it('레포 폴더: 위에 소유자·이름·카드 수·후보 보드 하나, 아래 기술 카드와 경험 카드 두 구역', async () => {
     connectMockServer();
     mountApp(routes(), '/cards/repo/r_auth');
     expect(await screen.findByRole('heading', { level: 1, name: 'auth-service' })).toBeInTheDocument();
     expect(screen.getByText('hong-dev')).toBeInTheDocument();
-    expect(screen.getByText('카드 4장')).toBeInTheDocument();
+    expect(screen.getByText('기술 카드 2장 · 경험 카드 2장 · 확정 2장')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '후보 보드' })).toHaveAttribute('href', '/repos/r_auth/candidates');
-    expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new?repo=r_auth');
+    expect(document.querySelectorAll('.folder-head__actions .btn')).toHaveLength(1);
     const tech = screen.getByRole('region', { name: '기술 카드' });
     const experience = screen.getByRole('region', { name: '경험 카드' });
     expect(tiles(tech)).toHaveLength(2);
@@ -157,35 +172,38 @@ describe('폴더 안', () => {
     expect(screen.getByRole('navigation', { name: 'breadcrumb' })).toHaveTextContent('경험 카드');
   });
 
-  it('경험 카드가 없는 레포: 경험 카드 구역에 직접 쓸 길을 알려 준다', async () => {
+  it('경험 카드가 없는 레포: 경험 카드 구역에는 점선 타일 하나만 있다', async () => {
     connectMockServer();
     mountApp(routes(), '/cards/repo/r_fts');
     const experience = await screen.findByRole('region', { name: '경험 카드' });
-    expect(within(experience).getByText(/아직 경험 카드가 없어요/)).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: '경험 카드 만들기' })).toHaveLength(1); // 머리의 버튼과 같은 이름의 링크를 또 두지 않는다
-    expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new?repo=r_fts');
+    expect(tiles(experience)).toHaveLength(0);
+    expect(within(experience).getByRole('button', { name: '경험 카드 만들기' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: '경험 카드 만들기' })).toHaveLength(1);
     expect(tiles(screen.getByRole('region', { name: '기술 카드' }))).toHaveLength(1);
   });
 
-  it('활동 폴더: 후보 보드는 없고, 경험 카드 만들기·활동 고치기·활동 삭제가 있다. 기술 카드 구역은 없다', async () => {
+  it('활동 폴더: 후보 보드는 없고 활동 고치기·활동 삭제가 있다. 경험 카드 만들기는 구역 끝의 점선 타일이고 기술 카드 구역은 없다', async () => {
     connectMockServer();
     mountApp(routes(), '/cards/activity/act_club');
     expect(await screen.findByRole('heading', { level: 1, name: '교내 개발 동아리' })).toBeInTheDocument();
     expect(screen.getByText('활동, 동아리')).toBeInTheDocument();
-    expect(screen.getByText('카드 2장, 확정 1장')).toBeInTheDocument();
+    expect(screen.getByText('카드 2장 · 확정 1장')).toBeInTheDocument();
     expect(screen.getByText('동아리, 2025년 3월부터 진행 중, 백엔드 파트장')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '후보 보드' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '기술 카드' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new?activity=act_club');
+    expect(screen.queryByRole('link', { name: '경험 카드 만들기' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '활동 고치기' })).toHaveAttribute('href', '/activities/act_club/edit');
-    expect(tiles(screen.getByRole('region', { name: '경험 카드' }))).toHaveLength(2);
+    const experience = screen.getByRole('region', { name: '경험 카드' });
+    expect(tiles(experience)).toHaveLength(2);
+    expect(within(experience).getByRole('button', { name: '경험 카드 만들기' })).toBeInTheDocument();
   });
 
   it('카드가 없는 활동과 없는 활동 주소를 각각 안내한다', async () => {
     connectMockServer();
     const empty = mountApp(routes(), '/cards/activity/act_contest');
-    expect(await screen.findByText(/아직 카드가 없어요/)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '경험 카드 만들기' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: '해커톤 참가' })).toBeInTheDocument();
+    expect(tiles()).toHaveLength(0);
     empty.unmount();
     mountApp(routes(), '/cards/activity/nope');
     expect(await screen.findByText('이미 삭제됐거나 볼 수 없는 활동이에요.')).toBeInTheDocument();
@@ -329,7 +347,7 @@ describe('활동 만들기와 고치기', () => {
     expect(JSON.parse(String(init!.body))).toEqual({ name: '알고리즘 스터디', type: 'STUDY', startMonth: '2026-03' });
     expect((init!.headers as Record<string, string>)['Idempotency-Key']).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     expect(db.activities.filter((activity) => activity.name === '알고리즘 스터디')).toHaveLength(1);
-    expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '경험 카드 만들기' })).toBeInTheDocument();
   });
 
   it('응답을 못 받아 다시 저장해도 같은 키를 쓰고 활동은 하나만 생긴다', async () => {

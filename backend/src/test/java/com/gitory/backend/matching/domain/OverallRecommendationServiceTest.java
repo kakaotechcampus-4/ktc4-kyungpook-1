@@ -121,8 +121,9 @@ class OverallRecommendationServiceTest {
         service.compute(USER);
 
         assertThat(refreshed()).extracting(OverallCompany::companyId).containsExactly("d", "e", "b", "c", "a");
+        OverallCompany.Condition spring = new OverallCompany.Condition("조건", List.of("SPRING"));
         assertThat(refreshed().get(2)).isEqualTo(new OverallCompany("b", "b", companies.get(1).representative().getId(),
-                3, 4, 0, 0));
+                3, 4, 0, 0, List.of(spring, spring, spring), List.of(spring)));
 
     }
 
@@ -136,6 +137,34 @@ class OverallRecommendationServiceTest {
         service.compute(USER);
 
         assertThat(refreshed()).extracting(OverallCompany::companyId).containsExactly("b");
+
+    }
+
+    @Test
+    @DisplayName("맞은 필수 조건과 모자란 필수 조건의 글·기술 이름을 공고에 적힌 순서로 3개까지 저장하고, 우대 조건은 이름에 넣지 않는다")
+    void namesMetAndMissingRequiredConditionsInPostingOrderUpToThree() {
+
+        JobPosting posting = company("toss");
+        JobPostingCriterion spring = criterion(posting, "Spring 서버 개발 경험", CriterionType.REQUIRED, null, CardTech.SPRING);
+        JobPostingCriterion msa = criterion(posting, "MSA 경험", CriterionType.PREFERRED, null);
+        criterion(posting, "Kafka 운영 경험", CriterionType.REQUIRED, null, CardTech.KAFKA);
+        criterion(posting, "클라우드 운영 경험", CriterionType.PREFERRED, null);
+        JobPostingCriterion review = criterion(posting, "코드 리뷰 문화 경험", CriterionType.REQUIRED, null);
+        criterion(posting, "Docker 배포 경험", CriterionType.REQUIRED, null, CardTech.DOCKER);
+        JobPostingCriterion sql = criterion(posting, "SQL 튜닝 경험", CriterionType.REQUIRED, null, CardTech.SQL);
+        JobPostingCriterion redis = criterion(posting, "Redis 캐시 경험", CriterionType.REQUIRED, null, CardTech.REDIS);
+        judged(posting, Map.of(spring.getId(), met(), msa.getId(), met(), review.getId(), met(), sql.getId(), met(),
+                redis.getId(), met()));
+
+        service.compute(USER);
+
+        OverallCompany shown = refreshed().getFirst();
+        assertThat(shown.requiredMet()).isEqualTo(4);
+        assertThat(shown.met()).containsExactly(new OverallCompany.Condition("Spring 서버 개발 경험", List.of("SPRING")),
+                new OverallCompany.Condition("코드 리뷰 문화 경험", List.of()),
+                new OverallCompany.Condition("SQL 튜닝 경험", List.of("SQL")));
+        assertThat(shown.missing()).containsExactly(new OverallCompany.Condition("Kafka 운영 경험", List.of("KAFKA")),
+                new OverallCompany.Condition("Docker 배포 경험", List.of("DOCKER")));
 
     }
 
@@ -297,8 +326,15 @@ class OverallRecommendationServiceTest {
     private JobPostingCriterion criterion(JobPosting posting, CriterionType type, GeneralConditionType general,
                                           CardTech... techs) {
 
+        return criterion(posting, "조건", type, general, techs);
+
+    }
+
+    private JobPostingCriterion criterion(JobPosting posting, String text, CriterionType type,
+                                          GeneralConditionType general, CardTech... techs) {
+
         JobPostingCriterion criterion = JobPostingCriterion.extracted(posting.getId(), type, allCriteria.size() + 1,
-                "조건", "조건", general, List.of(techs), null, false);
+                text, text, general, List.of(techs), null, false);
         ReflectionTestUtils.setField(criterion, "id", nextId++);
         allCriteria.add(criterion);
         return criterion;

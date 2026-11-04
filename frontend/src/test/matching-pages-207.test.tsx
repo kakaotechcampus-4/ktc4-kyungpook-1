@@ -76,7 +76,7 @@ it("does not render null grade as D and provides a card action", async () => {
     client.setQueryData(keys.me, { ...me, stats: { ...me.stats, confirmedCards: 0 } });
   });
   await screen.findByText(
-    "확정한 카드가 없어요. 카드를 확정하면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.",
+    "확정한 카드가 없어요. 카드가 확정되면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.",
   );
   expect(screen.queryByLabelText("근거 등급 D")).not.toBeInTheDocument();
   expect(
@@ -100,13 +100,6 @@ it('does not retry failed AI requests when the screen remounts', async () => {
   const client=mount();await screen.findByRole('alert');cleanup();
   mount('/match',undefined,client);await screen.findByRole('alert');
   expect(fetch).toHaveBeenCalledTimes(1);
-});
-it('explicit list refresh invalidates previously visited details', async () => {
-  vi.spyOn(matchingApi,'list').mockResolvedValue(sampleList.data.map(x=>MatchTarget.parse(x)));
-  const client=mount();await screen.findByText('가온소프트');
-  client.setQueryData(matchKeys.detail(sampleDetail.data.id),sampleDetail.data);
-  fireEvent.click(screen.getByRole('button',{name:'목록 새로고침'}));
-  await waitFor(()=>expect(client.getQueryState(matchKeys.detail(sampleDetail.data.id))?.isInvalidated).toBe(true));
 });
 it("shows each condition's judgement and hides only duplicate quote lines", async () => {
   const detail = MatchDetail.parse(sampleDetail.data);

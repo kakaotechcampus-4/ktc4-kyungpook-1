@@ -12,7 +12,7 @@ const isActor = (v: unknown): v is NoteActor => v === 'CODE' || v === 'SUB_AGENT
 
 export type CheckGroup = 'evidence' | 'repeat' | 'fit' | 'length' | 'inference';
 export const CHECK_GROUPS: CheckGroup[] = ['evidence', 'repeat', 'fit', 'length', 'inference'];
-export const GROUP_LABEL: Record<CheckGroup, string> = { evidence: '근거', repeat: '중복', fit: '문항 적합', length: '글자 수', inference: '추론' };
+export const GROUP_LABEL: Record<CheckGroup, string> = { evidence: '근거', repeat: '겹침', fit: '문항 적합', length: '글자 수', inference: '짐작' };
 /** AI 가 재료에 없는 해석(배운 점·판단 이유·직무 연결·포부)을 지어 쓴 문장 — 사용자가 확인하기 전까지 남는다(#719) */
 export const INFERRED = 'INFERRED';
 const GROUP_OF: Record<string, CheckGroup> = {
@@ -35,7 +35,7 @@ export type NoteThread = {
   /** 추론 표시가 달린 초안 문장 번호 — 확인 API 가 이 번호로 표시를 지운다 */
   sentenceSeq?: number;
 };
-export const STATUS_LABEL: Record<NoteStatus, string> = { open: '보는 중', 'fixed-ai': '고침 · 작성 AI', kept: '그대로 둠', marked: '확인 필요', inferred: 'AI 추론 · 확인 필요', 'fixed-user': '고침 · 나', reverted: '되돌림' };
+export const STATUS_LABEL: Record<NoteStatus, string> = { open: '보는 중', 'fixed-ai': '고침, 작성 AI', kept: '그대로 둠', marked: '확인 필요', inferred: '짐작, 확인 필요', 'fixed-user': '고침, 나', reverted: '되돌림' };
 
 export type ChecklistCell = { phase: 'before' | 'checking' | 'done'; marked: number; fixed: number };
 export type Checklist = Record<CheckGroup, ChecklistCell>;
@@ -45,7 +45,14 @@ export function cellLabel(cell: ChecklistCell): string {
   if (cell.phase === 'before') return '검사 전';
   if (cell.phase === 'checking') return '검사 중';
   const parts = [cell.marked > 0 && `확인 필요 ${cell.marked}`, cell.fixed > 0 && `고침 ${cell.fixed}`].filter(Boolean);
-  return parts.length ? parts.join(' · ') : '통과';
+  return parts.length ? parts.join(', ') : '통과';
+}
+
+/** ⑥ 종이 아래 칩(#727) — 근거 · 겹침 · 짐작 세 칸만 짧게. 글자 수는 옆 숫자가 말한다 */
+export const DRAFT_CHIP_GROUPS: CheckGroup[] = ['evidence', 'repeat', 'inference'];
+export function chipLabel(group: CheckGroup, cell: ChecklistCell): string {
+  if (group === 'evidence') return cell.marked > 0 ? `근거 확인 ${cell.marked}` : cell.fixed > 0 ? `근거 고침 ${cell.fixed}` : '근거 통과';
+  return cell.marked > 0 ? `${GROUP_LABEL[group]} ${cell.marked}` : `${GROUP_LABEL[group]} 없음`;
 }
 
 export type QuestionNotes = { threads: NoteThread[]; questionNotes: NoteThread[]; checklist: Checklist; phase: string | null };
@@ -137,7 +144,7 @@ export function buildQuestionNotes(q: Pick<CoverLetterQuestion, 'id' | 'draft' |
       case 'SENT_BACK': {
         const t = s.sentence ? threadFor(s.sentence, s.value, groupOf(s.code)) : questionNoteFor(s.code);
         t.items.push({ ...item, reason: s.reason?.trim() || checkMessage(s.code, null) }); t.status = 'open'; lastOpen = t;
-        phase = '검토 AI 가 돌려보냄';
+        phase = '다시 쓰는 중';
         break;
       }
       case 'SKELETON': case 'FAILED': general.items.push(item); phase = null; break;
@@ -204,6 +211,19 @@ export function buildAssignNotes(q: Pick<CoverLetterQuestion, 'id' | 'seq' | 'pr
   return { questionNote: items.length ? { key: `q:${q.id}`, sentence: null, value: null, group: null, items, status: 'kept' } : null, phase };
 }
 
+/** 기다리는 종이(②·④·⑤)의 문항마다 상태 한 줄(#745) — wait 차례 기다림 · now 하는 중 · done 끝남(✓) · end 끝났지만 고르지 못함 */
+export type PaperStatus = { text: string; tone: 'wait' | 'now' | 'done' | 'end' };
+export function paperStatus(mode: 'assign' | 'ask' | 'live', q: Pick<CoverLetterQuestion, 'primaryCard' | 'asks'>, phase: string | null): PaperStatus {
+  if (mode === 'ask') return q.asks.length > 0 ? { text: '물어볼 것을 골랐어요', tone: 'done' } : { text: '물어볼 것을 고르는 중', tone: 'now' };
+  if (mode === 'assign') {
+    if (phase === '카드를 고르는 중') return { text: phase, tone: 'now' };
+    if (phase === '카드를 골랐어요' || (phase == null && q.primaryCard)) return { text: '카드를 골랐어요', tone: 'done' };
+    return { text: phase ?? '맞는 카드가 없어요', tone: 'end' };
+  }
+  if (phase == null) return { text: '다 썼어요', tone: 'done' };
+  return { text: phase, tone: phase === '차례를 기다리는 중' ? 'wait' : 'now' };
+}
+
 /** 문항에 속하지 않는 단계(검토 AI 의 전체 검토·실패, 카드 고르기의 전체 확인) — 종이 아래 한 줄로 */
 export function letterNotes(draft: DraftStep[], assign: AssignStep[] = []): NoteItem[] {
   const fromDraft = draft.filter((s) => s.questionId == null && isActor(s.actor))
@@ -211,4 +231,31 @@ export function letterNotes(draft: DraftStep[], assign: AssignStep[] = []): Note
   const fromAssign = assign.filter((s) => s.questionId == null && isActor(s.actor))
     .map((s) => { const l = assignLine(s, []); return { seq: s.seq, actor: s.actor as NoteActor, text: l?.text ?? '', reason: l?.reason ?? null }; });
   return [...fromAssign, ...fromDraft].filter((i) => i.text).sort((a, b) => a.seq - b.seq);
+}
+
+/**
+ * 살펴볼 곳 — 짐작(INFERRED)이 아닌 확인 필요 표시(marks) 중 지금 글에 남은 것. key 는 종이의 칠하기·점검표가 쓰는 메모 key 와 같다.
+ * 사용자가 고쳐 원문이 사라진 표시는 빠진다(그 메모는 '고침, 나'가 된다).
+ */
+export function flaggedSentences(q: Pick<CoverLetterQuestion, 'id' | 'draft' | 'writing'>, steps: DraftStep[], text: string): { key: string; code: string; value: string | null }[] {
+  if (!q.draft) return [];
+  const notes = buildQuestionNotes(q, steps, text, 'edit');
+  const marked = [...notes.threads, ...notes.questionNotes].filter((t) => t.status === 'marked');
+  const head = (s: string) => s.slice(0, SENTENCE_MAX).trim();
+  const out: { key: string; code: string; value: string | null }[] = [];
+  for (const m of q.draft.marks) {
+    if (m.code === INFERRED) continue;
+    const sentence = q.draft.sentences.find((x) => x.seq === m.sentenceSeq)?.text ?? null;
+    const t = marked.find((x) => (sentence ? x.sentence != null && head(x.sentence) === head(sentence) : x.sentence == null && x.group === groupOf(m.code)));
+    if (t && !out.some((o) => o.key === t.key && o.code === m.code)) out.push({ key: t.key, code: m.code, value: m.value });
+  }
+  return out;
+}
+
+/** 다른 문항과 겹친다고 표시된(REPEATED) 문장 중 지금 글에 남은 것 — 문항 차례대로. 알림 줄이 이것으로 생긴다 */
+export function repeatedSentences(questions: Pick<CoverLetterQuestion, 'id' | 'seq' | 'draft'>[], texts: Record<string, string>): { questionId: string; seq: number; sentence: string }[] {
+  return questions.flatMap((q) => (q.draft?.marks ?? []).filter((m) => m.code === 'REPEATED').flatMap((m) => {
+    const sentence = q.draft!.sentences.find((x) => x.seq === m.sentenceSeq)?.text;
+    return sentence && locateSentence(texts[q.id] ?? q.draft!.text, sentence) ? [{ questionId: q.id, seq: q.seq, sentence }] : [];
+  }));
 }

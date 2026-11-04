@@ -1,7 +1,7 @@
 import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas';
 import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
-import { chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, getCoverLetter, listCoverLetters, retryCoverLetter, saveAnswers, saveDraft, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
+import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
  * 실서버(Spring) 의 응답 형태를 그대로 흉내낸다. 노드·브라우저 어디서도 돈다.
@@ -67,6 +67,13 @@ on('POST', '/cover-letters/:id/drafts', ({ params }) => letter(startDrafting(par
 on('PATCH', '/cover-letters/:id/questions/:qid', ({ params, body }) => letter(saveDraft(params[0], params[1], body)));
 on('POST', '/cover-letters/:id/retry', ({ params }) => letter(retryCoverLetter(params[0])));
 on('DELETE', '/cover-letters/:id/questions/:qid/marks/:seq', ({ params }) => letter(confirmInference(params[0], params[1], Number(params[2]))));
+on('POST', '/cover-letters/:id/questions/:qid/polish', ({ params }) => letter(polishQuestion(params[0], params[1])));
+on('POST', '/cover-letters/:id/questions/:qid/polish/apply', ({ params }) => letter(applyPolish(params[0], params[1])));
+on('DELETE', '/cover-letters/:id/questions/:qid/polish', ({ params }) => letter(discardPolish(params[0], params[1])));
+on('GET', '/cover-letters/:id/turns', ({ params }) => letter(listCoverLetterTurns(params[0])));
+on('POST', '/cover-letters/:id/questions/:qid/turns/open', ({ params }) => letter(openCoverLetterTurn(params[0], params[1])));
+on('POST', '/cover-letters/:id/questions/:qid/turns/skip', ({ params }) => letter(skipCoverLetterTurn(params[0], params[1])));
+on('POST', '/cover-letters/:id/questions/:qid/turns', ({ params, body }) => letter(replyCoverLetterTurn(params[0], params[1], body)));
 on('DELETE', '/cover-letters/:id', ({ params }) => letter(deleteCoverLetter(params[0])));
 on('GET', '/profile', () => ok(getProfile())); // 저장한 적이 없어도 200 + 빈 목록 + savedAt:null
 on('PUT', '/profile', ({ body }) => {
@@ -99,7 +106,10 @@ on('POST', '/github/disconnect', () => { db.user.github.connected = false; db.us
 
 // ───────────────────────────── 레포 ─────────────────────────────
 const stripDisclosure = ({ disclosure, userId, ...r }: Any) => { void disclosure; void userId; return r; };
-on('GET', '/repos', () => ok(db.repos.map((r) => ({ ...stripDisclosure(r), cardCount: db.cards.filter((c) => c.repo?.id === r.id && c.status === 'CONFIRMED').length }))));
+const repoList = () => db.repos.map((r) => ({ ...stripDisclosure(r), cardCount: db.cards.filter((c) => c.repo?.id === r.id && c.status === 'CONFIRMED').length }));
+on('GET', '/repos', () => ok(repoList()));
+// 실제 서버처럼 GitHub 을 거치지 않은 저장 목록. '/repos/:id' 보다 먼저 둬야 saved 가 id 로 잡히지 않는다
+on('GET', '/repos/saved', () => ok(repoList()));
 on('GET', '/repos/:id', ({ params }) => {
   const r = db.repos.find((x) => x.id === params[0]);
   if (!r) return fail(404, 'REPO_NOT_FOUND', '레포를 찾을 수 없습니다');

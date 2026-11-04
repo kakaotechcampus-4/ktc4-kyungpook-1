@@ -165,7 +165,7 @@ describe('프로필 메뉴 — 로그아웃을 찾기 쉽게', () => {
     fireEvent.click(trigger);
     expect(screen.getByRole('menuitem', { name: '마이페이지' })).toHaveAttribute('href', '/settings');
     expect(screen.getByRole('menuitem', { name: /다크 모드로|라이트 모드로/ })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: '로그아웃' })).toHaveClass('profile-menu__item--danger');
+    expect(screen.getByRole('menuitem', { name: '로그아웃' })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();

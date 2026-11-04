@@ -20,7 +20,17 @@ export function useMe() {
     staleTime: 5 * 60_000,
   });
 }
-export const useRepos = () => useQuery({ queryKey: keys.repos, queryFn: endpoints.repos, staleTime: 60_000 });
+/**
+ * 최신 목록(/repos)은 GitHub 동기화를 기다려 1~2초 걸린다. 그동안 저장 목록(/repos/saved, 수십 ms)을 자리표시로 먼저 보여 준다.
+ * 저장 목록이 비었거나 실패하면 자리표시 없이 지금처럼 최신 목록을 기다린다.
+ */
+export function useRepos() {
+  const saved = useQuery({ queryKey: keys.savedRepos, queryFn: endpoints.savedRepos, staleTime: 60_000, retry: false });
+  return useQuery({
+    queryKey: keys.repos, queryFn: endpoints.repos, staleTime: 60_000,
+    placeholderData: saved.data && saved.data.length > 0 ? saved.data : undefined,
+  });
+}
 export const useRepo = (id: string | undefined) =>
   useQuery({ queryKey: keys.repo(id ?? ''), queryFn: () => endpoints.repo(id!), enabled: !!id });
 export const useCandidates = (repoId: string | undefined) =>

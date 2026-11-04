@@ -199,6 +199,8 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .toast__action, .toast__close { position: relative; }
 .toast__action::after { content: ''; position: absolute; inset: -12px -6px; }
 .toast__close::after { content: ''; position: absolute; inset: -12px -14px -12px -13px; }
+/* '보기'처럼 짧은 글자도 누르는 너비가 44px 은 되게 한다 — 옆 닫기 버튼의 넓힌 영역이 덮지 않게 버튼 자체를 넓힌다 */
+.toast__action { min-width: 44px; }
 .toast__action { color: var(--text-on-toast); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .toast__close { color: var(--toast-muted); font-size: 12px; padding: 2px 4px; }
 .toast__close:hover { color: var(--text-on-toast); }

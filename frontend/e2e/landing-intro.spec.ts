@@ -17,7 +17,15 @@ for (const width of [320, 390, 768, 1440]) {
   });
 }
 
-for (const loggedIn of [false, true]) {
+test('a signed-in visitor opening /login goes home instead of the login screen', async ({ page }) => {
+  await page.addInitScript(() => sessionStorage.setItem('gitory.demo.session', '1'));
+  await page.goto('/login');
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('.landing')).toHaveCount(0);
+});
+
+// 로그인한 사람은 /login 에서 홈으로 가므로(위 시험) 인트로 재생은 로그아웃 상태만 본다
+for (const loggedIn of [false]) {
   test(`every refresh replays the introduction with loggedIn=${loggedIn}`, async ({ page }) => {
     await page.addInitScript(loggedIn => {
       sessionStorage.setItem('gitory.brand-intro.v1', '1'); // Legacy flag must no longer suppress entry.

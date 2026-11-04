@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.UUID;
 
 public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep failedStep, String errorCode,
-                              Boolean retryable, boolean running, String jobRole, String memo, PostingRef posting,
-                              Instant createdAt,
+                              Boolean retryable, boolean running, String jobRole, String memo,
+                              List<Strength> strengths, Boolean memoUsable, PostingRef posting, Instant createdAt,
                               Instant updatedAt, List<Question> questions, List<Step> assignSteps,
                               List<WritingStep> draftSteps) {
 
@@ -18,7 +18,7 @@ public record CoverLetterView(UUID id, CoverLetterStage stage, CoverLetterStep f
     public record Question(UUID id, int seq, String text, int charLimit, QuestionTheme theme, CardRef primaryCard,
                            boolean primaryCardDeleted, CardRef supportingCard, AssignedBy assignedBy, String pickReason,
                            List<Considered> considered, List<MaterialItem> materials, List<Ask> asks,
-                           QuestionDraft draft, Writing writing) {
+                           QuestionDraft draft, Writing writing, QuestionPolish polish, int polishAppliedCount) {
     }
 
     public record Writing(String text, int round) {

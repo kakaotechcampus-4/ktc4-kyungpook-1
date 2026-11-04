@@ -63,6 +63,7 @@ class CoverLetterViewFactory {
 
         return new CoverLetterView(letter.getPublicId(), letter.getStage(), letter.getFailedStep(),
                 letter.getErrorCode(), retryable(letter), letter.isRunning(), letter.getJobRole(), letter.getMemo(),
+                List.copyOf(letter.getStrengths()), letter.getMemoUsable(),
                 CoverLetterPosting.refOf(letter), letter.getCreatedAt(), letter.getUpdatedAt(),
                 loaded.stream()
                         .map(question -> question(question, labels, slots, remembered,
@@ -112,7 +113,7 @@ class CoverLetterViewFactory {
                 question.getCharLimit(), question.getTheme(), cardRef(labelOf(labels, question.getPrimaryCardId())),
                 primaryCardDeleted, cardRef(labelOf(labels, question.getSupportingCardId())), question.getAssignedBy(),
                 question.getPickReason(), considered, materials(question.getPrimaryCardId(), labels, slots, remembered),
-                asks(question), draft(question), writing);
+                asks(question), draft(question), writing, question.getPolish(), question.getPolishAppliedCount());
 
     }
 

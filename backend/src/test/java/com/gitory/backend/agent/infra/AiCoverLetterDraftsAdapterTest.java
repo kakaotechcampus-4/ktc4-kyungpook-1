@@ -32,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AiCoverLetterDraftsAdapterTest {
 
     private static final CoverLetterDraftsRequest REQUEST = new CoverLetterDraftsRequest(7L, "백엔드 개발", null,
+            List.of("METICULOUS"),
             List.of(new CoverLetterDraftsRequest.Question(1, "협업 경험을 쓰세요", 700, "COLLABORATION",
                             new CoverLetterQuestionsRequest.CardDetail(11L, "배포 시간 단축", "TECH", null,
                                     List.of(new CoverLetterQuestionsRequest.Statement("A", "빌드를 병렬로 돌렸다"))),
@@ -86,6 +87,7 @@ class AiCoverLetterDraftsAdapterTest {
         JsonNode first = mapper.readTree(requestBody).path("questions").get(0);
         assertThat(requestPath).isEqualTo("/internal/cover-letter-drafts");
         assertThat(mapper.readTree(requestBody).has("posting")).isFalse();
+        assertThat(mapper.readTree(requestBody).path("strengths").get(0).asString()).isEqualTo("METICULOUS");
         assertThat(first.path("missing_items").get(0).asString()).isEqualTo("LEARNING");
         assertThat(first.path("answers").get(0).path("card_id").asLong()).isEqualTo(11L);
         assertThat(first.path("answers").get(1).path("card_id").isNull()).isTrue();

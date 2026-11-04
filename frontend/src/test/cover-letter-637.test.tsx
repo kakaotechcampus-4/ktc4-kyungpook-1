@@ -15,7 +15,7 @@ vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 
 /** Mock 공고 첫 줄(docs/examples/matching/list.json) — 공고 API 의 role 이 자소서 응답의 posting.title 이다 */
 const POSTING = { id: '3f6c2a10-6b1d-4c2e-9a51-0d7e8b4f1a01', company: '가온소프트', title: '백엔드 엔지니어 (Java·Spring)' };
-const input = { jobRole: '백엔드 개발', memo: null, questions: [{ text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }] };
+const input = { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [{ text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }] };
 
 const req = (method: string, path: string, body: unknown = {}, headers: Record<string, string> = {}) =>
   handle(method, path, new URLSearchParams(), body as Record<string, unknown>, true, headers);
@@ -57,7 +57,10 @@ function mount(path: string, seed?: (client: QueryClient) => void) {
 }
 
 const jobInput = () => screen.getByPlaceholderText('예: 백엔드 개발');
-const fillQuestion = () => fireEvent.change(screen.getByLabelText('1번 문항'), { target: { value: input.questions[0].text } });
+const fillQuestion = () => {
+  fireEvent.change(screen.getByLabelText('지원 이유'), { target: { value: input.memo } });
+  fireEvent.change(screen.getByLabelText('1번 문항'), { target: { value: input.questions[0].text } });
+};
 
 beforeEach(resetDb);
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -70,7 +73,7 @@ describe('① 공고에서 시작한 입력 화면', () => {
     expect(screen.getByRole('region', { name: '지원 공고' })).toHaveTextContent('가온소프트');
     expect(screen.getByRole('link', { name: /공고 보기/ })).toHaveAttribute('href', `/match/${POSTING.id}`);
     fillQuestion();
-    fireEvent.click(screen.getByRole('button', { name: '카드 고르기 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '카드 고르기' }));
     await waitFor(() => expect(db.coverLetters).toHaveLength(1));
     expect(db.coverLetters[0].posting).toEqual(POSTING);
   });
@@ -89,7 +92,7 @@ describe('① 공고에서 시작한 입력 화면', () => {
     mount(`/cover-letters/new?postingId=${POSTING.id}`);
     await waitFor(() => expect(jobInput()).toHaveValue(POSTING.title));
     fillQuestion();
-    fireEvent.click(screen.getByRole('button', { name: '카드 고르기 시작' }));
+    fireEvent.click(screen.getByRole('button', { name: '카드 고르기' }));
     await screen.findByText('공고를 찾을 수 없어요');
     expect(db.coverLetters).toHaveLength(0);
     // 같은 화면으로 돌아오므로 적어 둔 문항은 남고, 공고 때문에 난 실패 안내는 사라진다
@@ -123,7 +126,7 @@ describe('자소서 화면과 목록', () => {
     ]));
     const rows = screen.getAllByRole('listitem');
     expect(within(rows[0]).getByText('가온소프트')).toBeInTheDocument();
-    expect(within(rows[1]).getByText('가온소프트 · 백엔드 엔지니어 (Java·Spring)')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('가온소프트, 백엔드 엔지니어 (Java·Spring)')).toBeInTheDocument();
     expect(within(rows[2]).queryByText(/가온소프트/)).not.toBeInTheDocument();
   });
 

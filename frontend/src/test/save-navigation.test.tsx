@@ -43,8 +43,9 @@ describe('writing route save protection', () => {
     fireEvent.change(screen.getByLabelText('상황'), { target: { value: 'Saved manual situation' } });
     fireEvent.click(screen.getByRole('button', { name: '작성 시작' }));
     fireEvent.click(await screen.findByRole('button', { name: '저장 후 종료' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/cards/manual-cache'));
-    await waitFor(() => expect(client.getQueryState(keys.card('manual-cache'))?.status).toBe('error'));
+    // 느린 CI 러너에서 저장 요청과 이동이 1초를 넘겨 떨어진 적이 있어 넉넉히 기다린다
+    await waitFor(() => expect(router.state.location.pathname).toBe('/cards/manual-cache'), { timeout: 10_000 });
+    await waitFor(() => expect(client.getQueryState(keys.card('manual-cache'))?.status).toBe('error'), { timeout: 10_000 });
     expect(screen.getByText('Saved manual situation')).toBeInTheDocument();
     await act(async () => { await router.navigate('/cards/manual-cache?mode=edit'); });
     expect(screen.getByLabelText('상황')).toHaveValue('Saved manual situation');

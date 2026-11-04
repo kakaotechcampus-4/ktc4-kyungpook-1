@@ -57,15 +57,17 @@ export function InterviewPage() {
   // 넘긴 질문도 질문 상한에 센다(서버 규칙)
   const capReached = allTurns.length >= maxTurns;
 
-  // 칸을 정해 들어오면 그 칸을, 처음인데 칸이 없으면 AI 가 고른 칸을 묻는다
+  // 칸을 정해 들어오면 그 칸을, 처음인데 칸이 없으면 AI 가 고른 칸을 묻는다.
+  // 확정 카드는 더 물을 수 없다 — 카드를 받아 초안인 걸 확인하기 전에는 묻지 않는다(확정 카드에 들어오기만 해도 POST 가 나가던 문제)
+  const draftReady = q.data?.status === 'DRAFT';
   useEffect(() => {
-    if (turns.isSuccess && !open && !autoAsked.current && !capReached && (field || allTurns.length === 0)) {
+    if (draftReady && turns.isSuccess && !open && !autoAsked.current && !capReached && (field || allTurns.length === 0)) {
       autoAsked.current = true;
       ask.mutate(field ?? undefined, {
         onSuccess: (turn) => turn ? track('interview_asked', { cardId, field: turn.field }) : setAiDone(true),
       });
     }
-  }, [turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
+  }, [draftReady, turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
 
   // 답하거나 넘긴 뒤에는 칸을 정하지 않고 묻는다. AI 가 다음 칸을 고르거나, 더 물을 것이 없으면 null 로 끝낸다
   const askNext = (turnsAfter: number) => {
@@ -191,12 +193,13 @@ export function InterviewPage() {
               <div className="stack" style={{ gap: 6 }}>
                 <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{starFieldShort[open.field]} 칸</Badge></div>
                 <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
-                <details className="interview-evidence"><summary>질문 근거 보기</summary>
+                {/* 근거가 둘 다 비면 펼쳐도 빈 칸뿐이라 열 거리 자체를 두지 않는다(#536) */}
+                {(open.found.length > 0 || open.missing.length > 0) && <details className="interview-evidence"><summary>질문 근거 보기</summary>
                 <div className="found" style={{ gridTemplateColumns: '1fr' }}>
                   <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>• {f}</span>)}</div>
                   <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>• {m}</span>)}</div>
                 </div>
-                </details>
+                </details>}
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>

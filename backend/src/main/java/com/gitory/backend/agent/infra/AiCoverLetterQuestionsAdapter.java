@@ -65,7 +65,34 @@ public class AiCoverLetterQuestionsAdapter implements CoverLetterQuestionsPort {
             throw AiClientException.invalidResponse();
         }
 
-        return new CoverLetterQuestions(List.copyOf(questions));
+        return new CoverLetterQuestions(memoUsable(data), memoProblem(data), List.copyOf(questions));
+
+    }
+
+    // 판정을 아직 보내지 않던 AI 응답도 받도록, 칸이 없으면 판정하지 않은 것으로 본다
+    private static Boolean memoUsable(JsonNode data) {
+
+        JsonNode value = data.path("memo_usable");
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        if (!value.isBoolean()) {
+            throw AiClientException.invalidResponse();
+        }
+        return value.booleanValue();
+
+    }
+
+    private static String memoProblem(JsonNode data) {
+
+        JsonNode value = data.path("memo_problem");
+        if (value.isMissingNode() || value.isNull()) {
+            return null;
+        }
+        if (!value.isString()) {
+            throw AiClientException.invalidResponse();
+        }
+        return value.asString().strip();
 
     }
 

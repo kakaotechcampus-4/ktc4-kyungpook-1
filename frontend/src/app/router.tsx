@@ -45,9 +45,15 @@ const NotFoundPage = L(() => import('@/features/NotFoundPage'), 'NotFoundPage');
 
 const S = ({ children }: { children: ReactNode }) => <Suspense fallback={<main className="main" style={{ alignItems: 'center', paddingTop: 96 }}><PageLoading /></main>}>{children}</Suspense>;
 
+/** 콜백에 실패 사유가 실려 오면 그대로 로그인 화면에 넘겨 안내를 띄운다. 없으면 홈(세션 확인은 AuthGate) */
+function AuthCallback() {
+  const error = new URLSearchParams(window.location.search).get('error');
+  return <Navigate to={error ? `/login?error=${encodeURIComponent(error)}` : '/'} replace />;
+}
+
 export const router = createBrowserRouter([
   { path: '/login', element: <S><LandingPage /></S>, errorElement: <ErrorBoundary /> },
-  { path: '/auth/callback', element: <Navigate to="/" replace /> }, // Spring 이 세션을 세운 뒤 여기로 보낼 수도 있다
+  { path: '/auth/callback', element: <AuthCallback /> }, // Spring 이 세션을 세운 뒤 여기로 보낼 수도 있다
   {
     element: <AuthGate><AppShell /></AuthGate>,
     errorElement: <ErrorBoundary />,

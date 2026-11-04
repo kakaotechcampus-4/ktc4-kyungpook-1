@@ -193,7 +193,7 @@ describe('레포 화면 (#520 G-03 · 용어집)', () => {
     repos();
     expect(screen.getByText('레포를 하나 골라 주세요')).toBeInTheDocument();
     expect(screen.queryByText(/고르세요/)).not.toBeInTheDocument();
-    expect(screen.getAllByText(/^카드 \d+장$/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^정리 완료 · 카드 \d+장$/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^카드 \d+건$/)).not.toBeInTheDocument();
   });
 

@@ -84,32 +84,27 @@ describe('후보 보드 (C-01, C-02, C-03, C-06, C-09)', () => {
     </Routes></MemoryRouter></QueryClientProvider>);
     return board;
   }
-  const sectionCount = () => Number(screen.getByText('후보 선택').parentElement!.querySelector('.section-head__count')!.textContent);
-
-  it('제목의 후보 수와 "후보 선택" 옆 수가 같다 (카드로 만든 후보와 제외한 후보는 두 곳 모두에서 뺀다)', () => {
-    const board = mountBoard('r_auth', { mutate: (b) => ({ ...b, candidates: b.candidates.map((c, i) => i === 0 && c.status === 'NEW' ? { ...c, status: 'EXCLUDED' as const } : c) }) });
-    const open = board.candidates.filter((c) => c.status === 'NEW').length - 1;
-    expect(board.candidates.some((c) => c.status === 'USED')).toBe(true);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(`후보 ${open}개`);
-    expect(sectionCount()).toBe(open);
-    expect(open).toBeLessThan(board.candidates.length);
-  });
-
-  it('부분 결과여도 제목의 수는 같은 기준이다', () => {
-    const board = mountBoard('r_auth', { mutate: (b) => ({ ...b, partial: true }) });
-    const open = board.candidates.filter((c) => c.status !== 'USED' && c.status !== 'EXCLUDED').length;
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(`후보 ${open}개 (부분 결과)`);
-    expect(sectionCount()).toBe(open);
-  });
-
-  it('고르는 대상은 모두 "후보"라고 말하고, "더 보기"와 "보기"가 이어지지 않는다', () => {
+  it('머리는 "레포 이름 에서 찾은 일" 제목과 안내 한 줄이고, 정리 기준·직접 추가는 회색 글자 버튼이다 (회색 레포 상자·"후보 선택" 머리는 없다)', () => {
     mountBoard('r_auth');
-    expect(screen.getByText('카드로 만들 후보를 골라 주세요.')).toBeInTheDocument();
-    expect(screen.getByText(/카드로 만들 만한 후보를 골라 뒀어요/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '후보를 골라 주세요' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /^추천도 낮은 후보 \d+개 보기$/ })).toBeInTheDocument();
-    expect(screen.queryByText(/더 보기/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/경험을 선택/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('auth-service 에서 찾은 일');
+    expect(screen.getByText('카드로 남길 일을 골라 주세요. 고른 것마다 초안을 써 드려요.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '정리 기준' })).toHaveClass('btn--text');
+    expect(screen.getByRole('button', { name: '+ 직접 추가' })).toHaveClass('btn--text');
+    expect(document.querySelector('.repo-ctx')).toBeNull();
+    expect(screen.queryByText('후보 선택')).not.toBeInTheDocument();
+  });
+
+  it('부분 결과면 제목은 그대로 두고 부분 결과 안내를 따로 보인다', () => {
+    mountBoard('r_auth', { mutate: (b) => ({ ...b, partial: true }) });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/^auth-service 에서 찾은 일$/);
+    expect(screen.getByText('읽은 기록에서 찾은 후보예요')).toBeInTheDocument();
+  });
+
+  it('단계 표시줄은 레포 선택 → 읽는 범위 확인 → 후보 고르기이고, 후보 고르기가 지금 단계다', () => {
+    mountBoard('r_auth');
+    const steps = within(screen.getByRole('list', { name: '진행 단계' })).getAllByRole('listitem');
+    expect(steps.map((step) => step.textContent)).toEqual(['1레포 선택', '2읽는 범위 확인', '3후보 고르기']);
+    expect(steps[2]).toHaveAttribute('aria-current', 'step');
   });
 
   it('후보가 하나도 없는 화면의 제목도 "후보"이고, 글을 직접 쓰는 길은 "직접 작성"이다', () => {

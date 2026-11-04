@@ -37,9 +37,8 @@
 /* 지금 쓰는 칸은 두꺼운 윤곽으로 강조한다. 바탕은 비워 두어 '다 쓴 칸'의 채움과 겹쳐 보이지 않게 한다 */
 .live-slot[data-phase='NEXT'], .live-slot[data-phase='WRITING'], .live-slot[data-phase='REWRITING'] { background: var(--bg-surface); box-shadow: inset 0 0 0 2px var(--border-selected); z-index: 1; }
 .live-slot[data-phase='NEXT'] .live-slot__status, .live-slot[data-phase='WRITING'] .live-slot__status, .live-slot[data-phase='REWRITING'] .live-slot__status { color: var(--text-accent); }
-/* 다 쓴 칸은 색을 채운다. 왼쪽 띠는 장식이고 뜻은 '완료' 글자가 말한다 */
+/* 다 쓴 칸은 색을 채운다. 뜻은 '완료' 글자가 말한다. 두꺼운 왼쪽 띠는 두지 않는다: 아래 칸의 두꺼운 윤곽(지금 쓰는 칸)과 이어져 긴 검은 줄처럼 깨져 보였다 */
 .live-slot[data-phase='DONE'] { background: var(--bg-selected); }
-.live-slot[data-phase='DONE']::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--accent-point); }
 .live-slot[data-phase='DONE'] .live-slot__status { color: var(--text-accent); }
 /* 근거가 없어 비운 칸과 주지 않은 칸 */
 .live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'] { background: var(--field-dropped-bg); }
@@ -48,7 +47,7 @@
 .live-slot[data-phase='MISSED'] .live-slot__status, .live-slot[data-phase='MISSED'] .live-slot__note { color: var(--state-failed-text); }
 .live-slot[data-phase='DONE'], .live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'], .live-slot[data-phase='MISSED'] { transition: background-color .3s; }
 
-/* 칸에 한 AI 의 과정. 카드 상세 'AI 가 한 일'과 같은 세로 모양이다. 왼쪽 선과 아이콘은 장식이고 순서는 목록(ol)이 말한다 */
+/* 칸에 한 AI 의 과정. 카드 상세 '만든 과정'과 같은 세로 모양이다. 왼쪽 선과 아이콘은 장식이고 순서는 목록(ol)이 말한다 */
 .live-steps { display: flex; flex-direction: column; margin: 0; padding: 10px 0 0; list-style: none; border-top: 1px dashed var(--border-strong); }
 .live-step { position: relative; display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 8px; padding-bottom: 8px; min-width: 0; font-size: 13px; line-height: 20px; color: var(--text-strong); }
 .live-step:last-child { padding-bottom: 0; }

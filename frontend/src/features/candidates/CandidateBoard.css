@@ -1,0 +1,36 @@
+/* #753 후보 보드 — 후보 하나를 타일 하나로. 강조색은 고른 타일(--border-accent, 고른 것의 파랑) 하나만 쓰고 나머지는 회색 토큰이다 */
+.candidate-board .repo-picker__steps { margin-bottom: 4px; }
+.cand-head { display: flex; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; }
+.cand-head > .stack { flex: 1 1 320px; min-width: 0; }
+.cand-head__acts { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.cand-grp { display: flex; flex-direction: column; min-width: 0; }
+.cand-grp__h { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-size: 18px; line-height: 26px; font-weight: 600; }
+.cand-grp__n { display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-subtle); font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.cand-grp__meta { margin-left: auto; font-size: 13px; font-weight: 400; color: var(--text-tertiary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cand-grp__more { align-self: flex-start; margin: 8px 0 0 -8px; }
+
+.cand-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 14px; }
+.cand-tile { display: flex; flex-direction: column; min-width: 0; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+.cand-tile:hover { border-color: var(--border-strong); }
+.cand-tile--on, .cand-tile--on:hover { border-color: var(--border-accent); box-shadow: inset 0 0 0 1px var(--border-accent); background: var(--bg-accent); }
+.cand-tile--open { grid-column: 1 / -1; }
+.cand-tile__pick { flex: 1; display: flex; flex-direction: column; gap: 6px; width: 100%; min-height: var(--control-touch-size); padding: 16px 16px 14px; border: 0; border-radius: inherit; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.cand-tile__pick:disabled { cursor: default; }
+.cand-tile__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.cand-tile__title { min-width: 0; font-size: 16px; line-height: 1.4; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+.cand-kind { flex: none; display: inline-block; padding: 0 8px; border-radius: var(--radius-full); background: var(--bg-subtle); font-size: 12px; line-height: 20px; font-weight: 500; color: var(--text-secondary); white-space: nowrap; }
+.cand-tile__reason { display: -webkit-box; font-size: 14px; line-height: 1.5; color: var(--text-secondary); -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cand-tile__weak { font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.cand-tile__foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 6px; font-size: 13px; color: var(--text-tertiary); }
+.cand-tile__chk { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border: 1.5px solid var(--border-strong); border-radius: var(--radius-xs); background: var(--bg-surface); font-size: 12px; font-weight: 700; color: transparent; }
+.cand-tile--on .cand-tile__chk { border-color: var(--border-accent); background: var(--border-accent); color: var(--bg-surface); }
+.cand-tile--on .cand-tile__state { color: var(--text-primary); font-weight: 600; }
+.cand-tile__commits { align-self: flex-start; margin: -6px 8px 8px; }
+.cand-tile__details { padding: 0 16px 16px; }
+
+.cand-made { list-style: none; margin: 0; padding: 0; }
+.cand-made__row { display: flex; align-items: center; gap: 10px; min-height: var(--control-touch-size); padding: 0 4px; border-top: 1px solid var(--border-default); font-size: 14px; color: var(--text-secondary); }
+.cand-made__row:last-child { border-bottom: 1px solid var(--border-default); }
+.cand-made__title { min-width: 0; color: var(--text-strong); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cand-made__link { margin-left: auto; flex: none; }

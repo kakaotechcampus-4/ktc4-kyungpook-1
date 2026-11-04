@@ -5,7 +5,7 @@ import { useCards, useMe, useRepos } from '@/api/queries';
 import type { CardSummary, StarField } from '@/api/schemas';
 import { IconBox, KindIcon, PageTitle, SectionHead, StarDots } from '@/components/ui';
 import { CardStatusMark } from '@/components/cards/CardStatusMark';
-import { cardKindShort } from '@/lib/labels';
+import { cardKindLabel } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
 import { periodLabel } from '@/lib/format';
 import { track } from '@/lib/track';
@@ -72,7 +72,7 @@ export function HomePage() {
   const confirmedCount = cards.isSuccess ? cards.data.filter((c) => c.status === 'CONFIRMED').length : undefined;
   const matchedCount = matchSupported() && confirmedCount !== 0 && matched.isSuccess ? matched.data.matchedPostings : undefined;
   const matchedNote = !matchSupported() || confirmedCount === undefined ? '경험과 연결되는 다음 기회'
-    : confirmedCount === 0 ? '카드를 확정하면 매칭할 수 있어요'
+    : confirmedCount === 0 ? '카드가 확정되면 매칭할 수 있어요'
     : matchedCount === undefined ? '경험과 연결되는 다음 기회'
     : matchedCount === 0 ? '전체 매칭을 하면 맞는 공고를 찾아요' : 'AI 가 내 카드로 맞춰 본 공고 중 맞는 공고';
   return (
@@ -89,10 +89,10 @@ export function HomePage() {
         <div className="home-welcome__visual" aria-hidden="true"><div className="activity-float activity-float--commit"><GitCommitHorizontal size={20} /><span>Commit<small>쌓아온 작업 기록</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--pr"><GitPullRequest size={20} /><span>Pull Request<small>함께 해결한 문제</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--issue"><CircleDot size={20} /><span>Experience<small>나만의 경험 카드로</small></span><Check size={17} /></div><Github className="home-welcome__github" size={52} strokeWidth={1.4} /></div>
       </section>
       <section className="home-overview" aria-label="취업 준비 현황">
-        <div className="overview-tile overview-tile--blue"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
-        <div className="overview-tile overview-tile--lavender"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
-        <div className="overview-tile overview-tile--mint"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
-        <Link to="/match" className="overview-tile overview-tile--yellow overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
+        <div className="overview-tile"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
+        <div className="overview-tile"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
+        <div className="overview-tile"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
+        <Link to="/match" className="overview-tile overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
       </section>
       <ActiveJobsList />
       <section className="prompt" id="home-repo-search" hidden={!repoSearchOpen}>
@@ -198,17 +198,20 @@ export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) =>
 export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
 
 export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: string[] }) {
-  const src = summarySource(c);
+  const experience = c.kind === 'QUALITATIVE';
+  const origin = experience ? c.activity?.name ?? cardKindLabel.QUALITATIVE : summarySource(c) ?? cardKindLabel.TECH;
   const sub = summaryDetail(c);
   return (
-    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : 'gcard--confirmed'}`}>
+    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : 'gcard--confirmed'}${experience ? ' gcard--experience' : ''}`}>
       <div className="experience-item__meta">
-        <span>{cardKindShort[c.kind]} 카드{src ? `, ${src}` : ''}</span>
-        {c.period && <span>{periodLabel(c.period)}</span>}
+        <KindIcon kind={c.kind} size={24} />
+        <span>{[origin, c.period && periodLabel(c.period)].filter(Boolean).join(' · ')}</span>
       </div>
-      <CardTags areas={c.areas} techs={c.techs} techLimit={4} />
       <h3 className="gcard__title">{c.title}</h3>
-      <StarDots filled={filledOf(c)} low={needsReviewOf(c)} showLabels />
+      {c.preview !== undefined && (c.preview
+        ? <p className="experience-item__preview">{c.preview}</p>
+        : <p className="experience-item__preview experience-item__preview--empty">결과가 아직 없어요</p>)}
+      <CardTags areas={c.areas} techs={c.techs} techLimit={2} />
       <div className="experience-item__footer">
         <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <CardStatusMark status={c.status} star={c.star} />

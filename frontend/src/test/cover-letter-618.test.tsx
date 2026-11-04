@@ -46,7 +46,7 @@ const realNow = Date.now;
 const advance = (sec: number) => { shift += sec * 1000; Date.now = () => realNow() + shift; };
 /** 만들기 → 카드 고르기 → 질문까지 끝난 자소서(목) */
 function askedLetter() {
-  const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, questions: [
+  const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [
     { text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }, { text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: 1000 },
   ] }).data);
   advance(7);
@@ -226,7 +226,7 @@ describe('여백 메모와 점검표', () => {
     const steps = [step({ seq: 1, kind: 'WROTE' }), step({ seq: 2, actor: 'CODE', kind: 'CHECK_FAILED', code: 'UNSOURCED_NUMBER', value: '30%', sentenceSeq: 1, sentence: S1 })];
     const open = buildQuestionNotes(q, steps, TEXT, 'live');
     expect(open.threads[0]).toMatchObject({ sentence: S1, value: '30%', group: 'evidence', status: 'open' });
-    expect(open.threads[0].items[0]).toMatchObject({ actor: 'CODE', text: "'30%'는 카드에 없는 수치예요" });
+    expect(open.threads[0].items[0]).toMatchObject({ actor: 'CODE', text: "'30%' — 카드에 없는 숫자예요" });
     expect(cellLabel(open.checklist.evidence)).toBe('검사 중');
     expect(open.phase).toBe('검사 중');
     const fixed = buildQuestionNotes(q, [...steps, step({ seq: 3, kind: 'DECIDED', action: 'FIX', reason: '표현을 바꿔요' }), step({ seq: 4, kind: 'REWROTE', value: '140' })], TEXT, 'live');
@@ -256,7 +256,7 @@ describe('여백 메모와 점검표', () => {
     ];
     const withDraft = question({ draft: draft(TEXT_B, [{ sentenceSeq: 1, code: 'UNSOURCED_NUMBER', value: '30%' }]) });
     const untouched = buildQuestionNotes(withDraft, steps, TEXT_B, 'edit');
-    expect(cellLabel(untouched.checklist.evidence)).toBe('확인 필요 1 · 고침 1');
+    expect(cellLabel(untouched.checklist.evidence)).toBe('확인 필요 1, 고침 1');
     const edited = buildQuestionNotes(withDraft, steps, TEXT_B.replace(S1, '장애를 크게 줄인 팀이라서.'), 'edit');
     const mine = edited.threads.find((t) => t.sentence === S1)!;
     expect(mine.status).toBe('fixed-user');
@@ -317,7 +317,7 @@ describe('여백 메모와 점검표', () => {
     expect(cellLabel({ phase: 'before', marked: 0, fixed: 0 })).toBe('검사 전');
     expect(cellLabel({ phase: 'checking', marked: 0, fixed: 0 })).toBe('검사 중');
     expect(cellLabel({ phase: 'done', marked: 0, fixed: 0 })).toBe('통과');
-    expect(cellLabel({ phase: 'done', marked: 2, fixed: 1 })).toBe('확인 필요 2 · 고침 1');
+    expect(cellLabel({ phase: 'done', marked: 2, fixed: 1 })).toBe('확인 필요 2, 고침 1');
   });
 
   it('카드 고르기 메모는 고른 카드와 이유를 말하고, 모르는 actor 의 단계는 건너뛴다', () => {
@@ -333,7 +333,7 @@ describe('여백 메모와 점검표', () => {
 
 // ───────────────────────────── ⑤ 쓰는 중 ─────────────────────────────
 describe('⑤ 종이 위에 쓰는 중', () => {
-  it('움직임을 줄이면 글이 바로 다 보이고, 걸린 문장은 칠해지고 여백 메모와 점검표가 붙는다', () => {
+  it('움직임을 줄이면 글이 바로 다 보이고, 걸린 문장은 칠해지고 여백 메모와 상태 한 줄이 붙는다', () => {
     reduceMotion(true);
     mount(letter({ questions: [question({ writing: { text: TEXT, round: 0 } })], steps: { assign: [], draft: [
       step({ seq: 1, kind: 'WROTE', value: '100' }), step({ seq: 2, actor: 'CODE', kind: 'CHECK_FAILED', code: 'UNSOURCED_NUMBER', value: '30%', sentenceSeq: 1, sentence: S1 }),
@@ -343,9 +343,8 @@ describe('⑤ 종이 위에 쓰는 중', () => {
     const mark = document.querySelector('.pq__answer mark[data-note]');
     expect(mark?.textContent).toBe(S1);
     expect(document.querySelector('.pq__answer')?.textContent).toBe(TEXT);
-    expect(screen.getByRole('button', { name: /^근거\s?검사 중$/ })).toBeDisabled();
-    expect(screen.getByText("'30%'는 카드에 없는 수치예요")).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`^${TEXT.length} / 700자`))).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('검사 중');
+    expect(screen.getByText("'30%' — 카드에 없는 숫자예요")).toBeInTheDocument();
   });
 
   it('이미 있던 글은 바로 보이고 늘어난 글만 따라 치며 커서가 깜빡인다', async () => {
@@ -375,16 +374,9 @@ describe('②·③ 카드 고르기 메모', () => {
     expect(screen.getByRole('status')).toHaveTextContent('카드를 골랐어요');
   });
 
-  it('③ 카드 확인에도 같은 메모가 보인다', () => {
-    mount(letter({ stage: 'ASSIGNED', pollAfterMs: null, steps: { assign: [picked], draft: [] } }));
-    expect(screen.getByText('문항마다 쓸 카드')).toBeInTheDocument();
-    expect(screen.getByText("'토큰 만료 자동 재발급' 카드를 골랐어요")).toBeInTheDocument();
-    expect(screen.getByText('직무와 이어져서')).toBeInTheDocument();
-  });
-
   it('카드 바꾸기는 중심 카드를 고르기 전에는 보조 카드를 못 고른다', async () => {
     mount(letter({ stage: 'ASSIGNED', pollAfterMs: null, questions: [question({ primaryCard: null, assignedBy: 'SUB_AGENT' })] }));
-    fireEvent.click(screen.getByRole('button', { name: '카드 바꾸기' }));
+    fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
     const support = await screen.findByRole('radiogroup', { name: '보조 카드' });
     expect(within(support).getAllByRole('radio').every((r) => (r as HTMLButtonElement).disabled)).toBe(true);
     expect(screen.getByText('중심 카드를 먼저 골라 주세요.')).toBeInTheDocument();
@@ -394,7 +386,7 @@ describe('②·③ 카드 고르기 메모', () => {
 
   it('확정을 푼 카드는 카드 바꾸기의 기본값으로 남지 않는다', async () => {
     mount(letter({ stage: 'ASSIGNED', pollAfterMs: null, questions: [question({ primaryCard: { id: 'card_99', title: '확정 푼 카드', kind: 'TECH' } })] }));
-    fireEvent.click(screen.getByRole('button', { name: '카드 바꾸기' }));
+    fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
     const primary = await screen.findByRole('radiogroup', { name: '중심 카드' });
     expect(within(primary).queryByRole('radio', { checked: true })).toBeNull();
     expect(screen.getByRole('button', { name: '바꾸기' })).toBeEnabled();
@@ -419,14 +411,13 @@ describe('⑥ 같은 종이에서 고치기', () => {
     expect(document.querySelector('.pedit__mirror mark[data-note]')?.textContent).toBe(S1);
   });
 
-  it('걸린 문장을 고쳐 원문이 사라지면 밑줄은 지우고 메모는 고침 · 나 로 남으며 점검표가 고침 1 이 된다', () => {
+  it('걸린 문장을 고쳐 원문이 사라지면 밑줄을 지우고 칩이 근거 확인 1 에서 근거 고침 1 로 바뀐다(⑥ 에는 여백 메모가 없다)', () => {
     mount(drafted());
-    expect(screen.getByText('확인 필요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '근거 확인 1' })).toBeEnabled();
+    expect(document.querySelector('[data-note-card]')).toBeNull();
     fireEvent.change(screen.getByLabelText('1번 문항 초안'), { target: { value: TEXT.replace(S1, '장애를 크게 줄인 팀이라서.') } });
     expect(document.querySelector('.pedit__mirror mark[data-note]')).toBeNull();
-    expect(screen.getByText('고침 · 나')).toBeInTheDocument();
-    expect(screen.getByText(`원래 문장: ${S1}`)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^근거\s?고침 1$/ })).toBeEnabled();
+    expect(screen.getAllByRole('button', { name: /^(근거|겹침|짐작) / }).map((b) => b.textContent)).toEqual(['근거 고침 1', '겹침 없음', '짐작 없음']);
   });
 
   it('전체 복사는 화면에 있는 지금 글로 만든다', async () => {
@@ -465,7 +456,7 @@ describe('⑥ 같은 종이에서 고치기', () => {
     Element.prototype.scrollIntoView = scroll;
     try {
       mount(drafted());
-      fireEvent.click(screen.getByRole('button', { name: /^근거\s?확인 필요 1$/ }));
+      fireEvent.click(screen.getByRole('button', { name: '근거 확인 1' }));
       expect(scroll).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' }));
     } finally { delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView; }
   });

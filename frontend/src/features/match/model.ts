@@ -1,5 +1,6 @@
-import { MatchCategory, type MatchDetail, type MatchTarget } from "@/api/matching";
+import { MatchCategory, type MatchDetail, type MatchTarget, type OverallRecommendation } from "@/api/matching";
 import type { CardSummary } from "@/api/schemas";
+import { techLabels } from "@/lib/cardTags";
 export const categoryLabel = {
   BACKEND: "백엔드",
   FRONTEND: "프론트엔드",
@@ -95,7 +96,64 @@ export const postingFacts = (item: MatchTarget) =>
     (value): value is string => value !== null,
   );
 
-// ───────── 기업별 보기 ─────────
+// ───────── 맞춰 본 결과 상자 ─────────
+
+type OverallCompany = OverallRecommendation["companies"][number];
+type FitCounts = Pick<OverallCompany, "requiredMet" | "requiredTotal" | "preferredMet" | "preferredTotal">;
+type FitNames = Pick<OverallCompany, "requiredMet" | "requiredTotal" | "met" | "missing">;
+
+/**
+ * 결과 타일의 개수 줄 — 학력·경력 같은 일반 조건은 서버가 세지 않아, 기술·경험 필수 조건이 없는 공고를 0개 중 0개라고 쓰지 않는다
+ * 우대는 맞은 개수만 붙인다(전체 개수를 붙이면 다 맞은 것처럼 읽힌다)
+ */
+export function fitSummary(c: FitCounts) {
+  if (c.requiredTotal === 0) {
+    const preferred = c.preferredTotal ? `, 우대 ${c.preferredTotal}개 중 ${c.preferredMet}개가 맞아요` : "";
+    return { done: false, text: `기술과 경험 필수 조건이 없어요${preferred}`, extra: "" };
+  }
+  if (c.requiredMet >= c.requiredTotal) {
+    return { done: true, text: `필수 ${c.requiredTotal}개 모두 맞아요`, extra: c.preferredMet > 0 ? `우대 ${c.preferredMet}개` : "" };
+  }
+  return { done: false, text: `필수 ${c.requiredTotal}개 중 ${c.requiredMet}개 맞아요`, extra: "" };
+}
+
+const NAMES_SHOWN = 2;
+const techName = (tech: string) => (techLabels as Record<string, string>)[tech] ?? tech;
+// 서버의 text 는 공고에 적힌 조건 문장이라 '…경험' 으로 끝나는 일이 많고, 문장 끝에 '경험이' 를 다시 붙이므로 겹치지 않게 뗀다
+const conditionName = (condition: OverallCompany["met"][number]) =>
+  condition.techs.length > 0 ? condition.techs.map(techName).join("·") : condition.text.replace(/\s*경험$/, "").trim() || condition.text;
+
+/**
+ * 결과 타일의 이름 줄 — 필수를 다 채웠으면 맞은 조건, 아니면 모자란 조건을 2개까지 이름으로 쓰고 남으면 '등 N개' 로 줄인다(조건 사이는 쉼표, 한 조건의 기술 사이는 가운뎃점)
+ * N 은 이름 목록(서버가 3개까지만 준다)이 아니라 필수 개수에서 센다, 이름을 못 받은 옛 응답은 줄을 그리지 않는다(null)
+ */
+export function fitNames(c: FitNames) {
+  if (c.requiredTotal === 0) return null;
+  const done = c.requiredMet >= c.requiredTotal;
+  const conditions = done ? c.met : c.missing;
+  if (conditions.length === 0) return null;
+  const shown = conditions.slice(0, NAMES_SHOWN);
+  const total = Math.max(done ? c.requiredMet : c.requiredTotal - c.requiredMet, conditions.length);
+  const verb = done ? "맞아요" : "아직 없어요";
+  return {
+    names: shown.map(conditionName).join(", "),
+    tail: total > shown.length ? ` 등 ${total}개가 ${verb}` : ` 경험이 ${verb}`,
+    lacking: !done,
+  };
+}
+
+export type FitPosting = { item: MatchTarget; company: OverallCompany };
+
+/** 맞춰 본 기업(순위 순)의 공고를 목록에서 찾아 순위 순서 그대로 돌려준다. 목록에 없는 공고(마감되어 목록에서 빠진 공고)는 건너뛴다 */
+export function fitPostings(list: readonly MatchTarget[], companies: OverallRecommendation["companies"]): FitPosting[] {
+  const byId = new Map(list.map((item) => [item.id, item]));
+  return companies.flatMap((company) => {
+    const item = byId.get(company.posting.id);
+    return item ? [{ item, company }] : [];
+  });
+}
+
+// ───────── 기업 묶기(기업 페이지) ─────────
 // 서버(#556)가 공고마다 companyId(같은 회사를 묶는 id)와 logoUrl 을 준다. companyId 로 묶고, 그 칸이 없는 응답(구서버·목)일 때만 이름(companyKey)으로 묶는다.
 // 목록 단계의 등급(fit)·충족 개수(met)는 근거가 얕아 기업 묶음에서는 쓰지 않는다 — 기업 순서도 공고 수와 이름처럼 서버가 준 사실로만 정한다.
 
@@ -210,25 +268,6 @@ const coreName = (name: string) => {
 export function companyMonogram(name: string) {
   const first = Array.from(coreName(name)).find((ch) => /[\p{L}\p{N}]/u.test(ch));
   return first ? first.toLocaleUpperCase("en") : "·";
-}
-
-/** 마크 색 가짓수 — match-company.css 의 .company-mark--0 ~ --7 과 맞춘다 */
-export const COMPANY_TONES = 8;
-
-/** 이름에서 색 번호를 정한다. 같은 기업은 언제나 같은 색(FNV-1a + 섞기). 표기만 다른 이름(공백·대소문자·(주))은 같은 색을 쓴다. */
-export function companyTone(name: string) {
-  let hash = 0x811c9dc5;
-  for (const ch of coreName(name)) {
-    hash ^= ch.codePointAt(0)!;
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  // 짧은 이름은 끝 글자만 달라도 아래 비트가 몰리기 쉬워 한 번 더 섞는다(murmur3 finalizer)
-  hash ^= hash >>> 16;
-  hash = Math.imul(hash, 0x85ebca6b) >>> 0;
-  hash ^= hash >>> 13;
-  hash = Math.imul(hash, 0xc2b2ae35) >>> 0;
-  hash ^= hash >>> 16;
-  return (hash >>> 0) % COMPANY_TONES;
 }
 
 /** 주소의 검색·필터·정렬 값을 목록 화면과 같은 규칙으로 읽는다(기업 페이지가 목록과 같은 공고를 보여 주려고) */

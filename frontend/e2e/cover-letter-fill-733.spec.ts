@@ -46,7 +46,7 @@ test('초안의 채우기에서 답을 보내면 종이의 빈칸 자리가 다�
   await expect(paper).toHaveValue(/백엔드를 맡아 AI 담당 팀원과 로그를 같이 보며 원인을 좁혔습니다\./);
   await expect(paper).not.toHaveValue(/\[더 쓸 거리: /);
 
-  await panel.getByRole('button', { name: '→ 보기' }).click();
+  await panel.getByRole('button', { name: '보기' }).click();
   const lit = page.locator('mark.phl--flash');
   await expect(lit).toHaveText('백엔드를 맡아 AI 담당 팀원과 로그를 같이 보며 원인을 좁혔습니다.');
   await expect(lit).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');

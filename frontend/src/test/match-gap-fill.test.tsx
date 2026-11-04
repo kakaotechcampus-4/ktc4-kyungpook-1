@@ -254,7 +254,7 @@ it('이미 카드로 쓴 후보의 제안은 고를 수 없고, 카드로 만들
 
   expect(await screen.findByText('카드로 만들었어요')).toBeInTheDocument();
   expect(screen.queryByRole('checkbox', { name: '후보로 카드 만들기 — 로그인 API 응답 속도 개선' })).not.toBeInTheDocument();
-  expect(screen.getByRole('link', { name: '만든 카드 보기 →' })).toHaveAttribute('href', '/cards/card_90');
+  expect(screen.getByRole('link', { name: '만든 카드 보기' })).toHaveAttribute('href', '/cards/card_90');
   expect(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 5.12 결제모듈 6커밋' })).toBeInTheDocument();
 });
 

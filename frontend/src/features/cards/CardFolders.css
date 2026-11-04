@@ -11,9 +11,9 @@
 .folders__bar .right { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .folders__notice { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; }
 
-/* 한 줄에 셋까지(340~400px) — max-width 가 없으면 넓은 화면에서 넷 이상이 된다. 중간 폭은 둘, 폰은 하나
+/* 폭을 끝까지 채운다 — 1440 에서 셋, 1920 에서 넷, 중간 폭은 둘, 폰은 하나. 머리 줄(폴더 수·활동 만들기)이 끝까지 쓰므로 격자만 1200px 에서 멈추면 덜 채운 것처럼 보인다
  * 줄 간격 36px 은 올렸을 때 뒤 카드가 솟는 높이(390px 폭·7°에서 약 30px)보다 커야 윗줄과 겹치지 않는다 */
-.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 36px 20px; max-width: 1200px; }
+.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 36px 20px; }
 
 .folder-grid > li { display: flex; min-width: 0; }
 /* 부채꼴 자리(위·오른쪽)는 모든 폴더에 같이 비워 둔다 — 겹친 수에 따라 앞판 크기가 달라지면 줄이 들쭉날쭉해진다 */

@@ -123,17 +123,17 @@ test('폴더는 키보드로 열고, 위에 두면 테두리 색이 바뀌고 �
   await expect(page).toHaveURL(/\/cards\/card_0[1-4]$/);
 });
 
-for (const width of [1440, 1920]) test(`폴더는 한 줄에 셋까지이고 340~400px 이다. 넓은 화면에서도 격자가 1,200px 를 넘지 않는다 (${width})`, async ({ page }) => {
+// 격자는 머리 줄과 같은 폭을 채운다(#785) — 1440 은 한 줄에 셋, 1920 은 넷이고 타일은 340~440px 안이다
+for (const [width, perRow] of [[1440, 3], [1920, 4]] as const) test(`폴더는 폭을 채워 한 줄에 ${perRow}개이고 타일은 340~440px 이다 (${width})`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   await loginAsDemo(page);
   await page.goto('/cards');
   const folders = page.locator('.folder');
   await expect(folders).toHaveCount(5);
   const boxes = await folders.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()));
-  for (const box of boxes) { expect(box.width).toBeGreaterThanOrEqual(340); expect(box.width).toBeLessThanOrEqual(400); }
-  expect(boxes.filter((box) => Math.round(box.top) === Math.round(boxes[0].top))).toHaveLength(3);
-  expect(boxes.filter((box) => box.top > boxes[0].bottom)).toHaveLength(2); // 다섯이면 두 줄
-  expect(await page.locator('.folder-grid').evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(1200);
+  for (const box of boxes) { expect(box.width).toBeGreaterThanOrEqual(340); expect(box.width).toBeLessThanOrEqual(440); }
+  expect(boxes.filter((box) => Math.round(box.top) === Math.round(boxes[0].top))).toHaveLength(perRow);
+  expect(boxes.filter((box) => box.top > boxes[0].bottom)).toHaveLength(5 - perRow); // 다섯이면 두 줄
 });
 
 test('위에 두어 부채꼴이 벌어져도 뒤 카드가 윗줄 폴더에 닿지 않는다(1440, 두 줄)', async ({ page }) => {

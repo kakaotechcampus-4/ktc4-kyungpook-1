@@ -611,6 +611,23 @@ class RepoApiTest {
     }
 
     @Test
+    @DisplayName("출처가 AI 인 소개 문장은 저장된 목록과 상세에 description 과 AI 출처로 내려온다")
+    void showsAiSentenceWithAiSource() throws Exception {
+
+        UUID id = connectCounted(100L, "gitory");
+        jdbc.update("UPDATE user_repository SET readme_summary = 'AI 가 만든 문장', readme_summary_source = 'AI' WHERE public_id = ?",
+                id);
+
+        savedRepos()
+                .andExpect(jsonPath("$.data[0].description").value("AI 가 만든 문장"))
+                .andExpect(jsonPath("$.data[0].descriptionSource").value("AI"));
+        detail(id)
+                .andExpect(jsonPath("$.data.description").value("AI 가 만든 문장"))
+                .andExpect(jsonPath("$.data.descriptionSource").value("AI"));
+
+    }
+
+    @Test
     @DisplayName("폴더 설명을 저장하면 앞뒤 공백을 떼어 USER 출처의 목록 한 줄로 돌려주고, 목록에도 그 설명이 나온다")
     void savesFolderDescription() throws Exception {
 

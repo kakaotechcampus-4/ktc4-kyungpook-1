@@ -22,15 +22,17 @@ public record RepositorySummary(
         int cardCount,
         String userDescription,
         String githubDescription,
-        String readmeSummary) {
+        String readmeSummary,
+        ReadmeSummarySource readmeSummarySource) {
 
     public RepositorySummary(Long connectionId, UUID publicId, String ownerLogin, String name, String language,
                              Instant activeFrom, Instant activeTo, Instant lastAnalyzedAt, Instant countedAt,
                              int commitCount, int ownCommitCount, int prCount, int ownPrCount, int reviewedPrCount,
-                             String userDescription, String githubDescription, String readmeSummary) {
+                             String userDescription, String githubDescription, String readmeSummary,
+                             ReadmeSummarySource readmeSummarySource) {
         this(connectionId, publicId, ownerLogin, name, language, activeFrom, activeTo, lastAnalyzedAt, countedAt,
                 commitCount, ownCommitCount, prCount, ownPrCount, reviewedPrCount, null, 0,
-                userDescription, githubDescription, readmeSummary);
+                userDescription, githubDescription, readmeSummary, readmeSummarySource);
     }
 
     public Contribution contribution() {
@@ -47,7 +49,7 @@ public record RepositorySummary(
 
         return new RepositorySummary(connectionId, publicId, ownerLogin, name, language, activeFrom, activeTo,
                 lastAnalyzedAt, countedAt, commitCount, ownCommitCount, prCount, ownPrCount, reviewedPrCount,
-                shownCandidates, cards, userDescription, githubDescription, readmeSummary);
+                shownCandidates, cards, userDescription, githubDescription, readmeSummary, readmeSummarySource);
 
     }
 
@@ -59,12 +61,15 @@ public record RepositorySummary(
         if (isFilled(githubDescription)) {
             return DescriptionSource.GITHUB;
         }
+        if (!isFilled(readmeSummary)) {
+            return null;
+        }
 
-        return isFilled(readmeSummary) ? DescriptionSource.README : null;
+        return readmeSummarySource == ReadmeSummarySource.AI ? DescriptionSource.AI : DescriptionSource.README;
 
     }
 
-    /** 사용자가 쓴 설명, GitHub 설명, README 문장 순으로 처음 있는 것이고 셋 다 없으면 null 이다 */
+    /** 사용자가 쓴 설명, GitHub 설명, README 문장(고르지 못해 AI 가 만든 문장 포함) 순으로 처음 있는 것이고 셋 다 없으면 null 이다 */
     public String description() {
 
         DescriptionSource source = descriptionSource();
@@ -75,7 +80,7 @@ public record RepositorySummary(
         return switch (source) {
             case USER -> userDescription;
             case GITHUB -> githubDescription;
-            case README -> readmeSummary;
+            case README, AI -> readmeSummary;
         };
 
     }

@@ -47,6 +47,7 @@ class GithubRepositoryClientTest {
     private static final String PAGE_URL = "https://api.github.com/user/repos?per_page=100&page=";
     private static final String GRAPHQL_URL = "https://api.github.com/graphql";
     private static final String README_URL = "https://api.github.com/repos/grow22/gitory/readme";
+    private static final String CONTENTS_URL = "https://api.github.com/repos/grow22/gitory/contents/";
     private static final String TEAM_REPO = node("1340154160", "kakaotechcampus-4", "ktc4-kyungpook-1", "\"develop\"");
 
     @Autowired
@@ -287,6 +288,49 @@ class GithubRepositoryClientTest {
 
         assertThat(client.fetchReadme(TOKEN, "grow22", "gitory")).hasValueSatisfying(
                 readme -> assertThat(readme).hasSize(64 * 1024));
+
+    }
+
+    @Test
+    @DisplayName("최상위 파일·폴더는 이름만 GitHub 이 준 순서대로 30개까지 돌려주고, 요청에는 토큰을 붙인다")
+    void fetchesTopLevelNamesUpToThirty() {
+
+        String entries = IntStream.rangeClosed(1, 35)
+                .mapToObj(number -> """
+                        {"name": "item-%d", "path": "item-%d", "type": "file", "size": 10}""".formatted(number, number))
+                .collect(Collectors.joining(",", "[", "]"));
+        server.expect(requestTo(CONTENTS_URL))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer " + TOKEN))
+                .andRespond(withSuccess(entries, MediaType.APPLICATION_JSON));
+
+        assertThat(client.fetchTopLevelNames(TOKEN, "grow22", "gitory"))
+                .containsExactlyElementsOf(IntStream.rangeClosed(1, 30).mapToObj(number -> "item-" + number).toList());
+        server.verify();
+
+    }
+
+    @Test
+    @DisplayName("비어 있거나 찾을 수 없는 저장소라 404 가 오면 최상위 파일 목록은 예외 없이 빈 목록이다")
+    void returnsEmptyTopLevelNamesWhenRepositoryIsEmpty() {
+
+        server.expect(requestTo(CONTENTS_URL)).andRespond(withResourceNotFound());
+
+        assertThat(client.fetchTopLevelNames(TOKEN, "grow22", "gitory")).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("최상위 파일을 받다 404 가 아닌 오류 응답이 오면 예외로 알린다")
+    void throwsOnOtherErrorsWhileReadingTopLevelNames() {
+
+        server.expect(requestTo(CONTENTS_URL)).andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(CONTENTS_URL)).andRespond(withServerError());
+
+        assertThatThrownBy(() -> client.fetchTopLevelNames(TOKEN, "grow22", "gitory"))
+                .isInstanceOf(HttpClientErrorException.class);
+        assertThatThrownBy(() -> client.fetchTopLevelNames(TOKEN, "grow22", "gitory"))
+                .isInstanceOf(HttpServerErrorException.class);
 
     }
 

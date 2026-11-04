@@ -242,6 +242,22 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     }
 
+    /** 소개 문장을 만드는 보조 재료라 어떤 실패든 빈 목록으로 돌려주고, 응답 본문이 로그에 남지 않게 예외 종류만 적는다 */
+    @Override
+    public List<String> topLevelPaths(Long userId, String owner, String name) {
+
+        try {
+            Optional<String> token = activeUser(userId).flatMap(user -> activeToken(userId));
+
+            return token.isEmpty() ? List.of() : github.fetchTopLevelNames(token.get(), owner, name);
+        } catch (RuntimeException failed) {
+            log.warn("GitHub 저장소 {}/{} 의 최상위 파일을 읽지 못해 빈 목록으로 둔다: {}", owner, name,
+                    failed.getClass().getSimpleName());
+            return List.of();
+        }
+
+    }
+
     /**
      * '/user/repos' 에는 조직이 승인하지 않은 앱이면 조직 소유 저장소가 빠져 기여한 저장소를 더하고, 그 찾기가 실패하면 '/user/repos' 결과만 돌려준다
      * 찾기 실패는 403 을 모두 한도로 보는 판정에 태우지 않아 연결 해제·한도 예외로 바꾸지 않는다

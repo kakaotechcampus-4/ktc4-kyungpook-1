@@ -23,7 +23,7 @@ public record RepoSummaryResponse(
         @Schema(description = "저장소의 후보 전체 수. 후보가 없고 마지막 분석 뒤에 경험 그룹화 기록도 없으면 null") Integer candidateCount,
         @Schema(description = "이 저장소에서 확정한 카드 수") int cardCount,
         boolean recommended,
-        @Schema(description = "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장 순으로 처음 있는 것이고 모두 없으면 null") String description,
+        @Schema(description = "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장(못 고르면 AI 가 요약한 문장) 순으로 처음 있는 것이고 모두 없으면 null") String description,
         @Schema(description = "description 을 어디서 가져왔는지. description 이 null 이면 null") DescriptionSource descriptionSource) {
 
     static RepoSummaryResponse from(RepositorySummary repository) {

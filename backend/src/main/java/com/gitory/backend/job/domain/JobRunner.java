@@ -13,6 +13,7 @@ import com.gitory.backend.ingest.domain.ActivityStoreService;
 import com.gitory.backend.ingest.domain.GroupingMaterial;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.domain.ReadmeRefresh;
 import com.gitory.backend.ingest.domain.RepositoryReadmeService;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.IngestRequest;
@@ -37,7 +38,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * 대기 중인 분석 Job 하나를 꺼내 README 소개 문장을 갱신하고 AI 수집을 부르고, 경험 그룹화를 켰으면 저장한 수집 결과로 AI 경험 그룹화까지 부른 뒤 결과에 따라 끝내며, 카드 초안 Job 은 AI 초안을 켰을 때만 AI 를 불러 카드를 채운다
+ * 대기 중인 분석 Job 하나를 꺼내 README 소개 문장을 갱신하고(설명이 하나도 없으면 AI 로 한 문장을 채우고) AI 수집을 부르고, 경험 그룹화를 켰으면 저장한 수집 결과로 AI 경험 그룹화까지 부른 뒤 결과에 따라 끝내며, 카드 초안 Job 은 AI 초안을 켰을 때만 AI 를 불러 카드를 채운다
  * Job 을 RUNNING 으로 확정한 뒤에 AI 를 불러, 응답을 기다리는 동안 DB 커넥션과 잠금을 붙잡지 않는다
  */
 @Slf4j
@@ -70,6 +71,7 @@ public class JobRunner {
     private final Clock clock;
     private final JobActivityLog activity;
     private final RepositoryReadmeService readmes;
+    private final RepoSummaryFiller summaryFiller;
 
     /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
     public Optional<AnalysisJob> claimNext() {
@@ -149,7 +151,8 @@ public class JobRunner {
         }
 
         try {
-            readmes.refresh(job.getUserId(), job.getUserRepositoryId());
+            ReadmeRefresh readme = readmes.refresh(job.getUserId(), job.getUserRepositoryId());
+            summaryFiller.fill(job.getUserId(), job.getUserRepositoryId(), readme);
             IngestRequest request = new IngestRequest(job.getUserRepositoryId(), List.of(),
                     activityStore.knownCommitShas(job.getUserRepositoryId()));
             Consumer<AiProgress> progress = progressOf(job);

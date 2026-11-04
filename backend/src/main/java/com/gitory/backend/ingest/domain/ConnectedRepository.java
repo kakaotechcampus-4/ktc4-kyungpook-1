@@ -42,6 +42,10 @@ public class ConnectedRepository {
 
     private String githubDescription;
     private String readmeSummary;
+
+    @Enumerated(EnumType.STRING)
+    private ReadmeSummarySource readmeSummarySource;
+
     private String description;
 
     public void markAnalyzed() {
@@ -63,9 +67,10 @@ public class ConnectedRepository {
 
     }
 
-    public void recordReadmeSummary(String readmeSummary) {
+    public void recordReadmeSummary(String readmeSummary, ReadmeSummarySource source) {
 
         this.readmeSummary = readmeSummary;
+        this.readmeSummarySource = readmeSummary == null ? null : source;
 
     }
 

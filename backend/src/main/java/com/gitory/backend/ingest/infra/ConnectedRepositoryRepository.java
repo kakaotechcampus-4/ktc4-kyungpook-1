@@ -65,7 +65,7 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
                 c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
                 c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount,
-                c.description, c.githubDescription, c.readmeSummary)
+                c.description, c.githubDescription, c.readmeSummary, c.readmeSummarySource)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId AND r.githubRepoId IN :githubRepoIds
               AND (c.countedAt IS NULL OR c.commitCount > 0)
@@ -81,7 +81,7 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
                 c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
                 c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount,
-                c.description, c.githubDescription, c.readmeSummary)
+                c.description, c.githubDescription, c.readmeSummary, c.readmeSummarySource)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.userId = :userId
               AND (c.countedAt IS NULL OR c.commitCount > 0)
@@ -109,7 +109,7 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
                 c.id, c.publicId, r.ownerLogin, r.name, r.primaryLanguage,
                 r.githubCreatedAt, COALESCE(r.githubPushedAt, r.githubCreatedAt), c.lastAnalyzedAt, c.countedAt,
                 c.commitCount, c.ownCommitCount, c.prCount, c.ownPrCount, c.reviewedPrCount,
-                c.description, c.githubDescription, c.readmeSummary)
+                c.description, c.githubDescription, c.readmeSummary, c.readmeSummarySource)
             FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
             WHERE c.publicId = :publicId AND c.userId = :userId
             """)

@@ -887,6 +887,45 @@ class GithubCollectionAccessTest {
 
     }
 
+    @Test
+    @DisplayName("쓸 수 있는 연결이면 복호화한 토큰으로 최상위 파일 이름을 받아 온다")
+    void fetchesTopLevelPathsWithDecryptedToken() {
+
+        connectionExpiringAt(null);
+        when(github.fetchTopLevelNames(TOKEN, "grow22", "gitory")).thenReturn(List.of("README.md", "src"));
+
+        assertThat(access.topLevelPaths(USER_ID, "grow22", "gitory")).containsExactly("README.md", "src");
+
+    }
+
+    @Test
+    @DisplayName("쓸 수 있는 연결이 없으면 GitHub 을 부르지 않고 빈 목록을 돌려준다")
+    void returnsNoTopLevelPathsWithoutUsableConnection() {
+
+        when(connections.findByUserIdAndRevokedAtIsNull(USER_ID)).thenReturn(Optional.empty());
+
+        assertThat(access.topLevelPaths(USER_ID, "grow22", "gitory")).isEmpty();
+        verifyNoInteractions(github);
+
+    }
+
+    @Test
+    @DisplayName("최상위 파일을 받다 GitHub 이 실패하거나 401 로 거절해도 예외 없이 빈 목록을 돌려주고 연결은 해제하지 않는다")
+    void returnsNoTopLevelPathsWhenGithubFails() {
+
+        connectionExpiringAt(null);
+        when(github.fetchTopLevelNames(TOKEN, "grow22", "gitory"))
+                .thenThrow(new ResourceAccessException("timeout"))
+                .thenThrow(HttpClientErrorException.create(
+                        HttpStatus.UNAUTHORIZED, "Unauthorized", new HttpHeaders(), new byte[0], null));
+
+        assertThat(access.topLevelPaths(USER_ID, "grow22", "gitory")).isEmpty();
+        assertThat(access.topLevelPaths(USER_ID, "grow22", "gitory")).isEmpty();
+
+        verifyNoInteractions(disconnects);
+
+    }
+
     private static Stream<RuntimeException> contributedFailures() {
 
         return Stream.of(

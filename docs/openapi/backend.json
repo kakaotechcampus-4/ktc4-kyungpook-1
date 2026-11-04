@@ -3699,12 +3699,12 @@
             "type" : "string"
           },
           "description" : {
-            "description" : "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장 순으로 처음 있는 것이고 모두 없으면 null",
+            "description" : "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장(못 고르면 AI 가 요약한 문장) 순으로 처음 있는 것이고 모두 없으면 null",
             "type" : "string"
           },
           "descriptionSource" : {
             "description" : "description 을 어디서 가져왔는지. description 이 null 이면 null",
-            "enum" : [ "USER", "GITHUB", "README" ],
+            "enum" : [ "USER", "GITHUB", "README", "AI" ],
             "type" : "string"
           },
           "disclosure" : {
@@ -3870,12 +3870,12 @@
             "type" : "string"
           },
           "description" : {
-            "description" : "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장 순으로 처음 있는 것이고 모두 없으면 null",
+            "description" : "저장소를 소개하는 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장(못 고르면 AI 가 요약한 문장) 순으로 처음 있는 것이고 모두 없으면 null",
             "type" : "string"
           },
           "descriptionSource" : {
             "description" : "description 을 어디서 가져왔는지. description 이 null 이면 null",
-            "enum" : [ "USER", "GITHUB", "README" ],
+            "enum" : [ "USER", "GITHUB", "README", "AI" ],
             "type" : "string"
           },
           "id" : {

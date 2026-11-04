@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -62,20 +62,39 @@ function mount(path: string, list: MatchTarget[] = postings, load?: () => Promis
   return { router, where, ...result };
 }
 const enc = encodeURIComponent;
+// 기업 페이지로 가는 길은 공고 상세 머리말의 회사 링크뿐이다(목록 타일의 회사 줄은 글) — id 없는 응답이라 이름으로 기업 페이지를 찾는다
+const detailOf = (over: Partial<MatchDetail>) => MatchDetail.parse({ ...sampleDetail.data, companyId: null, logoUrl: null, ...over });
 const cardHeadings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.match-group__head, .result-box')).map((h) => h.textContent); // 목록 절 제목과 맞춰 본 결과 상자 제목은 빼고 센다
 
-it("목록 카드: 기업 이름은 기업 페이지로, 제목은 공고 상세로 가고 둘 다 목록의 검색·직무만 이어 간다(예전 주소의 정렬·경력·보기 값은 넘기지 않는다)", async () => {
+it("목록 카드: 기업 이름은 글이고 카드 안 링크는 공고 상세 제목 하나뿐이며, 제목 링크는 목록의 검색·직무만 이어 간다(예전 주소의 정렬·경력·보기 값은 넘기지 않는다)", async () => {
   const { where } = mount("/match?category=BACKEND&view=company&sort=deadline&experience=ENTRY");
   await screen.findAllByText("가온소프트");
-  expect(screen.getByRole("link", { name: "가온소프트" })).toHaveAttribute("href", `/match/company/${enc("가온소프트")}?category=BACKEND`);
-  expect(screen.getByRole("link", { name: "백엔드 엔지니어" })).toHaveAttribute("href", "/match/p1?category=BACKEND");
+  expect(screen.queryByRole("link", { name: "가온소프트" })).not.toBeInTheDocument();
+  const card = screen.getByRole("heading", { level: 2, name: "백엔드 엔지니어" }).closest("article")!;
+  expect(within(card).getByText("가온소프트").closest("a")).toBeNull();
+  expect(within(card).getAllByRole("link")).toHaveLength(1);
+  expect(within(card).getByRole("link", { name: "백엔드 엔지니어" })).toHaveAttribute("href", "/match/p1?category=BACKEND");
   // 검색어도 이어 간다
   fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), { target: { value: "나래" } });
-  const narae = screen.getByRole("link", { name: "나래랩스" });
-  expect(narae).toHaveAttribute("href", `/match/company/${enc("나래랩스")}?q=${enc("나래")}&category=BACKEND`);
-  fireEvent.click(narae);
+  const title = screen.getByRole("link", { name: "서버 개발자" });
+  expect(title).toHaveAttribute("href", `/match/p2?q=${enc("나래")}&category=BACKEND`);
+  fireEvent.click(title);
+  await waitFor(() => expect(where().path).toBe("/match/p2"));
+  expect(where().search).toBe(`?q=${enc("나래")}&category=BACKEND`);
+});
+
+it("목록 → 공고 상세 → 머리말의 회사 링크로 기업 페이지: 검색어와 직무를 이어 가고 그 기업의 공고를 모은다", async () => {
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(detailOf({ id: "p2", company: "나래랩스" }));
+  const { where } = mount("/match?category=BACKEND");
+  await screen.findAllByText("나래랩스");
+  fireEvent.change(screen.getByPlaceholderText("기업이나 직무 검색"), { target: { value: "나래" } });
+  fireEvent.click(screen.getByRole("link", { name: "서버 개발자" }));
+  const company = await screen.findByRole("link", { name: "나래랩스" });
+  expect(company).toHaveAttribute("href", `/match/company/${enc("나래랩스")}?q=${enc("나래")}&category=BACKEND`);
+  fireEvent.click(company);
   await screen.findByRole("heading", { level: 1, name: "나래랩스" });
   expect(where().path).toBe(`/match/company/${enc("나래랩스")}`);
+  expect(cardHeadings()).toEqual(["서버 개발자"]);
 });
 
 it("카드의 기업 마크는 장식(aria-hidden)이고 기업 이름은 글로 항상 있다 · 링크 안에 링크가 없다", async () => {
@@ -85,7 +104,7 @@ it("카드의 기업 마크는 장식(aria-hidden)이고 기업 이름은 글로
   const marks = container.querySelectorAll(".company-mark");
   expect(marks).toHaveLength(postings.length);
   marks.forEach((mark) => expect(mark).toHaveAttribute("aria-hidden", "true"));
-  expect(screen.getByRole("link", { name: "나래랩스" }).querySelector(".company-mark")).toHaveTextContent("나");
+  expect(screen.getByText("나래랩스").closest(".posting-company")!.querySelector(".company-mark")).toHaveTextContent("나");
   // 기업 이름이 마크의 글자 하나로만 있지 않다
   expect(screen.getByText("나래랩스")).toBeVisible();
   expect(container.querySelectorAll("a a")).toHaveLength(0);
@@ -119,7 +138,7 @@ it("기업 페이지: 그 기업 공고만, 공고 수·목록으로 돌아가�
   const detail = screen.getByRole("link", { name: "백엔드 엔지니어" });
   expect(detail).toHaveAttribute("href", "/match/p1?sort=deadline&category=ALL");
   // 머리말에 기업이 있으니 카드마다 기업 이름·마크를 되풀이하지 않는다(마크는 머리말에 하나, 장식)
-  expect(screen.queryByRole("link", { name: "가온소프트" })).not.toBeInTheDocument();
+  expect(document.querySelector(".posting-company")).toBeNull();
   const marks = document.querySelectorAll(".company-mark");
   expect(marks).toHaveLength(1);
   expect(marks[0]).toHaveAttribute("aria-hidden", "true");
@@ -173,13 +192,17 @@ it("fit 이 모두 비어 와도(서버가 목록의 AI 검색을 끈 때) 기�
   expect(screen.queryByLabelText(/등급 [A-D]/)).not.toBeInTheDocument();
 });
 
-it("빈 기업명은 '기업명 없음'으로 보이고 링크가 살아 있다", async () => {
+it("빈 기업명은 목록에서 '기업명 없음' 글로 보이고, 공고 상세 머리말 링크가 살아 있다", async () => {
   const items = [make("e1", "", "이름 없는 공고", "B"), make("e2", "   ", "공백 이름 공고", null), make("e3", "토스", "서버", "A")];
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(detailOf({ id: "e1", company: "" }));
   const { where } = mount("/match", items);
-  const links = await screen.findAllByRole("link", { name: "기업명 없음" });
-  expect(links).toHaveLength(2);
-  expect(links[0]).toHaveAttribute("href", "/match/company/%20");
-  fireEvent.click(links[0]);
+  const names = await screen.findAllByText("기업명 없음");
+  expect(names).toHaveLength(2);
+  names.forEach((name) => expect(name.closest("a")).toBeNull());
+  fireEvent.click(screen.getByRole("link", { name: "이름 없는 공고" }));
+  const link = await screen.findByRole("link", { name: "기업명 없음" });
+  expect(link).toHaveAttribute("href", "/match/company/%20");
+  fireEvent.click(link);
   await screen.findByRole("heading", { level: 1, name: "기업명 없음" });
   expect(where().path).toBe("/match/company/%20");
   expect(screen.getByRole("status")).toHaveTextContent("공고 2건");
@@ -188,7 +211,9 @@ it("빈 기업명은 '기업명 없음'으로 보이고 링크가 살아 있다"
 it("이름에 / ? # % 가 있어도 기업 페이지로 가서 같은 기업의 공고를 찾는다", async () => {
   const name = "A/B?#50% 연구소";
   const items = [make("s1", name, "연구원", "C"), make("s2", "토스", "서버", "A")];
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(detailOf({ id: "s1", company: name }));
   const { where } = mount("/match", items);
+  fireEvent.click(await screen.findByRole("link", { name: "연구원" }));
   fireEvent.click(await screen.findByRole("link", { name }));
   await screen.findByRole("heading", { level: 1, name });
   expect(screen.getByRole("status")).toHaveTextContent("공고 1건");
@@ -199,9 +224,11 @@ it("이름에 / ? # % 가 있어도 기업 페이지로 가서 같은 기업의 
 it("이름에 짝 잃은 서로게이트 글자(잘린 이모지)가 있어도 목록이 무너지지 않고 기업 페이지로 간다", async () => {
   const name = "연구소\ud83d"; // 이모지가 반쯤 잘려 온 이름 — encodeURIComponent 가 그대로는 던진다
   const items = [make("w1", name, "연구원", "C"), make("w2", "토스", "서버", "A")];
+  vi.spyOn(matchingApi, "detail").mockResolvedValue(detailOf({ id: "w1", company: name }));
   const { where } = mount("/match", items);
-  expect(await screen.findByRole("link", { name: "토스" })).toBeInTheDocument();
-  const link = screen.getByRole("link", { name: /^연구소/ });
+  expect(await screen.findByText("토스")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "연구원" }));
+  const link = await screen.findByRole("link", { name: /^연구소/ });
   expect(link).toHaveAttribute("href", `/match/company/${enc("연구소\ufffd")}`);
   fireEvent.click(link);
   await screen.findByRole("heading", { level: 1, name: /^연구소/ });

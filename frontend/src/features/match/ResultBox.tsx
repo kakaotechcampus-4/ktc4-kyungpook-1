@@ -6,7 +6,7 @@ import { errorView } from "@/api/errorView";
 import { Button, Track } from "@/components/ui";
 import { CompanyMark } from "./CompanyMark";
 import { DeadlineMark, PostingFacts } from "./PostingParts";
-import { companyLabel, companyPath, fitNames, fitPostings, fitSummary, type FitPosting } from "./model";
+import { companyLabel, fitNames, fitPostings, fitSummary, type FitPosting } from "./model";
 
 const BOX_LABEL = "내 카드로 맞춰 본 공고";
 const NO_CARDS = "확정한 카드가 없어요. 카드가 확정되면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.";
@@ -140,7 +140,7 @@ function Progress({ progress }: { progress: OverallRecommendation["progress"] })
 
 /**
  * 결과 타일 — 순위 번호, 기업·공고, 필수 조건 개수 줄과 맞은·모자란 조건 이름 줄.
- * 카드 전체가 공고 상세로 가고(제목 링크를 카드 크기로 펼친다) 기업 이름만 따로 기업 페이지로 간다. 공고 기술 칩은 '모든 공고' 타일에만 둔다.
+ * 카드 전체가 공고 상세로 가고(제목 링크를 카드 크기로 펼친다) 기업 이름은 글이다. 공고 기술 칩은 '모든 공고' 타일에만 둔다.
  */
 function ResultTile({ tile: { item, company }, rank, search }: { tile: FitPosting; rank: number; search: URLSearchParams }) {
   const summary = fitSummary(company);
@@ -149,10 +149,10 @@ function ResultTile({ tile: { item, company }, rank, search }: { tile: FitPostin
     <li className="result-tile">
       <div className="result-tile__co">
         <span className="star-key star-key--sm" aria-hidden="true">{rank}</span>
-        <Link className="match-company-link" to={companyPath(item, search)}>
+        <div className="posting-company">
           <CompanyMark name={item.company} logoUrl={item.logoUrl} size={28} />
-          <span className="match-company-link__name">{companyLabel(item.company)}</span>
-        </Link>
+          <span className="posting-company__name">{companyLabel(item.company)}</span>
+        </div>
       </div>
       <h3 className="posting-title posting-title--clamp">
         <Link className="match-card__link" to={`/match/${encodeURIComponent(item.id)}${search.size ? `?${search}` : ""}`}>

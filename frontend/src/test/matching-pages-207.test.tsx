@@ -60,7 +60,7 @@ it("filters locally and preserves search in detail/list links without repeating 
     target: { value: "나래" },
   });
   expect(screen.queryByText("가온소프트")).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: /나래랩스/ })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: /서버 개발자/ })).toHaveAttribute(
     "href",
     expect.stringContaining("q="),
   );

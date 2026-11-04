@@ -199,12 +199,12 @@ describe('경험 카드 상세 (CD-02, CD-03, CD-05, CD-06, CD-10, CD-12, CD-14)
     expect(document.body.textContent).not.toMatch(/내가 말한 것|근거 커밋 \d+건/);
   });
 
-  it('다시 열 때 작성 이력이라고 안내하고, 버튼은 "수정"이다', async () => {
+  it('다시 열 때 작성 이력이라고 안내한다 — 다시 여는 길은 칸 이름 옆 연필이다', async () => {
     const card = load('card_03');
     vi.spyOn(endpoints, 'reopen').mockResolvedValue({ ...card, status: 'DRAFT' });
     mountCard(card);
     expect(screen.queryByRole('button', { name: '수정하기' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '수정' }));
+    fireEvent.click(screen.getByRole('button', { name: '상황 수정' }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith('다시 편집할 수 있어요. 확정했던 버전은 작성 이력에 남아요.'));
     expect(vi.mocked(toast).mock.calls.flat().join(' ')).not.toContain('히스토리');
   });

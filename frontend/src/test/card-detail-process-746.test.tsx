@@ -35,8 +35,8 @@ describe('#746 확정 카드의 칸 연필', () => {
     const card = load('card_03', { version: { ...load('card_03').version, result: null } });
     const reopen = vi.spyOn(endpoints, 'reopen').mockResolvedValue({ ...card, status: 'DRAFT', confirmedAt: null });
     const router = mount(card);
-    // 비운 결과 칸에는 연필이 없다(위 '수정'으로 연다)
-    expect(screen.getAllByRole('button', { name: /^(상황|과제|행동|결과) 수정$/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['상황 수정', '과제 수정', '행동 수정']);
+    // 채운 칸은 '수정', 비운 채 확정한 칸은 '채우기' 연필이다 — 위 '수정' 버튼 없이 네 칸 모두 칸 연필로 연다
+    expect(screen.getAllByRole('button', { name: /^(상황|과제|행동|결과) (수정|채우기)$/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['상황 수정', '과제 수정', '행동 수정', '결과 채우기']);
     fireEvent.click(screen.getByRole('button', { name: '행동 수정' }));
     await waitFor(() => expect(router.state.location.search).toBe('?mode=edit&field=A'));
     expect(reopen).toHaveBeenCalledTimes(1);

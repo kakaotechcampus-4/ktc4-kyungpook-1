@@ -28,8 +28,8 @@ it('treats a null period as unchanged like the server', () => {
   const after = request('GET', `/cards/${created.id}`).data as any;
   expect(after.title).toBe('새 제목'); expect(after.period).toBe('2024.04');
 });
-it('rejects edits to confirmed cards and blank titles', () => {
-  expect(request('PATCH', '/cards/card_03/metadata', { title: '변경' }).status).toBe(409);
+it('accepts title edits on confirmed cards without reopening (server rule) and rejects blank titles', () => {
+  expect(request('PATCH', '/cards/card_03/metadata', { title: '변경' }).status).toBe(200);
   expect(request('PATCH', '/cards/card_01/metadata', { title: '   ' }).status).toBe(400);
 });
 

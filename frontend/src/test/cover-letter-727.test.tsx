@@ -244,7 +244,7 @@ describe('짐작 확인 탭 · 알림 줄 · 모바일', () => {
     mount(repeated);
     const notices = screen.getByRole('region', { name: '살펴볼 것' });
     expect(within(notices).getByText('Q1, Q2에 같은 이야기가 있어요')).toBeInTheDocument();
-    expect(within(notices).getByRole('button', { name: '→ Q2 보기' })).toBeInTheDocument();
+    expect(within(notices).getByRole('button', { name: 'Q2 보기' })).toBeInTheDocument();
     fireEvent.click(within(notices).getByRole('button', { name: '이 알림 닫기' }));
     expect(screen.queryByRole('region', { name: '살펴볼 것' })).toBeNull();
   });

@@ -140,7 +140,7 @@ describe('채우기 탭', () => {
     mount(after);
     openFill();
     expect(await within(panel()).findByText('Q1에 넣었어요', SEEN)).toBeInTheDocument();
-    fireEvent.click(within(panel()).getByRole('button', { name: '→ 보기' }));
+    fireEvent.click(within(panel()).getByRole('button', { name: '보기' }));
     expect(within(panel()).getByText('Q1에 적용')).toBeInTheDocument();
   });
 
@@ -196,7 +196,7 @@ describe('채우기 탭', () => {
     expect(await within(panel()).findByText('Q1에 넣었어요', SEEN)).toBeInTheDocument();
     expect(area(1).value).toContain(FORMAL);
     expect(area(1).value).not.toContain('[더 쓸 거리');
-    fireEvent.click(within(panel()).getByRole('button', { name: '→ 보기' }));
+    fireEvent.click(within(panel()).getByRole('button', { name: '보기' }));
     await waitFor(() => expect(document.querySelector(`[data-question="${l.questions[0].id}"] mark.phl--flash`)?.textContent).toBe(FORMAL));
   });
 
@@ -266,7 +266,9 @@ describe('채우기 탭', () => {
     expect(screen.getByRole('tab', { name: '진단과 첨삭' })).toHaveAttribute('aria-selected', 'true');
     const notices = screen.getByRole('region', { name: '살펴볼 것' });
     expect(within(notices).getByText("Q1에 '결과' 빈칸이 남아 있어요")).toBeInTheDocument();
-    fireEvent.click(within(notices).getByRole('button', { name: '→ Q1에 넣기' }));
+    // 방향은 버튼 이름과 자리가 말한다(용어집 3.2절): 글자 화살표가 이름에 섞이지 않는다
+    expect(notices).not.toHaveTextContent(/[←→↗↘]/);
+    fireEvent.click(within(notices).getByRole('button', { name: 'Q1에 넣기' }));
     expect(screen.getByRole('tab', { name: '채우기' })).toHaveAttribute('aria-selected', 'true');
     expect(await within(panel()).findByText(/'결과' 빈칸이 있어요/, SEEN)).toBeInTheDocument();
     expect(log.filter((x) => x === `POST ${turnsPath(l)}/open`)).toHaveLength(1);

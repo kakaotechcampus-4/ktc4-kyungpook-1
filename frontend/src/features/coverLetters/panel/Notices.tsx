@@ -28,14 +28,14 @@ export function Notices({ questions, texts, onGo, onTalk, memoUsable }: {
       title: others.length === 1
         ? `Q${Math.min(seq, others[0].seq)}, Q${Math.max(seq, others[0].seq)}에 같은 이야기가 있어요`
         : `Q${seq}에 다른 문항과 같은 이야기가 있어요`,
-      line: `Q${seq}의 "${excerpt(sentence)}" 문장을 바꾸는 쪽이 쉬워요`, go: `→ Q${seq} 보기`, onClick: () => onGo(id),
+      line: `Q${seq}의 "${excerpt(sentence)}" 문장을 바꾸는 쪽이 쉬워요`, go: `Q${seq} 보기`, onClick: () => onGo(id),
     };
   });
   const reasonQ = questions.find((q) => q.theme === 'MOTIVATION') ?? questions[0];
   if (onTalk && memoUsable === false && reasonQ) {
     list.unshift({
       key: 'reason', questionId: reasonQ.id, title: '지원 이유가 글로 쓰기 어려워서 채팅에서 다시 물어요',
-      line: '', go: '→ 채우기', onClick: () => onTalk(reasonQ.id),
+      line: '', go: '채우기', onClick: () => onTalk(reasonQ.id),
     });
   }
   if (onTalk) {
@@ -44,7 +44,7 @@ export function Notices({ questions, texts, onGo, onTalk, memoUsable }: {
       if (!item) continue;
       list.push({
         key: `blank:${q.id}`, questionId: q.id, title: `Q${q.seq}에 '${ITEM_LABEL[item]}' 빈칸이 남아 있어요`,
-        line: '한 줄로 알려 주면 그 자리를 채워요', go: `→ Q${q.seq}에 넣기`, onClick: () => onTalk(q.id),
+        line: '한 줄로 알려 주면 그 자리를 채워요', go: `Q${q.seq}에 넣기`, onClick: () => onTalk(q.id),
       });
     }
   }

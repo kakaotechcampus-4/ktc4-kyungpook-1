@@ -35,7 +35,7 @@ function Proposal({ proposal, picked, onPick, used }: { proposal: GapFillProposa
         <p className="gap-fill__reason">{proposal.reason}</p>
         {used?.cardId && (
           <Link className="gap-fill__card-link" to={`/cards/${encodeURIComponent(used.cardId)}`}>
-            만든 카드 보기 →
+            만든 카드 보기
           </Link>
         )}
       </div>

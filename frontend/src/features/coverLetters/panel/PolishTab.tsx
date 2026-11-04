@@ -106,7 +106,7 @@ function PolishResult({ polish, current, charLimit, applying, onRetry, onApply }
                   <span className="clp-pt__t">{p.title}</span>
                   <ChevronDown size={18} className="clp-pt__chev" aria-hidden />
                 </span>
-                {open === k && p.detail && <span className="clp-pt__w">→ {p.detail}</span>}
+                {open === k && p.detail && <span className="clp-pt__w">{p.detail}</span>}
               </button>
             </li>
           ))}

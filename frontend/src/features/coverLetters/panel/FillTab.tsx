@@ -173,7 +173,7 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
         {done && (
           <p className={`clp-placed${filled[t.seq] ? ' clp-bub--enter' : ''}`}>
             Q{q?.seq}에 넣었어요
-            <button type="button" className="clp-link" onClick={() => onShow(done.questionId, done.sentence)}>→ 보기</button>
+            <button type="button" className="clp-link" onClick={() => onShow(done.questionId, done.sentence)}>보기</button>
           </p>
         )}
         {notPlaced[t.seq] && <p className="clp-tline clp-tline--left">답은 저장했어요. 글에는 넣지 못해서 첨삭 받기로 다시 시도해 보세요</p>}

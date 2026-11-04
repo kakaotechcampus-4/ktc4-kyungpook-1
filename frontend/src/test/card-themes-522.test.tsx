@@ -129,9 +129,10 @@ describe('목: 유형 고치기', () => {
     expect(listed().updatedAt).toBe(stamp);
   });
 
-  it('still asks to reopen before changing the title of a confirmed card', () => {
-    expect(call('PATCH', `/cards/${CONFIRMED}/metadata`, { title: '새 제목', themes: ['GROWTH'] }).status).toBe(409);
-    expect(readCard(CONFIRMED).themes).toEqual(['CONFLICT', 'COLLABORATION']);
+  it('changes the title and themes of a confirmed card together without reopening it (server rule)', () => {
+    expect(call('PATCH', `/cards/${CONFIRMED}/metadata`, { title: '새 제목', themes: ['GROWTH'] }).status).toBe(200);
+    expect(readCard(CONFIRMED).themes).toEqual(['GROWTH']);
+    expect(readCard(CONFIRMED).status).toBe('CONFIRMED');
   });
 
   it.each([

@@ -110,9 +110,9 @@ export function CardPage() {
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
-  // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다
-  const metadataAction = card.status === 'DRAFT' && cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
-  const metadataDialog = metadataOpen && card.status === 'DRAFT' ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
+  // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다. 서버가 확정 카드도 다시 열지 않고 받으므로 확정 카드에도 둔다
+  const metadataAction = cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
+  const metadataDialog = metadataOpen ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
   const exportMd = () => setCopyOpen(true);
   const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
   // 확정 카드를 편집 상태로 되돌린다. 칸 연필로 열었으면 되돌린 뒤 그 칸부터 고친다
@@ -162,10 +162,7 @@ export function CardPage() {
             {matchSupported() && <Link to="/match" className="btn btn--outline">이 경험과 맞는 공고 보기</Link>}
           </div>
         )}
-        <CardHeader card={card} right={<>
-          <Button size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>
-          <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopenCard()}>수정</Button>
-        </>} />
+        <CardHeader card={card} titleAction={metadataAction} right={<Button size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
         <div className="two-col two-col--340">
           <div className="card star-read star-read--rows">
             {STAR_FIELDS.map((f) => {
@@ -173,7 +170,7 @@ export function CardPage() {
               const ev = card.evidence.filter((e) => e.field === f);
               const rowClass = [!t && 'star-read__row--gap', f === 'R' && 'star-read__row--result'].filter(Boolean).join(' ');
               return (
-                <StarRow key={f} field={f} label={starFieldShort[f]} action={t && <button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} 수정`} title={`${starFieldShort[f]} 수정`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={rowClass}>
+                <StarRow key={f} field={f} label={starFieldShort[f]} action={<button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} ${t ? '수정' : '채우기'}`} title={`${starFieldShort[f]} ${t ? '수정' : '채우기'}`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={rowClass}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했어요</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
@@ -205,6 +202,7 @@ export function CardPage() {
         </div>
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
+        {metadataDialog}
         <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       </main>
     );

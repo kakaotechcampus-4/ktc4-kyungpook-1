@@ -1,24 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useActiveJobs, useJob, useMe, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
 import { isGithubUnauthorized, reconnectGithub, reconnectGithubTo } from '@/lib/githubReconnect';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton, Track } from '@/components/ui';
+import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton } from '@/components/ui';
 import { JobLiveness } from '@/components/JobLiveness';
 import { AiWait } from '@/components/ui/AiWait';
-import { Sparkles } from 'lucide-react';
 import { agentHeadline, agentLine } from '@/lib/agentNarration';
 import { stepLines, useActivityFeed, type ActivityLine } from '@/lib/agentActivity';
-import { minutes } from '@/lib/format';
+import { elapsed, minutes } from '@/lib/format';
 import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/labels';
-import { isTerminal, type Job } from '@/api/schemas';
+import { isTerminal, type Job, type JobStep } from '@/api/schemas';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
-import { doneSteps, stepBadge, stepProgress, stepView } from '@/lib/jobView';
+import { timelineView, type TimelineView } from '@/lib/jobView';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { jobRetryState, useJobRetry, requiresRetryRefresh } from '@/lib/useJobRetry';
+import './AnalyzePage.css';
 
-/** B3 분석 진행 · B4 수집 실패 · B5 부분 결과(SUCCEEDED + partial) */
+/** B3 분석 진행 · B4 수집 실패 · B5 부분 결과(SUCCEEDED + partial) — 셋 다 같은 타임라인 위에 어디까지 왔는지 그린다(#789) */
 export function AnalyzePage() {
   const { repoId = '' } = useParams();
   const [sp, setSp] = useSearchParams();
@@ -151,6 +151,9 @@ export function AnalyzePage() {
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '정리 실패' }]} />
         <PageTitle>{jobErrorTitle[code]}</PageTitle>
+        <RunSub name={name}><span className="run-sub__item">{took(j)} 진행</span></RunSub>
+        <p className="run-goal">{agentHeadline(j)}</p>
+        <Timeline job={j} lines={feed.lines} />
         <div className="fail-card" role="alert">
           <span className="fail-card__bang">!</span>
           <div className="stack" style={{ gap: 6 }}>
@@ -186,6 +189,9 @@ export function AnalyzePage() {
       <main className="main main--tight">
         <Breadcrumb items={[...crumbs, { label: '후보 보드' }]} />
         <PageTitle>읽은 데까지 정리했어요</PageTitle>
+        <RunSub name={name}><span className="run-sub__item">{took(j)} 진행</span></RunSub>
+        <p className="run-goal">{agentHeadline(j)}</p>
+        <Timeline job={j} lines={feed.lines} />
         {requiresRetryRefresh(j) && <RetryTimeNotice refresh={() => job.refetch()} pending={job.isFetching} />}
         <div className="card partial-card">
           <Badge kind="NEUTRAL">부분 결과</Badge>
@@ -208,59 +214,32 @@ export function AnalyzePage() {
   }
 
   // B3 — 진행. 누를 것이 없다. 떠나도 된다.
-  const doneCount = j ? doneSteps(j) : 0;
-  const progress = stepProgress(j);
   // 다 읽었어도 고른 이유가 차례로 나오는 동안은 이 화면에 남는다 — 그때는 "읽고 있어요"라고 하지 않고 취소도 막는다
   const finished = j?.state === 'SUCCEEDED';
   return (
     <main className="main">
       <Breadcrumb items={[...crumbs, { label: finished ? '정리 완료' : '정리 중' }]} />
       <PageTitle right={finished ? undefined : '떠나도 돼요'}>{finished ? '레포를 다 읽었어요' : '레포를 읽고 있어요'}</PageTitle>
-      <RepoContext name={name} note={finished ? '후보를 골랐어요' : '새 기록을 읽는 중이에요'}
-        right={<Badge kind={finished ? 'CONFIRMED' : 'NEUTRAL'}>{finished ? '완료' : '진행 중'}</Badge>} />
-      <div className="card stack" style={{ gap: 16, padding: '22px 24px' }}>
-        {!j ? <AiWait label="레포를 읽을 준비를 하고 있어요. 곧 PR부터 읽기 시작해요." /> : (
-          <>
-            {/* AI 가 지금 하는 일을 한 문장으로 — 단계 이름보다 먼저 눈에 걸리게 */}
-            <p className="agent-now" aria-live="polite"><Sparkles size={16} aria-hidden /><span>{agentHeadline(j, repo.data?.name)}</span></p>
-            <div className="row" style={{ gap: 12 }}>
-              <span className="w-700" style={{ fontSize: 14 }}>{doneCount} / {j.steps.length} 단계</span>
-              <span className="right t-12l c-2">{j.state === 'SUCCEEDED' ? '완료, 후보 보드로 갈게요' : '조금만 기다려 주세요'}</span>
-            </div>
-            <Track value={progress} label="정리 진행률" live={!isTerminal(j.state)} />
-            <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />
-            <ol className="stages">
-              {j.steps.map((s) => {
-                const status = stepView(s);
-                return (
-                  <li key={s.key} className={`stage stage--${status}`}>
-                    <span className="stage__icon" aria-hidden>{status === 'DONE' ? '✓' : status === 'NOW' ? <span className="spinner spinner--sm" /> : ''}</span>
-                    <div className="stack grow" style={{ gap: 3 }}>
-                      <span className="stage__label">{jobStepLabel[s.key]}</span>
-                      <span className="stage__agent">{agentLine(s, j)}</span>
-                      <StageFeed lines={stepLines(feed.lines, s.key, status === 'NOW')} />
-                      <span className="stage__detail">{stepDetail(s.done, s.total, jobStepUnit[s.key], s.state)}</span>
-                    </div>
-                    <Badge kind={status === 'NOW' ? 'CONFIRMED' : 'NEUTRAL'}>{stepBadge(s, j)}</Badge>
-                  </li>
-                );
-              })}
-            </ol>
-          </>
-        )}
-      </div>
-      <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
+      <RunSub name={name}>{j && <JobLiveness job={j} checkedAt={job.dataUpdatedAt} />}</RunSub>
+      {!j ? <AiWait label="레포를 읽을 준비를 하고 있어요. 곧 PR부터 읽기 시작해요." /> : (
+        <>
+          {/* 지금 무엇을 하려는지 한 문장으로 — 단계 이름보다 먼저 눈에 걸리게 */}
+          <p className="run-goal" aria-live="polite">{agentHeadline(j, repo.data?.name)}</p>
+          <Timeline job={j} lines={feed.lines} />
+        </>
+      )}
+      <div className="run-foot">
         {finished ? (
           <>
-            <span className="c-2 t-14">고른 이유를 다 보여 드리면 후보 보드로 가요</span>
-            <div className="right row" style={{ gap: 8 }}>
+            <span>고른 이유를 다 보여 드리면 후보 보드로 가요</span>
+            <div className="run-foot__right">
               <Link to={`/repos/${repoId}/candidates`} replace className="btn btn--primary">후보 보드로 바로 가기</Link>
             </div>
           </>
         ) : (
           <>
-            <span className="c-2 t-14">끝나면 알려 드릴게요</span>
-            <div className="right row" style={{ gap: 8 }}>
+            <span>끝나면 알려 드릴게요</span>
+            <div className="run-foot__right">
               <Link to="/" className="btn btn--outline">다른 일 하러 가기</Link>
               <Button variant="ghost" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>
             </div>
@@ -271,33 +250,82 @@ export function AnalyzePage() {
   );
 }
 
-/** AI 가 방금 읽은 PR·커밋과 판단한 줄. 맨 아래가 가장 최근이다 */
-function StageFeed({ lines }: { lines: ActivityLine[] }) {
-  if (!lines.length) return null;
+/** 제목 아래 한 줄 — 레포 이름 뒤에 경과(진행 중) 또는 걸린 시간(끝난 뒤)이 붙는다 */
+function RunSub({ name, children }: { name: string; children?: ReactNode }) {
+  return <div className="run-sub"><b>{name}</b>{children}</div>;
+}
+
+const DOT: Record<TimelineView, string> = { done: '✓', now: '', wait: '', skip: '–', halt: '!', cap: '!' };
+
+/**
+ * 단계 4개를 점과 선으로 그린다. 지금 읽는 단계만 상자로 펼쳐 큰 숫자와 방금 읽은 줄을 보이고,
+ * 묶음·고른 이유 같은 판단 줄은 단계가 끝나도 메모로 남는다(읽기 줄은 숫자로 접힌다).
+ */
+function Timeline({ job, lines }: { job: Job; lines: ActivityLine[] }) {
   return (
-    <ul className="stage__feed">
-      {lines.map((l) => (
-        <li key={l.seq} className={`feed-line feed-line--${l.tone}`}>
-          {l.tag && <span className="feed-line__tag">{l.tag}</span>}
-          <span className="feed-line__text">{l.text}</span>
-          {l.meta && <span className="feed-line__meta">{l.meta}</span>}
-        </li>
-      ))}
-    </ul>
+    <ol className="tl">
+      {job.steps.map((s) => {
+        const view = timelineView(s, job);
+        const mine = stepLines(lines, s.key, view === 'now');
+        const reads = mine.filter((l) => l.tone !== 'judge');
+        const notes = mine.filter((l) => l.tone === 'judge');
+        return (
+          <li key={s.key} className={`tl__item tl__item--${view}`}>
+            <span className="tl__dot" aria-hidden>{DOT[view]}</span>
+            <div className="tl__body">
+              <div className="tl__head"><b className="tl__label">{jobStepLabel[s.key]}</b><StepCount step={s} view={view} /></div>
+              <p className="tl__line">{agentLine(s, job)}</p>
+              {reads.length > 0 && (
+                <ul className="tl__stream">
+                  {reads.map((l, i) => (
+                    <li key={l.seq} className={`sline sline--${l.tone}${i < reads.length - 1 ? ' sline--old' : ''}`}>
+                      {l.tag && <span className="sline__tag">{l.tag}</span>}
+                      <span className="sline__text">{l.text}</span>
+                      {l.meta && <span className="sline__meta">{l.meta}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {notes.length > 0 && (
+                <ul className="tl__notes">
+                  {notes.map((l) => l.meta
+                    ? <li key={l.seq} className="tl-note"><b>{l.text}</b><span>{l.meta}</span></li>
+                    : <li key={l.seq} className="tl-note tl-note--one">{l.text}</li>)}
+                </ul>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
-/** total 을 모르면(null) 분모를 지어내지 않는다 — "82개 읽음"으로만 쓴다. */
+/**
+ * total 을 모르면(null) 분모를 지어내지 않는다 — 읽는 단계는 "82개 읽음", 고르는 단계는 "20개"로만 쓴다.
+ * 지금 단계는 큰 숫자, 나머지는 작은 글이다
+ */
+function StepCount({ step, view }: { step: JobStep; view: TimelineView }) {
+  if (view === 'wait' || view === 'skip') return null;
+  const unit = jobStepUnit[step.key];
+  if (step.total === 0) return <span className="tl__meta">새로 읽을 게 없어요</span>;
+  const known = step.total != null;
+  const open = `${unit}${step.key === 'COMMITS' || step.key === 'PR_REVIEW' ? ' 읽음' : ''}`;
+  if (view === 'now') {
+    if (!known && step.done === 0) return null;
+    return <span className="tl__count">{step.done}<small>{known ? ` / ${step.total}${unit}` : open}</small></span>;
+  }
+  return <span className="tl__meta">{!known ? `${step.done}${open}` : view === 'done' ? `${step.done}${unit}` : `${step.done} / ${step.total}${unit}`}</span>;
+}
+
+/** 시작부터 끝(또는 마지막 갱신)까지 걸린 시간 */
+function took(j: Job) {
+  return elapsed((Date.parse(j.finishedAt ?? j.updatedAt) - Date.parse(j.startedAt)) / 1000);
+}
+
 function RetryTimeNotice({ refresh, pending }: { refresh: () => Promise<unknown>; pending: boolean }) {
   return <div className="query-failure" role="alert"><p>대기 시간을 확인하지 못했어요. 정리 상태를 다시 불러와 주세요.</p>
     <Button variant="outline" loading={pending} onClick={() => void refresh()}>정리 상태 새로고침</Button></div>;
-}
-function stepDetail(done: number, total: number | null, unit: string, state: string) {
-  if (state === 'SKIPPED') return '읽을 게 없어 건너뛰었어요';
-  if (state === 'QUEUED') return '대기 중';
-  if (total == null) return `${done}${unit} 읽음`;
-  if (total === 0) return '새로 읽을 게 없어요';
-  return `${done} / ${total}${unit}`;
 }
 
 /** 어디까지 읽고 멈췄는지. 단계 진행값이 그대로 근거가 된다. */

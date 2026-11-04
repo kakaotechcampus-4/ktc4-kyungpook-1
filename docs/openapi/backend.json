@@ -2868,6 +2868,22 @@
         },
         "type" : "object"
       },
+      "MatchedCondition" : {
+        "properties" : {
+          "techs" : {
+            "description" : "조건의 기술 이름. 카드 techs 와 같은 값이며, 기술 이름이 없는 조건은 빈 배열",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "text" : {
+            "description" : "조건 글",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "MatchedPostingsResponse" : {
         "properties" : {
           "matchedPostings" : {
@@ -2925,6 +2941,11 @@
       },
       "OverallRecommendationResponse" : {
         "properties" : {
+          "checked" : {
+            "description" : "계산할 때 확인한 공고 수(1단계로 고른 곳, 많아야 15). 계산 중이든 끝났든 싣고, 계산한 적 없으면 0",
+            "format" : "int32",
+            "type" : "integer"
+          },
           "companies" : {
             "description" : "추천 기업. 많아야 5곳이고 순위 순서이며, 계산 중이거나 실패해도 지난 결과를 담는다",
             "items" : {
@@ -3444,6 +3465,20 @@
           "logoUrl" : {
             "description" : "https 로고 주소. 없으면 null",
             "type" : "string"
+          },
+          "met" : {
+            "description" : "채웠다고 판단한 필수 조건. 공고에 적힌 순서로 많아야 3개이며, 이 칸이 생기기 전에 계산한 결과는 빈 배열",
+            "items" : {
+              "$ref" : "#/components/schemas/MatchedCondition"
+            },
+            "type" : "array"
+          },
+          "missing" : {
+            "description" : "채우지 못한 필수 조건. 공고에 적힌 순서로 많아야 3개이며, 이 칸이 생기기 전에 계산한 결과는 빈 배열",
+            "items" : {
+              "$ref" : "#/components/schemas/MatchedCondition"
+            },
+            "type" : "array"
           },
           "posting" : {
             "$ref" : "#/components/schemas/Posting"

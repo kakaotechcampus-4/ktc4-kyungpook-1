@@ -59,7 +59,7 @@ class OverallRecommendationQueryServiceTest {
 
         when(recommendations.findByUserId(USER)).thenReturn(Optional.empty());
 
-        assertThat(queries.of(USER)).isEqualTo(new OverallRecommendationView(null, null, false, null, List.of()));
+        assertThat(queries.of(USER)).isEqualTo(new OverallRecommendationView(null, null, false, null, 0, List.of()));
 
     }
 
@@ -107,24 +107,29 @@ class OverallRecommendationQueryServiceTest {
     }
 
     @Test
-    @DisplayName("저장한 기업은 로고와 대표 공고를 붙여 보여 주고, 그 뒤 마감된 공고는 마감으로, 사라진 공고의 기업은 빼고 보여 준다")
+    @DisplayName("저장한 기업은 로고와 대표 공고, 맞은·모자란 조건 이름을 붙여 보여 주고, 그 뒤 마감된 공고는 마감으로, 사라진 공고의 기업은 빼며, 확인한 공고 수는 계산이 끝난 뒤에도 싣는다")
     void showsSavedCompaniesWithClosedPostingsAndWithoutRemovedOnes() {
 
         JobPosting open = posting(21L, NOW.plusSeconds(86_400));
         JobPosting expired = posting(22L, NOW);
         when(postings.findAllById(anyList())).thenReturn(List.of(open, expired));
         OverallRecommendation saved = saved(OverallRecommendationStatus.READY, NOW, null);
+        OverallCompany.Condition spring = new OverallCompany.Condition("Spring 서버 개발 경험", List.of("SPRING"));
+        OverallCompany.Condition kafka = new OverallCompany.Condition("Kafka 운영 경험", List.of("KAFKA"));
         ReflectionTestUtils.setField(saved, "companies", List.of(
-                new OverallCompany("toss", "토스", 21L, 3, 4, 1, 2),
-                new OverallCompany("kakao", "카카오", 22L, 1, 2, 0, 0),
-                new OverallCompany("line", "라인", 23L, 1, 1, 0, 0)));
+                new OverallCompany("toss", "토스", 21L, 3, 4, 1, 2, List.of(spring), List.of(kafka)),
+                new OverallCompany("kakao", "카카오", 22L, 1, 2, 0, 0, List.of(), List.of()),
+                new OverallCompany("line", "라인", 23L, 1, 1, 0, 0, List.of(), List.of())));
         when(recommendations.findByUserId(USER)).thenReturn(Optional.of(saved));
 
-        assertThat(queries.of(USER).companies())
+        OverallRecommendationView view = queries.of(USER);
+        assertThat(view.checked()).isEqualTo(15);
+        assertThat(view.companies())
                 .extracting(company -> company.companyName(), company -> company.logoUrl(),
-                        company -> company.posting().closed(), company -> company.requiredTotal())
-                .containsExactly(tuple("토스", "https://static.toss.im/logo.png", false, 4),
-                        tuple("카카오", "https://static.toss.im/logo.png", true, 2));
+                        company -> company.posting().closed(), company -> company.requiredTotal(),
+                        company -> company.met(), company -> company.missing())
+                .containsExactly(tuple("토스", "https://static.toss.im/logo.png", false, 4, List.of(spring), List.of(kafka)),
+                        tuple("카카오", "https://static.toss.im/logo.png", true, 2, List.of(), List.of()));
 
     }
 

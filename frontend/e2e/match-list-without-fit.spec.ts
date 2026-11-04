@@ -45,7 +45,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator('.match-card')).toHaveCount(5);
     await expect(page.getByText(/확정한 카드가 없어요/)).toHaveCount(0);
     await expect(page.getByRole('link', { name: '카드 확정하러 가기' })).toHaveCount(0);
-    await expect(page.getByText('카드를 확정하면 등급이 나와요')).toHaveCount(0);
+    await expect(page.getByText('카드가 확정되면 등급이 나와요')).toHaveCount(0);
     await expect(page.locator('.match-fit')).toHaveCount(0);
     await expect(page.locator('.match-counts')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

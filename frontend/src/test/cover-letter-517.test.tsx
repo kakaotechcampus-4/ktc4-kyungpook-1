@@ -206,6 +206,8 @@ describe('① 입력 화면', () => {
     db.cards.forEach((c) => { c.status = 'DRAFT'; });
     mount(null, '/cover-letters/new');
     await waitFor(() => expect(screen.getByText('확정한 카드가 없어요')).toBeInTheDocument());
+    // 카드는 네 칸이 모두 차고 확인 필요한 칸이 없으면 서버가 자동으로 확정한다(Card.settle) — 눌러서 확정하라고만 하지 않고 그 규칙을 알린다
+    expect(screen.getByText(/네 칸이 모두 차고 확인 필요한 칸이 없으면 카드가 자동으로 확정돼요/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 고르기' })).toBeDisabled();
   });
 });

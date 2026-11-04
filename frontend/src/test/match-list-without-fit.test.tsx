@@ -15,7 +15,7 @@ import sampleList from '../../docs/examples/matching/list.json';
 // 서버가 목록에서 등급(fit)을 비워 보내도, 확정 카드가 없다고 말하지 않는다. 확정 카드 수는 내 정보(me)에서만 읽는다.
 // 목록의 순서가 마감 순과 달라야 '서버 순서 그대로' 시험이 의미가 있어서, 아래 목록은 일부러 섞어 둔다.
 const NOTICE = /확정한 카드가 없어요/;
-const EMPTY_CHIP = '카드를 확정하면 등급이 나와요';
+const EMPTY_CHIP = '카드가 확정되면 등급이 나와요';
 
 beforeEach(resetDb);
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
@@ -56,7 +56,7 @@ describe('목록의 등급이 전부 비어 있을 때', () => {
     expect(document.querySelectorAll('.match-card')).toHaveLength(5);
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '카드 확정하러 가기' })).not.toBeInTheDocument();
-    // 등급 칩 자리에 "카드를 확정하면 등급이 나와요" 를 공고마다 되풀이하지 않고, 채운 개수(0)도 지어내지 않는다
+    // 등급 칩 자리에 "카드가 확정되면 등급이 나와요" 를 공고마다 되풀이하지 않고, 채운 개수(0)도 지어내지 않는다
     expect(screen.queryByText(EMPTY_CHIP)).not.toBeInTheDocument();
     expect(document.querySelector('.match-fit')).toBeNull();
     expect(document.querySelector('.match-counts')).toBeNull();

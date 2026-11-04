@@ -316,7 +316,7 @@ it('진행하기 뒤 돌아왔는데 새 카드가 아직 확정 전이면 다�
   mount(base);
   const judge = vi.spyOn(matchingApi, 'judge').mockResolvedValue(base);
 
-  await screen.findByText('새로 만든 카드를 확정하면 다시 맞춰 볼게요');
+  await screen.findByText('새로 만든 카드가 확정되면 다시 맞춰 볼게요');
   expect(judge).not.toHaveBeenCalled();
   expect(readProceeded(base.id)).toEqual([docker.id, k8s.id]);
 });

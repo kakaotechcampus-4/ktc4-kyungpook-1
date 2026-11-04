@@ -31,7 +31,7 @@ export function RepoMatch({ repoId, confirmedCards }: { repoId: string; confirme
         <Link to="/match" className="btn btn--outline btn--sm">전체 공고 보기</Link>
       </div>
       {confirmedCards === 0 ? (
-        <p className="overall-match__empty">카드를 확정하면 이 레포 카드로 맞는 기업을 골라 드려요.</p>
+        <p className="overall-match__empty">카드가 확정되면 이 레포 카드로 맞는 기업을 골라 드려요.</p>
       ) : rec.isPending ? (
         <Skeleton h={72} />
       ) : rec.isError && !rec.data ? (

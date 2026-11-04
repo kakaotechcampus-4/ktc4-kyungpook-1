@@ -31,7 +31,7 @@ export function MatchBack({ to }: { to: string }) {
 /** label: 기업 묶음처럼 여러 공고 중 대표 등급을 보일 때는 "최고 등급"으로 바꿔 쓴다 */
 export function Fit({ value, label = "근거 등급" }: { value: MatchTarget["fit"]; label?: string }) {
   return value === null ? (
-    <span className="match-fit-empty">카드를 확정하면 등급이 나와요</span>
+    <span className="match-fit-empty">카드가 확정되면 등급이 나와요</span>
   ) : (
     <span
       className={`match-fit match-fit--${value}`}

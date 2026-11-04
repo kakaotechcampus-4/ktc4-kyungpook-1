@@ -55,7 +55,7 @@ export function MatchHead({ confirmedCards }: { confirmedCards: number | undefin
         </p>
       )}
       {data && !computing && data.status === "READY" && data.companies.length === 0 && (
-        <p className="match-line">맞는 공고를 찾지 못했어요. 경험 카드를 더 확정하거나 인적사항을 채우면 달라질 수 있어요.</p>
+        <p className="match-line">맞는 공고를 찾지 못했어요. 확정된 경험 카드가 늘거나 인적사항을 채우면 달라질 수 있어요.</p>
       )}
     </>
   );

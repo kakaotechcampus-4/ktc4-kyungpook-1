@@ -163,7 +163,7 @@ describe('응답 읽기와 초안 알림', () => {
     mount(`/cover-letters/${unusable.id}`, unusable);
     const notices = screen.getByRole('region', { name: '살펴볼 것' });
     expect(within(notices).getByText('지원 이유가 글로 쓰기 어려워서 채팅에서 다시 물어요')).toBeInTheDocument();
-    fireEvent.click(within(notices).getByRole('button', { name: '→ 채우기' }));
+    fireEvent.click(within(notices).getByRole('button', { name: '채우기' }));
     expect(screen.getByRole('tab', { name: '채우기' })).toHaveAttribute('aria-selected', 'true');
   });
 });

@@ -5,6 +5,8 @@
  */
 import { ANSWER_MAX, COVER_LETTER_LIMITS as L, DRAFT_MAX, MATERIAL_ITEMS, type QuestionTheme } from '@/api/coverLetters';
 import { BLANK_TEXT, blanksIn, countableLength } from '@/lib/draftText';
+import { STRENGTHS, STRENGTH_LIMIT } from '@/lib/coverLetterCopy';
+import { checkReason } from '@/lib/reasonCheck';
 import { db, nextId, STAR, FIELD_KEY } from './store';
 import { now } from './fixtures';
 import { mockMatchDetail } from './matching';
@@ -34,9 +36,14 @@ const latest = (c: Any) => c.versions[c.versions.length - 1];
 // ───────────────────────────── 입력 검사 ─────────────────────────────
 const hasNul = (s: string) => s.includes('\u0000');
 const blank = (s: unknown) => typeof s !== 'string' || s.trim() === '';
+const STRENGTH_CODES: unknown[] = STRENGTHS.flatMap((g) => g.items.map((i) => i.code));
 function checkInput(body: Any): string | null {
   if (blank(body?.jobRole) || body.jobRole.length > L.JOB_ROLE || hasNul(body.jobRole)) return '지원 직무 칸을 확인해 주세요.';
-  if (body.memo != null && (typeof body.memo !== 'string' || body.memo.length > L.MEMO || hasNul(body.memo))) return '메모 칸을 확인해 주세요.';
+  if (typeof body?.memo !== 'string' || body.memo.length > L.MEMO) return '지원 이유를 20자 이상 한국어로 적어 주세요.';
+  const reason = checkReason(body.memo);
+  if (reason) return `지원 이유: ${reason}`;
+  const st = body.strengths;
+  if (st != null && (!Array.isArray(st) || st.length > STRENGTH_LIMIT || new Set(st).size !== st.length || st.some((c) => !STRENGTH_CODES.includes(c)))) return `강점은 정해진 것 중 ${STRENGTH_LIMIT}개까지 고를 수 있습니다.`;
   const qs = body.questions;
   if (!Array.isArray(qs) || qs.length < 1 || qs.length > L.QUESTIONS) return `문항은 1개부터 ${L.QUESTIONS}개까지입니다.`;
   for (const q of qs) {
@@ -256,7 +263,7 @@ const draftView = (q: Any) => {
   if (!d) return null;
   const charCount = countableLength(d.text);
   return {
-    text: d.text, aiText: d.aiText, edited: d.text !== d.aiText, charCount, overBy: Math.max(0, charCount - q.charLimit),
+    text: d.text, aiText: d.aiText, edited: d.edited ?? d.text !== d.aiText, charCount, overBy: Math.max(0, charCount - q.charLimit),
     sentences: d.sentences, marks: d.marks, blanks: blanksIn(d.text), source: d.source,
   };
 };
@@ -281,7 +288,8 @@ function advance(letter: Any) {
   }
   if (letter.stage === 'ASKING' && elapsed(letter) >= ASK_SEC) {
     settleAsks(letter);
-    Object.assign(letter, { stage: 'ASKED', updatedAt: now() });
+    // 질문 단계의 지원 이유 판정 흉내 — '무시하고' 가 들어간 글은 쓸 수 없는 글로 본다(초안 화면 알림 시험용)
+    Object.assign(letter, { stage: 'ASKED', updatedAt: now(), memoUsable: letter.memo ? !letter.memo.includes('무시하고') : null });
   }
   if (letter.stage === 'DRAFTING' && elapsed(letter) >= (letter._draftSec ?? DRAFT_SEC)) {
     settleDrafts(letter);
@@ -306,7 +314,8 @@ function view(letter: Any) {
     id: letter.id, stage: letter.stage, failedStep: letter.failedStep ?? null, errorCode: letter.errorCode ?? null,
     retryable: letter.stage === 'FAILED' ? letter.errorCode === 'AI_UNAVAILABLE' : null,
     pollAfterMs: running ? COVER_LETTER_POLL_MS : null,
-    jobRole: letter.jobRole, memo: letter.memo, posting: letter.posting ?? null, createdAt: letter.createdAt, updatedAt: letter.updatedAt,
+    jobRole: letter.jobRole, memo: letter.memo, strengths: letter.strengths ?? [], memoUsable: letter.memoUsable ?? null,
+    posting: letter.posting ?? null, createdAt: letter.createdAt, updatedAt: letter.updatedAt,
     questions: letter.questions.map((q: Any) => {
       const primary = assigned ? cardRef(q.primaryCardId) : null;
       const answers = new Map((q.answers ?? []).map((a: Any) => [a.item, a]));
@@ -325,6 +334,8 @@ function view(letter: Any) {
         }),
         draft: draftView(q),
         writing: letter.stage === 'DRAFTING' ? writingOf(letter, q, elapsed(letter)) : null,
+        polish: q.polish ?? null,
+        polishAppliedCount: q.polishAppliedCount ?? 0,
       };
     }),
     steps: {
@@ -367,7 +378,7 @@ export function createCoverLetter(body: Any, key: string | undefined): CoverLett
   const at = now();
   const letter: Any = {
     id: nextId('cl'), key: key || null, stage: 'ASSIGNING', failedStep: null, errorCode: null,
-    jobRole: body.jobRole.trim(), memo: body.memo?.trim() || null, posting, createdAt: at, updatedAt: at, startedAt: Date.now(),
+    jobRole: body.jobRole.trim(), memo: body.memo.trim(), strengths: body.strengths ?? [], memoUsable: null, posting, createdAt: at, updatedAt: at, startedAt: Date.now(),
     questions: body.questions.map((q: Any, i: number) => ({ id: nextId('clq'), seq: i + 1, text: q.text.trim(), charLimit: q.charLimit ?? L.CHAR_DEFAULT })),
     _failAssign: failNextAssign,
   };
@@ -490,6 +501,281 @@ export function saveDraft(id: string, questionId: string, body: Any): CoverLette
   const text = body?.text;
   if (typeof text !== 'string' || text.length > DRAFT_MAX || text.includes('\u0000')) return invalid('글을 확인해 주세요.');
   q.draft.text = text;
+  delete q.draft.edited;
   l.updatedAt = now();
   return ok(view(l));
+}
+
+// ───────────────────────────── 첨삭(#727) ─────────────────────────────
+/** 첨삭 받기는 실제로 AI 를 기다리는 요청이라 데모(mock/browser.ts)는 이만큼 더 기다린다 — 진행 표시 두 단계가 보이게 */
+export const POLISH_DELAY_MS = 1200;
+const POLISH_RESULT = '그 결과 같은 문제가 다시 생기지 않았습니다.';
+
+/** 쉼표가 가운데에 가장 가까운 자리에서 문장을 둘로 나눈다. '…했고,' 는 '…했습니다.' 로 맺는다. 쉼표가 없으면 null */
+function splitLong(sentence: string): [string, string] | null {
+  const commas = [...sentence.matchAll(/, /g)].map((m) => m.index);
+  if (!commas.length) return null;
+  const at = commas.reduce((a, b) => (Math.abs(b - sentence.length / 2) < Math.abs(a - sentence.length / 2) ? b : a));
+  const left = sentence.slice(0, at), right = sentence.slice(at + 2).trim();
+  return [left.endsWith('고') ? `${left.slice(0, -1)}습니다.` : `${left}.`, right];
+}
+
+/**
+ * 가짜 첨삭 — 지금 글에서 가장 긴 문장을 둘로 나누고 결과 문장 하나를 보탠다. 포인트는 아쉬운 점 2 · 잘한 점 1, 문장 번호는 고친 글 기준.
+ * 표시(marks)는 바뀌지 않은 문장에만 그대로 옮긴다 — 확인해 지운 짐작 표시는 다시 달지 않는다.
+ */
+export function polishQuestion(id: string, questionId: string): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  advance(l);
+  if (l.stage !== 'DRAFTED' || !q.draft) return badState('첨삭은 초안을 다 쓴 뒤에만 받을 수 있습니다.');
+  const before: string[] = q.draft.text.split(/(?<=[.])\s+/).filter(Boolean);
+  const longest = before.reduce((a, b, i) => (b.length > before[a].length ? i : a), 0);
+  const halves = before.length ? splitLong(before[longest]) : null;
+  const after = halves ? [...before.slice(0, longest), ...halves, ...before.slice(longest + 1)] : [...before];
+  // 결과 문장은 글 끝의 빈칸(`[더 쓸 거리: …]`) 앞에 둔다
+  const resultAt = after.length && /^\[[^\]]*\]$/.test(after[after.length - 1]) ? after.length - 1 : after.length;
+  after.splice(resultAt, 0, POLISH_RESULT);
+  const sentences = after.map((t, i) => ({ seq: i + 1, text: t }));
+  const seqOf = (oldSeq: number) => {
+    const t = before[oldSeq - 1];
+    if (t == null || (halves && oldSeq - 1 === longest)) return null;
+    return after.indexOf(t) + 1 || null;
+  };
+  const marks = q.draft.marks.flatMap((m: Any) => {
+    if (m.sentenceSeq == null) return [m];
+    const seq = seqOf(m.sentenceSeq);
+    return seq ? [{ ...m, sentenceSeq: seq }] : [];
+  });
+  const text = after.join(' ');
+  const charCount = countableLength(text);
+  const points = [
+    halves
+      ? { kind: 'WEAK', category: 'READABILITY', title: '한 문장이 길어요', detail: '두 문장으로 나누면 읽기 쉬워요', sentenceSeqs: [longest + 1, longest + 2] }
+      : { kind: 'WEAK', category: 'TECH_TERMS', title: '쓴 기술 이름이 안 보여요', detail: '실제로 쓴 기술 하나를 붙여요', sentenceSeqs: [1] },
+    { kind: 'WEAK', category: 'EVIDENCE', title: '결과가 얼마나 나아졌는지 안 보여요', detail: '고친 뒤 달라진 점을 한 가지 적어요', sentenceSeqs: [resultAt + 1] },
+    { kind: 'GOOD', category: 'FIT', title: '문항이 묻는 흐름대로 썼어요', detail: '겪은 일과 한 일이 차례로 보여요', sentenceSeqs: [1] },
+  ].map((p, i) => ({ seq: i + 1, ...p }));
+  q.polish = {
+    summary: '겪은 일과 한 일이 차례로 보여요. 결과를 한 줄 더하고 긴 문장을 나누면 더 읽기 쉬워요.',
+    points,
+    draft: { text, sentences, charCount, overBy: Math.max(0, charCount - q.charLimit), marks, blanks: blanksIn(text) },
+    createdAt: now(),
+  };
+  l.updatedAt = now();
+  return ok(view(l));
+}
+
+/** 첨삭 글로 지금 글·문장·표시를 바꾼다. AI 원본은 그대로 두고 적용 횟수를 센다 */
+export function applyPolish(id: string, questionId: string): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  advance(l);
+  if (l.stage !== 'DRAFTED' || !q.draft || !q.polish) return badState('적용할 첨삭 결과가 없습니다.');
+  const p = q.polish.draft;
+  Object.assign(q.draft, { text: p.text, sentences: p.sentences, marks: p.marks, edited: false });
+  q.polishAppliedCount = (q.polishAppliedCount ?? 0) + 1;
+  q.polish = null;
+  l.updatedAt = now();
+  return ok(view(l));
+}
+
+export function discardPolish(id: string, questionId: string): CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  q.polish = null;
+  return ok(view(l));
+}
+
+// ───────────────────────────── 채우기 대화(#733) ─────────────────────────────
+/** 대화 요청은 AI 를 기다리는 요청이라 데모(mock/browser.ts)는 이만큼 더 기다린다 — '생각하는 중'이 보이게 */
+export const TURN_DELAY_MS = 800;
+/** 문항마다 물을 질문 수 — 넘으면 그 문항은 끝(DONE)이다 */
+const TURN_QUESTIONS = 2;
+const TURN_MAX = 500;
+const MORE_BLANK = /\[더 쓸 거리: ([^[\]\n]{1,60})\]/;
+const GAP_LABEL: Record<string, string> = { SITUATION: '상황', ACTION: '직접 한 일', RESULT: '결과', LEARNING: '배운 점', TRIGGER: '계기', JOB_LINK: '직무와 이어지는 점', REASON: '지원 이유' };
+const GAP_WHY: Record<string, string> = {
+  SITUATION: '언제 무슨 일이었는지가 있어야 뒤의 행동이 읽혀요',
+  ACTION: '내가 직접 한 일이 보여야 읽는 사람이 믿어요',
+  RESULT: '무엇이 달라졌는지가 있어야 한 일이 끝맺어져요',
+  LEARNING: '이 경험에서 얻은 것이 있어야 다음 일과 이어져요',
+  TRIGGER: '왜 시작했는지가 있어야 동기가 보여요',
+  JOB_LINK: '지원 직무와 이어져야 이 경험을 고른 이유가 보여요',
+  REASON: '이 회사를 고른 이유가 있어야 지원 동기가 돼요',
+};
+const GAP_EXAMPLE: Record<string, string> = {
+  SITUATION: '팀 프로젝트 마감 두 주 전에 배포가 자주 멈췄어요',
+  ACTION: 'AI 담당 팀원과 로그를 같이 보며 원인을 좁혔어요',
+  RESULT: '같은 오류가 그 뒤로 다시 나지 않았어요',
+  LEARNING: '작게 나눠 확인하는 습관이 중요하다는 걸 배웠어요',
+  TRIGGER: '수강 신청 서버가 자주 멈추는 걸 보고 시작했어요',
+  JOB_LINK: '서버 오류를 찾아 고친 경험이 백엔드 일과 이어져요',
+  REASON: '이 회사가 결제 서버를 직접 만든다는 점이 끌렸어요',
+};
+
+const GAP_SUBJECT: Record<string, string> = { RESULT: '결과가', LEARNING: '배운 점이' };
+
+type Gap = { key: string; item: string; blank: string | null; what: string };
+/** 그 문항에서 다음에 물을 곳 — 항목 빈칸 → 더 쓸 거리 → 답이 없는 결과·배운 점. 다룬 곳은 다시 묻지 않는다 */
+function nextGap(q: Any): Gap | null {
+  const text: string = q.draft?.text ?? '';
+  const passed = new Set<string>(q._turn?.passed ?? []);
+  for (const item of MATERIAL_ITEMS) {
+    const blank = BLANK_TEXT[item];
+    if (text.includes(blank) && !passed.has(`item:${item}`)) return { key: `item:${item}`, item, blank, what: GAP_LABEL[item] };
+  }
+  const more = text.match(MORE_BLANK);
+  if (more && !passed.has(`more:${more[1]}`)) return { key: `more:${more[1]}`, item: 'ACTION', blank: more[0], what: more[1] };
+  const answered = new Set((q.answers ?? []).filter((a: Any) => !a.skipped).map((a: Any) => a.item));
+  for (const item of ['RESULT', 'LEARNING']) if (!answered.has(item) && !passed.has(`add:${item}`)) return { key: `add:${item}`, item, blank: null, what: GAP_LABEL[item] };
+  return null;
+}
+/** 질문은 세 줄 — 무엇이 비었나 · 이 문항에 왜 필요한가 · 무엇을 한 줄로 알려 주면 되나 + 예시 */
+const askLines = (q: Any, g: Gap) => [
+  g.key.startsWith('more:') ? `Q${q.seq} 글 끝에 빈칸이 하나 있어요(${g.what}).`
+    : g.blank ? `Q${q.seq} 글에 '${g.what}' 빈칸이 있어요.` : `Q${q.seq}에 ${GAP_SUBJECT[g.item] ?? g.what} 한 줄 있으면 글이 단단해져요.`,
+  `이 문항은 ${GAP_WHY[g.item]}.`,
+  `한 줄로 알려 주세요. 예: "${GAP_EXAMPLE[g.item]}"`,
+].join('\n');
+
+/** 답을 자소서 말투('~했습니다')로 — 실제 서버는 AI 가 그 자리를 다시 쓴다 */
+export function formalSentence(reply: string): string {
+  const t = reply.trim().replace(/\s+/g, ' ').replace(/[.!?~\s]+$/, '');
+  if (/다$/.test(t)) return `${t}.`;
+  if (/해요$/.test(t)) return `${t.slice(0, -2)}했습니다.`;
+  if (/(이)?에요$|예요$/.test(t)) return `${t.replace(/(이)?에요$|예요$/, '')}입니다.`;
+  if (/[어아]요$/.test(t)) return `${t.slice(0, -2)}습니다.`;
+  return `${t}.`;
+}
+
+/** 빈칸 자리를 그 문장으로 바꾼다. 빈칸이 없으면 끝(더 쓸 거리 앞)에 붙인다. 표시는 글이 그대로인 문장에만 옮긴다 */
+function fillDraft(q: Any, g: Gap, sentence: string) {
+  const d = q.draft;
+  const before: string = d.text;
+  let next: string;
+  if (g.blank && before.includes(g.blank)) next = before.replace(g.blank, sentence);
+  else {
+    const more = before.match(MORE_BLANK);
+    next = more ? before.replace(more[0], `${sentence} ${more[0]}`) : `${before.trimEnd()} ${sentence}`.trim();
+  }
+  const texts = next.split(/(?<=[.])\s+/).filter(Boolean);
+  const marks = (d.marks ?? []).flatMap((m: Any) => {
+    if (m.sentenceSeq == null) return [m];
+    const old = d.sentences.find((s: Any) => s.seq === m.sentenceSeq)?.text;
+    const at = old == null ? -1 : texts.indexOf(old);
+    return at >= 0 ? [{ ...m, sentenceSeq: at + 1 }] : [];
+  });
+  Object.assign(d, { text: next, sentences: texts.map((t, i) => ({ seq: i + 1, text: t })), marks, edited: false });
+}
+
+const turnView = (t: Any) => ({ seq: t.seq, role: t.role, questionId: t.questionId, text: t.text, item: t.item ?? null, status: t.status ?? null, createdAt: t.createdAt });
+const turnReply = (l: Any, q: Any, rewriteFailed = false): CoverLetterResult => {
+  const v = view(l) as Any;
+  return ok({ turns: (l.turns ?? []).map(turnView), question: v.questions.find((x: Any) => x.id === q.id), rewriteFailed });
+};
+function pushTurn(l: Any, q: Any, role: 'AI' | 'USER', text: string, item: string | null = null, status: string | null = null) {
+  l.turns ??= [];
+  l.turns.push({ seq: l.turns.length + 1, role, questionId: q.id, text, item, status: role === 'AI' ? status : null, createdAt: now() });
+}
+const blanksLeft = (q: Any) => blanksIn(q.draft.text).length > 0 || MORE_BLANK.test(q.draft.text);
+/** 다음 질문을 하거나, 물을 게 없거나 질문을 다 썼으면 그 문항을 끝낸다 */
+function askOrFinish(l: Any, q: Any, intro: string | null) {
+  const st = (q._turn ??= { asked: 0, passed: [], pending: null, followed: false });
+  const g = st.asked < TURN_QUESTIONS ? nextGap(q) : null;
+  const lead = intro ? `${intro}\n` : '';
+  if (!g) {
+    st.pending = null;
+    pushTurn(l, q, 'AI', `${lead}${blanksLeft(q) ? '빈칸은 그대로 둘게요 · 글은 지금도 완성이에요.' : '이 문항은 채웠어요.'}`, null, 'DONE');
+    return;
+  }
+  st.asked++;
+  Object.assign(st, { pending: g, followed: false });
+  pushTurn(l, q, 'AI', `${lead}${askLines(q, g)}`, g.item, 'ASKING');
+}
+function turnTarget(id: string, questionId: string): { l: Any; q: Any } | CoverLetterResult {
+  const l = own(id);
+  const q = l?.questions.find((x: Any) => x.id === questionId);
+  if (!l || !q) return notFound();
+  advance(l);
+  if (l.stage !== 'DRAFTED' || !q.draft) return badState('채우기는 초안을 다 쓴 뒤에만 할 수 있습니다.');
+  return { l, q };
+}
+
+export function listCoverLetterTurns(id: string): CoverLetterResult {
+  const l = own(id);
+  return l ? ok({ turns: (l.turns ?? []).map(turnView) }) : notFound();
+}
+
+/** 그 문항 이야기를 시작한다. 이미 그 문항 질문이 열려 있으면 같은 곳을 다시 묻는다(질문 수는 늘지 않는다) */
+export function openCoverLetterTurn(id: string, questionId: string): CoverLetterResult {
+  const t = turnTarget(id, questionId);
+  if ('ok' in t) return t;
+  const { l, q } = t;
+  const last = (l.turns ?? []).filter((x: Any) => x.role === 'AI').at(-1);
+  const intro = last && last.questionId !== q.id ? `Q${q.seq} 얘기로 갈게요.` : null;
+  const st = q._turn;
+  if (st?.pending) pushTurn(l, q, 'AI', `${intro ? `${intro}\n` : ''}${askLines(q, st.pending)}`, st.pending.item, 'ASKING');
+  else askOrFinish(l, q, intro);
+  l.updatedAt = now();
+  return turnReply(l, q);
+}
+
+/**
+ * 답 하나 — '무시하고'가 든 말은 범위 밖(OFF_TOPIC), 15자 안쪽이면 꼬리 질문 한 번, 아니면 답을 재료로 저장하고 그 빈칸 자리를 다시 쓴다(FILLED).
+ * 다시 쓴 뒤 물을 곳이 남았으면 같은 말에 다음 질문을 잇고, 없으면 끝(DONE) 말을 하나 더 붙인다.
+ * '실패'가 든 답은 다시 쓰기가 실패한 경우를 흉내 낸다 — 말과 답은 남기고 글은 그대로 두며 rewriteFailed 를 준다.
+ */
+export function replyCoverLetterTurn(id: string, questionId: string, body: Any): CoverLetterResult {
+  const text = body?.text;
+  if (typeof text !== 'string' || text.trim() === '' || text.length > TURN_MAX || hasNul(text)) return invalid('답 칸을 확인해 주세요.');
+  const t = turnTarget(id, questionId);
+  if ('ok' in t) return t;
+  const { l, q } = t;
+  const st = q._turn;
+  if (!st?.pending) return badState('지금 이 문항에 열린 질문이 없습니다.');
+  const g: Gap = st.pending;
+  let rewriteFailed = false;
+  pushTurn(l, q, 'USER', text);
+  if (text.includes('무시하고')) {
+    pushTurn(l, q, 'AI', `그건 제가 도울 수 없어요. 지금은 Q${q.seq} 재료를 묻고 있어요.\n${askLines(q, g)}`, g.item, 'OFF_TOPIC');
+  } else if (text.trim().length < 15 && !st.followed) {
+    st.followed = true;
+    pushTurn(l, q, 'AI', `알겠어요. 조금만 더 알려 주세요.\n그때 직접 한 일을 한 줄만 더 적어 주세요. 예: "${GAP_EXAMPLE[g.item]}"`, g.item, 'ASKING');
+  } else {
+    q.answers = [...(q.answers ?? []).filter((a: Any) => a.item !== g.item), { item: g.item, text: text.trim(), skipped: false, reused: false }];
+    const card = cardById(q.primaryCardId);
+    if (card && REMEMBERED.includes(g.item)) (db.cardMaterialAnswers[card.id] ??= {})[g.item] = text.trim();
+    rewriteFailed = text.includes('실패');
+    if (!rewriteFailed) fillDraft(q, g, formalSentence(text));
+    st.passed.push(g.key);
+    st.pending = null;
+    const next = st.asked < TURN_QUESTIONS ? nextGap(q) : null;
+    if (next) {
+      st.asked++;
+      Object.assign(st, { pending: next, followed: false });
+      pushTurn(l, q, 'AI', `알려 준 대로 그 자리를 다시 썼어요.\n${askLines(q, next)}`, next.item, 'FILLED');
+    } else {
+      pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', g.item, 'FILLED');
+      askOrFinish(l, q, null);
+    }
+  }
+  l.updatedAt = now();
+  return turnReply(l, q, rewriteFailed);
+}
+
+export function skipCoverLetterTurn(id: string, questionId: string): CoverLetterResult {
+  const t = turnTarget(id, questionId);
+  if ('ok' in t) return t;
+  const { l, q } = t;
+  const st = q._turn;
+  if (!st?.pending) return badState('지금 이 문항에 열린 질문이 없습니다.');
+  st.passed.push(st.pending.key);
+  st.pending = null;
+  pushTurn(l, q, 'AI', `넘겼어요. ${blanksLeft(q) ? '빈칸은 그대로 둘게요 · 글은 지금도 완성이에요.' : '이 문항은 채웠어요.'}`, null, 'DONE');
+  l.updatedAt = now();
+  return turnReply(l, q);
 }

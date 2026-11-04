@@ -19,25 +19,13 @@ test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 
   await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // GITHUB_RATE_LIMITED
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
-  await expect(page.getByRole('heading', { name: /후보 \d+개 \(부분 결과\)/ })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: / 에서 찾은 일$/ })).toBeVisible();
   await expect(page.getByText('읽은 기록에서 찾은 후보예요')).toBeVisible();
   await page.getByRole('button', { name: '정리 기준' }).click();
   await expect(page.getByRole('button', { name: '다시 정리하기' })).toBeDisabled();
   await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).last().click();
   await page.getByRole('link', { name: '작업 상태 보기' }).click();
   await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
-});
-
-test('후보 제외는 실행 취소할 수 있다', async ({ page }) => {
-  await login(page);
-  await page.goto('/repos/r_auth/candidates');
-  const first = page.locator('.cand').first();
-  const title = await first.locator('.cand__title').textContent();
-  await first.getByRole('button', { name: '제외' }).click();
-  await expect(page.locator('.toast')).toContainText('제외했어요');
-  await expect(page.locator('.cand').first().locator('.cand__title')).not.toHaveText(title!);
-  await page.getByRole('button', { name: '실행 취소' }).click();
-  await expect(page.locator('.cand__title', { hasText: title! })).toBeVisible();
 });
 
 test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채워진다', async ({ page }) => {

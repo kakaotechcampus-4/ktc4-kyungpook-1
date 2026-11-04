@@ -191,12 +191,13 @@ export function InterviewPage() {
               <div className="stack" style={{ gap: 6 }}>
                 <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{starFieldShort[open.field]} 칸</Badge></div>
                 <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
-                <details className="interview-evidence"><summary>질문 근거 보기</summary>
+                {/* 근거가 둘 다 비면 펼쳐도 빈 칸뿐이라 열 거리 자체를 두지 않는다(#536) */}
+                {(open.found.length > 0 || open.missing.length > 0) && <details className="interview-evidence"><summary>질문 근거 보기</summary>
                 <div className="found" style={{ gridTemplateColumns: '1fr' }}>
                   <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>• {f}</span>)}</div>
                   <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>• {m}</span>)}</div>
                 </div>
-                </details>
+                </details>}
               </div>
               {open.options.length > 0 && (
                 <div className="stack" style={{ gap: 6 }}>

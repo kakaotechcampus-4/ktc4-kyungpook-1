@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Activity } from '@/api/activities';
 import { CardSummary } from '@/api/schemas';
-import { buildFolders, deckLayers, folderLabel, folderNote, topTechs } from '@/lib/cardFolders';
+import { buildFolders, deckLayers, folderLabel, folderNote, folderPeek, topTechs } from '@/lib/cardFolders';
 
 const card = (id: string, over: Record<string, unknown> = {}) => CardSummary.parse({
   id, kind: 'TECH', status: 'DRAFT', title: id, versionNo: 1, areas: [], techs: [], repo: null, activity: null,
@@ -93,5 +93,15 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
 describe('폴더 앞판 뒤로 겹쳐 보이는 카드 수 (#522)', () => {
   it('한 장은 겹치지 않고 둘은 한 겹, 셋 이상은 두 겹으로 멈춘다', () => {
     expect([0, 1, 2, 3, 4, 8, 100].map(deckLayers)).toEqual([0, 0, 1, 2, 2, 2, 2]);
+  });
+});
+
+describe('폴더 앞판 미리 보기 한 줄 (#758)', () => {
+  const titled = (...titles: string[]) => ({ cards: titles.map((title, i) => card(`p${i}`, { title })) });
+  it('빈 폴더는 없고, 한두 장은 제목만, 세 장 이상은 앞의 두 제목 뒤에 남은 장 수를 붙인다', () => {
+    expect(folderPeek(titled())).toBeNull();
+    expect(folderPeek(titled('로그인 세션 처리'))).toBe('로그인 세션 처리');
+    expect(folderPeek(titled('로그인 세션 처리', '결제 롤백 대응'))).toBe('로그인 세션 처리 · 결제 롤백 대응');
+    expect(folderPeek(titled('로그인 세션 처리', '결제 롤백 대응', 'c', 'd', 'e'))).toBe('로그인 세션 처리 · 결제 롤백 대응 · +3');
   });
 });

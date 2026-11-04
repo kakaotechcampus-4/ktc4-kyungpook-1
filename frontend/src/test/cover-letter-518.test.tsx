@@ -23,7 +23,7 @@ const advance = (sec: number) => { shift += sec * 1000; Date.now = () => realNow
 
 /** 만들기 → 카드 고르기 → 질문까지 끝난 자소서 */
 function askedLetter() {
-  const created = parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, questions: [
+  const created = parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [
     { text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }, { text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: 1000 },
   ] }));
   advance(7);
@@ -63,12 +63,12 @@ describe('⑤ AI 가 한 일 문장', () => {
   const step = (over: Record<string, unknown>) => ({ seq: 1, actor: 'SUB_AGENT', kind: 'WROTE', questionId: 'q1', code: null, value: null, sentenceSeq: null, action: null, reason: null, ...over });
   it('쓰기, 검사, 고칠지 정하기, 감독 검토를 서버 값으로 말한다', () => {
     expect(draftLine(step({ value: '642' }), qs)?.text).toBe('1번 문항 초안을 썼어요(642자)');
-    expect(draftLine(step({ kind: 'CHECK_FAILED', code: 'UNSOURCED_NUMBER', value: '30%' }), qs)?.text).toBe("1번 문항 검사: '30%'는 카드에 없는 수치예요");
+    expect(draftLine(step({ kind: 'CHECK_FAILED', code: 'UNSOURCED_NUMBER', value: '30%' }), qs)?.text).toBe("1번 문항 검사: '30%' — 카드에 없는 숫자예요");
     expect(draftLine(step({ kind: 'DECIDED', action: 'KEEP', reason: "'k8s'와 같은 뜻" }), qs)).toMatchObject({ text: '1번 문항 그대로 두기로 했어요', reason: "'k8s'와 같은 뜻" });
     expect(draftLine(step({ kind: 'REVIEWED', questionId: null, actor: 'SUPERVISOR', value: '2' }), qs)?.text).toBe('모든 문항을 함께 읽고 2문장을 다시 보게 했어요');
     expect(draftLine(step({ kind: 'SENT_BACK', sentenceSeq: 3, code: 'REPEATED' }), qs)).toMatchObject({ text: '1번 문항 3번째 문장을 다시 쓰게 했어요', reason: '다른 문항과 같은 이야기예요' });
     expect(draftLine(step({ kind: 'SOMETHING_NEW' }), qs)).toBeNull();
-    expect(checkMessage('MISSING_BLANK', 'LEARNING')).toBe("빈칸 '배운 점'을 빠뜨렸어요");
+    expect(checkMessage('MISSING_BLANK', 'LEARNING')).toBe("'배운 점' 빈칸을 빠뜨렸어요");
   });
 });
 
@@ -148,11 +148,11 @@ describe('④ ⑥ 화면', () => {
     mount(parse(req('GET', `/cover-letters/${l.id}`)));
     connectMockServer(); // 저장은 화면 → api() → fetch → 목 라우터 실제 경로로
     expect(screen.getByText('초안이 나왔어요')).toBeInTheDocument();
-    expect(screen.getByText("'30%'는 카드에 없는 수치예요")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '근거 확인 1' })).toBeEnabled();
     const area = screen.getByLabelText('2번 문항 초안');
     fireEvent.change(area, { target: { value: `짧은 글 ${BLANK_TEXT.RESULT}` } });
     expect(screen.getByText(/^5 \/ 1,000자/)).toBeInTheDocument();
-    expect(screen.getByText(/결과/, { selector: 'b' })).toBeInTheDocument();
+    expect(screen.getByText(/결과/, { selector: '.cl-todo b' })).toBeInTheDocument();
     const saveBtns = screen.getAllByRole('button', { name: '저장' });
     expect(saveBtns).toHaveLength(1);
     fireEvent.click(saveBtns[0]);

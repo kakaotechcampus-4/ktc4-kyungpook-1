@@ -216,7 +216,7 @@ class CoverLetterRunnerTest {
         AtomicReference<CoverLetterQuestionsRequest> sent = new AtomicReference<>();
         given(questionsPort.ask(any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
-            return new CoverLetterQuestions(List.of(
+            return new CoverLetterQuestions(null, null, List.of(
                     new CoverLetterQuestions.Question(1, List.of("RESULT"), List.of(
                             new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?",
                                     List.of("배포가 ___ 빨라졌다")),
@@ -276,12 +276,46 @@ class CoverLetterRunnerTest {
         AtomicReference<CoverLetterQuestionsRequest> sent = new AtomicReference<>();
         given(questionsPort.ask(any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
-            return new CoverLetterQuestions(List.of(new CoverLetterQuestions.Question(1, List.of(), List.of())));
+            return new CoverLetterQuestions(null, null, List.of(new CoverLetterQuestions.Question(1, List.of(), List.of())));
         });
 
         runner.run(runner.claimNext().orElseThrow());
 
         assertThat(sent.get().questions().getFirst().primaryCard().statements()).hasSize(20);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true, 결제 서비스를 직접 만들어 보고 싶어서 지원합니다", "false, "})
+    @DisplayName("질문 단계가 지원 이유를 판정하면 남기고, 쓰기 어렵다고 본 지원 이유는 초안 쓰기에 보내지 않는다")
+    void keepsMemoJudgementAndHidesUnusableMemoFromDrafting(boolean usable, String expectedMemo) {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        CoverLetter letter = askingLetter(new Pick(QuestionTheme.MOTIVATION, card, null));
+        jdbc.update("UPDATE cover_letter SET memo = ? WHERE id = ?", "결제 서비스를 직접 만들어 보고 싶어서 지원합니다",
+                letter.getId());
+        AtomicReference<CoverLetterQuestionsRequest> asked = new AtomicReference<>();
+        given(questionsPort.ask(any())).willAnswer(invocation -> {
+            asked.set(invocation.getArgument(0));
+            return new CoverLetterQuestions(usable, usable ? null : "지원 이유로 읽히지 않는 글",
+                    List.of(new CoverLetterQuestions.Question(1, List.of(), List.of())));
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetter judged = letters.findById(letter.getId()).orElseThrow();
+        assertThat(asked.get().memo()).isEqualTo("결제 서비스를 직접 만들어 보고 싶어서 지원합니다");
+        assertThat(judged.getMemoUsable()).isEqualTo(usable);
+
+        judged.startDrafting();
+        letters.save(judged);
+        AtomicReference<CoverLetterDraftsRequest> drafted = new AtomicReference<>();
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
+            drafted.set(invocation.getArgument(0));
+            throw new AgentUnavailableException("AI 실패", true, false, null);
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        assertThat(drafted.get().memo()).isEqualTo(expectedMemo);
 
     }
 

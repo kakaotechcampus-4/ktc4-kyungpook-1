@@ -81,7 +81,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
           {boardLink && <Link to={`${boardLink}?add=1`} className="btn btn--outline">기술 카드 만들기</Link>}
           {kind === 'activity' && <Link to={newCard} className="btn btn--primary"><PenLine size={14} aria-hidden />경험 카드 만들기</Link>}
           {kind === 'activity' && <Link to={`/activities/${encodeURIComponent(id ?? '')}/edit`} className="btn btn--outline">활동 고치기</Link>}
-          {kind === 'activity' && <Button variant="danger" onClick={() => setDeleting(true)}>활동 삭제</Button>}
+          {kind === 'activity' && <Button variant="text" onClick={() => setDeleting(true)}>활동 삭제</Button>}
           {kind === 'repo' && <Link to={newCard} className="btn btn--outline"><PenLine size={14} aria-hidden />경험 카드 만들기</Link>}
           {kind === 'direct' && <Link to={newCard} className="btn btn--primary"><PenLine size={14} aria-hidden />직접 작성</Link>}
         </div>

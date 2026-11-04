@@ -63,6 +63,37 @@ const Draft = z.object({
   blanks: items,
   source: z.string().catch('LLM'),
 });
+/** 첨삭(#727) — 포인트의 종류(아쉬운 점·잘한 점)와 분류. 모르는 값의 포인트는 그 포인트만 버린다 */
+export const POLISH_KINDS = ['WEAK', 'GOOD'] as const;
+export type PolishKind = (typeof POLISH_KINDS)[number];
+export const POLISH_CATEGORIES = ['FIT', 'EVIDENCE', 'READABILITY', 'OVERLAP', 'TECH_TERMS'] as const;
+export type PolishCategory = (typeof POLISH_CATEGORIES)[number];
+const PolishPoint = z.object({
+  seq: z.number(),
+  kind: z.enum(POLISH_KINDS),
+  category: z.enum(POLISH_CATEGORIES),
+  title: z.string(),
+  detail: text,
+  /** 고친 글(polish.draft.sentences)의 문장 번호 */
+  sentenceSeqs: list(z.number()),
+});
+export type PolishPoint = z.infer<typeof PolishPoint>;
+const QuestionPolish = z.object({
+  summary: z.string(),
+  points: z.array(z.unknown()).nullish().catch(null)
+    .transform((v) => (v ?? []).flatMap((p) => { const r = PolishPoint.safeParse(p); return r.success ? [r.data] : []; })),
+  draft: z.object({
+    text: z.string(),
+    sentences: list(z.object({ seq: z.number(), text: z.string() })),
+    charCount: z.number().catch(0),
+    overBy: z.number().catch(0),
+    marks: list(z.object({ sentenceSeq: z.number().nullish(), code: z.string(), value: text })),
+    blanks: items,
+  }),
+  createdAt: text,
+});
+export type QuestionPolish = z.infer<typeof QuestionPolish>;
+
 const Question = z.object({
   id: z.string(),
   seq: z.number(),
@@ -82,6 +113,10 @@ const Question = z.object({
   draft: nullable(Draft),
   /** DRAFTING 동안 그 문항에 지금까지 쓴 글(#618). 문장이 끝날 때마다 늘고, round 는 첫 초안 0·고쳐 쓸 때마다 +1. 다 쓰면 null 이고 draft 가 채워진다 */
   writing: nullable(z.object({ text: z.string(), round: z.number().catch(0) })),
+  /** 적용하지 않은 첨삭 결과. 적용하거나 지우면 null */
+  polish: nullable(QuestionPolish),
+  /** 첨삭을 적용한 횟수 — 0 이면 아직 AI 원본 그대로의 판이다 */
+  polishAppliedCount: z.number().nullish().catch(null).transform((v) => v ?? 0),
 });
 export type CoverLetterQuestion = z.infer<typeof Question>;
 
@@ -114,6 +149,10 @@ export const CoverLetter = z.object({
   pollAfterMs: nullable(z.number()),
   jobRole: z.string(),
   memo: text,
+  /** 고른 강점 코드(최대 3). 이 칸이 없던 응답은 [] 로 읽는다 */
+  strengths: list(z.string()),
+  /** 질문 단계가 지원 이유를 글로 쓸 만하다고 봤는지. 판정 전이면 null, false 면 채팅에서 다시 묻는다 */
+  memoUsable: nullable(z.boolean()),
   posting: nullable(Posting),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -122,6 +161,31 @@ export const CoverLetter = z.object({
     .transform((v) => v ?? { assign: [], draft: [] }),
 });
 export type CoverLetter = z.infer<typeof CoverLetter>;
+
+/** 채우기 대화(#733) — 자소서 하나에 대화 하나. 말마다 어느 문항 얘기인지(questionId)가 붙는다 */
+export const TURN_ROLES = ['AI', 'USER'] as const;
+export const TURN_STATUSES = ['ASKING', 'FILLED', 'DONE', 'OFF_TOPIC'] as const;
+export type TurnStatus = (typeof TURN_STATUSES)[number];
+const isTurnStatus = (v: unknown): v is TurnStatus => (TURN_STATUSES as readonly unknown[]).includes(v);
+export const CoverLetterTurn = z.object({
+  seq: z.number(),
+  role: z.enum(TURN_ROLES),
+  questionId: z.string(),
+  text: z.string(),
+  item: z.unknown().transform((v) => (isItem(v) ? v : null)),
+  /** AI 말에만 있다. 모르는 값은 null 로 읽고 질문이 열린 말로 본다 */
+  status: z.unknown().transform((v) => (isTurnStatus(v) ? v : null)),
+  createdAt: text,
+});
+export type CoverLetterTurn = z.infer<typeof CoverLetterTurn>;
+/** 모양이 다른 말은 그 말만 버린다 */
+const turnList = z.array(z.unknown()).nullish().catch(null)
+  .transform((v) => (v ?? []).flatMap((t) => { const r = CoverLetterTurn.safeParse(t); return r.success ? [r.data] : []; }));
+export const TurnsResponse = z.object({ turns: turnList });
+/** open·답·넘기기의 응답 — 대화 전체와 그 문항. 답으로 그 문항을 다시 쓰다 실패하면 rewriteFailed 이고 글은 그대로다 */
+export const TurnReply = z.object({ turns: turnList, question: Question, rewriteFailed: z.boolean().nullish().catch(null).transform((v) => v === true) });
+export type TurnReply = z.infer<typeof TurnReply>;
+export const TURN_TEXT_MAX = 500;
 
 export const CoverLetterSummary = z.object({
   id: z.string(), stage: CoverLetterStage, jobRole: z.string(), posting: nullable(Posting), questionCount: z.number(),
@@ -138,8 +202,8 @@ export const ANSWER_MAX = 1_000;
 /** 고친 초안은 10,000자까지 */
 export const DRAFT_MAX = 10_000;
 
-/** postingId 는 공고 상세에서 시작할 때만 그 공고 id, 아니면 null. 없는 공고면 서버가 404 NOT_FOUND */
-export type NewCoverLetter = { jobRole: string; memo: string | null; questions: { text: string; charLimit: number | null }[]; postingId: string | null };
+/** postingId 는 공고 상세에서 시작할 때만 그 공고 id, 아니면 null. 없는 공고면 서버가 404 NOT_FOUND. memo(지원 이유)는 필수이고 규칙은 lib/reasonCheck.ts, strengths 는 강점 코드 최대 3개 */
+export type NewCoverLetter = { jobRole: string; memo: string; strengths: string[]; questions: { text: string; charLimit: number | null }[]; postingId: string | null };
 
 export const coverLetterApi = {
   create: (input: NewCoverLetter, idempotencyKey: string) =>
@@ -162,13 +226,31 @@ export const coverLetterApi = {
   /** AI 추론 문장(marks 의 INFERRED)을 맞다고 확인해 그 표시만 지운다. 글은 그대로. DRAFTED 에서만, 그 문장에 추론 표시가 없으면 409 */
   confirmInference: (id: string, questionId: string, sentenceSeq: number) =>
     api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/marks/${sentenceSeq}`, { method: 'DELETE' }),
+  /** 지금 글로 첨삭을 받는다. 결과는 question.polish 에 남고 글은 그대로. DRAFTED 에서만.
+   *  서버가 AI 를 세 번 부르며 수십 초를 쓰므로 기본 30초로는 끊긴다 — 공고 매칭의 긴 호출과 같은 100초를 준다 */
+  polish: (id: string, questionId: string) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'POST', timeoutMs: 100_000 }),
+  /** 첨삭 글로 지금 글·문장·표시를 바꾼다. AI 원본(aiText)은 그대로, polishAppliedCount 가 하나 는다 */
+  applyPolish: (id: string, questionId: string) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish/apply`, { method: 'POST' }),
+  discardPolish: (id: string, questionId: string) =>
+    api(CoverLetter, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/polish`, { method: 'DELETE' }),
   remove: (id: string) => api(z.object({ ok: z.boolean() }), `/cover-letters/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  turns: (id: string) => api(TurnsResponse, `/cover-letters/${encodeURIComponent(id)}/turns`),
+  openTurn: (id: string, questionId: string) =>
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/open`, { method: 'POST' }),
+  /** 답이 충분하면 서버가 그 문항을 다시 쓴 뒤에 답한다 — 수십 초가 걸릴 수 있어 첨삭과 같은 100초를 준다 */
+  replyTurn: (id: string, questionId: string, text: string) =>
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns`, { method: 'POST', body: { text }, timeoutMs: 150_000 }),
+  skipTurn: (id: string, questionId: string) =>
+    api(TurnReply, `/cover-letters/${encodeURIComponent(id)}/questions/${encodeURIComponent(questionId)}/turns/skip`, { method: 'POST' }),
 };
 
 // ───────────────────────────── 조회·변경 ─────────────────────────────
 export const coverLetterKeys = {
   all: ['coverLetters'] as const,
   one: (id: string) => ['coverLetters', id] as const,
+  turns: (id: string) => ['coverLetters', id, 'turns'] as const,
 };
 const POLL_MIN_MS = 500;
 
@@ -216,3 +298,31 @@ export const useSaveDraft = (id: string) =>
   useLetterMutation(({ questionId, text }: { questionId: string; text: string }) => coverLetterApi.saveDraft(id, questionId, text), true);
 export const useConfirmInference = (id: string) =>
   useLetterMutation(({ questionId, sentenceSeq }: { questionId: string; sentenceSeq: number }) => coverLetterApi.confirmInference(id, questionId, sentenceSeq), true);
+export const usePolish = (id: string) =>
+  useLetterMutation(({ questionId }: { questionId: string }) => coverLetterApi.polish(id, questionId), true);
+export const useApplyPolish = (id: string) =>
+  useLetterMutation(({ questionId }: { questionId: string }) => coverLetterApi.applyPolish(id, questionId), true);
+export const useDiscardPolish = (id: string) =>
+  useLetterMutation(({ questionId }: { questionId: string }) => coverLetterApi.discardPolish(id, questionId), true);
+
+/** 대화는 패널이 열릴 때 한 번 읽고, 뒤로는 각 응답의 turns 로 바꾼다 */
+export const useTurns = (id: string) =>
+  useQuery({ queryKey: coverLetterKeys.turns(id), queryFn: () => coverLetterApi.turns(id).then((r) => r.turns), staleTime: Infinity });
+
+/** 응답의 대화로 대화 캐시를 바꾸고, 응답의 문항을 자소서 캐시의 그 문항 자리에 넣는다 */
+function useTurnMutation<V>(id: string, fn: (vars: V) => Promise<TurnReply>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: fn,
+    meta: { errorPresentation: 'inline' },
+    onSuccess: (r) => {
+      client.setQueryData(coverLetterKeys.turns(id), r.turns);
+      client.setQueryData<CoverLetter>(coverLetterKeys.one(id), (l) => (l ? { ...l, questions: l.questions.map((q) => (q.id === r.question.id ? r.question : q)) } : l));
+      void client.invalidateQueries({ queryKey: coverLetterKeys.all, exact: true });
+    },
+  });
+}
+export const useOpenTurn = (id: string) => useTurnMutation(id, ({ questionId }: { questionId: string }) => coverLetterApi.openTurn(id, questionId));
+export const useReplyTurn = (id: string) =>
+  useTurnMutation(id, ({ questionId, text }: { questionId: string; text: string }) => coverLetterApi.replyTurn(id, questionId, text));
+export const useSkipTurn = (id: string) => useTurnMutation(id, ({ questionId }: { questionId: string }) => coverLetterApi.skipTurn(id, questionId));

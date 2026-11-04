@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsDemo, showCardTiles } from './helpers';
+import { loginAsDemo, showCardTiles, pickCardStatus } from './helpers';
 
 /**
  * 목록을 "테두리 하나짜리 박스 + 칸막이선"으로 바꾸고 나서, 낱장 카드 시절의 hover 규칙이 남아
@@ -67,7 +67,7 @@ test('홀수 경험 카드도 다른 카드와 같은 폭을 유지한다', asyn
   await page.goto('/cards');
   await showCardTiles(page);
   // 확정 카드는 5장이라 홀수다(전체는 8장이라 짝수가 됐다) — 묶음이 달라도, 혼자 남은 카드도 모두 같은 폭이어야 한다
-  await page.getByRole('button', { name: /^확정됨/ }).click();
+  await pickCardStatus(page, '확정됨');
   await page.locator('.experience-list > *').first().waitFor();
   const widths = await page.locator('.experience-list > *').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
   expect(widths.length % 2).toBe(1);                   // 시드가 홀수여야 이 검사가 의미 있다

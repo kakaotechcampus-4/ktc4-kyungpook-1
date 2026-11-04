@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo, showCardTiles } from './helpers';
+import { loginAsDemo, showCardTiles, pickCardStatus } from './helpers';
 
 test('minimal API summaries never imply a manual source or invented evidence count', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards?demoScenario=minimal-summary');
@@ -20,11 +20,12 @@ test('cards with all four STAR fields filled drop the text status badge; incompl
   await expect(tile('card_01').locator('.badge')).toHaveText(['작성 중', '확인 필요']);
   await expect(tile('card_02').locator('.badge')).toHaveText(['작성 중']);
   await expect(tile('card_02')).toContainText('빈 칸 2개');
-  // 탭 이름과 개수는 그대로 — 글자 배지가 사라져도 "확정됨" 탭으로 확정 카드를 모아 볼 수 있다
-  await expect(page.getByRole('button', { name: /^전체 8/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^작성 중 3/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^보완 필요 3/ })).toBeVisible();
-  await page.getByRole('button', { name: /^확정됨 5/ }).click();
+  // 상태 이름과 개수는 그대로 — 글자 배지가 사라져도 "확정됨" 으로 확정 카드를 모아 볼 수 있다
+  await page.getByRole('combobox', { name: '카드 작성 상태 필터' }).click();
+  await expect(page.getByRole('option', { name: /^전체 8/ })).toBeVisible();
+  await expect(page.getByRole('option', { name: /^작성 중 3/ })).toBeVisible();
+  await expect(page.getByRole('option', { name: /^보완 필요 3/ })).toBeVisible();
+  await page.getByRole('option', { name: /^확정됨 5/ }).click();
   await expect(page.locator('.experience-item')).toHaveCount(5);
 });
 
@@ -43,8 +44,8 @@ test('active analysis is visible on home and can be reopened after refresh', asy
 
 test('review and missing-field filters use the current server STAR states', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/cards'); await showCardTiles(page);
-  // 보완 상태 선택 칸 대신 "보완 필요" 탭 하나 — 빈칸 있음, 확인 필요인 작성 중 카드를 함께 보여 준다
-  await page.getByRole('button', { name: /^보완 필요/ }).click();
+  // "보완 필요" 하나로 빈칸 있음, 확인 필요인 작성 중 카드를 함께 보여 준다
+  await pickCardStatus(page, '보완 필요');
   await expect(page.getByRole('heading', { name: '로그인 세션 처리', exact: true })).toBeVisible(); // 확인 필요
   await expect(page.getByRole('heading', { name: '결제 롤백 대응 경험', exact: true })).toBeVisible(); // 빈칸 있음
   await expect(page.getByRole('heading', { name: '스터디 일정이 밀렸을 때 범위를 줄인 경험', exact: true })).toBeVisible(); // 활동 안의 카드도 같은 규칙

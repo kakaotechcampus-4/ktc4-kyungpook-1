@@ -1,4 +1,4 @@
-import type { AssignStep, CoverLetterPosting, CoverLetterQuestion, DraftStep, MaterialItem, QuestionTheme } from '@/api/coverLetters';
+import type { AssignStep, CoverLetterPosting, CoverLetterQuestion, CoverLetterStage, DraftStep, MaterialItem, PolishCategory, PolishKind, QuestionTheme } from '@/api/coverLetters';
 import { COVER_LETTER_LIMITS as L, QUESTION_THEMES } from '@/api/coverLetters';
 import { themeLabel } from '@/lib/cardThemes';
 
@@ -67,14 +67,6 @@ export function exampleThemes(cardThemes: readonly (readonly string[] | null | u
   return { top, more: ranked.slice(3) };
 }
 
-/** 누가 최종 배정을 정했는지 — ③ 카드 옆 작은 글 */
-export const ASSIGNED_BY_LABEL: Record<string, string> = {
-  SUPERVISOR: 'AI가 문항 전체를 보고 정함',
-  SUB_AGENT: 'AI가 고름',
-  CODE: '겹치는 카드를 정리함',
-  USER: '내가 고름',
-};
-
 /** ③ 중심 카드 자리의 상태 — 카드가 있음, 지움, 고르기 실패, 맞는 카드 없음 */
 export type PrimaryState = 'picked' | 'deleted' | 'failed' | 'no-fit';
 export function primaryState(q: Pick<CoverLetterQuestion, 'primaryCard' | 'primaryCardDeleted' | 'assignedBy'>): PrimaryState {
@@ -115,19 +107,19 @@ export const FAILED_STEP_LABEL: Record<string, string> = { ASSIGN: '카드 고�
 export const reusedTitle = (item: MaterialItem) => `${ITEM_LABEL[item]} (지난번에 답한 내용)`;
 
 const quoted = (v: string | null) => (v ? `'${v}'` : null);
-/** 검사에 걸린 이유 — `marks[].code` 와 `steps.draft` 의 CHECK_FAILED 가 같은 말을 쓴다 */
+/** 검사에 걸린 이유 — `marks[].code` 와 `steps.draft` 의 CHECK_FAILED 가 같은 말을 쓴다. 따옴표 값 뒤에는 받침에 따라 바뀌는 조사를 붙이지 않는다 */
 export function checkMessage(code: string | null, value: string | null): string {
   const v = quoted(value);
   switch (code) {
-    case 'UNSOURCED_NUMBER': return v ? `${v}는 카드에 없는 수치예요` : '카드에 없는 수치가 있어요';
-    case 'UNSOURCED_TERM': return v ? `${v}는 카드에 없는 낱말이에요` : '카드에 없는 낱말이 있어요';
+    case 'UNSOURCED_NUMBER': return v ? `${v} — 카드에 없는 숫자예요` : '카드에 없는 숫자가 있어요';
+    case 'UNSOURCED_TERM': return v ? `${v} — 카드에 없는 낱말이에요` : '카드에 없는 낱말이 있어요';
     case 'REPEATED': return '다른 문항과 같은 이야기예요';
     case 'UNSUPPORTED_CLAIM': return '카드와 답에 없는 역할이나 성과예요';
     case 'OFF_TOPIC': return '문항이 묻는 것을 벗어났어요';
-    case 'INFERRED': return 'AI가 재료를 바탕으로 추론해 쓴 문장이에요. 맞으면 확인, 다르면 고치거나 빼 주세요.';
+    case 'INFERRED': return '재료를 바탕으로 짐작해 쓴 문장이에요. 맞으면 확인, 다르면 고치거나 빼 주세요.';
     case 'OVER_LIMIT': return value ? `글자 수를 ${value}자 넘었어요` : '글자 수를 넘었어요';
     case 'UNDER_LENGTH': return value ? `목표보다 ${value}자 모자라요` : '목표보다 짧아요';
-    case 'MISSING_BLANK': return value && value in ITEM_LABEL ? `빈칸 '${ITEM_LABEL[value as MaterialItem]}'을 빠뜨렸어요` : '빈칸을 빠뜨렸어요';
+    case 'MISSING_BLANK': return value && value in ITEM_LABEL ? `'${ITEM_LABEL[value as MaterialItem]}' 빈칸을 빠뜨렸어요` : '빈칸을 빠뜨렸어요';
     default: return '확인이 필요해요';
   }
 }
@@ -151,7 +143,7 @@ export function draftLine(step: DraftLineStep, questions: Pick<CoverLetterQuesti
     case 'REWROTE': return { text: `${q}고쳐서 다시 썼어요${chars}`, reason: null, tone: 'work' };
     case 'REVERTED': return { text: `${q}다시 쓴 글이 새 문제를 만들어 앞 초안으로 돌렸어요`, reason: null, tone: 'fix' };
     case 'MARKED': return step.code === 'INFERRED'
-      ? { text: `${q}추론한 문장이라 확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' }
+      ? { text: `${q}짐작한 문장이라 확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' }
       : { text: `${q}${step.value ? `'${step.value}'에 ` : ''}확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' };
     case 'SKELETON': return { text: `${q}초안을 쓰지 못해 카드 문장으로 뼈대를 만들었어요`, reason: null, tone: 'fix' };
     case 'REVIEWED': {
@@ -164,10 +156,60 @@ export function draftLine(step: DraftLineStep, questions: Pick<CoverLetterQuesti
   }
 }
 
-/** 복사 알림 뒤에 붙는 말 — 확인하지 않은 AI 추론 문장과 채우지 않은 빈칸이 함께 복사됐음을 알린다(복사는 막지 않는다). 둘 다 없으면 null */
+/** 복사 알림 뒤에 붙는 말 — 확인하지 않은 짐작 문장과 채우지 않은 빈칸이 함께 복사됐음을 알린다(복사는 막지 않는다). 둘 다 없으면 null */
 export function copiedExtras(inferred: number, blanks: number): string | null {
-  if (inferred > 0 && blanks > 0) return `확인하지 않은 AI 추론 문장 ${inferred}개와 빈칸 ${blanks}개가 함께 복사됐어요.`;
-  if (inferred > 0) return `확인하지 않은 AI 추론 문장 ${inferred}개가 함께 복사됐어요.`;
+  if (inferred > 0 && blanks > 0) return `확인하지 않은 짐작 문장 ${inferred}개와 빈칸 ${blanks}개가 함께 복사됐어요.`;
+  if (inferred > 0) return `확인하지 않은 짐작 문장 ${inferred}개가 함께 복사됐어요.`;
   if (blanks > 0) return `아직 채우지 않은 빈칸 ${blanks}개가 함께 복사됐어요.`;
   return null;
+}
+
+// ───────────────────────────── ⑥ 첨삭(#727) ─────────────────────────────
+export const POLISH_CATEGORY_LABEL: Record<PolishCategory, string> = {
+  FIT: '문항 적합성', EVIDENCE: '근거', READABILITY: '읽기 쉬움', OVERLAP: '겹침', TECH_TERMS: '기술 용어',
+};
+export const POLISH_KIND_LABEL: Record<PolishKind, string> = { WEAK: '아쉬운 점', GOOD: '잘한 점' };
+
+// ───────────────────────────── ① 강점 칩(#738) ─────────────────────────────
+/** 강점 칩 — API 는 코드만 주고받고 한국어 이름은 여기에만 둔다 */
+export const STRENGTHS: { group: string; items: { code: string; label: string }[] }[] = [
+  { group: '일하는 방식', items: [
+    { code: 'METICULOUS', label: '꼼꼼함' }, { code: 'PERSISTENT', label: '끈기' }, { code: 'PROACTIVE', label: '주도성' },
+    { code: 'FAST_LEARNER', label: '빠른 학습' }, { code: 'RESPONSIBLE', label: '책임감' }, { code: 'PROBLEM_SOLVING', label: '문제 해결' },
+  ] },
+  { group: '사람과 일할 때', items: [
+    { code: 'COMMUNICATION', label: '소통' }, { code: 'COLLABORATION', label: '협업' }, { code: 'PERSUASION', label: '설득' },
+    { code: 'CONSIDERATE', label: '배려' }, { code: 'USER_FOCUS', label: '사용자 관점' }, { code: 'DOCUMENTING', label: '기록과 공유' },
+  ] },
+];
+export const STRENGTH_LIMIT = 3;
+
+// ───────────────────────────── 단계 표시줄 · 재료 한 줄(#745) ─────────────────────────────
+export const FLOW_STEPS = ['문항', '카드', '질문', '초안'] as const;
+export type FlowStep = 1 | 2 | 3 | 4;
+/** 자소서가 흐름의 몇 번째 단계에 있는지 — 실패는 실패한 단계에 머문다. 모르는 실패 단계는 처음 AI 단계(카드)로 본다 */
+export function flowStep(stage: CoverLetterStage, failedStep: string | null): FlowStep {
+  switch (stage) {
+    case 'ASKING': case 'ASKED': return 3;
+    case 'DRAFTING': case 'DRAFTED': return 4;
+    case 'FAILED': return failedStep === 'DRAFT' ? 4 : failedStep === 'ASK' ? 3 : 2;
+    default: return 2;
+  }
+}
+
+/** 낱말 끝 글자에 받침이 있으면 '은', 없으면 '는' */
+const topic = (word: string) => {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code < 11172 && code % 28 !== 0 ? '은' : '는';
+};
+/** ③ 재료 한 줄 '재료 3/5 · 배운 점, 계기는 다음에 물어요' — 빠진 이름(missing)은 화면이 호박색으로 칠하고, rest 는 그 뒤에 붙는 말이다 */
+export function materialLine(materials: readonly MaterialItem[]): { have: number; total: number; missing: string[]; rest: string } {
+  const have = new Set(materials);
+  const missing = CHECK_ITEMS.filter((i) => !have.has(i)).map((i) => ITEM_LABEL[i]);
+  return {
+    have: CHECK_ITEMS.length - missing.length,
+    total: CHECK_ITEMS.length,
+    missing,
+    rest: missing.length ? `${topic(missing[missing.length - 1])} 다음에 물어요` : '다 있어요',
+  };
 }

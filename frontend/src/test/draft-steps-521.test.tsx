@@ -6,7 +6,7 @@ import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import { Card, DraftStep } from '@/api/schemas';
 import { CardPage } from '@/features/cards/CardPage';
-import { DraftSteps } from '@/features/cards/DraftSteps';
+import { DraftStepsDialog } from '@/features/cards/DraftSteps';
 import { draftStepGroups } from '@/lib/draftSteps';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
@@ -160,14 +160,13 @@ describe('#521 sentences and order', () => {
   });
 });
 
-describe('#521 the AI 가 한 일 section', () => {
+describe('#521 the 만든 과정 dialog', () => {
   const steps = Card.parse(raw('card_01')).draftSteps!;
+  const open = (value: readonly DraftStep[] | null | undefined = steps) => render(<DraftStepsDialog steps={value} onClose={() => {}} />);
 
-  it('shows the steps in order under one named section', () => {
-    render(<DraftSteps steps={steps} />);
-    const section = screen.getByRole('region', { name: 'AI 작업 기록 확인하기' });
-    expect(within(section).getByRole('heading', { level: 2, name: 'AI 작업 기록 확인하기' })).toBeInTheDocument();
-    expect(within(section).getByText('초안 작성·검토 8단계')).toBeInTheDocument();
+  it('shows the steps in order under one named dialog', () => {
+    open();
+    expect(screen.getByRole('dialog', { name: '만든 과정' })).toBeInTheDocument();
     const rows = lines();
     expect(rows).toHaveLength(8);
     expect(rows[0]).toContain('GitHub 기록으로 초안을 썼어요');
@@ -180,32 +179,35 @@ describe('#521 the AI 가 한 일 section', () => {
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['첫 초안과 검사', '1번째 고쳐 쓰기']);
   });
 
-  it('folds the AI reason under 판단 이유, and only where the AI gave one', () => {
-    render(<DraftSteps steps={steps} />);
-    expect(screen.getAllByText('판단 이유')).toHaveLength(3); // OPEN · KEEP · RETRY
-    const open = screen.getAllByRole('listitem')[3];
-    expect(within(open).getByText('판단 이유')).toBeInTheDocument();
-    expect(within(open).getByText('과제가 이슈 본문에 적혀 있을 것 같음')).toBeInTheDocument();
+  it('labels the AI reason as 판단 이유, and only where the AI gave one', () => {
+    open();
+    const labels = screen.getAllByText('판단 이유');
+    expect(labels).toHaveLength(3); // OPEN · KEEP · RETRY
+    const row = screen.getAllByRole('listitem')[3];
+    expect(within(row).getByText('판단 이유')).toBeInTheDocument();
+    expect(within(row).getByText('과제가 이슈 본문에 적혀 있을 것 같음')).toBeInTheDocument();
     // 코드가 한 단계(FLAG·PASS)와 reason 이 없는 단계에는 이름표가 없다
     expect(within(screen.getAllByRole('listitem')[1]).queryByText('판단 이유')).not.toBeInTheDocument();
     expect(within(screen.getAllByRole('listitem')[7]).queryByText('판단 이유')).not.toBeInTheDocument();
+    // 카드 문장과 구분된다는 안내
+    expect(screen.getByText(/판단은 글에 들어가지 않아요/)).toBeInTheDocument();
   });
 
   it('does not present a reason that came with a step the code took as the AI judgment', () => {
-    render(<DraftSteps steps={[parsed({ kind: 'FLAG', field: 'R', code: 'EMPTY', actor: 'CODE', reason: '코드가 쓴 이유일 리 없음' })]} />);
+    open([parsed({ kind: 'FLAG', field: 'R', code: 'EMPTY', actor: 'CODE', reason: '코드가 쓴 이유일 리 없음' })]);
     expect(screen.queryByText('판단 이유')).not.toBeInTheDocument();
     expect(screen.queryByText('코드가 쓴 이유일 리 없음')).not.toBeInTheDocument();
     expect(screen.getByText('결과 칸: 비어 있어요')).toBeInTheDocument();
   });
 
   it('shows a reason whose actor is unknown, because only an explicit code step is excluded', () => {
-    render(<DraftSteps steps={[parsed({ kind: 'KEEP', field: 'T', actor: 'ROBOT', reason: '그대로 둠' })]} />);
+    open([parsed({ kind: 'KEEP', field: 'T', actor: 'ROBOT', reason: '그대로 둠' })]);
     expect(screen.getByText('판단 이유')).toBeInTheDocument();
     expect(screen.getByText('그대로 둠')).toBeInTheDocument();
   });
 
   it('renders text as text, never as markup or a link', () => {
-    render(<DraftSteps steps={[parsed({ kind: 'OPEN', field: 'S', material: 'ISSUE', value: '<img src=x onerror=alert(1)> https://evil.example', reason: '<b>굵게</b>' })]} />);
+    open([parsed({ kind: 'OPEN', field: 'S', material: 'ISSUE', value: '<img src=x onerror=alert(1)> https://evil.example', reason: '<b>굵게</b>' })]);
     expect(screen.getByText('<b>굵게</b>')).toBeInTheDocument();
     expect(document.querySelector('img')).toBeNull();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
@@ -213,26 +215,16 @@ describe('#521 the AI 가 한 일 section', () => {
 
   it('skips a step of a kind it does not know without crashing', () => {
     const unknown = { ...steps[0], kind: 'TELEPORT' } as unknown as DraftStep;
-    render(<DraftSteps steps={[steps[0], unknown, steps[7]]} />);
+    open([steps[0], unknown, steps[7]]);
     expect(lines()).toHaveLength(2);
   });
 
-  it('draws nothing for no steps', () => {
-    for (const value of [undefined, null, []]) {
-      const { container, unmount } = render(<DraftSteps steps={value} />);
-      expect(container).toBeEmptyDOMElement();
-      unmount();
-    }
-    const { container } = render(<DraftSteps steps={[parsed({ kind: 'PASS', field: null })]} />);
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it('hides the decorative icons from assistive technology and has no controls to operate', () => {
-    const { container } = render(<DraftSteps steps={steps} />);
-    const icons = [...container.querySelectorAll('svg')];
+  it('hides the decorative icons from assistive technology and has no control besides closing', () => {
+    open();
+    const icons = [...screen.getByRole('dialog').querySelectorAll('svg')];
     expect(icons.length).toBeGreaterThan(0);
     for (const icon of icons) expect(icon.closest('[aria-hidden="true"]')).not.toBeNull();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['닫기']);
   });
 });
 
@@ -246,36 +238,15 @@ describe('#521 on the card page', () => {
   }
   const card = (id: string, extra: Partial<Card> = {}) => ({ ...Card.parse(raw(id)), ...extra }) as Card;
 
-  it('keeps a draft card to the card itself — the record shows once the card is confirmed', () => {
-    mount(card('card_01'));
-    expect(screen.queryByRole('region', { name: 'AI 작업 기록 확인하기' })).not.toBeInTheDocument();
-    // 카드 문장은 그대로 따로 있다
-    expect(screen.getByText('인증 모듈의 세션 처리를 담당했다')).toBeInTheDocument();
-  });
-
-  it('shows it on a confirmed card too, even though the user edited it afterwards', () => {
-    const confirmed = card('card_03');
-    expect(confirmed.version.versionNo).toBe(3);
-    mount(confirmed);
-    expect(screen.getByRole('region', { name: 'AI 작업 기록 확인하기' })).toBeInTheDocument();
-    expect(screen.getByText('과제 칸: 비어 있어요')).toBeInTheDocument();
-  });
-
-  it.each([['card_01', []], ['card_01', undefined], ['card_03', []], ['card_04', undefined]])('shows nothing for %s when draftSteps is %j', (id, draftSteps) => {
-    mount(card(id, { draftSteps }));
-    expect(screen.queryByRole('region', { name: 'AI 작업 기록 확인하기' })).not.toBeInTheDocument();
-    expect(screen.queryByText('AI 작업 기록 확인하기')).not.toBeInTheDocument();
-  });
-
   it('shows nothing live while the draft is still being generated', () => {
     mount(card('card_01', { generation: { jobId: 'job_1', partial: false } }));
-    expect(screen.queryByText('AI 작업 기록 확인하기')).not.toBeInTheDocument();
+    expect(screen.queryByText('만든 과정')).not.toBeInTheDocument();
     expect(screen.getByText('고른 후보의 카드 초안을 쓰고 있어요')).toBeInTheDocument();
   });
 
   it('is not part of the edit screen', () => {
     mount(card('card_01'), '/cards/card_01?mode=edit');
-    expect(screen.queryByText('AI 작업 기록 확인하기')).not.toBeInTheDocument();
+    expect(screen.queryByText('만든 과정')).not.toBeInTheDocument();
   });
 });
 

@@ -5,12 +5,12 @@
 .stardots { display: inline-grid; grid-template-columns: repeat(4, minmax(22px, 1fr)); gap: 4px; min-width: 100px; }
 .stardot { min-width: 0; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: var(--bg-canvas); border: 1px dashed var(--border-strong); }
 .stardot--on { background: var(--bg-ink-solid); color: var(--text-on-ink); border: 1px solid var(--bg-ink-solid); }
-.stardot--low { background: var(--star-review-bg); color: var(--star-review-text); border: 1px solid var(--star-review-bg); }
+.stardot--low { background: var(--field-low-bg); color: var(--field-low-text); border: 1px solid var(--field-low-border); }
 .stardots--labeled { width: min(100%, 240px); min-width: 200px; gap: 6px; }
 .stardots--labeled .stardot { height: 38px; grid-template-rows: 22px 14px; align-content: center; border: 0; background: transparent; color: var(--text-tertiary); }
 .stardots--labeled .stardot__letter { width: 22px; height: 22px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; border: 1px dashed var(--border-strong); background: var(--bg-paper); }
 .stardots--labeled .stardot--on .stardot__letter { border-style: solid; border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
-.stardots--labeled .stardot--low .stardot__letter { border-style: solid; border-color: var(--star-review-bg); background: var(--star-review-bg); color: var(--star-review-text); }
+.stardots--labeled .stardot--low .stardot__letter { border-style: solid; border-color: var(--field-low-border); background: var(--field-low-bg); color: var(--field-low-text); }
 .stardot__letter { line-height: 1; }
 .stardot__label { font-size: 11px; line-height: 12px; font-weight: 600; color: currentColor; opacity: .72; }
 .chip--static { color: var(--text-tertiary); background: var(--bg-paper); cursor: default; }
@@ -99,3 +99,18 @@
 }
 .repo-row__warn { font-size: 12px; line-height: 17px; color: var(--text-tertiary); }
 .repo-row--sel .repo-row__warn { color: var(--text-secondary); }
+/* #756 레포 줄 — 숫자는 문장 한 줄에, 강조색은 고른 줄의 파랑과 기여가 적을 때의 호박 둘만 쓴다 */
+.repo-row__body { gap: 2px; min-width: 0; text-align: left; }
+.repo-row__pick { font-size: 12px; line-height: 17px; color: var(--text-tertiary); }
+.repo-row__title { display: flex; flex-direction: column; min-width: 0; }
+.repo-row__owner { font-size: 12px; line-height: 17px; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.repo-row__name { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+.repo-row__line { display: block; margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
+.repo-row__caution { font-weight: 600; color: var(--field-low-text); }
+.repo-row__hint { color: var(--text-tertiary); }
+.repo-row__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; }
+.repo-row__meta { font-size: 12px; line-height: 17px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.record-list > .repo-row.card--selected::before { border-color: var(--border-accent); }
+.repo-row--sel .radio--checked { background: var(--border-accent); border-color: var(--border-accent); }
+/* 고른 레포 줄은 파랑 바탕 — 앱 공통 --bg-selected 는 회색이라 고른 것을 파랑으로 보이게 따로 둔다 */
+.record-list > .repo-row--sel, .record-list > .repo-row--sel:hover { background: var(--bg-accent); }

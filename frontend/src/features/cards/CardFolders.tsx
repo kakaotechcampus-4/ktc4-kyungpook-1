@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Flag, FolderGit2, PenLine, type LucideIcon } from 'lucide-react';
 import { techLabels } from '@/lib/cardTags';
-import { deckLayers, folderLabel, folderOwnerLine, folderNote, folderTitle, type CardFolder, type FolderKind } from '@/lib/cardFolders';
+import { deckLayers, folderLabel, folderOwnerLine, folderNote, folderPeek, folderTitle, type CardFolder, type FolderKind } from '@/lib/cardFolders';
 import './CardFolders.css';
 
 const kindIcon: Record<FolderKind, LucideIcon> = { repo: FolderGit2, activity: Flag, direct: PenLine };
@@ -14,6 +14,7 @@ const kindIcon: Record<FolderKind, LucideIcon> = { repo: FolderGit2, activity: F
 export function FolderTile({ folder }: { folder: CardFolder }) {
   const Icon = kindIcon[folder.kind];
   const note = folderNote(folder);
+  const peek = folderPeek(folder);
   return (
     <Link to={folder.to} className="folder" aria-label={folderLabel(folder)} data-deck={deckLayers(folder.cards.length)} data-empty={folder.cards.length === 0 || undefined}>
       <span className="folder__back" aria-hidden />
@@ -26,6 +27,7 @@ export function FolderTile({ folder }: { folder: CardFolder }) {
           </span>
         </span>
         <span className="folder__name">{folderTitle(folder)}</span>
+        {peek && <span className="folder__peek">{peek}</span>}
         {note && <span className="folder__note">{note}</span>}
         <span className="folder__foot">
           <span className="folder__tags">{folder.techs.map((tech) => <span key={tech} className="folder__tag">{techLabels[tech] ?? tech}</span>)}</span>

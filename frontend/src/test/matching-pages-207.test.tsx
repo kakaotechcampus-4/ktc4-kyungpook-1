@@ -101,13 +101,6 @@ it('does not retry failed AI requests when the screen remounts', async () => {
   mount('/match',undefined,client);await screen.findByRole('alert');
   expect(fetch).toHaveBeenCalledTimes(1);
 });
-it('explicit list refresh invalidates previously visited details', async () => {
-  vi.spyOn(matchingApi,'list').mockResolvedValue(sampleList.data.map(x=>MatchTarget.parse(x)));
-  const client=mount();await screen.findByText('가온소프트');
-  client.setQueryData(matchKeys.detail(sampleDetail.data.id),sampleDetail.data);
-  fireEvent.click(screen.getByRole('button',{name:'목록 새로고침'}));
-  await waitFor(()=>expect(client.getQueryState(matchKeys.detail(sampleDetail.data.id))?.isInvalidated).toBe(true));
-});
 it("shows each condition's judgement and hides only duplicate quote lines", async () => {
   const detail = MatchDetail.parse(sampleDetail.data);
   detail.conditions[0].quote = detail.conditions[0].text;

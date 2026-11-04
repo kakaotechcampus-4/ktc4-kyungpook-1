@@ -46,7 +46,9 @@ describe('#689 레포 안에서 커밋을 골라 기술 카드 만들기', () =>
     await addCandidate('직접 만든 배포 도구');
 
     const created = db.candidates.find((c) => c.title === '직접 만든 배포 도구')!;
-    await waitFor(() => expect(screen.getByRole('button', { name: '선택한 1개로 카드 만들기' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: '카드 만들기' })).toBeEnabled());
+    expect(screen.getByText('1개 골랐어요')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /직접 만든 배포 도구/, pressed: true })).toBeInTheDocument(); // 점수가 낮아 접힌 쪽이어도 펼쳐 보인다
     expect(JSON.parse(sessionStorage.getItem('gitory.sel.r_auth') ?? '[]')).toEqual([created.id]);
   });
 
@@ -60,6 +62,7 @@ describe('#689 레포 안에서 커밋을 골라 기술 카드 만들기', () =>
 
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.stringContaining(CARD_LIMIT_MESSAGE)));
     expect(JSON.parse(sessionStorage.getItem('gitory.sel.r_auth') ?? '[]')).toEqual(picked);
-    expect(screen.getByRole('button', { name: `선택한 ${MAX_CARDS_PER_REQUEST}개로 카드 만들기` })).toBeEnabled();
+    expect(screen.getByText(`${MAX_CARDS_PER_REQUEST}개 골랐어요`)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드 만들기' })).toBeEnabled();
   });
 });

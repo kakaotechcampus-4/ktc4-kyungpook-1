@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from 'react';
 import type { NoteStatus } from '@/lib/coverLetterNotes';
 
-export type Highlight = { key: string; start: number; end: number; status: NoteStatus; value: string | null; focus: boolean };
+export type Highlight = { key: string; start: number; end: number; status: NoteStatus; value: string | null; focus: boolean; flash?: boolean };
 
 const BLANK = /\[[^[\]\n]{1,80}\]/g;
 
@@ -40,7 +40,7 @@ export function TextRuns({ text, offset, highlights }: { text: string; offset: n
     const slice = text.slice(a - offset, b - offset);
     const h = highlights.find((x) => x.start <= a && x.end >= b);
     nodes.push(h
-      ? <mark key={a} className={`phl phl--${h.status}${h.focus ? ' phl--focus' : ''}`} data-note={h.key}>{pieces(slice, h.value)}</mark>
+      ? <mark key={a} className={h.flash ? 'phl phl--flash' : `phl phl--${h.status}${h.focus ? ' phl--focus' : ''}`} data-note={h.key}>{pieces(slice, h.value)}</mark>
       : <Fragment key={a}>{pieces(slice, null)}</Fragment>);
   }
   return <>{nodes}</>;

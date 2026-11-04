@@ -24,7 +24,7 @@ export function CoverLettersPage() {
       {list.isError ? <QueryFailure error={list.error} retry={() => list.refetch()} pending={list.isFetching} />
         : list.isPending ? <Skeleton h={160} />
         : list.data.length === 0 ? (
-          <EmptyState icon={FileText} title="아직 쓴 자소서가 없어요" desc="지원 직무와 문항을 넣으면 AI가 문항마다 쓸 카드를 골라요.">{add}</EmptyState>
+          <EmptyState icon={FileText} title="아직 쓴 자소서가 없어요" desc="지원 직무와 문항을 넣으면 문항마다 쓸 카드를 골라 드려요.">{add}</EmptyState>
         ) : (
           <ul className="cl-list">
             {list.data.map((l) => {

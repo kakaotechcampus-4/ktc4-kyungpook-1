@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronRight, FileSearch, Plus, X } from 'lucide-react';
+import { ChevronRight, FileSearch, X } from 'lucide-react';
 import { useCards } from '@/api/queries';
 import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
@@ -10,10 +10,12 @@ import { Breadcrumb, Button, Chip, EmptyState, Field, Input, Note, PageTitle, Sk
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CompanyMark } from '@/features/match/CompanyMark';
 import { companyLabel } from '@/features/match/model';
-import { EXAMPLE_QUESTION, MEMO_EXAMPLE, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
+import { EXAMPLE_QUESTION, MEMO_EXAMPLE, STRENGTHS, STRENGTH_LIMIT, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
+import { checkReason } from '@/lib/reasonCheck';
 import { newIdempotencyKey } from '@/lib/uuid';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { Stepper } from './Stepper';
 import './coverLetters.css';
 
 type Row = { text: string; charLimit: string };
@@ -32,7 +34,7 @@ function charLimitOf(raw: string): { value: number | null; error: string | null 
 const postingNotFound = (e: unknown) => e instanceof ApiError && e.status === 404;
 
 /**
- * 자소서 ① 입력(#517). 지원 직무, 메모, 문항(1~10개, 글자 수)을 받아 만든다.
+ * 자소서 ① 입력(#517). 지원 직무, 지원 이유(필수, #738), 강점(최대 3개), 문항(1~10개, 글자 수)을 받아 만든다.
  * 같은 요청 키는 "내용을 바꾸지 않은 재전송"에만 쓴다 — 입력을 고치면 새 키를 만든다(계약: 같은 키는 처음 자소서를 돌려준다).
  * 공고 상세에서 왔으면(`?postingId=`, #637) 그 공고를 보이고 직무를 공고 제목으로 채워 두며, 만들기에 공고 id 를 함께 보낸다.
  */
@@ -47,6 +49,8 @@ export function CoverLetterNewPage() {
   const create = useCreateCoverLetter();
   const [jobRole, setJobRole] = useState('');
   const [memo, setMemo] = useState('');
+  const [strengths, setStrengths] = useState<string[]>([]);
+  const [strengthFull, setStrengthFull] = useState(false);
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [key, setKey] = useState(newIdempotencyKey);
   const [showMore, setShowMore] = useState(false);
@@ -73,7 +77,8 @@ export function CoverLetterNewPage() {
   }));
 
   const jobError = jobRole.trim() === '' ? '지원 직무를 적어 주세요' : jobRole.length > L.JOB_ROLE ? `${L.JOB_ROLE}자까지 적을 수 있어요` : null;
-  const memoError = memo.length > L.MEMO ? `${L.MEMO.toLocaleString()}자까지 적을 수 있어요` : null;
+  // 지원 이유는 서버와 같은 규칙(reasonCheck)을 다 지켜야 시작 버튼이 켜진다
+  const memoError = memo.length > L.MEMO ? `${L.MEMO.toLocaleString()}자까지 적을 수 있어요` : checkReason(memo);
   const rowErrors = rows.map((r) => ({
     text: r.text.trim() === '' ? '문항을 적어 주세요' : r.text.length > L.QUESTION ? `${L.QUESTION}자까지 적을 수 있어요` : null,
     limit: charLimitOf(r.charLimit).error,
@@ -85,7 +90,8 @@ export function CoverLetterNewPage() {
     if (invalid || noCards || create.isPending) return;
     const input: NewCoverLetter = {
       jobRole: jobRole.trim(),
-      memo: memo.trim() || null,
+      memo: memo.trim(),
+      strengths,
       questions: rows.map((r) => ({ text: r.text.trim(), charLimit: charLimitOf(r.charLimit).value })),
       postingId,
     };
@@ -113,20 +119,22 @@ export function CoverLetterNewPage() {
   // 확정 카드 없음은 위 안내가, 없는 공고(404)는 '찾을 수 없음' 화면이 맡는다 — '공고 없이 새 자소서 쓰기' 로 돌아와도 그 실패가 남지 않게
   const failure = create.error && !(create.error instanceof ApiError && create.error.code === 'NO_CONFIRMED_CARDS') && !postingNotFound(create.error) ? errorView(create.error) : null;
   const show = (msg: string | null) => (tried ? msg : null);
-  const sub = postingId
-    ? '이 공고의 조건과 맞춰 본 결과를 AI가 함께 봐요. 문항마다 쓸 카드도 공고에 맞춰 골라 드려요.'
-    : '문항마다 내 확정 카드 중 쓸 만한 것을 AI가 먼저 골라 드려요. 고른 카드는 다음 화면에서 바꿀 수 있어요.';
+  const memoHint = memo !== '' ? memoError : null; // 아직 아무것도 적지 않았으면 위 안내 문장만 보인다
+  /** 고른 칩을 누르면 빼고, 3개를 다 골랐으면 더 고르지 않고 안내만 한다 */
+  const toggleStrength = (code: string) => {
+    const on = strengths.includes(code);
+    if (!on && strengths.length >= STRENGTH_LIMIT) { setStrengthFull(true); return; }
+    setStrengthFull(false);
+    edit(() => setStrengths((xs) => (on ? xs.filter((x) => x !== code) : [...xs, code])));
+  };
+  const sub = postingId ? '문항을 적으면 이 공고에 맞춰 문항마다 쓸 카드를 골라 드려요.' : '문항을 적으면 문항마다 쓸 카드를 골라 드려요.';
+  const footWarn = memoError ? '지원 이유를 채우면 만들 수 있어요' : invalid && tried ? '빠진 칸을 채워 주세요' : null;
 
   return (
     <main className="main main--tight">
       <Breadcrumb items={crumbs} />
+      <Stepper current={1} />
       <PageTitle sub={sub}>새 자소서</PageTitle>
-
-      {postingId && (
-        posting.data ? <PostingBanner posting={posting.data} />
-        : posting.isError ? <QueryFailure error={posting.error} retry={() => posting.refetch()} pending={posting.isFetching} />
-        : <Skeleton h={70} />
-      )}
 
       {noCards && (
         <Note strong="확정한 카드가 없어요" tone="caution">
@@ -134,67 +142,128 @@ export function CoverLetterNewPage() {
         </Note>
       )}
 
-      <section className="cl-form stack">
+      <section className="cl-group" aria-labelledby="cl-group-where">
+        <h2 className="cl-group__head" id="cl-group-where"><span className="cl-group__n" aria-hidden>1</span>어디에 내나요</h2>
         <Field label="지원 직무" right={`${jobRole.length}/${L.JOB_ROLE}`}>
           <Input value={jobRole} maxLength={L.JOB_ROLE} placeholder="예: 백엔드 개발" aria-invalid={!!show(jobError)}
             onChange={(e) => edit(() => setJobRole(e.target.value))} />
           {show(jobError) && <span className="cl-error">{jobError}</span>}
         </Field>
-        <Field label="메모 (선택)" right={`${memo.length.toLocaleString()}/${L.MEMO.toLocaleString()}`} hint="지원 동기 문항에서 '이 회사를 고른 이유'로 써요.">
-          <Textarea value={memo} rows={3} maxLength={L.MEMO} placeholder={MEMO_EXAMPLE}
-            onChange={(e) => edit(() => setMemo(e.target.value))} />
+        {postingId && (
+          posting.data ? <PostingBanner posting={posting.data} />
+          : posting.isError ? <QueryFailure error={posting.error} retry={() => posting.refetch()} pending={posting.isFetching} />
+          : <Skeleton h={70} />
+        )}
+        <Field label="지원 이유 (필수)" right={`${memo.length.toLocaleString()}/${L.MEMO.toLocaleString()}`} hint="지원 동기 문항에서 '이 회사를 고른 이유'로 써요. 공백을 빼고 20자 이상 적어 주세요.">
+          <Textarea value={memo} rows={3} maxLength={L.MEMO} placeholder={MEMO_EXAMPLE} aria-label="지원 이유" aria-required
+            aria-invalid={!!memoHint} aria-describedby="cl-reason-hint" onChange={(e) => edit(() => setMemo(e.target.value))} />
+          <span id="cl-reason-hint" className="cl-reason-hint" aria-live="polite">{memoHint}</span>
         </Field>
 
-        <div className="cl-questions">
-          <div className="cl-questions__head">
-            <span className="field__label">문항</span>
-            <span className="c-3 t-12">{rows.length}/{L.QUESTIONS}</span>
-          </div>
-          {rows.map((r, i) => (
-            <div key={i} className="cl-question-input">
-              <span className="cl-q__no" aria-hidden>{i + 1}</span>
-              <div className="stack grow" style={{ gap: 8 }}>
-                <Textarea value={r.text} rows={2} maxLength={L.QUESTION} aria-label={`${i + 1}번 문항`} placeholder="회사가 묻는 문항을 그대로 붙여 넣어 주세요"
-                  aria-invalid={!!show(rowErrors[i].text)} onChange={(e) => setRow(i, { text: e.target.value })} />
-                <div className="row cl-question-input__meta">
-                  <div className="cl-limit">
-                    <span>글자 수</span>
-                    <Input inputMode="numeric" value={r.charLimit} placeholder={String(L.CHAR_DEFAULT)} aria-label={`${i + 1}번 문항 글자 수`}
-                      aria-invalid={!!show(rowErrors[i].limit)} onChange={(e) => setRow(i, { charLimit: e.target.value.replace(/[^\d]/g, '') })} />
-                    <span className="c-3">자 이내</span>
-                  </div>
-                  <span className="right c-3 t-12">{r.text.length}/{L.QUESTION}</span>
-                </div>
-                {(show(rowErrors[i].text) || show(rowErrors[i].limit)) && <span className="cl-error">{rowErrors[i].text ?? rowErrors[i].limit}</span>}
+        <fieldset className="cl-strengths">
+          <legend className="field__label">내 강점 (선택) <span className="cl-strengths__limit">최대 {STRENGTH_LIMIT}개</span></legend>
+          {STRENGTHS.map((g) => (
+            <div key={g.group} className="cl-strengths__group" role="group" aria-label={g.group}>
+              <span className="cl-strengths__label">{g.group}</span>
+              <div className="row cl-strengths__chips">
+                {g.items.map((it) => (
+                  <button key={it.code} type="button" className="chip cl-strength" aria-pressed={strengths.includes(it.code)} onClick={() => toggleStrength(it.code)}>{it.label}</button>
+                ))}
               </div>
-              {rows.length > 1 && (
-                <button type="button" className="cl-icon-btn" aria-label={`${i + 1}번 문항 지우기`} onClick={() => edit(() => setRows((rs) => rs.filter((_, j) => j !== i)))}><X size={16} /></button>
-              )}
             </div>
           ))}
-          {rows.length < L.QUESTIONS && (
-            <Button variant="ghost" size="sm" onClick={() => edit(() => setRows((rs) => [...rs, emptyRow()]))}><Plus size={14} aria-hidden /> 문항 더하기</Button>
-          )}
-        </div>
+          <span className="cl-reason-hint" aria-live="polite">{strengthFull ? `${STRENGTH_LIMIT}개까지 고를 수 있어요. 하나를 빼고 골라 주세요` : null}</span>
+        </fieldset>
+      </section>
 
-        <div className="cl-examples">
-          <span className="t-12 c-2">자주 나오는 문항</span>
-          <div className="row cl-examples__chips">
+      <section className="cl-group" aria-labelledby="cl-group-questions">
+        <div className="cl-group__top">
+          <h2 className="cl-group__head" id="cl-group-questions"><span className="cl-group__n" aria-hidden>2</span>문항</h2>
+          <span className="cl-group__meta">{rows.length}/{L.QUESTIONS}</span>
+        </div>
+        <p className="cl-group__help">회사가 묻는 문항 문장을 그대로 붙여 넣어요 — 답은 여기에 쓰지 않아요</p>
+        <div className="cl-qbox">
+          <div className="cl-quick" role="group" aria-label="자주 나오는 문항">
+            <span className="cl-quick__label" aria-hidden>자주 나오는 문항 · 누르면 아래에 더해져요</span>
             {[...examples.top, ...(showMore ? examples.more : [])].map((t) => (
               <Chip key={t} onClick={() => addExample(t)} disabled={rows.length >= L.QUESTIONS && !rows.some((r) => r.text.trim() === '')}>{THEME_LABEL[t]}</Chip>
             ))}
-            {!showMore && examples.more.length > 0 && <button type="button" className="cl-link-btn t-12" onClick={() => setShowMore(true)}>더 보기</button>}
+            {!showMore && examples.more.length > 0 && <button type="button" className="chip cl-quick__more" onClick={() => setShowMore(true)}>더 보기</button>}
           </div>
+          {rows.map((r, i) => (
+            <QuestionRow key={i} n={i + 1} row={r} textError={show(rowErrors[i].text)} limitError={show(rowErrors[i].limit)} limitBad={!!rowErrors[i].limit}
+              onText={(text) => setRow(i, { text })} onLimit={(charLimit) => setRow(i, { charLimit })}
+              onRemove={rows.length > 1 ? () => edit(() => setRows((rs) => rs.filter((_, j) => j !== i))) : undefined} />
+          ))}
+          {rows.length < L.QUESTIONS && (
+            <Button variant="text" className="cl-add-q" onClick={() => edit(() => setRows((rs) => [...rs, emptyRow()]))}>+ 문항 더하기</Button>
+          )}
         </div>
       </section>
 
       {failure && <Note strong={failure.title} tone="danger">{failure.message}</Note>}
 
-      <div className="row cl-actions">
-        <span className="c-2 t-14">{invalid && tried ? '빠진 칸을 채워 주세요' : '만들면 AI가 문항마다 카드를 골라요'}</span>
-        <Button className="right" onClick={submit} loading={create.isPending} disabled={noCards}>카드 고르기 시작</Button>
+      <div className="sticky-footer">
+        <div className="sticky-footer__text">
+          <strong>만들면 문항마다 쓸 카드를 골라요</strong>
+          {footWarn && <span className="cl-foot-warn">{footWarn}</span>}
+        </div>
+        <div className="sticky-footer__actions">
+          <Button onClick={submit} loading={create.isPending} disabled={noCards || !!memoError}>카드 고르기</Button>
+        </div>
       </div>
     </main>
+  );
+}
+
+/**
+ * 문항 한 줄 — 번호 · 한 줄 높이 글 칸(문장이 줄을 넘길 때만 늘어남) · 칸 안 오른쪽의 '700자 이내' · 빼기.
+ * '700자 이내'를 누르면 그 자리에서 숫자 칸이 되고 Enter·칸 벗어남은 저장, Esc 는 취소다. 비워 두면 서버가 700 으로 본다.
+ */
+function QuestionRow({ n, row, textError, limitError, limitBad, onText, onLimit, onRemove }: {
+  n: number; row: Row; textError: string | null; limitError: string | null; limitBad: boolean;
+  onText: (text: string) => void; onLimit: (charLimit: string) => void; onRemove?: () => void;
+}) {
+  const area = useRef<HTMLTextAreaElement>(null);
+  const limitBtn = useRef<HTMLButtonElement>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    const el = area.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight + 2}px`;
+  }, [row.text]);
+
+  const shown = row.charLimit || String(L.CHAR_DEFAULT);
+  const close = (save: boolean) => {
+    if (editing == null) return;
+    if (save && editing !== shown) onLimit(editing);
+    setEditing(null);
+    requestAnimationFrame(() => limitBtn.current?.focus());
+  };
+  return (
+    <div className="cl-qrow">
+      <span className="cl-qrow__n" aria-hidden>{n}</span>
+      <div className="cl-qfield">
+        <textarea ref={area} className="input cl-qfield__text" rows={1} value={row.text} maxLength={L.QUESTION} aria-label={`${n}번 문항`}
+          placeholder="예: 지원 동기와 입사 후 포부를 적어 주세요" aria-invalid={!!textError} onChange={(e) => onText(e.target.value)} />
+        {editing == null ? (
+          <button ref={limitBtn} type="button" className={`cl-qfield__limit${limitBad ? ' cl-qfield__limit--bad' : ''}`}
+            aria-label={`${n}번 문항 답 ${shown}자 이내 · 눌러서 바꾸기`} onClick={() => setEditing(shown)}>{shown}자 이내</button>
+        ) : (
+          <span className="cl-qfield__edit">
+            <input type="text" inputMode="numeric" autoFocus value={editing} aria-label={`${n}번 문항 글자 수`}
+              onChange={(e) => setEditing(e.target.value.replace(/[^\d]/g, ''))} onBlur={() => close(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); close(true); }
+                if (e.key === 'Escape') { e.preventDefault(); close(false); }
+              }} />자 이내
+          </span>
+        )}
+        {(textError ?? limitError) && <span className="cl-error">{textError ?? limitError}</span>}
+      </div>
+      <button type="button" className="cl-qrow__x" aria-label={`${n}번 문항 지우기`} disabled={!onRemove} onClick={onRemove}><X size={16} aria-hidden /></button>
+    </div>
   );
 }
 

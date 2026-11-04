@@ -17,7 +17,7 @@ vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 
 /**
  * #719 ② AI 추론 표시 — AI 가 재료에 없는 해석(배운 점·판단 이유·직무 연결·포부)을 지어 쓴 문장은 marks 의 INFERRED 로 오고,
- * 화면은 노란 형광펜 + 'AI 추론 · 확인 필요' 메모 + 점검표 '추론' 칸으로 보이며 메모에서 확인·고치기·빼기를 한다.
+ * 화면은 노란 형광펜 + 점검표 '짐작' 칸으로 보이며, ⑥ 에서는 옆 패널의 짐작 확인 탭(#727)에서 확인·고치기·빼기를 한다.
  */
 const S1 = '결제 모듈의 장애 대응을 맡았다.';
 const S2 = '로그를 모아 원인을 찾았다.';
@@ -45,7 +45,7 @@ const advance = (sec: number) => { shift += sec * 1000; Date.now = () => realNow
 
 /** 목으로 만들기 → 카드 고르기 → 질문 → 초안까지 끝낸 자소서 */
 function draftedFromMock() {
-  const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, questions: [
+  const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [
     { text: '팀으로 함께 성과를 낸 경험을 적어 주세요', charLimit: null },
   ] }).data);
   advance(7);
@@ -82,6 +82,11 @@ function mount(l: CoverLetter) {
   );
 }
 const inferredCard = () => document.querySelector<HTMLElement>('[data-note-card^="i:"]');
+/** 패널의 짐작 확인 탭을 열고 첫 짐작 문장 줄 */
+const inferenceRow = () => {
+  fireEvent.click(screen.getByRole('tab', { name: /짐작 확인/ }));
+  return document.querySelector<HTMLElement>('.clp-inf');
+};
 const area = () => screen.getByLabelText('1번 문항 초안') as HTMLTextAreaElement;
 
 beforeEach(() => { resetDb(); shift = 0; Date.now = realNow; });
@@ -93,9 +98,9 @@ describe('추론 메모와 점검표', () => {
     const notes = buildQuestionNotes(q, [step({ seq: 1, kind: 'WROTE' }), inferredStep], TEXT, 'edit');
     const inferred = notes.threads.find((t) => t.status === 'inferred')!;
     expect(inferred).toMatchObject({ sentence: LEARNED, group: 'inference', sentenceSeq: 3 });
-    expect(inferred.items[0]).toMatchObject({ actor: 'SUB_AGENT', text: '추론한 문장이라 확인 필요 표시를 남겼어요' });
+    expect(inferred.items[0]).toMatchObject({ actor: 'SUB_AGENT', text: '짐작한 문장이라 확인 필요 표시를 남겼어요' });
     expect(notes.threads.find((t) => t.group === 'evidence')?.status).toBe('marked');
-    expect(STATUS_LABEL.inferred).toBe('AI 추론 · 확인 필요');
+    expect(STATUS_LABEL.inferred).toBe('짐작 · 확인 필요');
     expect(cellLabel(notes.checklist.inference)).toBe('확인 필요 1');
     expect(cellLabel(notes.checklist.evidence)).toBe('확인 필요 1');
   });
@@ -115,8 +120,8 @@ describe('추론 메모와 점검표', () => {
 
   it('표시만 있고 단계가 없는 옛 응답도 추론 메모를 만들고, 쓰는 동안의 단계 줄은 추론이라고 말한다', () => {
     const notes = buildQuestionNotes(question({ draft: draft(TEXT, [{ sentenceSeq: 3, code: 'INFERRED', value: null }]) }), [], TEXT, 'edit');
-    expect(notes.threads[0].items[0].text).toBe('AI가 재료를 바탕으로 추론해 쓴 문장이에요. 맞으면 확인, 다르면 고치거나 빼 주세요.');
-    expect(draftLine(inferredStep, [{ id: 'q1', seq: 1 }])?.text).toBe('1번 문항 추론한 문장이라 확인 필요 표시를 남겼어요');
+    expect(notes.threads[0].items[0].text).toBe('재료를 바탕으로 짐작해 쓴 문장이에요. 맞으면 확인, 다르면 고치거나 빼 주세요.');
+    expect(draftLine(inferredStep, [{ id: 'q1', seq: 1 }])?.text).toBe('1번 문항 짐작한 문장이라 확인 필요 표시를 남겼어요');
   });
 });
 
@@ -156,19 +161,21 @@ describe('목 서버', () => {
   });
 });
 
-describe('⑥ 메모의 확인 · 고치기 · 빼기', () => {
-  it('확인을 누르면 표시 지우기 API 를 부르고, 노란 형광펜과 추론 메모가 사라진다', async () => {
+describe('⑥ 짐작 확인 탭의 확인 · 고치기 · 빼기', () => {
+  it('확인을 누르면 표시 지우기 API 를 부르고, 노란 형광펜과 그 줄이 사라진다', async () => {
     const log: string[] = [];
     stubFetch(log);
     const l = draftedFromMock();
     const seq = l.questions[0].draft!.marks.find((m) => m.code === 'INFERRED')!.sentenceSeq;
     mount(l);
     expect(document.querySelector('.pedit__mirror mark.phl--inferred')?.textContent).toBe(MOCK_LEARNED);
-    expect(within(inferredCard()!).getByText('AI 추론 · 확인 필요')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^추론\s?확인 필요 1$/ })).toBeEnabled();
-    fireEvent.click(within(inferredCard()!).getByRole('button', { name: '확인' }));
-    await waitFor(() => expect(document.querySelector('.phl--inferred')).toBeNull());
     expect(inferredCard()).toBeNull();
+    expect(screen.getByRole('button', { name: '짐작 1' })).toBeEnabled();
+    const row = inferenceRow()!;
+    expect(within(row).getByText(MOCK_LEARNED)).toBeInTheDocument();
+    fireEvent.click(within(row).getByRole('button', { name: '확인' }));
+    await waitFor(() => expect(document.querySelector('.phl--inferred')).toBeNull());
+    expect(screen.getByText('확인할 문장이 없어요')).toBeInTheDocument();
     expect(log).toContain(`DELETE /cover-letters/${l.id}/questions/${l.questions[0].id}/marks/${seq}`);
     expect(area().value).toContain(MOCK_LEARNED);
   });
@@ -176,47 +183,47 @@ describe('⑥ 메모의 확인 · 고치기 · 빼기', () => {
   it('고치기를 누르면 글상자에서 그 문장을 골라 둔다', () => {
     const l = draftedFromMock();
     mount(l);
-    fireEvent.click(within(inferredCard()!).getByRole('button', { name: '고치기' }));
+    fireEvent.click(within(inferenceRow()!).getByRole('button', { name: '고치기' }));
     const start = area().value.indexOf(MOCK_LEARNED);
     expect(document.activeElement).toBe(area());
     expect([area().selectionStart, area().selectionEnd]).toEqual([start, start + MOCK_LEARNED.length]);
   });
 
-  it('빼기를 누르면 그 문장을 뺀 글을 바로 저장하고, 메모는 고침 · 나 로 바뀐다', async () => {
+  it('빼기를 누르면 그 문장을 뺀 글을 바로 저장하고, 짐작 확인 목록에서 빠진다', async () => {
     const log: string[] = [];
     stubFetch(log);
     const l = draftedFromMock();
     mount(l);
-    fireEvent.click(within(inferredCard()!).getByRole('button', { name: '빼기' }));
+    fireEvent.click(within(inferenceRow()!).getByRole('button', { name: '빼기' }));
     expect(area().value).not.toContain(MOCK_LEARNED);
     expect(area().value).not.toMatch(/ {2}/);
     await waitFor(() => expect(log.some((x) => x.startsWith('PATCH '))).toBe(true));
     expect(log.find((x) => x.startsWith('PATCH '))).toContain(area().value);
     await waitFor(() => expect(db.coverLetters[0].questions[0].draft.text).toBe(area().value));
-    expect(within(inferredCard()!).getByText('고침 · 나')).toBeInTheDocument();
-    expect(within(inferredCard()!).queryByRole('button', { name: '확인' })).toBeNull();
+    expect(screen.getByText('확인할 문장이 없어요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '짐작 없음' })).toBeInTheDocument();
   });
 
-  it('복사 알림은 지금 글에 남은 확인하지 않은 추론 문장 수를 빈칸 수와 함께 알린다', async () => {
+  it('복사 알림은 지금 글에 남은 확인하지 않은 짐작 문장 수를 빈칸 수와 함께 알린다', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     mount(draftedFromMock());
     fireEvent.change(area(), { target: { value: `${area().value} ${BLANK_TEXT.RESULT}` } });
     fireEvent.click(screen.getByRole('button', { name: '복사' }));
-    expect(await screen.findByText('복사했어요. 확인하지 않은 AI 추론 문장 1개와 빈칸 1개가 함께 복사됐어요.')).toBeInTheDocument();
+    expect(await screen.findByText('복사했어요. 확인하지 않은 짐작 문장 1개와 빈칸 1개가 함께 복사됐어요.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '전체 복사' }));
-    expect(await screen.findByText('모든 문항을 복사했어요. 확인하지 않은 AI 추론 문장 1개와 빈칸 1개가 함께 복사됐어요.')).toBeInTheDocument();
+    expect(await screen.findByText('모든 문항을 복사했어요. 확인하지 않은 짐작 문장 1개와 빈칸 1개가 함께 복사됐어요.')).toBeInTheDocument();
     fireEvent.change(area(), { target: { value: area().value.replace(MOCK_LEARNED, '') } });
     fireEvent.click(screen.getByRole('button', { name: '복사' }));
     expect(await screen.findByText('복사했어요. 아직 채우지 않은 빈칸 1개가 함께 복사됐어요.')).toBeInTheDocument();
   });
 
-  it('쓰는 중(⑤)에는 추론 메모가 보이기만 하고 확인 · 고치기 · 빼기가 없다', () => {
+  it('쓰는 중(⑤)에는 짐작 메모가 보이기만 하고 확인 · 고치기 · 빼기가 없다', () => {
     mount(CoverLetter.parse({
       id: 'cl_1', stage: 'DRAFTING', pollAfterMs: 1500, jobRole: '백엔드 개발', createdAt: 't', updatedAt: 't',
       questions: [question({ writing: { text: TEXT, round: 0 } })], steps: { assign: [], draft: [step({ seq: 1, kind: 'WROTE' }), inferredStep] },
     }));
-    expect(within(inferredCard()!).getByText('AI 추론 · 확인 필요')).toBeInTheDocument();
+    expect(within(inferredCard()!).getByText('짐작 · 확인 필요')).toBeInTheDocument();
     expect(within(inferredCard()!).queryAllByRole('button')).toHaveLength(0);
   });
 });

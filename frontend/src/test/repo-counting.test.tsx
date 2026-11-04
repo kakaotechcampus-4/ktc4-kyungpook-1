@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ReactElement } from 'react';
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '@/api/keys';
 import { CandidateBoard, Job, JobErrorCode, RepoDetail, RepoSummary, StartedJob } from '@/api/schemas';
 import { GithubSettingsPage } from '@/features/settings/GithubSettingsPage';
+import { HomePage } from '@/features/home/HomePage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { ReposPage } from '@/features/repos/ReposPage';
 import { jobErrorHint, jobErrorTitle } from '@/lib/labels';
@@ -101,22 +102,22 @@ describe('레포 목록 화면', () => {
   it('못 센 레포는 숫자 대신 "세는 중"을 보이고 "내 기여 0%"·"PR 0건"을 띄우지 않는다', () => {
     mount('/repos', <ReposPage />, '/repos', seedRepos);
     const row = rowOf(/side-project-new/);
-    expect(within(row).getAllByText(/세는 중/).length).toBeGreaterThanOrEqual(2);   // 배지 · 내 커밋 칩 · PR/리뷰 줄
+    expect(within(row).getByText(/기여 개수를 세는 중이에요/)).toBeInTheDocument();   // #756 숫자 줄 대신 문장 한 줄
     expect(within(row).getByText(/집계 전이에요/)).toBeInTheDocument();
     expect(within(row).queryByText(/내 기여/)).not.toBeInTheDocument();
     expect(within(row).queryByText('PR 0건')).not.toBeInTheDocument();
     expect(within(row).queryByText(/부풀린 것처럼/)).not.toBeInTheDocument();
-    expect(within(row).queryByText(/PR이 없어서/)).not.toBeInTheDocument();
+    expect(within(row).queryByText(/PR 없이/)).not.toBeInTheDocument();
     expect(within(row).queryByText(/내 커밋 0/)).not.toBeInTheDocument();
   });
 
   it('실제로 0 인 레포는 그대로 0 과 경고를 보인다 (세는 중과 구분)', () => {
     mount('/repos', <ReposPage />, '/repos', seedRepos);
     const real = rowOf(/algorithm-study/);                 // PR 0건 · 개수를 센 레포
-    expect(within(real).getByText('PR 0건')).toBeInTheDocument();
+    expect(within(real).getByText(/^PR 없이 커밋 \d+개를 올린 레포라/)).toBeInTheDocument();
     expect(within(real).queryByText(/세는 중/)).not.toBeInTheDocument();
-    expect(within(rowOf(/team-board/)).getByText(/내 기여 2%/)).toBeInTheDocument();   // 센 결과가 낮은 기여
-    expect(screen.getAllByText('PR 0건')).toHaveLength(2);                              // 못 센 레포는 세지 않는다
+    expect(within(rowOf(/team-board/)).getByText(/^내 커밋이 \d+개$/)).toBeInTheDocument();   // 센 결과가 낮은 기여
+    expect(within(rowOf(/side-project-new/)).queryByText(/PR 없이/)).not.toBeInTheDocument();  // 못 센 레포는 PR 없음으로 말하지 않는다
   });
 
   it('"PR 0건"·"PR 있는 레포" 필터는 못 센 레포를 넣지 않는다', () => {
@@ -140,6 +141,29 @@ describe('레포 목록 화면', () => {
 });
 
 describe('홈 · 설정 · 분석 화면', () => {
+  it('홈의 레포 제안 줄도 못 센 레포는 "개수 세는 중"이다', () => {
+    mount('/', <HomePage />, '/', (client) => {
+      seedRepos(client);
+      client.setQueryData(keys.me, req('GET', '/me').data);
+      client.setQueryData(keys.cards, []);
+      client.setQueryData(keys.activeJobs, { jobs: [] });
+    });
+    fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
+    fireEvent.change(screen.getByPlaceholderText('레포 검색'), { target: { value: 'side-project' } });
+    const option = screen.getByRole('option', { name: /side-project-new/ });
+    expect(option).toHaveTextContent('개수 세는 중');
+    expect(option).not.toHaveTextContent('내 커밋 0');
+    cleanup();
+    mount('/', <HomePage />, '/', (client) => {
+      seedRepos(client);
+      client.setQueryData(keys.me, req('GET', '/me').data);
+      client.setQueryData(keys.cards, []);
+      client.setQueryData(keys.activeJobs, { jobs: [] });
+    });
+    fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
+    fireEvent.change(screen.getByPlaceholderText('레포 검색'), { target: { value: 'auth-service' } });
+    expect(screen.getByRole('option', { name: /auth-service/ })).toHaveTextContent('내 커밋 214 / 팀 402');
+  });
 
   it('설정의 수집 이력 줄도 못 센 레포는 숫자를 숨긴다', () => {
     mount('/settings/github', <GithubSettingsPage />, '/settings/github', (client) => {

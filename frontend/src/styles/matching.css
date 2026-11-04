@@ -5,31 +5,11 @@
 .matching-page h1 {
   overflow-wrap: anywhere;
 }
-.match-intro {
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.65;
-}
-.match-controls {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) repeat(3, auto);
-  gap: 12px;
-  align-items: center;
-}
-.match-controls > * {
-  min-width: 0;
-}
-.match-results,
 .match-counts {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px 20px;
-}
-.match-results {
-  justify-content: space-between;
-  color: var(--text-secondary);
-  font-size: 14px;
 }
 .match-grid {
   display: grid;
@@ -132,17 +112,6 @@
   align-items: center;
   gap: 4px;
 }
-@media (max-width: 1000px) {
-  .match-controls {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .match-controls > :first-child {
-    grid-column: 1/-1;
-  }
-  .match-controls .select-trigger {
-    width: 100%;
-  }
-}
 @media (max-width: 700px) {
   .matching-page {
     gap: 20px;
@@ -151,30 +120,13 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  .match-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-  .match-controls > :last-child {
-    grid-column: 1/-1;
-  }
   .match-card {
     padding: 20px;
   }
 }
 
-/* ───────── 공고 목록: 공고 카드(posting-tile) · 기업 카드(company-tile) · 마감 · 쪽 번호 ─────────
+/* ───────── 공고 목록: 공고 카드(posting-tile) · 마감 · 쪽 번호 ─────────
  * 카드는 내용이 비어도 같은 줄끼리 높이가 같게 최소 높이를 둔다. 마감 7일 안만 붉은 배지로 강조한다(대부분 마감일이 없어 차분하게 둔다). */
-.match-results strong {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-.match-results__side {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
 .match-card .posting-title {
   margin: 0;
   color: var(--text-primary);
@@ -265,8 +217,8 @@
 .deadline--today .deadline__badge,
 .deadline__badge.deadline--soon,
 .deadline__badge.deadline--today {
-  background: var(--state-failed-bg);
-  color: var(--state-failed-text);
+  background: var(--state-open-bg);
+  color: var(--state-open-text);
 }
 .deadline--closed .deadline__badge,
 .deadline__badge.deadline--closed {
@@ -276,13 +228,11 @@
 .deadline__date {
   white-space: nowrap;
 }
-.match-grid--three,
-.match-grid--companies {
+.match-grid--three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
-.match-card.posting-tile,
-.match-card.company-tile {
+.match-card.posting-tile {
   gap: 10px;
   min-height: 220px;
   padding: 20px;
@@ -294,8 +244,7 @@
   font-size: 13px;
   font-weight: 500;
 }
-.posting-tile__foot,
-.company-tile__foot {
+.posting-tile__foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -305,54 +254,6 @@
   border-top: 1px solid var(--border-default);
   color: var(--text-secondary);
   font-size: 13px;
-}
-.match-card.company-tile {
-  gap: 16px;
-}
-.company-tile__head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-.company-tile__head > div {
-  min-width: 0;
-}
-.match-card .company-tile__name {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.company-tile__count {
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-.company-tile__roles {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-}
-.company-tile__roles li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--text-strong);
-  font-size: 14px;
-  line-height: 20px;
-}
-.company-tile__role {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .pagination {
   display: flex;
@@ -399,21 +300,15 @@
   color: var(--text-tertiary);
 }
 @media (max-width: 1000px) {
-  .match-controls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .match-grid--three,
-.match-grid--companies {
+  .match-grid--three {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 700px) {
-  .match-grid--three,
-.match-grid--companies {
+  .match-grid--three {
     grid-template-columns: 1fr;
   }
-  .match-card.posting-tile,
-.match-card.company-tile {
+  .match-card.posting-tile {
     min-height: 0;
   }
   .match-card .posting-title {
@@ -464,7 +359,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: var(--pastel-mint);
+  background: var(--bg-surface);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
   color: var(--text-primary);
 }
 .posting-detail__side {
@@ -572,12 +468,12 @@
   border-radius: 6px;
 }
 .cond-tile--met {
-  background: var(--pastel-mint);
+  background: var(--bg-subtle);
   color: var(--text-primary);
 }
 .cond-tile--not_met {
-  background: var(--state-failed-bg);
-  color: var(--state-failed-text);
+  background: var(--state-open-bg);
+  color: var(--state-open-text);
 }
 
 /* 원문 조건 목록 */
@@ -977,4 +873,139 @@
   gap: 8px;
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+/* 공고 매칭 머리 · 검색과 직무 칩 · 묶음(나와 맞는 공고 / 아직 부족한 공고 / 그 밖의 공고) */
+.match-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+}
+.match-head__main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.match-head__sub,
+.match-head__progress {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.match-head__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 420px;
+}
+.match-line {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.match-line strong {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+.match-line--danger strong {
+  color: var(--state-failed-text);
+}
+.match-line__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-touch-size);
+  color: var(--text-strong);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.match-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.match-tools__search {
+  max-width: 420px;
+}
+.match-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.match-chip {
+  min-height: var(--control-touch-size);
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.match-chip:hover {
+  border-color: var(--border-strong);
+}
+.match-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+/* 고른 칩은 파랑(지금·선택) — 캘린더에서 고른 날과 같은 값 */
+.match-chip[aria-pressed="true"] {
+  border-color: var(--nav-active-bg);
+  background: var(--nav-active-bg);
+  color: var(--nav-active-text);
+  font-weight: 600;
+}
+.match-group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.match-group__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.match-group__head h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+.match-group__meta {
+  margin-left: auto;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.match-group__sub {
+  margin: -6px 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.match-group .match-group__more {
+  align-self: flex-start;
+  min-height: var(--control-touch-size);
+}
+.posting-fit {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.5;
+}
+@media (max-width: 700px) {
+  .match-head .btn {
+    width: 100%;
+  }
+  .match-tools__search {
+    max-width: none;
+  }
 }

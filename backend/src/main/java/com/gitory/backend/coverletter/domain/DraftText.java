@@ -3,6 +3,8 @@ package com.gitory.backend.coverletter.domain;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -42,6 +44,30 @@ final class DraftText {
                 .filter(blank -> text.contains(blank.getValue()))
                 .map(Map.Entry::getKey)
                 .toList();
+
+    }
+
+    static String blankOf(MaterialItem item) {
+
+        return BLANKS.get(item);
+
+    }
+
+    // 항목 빈칸과 '더 쓸 거리' 빈칸을 글에 나온 차례대로 글자 그대로 돌려줘, AI 가 그 자리를 찾아 묻고 채울 수 있게 한다
+    static List<String> blankTextsIn(String text) {
+
+        TreeMap<Integer, String> found = new TreeMap<>();
+        for (String blank : BLANKS.values()) {
+            int at = text.indexOf(blank);
+            if (at >= 0) {
+                found.put(at, blank);
+            }
+        }
+        Matcher more = MORE_BLANK.matcher(text);
+        while (more.find()) {
+            found.put(more.start(), more.group());
+        }
+        return found.values().stream().distinct().toList();
 
     }
 }

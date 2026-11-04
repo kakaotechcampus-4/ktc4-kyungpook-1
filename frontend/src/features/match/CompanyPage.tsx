@@ -5,7 +5,6 @@ import { AiWait } from "@/components/ui/AiWait";
 import { EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
-import { matchViewFromParams } from "./CompanyList";
 import { PostingCard } from "./PostingCard";
 import { MatchBack, MatchFailure, MatchUnavailable } from "./shared";
 import {
@@ -23,7 +22,7 @@ const NONE: never[] = [];
 /**
  * 기업 페이지 — 목록 API 가 준 공고 중 이 기업의 공고만 모아 본다(별도 요청 없음, 목록과 같은 캐시).
  * 주소의 조각(:companyId)은 서버의 companyId 다. 이름으로 만들던 옛 주소도 같은 기업을 찾을 수 있으면 찾아 주고, 못 찾으면 "없는 기업"을 보인다.
- * 목록의 검색·필터를 주소로 이어받아 같은 기준을 적용한다: 기업별 보기의 "공고 N건"과 이 페이지의 N 이 어긋나지 않게.
+ * 목록의 검색·직무를 주소로 이어받아 같은 기준을 적용한다: 목록에서 본 공고와 이 페이지의 공고가 어긋나지 않게.
  * 걸러져 숨은 공고가 있으면 알리고, 필터만 풀어 전체를 볼 수 있게 한다.
  */
 export function CompanyPage() {
@@ -45,16 +44,15 @@ export function CompanyPage() {
 
   if (!matchSupported()) return <MatchUnavailable />;
 
-  const fromCompanyView = matchViewFromParams(sp) === "company";
   const backTo = `/match${sp.size ? `?${sp}` : ""}`;
-  // 필터만 푼 같은 기업 페이지 — 정렬·보기는 그대로 둔다
+  // 필터만 푼 같은 기업 페이지 — 나머지 주소 값은 그대로 둔다
   const unfiltered = new URLSearchParams(sp);
   FILTER_KEYS.forEach((k) => unfiltered.delete(k));
   const unfilteredTo = companyPath(company ?? segment, unfiltered);
 
   return (
     <main className="main matching-page">
-      <MatchBack to={backTo} fromCompanyView={fromCompanyView} />
+      <MatchBack to={backTo} />
       {matches.isPending && (
         <>
           <AiWait label="확정한 카드와 공고 조건을 하나씩 맞춰 보는 중이에요" />

@@ -33,7 +33,7 @@ export function HomePage() {
   useDocumentTitle('홈');
   const me = useMe();
   const matched = useMatchedPostings();
-  const repoSearchOpen = false;
+  const [repoSearchOpen, setRepoSearchOpen] = useState(false);
   const cards = useCards();
   const repos = useRepos();
   const [rq, setRq] = useState('');
@@ -85,14 +85,14 @@ export function HomePage() {
       <div className="home-workspace">
       <div className="home-workspace__content">
       <section className="home-welcome">
-        <div className="home-welcome__copy"><span className="home-eyebrow">BUILD YOUR NEXT CHAPTER</span><h2>GitHub 활동을<br />나만의 경험으로</h2><p>레포를 연결하면 커밋과 PR에서<br />자소서에 쓸 경험을 찾아드려요.</p><div className="home-welcome__actions"><Link to="/repos" className="btn btn--primary"><Github size={17} /> 레포 연결하기 <ArrowRight size={16} /></Link></div></div>
+        <div className="home-welcome__copy"><span className="home-eyebrow">BUILD YOUR NEXT CHAPTER</span><h2>GitHub 활동을<br />나만의 경험으로</h2><p>레포를 연결하면 커밋과 PR에서<br />자소서에 쓸 경험을 찾아드려요.</p><div className="home-welcome__actions"><Link to="/repos" className="btn btn--primary"><Github size={17} /> 레포 연결하기 <ArrowRight size={16} /></Link><button type="button" className="btn btn--outline" aria-expanded={repoSearchOpen} aria-controls="home-repo-search" onClick={() => setRepoSearchOpen(v => !v)}><Search size={17} /> 레포 검색하기</button></div></div>
         <div className="home-welcome__visual" aria-hidden="true"><div className="activity-float activity-float--commit"><GitCommitHorizontal size={20} /><span>Commit<small>쌓아온 작업 기록</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--pr"><GitPullRequest size={20} /><span>Pull Request<small>함께 해결한 문제</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--issue"><CircleDot size={20} /><span>Experience<small>나만의 경험 카드로</small></span><Check size={17} /></div><Github className="home-welcome__github" size={52} strokeWidth={1.4} /></div>
       </section>
       <section className="home-overview" aria-label="취업 준비 현황">
-        <div className="overview-tile overview-tile--blue"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
-        <div className="overview-tile overview-tile--lavender"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
-        <div className="overview-tile overview-tile--mint"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
-        <Link to="/match" className="overview-tile overview-tile--yellow overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
+        <div className="overview-tile"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
+        <div className="overview-tile"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
+        <div className="overview-tile"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
+        <Link to="/match" className="overview-tile overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
       </section>
       <ActiveJobsList />
       <section className="prompt" id="home-repo-search" hidden={!repoSearchOpen}>

@@ -18,7 +18,6 @@ import { cardKindLabel } from "@/lib/labels";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
-import { matchViewFromParams } from "./CompanyList";
 import { ConditionGapFill, Dots } from "./GapFillParts";
 import { canProceed, clearProceeded, gapKey, gapKeys, gapSummary, readProceeded, rememberProceeded, revealIntervalMs, useProceed, useRevealed, useUsedCandidates } from "./gapFill";
 import { DeadlineMark, PostingFacts, TechChips } from "./PostingParts";
@@ -360,7 +359,7 @@ export function MatchDetailPage() {
   );
   return (
     <main className="main matching-page">
-      <MatchBack to={`/match${sp.size ? `?${sp}` : ""}`} fromCompanyView={matchViewFromParams(sp) === "company"} />
+      <MatchBack to={`/match${sp.size ? `?${sp}` : ""}`} />
       {query.isPending && <DetailSkeleton />}
       {query.isError && (
         <>

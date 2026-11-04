@@ -2,14 +2,13 @@ import { useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRepo, useRepos, useStartAnalysis } from '@/api/queries';
 import type { RepoSummary } from '@/api/schemas';
-import { CalendarDays, FileCode2, FolderGit2, GitCommitHorizontal, GitPullRequest } from 'lucide-react';
-import { MetaItem } from '@/components/MetaItem';
+import { FolderGit2 } from 'lucide-react';
 import { Badge, Button, IconBox, Radio, PageTitle, Skeleton, StickyFooter, Note, EmptyState } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGrid } from '@/features/auth/LandingPage';
-import { pct, ym } from '@/lib/format';
 import { COUNTING, isCounting } from '@/lib/repoCounts';
+import { repoMeta, repoSentence } from '@/lib/repoSentence';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -42,7 +41,9 @@ export function ReposPage() {
     if (filter === 'nopr') xs = xs.filter((r) => !isCounting(r) && r.prCount === 0);
     if (filter === 'fresh') xs = xs.filter((r) => !r.lastAnalyzedAt);
     const score = (r: RepoSummary) => r.contribution.mine + r.prCount * 3 + r.reviewCount;
-    return xs.sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name) : sort === 'recent' ? b.activeTo.localeCompare(a.activeTo) : score(b) - score(a));
+    // 활동량 순에서는 먼저 정리해 보기 좋은 레포(추천이면서 아직 안 정리한 레포)를 맨 위에 모은다 — 사용자가 고른 이름·최근 순은 그대로 둔다
+    const first = (r: RepoSummary) => (sort === 'activity' && isFirstPick(r) ? 0 : 1);
+    return xs.sort((a, b) => first(a) - first(b) || (sort === 'name' ? a.name.localeCompare(b.name) : sort === 'recent' ? b.activeTo.localeCompare(a.activeTo) : score(b) - score(a)));
   }, [repos.data, q, sort, filter]);
   const selected = (repos.data ?? []).find((r) => r.id === selectedId) ?? null;
   const detail = useRepo(disclose ? selectedId ?? undefined : undefined);
@@ -94,7 +95,7 @@ export function ReposPage() {
         {list.map((r) => <RepoRow key={r.id} r={r} selected={r.id === selectedId} onSelect={() => select(r.id)} />)}
       </div>
 
-      <StickyFooter strong={selected ? `${selected.name}` : '레포를 하나 골라 주세요'}>
+      <StickyFooter strong={selected ? `${selected.name} 을 골랐어요` : '레포를 하나 골라 주세요'} sub={selected ? '다음은 읽는 범위 확인이에요' : undefined}>
         <Link to="/" className="btn btn--outline">취소</Link>
         <Button size="lg" disabled={!selected} onClick={openDisclose}>다음</Button>
       </StickyFooter>
@@ -122,35 +123,28 @@ export function ReposPage() {
   );
 }
 
+const isFirstPick = (r: RepoSummary) => r.recommended && !r.lastAnalyzedAt;
+
 function RepoRow({ r, selected, onSelect }: { r: RepoSummary; selected: boolean; onSelect: () => void }) {
-  const counting = isCounting(r); // 개수 0 이 실제 0 이 아니다 — 기여 경고·PR 0건 표시를 하지 않는다
-  const low = !counting && (r.contribution.level === 'PARTIAL' || r.contribution.level === 'NONE');
+  const line = repoSentence(r);
+  const meta = repoMeta(r);
   return (
     <button type="button" role="radio" aria-checked={selected} onClick={onSelect}
       className={`card row repo-row ${selected ? 'card--selected repo-row--sel' : ''}`}>
       <Radio checked={selected} />
       <IconBox icon={FolderGit2} size={34} />
-      <div className="stack grow" style={{ gap: 5, textAlign: 'left' }}>
-        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          <span className="w-600" style={{ fontSize: 14 }}>{r.owner} / {r.name}</span>
-          {r.recommended && !r.lastAnalyzedAt && <Badge kind="PR">추천</Badge>}
-          {low && <Badge kind="CAUTION">내 기여 {pct(r.contribution.ratio)}</Badge>}
-          {counting && <Badge kind="NEUTRAL">{COUNTING}</Badge>}
-          {!counting && r.prCount === 0 && <Badge kind="NEUTRAL">PR 0건</Badge>}
-          {r.lastAnalyzedAt && <span className="repo-row__status"><Badge kind="NEUTRAL">정리 완료</Badge><Badge kind="NEUTRAL">카드 {r.cardCount}장</Badge></span>}
-        </div>
-        <div className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-          <span className={`mine-chip ${low ? 'mine-chip--low' : ''}`}><GitCommitHorizontal size={14} aria-hidden />{counting ? <>내 커밋 <span>{COUNTING}</span></> : <>내 커밋 {r.contribution.mine} <span>/ 팀 {r.contribution.team}</span></>}</span>
-          <span className="repo-row__stats t-12 c-3">
-            <MetaItem icon={GitPullRequest}>{counting ? `PR과 리뷰 ${COUNTING}` : `PR ${r.prCount}, 리뷰 ${r.reviewCount}`}</MetaItem>
-            <MetaItem icon={FileCode2}>{r.language ?? '-'}</MetaItem>
-            <MetaItem icon={CalendarDays}>{ym(r.activeFrom)} – {ym(r.activeTo)}</MetaItem>
-          </span>
-        </div>
-        {/* 배지만 두면 왜 조심해야 하는지 안 읽힌다 — 한 줄로 풀어 쓴다 */}
-        {low && <span className="repo-row__warn">확인되는 기여가 적어요. 맡은 일은 답변해서 채울 수 있어요.</span>}
-        {counting && <span className="t-12 c-3">아직 개수를 세지 못했어요. 0건이 아니라 집계 전이에요</span>}
-        {!counting && !low && r.prCount === 0 && <span className="repo-row__warn">PR이 없어서 커밋을 묶어 후보를 만들어 드려요</span>}
+      <div className="stack grow repo-row__body">
+        {isFirstPick(r) && <span className="repo-row__pick">먼저 정리해 보기 좋아요</span>}
+        {/* 읽는 이름은 'owner / name' 그대로 둔다 — 레포를 이름으로 찾는 시험·보조기기가 이 모양에 기댄다 */}
+        <span className="repo-row__title"><span className="repo-row__owner">{r.owner}</span><span className="sr-only"> / </span><span className="repo-row__name">{r.name}</span></span>
+        <span className="repo-row__line">
+          {line.before}{line.caution && <span className="repo-row__caution">{line.caution}</span>}{line.after}
+          {line.hint && <>{'. '}<span className="repo-row__hint">{line.hint}</span></>}
+        </span>
+        {(meta || r.lastAnalyzedAt) && <span className="repo-row__foot">
+          {meta && <span className="repo-row__meta">{meta}</span>}
+          {r.lastAnalyzedAt && <Badge kind="NEUTRAL">정리 완료 · 카드 {r.cardCount}장</Badge>}
+        </span>}
       </div>
     </button>
   );

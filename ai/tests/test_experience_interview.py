@@ -1,4 +1,4 @@
-"""경험 카드 되묻기: 답 다듬기·첫 질문·빈칸 틀·문항 유형이 합의한 규칙대로인지 LLM 없이 검증한다."""
+"""경험 카드 되묻기: 답 다듬기·첫 질문·문항 유형이 합의한 규칙대로인지 LLM 없이 검증한다."""
 
 from __future__ import annotations
 
@@ -178,18 +178,14 @@ def test_experience_card_with_s_written_lets_the_llm_choose() -> None:
     assert client.payloads[0]["fixed_slot"] is None
 
 
-def test_activity_card_keeps_only_blank_templates() -> None:
-    """활동 카드는 활동을 보내고, 빈칸(___)이 없는 예상 답변은 지어낸 문장이라 버린다."""
-    client = FakeClient(QuestionOutput(
-        action="ASK", star_slot="S", question="해커톤에서 어떤 상황이었나요?",
-        suggested_answers=["캠퍼스 해커톤에서 ___ 를 준비하던 중 ___ 문제가 생겼다", "해커톤에서 서버가 멈췄다"],
-    ))
+def test_activity_card_sends_the_activity() -> None:
+    """활동 카드는 읽을 기록이 없으므로 활동 이름·종류·역할을 LLM 입력에 보낸다."""
+    client = FakeClient(QuestionOutput(action="ASK", star_slot="S", question="해커톤에서 어떤 상황이었나요?"))
     activity = {"name": "캠퍼스 해커톤", "type": "CONTEST", "role": "백엔드"}
 
-    result, _ = _next(client, _turn(source_type="ACTIVITY", activity=activity))
+    _next(client, _turn(source_type="ACTIVITY", activity=activity))
 
     assert client.payloads[0]["activity"] == activity
-    assert result.suggested_answers == ["캠퍼스 해커톤에서 ___ 를 준비하던 중 ___ 문제가 생겼다"]
 
 
 def test_end_on_an_experience_card_carries_up_to_two_themes() -> None:
@@ -253,18 +249,16 @@ def test_polish_keeps_the_whole_answer_up_to_the_stored_length() -> None:
 
 
 def test_activity_name_and_role_count_as_number_sources() -> None:
-    """활동 이름·역할에 든 수치(24시간, 2개)는 지어낸 숫자가 아니라서, 그 수치가 든 빈칸 틀을 버리지 않는다."""
+    """활동 이름·역할에 든 수치(24시간, 2개)는 지어낸 숫자가 아니라서, 그 수치가 든 후보를 버리지 않는다."""
     client = FakeClient(QuestionOutput(
         action="ASK", star_slot="S", question="해커톤에서 어떤 상황이었나요?",
-        suggested_answers=["24시간 캠퍼스 해커톤에서 ___ 를 준비하던 중 ___ 문제가 생겼다",
-                           "2개 파트의 ___ 를 맡아 ___ 를 만들었다"],
+        suggested_answers=["24시간 캠퍼스 해커톤에서 서버가 멈췄다", "2개 파트를 이끌며 서버를 맡았다"],
     ))
     activity = {"name": "24시간 캠퍼스 해커톤", "type": "CONTEST", "role": "2개 파트 리드"}
 
     result, _ = _next(client, _turn(source_type="ACTIVITY", activity=activity))
 
-    assert result.suggested_answers == ["24시간 캠퍼스 해커톤에서 ___ 를 준비하던 중 ___ 문제가 생겼다",
-                                        "2개 파트의 ___ 를 맡아 ___ 를 만들었다"]
+    assert result.suggested_answers == ["24시간 캠퍼스 해커톤에서 서버가 멈췄다", "2개 파트를 이끌며 서버를 맡았다"]
 
 
 @pytest.mark.parametrize("overrides", [

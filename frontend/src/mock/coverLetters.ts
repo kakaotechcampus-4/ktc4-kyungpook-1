@@ -114,9 +114,9 @@ function settleAsks(letter: Any) {
     const v = card ? latest(card) : null;
     const known = (card && memory[card.id]) || {};
     const asks: Any[] = [];
-    if (!v?.result && !known.RESULT) asks.push({ item: 'RESULT', question: '이 일로 무엇이 얼마나 나아졌나요?', templates: card ? ['___를 ___만큼 줄였어요'] : [], required: true });
+    if (!v?.result && !known.RESULT) asks.push({ item: 'RESULT', question: '이 일로 무엇이 얼마나 나아졌나요?', templates: [], required: true });
     if (!card) asks.push({ item: 'SITUATION', question: '어떤 상황에서 있었던 일인가요?', templates: [], required: true }, { item: 'ACTION', question: '그때 직접 한 일은 무엇인가요?', templates: [], required: true });
-    if (!known.LEARNING) asks.push({ item: 'LEARNING', question: '이 경험에서 무엇을 배웠나요?', templates: ['___을 겪으며 ___의 중요성을 배웠어요'], required: q.theme === 'GROWTH' || q.theme === 'FAILURE' });
+    if (!known.LEARNING) asks.push({ item: 'LEARNING', question: '이 경험에서 무엇을 배웠나요?', templates: [], required: q.theme === 'GROWTH' || q.theme === 'FAILURE' });
     if (q.theme === 'MOTIVATION') asks.push({ item: 'REASON', question: '이 회사를 고른 이유는 무엇인가요?', templates: [], required: true });
     q.asks = asks.slice(0, 4);
     q.answers = [];

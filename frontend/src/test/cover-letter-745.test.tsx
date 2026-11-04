@@ -150,12 +150,11 @@ describe('기다리는 화면', () => {
 
 describe('④ 질문', () => {
   const asked = () => letter({ stage: 'ASKED', questions: [question({ asks: [
-    { item: 'LEARNING', question: '이 일을 겪고 무엇을 배웠나요?', templates: ['___을 겪으며 ___의 중요성을 배웠어요'], required: false, answer: null, skipped: false },
+    { item: 'LEARNING', question: '이 일을 겪고 무엇을 배웠나요?', templates: [], required: false, answer: null, skipped: false },
   ] })] });
 
-  it("점선 틀 칩 대신 질문 아래 '예:' 한 줄을 두고 답 칸이 그 줄을 설명으로 읽는다", () => {
+  it("질문 아래 '예:' 한 줄을 두고 답 칸이 그 줄을 설명으로 읽는다", () => {
     mount('/cover-letters/cl_1', asked());
-    expect(screen.queryByRole('button', { name: /___/ })).not.toBeInTheDocument();
     const example = screen.getByText(copy.ITEM_EXAMPLE.LEARNING);
     expect(example.textContent).toMatch(/^예: /);
     expect(screen.getByLabelText('이 일을 겪고 무엇을 배웠나요?')).toHaveAttribute('aria-describedby', example.id);

@@ -178,7 +178,6 @@
 @media (max-width: 640px) {
   .cl-indent, .cl-asks { padding-left: 0; }
 }
-.cl-gap { color: var(--field-low-text); }
 
 /* 지원 공고(#637) — ① 입력 블록, 자소서 화면 한 줄, 목록 둘째 줄 */
 .cl-posting { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-surface); }

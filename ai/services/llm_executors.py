@@ -33,6 +33,8 @@ COVER_LETTER_JUDGE_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_pref
 MATCHING_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="matching-index")
 #: 조건 판단은 Spring 이 공고 여러 개를 나란히 부르므로 색인 한 줄에 서지 않게 따로 둔다.
 MATCH_JUDGE_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="llm-match-judge")
+#: 레포 요약은 레포 목록을 불러올 때 레포마다 나란히 올 수 있어 다른 LLM 작업 자리를 차지하지 않게 따로 둔다.
+REPO_SUMMARY_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="llm-repo-summary")
 
 
 class LLMCallSkipped(Exception):

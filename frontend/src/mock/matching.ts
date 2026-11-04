@@ -164,9 +164,50 @@ export function mockMatchList() {
 }
 
 const OVERALL_SEC = 6;
+const OVERALL_CHECKED = 15;
+type NamedCondition = { text: string; techs: string[] };
+/**
+ * Mock server only: 공고마다 맞은·모자란 필수 조건 이름. 실서버는 공고에 적힌 조건 글(text)과 그 조건의 기술 이름(techs)을 공고 순서로 3개까지 준다.
+ * 개수는 예시 공고의 필수 조건(met/total)과 맞춘다
+ */
+const MOCK_CONDITIONS: Record<string, { met: NamedCondition[]; missing: NamedCondition[] }> = {
+  [listExample.data[0].id]: {
+    met: [
+      { text: "Java·Spring 서버 개발 경험", techs: ["JAVA", "SPRING"] },
+      { text: "관계형 데이터베이스 설계와 쿼리 작성 경험", techs: ["POSTGRESQL"] },
+      { text: "캐시를 써 본 경험", techs: ["REDIS"] },
+    ],
+    missing: [],
+  },
+  [listExample.data[1].id]: {
+    met: [
+      { text: "Kotlin 으로 서버를 개발해 본 경험", techs: ["KOTLIN", "SPRING"] },
+      { text: "REST API 설계와 개발 경험", techs: [] },
+    ],
+    missing: [
+      { text: "Kafka 운영 경험", techs: ["KAFKA"] },
+      { text: "메시지 큐 운영 경험", techs: [] },
+    ],
+  },
+  [listExample.data[2].id]: { met: [], missing: [] },
+  [listExample.data[3].id]: {
+    met: [{ text: "Kotlin 으로 앱을 개발해 본 경험", techs: ["KOTLIN"] }],
+    missing: [
+      { text: "Android 앱 출시 경험", techs: ["ANDROID"] },
+      { text: "앱 성능 개선 경험", techs: [] },
+    ],
+  },
+  [listExample.data[4].id]: {
+    met: [],
+    missing: [
+      { text: "Spark 로 대용량 데이터를 처리해 본 경험", techs: ["SPARK"] },
+      { text: "Airflow 로 배치를 운영해 본 경험", techs: ["AIRFLOW"] },
+    ],
+  },
+};
 /**
  * Mock server only: 예시 공고에서 필수 조건을 많이 채운 순서로 기업마다 대표 공고 하나씩, 5곳까지.
- * 채운 개수는 예시 공고에 적힌 값 그대로라(가온 3/3 · 다온 필수 없음 · 마루 0/2), 데모에서 '나와 맞는 공고' 와 '아직 부족한 공고' 가 함께 보인다
+ * 채운 개수는 예시 공고에 적힌 값 그대로라(가온 3/3 · 다온 필수 없음 · 마루 0/2), 데모에서 필수를 다 채운 타일과 모자란 타일이 함께 보인다
  */
 function overallCompanies() {
   const seen = new Set<string>();
@@ -183,6 +224,7 @@ function overallCompanies() {
       companyId: x.companyId, companyName: x.company, logoUrl: x.logoUrl,
       posting: { id: x.id, title: x.role, deadline: x.source.expiresAt, closed: false },
       requiredMet: x.required.met, requiredTotal: x.required.total, preferredMet: x.preferred.met, preferredTotal: x.preferred.total,
+      ...MOCK_CONDITIONS[x.id],
     }));
 }
 /**
@@ -228,16 +270,17 @@ export function mockMatchedPostings() {
 /** Mock server only: 실서버처럼 누르면 배경에서 기업을 하나씩 확인하고(진행 개수), 다시 계산하는 동안에는 지난 기업을 그대로 준다 */
 export function mockOverall() {
   const state = db.overall;
-  if (!state) return { status: "NONE", computedAt: null, stale: false, progress: null, companies: [] };
+  if (!state) return { status: "NONE", computedAt: null, stale: false, progress: null, checked: 0, companies: [] };
   const companies = overallCompanies();
   const elapsed = (Date.now() - state.startedAt) / 1000;
   if (elapsed < OVERALL_SEC) {
     return { status: "COMPUTING", computedAt: state.computedAt, stale: false,
       progress: { done: Math.floor((elapsed / OVERALL_SEC) * companies.length), total: companies.length },
+      checked: state.computedAt ? OVERALL_CHECKED : 0,
       companies: state.computedAt ? companies : [] };
   }
   state.computedAt = new Date(state.startedAt + OVERALL_SEC * 1000).toISOString();
-  return { status: "READY", computedAt: state.computedAt, stale: false, progress: null, companies };
+  return { status: "READY", computedAt: state.computedAt, stale: false, progress: null, checked: OVERALL_CHECKED, companies };
 }
 /** Mock server only: 이미 계산 중이면 새로 시작하지 않는다(실서버 규칙) */
 export function startMockOverall() {

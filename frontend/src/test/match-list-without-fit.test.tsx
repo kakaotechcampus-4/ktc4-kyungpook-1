@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -60,7 +60,7 @@ describe('목록의 등급이 전부 비어 있을 때', () => {
     expect(screen.queryByText(EMPTY_CHIP)).not.toBeInTheDocument();
     expect(document.querySelector('.match-fit')).toBeNull();
     expect(document.querySelector('.match-counts')).toBeNull();
-    expect(screen.getByText('공고 5건')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: '모든 공고' })).getByText('5건')).toBeInTheDocument();
   });
 
   it('등급이 없으면 서버가 준 순서(마감 임박 먼저, 나머지는 회사마다 돌아가며)를 다시 정렬하지 않고 그대로 보여 준다', async () => {
@@ -82,6 +82,7 @@ describe('목록의 등급이 전부 비어 있을 때', () => {
     mount('/match', { me: 0 });
     await screen.findByText(NOTICE);
     expect(screen.getByRole('link', { name: '카드 확정하러 가기' })).toHaveAttribute('href', '/cards');
+    await screen.findByText('가온소프트');
     expect(document.querySelectorAll('.match-card')).toHaveLength(5);
   });
 
@@ -101,11 +102,12 @@ describe('목록의 등급이 전부 비어 있을 때', () => {
     expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
   });
 
-  it('공고가 하나도 없으면 안내 대신 빈 목록 안내만 보여 준다', async () => {
+  it('공고가 하나도 없으면 모든 공고 자리에는 빈 목록 안내를 보이고, 카드 확정 안내는 맞춰 본 결과 상자에 남는다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue([]);
     mount('/match', { me: 0 });
     await screen.findByText('현재 확인할 공고가 없어요');
-    expect(screen.queryByText(NOTICE)).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: '모든 공고' })).getByText('현재 확인할 공고가 없어요')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: '내 카드로 맞춰 본 공고' })).getByText(NOTICE)).toBeInTheDocument();
   });
 });
 

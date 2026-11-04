@@ -62,7 +62,7 @@ function mount(path: string, list: MatchTarget[] = postings, load?: () => Promis
   return { router, where, ...result };
 }
 const enc = encodeURIComponent;
-const cardHeadings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.match-group__head')).map((h) => h.textContent); // 목록의 묶음 제목은 빼고 센다
+const cardHeadings = () => screen.getAllByRole("heading", { level: 2 }).filter((h) => !h.closest('.match-group__head, .result-box')).map((h) => h.textContent); // 목록 절 제목과 맞춰 본 결과 상자 제목은 빼고 센다
 
 it("목록 카드: 기업 이름은 기업 페이지로, 제목은 공고 상세로 가고 둘 다 목록의 검색·직무만 이어 간다(예전 주소의 정렬·경력·보기 값은 넘기지 않는다)", async () => {
   const { where } = mount("/match?category=BACKEND&view=company&sort=deadline&experience=ENTRY");
@@ -94,7 +94,7 @@ it("카드의 기업 마크는 장식(aria-hidden)이고 기업 이름은 글로
   expect(screen.queryByLabelText(/등급/)).not.toBeInTheDocument();
   expect(screen.queryByText("근거 등급")).not.toBeInTheDocument();
   expect(container.querySelector(".match-fit, .match-counts")).toBeNull();
-  expect(container.textContent).not.toMatch(/필수|우대|\d+ \/ \d+/);
+  expect(screen.getByRole("region", { name: "모든 공고" }).textContent).not.toMatch(/필수|우대|\d+ \/ \d+/);
 });
 
 it("맞는 공고가 없을 때 초기화하면 검색어와 직무를 함께 지운다", async () => {

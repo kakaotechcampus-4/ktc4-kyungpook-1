@@ -3,7 +3,7 @@
     "schemas": {
       "ActivityContext": {
         "additionalProperties": false,
-        "description": "활동 안 경험 카드가 속한 활동으로, 기록이 없어 질문과 빈칸 틀의 단서가 된다.",
+        "description": "활동 안 경험 카드가 속한 활동으로, 기록이 없어 질문의 단서가 된다.",
         "properties": {
           "name": {
             "maxLength": 50,

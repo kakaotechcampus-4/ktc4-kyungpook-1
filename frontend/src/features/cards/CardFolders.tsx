@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Flag, FolderGit2, FolderPlus, PenLine, type LucideIcon } from 'lucide-react';
 import { techLabels } from '@/lib/cardTags';
-import { deckLayers, folderLabel, folderOwnerLine, folderNote, folderPeek, folderTitle, type CardFolder, type FolderKind } from '@/lib/cardFolders';
+import { deckLayers, folderCounts, folderLabel, folderOwnerLine, folderTitle, type CardFolder, type FolderKind } from '@/lib/cardFolders';
 import './CardFolders.css';
 
 const kindIcon: Record<FolderKind, LucideIcon> = { repo: FolderGit2, activity: Flag, direct: PenLine };
@@ -9,12 +9,12 @@ const kindIcon: Record<FolderKind, LucideIcon> = { repo: FolderGit2, activity: F
 /**
  * 폴더 앞판(카드 묶음). 맨 위 카드 한 장이 보이고, 그 뒤로 카드가 겹쳐 쌓인 모양이다 — 겹친 수는 장 수를 따른다(deckLayers).
  * 폴더 전체가 링크 하나라 키보드로 열고, 이름에는 소유자·이름·장 수가 모두 들어간다(folderLabel).
+ * 레포 폴더는 이름 아래에 프로젝트 설명 두 줄 자리를 늘 둔다 — 설명이 없어도 타일 높이가 같다.
  * 장식(뒤에 겹친 카드와 종류 아이콘)은 접근성 트리에서 뺀다. 숫자는 서버가 준 카드를 센 값이다.
  */
 export function FolderTile({ folder }: { folder: CardFolder }) {
   const Icon = kindIcon[folder.kind];
-  const note = folderNote(folder);
-  const peek = folderPeek(folder);
+  const counts = folderCounts(folder);
   return (
     <Link to={folder.to} className="folder" aria-label={folderLabel(folder)} data-deck={deckLayers(folder.cards.length)} data-empty={folder.cards.length === 0 || undefined}>
       <span className="folder__back" aria-hidden />
@@ -27,8 +27,8 @@ export function FolderTile({ folder }: { folder: CardFolder }) {
           </span>
         </span>
         <span className="folder__name">{folderTitle(folder)}</span>
-        {peek && <span className="folder__peek">{peek}</span>}
-        {note && <span className="folder__note">{note}</span>}
+        {folder.kind === 'repo' && <span className="folder__desc">{folder.description}</span>}
+        {counts && <span className="folder__note">{counts}</span>}
         <span className="folder__foot">
           <span className="folder__tags">{folder.techs.map((tech) => <span key={tech} className="folder__tag">{techLabels[tech] ?? tech}</span>)}</span>
         </span>

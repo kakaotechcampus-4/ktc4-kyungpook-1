@@ -8,7 +8,9 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.gitory.backend.consent.port.GithubOwnerResponse;
@@ -25,8 +27,10 @@ import org.springframework.boot.restclient.test.autoconfigure.RestClientTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
 import java.time.Instant;
@@ -42,6 +46,7 @@ class GithubRepositoryClientTest {
     private static final String TOKEN = "gho_test";
     private static final String PAGE_URL = "https://api.github.com/user/repos?per_page=100&page=";
     private static final String GRAPHQL_URL = "https://api.github.com/graphql";
+    private static final String README_URL = "https://api.github.com/repos/grow22/gitory/readme";
     private static final String TEAM_REPO = node("1340154160", "kakaotechcampus-4", "ktc4-kyungpook-1", "\"develop\"");
 
     @Autowired
@@ -60,14 +65,16 @@ class GithubRepositoryClientTest {
                 .andRespond(withSuccess("""
                         [{"id": 123, "name": "gitory", "owner": {"login": "grow22"},
                           "private": true, "language": null, "default_branch": "develop", "fork": false,
-                          "created_at": "2026-09-10T03:00:00Z", "pushed_at": "2026-10-05T01:00:00Z"}]
+                          "created_at": "2026-09-10T03:00:00Z", "pushed_at": "2026-10-05T01:00:00Z",
+                          "description": "커밋을 경험 카드로 바꿔 주는 서비스"}]
                         """, MediaType.APPLICATION_JSON));
 
         List<GithubRepositoryResponse> repositories = client.fetchRepositories(TOKEN);
 
         assertThat(repositories).containsExactly(new GithubRepositoryResponse(
                 123L, "gitory", new GithubOwnerResponse("grow22"), true, null, "develop",
-                Instant.parse("2026-09-10T03:00:00Z"), Instant.parse("2026-10-05T01:00:00Z")));
+                Instant.parse("2026-09-10T03:00:00Z"), Instant.parse("2026-10-05T01:00:00Z"),
+                "커밋을 경험 카드로 바꿔 주는 서비스"));
         server.verify();
     }
 
@@ -109,7 +116,8 @@ class GithubRepositoryClientTest {
                         containsString("repositoriesContributedTo(first: 100, after: $after"),
                         containsString("includeUserRepositories: false"),
                         containsString("contributionTypes: [COMMIT]"),
-                        containsString("privacy: PUBLIC"))))
+                        containsString("privacy: PUBLIC"),
+                        containsString("description"))))
                 .andExpect(jsonPath("$.variables.after").doesNotExist())
                 .andRespond(withSuccess(contributedPage(false, null, TEAM_REPO), MediaType.APPLICATION_JSON));
 
@@ -125,7 +133,7 @@ class GithubRepositoryClientTest {
         String docs = """
                 {"fullDatabaseId": "1227299271", "name": "docs", "owner": {"login": "2026-ITEC0401"}, "isPrivate": false,
                  "primaryLanguage": null, "defaultBranchRef": {"name": "main"},
-                 "createdAt": "2026-05-02T13:44:46Z", "pushedAt": null}""";
+                 "createdAt": "2026-05-02T13:44:46Z", "pushedAt": null, "description": "  수업 문서 모음  "}""";
         server.expect(requestTo(GRAPHQL_URL))
                 .andRespond(withSuccess(contributedPage(false, null, TEAM_REPO, docs), MediaType.APPLICATION_JSON));
 
@@ -133,9 +141,9 @@ class GithubRepositoryClientTest {
 
         assertThat(repositories).containsExactly(
                 new GithubRepositoryResponse(1340154160L, "ktc4-kyungpook-1", new GithubOwnerResponse("kakaotechcampus-4"),
-                        false, "Java", "develop", Instant.parse("2026-09-10T03:00:00Z"), Instant.parse("2026-10-17T10:12:00Z")),
+                        false, "Java", "develop", Instant.parse("2026-09-10T03:00:00Z"), Instant.parse("2026-10-17T10:12:00Z"), null),
                 new GithubRepositoryResponse(1227299271L, "docs", new GithubOwnerResponse("2026-ITEC0401"),
-                        false, null, "main", Instant.parse("2026-05-02T13:44:46Z"), null));
+                        false, null, "main", Instant.parse("2026-05-02T13:44:46Z"), null, "  수업 문서 모음  "));
 
     }
 
@@ -230,6 +238,55 @@ class GithubRepositoryClientTest {
                 .containsExactly(1340154160L);
         assertThat(output.getOut() + output.getErr()).contains("커서를 주지 않아 기여한 저장소는 1쪽까지만 넣었다");
         server.verify();
+
+    }
+
+    @Test
+    @DisplayName("README 는 토큰과 원문 미디어 타입을 붙여 묻고, 받은 글을 그대로 돌려준다")
+    void fetchesRawReadmeWithToken() {
+
+        server.expect(requestTo(README_URL))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer " + TOKEN))
+                .andExpect(header("Accept", "application/vnd.github.raw+json"))
+                .andRespond(withSuccess("# gitory\n\n커밋을 경험 카드로 바꿔 줘요.", MediaType.TEXT_PLAIN));
+
+        assertThat(client.fetchReadme(TOKEN, "grow22", "gitory")).contains("# gitory\n\n커밋을 경험 카드로 바꿔 줘요.");
+        server.verify();
+
+    }
+
+    @Test
+    @DisplayName("README 가 없어 404 가 오면 예외 없이 빈 값을 돌려준다")
+    void returnsEmptyWhenReadmeIsMissing() {
+
+        server.expect(requestTo(README_URL)).andRespond(withResourceNotFound());
+
+        assertThat(client.fetchReadme(TOKEN, "grow22", "gitory")).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("404 가 아닌 오류 응답은 예외로 알린다")
+    void throwsOnOtherErrors() {
+
+        server.expect(requestTo(README_URL)).andRespond(withStatus(HttpStatus.FORBIDDEN));
+        server.expect(requestTo(README_URL)).andRespond(withServerError());
+
+        assertThatThrownBy(() -> client.fetchReadme(TOKEN, "grow22", "gitory")).isInstanceOf(HttpClientErrorException.class);
+        assertThatThrownBy(() -> client.fetchReadme(TOKEN, "grow22", "gitory")).isInstanceOf(HttpServerErrorException.class);
+
+    }
+
+    @Test
+    @DisplayName("아주 큰 README 는 앞쪽 64KB 만 읽는다")
+    void readsOnlyTheStartOfLargeReadme() {
+
+        server.expect(requestTo(README_URL))
+                .andRespond(withSuccess("a".repeat(200 * 1024), MediaType.TEXT_PLAIN));
+
+        assertThat(client.fetchReadme(TOKEN, "grow22", "gitory")).hasValueSatisfying(
+                readme -> assertThat(readme).hasSize(64 * 1024));
 
     }
 

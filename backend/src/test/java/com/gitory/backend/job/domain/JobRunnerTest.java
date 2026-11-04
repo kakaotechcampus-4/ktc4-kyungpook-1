@@ -30,6 +30,7 @@ import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.domain.RepositoryReadmeService;
 import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
@@ -65,6 +66,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.ResourceAccessException;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -97,7 +99,7 @@ import java.util.function.Consumer;
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
         CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class,
-        CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class})
+        CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class, RepositoryReadmeService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ExtendWith(OutputCaptureExtension.class)
@@ -141,6 +143,9 @@ class JobRunnerTest {
 
     @Autowired
     CandidateStoreService candidates;
+
+    @Autowired
+    RepositoryReadmeService readmes;
 
     @MockitoBean
     RepositoryActivityPort activities;
@@ -188,6 +193,37 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("분석을 시작하면 GitHub README 에서 고른 소개 문장이 저장소에 남는다")
+    void storesReadmeSummaryWhenStarting() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(githubAccess.readme(userId, "grow22", "gitory"))
+                .willReturn(Optional.of("# gitory\n\n커밋 기록으로 경험 카드를 만들어 주는 서비스예요. 둘째 문장이에요."));
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        assertThat(readmeSummary()).isEqualTo("커밋 기록으로 경험 카드를 만들어 주는 서비스예요.");
+
+    }
+
+    @Test
+    @DisplayName("README 를 읽다 실패해도 분석은 그대로 끝내고 소개 문장은 지난번 것을 둔다")
+    void continuesAnalysisWhenReadmeFails() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        jdbc.update("UPDATE user_repository SET readme_summary = '지난번 소개 문장이에요' WHERE id = ?", userRepositoryId);
+        given(githubAccess.readme(userId, "grow22", "gitory")).willThrow(new ResourceAccessException("timeout"));
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(readmeSummary()).isEqualTo("지난번 소개 문장이에요");
+
+    }
+
+    @Test
     @DisplayName("실시간 진행을 켜면 진행을 받는 수집을 불러, 수집이 끝나기 전에 받은 진행이 Job 단계에 남는다")
     void recordsCollectionProgressWhileCollecting() {
 
@@ -202,7 +238,7 @@ class JobRunnerTest {
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
                 new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(),
-                new JobActivityLog(Clock.systemUTC()));
+                new JobActivityLog(Clock.systemUTC()), readmes);
 
         live.claimNext().ifPresent(live::run);
 
@@ -227,7 +263,7 @@ class JobRunnerTest {
         JobActivityLog log = mock(JobActivityLog.class);
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
-                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log);
+                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log, readmes);
 
         live.claimNext().ifPresent(live::run);
 
@@ -536,7 +572,7 @@ class JobRunnerTest {
 
         runNext();
 
-        verifyNoInteractions(githubAccess);
+        verify(githubAccess, never()).rateLimitResetAt(any());
         assertThat(jobs.findById(jobId).orElseThrow().getRetryAfterSec()).isNull();
 
     }
@@ -550,7 +586,7 @@ class JobRunnerTest {
 
         runNext();
 
-        verifyNoInteractions(githubAccess);
+        verify(githubAccess, never()).rateLimitResetAt(any());
 
     }
 
@@ -1163,6 +1199,12 @@ class JobRunnerTest {
 
     }
 
+    private String readmeSummary() {
+
+        return jdbc.queryForObject("SELECT readme_summary FROM user_repository WHERE id = ?", String.class, userRepositoryId);
+
+    }
+
     private boolean runNext() {
 
         Optional<AnalysisJob> claimed = runner.claimNext();
@@ -1183,7 +1225,7 @@ class JobRunnerTest {
         return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
                 new JobDraftProperties(false), null, new JobProgressProperties(false), Clock.systemUTC(),
-                new JobActivityLog(Clock.systemUTC()));
+                new JobActivityLog(Clock.systemUTC()), readmes);
 
     }
 

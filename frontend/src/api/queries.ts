@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@ta
 import { endpoints } from './endpoints';
 import { keys } from './keys';
 import { ApiError, AuthError } from './client';
-import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard } from './schemas';
+import { isTerminal, type Card, type CardSummary, type DraftFields, type Job, type StarField, type EvidenceType, type CandidateStatus, type CandidateBoard, type RepoDetail, type RepoSummary } from './schemas';
 import { createAnalysisRequest } from './analysisRequest';
 import { pollInterval } from '@/lib/jobView';
 import { CONFIG } from '@/lib/config';
@@ -31,6 +31,9 @@ export function useRepos() {
     placeholderData: saved.data && saved.data.length > 0 ? saved.data : undefined,
   });
 }
+/** GitHub 을 부르지 않는 저장 목록만 읽는다 — 폴더 타일의 설명처럼 최신일 필요가 없는 곳에서 쓴다 */
+export const useSavedRepos = (enabled = true) =>
+  useQuery({ queryKey: keys.savedRepos, queryFn: endpoints.savedRepos, staleTime: 60_000, retry: false, enabled });
 export const useRepo = (id: string | undefined) =>
   useQuery({ queryKey: keys.repo(id ?? ''), queryFn: () => endpoints.repo(id!), enabled: !!id });
 export const useCandidates = (repoId: string | undefined) =>
@@ -145,6 +148,24 @@ export function useSaveDraft(cardId: string) {
   return useMutation({
     mutationFn: (fields: DraftFields) => endpoints.saveDraft(cardId, fields),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.cards, refetchType: 'none' }),
+  });
+}
+
+/**
+ * 폴더 설명을 고친다. 서버가 돌려준 목록 한 줄로 레포 목록과 상세 캐시를 바꿔 타일과 폴더 머리에 바로 보인다.
+ * 아직 오는 중인 읽기가 고치기 전의 설명으로 캐시를 덮지 않게 먼저 멈추고, 레포 목록은 다시 불러오지 않는다 — 실서버의 목록은 부를 때마다 GitHub 에서 받아 오기 때문이다.
+ * 실패는 대화창이 보여 주므로 전역 알림은 띄우지 않는다.
+ */
+export function useUpdateRepoDescription(repoId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { errorPresentation: 'inline' },
+    mutationFn: (description: string | null) => endpoints.updateRepoDescription(repoId, description),
+    onSuccess: async (updated) => {
+      await Promise.all([keys.repos, keys.savedRepos, keys.repo(repoId)].map((queryKey) => qc.cancelQueries({ queryKey, exact: true })));
+      for (const queryKey of [keys.repos, keys.savedRepos]) qc.setQueryData<RepoSummary[]>(queryKey, (repos) => repos?.map((repo) => repo.id === updated.id ? updated : repo));
+      qc.setQueryData<RepoDetail>(keys.repo(repoId), (detail) => detail && { ...detail, ...updated });
+    },
   });
 }
 

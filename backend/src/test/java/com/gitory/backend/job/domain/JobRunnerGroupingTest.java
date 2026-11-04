@@ -33,6 +33,7 @@ import com.gitory.backend.ingest.domain.FileChangeStatus;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.domain.RepositoryReadmeService;
 import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
@@ -96,7 +97,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Import({ClockConfig.class, JobRunner.class, JobCancelService.class, JobQueryService.class, ActivityStoreService.class,
         GroupingMaterialService.class, CandidateStoreService.class, StoredActivityService.class, UserLoginService.class,
         JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class, CollectionStatsService.class,
-        GeneratedCardQueryService.class})
+        GeneratedCardQueryService.class, RepositoryReadmeService.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class JobRunnerGroupingTest {

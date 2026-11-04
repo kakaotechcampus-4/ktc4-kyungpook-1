@@ -1,8 +1,8 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { PenLine } from 'lucide-react';
+import { Pencil, PenLine } from 'lucide-react';
 import { useActivities } from '@/api/activities';
-import { useCards } from '@/api/queries';
+import { useCards, useRepo } from '@/api/queries';
 import type { CardSummary } from '@/api/schemas';
 import { Breadcrumb, Button, PageTitle, SectionHead, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -13,6 +13,7 @@ import { activityMeta } from '@/lib/activityLabels';
 import { buildFolders, folderOwnerLine, folderTitle, type FolderKind } from '@/lib/cardFolders';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { NewCardDialog } from './NewCardDialog';
+import { RepoDescriptionDialog } from './RepoDescriptionDialog';
 import './CardFolders.css';
 
 /**
@@ -21,6 +22,7 @@ import './CardFolders.css';
  * 카드를 만드는 길은 두 구역 맨 끝의 점선 타일이다(#773).
  * 경험 카드는 누른 폴더가 곧 자리라 그 자리에서 제목과 기간만 받는다.
  * 폴더 안에서 카드를 열면 이전/다음 카드는 이 폴더의 순서(기술 카드, 경험 카드)를 따른다.
+ * 레포 폴더는 이름 옆 연필로 폴더 설명을 고친다(#777). 설명은 레포 상세에서 읽고, 못 읽어도 폴더는 그대로 보인다.
  */
 export const RepoFolderPage = () => <FolderScreen kind="repo" id={useParams().repoId} />;
 export const ActivityFolderPage = () => <FolderScreen kind="activity" id={useParams().activityId} />;
@@ -30,9 +32,11 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
   const nav = useNavigate();
   const cards = useCards();
   const activities = useActivities(kind === 'activity');
+  const repo = useRepo(kind === 'repo' ? id : undefined);
   const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
-  const key = kind === 'direct' ? 'direct' : `${kind}:${id}`;
+  const [editing, setEditing] = useState(false);
+  const key =kind === 'direct' ? 'direct' : `${kind}:${id}`;
   const folder = useMemo(() => cards.isSuccess ? buildFolders(cards.data, kind === 'activity' ? activities.data : undefined).find((item) => item.key === key) : undefined,
     [cards.isSuccess, cards.data, activities.data, kind, key]);
   const activity = kind === 'activity' ? activities.data?.find((item) => item.id === id) : undefined;
@@ -76,8 +80,10 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
       <div className="folder-head">
         <div className="folder-head__identity">
           <span className="folder-head__owner">{folderOwnerLine(folder)}</span>
-          <PageTitle sub={<span className="t-14 c-2">{facts}</span>}>{folderTitle(folder)}</PageTitle>
-          {activity && <p className="folder-head__meta">{activityMeta(activity)}</p>}
+          <PageTitle sub={<span className="t-14 c-2">{facts}</span>}
+            after={kind === 'repo' && repo.data ? <button type="button" className="title-edit" aria-label="폴더 설명 수정" title="폴더 설명 수정" onClick={() => setEditing(true)}><Pencil size={18} aria-hidden /></button> : undefined}>{folderTitle(folder)}</PageTitle>
+          {activity &&<p className="folder-head__meta">{activityMeta(activity)}</p>}
+          {kind === 'repo' && repo.data?.description && <p className="folder-head__meta">{repo.data.description}</p>}
         </div>
         {kind !== 'direct' && (
           <div className="folder-head__actions">
@@ -98,6 +104,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
 
       {creating && <NewCardDialog folderName={folderTitle(folder)} repoId={kind === 'repo' ? id : undefined} activityId={kind === 'activity' ? id : undefined} onClose={() => setCreating(false)} />}
       {deleting && activity && <ActivityDeleteDialog activity={activity} onClose={() => setDeleting(false)} onDeleted={() => nav('/cards', { replace: true })} />}
+      {editing && repo.data && <RepoDescriptionDialog repo={repo.data} onClose={() => setEditing(false)} />}
     </main>
   );
 }

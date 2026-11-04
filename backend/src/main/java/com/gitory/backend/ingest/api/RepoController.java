@@ -3,6 +3,7 @@ package com.gitory.backend.ingest.api;
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.consent.domain.LoginUser;
 import com.gitory.backend.ingest.domain.ConnectedRepositoryNotFoundException;
+import com.gitory.backend.ingest.domain.RepositoryDescriptionService;
 import com.gitory.backend.ingest.domain.RepositoryDetailService;
 import com.gitory.backend.ingest.domain.RepositoryListService;
 import com.gitory.backend.ingest.domain.RepositoryMaterialService;
@@ -15,7 +16,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -29,6 +32,7 @@ public class RepoController {
     private final RepositoryListService repositoryList;
     private final RepositoryDetailService repositoryDetail;
     private final RepositoryMaterialService repositoryMaterial;
+    private final RepositoryDescriptionService repositoryDescription;
 
     @GetMapping("/api/repos")
     @Operation(summary = "저장소 목록 조회", description = "부를 때마다 GitHub 에서 접근할 수 있는 저장소와 최근에 커밋한 남의 공개 저장소(조직 소유 포함)를 다시 받아 반영한 뒤, 이번에 받은 저장소만 돌려줍니다. 커밋한 저장소를 찾지 못하면 접근할 수 있는 저장소만 돌려줍니다. 쓸 수 있는 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 돌려줍니다. 어느 경우든 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠집니다.")
@@ -73,6 +77,34 @@ public class RepoController {
             @PathVariable String id) {
 
         return ApiResponse.ok(RepoDetailResponse.from(repositoryDetail.detail(toUuid(id), loginUser.id())));
+
+    }
+
+    @PatchMapping("/api/repos/{id}")
+    @Operation(summary = "저장소 폴더 설명 수정", description = """
+            경험 카드 폴더에 보이는 저장소 설명을 사용자가 직접 씁니다. 앞뒤 공백을 뗀 글이 120자까지이고,
+            비우거나 공백뿐이거나 null 이면 사용자가 쓴 설명을 지워 GitHub 설명이나 README 문장을 다시 보여 줍니다.
+            응답은 목록 한 줄과 같은 저장소 요약입니다. 변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
+            """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "고친 뒤의 저장소 요약"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 설명이 120자를 넘음, U+0000 이 있음, 본문을 읽을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "CSRF 토큰 없음 또는 불일치",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID 또는 본인 저장소 없음",
+                    content = @Content(schema = @Schema(implementation = ApiResponse.class)))
+    })
+    public ApiResponse<RepoSummaryResponse> describe(
+            @Parameter(hidden = true) @AuthenticationPrincipal LoginUser loginUser,
+            @Parameter(description = "목록 응답의 저장소 id", schema = @Schema(type = "string", format = "uuid"))
+            @PathVariable String id,
+            @RequestBody RepoDescriptionRequest request) {
+
+        return ApiResponse.ok(RepoSummaryResponse.from(
+                repositoryDescription.change(toUuid(id), loginUser.id(), request.description())));
 
     }
 

@@ -4,18 +4,23 @@ import com.gitory.backend.consent.port.GithubOwnerResponse;
 import com.gitory.backend.consent.port.GithubRepositoryResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -26,6 +31,10 @@ import java.util.TreeSet;
 public class GithubRepositoryClient {
 
     private static final int PAGE_SIZE = 100;
+
+    // 소개 문장은 앞쪽에서 고르므로 아주 큰 README 를 통째로 메모리에 올리지 않고 앞부분만 읽는다
+    private static final int README_MAX_BYTES = 64 * 1024;
+    private static final MediaType RAW_MEDIA_TYPE = MediaType.parseMediaType("application/vnd.github.raw+json");
 
     // GitHub 이 결과를 정렬 인자와 상관없이 id 오름차순으로 줘서 앞쪽만 받으면 최근 저장소가 잘리므로 여러 쪽을 받고, 상한에 닿아도 남으면 경고를 남긴다
     private static final int MAX_CONTRIBUTED_PAGES = 3;
@@ -38,7 +47,7 @@ public class GithubRepositoryClient {
                   pageInfo { hasNextPage endCursor }
                   nodes {
                     fullDatabaseId name owner { login } isPrivate
-                    primaryLanguage { name } defaultBranchRef { name } createdAt pushedAt
+                    primaryLanguage { name } defaultBranchRef { name } createdAt pushedAt description
                   }
                 }
               }
@@ -116,6 +125,30 @@ public class GithubRepositoryClient {
         }
 
         return repositories;
+
+    }
+
+    /** README 가 없으면(404) 빈 값을 돌려주고, 그 밖의 실패는 예외로 알린다 */
+    public Optional<String> fetchReadme(String token, String owner, String name) {
+
+        return restClient.get()
+                .uri("/repos/{owner}/{name}/readme", owner, name)
+                .accept(RAW_MEDIA_TYPE)
+                .headers(headers -> headers.setBearerAuth(token))
+                .exchange((request, response) -> {
+                    HttpStatusCode status = response.getStatusCode();
+                    if (status.value() == 404) {
+                        return Optional.<String>empty();
+                    }
+                    if (status.is4xxClientError()) {
+                        throw new HttpClientErrorException(status, response.getStatusText());
+                    }
+                    if (status.isError()) {
+                        throw new HttpServerErrorException(status, response.getStatusText());
+                    }
+
+                    return Optional.of(new String(response.getBody().readNBytes(README_MAX_BYTES), StandardCharsets.UTF_8));
+                });
 
     }
 
@@ -210,6 +243,7 @@ public class GithubRepositoryClient {
     private static GithubRepositoryResponse toResponse(JsonNode node) {
 
         JsonNode language = node.path("primaryLanguage").path("name");
+        JsonNode description = node.path("description");
 
         return new GithubRepositoryResponse(
                 Long.parseLong(node.path("fullDatabaseId").asString()),
@@ -219,7 +253,8 @@ public class GithubRepositoryClient {
                 language.isString() ? language.asString() : null,
                 node.path("defaultBranchRef").path("name").asString(),
                 instantOrNull(node.path("createdAt")),
-                instantOrNull(node.path("pushedAt")));
+                instantOrNull(node.path("pushedAt")),
+                description.isString() ? description.asString() : null);
 
     }
 

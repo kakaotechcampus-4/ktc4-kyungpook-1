@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, FolderGit2, FolderPlus, Layers, PenLine } from 'lucide-react';
 import { useActivities } from '@/api/activities';
-import { useCards } from '@/api/queries';
+import { useCards, useSavedRepos } from '@/api/queries';
 import type { CardSummary } from '@/api/schemas';
 import { Button, PageTitle, Skeleton } from '@/components/ui';
 import { SearchField } from '@/components/ui/SearchField';
@@ -55,8 +55,9 @@ export function CardsListPage() {
     && (status === 'ALL' || (status === 'NEEDS_WORK' ? needsWork(c) : c.status === status))) : all, [all, filtering, q, status]);
   const groups = useMemo(() => view === 'folder' ? [] : groupCards(list, view), [list, view]);
   const activities = useActivities(view === 'folder' || isEmpty); // 폴더와 빈 상태 안내에만 쓴다. 다른 보기는 활동 목록을 부르지 않는다
-  const folders = useMemo(() => view === 'folder' && cards.isSuccess ? buildFolders(cards.data, activities.data) : [],
-    [view, cards.isSuccess, cards.data, activities.data]);
+  const repos = useSavedRepos(view === 'folder'); // 레포 폴더의 설명에만 쓴다 — 저장 목록이면 충분해서 GitHub 을 부르지 않고, 늦게 와도 폴더는 먼저 보인다
+  const folders = useMemo(() => view === 'folder' && cards.isSuccess ? buildFolders(cards.data, activities.data, repos.data) : [],
+    [view, cards.isSuccess, cards.data, activities.data, repos.data]);
   // 활동 목록이 오기 전에는 카드가 없는 활동이 빠져 있다 — 폴더가 하나씩 끼어들지 않게 같이 보여 준다
   const foldersPending = view === 'folder' && cards.isSuccess && !isEmpty && activities.isPending;
   // 상세의 이전/다음 카드는 화면에 보이는 순서를 따른다(같은 카드가 여러 기술 묶음에 있어도 한 번만)

@@ -233,6 +233,15 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
 
     }
 
+    @Override
+    public Optional<String> readme(Long userId, String owner, String name) {
+
+        Optional<String> token = activeUser(userId).flatMap(user -> activeToken(userId));
+
+        return token.isEmpty() ? Optional.empty() : github.fetchReadme(token.get(), owner, name);
+
+    }
+
     /**
      * '/user/repos' 에는 조직이 승인하지 않은 앱이면 조직 소유 저장소가 빠져 기여한 저장소를 더하고, 그 찾기가 실패하면 '/user/repos' 결과만 돌려준다
      * 찾기 실패는 403 을 모두 한도로 보는 판정에 태우지 않아 연결 해제·한도 예외로 바꾸지 않는다

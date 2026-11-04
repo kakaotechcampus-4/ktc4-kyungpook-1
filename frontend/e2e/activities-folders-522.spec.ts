@@ -13,6 +13,7 @@ const readContrasts = (pairs: { text: string; surface: string }[]) => {
     return (Math.max(text, surface) + .05) / (Math.min(text, surface) + .05);
   });
 };
+const SHOTS_DESCRIPTION = 'docs/screenshots/2026-11-04-repo-description';
 const folder = (page: Page, name: RegExp | string) => page.getByRole('link', { name });
 
 test('활동 만들기, 활동 안에서 카드 만들기, 폴더 보기, 지우기', async ({ page }) => {
@@ -180,13 +181,15 @@ for (const width of [1440, 390, 320]) for (const theme of ['light', 'dark'] as c
     for (const box of await folders.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON()))) {
       expect(box.height).toBeGreaterThanOrEqual(44); expect(box.width).toBeGreaterThanOrEqual(44); expect(box.right).toBeLessThanOrEqual(width);
     }
-    // 앞판의 글은 읽을 수 있는 대비다(장 수·소유자·안내 한 줄·기술 태그)
+    // 앞판의 글은 읽을 수 있는 대비다(장 수·소유자·설명·작은 글·기술 태그)
     for (const value of await page.evaluate(readContrasts, [
-      { text: '.folder__owner', surface: '.folder__front' }, { text: '.folder__name', surface: '.folder__front' }, { text: '.folder__note', surface: '.folder__front' }, { text: '.folder__peek', surface: '.folder__front' },
+      { text: '.folder__owner', surface: '.folder__front' }, { text: '.folder__name', surface: '.folder__front' }, { text: '.folder__note', surface: '.folder__front' }, { text: '.folder__desc', surface: '.folder__front' },
       { text: '.folder__count-num', surface: '.folder__front' }, { text: '.folder__tag', surface: '.folder__tag' },
     ])) expect(value).toBeGreaterThanOrEqual(4.5);
-    // 활동 폴더 앞판 첫 줄은 '활동, 종류'이고, 안내 한 줄은 기술 카드만 있는 폴더와 빈 폴더에만 있다
+    // 활동 폴더 앞판 첫 줄은 '활동, 종류'이고, 설명은 레포 폴더에만 있으며, 작은 글은 기술·경험 카드가 둘 다 있는 폴더와 빈 폴더에만 있다
+    await expect(page.locator('.folder__desc')).toHaveCount(2);
     await expect(page.locator('.folder__note')).toHaveCount(2);
+    await expect(page.locator('.folder__peek')).toHaveCount(0);
     await expect(page.getByText('활동, 동아리', { exact: true })).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/folders-${width}-${theme}.png`, fullPage: true, animations: 'disabled' });
 
@@ -262,3 +265,55 @@ test('활동 목록과 만들기 화면은 모바일에서도 넘치지 않는�
     await page.screenshot({ path: `${SHOTS}/activities-${width}.png`, fullPage: true, animations: 'disabled' });
   }
 });
+
+test('레포 폴더 설명을 고치면 폴더 머리와 목록 타일에 바로 보이고, 비우면 GitHub 설명으로 돌아간다', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.goto('/cards');
+  const auth = folder(page, /^레포 hong-dev, auth-service/);
+  await expect(auth.locator('.folder__desc')).toHaveText('로그인과 세션 인증을 맡는 Spring Boot 서비스');
+  await auth.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'auth-service' })).toBeVisible();
+  await expect(page.getByText('로그인과 세션 인증을 맡는 Spring Boot 서비스')).toBeVisible();
+
+  await page.getByRole('button', { name: '폴더 설명 수정' }).click();
+  const dialog = page.getByRole('dialog', { name: '폴더 설명' });
+  const field = dialog.getByRole('textbox', { name: '한 줄 설명' });
+  await expect(field).toHaveValue('');
+  await expect(dialog.getByRole('button', { name: '저장' })).toBeDisabled();
+  await field.fill('팀 프로젝트에서 로그인을 맡아 만든 서비스');
+  await dialog.getByRole('button', { name: '저장' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText('팀 프로젝트에서 로그인을 맡아 만든 서비스')).toBeVisible();
+  await page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('link', { name: '경험 카드' }).click();
+  await expect(folder(page, /^레포 hong-dev, auth-service/).locator('.folder__desc')).toHaveText('팀 프로젝트에서 로그인을 맡아 만든 서비스');
+
+  await folder(page, /^레포 hong-dev, auth-service/).click();
+  await page.getByRole('button', { name: '폴더 설명 수정' }).click();
+  await expect(field).toHaveValue('팀 프로젝트에서 로그인을 맡아 만든 서비스');
+  await field.fill('');
+  await dialog.getByRole('button', { name: '저장' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByText('로그인과 세션 인증을 맡는 Spring Boot 서비스')).toBeVisible();
+});
+
+for (const width of [1440, 390]) for (const theme of ['light', 'dark'] as const) {
+  test(`폴더 타일에 프로젝트 설명이 보이고 설명이 없는 레포도 같은 높이다 ${width} ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript((value) => localStorage.setItem('gitory.theme', value), theme);
+    await loginAsDemo(page);
+    await page.goto('/cards');
+    const auth = folder(page, /^레포 hong-dev, auth-service/);
+    await expect(auth.locator('.folder__desc')).toHaveText('로그인과 세션 인증을 맡는 Spring Boot 서비스');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+    const [desc] = await auth.locator('.folder__desc').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().height));
+    expect(desc).toBeGreaterThanOrEqual(36); // 두 줄 자리
+    await page.screenshot({ path: `${SHOTS_DESCRIPTION}/folders-${width}-${theme}.png`, fullPage: true, animations: 'disabled' });
+
+    if (width === 1440 && theme === 'light') {
+      await auth.click();
+      await page.getByRole('button', { name: '폴더 설명 수정' }).click();
+      await expect(page.getByRole('dialog', { name: '폴더 설명' })).toBeVisible();
+      await page.screenshot({ path: `${SHOTS_DESCRIPTION}/dialog-1440-light.png`, animations: 'disabled' });
+    }
+  });
+}

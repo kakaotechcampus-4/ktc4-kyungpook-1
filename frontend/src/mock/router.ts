@@ -309,8 +309,7 @@ on('PATCH', '/cards/:id/metadata', ({ params, body }) => {
   // 실서버처럼 null 인 칸은 보내지 않은 것으로 보고, 빈 기간은 지운다(#420)
   const patch = Object.fromEntries(Object.entries(body).filter(([, value]) => value !== null));
   const titleProvided = Object.hasOwn(patch, 'title'), periodProvided = Object.hasOwn(patch, 'period'), themesProvided = Object.hasOwn(patch, 'themes');
-  // 문항 유형만 고치는 요청은 확정 카드도 다시 열지 않고 받는다(#564). 제목·기간은 지금처럼 작성 중 카드만 받는다
-  if (card.status !== 'DRAFT' && (titleProvided || periodProvided)) return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
+  // 실서버(CardMetadataService)처럼 확정 카드도 다시 열지 않고 제목·기간·문항 유형을 받고, 카드는 확정으로 남는다
   const parsed = CardMetadataPatch.safeParse(patch);
   if (!parsed.success) return fail(400, 'INVALID_REQUEST', themesProvided ? '문항 유형을 확인해 주세요' : '제목과 기간을 확인해 주세요');
   if (themesProvided && card.kind !== 'QUALITATIVE' && parsed.data.themes!.length) return fail(400, 'INVALID_REQUEST', '문항 유형은 경험 카드에만 붙일 수 있어요');

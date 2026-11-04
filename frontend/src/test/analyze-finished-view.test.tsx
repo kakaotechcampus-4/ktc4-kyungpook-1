@@ -36,7 +36,8 @@ describe('분석 진행 화면 — 다 읽은 뒤 고른 이유를 보여 주는
     mount('RUNNING');
     expect(screen.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeInTheDocument();
     expect(screen.getByText('정리 중')).toBeInTheDocument();
-    expect(screen.getByText('새 기록을 읽는 중이에요')).toBeInTheDocument();
+    expect(screen.getByText(/자소서에 쓸 만한 경험을 찾고 있어요/)).toBeInTheDocument();
+    expect(screen.getByText('떠나도 돼요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '정리 취소' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '후보 보드로 바로 가기' })).not.toBeInTheDocument();
   });
@@ -47,8 +48,8 @@ describe('분석 진행 화면 — 다 읽은 뒤 고른 이유를 보여 주는
     expect(screen.queryByText('레포를 읽고 있어요')).not.toBeInTheDocument();
     expect(screen.getByText('정리 완료')).toBeInTheDocument();
     expect(screen.queryByText('정리 중')).not.toBeInTheDocument();
-    expect(screen.getByText('후보를 골랐어요')).toBeInTheDocument();
-    expect(screen.queryByText('새 기록을 읽는 중이에요')).not.toBeInTheDocument();
+    expect(screen.getByText(/골랐어요|읽기를 마쳤어요/)).toBeInTheDocument();
+    expect(screen.queryByText(/찾고 있어요/)).not.toBeInTheDocument();
     expect(screen.queryByText('떠나도 돼요')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '정리 취소' })).not.toBeInTheDocument();
   });

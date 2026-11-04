@@ -75,22 +75,23 @@ function mountAnalyze(data: Job, repoId = 'r_auth') {
 }
 
 describe('분석 진행 화면', () => {
-  it('진행 중에는 경과 시간·마지막 확인·움직이는 진행 막대·돌아가는 단계 표시가 보인다', () => {
+  it('진행 중에는 경과 시간·마지막 확인이 보이고, 지금 읽는 단계만 상자로 펼쳐 큰 숫자를 보인다', () => {
     mountAnalyze(job());
     expect(screen.getByText(/째 진행 중이에요/)).toBeInTheDocument();
     expect(screen.getByText(/마지막 확인/)).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: '정리 진행률' })).toHaveClass('track--live');
+    expect(screen.queryByRole('progressbar')).toBeNull();                       // 막대 대신 점과 선(#789)
     const now = screen.getByText('커밋 읽기').closest('li') as HTMLElement;
-    expect(now.querySelector('.spinner')).not.toBeNull();            // 지금 읽는 단계에만
-    expect(screen.getByText('PR과 리뷰 읽기').closest('li')!.querySelector('.spinner')).toBeNull();
-    expect(within(now).getByText('12 / 33개')).toBeInTheDocument();    // 서버가 준 숫자는 그대로 — 지어낸 분모가 아니다
+    expect(now).toHaveClass('tl__item--now');                                    // 지금 읽는 단계에만
+    expect(screen.getByText('PR과 리뷰 읽기').closest('li')).not.toHaveClass('tl__item--now');
+    expect(within(now).getByText((_, el) => el?.classList.contains('tl__count') === true && el.textContent === '12 / 33개')).toBeInTheDocument(); // 서버가 준 숫자는 그대로 — 지어낸 분모가 아니다
   });
 
   it('총량을 모르는 단계는 분모를 지어내지 않는다', () => {
     mountAnalyze(job({ steps: [{ key: 'COMMITS', state: 'DONE', done: 33, total: 33 }, { key: 'PR_REVIEW', state: 'RUNNING', done: 5, total: null },
       { key: 'COMPRESS', state: 'QUEUED', done: 0, total: null }, { key: 'REASON', state: 'QUEUED', done: 0, total: null }] }));
-    expect(screen.getByText('5건 읽음')).toBeInTheDocument();
-    expect(screen.queryByText(/5 \/ /)).not.toBeInTheDocument();
+    const now = screen.getByText('PR과 리뷰 읽기').closest('li') as HTMLElement;
+    expect(now.querySelector('.tl__count')).toHaveTextContent('5건 읽음');
+    expect(now.textContent).not.toMatch(/5 \/ /);
   });
 });
 

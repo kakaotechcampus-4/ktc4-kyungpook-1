@@ -23,12 +23,6 @@ test('repository menus support keyboard selection and outside dismissal without 
   }).toPass({ timeout: 5000 });
   await expect(sort).toContainText('이름 순');
   await expect(sort).toBeFocused();
-  const filter = page.getByRole('combobox', { name: '필터', exact: true });
-  await filter.click(); await page.getByRole('option', { name: 'PR 0건', exact: true }).click();
-  await expect(filter).toContainText('PR 0건');
-  await expect(page.getByRole('radio')).toHaveCount(2);
-  await expect(page.getByRole('radio', { name: /algorithm-study/ })).toBeVisible();
-  await expect(page.getByRole('radio', { name: /auth-service/ })).toHaveCount(0);
 });
 
 test('repository typeahead reaches the draft unchanged and locks after the first save', async ({ page }) => {

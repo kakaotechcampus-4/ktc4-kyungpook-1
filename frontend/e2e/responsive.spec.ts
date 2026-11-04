@@ -136,12 +136,12 @@ test.describe('반응형 레이아웃', () => {
     expect(selectedBorder).toBeGreaterThanOrEqual(1);
   });
 
-  test('저장소는 개별 카드 대신 하나의 행 목록으로 묶는다', async ({ page }) => {
+  test('저장소는 개별 카드 대신 묶음마다 하나의 행 목록으로 묶는다', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await loginAsDemo(page);
     for (const path of ['/repos']) {
       await page.goto(path);
-      await expect(page.locator('.record-list')).toHaveCount(1);
+      await expect(page.locator('.record-list')).toHaveCount(3); // 레포 목록은 세 묶음(#778)이라 상자가 셋이다
       const children = page.locator('.record-list > .card');
       await expect.poll(() => children.count()).toBeGreaterThan(1);
       const shadows = await children.evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));

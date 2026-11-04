@@ -100,6 +100,26 @@
 .star-row__body { display: flex; flex-direction: column; gap: var(--space-12); min-width: 0; }
 .star-read__row:first-child { border-top: 0; }
 .star-read__row--gap { background: var(--field-dropped-bg); }
+/* 확정 카드 읽기만 왼쪽 라벨 열 + 오른쪽 본문의 행이고, 다른 화면의 .star-read 는 이 클래스가 없어 그대로다 — 오른쪽 padding 60px 은 연필 자리 */
+.star-read--rows > .star-read__row:last-child { border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px); } /* 결과 행 바탕이 카드의 둥근 모서리(테두리 1px 안쪽)를 따르게 — overflow 로 자르면 긴 카드가 인쇄에서 잘린다 */
+.star-read--rows .star-read__row { position: relative; display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 0 20px; align-items: start; padding: 24px 60px 24px 24px; }
+.star-read--rows .star-row__label { min-height: 28px; }
+.star-read--rows .star__name { font-size: 16px; line-height: 24px; }
+.star-read--rows .star-row__body { gap: var(--space-6); }
+.star-read--rows .star-read__row--result { background: var(--bg-subtle); }
+.star-read--rows .star-read__row--gap { background: var(--field-dropped-bg); } /* 비운 결과 칸은 결과 바탕보다 비운 칸 바탕이 이긴다 */
+.star-read--rows .star-read__row--gap .star-row__body { min-height: 28px; justify-content: center; } /* 13px 안내 글을 한 줄짜리 라벨의 가운데에 맞춘다 */
+.star-read--rows .star__pencil { position: absolute; top: 16px; right: 8px; margin: 0; }
+/* 근거는 상자 버튼 대신 문장 아래 글자 링크라 네 칸에서 되풀이돼도 가볍고, 누르는 높이 44px 은 두고 위아래 여백만 당겨 문장에 붙인다 */
+.star-read--rows .evidence-open { align-self: flex-start; justify-content: flex-start; min-height: var(--control-touch-size); margin: -8px 0 -12px; padding: 0; border: 0; background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: var(--body-weight); }
+.star-read--rows .evidence-open svg { color: var(--text-tertiary); }
+.star-read--rows .evidence-open:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+/* 인쇄 폭이 700px 안팎이어도 2열이 그대로 나오게 screen 에서만 접는다 */
+@media screen and (max-width: 700px) {
+  .star-read--rows .star-read__row { grid-template-columns: minmax(0, 1fr); gap: 8px 0; padding: 20px 16px; }
+  .star-read--rows .star__pencil { top: 12px; }
+}
+@media print { .star-read--rows .star__pencil { display: none; } } /* 종이에서는 고칠 수 없다 */
 .qpanel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 10px; background: var(--bg-canvas); }
 .qpanel--caution { background: var(--field-low-bg); }
 .qpanel__q { font-size: 13px; line-height: 20px; font-weight: 600; }

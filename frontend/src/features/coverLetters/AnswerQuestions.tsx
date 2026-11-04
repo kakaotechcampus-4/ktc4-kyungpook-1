@@ -3,7 +3,6 @@ import { ANSWER_MAX, useSaveAnswers, useStartDrafting, type AnswerInput, type Co
 import { errorView } from '@/api/errorView';
 import { Button, Note, PageTitle, StickyFooter, Textarea } from '@/components/ui';
 import { ITEM_EXAMPLE, ITEM_LABEL, answerLengthHint, reusedTitle } from '@/lib/coverLetterCopy';
-import { TEMPLATE_GAP } from '@/lib/draftText';
 import { track } from '@/lib/track';
 
 type Draft = { text: string; skipped: boolean };
@@ -156,7 +155,6 @@ function QuestionAsks({ q, input, saveState, onEdit, onLeave }: {
                 <button type="button" className="cl-link-btn t-12" onClick={() => { onEdit(a.item, { skipped: !d.skipped }); setTimeout(onLeave); }}>
                   {d.skipped ? '다시 답하기' : '넘기기'}
                 </button>
-                {!d.skipped && d.text.includes(TEMPLATE_GAP) && <span className="t-12 cl-gap">채울 곳({TEMPLATE_GAP})이 남아 있어요</span>}
                 {!d.skipped && <span className="right t-12 c-3"><span aria-live="polite">{answerLengthHint(d.text.length)}</span>, {d.text.length}/{ANSWER_MAX.toLocaleString()}</span>}
               </div>
             </li>

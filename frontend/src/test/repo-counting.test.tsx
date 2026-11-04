@@ -167,13 +167,13 @@ describe('홈 · 설정 · 분석 화면', () => {
   });
 
   // 다시 분석하면 새 기록만 읽으므로, 저장소 전체 숫자를 이번에 읽는 양처럼 말하지 않는다(읽는 양은 단계 숫자가 보여 준다)
-  it('분석 진행 화면의 저장소 줄은 못 센 레포든 센 레포든 숫자 없이 새 기록을 읽는 중이라고만 말한다', () => {
+  it('분석 진행 화면의 머리는 못 센 레포든 센 레포든 저장소 숫자 없이 무엇을 찾는지만 말한다', () => {
     for (const repoId of ['r_counting', 'r_auth']) {
       mount(`/repos/${repoId}/run?job=job`, <AnalyzePage />, '/repos/:repoId/run', (client) => {
         seedRepos(client);
         client.setQueryData(keys.job('job'), job({ state: 'RUNNING', partial: false, finishedAt: null, pollAfterMs: 2000 }));
       });
-      expect(screen.getByText('새 기록을 읽는 중이에요')).toBeInTheDocument();
+      expect(screen.getByText(/자소서에 쓸 만한 경험을 찾고 있어요/)).toBeInTheDocument();
       expect(screen.queryByText(/커밋 \d+개 ·/)).not.toBeInTheDocument();
       cleanup();
     }
@@ -192,7 +192,7 @@ describe('홈 · 설정 · 분석 화면', () => {
       }));
     });
     expect(screen.getByText('새로 읽을 게 없어요')).toBeInTheDocument();
-    expect(screen.getByText('3 / 30개')).toBeInTheDocument();
+    expect(screen.getByText('커밋 읽기').closest('li')!.querySelector('.tl__count')).toHaveTextContent('3 / 30개');
   });
 });
 

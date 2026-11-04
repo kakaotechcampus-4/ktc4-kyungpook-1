@@ -29,18 +29,7 @@
 .repo-row { gap: 12px; padding: 13px 14px; width: 100%; text-align: left; border-radius: 10px; }
 .repo-row--sel { background: var(--bg-selected); }
 
-/* ───────── 분석 진행 (B3) · 실패 (B4) ───────── */
-.stages { display: flex; flex-direction: column; }
-.stage { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--border-default); }
-.stage:first-child { border-top: 0; }
-.stage__icon { width: 26px; height: 26px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg-surface); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--text-on-ink); flex: 0 0 auto; }
-.stage--DONE .stage__icon { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }
-.stage--WAIT .stage__icon { border-color: var(--border-default); }
-.stage__label { font-size: 14px; line-height: 20px; font-weight: 600; }
-.stage__detail { font-size: 12px; line-height: 19px; color: var(--text-secondary); }
-.stage--WAIT .stage__label, .stage--WAIT .stage__detail { color: var(--text-tertiary); }
-.stage--NOW .stage__icon { animation: pulse 1.2s ease-in-out infinite; }
-@keyframes pulse { 50% { border-color: var(--bg-ink-solid); } }
+/* ───────── 분석 실패 (B4) — 진행 화면의 타임라인은 features/repos/AnalyzePage.css ───────── */
 .fail-card { display: flex; align-items: center; gap: 18px; padding: 22px 24px; border-radius: var(--radius-lg); background: var(--state-failed-bg); }
 .fail-card__bang { font-size: 20px; font-weight: 800; color: var(--state-failed-text); flex: 0 0 auto; }
 /* 일부만 정리된 결과(B5): 배지, 글, 버튼이 가로로 놓인다. 좁은 폭에서는 버튼 글자가 여러 줄로 쪼개지므로 세로로 쌓는다(#520 A-06) */

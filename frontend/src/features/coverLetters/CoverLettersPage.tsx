@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Briefcase, FileText } from 'lucide-react';
 import { useCoverLetters, type CoverLetterStage } from '@/api/coverLetters';
-import { Badge, Breadcrumb, EmptyState, PageTitle, Skeleton } from '@/components/ui';
+import { Badge, EmptyState, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { postingLine } from '@/lib/coverLetterCopy';
 import { ymd } from '@/lib/format';
@@ -20,8 +20,7 @@ export function CoverLettersPage() {
   const add = <Link to="/cover-letters/new" className="btn btn--primary">새 자소서</Link>;
   return (
     <main className="main main--tight">
-      <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '자소서' }]} />
-      <PageTitle right={add} sub="확정한 경험 카드로 문항마다 초안을 써요.">자소서</PageTitle>
+      <PageTitle right={add} lead="확정한 경험 카드로 문항마다 초안을 써요.">자소서</PageTitle>
       {list.isError ? <QueryFailure error={list.error} retry={() => list.refetch()} pending={list.isFetching} />
         : list.isPending ? <Skeleton h={160} />
         : list.data.length === 0 ? (

@@ -6,17 +6,11 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 const box = async (locator: import('@playwright/test').Locator) => (await locator.boundingBox())!;
 
-test('경험 카드 목록의 묶어 보기 전환과 상태 탭은 44px 이상이다 (CL-03)', async ({ page }) => {
+test('경험 카드 목록의 보기 방식과 상태 드롭다운은 44px 이상이다 (CL-03)', async ({ page }) => {
   await loginAsDemo(page);
   await page.goto('/cards');
-  await expect(page.getByRole('radiogroup', { name: '카드 묶어 보기' })).toBeVisible();
-  for (const item of await page.locator('.view-switch__item').all()) {
-    const rect = await box(item);
-    expect(rect.height).toBeGreaterThanOrEqual(44);
-    expect(rect.width).toBeGreaterThanOrEqual(44);
-  }
-  for (const tab of await page.locator('.status-tab').all()) {
-    const rect = await box(tab);
+  for (const name of ['카드 보기 방식', '카드 작성 상태 필터']) {
+    const rect = await box(page.getByRole('combobox', { name }));
     expect(rect.height).toBeGreaterThanOrEqual(44);
     expect(rect.width).toBeGreaterThanOrEqual(44);
   }

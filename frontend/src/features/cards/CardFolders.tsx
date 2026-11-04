@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Flag, FolderGit2, FolderPlus, PenLine, type LucideIcon } from 'lucide-react';
+import { Flag, FolderGit2, PenLine, type LucideIcon } from 'lucide-react';
 import { techLabels } from '@/lib/cardTags';
 import { deckLayers, folderLabel, folderOwnerLine, folderNote, folderPeek, folderTitle, type CardFolder, type FolderKind } from '@/lib/cardFolders';
 import './CardFolders.css';
@@ -44,13 +44,6 @@ export function FolderTile({ folder }: { folder: CardFolder }) {
 export function CardFolders({ folders, activitiesFailed, retryActivities }: { folders: CardFolder[]; activitiesFailed?: boolean; retryActivities?: () => void }) {
   return (
     <section className="folders" aria-label="레포와 활동 폴더">
-      <div className="folders__bar">
-        <span className="t-12 c-2">폴더 {folders.length}개</span>
-        <div className="right">
-          <Link to="/cards/new" className="btn btn--ghost btn--sm"><PenLine size={14} aria-hidden />경험 카드 만들기</Link>
-          <Link to="/activities/new" className="btn btn--ghost btn--sm"><FolderPlus size={14} aria-hidden />활동 만들기</Link>
-        </div>
-      </div>
       {activitiesFailed && (
         <p className="folders__notice t-12 c-2">
           <span role="status">활동 목록을 불러오지 못했어요. 카드가 없는 활동은 보이지 않을 수 있어요.</span>

@@ -64,20 +64,20 @@ export function ReposPage() {
 
   return (
     <main className="main main--footer main--tight">
-      <ol className="wizard__steps repo-picker__steps" aria-label="진행 단계">
-        <li className="wstep wstep--now"><span className="wstep__no">1</span>레포 선택</li>
-        <li className="wstep"><span className="wstep__no">2</span>읽는 범위 확인</li>
-        <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
-      </ol>
       <div className="list-head">
         {/* 아직 못 받았으면 개수를 모른다 — 0 으로 보이면 "레포가 없다"로 읽힌다 */}
-        <PageTitle>레포 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
+        <PageTitle lead="레포를 선택하고 커밋과 PR에서 나의 경험을 찾아보세요.">레포 {repos.data && <span className="c-3 t-14">{repos.data.length}</span>}</PageTitle>
         <div className="right">
           <SearchField className="list-search" value={q} onChange={setQ} placeholder="레포 이름 검색" />
           <Select value={sort} onChange={setSort} label="정렬" options={(Object.keys(SORT_LABEL) as Sort[]).map((value) => ({ value, label: SORT_LABEL[value] }))} />
           <Select value={filter} onChange={setFilter} label="필터" options={(Object.keys(FILTER_LABEL) as Filter[]).map((value) => ({ value, label: FILTER_LABEL[value] }))} />
         </div>
       </div>
+      <ol className="wizard__steps repo-picker__steps" aria-label="진행 단계">
+        <li className="wstep wstep--now"><span className="wstep__no">1</span>레포 선택</li>
+        <li className="wstep"><span className="wstep__no">2</span>읽는 범위 확인</li>
+        <li className="wstep"><span className="wstep__no">3</span>후보 고르기</li>
+      </ol>
       {repos.isError && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
 
       {/* 목록은 서버가 GitHub 에서 그때그때 읽어 온다 — GitHub 가 느려지면 그만큼 늦게 뜬다. 회색 막대만 두면 멈춘 것처럼 보인다.

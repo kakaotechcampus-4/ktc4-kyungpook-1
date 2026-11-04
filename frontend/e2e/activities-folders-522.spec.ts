@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, pickCardView } from './helpers';
 
 const SHOTS = 'docs/screenshots/2026-10-31-folders';
 const readContrasts = (pairs: { text: string; surface: string }[]) => {
@@ -84,8 +84,7 @@ test('확정 카드가 든 활동을 지우면 확정 카드도 지워진다고 
   await page.getByRole('dialog').getByRole('button', { name: '삭제', exact: true }).click();
   await expect(row).toHaveCount(0);
   await page.goto('/cards');
-  await expect(page.getByRole('radio', { name: '최근순' })).toBeVisible();
-  await page.getByRole('radio', { name: '최근순' }).click();
+  await pickCardView(page, '최근순');
   await expect(page.locator('.experience-item')).toHaveCount(6); // 8장 중 활동 카드 2장이 함께 지워졌다
 });
 

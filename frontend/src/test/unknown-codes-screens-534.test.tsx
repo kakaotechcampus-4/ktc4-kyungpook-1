@@ -110,7 +110,7 @@ describe('카드 목록 — 카드 한 장에 모르는 값이 섞여도 나머�
       if (i === 1) expect(screen.queryByText(c.title)).not.toBeInTheDocument();
       else expect(screen.getAllByText(c.title).length).toBeGreaterThan(0);
     }
-    expect(screen.getByRole('status')).toHaveTextContent('나머지 카드는 그대로 볼 수 있어요');
+    expect(screen.getAllByRole('status').some((node) => node.textContent?.includes('나머지 카드는 그대로 볼 수 있어요'))).toBe(true);
     // 오류 화면이나 빈 상태로 떨어지지 않는다
     expect(alerts()).toHaveLength(0);
     expect(screen.queryByText('아직 카드가 없어요')).not.toBeInTheDocument();

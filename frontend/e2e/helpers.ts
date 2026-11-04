@@ -37,7 +37,19 @@ export async function freshSeed(page: Page) {
  * 고른 보기는 브라우저가 기억하므로 같은 시험 안의 다음 이동에도 이어진다.
  */
 export async function showCardTiles(page: Page) {
-  const recent = page.getByRole('radio', { name: '최근순', exact: true });
-  await recent.click();
-  await expect(recent).toHaveAttribute('aria-checked', 'true');
+  await pickCardView(page, '최근순');
+}
+
+/** 카드 목록의 보기 방식(폴더·최근순·기술별)을 드롭다운에서 고른다 */
+export async function pickCardView(page: Page, label: '폴더' | '최근순' | '기술별') {
+  const view = page.getByRole('combobox', { name: '카드 보기 방식' });
+  await view.click();
+  await page.getByRole('option', { name: label, exact: true }).click();
+  await expect(view).toHaveText(label);
+}
+
+/** 카드 목록의 작성 상태를 드롭다운에서 고른다. 항목 이름 뒤에 장 수가 붙는다 */
+export async function pickCardStatus(page: Page, label: '전체' | '작성 중' | '확정됨' | '보완 필요') {
+  await page.getByRole('combobox', { name: '카드 작성 상태 필터' }).click();
+  await page.getByRole('option', { name: new RegExp(`^${label} `) }).click();
 }

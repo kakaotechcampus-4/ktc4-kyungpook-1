@@ -11,15 +11,9 @@ import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
 import { connectMockServer, jsonError, mountApp, page } from './profileHarness';
 
+vi.mock('@/components/ui/Select', () => import('./nativeSelect'));
+
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
-// Radix 메뉴는 jsdom 에서 여는 데만 오래 걸린다. 값·접근성 이름이 같은 네이티브 select 로 바꿔 폼 로직만 시험한다(profile-form.test 와 같은 방식).
-vi.mock('@/components/ui/Select', () => ({
-  Select: ({ value, onChange, options, label, invalid, describedBy, disabled }: { value: string; onChange: (value: string) => void; options: { value: string; label: string }[]; label: string; invalid?: boolean; describedBy?: string; disabled?: boolean }) => (
-    <select aria-label={label} aria-invalid={invalid || undefined} aria-describedby={describedBy} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
-      {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-    </select>
-  ),
-}));
 
 beforeEach(() => { resetDb(); localStorage.clear(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
@@ -49,7 +43,7 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(screen.getByRole('link', { name: FOLDERS.club })).toHaveAttribute('href', '/cards/activity/act_club');
     expect(screen.getByRole('link', { name: FOLDERS.edu })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: FOLDERS.contest })).toHaveAttribute('href', '/cards/activity/act_contest');
-    expect(screen.getByRole('radio', { name: '폴더' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('combobox', { name: '카드 보기 방식' })).toHaveValue('folder');
     expect(tiles()).toHaveLength(0);
     // 앞판 글: 기술 카드만 있는 폴더와 빈 폴더에 안내 한 줄, 장식(뒤에 겹친 카드)은 접근성 트리에서 뺀다
     expect(screen.getByText('기술 카드만 있어요')).toBeInTheDocument();
@@ -74,12 +68,12 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(screen.queryByRole('link', { name: /직접 쓴 카드/ })).not.toBeInTheDocument();
   });
 
-  it('폴더 보기에는 상태 탭과 검색이 없고, 만들기는 폴더 위의 경험 카드 만들기와 활동 만들기 둘뿐이다', async () => {
+  it('폴더 보기에도 검색과 상태 필터가 있고, 만들기는 경험 카드 만들기와 활동 만들기 둘뿐이다', async () => {
     connectMockServer();
     mountApp(routes(), '/cards');
     await screen.findByRole('link', { name: FOLDERS.auth });
-    expect(screen.queryByRole('textbox', { name: '카드 이름으로 검색' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^(전체|작성 중|확정됨|보완 필요)/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '카드 이름으로 검색' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '카드 작성 상태 필터' })).toHaveValue('ALL');
     expect(screen.getByRole('link', { name: '경험 카드 만들기' })).toHaveAttribute('href', '/cards/new');
     expect(screen.getByRole('link', { name: '활동 만들기' })).toHaveAttribute('href', '/activities/new');
     for (const gone of ['활동 관리', '직접 작성', '레포에서 만들기']) expect(screen.queryByRole('link', { name: gone })).not.toBeInTheDocument();
@@ -91,7 +85,7 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     connectMockServer();
     mountApp(routes(), '/cards');
     await screen.findByRole('link', { name: FOLDERS.auth });
-    fireEvent.click(screen.getByRole('radio', { name: '최근순' }));
+    fireEvent.change(screen.getByRole('combobox', { name: '카드 보기 방식' }), { target: { value: 'recent' } });
     await waitFor(() => expect(tiles()).toHaveLength(8));
     expect(screen.getAllByText('경험 카드, 활동 교내 개발 동아리')).toHaveLength(2); // 활동 카드는 타일에서도 어느 활동인지 보인다
     expect(localStorage.getItem('gitory.cards.view')).toBe('"recent"');
@@ -106,18 +100,16 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(direct.parentElement!.parentElement!.lastElementChild).toBe(direct.parentElement); // 맨 뒤
   });
 
-  it('목록 보기에서 고른 검색어와 탭은 폴더 보기에 걸리지 않는다 — 폴더 보기에는 그것을 풀 칸이 없다', async () => {
+  it('검색어는 폴더 보기에도 걸려, 맞는 카드가 없는 폴더는 숨기고 초기화하면 다시 보인다', async () => {
     connectMockServer();
     mountApp(routes(), '/cards');
     await screen.findByRole('link', { name: FOLDERS.auth });
-    fireEvent.click(screen.getByRole('radio', { name: '최근순' }));
-    fireEvent.change(await screen.findByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: 'no-such-card' } });
-    fireEvent.click(screen.getByRole('button', { name: /^확정됨/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: '카드 이름으로 검색' }), { target: { value: 'no-such-card' } });
     expect(await screen.findByText('조건에 맞는 카드가 없어요')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('radio', { name: '폴더' }));
+    expect(screen.queryByRole('link', { name: FOLDERS.auth })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '필터 초기화' }));
     expect(await screen.findByRole('link', { name: FOLDERS.auth })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: FOLDERS.fts })).toBeInTheDocument();
-    expect(screen.queryByText('조건에 맞는 카드가 없어요')).not.toBeInTheDocument();
     expect(screen.queryByText(/^\d+개 보기$/)).not.toBeInTheDocument();
   });
 
@@ -129,8 +121,8 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     });
     mountApp(routes(), '/cards');
     await waitFor(() => expect(tiles()).toHaveLength(8));
-    expect(screen.queryByRole('radio', { name: '폴더' })).not.toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: '최근순' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('option', { name: '폴더' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '카드 보기 방식' })).toHaveValue('recent');
   });
 
   it('활동 목록만 못 읽어도 카드가 있는 폴더는 보이고, 빠질 수 있는 폴더가 있다고 알린 뒤 다시 불러올 수 있다', async () => {

@@ -87,7 +87,6 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
         </div>
       </div>
 
-      {kind === 'repo' && id && <RepoMatch repoId={id} confirmedCards={confirmed} />}
       {(kind === 'repo' || techCards.length > 0) && (
         <CardSection title="기술 카드" cards={techCards} order={order}
           empty={emptyHint("아직 기술 카드가 없어요. 위의 '기술 카드 만들기'에서 커밋을 골라 만들 수 있어요.")} />
@@ -98,6 +97,8 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
           : kind === 'repo'
           ? "아직 경험 카드가 없어요. 코드에 남지 않은 경험은 위의 '경험 카드 만들기'로 이 폴더에 둘 수 있어요."
           : "아직 경험 카드가 없어요. 코드에 남지 않은 경험은 위의 '직접 작성'으로 이 폴더에 둘 수 있어요.")} />
+
+      {kind === 'repo' && id && <RepoMatch repoId={id} confirmedCards={confirmed} />}
 
       {deleting && activity && <ActivityDeleteDialog activity={activity} onClose={() => setDeleting(false)} onDeleted={() => nav('/cards', { replace: true })} />}
     </main>

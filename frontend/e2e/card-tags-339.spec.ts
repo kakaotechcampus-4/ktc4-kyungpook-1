@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsDemo, showCardTiles } from './helpers';
+import { loginAsDemo, showCardTiles, pickCardView } from './helpers';
 
 for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']) {
   test(`card tags list/filter/detail ${width} ${theme}`, async ({ page }) => {
@@ -13,7 +13,7 @@ for (const width of [320, 390, 768, 1440]) for (const theme of ['light', 'dark']
     // Untagged cards remain visible, without an invented tag or empty pill.
     await expect(cards.filter({ hasText: '팀원과 토큰 저장 위치로 갈린 경험' }).locator('.card-tags')).toHaveCount(0);
     // 분야·기술 선택 칸 대신 "기술별"로 묶어 본다(팀 피드백 10/26). 태그 없는 카드는 지어내지 않고 "기술 정보 없음" 묶음에
-    await page.getByRole('radio', { name: '기술별', exact: true }).click();
+    await pickCardView(page, '기술별');
     const java = page.getByRole('region', { name: 'Java', exact: true });
     await expect(java.locator('.experience-item')).toHaveCount(1);
     await expect(page.getByRole('region', { name: '기술 정보 없음', exact: true }).locator('.experience-item')).toHaveCount(7); // 시드 카드 5장 중 태그 없는 4장과 활동 카드 3장(활동 카드에는 기술 태그가 없다)

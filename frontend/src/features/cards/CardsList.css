@@ -2,3 +2,10 @@
    공용 .view-switch / .status-tab 은 다른 화면과 겹쳐서 건드리지 않고, 경험 카드 목록 안에서만 맞춘다. */
 .cards-list .view-switch__item { min-height: var(--control-touch-size); min-width: var(--control-touch-size); }
 .cards-list .status-tab { min-width: var(--control-touch-size); }
+
+.cards-list__tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.cards-list__tools .list-search { flex: 1 1 220px; min-width: 180px; }
+@media (max-width: 767px) {
+  .cards-list__tools { width: 100%; }
+  .cards-list__tools .list-search { flex-basis: 100%; min-width: 0; }
+}

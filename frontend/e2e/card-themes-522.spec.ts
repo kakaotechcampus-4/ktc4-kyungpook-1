@@ -31,7 +31,9 @@ test('고르면 바로 저장되고, 확정 카드도 다시 열지 않으며, �
   await expect(chips(page)).toHaveText(['협업과 소통', '문제 해결']);
   // 목의 확정일은 오늘 기준 며칠 전(daysAgo)이라 날짜를 적어 두면 날이 바뀔 때 깨진다 — 확정 날짜가 그대로 보이는지만 본다
   await expect(page.getByText(/\d{4}\.\d{2}\.\d{2} 확정/)).toBeVisible();
-  await expect(page.getByRole('button', { name: /^수정(하기)?$/ })).toBeVisible();
+  // 확정 카드는 위 '수정' 버튼 대신 제목 옆 연필로 고친다(#798) — 다시 열렸다면 작성 중 화면의 버튼들이 보였을 것이다
+  await expect(page.getByRole('button', { name: '기본 정보 수정' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '복사' })).toBeVisible();
 
   await page.reload();
   await expect(chips(page)).toHaveText(['협업과 소통', '문제 해결']);

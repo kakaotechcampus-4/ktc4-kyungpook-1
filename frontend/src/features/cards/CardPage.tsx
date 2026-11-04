@@ -25,7 +25,7 @@ import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
 import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
 import { matchSupported } from '@/api/matching';
-import { StarBlock, applyMask, railKind } from './StarBlock';
+import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
@@ -167,12 +167,13 @@ export function CardPage() {
           <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopenCard()}>수정</Button>
         </>} />
         <div className="two-col two-col--340">
-          <div className="card star-read evidence-rail evidence-rail--rows">
+          <div className="card star-read star-read--rows">
             {STAR_FIELDS.map((f) => {
               const t = card.version[fieldKey[f]];
               const ev = card.evidence.filter((e) => e.field === f);
+              const rowClass = [!t && 'star-read__row--gap', f === 'R' && 'star-read__row--result'].filter(Boolean).join(' ');
               return (
-                <StarRow key={f} field={f} label={starFieldShort[f]} action={t && <button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} 수정`} title={`${starFieldShort[f]} 수정`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={t ? undefined : 'star-read__row--gap'} rail={{ commits: ev.filter((e) => e.type === 'COMMIT').length, kind: railKind(!t, ev) }}>
+                <StarRow key={f} field={f} label={starFieldShort[f]} action={t && <button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} 수정`} title={`${starFieldShort[f]} 수정`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={rowClass}>
                   {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했어요</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>

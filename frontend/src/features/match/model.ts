@@ -102,7 +102,7 @@ type FitCounts = Pick<OverallRecommendation["companies"][number], "requiredMet" 
 /** 공고 타일 안의 맞는 정도 한 줄. 학력·경력 같은 일반 조건은 서버가 세지 않아, 기술·경험 필수 조건이 없는 공고를 0개 중 0개라고 쓰지 않는다 */
 export function fitLine(c: FitCounts) {
   const preferred = c.preferredTotal ? `, 우대 ${c.preferredTotal}개 중 ${c.preferredMet}개가 맞아요` : "";
-  if (c.requiredTotal === 0) return `기술·경험 필수 조건이 없어요${preferred}`;
+  if (c.requiredTotal === 0) return `기술과 경험 필수 조건이 없어요${preferred}`;
   if (c.requiredMet >= c.requiredTotal) return `필수 조건 ${c.requiredTotal}개를 모두 채웠어요${preferred}`;
   return `필수 조건 ${c.requiredTotal}개 중 ${c.requiredMet}개를 채웠어요`;
 }

@@ -256,7 +256,7 @@ describe('여백 메모와 점검표', () => {
     ];
     const withDraft = question({ draft: draft(TEXT_B, [{ sentenceSeq: 1, code: 'UNSOURCED_NUMBER', value: '30%' }]) });
     const untouched = buildQuestionNotes(withDraft, steps, TEXT_B, 'edit');
-    expect(cellLabel(untouched.checklist.evidence)).toBe('확인 필요 1 · 고침 1');
+    expect(cellLabel(untouched.checklist.evidence)).toBe('확인 필요 1, 고침 1');
     const edited = buildQuestionNotes(withDraft, steps, TEXT_B.replace(S1, '장애를 크게 줄인 팀이라서.'), 'edit');
     const mine = edited.threads.find((t) => t.sentence === S1)!;
     expect(mine.status).toBe('fixed-user');
@@ -317,7 +317,7 @@ describe('여백 메모와 점검표', () => {
     expect(cellLabel({ phase: 'before', marked: 0, fixed: 0 })).toBe('검사 전');
     expect(cellLabel({ phase: 'checking', marked: 0, fixed: 0 })).toBe('검사 중');
     expect(cellLabel({ phase: 'done', marked: 0, fixed: 0 })).toBe('통과');
-    expect(cellLabel({ phase: 'done', marked: 2, fixed: 1 })).toBe('확인 필요 2 · 고침 1');
+    expect(cellLabel({ phase: 'done', marked: 2, fixed: 1 })).toBe('확인 필요 2, 고침 1');
   });
 
   it('카드 고르기 메모는 고른 카드와 이유를 말하고, 모르는 actor 의 단계는 건너뛴다', () => {

@@ -33,7 +33,7 @@ export function DraftPaper({ letter, mode, texts, onText, activeId, focus, flash
   const layout: PaperLayout = narrow || mode === 'edit' || mode === 'ask' ? 'inline' : 'margin';
   const assigning = letter.stage === 'ASSIGNING';
   const foot = letterNotes(letter.steps.draft, mode === 'assign' ? letter.steps.assign : []);
-  const meta = [letter.posting ? `${letter.posting.company} · ${letter.posting.title}` : letter.jobRole, `문항 ${letter.questions.length}개`].join(' · ');
+  const meta = [letter.posting ? `${letter.posting.company}, ${letter.posting.title}` : letter.jobRole, `문항 ${letter.questions.length}개`].join(', ');
 
   return (
     <section className={`paper${layout === 'inline' ? ' paper--inline' : ''}`} aria-label="자기소개서">

@@ -63,10 +63,10 @@ describe('#693 공고 마감일을 홈 캘린더에 담기', () => {
     ]));
     const { router } = mountApp([page(<JobCalendar userId="owner" />, '/'), page(<p>공고 상세</p>, '/match/:id')], '/');
 
-    fireEvent.click(screen.getByRole('button', { name: '직접 기업 · 지원 마감' }));
+    fireEvent.click(screen.getByRole('button', { name: '직접 기업, 지원 마감' }));
     const modal = screen.getByRole('dialog', { name: '공고 일정 수정' });
     fireEvent.click(within(modal).getByRole('button', { name: '취소' }));
-    fireEvent.click(screen.getByRole('button', { name: '가온소프트 · 지원 마감' }));
+    fireEvent.click(screen.getByRole('button', { name: '가온소프트, 지원 마감' }));
 
     expect(await screen.findByText('공고 상세')).toBeInTheDocument();
     await act(async () => { await Promise.resolve(); });
@@ -85,6 +85,6 @@ describe('#693 공고 마감일을 홈 캘린더에 담기', () => {
     fireEvent.click(screen.getByRole('button', { name: '가온소프트 일정 캘린더에서 빼기' }));
 
     expect(JSON.parse(localStorage.getItem(calendarStorageKey('owner')) ?? '[]').map((e: { id: string }) => e.id)).toEqual(['manual']);
-    expect(screen.queryByRole('button', { name: '가온소프트 · 지원 마감' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '가온소프트, 지원 마감' })).not.toBeInTheDocument();
   });
 });

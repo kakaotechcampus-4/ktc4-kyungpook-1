@@ -153,7 +153,7 @@ function QuestionAsks({ q, input, saveState, onEdit, onLeave }: {
                   {d.skipped ? '다시 답하기' : '넘기기'}
                 </button>
                 {!d.skipped && d.text.includes(TEMPLATE_GAP) && <span className="t-12 cl-gap">채울 곳({TEMPLATE_GAP})이 남아 있어요</span>}
-                {!d.skipped && <span className="right t-12 c-3"><span aria-live="polite">{answerLengthHint(d.text.length)}</span> · {d.text.length}/{ANSWER_MAX.toLocaleString()}</span>}
+                {!d.skipped && <span className="right t-12 c-3"><span aria-live="polite">{answerLengthHint(d.text.length)}</span>, {d.text.length}/{ANSWER_MAX.toLocaleString()}</span>}
               </div>
             </li>
           );

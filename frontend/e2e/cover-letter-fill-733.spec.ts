@@ -29,7 +29,7 @@ test('초안의 채우기에서 답을 보내면 종이의 빈칸 자리가 다�
   await page.clock.runFor(1_000);
   const question = panel.locator('.clp-bub--ai').last();
   await expect(question).toContainText('빈칸이 하나 있어요');
-  await expect(question.locator('.clp-qchip')).toHaveText('Q1 · 행동');
+  await expect(question.locator('.clp-qchip')).toHaveText('Q1, 행동');
 
   const input = panel.getByLabel('한 줄로 답하기');
   await input.fill('백엔드를 맡아 AI 담당 팀원과 로그를 같이 보며 원인을 좁혔어요');

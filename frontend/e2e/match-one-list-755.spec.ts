@@ -33,7 +33,7 @@ test('맞춰 본 뒤: 맞춰 본 공고 5개가 나와 맞는 공고와 아직 �
   await expect(fit.locator('.posting-fit')).toHaveCount(4);
   await expect(fit.locator('.match-card').filter({ hasText: '가온소프트' }).locator('.posting-fit')).toHaveText('필수 조건 3개를 모두 채웠어요, 우대 2개 중 1개가 맞아요');
   await expect(fit.locator('.match-card').filter({ hasText: '나래랩스' }).locator('.posting-fit')).toHaveText('필수 조건 4개 중 2개를 채웠어요');
-  await expect(fit.locator('.match-card').filter({ hasText: '다온페이' }).locator('.posting-fit')).toHaveText('기술·경험 필수 조건이 없어요, 우대 2개 중 1개가 맞아요');
+  await expect(fit.locator('.match-card').filter({ hasText: '다온페이' }).locator('.posting-fit')).toHaveText('기술과 경험 필수 조건이 없어요, 우대 2개 중 1개가 맞아요');
 
   const gap = page.getByRole('region', { name: '아직 부족한 공고' });
   await expect(gap.locator('.match-card')).toHaveCount(0);

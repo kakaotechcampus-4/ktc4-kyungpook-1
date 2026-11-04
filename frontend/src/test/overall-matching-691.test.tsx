@@ -59,8 +59,8 @@ async function startButton() {
 
 describe('공고 타일 안의 맞는 정도 한 줄(fitLine)', () => {
   it('기술·경험 필수 조건이 없으면 0개 중 0개라고 쓰지 않는다', () => {
-    expect(fitLine({ requiredMet: 0, requiredTotal: 0, preferredMet: 0, preferredTotal: 0 })).toBe('기술·경험 필수 조건이 없어요');
-    expect(fitLine({ requiredMet: 0, requiredTotal: 0, preferredMet: 1, preferredTotal: 2 })).toBe('기술·경험 필수 조건이 없어요, 우대 2개 중 1개가 맞아요');
+    expect(fitLine({ requiredMet: 0, requiredTotal: 0, preferredMet: 0, preferredTotal: 0 })).toBe('기술과 경험 필수 조건이 없어요');
+    expect(fitLine({ requiredMet: 0, requiredTotal: 0, preferredMet: 1, preferredTotal: 2 })).toBe('기술과 경험 필수 조건이 없어요, 우대 2개 중 1개가 맞아요');
   });
 
   it('필수 조건을 모두 채웠으면 그렇다고 쓰고 우대 개수를 붙인다', () => {
@@ -119,7 +119,7 @@ describe('#755 공고 매칭 한 목록', () => {
     expect([...fit.querySelectorAll('.posting-fit')].map((el) => el.textContent)).toEqual([
       '필수 조건 4개 중 2개를 채웠어요',
       '필수 조건 3개를 모두 채웠어요, 우대 2개 중 1개가 맞아요',
-      '기술·경험 필수 조건이 없어요',
+      '기술과 경험 필수 조건이 없어요',
     ]);
     expect(screen.queryByText('공고9')).not.toBeInTheDocument();
     expect(screen.queryByText('나와 맞는 기업')).not.toBeInTheDocument();

@@ -100,7 +100,7 @@ describe('추론 메모와 점검표', () => {
     expect(inferred).toMatchObject({ sentence: LEARNED, group: 'inference', sentenceSeq: 3 });
     expect(inferred.items[0]).toMatchObject({ actor: 'SUB_AGENT', text: '짐작한 문장이라 확인 필요 표시를 남겼어요' });
     expect(notes.threads.find((t) => t.group === 'evidence')?.status).toBe('marked');
-    expect(STATUS_LABEL.inferred).toBe('짐작 · 확인 필요');
+    expect(STATUS_LABEL.inferred).toBe('짐작, 확인 필요');
     expect(cellLabel(notes.checklist.inference)).toBe('확인 필요 1');
     expect(cellLabel(notes.checklist.evidence)).toBe('확인 필요 1');
   });
@@ -223,7 +223,7 @@ describe('⑥ 짐작 확인 탭의 확인 · 고치기 · 빼기', () => {
       id: 'cl_1', stage: 'DRAFTING', pollAfterMs: 1500, jobRole: '백엔드 개발', createdAt: 't', updatedAt: 't',
       questions: [question({ writing: { text: TEXT, round: 0 } })], steps: { assign: [], draft: [step({ seq: 1, kind: 'WROTE' }), inferredStep] },
     }));
-    expect(within(inferredCard()!).getByText('짐작 · 확인 필요')).toBeInTheDocument();
+    expect(within(inferredCard()!).getByText('짐작, 확인 필요')).toBeInTheDocument();
     expect(within(inferredCard()!).queryAllByRole('button')).toHaveLength(0);
   });
 });

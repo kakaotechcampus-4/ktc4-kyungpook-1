@@ -10,9 +10,9 @@ type Company = RepoRecommendation["companies"][number];
 
 const techName = (tech: string) => (techLabels as Record<string, string>)[tech] ?? tech;
 const metLine = (c: Company) =>
-  [c.techs.length ? c.techs.map(techName).join("·") : null, `필수 ${c.requiredMet}개${c.preferredMet ? `·우대 ${c.preferredMet}개` : ""} 맞음`]
+  [c.techs.length ? c.techs.map(techName).join(", ") : null, `필수 ${c.requiredMet}개${c.preferredMet ? `, 우대 ${c.preferredMet}개` : ""} 맞음`]
     .filter(Boolean)
-    .join(" · ");
+    .join(", ");
 
 /**
  * 레포 폴더 위 '이 레포로 맞는 기업'(#709). 서버가 그 레포의 확정 카드로만 고른 기업 3곳이라, 다른 레포를 분석해도 바뀌지 않는다.
@@ -65,7 +65,7 @@ function RepoMatchBody({ data }: { data: RepoRecommendation }) {
                 <span className="overall-match__text">
                   <strong>{company.companyName}</strong>
                   <span>{company.posting.title}</span>
-                  <span className="overall-match__meta">{metLine(company)} · {company.posting.closed ? "마감된 공고" : deadlineLabel(company.posting.deadline)}</span>
+                  <span className="overall-match__meta">{metLine(company)}, {company.posting.closed ? "마감된 공고" : deadlineLabel(company.posting.deadline)}</span>
                 </span>
               </Link>
             </li>

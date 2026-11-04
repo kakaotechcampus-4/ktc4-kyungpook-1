@@ -120,17 +120,6 @@ describe('레포 목록 화면', () => {
     expect(within(rowOf(/side-project-new/)).queryByText(/PR 없이/)).not.toBeInTheDocument();  // 못 센 레포는 PR 없음으로 말하지 않는다
   });
 
-  it('"PR 0건"·"PR 있는 레포" 필터는 못 센 레포를 넣지 않는다', () => {
-    mount('/repos?filter=nopr', <ReposPage />, '/repos', seedRepos);
-    expect(rowOf(/algorithm-study/)).toBeInTheDocument();
-    expect(rowOf(/team-board/)).toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: /side-project-new/ })).not.toBeInTheDocument();
-    cleanup();
-    mount('/repos?filter=pr', <ReposPage />, '/repos', seedRepos);
-    expect(screen.queryByRole('radio', { name: /side-project-new/ })).not.toBeInTheDocument();
-    expect(rowOf(/auth-service/)).toBeInTheDocument();
-  });
-
   it('읽기 전 안내 창에서도 0 대신 "세는 중"을 말한다', () => {
     mount('/repos?select=r_counting&disclose=1', <ReposPage />, '/repos', seedRepos);
     const dialog = screen.getByRole('dialog');

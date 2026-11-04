@@ -100,10 +100,11 @@
 .repo-row--sel .repo-row__warn { color: var(--text-secondary); }
 /* #756 레포 줄 — 숫자는 문장 한 줄에, 강조색은 고른 줄의 파랑과 기여가 적을 때의 호박 둘만 쓴다 */
 .repo-row__body { gap: 2px; min-width: 0; text-align: left; }
-.repo-row__pick { font-size: 12px; line-height: 17px; color: var(--text-tertiary); }
 .repo-row__title { display: flex; flex-direction: column; min-width: 0; }
 .repo-row__owner { font-size: 12px; line-height: 17px; color: var(--text-tertiary); overflow-wrap: anywhere; }
 .repo-row__name { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+/* 설명은 폴더 타일의 설명(.folder__desc)과 같은 크기·색이라 두 화면에서 같은 줄로 읽힌다 */
+.repo-row__desc { display: block; font-size: 13px; line-height: 18px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .repo-row__line { display: block; margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
 .repo-row__caution { font-weight: 600; color: var(--field-low-text); }
 .repo-row__hint { color: var(--text-tertiary); }
@@ -113,3 +114,21 @@
 .repo-row--sel .radio--checked { background: var(--border-accent); border-color: var(--border-accent); }
 /* 고른 레포 줄은 파랑 바탕 — 앱 공통 --bg-selected 는 회색이라 고른 것을 파랑으로 보이게 따로 둔다 */
 .record-list > .repo-row--sel, .record-list > .repo-row--sel:hover { background: var(--bg-accent); }
+/* #778 레포 목록 세 묶음 — 묶음마다 제목 아래에 상자(.record-list)가 하나씩 있다 */
+.repo-groups, .repo-groups__pick { display: flex; flex-direction: column; gap: 20px; }
+.repo-group { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+/* 이미 정리한 레포 줄 — 고르는 줄이 아니라서 줄 전체에 hover 바탕을 주지 않고 링크만 눌린다 */
+.repo-done { margin: 0; padding: 0; list-style: none; }
+.repo-done__row { display: flex; align-items: center; gap: 4px 12px; padding: 14px 20px; }
+.repo-done__row + .repo-done__row { border-top: 1px solid var(--border-default); }
+.repo-done__side { display: flex; align-items: center; flex: 0 0 auto; gap: 0 14px; }
+.repo-done__cards { font-size: 13px; line-height: 18px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.repo-done__link { display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 0 4px; font-size: 14px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+.repo-done__link:hover { color: var(--text-primary); }
+@media (max-width: 767px) {
+  .repo-done__row > .iconbox { display: none; }
+}
+@media (max-width: 560px) {
+  .repo-done__row { flex-wrap: wrap; }
+  .repo-done__side { flex-basis: 100%; }
+}

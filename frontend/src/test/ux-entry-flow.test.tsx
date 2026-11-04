@@ -40,7 +40,7 @@ it('explains search misses without claiming a private-repository permission prob
   fireEvent.change(screen.getByRole('textbox', { name: '레포 이름 검색' }), { target: { value: 'no-such-repo' } });
   expect(screen.getByText('검색 결과가 없어요')).toBeInTheDocument();
   expect(screen.queryByText(/권한부터 요청하지/)).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '검색과 필터 초기화' }));
+  fireEvent.click(screen.getByRole('button', { name: '검색 초기화' }));
   expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
 });
 it('does not equate a small commit share with exaggerating experience', () => {

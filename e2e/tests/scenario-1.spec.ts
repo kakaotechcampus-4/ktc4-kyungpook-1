@@ -64,7 +64,8 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       const row = page.getByRole('radio', { name: new RegExp(`${login} / sample-app`) });
       await row.click();
       await expect(row).toContainText('PR 2개를 올린 레포예요');
-      await expect(row).toContainText('먼저 정리해 보기 좋아요');
+      // 추천 레포는 줄 안의 글 대신 묶음 제목으로 드러난다(#778)
+      await expect(page.getByRole('region', { name: '내 기여가 많은 레포' }).getByRole('radio', { name: new RegExp(`${login} / sample-app`) })).toBeVisible();
 
       const repos = await dataOf(await page.request.get('/api/repos'));
       expect(repos).toHaveLength(1);

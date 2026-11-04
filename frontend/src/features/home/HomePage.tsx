@@ -72,7 +72,7 @@ export function HomePage() {
   const confirmedCount = cards.isSuccess ? cards.data.filter((c) => c.status === 'CONFIRMED').length : undefined;
   const matchedCount = matchSupported() && confirmedCount !== 0 && matched.isSuccess ? matched.data.matchedPostings : undefined;
   const matchedNote = !matchSupported() || confirmedCount === undefined ? '경험과 연결되는 다음 기회'
-    : confirmedCount === 0 ? '카드를 확정하면 매칭할 수 있어요'
+    : confirmedCount === 0 ? '카드가 확정되면 매칭할 수 있어요'
     : matchedCount === undefined ? '경험과 연결되는 다음 기회'
     : matchedCount === 0 ? '전체 매칭을 하면 맞는 공고를 찾아요' : 'AI 가 내 카드로 맞춰 본 공고 중 맞는 공고';
   return (

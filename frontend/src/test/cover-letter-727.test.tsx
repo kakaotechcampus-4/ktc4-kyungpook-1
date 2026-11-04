@@ -12,7 +12,7 @@ import { db, resetDb } from '@/mock/store';
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 
 /**
- * #727 초안 옆 패널 — 진단·첨삭(첨삭 받기 → 결과 → 적용하기), 짐작 확인 탭, 알림 줄, 860px 아래 막대.
+ * #727 초안 옆 패널 — 진단과 첨삭(첨삭 받기 → 결과 → 적용하기), 짐작 확인 탭, 알림 줄, 860px 아래 막대.
  * 목 서버가 문항 하나를 결정적으로 첨삭한다(긴 문장 하나를 둘로 · 결과 문장 하나 보탬 · 아쉬운 점 2 · 잘한 점 1).
  */
 const req = (method: string, path: string, body: unknown = {}) =>
@@ -111,7 +111,7 @@ describe('목 서버', () => {
   });
 });
 
-describe('진단·첨삭 탭', () => {
+describe('진단과 첨삭 탭', () => {
   it('첨삭 받기는 POST …/polish 를 부르고, 기다리는 동안 살펴보는 중 → 고치는 중, 끝나면 종합 평가 · 포인트 · 고친 글을 보인다', async () => {
     const log: string[] = [];
     let release!: () => void;
@@ -243,7 +243,7 @@ describe('짐작 확인 탭 · 알림 줄 · 모바일', () => {
     const repeated = { ...l, questions: [l.questions[0], { ...q2, draft: { ...q2.draft!, marks: [...q2.draft!.marks, { sentenceSeq: 1, code: 'REPEATED', value: null }] } }] };
     mount(repeated);
     const notices = screen.getByRole('region', { name: '살펴볼 것' });
-    expect(within(notices).getByText('Q1·Q2에 같은 이야기가 있어요')).toBeInTheDocument();
+    expect(within(notices).getByText('Q1, Q2에 같은 이야기가 있어요')).toBeInTheDocument();
     expect(within(notices).getByRole('button', { name: '→ Q2 보기' })).toBeInTheDocument();
     fireEvent.click(within(notices).getByRole('button', { name: '이 알림 닫기' }));
     expect(screen.queryByRole('region', { name: '살펴볼 것' })).toBeNull();
@@ -254,12 +254,12 @@ describe('짐작 확인 탭 · 알림 줄 · 모바일', () => {
     mount(draftedFromMock());
     expect(screen.queryByRole('tablist')).toBeNull();
     const bar = screen.getByRole('navigation', { name: '다듬기 메뉴' });
-    expect(within(bar).getAllByRole('button').map((b) => b.textContent)).toEqual(['채우기', '진단·첨삭', '짐작 확인1']);
-    fireEvent.click(within(bar).getByRole('button', { name: '진단·첨삭' }));
-    const sheet = screen.getByRole('complementary', { name: '진단·첨삭' });
+    expect(within(bar).getAllByRole('button').map((b) => b.textContent)).toEqual(['채우기', '진단과 첨삭', '짐작 확인1']);
+    fireEvent.click(within(bar).getByRole('button', { name: '진단과 첨삭' }));
+    const sheet = screen.getByRole('complementary', { name: '진단과 첨삭' });
     expect(within(sheet).getByRole('button', { name: '첨삭 받기' })).toBeInTheDocument();
-    expect(within(bar).getByRole('button', { name: '진단·첨삭' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(bar).getByRole('button', { name: '진단과 첨삭' })).toHaveAttribute('aria-pressed', 'true');
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByRole('complementary', { name: '진단·첨삭' })).toBeNull();
+    expect(screen.queryByRole('complementary', { name: '진단과 첨삭' })).toBeNull();
   });
 });

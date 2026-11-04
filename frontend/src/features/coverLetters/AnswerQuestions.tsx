@@ -80,6 +80,8 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
     const d = answers[q.id]?.[a.item];
     return a.required && (!d || d.skipped || !d.text.trim());
   }).length, 0);
+  // 문항마다 카드만으로 쓸 수 있어 물을 게 하나도 없으면, "더 알려 달라"는 제목 대신 바로 쓸 수 있다고 말한다
+  const nothingToAsk = letter.questions.length > 0 && letter.questions.every((q) => q.asks.length === 0);
   // 저장을 기다리는 동안에도 누른 것이 보이고, 두 번 눌러도 초안 쓰기는 한 번만 보낸다
   const [starting, setStarting] = useState(false);
   const startingRef = useRef(false);
@@ -100,7 +102,9 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
 
   return (
     <>
-      <PageTitle sub="카드에 없는 것만 물어요. 아는 만큼 답하고, 모르면 넘겨도 돼요.">조금만 더 알려 주세요</PageTitle>
+      {nothingToAsk
+        ? <PageTitle sub="카드에 담긴 내용만으로 충분해서 더 묻지 않아요.">바로 초안을 쓸 수 있어요</PageTitle>
+        : <PageTitle sub="카드에 없는 것만 물어요. 아는 만큼 답하고, 모르면 넘겨도 돼요.">조금만 더 알려 주세요</PageTitle>}
       <div className="cl-review">
         {letter.questions.map((q) => (
           <QuestionAsks key={q.id} q={q} input={answers[q.id] ?? {}} saveState={state[q.id] ?? 'idle'}
@@ -108,8 +112,8 @@ export function AnswerQuestions({ letter }: { letter: CoverLetter }) {
         ))}
       </div>
       {error && <Note strong="답을 저장하지 못했어요" tone="danger">{error} 쓴 답은 화면에 그대로 있어요.</Note>}
-      <StickyFooter strong={missing ? `꼭 필요한 재료 ${missing}개가 비어 있어요` : '답을 다 했으면 초안을 써요'}
-        sub={missing ? '비운 채로 쓰면 그 자리에 빈칸을 남겨요. 초안에서 채울 수 있어요.' : '답하지 않은 질문은 넘긴 것으로 봐요'}>
+      <StickyFooter strong={missing ? `꼭 필요한 재료 ${missing}개가 비어 있어요` : nothingToAsk ? '초안을 써요' : '답을 다 했으면 초안을 써요'}
+        sub={missing ? '비운 채로 쓰면 그 자리에 빈칸을 남겨요. 초안에서 채울 수 있어요.' : nothingToAsk ? '문항마다 고른 카드로 써요' : '답하지 않은 질문은 넘긴 것으로 봐요'}>
         <Button onClick={write} loading={starting || draft.isPending}>초안 쓰기</Button>
       </StickyFooter>
     </>
@@ -153,7 +157,7 @@ function QuestionAsks({ q, input, saveState, onEdit, onLeave }: {
                   {d.skipped ? '다시 답하기' : '넘기기'}
                 </button>
                 {!d.skipped && d.text.includes(TEMPLATE_GAP) && <span className="t-12 cl-gap">채울 곳({TEMPLATE_GAP})이 남아 있어요</span>}
-                {!d.skipped && <span className="right t-12 c-3"><span aria-live="polite">{answerLengthHint(d.text.length)}</span> · {d.text.length}/{ANSWER_MAX.toLocaleString()}</span>}
+                {!d.skipped && <span className="right t-12 c-3"><span aria-live="polite">{answerLengthHint(d.text.length)}</span>, {d.text.length}/{ANSWER_MAX.toLocaleString()}</span>}
               </div>
             </li>
           );

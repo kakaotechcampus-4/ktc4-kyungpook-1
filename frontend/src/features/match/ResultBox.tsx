@@ -9,7 +9,7 @@ import { DeadlineMark, PostingFacts } from "./PostingParts";
 import { companyLabel, companyPath, fitNames, fitPostings, fitSummary, type FitPosting } from "./model";
 
 const BOX_LABEL = "내 카드로 맞춰 본 공고";
-const NO_CARDS = "확정한 카드가 없어요. 경험 카드를 확정하면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.";
+const NO_CARDS = "확정한 카드가 없어요. 카드가 확정되면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.";
 const NO_COMPANIES: OverallRecommendation["companies"] = [];
 
 const dayLabel = (iso: string) =>
@@ -105,7 +105,7 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
         </p>
       )}
       {data && !computing && data.status === "READY" && data.companies.length === 0 && (
-        <p className="result-box__line">맞는 공고를 찾지 못했어요. 경험 카드를 더 확정하거나 인적사항을 채우면 달라질 수 있어요.</p>
+        <p className="result-box__line">맞는 공고를 찾지 못했어요. 확정된 경험 카드가 늘거나 인적사항을 채우면 달라질 수 있어요.</p>
       )}
       {tiles.length > 0 && (
         <ol className="result-box__grid">

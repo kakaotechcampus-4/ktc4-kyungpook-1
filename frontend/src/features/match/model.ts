@@ -109,7 +109,7 @@ type FitNames = Pick<OverallCompany, "requiredMet" | "requiredTotal" | "met" | "
 export function fitSummary(c: FitCounts) {
   if (c.requiredTotal === 0) {
     const preferred = c.preferredTotal ? `, 우대 ${c.preferredTotal}개 중 ${c.preferredMet}개가 맞아요` : "";
-    return { done: false, text: `기술·경험 필수 조건이 없어요${preferred}`, extra: "" };
+    return { done: false, text: `기술과 경험 필수 조건이 없어요${preferred}`, extra: "" };
   }
   if (c.requiredMet >= c.requiredTotal) {
     return { done: true, text: `필수 ${c.requiredTotal}개 모두 맞아요`, extra: c.preferredMet > 0 ? `우대 ${c.preferredMet}개` : "" };

@@ -74,9 +74,9 @@ it('맞춰 본 결과는 읽은 카드 수 → 견준 조건 수 → 조건마�
   expect(tiles()).toBe(0);
   await advance(1000);
   expect(screen.getByText(/^확정 카드.*읽었어요$/)).toBeInTheDocument();
-  expect(screen.queryByText('필수 3개·우대 2개와 견줬어요')).not.toBeInTheDocument();
+  expect(screen.queryByText('필수 3개, 우대 2개와 견줬어요')).not.toBeInTheDocument();
   await advance(900);
-  expect(screen.getByText('필수 3개·우대 2개와 견줬어요')).toBeInTheDocument();
+  expect(screen.getByText('필수 3개, 우대 2개와 견줬어요')).toBeInTheDocument();
   expect(tiles()).toBe(0);
   await advance(900);
   expect(tiles()).toBe(1);
@@ -118,15 +118,15 @@ it('조건마다 찾아볼지와 이유 → 한 일 → 결론이 보이고, 찾
   mount({ ...five, gapFill });
   const again = vi.spyOn(matchingApi, 'gapFill').mockResolvedValue({ ...five, gapFill });
   await screen.findByText('카드로 안 만든 후보 12개를 읽었어요');
-  expect(screen.getByText("GitHub 에서 'docker' 로 내 커밋을 찾았어요 · 5개")).toBeInTheDocument();
+  expect(screen.getByText("GitHub 에서 'docker' 로 내 커밋 5개를 찾았어요")).toBeInTheDocument();
   expect(screen.getByText("'helm' 로 자료를 살펴봤어요")).toBeInTheDocument();
-  expect(screen.getByText('kbu-capstone/team-board 는 다른 사람 레포라 분석할 수 없어 뺐어요 · 커밋 2개')).toBeInTheDocument();
+  expect(screen.getByText('kbu-capstone/team-board 는 다른 사람 레포라 분석할 수 없어 뺐어요 (커밋 2개)')).toBeInTheDocument();
   expect(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 로그인 API 응답 속도 개선' })).toBeInTheDocument();
   expect(screen.getByText('응답 시간을 줄인 기록이 있어요')).toBeInTheDocument();
   expect(screen.getByText(/^찾지 않기로 했어요 — 다른 분야의 일이라 거리가 멀어요/)).toBeInTheDocument();
   expect(screen.getByText('채울 자료를 찾지 못했어요.')).toBeInTheDocument();
   expect(screen.getByText('시간이 부족해 여기까지 찾았어요.')).toBeInTheDocument();
-  expect(screen.getByText('제안 1개 · 찾지 못함 1개 · 찾지 않음 1개 · 시간 초과 1개')).toBeInTheDocument();
+  expect(screen.getByText('제안 1개, 찾지 못함 1개, 찾지 않음 1개, 시간 초과 1개')).toBeInTheDocument();
   // 다섯 번째 ✕ 조건은 서버가 찾지 않아(상한) 아래에 아무것도 없다
   expect(document.querySelectorAll('.gap-fill')).toHaveLength(4);
   const buttons = screen.getAllByRole('button', { name: '그래도 찾아보기' });
@@ -186,7 +186,7 @@ it('gapFill 칸이 없는 구서버 응답은 null 로 받고, 모르는 kind �
   expect(parsed.gapFill?.conditions[0].forced).toBe(false);
   expect(stepText(st('SOMETHING_NEW'))).toBe('자료를 살펴봤어요');
   expect(stepText(st('GITHUB_FAILED', null, 'kafka'))).toBe("GitHub 검색이 잠시 안 돼 'kafka' 로 찾는 건 건너뛰었어요");
-  expect(stepText(st('SOMETHING_NEW', 3, 'kafka'))).toBe("'kafka' 로 자료를 살펴봤어요 · 3개");
+  expect(stepText(st('SOMETHING_NEW', 3, 'kafka'))).toBe("'kafka' 로 자료 3개를 살펴봤어요");
 });
 
 it('도는 동안은 pollAfterMs 마다 상세를 다시 읽고, 한꺼번에 온 일도 0.8초마다 하나씩 보이며 이미 보인 줄은 남는다', async () => {
@@ -316,7 +316,7 @@ it('진행하기 뒤 돌아왔는데 새 카드가 아직 확정 전이면 다�
   mount(base);
   const judge = vi.spyOn(matchingApi, 'judge').mockResolvedValue(base);
 
-  await screen.findByText('새로 만든 카드를 확정하면 다시 맞춰 볼게요');
+  await screen.findByText('새로 만든 카드가 확정되면 다시 맞춰 볼게요');
   expect(judge).not.toHaveBeenCalled();
   expect(readProceeded(base.id)).toEqual([docker.id, k8s.id]);
 });

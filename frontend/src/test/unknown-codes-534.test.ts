@@ -121,7 +121,7 @@ describe('남긴 칸 — 모르는 값은 검증 실패이고, 화면은 "응답
     ['VersionListItem.source: 이력의 출처 문구를 지어낼 수 없다', () => endpoints.versions('card_01'), [{ versionNo: 1, source: 'IMPORT', createdAt: '2026-10-30T00:00:00Z', summary: '요약', current: true }]],
     ['InterviewTurn.field: 어느 칸을 묻는 질문인지 알 수 없다', () => endpoints.interviewTurns('card_01'), [{ ...turn(), field: 'X' }]],
     ['ConfirmResult.status: 확정됐는지 알 수 없다', () => endpoints.confirm('card_01', { edited: false, maskedFields: [] }), { cardId: 'card_01', status: 'ARCHIVED', versionNo: 1, usedCandidateIds: [], remainingCandidates: 0, repoId: null }],
-    ['MatchTarget.fit: null("카드를 확정하면 등급이 나와요")로 읽으면 확정한 카드가 있어도 틀린 이유를 댄다', () => matchingApi.list(), [{ ...sampleList.data[0], fit: 'E' }]],
+    ['MatchTarget.fit: null("카드가 확정되면 등급이 나와요")로 읽으면 확정한 카드가 있어도 틀린 이유를 댄다', () => matchingApi.list(), [{ ...sampleList.data[0], fit: 'E' }]],
     ['MatchDetail.conditions[].type: 필수·우대 칸에 못 들어가 조건이 사라지고 N/M 이 어긋난다', () => matchingApi.detail(sampleDetail.data.id), set(detail(), (d) => { d.conditions[0].type = 'BONUS'; })],
     ['MatchDetail.conditions[].status: 맞음·모자람 어느 쪽으로 읽어도 조건 판단을 지어낸다', () => matchingApi.detail(sampleDetail.data.id), set(detail(), (d) => { d.conditions[0].status = 'PARTIAL'; })],
     ['MatchDetail.metBy[].cardKind: 카드 종류 이름표를 지어낼 수 없다', () => matchingApi.detail(sampleDetail.data.id), set(detail(), (d) => { supported(d).cardKind = 'HYBRID'; })],

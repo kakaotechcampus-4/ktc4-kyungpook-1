@@ -138,7 +138,7 @@ export function CoverLetterNewPage() {
 
       {noCards && (
         <Note strong="확정한 카드가 없어요" tone="caution">
-          자소서는 확정한 경험 카드로 써요. 카드를 하나 이상 확정한 뒤에 다시 와 주세요. <Link to="/cards" className="cl-inline-link">경험 카드로 가기</Link>
+          자소서는 확정한 경험 카드로 써요. 네 칸이 모두 차고 확인 필요한 칸이 없으면 카드가 자동으로 확정돼요. 확정된 카드가 하나 이상 생기면 다시 와 주세요. <Link to="/cards" className="cl-inline-link">경험 카드로 가기</Link>
         </Note>
       )}
 
@@ -184,7 +184,7 @@ export function CoverLetterNewPage() {
         <p className="cl-group__help">회사가 묻는 문항 문장을 그대로 붙여 넣어요 — 답은 여기에 쓰지 않아요</p>
         <div className="cl-qbox">
           <div className="cl-quick" role="group" aria-label="자주 나오는 문항">
-            <span className="cl-quick__label" aria-hidden>자주 나오는 문항 · 누르면 아래에 더해져요</span>
+            <span className="cl-quick__label" aria-hidden>자주 나오는 문항을 누르면 아래에 더해져요</span>
             {[...examples.top, ...(showMore ? examples.more : [])].map((t) => (
               <Chip key={t} onClick={() => addExample(t)} disabled={rows.length >= L.QUESTIONS && !rows.some((r) => r.text.trim() === '')}>{THEME_LABEL[t]}</Chip>
             ))}
@@ -249,7 +249,7 @@ function QuestionRow({ n, row, textError, limitError, limitBad, onText, onLimit,
           placeholder="예: 지원 동기와 입사 후 포부를 적어 주세요" aria-invalid={!!textError} onChange={(e) => onText(e.target.value)} />
         {editing == null ? (
           <button ref={limitBtn} type="button" className={`cl-qfield__limit${limitBad ? ' cl-qfield__limit--bad' : ''}`}
-            aria-label={`${n}번 문항 답 ${shown}자 이내 · 눌러서 바꾸기`} onClick={() => setEditing(shown)}>{shown}자 이내</button>
+            aria-label={`${n}번 문항 답 ${shown}자 이내, 눌러서 바꾸기`} onClick={() => setEditing(shown)}>{shown}자 이내</button>
         ) : (
           <span className="cl-qfield__edit">
             <input type="text" inputMode="numeric" autoFocus value={editing} aria-label={`${n}번 문항 글자 수`}
@@ -275,7 +275,7 @@ function PostingBanner({ posting }: { posting: Pick<MatchTarget, 'id' | 'company
       <CompanyMark name={company} logoUrl={posting.logoUrl} size={40} />
       <div className="stack grow" style={{ gap: 2, minWidth: 0 }}>
         <span className="cl-posting__label">지원 공고</span>
-        <span className="cl-posting__title"><b>{company}</b> · {posting.role}</span>
+        <span className="cl-posting__title"><b>{company}</b>, {posting.role}</span>
       </div>
       <Link to={`/match/${encodeURIComponent(posting.id)}`} className="cl-posting__link">공고 보기 <ChevronRight size={14} aria-hidden /></Link>
     </section>

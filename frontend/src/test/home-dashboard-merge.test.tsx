@@ -35,10 +35,10 @@ it('persists a hiring date for its owner and keeps another account separate', ()
   expect(JSON.parse(localStorage.getItem('gitory.job-calendar.v1.owner')!)[0].company).toBe('달력 테스트 기업');
   view.unmount();
   view = calendar("another-owner");
-  expect(screen.queryByRole('button', { name: '달력 테스트 기업 · 지원 마감' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '달력 테스트 기업, 지원 마감' })).not.toBeInTheDocument();
   view.unmount();
   calendar("owner");
-  fireEvent.click(screen.getByRole('button', { name: '달력 테스트 기업 · 지원 마감' }));
+  fireEvent.click(screen.getByRole('button', { name: '달력 테스트 기업, 지원 마감' }));
   fireEvent.click(within(screen.getByRole('dialog', { name: '공고 일정 수정' })).getByRole('button', { name: '삭제' }));
   expect(JSON.parse(localStorage.getItem('gitory.job-calendar.v1.owner')!)).toEqual([]);
 });

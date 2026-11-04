@@ -70,8 +70,8 @@ const chip = (name: string) => screen.getByRole('button', { name });
 
 describe('결과 타일의 개수 줄(fitSummary)', () => {
   it('기술·경험 필수 조건이 없으면 0개 중 0개라고 쓰지 않는다', () => {
-    expect(fitSummary({ requiredMet: 0, requiredTotal: 0, preferredMet: 0, preferredTotal: 0 })).toEqual({ done: false, text: '기술·경험 필수 조건이 없어요', extra: '' });
-    expect(fitSummary({ requiredMet: 0, requiredTotal: 0, preferredMet: 1, preferredTotal: 2 }).text).toBe('기술·경험 필수 조건이 없어요, 우대 2개 중 1개가 맞아요');
+    expect(fitSummary({ requiredMet: 0, requiredTotal: 0, preferredMet: 0, preferredTotal: 0 })).toEqual({ done: false, text: '기술과 경험 필수 조건이 없어요', extra: '' });
+    expect(fitSummary({ requiredMet: 0, requiredTotal: 0, preferredMet: 1, preferredTotal: 2 }).text).toBe('기술과 경험 필수 조건이 없어요, 우대 2개 중 1개가 맞아요');
   });
 
   it('필수를 모두 채웠으면 그렇다고 쓰고, 맞은 우대가 있을 때만 그 개수를 붙인다', () => {
@@ -176,7 +176,7 @@ describe('공고 매칭 결과 상자', () => {
     const lines = (tile: HTMLElement) => [tile.querySelector('.result-tile__count')?.textContent, tile.querySelector('.result-tile__names')?.textContent];
     expect(lines(tiles()[0])).toEqual(['필수 4개 중 2개 맞아요', 'Kafka, 메시지 큐 운영 경험이 아직 없어요']);
     expect(lines(tiles()[1])).toEqual(['필수 3개 모두 맞아요 · 우대 1개', 'Java·Kotlin, SQL 등 3개가 맞아요']);
-    expect(lines(tiles()[2])).toEqual(['기술·경험 필수 조건이 없어요', undefined]);
+    expect(lines(tiles()[2])).toEqual(['기술과 경험 필수 조건이 없어요', undefined]);
     expect(lines(tiles()[3])).toEqual(['필수 2개 중 0개 맞아요', undefined]);
     expect(tiles()[0].querySelector('.result-tile__names b')).toHaveClass('is-lacking');
     expect(tiles()[1].querySelector('.result-tile__names b')).not.toHaveClass('is-lacking');
@@ -248,7 +248,7 @@ describe('공고 매칭 결과 상자', () => {
   it('확정 카드가 0장이면 상자가 카드 확정을 안내하고 맞춰 보기 버튼은 없다', async () => {
     vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(state());
     mount('/match', 0);
-    expect(await screen.findByText('확정한 카드가 없어요. 경험 카드를 확정하면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.')).toBeInTheDocument();
+    expect(await screen.findByText('확정한 카드가 없어요. 카드가 확정되면 공고마다 내 경험과 조건을 맞춰 볼 수 있어요.')).toBeInTheDocument();
     expect(within(box()).getByRole('link', { name: '카드 확정하러 가기' })).toHaveAttribute('href', '/cards');
     expect(screen.queryByRole('button', { name: '내 조건으로 맞춰 보기' })).not.toBeInTheDocument();
   });

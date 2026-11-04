@@ -23,7 +23,7 @@ test('초안에서 첨삭을 받아 포인트를 보고 적용하면 종이 글�
   const panel = page.getByRole('complementary', { name: '다듬기 패널' });
   const paper = page.getByLabel('1번 문항 초안');
   await expect(panel.getByText('Q1에 적용')).toBeVisible();
-  await expect(panel.getByRole('tab', { name: '진단·첨삭' })).toHaveAttribute('aria-selected', 'true');
+  await expect(panel.getByRole('tab', { name: '진단과 첨삭' })).toHaveAttribute('aria-selected', 'true');
   for (const tab of await panel.getByRole('tab').all()) expect((await tab.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
   const before = await paper.inputValue();
 

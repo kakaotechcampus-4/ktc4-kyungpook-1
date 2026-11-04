@@ -112,10 +112,10 @@ describe('③ 문항마다 쓸 카드', () => {
     expect(screen.getByRole('article', { name: '이 경험으로 써요: 토큰 만료 자동 재발급' })).toHaveTextContent('기술');
   });
 
-  it("재료 한 줄은 '재료 3/5 · 배운 점, 계기는 다음에 물어요'이고 빠진 이름만 호박색으로 칠한다", () => {
+  it("재료 한 줄은 '재료 3/5 (배운 점, 계기는 다음에 물어요)'이고 빠진 이름만 호박색으로 칠한다", () => {
     mount('/cover-letters/cl_1', letter());
     const line = document.querySelector('.cl-ready');
-    expect(line).toHaveTextContent('재료 3/5 · 배운 점, 계기는 다음에 물어요');
+    expect(line).toHaveTextContent('재료 3/5 (배운 점, 계기는 다음에 물어요)');
     expect(line?.querySelector('.cl-ready__miss')?.textContent).toBe('배운 점, 계기');
     expect(copy.materialLine(['SITUATION', 'RESULT', 'LEARNING', 'TRIGGER'])).toMatchObject({ missing: ['행동'], rest: '은 다음에 물어요' });
     expect(copy.materialLine(['SITUATION', 'ACTION', 'RESULT', 'LEARNING', 'TRIGGER'])).toMatchObject({ have: 5, missing: [], rest: '다 있어요' });
@@ -129,7 +129,7 @@ describe('③ 문항마다 쓸 카드', () => {
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('link', { name: '로그인 세션 오류 수정' })).toBeInTheDocument();
-    expect(document.querySelector('.cl-compared--picked')).toHaveTextContent('토큰 만료 자동 재발급 · 고름');
+    expect(document.querySelector('.cl-compared--picked')).toHaveTextContent('토큰 만료 자동 재발급 (고름)');
     fireEvent.click(toggle);
     expect(screen.queryByRole('link', { name: '로그인 세션 오류 수정' })).not.toBeInTheDocument();
   });
@@ -140,7 +140,7 @@ describe('기다리는 화면', () => {
     const q2 = question({ id: 'q2', seq: 2, text: '팀으로 함께 성과를 낸 경험을 적어 주세요', writing: { text: '팀원과 의견이 갈렸습니다.', round: 0 } });
     mount('/cover-letters/cl_1', letter({ stage: 'DRAFTING', pollAfterMs: 1500, questions: [question(), q2],
       steps: { assign: [], draft: [step({ seq: 1, questionId: 'q2', kind: 'WROTE', value: '13' })] } }));
-    expect(screen.getByText('보통 1~2분 걸려요 · 떠나도 돼요')).toBeInTheDocument();
+    expect(screen.getByText('보통 1~2분 걸리니 떠나도 돼요')).toBeInTheDocument();
     expect(screen.getAllByRole('status').map((s) => s.textContent)).toEqual(['차례를 기다리는 중', '검사 중']);
     expect(document.querySelector('.pcheck')).toBeNull();
     expect(screen.queryByText(/\/ 700자/)).not.toBeInTheDocument();

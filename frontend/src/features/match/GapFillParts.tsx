@@ -29,7 +29,7 @@ function Proposal({ proposal, picked, onPick, used }: { proposal: GapFillProposa
         <p className="gap-fill__title">
           <Icon size={14} aria-hidden />
           <span>{proposal.title}</span>
-          {proposal.repoName && <span className="gap-fill__repo">· {proposal.repoName}</span>}
+          {proposal.repoName && <span className="gap-fill__repo">({proposal.repoName})</span>}
           <span className="gap-fill__action">{used ? "카드로 만들었어요" : actionLabel[proposal.action]}</span>
         </p>
         <p className="gap-fill__reason">{proposal.reason}</p>

@@ -35,7 +35,7 @@ export type NoteThread = {
   /** 추론 표시가 달린 초안 문장 번호 — 확인 API 가 이 번호로 표시를 지운다 */
   sentenceSeq?: number;
 };
-export const STATUS_LABEL: Record<NoteStatus, string> = { open: '보는 중', 'fixed-ai': '고침 · 작성 AI', kept: '그대로 둠', marked: '확인 필요', inferred: '짐작 · 확인 필요', 'fixed-user': '고침 · 나', reverted: '되돌림' };
+export const STATUS_LABEL: Record<NoteStatus, string> = { open: '보는 중', 'fixed-ai': '고침, 작성 AI', kept: '그대로 둠', marked: '확인 필요', inferred: '짐작, 확인 필요', 'fixed-user': '고침, 나', reverted: '되돌림' };
 
 export type ChecklistCell = { phase: 'before' | 'checking' | 'done'; marked: number; fixed: number };
 export type Checklist = Record<CheckGroup, ChecklistCell>;
@@ -45,7 +45,7 @@ export function cellLabel(cell: ChecklistCell): string {
   if (cell.phase === 'before') return '검사 전';
   if (cell.phase === 'checking') return '검사 중';
   const parts = [cell.marked > 0 && `확인 필요 ${cell.marked}`, cell.fixed > 0 && `고침 ${cell.fixed}`].filter(Boolean);
-  return parts.length ? parts.join(' · ') : '통과';
+  return parts.length ? parts.join(', ') : '통과';
 }
 
 /** ⑥ 종이 아래 칩(#727) — 근거 · 겹침 · 짐작 세 칸만 짧게. 글자 수는 옆 숫자가 말한다 */
@@ -235,7 +235,7 @@ export function letterNotes(draft: DraftStep[], assign: AssignStep[] = []): Note
 
 /**
  * 살펴볼 곳 — 짐작(INFERRED)이 아닌 확인 필요 표시(marks) 중 지금 글에 남은 것. key 는 종이의 칠하기·점검표가 쓰는 메모 key 와 같다.
- * 사용자가 고쳐 원문이 사라진 표시는 빠진다(그 메모는 '고침 · 나'가 된다).
+ * 사용자가 고쳐 원문이 사라진 표시는 빠진다(그 메모는 '고침, 나'가 된다).
  */
 export function flaggedSentences(q: Pick<CoverLetterQuestion, 'id' | 'draft' | 'writing'>, steps: DraftStep[], text: string): { key: string; code: string; value: string | null }[] {
   if (!q.draft) return [];

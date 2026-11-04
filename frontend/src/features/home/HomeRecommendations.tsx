@@ -34,7 +34,7 @@ export function HomeRecommendations() {
     {isDemo && <p className="home-recommendations__notice">체험용 예시 공고예요.</p>}
     {!supported ? <p className="home-panel-empty">공고 매칭 기능을 연결하면 추천 공고가 표시돼요.</p>
       : loading ? <p className="home-panel-empty" role="status">추천 공고를 불러오고 있어요.</p>
-      : confirmed.length === 0 ? <p className="home-panel-empty">경험 카드를 확정하면 맞는 공고를 골라 드려요.</p>
+      : confirmed.length === 0 ? <p className="home-panel-empty">경험 카드가 확정되면 맞는 공고를 골라 드려요.</p>
       : picks.length ? picks.map((pick) => <Link className="recommended-job" key={pick.posting.id} to={`/match/${encodeURIComponent(pick.posting.id)}`}>
         <span className="recommended-job__logo">{pick.companyName.slice(0, 1)}</span><span className="recommended-job__copy"><strong>{pick.posting.title}</strong><span>{pick.companyName}</span><small>{deadlineLabel(pick.posting.deadline)}</small></span><ChevronRight size={17} aria-hidden />
       </Link>)

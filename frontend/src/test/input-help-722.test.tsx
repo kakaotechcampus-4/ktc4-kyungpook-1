@@ -110,7 +110,7 @@ describe('답 칸 글자 수 안내', () => {
     const hint = () => area.closest('li')!.querySelector('[aria-live="polite"]')!; // 안내 문구만 읽어 주고, 바뀌는 글자 수는 읽지 않는다
     fireEvent.change(area, { target: { value: '가'.repeat(99) } });
     expect(hint().textContent).toBe('100자쯤 쓰면 글이 좋아져요'); // AI 가 답 하나를 100자로 어림한다
-    expect(hint().parentElement!.textContent).toBe('100자쯤 쓰면 글이 좋아져요 · 99/1,000');
+    expect(hint().parentElement!.textContent).toBe('100자쯤 쓰면 글이 좋아져요, 99/1,000');
     fireEvent.change(area, { target: { value: '가'.repeat(100) } });
     expect(hint().textContent).toBe('충분해요');
     fireEvent.change(area, { target: { value: '짧게' } });

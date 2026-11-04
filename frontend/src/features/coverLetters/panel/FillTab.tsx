@@ -18,7 +18,7 @@ type Filled = { questionId: string; sentence: string | null };
 
 const chipOf = (q: CoverLetterQuestion | undefined, t: CoverLetterTurn) => {
   const label = t.item ? ITEM_LABEL[t.item] : q?.theme ? THEME_LABEL[q.theme] : null;
-  return label ? `Q${q?.seq ?? '?'} · ${label}` : `Q${q?.seq ?? '?'}`;
+  return label ? `Q${q?.seq ?? '?'}, ${label}` : `Q${q?.seq ?? '?'}`;
 };
 /** 질문 끝의 예시('예: "…"')만 흐리게 */
 const withExample = (text: string) => text.split(/(예: "[^"\n]*")/).map((p, i) => (i % 2 ? <span key={i} className="clp-bub__ex">{p}</span> : p));
@@ -176,7 +176,7 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
             <button type="button" className="clp-link" onClick={() => onShow(done.questionId, done.sentence)}>→ 보기</button>
           </p>
         )}
-        {notPlaced[t.seq] && <p className="clp-tline clp-tline--left">답은 저장했어요 · 글에는 넣지 못해서 첨삭 받기로 다시 시도해 보세요</p>}
+        {notPlaced[t.seq] && <p className="clp-tline clp-tline--left">답은 저장했어요. 글에는 넣지 못해서 첨삭 받기로 다시 시도해 보세요</p>}
       </div>
     );
   };

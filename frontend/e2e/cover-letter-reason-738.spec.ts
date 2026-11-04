@@ -12,7 +12,7 @@ test('지원 이유를 적고 강점 둘을 고르면 초안까지 간다', asyn
   const reason = page.getByLabel('지원 이유', { exact: true });
   const start = page.getByRole('button', { name: '카드 고르기', exact: true });
   await reason.fill('결제가 좋아서');
-  await expect(page.locator('#cl-reason-hint')).toHaveText('20자 이상 적어 주세요 · 지금 6자');
+  await expect(page.locator('#cl-reason-hint')).toHaveText('20자 이상 적어 주세요. 지금 6자예요');
   await expect(start).toBeDisabled();
   await reason.fill('결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요');
   await expect(page.locator('#cl-reason-hint')).toBeEmpty();

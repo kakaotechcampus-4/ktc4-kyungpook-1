@@ -43,7 +43,7 @@ test('맞춰 본 뒤: 상자에 순위 번호가 붙은 타일 5개가 오르고
   await expect(tile('가온소프트').locator('.result-tile__names')).toHaveText('Java·Spring, PostgreSQL 등 3개가 맞아요');
   await expect(tile('나래랩스').locator('.result-tile__count')).toHaveText('필수 4개 중 2개 맞아요');
   await expect(tile('나래랩스').locator('.result-tile__names')).toHaveText('Kafka, 메시지 큐 운영 경험이 아직 없어요');
-  await expect(tile('다온페이').locator('.result-tile__count')).toHaveText('기술·경험 필수 조건이 없어요, 우대 2개 중 1개가 맞아요');
+  await expect(tile('다온페이').locator('.result-tile__count')).toHaveText('기술과 경험 필수 조건이 없어요, 우대 2개 중 1개가 맞아요');
   await expect(tile('다온페이').locator('.result-tile__names')).toHaveCount(0);
   await expect(tile('마루데이터').locator('.result-tile__names')).toHaveText('Spark, Airflow 경험이 아직 없어요');
 

@@ -56,14 +56,14 @@ function PostingLine({ posting }: { posting: CoverLetterPosting }) {
     <p className="cl-posting-line">
       <Briefcase size={14} aria-hidden />
       <span className="c-3">지원 공고</span>
-      <span className="cl-posting-line__text"><b>{posting.company}</b> · {posting.title}</span>
+      <span className="cl-posting-line__text"><b>{posting.company}</b>, {posting.title}</span>
       <Link to={`/match/${encodeURIComponent(posting.id)}`} className="cl-posting-line__link">공고 보기</Link>
     </p>
   );
 }
 
 /** 기다리는 화면 세 곳(②·④·⑤)의 제목 아래 한 줄 — 서버가 진행률을 주지 않아 걸리는 시간만 어림으로 말한다 */
-const WaitNote = () => <span className="cl-wait-note">보통 1~2분 걸려요 · 떠나도 돼요</span>;
+const WaitNote = () => <span className="cl-wait-note">보통 1~2분 걸리니 떠나도 돼요</span>;
 
 /** ② 문항마다 카드를 고르는 동안 — 종이의 문항마다 상태 한 줄, 고른 카드와 이유는 여백 메모로 붙는다(#618) */
 function AssignWait({ letter }: { letter: CoverLetter }) {
@@ -114,7 +114,7 @@ function QuestionReview({ q, onPick }: { q: CoverLetterQuestion; onPick: () => v
         <span className="cl-q__no" aria-hidden>{q.seq}</span>
         <div className="stack" style={{ gap: 2 }}>
           <h2 id={`q-${q.id}`} className="cl-q__text">{q.text}</h2>
-          <span className="t-13 c-3">{[q.theme && THEME_LABEL[q.theme], `${q.charLimit.toLocaleString()}자 이내`].filter(Boolean).join(' · ')}</span>
+          <span className="t-13 c-3">{[q.theme && THEME_LABEL[q.theme], `${q.charLimit.toLocaleString()}자 이내`].filter(Boolean).join(', ')}</span>
         </div>
         <Button variant="text" className="cl-ac__change" onClick={onPick} aria-label={`${q.seq}번 문항 카드 바꾸기`}>카드 바꾸기</Button>
       </div>
@@ -144,7 +144,7 @@ function QuestionReview({ q, onPick }: { q: CoverLetterQuestion; onPick: () => v
               const chosen = c.cardId === q.primaryCard?.id;
               return (
                 <li key={c.cardId} className={chosen ? 'cl-compared--picked' : undefined}>
-                  <Link to={`/cards/${encodeURIComponent(c.cardId)}`}>{c.title}</Link>{chosen && <span className="cl-compared__tag"> · 고름</span>}
+                  <Link to={`/cards/${encodeURIComponent(c.cardId)}`}>{c.title}</Link>{chosen && <span className="cl-compared__tag"> (고름)</span>}
                   {c.note && <span className="cl-compared__note">{c.note}</span>}
                 </li>
               );
@@ -183,7 +183,7 @@ function MaterialLine({ q }: { q: CoverLetterQuestion }) {
   const m = materialLine(q.materials);
   return (
     <p className="cl-ready">
-      재료 {m.have}/{m.total} · {m.missing.length > 0 && <span className="cl-ready__miss">{m.missing.join(', ')}</span>}{m.rest}
+      재료 {m.have}/{m.total} ({m.missing.length > 0 && <span className="cl-ready__miss">{m.missing.join(', ')}</span>}{m.rest})
     </p>
   );
 }

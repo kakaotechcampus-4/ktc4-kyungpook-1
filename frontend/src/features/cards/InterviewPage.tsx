@@ -57,15 +57,17 @@ export function InterviewPage() {
   // 넘긴 질문도 질문 상한에 센다(서버 규칙)
   const capReached = allTurns.length >= maxTurns;
 
-  // 칸을 정해 들어오면 그 칸을, 처음인데 칸이 없으면 AI 가 고른 칸을 묻는다
+  // 칸을 정해 들어오면 그 칸을, 처음인데 칸이 없으면 AI 가 고른 칸을 묻는다.
+  // 확정 카드는 더 물을 수 없다 — 카드를 받아 초안인 걸 확인하기 전에는 묻지 않는다(확정 카드에 들어오기만 해도 POST 가 나가던 문제)
+  const draftReady = q.data?.status === 'DRAFT';
   useEffect(() => {
-    if (turns.isSuccess && !open && !autoAsked.current && !capReached && (field || allTurns.length === 0)) {
+    if (draftReady && turns.isSuccess && !open && !autoAsked.current && !capReached && (field || allTurns.length === 0)) {
       autoAsked.current = true;
       ask.mutate(field ?? undefined, {
         onSuccess: (turn) => turn ? track('interview_asked', { cardId, field: turn.field }) : setAiDone(true),
       });
     }
-  }, [turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
+  }, [draftReady, turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
 
   // 답하거나 넘긴 뒤에는 칸을 정하지 않고 묻는다. AI 가 다음 칸을 고르거나, 더 물을 것이 없으면 null 로 끝낸다
   const askNext = (turnsAfter: number) => {

@@ -162,7 +162,7 @@ describe('③ 카드 확인 화면', () => {
     mount(letter());
     expect(screen.getByRole('link', { name: '팀원과 토큰 저장 위치로 갈린 경험' })).toHaveAttribute('href', '/cards/card_04');
     expect(screen.getByText('의견을 맞춘 과정이 분명해서')).toBeInTheDocument();
-    expect(document.querySelector('.cl-ready')).toHaveTextContent('재료 2/5 · 결과, 배운 점, 계기는 다음에 물어요');
+    expect(document.querySelector('.cl-ready')).toHaveTextContent('재료 2/5 (결과, 배운 점, 계기는 다음에 물어요)');
     fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
     const support = await screen.findByRole('radiogroup', { name: '보조 카드' });
     expect(within(support).getByRole('radio', { name: /팀원과 토큰 저장 위치로 갈린 경험/ })).toBeDisabled();
@@ -206,6 +206,8 @@ describe('① 입력 화면', () => {
     db.cards.forEach((c) => { c.status = 'DRAFT'; });
     mount(null, '/cover-letters/new');
     await waitFor(() => expect(screen.getByText('확정한 카드가 없어요')).toBeInTheDocument());
+    // 카드는 네 칸이 모두 차고 확인 필요한 칸이 없으면 서버가 자동으로 확정한다(Card.settle) — 눌러서 확정하라고만 하지 않고 그 규칙을 알린다
+    expect(screen.getByText(/네 칸이 모두 차고 확인 필요한 칸이 없으면 카드가 자동으로 확정돼요/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 고르기' })).toBeDisabled();
   });
 });

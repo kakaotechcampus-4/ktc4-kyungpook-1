@@ -42,12 +42,12 @@ const mountMatch = (path: string) => {
 };
 
 describe('M-02 공고 매칭 화면의 말투와 용어', () => {
-  it('머리 한 줄은 "채용" 과 명령형을 쓰지 않고, 무엇으로 맞는 공고를 고르는지 알려 준다', async () => {
+  it('결과 상자의 안내 한 줄은 "채용" 과 명령형을 쓰지 않고, 무엇으로 맞는 공고를 고르는지 알려 준다', async () => {
     vi.spyOn(matchingApi, 'list').mockResolvedValue(sampleList.data.map((x) => MatchTarget.parse(x)));
     const { container } = mountMatch('/match');
     await screen.findByText('가온소프트');
-    const sub = container.querySelector('.match-head__sub')!.textContent!;
-    expect(sub).toContain('확정한 경험 카드와 인적사항');
+    const sub = container.querySelector('.result-box__meta')!.textContent!;
+    expect(sub).toMatch(/확정 카드.* 인적사항/);
     expect(sub).not.toMatch(/채용|하세요|확인하세요/);
     expect(sub).not.toMatch(FORMAL);
   });

@@ -198,18 +198,22 @@ export const RepoRecommendation = z.object({
   ),
 });
 export type RepoRecommendation = z.infer<typeof RepoRecommendation>;
+const namedCondition = z.object({ text: z.string(), techs: z.array(z.string()) });
 /**
  * 공고 페이지 위쪽 '나와 맞는 기업'(#614, `GET /recommendations`). 서버는 '내 조건으로 매칭하기'(`POST /recommendations`, 같은 응답)를 누를 때만 계산한다.
  *  - COMPUTING 동안 progress 로 '공고 15곳 중 6곳 확인' 을 그린다(그 밖에는 null). 계산은 1분 안팎이다.
  *  - FAILED 는 실패했거나 계산이 멈춘 것이라 다시 누르면 새로 계산한다. 계산 중·실패여도 지난 기업은 companies 에 남아 있다.
  *  - stale 이면 계산 뒤 확정 카드나 인적사항이 바뀐 것 → '조건이 바뀌었어요 — 다시 매칭하기'.
  *  - 기업은 많아야 5곳이고 순위 순서다. requiredMet / requiredTotal 로 '필수 4개 중 3개' 를 쓴다(학력·경력 같은 일반 조건은 세지 않는다).
+ *  - checked 는 계산할 때 확인한 공고 수(계산한 적 없으면 0). 이 칸이 생기기 전 서버는 주지 않아 0 으로 읽는다.
+ *  - met·missing 은 맞은·모자란 필수 조건 이름(공고에 적힌 순서, 각 3개까지). techs 는 카드 techs 와 같은 기술 이름이고 없는 조건은 빈 배열이다. 옛 서버에는 없어 빈 배열로 읽는다.
  */
 export const OverallRecommendation = z.object({
   status: RecommendationStatus,
   computedAt: z.string().datetime({ offset: true }).nullable(),
   stale: z.boolean(),
   progress: z.object({ done: count, total: count }).nullable(),
+  checked: count.default(0),
   companies: z.array(
     z.object({
       companyId,
@@ -220,6 +224,8 @@ export const OverallRecommendation = z.object({
       requiredTotal: count,
       preferredMet: count,
       preferredTotal: count,
+      met: z.array(namedCondition).default([]),
+      missing: z.array(namedCondition).default([]),
     }),
   ),
 });

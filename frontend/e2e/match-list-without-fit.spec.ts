@@ -62,11 +62,12 @@ test('예전 주소의 sort·experience 값이 남아 있어도 같은 목록을
   await expect(page.locator('.match-card')).toHaveCount(5);
 });
 
-test('확정 카드가 0장이면 안내와 카드 확정 링크를 보여 준다', async ({ page }) => {
+test('확정 카드가 0장이면 맞춰 본 결과 상자가 안내와 카드 확정 링크를 보여 준다', async ({ page }) => {
   await loginAsDemo(page);
   await serverWithoutFit(page, 0);
   await page.goto('/match');
-  await expect(page.getByText(/확정한 카드가 없어요/)).toBeVisible();
-  await expect(page.getByRole('link', { name: '카드 확정하러 가기' })).toHaveAttribute('href', '/cards');
+  const box = page.getByRole('region', { name: '내 카드로 맞춰 본 공고' });
+  await expect(box.getByText(/확정한 카드가 없어요/)).toBeVisible();
+  await expect(box.getByRole('link', { name: '카드 확정하러 가기' })).toHaveAttribute('href', '/cards');
   await expect(page.locator('.match-card')).toHaveCount(5);
 });

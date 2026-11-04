@@ -216,6 +216,8 @@ body { overflow-x: hidden; }
   .repo-ctx > .grow { min-width: 0; }
   .repo-ctx__name { overflow-wrap: anywhere; }
   .repo-ctx > .btn { flex-shrink: 0; white-space: nowrap; }
+  .repo-ctx:has(> .repo-ctx__actions) { flex-wrap: wrap; }
+  .repo-ctx__actions { flex-basis: 100%; justify-content: flex-end; }
   .mask-presets { flex-wrap: wrap; }
   .mask-presets .chip { flex: 0 0 auto; min-height: 44px; white-space: nowrap; }
   .note { flex-direction: column; gap: 6px; }

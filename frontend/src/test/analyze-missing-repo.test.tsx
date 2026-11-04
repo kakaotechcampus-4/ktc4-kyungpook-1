@@ -59,7 +59,7 @@ describe('정리 시작 화면 — 레포를 못 찾거나 조회에 실패했�
 
   it('있는 레포는 그대로 시작 화면을 보여 준다', async () => {
     stubApi();
-    const repoId = (handle('GET', '/repos', new URLSearchParams(), {}, true).data as { id: string }[])[0].id;
+    const repoId = (handle('GET', '/repos', new URLSearchParams(), {}, true).data as { id: string; lastAnalyzedAt: string | null }[]).find((r) => !r.lastAnalyzedAt)!.id; // 정리한 레포는 '지난 결과 보기' 화면
     mount(`/repos/${repoId}/run`);
     expect(await screen.findByRole('heading', { name: '정리를 시작할까요' })).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: '정리 시작' })).toBeInTheDocument();

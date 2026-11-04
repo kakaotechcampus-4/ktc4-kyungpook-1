@@ -115,7 +115,7 @@ export function ReposPage() {
               </div>
               {detail.isPending ? <Skeleton h={160} /> : detail.data && <PermissionGrid compact reads={detail.data.disclosure.reads} skips={detail.data.disclosure.skips} />}
               {detail.isError && <QueryFailure error={detail.error} retry={() => detail.refetch()} pending={detail.isFetching} />}
-              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요.</Note>}
+              {selected.lastAnalyzedAt && <Note strong="전에 정리한 레포예요" tone="inset">다시 정리해 새 기록을 확인할 수 있어요. 지난 결과만 보려면 <Link to={`/repos/${selected.id}/candidates`}>지난 후보 보기</Link></Note>}
             </div>
         </Modal>
       )}

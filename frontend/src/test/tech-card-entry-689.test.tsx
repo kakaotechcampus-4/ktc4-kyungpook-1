@@ -32,12 +32,13 @@ describe('#689 레포 안에서 커밋을 골라 기술 카드 만들기', () =>
   it('후보가 없는 레포의 보드에도 직접 추가가 있고, 추가하면 그 후보가 보드에 나온다', async () => {
     connectMockServer();
     mountApp(routes(), '/repos/r_board/candidates');
-    expect(await screen.findByRole('heading', { name: '자동으로 찾은 후보가 없어요' })).toBeInTheDocument();
+    // r_board 는 아직 정리하지 않은 레포 — 그 화면에도 직접 추가가 있다
+    expect(await screen.findByRole('heading', { name: '아직 정리하지 않은 레포예요' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '+ 직접 추가' }));
     await addCandidate('직접 만든 배포 도구');
 
     expect(await screen.findByText('직접 만든 배포 도구')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '자동으로 찾은 후보가 없어요' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '아직 정리하지 않은 레포예요' })).not.toBeInTheDocument();
   });
 
   it('직접 추가한 후보는 바로 골라져, 카드 만들기만 누르면 된다', async () => {

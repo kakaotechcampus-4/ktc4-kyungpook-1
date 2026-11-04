@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useActiveJobs, useJob, useMe, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
 import { isGithubUnauthorized, reconnectGithub, reconnectGithubTo } from '@/lib/githubReconnect';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Track } from '@/components/ui';
+import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton, Track } from '@/components/ui';
 import { JobLiveness } from '@/components/JobLiveness';
 import { AiWait } from '@/components/ui/AiWait';
 import { Sparkles } from 'lucide-react';
@@ -115,17 +115,30 @@ export function AnalyzePage() {
     );
   }
 
+  // 레포를 확인하기 전에는 시작 화면을 그리지 않는다 — 없는 레포 주소에서 404 안내 전에 눌리는 '정리 시작' 이 잠깐 보였다
+  if (!jobId && repo.isPending) {
+    return <main className="main"><Breadcrumb items={[...crumbs, { label: '정리' }]} /><Skeleton h={28} w={220} /><Skeleton h={72} /></main>;
+  }
+
   if (!jobId) {
     // 연결이 끊긴 걸 알고 있으면 눌러서 실패하게 두지 않는다. 연결은 있다는데 서버가 403 으로 거절하면 같은 안내를 띄운다.
     const disconnected = me.data?.github?.connected === false;
+    // 정리한 적이 있으면 결과 보기를 먼저 둔다 — 끝난 작업은 진행 목록에 없어서 이전에는 시작 화면만 나왔다
+    const analyzed = !!repo.data?.lastAnalyzedAt;
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs, { label: '정리' }]} />
-        <PageTitle>정리를 시작할까요</PageTitle>
-        <RepoContext name={name} note={disconnected ? 'GitHub 연결이 끊겨서 지금은 읽을 수 없어요.' : restart.isPending ? '정리를 요청하고 있어요. 곧 읽기 시작해요.' : active.isPending ? '진행 중인 정리를 확인하고 있어요…' : '진행 중인 정리가 없어요.'}
+        <PageTitle>{analyzed ? '전에 정리한 레포예요' : '정리를 시작할까요'}</PageTitle>
+        <RepoContext name={name} note={disconnected ? 'GitHub 연결이 끊겨서 지금은 읽을 수 없어요.' : restart.isPending ? '정리를 요청하고 있어요. 곧 읽기 시작해요.' : active.isPending ? '진행 중인 정리를 확인하고 있어요…'
+            : analyzed ? '지난 결과를 이어서 보거나, 다시 정리해 새 기록을 확인할 수 있어요.' : '진행 중인 정리가 없어요.'}
           right={disconnected
             ? <Button onClick={reconnectGithub}>GitHub 다시 연결</Button>
-            : <Button onClick={retry} loading={restart.isPending} disabled={active.isPending}>정리 시작</Button>} />
+            : analyzed
+              ? <div className="row repo-ctx__actions" style={{ gap: 8 }}>
+                  <Button variant="outline" onClick={retry} loading={restart.isPending} disabled={active.isPending}>다시 정리</Button>
+                  <Link to={`/repos/${repoId}/candidates`} className="btn btn--primary">지난 결과 보기</Link>
+                </div>
+              : <Button onClick={retry} loading={restart.isPending} disabled={active.isPending}>정리 시작</Button>} />
         {isGithubUnauthorized(restart.error) && <QueryFailure error={restart.error} retry={retry} />}
       </main>
     );

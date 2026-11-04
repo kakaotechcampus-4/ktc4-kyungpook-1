@@ -9,6 +9,8 @@ import com.gitory.backend.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
@@ -71,6 +73,7 @@ class RepositoryReadmeServiceTest {
 
         service.refresh(userId, connectionId);
         assertThat(readmeSummary()).isEqualTo("커밋 기록으로 경험 카드를 만들어 주는 서비스예요.");
+        assertThat(readmeSummarySource()).isEqualTo("RULE");
 
         service.refresh(userId, connectionId);
         assertThat(readmeSummary()).isEqualTo("저장소를 분석해 경험 카드 후보를 보여 주는 서비스예요.");
@@ -113,9 +116,91 @@ class RepositoryReadmeServiceTest {
 
     }
 
+    @Test
+    @DisplayName("사용자 설명·GitHub 설명·README 문장이 셋 다 비면 AI 요약이 필요하다고 알리고, 저장소 정보와 README 앞 3,000자를 돌려준다")
+    void asksForAiSummaryWhenNothingToShow() {
+
+        jdbc.update("UPDATE repository SET primary_language = 'Java' WHERE github_repo_id = 100");
+        String readme = "# gitory\n\n- " + "a".repeat(5_000);
+        given(github.readme(userId, "grow22", "gitory")).willReturn(Optional.of(readme));
+
+        ReadmeRefresh refresh = service.refresh(userId, connectionId);
+
+        assertThat(refresh).isEqualTo(new ReadmeRefresh(true, "grow22", "gitory", "Java", readme.substring(0, 3_000)));
+        assertThat(readmeSummary()).isNull();
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"github_description", "description"})
+    @DisplayName("GitHub 설명이나 사용자가 쓴 설명이 있으면 README 문장이 없어도 AI 요약이 필요 없다")
+    void needsNoAiSummaryWhenDescriptionExists(String column) {
+
+        jdbc.update("UPDATE user_repository SET " + column + " = '이미 있는 설명' WHERE id = ?", connectionId);
+        given(github.readme(userId, "grow22", "gitory")).willReturn(Optional.of("# gitory\n\n- 목록뿐인 README"));
+
+        assertThat(service.refresh(userId, connectionId).needsAiSummary()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("README 에서 소개 문장을 골랐으면 AI 요약이 필요 없다")
+    void needsNoAiSummaryWhenRulePicksSentence() {
+
+        given(github.readme(userId, "grow22", "gitory"))
+                .willReturn(Optional.of("# gitory\n\n커밋 기록으로 경험 카드를 만들어 주는 서비스예요."));
+
+        assertThat(service.refresh(userId, connectionId).needsAiSummary()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("README 가 없어도 지난번에 AI 가 만든 문장이 남아 있으면 AI 요약을 다시 요청하지 않고 README 앞부분은 비어 있다")
+    void keepsEarlierAiSentenceWhenReadmeIsMissing() {
+
+        jdbc.update("UPDATE user_repository SET readme_summary = ?, readme_summary_source = 'AI' WHERE id = ?",
+                "지난번에 AI 가 만든 소개 문장이에요.", connectionId);
+        given(github.readme(userId, "grow22", "gitory")).willReturn(Optional.empty());
+
+        ReadmeRefresh refresh = service.refresh(userId, connectionId);
+
+        assertThat(refresh.needsAiSummary()).isFalse();
+        assertThat(refresh.readmeHead()).isNull();
+        assertThat(readmeSummary()).isEqualTo("지난번에 AI 가 만든 소개 문장이에요.");
+
+    }
+
+    @Test
+    @DisplayName("README 를 읽다 실패하면 예외 없이 AI 요약도 요청하지 않는다")
+    void asksForNoAiSummaryWhenGithubFails() {
+
+        jdbc.update("UPDATE user_repository SET readme_summary = NULL WHERE id = ?", connectionId);
+        given(github.readme(userId, "grow22", "gitory")).willThrow(new ResourceAccessException("timeout"));
+
+        assertThat(service.refresh(userId, connectionId).needsAiSummary()).isFalse();
+
+    }
+
+    @Test
+    @DisplayName("AI 가 만든 문장은 출처 AI 로 저장한다")
+    void recordsAiSentenceWithAiSource() {
+
+        service.recordAiSummary(connectionId, "커밋 기록으로 경험 카드를 만들어 주는 서비스예요.");
+
+        assertThat(readmeSummary()).isEqualTo("커밋 기록으로 경험 카드를 만들어 주는 서비스예요.");
+        assertThat(readmeSummarySource()).isEqualTo("AI");
+
+    }
+
     private String readmeSummary() {
 
         return jdbc.queryForObject("SELECT readme_summary FROM user_repository WHERE id = ?", String.class, connectionId);
+
+    }
+
+    private String readmeSummarySource() {
+
+        return jdbc.queryForObject("SELECT readme_summary_source FROM user_repository WHERE id = ?", String.class, connectionId);
 
     }
 }

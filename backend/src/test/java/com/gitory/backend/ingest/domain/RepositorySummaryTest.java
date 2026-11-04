@@ -64,10 +64,40 @@ class RepositorySummaryTest {
 
     }
 
+    @Test
+    @DisplayName("README 문장의 출처가 AI 면 설명 출처도 AI 이고 문장을 그대로 고른다")
+    void aiSentenceIsReportedAsAi() {
+
+        RepositorySummary summary = summary(null, null, "AI 가 만든 문장", ReadmeSummarySource.AI);
+
+        assertThat(summary.description()).isEqualTo("AI 가 만든 문장");
+        assertThat(summary.descriptionSource()).isEqualTo(DescriptionSource.AI);
+
+    }
+
+    @Test
+    @DisplayName("사용자가 쓴 설명이나 GitHub 설명이 있으면 AI 가 만든 문장보다 앞선다")
+    void userAndGithubDescriptionsComeBeforeAiSentence() {
+
+        RepositorySummary user = summary("내가 쓴 설명", "GitHub 설명", "AI 가 만든 문장", ReadmeSummarySource.AI);
+        RepositorySummary github = summary(null, "GitHub 설명", "AI 가 만든 문장", ReadmeSummarySource.AI);
+
+        assertThat(user.descriptionSource()).isEqualTo(DescriptionSource.USER);
+        assertThat(github.descriptionSource()).isEqualTo(DescriptionSource.GITHUB);
+        assertThat(github.description()).isEqualTo("GitHub 설명");
+
+    }
+
     private static RepositorySummary summary(String user, String github, String readme) {
 
+        return summary(user, github, readme, null);
+
+    }
+
+    private static RepositorySummary summary(String user, String github, String readme, ReadmeSummarySource source) {
+
         return new RepositorySummary(1L, UUID.randomUUID(), "grow22", "gitory", "Java", null, null, null, null,
-                0, 0, 0, 0, 0, user, github, readme);
+                0, 0, 0, 0, 0, user, github, readme, source);
 
     }
 }

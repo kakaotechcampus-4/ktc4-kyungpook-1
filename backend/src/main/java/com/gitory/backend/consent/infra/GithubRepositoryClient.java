@@ -36,6 +36,9 @@ public class GithubRepositoryClient {
     private static final int README_MAX_BYTES = 64 * 1024;
     private static final MediaType RAW_MEDIA_TYPE = MediaType.parseMediaType("application/vnd.github.raw+json");
 
+    // 저장소가 무슨 일을 하는지 짐작하는 데는 최상위 이름 앞쪽이면 충분해서 AI 로 보내는 양을 줄이려고 자른다
+    private static final int TOP_LEVEL_MAX = 30;
+
     // GitHub 이 결과를 정렬 인자와 상관없이 id 오름차순으로 줘서 앞쪽만 받으면 최근 저장소가 잘리므로 여러 쪽을 받고, 상한에 닿아도 남으면 경고를 남긴다
     private static final int MAX_CONTRIBUTED_PAGES = 3;
 
@@ -149,6 +152,43 @@ public class GithubRepositoryClient {
 
                     return Optional.of(new String(response.getBody().readNBytes(README_MAX_BYTES), StandardCharsets.UTF_8));
                 });
+
+    }
+
+    /** 최상위의 파일·폴더 이름을 GitHub 이 준 순서대로 30개까지 돌려주며, 저장소가 비어 있거나 찾을 수 없으면(404) 빈 목록이고 그 밖의 실패는 예외로 알린다 */
+    public List<String> fetchTopLevelNames(String token, String owner, String name) {
+
+        JsonNode entries = restClient.get()
+                .uri("/repos/{owner}/{name}/contents/", owner, name)
+                .headers(headers -> headers.setBearerAuth(token))
+                .exchange((request, response) -> {
+                    HttpStatusCode status = response.getStatusCode();
+                    if (status.value() == 404) {
+                        return null;
+                    }
+                    if (status.is4xxClientError()) {
+                        throw new HttpClientErrorException(status, response.getStatusText());
+                    }
+                    if (status.isError()) {
+                        throw new HttpServerErrorException(status, response.getStatusText());
+                    }
+
+                    return response.bodyTo(JsonNode.class);
+                });
+
+        if (entries == null) {
+            return List.of();
+        }
+
+        List<String> names = new ArrayList<>();
+        for (JsonNode entry : entries) {
+            JsonNode entryName = entry.path("name");
+            if (names.size() < TOP_LEVEL_MAX && isFilled(entryName)) {
+                names.add(entryName.asString());
+            }
+        }
+
+        return names;
 
     }
 

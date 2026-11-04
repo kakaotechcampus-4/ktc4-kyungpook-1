@@ -4,6 +4,7 @@ import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.CardThemePort;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
+import com.gitory.backend.agent.port.RepoSummaryPort;
 import com.gitory.backend.agent.port.StarConfidence;
 import com.gitory.backend.agent.port.StarDraft;
 import com.gitory.backend.agent.port.StarDraftListener;
@@ -108,7 +109,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
-        CommitSummaryService.class, RepositoryReadmeService.class})
+        CommitSummaryService.class, RepositoryReadmeService.class, RepoSummaryFiller.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ExtendWith(OutputCaptureExtension.class)
@@ -151,6 +152,9 @@ class CardDraftRunnerTest {
 
     @MockitoBean
     GithubCollectionAccessPort githubAccess;
+
+    @MockitoBean
+    RepoSummaryPort summaries;
 
     @MockitoBean
     CardThemePort themes;

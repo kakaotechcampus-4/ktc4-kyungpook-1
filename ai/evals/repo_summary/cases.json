@@ -1,0 +1,17 @@
+[
+  {"repo": "kakaotechcampus-4/ktc4-kyungpook-1", "kind": "소개 분명", "expect": "SUMMARY", "memo": "Gitory, 커밋과 PR 을 자소서 경험으로. HTML 머리말 뒤에 서비스 소개가 있다"},
+  {"repo": "kakaotechcampus-4/ktc4-kangwon-1", "kind": "소개 분명", "expect": "SUMMARY", "memo": "채움, 빈 상가에 맞는 업종 분석 리포트. 서비스 업종 51종 같은 숫자가 README 안에 있다"},
+  {"repo": "kakaotechcampus-4/ktc4-pusan-2", "kind": "소개 분명", "expect": "SUMMARY", "memo": "피치코치, 발표 연습 코칭. 소개·목적·기능 절이 나뉘어 있다"},
+  {"repo": "kakaotechcampus-4/ktc4-chonnam-2", "kind": "소개 분명", "expect": "SUMMARY", "memo": "대신고, 블랙박스 영상에서 신고 자료 준비. README 가 12,000자라 3,000자에서 잘린다"},
+  {"repo": "Grow22/StackBreak", "kind": "소개 분명", "expect": "SUMMARY", "memo": "C 로 만든 1:1 대전 터미널 게임. HTML 과 배지가 많은 머리말, 이모지"},
+  {"repo": "kakaotechcampus-4/ktc4-chungnam-1", "kind": "소개 분명", "expect": "SUMMARY", "memo": "새록, 면회 대화 소재를 돕는 Flutter 앱. 언어가 Dart"},
+  {"repo": "Grow22/Grow22", "kind": "기본 틀", "expect": "NULL", "memo": "GitHub 프로필 README 기본 틀(주석 처리된 예시 문구와 배지 하나)"},
+  {"repo": "kakaotechcampus-4/ktc4-kyungpook-5", "kind": "설치법뿐", "expect": "NULL", "memo": "팀 이름 한 줄 뒤에 로컬 실행 방법(docker compose)만 있다"},
+  {"repo": "kakaotechcampus-4/ktc4-pusan-4", "kind": "폴더 구조뿐", "expect": "NULL", "memo": "팀 이름 한 줄 뒤에 폴더 구조(Java 21 + Spring Boot)와 문서 링크만 있다"},
+  {"repo": "kakaotechcampus-4/ktc4-kangwon-3", "kind": "제목뿐", "expect": "NULL", "memo": "README 가 팀 이름 두 줄(48자)뿐이다"},
+  {"repo": "Grow22/Hearo", "kind": "README 없음", "expect": "EITHER", "memo": "README 없음, 언어 Jupyter Notebook, 폴더 이름(docs·frontend·raspberry-pi·server·yamnet)만 있다"},
+  {"repo": "Grow22/library-app", "kind": "README 없음", "expect": "EITHER", "memo": "README 없음, Java, build.gradle·src 같은 파일과 레포 이름뿐이다"},
+  {"repo": "Grow22/-", "kind": "README 없음", "expect": "NULL", "memo": "빈 저장소(파일·언어·README 모두 없음)"},
+  {"repo": "kakaotechcampus-4/ktc4-chungnam-2", "kind": "한국어 README", "expect": "SUMMARY", "memo": "README 앞부분은 협업 규칙이고 서비스 소개('이 서비스는?')는 그 아래 절에 있다"},
+  {"repo": "kakaotechcampus-4/ktc4-pusan-1", "kind": "한국어 README", "expect": "SUMMARY", "memo": "IRYA, 한 줄 소개와 폴더 설명뿐인 짧은 README(영어·한국어 섞임)"}
+]

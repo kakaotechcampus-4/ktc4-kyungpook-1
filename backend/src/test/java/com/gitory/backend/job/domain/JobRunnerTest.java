@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
+import com.gitory.backend.agent.port.RepoSummaryPort;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.common.infra.ai.AiCallContext;
@@ -99,7 +100,8 @@ import java.util.function.Consumer;
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
         CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class,
-        CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class, RepositoryReadmeService.class})
+        CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class, RepositoryReadmeService.class,
+        RepoSummaryFiller.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ExtendWith(OutputCaptureExtension.class)
@@ -147,6 +149,9 @@ class JobRunnerTest {
     @Autowired
     RepositoryReadmeService readmes;
 
+    @Autowired
+    RepoSummaryFiller summaryFiller;
+
     @MockitoBean
     RepositoryActivityPort activities;
 
@@ -158,6 +163,9 @@ class JobRunnerTest {
 
     @MockitoBean
     GithubCollectionAccessPort githubAccess;
+
+    @MockitoBean
+    RepoSummaryPort summaries;
 
     @MockitoBean
     CardDraftRunner cardDrafts;
@@ -224,6 +232,25 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("README 에서 소개 문장을 못 고르고 다른 설명도 없으면 AI 요약을 한 번 부르고, 받은 문장을 출처 AI 로 남긴다")
+    void asksAiForSummaryWhenReadmeHasNoSentence() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(githubAccess.readme(userId, "grow22", "gitory")).willReturn(Optional.of("# gitory\n\n- 목록뿐인 README"));
+        given(githubAccess.topLevelPaths(userId, "grow22", "gitory")).willReturn(List.of("README.md", "src"));
+        given(summaries.summarize(any())).willReturn(Optional.of("커밋 기록으로 경험 카드를 만들어 주는 서비스예요."));
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        verify(summaries, times(1)).summarize(any());
+        assertThat(readmeSummary()).isEqualTo("커밋 기록으로 경험 카드를 만들어 주는 서비스예요.");
+        assertThat(jdbc.queryForObject("SELECT readme_summary_source FROM user_repository WHERE id = ?", String.class,
+                userRepositoryId)).isEqualTo("AI");
+
+    }
+
+    @Test
     @DisplayName("실시간 진행을 켜면 진행을 받는 수집을 불러, 수집이 끝나기 전에 받은 진행이 Job 단계에 남는다")
     void recordsCollectionProgressWhileCollecting() {
 
@@ -238,7 +265,7 @@ class JobRunnerTest {
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
                 new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(),
-                new JobActivityLog(Clock.systemUTC()), readmes);
+                new JobActivityLog(Clock.systemUTC()), readmes, summaryFiller);
 
         live.claimNext().ifPresent(live::run);
 
@@ -263,7 +290,7 @@ class JobRunnerTest {
         JobActivityLog log = mock(JobActivityLog.class);
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
-                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log, readmes);
+                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log, readmes, summaryFiller);
 
         live.claimNext().ifPresent(live::run);
 
@@ -1225,7 +1252,7 @@ class JobRunnerTest {
         return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
                 new JobDraftProperties(false), null, new JobProgressProperties(false), Clock.systemUTC(),
-                new JobActivityLog(Clock.systemUTC()), readmes);
+                new JobActivityLog(Clock.systemUTC()), readmes, summaryFiller);
 
     }
 

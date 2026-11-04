@@ -38,7 +38,7 @@ export const seedRepos = [
   {
     // 케이스 5 실물 — 실측 프로토타입에서 가져온 진짜 숫자 (TaeHuiKKIM/free-tier-sleep)
     id: 'r_fts', owner: 'TaeHuiKKIM', name: 'free-tier-sleep',
-    description: '무료 요금제로 바꾼 뒤 광고가 쏟아지는 상황을 풍자하는 Unity 게임이에요. 인트로 씬과 광고 연출을 맡았어요.', descriptionSource: 'README',
+    description: '무료 요금제로 바꾼 뒤 광고가 쏟아지는 상황을 풍자하는 Unity 게임이에요. 인트로 씬과 광고 연출을 맡았어요.', descriptionSource: 'AI',
     contribution: { mine: 21, team: 118, ratio: 0.151, level: 'PARTIAL' },
     prCount: 1, reviewCount: 0, language: 'C#', activeFrom: '2026-05-20', activeTo: '2026-06-02',
     lastAnalyzedAt: daysAgo(2), countedAt: daysAgo(1), candidateCount: 4, cardCount: 1, recommended: false,

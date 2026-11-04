@@ -1,5 +1,6 @@
 import { useCallback, useState, type CSSProperties } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
+import { useMe } from '@/api/queries';
 import { ArrowRight } from 'lucide-react';
 import { Button, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -26,6 +27,10 @@ export function LandingPage() {
   const [introRequested, setIntroRequested] = useState(() => shouldPlayLandingIntro(sp));
   const finishIntro = useCallback(() => setIntroRequested(false), []);
   const introActive = introRequested && !consent;
+  // 이미 로그인한 사람이 /login 을 열면 로그인 화면에 머물지 않고 홈으로 간다. 원래 가려던 곳은 AuthGate 가 이어 준다.
+  // (로그아웃은 캐시를 비운 뒤 여기로 오므로 다시 튕기지 않는다)
+  const me = useMe();
+  if (me.isSuccess) return <Navigate to="/" replace />;
 
   return (
     <main className="landing" data-intro={introActive ? 'playing' : 'done'} style={{ '--intro-hold-extension': `${LANDING_HOLD_EXTENSION_MS}ms` } as CSSProperties}>

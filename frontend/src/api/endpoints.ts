@@ -15,6 +15,8 @@ export const endpoints = {
 
   // 레포
   repos: () => api(z.array(S.RepoSummary), '/repos'),
+  // GitHub 을 부르지 않는 저장 목록(BE RepoController). 최신 목록을 기다리는 동안 먼저 보여 준다
+  savedRepos: () => api(z.array(S.RepoSummary), '/repos/saved'),
   repo: (id: string) => api(S.RepoDetail, `/repos/${id}`),
   /**
    * 분석 시작. Idempotency-Key 를 붙이므로 같은 키의 재요청은 새 Job 을 만들지 않고 기존 Job 을 돌려준다.

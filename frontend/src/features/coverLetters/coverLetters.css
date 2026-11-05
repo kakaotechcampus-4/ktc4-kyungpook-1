@@ -137,6 +137,13 @@
 .cl-list li + li { border-top: 1px solid var(--border-default); }
 .cl-list__row { display: flex; align-items: center; gap: 16px; padding: 16px 4px; color: inherit; text-decoration: none; }
 .cl-list__row:hover .w-600 { text-decoration: underline; }
+/* 삭제 버튼은 링크 밖(옆)에 둔다. 행은 버튼 자리만큼 오른쪽을 비운다 */
+.cl-list__item { position: relative; }
+.cl-list__item .cl-list__row { padding-right: 76px; }
+.cl-list__delete { position: absolute; top: 50%; right: 0; transform: translateY(-50%); }
+.cl-crumbbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.cl-delete-title { color: var(--text-primary); font-weight: 600; overflow-wrap: anywhere; }
+@media print { .cl-list__delete, .cl-crumbbar .cl-delete-trigger { display: none; } }
 .cl-list__first { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 640px) {

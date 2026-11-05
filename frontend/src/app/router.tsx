@@ -13,10 +13,12 @@ import { PageLoading } from '@/components/ui/PageLoading';
  *  F1 /settings/github · F2 /settings · F3 /settings/leave · F4 /settings/profile (인적사항, BE #552 계약)
  *  폴더 /cards/repo/:repoId · /cards/activity/:activityId · /cards/direct (경험 카드 목록에서 폴더를 열면, #522)
  *  활동 /activities · /activities/new · /activities/:activityId/edit (레포 밖 경험 묶음, BE #477 계약)
+ *  홈 한 줄 명령 /ask · /ask/:runId (서버가 열린 빌드에서만 — VITE_ASSISTANT_ENABLED, 꺼져 있으면 홈으로)
  */
 const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() => f().then((m) => ({ default: m[name] as React.ComponentType })));
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
+const AskPage = L(() => import('@/features/assistant/AskPage'), 'AskPage');
 const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
 const CoverLettersPage = L(() => import('@/features/coverLetters/CoverLettersPage'), 'CoverLettersPage');
 const CoverLetterNewPage = L(() => import('@/features/coverLetters/CoverLetterNewPage'), 'CoverLetterNewPage');
@@ -59,6 +61,8 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary />,
     children: [
       { path: '/', element: <S><HomePage /></S> },
+      { path: '/ask', element: <S><AskPage /></S> },
+      { path: '/ask/:runId', element: <S><AskPage /></S> },
       { path: '/match', element: <S><MatchListPage /></S> },
       { path: '/match/company/:companyId', element: <S><CompanyPage /></S> },
       { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },

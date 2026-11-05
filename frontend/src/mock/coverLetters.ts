@@ -726,7 +726,7 @@ export function openCoverLetterTurn(id: string, questionId: string): CoverLetter
 
 /**
  * 답 하나 — '무시하고'가 든 말은 범위 밖(OFF_TOPIC), 15자 안쪽이면 꼬리 질문 한 번, 아니면 답을 재료로 저장하고 그 빈칸 자리를 다시 쓴다(FILLED).
- * 다시 쓴 뒤 물을 곳이 남았으면 같은 말에 다음 질문을 잇고, 없으면 끝(DONE) 말을 하나 더 붙인다.
+ * 다시 쓴 말(FILLED)에는 다음 질문을 잇지 않는다 — 실제 서버가 그렇고, 남은 빈칸은 화면이 그 문항을 다시 열 때 묻는다.
  * '실패'가 든 답은 다시 쓰기가 실패한 경우를 흉내 낸다 — 말과 답은 남기고 글은 그대로 두며 rewriteFailed 를 준다.
  */
 export function replyCoverLetterTurn(id: string, questionId: string, body: Any): CoverLetterResult {
@@ -753,15 +753,7 @@ export function replyCoverLetterTurn(id: string, questionId: string, body: Any):
     if (!rewriteFailed) fillDraft(q, g, formalSentence(text));
     st.passed.push(g.key);
     st.pending = null;
-    const next = st.asked < TURN_QUESTIONS ? nextGap(q) : null;
-    if (next) {
-      st.asked++;
-      Object.assign(st, { pending: next, followed: false });
-      pushTurn(l, q, 'AI', `알려 준 대로 그 자리를 다시 썼어요.\n${askLines(q, next)}`, next.item, 'FILLED');
-    } else {
-      pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', g.item, 'FILLED');
-      askOrFinish(l, q, null);
-    }
+    pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', g.item, 'FILLED');
   }
   l.updatedAt = now();
   return turnReply(l, q, rewriteFailed);

@@ -108,7 +108,7 @@ test.describe('반응형 레이아웃', () => {
 
     // 홈은 카드 목록을 두지 않는다. 카드 목록은 묶음 안에 경험 목록을 쓴다(기본 보기는 폴더라 최근순으로 바꿔 본다)
     await page.goto('/');
-    await expect(page.locator('.overview-tile').first()).toBeVisible();
+    await expect(page.getByRole('region', { name: '지금 상태' })).toBeVisible();
     await expect(page.locator('.experience-item')).toHaveCount(0);
     await page.goto('/cards');
     await showCardTiles(page);

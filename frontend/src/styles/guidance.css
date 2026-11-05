@@ -7,13 +7,10 @@
 .btn--primary { background: var(--accent-point); border-color: var(--accent-point); }
 .btn--primary:hover:not(:disabled) { background: var(--accent-point-hover); border-color: var(--accent-point-hover); }
 .btn--primary.btn--loading { background: var(--accent-point) !important; border-color: var(--accent-point) !important; }
-.prompt__go:not(:disabled) { background: var(--accent-point); }
-.prompt__go:hover:not(:disabled) { background: var(--accent-point-hover); }
 .menu-item[aria-current="page"] { box-shadow: inset 3px 0 0 var(--accent-point); }
 .menu-item[aria-current="page"] svg { color: var(--accent-point); }
 .mobile-nav a[aria-current="page"] svg { color: var(--accent-point); }
 /* ───────── 다크 대비 보강 ───────── */
-.prompt__go:disabled { border: 1px solid var(--border-strong); }
 :root[data-theme="dark"] .stardot:not(.stardot--on):not(.stardot--low),
 :root[data-theme="dark"] .stardots--labeled .stardot:not(.stardot--on):not(.stardot--low) .stardot__letter { border-color: var(--text-tertiary); }
 
@@ -21,7 +18,7 @@
  * 화면마다 섹션이 차례로 페이드되고 모든 카드가 hover 에 떠오르는 건 생성된 화면의 기본값처럼 읽힌다(frontend-design 기준).
  * 남기는 것: 메뉴가 열림, 토스트가 나타남, 버튼이 눌림, 기다리는 동안 도는 표시. 카드는 테두리 색만 바뀐다. */
 :root { --motion-fast: .15s; --ease-standard: cubic-bezier(.4, 0, .2, 1); }
-.gcard, .match-card, .resume__item { transition: border-color var(--motion-fast) var(--ease-standard); }
+.gcard, .match-card { transition: border-color var(--motion-fast) var(--ease-standard); }
 .btn { transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), transform .1s var(--ease-standard); }
 .btn:active:not(:disabled) { transform: scale(.98); }
 .select-menu { animation: menu-in var(--motion-fast) var(--ease-standard); transform-origin: top; }
@@ -154,27 +151,6 @@
 .gh-banner__text strong { font-size: 14px; line-height: 20px; font-weight: var(--heading-weight); color: var(--state-open-text); }
 .gh-banner__text span { font-size: 12px; line-height: 18px; color: var(--text-secondary); }
 @media (max-width: 560px) { .gh-banner { flex-wrap: wrap; } .gh-banner .btn { width: 100%; } }
-
-/* ───────── 홈: 다시 온 사용자의 "새 경험 카드 만들기" ───────── */
-.home-start__head { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; }
-.home-start__head h2 { font-size: 20px; line-height: 26px; font-weight: var(--heading-weight); letter-spacing: var(--text-tracking); }
-.home-start__head p { font-size: 14px; line-height: 21px; color: var(--text-secondary); }
-.home-start__row { display: contents; }
-.home-page--returning .prompt { padding: var(--space-24); border: 1px solid var(--border-default); border-radius: var(--radius-xl); background: var(--bg-surface); }
-.home-page--returning .home-start__row { display: flex; align-items: flex-start; gap: 12px; width: 100%; flex-wrap: wrap; }
-.home-page--returning .prompt__card { flex: 1 1 360px; max-width: 640px; box-shadow: none; background: var(--bg-paper); }
-.home-page--returning .prompt__chips { flex-wrap: nowrap; align-self: center; }
-@media (max-width: 767px) {
-  .home-page--returning .prompt { padding: var(--space-16); }
-  .home-page--returning .prompt__chips { flex-wrap: wrap; }
-}
-.home-cards__head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.home-cards__head .section-head { flex: 1 1 240px; min-width: 0; }
-.home-cards__search { width: 240px; }
-@media (max-width: 767px) {
-  .home-cards__head .section-head { flex: 1 1 0; }
-  .home-cards__search { width: 100%; order: 3; }
-}
 
 /* ───────── 오류 화면 ───────── */
 .error-screen { max-width: 560px; margin: 96px auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }

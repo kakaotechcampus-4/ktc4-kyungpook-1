@@ -350,9 +350,6 @@ export const useGapFill = (id: string) => {
     onSuccess: (detail) => client.setQueryData(matchKeys.detail(id), detail),
   });
 };
-/** 홈의 '매칭된 공고' 수(#712). AI 를 부르지 않는 가벼운 조회라 홈을 열 때마다 다시 읽어, 그사이 쌓인 매칭 판단이 바로 반영된다 */
-export const useMatchedPostings = () =>
-  useQuery({ queryKey: matchKeys.summary, queryFn: () => matchingApi.matchedPostings(), enabled: matchSupported(), retry: false });
 /** 레포 폴더의 추천 기업(#709). 서버가 그 레포의 확정 카드가 바뀌면 배경에서 다시 계산하므로, 계산 중에만 2초마다 다시 읽는다 */
 export const useRepoRecommendation = (repoId: string | undefined) =>
   useQuery({

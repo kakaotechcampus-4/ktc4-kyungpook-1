@@ -88,7 +88,7 @@ test('first entry: the dialog takes the five steps over the home page, then the 
   expect(afterSetup.interests).toEqual(['BACKEND']);
   expect(afterSetup.educations).toHaveLength(1);
   await page.reload();
-  await expect(page.getByRole('heading', { name: '홈', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '오늘은 무엇을 할까요?', level: 1 })).toBeVisible();
   await expect(dialog(page)).toHaveCount(0);
 
   await page.goto('/settings/profile');
@@ -157,8 +157,8 @@ test('the dialog also appears for a first-time user with no cards, and the home 
   await seedInterests(page);
   await page.goto('/?demoScenario=empty');
   await expect(dialog(page)).toHaveCount(0);
-  await expect(page.getByRole('link', { name: '레포 연결하기', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '레포 검색하기', exact: true })).toBeEnabled();
+  await expect(page.getByRole('link', { name: '레포 고르기', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: '레포 정리하기', exact: true })).toBeVisible();
 });
 
 test('a failed save keeps the input and the retry saves it', async ({ page }) => {

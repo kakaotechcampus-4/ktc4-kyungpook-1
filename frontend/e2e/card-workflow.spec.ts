@@ -35,8 +35,8 @@ test('active analysis is visible on home and can be reopened after refresh', asy
     return (await response.json()).data.jobId as string;
   });
   await page.reload();
-  const jobs = page.getByRole('region', { name: '진행 중인 작업' }); await expect(jobs).toBeVisible();
-  await jobs.getByRole('link', { name: '진행 상황 보기', exact: true }).click();
+  const jobs = page.getByRole('region', { name: /^이어서 하기/ }); await expect(jobs).toBeVisible();
+  await jobs.getByRole('link', { name: /auth-service/ }).click();
   await expect(page).toHaveURL(new RegExp('/repos/r_auth/run\\?job=' + jobId + '$'));
   await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
 });

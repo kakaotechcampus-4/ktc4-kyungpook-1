@@ -230,4 +230,3 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .mine-chip > svg { flex: none; align-self: center; }
 .match-meta, .match-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .match-card__go { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text-accent); font-weight: 600; }
-.prompt__icon { flex: none; color: var(--text-tertiary); }

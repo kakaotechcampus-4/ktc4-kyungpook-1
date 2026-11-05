@@ -3,7 +3,8 @@ import { loginAsDemo } from './helpers';
 
 test('공고 상세에서 마감일을 캘린더에 담으면 홈 캘린더에 뜨고, 누르면 그 공고로 돌아간다', async ({ page }) => {
   await loginAsDemo(page); await page.goto('/match');
-  await page.locator('a[href^="/match/"]').filter({ hasText: /엔지니어|개발자/ }).first().click();
+  // 홈 캘린더는 내 카드와 맞는 기업의 마감을 스스로 띄운다 — 담고 빼는 것만 보려고 맞는 기업에 들지 않는 공고를 고른다
+  await page.locator('a[href^="/match/"]').filter({ hasText: /안드로이드/ }).first().click();
   await expect(page).toHaveURL(/\/match\/[^/?]+/);
   const detail = new URL(page.url()).pathname;
   await page.getByRole('button', { name: '캘린더에 담기', exact: true }).click();

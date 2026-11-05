@@ -65,6 +65,8 @@ const area = (n: number) => screen.getByLabelText(`${n}번 문항 초안`) as HT
 const panel = () => screen.getByRole('complementary', { name: '다듬기 패널' });
 const polishPath = (l: CoverLetter, i = 0) => `/cover-letters/${l.id}/questions/${l.questions[i].id}/polish`;
 const mockQuestion = (i = 0) => db.coverLetters[0].questions[i];
+/** 초안이 나오면 대화 탭이 먼저 열려 있어서 진단과 첨삭은 탭을 눌러 연다 */
+const openPolish = () => fireEvent.click(screen.getByRole('tab', { name: '진단과 첨삭' }));
 
 beforeEach(() => { resetDb(); shift = 0; Date.now = realNow; });
 afterEach(() => { cleanup(); Date.now = realNow; vi.restoreAllMocks(); vi.useRealTimers(); delete (window as { matchMedia?: unknown }).matchMedia; });
@@ -118,6 +120,7 @@ describe('진단과 첨삭 탭', () => {
     stubFetch(log, new Promise<void>((r) => { release = r; }));
     const l = draftedFromMock();
     mount(l);
+    openPolish();
     const before = area(1).value;
     fireEvent.click(within(panel()).getByRole('button', { name: '첨삭 받기' }));
     expect(await within(panel()).findByText('살펴보는 중')).toBeInTheDocument();
@@ -138,6 +141,7 @@ describe('진단과 첨삭 탭', () => {
     stubFetch([]);
     const l = draftedFromMock();
     mount(l);
+    openPolish();
     fireEvent.click(within(panel()).getByRole('button', { name: '첨삭 받기' }));
     await within(panel()).findByText('종합 평가');
     const p = CoverLetter.parse(req('GET', `/cover-letters/${l.id}`).data).questions[0].polish!;
@@ -156,6 +160,7 @@ describe('진단과 첨삭 탭', () => {
     const l = draftedFromMock();
     const aiText = l.questions[0].draft!.aiText;
     mount(l);
+    openPolish();
     fireEvent.click(within(panel()).getByRole('button', { name: '첨삭 받기' }));
     await within(panel()).findByText('종합 평가');
     const polished = mockQuestion().polish.draft.text;
@@ -176,6 +181,7 @@ describe('진단과 첨삭 탭', () => {
     stubFetch(log);
     const l = draftedFromMock();
     mount(l);
+    openPolish();
     fireEvent.click(within(panel()).getByRole('button', { name: '첨삭 받기' }));
     await within(panel()).findByText('종합 평가');
     fireEvent.click(within(panel()).getByRole('button', { name: '다시 받기' }));
@@ -188,6 +194,7 @@ describe('진단과 첨삭 탭', () => {
     stubFetch(log);
     const l = draftedFromMock();
     mount(l);
+    openPolish();
     fireEvent.change(area(1), { target: { value: '아직 저장하지 않은 글입니다.' } });
     fireEvent.click(within(panel()).getByRole('button', { name: '첨삭 받기' }));
     await within(panel()).findByText('종합 평가');
@@ -200,6 +207,7 @@ describe('진단과 첨삭 탭', () => {
     const q = l.questions[0];
     const first = q.draft!.sentences[0].text;
     mount({ ...l, questions: [{ ...q, draft: { ...q.draft!, marks: [...q.draft!.marks, { sentenceSeq: 1, code: 'UNSOURCED_NUMBER', value: '458개' }] } }, l.questions[1]] });
+    openPolish();
     const flags = within(panel()).getByRole('region', { name: '살펴볼 곳' });
     expect(within(flags).getAllByRole('button').map((b) => b.textContent)).toEqual(["'458개' — 카드에 없는 숫자예요"]);
     expect(document.querySelector('.pedit__mirror mark.phl--focus')).toBeNull();
@@ -254,7 +262,8 @@ describe('짐작 확인 탭 · 알림 줄 · 모바일', () => {
     mount(draftedFromMock());
     expect(screen.queryByRole('tablist')).toBeNull();
     const bar = screen.getByRole('navigation', { name: '다듬기 메뉴' });
-    expect(within(bar).getAllByRole('button').map((b) => b.textContent)).toEqual(['채우기', '진단과 첨삭', '짐작 확인1']);
+    expect(within(bar).getAllByRole('button').map((b) => b.textContent)).toEqual(['대화', '진단과 첨삭', '짐작 확인1']);
+    expect(screen.queryByRole('complementary')).toBeNull();
     fireEvent.click(within(bar).getByRole('button', { name: '진단과 첨삭' }));
     const sheet = screen.getByRole('complementary', { name: '진단과 첨삭' });
     expect(within(sheet).getByRole('button', { name: '첨삭 받기' })).toBeInTheDocument();

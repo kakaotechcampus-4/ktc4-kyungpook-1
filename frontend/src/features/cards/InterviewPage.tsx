@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { errorView } from '@/api/errorView';
 import { useAnswerInterview, useAskInterview, useCard, useInterview, useSkipInterview } from '@/api/queries';
 import { StarField as StarFieldSchema, isOpenTurn, type EvidenceType, type StarField } from '@/api/schemas';
-import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
+import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
+import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldExample, starFieldName, starFieldShort } from '@/lib/labels';
 import { askJudgement, cleanAiText } from '@/lib/interviewReason';
@@ -12,15 +13,17 @@ import { CONFIG } from '@/lib/config';
 import { toast } from '@/lib/toast';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { useReducedMotion } from '@/lib/useLiveText';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
 import { cardFolderPath, folderPath } from '@/lib/cardFolders';
 import { StarRow } from '@/components/ui/StarRow';
 import { UnsavedChangesDialog } from '@/components/SaveStatus';
 import { AiJudgement, AiLive } from './AiJudgement';
+import './InterviewChat.css';
 
 /**
- * D5 되묻기 — 레퍼런스(TIO 경험 정리) 구조: 좌측 캔버스에 카드가 채워지고, 우측 패널이 한 번에 하나씩 묻는다.
+ * D5 되묻기 — 레퍼런스(TIO 경험 정리) 구조: 좌측 캔버스에 카드가 채워지고, 우측 패널이 말풍선 대화로 한 번에 하나씩 묻는다.
  * 코드에서 찾은 것 / 없는 것을 먼저 보여주고 한 줄만 묻는다. 보기 선택 = USER_SELECTED · 직접 입력 = USER_STATED.
  * 답변은 가공 없이 그대로 저장(매 턴 새 버전). 꼬리질문은 상한(Q6)까지.
  */
@@ -39,6 +42,8 @@ export function InterviewPage() {
   const guard = useUnsavedChanges(!!text.trim() || answer.isPending);
   const [folded, setFolded] = useState(true); // 모바일에서는 미리보기를 접고 질문부터 보여준다
   const autoAsked = useRef(false);
+  const threadRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
   // AI 가 더 물을 것이 없다고 끝낸 상태. 사용자가 칸을 골라 다시 물으면 풀린다
   const [aiDone, setAiDone] = useState(false);
   useDocumentTitle(q.data ? `답변하기 - ${q.data.title}` : '답변하기');
@@ -69,6 +74,12 @@ export function InterviewPage() {
       });
     }
   }, [draftReady, turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
+
+  // 줄이 늘거나 기다림이 바뀌면 대화 영역만 맨 아래로 굴린다 — 좁은 화면에서는 이 영역이 스크롤되지 않아 페이지도 그대로다
+  useEffect(() => {
+    const box = threadRef.current;
+    box?.scrollTo?.({ top: box.scrollHeight, behavior: reduced ? 'auto' : 'smooth' });
+  }, [q.isSuccess, allTurns.length, open?.turnNo, answer.isPending, ask.isPending, aiDone, q.data?.interviewEndReason, reduced]);
 
   // 답하거나 넘긴 뒤에는 칸을 정하지 않고 묻는다. AI 가 다음 칸을 고르거나, 더 물을 것이 없으면 null 로 끝낸다
   const askNext = (turnsAfter: number) => {
@@ -152,82 +163,100 @@ export function InterviewPage() {
         </section>
 
         {/* 우측 패널 — 한 번에 하나만 묻는다 */}
-        <aside className="card iv__panel">
-          {/* 질문이 없을 때는 아래 "카드로 돌아가기"가 같은 길이라, 여기서는 질문 중(또는 질문을 만드는 중)에만 둔다 */}
-          {(open || ask.isPending) && <div className="row" style={{ gap: 8 }}>
-            <Link to={`/cards/${cardId}`} state={location.state} className="btn btn--ghost btn--sm"><ArrowLeft size={14} aria-hidden /> 카드로</Link>
-          </div>}
+        <aside className="card iv__panel" aria-label="대화">
+          <div className="iv__head">
+            <p className="iv__title"><strong>대화</strong><span>답하면 카드에 바로 들어가요</span></p>
+            {/* 질문이 없을 때는 아래 "카드로 돌아가기"가 같은 길이라, 여기서는 질문 중(또는 질문을 만드는 중)에만 둔다 */}
+            {(open || ask.isPending) && <Link to={`/cards/${cardId}`} state={location.state} className="btn btn--ghost btn--sm"><ArrowLeft size={14} aria-hidden /> 카드로</Link>}
+          </div>
           {answer.isError && <Note strong="답변이 저장되지 않았어요" tone="danger">{errorView(answer.error).message}</Note>}
           {skip.isError && <Note strong="질문을 넘기지 못했어요" tone="danger">{errorView(skip.error).message}</Note>}
           {ask.isError && <QueryFailure error={ask.error} retry={() => ask.variables && askMore(ask.variables)} pending={ask.isPending} />}
 
-          {finished.map((t) => (
-            <div key={t.turnNo} className="stack" style={{ gap: 6, padding: '10px 12px', borderRadius: 16, background: 'var(--bg-paper)' }}>
-              <div className="row" style={{ gap: 8 }}><span className="turn__no" style={{ width: 20, height: 20, fontSize: 11 }}>{t.turnNo}</span><Badge kind="NEUTRAL">{starFieldShort[t.field]} 칸</Badge><span className="t-12 c-2">{t.question}</span></div>
-              {t.answer ? (
-                <>
-                  <span style={{ fontSize: 13, lineHeight: '20px' }}>{t.answer.text}</span>
-                  <span className="t-12 c-3">{evidenceTypeLabel[t.answer.source]}, 저장됨</span>
-                </>
-              ) : (
-                <span className="t-12 c-3">{t.outcome === 'SKIPPED' ? '넘긴 질문' : '측정하지 않음으로 기록'}</span>
-              )}
-            </div>
-          ))}
+          <div className="chat-thread iv__thread" ref={threadRef}>
+            {/* 질문 뒤에는 늘 내 답이나 넘김 줄이 와서, 질문마다 Gitory 의 말이 새로 시작된다 */}
+            {finished.map((t) => (
+              <Fragment key={t.turnNo}>
+                <ChatFrom />
+                <Bubble side="it"><span className="chat-tag">{starFieldShort[t.field]} 칸</span><p>{t.question}</p></Bubble>
+                {t.answer ? (
+                  <>
+                    <Bubble side="me">{t.answer.text}</Bubble>
+                    <p className="iv__saved">{evidenceTypeLabel[t.answer.source]}, 저장됨</p>
+                  </>
+                ) : (
+                  <p className="chat-line">{t.outcome === 'SKIPPED' ? '넘긴 질문' : '측정하지 않음으로 기록'}</p>
+                )}
+              </Fragment>
+            ))}
 
-          {/* AI 판단 — 새 질문의 이유나 끝난 알림이 오면 한 번만 읽어 주는 낭독 영역이 여기 하나다 */}
-          <AiLive>
-            {open && judged && <AiJudgement key={open.turnNo} head={judged.head}>{judged.reason}</AiJudgement>}
-            {showEnded && (
-              <div className="interview-complete">
-                <div className="interview-complete__summary">
-                  <strong>{confirmed ? '카드를 확정했어요' : '추가 질문을 마쳤어요'}</strong>
-                  <p>{confirmed ? '네 칸이 다 차서 바로 쓸 수 있어요.' : '작성된 카드를 검토해 주세요. 필요한 내용은 질문을 더 받거나 직접 수정할 수 있어요.'}</p>
+            {/* AI 판단 — 새 질문의 이유나 끝난 알림이 오면 한 번만 읽어 주는 낭독 영역이 여기 하나다 */}
+            <AiLive>
+              {open && judged && <AiJudgement key={open.turnNo} head={judged.head}>{judged.reason}</AiJudgement>}
+              {showEnded && (
+                <div className="interview-complete">
+                  <div className="interview-complete__summary">
+                    <strong>{confirmed ? '카드를 확정했어요' : '추가 질문을 마쳤어요'}</strong>
+                    <p>{confirmed ? '네 칸이 다 차서 바로 쓸 수 있어요.' : '작성된 카드를 검토해 주세요. 필요한 내용은 질문을 더 받거나 직접 수정할 수 있어요.'}</p>
+                  </div>
+                  {endReason && <details className="interview-complete__reason" open><summary>질문을 마친 이유</summary><AiJudgement>{endReason}</AiJudgement></details>}
                 </div>
-                {endReason && <details className="interview-complete__reason" open><summary>질문을 마친 이유</summary><AiJudgement>{endReason}</AiJudgement></details>}
-              </div>
-            )}
-          </AiLive>
+              )}
+            </AiLive>
 
-          {open ? (
-            <>
-              <div className="stack" style={{ gap: 6 }}>
-                <div className="row" style={{ gap: 8 }}><span className="turn__no turn__no--now" style={{ width: 22, height: 22 }}>{open.turnNo}</span><Badge kind={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'CAUTION' : 'PR'}>{starFieldShort[open.field]} 칸</Badge></div>
-                <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
+            {open && (
+              <Fragment key={open.turnNo}>
+                <ChatFrom />
+                <Bubble side="it" enter>
+                  <span className={card.lowConfidenceFields.some((l) => l.field === open.field) ? 'chat-tag chat-tag--caution' : 'chat-tag'}>{starFieldShort[open.field]} 칸</span>
+                  <h2 className="iv__q">Q{open.turnNo}. {open.question}</h2>
+                </Bubble>
                 {/* 근거가 둘 다 비면 펼쳐도 빈 칸뿐이라 열 거리 자체를 두지 않는다(#536) */}
                 {(open.found.length > 0 || open.missing.length > 0) && <details className="interview-evidence"><summary>질문 근거 보기</summary>
-                <div className="found" style={{ gridTemplateColumns: '1fr' }}>
-                  <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>• {f}</span>)}</div>
-                  <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>• {m}</span>)}</div>
-                </div>
+                  <div className="found" style={{ gridTemplateColumns: '1fr' }}>
+                    <div className="found__box"><h4>코드에서 찾은 것</h4>{open.found.map((f, i) => <span key={i}>• {f}</span>)}</div>
+                    <div className="found__box found__box--miss"><h4>코드에 없는 것</h4>{open.missing.map((m, i) => <span key={i}>• {m}</span>)}</div>
+                  </div>
                 </details>}
-              </div>
-              {open.options.length > 0 && (
-                <div className="stack" style={{ gap: 6 }}>
-                  <span className="t-12 w-600 c-3" style={{ fontSize: 11 }}>이 중에서 골라도 돼요</span>
-                  {open.options.map((o) => <button key={o} type="button" className="chip chip--option" disabled={answer.isPending} aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
-                </div>
-              )}
-              <Textarea rows={4} value={text} disabled={answer.isPending} onChange={(e) => { setText(e.target.value); if (picked && e.target.value !== picked) setPicked(null); }}
-                onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submit(); }}
-                placeholder={starFieldExample[open.field]} aria-label="답변" maxLength={500} />
-              <div className="row" style={{ gap: 8 }}>
-                <span className="t-12 c-3 grow">{text ? `${text.length}/500` : ''}</span>
+                {open.options.length > 0 && (
+                  <div className="stack" style={{ gap: 6 }}>
+                    <span className="t-12 w-600 c-3" style={{ fontSize: 13 }}>이 중에서 골라도 돼요</span>
+                    {open.options.map((o) => <button key={o} type="button" className="chip chip--option" disabled={answer.isPending} aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
+                  </div>
+                )}
+              </Fragment>
+            )}
+            {open && answer.isPending && (
+              <>
+                <Bubble side="me" enter>{answer.variables?.text}</Bubble>
+                <AiWait label={`답변을 ${starFieldShort[open.field]} 칸 문장으로 다듬어 카드에 넣는 중이에요`} />
+              </>
+            )}
+            {!open && ask.isPending && <AiWait label={`카드와 커밋을 읽고 ${ask.variables ? starFieldShort[ask.variables] : ''} 칸에 맞는 질문을 만드는 중이에요`} />}
+          </div>
+
+          {open && (
+            <div className="iv__dock">
+              {/* 보내기 버튼의 이름은 '답변 저장' 으로 둔다 — 시험과 보조 기술이 이 이름으로 찾는다 */}
+              <Composer value={text} onChange={(next) => { setText(next); if (picked && next !== picked) setPicked(null); }}
+                onSend={() => void submit()} canSend={!!text.trim() && !answer.isPending} disabled={answer.isPending}
+                label="답변" sendLabel="답변 저장" placeholder={starFieldExample[open.field]} maxLength={500} />
+              <div className="iv__sub">
+                <span>{text ? `${text.length}/500` : ''}</span>
                 <Button variant="ghost" size="sm" loading={skip.isPending} disabled={answer.isPending} onClick={skipOpen}>건너뛰기</Button>
-                <Button size="lg" disabled={!text.trim()} loading={answer.isPending} onClick={submit}>답변 저장</Button>
               </div>
-              {answer.isPending && <AiWait label={`답변을 ${starFieldShort[open.field]} 칸 문장으로 다듬어 카드에 넣는 중이에요`} />}
-            </>
-          ) : ask.isPending ? <AiWait label={`카드와 커밋을 읽고 ${ask.variables ? starFieldShort[ask.variables] : ''} 칸에 맞는 질문을 만드는 중이에요`} /> : (
+            </div>
+          )}
+          {!open && !ask.isPending && (
             <>
               {confirmed ? null : capReached ? (
                 <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채울 수 있어요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
-                  <span className="w-600" style={{ fontSize: 14 }}>{ended ? '더 보완하고 싶다면' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
-                  <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-                    {!ended && <Button variant="outline" size="sm" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</Button>}
-                    {(weakFields.length ? weakFields : askable).map((f) => <Button key={f} variant="outline" size="sm" onClick={() => askMore(f)}>{starFieldShort[f]} 질문 받기{!card.version[fieldKey[f]] ? ' · 미작성' : card.lowConfidenceFields.some((l) => l.field === f) ? ' · 확인 필요' : ''}</Button>)}
+                  <span className="w-600" style={{ fontSize: 15 }}>{ended ? '더 보완하고 싶다면' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
+                  <div className="chat-quick">
+                    {!ended && <button type="button" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</button>}
+                    {(weakFields.length ? weakFields : askable).map((f) => <button key={f} type="button" onClick={() => askMore(f)}>{starFieldShort[f]} 질문 받기{!card.version[fieldKey[f]] ? ' · 미작성' : card.lowConfidenceFields.some((l) => l.field === f) ? ' · 확인 필요' : ''}</button>)}
                   </div>
                 </div>
               )}

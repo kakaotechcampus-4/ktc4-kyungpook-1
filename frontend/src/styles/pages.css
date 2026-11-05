@@ -128,8 +128,6 @@
 /* ───────── 되묻기 (D5) ───────── */
 .turn { display: flex; gap: 13px; padding: 16px; }
 .turn--now { flex-direction: column; gap: 14px; padding: 18px; }
-.turn__no { width: 25px; height: 25px; border-radius: 50%; background: var(--bg-inset); color: var(--text-secondary); display: grid; place-items: center; font-size: 11px; font-weight: 600; flex: 0 0 auto; }
-.turn__no--now { background: var(--bg-ink-solid); color: var(--text-on-ink); }
 .turn__q { font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-secondary); }
 .turn__a { font-size: 14px; line-height: 22px; }
 .turn__big { font-size: 20px; line-height: 27px; font-weight: 600; }

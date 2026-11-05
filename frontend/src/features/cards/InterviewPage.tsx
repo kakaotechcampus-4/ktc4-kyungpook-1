@@ -14,6 +14,7 @@ import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useUnsavedChanges } from '@/lib/useUnsavedChanges';
+import { cardFolderPath, folderPath } from '@/lib/cardFolders';
 import { StarRow } from '@/components/ui/StarRow';
 import { UnsavedChangesDialog } from '@/components/SaveStatus';
 import { AiJudgement, AiLive } from './AiJudgement';
@@ -106,7 +107,7 @@ export function InterviewPage() {
   if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   if (!card || turns.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={300} /></main>;
   const total = allTurns.length;
-  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }] : []), { label: card.title, to: `/cards/${cardId}`, state: location.state }, { label: '답변하기' }];
+  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: folderPath.repo(card.repo.id) }] : card.activity ? [{ label: card.activity.name, to: folderPath.activity(card.activity.id) }] : []), { label: card.title, to: `/cards/${cardId}`, state: location.state }, { label: '답변하기' }];
   const askable = STAR_FIELDS.filter((f) => !closedFields.has(f));
   const weakFields = askable.filter((f) => !card.version[fieldKey[f]] || card.lowConfidenceFields.some((l) => l.field === f));
   const confirmed = card.status === 'CONFIRMED';
@@ -180,8 +181,8 @@ export function InterviewPage() {
             {showEnded && (
               <div className="interview-complete">
                 <div className="interview-complete__summary">
-                  <strong>{confirmed ? '경험 카드가 확정됐어요' : '추가 질문을 마쳤어요'}</strong>
-                  <p>{confirmed ? '완성한 카드를 확인하거나 수정할 수 있어요.' : '작성된 카드를 검토해 주세요. 필요한 내용은 질문을 더 받거나 직접 수정할 수 있어요.'}</p>
+                  <strong>{confirmed ? '카드를 확정했어요' : '추가 질문을 마쳤어요'}</strong>
+                  <p>{confirmed ? '네 칸이 다 차서 바로 쓸 수 있어요.' : '작성된 카드를 검토해 주세요. 필요한 내용은 질문을 더 받거나 직접 수정할 수 있어요.'}</p>
                 </div>
                 {endReason && <details className="interview-complete__reason" open><summary>질문을 마친 이유</summary><AiJudgement>{endReason}</AiJudgement></details>}
               </div>
@@ -232,11 +233,13 @@ export function InterviewPage() {
               )}
               <div className="row" style={{ gap: 8 }}>
                 {confirmed
-                  ? <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
+                  ? <Button onClick={() => nav(cardFolderPath(card), { state: { confirmed: cardId } })}>폴더로 돌아가기</Button>
                   : ended || capReached
                   ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 검토하기</Button>
                   : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
-                <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정하기</Button>
+                {confirmed
+                  ? <Button variant="outline" onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
+                  : <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정하기</Button>}
               </div>
             </>
           )}

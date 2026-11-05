@@ -70,7 +70,7 @@ describe('interview retry and pending answer', () => {
     mount(turns);
     fireEvent.change(await screen.findByRole('textbox', { name: '답변' }), { target: { value: 'R answer' } });
     fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
-    expect(await screen.findByText('경험 카드가 확정됐어요')).toBeInTheDocument();
+    expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
     expect(screen.queryByText('이어서 물을까요?')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
   });

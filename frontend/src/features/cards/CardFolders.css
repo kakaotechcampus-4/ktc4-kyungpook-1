@@ -79,3 +79,22 @@
   .new-card-dialog__actions { flex-direction: column-reverse; }
   .new-card-dialog__actions .btn--text { margin-right: 0; }
 }
+
+/* 폴더 맨 위의 다음 걸음 한 줄 — 확인할 카드가 있으면 주의 색, 다 됐으면 차분한 파란색 */
+.next-step { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 16px; padding: 16px 20px; border-radius: 18px; background: var(--state-open-bg); }
+.next-step--ready { background: var(--bg-accent); }
+.next-step__icon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 13px; background: var(--bg-surface); color: var(--state-open-text); }
+.next-step--ready .next-step__icon { color: var(--border-accent); }
+.next-step__text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 2px; }
+.next-step__text strong { font-size: 17px; line-height: 25px; font-weight: 700; letter-spacing: -.03em; }
+.next-step__text span { font-size: 14px; line-height: 21px; color: var(--text-secondary); }
+.next-step__actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.next-step__go.btn { min-height: 46px; padding-inline: 20px; font-size: 15px; }
+.next-step .btn--text { font-size: 14px; color: var(--text-strong); }
+/* 방금 확정한 카드 — 폴더로 돌아왔을 때 어느 카드였는지 테두리로 짚는다 */
+.experience-item.gcard.experience-item--just { box-shadow: 0 0 0 2px var(--border-accent); }
+@media (max-width: 767px) {
+  .next-step { padding: 14px; }
+  .next-step__actions { width: 100%; margin-left: 0; }
+  .next-step__go.btn { flex: 1; }
+}

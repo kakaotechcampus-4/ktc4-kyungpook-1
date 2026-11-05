@@ -27,8 +27,10 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await page.getByRole('button', { name: '확정', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
   await page.getByRole('button', { name: '확정하기' }).click();
-  await expect(page.getByText('확정됨').first()).toBeVisible();
-  await expect(page.getByRole('button', { name: /남은 후보 \d+개 보기/ })).toBeVisible();
+  // 확정하면 카드가 든 폴더로 가고, 맨 위 줄이 다음에 할 일을 말하며 방금 확정한 카드를 짚는다
+  await expect(page).toHaveURL(/\/cards\/repo\//);
+  await expect(page.locator('.next-step')).toContainText('카드를 확정했어요');
+  await expect(page.locator('.experience-item--just')).toHaveCount(1);
 });
 
 test('후보 0개는 에러가 아니라 판정이다 (verdict EMPTY)', async ({ page }) => {

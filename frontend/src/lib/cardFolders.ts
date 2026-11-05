@@ -46,6 +46,10 @@ export const folderPath = {
   direct: '/cards/direct',
 } as const;
 
+/** 카드가 들어 있는 폴더 화면 주소이고, 레포 · 활동 · 직접 쓴 카드 순서는 buildFolders 와 같아야 한다 */
+export const cardFolderPath = (card: { repo?: { id: string } | null; activity?: { id: string } | null }): string =>
+  card.repo ? folderPath.repo(card.repo.id) : card.activity ? folderPath.activity(card.activity.id) : folderPath.direct;
+
 const byRecent = (a: CardSummary, b: CardSummary) => b.updatedAt.localeCompare(a.updatedAt);
 
 /** 폴더 앞판에 보일 기술. `cards` 는 최근순이어야 한다 */

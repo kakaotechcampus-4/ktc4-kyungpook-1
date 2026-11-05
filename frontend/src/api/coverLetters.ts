@@ -1,6 +1,7 @@
 /**
  * 자소서 계약 — docs/2026-10-28-COVER_LETTER.md (#492, #549). 서버는 #497·#527·#585 로 구현됐다.
  * 화면 ① 입력 → ② 카드 고르기 기다림 → ③ 카드 확인 → ④ 질문 → ⑤ 쓰기 기다림 → ⑥ 초안. 단계는 응답의 `stage` 가 정한다.
+ * 사용자는 ③·④ 에서 멈추지 않는다 — 화면이 asks·drafts 요청을 스스로 보내 넘어간다.
  * AI 가 도는 단계에서는 응답의 `pollAfterMs` 마다 다시 읽는다(기존 Job API 는 쓰지 않는다).
  *
  * 응답은 단계와 상관없이 같은 모양이지만, 칸이 빠지거나 모르는 값이 와도 화면이 멈추지 않게 읽는다(#534).
@@ -202,8 +203,8 @@ export const ANSWER_MAX = 1_000;
 /** 고친 초안은 10,000자까지 */
 export const DRAFT_MAX = 10_000;
 
-/** postingId 는 공고 상세에서 시작할 때만 그 공고 id, 아니면 null. 없는 공고면 서버가 404 NOT_FOUND. memo(지원 이유)는 필수이고 규칙은 lib/reasonCheck.ts, strengths 는 강점 코드 최대 3개 */
-export type NewCoverLetter = { jobRole: string; memo: string; strengths: string[]; questions: { text: string; charLimit: number | null }[]; postingId: string | null };
+/** postingId 는 공고 상세에서 시작할 때만 그 공고 id, 아니면 null. 없는 공고면 서버가 404 NOT_FOUND. memo(지원 이유)는 없어도 되고 화면은 null 로, strengths(강점 코드 최대 3개)는 []로 보낸다 */
+export type NewCoverLetter = { jobRole: string; memo: string | null; strengths: string[]; questions: { text: string; charLimit: number | null }[]; postingId: string | null };
 
 export const coverLetterApi = {
   create: (input: NewCoverLetter, idempotencyKey: string) =>
@@ -275,7 +276,7 @@ function useLetterMutation<V>(fn: (vars: V) => Promise<CoverLetter>, inline = fa
   const client = useQueryClient();
   return useMutation({
     mutationFn: fn,
-    // 만들기 실패(확정 카드 없음·한도)는 입력 화면이 그 자리에서 말한다
+    // 만들기 실패(확정 카드 없음·한도)와 스스로 보낸 넘어가기 요청의 실패는 그 화면이 그 자리에서 말한다
     meta: inline ? { errorPresentation: 'inline' } : undefined,
     onSuccess: (letter) => {
       client.setQueryData(coverLetterKeys.one(letter.id), letter);
@@ -309,14 +310,9 @@ export function useDeleteCoverLetter(id: string) {
 
 export const useCreateCoverLetter = () =>
   useLetterMutation(({ input, key }: { input: NewCoverLetter; key: string }) => coverLetterApi.create(input, key), true);
-export const useChooseCards = (id: string) =>
-  useLetterMutation(({ questionId, primaryCardId, supportingCardId }: { questionId: string; primaryCardId: string | null; supportingCardId: string | null }) =>
-    coverLetterApi.chooseCards(id, questionId, primaryCardId, supportingCardId));
-export const useStartAsking = (id: string) => useLetterMutation(() => coverLetterApi.startAsking(id));
+export const useStartAsking = (id: string) => useLetterMutation(() => coverLetterApi.startAsking(id), true);
 export const useRetryCoverLetter = (id: string) => useLetterMutation(() => coverLetterApi.retry(id));
-export const useSaveAnswers = (id: string) =>
-  useLetterMutation(({ questionId, answers }: { questionId: string; answers: AnswerInput[] }) => coverLetterApi.saveAnswers(id, questionId, answers), true);
-export const useStartDrafting = (id: string) => useLetterMutation(() => coverLetterApi.startDrafting(id));
+export const useStartDrafting = (id: string) => useLetterMutation(() => coverLetterApi.startDrafting(id), true);
 export const useSaveDraft = (id: string) =>
   useLetterMutation(({ questionId, text }: { questionId: string; text: string }) => coverLetterApi.saveDraft(id, questionId, text), true);
 export const useConfirmInference = (id: string) =>

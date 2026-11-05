@@ -55,27 +55,6 @@
   .cl-qfield__limit, .cl-qfield__edit { top: auto; bottom: 0; }
   .cl-qfield:has(> .cl-error) .cl-qfield__limit, .cl-qfield:has(> .cl-error) .cl-qfield__edit { bottom: 24px; }
 }
-/* 지원 이유 안내 줄과 강점 칩(#738) — 고칠 곳은 호박색, 고른 칩은 파랑. 칩은 누르기 쉽게 44px */
-.cl-reason-hint { font-size: 12px; line-height: 18px; color: var(--field-low-text); }
-/* 빈 안내 줄도 aria-live 로 남겨 두되 자리는 차지하지 않게 칸 사이 간격만큼 당긴다 */
-.field > .cl-reason-hint:empty { margin-top: -7px; }
-.cl-strengths > .cl-reason-hint:empty { margin-top: -10px; }
-.cl-strengths { display: flex; flex-direction: column; gap: 10px; min-width: 0; margin: 0; padding: 0; border: 0; }
-.cl-strengths > legend { padding: 0; margin-bottom: 2px; }
-.cl-strengths__limit { margin-left: 4px; font-size: 12px; font-weight: 400; color: var(--text-tertiary); }
-.cl-strengths__group { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 6px 12px; align-items: start; }
-.cl-strengths__label { font-size: 13px; line-height: 44px; color: var(--text-secondary); }
-@media (max-width: 640px) {
-  .cl-strengths__group { grid-template-columns: minmax(0, 1fr); }
-  .cl-strengths__label { line-height: 20px; }
-}
-.cl-strengths__chips { gap: 6px; flex-wrap: wrap; }
-.cl-strength { min-height: 44px; padding: 0 14px; cursor: pointer; }
-.cl-strength[aria-pressed="true"] { background: var(--bg-selected); border-color: var(--border-selected); color: var(--text-strong); font-weight: 600; }
-
-/* 문항 번호 */
-.cl-q__no { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-top: 2px; border-radius: 6px; background: var(--bg-inset); color: var(--text-secondary); font-size: 12px; font-weight: 600; }
-
 /* ②·④·⑤ 기다림 — 제목 아래 한 줄 */
 .cl-wait-note { font-size: 14px; line-height: 21px; color: var(--text-secondary); }
 .cl-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -84,53 +63,6 @@
 .cl-feed__reason { font-size: 12px; line-height: 18px; color: var(--text-secondary); }
 @keyframes cl-feed-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cl-feed__line { animation: none; } }
-
-/* ③ 카드 확인 — 문항(왼쪽) · 카드 타일(오른쪽), 문항마다 구분선. 860px 아래는 위아래로 */
-.cl-review { display: flex; flex-direction: column; }
-.cl-q { display: flex; flex-direction: column; gap: 14px; padding: 22px 0; border-top: 1px solid var(--border-default); }
-.cl-q:first-child { border-top: 0; padding-top: 4px; }
-.cl-q__head { display: flex; align-items: flex-start; gap: 12px; }
-.cl-q__text { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-primary); }
-.cl-ac { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 28px 0; border-top: 1px solid var(--border-default); }
-.cl-ac:first-child { border-top: 0; padding-top: 4px; }
-.cl-ac__q { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 2px 12px; align-content: start; }
-.cl-ac__change { grid-column: 2; justify-self: start; margin: 6px 0 0 -8px; }
-.cl-ac__cards { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.cl-ac__why { margin: 2px 0 0; font-size: 14px; line-height: 22px; color: var(--text-secondary); }
-.cl-ac__link { display: inline-flex; align-items: center; min-height: 44px; margin: -11px 0; padding: 0 2px; border: 0; background: transparent; font-size: 13px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; vertical-align: middle; cursor: pointer; }
-.cl-ac__link:hover { color: var(--text-primary); }
-.cl-deck { position: relative; isolation: isolate; }
-.cl-deck__main { position: relative; }
-.cl-deck--sub .cl-deck__main::before { content: ''; position: absolute; inset: 0; z-index: -1; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--bg-subtle); transform: rotate(2deg); transform-origin: 85% 100%; }
-.cl-tile { position: relative; z-index: 2; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 16px; background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: 0 1px 2px rgba(0, 0, 0, .05); }
-.cl-tile__title { min-width: 0; font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-primary); text-decoration: none; overflow-wrap: anywhere; }
-.cl-tile__title:hover { text-decoration: underline; text-underline-offset: 3px; }
-.cl-tile--sub { z-index: 1; align-items: center; justify-content: flex-start; gap: 8px; margin: -12px 0 0 14px; padding: 20px 14px 10px; background: var(--bg-canvas); box-shadow: none; border-top-left-radius: 0; border-top-right-radius: 0; font-size: 13px; color: var(--text-secondary); }
-.cl-tile__lab { flex: none; }
-.cl-tile__subtitle { flex: 1; min-width: 0; font-weight: 600; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
-.cl-tile__subtitle:hover { text-decoration: underline; }
-.cl-kind { flex: none; padding: 0 8px; border-radius: var(--radius-full); background: var(--bg-subtle); font-size: 12px; line-height: 20px; font-weight: 500; color: var(--text-secondary); }
-.cl-compared { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.cl-compared li { padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--bg-canvas); font-size: 14px; line-height: 20px; }
-.cl-compared a { font-weight: 600; color: var(--text-primary); text-decoration: none; }
-.cl-compared a:hover { text-decoration: underline; }
-.cl-compared__tag { font-weight: 600; }
-.cl-compared__note { display: block; font-size: 13px; color: var(--text-secondary); }
-.cl-compared li.cl-compared--picked { border-color: var(--accent-decoration); background: var(--bg-selected); }
-.cl-ready { margin: 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
-.cl-ready__miss { color: var(--field-low-text); font-weight: 600; }
-@media (min-width: 860px) {
-  .cl-ac { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 40px; }
-}
-
-/* 카드 바꾸기 */
-.cl-pick { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid var(--border-default); border-radius: 10px; overflow: hidden; }
-.cl-pick li + li { border-top: 1px solid var(--border-default); }
-.cl-pick__row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; border: 0; background: var(--bg-surface); color: var(--text-primary); text-align: left; font-size: 14px; cursor: pointer; }
-.cl-pick__row:hover:not(:disabled) { background: var(--bg-subtle); }
-.cl-pick__row[aria-checked="true"] { background: var(--bg-selected); }
-.cl-pick__row:disabled { opacity: .45; cursor: not-allowed; }
-.cl-pick__title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* 목록 */
 .cl-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -143,33 +75,14 @@
 .cl-list__delete { position: absolute; top: 50%; right: 0; transform: translateY(-50%); }
 .cl-crumbbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
 .cl-delete-title { color: var(--text-primary); font-weight: 600; overflow-wrap: anywhere; }
-@media print { .cl-list__delete, .cl-crumbbar .cl-delete-trigger { display: none; } }
+@media print { .cl-list__delete, .cl-crumbbar .cl-delete-trigger, .cl-crumbbar .cl-edit-trigger { display: none; } }
 .cl-list__first { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-@media (max-width: 640px) {
-  .cl-q__head { flex-wrap: wrap; }
-  .cl-tile--sub { margin-left: 10px; }
-}
 .cl-inline-link { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 
 /* ⑤ 줄 종류 — 쓰기(포인트 선), 검사(옅은 선), 걸림과 고치기(주의 선) */
 .cl-feed__line--check { border-left-color: var(--border-strong); }
 .cl-feed__line--fix { border-left-color: var(--field-low-text); }
-
-/* ④ 질문 */
-.cl-indent { padding-left: 36px; }
-.cl-save { flex: 0 0 auto; min-width: 72px; text-align: right; }
-.cl-asks { list-style: none; margin: 0; padding: 0 0 0 36px; display: flex; flex-direction: column; gap: 18px; }
-.cl-ask { display: flex; flex-direction: column; gap: 6px; }
-.cl-ask__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.cl-ask__question { font-size: 14px; line-height: 21px; font-weight: 600; color: var(--text-primary); }
-.cl-ask__item { font-size: 12px; color: var(--text-tertiary); }
-.cl-ask__item b { margin-left: 4px; font-weight: 600; color: var(--accent-point); }
-.cl-ask--skipped .cl-ask__question { color: var(--text-tertiary); text-decoration: line-through; }
-.cl-ask__foot { align-items: center; gap: 8px; }
-.cl-ask__ex { font-size: 13px; line-height: 20px; color: var(--text-secondary); }
-/* '넘기기'는 글자 버튼이지만 누르는 자리는 44px 로 둔다 — 위아래는 겹쳐서 줄 높이를 늘리지 않는다 */
-.cl-ask__foot .cl-link-btn { min-height: 44px; margin: -12px 0 -12px -4px; }
 
 /* ⑥ 초안 */
 .cl-draft { min-height: 220px; resize: vertical; font-size: 14px; line-height: 24px; padding: 14px 16px; }
@@ -182,9 +95,6 @@
 .cl-todo__quote { display: block; margin-top: 2px; color: var(--text-secondary); font-size: 12px; quotes: '"' '"'; }
 .cl-original { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px dashed var(--border-strong); border-radius: 10px; }
 .cl-original p { margin: 0; white-space: pre-wrap; font-size: 13px; line-height: 22px; color: var(--text-secondary); }
-@media (max-width: 640px) {
-  .cl-indent, .cl-asks { padding-left: 0; }
-}
 
 /* 지원 공고(#637) — ① 입력 블록, 자소서 화면 한 줄, 목록 둘째 줄 */
 .cl-posting { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-surface); }

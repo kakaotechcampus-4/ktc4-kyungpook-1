@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link, useLocation, useNavigationType } from 'react-router-dom';
 import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, BriefcaseBusiness, FileText } from 'lucide-react';
 import { matchSupported } from '@/api/matching';
-import { useActiveJobs } from '@/api/queries';
+import { useActiveJobs, useCards } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { GithubBanner } from './GithubBanner';
@@ -25,7 +25,7 @@ const MENU = [
 ];
 
 /** 워드마크 — 사각 G 마크 + itory. 원본 PNG(투명 배경). 다크 서페이스 위에서는 invert. */
-export const Wordmark = ({ height = 26, className }: { height?: number; className?: string }) => (
+export const Wordmark = ({ height = 27, className }: { height?: number; className?: string }) => (
   <BrandLogo height={height} className={className} />
 );
 const Mark = () => <BrandLogo height={32} mark />;
@@ -44,6 +44,9 @@ const MOBILE_MENU = [
 export function AppShell() {
 
   const active = useActiveJobs();
+  const cards = useCards();
+  // 확정하지 않은 카드는 사람이 봐야 끝나는 일이라, 어느 화면에서든 메뉴 옆에 남은 장수를 보인다
+  const waiting = cards.data?.filter((card) => card.status === 'DRAFT').length ?? 0;
   const { pathname } = useLocation();
   const navType = useNavigationType();
   // 메뉴·링크로 새 화면에 가면 맨 위에서 시작한다. 뒤로·앞으로(POP)는 브라우저가 둔 자리를 그대로 쓴다
@@ -60,16 +63,17 @@ export function AppShell() {
       </header>
       <aside className="sidebar" aria-label="주 메뉴">
         <div className="sidebar__top">
-          <Link to="/" className="brand" aria-label="Gitory 홈">{rail ? <Mark /> : <Wordmark height={26} />}</Link>
+          <Link to="/" className="brand" aria-label="Gitory 홈">{rail ? <Mark /> : <Wordmark height={27} />}</Link>
           <button type="button" className="sidebar__toggle sidebar__toggle--edge" onClick={() => setRail(value => !value)} aria-label={rail ? '사이드바 펼치기' : '사이드바 접기'} title={rail ? '사이드바 펼치기' : '사이드바 접기'} aria-expanded={!rail}><PanelLeft size={16} /></button>
         </div>
         {MENU.map((g) => (
           <nav key={g.group} className="menu-group" aria-label={g.group}>
             {g.items.map((it) => (
               'also' in it && it.also?.some((p) => pathname.startsWith(p))
-                ? <Link key={it.to} to={it.to} className="menu-item" title={it.label} aria-label={it.label} aria-current="page"><it.icon size={16} /><span>{it.label}</span></Link>
-                : <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.label}>
-                  <it.icon size={16} /><span>{it.label}</span>
+                ? <Link key={it.to} to={it.to} className="menu-item" title={it.label} aria-label={it.label} aria-current="page"><it.icon size={18} /><span>{it.label}</span></Link>
+                : <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.to === '/cards' && waiting > 0 ? `${it.label}, 확인할 카드 ${waiting}장` : it.label}>
+                  <it.icon size={18} /><span>{it.label}</span>
+                  {it.to === '/cards' && waiting > 0 && <span className="menu-item__count" aria-hidden>{waiting}</span>}
                 </NavLink>
             ))}
           </nav>

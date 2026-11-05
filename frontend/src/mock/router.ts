@@ -1,4 +1,5 @@
 import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas';
+import { getAssistantRun, sayToAssistantRun, startAssistantRun, type AssistantResult } from './assistant';
 import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
 import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
@@ -75,6 +76,11 @@ on('POST', '/cover-letters/:id/questions/:qid/turns/open', ({ params }) => lette
 on('POST', '/cover-letters/:id/questions/:qid/turns/skip', ({ params }) => letter(skipCoverLetterTurn(params[0], params[1])));
 on('POST', '/cover-letters/:id/questions/:qid/turns', ({ params, body }) => letter(replyCoverLetterTurn(params[0], params[1], body)));
 on('DELETE', '/cover-letters/:id', ({ params }) => letter(deleteCoverLetter(params[0])));
+// 홈 한 줄 명령 — 계약 검증과 진행은 mock/assistant.ts
+const assist = (r: AssistantResult): MockResult => (r.ok ? ok(r.data) : fail(r.status, r.code, r.message));
+on('POST', '/assistant/runs', ({ body }) => assist(startAssistantRun(body)));
+on('GET', '/assistant/runs/:id', ({ params }) => assist(getAssistantRun(params[0])));
+on('POST', '/assistant/runs/:id/messages', ({ params, body }) => assist(sayToAssistantRun(params[0], body)));
 on('GET', '/profile', () => ok(getProfile())); // 저장한 적이 없어도 200 + 빈 목록 + savedAt:null
 on('PUT', '/profile', ({ body }) => {
   const saved = putProfile(body);

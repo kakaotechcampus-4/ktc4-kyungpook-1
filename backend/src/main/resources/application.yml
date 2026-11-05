@@ -287,10 +287,10 @@ gitory:
     cover-letter-polish:
       per-minute: 3
       per-day: 30
-    # 자소서 채우기 대화(문항 이야기 시작·답·넘기기). 답 하나에 LLM 을 한두 번 부르고 주고받기가 잦아 첨삭보다 넉넉히 둔다
+    # 자소서 채우기 대화(문항 이야기 시작·답·넘기기). 답 하나에 LLM 을 한두 번 부르고 초안이 나오면 대화가 빈칸마다 스스로 질문을 열어 호출이 잦으므로 첨삭보다 넉넉히 둔다
     cover-letter-turn:
-      per-minute: 6
-      per-day: 60
+      per-minute: 20
+      per-day: 200
     # 공고 상세 '이 공고와 맞춰 보기'. 아직 판단하지 않은 카드가 남아 AI 를 부를 때만 센다
     match-judgement:
       per-minute: 10

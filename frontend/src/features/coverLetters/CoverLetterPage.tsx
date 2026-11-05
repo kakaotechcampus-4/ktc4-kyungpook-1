@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Briefcase } from 'lucide-react';
 import { useCoverLetter, useRetryCoverLetter, useStartAsking, type CoverLetter, type CoverLetterCardRef, type CoverLetterPosting, type CoverLetterQuestion } from '@/api/coverLetters';
 import { Breadcrumb, Button, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
@@ -8,6 +8,7 @@ import { FAILED_STEP_LABEL, THEME_LABEL, flowStep, materialLine, primaryState } 
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { AnswerQuestions } from './AnswerQuestions';
+import { CoverLetterDeleteAction } from './CoverLetterDeleteAction';
 import { CardPicker } from './CardPicker';
 import { DraftEditor } from './DraftEditor';
 import { DraftPaper } from './paper/DraftPaper';
@@ -17,6 +18,7 @@ import './coverLetters.css';
 /** 자소서 한 편 — 응답의 stage 가 화면을 정한다. #517 은 ② 기다림, ③ 카드 확인, 실패까지 */
 export function CoverLetterPage() {
   const { coverLetterId = '' } = useParams();
+  const nav = useNavigate();
   const letter = useCoverLetter(coverLetterId);
   const l = letter.data;
   useDocumentTitle(l ? `${l.jobRole} 자소서` : '자소서');
@@ -36,7 +38,10 @@ export function CoverLetterPage() {
 
   return (
     <main className="main main--tight">
-      <Breadcrumb items={crumbs} />
+      <div className="cl-crumbbar">
+        <Breadcrumb items={crumbs} />
+        <CoverLetterDeleteAction letter={l} label="자소서 삭제" onDeleted={() => nav('/cover-letters', { replace: true })} />
+      </div>
       <Stepper current={flowStep(l.stage, l.failedStep)} />
       {l.posting && <PostingLine posting={l.posting} />}
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}

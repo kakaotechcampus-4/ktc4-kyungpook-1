@@ -7,7 +7,7 @@
  */
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from './client';
+import { ApiError, api } from './client';
 
 export const COVER_LETTER_LIMITS = {
   JOB_ROLE: 100,
@@ -279,6 +279,29 @@ function useLetterMutation<V>(fn: (vars: V) => Promise<CoverLetter>, inline = fa
     meta: inline ? { errorPresentation: 'inline' } : undefined,
     onSuccess: (letter) => {
       client.setQueryData(coverLetterKeys.one(letter.id), letter);
+      void client.invalidateQueries({ queryKey: coverLetterKeys.all, exact: true });
+    },
+  });
+}
+
+/** 자소서 지우기. 이미 없는 자소서(404)는 지운 것으로 본다. 늦게 온 조회가 지운 자소서를 되살리지 않게 목록과 상세 캐시를 먼저 정리한다 */
+export function useDeleteCoverLetter(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    retry: false,
+    meta: { errorPresentation: 'inline' },
+    mutationFn: async () => {
+      try { await coverLetterApi.remove(id); return { alreadyMissing: false }; }
+      catch (error) {
+        if (error instanceof ApiError && error.status === 404) return { alreadyMissing: true };
+        throw error;
+      }
+    },
+    onSuccess: async () => {
+      await client.cancelQueries({ queryKey: coverLetterKeys.all });
+      client.removeQueries({ queryKey: coverLetterKeys.one(id) });
+      client.removeQueries({ queryKey: coverLetterKeys.turns(id) });
+      client.setQueryData<CoverLetterSummary[]>(coverLetterKeys.all, (list) => list?.filter((letter) => letter.id !== id));
       void client.invalidateQueries({ queryKey: coverLetterKeys.all, exact: true });
     },
   });

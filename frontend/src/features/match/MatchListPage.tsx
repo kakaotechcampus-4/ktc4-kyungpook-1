@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
-import { useMe } from "@/api/queries";
+import { useConfirmedCardCount } from "@/api/queries";
 import { Badge, Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
 import { isDemo } from "@/mock/browser";
@@ -30,7 +30,7 @@ export function MatchListPage() {
   useDocumentTitle("공고 매칭");
   const matches = useMatches();
   // 확정 카드 수는 목록의 등급이 아니라 내 정보에서 읽는다(등급이 비었다고 카드가 없는 것은 아니다). 아직 모르면 undefined
-  const confirmedCards = useMe().data?.stats.confirmedCards;
+  const confirmedCards = useConfirmedCardCount();
   // 받은 목록 기준으로 센다(검색·필터로는 다시 세지 않는다)
   const loadedCount = matches.data?.length;
   useEffect(() => {

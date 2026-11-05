@@ -31,6 +31,7 @@ import com.gitory.backend.recommend.domain.CandidateDraftSource;
 import com.gitory.backend.recommend.domain.CandidateDraftSourceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -66,6 +67,7 @@ public class CardDraftRunner {
     private final CommitSummaryService commitSummaries;
     private final RepoRecommendationTrigger recommendations;
     private final CardDraftLiveLog live;
+    private final ApplicationEventPublisher events;
 
     public void run(AnalysisJob job) {
 
@@ -248,6 +250,9 @@ public class CardDraftRunner {
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() == JobState.RUNNING) {
             job.finishDraft(results);
+            if (job.getState() == JobState.FAILED) {
+                events.publishEvent(JobFailed.of(job));
+            }
             // 카드마다 알리지 않고 다 만든 뒤 한 번에 그 레포 추천을 다시 계산한다
             recommendations.requestNow(job.getUserId(), job.getUserRepositoryId());
         }

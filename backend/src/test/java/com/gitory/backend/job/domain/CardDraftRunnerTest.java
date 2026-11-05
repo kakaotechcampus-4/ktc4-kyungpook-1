@@ -92,6 +92,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -109,7 +110,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
-        CommitSummaryService.class, RepositoryReadmeService.class, RepoSummaryFiller.class})
+        CommitSummaryService.class, RepositoryReadmeService.class, RepoSummaryFiller.class, JobFailureAlert.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ExtendWith(OutputCaptureExtension.class)
@@ -158,6 +159,9 @@ class CardDraftRunnerTest {
 
     @MockitoBean
     CardThemePort themes;
+
+    @MockitoBean
+    JobAlertSender alerts;
 
     private TestFixtures fixtures;
     private CandidateCardFixtures cardFixtures;
@@ -845,6 +849,22 @@ class CardDraftRunnerTest {
         assertThat(generationFailureOf(second)).isEqualTo("AI_UNAVAILABLE");
         assertThat(job().getState()).isEqualTo(JobState.FAILED);
         assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.AI_UNAVAILABLE);
+
+    }
+
+    @Test
+    @DisplayName("모든 카드의 AI 가 실패해 실패로 끝난 카드 초안 Job 도 한 번 알린다")
+    void alertsOnceWhenEveryCardFails() {
+
+        cardWithCommits(commit(SHA_A, 10, 0));
+        cardWithCommits(commit(SHA_B, 10, 0));
+        given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A, SHA_B));
+        given(star.draft(any(), any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", true, false, null));
+
+        runNext();
+
+        String draftJob = "카드 초안 Job " + job().getId() + " ";
+        verify(alerts, times(1)).send(argThat(text -> text.contains(draftJob) && text.contains("AI_UNAVAILABLE")));
 
     }
 

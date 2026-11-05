@@ -137,7 +137,7 @@ export function CardPage() {
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs.slice(0, -1), { label: '초안 생성 중' }]} />
-        <PageTitle>고른 후보의 카드 초안을 쓰고 있어요</PageTitle>
+        <PageTitle>카드 초안을 쓰고 있어요</PageTitle>
         {job.isError && <QueryFailure error={job.error} retry={() => job.refetch()} pending={job.isFetching} />}
         <DraftProgress job={j} checkedAt={job.dataUpdatedAt} />
         <LiveCardDraft view={live.view} instant={{ on: live.manualInstant, toggle: live.reducedMotion ? null : () => live.setManualInstant((on) => !on) }} />

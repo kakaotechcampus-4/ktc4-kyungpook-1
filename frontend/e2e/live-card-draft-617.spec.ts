@@ -9,7 +9,7 @@ import { loginAsDemo } from './helpers';
 const slot = (page: Page, field: 'S' | 'T' | 'A' | 'R') => page.locator(`.live-card .live-slot[data-field="${field}"]`);
 const typedLength = (page: Page) => page.locator('.live-card [data-live-text]').evaluateAll((nodes) => nodes.reduce((sum, node) => sum + Array.from(node.textContent ?? '').length, 0));
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-const generationHeading = (page: Page) => page.getByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' });
+const generationHeading = (page: Page) => page.getByRole('heading', { name: '카드 초안을 쓰고 있어요' });
 
 async function startCards(page: Page, count: number) {
   await loginAsDemo(page);

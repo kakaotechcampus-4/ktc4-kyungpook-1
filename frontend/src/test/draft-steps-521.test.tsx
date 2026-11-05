@@ -241,7 +241,7 @@ describe('#521 on the card page', () => {
   it('shows nothing live while the draft is still being generated', () => {
     mount(card('card_01', { generation: { jobId: 'job_1', partial: false } }));
     expect(screen.queryByText('만든 과정')).not.toBeInTheDocument();
-    expect(screen.getByText('고른 후보의 카드 초안을 쓰고 있어요')).toBeInTheDocument();
+    expect(screen.getByText('카드 초안을 쓰고 있어요')).toBeInTheDocument();
   });
 
   it('is not part of the edit screen', () => {

@@ -5,7 +5,7 @@ test('demo starts in one action without repeating mode explanations', async ({ p
   await freshSeed(page); await page.goto('/login');
   const trigger = page.locator('.landing__actions').getByRole('button', { name: '샘플로 체험하기' });
   await trigger.click();
-  await expect(page.getByRole('heading', { name: '홈', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '오늘은 무엇을 할까요?', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 

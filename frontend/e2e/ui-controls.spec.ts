@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo, openRepoSearch, showCardTiles } from './helpers';
+import { loginAsDemo, showCardTiles } from './helpers';
 
 test('search has one focus boundary, Escape clears and returns typing focus', async ({ page }) => {
   // 카드 검색은 경험 카드 목록에 있다(폴더 보기에는 검색이 없어 최근순으로 바꿔 본다)
@@ -58,14 +58,4 @@ test('mobile repository select keeps its menu in view and roundtrips the empty c
   await page.getByRole('button', { name: '저장 후 종료', exact: true }).click(); await expect(page).toHaveURL(/\/cards\/[^/?]+$/);
   const saved = await page.evaluate(async () => (await (await fetch('/api' + location.pathname)).json()).data);
   expect(saved.repo).toBeNull();
-});
-
-test('repository autocomplete exposes its active option and closes without losing the query', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/'); await openRepoSearch(page);
-  const search = page.getByRole('combobox', { name: '레포 검색', exact: true }); await search.fill('auth-service');
-  await expect(search).toHaveAttribute('aria-expanded', 'true'); await search.press('ArrowDown');
-  const active = await search.getAttribute('aria-activedescendant'); expect(active).toBeTruthy();
-  expect(await page.evaluate(id => document.getElementById(id!)?.getAttribute('aria-selected'), active)).toBe('true');
-  await search.press('Escape'); await expect(search).toHaveAttribute('aria-expanded', 'false'); await expect(search).toHaveValue('auth-service');
-  await search.press('ArrowDown'); await search.press('Enter'); await expect(page).toHaveURL(/\/repos\?.*disclose=1/);
 });

@@ -15,14 +15,10 @@ const calendar = (userId: string) => render(<MemoryRouter><JobCalendar userId={u
 it('keeps the home dashboard whole without the old first-visit band — the first-entry dialog now lives in the app shell (#656)', async () => {
   connectMockServer();
   mountApp([page(<HomePage />, '/')], '/');
-  expect(screen.getByRole('heading', { name: '홈', level: 1 })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: '오늘은 무엇을 할까요?', level: 1 })).toBeInTheDocument();
   expect(await screen.findByRole('heading', { name: '캘린더' })).toBeInTheDocument();
   expect(screen.queryByRole('region', { name: '매칭에 쓸 인적사항을 입력해 주세요' })).not.toBeInTheDocument();
   expect(screen.queryByRole('link', { name: '입력하기' })).not.toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: '추천 공고' })).toBeInTheDocument();
-  expect(screen.queryByRole('combobox', { name: '레포 검색' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
-  expect(screen.getByRole('combobox', { name: '레포 검색' })).toBeInTheDocument();
 });
 
 it('persists a hiring date for its owner and keeps another account separate', () => {

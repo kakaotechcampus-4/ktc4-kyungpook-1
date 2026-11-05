@@ -1,194 +1,116 @@
-import { useId, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowUp, Check, ChevronRight, FolderGit2, Github, GitCommitHorizontal, GitPullRequest, CircleDot, Layers, PenLine, Search } from 'lucide-react';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useCards, useMe, useRepos } from '@/api/queries';
+import { useCoverLetters } from '@/api/coverLetters';
 import type { CardSummary, StarField } from '@/api/schemas';
-import { IconBox, KindIcon, PageTitle, SectionHead, StarDots } from '@/components/ui';
+import { KindIcon } from '@/components/ui';
 import { CardStatusMark } from '@/components/cards/CardStatusMark';
 import { cardKindLabel } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
 import { periodLabel } from '@/lib/format';
-import { track } from '@/lib/track';
-import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { errorView } from '@/api/errorView';
 import { CardTags } from '@/components/cards/CardTags';
 import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
-import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
+import { useActiveJobFeed } from '@/lib/activeJobFeed';
+import { orderedActiveJobs } from '@/lib/activeJobOrder';
+import { activeJobLink } from '@/lib/jobLinks';
+import { agoLabel, continueItems, deadlineItems, letterTitle, recentItems } from '@/lib/homeModel';
 import { JobCalendar, type CalendarPosting } from './JobCalendar';
-import { useOverallRecommendation } from '@/api/matching';
-import { HomeRecommendations } from './HomeRecommendations';
-import { HomeActivity } from './HomeActivity';
-import { matchSupported, useMatchedPostings } from '@/api/matching';
+import { matchSupported } from '@/api/matching';
+import { useHomePicks } from './useHomePicks';
+import { ContinueList, DeadlineList, HomeHero, RecentCards, StageTiles, type StageTile } from './HomeSections';
+import './home.css';
 
 const failureText = (error: unknown) => { const view = errorView(error, 'read'); return `${view.title} ${view.message}`; };
 
 /**
- * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 버튼 → 이어서 하기 → 카드.
- * 프롬프트는 "레포 이름을 치면 바로 그 레포의 사전 고지로" — 레포 고르기 페이지를 건너뛰는 빠른 길.
+ * 홈 — 맨 위에 할 일을 적는 자리, 그 아래 네 단계(레포, 경험 카드, 공고, 자소서)의 지금 상태와 이어서 할 일.
+ * 화면이 답하는 것은 하나다: 지금 어디까지 했고, 다음에 무엇을 누르면 되는가.
  */
 export function HomePage() {
   useDocumentTitle('홈');
   const me = useMe();
-  const matched = useMatchedPostings();
-  const [repoSearchOpen, setRepoSearchOpen] = useState(false);
   const cards = useCards();
   const repos = useRepos();
-  const [rq, setRq] = useState('');
-  const [hi, setHi] = useState(0);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
-  const suggestionId = useId();
-  const nav = useNavigate();
-  const overall = useOverallRecommendation();
-  // 캘린더에는 공고 목록 전체(운영 수백 개)가 아니라 '나와 맞는 기업' 으로 추천된 공고의 마감일만 자동으로 띄운다
-  const recommendedPostings = useMemo<CalendarPosting[]>(() => overall.data?.status === 'READY'
-    ? overall.data.companies.filter(c => !c.posting.closed).map(c => ({ id: c.posting.id, company: c.companyName, role: c.posting.title, expiresAt: c.posting.deadline, url: null }))
-    : [], [overall.data]);
+  const letters = useCoverLetters();
+  const active = useActiveJobFeed();
+  const jobs = useMemo(() => orderedActiveJobs(active.data?.jobs ?? []), [active.data]);
+  const cardList = useMemo(() => cards.data ?? [], [cards.data]);
+  const letterList = useMemo(() => letters.data ?? [], [letters.data]);
+  const { picks, overall, computing } = useHomePicks(cardList);
 
-  const drafts = (cards.data ?? []).filter((c) => c.status === 'DRAFT').slice(0, 3);
-  // 카드 목록을 아직 모르면(불러오는 중, 실패) 처음 온 사람으로 단정하지 않는다 — 첫 방문 문구가 잠깐 떴다 사라지지 않게
-  const returning = cards.isSuccess ? cards.data.length > 0 : true;
+  // 달력에는 공고 목록 전체(운영 수백 개)가 아니라 '나와 맞는 기업' 으로 뽑힌 공고의 마감일만 자동으로 띄운다
+  // 조회가 돌 때마다 새 배열이 와도 내용이 같으면 달력과 마감 목록을 다시 그리지 않게 글자열로 견준다
+  const pickKey = JSON.stringify(picks);
+  const stablePicks = useMemo(() => picks, [pickKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const recommendedPostings = useMemo<CalendarPosting[]>(() => stablePicks.map((pick) => ({ id: pick.postingId, company: pick.company, role: pick.title, expiresAt: pick.deadline, url: null })), [stablePicks]);
+
+  const todo = useMemo(() => continueItems({ jobs, cards: cardList, letters: letterList }), [jobs, cardList, letterList]);
+  const recent = useMemo(() => recentItems({ cards: cardList, letters: letterList, overall: overall.data }), [cardList, letterList, overall.data]);
+  const due = useMemo(() => deadlineItems({ picks: stablePicks, letters: letterList }), [stablePicks, letterList]);
+  // 카드 목록이나 도는 작업을 아직 모르면(불러오는 중, 실패) 처음 온 사람으로 단정하지 않는다 — 첫 방문 안내가 잠깐 떴다 사라지지 않게
+  const firstTime = cards.isSuccess && cards.data.length === 0 && active.data !== undefined && jobs.length === 0;
   const sameFailure = cards.isError && repos.isError && failureText(cards.error) === failureText(repos.error);
-  const sugg = useMemo(() => {
-    const xs = repos.data ?? [];
-    const t = rq.trim().toLowerCase();
-    if (returning && !t) return [];
-    const pool = t ? xs.filter((r) => `${r.owner}/${r.name}`.toLowerCase().includes(t)) : xs.filter((r) => r.recommended && !r.lastAnalyzedAt);
-    return pool.slice(0, 5);
-  }, [repos.data, rq, returning]);
-  const activeIndex = Math.max(0, Math.min(hi, sugg.length - 1));
-  const showSuggestions = suggestionsOpen && (!!rq.trim() || sugg.length > 0);
-  const optionId = (index: number) => `${suggestionId}-option-${index}`;
-  const go = (id?: string) => {
-    const target = id ?? sugg[activeIndex]?.id;
-    if (!target) { nav('/repos'); return; }
-    track('repo_selected', { repoId: target, via: 'prompt' });
-    nav(`/repos?select=${target}&disclose=1`);
-  };
 
-  // '매칭된 공고' 는 공고 전체 수가 아니라 AI 가 내 확정 카드로 맞춰 본 공고 중 필수 조건이 맞은 공고 수다
-  const confirmedCount = cards.isSuccess ? cards.data.filter((c) => c.status === 'CONFIRMED').length : undefined;
-  const matchedCount = matchSupported() && confirmedCount !== 0 && matched.isSuccess ? matched.data.matchedPostings : undefined;
-  const matchedNote = !matchSupported() || confirmedCount === undefined ? '경험과 연결되는 다음 기회'
-    : confirmedCount === 0 ? '카드가 확정되면 매칭할 수 있어요'
-    : matchedCount === undefined ? '경험과 연결되는 다음 기회'
-    : matchedCount === 0 ? '전체 매칭을 하면 맞는 공고를 찾아요' : 'AI 가 내 카드로 맞춰 본 공고 중 맞는 공고';
+  const tiles = useMemo<StageTile[]>(() => {
+    const analyzing = jobs.find((job) => job.type === 'ANALYZE');
+    const analyzed = me.data?.stats.analyzedRepos;
+    const drafts = cardList.filter((card) => card.status === 'DRAFT');
+    const confirmed = cardList.length - drafts.length;
+    const writing = letterList.find((letter) => letter.stage !== 'DRAFTED');
+    const latest = [...letterList].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    const repoTile: StageTile = {
+      key: 'repo', name: '레포', unit: '개', count: analyzed,
+      to: analyzing ? activeJobLink(analyzing) : '/repos', action: analyzing ? '진행 보기' : analyzed ? '레포 보기' : '레포 고르기',
+      flag: analyzing ? { tone: 'now', text: `${analyzing.repoName ?? '레포'} 읽는 중` } : undefined,
+      note: analyzing ? undefined : analyzed ? '정리한 레포예요' : '레포를 고르면 경험을 찾아 드려요',
+    };
+    const cardTile: StageTile = {
+      key: 'card', name: '경험 카드', unit: '장', count: cards.isSuccess ? cardList.length : undefined,
+      to: drafts.length ? `/cards/${encodeURIComponent(drafts[0].id)}` : '/cards', action: drafts.length ? '확인하기' : '카드 보기',
+      flag: drafts.length ? { tone: 'need', text: `확인할 카드 ${drafts.length}장` } : undefined,
+      note: !cards.isSuccess ? undefined : cardList.length === 0 ? '레포를 정리하면 카드가 생겨요' : drafts.length ? `${confirmed}장은 바로 쓸 수 있어요` : '모두 바로 쓸 수 있어요',
+    };
+    const matchTile: StageTile = {
+      key: 'match', name: '공고', unit: '곳', count: overall.isPending ? undefined : stablePicks.length,
+      to: '/match', action: '맞는 공고 보기', initials: stablePicks.slice(0, 3).map((pick) => pick.company.slice(0, 1)),
+      flag: computing ? { tone: 'now', text: '맞춰 보는 중' } : undefined,
+      note: computing ? undefined
+        : stablePicks.length ? ['내 카드와 맞는 기업이에요', overall.data?.computedAt ? `${agoLabel(overall.data.computedAt)} 맞췄어요` : ''].filter(Boolean).join(' · ')
+        : confirmed ? '내 카드로 맞는 공고를 찾아 드려요' : '카드가 확정되면 맞는 공고를 골라 드려요',
+    };
+    const letterTile: StageTile = {
+      key: 'letter', name: '자소서', unit: '편', count: letters.isSuccess ? letterList.length : undefined,
+      to: writing ? `/cover-letters/${encodeURIComponent(writing.id)}` : latest ? '/cover-letters' : '/cover-letters/new',
+      action: writing ? '이어 쓰기' : latest ? '자소서 보기' : '자소서 쓰기',
+      flag: writing ? { tone: 'need', text: '쓰던 자소서가 있어요' } : undefined,
+      note: writing ? letterTitle(writing) : latest ? letterTitle(latest) : '공고를 고르면 초안을 써 드려요',
+    };
+    return matchSupported() ? [repoTile, cardTile, matchTile, letterTile] : [repoTile, cardTile, letterTile];
+  }, [jobs, cardList, letterList, stablePicks, computing, overall.data, overall.isPending, me.data, cards.isSuccess, letters.isSuccess]);
+
   return (
-    <main className={`main home-page ${returning ? 'home-page--returning' : ''}`}>
+    <main className="main home2">
       {/* 카드와 레포가 같은 이유로 함께 실패하면 같은 안내가 두 번 나오지 않게 하나로 합친다(#520 G-08) */}
       {cards.isError && <QueryFailure error={cards.error} retry={() => sameFailure ? Promise.all([cards.refetch(), repos.refetch()]) : cards.refetch()} pending={cards.isFetching || (sameFailure && repos.isFetching)} />}
       {repos.isError && !sameFailure && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
-      <PageTitle lead="관심 기업의 일정과 나의 준비 현황을 한곳에서 관리하세요.">홈</PageTitle>
       {cards.isSuccess && <SkippedCardsNotice />}
-      <div className="home-workspace">
-      <div className="home-workspace__content">
-      <section className="home-welcome">
-        <div className="home-welcome__copy"><span className="home-eyebrow">BUILD YOUR NEXT CHAPTER</span><h2>GitHub 활동을<br />나만의 경험으로</h2><p>레포를 연결하면 커밋과 PR에서<br />자소서에 쓸 경험을 찾아드려요.</p><div className="home-welcome__actions"><Link to="/repos" className="btn btn--primary"><Github size={17} /> 레포 연결하기 <ArrowRight size={16} /></Link><button type="button" className="btn btn--outline" aria-expanded={repoSearchOpen} aria-controls="home-repo-search" onClick={() => setRepoSearchOpen(v => !v)}><Search size={17} /> 레포 검색하기</button></div></div>
-        <div className="home-welcome__visual" aria-hidden="true"><div className="activity-float activity-float--commit"><GitCommitHorizontal size={20} /><span>Commit<small>쌓아온 작업 기록</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--pr"><GitPullRequest size={20} /><span>Pull Request<small>함께 해결한 문제</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--issue"><CircleDot size={20} /><span>Experience<small>나만의 경험 카드로</small></span><Check size={17} /></div><Github className="home-welcome__github" size={52} strokeWidth={1.4} /></div>
-      </section>
-      <section className="home-overview" aria-label="취업 준비 현황">
-        <div className="overview-tile"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
-        <div className="overview-tile"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
-        <div className="overview-tile"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
-        <Link to="/match" className="overview-tile overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
-      </section>
-      <ActiveJobsList />
-      <section className="prompt" id="home-repo-search" hidden={!repoSearchOpen}>
-        {returning ? (
-          <div className="home-start__head">
-            <h2>새 경험 카드 만들기</h2>
-            <p>레포를 검색해 바로 시작하거나, 코드에 남지 않은 경험은 직접 써 보세요.</p>
-          </div>
-        ) : <h1 className="prompt__h">오늘은 어떤 경험을 정리해 볼까요?</h1>}
-        {!returning && <p className="prompt__sub">레포를 고르면 경험 카드를 만들어 드려요.</p>}
-        <div className="home-start__row">
-        <div className="prompt__card" role="search" onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget)) setSuggestionsOpen(false);
-        }}>
-          <div className="prompt__row">
-            <Search size={18} className="prompt__icon" aria-hidden />
-            <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); setSuggestionsOpen(true); }} placeholder="레포 검색" aria-label="레포 검색"
-              role="combobox" aria-autocomplete="list" aria-expanded={showSuggestions} aria-controls={suggestionId}
-              aria-activedescendant={showSuggestions && sugg.length ? optionId(activeIndex) : undefined}
-              onFocus={() => setSuggestionsOpen(true)}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
-                if (e.key === 'Escape') { e.preventDefault(); setSuggestionsOpen(false); }
-                if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && sugg.length) {
-                  e.preventDefault(); setSuggestionsOpen(true);
-                  setHi(e.key === 'ArrowDown' ? Math.min(activeIndex + 1, sugg.length - 1) : Math.max(activeIndex - 1, 0));
-                }
-                if (e.key === 'Enter') { e.preventDefault(); void go(); }
-              }} />
-            <button type="button" className="prompt__go" onClick={() => void go()} aria-label="이 레포로 시작" disabled={!sugg.length}><ArrowUp size={18} /></button>
-          </div>
-          {showSuggestions && (
-            <div className="prompt__list">
-              {sugg.length === 0 && <p className="prompt__none" role="status">{repos.isPending ? '레포를 불러오는 중이에요' : repos.isError ? '레포를 불러오지 못했어요' : '그런 이름의 레포가 없어요'}</p>}
-              <ul id={suggestionId} className="prompt__sugg" role="listbox" aria-label="레포 제안">
-                {sugg.map((r, i) => (
-                  <li key={r.id} role="presentation">
-                    <button id={optionId(i)} type="button" role="option" tabIndex={-1} aria-selected={i === activeIndex}
-                      onMouseEnter={() => setHi(i)} onPointerDown={(e) => e.preventDefault()} onClick={() => go(r.id)}>
-                      <FolderGit2 size={15} className="prompt__sugg-icon" />
-                      <span className="prompt__sugg-name">{r.owner} / {r.name}</span>
-                      <span className="prompt__sugg-meta">{isCounting(r) ? `개수 ${COUNTING}` : `내 커밋 ${r.contribution.mine} / 팀 ${r.contribution.team}`}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+      <HomeHero />
+      <StageTiles tiles={tiles} />
+      <div className="home2-cols">
+        <div className="home2-col">
+          <ContinueList items={todo} firstTime={firstTime} />
+          <RecentCards items={recent} />
         </div>
-        <div className="prompt__chips">
-          <Link to="/repos" className="btn btn--outline"><FolderGit2 size={14} /> 모든 레포 보기</Link>
-          <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
-        </div>
-        </div>
-      </section>
-
-      <div className="home-lower">
-      <aside className="home-insights">
-      <HomeActivity key={me.data?.id} userId={me.data?.id} />
-      {drafts.length > 0 && (
-        <section className="stack home-resume" style={{ gap: 16 }}>
-          <SectionHead label="진행 중인 작업" count={drafts.length} />
-          <div className="resume">
-            {drafts.map((c) => (
-              <Link key={c.id} to={`/cards/${c.id}`} className="resume__item">
-                <KindIcon kind={c.kind} size={30} />
-                <div className="stack grow" style={{ gap: 3, minWidth: 0 }}>
-                  <span className="resume__title">{c.title}</span>
-                  <span className="t-12 c-2">{needsReviewOf(c).length ? '확인 필요' : filledOf(c).length < 4 ? `빈 칸 ${4 - filledOf(c).length}개` : '확정 대기'}</span>
-                </div>
-                <StarDots filled={filledOf(c)} low={needsReviewOf(c)} />
-                <ArrowRight size={16} className="c-3" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-      </aside>
-      </div>
-      </div>
-      <aside className="home-workspace__calendar" aria-label="공고 일정">{me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={recommendedPostings} postingsLoading={matchSupported() && overall.isPending} postingsError={overall.isError} onRetryPostings={() => void overall.refetch()} />}<HomeRecommendations /></aside>
+        <aside className="home2-side" aria-label="공고 일정">
+          {me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={recommendedPostings} postingsLoading={matchSupported() && overall.isPending} postingsError={overall.isError} onRetryPostings={() => void overall.refetch()} />}
+          <DeadlineList items={due} />
+        </aside>
       </div>
     </main>
-  );
-}
-
-export function SourceRow({ icon, title, desc, onClick }: { icon: typeof FolderGit2; title: string; desc: string; onClick: () => void }) {
-  return (
-    <button type="button" className="source" onClick={onClick}>
-      <IconBox icon={icon} size={44} />
-      <div className="stack" style={{ gap: 4, minWidth: 0 }}>
-        <span className="source__t">{title}</span>
-        <span className="source__d">{desc}</span>
-      </div>
-      <ChevronRight size={18} className="source__chev" />
-    </button>
   );
 }
 

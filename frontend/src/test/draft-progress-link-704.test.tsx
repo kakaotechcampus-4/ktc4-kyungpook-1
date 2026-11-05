@@ -3,7 +3,8 @@ import { useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { endpoints } from '@/api/endpoints';
 import type { Job } from '@/api/schemas';
-import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
+import { ContinueList } from '@/features/home/HomeSections';
+import { continueItems } from '@/lib/homeModel';
 import { jobResultLink } from '@/lib/jobLinks';
 import { mountApp, page } from './profileHarness';
 
@@ -16,12 +17,11 @@ const draftJob = (cardIds: string[] | null): Job => ({
   result: cardIds ? { repoId: 'r_auth', cardIds } : null, pollAfterMs: 60_000,
 } as Job);
 const CardProbe = () => { const location = useLocation(); return <p>{`card ${location.pathname} ${JSON.stringify(location.state)}`}</p>; };
-const routes = () => [page(<ActiveJobsList />, '/'), page(<CardProbe />, '/cards/:cardId')];
-const link = () => screen.getByRole('link', { name: '진행 상황 보기' });
+const routes = () => [page(<ContinueList items={continueItems({ jobs: [active], cards: [], letters: [] })} firstTime={false} />, '/'), page(<CardProbe />, '/cards/:cardId')];
+const link = () => screen.getByRole('link', { name: /auth-service/ });
 
 describe('#704 카드 초안 작업의 진행 상황 보기', () => {
   it('작업이 만든 카드 id 를 받으면 첫 카드의 초안을 쓰는 화면으로 가고, 앞뒤 카드 순서를 함께 넘긴다', async () => {
-    vi.spyOn(endpoints, 'activeJobs').mockResolvedValue({ jobs: [active] });
     vi.spyOn(endpoints, 'job').mockResolvedValue(draftJob(['card_9', 'card_8']));
     mountApp(routes(), '/');
 
@@ -31,11 +31,10 @@ describe('#704 카드 초안 작업의 진행 상황 보기', () => {
   });
 
   it('카드 id 를 아직 받지 못했으면 그 레포의 카드 폴더로 간다', async () => {
-    vi.spyOn(endpoints, 'activeJobs').mockResolvedValue({ jobs: [active] });
     vi.spyOn(endpoints, 'job').mockResolvedValue(draftJob(null));
     mountApp(routes(), '/');
 
-    await screen.findByRole('link', { name: '진행 상황 보기' });
+    await screen.findByRole('link', { name: /auth-service/ });
     await waitFor(() => expect(endpoints.job).toHaveBeenCalled());
     expect(link()).toHaveAttribute('href', '/cards/repo/r_auth');
   });

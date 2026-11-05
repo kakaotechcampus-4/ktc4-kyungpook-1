@@ -11,11 +11,11 @@ for (const width of [320, 1440]) test(`active work renders execution and separat
   ].map(job => ({ ...job, userRepositoryId: null, pollAfterMs: 60000 }));
   await page.route(url => url.pathname === '/api/jobs' && url.searchParams.get('active') === 'true', route => route.fulfill({ json: { data: { jobs }, error: null } }));
   await page.goto('/');
-  const section = page.getByRole('region', { name: '진행 중인 작업', exact: true });
-  const rows = section.locator('.active-job-row');
+  const section = page.getByRole('region', { name: /이어서 하기/ });
+  const rows = section.locator('.home2-todo');
   await expect(rows.locator('strong')).toHaveText(['team/running', 'team/queued-draft', 'team/queued-analysis']);
-  await expect(rows.first().locator('.spinner')).toBeVisible();
-  await expect(rows.nth(1)).toContainText('초안');
+  await expect(rows.first()).toContainText('레포를 읽고 있어요');
+  await expect(rows.nth(1)).toContainText('곧 시작해요');
   await expect(rows.nth(1)).not.toContainText('앞 정리');
   await expect(rows.nth(2)).toContainText('앞 정리가 끝나면 시작해요');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);

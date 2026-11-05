@@ -192,7 +192,7 @@
 { "turns": [Turn], "question": Question, "rewriteFailed": false }
 ```
 - `role` 은 `AI` · `USER`. `status` 는 AI 말에만 있다: `ASKING`(질문이 열림) · `FILLED`(이 답으로 그 문항을 다시 씀) · `DONE`(이 문항은 더 묻지 않음) · `OFF_TOPIC`(재료가 아닌 말이라 돌려보냄, 질문은 그대로 열림). 모르는 `status`·`item` 은 `null` 로 읽고, 모양이 다른 말은 그 말만 버린다.
-- 화면은 마지막 AI 말이 `DONE` 이 아니면 입력을 연다. `FILLED` 다음에 물을 게 남았으면 같은 말에 다음 질문이 붙어 오고, 없으면 `DONE` 말이 하나 더 붙어 온다.
+- 화면은 마지막 AI 말이 `DONE` 이 아니면 입력을 연다. `FILLED` 말에는 다음 질문이 붙어 오지 않는다 — 빈칸이 남았으면 화면이 그 문항(없으면 다음 문항)을 다시 열어(`turns/open`) 이어서 묻는다.
 - `question` 은 `CoverLetter.questions[]` 와 같은 모양이고 화면은 자소서 캐시의 그 문항 자리에 넣는다. `rewriteFailed: true` 면 답은 저장됐지만 글은 그대로다.
 - 오류: 400(글 규칙) · 409 `INVALID_STATE`(초안 단계가 아님, 열린 질문 없음) · 429 `RATE_LIMITED` · 503 `LLM_UNAVAILABLE`. 화면은 429(1분)·503·연결 실패를 '잠시 뒤 다시 보내 주세요' 한 줄과 다시 보내기로, 하루 한도는 그 말로 알린다.
 

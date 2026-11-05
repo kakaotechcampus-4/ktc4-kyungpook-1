@@ -7,7 +7,7 @@ import { buildQuestionNotes, flaggedSentences } from '@/lib/coverLetterNotes';
 import { locateSentence, withoutSentence } from '@/lib/draftPaper';
 import { track } from '@/lib/track';
 import { useReducedMotion } from '@/lib/useLiveText';
-import { FillTab } from './FillTab';
+import { FillTab, type AutoAsk } from './FillTab';
 import { InferenceTab, type InferenceItem } from './InferenceTab';
 import { Notices } from './Notices';
 import { PANEL_TABS, PanelTabs, tabId, tabPanelId, type PanelTab } from './PanelTabs';
@@ -21,19 +21,19 @@ const withGwa = (n: number) => `Q${n}${[2, 4, 5, 9].includes(n % 10) ? '와' : '
 const TAB_ICON: Record<PanelTab, ReactNode> = { fill: <MessageSquarePlus size={22} aria-hidden />, polish: <PenLine size={22} aria-hidden />, inference: <CircleHelp size={22} aria-hidden /> };
 
 /**
- * ⑥ 초안 옆 패널(#727) — 채우기 · 진단·첨삭 · 짐작 확인 중 하나만 보이고, 머리줄은 지금 보고 있는 문항('Q3에 적용')을 따라간다.
+ * ⑥ 초안 옆 패널(#727) — 대화 · 진단·첨삭 · 짐작 확인 중 하나만 보이고, 머리줄은 지금 보고 있는 문항('Q3에 적용')을 따라간다.
  * 860px 아래에서는 아래 막대 세 칸이 되고, 누르면 반 높이 시트로 열린다(종이는 가리지 않는다).
- * 첨삭 요청과 그 결과는 탭을 옮겨도 이어지도록 여기서 갖는다.
+ * 첨삭 요청과 그 결과, 대화가 스스로 묻기를 어디까지 했는지는 탭을 옮겨도 이어지도록 여기서 갖는다.
  */
 export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, onGo, onFlag, talk, onTalk, onTalked, onShowFilled }: {
   letter: CoverLetter; texts: Record<string, string>; onText: (id: string, text: string) => void;
   activeId: string; mobile: boolean; onLock: (id: string | null) => void; onGo: (questionId: string) => void;
   onFlag: (questionId: string, key: string) => void;
-  /** 알림 줄의 '→ Qn에 넣기'(#733) — 채우기 탭을 열고 그 문항 이야기를 시작한다 */
+  /** 알림 줄의 '→ Qn에 넣기'(#733) — 대화 탭을 열고 그 문항 이야기를 시작한다 */
   talk: { questionId: string } | null; onTalk: (questionId: string) => void; onTalked: () => void;
   onShowFilled: (questionId: string, sentence: string | null) => void;
 }) {
-  const [tab, setTab] = useState<PanelTab>('polish');
+  const [tab, setTab] = useState<PanelTab>('fill');
   const [sheet, setSheet] = useState<PanelTab | null>(null);
   const [running, setRunning] = useState<string | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
@@ -42,6 +42,7 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   const [infNote, setInfNote] = useState<string | null>(null);
   const reduced = useReducedMotion();
   const asideRef = useRef<HTMLElement>(null);
+  const autoAsk = useRef<AutoAsk>({ first: false, off: false });
   const polish = usePolish(letter.id);
   const apply = useApplyPolish(letter.id);
   const save = useSaveDraft(letter.id);
@@ -160,7 +161,7 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   const view: PolishView = running === q.id ? 'running' : q.polish ? 'result' : applied[q.id] ? 'applied' : 'idle';
   const body = (t: PanelTab) => {
     if (t === 'fill') {
-      return <FillTab letter={letter} activeId={q.id} texts={texts} onText={onText} talk={talk} onTalked={onTalked}
+      return <FillTab letter={letter} activeId={q.id} texts={texts} onText={onText} talk={talk} onTalked={onTalked} autoAsk={autoAsk}
         onShow={(id, sentence) => { if (mobile) setSheet(null); onShowFilled(id, sentence); }} />;
     }
     if (t === 'inference') return <InferenceTab items={items} confirmingKey={confirmingKey} note={infNote} {...inference} />;
@@ -200,7 +201,8 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   }
   return (
     <aside ref={asideRef} className="clp clp-scroll" aria-label="다듬기 패널">
-      <Notices questions={letter.questions} texts={texts} onGo={onGo} onTalk={onTalk} memoUsable={letter.memoUsable} />
+      {/* 대화 탭에서는 대화가 빈칸을 스스로 묻고 있어, 같은 말을 하는 빈칸 알림은 다른 탭에서만 보인다 */}
+      <Notices questions={letter.questions} texts={texts} onGo={onGo} onTalk={tab === 'fill' ? undefined : onTalk} memoUsable={letter.memoUsable} />
       {head()}
       <PanelTabs tab={tab} onTab={setTab} badge={items.length} />
       <section className="clp-card" role="tabpanel" id={tabPanelId(tab)} aria-labelledby={tabId(tab)}>{body(tab)}</section>

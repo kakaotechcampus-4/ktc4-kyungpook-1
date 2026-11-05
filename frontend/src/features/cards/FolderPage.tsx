@@ -1,9 +1,11 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Pencil, PenLine } from 'lucide-react';
 import { useActivities } from '@/api/activities';
+import { matchSupported } from '@/api/matching';
 import { useCards, useRepo } from '@/api/queries';
 import type { CardSummary } from '@/api/schemas';
+import { NextStep } from '@/components/cards/NextStep';
 import { Breadcrumb, Button, PageTitle, SectionHead, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { ActivityDeleteDialog } from '@/features/activities/ActivityDeleteDialog';
@@ -11,6 +13,7 @@ import { RepoMatch } from '@/features/match/RepoMatch';
 import { CardGridItem } from '@/features/home/HomePage';
 import { activityMeta } from '@/lib/activityLabels';
 import { buildFolders, folderOwnerLine, folderTitle, type FolderKind } from '@/lib/cardFolders';
+import { folderNext } from '@/lib/folderNext';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { NewCardDialog } from './NewCardDialog';
 import { RepoDescriptionDialog } from './RepoDescriptionDialog';
@@ -23,6 +26,7 @@ import './CardFolders.css';
  * 경험 카드는 누른 폴더가 곧 자리라 그 자리에서 제목과 기간만 받는다.
  * 폴더 안에서 카드를 열면 이전/다음 카드는 이 폴더의 순서(기술 카드, 경험 카드)를 따른다.
  * 레포 폴더는 이름 옆 연필로 폴더 설명을 고친다(#777). 설명은 레포 상세에서 읽고, 못 읽어도 폴더는 그대로 보인다.
+ * 카드를 확정하면 이 폴더로 돌아오고(location.state.confirmed), 맨 위 한 줄이 다음에 할 일 하나를 말한다.
  */
 export const RepoFolderPage = () => <FolderScreen kind="repo" id={useParams().repoId} />;
 export const ActivityFolderPage = () => <FolderScreen kind="activity" id={useParams().activityId} />;
@@ -30,6 +34,7 @@ export const DirectFolderPage = () => <FolderScreen kind="direct" />;
 
 function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
   const nav = useNavigate();
+  const justId = (useLocation().state as { confirmed?: string } | null)?.confirmed;
   const cards = useCards();
   const activities = useActivities(kind === 'activity');
   const repo = useRepo(kind === 'repo' ? id : undefined);
@@ -68,7 +73,10 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
 
   const techCards = folder.cards.filter((card) => card.kind === 'TECH');
   const experienceCards = folder.cards.filter((card) => card.kind === 'QUALITATIVE');
-  const order = [...techCards, ...experienceCards].map((card) => card.id);
+  const ordered = [...techCards, ...experienceCards];
+  const order = ordered.map((card) => card.id);
+  const justConfirmed = !!justId && order.includes(justId);
+  const next = folderNext({ cards: ordered, justConfirmed, matchOn: matchSupported() });
   const confirmed = folder.cards.filter((card) => card.status === 'CONFIRMED').length;
   const boardLink = kind === 'repo' ? `/repos/${encodeURIComponent(id ?? '')}/candidates` : null;
   const facts = kind === 'repo' ? `기술 카드 ${techCards.length}장 · 경험 카드 ${experienceCards.length}장 · 확정 ${confirmed}장` : `카드 ${folder.cards.length}장 · 확정 ${confirmed}장`;
@@ -87,19 +95,20 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
         </div>
         {kind !== 'direct' && (
           <div className="folder-head__actions">
-            {boardLink && <Link to={boardLink} className="btn btn--primary">후보 보드</Link>}
+            {boardLink && <Link to={boardLink} className="btn btn--outline">후보 보드</Link>}
             {kind === 'activity' && <Link to={`/activities/${encodeURIComponent(id ?? '')}/edit`} className="btn btn--outline">활동 고치기</Link>}
             {kind === 'activity' && <Button variant="danger" onClick={() => setDeleting(true)}>활동 삭제</Button>}
           </div>
         )}
       </div>
 
+      {next && <NextStep next={next} state={{ cardOrder: order }} announce={justConfirmed} />}
       {kind === 'repo' && id && <RepoMatch repoId={id} confirmedCards={confirmed} />}
       {(kind === 'repo' || techCards.length > 0) && (
-        <CardSection title="기술 카드" cards={techCards} order={order}
+        <CardSection title="기술 카드" cards={techCards} order={order} justId={justId}
           create={boardLink && <NewTile title="기술 카드 직접 만들기" hint="찾아 둔 후보에 없는 일을 커밋을 골라 적어요" to={`${boardLink}?add=1`} />} />
       )}
-      <CardSection title="경험 카드" cards={experienceCards} order={order}
+      <CardSection title="경험 카드" cards={experienceCards} order={order} justId={justId}
         create={<NewTile title="경험 카드 만들기" hint={experienceHint} onClick={() => setCreating(true)} />} />
 
       {creating && <NewCardDialog folderName={folderTitle(folder)} repoId={kind === 'repo' ? id : undefined} activityId={kind === 'activity' ? id : undefined} onClose={() => setCreating(false)} />}
@@ -109,11 +118,11 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
   );
 }
 
-function CardSection({ title, cards, order, create }: { title: string; cards: CardSummary[]; order: string[]; create: ReactNode }) {
+function CardSection({ title, cards, order, justId, create }: { title: string; cards: CardSummary[]; order: string[]; justId?: string; create: ReactNode }) {
   return (
     <section className="folder-section" aria-label={title}>
       <SectionHead label={title} count={cards.length} />
-      <div className="experience-list">{cards.map((card) => <CardGridItem key={card.id} c={card} cardOrder={order} />)}{create}</div>
+      <div className="experience-list">{cards.map((card) => <CardGridItem key={card.id} c={card} cardOrder={order} just={card.id === justId} />)}{create}</div>
     </section>
   );
 }

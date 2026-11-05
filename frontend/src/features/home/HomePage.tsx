@@ -197,12 +197,13 @@ const STAR_KEYS: StarField[] = ['S', 'T', 'A', 'R'];
 export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] !== 'EMPTY');
 export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
 
-export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: string[] }) {
+export function CardGridItem({ c, cardOrder, just }: { c: CardSummary; cardOrder?: string[]; just?: boolean }) {
   const experience = c.kind === 'QUALITATIVE';
   const origin = experience ? c.activity?.name ?? cardKindLabel.QUALITATIVE : summarySource(c) ?? cardKindLabel.TECH;
   const sub = summaryDetail(c);
   return (
-    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : 'gcard--confirmed'}${experience ? ' gcard--experience' : ''}`}>
+    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : 'gcard--confirmed'}${experience ? ' gcard--experience' : ''}${just ? ' experience-item--just' : ''}`}>
+      {just && <span className="sr-only">방금 확정한 카드</span>}
       <div className="experience-item__meta">
         <KindIcon kind={c.kind} size={24} />
         <span>{[origin, c.period && periodLabel(c.period)].filter(Boolean).join(' · ')}</span>

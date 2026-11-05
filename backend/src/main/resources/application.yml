@@ -143,6 +143,9 @@ gitory:
       enabled: ${JOB_WORKER_ENABLED:true}
       # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
+  alert:
+    # 서버나 AI 문제로 Job 이 실패해도 로그에만 남아 아무도 모르므로 이 Discord 웹훅으로 한 줄을 보내며, 비어 있으면 보내지 않는다
+    webhook-url: ${GITORY_ALERT_WEBHOOK_URL:}
   cover-letter:
     worker:
       # 끄면 자소서의 AI 단계가 돌지 않는다. 분석 Job 과 자리를 나눠, 오래 걸리는 분석이 자소서를 막지 않는다

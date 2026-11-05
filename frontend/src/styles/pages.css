@@ -119,6 +119,11 @@
 .done-card { display: flex; align-items: center; gap: 18px; padding: 18px 20px; flex-wrap: wrap; }
 .done-card__ok { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); display: grid; place-items: center; font-weight: 700; flex: 0 0 auto; }
 @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } }
+/* 폰에서는 확정 패널의 주 버튼을 글 바로 아래 한 줄로, 보조 버튼은 그 아래로 */
+@media (max-width: 640px) {
+  .done-card > .btn { flex: 1 1 100%; order: 3; }
+  .done-card > .btn--primary { order: 2; }
+}
 
 /* ───────── 되묻기 (D5) ───────── */
 .turn { display: flex; gap: 13px; padding: 16px; }

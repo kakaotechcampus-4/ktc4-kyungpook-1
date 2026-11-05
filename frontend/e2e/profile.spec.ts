@@ -4,7 +4,8 @@ import { loginAsDemo } from './helpers';
 /** 인적사항(BE #552 계약, 관심 분야 #656) — 처음 입력 창 → 저장 → 새로고침 → 마이페이지 폼. 목 서버가 브라우저 안에서 돈다. */
 
 const noHorizontalOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-const dialog = (page: Page) => page.getByRole('dialog', { name: /인적사항 입력/ });
+// 처음 입력 창 — 제목은 지금 단계 이름(관심 분야, 경력, 학력, 어학, 자격증)
+const dialog = (page: Page) => page.getByRole('dialog', { name: /^(관심 분야|경력|학력|어학|자격증)$/ });
 /** 시드 사용자는 처음 입력을 마친 사람이라, 처음 입력 창은 인적사항 미입력 장면으로 새로 연 데모에서 본다 */
 const NO_PROFILE = '/?demoScenario=no-profile';
 /** 처음 입력 창을 지나간 상태로 만든다 — 관심 분야 하나만 저장(목 서버가 브라우저 안에서 돌아 페이지에서 PUT 한다) */
@@ -62,17 +63,17 @@ test('first entry: the dialog takes the five steps over the home page, then the 
   await page.goto(NO_PROFILE);
   await expect(dialog(page)).toBeVisible();
   await expect(dialog(page).getByRole('button', { name: '닫기', exact: true })).toHaveCount(0);
-  await expect(dialog(page)).toContainText('1/5 단계');
+  await expect(dialog(page)).toHaveAccessibleName('관심 분야');
   await page.getByRole('button', { name: '다음', exact: true }).click();
   await expect(page.getByText('관심 분야를 1개 이상 골라 주세요')).toBeVisible();
   await page.getByRole('checkbox', { name: '백엔드', exact: true }).check();
   await page.getByRole('button', { name: '다음', exact: true }).click();
-  await expect(dialog(page)).toContainText('2/5 단계');
+  await expect(dialog(page)).toHaveAccessibleName('경력');
   await page.getByRole('button', { name: '경력 없음', exact: true }).click();
-  await expect(dialog(page)).toContainText('3/5 단계');
+  await expect(dialog(page)).toHaveAccessibleName('학력');
   await page.getByRole('button', { name: '다음', exact: true }).click();
   await expect(page.getByText('학력을 1개 이상 입력해 주세요')).toBeVisible();
-  await page.getByRole('radio', { name: '학사', exact: true }).check();
+  await page.getByRole('radio', { name: '대학교', exact: true }).check(); // 4년제가 먼저 골라진다
   await page.getByRole('button', { name: '다음', exact: true }).click();
   await expect(page.getByText('상태를 선택해 주세요')).toBeVisible();
   await page.getByRole('radio', { name: '졸업', exact: true }).check();
@@ -80,7 +81,7 @@ test('first entry: the dialog takes the five steps over the home page, then the 
   await page.getByRole('checkbox', { name: '토익', exact: true }).check();
   await page.getByLabel('토익 점수', { exact: true }).fill('900');
   await page.getByRole('button', { name: '다음', exact: true }).click();
-  await expect(dialog(page)).toContainText('5/5 단계');
+  await expect(dialog(page)).toHaveAccessibleName('자격증');
   await page.getByRole('button', { name: '자격증 없음', exact: true }).click();
   await expect(dialog(page)).toHaveCount(0);
   const afterSetup = await savedProfile(page);
@@ -145,7 +146,7 @@ test('the dialog cannot be dismissed: Escape, clicking outside and a reload all 
   await page.getByRole('button', { name: '다음', exact: true }).click();
   await page.reload();
   await expect(dialog(page)).toBeVisible();
-  await expect(dialog(page)).toContainText('1/5 단계'); // 저장 전이라 처음부터
+  await expect(dialog(page)).toHaveAccessibleName('관심 분야'); // 저장 전이라 처음부터
   expect((await savedProfile(page)).savedAt).toBeNull();
   expect(await page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('gitory.profile')))).toEqual([]);
 });
@@ -315,7 +316,7 @@ for (const width of [1440, 390]) {
     await expect(dialog(page)).toBeVisible();
     await page.getByRole('checkbox', { name: '백엔드', exact: true }).check();
     for (const value of await page.evaluate(contrast, [
-      { text: '.modal__title', surface: '.modal' }, { text: '.modal__sub', surface: '.modal' }, { text: '.setup-steps li[aria-current="step"]', surface: '.modal' },
+      { text: '.modal__title', surface: '.modal' }, { text: '.modal__foot-text strong', surface: '.modal__foot' }, { text: '.setup-steps li[aria-current="step"]', surface: '.modal' },
       { text: '.interest-tile.is-on span', surface: '.interest-tile.is-on' }, { text: '.interest-tile:not(.is-on) span', surface: '.interest-tile:not(.is-on)' },
       { text: '.modal__foot .btn--primary', surface: '.modal__foot .btn--primary' },
     ])) expect(value).toBeGreaterThanOrEqual(4.5);
@@ -327,7 +328,7 @@ for (const width of [1440, 390]) {
     await page.getByRole('button', { name: '저장', exact: true }).click();
     await expect(page.locator('.profile-error').first()).toBeVisible();
     for (const value of await page.evaluate(contrast, [
-      { text: '.profile-row__title', surface: '.profile-row' }, { text: '.profile-section__hint', surface: '.profile-section' }, { text: '.profile-error', surface: '.profile-row' },
+      { text: '.profile-row__title', surface: '.profile-row' }, { text: '.profile-error', surface: '.profile-row' },
       { text: '.profile-row .input', surface: '.profile-row .input' }, { text: '.note--danger strong', surface: '.note--danger' },
     ])) expect(value).toBeGreaterThanOrEqual(4.5);
     expect(await noHorizontalOverflow(page)).toBe(true);

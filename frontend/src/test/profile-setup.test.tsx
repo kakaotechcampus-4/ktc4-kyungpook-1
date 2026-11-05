@@ -25,21 +25,22 @@ const choose = (label: string, value: string) => fireEvent.change(screen.getByRo
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 30)); });
 const puts = (server: ReturnType<typeof connectMockServer>) => server.profileCalls().filter((c) => c.method === 'PUT');
 const pickRadio = (label: string) => fireEvent.click(screen.getByRole('radio', { name: label }));
-/** 창의 학력은 타일 두 줄 — 학력 구분과 상태 */
+/** 창의 학력은 타일 두 줄 — 학력 구분(대학교면 4년제가 먼저 골라진다)과 현재 상태 */
 function fillEducation() {
-  pickRadio('학사'); pickRadio('재학');
+  pickRadio('대학교'); pickRadio('재학');
 }
 
 beforeEach(() => { resetDb(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
 describe('first-entry dialog (shown while no interest is saved)', () => {
-  it('opens over the page for a never-saved profile, starting at 관심 분야 1/5', async () => {
+  it('opens over the page for a never-saved profile, starting at 관심 분야 (title is the step name, no extra step text)', async () => {
     connectMockServer();
     mount();
     const modal = await screen.findByRole('dialog');
-    expect(modal).toHaveAccessibleName(/관심 분야/);
-    expect(within(modal).getByText(/1\/5 단계/)).toBeInTheDocument();
+    expect(modal).toHaveAccessibleName('관심 분야');
+    expect(within(modal).queryByText(/1\/5 단계|다 입력해야/)).not.toBeInTheDocument();
+    expect(within(modal).getByRole('listitem', { current: 'step' })).toHaveTextContent('관심 분야');
     expect(within(modal).getByRole('checkbox', { name: '백엔드' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '홈 화면' })).toBeInTheDocument(); // 페이지는 뒤에 그대로 있다
   });
@@ -113,7 +114,7 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
     click('다음');
     expect(screen.getByText('학력을 1개 이상 입력해 주세요')).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toHaveAccessibleName(/학력/);
-    pickRadio('학사');
+    pickRadio('대학교');
     expect(screen.queryByText('학력을 1개 이상 입력해 주세요')).not.toBeInTheDocument();
     click('다음');
     expect(screen.getByText('상태를 선택해 주세요')).toBeInTheDocument();
@@ -121,7 +122,8 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
     click('다음');
     expect(screen.getByRole('dialog')).toHaveAccessibleName(/어학/);
     click('이전');
-    expect(screen.getByRole('radio', { name: '학사' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: '대학교' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: '4년제' })).toBeChecked();
     expect(screen.getByRole('radio', { name: '졸업 예정' })).toBeChecked();
   });
 
@@ -175,6 +177,33 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
     expect(screen.getByRole('checkbox', { name: '백엔드' })).toBeChecked();
     click('다음');
     expect(screen.getByLabelText('경력 1 회사')).toHaveValue('샘플컴퍼니');
+  });
+
+  it('학력 구분은 고등학교, 대학교, 대학원 셋이고, 대학교와 대학원만 한 줄 더 물어 저장 값은 그대로 보낸다', async () => {
+    const server = connectMockServer();
+    mount();
+    await screen.findByRole('dialog');
+    pick('백엔드'); click('다음'); click('경력 없음');
+    expect(screen.getAllByRole('radio').map((r) => r.getAttribute('name') === 'p-edu-level' ? (r.closest('label')?.textContent ?? '') : null).filter(Boolean)).toEqual(['고등학교', '대학교', '대학원']);
+    expect(screen.getByText('현재 상태')).toBeInTheDocument();
+    pickRadio('고등학교');
+    expect(screen.queryByRole('radiogroup', { name: /구분$/ })).not.toBeInTheDocument();
+    pickRadio('대학원');
+    expect(screen.getByRole('radio', { name: '석사' })).toBeChecked(); // 대학원을 고르면 석사가 먼저
+    pickRadio('박사'); pickRadio('졸업');
+    click('다음'); click('어학 없음'); click('자격증 없음');
+    await waitFor(() => expect(dialog()).not.toBeInTheDocument());
+    expect((puts(server)[0].body as { educations: unknown[] }).educations[0]).toMatchObject({ level: 'DOCTOR', status: 'GRADUATED' });
+  });
+
+  it('이전은 테두리 있는 보조 버튼이고, 경력이 비었을 때 넘기는 안내 줄 없이 "경력 없음" 버튼만 둔다', async () => {
+    connectMockServer();
+    mount();
+    await screen.findByRole('dialog');
+    pick('백엔드'); click('다음');
+    expect(screen.getByRole('button', { name: '이전' })).toHaveClass('btn--outline');
+    expect(screen.getByRole('button', { name: '경력 없음' })).toHaveClass('btn--primary');
+    expect(screen.queryByText(/해당 사항이 없으면|회사에서 한 일과 기간을/)).not.toBeInTheDocument();
   });
 
   it('the last step saves everything in one PUT, closes the dialog and reports only a count', async () => {

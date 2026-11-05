@@ -241,7 +241,7 @@ function CandidateTile({ c, disabled, selected, onToggle, expanded, onExpand, on
   return (
     <div className={`cand-tile${selected ? ' cand-tile--on' : ''}${commits && expanded ? ' cand-tile--open' : ''}`}>
       <button type="button" className="cand-tile__pick" aria-pressed={selected} disabled={disabled} onClick={onToggle}>
-        <span className="cand-tile__head"><span className="cand-tile__title">{c.title}</span><span className="cand-kind">{candidateRefLabel(c.type, c.ref)}</span></span>
+        <span className="cand-tile__head"><span className="cand-tile__title" title={c.title}>{c.title}</span><span className="cand-kind">{candidateRefLabel(c.type, c.ref)}</span></span>
         <span className="cand-tile__reason">{c.reason}</span>
         {c.weak && <span className="cand-tile__weak">추천도 낮음</span>}
         <span className="cand-tile__foot"><span className="cand-tile__chk" aria-hidden>✓</span><span className="cand-tile__state">{selected ? '골랐어요' : '고르기'}</span></span>

@@ -30,7 +30,7 @@ import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { StarRow } from '@/components/ui/StarRow';
-import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
+import { canConfirmCard, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
 import { DraftProcess } from './DraftSteps';
 import { folderPath } from '@/lib/cardFolders';
@@ -149,20 +149,21 @@ export function CardPage() {
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
         {justConfirmed && (
-          <div className="card done-card">
+          // 확정 직후 다음 걸음 — 확정한 카드는 자소서의 재료라, 주 버튼은 자소서 쓰기 하나. 나머지는 보조 버튼
+          <div className="card done-card" role="status">
             <span className="done-card__ok" aria-hidden>✓</span>
-            <div className="stack grow" style={{ gap: 5 }}>
-              <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 16 }}>{card.title}</span><Badge kind="CONFIRMED">확정됨</Badge></div>
-              <span className="t-12l c-2">{evidenceCountLabel(card.evidence, { showZero: true })}, {emptyStarFields(card).length ? `${emptyStarFields(card).length}칸 비어 있음` : '네 칸 모두 채움'}</span>
+            <div className="stack grow" style={{ gap: 4 }}>
+              <span className="w-600" style={{ fontSize: 16 }}>카드를 확정했어요</span>
+              <span className="t-13 c-2">이 경험으로 자소서를 써 볼까요?</span>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
-            {justConfirmed.repoId && justConfirmed.remainingCandidates > 0
-              ? <Button onClick={() => nav(`/repos/${justConfirmed.repoId}/candidates`)}>남은 후보 {justConfirmed.remainingCandidates}개 보기</Button>
-              : <Link to="/" className="btn btn--primary">홈으로</Link>}
+            {justConfirmed.repoId && justConfirmed.remainingCandidates > 0 && (
+              <Button variant="outline" onClick={() => nav(`/repos/${justConfirmed.repoId}/candidates`)}>남은 후보 {justConfirmed.remainingCandidates}개 보기</Button>
+            )}
             {matchSupported() && <Link to="/match" className="btn btn--outline">이 경험과 맞는 공고 보기</Link>}
+            <Link to="/cover-letters/new" className="btn btn--primary">자소서 쓰기</Link>
           </div>
         )}
-        <CardHeader card={card} titleAction={metadataAction} right={<Button size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
+        <CardHeader card={card} titleAction={metadataAction} right={<Button variant="outline" size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
         <div className="two-col two-col--340">
           <div className="card star-read star-read--rows">
             {STAR_FIELDS.map((f) => {

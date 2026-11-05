@@ -47,6 +47,7 @@ INTERNAL_PATHS = {
     "/internal/cover-letter-turns",
     "/internal/cover-letter-fill",
     "/internal/repo-summary",
+    "/internal/assistant/next-step",
 }
 
 

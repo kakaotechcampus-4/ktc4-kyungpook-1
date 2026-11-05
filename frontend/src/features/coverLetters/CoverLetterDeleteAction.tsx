@@ -12,13 +12,14 @@ type Target = { id: string; jobRole: string; posting: CoverLetterPosting | null;
 /**
  * 자소서 지우기 — 어느 단계에서든 서버가 자소서와 문항, 답, 초안을 지운다. 카드에 기억해 둔 답은 다른 자소서도 쓰므로 남는다.
  * 누르면 되돌릴 수 없다는 확인 창이 먼저 열린다(카드, 활동 지우기와 같은 모양). 이름은 글자가 이름이다(`label`).
+ * 여는 버튼은 위험 버튼(`danger`)이다 — 버튼 규칙(#804)의 '위험(취소, 삭제)'.
  */
 export function CoverLetterDeleteAction({ letter, label = '삭제', ariaLabel, onDeleted }: {
   letter: Target; label?: string; ariaLabel?: string; onDeleted?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return <>
-    <Button variant="text" size="sm" className="cl-delete-trigger" aria-label={ariaLabel} onClick={() => setOpen(true)}>{label}</Button>
+    <Button variant="danger" size="sm" className="cl-delete-trigger" aria-label={ariaLabel} onClick={() => setOpen(true)}>{label}</Button>
     {open && <CoverLetterDeleteDialog letter={letter} onClose={() => setOpen(false)} onDeleted={onDeleted} />}
   </>;
 }

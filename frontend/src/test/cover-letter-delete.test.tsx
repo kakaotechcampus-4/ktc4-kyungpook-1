@@ -29,7 +29,9 @@ describe('자소서 지우기', () => {
     const server = connectMockServer();
     mountApp(routes(), '/cover-letters');
     await screen.findByText('백엔드 개발');
-    fireEvent.click(screen.getByRole('button', { name: '백엔드 개발 자소서 삭제' }));
+    const trigger = screen.getByRole('button', { name: '백엔드 개발 자소서 삭제' });
+    expect(trigger).toHaveClass('btn--danger'); // 삭제를 여는 버튼은 위험 버튼(빨강)
+    fireEvent.click(trigger);
     const dialog = await screen.findByRole('dialog', { name: '자소서를 삭제할까요?' });
     expect(within(dialog).getByText('백엔드 개발')).toBeInTheDocument();
     expect(within(dialog).getByText('문항, 답, 초안이 모두 지워져요. 카드에 기억해 둔 답은 다른 자소서도 쓰므로 남아요.')).toBeInTheDocument();

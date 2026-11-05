@@ -476,7 +476,7 @@ describe('카드 상세의 활동 표시', () => {
     expect(await screen.findByRole('heading', { level: 1, name: '교내 개발 동아리' })).toBeInTheDocument();
   });
 
-  it('작성 중인 활동 카드도 경로에서 활동 폴더로 돌아갈 수 있다. 레포 카드의 경로는 그대로다', async () => {
+  it('작성 중인 활동 카드도 경로에서 활동 폴더로 돌아갈 수 있다. 레포 카드의 경로는 레포 폴더로 간다', async () => {
     connectMockServer();
     const draft = mountApp(detailRoutes(), '/cards/card_a2');
     const crumbs = await screen.findByRole('navigation', { name: 'breadcrumb' });
@@ -484,7 +484,7 @@ describe('카드 상세의 활동 표시', () => {
     draft.unmount();
     mountApp(detailRoutes(), '/cards/card_01');
     const repoCrumbs = await screen.findByRole('navigation', { name: 'breadcrumb' });
-    expect(within(repoCrumbs).getByRole('link', { name: 'auth-service' })).toHaveAttribute('href', '/repos/r_auth/candidates');
+    expect(within(repoCrumbs).getByRole('link', { name: 'auth-service' })).toHaveAttribute('href', '/cards/repo/r_auth');
     expect(within(repoCrumbs).queryByRole('link', { name: /동아리/ })).not.toBeInTheDocument();
   });
 });

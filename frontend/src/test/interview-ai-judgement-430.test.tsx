@@ -75,7 +75,7 @@ describe('#430 되묻기에서 AI 판단을 보여 주기', () => {
     mount(turns);
     await answerOpenTurn();
 
-    expect(await screen.findByText('경험 카드가 확정됐어요')).toBeInTheDocument();
+    expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '카드 검토하기' })).not.toBeInTheDocument();
     expect(ask).not.toHaveBeenCalled();

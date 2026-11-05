@@ -218,7 +218,7 @@ describe('AI 가 끝낸 이유', () => {
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue(turns);
     const confirmedCard = { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' } as Card;
     mount(turns, { card: { ...confirmedCard, interviewEndReason: null } });
-    expect(liveRegions()[0]).toContainElement(screen.getByText('경험 카드가 확정됐어요'));
+    expect(liveRegions()[0]).toContainElement(screen.getByText('카드를 확정했어요'));
     expect(screen.queryByText('AI 판단')).not.toBeInTheDocument(); // 답으로 확정된 카드는 AI 가 끝낸 것이 아니다
     cleanup();
 

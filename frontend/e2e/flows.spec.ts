@@ -119,6 +119,10 @@ test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_S
   await page.getByRole('button', { name: '확정', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
   await page.getByRole('button', { name: '확정하기' }).click();
+  // 레포도 활동도 없는 카드라 직접 쓴 카드 폴더로 간다. 카드를 열어 확정 상태와 근거 이름을 본다
+  await expect(page).toHaveURL(/\/cards\/direct$/);
+  await expect(page.locator('.next-step')).toContainText('카드를 확정했어요');
+  await page.locator('.experience-item--just').click();
   await expect(page.getByText('확정됨').first()).toBeVisible();
   await expect(page.getByText('내 답변').first()).toBeVisible();
 });

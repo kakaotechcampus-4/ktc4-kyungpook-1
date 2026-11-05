@@ -28,7 +28,7 @@ export function ConfirmDialog({ card, onClose, onConfirmed }: { card: Card; onCl
     try {
       const r = await confirm.mutateAsync({ edited, maskedFields });
       track('card_confirmed', { cardId: card.id, edited, dropped, masked: maskedFields.length, remaining: r.remainingCandidates });
-      toast('카드를 확정했어요', { tone: 'success' });
+      // 확정 알림은 카드 화면 위 패널이 한다(같은 말을 토스트로 두 번 하지 않는다)
       onConfirmed(r);
     } catch { /* Keep the dialog open; mutation errors remain visible below. */ }
   };

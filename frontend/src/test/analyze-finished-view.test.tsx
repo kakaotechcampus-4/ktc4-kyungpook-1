@@ -42,6 +42,15 @@ describe('분석 진행 화면 — 다 읽은 뒤 고른 이유를 보여 주는
     expect(screen.queryByRole('link', { name: '후보 보드로 바로 가기' })).not.toBeInTheDocument();
   });
 
+  it('보통 누를 다른 일 하러 가기가 주 버튼이고, 되돌릴 수 없는 정리 취소는 위험 버튼으로 앞에 둔다', () => {
+    mount('RUNNING');
+    const cancel = screen.getByRole('button', { name: '정리 취소' });
+    const leave = screen.getByRole('link', { name: '다른 일 하러 가기' });
+    expect(leave).toHaveClass('btn--primary');
+    expect(cancel).toHaveClass('btn--danger');
+    expect(cancel.compareDocumentPosition(leave) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('다 읽은 작업은 제목·위치·한 줄 설명이 끝난 일을 말하고, 이미 끝난 작업을 취소하라고 하지 않는다', () => {
     mount('SUCCEEDED');
     expect(screen.getByRole('heading', { name: '레포를 다 읽었어요' })).toBeInTheDocument();

@@ -1,10 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { EDUCATION_LEVELS, EDUCATION_STATUSES, LANGUAGE_TESTS, PROFILE_LIMITS, type Interest, type LanguageTest } from '@/api/profile';
+import { EDUCATION_STATUSES, LANGUAGE_TESTS, PROFILE_LIMITS, type EducationLevel, type Interest, type LanguageTest } from '@/api/profile';
 import { Button, Field, Input, SectionHead } from '@/components/ui';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import {
-  CAREER_TYPE_OPTIONS, COMMON_CERTIFICATIONS, GPA_MAX_OPTIONS, INTEREST_OPTIONS, LANGUAGE_GRADES, LEVEL_LABEL, LEVEL_OPTIONS, STATUS_LABEL, STATUS_OPTIONS, TEST_LABEL, TEST_OPTIONS,
+  CAREER_TYPE_OPTIONS, COMMON_CERTIFICATIONS, GPA_MAX_OPTIONS, INTEREST_OPTIONS, LANGUAGE_GRADES, LEVEL_OPTIONS, STATUS_LABEL, STATUS_OPTIONS, TEST_LABEL, TEST_OPTIONS,
   blankCertification, blankEducation, blankLanguage, scorePlaceholder, type EducationRow, type SectionKey,
 } from '@/lib/profileForm';
 import { INTERESTS_ID, addId, fieldId, type ProfileFormState } from './useProfileFormState';
@@ -15,23 +15,17 @@ export const EDU_LEVEL_ID = 'p-edu-level';
 type RowSection = Exclude<SectionKey, 'certifications'>;
 
 const SECTION_NOUN: Record<RowSection, string> = { educations: '학력', careers: '경력', languages: '어학' };
-const SECTION_HINT: Record<RowSection, string> = {
-  educations: "다니고 있거나 마친 학교를 적어 주세요. 학력 구분, 학교, 상태만 꼭 필요하고 나머지는 비워 둬도 돼요. 졸업을 앞두고 있다면 상태에서 '졸업 예정'을 골라 주세요.",
-  careers: "회사에서 한 일과 기간을 적어 주세요. 인턴이나 계약직도 괜찮아요. 일하고 있다면 '재직 중'을 골라 주세요.",
-  languages: "공인 어학 시험을 적어 주세요. 점수나 등급은 시험에 나온 그대로 적으면 돼요. 목록에 없는 시험은 '기타'를 고르고 이름을 적어 주세요.",
-};
 type Span = 'half' | 'wide' | 'full';
 type ControlProps = { id: string; 'aria-label': string; 'aria-invalid'?: true; 'aria-describedby'?: string; autoComplete: string; spellCheck: boolean };
 
-function Section({ section, title, hint, count, onAdd, error, children }: {
-  section: RowSection; title: string; hint: string; count: number; onAdd: () => void; error?: string; children: ReactNode;
+function Section({ section, title, count, onAdd, error, children }: {
+  section: RowSection; title: string; count: number; onAdd: () => void; error?: string; children: ReactNode;
 }) {
   const max = PROFILE_LIMITS.MAX_ITEMS[section];
   const full = count >= max;
   return (
     <section className="settings-section profile-section" aria-label={title}>
       <SectionHead label={title} count={count} right={<span className="t-12 c-3">최대 {max}개</span>} />
-      <p className="profile-section__hint">{hint}</p>
       {children}
       {error && <p className="profile-error" role="alert">{error}</p>}
       <div className="profile-add">
@@ -62,7 +56,6 @@ export function InterestPicker({ value, onChange, error }: { value: Interest[]; 
   return (
     <section className="settings-section profile-section" aria-label="관심 분야">
       <SectionHead label="관심 분야" count={value.length} right={<span className="t-12 c-3">최대 {max}개</span>} />
-      <p className="profile-section__hint">관심 있는 직무를 1개부터 {max}개까지 골라 주세요. 공고 매칭이 이 직무의 공고를 먼저 찾아요.</p>
       <ul id={INTERESTS_ID} className="interest-grid" aria-describedby={error ? `${INTERESTS_ID}-error` : undefined}>
         {INTEREST_OPTIONS.map(({ value: interest, label }) => {
           const on = value.includes(interest);
@@ -182,7 +175,7 @@ export function SectionEditor({ section, state }: { section: RowSection; state: 
   };
 
   return (
-    <Section section={section} title={SECTION_NOUN[section]} hint={SECTION_HINT[section]} count={form[section].length} onAdd={() => add(section)} error={errors[section]}>
+    <Section section={section} title={SECTION_NOUN[section]} count={form[section].length} onAdd={() => add(section)} error={errors[section]}>
       {form[section].length === 0 ? <p className="profile-empty">아직 입력한 {SECTION_NOUN[section]}이 없어요.</p> : <ul className="profile-list">{rows()}</ul>}
     </Section>
   );
@@ -192,7 +185,17 @@ function tileClass(on: boolean, off = false) {
   return `interest-tile ${on ? 'is-on' : ''} ${off ? 'is-off' : ''}`;
 }
 
-/** 처음 입력 창의 학력 — 학력 구분과 상태만 타일로 고른다(매칭이 보는 건 학력 구분뿐). 학교·전공·날짜·학점은 마이페이지 폼에서 더 적는다 */
+/** 학력 구분을 사람이 생각하는 단위로 묶는다. 저장 값(EducationLevel)은 그대로라 매칭과 서버 계약은 바뀌지 않는다 */
+type LevelGroup = 'HIGH' | 'UNIV' | 'GRAD';
+const LEVEL_GROUPS: { group: LevelGroup; label: string; levels: EducationLevel[] }[] = [
+  { group: 'HIGH', label: '고등학교', levels: ['HIGH_SCHOOL'] },
+  { group: 'UNIV', label: '대학교', levels: ['BACHELOR', 'ASSOCIATE'] },
+  { group: 'GRAD', label: '대학원', levels: ['MASTER', 'DOCTOR'] },
+];
+const SUB_LABEL: Partial<Record<EducationLevel, string>> = { BACHELOR: '4년제', ASSOCIATE: '2~3년제', MASTER: '석사', DOCTOR: '박사' };
+const groupOf = (level: EducationLevel | '' | undefined) => LEVEL_GROUPS.find((g) => (g.levels as string[]).includes(level ?? ''));
+
+/** 처음 입력 창의 학력 — 학력 구분과 현재 상태만 타일로 고른다(매칭이 보는 건 학력 구분뿐). 학교, 전공, 날짜, 학점은 마이페이지 폼에서 더 적는다 */
 export function EducationQuick({ state }: { state: ProfileFormState }) {
   const row = state.form.educations[0];
   const set = (patch: Partial<EducationRow>) => {
@@ -201,26 +204,36 @@ export function EducationQuick({ state }: { state: ProfileFormState }) {
   };
   const levelError = state.errors['educations.0.level'];
   const statusError = state.errors['educations.0.status'];
+  const chosen = groupOf(row?.level);
   return (
     <section className="settings-section profile-section" aria-label="학력">
       <SectionHead label="학력" />
-      <p className="profile-section__hint">최종 학력과 지금 상태만 골라 주세요. 학교 이름, 전공, 학점은 마이페이지 인적사항에서 더 적을 수 있어요.</p>
       <fieldset className="quick-group">
         <legend className="quick-group__label">학력 구분</legend>
-        <ul id={EDU_LEVEL_ID} className="interest-grid interest-grid--5" aria-describedby={levelError ? `${EDU_LEVEL_ID}-error` : undefined}>
-          {EDUCATION_LEVELS.map((level) => (
-            <li key={level}>
-              <label className={tileClass(row?.level === level)}>
-                <input type="radio" name={EDU_LEVEL_ID} checked={row?.level === level} onChange={() => set({ level })} />
-                <span>{LEVEL_LABEL[level]}</span>
+        <ul id={EDU_LEVEL_ID} className="interest-grid interest-grid--3" aria-describedby={levelError ? `${EDU_LEVEL_ID}-error` : undefined}>
+          {LEVEL_GROUPS.map((g) => (
+            <li key={g.group}>
+              <label className={tileClass(chosen?.group === g.group)}>
+                <input type="radio" name={EDU_LEVEL_ID} checked={chosen?.group === g.group} onChange={() => set({ level: g.levels[0] })} />
+                <span>{g.label}</span>
               </label>
             </li>
           ))}
         </ul>
+        {chosen && chosen.levels.length > 1 && (
+          <div className="quick-sub" role="radiogroup" aria-label={`${chosen.label} 구분`}>
+            {chosen.levels.map((level) => (
+              <label key={level} className={tileClass(row?.level === level)}>
+                <input type="radio" name="p-edu-sublevel" checked={row?.level === level} onChange={() => set({ level })} />
+                <span>{SUB_LABEL[level]}</span>
+              </label>
+            ))}
+          </div>
+        )}
         {levelError && <p id={`${EDU_LEVEL_ID}-error`} className="profile-error">{levelError}</p>}
       </fieldset>
       <fieldset className="quick-group">
-        <legend className="quick-group__label">상태</legend>
+        <legend className="quick-group__label">현재 상태</legend>
         <ul className="interest-grid interest-grid--5" aria-describedby={statusError ? 'p-edu-status-error' : undefined}>
           {EDUCATION_STATUSES.map((status) => (
             <li key={status}>
@@ -250,7 +263,6 @@ export function LanguageQuick({ state }: { state: ProfileFormState }) {
   return (
     <section className="settings-section profile-section" aria-label="어학">
       <SectionHead label="어학" count={rows.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
-      <p className="profile-section__hint">가진 어학 시험을 누르고 점수나 등급을 적어 주세요. 없으면 아래 '어학 없음'으로 넘어가요.</p>
       <div className="quick-split">
         <ul className="interest-grid interest-grid--2">
           {LANGUAGE_TESTS.map((test) => {
@@ -266,9 +278,7 @@ export function LanguageQuick({ state }: { state: ProfileFormState }) {
           })}
         </ul>
         <div className="quick-side">
-          {rows.length === 0
-            ? <p className="profile-empty">시험을 고르면 여기에 점수나 등급 칸이 나와요.</p>
-            : rows.map((row, i) => <LanguageScore key={row.key} index={i} state={state} />)}
+          {rows.map((row, i) => <LanguageScore key={row.key} index={i} state={state} />)}
         </div>
       </div>
       {state.errors.languages && <p className="profile-error" role="alert">{state.errors.languages}</p>}
@@ -333,7 +343,6 @@ export function CertificationQuick({ state }: { state: ProfileFormState }) {
   return (
     <section className="settings-section profile-section" aria-label="자격증">
       <SectionHead label="자격증" count={rows.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
-      <p className="profile-section__hint">가진 자격증을 누르거나 직접 적어 주세요.</p>
       <ul className="interest-grid interest-grid--2 cert-grid">
         {COMMON_CERTIFICATIONS.map((name) => {
           const on = has(name);

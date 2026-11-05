@@ -81,6 +81,11 @@ it('offers matching postings right after confirming when matching is on', async 
   vi.stubEnv('VITE_API_MOCK', 'false'); vi.stubEnv('VITE_MATCH_ENABLED', 'true');
   await confirmCard();
   expect(screen.getByRole('link', { name: '이 경험과 맞는 공고 보기' })).toHaveAttribute('href', '/match');
+  // 확정 직후 주 버튼은 자소서 쓰기 하나, 공고 보기는 보조 버튼
+  expect(screen.getByText('이 경험으로 자소서를 써 볼까요?')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '자소서 쓰기' })).toHaveAttribute('href', '/cover-letters/new');
+  expect(screen.getByRole('link', { name: '자소서 쓰기' })).toHaveClass('btn--primary');
+  expect(screen.getByRole('link', { name: '이 경험과 맞는 공고 보기' })).toHaveClass('btn--outline');
 });
 
 it('does not offer matching postings after confirming when matching is off', async () => {

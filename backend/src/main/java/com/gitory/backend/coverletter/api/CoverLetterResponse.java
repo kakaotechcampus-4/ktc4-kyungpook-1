@@ -20,7 +20,7 @@ public record CoverLetterResponse(
         String jobRole,
         String memo,
         @Schema(description = "만들 때 고른 강점, 0~3개. 고른 것이 없으면 빈 배열") List<Strength> strengths,
-        @Schema(description = "질문 단계가 지원 이유를 글에 쓸 수 있다고 봤으면 true, 쓰기 어렵다고 봤으면 false(이때 초안은 지원 이유를 빈칸으로 두고 대화에서 다시 묻는다). 판정 전이거나 지원 이유가 없는 옛 자소서면 null") Boolean memoUsable,
+        @Schema(description = "질문 단계가 지원 이유를 글에 쓸 수 있다고 봤으면 true, 쓰기 어렵다고 봤으면 false(이때 초안은 지원 이유를 빈칸으로 두고 대화에서 다시 묻는다). 판정 전이거나 지원 이유가 없는 자소서면 null") Boolean memoUsable,
         @Schema(description = "공고 상세에서 시작한 자소서면 그 공고, 아니면 null") CoverLetterPostingResponse posting,
         Instant createdAt,
         Instant updatedAt,

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -182,7 +183,7 @@ class CoverLetterApiTest {
 
     @ParameterizedTest
     @MethodSource("unusableMemos")
-    @DisplayName("지원 이유가 없거나 짧거나 한글이 없거나, 같은 글자 반복·URL·이메일·쓸 수 없는 글자가 있으면 걸린 규칙을 알리는 400 이고 만들지 않는다")
+    @DisplayName("지원 이유를 적었는데 짧거나 한글이 없거나, 같은 글자 반복·URL·이메일·쓸 수 없는 글자가 있으면 걸린 규칙을 알리는 400 이고 만들지 않는다")
     void rejectsMemoBreakingReasonRules(String memo, String message) throws Exception {
 
         confirmedCard(myUserId, "배포 시간 단축", "A");
@@ -200,7 +201,6 @@ class CoverLetterApiTest {
 
         String tooShort = "지원 이유를 20자 이상 적어 주세요.";
         return Stream.of(
-                Arguments.of("null", tooShort),
                 Arguments.of("\"결제 서비스를 만들고 싶어요\"", tooShort),
                 Arguments.of("\"I want to build payment services at this company\"", "지원 이유는 한국어로 적어 주세요."),
                 Arguments.of("\"결제 서비스를 만들고 싶어요 ㅋㅋㅋㅋㅋ 진짜로 지원합니다\"",
@@ -213,6 +213,23 @@ class CoverLetterApiTest {
                         "지원 이유에는 한글·영문·숫자·흔한 문장부호만 쓸 수 있습니다."),
                 Arguments.of("\"결제 서비스를 만들고 싶어서 이 회사에\\u0000 지원합니다\"",
                         "지원 이유에는 한글·영문·숫자·흔한 문장부호만 쓸 수 있습니다."));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "\"   \""})
+    @DisplayName("지원 이유가 없거나 공백뿐이면 검사하지 않고 비운 채로 만든다")
+    void createsLetterWithoutMemoWhenMemoIsNullOrBlank(String memo) throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(body("\"백엔드\"", memo, "{\"text\": \"협업 경험을 쓰세요\", \"charLimit\": 500}"), "k")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stage").value("ASSIGNING"))
+                .andExpect(jsonPath("$.data.memo").value(nullValue()));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter WHERE memo IS NULL", Integer.class))
+                .isEqualTo(1);
 
     }
 

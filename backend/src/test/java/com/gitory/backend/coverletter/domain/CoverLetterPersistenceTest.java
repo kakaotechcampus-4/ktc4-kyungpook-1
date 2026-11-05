@@ -100,7 +100,7 @@ class CoverLetterPersistenceTest {
     }
 
     @Test
-    @DisplayName("지원 이유가 없는 옛 자소서는 질문 단계가 판정을 보내도 판정 전으로 둔다")
+    @DisplayName("지원 이유가 없는 자소서는 질문 단계가 판정을 보내도 판정 전으로 둔다")
     void memoJudgementIgnoredWithoutMemo() {
 
         CoverLetter withoutMemo = CoverLetter.start(userId, "백엔드 개발", null, null);

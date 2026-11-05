@@ -219,7 +219,9 @@ describe('활동 삭제', () => {
   it('폴더 안에서 지우면 카드 N장(확정 M장)을 말로 확인한 뒤 안의 카드까지 지우고 목록으로 돌아간다', async () => {
     const server = connectMockServer();
     mountApp(routes(), '/cards/activity/act_club');
-    fireEvent.click(await screen.findByRole('button', { name: '활동 삭제' }));
+    const trigger = await screen.findByRole('button', { name: '활동 삭제' });
+    expect(trigger).toHaveClass('btn--danger'); // 삭제를 여는 버튼도 위험 버튼(빨강)
+    fireEvent.click(trigger);
     const dialog = await screen.findByRole('dialog', { name: '활동을 삭제할까요?' });
     expect(within(dialog).getByText('교내 개발 동아리')).toBeInTheDocument();
     expect(within(dialog).getByText('카드 2장(확정 1장)도 함께 지워져요.')).toBeInTheDocument();

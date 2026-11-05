@@ -11,26 +11,25 @@ test.beforeEach(async ({ page }) => {
 });
 
 const overflowFree = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-async function matchOnce(page: Page) {
-  await page.getByRole('button', { name: '내 조건으로 맞춰 보기', exact: true }).click();
+// 데모는 확정 카드가 있어 들어오면 스스로 맞춰 보기를 시작하므로, 누르지 않고 결과가 나올 때까지 기다린다
+async function waitForMatch(page: Page) {
   await expect(page.getByRole('button', { name: '다시 맞춰 보기', exact: true })).toBeEnabled({ timeout: 15_000 });
 }
 const BOX = '내 카드로 맞춰 본 공고';
 
-test('맞춰 보기 전: 상자는 안내와 검은 버튼이고 모든 공고는 5건 목록이다', async ({ page }) => {
+test('맞춰 보는 동안: 들어오면 스스로 맞춰 보기를 시작하고, 모든 공고는 5건 목록이다', async ({ page }) => {
   await page.goto('/match');
   const box = page.getByRole('region', { name: BOX });
-  await expect(box.getByRole('heading', { level: 2, name: '내 카드로 공고 맞춰 보기' })).toBeVisible();
+  await expect(box.getByRole('heading', { level: 2, name: '맞춰 보는 중' })).toBeVisible();
   await expect(box.locator('.result-tile')).toHaveCount(0);
   const all = page.getByRole('region', { name: '모든 공고' });
   await expect(all.locator('.match-card')).toHaveCount(5);
   await expect(all.getByText('5건', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '내 조건으로 맞춰 보기', exact: true })).toHaveClass(/btn--primary/);
 });
 
 test('맞춰 본 뒤: 상자에 순위 번호가 붙은 타일 5개가 오르고 타일마다 개수 줄과 이름 줄이 있다', async ({ page }) => {
   await page.goto('/match');
-  await matchOnce(page);
+  await waitForMatch(page);
   const box = page.getByRole('region', { name: BOX });
   const tiles = box.locator('.result-tile');
   await expect(tiles).toHaveCount(5);
@@ -66,7 +65,7 @@ test('직무 칩을 고르면 모든 공고가 그 직무 공고만 남고 주�
 
 test('칩이 걸리면 상자는 한 줄 띠로 접히고, 펼치면 타일이 그대로이며, 칩을 풀면 다시 펼쳐진다', async ({ page }) => {
   await page.goto('/match');
-  await matchOnce(page);
+  await waitForMatch(page);
   const chips = page.getByRole('group', { name: '직무' });
   const box = page.getByRole('region', { name: BOX });
   await chips.getByRole('button', { name: '데이터', exact: true }).click();
@@ -94,7 +93,7 @@ test('공고별/기업별 전환 · 경력과 정렬 고르기 · 목록 새로�
 test('390px: 맞춰 본 뒤에도 접어도 가로로 넘치지 않고, 칩과 버튼은 44px 이상이다', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto('/match');
-  await matchOnce(page);
+  await waitForMatch(page);
   expect(await overflowFree(page)).toBe(true);
   await page.getByRole('group', { name: '직무' }).getByRole('button', { name: '데이터', exact: true }).click();
   await expect(page.getByRole('button', { name: '펼치기' })).toBeVisible();

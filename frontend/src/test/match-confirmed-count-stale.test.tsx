@@ -22,30 +22,35 @@ const meWith = (confirmedCards: number) => {
   return Me.parse({ ...me, stats: { ...me.stats, confirmedCards } });
 };
 const none = OverallRecommendation.parse({ status: 'NONE', computedAt: null, stale: false, progress: null, companies: [] });
+const done = OverallRecommendation.parse({ status: 'READY', computedAt: '2026-11-02T08:27:00Z', stale: false, progress: null, checked: 15, companies: [] });
 const postings = [MatchTarget.parse({ ...sampleList.data[0], id: 'p1', fit: null })];
 
 function mountMatch(cached: number | null, server: number) {
   vi.spyOn(matchingApi, 'list').mockResolvedValue(postings);
   vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(none);
+  // 확정 카드가 있으면 들어오자마자 스스로 맞춰 보기를 시작한다 — 이 시험은 카드 수를 보므로 시작은 바로 끝난 것으로 둔다
+  const start = vi.spyOn(matchingApi, 'startRecommendations').mockResolvedValue(done);
   const me = vi.spyOn(endpoints, 'me').mockResolvedValue(meWith(server));
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   if (cached !== null) client.setQueryData(keys.me, meWith(cached));
   const router = createMemoryRouter([{ path: '/match', element: <MatchListPage /> }], { initialEntries: ['/match'] });
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
-  return { me, client };
+  return { me, start, client };
 }
 const box = () => screen.getByRole('region', { name: '내 카드로 맞춰 본 공고' });
 
 describe('공고 매칭의 확정 카드 수', () => {
   it('0장으로 남은 값이 있어도 서버의 새 값을 읽고, 읽는 동안에는 "없어요"라고 말하지 않는다', async () => {
-    const { me } = mountMatch(0, 2);
+    const { me, start } = mountMatch(0, 2);
     // 다시 읽는 중에는 아직 모른다 — 틀린 안내(없어요)도, 카드 확정하러 가기 버튼도 뜨지 않는다
     expect(box()).not.toHaveTextContent('확정한 카드가 없어요');
     expect(screen.queryByRole('link', { name: '카드 확정하러 가기' })).not.toBeInTheDocument();
     await waitFor(() => expect(box()).toHaveTextContent('확정 카드 2장과'));
     expect(me).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('link', { name: '카드 확정하러 가기' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '내 조건으로 맞춰 보기' })).toBeInTheDocument();
+    // 확정 카드가 있다고 확인되면 누르지 않아도 맞춰 보기를 시작하고, 끝나면 버튼은 다시 맞춰 보기가 된다
+    expect(await screen.findByRole('button', { name: '다시 맞춰 보기' })).toBeInTheDocument();
+    expect(start).toHaveBeenCalledTimes(1);
   });
 
   it('정말 확정한 카드가 없으면 그대로 알려 주고 카드 확정으로 안내한다', async () => {

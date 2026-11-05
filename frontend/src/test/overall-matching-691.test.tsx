@@ -67,6 +67,9 @@ async function startButton() {
   return button;
 }
 const chip = (name: string) => screen.getByRole('button', { name });
+// 확정 카드가 있고 맞춰 본 적이 없거나 낡았으면 들어오자마자 스스로 시작한다 — 안내와 버튼이 그대로 남는 모습은 그 시작이 거절됐을 때다
+const refuseStart = () =>
+  vi.spyOn(matchingApi, 'startRecommendations').mockRejectedValue(new ApiError('RATE_LIMITED', '잠시 뒤에 다시 시도해 주세요.', 429));
 
 describe('결과 타일의 개수 줄(fitSummary)', () => {
   it('기술·경험 필수 조건이 없으면 0개 중 0개라고 쓰지 않는다', () => {
@@ -110,8 +113,9 @@ describe('결과 타일의 이름 줄(fitNames)', () => {
 });
 
 describe('공고 매칭 결과 상자', () => {
-  it('맞춰 본 적이 없으면 상자에 안내와 검은 버튼만 있고, 모든 공고는 전체 목록이다', async () => {
+  it('맞춰 본 적이 없고 스스로 시작하지 못했으면 상자에 안내와 검은 버튼이 남고, 모든 공고는 전체 목록이다', async () => {
     vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(state());
+    refuseStart();
     mount();
     const button = await startButton();
     expect(button).toHaveClass('btn--primary');
@@ -123,10 +127,11 @@ describe('공고 매칭 결과 상자', () => {
   });
 
   it('누르면 계산을 시작하고, 계산 중에는 확인한 공고 수를 보이며 버튼을 막는다', async () => {
-    vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(state());
+    // 결과가 최신이면 들어올 때 스스로 시작하지 않으므로, 다시 맞춰 보기를 눌러 시작한다
+    vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(ready());
     const start = vi.spyOn(matchingApi, 'startRecommendations').mockResolvedValue(state({ status: 'COMPUTING', progress: { done: 2, total: 5 } }));
     mount();
-    fireEvent.click(await startButton());
+    fireEvent.click(await screen.findByRole('button', { name: '다시 맞춰 보기' }));
 
     expect(await screen.findByText('공고 5곳 중 2곳을 확인했어요')).toBeInTheDocument();
     expect(start).toHaveBeenCalledTimes(1);
@@ -233,6 +238,7 @@ describe('공고 매칭 결과 상자', () => {
 
   it('맞춰 본 결과가 없거나 계산 중이면 칩이 걸려도 접지 않는다', async () => {
     vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(state());
+    refuseStart();
     mount('/match?category=BACKEND');
     expect(await startButton()).toBeInTheDocument();
     expect(within(box()).queryByRole('button', { name: '펼치기' })).not.toBeInTheDocument();
@@ -267,7 +273,9 @@ describe('공고 매칭 결과 상자', () => {
   });
 
   it('카드나 인적사항이 바뀌었으면 상자 안에서 다시 맞춰 보라고 한 줄로 알린다', async () => {
+    // 들어오면 스스로 다시 맞춰 보므로, 이 안내는 그 시작이 거절됐을 때 남는다
     vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(ready({ stale: true }));
+    refuseStart();
     mount();
     expect(await within(box()).findByText('카드나 인적사항이 바뀌었어요.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다시 맞춰 보기' })).toBeEnabled();
@@ -302,11 +310,14 @@ describe('공고 매칭 결과 상자', () => {
 
   it('시작이 거절되면(호출 한도) 이유를 보이고 다시 누를 수 있다', async () => {
     vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(state());
-    vi.spyOn(matchingApi, 'startRecommendations').mockRejectedValue(new ApiError('RATE_LIMITED', '잠시 뒤에 다시 시도해 주세요.', 429));
+    const start = refuseStart();
     mount();
+
+    // 들어오자마자 스스로 시작한 것이 거절됐다
+    expect(await screen.findByRole('alert')).toHaveTextContent('맞춰 보기를 시작하지 못했어요.');
     fireEvent.click(await startButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('맞춰 보기를 시작하지 못했어요.');
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(screen.getByRole('button', { name: '내 조건으로 맞춰 보기' })).toBeEnabled());
   });
 });

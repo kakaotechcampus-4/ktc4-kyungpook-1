@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { freshSeed, loginAsDemo } from './helpers';
 
-/** S-1 핵심 경로: 로그인 → 레포 선택 → 사전 고지 → 분석 → 후보 보드 → 카드 생성 → 초안 → 확정. */
+/** S-1 핵심 경로: 로그인 → 레포 선택 → 사전 고지 → 분석 → 추천 후보로 카드 초안(후보를 고르지 않는다) → 카드 폴더 → 확정. */
 test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
+  test.setTimeout(120_000); // 분석 12초 뒤 추천 후보 네 장을 한 장씩 차례로 쓴다(#617)
   await freshSeed(page);
   await page.goto('/');
   await expect(page).toHaveURL(/\/login/);
@@ -16,13 +17,12 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await page.getByRole('button', { name: '정리 시작' }).click();
 
   await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
-  await expect(page).toHaveURL(/\/candidates/, { timeout: 30_000 });
-  await expect(page.getByText('커밋 묶음', { exact: true }).first()).toBeVisible(); // COMMIT_CLUSTER 출처 라벨
-
-  await page.locator('.cand-tile__pick').first().click(); // 이미 카드로 만든 후보는 타일이 아니라 아래 한 줄 목록에 있다
-  await page.getByRole('button', { name: '카드 만들기', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' })).toBeVisible();
-  await expect(page.getByText('근거를 찾지 못해 비워 뒀어요')).toBeVisible({ timeout: 30_000 }); // 빈 칸이 증거
+  // 이 화면에서 끝나는 것을 봤고 이 레포에는 카드가 없으니 후보 보드를 거치지 않고 추천 후보로 바로 초안을 쓴다
+  await expect(page.getByRole('heading', { name: '카드 초안을 쓰고 있어요' })).toBeVisible({ timeout: 30_000 });
+  // 여러 장을 다 쓰면 그 레포의 카드 폴더로 옮겨 간다
+  await expect(page).toHaveURL(/\/cards\/repo\/r_algo$/, { timeout: 60_000 });
+  await page.locator('.experience-item', { hasText: '/auth 아래 3커밋 묶음' }).click(); // 점수가 가장 높은 후보의 카드
+  await expect(page.getByText('근거를 찾지 못해 비워 뒀어요')).toBeVisible(); // 빈 칸이 증거
 
   await page.getByRole('button', { name: '확정', exact: true }).click();
   await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);

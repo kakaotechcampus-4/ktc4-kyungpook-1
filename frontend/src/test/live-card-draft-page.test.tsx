@@ -38,7 +38,7 @@ const pass = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync
 const typedOf = (field: string) => document.querySelector(`.live-slot[data-field="${field}"] [data-live-text]`)?.textContent ?? '';
 /** 전역 알림(JobWatcher)처럼 화면의 Job 조회와 상관없이 카드를 다시 읽게 한다 */
 const refetchCard = () => act(async () => { await client.invalidateQueries({ queryKey: keys.card('card_01') }); });
-const generationScreen = () => screen.queryByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' });
+const generationScreen = () => screen.queryByRole('heading', { name: '카드 초안을 쓰고 있어요' });
 
 function mount() {
   vi.spyOn(endpoints, 'card').mockImplementation(async (id: string) => id === 'card_01' ? serverCard : Card.parse(raw(id)));

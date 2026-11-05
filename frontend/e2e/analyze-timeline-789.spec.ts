@@ -37,7 +37,7 @@ test('다 읽으면 네 점이 모두 검정이 되고 고른 이유가 메모�
   await expect(page.getByRole('heading', { name: '레포를 다 읽었어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.tl__item--done')).toHaveCount(4);
   await expect(page.locator('.tl-note').first()).toBeVisible();
-  await expect(page.getByRole('link', { name: '후보 보드로 바로 가기' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '후보 직접 고르기' })).toBeVisible(); // 끝나는 것을 지켜봤으니 카드까지 이어 쓰는 흐름의 링크다 — r_auth 는 카드가 이미 있어 후보 보드로 온다
   await page.screenshot({ path: `${SHOTS}/finished-1440-light.png`, fullPage: true, animations: 'disabled' });
   await expect(page).toHaveURL(/\/repos\/r_auth\/candidates/, { timeout: 30_000 });
 });

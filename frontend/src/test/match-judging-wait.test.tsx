@@ -45,10 +45,7 @@ describe("공고를 처음 맞춰 보는 동안(서버가 AI 에게 묻는 동�
     vi.spyOn(matchingApi, "judge").mockReturnValue(new Promise<MatchDetail>((resolve) => { finish = resolve; }));
     mount(detail.id);
 
-    expect(await screen.findByText("확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.")).toBeInTheDocument();
-    expect(aiLog()).not.toBeInTheDocument();
-
-    await start();
+    // 확정 카드가 있으면 누르지 않아도 맞춰 보기를 시작한다
     const log = await screen.findByRole("list", { name: "AI 가 한 일" });
     expect(await within(log).findByText(`확정 카드 ${confirmedCards().length}장을 읽고 조건과 견주고 있어요`)).toBeInTheDocument();
     expect(screen.getByText("조건이 많으면 1분쯤 걸려요.")).toBeInTheDocument();
@@ -66,6 +63,10 @@ describe("공고를 처음 맞춰 보는 동안(서버가 AI 에게 묻는 동�
     vi.spyOn(matchingApi, "judge").mockReturnValue(new Promise(() => {}));
     mount(detail.id);
 
+    // 확정 카드를 아직 못 받았으면 스스로 시작하지 않아, 누르기 전에는 안내와 버튼뿐이다
+    expect(await screen.findByText("확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.")).toBeInTheDocument();
+    expect(aiLog()).not.toBeInTheDocument();
+
     await start();
     expect(await screen.findByText("확정 카드를 읽고 조건과 견주고 있어요")).toBeInTheDocument();
   });
@@ -77,7 +78,6 @@ describe("공고를 처음 맞춰 보는 동안(서버가 AI 에게 묻는 동�
     vi.spyOn(matchingApi, "judge").mockRejectedValue(new ApiError("AI_UNAVAILABLE", "unavailable", 503));
     mount(detail.id);
 
-    await start();
     expect(await screen.findByText("맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.")).toBeInTheDocument();
     expect(aiLog()).not.toBeInTheDocument();
     expect(screen.getByText("확정한 경험 카드로 조건마다 맞는지 맞춰 봐요.")).toBeInTheDocument();

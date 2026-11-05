@@ -220,7 +220,7 @@ describe('활동 삭제', () => {
     const server = connectMockServer();
     mountApp(routes(), '/cards/activity/act_club');
     const trigger = await screen.findByRole('button', { name: '활동 삭제' });
-    expect(trigger).toHaveClass('btn--danger-text'); // 지우기를 여는 버튼도 빨간 글자
+    expect(trigger).toHaveClass('btn--danger'); // 삭제를 여는 버튼도 위험 버튼(빨강)
     fireEvent.click(trigger);
     const dialog = await screen.findByRole('dialog', { name: '활동을 삭제할까요?' });
     expect(within(dialog).getByText('교내 개발 동아리')).toBeInTheDocument();

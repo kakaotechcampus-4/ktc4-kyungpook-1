@@ -47,7 +47,7 @@ function Row({ title, removeLabel, onRemove, children }: { title: string; remove
     <li className="profile-row">
       <div className="profile-row__head">
         <h3 className="profile-row__title">{title}</h3>
-        <Button variant="danger-text" size="sm" aria-label={removeLabel} onClick={onRemove}><Trash2 size={14} aria-hidden />삭제</Button>
+        <Button variant="danger" size="sm" aria-label={removeLabel} onClick={onRemove}><Trash2 size={14} aria-hidden />삭제</Button>
       </div>
       <div className="profile-grid">{children}</div>
     </li>

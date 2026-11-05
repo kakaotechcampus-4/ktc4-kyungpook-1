@@ -259,7 +259,7 @@ describe('경험 카드 상세 (CD-02, CD-03, CD-05, CD-06, CD-10, CD-12, CD-14)
     const button = screen.getByRole('button', { name: '카드 삭제' });
     expect(button).toHaveClass('card-delete-text');
     // 지우기를 여는 글자 버튼은 빨간 글자(멘토 의견)이고, 확인 창의 '삭제' 도 빨강이다
-    expect(button).toHaveClass('btn--danger-text');
+    expect(button).toHaveClass('btn--danger');
     fireEvent.click(button);
     expect(within(screen.getByRole('dialog')).getByText('이 레포의 후보 보드에서 다시 골라 카드를 만들 수 있어요.')).toBeInTheDocument();
   });

@@ -15,7 +15,7 @@ export function CardDeleteAction({ card, icon = false, onDeleted }: {
 }) {
   const [open, setOpen] = useState(false);
   return <>
-    <Button variant={icon ? 'text' : 'danger-text'} className={icon ? 'card-delete-trigger' : 'card-delete-text'}
+    <Button variant={icon ? 'text' : 'danger'} className={icon ? 'card-delete-trigger' : 'card-delete-text'}
       aria-label={icon ? `${card.title} 삭제` : undefined} title={icon ? '카드 삭제' : undefined}
       onClick={() => setOpen(true)}>{icon ? <X size={17} /> : '카드 삭제'}</Button>
     {open && <CardDeleteDialog card={card} onClose={() => setOpen(false)} onDeleted={onDeleted} />}

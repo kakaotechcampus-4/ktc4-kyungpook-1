@@ -8,6 +8,7 @@ import { BrandLogo } from '@/components/ui/BrandLogo';
 import { GithubBanner } from './GithubBanner';
 import { ProfileMenu } from './ProfileMenu';
 import { ProfileSetupModal } from '@/features/profile/ProfileSetupModal';
+import { LegalLinks } from '@/features/legal/LegalLinks';
 
 const MENU = [
   { group: '커리어 관리', items: [
@@ -75,6 +76,7 @@ export function AppShell() {
           </nav>
         ))}
         <div style={{ marginTop: 'auto' }} />
+        <LegalLinks className="sidebar__legal" />
         <div className="sidebar__profile"><ProfileMenu variant="sidebar" /></div>
       </aside>
       <div id="main" className="shell__main"><GithubBanner /><Outlet context={active} /></div>

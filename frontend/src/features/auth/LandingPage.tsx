@@ -1,5 +1,5 @@
 import { useCallback, useState, type CSSProperties } from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { useMe } from '@/api/queries';
 import { ArrowRight } from 'lucide-react';
 import { Button, Note } from '@/components/ui';
@@ -8,6 +8,7 @@ import { LANDING_HOLD_EXTENSION_MS, LandingBrand, shouldPlayLandingIntro } from 
 import { useLogin } from './useLogin';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { LandingExample } from './LandingExample';
+import { LegalLinks } from '@/features/legal/LegalLinks';
 
 const READS = ['내가 올린 커밋', '내가 만든 PR', '내가 남긴 리뷰 코멘트'];
 const SKIPS = ['비공개 레포', '다른 사람만 한 일'];
@@ -50,6 +51,7 @@ export function LandingPage() {
           <div className="landing__actions">
             <Button size="xl" loading={login.pending} onClick={() => login.isDemo ? void login.start() : setSp({ consent: '1' })}>{login.label} <ArrowRight size={16} /></Button>
           </div>
+          <p className="legal-consent">시작하면 <Link to="/terms">이용약관</Link>과 <Link to="/privacy">개인정보처리방침</Link>에 동의하게 돼요.</p>
           {error === 'access_denied' && <p className="landing-notice" role="status">GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.</p>}
           {error && error !== 'access_denied' && <p className="landing-notice landing-notice--error" role="alert">GitHub 연결에 실패했어요. 다시 시작해 주세요.</p>}
           {reason === 'expired' && !error && !login.isDemo && <p className="landing-notice" role="status">로그인이 만료됐어요. 다시 시작해 주세요.</p>}
@@ -64,12 +66,15 @@ export function LandingPage() {
         <LandingExample />
       </section>
 
+      <footer className="landing__legal"><LegalLinks /></footer>
+
       {consent && !login.isDemo && (
         <Modal title="GitHub 연결 권한 확인" width={520}
           onClose={() => setSp({})}
           footer={{ strong: '쓰기 권한은 요청하지 않아요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>GitHub으로 이동</Button></> }}>
           {login.failure && <Note strong="시작하지 못했어요" tone="danger">{login.failure}</Note>}
           <p className="t-14">프로필 정보와 공개 레포만 읽어요.</p>
+          <p className="legal-consent">시작하면 <Link to="/terms">이용약관</Link>과 <Link to="/privacy">개인정보처리방침</Link>에 동의하게 돼요.</p>
         </Modal>
       )}
     </main>

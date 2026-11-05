@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, runToDraft } from './helpers';
 
 /**
  * #719 ② 짐작 표시 — 목 서버가 배운 점 답이 없는 문항에 짐작 문장 하나를 넣는다.
@@ -11,15 +11,10 @@ test('짐작 문장은 노란 형광펜으로 보이고, 짐작 확인 탭에서
   await page.clock.install();
   await page.goto('/cover-letters/new');
   await page.getByPlaceholder('예: 백엔드 개발').fill('백엔드 개발');
-  await page.getByLabel('지원 이유', { exact: true }).fill('결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요');
   await page.getByLabel('1번 문항', { exact: true }).fill('팀으로 함께 성과를 낸 경험을 적어 주세요');
-  await page.getByRole('button', { name: '카드 고르기', exact: true }).click();
-  await page.clock.runFor(8_000);
-  await page.getByRole('button', { name: '다음: 질문 받기' }).click();
-  await page.clock.runFor(6_000);
-  await page.getByRole('button', { name: '초안 쓰기' }).click();
-  await page.clock.runFor(30_000);
-  await expect(page.getByText('초안이 나왔어요')).toBeVisible();
+  await page.getByRole('button', { name: '초안 쓰기', exact: true }).click();
+  // 카드 고르기 → 재료 확인 → 초안 쓰기를 화면이 멈추지 않고 이어 가므로 누를 것 없이 시간만 흘려 보낸다
+  await runToDraft(page);
 
   const mark = page.locator('.pedit__mirror mark.phl--inferred');
   await expect(mark).toHaveCount(1);

@@ -8,9 +8,8 @@ import { loginAsDemo } from './helpers';
 async function createLetter(page: Page) {
   await page.goto('/cover-letters/new');
   await page.getByPlaceholder('예: 백엔드 개발').fill('백엔드 개발');
-  await page.getByLabel('지원 이유', { exact: true }).fill('결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요');
   await page.getByLabel('1번 문항', { exact: true }).fill('어려운 문제를 해결한 경험을 적어 주세요');
-  await page.getByRole('button', { name: '카드 고르기', exact: true }).click();
+  await page.getByRole('button', { name: '초안 쓰기', exact: true }).click();
   // /cover-letters/new 도 아래 모양에 맞으니 new 는 뺀다(만들기가 끝나 자소서 주소로 바뀐 뒤에야 다음으로 간다)
   await expect(page).toHaveURL(/\/cover-letters\/(?!new$)[0-9a-z_-]+$/);
 }

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,7 +13,7 @@ import { buildAssignNotes, buildQuestionNotes, cellLabel } from '@/lib/coverLett
 import { DEL_MS, advanceLive, isSettled, liveFrom, locateSentence, sentenceDiff, shownText, splitSentences, type LiveState } from '@/lib/draftPaper';
 import { BLANK_TEXT } from '@/lib/draftText';
 import { handle } from '@/mock/router';
-import { db, resetDb } from '@/mock/store';
+import { resetDb } from '@/mock/store';
 
 vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 
@@ -55,15 +55,13 @@ function askedLetter() {
   return CoverLetter.parse(req('GET', `/cover-letters/${created.id}`).data);
 }
 
-type Gate = { holdPut?: Promise<void>; failGet?: boolean; log?: string[] };
-/** fetch 를 목 서버로 보낸다. 답 저장(PUT)을 멈춰 두거나 조회(GET)를 500 으로 떨어뜨릴 수 있다 */
+type Gate = { failGet?: boolean };
+/** fetch 를 목 서버로 보낸다. 조회(GET)를 500 으로 떨어뜨릴 수 있다 */
 function stubFetch(gate: Gate = {}) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (resource: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof resource === 'string' ? resource : resource instanceof URL ? resource.toString() : resource.url, 'http://localhost');
     const path = url.pathname.replace(/^\/api/, '');
     const method = (init?.method ?? 'GET').toUpperCase();
-    gate.log?.push(`${method} ${path}`);
-    if (method === 'PUT' && gate.holdPut) await gate.holdPut;
     if (method === 'GET' && gate.failGet) return new Response(JSON.stringify({ data: null, error: { code: 'INTERNAL', message: '서버 오류' } }), { status: 500 });
     const headers: Record<string, string> = {};
     new Headers(init?.headers).forEach((v, k) => { headers[k.toLowerCase()] = v; });
@@ -364,32 +362,14 @@ describe('⑤ 종이 위에 쓰는 중', () => {
   });
 });
 
-// ───────────────────────────── ② ③ 카드 고르기 ─────────────────────────────
-describe('②·③ 카드 고르기 메모', () => {
+// ───────────────────────────── ② 카드 고르기 ─────────────────────────────
+describe('② 카드 고르기 메모', () => {
   const picked = { seq: 1, actor: 'SUB_AGENT', kind: 'PICKED', questionId: 'q1', cardId: 'card_03', cardTitle: '토큰 만료 자동 재발급', reason: '직무와 이어져서' };
   it('② 는 종이의 문항 옆에 고른 카드 메모가 붙고 상태 글이 바뀐다', () => {
     mount(letter({ stage: 'ASSIGNING', questions: [question({ primaryCard: null, assignedBy: null })], steps: { assign: [picked], draft: [] } }));
     expect(screen.getByText('문항마다 쓸 카드를 고르고 있어요')).toBeInTheDocument();
     expect(screen.getByText("'토큰 만료 자동 재발급' 카드를 골랐어요")).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('카드를 골랐어요');
-  });
-
-  it('카드 바꾸기는 중심 카드를 고르기 전에는 보조 카드를 못 고른다', async () => {
-    mount(letter({ stage: 'ASSIGNED', pollAfterMs: null, questions: [question({ primaryCard: null, assignedBy: 'SUB_AGENT' })] }));
-    fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
-    const support = await screen.findByRole('radiogroup', { name: '보조 카드' });
-    expect(within(support).getAllByRole('radio').every((r) => (r as HTMLButtonElement).disabled)).toBe(true);
-    expect(screen.getByText('중심 카드를 먼저 골라 주세요.')).toBeInTheDocument();
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: '중심 카드' })).getByRole('radio', { name: /토큰 만료 자동 재발급/ }));
-    expect(within(support).getAllByRole('radio').some((r) => !(r as HTMLButtonElement).disabled)).toBe(true);
-  });
-
-  it('확정을 푼 카드는 카드 바꾸기의 기본값으로 남지 않는다', async () => {
-    mount(letter({ stage: 'ASSIGNED', pollAfterMs: null, questions: [question({ primaryCard: { id: 'card_99', title: '확정 푼 카드', kind: 'TECH' } })] }));
-    fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
-    const primary = await screen.findByRole('radiogroup', { name: '중심 카드' });
-    expect(within(primary).queryByRole('radio', { checked: true })).toBeNull();
-    expect(screen.getByRole('button', { name: '바꾸기' })).toBeEnabled();
   });
 });
 
@@ -462,81 +442,8 @@ describe('⑥ 같은 종이에서 고치기', () => {
   });
 });
 
-// ───────────────────────────── ④ 질문 보완 ─────────────────────────────
-describe('④ 답 저장', () => {
-  it('저장하는 사이에 더 쓴 답은 저장됨으로 보이지 않고, 같은 문항 저장은 앞 저장이 끝난 뒤에 나간다', async () => {
-    const l = askedLetter();
-    let release!: () => void;
-    const log: string[] = [];
-    stubFetch({ holdPut: new Promise<void>((r) => { release = r; }), log });
-    mount(l);
-    const area = screen.getByLabelText('이 회사를 고른 이유는 무엇인가요?');
-    fireEvent.change(area, { target: { value: '첫 답' } });
-    fireEvent.blur(area);
-    await waitFor(() => expect(log.filter((x) => x.startsWith('PUT')).length).toBe(1));
-    fireEvent.change(area, { target: { value: '첫 답을 더 씀' } });
-    fireEvent.blur(area);
-    expect(log.filter((x) => x.startsWith('PUT')).length).toBe(1);
-    release();
-    await waitFor(() => expect(log.filter((x) => x.startsWith('PUT')).length).toBe(2));
-    await waitFor(() => expect(screen.getByText('저장됨')).toBeInTheDocument());
-    expect(db.coverLetters[0].questions[0].answers.find((a: { item: string }) => a.item === 'REASON').text).toBe('첫 답을 더 씀');
-  });
-
-  it("'초안 쓰기' 는 저장 중에도 눌리고, 누르면 저장이 끝난 뒤 초안을 시작한다", async () => {
-    const l = askedLetter();
-    let release!: () => void;
-    const log: string[] = [];
-    stubFetch({ holdPut: new Promise<void>((r) => { release = r; }), log });
-    mount(l);
-    const area = screen.getByLabelText('이 회사를 고른 이유는 무엇인가요?');
-    fireEvent.change(area, { target: { value: '답' } });
-    fireEvent.blur(area);
-    await waitFor(() => expect(log.some((x) => x.startsWith('PUT'))).toBe(true));
-    const button = screen.getByRole('button', { name: '초안 쓰기' });
-    expect(button).toBeEnabled();
-    fireEvent.click(button);
-    expect(log.some((x) => x.startsWith('POST'))).toBe(false);
-    release();
-    await waitFor(() => expect(log.some((x) => x.endsWith('/drafts'))).toBe(true));
-    expect(log.findIndex((x) => x.endsWith('/drafts'))).toBeGreaterThan(log.findIndex((x) => x.startsWith('PUT')));
-  });
-
-  it("'초안 쓰기' 는 저장을 기다리는 동안 누른 것이 보이고, 두 번 눌러도 초안 쓰기는 한 번만 보낸다", async () => {
-    const l = askedLetter();
-    let release!: () => void;
-    const log: string[] = [];
-    stubFetch({ holdPut: new Promise<void>((r) => { release = r; }), log });
-    mount(l);
-    const area = screen.getByLabelText('이 회사를 고른 이유는 무엇인가요?');
-    fireEvent.change(area, { target: { value: '답' } });
-    fireEvent.blur(area);
-    await waitFor(() => expect(log.some((x) => x.startsWith('PUT'))).toBe(true));
-    const button = screen.getByRole('button', { name: '초안 쓰기' });
-    fireEvent.click(button);
-    fireEvent.click(button);
-    expect(button).toHaveAttribute('aria-busy', 'true');
-    release();
-    await waitFor(() => expect(log.some((x) => x.endsWith('/drafts'))).toBe(true));
-    await new Promise((r) => setTimeout(r, 50));
-    expect(log.filter((x) => x.endsWith('/drafts'))).toHaveLength(1);
-  });
-
-  it('글이 남아 있는 필수 재료라도 넘기면 비운 것으로 센다', () => {
-    const l = askedLetter();
-    stubFetch();
-    mount(l);
-    // 비운 필수 재료가 0개면 문구가 '답을 다 했으면 초안을 써요' 로 바뀐다
-    const missingNow = () => { const m = screen.queryByText(/꼭 필요한 재료 \d+개/); return m ? Number(m.textContent!.match(/\d+/)![0]) : 0; };
-    const before = missingNow();
-    expect(before).toBeGreaterThan(0);
-    const area = screen.getByLabelText('이 회사를 고른 이유는 무엇인가요?');
-    fireEvent.change(area, { target: { value: '답' } });
-    expect(missingNow()).toBe(before - 1);
-    fireEvent.click(within(area.closest('li')!).getByRole('button', { name: '넘기기' }));
-    expect(missingNow()).toBe(before);
-  });
-
+// ───────────────────────────── 빈칸 문구 ─────────────────────────────
+describe('빈칸 문구', () => {
   it('화면의 빈칸 문구는 서버(DraftText.java)와 글자 그대로 같다', () => {
     const java = readFileSync(resolve(process.cwd(), '../backend/src/main/java/com/gitory/backend/coverletter/domain/DraftText.java'), 'utf-8');
     const server = Object.fromEntries([...java.matchAll(/MaterialItem\.(\w+), "([^"]+)"/g)].map((m) => [m[1], m[2]]));
@@ -548,11 +455,11 @@ describe('④ 답 저장', () => {
 describe('잠깐의 조회 실패', () => {
   it('받아 둔 자소서가 있으면 조회가 실패해도 화면을 유지한다', async () => {
     const spy = stubFetch({ failGet: true });
-    mount(letter({ stage: 'ASSIGNED', pollAfterMs: null }), 0);
+    mount(letter({ stage: 'ASSIGNING', pollAfterMs: null }), 0);
     await waitFor(() => expect(spy).toHaveBeenCalled());
     await waitFor(() => expect(spy.mock.results.length).toBeGreaterThan(0));
     await new Promise((r) => setTimeout(r, 50));
-    expect(screen.getByText('문항마다 쓸 카드')).toBeInTheDocument();
+    expect(screen.getByText('문항마다 쓸 카드를 고르고 있어요')).toBeInTheDocument();
     expect(screen.queryByText('자소서를 불러오지 못했어요')).not.toBeInTheDocument();
   });
 });

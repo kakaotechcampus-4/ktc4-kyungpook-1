@@ -4,7 +4,6 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoverLetter, coverLetterKeys } from '@/api/coverLetters';
 import { CoverLetterPage } from '@/features/coverLetters/CoverLetterPage';
-import { answersFor } from '@/features/coverLetters/AnswerQuestions';
 import { checkMessage, draftLine } from '@/lib/coverLetterCopy';
 import { BLANK_TEXT, blanksIn, countableLength, moreToWrite } from '@/lib/draftText';
 import { handle } from '@/mock/router';
@@ -72,20 +71,6 @@ describe('⑤ AI 가 한 일 문장', () => {
   });
 });
 
-describe('④ 답 보내기', () => {
-  it('넘긴 질문은 text null, 비운 질문은 빼고, 손대지 않은 지난 답도 다시 보낸다', () => {
-    const q = { asks: [
-      { item: 'RESULT', question: '?', templates: [], required: true, answer: null, skipped: false },
-      { item: 'REASON', question: '?', templates: [], required: true, answer: null, skipped: false },
-      { item: 'LEARNING', question: null, templates: [], required: false, answer: { text: '지난 답', reused: true }, skipped: false },
-    ] };
-    expect(answersFor(q, { RESULT: { text: '', skipped: true }, REASON: { text: '  ', skipped: false } })).toEqual([
-      { item: 'RESULT', text: null, skipped: true },
-      { item: 'LEARNING', text: '지난 답', skipped: false },
-    ]);
-  });
-});
-
 describe('Mock 서버 — 질문, 답, 초안, 고치기', () => {
   it('답 저장은 ASKED 에서만, 질문에 없는 항목과 두 번은 400, 넘기면 skipped', () => {
     const l = askedLetter();
@@ -130,16 +115,7 @@ describe('Mock 서버 — 질문, 답, 초안, 고치기', () => {
   });
 });
 
-describe('④ ⑥ 화면', () => {
-  it('질문마다 필수 표시와 넘기기, 지난 답 제목을 보이고 비운 필수 재료 수를 말한다', () => {
-    mount(askedLetter());
-    expect(screen.getByText('조금만 더 알려 주세요')).toBeInTheDocument();
-    expect(screen.getAllByText('꼭 필요').length).toBeGreaterThan(0);
-    expect(screen.getByText(/꼭 필요한 재료 \d+개가 비어 있어요/)).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole('button', { name: '넘기기' })[0]);
-    expect(screen.getAllByRole('button', { name: '다시 답하기' })).toHaveLength(1);
-  });
-
+describe('⑥ 화면', () => {
   it('초안 화면은 글자 수를 바로 다시 세고, 빈칸과 확인 필요를 알려 주며, 고치면 저장할 수 있다', async () => {
     const l = askedLetter();
     req('PUT', `/cover-letters/${l.id}/questions/${l.questions[0].id}/answers`, { answers: [{ item: 'REASON', text: '장애를 30% 줄인 팀이라서', skipped: false }] });

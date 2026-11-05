@@ -93,7 +93,14 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       await expect(page).toHaveURL(/\/repos\/[^/]+\/run\?job=/);
     });
 
-    await test.step('4. 후보 보드', async () => {
+    let cardId: string;
+    await test.step('4. 정리가 끝나면 추천 후보로 카드 초안을 이어서 만듦', async () => {
+      const repoId = new URL(page.url()).pathname.split('/')[2];
+      // 정리를 지켜본 화면이 추천 후보로 카드 만들기를 스스로 요청한다(후보 보드에서 고르는 단계가 없다)
+      const created = page.waitForResponse(
+        (r) => /\/api\/repos\/[^/]+\/cards$/.test(r.url()) && r.request().method() === 'POST',
+        { timeout: SLOW },
+      );
       // 화면이 넘어가기만 기다리면 Job 이 FAILED 로 끝나도 원인 코드가 안 남아 상태를 직접 본다
       await expect
         .poll(
@@ -104,23 +111,17 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
           { timeout: SLOW },
         )
         .toEqual({ state: 'SUCCEEDED', partial: false, errorCode: null });
-      await expect(page).toHaveURL(/\/candidates/, { timeout: SLOW });
-      await expect(page.getByRole('heading', { name: /에서 찾은 일$/ })).toBeVisible();
-      // 가짜 LLM 이 만든 제목이 보이면 LLM 경로를 탄 것이다
-      await expect(page.getByText(CANDIDATE).first()).toBeVisible();
+      // 가짜 LLM 이 만든 제목이 후보에 있으면 LLM 경로를 탄 것이다
+      expect(JSON.stringify(await dataOf(await page.request.get(`/api/repos/${repoId}/candidates`)))).toContain(CANDIDATE);
+      const made = await dataOf(await created);
+      expect(made.cardIds.length).toBeGreaterThan(0);
+      cardId = made.cardIds[0];
     });
 
-    let cardId: string;
-    await test.step('5. 후보 하나로 카드 만들기', async () => {
-      // 후보 순서는 AI 점수에 기대므로 이름으로 고른다
-      // 처음엔 추천 5개만 보이므로 접힌 쪽에 있으면 먼저 편다. 타일 전체가 고르기 버튼이라 이름이 들어간 버튼을 누른다
-      const more = page.getByRole('button', { name: /^나머지 \d+개 더 보기$/ });
-      if (await more.isVisible()) await more.click();
-      await page.getByRole('button', { name: CANDIDATE }).click();
-      await expect(page.getByText('1개 골랐어요')).toBeVisible();
-      await page.getByRole('button', { name: '카드 만들기', exact: true }).click();
-      await expect(page).toHaveURL(/\/cards\/[^/?]+$/, { timeout: SLOW });
-      cardId = new URL(page.url()).pathname.split('/').pop()!;
+    await test.step('5. 초안을 다 쓰면 레포 폴더로', async () => {
+      await expect(page).toHaveURL(/\/cards\/repo\//, { timeout: SLOW });
+      await page.goto(`/cards/${cardId}`);
+      await expect(page).toHaveURL(/\/cards\/[^/?]+$/);
     });
 
     await test.step('6. 상황·행동 직접 쓰기', async () => {

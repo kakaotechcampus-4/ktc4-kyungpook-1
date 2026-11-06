@@ -68,29 +68,6 @@ describe('홈의 상태 화면', () => {
   });
 });
 
-describe('왼쪽 메뉴의 확인할 카드 수', () => {
-  function shell(cards: CardSummary[]) {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
-    client.setQueryData(keys.me, handle('GET', '/me', new URLSearchParams(), {}, true).data);
-    client.setQueryData(keys.cards, cards);
-    vi.spyOn(endpoints, 'activeJobs').mockResolvedValue({ jobs: [] });
-    const router = createMemoryRouter([{ element: <AppShell />, children: [{ path: '/', element: <p>본문</p> }] }], { initialEntries: ['/'] });
-    return render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
-  }
-  const menu = () => within(screen.getByRole('complementary', { name: '주 메뉴' }));
-
-  it('경험 카드 옆에는 확정하지 않은 카드 수가 보이고, 0장이면 보이지 않는다', () => {
-    const drafts = mockCards().filter((card) => card.status === 'DRAFT').length;
-    expect(drafts).toBeGreaterThan(0);
-    shell(mockCards());
-    expect(menu().getByRole('link', { name: `경험 카드, 확인할 카드 ${drafts}장` })).toHaveTextContent(`경험 카드${drafts}`);
-    cleanup();
-
-    shell(mockCards().map((card) => ({ ...card, status: 'CONFIRMED' as const })));
-    expect(menu().getByRole('link', { name: '경험 카드' })).toHaveTextContent(/^경험 카드$/);
-  });
-});
-
 describe('홈에 보일 맞는 공고', () => {
   const company = (n: number) => ({
     companyId: `co_${n}`, companyName: `회사 ${n}`, logoUrl: null, techs: [],

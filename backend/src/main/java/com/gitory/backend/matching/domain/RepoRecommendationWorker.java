@@ -29,6 +29,7 @@ public class RepoRecommendationWorker {
     private final Clock clock;
     private final Executor executor;
     private final AtomicBoolean running = new AtomicBoolean();
+    private final AtomicBoolean recovered = new AtomicBoolean();
 
     @Autowired
     public RepoRecommendationWorker(RepoRecommendationRepository recommendations, RepoRecommendationService service,
@@ -45,13 +46,29 @@ public class RepoRecommendationWorker {
         this.executor = executor;
     }
 
+    // 서버가 1대라 뜬 뒤 첫 차례에는 계산 중인 것이 없어서, 표시 없는 COMPUTING 은 계산하다 끊긴 것이므로 바로 집히게 다시 표시한다
+    void reserveInterrupted() {
+
+        int reserved = recommendations.markStaleOfInterrupted(
+                Instant.now(clock).minus(RepoRecommendationTrigger.QUIET));
+        if (reserved > 0) {
+            log.info("계산하다 끊긴 레포 추천 {} 건을 다시 계산하도록 표시한다", reserved);
+        }
+
+    }
+
     // 앞 차례가 아직 계산 중이면 새로 넘기지 않아, 같은 레포를 두 곳에서 계산하지 않는다
+    // 끊긴 계산은 첫 차례가 집기 전에 표시해, 이 서버가 방금 집어 계산하는 줄을 끊긴 것으로 잘못 보지 않는다
     @Scheduled(fixedDelay = 15_000)
     public void work() {
 
         if (running.compareAndSet(false, true)) {
             executor.execute(() -> {
                 try {
+                    if (!recovered.get()) {
+                        reserveInterrupted();
+                        recovered.set(true);
+                    }
                     drain();
                 } finally {
                     running.set(false);

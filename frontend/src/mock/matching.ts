@@ -1,10 +1,11 @@
 import listExample from "../../docs/examples/matching/list.json";
 import detailExample from "../../docs/examples/matching/detail.json";
 import { MatchDetail, MatchTarget } from "@/api/matching";
-import { db, cardView } from "./store";
+import { db, cardView, FIELD_KEY, isCardBlank, STAR } from "./store";
 import { Card } from "@/api/schemas";
 import { applyMask } from "@/lib/mask";
-import { gapFillOf, isJudged, markJudged, proposalsOf, startGapFill } from "./matchState";
+import { gapFillOf, isJudged, markJudged, proposalsOf, repoRunStart, startGapFill } from "./matchState";
+import { rankPicks, techName, type LiveHit } from "@/lib/repoPick";
 
 /**
  * Mock server only: 응답 계약의 companyId·logoUrl. 예시 JSON 은 서버와 같은 모양을 지키는 문서라 건드리지 않고 여기서 얹는다.
@@ -227,26 +228,92 @@ function overallCompanies() {
       ...MOCK_CONDITIONS[x.id],
     }));
 }
+/** 처음 읽고 계산을 시작하기까지(예약) · 시작하고 첫 회사를 확인하기까지 · 회사 하나에 걸리는 시간 · 그 가운데 확인 중인 시간 */
+const PICK_QUEUE = 1;
+const PICK_LEAD = 0.8;
+const PICK_STEP = 2.4;
+const PICK_CHECK = 1.7;
+/** 카드에 기술 태그가 모자라면 데모가 단조롭지 않게 더하는 기술 */
+const DEMO_TECHS = ["JAVA", "SPRING", "POSTGRESQL", "REDIS", "KAFKA", "AWS"];
+/** 목 공고에 없는 회사 — 후보가 6곳이 넘게 보이도록 둔 것이고, 확인은 하지만 맞는 게 없는 후보로만 쓴다 */
+const FILLER = [
+  { companyId: "saebyeok", companyName: "새벽마켓", title: "백엔드 개발자", days: 6, overlap: 2 },
+  { companyId: "hanbit", companyName: "한빛커머스", title: "백엔드 개발자", days: 2, overlap: 1 },
+  { companyId: "chaeum", companyName: "채움에듀", title: "서버 개발자", days: 11, overlap: 3 },
+] as const;
+/** 확인하는 순서 — 예시 공고(순번)와 위 회사를 섞는다 */
+const PICK_ORDER: ReadonlyArray<readonly ["post" | "fill", number]> = [["post", 1], ["fill", 0], ["post", 0], ["fill", 1], ["post", 2], ["post", 3], ["fill", 2], ["post", 4]];
+type PickCandidate = {
+  companyId: string | null; companyName: string; logoUrl: string | null; posting: { id: string; title: string; deadline: string | null };
+  overlap: number; hits: LiveHit[]; matched: string[];
+};
+
 /**
- * Mock server only: 레포의 확정 카드가 없으면 계산한 적 없음(NONE), 있으면 기업마다 공고 하나씩 3곳.
- * 실서버는 카드 글로 AI 가 판단하므로, 그 카드 기술과 겹치는 공고를 앞에 두고 남는 자리는 다른 공고로 채운다
+ * Mock server only: 레포 카드로 고르는 결과 — 시간과 상관없이 정해지는 끝난 모습이다.
+ * 카드(작성 중 포함) 기술과 겹치는 예시 공고가 기술마다 조건 하나를 채운다. 실서버처럼 네 칸이 모두 빈 카드는 빼고, 남은 카드가 없으면 null.
+ */
+function repoPicks(repoId: string) {
+  const cards = db.cards.filter((c) => {
+    const version = c.versions[c.versions.length - 1];
+    return c.repo?.id === repoId && STAR.some((field) => !isCardBlank(version[FIELD_KEY[field]] ?? ""));
+  });
+  if (cards.length === 0) return null;
+  const own = [...new Set(cards.flatMap((c) => (c.techs ?? []) as string[]))];
+  const techs = own.length < 3 ? [...new Set([...own, ...DEMO_TECHS])] : own;
+  const mine = new Set(techs);
+  const list = new Map(mockMatchList().map((x) => [x.id, x]));
+  const titleFor = (tech: string, i: number) => (cards.find((c) => ((c.techs ?? []) as string[]).includes(tech)) ?? cards[i % cards.length]).title as string;
+  const candidates = PICK_ORDER.map(([kind, index]): PickCandidate => {
+    if (kind === "fill") {
+      const f = FILLER[index];
+      const deadline = new Date(Date.now() + f.days * 86400000).toISOString();
+      return { companyId: f.companyId, companyName: f.companyName, logoUrl: null, posting: { id: `mock-${f.companyId}`, title: f.title, deadline }, overlap: f.overlap, hits: [], matched: [] };
+    }
+    const x = list.get(listExample.data[index].id)!;
+    const matched = x.techs.filter((tech) => mine.has(tech));
+    const hits = x.techs.flatMap((tech, i): LiveHit[] => mine.has(tech)
+      ? [{ type: i < x.required.total ? "REQUIRED" : "PREFERRED", text: `${techName(tech)} 사용 경험`, cardTitle: titleFor(tech, i) }] : []);
+    return { companyId: x.companyId, companyName: x.company, logoUrl: x.logoUrl, posting: { id: x.id, title: x.role, deadline: x.source.expiresAt }, overlap: hits.length, hits, matched };
+  });
+  const companies = rankPicks(candidates.map((c) => ({ ...c, state: "DONE" as const, failed: false }))).map((c) => {
+    const found = candidates.find((x) => x.posting.id === c.posting.id)!;
+    return {
+      companyId: c.companyId, companyName: c.companyName, logoUrl: c.logoUrl, posting: { ...c.posting, closed: false },
+      techs: found.matched.slice(0, 3),
+      requiredMet: c.hits.filter((h) => h.type === "REQUIRED").length, preferredMet: c.hits.filter((h) => h.type === "PREFERRED").length,
+    };
+  });
+  return { cards, techs, candidates, companies, signature: cards.map((c) => c.id as string).sort().join(",") };
+}
+
+/**
+ * Mock server only: 레포 카드로 맞는 기업을 고르는 모습. 처음 읽은 때부터의 경과 시간으로, 1초쯤 예약(COMPUTING + queued)했다가 후보를 하나씩 확인하고(회사마다 2.4초쯤) 끝나면 READY 가 된다.
+ * 그 레포의 카드가 달라지면 처음부터 다시 한다. 카드가 없으면 계산한 적 없음(NONE).
+ * 고른 기업(companies)은 끝난 모습을 늘 주는데, 홈의 추천 공고가 읽는 즉시 보이게 하려는 것이다.
  */
 export function mockRepoRecommendation(repoId: string) {
-  const confirmed = db.cards.filter((c) => c.repo?.id === repoId && c.status === "CONFIRMED");
-  if (confirmed.length === 0) return { status: "NONE", computedAt: null, companies: [] };
-  const mine = new Set<string>(confirmed.flatMap((c) => (c.techs ?? []) as string[]));
-  const seen = new Set<string>();
-  const companies = mockMatchList()
-    .map((x) => ({ x, techs: x.techs.filter((tech) => mine.has(tech)).slice(0, 3) }))
-    .sort((a, b) => b.techs.length - a.techs.length)
-    .filter(({ x }) => { const key = x.companyId ?? x.company; if (seen.has(key)) return false; seen.add(key); return true; })
-    .slice(0, 3)
-    .map(({ x, techs }) => ({
-      companyId: x.companyId, companyName: x.company, logoUrl: x.logoUrl,
-      posting: { id: x.id, title: x.role, deadline: x.source.expiresAt, closed: false },
-      techs, requiredMet: Math.max(1, techs.length), preferredMet: 0,
-    }));
-  return { status: "READY", computedAt: new Date().toISOString(), companies };
+  const picks = repoPicks(repoId);
+  if (!picks) return { status: "NONE", computedAt: null, queued: false, live: null, companies: [] };
+  const now = Date.now();
+  const startedAt = repoRunStart(repoId, picks.signature, now);
+  const elapsed = (now - startedAt) / 1000;
+  if (elapsed < PICK_QUEUE) return { status: "COMPUTING", computedAt: null, queued: true, live: null, companies: picks.companies };
+  const progress = elapsed - PICK_QUEUE;
+  const starts = picks.candidates.map((_, i) => PICK_LEAD + PICK_STEP * i);
+  const total = starts[starts.length - 1] + PICK_CHECK + 0.3;
+  const finished = progress >= total;
+  const candidates = picks.candidates.map(({ matched, ...c }, i) => {
+    void matched;
+    const state = progress >= starts[i] + PICK_CHECK ? "DONE" : progress >= starts[i] ? "CHECKING" : "WAITING";
+    return { ...c, state, failed: false, hits: state === "DONE" ? c.hits : [] };
+  });
+  return {
+    status: finished ? "READY" : "COMPUTING",
+    computedAt: finished ? new Date(startedAt + (PICK_QUEUE + total) * 1000).toISOString() : null,
+    queued: false,
+    live: { cardCount: picks.cards.length, techs: picks.techs, candidates, finished },
+    companies: picks.companies,
+  };
 }
 /**
  * Mock server only: 실서버처럼 맞춰 본 공고 · 전체 매칭 결과 · 레포 추천을 합쳐, 지금 확정 카드로 필수 조건이 맞은 공고를 한 번씩 센다.
@@ -264,7 +331,7 @@ export function mockMatchedPostings() {
   const overall = mockOverall();
   if (overall.status === "READY") overall.companies.forEach((c) => ids.add(c.posting.id));
   new Set(confirmed.flatMap((c) => (c.repo?.id ? [c.repo.id as string] : []))).forEach((repoId) =>
-    mockRepoRecommendation(repoId).companies.forEach((c) => ids.add(c.posting.id)));
+    repoPicks(repoId)?.companies.forEach((c) => ids.add(c.posting.id)));
   return { matchedPostings: ids.size };
 }
 /** Mock server only: 실서버처럼 누르면 배경에서 기업을 하나씩 확인하고(진행 개수), 다시 계산하는 동안에는 지난 기업을 그대로 준다 */

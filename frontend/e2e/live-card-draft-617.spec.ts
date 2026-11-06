@@ -79,8 +79,8 @@ test('카드가 차례로 채워지고, 읽는 동안은 커서만, 글은 일�
   await expect(page.getByText('카드 초안 2 / 2장')).toBeVisible();
   await expect(generationHeading(page)).toBeVisible(); // 다 쓴 모습을 잠깐 보여 준다
   await expect(generationHeading(page)).toHaveCount(0, { timeout: 10_000 });
-  // 여러 장을 다 쓰면 그 레포의 카드 폴더로 옮겨 여러 장을 한눈에 본다 (#704)
-  await expect(page).toHaveURL(/\/cards\/repo\/r_auth$/);
+  // 여러 장을 다 쓰면 그 레포 카드로 맞는 기업을 고르는 화면으로 옮겨 간다 (#704)
+  await expect(page).toHaveURL(/\/cards\/repo\/r_auth\/match$/);
   await expect(page.locator('.live-draft')).toHaveCount(0);
 });
 

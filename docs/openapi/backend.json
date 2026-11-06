@@ -2529,6 +2529,108 @@
         },
         "type" : "object"
       },
+      "Live" : {
+        "properties" : {
+          "candidates" : {
+            "description" : "후보 회사. 1단계가 고른 순서이고 많아야 10곳",
+            "items" : {
+              "$ref" : "#/components/schemas/LiveCandidate"
+            },
+            "type" : "array"
+          },
+          "cardCount" : {
+            "description" : "계산에 쓴 카드 수. 네 칸이 모두 빈 카드는 세지 않는다",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "finished" : {
+            "description" : "추천 저장까지 마쳤으면 true",
+            "type" : "boolean"
+          },
+          "techs" : {
+            "description" : "카드에서 모은 기술 이름(카드 techs 와 같은 값), 많아야 12개",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "LiveCandidate" : {
+        "properties" : {
+          "companyId" : {
+            "type" : "string"
+          },
+          "companyName" : {
+            "type" : "string"
+          },
+          "failed" : {
+            "description" : "AI 판단을 받지 못했으면 true. 이때 state 는 DONE 이고 hits 는 빈 배열",
+            "type" : "boolean"
+          },
+          "hits" : {
+            "description" : "이 레포 카드가 채웠다고 AI 가 판단한 조건. 필수가 먼저이고 공고에 적힌 순서이며, 확인을 마치기 전에는 빈 배열",
+            "items" : {
+              "$ref" : "#/components/schemas/LiveHit"
+            },
+            "type" : "array"
+          },
+          "logoUrl" : {
+            "description" : "https 로고 주소. 없으면 null",
+            "type" : "string"
+          },
+          "overlap" : {
+            "description" : "대표 공고에서 이 레포 카드 기술과 겹친 필수·우대 조건 수. 0 이면 AI 에게 묻지 않고 건너뛴다",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "posting" : {
+            "$ref" : "#/components/schemas/LivePosting"
+          },
+          "state" : {
+            "description" : "WAITING 은 차례를 기다림, CHECKING 은 AI 가 확인 중, DONE 은 확인을 마침",
+            "enum" : [ "WAITING", "CHECKING", "DONE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "LiveHit" : {
+        "properties" : {
+          "cardTitle" : {
+            "description" : "그 조건을 채운 카드 가운데 첫 카드의 제목. 가리기 전 제목이다",
+            "type" : "string"
+          },
+          "text" : {
+            "description" : "조건 글. 80자를 넘으면 80자에서 자른다",
+            "type" : "string"
+          },
+          "type" : {
+            "description" : "REQUIRED 는 필수 조건, PREFERRED 는 우대 조건",
+            "enum" : [ "REQUIRED", "PREFERRED" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "LivePosting" : {
+        "properties" : {
+          "deadline" : {
+            "description" : "마감 시각. 상시 채용이면 null",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "description" : "대표 공고 id, 매칭 상세 주소에 쓴다",
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "LowConfidenceResponse" : {
         "properties" : {
           "field" : {
@@ -3830,8 +3932,16 @@
             "format" : "date-time",
             "type" : "string"
           },
+          "live" : {
+            "$ref" : "#/components/schemas/Live",
+            "description" : "가장 최근 계산에서 후보 회사를 하나씩 확인한 과정. 서버 메모리에만 있어 계산이 끝난 뒤에도 남지만 서버가 다시 뜨면 사라지고, 새 계산이 후보를 정하는 동안에도 비어 있으며, 없으면 null"
+          },
+          "queued" : {
+            "description" : "카드가 바뀌어 다시 계산이 예약돼 있고 아직 시작하지 않았으면 true. 계산을 시작하면 false 가 되고, 계산하는 중에 카드가 또 바뀌면 다시 true",
+            "type" : "boolean"
+          },
           "status" : {
-            "description" : "COMPUTING 은 계산을 기다리거나 하는 중, NONE 은 아직 계산한 적 없음",
+            "description" : "COMPUTING 은 계산을 기다리거나 하는 중, NONE 은 계산한 적도 카드도 없음",
             "enum" : [ "COMPUTING", "READY", "FAILED", "NONE" ],
             "type" : "string"
           }
@@ -10090,7 +10200,7 @@
     },
     "/api/repos/{repoId}/recommendations" : {
       "get" : {
-        "description" : "그 레포의 확정 카드로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 카드 초안이 끝나거나 확정 카드가 바뀌고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 입니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다.",
+        "description" : "그 레포의 카드(작성 중과 확정)로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 계산한 적이 없는데 카드가 있으면 조회할 때 계산을 예약합니다(여는 요청 안에서 계산하지는 않습니다). 카드 초안이 끝나거나 확정 카드가 바뀌거나 카드를 지우고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 이며 queued 는 계산이 시작되기 전까지 true 입니다. 계산을 시작해 후보를 정하는 동안은 live 가 null 이고, 이어서 후보 회사를 하나씩 확인하는 과정이 live 에 담기며, 계산이 끝난 뒤에도 서버가 다시 뜨기 전까지 남습니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다.",
         "operationId" : "recommendations",
         "parameters" : [ {
           "description" : "레포 목록 응답의 id",
@@ -10111,7 +10221,7 @@
                 }
               }
             },
-            "description" : "추천 상태와 기업. 계산한 적이 없으면 NONE 과 빈 배열"
+            "description" : "추천 상태와 기업, 다시 계산 예약 여부(queued), 고르는 과정(live). 계산한 적도 카드도 없으면 NONE 과 빈 배열"
           },
           "400" : {
             "content" : {

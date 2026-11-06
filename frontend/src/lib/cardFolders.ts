@@ -42,6 +42,8 @@ export type CardFolder = {
 
 export const folderPath = {
   repo: (repoId: string) => `/cards/repo/${encodeURIComponent(repoId)}`,
+  /** 그 레포의 카드로 맞는 기업을 고르는 화면 */
+  repoMatch: (repoId: string) => `/cards/repo/${encodeURIComponent(repoId)}/match`,
   activity: (activityId: string) => `/cards/activity/${encodeURIComponent(activityId)}`,
   direct: '/cards/direct',
 } as const;

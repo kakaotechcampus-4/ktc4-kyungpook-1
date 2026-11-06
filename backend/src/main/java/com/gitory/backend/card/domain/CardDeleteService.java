@@ -36,9 +36,7 @@ public class CardDeleteService {
             candidates.release(card.getCandidateId());
         }
         cards.delete(card);
-        if (card.isConfirmed()) {
-            changes.announce(card);
-        }
+        changes.announce(card);
         auditLog.ok(userId, AuditAction.DELETE_CARD, card.getId());
 
     }

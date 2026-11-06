@@ -1,7 +1,9 @@
 package com.gitory.backend.matching.domain;
 
+import com.gitory.backend.card.domain.CardKind;
 import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.card.domain.MatchingCard;
+import com.gitory.backend.card.domain.MatchingCardLabel;
 import com.gitory.backend.card.domain.MatchingCardReader;
 import com.gitory.backend.matching.infra.JobPostingCriterionRepository;
 import com.gitory.backend.matching.infra.RepoRecommendationRepository;
@@ -17,16 +19,22 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -37,31 +45,38 @@ class RepoRecommendationServiceTest {
     private static final Instant NOW = Instant.parse("2026-10-31T00:00:00Z");
     private static final Long USER = 1L;
     private static final Long REPO = 7L;
+    private static final MatchingCard CARD = new MatchingCard(11L, REPO, "결제 API", null, null,
+            "Spring 으로 결제 API 를 만들었다", null,
+            List.of(CardTech.JAVA, CardTech.SPRING, CardTech.JPA, CardTech.REDIS));
 
     private final MatchingCardReader cards = mock(MatchingCardReader.class);
     private final CompanyShortlistService shortlist = mock(CompanyShortlistService.class);
     private final JobPostingCriterionRepository criteria = mock(JobPostingCriterionRepository.class);
     private final MatchJudgementService judgements = mock(MatchJudgementService.class);
     private final RepoRecommendationRepository recommendations = mock(RepoRecommendationRepository.class);
+    private final CompanyDirectory directory = mock(CompanyDirectory.class);
+    private final RepoRecommendationLiveLog liveLog = new RepoRecommendationLiveLog();
     private final RepoRecommendationService service = new RepoRecommendationService(cards, shortlist, criteria,
-            judgements, recommendations, new TransactionTemplate(mock(PlatformTransactionManager.class)),
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            judgements, recommendations, directory, liveLog,
+            new TransactionTemplate(mock(PlatformTransactionManager.class)), Clock.fixed(NOW, ZoneOffset.UTC));
 
     private final List<ShortlistedCompany> companies = new ArrayList<>();
     private final List<JobPostingCriterion> allCriteria = new ArrayList<>();
     private final Map<Long, Optional<Map<Long, List<JudgedSupport>>>> verdicts = new HashMap<>();
+    private final List<RepoRecommendationLive> whileJudging = new ArrayList<>();
     private long nextId = 1;
 
     @BeforeEach
     void setUp() {
 
-        when(cards.confirmedOf(USER, REPO)).thenReturn(List.of(new MatchingCard(11L, REPO, "결제 API", null, null,
-                "Spring 으로 결제 API 를 만들었다", null,
-                List.of(CardTech.JAVA, CardTech.SPRING, CardTech.JPA, CardTech.REDIS))));
+        when(cards.allOf(USER, REPO)).thenReturn(List.of(CARD));
+        when(directory.of(any(), any())).thenReturn(new MatchCompany("toss", "https://static.toss.im/logo.png"));
         when(shortlist.shortlist(eq(USER), any(), anyInt())).thenReturn(companies);
         when(criteria.findByJobPostingIdInOrderByJobPostingIdAscSeqAsc(any())).thenReturn(allCriteria);
-        when(judgements.judge(any(), anyList(), anyList()))
-                .thenAnswer(call -> verdicts.get(((JobPosting) call.getArgument(0)).getId()));
+        when(judgements.judge(any(), anyList(), anyList())).thenAnswer(call -> {
+            liveLog.of(REPO).ifPresent(whileJudging::add);
+            return verdicts.get(((JobPosting) call.getArgument(0)).getId());
+        });
         when(recommendations.findWithLockByUserRepositoryId(REPO)).thenReturn(Optional.empty());
 
     }
@@ -170,16 +185,142 @@ class RepoRecommendationServiceTest {
     }
 
     @Test
-    @DisplayName("레포에 확정 카드가 없으면 AI 를 부르지 않고 빈 추천을 준비됨으로 저장한다")
-    void savesEmptyRecommendationWithoutAskingWhenRepoHasNoConfirmedCards() {
+    @DisplayName("레포에 쓸 카드가 없으면 AI 를 부르지 않고 빈 추천을 준비됨으로 저장한다")
+    void savesEmptyRecommendationWithoutAskingWhenRepoHasNoCards() {
 
-        when(cards.confirmedOf(USER, REPO)).thenReturn(List.of());
+        when(cards.allOf(USER, REPO)).thenReturn(List.of());
 
         service.compute(USER, REPO);
 
         verify(judgements, never()).judge(any(), anyList(), anyList());
         assertThat(saved().getStatus()).isEqualTo(RepoRecommendationStatus.READY);
         assertThat(saved().getCompanies()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("네 칸이 모두 빈 카드는 계산에서 뺀다")
+    void leavesOutCardsWhoseFourSlotsAreAllEmpty() {
+
+        MatchingCard unwritten = new MatchingCard(12L, REPO, "초안을 쓰기 전 카드", null, null, null, null,
+                List.of(CardTech.KAFKA));
+        when(cards.allOf(USER, REPO)).thenReturn(List.of(CARD, unwritten));
+        JobPosting posting = company("a");
+        JobPostingCriterion spring = criterion(posting, CriterionType.REQUIRED, null, CardTech.SPRING);
+        criterion(posting, CriterionType.REQUIRED, null, CardTech.KAFKA);
+        judged(posting, Map.of(spring.getId(), met()));
+
+        service.compute(USER, REPO);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Set<CardTech>> techs = ArgumentCaptor.forClass(Set.class);
+        verify(shortlist).shortlist(eq(USER), techs.capture(), anyInt());
+        assertThat(techs.getValue()).doesNotContain(CardTech.KAFKA);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<MatchingCard>> askedCards = ArgumentCaptor.forClass(List.class);
+        verify(judgements).judge(eq(posting), anyList(), askedCards.capture());
+        assertThat(askedCards.getValue()).containsExactly(CARD);
+        assertThat(liveLog.of(REPO).orElseThrow().cardCount()).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("계산하는 동안 후보 회사를 기다림, 확인 중, 끝남으로 남기고 맞은 조건과 채운 카드 제목을 싣는다")
+    void keepsCandidatesAsWaitingCheckingDoneWithMetConditionsAndCardTitles() {
+
+        // SPRING 은 열네 번째 기술이라 화면에 싣는 12개에는 못 들지만 조건과 겹치는 데는 쓰인다
+        List<CardTech> manyTechs = Arrays.asList(CardTech.values()).subList(0, 14);
+        when(cards.allOf(USER, REPO)).thenReturn(List.of(new MatchingCard(11L, REPO, "가린 제목", null, null,
+                "Spring 으로 결제 API 를 만들었다", null, manyTechs)));
+        when(cards.labelsOf(any())).thenReturn(Map.of(11L,
+                new MatchingCardLabel(UUID.randomUUID(), "가리기 전 제목", CardKind.QUALITATIVE, REPO)));
+        JobPosting checked = company("a");
+        JobPostingCriterion preferred = criterion(checked, CriterionType.PREFERRED, null, CardTech.SPRING);
+        JobPostingCriterion required = criterion(checked, CriterionType.REQUIRED, null, CardTech.SPRING);
+        criterion(checked, CriterionType.REQUIRED, null, CardTech.KAFKA);
+        worded(preferred, "우대 조건");
+        worded(required, "가".repeat(100));
+        judged(checked, Map.of(preferred.getId(), met(), required.getId(), met()));
+        JobPosting skipped = company("b");
+        criterion(skipped, CriterionType.REQUIRED, null, CardTech.KAFKA);
+        JobPosting unanswered = company("c");
+        criterion(unanswered, CriterionType.REQUIRED, null, CardTech.SPRING);
+        verdicts.put(unanswered.getId(), Optional.empty());
+
+        service.compute(USER, REPO);
+
+        assertThat(whileJudging).extracting(RepoRecommendationServiceTest::states).containsExactly(
+                List.of(RepoRecommendationLiveState.CHECKING, RepoRecommendationLiveState.WAITING,
+                        RepoRecommendationLiveState.WAITING),
+                List.of(RepoRecommendationLiveState.DONE, RepoRecommendationLiveState.DONE,
+                        RepoRecommendationLiveState.CHECKING));
+        RepoRecommendationLive live = liveLog.of(REPO).orElseThrow();
+        assertThat(live.finished()).isTrue();
+        assertThat(live.cardCount()).isEqualTo(1);
+        assertThat(live.techs()).containsExactlyElementsOf(
+                Arrays.stream(CardTech.values()).limit(12).map(Enum::name).toList());
+        assertThat(live.candidates()).extracting(RepoRecommendationLive.Candidate::companyId,
+                        RepoRecommendationLive.Candidate::overlap, RepoRecommendationLive.Candidate::state,
+                        RepoRecommendationLive.Candidate::failed)
+                .containsExactly(tuple("a", 2, RepoRecommendationLiveState.DONE, false),
+                        tuple("b", 0, RepoRecommendationLiveState.DONE, false),
+                        tuple("c", 1, RepoRecommendationLiveState.DONE, true));
+        RepoRecommendationLive.Candidate first = live.candidates().getFirst();
+        assertThat(first.logoUrl()).isEqualTo("https://static.toss.im/logo.png");
+        assertThat(first.posting())
+                .isEqualTo(new RepoRecommendationLive.Posting(checked.getPublicId(), "백엔드 개발자", null));
+        assertThat(first.hits()).containsExactly(
+                new RepoRecommendationLive.Hit(CriterionType.REQUIRED, "가".repeat(80), "가리기 전 제목"),
+                new RepoRecommendationLive.Hit(CriterionType.PREFERRED, "우대 조건", "가리기 전 제목"));
+        assertThat(live.candidates().get(1).hits()).isEmpty();
+        assertThat(live.candidates().get(2).hits()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("계산이 끝나도 진행은 남고, 같은 레포의 다음 계산이 시작되면 새 진행으로 바뀐다")
+    void keepsFinishedProgressUntilTheNextComputeStartsAnotherOne() {
+
+        withMet("a", 1, 0);
+        service.compute(USER, REPO);
+
+        RepoRecommendationLive finished = liveLog.of(REPO).orElseThrow();
+        assertThat(finished.finished()).isTrue();
+        assertThat(finished.candidates()).extracting(RepoRecommendationLive.Candidate::companyId)
+                .containsExactly("a");
+
+        companies.clear();
+        withMet("b", 1, 0);
+        List<Boolean> progressWhileChoosingCandidates = new ArrayList<>();
+        when(shortlist.shortlist(eq(USER), any(), anyInt())).thenAnswer(call -> {
+            progressWhileChoosingCandidates.add(liveLog.of(REPO).isPresent());
+            return companies;
+        });
+        service.compute(USER, REPO);
+
+        assertThat(progressWhileChoosingCandidates).containsExactly(false);
+        RepoRecommendationLive whileSecondCompute = whileJudging.getLast();
+        assertThat(whileSecondCompute.finished()).isFalse();
+        assertThat(whileSecondCompute.candidates()).extracting(RepoRecommendationLive.Candidate::companyId)
+                .containsExactly("b");
+        assertThat(liveLog.of(REPO).orElseThrow().candidates())
+                .extracting(RepoRecommendationLive.Candidate::companyId).containsExactly("b");
+
+    }
+
+    @Test
+    @DisplayName("계산이 예외로 멈추면 그 레포의 진행을 지운다")
+    void dropsProgressWhenComputeBreaks() {
+
+        withMet("a", 1, 0);
+        doThrow(new IllegalStateException("고장")).when(judgements).judge(any(), anyList(), anyList());
+
+        assertThatThrownBy(() -> service.compute(USER, REPO)).isInstanceOf(IllegalStateException.class);
+        assertThat(liveLog.of(REPO)).isPresent();
+
+        service.markFailed(USER, REPO);
+
+        assertThat(liveLog.of(REPO)).isEmpty();
 
     }
 
@@ -226,6 +367,18 @@ class RepoRecommendationServiceTest {
     private void judged(JobPosting posting, Map<Long, List<JudgedSupport>> judged) {
 
         verdicts.put(posting.getId(), Optional.of(judged));
+
+    }
+
+    private static void worded(JobPostingCriterion criterion, String text) {
+
+        ReflectionTestUtils.setField(criterion, "text", text);
+
+    }
+
+    private static List<RepoRecommendationLiveState> states(RepoRecommendationLive live) {
+
+        return live.candidates().stream().map(RepoRecommendationLive.Candidate::state).toList();
 
     }
 

@@ -1,20 +1,19 @@
 import { Link } from 'react-router-dom';
-import { Flag, FolderGit2, FolderPlus, PenLine, type LucideIcon } from 'lucide-react';
+import { FolderPlus } from 'lucide-react';
 import { techLabels } from '@/lib/cardTags';
-import { deckLayers, folderCounts, folderLabel, folderOwnerLine, folderTitle, type CardFolder, type FolderKind } from '@/lib/cardFolders';
+import { deckLayers, folderCounts, folderLabel, folderOwnerLine, folderTitle, reviewCount, type CardFolder } from '@/lib/cardFolders';
 import './CardFolders.css';
-
-const kindIcon: Record<FolderKind, LucideIcon> = { repo: FolderGit2, activity: Flag, direct: PenLine };
 
 /**
  * 폴더 앞판(카드 묶음). 맨 위 카드 한 장이 보이고, 그 뒤로 카드가 겹쳐 쌓인 모양이다 — 겹친 수는 장 수를 따른다(deckLayers).
  * 폴더 전체가 링크 하나라 키보드로 열고, 이름에는 소유자·이름·장 수가 모두 들어간다(folderLabel).
  * 레포 폴더는 이름 아래에 프로젝트 설명 두 줄 자리를 늘 둔다 — 설명이 없어도 타일 높이가 같다.
- * 장식(뒤에 겹친 카드와 종류 아이콘)은 접근성 트리에서 뺀다. 숫자는 서버가 준 카드를 센 값이다.
+ * 폴더 종류는 첫 줄(소유자 · '활동, 종류' · 직접 쓴 카드)이 말하고, 오른쪽 위에는 장 수와 아직 확정하지 않은 카드 수만 둔다.
+ * 장식(뒤에 겹친 카드)은 접근성 트리에서 뺀다. 숫자는 서버가 준 카드를 센 값이다.
  */
 export function FolderTile({ folder }: { folder: CardFolder }) {
-  const Icon = kindIcon[folder.kind];
   const counts = folderCounts(folder);
+  const review = reviewCount(folder);
   return (
     <Link to={folder.to} className="folder" aria-label={folderLabel(folder)} data-deck={deckLayers(folder.cards.length)} data-empty={folder.cards.length === 0 || undefined}>
       <span className="folder__back" aria-hidden />
@@ -22,8 +21,8 @@ export function FolderTile({ folder }: { folder: CardFolder }) {
         <span className="folder__head">
           <span className="folder__owner">{folderOwnerLine(folder)}</span>
           <span className="folder__meta">
+            {review > 0 && <span className="folder__review">확인할 카드 {review}장</span>}
             {folder.cards.length > 0 && <span className="folder__count"><span className="folder__count-num">{folder.cards.length}</span>장</span>}
-            <Icon className="folder__kind" size={16} aria-hidden />
           </span>
         </span>
         <span className="folder__name">{folderTitle(folder)}</span>

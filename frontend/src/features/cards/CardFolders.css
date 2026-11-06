@@ -35,20 +35,21 @@
 .folder:focus-visible .folder__back::before, .folder:focus-visible .folder__back::after { border-color: var(--border-selected); }
 
 .folder__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
-.folder__meta { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.folder__kind { flex: 0 0 auto; color: var(--text-tertiary); }
-.folder__owner { font-size: 12px; line-height: 16px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder__meta { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.folder__owner { font-size: 13px; line-height: 18px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder__name { font-size: 18px; line-height: 26px; font-weight: var(--heading-weight); color: var(--text-primary);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .folder__desc { min-height: 36px; font-size: 13px; line-height: 18px; color: var(--text-secondary);
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-.folder__note { font-size: 12px; line-height: 16px; color: var(--text-tertiary); }
+.folder__note { font-size: 13px; line-height: 18px; color: var(--text-tertiary); }
 .folder__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 12px; }
 .folder__tags { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
-.folder__tag { padding: 3px 8px; border-radius: var(--radius-sm); background: var(--bg-subtle); color: var(--text-secondary); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
-/* 장 수는 겹침이 이미 보여 주므로 작게 — 큰 숫자가 이름보다 먼저 보이지 않게 */
-.folder__count { flex: 0 0 auto; color: var(--text-secondary); font-size: 12px; line-height: 16px; }
-.folder__count-num { font-size: 14px; line-height: 16px; font-weight: 600; color: var(--text-primary); }
+.folder__tag { padding: 3px 9px; border-radius: var(--radius-sm); background: var(--bg-subtle); color: var(--text-secondary); font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+/* 장 수는 겹침이 이미 보여 주므로 이름보다 작게 둔다 */
+.folder__count { flex: 0 0 auto; color: var(--text-secondary); font-size: 13px; line-height: 18px; }
+.folder__count-num { font-size: 15px; line-height: 18px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+/* 확정하지 않은 카드가 있을 때만 보이며, 홈의 '확인할 카드' 칩과 같은 색이라 같은 뜻으로 읽힌다 */
+.folder__review { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px; background: var(--state-open-bg); color: var(--state-open-text); font-size: 13px; line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ───── 폴더 안 ───── */
 .folder-head { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; }

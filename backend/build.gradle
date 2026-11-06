@@ -52,6 +52,9 @@ dependencies {
     // LLM 을 부르는 요청의 사용자별 호출 횟수를 센다. 서버가 다시 떠도 숫자가 남고 만료가 저절로 된다
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // 새 공고 알림을 메일로도 보낸다. JavaMailSender 자동 설정은 스타터가 끌어오는 spring-boot-mail 모듈에 있다
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
     // 채용 공고 본문의 HTML 을 글로 바꾼다
     implementation 'org.jsoup:jsoup:1.22.2'
 

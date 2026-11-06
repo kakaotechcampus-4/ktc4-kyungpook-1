@@ -3,6 +3,8 @@ package com.gitory.backend.matching.domain;
 import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.card.domain.MatchingCard;
 import com.gitory.backend.card.domain.MatchingCardReader;
+import com.gitory.backend.mail.domain.MailPosting;
+import com.gitory.backend.mail.domain.MailService;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.PostingAlertRunRepository;
 import com.gitory.backend.matching.infra.SyncLock;
@@ -10,9 +12,11 @@ import com.gitory.backend.notice.domain.NoticeKind;
 import com.gitory.backend.notice.domain.NoticePayload;
 import com.gitory.backend.notice.domain.NoticePosting;
 import com.gitory.backend.notice.domain.NoticeService;
+import com.gitory.backend.profile.domain.ProfileService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.mockito.ArgumentCaptor;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -34,6 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -54,10 +59,12 @@ class NewPostingAlertServiceTest {
     private final CompanyShortlistService shortlist = mock(CompanyShortlistService.class);
     private final MatchJudgementService judgements = mock(MatchJudgementService.class);
     private final NoticeService notices = mock(NoticeService.class);
+    private final ProfileService profiles = mock(ProfileService.class);
+    private final MailService mails = mock(MailService.class);
     private final SyncLock lock = mock(SyncLock.class);
     private final Clock clock = mock(Clock.class);
     private final NewPostingAlertService service = new NewPostingAlertService(runs, postings, cards, shortlist,
-            judgements, notices, lock, clock, Runnable::run);
+            judgements, notices, profiles, mails, lock, clock, Runnable::run);
 
     private final Map<Long, List<ShortlistedPosting>> candidatesByUser = new HashMap<>();
     private final Map<Long, Optional<Map<Long, List<JudgedSupport>>>> verdicts = new HashMap<>();
@@ -256,6 +263,8 @@ class NewPostingAlertServiceTest {
                 .withBean(CompanyShortlistService.class, () -> shortlist)
                 .withBean(MatchJudgementService.class, () -> judgements)
                 .withBean(NoticeService.class, () -> notices)
+                .withBean(ProfileService.class, () -> profiles)
+                .withBean(MailService.class, () -> mails)
                 .withBean(SyncLock.class, () -> lock)
                 .withBean(Clock.class, () -> Clock.fixed(NOW, ZoneOffset.UTC));
 
@@ -264,6 +273,67 @@ class NewPostingAlertServiceTest {
                 .run(context -> assertThat(context).doesNotHaveBean(NewPostingAlertService.class));
         runner.withPropertyValues("gitory.matching.alert.enabled=true")
                 .run(context -> assertThat(context).hasSingleBean(NewPostingAlertService.class));
+
+    }
+
+    @Test
+    @DisplayName("알림을 남긴 사용자가 메일 수신을 켰으면 알림과 같은 공고 목록을 그 주소로 메일로 부탁한다")
+    void mailsTheSamePostingsToAnOptedInUser() {
+
+        ShortlistedPosting found = candidate(3, 4, 0, 0, NOW.plusSeconds(86400));
+        candidatesByUser.put(USER, List.of(found));
+        when(profiles.mailOptInUserIds()).thenReturn(List.of(USER));
+        when(profiles.mailAddressOf(USER)).thenReturn(Optional.of("me@example.com"));
+
+        service.run();
+
+        verify(mails).sendMatchedPostings("me@example.com", List.of(new MailPosting(found.posting().getPublicId(),
+                "토스", "백엔드 개발자", 3, 4, NOW.plusSeconds(86400))));
+
+    }
+
+    @Test
+    @DisplayName("알릴 공고가 없으면 수신을 켠 사용자에게도 메일을 부탁하지 않는다")
+    void sendsNoMailWhenThereIsNothingToAlert() {
+
+        candidatesByUser.put(USER, List.of(candidate(1, 3, 0, 0)));
+        when(profiles.mailOptInUserIds()).thenReturn(List.of(USER));
+        when(profiles.mailAddressOf(USER)).thenReturn(Optional.of("me@example.com"));
+
+        service.run();
+
+        verify(mails, never()).sendMatchedPostings(any(), any());
+
+    }
+
+    @Test
+    @DisplayName("메일 수신을 켜지 않은 사용자에게는 알림만 남기고 메일은 부탁하지 않는다")
+    void leavesOnlyANoticeForAUserWhoDidNotOptIn() {
+
+        candidatesByUser.put(USER, List.of(candidate(2, 2, 0, 0)));
+        when(profiles.mailAddressOf(USER)).thenReturn(Optional.of("me@example.com"));
+
+        service.run();
+
+        verify(notices).leave(eq(USER), eq(NoticeKind.POSTINGS_MATCHED), any());
+        verify(mails, never()).sendMatchedPostings(any(), any());
+
+    }
+
+    @Test
+    @DisplayName("확인 대상은 최근 14일 안에 쓴 사용자와 수신을 켠 사용자를 합친 것이고 겹치는 사용자는 한 번만 id 순으로 본다")
+    void checksActiveAndOptedInUsersOnceEachInIdOrder() {
+
+        when(cards.activeUserIds(any())).thenReturn(List.of(5L, 1L));
+        when(profiles.mailOptInUserIds()).thenReturn(List.of(3L, 1L));
+
+        service.run();
+
+        InOrder order = inOrder(cards);
+        order.verify(cards).confirmedOf(1L);
+        order.verify(cards).confirmedOf(3L);
+        order.verify(cards).confirmedOf(5L);
+        verify(cards, times(3)).confirmedOf(any());
 
     }
 

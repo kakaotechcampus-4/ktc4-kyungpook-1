@@ -3,6 +3,8 @@ package com.gitory.backend.matching.domain;
 import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.card.domain.MatchingCard;
 import com.gitory.backend.card.domain.MatchingCardReader;
+import com.gitory.backend.mail.domain.MailPosting;
+import com.gitory.backend.mail.domain.MailService;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.PostingAlertRunRepository;
 import com.gitory.backend.matching.infra.SyncLock;
@@ -10,6 +12,7 @@ import com.gitory.backend.notice.domain.NoticeKind;
 import com.gitory.backend.notice.domain.NoticePayload;
 import com.gitory.backend.notice.domain.NoticePosting;
 import com.gitory.backend.notice.domain.NoticeService;
+import com.gitory.backend.profile.domain.ProfileService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -25,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -57,6 +61,8 @@ public class NewPostingAlertService {
     private final CompanyShortlistService shortlist;
     private final MatchJudgementService judgements;
     private final NoticeService notices;
+    private final ProfileService profiles;
+    private final MailService mails;
     private final SyncLock lock;
     private final Clock clock;
     private final Executor judgeCalls;
@@ -64,21 +70,25 @@ public class NewPostingAlertService {
     @Autowired
     public NewPostingAlertService(PostingAlertRunRepository runs, JobPostingRepository postings,
                                   MatchingCardReader cards, CompanyShortlistService shortlist,
-                                  MatchJudgementService judgements, NoticeService notices, SyncLock lock, Clock clock) {
-        this(runs, postings, cards, shortlist, judgements, notices, lock, clock,
+                                  MatchJudgementService judgements, NoticeService notices, ProfileService profiles,
+                                  MailService mails, SyncLock lock, Clock clock) {
+        this(runs, postings, cards, shortlist, judgements, notices, profiles, mails, lock, clock,
                 Executors.newFixedThreadPool(JUDGED_POSTINGS,
                         Thread.ofPlatform().daemon().name("posting-alert-judge-", 1).factory()));
     }
 
     NewPostingAlertService(PostingAlertRunRepository runs, JobPostingRepository postings, MatchingCardReader cards,
                            CompanyShortlistService shortlist, MatchJudgementService judgements,
-                           NoticeService notices, SyncLock lock, Clock clock, Executor judgeCalls) {
+                           NoticeService notices, ProfileService profiles, MailService mails, SyncLock lock,
+                           Clock clock, Executor judgeCalls) {
         this.runs = runs;
         this.postings = postings;
         this.cards = cards;
         this.shortlist = shortlist;
         this.judgements = judgements;
         this.notices = notices;
+        this.profiles = profiles;
+        this.mails = mails;
         this.lock = lock;
         this.clock = clock;
         this.judgeCalls = judgeCalls;
@@ -105,8 +115,11 @@ public class NewPostingAlertService {
 
         Set<Long> targets = new HashSet<>(postings.findIdsExtractedAfter(after, started));
         if (!targets.isEmpty()) {
-            for (Long userId : cards.activeUserIds(started.minus(ACTIVE_WITHIN))) {
-                checkUser(userId, targets);
+            Set<Long> mailOptIn = new HashSet<>(profiles.mailOptInUserIds());
+            Set<Long> users = new TreeSet<>(cards.activeUserIds(started.minus(ACTIVE_WITHIN)));
+            users.addAll(mailOptIn);
+            for (Long userId : users) {
+                checkUser(userId, targets, mailOptIn.contains(userId));
             }
         }
 
@@ -120,17 +133,17 @@ public class NewPostingAlertService {
     }
 
     // 한 사용자가 실패해도 다음 사용자를 확인하도록 사용자마다 예외를 삼킨다
-    private void checkUser(Long userId, Set<Long> targets) {
+    private void checkUser(Long userId, Set<Long> targets, boolean mailOptIn) {
 
         try {
-            leaveNotice(userId, targets);
+            leaveNotice(userId, targets, mailOptIn);
         } catch (RuntimeException failure) {
             log.warn("사용자 {} 의 새 공고 알림을 확인하지 못해 건너뛴다", userId, failure);
         }
 
     }
 
-    private void leaveNotice(Long userId, Set<Long> targets) {
+    private void leaveNotice(Long userId, Set<Long> targets, boolean mailOptIn) {
 
         List<MatchingCard> all = cards.confirmedOf(userId);
         Set<CardTech> techs = all.stream()
@@ -156,7 +169,20 @@ public class NewPostingAlertService {
 
         if (!alerted.isEmpty()) {
             notices.leave(userId, NoticeKind.POSTINGS_MATCHED, NoticePayload.matched(alerted));
+            if (mailOptIn) {
+                mailTo(userId, alerted);
+            }
         }
+
+    }
+
+    private void mailTo(Long userId, List<NoticePosting> alerted) {
+
+        List<MailPosting> mailPostings = alerted.stream()
+                .map(posting -> new MailPosting(posting.postingId(), posting.companyName(), posting.title(),
+                        posting.requiredMet(), posting.requiredTotal(), posting.expiresAt()))
+                .toList();
+        profiles.mailAddressOf(userId).ifPresent(to -> mails.sendMatchedPostings(to, mailPostings));
 
     }
 

@@ -45,4 +45,9 @@ describe('#704 카드 초안 작업의 진행 상황 보기', () => {
     expect(jobResultLink(done(['card_9']))).toBe('/cards/card_9');
     expect(jobResultLink({ ...done(['card_9', 'card_8']), result: { cardIds: ['card_9', 'card_8'] } }, null)).toBe('/cards/card_9');
   });
+
+  it('다 읽고 끝난 레포 정리의 결과는 후보 보드가 아니라 정리 화면이다', () => {
+    const analyzed = { ...draftJob(null), type: 'ANALYZE', state: 'SUCCEEDED', result: { repoId: 'r_auth' } } as Job;
+    expect(jobResultLink(analyzed)).toBe('/repos/r_auth/run?job=job_9');
+  });
 });

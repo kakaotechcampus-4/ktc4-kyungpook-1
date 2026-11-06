@@ -16,4 +16,13 @@ describe('#753 후보 추천 5개와 나머지', () => {
     expect(recommended.map((c) => c.id)).toEqual(['s7', 's6', 's5', 's4', 's3']);
     expect(more.map((c) => c.id)).toEqual(['s2', 's1', 's0', 'w0']);
   });
+
+  it('추천도 낮은 후보뿐이면 그중 점수 높은 5개가 추천이다', () => {
+    const weak = Array.from({ length: 7 }, (_, i) => candidate(`w${i}`, i / 100, true));
+
+    const { recommended, more } = splitRecommended(weak);
+
+    expect(recommended.map((c) => c.id)).toEqual(['w6', 'w5', 'w4', 'w3', 'w2']);
+    expect(more.map((c) => c.id)).toEqual(['w1', 'w0']);
+  });
 });

@@ -151,6 +151,14 @@ gitory:
       # 끄면 자소서의 AI 단계가 돌지 않는다. 분석 Job 과 자리를 나눠, 오래 걸리는 분석이 자소서를 막지 않는다
       enabled: ${COVER_LETTER_WORKER_ENABLED:true}
       concurrency: ${COVER_LETTER_WORKER_CONCURRENCY:2}
+  assistant:
+    # 켜면 홈 한 줄 명령 API 가 열리고, 워커도 같은 값으로 켜져 접수한 실행을 돌린다. 화면의 VITE_ASSISTANT_ENABLED 와 함께 켠다
+    enabled: ${ASSISTANT_ENABLED:false}
+    # 한 실행이 도구를 실행할 수 있는 횟수로, AI 계약이 남은 횟수를 10까지만 받는다
+    step-limit: 6
+    worker:
+      enabled: ${ASSISTANT_ENABLED:false}
+      concurrency: 2
   matching:
     recommend:
       worker:
@@ -306,6 +314,10 @@ gitory:
     match-gap-fill:
       per-minute: 3
       per-day: 40
+    # 홈 한 줄 명령 실행 만들기와 말 더하기. 한 실행에 AI 를 여러 번 부르므로 다른 요청보다 적게 둔다
+    assistant:
+      per-minute: 5
+      per-day: 50
 
 logging:
   level:

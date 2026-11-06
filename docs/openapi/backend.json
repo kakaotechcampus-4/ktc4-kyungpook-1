@@ -215,6 +215,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseAssistantRunResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/AssistantRunResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseCandidateBoardResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -807,6 +821,211 @@
               "type" : "string"
             },
             "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantMessageRequest" : {
+        "description" : "사용자가 홈에서 적은 한 문장이나 물음에 대한 답",
+        "properties" : {
+          "text" : {
+            "description" : "앞뒤 공백을 뺀 1~500자",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunFind" : {
+        "properties" : {
+          "company" : {
+            "type" : "string"
+          },
+          "keywords" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunItem" : {
+        "properties" : {
+          "askKind" : {
+            "description" : "ASK 만. QUESTIONS·CHOICE·FREE",
+            "type" : "string"
+          },
+          "coverLetterId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "error" : {
+            "description" : "실패한 걸음의 코드(NOT_FOUND·NO_CONFIRMED_CARDS·RATE_LIMITED·FAILED)",
+            "type" : "string"
+          },
+          "find" : {
+            "$ref" : "#/components/schemas/AssistantRunFind"
+          },
+          "jobId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "USER", "STEP", "ASK", "SAY" ],
+            "type" : "string"
+          },
+          "match" : {
+            "$ref" : "#/components/schemas/AssistantRunMatch"
+          },
+          "ok" : {
+            "description" : "STEP 만. 없으면 하는 중, true 면 끝, false 면 실패(error)",
+            "type" : "boolean"
+          },
+          "options" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "posting" : {
+            "$ref" : "#/components/schemas/AssistantRunPosting",
+            "description" : "MATCH_POSTING 이 맞춰 본 공고"
+          },
+          "postings" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantRunPosting"
+            },
+            "type" : "array"
+          },
+          "questionCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "repoId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "repoName" : {
+            "type" : "string"
+          },
+          "seq" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "text" : {
+            "description" : "USER 는 사용자의 말, ASK 와 SAY 는 AI 가 쓴 문장",
+            "type" : "string"
+          },
+          "tool" : {
+            "enum" : [ "FIND_POSTINGS", "MATCH_POSTING", "START_COVER_LETTER", "START_REPO_ANALYSIS" ],
+            "type" : "string"
+          },
+          "totalFound" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunMatch" : {
+        "properties" : {
+          "met" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "missing" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "requiredMet" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requiredTotal" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunPosting" : {
+        "properties" : {
+          "company" : {
+            "type" : "string"
+          },
+          "daysLeft" : {
+            "description" : "마감까지 남은 날. 마감일이 없으면 null",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "postingId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "requiredMet" : {
+            "description" : "이미 맞춰 본 공고만 값이 있다",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "requiredTotal" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AssistantRunResponse" : {
+        "description" : "홈 한 줄 명령 실행 한 건과 지금까지 쌓인 줄",
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "errorCode" : {
+            "description" : "FAILED 일 때만 AI_UNAVAILABLE 또는 INTERNAL_ERROR, 아니면 null",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "items" : {
+            "description" : "seq 순서의 줄. 같은 걸음은 seq 를 바꾸지 않고 ok 와 결과 칸만 채워 같은 줄로 온다",
+            "items" : {
+              "$ref" : "#/components/schemas/AssistantRunItem"
+            },
+            "type" : "array"
+          },
+          "pollAfterMs" : {
+            "description" : "도는 동안(RUNNING)에만 다음 조회 간격(밀리초), 아니면 null",
+            "example" : 1000,
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "state" : {
+            "enum" : [ "RUNNING", "WAITING_USER", "DONE", "FAILED" ],
+            "type" : "string"
+          },
+          "stepLimit" : {
+            "description" : "한 실행이 쓸 수 있는 도구 걸음 수 상한",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "stepsUsed" : {
+            "description" : "지금까지 실행한 도구 걸음 수",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -4624,6 +4843,206 @@
         },
         "summary" : "활동 수정",
         "tags" : [ "Activities" ]
+      }
+    },
+    "/api/assistant/runs" : {
+      "post" : {
+        "description" : "사용자가 적은 한 문장으로 실행을 만들고 RUNNING 으로 바로 돌려줍니다. 일은 배경에서 하며 첫 줄은 사용자의 말입니다.\n화면은 pollAfterMs 마다 GET 으로 다시 읽어 걸음이 쌓이는 것을 보여 줍니다.\n호출 제한은 실행 만들기와 말 더하기를 합쳐 셉니다.\n",
+        "operationId" : "start_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssistantMessageRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAssistantRunResponse"
+                }
+              }
+            },
+            "description" : "만든 실행"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 말이 앞뒤 공백을 뺀 1~500자가 아님, U+0000 이 있음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 1분 5번, 하루 50번을 넘음"
+          }
+        },
+        "summary" : "홈 한 줄 명령 실행 만들기",
+        "tags" : [ "Assistant" ]
+      }
+    },
+    "/api/assistant/runs/{id}" : {
+      "get" : {
+        "description" : "지금까지 쌓인 줄 전체를 돌려줍니다. 도는 동안(RUNNING)에는 pollAfterMs 마다 다시 부릅니다.",
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "description" : "실행 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseAssistantRunResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "NOT_FOUND: 잘못된 UUID, 없는 실행, 남의 실행"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "홈 한 줄 명령 실행 조회",
+        "tags" : [ "Assistant" ]
+      }
+    },
+    "/api/assistant/runs/{id}/messages" : {
+      "post" : {
+        "description" : "물음을 기다리는 실행(WAITING_USER)에만 사용자의 말을 더하고 다시 RUNNING 으로 돌려줍니다.\n한 실행에 사용자의 말은 처음 말을 포함해 10개까지입니다.\n",
+        "operationId" : "say",
+        "parameters" : [ {
+          "description" : "실행 id",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AssistantMessageRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_REQUEST: 말이 앞뒤 공백을 뺀 1~500자가 아님, U+0000 이 있음"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "NOT_FOUND: 잘못된 UUID, 없는 실행, 남의 실행"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "INVALID_STATE: 물음을 기다리는 실행이 아님(도는 중이거나 끝남), 사용자의 말이 이미 10개"
+          },
+          "429" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "RATE_LIMITED: 1분 5번, 하루 50번을 넘음"
+          }
+        },
+        "summary" : "홈 한 줄 명령의 물음에 답하기",
+        "tags" : [ "Assistant" ]
       }
     },
     "/api/candidates/{id}" : {
@@ -10314,6 +10733,9 @@
   }, {
     "description" : "레포 밖 경험(동아리·대외활동 등)을 묶는 활동",
     "name" : "Activities"
+  }, {
+    "description" : "홈 한 줄 명령 — 한 문장으로 맡기면 서버가 걸음마다 도구를 골라 실행한다",
+    "name" : "Assistant"
   }, {
     "description" : "본인의 분석 Job 상태와 활성 작업 조회",
     "name" : "Jobs"

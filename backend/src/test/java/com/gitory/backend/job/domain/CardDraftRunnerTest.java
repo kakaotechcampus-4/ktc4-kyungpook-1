@@ -371,6 +371,29 @@ class CardDraftRunnerTest {
     }
 
     @Test
+    @DisplayName("스스로 다시 읽기가 만든 카드 초안 Job 이 끝날 때는 레포 추천을 바로 다시 계산하게 표시하지 않는다")
+    void doesNotRequestRepoRecommendationForSelfRefreshDraft() {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "MANUAL", null, "MANUAL", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), false);
+        cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        Long analysisJobId = jdbc.queryForObject(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, type, state) VALUES (?, ?, ?, 'ANALYZE', 'SUCCEEDED') RETURNING id",
+                Long.class, userId, userRepositoryId, UUID.randomUUID().toString());
+        jdbc.update("""
+                INSERT INTO repo_refresh (user_id, user_repository_id, analysis_job_id, draft_job_id,
+                    previous_analyzed_at, card_count, state, created_at)
+                VALUES (?, ?, ?, ?, now(), 1, 'DRAFTING', now())
+                """, userId, userRepositoryId, analysisJobId, job().getId());
+
+        runNext();
+
+        assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM repo_recommendation", Integer.class)).isZero();
+
+    }
+
+    @Test
     @DisplayName("STAR 요청에는 후보 공개 id·내 로그인·카드 제목·후보 종류·ref 와 받은 diff 근거를 그대로 보낸다")
     void sendsStarRequestFromCandidateAndEvidence() {
 

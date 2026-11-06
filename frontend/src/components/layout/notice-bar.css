@@ -1,0 +1,66 @@
+/* 오른쪽 위 알림 자리. 넓은 화면은 본문 맨 위 줄, 휴대폰은 위쪽 줄(.mobile-brand) 안에 들어간다 */
+.notice-slot { --notice-px: 24px; position: relative; z-index: 6; display: flex; justify-content: flex-end; padding: 8px var(--notice-px) 0; margin-bottom: -20px; pointer-events: none; }
+@media (min-width: 1200px) { .notice-slot { --notice-px: 40px; } }
+.notice-bar { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; max-width: 100%; pointer-events: auto; }
+
+.notice-pill { display: inline-flex; align-items: center; gap: 10px; min-width: 0; min-height: var(--control-touch-size); padding: 0 16px; border: 1px solid var(--border-default); border-radius: 999px; background: var(--bg-surface); color: var(--text-primary); font-size: 14px; line-height: 20px; font-weight: 600; }
+.notice-pill:hover { background: var(--bg-subtle); }
+.notice-pill__spin { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border-default); border-top-color: var(--text-primary); animation: spin .9s linear infinite; }
+.notice-pill__what { flex: none; white-space: nowrap; }
+.notice-pill small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+.notice-pill__more { flex: none; }
+.notice-pill__repo { max-width: 180px; }
+
+.notice-bell { position: relative; display: inline-flex; align-items: center; gap: 8px; flex: none; min-height: var(--control-touch-size); padding: 0 16px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); color: var(--text-primary); font-size: 14px; font-weight: 600; }
+.notice-bell:hover, .notice-bell[aria-expanded="true"] { background: var(--bg-subtle); }
+.notice-bell__count { min-width: 22px; padding: 0 6px; border-radius: 999px; background: var(--bg-ink-solid); color: var(--text-on-ink); font-size: 13px; font-style: normal; font-weight: 600; line-height: 22px; text-align: center; }
+
+.notice-panel, .notice-ask { position: absolute; z-index: 30; right: 0; top: calc(100% + 8px); border: 1px solid var(--border-default); border-radius: 20px; background: var(--bg-surface); box-shadow: 0 12px 40px rgb(0 0 0 / 18%); }
+.notice-panel { width: min(440px, calc(100vw - 32px)); max-height: min(640px, calc(100svh - 120px)); overflow-y: auto; overscroll-behavior: contain; }
+.notice-panel__head { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 0 20px; border-bottom: 1px solid var(--border-default); }
+.notice-panel__head b { font-size: 17px; line-height: 24px; }
+.notice-link { min-height: var(--control-touch-size); padding: 0 4px; font-size: 14px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+.notice-link:hover { color: var(--text-primary); }
+.notice-empty { padding: 28px 20px; font-size: 15px; color: var(--text-secondary); }
+
+.notice-list { display: block; }
+.notice { padding: 16px 20px; border-bottom: 1px solid var(--border-default); }
+.notice:last-child { border-bottom: 0; }
+.notice--new { background: var(--bg-accent); }
+.notice__title { font-size: 16px; line-height: 24px; font-weight: 650; overflow-wrap: anywhere; }
+.notice--bad .notice__title { color: var(--state-failed-text); }
+.notice__hint { margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--text-strong); }
+.notice__lines { margin-top: 8px; font-size: 14px; line-height: 20px; color: var(--text-strong); }
+.notice__lines li { position: relative; padding-left: 12px; margin-top: 3px; overflow-wrap: anywhere; }
+.notice__lines li::before { content: ''; position: absolute; left: 0; top: .65em; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.notice__row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.notice__row time { font-size: 13px; color: var(--text-tertiary); }
+.notice__asks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.notice__asks > span { width: 100%; font-size: 13px; color: var(--text-tertiary); }
+
+.notice-btn { flex: none; min-height: var(--control-touch-size); padding: 0 18px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); color: var(--text-primary); font-size: 14px; font-weight: 600; }
+.notice-btn:hover { background: var(--bg-subtle); }
+.notice-btn--ink { border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
+.notice-btn--ink:hover { background: var(--bg-ink-hover); border-color: var(--bg-ink-hover); }
+.notice-chip { min-height: 40px; padding: 0 14px; border: 1px solid var(--border-default); border-radius: 999px; background: var(--bg-surface); color: var(--text-primary); font-size: 14px; text-align: left; }
+.notice-chip:hover { background: var(--bg-subtle); }
+
+.notice-ask { width: min(360px, calc(100vw - 32px)); padding: 16px 18px; border-radius: 16px; font-size: 14px; line-height: 21px; }
+.notice-ask p { margin-bottom: 12px; color: var(--text-secondary); }
+.notice-ask b { font-size: 15px; color: var(--text-primary); }
+.notice-ask__row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (prefers-reduced-motion: reduce) { .notice-pill__spin { animation-duration: 3s; } }
+
+@media (max-width: 767px) {
+  .notice-bar { position: static; margin-left: auto; margin-right: 4px; gap: 6px; }
+  .notice-pill { padding: 0 12px; gap: 8px; }
+  .notice-pill__repo, .notice-pill__more { display: none; }
+  .notice-bell { padding: 0; width: var(--control-touch-size); justify-content: center; }
+  .notice-bell__text { display: none; }
+  .notice-bell__count { position: absolute; top: 2px; right: 0; min-width: 20px; padding: 0 5px; font-size: 13px; line-height: 20px; box-shadow: 0 0 0 2px var(--bg-surface); }
+  .notice-panel, .notice-ask { left: 0; right: 0; top: 100%; width: auto; border-width: 0 0 1px; border-radius: 0 0 20px 20px; }
+  .notice-panel { max-height: calc(100svh - 56px - var(--mobile-nav-height) - env(safe-area-inset-bottom)); }
+  .notice-ask { padding: 16px; }
+  .mobile-brand .profile-menu__name { display: none; }
+}

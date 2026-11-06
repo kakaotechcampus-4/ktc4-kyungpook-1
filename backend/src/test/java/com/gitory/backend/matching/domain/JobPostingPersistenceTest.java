@@ -312,6 +312,32 @@ class JobPostingPersistenceTest {
     }
 
     @Test
+    @DisplayName("새 공고 알림은 확인한 시각 뒤에 조건을 뽑았고 활성·READY·마감 전인 공고의 id 만 읽는다")
+    void alertTargetsAreOpenPostingsExtractedAfterTheLastCheck() {
+
+        Instant after = NOW.minusSeconds(3600);
+        JobPosting fresh = persistExtracted("acme", "2001", null);
+        JobPosting freshWithDeadline = persistExtracted("acme", "2002", NOW.plusSeconds(86400));
+        JobPosting alreadyChecked = persistExtracted("acme", "2003", null);
+        JobPosting expired = persistExtracted("acme", "2004", NOW.minusSeconds(1));
+        JobPosting removed = persistExtracted("acme", "2005", null);
+        JobPosting pending = persistPosting("acme", "2006");
+        JobPosting metadataOnly = persistExtracted("acme", "2007", null);
+        jdbc.update("UPDATE job_posting SET extracted_at = ? WHERE id = ?", java.sql.Timestamp.from(after),
+                alreadyChecked.getId());
+        jdbc.update("UPDATE job_posting SET content_status = 'METADATA_ONLY' WHERE id = ?", metadataOnly.getId());
+        jdbc.update("UPDATE job_posting SET status = 'REMOVED' WHERE id = ?", removed.getId());
+        jdbc.update("UPDATE job_posting SET extracted_at = ? WHERE id = ?", java.sql.Timestamp.from(NOW),
+                pending.getId());
+        em.clear();
+
+        List<Long> ids = postings.findIdsExtractedAfter(after, NOW);
+
+        assertThat(ids).containsExactly(fresh.getId(), freshWithDeadline.getId());
+
+    }
+
+    @Test
     @DisplayName("회사별 가져오기 시도 시각이 저장되고 다시 읽힌다")
     void savesSourceAttempt() {
 

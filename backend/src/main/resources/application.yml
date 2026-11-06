@@ -168,6 +168,10 @@ gitory:
       # 켜면 매일 새벽 5시(서울)에 회사 채용 공고를 가져오고 서버가 뜰 때 24시간 넘게 안 돌았으면 바로 한 번 돈다
       # 켜기 전에 회사별 이용 조건을 확인하며 서버가 여러 대여도 DB 잠금으로 한 곳에서만 돈다
       enabled: ${MATCHING_SYNC_ENABLED:false}
+    alert:
+      # 켜면 공고 가져오기가 끝난 뒤 새로 조건을 뽑은 공고를 확정 카드와 맞춰 보고 알림으로 남기며, 사용자마다 AI 판단을 공고 5건까지 부른다
+      # 공고 가져오기(sync)가 꺼져 있으면 함께 돌지 않는다
+      enabled: ${MATCHING_ALERT_ENABLED:false}
     sources:
       # 쿠팡은 회사 채용 사이트가 공고 경로에서 채용 집계 봇을 막고 있어 그 뜻을 따라 넣지 않는다
       - { key: daangn, name: 당근, type: GREENHOUSE, board: daangn, logo: 'https://about.daangn.com/icons/icon-72x72.png?v=7ecc65aad435f5c3e7bed69e5a7a6219' }

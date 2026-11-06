@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useCards, useMe, useRepos } from '@/api/queries';
 import { useCoverLetters } from '@/api/coverLetters';
+import { useCheckRepoUpdates, useMarkRepoUpdateSeen, useRepoUpdates } from '@/api/repoUpdates';
 import type { CardSummary, StarField } from '@/api/schemas';
 import { KindIcon } from '@/components/ui';
 import { CardStatusMark } from '@/components/cards/CardStatusMark';
@@ -21,7 +22,7 @@ import { agoLabel, continueItems, deadlineItems, letterTitle, recentItems } from
 import { JobCalendar, type CalendarPosting } from './JobCalendar';
 import { matchSupported } from '@/api/matching';
 import { useHomePicks } from './useHomePicks';
-import { ContinueList, DeadlineList, HomeHero, RecentCards, StageTiles, type StageTile } from './HomeSections';
+import { ContinueList, DeadlineList, HomeHero, RecentCards, RepoUpdateNotice, StageTiles, type StageTile } from './HomeSections';
 import './home.css';
 
 const failureText = (error: unknown) => { const view = errorView(error, 'read'); return `${view.title} ${view.message}`; };
@@ -41,6 +42,17 @@ export function HomePage() {
   const cardList = useMemo(() => cards.data ?? [], [cards.data]);
   const letterList = useMemo(() => letters.data ?? [], [letters.data]);
   const { picks, overall, computing } = useHomePicks(cardList);
+  const repoUpdates = useRepoUpdates();
+  const { mutate: checkRepoUpdates } = useCheckRepoUpdates();
+  const { mutate: markSeen } = useMarkRepoUpdateSeen();
+
+  // 최신 레포 목록을 읽은 뒤(저장 목록 자리표시가 아니라) 한 번만 새 활동을 확인한다
+  const checked = useRef(false);
+  useEffect(() => {
+    if (!repos.isSuccess || repos.isPlaceholderData || checked.current) return;
+    checked.current = true;
+    checkRepoUpdates();
+  }, [repos.isSuccess, repos.isPlaceholderData, checkRepoUpdates]);
 
   // 달력에는 공고 목록 전체(운영 수백 개)가 아니라 '나와 맞는 기업' 으로 뽑힌 공고의 마감일만 자동으로 띄운다
   // 조회가 돌 때마다 새 배열이 와도 내용이 같으면 달력과 마감 목록을 다시 그리지 않게 글자열로 견준다
@@ -99,6 +111,7 @@ export function HomePage() {
       {repos.isError && !sameFailure && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
       {cards.isSuccess && <SkippedCardsNotice />}
       <HomeHero />
+      <RepoUpdateNotice updates={repoUpdates.data ?? []} onSeen={markSeen} />
       <StageTiles tiles={tiles} />
       <div className="home2-cols">
         <div className="home2-col">

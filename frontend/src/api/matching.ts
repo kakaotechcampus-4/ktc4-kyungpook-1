@@ -217,6 +217,8 @@ export const RepoRecommendation = z.object({
       techs: z.array(z.string()),
       requiredMet: z.number().int().nonnegative(),
       preferredMet: z.number().int().nonnegative(),
+      /** 지난 결과에 없던 회사이고, 칸이 없는 옛 서버는 false 로 읽는다 */
+      fresh: z.boolean().catch(false),
     }),
   ),
 });
@@ -307,6 +309,11 @@ export const matchingApi = {
     matchSupported(env)
       ? api(RepoRecommendation, `/repos/${encodeURIComponent(repoId)}/recommendations`)
       : Promise.reject(unavailable()),
+  /** 새 카드를 넣어 다시 고르기 시작한다. 응답은 읽기와 같고 queued 가 true 다 */
+  refreshRepoRecommendations: (repoId: string, env?: MatchEnv) =>
+    matchSupported(env)
+      ? api(RepoRecommendation, `/repos/${encodeURIComponent(repoId)}/recommendations/refresh`, { method: "POST" })
+      : Promise.reject(unavailable()),
   recommendations: (env?: MatchEnv) =>
     matchSupported(env)
       ? api(OverallRecommendation, "/recommendations")
@@ -383,6 +390,19 @@ export const useRepoRecommendation = (repoId: string | undefined) =>
     refetchOnWindowFocus: false,
     refetchInterval: (query) => (query.state.data?.status === "COMPUTING" || query.state.data?.queued ? 2000 : false),
   });
+/** 실패는 화면이 지금 결과를 그대로 보이면 되므로 알림을 띄우지 않는다 */
+export const useRefreshRepoRecommendation = (repoId: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => matchingApi.refreshRepoRecommendations(repoId),
+    onSuccess: async (data) => {
+      // 먼저 나간 읽기가 늦게 돌아와 새로 시작한 결과를 덮지 않게 한다
+      await client.cancelQueries({ queryKey: matchKeys.repo(repoId) });
+      client.setQueryData(matchKeys.repo(repoId), data);
+    },
+    meta: { errorPresentation: "inline" },
+  });
+};
 /**
  * 전체 매칭(#614) — 서버가 배경에서 계산하고 화면은 저장된 결과를 읽는다. 읽기는 AI 를 부르지 않아 열 때마다 다시 읽고,
  * 계산 중에는 확인한 공고 수가 바뀌므로 2초마다 다시 읽는다. 화면을 떠나도 계산은 서버에서 이어진다.

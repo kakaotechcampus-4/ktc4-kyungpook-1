@@ -4,7 +4,7 @@ import { MatchDetail, MatchTarget } from "@/api/matching";
 import { db, cardView, FIELD_KEY, isCardBlank, STAR } from "./store";
 import { Card } from "@/api/schemas";
 import { applyMask } from "@/lib/mask";
-import { gapFillOf, isJudged, markJudged, proposalsOf, repoRunStart, startGapFill } from "./matchState";
+import { gapFillOf, isJudged, isRefreshedRepo, markJudged, proposalsOf, repoRunStart, restartRepoRun, startGapFill } from "./matchState";
 import { rankPicks, techName, type LiveHit } from "@/lib/repoPick";
 
 /**
@@ -294,10 +294,12 @@ function repoPicks(repoId: string) {
 export function mockRepoRecommendation(repoId: string) {
   const picks = repoPicks(repoId);
   if (!picks) return { status: "NONE", computedAt: null, queued: false, live: null, companies: [] };
+  // 다시 고르기를 요청한 뒤에는 위 회사 하나를 지난 결과에 없던 회사로 준다
+  const companies = picks.companies.map((company, index) => ({ ...company, fresh: isRefreshedRepo(repoId) && index === 0 }));
   const now = Date.now();
   const startedAt = repoRunStart(repoId, picks.signature, now);
   const elapsed = (now - startedAt) / 1000;
-  if (elapsed < PICK_QUEUE) return { status: "COMPUTING", computedAt: null, queued: true, live: null, companies: picks.companies };
+  if (elapsed < PICK_QUEUE) return { status: "COMPUTING", computedAt: null, queued: true, live: null, companies };
   const progress = elapsed - PICK_QUEUE;
   const starts = picks.candidates.map((_, i) => PICK_LEAD + PICK_STEP * i);
   const total = starts[starts.length - 1] + PICK_CHECK + 0.3;
@@ -312,8 +314,14 @@ export function mockRepoRecommendation(repoId: string) {
     computedAt: finished ? new Date(startedAt + (PICK_QUEUE + total) * 1000).toISOString() : null,
     queued: false,
     live: { cardCount: picks.cards.length, techs: picks.techs, candidates, finished },
-    companies: picks.companies,
+    companies,
   };
+}
+/** Mock server only: 새 카드를 넣어 다시 고르기 — 계산 중 → 진행 → 끝 흉내를 처음부터 다시 시작하고, 응답은 읽기와 같다 */
+export function mockRefreshRepoRecommendation(repoId: string) {
+  const picks = repoPicks(repoId);
+  if (picks) restartRepoRun(repoId, picks.signature, Date.now());
+  return mockRepoRecommendation(repoId);
 }
 /**
  * Mock server only: 실서버처럼 맞춰 본 공고 · 전체 매칭 결과 · 레포 추천을 합쳐, 지금 확정 카드로 필수 조건이 맞은 공고를 한 번씩 센다.

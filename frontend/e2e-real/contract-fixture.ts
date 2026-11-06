@@ -77,6 +77,8 @@ export async function installContractFixture(page: Page, options: { card?: Card;
       startedAt: timestamp, updatedAt: timestamp, finishedAt: timestamp,
       result: { cardIds: [card!.id], verdict: 'PARTIAL', reasons: [] }, pollAfterMs: 1000,
     });
+    if (method === 'POST' && path === '/repo-updates/check') return ok(route, { queued: 0 }); // 홈이 새 활동 확인을 부른다
+    if (method === 'GET' && path === '/repo-updates') return ok(route, []); // 서버가 다시 읽은 레포 알림 — 이 계약 시험에는 없다
     if (method === 'POST' && path === '/events') return route.fulfill({ status: 204 });
     unexpected.push(`${method} ${path}${url.search}`);
     return route.fulfill({ status: 501, json: { data: null, error: { code: 'UNEXPECTED_CONTRACT_REQUEST', message: 'No fixture for this request' } } });

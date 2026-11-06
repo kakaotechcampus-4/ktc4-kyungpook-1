@@ -16,6 +16,7 @@ export const SCENARIOS = {
   'github-unauthorized': { label: 'GitHub 토큰 무효(분석 403)', delayMs: 160 },
   'cover-letter-failed': { label: '자소서 카드 고르기 실패', delayMs: 160 },
   'no-profile': { label: '인적사항 미입력(처음 입력 창)', delayMs: 160 },
+  'repo-update': { label: '서버가 다시 읽은 레포 알림', delayMs: 160 },
 } as const;
 export type Scenario = keyof typeof SCENARIOS;
 /** 이 장면으로 새로 연 데모만 관심 분야가 비어 처음 입력 창이 뜬다 */

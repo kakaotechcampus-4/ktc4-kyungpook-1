@@ -10,6 +10,8 @@ const judged = new Map<string, string>();
 const runs = new Map<string, Plan[]>();
 /** 레포 id → 맞는 기업을 고르기 시작한 때. 그 레포의 카드 묶음(signature)이 달라지면 새로 시작한다 */
 const repoRuns = new Map<string, { signature: string; startedAt: number }>();
+/** 다시 고르기를 요청한 레포 — 끝난 결과에서 한 회사가 '지난 결과에 없던 회사' 로 보인다 */
+const refreshedRepos = new Set<string>();
 
 export const GAP_FILL_POLL_MS = 1500;
 
@@ -38,6 +40,7 @@ export function resetMatchState() {
   judged.clear();
   runs.clear();
   repoRuns.clear();
+  refreshedRepos.clear();
 }
 
 /** 처음 읽을 때 시작하고, 그 레포의 카드가 달라질 때까지는 같은 시작 시각을 돌려준다 */
@@ -47,6 +50,12 @@ export function repoRunStart(repoId: string, signature: string, now: number) {
   repoRuns.set(repoId, { signature, startedAt: now });
   return now;
 }
+
+export function restartRepoRun(repoId: string, signature: string, now: number) {
+  repoRuns.set(repoId, { signature, startedAt: now });
+  refreshedRepos.add(repoId);
+}
+export const isRefreshedRepo = (repoId: string) => refreshedRepos.has(repoId);
 
 const step = (at: number, kind: string, count: number | null = null, query: string | null = null, repoName: string | null = null): Step => ({ at, kind, count, query, repoName });
 

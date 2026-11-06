@@ -1,6 +1,6 @@
 import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas';
 import { getAssistantRun, sayToAssistantRun, startAssistantRun, type AssistantResult } from './assistant';
-import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
+import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRefreshRepoRecommendation, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
 import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
@@ -9,7 +9,7 @@ import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCo
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, starStates } from './store';
+import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, repoUpdateList, markRepoUpdateSeen, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, starStates } from './store';
 import { now } from './fixtures';
 import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
@@ -38,6 +38,11 @@ on('GET', '/matches/summary', () => ok(mockMatchedPostings())); // '/matches/:id
 on('GET', '/recommendations', () => ok(mockOverall()));
 on('POST', '/recommendations', () => ok(startMockOverall()));
 on('GET', '/repos/:id/recommendations', ({ params }) => ok(mockRepoRecommendation(params[0])));
+on('POST', '/repos/:id/recommendations/refresh', ({ params }) => ok(mockRefreshRepoRecommendation(params[0])));
+// 서버가 스스로 다시 읽은 레포 — 새 push 를 서버가 찾는 일은 흉내 내지 않아 확인은 늘 0건이고, 알림은 시연 장면이나 시험이 db 에 넣는다
+on('POST', '/repo-updates/check', () => ok({ queued: 0 }));
+on('GET', '/repo-updates', () => ok(repoUpdateList()));
+on('POST', '/repo-updates/:id/seen', ({ params }) => { markRepoUpdateSeen(params[0]); return ok(null); });
 on('GET', '/matches/:id', ({ params }) => {
   const detail=mockMatchDetail(params[0]);
   return detail?ok(detail):fail(404,'NOT_FOUND','공고를 찾을 수 없습니다.');

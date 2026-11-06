@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -60,6 +62,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -81,6 +84,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -101,7 +105,7 @@ import java.util.function.Consumer;
 @Import({ClockConfig.class, JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
         CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class,
         CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class, RepositoryReadmeService.class,
-        RepoSummaryFiller.class})
+        RepoSummaryFiller.class, JobFailureAlert.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ExtendWith(OutputCaptureExtension.class)
@@ -152,6 +156,9 @@ class JobRunnerTest {
     @Autowired
     RepoSummaryFiller summaryFiller;
 
+    @Autowired
+    ApplicationEventPublisher events;
+
     @MockitoBean
     RepositoryActivityPort activities;
 
@@ -169,6 +176,9 @@ class JobRunnerTest {
 
     @MockitoBean
     CardDraftRunner cardDrafts;
+
+    @MockitoBean
+    JobAlertSender alerts;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -265,7 +275,7 @@ class JobRunnerTest {
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
                 new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(),
-                new JobActivityLog(Clock.systemUTC()), readmes, summaryFiller);
+                new JobActivityLog(Clock.systemUTC()), readmes, summaryFiller, events);
 
         live.claimNext().ifPresent(live::run);
 
@@ -290,7 +300,8 @@ class JobRunnerTest {
         JobActivityLog log = mock(JobActivityLog.class);
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
-                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log, readmes, summaryFiller);
+                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log, readmes, summaryFiller,
+                events);
 
         live.claimNext().ifPresent(live::run);
 
@@ -714,6 +725,57 @@ class JobRunnerTest {
         runner.failStuckJobs();
 
         assertFailed(jobId, JobErrorCode.INTERNAL_ERROR);
+
+    }
+
+    @Test
+    @DisplayName("서버나 AI 문제로 실패한 Job 은 실패가 저장된 뒤에 한 번 알린다")
+    void alertsOnceAfterServerOrAiFailureIsSaved() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willThrow(new AiClientException("AI_UNAVAILABLE", true, null));
+        // 다른 스레드의 연결로 읽어 커밋된 상태만 보이게 하며, 커밋 전에 알렸다면 RUNNING 으로 보인다
+        AtomicReference<String> savedStateWhenAlerted = new AtomicReference<>();
+        willAnswer(invocation -> {
+            savedStateWhenAlerted.set(CompletableFuture.supplyAsync(() -> jdbc.queryForObject(
+                    "SELECT state FROM analysis_job WHERE id = ?", String.class, jobId)).join());
+            return null;
+        }).given(alerts).send(any());
+
+        runNext();
+
+        verify(alerts, times(1)).send(argThat(
+                text -> text.contains("Job " + jobId + " ") && text.contains("AI_UNAVAILABLE")));
+        assertThat(savedStateWhenAlerted.get()).isEqualTo("FAILED");
+
+    }
+
+    @Test
+    @DisplayName("멈춰서 실패로 정리된 Job 도 한 번 알린다")
+    void alertsOnceWhenStuckJobIsFailed() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+
+        runner.failStuckJobs();
+
+        verify(alerts, times(1)).send(argThat(
+                text -> text.contains("Job " + jobId + " ") && text.contains("INTERNAL_ERROR")));
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 취소된 Job 은 AI 가 실패해도 알리지 않는다")
+    void doesNotAlertForJobCanceledDuringCall() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willAnswer(invocation -> {
+            cancel(jobId);
+            throw new AiClientException("AI_UNAVAILABLE", true, null);
+        });
+
+        runNext();
+
+        verifyNoInteractions(alerts);
 
     }
 
@@ -1252,7 +1314,7 @@ class JobRunnerTest {
         return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
                 new JobDraftProperties(false), null, new JobProgressProperties(false), Clock.systemUTC(),
-                new JobActivityLog(Clock.systemUTC()), readmes, summaryFiller);
+                new JobActivityLog(Clock.systemUTC()), readmes, summaryFiller, events);
 
     }
 

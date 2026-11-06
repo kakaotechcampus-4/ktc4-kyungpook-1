@@ -22,7 +22,7 @@ const LONG = { timeout: 3000 }; // 부하가 큰 기계에서도 넘어가기까
 const steps = (state: 'DONE' | 'RUNNING') => ['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON'].map((key) => ({ key, state, done: 4, total: null }));
 const job = (state: 'RUNNING' | 'SUCCEEDED', over: Record<string, unknown> = {}) => Job.parse({
   jobId: 'job', type: 'ANALYZE', state, partial: false, steps: steps(state === 'SUCCEEDED' ? 'DONE' : 'RUNNING'), errorCode: null, retryable: null, retryAfterSec: null,
-  result: null, startedAt: '2026-11-02T00:00:00Z', updatedAt: '2026-11-02T00:00:10Z', finishedAt: state === 'SUCCEEDED' ? '2026-11-02T00:00:10Z' : null, pollAfterMs: 60_000, ...over,
+  result: null, startedAt: '2026-11-02T00:00:00Z', updatedAt: '2026-11-02T00:00:10Z', finishedAt: state === 'SUCCEEDED' ? new Date().toISOString() : null, pollAfterMs: 60_000, ...over,
 });
 const candidate = (id: string, over: Record<string, unknown> = {}) => Candidate.parse({
   id, repoId: 'r_auth', type: 'PR', status: 'NEW', ref: '#1', title: `후보 ${id}`, reason: '리뷰를 주고받으며 다듬은 일이에요',
@@ -115,10 +115,16 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('이미 끝난 정리를 다시 열어도 추천 후보로 카드 초안을 만든다', async () => {
-    const { create } = mount(job('SUCCEEDED'));
+  it('끝난 지 10분이 안 된 정리를 다시 열면 추천 후보로 카드 초안을 만든다', async () => {
+    const { create } = mount(job('SUCCEEDED', { finishedAt: new Date(Date.now() - 9 * 60_000).toISOString() }));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
     expect(create).toHaveBeenCalledWith('r_auth', topIds('s'));
+  });
+
+  it('끝난 지 10분이 넘은 정리를 다시 열면 카드를 만들지 않고 후보 보드로 간다', async () => {
+    const { create } = mount(job('SUCCEEDED', { finishedAt: new Date(Date.now() - 11 * 60_000).toISOString() }));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith(BOARD, { replace: true }), LONG);
+    expect(create).not.toHaveBeenCalled();
   });
 
   it('카드를 만들지 못하면 후보 보드로 가고 다시 시도하지 않는다', async () => {

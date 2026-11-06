@@ -21,6 +21,8 @@ import './AnalyzePage.css';
 
 /** 다 읽은 모습을 보고 나서 넘어가도록 잠깐 머무는 시간 */
 const FINISHED_VIEW_MS = 600;
+/** 끝난 지 이보다 오래된 정리를 다시 열면(알림 링크·뒤로 가기) 카드를 만들지 않는다 — 일부러 비워 둔 레포에 고르지 않은 카드가 생기지 않게 */
+const AUTO_DRAFT_WITHIN_MS = 10 * 60_000;
 
 /** B3 분석 진행 · B4 수집 실패 · B5 부분 결과(SUCCEEDED + partial) — 셋 다 같은 타임라인 위에 어디까지 왔는지 그린다(#789) */
 export function AnalyzePage() {
@@ -228,7 +230,7 @@ export function AnalyzePage() {
           <Timeline job={j} lines={feed.lines} />
         </>
       )}
-      {autoCards && feed.drained && <AutoDraft key={`${repoId}:${jobId}`} repoId={repoId} onPlan={setPlan} />}
+      {autoCards && feed.drained && <AutoDraft key={`${repoId}:${jobId}`} repoId={repoId} finishedAt={j.finishedAt} onPlan={setPlan} />}
       <div className="run-foot">
         {autoCards ? (
           <>
@@ -259,7 +261,7 @@ export function AnalyzePage() {
  * 카드가 이미 있으면 만들지 않고 카드 폴더로 보내고, 만들 후보가 없거나 읽기가 실패하면 후보 보드로 보낸다.
  * 만들기가 실패해도 다시 시도하지 않고 후보 보드로 보낸다(실패 알림은 공통 오류 알림이 띄운다)
  */
-function AutoDraft({ repoId, onPlan }: { repoId: string; onPlan: (plan: 'draft' | 'folder') => void }) {
+function AutoDraft({ repoId, finishedAt, onPlan }: { repoId: string; finishedAt: string | null; onPlan: (plan: 'draft' | 'folder') => void }) {
   const nav = useNavigate();
   const board = useCandidates(repoId);
   const cards = useCards();
@@ -277,7 +279,8 @@ function AutoDraft({ repoId, onPlan }: { repoId: string; onPlan: (plan: 'draft' 
       // 보드나 카드 목록을 본 적이 있으면 캐시에 정리 전 모습이 남아 있다 — 끝난 지금 다시 읽고, 마운트가 이미 읽는 중이면 그 읽기에 붙는다
       const [read, list] = await Promise.all([board.refetch({ cancelRefetch: false }), cards.refetch({ cancelRefetch: false })]);
       const next = read.isError || list.isError ? { kind: 'board' as const } : afterAnalysis({ candidates: read.data?.candidates ?? [], cards: list.data ?? [], repoId });
-      if (next.kind !== 'draft') {
+      const recent = finishedAt !== null && Date.now() - Date.parse(finishedAt) < AUTO_DRAFT_WITHIN_MS;
+      if (next.kind !== 'draft' || !recent) {
         if (next.kind === 'folder' && mounted.current) onPlan('folder');
         await lingered;
         if (!mounted.current) return;

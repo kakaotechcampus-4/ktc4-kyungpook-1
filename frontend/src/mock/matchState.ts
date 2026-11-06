@@ -8,6 +8,8 @@ import type { GapFill, GapFillCondition, GapFillProposal, MatchDetail } from "@/
 /** 공고 id → 맞춰 봤을 때의 확정 카드 묶음. 카드가 바뀌면 실서버처럼 다시 맞춰 봐야 한다 */
 const judged = new Map<string, string>();
 const runs = new Map<string, Plan[]>();
+/** 레포 id → 맞는 기업을 고르기 시작한 때. 그 레포의 카드 묶음(signature)이 달라지면 새로 시작한다 */
+const repoRuns = new Map<string, { signature: string; startedAt: number }>();
 
 export const GAP_FILL_POLL_MS = 1500;
 
@@ -35,6 +37,15 @@ export function isJudged(matchId: string, signature: string) {
 export function resetMatchState() {
   judged.clear();
   runs.clear();
+  repoRuns.clear();
+}
+
+/** 처음 읽을 때 시작하고, 그 레포의 카드가 달라질 때까지는 같은 시작 시각을 돌려준다 */
+export function repoRunStart(repoId: string, signature: string, now: number) {
+  const run = repoRuns.get(repoId);
+  if (run?.signature === signature) return run.startedAt;
+  repoRuns.set(repoId, { signature, startedAt: now });
+  return now;
 }
 
 const step = (at: number, kind: string, count: number | null = null, query: string | null = null, repoName: string | null = null): Step => ({ at, kind, count, query, repoName });

@@ -103,7 +103,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
       </div>
 
       {next && <NextStep next={next} state={{ cardOrder: order }} announce={justConfirmed} />}
-      {kind === 'repo' && id && <RepoMatch repoId={id} confirmedCards={confirmed} />}
+      {kind === 'repo' && id && <RepoMatch repoId={id} cardCount={folder.cards.length} />}
       {(kind === 'repo' || techCards.length > 0) && (
         <CardSection title="기술 카드" cards={techCards} order={order} justId={justId}
           create={boardLink && <NewTile title="기술 카드 직접 만들기" hint="찾아 둔 후보에 없는 일을 커밋을 골라 적어요" to={`${boardLink}?add=1`} />} />

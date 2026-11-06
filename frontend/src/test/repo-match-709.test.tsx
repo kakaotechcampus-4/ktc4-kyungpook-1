@@ -4,8 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { matchingApi, RepoRecommendation } from '@/api/matching';
 import { RepoMatch } from '@/features/match/RepoMatch';
-import { mockRepoRecommendation } from '@/mock/matching';
-import { db, resetDb } from '@/mock/store';
+import { resetDb } from '@/mock/store';
 
 beforeEach(resetDb);
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
@@ -15,19 +14,20 @@ const company = (n: number, over: Record<string, unknown> = {}) => ({
   posting: { id: `p ${n}`, title: `백엔드 개발자 ${n}`, deadline: null, closed: false },
   techs: ['JAVA', 'SPRING'], requiredMet: 2, preferredMet: 1, ...over,
 });
-const rec = (status: string, companies: unknown[] = []) => RepoRecommendation.parse({ status, computedAt: status === 'NONE' ? null : '2026-11-02T12:00:00Z', companies });
-const mount = (confirmedCards: number) => render(
+const rec = (status: string, companies: unknown[] = [], extra: Record<string, unknown> = {}) => RepoRecommendation.parse({ status, computedAt: status === 'NONE' ? null : '2026-11-02T12:00:00Z', companies, ...extra });
+const live = (over: Record<string, unknown> = {}) => ({ cardCount: 2, techs: ['JAVA'], candidates: [], finished: true, ...over });
+const mount = (cardCount: number) => render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-    <MemoryRouter><RepoMatch repoId="r_auth" confirmedCards={confirmedCards} /></MemoryRouter>
+    <MemoryRouter><RepoMatch repoId="r_auth" cardCount={cardCount} /></MemoryRouter>
   </QueryClientProvider>,
 );
 
 describe('#709 레포 폴더의 추천 기업', () => {
-  it('이 레포에 확정 카드가 없으면 서버에 묻지 않고, 확정하면 골라 준다고 안내한다', () => {
+  it('이 레포에 카드가 없으면 서버에 묻지 않고, 카드가 생기면 골라 준다고 안내한다', () => {
     const read = vi.spyOn(matchingApi, 'repoRecommendations');
     mount(0);
 
-    expect(screen.getByText('카드가 확정되면 이 레포 카드로 맞는 기업을 골라 드려요.')).toBeInTheDocument();
+    expect(screen.getByText('카드가 생기면 이 레포 카드로 맞는 기업을 골라 드려요.')).toBeInTheDocument();
     expect(read).not.toHaveBeenCalled();
   });
 
@@ -42,15 +42,26 @@ describe('#709 레포 폴더의 추천 기업', () => {
     expect(within(items[0]).getByRole('link')).toHaveAttribute('href', '/match/p%201');
   });
 
-  it('계산 중이면 고르고 있다고 알리고, 2초마다 다시 읽어 끝나면 기업을 보인다', async () => {
+  it('폴더의 기업 칸은 카드가 한 장이라도 있으면 서버에 묻고, 고르는 중이면 과정 보기 링크를 보이고 2초마다 다시 읽는다', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const read = vi.spyOn(matchingApi, 'repoRecommendations').mockResolvedValueOnce(rec('COMPUTING')).mockResolvedValue(rec('READY', [company(1)]));
+    const read = vi.spyOn(matchingApi, 'repoRecommendations').mockResolvedValueOnce(rec('COMPUTING', [], { queued: true })).mockResolvedValue(rec('READY', [company(1)]));
     mount(1);
 
     expect(await screen.findByRole('status')).toHaveTextContent('이 레포 카드로 맞는 기업을 고르고 있어요.');
+    expect(screen.getByRole('link', { name: '고르는 과정 보기' })).toHaveAttribute('href', '/cards/repo/r_auth/match');
     await act(async () => { await vi.advanceTimersByTimeAsync(2100); });
     expect(await screen.findByText('회사 1')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '고르는 과정 보기' })).not.toBeInTheDocument();
     expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it('끝났고 진행이 남아 있으면 목록 아래에 고른 과정 보기 링크를 보인다', async () => {
+    vi.spyOn(matchingApi, 'repoRecommendations').mockResolvedValue(rec('READY', [company(1)], { live: live() }));
+    mount(2);
+
+    const link = await screen.findByRole('link', { name: '고른 과정 보기' });
+    expect(link).toHaveAttribute('href', '/cards/repo/r_auth/match');
+    expect(screen.getByRole('list').compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('맞는 공고가 없으면 없다고 하고, 실패했으면 지난번 결과와 함께 알린다', async () => {
@@ -63,19 +74,5 @@ describe('#709 레포 폴더의 추천 기업', () => {
     mount(1);
     expect(await screen.findByText('추천을 만들지 못했어요')).toBeInTheDocument();
     expect(screen.getByText('회사 1')).toBeInTheDocument();
-  });
-
-  it('목 서버는 레포에 확정 카드가 없으면 계산한 적 없음, 있으면 그 카드 기술과 겹치는 기업을 앞에 두고 3곳을 준다', () => {
-    db.cards.forEach((card) => { if (card.repo?.id === 'r_auth') card.status = 'DRAFT'; });
-    expect(mockRepoRecommendation('r_auth')).toMatchObject({ status: 'NONE', companies: [] });
-    const target = db.cards.find((card) => card.repo?.id === 'r_auth')!;
-    target.status = 'CONFIRMED';
-    target.techs = ['JAVA', 'SPRING'];
-    const ready = RepoRecommendation.parse(mockRepoRecommendation('r_auth'));
-    expect(ready.status).toBe('READY');
-    expect(ready.companies).toHaveLength(3);
-    expect(ready.companies[0].techs.length).toBeGreaterThan(0);
-    expect(ready.companies.every((c) => c.techs.every((t) => ['JAVA', 'SPRING'].includes(t)))).toBe(true);
-    expect(new Set(ready.companies.map((c) => c.companyId ?? c.companyName)).size).toBe(3);
   });
 });

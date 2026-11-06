@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
-type AvatarSize = 28 | 36 | 48 | 64;
+/** 'fill' 은 크기를 인라인으로 두지 않고 감싼 쪽 CSS 에 맡긴다(화면 폭에 따라 크기가 바뀌는 자리) */
+type AvatarSize = 28 | 36 | 48 | 64 | 'fill';
 
 export function UserAvatar({ src, login, size = 36, className = '' }: {
   src?: string | null;
@@ -14,7 +15,7 @@ export function UserAvatar({ src, login, size = 36, className = '' }: {
   const initial = Array.from(label.trim())[0]?.toUpperCase() ?? 'G';
 
   return (
-    <span className={`user-avatar ${className}`.trim()} style={{ width: size, height: size }}>
+    <span className={`user-avatar ${className}`.trim()} style={size === 'fill' ? undefined : { width: size, height: size }}>
       {src && !failed
         ? <img src={src} alt={`${label} GitHub 프로필`} onError={() => setFailed(true)} />
         : <span className="user-avatar__fallback" role="img" aria-label={`${label} 프로필 기본 이미지`}>{initial}</span>}

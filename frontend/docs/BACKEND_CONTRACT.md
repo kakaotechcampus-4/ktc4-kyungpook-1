@@ -122,6 +122,45 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 - 알림이 되는 것은 카드 초안 Job 이 `SUCCEEDED` 로 끝난 경우뿐이다. 새 일이 든 후보가 없거나, 분석이 실패·취소·일부만 읽음으로 끝났거나, 카드 만들기가 거절됐거나(호출 제한 등) 초안 Job 이 실패·취소되면 알림 없이 닫는다.
 - 만든 카드는 일반 카드 초안과 똑같이 `GET /cards` 에 `DRAFT` 로 나타나고 확정은 사용자가 한다.
 
+### 알림 (서버가 남기는 알림 한 줄)
+
+카드 초안 Job 이 끝나거나 레포 분석이 실패하면 서버가 그 사용자에게 알림 한 줄을 남긴다. 화면은 목록을 읽고 `readAt` 이 `null` 인 것을 읽지 않은 알림으로 보이며, 누르면 읽음으로 표시한다. 알림은 남긴 순간의 레포 이름과 카드 제목을 그대로 담아서, 그 뒤에 이름이 바뀌거나 카드를 지워도 알림은 바뀌지 않는다. 위 '새 활동 알림'(`/repo-updates`)은 그대로이고 별도다.
+
+| | 요청 | 응답 `data` |
+|---|---|---|
+| `GET /notifications` | | `Notification[]` — 내 알림을 최근에 남긴 것부터 **30개까지**. 없으면 빈 배열 |
+| `POST /notifications/{id}/read` | 본문 없음 | `{ ok: true }` — 알림 하나를 읽음으로 표시한다. 이미 읽은 알림은 처음 읽은 시각을 그대로 두고 오류도 아니다. 남의 알림·없는 알림·UUID 가 아닌 id 는 404 `NOT_FOUND` |
+| `POST /notifications/read-all` | 본문 없음 | `{ ok: true }` — 내 읽지 않은 알림을 모두 읽음으로 표시한다. 읽지 않은 알림이 없어도 오류가 아니다 |
+
+세 API 모두 로그인이 필요하고, POST 는 CSRF 헤더도 필요하다.
+
+```jsonc
+// Notification
+{ "id": "<uuid>", "kind": "CARDS_DRAFTED|REPO_REFRESHED|ANALYSIS_FAILED|POSTINGS_MATCHED",
+  "createdAt": "<ISO>", "readAt": null | "<ISO>",
+  "repoId": "<uuid>" | null,                  // GET /repos 의 id 와 같은 값
+  "repoName": "owner/name" | null,            // 알림을 남긴 때의 이름
+  "cardCount": 3 | null,                      // 그 Job 이 만든 카드 수
+  "cardTitles": ["…"],                        // 만든 순서로 3개까지. 없으면 []
+  "jobId": "<uuid>" | null,
+  "errorCode": "GITHUB_UNAUTHORIZED" | null,  // ANALYSIS_FAILED 에서만. 값은 Job 의 errorCode 와 같다
+  "postings": [{ "postingId": "<uuid>",       // POSTINGS_MATCHED 에서만. 다른 종류는 []
+                 "companyName": "…", "title": "…",
+                 "requiredMet": 4, "requiredTotal": 5,   // 채운 필수 조건 수 / 필수 조건 수
+                 "expiresAt": "<ISO>" | null }] }         // 마감 시각. 마감이 없으면 null
+
+| `kind` | 남기는 때 | 채우는 값 |
+|---|---|---|
+| `CARDS_DRAFTED` | 카드 초안 Job 이 `SUCCEEDED` 로 끝남 | `repoId`·`repoName`·`cardCount`·`cardTitles`·`jobId` |
+| `REPO_REFRESHED` | 서버가 스스로 다시 읽기로 만든 카드 초안 Job 이 `SUCCEEDED` 로 끝남 | `CARDS_DRAFTED` 와 같다 |
+| `ANALYSIS_FAILED` | 사용자가 시작한 레포 분석 Job 이 `FAILED` 로 끝남 | `repoId`·`repoName`·`jobId`·`errorCode` (`cardCount` 는 `null`, `cardTitles` 는 `[]`) |
+| `POSTINGS_MATCHED` | 새벽 공고 가져오기가 끝난 뒤, 새로 조건을 뽑은 공고 중 확정 카드와 필수 조건의 절반 이상 맞는 공고를 찾음 | `postings` (필수 충족 비율이 높은 순, 같으면 우대 충족 수 순으로 3건까지). `repoId`·`repoName`·`cardCount`·`jobId`·`errorCode` 는 `null`, `cardTitles` 는 `[]` |
+
+- 취소된 Job, 실패한 카드 초안 Job, 성공한 분석 Job, 서버가 스스로 다시 읽기로 접수한 분석 Job 의 실패는 알림을 남기지 않는다.
+- 알림을 남기다 실패해도 Job 의 결과는 바뀌지 않는다.
+- `POSTINGS_MATCHED` 는 서버 스위치 `MATCHING_ALERT_ENABLED` 가 켜져 있을 때만 남긴다. 확정 카드가 있고 최근 14일 안에 카드를 만들거나 고친 사용자만 대상이며, 한 번 확인한 공고는 다시 알리지 않는다. 맞는 공고가 없으면 알림을 남기지 않는다. `postings[].postingId` 는 `GET /matches/{id}` 의 id 와 같은 값이다.
+- `kind` 는 나중에 값이 늘 수 있으니 화면은 모르는 값을 건너뛴다.
+
 ### Job (폴링 · 항상 200)
 
 `GET /jobs/{id}` → `Job`

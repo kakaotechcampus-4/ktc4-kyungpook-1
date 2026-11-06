@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, runToDraft } from './helpers';
 
 /**
  * #733 대화 — 목 서버가 대화 요청마다 0.8초 기다리고 결정적으로 답한다.
@@ -10,15 +10,10 @@ test('초안의 대화에서 답을 보내면 종이의 빈칸 자리가 다시 
   await page.clock.install();
   await page.goto('/cover-letters/new');
   await page.getByPlaceholder('예: 백엔드 개발').fill('백엔드 개발');
-  await page.getByLabel('지원 이유', { exact: true }).fill('결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요');
   await page.getByLabel('1번 문항', { exact: true }).fill('어려운 문제를 해결한 경험을 적어 주세요');
-  await page.getByRole('button', { name: '카드 고르기', exact: true }).click();
-  await page.clock.runFor(8_000);
-  await page.getByRole('button', { name: '다음: 질문 받기' }).click();
-  await page.clock.runFor(6_000);
-  await page.getByRole('button', { name: '초안 쓰기' }).click();
-  await page.clock.runFor(30_000);
-  await expect(page.getByText('초안이 나왔어요')).toBeVisible();
+  await page.getByRole('button', { name: '초안 쓰기', exact: true }).click();
+  // 카드 고르기 → 재료 확인 → 초안 쓰기를 화면이 멈추지 않고 이어 가므로 누를 것 없이 시간만 흘려 보낸다
+  await runToDraft(page);
 
   const panel = page.getByRole('complementary', { name: '다듬기 패널' });
   const paper = page.getByLabel('1번 문항 초안');

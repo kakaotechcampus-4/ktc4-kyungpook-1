@@ -10,7 +10,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import './coverLetters.css';
 
 const STAGE_LABEL: Record<CoverLetterStage, string> = {
-  ASSIGNING: '카드 고르는 중', ASSIGNED: '카드 확인', ASKING: '질문 만드는 중', ASKED: '질문에 답하기',
+  ASSIGNING: '카드 고르는 중', ASSIGNED: '이어서 쓰는 중', ASKING: '질문 만드는 중', ASKED: '이어서 쓰는 중',
   DRAFTING: '초안 쓰는 중', DRAFTED: '초안 완성', FAILED: '멈춤',
 };
 

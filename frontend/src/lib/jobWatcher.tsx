@@ -63,7 +63,7 @@ export function JobWatcher({ active: shared }: { active?: ActiveJobFeed } = {}) 
             : j.partial ? `${label} — 읽은 데까지 정리했어요`
             : `${label} — 다 됐어요`;
           // 탭이 가려져 있으면 그 작업을 보고 있던 화면이어도 화면 안 알림은 소용이 없다
-          showBrowserNotice(text, () => nav(href, { state: jobResultState(j) }));
+          showBrowserNotice(text, w.jobId, () => nav(href, { state: jobResultState(j) }));
           // href 는 실패/부분완료 분기에서 ?job= 쿼리를 포함한다 — pathname만 비교하면 절대 못 맞는다.
           if (suppressed.has(w.jobId) || location.pathname + location.search === href) continue;
           toast(text, { tone: j.state === 'FAILED' ? 'danger' : 'success', action: { label: '보기', onClick: () => nav(href, { state: jobResultState(j) }) } });

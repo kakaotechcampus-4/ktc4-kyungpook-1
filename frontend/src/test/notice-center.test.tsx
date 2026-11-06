@@ -214,13 +214,14 @@ describe('JobWatcher 와 브라우저 알림', () => {
     result: { repoId: 'r_a', verdict: 'OK', reasons: [] }, pollAfterMs: 0,
   });
   function stubBrowserNotice(permission: NotificationPermission) {
-    const made: { title: string; onclick: (() => void) | null; close: () => void }[] = [];
+    const made: { title: string; tag?: string; onclick: (() => void) | null; close: () => void }[] = [];
     class FakeNotification {
       static permission = permission;
       static requestPermission = vi.fn(async () => 'granted');
       onclick: (() => void) | null = null;
       close = vi.fn();
-      constructor(public title: string) { made.push(this); }
+      tag?: string;
+      constructor(public title: string, options?: { tag?: string }) { this.tag = options?.tag; made.push(this); }
     }
     vi.stubGlobal('Notification', FakeNotification);
     return { made, FakeNotification };
@@ -258,6 +259,7 @@ describe('JobWatcher 와 브라우저 알림', () => {
     const { router } = await finishJob();
     await waitFor(() => expect(made).toHaveLength(1));
     expect(made[0].title).toBe('team/alpha — 다 됐어요');
+    expect(made[0].tag).toBe('job_1'); // 탭이 여럿이어도 같은 작업은 OS 알림 하나로 겹친다
     act(() => { made[0].onclick?.(); });
     expect(router.state.location.pathname).toBe('/repos/r_a/candidates');
   });

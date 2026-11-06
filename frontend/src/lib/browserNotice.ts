@@ -25,11 +25,11 @@ export async function requestPermission(): Promise<void> {
   try { await Notification.requestPermission(); } catch { /* 권한 창을 못 띄우는 브라우저 */ }
 }
 
-/** 탭이 가려져 있고 권한이 허용일 때만 띄운다. 띄웠으면 true */
-export function showBrowserNotice(title: string, onOpen: () => void): boolean {
+/** 탭이 가려져 있고 권한이 허용일 때만 띄운다. 띄웠으면 true. 탭이 여럿이어도 같은 tag 는 OS 알림 하나로 겹친다 */
+export function showBrowserNotice(title: string, tag: string, onOpen: () => void): boolean {
   if (!supported() || Notification.permission !== 'granted' || !document.hidden) return false;
   try {
-    const notice = new Notification(title);
+    const notice = new Notification(title, { tag });
     notice.onclick = () => { window.focus(); notice.close(); onOpen(); };
     return true;
   } catch {

@@ -30,7 +30,7 @@ import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { StarRow } from '@/components/ui/StarRow';
-import { canConfirmCard, starFieldsToReview } from '@/lib/cardRules';
+import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
 import { DraftProcess } from './DraftSteps';
 import { cardFolderPath, folderPath } from '@/lib/cardFolders';
@@ -73,7 +73,7 @@ export function CardPage() {
   const [copyOpen, setCopyOpen] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
   useEffect(() => { setCopyOpen(false); setMetadataOpen(false); setJustConfirmed(false); }, [cardId]);
-  // 이 화면이 보는 동안 같은 카드가 작성 중에서 확정으로 바뀐 때만 안내한다 — 수정을 저장하다 네 칸이 차면 서버가 확정한다
+  // 이 화면이 보는 동안 같은 카드가 작성 중에서 확정으로 바뀐 때만 안내한다 — 수정을 저장하다 상황과 행동이 차면 서버가 확정한다
   // 확정 창으로 확정한 때는 곧 폴더로 가므로 제외한다
   const lastSeen = useRef<{ id: string; status: Card['status'] } | null>(null);
   useEffect(() => {
@@ -156,6 +156,7 @@ export function CardPage() {
 
   // ── E2 읽기 (CONFIRMED) + D9 확정 직후
   if (card.status === 'CONFIRMED' && mode !== 'edit') {
+    const gapFields = emptyStarFields(card);
     return (
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
@@ -165,12 +166,19 @@ export function CardPage() {
             <span className="done-card__ok" aria-hidden>✓</span>
             <div className="stack grow" style={{ gap: 4 }}>
               <span className="w-600" style={{ fontSize: 16 }}>카드를 확정했어요</span>
-              <span className="t-13 c-2">네 칸이 다 차서 바로 쓸 수 있어요.</span>
+              <span className="t-13 c-2">상황과 행동이 있어서 바로 쓸 수 있어요.</span>
             </div>
             <Link to={cardFolderPath(card)} state={{ confirmed: card.id }} className="btn btn--primary">폴더로 돌아가기</Link>
           </div>
         )}
         <CardHeader card={card} titleAction={metadataAction} right={<Button variant="outline" size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
+        {/* 과제·결과가 비어도 확정은 그대로이고, 채우고 싶을 때 바로 질문을 받게만 한다 */}
+        {gapFields.length > 0 && (
+          <div className="card row" style={{ gap: 16, padding: '16px 18px', background: 'var(--bg-inset)', border: 0, flexWrap: 'wrap' }}>
+            <span className="grow" style={{ fontSize: 14, lineHeight: '22px' }}>{gapFields.map((f) => starFieldShort[f]).join(', ')} 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요</span>
+            <Button variant="outline" onClick={() => ask(gapFields[0])}>질문 받기</Button>
+          </div>
+        )}
         <div className="two-col two-col--340">
           <div className="card star-read star-read--rows">
             {STAR_FIELDS.map((f) => {

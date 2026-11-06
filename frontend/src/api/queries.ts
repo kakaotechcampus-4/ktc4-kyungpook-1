@@ -129,14 +129,14 @@ export function useCard(id: string | undefined) {
   useEffect(() => {
     if (done && jobId && id) void qc.invalidateQueries({ queryKey: keys.card(id) });
   }, [done, jobId, id, qc]);
-  // 이 화면에 있는 동안 카드가 확정으로 바뀌면(서버 자동 확정 포함) 확정 카드 수와 공고 매칭이 새 값을 읽게 한다.
+  // 이 화면에 있는 동안 카드가 확정으로 바뀌거나(서버 자동 확정 포함) 상황·행동이 비어 작성 중으로 돌아가면 확정 카드 수와 공고 매칭이 새 값을 읽게 한다.
   // 확정 버튼(useConfirm)은 이미 하던 일이라, 자동 확정에서도 같게 맞춘 것이다. 처음 읽어 온 값은 바뀐 것이 아니라서 건너뛴다.
   const status = card.data?.status;
   const lastStatus = useRef(status);
   useEffect(() => {
     const before = lastStatus.current;
     lastStatus.current = status;
-    if (status !== 'CONFIRMED' || !before || before === 'CONFIRMED') return;
+    if (!status || !before || before === status) return;
     void qc.invalidateQueries({ queryKey: keys.me });
     void qc.invalidateQueries({ queryKey: keys.cards });
     void qc.resetQueries({ queryKey: matchKeys.all });

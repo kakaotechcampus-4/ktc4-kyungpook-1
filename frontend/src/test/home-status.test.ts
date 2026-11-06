@@ -53,12 +53,13 @@ describe('이어서 하기', () => {
     expect(continueItems({ jobs: [], cards: [], letters }).map(key)).toEqual(['letter:waiting']);
   });
 
-  it('카드 줄의 설명은 확인 필요 칸이 있으면 확인을, 빈 칸만 있으면 빈 칸 수를, 네 칸이 다 찼으면 확정을 말한다', () => {
+  it('카드 줄의 설명은 확인 필요 칸이 있으면 확인을, 상황·행동 빈 칸이 있으면 그 수를(과제·결과는 세지 않는다), 둘이 차 있으면 일부만 채워졌다고 말한다', () => {
     const sub = (id: string, star: ReturnType<typeof stars>) => continueItems({ jobs: [], cards: [card(id, { star })], letters: [] })[0].sub;
 
     expect(sub('review', stars('NEEDS_REVIEW', 'EMPTY', 'FILLED', 'FILLED'))).toBe('확인이 필요한 칸이 있어요');
-    expect(sub('empty', stars('FILLED', 'EMPTY', 'FILLED', 'EMPTY'))).toBe('빈 칸 2개만 채우면 돼요');
-    expect(sub('full', stars('FILLED', 'FILLED', 'FILLED', 'FILLED'))).toBe('확정만 하면 돼요');
+    expect(sub('empty', stars('EMPTY', 'EMPTY', 'EMPTY', 'EMPTY'))).toBe('빈 칸 2개만 채우면 돼요');
+    expect(sub('one', stars('FILLED', 'EMPTY', 'EMPTY', 'EMPTY'))).toBe('빈 칸 1개만 채우면 돼요');
+    expect(sub('partial', stars('FILLED', 'EMPTY', 'FILLED', 'EMPTY'))).toBe('일부만 채워졌어요');
   });
 });
 

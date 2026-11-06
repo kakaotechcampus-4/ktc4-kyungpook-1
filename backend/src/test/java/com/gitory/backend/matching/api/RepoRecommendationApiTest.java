@@ -2,12 +2,16 @@ package com.gitory.backend.matching.api;
 
 import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.consent.domain.LoginUser;
+import com.gitory.backend.matching.domain.CriterionType;
 import com.gitory.backend.matching.domain.ExperienceLevel;
 import com.gitory.backend.matching.domain.JobCategory;
 import com.gitory.backend.matching.domain.JobPosting;
 import com.gitory.backend.matching.domain.JobPostingContentStatus;
 import com.gitory.backend.matching.domain.RecommendedCompany;
 import com.gitory.backend.matching.domain.RepoRecommendation;
+import com.gitory.backend.matching.domain.RepoRecommendationLive;
+import com.gitory.backend.matching.domain.RepoRecommendationLiveLog;
+import com.gitory.backend.matching.domain.RepoRecommendationLiveState;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.RepoRecommendationRepository;
 import com.gitory.backend.support.TestFixtures;
@@ -30,6 +34,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -62,6 +67,9 @@ class RepoRecommendationApiTest {
 
     @Autowired
     RepoRecommendationRepository recommendations;
+
+    @Autowired
+    RepoRecommendationLiveLog liveLog;
 
     private TestFixtures fixtures;
     private Long myUserId;
@@ -108,17 +116,97 @@ class RepoRecommendationApiTest {
     }
 
     @Test
-    @DisplayName("아직 계산한 적이 없는 레포는 NONE 과 빈 배열이다")
-    void returnsNoneBeforeFirstCompute() throws Exception {
+    @DisplayName("계산한 적도 카드도 없는 레포는 NONE 과 빈 배열이고, 다른 레포에 카드가 있어도 계산을 예약하지 않는다")
+    void returnsNoneWithoutReservingWhenRepoHasNoCards() throws Exception {
 
         UUID repoPublicId = UUID.randomUUID();
         fixtures.insertUserRepository(repoPublicId, myUserId, fixtures.insertRepository(10L, "grow22", "gitory"));
+        cardIn(fixtures.insertUserRepository(myUserId, fixtures.insertRepository(11L, "grow22", "blog")));
 
         mvc.perform(get("/api/repos/" + repoPublicId + "/recommendations").with(loggedIn()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("NONE"))
                 .andExpect(jsonPath("$.data.computedAt").value(nullValue()))
-                .andExpect(jsonPath("$.data.companies", hasSize(0)));
+                .andExpect(jsonPath("$.data.companies", hasSize(0)))
+                .andExpect(jsonPath("$.data.queued").value(false))
+                .andExpect(jsonPath("$.data.live").value(nullValue()));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM repo_recommendation", Integer.class)).isZero();
+
+    }
+
+    @Test
+    @DisplayName("계산한 적이 없는 레포에 카드가 있으면 조회할 때 계산을 예약하고 COMPUTING 과 queued 로 답한다")
+    void reservesComputeWhenRepoHasCardsButNoRecommendation() throws Exception {
+
+        UUID repoPublicId = UUID.randomUUID();
+        Long repo = fixtures.insertUserRepository(repoPublicId, myUserId, fixtures.insertRepository(10L, "grow22", "gitory"));
+        cardIn(repo);
+
+        mvc.perform(get("/api/repos/" + repoPublicId + "/recommendations").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPUTING"))
+                .andExpect(jsonPath("$.data.computedAt").value(nullValue()))
+                .andExpect(jsonPath("$.data.companies", hasSize(0)))
+                .andExpect(jsonPath("$.data.queued").value(true))
+                .andExpect(jsonPath("$.data.live").value(nullValue()));
+
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM repo_recommendation
+                WHERE user_repository_id = ? AND status = 'COMPUTING' AND stale_since <= now() - interval '50 seconds'
+                """, Integer.class, repo)).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("조회는 예약된 다시 계산을 queued 로, 남아 있는 진행을 live 로 싣는다")
+    void returnsQueuedReservationAndLiveProgress() throws Exception {
+
+        UUID repoPublicId = UUID.randomUUID();
+        Long repo = fixtures.insertUserRepository(repoPublicId, myUserId, fixtures.insertRepository(10L, "grow22", "gitory"));
+        UUID postingId = UUID.randomUUID();
+        recommendations.markStale(myUserId, repo, Instant.now());
+        liveLog.start(repo, 3, List.of("SPRING", "JPA"), List.of(
+                new RepoRecommendationLive.Candidate("daangn", "당근", "https://static.example.com/daangn.png",
+                        new RepoRecommendationLive.Posting(postingId, "서버 개발자", Instant.parse("2026-11-20T00:00:00Z")),
+                        2, RepoRecommendationLiveState.DONE, false,
+                        List.of(new RepoRecommendationLive.Hit(CriterionType.REQUIRED, "Spring 서버 개발 경험", "결제 API"))),
+                RepoRecommendationLive.Candidate.waiting("krafton", "크래프톤", null,
+                        new RepoRecommendationLive.Posting(UUID.randomUUID(), "게임 서버 개발자", null), 1)));
+
+        mvc.perform(get("/api/repos/" + repoPublicId + "/recommendations").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPUTING"))
+                .andExpect(jsonPath("$.data.queued").value(true))
+                .andExpect(jsonPath("$.data.live.cardCount").value(3))
+                .andExpect(jsonPath("$.data.live.techs[1]").value("JPA"))
+                .andExpect(jsonPath("$.data.live.finished").value(false))
+                .andExpect(jsonPath("$.data.live.candidates", hasSize(2)))
+                .andExpect(jsonPath("$.data.live.candidates[0].companyId").value("daangn"))
+                .andExpect(jsonPath("$.data.live.candidates[0].companyName").value("당근"))
+                .andExpect(jsonPath("$.data.live.candidates[0].logoUrl").value("https://static.example.com/daangn.png"))
+                .andExpect(jsonPath("$.data.live.candidates[0].posting.id").value(postingId.toString()))
+                .andExpect(jsonPath("$.data.live.candidates[0].posting.title").value("서버 개발자"))
+                .andExpect(jsonPath("$.data.live.candidates[0].posting.deadline").value("2026-11-20T00:00:00Z"))
+                .andExpect(jsonPath("$.data.live.candidates[0].overlap").value(2))
+                .andExpect(jsonPath("$.data.live.candidates[0].state").value("DONE"))
+                .andExpect(jsonPath("$.data.live.candidates[0].failed").value(false))
+                .andExpect(jsonPath("$.data.live.candidates[0].hits[0].type").value("REQUIRED"))
+                .andExpect(jsonPath("$.data.live.candidates[0].hits[0].text").value("Spring 서버 개발 경험"))
+                .andExpect(jsonPath("$.data.live.candidates[0].hits[0].cardTitle").value("결제 API"))
+                .andExpect(jsonPath("$.data.live.candidates[1].logoUrl").value(nullValue()))
+                .andExpect(jsonPath("$.data.live.candidates[1].posting.deadline").value(nullValue()))
+                .andExpect(jsonPath("$.data.live.candidates[1].state").value("WAITING"))
+                .andExpect(jsonPath("$.data.live.candidates[1].hits", hasSize(0)));
+
+        recommendations.claim(recommendations.findByUserRepositoryId(repo).orElseThrow().getId(),
+                Instant.now().plusSeconds(60));
+
+        mvc.perform(get("/api/repos/" + repoPublicId + "/recommendations").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPUTING"))
+                .andExpect(jsonPath("$.data.queued").value(false))
+                .andExpect(jsonPath("$.data.live.candidates", hasSize(2)));
 
     }
 
@@ -128,7 +216,9 @@ class RepoRecommendationApiTest {
 
         Long other = fixtures.insertUser(2L, "taehun0208");
         UUID othersRepo = UUID.randomUUID();
-        fixtures.insertUserRepository(othersRepo, other, fixtures.insertRepository(11L, "taehun0208", "blog"));
+        Long othersRepoId = fixtures.insertUserRepository(othersRepo, other,
+                fixtures.insertRepository(11L, "taehun0208", "blog"));
+        liveLog.start(othersRepoId, 1, List.of("JAVA"), List.of());
 
         mvc.perform(get("/api/repos/" + othersRepo + "/recommendations").with(loggedIn()))
                 .andExpect(status().isNotFound())
@@ -145,6 +235,14 @@ class RepoRecommendationApiTest {
         posting.extracted(JobCategory.BACKEND, ExperienceLevel.UNSPECIFIED, null, null, List.<CardTech>of(), 2,
                 JobPostingContentStatus.READY, "a".repeat(64), Instant.now());
         return postings.saveAndFlush(posting);
+
+    }
+
+    // 글이 없어도 카드이므로, 이 레포에 묶은 작성 중 카드를 하나 만든다
+    private void cardIn(Long userRepositoryId) {
+
+        Long card = fixtures.insertCard(UUID.randomUUID(), myUserId);
+        jdbc.update("UPDATE card SET user_repository_id = ? WHERE id = ?", userRepositoryId, card);
 
     }
 

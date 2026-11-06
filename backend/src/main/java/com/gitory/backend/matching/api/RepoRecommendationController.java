@@ -27,9 +27,9 @@ public class RepoRecommendationController {
 
     @GetMapping("/api/repos/{repoId}/recommendations")
     @Operation(summary = "레포 추천 기업 조회",
-            description = "그 레포의 확정 카드로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 카드 초안이 끝나거나 확정 카드가 바뀌고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 입니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다.")
+            description = "그 레포의 카드(작성 중과 확정)로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 계산한 적이 없는데 카드가 있으면 조회할 때 계산을 예약합니다(여는 요청 안에서 계산하지는 않습니다). 카드 초안이 끝나거나 확정 카드가 바뀌거나 카드를 지우고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 이며 queued 는 계산이 시작되기 전까지 true 입니다. 계산을 시작해 후보를 정하는 동안은 live 가 null 이고, 이어서 후보 회사를 하나씩 확인하는 과정이 live 에 담기며, 계산이 끝난 뒤에도 서버가 다시 뜨기 전까지 남습니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "추천 상태와 기업. 계산한 적이 없으면 NONE 과 빈 배열"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "추천 상태와 기업, 다시 계산 예약 여부(queued), 고르는 과정(live). 계산한 적도 카드도 없으면 NONE 과 빈 배열"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "로그인 세션 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "UUID 가 아니거나 없는 레포이거나 남의 레포",

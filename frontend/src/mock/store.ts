@@ -19,6 +19,7 @@ export const db = {
   activities: clone(seedActivities) as Any[], // 활동(#477) — 카드는 activityId 로 가리킨다
   interview: clone(seedInterview) as Record<string, Any[]>,
   coverLetters: [] as Any[], // 자소서(#492 계약) — mock/coverLetters.ts 가 다룬다
+  assistantRuns: [] as Any[], // 홈 한 줄 명령 — mock/assistant.ts 가 다룬다
   cardMaterialAnswers: {} as Record<string, Record<string, string>>, // 카드마다 기억한 자소서 답(#585)
   profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   overall: null as { startedAt: number; computedAt: string | null } | null, // 전체 매칭(#614) — 누른 적이 없으면 null
@@ -68,7 +69,7 @@ export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
   db.activities = clone(seedActivities);
-  db.profile = emptyProfile(); db.coverLetters = []; db.cardMaterialAnswers = {}; db.overall = null;
+  db.profile = emptyProfile(); db.coverLetters = []; db.assistantRuns = []; db.cardMaterialAnswers = {}; db.overall = null;
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.activityIdem.clear(); db.seq = 100;
   resetMatchState();
   hydrateCards();
@@ -571,7 +572,7 @@ export function seedSetUpProfile() {
 
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, assistantRuns: db.assistantRuns, cardMaterialAnswers: db.cardMaterialAnswers,
     jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], activityIdem: [...db.activityIdem.entries()], seq: db.seq,
   });
 }
@@ -583,6 +584,7 @@ export function restore(raw: string): boolean {
     db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
     db.activities = Array.isArray(s.activities) ? s.activities : []; // 활동이 생기기 전에 저장된 데모 DB 는 활동 없이 이어진다
     db.coverLetters = Array.isArray(s.coverLetters) ? s.coverLetters : [];
+    db.assistantRuns = Array.isArray(s.assistantRuns) ? s.assistantRuns : [];
     db.cardMaterialAnswers = s.cardMaterialAnswers ?? {};
     const profile = Profile.safeParse(s.profile); // 인적사항이 생기기 전에 저장된 데모 DB 는 빈 값으로 이어진다
     db.profile = profile.success ? profile.data : emptyProfile();

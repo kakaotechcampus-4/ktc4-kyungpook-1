@@ -30,12 +30,14 @@ public class InterviewAnswerController {
     @PostMapping("/api/cards/{id}/interview/{turnNo}/answer")
     @Operation(summary = "되묻기 답변 저장", description = """
             kind 가 TEXT(없으면 TEXT)면 답을 가공 없이 그 질문의 칸 글로 저장하고, 그 칸만 바꾼 INTERVIEW 새 버전을 현재 버전으로 삼아 카드 전체를 돌려줍니다.
+            확정된 카드도 같은 방식으로 받으며, 확정본 버전은 그대로 두고 새 버전만 현재 버전이 되고 카드는 확정으로 남습니다.
+            답을 반영한 글로 카드 상태를 다시 정해, 작성 중 카드는 상황·행동이 차고 확인 필요 칸이 없으면 확정됩니다.
             답한 칸은 옛 글의 근거 커밋과 확인 필요 표시를 잃고, 직접 쓴 답(USER_STATED)이나 보기를 그대로 고른 답(USER_SELECTED)이 되며, 나머지 세 칸은 그대로입니다.
             MEASURED·NOT_MEASURED 는 R 수치 질문(answerMode MEASURE)에만 받습니다. MEASURED 는 확정한 문장으로 TEXT 와 같이 R 칸을 바꿉니다.
             NOT_MEASURED 는 text 가 없으면 칸을 바꾸지 않고, text 가 있어도 R 이 커밋으로 확인된 문장이면 칸을 바꾸지 않고 답만 기록하며, 빈 R·확인 필요 R 일 때만 R 칸을 바꿉니다.
             kind 가 SKIP 이면 카드 칸을 바꾸지 않고 질문만 넘김(SKIPPED)으로 남기며 text·source 는 보지 않습니다. 넘긴 질문도 질문 상한에 세고, 그 칸은 다시 묻지 않습니다.
             이미 결과가 정해진 질문에 같은 요청(같은 종류에 같은 답)이 오면 아무것도 바꾸지 않고 지금 카드를 200 으로 돌려주고, 다른 요청이면 409 INVALID_STATE 입니다.
-            확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 확정된 카드(409 CARD_CONFIRMED), 답의 모양(400) 입니다.
+            확인 순서는 질문 번호(404), 초안을 만드는 중인 카드(409 INVALID_STATE), 이미 한 답(200·409), 답의 모양(400) 입니다.
             답의 글은 1,000자까지이고 앞뒤 공백도 그대로 저장합니다. 답을 저장해도 다음 질문은 만들지 않으며, 다음 질문은 질문 요청에서 AI 가 앞 답을 읽고 고릅니다.
             경험 카드의 다듬은 문장을 저장할 때는 다듬기 전 사용자 답을 original 로 함께 보내면 TEXT 답에만 남겨 지난 질문 목록의 answer.original 로 돌려줍니다.
             변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.
@@ -50,7 +52,7 @@ public class InterviewAnswerController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "잘못된 UUID, 본인 카드 없음 또는 그 번호의 질문 없음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "CARD_CONFIRMED: 확정된 카드는 다시 열어야 답할 수 있음, INVALID_STATE: 이미 다른 결과로 끝난 질문 또는 초안을 만드는 중인 카드",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: 이미 다른 결과로 끝난 질문 또는 초안을 만드는 중인 카드",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
     })
     public ApiResponse<CardResponse> answer(

@@ -204,17 +204,17 @@ class InterviewAskConcurrencyTest {
     }
 
     @Test
-    @DisplayName("AI 를 기다리는 사이 카드가 확정되면 질문을 만들지 않고 409 CARD_CONFIRMED 이다")
-    void rechecksConfirmedStateAfterAi() throws Exception {
+    @DisplayName("AI 를 기다리는 사이 카드가 확정돼도 질문을 만들고 카드는 확정으로 남는다")
+    void questionIsSavedWhenCardIsConfirmedDuringAi() throws Exception {
 
         AI.beforeReply(request -> fixtures.confirmCard(cardId));
 
         ask("T")
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.turnNo").value(1));
 
         assertThat(AI.requests()).hasSize(1);
-        assertThat(interviews.turnsOf(cardId)).isEmpty();
+        assertThat(interviews.turnsOf(cardId)).hasSize(1);
 
     }
 

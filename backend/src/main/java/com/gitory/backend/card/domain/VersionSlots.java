@@ -25,10 +25,12 @@ public record VersionSlots(short versionNo, Map<StarField, SlotContent> slots) {
 
     }
 
-    /** 사용자가 읽지 않아도 확정할 수 있는 글로, 네 칸이 모두 확인 필요 없이 찼다 */
-    public boolean isComplete() {
+    /** 사용자가 읽지 않아도 확정할 수 있는 글로, 상황과 행동이 차 있고 네 칸 어디에도 확인 필요가 없다 */
+    public boolean isAutoConfirmable() {
 
-        return Arrays.stream(StarField.values()).allMatch(field -> stateOf(field) == StarFieldState.FILLED);
+        return stateOf(StarField.S) == StarFieldState.FILLED
+                && stateOf(StarField.A) == StarFieldState.FILLED
+                && Arrays.stream(StarField.values()).noneMatch(field -> stateOf(field) == StarFieldState.NEEDS_REVIEW);
 
     }
 

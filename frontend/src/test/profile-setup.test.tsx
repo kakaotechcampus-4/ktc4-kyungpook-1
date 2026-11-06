@@ -33,6 +33,22 @@ function fillEducation() {
 beforeEach(() => { resetDb(); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
+describe('first-entry dialog — 메일 알림', () => {
+  it('F1: the last step shows the 메일 알림 section under 자격증', async () => {
+    connectMockServer();
+    mount();
+    await screen.findByRole('dialog');
+    pick('백엔드'); click('다음');
+    click('경력 없음');
+    fillEducation(); click('다음');
+    click('어학 없음');
+    const region = screen.getByRole('region', { name: '메일 알림' });
+    expect(region).toBeInTheDocument();
+    expect(within(region).getByLabelText('메일 주소')).toHaveAttribute('type', 'email');
+    expect(within(region).getByRole('checkbox', { name: '내 경험에 맞는 공고를 메일로 받을게요' })).not.toBeChecked();
+  });
+});
+
 describe('first-entry dialog (shown while no interest is saved)', () => {
   it('opens over the page for a never-saved profile, starting at 관심 분야 (title is the step name, no extra step text)', async () => {
     connectMockServer();
@@ -47,7 +63,7 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
 
   it('also opens for a profile saved earlier without interests (skipped before), with its rows filled in', async () => {
     connectMockServer();
-    db.profile = { ...sampleInput(), interests: [], savedAt: '2026-10-30T03:00:00.000Z' };
+    db.profile = { ...sampleInput(), email: null, mailOptIn: false, interests: [], savedAt: '2026-10-30T03:00:00.000Z' };
     mount();
     await screen.findByRole('dialog');
     pick('백엔드'); click('다음');
@@ -220,7 +236,7 @@ describe('first-entry dialog (shown while no interest is saved)', () => {
     expect(puts(server)).toHaveLength(1);
     expect(puts(server)[0].body).toEqual({
       educations: [{ level: 'BACHELOR', school: null, major: null, status: 'ENROLLED', startMonth: null, endMonth: null, gpa: null, gpaMax: null }],
-      careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS'],
+      careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS'], email: '', mailOptIn: false,
     });
     expect(db.profile.interests).toEqual(['BACKEND', 'DEVOPS']);
     expect(vi.mocked(track)).toHaveBeenCalledWith('profile_setup_completed', { interestCount: 2 });

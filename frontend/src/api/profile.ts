@@ -75,9 +75,13 @@ export const Profile = z.object({
   interests: z.array(z.string()).catch([]).transform((values) => values.filter(isInterest)),
   /** 마지막으로 저장한 시각. 한 번도 저장하지 않았으면 null — 화면은 이것으로 처음 입력을 띄울지 정한다 */
   savedAt: z.string().datetime({ offset: true }).nullable(),
+  /** 새 공고 메일을 받을 주소. 칸이 없는 옛 응답은 null — 화면이 깨지지 않게 */
+  email: z.string().nullish().transform((value) => value ?? null),
+  /** 메일 수신 여부. 칸이 없는 옛 응답은 꺼짐 */
+  mailOptIn: z.boolean().nullish().transform((value) => value ?? false),
 });
 export type Profile = z.infer<typeof Profile>;
-export const emptyProfile = (): Profile => ({ educations: [], careers: [], languages: [], certifications: [], interests: [], savedAt: null });
+export const emptyProfile = (): Profile => ({ educations: [], careers: [], languages: [], certifications: [], interests: [], savedAt: null, email: null, mailOptIn: false });
 /** 네 목록이 모두 비었다. 저장한 적이 있는지(`savedAt`)와는 다르다 — 건너뛰면 빈 목록으로 저장된다 */
 export const isProfileEmpty = (p: Pick<Profile, 'educations' | 'careers' | 'languages' | 'certifications'>) =>
   p.educations.length + p.careers.length + p.languages.length + p.certifications.length === 0;
@@ -159,6 +163,19 @@ const interestsIn = z.array(choice(INTERESTS), required).min(1, 'REQUIRED').max(
   .superRefine((values, ctx) => { if (new Set(values).size !== values.length) issue(ctx, 'INVALID_VALUE'); })
   .transform((values) => values as Interest[]);
 
+/** 메일 주소 규칙(서버와 같다): 앞뒤 공백을 뗀 뒤 254자까지, 공백 없음, `@` 하나와 그 앞 글자, `@` 뒤에 점. 수신을 켰는데 주소가 없으면 REQUIRED */
+export const MAIL_MAX = 254;
+export function mailIssue(email: string | null | undefined, optIn: boolean | undefined): ProfileIssueCode | null {
+  const value = email == null ? '' : email.trim();
+  if (value === '') return optIn ? 'REQUIRED' : null;
+  if (value.length > MAIL_MAX) return 'TOO_LONG';
+  const parts = value.split('@');
+  return /\s/.test(value) || parts.length !== 2 || parts[0] === '' || !parts[1].includes('.') ? 'INVALID_FORMAT' : null;
+}
+/** 주소·수신 여부는 선택이다. 안 보내면(undefined·null) 서버가 저장된 값을 그대로 둔다 */
+const mailEmailIn = z.string().nullable().optional();
+const mailOptInIn = z.boolean().nullable().optional();
+
 /**
  * PUT 본문. 네 목록과 관심 분야를 모두 보낸다(목록이 빠지면 400 — 통째로 바꾸므로 빠진 목록을 `[]` 로 읽으면 저장된 값이 지워진다). 모르는 키는 무시한다.
  * 통과한 값(`z.output`)은 앞뒤 공백을 지우고, 비운 선택 칸을 null 로 맞춘 정규형이다.
@@ -169,7 +186,16 @@ export const ProfileInput = z.object({
   languages: list(LanguageIn, PROFILE_LIMITS.MAX_ITEMS.languages),
   certifications: list(CertificationIn, PROFILE_LIMITS.MAX_ITEMS.certifications),
   interests: interestsIn,
-});
+  email: mailEmailIn,
+  mailOptIn: mailOptInIn,
+}).superRefine((body, ctx) => {
+  // 주소를 안 보냈으면(undefined·null) 서버가 저장된 값을 두므로 형식만 볼 대상이 없다
+  if (body.email == null) return;
+  const code = mailIssue(body.email, body.mailOptIn === true);
+  if (code) add(ctx, 'email', code);
+}).transform(({ email, mailOptIn, ...rest }) => ({
+  ...rest, ...(email != null ? { email: email.trim() } : {}), ...(mailOptIn != null ? { mailOptIn } : {}),
+}));
 export type ProfileInput = z.output<typeof ProfileInput>;
 
 const pathOf = (segments: (string | number)[]) =>

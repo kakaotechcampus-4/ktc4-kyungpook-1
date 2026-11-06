@@ -3725,6 +3725,10 @@
             },
             "type" : "array"
           },
+          "email" : {
+            "description" : "새 공고 알림을 받을 메일 주소 — 254자까지, 공백 없이 @ 하나와 그 뒤의 점이 있어야 합니다. 빈 글이면 주소를 지우고, 안 보내면 저장된 값을 그대로 둡니다",
+            "type" : [ "string", "null" ]
+          },
           "interests" : {
             "description" : "관심 분야 — 공고 직무 분류 이름(BACKEND · FRONTEND · MOBILE · DEVOPS · DATA · AI_ML · SECURITY · QA · ETC) 3개까지, 겹치지 않게. 안 보내면 저장된 값을 그대로 둡니다",
             "items" : {
@@ -3738,6 +3742,10 @@
               "$ref" : "#/components/schemas/ProfileLanguageRequest"
             },
             "type" : "array"
+          },
+          "mailOptIn" : {
+            "description" : "메일 알림 수신 여부. true 이면 주소가 있어야 합니다. 안 보내면 저장된 값을 그대로 둡니다",
+            "type" : [ "boolean", "null" ]
           }
         },
         "type" : "object"
@@ -3763,6 +3771,10 @@
             },
             "type" : "array"
           },
+          "email" : {
+            "description" : "메일 알림을 받을 주소. 적지 않았으면 null",
+            "type" : [ "string", "null" ]
+          },
           "interests" : {
             "description" : "관심 분야 직무 분류 이름, 3개까지. 아직 고르지 않았으면 []",
             "items" : {
@@ -3776,6 +3788,10 @@
               "$ref" : "#/components/schemas/LanguageScore"
             },
             "type" : "array"
+          },
+          "mailOptIn" : {
+            "description" : "메일 알림 수신 여부. 한 번도 저장하지 않았으면 false",
+            "type" : "boolean"
           },
           "savedAt" : {
             "description" : "마지막으로 저장한 시각. 한 번도 저장하지 않았으면 null 이라, 화면은 처음 입력을 띄웁니다",
@@ -9868,7 +9884,7 @@
         "tags" : [ "Profile" ]
       },
       "put" : {
-        "description" : "네 목록을 통째로 바꿉니다. 처음 입력을 건너뛰면 빈 목록 네 개를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n글은 앞뒤 공백을 지우고, 빈 글은 null 로 저장합니다. 목록 순서는 보낸 그대로입니다.\n관심 분야(interests)는 보내면 통째로 바꾸고, 안 보내면 저장된 값을 그대로 둡니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "description" : "네 목록을 통째로 바꿉니다. 처음 입력을 건너뛰면 빈 목록 네 개를 보내 저장해, 다음부터 처음 입력을 띄우지 않게 합니다.\n글은 앞뒤 공백을 지우고, 빈 글은 null 로 저장합니다. 목록 순서는 보낸 그대로입니다.\n관심 분야(interests)는 보내면 통째로 바꾸고, 안 보내면 저장된 값을 그대로 둡니다.\n메일 주소(email)와 수신 여부(mailOptIn)도 안 보내면 저장된 값을 그대로 두며, 수신을 새로 켜거나 켠 채 주소를 바꾸면 그 주소로 확인 메일을 한 통 보냅니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
         "operationId" : "replace",
         "requestBody" : {
           "content" : {
@@ -9899,7 +9915,7 @@
                 }
               }
             },
-            "description" : "INVALID_REQUEST: 목록이 빠짐, 개수를 넘음, 필수 칸이 비었음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 학점·만점이 맞지 않음, 글이 길거나 U+0000 이 있음, 관심 분야가 4개 이상이거나 겹치거나 모르는 값임. 메시지에 어느 목록의 몇 번째인지 적습니다"
+            "description" : "INVALID_REQUEST: 목록이 빠짐, 개수를 넘음, 필수 칸이 비었음, 모르는 종류, 달이 YYYY-MM 이 아님, 끝난 달이 시작한 달보다 앞섬, 학점·만점이 맞지 않음, 글이 길거나 U+0000 이 있음, 관심 분야가 4개 이상이거나 겹치거나 모르는 값임, 메일 주소가 254자를 넘거나 모양이 틀림, 수신을 켰는데 저장될 주소가 없음. 메시지에 어느 목록의 몇 번째인지 적습니다"
           }
         },
         "summary" : "내 인적사항 저장",

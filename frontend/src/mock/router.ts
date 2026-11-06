@@ -2,6 +2,7 @@ import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas
 import { getAssistantRun, sayToAssistantRun, startAssistantRun, type AssistantResult } from './assistant';
 import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
+import { listNotices, readAllNotices, readNotice, seedNotices } from './notifications';
 import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
@@ -33,6 +34,10 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 // ───────────────────────────── 인증 ─────────────────────────────
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
+on('GET', '/notifications', () => ok(listNotices(db.notifications)));
+on('POST', '/notifications/read-all', () => { readAllNotices(db.notifications); return ok(null); });
+on('POST', '/notifications/:id/read', ({ params }) => readNotice(db.notifications, params[0]) ? ok(null) : fail(404, 'NOT_FOUND', '알림을 찾을 수 없습니다.'));
+on('POST', '/__notices', ({ body }) => ok(seedNotices(db.notifications, body.items))); // 목 전용 (시험·시연). 실서버엔 없다
 on('GET', '/matches', () => ok(mockMatchList()));
 on('GET', '/matches/summary', () => ok(mockMatchedPostings())); // '/matches/:id' 보다 먼저 둬야 summary 를 공고 id 로 읽지 않는다
 on('GET', '/recommendations', () => ok(mockOverall()));

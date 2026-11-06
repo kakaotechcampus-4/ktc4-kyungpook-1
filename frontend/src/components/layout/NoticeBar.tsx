@@ -104,7 +104,7 @@ export function NoticeBar({ jobs }: { jobs: readonly ActiveJob[] | undefined }) 
                 <li key={view.id} className={`notice${view.unread ? ' notice--new' : ''}${view.hint ? ' notice--bad' : ''}`}>
                   <p className="notice__title">{view.unread && <span className="sr-only">안 읽음, </span>}{view.title}</p>
                   {view.hint && <p className="notice__hint">{view.hint}</p>}
-                  {view.lines.length > 0 && <ul className="notice__lines">{view.lines.map((line) => <li key={line}>{line}</li>)}</ul>}
+                  {view.lines.length > 0 && <ul className="notice__lines">{view.lines.map((line, i) => <li key={`${i}-${line}`}>{line}</li>)}</ul>}
                   <div className="notice__row">
                     <time>{view.time}</time>
                     <button type="button" className={`notice-btn${view.unread ? ' notice-btn--ink' : ''}`} onClick={() => go(view, view.action.to, true)}>{view.action.label}</button>

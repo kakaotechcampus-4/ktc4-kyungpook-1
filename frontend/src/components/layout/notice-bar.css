@@ -16,7 +16,7 @@
 .notice-bell__count { min-width: 22px; padding: 0 6px; border-radius: 999px; background: var(--bg-ink-solid); color: var(--text-on-ink); font-size: 13px; font-style: normal; font-weight: 600; line-height: 22px; text-align: center; }
 
 .notice-panel, .notice-ask { position: absolute; z-index: 30; right: 0; top: calc(100% + 8px); border: 1px solid var(--border-default); border-radius: 20px; background: var(--bg-surface); box-shadow: 0 12px 40px rgb(0 0 0 / 18%); }
-.notice-panel { width: min(440px, calc(100vw - 32px)); max-height: min(640px, calc(100svh - 120px)); overflow-y: auto; overscroll-behavior: contain; }
+.notice-panel { width: min(440px, calc(100vw - 32px)); max-height: min(1000px, calc(100svh - 120px)); overflow-y: auto; overscroll-behavior: contain; }
 .notice-panel__head { display: flex; align-items: center; justify-content: space-between; min-height: 56px; padding: 0 20px; border-bottom: 1px solid var(--border-default); }
 .notice-panel__head b { font-size: 17px; line-height: 24px; }
 .notice-link { min-height: var(--control-touch-size); padding: 0 4px; font-size: 14px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }

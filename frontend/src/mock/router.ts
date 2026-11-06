@@ -35,8 +35,8 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
 on('GET', '/notifications', () => ok(listNotices(db.notifications)));
-on('POST', '/notifications/read-all', () => { readAllNotices(db.notifications); return ok(null); });
-on('POST', '/notifications/:id/read', ({ params }) => readNotice(db.notifications, params[0]) ? ok(null) : fail(404, 'NOT_FOUND', '알림을 찾을 수 없습니다.'));
+on('POST', '/notifications/read-all', () => { readAllNotices(db.notifications); return ok({ ok: true }); });
+on('POST', '/notifications/:id/read', ({ params }) => readNotice(db.notifications, params[0]) ? ok({ ok: true }) : fail(404, 'NOT_FOUND', '알림을 찾을 수 없습니다.'));
 on('POST', '/__notices', ({ body }) => ok(seedNotices(db.notifications, body.items))); // 목 전용 (시험·시연). 실서버엔 없다
 on('GET', '/matches', () => ok(mockMatchList()));
 on('GET', '/matches/summary', () => ok(mockMatchedPostings())); // '/matches/:id' 보다 먼저 둬야 summary 를 공고 id 로 읽지 않는다

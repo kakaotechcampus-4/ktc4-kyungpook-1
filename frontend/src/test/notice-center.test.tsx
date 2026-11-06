@@ -315,3 +315,87 @@ describe('브라우저 알림 안내', () => {
     expect(screen.queryByText('끝나면 브라우저 알림으로 알려 드릴까요?')).not.toBeInTheDocument();
   });
 });
+
+describe('읽음 응답과 새 공고 알림', () => {
+  const matched = (extra: Record<string, unknown> = {}) => ({
+    kind: 'POSTINGS_MATCHED', createdAt: minutesAgo(5),
+    postings: [
+      { postingId: 'p 1', companyName: '한빛페이', title: '서버 개발자', requiredMet: 4, requiredTotal: 5, expiresAt: null },
+      { postingId: 'p2', companyName: '모아마켓', title: '백엔드', requiredMet: 4, requiredTotal: 4, expiresAt: minutesAgo(-1000) },
+      { postingId: 'p3', companyName: '한빛페이', title: '플랫폼', requiredMet: 1, requiredTotal: 3, expiresAt: null },
+    ],
+    ...extra,
+  });
+  const mutationStates = () => queryClient.getMutationCache().getAll().map((mutation) => mutation.state.status);
+
+  it('R1 읽음·모두 읽음 응답의 data 가 { ok: true } 여도 null 이어도 성공으로 받는다', async () => {
+    for (const data of [{ ok: true }, null]) {
+      cleanup(); queryClient.clear(); resetDb();
+      connectMockServer((call) => (call.method === 'POST' && call.path.startsWith('/notifications/') ? new Response(JSON.stringify({ data, error: null }), { status: 200 }) : undefined));
+      seed(drafted(), refreshed());
+      mount();
+      const panel = await open();
+      fireEvent.click(within(panel).getByRole('button', { name: '모두 읽음' }));
+      await waitFor(() => expect(mutationStates()).toEqual(['success']));
+    }
+    cleanup(); queryClient.clear(); resetDb();
+    connectMockServer();
+    seed(drafted());
+    mount();
+    fireEvent.click(within(await open()).getByRole('button', { name: '보기' }));
+    await waitFor(() => expect(mutationStates()).toEqual(['success']));
+  });
+
+  it('K1 새 공고 알림은 곳 수를 제목에 쓰고 공고마다 한 줄을 3줄까지 보이며 필수 조건을 모두 채우면 모두라고 쓴다', async () => {
+    vi.stubEnv('VITE_API_MOCK', 'true');
+    connectMockServer();
+    seed(matched({ postings: [...matched().postings, { postingId: 'p4', companyName: '넷째', title: '잘림', requiredMet: 1, requiredTotal: 2, expiresAt: null }] }));
+    mount();
+    const panel = await open();
+    expect(panel).toHaveTextContent('새 공고 중 잘 맞는 곳을 4곳 찾았어요');
+    const lines = within(panel).getAllByRole('listitem').filter((row) => row.parentElement?.classList.contains('notice__lines')).map((row) => row.textContent);
+    expect(lines).toEqual([
+      '한빛페이 서버 개발자 · 필수 조건 5개 중 4개가 카드에 있어요',
+      '모아마켓 백엔드 · 필수 조건 4개가 모두 카드에 있어요',
+      '한빛페이 플랫폼 · 필수 조건 3개 중 1개가 카드에 있어요',
+    ]);
+  });
+
+  it('K2 공고 보기는 첫 공고의 상세로 가고 매칭이 꺼져 있거나 공고가 비어 있으면 알림을 건너뛰고 안 읽은 수에도 세지 않는다', async () => {
+    vi.stubEnv('VITE_API_MOCK', 'true');
+    connectMockServer();
+    seed(matched());
+    mount();
+    fireEvent.click(within(await open()).getByRole('button', { name: '공고 보기' }));
+    expect(where()).toBe('/match/p%201');
+
+    for (const off of [true, false]) {
+      cleanup(); queryClient.clear(); resetDb();
+      if (off) { vi.stubEnv('VITE_API_MOCK', 'false'); vi.stubEnv('VITE_MATCH_ENABLED', 'false'); }
+      seed(off ? matched() : matched({ postings: [] }), drafted());
+      mount();
+      await waitFor(() => expect(bell()).toHaveAccessibleName('알림, 안 읽은 알림 1개'));
+      expect(await open()).not.toHaveTextContent('새 공고');
+      vi.stubEnv('VITE_API_MOCK', 'true');
+    }
+  });
+
+  it('K3 한 줄 명령이 켜져 있으면 앞의 두 공고 회사로 자소서 문장을 한 번씩만 보이고 꺼져 있으면 보이지 않는다', async () => {
+    vi.stubEnv('VITE_API_MOCK', 'true');
+    vi.stubEnv('VITE_ASSISTANT_ENABLED', 'true');
+    connectMockServer();
+    seed(matched({ postings: [matched().postings[0], matched().postings[2], matched().postings[1]] }));
+    mount();
+    const panel = await open();
+    const asks = within(panel).getAllByRole('button').map((button) => button.textContent).filter((text) => text?.endsWith('써 줘'));
+    expect(asks).toEqual(['한빛페이 공고로 자소서 써 줘']);
+    fireEvent.click(within(panel).getByRole('button', { name: '한빛페이 공고로 자소서 써 줘' }));
+    expect(where()).toBe(`/ask?q=${encodeURIComponent('한빛페이 공고로 자소서 써 줘')}`);
+
+    cleanup(); queryClient.clear(); resetDb();
+    vi.stubEnv('VITE_ASSISTANT_ENABLED', 'false');
+    seed(matched());
+    mount();
+    expect(await open()).not.toHaveTextContent('이어서 맡길 수 있어요');
+  });
+});

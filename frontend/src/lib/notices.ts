@@ -1,5 +1,5 @@
 import { JobErrorCode } from '@/api/schemas';
-import { isKnownNotice, type Notice } from '@/api/notifications';
+import { isKnownNotice, type Notice, type NoticePosting } from '@/api/notifications';
 import { assistantSupported } from '@/api/capabilities';
 import { matchSupported } from '@/api/matching';
 import { jobErrorTitle } from './labels';
@@ -36,6 +36,9 @@ const objectParticle = (name: string) => (hasBatchim(name) ? '을' : '를');
 /** owner/name 에서 owner 를 뺀 레포 이름 */
 export const shortRepoName = (repoName: string): string => repoName.split('/').pop() || repoName;
 
+const postingLine = (p: NoticePosting) =>
+  `${p.companyName} ${p.title} · ${p.requiredMet >= p.requiredTotal ? `필수 조건 ${p.requiredTotal}개가 모두` : `필수 조건 ${p.requiredTotal}개 중 ${p.requiredMet}개가`} 카드에 있어요`;
+
 const cardCountText = (n: number | null) => (n === null ? '카드를' : `카드 ${n}장을`);
 
 /** 알림 한 줄의 제목. 브라우저 알림도 같은 문장을 쓴다 */
@@ -45,6 +48,7 @@ export function noticeTitle(notice: Notice): string | null {
     case 'CARDS_DRAFTED': return `${repo}의 ${cardCountText(notice.cardCount)} 다 썼어요`;
     case 'REPO_REFRESHED': return `${repo}에서 새로 한 일로 ${cardCountText(notice.cardCount)} 써 뒀어요`;
     case 'ANALYSIS_FAILED': return `${repo}${objectParticle(repo)} 읽다가 멈췄어요`;
+    case 'POSTINGS_MATCHED': return `새 공고 중 잘 맞는 곳을 ${notice.postings.length}곳 찾았어요`;
     default: return null;
   }
 }
@@ -58,6 +62,10 @@ export function noticeAction(notice: Notice, matching: boolean): { label: string
       if (!repoId) return { label: '보러 가기', to: '/cards' };
       const folder = `/cards/repo/${repoId}`;
       return { label: '보러 가기', to: matching ? `${folder}/match?again=1&cards=${notice.cardCount ?? 0}` : folder };
+    }
+    case 'POSTINGS_MATCHED': {
+      const first = notice.postings[0];
+      return { label: '공고 보기', to: first ? `/match/${encodeURIComponent(first.postingId)}` : '/match' };
     }
     case 'ANALYSIS_FAILED': {
       if (!repoId) return { label: '다시 보기', to: '/repos' };
@@ -79,16 +87,20 @@ export function noticeView(notice: Notice, env: Env = {}): NoticeView | null {
   const title = noticeTitle(notice);
   const action = noticeAction(notice, env.matching ?? matchSupported());
   if (!title || !action) return null;
-  const drafted = notice.kind !== 'ANALYSIS_FAILED';
+  const assistant = env.assistant ?? assistantSupported();
   const repo = shortRepoName(notice.repoName ?? '레포');
+  const matched = notice.kind === 'POSTINGS_MATCHED';
+  const asks = !assistant || notice.kind === 'ANALYSIS_FAILED' ? []
+    : matched ? [...new Set(notice.postings.slice(0, 2).map((p) => p.companyName))].map((company) => `${company} 공고로 자소서 써 줘`)
+    : [`${repo} 카드로 맞는 기업 골라 줘`, `${repo} 카드로 자소서 써 줘`];
   return {
     id: notice.id,
     unread: notice.readAt === null,
     title,
     hint: notice.kind === 'ANALYSIS_FAILED' ? failureHint(notice.errorCode) : null,
-    lines: notice.cardTitles.slice(0, 3),
+    lines: matched ? notice.postings.slice(0, 3).map(postingLine) : notice.cardTitles.slice(0, 3),
     time: agoLabel(notice.createdAt, env.now),
     action,
-    asks: drafted && (env.assistant ?? assistantSupported()) ? [`${repo} 카드로 맞는 기업 골라 줘`, `${repo} 카드로 자소서 써 줘`] : [],
+    asks,
   };
 }

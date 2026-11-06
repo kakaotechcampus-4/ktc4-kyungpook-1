@@ -13,7 +13,7 @@ export function listNotices(list: Any[]): Any[] {
 export function pushNotice(list: Any[], notice: Any): Any {
   const added = {
     id: `notice_${list.length + 1}`, createdAt: new Date().toISOString(), readAt: null,
-    repoId: null, repoName: null, cardCount: null, cardTitles: [], jobId: null, errorCode: null, ...notice,
+    repoId: null, repoName: null, cardCount: null, cardTitles: [], jobId: null, errorCode: null, postings: [], ...notice,
   };
   list.push(added);
   return added;

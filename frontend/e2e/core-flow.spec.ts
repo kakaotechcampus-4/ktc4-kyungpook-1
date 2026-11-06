@@ -19,8 +19,10 @@ test('레포 선택 → 카드 확정 1개 경로', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
   // 이 화면에서 끝나는 것을 봤고 이 레포에는 카드가 없으니 후보 보드를 거치지 않고 추천 후보로 바로 초안을 쓴다
   await expect(page.getByRole('heading', { name: '카드 초안을 쓰고 있어요' })).toBeVisible({ timeout: 30_000 });
-  // 여러 장을 다 쓰면 그 레포의 카드 폴더로 옮겨 간다
-  await expect(page).toHaveURL(/\/cards\/repo\/r_algo$/, { timeout: 60_000 });
+  // 여러 장을 다 쓰면 그 레포 카드로 맞는 기업을 고르는 화면으로 옮겨 간다. 거기서 카드 폴더로 간다(고르는 중이면 '카드 먼저 보기', 끝났으면 '폴더로 가기')
+  await expect(page).toHaveURL(/\/cards\/repo\/r_algo\/match$/, { timeout: 60_000 });
+  await page.getByRole('link', { name: /^(카드 먼저 보기|폴더로 가기|카드 보러 가기)$/ }).click();
+  await expect(page).toHaveURL(/\/cards\/repo\/r_algo$/);
   await page.locator('.experience-item', { hasText: '/auth 아래 3커밋 묶음' }).click(); // 점수가 가장 높은 후보의 카드
   await expect(page.getByText('근거를 찾지 못해 비워 뒀어요')).toBeVisible(); // 빈 칸이 증거
 

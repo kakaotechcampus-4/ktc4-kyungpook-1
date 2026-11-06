@@ -118,8 +118,8 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       cardId = made.cardIds[0];
     });
 
-    await test.step('5. 초안을 다 쓰면 레포 폴더로', async () => {
-      await expect(page).toHaveURL(/\/cards\/repo\//, { timeout: SLOW });
+    await test.step('5. 초안을 다 쓰면 그 레포의 카드로 맞는 기업을 고르는 화면으로', async () => {
+      await expect(page).toHaveURL(/\/cards\/repo\/[^/]+\/match$/, { timeout: SLOW });
       await page.goto(`/cards/${cardId}`);
       await expect(page).toHaveURL(/\/cards\/[^/?]+$/);
     });

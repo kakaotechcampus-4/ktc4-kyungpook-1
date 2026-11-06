@@ -82,7 +82,7 @@ describe('폴더 설명 고치기 (#777)', () => {
     expect(screen.queryByText(GITHUB_TEXT)).not.toBeInTheDocument();
 
     await app.router.navigate('/cards');
-    const tileLink = await screen.findByRole('link', { name: new RegExp(`^레포 hong-dev, auth-service, 카드 4장, ${MINE}`) }, { timeout: 4000 });
+    const tileLink = await screen.findByRole('link', { name: new RegExp(`^레포 hong-dev, auth-service, 카드 4장, 확인할 카드 2장, ${MINE}`) }, { timeout: 4000 });
     expect(tileLink.querySelector('.folder__desc')).toHaveTextContent(MINE);
     // 폴더 타일은 GitHub 을 부르지 않는 저장 목록을 한 번만 읽고, 고친 뒤에도 다시 받지 않고 서버가 돌려준 한 줄로 바꾼다
     expect(calls.filter((call) => call.path === '/repos/saved')).toHaveLength(1);

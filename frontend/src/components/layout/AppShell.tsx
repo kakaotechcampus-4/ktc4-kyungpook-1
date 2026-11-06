@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link, useLocation, useNavigationType } from 'react-router-dom';
 import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, BriefcaseBusiness, FileText } from 'lucide-react';
 import { matchSupported } from '@/api/matching';
-import { useActiveJobs, useCards } from '@/api/queries';
+import { useActiveJobs } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { GithubBanner } from './GithubBanner';
@@ -44,9 +44,6 @@ const MOBILE_MENU = [
 export function AppShell() {
 
   const active = useActiveJobs();
-  const cards = useCards();
-  // 확정하지 않은 카드는 사람이 봐야 끝나는 일이라, 어느 화면에서든 메뉴 옆에 남은 장수를 보인다
-  const waiting = cards.data?.filter((card) => card.status === 'DRAFT').length ?? 0;
   const { pathname } = useLocation();
   const navType = useNavigationType();
   // 메뉴·링크로 새 화면에 가면 맨 위에서 시작한다. 뒤로·앞으로(POP)는 브라우저가 둔 자리를 그대로 쓴다
@@ -71,9 +68,8 @@ export function AppShell() {
             {g.items.map((it) => (
               'also' in it && it.also?.some((p) => pathname.startsWith(p))
                 ? <Link key={it.to} to={it.to} className="menu-item" title={it.label} aria-label={it.label} aria-current="page"><it.icon size={18} /><span>{it.label}</span></Link>
-                : <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.to === '/cards' && waiting > 0 ? `${it.label}, 확인할 카드 ${waiting}장` : it.label}>
+                : <NavLink key={it.to} to={it.to} end={it.end} className="menu-item" title={it.label} aria-label={it.label}>
                   <it.icon size={18} /><span>{it.label}</span>
-                  {it.to === '/cards' && waiting > 0 && <span className="menu-item__count" aria-hidden>{waiting}</span>}
                 </NavLink>
             ))}
           </nav>

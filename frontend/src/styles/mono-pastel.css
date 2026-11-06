@@ -24,7 +24,6 @@
 
   .sidebar .menu-group__title, .sidebar__recent-title { color: #AEAEBA; letter-spacing: .02em; }
   .sidebar .menu-item { min-height: 46px; margin-block: 3px; padding: 10px 14px; gap: 11px; border-radius: 12px; font-size: 15px; line-height: 22px; }
-  .sidebar .menu-item__count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: auto; padding-inline: 7px; border-radius: 999px; background: #FBF3E3; color: #8E6414; font-size: 13px; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
   .sidebar .profile-menu__name { font-size: 15px; }
   .sidebar .menu-item[aria-current="page"] { background: #E4F1FC; color: #202022; }
   .sidebar .menu-item[aria-current="page"] svg { color: #202022; }

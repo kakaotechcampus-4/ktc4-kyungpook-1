@@ -30,9 +30,9 @@ const routes = () => [
   page(<ActivitiesPage />, '/activities'), page(<ActivityNewPage />, '/activities/new'), page(<ActivityEditPage />, '/activities/:activityId/edit'),
 ];
 const FOLDERS = {
-  auth: '레포 hong-dev, auth-service, 카드 4장, 로그인과 세션 인증을 맡는 Spring Boot 서비스, 기술 2 · 경험 2, 기술 Java',
+  auth: '레포 hong-dev, auth-service, 카드 4장, 확인할 카드 2장, 로그인과 세션 인증을 맡는 Spring Boot 서비스, 기술 2 · 경험 2, 기술 Java',
   fts: '레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 무료 요금제로 바꾼 뒤 광고가 쏟아지는 상황을 풍자하는 Unity 게임이에요. 인트로 씬과 광고 연출을 맡았어요.',
-  club: '활동, 동아리, 교내 개발 동아리, 카드 2장',
+  club: '활동, 동아리, 교내 개발 동아리, 카드 2장, 확인할 카드 1장',
   edu: '활동, 교육 과정, 카카오테크캠퍼스, 카드 1장',
   contest: '활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요 · 열어서 만들기',
 };
@@ -62,7 +62,7 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(screen.getByText('아직 카드가 없어요 · 열어서 만들기')).toBeInTheDocument();
     expect(screen.queryByText('기술 카드만 있어요')).not.toBeInTheDocument();
     expect(document.querySelector('.folder__peek')).toBeNull();
-    // 장 수는 종류 아이콘 옆 작은 글이고, 빈 폴더에는 없다(0장 대신 안내 한 줄이 말한다)
+    // 장 수는 오른쪽 위 작은 글이고, 빈 폴더에는 없다(0장 대신 안내 한 줄이 말한다)
     expect(auth.querySelector('.folder__head .folder__count')).toHaveTextContent(/^4장$/);
     expect(screen.getByRole('link', { name: FOLDERS.contest }).querySelector('.folder__count')).toBeNull();
     expect(auth.querySelector('.folder__back')).toHaveAttribute('aria-hidden', 'true');
@@ -72,10 +72,19 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     expect(screen.getByRole('link', { name: FOLDERS.fts })).toHaveAttribute('data-deck', '0');
     expect(screen.getByRole('link', { name: FOLDERS.contest })).toHaveAttribute('data-empty', 'true');
     expect(auth).not.toHaveAttribute('data-empty');
-    // 종류 아이콘도 장식이다
-    expect(auth.querySelector('.folder__kind')).toHaveAttribute('aria-hidden', 'true');
     // 직접 쓴 카드가 없으니 그 폴더도 없다
     expect(screen.queryByRole('link', { name: /직접 쓴 카드/ })).not.toBeInTheDocument();
+  });
+
+  it('확정하지 않은 카드가 있는 폴더만 오른쪽 위 장 수 옆에 확인할 카드 수가 보인다', async () => {
+    connectMockServer();
+    mountApp([page(<CardsListPage />, '/cards')], '/cards');
+
+    const auth = await screen.findByRole('link', { name: FOLDERS.auth });
+    expect(auth.querySelector('.folder__head .folder__review')).toHaveTextContent(/^확인할 카드 2장$/);
+    expect(screen.getByRole('link', { name: FOLDERS.club }).querySelector('.folder__review')).toHaveTextContent(/^확인할 카드 1장$/);
+    expect(screen.getByRole('link', { name: FOLDERS.fts }).querySelector('.folder__review')).toBeNull(); // 모두 확정한 폴더
+    expect(screen.getByRole('link', { name: FOLDERS.contest }).querySelector('.folder__review')).toBeNull(); // 빈 폴더
   });
 
   it('폴더 보기에는 상태 탭과 검색이 없고, 만들기는 폴더 위의 활동 만들기 하나뿐이다. 경험 카드는 폴더 안에서 만든다', async () => {
@@ -104,7 +113,7 @@ describe('경험 카드 목록의 폴더 보기 (#522)', () => {
     connectMockServer();
     handle('POST', '/cards/manual/draft', new URLSearchParams(), { title: '그냥 쓴 카드', period: null, repoId: null }, true);
     mountApp(routes(), '/cards');
-    const direct = await screen.findByRole('link', { name: '레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장' });
+    const direct = await screen.findByRole('link', { name: '레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장, 확인할 카드 1장' });
     expect(direct).toHaveAttribute('href', '/cards/direct');
     expect(direct.parentElement!.parentElement!.lastElementChild).toBe(direct.parentElement); // 맨 뒤
   });

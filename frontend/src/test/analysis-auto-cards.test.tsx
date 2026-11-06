@@ -7,6 +7,7 @@ import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import { Candidate, CandidateBoard, CardSummary, Job, RepoDetail } from '@/api/schemas';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
+import { MAX_CARDS_PER_REQUEST } from '@/lib/candidatePicks';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 
@@ -33,13 +34,18 @@ const cardOf = (repoId: string | null) => CardSummary.parse({
   updatedAt: '2026-10-30T00:00:00Z', repo: repoId ? { id: repoId, owner: 'hong-dev', name: repoId } : null,
 });
 
-// 점수 순으로 위 다섯은 s1~s5 — 점수가 가장 높은 약한 후보·이미 카드로 만든 후보·제외한 후보는 들어가면 안 된다
+// 점수가 낮은 순으로 늘어놓은 쓸 만한 후보가 한 요청 상한보다 둘 많다 — 점수가 가장 높은 약한 후보·이미 카드로 만든 후보·제외한 후보는 들어가면 안 된다
+const topIds = (prefix: string) => Array.from({ length: MAX_CARDS_PER_REQUEST }, (_, i) => `${prefix}${MAX_CARDS_PER_REQUEST + 2 - i}`);
 const MANY = [
-  candidate('s3', { score: 50 }), candidate('s7', { score: 10 }), candidate('s1', { score: 70 }), candidate('s5', { score: 30 }),
-  candidate('s2', { score: 60 }), candidate('s6', { score: 20 }), candidate('s4', { score: 40 }),
-  candidate('weak', { weak: true, score: 99 }), candidate('used', { status: 'USED', usedByCardId: 'card_x', score: 98 }), candidate('out', { status: 'EXCLUDED', score: 97 }),
+  ...Array.from({ length: MAX_CARDS_PER_REQUEST + 2 }, (_, i) => candidate(`s${i + 1}`, { score: (i + 1) * 5 })),
+  candidate('weak', { weak: true, score: 999 }), candidate('used', { status: 'USED', usedByCardId: 'card_x', score: 998 }), candidate('out', { status: 'EXCLUDED', score: 997 }),
 ];
-const NOTHING_TO_PICK = [candidate('weak', { weak: true, score: 90 }), candidate('used', { status: 'USED', usedByCardId: 'card_x', score: 80 }), candidate('out', { status: 'EXCLUDED', score: 70 })];
+const NOTHING_TO_PICK = [candidate('used', { status: 'USED', usedByCardId: 'card_x', score: 80 }), candidate('out', { status: 'EXCLUDED', score: 70 })];
+// 추천도 낮은 후보뿐이면 그중 점수 순으로 위에서부터 추천이다
+const WEAK_ONLY = [
+  ...Array.from({ length: MAX_CARDS_PER_REQUEST + 2 }, (_, i) => candidate(`w${i + 1}`, { weak: true, score: (i + 1) * 5 })),
+  candidate('used', { status: 'USED', usedByCardId: 'card_x', score: 999 }),
+];
 
 const settle = (ms: number) => act(async () => { await new Promise((done) => setTimeout(done, ms)); });
 
@@ -74,7 +80,6 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     finish(job('SUCCEEDED'));
     await screen.findByText('추천 경험으로 카드까지 이어서 써요', {}, LONG); // 후보를 읽는 동안
     expect(screen.getByRole('link', { name: '후보 직접 고르기' })).toHaveAttribute('href', BOARD);
-    expect(screen.queryByRole('link', { name: '후보 보드로 바로 가기' })).not.toBeInTheDocument();
     expect(create).not.toHaveBeenCalled();
 
     release();
@@ -82,30 +87,38 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     expect(screen.queryByRole('link', { name: '후보 직접 고르기' })).not.toBeInTheDocument();
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
     expect(create).toHaveBeenCalledTimes(1);
-    expect(create).toHaveBeenCalledWith('r_auth', ['s1', 's2', 's3', 's4', 's5']); // 쓸 만한 후보가 일곱 개여도 다섯 개까지, 점수 순이다
+    expect(create).toHaveBeenCalledWith('r_auth', topIds('s')); // 쓸 만한 후보가 상한보다 많아도 상한까지, 점수 순이다
     expect(navigate).toHaveBeenCalledTimes(1);
   });
 
-  it('그 레포에 카드가 이미 있으면 만들지 않고 후보 보드로 간다', async () => {
-    const { create, finish } = mount(job('RUNNING'), { cards: [cardOf('r_auth')] });
+  it('추천도 낮은 후보만 남았으면 점수 순으로 한 요청 상한까지 카드 초안을 만든다', async () => {
+    const { create, finish } = mount(job('RUNNING'), { board: boardOf(WEAK_ONLY) });
     finish(job('SUCCEEDED'));
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith(BOARD, { replace: true }), LONG);
-    expect(create).not.toHaveBeenCalled();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
+    expect(create).toHaveBeenCalledWith('r_auth', topIds('w'));
   });
 
-  it('추천할 후보가 없으면 만들지 않고 후보 보드로 간다', async () => {
+  it('그 레포에 카드가 이미 있으면 만들지 않고 그 레포의 카드 폴더로 간다', async () => {
+    const { create, finish } = mount(job('RUNNING'), { cards: [cardOf('r_auth')] });
+    finish(job('SUCCEEDED'));
+    await screen.findByText('만들어 둔 카드가 있어서 카드 폴더로 가요', {}, LONG);
+    expect(screen.queryByRole('link', { name: '후보 직접 고르기' })).not.toBeInTheDocument();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/repo/r_auth', { replace: true }), LONG);
+    expect(create).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('만들 후보가 하나도 없고 카드도 없으면 만들지 않고 후보 보드로 간다', async () => {
     const { create, finish } = mount(job('RUNNING'), { board: boardOf(NOTHING_TO_PICK) });
     finish(job('SUCCEEDED'));
     await waitFor(() => expect(navigate).toHaveBeenCalledWith(BOARD, { replace: true }), LONG);
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('이미 끝난 정리를 다시 열면 만들지 않는다', async () => {
-    const { create, read } = mount(job('SUCCEEDED'));
-    expect(screen.getByRole('link', { name: '후보 보드로 바로 가기' })).toHaveAttribute('href', BOARD);
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith(BOARD, { replace: true }), LONG);
-    expect(create).not.toHaveBeenCalled();
-    expect(read).not.toHaveBeenCalled();
+  it('이미 끝난 정리를 다시 열어도 추천 후보로 카드 초안을 만든다', async () => {
+    const { create } = mount(job('SUCCEEDED'));
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), LONG);
+    expect(create).toHaveBeenCalledWith('r_auth', topIds('s'));
   });
 
   it('카드를 만들지 못하면 후보 보드로 가고 다시 시도하지 않는다', async () => {

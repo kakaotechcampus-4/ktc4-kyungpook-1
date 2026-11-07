@@ -153,16 +153,16 @@ describe('목: 유형 고치기', () => {
   it('fills themes a few seconds after confirming, and never overwrites what the user chose', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-31T09:00:00Z'));
+    // 상황과 행동을 저장하면 서버가 스스로 확정한다 — 확정 버튼과 같게 유형은 몇 초 뒤에 붙는다
     call('PATCH', `/cards/${DRAFT_EXPERIENCE}/draft`, { situation: '팀원과 의견이 갈렸다', task: null, action: '합의 기준을 만들었다', result: null });
-    expect(call('POST', `/cards/${DRAFT_EXPERIENCE}/confirm`, { edited: false, maskedFields: [] }).status).toBe(200);
-    expect(readCard(DRAFT_EXPERIENCE).themes).toEqual([]); // 확정 응답 직후에는 아직 비어 있다
+    expect(readCard(DRAFT_EXPERIENCE).status).toBe('CONFIRMED');
+    expect(readCard(DRAFT_EXPERIENCE).themes).toEqual([]); // 확정 직후에는 아직 비어 있다
     vi.setSystemTime(new Date(Date.now() + MOCK_THEME_AI_DELAY_MS + 1));
     expect(readCard(DRAFT_EXPERIENCE).themes?.length).toBeGreaterThan(0); // 다시 읽으면 채워져 있다
 
     // 사용자가 먼저 고른 카드는 AI 가 덮어쓰지 않는다
     resetDb();
     call('PATCH', `/cards/${DRAFT_EXPERIENCE}/draft`, { situation: '팀원과 의견이 갈렸다', task: null, action: '합의 기준을 만들었다', result: null });
-    call('POST', `/cards/${DRAFT_EXPERIENCE}/confirm`, { edited: false, maskedFields: [] });
     call('PATCH', `/cards/${DRAFT_EXPERIENCE}/metadata`, { themes: ['LEADERSHIP'] });
     vi.setSystemTime(new Date(Date.now() + MOCK_THEME_AI_DELAY_MS + 1));
     expect(readCard(DRAFT_EXPERIENCE).themes).toEqual(['LEADERSHIP']);

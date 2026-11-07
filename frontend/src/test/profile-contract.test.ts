@@ -223,10 +223,18 @@ describe('PUT body (ProfileInput) follows BE #552', () => {
   });
 });
 
+describe('메일 알림 계약', () => {
+  it('F2: an old server answer without email and mailOptIn reads as an empty address and an unchecked box', () => {
+    const { email: _e, mailOptIn: _m, ...old } = { ...sampleInput(), savedAt: '2026-10-30T03:00:00Z' };
+    expect(Profile.parse(old)).toMatchObject({ email: null, mailOptIn: false });
+    expect(toForm(Profile.parse(old))).toMatchObject({ email: '', mailOptIn: false });
+  });
+});
+
 describe('form → body (toDraft) always sends all four lists', () => {
-  const emptyForm: ProfileForm = { educations: [], careers: [], languages: [], certifications: [], interests: [] };
+  const emptyForm: ProfileForm = { educations: [], careers: [], languages: [], certifications: [], interests: [], email: '', mailOptIn: false };
   it('an empty form is four empty lists and an empty interest list, not a partial body', () => {
-    expect(toDraft(emptyForm)).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: [] });
+    expect(toDraft(emptyForm)).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: [], email: '', mailOptIn: false });
   });
   it('maps the screen-only "still working" box to endMonth null, and a blank end month without it stays blank', () => {
     const row = { ...blankCareer(), company: 'A', type: 'INTERN' as const, startMonth: '2024-01' };
@@ -243,7 +251,7 @@ describe('form → body (toDraft) always sends all four lists', () => {
   });
   it('round-trips a saved profile through the form', () => {
     const saved = Profile.parse({ ...sampleInput(), savedAt: '2026-10-30T03:00:00Z' });
-    expect(ProfileInput.parse(toDraft(toForm(saved)))).toEqual(sampleInput());
+    expect(ProfileInput.parse(toDraft(toForm(saved)))).toEqual({ ...sampleInput(), email: '', mailOptIn: false });
     expect(toForm(saved).careers[0].current).toBe(true);
     expect(toForm(saved).educations[0].gpaMax).toBe('4.5');
   });
@@ -258,7 +266,7 @@ describe('response (Profile) and helpers', () => {
   const saved = () => ({ ...sampleInput(), savedAt: '2026-10-30T03:00:00Z' });
   it('parses a saved document and an empty one', () => {
     expect(Profile.parse(saved()).careers[0].endMonth).toBeNull();
-    expect(Profile.parse(emptyProfile())).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: [], savedAt: null });
+    expect(Profile.parse(emptyProfile())).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: [], savedAt: null, email: null, mailOptIn: false });
     expect(Profile.parse({ ...saved(), interests: undefined }).interests).toEqual([]); // 관심 분야 칸이 없던 때의 응답
     expect(Profile.parse({ ...saved(), interests: ['BACKEND', 'GAME'] }).interests).toEqual(['BACKEND']); // 모르는 값은 버린다
   });
@@ -302,7 +310,7 @@ describe('server field errors (what we ask BE for; #552 sends only a Korean sent
     expect(serverIssues({ message: '학력 1번째 학교 이름이 비었어요', fields: [{ path: 'educations[0].school', code: 'REQUIRED', message: '서버 문구' }] })).toEqual([{ path: 'educations[0].school', code: 'REQUIRED' }]);
   });
   it('attaches only to fields that exist on screen, in either path style', () => {
-    const form: ProfileForm = { educations: [blankEducation()], careers: [blankCareer()], languages: [blankLanguage()], certifications: [blankCertification()], interests: [] };
+    const form: ProfileForm = { educations: [blankEducation()], careers: [blankCareer()], languages: [blankLanguage()], certifications: [blankCertification()], interests: [], email: '', mailOptIn: false };
     const out = attachableErrors([
       { path: 'educations[0].school', code: 'REQUIRED' }, { path: 'careers.0.company', code: 'REQUIRED' },
       { path: 'educations[3].school', code: 'REQUIRED' }, // 없는 줄

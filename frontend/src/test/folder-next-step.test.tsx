@@ -146,7 +146,7 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
 
     expect(await screen.findByText('카드를 확정했어요')).toBeInTheDocument();
-    expect(screen.getByText('네 칸이 다 차서 바로 쓸 수 있어요.')).toBeInTheDocument();
+    expect(screen.getByText('상황과 행동이 있어서 바로 쓸 수 있어요.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '카드 보기' })).toHaveClass('btn--outline');
     expect(screen.queryByRole('button', { name: '직접 수정하기' })).not.toBeInTheDocument();
     expect(within(screen.getByRole('navigation', { name: 'breadcrumb' })).getByRole('link', { name: 'auth-service' })).toHaveAttribute('href', '/cards/repo/r_auth');
@@ -172,7 +172,7 @@ describe('확정하면 카드가 든 폴더로 돌아가 다음에 할 일 하�
     const panel = back.closest('.done-card') as HTMLElement;
     expect(panel).toHaveAttribute('role', 'status');
     expect(panel).toHaveTextContent('카드를 확정했어요');
-    expect(panel).toHaveTextContent('네 칸이 다 차서 바로 쓸 수 있어요.');
+    expect(panel).toHaveTextContent('상황과 행동이 있어서 바로 쓸 수 있어요.');
     expect(within(panel).getAllByRole('link')).toHaveLength(1);
     expect(screen.queryByRole('button', { name: /남은 후보/ })).not.toBeInTheDocument();
 

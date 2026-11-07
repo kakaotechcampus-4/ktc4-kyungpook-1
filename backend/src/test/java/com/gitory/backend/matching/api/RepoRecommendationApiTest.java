@@ -38,7 +38,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -111,6 +113,7 @@ class RepoRecommendationApiTest {
                 .andExpect(jsonPath("$.data.companies[0].techs[1]").value("REDIS"))
                 .andExpect(jsonPath("$.data.companies[0].requiredMet").value(2))
                 .andExpect(jsonPath("$.data.companies[0].preferredMet").value(1))
+                .andExpect(jsonPath("$.data.companies[0].fresh").value(false))
                 .andExpect(jsonPath("$.data.companies[1].posting.closed").value(true));
 
     }
@@ -225,6 +228,74 @@ class RepoRecommendationApiTest {
                 .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
         mvc.perform(get("/api/repos/not-a-uuid/recommendations").with(loggedIn()))
                 .andExpect(status().isNotFound());
+
+    }
+
+    @Test
+    @DisplayName("계산이 결과를 바꾸면 바뀌기 전 기업을 남겨, 바뀌기 전 결과에 없던 기업만 fresh 로 싣는다")
+    void marksCompaniesNotInThePreviousResultAsFresh() throws Exception {
+
+        UUID repoPublicId = UUID.randomUUID();
+        Long repo = fixtures.insertUserRepository(repoPublicId, myUserId, fixtures.insertRepository(10L, "grow22", "gitory"));
+        JobPosting kept = posting("daangn", "당근", "1", Instant.now().plusSeconds(86_400));
+        JobPosting added = posting("krafton", "크래프톤", "2", Instant.now().plusSeconds(86_400));
+        RecommendedCompany daangn = new RecommendedCompany("daangn", "당근", kept.getId(), 2, 1, List.of("SPRING"), List.of(1L));
+        RecommendedCompany krafton = new RecommendedCompany("krafton", "크래프톤", added.getId(), 1, 0, List.of("JAVA"), List.of(2L));
+        RepoRecommendation recommendation = RepoRecommendation.ready(myUserId, repo, List.of(daangn),
+                Instant.parse("2026-10-31T00:00:00Z"));
+        recommendation.refresh(List.of(daangn, krafton), Instant.parse("2026-11-01T00:00:00Z"));
+        recommendations.save(recommendation);
+
+        mvc.perform(get("/api/repos/" + repoPublicId + "/recommendations").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.companies[0].companyId").value("daangn"))
+                .andExpect(jsonPath("$.data.companies[0].fresh").value(false))
+                .andExpect(jsonPath("$.data.companies[1].companyId").value("krafton"))
+                .andExpect(jsonPath("$.data.companies[1].fresh").value(true));
+
+    }
+
+    @Test
+    @DisplayName("다시 고르기를 요청하면 본인 레포의 추천을 다음 차례에 바로 계산하도록 예약하고, 지난 추천을 그대로 보이며 queued 가 true 인 조회와 같은 응답을 준다")
+    void refreshReservesImmediateRecomputeAndAnswersLikeTheLookup() throws Exception {
+
+        UUID repoPublicId = UUID.randomUUID();
+        Long repo = fixtures.insertUserRepository(repoPublicId, myUserId, fixtures.insertRepository(10L, "grow22", "gitory"));
+        JobPosting open = posting("daangn", "당근", "1", Instant.now().plusSeconds(86_400));
+        recommendations.save(RepoRecommendation.ready(myUserId, repo, List.of(
+                new RecommendedCompany("daangn", "당근", open.getId(), 2, 1, List.of("SPRING"), List.of(1L))),
+                Instant.parse("2026-10-31T00:00:00Z")));
+
+        mvc.perform(post("/api/repos/" + repoPublicId + "/recommendations/refresh").with(loggedIn()).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.error").value(nullValue()))
+                .andExpect(jsonPath("$.data.status").value("COMPUTING"))
+                .andExpect(jsonPath("$.data.queued").value(true))
+                .andExpect(jsonPath("$.data.companies", hasSize(1)))
+                .andExpect(jsonPath("$.data.companies[0].companyName").value("당근"));
+
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM repo_recommendation
+                WHERE user_repository_id = ? AND status = 'COMPUTING' AND stale_since <= now() - interval '50 seconds'
+                """, Integer.class, repo)).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("남의 레포와 UUID 가 아닌 id 로 다시 고르기를 요청하면 조회와 똑같이 404 이고 계산을 예약하지 않는다")
+    void refreshHidesOthersRepositories() throws Exception {
+
+        Long other = fixtures.insertUser(2L, "taehun0208");
+        UUID othersRepo = UUID.randomUUID();
+        fixtures.insertUserRepository(othersRepo, other, fixtures.insertRepository(11L, "taehun0208", "blog"));
+
+        mvc.perform(post("/api/repos/" + othersRepo + "/recommendations/refresh").with(loggedIn()).with(csrf()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+        mvc.perform(post("/api/repos/not-a-uuid/recommendations/refresh").with(loggedIn()).with(csrf()))
+                .andExpect(status().isNotFound());
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM repo_recommendation", Integer.class)).isZero();
 
     }
 

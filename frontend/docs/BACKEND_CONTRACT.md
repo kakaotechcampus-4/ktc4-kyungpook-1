@@ -43,7 +43,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | | 요청 | 응답 `data` |
 |---|---|---|
 | `GET /profile` | | `Profile` — 한 번도 저장하지 않았으면 네 목록이 `[]` 이고 `savedAt: null` |
-| `PUT /profile` | `{ educations[], careers[], languages[], certifications[], interests[]? }` **네 목록 모두 필수**(없으면 `[]`). `interests` 는 보내면 통째로 바꾸고 안 보내면 그대로 둠 | `Profile` — 네 목록을 통째로 바꿈 |
+| `PUT /profile` | `{ educations[], careers[], languages[], certifications[], interests[]?, email?, mailOptIn? }` **네 목록 모두 필수**(없으면 `[]`). `interests`·`email`·`mailOptIn` 은 보내면 바꾸고 안 보내면 그대로 둠 | `Profile` — 네 목록을 통째로 바꿈 |
 
 ```jsonc
 // Profile — 요청 항목도 같은 모양(savedAt 빼고)이고, 비운 칸은 null
@@ -56,11 +56,14 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
                   "score": "IH", "acquiredMonth": "2025-05" | null }],  // 10개까지, testName 은 OTHER 일 때만 필수·저장
   "certifications": [{ "name": "정보처리기사", "issuer": "한국산업인력공단" | null, "acquiredMonth": "2026-06" | null }],  // 20개까지
   "interests": ["BACKEND", "DEVOPS"],   // 관심 분야 = 공고 직무 분류 이름(BACKEND·FRONTEND·MOBILE·DEVOPS·DATA·AI_ML·SECURITY·QA·ETC), 3개까지, 겹치지 않게. 아직 안 골랐으면 []
+  "email": "me@example.com" | null,   // 새 공고 알림을 받을 메일 주소. 요청에서 빈 글이면 지움(응답은 null)
+  "mailOptIn": false,                  // 메일 알림 수신 여부. 한 번도 저장하지 않았으면 false
   "savedAt": "ISO" | null }
 ```
 
 - 처음 들어올 때 `interests` 가 비어 있으면(전에 건너뛴 사용자 포함) 어느 화면이든 그 위에 입력 창을 띄우고, 저장해야 닫힌다(#656). '건너뛰기'는 없다. 창은 학력 구분·상태, 어학 시험+점수/등급, 자격증 이름만 받고 나머지 칸은 마이페이지 폼에서 더 적는다.
 - **관심 분야(`interests`)**: 매칭 1단계가 이 직무의 공고만 후보로 올린다(레포 추천·전체 추천). 비어 있으면 거르지 않는다. 4개 이상·겹침·모르는 값은 400.
+- **메일 알림(`email`·`mailOptIn`)**: 수신을 켜고 저장하면 그 주소로 확인 메일을 한 통 보낸다(켠 채 주소를 바꿔 저장해도 한 통). 주소는 인증하지 않고 적은 그대로 쓰며, 앞뒤 공백을 지우고 254자까지·공백 없이 `@` 하나와 그 뒤의 점이 있어야 한다. 모양이 틀리면 400 `INVALID_REQUEST`, 수신을 켰는데 저장될 주소가 없어도 400. 옛 화면처럼 두 칸을 안 보내면 저장된 값을 그대로 둔다. 새 공고 알림(`POSTINGS_MATCHED`)을 남길 때 수신을 켠 사용자에게는 같은 공고 목록을 메일로도 보낸다(서버 `MAIL_ENABLED` 가 켜져 있을 때만). 끄는 방법은 체크를 풀어 저장하는 것뿐이다.
 - 글은 앞뒤 공백을 지우고 50자까지(어학 점수는 20자), 빈 글은 null. 달은 `YYYY-MM`, 끝난 달이 시작한 달보다 앞서면 400. 학점은 만점(4.0·4.3·4.5·100)과 함께 보내거나 둘 다 null.
 - 규칙을 어기면 400 `INVALID_REQUEST` 이고 `error.message` 에 "학력 1번째 학교 이름…" 처럼 목록과 순번을 적는다. CSRF 헤더 필요.
 - 매칭 1차 필터(#532)와 자소서 AI(#484)가 이 값을 읽는다(아직 연결 전).
@@ -75,7 +78,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 사용자의 같은 연결 저장소에 활성 Job이 있으면 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409 + IDEMPOTENCY_KEY_MISMATCH** (확정). FE는 409에 새 키를 만들어 자동 재요청하지 않는다. |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
-| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 10장까지이고, 중복을 뺀 후보가 11개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST`. AI 초안의 네 칸이 확인 필요 없이 모두 찬 카드는 Job 이 바로 `CONFIRMED` 로 두고(#568), 확인 필요 칸이나 빈 칸이 있는 카드만 `DRAFT` 로 남는다 — 화면은 `DRAFT` 카드에만 확정 버튼을 보여 준다 |
+| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 10장까지이고, 중복을 뺀 후보가 11개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST`. AI 초안의 상황·행동이 차 있고 확인 필요 칸이 없는 카드는 Job 이 바로 `CONFIRMED` 로 두고(#568) 과제·결과는 비어 있어도 된다. 확인 필요 칸이 있거나 상황·행동이 빈 카드, 시간 초과로 일부 칸만 채운 카드(`generation.partial` 이 true)는 `DRAFT` 로 남는다 — 화면은 `DRAFT` 카드에만 확정 버튼을 보여 준다 |
 | `GET /repos/{id}/commits?q=` | | `RepoCommit[]` — `{ sha, message, path, at, url, candidateId }` (C5 커밋 찾기, 최대 20) |
 | `GET /repos/{id}/materials` | | `RepoMaterials` (아래) — 분석이 끝난 뒤 '읽은 커밋·PR 전체 보기' 용. GitHub 을 부르지 않고 저장된 값만 읽는다. 분석 전이면 두 배열 모두 빈 배열 |
 | `GET /repos/{id}/recall` | | `Recall` — `{ repoId, note, dirs:[{ path, filesChanged, myCommits, files[], question, options[] }] }` |
@@ -105,6 +108,61 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | | 요청 | 응답 |
 |---|---|---|
 | `PATCH /candidates/{id}` | `{ status?: 'NEW'|'EXCLUDED', excludedShas?: string[] }` | `Candidate` — 제외/복원 · 군집 커밋 빼기(E-4) |
+
+### 새 활동 알림 (서버가 정리한 레포를 스스로 다시 읽기)
+
+홈에 들어오면 화면이 `GET /repos` 로 마지막 push 시각을 새로 받아 둔 뒤 `POST /repo-updates/check` 를 부른다. 서버는 **정리한 적이 있고 마지막 정리 뒤에 push 가 있는** 레포의 분석 Job 을 사용자 대신 접수하고, 분석이 끝나면 **새 일이 든 후보만** 카드 초안으로 만든다. 초안까지 끝나면 `GET /repo-updates` 에 알림으로 나타난다. 사용자가 알림을 누르면 `seen` 으로 닫고 `recommendations/refresh` 로 레포 추천을 다시 고르게 한다.
+
+| | 요청 | 응답 `data` |
+|---|---|---|
+| `POST /repo-updates/check` | 본문 없음 | `{ queued }` — 분석 Job 을 접수한 레포 수(0~3). `check` 는 GitHub 을 부르지 않고 저장된 마지막 push 시각만 본다. push 가 최근인 레포부터 3개까지이고, 분석 Job 이 진행 중이거나 마지막 `check` 로 접수한 지 6시간이 안 된 레포는 건너뛴다. 쓸 수 있는 GitHub 연결이 없으면 오류가 아니라 `{ queued: 0 }` 이다. 접수한 Job 은 `GET /jobs?active=true` 에 보통 분석 Job 으로 나타난다 |
+| `GET /repo-updates` | | `RepoUpdate[]` — `{ repoId, repoName, cardCount, finishedAt }`. 보지 않은 알림을 **레포마다 하나로** 묶어 `finishedAt`(가장 늦게 끝난 시각)이 최근인 순서로 준다. `repoId` 는 `GET /repos` 의 `id` 와 같은 값, `repoName` 은 `owner/name` 모양(활성 Job 목록의 `repoName` 과 같다), `cardCount` 는 그 레포에서 보지 않은 알림의 카드 수 합이다. 없으면 빈 배열 |
+| `POST /repo-updates/{repoId}/seen` | 본문 없음 | `{ ok: true }` — 그 레포의 보지 않은 알림을 모두 본 것으로 닫아 목록에 다시 나오지 않는다. 이미 닫혔거나 알림이 없어도 오류가 아니다. 남의 레포·없는 레포·UUID 가 아닌 id 는 404 `NOT_FOUND` |
+| `POST /repos/{repoId}/recommendations/refresh` | 본문 없음 | `GET /repos/{repoId}/recommendations` 와 같은 모양이다. 추천을 다음 배경 작업 차례에 바로 다시 계산하도록 예약하므로 `queued: true`, `status: COMPUTING` 이고 지난 기업은 그대로 보인다. 남의 레포·없는 레포·UUID 가 아닌 id 는 조회와 같은 404 `NOT_FOUND` |
+
+- 서버가 스스로 다시 읽어 만든 카드 초안 Job 이 끝나도 레포 추천은 **바로 다시 계산하지 않는다.** 알림을 누른 뒤 `refresh` 를 불러야 다시 고른다.
+- `GET /repos/{repoId}/recommendations` 의 `companies[]` 에 `fresh: boolean` 이 더해졌다. 계산이 끝나 결과를 바꿀 때 바뀌기 전 기업을 남겨 두고, 그 결과에 없던 기업이면 `true` 다. 바뀌기 전 결과가 없으면(처음 계산) 모두 `false` 이고, 그다음 계산이 또 결과를 바꾸면 그 이전 결과가 기준이 된다.
+- 알림이 되는 것은 카드 초안 Job 이 `SUCCEEDED` 로 끝난 경우뿐이다. 새 일이 든 후보가 없거나, 분석이 실패·취소·일부만 읽음으로 끝났거나, 카드 만들기가 거절됐거나(호출 제한 등) 초안 Job 이 실패·취소되면 알림 없이 닫는다.
+- 만든 카드는 일반 카드 초안과 똑같이 `GET /cards` 에 `DRAFT` 로 나타나고 확정은 사용자가 한다.
+
+### 알림 (서버가 남기는 알림 한 줄)
+
+카드 초안 Job 이 끝나거나 레포 분석이 실패하면 서버가 그 사용자에게 알림 한 줄을 남긴다. 화면은 목록을 읽고 `readAt` 이 `null` 인 것을 읽지 않은 알림으로 보이며, 누르면 읽음으로 표시한다. 알림은 남긴 순간의 레포 이름과 카드 제목을 그대로 담아서, 그 뒤에 이름이 바뀌거나 카드를 지워도 알림은 바뀌지 않는다. 위 '새 활동 알림'(`/repo-updates`)은 그대로이고 별도다.
+
+| | 요청 | 응답 `data` |
+|---|---|---|
+| `GET /notifications` | | `Notification[]` — 내 알림을 최근에 남긴 것부터 **30개까지**. 없으면 빈 배열 |
+| `POST /notifications/{id}/read` | 본문 없음 | `{ ok: true }` — 알림 하나를 읽음으로 표시한다. 이미 읽은 알림은 처음 읽은 시각을 그대로 두고 오류도 아니다. 남의 알림·없는 알림·UUID 가 아닌 id 는 404 `NOT_FOUND` |
+| `POST /notifications/read-all` | 본문 없음 | `{ ok: true }` — 내 읽지 않은 알림을 모두 읽음으로 표시한다. 읽지 않은 알림이 없어도 오류가 아니다 |
+
+세 API 모두 로그인이 필요하고, POST 는 CSRF 헤더도 필요하다.
+
+```jsonc
+// Notification
+{ "id": "<uuid>", "kind": "CARDS_DRAFTED|REPO_REFRESHED|ANALYSIS_FAILED|POSTINGS_MATCHED",
+  "createdAt": "<ISO>", "readAt": null | "<ISO>",
+  "repoId": "<uuid>" | null,                  // GET /repos 의 id 와 같은 값
+  "repoName": "owner/name" | null,            // 알림을 남긴 때의 이름
+  "cardCount": 3 | null,                      // 그 Job 이 만든 카드 수
+  "cardTitles": ["…"],                        // 만든 순서로 3개까지. 없으면 []
+  "jobId": "<uuid>" | null,
+  "errorCode": "GITHUB_UNAUTHORIZED" | null,  // ANALYSIS_FAILED 에서만. 값은 Job 의 errorCode 와 같다
+  "postings": [{ "postingId": "<uuid>",       // POSTINGS_MATCHED 에서만. 다른 종류는 []
+                 "companyName": "…", "title": "…",
+                 "requiredMet": 4, "requiredTotal": 5,   // 채운 필수 조건 수 / 필수 조건 수
+                 "expiresAt": "<ISO>" | null }] }         // 마감 시각. 마감이 없으면 null
+
+| `kind` | 남기는 때 | 채우는 값 |
+|---|---|---|
+| `CARDS_DRAFTED` | 카드 초안 Job 이 `SUCCEEDED` 로 끝남 | `repoId`·`repoName`·`cardCount`·`cardTitles`·`jobId` |
+| `REPO_REFRESHED` | 서버가 스스로 다시 읽기로 만든 카드 초안 Job 이 `SUCCEEDED` 로 끝남 | `CARDS_DRAFTED` 와 같다 |
+| `ANALYSIS_FAILED` | 사용자가 시작한 레포 분석 Job 이 `FAILED` 로 끝남 | `repoId`·`repoName`·`jobId`·`errorCode` (`cardCount` 는 `null`, `cardTitles` 는 `[]`) |
+| `POSTINGS_MATCHED` | 새벽 공고 가져오기가 끝난 뒤, 새로 조건을 뽑은 공고 중 확정 카드와 필수 조건의 절반 이상 맞는 공고를 찾음 | `postings` (필수 충족 비율이 높은 순, 같으면 우대 충족 수 순으로 3건까지). `repoId`·`repoName`·`cardCount`·`jobId`·`errorCode` 는 `null`, `cardTitles` 는 `[]` |
+
+- 취소된 Job, 실패한 카드 초안 Job, 성공한 분석 Job, 서버가 스스로 다시 읽기로 접수한 분석 Job 의 실패는 알림을 남기지 않는다.
+- 알림을 남기다 실패해도 Job 의 결과는 바뀌지 않는다.
+- `POSTINGS_MATCHED` 는 서버 스위치 `MATCHING_ALERT_ENABLED` 가 켜져 있을 때만 남긴다. 확정 카드가 있고 최근 14일 안에 카드를 만들거나 고친 사용자만 대상이며, 한 번 확인한 공고는 다시 알리지 않는다. 맞는 공고가 없으면 알림을 남기지 않는다. `postings[].postingId` 는 `GET /matches/{id}` 의 id 와 같은 값이다.
+- `kind` 는 나중에 값이 늘 수 있으니 화면은 모르는 값을 건너뛴다.
 
 ### Job (폴링 · 항상 200)
 
@@ -212,7 +270,7 @@ Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드�
 - **정규화한 네 칸이 현재 글과 같으면 no-op**입니다. 버전 번호·버전 시각·카드 수정 시각을 바꾸지 않으며 savedAt은 기존 버전 시각입니다.
 - **확정되지 않은 USER_EDIT만 같은 버전을 덮어씁니다.** AI_DRAFT·INTERVIEW·MASK·RESTORE 또는 확정 후 다시 연 버전 위의 첫 실제 변경은 USER_EDIT 새 버전입니다. 그 뒤의 변경은 같은 미확정 USER_EDIT에 저장합니다.
 - 각 칸의 글이 분기 직전 버전과 정확히 같으면 그 칸의 근거·확신도·되묻기 턴 연결을 복사합니다. 취소로 같은 원문을 다시 보내도 이 정보가 돌아옵니다. 달라진 칸은 USER_STATED이며 이전 커밋 근거·확인 필요 표시는 붙이지 않습니다. null은 문장과 그 칸의 근거를 제거합니다.
-- 확정된 카드도 다시 열지 않고 PATCH 합니다(#568). 저장한 글로 `status` 를 다시 정합니다 — 작성 중 카드는 네 칸이 모두 차고 확인 필요 칸이 없으면 `CONFIRMED`, 확정 카드는 상황이나 행동이 비면 `DRAFT`(확정 시각 null)로 돌아가고 그 밖에는 `CONFIRMED` 를 유지합니다. 화면이 자동 저장하므로 이렇게 바뀐 확정은 확정본(이력의 ` · 확정`)을 남기지 않습니다. 확정 버튼으로 확정한 과거 버전은 고정된 채 남고, 새 버전은 이 확정 표시를 상속하지 않습니다.
+- 확정된 카드도 다시 열지 않고 PATCH 합니다(#568). 저장한 글로 `status` 를 다시 정합니다 — 작성 중 카드는 상황·행동이 차고 확인 필요 칸이 없으면(시간 초과로 일부만 만든 카드는 제외) `CONFIRMED`, 확정 카드는 상황이나 행동이 비면 `DRAFT`(확정 시각 null)로 돌아가고 그 밖에는 `CONFIRMED` 를 유지합니다. 화면이 자동 저장하므로 이렇게 바뀐 확정은 확정본(이력의 ` · 확정`)을 남기지 않습니다. 확정 버튼으로 확정한 과거 버전은 고정된 채 남고, 새 버전은 이 확정 표시를 상속하지 않습니다.
 - 목록 updatedAt은 마지막 실제 수정 시각이고 최근 수정순입니다. savedAt ACK의 글·버전·시각은 FE 캐시에 먼저 반영하고, ACK에 없는 근거를 추정하지 않고 상세를 다시 조회합니다.
 
 **`evidence.authoredBy`**
@@ -276,8 +334,8 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 | | 요청 | 응답 |
 |---|---|---|
 | `GET /cards/{id}/interview` | | **구현됨(#172).** `InterviewTurn[]`, 질문 번호순. 없으면 빈 배열; 없는 카드·남의 카드·잘못된 UUID는 404 |
-| `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED`. 이렇게 되묻기가 끝나(`null`) 네 칸이 확인 필요 없이 모두 차 있으면 서버가 카드를 `CONFIRMED` 로 바꾸므로(#568) 화면은 카드를 다시 읽는다 |
-| `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다. 답으로 네 칸이 확인 필요 없이 모두 차면 되묻기 끝을 기다리지 않고 답 저장과 함께 `CONFIRMED` 로 바꾼다(#624) — 화면은 응답 `status` 가 `CONFIRMED` 면 확정 안내를 보이고 더 묻지 않는다 |
+| `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED`. 확정된 카드도 질문을 받으며 카드는 `CONFIRMED` 로 남는다. 이렇게 되묻기가 끝나(`null`) 작성 중 카드의 상황·행동이 차 있고 확인 필요 칸이 없으면 서버가 카드를 `CONFIRMED` 로 바꾸므로(#568) 화면은 카드를 다시 읽는다 |
+| `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다. 작성 중 카드는 답으로 상황·행동이 차고 확인 필요 칸이 없어지면 되묻기 끝을 기다리지 않고 답 저장과 함께 `CONFIRMED` 로 바꾼다(#624) — 화면은 응답 `status` 가 `CONFIRMED` 면 확정 안내를 보이고 더 묻지 않는다. 확정된 카드에 답해도 409 없이 받으며 `status` 는 `CONFIRMED` 그대로이고, 답한 칸만 바꾼 INTERVIEW 새 버전이 현재 버전이 된다(확정본 버전은 덮어쓰지 않는다) |
 | `POST /cards/{id}/interview/{turnNo}/polished-draft` | `{ text }` | **새로 만듦(#482).** `{ sentence, polished, unsourcedNumbers: string[] }` — 경험 카드 글 질문의 답 다듬기 미리 보기. **아무것도 저장하지 않고** 질문 상한에 세지 않는다. AI 는 표현만 다듬고, 다듬은 문장에 답에 없는 숫자가 생기면 한 번 고쳐 쓰게 한 뒤에도 남은 숫자를 서버가 견줘 `unsourcedNumbers` 로 알린다. AI 가 응답하지 못하면 오류가 아니라 `polished: false` 와 답 그대로의 `sentence` 다. 오류 순서는 `measured-draft` 와 같고, 경험 카드의 글 질문이 아니면 400 `BAD_FIELD` 다 |
 | `POST /cards/{id}/interview/{turnNo}/measured-draft` | `{ text }` | **새로 만듦.** `{ sentence }` — '재 봤어요' 미리 보기. **아무것도 저장하지 않는다.** 입력에 수치(아라비아 숫자)가 없으면 AI 를 부르지 않고 `sentence: null` 이고, 화면은 "수치를 찾지 못했어요. 대략이라도 적어 주세요" 를 보인다. 질문 상한에 세지 않는다 |
 
@@ -294,8 +352,8 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - `kind` 가 질문의 버튼과 맞지 않으면(`answerMode: TEXT` 질문에 `MEASURED`·`NOT_MEASURED`) 400 `INVALID_REQUEST` 이고 아무것도 저장하지 않는다.
 
 **오류 순서**
-- `POST /cards/{id}/interview`: 404(카드 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `CARD_CONFIRMED` → 답을 기다리는 질문이 있으면 그 질문을 200 으로 돌려준다 → 409 `INTERVIEW_CAP` → 400 `BAD_FIELD` → 409 `INTERVIEW_FIELD_CLOSED`.
-- `POST /cards/{id}/interview/{turnNo}/measured-draft`: 404(카드·질문 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `CARD_CONFIRMED` → 409 `INVALID_STATE`(이미 결과가 정해진 질문) → 400 `BAD_FIELD`(R 수치 질문이 아님) → 400 `INVALID_REQUEST`(빈 글·너무 긴 글) → 429 `RATE_LIMITED`.
+- `POST /cards/{id}/interview`: 404(카드 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 답을 기다리는 질문이 있으면 그 질문을 200 으로 돌려준다 → 409 `INTERVIEW_CAP` → 400 `BAD_FIELD` → 409 `INTERVIEW_FIELD_CLOSED`.
+- `POST /cards/{id}/interview/{turnNo}/measured-draft`: 404(카드·질문 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `INVALID_STATE`(이미 결과가 정해진 질문) → 400 `BAD_FIELD`(R 수치 질문이 아님) → 400 `INVALID_REQUEST`(빈 글·너무 긴 글) → 429 `RATE_LIMITED`.
 
 `InterviewTurn`
 `{ turnNo, field, askedBy:'USER_REQUEST'|'FOLLOW_UP', sourceType:'PR'|'COMMIT_CLUSTER'|'DIRECT_CARD',

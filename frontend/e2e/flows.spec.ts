@@ -109,20 +109,16 @@ test('마스킹 — 원문은 그대로, 표시만 바뀐다', async ({ page }) 
   await expect(page.locator('.toast')).toContainText('가리기 규칙');
 });
 
-test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_STATED', async ({ page }) => {
+test('직접 작성 — S·A 만 써도 저절로 확정되고 근거는 USER_STATED', async ({ page }) => {
   await login(page);
   await page.goto('/cards/new?write=1');
   await page.getByRole('textbox', { name: '카드 제목' }).fill('E2E 직접 작성 카드');
   await page.getByLabel('상황', { exact: true }).fill('3인 팀에서 배포 담당이 없었다');
   await page.getByLabel('행동', { exact: true }).fill('GitHub Actions 로 배포 파이프라인을 직접 구성했다');
   await page.getByRole('button', { name: '작성 시작', exact: true }).click();
-  await page.getByRole('button', { name: '확정', exact: true }).click();
-  await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
-  await page.getByRole('button', { name: '확정하기' }).click();
-  // 레포도 활동도 없는 카드라 직접 쓴 카드 폴더로 간다. 카드를 열어 확정 상태와 근거 이름을 본다
-  await expect(page).toHaveURL(/\/cards\/direct$/);
-  await expect(page.locator('.next-step')).toContainText('카드를 확정했어요');
-  await page.locator('.experience-item--just').click();
+  await page.getByRole('button', { name: '다 썼어요', exact: true }).click();
+  // 확인 필요 칸이 없으면 상황·행동만으로 저장하는 순간 서버가 확정해서, 확정 창 없이 확정된 카드가 열리고 빈 과제·결과 안내가 따라온다
+  await expect(page.getByText('과제, 결과 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요')).toBeVisible();
   await expect(page.getByText('확정됨').first()).toBeVisible();
   await expect(page.getByText('내 답변').first()).toBeVisible();
 });

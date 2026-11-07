@@ -12,6 +12,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -96,6 +97,39 @@ class MatchingCardReaderTest {
         fixtures.confirmCard(others);
 
         assertThat(reader.confirmedOf(userId)).extracting(MatchingCard::id).containsExactly(first, second);
+
+    }
+
+    @Test
+    @DisplayName("확정 카드가 있고 최근 14일 안에 작성 중 카드를 포함해 카드를 만들거나 고친 사용자만 id 순으로 읽는다")
+    void readsOnlyUsersWithConfirmedCardAndRecentEdit() {
+
+        Instant since = Instant.parse("2026-11-01T00:00:00Z");
+        Long recentlyDrafting = fixtures.insertUser(2L, "recent-draft");
+        card(recentlyDrafting, true, since.minusSeconds(86400 * 30));
+        card(recentlyDrafting, false, since.plusSeconds(60));
+        Long recentlyConfirmed = fixtures.insertUser(3L, "recent-confirmed");
+        card(recentlyConfirmed, true, since.plusSeconds(60));
+        Long stale = fixtures.insertUser(4L, "stale");
+        card(stale, true, since.minusSeconds(60));
+        Long draftsOnly = fixtures.insertUser(5L, "drafts-only");
+        card(draftsOnly, false, since.plusSeconds(60));
+        Long deletedOnly = fixtures.insertUser(6L, "deleted");
+        Long deletedCard = card(deletedOnly, true, since.plusSeconds(60));
+        jdbc.update("UPDATE card SET deleted_at = now() WHERE id = ?", deletedCard);
+
+        assertThat(reader.activeUserIds(since)).containsExactly(recentlyDrafting, recentlyConfirmed);
+
+    }
+
+    private Long card(Long ownerId, boolean confirmed, Instant updatedAt) {
+
+        Long card = fixtures.insertCard(UUID.randomUUID(), ownerId);
+        if (confirmed) {
+            fixtures.confirmCard(card);
+        }
+        jdbc.update("UPDATE card SET updated_at = ? WHERE id = ?", java.sql.Timestamp.from(updatedAt), card);
+        return card;
 
     }
 

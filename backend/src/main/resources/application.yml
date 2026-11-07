@@ -2,6 +2,22 @@ spring:
   application:
     name: gitory-backend
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          # 메일 서버가 멈춰도 보내는 스레드가 오래 붙잡히지 않게 접속·응답·쓰기를 10초로 끊는다
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -76,6 +92,9 @@ management:
         # 헬스체크만 연다. env·configprops 는 비밀값이 새는 경로다.
         include: health
   health:
+    mail:
+      # 메일 계정이 없거나 Gmail 이 막혀도 서버 상태가 DOWN 으로 보이면 안 된다 — 헬스체크가 SMTP 에 접속하지 않게 한다
+      enabled: false
     redis:
       # Redis 는 호출 제한에만 쓰고 멈추면 제한을 건너뛴다. health 에 섞이면 compose --wait 와 배포 확인이 Redis 때문에 실패한다
       enabled: false
@@ -143,6 +162,11 @@ gitory:
       enabled: ${JOB_WORKER_ENABLED:true}
       # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
+  mail:
+    # 켜면 인적사항에서 수신을 켠 사용자에게 확인 메일과 새 공고 메일을 보낸다. 켜기 전에 MAIL_USERNAME 과 MAIL_PASSWORD(Gmail 앱 비밀번호)를 넣는다
+    enabled: ${MAIL_ENABLED:false}
+    # 메일 안의 링크 앞부분이다
+    app-base-url: ${GITORY_APP_BASE_URL:http://localhost:5173}
   alert:
     # 서버나 AI 문제로 Job 이 실패해도 로그에만 남아 아무도 모르므로 이 Discord 웹훅으로 한 줄을 보내며, 비어 있으면 보내지 않는다
     webhook-url: ${GITORY_ALERT_WEBHOOK_URL:}
@@ -168,6 +192,10 @@ gitory:
       # 켜면 매일 새벽 5시(서울)에 회사 채용 공고를 가져오고 서버가 뜰 때 24시간 넘게 안 돌았으면 바로 한 번 돈다
       # 켜기 전에 회사별 이용 조건을 확인하며 서버가 여러 대여도 DB 잠금으로 한 곳에서만 돈다
       enabled: ${MATCHING_SYNC_ENABLED:false}
+    alert:
+      # 켜면 공고 가져오기가 끝난 뒤 새로 조건을 뽑은 공고를 확정 카드와 맞춰 보고 알림으로 남기며, 사용자마다 AI 판단을 공고 5건까지 부른다
+      # 공고 가져오기(sync)가 꺼져 있으면 함께 돌지 않는다
+      enabled: ${MATCHING_ALERT_ENABLED:false}
     sources:
       # 쿠팡은 회사 채용 사이트가 공고 경로에서 채용 집계 봇을 막고 있어 그 뜻을 따라 넣지 않는다
       - { key: daangn, name: 당근, type: GREENHOUSE, board: daangn, logo: 'https://about.daangn.com/icons/icon-72x72.png?v=7ecc65aad435f5c3e7bed69e5a7a6219' }

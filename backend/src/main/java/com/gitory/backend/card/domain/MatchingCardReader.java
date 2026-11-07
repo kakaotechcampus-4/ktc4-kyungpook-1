@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -49,6 +50,14 @@ public class MatchingCardReader {
     public List<MatchingCard> confirmedOf(Long userId) {
 
         return cardsOf(confirmedCards.findLiveConfirmedIdsOfUser(userId));
+
+    }
+
+    /** 지우지 않은 확정 카드가 있고, 작성 중까지 포함한 카드를 since 이후에 만들거나 고친 사용자를 id 순으로 읽는다 */
+    @Transactional(readOnly = true)
+    public List<Long> activeUserIds(Instant since) {
+
+        return confirmedCards.findUserIdsWithConfirmedAndEditedSince(since);
 
     }
 

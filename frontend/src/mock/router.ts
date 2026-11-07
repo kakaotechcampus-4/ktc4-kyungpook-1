@@ -2,6 +2,7 @@ import { ACTIVITY_TYPES, CardMetadataPatch, type StarField } from '@/api/schemas
 import { getAssistantRun, sayToAssistantRun, startAssistantRun, type AssistantResult } from './assistant';
 import { mockMatchDetail, mockMatchedPostings, mockMatchList, mockOverall, mockRepoRecommendation, mockStartGapFill, startMockOverall } from './matching';
 import { getProfile, putProfile } from './profile';
+import { listNotices, readAllNotices, readNotice, seedNotices } from './notifications';
 import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCoverLetter, discardPolish, getCoverLetter, listCoverLetters, listCoverLetterTurns, openCoverLetterTurn, polishQuestion, replyCoverLetterTurn, retryCoverLetter, saveAnswers, saveDraft, skipCoverLetterTurn, startAsking, startDrafting, type CoverLetterResult } from './coverLetters';
 /**
  * 목 API 라우터 — 순수 함수. 요청을 받아 { status, data, error } 를 돌려준다.
@@ -9,7 +10,7 @@ import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCo
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, starStates } from './store';
+import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, settleCard } from './store';
 import { now } from './fixtures';
 import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
@@ -33,6 +34,10 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 // ───────────────────────────── 인증 ─────────────────────────────
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
+on('GET', '/notifications', () => ok(listNotices(db.notifications)));
+on('POST', '/notifications/read-all', () => { readAllNotices(db.notifications); return ok({ ok: true }); });
+on('POST', '/notifications/:id/read', ({ params }) => readNotice(db.notifications, params[0]) ? ok({ ok: true }) : fail(404, 'NOT_FOUND', '알림을 찾을 수 없습니다.'));
+on('POST', '/__notices', ({ body }) => ok(seedNotices(db.notifications, body.items))); // 목 전용 (시험·시연). 실서버엔 없다
 on('GET', '/matches', () => ok(mockMatchList()));
 on('GET', '/matches/summary', () => ok(mockMatchedPostings())); // '/matches/:id' 보다 먼저 둬야 summary 를 공고 id 로 읽지 않는다
 on('GET', '/recommendations', () => ok(mockOverall()));
@@ -300,7 +305,7 @@ on('POST', '/cards/manual/draft', ({ body, headers }) => {
 on('PATCH', '/cards/:id/draft', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 수정할 수 있습니다');
+  // 실서버처럼 확정 카드도 다시 열지 않고 저장하고, 저장한 글로 상태를 다시 정한다
   const fields: Any = {};
   for (const field of STAR) {
     const key = FIELD_KEY[field], value = body[key];
@@ -408,7 +413,7 @@ on('POST', '/cards/:id/versions/:no/restore', ({ params }) => {
   const fields = Object.fromEntries(STAR.map(f => [FIELD_KEY[f], target[FIELD_KEY[f]]]));
   pushVersion(c, 'RESTORE', fields); // 되돌려도 히스토리는 지워지지 않는다
   restoreVersionMetadata(c, target); captureVersion(c);
-  c.status = 'DRAFT'; c.confirmedAt = null;
+  settleCard(c);
   return ok(cardView(c));
 });
 
@@ -417,7 +422,7 @@ on('GET', '/cards/:id/interview', ({ params }) => findCard(params[0]) ? ok([...(
 on('POST', '/cards/:id/interview', ({ params, body }) => {
   const c = findCard(params[0]);
   if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
-  if (c.status === 'CONFIRMED') return fail(409, 'CARD_CONFIRMED', '확정된 카드는 다시 열어야 되물을 수 있습니다');
+  // 실서버처럼 확정 카드도 되묻는다 — 상태는 그대로 확정이다
   // 실서버처럼 넘긴 질문도 상한에 세고, 넘긴 칸은 다시 묻지 않는다
   const asked = db.interview[c.id] ?? [];
   if (asked.length >= INTERVIEW_MAX_TURNS) return fail(409, 'INTERVIEW_CAP', '이 카드의 되묻기 상한에 닿았습니다');
@@ -432,11 +437,9 @@ on('POST', '/cards/:id/interview', ({ params, body }) => {
     }
     const next = STAR.find((f) => isCardBlank(v[FIELD_KEY[f]] ?? '') && !asked.some((t: Any) => t.field === f && t.outcome === 'SKIPPED'));
     if (next) return ok(askTurn(c, next, { reason: `${starFieldShort[next as StarField]} 칸이 비어 있어 먼저 물어볼게요` }));
-    // 실서버처럼 AI 가 끝내면 이유를 남기고, 네 칸이 확인 필요 없이 다 찼으면 확정한다
+    // 실서버처럼 AI 가 끝내면 이유를 남기고, 확정 조건이 갖춰졌으면 확정한다
     c.interviewEndReason = '더 물을 빈 칸이 없어 질문을 마칠게요';
-    if (Object.values(starStates(c)).every((state) => state === 'FILLED')) {
-      c.status = 'CONFIRMED'; c.confirmedAt = now();
-    }
+    settleCard(c);
     return ok(null);
   }
   if (!['S', 'T', 'A', 'R'].includes(body.field)) return fail(400, 'BAD_FIELD', 'field 는 S/T/A/R 중 하나여야 합니다');

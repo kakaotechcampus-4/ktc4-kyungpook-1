@@ -14,7 +14,7 @@ async function dataOf(res: APIResponse) {
   return (await res.json()).data;
 }
 
-test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
+test.describe('시나리오 1: 로그인부터 카드 자동 확정과 되묻기까지', () => {
   // 시험마다 새 사용자라 이전 실행이 남긴 저장소·카드와 섞이지 않는다
   let login: string;
   let token: string;
@@ -26,7 +26,7 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
     expect((await request.post(`${FAKE}/__control/next-user`, { data: { login } })).ok()).toBeTruthy();
   });
 
-  test('GitHub 로그인 → 분석 → 후보 → 카드 작성 → 되묻기 → 확정', async ({ page, request }) => {
+  test('GitHub 로그인 → 분석 → 후보 → 카드 작성(자동 확정) → 확정 카드에서 되묻기', async ({ page, request }) => {
     await test.step('1. 로그인', async () => {
       await page.goto('/');
       await expect(page).toHaveURL(/\/login/);
@@ -124,18 +124,24 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       await expect(page).toHaveURL(/\/cards\/[^/?]+$/);
     });
 
-    await test.step('6. 상황·행동 직접 쓰기', async () => {
-      // 과제는 비워 둬서 되묻기에 쓴다
+    await test.step('6. 상황·행동 직접 쓰기 → 서버가 스스로 확정', async () => {
+      // 과제는 비워 둬서 되묻기에 쓴다. 상황과 행동만 차 있어도 확인 필요 칸이 없으면 저장하는 순간 서버가 카드를 확정한다
       // 하단 "직접 수정"은 없앴다(#452). 칸마다 있는 버튼으로 편집에 들어간다 — 상황이 채워져 있으면 "상황 수정", 비어 있으면 "상황 직접 작성"
       await page.getByRole('button', { name: /^상황 (수정|직접 작성)$/ }).click();
       await page.getByRole('textbox', { name: '상황', exact: true }).fill(SITUATION);
       await page.getByRole('textbox', { name: '행동', exact: true }).fill(ACTION);
       await expect(page.getByText('저장됨', { exact: true })).toBeVisible({ timeout: 15_000 });
       await page.getByRole('button', { name: '저장하고 닫기' }).click();
+
+      await expect
+        .poll(async () => (await dataOf(await page.request.get(`/api/cards/${cardId}`))).status, { timeout: 15_000 })
+        .toBe('CONFIRMED');
     });
 
-    await test.step('7. 되묻기', async () => {
-      await page.getByRole('button', { name: '과제 답변하기' }).first().click();
+    await test.step('7. 확정된 카드에서 비어 있는 과제 칸 되묻기', async () => {
+      // 확정 카드에 과제·결과가 비어 있다고 알리고, 질문 받기는 첫 빈 칸(과제)부터 묻는다
+      await expect(page.getByText('과제, 결과 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요')).toBeVisible();
+      await page.getByRole('button', { name: '질문 받기', exact: true }).click();
       await expect(page).toHaveURL(/\/interview\?field=T/);
       await expect(page.getByRole('heading', { name: /^Q1\. \S/ })).toBeVisible({ timeout: SLOW });
       await page.getByRole('textbox', { name: '답변' }).fill(ANSWER);
@@ -143,14 +149,12 @@ test.describe('시나리오 1: 로그인부터 카드 확정까지', () => {
       await expect(page.getByText('내 답변, 저장됨')).toBeVisible({ timeout: 15_000 });
       // 질문이 끝나면 "카드로" 링크를 두지 않아서(AI 가 더 묻지 않기로 하면 열린 질문이 없다) 카드 주소로 바로 간다
       await page.goto(`/cards/${cardId}`);
-      await expect(page.getByRole('region', { name: '과제', exact: true })).toContainText(ANSWER);
+      // 확정된 카드는 칸이 읽기 줄이라 칸 이름 영역 대신 글로 찾는다. 과제를 채웠으니 안내는 결과 칸만 남는다
+      await expect(page.getByText(ANSWER)).toBeVisible();
+      await expect(page.getByText('결과 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요')).toBeVisible();
     });
 
-    await test.step('8. 확정', async () => {
-      await page.getByRole('button', { name: '확정', exact: true }).click();
-      await page.getByRole('dialog').getByRole('button', { name: '확정하기' }).click();
-      await expect(page.getByText('확정됨').first()).toBeVisible({ timeout: 15_000 });
-
+    await test.step('8. 답한 뒤에도 확정 그대로', async () => {
       const card = await dataOf(await page.request.get(`/api/cards/${cardId}`));
       expect(card.status).toBe('CONFIRMED');
       expect(card.version.versionNo).toBeGreaterThan(1);

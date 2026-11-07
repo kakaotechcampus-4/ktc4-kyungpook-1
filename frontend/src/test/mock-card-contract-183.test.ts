@@ -63,8 +63,11 @@ describe('draft saves match #163', () => {
   it.each([{ situation: 'only one' }, { situation: undefined, task: null, action: null, result: null }, { situation: 3, task: null, action: null, result: null }, { situation: 'x'.repeat(1001), task: null, action: null, result: null }, { situation: 'x\0', task: null, action: null, result: null }])('rejects invalid full body without mutation %j', body => {
     const before = snapshot(); expect(save('card_01', body).status).toBe(400); expect(snapshot()).toBe(before);
   });
-  it('returns confirmed409 before validating fields', () => {
-    expect(save('card_03', {}).status).toBe(409);
+  it('saves a confirmed card without reopening and validates fields first', () => {
+    expect(save('card_03', {}).status).toBe(400);
+    const c = detail('card_03');
+    expect(save(c.id, { ...fields(c), result: null }).status).toBe(200);
+    expect(detail(c.id).status).toBe('CONFIRMED');
   });
   it('normalizes all CardText blank characters but preserves meaningful whitespace and 1000 chars', () => {
     const c = manual();
@@ -99,6 +102,7 @@ describe('draft saves match #163', () => {
   });
   it('freezes confirmed USER_EDIT, reopens without thawing, and clears flags on the new version', () => {
     const c = manual(); save(c.id, { situation: '상황', task: null, action: '행동', result: null });
+    req('POST', `/cards/${c.id}/reopen`); // 저장만으로 이미 자동 확정돼 있어, 확정 버튼을 시험하려고 먼저 작성 중으로 돌린다
     expect(req('POST', `/cards/${c.id}/confirm`).data).toMatchObject({ versionNo: 1 });
     expect((req('GET', `/cards/${c.id}/versions`).data as Any[])[0].summary).toBe('S · A 채움 · 확정');
     req('POST', `/cards/${c.id}/reopen`);

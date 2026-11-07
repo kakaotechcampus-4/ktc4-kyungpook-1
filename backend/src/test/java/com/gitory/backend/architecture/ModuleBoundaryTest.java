@@ -144,6 +144,34 @@ class ModuleBoundaryTest {
     }
 
     @Test
+    @DisplayName("notice 의 domain·infra 는 다른 업무 모듈을 참조하지 않는다 — job 이 notice 를 부르고 그 반대는 없다")
+    void noticeDomainDependsOnNoOtherModule() {
+
+        noClasses()
+                .that().resideInAnyPackage(ROOT + ".notice.domain..", ROOT + ".notice.infra..")
+                .should().dependOnClassesThat(resideInAPackage(ROOT + "..")
+                        .and(resideOutsideOfPackage(ROOT + ".notice.."))
+                        .and(resideOutsideOfPackage(ROOT + ".common..")))
+                .allowEmptyShould(true)
+                .check(classes);
+
+    }
+
+    @Test
+    @DisplayName("mail 은 다른 업무 모듈을 참조하지 않는다 — profile·matching 이 mail 을 부르고 그 반대는 없다")
+    void mailDependsOnNoOtherModule() {
+
+        noClasses()
+                .that().resideInAPackage(ROOT + ".mail..")
+                .should().dependOnClassesThat(resideInAPackage(ROOT + "..")
+                        .and(resideOutsideOfPackage(ROOT + ".mail.."))
+                        .and(resideOutsideOfPackage(ROOT + ".common..")))
+                .allowEmptyShould(true)
+                .check(classes);
+
+    }
+
+    @Test
     @DisplayName("도메인은 웹 계층(api)을 참조하지 않는다")
     void domainDoesNotDependOnApi() {
         noClasses()
@@ -183,12 +211,12 @@ class ModuleBoundaryTest {
     static final class Modules {
         static final String[] ALL = {
                 "consent", "ingest", "recommend", "agent", "card", "job", "audit", "usage", "matching", "coverletter", "profile",
-                "assistant"
+                "assistant", "notice", "mail"
         };
 
         /** {@code job} 을 참조하면 안 되는 모듈들. 오케스트레이션 의존은 한 방향이다. */
         static final String[] BELOW_JOB = {
-                "consent", "ingest", "recommend", "card", "audit", "usage", "matching", "coverletter", "profile", "assistant"
+                "consent", "ingest", "recommend", "card", "audit", "usage", "matching", "coverletter", "profile", "assistant", "notice", "mail"
         };
 
         private Modules() {

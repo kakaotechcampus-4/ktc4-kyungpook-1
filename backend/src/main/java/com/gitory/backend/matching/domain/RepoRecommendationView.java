@@ -8,7 +8,7 @@ public record RepoRecommendationView(RepoRecommendationStatus status, Instant co
                                      boolean queued, RepoRecommendationLive live) {
 
     public record Company(String companyId, String companyName, String logoUrl, Posting posting, List<String> techs,
-                          int requiredMet, int preferredMet) {
+                          int requiredMet, int preferredMet, boolean fresh) {
     }
 
     public record Posting(UUID id, String title, Instant deadline, boolean closed) {

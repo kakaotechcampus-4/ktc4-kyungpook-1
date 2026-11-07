@@ -22,6 +22,7 @@ final class ProfileRules {
     static final int MAX_INTERESTS = 3;
     private static final int TEXT_MAX_LENGTH = 50;
     private static final int SCORE_MAX_LENGTH = 20;
+    private static final int EMAIL_MAX_LENGTH = 254;
     // 국내 대학이 쓰는 학점 만점과 100점 환산이다
     private static final Set<BigDecimal> GPA_MAXES = Set.of(new BigDecimal("4.0"), new BigDecimal("4.3"),
             new BigDecimal("4.5"), new BigDecimal("100"));
@@ -104,6 +105,32 @@ final class ProfileRules {
             checked.add(category);
         }
         return List.copyOf(checked);
+
+    }
+
+    /** 안 보내면(null) 저장된 주소를 그대로 두고, 빈 글은 주소를 지운다는 뜻으로 빈 글을 돌려준다 */
+    static String email(String input) {
+
+        if (input == null) {
+            return null;
+        }
+        if (input.indexOf('\u0000') >= 0) {
+            throw new InvalidProfileInputException("메일 주소에 쓸 수 없는 글자(U+0000)가 있습니다.");
+        }
+        if (isBlank(input)) {
+            return "";
+        }
+        String stripped = input.strip();
+        if (stripped.length() > EMAIL_MAX_LENGTH) {
+            throw new InvalidProfileInputException("메일 주소는 " + EMAIL_MAX_LENGTH + "자를 넘을 수 없습니다.");
+        }
+        int at = stripped.indexOf('@');
+        boolean oneAt = at > 0 && at == stripped.lastIndexOf('@');
+        boolean hasSpace = stripped.codePoints().anyMatch(cp -> Character.isWhitespace(cp) || Character.isSpaceChar(cp));
+        if (!oneAt || hasSpace || stripped.indexOf('.', at) < 0) {
+            throw new InvalidProfileInputException("메일 주소 모양이 맞지 않습니다.");
+        }
+        return stripped;
 
     }
 

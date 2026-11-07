@@ -67,6 +67,16 @@ describe('manual startup contract #183', () => {
     expect(replayKey).toBe(firstKey); expect(metadata).not.toHaveBeenCalled();
   });
 
+  it('N2 says what is still missing, and that the card is ready once 제목 상황 행동 are filled', () => {
+    mount();
+    expect(screen.getByText('더 필요한 것: 제목, 상황, 행동')).toBeInTheDocument();
+    change('카드 제목', '제목'); change('상황', '상황 글');
+    expect(screen.getByText('더 필요한 것: 행동')).toBeInTheDocument();
+    change('행동', '행동 글');
+    expect(screen.getByText('이대로 쓸 수 있어요')).toBeInTheDocument();
+    expect(screen.queryByText(/확정/)).not.toBeInTheDocument();
+  });
+
   it('creates a fresh key for the next writing entry', async () => {
     const create = vi.spyOn(endpoints, 'createManualDraft').mockImplementation(async input => card({ title: input.title, period: input.period ?? null }));
     vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ({ cardId: id, versionNo: 1, ...fields, savedAt: '2026-10-12T00:00:01Z' }));

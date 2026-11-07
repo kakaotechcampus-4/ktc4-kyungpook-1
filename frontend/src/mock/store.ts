@@ -370,6 +370,23 @@ export function starStates(c: Any) {
   return out;
 }
 
+/**
+ * 서버의 자동 확정(Card.settle)을 따른다 — 상황·행동이 차 있고 확인 필요 칸이 없으면 과제·결과가 비어도 확정하고,
+ * 시간 초과로 일부만 만든 카드는 사용자가 읽고 확정하게 둔다. 확정 카드가 상황이나 행동을 비우면 작성 중으로 돌린다.
+ */
+export function settleCard(c: Any) {
+  const states = starStates(c);
+  const blank = states.S === 'EMPTY' || states.A === 'EMPTY';
+  if (c.status === 'DRAFT' && !blank && !c.generation?.partial && STAR.every((f) => states[f] !== 'NEEDS_REVIEW')) {
+    c.status = 'CONFIRMED';
+    c.confirmedAt = now();
+    queueAiThemes(c); // 서버가 자동 확정에서도 문항 유형을 붙이므로 확정 버튼과 같게 맞춘다
+  } else if (c.status === 'CONFIRMED' && blank) {
+    c.status = 'DRAFT';
+    c.confirmedAt = null;
+  }
+}
+
 export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
   const result = v[FIELD_KEY.R];
@@ -412,6 +429,7 @@ export function patchDraft(c: Any, fields: Any) {
     });
     c.evidence = metadata.evidence; c.lowConfidenceFields = metadata.lowConfidenceFields; c.droppedFields = metadata.droppedFields;
     v.createdAt = now(); c.updatedAt = v.createdAt; captureVersion(c);
+    settleCard(c);
   }
   return { cardId: c.id, versionNo: v.versionNo, situation: v.situation, task: v.task, action: v.action, result: v.result, savedAt: v.createdAt };
 }
@@ -486,6 +504,7 @@ function fillDraft(cardId: string, timeout: boolean, plan: DraftPlan = 'OK') {
   }
   if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; }
   c.updatedAt = v.createdAt; captureVersion(c);
+  settleCard(c);
 }
 
 export function pushVersion(c: Any, source: string, fields: Any) {
@@ -540,11 +559,8 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   c.interviewTurns = db.interview[c.id].filter((t) => t.answer).length;
   if (c.generation?.partial) c.generation = null;
   captureVersion(c);
-  // 실서버처럼 답으로 네 칸이 확인 필요 없이 모두 차면 확정한다(확정본은 남기지 않는다)
-  if (Object.values(starStates(c)).every((state) => state === 'FILLED')) {
-    c.status = 'CONFIRMED';
-    c.confirmedAt = now();
-  }
+  // 실서버처럼 답으로 상황·행동이 차고 확인 필요 칸이 없으면 확정한다(확정본은 남기지 않는다)
+  settleCard(c);
   return c;
 }
 

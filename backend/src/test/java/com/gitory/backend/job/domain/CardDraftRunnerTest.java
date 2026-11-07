@@ -796,12 +796,16 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("AI 초안의 네 칸이 확인 필요 없이 모두 차면 사용자가 확정을 누르지 않아도 카드를 확정한다")
-    void completeDraftConfirmsCard() {
+    @DisplayName("AI 초안의 상황·행동이 확인 필요 없이 차 있으면 과제·결과가 비어 있어도 사용자가 확정을 누르지 않아도 카드를 확정한다")
+    void draftWithSituationAndActionConfirmsCard() {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
+                StarSlot.S, filled(SHA_A, "상황", StarConfidence.HIGH),
+                StarSlot.T, empty(StarEmptyReason.NO_EVIDENCE),
+                StarSlot.A, filled(SHA_A, "행동", StarConfidence.HIGH),
+                StarSlot.R, empty(StarEmptyReason.NO_EVIDENCE))));
 
         runNext();
 
@@ -811,7 +815,7 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("시간이 모자라 비운 칸이 있으면 카드를 일부만 만든 카드로 표시하고 Job 은 시간 초과 부분 완료다")
+    @DisplayName("시간이 모자라 비운 칸이 있으면 카드를 일부만 만든 카드로 표시해 확정하지 않고 Job 은 시간 초과 부분 완료다")
     void timeoutMarksCardPartial() {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
@@ -826,6 +830,7 @@ class CardDraftRunnerTest {
 
         assertThat(generationPartialOf(cardId)).isTrue();
         assertThat(notesOf(cardId)).containsExactly(new NoteRow("R", "TIMEOUT", null));
+        assertThat(statusOf(cardId)).isEqualTo("DRAFT");
         assertThat(job().isPartial()).isTrue();
         assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.DRAFT_TIMEOUT);
 

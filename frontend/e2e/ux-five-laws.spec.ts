@@ -23,7 +23,7 @@ for (const width of [320, 390, 1440]) {
     await page.goto('/cards/new?write=1');
     await expect(page.getByRole('heading', { name: '직접 작성', exact: true })).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: '작성 시작' })).toHaveCount(1);
-    await expect(page.getByRole('button', { name: '확정', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '다 썼어요', exact: true })).toHaveCount(0);
     await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('UX 확인 카드');
     await page.getByRole('textbox', { name: '상황', exact: true }).fill('작성한 상황');
     await page.getByRole('button', { name: '작성 시작' }).click();

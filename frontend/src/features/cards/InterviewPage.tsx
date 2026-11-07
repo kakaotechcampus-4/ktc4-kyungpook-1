@@ -46,6 +46,8 @@ export function InterviewPage() {
   const reduced = useReducedMotion();
   // AI 가 더 물을 것이 없다고 끝낸 상태. 사용자가 칸을 골라 다시 물으면 풀린다
   const [aiDone, setAiDone] = useState(false);
+  // 이 화면에서 한 답이 카드를 작성 중에서 확정으로 바꿨다. 처음부터 확정이던 카드와 달리 확정 안내를 보여 주고 더 묻지 않는다
+  const [settledHere, setSettledHere] = useState(false);
   useDocumentTitle(q.data ? `답변하기 - ${q.data.title}` : '답변하기');
 
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
@@ -63,17 +65,17 @@ export function InterviewPage() {
   // 넘긴 질문도 질문 상한에 센다(서버 규칙)
   const capReached = allTurns.length >= maxTurns;
 
-  // 칸을 정해 들어오면 그 칸을, 처음인데 칸이 없으면 AI 가 고른 칸을 묻는다.
-  // 확정 카드는 더 물을 수 없다 — 카드를 받아 초안인 걸 확인하기 전에는 묻지 않는다(확정 카드에 들어오기만 해도 POST 가 나가던 문제)
-  const draftReady = q.data?.status === 'DRAFT';
+  // 칸을 정해 들어오면 그 칸을, 처음인데 칸이 없으면 AI 가 고른 칸을 묻는다. 확정 카드도 같다
+  // 카드를 받기 전에는 묻지 않는다 — 카드를 못 읽었는데 질문부터 나가면 어떤 카드의 질문인지 화면이 모른다
+  const cardReady = !!q.data;
   useEffect(() => {
-    if (draftReady && turns.isSuccess && !open && !autoAsked.current && !capReached && (field || allTurns.length === 0)) {
+    if (cardReady && turns.isSuccess && !open && !autoAsked.current && !capReached && (field || allTurns.length === 0)) {
       autoAsked.current = true;
       ask.mutate(field ?? undefined, {
         onSuccess: (turn) => turn ? track('interview_asked', { cardId, field: turn.field }) : setAiDone(true),
       });
     }
-  }, [draftReady, turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
+  }, [cardReady, turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
 
   // 줄이 늘거나 기다림이 바뀌면 대화 영역만 맨 아래로 굴린다 — 좁은 화면에서는 이 영역이 스크롤되지 않아 페이지도 그대로다
   useEffect(() => {
@@ -94,22 +96,24 @@ export function InterviewPage() {
     if (!open || !text.trim() || answer.isPending) return false;
     try {
     const source: EvidenceType = picked === text ? 'USER_SELECTED' : 'USER_STATED';
+    const wasDraft = q.data?.status === 'DRAFT';
     const saved = await answer.mutateAsync({ turnNo: open.turnNo, text, source });
     track('interview_answered', { cardId, field: open.field, source, turnNo: open.turnNo });
     toast(`${starFieldShort[open.field]} 답변을 저장했어요`, { tone: 'success' });
     setText(''); setPicked(null);
-    // 답으로 네 칸이 다 차면 서버가 바로 확정하고(#624) 확정 카드는 더 물을 수 없으므로 다음 질문을 요청하지 않는다
-    if (saved.status !== 'CONFIRMED') askNext(allTurns.length);
+    // 답으로 상황·행동이 차서 서버가 확정했으면 확정 안내를 보여 주고, 남은 칸은 카드 화면의 안내에서 이어 받는다
+    if (wasDraft && saved.status === 'CONFIRMED') setSettledHere(true);
+    else askNext(allTurns.length);
     return true;
     } catch { return false; }
   };
   const skipOpen = () => {
     if (!open || skip.isPending || answer.isPending) return;
     skip.mutate(open.turnNo, {
-      onSuccess: (saved) => {
+      onSuccess: () => {
         toast(`${starFieldShort[open.field]} 질문을 넘겼어요`);
         setText(''); setPicked(null);
-        if (saved.status !== 'CONFIRMED') askNext(allTurns.length);
+        askNext(allTurns.length);
       },
     });
   };
@@ -128,7 +132,7 @@ export function InterviewPage() {
   const judged = open ? askJudgement(open, allTurns) : null;
   const endReason = cleanAiText(card.interviewEndReason);
   const ended = aiDone || endReason !== null;
-  const showEnded = !open && !ask.isPending && (confirmed || (!capReached && ended));
+  const showEnded = !open && !ask.isPending && (settledHere || (!capReached && ended));
 
   return (
     <main className="main main--tight">
@@ -196,8 +200,8 @@ export function InterviewPage() {
               {showEnded && (
                 <div className="interview-complete">
                   <div className="interview-complete__summary">
-                    <strong>{confirmed ? '카드를 확정했어요' : '추가 질문을 마쳤어요'}</strong>
-                    <p>{confirmed ? '네 칸이 다 차서 바로 쓸 수 있어요.' : '작성된 카드를 검토해 주세요. 필요한 내용은 질문을 더 받거나 직접 수정할 수 있어요.'}</p>
+                    <strong>{settledHere ? '카드를 확정했어요' : '추가 질문을 마쳤어요'}</strong>
+                    <p>{settledHere ? '상황과 행동이 있어서 바로 쓸 수 있어요.' : confirmed ? '카드는 확정된 그대로 쓸 수 있어요.' : '작성된 카드를 검토해 주세요. 필요한 내용은 질문을 더 받거나 직접 수정할 수 있어요.'}</p>
                   </div>
                   {endReason && <details className="interview-complete__reason" open><summary>질문을 마친 이유</summary><AiJudgement>{endReason}</AiJudgement></details>}
                 </div>
@@ -249,7 +253,7 @@ export function InterviewPage() {
           )}
           {!open && !ask.isPending && (
             <>
-              {confirmed ? null : capReached ? (
+              {settledHere ? null : capReached ? (
                 <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채울 수 있어요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
@@ -261,13 +265,16 @@ export function InterviewPage() {
                 </div>
               )}
               <div className="row" style={{ gap: 8 }}>
-                {confirmed
+                {settledHere
                   ? <Button onClick={() => nav(cardFolderPath(card), { state: { confirmed: cardId } })}>폴더로 돌아가기</Button>
+                  : confirmed
+                  ? <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>
                   : ended || capReached
                   ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 검토하기</Button>
                   : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
-                {confirmed
+                {settledHere
                   ? <Button variant="outline" onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
+                  : confirmed ? null
                   : <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정하기</Button>}
               </div>
             </>

@@ -68,7 +68,7 @@ public class InterviewAskService {
     private final CardThemeSuggester themeSuggester;
 
     /**
-     * 초안을 만드는 중이거나 확정된 카드는 409, 답을 기다리는 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409,
+     * 초안을 만드는 중인 카드는 409, 답을 기다리는 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409,
      * 칸이 잘못되면 400, 지정한 칸이 닫혔으면 409 순서로 확인한다
      * 칸을 지정하지 않았는데 고를 칸이 없거나 AI 가 끝을 고르면 질문을 만들지 않고 null 을 돌려주며, AI 가 끝낸 이유를 남기고 카드 상태를 다시 정한다
      * 새 질문은 AI 를 다녀온 뒤 같은 확인을 한 번 더 하고 저장한다
@@ -98,7 +98,7 @@ public class InterviewAskService {
 
     }
 
-    // 답마다 확정하면 다음 질문이 확정 카드라 막히므로, 되묻기가 끝났을 때 한 번 그 글로 카드 상태를 정한다
+    // 되묻기가 끝났을 때 한 번 그 글로 카드 상태를 정한다
     private void settleAtEnd(UUID publicId, Long userId) {
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
@@ -241,7 +241,6 @@ public class InterviewAskService {
     private Optional<InterviewTurn> openTurnOrRefuse(Card card, List<InterviewTurn> asked) {
 
         generation.requireNotGenerating(card);
-        card.requireDraft();
 
         Optional<InterviewTurn> open = openTurnOf(asked);
         if (open.isEmpty() && asked.size() >= limits.maxTurns()) {

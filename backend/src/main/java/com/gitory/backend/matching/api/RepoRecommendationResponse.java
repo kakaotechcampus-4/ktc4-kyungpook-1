@@ -19,7 +19,8 @@ public record RepoRecommendationResponse(
                           @Schema(description = "https 로고 주소. 없으면 null") String logoUrl, Posting posting,
                           @Schema(description = "이 레포 카드가 채운 조건의 기술 이름(카드 techs 와 같은 값), 많아야 3개") List<String> techs,
                           @Schema(description = "이 레포 카드가 채웠다고 AI 가 판단한 필수 조건 수") int requiredMet,
-                          @Schema(description = "이 레포 카드가 채웠다고 AI 가 판단한 우대 조건 수") int preferredMet) {
+                          @Schema(description = "이 레포 카드가 채웠다고 AI 가 판단한 우대 조건 수") int preferredMet,
+                          @Schema(description = "바로 앞 계산 결과에 없던 기업이면 true. 앞 계산 결과가 없으면 모두 false") boolean fresh) {
     }
 
     public record Posting(@Schema(description = "대표 공고 id, 매칭 상세 주소에 쓴다") String id, String title,
@@ -60,7 +61,7 @@ public record RepoRecommendationResponse(
                         .map(company -> new Company(company.companyId(), company.companyName(), company.logoUrl(),
                                 new Posting(company.posting().id().toString(), company.posting().title(),
                                         company.posting().deadline(), company.posting().closed()),
-                                company.techs(), company.requiredMet(), company.preferredMet()))
+                                company.techs(), company.requiredMet(), company.preferredMet(), company.fresh()))
                         .toList(),
                 view.queued(), view.live() == null ? null : liveOf(view.live()));
 

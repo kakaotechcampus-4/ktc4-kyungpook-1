@@ -6,9 +6,12 @@ import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -30,6 +33,20 @@ public class CommitSummaryService {
     public List<DraftCommit> largestFirst(Collection<Long> commitIds, int limit) {
 
         return commits.findLargestFirst(commitIds, Limit.of(limit));
+
+    }
+
+    /**
+     * 주어진 커밋 가운데 after 뒤에 쓴 커밋이거나 그 수집 이력에서 처음 저장된 커밋의 id 를 돌려준다
+     * 커밋은 저장소마다 한 벌이고 처음 저장한 수집 이력의 id 만 가지므로, 이전 수집 때 저장한 커밋은 쓴 시각이 after 뒤가 아니면 빠진다
+     */
+    public Set<Long> newIds(Collection<Long> commitIds, Instant after, Long collectionRunId) {
+
+        if (commitIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return new HashSet<>(commits.findNewIds(commitIds, after, collectionRunId));
 
     }
 

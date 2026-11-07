@@ -23,6 +23,8 @@ public interface AnalysisJobRepository extends JpaRepository<AnalysisJob, Long> 
     // 한 레포에서 진행 중인 분석 Job 은 오직 하나뿐이라(uq_job_active) 결과는 최대 1개 반환
     Optional<AnalysisJob> findByUserRepositoryIdAndTypeAndStateIn(Long userRepositoryId, JobType type, List<JobState> states);
 
+    boolean existsByUserRepositoryIdAndTypeAndStateIn(Long userRepositoryId, JobType type, List<JobState> states);
+
     Optional<AnalysisJob> findByPublicIdAndUserId(UUID publicId, Long userId);
 
     boolean existsByPublicIdAndStateIn(UUID publicId, List<JobState> states);

@@ -106,6 +106,22 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 |---|---|---|
 | `PATCH /candidates/{id}` | `{ status?: 'NEW'|'EXCLUDED', excludedShas?: string[] }` | `Candidate` — 제외/복원 · 군집 커밋 빼기(E-4) |
 
+### 새 활동 알림 (서버가 정리한 레포를 스스로 다시 읽기)
+
+홈에 들어오면 화면이 `GET /repos` 로 마지막 push 시각을 새로 받아 둔 뒤 `POST /repo-updates/check` 를 부른다. 서버는 **정리한 적이 있고 마지막 정리 뒤에 push 가 있는** 레포의 분석 Job 을 사용자 대신 접수하고, 분석이 끝나면 **새 일이 든 후보만** 카드 초안으로 만든다. 초안까지 끝나면 `GET /repo-updates` 에 알림으로 나타난다. 사용자가 알림을 누르면 `seen` 으로 닫고 `recommendations/refresh` 로 레포 추천을 다시 고르게 한다.
+
+| | 요청 | 응답 `data` |
+|---|---|---|
+| `POST /repo-updates/check` | 본문 없음 | `{ queued }` — 분석 Job 을 접수한 레포 수(0~3). `check` 는 GitHub 을 부르지 않고 저장된 마지막 push 시각만 본다. push 가 최근인 레포부터 3개까지이고, 분석 Job 이 진행 중이거나 마지막 `check` 로 접수한 지 6시간이 안 된 레포는 건너뛴다. 쓸 수 있는 GitHub 연결이 없으면 오류가 아니라 `{ queued: 0 }` 이다. 접수한 Job 은 `GET /jobs?active=true` 에 보통 분석 Job 으로 나타난다 |
+| `GET /repo-updates` | | `RepoUpdate[]` — `{ repoId, repoName, cardCount, finishedAt }`. 보지 않은 알림을 **레포마다 하나로** 묶어 `finishedAt`(가장 늦게 끝난 시각)이 최근인 순서로 준다. `repoId` 는 `GET /repos` 의 `id` 와 같은 값, `repoName` 은 `owner/name` 모양(활성 Job 목록의 `repoName` 과 같다), `cardCount` 는 그 레포에서 보지 않은 알림의 카드 수 합이다. 없으면 빈 배열 |
+| `POST /repo-updates/{repoId}/seen` | 본문 없음 | `{ ok: true }` — 그 레포의 보지 않은 알림을 모두 본 것으로 닫아 목록에 다시 나오지 않는다. 이미 닫혔거나 알림이 없어도 오류가 아니다. 남의 레포·없는 레포·UUID 가 아닌 id 는 404 `NOT_FOUND` |
+| `POST /repos/{repoId}/recommendations/refresh` | 본문 없음 | `GET /repos/{repoId}/recommendations` 와 같은 모양이다. 추천을 다음 배경 작업 차례에 바로 다시 계산하도록 예약하므로 `queued: true`, `status: COMPUTING` 이고 지난 기업은 그대로 보인다. 남의 레포·없는 레포·UUID 가 아닌 id 는 조회와 같은 404 `NOT_FOUND` |
+
+- 서버가 스스로 다시 읽어 만든 카드 초안 Job 이 끝나도 레포 추천은 **바로 다시 계산하지 않는다.** 알림을 누른 뒤 `refresh` 를 불러야 다시 고른다.
+- `GET /repos/{repoId}/recommendations` 의 `companies[]` 에 `fresh: boolean` 이 더해졌다. 계산이 끝나 결과를 바꿀 때 바뀌기 전 기업을 남겨 두고, 그 결과에 없던 기업이면 `true` 다. 바뀌기 전 결과가 없으면(처음 계산) 모두 `false` 이고, 그다음 계산이 또 결과를 바꾸면 그 이전 결과가 기준이 된다.
+- 알림이 되는 것은 카드 초안 Job 이 `SUCCEEDED` 로 끝난 경우뿐이다. 새 일이 든 후보가 없거나, 분석이 실패·취소·일부만 읽음으로 끝났거나, 카드 만들기가 거절됐거나(호출 제한 등) 초안 Job 이 실패·취소되면 알림 없이 닫는다.
+- 만든 카드는 일반 카드 초안과 똑같이 `GET /cards` 에 `DRAFT` 로 나타나고 확정은 사용자가 한다.
+
 ### Job (폴링 · 항상 200)
 
 `GET /jobs/{id}` → `Job`

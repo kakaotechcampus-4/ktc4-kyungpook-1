@@ -572,6 +572,23 @@
         },
         "type" : "object"
       },
+      "ApiResponseListRepoUpdateResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "description" : "성공 응답 데이터. 오류 응답에서는 null",
+            "items" : {
+              "$ref" : "#/components/schemas/RepoUpdateResponse"
+            },
+            "type" : "array"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListVersionListItemResponse" : {
         "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
         "properties" : {
@@ -748,6 +765,34 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/RepoSummaryResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseRepoUpdateCheckResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RepoUpdateCheckResponse",
+            "description" : "성공 응답 데이터. 오류 응답에서는 null"
+          },
+          "error" : {
+            "$ref" : "#/components/schemas/ApiError",
+            "description" : "오류 정보. 성공 응답에서는 null"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseRepoUpdateSeenResponse" : {
+        "description" : "공통 응답. 성공이면 data에 결과·error=null, HTTP 오류이면 data=null·error에 오류를 담습니다.",
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RepoUpdateSeenResponse",
             "description" : "성공 응답 데이터. 오류 응답에서는 null"
           },
           "error" : {
@@ -1774,6 +1819,10 @@
           },
           "companyName" : {
             "type" : "string"
+          },
+          "fresh" : {
+            "description" : "바로 앞 계산 결과에 없던 기업이면 true. 앞 계산 결과가 없으면 모두 false",
+            "type" : "boolean"
           },
           "logoUrl" : {
             "description" : "https 로고 주소. 없으면 null",
@@ -4237,6 +4286,50 @@
             "description" : "내가 리뷰한 PR 수",
             "format" : "int32",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoUpdateCheckResponse" : {
+        "properties" : {
+          "queued" : {
+            "description" : "분석 Job 을 접수한 레포 수. 없으면 0",
+            "example" : 1,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoUpdateResponse" : {
+        "properties" : {
+          "cardCount" : {
+            "description" : "새로 만든 카드 수. 보지 않은 알림이 여럿이면 합",
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "finishedAt" : {
+            "description" : "가장 늦게 끝난 시각",
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "repoId" : {
+            "description" : "레포 목록 응답의 id 와 같은 값",
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "repoName" : {
+            "description" : "owner/name 모양",
+            "example" : "grow22/gitory",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoUpdateSeenResponse" : {
+        "properties" : {
+          "ok" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -9728,6 +9821,226 @@
         "tags" : [ "Matches" ]
       }
     },
+    "/api/repo-updates" : {
+      "get" : {
+        "description" : "서버가 스스로 다시 읽어 카드 초안까지 만든 레포 가운데 사용자가 아직 보지 않은 것을 레포마다 하나로 묶어 최근에 끝난 순서로 돌려줍니다.\ncardCount 는 그 레포에서 보지 않은 알림의 카드 수 합이고, finishedAt 은 그중 가장 늦게 끝난 시각입니다.\n",
+        "operationId" : "updates",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListRepoUpdateResponse"
+                }
+              }
+            },
+            "description" : "알림 배열. 없으면 빈 배열"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Forbidden"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "새 활동 알림 목록",
+        "tags" : [ "Repositories" ]
+      }
+    },
+    "/api/repo-updates/check" : {
+      "post" : {
+        "description" : "정리한 적이 있는 레포 가운데 마지막 정리 뒤에 push 가 있는 레포의 분석 Job 을 사용자 대신 접수합니다.\nGitHub 을 새로 부르지 않고 저장된 마지막 push 시각만 보므로, 화면은 레포 목록(GET /api/repos)을 먼저 읽어 시각을 새로 받아 둡니다.\n한 번에 push 가 최근인 레포부터 3개까지 접수하고, 분석 Job 이 진행 중이거나 마지막 확인으로 접수한 지 6시간이 안 된 레포는 건너뜁니다.\n쓸 수 있는 GitHub 연결이 없으면 오류가 아니라 queued 0 으로 답합니다.\n분석이 끝나면 새 일이 든 후보로 카드 초안까지 서버가 만들고, 초안이 끝나면 GET /api/repo-updates 에 나타납니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "check",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoUpdateCheckResponse"
+                }
+              }
+            },
+            "description" : "접수한 레포 수"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Not Found"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "새 활동 확인",
+        "tags" : [ "Repositories" ]
+      }
+    },
+    "/api/repo-updates/{repoId}/seen" : {
+      "post" : {
+        "description" : "그 레포의 보지 않은 알림을 모두 본 것으로 닫아 목록에 다시 나오지 않게 합니다. 이미 닫혔거나 알림이 없어도 오류가 아닙니다.\n변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.\n",
+        "operationId" : "seen",
+        "parameters" : [ {
+          "description" : "레포 목록 응답의 id",
+          "in" : "path",
+          "name" : "repoId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoUpdateSeenResponse"
+                }
+              }
+            },
+            "description" : "닫았음"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "UUID 가 아니거나 없는 레포이거나 남의 레포"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          }
+        },
+        "summary" : "새 활동 알림 확인",
+        "tags" : [ "Repositories" ]
+      }
+    },
     "/api/repos" : {
       "get" : {
         "description" : "부를 때마다 GitHub 에서 접근할 수 있는 저장소와 최근에 커밋한 남의 공개 저장소(조직 소유 포함)를 다시 받아 반영한 뒤, 이번에 받은 저장소만 돌려줍니다. 커밋한 저장소를 찾지 못하면 접근할 수 있는 저장소만 돌려줍니다. 쓸 수 있는 연결이 없거나 GitHub 이 토큰·한도로 거절하면 저장된 저장소를 돌려줍니다. 어느 경우든 커밋이 없다고 센 빈 저장소와 내 프로필 README 저장소(아이디/아이디)는 빠집니다.",
@@ -10619,7 +10932,7 @@
     },
     "/api/repos/{repoId}/recommendations" : {
       "get" : {
-        "description" : "그 레포의 카드(작성 중과 확정)로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 계산한 적이 없는데 카드가 있으면 조회할 때 계산을 예약합니다(여는 요청 안에서 계산하지는 않습니다). 카드 초안이 끝나거나 확정 카드가 바뀌거나 카드를 지우고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 이며 queued 는 계산이 시작되기 전까지 true 입니다. 계산을 시작해 후보를 정하는 동안은 live 가 null 이고, 이어서 후보 회사를 하나씩 확인하는 과정이 live 에 담기며, 계산이 끝난 뒤에도 서버가 다시 뜨기 전까지 남습니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다.",
+        "description" : "그 레포의 카드(작성 중과 확정)로 계산해 저장해 둔 추천 기업을 돌려주며, 열 때 계산하지 않습니다. 계산한 적이 없는데 카드가 있으면 조회할 때 계산을 예약합니다(여는 요청 안에서 계산하지는 않습니다). 카드 초안이 끝나거나(서버가 스스로 다시 읽어 만든 초안은 제외) 확정 카드가 바뀌거나 카드를 지우고 1분이 지나면 서버가 다시 계산하고, 그동안 status 는 COMPUTING 이며 queued 는 계산이 시작되기 전까지 true 입니다. 계산을 시작해 후보를 정하는 동안은 live 가 null 이고, 이어서 후보 회사를 하나씩 확인하는 과정이 live 에 담기며, 계산이 끝난 뒤에도 서버가 다시 뜨기 전까지 남습니다. 기업마다 이 레포 카드가 채웠다고 AI 가 판단한 조건 수와 그 기술 이름을 담습니다. fresh 는 바로 앞 계산 결과에 없던 기업이면 true 입니다.",
         "operationId" : "recommendations",
         "parameters" : [ {
           "description" : "레포 목록 응답의 id",
@@ -10714,6 +11027,106 @@
           }
         },
         "summary" : "레포 추천 기업 조회",
+        "tags" : [ "Matches" ]
+      }
+    },
+    "/api/repos/{repoId}/recommendations/refresh" : {
+      "post" : {
+        "description" : "그 레포의 추천 기업을 다음 배경 작업 차례에 바로 다시 계산하도록 예약하고, 조회와 같은 응답을 돌려줍니다. 이때 queued 는 true 이고 계산이 끝나면 조회에서 바꾼 결과를 읽습니다. 계산이 끝나 결과를 바꿀 때 바뀌기 전 기업을 남겨 두어, 그 뒤 조회에서 바뀌기 전 결과에 없던 기업은 fresh 가 true 입니다. 변경 요청이므로 세션과 CSRF 헤더가 모두 필요합니다.",
+        "operationId" : "refresh",
+        "parameters" : [ {
+          "description" : "레포 목록 응답의 id",
+          "in" : "path",
+          "name" : "repoId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRepoRecommendationResponse"
+                }
+              }
+            },
+            "description" : "조회와 같은 모양의 추천 상태. queued 는 true"
+          },
+          "400" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Bad Request"
+          },
+          "401" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "로그인 세션 없음"
+          },
+          "403" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "CSRF 토큰 없음 또는 불일치"
+          },
+          "404" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponse"
+                }
+              }
+            },
+            "description" : "UUID 가 아니거나 없는 레포이거나 남의 레포"
+          },
+          "409" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Conflict"
+          },
+          "500" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Internal Server Error"
+          },
+          "503" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            },
+            "description" : "Service Unavailable"
+          }
+        },
+        "summary" : "레포 추천 기업 다시 고르기",
         "tags" : [ "Matches" ]
       }
     }

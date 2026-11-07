@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import { useCards, useMe, useRepos } from '@/api/queries';
 import { useCoverLetters } from '@/api/coverLetters';
+import { matchSupported, useStartOverallRecommendation } from '@/api/matching';
+import { knownNotices, useNotices } from '@/api/notifications';
 import { useCheckRepoUpdates, useMarkRepoUpdateSeen, useRepoUpdates } from '@/api/repoUpdates';
-import type { CardSummary, StarField } from '@/api/schemas';
+import type { CardSummary } from '@/api/schemas';
 import { KindIcon } from '@/components/ui';
 import { CardStatusMark } from '@/components/cards/CardStatusMark';
 import { cardKindLabel } from '@/lib/labels';
@@ -15,21 +18,32 @@ import { errorView } from '@/api/errorView';
 import { CardTags } from '@/components/cards/CardTags';
 import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
-import { useActiveJobFeed } from '@/lib/activeJobFeed';
-import { orderedActiveJobs } from '@/lib/activeJobOrder';
-import { activeJobLink } from '@/lib/jobLinks';
-import { agoLabel, continueItems, deadlineItems, letterTitle, recentItems } from '@/lib/homeModel';
-import { JobCalendar, type CalendarPosting } from './JobCalendar';
-import { matchSupported } from '@/api/matching';
+import { ApplyPanel } from './ApplyPanel';
+import { orderApplyList, setupStep, todayLabel } from './homeApply';
+import { HomeHero, RepoUpdateNotice } from './HomeSections';
+import { SetupSteps } from './SetupSteps';
 import { useHomePicks } from './useHomePicks';
-import { ContinueList, DeadlineList, HomeHero, RecentCards, RepoUpdateNotice, StageTiles, type StageTile } from './HomeSections';
 import './home.css';
 
 const failureText = (error: unknown) => { const view = errorView(error, 'read'); return `${view.title} ${view.message}`; };
 
+function HomeSkeleton() {
+  const line = (width: string, height: number, margin = 0, radius?: string) => <div className="home3-sk home3-pulse" style={{ width, height, marginTop: margin, borderRadius: radius }} />;
+  return (
+    <div className="home3-skeleton" aria-busy="true" aria-label="지원할 곳을 불러오는 중이에요">
+      <div className="home3-skeleton-tabs">{line('110px', 14)}{line('90px', 14)}{line('120px', 14)}</div>
+      <div className="home3-lead">
+        {line('160px', 12)}{line('62%', 26, 12)}{line('46%', 14, 26)}
+        {[0, 1, 2].map((row) => <div key={row} className="home3-sk-row">{line('18px', 18, 0, '50%')}{line('44%', 14)}</div>)}
+        {line('140px', 48, 24, '12px')}
+      </div>
+    </div>
+  );
+}
+
 /**
- * 홈 — 맨 위에 할 일을 적는 자리, 그 아래 네 단계(레포, 경험 카드, 공고, 자소서)의 지금 상태와 이어서 할 일.
- * 화면이 답하는 것은 하나다: 지금 어디까지 했고, 다음에 무엇을 누르면 되는가.
+ * 홈 — 맨 위에 할 일을 맡기는 한 줄, 그 아래 내 카드와 맞는 공고 중 지금 지원할 곳을 한 장씩.
+ * 화면이 답하는 것은 하나다: 지금 어느 공고에 지원하면 되는가. 맞는 공고가 없으면 준비 단계를 보인다.
  */
 export function HomePage() {
   useDocumentTitle('홈');
@@ -37,14 +51,15 @@ export function HomePage() {
   const cards = useCards();
   const repos = useRepos();
   const letters = useCoverLetters();
-  const active = useActiveJobFeed();
-  const jobs = useMemo(() => orderedActiveJobs(active.data?.jobs ?? []), [active.data]);
+  const notices = useNotices();
   const cardList = useMemo(() => cards.data ?? [], [cards.data]);
   const letterList = useMemo(() => letters.data ?? [], [letters.data]);
-  const { picks, overall, computing } = useHomePicks(cardList);
+  const { picks, overall } = useHomePicks(cardList);
   const repoUpdates = useRepoUpdates();
   const { mutate: checkRepoUpdates } = useCheckRepoUpdates();
   const { mutate: markSeen } = useMarkRepoUpdateSeen();
+  const matching = matchSupported();
+  const startOverall = useStartOverallRecommendation();
 
   // 최신 레포 목록을 읽은 뒤(저장 목록 자리표시가 아니라) 한 번만 새 활동을 확인한다
   const checked = useRef(false);
@@ -54,83 +69,68 @@ export function HomePage() {
     checkRepoUpdates();
   }, [repos.isSuccess, repos.isPlaceholderData, checkRepoUpdates]);
 
-  // 달력에는 공고 목록 전체(운영 수백 개)가 아니라 '나와 맞는 기업' 으로 뽑힌 공고의 마감일만 자동으로 띄운다
-  // 조회가 돌 때마다 새 배열이 와도 내용이 같으면 달력과 마감 목록을 다시 그리지 않게 글자열로 견준다
+  // 공고 매칭 화면처럼, 확정 카드가 있는데 한 번도 맞춰 보지 않았거나 카드가 바뀌어 결과가 낡았으면 홈에서도 바로 맞춰 보기를 시작한다
+  const confirmedCount = cardList.filter((card) => card.status === 'CONFIRMED').length;
+  const needsRun = overall.data?.status === 'NONE' || (overall.data?.status === 'READY' && overall.data.stale);
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!matching || autoStarted.current || !needsRun || confirmedCount === 0 || startOverall.isPending) return;
+    autoStarted.current = true;
+    startOverall.mutate();
+  }, [matching, needsRun, confirmedCount, startOverall.isPending, startOverall.mutate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 조회가 돌 때마다 새 배열이 와도 내용이 같으면 목록을 다시 그리지 않게 글자열로 견준다
   const pickKey = JSON.stringify(picks);
   const stablePicks = useMemo(() => picks, [pickKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const recommendedPostings = useMemo<CalendarPosting[]>(() => stablePicks.map((pick) => ({ id: pick.postingId, company: pick.company, role: pick.title, expiresAt: pick.deadline, url: null })), [stablePicks]);
+  const newIds = useMemo(() => new Set(knownNotices(notices.data)
+    .filter((notice) => notice.kind === 'POSTINGS_MATCHED' && notice.readAt === null)
+    .flatMap((notice) => notice.postings.map((posting) => posting.postingId))), [notices.data]);
+  const items = useMemo(() => orderApplyList(stablePicks, newIds, letterList), [stablePicks, newIds, letterList]);
+  const newCount = items.filter((item) => item.isNew).length;
 
-  const todo = useMemo(() => continueItems({ jobs, cards: cardList, letters: letterList }), [jobs, cardList, letterList]);
-  const recent = useMemo(() => recentItems({ cards: cardList, letters: letterList, overall: overall.data }), [cardList, letterList, overall.data]);
-  const due = useMemo(() => deadlineItems({ picks: stablePicks, letters: letterList }), [stablePicks, letterList]);
-  // 카드 목록이나 도는 작업을 아직 모르면(불러오는 중, 실패) 처음 온 사람으로 단정하지 않는다 — 첫 방문 안내가 잠깐 떴다 사라지지 않게
-  const firstTime = cards.isSuccess && cards.data.length === 0 && active.data !== undefined && jobs.length === 0;
+  // 목록을 아직 모르는 동안은 빈 틀을 보인다 — 실패하면 틀을 치우고 실패 안내가 대신한다
+  const loading = cards.isPending || me.isPending || letters.isPending || notices.isPending || (matching && overall.isPending);
+  const unknown = cards.isError || me.isError || (matching && overall.isError);
   const sameFailure = cards.isError && repos.isError && failureText(cards.error) === failureText(repos.error);
-
-  const tiles = useMemo<StageTile[]>(() => {
-    const analyzing = jobs.find((job) => job.type === 'ANALYZE');
-    const analyzed = me.data?.stats.analyzedRepos;
-    const drafts = cardList.filter((card) => card.status === 'DRAFT');
-    const confirmed = cardList.length - drafts.length;
-    const writing = letterList.find((letter) => letter.stage !== 'DRAFTED');
-    const latest = [...letterList].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-    const repoTile: StageTile = {
-      key: 'repo', name: '레포', unit: '개', count: analyzed,
-      to: analyzing ? activeJobLink(analyzing) : '/repos', action: analyzing ? '진행 보기' : analyzed ? '레포 보기' : '레포 고르기',
-      flag: analyzing ? { tone: 'now', text: `${analyzing.repoName ?? '레포'} 읽는 중` } : undefined,
-      note: analyzing ? undefined : analyzed ? '정리한 레포예요' : '레포를 고르면 경험을 찾아 드려요',
-    };
-    const cardTile: StageTile = {
-      key: 'card', name: '경험 카드', unit: '장', count: cards.isSuccess ? cardList.length : undefined,
-      to: drafts.length ? `/cards/${encodeURIComponent(drafts[0].id)}` : '/cards', action: drafts.length ? '확인하기' : '카드 보기',
-      flag: drafts.length ? { tone: 'need', text: `확인할 카드 ${drafts.length}장` } : undefined,
-      note: !cards.isSuccess ? undefined : cardList.length === 0 ? '레포를 정리하면 카드가 생겨요' : drafts.length ? `${confirmed}장은 바로 쓸 수 있어요` : '모두 바로 쓸 수 있어요',
-    };
-    const matchTile: StageTile = {
-      key: 'match', name: '공고', unit: '곳', count: overall.isPending ? undefined : stablePicks.length,
-      to: '/match', action: '맞는 공고 보기', initials: stablePicks.slice(0, 3).map((pick) => pick.company.slice(0, 1)),
-      flag: computing ? { tone: 'now', text: '맞춰 보는 중' } : undefined,
-      note: computing ? undefined
-        : stablePicks.length ? ['내 카드와 맞는 기업이에요', overall.data?.computedAt ? `${agoLabel(overall.data.computedAt)} 맞췄어요` : ''].filter(Boolean).join(' · ')
-        : confirmed ? '내 카드로 맞는 공고를 찾아 드려요' : '카드가 확정되면 맞는 공고를 골라 드려요',
-    };
-    const letterTile: StageTile = {
-      key: 'letter', name: '자소서', unit: '편', count: letters.isSuccess ? letterList.length : undefined,
-      to: writing ? `/cover-letters/${encodeURIComponent(writing.id)}` : latest ? '/cover-letters' : '/cover-letters/new',
-      action: writing ? '이어 쓰기' : latest ? '자소서 보기' : '자소서 쓰기',
-      flag: writing ? { tone: 'need', text: '쓰던 자소서가 있어요' } : undefined,
-      note: writing ? letterTitle(writing) : latest ? letterTitle(latest) : '공고를 고르면 초안을 써 드려요',
-    };
-    return matchSupported() ? [repoTile, cardTile, matchTile, letterTile] : [repoTile, cardTile, letterTile];
-  }, [jobs, cardList, letterList, stablePicks, computing, overall.data, overall.isPending, me.data, cards.isSuccess, letters.isSuccess]);
+  const setup = me.data ? setupStep({ analyzedRepos: me.data.stats.analyzedRepos, cards: cardList, overallStatus: overall.data?.status, matching }) : null;
 
   return (
-    <main className="main home2">
-      {/* 카드와 레포가 같은 이유로 함께 실패하면 같은 안내가 두 번 나오지 않게 하나로 합친다(#520 G-08) */}
-      {cards.isError && <QueryFailure error={cards.error} retry={() => sameFailure ? Promise.all([cards.refetch(), repos.refetch()]) : cards.refetch()} pending={cards.isFetching || (sameFailure && repos.isFetching)} />}
-      {repos.isError && !sameFailure && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
-      {cards.isSuccess && <SkippedCardsNotice />}
-      <HomeHero />
-      <RepoUpdateNotice updates={repoUpdates.data ?? []} onSeen={markSeen} />
-      <StageTiles tiles={tiles} />
-      <div className="home2-cols">
-        <div className="home2-col">
-          <ContinueList items={todo} firstTime={firstTime} />
-          <RecentCards items={recent} />
-        </div>
-        <aside className="home2-side" aria-label="공고 일정">
-          {me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={recommendedPostings} postingsLoading={matchSupported() && overall.isPending} postingsError={overall.isError} onRetryPostings={() => void overall.refetch()} />}
-          <DeadlineList items={due} />
-        </aside>
+    <main className="main home3">
+      <div className="home3-page">
+        {/* 카드와 레포가 같은 이유로 함께 실패하면 같은 안내가 두 번 나오지 않게 하나로 합친다(#520 G-08) */}
+        {cards.isError && <QueryFailure error={cards.error} retry={() => sameFailure ? Promise.all([cards.refetch(), repos.refetch()]) : cards.refetch()} pending={cards.isFetching || (sameFailure && repos.isFetching)} />}
+        {repos.isError && !sameFailure && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
+        {matching && overall.isError && !items.length && <QueryFailure error={overall.error} retry={() => overall.refetch()} pending={overall.isFetching} />}
+        {cards.isSuccess && <SkippedCardsNotice />}
+        <HomeHero />
+        <header className="home3-hd">
+          {loading ? (
+            <div>
+              <h1 className="sr-only">지원할 곳</h1>
+              <div className="home3-sk home3-pulse" style={{ width: 96, height: 12, marginBottom: 12 }} />
+              <div className="home3-sk home3-pulse" style={{ width: 160, height: 32 }} />
+              <div className="home3-sk home3-pulse" style={{ width: 280, maxWidth: '70vw', height: 14, marginTop: 12 }} />
+            </div>
+          ) : (
+            <div>
+              <p className="home3-date">{todayLabel()}</p>
+              <div className="page-title"><h1>지원할 곳{items.length > 0 && <span className="home3-n home3-tnum" aria-hidden>{items.length}</span>}</h1></div>
+              <p className="home3-lede">
+                {newCount > 0 && <><b>새 공고 {newCount}곳</b> · </>}
+                {items.length === 0 ? '아직 모인 공고가 없어요' : items.length === 1 ? '내 카드와 맞는 공고를 모았어요' : '내 카드와 맞는 공고를 마감이 가까운 순서로 모았어요'}
+              </p>
+            </div>
+          )}
+          {!loading && items.length > 0 && <Link to="/match" className="home3-all">모두 보기<ChevronRight size={18} aria-hidden /></Link>}
+        </header>
+        {loading ? <HomeSkeleton />
+          : items.length > 0 ? <ApplyPanel items={items} />
+          : !unknown && setup && <SetupSteps view={setup} matching={matching} onRetry={() => startOverall.mutate()} retrying={startOverall.isPending} />}
+        <RepoUpdateNotice updates={repoUpdates.data ?? []} onSeen={markSeen} />
       </div>
     </main>
   );
 }
-
-/** 서버가 현재 버전 기준으로 판정한 칸 상태를 그대로 쓴다. 추정하지 않는다. */
-const STAR_KEYS: StarField[] = ['S', 'T', 'A', 'R'];
-export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] !== 'EMPTY');
-export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
 
 export function CardGridItem({ c, cardOrder, just }: { c: CardSummary; cardOrder?: string[]; just?: boolean }) {
   const experience = c.kind === 'QUALITATIVE';

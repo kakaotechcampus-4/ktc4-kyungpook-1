@@ -1,27 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { CARD_ID, cardFixture, installContractFixture } from './contract-fixture';
 
-for (const width of [320, 1440]) test(`active work renders execution and separate queues clearly ${width}`, async ({ page }) => {
-  await page.setViewportSize({ width, height: 900 });
-  await installContractFixture(page);
-  const jobs = [
-    { jobId: 'queued-analysis', state: 'QUEUED', type: 'ANALYZE', startedAt: '2026-10-21T01:03:00Z', repoName: 'team/queued-analysis' },
-    { jobId: 'queued-draft', state: 'QUEUED', type: 'DRAFT', startedAt: '2026-10-21T01:02:00Z', repoName: 'team/queued-draft' },
-    { jobId: 'running', state: 'RUNNING', type: 'ANALYZE', startedAt: '2026-10-21T01:01:00Z', repoName: 'team/running' },
-  ].map(job => ({ ...job, userRepositoryId: null, pollAfterMs: 60000 }));
-  await page.route(url => url.pathname === '/api/jobs' && url.searchParams.get('active') === 'true', route => route.fulfill({ json: { data: { jobs }, error: null } }));
-  await page.goto('/');
-  const section = page.getByRole('region', { name: /이어서 하기/ });
-  const rows = section.locator('.home2-todo');
-  await expect(rows.locator('strong')).toHaveText(['team/running', 'team/queued-draft', 'team/queued-analysis']);
-  await expect(rows.first()).toContainText('레포를 읽고 있어요');
-  await expect(rows.nth(1)).toContainText('곧 시작해요');
-  await expect(rows.nth(1)).not.toContainText('앞 정리');
-  await expect(rows.nth(2)).toContainText('앞 정리가 끝나면 시작해요');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-  await section.screenshot({ path: `docs/screenshots/2026-10-21-followups/jobs-${width}.png` });
-});
-
 for (const seconds of [30, 32400]) test(`429 (${seconds}s) keeps the confirmation dialog and card content without automatic retransmission`, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const card = cardFixture({ version: { ...cardFixture().version, situation: '직접 쓴 상황', action: '직접 쓴 행동' } });

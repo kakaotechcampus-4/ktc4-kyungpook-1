@@ -37,10 +37,10 @@ test('공고 목록: 기업 글자 표시는 모두 같은 회색이고, 마감 
   expect(badge).toEqual({ color: await tokenColor(page, '--state-open-text'), background: await tokenColor(page, '--state-open-bg', 'backgroundColor') });
 });
 
-test('홈 캘린더(390px): 날짜 버튼은 44px 이상이고, 요일은 같은 글자색이며 고른 날은 파랑이다', async ({ page }) => {
+test('공고 매칭 캘린더(390px): 날짜 버튼은 44px 이상이고, 요일은 같은 글자색이며 고른 날은 파랑이다', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 });
   await loginAsDemo(page);
-  await page.goto('/');
+  await page.goto('/match');
   const days = page.locator('.job-calendar .calendar-day__number');
   await expect(days.first()).toBeVisible();
   for (const day of (await days.all()).slice(0, 7)) {

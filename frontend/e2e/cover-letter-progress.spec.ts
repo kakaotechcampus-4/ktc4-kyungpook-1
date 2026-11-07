@@ -14,7 +14,9 @@ const call = (page: Page, method: string, path: string, body?: unknown) =>
   }, [method, path, body] as const);
 
 async function startDrafting(page: Page) {
-  const made = await call(page, 'POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, strengths: [], questions: [{ text: '지원 동기를 적어 주세요', charLimit: null }], postingId: null });
+  // 공고를 골라 만든 자소서라야 진행 표시에 회사 마크와 회사 이름이 보인다
+  const postings = await page.evaluate(async () => (await (await fetch('/api/matches')).json()).data as { id: string }[]);
+  const made = await call(page, 'POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, strengths: [], questions: [{ text: '지원 동기를 적어 주세요', charLimit: null }], postingId: postings[0]?.id ?? null });
   await expect.poll(async () => (await call(page, 'GET', `/cover-letters/${made.id}`)).stage, { timeout: 15_000 }).toBe('ASSIGNED');
   await call(page, 'POST', `/cover-letters/${made.id}/asks`);
   await expect.poll(async () => (await call(page, 'GET', `/cover-letters/${made.id}`)).stage, { timeout: 15_000 }).toBe('ASKED');
@@ -30,9 +32,10 @@ for (const [name, width, height] of [['pc-1440', 1440, 900], ['phone-390', 390, 
     const id = await startDrafting(page);
     await page.goto('/cards');
 
-    const pill = page.getByRole('link', { name: /^자소서 쓰는 중 / });
+    const pill = page.getByRole('link', { name: / 자소서 쓰는 중$/ });
     await expect(pill).toBeVisible();
     await expect(pill).toHaveAttribute('href', `/cover-letters/${id}`);
+    await expect(page.getByRole('heading', { level: 1, name: /경험 카드/ })).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/${name}.png` });
 
     await pill.click();

@@ -2,11 +2,12 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { isCoverLetterRunning, useRunningCoverLetters, type CoverLetterSummary } from '@/api/coverLetters';
+import { useMatch } from '@/api/matching';
 import { unreadCount, useNotices, useReadAllNotices, useReadNotice } from '@/api/notifications';
 import type { ActiveJob } from '@/api/schemas';
 import { canAskPermission, markPermissionAsked, requestPermission } from '@/lib/browserNotice';
+import { CompanyMark } from '@/features/match/CompanyMark';
 import { activeJobLink } from '@/lib/jobLinks';
-import { letterTitle } from '@/lib/homeModel';
 import { noticeView, shortRepoName, type NoticeView } from '@/lib/notices';
 import './notice-bar.css';
 
@@ -50,6 +51,10 @@ export function NoticeBar({ jobs }: { jobs: readonly ActiveJob[] | undefined }) 
     .flatMap((notice) => noticeView(notice, { now }) ?? []);
   const runningLetters = useRunningCoverLetters();
   const { first, more } = pickProgress(jobs, runningLetters.data);
+  // 자소서 목록에는 로고가 없어 진행 표시에 오른 자소서의 공고만 한 번 더 읽는다
+  const letter = first?.kind === 'letter' ? first.letter : null;
+  const letterPosting = useMatch(letter?.posting?.id ?? '');
+  const letterWho = letter ? letter.posting?.company ?? letter.jobRole : '';
   const askPermission = !!first && !open && !asked && canAskPermission();
 
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -86,11 +91,13 @@ export function NoticeBar({ jobs }: { jobs: readonly ActiveJob[] | undefined }) 
           {more > 0 && <small className="notice-pill__more">외 {more}개</small>}
         </Link>
       )}
-      {first?.kind === 'letter' && (
-        <Link to={`/cover-letters/${encodeURIComponent(first.letter.id)}`} className="notice-pill" aria-label={`${LETTER_WHAT} ${letterTitle(first.letter)}${more ? ` 외 ${more}개` : ''}`}>
-          <span className="notice-pill__spin" aria-hidden />
+      {letter && (
+        <Link to={`/cover-letters/${encodeURIComponent(letter.id)}`} className={`notice-pill${letter.posting ? ' notice-pill--marked' : ''}`}
+          aria-label={`${letterWho} ${LETTER_WHAT}${more ? ` 외 ${more}개` : ''}`}>
+          {letter.posting && <CompanyMark name={letter.posting.company} logoUrl={letterPosting.data?.logoUrl} size={28} className="notice-pill__mark" />}
+          <span className="notice-pill__who">{letterWho}</span>
           <span className="notice-pill__what">{LETTER_WHAT}</span>
-          <small className="notice-pill__repo">{letterTitle(first.letter)}</small>
+          <span className="notice-pill__spin" aria-hidden />
           {more > 0 && <small className="notice-pill__more">외 {more}개</small>}
         </Link>
       )}

@@ -428,7 +428,7 @@ describe('자소서 진행 표시', () => {
     for (const stage of ['ASSIGNING', 'ASKING', 'DRAFTING']) {
       serve([row(stage, { jobRole: `역할-${stage}` })]);
       mountWatched();
-      const pill = await screen.findByRole('link', { name: `자소서 쓰는 중 가온소프트 · 역할-${stage}` });
+      const pill = await screen.findByRole('link', { name: '가온소프트 자소서 쓰는 중' });
       expect(pill).toHaveTextContent('자소서 쓰는 중');
       expect(pill).toHaveAttribute('href', '/cover-letters/cl_1');
       cleanup(); queryClient.clear();
@@ -439,15 +439,30 @@ describe('자소서 진행 표시', () => {
     expect(screen.queryByRole('link', { name: /자소서 쓰는 중/ })).not.toBeInTheDocument();
   });
 
+  it('C6 공고가 있는 자소서는 회사 마크와 옅은 바탕의 회사 이름을 앞에 두고 공고가 없으면 직무를 둔다', async () => {
+    serve([row('DRAFTING')]);
+    mountWatched();
+    const marked = await screen.findByRole('link', { name: '가온소프트 자소서 쓰는 중' });
+    expect(marked.querySelector('.company-mark')).not.toBeNull();
+    expect(marked.querySelector('.notice-pill__who')).toHaveTextContent('가온소프트');
+    expect(marked.firstElementChild).toBe(marked.querySelector('.company-mark'));
+    cleanup(); queryClient.clear();
+    serve([row('DRAFTING', { posting: null, jobRole: '백엔드 개발' })]);
+    mountWatched();
+    const plain = await screen.findByRole('link', { name: '백엔드 개발 자소서 쓰는 중' });
+    expect(plain.querySelector('.company-mark')).toBeNull();
+    expect(plain.querySelector('.notice-pill__who')).toHaveTextContent('백엔드 개발');
+  });
+
   it('C2 레포 작업이 있으면 그 작업을 보이고 나머지와 자소서를 합쳐 외 n개로 세며 작업이 없으면 가장 먼저 바뀐 자소서를 보인다', async () => {
-    serve([row('DRAFTING', { id: 'cl_new', jobRole: '늦은', updatedAt: minutesAgo(1) }), row('ASKING', { id: 'cl_old', jobRole: '이른', updatedAt: minutesAgo(9) })]);
+    serve([row('DRAFTING', { id: 'cl_new', posting: { id: 'p2', company: '늦은소프트', title: '서버' }, updatedAt: minutesAgo(1) }), row('ASKING', { id: 'cl_old', posting: { id: 'p3', company: '이른소프트', title: '서버' }, updatedAt: minutesAgo(9) })]);
     mountWatched('/cards', [live({ jobId: 'b', startedAt: '2026-11-06T02:00:00Z' }), live()]);
     const pill = await screen.findByRole('link', { name: /레포 읽는 중/ });
     await waitFor(() => expect(pill).toHaveTextContent('외 3개'));
     cleanup(); queryClient.clear();
     mountWatched();
     const letter = await screen.findByRole('link', { name: /자소서 쓰는 중/ });
-    expect(letter).toHaveAccessibleName('자소서 쓰는 중 가온소프트 · 이른 외 1개');
+    expect(letter).toHaveAccessibleName('이른소프트 자소서 쓰는 중 외 1개');
     expect(letter).toHaveTextContent('외 1개');
   });
 

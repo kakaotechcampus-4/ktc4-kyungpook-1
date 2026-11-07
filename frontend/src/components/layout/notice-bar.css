@@ -10,6 +10,11 @@
 .notice-pill small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; color: var(--text-secondary); }
 .notice-pill__more { flex: none; }
 .notice-pill__repo { max-width: 180px; }
+/* 자소서 — 회사 마크와 옅은 바탕의 회사 이름을 앞에 두어 어느 회사 자소서인지 먼저 읽힌다 */
+.notice-pill--marked { padding-left: 8px; }
+.notice-pill__mark { flex: none; }
+.notice-pill__who { min-width: 0; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 8px; border-radius: 6px; background: var(--bg-subtle); color: var(--text-primary); font-weight: 700; }
+.notice-pill:hover .notice-pill__who { background: var(--bg-inset); }
 
 .notice-bell { position: relative; display: inline-flex; align-items: center; gap: 8px; flex: none; min-height: var(--control-touch-size); padding: 0 16px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); color: var(--text-primary); font-size: 14px; font-weight: 600; }
 .notice-bell:hover, .notice-bell[aria-expanded="true"] { background: var(--bg-subtle); }
@@ -55,7 +60,7 @@
 @media (max-width: 767px) {
   .notice-bar { position: static; margin-left: auto; margin-right: 4px; gap: 6px; }
   .notice-pill { padding: 0 12px; gap: 8px; }
-  .notice-pill__repo, .notice-pill__more { display: none; }
+  .notice-pill__repo, .notice-pill__more, .notice-pill__who { display: none; }
   .notice-bell { padding: 0; width: var(--control-touch-size); justify-content: center; }
   .notice-bell__text { display: none; }
   .notice-bell__count { position: absolute; top: 2px; right: 0; min-width: 20px; padding: 0 5px; font-size: 13px; line-height: 20px; box-shadow: 0 0 0 2px var(--bg-surface); }

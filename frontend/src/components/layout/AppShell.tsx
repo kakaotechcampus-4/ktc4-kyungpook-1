@@ -7,6 +7,8 @@ import { JobWatcher } from '@/lib/jobWatcher';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { GithubBanner } from './GithubBanner';
 import { ProfileMenu } from './ProfileMenu';
+import { NoticeBar } from './NoticeBar';
+import { useMatches } from '@/features/coverLetters/panel/useActiveQuestion';
 import { ProfileSetupModal } from '@/features/profile/ProfileSetupModal';
 
 const MENU = [
@@ -44,6 +46,8 @@ const MOBILE_MENU = [
 export function AppShell() {
 
   const active = useActiveJobs();
+  // 휴대폰에서는 위쪽 줄에, 넓은 화면에서는 본문 맨 위 줄에 한 번만 그린다
+  const phone = useMatches('(max-width: 767px)');
   const { pathname } = useLocation();
   const navType = useNavigationType();
   // 메뉴·링크로 새 화면에 가면 맨 위에서 시작한다. 뒤로·앞으로(POP)는 브라우저가 둔 자리를 그대로 쓴다
@@ -56,6 +60,7 @@ export function AppShell() {
       <a href="#main" className="skip-link">본문으로 건너뛰기</a>
       <header className="mobile-brand">
         <Link to="/" aria-label="Gitory 홈"><Wordmark height={25} /></Link>
+        {phone && <NoticeBar jobs={active.data?.jobs} />}
         <ProfileMenu variant="mobile" />
       </header>
       <aside className="sidebar" aria-label="주 메뉴">
@@ -77,7 +82,10 @@ export function AppShell() {
         <div style={{ marginTop: 'auto' }} />
         <div className="sidebar__profile"><ProfileMenu variant="sidebar" /></div>
       </aside>
-      <div id="main" className="shell__main"><GithubBanner /><Outlet context={active} /></div>
+      <div id="main" className="shell__main">
+        {!phone && <div className="notice-slot"><NoticeBar jobs={active.data?.jobs} /></div>}
+        <GithubBanner /><Outlet context={active} />
+      </div>
       <nav className="mobile-nav" aria-label="모바일 주 메뉴" style={{ gridTemplateColumns: `repeat(${MOBILE_MENU.length}, minmax(0, 1fr))` }}>
         {MOBILE_MENU.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end}>

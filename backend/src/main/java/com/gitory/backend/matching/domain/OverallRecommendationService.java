@@ -226,13 +226,13 @@ public class OverallRecommendationService {
 
     }
 
-    private static int total(List<JobPostingCriterion> conditions, CriterionType type) {
+    static int total(List<JobPostingCriterion> conditions, CriterionType type) {
 
         return (int) conditions.stream().filter(c -> c.getType() == type).count();
 
     }
 
-    private static int met(List<JobPostingCriterion> conditions, CriterionType type,
+    static int met(List<JobPostingCriterion> conditions, CriterionType type,
                            Map<Long, List<JudgedSupport>> judged) {
 
         return (int) conditions.stream()

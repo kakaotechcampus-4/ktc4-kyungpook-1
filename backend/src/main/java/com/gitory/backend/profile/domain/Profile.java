@@ -47,6 +47,10 @@ public class Profile {
     @JdbcTypeCode(SqlTypes.ARRAY)
     private List<String> interests;
 
+    private String email;
+
+    private boolean mailOptIn;
+
     private Instant savedAt;
 
     static Profile of(Long userId) {
@@ -74,10 +78,23 @@ public class Profile {
 
     }
 
+    /** email 이 null 이면 저장된 주소를, 빈 글이면 주소를 지우고, mailOptIn 이 null 이면 저장된 수신 여부를 그대로 둔다 */
+    void changeMail(String email, Boolean mailOptIn) {
+
+        String nextEmail = email == null ? this.email : (email.isEmpty() ? null : email);
+        boolean nextOptIn = mailOptIn == null ? this.mailOptIn : mailOptIn;
+        if (nextOptIn && nextEmail == null) {
+            throw new InvalidProfileInputException("메일 알림을 받으려면 메일 주소를 적어 주세요.");
+        }
+        this.email = nextEmail;
+        this.mailOptIn = nextOptIn;
+
+    }
+
     ProfileView view() {
 
         return new ProfileView(List.copyOf(educations), List.copyOf(careers), List.copyOf(languages),
-                List.copyOf(certifications), interests.stream().map(InterestCategory::valueOf).toList(), savedAt);
+                List.copyOf(certifications), interests.stream().map(InterestCategory::valueOf).toList(), email, mailOptIn, savedAt);
 
     }
 }

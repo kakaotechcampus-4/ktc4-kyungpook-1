@@ -173,6 +173,7 @@ public class JobRunner {
             log.warn("분석 Job {} 을 {} 로 끝낸다", job.getId(), errorCode, failure);
             transaction.executeWithoutResult(status -> fail(job.getId(), errorCode));
         }
+        events.publishEvent(new AnalysisFinished(job.getId()));
 
     }
 
@@ -200,6 +201,7 @@ public class JobRunner {
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() == JobState.RUNNING) {
             job.completeDraftWithoutWriting();
+            events.publishEvent(new JobEnded(jobId));
         }
 
     }

@@ -47,6 +47,7 @@ export async function installContractFixture(page: Page, options: { card?: Card;
       lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,
     }]);
     if (method === 'GET' && path === '/jobs' && url.search === '?active=true') return ok(route, { jobs: [] });
+    if (method === 'GET' && path === '/notifications') return ok(route, []); // 알림 자리가 읽는다 — 이 계약 시험에는 알림이 없다
     if (method === 'GET' && path === '/activities') return ok(route, []); // 활동(#477) 목록 — 이 계약 시험에는 활동이 없다
     if (method === 'GET' && path === '/cover-letters') return ok(route, []); // 홈이 자소서 목록을 읽는다 — 이 계약 시험에는 자소서가 없다
     if (method === 'GET' && path === '/cards' && !url.search) return ok(route, card ? [{

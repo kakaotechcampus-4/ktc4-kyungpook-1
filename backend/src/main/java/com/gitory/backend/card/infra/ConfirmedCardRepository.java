@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -54,6 +55,15 @@ public interface ConfirmedCardRepository extends Repository<Card, Long> {
             ORDER BY id
             """, nativeQuery = true)
     List<Long> findLiveConfirmedIdsOfUser(@Param("userId") Long userId);
+
+    @Query(value = """
+            SELECT user_id FROM card
+            WHERE deleted_at IS NULL
+            GROUP BY user_id
+            HAVING bool_or(status = 'CONFIRMED') AND max(updated_at) >= :since
+            ORDER BY user_id
+            """, nativeQuery = true)
+    List<Long> findUserIdsWithConfirmedAndEditedSince(@Param("since") Instant since);
 
     @Query(value = """
             SELECT id FROM card

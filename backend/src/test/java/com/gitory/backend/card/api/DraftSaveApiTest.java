@@ -148,15 +148,15 @@ class DraftSaveApiTest {
     }
 
     @Test
-    @DisplayName("작성 중 카드는 네 칸을 확인 필요 없이 모두 채워 저장하면 확정되고, 비운 칸이 있으면 작성 중으로 남는다")
-    void savingAllFourSlotsConfirmsDraftCard() throws Exception {
+    @DisplayName("작성 중 카드는 상황·행동을 채워 저장하면 과제·결과가 비어 있어도 확정되고, 행동이 비어 있으면 작성 중으로 남는다")
+    void savingSituationAndActionConfirmsDraftCard() throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);
 
-        save(MY_CARD, "상황", null, "행동", null).andExpect(status().isOk());
+        save(MY_CARD, "상황", "맡은 일", null, "결과").andExpect(status().isOk());
         assertThat(statusOf(cardId)).isEqualTo("DRAFT");
 
-        save(MY_CARD, "상황", "맡은 일", "행동", "결과").andExpect(status().isOk());
+        save(MY_CARD, "상황", null, "행동", null).andExpect(status().isOk());
         assertThat(statusOf(cardId)).isEqualTo("CONFIRMED");
         assertThat(confirmedAtOf(cardId)).isNotNull();
 

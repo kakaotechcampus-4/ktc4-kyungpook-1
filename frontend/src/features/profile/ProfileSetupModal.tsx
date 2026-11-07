@@ -6,7 +6,7 @@ import { Button, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import { type SectionKey } from '@/lib/profileForm';
 import { track } from '@/lib/track';
-import { CertificationQuick, EDU_LEVEL_ID, EducationQuick, InterestPicker, LanguageQuick, SectionEditor } from './ProfileSections';
+import { CertificationQuick, EDU_LEVEL_ID, EducationQuick, InterestPicker, LanguageQuick, MailSection, SectionEditor } from './ProfileSections';
 import { useProfileFormState, type Scope } from './useProfileFormState';
 
 /**
@@ -39,6 +39,7 @@ function SetupDialog({ initial }: { initial: Profile }) {
   const go = (index: number) => { setAskedEducation(false); setStep(index); };
   const next = async () => {
     state.attempt(scope);
+    if (last) state.attempt('email');
     if (scope === 'educations' && state.form.educations.length === 0) { setAskedEducation(true); state.focus(EDU_LEVEL_ID); return; }
     const firstError = state.firstErrorId(scope);
     if (firstError) { state.focus(firstError); return; }
@@ -74,7 +75,7 @@ function SetupDialog({ initial }: { initial: Profile }) {
         {scope === 'interests' ? <InterestPicker value={state.form.interests} onChange={state.setInterests} error={state.errors.interests} />
           : scope === 'educations' ? <EducationQuick state={state} />
           : scope === 'languages' ? <LanguageQuick state={state} />
-          : scope === 'certifications' ? <CertificationQuick state={state} />
+          : scope === 'certifications' ? <><CertificationQuick state={state} /><MailSection state={state} /></>
           : <SectionEditor section={scope} state={state} />}
       </fieldset>
     </Modal>

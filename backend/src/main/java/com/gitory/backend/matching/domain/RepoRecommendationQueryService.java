@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -44,8 +45,30 @@ public class RepoRecommendationQueryService {
     @Transactional
     public RepoRecommendationView of(UUID repoPublicId, Long userId) {
 
-        Long repoId = ownership.findOwnedRepository(repoPublicId, userId, AuditAction.VIEW_REPO)
+        return viewOf(ownedRepository(repoPublicId, userId), userId);
+
+    }
+
+    /** 본인 레포의 추천을 다음 배경 작업 차례에 바로 다시 계산하도록 예약하고 조회와 같은 모양으로 답하며, 이때 queued 는 true 다 */
+    @Transactional
+    public RepoRecommendationView refresh(UUID repoPublicId, Long userId) {
+
+        Long repoId = ownedRepository(repoPublicId, userId);
+        trigger.requestNow(userId, repoId);
+
+        return viewOf(repoId, userId);
+
+    }
+
+    private Long ownedRepository(UUID repoPublicId, Long userId) {
+
+        return ownership.findOwnedRepository(repoPublicId, userId, AuditAction.VIEW_REPO)
                 .orElseThrow(RecommendationRepositoryNotFoundException::new);
+
+    }
+
+    private RepoRecommendationView viewOf(Long repoId, Long userId) {
+
         Optional<RepoRecommendation> saved = recommendations.findByUserRepositoryId(repoId);
         // 계산이 멈추면 진행을 먼저 지운 뒤 실패로 저장하므로, 저장본을 먼저 읽어야 FAILED 인데 끝나지 않은 진행이 보이지 않는다
         RepoRecommendationLive live = liveLog.of(repoId).orElse(null);
@@ -74,8 +97,10 @@ public class RepoRecommendationQueryService {
                         .toList())
                 .stream()
                 .collect(Collectors.toMap(JobPosting::getId, Function.identity()));
+        Set<String> previous = recommendation.getPreviousCompanies() == null ? Set.of()
+                : recommendation.getPreviousCompanies().stream().map(RecommendedCompany::companyId).collect(Collectors.toSet());
         List<RepoRecommendationView.Company> shown = recommendation.getCompanies().stream()
-                .map(company -> company(company, byId.get(company.postingId()), now))
+                .map(company -> company(company, byId.get(company.postingId()), now, previous))
                 .filter(Objects::nonNull)
                 .toList();
         return new RepoRecommendationView(recommendation.getStatus(), recommendation.getComputedAt(), shown,
@@ -83,7 +108,8 @@ public class RepoRecommendationQueryService {
 
     }
 
-    private RepoRecommendationView.Company company(RecommendedCompany company, JobPosting posting, Instant now) {
+    private RepoRecommendationView.Company company(RecommendedCompany company, JobPosting posting, Instant now,
+                                                    Set<String> previous) {
 
         if (posting == null) {
             return null;
@@ -92,7 +118,8 @@ public class RepoRecommendationQueryService {
                 companies.of(posting.getCompanyKey(), posting.getCompanyName()).logoUrl(),
                 new RepoRecommendationView.Posting(posting.getPublicId(), posting.getTitle(), posting.getExpiresAt(),
                         posting.isClosedAt(now)),
-                company.techs(), company.requiredMet(), company.preferredMet());
+                company.techs(), company.requiredMet(), company.preferredMet(),
+                !previous.isEmpty() && !previous.contains(company.companyId()));
 
     }
 }

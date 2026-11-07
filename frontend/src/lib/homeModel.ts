@@ -30,8 +30,9 @@ export type ContinueItem =
 
 const cardSub = (card: CardSummary) => {
   if (STAR.some((f) => card.star[f] === 'NEEDS_REVIEW')) return '확인이 필요한 칸이 있어요';
-  const empty = STAR.filter((f) => card.star[f] === 'EMPTY').length;
-  return empty ? `빈 칸 ${empty}개만 채우면 돼요` : '확정만 하면 돼요';
+  // 상황·행동만 채우면 서버가 확정하므로 과제·결과 빈 칸은 세지 않는다. 둘이 다 찼는데 작성 중이면 시간 초과로 일부만 만든 카드다
+  const empty = (['S', 'A'] as const).filter((f) => card.star[f] === 'EMPTY').length;
+  return empty ? `빈 칸 ${empty}개만 채우면 돼요` : '일부만 채워졌어요';
 };
 const LETTER_SUB: Partial<Record<CoverLetterSummary['stage'], string>> = {
   ASSIGNED: '고른 카드를 확인해 주세요', ASKED: '몇 가지만 답하면 초안을 써요', FAILED: '쓰다가 멈췄어요',

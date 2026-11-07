@@ -3,6 +3,7 @@ package com.gitory.backend.ingest.infra;
 import com.gitory.backend.ingest.domain.ConnectedRepository;
 import com.gitory.backend.ingest.domain.ConnectedRepositoryReference;
 import com.gitory.backend.ingest.domain.ContributionTarget;
+import com.gitory.backend.ingest.domain.RepositoryPushedAfterAnalysis;
 import com.gitory.backend.ingest.domain.RepositoryReference;
 import com.gitory.backend.ingest.domain.RepositorySummary;
 import org.springframework.data.domain.Limit;
@@ -126,6 +127,15 @@ public interface ConnectedRepositoryRepository extends JpaRepository<ConnectedRe
             """)
     List<ContributionTarget> findUncounted(@Param("userId") Long userId,
                                            @Param("githubRepoIds") Collection<Long> githubRepoIds);
+
+    // 분석한 적이 있는 저장소만 보고, 마지막 push 가 최근인 순서로 둔다
+    @Query("""
+            SELECT new com.gitory.backend.ingest.domain.RepositoryPushedAfterAnalysis(c.id, c.lastAnalyzedAt)
+            FROM ConnectedRepository c JOIN GithubRepo r ON r.id = c.repositoryId
+            WHERE c.userId = :userId AND c.lastAnalyzedAt IS NOT NULL AND r.githubPushedAt > c.lastAnalyzedAt
+            ORDER BY r.githubPushedAt DESC, c.id
+            """)
+    List<RepositoryPushedAfterAnalysis> findPushedAfterAnalysis(@Param("userId") Long userId);
 
     interface ReferenceRow {
 

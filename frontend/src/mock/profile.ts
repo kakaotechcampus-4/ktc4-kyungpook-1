@@ -14,6 +14,7 @@ const LIST_NAME: Record<string, string> = { educations: '학력', careers: '경�
 
 /** 서버처럼 어느 목록의 몇 번째인지만 적는다 — 값은 담지 않는다 */
 function describe(issues: ProfileIssue[]): string {
+  if (issues[0]?.path === 'email') return '메일 주소를 확인해 주세요.';
   const first = issues[0]?.path.match(/^(\w+)(?:\[(\d+)\])?/);
   const list = first && LIST_NAME[first[1]];
   if (!list) return '요청 본문을 확인해 주세요.';
@@ -26,6 +27,11 @@ export const getProfile = (): Profile => clone(db.profile);
 export function putProfile(body: unknown): PutProfileResult {
   const parsed = ProfileInput.safeParse(body);
   if (!parsed.success) return { ok: false, message: describe(issuesOf(parsed.error)) };
-  db.profile = { ...parsed.data, savedAt: now() };
+  // 주소·수신 여부를 안 보냈으면 저장된 값을 그대로 둔다. 주소는 앞뒤 공백을 떼고 비면 지운다
+  const { email, mailOptIn, ...lists } = parsed.data;
+  const nextEmail = email === undefined ? db.profile.email : email === '' ? null : email;
+  const nextOptIn = mailOptIn ?? db.profile.mailOptIn;
+  if (nextOptIn && nextEmail === null) return { ok: false, message: '메일 주소를 확인해 주세요.' };
+  db.profile = { ...lists, email: nextEmail, mailOptIn: nextOptIn, savedAt: now() };
   return { ok: true, profile: getProfile() };
 }

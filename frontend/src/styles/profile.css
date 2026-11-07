@@ -87,3 +87,13 @@
   .quick-sub { max-width: none; }
   .quick-split { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ───────── 메일 알림 칸 — 글자와 눌리는 곳을 키워 둔다 ───────── */
+.mail-section__why { margin: 0; font-size: 15px; line-height: 24px; color: var(--text-secondary); }
+.mail-section__field { grid-column: auto; }
+.mail-section__field .field__label { font-size: 15px; font-weight: 600; }
+.mail-section__field .input { height: 48px; font-size: 16px; }
+.mail-section__error { font-size: 15px; line-height: 22px; }
+.mail-section__check { display: flex; align-items: center; gap: 12px; min-height: 48px; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-strong); cursor: pointer; }
+.mail-section__check input { width: 22px; height: 22px; margin: 0; flex: 0 0 auto; accent-color: var(--accent-point); cursor: pointer; }
+.mail-section__check input:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 2px; }

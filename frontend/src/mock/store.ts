@@ -25,6 +25,7 @@ export const db = {
   cardMaterialAnswers: {} as Record<string, Record<string, string>>, // 카드마다 기억한 자소서 답(#585)
   profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   overall: null as { startedAt: number; computedAt: string | null } | null, // 전체 매칭(#614) — 누른 적이 없으면 null
+  repoUpdates: [] as { repoId: string; repoName: string; cardCount: number; finishedAt: string; seen: boolean }[], // 서버가 스스로 다시 읽은 레포 — 기본은 없다
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
@@ -71,7 +72,7 @@ export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
   db.activities = clone(seedActivities);
-  db.profile = emptyProfile(); db.coverLetters = []; db.assistantRuns = []; db.notifications = []; db.cardMaterialAnswers = {}; db.overall = null;
+  db.profile = emptyProfile(); db.coverLetters = []; db.assistantRuns = []; db.notifications = []; db.cardMaterialAnswers = {}; db.overall = null; db.repoUpdates = [];
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.activityIdem.clear(); db.seq = 100;
   resetMatchState();
   hydrateCards();
@@ -596,7 +597,7 @@ export function seedSetUpProfile() {
 
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, assistantRuns: db.assistantRuns, notifications: db.notifications, cardMaterialAnswers: db.cardMaterialAnswers,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, assistantRuns: db.assistantRuns, notifications: db.notifications, cardMaterialAnswers: db.cardMaterialAnswers, repoUpdates: db.repoUpdates,
     jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], activityIdem: [...db.activityIdem.entries()], seq: db.seq,
   });
 }
@@ -611,6 +612,7 @@ export function restore(raw: string): boolean {
     db.assistantRuns = Array.isArray(s.assistantRuns) ? s.assistantRuns : [];
     db.notifications = Array.isArray(s.notifications) ? s.notifications : [];
     db.cardMaterialAnswers = s.cardMaterialAnswers ?? {};
+    db.repoUpdates = Array.isArray(s.repoUpdates) ? s.repoUpdates : [];
     const profile = Profile.safeParse(s.profile); // 인적사항이 생기기 전에 저장된 데모 DB 는 빈 값으로 이어진다
     db.profile = profile.success ? profile.data : emptyProfile();
     db.jobs.clear();
@@ -622,6 +624,19 @@ export function restore(raw: string): boolean {
     settlePending();
     return true;
   } catch { return false; }
+}
+
+/** 아직 보지 않은 레포 알림을 최근 순으로. 본 것은 목록에서 빠진다 */
+export const repoUpdateList = () => db.repoUpdates.filter((u) => !u.seen).sort((a, b) => b.finishedAt.localeCompare(a.finishedAt))
+  .map(({ repoId, repoName, cardCount, finishedAt }) => ({ repoId, repoName, cardCount, finishedAt }));
+export function markRepoUpdateSeen(repoId: string) {
+  db.repoUpdates.filter((u) => u.repoId === repoId).forEach((u) => { u.seen = true; });
+}
+/** 시연 장면(demoScenario=repo-update)에서 서버가 auth-service 를 다시 읽어 카드 3장을 써 둔 상태를 까는 것이고, 본 알림은 목록에 남겨 다시 깔지 않는다 */
+export function seedRepoUpdate() {
+  const repo = db.repos.find((r) => r.id === 'r_auth');
+  if (!repo || db.repoUpdates.some((u) => u.repoId === repo.id)) return;
+  db.repoUpdates.push({ repoId: repo.id, repoName: `${repo.owner}/${repo.name}`, cardCount: 3, finishedAt: new Date().toISOString(), seen: false });
 }
 
 /**

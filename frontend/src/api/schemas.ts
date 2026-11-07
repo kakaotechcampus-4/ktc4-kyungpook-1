@@ -183,6 +183,17 @@ export const RepoDisclosure = z.object({
 export const RepoDetail = RepoSummary.extend({ disclosure: RepoDisclosure });
 export type RepoDetail = z.infer<typeof RepoDetail>;
 
+/** 서버가 스스로 다시 읽은 레포 한 줄(레포마다 하나, 최근 순)이고, 사용자가 보면 목록에서 빠진다 */
+export const RepoUpdate = z.object({
+  repoId: z.string(),
+  repoName: z.string(),
+  cardCount: z.number().int().nonnegative(),
+  finishedAt: z.string(),
+});
+export type RepoUpdate = z.infer<typeof RepoUpdate>;
+/** 새 활동 확인 — queued 는 새 push 가 있어 다시 읽기를 시작한 레포 수 */
+export const RepoUpdateCheck = z.object({ queued: z.number().int().nonnegative() });
+
 // ───────────────────────────── Job ─────────────────────────────
 export const JobStep = z.object({
   key: JobStepKey,

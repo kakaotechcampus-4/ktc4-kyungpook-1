@@ -65,6 +65,18 @@ describe('원 그림의 고리', () => {
     expect(labelAbove(0, top)).toBe(false);
   });
 
+  it('안쪽·가운데 고리에 회사가 하나씩만 있어도 서로 닿지 않는 자리로 돌려 놓는다', () => {
+    const spins = Array.from({ length: 6 }, (_, i) => (Math.PI * 2 * i) / 6);
+    const others = [0, 1, 2, 3, 4, 5, 6, 7];
+    let worst = 0;
+    for (const inner of others) for (const middle of others) {
+      if (inner === middle) continue;
+      const rings = others.map((i) => (i === inner ? 2 : i === middle ? 1 : 0));
+      for (const spin of spins) worst = Math.max(worst, overlapCount(rings, ringAngles(rings, spin).map((angle) => angle + spin)));
+    }
+    expect(worst).toBe(0);
+  });
+
   it('원 그림이 돈 뒤에는 돈 각도의 화면에서 겹치지 않는 자리를 고른다', () => {
     const rings = [0, 2, 0, 2, 0, 1, 0, 0] as const;
     const spin = Math.PI / 2;

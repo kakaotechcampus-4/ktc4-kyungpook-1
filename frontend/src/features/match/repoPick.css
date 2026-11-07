@@ -84,6 +84,9 @@
 .rp-pick__text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; line-height: 23px; font-weight: 700; }
 .rp-pick__text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 21px; color: var(--text-secondary); }
 .rp-pick__text > .rp-pick__why { white-space: normal; }
+.rp-pick__text > .rp-pick__name { display: flex; align-items: center; gap: 8px; font-size: inherit; line-height: inherit; color: inherit; }
+.rp-pick__name strong { min-width: 0; }
+.rp-new { flex: none; padding: 1px 8px; border-radius: 8px; background: var(--bg-accent); font-size: 13px; line-height: 20px; font-weight: 600; color: var(--rp-accent-text); }
 .rp-pick__fit { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
 .rp-pick__fit > span:last-child { font-size: 13px; line-height: 18px; color: var(--text-secondary); white-space: nowrap; }
 .rp-meter { display: flex; gap: 3px; }

@@ -6,7 +6,8 @@ import { useJob } from '@/api/queries';
 import { assistantSupported } from '@/api/capabilities';
 import { matchSupported } from '@/api/matching';
 import { IconBox, KindIcon, Spinner, StarDots } from '@/components/ui';
-import { agoLabel, daysLeftLabel, metLabel, type ContinueItem, type DeadlineItem, type RecentItem } from '@/lib/homeModel';
+import type { RepoUpdate } from '@/api/schemas';
+import { agoLabel, daysLeftLabel, metLabel, repoUpdatePath, repoUpdateText, type ContinueItem, type DeadlineItem, type RecentItem } from '@/lib/homeModel';
 import { jobResultState } from '@/lib/jobLinks';
 import { filledOf, needsReviewOf } from './HomePage';
 
@@ -48,6 +49,28 @@ export function HomeHero() {
         <div className="home2-float home2-float--3"><IconBox icon={FileText} size={34} /><span>자소서<small>공고에 맞춘 초안</small></span><Check size={18} /></div>
         <Github className="home2-hero__github" size={50} strokeWidth={1.4} />
       </div>
+    </section>
+  );
+}
+
+/**
+ * 서버가 스스로 다시 읽어 카드 초안을 써 둔 레포를 레포마다 한 줄로 보인다
+ * 폴더로 갈 때는 누르는 순간 본 것으로 표시하고, 기업 고르기 화면은 들어오면서 표시한다
+ */
+export function RepoUpdateNotice({ updates, onSeen }: { updates: RepoUpdate[]; onSeen: (repoId: string) => void }) {
+  if (!updates.length) return null;
+  const matching = matchSupported();
+  return (
+    <section aria-label="새로 써 둔 카드">
+      <ul className="home2-updates">
+        {updates.map((update) => (
+          <li key={update.repoId} className="home2-update">
+            <IconBox icon={GitCommitHorizontal} size={40} />
+            <p className="home2-update__text">{repoUpdateText(update)}</p>
+            <Link to={repoUpdatePath(update, matching)} onClick={matching ? undefined : () => onSeen(update.repoId)} className="btn btn--primary">보러 가기 <ArrowRight size={16} aria-hidden /></Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

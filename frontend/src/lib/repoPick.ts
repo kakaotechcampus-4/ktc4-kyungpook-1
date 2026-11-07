@@ -35,12 +35,21 @@ export function phaseOf(rec: RepoRecommendation): PickPhase {
   return 'idle';
 }
 
-export function pickHead(phase: PickPhase, { repoName, cardCount, picked }: { repoName: string; cardCount: number; picked: number }): { title: string; lead: string } {
+/** 알림에서 들어온 주소(again=1&cards=n)이고, cards 는 1 이상의 정수일 때만 쓰며 아니면 null 이라 장수를 빼고 말한다 */
+export type Again = { cards: number | null };
+export function againOf(params: URLSearchParams): Again | null {
+  if (params.get('again') !== '1') return null;
+  const raw = params.get('cards') ?? '';
+  return { cards: /^\d+$/.test(raw) && Number(raw) > 0 ? Number(raw) : null };
+}
+
+export function pickHead(phase: PickPhase, { repoName, cardCount, picked, again }: { repoName: string; cardCount: number; picked: number; again?: Again | null }): { title: string; lead: string } {
   const cards = `${repoName} 레포의 카드 ${cardCount}장`;
+  const added = again ? (again.cards === null ? '새 카드를 더해' : `새 카드 ${again.cards}장을 더해`) : '';
   switch (phase) {
-    case 'queued': return { title: '맞는 기업을 곧 고르기 시작해요', lead: `${cards}을 지금 지원할 수 있는 공고와 곧 맞춰 봐요.` };
-    case 'running': return { title: '맞는 기업을 고르고 있어요', lead: `${cards}을 지금 지원할 수 있는 공고와 맞춰 보고 있어요. 보통 1~2분 걸려요.` };
-    case 'done': return { title: `맞는 기업 ${picked}곳을 골랐어요`, lead: `${cards}과 맞는 조건이 많은 순서예요.` };
+    case 'queued': return { title: again ? `${added} 다시 고르고 있어요` : '맞는 기업을 곧 고르기 시작해요', lead: `${cards}을 지금 지원할 수 있는 공고와 곧 맞춰 봐요.` };
+    case 'running': return { title: again ? `${added} 다시 고르고 있어요` : '맞는 기업을 고르고 있어요', lead: `${cards}을 지금 지원할 수 있는 공고와 맞춰 보고 있어요. 보통 1~2분 걸려요.` };
+    case 'done': return { title: again ? `${added} 다시 골랐어요` : `맞는 기업 ${picked}곳을 골랐어요`, lead: `${cards}과 맞는 조건이 많은 순서예요.` };
     case 'none': return { title: '맞는 기업을 찾지 못했어요', lead: '지금 올라온 공고 가운데 이 레포의 카드와 맞는 조건이 있는 곳이 없었어요.' };
     case 'failed': return { title: '기업을 고르지 못했어요', lead: '카드를 고치거나 확정하면 다시 골라요.' };
     case 'idle': return { title: '아직 고른 기업이 없어요', lead: '이 레포의 카드로는 아직 맞는 기업을 고르지 않았어요.' };
@@ -113,7 +122,7 @@ export function overlapCount(rings: readonly Ring[], angles: readonly number[], 
 
 /**
  * 회사마다 놓일 각도(라디안, 12시 방향에서 시계 방향). 바깥 고리는 후보 순서대로 고르게 놓은 제 자리 그대로라 확인하는 동안 움직이지 않는다.
- * 가운데·안쪽 고리는 그 고리의 회사끼리 고르게 벌리고, 시작각을 돌려 가며 옆 고리와 겹침이 가장 적은 배치를 고른다(적게 돌린 쪽이 우선).
+ * 가운데·안쪽 고리는 그 고리의 회사끼리 고르게 벌리고, 회사가 하나뿐이어도 시작각을 돌려 가며 옆 고리와 겹침이 가장 적은 배치를 고른다(적게 돌린 쪽이 우선).
  * 원 그림은 천천히 돌기 때문에, 겹침은 지금까지 돈 각도(spin)를 더한 화면 위의 자리로 센다.
  */
 export function ringAngles(rings: readonly Ring[], spin = 0, ref: OrbitRef = ORBIT_REF): number[] {
@@ -123,9 +132,9 @@ export function ringAngles(rings: readonly Ring[], spin = 0, ref: OrbitRef = ORB
   const membersOf = (ring: Ring) => rings.flatMap((r, i) => (r === ring ? [i] : []));
   const middle = membersOf(1);
   const inner = membersOf(2);
-  const turnsOf = (members: number[]) => (members.length > 1 ? Array.from({ length: TURNS }, (_, t) => t) : [0]);
+  const turnsOf = (members: number[]) => (members.length > 0 ? Array.from({ length: TURNS }, (_, t) => t) : [0]);
   const place = (angles: number[], members: number[], turn: number) => {
-    if (members.length > 1) members.forEach((member, j) => { angles[member] = slot(members[0]) + (TAU / TURNS) * turn + (TAU / members.length) * j; });
+    members.forEach((member, j) => { angles[member] = slot(members[0]) + (TAU / TURNS) * turn + (TAU / members.length) * j; });
   };
 
   let best = { score: Infinity, angles: base };
@@ -155,6 +164,8 @@ export type PickRow = {
   cards: string[];
   /** 진행이 남아 있지 않을 때 서버가 준 겹친 기술 */
   techs: string[];
+  /** 지난 결과에 없던 회사 */
+  fresh: boolean;
 };
 
 const cardTitles = (hits: readonly LiveHit[]) => [...new Set(hits.map((hit) => hit.cardTitle))].slice(0, 3);
@@ -163,7 +174,7 @@ const cardTitles = (hits: readonly LiveHit[]) => [...new Set(hits.map((hit) => h
 export const liveRows = (live: Live): PickRow[] => rankPicks(live.candidates).map((candidate) => ({
   key: candidate.posting.id, postingId: candidate.posting.id, name: candidate.companyName, logoUrl: candidate.logoUrl,
   role: candidate.posting.title, deadline: candidate.posting.deadline, closed: false,
-  required: hitCount(candidate, 'REQUIRED'), preferred: hitCount(candidate, 'PREFERRED'), cards: cardTitles(candidate.hits), techs: [],
+  required: hitCount(candidate, 'REQUIRED'), preferred: hitCount(candidate, 'PREFERRED'), cards: cardTitles(candidate.hits), techs: [], fresh: false,
 }));
 
 /** 끝난 결과는 서버가 준 기업이 기준이고, 진행이 남아 있으면 그 회사의 맞은 카드 제목을 이유에 붙인다 */
@@ -172,7 +183,7 @@ export const resultRows = (companies: readonly PickCompany[], live: Live | null)
   return {
     key: company.posting.id, postingId: company.posting.id, name: company.companyName, logoUrl: company.logoUrl,
     role: company.posting.title, deadline: company.posting.deadline, closed: company.posting.closed,
-    required: company.requiredMet, preferred: company.preferredMet, cards: candidate ? cardTitles(candidate.hits) : [], techs: company.techs,
+    required: company.requiredMet, preferred: company.preferredMet, cards: candidate ? cardTitles(candidate.hits) : [], techs: company.techs, fresh: company.fresh,
   };
 });
 

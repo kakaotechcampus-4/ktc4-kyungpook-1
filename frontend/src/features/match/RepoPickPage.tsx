@@ -1,15 +1,16 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ChevronRight } from 'lucide-react';
-import { matchSupported, useRepoRecommendation, type RepoRecommendation } from '@/api/matching';
+import { matchSupported, useRefreshRepoRecommendation, useRepoRecommendation, type RepoRecommendation } from '@/api/matching';
+import { useMarkRepoUpdateSeen } from '@/api/repoUpdates';
 import { useCards, useMe } from '@/api/queries';
 import { Breadcrumb, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { buildFolders, folderPath, folderTitle } from '@/lib/cardFolders';
 import {
-  fitLabel, liveRows, logLines, orbitTiles, phaseOf, pickHead, pickReason, resultRows, techName,
-  type LogLine, type PickPhase, type PickRow,
+  againOf, fitLabel, liveRows, logLines, orbitTiles, phaseOf, pickHead, pickReason, resultRows, techName,
+  type Again, type LogLine, type PickPhase, type PickRow,
 } from '@/lib/repoPick';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CompanyMark } from './CompanyMark';
@@ -22,13 +23,27 @@ const cx = (...names: (string | false | null | undefined)[]) => names.filter(Boo
 /**
  * 레포의 카드로 맞는 기업을 고르는 모습. 서버가 기업을 하나씩 확인하는 과정(live)을 2초마다 읽어 원 그림 · 지금까지 고른 곳 · 로그로 보이고, 끝나면 고른 기업과 이유를 보인다.
  * 매칭이 꺼져 있거나 그 레포에 카드가 없으면 폴더로 돌려보낸다.
+ * 알림에서 들어오면(again=1) 들어오면서 한 번 '본 것으로 표시' 와 '다시 고르기' 를 부르고, 둘 다 실패해도 지금 결과를 그대로 보인다.
  */
 export function RepoPickPage() {
   const { repoId = '' } = useParams();
   const supported = matchSupported();
   const cards = useCards();
   const folder = useMemo(() => (cards.data ? buildFolders(cards.data).find((item) => item.key === `repo:${repoId}`) : undefined), [cards.data, repoId]);
-  const rec = useRepoRecommendation(supported && folder ? repoId : undefined);
+  const [params] = useSearchParams();
+  const again = useMemo(() => againOf(params), [params]);
+  const { mutate: markSeen } = useMarkRepoUpdateSeen();
+  const { mutate: refresh, isIdle: refreshIdle, isPending: refreshing } = useRefreshRepoRecommendation(repoId);
+  // 다시 고르기 요청이 끝나기 전에 읽으면 지난 결과가 '다시 골랐어요' 로 잠깐 보인다
+  const waiting = again !== null && (refreshIdle || refreshing);
+  const rec = useRepoRecommendation(supported && folder && !waiting ? repoId : undefined);
+  const entered = useRef(false);
+  useEffect(() => {
+    if (again === null || !supported || !folder || entered.current) return;
+    entered.current = true;
+    markSeen(repoId);
+    refresh();
+  }, [again, supported, folder, repoId, markSeen, refresh]);
   const me = useMe();
   const who: Who = { login: me.data?.login ?? '', avatarUrl: me.data?.avatarUrl };
   const name = folder ? folderTitle(folder) : '';
@@ -45,24 +60,25 @@ export function RepoPickPage() {
   // 막 만든 카드가 아직 목록에 없을 수 있어, 다시 읽는 중에는 카드가 없다고 보지 않는다
   if (cards.isPending || (!folder && cards.isFetching)) return loading;
   if (!folder) return <Navigate to={back} replace />;
+  if (waiting) return loading;
   if (rec.isError && !rec.data) {
     return <main className="main"><Breadcrumb items={crumbs('맞는 기업')} /><QueryFailure error={rec.error} retry={() => rec.refetch()} pending={rec.isFetching} /><Link to={back} className="btn btn--outline">폴더로 가기</Link></main>;
   }
   if (!rec.data) return loading;
-  return <PickScreen name={name} back={back} cardCount={folder.cards.length} crumbs={crumbs('맞는 기업')} rec={rec.data} who={who} />;
+  return <PickScreen name={name} back={back} cardCount={folder.cards.length} crumbs={crumbs('맞는 기업')} rec={rec.data} who={who} again={again} />;
 }
 
 type Crumb = { label: string; to?: string };
 /** 원 그림 가운데와 로그의 '내 쪽' 줄에 보일 사용자. 사진이 없으면 로그인 이름 첫 글자다 */
 type Who = { login: string; avatarUrl?: string | null };
 
-function PickScreen({ name, back, cardCount, crumbs, rec, who }: { name: string; back: string; cardCount: number; crumbs: Crumb[]; rec: RepoRecommendation; who: Who }) {
+function PickScreen({ name, back, cardCount, crumbs, rec, who, again }: { name: string; back: string; cardCount: number; crumbs: Crumb[]; rec: RepoRecommendation; who: Who; again: Again | null }) {
   const phase = phaseOf(rec);
   // 예약이거나 막 시작한 순간에는 남아 있는 지난 진행을 쓰지 않는다
   const live = phase === 'queued' ? null : rec.live;
   const count = live?.cardCount ?? cardCount;
   const rows = phase === 'running' ? (live ? liveRows(live) : []) : phase === 'done' || phase === 'failed' ? resultRows(rec.companies, live) : [];
-  const head = pickHead(phase, { repoName: name, cardCount: count, picked: rec.companies.length });
+  const head = pickHead(phase, { repoName: name, cardCount: count, picked: rec.companies.length, again });
   const candidates = live?.candidates ?? [];
   const checked = candidates.filter((candidate) => candidate.state === 'DONE').length;
   const started = candidates.some((candidate) => candidate.state !== 'WAITING');
@@ -169,7 +185,7 @@ function PickItem({ row, no, final }: { row: PickRow; no: number; final: boolean
       <span className="rp-pick__no">{no}</span>
       <CompanyMark name={row.name} logoUrl={row.logoUrl} size={48} className="rp-pick__logo" />
       <span className="rp-pick__text">
-        <strong>{row.name}</strong>
+        <span className="rp-pick__name"><strong>{row.name}</strong>{final && row.fresh && <span className="rp-new">새로 들어옴</span>}</span>
         <span>{row.role} · {dueLabel(row)}</span>
         {final && <span className="rp-pick__why">{pickReason(row)}</span>}
       </span>

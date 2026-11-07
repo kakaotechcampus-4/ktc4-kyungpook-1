@@ -34,6 +34,13 @@
 .home2-float--3 { top: 122px; left: 44px; }
 .home2-hero__github { position: absolute; right: 2px; bottom: 6px; color: var(--text-tertiary); z-index: -1; }
 
+/* ───────── 새로 써 둔 카드 ───────── */
+.home2-updates { display: flex; flex-direction: column; gap: 8px; }
+.home2-update { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border-accent); border-radius: 16px; background: var(--bg-accent); }
+.home2-update .iconbox { flex: none; background: var(--bg-surface); color: var(--text-primary); border-radius: 12px; }
+.home2-update__text { flex: 1; min-width: 0; margin: 0; font-size: 16px; line-height: 24px; font-weight: 700; overflow-wrap: anywhere; }
+.home2-update .btn { flex: none; }
+
 /* ───────── 지금 상태: 네 단계 ───────── */
 .home2-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 24px; }
 .home2-flow > li { position: relative; display: flex; min-width: 0; }
@@ -174,6 +181,9 @@
   .home2-todo__text { flex-basis: calc(100% - 108px); }
   .home2-todo .stardots, .home2-todo .home2-steps, .home2-todo .home2-chip { margin-left: 52px; }
   .home2-start .btn { width: 100%; }
+  .home2-update { flex-wrap: wrap; gap: 10px 12px; padding: 14px; }
+  .home2-update__text { flex-basis: calc(100% - 52px); }
+  .home2-update .btn { width: 100%; }
   .home2-recent { grid-template-columns: minmax(0, 1fr); }
   .home2-did { flex-direction: row; }
   .home2-thumb { flex: none; width: 128px; height: auto; min-height: 112px; }

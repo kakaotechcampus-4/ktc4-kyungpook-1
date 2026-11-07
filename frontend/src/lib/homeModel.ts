@@ -1,4 +1,4 @@
-import type { ActiveJob, CardSummary } from '@/api/schemas';
+import type { ActiveJob, CardSummary, RepoUpdate } from '@/api/schemas';
 import type { CoverLetterSummary } from '@/api/coverLetters';
 import { isCoverLetterRunning } from '@/api/coverLetters';
 import type { OverallRecommendation } from '@/api/matching';
@@ -64,6 +64,14 @@ export function continueItems(input: { jobs: readonly ActiveJob[]; cards: readon
     }));
   return [...jobs, ...cards, ...letters].slice(0, limit);
 }
+
+// ───────── 새로 써 둔 카드 ─────────
+export const repoUpdateText = (update: Pick<RepoUpdate, 'repoName' | 'cardCount'>) =>
+  `${update.repoName}에서 새로 한 일로 카드 ${update.cardCount}장을 써 뒀어요`;
+
+/** 매칭이 켜져 있으면 새 카드를 넣어 기업을 다시 고르는 화면, 꺼져 있으면 그 레포의 카드 폴더로 보낸다 */
+export const repoUpdatePath = (update: Pick<RepoUpdate, 'repoId' | 'cardCount'>, matching: boolean) =>
+  matching ? `${folderPath.repoMatch(update.repoId)}?again=1&cards=${update.cardCount}` : folderPath.repo(update.repoId);
 
 // ───────── 최근에 한 일 ─────────
 export type RecentItem =

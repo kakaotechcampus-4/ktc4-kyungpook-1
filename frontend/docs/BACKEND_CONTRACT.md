@@ -43,7 +43,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | | 요청 | 응답 `data` |
 |---|---|---|
 | `GET /profile` | | `Profile` — 한 번도 저장하지 않았으면 네 목록이 `[]` 이고 `savedAt: null` |
-| `PUT /profile` | `{ educations[], careers[], languages[], certifications[], interests[]? }` **네 목록 모두 필수**(없으면 `[]`). `interests` 는 보내면 통째로 바꾸고 안 보내면 그대로 둠 | `Profile` — 네 목록을 통째로 바꿈 |
+| `PUT /profile` | `{ educations[], careers[], languages[], certifications[], interests[]?, email?, mailOptIn? }` **네 목록 모두 필수**(없으면 `[]`). `interests`·`email`·`mailOptIn` 은 보내면 바꾸고 안 보내면 그대로 둠 | `Profile` — 네 목록을 통째로 바꿈 |
 
 ```jsonc
 // Profile — 요청 항목도 같은 모양(savedAt 빼고)이고, 비운 칸은 null
@@ -56,11 +56,14 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
                   "score": "IH", "acquiredMonth": "2025-05" | null }],  // 10개까지, testName 은 OTHER 일 때만 필수·저장
   "certifications": [{ "name": "정보처리기사", "issuer": "한국산업인력공단" | null, "acquiredMonth": "2026-06" | null }],  // 20개까지
   "interests": ["BACKEND", "DEVOPS"],   // 관심 분야 = 공고 직무 분류 이름(BACKEND·FRONTEND·MOBILE·DEVOPS·DATA·AI_ML·SECURITY·QA·ETC), 3개까지, 겹치지 않게. 아직 안 골랐으면 []
+  "email": "me@example.com" | null,   // 새 공고 알림을 받을 메일 주소. 요청에서 빈 글이면 지움(응답은 null)
+  "mailOptIn": false,                  // 메일 알림 수신 여부. 한 번도 저장하지 않았으면 false
   "savedAt": "ISO" | null }
 ```
 
 - 처음 들어올 때 `interests` 가 비어 있으면(전에 건너뛴 사용자 포함) 어느 화면이든 그 위에 입력 창을 띄우고, 저장해야 닫힌다(#656). '건너뛰기'는 없다. 창은 학력 구분·상태, 어학 시험+점수/등급, 자격증 이름만 받고 나머지 칸은 마이페이지 폼에서 더 적는다.
 - **관심 분야(`interests`)**: 매칭 1단계가 이 직무의 공고만 후보로 올린다(레포 추천·전체 추천). 비어 있으면 거르지 않는다. 4개 이상·겹침·모르는 값은 400.
+- **메일 알림(`email`·`mailOptIn`)**: 수신을 켜고 저장하면 그 주소로 확인 메일을 한 통 보낸다(켠 채 주소를 바꿔 저장해도 한 통). 주소는 인증하지 않고 적은 그대로 쓰며, 앞뒤 공백을 지우고 254자까지·공백 없이 `@` 하나와 그 뒤의 점이 있어야 한다. 모양이 틀리면 400 `INVALID_REQUEST`, 수신을 켰는데 저장될 주소가 없어도 400. 옛 화면처럼 두 칸을 안 보내면 저장된 값을 그대로 둔다. 새 공고 알림(`POSTINGS_MATCHED`)을 남길 때 수신을 켠 사용자에게는 같은 공고 목록을 메일로도 보낸다(서버 `MAIL_ENABLED` 가 켜져 있을 때만). 끄는 방법은 체크를 풀어 저장하는 것뿐이다.
 - 글은 앞뒤 공백을 지우고 50자까지(어학 점수는 20자), 빈 글은 null. 달은 `YYYY-MM`, 끝난 달이 시작한 달보다 앞서면 400. 학점은 만점(4.0·4.3·4.5·100)과 함께 보내거나 둘 다 null.
 - 규칙을 어기면 400 `INVALID_REQUEST` 이고 `error.message` 에 "학력 1번째 학교 이름…" 처럼 목록과 순번을 적는다. CSRF 헤더 필요.
 - 매칭 1차 필터(#532)와 자소서 AI(#484)가 이 값을 읽는다(아직 연결 전).

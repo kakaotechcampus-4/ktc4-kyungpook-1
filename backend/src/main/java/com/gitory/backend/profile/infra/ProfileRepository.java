@@ -4,7 +4,9 @@ import com.gitory.backend.profile.domain.Profile;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ProfileRepository extends JpaRepository<Profile, Long> {
@@ -13,4 +15,7 @@ public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Profile> findWithLockByUserId(Long userId);
+
+    @Query("select p.userId from Profile p where p.mailOptIn = true order by p.userId")
+    List<Long> findMailOptInUserIds();
 }

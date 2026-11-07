@@ -107,6 +107,7 @@ Spring 이 복호화한 GitHub 토큰을 `X-GitHub-Token` 헤더로 AI 서버에
 | `GITORY_STAR_REVIEW_ENABLED` (ai) | `false` | 다시 쓰기 전에 LLM 으로 원문과 뜻이 뒤집힌 칸도 검토한다. 모델은 `GITORY_STAR_REVIEW_MODEL`(비우면 `gpt-5.6-luna`) | — |
 | `RATE_LIMIT_ENABLED` | `false` | LLM 을 부르는 요청에 사용자별 호출 제한(429 `RATE_LIMITED`)을 건다 | 429 안내 문구를 보여주는 프론트(#335)가 배포돼 있어야 한다. 켜졌는지는 backend 로그 첫머리의 `LLM 호출 제한이 켜져 있다` 한 줄로 확인한다. redis 서비스는 이 값과 상관없이 뜬다. 백엔드 시험·로컬·E2E 는 꺼진 채 Redis 없이 돈다 |
 | `MATCHING_SYNC_ENABLED` | `false` | 매일 새벽 5시(서울)에 회사 채용 공고를 가져와 조건을 뽑고 AI 색인에 보낸다. 켠 뒤 서버가 뜰 때 마지막 실행이 24시간보다 오래됐으면 바로 한 번 돈다 | LLM 값을 넣는다. 색인은 ai 의 `ai-index` 볼륨에 남아 배포로 지워지지 않고, 볼륨을 지워도 다음 가져오기 때 전체를 다시 보낸다 |
+| `MATCHING_ALERT_ENABLED` | `false` | 공고 가져오기가 끝난 뒤 새로 조건을 뽑은 공고를 확정 카드와 맞춰 보고, 필수 조건의 절반 이상을 채운 공고를 알림(`POSTINGS_MATCHED`)으로 남긴다. 사용자마다 AI 판단을 공고 5건까지 부른다 | `MATCHING_SYNC_ENABLED` 가 켜져 있어야 돈다. 확정 카드가 있고 최근 14일 안에 카드를 만들거나 고친 사용자만 본다 |
 | `API_DOCS_ENABLED` | `false` | `https://<SITE_ADDRESS>/api/swagger-ui.html` 에서 BE API 문서를 연다. 문서 주소만 로그인 없이 열리고, API 를 부르려면 로그인 세션과 CSRF 헤더가 그대로 필요하다 | — |
 | `ROCKETPUNCH_API_KEY` | 빈 값 | 로켓펀치 공고도 가져온다 (developers.rocketpunch.com 콘솔에서 발급) | 비워 두면 로켓펀치 공고만 건너뛴다 |
 

@@ -3,6 +3,7 @@ package com.gitory.backend.matching.domain;
 import com.gitory.backend.matching.infra.JobPostingSourceRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -15,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -36,7 +39,7 @@ class MatchingSyncSchedulerTest {
         when(sources.findLatestAttemptAt())
                 .thenReturn("none".equals(hoursAgo) ? null : NOW.minus(Duration.ofHours(Long.parseLong(hoursAgo))));
         MatchingSyncScheduler scheduler = new MatchingSyncScheduler(sync, sources, Clock.fixed(NOW, ZoneOffset.UTC),
-                Runnable::run);
+                Runnable::run, null);
 
         scheduler.catchUp();
 
@@ -54,7 +57,7 @@ class MatchingSyncSchedulerTest {
 
         List<Runnable> queued = new ArrayList<>();
         MatchingSyncScheduler scheduler = new MatchingSyncScheduler(sync, sources, Clock.fixed(NOW, ZoneOffset.UTC),
-                queued::add);
+                queued::add, null);
 
         scheduler.scheduled();
         scheduler.scheduled();
@@ -64,6 +67,27 @@ class MatchingSyncSchedulerTest {
         scheduler.scheduled();
         assertThat(queued).hasSize(2);
         verify(sync, times(1)).sync();
+
+    }
+
+    @Test
+    @DisplayName("공고 가져오기가 끝나면 같은 스레드에서 이어서 새 공고 알림 확인을 돌고, 가져오기가 예외로 끝나면 돌지 않는다")
+    void runsNewPostingAlertsAfterTheSyncOnlyWhenTheSyncFinished() {
+
+        NewPostingAlertService alerts = mock(NewPostingAlertService.class);
+        MatchingSyncScheduler scheduler = new MatchingSyncScheduler(sync, sources, Clock.fixed(NOW, ZoneOffset.UTC),
+                Runnable::run, alerts);
+
+        scheduler.scheduled();
+
+        InOrder order = inOrder(sync, alerts);
+        order.verify(sync).sync();
+        order.verify(alerts).run();
+
+        doThrow(new IllegalStateException("가져오기 실패")).when(sync).sync();
+        scheduler.scheduled();
+
+        verify(alerts, times(1)).run();
 
     }
 

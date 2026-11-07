@@ -261,7 +261,7 @@ describe('JobWatcher 와 브라우저 알림', () => {
     expect(made[0].title).toBe('team/alpha — 다 됐어요');
     expect(made[0].tag).toBe('job_1'); // 탭이 여럿이어도 같은 작업은 OS 알림 하나로 겹친다
     act(() => { made[0].onclick?.(); });
-    expect(router.state.location.pathname).toBe('/repos/r_a/candidates');
+    expect(router.state.location.pathname).toBe('/repos/r_a/run');
   });
 
   it('W1 탭을 보고 있으면 브라우저 알림을 띄우지 않는다', async () => {

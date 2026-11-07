@@ -31,6 +31,7 @@ public class CardConfirmService {
     private final CandidateReferenceService candidates;
     private final AuditLog auditLog;
     private final CardThemeSuggester themeSuggester;
+    private final ConfirmedCardChanges changes;
 
     @Transactional
     public ConfirmResult confirm(UUID publicId, Long userId) {
@@ -53,6 +54,7 @@ public class CardConfirmService {
         confirmed.markConfirmed();
         card.confirm();
         themeSuggester.askAfterCommit(card);
+        changes.announce(card);
         auditLog.ok(userId, AuditAction.CONFIRM_CARD, card.getId());
 
         return resultOf(card);

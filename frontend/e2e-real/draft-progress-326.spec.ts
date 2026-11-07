@@ -40,7 +40,7 @@ test('DRAFT response renders card counts instead of four analysis phases', async
   );
   await page.goto(`/cards/${CARD_ID}`);
   await expect(
-    page.getByRole('heading', { name: '고른 후보의 카드 초안을 쓰고 있어요' }),
+    page.getByRole('heading', { name: '카드 초안을 쓰고 있어요' }),
   ).toBeVisible({ timeout: 20000 });
   await expect(page.getByText('카드 초안 10 / 40장')).toBeVisible();
   await expect(
@@ -52,8 +52,4 @@ test('DRAFT response renders card counts instead of four analysis phases', async
   await expect(
     page.getByRole('link', { name: '홈으로', exact: true }),
   ).toBeVisible();
-  await page.goto('/jobs/draft-326');
-  await expect(page.getByRole('heading', { name: '작업 진행', exact: true })).toBeVisible({ timeout: 20000 });
-  await expect(page.getByText('카드 초안 10 / 40장')).toBeVisible();
-  await expect(page.locator('.job-status-steps')).toHaveCount(0);
 });

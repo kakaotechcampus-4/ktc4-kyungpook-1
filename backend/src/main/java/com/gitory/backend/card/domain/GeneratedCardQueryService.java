@@ -25,7 +25,7 @@ public class GeneratedCardQueryService {
     public List<GeneratedCard> cardsOf(UUID generationJobId) {
 
         return cards.findByGenerationJobIdOrderById(generationJobId).stream()
-                .map(card -> new GeneratedCard(card.getId(), card.getCandidateId(), card.getTitle()))
+                .map(card -> new GeneratedCard(card.getId(), card.getPublicId(), card.getCandidateId(), card.getTitle()))
                 .toList();
 
     }

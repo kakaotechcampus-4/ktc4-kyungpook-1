@@ -8,7 +8,6 @@
 .card, .modal { border-radius: 20px; }
 .btn--outline { border-color: var(--border-default); }
 .btn--outline:hover:not(:disabled) { border-color: var(--border-strong); }
-.hl { text-decoration-color: var(--accent-decoration); text-decoration-thickness: 3px; }
 
 /* The navigation stays dark in either theme, independent of content surfaces. */
 @media screen and (min-width: 768px) {
@@ -21,10 +20,11 @@
   }
   .sidebar .brand-logo > .brand-logo__light { display: none; }
   .sidebar .brand-logo > .brand-logo__dark { display: block; }
-  .sidebar .brand-logo--mark { background: #F7F1D9; border-radius: 10px; padding: 5px; box-sizing: content-box; }
-  .sidebar .brand-logo--mark > .brand-logo__dark { filter: brightness(0); }
+  .sidebar .brand-logo--mark { background: transparent; padding: 0; }
+
   .sidebar .menu-group__title, .sidebar__recent-title { color: #AEAEBA; letter-spacing: .02em; }
-  .sidebar .menu-item { min-height: 44px; margin-block: 3px; border-radius: 12px; }
+  .sidebar .menu-item { min-height: 46px; margin-block: 3px; padding: 10px 14px; gap: 11px; border-radius: 12px; font-size: 15px; line-height: 22px; }
+  .sidebar .profile-menu__name { font-size: 15px; }
   .sidebar .menu-item[aria-current="page"] { background: #E4F1FC; color: #202022; }
   .sidebar .menu-item[aria-current="page"] svg { color: #202022; }
   .sidebar .sidebar__profile { background: transparent; }
@@ -74,28 +74,10 @@
 .landing-card__field .star-key { background: var(--bg-surface); }
 .landing-card__evidence { background: var(--bg-surface); }
 
-/* Dashboard colours describe progress, rather than colouring every surface. */
-.home-overview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.overview-tile { display: flex; flex-direction: column; gap: 20px; padding: 24px; border-radius: 20px; min-width: 0; }
-.overview-tile--blue { background: var(--pastel-blue); }
-.overview-tile--lavender { background: var(--pastel-lavender); }
-.overview-tile--mint { background: var(--pastel-mint); }
-.overview-tile__label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; font-weight: 600; }
-.overview-tile__label svg { opacity: .65; flex-shrink: 0; }
-.overview-tile > strong { font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-.overview-tile small { font-size: 13px; font-weight: 500; margin-left: 6px; }
-.overview-tile p { color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
-.home-page--returning .prompt { background: var(--bg-paper); border-color: var(--border-default); padding: 24px; }
-.home-page--returning .prompt__card { background: var(--bg-surface); border-radius: 14px; }
-.resume__item { background: var(--pastel-lavender); border-color: transparent; box-shadow: none; }
-.resume__item .iconbox { background: var(--bg-surface); color: var(--text-primary); }
 .experience-item.gcard { border-radius: 20px; box-shadow: none; }
 .experience-item:hover { background: var(--bg-paper); border-color: var(--border-strong); }
-.source .iconbox { color: var(--text-primary); background: var(--pastel-blue); }
-.source:nth-child(2) .iconbox { background: var(--pastel-lavender); }
-.source:nth-child(3) .iconbox { background: var(--pastel-mint); }
 @media (min-width: 1200px) {
-  .shell { --sb: 224px; }
+  .shell { --sb: 232px; }
   .shell--rail { --sb: 72px; }
   .shell__main { border-radius: 28px 0 0 28px; }
   .shell { background: #232325; }
@@ -114,20 +96,24 @@
   .landing-example-wrap { padding: 12px; border-radius: 20px; box-shadow: none; }
   .landing-example { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .landing-example__connector { justify-self: center; transform: rotate(90deg); }
-  .home-overview { gap: 8px; }
-  .overview-tile { padding: 16px 12px; gap: 16px; border-radius: 16px; }
-  .overview-tile__label { font-size: 11px; }
-  .overview-tile__label svg { display: none; }
-  .overview-tile > strong { font-size: 28px; }
-  .overview-tile p { font-size: 11px; }
-  .home-page--returning .prompt { padding: 18px; }
   .mobile-nav a[aria-current='page'] { background: var(--pastel-blue); color: var(--text-primary); border-radius: 12px; }
 }
 @media print {
-  .home-overview { display: none; }
   .shell, .shell__main { background: white; }
 }
 
 /* Keep sidebar navigation scrollable without showing a scrollbar. */
 .sidebar { scrollbar-width: none; }
 .sidebar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* 펼치면 로고 오른쪽, 접히면 로고 아래에 토글을 둔다. */
+@media (min-width: 1200px) {
+  .sidebar__top { gap: 12px; }
+  /* 눌리는 범위는 44px 이고 보이는 배경은 안쪽 32px 만 칠한다 — 바깥 6px 은 음수 여백으로 자리를 차지하지 않는다 */
+  .sidebar__top .sidebar__toggle { display: grid; place-items: center; flex: none; width: 44px; height: 44px; min-width: 0; min-height: 0; margin: -6px; padding: 6px; border: 0; border-radius: 14px; background: transparent; background-clip: content-box; color: #AEAEBA; box-shadow: none; }
+  .sidebar__top .sidebar__toggle:hover { background: #303035; color: #F5F5F7; }
+  .sidebar__top .sidebar__toggle:focus-visible { outline: 2px solid #AEAEBA; outline-offset: 2px; }
+  .shell--rail .sidebar { padding-inline: 8px; }
+  .shell--rail .sidebar__top { flex-direction: column; align-items: center; justify-content: center; gap: 12px; margin-inline: 0; padding-inline: 0; }
+  .shell--rail .sidebar__top .brand { flex: none; width: 32px; padding: 0; }
+}

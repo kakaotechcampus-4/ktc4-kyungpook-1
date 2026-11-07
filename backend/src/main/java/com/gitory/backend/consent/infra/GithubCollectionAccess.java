@@ -59,6 +59,7 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
     private static final Duration COUNT_TIME_LIMIT = Duration.ofSeconds(15);
 
     private static final String DIFF_EVIDENCE_PATH = "/internal/analysis/diff-evidence";
+    private static final String GAP_FILL_PATH = "/internal/matching/gap-fill/stream";
     private static final String GITHUB_UNAUTHORIZED = "GITHUB_UNAUTHORIZED";
 
     private final UserRepository users;
@@ -114,6 +115,20 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
             throw revokedIfRejected(userId, token, failed);
         }
         return DiffEvidenceReader.read(data, target.userRepositoryId());
+
+    }
+
+    @Override
+    public JsonNode gapFill(Long userId, Object request, Consumer<AiProgress> progress) {
+
+        activeUser(userId).orElseThrow(GithubCollectionAccess::unavailable);
+        UsableToken token = activeUsableToken(userId).orElseThrow(GithubCollectionAccess::unauthorized);
+        try {
+            return ai.postStreamingWithGithubToken(GAP_FILL_PATH, request, token.value(), aiProperties.readTimeout(),
+                    progress);
+        } catch (AiClientException failed) {
+            throw revokedIfRejected(userId, token, failed);
+        }
 
     }
 
@@ -214,6 +229,31 @@ public class GithubCollectionAccess implements GithubCollectionAccessPort {
         } catch (RuntimeException failed) {
             log.warn("GitHub 호출 한도를 조회하지 못했다: 사용자 {}, {}", userId, failed.getClass().getSimpleName());
             return Optional.empty();
+        }
+
+    }
+
+    @Override
+    public Optional<String> readme(Long userId, String owner, String name) {
+
+        Optional<String> token = activeUser(userId).flatMap(user -> activeToken(userId));
+
+        return token.isEmpty() ? Optional.empty() : github.fetchReadme(token.get(), owner, name);
+
+    }
+
+    /** 소개 문장을 만드는 보조 재료라 어떤 실패든 빈 목록으로 돌려주고, 응답 본문이 로그에 남지 않게 예외 종류만 적는다 */
+    @Override
+    public List<String> topLevelPaths(Long userId, String owner, String name) {
+
+        try {
+            Optional<String> token = activeUser(userId).flatMap(user -> activeToken(userId));
+
+            return token.isEmpty() ? List.of() : github.fetchTopLevelNames(token.get(), owner, name);
+        } catch (RuntimeException failed) {
+            log.warn("GitHub 저장소 {}/{} 의 최상위 파일을 읽지 못해 빈 목록으로 둔다: {}", owner, name,
+                    failed.getClass().getSimpleName());
+            return List.of();
         }
 
     }

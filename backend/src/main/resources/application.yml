@@ -2,6 +2,22 @@ spring:
   application:
     name: gitory-backend
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          # 메일 서버가 멈춰도 보내는 스레드가 오래 붙잡히지 않게 접속·응답·쓰기를 10초로 끊는다
+          connectiontimeout: 10000
+          timeout: 10000
+          writetimeout: 10000
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -76,6 +92,9 @@ management:
         # 헬스체크만 연다. env·configprops 는 비밀값이 새는 경로다.
         include: health
   health:
+    mail:
+      # 메일 계정이 없거나 Gmail 이 막혀도 서버 상태가 DOWN 으로 보이면 안 된다 — 헬스체크가 SMTP 에 접속하지 않게 한다
+      enabled: false
     redis:
       # Redis 는 호출 제한에만 쓰고 멈추면 제한을 건너뛴다. health 에 섞이면 compose --wait 와 배포 확인이 Redis 때문에 실패한다
       enabled: false
@@ -143,16 +162,40 @@ gitory:
       enabled: ${JOB_WORKER_ENABLED:true}
       # 동시에 실행하는 Job 수로 카드 초안 Job 도 같은 자리를 쓰며, 같은 사용자의 분석 Job·카드 초안 Job 은 종류마다 이 수와 상관없이 하나씩 실행한다
       concurrency: ${JOB_WORKER_CONCURRENCY:3}
+  mail:
+    # 켜면 인적사항에서 수신을 켠 사용자에게 확인 메일과 새 공고 메일을 보낸다. 켜기 전에 MAIL_USERNAME 과 MAIL_PASSWORD(Gmail 앱 비밀번호)를 넣는다
+    enabled: ${MAIL_ENABLED:false}
+    # 메일 안의 링크 앞부분이다
+    app-base-url: ${GITORY_APP_BASE_URL:http://localhost:5173}
+  alert:
+    # 서버나 AI 문제로 Job 이 실패해도 로그에만 남아 아무도 모르므로 이 Discord 웹훅으로 한 줄을 보내며, 비어 있으면 보내지 않는다
+    webhook-url: ${GITORY_ALERT_WEBHOOK_URL:}
   cover-letter:
     worker:
       # 끄면 자소서의 AI 단계가 돌지 않는다. 분석 Job 과 자리를 나눠, 오래 걸리는 분석이 자소서를 막지 않는다
       enabled: ${COVER_LETTER_WORKER_ENABLED:true}
       concurrency: ${COVER_LETTER_WORKER_CONCURRENCY:2}
+  assistant:
+    # 켜면 홈 한 줄 명령 API 가 열리고, 워커도 같은 값으로 켜져 접수한 실행을 돌린다. 화면의 VITE_ASSISTANT_ENABLED 와 함께 켠다
+    enabled: ${ASSISTANT_ENABLED:false}
+    # 한 실행이 도구를 실행할 수 있는 횟수로, AI 계약이 남은 횟수를 10까지만 받는다
+    step-limit: 6
+    worker:
+      enabled: ${ASSISTANT_ENABLED:false}
+      concurrency: 2
   matching:
+    recommend:
+      worker:
+        # 끄면 확정 카드가 바뀌어도 레포 추천을 다시 계산하지 않으며, 계산은 공고마다 AI 를 부른다
+        enabled: ${MATCHING_RECOMMEND_WORKER_ENABLED:true}
     sync:
       # 켜면 매일 새벽 5시(서울)에 회사 채용 공고를 가져오고 서버가 뜰 때 24시간 넘게 안 돌았으면 바로 한 번 돈다
       # 켜기 전에 회사별 이용 조건을 확인하며 서버가 여러 대여도 DB 잠금으로 한 곳에서만 돈다
       enabled: ${MATCHING_SYNC_ENABLED:false}
+    alert:
+      # 켜면 공고 가져오기가 끝난 뒤 새로 조건을 뽑은 공고를 확정 카드와 맞춰 보고 알림으로 남기며, 사용자마다 AI 판단을 공고 5건까지 부른다
+      # 공고 가져오기(sync)가 꺼져 있으면 함께 돌지 않는다
+      enabled: ${MATCHING_ALERT_ENABLED:false}
     sources:
       # 쿠팡은 회사 채용 사이트가 공고 경로에서 채용 집계 봇을 막고 있어 그 뜻을 따라 넣지 않는다
       - { key: daangn, name: 당근, type: GREENHOUSE, board: daangn, logo: 'https://about.daangn.com/icons/icon-72x72.png?v=7ecc65aad435f5c3e7bed69e5a7a6219' }
@@ -255,7 +298,7 @@ gitory:
       enabled: ${ANALYSIS_LIVE_PROGRESS_ENABLED:true}
   cards:
     # 후보로 카드 만들기 한 요청에 만들 수 있는 카드 수. 화면은 같은 값으로 선택을 막는다(CandidateBoardPage)
-    max-per-request: 8
+    max-per-request: 10
     ai-draft:
       # 켜면 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채우고, 끄면 빈 카드로 끝낸다
       # 운영 AI 에 LLM 설정이 없으면 모든 초안이 실패하므로 그 설정을 넣고 한 번 확인한 뒤 켠다
@@ -279,6 +322,30 @@ gitory:
     cover-letter:
       per-minute: 2
       per-day: 10
+    # 자소서 문항 첨삭. 한 번에 LLM 을 두 번 부르고 문항마다 다시 받을 수 있어 만들기보다 넉넉히 둔다
+    cover-letter-polish:
+      per-minute: 3
+      per-day: 30
+    # 자소서 채우기 대화(문항 이야기 시작·답·넘기기). 답 하나에 LLM 을 한두 번 부르고 초안이 나오면 대화가 빈칸마다 스스로 질문을 열어 호출이 잦으므로 첨삭보다 넉넉히 둔다
+    cover-letter-turn:
+      per-minute: 20
+      per-day: 200
+    # 공고 상세 '이 공고와 맞춰 보기'. 아직 판단하지 않은 카드가 남아 AI 를 부를 때만 센다
+    match-judgement:
+      per-minute: 10
+      per-day: 100
+    # 공고 페이지 '내 조건으로 매칭하기'. 한 번에 공고 15곳을 물어 다른 요청보다 적게 두고, 이미 계산 중이면 세지 않는다
+    match-overall:
+      per-minute: 2
+      per-day: 20
+    # 공고 상세 '모자란 조건 채우기'. 같은 자료로 이미 채운 공고와 채우는 중인 공고는 세지 않는다
+    match-gap-fill:
+      per-minute: 3
+      per-day: 40
+    # 홈 한 줄 명령 실행 만들기와 말 더하기. 한 실행에 AI 를 여러 번 부르므로 다른 요청보다 적게 둔다
+    assistant:
+      per-minute: 5
+      per-day: 50
 
 logging:
   level:

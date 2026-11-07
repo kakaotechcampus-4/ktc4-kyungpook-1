@@ -38,7 +38,7 @@ import java.util.UUID;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
-@Import({ClockConfig.class, JobQueryService.class, JobViewFactory.class, JobActivityLog.class, CandidateEmptyReasons.class, CollectionStatsService.class,
+@Import({ClockConfig.class, JobQueryService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class, CollectionStatsService.class,
         GeneratedCardQueryService.class})
 class JobQueryServiceTest {
 

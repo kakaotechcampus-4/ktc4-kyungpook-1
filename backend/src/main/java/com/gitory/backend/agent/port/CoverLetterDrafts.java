@@ -15,6 +15,6 @@ public record CoverLetterDrafts(List<Draft> drafts, List<Step> steps) {
     }
 
     public record Step(int seq, String actor, String kind, Integer questionId, String code, String value,
-                       Integer sentenceSeq, String action, String reason) {
+                       Integer sentenceSeq, String sentence, String action, String reason) {
     }
 }

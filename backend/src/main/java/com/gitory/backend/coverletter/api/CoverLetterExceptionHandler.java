@@ -2,7 +2,9 @@ package com.gitory.backend.coverletter.api;
 
 import com.gitory.backend.common.api.ApiResponse;
 import com.gitory.backend.common.api.ErrorCode;
+import com.gitory.backend.coverletter.domain.CoverLetterAiUnavailableException;
 import com.gitory.backend.coverletter.domain.CoverLetterNotFoundException;
+import com.gitory.backend.coverletter.domain.CoverLetterPostingNotFoundException;
 import com.gitory.backend.coverletter.domain.CoverLetterStateException;
 import com.gitory.backend.coverletter.domain.InvalidCoverLetterInputException;
 import com.gitory.backend.coverletter.domain.NoConfirmedCardsException;
@@ -25,6 +27,14 @@ public class CoverLetterExceptionHandler {
 
     }
 
+    @ExceptionHandler(CoverLetterPostingNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handlePostingNotFound() {
+
+        return ApiResponse.fail(ErrorCode.NOT_FOUND, "공고를 찾을 수 없습니다.");
+
+    }
+
     @ExceptionHandler(InvalidCoverLetterInputException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleInvalidInput(InvalidCoverLetterInputException e) {
@@ -38,6 +48,14 @@ public class CoverLetterExceptionHandler {
     public ApiResponse<Void> handleState(CoverLetterStateException e) {
 
         return ApiResponse.fail(ErrorCode.INVALID_STATE, e.getMessage());
+
+    }
+
+    @ExceptionHandler(CoverLetterAiUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ApiResponse<Void> handleAiUnavailable(CoverLetterAiUnavailableException e) {
+
+        return ApiResponse.fail(ErrorCode.AI_UNAVAILABLE, e.getMessage());
 
     }
 

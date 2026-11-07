@@ -11,9 +11,16 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="stylesheet" crossorigin
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+    <!-- JS 가 뜨기 전(느린 회선에서 수 초) 빈 흰 화면 대신 보일 자리. React 가 #root 를 그리면 사라진다 -->
+    <style>
+      .boot{min-height:100vh;display:grid;place-items:center}
+      .boot__spin{width:28px;height:28px;border-radius:50%;border:3px solid rgba(128,128,128,.25);border-top-color:rgba(128,128,128,.8);animation:boot-spin .8s linear infinite}
+      @keyframes boot-spin{to{transform:rotate(360deg)}}
+      @media (prefers-reduced-motion: reduce){.boot__spin{animation:none}}
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot" role="status" aria-label="불러오는 중이에요"><span class="boot__spin"></span></div></div>
     <noscript><p>Gitory는 GitHub 커밋과 PR을 STAR 경험 카드로 정리하는 서비스입니다. 이용하려면 브라우저의 JavaScript를 켜 주세요.</p></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

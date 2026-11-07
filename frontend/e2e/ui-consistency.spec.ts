@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, showCardTiles } from './helpers';
 
 /**
  * 목록을 "테두리 하나짜리 박스 + 칸막이선"으로 바꾸고 나서, 낱장 카드 시절의 hover 규칙이 남아
@@ -52,20 +52,23 @@ test('목록 행에 마우스를 올리면 배경만 바뀐다 — 칸막이선�
     return { border: cs.borderTopColor, bg: cs.backgroundColor };
   });
   await row.hover();
+  // 배경은 짧은 전환(.15s)으로 바뀌므로 전환이 끝날 때까지 기다려 읽는다
+  await expect.poll(() => row.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(before.bg); // 배경은 눈에 띄게 바뀐다
   const after = await row.evaluate((el) => {
     const cs = getComputedStyle(el);
     return { border: cs.borderTopColor, bg: cs.backgroundColor };
   });
   expect(after.border).toBe(before.border);  // 선은 그대로
-  expect(after.bg).not.toBe(before.bg);      // 배경은 눈에 띄게 바뀐다
 });
 
 test('홀수 경험 카드도 다른 카드와 같은 폭을 유지한다', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await loginAsDemo(page);
   await page.goto('/cards');
+  await showCardTiles(page);
+  // 확정 카드는 5장이라 홀수다(전체는 8장이라 짝수가 됐다) — 묶음이 달라도, 혼자 남은 카드도 모두 같은 폭이어야 한다
+  await page.getByRole('button', { name: /^확정됨/ }).click();
   await page.locator('.experience-list > *').first().waitFor();
-  // 레포별 묶음은 카드 1장·4장처럼 홀짝이 섞인다 — 묶음이 달라도, 혼자 남은 카드도 모두 같은 폭이어야 한다
   const widths = await page.locator('.experience-list > *').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
   expect(widths.length % 2).toBe(1);                   // 시드가 홀수여야 이 검사가 의미 있다
   expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);

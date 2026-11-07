@@ -6,14 +6,24 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 import api.cover_letters as cover_letters_api
 from main import app
+from schemas.cover_letter import (
+    AssignmentRequest,
+    DraftsRequest,
+    FillRequest,
+    PolishRequest,
+    QuestionsRequest,
+    TurnRequest,
+)
 from services.cover_letter_asker import AskItemOutput, AskOutput, CoverLetterAsker
 from services.cover_letter_assigner import ConsideredOutput, CoverLetterAssigner, PickOutput
 from services.cover_letter_drafter import CoverLetterDrafter, ReviewOutput
 from services.cover_letter_llm import CoverLetterLimits
-from services.cover_letter_writer import WriteOutput
+from services.cover_letter_writer import ReadinessOutput, WriteOutput
+from cover_letter_fakes import all_evidence
 from services.llm_structured_client import LLMStructuredCallError, StructuredCallResult
 
 SUMMARY = {"card_id": 1, "title": "배포 시간 단축", "summary": "배포 시간을 40분에서 12분으로 줄였다"}
@@ -31,7 +41,7 @@ class FixedClient:
         self._answers = answers
 
     def call(self, system_prompt, payload, output_model, max_completion_tokens, timeout_seconds=None):
-        answer = self._answers[output_model]
+        answer = all_evidence(payload) if output_model is ReadinessOutput else self._answers[output_model]
         if isinstance(answer, dict):
             answer = answer[payload["question"]["text"]]
         if isinstance(answer, Exception):
@@ -46,7 +56,7 @@ def _post(path: str, payload: dict) -> dict:
 
 def test_assignment_api_returns_result_and_how_it_ended(monkeypatch: pytest.MonkeyPatch) -> None:
     """카드 고르기 API 는 배정과 끝난 방식을 공통 응답 형식으로 돌려준다."""
-    pick = PickOutput(question_theme="PROBLEM_SOLVING", considered=[ConsideredOutput(card_id=1, note="원인을 고친 과정")],
+    pick = PickOutput(question_theme="PROBLEM_SOLVING", considered=[ConsideredOutput(card_id=1, note="원인을 고친 과정", fit="MEDIUM")],
                       first_card_id=1, first_reason="문제 해결 과정이 있음")
     client = FixedClient({PickOutput: pick})
     monkeypatch.setattr(cover_letters_api, "_assigner", CoverLetterAssigner(client, client))
@@ -127,3 +137,34 @@ def test_duplicate_missing_items_are_rejected() -> None:
     body = _post("/internal/cover-letter-drafts", payload)
 
     assert (body["status"], body["error"]["code"]) == (400, "INVALID_PAYLOAD")
+
+
+_TARGET = {"question_id": 1, "text": "지원 동기", "char_limit": 500, "current_text": "결제 서비스에 관심이 있어 지원했습니다."}
+STRENGTH_REQUESTS = {
+    "assignments": (AssignmentRequest, {"questions": [{"question_id": 1, "text": "지원 동기", "char_limit": 500}]}),
+    "questions": (QuestionsRequest, {"questions": [{"question_id": 1, "text": "지원 동기", "char_limit": 500}]}),
+    "drafts": (DraftsRequest, {"questions": [{"question_id": 1, "text": "지원 동기", "char_limit": 500}]}),
+    "polish": (PolishRequest, {"target": _TARGET}),
+    "turns": (TurnRequest, {"question": _TARGET, "trigger": "OPEN"}),
+    "fill": (FillRequest, {"target": _TARGET | {"answers": [{"item": "REASON", "text": "결제 서비스에 관심이 있다"}]},
+                           "filled_item": "REASON"}),
+}
+
+
+@pytest.mark.parametrize("name", list(STRENGTH_REQUESTS))
+@pytest.mark.parametrize(
+    ("strengths", "accepted"),
+    [([], True), (["METICULOUS", "PERSISTENT", "DOCUMENTING"], True), (["METICULOUS", "METICULOUS"], False),
+     (["METICULOUS", "PERSISTENT", "PROACTIVE", "DOCUMENTING"], False), (["HONEST"], False)],
+    ids=["없음", "3개", "같은 값 두 번", "4개", "모르는 값"],
+)
+def test_requests_take_up_to_three_distinct_known_strengths(name: str, strengths: list[str], accepted: bool) -> None:
+    """여섯 자소서 요청 모두 강점을 같은 값 없이 3개까지, 정해 둔 12개 값만 받는다."""
+    model, body = STRENGTH_REQUESTS[name]
+    payload = {"cover_letter_id": 9, "job_role": "백엔드 개발", **body, "strengths": strengths}
+
+    if accepted:
+        assert model.model_validate(payload).strengths == strengths
+    else:
+        with pytest.raises(ValidationError):
+            model.model_validate(payload)

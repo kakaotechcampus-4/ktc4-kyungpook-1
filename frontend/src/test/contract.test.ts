@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
-import { ActiveJob, CardSummary, Job, StartedJob } from '@/api/schemas';
+import { ActiveJob, Card, CardSummary, DraftLive, Job, StartedJob } from '@/api/schemas';
 import { pollInterval } from '@/lib/jobView';
 
 /**
@@ -134,6 +134,18 @@ describe('카드 목록의 STAR 는 서버 판정값이다', () => {
   });
 });
 
+describe('카드 목록의 preview (#773)', () => {
+  it('현재 버전 결과 칸의 글이고, 결과가 비어 있으면 null 이다', () => {
+    const list = (req('GET', '/cards').data as unknown[]).map((c) => CardSummary.parse(c));
+    for (const summary of list) {
+      const detail = req('GET', `/cards/${summary.id}`).data as { version: { result: string | null } };
+      expect(summary.preview).toBe(detail.version.result || null);
+    }
+    expect(list.some((summary) => summary.preview === null)).toBe(true);
+    expect(list.some((summary) => typeof summary.preview === 'string')).toBe(true);
+  });
+});
+
 describe('직접 작성 — 근거 없이도 저장된다', () => {
   it('제목만으로 DRAFT 를 먼저 만들고, 이후 입력은 같은 버전을 덮어쓴다', () => {
     const card = req('POST', '/cards/manual/draft', { title: '팀 설득 경험', period: '2024.04', repoId: null }).data as { id: string; version: { versionNo: number } };
@@ -214,5 +226,15 @@ describe('되묻기 — 커밋 묶음 카드', () => {
     const made = req('POST', '/repos/r_algo/cards', { candidateIds: [cluster.id] }).data as { cardIds: string[] };
     const turn = req('POST', `/cards/${made.cardIds[0]}/interview`, { field: 'T' }).data as { sourceType: string };
     expect(turn.sourceType).toBe('COMMIT_CLUSTER');
+  });
+});
+
+describe('AI 가 한 일 — 서버가 보내는 단계 값 (#646)', () => {
+  const revert = { round: 1, actor: 'CODE', kind: 'REVERT', field: 'R', code: 'UNSOURCED_NUMBER', value: null, material: null, reason: null };
+  it('REVERT 단계가 든 카드 응답과 초안 진행(drafts)이 스키마를 통과하고 단계가 남는다', () => {
+    const card = Card.parse({ ...(req('GET', '/cards/card_01').data as Record<string, unknown>), draftSteps: [revert] });
+    expect(card.draftSteps?.map((s) => s.kind)).toEqual(['REVERT']);
+    const live = DraftLive.parse({ cardId: 'card_01', title: '카드', state: 'WRITING', slots: [], steps: [revert] });
+    expect(live.steps).toEqual([revert]);
   });
 });

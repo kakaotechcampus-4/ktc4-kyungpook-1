@@ -54,6 +54,40 @@ public record Applicant(Set<JobCategory> interests, EducationLevel education, In
 
     }
 
+    /**
+     * 공고 상세에서 학력 조건 하나를 인적사항과 견주며, 수준을 못 읽은 조건은 견줄 것이 없어 CHECK, 학력을 모르면 UNKNOWN 이다
+     * '또는 그에 준하는 경력' 같은 예외가 적힌 조건은 못 미쳐도 지원할 수 있을 수 있어 NOT_MET 대신 CHECK 다
+     */
+    public MatchConditionStatus educationOf(JobPostingCriterion criterion) {
+
+        if (criterion.getEducationLevel() == null) {
+            return MatchConditionStatus.CHECK;
+        }
+        if (education == null) {
+            return MatchConditionStatus.UNKNOWN;
+        }
+        if (education.compareTo(criterion.getEducationLevel()) >= 0) {
+            return MatchConditionStatus.MET;
+        }
+        return criterion.isEducationExempt() ? MatchConditionStatus.CHECK : MatchConditionStatus.NOT_MET;
+
+    }
+
+    /** 공고가 요구한 경력 연수를 인적사항과 견주며, 연수 요구가 없는 공고는 null 이다 */
+    public MatchConditionStatus careerOf(JobPosting posting) {
+
+        Integer requiredYears = posting.getExperienceMinYears();
+        if (requiredYears == null) {
+            return null;
+        }
+        if (careerMonths == null) {
+            return MatchConditionStatus.UNKNOWN;
+        }
+        return careerMonths >= requiredYears * MONTHS_PER_YEAR ? MatchConditionStatus.MET
+                : MatchConditionStatus.NOT_MET;
+
+    }
+
     public boolean allows(JobPosting posting, List<JobPostingCriterion> criteria) {
 
         return allowsCategory(posting) && allowsEducation(criteria) && allowsCareer(posting);

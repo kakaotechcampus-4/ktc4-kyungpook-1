@@ -23,23 +23,17 @@ test('repository menus support keyboard selection and outside dismissal without 
   }).toPass({ timeout: 5000 });
   await expect(sort).toContainText('이름 순');
   await expect(sort).toBeFocused();
-  const filter = page.getByRole('combobox', { name: '필터', exact: true });
-  await filter.click(); await page.getByRole('option', { name: 'PR 0건', exact: true }).click();
-  await expect(filter).toContainText('PR 0건');
-  await expect(page.getByRole('radio')).toHaveCount(2);
-  await expect(page.getByRole('radio', { name: /algorithm-study/ })).toBeVisible();
-  await expect(page.getByRole('radio', { name: /auth-service/ })).toHaveCount(0);
 });
 
 test('repository typeahead reaches the draft unchanged and locks after the first save', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/cards/new');
+  await loginAsDemo(page); await page.goto('/cards/new?write=1');
   const repo = page.getByRole('combobox', { name: '관련 레포', exact: true });
   await repo.click(); await page.keyboard.type('Tae');
   await expect(page.getByRole('option', { name: 'TaeHuiKKIM/free-tier-sleep', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(repo).toContainText('TaeHuiKKIM/free-tier-sleep');
   await page.getByRole('textbox', { name: '카드 제목', exact: true }).fill('레포 선택 저장 검사');
-  await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();
+  await page.getByRole('button', { name: '작성 시작', exact: true }).click();
   await expect(repo).toBeDisabled();
   await repo.dispatchEvent('click');
   await expect(page.getByRole('listbox', { name: '관련 레포', exact: true })).toHaveCount(0);
@@ -51,7 +45,7 @@ test('repository typeahead reaches the draft unchanged and locks after the first
 
 test('long repository menus scroll to the keyboard destination within the mobile viewport', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 600 });
-  await loginAsDemo(page); await page.goto('/cards/new');
+  await loginAsDemo(page); await page.goto('/cards/new?write=1');
   const initialRepo = page.getByRole('combobox', { name: '관련 레포', exact: true });
   await initialRepo.click();
   await expect(page.getByRole('option', { name: 'hong-dev/auth-service', exact: true })).toBeVisible();

@@ -1,0 +1,116 @@
+package com.gitory.backend.card.domain;
+
+import com.gitory.backend.card.infra.CardRepository;
+import com.gitory.backend.card.infra.CardStatementRepository;
+import com.gitory.backend.card.infra.ConfirmedCardRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 매칭 AI 에 보낼 확정 카드·작성 중 카드의 지금 버전 글을 사용자가 정한 가리기를 적용해 칸마다 한 덩어리로 읽는다
+ * 매칭은 이 글로 판단을 저장해 두므로, 가리기를 바꾸면 보내는 글이 달라져 판단을 다시 묻게 된다
+ */
+@Service
+@RequiredArgsConstructor
+public class MatchingCardReader {
+
+    // AI 는 빈 제목을 받지 않아서, 가리기가 제목을 모두 지운 카드는 이 이름으로 보낸다
+    private static final String MASKED_TITLE = "제목을 가린 카드";
+
+    private final ConfirmedCardRepository confirmedCards;
+    private final CardRepository cards;
+    private final CardStatementRepository statements;
+
+    /** 그 레포의 지우지 않은 작성 중 카드와 확정 카드를 카드 id 순으로 모두 읽는다 */
+    @Transactional(readOnly = true)
+    public List<MatchingCard> allOf(Long userId, Long userRepositoryId) {
+
+        return cardsOf(confirmedCards.findLiveIdsOfRepository(userId, userRepositoryId));
+
+    }
+
+    /** 그 레포에 지우지 않은 카드가 작성 중이든 확정이든 한 장이라도 있는지 묻는다 */
+    @Transactional(readOnly = true)
+    public boolean existsOf(Long userId, Long userRepositoryId) {
+
+        return confirmedCards.existsLiveOfRepository(userId, userRepositoryId);
+
+    }
+
+    /** 레포를 가리지 않고 그 사용자의 확정 카드를 모두 읽는다 */
+    @Transactional(readOnly = true)
+    public List<MatchingCard> confirmedOf(Long userId) {
+
+        return cardsOf(confirmedCards.findLiveConfirmedIdsOfUser(userId));
+
+    }
+
+    /** 지우지 않은 확정 카드가 있고, 작성 중까지 포함한 카드를 since 이후에 만들거나 고친 사용자를 id 순으로 읽는다 */
+    @Transactional(readOnly = true)
+    public List<Long> activeUserIds(Instant since) {
+
+        return confirmedCards.findUserIdsWithConfirmedAndEditedSince(since);
+
+    }
+
+    /** 작성 중 카드 중 최근에 고친 limit 장을 카드 id 순으로 읽는다 */
+    @Transactional(readOnly = true)
+    public List<MatchingCard> draftsOf(Long userId, int limit) {
+
+        return cardsOf(confirmedCards.findLiveDraftIdsRecentFirst(userId, limit));
+
+    }
+
+    /** 매칭 화면이 '이 조건을 채운 카드' 로 보여 줄 이름표로, 카드 주인에게만 보이므로 가리기 전 제목이다 */
+    @Transactional(readOnly = true)
+    public Map<Long, MatchingCardLabel> labelsOf(Collection<Long> ids) {
+
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+
+        return cards.findAllById(ids).stream()
+                .collect(Collectors.toMap(Card::getId, card -> new MatchingCardLabel(card.getPublicId(),
+                        card.getTitle(), card.getCardType(), card.getUserRepositoryId())));
+
+    }
+
+    private List<MatchingCard> cardsOf(List<Long> ids) {
+
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, List<CardStatement>> byCard = statements.findCurrentOf(ids).stream()
+                .collect(Collectors.groupingBy(CardStatement::getCardId));
+        return cards.findAllById(ids).stream()
+                .sorted(Comparator.comparing(Card::getId))
+                .map(card -> card(card, byCard.getOrDefault(card.getId(), List.of())))
+                .toList();
+
+    }
+
+    private static MatchingCard card(Card card, List<CardStatement> current) {
+
+        Map<StarField, String> slots = current.stream()
+                .sorted(Comparator.comparing(CardStatement::getSeq))
+                .map(statement -> Map.entry(statement.getStarSlot(),
+                        MaskRule.apply(statement.getBody(), card.getMaskRules())))
+                .filter(entry -> !CardText.isBlank(entry.getValue()))
+                .collect(Collectors.groupingBy(Map.Entry::getKey,
+                        Collectors.mapping(Map.Entry::getValue, Collectors.joining(" "))));
+        String title = MaskRule.apply(card.getTitle(), card.getMaskRules());
+        return new MatchingCard(card.getId(), card.getUserRepositoryId(), CardText.isBlank(title) ? MASKED_TITLE : title,
+                slots.get(StarField.S), slots.get(StarField.T), slots.get(StarField.A), slots.get(StarField.R),
+                card.techTags());
+
+    }
+}

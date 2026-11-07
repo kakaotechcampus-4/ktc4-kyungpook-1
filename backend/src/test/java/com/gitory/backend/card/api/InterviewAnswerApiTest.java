@@ -251,7 +251,7 @@ class InterviewAnswerApiTest {
     }
 
     @Test
-    @DisplayName("질문 번호가 없으면 확정된 카드여도 409 CARD_CONFIRMED 가 아니라 404 이다")
+    @DisplayName("확정된 카드여도 질문 번호가 없으면 404 이다")
     void missingTurnOnConfirmedCardIsNotFound() throws Exception {
 
         Long cardId = confirmedCardWithOpenTurn();
@@ -265,26 +265,51 @@ class InterviewAnswerApiTest {
 
     }
 
-    @ParameterizedTest
-    @MethodSource("bodiesThatAreValidOrDoublyInvalid")
-    @DisplayName("확정된 카드에 답하지 않은 질문이 있으면 답이 맞든 틀리든 409 CARD_CONFIRMED 이고 버전·문장·질문·감사 기록이 그대로다")
-    void confirmedCardIsConflictBeforeTheAnswerIsJudged(String body) throws Exception {
+    @Test
+    @DisplayName("확정된 카드에 답하면 확정본 버전은 그대로 두고 답한 칸만 바꾼 INTERVIEW 새 버전이 현재 버전이 되며 카드는 확정으로 남는다")
+    void answerOnConfirmedCardAddsInterviewVersionAndStaysConfirmed() throws Exception {
 
         Long cardId = confirmedCardWithOpenTurn();
-        List<Map<String, Object>> before = stateOf(cardId);
+        List<Long> confirmedStatements = statementIds(cardId, 2);
 
-        send(myUserId, MY_CARD.toString(), "1", body)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.data").value(nullValue()))
-                .andExpect(jsonPath("$.error.code").value("CARD_CONFIRMED"));
+        answer(MY_CARD, 1, "새로 쓴 과제", USER_STATED)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.version.versionNo").value(3))
+                .andExpect(jsonPath("$.data.version.source").value("INTERVIEW"))
+                .andExpect(jsonPath("$.data.version.situation").value("상황"))
+                .andExpect(jsonPath("$.data.version.task").value("새로 쓴 과제"));
 
-        assertThat(stateOf(cardId)).isEqualTo(before);
-        assertThat(events()).isEmpty();
+        assertThat(versions(cardId)).containsExactly(new VersionRow(1, "USER_EDIT", false),
+                new VersionRow(2, "USER_EDIT", true), new VersionRow(3, "INTERVIEW", false));
+        assertThat(statementIds(cardId, 2)).isEqualTo(confirmedStatements);
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId))
+                .isEqualTo("CONFIRMED");
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SKIP", "NOT_MEASURED"})
+    @DisplayName("확정된 카드도 질문을 넘기거나 측정하지 않음으로 답할 수 있고 카드의 버전·문장·확정 상태는 그대로다")
+    void skipAndNotMeasuredOnConfirmedCardLeaveTheCardAsItWas(String kind) throws Exception {
+
+        Long cardId = confirmedCardWithMeasureTurn();
+        List<Long> before = statementIds(cardId, 1);
+
+        send(myUserId, MY_CARD.toString(), "1", kindBody(kind, null, null))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.data.version.versionNo").value(1));
+
+        assertThat(versions(cardId)).extracting(VersionRow::versionNo).containsExactly(1);
+        assertThat(statementIds(cardId, 1)).isEqualTo(before);
+        assertThat(interviews.turnsOf(cardId)).extracting(TurnRow::outcome).containsExactly(kind.equals("SKIP")
+                ? "SKIPPED" : "NOT_MEASURED");
 
     }
 
     @Test
-    @DisplayName("확정된 카드에서 이미 한 답과 다른 답이 오면 409 CARD_CONFIRMED 가 아니라 409 INVALID_STATE 이다")
+    @DisplayName("확정된 카드에서 이미 한 답과 다른 답이 오면 409 INVALID_STATE 이다")
     void differentAnswerOnConfirmedCardIsInvalidState() throws Exception {
 
         Long cardId = confirmedCardWithOpenTurn();
@@ -604,6 +629,40 @@ class InterviewAnswerApiTest {
     }
 
     @Test
+    @DisplayName("답으로 상황·행동이 차고 확인 필요 칸이 없으면 과제·결과가 비어 있어도 되묻기 끝을 기다리지 않고 답 저장과 함께 카드가 확정된다")
+    void answerThatFillsSituationAndActionConfirmsTheCard() throws Exception {
+
+        Long cardId = fixtures.insertCard(MY_CARD, myUserId);
+        interviews.insertAsked(cardId, 1, "A", "EVIDENCE_GAP", "USER", "무엇을 했나요?");
+        fixtures.insertStatement(cardId, 1, "S", "S 글", "USER_STATED", null);
+
+        answer(MY_CARD, 1, "응답 시간을 줄이려 캐시를 넣었다", USER_STATED)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId))
+                .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject("SELECT confirmed_at IS NOT NULL FROM card WHERE id = ?", Boolean.class, cardId))
+                .isTrue();
+
+    }
+
+    @Test
+    @DisplayName("답을 저장해도 확인 필요 칸이 남으면 카드는 작성 중 그대로다")
+    void answerLeavingAReviewSlotKeepsTheCardDraft() throws Exception {
+
+        Rich rich = richCard();
+
+        answer(MY_CARD, 2, "새로 쓴 행동", USER_STATED)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, rich.cardId()))
+                .isEqualTo("DRAFT");
+
+    }
+
+    @Test
     @DisplayName("답한 칸은 옛 글의 확인 필요 표시와 커밋 근거를 잃고 질문 번호가 붙은 사용자 근거 하나가 되며, 다른 칸의 확인 필요 표시와 근거는 남고, 답한 질문은 모두 센다")
     void answeredSlotLosesReviewMarkAndCommitEvidence() throws Exception {
 
@@ -858,7 +917,6 @@ class InterviewAnswerApiTest {
                 .andExpect(jsonPath(post + ".responses['401'].description").value(containsString("로그인 세션 없음")))
                 .andExpect(jsonPath(post + ".responses['403'].description").value(containsString("CSRF")))
                 .andExpect(jsonPath(post + ".responses['404'].description").value(containsString("그 번호의 질문 없음")))
-                .andExpect(jsonPath(post + ".responses['409'].description").value(containsString("CARD_CONFIRMED")))
                 .andExpect(jsonPath(post + ".responses['409'].description").value(containsString("INVALID_STATE")))
                 .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.required").doesNotExist())
                 .andExpect(jsonPath("$.components.schemas.InterviewAnswerRequest.properties.kind.enum",
@@ -1389,6 +1447,18 @@ class InterviewAnswerApiTest {
         fixtures.insertStatement(cardId, 1, "S", "상황", "USER_STATED", null);
         fixtures.insertCardVersion(cardId, 2, "USER_EDIT", true);
         fixtures.insertStatement(cardId, 2, "S", "상황", "USER_STATED", null);
+        fixtures.insertStatement(cardId, 2, "A", "행동", "USER_STATED", null);
+        fixtures.confirmCard(cardId);
+
+        return cardId;
+
+    }
+
+    private Long confirmedCardWithMeasureTurn() {
+
+        Long cardId = cardWithMeasureTurn(null, null, null);
+        fixtures.insertStatement(cardId, 1, "S", "상황", "USER_STATED", null);
+        fixtures.insertStatement(cardId, 1, "A", "행동", "USER_STATED", null);
         fixtures.confirmCard(cardId);
 
         return cardId;

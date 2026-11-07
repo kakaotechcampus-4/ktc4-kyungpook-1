@@ -13,11 +13,12 @@ const COLLECTED = [
   ['공개 레포 원본 (커밋, PR, 리뷰)', '재현성과 근거 검증', '보관'],
   ['확정한 경험 카드와 버전', '서비스 핵심 데이터', '보관'],
   ['질문 답변 원문', '카드의 근거', '보관'],
+  ['활동 이름, 종류, 기간, 역할', '레포 밖 경험을 카드로 묶기', '보관'],
   ['GitHub 액세스 토큰', '수집에만 사용', '탈퇴 시 즉시 파기'],
 ] as const;
 
 /** 인적사항은 서버 지원이 열린 환경에서만 수집한다 — 안 받는 정보를 받는다고 적지 않는다 */
-const PROFILE_COLLECTED = [['인적사항 (학력·경력·어학·자격증)', '공고 매칭의 지원 자격 비교, 자소서 AI 참고', '보관']] as const;
+const PROFILE_COLLECTED = [['인적사항 (학력, 경력, 어학, 자격증)', '공고 매칭의 지원 자격 비교, 자소서 AI 참고', '보관']] as const;
 
 /** F2 마이페이지 — 수집 항목 투명 공개. 지표·크레딧 UI 없음 (과금 단위 미정). */
 export function MyPage() {
@@ -57,10 +58,10 @@ export function MyPage() {
         <div className="kv" style={{ padding: '14px 0' }} aria-disabled="true">
           <div className="stack grow" style={{ gap: 3 }}><span className="w-600 c-3" style={{ fontSize: 14 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-3">준비 중이에요</span></div>
         </div>
-        <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="danger" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
+        <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="text" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
       </section>
       <section className="settings-section stat-grid">
-        {[['확정한 카드', s ? `${s.confirmedCards}장` : '-'], ['정리한 레포', s ? `${s.analyzedRepos}개` : '-'], ['작성한 답변', s ? `${s.interviewTurns}개` : '-'], ['남은 후보', s ? `${s.remainingCandidates}개` : '-']].map(([k, v]) => (
+        {[['확정한 카드', s ? `${s.confirmedCards}장` : '—'], ['정리한 레포', s ? `${s.analyzedRepos}개` : '—'], ['작성한 답변', s ? `${s.interviewTurns}개` : '—'], ['남은 후보', s ? `${s.remainingCandidates}개` : '—']].map(([k, v]) => (
           <div key={k} className="stat"><span className="t-12 c-2">{k}</span><b>{v}</b></div>
         ))}
       </section>

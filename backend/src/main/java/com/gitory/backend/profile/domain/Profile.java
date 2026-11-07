@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static lombok.AccessLevel.PROTECTED;
 
@@ -42,32 +43,58 @@ public class Profile {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<Certification> certifications;
 
+    // 공고 직무 분류 이름이며, profile 이 matching 을 참조하면 순환이라 이름 글로 둔다
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    private List<String> interests;
+
+    private String email;
+
+    private boolean mailOptIn;
+
     private Instant savedAt;
 
     static Profile of(Long userId) {
 
         Profile profile = new Profile();
         profile.userId = userId;
+        profile.interests = new ArrayList<>();
         return profile;
 
     }
 
+    /** interests 가 null 이면 저장된 관심 분야를 그대로 둔다 — 지금 배포된 화면은 이 칸을 아직 보내지 않는다 */
     void replace(List<Education> educations, List<Career> careers, List<LanguageScore> languages,
-                 List<Certification> certifications) {
+                 List<Certification> certifications, List<InterestCategory> interests) {
 
         this.educations = new ArrayList<>(educations);
         this.careers = new ArrayList<>(careers);
         this.languages = new ArrayList<>(languages);
         this.certifications = new ArrayList<>(certifications);
+        if (interests != null) {
+            this.interests = interests.stream().map(Enum::name).collect(Collectors.toCollection(ArrayList::new));
+        }
         // DB 가 µs 까지 저장해, 저장 직후 응답과 다시 읽은 값이 같게 자른다
         this.savedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+
+    }
+
+    /** email 이 null 이면 저장된 주소를, 빈 글이면 주소를 지우고, mailOptIn 이 null 이면 저장된 수신 여부를 그대로 둔다 */
+    void changeMail(String email, Boolean mailOptIn) {
+
+        String nextEmail = email == null ? this.email : (email.isEmpty() ? null : email);
+        boolean nextOptIn = mailOptIn == null ? this.mailOptIn : mailOptIn;
+        if (nextOptIn && nextEmail == null) {
+            throw new InvalidProfileInputException("메일 알림을 받으려면 메일 주소를 적어 주세요.");
+        }
+        this.email = nextEmail;
+        this.mailOptIn = nextOptIn;
 
     }
 
     ProfileView view() {
 
         return new ProfileView(List.copyOf(educations), List.copyOf(careers), List.copyOf(languages),
-                List.copyOf(certifications), savedAt);
+                List.copyOf(certifications), interests.stream().map(InterestCategory::valueOf).toList(), email, mailOptIn, savedAt);
 
     }
 }

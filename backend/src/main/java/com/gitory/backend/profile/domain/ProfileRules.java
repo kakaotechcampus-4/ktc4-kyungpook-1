@@ -19,8 +19,10 @@ final class ProfileRules {
     static final int MAX_CAREERS = 10;
     static final int MAX_LANGUAGES = 10;
     static final int MAX_CERTIFICATIONS = 20;
+    static final int MAX_INTERESTS = 3;
     private static final int TEXT_MAX_LENGTH = 50;
     private static final int SCORE_MAX_LENGTH = 20;
+    private static final int EMAIL_MAX_LENGTH = 254;
     // 국내 대학이 쓰는 학점 만점과 100점 환산이다
     private static final Set<BigDecimal> GPA_MAXES = Set.of(new BigDecimal("4.0"), new BigDecimal("4.3"),
             new BigDecimal("4.5"), new BigDecimal("100"));
@@ -36,7 +38,7 @@ final class ProfileRules {
             requireOrdered(startMonth, endMonth, at);
             requireGpa(input.gpa(), input.gpaMax(), at);
             return new Education(oneOf(EducationLevel.class, input.level(), at + " 학력 구분"),
-                    requiredText(input.school(), at + " 학교 이름", TEXT_MAX_LENGTH),
+                    optionalText(input.school(), at + " 학교 이름", TEXT_MAX_LENGTH),
                     optionalText(input.major(), at + " 전공", TEXT_MAX_LENGTH),
                     oneOf(EducationStatus.class, input.status(), at + " 상태"),
                     startMonth, endMonth, input.gpa(), input.gpaMax());
@@ -82,6 +84,54 @@ final class ProfileRules {
 
     private interface Check<I, O> {
         O apply(I input, String at);
+    }
+
+    /** 관심 분야는 안 보내면(null) 저장된 값을 그대로 두고, 보내면 통째로 바꾼다 — 지금 배포된 화면이 아직 이 칸을 보내지 않아서다 */
+    static List<InterestCategory> interests(List<String> inputs) {
+
+        if (inputs == null) {
+            return null;
+        }
+        if (inputs.size() > MAX_INTERESTS) {
+            throw new InvalidProfileInputException("관심 분야는 " + MAX_INTERESTS + "개까지 고를 수 있습니다.");
+        }
+        List<InterestCategory> checked = new ArrayList<>();
+        for (int index = 0; index < inputs.size(); index++) {
+            String at = "관심 분야 " + (index + 1) + "번째";
+            InterestCategory category = oneOf(InterestCategory.class, inputs.get(index), at);
+            if (checked.contains(category)) {
+                throw new InvalidProfileInputException(at + "가 앞의 것과 겹칩니다.");
+            }
+            checked.add(category);
+        }
+        return List.copyOf(checked);
+
+    }
+
+    /** 안 보내면(null) 저장된 주소를 그대로 두고, 빈 글은 주소를 지운다는 뜻으로 빈 글을 돌려준다 */
+    static String email(String input) {
+
+        if (input == null) {
+            return null;
+        }
+        if (input.indexOf('\u0000') >= 0) {
+            throw new InvalidProfileInputException("메일 주소에 쓸 수 없는 글자(U+0000)가 있습니다.");
+        }
+        if (isBlank(input)) {
+            return "";
+        }
+        String stripped = input.strip();
+        if (stripped.length() > EMAIL_MAX_LENGTH) {
+            throw new InvalidProfileInputException("메일 주소는 " + EMAIL_MAX_LENGTH + "자를 넘을 수 없습니다.");
+        }
+        int at = stripped.indexOf('@');
+        boolean oneAt = at > 0 && at == stripped.lastIndexOf('@');
+        boolean hasSpace = stripped.codePoints().anyMatch(cp -> Character.isWhitespace(cp) || Character.isSpaceChar(cp));
+        if (!oneAt || hasSpace || stripped.indexOf('.', at) < 0) {
+            throw new InvalidProfileInputException("메일 주소 모양이 맞지 않습니다.");
+        }
+        return stripped;
+
     }
 
     // 목록을 통째로 바꾸는 요청이라 빠진 목록을 빈 목록으로 보면 실수로 보낸 요청이 저장된 값을 지우므로, 네 목록 모두 보내야 한다

@@ -1,0 +1,181 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CoverLetter, coverLetterKeys } from '@/api/coverLetters';
+import { keys } from '@/api/keys';
+import { CardSummary } from '@/api/schemas';
+import { CoverLetterPage } from '@/features/coverLetters/CoverLetterPage';
+import { CoverLetterNewPage } from '@/features/coverLetters/CoverLetterNewPage';
+import { assignLine, exampleThemes } from '@/lib/coverLetterCopy';
+import { handle } from '@/mock/router';
+import { db, resetDb } from '@/mock/store';
+
+vi.mock('@/lib/track', () => ({ track: vi.fn() }));
+
+const req = (method: string, path: string, body: unknown = {}, headers: Record<string, string> = {}) =>
+  handle(method, path, new URLSearchParams(), body as Record<string, unknown>, true, headers);
+const input = { jobRole: '백엔드 개발', memo: '결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요', questions: [{ text: '지원 동기와 입사 후 포부를 적어 주세요', charLimit: null }, { text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: 1000 }] };
+/** Mock 진행은 경과 시간으로 정해진다 — 시계를 앞으로 민다 */
+const later = (sec: number) => { const real = Date.now; const base = real(); Date.now = () => base + sec * 1000; return () => { Date.now = real; }; };
+
+const question = (over: Record<string, unknown> = {}) => ({
+  id: 'q1', seq: 1, text: '갈등을 조율한 경험', charLimit: 700, theme: 'CONFLICT',
+  primaryCard: { id: 'card_04', title: '팀원과 토큰 저장 위치로 갈린 경험', kind: 'QUALITATIVE' }, primaryCardDeleted: false,
+  supportingCard: null, assignedBy: 'SUB_AGENT', pickReason: '의견을 맞춘 과정이 분명해서',
+  considered: [], materials: ['SITUATION', 'ACTION'], asks: [], draft: null, ...over,
+});
+const letter = (over: Record<string, unknown> = {}) => CoverLetter.parse({
+  id: 'cl_1', stage: 'ASSIGNED', failedStep: null, errorCode: null, retryable: null, pollAfterMs: null,
+  jobRole: '백엔드 개발', memo: null, createdAt: '2026-10-31T00:00:00Z', updatedAt: '2026-10-31T00:00:00Z',
+  questions: [question()], steps: { assign: [], draft: [] }, ...over,
+});
+
+function mount(seed: CoverLetter | null, path = '/cover-letters/cl_1') {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  if (seed) client.setQueryData(coverLetterKeys.one(seed.id), seed);
+  client.setQueryData(keys.cards, (req('GET', '/cards').data as unknown[]).map((c) => CardSummary.parse(c)));
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/cover-letters/new" element={<CoverLetterNewPage />} />
+          <Route path="/cover-letters/:coverLetterId" element={<CoverLetterPage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  return client;
+}
+
+beforeEach(resetDb);
+afterEach(cleanup);
+
+describe('자소서 응답 읽기', () => {
+  it('아직 없는 칸이나 모르는 값이 와도 멈추지 않는다', () => {
+    const l = CoverLetter.parse({
+      id: 'x', stage: 'ASSIGNING', jobRole: 'a', createdAt: 't', updatedAt: 't',
+      questions: [{ id: 'q', seq: 1, text: 't', charLimit: 700, theme: 'NEW_THEME', materials: ['SITUATION', 'SOMETHING'] }],
+    });
+    expect(l.steps).toEqual({ assign: [], draft: [] });
+    expect(l.retryable).toBeNull();
+    expect(l.questions[0]).toMatchObject({ theme: null, primaryCard: null, primaryCardDeleted: false, materials: ['SITUATION'], asks: [], draft: null });
+  });
+});
+
+describe('화면 문장', () => {
+  it('예시 문항은 지원 동기를 먼저, 그다음 내 카드에 많은 유형 3개', () => {
+    const { top, more } = exampleThemes([['CONFLICT', 'GROWTH'], ['GROWTH'], null]);
+    expect(top).toEqual(['MOTIVATION', 'GROWTH', 'CONFLICT', 'PROBLEM_SOLVING']);
+    expect(more).not.toContain('MOTIVATION');
+    expect(top.length + more.length).toBe(8);
+    expect(exampleThemes([]).top).toEqual(['MOTIVATION', 'PROBLEM_SOLVING', 'COLLABORATION', 'CONFLICT']); // 카드가 없으면 계약 표 순서
+  });
+
+  it('AI 가 한 일 줄은 카드 이름으로 말하고, 지운 카드와 모르는 줄은 그에 맞게', () => {
+    const qs = [{ id: 'q1', seq: 1 }, { id: 'q2', seq: 2 }];
+    const step = (over: Record<string, unknown>) => ({ seq: 1, actor: 'SUB_AGENT', kind: 'PICKED', questionId: 'q2', cardId: 'c', cardTitle: '배포 시간 단축', reason: '직무와 이어져서', ...over });
+    expect(assignLine(step({}), qs)).toEqual({ text: "2번 문항: '배포 시간 단축' 카드를 골랐어요", reason: '직무와 이어져서' });
+    expect(assignLine(step({ actor: 'SUPERVISOR', kind: 'SWITCHED', questionId: 'q1', cardTitle: null }), qs)?.text).toBe('1번 문항은 지운 카드로 바꿨어요');
+    expect(assignLine(step({ actor: 'SUPERVISOR', kind: 'CHECKED', questionId: null }), qs)?.text).toBe('모든 문항을 함께 보고 겹치는 카드를 확인했어요');
+    expect(assignLine(step({ actor: 'ROBOT', kind: 'DANCED' }), qs)).toBeNull();
+  });
+});
+
+describe('Mock 서버는 계약대로 동작한다', () => {
+  it('같은 키는 내용과 상관없이 처음 자소서, 6초 뒤 카드 고르기가 끝나고 줄이 쌓인다', () => {
+    const first = req('POST', '/cover-letters', input, { 'idempotency-key': 'k1' });
+    expect(first.status).toBe(200);
+    const created = CoverLetter.parse(first.data);
+    expect(created).toMatchObject({ stage: 'ASSIGNING', pollAfterMs: 1500 });
+    expect(created.questions.map((q) => q.charLimit)).toEqual([700, 1000]);
+    const again = CoverLetter.parse(req('POST', '/cover-letters', { ...input, jobRole: '다른 직무' }, { 'idempotency-key': 'k1' }).data);
+    expect(again.id).toBe(created.id);
+    const restore = later(7);
+    try {
+      const done = CoverLetter.parse(req('GET', `/cover-letters/${created.id}`).data);
+      expect(done).toMatchObject({ stage: 'ASSIGNED', pollAfterMs: null });
+      expect(done.questions.every((q) => q.primaryCard)).toBe(true);
+      expect(done.steps.assign.length).toBeGreaterThan(2);
+      expect(done.steps.assign.every((s) => s.cardTitle !== undefined)).toBe(true);
+    } finally { restore(); }
+  });
+
+  it('확정 카드가 없으면 422, 입력 규칙을 어기면 400', () => {
+    expect(req('POST', '/cover-letters', { ...input, questions: [] }).error?.code).toBe('INVALID_REQUEST');
+    expect(req('POST', '/cover-letters', { ...input, questions: [{ text: 'a', charLimit: 99 }] }).error?.code).toBe('INVALID_REQUEST');
+    db.cards.forEach((c) => { c.status = 'DRAFT'; });
+    expect(req('POST', '/cover-letters', input)).toMatchObject({ status: 422, error: { code: 'NO_CONFIRMED_CARDS' } });
+  });
+
+  it('카드 바꾸기는 ASSIGNED 에서만, 중심과 보조가 같으면 400, 바꾸면 USER', () => {
+    const created = CoverLetter.parse(req('POST', '/cover-letters', input).data);
+    const path = `/cover-letters/${created.id}/questions/${created.questions[0].id}/cards`;
+    expect(req('PUT', path, { primaryCardId: 'card_03', supportingCardId: null }).status).toBe(409);
+    const restore = later(7);
+    try {
+      expect(req('PUT', path, { primaryCardId: 'card_03', supportingCardId: 'card_03' }).status).toBe(400);
+      expect(req('PUT', path, { primaryCardId: 'card_01', supportingCardId: null }).status).toBe(400); // 확정 카드가 아님
+      const changed = CoverLetter.parse(req('PUT', path, { primaryCardId: 'card_04', supportingCardId: null }).data);
+      expect(changed.questions[0]).toMatchObject({ primaryCard: { id: 'card_04' }, assignedBy: 'USER', pickReason: null });
+      const asking = CoverLetter.parse(req('POST', `/cover-letters/${created.id}/asks`).data);
+      expect(asking).toMatchObject({ stage: 'ASKING', pollAfterMs: 1500 });
+      expect(req('PUT', path, { primaryCardId: 'card_03', supportingCardId: null }).status).toBe(409);
+    } finally { restore(); }
+  });
+
+  it('배정된 중심 카드를 지우면 primaryCardDeleted 로 알린다', () => {
+    const created = CoverLetter.parse(req('POST', '/cover-letters', input).data);
+    const restore = later(7);
+    try {
+      const assigned = CoverLetter.parse(req('GET', `/cover-letters/${created.id}`).data);
+      const id = assigned.questions[0].primaryCard!.id;
+      db.cards = db.cards.filter((c) => c.id !== id);
+      const after = CoverLetter.parse(req('GET', `/cover-letters/${created.id}`).data);
+      expect(after.questions[0]).toMatchObject({ primaryCard: null, primaryCardDeleted: true });
+    } finally { restore(); }
+  });
+});
+
+describe('카드 고르기 실패 화면', () => {
+  it('실패는 retryable 이 true 일 때만 다시 시도를 연다', () => {
+    mount(letter({ stage: 'FAILED', failedStep: 'ASSIGN', errorCode: 'INTERNAL_ERROR', retryable: false }));
+    expect(screen.getByText('카드 고르기를 마치지 못했어요')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+    cleanup();
+    mount(letter({ stage: 'FAILED', failedStep: 'ASSIGN', errorCode: 'AI_UNAVAILABLE', retryable: true }));
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeEnabled();
+  });
+});
+
+describe('① 입력 화면', () => {
+  it('빈 칸과 글자 수 범위를 그 자리에서 알리고 보내지 않는다', () => {
+    mount(null, '/cover-letters/new');
+    fireEvent.click(screen.getByRole('button', { name: /^1번 문항 답 700자 이내/ }));
+    fireEvent.change(screen.getByLabelText('1번 문항 글자 수'), { target: { value: '50' } });
+    fireEvent.keyDown(screen.getByLabelText('1번 문항 글자 수'), { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: '초안 쓰기' }));
+    expect(screen.getByText('지원 직무를 적어 주세요')).toBeInTheDocument();
+    expect(screen.getByText('문항을 적어 주세요')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('1번 문항'), { target: { value: input.questions[0].text } });
+    expect(screen.getByText('100부터 5000까지 숫자로 적어 주세요')).toBeInTheDocument();
+    expect((db as { coverLetters: unknown[] }).coverLetters).toHaveLength(0);
+  });
+
+  it('예시 문항 버튼은 빈 칸을 먼저 채우고, 다 차 있으면 문항을 더한다', () => {
+    mount(null, '/cover-letters/new');
+    fireEvent.click(screen.getByRole('button', { name: '지원 동기' }));
+    expect(screen.getByLabelText('1번 문항')).toHaveValue('지원 동기와 입사 후 포부를 적어 주세요');
+    fireEvent.click(screen.getByRole('button', { name: '갈등 해결' }));
+    expect(screen.getByLabelText('2번 문항')).toHaveValue('의견 차이를 조율해 해결한 경험을 적어 주세요');
+  });
+
+  it('확정 카드가 없으면 먼저 알리고 시작 버튼을 막는다', async () => {
+    db.cards.forEach((c) => { c.status = 'DRAFT'; });
+    mount(null, '/cover-letters/new');
+    await waitFor(() => expect(screen.getByText('확정한 카드가 없어요')).toBeInTheDocument());
+    // 카드는 상황과 행동이 차 있고 확인 필요한 칸이 없으면 서버가 자동으로 확정한다(Card.settle) — 눌러서 확정하라고만 하지 않고 그 규칙을 알린다
+    expect(screen.getByText(/상황과 행동이 차 있고 확인이 필요한 칸이 없으면 카드가 자동으로 확정돼요/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '초안 쓰기' })).toBeDisabled();
+  });
+});

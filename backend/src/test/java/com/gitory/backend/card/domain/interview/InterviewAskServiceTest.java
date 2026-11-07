@@ -15,10 +15,15 @@ import com.gitory.backend.agent.port.InterviewQuestionType;
 import com.gitory.backend.agent.port.InterviewStarSlot;
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.Card;
+import com.gitory.backend.card.domain.CardKind;
+import com.gitory.backend.card.domain.Confidence;
+import com.gitory.backend.card.domain.EvidenceType;
+import com.gitory.backend.card.domain.SlotContent;
 import com.gitory.backend.card.domain.CardGeneratingException;
 import com.gitory.backend.card.domain.CardGenerationGuard;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.CardThemeSuggester;
+import com.gitory.backend.card.domain.ConfirmedCardChanges;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
 import com.gitory.backend.card.domain.VersionSlots;
@@ -45,6 +50,7 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -59,10 +65,12 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -83,7 +91,8 @@ class InterviewAskServiceTest {
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final CardVersionReader reader = mock(CardVersionReader.class);
     private final CardThemeSuggester themeSuggester = new CardThemeSuggester(mock(CardRepository.class), reader,
-            mock(CardThemePort.class), mock(ApplicationEventPublisher.class), transactionManager);
+            mock(CardThemePort.class), mock(ApplicationEventPublisher.class), transactionManager,
+            mock(ConfirmedCardChanges.class));
     private final List<TransactionStatus> statuses = new ArrayList<>();
 
     private InterviewQuestionRequest request;
@@ -330,9 +339,10 @@ class InterviewAskServiceTest {
     @DisplayName("AI 를 기다리는 사이 그 칸이 넘김으로 닫혔으면 저장하지 않고 InterviewFieldClosedException 이다")
     void slotClosedWhileWaitingForAi() {
 
-        InterviewTurn skipped = InterviewTurn.ask(CARD_ID, (short) 1, StarField.T, QuestionType.EVIDENCE_GAP, "질문");
+        InterviewTurn skipped = InterviewTurn.ask(CARD_ID, (short) 1, StarField.S, QuestionType.EVIDENCE_GAP, "질문");
         ReflectionTestUtils.setField(skipped, "outcome", TurnOutcome.SKIPPED);
         when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(), List.of(skipped));
+        when(port.nextQuestion(request)).thenReturn(question(InterviewStarSlot.S));
 
         assertThatThrownBy(() -> service(3).ask(PUBLIC_ID, USER_ID, null))
                 .isInstanceOf(InterviewFieldClosedException.class);
@@ -351,6 +361,73 @@ class InterviewAskServiceTest {
 
         assertThat(service(3).ask(PUBLIC_ID, USER_ID, null)).isNull();
         assertThat(card.getInterviewEndReason()).isNull();
+
+    }
+
+    @Test
+    @DisplayName("경험 카드에서 칸을 정하지 않고 물으면 마지막으로 물은 칸과 순서상 첫 빈 칸만 AI 가 고를 칸으로 넘긴다")
+    void offersTheLastAskedAndTheNextEmptySlotForExperienceCards() {
+
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(answered(1, StarField.S)));
+        when(reader.read(anyLong(), anyShort())).thenReturn(filled(StarField.S));
+
+        service(8).ask(PUBLIC_ID, USER_ID, null);
+
+        verify(assembler).assemble(any(Card.class), eq(List.of(StarField.S, StarField.T)), any(), anyList());
+
+    }
+
+    @Test
+    @DisplayName("경험 카드의 첫 질문은 순서상 첫 빈 칸만 넘겨, 상황을 직접 써 두었으면 과제부터 묻는다")
+    void firstQuestionOffersOnlyTheFirstEmptySlot() {
+
+        when(reader.read(anyLong(), anyShort())).thenReturn(filled(StarField.S));
+
+        service(8).ask(PUBLIC_ID, USER_ID, null);
+
+        verify(assembler).assemble(any(Card.class), eq(List.of(StarField.T)), any(), anyList());
+
+    }
+
+    @Test
+    @DisplayName("경험 카드에 빈 칸이 없고 마지막 칸도 두 번 물었으면 남은 칸 전체에서 AI 가 고르게 둔다")
+    void fallsBackToEveryOpenSlotWhenNothingIsLeftInOrder() {
+
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(answered(1, StarField.S), answered(2, StarField.S)));
+        when(reader.read(anyLong(), anyShort())).thenReturn(filled(StarField.values()));
+
+        service(8).ask(PUBLIC_ID, USER_ID, null);
+
+        verify(assembler).assemble(any(Card.class), eq(List.of(StarField.T, StarField.A, StarField.R)), any(), anyList());
+
+    }
+
+    @Test
+    @DisplayName("칸을 정한 요청과 기술 카드는 고를 칸을 좁히지 않는다")
+    void chosenSlotsAndTechCardsKeepEveryOpenSlot() {
+
+        when(turns.findByCardIdOrderBySeqAsc(CARD_ID)).thenReturn(List.of(answered(1, StarField.S)));
+        when(reader.read(anyLong(), anyShort())).thenReturn(filled(StarField.S));
+        service(8).ask(PUBLIC_ID, USER_ID, "T");
+        Card tech = Card.startFromCandidate(USER_ID, 11L, 5L, "기술 카드", CardKind.TECH, UUID.randomUUID());
+        ReflectionTestUtils.setField(tech, "id", CARD_ID);
+        when(ownership.findOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(tech);
+        when(ownership.lockOwned(PUBLIC_ID, USER_ID, AuditAction.EDIT_CARD)).thenReturn(tech);
+
+        service(8).ask(PUBLIC_ID, USER_ID, null);
+
+        verify(assembler, times(2)).assemble(any(Card.class),
+                eq(List.of(StarField.S, StarField.T, StarField.A, StarField.R)), any(), anyList());
+
+    }
+
+    private static VersionSlots filled(StarField... slots) {
+
+        Map<StarField, SlotContent> contents = new EnumMap<>(StarField.class);
+        for (StarField slot : slots) {
+            contents.put(slot, new SlotContent(slot, "글", EvidenceType.USER_STATED, Confidence.HIGH, null, List.of()));
+        }
+        return new VersionSlots((short) 1, contents);
 
     }
 

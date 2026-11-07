@@ -21,6 +21,8 @@ export const ManualDraftInput = z.object({
   period: z.string().nullable().transform((text) => text === null || isBlankCardText(text) ? null : text)
     .pipe(cardText(CONFIG.CARD_PERIOD_MAX).nullable()),
   repoId: z.string().nullable(),
+  /** 활동 안에서 만들 때만 싣는다(#477). repoId 와 함께 보내면 서버가 400 이라 둘 중 하나만 값이 있다. 생략하면 활동 밖 카드다 */
+  activityId: z.string().nullable().optional(),
 });
 export type ManualDraftInput = z.infer<typeof ManualDraftInput>;
 export const ManualDraftKey = nonBlankCardText(255);
@@ -71,6 +73,41 @@ export type Verdict = z.infer<typeof Verdict>;
 export type DropReason = z.infer<typeof DropReason>;
 export type JobErrorCode = z.infer<typeof JobErrorCode>;
 
+// ───────────────────────────── 모르는 값 (#534) ─────────────────────────────
+/*
+ * 서버가 화면이 모르는 코드를 하나만 보내도 응답 전체를 버리면 화면이 통째로 멈춘다. 그래서 칸마다 따진다.
+ * 기본값은 사실을 꾸미지 않는 중립 값일 때만 둔다. 모르는 값을 아는 값으로 바꿔 읽으면 폴링, 확정, 근거 판단이 달라진다.
+ *  - 기본값을 둔 칸: JobErrorCode 와 Card.draftFailure(일반 오류), Me.plan, ContributionLevel, 되묻기 종류(모름 = null),
+ *    공고 분야(기타), 경력(표시 없음), ActiveJob.type, CardSummary.sourceType, JobResult.verdict(칸이 없는 것과 같다),
+ *    분야와 기술 태그(모르는 태그만 뺀다).
+ *  - 남긴 칸(검증 실패, ContractError, "응답을 확인하지 못했어요"): 작업과 단계 상태, 카드 종류와 상태, 근거 종류,
+ *    후보 상태와 종류, 등급, 칸 상태, 글쓴이, 빈 이유, 버전 출처, 공고 조건 종류, 인적사항 선택지.
+ *    어느 쪽으로 읽어도 화면이 틀린 말을 하게 된다.
+ *  - 목록은 카드 목록만 원소 하나가 나빠도 나머지를 보여 준다(CardSummaryList). 몇 장을 뺐는지는 화면이 알린다.
+ * 내보낸 enum(JobErrorCode 등)은 그대로 엄격하다. 요청 검사와 "이 코드를 아는가" 확인에 쓰기 때문이다. 기본값은 응답 칸에만 붙인다.
+ */
+/**
+ * 서버가 새로 만든 코드(문자열인데 목록에 없는 값)만 fallback 으로 읽는다. 칸이 빠졌거나 숫자·객체처럼 모양이 틀린 값은 그대로 계약 위반이다.
+ * z.catch 는 칸이 빠진 응답까지 기본값으로 덮어 "오류가 없는 작업"에 오류 문구가 붙는다.
+ */
+export const unknownAs = <T extends z.ZodTypeAny>(schema: T, fallback: z.input<T>) =>
+  z.preprocess((value) => (typeof value === 'string' && !schema.safeParse(value).success ? fallback : value), schema);
+/** 문자열 목록에서 모르는 항목만 뺀다. 문자열이 아닌 항목은 모양 오류라 그대로 실패한다. */
+export const knownOnly = <T extends z.ZodTypeAny>(schema: T) =>
+  z.array(z.string()).transform((items) => items.filter((item) => schema.safeParse(item).success) as z.output<T>[]);
+/**
+ * 목록을 원소 하나씩 읽는다. 읽을 수 없는 원소는 빼고 몇 개를 뺐는지(skipped)를 함께 준다 — 빠진 원소를 화면이 알려야 한다.
+ * 원소가 있었는데 하나도 못 읽었으면 실패시킨다. 그대로 두면 "비어 있음"으로 오인한다.
+ */
+export const lenientList = <T extends z.ZodTypeAny>(item: T) => z.array(z.unknown()).transform((raw, ctx) => {
+  const items = raw.flatMap((entry) => { const read = item.safeParse(entry); return read.success ? [read.data as z.output<T>] : []; });
+  if (raw.length > 0 && items.length === 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: '목록의 항목을 하나도 읽을 수 없습니다' });
+    return z.NEVER;
+  }
+  return { items, skipped: raw.length - items.length };
+});
+
 // ───────────────────────────── 봉투 ─────────────────────────────
 export const ApiErrorBody = z.object({
   code: z.string(),
@@ -79,18 +116,20 @@ export const ApiErrorBody = z.object({
 });
 export type ApiErrorBody = z.infer<typeof ApiErrorBody>;
 
-export const envelope = <T extends z.ZodTypeAny>(data: T) =>
+export const envelope = <T extends z.ZodTypeAny>(data: T, options: { allowNullData?: boolean } = {}) =>
   z.object({ data: data.nullable(), error: ApiErrorBody.nullable() })
     // data·error 가 둘 다 null이면 2xx 성공 규칙("data 반환")을 어긴 것이다 — 통과시키면 호출부가
     // null을 T로 오인해 조용히 깨진다. 계약 위반은 ContractError 로 즉시 드러나야 한다.
-    .refine((v) => v.error != null || v.data !== null, { message: '2xx 응답의 data·error 가 모두 null입니다' });
+    // 되묻기 질문처럼 null 이 정상 결과('더 물을 것 없음')인 API 만 allowNullData 로 허용한다.
+    .refine((v) => options.allowNullData || v.error != null || v.data !== null, { message: '2xx 응답의 data·error 가 모두 null입니다' });
 
 // ───────────────────────────── 사용자 ─────────────────────────────
 export const Me = z.object({
   id: z.string(),
   login: z.string(),
   avatarUrl: z.string().nullable(),
-  plan: z.enum(['FREE']),
+  /** 화면은 읽지 않는다. 서버가 새 요금제를 만들어도 앱 전체가 막히지 않게 모르면 null */
+  plan: unknownAs(z.enum(['FREE']).nullable(), null),
   github: z.object({
     connected: z.boolean(),
     scopes: z.array(z.string()),
@@ -111,7 +150,8 @@ export const Contribution = z.object({
   mine: z.number(),
   team: z.number(),
   ratio: z.number(),
-  level: ContributionLevel,
+  /** 화면은 '기여가 적은 레포' 주의 표시에만 쓴다. 모르는 값은 null(주의 표시 없음) — 기여 정도를 지어내지 않는다 */
+  level: unknownAs(ContributionLevel.nullable(), null),
 });
 export const RepoSummary = z.object({
   id: z.string(),
@@ -129,6 +169,9 @@ export const RepoSummary = z.object({
   candidateCount: z.number().nullable(),
   cardCount: z.number(),
   recommended: z.boolean(),
+  /** 폴더 타일에 보일 프로젝트 설명 한 줄. 사용자가 쓴 설명, GitHub 저장소 설명, README 에서 고른 문장 순이고 모두 없으면 null. README 에서 문장을 못 골라 분석 때 자동으로 요약해 둔 문장은 출처가 AI 다. 생략된 응답은 없는 것으로 본다 */
+  description: z.string().nullish(),
+  descriptionSource: z.enum(['USER', 'GITHUB', 'README', 'AI']).nullish(),
 });
 export type RepoSummary = z.infer<typeof RepoSummary>;
 
@@ -139,6 +182,17 @@ export const RepoDisclosure = z.object({
 });
 export const RepoDetail = RepoSummary.extend({ disclosure: RepoDisclosure });
 export type RepoDetail = z.infer<typeof RepoDetail>;
+
+/** 서버가 스스로 다시 읽은 레포 한 줄(레포마다 하나, 최근 순)이고, 사용자가 보면 목록에서 빠진다 */
+export const RepoUpdate = z.object({
+  repoId: z.string(),
+  repoName: z.string(),
+  cardCount: z.number().int().nonnegative(),
+  finishedAt: z.string(),
+});
+export type RepoUpdate = z.infer<typeof RepoUpdate>;
+/** 새 활동 확인 — queued 는 새 push 가 있어 다시 읽기를 시작한 레포 수 */
+export const RepoUpdateCheck = z.object({ queued: z.number().int().nonnegative() });
 
 // ───────────────────────────── Job ─────────────────────────────
 export const JobStep = z.object({
@@ -173,7 +227,7 @@ export type JobActivity = z.infer<typeof JobActivity>;
 export const JobResult = z.object({
   repoId: z.string().nullish(),
   cardIds: z.array(z.string()).nullish(),
-  verdict: Verdict.nullish(),
+  verdict: unknownAs(Verdict.nullish(), undefined), // 화면이 읽지 않는다 — 모르는 값은 칸이 없는 것과 같다
   reasons: z.array(z.string()).nullish(),
 });
 
@@ -184,7 +238,7 @@ export const Job = z.object({
   partial: z.boolean(),          // 부분 완료는 별도 상태가 아니라 SUCCEEDED + partial
   steps: z.array(JobStep),
   activity: z.array(JobActivity).nullish(), // 이전 서버, 카드 초안 Job, 끝나고 10분 뒤에는 없거나 []
-  errorCode: JobErrorCode.nullable(),
+  errorCode: unknownAs(JobErrorCode, 'INTERNAL_ERROR').nullable(), // 모르는 코드는 일반 오류. 아는 코드에만 붙는 안내·버튼은 붙지 않는다
   retryable: z.boolean().nullable(),
   retryAfterSec: z.number().nullable(), // GITHUB_RATE_LIMITED 에서만 의미가 있다
   startedAt: z.string(),
@@ -192,6 +246,8 @@ export const Job = z.object({
   finishedAt: z.string().nullable(),
   result: JobResult.nullable(),
   pollAfterMs: z.number(),       // 다음 폴링까지 기다릴 시간 — 간격은 서버가 정한다
+  /** 카드 초안 Job 이 쓰는 카드별 진행(#617). 카드 초안 Job 이 아니거나 서버가 진행을 잃으면 [] → 화면은 진행 막대만 그린다 */
+  drafts: z.lazy(() => DraftLives).optional(),
 });
 export type Job = z.infer<typeof Job>;
 
@@ -199,7 +255,7 @@ export type Job = z.infer<typeof Job>;
 export const ActiveJob = z.object({
   jobId: z.string(),
   state: JobState,
-  type: JobType.nullish(),
+  type: unknownAs(JobType.nullish(), undefined), // 모르는 종류는 종류가 없는 것과 같다 — 화면은 '작업 유형 확인 중'
   userRepositoryId: z.string().nullable(),
   repoName: z.string().nullable(),
   startedAt: z.string(),
@@ -285,7 +341,8 @@ export const DroppedField = z.object({ field: StarField, reason: DropReason });
 export const LowConfidence = z.object({ field: StarField, why: z.string() });
 
 // ───────────────────────────── AI 가 한 일 (#479 draftSteps) ─────────────────────────────
-export const DraftStepKind = z.enum(['DRAFT', 'FLAG', 'OPEN', 'RETRY', 'KEEP', 'REWRITE', 'PASS']);
+// REVERT: 고쳐 쓴 글이 더 나빠 앞 글로 되돌림(서버 V35, AI star_generator). code 는 더 나빠지게 만든 검사 코드다
+export const DraftStepKind = z.enum(['DRAFT', 'FLAG', 'OPEN', 'RETRY', 'KEEP', 'REWRITE', 'PASS', 'REVERT']);
 export const DraftStepActor = z.enum(['MODEL', 'CODE']);
 export const DraftMaterial = z.enum(['ISSUE', 'REVIEW', 'OWNER_REPLY']);
 export type DraftStepKind = z.infer<typeof DraftStepKind>;
@@ -314,6 +371,44 @@ export const DraftSteps = z.array(z.unknown())
   .transform((items) => items.flatMap((item) => { const step = DraftStep.safeParse(item); return step.success ? [step.data] : []; }))
   .catch([]);
 
+// ───────────────────────────── 활동 (#477, 계약 #475 1·2절) ─────────────────────────────
+export const ACTIVITY_TYPES = ['CLUB', 'EXTERNAL', 'CONTEST', 'INTERNSHIP', 'EDUCATION', 'PART_TIME', 'VOLUNTEER', 'STUDY', 'OTHER'] as const;
+export const ActivityType = z.enum(ACTIVITY_TYPES);
+export type ActivityType = z.infer<typeof ActivityType>;
+/** 응답의 종류. 서버가 새 종류를 더해도 카드·활동 목록이 통째로 깨지지 않게, 모르는 종류는 null 로 읽는다(화면은 종류 이름 없이 '활동'만 쓴다) */
+export const ActivityTypeRead = ActivityType.nullable().catch(null);
+/** 카드가 속한 활동. 카드는 레포와 활동 중 하나에만 속하거나 둘 다 아니다 */
+export const CardActivity = z.object({ id: z.string(), name: z.string(), type: ActivityTypeRead });
+export type CardActivity = z.infer<typeof CardActivity>;
+// ───────────────────────────── 카드 초안 실시간 (#617 Job.drafts) ─────────────────────────────
+/** WAITING 차례 전 · READING 코드 읽는 중 · WRITING 칸 쓰는 중 · DONE · FAILED. 서버는 카드를 한 장씩 차례로 쓴다 */
+export const DraftLiveState = z.enum(['WAITING', 'READING', 'WRITING', 'DONE', 'FAILED']);
+export type DraftLiveState = z.infer<typeof DraftLiveState>;
+/**
+ * 칸 하나의 지금까지 쓴 전체 글(늘어난 부분이 아니다). 끝난 문장까지만 오므로 화면이 일정한 속도로 펼친다.
+ *  - 다시 쓰면 round 가 올라가고 text 가 새 글로 바뀐다.
+ *  - done 인데 text 가 '' 이면 AI 가 근거가 없어 비운 칸이다.
+ */
+export const DraftLiveSlot = z.object({
+  field: StarField,
+  round: z.number().int().nonnegative(),
+  text: z.string(),
+  done: z.boolean(),
+});
+export type DraftLiveSlot = z.infer<typeof DraftLiveSlot>;
+export const DraftLive = z.object({
+  cardId: z.string(),
+  title: z.string(),
+  state: DraftLiveState,
+  slots: z.array(DraftLiveSlot),
+  steps: DraftSteps,
+});
+export type DraftLive = z.infer<typeof DraftLive>;
+/** 모양이 틀린 카드는 버린다. 진행은 화면 표시용이라 Job 전체를 깨지 않는다 */
+export const DraftLives = z.array(z.unknown())
+  .transform((items) => items.flatMap((item) => { const live = DraftLive.safeParse(item); return live.success ? [live.data] : []; }))
+  .catch([]);
+
 export const CardArea = z.enum(['BACKEND', 'FRONTEND', 'MOBILE', 'DEVOPS', 'AI', 'DB', 'TEST', 'DOCS']);
 export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON', 'GO', 'RUST', 'SWIFT', 'DART',
   'TYPESCRIPT', 'JAVASCRIPT', 'SCALA', 'SPRING', 'JPA', 'NODEJS', 'NESTJS', 'EXPRESS', 'DJANGO', 'FASTAPI', 'FLASK',
@@ -323,9 +418,10 @@ export const CardTech = z.enum(['C', 'CPP', 'CSHARP', 'JAVA', 'KOTLIN', 'PYTHON'
   'PROMETHEUS', 'GRAFANA', 'LLM', 'PYTORCH', 'TENSORFLOW', 'SCIKIT_LEARN', 'LANGCHAIN', 'GRAPHQL', 'GRPC', 'MSA',
   'UNITY', 'UNREAL']);
 // Optional only for existing snapshots / rolling deployments; never infer absent tags.
+// 서버가 새 태그를 추가해도 카드 목록이 통째로 깨지지 않게, 모르는 태그만 빼고 나머지는 그대로 보여 준다(개수 상한은 그대로 계약이다).
 export const CardTagFields = {
-  areas: z.array(CardArea).max(2).optional(),
-  techs: z.array(CardTech).max(8).optional(),
+  areas: knownOnly(CardArea).pipe(z.array(CardArea).max(2)).optional(),
+  techs: knownOnly(CardTech).pipe(z.array(CardTech).max(8)).optional(),
 };
 
 // ───────────────────────────── 문항 유형 themes (#482, 계약 #475 3절) ─────────────────────────────
@@ -351,6 +447,8 @@ export const Card = z.object({
   title: z.string(),
   period: z.string().nullish(),
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullable(),
+  /** #477: 어느 활동 안의 카드인지. 없음(undefined) = 이전 서버라 모름, null = 활동 밖 카드 */
+  activity: CardActivity.nullish(),
   candidate: z.object({ id: z.string(), type: CandidateType, ref: z.string(), title: z.string() }).nullable(),
   version: CardVersion,
   evidence: z.array(Evidence),
@@ -361,8 +459,11 @@ export const Card = z.object({
   maskRules: z.array(z.object({ from: z.string(), to: z.string() })),
   generation: z.object({ jobId: z.string(), partial: z.boolean() }).nullable(), // D1 · D3
   // AI 초안을 채우지 못한 이유(#419). 데모 데이터처럼 값이 없으면 실패 없음이다
-  draftFailure: z.enum(['GITHUB_UNAUTHORIZED', 'AI_UNAVAILABLE', 'INTERNAL_ERROR']).nullable().optional(),
+  // 모르는 이유는 일반 오류 문구(INTERNAL_ERROR)로 읽는다. 연결 버튼은 GITHUB_UNAUTHORIZED 일 때만 붙는다
+  draftFailure: unknownAs(z.enum(['GITHUB_UNAUTHORIZED', 'AI_UNAVAILABLE', 'INTERNAL_ERROR']), 'INTERNAL_ERROR').nullable().optional(),
   interviewTurns: z.number(),
+  // AI 가 되묻기를 그만두기로 한 이유 한 줄(#430). 끝내지 않았거나 그 뒤 새 질문을 만들었으면 null 이다
+  interviewEndReason: z.string().nullish(),
   confirmedAt: z.string().nullable(),
   createdAt: z.string(),
 });
@@ -384,14 +485,20 @@ export const CardSummary = z.object({
   updatedAt: z.string(),
   // Missing/null enrichment is unknown, not a manual source or an actual zero.
   sourceLabel: z.string().nullish(),
-  sourceType: CandidateType.nullish(),
+  sourceType: unknownAs(CandidateType.nullish(), undefined), // 모르는 종류도 '모름'이다 — 직접 작성으로 읽지 않는다
   period: z.string().nullish(),
   evidenceCount: z.number().nonnegative().nullish(),
   userStatedCount: z.number().nonnegative().nullish(),
+  /** #773: 현재 버전 결과 칸의 글이고, 없음(undefined)은 이전 서버라 모름, null 은 결과가 아직 비어 있음 */
+  preview: z.string().nullish(),
   /** #457: 어느 레포에서 나온 카드인지. 없음(undefined) = 이전 서버라 모름, null = 직접 작성처럼 레포가 없음 */
   repo: z.object({ id: z.string(), owner: z.string(), name: z.string() }).nullish(),
+  /** #477: 카드 상세와 같은 값. 없음(undefined) = 이전 서버라 모름, null = 활동 밖 카드 */
+  activity: CardActivity.nullish(),
 });
 export type CardSummary = z.infer<typeof CardSummary>;
+/** GET /cards 응답. 카드 한 장이 나빠도 나머지를 보여 준다 — 못 읽은 장수(skipped)는 화면이 알린다. 한 장도 못 읽으면 실패 */
+export const CardSummaryList = lenientList(CardSummary);
 
 /** Shared by manual creation and metadata PATCH: blank periods clear to null. */
 export const CardPeriodInput = ManualDraftInput.shape.period;
@@ -416,21 +523,30 @@ export const VersionListItem = z.object({
 });
 
 // ───────────────────────────── 되묻기 ─────────────────────────────
+export const TurnOutcome = z.enum(['ANSWERED', 'LATER', 'SKIPPED', 'INSUFFICIENT', 'MEASURED', 'NOT_MEASURED']);
 export const InterviewTurn = z.object({
   turnNo: z.number(),
   field: StarField,
-  askedBy: z.enum(['USER_REQUEST', 'FOLLOW_UP']),
-  sourceType: InterviewSourceType, // PR 없는 커밋 묶음·직접 작성 카드도 되묻기 대상이다
-  questionType: QuestionType,
+  // 아래 세 칸은 화면이 읽지 않는다. 서버가 새 종류를 추가해도 되묻기 전체가 막히지 않게, 모르는 값은 null(모름)로 둔다
+  askedBy: unknownAs(z.enum(['USER_REQUEST', 'FOLLOW_UP']).nullable(), null),
+  sourceType: unknownAs(InterviewSourceType.nullable(), null), // PR 없는 커밋 묶음·직접 작성 카드도 되묻기 대상이다
+  questionType: unknownAs(QuestionType.nullable(), null),
   found: z.array(z.string()),
   missing: z.array(z.string()),
   question: z.string(),
   options: z.array(z.string()), // USER_SELECTED 보기
   answer: z.object({ text: z.string(), source: EvidenceType }).nullable(),
+  // 질문이 어떻게 끝났는지. 답 전이면 null 이고, 데모 데이터처럼 값이 없으면 null 로 본다
+  outcome: TurnOutcome.nullable().optional().transform((value) => value ?? null),
+  // AI 가 이 칸을 고른 이유 한 줄(#430). 사용자가 칸을 골랐거나 AI 가 실패해 틀 질문을 썼으면 null 이다
+  reason: z.string().nullable().optional().transform((value) => value ?? null),
   remaining: z.number(),
   maxTurns: z.number(), // 상한은 서버 정책이다. 화면 상수로 두지 않는다
 });
 export type InterviewTurn = z.infer<typeof InterviewTurn>;
+/** 서버의 InterviewTurn.isClosed 와 같은 규칙: 답·넘김·측정으로 끝나지 않았으면(LATER·INSUFFICIENT 포함) 아직 답을 기다린다 */
+export const isOpenTurn = (turn: Pick<InterviewTurn, 'answer' | 'outcome'>) =>
+  !turn.answer && (turn.outcome == null || turn.outcome === 'LATER' || turn.outcome === 'INSUFFICIENT');
 
 export const ConfirmResult = z.object({
   cardId: z.string(),

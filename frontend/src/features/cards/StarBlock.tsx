@@ -31,8 +31,9 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
       <div className="star__head">
         <StarKey field={field} dropped={isDropped} />
         <span className="star__name" id={`star-${field}`}>{starFieldName[field]}</span>
+        {/* 카드 제목처럼 칸 이름 바로 옆 연필 하나로 고친다 — 무엇을 고치는지 위치가 말해 준다 */}
+        {!isDropped && onEdit && <button type="button" className="star__pencil" aria-label={`${starFieldShort[field]} 수정`} title={`${starFieldShort[field]} 수정`} onClick={onEdit}><Pencil size={16} aria-hidden /></button>}
         {low && !isDropped && <Badge kind="CAUTION">확인 필요</Badge>}
-        {!isDropped && onEdit && <Button variant="text" size="sm" className="star__edit right" aria-label={`${starFieldShort[field]} 수정`} onClick={onEdit}><Pencil size={14} aria-hidden />수정</Button>}
       </div>
       {isDropped ? (
         <>
@@ -43,9 +44,9 @@ export function StarBlock({ card, field, onAsk, onEdit, onRegenerate, masked }: 
               {onAsk && <span className="t-12 c-3">{dropHint[dropped?.reason ?? 'NO_EVIDENCE']}</span>}
             </span>
             <span className="right row" style={{ gap: 8 }}>
-              {dropped?.reason === 'TIMEOUT' && onRegenerate && <Button variant="outline" size="sm" onClick={onRegenerate}>{field} 칸만 다시 생성</Button>}
-              {/* 하단 "직접 수정"을 없앴으니 빈 칸도 여기서 바로 쓸 수 있어야 한다 */}
-              {onEdit && <Button variant="text" size="sm" className="star__edit" aria-label={`${starFieldShort[field]} 직접 쓰기`} onClick={onEdit}><Pencil size={14} aria-hidden />직접 쓰기</Button>}
+              {dropped?.reason === 'TIMEOUT' && onRegenerate && <Button variant="outline" size="sm" onClick={onRegenerate}>{starFieldShort[field]} 칸만 다시 생성</Button>}
+              {/* 하단 "수정"을 없앴으니 빈 칸도 여기서 바로 쓸 수 있어야 한다 */}
+              {onEdit && <Button variant="text" size="sm" className="star__edit" aria-label={`${starFieldShort[field]} 직접 작성`} onClick={onEdit}><Pencil size={14} aria-hidden />직접 작성</Button>}
               {onAsk && <Button variant="outline" size="sm" aria-label={`${starFieldShort[field]} 답변하기`} onClick={onAsk}>{interviewActionLabel}</Button>}
             </span>
           </div>

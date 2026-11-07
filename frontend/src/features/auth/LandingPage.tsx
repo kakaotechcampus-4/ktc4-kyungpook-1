@@ -1,5 +1,6 @@
 import { useCallback, useState, type CSSProperties } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
+import { useMe } from '@/api/queries';
 import { ArrowRight } from 'lucide-react';
 import { Button, Note } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -9,7 +10,7 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { LandingExample } from './LandingExample';
 
 const READS = ['내가 올린 커밋', '내가 만든 PR', '내가 남긴 리뷰 코멘트'];
-const SKIPS = ['비공개 레포', '다른 사람만 작업한 내용'];
+const SKIPS = ['비공개 레포', '다른 사람만 한 일'];
 
 /**
  * A1 랜딩 · A2 동의 안내(모달).
@@ -26,6 +27,10 @@ export function LandingPage() {
   const [introRequested, setIntroRequested] = useState(() => shouldPlayLandingIntro(sp));
   const finishIntro = useCallback(() => setIntroRequested(false), []);
   const introActive = introRequested && !consent;
+  // 이미 로그인한 사람이 /login 을 열면 로그인 화면에 머물지 않고 홈으로 간다. 원래 가려던 곳은 AuthGate 가 이어 준다.
+  // (로그아웃은 캐시를 비운 뒤 여기로 오므로 다시 튕기지 않는다)
+  const me = useMe();
+  if (me.isSuccess) return <Navigate to="/" replace />;
 
   return (
     <main className="landing" data-intro={introActive ? 'playing' : 'done'} style={{ '--intro-hold-extension': `${LANDING_HOLD_EXTENSION_MS}ms` } as CSSProperties}>
@@ -38,14 +43,14 @@ export function LandingPage() {
           <span className="landing__eyebrow">코드에 남긴 기록, 나만의 경험으로</span>
           <h1 className="landing__h1">커밋과 PR을<br /><span>자소서 경험으로</span></h1>
           <p className="landing__lead">
-            저장소를 고르면 내가 한 작업을 찾아 상황, 과제, 행동, 결과로 정리해요.
+            레포를 고르면 내가 한 일을 찾아 상황, 과제, 행동, 결과로 정리해요.
             비어 있는 내용은 질문에 답하며 채우고, 자소서와 면접에 활용할 수 있어요.
           </p>
 
           <div className="landing__actions">
             <Button size="xl" loading={login.pending} onClick={() => login.isDemo ? void login.start() : setSp({ consent: '1' })}>{login.label} <ArrowRight size={16} /></Button>
           </div>
-          {error === 'access_denied' && <p className="landing-notice" role="status">GitHub에서 동의를 취소하셨네요</p>}
+          {error === 'access_denied' && <p className="landing-notice" role="status">GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.</p>}
           {error && error !== 'access_denied' && <p className="landing-notice landing-notice--error" role="alert">GitHub 연결에 실패했어요. 다시 시작해 주세요.</p>}
           {reason === 'expired' && !error && !login.isDemo && <p className="landing-notice" role="status">로그인이 만료됐어요. 다시 시작해 주세요.</p>}
           {login.failure && <p className="landing-notice landing-notice--error" role="alert">{login.failure}</p>}

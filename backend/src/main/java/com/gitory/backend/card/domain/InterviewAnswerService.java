@@ -22,7 +22,8 @@ import java.util.UUID;
 /**
  * 되묻기 답을 가공 없이 질문한 칸의 글로 저장하고 그 칸만 바꾼 INTERVIEW 새 버전을 만들며, 넘기기는 칸을 바꾸지 않고 질문만 넘김으로 남긴다
  * '측정 안 했어요' 는 커밋으로 확인된 R 문장을 지우지 않도록 그 문장이 있으면 칸을 바꾸지 않고 답만 기록한다
- * 이미 정해진 결과와 같은 요청이 다시 오면 응답이 끊긴 뒤의 재시도이므로 확정된 카드여도 아무것도 쓰지 않고 지금 카드를 돌려준다
+ * 이미 정해진 결과와 같은 요청이 다시 오면 응답이 끊긴 뒤의 재시도이므로 아무것도 쓰지 않고 지금 카드를 돌려준다
+ * 확정된 카드도 작성 중 카드처럼 답을 받으며, 확정본 버전을 덮어쓰지 않고 새 INTERVIEW 버전에 쌓는다
  */
 @Service
 @RequiredArgsConstructor
@@ -34,9 +35,11 @@ public class InterviewAnswerService {
     private final CardVersionWriter writer;
     private final CardStatementRepository statements;
     private final CardDetailService details;
+    private final CardVersionReader reader;
+    private final CardThemeSuggester themeSuggester;
 
     /**
-     * 카드 행을 잠근 뒤 질문 번호, 초안을 만드는 중인지, 이미 한 답, 확정 여부, 답의 모양 순서로 확인하고, 이 순서가 응답 코드의 우선순위다
+     * 카드 행을 잠근 뒤 질문 번호, 초안을 만드는 중인지, 이미 한 답, 답의 모양 순서로 확인하고, 이 순서가 응답 코드의 우선순위다
      * 답 글과 출처는 모양이 틀린 값도 여기까지 들어오므로 카드에 대한 확인을 끝낸 뒤에야 거절한다
      */
     @Transactional
@@ -55,7 +58,6 @@ public class InterviewAnswerService {
             return details.load(publicId, userId);
         }
 
-        card.requireDraft();
         AnswerKind answerKind = kindOf(kind);
         // 글 답은 지금 화면이 수치 질문에도 kind 없이 보내므로 막지 않고, 측정 답만 수치 질문인지 본다
         if (answerKind != AnswerKind.TEXT && answerKind != AnswerKind.SKIP
@@ -78,6 +80,8 @@ public class InterviewAnswerService {
             }
             case NOT_MEASURED -> recordNotMeasured(card, turn, text, source);
         }
+        // 되묻기 화면은 칸을 골라 묻기만 해서 '되묻기 끝' 판정이 오지 않으므로, 답으로 자동 확정 조건이 갖춰지면 여기서 확정한다
+        themeSuggester.settle(card, reader.read(card.getId(), card.getCurrentVersion()));
 
         return details.load(publicId, userId);
 

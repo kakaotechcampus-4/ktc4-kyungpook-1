@@ -1,0 +1,169 @@
+import type { AssignStep, CoverLetterPosting, CoverLetterQuestion, CoverLetterStage, DraftStep, MaterialItem, PolishCategory, PolishKind, QuestionTheme } from '@/api/coverLetters';
+import { COVER_LETTER_LIMITS as L, QUESTION_THEMES } from '@/api/coverLetters';
+import { themeLabel } from '@/lib/cardThemes';
+
+/** ① 공고에서 시작하면 직무 칸에 미리 채우는 공고 제목 — 직무 칸 한도에 맞춰 자른다 */
+export const prefillJobRole = (title: string) => title.trim().slice(0, L.JOB_ROLE);
+
+/** 목록 둘째 줄 — 직무가 미리 채운 공고 제목 그대로면 회사만 적어 같은 글자가 두 줄에 나오지 않게 한다 */
+export function postingLine(posting: CoverLetterPosting | null, jobRole: string): string | null {
+  if (!posting) return null;
+  return prefillJobRole(posting.title) === jobRole.trim() ? posting.company : `${posting.company}, ${posting.title}`;
+}
+
+/** 문항 유형 이름 — 카드 유형 7개는 카드 화면과 같은 이름을 쓰고, 지원 동기만 자소서에서 더한다 */
+export const THEME_LABEL: Record<QuestionTheme, string> = { MOTIVATION: '지원 동기', ...themeLabel };
+
+/** 재료 항목 이름 */
+export const ITEM_LABEL: Record<MaterialItem, string> = {
+  SITUATION: '상황', ACTION: '행동', RESULT: '결과', LEARNING: '배운 점', TRIGGER: '계기',
+  JOB_LINK: '지원 직무와 이어지는 점', REASON: '지원 이유',
+};
+
+/** ① 예시 문항 문장. 모두에게 같다(계약 표 그대로) */
+export const EXAMPLE_QUESTION: Record<QuestionTheme, string> = {
+  MOTIVATION: '지원 동기와 입사 후 포부를 적어 주세요',
+  PROBLEM_SOLVING: '어려운 문제를 해결한 경험을 적어 주세요',
+  COLLABORATION: '팀으로 함께 성과를 낸 경험을 적어 주세요',
+  CONFLICT: '의견 차이를 조율해 해결한 경험을 적어 주세요',
+  LEADERSHIP: '주도적으로 일을 이끈 경험을 적어 주세요',
+  CHALLENGE: '가장 도전적이었던 경험을 적어 주세요',
+  FAILURE: '실패를 극복한 경험을 적어 주세요',
+  GROWTH: '스스로 성장한 경험과 배운 점을 적어 주세요',
+};
+
+/**
+ * 예시 버튼 순서 — 지원 동기를 먼저, 그다음 내 카드에 많은 유형 3개, 나머지는 '더 보기'.
+ * 카드가 없거나 유형이 모자라면 계약 표 순서로 채운다.
+ */
+export function exampleThemes(cardThemes: readonly (readonly string[] | null | undefined)[]): { top: QuestionTheme[]; more: QuestionTheme[] } {
+  const count = new Map<QuestionTheme, number>();
+  for (const themes of cardThemes) for (const t of themes ?? []) {
+    if ((QUESTION_THEMES as readonly string[]).includes(t) && t !== 'MOTIVATION') count.set(t as QuestionTheme, (count.get(t as QuestionTheme) ?? 0) + 1);
+  }
+  const order = QUESTION_THEMES.filter((t) => t !== 'MOTIVATION');
+  const ranked = [...order].sort((a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0) || order.indexOf(a) - order.indexOf(b));
+  const top: QuestionTheme[] = ['MOTIVATION', ...ranked.slice(0, 3)];
+  return { top, more: ranked.slice(3) };
+}
+
+/**
+ * ② AI 가 한 일 — `steps.assign` 한 줄을 문장으로. 서버는 값만 주고 문장은 화면이 만든다.
+ * 모르는 actor·kind 는 null(그 줄을 건너뛴다). 카드 이름이 없으면(지운 카드) 이름 없이 말한다.
+ */
+export function assignLine(step: AssignStep, questions: Pick<CoverLetterQuestion, 'id' | 'seq'>[]): { text: string; reason: string | null } | null {
+  const n = questions.find((q) => q.id === step.questionId)?.seq;
+  const q = n != null ? `${n}번 문항` : '한 문항';
+  const card = step.cardTitle ? `'${step.cardTitle}' 카드` : '지운 카드';
+  const reason = step.reason?.trim() || null;
+  const key = `${step.actor}.${step.kind}`;
+  switch (key) {
+    case 'SUB_AGENT.PICKED': return { text: `${q}: ${card}를 골랐어요`, reason };
+    case 'SUB_AGENT.NO_FIT': return { text: `${q}: 맞는 카드를 찾지 못했어요`, reason };
+    case 'SUB_AGENT.FAILED': return { text: `${q}: 카드를 고르지 못했어요. 직접 골라 주세요`, reason: null };
+    case 'SUPERVISOR.CHECKED': return { text: '모든 문항을 함께 보고 겹치는 카드를 확인했어요', reason };
+    case 'SUPERVISOR.SWITCHED': return { text: `${q}은 ${card}로 바꿨어요`, reason };
+    case 'SUPERVISOR.FAILED': return { text: '문항 전체를 함께 보지 못했어요', reason: null };
+    case 'CODE.RESOLVED': return { text: `겹치는 카드를 2순위 ${card}로 정리했어요`, reason };
+    default: return null;
+  }
+}
+
+/** 실패한 단계 이름 */
+export const FAILED_STEP_LABEL: Record<string, string> = { ASSIGN: '카드 고르기', ASK: '질문 만들기', DRAFT: '초안 쓰기' };
+
+// ───────────────────────────── ⑤ 쓰기 · ⑥ 초안 ─────────────────────────────
+
+const quoted = (v: string | null) => (v ? `'${v}'` : null);
+/** 검사에 걸린 이유 — `marks[].code` 와 `steps.draft` 의 CHECK_FAILED 가 같은 말을 쓴다. 따옴표 값 뒤에는 받침에 따라 바뀌는 조사를 붙이지 않는다 */
+export function checkMessage(code: string | null, value: string | null): string {
+  const v = quoted(value);
+  switch (code) {
+    case 'UNSOURCED_NUMBER': return v ? `${v} — 카드에 없는 숫자예요` : '카드에 없는 숫자가 있어요';
+    case 'UNSOURCED_TERM': return v ? `${v} — 카드에 없는 낱말이에요` : '카드에 없는 낱말이 있어요';
+    case 'REPEATED': return '다른 문항과 같은 이야기예요';
+    case 'UNSUPPORTED_CLAIM': return '카드와 답에 없는 역할이나 성과예요';
+    case 'OFF_TOPIC': return '문항이 묻는 것을 벗어났어요';
+    case 'INFERRED': return '재료를 바탕으로 짐작해 쓴 문장이에요. 맞으면 확인, 다르면 고치거나 빼 주세요.';
+    case 'OVER_LIMIT': return value ? `글자 수를 ${value}자 넘었어요` : '글자 수를 넘었어요';
+    case 'UNDER_LENGTH': return value ? `목표보다 ${value}자 모자라요` : '목표보다 짧아요';
+    case 'MISSING_BLANK': return value && value in ITEM_LABEL ? `'${ITEM_LABEL[value as MaterialItem]}' 빈칸을 빠뜨렸어요` : '빈칸을 빠뜨렸어요';
+    default: return '확인이 필요해요';
+  }
+}
+
+/**
+ * ⑤ AI 가 한 일 — `steps.draft` 한 줄을 문장으로. 쓰기, 검사, 고칠지 정하기, 다시 쓰기, 감독 검토가 차례로 쌓인다.
+ * 모르는 actor·kind 는 null(건너뛴다).
+ */
+type DraftLineStep = Pick<DraftStep, 'actor' | 'kind' | 'questionId' | 'code' | 'value' | 'sentenceSeq' | 'action' | 'reason'>;
+export function draftLine(step: DraftLineStep, questions: Pick<CoverLetterQuestion, 'id' | 'seq'>[]): { text: string; reason: string | null; tone: 'work' | 'check' | 'fix' } | null {
+  if (step.actor !== 'SUB_AGENT' && step.actor !== 'SUPERVISOR' && step.actor !== 'CODE') return null;
+  const n = questions.find((q) => q.id === step.questionId)?.seq;
+  const q = n != null ? `${n}번 문항 ` : '';
+  const chars = step.value && /^\d+$/.test(step.value) ? `(${Number(step.value).toLocaleString()}자)` : '';
+  const reason = step.reason?.trim() || null;
+  switch (step.kind) {
+    case 'WROTE': return { text: `${q}초안을 썼어요${chars}`, reason: null, tone: 'work' };
+    case 'CHECK_PASSED': return { text: `${q}근거와 글자 수 검사를 통과했어요`, reason: null, tone: 'check' };
+    case 'CHECK_FAILED': return { text: `${q}검사: ${checkMessage(step.code, step.value)}`, reason: null, tone: 'fix' };
+    case 'DECIDED': return { text: step.action === 'KEEP' ? `${q}그대로 두기로 했어요` : `${q}고치기로 했어요`, reason, tone: 'check' };
+    case 'REWROTE': return { text: `${q}고쳐서 다시 썼어요${chars}`, reason: null, tone: 'work' };
+    case 'REVERTED': return { text: `${q}다시 쓴 글이 새 문제를 만들어 앞 초안으로 돌렸어요`, reason: null, tone: 'fix' };
+    case 'MARKED': return step.code === 'INFERRED'
+      ? { text: `${q}짐작한 문장이라 확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' }
+      : { text: `${q}${step.value ? `'${step.value}'에 ` : ''}확인 필요 표시를 남겼어요`, reason: null, tone: 'fix' };
+    case 'SKELETON': return { text: `${q}초안을 쓰지 못해 카드 문장으로 뼈대를 만들었어요`, reason: null, tone: 'fix' };
+    case 'REVIEWED': {
+      const count = Number(step.value);
+      return { text: count > 0 ? `모든 문항을 함께 읽고 ${count}문장을 다시 보게 했어요` : '모든 문항을 함께 읽고 확인했어요', reason, tone: 'check' };
+    }
+    case 'SENT_BACK': return { text: `${q}${step.sentenceSeq != null ? `${step.sentenceSeq}번째 문장을 ` : ''}다시 쓰게 했어요`, reason: reason ?? checkMessage(step.code, null), tone: 'fix' };
+    case 'FAILED': return { text: q ? `${q}초안 쓰기를 마치지 못했어요` : '전체 검토를 하지 못했어요', reason: null, tone: 'fix' };
+    default: return null;
+  }
+}
+
+/** 복사 알림 뒤에 붙는 말 — 확인하지 않은 짐작 문장과 채우지 않은 빈칸이 함께 복사됐음을 알린다(복사는 막지 않는다). 둘 다 없으면 null */
+export function copiedExtras(inferred: number, blanks: number): string | null {
+  if (inferred > 0 && blanks > 0) return `확인하지 않은 짐작 문장 ${inferred}개와 빈칸 ${blanks}개가 함께 복사됐어요.`;
+  if (inferred > 0) return `확인하지 않은 짐작 문장 ${inferred}개가 함께 복사됐어요.`;
+  if (blanks > 0) return `아직 채우지 않은 빈칸 ${blanks}개가 함께 복사됐어요.`;
+  return null;
+}
+
+// ───────────────────────────── ⑥ 첨삭(#727) ─────────────────────────────
+export const POLISH_CATEGORY_LABEL: Record<PolishCategory, string> = {
+  FIT: '문항 적합성', EVIDENCE: '근거', READABILITY: '읽기 쉬움', OVERLAP: '겹침', TECH_TERMS: '기술 용어',
+};
+export const POLISH_KIND_LABEL: Record<PolishKind, string> = { WEAK: '아쉬운 점', GOOD: '잘한 점' };
+
+// ───────────────────────────── 강점 코드(#738) ─────────────────────────────
+/** 서버가 받는 강점 코드 — 화면은 더 고르게 하지 않고 목 서버만 이 코드로 요청을 검사한다 */
+export const STRENGTHS: { group: string; items: { code: string; label: string }[] }[] = [
+  { group: '일하는 방식', items: [
+    { code: 'METICULOUS', label: '꼼꼼함' }, { code: 'PERSISTENT', label: '끈기' }, { code: 'PROACTIVE', label: '주도성' },
+    { code: 'FAST_LEARNER', label: '빠른 학습' }, { code: 'RESPONSIBLE', label: '책임감' }, { code: 'PROBLEM_SOLVING', label: '문제 해결' },
+  ] },
+  { group: '사람과 일할 때', items: [
+    { code: 'COMMUNICATION', label: '소통' }, { code: 'COLLABORATION', label: '협업' }, { code: 'PERSUASION', label: '설득' },
+    { code: 'CONSIDERATE', label: '배려' }, { code: 'USER_FOCUS', label: '사용자 관점' }, { code: 'DOCUMENTING', label: '기록과 공유' },
+  ] },
+];
+export const STRENGTH_LIMIT = 3;
+
+// ───────────────────────────── 단계 표시줄(#745) ─────────────────────────────
+export const FLOW_STEPS = ['문항', '카드 고르기', '재료 확인', '초안'] as const;
+export type FlowStep = 1 | 2 | 3 | 4;
+/**
+ * 자소서가 흐름의 몇 번째 단계에 있는지 — 실패는 실패한 단계에 머문다. 모르는 실패 단계는 처음 AI 단계(카드 고르기)로 본다.
+ * ASSIGNED·ASKED 는 사용자가 멈추지 않고 다음 단계의 기다림 화면을 보므로 그 단계로 센다.
+ */
+export function flowStep(stage: CoverLetterStage, failedStep: string | null): FlowStep {
+  switch (stage) {
+    case 'ASSIGNED': case 'ASKING': return 3;
+    case 'ASKED': case 'DRAFTING': case 'DRAFTED': return 4;
+    case 'FAILED': return failedStep === 'DRAFT' ? 4 : failedStep === 'ASK' ? 3 : 2;
+    default: return 2;
+  }
+}

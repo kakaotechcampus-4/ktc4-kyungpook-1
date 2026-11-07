@@ -144,22 +144,54 @@ class CardTest {
     }
 
     @Test
-    @DisplayName("작성 중 카드는 네 칸이 확인 필요 없이 모두 찬 글로 정할 때만 확정되고, 확인 필요 칸이나 빈 칸이 하나라도 있으면 작성 중으로 남는다")
-    void draftIsConfirmedOnlyWhenAllFourSlotsAreFilledWithoutReview() {
+    @DisplayName("작성 중 카드는 상황과 행동이 확인 필요 없이 차 있고 확인 필요 칸이 없으면 과제·결과가 비어 있어도 확정된다")
+    void draftIsConfirmedWhenSituationAndActionAreFilledWithoutReview() {
 
-        Card complete = draft();
-        complete.settle(slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH));
-        assertThat(complete.getStatus()).isEqualTo(CardStatus.CONFIRMED);
-        assertThat(complete.getConfirmedAt()).isNotNull();
+        Card onlySituationAndAction = draft();
+        onlySituationAndAction.settle(slots(Confidence.HIGH, null, Confidence.HIGH, null));
+        assertThat(onlySituationAndAction.getStatus()).isEqualTo(CardStatus.CONFIRMED);
+        assertThat(onlySituationAndAction.getConfirmedAt()).isNotNull();
 
-        Card needsReview = draft();
-        needsReview.settle(slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.LOW));
-        assertThat(needsReview.getStatus()).isEqualTo(CardStatus.DRAFT);
+        Card allFour = draft();
+        allFour.settle(slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH));
+        assertThat(allFour.getStatus()).isEqualTo(CardStatus.CONFIRMED);
 
-        Card emptyTask = draft();
-        emptyTask.settle(slots(Confidence.HIGH, null, Confidence.HIGH, Confidence.HIGH));
-        assertThat(emptyTask.getStatus()).isEqualTo(CardStatus.DRAFT);
-        assertThat(emptyTask.getConfirmedAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("작성 중 카드는 확인 필요 칸이 하나라도 있거나 상황·행동이 비었거나 확인 필요이면 확정되지 않는다")
+    void draftStaysDraftWhenAnySlotNeedsReviewOrSituationOrActionIsNotFilled() {
+
+        List<VersionSlots> notAutoConfirmable = List.of(
+                slots(Confidence.HIGH, Confidence.LOW, Confidence.HIGH, Confidence.HIGH),
+                slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.LOW),
+                slots(Confidence.LOW, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH),
+                slots(Confidence.HIGH, Confidence.HIGH, Confidence.LOW, Confidence.HIGH),
+                slots(null, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH),
+                slots(Confidence.HIGH, Confidence.HIGH, null, Confidence.HIGH));
+
+        for (VersionSlots slots : notAutoConfirmable) {
+            Card card = draft();
+            card.settle(slots);
+            assertThat(card.getStatus()).isEqualTo(CardStatus.DRAFT);
+            assertThat(card.getConfirmedAt()).isNull();
+        }
+
+    }
+
+    @Test
+    @DisplayName("시간 초과로 일부만 만들어진 작성 중 카드는 칸이 모두 차도 확정되지 않지만 버튼 확정은 된다")
+    void partiallyGeneratedDraftIsNotAutoConfirmed() {
+
+        Card partial = draft();
+        partial.markGenerationPartial();
+
+        boolean confirmedNow = partial.settle(slots(Confidence.HIGH, Confidence.HIGH, Confidence.HIGH, Confidence.HIGH));
+
+        assertThat(confirmedNow).isFalse();
+        assertThat(partial.getStatus()).isEqualTo(CardStatus.DRAFT);
+        partial.confirm();
+        assertThat(partial.getStatus()).isEqualTo(CardStatus.CONFIRMED);
 
     }
 

@@ -4,4 +4,11 @@ package com.gitory.backend.agent.port;
 public interface StarDraftPort {
 
     StarDraft draft(StarDraftRequest request);
+
+    /** {@link #draft(StarDraftRequest)} 와 같고, AI 가 칸 글을 쓰거나 단계를 거칠 때마다 listener 로 받는다 */
+    default StarDraft draft(StarDraftRequest request, StarDraftListener listener) {
+
+        return draft(request);
+
+    }
 }

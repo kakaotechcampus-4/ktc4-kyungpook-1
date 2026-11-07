@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { loginAsDemo } from './helpers';
 
-const routes = ['/repos', '/repos/r_auth/candidates', '/cards/new', '/cards/card_01?mode=edit', '/cards/card_01?mode=mask', '/cards/card_01'];
+const routes = ['/repos', '/repos/r_auth/candidates', '/cards/new', '/cards/new?write=1', '/cards/card_01?mode=edit', '/cards/card_01?mode=mask', '/cards/card_01'];
 for (const [width, height] of [[320, 740], [390, 844], [767, 844], [768, 1024], [1024, 768], [1440, 900], [320, 480], [390, 480]]) {
   test(`shared footer keeps content clear at ${width}x${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
@@ -29,12 +29,14 @@ test('320px primary and masking preset labels remain on one line', async ({ page
   await page.setViewportSize({ width: 320, height: 740 });
   await loginAsDemo(page);
   for (const [path, labels] of [
-    ['/repos/r_auth/run', ['정리 시작']],
+    ['/repos/r_web/run', ['정리 시작']],
+    // 정리한 레포는 지난 결과 보기(링크)와 다시 정리를 나란히 둔다
+    ['/repos/r_auth/run', ['다시 정리', '지난 결과 보기']],
     ['/cards/card_01?mode=mask', ['+ 규칙 추가', '+ 팀원 익명화', '+ 회사명 가리기']],
   ] as const) {
     await page.goto(path);
     for (const label of labels) {
-      const button = page.getByRole('button', { name: label, exact: true });
+      const button = page.getByRole(label === '지난 결과 보기' ? 'link' : 'button', { name: label, exact: true });
       await expect(button).toBeVisible();
       const lines = await button.evaluate(el => {
         const range = document.createRange(); range.selectNodeContents(el);

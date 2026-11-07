@@ -33,7 +33,7 @@ function ThemesSection({ card, themes, editable }: { card: Card; themes: CardThe
     return (
       <div className="card-themes">
         <fieldset className="card-themes__editor" aria-describedby={noteId}>
-          <legend className="card-themes__label">자소서 문항 유형</legend>
+          <legend className="card-themes__label">자소서 문항 유형 <span className="card-themes__limit" aria-hidden>최대 {CARD_THEME_LIMIT}개</span></legend>
           <div className="card-themes__options">
             {CARD_THEMES.map((theme) => {
               const checked = selected.includes(theme);

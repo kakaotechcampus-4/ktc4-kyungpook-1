@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { freshSeed, loginAsDemo } from './helpers';
+import { freshSeed, loginAsDemo, showCardTiles } from './helpers';
 
 test('sample landing explains GitHub records and card output without a false expired-session notice', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -35,9 +35,9 @@ test('first, middle and last selected repository rows retain geometry and rounde
 
 test('desktop experiences have individual card boundaries and gaps', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await loginAsDemo(page); await page.goto('/cards');
-  // 레포별 묶음이라 처음 두 장이 한 줄이라는 보장이 없다 — 같은 줄(같은 top)에 나란히 놓인 두 장의 간격을 잰다
-  await expect(page.locator('.experience-item')).toHaveCount(5);
+  await loginAsDemo(page); await page.goto('/cards'); await showCardTiles(page);
+  // 묶음별로 나뉘어 처음 두 장이 한 줄이라는 보장이 없다 — 같은 줄(같은 top)에 나란히 놓인 두 장의 간격을 잰다
+  await expect(page.locator('.experience-item')).toHaveCount(8);
   const boxes = await page.locator('.experience-item').evaluateAll(items => items.map(item => item.getBoundingClientRect()).map(r => ({ top: Math.round(r.top), x: r.x, right: r.right })));
   const pair = boxes.find((a, i) => boxes.slice(i + 1).some(b => b.top === a.top));
   expect(pair).toBeDefined();
@@ -68,17 +68,6 @@ test('dark logo is visible on mobile, expanded and collapsed navigation', async 
   await expect(page.locator('.sidebar .brand-logo__dark')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.mobile-brand .brand-logo__dark')).toBeVisible();
-});
-
-test('suggested selections add to previously selected hidden candidates', async ({ page }) => {
-  await loginAsDemo(page); await page.goto('/repos/r_auth/candidates');
-  const first = page.getByRole('checkbox', { name: '로그인 세션 처리 선택' });
-  await first.check();
-  await page.getByRole('textbox', { name: '후보 검색 (제목, 추천 이유)' }).fill('로그인 API');
-  await page.getByRole('button', { name: '추천 후보 선택' }).click();
-  await page.getByRole('button', { name: '검색 지우기' }).click();
-  await expect(first).toBeChecked();
-  await expect(page.getByRole('button', { name: '선택한 2개로 카드 만들기' })).toBeVisible();
 });
 
 test('bulk restore attempts every excluded candidate despite request failures', async ({ page }) => {

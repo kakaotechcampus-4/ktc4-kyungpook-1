@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -78,8 +79,10 @@ class CoverLetterApiTest {
 
     private static final String LEARNING_BLANK = "[배운 점: 배운 점을 적어 주세요]";
 
+    private static final String MEMO = "\"결제 서비스를 직접 만들어 보고 싶어서 이 회사에 지원합니다\"";
+
     private static final String BODY = """
-            {"jobRole": "백엔드 개발", "memo": "결제 서비스를 만들고 싶다",
+            {"jobRole": "백엔드 개발", "memo": "결제 서비스를 직접 만들어 보고 싶어서 이 회사에 지원합니다",
              "questions": [{"text": "협업 경험을 쓰세요", "charLimit": 500}, {"text": "실패 경험을 쓰세요", "charLimit": null}]}
             """;
 
@@ -164,17 +167,111 @@ class CoverLetterApiTest {
 
         String question = "{\"text\": \"협업 경험을 쓰세요\", \"charLimit\": 500}";
         return Stream.of(
-                Arguments.of(body("\"  \"", "null", question), "k"),
-                Arguments.of(body("\"" + "가".repeat(101) + "\"", "null", question), "k"),
+                Arguments.of(body("\"  \"", MEMO, question), "k"),
+                Arguments.of(body("\"" + "가".repeat(101) + "\"", MEMO, question), "k"),
                 Arguments.of(body("\"백엔드\"", "\"" + "가".repeat(1_001) + "\"", question), "k"),
-                Arguments.of(body("\"백엔드\"", "null", ""), "k"),
-                Arguments.of(body("\"백엔드\"", "null", String.join(",", java.util.Collections.nCopies(11, question))), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \" \", \"charLimit\": 500}"), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \"" + "가".repeat(501) + "\", \"charLimit\": 500}"), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \"문항\", \"charLimit\": 99}"), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \"문항\", \"charLimit\": 5001}"), "k"),
-                Arguments.of(body("\"백엔드\"", "null", "{\"text\": \"문\\u0000항\", \"charLimit\": 500}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, ""), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, String.join(",", java.util.Collections.nCopies(11, question))), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \" \", \"charLimit\": 500}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \"" + "가".repeat(501) + "\", \"charLimit\": 500}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \"문항\", \"charLimit\": 99}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \"문항\", \"charLimit\": 5001}"), "k"),
+                Arguments.of(body("\"백엔드\"", MEMO, "{\"text\": \"문\\u0000항\", \"charLimit\": 500}"), "k"),
                 Arguments.of(BODY, "k".repeat(256)));
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("unusableMemos")
+    @DisplayName("지원 이유를 적었는데 짧거나 한글이 없거나, 같은 글자 반복·URL·이메일·쓸 수 없는 글자가 있으면 걸린 규칙을 알리는 400 이고 만들지 않는다")
+    void rejectsMemoBreakingReasonRules(String memo, String message) throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(body("\"백엔드\"", memo, "{\"text\": \"협업 경험을 쓰세요\", \"charLimit\": 500}"), "k")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.error.message").value(message));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter", Integer.class)).isZero();
+
+    }
+
+    static Stream<Arguments> unusableMemos() {
+
+        String tooShort = "지원 이유를 20자 이상 적어 주세요.";
+        return Stream.of(
+                Arguments.of("\"결제 서비스를 만들고 싶어요\"", tooShort),
+                Arguments.of("\"I want to build payment services at this company\"", "지원 이유는 한국어로 적어 주세요."),
+                Arguments.of("\"결제 서비스를 만들고 싶어요 ㅋㅋㅋㅋㅋ 진짜로 지원합니다\"",
+                        "지원 이유에 같은 글자를 5번 이상 이어 쓸 수 없습니다."),
+                Arguments.of("\"결제 서비스 소개 글을 보고 지원합니다 https://gitory.dev/about\"",
+                        "지원 이유에는 URL 을 넣을 수 없습니다."),
+                Arguments.of("\"결제 서비스를 만들고 싶어 지원합니다 연락은 grow22@gitory.dev 로\"",
+                        "지원 이유에는 이메일 주소를 넣을 수 없습니다."),
+                Arguments.of("\"결제 서비스를 만들고 싶어 지원합니다 বাংলা\"",
+                        "지원 이유에는 한글·영문·숫자·흔한 문장부호만 쓸 수 있습니다."),
+                Arguments.of("\"결제 서비스를 만들고 싶어서 이 회사에\\u0000 지원합니다\"",
+                        "지원 이유에는 한글·영문·숫자·흔한 문장부호만 쓸 수 있습니다."));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "\"   \""})
+    @DisplayName("지원 이유가 없거나 공백뿐이면 검사하지 않고 비운 채로 만든다")
+    void createsLetterWithoutMemoWhenMemoIsNullOrBlank(String memo) throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(body("\"백엔드\"", memo, "{\"text\": \"협업 경험을 쓰세요\", \"charLimit\": 500}"), "k")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stage").value("ASSIGNING"))
+                .andExpect(jsonPath("$.data.memo").value(nullValue()));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter WHERE memo IS NULL", Integer.class))
+                .isEqualTo(1);
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("unusableStrengths")
+    @DisplayName("강점이 3개를 넘거나 겹치거나 모르는 값이면 400 이고 만들지 않는다")
+    void rejectsStrengthsBreakingRules(String strengths, String message) throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(withStrengths(strengths), "k")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"))
+                .andExpect(jsonPath("$.error.message").value(message));
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM cover_letter", Integer.class)).isZero();
+
+    }
+
+    static Stream<Arguments> unusableStrengths() {
+
+        return Stream.of(
+                Arguments.of("[\"METICULOUS\", \"PERSISTENT\", \"PROACTIVE\", \"DOCUMENTING\"]",
+                        "강점은 3개까지 고를 수 있습니다."),
+                Arguments.of("[\"METICULOUS\", \"METICULOUS\"]", "같은 강점을 두 번 고를 수 없습니다."),
+                Arguments.of("[\"PATIENT\"]", "고를 수 없는 강점이 있습니다."));
+
+    }
+
+    @Test
+    @DisplayName("고른 강점은 고른 순서대로 저장해 응답에 싣고, 지원 이유 판정은 질문 단계 전이라 null 이다")
+    void createsLetterWithStrengths() throws Exception {
+
+        confirmedCard(myUserId, "배포 시간 단축", "A");
+
+        create(withStrengths("[\"USER_FOCUS\", \"METICULOUS\"]"), "key-1")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.strengths", contains("USER_FOCUS", "METICULOUS")))
+                .andExpect(jsonPath("$.data.memoUsable").value(nullValue()));
+
+        assertThat(jdbc.queryForObject("SELECT strengths::text FROM cover_letter", String.class))
+                .isEqualTo("[\"USER_FOCUS\", \"METICULOUS\"]");
 
     }
 
@@ -203,7 +300,8 @@ class CoverLetterApiTest {
         confirmedCard(myUserId, "배포 시간 단축", "A");
         String firstId = idOf(create(BODY, "key-1"));
 
-        create("{\"jobRole\": \"프론트엔드\", \"questions\": [{\"text\": \"다른 문항\"}]}", "key-1")
+        create("{\"jobRole\": \"프론트엔드\", \"memo\": " + MEMO + ", \"questions\": [{\"text\": \"다른 문항\"}]}",
+                "key-1")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(firstId))
                 .andExpect(jsonPath("$.data.jobRole").value("백엔드 개발"));
@@ -624,6 +722,78 @@ class CoverLetterApiTest {
     }
 
     @Test
+    @DisplayName("AI 추론 문장을 확인하면 그 문장의 INFERRED 표시만 지우고, 글과 같은 문장의 다른 표시는 그대로 둔 자소서를 돌려준다")
+    void confirmingInferenceRemovesOnlyThatInferredMark() throws Exception {
+
+        CoverLetter letter = draftedLetter(myUserId, "초안", List.of(new DraftMark(1, "UNSOURCED_NUMBER", "90"),
+                new DraftMark(1, "INFERRED", null), new DraftMark(2, "INFERRED", null)));
+
+        confirmInference(letter, questionIdOf(letter), 1)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.questions[0].draft.text").value("초안"))
+                .andExpect(jsonPath("$.data.questions[0].draft.aiText").value("초안"))
+                .andExpect(jsonPath("$.data.questions[0].draft.marks.length()").value(2))
+                .andExpect(jsonPath("$.data.questions[0].draft.marks[0].code").value("UNSOURCED_NUMBER"))
+                .andExpect(jsonPath("$.data.questions[0].draft.marks[1].sentenceSeq").value(2))
+                .andExpect(jsonPath("$.data.questions[0].draft.marks[1].code").value("INFERRED"));
+
+    }
+
+    @Test
+    @DisplayName("그 문장 번호에 INFERRED 표시가 없으면(다른 표시만 있거나 표시가 없으면) 409 이고 표시를 지우지 않는다")
+    void rejectsConfirmingWhereNoInferredMark() throws Exception {
+
+        CoverLetter letter = draftedLetter("초안");
+
+        confirmInference(letter, questionIdOf(letter), 1)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+        confirmInference(letter, questionIdOf(letter), 2)
+                .andExpect(status().isConflict());
+
+        assertThat(questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst().getMarks())
+                .containsExactly(new DraftMark(1, "UNSOURCED_NUMBER", "90"));
+
+    }
+
+    @Test
+    @DisplayName("남의 자소서의 추론 문장은 404 로 확인할 수 없고 거절로 남긴다")
+    void othersInferenceIsNotFound() throws Exception {
+
+        CoverLetter others = draftedLetter(othersUserId, "초안", List.of(new DraftMark(1, "INFERRED", null)));
+
+        confirmInference(others, questionIdOf(others), 1)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("NOT_FOUND"));
+
+        assertThat(questions.findByCoverLetterIdOrderBySeq(others.getId()).getFirst().getMarks())
+                .containsExactly(new DraftMark(1, "INFERRED", null));
+        assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM audit_event WHERE action = 'EDIT_COVER_LETTER' AND outcome = 'DENIED'",
+                Integer.class)).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("초안을 다 쓰기 전에는 추론 표시가 있어도 409 로 확인할 수 없다")
+    void rejectsConfirmingBeforeDrafted() throws Exception {
+
+        CoverLetter asked = askedLetter();
+        CoverLetterQuestion question = questions.findByCoverLetterIdOrderBySeq(asked.getId()).getFirst();
+        question.drafted("배웠다.", List.of(new DraftSentence(1, "배웠다.")), 4, 0,
+                List.of(new DraftMark(1, "INFERRED", null)), List.of(), DraftSource.LLM);
+        questions.save(question);
+
+        confirmInference(asked, questionIdOf(asked), 1)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
+
+        assertThat(questions.findByCoverLetterIdOrderBySeq(asked.getId()).getFirst().getMarks())
+                .containsExactly(new DraftMark(1, "INFERRED", null));
+
+    }
+
+    @Test
     @DisplayName("목록은 내 자소서만 최근에 만든 것부터 문항 수·첫 문항과 함께 주고, 없으면 빈 목록이다")
     void listsMyLettersNewestFirst() throws Exception {
 
@@ -697,6 +867,11 @@ class CoverLetterApiTest {
 
     private static String body(String jobRole, String memo, String questions) {
         return "{\"jobRole\": " + jobRole + ", \"memo\": " + memo + ", \"questions\": [" + questions + "]}";
+    }
+
+    private static String withStrengths(String strengths) {
+        return "{\"jobRole\": \"백엔드\", \"memo\": " + MEMO + ", \"strengths\": " + strengths
+                + ", \"questions\": [{\"text\": \"협업 경험을 쓰세요\", \"charLimit\": 500}]}";
     }
 
     private Long confirmedCard(Long userId, String title, String... slots) {
@@ -783,10 +958,16 @@ class CoverLetterApiTest {
 
     private CoverLetter draftedLetter(String aiText) {
 
-        CoverLetter letter = letters.save(CoverLetter.start(myUserId, "백엔드 개발", null, null));
+        return draftedLetter(myUserId, aiText, List.of(new DraftMark(1, "UNSOURCED_NUMBER", "90")));
+
+    }
+
+    private CoverLetter draftedLetter(Long userId, String aiText, List<DraftMark> marks) {
+
+        CoverLetter letter = letters.save(CoverLetter.start(userId, "백엔드 개발", null, null));
         CoverLetterQuestion question = CoverLetterQuestion.of(letter.getId(), 1, "협업 경험을 쓰세요", 100);
         question.drafted(aiText, List.of(new DraftSentence(1, "가".repeat(90))), 91, 0,
-                List.of(new DraftMark(1, "UNSOURCED_NUMBER", "90")), List.of(MaterialItem.LEARNING), DraftSource.LLM);
+                marks, List.of(MaterialItem.LEARNING), DraftSource.LLM);
         questions.save(question);
         letter.claim();
         letter.assigned(List.of());
@@ -795,7 +976,7 @@ class CoverLetterApiTest {
         letter.asked();
         letter.startDrafting();
         letter.claim();
-        letter.drafted(List.of(new DraftStep(1, "SUB_AGENT", "WROTE", 1, null, "91", null, null, null)));
+        letter.drafted(List.of(new DraftStep(1, "SUB_AGENT", "WROTE", 1, null, "91", null, null, null, null)));
         return letters.save(letter);
 
     }
@@ -864,6 +1045,13 @@ class CoverLetterApiTest {
 
         return mvc.perform(patch("/api/cover-letters/{id}/questions/{qid}", letter.getPublicId(), questionId)
                 .with(loggedInAs(myUserId)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body));
+
+    }
+
+    private ResultActions confirmInference(CoverLetter letter, String questionId, int sentenceSeq) throws Exception {
+
+        return mvc.perform(delete("/api/cover-letters/{id}/questions/{qid}/marks/{seq}", letter.getPublicId(),
+                questionId, sentenceSeq).with(loggedInAs(myUserId)).with(csrf()));
 
     }
 

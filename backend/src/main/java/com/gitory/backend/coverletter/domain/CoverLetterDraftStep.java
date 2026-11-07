@@ -1,6 +1,7 @@
 package com.gitory.backend.coverletter.domain;
 
 import com.gitory.backend.agent.port.CoverLetterDrafts;
+import com.gitory.backend.agent.port.CoverLetterDraftsListener;
 import com.gitory.backend.agent.port.CoverLetterDraftsPort;
 import com.gitory.backend.agent.port.CoverLetterDraftsRequest;
 import com.gitory.backend.agent.port.CoverLetterQuestionsRequest;
@@ -34,15 +35,38 @@ class CoverLetterDraftStep {
     private final CardMaterialReader cardMaterials;
     private final CoverLetterDraftsPort drafts;
 
-    Consumer<CoverLetter> run(CoverLetter claimed) {
+    /** AI 가 글을 쓰거나 단계를 거칠 때마다 live 에 남겨, 초안을 쓰는 동안에도 조회가 글과 과정을 보이게 한다 */
+    Consumer<CoverLetter> run(CoverLetter claimed, CoverLetterLive live) {
 
         List<CoverLetterQuestion> loaded = questions.findByCoverLetterIdOrderBySeq(claimed.getId());
         Map<Long, CardMaterial> cards = cardMaterials.readOf(CoverLetterCardDetails.cardIdsOf(loaded)).stream()
                 .collect(Collectors.toMap(CardMaterial::id, Function.identity()));
 
         CoverLetterDrafts result = drafts.write(new CoverLetterDraftsRequest(claimed.getId(), claimed.getJobRole(),
-                claimed.getMemo(), loaded.stream().map(question -> requestOf(question, cards)).toList()));
+                claimed.memoForWriting(), claimed.strengthCodes(), loaded.stream().map(question -> requestOf(question, cards)).toList(),
+                CoverLetterPosting.inputOf(claimed)), listenerOf(live));
         return letter -> save(letter, result);
+
+    }
+
+    private static CoverLetterDraftsListener listenerOf(CoverLetterLive live) {
+
+        return new CoverLetterDraftsListener() {
+
+            @Override
+            public void text(int questionId, int round, String text) {
+
+                live.write(questionId, round, text);
+
+            }
+
+            @Override
+            public void step(CoverLetterDrafts.Step step) {
+
+                live.draftStep(stepOf(step));
+
+            }
+        };
 
     }
 
@@ -57,10 +81,14 @@ class CoverLetterDraftStep {
                     draft.marks().stream().map(mark -> new DraftMark(mark.sentenceSeq(), mark.code(), mark.value())).toList(),
                     draft.blanks().stream().map(MaterialItem::valueOf).toList(), DraftSource.valueOf(draft.source()));
         }
-        letter.drafted(result.steps().stream()
-                .map(step -> new DraftStep(step.seq(), step.actor(), step.kind(), step.questionId(), step.code(),
-                        step.value(), step.sentenceSeq(), step.action(), step.reason()))
-                .toList());
+        letter.drafted(result.steps().stream().map(CoverLetterDraftStep::stepOf).toList());
+
+    }
+
+    private static DraftStep stepOf(CoverLetterDrafts.Step step) {
+
+        return new DraftStep(step.seq(), step.actor(), step.kind(), step.questionId(), step.code(), step.value(),
+                step.sentenceSeq(), step.sentence(), step.action(), step.reason());
 
     }
 
@@ -68,23 +96,33 @@ class CoverLetterDraftStep {
                                                                Map<Long, CardMaterial> cards) {
 
         CardMaterial primary = CoverLetterCardDetails.primaryOf(question, cards);
-        List<MaterialAnswer> written = question.getAnswers().stream().filter(answer -> !answer.skipped()).toList();
-        Set<MaterialItem> answered = written.stream().map(MaterialAnswer::item).collect(Collectors.toSet());
+        Set<MaterialItem> answered = question.getAnswers().stream()
+                .filter(answer -> !answer.skipped())
+                .map(MaterialAnswer::item)
+                .collect(Collectors.toSet());
 
         return new CoverLetterDraftsRequest.Question(question.getSeq(), question.getText(), question.getCharLimit(),
                 question.getTheme() == null ? null : question.getTheme().name(),
                 CoverLetterCardDetails.detail(primary),
                 CoverLetterCardDetails.detail(CoverLetterCardDetails.supportingOf(question, cards)),
-                written.stream()
-                        .map(answer -> new CoverLetterQuestionsRequest.KnownAnswer(answer.item().name(), answer.text(),
-                                primary != null && CARD_ITEMS.contains(answer.item()) ? primary.id() : null))
-                        .toList(),
+                answersOf(question, primary),
                 question.getAsks().stream()
                         .filter(MaterialAsk::required)
                         .map(MaterialAsk::item)
                         .filter(item -> !answered.contains(item))
                         .map(MaterialItem::name)
                         .toList());
+
+    }
+
+    static List<CoverLetterQuestionsRequest.KnownAnswer> answersOf(CoverLetterQuestion question,
+                                                                   CardMaterial primary) {
+
+        return question.getAnswers().stream()
+                .filter(answer -> !answer.skipped())
+                .map(answer -> new CoverLetterQuestionsRequest.KnownAnswer(answer.item().name(), answer.text(),
+                        primary != null && CARD_ITEMS.contains(answer.item()) ? primary.id() : null))
+                .toList();
 
     }
 }

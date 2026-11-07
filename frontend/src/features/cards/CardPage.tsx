@@ -1,5 +1,6 @@
 import { Copy, ExternalLink, History, ListChecks, Pencil, Printer } from 'lucide-react';
 import { DraftProgress } from './DraftProgress';
+import { LiveCardDraft } from './LiveCardDraft';
 import { CardNavigation } from './CardNavigation';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -8,28 +9,31 @@ import { CardThemes } from '@/components/cards/CardThemes';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { CardStatusMark, cardStarStates } from '@/components/cards/CardStatusMark';
 import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
-import { isTerminal, StarField as StarFieldSchema, type Card, type ConfirmResult, type StarField } from '@/api/schemas';
+import { isTerminal, StarField as StarFieldSchema, type Card, type StarField } from '@/api/schemas';
 import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, cardKindLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
+import { evidenceCountLabel } from '@/lib/evidenceCount';
 import { toast } from '@/lib/toast';
 import { errorView } from '@/api/errorView';
 import { reconnectGithub } from '@/lib/githubReconnect';
 import { track } from '@/lib/track';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
+import { useLiveDraft } from '@/lib/useLiveDraft';
 import { CardCopyDialog } from './CardCopyDialog';
 import { CardMetadataDialog } from './CardMetadataDialog';
 import { cardMetadataSupported, cardRegenerationSupported } from '@/api/capabilities';
 import { matchSupported } from '@/api/matching';
-import { StarBlock, applyMask, railKind } from './StarBlock';
+import { StarBlock, applyMask } from './StarBlock';
 import { EditMode, MaskMode } from './CardModes';
 import { ConfirmDialog, VersionsDialog } from './CardDialogs';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { StarRow } from '@/components/ui/StarRow';
 import { canConfirmCard, emptyStarFields, starFieldsToReview } from '@/lib/cardRules';
 import { isDraftMetadataPending } from '@/lib/cacheSavedDraft';
-import { DraftSteps } from './DraftSteps';
+import { DraftProcess } from './DraftSteps';
+import { cardFolderPath, folderPath } from '@/lib/cardFolders';
 
 /**
  * /cards/:id — 상태로 화면이 갈린다.
@@ -65,10 +69,20 @@ export function CardPage() {
   const regen = useRegenerateField(cardId);
   const retry = useRetryDraft(cardId);
   const reopen = useReopen(cardId);
-  const [justConfirmed, setJustConfirmed] = useState<ConfirmResult | null>(null);
+  const [justConfirmed, setJustConfirmed] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
-  useEffect(() => { setCopyOpen(false); setMetadataOpen(false); setJustConfirmed(null); }, [cardId]);
+  useEffect(() => { setCopyOpen(false); setMetadataOpen(false); setJustConfirmed(false); }, [cardId]);
+  // 이 화면이 보는 동안 같은 카드가 작성 중에서 확정으로 바뀐 때만 안내한다 — 수정을 저장하다 상황과 행동이 차면 서버가 확정한다
+  // 확정 창으로 확정한 때는 곧 폴더로 가므로 제외한다
+  const lastSeen = useRef<{ id: string; status: Card['status'] } | null>(null);
+  useEffect(() => {
+    if (!q.data) return;
+    const { id, status } = q.data;
+    const seen = lastSeen.current;
+    if (seen?.id === id && seen.status === 'DRAFT' && status === 'CONFIRMED' && sp.get('confirm') !== '1') setJustConfirmed(true);
+    lastSeen.current = { id, status };
+  }, [q.data?.id, q.data?.status]);
   const parsedField = StarFieldSchema.safeParse(sp.get('field'));
   const editField = parsedField.success ? parsedField.data : undefined;
   useDocumentTitle(q.data?.title);
@@ -81,32 +95,56 @@ export function CardPage() {
     return () => { if (jid) releaseJobToast(jid); }; // 화면을 떠나면 억제도 같이 풀어야 전역 알림이 계속 죽어있지 않는다
   }, [q.data?.generation?.jobId, job.data, cardId]);
 
+  // 초안을 쓰는 동안 AI 가 칸을 쓰는 모습(#617). Job 이 끝나도 마지막 카드를 다 펼칠 때까지 이 화면을 붙잡는다(live.holding)
+  const generating = !!q.data?.generation && !q.data.generation.partial;
+  const live = useLiveDraft({ scope: cardId, jobId: q.data?.generation?.jobId, generating });
+  // 쓰는 화면을 보고 있다가 여러 장이 다 써졌으면 그 레포로 옮긴다 — 다음 일이 여러 장을 훑어 확정하는 것이다.
+  // 매칭이 켜져 있으면 그 카드로 맞는 기업을 고르는 화면, 꺼져 있으면 카드 폴더다
+  const showingLive = generating || live.holding;
+  const wasShowingLive = useRef(false);
+  const draftRepoId = q.data?.repo?.id;
+  useEffect(() => {
+    const done = live.job;
+    if (wasShowingLive.current && !showingLive && done?.state === 'SUCCEEDED' && (done.result?.cardIds?.length ?? 0) > 1 && draftRepoId) {
+      nav(matchSupported() ? folderPath.repoMatch(draftRepoId) : folderPath.repo(draftRepoId), { replace: true });
+    }
+    wasShowingLive.current = showingLive;
+  }, [showingLive, live.job, draftRepoId, nav]);
+
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
   if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
   const card = q.data!;
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
-  const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: `/repos/${card.repo.id}/candidates` }, { label: '후보 보드', to: `/repos/${card.repo.id}/candidates` }] : [{ label: '경험 카드', to: '/cards' }]), { label: srcLabel, href: candidateGithubUrl(card) }];
+  // 경험 카드 목록 다음에 카드가 든 폴더(레포 또는 활동)가 온다(#522)
+  const crumbs = [{ label: '홈', to: '/' }, { label: '경험 카드', to: '/cards' }, ...(card.repo ? [{ label: card.repo.name, to: folderPath.repo(card.repo.id) }] : card.activity ? [{ label: card.activity.name, to: folderPath.activity(card.activity.id) }] : []), { label: srcLabel, href: candidateGithubUrl(card) }];
   const ask = (f: StarField) => nav(`/cards/${cardId}/interview?field=${f}`, { state: location.state });
   const close = () => setSp({});
   const masked = (t: string) => applyMask(t, card.maskRules);
-  // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다
-  const metadataAction = card.status === 'DRAFT' && cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
-  const metadataDialog = metadataOpen && card.status === 'DRAFT' ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
+  // 제목·기간 수정은 제목 바로 옆 연필 하나로 — 무엇을 고치는지 위치가 말해 준다. 서버가 확정 카드도 다시 열지 않고 받으므로 확정 카드에도 둔다
+  const metadataAction = cardMetadataSupported() ? <button type="button" className="title-edit" aria-label="기본 정보 수정" title="제목과 기간 수정" onClick={() => setMetadataOpen(true)}><Pencil size={18} aria-hidden /></button> : null;
+  const metadataDialog = metadataOpen ? <CardMetadataDialog key={card.id} card={card} onClose={() => setMetadataOpen(false)} /> : null;
   const exportMd = () => setCopyOpen(true);
   const print = () => { track('card_exported', { cardId, format: 'print' }); window.print(); };
+  // 확정 카드를 편집 상태로 되돌린다. 칸 연필로 열었으면 되돌린 뒤 그 칸부터 고친다
+  const reopenCard = (field?: StarField) => reopen.mutate(undefined, { onSuccess: () => {
+    track('card_reopened', { cardId });
+    toast(`다시 편집할 수 있어요. 확정했던 버전은 ${historyActionLabel}에 남아요.`);
+    if (field) setSp({ mode: 'edit', field });
+  } });
 
   // ── D1 · D3 생성 중
-  if (card.generation && !card.generation.partial) {
-    const j = job.data;
+  if (generating || live.holding) {
+    const j = job.data ?? live.job; // 카드가 완성으로 바뀌어 카드의 Job 조회가 꺼져도 마지막 진행을 그린다
     return (
       <main className="main">
         <Breadcrumb items={[...crumbs.slice(0, -1), { label: '초안 생성 중' }]} />
-        <PageTitle>고른 후보의 카드 초안을 쓰고 있어요</PageTitle>
+        <PageTitle>카드 초안을 쓰고 있어요</PageTitle>
         {job.isError && <QueryFailure error={job.error} retry={() => job.refetch()} pending={job.isFetching} />}
         <DraftProgress job={j} checkedAt={job.dataUpdatedAt} />
+        <LiveCardDraft view={live.view} instant={{ on: live.manualInstant, toggle: live.reducedMotion ? null : () => live.setManualInstant((on) => !on) }} />
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
-          <span className="c-2 t-14">끝나면 알려드릴게요</span>
+          <span className="c-2 t-14">끝나면 알려 드릴게요</span>
           <div className="right row" style={{ gap: 8 }}>
             {card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--outline">후보 보드로</Link>}
             <Link to="/" className="btn btn--text">홈으로</Link>
@@ -118,56 +156,57 @@ export function CardPage() {
 
   // ── E2 읽기 (CONFIRMED) + D9 확정 직후
   if (card.status === 'CONFIRMED' && mode !== 'edit') {
+    const gapFields = emptyStarFields(card);
     return (
       <main className="main main--tight">
         <Breadcrumb items={crumbs} />
         {justConfirmed && (
-          <div className="card done-card">
+          // 수정을 저장하다 서버가 확정한 때의 안내이고, 확정 창으로 확정하면 폴더로 가서 다음 걸음은 폴더 맨 위가 말한다
+          <div className="card done-card" role="status">
             <span className="done-card__ok" aria-hidden>✓</span>
-            <div className="stack grow" style={{ gap: 5 }}>
-              <div className="row" style={{ gap: 8 }}><span className="w-600" style={{ fontSize: 16 }}>{card.title}</span><Badge kind="CONFIRMED">확정됨</Badge></div>
-              <span className="t-12l c-2">근거 {card.evidence.length}건, {emptyStarFields(card).length ? `비어 있는 항목 ${emptyStarFields(card).length}개` : '모든 항목 작성 완료'}</span>
+            <div className="stack grow" style={{ gap: 4 }}>
+              <span className="w-600" style={{ fontSize: 16 }}>카드를 확정했어요</span>
+              <span className="t-13 c-2">상황과 행동이 있어서 바로 쓸 수 있어요.</span>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setSp({ versions: '1' })}>{historyActionLabel}</Button>
-            {justConfirmed.repoId && justConfirmed.remainingCandidates > 0
-              ? <Button onClick={() => nav(`/repos/${justConfirmed.repoId}/candidates`)}>남은 후보 {justConfirmed.remainingCandidates}개 보기</Button>
-              : <Link to="/" className="btn btn--primary">홈으로</Link>}
-            {matchSupported() && <Link to="/match" className="btn btn--outline">이 경험과 맞는 공고 보기</Link>}
+            <Link to={cardFolderPath(card)} state={{ confirmed: card.id }} className="btn btn--primary">폴더로 돌아가기</Link>
           </div>
         )}
-        <CardHeader card={card} right={<>
-          <Button size="sm" onClick={exportMd} title="마스킹 적용된 표시값을 마크다운으로 복사">복사</Button>
-          <Button variant="outline" size="sm" loading={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: () => { track('card_reopened', { cardId }); toast('다시 편집할 수 있습니다. 확정 버전은 히스토리에 남습니다.'); } })}>수정하기</Button>
-        </>} />
+        <CardHeader card={card} titleAction={metadataAction} right={<Button variant="outline" size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
+        {/* 과제·결과가 비어도 확정은 그대로이고, 채우고 싶을 때 바로 질문을 받게만 한다 */}
+        {gapFields.length > 0 && (
+          <div className="card row" style={{ gap: 16, padding: '16px 18px', background: 'var(--bg-inset)', border: 0, flexWrap: 'wrap' }}>
+            <span className="grow" style={{ fontSize: 14, lineHeight: '22px' }}>{gapFields.map((f) => starFieldShort[f]).join(', ')} 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요</span>
+            <Button variant="outline" onClick={() => ask(gapFields[0])}>질문 받기</Button>
+          </div>
+        )}
         <div className="two-col two-col--340">
-          <div className="card star-read evidence-rail evidence-rail--rows">
+          <div className="card star-read star-read--rows">
             {STAR_FIELDS.map((f) => {
               const t = card.version[fieldKey[f]];
               const ev = card.evidence.filter((e) => e.field === f);
+              const rowClass = [!t && 'star-read__row--gap', f === 'R' && 'star-read__row--result'].filter(Boolean).join(' ');
               return (
-                <StarRow key={f} field={f} label={starFieldShort[f]} dropped={!t} className={t ? undefined : 'star-read__row--gap'} rail={{ commits: ev.filter((e) => e.type === 'COMMIT').length, kind: railKind(!t, ev) }}>
-                  {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했습니다</span>}
+                <StarRow key={f} field={f} label={starFieldShort[f]} action={<button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} ${t ? '수정' : '채우기'}`} title={`${starFieldShort[f]} ${t ? '수정' : '채우기'}`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={rowClass}>
+                  {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했어요</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
               );
             })}
           </div>
           <aside className="stack card-review-aside" style={{ gap: 16 }}>
-            {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 받을 질문, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
-            <div className="card stack" style={{ gap: 10, padding: '16px 18px' }}>
-              <span className="w-600" style={{ fontSize: 14 }}>이 카드로 받을 수 있는 질문</span>
-              <ul className="aside-list">{interviewQuestions(card).map((qq) => <li key={qq} className="t-12l c-2">{qq}</li>)}</ul>
-            </div>
+            {/* 오른쪽은 한눈에 읽히는 세 덩어리만: 만든 과정, 출처 두 줄, 카드 관리. 확정일은 제목 아래에 이미 있다 */}
+            <DraftProcess card={card} />
             <div className="card stack" style={{ gap: 12, padding: '16px 18px' }}>
               <div className="stack" style={{ gap: 4 }}>
                 <span className="t-12 w-600 c-3">출처</span>
                 <span className="t-12l">
+                  {card.activity ? <>활동 <Link className="aside-link" to={folderPath.activity(card.activity.id)}>{card.activity.name}</Link>, </> : null}
                   {card.repo ? <a className="aside-link" href={`https://github.com/${card.repo.owner}/${card.repo.name}`} target="_blank" rel="noreferrer">{repoName}<ExternalLink size={12} aria-hidden /></a> : null}
                   {card.repo && srcLabel ? ', ' : ''}
                   {(() => { const href = candidateGithubUrl(card); return href ? <a className="aside-link" href={href} target="_blank" rel="noreferrer">{srcLabel}<ExternalLink size={12} aria-hidden /></a> : srcLabel; })()}
                   {!card.repo && !srcLabel ? '직접 작성' : null}
                 </span>
-                <span className="t-12 c-2">근거 커밋 {card.evidence.filter((e) => e.type === 'COMMIT').length}건, 내가 말한 것 {card.evidence.filter((e) => e.type !== 'COMMIT').length}건{card.maskRules.length ? `, 가린 정보 ${card.maskRules.length}개` : ''}</span>
+                <span className="t-12 c-2">{evidenceCountLabel(card.evidence, { showZero: true })}{card.maskRules.length ? `, 가린 정보 ${card.maskRules.length}개` : ''}</span>
               </div>
               <div className="card-tools">
                 <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
@@ -177,16 +216,16 @@ export function CardPage() {
             <CardNavigation cardId={cardId} />
           </aside>
         </div>
-        <DraftSteps steps={card.draftSteps} />
         {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
         {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
+        {metadataDialog}
         <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       </main>
     );
   }
 
   // ── D6 · D7 모드
-  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '직접 수정' }]} /><CardHeader card={card} titleAction={metadataAction} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} note="입력한 내용은 자동으로 저장됩니다" /><EditMode key={card.id} card={card} onDone={close} initialField={editField} />{metadataDialog}</main>;
+  if (mode === 'edit') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '수정' }]} /><CardHeader card={card} titleAction={metadataAction} statusOverride={<Badge kind="CONFIRMED">편집 중</Badge>} /><EditMode key={card.id} card={card} onDone={close} initialField={editField} />{metadataDialog}</main>;
   if (mode === 'mask') return <main className="main main--footer main--tight"><Breadcrumb items={[...crumbs, { label: '정보 가리기' }]} /><PageTitle>공유할 정보 가리기</PageTitle><MaskMode key={card.id} card={card} onDone={close} /></main>;
 
   // ── D2 초안 · D3 (E-7 부분) · D4 (E-6 소재 부족)
@@ -195,22 +234,22 @@ export function CardPage() {
   const e6 = emptyR && !partial && card.candidate;
   const canConfirm = canConfirmCard(card);
   const reviewFields = starFieldsToReview(card);
-  const regenerate = (f: StarField) => regen.mutate(f, { onSuccess: () => { track('field_regenerated', { cardId, field: f }); toast(`${starFieldShort[f]} 칸을 다시 생성했습니다 — 근거가 없으면 그대로 비어 있습니다`); } });
+  const regenerate = (f: StarField) => regen.mutate(f, { onSuccess: () => { track('field_regenerated', { cardId, field: f }); toast(`${starFieldShort[f]} 칸을 다시 생성했어요. 근거가 없으면 그대로 비어 있어요.`); } });
   const canRegenerate = cardRegenerationSupported();
   const retryDraft = () => retry.mutate(undefined, { onSuccess: () => toast('초안을 다시 만들고 있어요') });
 
   return (
     <main className="main main--footer main--tight">
       <Breadcrumb items={crumbs} />
-      <CardHeader card={card} titleAction={metadataAction} right={<>{card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--ghost"><ListChecks size={15} aria-hidden />후보 목록</Link>}</>} />
+      <CardHeader card={card} titleAction={metadataAction} right={<>{card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--ghost"><ListChecks size={15} aria-hidden />후보 보드</Link>}</>} />
       {partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
-          <Badge kind="NEUTRAL">E-7</Badge>
+          <Badge kind="NEUTRAL">일부만 채움</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
-            <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).join(', ')} 는 채워졌고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => d.field).join(', ')} 은 아직입니다</span>
-            <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈칸은 답변하거나 직접 작성해 주세요.'}</span>
+            <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).map((f) => starFieldShort[f]).join(', ')} 칸은 채웠고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => starFieldShort[d.field]).join(', ')} 칸은 아직이에요</span>
+            <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈 칸은 답변하거나 직접 작성해 주세요.'}</span>
           </div>
-          {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{d.field} 칸만 다시 생성</Button>)}
+          {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{starFieldShort[d.field]} 칸만 다시 생성</Button>)}
         </div>
       )}
       {card.draftFailure && card.status === 'DRAFT' && (
@@ -221,7 +260,7 @@ export function CardPage() {
               ? 'GitHub 연결이 끊겼어요. 다시 연결한 뒤 초안을 다시 만들어 주세요.'
               : card.draftFailure === 'AI_UNAVAILABLE'
               ? 'AI 가 잠시 응답하지 않았어요. 다시 시도하면 채워질 수 있어요.'
-              : '초안을 만드는 중에 문제가 났어요. 다시 시도하거나 칸을 직접 채워 주세요.'} 직접 쓴 칸은 그대로 둡니다.</span>
+              : '초안을 만드는 중에 문제가 났어요. 다시 시도하거나 칸을 직접 채워 주세요.'} 직접 쓴 칸은 그대로 둬요.</span>
           </div>
           {card.draftFailure === 'GITHUB_UNAUTHORIZED' && <Button size="sm" onClick={reconnectGithub}>GitHub 다시 연결</Button>}
           <Button variant="outline" size="sm" loading={retry.isPending} onClick={retryDraft}>초안 다시 만들기</Button>
@@ -231,8 +270,8 @@ export function CardPage() {
       {e6 && (
         <div className="card row" style={{ gap: 16, padding: '18px 20px', background: 'var(--bg-inset)', border: 0, flexWrap: 'wrap' }}>
           <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 16 }}>이 후보만으론 결과(R)가 채워지지 않습니다</span>
-            <span className="c-2" style={{ fontSize: 13, lineHeight: '21px' }}>{candidateRefLabel(card.candidate!.type, card.candidate!.ref)}에는 결과 수치가 없어요 — 지어내지 않고 비워 둡니다</span>
+            <span className="w-600" style={{ fontSize: 16 }}>이 후보만으로는 결과 칸을 채울 수 없어요</span>
+            <span className="c-2" style={{ fontSize: 13, lineHeight: '21px' }}>{candidateRefLabel(card.candidate!.type, card.candidate!.ref)}에는 결과 수치가 없어요. 지어내지 않고 비워 둬요</span>
           </div>
           <Link to={`/repos/${card.repo!.id}/candidates`} className="btn btn--outline btn--sm">다른 후보도 보기</Link>
         </div>
@@ -243,7 +282,7 @@ export function CardPage() {
         <div className="stack evidence-rail" style={{ gap: 12 }}>
           {STAR_FIELDS.map((f) => <StarBlock key={f} card={card} field={f} onAsk={() => ask(f)} onEdit={() => setSp({ mode: 'edit', field: f })} onRegenerate={canRegenerate ? () => regenerate(f) : undefined} />)}
         </div>
-        <aside className="card-review-aside"><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
+        <aside className="card-review-aside"><DraftProcess card={card} /><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <div className="stack" style={{ gap: 6 }}>
             <div className="card-tools">
               <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
@@ -255,15 +294,14 @@ export function CardPage() {
         </aside>
       </div>
 
-      <DraftSteps steps={card.draftSteps} />
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
-      <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 보완하기` : canConfirm ? '내용을 확인한 뒤 확정하세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
-        {reviewFields.length === 0 && (card.repo ? <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--text">나중에</Link> : <Link to="/" className="btn btn--text">나중에</Link>)}
+      <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
+        {reviewFields.length === 0 && <Link to={cardFolderPath(card)} className="btn btn--text">나중에</Link>}
         <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
         {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변하기</Button>}
       </StickyFooter>
 
-      {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={(r) => { setJustConfirmed(r); close(); }} />}
+      {sp.get('confirm') === '1' && <ConfirmDialog card={card} onClose={close} onConfirmed={() => nav(cardFolderPath(card), { replace: true, state: { confirmed: card.id } })} />}
       {sp.get('versions') === '1' && <VersionsDialog key={card.id} card={card} onClose={close} />}
       {copyOpen && <CardCopyDialog key={card.id} card={card} onClose={() => setCopyOpen(false)} />}
       {metadataDialog}
@@ -284,15 +322,6 @@ function CardHeader({ card, right, titleAction, statusOverride, note }: { card: 
       {right && <div className="card-page-header__actions">{right}</div>}
     </div>
   );
-}
-
-function interviewQuestions(card: Card): string[] {
-  const qs: string[] = [];
-  if (card.version.action) qs.push(`왜 그 방식을 택했나요? — ${starFieldName.A}`);
-  if (card.version.result) qs.push(`그 결과는 어떻게 측정했나요? — ${starFieldName.R}`);
-  if (card.evidence.some((e) => e.type !== 'COMMIT')) qs.push('코드에 안 남은 부분은 어떻게 증명하나요?');
-  if (card.droppedFields.length) qs.push(`${card.droppedFields.map((d) => d.field).join(', ')} 칸이 빈 이유를 설명할 수 있나요?`);
-  return qs.length ? qs : ['이 경험에서 가장 어려웠던 점은?'];
 }
 
 /** 후보가 PR·이슈면 그 GitHub 주소. 커밋 묶음은 한 주소로 가리킬 수 없어 링크를 만들지 않는다 */

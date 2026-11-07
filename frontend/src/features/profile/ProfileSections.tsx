@@ -1,0 +1,398 @@
+import { useState, type ReactNode } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
+import { EDUCATION_STATUSES, LANGUAGE_TESTS, PROFILE_LIMITS, type EducationLevel, type Interest, type LanguageTest } from '@/api/profile';
+import { Button, Field, Input, SectionHead } from '@/components/ui';
+import { Select, type SelectOption } from '@/components/ui/Select';
+import {
+  CAREER_TYPE_OPTIONS, COMMON_CERTIFICATIONS, GPA_MAX_OPTIONS, INTEREST_OPTIONS, LANGUAGE_GRADES, LEVEL_OPTIONS, STATUS_LABEL, STATUS_OPTIONS, TEST_LABEL, TEST_OPTIONS,
+  blankCertification, blankEducation, blankLanguage, scorePlaceholder, type EducationRow, type SectionKey,
+} from '@/lib/profileForm';
+import { INTERESTS_ID, MAIL_ID, addId, fieldId, type ProfileFormState } from './useProfileFormState';
+
+export const EDU_LEVEL_ID = 'p-edu-level';
+
+/** 줄마다 칸을 채우는 영역 — 자격증은 이름만 받아 CertificationQuick 으로 고른다 */
+type RowSection = Exclude<SectionKey, 'certifications'>;
+
+const SECTION_NOUN: Record<RowSection, string> = { educations: '학력', careers: '경력', languages: '어학' };
+type Span = 'half' | 'wide' | 'full';
+type ControlProps = { id: string; 'aria-label': string; 'aria-invalid'?: true; 'aria-describedby'?: string; autoComplete: string; spellCheck: boolean };
+
+function Section({ section, title, count, onAdd, error, children }: {
+  section: RowSection; title: string; count: number; onAdd: () => void; error?: string; children: ReactNode;
+}) {
+  const max = PROFILE_LIMITS.MAX_ITEMS[section];
+  const full = count >= max;
+  return (
+    <section className="settings-section profile-section" aria-label={title}>
+      <SectionHead label={title} count={count} right={<span className="t-12 c-3">최대 {max}개</span>} />
+      {children}
+      {error && <p className="profile-error" role="alert">{error}</p>}
+      <div className="profile-add">
+        <Button id={addId(section)} variant="outline" disabled={full} onClick={onAdd}><Plus size={16} aria-hidden />{SECTION_NOUN[section]} 추가</Button>
+        {full && <span className="t-12">최대 {max}개까지 입력할 수 있어요</span>}
+      </div>
+    </section>
+  );
+}
+
+function Row({ title, removeLabel, onRemove, children }: { title: string; removeLabel: string; onRemove: () => void; children: ReactNode }) {
+  return (
+    <li className="profile-row">
+      <div className="profile-row__head">
+        <h3 className="profile-row__title">{title}</h3>
+        <Button variant="danger" size="sm" aria-label={removeLabel} onClick={onRemove}><Trash2 size={14} aria-hidden />삭제</Button>
+      </div>
+      <div className="profile-grid">{children}</div>
+    </li>
+  );
+}
+
+/** 관심 분야 고르기 — 1개부터 3개까지. 셋을 고르면 나머지 타일은 잠긴다. 오류 문구에 role 을 주지 않는 건 폼의 '입력을 확인해 주세요' 알림과 겹치지 않게 해서다 */
+export function InterestPicker({ value, onChange, error }: { value: Interest[]; onChange: (next: Interest[]) => void; error?: string }) {
+  const max = PROFILE_LIMITS.INTERESTS;
+  const full = value.length >= max;
+  const toggle = (interest: Interest, on: boolean) => onChange(on ? [...value, interest] : value.filter((chosen) => chosen !== interest));
+  return (
+    <section className="settings-section profile-section" aria-label="관심 분야">
+      <SectionHead label="관심 분야" count={value.length} right={<span className="t-12 c-3">최대 {max}개</span>} />
+      <ul id={INTERESTS_ID} className="interest-grid" aria-describedby={error ? `${INTERESTS_ID}-error` : undefined}>
+        {INTEREST_OPTIONS.map(({ value: interest, label }) => {
+          const on = value.includes(interest);
+          const off = !on && full;
+          return (
+            <li key={interest}>
+              <label className={`interest-tile ${on ? 'is-on' : ''} ${off ? 'is-off' : ''}`}>
+                <input type="checkbox" checked={on} disabled={off} onChange={(e) => toggle(interest, e.target.checked)} />
+                <span>{label}</span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      {error && <p id={`${INTERESTS_ID}-error`} className="profile-error">{error}</p>}
+    </section>
+  );
+}
+
+/** 메일 알림 — 주소와 수신 체크는 둘 다 선택이다. 체크하면 주소가 필요하다(처음 입력 창과 마이페이지가 같이 쓴다) */
+export function MailSection({ state }: { state: ProfileFormState }) {
+  const error = state.errors.email;
+  return (
+    <section className="settings-section profile-section mail-section" aria-label="메일 알림">
+      <SectionHead label="메일 알림" />
+      <p className="mail-section__why">새로 올라온 공고 중 내 카드와 잘 맞는 곳을 찾으면 이 주소로 알려 드려요. 다른 용도로는 쓰지 않고, 언제든 끌 수 있어요.</p>
+      <div className={`profile-cell mail-section__field ${error ? 'profile-cell--invalid' : ''}`}>
+        <Field label="메일 주소">
+          <Input id={MAIL_ID} type="email" autoComplete="email" spellCheck={false} inputMode="email" aria-invalid={error ? true : undefined} aria-describedby={error ? `${MAIL_ID}-error` : undefined}
+            value={state.form.email} onChange={(e) => state.setMail({ email: e.target.value })} />
+        </Field>
+        {error && <p id={`${MAIL_ID}-error`} className="profile-error mail-section__error" role="alert">{error}</p>}
+      </div>
+      <label className="mail-section__check">
+        <input type="checkbox" checked={state.form.mailOptIn} onChange={(e) => state.setMail({ mailOptIn: e.target.checked })} />
+        <span>내 경험에 맞는 공고를 메일로 받을게요</span>
+      </label>
+    </section>
+  );
+}
+
+/** 네 목록 가운데 하나의 편집기 — 마이페이지 폼과 처음 입력 창이 같은 칸·검증·초점 규칙을 쓴다 */
+export function SectionEditor({ section, state }: { section: RowSection; state: ProfileFormState }) {
+  const { form, errors, edit, add, remove } = state;
+
+  /**
+   * 한 줄의 칸을 만드는 도구. 칸 이름(aria-label)을 눈에 보이는 이름에서 만들어 둘이 어긋나지 않게 하고(WCAG 2.5.3),
+   * 오류 문구와 칸을 같은 곳에서 이어 준다. 선택 칸은 이름 뒤에 '(선택)'을 붙인다.
+   */
+  const kit = (i: number, rowKey: string) => {
+    const prefix = `${SECTION_NOUN[section]} ${i + 1}`;
+    const cell = (name: string, label: string, render: (props: ControlProps) => ReactNode, opts: { optional?: boolean; span?: Span } = {}) => {
+      const shown = opts.optional ? `${label} (선택)` : label;
+      const id = fieldId(rowKey, name);
+      const message = errors[`${section}.${i}.${name}`];
+      const props: ControlProps = {
+        id, 'aria-label': `${prefix} ${shown}`, 'aria-invalid': message ? true : undefined, 'aria-describedby': message ? `${id}-error` : undefined,
+        autoComplete: 'off', spellCheck: false,
+      };
+      return (
+        <div key={name} className={`profile-cell ${opts.span ? `profile-cell--${opts.span}` : ''} ${message ? 'profile-cell--invalid' : ''}`}>
+          <Field label={shown}>{render(props)}</Field>
+          {message && <p id={`${id}-error`} className="profile-error">{message}</p>}
+        </div>
+      );
+    };
+    type Opts = { optional?: boolean; span?: Span };
+    return {
+      cell,
+      text: (name: string, label: string, value: string, max: number, onChange: (value: string) => void, opts: Opts & { placeholder?: string; inputMode?: 'decimal' } = {}) =>
+        cell(name, label, (props) => <Input {...props} maxLength={max} value={value} placeholder={opts.placeholder} inputMode={opts.inputMode} onChange={(e) => onChange(e.target.value)} />, opts),
+      month: (name: string, label: string, value: string, onChange: (value: string) => void, opts: Opts & { disabled?: boolean } = {}) =>
+        cell(name, label, (props) => <Input {...props} disabled={opts.disabled} type="month" placeholder="2024-03" value={value} onChange={(e) => onChange(e.target.value)} />, opts),
+      select: <V extends string>(name: string, label: string, value: V, options: readonly SelectOption<V>[], onChange: (value: V) => void, opts: Opts = {}) =>
+        cell(name, label, (props) => (
+          <div id={props.id}>
+            <Select className="select-trigger--field" value={value} label={props['aria-label']} options={options} invalid={Boolean(props['aria-invalid'])} describedBy={props['aria-describedby']} onChange={onChange} />
+          </div>
+        ), opts),
+    };
+  };
+
+  const rows = (): ReactNode => {
+    switch (section) {
+      case 'educations':
+        return form.educations.map((row, i) => {
+          const f = kit(i, row.key);
+          const n = i + 1;
+          return (
+            <Row key={row.key} title={`학력 ${n}`} removeLabel={`학력 ${n} 삭제`} onRemove={() => remove('educations', i)}>
+              {f.select('level', '학력 구분', row.level, LEVEL_OPTIONS, (level) => edit('educations', i, { level }))}
+              {f.text('school', '학교', row.school, PROFILE_LIMITS.TEXT, (school) => edit('educations', i, { school }), { span: 'wide', optional: true, placeholder: '예) 경북대학교' })}
+              {f.text('major', '전공', row.major, PROFILE_LIMITS.TEXT, (major) => edit('educations', i, { major }), { span: 'half', optional: true, placeholder: '예) 컴퓨터학부' })}
+              {f.select('status', '상태', row.status, STATUS_OPTIONS, (status) => edit('educations', i, { status }), { span: 'half' })}
+              {f.month('startMonth', '입학 월', row.startMonth, (startMonth) => edit('educations', i, { startMonth }), { span: 'half', optional: true })}
+              {f.month('endMonth', '졸업(예정) 월', row.endMonth, (endMonth) => edit('educations', i, { endMonth }), { span: 'half', optional: true })}
+              {f.text('gpa', '학점', row.gpa, 6, (gpa) => edit('educations', i, { gpa }), { span: 'half', optional: true, placeholder: '예) 3.8', inputMode: 'decimal' })}
+              {f.select('gpaMax', '학점 만점', row.gpaMax, GPA_MAX_OPTIONS, (gpaMax) => edit('educations', i, { gpaMax }), { span: 'half', optional: true })}
+            </Row>
+          );
+        });
+      case 'careers':
+        return form.careers.map((row, i) => {
+          const f = kit(i, row.key);
+          const n = i + 1;
+          return (
+            <Row key={row.key} title={`경력 ${n}`} removeLabel={`경력 ${n} 삭제`} onRemove={() => remove('careers', i)}>
+              {f.text('company', '회사', row.company, PROFILE_LIMITS.TEXT, (company) => edit('careers', i, { company }), { span: 'half' })}
+              {f.select('type', '고용 형태', row.type, CAREER_TYPE_OPTIONS, (type) => edit('careers', i, { type }), { span: 'half' })}
+              {f.text('role', '직무', row.role, PROFILE_LIMITS.TEXT, (role) => edit('careers', i, { role }), { span: 'full', optional: true, placeholder: '예) 백엔드 개발' })}
+              {f.month('startMonth', '입사 월', row.startMonth, (startMonth) => edit('careers', i, { startMonth }))}
+              {f.month('endMonth', '퇴사 월', row.endMonth, (endMonth) => edit('careers', i, { endMonth }), { disabled: row.current })}
+              <div className="profile-cell" key="current">
+                <span className="field__label" aria-hidden="true">&nbsp;</span>
+                <label className="profile-check">
+                  <input type="checkbox" checked={row.current} onChange={(e) => edit('careers', i, { current: e.target.checked })} aria-label={`경력 ${n} 재직 중`} />
+                  재직 중
+                </label>
+              </div>
+            </Row>
+          );
+        });
+      case 'languages':
+        return form.languages.map((row, i) => {
+          const f = kit(i, row.key);
+          const n = i + 1;
+          const other = row.test === 'OTHER';
+          const span = other ? 'half' : undefined;
+          return (
+            <Row key={row.key} title={`어학 ${n}`} removeLabel={`어학 ${n} 삭제`} onRemove={() => remove('languages', i)}>
+              {f.select('test', '시험', row.test, TEST_OPTIONS, (test) => edit('languages', i, { test }))}
+              {other && f.text('testName', '시험 이름', row.testName, PROFILE_LIMITS.TEXT, (testName) => edit('languages', i, { testName }), { span: 'wide', placeholder: '예) TOPIK' })}
+              {f.text('score', '점수 또는 등급', row.score, PROFILE_LIMITS.SCORE, (score) => edit('languages', i, { score }), { span, placeholder: scorePlaceholder(row.test) })}
+              {f.month('acquiredMonth', '취득 월', row.acquiredMonth, (acquiredMonth) => edit('languages', i, { acquiredMonth }), { span, optional: true })}
+            </Row>
+          );
+        });
+    }
+  };
+
+  return (
+    <Section section={section} title={SECTION_NOUN[section]} count={form[section].length} onAdd={() => add(section)} error={errors[section]}>
+      {form[section].length === 0 ? <p className="profile-empty">아직 입력한 {SECTION_NOUN[section]}이 없어요.</p> : <ul className="profile-list">{rows()}</ul>}
+    </Section>
+  );
+}
+
+function tileClass(on: boolean, off = false) {
+  return `interest-tile ${on ? 'is-on' : ''} ${off ? 'is-off' : ''}`;
+}
+
+/** 학력 구분을 사람이 생각하는 단위로 묶는다. 저장 값(EducationLevel)은 그대로라 매칭과 서버 계약은 바뀌지 않는다 */
+type LevelGroup = 'HIGH' | 'UNIV' | 'GRAD';
+const LEVEL_GROUPS: { group: LevelGroup; label: string; levels: EducationLevel[] }[] = [
+  { group: 'HIGH', label: '고등학교', levels: ['HIGH_SCHOOL'] },
+  { group: 'UNIV', label: '대학교', levels: ['BACHELOR', 'ASSOCIATE'] },
+  { group: 'GRAD', label: '대학원', levels: ['MASTER', 'DOCTOR'] },
+];
+const SUB_LABEL: Partial<Record<EducationLevel, string>> = { BACHELOR: '4년제', ASSOCIATE: '2~3년제', MASTER: '석사', DOCTOR: '박사' };
+const groupOf = (level: EducationLevel | '' | undefined) => LEVEL_GROUPS.find((g) => (g.levels as string[]).includes(level ?? ''));
+
+/** 처음 입력 창의 학력 — 학력 구분과 현재 상태만 타일로 고른다(매칭이 보는 건 학력 구분뿐). 학교, 전공, 날짜, 학점은 마이페이지 폼에서 더 적는다 */
+export function EducationQuick({ state }: { state: ProfileFormState }) {
+  const row = state.form.educations[0];
+  const set = (patch: Partial<EducationRow>) => {
+    if (row) state.edit('educations', 0, patch);
+    else state.replaceSection('educations', [{ ...blankEducation(), ...patch }]);
+  };
+  const levelError = state.errors['educations.0.level'];
+  const statusError = state.errors['educations.0.status'];
+  const chosen = groupOf(row?.level);
+  return (
+    <section className="settings-section profile-section" aria-label="학력">
+      <SectionHead label="학력" />
+      <fieldset className="quick-group">
+        <legend className="quick-group__label">학력 구분</legend>
+        <ul id={EDU_LEVEL_ID} className="interest-grid interest-grid--3" aria-describedby={levelError ? `${EDU_LEVEL_ID}-error` : undefined}>
+          {LEVEL_GROUPS.map((g) => (
+            <li key={g.group}>
+              <label className={tileClass(chosen?.group === g.group)}>
+                <input type="radio" name={EDU_LEVEL_ID} checked={chosen?.group === g.group} onChange={() => set({ level: g.levels[0] })} />
+                <span>{g.label}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {chosen && chosen.levels.length > 1 && (
+          <div className="quick-sub" role="radiogroup" aria-label={`${chosen.label} 구분`}>
+            {chosen.levels.map((level) => (
+              <label key={level} className={tileClass(row?.level === level)}>
+                <input type="radio" name="p-edu-sublevel" checked={row?.level === level} onChange={() => set({ level })} />
+                <span>{SUB_LABEL[level]}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        {levelError && <p id={`${EDU_LEVEL_ID}-error`} className="profile-error">{levelError}</p>}
+      </fieldset>
+      <fieldset className="quick-group">
+        <legend className="quick-group__label">현재 상태</legend>
+        <ul className="interest-grid interest-grid--5" aria-describedby={statusError ? 'p-edu-status-error' : undefined}>
+          {EDUCATION_STATUSES.map((status) => (
+            <li key={status}>
+              <label className={tileClass(row?.status === status)}>
+                <input type="radio" name="p-edu-status" checked={row?.status === status} onChange={() => set({ status })} />
+                <span>{STATUS_LABEL[status]}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {statusError && <p id="p-edu-status-error" className="profile-error">{statusError}</p>}
+      </fieldset>
+    </section>
+  );
+}
+
+/** 처음 입력 창의 어학 — 시험 타일을 고르면 오른쪽에 점수 칸(토익·토플…)이나 등급 목록(오픽·토스·JLPT·HSK)이 뜬다. 고른 시험마다 한 줄 */
+export function LanguageQuick({ state }: { state: ProfileFormState }) {
+  const rows = state.form.languages;
+  const indexOf = (test: LanguageTest) => rows.findIndex((row) => row.test === test);
+  const full = rows.length >= PROFILE_LIMITS.MAX_ITEMS.languages;
+  const toggle = (test: LanguageTest, on: boolean) => {
+    const index = indexOf(test);
+    if (on && index === -1) state.replaceSection('languages', [...rows, { ...blankLanguage(), test }]);
+    if (!on && index !== -1) state.replaceSection('languages', rows.filter((_, i) => i !== index));
+  };
+  return (
+    <section className="settings-section profile-section" aria-label="어학">
+      <SectionHead label="어학" count={rows.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
+      <div className="quick-split">
+        <ul className="interest-grid interest-grid--2">
+          {LANGUAGE_TESTS.map((test) => {
+            const on = indexOf(test) !== -1;
+            return (
+              <li key={test}>
+                <label className={tileClass(on, !on && full)}>
+                  <input type="checkbox" checked={on} disabled={!on && full} onChange={(e) => toggle(test, e.target.checked)} />
+                  <span>{TEST_LABEL[test]}</span>
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+        <div className="quick-side">
+          {rows.map((row, i) => <LanguageScore key={row.key} index={i} state={state} />)}
+        </div>
+      </div>
+      {state.errors.languages && <p className="profile-error" role="alert">{state.errors.languages}</p>}
+    </section>
+  );
+}
+
+function LanguageScore({ index, state }: { index: number; state: ProfileFormState }) {
+  const row = state.form.languages[index];
+  const name = row.test ? TEST_LABEL[row.test] : '시험';
+  const grades = row.test ? LANGUAGE_GRADES[row.test] : undefined;
+  const scoreId = fieldId(row.key, 'score');
+  const nameId = fieldId(row.key, 'testName');
+  const scoreError = state.errors[`languages.${index}.score`];
+  const nameError = state.errors[`languages.${index}.testName`];
+  return (
+    <div className="quick-score">
+      <strong className="quick-score__name">{name}</strong>
+      {row.test === 'OTHER' && (
+        <div className={`profile-cell ${nameError ? 'profile-cell--invalid' : ''}`}>
+          <Field label="시험 이름">
+            <Input id={nameId} aria-label="기타 시험 이름" aria-invalid={nameError ? true : undefined} aria-describedby={nameError ? `${nameId}-error` : undefined}
+              autoComplete="off" spellCheck={false} maxLength={PROFILE_LIMITS.TEXT} placeholder="예) TOPIK" value={row.testName} onChange={(e) => state.edit('languages', index, { testName: e.target.value })} />
+          </Field>
+          {nameError && <p id={`${nameId}-error`} className="profile-error">{nameError}</p>}
+        </div>
+      )}
+      <div className={`profile-cell ${scoreError ? 'profile-cell--invalid' : ''}`}>
+        {grades ? (
+          <Field label="등급">
+            <div id={scoreId}>
+              <Select className="select-trigger--field" value={row.score} label={`${name} 등급`} invalid={Boolean(scoreError)} describedBy={scoreError ? `${scoreId}-error` : undefined}
+                options={[{ value: '', label: '선택', disabled: true }, ...grades.map((grade) => ({ value: grade, label: grade }))]} onChange={(score) => state.edit('languages', index, { score })} />
+            </div>
+          </Field>
+        ) : (
+          <Field label="점수">
+            <Input id={scoreId} aria-label={`${name} 점수`} aria-invalid={scoreError ? true : undefined} aria-describedby={scoreError ? `${scoreId}-error` : undefined}
+              autoComplete="off" spellCheck={false} inputMode="decimal" maxLength={PROFILE_LIMITS.SCORE} placeholder={scorePlaceholder(row.test)} value={row.score} onChange={(e) => state.edit('languages', index, { score: e.target.value })} />
+          </Field>
+        )}
+        {scoreError && <p id={`${scoreId}-error`} className="profile-error">{scoreError}</p>}
+      </div>
+    </div>
+  );
+}
+
+/** 자격증 — 흔한 자격증은 타일로, 그 밖은 직접 적어 더한다(처음 입력 창과 마이페이지가 같이 쓴다) */
+export function CertificationQuick({ state }: { state: ProfileFormState }) {
+  const rows = state.form.certifications;
+  const [custom, setCustom] = useState('');
+  const has = (name: string) => rows.some((row) => row.name === name);
+  const full = rows.length >= PROFILE_LIMITS.MAX_ITEMS.certifications;
+  const addName = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || has(trimmed) || full) return;
+    state.replaceSection('certifications', [...rows, { ...blankCertification(), name: trimmed }]);
+  };
+  const removeName = (name: string) => state.replaceSection('certifications', rows.filter((row) => row.name !== name));
+  const common = COMMON_CERTIFICATIONS as readonly string[];
+  const others = rows.filter((row) => !common.includes(row.name));
+  return (
+    <section className="settings-section profile-section" aria-label="자격증">
+      <SectionHead label="자격증" count={rows.length} right={<span className="t-12 c-3">중복 선택 가능</span>} />
+      <ul className="interest-grid interest-grid--2 cert-grid">
+        {COMMON_CERTIFICATIONS.map((name) => {
+          const on = has(name);
+          return (
+            <li key={name}>
+              <label className={tileClass(on, !on && full)}>
+                <input type="checkbox" checked={on} disabled={!on && full} onChange={(e) => (e.target.checked ? addName(name) : removeName(name))} />
+                <span>{name}</span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="quick-custom">
+        <Field label="직접 입력">
+          <Input aria-label="자격증 직접 입력" autoComplete="off" spellCheck={false} maxLength={PROFILE_LIMITS.TEXT} placeholder="예) 정보통신기사" value={custom}
+            onChange={(e) => setCustom(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addName(custom); setCustom(''); } }} />
+        </Field>
+        <Button variant="outline" disabled={!custom.trim() || full} onClick={() => { addName(custom); setCustom(''); }}>추가</Button>
+      </div>
+      {others.length > 0 && (
+        <ul className="quick-chips" aria-label="직접 적은 자격증">
+          {others.map((row) => (
+            <li key={row.key}><span>{row.name}</span><button type="button" aria-label={`${row.name} 삭제`} onClick={() => removeName(row.name)}>✕</button></li>
+          ))}
+        </ul>
+      )}
+      {state.errors.certifications && <p className="profile-error" role="alert">{state.errors.certifications}</p>}
+    </section>
+  );
+}

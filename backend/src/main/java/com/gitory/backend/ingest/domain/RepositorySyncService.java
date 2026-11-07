@@ -18,6 +18,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RepositorySyncService {
 
+    private static final int GITHUB_DESCRIPTION_LIMIT = 500;
+
     private final GithubCollectionAccessPort github;
     private final GithubRepoRepository repositories;
     private final ConnectedRepositoryRepository connections;
@@ -41,6 +43,8 @@ public class RepositorySyncService {
                 repository.language(), repository.defaultBranch(),
                 repository.createdAt(), repository.pushedAt());
         connections.connectIfAbsent(userId, repository.id());
+        connections.updateGithubDescription(userId, repository.id(),
+                DescriptionText.cut(DescriptionText.stripped(repository.description()), GITHUB_DESCRIPTION_LIMIT));
 
     }
 }

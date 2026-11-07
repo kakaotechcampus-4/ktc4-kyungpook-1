@@ -5,8 +5,10 @@ import com.gitory.backend.agent.port.CoverLetterAssignment;
 import com.gitory.backend.agent.port.CoverLetterAssignmentPort;
 import com.gitory.backend.agent.port.CoverLetterAssignmentRequest;
 import com.gitory.backend.agent.port.CoverLetterDrafts;
+import com.gitory.backend.agent.port.CoverLetterDraftsListener;
 import com.gitory.backend.agent.port.CoverLetterDraftsPort;
 import com.gitory.backend.agent.port.CoverLetterDraftsRequest;
+import com.gitory.backend.agent.port.CoverLetterPostingInput;
 import com.gitory.backend.agent.port.CoverLetterQuestions;
 import com.gitory.backend.agent.port.CoverLetterQuestionsPort;
 import com.gitory.backend.agent.port.CoverLetterQuestionsRequest;
@@ -32,6 +34,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -65,6 +68,12 @@ class CoverLetterRunnerTest {
 
     @Autowired
     CardMaterialAnswerRepository answers;
+
+    @Autowired
+    CoverLetterQueryService queries;
+
+    @Autowired
+    CoverLetterLiveLog liveLog;
 
     @MockitoBean
     CoverLetterAssignmentPort assignment;
@@ -115,7 +124,7 @@ class CoverLetterRunnerTest {
         CoverLetter letter = waitingLetter("협업 경험을 쓰세요", "실패 경험을 쓰세요");
         AtomicReference<CoverLetterAssignmentRequest> sent = new AtomicReference<>();
         AtomicReference<Long> markedLetter = new AtomicReference<>();
-        given(assignment.assign(any())).willAnswer(invocation -> {
+        given(assignment.assign(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             markedLetter.set(AiCallContext.coverLetterId());
             return new CoverLetterAssignment(List.of(
@@ -157,7 +166,7 @@ class CoverLetterRunnerTest {
     void failsAssignStepByAiFailureKind(boolean retryable, boolean invalidResponse, CoverLetterError expected) {
 
         CoverLetter letter = waitingLetter("문항");
-        given(assignment.assign(any()))
+        given(assignment.assign(any(), any()))
                 .willThrow(new AgentUnavailableException("AI 실패", retryable, invalidResponse, null));
 
         runner.run(runner.claimNext().orElseThrow());
@@ -176,7 +185,7 @@ class CoverLetterRunnerTest {
 
         Long card = confirmedCard("배포 시간 단축", "A");
         CoverLetter letter = waitingLetter("문항");
-        given(assignment.assign(any())).willAnswer(invocation -> {
+        given(assignment.assign(any(), any())).willAnswer(invocation -> {
             jdbc.update("UPDATE cover_letter SET stage = 'FAILED', failed_step = 'ASSIGN', error_code = 'AI_UNAVAILABLE', "
                     + "running_since = NULL WHERE id = ?", letter.getId());
             return new CoverLetterAssignment(List.of(new CoverLetterAssignment.Question(1, "COLLABORATION", card,
@@ -207,7 +216,7 @@ class CoverLetterRunnerTest {
         AtomicReference<CoverLetterQuestionsRequest> sent = new AtomicReference<>();
         given(questionsPort.ask(any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
-            return new CoverLetterQuestions(List.of(
+            return new CoverLetterQuestions(null, null, List.of(
                     new CoverLetterQuestions.Question(1, List.of("RESULT"), List.of(
                             new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?",
                                     List.of("배포가 ___ 빨라졌다")),
@@ -267,12 +276,90 @@ class CoverLetterRunnerTest {
         AtomicReference<CoverLetterQuestionsRequest> sent = new AtomicReference<>();
         given(questionsPort.ask(any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
-            return new CoverLetterQuestions(List.of(new CoverLetterQuestions.Question(1, List.of(), List.of())));
+            return new CoverLetterQuestions(null, null, List.of(new CoverLetterQuestions.Question(1, List.of(), List.of())));
         });
 
         runner.run(runner.claimNext().orElseThrow());
 
         assertThat(sent.get().questions().getFirst().primaryCard().statements()).hasSize(20);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true, 결제 서비스를 직접 만들어 보고 싶어서 지원합니다", "false, "})
+    @DisplayName("질문 단계가 지원 이유를 판정하면 남기고, 쓰기 어렵다고 본 지원 이유는 초안 쓰기에 보내지 않는다")
+    void keepsMemoJudgementAndHidesUnusableMemoFromDrafting(boolean usable, String expectedMemo) {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        CoverLetter letter = askingLetter(new Pick(QuestionTheme.MOTIVATION, card, null));
+        jdbc.update("UPDATE cover_letter SET memo = ? WHERE id = ?", "결제 서비스를 직접 만들어 보고 싶어서 지원합니다",
+                letter.getId());
+        AtomicReference<CoverLetterQuestionsRequest> asked = new AtomicReference<>();
+        given(questionsPort.ask(any())).willAnswer(invocation -> {
+            asked.set(invocation.getArgument(0));
+            return new CoverLetterQuestions(usable, usable ? null : "지원 이유로 읽히지 않는 글",
+                    List.of(new CoverLetterQuestions.Question(1, List.of(), List.of())));
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetter judged = letters.findById(letter.getId()).orElseThrow();
+        assertThat(asked.get().memo()).isEqualTo("결제 서비스를 직접 만들어 보고 싶어서 지원합니다");
+        assertThat(judged.getMemoUsable()).isEqualTo(usable);
+
+        judged.startDrafting();
+        letters.save(judged);
+        AtomicReference<CoverLetterDraftsRequest> drafted = new AtomicReference<>();
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
+            drafted.set(invocation.getArgument(0));
+            throw new AgentUnavailableException("AI 실패", true, false, null);
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        assertThat(drafted.get().memo()).isEqualTo(expectedMemo);
+
+    }
+
+    @Test
+    @DisplayName("지원 이유가 없는 자소서도 카드 고르기·질문 만들기·초안 쓰기 세 단계를 지나 초안이 나오고, AI 에는 지원 이유를 null 로 보낸다")
+    void sendsNullMemoToAllThreeStepsWhenLetterHasNoMemo() {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        CoverLetter letter = waitingLetter("협업 경험을 쓰세요");
+        AtomicReference<CoverLetterAssignmentRequest> assigned = new AtomicReference<>();
+        given(assignment.assign(any(), any())).willAnswer(invocation -> {
+            assigned.set(invocation.getArgument(0));
+            return new CoverLetterAssignment(List.of(new CoverLetterAssignment.Question(1, "COLLABORATION", card, null,
+                    "함께 고친 경험", List.of(), "SUB_AGENT")), List.of());
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetter toAsk = letters.findById(letter.getId()).orElseThrow();
+        toAsk.startAsking();
+        letters.save(toAsk);
+        AtomicReference<CoverLetterQuestionsRequest> asked = new AtomicReference<>();
+        given(questionsPort.ask(any())).willAnswer(invocation -> {
+            asked.set(invocation.getArgument(0));
+            return new CoverLetterQuestions(false, null, List.of(new CoverLetterQuestions.Question(1, List.of(),
+                    List.of(new CoverLetterQuestions.Ask("RESULT", "배포가 얼마나 빨라졌나요?", List.of())))));
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetter toDraft = letters.findById(letter.getId()).orElseThrow();
+        toDraft.startDrafting();
+        letters.save(toDraft);
+        AtomicReference<CoverLetterDraftsRequest> drafted = new AtomicReference<>();
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
+            drafted.set(invocation.getArgument(0));
+            return new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1, "배포를 고쳤다.",
+                    List.of(new CoverLetterDrafts.Sentence(1, "배포를 고쳤다.")), 8, 0, List.of(), List.of(), "LLM")),
+                    List.of());
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        assertThat(assigned.get().memo()).isNull();
+        assertThat(asked.get().memo()).isNull();
+        assertThat(drafted.get().memo()).isNull();
+        assertThat(letters.findById(letter.getId()).orElseThrow().getStage()).isEqualTo(CoverLetterStage.DRAFTED);
 
     }
 
@@ -311,12 +398,12 @@ class CoverLetterRunnerTest {
                         new MaterialAnswer(MaterialItem.TRIGGER, null, true, false),
                         new MaterialAnswer(MaterialItem.LEARNING, "작게 나눠 배포하게 됐다", false, true)));
         AtomicReference<CoverLetterDraftsRequest> sent = new AtomicReference<>();
-        given(draftsPort.write(any())).willAnswer(invocation -> {
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
             sent.set(invocation.getArgument(0));
             return new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1, "배포를 고쳤다. [직무 연결: 지원 직무와 이어지는 점을 적어 주세요]",
                             List.of(new CoverLetterDrafts.Sentence(1, "배포를 고쳤다.")), 8, 0,
                             List.of(new CoverLetterDrafts.Mark(1, "UNSOURCED_TERM", "CI")), List.of("JOB_LINK"), "LLM")),
-                    List.of(new CoverLetterDrafts.Step(1, "SUB_AGENT", "WROTE", 1, null, "8", null, null, null)));
+                    List.of(new CoverLetterDrafts.Step(1, "SUB_AGENT", "WROTE", 1, null, "8", null, null, null, null)));
         });
 
         runner.run(runner.claimNext().orElseThrow());
@@ -332,7 +419,7 @@ class CoverLetterRunnerTest {
         CoverLetter saved = letters.findById(letter.getId()).orElseThrow();
         assertThat(saved.getStage()).isEqualTo(CoverLetterStage.DRAFTED);
         assertThat(saved.getRunningSince()).isNull();
-        assertThat(saved.getDraftSteps()).containsExactly(new DraftStep(1, "SUB_AGENT", "WROTE", 1, null, "8", null,
+        assertThat(saved.getDraftSteps()).containsExactly(new DraftStep(1, "SUB_AGENT", "WROTE", 1, null, "8", null, null,
                 null, null));
         CoverLetterQuestion stored = questions.findByCoverLetterIdOrderBySeq(letter.getId()).getFirst();
         assertThat(stored).extracting(CoverLetterQuestion::getAiText, CoverLetterQuestion::getDraftText,
@@ -347,11 +434,39 @@ class CoverLetterRunnerTest {
     }
 
     @Test
+    @DisplayName("공고에서 시작한 자소서는 질문 만들기와 초안 쓰기에도 만들 때 남긴 공고를 그대로 보낸다")
+    void sendsStoredPostingToAskAndDraftSteps() {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        withPosting(askingLetter(new Pick(QuestionTheme.COLLABORATION, card, null)), card);
+        AtomicReference<CoverLetterQuestionsRequest> asked = new AtomicReference<>();
+        given(questionsPort.ask(any())).willAnswer(invocation -> {
+            asked.set(invocation.getArgument(0));
+            throw new AgentUnavailableException("AI 실패", true, false, null);
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        withPosting(draftingLetter(card, List.of(), List.of()), card);
+        AtomicReference<CoverLetterDraftsRequest> drafted = new AtomicReference<>();
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
+            drafted.set(invocation.getArgument(0));
+            throw new AgentUnavailableException("AI 실패", true, false, null);
+        });
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetterPostingInput expected = new CoverLetterPostingInput("나래랩스", "서버 개발자", List.of("결제 서버 개발"),
+                List.of(new CoverLetterPostingInput.Condition("REQUIRED", "Spring 경험", "MET", List.of(card))));
+        assertThat(asked.get().posting()).isEqualTo(expected);
+        assertThat(drafted.get().posting()).isEqualTo(expected);
+
+    }
+
+    @Test
     @DisplayName("초안 쓰기 AI 호출이 실패하면 초안 단계 실패로 끝낸다")
     void failsDraftStepWhenAiFails() {
 
         CoverLetter letter = draftingLetter(confirmedCard("배포 시간 단축", "A"), List.of(), List.of());
-        given(draftsPort.write(any())).willThrow(new AgentUnavailableException("AI 실패", false, true, null));
+        given(draftsPort.write(any(), any())).willThrow(new AgentUnavailableException("AI 실패", false, true, null));
 
         runner.run(runner.claimNext().orElseThrow());
 
@@ -367,7 +482,7 @@ class CoverLetterRunnerTest {
     void dropsDraftsOfLetterDeletedWhileWaiting() {
 
         CoverLetter letter = draftingLetter(confirmedCard("배포 시간 단축", "A"), List.of(), List.of());
-        given(draftsPort.write(any())).willAnswer(invocation -> {
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
             jdbc.update("DELETE FROM cover_letter WHERE id = ?", letter.getId());
             return new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1, "초안", List.of(), 2, 0, List.of(),
                     List.of(), "LLM")), List.of());
@@ -377,6 +492,86 @@ class CoverLetterRunnerTest {
 
         assertThat(letters.findById(letter.getId())).isEmpty();
         assertThat(questions.findByCoverLetterIdOrderBySeq(letter.getId())).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("카드를 고르는 동안 조회하면 AI 가 지금까지 보낸 단계를 번호 차례로, 아직 문항에 배정되지 않은 카드의 제목과 함께 싣는다")
+    void showsAssignStepsWhileAssigning() {
+
+        Long card = confirmedCard("배포 시간 단축", "A");
+        CoverLetter letter = waitingLetter("협업 경험을 쓰세요", "실패 경험을 쓰세요");
+        AtomicReference<CoverLetterView> during = new AtomicReference<>();
+        given(assignment.assign(any(), any())).willAnswer(invocation -> {
+            Consumer<CoverLetterAssignment.Step> onStep = invocation.getArgument(1);
+            onStep.accept(new CoverLetterAssignment.Step(2, "SUB_AGENT", "NO_FIT", 2, null, "맞는 카드가 없다"));
+            onStep.accept(new CoverLetterAssignment.Step(1, "SUB_AGENT", "PICKED", 1, card, "함께 고친 경험"));
+            during.set(queries.load(letter.getPublicId(), userId));
+            throw new AgentUnavailableException("AI 실패", true, false, null);
+        });
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        assertThat(during.get().questions()).extracting(CoverLetterView.Question::primaryCard).containsOnlyNulls();
+        assertThat(during.get().assignSteps()).extracting(CoverLetterView.Step::seq, CoverLetterView.Step::kind,
+                CoverLetterView.Step::cardTitle).containsExactly(tuple(1, "PICKED", "배포 시간 단축"),
+                tuple(2, "NO_FIT", null));
+
+    }
+
+    @Test
+    @DisplayName("초안을 쓰는 동안 조회하면 문항마다 지금까지 쓴 글과 바퀴, 걸린 문장이 든 단계를 싣고, 끝나면 글 대신 초안과 걸린 문장이 남은 과정을 싣는다")
+    void showsWritingWhileDraftingAndKeepsFlaggedSentences() {
+
+        CoverLetter letter = draftingLetter(confirmedCard("배포 시간 단축", "A"), List.of(), List.of());
+        CoverLetterDrafts.Step wrote = new CoverLetterDrafts.Step(1, "SUB_AGENT", "WROTE", 1, null, "12", null, null,
+                null, null);
+        CoverLetterDrafts.Step flagged = new CoverLetterDrafts.Step(2, "CODE", "CHECK_FAILED", 1, "UNSOURCED_NUMBER",
+                "30%", 1, "처리량을 30% 늘렸다.", null, null);
+        AtomicReference<CoverLetterView> during = new AtomicReference<>();
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
+            CoverLetterDraftsListener listener = invocation.getArgument(1);
+            listener.text(1, 0, "처리량을 30% 늘렸다.");
+            listener.step(wrote);
+            listener.step(flagged);
+            listener.text(1, 1, "처리량을 늘렸다.");
+            during.set(queries.load(letter.getPublicId(), userId));
+            return new CoverLetterDrafts(List.of(new CoverLetterDrafts.Draft(1, "처리량을 늘렸다.",
+                    List.of(new CoverLetterDrafts.Sentence(1, "처리량을 늘렸다.")), 8, 0, List.of(), List.of(), "LLM")),
+                    List.of(wrote, flagged));
+        });
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        CoverLetterView.Question writing = during.get().questions().getFirst();
+        assertThat(writing.writing()).isEqualTo(new CoverLetterView.Writing("처리량을 늘렸다.", 1));
+        assertThat(writing.draft()).isNull();
+        assertThat(during.get().draftSteps()).extracting(CoverLetterView.WritingStep::kind,
+                CoverLetterView.WritingStep::sentence).containsExactly(tuple("WROTE", null),
+                tuple("CHECK_FAILED", "처리량을 30% 늘렸다."));
+
+        CoverLetterView after = queries.load(letter.getPublicId(), userId);
+        assertThat(after.questions().getFirst().writing()).isNull();
+        assertThat(after.questions().getFirst().draft().text()).isEqualTo("처리량을 늘렸다.");
+        assertThat(after.draftSteps()).extracting(CoverLetterView.WritingStep::sentence)
+                .containsExactly(null, "처리량을 30% 늘렸다.");
+
+    }
+
+    @Test
+    @DisplayName("AI 가 실패해도 그 단계에서 받은 진행은 지워, 서버 메모리에 남지 않게 한다")
+    void dropsLiveProgressWhenTheStageFails() {
+
+        CoverLetter letter = draftingLetter(confirmedCard("배포 시간 단축", "A"), List.of(), List.of());
+        given(draftsPort.write(any(), any())).willAnswer(invocation -> {
+            CoverLetterDraftsListener listener = invocation.getArgument(1);
+            listener.text(1, 0, "처리량을 늘렸다.");
+            throw new AgentUnavailableException("AI 실패", true, false, null);
+        });
+
+        runner.run(runner.claimNext().orElseThrow());
+
+        assertThat(liveLog.of(letter.getId())).isEmpty();
 
     }
 
@@ -448,6 +643,16 @@ class CoverLetterRunnerTest {
         letter.asked();
         letter.startDrafting();
         return letters.save(letter);
+
+    }
+
+    // 공고에서 시작한 자소서처럼 만들 때 남긴 공고를 넣는다
+    private void withPosting(CoverLetter letter, Long card) {
+
+        jdbc.update("UPDATE cover_letter SET posting = ?::jsonb WHERE id = ?", """
+                {"id": "%s", "company": "나래랩스", "title": "서버 개발자", "responsibilities": ["결제 서버 개발"],
+                 "conditions": [{"type": "REQUIRED", "text": "Spring 경험", "status": "MET", "metBy": [%d]}]}
+                """.formatted(UUID.randomUUID(), card), letter.getId());
 
     }
 

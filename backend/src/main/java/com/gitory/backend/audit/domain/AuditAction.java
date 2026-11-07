@@ -5,6 +5,7 @@ public enum AuditAction {
     REVOKE,
     ANALYZE,
     VIEW_REPO,
+    EDIT_REPO,
     SEARCH_COMMITS,
     VIEW_REPO_MATERIALS,
     VIEW_JOB,
@@ -22,5 +23,7 @@ public enum AuditAction {
     DELETE_ACTIVITY,
     VIEW_COVER_LETTER,
     EDIT_COVER_LETTER,
-    DELETE_COVER_LETTER
+    DELETE_COVER_LETTER,
+    VIEW_ASSISTANT_RUN,
+    EDIT_ASSISTANT_RUN
 }

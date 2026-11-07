@@ -18,11 +18,15 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from api.collection import router as collection_router
 from api.analysis import router as analysis_router
+from api.assistant import router as assistant_router
 from api.cover_letters import router as cover_letters_router
 from api.interviews import router as interviews_router
 from api.health import SERVICE_VERSION, router as health_router
 from api.job_postings import router as job_postings_router
+from api.gap_fill import router as gap_fill_router
+from api.match_judgements import router as match_judgements_router
 from api.matching import router as matching_router
+from api.repo_summary import router as repo_summary_router
 from schemas.common import Envelope, ErrorDetail
 from services.usage import metering, usage_meta
 
@@ -122,6 +126,8 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
             {"name": "job-postings", "description": "공고 상세 본문에서 원문 인용이 있는 직무 조건 추출"},
             {"name": "matching", "description": "공고 조건 인덱싱과 확정 STAR 기반 직무 검색"},
             {"name": "cover-letters", "description": "자소서 문항별 카드 고르기·모자란 재료 질문·초안 쓰기와 전체 검토. 저장은 Spring 담당"},
+            {"name": "repos", "description": "저장소 README 를 소개 한 문장으로 요약. 저장은 Spring 담당"},
+            {"name": "assistant", "description": "홈 한 줄 명령의 다음 행동(도구 호출·사용자에게 묻기·끝내기) 고르기. 도구 실행과 반복은 Spring 담당"},
         ],
         openapi_url="/openapi.json" if docs_enabled else None,
         docs_url="/docs" if docs_enabled else None,
@@ -134,7 +140,11 @@ def create_app(*, docs_enabled: bool | None = None) -> FastAPI:
     application.include_router(interviews_router)
     application.include_router(job_postings_router)
     application.include_router(matching_router)
+    application.include_router(match_judgements_router)
+    application.include_router(gap_fill_router)
     application.include_router(cover_letters_router)
+    application.include_router(repo_summary_router)
+    application.include_router(assistant_router)
     application.add_exception_handler(
         RequestValidationError, handle_request_validation_error
     )

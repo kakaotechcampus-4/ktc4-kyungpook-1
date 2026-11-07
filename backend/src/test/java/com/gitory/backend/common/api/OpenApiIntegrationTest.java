@@ -42,7 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "springdoc.swagger-ui.path=/api/swagger-ui.html",
         "springdoc.swagger-ui.csrf.enabled=true",
         "springdoc.swagger-ui.csrf.cookie-name=XSRF-TOKEN",
-        "springdoc.swagger-ui.csrf.header-name=X-XSRF-TOKEN"
+        "springdoc.swagger-ui.csrf.header-name=X-XSRF-TOKEN",
+        "gitory.assistant.enabled=true"
 })
 @AutoConfigureMockMvc
 @Import(StubGithubConfig.class)

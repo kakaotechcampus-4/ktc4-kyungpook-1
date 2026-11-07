@@ -89,7 +89,7 @@
 - `sentence` 는 AI 가 다듬은 문장이다. AI 는 표현만 다듬고 내 답에 없는 사실을 더하지 않도록 지시받는다.
 - `unsourcedNumbers` 는 다듬은 문장에는 있는데 내 답에는 없는 숫자다. 서버 코드가 견줘 찾는다. 화면은 이 숫자를 강조해 사용자가 지우거나 고친 뒤 저장하게 한다.
 - AI 가 응답하지 못하면 오류가 아니라 `polished: false` 와 내 답 그대로의 `sentence` 를 돌려준다(수치 미리 보기 `measured-draft` 와 같은 방식). 화면은 "다듬지 못해 내 답을 그대로 보여 줘요" 처럼 알릴 수 있다.
-- 경험 카드의 글 질문(`answerMode: TEXT`)에서만 부른다. 오류 순서는 `measured-draft` 와 같다: 404(카드·질문 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `CARD_CONFIRMED` → 409 `INVALID_STATE`(이미 결과가 정해진 질문) → 400 `BAD_FIELD`(경험 카드의 글 질문이 아님) → 400 `INVALID_REQUEST`(빈 글·1,000자 초과·U+0000) → 429 `RATE_LIMITED`.
+- 경험 카드의 글 질문(`answerMode: TEXT`)에서만 부른다. 오류 순서는 `measured-draft` 와 같다: 404(카드·질문 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `INVALID_STATE`(이미 결과가 정해진 질문) → 400 `BAD_FIELD`(경험 카드의 글 질문이 아님) → 400 `INVALID_REQUEST`(빈 글·1,000자 초과·U+0000) → 429 `RATE_LIMITED`.
 
 **다듬은 문장 저장** — 기존 `POST /cards/{id}/interview/{turnNo}/answer`
 

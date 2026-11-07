@@ -72,7 +72,7 @@ button.chip { min-height: var(--control-touch-size); }
 /* ───────── 카드 · 노트 · 빈 상태 · 구분선 ───────── */
 .card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
 .card--paper { background: var(--bg-paper); }
-.card--selected { border-color: var(--border-selected); box-shadow: inset 0 0 0 1px var(--border-selected); }
+.card--selected { border-color: var(--border-default); background: var(--bg-selected); box-shadow: none; }
 .card--low { border-color: var(--field-low-border); }
 .card--dropped { background: var(--field-dropped-bg); }
 .card--used { background: var(--bg-paper); }
@@ -150,6 +150,7 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 
 /* ───────── 페이지 헤더 · 브레드크럼 · 섹션 헤드 · 툴바 · 스티키 푸터 ───────── */
 .crumb { display: flex; align-items: center; gap: 8px; font-size: 12px; line-height: 16px; color: var(--text-secondary); flex-wrap: wrap; }
+.crumb a { padding: 14px 6px; margin: -14px -6px; } /* 글줄 16px 은 그대로, 눌리는 자리만 44px(위아래 14px씩) */
 .crumb a:hover { color: var(--text-primary); text-decoration: underline; }
 .crumb__sep { color: var(--border-strong); }
 .crumb__cur { font-weight: 600; color: var(--text-strong); }
@@ -177,6 +178,9 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .sticky-footer__text strong { font-size: 14px; line-height: 20px; font-weight: var(--heading-weight); }
 .sticky-footer__text span { font-size: 12px; line-height: 16px; color: var(--text-secondary); }
 .repo-ctx { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+/* 버튼이 둘 이상일 때(지난 결과 보기 · 다시 정리) 묶음. 좁은 화면에서는 아래 줄로 내린다(responsive.css) */
+.repo-ctx__actions { flex-shrink: 0; }
+.repo-ctx__actions .btn { white-space: nowrap; }
 .repo-ctx__icon { width: 24px; height: 24px; border-radius: var(--radius-sm); background: var(--border-strong); flex: 0 0 auto; }
 .repo-ctx__name { font-size: 16px; line-height: 20px; font-weight: var(--heading-weight); }
 .repo-ctx__note { font-size: 12px; line-height: 19px; color: var(--text-secondary); }
@@ -191,10 +195,16 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .toast { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--toast-bg); color: var(--text-on-toast); font-size: 13px; line-height: 20px; box-shadow: 0 12px 40px rgba(0,0,0,.28); animation: rise .18s ease; }
 .toast--danger { background: var(--danger-600); }
 .toast--success { background: var(--toast-success-bg); }
+/* 글자 크기와 토스트 높이는 그대로 두고, 누를 수 있는 영역만 44px 안팎으로 넓힌다(터치 타겟). 닫기는 토스트 오른쪽 안쪽 여백까지 쓴다 */
+.toast__action, .toast__close { position: relative; }
+.toast__action::after { content: ''; position: absolute; inset: -12px -6px; }
+.toast__close::after { content: ''; position: absolute; inset: -12px -14px -12px -13px; }
+/* '보기'처럼 짧은 글자도 누르는 너비가 44px 은 되게 한다 — 옆 닫기 버튼의 넓힌 영역이 덮지 않게 버튼 자체를 넓힌다 */
+.toast__action { min-width: 44px; }
 .toast__action { color: var(--text-on-toast); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .toast__close { color: var(--toast-muted); font-size: 12px; padding: 2px 4px; }
 .toast__close:hover { color: var(--text-on-toast); }
-.skip-link { position: absolute; left: 8px; top: -48px; z-index: 100; padding: 8px 12px; border-radius: 10px; background: var(--bg-ink-solid); color: var(--text-on-ink); font-weight: 600; }
+.skip-link { position: absolute; left: 8px; top: -48px; z-index: 100; display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 8px 12px; border-radius: 10px; background: var(--bg-ink-solid); color: var(--text-on-ink); font-weight: 600; }
 .skip-link:focus { top: 8px; }
 .select-trigger { display: inline-flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; max-width: 100%; min-height: var(--control-touch-size); padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--control-radius); background: var(--bg-surface); color: var(--text-strong); font-size: 13px; line-height: 20px; font-weight: var(--control-weight); text-align: left; }
 .select-trigger > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -220,4 +230,3 @@ a.evidence:hover .evidence__arrow { color: var(--evidence-commit-text); }
 .mine-chip > svg { flex: none; align-self: center; }
 .match-meta, .match-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .match-card__go { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; color: var(--text-accent); font-weight: 600; }
-.prompt__icon { flex: none; color: var(--text-tertiary); }

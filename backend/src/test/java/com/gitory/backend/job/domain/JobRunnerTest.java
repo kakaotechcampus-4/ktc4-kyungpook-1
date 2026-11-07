@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -16,6 +18,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.gitory.backend.common.infra.ClockConfig;
 import com.gitory.backend.agent.port.ExperienceGroupingPort;
+import com.gitory.backend.agent.port.RepoSummaryPort;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.card.domain.GeneratedCardQueryService;
 import com.gitory.backend.common.infra.ai.AiCallContext;
@@ -30,6 +33,7 @@ import com.gitory.backend.ingest.domain.CollectionStatsService;
 import com.gitory.backend.ingest.domain.GithubState;
 import com.gitory.backend.ingest.domain.GroupingMaterialService;
 import com.gitory.backend.ingest.domain.PartialReason;
+import com.gitory.backend.ingest.domain.RepositoryReadmeService;
 import com.gitory.backend.ingest.domain.StoredActivityService;
 import com.gitory.backend.ingest.port.CollectedActivity;
 import com.gitory.backend.ingest.port.CollectedCommit;
@@ -58,6 +62,7 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -65,6 +70,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.ResourceAccessException;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -78,6 +84,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -96,8 +103,9 @@ import java.util.function.Consumer;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @Import({ClockConfig.class, JobRunner.class, JobCancelService.class, ActivityStoreService.class, GroupingMaterialService.class,
-        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class,
-        CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class})
+        CandidateStoreService.class, StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class,
+        CandidateEmptyReasons.class, CollectionStatsService.class, GeneratedCardQueryService.class, RepositoryReadmeService.class,
+        RepoSummaryFiller.class, JobFailureAlert.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ExtendWith(OutputCaptureExtension.class)
@@ -142,6 +150,15 @@ class JobRunnerTest {
     @Autowired
     CandidateStoreService candidates;
 
+    @Autowired
+    RepositoryReadmeService readmes;
+
+    @Autowired
+    RepoSummaryFiller summaryFiller;
+
+    @Autowired
+    ApplicationEventPublisher events;
+
     @MockitoBean
     RepositoryActivityPort activities;
 
@@ -155,7 +172,13 @@ class JobRunnerTest {
     GithubCollectionAccessPort githubAccess;
 
     @MockitoBean
+    RepoSummaryPort summaries;
+
+    @MockitoBean
     CardDraftRunner cardDrafts;
+
+    @MockitoBean
+    JobAlertSender alerts;
 
     private TestFixtures fixtures;
     private Long userId;
@@ -188,6 +211,56 @@ class JobRunnerTest {
     }
 
     @Test
+    @DisplayName("분석을 시작하면 GitHub README 에서 고른 소개 문장이 저장소에 남는다")
+    void storesReadmeSummaryWhenStarting() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(githubAccess.readme(userId, "grow22", "gitory"))
+                .willReturn(Optional.of("# gitory\n\n커밋 기록으로 경험 카드를 만들어 주는 서비스예요. 둘째 문장이에요."));
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        assertThat(readmeSummary()).isEqualTo("커밋 기록으로 경험 카드를 만들어 주는 서비스예요.");
+
+    }
+
+    @Test
+    @DisplayName("README 를 읽다 실패해도 분석은 그대로 끝내고 소개 문장은 지난번 것을 둔다")
+    void continuesAnalysisWhenReadmeFails() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        jdbc.update("UPDATE user_repository SET readme_summary = '지난번 소개 문장이에요' WHERE id = ?", userRepositoryId);
+        given(githubAccess.readme(userId, "grow22", "gitory")).willThrow(new ResourceAccessException("timeout"));
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        assertThat(jobs.findById(jobId).orElseThrow().getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(readmeSummary()).isEqualTo("지난번 소개 문장이에요");
+
+    }
+
+    @Test
+    @DisplayName("README 에서 소개 문장을 못 고르고 다른 설명도 없으면 AI 요약을 한 번 부르고, 받은 문장을 출처 AI 로 남긴다")
+    void asksAiForSummaryWhenReadmeHasNoSentence() {
+
+        enqueue(userRepositoryId, KEY_1);
+        given(githubAccess.readme(userId, "grow22", "gitory")).willReturn(Optional.of("# gitory\n\n- 목록뿐인 README"));
+        given(githubAccess.topLevelPaths(userId, "grow22", "gitory")).willReturn(List.of("README.md", "src"));
+        given(summaries.summarize(any())).willReturn(Optional.of("커밋 기록으로 경험 카드를 만들어 주는 서비스예요."));
+        given(activities.collect(any())).willReturn(activity(null));
+
+        runNext();
+
+        verify(summaries, times(1)).summarize(any());
+        assertThat(readmeSummary()).isEqualTo("커밋 기록으로 경험 카드를 만들어 주는 서비스예요.");
+        assertThat(jdbc.queryForObject("SELECT readme_summary_source FROM user_repository WHERE id = ?", String.class,
+                userRepositoryId)).isEqualTo("AI");
+
+    }
+
+    @Test
     @DisplayName("실시간 진행을 켜면 진행을 받는 수집을 불러, 수집이 끝나기 전에 받은 진행이 Job 단계에 남는다")
     void recordsCollectionProgressWhileCollecting() {
 
@@ -202,7 +275,7 @@ class JobRunnerTest {
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
                 new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(),
-                new JobActivityLog(Clock.systemUTC()));
+                new JobActivityLog(Clock.systemUTC()), readmes, summaryFiller, events);
 
         live.claimNext().ifPresent(live::run);
 
@@ -227,7 +300,8 @@ class JobRunnerTest {
         JobActivityLog log = mock(JobActivityLog.class);
         JobRunner live = new JobRunner(jobs, activities, activityStore, transaction, AiTestProperties.defaults().build(),
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
-                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log);
+                new JobDraftProperties(false), null, new JobProgressProperties(true), Clock.systemUTC(), log, readmes, summaryFiller,
+                events);
 
         live.claimNext().ifPresent(live::run);
 
@@ -431,7 +505,7 @@ class JobRunnerTest {
         assertThat(job.getState()).isEqualTo(JobState.SUCCEEDED);
         assertThat(job.getSteps()).extracting(JobStep::key, JobStep::state).endsWith(
                 tuple(JobStepKey.COMPRESS, JobStepState.SKIPPED), tuple(JobStepKey.REASON, JobStepState.SKIPPED));
-        assertThat(JobView.from(job, UUID.randomUUID(), List.of(), List::of, List.of()).result().verdict()).isNull();
+        assertThat(JobView.from(job, UUID.randomUUID(), List.of(), List::of, List.of(), List.of()).result().verdict()).isNull();
         assertThat(countOf("candidate_grouping")).isZero();
 
     }
@@ -536,7 +610,7 @@ class JobRunnerTest {
 
         runNext();
 
-        verifyNoInteractions(githubAccess);
+        verify(githubAccess, never()).rateLimitResetAt(any());
         assertThat(jobs.findById(jobId).orElseThrow().getRetryAfterSec()).isNull();
 
     }
@@ -550,7 +624,7 @@ class JobRunnerTest {
 
         runNext();
 
-        verifyNoInteractions(githubAccess);
+        verify(githubAccess, never()).rateLimitResetAt(any());
 
     }
 
@@ -651,6 +725,57 @@ class JobRunnerTest {
         runner.failStuckJobs();
 
         assertFailed(jobId, JobErrorCode.INTERNAL_ERROR);
+
+    }
+
+    @Test
+    @DisplayName("서버나 AI 문제로 실패한 Job 은 실패가 저장된 뒤에 한 번 알린다")
+    void alertsOnceAfterServerOrAiFailureIsSaved() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willThrow(new AiClientException("AI_UNAVAILABLE", true, null));
+        // 다른 스레드의 연결로 읽어 커밋된 상태만 보이게 하며, 커밋 전에 알렸다면 RUNNING 으로 보인다
+        AtomicReference<String> savedStateWhenAlerted = new AtomicReference<>();
+        willAnswer(invocation -> {
+            savedStateWhenAlerted.set(CompletableFuture.supplyAsync(() -> jdbc.queryForObject(
+                    "SELECT state FROM analysis_job WHERE id = ?", String.class, jobId)).join());
+            return null;
+        }).given(alerts).send(any());
+
+        runNext();
+
+        verify(alerts, times(1)).send(argThat(
+                text -> text.contains("Job " + jobId + " ") && text.contains("AI_UNAVAILABLE")));
+        assertThat(savedStateWhenAlerted.get()).isEqualTo("FAILED");
+
+    }
+
+    @Test
+    @DisplayName("멈춰서 실패로 정리된 Job 도 한 번 알린다")
+    void alertsOnceWhenStuckJobIsFailed() {
+
+        Long jobId = runningSince(userRepositoryId, "16 minutes");
+
+        runner.failStuckJobs();
+
+        verify(alerts, times(1)).send(argThat(
+                text -> text.contains("Job " + jobId + " ") && text.contains("INTERNAL_ERROR")));
+
+    }
+
+    @Test
+    @DisplayName("AI 를 기다리는 사이 취소된 Job 은 AI 가 실패해도 알리지 않는다")
+    void doesNotAlertForJobCanceledDuringCall() {
+
+        Long jobId = enqueue(userRepositoryId, KEY_1);
+        given(activities.collect(any())).willAnswer(invocation -> {
+            cancel(jobId);
+            throw new AiClientException("AI_UNAVAILABLE", true, null);
+        });
+
+        runNext();
+
+        verifyNoInteractions(alerts);
 
     }
 
@@ -1163,6 +1288,12 @@ class JobRunnerTest {
 
     }
 
+    private String readmeSummary() {
+
+        return jdbc.queryForObject("SELECT readme_summary FROM user_repository WHERE id = ?", String.class, userRepositoryId);
+
+    }
+
     private boolean runNext() {
 
         Optional<AnalysisJob> claimed = runner.claimNext();
@@ -1183,7 +1314,7 @@ class JobRunnerTest {
         return new JobRunner(jobs, activities, activityStore, transaction, aiProperties,
                 new JobGroupingProperties(false), users, materials, candidates, grouping, githubAccess,
                 new JobDraftProperties(false), null, new JobProgressProperties(false), Clock.systemUTC(),
-                new JobActivityLog(Clock.systemUTC()));
+                new JobActivityLog(Clock.systemUTC()), readmes, summaryFiller, events);
 
     }
 

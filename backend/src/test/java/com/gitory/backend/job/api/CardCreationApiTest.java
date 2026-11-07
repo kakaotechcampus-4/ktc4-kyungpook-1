@@ -230,16 +230,16 @@ class CardCreationApiTest {
     }
 
     @Test
-    @DisplayName("중복을 뺀 후보가 9개면 후보를 확인하기 전에 400 INVALID_REQUEST 로 거절해, 이미 쓴 후보가 섞여도 409 가 아니고 아무것도 만들지 않는다")
-    void moreThanEightCandidatesAreRejected() throws Exception {
+    @DisplayName("중복을 뺀 후보가 11개면 후보를 확인하기 전에 400 INVALID_REQUEST 로 거절해, 이미 쓴 후보가 섞여도 409 가 아니고 아무것도 만들지 않는다")
+    void moreThanTenCandidatesAreRejected() throws Exception {
 
         Long used = candidateFixtures.insertCandidate(myRepoId, "COMMIT_CLUSTER", null, "5.20", "쓴 후보", "USED");
-        List<UUID> nine = new ArrayList<>(ids(withCommit, withoutCommit, onlyExcludedCommit, second, used));
-        for (int i = 0; i < 4; i++) {
-            nine.add(candidateFixtures.publicIdOf(candidateFixtures.insertNewCandidate(myRepoId, "추가 " + i)));
+        List<UUID> eleven = new ArrayList<>(ids(withCommit, withoutCommit, onlyExcludedCommit, second, used));
+        for (int i = 0; i < 6; i++) {
+            eleven.add(candidateFixtures.publicIdOf(candidateFixtures.insertNewCandidate(myRepoId, "추가 " + i)));
         }
 
-        create(MY_REPO, nine)
+        create(MY_REPO, eleven)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.data").value(nullValue()))
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
@@ -250,18 +250,18 @@ class CardCreationApiTest {
     }
 
     @Test
-    @DisplayName("같은 후보가 겹쳐 9개를 보내도 중복을 뺀 후보가 8개면 카드 8장을 만든다")
-    void eightDistinctCandidatesAreAllowedEvenWithDuplicates() throws Exception {
+    @DisplayName("같은 후보가 겹쳐 11개를 보내도 중복을 뺀 후보가 10개면 카드 10장을 만든다")
+    void tenDistinctCandidatesAreAllowedEvenWithDuplicates() throws Exception {
 
-        List<UUID> eight = new ArrayList<>(ids(withCommit, withoutCommit, onlyExcludedCommit, second));
-        for (int i = 0; i < 4; i++) {
-            eight.add(candidateFixtures.publicIdOf(candidateFixtures.insertNewCandidate(myRepoId, "추가 " + i)));
+        List<UUID> ten = new ArrayList<>(ids(withCommit, withoutCommit, onlyExcludedCommit, second));
+        for (int i = 0; i < 6; i++) {
+            ten.add(candidateFixtures.publicIdOf(candidateFixtures.insertNewCandidate(myRepoId, "추가 " + i)));
         }
-        eight.add(eight.get(0));
+        ten.add(ten.get(0));
 
-        create(MY_REPO, eight)
+        create(MY_REPO, ten)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.cardIds.length()").value(8));
+                .andExpect(jsonPath("$.data.cardIds.length()").value(10));
 
     }
 

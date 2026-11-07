@@ -134,25 +134,25 @@ class MatchListApiTest {
     }
 
     @Test
-    @DisplayName("활성이고 마감 전이며 조건이 READY 로 색인에 반영된 공고만, 필수·우대 조건이 있을 때 목록에 넣는다")
+    @DisplayName("활성이고 마감 전이며 조건이 READY 인 공고만, 필수·우대 조건이 있을 때 목록에 넣고 임베딩 색인 여부는 보지 않는다")
     void listsOnlyMatchablePostings() throws Exception {
 
         Long listed = posting("목록에 있는 회사", "백엔드", "BACKEND", "UNSPECIFIED", null, null);
         criteria(listed, "REQUIRED", 1);
+        Long unindexed = posting("색인 안 된 회사", "백엔드", "BACKEND", "UNSPECIFIED", null, null);
+        criteria(unindexed, "REQUIRED", 1);
+        jdbc.update("UPDATE job_posting SET indexed_content_hash = NULL WHERE id = ?", unindexed);
         excluded("UPDATE job_posting SET status = 'EXPIRED' WHERE id = ?");
         excluded("UPDATE job_posting SET status = 'REMOVED' WHERE id = ?");
         excluded("UPDATE job_posting SET expires_at = now() - interval '1 hour' WHERE id = ?");
         excluded("UPDATE job_posting SET content_status = 'PENDING' WHERE id = ?");
         excluded("UPDATE job_posting SET content_status = 'METADATA_ONLY' WHERE id = ?");
-        excluded("UPDATE job_posting SET indexed_content_hash = '" + "b".repeat(64) + "' WHERE id = ?");
-        excluded("UPDATE job_posting SET indexed_content_hash = NULL WHERE id = ?");
         excluded("DELETE FROM job_posting_criterion WHERE job_posting_id = ?");
         excluded("UPDATE job_posting_criterion SET type = 'RESPONSIBILITY' WHERE job_posting_id = ?");
 
         mvc.perform(get("/api/matches").with(loggedIn()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.length()").value(1))
-                .andExpect(jsonPath("$.data[0].company").value("목록에 있는 회사"));
+                .andExpect(jsonPath("$.data[*].company", containsInAnyOrder("목록에 있는 회사", "색인 안 된 회사")));
 
     }
 
@@ -190,6 +190,29 @@ class MatchListApiTest {
         mvc.perform(get("/api/matches").param("companyId", "nope").with(loggedIn()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(0));
+
+    }
+
+    @Test
+    @DisplayName("목록 쿼리 한 번으로 읽은 조건의 기술과 필수 학력이 응답의 techs·education 에 실린다")
+    void carriesTechsAndEducationFromConditions() throws Exception {
+
+        Long posting = posting("가온소프트", "백엔드", "BACKEND", "ENTRY", null, null);
+        jdbc.update("""
+                INSERT INTO job_posting_criterion (job_posting_id, type, seq, text, quote, techs)
+                VALUES (?, 'REQUIRED', 1, 'Java·Spring 경험', '원문', '{JAVA,SPRING}'),
+                       (?, 'PREFERRED', 2, 'Kafka 경험', '원문', '{KAFKA,JAVA}')
+                """, posting, posting);
+        jdbc.update("""
+                INSERT INTO job_posting_criterion (job_posting_id, type, seq, text, quote, general_type, education_level)
+                VALUES (?, 'REQUIRED', 3, '학사 이상', '원문', 'EDUCATION', 'BACHELOR')
+                """, posting);
+
+        mvc.perform(get("/api/matches").with(loggedIn()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].techs", contains("JAVA", "SPRING", "KAFKA")))
+                .andExpect(jsonPath("$.data[0].education.level").value("BACHELOR"))
+                .andExpect(jsonPath("$.data[0].education.exempt").value(false));
 
     }
 

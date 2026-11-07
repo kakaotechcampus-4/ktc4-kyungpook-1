@@ -4,6 +4,7 @@ import com.gitory.backend.card.domain.CardTech;
 import com.gitory.backend.matching.infra.JobPostingRepository;
 import com.gitory.backend.matching.infra.PostingCondition;
 import com.gitory.backend.profile.domain.ProfileService;
+import com.gitory.backend.profile.domain.ProfileView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -38,6 +40,9 @@ public class CompanyShortlistService {
                     Comparator.nullsLast(Comparator.<Instant>naturalOrder()))
             .thenComparing(candidate -> candidate.posting().getId(),
                     Comparator.nullsLast(Comparator.<Long>naturalOrder()));
+    private static final Comparator<ShortlistedPosting> BEST_SHORTLISTED_POSTING_FIRST = Comparator
+            .comparing(ShortlistedPosting::overlap, TechOverlap.STRONGER_FIRST)
+            .thenComparing(found -> found.posting().getId(), Comparator.nullsLast(Comparator.<Long>naturalOrder()));
     private static final Comparator<ShortlistedCompany> STRONGER_COMPANY_FIRST = Comparator
             .comparing(ShortlistedCompany::overlap, TechOverlap.STRONGER_FIRST)
             .thenComparing(ShortlistedCompany::postingsWithRequiredTech, Comparator.reverseOrder())
@@ -50,32 +55,65 @@ public class CompanyShortlistService {
     private final CompanyDirectory companies;
     private final Clock clock;
 
-    /** techs 는 부르는 쪽이 고른 카드들의 기술 이름표이며, 겹친 기술이 하나도 없는 공고는 후보에 넣지 않는다 */
+    /**
+     * techs 는 부르는 쪽이 고른 카드들의 기술 이름표이며, 겹친 기술이 하나도 없는 공고는 후보에 넣지 않는다
+     * 관심 분야는 저장된 인적사항에서 읽어 그 직무의 공고만 남기고, 아직 고르지 않았으면 거르지 않는다
+     */
     @Transactional(readOnly = true)
-    public List<ShortlistedCompany> shortlist(Long userId, Set<CardTech> techs, Set<JobCategory> interests,
-                                              int limit) {
+    public List<ShortlistedCompany> shortlist(Long userId, Set<CardTech> techs, int limit) {
+
+        List<CandidatePosting> candidates = new ArrayList<>();
+        for (ShortlistedPosting found : overlapping(userId, techs, posting -> true)) {
+            JobPosting posting = found.posting();
+            String companyId = companies.of(posting.getCompanyKey(), posting.getCompanyName()).id();
+            candidates.add(new CandidatePosting(companyId, posting, found.overlap()));
+        }
+        return rank(candidates, limit);
+
+    }
+
+    /**
+     * 회사로 묶지 않고 postingIds 에 든 공고만 같은 인적사항 거르기와 기술 겹침으로 남겨, 많이 겹친 공고부터 돌려준다
+     * 새 공고 알림이 새로 조건을 뽑은 공고만 사용자마다 줄일 때 쓴다
+     */
+    @Transactional(readOnly = true)
+    public List<ShortlistedPosting> postingsAmong(Long userId, Set<CardTech> techs, Set<Long> postingIds) {
+
+        return overlapping(userId, techs, posting -> postingIds.contains(posting.getId())).stream()
+                .sorted(BEST_SHORTLISTED_POSTING_FIRST)
+                .toList();
+
+    }
+
+    private List<ShortlistedPosting> overlapping(Long userId, Set<CardTech> techs, Predicate<JobPosting> inScope) {
 
         Instant now = Instant.now(clock);
-        Applicant applicant = Applicant.of(profiles.of(userId), interests, YearMonth.from(now.atZone(SEOUL)));
+        ProfileView profile = profiles.of(userId);
+        Set<JobCategory> interests = profile.interests().stream()
+                .map(interest -> JobCategory.valueOf(interest.name()))
+                .collect(Collectors.toSet());
+        Applicant applicant = Applicant.of(profile, interests, YearMonth.from(now.atZone(SEOUL)));
         Set<String> mine = techs.stream().map(Enum::name).collect(Collectors.toSet());
 
         Map<UUID, List<PostingCondition>> byPosting = postings.findShortlistConditions(now).stream()
                 .collect(Collectors.groupingBy(row -> row.posting().getPublicId(), LinkedHashMap::new,
                         Collectors.toList()));
-        List<CandidatePosting> candidates = new ArrayList<>();
+        List<ShortlistedPosting> found = new ArrayList<>();
         for (List<PostingCondition> rows : byPosting.values()) {
             JobPosting posting = rows.getFirst().posting();
+            if (!inScope.test(posting)) {
+                continue;
+            }
             List<JobPostingCriterion> criteria = rows.stream().map(PostingCondition::criterion).toList();
             if (!applicant.allows(posting, criteria)) {
                 continue;
             }
             TechOverlap overlap = TechOverlap.of(posting, criteria, mine);
             if (!overlap.isEmpty()) {
-                String companyId = companies.of(posting.getCompanyKey(), posting.getCompanyName()).id();
-                candidates.add(new CandidatePosting(companyId, posting, overlap));
+                found.add(new ShortlistedPosting(posting, criteria, overlap));
             }
         }
-        return rank(candidates, limit);
+        return found;
 
     }
 

@@ -19,25 +19,13 @@ test('E-2 요청 한도 — partial 을 명시하고 읽은 범위의 후보를 
   await expect(page.getByRole('heading', { name: '읽은 데까지 정리했어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled(); // GITHUB_RATE_LIMITED
   await page.getByRole('button', { name: '읽은 범위의 후보 보기' }).click();
-  await expect(page.getByRole('heading', { name: /후보 \d+개 \(부분 결과\)/ })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: / 에서 찾은 일$/ })).toBeVisible();
   await expect(page.getByText('읽은 기록에서 찾은 후보예요')).toBeVisible();
   await page.getByRole('button', { name: '정리 기준' }).click();
   await expect(page.getByRole('button', { name: '다시 정리하기' })).toBeDisabled();
   await page.getByRole('dialog').getByRole('button', { name: '닫기', exact: true }).last().click();
   await page.getByRole('link', { name: '작업 상태 보기' }).click();
   await expect(page.getByRole('button', { name: /뒤 이어 읽기/ })).toBeDisabled();
-});
-
-test('후보 제외는 실행 취소할 수 있다', async ({ page }) => {
-  await login(page);
-  await page.goto('/repos/r_auth/candidates');
-  const first = page.locator('.cand').first();
-  const title = await first.locator('.cand__title').textContent();
-  await first.getByRole('button', { name: '제외' }).click();
-  await expect(page.locator('.toast')).toContainText('제외했습니다');
-  await expect(page.locator('.cand').first().locator('.cand__title')).not.toHaveText(title!);
-  await page.getByRole('button', { name: '실행 취소' }).click();
-  await expect(page.locator('.cand__title', { hasText: title! })).toBeVisible();
 });
 
 test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채워진다', async ({ page }) => {
@@ -53,19 +41,23 @@ test('되묻기 — 보기에서 고른 답도 그대로 저장되고 칸이 채
   expect(savedCard.version.task).toBe(selectedAnswer);
   expect(savedCard.evidence.some((entry: { field: string; type: string }) => entry.field === 'T' && entry.type === 'USER_SELECTED')).toBe(true);
   // 내부 enum 이 화면에 새지 않는다
-  await expect(page.getByText('선택한 답변, 답변 저장됨')).toBeVisible();
+  await expect(page.getByText('선택한 답변, 저장됨')).toBeVisible();
   await expect(page.getByText('USER_SELECTED')).toHaveCount(0);
-  await page.getByRole('button', { name: '카드로 돌아가기' }).click();
+  // 답하면 칸을 정하지 않고 다음 질문을 요청한다(#418). 이 카드는 T 가 마지막 빈 칸이라 AI 가 스스로 끝낸다
+  await expect(page.getByText('추가 질문을 마쳤어요')).toBeVisible();
+  await expect(page.getByRole('button', { name: '카드 검토하기' })).toBeVisible();
+  // 질문이 끝난 뒤에는 "카드로" 링크를 또 두지 않는다(확정 버튼이 카드로 가는 길). 여기서는 칸이 채워졌는지만 본다
+  await page.goto('/cards/card_01');
   await expect(page.locator('#star-T').locator('..').locator('..')).not.toContainText('근거를 찾지 못해');
 });
 
-test('직접 수정 — 쓰는 동안 서버에 저장되고 AI 초안은 히스토리에 남는다', async ({ page }) => {
+test('수정 — 쓰는 동안 서버에 저장되고 AI 초안은 작성 이력에 남는다', async ({ page }) => {
   await login(page);
   await page.goto('/cards/card_01?mode=edit');
-  const a = page.getByLabel('행동 (Action)');
+  const a = page.getByLabel('행동', { exact: true });
   const typed = `인증 모듈의 세션 처리를 담당했다. 리프레시 토큰을 쿠키에 두고 만료 시 자동 갱신되게 했다. (${Date.now()})`;
   await a.fill(typed);
-  await expect(page.getByText('저장됨')).toBeVisible({ timeout: 15_000 }); // 입력이 멈춘 뒤 한 번만 나간다
+  await expect(page.getByText('저장됨', { exact: true })).toBeVisible({ timeout: 15_000 }); // 입력이 멈춘 뒤 한 번만 나간다
   // 브라우저가 아니라 서버에 남았다는 증거 — 편집 화면을 떠났다 돌아와도 그대로다
   await page.goto('/cards/card_01');
   await expect(page.getByText(typed)).toBeVisible();
@@ -73,7 +65,7 @@ test('직접 수정 — 쓰는 동안 서버에 저장되고 AI 초안은 히스
   await page.getByRole('button', { name: '저장하고 닫기' }).click();
   await page.getByRole('button', { name: '작성 이력' }).first().click();
   await expect(page.getByText('첫 초안', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('직접 수정', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('직접 수정', { exact: true }).first()).toBeVisible(); // 버전 출처 이름(버튼이 아님)
   const versions = await page.evaluate(async () => (await (await fetch('/api/cards/card_01/versions')).json()).data);
   expect(versions.map((version: { source: string }) => version.source)).toEqual(expect.arrayContaining(['AI_DRAFT', 'USER_EDIT']));
 });
@@ -113,22 +105,22 @@ test('마스킹 — 원문은 그대로, 표시만 바뀐다', async ({ page }) 
   await page.getByLabel('치환').first().fill('[결제모듈]');
   await expect(page.locator('.cmp__box--after').first()).toContainText('[결제모듈]');
   await expect(page.locator('.cmp__box').first()).toContainText('결제 기능');
-  await page.getByRole('button', { name: '마스킹 적용' }).click();
-  await expect(page.locator('.toast')).toContainText('마스킹 규칙');
+  await page.getByRole('button', { name: '가리기 적용' }).click();
+  await expect(page.locator('.toast')).toContainText('가리기 규칙');
 });
 
-test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_STATED', async ({ page }) => {
+test('직접 작성 — S·A 만 써도 저절로 확정되고 근거는 USER_STATED', async ({ page }) => {
   await login(page);
-  await page.goto('/cards/new');
+  await page.goto('/cards/new?write=1');
   await page.getByRole('textbox', { name: '카드 제목' }).fill('E2E 직접 작성 카드');
-  await page.getByLabel('상황 (Situation)').fill('3인 팀에서 배포 담당이 없었다');
-  await page.getByLabel('행동 (Action)').fill('GitHub Actions 로 배포 파이프라인을 직접 구성했다');
-  await page.getByRole('button', { name: '임시 저장 시작', exact: true }).click();
-  await page.getByRole('button', { name: '확정', exact: true }).click();
-  await expect(page.getByRole('dialog').getByRole('checkbox')).toHaveCount(0);
-  await page.getByRole('button', { name: '확정하기' }).click();
+  await page.getByLabel('상황', { exact: true }).fill('3인 팀에서 배포 담당이 없었다');
+  await page.getByLabel('행동', { exact: true }).fill('GitHub Actions 로 배포 파이프라인을 직접 구성했다');
+  await page.getByRole('button', { name: '작성 시작', exact: true }).click();
+  await page.getByRole('button', { name: '다 썼어요', exact: true }).click();
+  // 확인 필요 칸이 없으면 상황·행동만으로 저장하는 순간 서버가 확정해서, 확정 창 없이 확정된 카드가 열리고 빈 과제·결과 안내가 따라온다
+  await expect(page.getByText('과제, 결과 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요')).toBeVisible();
   await expect(page.getByText('확정됨').first()).toBeVisible();
-  await expect(page.getByText('내가 말한 것').first()).toBeVisible();
+  await expect(page.getByText('내 답변').first()).toBeVisible();
 });
 
 /**
@@ -138,6 +130,6 @@ test('직접 작성 — S·A 만 있어도 확정할 수 있고 근거는 USER_S
 test('동의 취소는 랜딩으로 돌아와 안내를 보여준다', async ({ page }) => {
   await freshSeed(page);
   await page.goto('/login?error=access_denied');
-  await expect(page.getByText('GitHub에서 동의를 취소하셨네요')).toBeVisible();
+  await expect(page.getByText('GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.')).toBeVisible();
   await expect(page.getByRole('button', { name: '샘플로 체험하기' })).toHaveCount(1);
 });

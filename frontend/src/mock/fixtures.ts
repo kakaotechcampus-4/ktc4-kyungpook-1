@@ -13,6 +13,7 @@ export const seedUser = {
 export const seedRepos = [
   {
     id: 'r_auth', owner: 'hong-dev', name: 'auth-service',
+    description: '로그인과 세션 인증을 맡는 Spring Boot 서비스', descriptionSource: 'GITHUB',
     contribution: { mine: 214, team: 402, ratio: 0.347, level: 'SHARED' },
     prCount: 31, reviewCount: 88, language: 'Java', activeFrom: '2024-03-02', activeTo: '2024-08-30',
     lastAnalyzedAt: daysAgo(1), countedAt: daysAgo(1), candidateCount: 20, cardCount: 2, recommended: true,
@@ -24,6 +25,7 @@ export const seedRepos = [
   },
   {
     id: 'r_web', owner: 'hong-dev', name: 'web-client',
+    description: '인증 서비스와 붙는 React 웹 클라이언트예요.', descriptionSource: 'README',
     contribution: { mine: 96, team: 140, ratio: 0.407, level: 'SHARED' },
     prCount: 24, reviewCount: 31, language: 'TypeScript', activeFrom: '2024-01-10', activeTo: '2024-05-22',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
@@ -36,6 +38,7 @@ export const seedRepos = [
   {
     // 케이스 5 실물 — 실측 프로토타입에서 가져온 진짜 숫자 (TaeHuiKKIM/free-tier-sleep)
     id: 'r_fts', owner: 'TaeHuiKKIM', name: 'free-tier-sleep',
+    description: '무료 요금제로 바꾼 뒤 광고가 쏟아지는 상황을 풍자하는 Unity 게임이에요. 인트로 씬과 광고 연출을 맡았어요.', descriptionSource: 'AI',
     contribution: { mine: 21, team: 118, ratio: 0.151, level: 'PARTIAL' },
     prCount: 1, reviewCount: 0, language: 'C#', activeFrom: '2026-05-20', activeTo: '2026-06-02',
     lastAnalyzedAt: daysAgo(2), countedAt: daysAgo(1), candidateCount: 4, cardCount: 1, recommended: false,
@@ -48,6 +51,7 @@ export const seedRepos = [
   {
     // 후보 0개 (verdict EMPTY) 시나리오
     id: 'r_board', owner: 'kbu-capstone', name: 'team-board',
+    description: '캡스톤 팀 게시판', descriptionSource: 'GITHUB',
     contribution: { mine: 3, team: 183, ratio: 0.016, level: 'PARTIAL' },
     prCount: 0, reviewCount: 2, language: 'Python', activeFrom: '2023-09-04', activeTo: '2023-12-15',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
@@ -60,6 +64,7 @@ export const seedRepos = [
   {
     // PR 0건 · 개인 레포 (커밋 묶음 경로)
     id: 'r_algo', owner: 'hong-dev', name: 'algorithm-study',
+    description: null, descriptionSource: null,
     contribution: { mine: 41, team: 0, ratio: 1, level: 'MAJOR' },
     prCount: 0, reviewCount: 0, language: 'Java', activeFrom: '2023-03-01', activeTo: '2023-07-20',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
@@ -72,6 +77,7 @@ export const seedRepos = [
   {
     // E-1 수집 실패 시나리오
     id: 'r_fail', owner: 'hong-dev', name: 'legacy-monolith',
+    description: 'PHP 로 만든 오래된 모놀리스', descriptionSource: 'GITHUB',
     contribution: { mine: 12, team: 340, ratio: 0.034, level: 'PARTIAL' },
     prCount: 4, reviewCount: 1, language: 'PHP', activeFrom: '2022-06-01', activeTo: '2022-11-30',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
@@ -80,6 +86,7 @@ export const seedRepos = [
   {
     // E-2 rate limit · partial 시나리오
     id: 'r_ratelimit', owner: 'hong-dev', name: 'data-pipeline',
+    description: '매일 밤 로그를 모아 집계하는 데이터 파이프라인이에요.', descriptionSource: 'README',
     contribution: { mine: 158, team: 220, ratio: 0.418, level: 'SHARED' },
     prCount: 19, reviewCount: 12, language: 'Python', activeFrom: '2024-06-01', activeTo: '2024-08-15',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: false,
@@ -88,6 +95,7 @@ export const seedRepos = [
   {
     // 개수를 아직 못 센 레포 — countedAt 이 null 이라 개수 0 은 실제 0 이 아니다 ("내 기여 0%"·"PR 0건"을 띄우면 안 된다)
     id: 'r_counting', owner: 'hong-dev', name: 'side-project-new',
+    description: null, descriptionSource: null,
     contribution: { mine: 0, team: 0, ratio: 0, level: 'NONE' },
     prCount: 0, reviewCount: 0, language: 'TypeScript', activeFrom: '2026-09-20', activeTo: '2026-10-08',
     lastAnalyzedAt: null, countedAt: null, candidateCount: null, cardCount: 0, recommended: false,
@@ -96,6 +104,7 @@ export const seedRepos = [
   {
     // 수집 상한에 걸리는 시나리오 — SUCCEEDED + partial + errorCode COLLECTION_CAPPED (재시도는 열지 않는다)
     id: 'r_capped', owner: 'hong-dev', name: 'big-monorepo',
+    description: '여러 서비스를 한 저장소에서 관리하는 모노레포', descriptionSource: 'GITHUB',
     contribution: { mine: 480, team: 910, ratio: 0.527, level: 'MAJOR' },
     prCount: 62, reviewCount: 140, language: 'Java', activeFrom: '2023-01-10', activeTo: '2026-09-30',
     lastAnalyzedAt: null, countedAt: daysAgo(1), candidateCount: null, cardCount: 0, recommended: true,
@@ -108,10 +117,10 @@ const gh = (owner: string, repo: string, sha: string) => `https://github.com/${o
 export const seedCandidates = [
   // ── auth-service (20개 중 대표 6개 · 나머지는 generate 로 채움)
   { id: 'c_42', repoId: 'r_auth', type: 'PR', status: 'NEW', ref: '#42', title: '로그인 세션 처리',
-    reason: '리뷰 코멘트 14건 · 3주간 수정 6회 — 논의가 가장 길었던 작업',
+    reason: '리뷰를 14번 주고받으며 3주에 걸쳐 다듬은 일이에요',
     meta: { commits: 9, files: 12, reviewComments: 14, days: 21, codeRatio: 0.92 }, weak: false, score: 61.2, commits: null, usedByCardId: null },
   { id: 'c_pay', repoId: 'r_auth', type: 'COMMIT_CLUSTER', status: 'NEW', ref: '2024-05-12', title: '5.12 결제모듈 6커밋',
-    reason: 'PR 없이 main 직접 푸시 — 같은 날 /payment 아래 6커밋',
+    reason: 'PR 없이 하루 만에 결제 모듈에 커밋 6개를 올린 일이에요',
     meta: { commits: 6, files: 8, reviewComments: 0, days: 0, codeRatio: 0.83 }, weak: false, score: 38.5,
     commits: [
       { sha: 'a1f2c3d4e5f60718293a4b5c6d7e8f9012345678', message: '결제 요청 검증 추가', path: 'src/payment/validator.java', at: '2024-05-12T14:02:00+09:00', included: true, url: gh('hong-dev', 'auth-service', 'a1f2c3d') },
@@ -122,21 +131,21 @@ export const seedCandidates = [
       { sha: 'f6a8b9e0d1c2334455667788990011aabbccdd00', message: 'README 오타 수정', path: 'README.md', at: '2024-05-12T18:30:00+09:00', included: true, url: gh('hong-dev', 'auth-service', 'f6a8b9e') },
     ], usedByCardId: null },
   { id: 'c_31', repoId: 'r_auth', type: 'ISSUE', status: 'NEW', ref: '#31', title: '결제 롤백 대응',
-    reason: 'Revert 커밋 2건이 이 이슈에 연결되어 있습니다',
+    reason: '되돌린 커밋 2개가 이 이슈에 이어져 있어요',
     meta: { commits: 2, files: 3, reviewComments: 3, days: 4, codeRatio: 1 }, weak: false, score: 22.4, commits: null, usedByCardId: null },
   { id: 'c_57', repoId: 'r_auth', type: 'PR', status: 'NEW', ref: '#57', title: 'README 정리',
-    reason: '문서 변경만 — 카드로 쓰기엔 내용이 얇습니다',
+    reason: '문서 1개만 바꿔서 카드로 쓰기엔 내용이 적어요',
     meta: { commits: 2, files: 1, reviewComments: 0, days: 1, codeRatio: 0 }, weak: true, score: 4.1, commits: null, usedByCardId: null },
   { id: 'c_38', repoId: 'r_auth', type: 'PR', status: 'USED', ref: '#38', title: '토큰 만료 처리',
-    reason: '이미 카드로 만들었습니다',
+    reason: '9일 동안 리뷰를 6번 주고받으며 토큰이 끝나는 때를 다듬은 일이에요',
     meta: { commits: 5, files: 6, reviewComments: 6, days: 9, codeRatio: 0.95 }, weak: false, score: 33.0, commits: null, usedByCardId: 'card_03' },
   { id: 'c_51', repoId: 'r_auth', type: 'PR', status: 'NEW', ref: '#51', title: '로그인 API 응답 속도 개선',
-    reason: 'PR 본문에 측정 수치(800ms → 120ms)가 남아 있습니다',
+    reason: '응답 시간을 800ms 에서 120ms 로 줄였다는 기록이 PR 에 남아 있어요',
     meta: { commits: 4, files: 5, reviewComments: 5, days: 6, codeRatio: 1 }, weak: false, score: 29.7, commits: null, usedByCardId: null },
 
   // ── free-tier-sleep — 실측 프로토타입 후보 보드 그대로 (진짜 sha)
   { id: 'c_fts_intro', repoId: 'r_fts', type: 'COMMIT_CLUSTER', status: 'USED', ref: '2026-05-28', title: 'FreeTierSleep_Unity · 인트로 씬 연출 10커밋',
-    reason: '같은 날 Taehui 디렉터리 아래 10커밋 · 코드 비율 15% — 씬 파일이 커서 코드 비율은 낮지만 스크립트 6개를 새로 썼습니다',
+    reason: '하루 동안 인트로 화면을 만들며 커밋 10개를 올렸고, 스크립트 6개를 새로 썼어요',
     meta: { commits: 10, files: 62, reviewComments: 0, days: 0, codeRatio: 0.15 }, weak: false, score: 17.95,
     commits: [
       { sha: 'ea16f9b', message: 'feat: complete intro scene with procedural sfx, glitch transition', path: 'FreeTierSleep_Unity/Assets/_Project/Taehui/01.Scenes/Scene_Intro.unity', at: '2026-05-28T21:10:00+09:00', included: true, url: gh('TaeHuiKKIM', 'free-tier-sleep', 'ea16f9b') },
@@ -147,40 +156,40 @@ export const seedCandidates = [
       { sha: '9ca5acf', message: 'fix: resolve CS1513 compiler error due to missing closing namespace brace', path: 'FreeTierSleep_Unity/Assets/_Project/Taehui/02.Scripts/AdPopupManager.cs', at: '2026-05-28T17:05:00+09:00', included: true, url: gh('TaeHuiKKIM', 'free-tier-sleep', '9ca5acf') },
     ], usedByCardId: 'card_05' },
   { id: 'c_fts_start', repoId: 'r_fts', type: 'COMMIT_CLUSTER', status: 'NEW', ref: '2026-05-30', title: 'FreeTierSleep_Unity · 시작 화면(Start Scene) 3커밋',
-    reason: '4시간에 걸친 3커밋 · 44파일 · 코드 비율 25%',
+    reason: '4시간 동안 시작 화면에 커밋 3개를 올리며 파일 44개를 바꾼 일이에요',
     meta: { commits: 3, files: 44, reviewComments: 0, days: 0, codeRatio: 0.25 }, weak: false, score: 16.44, commits: [], usedByCardId: null },
   { id: 'c_fts_phase', repoId: 'r_fts', type: 'COMMIT_CLUSTER', status: 'NEW', ref: '2026-05-23', title: 'FreeTierSleep_Unity · phase 이동 구현 4커밋',
-    reason: '3시간 동안 27파일 · 코드 비율 7% — 씬·프리팹 위주라 카드감은 낮은 편',
+    reason: '3시간 동안 파일 27개를 바꿨지만 대부분 화면 파일이라 코드는 적어요',
     meta: { commits: 4, files: 27, reviewComments: 0, days: 0, codeRatio: 0.07 }, weak: true, score: 12.02, commits: [], usedByCardId: null },
   { id: 'c_fts_pr1', repoId: 'r_fts', type: 'PR', status: 'NEW', ref: '#1', title: 'Add AGENTS.md',
-    reason: '문서 1파일 — 카드로 쓰기엔 내용이 얇습니다',
+    reason: '문서 1개만 더해서 카드로 쓰기엔 내용이 적어요',
     meta: { commits: 1, files: 1, reviewComments: 0, days: 0, codeRatio: 0 }, weak: true, score: 8.71, commits: null, usedByCardId: null },
 ];
 
 // auth-service 나머지 후보 14개 자동 생성 — 20개 보드
 const filler = [
-  ['PR', '#33', '이메일 발송 비동기 처리', '가입 흐름을 막지 않게 큐로 분리', 27.1, 0.9],
-  ['PR', '#29', 'OAuth 콜백 예외 처리', '리뷰 코멘트 8건 — 에러 케이스 논의', 25.3, 1],
-  ['COMMIT_CLUSTER', '2024-06-03', '6.03 세션 저장소 Redis 전환 4커밋', 'PR 없이 main 직접 푸시 — 같은 날 /session 아래 4커밋', 21.8, 0.88],
-  ['PR', '#45', '비밀번호 재설정 토큰 만료', '리뷰 코멘트 4건', 18.9, 1],
-  ['ISSUE', '#27', '동시 로그인 제한', '커밋 3건이 이 이슈를 참조합니다', 17.2, 1],
-  ['PR', '#36', '회원 탈퇴 소프트 삭제', '리뷰 코멘트 3건 · 8일간 열림', 16.4, 0.95],
-  ['COMMIT_CLUSTER', '2024-04-18', '4.18 인증 필터 리팩터링 5커밋', '같은 날 /filter 아래 5커밋', 15.7, 1],
-  ['PR', '#48', '로그인 실패 횟수 제한', '리뷰 코멘트 2건', 14.1, 1],
-  ['PR', '#22', '프로필 이미지 업로드', '리뷰 코멘트 5건', 13.6, 0.7],
-  ['COMMIT_CLUSTER', '2024-07-09', '7.09 테스트 커버리지 보강 7커밋', '같은 날 /test 아래 7커밋', 12.2, 1],
-  ['PR', '#40', '헬스체크 엔드포인트', '변경 파일 2개 — 카드로 쓰기엔 얇습니다', 6.3, 1],
-  ['PR', '#54', 'CI 캐시 설정', '설정 파일만 — 카드감 낮음', 5.0, 0.2],
-  ['PR', '#59', '의존성 버전 정리', '설정 파일만 — 카드감 낮음', 3.8, 0],
-  ['PR', '#61', '로그 레벨 조정', '변경 파일 1개', 2.9, 1],
+  ['PR', '#33', '이메일 발송 비동기 처리', '가입이 멈추지 않도록 메일 보내기를 큐로 따로 뺀 일이에요', 27.1, 0.9],
+  ['PR', '#29', 'OAuth 콜백 예외 처리', '에러가 나는 경우를 두고 리뷰를 8번 주고받은 일이에요', 25.3, 1],
+  ['COMMIT_CLUSTER', '2024-06-03', '6.03 세션 저장소 Redis 전환 4커밋', '하루 동안 세션 저장소를 Redis 로 옮기며 커밋 4개를 남긴 일이에요', 21.8, 0.88],
+  ['PR', '#45', '비밀번호 재설정 토큰 만료', '리뷰를 4번 주고받으며 토큰이 끝나는 때를 다듬은 일이에요', 18.9, 1],
+  ['ISSUE', '#27', '동시 로그인 제한', '이 이슈를 풀려고 커밋 3개를 이어서 올린 일이에요', 17.2, 1],
+  ['PR', '#36', '회원 탈퇴 소프트 삭제', '8일 동안 리뷰를 3번 주고받으며 다듬은 일이에요', 16.4, 0.95],
+  ['COMMIT_CLUSTER', '2024-04-18', '4.18 인증 필터 리팩터링 5커밋', '하루 만에 인증 필터를 정리하며 커밋 5개를 남긴 일이에요', 15.7, 1],
+  ['PR', '#48', '로그인 실패 횟수 제한', '리뷰를 2번 주고받으며 로그인 실패를 막는 규칙을 만든 일이에요', 14.1, 1],
+  ['PR', '#22', '프로필 이미지 업로드', '리뷰를 5번 주고받으며 사진 올리기를 만든 일이에요', 13.6, 0.7],
+  ['COMMIT_CLUSTER', '2024-07-09', '7.09 테스트 커버리지 보강 7커밋', '하루 동안 테스트를 보강하며 커밋 7개를 남긴 일이에요', 12.2, 1],
+  ['PR', '#40', '헬스체크 엔드포인트', '파일 2개만 바꿔서 카드로 쓰기엔 내용이 적어요', 6.3, 1],
+  ['PR', '#54', 'CI 캐시 설정', '설정 파일만 바꿔서 카드로 쓰기엔 내용이 적어요', 5.0, 0.2],
+  ['PR', '#59', '의존성 버전 정리', '의존성 버전 숫자만 바꾼 일이라 카드로 쓰기엔 내용이 적어요', 3.8, 0],
+  ['PR', '#61', '로그 레벨 조정', '파일 1개만 바꾼 작은 일이에요', 2.9, 1],
 ] as const;
 filler.forEach(([type, ref, title, reason, score, codeRatio], i) => {
   // Explicit evidence in the sample copy is authoritative; keep the numeric
   // summary in sync when that copy changes, rather than inventing another count.
-  const reviewCount = reason.match(/리뷰 코멘트 (\d+)건/);
-  const fileCount = reason.match(/변경 파일 (\d+)개/);
-  const commitCount = `${title} ${reason}`.match(/(\d+)커밋|커밋 (\d+)건/);
-  const dayCount = reason.match(/(\d+)일간/);
+  const reviewCount = reason.match(/리뷰를 (\d+)번/);
+  const fileCount = reason.match(/(?:파일|문서) (\d+)개/);
+  const commitCount = `${title} ${reason}`.match(/(\d+)커밋|커밋 (\d+)개/);
+  const dayCount = reason.match(/(\d+)일 동안/);
   seedCandidates.push({
     id: `c_f${i}`, repoId: 'r_auth', type, status: 'NEW', ref, title, reason,
     meta: {
@@ -306,6 +315,48 @@ export const seedCards = [
     lowConfidenceFields: [{ field: 'R', why: '결과가 문서 갱신이라 정량 수치가 없습니다' }], droppedFields: [], maskRules: [],
     generation: null, interviewTurns: 0, confirmedAt: daysAgo(1), createdAt: daysAgo(2),
   },
+  // ── 활동 안의 경험 카드(#477) — 레포가 없고 activityId 로 활동에 묶인다. 직접 쓴 정성 카드라 근거는 모두 '내 답변'이다.
+  // 날짜는 레포 카드보다 오래전으로 둬 목록·홈의 앞쪽 순서(최근순)를 바꾸지 않는다
+  {
+    id: 'card_a1', kind: 'QUALITATIVE', status: 'CONFIRMED', title: '코드 리뷰 문화를 동아리에 만든 경험',
+    repo: null, activityId: 'act_club', candidate: null,
+    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: daysAgo(12),
+      situation: '동아리 프로젝트에서 리뷰 없이 바로 합쳐서 같은 버그가 반복됐다',
+      task: '파트장으로서 부담 없이 지킬 수 있는 리뷰 규칙을 정해야 했다',
+      action: '풀 리퀘스트 템플릿과 하루 안에 첫 리뷰를 남기는 규칙을 제안하고, 첫 두 주는 내가 먼저 모든 풀 리퀘스트를 읽었다',
+      result: '반복되던 버그 제보가 한 달 뒤 절반 아래로 줄었고, 부원 모두가 리뷰를 남기게 됐다' }],
+    evidence: [said('S', 1), said('T', 1), said('A', 2), said('R', 2)],
+    lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 2, confirmedAt: daysAgo(11), createdAt: daysAgo(12),
+  },
+  {
+    id: 'card_a2', kind: 'QUALITATIVE', status: 'DRAFT', title: '스터디 일정이 밀렸을 때 범위를 줄인 경험',
+    repo: null, activityId: 'act_club', candidate: null,
+    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: daysAgo(13),
+      situation: '학기 중반에 부원들의 시험 기간이 겹쳐 스터디 진도가 계속 밀렸다',
+      task: '남은 주 안에 발표까지 끝낼 방법을 정해야 했다',
+      action: null, result: null }],
+    evidence: [said('S', 1), said('T', 1)],
+    lowConfidenceFields: [], droppedFields: [{ field: 'A', reason: 'NO_EVIDENCE' }, { field: 'R', reason: 'NO_EVIDENCE' }],
+    maskRules: [], generation: null, interviewTurns: 1, confirmedAt: null, createdAt: daysAgo(13),
+  },
+  {
+    id: 'card_a3', kind: 'QUALITATIVE', status: 'CONFIRMED', title: '팀 프로젝트에서 서로 다른 일정을 맞춘 경험',
+    repo: null, activityId: 'act_edu', candidate: null,
+    versions: [{ versionNo: 1, source: 'USER_EDIT', createdAt: daysAgo(15),
+      situation: '교육 과정 팀 프로젝트에서 팀원마다 가능한 시간이 달라 회의가 자주 어긋났다',
+      task: '모두가 같은 정보를 보고 움직일 수 있는 진행 방식이 필요했다',
+      action: '매일 아침 십 분 비동기 공유 글과 주간 한 번의 짧은 회의로 바꾸고, 결정 사항은 한곳에 적어 두었다',
+      result: '회의에 오지 못한 팀원도 결정을 놓치지 않았고, 마감 전날 몰리던 작업이 주중에 나뉘었다' }],
+    evidence: [said('S', 1), said('T', 1), said('A', 2), said('R', 2)],
+    lowConfidenceFields: [], droppedFields: [], maskRules: [], generation: null, interviewTurns: 2, confirmedAt: daysAgo(14), createdAt: daysAgo(15),
+  },
+];
+
+export const seedActivities = [
+  { id: 'act_club', name: '교내 개발 동아리', type: 'CLUB', startMonth: '2025-03', endMonth: null, role: '백엔드 파트장', createdAt: daysAgo(40) },
+  { id: 'act_edu', name: '카카오테크캠퍼스', type: 'EDUCATION', startMonth: '2025-09', endMonth: '2026-02', role: '팀 프로젝트 팀원', createdAt: daysAgo(30) },
+  // 카드가 아직 없는 활동 — 폴더에는 '아직 카드가 없어요'가 보이고, 지울 때는 "안에 카드가 없어요"가 나온다
+  { id: 'act_contest', name: '해커톤 참가', type: 'CONTEST', startMonth: '2026-05', endMonth: '2026-06', role: null, createdAt: daysAgo(20) },
 ];
 
 export const seedInterview: Record<string, unknown[]> = {
@@ -327,7 +378,7 @@ export const interviewBank: Record<string, { question: string; missing: string; 
 
 export const seedRecall = {
   repoId: 'r_board',
-  note: '어떤 파일을 만졌는지 살펴보며 작업을 떠올려 보세요. 답한 내용은 그대로 정성 카드의 근거가 됩니다.',
+  note: '어떤 파일을 만졌는지 살펴보며 작업을 떠올려 보세요. 답한 내용은 그대로 경험 카드의 근거가 됩니다.',
   dirs: [
     { path: '/src/api/', filesChanged: 6, myCommits: 2, files: ['user_router.py', 'auth.py', 'schema.py'], question: '이 파일들을 만졌을 때, 무엇을 해내려던 중이었나요?', options: ['로그인이 정상적으로 동작하게 하려 했어요', '기존 기능을 완성하려 했어요', '반복되는 오류를 해결하려 했어요'] },
     { path: '/src/ui/', filesChanged: 3, myCommits: 1, files: ['board.jsx', 'card.jsx'], question: '이 화면 파일을 고친 이유가 기억나시나요?', options: ['디자인 수정 요청이 있었어요', '버그를 고쳤어요'] },

@@ -13,6 +13,8 @@ export const CONFIG = {
   MANUAL_FIELD_MAX: 1000,
   CARD_TITLE_MAX: 256,
   CARD_PERIOD_MAX: 50,
+  /** 폴더 설명 글자 상한. 서버와 같다 */
+  REPO_DESCRIPTION_MAX: 120,
   MASK_RULE_MAX: 20,
   MASK_TEXT_MAX: 100,
   /** 임시 저장 디바운스(ms) — 입력이 멈춘 뒤 한 번만 보낸다 */

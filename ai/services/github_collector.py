@@ -101,6 +101,8 @@ class CollectionLimits:
     max_pull_request_pages: int = 10
     max_issues: int = 50
     max_text_chars: int = 1_000
+    #: PR 본문은 카드 초안이 '왜 그렇게 했는지' 를 찾는 재료라 리뷰·이슈 글보다 길게 둔다.
+    max_pull_request_body_chars: int = 3_000
     max_candidate_commits: int = 50
     max_patch_chars: int = 20_000
     max_candidate_patch_chars: int = 100_000
@@ -124,6 +126,7 @@ class _CollectionState:
 _Item = TypeVar("_Item")
 _Read = TypeVar("_Read")
 _NOT_READ = object()
+_READ_DETAIL = object()
 
 
 async def _read_in_order(
@@ -346,7 +349,7 @@ class GithubCollector:
         title = _required_text(pull, "title")
         body = _optional_text(pull, "body")
         body_excerpt, body_truncated = _excerpt(
-            body, self._limits.max_text_chars
+            body, self._limits.max_pull_request_body_chars
         )
         return CollectedPullRequest(
             number=number,
@@ -619,18 +622,64 @@ class GithubCollector:
 
         pull_by_sha = _primary_pull_by_sha(state.pull_requests)
         selected_shas = list(summaries_by_sha)[: self._limits.max_commits]
-        report_progress(COMMITS, 0, len(selected_shas))
+        listed = {
+            sha: self._from_summary(request, summaries_by_sha[sha], pull_by_sha.get(sha))
+            for sha in selected_shas
+        }
+        detail_shas = [sha for sha in selected_shas if listed[sha] is _READ_DETAIL]
+        report_progress(COMMITS, 0, len(detail_shas))
         commits, rate_limited = await _read_in_order(
-            selected_shas,
+            detail_shas,
             lambda sha: self._collect_commit(client, request, state, sha, pull_by_sha.get(sha)),
-            lambda commit, read: report_progress(COMMITS, read, len(selected_shas), commit_item(commit[0])),
+            lambda commit, read: report_progress(COMMITS, read, len(detail_shas), commit_item(commit[0])),
         )
-        for commit, confirmation in commits:
+        read_by_sha = {commit.sha: (commit, confirmation) for commit, confirmation in commits}
+        for sha in selected_shas:
+            kept = read_by_sha.get(sha) if listed[sha] is _READ_DETAIL else listed[sha]
+            if kept is None:
+                continue
+            commit, confirmation = kept
             state.commits.append(commit)
             if confirmation is not None:
                 state.needs_confirmation.append(confirmation)
         if rate_limited:
             raise _RateLimited()
+
+    def _from_summary(
+        self,
+        request: RepositoryCollectionRequest,
+        summary: dict[str, Any],
+        pull_request_number: Optional[int],
+    ) -> Any:
+        """커밋 목록 값으로 내용을 받을지 가른다. 받을 커밋은 _READ_DETAIL, 저장하지 않을 남의 커밋은 None, 그 밖은 목록 값으로 만든 (커밋, None) 이다.
+
+        로그인이 있는 남의 커밋을 파일 없이 저장하면 이미 받은 커밋으로 잡혀, 그 팀원이 나중에 분석할 때 자기 커밋의 파일을 받지 못한다.
+        """
+        commit_node = _optional_dict(summary, "commit")
+        commit_author = _optional_dict(commit_node, "author")
+        if (
+            not isinstance(summary.get("parents"), list)
+            or _optional_text(commit_node, "message") is None
+            or _optional_text(commit_author, "date") is None
+        ):
+            return _READ_DETAIL
+        author_node = _optional_dict(summary, "author")
+        login = _optional_text(author_node, "login")
+        reason, confirmation = _contribution_decision(
+            sha=_required_text(summary, "sha"),
+            login=login,
+            author_type=_optional_text(author_node, "type"),
+            author_name=_optional_text(commit_author, "name"),
+            author_email=_optional_text(commit_author, "email"),
+            parent_count=len(_optional_list(summary, "parents")),
+            files=[],
+            request=request,
+        )
+        if reason is None or confirmation is not None:
+            return _READ_DETAIL
+        if reason is ExclusionReason.NOT_OWN and login is not None:
+            return None
+        return self._to_commit(request, summary, [], pull_request_number)
 
     async def _collect_commit(
         self,

@@ -4,13 +4,20 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties("gitory.rate-limit")
 public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit interviewAnswer, Limit cardDraft,
-                                  Limit coverLetter) {
+                                  Limit coverLetter, Limit coverLetterPolish, Limit coverLetterTurn,
+                                  Limit matchJudgement, Limit matchOverall, Limit matchGapFill, Limit assistant) {
 
     public RateLimitProperties {
         interviewAsk = interviewAsk == null ? Limit.NONE : interviewAsk;
         interviewAnswer = interviewAnswer == null ? Limit.NONE : interviewAnswer;
         cardDraft = cardDraft == null ? Limit.NONE : cardDraft;
         coverLetter = coverLetter == null ? Limit.NONE : coverLetter;
+        coverLetterPolish = coverLetterPolish == null ? Limit.NONE : coverLetterPolish;
+        coverLetterTurn = coverLetterTurn == null ? Limit.NONE : coverLetterTurn;
+        matchJudgement = matchJudgement == null ? Limit.NONE : matchJudgement;
+        matchOverall = matchOverall == null ? Limit.NONE : matchOverall;
+        matchGapFill = matchGapFill == null ? Limit.NONE : matchGapFill;
+        assistant = assistant == null ? Limit.NONE : assistant;
     }
 
     public Limit of(RateLimitedAction action) {
@@ -20,6 +27,12 @@ public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit int
             case INTERVIEW_ANSWER -> interviewAnswer;
             case CARD_DRAFT -> cardDraft;
             case COVER_LETTER -> coverLetter;
+            case COVER_LETTER_POLISH -> coverLetterPolish;
+            case COVER_LETTER_TURN -> coverLetterTurn;
+            case MATCH_JUDGEMENT -> matchJudgement;
+            case MATCH_OVERALL -> matchOverall;
+            case MATCH_GAP_FILL -> matchGapFill;
+            case ASSISTANT -> assistant;
         };
 
     }

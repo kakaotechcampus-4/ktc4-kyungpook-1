@@ -9,11 +9,14 @@ import com.gitory.backend.agent.port.InterviewQuestionResult;
 import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.card.domain.Card;
 import com.gitory.backend.card.domain.CardGenerationGuard;
+import com.gitory.backend.card.domain.CardKind;
 import com.gitory.backend.card.domain.CardOwnershipService;
 import com.gitory.backend.card.domain.CardTheme;
 import com.gitory.backend.card.domain.CardThemeSuggester;
 import com.gitory.backend.card.domain.CardVersionReader;
 import com.gitory.backend.card.domain.StarField;
+import com.gitory.backend.card.domain.StarFieldState;
+import com.gitory.backend.card.domain.VersionSlots;
 import com.gitory.backend.card.infra.InterviewTurnRepository;
 import com.gitory.backend.common.infra.ai.AiCallContext;
 import com.gitory.backend.common.infra.ratelimit.RateLimitedAction;
@@ -36,6 +39,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 /**
  * 되묻기 질문을 AI 에게 받아 저장하고, 칸을 지정하지 않으면 고를 수 있는 칸 중 AI 가 다음 칸을 고른다
@@ -64,7 +68,7 @@ public class InterviewAskService {
     private final CardThemeSuggester themeSuggester;
 
     /**
-     * 초안을 만드는 중이거나 확정된 카드는 409, 답을 기다리는 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409,
+     * 초안을 만드는 중인 카드는 409, 답을 기다리는 질문이 있으면 그 질문(AI 를 부르지 않음), 질문 상한이면 409,
      * 칸이 잘못되면 400, 지정한 칸이 닫혔으면 409 순서로 확인한다
      * 칸을 지정하지 않았는데 고를 칸이 없거나 AI 가 끝을 고르면 질문을 만들지 않고 null 을 돌려주며, AI 가 끝낸 이유를 남기고 카드 상태를 다시 정한다
      * 새 질문은 AI 를 다녀온 뒤 같은 확인을 한 번 더 하고 저장한다
@@ -94,7 +98,7 @@ public class InterviewAskService {
 
     }
 
-    // 답마다 확정하면 다음 질문이 확정 카드라 막히므로, 되묻기가 끝났을 때 한 번 그 글로 카드 상태를 정한다
+    // 되묻기가 끝났을 때 한 번 그 글로 카드 상태를 정한다
     private void settleAtEnd(UUID publicId, Long userId) {
 
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
@@ -133,8 +137,11 @@ public class InterviewAskService {
         if (allowed.isEmpty()) {
             return Prepared.done();
         }
+        List<StarField> offered = target == null && card.getCardType() == CardKind.QUALITATIVE
+                ? storyOrder(allowed, asked, reader.read(card.getId(), card.getCurrentVersion()))
+                : allowed;
 
-        return Prepared.toAsk(card, target, allowed, sourceTypeOf(card), context.assemble(card, allowed, target, asked));
+        return Prepared.toAsk(card, target, offered, sourceTypeOf(card), context.assemble(card, offered, target, asked));
 
     }
 
@@ -234,7 +241,6 @@ public class InterviewAskService {
     private Optional<InterviewTurn> openTurnOrRefuse(Card card, List<InterviewTurn> asked) {
 
         generation.requireNotGenerating(card);
-        card.requireDraft();
 
         Optional<InterviewTurn> open = openTurnOf(asked);
         if (open.isEmpty() && asked.size() >= limits.maxTurns()) {
@@ -250,6 +256,22 @@ public class InterviewAskService {
         return asked.stream()
                 .filter(turn -> !turn.isClosed())
                 .findFirst();
+
+    }
+
+    // 경험 카드는 일어난 순서대로 떠올리기 쉬워, 마지막으로 물은 칸(앞 답이 모자라면 다시)과 순서상 첫 빈 칸 가운데서만 AI 가 고른다
+    // 둘 다 없으면(빈 칸이 없고 마지막 칸도 닫혔으면) 남은 칸 전체에서 고르게 둔다
+    private static List<StarField> storyOrder(List<StarField> allowed, List<InterviewTurn> asked, VersionSlots version) {
+
+        Optional<StarField> last = asked.isEmpty() ? Optional.empty()
+                : Optional.of(asked.getLast().getStarSlot()).filter(allowed::contains);
+        Optional<StarField> next = Arrays.stream(StarField.values())
+                .filter(allowed::contains)
+                .filter(slot -> version.stateOf(slot) == StarFieldState.EMPTY)
+                .findFirst();
+        List<StarField> offered = Stream.concat(last.stream(), next.stream()).distinct().toList();
+
+        return offered.isEmpty() ? allowed : offered;
 
     }
 

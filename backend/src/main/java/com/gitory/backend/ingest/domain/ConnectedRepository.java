@@ -40,6 +40,14 @@ public class ConnectedRepository {
 
     private Instant countedAt;
 
+    private String githubDescription;
+    private String readmeSummary;
+
+    @Enumerated(EnumType.STRING)
+    private ReadmeSummarySource readmeSummarySource;
+
+    private String description;
+
     public void markAnalyzed() {
 
         this.lastAnalyzedAt = Instant.now();
@@ -56,6 +64,20 @@ public class ConnectedRepository {
         this.ownPrCount = ownPrCount;
         this.reviewedPrCount = reviewedPrCount;
         this.countedAt = countedAt;
+
+    }
+
+    public void recordReadmeSummary(String readmeSummary, ReadmeSummarySource source) {
+
+        this.readmeSummary = readmeSummary;
+        this.readmeSummarySource = readmeSummary == null ? null : source;
+
+    }
+
+    /** 비우면 사용자가 쓴 설명이 없는 것이라 GitHub 설명이나 README 문장을 보여 준다 */
+    public void describe(String description) {
+
+        this.description = description;
 
     }
 }

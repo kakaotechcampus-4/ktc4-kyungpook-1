@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -29,6 +30,14 @@ public interface CommitSummaryRepository extends Repository<GitCommit, Long> {
             ORDER BY COALESCE(c.additions, 0) + COALESCE(c.deletions, 0) DESC, c.authoredAt DESC, c.id DESC
             """)
     List<DraftCommit> findLargestFirst(@Param("commitIds") Collection<Long> commitIds, Limit limit);
+
+    // 수집 이력 id 가 비어 있으면 그 조건은 어떤 커밋에도 맞지 않는다
+    @Query("""
+            SELECT c.id FROM GitCommit c
+            WHERE c.id IN :commitIds AND (c.authoredAt > :after OR c.collectionRunId = :collectionRunId)
+            """)
+    List<Long> findNewIds(@Param("commitIds") Collection<Long> commitIds, @Param("after") Instant after,
+                          @Param("collectionRunId") Long collectionRunId);
 
     @Modifying
     @Query("UPDATE GitCommit c SET c.diffSummary = :summary WHERE c.id = :commitId")

@@ -15,7 +15,7 @@ export function CardDeleteAction({ card, icon = false, onDeleted }: {
 }) {
   const [open, setOpen] = useState(false);
   return <>
-    <Button variant="text" className={icon ? 'card-delete-trigger' : 'card-delete-text'}
+    <Button variant={icon ? 'text' : 'danger'} className={icon ? 'card-delete-trigger' : 'card-delete-text'}
       aria-label={icon ? `${card.title} 삭제` : undefined} title={icon ? '카드 삭제' : undefined}
       onClick={() => setOpen(true)}>{icon ? <X size={17} /> : '카드 삭제'}</Button>
     {open && <CardDeleteDialog card={card} onClose={() => setOpen(false)} onDeleted={onDeleted} />}
@@ -47,7 +47,7 @@ function CardDeleteDialog({ card, onClose, onDeleted }: {
       <div className="stack" style={{ gap: 12 }}>
         <p className="card-delete-title">{card.title}</p>
         {card.status === 'CONFIRMED' && <p>지우면 매칭 결과에서도 빠져요.</p>}
-        {candidate && <p>이 레포의 후보 목록에서 다시 골라 카드를 만들 수 있어요.</p>}
+        {candidate && <p>이 레포의 후보 보드에서 다시 골라 카드를 만들 수 있어요.</p>}
         {message && <p role="alert">{message}</p>}
       </div>
     </Modal>;

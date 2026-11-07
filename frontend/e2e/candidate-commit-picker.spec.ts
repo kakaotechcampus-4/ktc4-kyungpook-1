@@ -61,27 +61,27 @@ test('commit picker Space and child clicks preserve exact selected SHAs through 
   await first.focus();
   await page.keyboard.press('Space');
   await expect(first).toHaveAttribute('aria-pressed', 'true');
-  await expect(count).toContainText('커밋 1건이 붙어 있습니다');
+  await expect(count).toContainText('커밋 1개가 붙어 있어요');
   await second.locator('.badge').click();
   await expect(second).toHaveAttribute('aria-pressed', 'true');
-  await expect(count).toContainText('커밋 2건이 붙어 있습니다');
+  await expect(count).toContainText('커밋 2개가 붙어 있어요');
   await first.locator('.commit-row__msg').click();
   await expect(first).toHaveAttribute('aria-pressed', 'false');
-  await expect(count).toContainText('커밋 1건이 붙어 있습니다');
+  await expect(count).toContainText('커밋 1개가 붙어 있어요');
   await search.fill(commits[0].sha.slice(0, 7));
   await expect(dialog.locator('button.commit-row')).toHaveCount(1);
   await first.focus();
   await page.keyboard.press('Space');
   await expect(first).toHaveAttribute('aria-pressed', 'true');
-  await expect(count).toContainText('커밋 2건이 붙어 있습니다');
+  await expect(count).toContainText('커밋 2개가 붙어 있어요');
   const firstChip = dialog.getByRole('button', { name: `${commits[0].sha.slice(0, 7)} ${commits[0].message.slice(0, 18)} ✕`, exact: true });
   await firstChip.click();
   await expect(first).toHaveAttribute('aria-pressed', 'false');
-  await expect(count).toContainText('커밋 1건이 붙어 있습니다');
+  await expect(count).toContainText('커밋 1개가 붙어 있어요');
   await first.click();
-  await expect(count).toContainText('커밋 2건이 붙어 있습니다');
+  await expect(count).toContainText('커밋 2개가 붙어 있어요');
   await dialog.getByRole('textbox', { name: '후보 이름' }).fill('커밋 선택 검증');
-  await dialog.getByRole('textbox', { name: '무엇을 한 작업인가요' }).fill('검색과 키보드로 선택한 커밋을 첨부한다');
+  await dialog.getByRole('textbox', { name: '어떤 일을 했나요' }).fill('검색과 키보드로 선택한 커밋을 첨부한다');
   // Demo fetch is intercepted in the app; hold only this real submission to inspect its payload and pending UI.
   await page.evaluate(() => {
     const currentFetch = window.fetch;
@@ -105,9 +105,8 @@ test('commit picker Space and child clicks preserve exact selected SHAs through 
   ]);
   await page.evaluate(() => (window as typeof window & { releasePickerSubmission: () => void }).releasePickerSubmission());
   await expect(dialog).toHaveCount(0);
-  const saved = page.locator('.cand').filter({ has: page.getByRole('heading', { name: '커밋 선택 검증', exact: true }) });
-  await expect(saved.locator('.cand__meta')).toContainText('커밋 2개');
-  await expect(page.locator('.sticky-footer__text')).toContainText('0/8개 선택');
+  await expect(page.locator('.cand-tile__pick').filter({ hasText: '커밋 선택 검증' })).toHaveAttribute('aria-pressed', 'true'); // 직접 추가한 후보는 바로 골라 둔다
+  await expect(page.locator('.sticky-footer__text')).toContainText('1개 골랐어요');
 });
 
 test('320px picker wraps long messages for commits that have no existing candidate', async ({ page }) => {
@@ -139,5 +138,5 @@ test('320px picker wraps long messages for commits that have no existing candida
   await first.focus();
   await page.keyboard.press('Space');
   await expect(first).toHaveAttribute('aria-pressed', 'true');
-  await expect(dialog.locator('.modal__foot-text')).toContainText('커밋 1건이 붙어 있습니다');
+  await expect(dialog.locator('.modal__foot-text')).toContainText('커밋 1개가 붙어 있어요');
 });

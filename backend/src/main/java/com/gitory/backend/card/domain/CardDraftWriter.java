@@ -64,7 +64,7 @@ public class CardDraftWriter {
     /**
      * 칸마다 AI 문장을 근거 커밋과 함께, 비운 칸은 비운 이유를, 확인이 필요한 칸은 그 이유를 저장한다
      * 시간이 모자라 비운 칸이 있으면 카드를 일부만 만든 카드로 표시하고 true 를 돌려준다
-     * 네 칸이 확인 필요 없이 모두 찼으면 사용자가 확정을 누르지 않아도 바로 쓰이도록 확정한다
+     * 상황·행동이 차고 확인 필요 칸이 없으면(시간 초과로 일부만 만든 카드는 제외) 사용자가 확정을 누르지 않아도 바로 쓰이도록 확정한다
      */
     public boolean writeStar(Long cardId, StarDraft draft, Map<String, Long> commitIdsBySha) {
 
@@ -96,7 +96,7 @@ public class CardDraftWriter {
         if (timedOut) {
             card.markGenerationPartial();
         }
-        themeSuggester.settle(card, reader.read(cardId, card.getCurrentVersion()));
+        themeSuggester.settleInDraftJob(card, reader.read(cardId, card.getCurrentVersion()));
 
         return timedOut;
 

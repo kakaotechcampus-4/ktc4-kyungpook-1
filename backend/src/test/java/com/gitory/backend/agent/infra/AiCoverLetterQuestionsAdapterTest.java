@@ -29,12 +29,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AiCoverLetterQuestionsAdapterTest {
 
     private static final CoverLetterQuestionsRequest REQUEST = new CoverLetterQuestionsRequest(7L, "백엔드 개발", null,
+            List.of("METICULOUS"),
             List.of(new CoverLetterQuestionsRequest.Question(1, "협업 경험을 쓰세요", 700, "COLLABORATION",
                             new CoverLetterQuestionsRequest.CardDetail(11L, "배포 시간 단축", "TECH", "grow22/gitory",
                                     List.of(new CoverLetterQuestionsRequest.Statement("A", "빌드를 병렬로 돌렸다"))),
                             null,
                             List.of(new CoverLetterQuestionsRequest.KnownAnswer("LEARNING", "작게 나눠 배포하게 됐다", 11L))),
-                    new CoverLetterQuestionsRequest.Question(2, "실패 경험을 쓰세요", 500, null, null, null, List.of())));
+                    new CoverLetterQuestionsRequest.Question(2, "실패 경험을 쓰세요", 500, null, null, null, List.of())),
+            null);
 
     private final ObjectMapper mapper = JsonMapper.builder().build();
 
@@ -79,6 +81,8 @@ class AiCoverLetterQuestionsAdapterTest {
         JsonNode sent = mapper.readTree(requestBody);
         JsonNode first = sent.path("questions").get(0);
         assertThat(requestPath).isEqualTo("/internal/cover-letter-questions");
+        assertThat(sent.path("strengths").get(0).asString()).isEqualTo("METICULOUS");
+        assertThat(sent.has("posting")).isFalse();
         assertThat(sent.path("cover_letter_id").asLong()).isEqualTo(7L);
         assertThat(first.path("question_theme").asString()).isEqualTo("COLLABORATION");
         assertThat(first.path("primary_card").path("statements").get(0).path("star_slot").asString()).isEqualTo("A");
@@ -94,8 +98,9 @@ class AiCoverLetterQuestionsAdapterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"missingQuestion", "swappedQuestions", "unknownItem", "unknownRequiredItem",
-            "sameItemTwice", "fiveAsks", "blankQuestion", "threeTemplates", "blankTemplate", "templatesNotArray"})
-    @DisplayName("문항이 빠지거나 순서가 다르거나, 모르는 항목·같은 항목을 묻거나, 4개를 넘게 묻거나, 빈 질문이 오거나, 빈칸 틀이 2개를 넘거나 비었거나 목록이 아닌 응답은 다시 해도 같은 이상 응답이다")
+            "sameItemTwice", "fiveAsks", "blankQuestion", "threeTemplates", "blankTemplate", "templatesNotArray",
+            "memoUsableNotBoolean"})
+    @DisplayName("문항이 빠지거나 순서가 다르거나, 모르는 항목·같은 항목을 묻거나, 4개를 넘게 묻거나, 빈 질문이 오거나, 빈칸 틀이 2개를 넘거나 비었거나 목록이 아니거나, 지원 이유 판정이 참·거짓이 아닌 응답은 다시 해도 같은 이상 응답이다")
     void rejectsResponsesOutsideTheContract(String broken) {
 
         ObjectNode data = validData();
@@ -116,6 +121,7 @@ class AiCoverLetterQuestionsAdapterTest {
                     .add("___ 때문이었다").add("___ 이 달라졌다").add("___ 을 했다");
             case "blankTemplate" -> ((ObjectNode) first.withArray("asks").get(0)).putArray("templates").add(" ");
             case "templatesNotArray" -> ((ObjectNode) first.withArray("asks").get(0)).put("templates", "___ 때문이었다");
+            case "memoUsableNotBoolean" -> data.put("memo_usable", "false");
             default -> throw new IllegalArgumentException(broken);
         }
         responseBody = success(data);
@@ -158,6 +164,22 @@ class AiCoverLetterQuestionsAdapterTest {
 
         assertThat(result.questions().get(0).asks()).extracting(CoverLetterQuestions.Ask::templates).containsExactly(
                 List.of("빌드 캐시를 나눈 이유는 ___ 때문이었다", "___ 방법도 생각했지만 ___ 때문에 정했다"), List.of());
+
+    }
+
+    @Test
+    @DisplayName("지원 이유 판정과 그 까닭을 받아 돌려주고, 판정 칸이 없는 응답은 판정하지 않은 것으로 본다")
+    void readsMemoJudgementAndTreatsMissingAsNotJudged() {
+
+        CoverLetterQuestions withoutJudgement = adapter().ask(REQUEST);
+        responseBody = success(validData().put("memo_usable", false).put("memo_problem", "지원 이유로 읽히지 않는 글"));
+
+        CoverLetterQuestions judged = adapter().ask(REQUEST);
+
+        assertThat(withoutJudgement.memoUsable()).isNull();
+        assertThat(withoutJudgement.memoProblem()).isNull();
+        assertThat(judged.memoUsable()).isFalse();
+        assertThat(judged.memoProblem()).isEqualTo("지원 이유로 읽히지 않는 글");
 
     }
 

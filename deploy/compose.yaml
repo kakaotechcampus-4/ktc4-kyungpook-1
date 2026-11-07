@@ -1,4 +1,4 @@
-# 운영 구성: 단일 VM 에 서비스 6개 (docs/DEPLOYMENT.md 4절).
+# 운영 구성: 단일 VM 에 서비스 6개 (docs/DEPLOYMENT.md 「처음 배포」 절).
 #   cp .env.example .env   # 값 채우기
 #   docker compose up -d --build
 #
@@ -6,7 +6,7 @@
 # 특히 ai 는 X-GitHub-Token 을 받으므로 포트를 열지 않는다.
 name: gitory
 
-# 컨테이너 로그를 CloudWatch 로그 그룹 /gitory 로 보낸다 (docs/DEPLOYMENT.md 7절).
+# 컨테이너 로그를 CloudWatch 로그 그룹 /gitory 로 보낸다 (docs/DEPLOYMENT.md 「로그 보관·에러 경보」·「장애 확인」 절).
 # EC2 인스턴스 역할(CloudWatchAgentServerPolicy)로 보내므로 키를 두지 않는다. 스트림 이름은 컨테이너 이름이다.
 # non-blocking: CloudWatch 가 느려도 서비스가 로그 쓰기에서 멈추지 않는다(버퍼가 차면 그 로그는 버린다).
 # docker compose logs 는 Docker 의 이중 로깅으로 그대로 된다.
@@ -129,10 +129,23 @@ services:
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-false}
       # 매일 새벽 공고 가져오기 → 조건 뽑기 → AI 색인 보내기 (application.yml gitory.matching.sync)
       MATCHING_SYNC_ENABLED: ${MATCHING_SYNC_ENABLED:-false}
+      # 공고 가져오기가 끝난 뒤 새로 올라온 공고 중 확정 카드와 잘 맞는 곳을 알림으로 남긴다 (application.yml gitory.matching.alert)
+      MATCHING_ALERT_ENABLED: ${MATCHING_ALERT_ENABLED:-false}
+      # 인적사항에서 수신을 켠 사용자에게 확인 메일과 새 공고 메일을 보낸다 (application.yml gitory.mail). MAIL_USERNAME 은 보내는 Gmail 주소, MAIL_PASSWORD 는 앱 비밀번호다
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      GITORY_APP_BASE_URL: ${GITORY_APP_BASE_URL:-http://localhost:5173}
+      # 홈 한 줄 명령 API 와 워커를 연다. 화면의 VITE_ASSISTANT_ENABLED 와 AI 의 LLM 설정을 확인한 뒤 true 로 켠다
+      ASSISTANT_ENABLED: ${ASSISTANT_ENABLED:-false}
       # 켜면 /api/swagger-ui.html 에서 API 문서를 연다. 문서만 열리고 API 를 부르려면 여전히 로그인·CSRF 가 필요하다
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
       # 로켓펀치 Open API 키. 비어 있으면 로켓펀치 공고만 건너뛴다
       ROCKETPUNCH_API_KEY: ${ROCKETPUNCH_API_KEY:-}
+      # 서버나 AI 문제로 Job 이 실패하면 이 Discord 웹훅으로 한 줄을 보내며, 비어 있으면 보내지 않는다
+      GITORY_ALERT_WEBHOOK_URL: ${GITORY_ALERT_WEBHOOK_URL:-}
     healthcheck:
       # readiness 그룹은 db 연결까지 본다. ai 는 넣지 않는다 (application.yml management 절)
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health/readiness"]

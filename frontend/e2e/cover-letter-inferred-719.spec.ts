@@ -1,0 +1,38 @@
+import { expect, test } from '@playwright/test';
+import { loginAsDemo, runToDraft } from './helpers';
+
+/**
+ * #719 ② 짐작 표시 — 목 서버가 배운 점 답이 없는 문항에 짐작 문장 하나를 넣는다.
+ * 고치는 화면에서 그 문장은 노란 형광펜이고, 확인 · 고치기 · 빼기는 옆 패널의 짐작 확인 탭(#727)에 있으며 44px 이상이다.
+ * 확인하면 형광펜과 그 줄이 사라지고 종이 아래 칩이 '짐작 없음'으로 바뀐다.
+ */
+test('짐작 문장은 노란 형광펜으로 보이고, 짐작 확인 탭에서 확인하면 표시가 사라진다', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.clock.install();
+  await page.goto('/cover-letters/new');
+  await page.getByPlaceholder('예: 백엔드 개발').fill('백엔드 개발');
+  await page.getByLabel('1번 문항', { exact: true }).fill('팀으로 함께 성과를 낸 경험을 적어 주세요');
+  await page.getByRole('button', { name: '초안 쓰기', exact: true }).click();
+  // 카드 고르기 → 재료 확인 → 초안 쓰기를 화면이 멈추지 않고 이어 가므로 누를 것 없이 시간만 흘려 보낸다
+  await runToDraft(page);
+
+  const mark = page.locator('.pedit__mirror mark.phl--inferred');
+  await expect(mark).toHaveCount(1);
+  await expect(page.locator('[data-note-card]')).toHaveCount(0);
+  const background = await mark.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(background).not.toBe('rgba(0, 0, 0, 0)');
+  await expect(page.getByRole('button', { name: '짐작 1' })).toBeEnabled();
+
+  await page.getByRole('tab', { name: /짐작 확인/ }).click();
+  const row = page.locator('.clp-inf');
+  await expect(row).toContainText('짐작해서 쓴 문장이에요');
+  for (const name of ['확인', '고치기', '빼기']) {
+    const box = await row.getByRole('button', { name, exact: true }).boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+
+  await row.getByRole('button', { name: '확인', exact: true }).click();
+  await expect(mark).toHaveCount(0);
+  await expect(row).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '짐작 없음' })).toBeVisible();
+});

@@ -40,12 +40,16 @@ export async function installContractFixture(page: Page, options: { card?: Card;
       github: { connected: true, scopes: ['read:user'], connectedAt: timestamp, lastCollectedAt: timestamp },
       stats: { confirmedCards: 0, analyzedRepos: 0, interviewTurns: 0, remainingCandidates: 0 },
     });
-    if (method === 'GET' && path === '/repos') return ok(route, [{
+    // 저장 목록(/repos/saved)은 최신 목록이 오기 전 자리표시라 같은 레포를 준다 — 화면이 먼저 부르는 쪽이 이것이다
+    if (method === 'GET' && (path === '/repos' || path === '/repos/saved')) return ok(route, [{
       id: REPO_ID, owner: 'contract-user', name: 'server-repo', contribution: { mine: 1, team: 1, ratio: 1, level: 'MAJOR' },
       prCount: 0, reviewCount: 0, language: null, activeFrom: '2026-01-01', activeTo: '2026-10-12',
       lastAnalyzedAt: null, candidateCount: null, cardCount: 0, recommended: false,
     }]);
     if (method === 'GET' && path === '/jobs' && url.search === '?active=true') return ok(route, { jobs: [] });
+    if (method === 'GET' && path === '/notifications') return ok(route, []); // 알림 자리가 읽는다 — 이 계약 시험에는 알림이 없다
+    if (method === 'GET' && path === '/activities') return ok(route, []); // 활동(#477) 목록 — 이 계약 시험에는 활동이 없다
+    if (method === 'GET' && path === '/cover-letters') return ok(route, []); // 홈이 자소서 목록을 읽는다 — 이 계약 시험에는 자소서가 없다
     if (method === 'GET' && path === '/cards' && !url.search) return ok(route, card ? [{
       id: card.id, title: card.title, kind: card.kind, status: card.status, versionNo: card.version.versionNo,
       star: { S: card.version.situation ? 'FILLED' : 'EMPTY', T: card.version.task ? 'FILLED' : 'EMPTY', A: card.version.action ? 'FILLED' : 'EMPTY', R: card.version.result ? 'FILLED' : 'EMPTY' },
@@ -74,6 +78,8 @@ export async function installContractFixture(page: Page, options: { card?: Card;
       startedAt: timestamp, updatedAt: timestamp, finishedAt: timestamp,
       result: { cardIds: [card!.id], verdict: 'PARTIAL', reasons: [] }, pollAfterMs: 1000,
     });
+    if (method === 'POST' && path === '/repo-updates/check') return ok(route, { queued: 0 }); // 홈이 새 활동 확인을 부른다
+    if (method === 'GET' && path === '/repo-updates') return ok(route, []); // 서버가 다시 읽은 레포 알림 — 이 계약 시험에는 없다
     if (method === 'POST' && path === '/events') return route.fulfill({ status: 204 });
     unexpected.push(`${method} ${path}${url.search}`);
     return route.fulfill({ status: 501, json: { data: null, error: { code: 'UNEXPECTED_CONTRACT_REQUEST', message: 'No fixture for this request' } } });

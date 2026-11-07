@@ -187,19 +187,35 @@ class InterviewPolishedDraftApiTest {
 
     }
 
-    @ParameterizedTest
-    @MethodSource("conflicts")
-    @DisplayName("결과가 정해진 질문은 409 INVALID_STATE, 확정된 카드는 409 CARD_CONFIRMED 이고 AI 를 부르지 않는다")
-    void closedTurnOrConfirmedCardIsConflict(String update, String code) throws Exception {
+    @Test
+    @DisplayName("결과가 정해진 질문은 409 INVALID_STATE 이고 AI 를 부르지 않는다")
+    void closedTurnIsConflict() throws Exception {
 
         Long cardId = cardWithOpenTurn();
-        jdbc.update(update, cardId);
+        jdbc.update("UPDATE interview_turn SET outcome = 'SKIPPED', answered_at = now() WHERE card_id = ?", cardId);
 
         polish("회의 시간이 줄었어요")
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value(code));
+                .andExpect(jsonPath("$.error.code").value("INVALID_STATE"));
 
         assertThat(AI.requests()).isEmpty();
+
+    }
+
+    @Test
+    @DisplayName("확정된 카드도 답 다듬기 미리 보기를 받고 카드는 확정 그대로다")
+    void confirmedCardGetsPolishedDraft() throws Exception {
+
+        Long cardId = cardWithOpenTurn();
+        jdbc.update("UPDATE card SET status = 'CONFIRMED', confirmed_at = now() WHERE id = ?", cardId);
+        AI.replyWith(request -> polished(request, "회의 시간을 줄였다."));
+
+        polish("회의 시간이 줄었어요")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.sentence").value("회의 시간을 줄였다."));
+
+        assertThat(jdbc.queryForObject("SELECT status FROM card WHERE id = ?", String.class, cardId))
+                .isEqualTo("CONFIRMED");
 
     }
 
@@ -249,16 +265,6 @@ class InterviewPolishedDraftApiTest {
                 Arguments.of(Named.of("공백뿐", "   ")),
                 Arguments.of(Named.of("1,001자", "가".repeat(1001))),
                 Arguments.of(Named.of("U+0000", "회의\u0000시간")));
-
-    }
-
-    static Stream<Arguments> conflicts() {
-
-        return Stream.of(
-                Arguments.of(Named.of("넘긴 질문",
-                        "UPDATE interview_turn SET outcome = 'SKIPPED', answered_at = now() WHERE card_id = ?"), "INVALID_STATE"),
-                Arguments.of(Named.of("확정된 카드",
-                        "UPDATE card SET status = 'CONFIRMED', confirmed_at = now() WHERE id = ?"), "CARD_CONFIRMED"));
 
     }
 

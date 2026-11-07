@@ -1,0 +1,32 @@
+/*
+ * 되묻기 오른쪽 패널의 대화 모양 — 말풍선과 입력 줄은 components/chat 이 그리고, 여기서는 이 패널에 맞는 배치만 정한다.
+ * 전역 규칙보다 늦게 실려서, 1100px 아래 분기를 덮어쓰지 않도록 넓은 화면 규칙에만 조건을 건다.
+ */
+.iv__head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.iv__title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
+.iv__title strong { font-size: 16px; line-height: 24px; font-weight: 700; color: var(--text-primary); }
+.iv__title span { font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+
+.iv__panel .chat-bub { font-size: 15px; }
+.iv__panel .iv__q { margin: 0; }
+.iv__panel .chat-tag--caution { border-color: transparent; background: var(--state-open-bg); color: var(--state-open-text); }
+.iv__saved { align-self: flex-end; margin: -4px 0 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+
+.iv__dock { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border-default); }
+.iv__sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+.iv__sub span { font-variant-numeric: tabular-nums; }
+/* 패널의 작은 버튼(카드로, 건너뛰기)도 13px 아래로 내려가지 않게 한다 */
+.iv__panel .btn--sm { font-size: 13px; }
+
+@media (min-width: 1101px) {
+  .iv { grid-template-columns: minmax(0, 1fr) 440px; }
+  /* 초점 테두리(밖으로 5px)가 스크롤 영역 가장자리에서 잘리지 않게, 안쪽 여백을 두고 같은 만큼 바깥으로 뺀다 */
+  .iv__thread { max-height: max(240px, calc(100vh - 430px)); overflow-y: auto; margin: -6px; padding: 6px; }
+}
+
+@media (max-width: 767px) {
+  /* iOS 는 16px 보다 작은 글 칸에 초점을 주면 화면을 확대한다 */
+  .iv__panel .chat-composer__input { font-size: 16px; }
+  /* 스크롤해서 보여 줄 때 아래 탭 막대에 입력 줄이 가리지 않게 띄운다 */
+  .iv__panel .chat-composer__input, .iv__panel .chat-composer__send { scroll-margin-block: 80px 180px; }
+}

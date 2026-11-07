@@ -3,12 +3,15 @@ package com.gitory.backend.agent.infra;
 import com.gitory.backend.agent.port.AgentUnavailableException;
 import com.gitory.backend.agent.port.StarConfidence;
 import com.gitory.backend.agent.port.StarDraft;
+import com.gitory.backend.agent.port.StarDraftListener;
 import com.gitory.backend.agent.port.StarDraftRequest;
 import com.gitory.backend.agent.port.StarEmptyReason;
 import com.gitory.backend.agent.port.StarEvidence;
 import com.gitory.backend.agent.port.StarEvidenceRef;
 import com.gitory.backend.agent.port.StarEvidenceSource;
+import com.gitory.backend.agent.port.StarIssueMaterial;
 import com.gitory.backend.agent.port.StarMaterialKind;
+import com.gitory.backend.agent.port.StarMaterials;
 import com.gitory.backend.agent.port.StarSlot;
 import com.gitory.backend.agent.port.StarSlotDraft;
 import com.gitory.backend.agent.port.StarSlotStatus;
@@ -41,6 +44,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -113,6 +117,54 @@ class AiStarDraftAdapterTest {
     }
 
     @Test
+    @DisplayName("listener 가 있으면 /internal/analysis/star/stream 으로 보내 칸 글과 단계를 받은 차례대로 넘기고, 초안은 스트리밍 없는 STAR 와 같게 읽는다")
+    void streamsSlotsAndStepsAndReadsSameDraft() {
+
+        List<Object> received = new ArrayList<>();
+        responseContentType = "application/x-ndjson";
+        responseBody = progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":\"로그인 세션이 사라졌다.\",\"done\":false}")
+                + progress("{\"kind\":\"STEP\",\"step\":{\"round\":0,\"actor\":\"MODEL\",\"kind\":\"DRAFT\",\"slot\":null}}")
+                + progress("{\"kind\":\"SLOT\",\"round\":1,\"slot\":\"A\",\"text\":\"\",\"done\":true}")
+                + "{\"type\":\"result\",\"status\":200,\"body\":" + success(draftData()) + "}\n";
+
+        StarDraft streamed = adapter.draft(request(), recorder(received));
+
+        assertThat(requestPath).isEqualTo(PATH + "/stream");
+        assertThat(received).containsExactly(
+                new SlotLine(0, StarSlot.S, "로그인 세션이 사라졌다.", false),
+                new StarStep(0, StarStepActor.MODEL, StarStepKind.DRAFT, null, null, null, null, null),
+                new SlotLine(1, StarSlot.A, "", true));
+        responseContentType = "application/json";
+        responseBody = success(draftData());
+        assertThat(streamed).isEqualTo(adapter.draft(request()));
+
+    }
+
+    @Test
+    @DisplayName("바퀴·칸·글·끝남 중 하나라도 모양이 틀린 칸 글 줄과 모르는 단계 줄은 버리고, 남은 줄과 초안은 그대로 받는다")
+    void dropsMalformedLinesAndKeepsTheDraft() {
+
+        List<Object> received = new ArrayList<>();
+        String longest = "가".repeat(400);
+        responseContentType = "application/x-ndjson";
+        responseBody = progress("{\"kind\":\"SLOT\",\"round\":-1,\"slot\":\"S\",\"text\":\"음수 바퀴\",\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":\"0\",\"slot\":\"S\",\"text\":\"글자 바퀴\",\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"X\",\"text\":\"모르는 칸\",\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":null,\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":\"" + "가".repeat(401) + "\",\"done\":false}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":\"끝남 없음\"}")
+                + progress("{\"kind\":\"STEP\",\"step\":{\"round\":0,\"actor\":\"MODEL\",\"kind\":\"GUESS\",\"slot\":null}}")
+                + progress("{\"kind\":\"SLOT\",\"round\":0,\"slot\":\"S\",\"text\":\"" + longest + "\",\"done\":true}")
+                + "{\"type\":\"result\",\"status\":200,\"body\":" + success(draftData()) + "}\n";
+
+        StarDraft streamed = adapter.draft(request(), recorder(received));
+
+        assertThat(received).containsExactly(new SlotLine(0, StarSlot.S, longest, true));
+        assertThat(streamed.title()).isEqualTo(TITLE);
+
+    }
+
+    @Test
     @DisplayName("STAR 경로로 diff 근거를 그대로 보내고 토큰은 싣지 않으며, 네 칸 초안을 돌려준다")
     void sendsEvidenceAndReturnsDraft() {
 
@@ -165,7 +217,7 @@ class AiStarDraftAdapterTest {
                 List.of("src/main/java/SessionConfig.java"));
         StarDraftRequest empty = request();
         adapter.draft(new StarDraftRequest(empty.candidateId(), empty.targetLogin(), empty.title(), empty.sourceType(),
-                empty.sourceRef(), List.of(withPaths, base), null));
+                empty.sourceRef(), List.of(withPaths, base), null, null));
 
         JsonNode evidence = MAPPER.readTree(requestBody).path("evidence");
         assertThat(evidence.path(0).path("changed_paths").get(0).asString()).isEqualTo("src/main/java/SessionConfig.java");
@@ -217,7 +269,7 @@ class AiStarDraftAdapterTest {
 
         StarDraftRequest base = request();
         adapter.draft(new StarDraftRequest(base.candidateId(), base.targetLogin(), base.title(), base.sourceType(),
-                base.sourceRef(), base.evidence(), "## 고민한 점 폴링을 골랐다"));
+                base.sourceRef(), base.evidence(), "## 고민한 점 폴링을 골랐다", null));
 
         assertThat(MAPPER.readTree(requestBody).path("pull_request_body").asString()).isEqualTo("## 고민한 점 폴링을 골랐다");
 
@@ -264,6 +316,24 @@ class AiStarDraftAdapterTest {
         }));
 
         assertThat(adapter.draft(request()).steps()).hasSize(60).last().extracting(StarStep::code).isEqualTo("C59");
+
+    }
+
+    @Test
+    @DisplayName("자료가 있으면 materials 로 이슈 번호·제목·본문과 리뷰·카드 주인 답 댓글을 싣는다(없으면 키를 싣지 않는 것은 위 시험의 JSON 이 확인한다)")
+    void sendsMaterialsWhenPresent() {
+
+        StarDraftRequest base = request();
+        adapter.draft(new StarDraftRequest(base.candidateId(), base.targetLogin(), base.title(), base.sourceType(),
+                base.sourceRef(), base.evidence(), null, new StarMaterials(
+                List.of(new StarIssueMaterial(98, "세션 만료", "30분 뒤 풀림")), List.of("남의 리뷰"), List.of("내 답"))));
+
+        JsonNode materials = MAPPER.readTree(requestBody).path("materials");
+        assertThat(materials.path("issues").get(0).path("number").asInt()).isEqualTo(98);
+        assertThat(materials.path("issues").get(0).path("title").asString()).isEqualTo("세션 만료");
+        assertThat(materials.path("issues").get(0).path("body").asString()).isEqualTo("30분 뒤 풀림");
+        assertThat(materials.path("reviews").get(0).asString()).isEqualTo("남의 리뷰");
+        assertThat(materials.path("owner_replies").get(0).asString()).isEqualTo("내 답");
 
     }
 
@@ -497,6 +567,36 @@ class AiStarDraftAdapterTest {
 
     }
 
+    private static String progress(String item) {
+
+        return "{\"type\":\"progress\",\"step\":\"STAR\",\"done\":0,\"total\":null,\"item\":" + item + "}\n";
+
+    }
+
+    private static StarDraftListener recorder(List<Object> received) {
+
+        return new StarDraftListener() {
+
+            @Override
+            public void slot(int round, StarSlot slot, String text, boolean done) {
+
+                received.add(new SlotLine(round, slot, text, done));
+
+            }
+
+            @Override
+            public void step(StarStep step) {
+
+                received.add(step);
+
+            }
+        };
+
+    }
+
+    private record SlotLine(int round, StarSlot slot, String text, boolean done) {
+    }
+
     private static String success(ObjectNode data) {
 
         ObjectNode envelope = MAPPER.createObjectNode().put("success", true);
@@ -522,7 +622,7 @@ class AiStarDraftAdapterTest {
 
         return new StarDraftRequest("cand-1", "grow22", TITLE, StarSourceType.PR, "#17",
                 List.of(new StarEvidence(SHA, MESSAGE, "grow22", "+71/-0", REQUEST_TEXT, StarEvidenceSource.DIFF,
-                        List.of("Spring Session JDBC"), URL, List.of())), null);
+                        List.of("Spring Session JDBC"), URL, List.of())), null, null);
 
     }
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Generic, Literal, Optional, TypeVar
 
@@ -107,6 +107,7 @@ class StructuredLLMClient:
         max_completion_tokens: int,
         timeout_seconds: Optional[float] = None,
         on_partial: Optional[Callable[[dict[str, Any]], None]] = None,
+        images: Sequence[str] = (),
     ) -> StructuredCallResult[OutputT]:
         """입력은 지시가 아닌 데이터로 격리하기 위해 JSON 문자열로만 전달한다.
 
@@ -114,10 +115,11 @@ class StructuredLLMClient:
         SDK 재시도도 하지 않는다. 재시도까지 하면 마감을 넘기기 때문이다.
         실패한 호출도 요청의 LLM 호출 수에 세고, SDK 가 안에서 다시 보낸 요청은 따로 세지 않는다.
         ``on_partial`` 을 주면 스트리밍으로 받는 동안 지금까지 받은 출력을 부분 파싱한 dict 로 여러 번 부른다.
+        ``images`` 는 JSON 입력 뒤에 붙일 이미지 data URL 이다(공고 본문 이미지 글 옮기기).
         """
         try:
             result = self._call(
-                system_prompt, payload, output_model, max_completion_tokens, timeout_seconds, on_partial
+                system_prompt, payload, output_model, max_completion_tokens, timeout_seconds, on_partial, images
             )
         except Exception:
             record_llm_call(self._settings.model, None, None)
@@ -133,6 +135,7 @@ class StructuredLLMClient:
         max_completion_tokens: int,
         timeout_seconds: Optional[float],
         on_partial: Optional[Callable[[dict[str, Any]], None]] = None,
+        images: Sequence[str] = (),
     ) -> StructuredCallResult[OutputT]:
         started_at = time.perf_counter()
         client = (
@@ -146,7 +149,7 @@ class StructuredLLMClient:
                 model=self._settings.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                    {"role": "user", "content": _user_content(payload, images)},
                 ],
                 response_format=output_model,
                 max_completion_tokens=max_completion_tokens,
@@ -196,6 +199,15 @@ class StructuredLLMClient:
             completion_tokens=getattr(usage, "completion_tokens", None),
             latency_ms=round((time.perf_counter() - started_at) * 1000),
         )
+
+
+def _user_content(payload: dict[str, Any], images: Sequence[str]) -> str | list[dict[str, Any]]:
+    text = json.dumps(payload, ensure_ascii=False)
+    if not images:
+        return text
+    return [{"type": "text", "text": text}] + [
+        {"type": "image_url", "image_url": {"url": url, "detail": "high"}} for url in images
+    ]
 
 
 def _report_partial(on_partial: Callable[[dict[str, Any]], None], parsed: dict[str, Any]) -> None:

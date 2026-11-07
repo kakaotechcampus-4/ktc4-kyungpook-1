@@ -1,5 +1,7 @@
 package com.gitory.backend.agent.port;
 
+import java.util.function.Consumer;
+
 public interface CoverLetterAssignmentPort {
 
     /**
@@ -7,4 +9,12 @@ public interface CoverLetterAssignmentPort {
      * AI 를 부르지 못했거나 응답이 계약과 다르면 AgentUnavailableException 을 던진다
      */
     CoverLetterAssignment assign(CoverLetterAssignmentRequest request);
+
+    /** {@link #assign(CoverLetterAssignmentRequest)} 와 같고, AI 가 단계를 거칠 때마다 onStep 으로 받는다 */
+    default CoverLetterAssignment assign(CoverLetterAssignmentRequest request,
+                                         Consumer<CoverLetterAssignment.Step> onStep) {
+
+        return assign(request);
+
+    }
 }

@@ -1,0 +1,63 @@
+import { Link } from 'react-router-dom';
+import { FolderPlus } from 'lucide-react';
+import { techLabels } from '@/lib/cardTags';
+import { deckLayers, folderCounts, folderLabel, folderOwnerLine, folderTitle, reviewCount, type CardFolder } from '@/lib/cardFolders';
+import './CardFolders.css';
+
+/**
+ * 폴더 앞판(카드 묶음). 맨 위 카드 한 장이 보이고, 그 뒤로 카드가 겹쳐 쌓인 모양이다 — 겹친 수는 장 수를 따른다(deckLayers).
+ * 폴더 전체가 링크 하나라 키보드로 열고, 이름에는 소유자·이름·장 수가 모두 들어간다(folderLabel).
+ * 레포 폴더는 이름 아래에 프로젝트 설명 두 줄 자리를 늘 둔다 — 설명이 없어도 타일 높이가 같다.
+ * 폴더 종류는 첫 줄(소유자 · '활동, 종류' · 직접 쓴 카드)이 말하고, 오른쪽 위에는 장 수와 아직 확정하지 않은 카드 수만 둔다.
+ * 장식(뒤에 겹친 카드)은 접근성 트리에서 뺀다. 숫자는 서버가 준 카드를 센 값이다.
+ */
+export function FolderTile({ folder }: { folder: CardFolder }) {
+  const counts = folderCounts(folder);
+  const review = reviewCount(folder);
+  return (
+    <Link to={folder.to} className="folder" aria-label={folderLabel(folder)} data-deck={deckLayers(folder.cards.length)} data-empty={folder.cards.length === 0 || undefined}>
+      <span className="folder__back" aria-hidden />
+      <span className="folder__front">
+        <span className="folder__head">
+          <span className="folder__owner">{folderOwnerLine(folder)}</span>
+          <span className="folder__meta">
+            {review > 0 && <span className="folder__review">확인할 카드 {review}장</span>}
+            {folder.cards.length > 0 && <span className="folder__count"><span className="folder__count-num">{folder.cards.length}</span>장</span>}
+          </span>
+        </span>
+        <span className="folder__name">{folderTitle(folder)}</span>
+        {folder.kind === 'repo' && <span className="folder__desc">{folder.description}</span>}
+        {counts && <span className="folder__note">{counts}</span>}
+        <span className="folder__foot">
+          <span className="folder__tags">{folder.techs.map((tech) => <span key={tech} className="folder__tag">{techLabels[tech] ?? tech}</span>)}</span>
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * 폴더 보기. `folders` 는 lib/cardFolders 가 만든 것이다. 활동을 만드는 길도 여기서 연다 — 활동 고치기·삭제는 활동 폴더 안에 있고, 카드는 폴더 안에서 만든다(#773).
+ * 활동 목록을 못 읽었으면(`activitiesFailed`) 카드에 적힌 활동만 폴더가 되므로 카드가 없는 활동은 빠진다 — 그 사실을 알리고 다시 불러오게 한다.
+ */
+export function CardFolders({ folders, activitiesFailed, retryActivities }: { folders: CardFolder[]; activitiesFailed?: boolean; retryActivities?: () => void }) {
+  return (
+    <section className="folders" aria-label="레포와 활동 폴더">
+      <div className="folders__bar">
+        <span className="t-12 c-2">폴더 {folders.length}개</span>
+        <div className="right">
+          <Link to="/activities/new" className="btn btn--ghost btn--sm"><FolderPlus size={14} aria-hidden />활동 만들기</Link>
+        </div>
+      </div>
+      {activitiesFailed && (
+        <p className="folders__notice t-12 c-2">
+          <span role="status">활동 목록을 불러오지 못했어요. 카드가 없는 활동은 보이지 않을 수 있어요.</span>
+          {retryActivities && <button type="button" className="btn btn--text btn--sm" onClick={retryActivities}>다시 불러오기</button>}
+        </p>
+      )}
+      <ul className="folder-grid">
+        {folders.map((folder) => <li key={folder.key}><FolderTile folder={folder} /></li>)}
+      </ul>
+    </section>
+  );
+}

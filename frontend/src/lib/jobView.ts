@@ -27,6 +27,10 @@ export const stepBadge = (s: JobStep, j?: Pick<Job, 'state'>) =>
     : s.state === 'SKIPPED' ? '해당 없음' : stepView(s) === 'DONE' ? '완료' : stepView(s) === 'NOW' ? '진행 중' : '대기';
 
 /**
+ * 작업 상태 화면의 제목. 이 화면은 레포 정리(ANALYZE)와 카드 초안 쓰기(DRAFT)를 함께 보여 주므로 "정리 실패"라고만 쓰면 초안에는 틀린다.
+ * 그렇다고 둘을 묶는 말("작업")은 아직 정해지지 않았다(용어집 6절 1번) — 그래서 유형 이름 뒤에 상태를 붙인다. 부분 성공은 "일부 완료".
+ */
+/**
  * 진행 화면이 "멈춘 게 아니다"를 보여 줄 두 값. 둘 다 사실이다 — 총량을 모르는 진행률을 지어내지 않는다.
  * elapsedSec = 서버가 기록한 시작 시각부터 지금까지, sinceCheckSec = 마지막으로 서버에서 상태를 받아 온 뒤로.
  * 서버·브라우저 시계가 어긋나도 음수가 되지 않게 0 으로 자른다.
@@ -45,4 +49,23 @@ export const jobActivity = (job: Pick<Job, 'startedAt'>, checkedAt: number, now:
 export const pollInterval = (job: Job | undefined, floorMs = 500): number | false => {
   if (!job || isTerminal(job.state)) return false;
   return Math.max(floorMs, job.pollAfterMs);
+};
+
+export type TimelineView = 'done' | 'now' | 'wait' | 'skip' | 'halt' | 'cap';
+
+/**
+ * 타임라인 점 하나의 모양(#789). 멈춘 작업(FAILED · CANCELED)에서 읽던 단계는 halt 이고 뒤 단계는 그냥 wait 다.
+ * 일부 결과(SUCCEEDED + partial)에서 총량보다 적게 읽고 끝난 단계와 서버가 RUNNING 으로 남긴 단계는 cap(상한에서 멈춘 자리) —
+ * 끝난 화면에 진행 중인 점이 남지 않게. 정상 완료에서는 done 과 total 이 달라도 cap 으로 보지 않는다.
+ */
+export const timelineView = (s: JobStep, j?: Pick<Job, 'state' | 'partial'>): TimelineView => {
+  if (isHalted(j)) {
+    if (s.state === 'RUNNING') return 'halt';
+    if (s.state === 'QUEUED') return 'wait';
+  }
+  const partial = j?.state === 'SUCCEEDED' && j.partial;
+  if (partial && s.state === 'RUNNING') return 'cap';
+  if (s.state === 'SKIPPED') return 'skip';
+  if (s.state === 'DONE') return partial && s.total != null && s.done < s.total ? 'cap' : 'done';
+  return s.state === 'RUNNING' ? 'now' : 'wait';
 };

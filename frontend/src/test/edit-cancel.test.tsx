@@ -25,7 +25,7 @@ const ack = (id: string, fields: object) => ({ ...fields, cardId: id, savedAt: c
 /** 입력하고 자동저장 디바운스가 지나 서버에 한 번 반영된 상태까지 만든다. */
 async function typeAndAutosave(text: string) {
   vi.useFakeTimers();
-  fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: text } });
+  fireEvent.change(screen.getByLabelText('상황'), { target: { value: text } });
   await act(async () => { await vi.advanceTimersByTimeAsync(CONFIG.DRAFT_AUTOSAVE_MS + 1); });
   vi.useRealTimers();
 }
@@ -78,7 +78,7 @@ describe('편집 취소', () => {
     await typeAndAutosave('Shared text');
     expect(save).toHaveBeenCalledTimes(1);
     await act(async () => { await router.navigate(`/cards/${other.id}?mode=edit`); });
-    await waitFor(() => expect(screen.getByLabelText('상황 (Situation)')).toHaveValue('Shared text'));
+    await waitFor(() => expect(screen.getByLabelText('상황')).toHaveValue('Shared text'));
     fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(router.state.location.search).toBe(''));
     expect(save).toHaveBeenCalledTimes(1);
@@ -135,15 +135,15 @@ describe('편집 취소', () => {
   it('자동저장 전에 바로 취소하면 고친 내용이 서버에 아예 나가지 않는다', async () => {
     const save = vi.spyOn(endpoints, 'saveDraft').mockImplementation(async (id, fields) => ack(id, fields));
     const { done } = mountEdit();
-    fireEvent.change(screen.getByLabelText('상황 (Situation)'), { target: { value: 'Typed right before cancel' } });
+    fireEvent.change(screen.getByLabelText('상황'), { target: { value: 'Typed right before cancel' } });
     fireEvent.click(screen.getByRole('button', { name: '이번 수정 되돌리기' }));
     await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
     expect(save.mock.calls.map(([, fields]) => fields.situation)).not.toContain('Typed right before cancel');
   });
 });
 
-describe('마스킹 이탈 가드', () => {
-  it('마스킹 저장 요청이 진행되는 동안에도 이탈과 새로고침을 막는다', async () => {
+describe('가리기 이탈 가드', () => {
+  it('가리기 저장 요청이 진행되는 동안에도 이탈과 새로고침을 막는다', async () => {
     let release!: (value: Card) => void;
     const mask = vi.spyOn(endpoints, 'mask').mockImplementation(() => new Promise<Card>((resolve) => { release = resolve; }));
     const client = newClient();
@@ -154,7 +154,7 @@ describe('마스킹 이탈 가드', () => {
     ], { initialEntries: ['/mask'] });
     render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
     fireEvent.change(screen.getAllByLabelText('원문')[0], { target: { value: '민수' } });
-    fireEvent.click(screen.getByRole('button', { name: '마스킹 적용' }));
+    fireEvent.click(screen.getByRole('button', { name: '가리기 적용' }));
     await waitFor(() => expect(mask).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('link', { name: '나가기' }));
     await screen.findByRole('dialog');

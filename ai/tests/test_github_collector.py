@@ -219,6 +219,39 @@ def test_collects_commit_diff_pull_review_and_issue() -> None:
     assert result.head_sha == "abc1234567890"
 
 
+def test_pull_request_body_keeps_3000_chars_while_review_and_issue_bodies_keep_1000() -> None:
+    """PR 본문은 카드 초안이 '왜' 를 찾는 재료라 3,000자까지 남기고, 리뷰·줄 댓글·이슈 본문은 1,000자에서 자른다."""
+    long_paths = {
+        "/repos/grow22/gitory/pulls": "가" * 3_500,
+        "/repos/grow22/gitory/pulls/17/reviews": "나" * 1_500,
+        "/repos/grow22/gitory/pulls/17/comments": "다" * 1_500,
+        "/repos/grow22/gitory/issues": "라" * 1_500,
+    }
+
+    def long_bodies(request: httpx.Request) -> httpx.Response:
+        response = _success_handler(request)
+        if request.url.path not in long_paths:
+            return response
+        items = response.json()
+        for item in items:
+            item["body"] = long_paths[request.url.path]
+        return httpx.Response(200, json=items)
+
+    collector = GithubCollector(
+        base_url="https://api.github.test",
+        transport=httpx.MockTransport(long_bodies),
+    )
+
+    result = asyncio.run(collector.collect(_request(), "live-secret")).result
+
+    pull = result.pull_requests[0]
+    assert (len(pull.body_excerpt), pull.body_truncated) == (3_000, True)
+    assert len(pull.reviews[0].body_excerpt) == 1_000
+    assert len(pull.reviews[0].comments[0].body_excerpt) == 1_000
+    assert len(result.issues[0].body_excerpt) == 1_000
+
+
+
 def test_collect_reports_pull_requests_then_commits_progress() -> None:
     """PR 을 하나 읽을 때마다 번호·제목·리뷰 수를, 그다음 커밋 상세를 하나 받을 때마다 커밋 값을 실어 알리고 PR 이 먼저다."""
     collector = GithubCollector(
@@ -1305,3 +1338,123 @@ def test_rejected_token_while_reading_together_fails_the_whole_collection() -> N
 
     requested = {path.removeprefix(COMMIT_DETAIL_PREFIX) for path in calls if path.startswith(COMMIT_DETAIL_PREFIX)}
     assert requested.isdisjoint(shas[4:])
+
+
+# 커밋 목록 값으로 내용을 받을지 가르는 규칙(#699)
+
+
+def _listed(sha: str, *, login: str | None = "grow22", name: str = "Grow", parents: int = 1, author_type: str = "User") -> dict:
+    """GitHub 커밋 목록 한 줄 — 상세와 같은 모양에서 stats·files 만 없다."""
+    return {
+        "sha": sha,
+        "author": None if login is None else {"login": login, "type": author_type},
+        "commit": {
+            "message": f"feat: {sha} #12",
+            "author": {"name": name, "email": f"{(login or name).lower()}@mail.test", "date": "2026-09-20T09:00:00Z"},
+        },
+        "parents": [{"sha": f"p{index}"} for index in range(parents)],
+    }
+
+
+LISTED = [
+    _listed("own0001"),
+    _listed("team001", login="teammate", name="Kim"),
+    _listed("merge01", parents=2),
+    _listed("bot0001", login="dependabot[bot]", name="dependabot", author_type="Bot"),
+    _listed("maybe01", login="grow-work", name="grow22"),
+    _listed("nolog01", login=None, name="Lee"),
+    _listed("lock001"),
+]
+
+
+def _collect_listed(
+    items: list[dict], events: list[tuple] | None = None, details: dict[str, dict] | None = None
+) -> tuple[object, list[str]]:
+    """목록은 items 그대로, 상세는 details(없으면 목록 값)에 파일·줄 수를 붙여 답하는 가짜 GitHub 으로 수집하고 (결과, 상세를 부른 sha) 를 돌려준다."""
+    by_sha = details or {item["sha"]: item for item in items}
+    calls: list[str] = []
+
+    async def answer(path: str) -> httpx.Response:
+        sha = path.removeprefix(COMMIT_DETAIL_PREFIX)
+        filename = "package-lock.json" if sha == "lock001" else "src/app.py"
+        return httpx.Response(200, json={
+            **by_sha[sha],
+            "stats": {"additions": 3, "deletions": 1},
+            "files": [{"filename": filename, "status": "modified", "additions": 3, "deletions": 1}],
+        })
+
+    collector = _detail_collector([], [], answer, calls)
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/repos/grow22/gitory/commits":
+            calls.append(request.url.path)
+            return httpx.Response(200, json=items)
+        return await original(request)
+
+    original = collector._transport.handler
+    collector._transport = httpx.MockTransport(handler)
+    result = _collect_listening(collector, events if events is not None else []).result
+    detail_shas = [path.removeprefix(COMMIT_DETAIL_PREFIX) for path in calls if path.startswith(COMMIT_DETAIL_PREFIX)]
+    return result, detail_shas
+
+
+def test_reads_detail_only_for_own_commits_and_confirmation_targets() -> None:
+    """내용(상세)은 내 커밋과 '내 커밋인지 확인' 대상만 받고, lockfile 만 바꾼 내 커밋은 받은 뒤에 가린다."""
+    result, detail_shas = _collect_listed(LISTED)
+
+    assert sorted(detail_shas) == ["lock001", "maybe01", "own0001"]
+    by_sha = {commit.sha: commit for commit in result.commits}
+    assert by_sha["own0001"].exclusion_reason is None
+    assert [changed.path for changed in by_sha["own0001"].files] == ["src/app.py"]
+    assert by_sha["lock001"].exclusion_reason == ExclusionReason.LOCKFILE_ONLY
+    assert [item.sha for item in result.needs_confirmation] == ["maybe01"]
+
+
+def test_merge_and_bot_commits_are_kept_from_list_values_without_files() -> None:
+    """merge·봇 커밋은 내용을 받지 않고 목록 값으로만 돌려준다 — 제외 이유는 같고 파일과 줄 수는 0 이다."""
+    result, _ = _collect_listed(LISTED)
+
+    by_sha = {commit.sha: commit for commit in result.commits}
+    assert by_sha["merge01"].exclusion_reason == ExclusionReason.MERGE_COMMIT
+    assert by_sha["bot0001"].exclusion_reason == ExclusionReason.BOT
+    for sha in ("merge01", "bot0001"):
+        assert (by_sha[sha].files, by_sha[sha].additions, by_sha[sha].deletions, by_sha[sha].parent_count) == (
+            [], 0, 0, 2 if sha == "merge01" else 1
+        )
+        assert by_sha[sha].issue_numbers == [12]
+
+
+def test_commits_without_author_login_are_kept_from_list_values() -> None:
+    """작성자 로그인이 없는 커밋도 목록 값으로 돌려줘 후보 보드의 '로그인 없는 커밋' 수가 그대로 나온다."""
+    result, detail_shas = _collect_listed(LISTED)
+
+    kept = next(commit for commit in result.commits if commit.sha == "nolog01")
+    assert (kept.author_login, kept.exclusion_reason, kept.files) == (None, ExclusionReason.NOT_OWN, [])
+    assert "nolog01" not in detail_shas
+
+
+def test_teammate_commits_with_a_login_are_not_returned() -> None:
+    """로그인이 있는 남의 커밋은 내용을 받지도 돌려주지도 않는다 — 파일 없이 저장되면 그 팀원의 분석이 파일을 받지 못한다."""
+    result, detail_shas = _collect_listed(LISTED)
+
+    assert "team001" not in {commit.sha for commit in result.commits}
+    assert "team001" not in detail_shas
+
+
+def test_reads_detail_when_list_values_cannot_decide() -> None:
+    """목록 값에 작성자 정보가 없어 가를 수 없으면 지금처럼 내용을 받는다."""
+    result, detail_shas = _collect_listed(
+        [{"sha": "bare001"}, {**_listed("nodate1"), "commit": {"message": "x"}}],
+        details={sha: _listed(sha) for sha in ("bare001", "nodate1")},
+    )
+
+    assert sorted(detail_shas) == ["bare001", "nodate1"]
+
+
+def test_keeps_list_order_and_counts_progress_by_commits_whose_detail_is_read() -> None:
+    """돌려주는 커밋은 GitHub 목록 순서를 따르고, 진행 표시의 전체 수는 내용을 받는 커밋 수다."""
+    events: list[tuple] = []
+    result, _ = _collect_listed(LISTED, events)
+
+    assert [commit.sha for commit in result.commits] == ["own0001", "merge01", "bot0001", "maybe01", "nolog01", "lock001"]
+    assert {total for step, _, total, _ in events if step == "COMMITS"} == {3}

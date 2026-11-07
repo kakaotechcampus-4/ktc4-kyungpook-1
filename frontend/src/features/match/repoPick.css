@@ -1,0 +1,147 @@
+/*
+ * 맞는 기업 고르기 화면(시안 docs/mock/company-pick-v1.html). 색과 모양은 앱 토큰이고, 토큰에 없는 파랑 글씨와 초록 글씨만 이 화면의 변수로 둔다.
+ * 로고 타일 바탕은 두 테마 모두 흰색이라 이니셜 글자도 두 테마 모두 같은 어두운 회색이다.
+ */
+.rp-page { --rp-accent-text: #2F5F96; --rp-ok-text: #2F6B4A; }
+:root[data-theme="dark"] .rp-page { --rp-accent-text: var(--border-accent); --rp-ok-text: #A9D4BB; }
+.rp-page .crumb { font-size: 13px; line-height: 18px; }
+
+.rp-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.rp-head .page-lead { max-width: none; font-size: 15px; line-height: 24px; }
+.rp-head__act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rp-head__hint { font-size: 13px; line-height: 18px; color: var(--text-tertiary); }
+.rp-head__act .btn { min-height: 48px; padding: 0 20px; border-radius: 14px; font-size: 15px; font-weight: 600; }
+
+.rp-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 1240px) { .rp-grid { grid-template-columns: minmax(0, 560px) minmax(340px, 1fr); gap: 24px; } }
+
+/* ───────── 원 그림: 가운데가 나와 내 카드, 바깥 고리가 후보, 안쪽으로 올수록 맞는 조건이 많다 ───────── */
+.rp-orbit { display: flex; flex-direction: column; gap: 12px; max-width: 560px; padding: 18px 18px 16px; }
+.rp-stage { position: relative; width: 100%; aspect-ratio: 1 / 1; overflow: hidden; border-radius: 14px; background: var(--bg-canvas); }
+.rp-stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rp-ring { fill: none; stroke: var(--border-default); stroke-width: 1.25; }
+.rp-ring--in { fill: color-mix(in srgb, var(--bg-accent) 38%, transparent); }
+.rp-scan { stroke: var(--border-accent); stroke-width: 1.75; stroke-dasharray: 3 6; stroke-linecap: round; opacity: 0; transition: opacity .25s; }
+.rp-scan.is-on { opacity: 1; }
+
+.rp-me { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; width: 104px; text-align: center; }
+/* 사진 둘레의 흰 띠가 고리 선과 점선을 사진에서 떼어 놓는다 */
+.rp-me .rp-me__face { width: 60px; height: 60px; margin-bottom: 6px; box-shadow: 0 0 0 4px var(--bg-surface), 0 0 0 5px var(--border-default); }
+.rp-me .rp-me__face .user-avatar__fallback { font-size: 22px; }
+.rp-me b { max-width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 18px; font-weight: 700; }
+.rp-me > span:last-child { font-size: 13px; line-height: 18px; color: var(--text-secondary); }
+
+/* 타일 위치(transform)는 RepoPickOrbit 이 프레임마다 정한다. 여기서는 모양과 상태만 둔다 */
+.rp-co { position: absolute; left: 0; top: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 96px; margin: -26px 0 0 -48px; will-change: transform; animation: rp-in .35s ease-out backwards; animation-delay: calc(var(--i, 0) * 140ms); }
+@keyframes rp-in { from { opacity: 0; } }
+/* 안쪽 고리의 위쪽 반에서는 이름을 로고 위로 올린다. 로고가 제 자리에 있도록 이름 높이(18px + 간격 4px)만큼 더 끌어올린다 */
+.rp-co.is-up { flex-direction: column-reverse; margin-top: -48px; }
+/* 이름이 위에 있으면 순위 동그라미를 아래 모서리로 내려 이름과 겹치지 않게 한다 */
+.rp-co.is-up .rp-co__rank { top: auto; bottom: -7px; }
+.rp-co.is-now { z-index: 2; }
+.rp-co.is-top { z-index: 3; }
+.rp-co__logo { position: relative; display: block; width: 52px; height: 52px; border-radius: 15px; transition: box-shadow .25s, filter .4s, opacity .4s, transform .35s; }
+.rp-co__logo .company-mark { width: 100%; height: 100%; border-radius: inherit; background: var(--ink-0); color: var(--ink-600); font-size: 19px; transition: border-color .25s; }
+.rp-co.is-now .rp-co__logo { box-shadow: 0 0 0 4px var(--bg-accent); }
+.rp-co.is-now .rp-co__logo .company-mark { border-color: var(--border-accent); }
+.rp-co.is-miss .rp-co__logo { filter: grayscale(1); opacity: .42; }
+.rp-co.is-top .rp-co__logo { transform: scale(1.1); }
+.rp-co.is-top .rp-co__logo .company-mark { border: 2px solid var(--text-primary); }
+.rp-co__name { max-width: 96px; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--text-strong); transition: color .4s; }
+.rp-co.is-miss .rp-co__name { font-weight: 500; color: var(--text-tertiary); }
+.rp-co.is-top .rp-co__name { font-weight: 700; color: var(--text-primary); }
+.rp-co__rank { position: absolute; right: -7px; top: -7px; display: grid; place-items: center; width: 22px; height: 22px; border: 2px solid var(--bg-canvas); border-radius: 50%; background: var(--bg-ink-solid); color: var(--text-on-ink); font-size: 13px; font-style: normal; font-weight: 700; line-height: 1; }
+
+.rp-orbit__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding: 0 4px; }
+.rp-dots { display: flex; flex-wrap: wrap; gap: 5px; }
+.rp-dots i { width: 18px; height: 6px; border-radius: 3px; background: var(--bg-inset); transition: background .3s; }
+.rp-dots i.is-done { background: var(--text-strong); }
+.rp-dots i.is-now { background: var(--border-accent); }
+.rp-orbit__count { font-size: 14px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.rp-orbit__count b { font-weight: 700; color: var(--text-primary); }
+.rp-legend { display: flex; align-items: center; gap: 10px; margin: 0 4px; padding-top: 12px; border-top: 1px solid var(--border-default); font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+.rp-legend__rings { position: relative; flex: none; width: 22px; height: 22px; }
+.rp-legend__rings i { position: absolute; inset: 0; margin: auto; border: 1.25px solid var(--border-strong); border-radius: 50%; }
+.rp-legend__rings i:nth-child(2) { width: 14px; height: 14px; }
+.rp-legend__rings i:nth-child(3) { width: 6px; height: 6px; border-color: var(--border-accent); background: var(--border-accent); }
+
+/* ───────── 오른쪽: 지금까지 고른 곳 · 지금 하는 일 ───────── */
+.rp-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.rp-panel { padding: 20px 20px 18px; }
+.rp-panel h2 { display: flex; align-items: center; gap: 8px; font-size: 17px; line-height: 26px; font-weight: var(--heading-weight); letter-spacing: -.03em; }
+.rp-panel h2 small { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
+.rp-live { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 13px; font-weight: 600; color: var(--rp-accent-text); }
+.rp-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--border-accent); animation: rp-blink 1.4s ease-in-out infinite; }
+@keyframes rp-blink { 50% { opacity: .25; } }
+
+.rp-picks { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.rp-pick { display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
+.rp-pick--empty { min-height: 56px; border-style: dashed; font-size: 14px; color: var(--text-tertiary); }
+.rp-pick__no { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--bg-inset); font-size: 13px; font-weight: 700; color: var(--text-secondary); }
+.rp-pick.is-final .rp-pick__no { background: var(--bg-ink-solid); color: var(--text-on-ink); }
+.rp-pick .rp-pick__logo { flex: none; background: var(--ink-0); color: var(--ink-600); font-size: 18px; }
+.rp-pick__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rp-pick__text strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; line-height: 23px; font-weight: 700; }
+.rp-pick__text > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; line-height: 21px; color: var(--text-secondary); }
+.rp-pick__text > .rp-pick__why { white-space: normal; }
+.rp-pick__text > .rp-pick__name { display: flex; align-items: center; gap: 8px; font-size: inherit; line-height: inherit; color: inherit; }
+.rp-pick__name strong { min-width: 0; }
+.rp-new { flex: none; padding: 1px 8px; border-radius: 8px; background: var(--bg-accent); font-size: 13px; line-height: 20px; font-weight: 600; color: var(--rp-accent-text); }
+.rp-pick__fit { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.rp-pick__fit > span:last-child { font-size: 13px; line-height: 18px; color: var(--text-secondary); white-space: nowrap; }
+.rp-meter { display: flex; gap: 3px; }
+.rp-meter i { width: 16px; height: 7px; border-radius: 4px; background: var(--text-strong); }
+.rp-meter i.is-pref { border: 1.5px solid var(--border-strong); background: transparent; }
+.rp-pick__go { display: inline-flex; align-items: center; gap: 2px; flex: none; min-height: 44px; padding: 0 4px 0 10px; font-size: 14px; font-weight: 600; color: var(--text-strong); }
+.rp-pick__go:hover { text-decoration: underline; text-underline-offset: 3px; }
+.rp-note { margin-top: 12px; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
+.rp-none { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding: 18px; border-radius: 16px; background: var(--bg-subtle); }
+.rp-none strong { font-size: 16px; font-weight: 700; }
+.rp-none span { font-size: 14px; line-height: 22px; color: var(--text-secondary); }
+.rp-wait { margin-top: 10px; font-size: 14px; line-height: 22px; color: var(--text-secondary); }
+
+.rp-feed { max-height: 296px; margin-top: 10px; padding-right: 4px; overflow-y: auto; scroll-behavior: smooth; }
+.rp-feed.is-scrolled { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 30px); mask-image: linear-gradient(to bottom, transparent 0, #000 30px); }
+@media (prefers-reduced-motion: reduce) { .rp-feed { scroll-behavior: auto; } }
+.rp-feed ol { display: flex; flex-direction: column; }
+.rp-line { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 9px 0; border-top: 1px solid var(--border-default); font-size: 14px; line-height: 22px; color: var(--text-strong); animation: rp-rise .28s ease-out; }
+.rp-line:first-child { border-top: 0; }
+@keyframes rp-rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.rp-line .rp-line__mark { display: grid; place-items: center; width: 28px; height: 28px; margin-top: -2px; border-radius: 8px; font-size: 13px; font-weight: 700; }
+.rp-line .company-mark.rp-line__mark { background: var(--ink-0); color: var(--ink-600); }
+.rp-line__me { display: block; width: 28px; height: 28px; margin-top: -2px; }
+.rp-line__me .user-avatar__fallback { font-size: 13px; }
+.rp-line b { font-weight: 700; color: var(--text-primary); }
+.rp-line q { quotes: none; color: var(--text-primary); }
+.rp-line--miss { color: var(--text-tertiary); }
+.rp-line--now { color: var(--rp-accent-text); }
+.rp-card-name { padding: 0 5px; border-radius: 5px; background: var(--bg-accent); color: var(--rp-accent-text); font-weight: 600; overflow-wrap: anywhere; }
+.rp-tag { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 5px; font-size: 13px; line-height: 19px; font-weight: 600; vertical-align: 1px; }
+.rp-tag--req { background: var(--pastel-mint); color: var(--rp-ok-text); }
+.rp-tag--pref { background: var(--bg-inset); color: var(--text-secondary); }
+.rp-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.rp-chips span { padding: 0 8px; border: 1px solid var(--border-default); border-radius: 999px; font-size: 13px; line-height: 22px; color: var(--text-secondary); }
+
+/* ───────── 휴대폰 폭 ───────── */
+@media (max-width: 767px) {
+  .rp-head .page-title h1 { font-size: 23px; line-height: 31px; }
+  .rp-head__act { width: 100%; }
+  .rp-head__act .btn { flex: 1; }
+  .rp-co { width: 72px; margin: -22px 0 0 -36px; }
+  .rp-co.is-up { margin-top: -44px; }
+  /* 자리가 좁아 이름은 안쪽으로 들어온 회사와 지금 확인하는 회사만 보인다. 나머지 이름은 아래 로그에 있다 */
+  .rp-co:not(.is-in):not(.is-now) .rp-co__name { display: none; }
+  .rp-co__logo { width: 44px; height: 44px; border-radius: 13px; }
+  .rp-co__name { max-width: 72px; }
+  /* 좁은 원 그림에서는 안쪽 고리가 가운데에 바짝 붙어 사진만 두고, 레포 이름과 카드 수는 제목 아래 설명이 말한다 */
+  .rp-me { width: auto; }
+  .rp-me .rp-me__face { width: 40px; height: 40px; margin-bottom: 0; box-shadow: 0 0 0 3px var(--bg-surface), 0 0 0 4px var(--border-default); }
+  .rp-me .rp-me__face .user-avatar__fallback { font-size: 16px; }
+  .rp-me b, .rp-me > span:last-child { display: none; }
+  .rp-panel { padding: 16px; }
+  .rp-pick__fit { display: none; }
+  /* 고른 기업은 글이 길어, 공고 보기를 글 아래로 내려 글 칸을 넓힌다 */
+  .rp-pick.is-final { display: grid; grid-template-columns: 26px 48px minmax(0, 1fr); column-gap: 12px; row-gap: 0; align-items: start; }
+  .rp-pick.is-final .rp-pick__no { margin-top: 11px; }
+  .rp-pick__go { grid-column: 3; justify-self: start; padding-left: 0; }
+}

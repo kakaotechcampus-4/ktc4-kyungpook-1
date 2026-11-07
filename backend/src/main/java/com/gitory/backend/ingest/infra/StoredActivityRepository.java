@@ -2,6 +2,10 @@ package com.gitory.backend.ingest.infra;
 
 import com.gitory.backend.ingest.domain.CommitFile;
 import com.gitory.backend.ingest.domain.GitCommit;
+import com.gitory.backend.ingest.domain.Issue;
+import com.gitory.backend.ingest.domain.PrReview;
+import com.gitory.backend.ingest.domain.PrReviewComment;
+import com.gitory.backend.ingest.domain.PullRequest;
 import com.gitory.backend.ingest.domain.ReviewCommentCount;
 import com.gitory.backend.ingest.domain.StoredPullRequest;
 import org.springframework.data.jpa.repository.Query;
@@ -44,4 +48,24 @@ public interface StoredActivityRepository extends Repository<GitCommit, Long> {
             """)
     Optional<StoredPullRequest> findPullRequest(@Param("userRepositoryId") Long userRepositoryId,
                                                 @Param("number") int number);
+
+    @Query("""
+            SELECT p FROM PullRequest p JOIN ConnectedRepository ur ON ur.repositoryId = p.repositoryId
+            WHERE ur.id = :userRepositoryId AND p.githubPrNumber = :number
+            """)
+    Optional<PullRequest> findPullRequestRow(@Param("userRepositoryId") Long userRepositoryId,
+                                             @Param("number") int number);
+
+    @Query("SELECT i FROM Issue i WHERE i.repositoryId = :repositoryId AND i.githubIssueNumber IN :numbers")
+    List<Issue> findIssues(@Param("repositoryId") Long repositoryId, @Param("numbers") Collection<Integer> numbers);
+
+    @Query("""
+            SELECT r FROM PrReview r
+            WHERE r.repositoryId = :repositoryId AND r.githubPrNumber = :number
+              AND r.state <> com.gitory.backend.ingest.domain.ReviewState.DISMISSED
+            """)
+    List<PrReview> findReviews(@Param("repositoryId") Long repositoryId, @Param("number") int number);
+
+    @Query("SELECT c FROM PrReviewComment c WHERE c.repositoryId = :repositoryId AND c.githubPrNumber = :number")
+    List<PrReviewComment> findReviewComments(@Param("repositoryId") Long repositoryId, @Param("number") int number);
 }

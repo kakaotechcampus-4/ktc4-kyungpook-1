@@ -43,11 +43,11 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | | 요청 | 응답 `data` |
 |---|---|---|
 | `GET /profile` | | `Profile` — 한 번도 저장하지 않았으면 네 목록이 `[]` 이고 `savedAt: null` |
-| `PUT /profile` | `{ educations[], careers[], languages[], certifications[] }` **네 목록 모두 필수**(없으면 `[]`) | `Profile` — 네 목록을 통째로 바꿈 |
+| `PUT /profile` | `{ educations[], careers[], languages[], certifications[], interests[]?, email?, mailOptIn? }` **네 목록 모두 필수**(없으면 `[]`). `interests`·`email`·`mailOptIn` 은 보내면 바꾸고 안 보내면 그대로 둠 | `Profile` — 네 목록을 통째로 바꿈 |
 
 ```jsonc
 // Profile — 요청 항목도 같은 모양(savedAt 빼고)이고, 비운 칸은 null
-{ "educations": [{ "level": "HIGH_SCHOOL|ASSOCIATE|BACHELOR|MASTER|DOCTOR", "school": "경북대학교", "major": "컴퓨터학부" | null,
+{ "educations": [{ "level": "HIGH_SCHOOL|ASSOCIATE|BACHELOR|MASTER|DOCTOR", "school": "경북대학교" | null, "major": "컴퓨터학부" | null,
                    "status": "ENROLLED|ON_LEAVE|GRADUATION_EXPECTED|GRADUATED|DROPPED_OUT",
                    "startMonth": "2021-03" | null, "endMonth": "2027-02" | null, "gpa": 3.8 | null, "gpaMax": 4.5 | null }],  // 5개까지
   "careers": [{ "company": "카카오", "role": "백엔드" | null, "type": "FULL_TIME|CONTRACT|INTERN|PART_TIME|FREELANCE",
@@ -55,10 +55,15 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
   "languages": [{ "test": "TOEIC|TOEIC_SPEAKING|OPIC|TOEFL|IELTS|TEPS|JLPT|JPT|HSK|OTHER", "testName": "TOPIK" | null,
                   "score": "IH", "acquiredMonth": "2025-05" | null }],  // 10개까지, testName 은 OTHER 일 때만 필수·저장
   "certifications": [{ "name": "정보처리기사", "issuer": "한국산업인력공단" | null, "acquiredMonth": "2026-06" | null }],  // 20개까지
+  "interests": ["BACKEND", "DEVOPS"],   // 관심 분야 = 공고 직무 분류 이름(BACKEND·FRONTEND·MOBILE·DEVOPS·DATA·AI_ML·SECURITY·QA·ETC), 3개까지, 겹치지 않게. 아직 안 골랐으면 []
+  "email": "me@example.com" | null,   // 새 공고 알림을 받을 메일 주소. 요청에서 빈 글이면 지움(응답은 null)
+  "mailOptIn": false,                  // 메일 알림 수신 여부. 한 번도 저장하지 않았으면 false
   "savedAt": "ISO" | null }
 ```
 
-- 처음 들어올 때 `savedAt: null` 이면 입력 화면을 띄운다(#531). '건너뛰기'는 빈 목록 네 개를 `PUT` 해 저장하므로 다음부터 띄우지 않는다.
+- 처음 들어올 때 `interests` 가 비어 있으면(전에 건너뛴 사용자 포함) 어느 화면이든 그 위에 입력 창을 띄우고, 저장해야 닫힌다(#656). '건너뛰기'는 없다. 창은 학력 구분·상태, 어학 시험+점수/등급, 자격증 이름만 받고 나머지 칸은 마이페이지 폼에서 더 적는다.
+- **관심 분야(`interests`)**: 매칭 1단계가 이 직무의 공고만 후보로 올린다(레포 추천·전체 추천). 비어 있으면 거르지 않는다. 4개 이상·겹침·모르는 값은 400.
+- **메일 알림(`email`·`mailOptIn`)**: 수신을 켜고 저장하면 그 주소로 확인 메일을 한 통 보낸다(켠 채 주소를 바꿔 저장해도 한 통). 주소는 인증하지 않고 적은 그대로 쓰며, 앞뒤 공백을 지우고 254자까지·공백 없이 `@` 하나와 그 뒤의 점이 있어야 한다. 모양이 틀리면 400 `INVALID_REQUEST`, 수신을 켰는데 저장될 주소가 없어도 400. 옛 화면처럼 두 칸을 안 보내면 저장된 값을 그대로 둔다. 새 공고 알림(`POSTINGS_MATCHED`)을 남길 때 수신을 켠 사용자에게는 같은 공고 목록을 메일로도 보낸다(서버 `MAIL_ENABLED` 가 켜져 있을 때만). 끄는 방법은 체크를 풀어 저장하는 것뿐이다.
 - 글은 앞뒤 공백을 지우고 50자까지(어학 점수는 20자), 빈 글은 null. 달은 `YYYY-MM`, 끝난 달이 시작한 달보다 앞서면 400. 학점은 만점(4.0·4.3·4.5·100)과 함께 보내거나 둘 다 null.
 - 규칙을 어기면 400 `INVALID_REQUEST` 이고 `error.message` 에 "학력 1번째 학교 이름…" 처럼 목록과 순번을 적는다. CSRF 헤더 필요.
 - 매칭 1차 필터(#532)와 자소서 AI(#484)가 이 값을 읽는다(아직 연결 전).
@@ -66,13 +71,14 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ### 레포
 | | 요청 | 응답 `data` |
 |---|---|---|
-| `GET /repos` | | `RepoSummary[]` — `{ id, owner, name, contribution:{mine, team, ratio, level:'NONE'|'PARTIAL'|'SHARED'|'MAJOR'}, prCount, reviewCount, language, activeFrom, activeTo, lastAnalyzedAt, countedAt, candidateCount, cardCount, recommended }`. **`countedAt` 이 `null` 이면 기여 개수(커밋·PR·리뷰)를 아직 한 번도 못 센 것**이라 개수 0 은 실제 0 이 아니다 — 프론트는 숫자 대신 "세는 중"을 보이고, "내 기여 0%"·"PR 0건" 경고와 PR 유무 필터에서 뺀다. 필드가 생략된 응답은 센 것으로 본다. 한 번도 센 적이 없는 사용자(처음 로그인)는 최근 push 된 저장소 20개만 세고, 나머지는 `countedAt: null` 로 두었다가 다음 `GET /repos` 때 센다 |
+| `GET /repos` | | `RepoSummary[]` — `{ id, owner, name, contribution:{mine, team, ratio, level:'NONE'|'PARTIAL'|'SHARED'|'MAJOR'}, prCount, reviewCount, language, activeFrom, activeTo, lastAnalyzedAt, countedAt, candidateCount, cardCount, recommended, description, descriptionSource }`. `description` 은 폴더 타일에 보이는 한 줄로 사용자가 쓴 설명 > GitHub 저장소 설명 > README 소개 문장 순이고 셋 다 없으면 null, `descriptionSource` 는 그 출처(`USER`·`GITHUB`·`README`·`AI`, 없으면 null)다(#777). `AI` 는 README 에서 문장을 못 골라 분석 때 자동으로 요약해 둔 한 문장이다(#783). **`countedAt` 이 `null` 이면 기여 개수(커밋·PR·리뷰)를 아직 한 번도 못 센 것**이라 개수 0 은 실제 0 이 아니다 — 프론트는 숫자 대신 "세는 중"을 보이고, "내 기여 0%"·"PR 0건" 경고와 PR 유무 필터에서 뺀다. 필드가 생략된 응답은 센 것으로 본다. 한 번도 센 적이 없는 사용자(처음 로그인)는 최근 push 된 저장소 20개만 세고, 나머지는 `countedAt: null` 로 두었다가 다음 `GET /repos` 때 센다 |
 | `GET /repos/saved` | | `RepoSummary[]` — `GET /repos` 와 같은 모양. GitHub 을 부르지 않고 마지막으로 받아 둔 목록을 바로 돌려줘, `GET /repos` 를 기다리는 동안 먼저 그릴 때 쓴다. 받아 둔 목록이 없으면(처음 로그인) 빈 배열. 그사이 GitHub 에서 지웠거나 권한을 잃은 저장소가 남아 있을 수 있어 `GET /repos` 응답이 오면 그것으로 바꾼다. 커밋이 없다고 센 빈 저장소와 프로필 README 저장소(아이디/아이디)는 빠진다 |
 | `GET /repos/{id}` | | `RepoDetail` = `RepoSummary` + `disclosure:{ reads[], skips[], estimatedSeconds }` (B2 사전 고지 문구는 서버가 만든다) |
+| `PATCH /repos/{id}` | `{ description: string|null }` | **구현됨(#777).** 폴더 설명을 사용자가 직접 쓴다. 앞뒤 공백을 뗀 글이 120자까지이고, 비우거나 null 이면 사용자가 쓴 설명을 지워 GitHub 설명이나 README 문장으로 돌아간다. 121자부터는 400 `INVALID_REQUEST`, 남의 저장소는 404. 응답은 `RepoSummary` 한 건 |
 | `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 사용자의 같은 연결 저장소에 활성 Job이 있으면 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409 + IDEMPOTENCY_KEY_MISMATCH** (확정). FE는 409에 새 키를 만들어 자동 재요청하지 않는다. |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
-| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 8장까지이고, 중복을 뺀 후보가 9개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST`. AI 초안의 네 칸이 확인 필요 없이 모두 찬 카드는 Job 이 바로 `CONFIRMED` 로 두고(#568), 확인 필요 칸이나 빈 칸이 있는 카드만 `DRAFT` 로 남는다 — 화면은 `DRAFT` 카드에만 확정 버튼을 보여 준다 |
+| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 10장까지이고, 중복을 뺀 후보가 11개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST`. AI 초안의 상황·행동이 차 있고 확인 필요 칸이 없는 카드는 Job 이 바로 `CONFIRMED` 로 두고(#568) 과제·결과는 비어 있어도 된다. 확인 필요 칸이 있거나 상황·행동이 빈 카드, 시간 초과로 일부 칸만 채운 카드(`generation.partial` 이 true)는 `DRAFT` 로 남는다 — 화면은 `DRAFT` 카드에만 확정 버튼을 보여 준다 |
 | `GET /repos/{id}/commits?q=` | | `RepoCommit[]` — `{ sha, message, path, at, url, candidateId }` (C5 커밋 찾기, 최대 20) |
 | `GET /repos/{id}/materials` | | `RepoMaterials` (아래) — 분석이 끝난 뒤 '읽은 커밋·PR 전체 보기' 용. GitHub 을 부르지 않고 저장된 값만 읽는다. 분석 전이면 두 배열 모두 빈 배열 |
 | `GET /repos/{id}/recall` | | `Recall` — `{ repoId, note, dirs:[{ path, filesChanged, myCommits, files[], question, options[] }] }` |
@@ -102,6 +108,61 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | | 요청 | 응답 |
 |---|---|---|
 | `PATCH /candidates/{id}` | `{ status?: 'NEW'|'EXCLUDED', excludedShas?: string[] }` | `Candidate` — 제외/복원 · 군집 커밋 빼기(E-4) |
+
+### 새 활동 알림 (서버가 정리한 레포를 스스로 다시 읽기)
+
+홈에 들어오면 화면이 `GET /repos` 로 마지막 push 시각을 새로 받아 둔 뒤 `POST /repo-updates/check` 를 부른다. 서버는 **정리한 적이 있고 마지막 정리 뒤에 push 가 있는** 레포의 분석 Job 을 사용자 대신 접수하고, 분석이 끝나면 **새 일이 든 후보만** 카드 초안으로 만든다. 초안까지 끝나면 `GET /repo-updates` 에 알림으로 나타난다. 사용자가 알림을 누르면 `seen` 으로 닫고 `recommendations/refresh` 로 레포 추천을 다시 고르게 한다.
+
+| | 요청 | 응답 `data` |
+|---|---|---|
+| `POST /repo-updates/check` | 본문 없음 | `{ queued }` — 분석 Job 을 접수한 레포 수(0~3). `check` 는 GitHub 을 부르지 않고 저장된 마지막 push 시각만 본다. push 가 최근인 레포부터 3개까지이고, 분석 Job 이 진행 중이거나 마지막 `check` 로 접수한 지 6시간이 안 된 레포는 건너뛴다. 쓸 수 있는 GitHub 연결이 없으면 오류가 아니라 `{ queued: 0 }` 이다. 접수한 Job 은 `GET /jobs?active=true` 에 보통 분석 Job 으로 나타난다 |
+| `GET /repo-updates` | | `RepoUpdate[]` — `{ repoId, repoName, cardCount, finishedAt }`. 보지 않은 알림을 **레포마다 하나로** 묶어 `finishedAt`(가장 늦게 끝난 시각)이 최근인 순서로 준다. `repoId` 는 `GET /repos` 의 `id` 와 같은 값, `repoName` 은 `owner/name` 모양(활성 Job 목록의 `repoName` 과 같다), `cardCount` 는 그 레포에서 보지 않은 알림의 카드 수 합이다. 없으면 빈 배열 |
+| `POST /repo-updates/{repoId}/seen` | 본문 없음 | `{ ok: true }` — 그 레포의 보지 않은 알림을 모두 본 것으로 닫아 목록에 다시 나오지 않는다. 이미 닫혔거나 알림이 없어도 오류가 아니다. 남의 레포·없는 레포·UUID 가 아닌 id 는 404 `NOT_FOUND` |
+| `POST /repos/{repoId}/recommendations/refresh` | 본문 없음 | `GET /repos/{repoId}/recommendations` 와 같은 모양이다. 추천을 다음 배경 작업 차례에 바로 다시 계산하도록 예약하므로 `queued: true`, `status: COMPUTING` 이고 지난 기업은 그대로 보인다. 남의 레포·없는 레포·UUID 가 아닌 id 는 조회와 같은 404 `NOT_FOUND` |
+
+- 서버가 스스로 다시 읽어 만든 카드 초안 Job 이 끝나도 레포 추천은 **바로 다시 계산하지 않는다.** 알림을 누른 뒤 `refresh` 를 불러야 다시 고른다.
+- `GET /repos/{repoId}/recommendations` 의 `companies[]` 에 `fresh: boolean` 이 더해졌다. 계산이 끝나 결과를 바꿀 때 바뀌기 전 기업을 남겨 두고, 그 결과에 없던 기업이면 `true` 다. 바뀌기 전 결과가 없으면(처음 계산) 모두 `false` 이고, 그다음 계산이 또 결과를 바꾸면 그 이전 결과가 기준이 된다.
+- 알림이 되는 것은 카드 초안 Job 이 `SUCCEEDED` 로 끝난 경우뿐이다. 새 일이 든 후보가 없거나, 분석이 실패·취소·일부만 읽음으로 끝났거나, 카드 만들기가 거절됐거나(호출 제한 등) 초안 Job 이 실패·취소되면 알림 없이 닫는다.
+- 만든 카드는 일반 카드 초안과 똑같이 `GET /cards` 에 `DRAFT` 로 나타나고 확정은 사용자가 한다.
+
+### 알림 (서버가 남기는 알림 한 줄)
+
+카드 초안 Job 이 끝나거나 레포 분석이 실패하면 서버가 그 사용자에게 알림 한 줄을 남긴다. 화면은 목록을 읽고 `readAt` 이 `null` 인 것을 읽지 않은 알림으로 보이며, 누르면 읽음으로 표시한다. 알림은 남긴 순간의 레포 이름과 카드 제목을 그대로 담아서, 그 뒤에 이름이 바뀌거나 카드를 지워도 알림은 바뀌지 않는다. 위 '새 활동 알림'(`/repo-updates`)은 그대로이고 별도다.
+
+| | 요청 | 응답 `data` |
+|---|---|---|
+| `GET /notifications` | | `Notification[]` — 내 알림을 최근에 남긴 것부터 **30개까지**. 없으면 빈 배열 |
+| `POST /notifications/{id}/read` | 본문 없음 | `{ ok: true }` — 알림 하나를 읽음으로 표시한다. 이미 읽은 알림은 처음 읽은 시각을 그대로 두고 오류도 아니다. 남의 알림·없는 알림·UUID 가 아닌 id 는 404 `NOT_FOUND` |
+| `POST /notifications/read-all` | 본문 없음 | `{ ok: true }` — 내 읽지 않은 알림을 모두 읽음으로 표시한다. 읽지 않은 알림이 없어도 오류가 아니다 |
+
+세 API 모두 로그인이 필요하고, POST 는 CSRF 헤더도 필요하다.
+
+```jsonc
+// Notification
+{ "id": "<uuid>", "kind": "CARDS_DRAFTED|REPO_REFRESHED|ANALYSIS_FAILED|POSTINGS_MATCHED",
+  "createdAt": "<ISO>", "readAt": null | "<ISO>",
+  "repoId": "<uuid>" | null,                  // GET /repos 의 id 와 같은 값
+  "repoName": "owner/name" | null,            // 알림을 남긴 때의 이름
+  "cardCount": 3 | null,                      // 그 Job 이 만든 카드 수
+  "cardTitles": ["…"],                        // 만든 순서로 3개까지. 없으면 []
+  "jobId": "<uuid>" | null,
+  "errorCode": "GITHUB_UNAUTHORIZED" | null,  // ANALYSIS_FAILED 에서만. 값은 Job 의 errorCode 와 같다
+  "postings": [{ "postingId": "<uuid>",       // POSTINGS_MATCHED 에서만. 다른 종류는 []
+                 "companyName": "…", "title": "…",
+                 "requiredMet": 4, "requiredTotal": 5,   // 채운 필수 조건 수 / 필수 조건 수
+                 "expiresAt": "<ISO>" | null }] }         // 마감 시각. 마감이 없으면 null
+
+| `kind` | 남기는 때 | 채우는 값 |
+|---|---|---|
+| `CARDS_DRAFTED` | 카드 초안 Job 이 `SUCCEEDED` 로 끝남 | `repoId`·`repoName`·`cardCount`·`cardTitles`·`jobId` |
+| `REPO_REFRESHED` | 서버가 스스로 다시 읽기로 만든 카드 초안 Job 이 `SUCCEEDED` 로 끝남 | `CARDS_DRAFTED` 와 같다 |
+| `ANALYSIS_FAILED` | 사용자가 시작한 레포 분석 Job 이 `FAILED` 로 끝남 | `repoId`·`repoName`·`jobId`·`errorCode` (`cardCount` 는 `null`, `cardTitles` 는 `[]`) |
+| `POSTINGS_MATCHED` | 새벽 공고 가져오기가 끝난 뒤, 새로 조건을 뽑은 공고 중 확정 카드와 필수 조건의 절반 이상 맞는 공고를 찾음 | `postings` (필수 충족 비율이 높은 순, 같으면 우대 충족 수 순으로 3건까지). `repoId`·`repoName`·`cardCount`·`jobId`·`errorCode` 는 `null`, `cardTitles` 는 `[]` |
+
+- 취소된 Job, 실패한 카드 초안 Job, 성공한 분석 Job, 서버가 스스로 다시 읽기로 접수한 분석 Job 의 실패는 알림을 남기지 않는다.
+- 알림을 남기다 실패해도 Job 의 결과는 바뀌지 않는다.
+- `POSTINGS_MATCHED` 는 서버 스위치 `MATCHING_ALERT_ENABLED` 가 켜져 있을 때만 남긴다. 확정 카드가 있고 최근 14일 안에 카드를 만들거나 고친 사용자만 대상이며, 한 번 확인한 공고는 다시 알리지 않는다. 맞는 공고가 없으면 알림을 남기지 않는다. `postings[].postingId` 는 `GET /matches/{id}` 의 id 와 같은 값이다.
+- `kind` 는 나중에 값이 늘 수 있으니 화면은 모르는 값을 건너뛴다.
 
 ### Job (폴링 · 항상 200)
 
@@ -158,7 +219,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 ### 카드
 | | 요청 | 응답 |
 |---|---|---|
-| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, themes, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount, repo }`. `repo`는 카드 상세의 `repo`와 같은 `{ id, owner, name }`이고, 저장소 없이 직접 쓴 카드는 null이다(#457). `activity`는 카드가 속한 활동 `{ id, name, type }`이고 활동 밖 카드는 null이다(#477). `repo`·`activity` 가 둘 다 값이 있는 카드는 없다. `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용 |
+| `GET /cards` | 상태 쿼리 없음 | **구현됨.** 본인 카드 전체를 최근 수정순으로 반환하는 `CardSummary[]` — `{ id, kind, status, title, areas, techs, themes, versionNo, star:{S,T,A,R}, updatedAt }` + 부가 `{ sourceLabel, sourceType, period, evidenceCount, userStatedCount, preview, repo }`. `repo`는 카드 상세의 `repo`와 같은 `{ id, owner, name }`이고, 저장소 없이 직접 쓴 카드는 null이다(#457). `activity`는 카드가 속한 활동 `{ id, name, type }`이고 활동 밖 카드는 null이다(#477). `repo`·`activity` 가 둘 다 값이 있는 카드는 없다. `areas`(분야, 최대 2개)·`techs`(기술, 최대 4개)는 AI 초안이 고른 중요한 순서이고 늘 배열이다. 직접 작성 카드·AI 초안이 꺼져 있거나 실패한 카드·태그가 생기기 전 카드는 빈 배열이다. 상태·태그 필터는 FE에서 적용한다. `preview` 는 현재 버전 결과 칸 글(앞뒤 공백 제거)이고 결과가 비었으면 null, 옛 서버 응답에는 칸이 없다(#773). |
 | `POST /cards/manual/draft` | `{ title, period, repoId|null, activityId|null }`, 헤더 `Idempotency-Key: <UUID v4>` | **구현됨.** `Card` — 빈 `USER_EDIT` v1 DRAFT. 같은 사용자·같은 키는 처음 만든 카드의 **현재** 상세를 반환 |
 | `PATCH /cards/{id}/draft` | `{ situation, task, action, result }` **네 키 필수**, string/null | **구현됨.** `{ cardId, versionNo, situation, task, action, result, savedAt }` — 임시 저장 |
 | `GET /cards/{id}` | | **구현됨.** `Card` (아래) |
@@ -209,7 +270,7 @@ Mock 구현과 실제 API adapter/화면은 준비돼 있다. 실제 API 모드�
 - **정규화한 네 칸이 현재 글과 같으면 no-op**입니다. 버전 번호·버전 시각·카드 수정 시각을 바꾸지 않으며 savedAt은 기존 버전 시각입니다.
 - **확정되지 않은 USER_EDIT만 같은 버전을 덮어씁니다.** AI_DRAFT·INTERVIEW·MASK·RESTORE 또는 확정 후 다시 연 버전 위의 첫 실제 변경은 USER_EDIT 새 버전입니다. 그 뒤의 변경은 같은 미확정 USER_EDIT에 저장합니다.
 - 각 칸의 글이 분기 직전 버전과 정확히 같으면 그 칸의 근거·확신도·되묻기 턴 연결을 복사합니다. 취소로 같은 원문을 다시 보내도 이 정보가 돌아옵니다. 달라진 칸은 USER_STATED이며 이전 커밋 근거·확인 필요 표시는 붙이지 않습니다. null은 문장과 그 칸의 근거를 제거합니다.
-- 확정된 카드도 다시 열지 않고 PATCH 합니다(#568). 저장한 글로 `status` 를 다시 정합니다 — 작성 중 카드는 네 칸이 모두 차고 확인 필요 칸이 없으면 `CONFIRMED`, 확정 카드는 상황이나 행동이 비면 `DRAFT`(확정 시각 null)로 돌아가고 그 밖에는 `CONFIRMED` 를 유지합니다. 화면이 자동 저장하므로 이렇게 바뀐 확정은 확정본(이력의 ` · 확정`)을 남기지 않습니다. 확정 버튼으로 확정한 과거 버전은 고정된 채 남고, 새 버전은 이 확정 표시를 상속하지 않습니다.
+- 확정된 카드도 다시 열지 않고 PATCH 합니다(#568). 저장한 글로 `status` 를 다시 정합니다 — 작성 중 카드는 상황·행동이 차고 확인 필요 칸이 없으면(시간 초과로 일부만 만든 카드는 제외) `CONFIRMED`, 확정 카드는 상황이나 행동이 비면 `DRAFT`(확정 시각 null)로 돌아가고 그 밖에는 `CONFIRMED` 를 유지합니다. 화면이 자동 저장하므로 이렇게 바뀐 확정은 확정본(이력의 ` · 확정`)을 남기지 않습니다. 확정 버튼으로 확정한 과거 버전은 고정된 채 남고, 새 버전은 이 확정 표시를 상속하지 않습니다.
 - 목록 updatedAt은 마지막 실제 수정 시각이고 최근 수정순입니다. savedAt ACK의 글·버전·시각은 FE 캐시에 먼저 반영하고, ACK에 없는 근거를 추정하지 않고 상세를 다시 조회합니다.
 
 **`evidence.authoredBy`**
@@ -273,8 +334,8 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 | | 요청 | 응답 |
 |---|---|---|
 | `GET /cards/{id}/interview` | | **구현됨(#172).** `InterviewTurn[]`, 질문 번호순. 없으면 빈 배열; 없는 카드·남의 카드·잘못된 UUID는 404 |
-| `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 확정 카드 409 `CARD_CONFIRMED`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED`. 이렇게 되묻기가 끝나(`null`) 네 칸이 확인 필요 없이 모두 차 있으면 서버가 카드를 `CONFIRMED` 로 바꾸므로(#568) 화면은 카드를 다시 읽는다 |
-| `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다 |
+| `POST /cards/{id}/interview` | `{ field? }` | **구현됨 · 바뀔 것.** `InterviewTurn \| null`. `field` 를 비우면 AI 가 물을 칸을 고르고, 더 물을 게 없다고 판단하면 **200 + `null`** 이다. `field` 를 주면 그 칸을 묻는다(끝을 고르지 않는다). 상한 초과 409 `INTERVIEW_CAP`, 더 물을 수 없는 칸을 지정하면 409 `INTERVIEW_FIELD_CLOSED`. 확정된 카드도 질문을 받으며 카드는 `CONFIRMED` 로 남는다. 이렇게 되묻기가 끝나(`null`) 작성 중 카드의 상황·행동이 차 있고 확인 필요 칸이 없으면 서버가 카드를 `CONFIRMED` 로 바꾸므로(#568) 화면은 카드를 다시 읽는다 |
+| `POST /cards/{id}/interview/{turnNo}/answer` | `{ kind, text?, source? }` | **구현됨 · 바뀔 것.** `Card`. 답을 저장만 하고 다음 질문은 만들지 않는다 — 화면이 저장 직후 `POST /cards/{id}/interview`(field 없이)를 이어서 부른다. 작성 중 카드는 답으로 상황·행동이 차고 확인 필요 칸이 없어지면 되묻기 끝을 기다리지 않고 답 저장과 함께 `CONFIRMED` 로 바꾼다(#624) — 화면은 응답 `status` 가 `CONFIRMED` 면 확정 안내를 보이고 더 묻지 않는다. 확정된 카드에 답해도 409 없이 받으며 `status` 는 `CONFIRMED` 그대로이고, 답한 칸만 바꾼 INTERVIEW 새 버전이 현재 버전이 된다(확정본 버전은 덮어쓰지 않는다) |
 | `POST /cards/{id}/interview/{turnNo}/polished-draft` | `{ text }` | **새로 만듦(#482).** `{ sentence, polished, unsourcedNumbers: string[] }` — 경험 카드 글 질문의 답 다듬기 미리 보기. **아무것도 저장하지 않고** 질문 상한에 세지 않는다. AI 는 표현만 다듬고, 다듬은 문장에 답에 없는 숫자가 생기면 한 번 고쳐 쓰게 한 뒤에도 남은 숫자를 서버가 견줘 `unsourcedNumbers` 로 알린다. AI 가 응답하지 못하면 오류가 아니라 `polished: false` 와 답 그대로의 `sentence` 다. 오류 순서는 `measured-draft` 와 같고, 경험 카드의 글 질문이 아니면 400 `BAD_FIELD` 다 |
 | `POST /cards/{id}/interview/{turnNo}/measured-draft` | `{ text }` | **새로 만듦.** `{ sentence }` — '재 봤어요' 미리 보기. **아무것도 저장하지 않는다.** 입력에 수치(아라비아 숫자)가 없으면 AI 를 부르지 않고 `sentence: null` 이고, 화면은 "수치를 찾지 못했어요. 대략이라도 적어 주세요" 를 보인다. 질문 상한에 세지 않는다 |
 
@@ -291,8 +352,8 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 - `kind` 가 질문의 버튼과 맞지 않으면(`answerMode: TEXT` 질문에 `MEASURED`·`NOT_MEASURED`) 400 `INVALID_REQUEST` 이고 아무것도 저장하지 않는다.
 
 **오류 순서**
-- `POST /cards/{id}/interview`: 404(카드 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `CARD_CONFIRMED` → 답을 기다리는 질문이 있으면 그 질문을 200 으로 돌려준다 → 409 `INTERVIEW_CAP` → 400 `BAD_FIELD` → 409 `INTERVIEW_FIELD_CLOSED`.
-- `POST /cards/{id}/interview/{turnNo}/measured-draft`: 404(카드·질문 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `CARD_CONFIRMED` → 409 `INVALID_STATE`(이미 결과가 정해진 질문) → 400 `BAD_FIELD`(R 수치 질문이 아님) → 400 `INVALID_REQUEST`(빈 글·너무 긴 글) → 429 `RATE_LIMITED`.
+- `POST /cards/{id}/interview`: 404(카드 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 답을 기다리는 질문이 있으면 그 질문을 200 으로 돌려준다 → 409 `INTERVIEW_CAP` → 400 `BAD_FIELD` → 409 `INTERVIEW_FIELD_CLOSED`.
+- `POST /cards/{id}/interview/{turnNo}/measured-draft`: 404(카드·질문 없음) → 409 `INVALID_STATE`(초안 만드는 중) → 409 `INVALID_STATE`(이미 결과가 정해진 질문) → 400 `BAD_FIELD`(R 수치 질문이 아님) → 400 `INVALID_REQUEST`(빈 글·너무 긴 글) → 429 `RATE_LIMITED`.
 
 `InterviewTurn`
 `{ turnNo, field, askedBy:'USER_REQUEST'|'FOLLOW_UP', sourceType:'PR'|'COMMIT_CLUSTER'|'DIRECT_CARD',
@@ -325,39 +386,77 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 | | 응답 `data` |
 |---|---|
 | `GET /matches` | `MatchTarget[]` — **AI 를 부르지 않는다.** 모든 공고의 `fit` 은 null, `required`·`preferred` 의 `met` 은 0 이고 `total` 은 공고의 조건 수다(#581). 아래 정렬 규칙대로. 마감이 지난 공고, 회사 채용 목록에서 사라진 공고, 등급을 셀 필수·우대 조건이 하나도 없는 공고는 넣지 않는다. `?companyId=` 를 주면 그 회사 공고만 오고(없는 회사면 빈 배열), 비어 있으면 거르지 않는다 |
-| `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote` · `conditions[]`. 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
+| `GET /matches/{id}` | `MatchDetail` = `MatchTarget` + `experience.quote`·`status` · `needsJudgement` · `summary` · `conditions[]`. **AI 를 부르지 않고 저장된 판단만 읽는다.** 없는 id · 마감이 지난 공고 · 사라진 공고 · 필수·우대 조건이 없는 공고는 404 `NOT_FOUND` |
+| `GET /matches/summary` | `{ "matchedPostings": n }` — 홈의 '매칭된 공고'(#711). 전체 매칭·레포 추천·공고 상세 맞춰 보기가 저장한 (카드, 조건) 판단 중, **지금 확정 카드 글로** 필수 기술·경험 조건을 하나 이상 채운 마감 전 공고 수다. 공고마다 한 번만 세고, AI 를 부르지 않으며 호출 한도도 세지 않는다. 확정 카드가 없으면 0 |
+| `POST /matches/{id}/judgement` | 같은 `MatchDetail`. 아직 판단하지 않은 (카드, 조건) 짝만 AI 에게 묻고(최대 90초) 새 상세를 돌려준다. 물을 짝이 없으면 AI 를 부르지 않고 호출 한도도 세지 않는다 |
+| `POST /matches/{id}/gap-fill` | 같은 `MatchDetail`. 맞춰 본 뒤 못 채운 조건을 AI 가 **배경에서** 찾기 시작하고 바로 돌려준다(`gapFill.state` 는 보통 RUNNING). 화면은 `gapFill.pollAfterMs` 마다 `GET /matches/{id}` 를 다시 읽는다. 찾는 중이거나 카드·후보·레포가 그대로인 공고는 다시 찾지 않고 호출 한도도 세지 않는다. 못 채운 조건이 없으면 AI 없이 바로 DONE(빈 `conditions`)이다. 본문 `{ "conditionIds": ["…"] }` 를 주면 끝난 결과에서 SKIPPED 인 그 조건만 다시 찾는다([그래도 찾아보기], 아래) |
 
 **MatchTarget**
 ```jsonc
 { "id", "company", "companyId", "logoUrl": "https://…" | null,   // companyId = 같은 회사의 공고를 묶는 id
   "role",                                          // role = 공고 원문의 직무명
   "category": "BACKEND|FRONTEND|MOBILE|DEVOPS|DATA|AI_ML|SECURITY|QA|ETC",
-  "fit": "A|B|C|D" | null,                         // 목록은 늘 null(판정하지 않음). 상세에서 null = 확정 카드가 하나도 없음
+  "fit": "A|B|C|D" | null,                         // 목록·상세 모두 늘 null(등급을 매기지 않음)
   "required": { "total", "met" }, "preferred": { "total", "met" },
   "experience": { "level": "ENTRY|EXPERIENCED|UNSPECIFIED", "minYears": n | null },
+  "techs": ["JAVA", "SPRING", …],                  // 필수·우대 조건의 기술을 조건 순서대로 한 번씩. 없으면 []
+  "education": { "level": "HIGH_SCHOOL|ASSOCIATE|BACHELOR|MASTER|DOCTOR", "exempt": bool } | null,
   "source": { "url", "collectedAt", "expiresAt": "ISO" | null } }   // expiresAt null = 마감일 없음(아래 참고)
 ```
 
 **MatchDetail** 에 더하는 칸
 ```jsonc
-{ "experience": { "level", "minYears", "quote": "경력 원문" | null },
+{ "experience": { "level", "minYears", "quote": "경력 원문" | null,
+                  "status": "MET|NOT_MET|UNKNOWN" | null },        // 인적사항 경력과 견줌. 연수 요구가 없으면 null
+  "needsJudgement": true | false,                                   // true = 아직 맞춰 보지 않은 조건이 있음
+  "summary": { "requiredMet", "requiredTotal" } | null,             // 기술·경험 필수 조건만. needsJudgement 면 null
   "conditions": [{ "id", "type": "REQUIRED|PREFERRED|RESPONSIBILITY", "text", "quote",   // quote = 공고 원문 인용
-                   "supports": [{ "cardId", "cardTitle", "cardKind": "TECH|QUALITATIVE", "field": "A|R", "sentence" }] }] }
+                   "generalType": "EDUCATION|MILITARY|LANGUAGE|CERTIFICATE|LOCATION|OTHER" | null,   // null = 기술·경험 조건·담당 업무
+                   "status": "MET|NOT_MET|UNJUDGED|UNKNOWN|CHECK" | null,
+                   "metBy": [{ "cardId", "cardTitle", "cardKind": "TECH|QUALITATIVE", "repoId": "…" | null, "reason" }] }],
+  "gapFill": { … } | null }                                         // 모자란 조건 채우기. 시작한 적이 없으면 null (아래)
+```
+
+**MatchDetail.gapFill** — 모자란 조건 채우기 (#652)
+```jsonc
+{ "state": "RUNNING|DONE|FAILED",
+  "pollAfterMs": 1500 | null,                     // RUNNING 일 때만 값이 있다
+  "conditions": [{                                // 찾아본 조건마다 하나, 공고 조건 순서
+    "conditionId": "…",                           // conditions[].id 와 같다
+    "decision": "SEARCH|SKIP" | null,             // 찾아볼지. null = 아직 정하는 중
+    "decisionReason": "…" | null,
+    "forced": false,                              // [그래도 찾아보기]로 다시 찾은 조건. decision 은 AI 판단 그대로다
+    "steps": [{ "kind": "CANDIDATES_CHECKED|DRAFT_CARDS_CHECKED|GITHUB_SEARCHED|GITHUB_FAILED|OUTSIDE_REPO_FOUND",
+                "count": 12 | null, "query": "kafka" | null, "repoName": "owner/name" | null }],
+    "proposal": { "action": "CREATE_CARD|CONTINUE_CARD|ANALYZE_REPO",
+                  "candidateId": "…" | null, "cardId": "…" | null, "repoId": "…" | null,   // action 에 맞는 칸만 값이 있다(CREATE_CARD 는 candidateId·repoId)
+                  "title", "repoName": "owner/name" | null, "reason" } | null,
+    "result": "PROPOSED|NOT_FOUND|SKIPPED|TIMED_OUT" | null }] }   // null = 아직 찾는 중
 ```
 
 - **매칭 기준은 공고 조건이다.** 인재상 태그는 쓰지 않는다. 조건은 필수(REQUIRED) → 우대(PREFERRED) → 담당 업무(RESPONSIBILITY) 순이고, 같은 종류 안에서는 원문 순서다.
-- **근거는 확정 카드의 지금 확정 버전에서 행동(A)·결과(R) 칸 문장뿐이다.** 카드의 가리기를 적용한 문장을 보낸다. 같은 카드의 A·R 이 둘 다 맞으면 둘 다 담는다. `supports` 가 빈 조건은 근거가 없는 빈 칸이고, 숨기지 않는다.
-- **등급(`fit`)은 상세에서만 서버가 규칙으로 센다.** `met` 은 근거가 하나 이상 있는 조건 수다. 필수 조건 중 `met` 의 비율이 전부면 A · 절반 이상 B · 1개 이상 C · 0개 D 다. 필수가 없는 공고는 우대로 같은 규칙을 쓴다. 한 카드가 여러 조건을 채워도 된다. 우대는 등급에 넣지 않고 `preferred` 로 따로 보여 준다. 담당 업무와 경력은 등급에 넣지 않는다.
-- **상세에서 확정 카드가 하나도 없으면 `fit` 은 null, `met` 은 0, `supports` 는 모두 빈 배열이다.** D 는 '카드는 있는데 맞는 근거가 없음' 이다. 목록의 `fit` 은 늘 null 이라 '확정 카드가 없음' 과 같은 뜻이 아니다 — 확정 카드 수는 내 정보 `stats.confirmedCards` 로 본다.
-- **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 비슷한 내 카드 문장이 있으면 `supports` 로 함께 온다.
+- **기술·경험 조건의 `status` 는 확정 카드로 AI 가 판단한 결과다.** MET 이면 채운 카드가 `metBy` 에 오고 `reason` 은 그 카드가 조건을 채운 이유다(`repoId` 는 카드가 나온 레포, 직접 쓴 카드는 null). NOT_MET 은 채운 카드가 없음, UNJUDGED 는 아직 맞춰 보지 않았거나 그 뒤 카드 글이 바뀐 것이다. 판단은 (카드, 카드 글, 조건) 마다 저장해 레포 추천·전체 추천·상세가 같이 쓰므로, 카드 글이 바뀌기 전에는 다시 묻지 않는다.
+- **일반 조건은 `generalType` 으로 구분한다.** 화면은 같은 NOT_MET 이어도 기술·경험 조건('맞는 카드가 없음')과 학력('인적사항과 맞지 않음')을 이 칸으로 나눠 쓴다.
+- **학력은 인적사항과 견준다** — MET · NOT_MET · UNKNOWN(인적사항에 학력이 없음). '또는 그에 준하는 경력' 처럼 예외가 적힌 학력은 못 미쳐도 CHECK 다. 병역·어학·자격증·지역 같은 일반 조건은 CHECK(직접 확인)이다. `summary` 는 일반 조건을 세지 않는다.
+- **등급(`fit`)은 상세에서도 null 이다.** `required`·`preferred` 의 `met` 은 상태가 MET 인 조건 수다.
+- **확정 카드가 하나도 없으면** 기술·경험 조건은 모두 NOT_MET 이고 `needsJudgement` 는 false 다. 확정 카드 수는 내 정보 `stats.confirmedCards` 로 본다.
+- **담당 업무는 상세에서 '하게 될 일' 로 보여 준다.** 판단하지 않는다(`status` null, `metBy` 빈 배열).
+- **모자란 조건 채우기(`gapFill`)는 사용자에게 묻지 않는다.** 화면은 맞춰 보기(`/judgement`) 응답에 NOT_MET 이 있으면 `/gap-fill` 을 자동으로 부르고, `pollAfterMs` 마다 상세를 다시 읽는다. 찾는 조건은 못 채운 기술·경험 필수 조건이고, 필수를 다 채운 공고만 못 채운 우대 조건을 찾는다. 많아야 5개이고 학력·어학 같은 일반 조건은 찾지 않는다.
+  - `decision`: 조건 문장과 내 카드·후보를 보고 AI 가 찾아볼지 정한 것이다. SKIP 이면 `result` 는 SKIPPED 이고 `decisionReason` 이 그 이유다.
+  - `steps`: AI 가 한 일이며 생기는 대로 늘어난다. CANDIDATES_CHECKED = 카드로 만들지 않은 후보 `count` 개를 봄, DRAFT_CARDS_CHECKED = 작성 중 카드 `count` 장을 봄, GITHUB_SEARCHED = 검색어 `query` 로 내 공개 커밋을 찾아 분석한 레포의 커밋을 빼고 `count` 개를 찾음, GITHUB_FAILED = `query` 검색이 막힘(토큰 거절·GitHub 한도), OUTSIDE_REPO_FOUND = 내 레포 목록에 없는 레포 `repoName` 에서 찾아 분석할 수 없음.
+  - `proposal`: 찾았으면 하나다. CREATE_CARD = 후보 `candidateId` 로 카드 만들기(`repoId`·`repoName` 은 후보가 나온 레포라 `POST /repos/{repoId}/cards` 에 쓴다, `title` 은 후보 제목), CONTINUE_CARD = 작성 중 카드 `cardId` 마저 채우기(`title` 은 카드 제목, `repoName` null), ANALYZE_REPO = 분석하지 않은 내 레포 `repoId` 분석하기(`title`·`repoName` 은 레포 이름). [진행하기] 는 지금 있는 API(카드 만들기·되묻기·레포 분석)로 넘긴다.
+  - `result`: PROPOSED = 제안이 있음, NOT_FOUND = 찾아봤지만 없음, SKIPPED = 찾지 않기로 함, TIMED_OUT = 시간(90초)이 모자라 찾은 데까지만 봄.
+  - **[그래도 찾아보기]**: DONE 결과에서 `result` 가 SKIPPED 인 조건을 `conditionIds` 로 보내면 그 조건만 AI 판단과 상관없이 찾는다(호출 한도 1번). 찾는 동안 나머지 조건은 앞 결과 그대로 보이고, 끝나면 그 조건만 새 결과로 바뀐다. 그 조건은 `forced` 가 true 이고 `decision`·`decisionReason` 은 AI 가 SKIP 이라 본 그대로라, 화면은 'AI 는 이렇게 봤지만 직접 찾아봤어요' 처럼 두 사실을 같이 보일 수 있다. 끝난 결과가 없으면(처음·찾는 중·FAILED) 409 `INVALID_STATE`, SKIPPED 가 아니거나 지금은 채운 조건이면 400 `INVALID_REQUEST` 다.
+  - 찾는 동안은 서버 메모리의 진행을 보여 주므로, 서버가 다시 시작되면 `decision`·`steps` 가 빈 조건으로 보일 수 있다. 5분이 지나도 끝나지 않은 찾기와 AI 가 실패한 찾기는 FAILED 이고, `/gap-fill` 을 다시 부르면 새로 찾는다. 확정 카드·작성 중 카드·카드로 만들지 않은 후보·레포 목록과 분석 여부가 그대로면 DONE 결과를 그대로 다시 쓴다.
 - **경력은 원문에 적혀 있을 때만 나온다.** `ENTRY` = 신입·경력 무관·인턴·최소 0년(상한만 있는 '1년 미만'·'3년 이하' 도 포함), `EXPERIENCED` = 최소 N년(`minYears`), `UNSPECIFIED` = 경력 얘기가 없거나 원문으로 확인할 수 없을 때. 경력 조건은 `conditions` 에 넣지 않는다.
 - **정렬**: 목록은 등급이 없으므로 마감이 7일 안에 남은 공고를 마감이 가까운 순으로 앞에 두고, 나머지는 `expiresAt` 이 가까운 순을 지키며 회사마다 한 건씩 돌아가며 놓고, 마감일이 없는(null) 공고는 뒤로 내려준다. 화면의 '마감 순' 보기는 받은 목록을 다시 정렬한다.
 - **필터(경력: 전체·신입 가능·경력·경력 표시 없음, 직무 분류)도 화면에서 한다.** '경력 표시 없음'은 `experience.level` 이 `UNSPECIFIED` 인 공고라, 경력 조건을 알 수 없는 공고를 따로 걸러 볼 수 있게 한다. 서버 쿼리 파라미터는 기업 페이지용 `companyId` 하나뿐이다. 정렬·필터를 바꿀 때마다 서버에 다시 물으면 매칭을 다시 계산하기 때문이다.
+- **기술(`techs`) · 학력(`education`)**: 목록 카드에 그리는 값이다. `techs` 는 카드 `techs` 와 같은 이름이고 담당 업무 조건의 기술은 넣지 않는다. `education` 은 상세처럼 일반 조건 EDUCATION 중 수준을 읽은 것만 보고, 필수 학력 중 가장 낮은 수준을 준다. `exempt` 는 '또는 그에 준하는 경력' 같은 예외가 적힌 학력이라 화면은 목록에 보이지 않고 상세에서 원문으로 보인다. 수준을 읽은 필수 학력이 없으면 null 이다.
 - **회사(`companyId` · `logoUrl`)**: `companyId` 는 서버 회사 설정의 키(예: `daangn`)이고, 여러 회사의 공고를 주는 출처(로켓펀치)는 `rocketpunch:회사이름` 이다. 기업별로 묶을 때 회사 이름 대신 이 값을 쓴다. `logoUrl` 은 회사 설정에 적은 공식 로고 https 주소이고, 없으면 null 이라 화면은 이니셜을 보인다. 이미지를 불러오지 못할 때도 이니셜로 되돌린다.
 - **마감일(`source.expiresAt`)**: null 은 '마감일 없음' 이다. 출처가 상시 채용이라 마감일을 주지 않은 공고, 출처가 준 날짜를 읽지 못한 공고, 1년 넘게 먼 날짜를 준 공고가 함께 null 이라 화면은 '상시 채용' 보다 '마감일 없음' 이 맞다. 마감된 공고는 회사 채용 목록에서 사라지면 다음 가져오기에서 목록에서 빠진다.
 - **회사 이름(`company`)**: 같은 `companyId` 면 이름도 늘 같다. 회사 설정 출처는 설정의 이름 하나를 쓰고, 로켓펀치는 회사 이름이 `companyId` 안에 들어 있다.
-- **오류**: 목록은 401 `UNAUTHENTICATED` 뿐이다. 상세는 401 · 404 `NOT_FOUND` · 503 `AI_UNAVAILABLE`(근거를 찾는 AI 검색이 잠시 실패, 다시 시도할 수 있다).
-- **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급을 셀 때의 예시로, 지금 목록 응답과 값이 다르다) · `list-no-cards.json`(지금 목록 응답과 같은 모양 — `fit` null, `met` 0) · `detail.json`(근거가 있는 조건과 빈 조건) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
+- **오류**: 목록은 401 `UNAUTHENTICATED` 뿐이다. 상세는 401 · 404 `NOT_FOUND` 이다. 맞춰 보기는 401 · 404 · 429 `RATE_LIMITED`(1분 10번 · 하루 100번) · 503 `AI_UNAVAILABLE`(AI 판단이 잠시 실패, 다시 누를 수 있다)이다. 채우기는 401 · 404 · 400 `INVALID_REQUEST`(다시 찾을 수 없는 조건을 `conditionIds` 로 보냄) · 403 `GITHUB_UNAUTHORIZED`(새로 찾아야 하는데 쓸 수 있는 GitHub 연결이 없음 — 레포 분석과 같이 'GitHub 다시 연결' 로 안내. 저장한 결과를 다시 쓰거나 못 채운 조건이 없으면 연결을 보지 않는다) · 409 `INVALID_STATE`(아직 맞춰 보지 않은 조건이 있음 — `needsJudgement` 가 true, 또는 `conditionIds` 를 줬는데 끝난 결과가 없음) · 429 `RATE_LIMITED`(1분 3번 · 하루 40번)이다. 채우기는 배경에서 돌아 AI 실패가 503 으로 오지 않고 `gapFill.state` FAILED 로 보인다.
+- **응답 예시**: `frontend/docs/examples/matching/` — `list.json`(등급을 셀 때의 예시로, 지금 목록 응답과 값이 다르다) · `list-no-cards.json`(지금 목록 응답과 같은 모양 — `fit` null, `met` 0) · `detail.json`(맞춰 본 뒤의 상세) · `errors.json`(401·404·503). 회사·공고는 지어낸 예시다. 서버 API 가 생기기 전까지 목 데이터로 쓰고, 서버 목록·상세 API 를 만들 때 실제 응답이 이 예시와 같은 모양인지 시험으로 확인한다.
 - 한 줄 소개(`summary`), 인재상 태그(`matchedTags`·`gapTags`), 카드 수 기준 칸(`supportedTagCount`·`independentTagCount`)은 없다. `source.verifiedAt` 대신 `source.collectedAt`(공고를 가져온 시각)이다.
 
 ### 아직 서버 쪽에 남은 일 (FE 기대 계약)
@@ -406,7 +505,7 @@ API 로 나가는 `evidence_type` 은 대문자 `COMMIT` · `USER_STATED` · `US
 
 ## 자소서 (#484, 계약만 · 서버 구현 전)
 
-문항 입력 → AI 카드 고르기 → 카드 확인 → 모자란 재료 질문 → AI 쓰기·검사·검토 → 초안 고치기의 `/cover-letters` API 와 단계(`stage`)·폴링 규칙은 [자소서 계약](2026-10-28-COVER_LETTER.md)을 따릅니다. 기존 Job API(`/jobs`)는 쓰지 않고 자소서 조회를 폴링합니다.
+문항 입력 → AI 카드 고르기 → 카드 확인 → 모자란 재료 질문 → AI 쓰기·검사·검토 → 초안 고치기의 `/cover-letters` API 와 단계(`stage`)·폴링 규칙은 [자소서 계약](2026-10-28-COVER_LETTER.md)을 따릅니다. 기존 Job API(`/jobs`)는 쓰지 않고 자소서 조회를 폴링합니다. 초안의 AI 추론 문장 표시(`marks[].code: INFERRED`)와 확인 API(`DELETE /cover-letters/{id}/questions/{qid}/marks/{sentenceSeq}`, #719)도 그 문서에 있습니다.
 
 ## 카드 분야·기술 태그 (#338 → #339, 선행 구현 대기)
 

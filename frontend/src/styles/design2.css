@@ -24,15 +24,14 @@
 
 /* 카드 그리드 · 이어서 하기 · 히어로 */
 .experience-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-.experience-item.gcard { min-height: 220px; gap: 18px; padding: 24px; border: 1px solid var(--border-default); border-radius: 16px; box-shadow: none; background: var(--bg-surface); transform: none; }
+.experience-item.gcard { min-height: 0; gap: 10px; padding: 18px 18px 16px; border: 1px solid var(--border-default); border-radius: 16px; box-shadow: none; background: var(--bg-surface); transform: none; }
 /* 개수가 홀수면 마지막 칸이 반만 차서 오른쪽이 빈 채로 남는다 — 한 줄을 다 쓰게 한다 */
 /* hover 에서 border-color 를 건드리지 않는다. 여기 테두리는 카드 테두리가 아니라 칸 사이 격자선이라
    투명하게 만들면 마우스를 올린 칸 둘레의 선이 통째로 사라진다 (칸이 따로 놀던 시절의 잔재였다). */
 .experience-item:hover, .experience-item:focus-visible { background: var(--bg-canvas); box-shadow: none; transform: none; }
 .experience-item__meta, .experience-item__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-tertiary); font-size: 12px; line-height: 18px; }
-.experience-item__footer { margin-top: 0; }
+.experience-item__footer { margin-top: auto; }
 .experience-item .gcard__title { margin: 0; }
-.experience-item .stardots--labeled { width: 100%; max-width: 280px; margin-top: auto; }
 .status-tabs { display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--border-default); }
 .status-tab { position: relative; min-height: 44px; padding: 0 2px; color: var(--text-secondary); font-size: 13px; font-weight: 600; }
 .status-tab[aria-pressed="true"] { color: var(--text-primary); }
@@ -55,7 +54,7 @@
  */
 .record-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); }
 .record-list > .card { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.record-list > .card { position: relative; }
+.record-list > .card { position: relative; transition: background-color .15s ease; }
 .record-list > .card:first-child { border-top-left-radius: 17px; border-top-right-radius: 17px; }
 .record-list > .card:last-child { border-bottom-left-radius: 17px; border-bottom-right-radius: 17px; }
 .record-list > .card::before { content: ''; position: absolute; inset: 0; border: 2px solid transparent; border-radius: inherit; pointer-events: none; }
@@ -64,12 +63,8 @@
 .record-list > .cand { padding: 20px; }
 .record-list > .card:hover { background: var(--bg-canvas); box-shadow: none; }
 .record-list > .card--selected, .record-list > .card--selected:hover { background: var(--bg-selected); }
-.record-list > .card--selected::before { border-color: var(--border-selected); }
+.record-list > .card--selected::before { border-color: transparent; }
 .record-list > .card:focus-visible { outline-offset: -4px; }
-.resume { display: flex; flex-direction: column; gap: 8px; }
-.resume__item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: var(--radius-lg); background: var(--bg-surface); border: 1px solid var(--border-default); transition: border-color .12s, transform .12s; }
-.resume__item:hover { border-color: var(--border-strong); transform: translateX(2px); }
-.resume__title { font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hero { display: flex; align-items: center; gap: 20px; padding: 24px 26px; border-radius: var(--radius-xl); background: var(--bg-feature); color: var(--text-on-feature); flex-wrap: wrap; background-image: radial-gradient(circle at 92% 10%, rgba(255, 255, 255, .08), transparent 42%); }
 .hero__h { font-size: 20px; line-height: 29px; font-weight: var(--heading-weight); max-width: 640px; letter-spacing: var(--text-tracking); }
 .hero__s { font-size: 13px; line-height: 20px; color: var(--text-on-feature-muted); }
@@ -99,3 +94,37 @@
 }
 .repo-row__warn { font-size: 12px; line-height: 17px; color: var(--text-tertiary); }
 .repo-row--sel .repo-row__warn { color: var(--text-secondary); }
+/* #756 레포 줄 — 숫자는 문장 한 줄에, 강조색은 고른 줄의 파랑과 기여가 적을 때의 호박 둘만 쓴다 */
+.repo-row__body { gap: 2px; min-width: 0; text-align: left; }
+.repo-row__title { display: flex; flex-direction: column; min-width: 0; }
+.repo-row__owner { font-size: 12px; line-height: 17px; color: var(--text-tertiary); overflow-wrap: anywhere; }
+.repo-row__name { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+/* 설명은 폴더 타일의 설명(.folder__desc)과 같은 크기·색이라 두 화면에서 같은 줄로 읽힌다 */
+.repo-row__desc { display: block; font-size: 13px; line-height: 18px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repo-row__line { display: block; margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
+.repo-row__caution { font-weight: 600; color: var(--field-low-text); }
+.repo-row__hint { color: var(--text-tertiary); }
+.repo-row__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; }
+.repo-row__meta { font-size: 12px; line-height: 17px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.record-list > .repo-row.card--selected::before { border-color: var(--border-accent); }
+.repo-row--sel .radio--checked { background: var(--border-accent); border-color: var(--border-accent); }
+/* 고른 레포 줄은 파랑 바탕 — 앱 공통 --bg-selected 는 회색이라 고른 것을 파랑으로 보이게 따로 둔다 */
+.record-list > .repo-row--sel, .record-list > .repo-row--sel:hover { background: var(--bg-accent); }
+/* #778 레포 목록 세 묶음 — 묶음마다 제목 아래에 상자(.record-list)가 하나씩 있다 */
+.repo-groups, .repo-groups__pick { display: flex; flex-direction: column; gap: 20px; }
+.repo-group { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+/* 이미 정리한 레포 줄 — 고르는 줄이 아니라서 줄 전체에 hover 바탕을 주지 않고 링크만 눌린다 */
+.repo-done { margin: 0; padding: 0; list-style: none; }
+.repo-done__row { display: flex; align-items: center; gap: 4px 12px; padding: 14px 20px; }
+.repo-done__row + .repo-done__row { border-top: 1px solid var(--border-default); }
+.repo-done__side { display: flex; align-items: center; flex: 0 0 auto; gap: 0 14px; }
+.repo-done__cards { font-size: 13px; line-height: 18px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.repo-done__link { display: inline-flex; align-items: center; min-height: var(--control-touch-size); padding: 0 4px; font-size: 14px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+.repo-done__link:hover { color: var(--text-primary); }
+@media (max-width: 767px) {
+  .repo-done__row > .iconbox { display: none; }
+}
+@media (max-width: 560px) {
+  .repo-done__row { flex-wrap: wrap; }
+  .repo-done__side { flex-basis: 100%; }
+}

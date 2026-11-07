@@ -1,0 +1,194 @@
+/*
+ * 홈 — 한 줄 입력, 네 단계의 지금 상태, 이어서 하기, 최근에 한 일, 마감 달력.
+ * 글자는 가장 작은 것이 13, 설명 14, 본문 15~16, 소제목 20, 제목 28 이다(10~12px 글자를 쓰지 않는다).
+ */
+.home2 { gap: 32px; padding-bottom: 64px; }
+.home2-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 14px; font-size: 20px; line-height: 28px; font-weight: 700; letter-spacing: -.035em; }
+.home2-h small { font-size: 14px; font-weight: 600; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.home2-sec { min-width: 0; }
+
+/* ───────── 맨 위: 한 줄 입력 ───────── */
+.home2-hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); align-items: center; gap: 24px; padding: 26px 36px; border: 1px solid var(--border-default); border-radius: 24px; background: var(--bg-paper); overflow: hidden; }
+/* 다른 화면의 제목과 같은 크기와 굵기를 쓴다 */
+.home2-hero h1 { font-size: var(--page-title-size); line-height: var(--page-title-leading); font-weight: var(--heading-weight); letter-spacing: var(--text-tracking); }
+.home2-hero p { margin-top: 4px; font-size: 15px; line-height: 23px; color: var(--text-secondary); }
+.home2-ask { display: flex; gap: 8px; margin-top: 18px; }
+.home2-ask__field { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 48px; min-height: 48px; padding-inline: 16px; border: 1.5px solid var(--border-strong); border-radius: 14px; background: var(--bg-surface); color: var(--text-tertiary); cursor: text; }
+.home2-ask__field:focus-within { border-color: var(--border-selected); }
+.home2-ask__field input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 15px; line-height: 22px; color: var(--text-primary); }
+.home2-ask__field input::placeholder { color: var(--text-tertiary); }
+.home2-ask__field input:focus-visible { box-shadow: none; outline: 0; }
+.home2-ask__go.btn { min-height: 48px; padding-inline: 22px; border-radius: 14px; font-size: 15px; gap: 8px; }
+.home2-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.home2-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding-inline: 14px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: var(--bg-surface); font-size: 14px; line-height: 20px; font-weight: 500; color: var(--text-strong); transition: border-color var(--motion-fast) var(--ease-standard); }
+.home2-pill:hover { border-color: var(--border-strong); }
+.home2-pill svg { color: var(--text-secondary); flex: none; }
+/* 넓은 화면에서 그림 조각이 양옆으로 벌어지지 않게 폭을 묶어 오른쪽에 붙인다 */
+.home2-hero__art { position: relative; justify-self: end; width: 100%; max-width: 400px; height: 188px; isolation: isolate; }
+.home2-hero__art::before { content: ''; position: absolute; inset: 18px 6px 4px 34px; border: 1px solid var(--border-default); border-radius: 26px; background: var(--bg-subtle); transform: rotate(-9deg); z-index: -1; }
+.home2-float { position: absolute; display: flex; align-items: center; gap: 11px; width: 216px; padding: 10px 13px; border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-surface); box-shadow: 0 10px 32px rgb(40 35 80 / 8%); transform: rotate(-7deg); font-size: 14px; line-height: 20px; font-weight: 700; }
+.home2-float small { display: block; font-size: 13px; line-height: 18px; font-weight: 400; color: var(--text-secondary); }
+.home2-float > svg { margin-left: auto; flex: none; }
+.home2-float--1 { top: 2px; right: 2px; }
+.home2-float--2 { top: 62px; left: 6px; }
+.home2-float--3 { top: 122px; left: 44px; }
+.home2-hero__github { position: absolute; right: 2px; bottom: 6px; color: var(--text-tertiary); z-index: -1; }
+
+/* ───────── 새로 써 둔 카드 ───────── */
+.home2-updates { display: flex; flex-direction: column; gap: 8px; }
+.home2-update { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid var(--border-accent); border-radius: 16px; background: var(--bg-accent); }
+.home2-update .iconbox { flex: none; background: var(--bg-surface); color: var(--text-primary); border-radius: 12px; }
+.home2-update__text { flex: 1; min-width: 0; margin: 0; font-size: 16px; line-height: 24px; font-weight: 700; overflow-wrap: anywhere; }
+.home2-update .btn { flex: none; }
+
+/* ───────── 지금 상태: 네 단계 ───────── */
+.home2-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 24px; }
+.home2-flow > li { position: relative; display: flex; min-width: 0; }
+/* 칸 사이의 꺾쇠가 왼쪽에서 오른쪽으로 이어지는 순서를 말한다 */
+.home2-flow > li + li::before { content: ''; position: absolute; left: -17px; top: 50%; width: 8px; height: 8px; border-top: 2px solid var(--border-strong); border-right: 2px solid var(--border-strong); transform: translateY(-50%) rotate(45deg); }
+.home2-tile { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; min-height: 186px; padding: 18px 20px 16px; border: 1px solid var(--border-default); border-radius: 18px; background: var(--bg-surface); box-shadow: var(--shadow-card); transition: border-color var(--motion-fast) var(--ease-standard); }
+.home2-tile:hover { border-color: var(--border-strong); }
+.home2-tile--now { border-color: var(--border-accent); box-shadow: inset 0 0 0 1px var(--border-accent); }
+.home2-tile__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; min-height: 40px; }
+.home2-tile__name { font-size: 15px; line-height: 22px; font-weight: 600; color: var(--text-strong); }
+.home2-tile__num { font-size: 30px; line-height: 38px; font-weight: 700; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.home2-tile__num small { margin-left: 4px; font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+.home2-tile__state { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 4px; font-size: 14px; line-height: 21px; color: var(--text-secondary); }
+.home2-tile__go { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 12px; font-size: 14px; line-height: 20px; font-weight: 600; }
+.home2-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 26px; padding: 3px 10px; border-radius: 8px; background: var(--bg-subtle); font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-strong); }
+.home2-chip--now { background: var(--bg-accent); }
+.home2-chip--now i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--border-accent); }
+.home2-chip--need { background: var(--state-open-bg); color: var(--state-open-text); }
+.home2-avs { display: flex; }
+.home2-av { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-surface); font-size: 14px; line-height: 1; font-weight: 700; }
+.home2-avs .home2-av + .home2-av { margin-left: -8px; }
+.home2-avs .home2-av { box-shadow: 0 0 0 2px var(--bg-surface); }
+.home2-av--lg { width: 44px; height: 44px; border-radius: 13px; font-size: 17px; }
+
+/* ───────── 두 칸: 이어서 하기와 최근에 한 일 | 마감 달력 ───────── */
+.home2-cols { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.home2-col { display: flex; flex-direction: column; gap: 32px; min-width: 0; }
+.home2-panel { padding: 22px 22px 20px; border: 1px solid var(--border-default); border-radius: 20px; background: var(--bg-surface); box-shadow: var(--shadow-card); }
+.home2-todos { display: flex; flex-direction: column; gap: 8px; }
+.home2-todo, .home2-start { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-radius: 14px; background: var(--pastel-lavender); }
+.home2-todo { transition: box-shadow var(--motion-fast) var(--ease-standard); }
+.home2-todo:hover { box-shadow: inset 0 0 0 1px var(--border-strong); }
+.home2-todo .iconbox, .home2-start .iconbox { flex: none; background: var(--bg-surface); color: var(--text-primary); border-radius: 12px; }
+.home2-todo__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.home2-todo__text strong { font-size: 16px; line-height: 23px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home2-todo__text span { font-size: 14px; line-height: 21px; color: var(--text-secondary); }
+.home2-todo__go { flex: none; color: var(--text-secondary); }
+.home2-todo .stardots { flex: none; min-width: 116px; gap: 5px; }
+.home2-todo .stardot { height: 26px; border-radius: 7px; font-size: 13px; }
+.home2-empty { font-size: 15px; line-height: 23px; color: var(--text-secondary); }
+.home2-steps { display: inline-flex; gap: 5px; flex: none; }
+.home2-steps i { width: 20px; height: 7px; border-radius: 4px; background: var(--bg-inset); }
+.home2-steps i.is-done { background: var(--border-accent); }
+.home2-steps i.is-now { background: var(--border-accent); opacity: .45; }
+
+.home2-recent { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.home2-recent > li { display: flex; min-width: 0; }
+.home2-did { flex: 1; display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border-default); border-radius: 16px; background: var(--bg-surface); overflow: hidden; transition: border-color var(--motion-fast) var(--ease-standard); }
+.home2-did:hover { border-color: var(--border-strong); }
+.home2-thumb { position: relative; display: grid; place-items: center; height: 140px; }
+.home2-thumb--card { background: var(--pastel-yellow); }
+.home2-thumb--match { background: var(--pastel-mint); }
+.home2-thumb--letter { background: var(--pastel-lavender); place-items: end center; }
+.home2-kind { position: absolute; z-index: 1; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding-inline: 10px; border-radius: 8px; background: var(--bg-surface); font-size: 13px; line-height: 18px; font-weight: 600; }
+.home2-did__text { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px 16px; }
+.home2-did__text strong { font-size: 16px; line-height: 23px; font-weight: 700; }
+.home2-did__text span { font-size: 13px; line-height: 20px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 겹친 카드 — 카드 목록의 폴더 타일과 같은 모양을 작게 */
+.home2-fan { position: relative; width: 160px; height: 86px; margin-top: 28px; }
+.home2-fan i { position: absolute; inset: 0; padding: 11px 12px; border: 1px solid var(--border-default); border-radius: 12px; background: var(--bg-surface); box-shadow: 0 4px 14px rgb(0 0 0 / 6%); }
+.home2-fan i:nth-last-child(3) { transform: rotate(-9deg) translate(-16px, 4px); }
+.home2-fan i:nth-last-child(2) { transform: rotate(7deg) translate(18px, 2px); }
+.home2-fan b { display: -webkit-box; margin-bottom: 8px; font-size: 13px; line-height: 18px; font-weight: 700; letter-spacing: -.03em; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.home2-fan em { display: block; height: 6px; margin-bottom: 6px; border-radius: 3px; background: var(--bg-inset); }
+.home2-fan em:last-child { width: 45%; }
+.home2-fit { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding: 12px 14px; border: 1px solid var(--border-default); border-radius: 14px; background: var(--bg-surface); box-shadow: 0 4px 14px rgb(0 0 0 / 6%); }
+.home2-fit b { display: block; margin-bottom: 6px; font-size: 13px; line-height: 18px; font-weight: 700; white-space: nowrap; }
+.home2-meter { display: inline-flex; gap: 4px; }
+.home2-meter i { width: 18px; height: 8px; border-radius: 4px; border: 1.5px solid var(--border-strong); }
+.home2-meter i.is-on { background: var(--bg-ink-solid); border-color: var(--bg-ink-solid); }
+.home2-sheet { width: 128px; height: 100px; padding: 13px 12px; border: 1px solid var(--border-default); border-bottom: 0; border-radius: 10px 10px 0 0; background: var(--bg-surface); box-shadow: 0 4px 14px rgb(0 0 0 / 6%); }
+.home2-sheet b { display: -webkit-box; margin-bottom: 8px; font-size: 13px; line-height: 17px; font-weight: 700; letter-spacing: -.03em; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.home2-sheet em { display: block; height: 6px; margin-bottom: 7px; border-radius: 3px; background: var(--bg-inset); }
+.home2-sheet em:nth-child(3) { width: 55%; background: var(--field-low-border); }
+.home2-sheet em:last-child { width: 70%; }
+
+/* ───────── 마감 달력(지금 달력을 그대로 쓰고 크기만 맞춘다)과 다가오는 마감 ───────── */
+.home2-side { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.home2-side .job-calendar { padding: 20px; border-radius: 20px; box-shadow: var(--shadow-card); }
+.home2-side .job-calendar__head { gap: 10px; margin-bottom: 14px; align-items: center; }
+.home2-side .job-calendar__head h2 { font-size: 20px; line-height: 28px; letter-spacing: -.035em; }
+.home2-side .job-calendar__head p, .home2-side .job-calendar__head .home-eyebrow { display: none; }
+.home2-side .job-calendar__head > .btn { min-height: var(--control-touch-size); padding: 8px 14px; gap: 6px; font-size: 14px; }
+.home2-side .job-calendar__layout { display: flex; flex-direction: column; gap: 14px; }
+.home2-side .calendar-month h3 { font-size: 16px; line-height: 24px; }
+.home2-side .calendar-month > span { display: none; }
+.home2-side .calendar-controls button { height: var(--control-touch-size); min-width: var(--control-touch-size); padding-inline: 8px; font-size: 14px; }
+.home2-side .calendar-board__toolbar { padding-bottom: 6px; }
+.home2-side .calendar-weekdays > span { padding-block: 7px; font-size: 13px; }
+.home2-side .calendar-day { min-height: 54px; padding: 0; border-right: 0; border-bottom: 0; }
+.home2-side .calendar-day__number { margin-bottom: 2px; font-size: 14px; }
+.home2-side .calendar-day__number::before { width: 32px; height: 32px; }
+.home2-side .calendar-event { height: 5px; min-height: 5px; padding: 0; margin-bottom: 2px; border: 1px solid var(--border-strong); border-radius: 3px; background: var(--border-strong); }
+.home2-side .calendar-event--deadline { background: var(--field-low-border); border-color: var(--field-low-border); }
+.home2-side .calendar-event > span { display: none; }
+.home2-side .calendar-day__more { font-size: 13px; line-height: 16px; }
+.home2-side .calendar-legend { gap: 12px; padding-top: 8px; }
+.home2-side .calendar-legend > span { font-size: 13px; line-height: 18px; }
+.home2-side .calendar-agenda { display: flex; flex-direction: column; gap: 0; padding: 14px 0 0; border-left: 0; border-top: 1px solid var(--border-default); }
+.home2-side .calendar-agenda__upcoming { display: none; }
+.home2-side .calendar-agenda__selected { border: 0; padding: 0; margin: 0; }
+.home2-side .calendar-agenda__selected h3 { font-size: 15px; line-height: 22px; }
+.home2-side .calendar-agenda h3 > span { font-size: 13px; }
+.home2-side .calendar-agenda__none, .home2-side .selected-event small { font-size: 13px; line-height: 20px; }
+.home2-side .selected-event strong { font-size: 14px; line-height: 21px; }
+.home2-side .calendar-storage-note, .home2-side .calendar-error { font-size: 13px; line-height: 20px; }
+
+.home2-due { padding: 20px; border: 1px solid var(--border-default); border-radius: 20px; background: var(--bg-surface); box-shadow: var(--shadow-card); }
+.home2-due h3 { margin-bottom: 4px; font-size: 17px; line-height: 25px; font-weight: 700; letter-spacing: -.03em; }
+.home2-due__row { display: flex; align-items: center; gap: 12px; padding-block: 13px; border-bottom: 1px solid var(--border-default); }
+.home2-due li:last-child .home2-due__row { border-bottom: 0; }
+.home2-due__row:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.home2-due__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.home2-due__text strong { font-size: 15px; line-height: 22px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home2-due__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.home2-due__go.btn { width: 100%; margin-top: 8px; min-height: 46px; font-size: 15px; }
+
+@media (max-width: 1100px) {
+  .home2-cols { grid-template-columns: minmax(0, 1fr); }
+  .home2-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .home2-flow > li + li::before { display: none; }
+  .home2-hero { grid-template-columns: minmax(0, 1fr); }
+  .home2-hero__art { display: none; }
+}
+@media (max-width: 767px) {
+  .home2 { gap: 28px; padding-bottom: 32px; }
+  .home2-hero { padding: 22px 18px; border-radius: 20px; }
+  .home2-hero h1 { font-size: 24px; line-height: 33px; }
+  .home2-ask { flex-direction: column; }
+  .home2-pill { min-height: var(--control-touch-size); }
+  .home2-flow { gap: 10px; }
+  .home2-tile { min-height: 0; padding: 14px; }
+  .home2-tile__top .iconbox, .home2-avs { display: none; }
+  .home2-tile__top { min-height: 0; }
+  .home2-tile__num { font-size: 26px; line-height: 34px; }
+  .home2-panel, .home2-due, .home2-side .job-calendar { padding: 16px 14px; }
+  .home2-todo, .home2-start { flex-wrap: wrap; gap: 10px 12px; padding: 13px; }
+  .home2-todo__text { flex-basis: calc(100% - 108px); }
+  .home2-todo .stardots, .home2-todo .home2-steps, .home2-todo .home2-chip { margin-left: 52px; }
+  .home2-start .btn { width: 100%; }
+  .home2-update { flex-wrap: wrap; gap: 10px 12px; padding: 14px; }
+  .home2-update__text { flex-basis: calc(100% - 52px); }
+  .home2-update .btn { width: 100%; }
+  .home2-recent { grid-template-columns: minmax(0, 1fr); }
+  .home2-did { flex-direction: row; }
+  .home2-thumb { flex: none; width: 128px; height: auto; min-height: 112px; }
+  .home2-kind { display: none; }
+  .home2-fan, .home2-fit { transform: scale(.72); margin-top: 0; }
+  .home2-did__text { justify-content: center; min-width: 0; }
+}
+@media print { .home2-hero__art, .home2-ask, .home2-quick { display: none; } }

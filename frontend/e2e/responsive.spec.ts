@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { freshSeed, loginAsDemo } from './helpers';
+import { freshSeed, loginAsDemo, showCardTiles } from './helpers';
 
 async function expectNoHorizontalOverflow(page: Page) {
   const metrics = await page.evaluate(() => ({
@@ -42,14 +42,14 @@ test.describe('반응형 레이아웃', () => {
     await expect(nav.getByText('홈', { exact: true })).toBeVisible();
     await expect(nav.getByText('레포', { exact: true })).toBeVisible();
     await expect(nav.getByText('카드', { exact: true })).toBeVisible();
-    await expect(nav.getByText('설정', { exact: true })).toBeVisible();
+    await expect(nav.getByText('마이페이지', { exact: true })).toBeVisible();
     await expect(page.locator('.sidebar')).toBeHidden();
     await expectNoHorizontalOverflow(page);
   });
 
   test('주요 라우트는 모바일·태블릿·데스크톱에서 가로로 넘치지 않는다', async ({ page }) => {
     await loginAsDemo(page);
-    const routes = ['/', '/repos', '/repos/r_auth/candidates', '/cards', '/cards/card_01', '/cards/card_01/interview?field=T', '/cards/new', '/settings', '/settings/github'];
+    const routes = ['/', '/repos', '/repos/r_auth/candidates', '/cards', '/cards/card_01', '/cards/card_01/interview?field=T', '/cards/new', '/cards/new?write=1', '/settings', '/settings/github'];
     for (const viewport of [
       { width: 390, height: 844 },
       { width: 768, height: 1024 },
@@ -102,21 +102,22 @@ test.describe('반응형 레이아웃', () => {
     expect(geometry.logoHeight).toBe(34);
   });
 
-  test('홈과 카드 목록은 하나의 여유 있는 경험 목록과 정렬된 STAR를 쓴다', async ({ page }) => {
+  test('카드 목록은 하나의 여유 있는 경험 목록을 쓰고 타일은 STAR 칸 대신 결과 한 줄을 둔다', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await loginAsDemo(page);
 
-    for (const path of ['/', '/cards']) {
-      await page.goto(path);
-      // 홈은 경험 목록 하나, 카드 목록은 레포별 묶음 안에 같은 경험 목록을 쓴다
-      await expect(page.locator(path === '/' ? '.experience-list' : '.card-groups')).toHaveCount(1);
-      await expect(page.locator('.experience-item').first()).toBeVisible();
-      const itemShadow = await page.locator('.experience-item').first().evaluate((el) => getComputedStyle(el).boxShadow);
-      expect(itemShadow).toBe('none');
-      const widths = await page.locator('.experience-item').first().locator('.stardot').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
-      expect(new Set(widths.map((width) => Math.round(width))).size).toBe(1);
-      await expect(page.locator('.experience-item').first().locator('.stardot__label')).toHaveCount(4);
-    }
+    // 홈은 카드 목록을 두지 않는다. 카드 목록은 묶음 안에 경험 목록을 쓴다(기본 보기는 폴더라 최근순으로 바꿔 본다)
+    await page.goto('/');
+    await expect(page.getByRole('region', { name: '지금 상태' })).toBeVisible();
+    await expect(page.locator('.experience-item')).toHaveCount(0);
+    await page.goto('/cards');
+    await showCardTiles(page);
+    await expect(page.locator('.card-groups')).toHaveCount(1);
+    await expect(page.locator('.experience-item').first()).toBeVisible();
+    const itemShadow = await page.locator('.experience-item').first().evaluate((el) => getComputedStyle(el).boxShadow);
+    expect(itemShadow).toBe('none');
+    await expect(page.locator('.experience-item .stardot')).toHaveCount(0);
+    await expect(page.locator('.experience-item__preview').first()).toBeVisible();
   });
 
   test('설정은 관련 정보를 큰 섹션으로 묶고 선택 경계는 유지한다', async ({ page }) => {
@@ -135,12 +136,12 @@ test.describe('반응형 레이아웃', () => {
     expect(selectedBorder).toBeGreaterThanOrEqual(1);
   });
 
-  test('저장소와 후보는 개별 카드 대신 하나의 행 목록으로 묶는다', async ({ page }) => {
+  test('저장소는 개별 카드 대신 묶음마다 하나의 행 목록으로 묶는다', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     await loginAsDemo(page);
-    for (const path of ['/repos', '/repos/r_auth/candidates']) {
+    for (const path of ['/repos']) {
       await page.goto(path);
-      await expect(page.locator('.record-list')).toHaveCount(1);
+      await expect(page.locator('.record-list')).toHaveCount(3); // 레포 목록은 세 묶음(#778)이라 상자가 셋이다
       const children = page.locator('.record-list > .card');
       await expect.poll(() => children.count()).toBeGreaterThan(1);
       const shadows = await children.evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));

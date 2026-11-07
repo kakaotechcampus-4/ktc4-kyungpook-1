@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class CoverLetterService {
 
     private static final int JOB_ROLE_MAX_LENGTH = 100;
-    private static final int MEMO_MAX_LENGTH = 1_000;
+    private static final int MAX_STRENGTHS = 3;
     private static final int MAX_QUESTIONS = 10;
     private static final int QUESTION_MAX_LENGTH = 500;
     private static final int MIN_CHAR_LIMIT = 100;
@@ -53,17 +53,20 @@ public class CoverLetterService {
     private final CardMaterialAnswerRepository rememberedAnswers;
     private final CardMaterialReader cardMaterials;
     private final CardLabelReader cardLabels;
+    private final CoverLetterPostingReader postings;
     private final UserRateLimiter rateLimiter;
     private final AuditLog auditLog;
     private final CoverLetterViewFactory views;
     private final TransactionTemplate transaction;
 
     /** 같은 사용자·같은 요청 키면 보낸 내용과 상관없이 처음 만든 자소서를 돌려준다 */
-    public CoverLetterView create(Long userId, String jobRole, String memo, List<NewQuestion> newQuestions,
-                                  String idempotencyKey) {
+    /** postingId 는 공고 상세에서 시작했을 때만 있고, 없는 공고면 만들지도 호출 제한을 세지도 않는다 */
+    public CoverLetterView create(Long userId, String jobRole, String memo, List<String> strengths,
+                                  List<NewQuestion> newQuestions, UUID postingId, String idempotencyKey) {
 
         String key = checkedKey(idempotencyKey);
         checkInput(jobRole, memo, newQuestions);
+        List<Strength> checkedStrengths = checkedStrengths(strengths);
 
         Optional<CoverLetter> existing = existing(userId, key);
         if (existing.isPresent()) {
@@ -73,9 +76,10 @@ public class CoverLetterService {
         if (!cardMaterials.hasConfirmed(userId)) {
             throw new NoConfirmedCardsException();
         }
+        CoverLetterPosting posting = postingId == null ? null : postings.read(postingId, userId);
         rateLimiter.acquire(RateLimitedAction.COVER_LETTER, userId, 1);
 
-        return views.of(save(userId, jobRole, memo, newQuestions, key));
+        return views.of(save(userId, jobRole, memo, checkedStrengths, newQuestions, posting, key));
 
     }
 
@@ -177,6 +181,24 @@ public class CoverLetterService {
 
     }
 
+    /** 초안을 받은 뒤에만 부르며, 사용자가 맞다고 확인한 AI 추론 문장의 표시를 지우고 글은 건드리지 않는다 */
+    @Transactional
+    public CoverLetterView confirmInference(UUID letterId, UUID questionId, Long userId, int sentenceSeq) {
+
+        CoverLetter letter = lockOwned(letterId, userId, AuditAction.EDIT_COVER_LETTER);
+        CoverLetterQuestion question = questions.findByPublicIdAndCoverLetterId(questionId, letter.getId())
+                .orElseThrow(CoverLetterNotFoundException::new);
+        if (letter.getStage() != CoverLetterStage.DRAFTED) {
+            throw new CoverLetterStateException("AI 추론 문장은 초안을 다 쓴 뒤에만 확인할 수 있습니다.");
+        }
+
+        question.confirmInference(sentenceSeq);
+        letter.touch();
+
+        return views.of(letter);
+
+    }
+
     /** 어느 단계에서든 지우며, 워커가 돌리던 단계의 결과는 자소서가 없어 저장되지 않는다 */
     @Transactional
     public void delete(UUID letterId, Long userId) {
@@ -202,11 +224,12 @@ public class CoverLetterService {
 
     }
 
-    private CoverLetter save(Long userId, String jobRole, String memo, List<NewQuestion> newQuestions, String key) {
+    private CoverLetter save(Long userId, String jobRole, String memo, List<Strength> strengths,
+                             List<NewQuestion> newQuestions, CoverLetterPosting posting, String key) {
 
         try {
             return transaction.execute(status -> {
-                CoverLetter letter = letters.save(CoverLetter.start(userId, jobRole, memo, key));
+                CoverLetter letter = letters.save(CoverLetter.start(userId, jobRole, memo, strengths, key, posting));
                 for (int seq = 1; seq <= newQuestions.size(); seq++) {
                     NewQuestion question = newQuestions.get(seq - 1);
                     questions.save(CoverLetterQuestion.of(letter.getId(), seq, question.text(),
@@ -290,8 +313,10 @@ public class CoverLetterService {
     private static void checkInput(String jobRole, String memo, List<NewQuestion> newQuestions) {
 
         requireText(jobRole, "지원 직무 칸", JOB_ROLE_MAX_LENGTH);
-        if (memo != null) {
-            requireLength(memo, "메모 칸", MEMO_MAX_LENGTH);
+        // 지원 이유는 선택이라 비어 있으면 검사하지 않으며, 필요한 문항은 초안의 빈칸과 대화가 묻는다
+        String memoProblem = memo == null || memo.isBlank() ? null : ReasonCheck.problem(memo);
+        if (memoProblem != null) {
+            throw new InvalidCoverLetterInputException(memoProblem);
         }
         if (newQuestions == null || newQuestions.isEmpty() || newQuestions.size() > MAX_QUESTIONS) {
             throw new InvalidCoverLetterInputException("문항은 1개부터 " + MAX_QUESTIONS + "개까지입니다.");
@@ -306,6 +331,36 @@ public class CoverLetterService {
                 throw new InvalidCoverLetterInputException(
                         "글자 수는 " + MIN_CHAR_LIMIT + "부터 " + MAX_CHAR_LIMIT + "까지입니다.");
             }
+        }
+
+    }
+
+    private static List<Strength> checkedStrengths(List<String> strengths) {
+
+        if (strengths == null) {
+            return List.of();
+        }
+        if (strengths.size() > MAX_STRENGTHS) {
+            throw new InvalidCoverLetterInputException("강점은 " + MAX_STRENGTHS + "개까지 고를 수 있습니다.");
+        }
+        List<Strength> checked = new ArrayList<>();
+        for (String strength : strengths) {
+            Strength known = strengthOf(strength);
+            if (checked.contains(known)) {
+                throw new InvalidCoverLetterInputException("같은 강점을 두 번 고를 수 없습니다.");
+            }
+            checked.add(known);
+        }
+        return List.copyOf(checked);
+
+    }
+
+    private static Strength strengthOf(String strength) {
+
+        try {
+            return Strength.valueOf(strength);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new InvalidCoverLetterInputException("고를 수 없는 강점이 있습니다.");
         }
 
     }

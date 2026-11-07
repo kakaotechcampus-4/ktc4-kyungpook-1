@@ -37,6 +37,10 @@ public class CoverLetter {
     private Long userId;
     private String jobRole;
     private String memo;
+    private Boolean memoUsable;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<Strength> strengths;
 
     @Enumerated(EnumType.STRING)
     private CoverLetterStage stage;
@@ -54,12 +58,25 @@ public class CoverLetter {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<DraftStep> draftSteps;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    private CoverLetterPosting posting;
+
     private String idempotencyKey;
     private Instant createdAt;
     private Instant updatedAt;
 
-    /** 만들자마자 카드 고르기를 기다리고, 메모가 비어 있으면 없음으로 둔다 */
     public static CoverLetter start(Long userId, String jobRole, String memo, String idempotencyKey) {
+
+        return start(userId, jobRole, memo, List.of(), idempotencyKey, null);
+
+    }
+
+    /**
+     * 만들자마자 카드 고르기를 기다리고, 메모가 비어 있으면 없음으로 둔다
+     * posting 은 공고 상세에서 시작했을 때만 있고, 뒤에 카드나 공고가 바뀌어도 이 값으로 AI 를 부른다
+     */
+    public static CoverLetter start(Long userId, String jobRole, String memo, List<Strength> strengths,
+                                    String idempotencyKey, CoverLetterPosting posting) {
 
         CoverLetter letter = new CoverLetter();
         Instant now = CoverLetterTime.now();
@@ -67,14 +84,38 @@ public class CoverLetter {
         letter.userId = userId;
         letter.jobRole = jobRole;
         letter.memo = memo == null || memo.isBlank() ? null : memo;
+        letter.strengths = new ArrayList<>(strengths);
         letter.stage = CoverLetterStage.ASSIGNING;
         letter.assignSteps = new ArrayList<>();
         letter.draftSteps = new ArrayList<>();
+        letter.posting = posting;
         letter.idempotencyKey = idempotencyKey;
         letter.createdAt = now;
         letter.updatedAt = now;
 
         return letter;
+
+    }
+
+    /** 지원 이유가 없는 자소서는 판정할 글이 없어 판정 전으로 둔다 */
+    public void memoJudged(boolean usable) {
+
+        if (memo != null) {
+            memoUsable = usable;
+        }
+
+    }
+
+    /** 질문 단계가 지원 이유로 쓰기 어렵다고 본 글은 쓰기·첨삭·대화에 보내지 않아, 초안이 빈칸으로 두고 대화가 다시 묻게 한다 */
+    public String memoForWriting() {
+
+        return Boolean.FALSE.equals(memoUsable) ? null : memo;
+
+    }
+
+    public List<String> strengthCodes() {
+
+        return strengths.stream().map(Strength::name).toList();
 
     }
 

@@ -4,8 +4,11 @@ import com.gitory.backend.recommend.domain.Candidate;
 import com.gitory.backend.recommend.domain.CandidateStatus;
 import com.gitory.backend.recommend.domain.CandidateType;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -15,6 +18,15 @@ import java.util.UUID;
 public interface CandidateRepository extends JpaRepository<Candidate, Long> {
 
     List<Candidate> findByUserRepositoryId(Long userRepositoryId);
+
+    // 보드와 같은 순서(점수가 높은 후보부터, 점수가 없으면 맨 뒤)로 읽는다
+    @Query("""
+            SELECT c FROM Candidate c
+            WHERE c.userRepositoryId IN :userRepositoryIds AND c.status = :status
+            ORDER BY c.score DESC NULLS LAST, c.id
+            """)
+    List<Candidate> findBestFirst(@Param("userRepositoryIds") Collection<Long> userRepositoryIds,
+                                  @Param("status") CandidateStatus status, Limit limit);
 
     // 후보를 잠그는 다른 작업(카드 만들기 등)도 id 순으로 잠가야, 둘이 서로 상대가 잡은 행을 기다리며 멈추지 않는다
     @Lock(LockModeType.PESSIMISTIC_WRITE)

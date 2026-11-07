@@ -3,6 +3,7 @@ package com.gitory.backend.coverletter.api;
 import com.gitory.backend.coverletter.domain.CoverLetterStage;
 import com.gitory.backend.coverletter.domain.CoverLetterStep;
 import com.gitory.backend.coverletter.domain.CoverLetterView;
+import com.gitory.backend.coverletter.domain.Strength;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
@@ -18,6 +19,9 @@ public record CoverLetterResponse(
         @Schema(description = "AI 가 도는 단계면 다음 조회 간격(밀리초), 아니면 null", example = "1500") Integer pollAfterMs,
         String jobRole,
         String memo,
+        @Schema(description = "만들 때 고른 강점, 0~3개. 고른 것이 없으면 빈 배열") List<Strength> strengths,
+        @Schema(description = "질문 단계가 지원 이유를 글에 쓸 수 있다고 봤으면 true, 쓰기 어렵다고 봤으면 false(이때 초안은 지원 이유를 빈칸으로 두고 대화에서 다시 묻는다). 판정 전이거나 지원 이유가 없는 자소서면 null") Boolean memoUsable,
+        @Schema(description = "공고 상세에서 시작한 자소서면 그 공고, 아니면 null") CoverLetterPostingResponse posting,
         Instant createdAt,
         Instant updatedAt,
         List<CoverLetterView.Question> questions,
@@ -39,6 +43,9 @@ public record CoverLetterResponse(
                 letter.running() ? POLL_AFTER_MS : null,
                 letter.jobRole(),
                 letter.memo(),
+                letter.strengths(),
+                letter.memoUsable(),
+                CoverLetterPostingResponse.from(letter.posting()),
                 letter.createdAt(),
                 letter.updatedAt(),
                 letter.questions(),

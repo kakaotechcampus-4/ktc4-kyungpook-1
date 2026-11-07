@@ -24,6 +24,12 @@ public interface GithubCollectionAccessPort {
     /** 후보 커밋의 diff 를 AI 가 읽어 커밋별 근거로 요약하며, 토큰은 이 호출 안의 헤더에만 쓴다 */
     DiffEvidenceResult diffEvidence(Long userId, DiffEvidenceTarget target);
 
+    /**
+     * 공고에서 못 채운 조건을 채울 자료를 AI 가 사용자의 공개 커밋에서도 찾게 하며, 토큰은 이 호출의 헤더에만 쓴다
+     * request 는 AI 모자란 조건 채우기 API 의 요청 본문이고, AI 가 조건 상태를 바꿀 때마다 진행을 progress 로 받는다
+     */
+    JsonNode gapFill(Long userId, Object request, Consumer<AiProgress> progress);
+
     /** 쓸 수 있는 GitHub 연결이 없으면 GithubNotConnectedException 을 던지고, GitHub 은 부르지 않는다 */
     void requireUsableConnection(Long userId);
 
@@ -39,4 +45,16 @@ public interface GithubCollectionAccessPort {
 
     /** 연결이 없거나 GitHub 에 묻지 못하면 예외 없이 빈 값을 돌려준다 */
     Optional<Instant> rateLimitResetAt(Long userId);
+
+    /**
+     * 저장소의 README 앞부분을 원문 그대로 돌려주며, README 가 없거나 쓸 수 있는 GitHub 연결이 없으면 빈 값이다
+     * 그 밖의 GitHub 실패는 예외 그대로 나며 토큰은 거절당해도 연결을 해제로 남기지 않는다
+     */
+    Optional<String> readme(Long userId, String owner, String name);
+
+    /**
+     * 저장소 최상위의 파일·폴더 이름만 30개까지 돌려주며, 빈 저장소이거나 쓸 수 있는 GitHub 연결이 없거나 GitHub 에 묻지 못하면 예외 없이 빈 목록이다
+     * 토큰은 거절당해도 연결을 해제로 남기지 않는다
+     */
+    List<String> topLevelPaths(Long userId, String owner, String name);
 }

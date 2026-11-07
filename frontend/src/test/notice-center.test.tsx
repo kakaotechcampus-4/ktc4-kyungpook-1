@@ -60,8 +60,8 @@ describe('진행 표시', () => {
   it('P1 진행 중인 작업이 있으면 무슨 일인지와 레포 이름을 보이고 여러 개면 가장 먼저 시작한 것과 외 n개를 보인다', async () => {
     connectMockServer();
     mount([live({ jobId: 'late', type: 'DRAFT', repoName: 'team/late', startedAt: '2026-11-06T02:00:00Z' }), live()]);
-    const pill = screen.getByRole('link', { name: /레포 읽는 중/ });
-    expect(pill).toHaveTextContent('alpha');
+    const pill = screen.getByRole('link', { name: 'alpha 레포 읽는 중 외 1개' });
+    expect(pill.firstElementChild).toHaveTextContent('alpha'); // 레포 이름이 먼저 읽힌다
     expect(pill).toHaveTextContent('외 1개');
     expect(pill).not.toHaveTextContent('카드 쓰는 중');
     cleanup();

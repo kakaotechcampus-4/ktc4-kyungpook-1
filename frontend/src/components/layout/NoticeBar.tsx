@@ -84,10 +84,11 @@ export function NoticeBar({ jobs }: { jobs: readonly ActiveJob[] | undefined }) 
   return (
     <div ref={root} className="notice-bar" onBlur={(e) => { if (open && e.relatedTarget && !root.current?.contains(e.relatedTarget as Node)) setOpen(false); }}>
       {first?.kind === 'job' && (
-        <Link to={activeJobLink(first.job)} className="notice-pill" aria-label={`${jobWhat(first.job.type)}${first.job.repoName ? ` ${first.job.repoName}` : ''}${more ? ` 외 ${more}개` : ''}`}>
-          <span className="notice-pill__spin" aria-hidden />
+        <Link to={activeJobLink(first.job)} className="notice-pill"
+          aria-label={`${first.job.repoName ? `${shortRepoName(first.job.repoName)} ` : ''}${jobWhat(first.job.type)}${more ? ` 외 ${more}개` : ''}`}>
+          {first.job.repoName && <span className="notice-pill__who">{shortRepoName(first.job.repoName)}</span>}
           <span className="notice-pill__what">{jobWhat(first.job.type)}</span>
-          {first.job.repoName && <small className="notice-pill__repo">{shortRepoName(first.job.repoName)}</small>}
+          <span className="notice-pill__spin" aria-hidden />
           {more > 0 && <small className="notice-pill__more">외 {more}개</small>}
         </Link>
       )}

@@ -1,20 +1,30 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
+import { isCoverLetterRunning, useRunningCoverLetters, type CoverLetterSummary } from '@/api/coverLetters';
 import { unreadCount, useNotices, useReadAllNotices, useReadNotice } from '@/api/notifications';
 import type { ActiveJob } from '@/api/schemas';
 import { canAskPermission, markPermissionAsked, requestPermission } from '@/lib/browserNotice';
 import { activeJobLink } from '@/lib/jobLinks';
+import { letterTitle } from '@/lib/homeModel';
 import { noticeView, shortRepoName, type NoticeView } from '@/lib/notices';
 import './notice-bar.css';
 
+const LETTER_WHAT = '자소서 쓰는 중';
 const jobWhat = (type: ActiveJob['type']) => (type === 'ANALYZE' ? '레포 읽는 중' : type === 'DRAFT' ? '카드 쓰는 중' : '작업 중');
 
-/** 가장 먼저 시작한 작업 하나와 나머지 수 */
-function pickJob(jobs: readonly ActiveJob[] | undefined) {
-  const live = (jobs ?? []).filter((job) => job.state === 'QUEUED' || job.state === 'RUNNING');
-  const first = [...live].sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt))[0];
-  return { first, more: Math.max(0, live.length - 1) };
+type Progress =
+  | { kind: 'job'; job: ActiveJob }
+  | { kind: 'letter'; letter: CoverLetterSummary };
+
+/** 레포 작업이 있으면 가장 먼저 시작한 것, 없으면 가장 먼저 바뀐 자소서 하나와 나머지 수 */
+export function pickProgress(jobs: readonly ActiveJob[] | undefined, letters: readonly CoverLetterSummary[] | undefined): { first?: Progress; more: number } {
+  const liveJobs = (jobs ?? []).filter((job) => job.state === 'QUEUED' || job.state === 'RUNNING');
+  const liveLetters = (letters ?? []).filter((letter) => isCoverLetterRunning(letter.stage));
+  const job = [...liveJobs].sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt))[0];
+  const letter = [...liveLetters].sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt))[0];
+  const first: Progress | undefined = job ? { kind: 'job', job } : letter ? { kind: 'letter', letter } : undefined;
+  return { first, more: Math.max(0, liveJobs.length + liveLetters.length - 1) };
 }
 
 /**
@@ -38,7 +48,8 @@ export function NoticeBar({ jobs }: { jobs: readonly ActiveJob[] | undefined }) 
   const views = [...(notices.data ?? [])]
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .flatMap((notice) => noticeView(notice, { now }) ?? []);
-  const { first, more } = pickJob(jobs);
+  const runningLetters = useRunningCoverLetters();
+  const { first, more } = pickProgress(jobs, runningLetters.data);
   const askPermission = !!first && !open && !asked && canAskPermission();
 
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -67,11 +78,19 @@ export function NoticeBar({ jobs }: { jobs: readonly ActiveJob[] | undefined }) 
 
   return (
     <div ref={root} className="notice-bar" onBlur={(e) => { if (open && e.relatedTarget && !root.current?.contains(e.relatedTarget as Node)) setOpen(false); }}>
-      {first && (
-        <Link to={activeJobLink(first)} className="notice-pill" aria-label={`${jobWhat(first.type)}${first.repoName ? ` ${first.repoName}` : ''}${more ? ` 외 ${more}개` : ''}`}>
+      {first?.kind === 'job' && (
+        <Link to={activeJobLink(first.job)} className="notice-pill" aria-label={`${jobWhat(first.job.type)}${first.job.repoName ? ` ${first.job.repoName}` : ''}${more ? ` 외 ${more}개` : ''}`}>
           <span className="notice-pill__spin" aria-hidden />
-          <span className="notice-pill__what">{jobWhat(first.type)}</span>
-          {first.repoName && <small className="notice-pill__repo">{shortRepoName(first.repoName)}</small>}
+          <span className="notice-pill__what">{jobWhat(first.job.type)}</span>
+          {first.job.repoName && <small className="notice-pill__repo">{shortRepoName(first.job.repoName)}</small>}
+          {more > 0 && <small className="notice-pill__more">외 {more}개</small>}
+        </Link>
+      )}
+      {first?.kind === 'letter' && (
+        <Link to={`/cover-letters/${encodeURIComponent(first.letter.id)}`} className="notice-pill" aria-label={`${LETTER_WHAT} ${letterTitle(first.letter)}${more ? ` 외 ${more}개` : ''}`}>
+          <span className="notice-pill__spin" aria-hidden />
+          <span className="notice-pill__what">{LETTER_WHAT}</span>
+          <small className="notice-pill__repo">{letterTitle(first.letter)}</small>
           {more > 0 && <small className="notice-pill__more">외 {more}개</small>}
         </Link>
       )}

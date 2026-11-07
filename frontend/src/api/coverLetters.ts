@@ -257,6 +257,16 @@ const POLL_MIN_MS = 500;
 
 export const useCoverLetters = () => useQuery({ queryKey: coverLetterKeys.all, queryFn: coverLetterApi.list });
 
+export const RUNNING_LETTERS_POLL_MS = 4_000;
+
+/** 화면 위 진행 표시용 — 같은 목록을 쓰되 AI 가 도는 자소서가 있는 동안만 창이 가려져도 다시 읽는다 */
+export const useRunningCoverLetters = () => useQuery({
+  queryKey: coverLetterKeys.all,
+  queryFn: coverLetterApi.list,
+  refetchInterval: (q) => (q.state.data?.some((letter) => isCoverLetterRunning(letter.stage)) ? RUNNING_LETTERS_POLL_MS : false),
+  refetchIntervalInBackground: true,
+});
+
 /** AI 가 도는 단계면 서버가 준 간격마다 다시 읽고, 그 밖에는 멈춘다 */
 export function useCoverLetter(id: string | undefined) {
   return useQuery({

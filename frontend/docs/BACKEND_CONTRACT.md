@@ -78,7 +78,7 @@ POST /api/auth/logout                → { data: { ok: true } } + 쿠키 만료
 | `POST /repos/{id}/analyze` | 헤더 `Idempotency-Key: <UUID v4>` | `{ jobId, state, pollAfterMs }` — 같은 키·같은 저장소 재요청 또는 같은 사용자의 같은 연결 저장소에 활성 Job이 있으면 기존 Job을 200/202로 반환. **같은 키를 다른 저장소에 사용하면 409 + IDEMPOTENCY_KEY_MISMATCH** (확정). FE는 409에 새 키를 만들어 자동 재요청하지 않는다. |
 | `GET /repos/{id}/candidates` | | `CandidateBoard` (아래) |
 | `POST /repos/{id}/candidates` | `{ title, summary, shas[] }` | `Candidate` (type `MANUAL`) |
-| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 8장까지이고, 중복을 뺀 후보가 9개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST`. AI 초안의 상황·행동이 차 있고 확인 필요 칸이 없는 카드는 Job 이 바로 `CONFIRMED` 로 두고(#568) 과제·결과는 비어 있어도 된다. 확인 필요 칸이 있거나 상황·행동이 빈 카드, 시간 초과로 일부 칸만 채운 카드(`generation.partial` 이 true)는 `DRAFT` 로 남는다 — 화면은 `DRAFT` 카드에만 확정 버튼을 보여 준다 |
+| `POST /repos/{id}/cards` | `{ candidateIds[] }` | `{ jobId, cardIds[] }` — 후보 1개 = 카드 1장, DRAFT Job 1개. 한 요청에 10장까지이고, 중복을 뺀 후보가 11개 이상이면 아무것도 만들지 않고 **400** `INVALID_REQUEST`. AI 초안의 상황·행동이 차 있고 확인 필요 칸이 없는 카드는 Job 이 바로 `CONFIRMED` 로 두고(#568) 과제·결과는 비어 있어도 된다. 확인 필요 칸이 있거나 상황·행동이 빈 카드, 시간 초과로 일부 칸만 채운 카드(`generation.partial` 이 true)는 `DRAFT` 로 남는다 — 화면은 `DRAFT` 카드에만 확정 버튼을 보여 준다 |
 | `GET /repos/{id}/commits?q=` | | `RepoCommit[]` — `{ sha, message, path, at, url, candidateId }` (C5 커밋 찾기, 최대 20) |
 | `GET /repos/{id}/materials` | | `RepoMaterials` (아래) — 분석이 끝난 뒤 '읽은 커밋·PR 전체 보기' 용. GitHub 을 부르지 않고 저장된 값만 읽는다. 분석 전이면 두 배열 모두 빈 배열 |
 | `GET /repos/{id}/recall` | | `Recall` — `{ repoId, note, dirs:[{ path, filesChanged, myCommits, files[], question, options[] }] }` |

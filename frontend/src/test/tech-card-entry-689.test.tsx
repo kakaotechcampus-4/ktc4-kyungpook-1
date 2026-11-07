@@ -53,7 +53,7 @@ describe('#689 레포 안에서 커밋을 골라 기술 카드 만들기', () =>
     expect(JSON.parse(sessionStorage.getItem('gitory.sel.r_auth') ?? '[]')).toEqual([created.id]);
   });
 
-  it('이미 8개를 골라 둔 뒤 직접 추가한 후보는 고르지 않고 한도 안내를 보인다', async () => {
+  it('이미 한 번에 만들 수 있는 최대 수를 골라 둔 뒤 직접 추가한 후보는 고르지 않고 한도 안내를 보인다', async () => {
     const picked = db.candidates.filter((c) => c.repoId === 'r_auth' && c.status === 'NEW').slice(0, MAX_CARDS_PER_REQUEST).map((c) => c.id);
     expect(picked).toHaveLength(MAX_CARDS_PER_REQUEST);
     sessionStorage.setItem('gitory.sel.r_auth', JSON.stringify(picked));

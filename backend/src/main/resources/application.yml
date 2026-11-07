@@ -298,7 +298,7 @@ gitory:
       enabled: ${ANALYSIS_LIVE_PROGRESS_ENABLED:true}
   cards:
     # 후보로 카드 만들기 한 요청에 만들 수 있는 카드 수. 화면은 같은 값으로 선택을 막는다(CandidateBoardPage)
-    max-per-request: 8
+    max-per-request: 10
     ai-draft:
       # 켜면 후보로 만든 카드의 초안 Job 이 AI diff 근거·STAR 초안으로 칸을 채우고, 끄면 빈 카드로 끝낸다
       # 운영 AI 에 LLM 설정이 없으면 모든 초안이 실패하므로 그 설정을 넣고 한 번 확인한 뒤 켠다

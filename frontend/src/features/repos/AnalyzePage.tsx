@@ -13,7 +13,7 @@ import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/la
 import { isTerminal, type Job, type JobStep } from '@/api/schemas';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { timelineView, type TimelineView } from '@/lib/jobView';
-import { autoDraftPicks } from '@/lib/autoDraft';
+import { afterAnalysis } from '@/lib/autoDraft';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { jobRetryState, useJobRetry, requiresRetryRefresh } from '@/lib/useJobRetry';
@@ -21,6 +21,8 @@ import './AnalyzePage.css';
 
 /** 다 읽은 모습을 보고 나서 넘어가도록 잠깐 머무는 시간 */
 const FINISHED_VIEW_MS = 600;
+/** 끝난 지 이보다 오래된 정리를 다시 열면(알림 링크·뒤로 가기) 카드를 만들지 않는다 — 일부러 비워 둔 레포에 고르지 않은 카드가 생기지 않게 */
+const AUTO_DRAFT_WITHIN_MS = 10 * 60_000;
 
 /** B3 분석 진행 · B4 수집 실패 · B5 부분 결과(SUCCEEDED + partial) — 셋 다 같은 타임라인 위에 어디까지 왔는지 그린다(#789) */
 export function AnalyzePage() {
@@ -45,11 +47,8 @@ export function AnalyzePage() {
     : `${subject}정리 중`);
   const { waitSec, canRetry } = useJobRetry(j);
   const feed = useActivityFeed(j);
-  // 끝나는 것을 이 화면에서 지켜본 정리만 카드 초안까지 이어 쓴다 — 끝난 정리를 다시 열면 지금처럼 후보 보드로 간다
-  const watched = useRef<string | null>(null);
-  if (j && !isTerminal(j.state)) watched.current = j.jobId;
-  const autoCards = j?.state === 'SUCCEEDED' && !j.partial && watched.current === j.jobId;
-  const [drafting, setDrafting] = useState(false);
+  const autoCards = j?.state === 'SUCCEEDED' && !j.partial;
+  const [plan, setPlan] = useState<'draft' | 'folder' | null>(null);
 
   // 새로고침으로 ?job= 을 잃어도 서버가 진행 중인 작업을 안다 — 그걸 다시 붙인다
   useEffect(() => {
@@ -65,18 +64,11 @@ export function AnalyzePage() {
     return () => releaseJobToast(jobId);
   }, [jobId]);
 
-  // 다 읽었고 부분도 아니면 후보 보드로. 후보 0개(verdict EMPTY)도 보드가 판정을 보여준다.
-  // AI 가 고른 이유가 아직 차례로 나오는 중이면 다 보여 준 뒤에 넘어간다
-  // 지켜본 정리는 AutoDraft 가 카드 초안을 만들어 보내므로 여기서는 보내지 않는다
+  // 다 읽은 정리가 갈 곳은 AutoDraft 가 정한다
   useEffect(() => {
     if (!j || !jobId || !isTerminal(j.state)) return;
-    if (j.state === 'SUCCEEDED' && !j.partial) {
-      if (!feed.drained || autoCards) return;
-      const t = setTimeout(() => nav(`/repos/${repoId}/candidates`, { replace: true }), FINISHED_VIEW_MS);
-      return () => clearTimeout(t);
-    }
     if (j.state === 'CANCELED') nav('/repos', { replace: true });
-  }, [j, jobId, nav, repoId, feed.drained, autoCards]);
+  }, [j, jobId, nav]);
 
 
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
@@ -238,23 +230,16 @@ export function AnalyzePage() {
           <Timeline job={j} lines={feed.lines} />
         </>
       )}
-      {autoCards && feed.drained && <AutoDraft key={`${repoId}:${jobId}`} repoId={repoId} onStart={() => setDrafting(true)} />}
+      {autoCards && feed.drained && <AutoDraft key={`${repoId}:${jobId}`} repoId={repoId} finishedAt={j.finishedAt} onPlan={setPlan} />}
       <div className="run-foot">
         {autoCards ? (
           <>
-            <span>{drafting ? '카드를 쓰기 시작했어요' : '추천 경험으로 카드까지 이어서 써요'}</span>
-            {!drafting && (
+            <span>{plan === 'draft' ? '카드를 쓰기 시작했어요' : plan === 'folder' ? '만들어 둔 카드가 있어서 카드 폴더로 가요' : '추천 경험으로 카드까지 이어서 써요'}</span>
+            {!plan && (
               <div className="run-foot__right">
                 <Link to={`/repos/${repoId}/candidates`} replace className="btn btn--outline">후보 직접 고르기</Link>
               </div>
             )}
-          </>
-        ) : finished ? (
-          <>
-            <span>고른 이유를 다 보여 드리면 후보 보드로 가요</span>
-            <div className="run-foot__right">
-              <Link to={`/repos/${repoId}/candidates`} replace className="btn btn--primary">후보 보드로 바로 가기</Link>
-            </div>
           </>
         ) : (
           <>
@@ -272,10 +257,11 @@ export function AnalyzePage() {
 }
 
 /**
- * 지켜본 정리가 끝나면 이 레포의 추천 후보로 카드 초안을 만들고 쓰는 화면으로 보낸다 — 후보 보드에서 고르고 누르는 단계를 없앤다.
- * 만들 카드가 없거나 읽기가 실패하면 후보 보드로 보내고, 만들기가 실패해도 다시 시도하지 않고 후보 보드로 보낸다(실패 알림은 공통 오류 알림이 띄운다)
+ * 다 읽은 정리가 끝나면 이 레포의 추천 후보로 카드 초안을 만들고 쓰는 화면으로 보낸다 — 후보 보드에서 고르고 누르는 단계를 없앤다.
+ * 카드가 이미 있으면 만들지 않고 카드 폴더로 보내고, 만들 후보가 없거나 읽기가 실패하면 후보 보드로 보낸다.
+ * 만들기가 실패해도 다시 시도하지 않고 후보 보드로 보낸다(실패 알림은 공통 오류 알림이 띄운다)
  */
-function AutoDraft({ repoId, onStart }: { repoId: string; onStart: () => void }) {
+function AutoDraft({ repoId, finishedAt, onPlan }: { repoId: string; finishedAt: string | null; onPlan: (plan: 'draft' | 'folder') => void }) {
   const nav = useNavigate();
   const board = useCandidates(repoId);
   const cards = useCards();
@@ -292,14 +278,19 @@ function AutoDraft({ repoId, onStart }: { repoId: string; onStart: () => void })
     void (async () => {
       // 보드나 카드 목록을 본 적이 있으면 캐시에 정리 전 모습이 남아 있다 — 끝난 지금 다시 읽고, 마운트가 이미 읽는 중이면 그 읽기에 붙는다
       const [read, list] = await Promise.all([board.refetch({ cancelRefetch: false }), cards.refetch({ cancelRefetch: false })]);
-      const picks = read.isError || list.isError ? [] : autoDraftPicks({ candidates: read.data?.candidates ?? [], cards: list.data ?? [], repoId });
-      if (picks.length === 0) {
+      const next = read.isError || list.isError ? { kind: 'board' as const } : afterAnalysis({ candidates: read.data?.candidates ?? [], cards: list.data ?? [], repoId });
+      const recent = finishedAt !== null && Date.now() - Date.parse(finishedAt) < AUTO_DRAFT_WITHIN_MS;
+      if (next.kind !== 'draft' || !recent) {
+        if (next.kind === 'folder' && mounted.current) onPlan('folder');
         await lingered;
-        if (mounted.current) toBoard();
+        if (!mounted.current) return;
+        if (next.kind === 'folder') nav(`/cards/repo/${encodeURIComponent(repoId)}`, { replace: true });
+        else toBoard();
         return;
       }
+      const picks = next.ids;
       if (!mounted.current) return;
-      onStart();
+      onPlan('draft');
       const made = await create.mutateAsync(picks).catch(() => null);
       if (!mounted.current) return;
       if (!made) {

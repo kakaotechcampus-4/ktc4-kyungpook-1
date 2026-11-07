@@ -88,7 +88,7 @@ test('first entry: the dialog takes the five steps over the home page, then the 
   expect(afterSetup.interests).toEqual(['BACKEND']);
   expect(afterSetup.educations).toHaveLength(1);
   await page.reload();
-  await expect(page.getByRole('heading', { name: '오늘은 무엇을 할까요?', level: 1 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '지원할 곳', level: 1 })).toBeVisible();
   await expect(dialog(page)).toHaveCount(0);
 
   await page.goto('/settings/profile');

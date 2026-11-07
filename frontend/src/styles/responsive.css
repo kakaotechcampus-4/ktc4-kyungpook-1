@@ -284,11 +284,11 @@ body { overflow-x: hidden; }
   .modal__foot-text { flex-basis: 100%; }
   .modal__foot .btn { flex: 1 1 auto; }
 
-  .landing { display: flex; gap: 32px; padding: 18px 18px 44px; }
+  .landing { display: flex; gap: 20px; padding: 18px 18px 44px; }
   .landing__top { width: 100%; }
   .landing__top .btn { display: none; }
-  .landing__hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-items: start; }
-  .landing__copy { gap: 16px; }
+  .landing__hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; } /* 로그인 동의 문구가 들어와도 예시 카드가 첫 화면에 보이게 */
+  .landing__copy { gap: 12px; }
   .landing__eyebrow { font-size: 11px; }
   .landing__h1 { font-size: clamp(30px, 9vw, 40px); line-height: 1.22; }
   .landing__lead { font-size: 14px; line-height: 24px; }

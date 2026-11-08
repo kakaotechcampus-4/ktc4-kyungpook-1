@@ -12,7 +12,7 @@ import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
 import { Breadcrumb, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { composerHint, postingMeta, resultLink, stepLine } from './askCopy';
+import { composerHint, postingMeta, questionsGuide, questionsGuideText, resultLink, stepLine } from './askCopy';
 import './ask.css';
 
 const Dots = () => <span className="ai-wait__dots" aria-hidden><i /><i /><i /></span>;
@@ -109,6 +109,7 @@ function AskChat() {
 
   const thinking = pending || (state === 'RUNNING' && !(last?.kind === 'STEP' && last.ok === null));
   const choices = state === 'WAITING_USER' && last?.kind === 'ASK' && last.askKind === 'CHOICE' ? last.options : [];
+  const guide = state === 'WAITING_USER' && last?.kind === 'ASK' && last.askKind === 'QUESTIONS' ? questionsGuide(items) : null;
   const link = state === 'DONE' ? resultLink(items) : null;
   const failed = start.isError ? errorView(start.error).message : say.isError ? errorView(say.error).message
     : state === 'FAILED' ? '지금은 답을 받지 못했어요. 할 일을 다시 적어 주세요.' : null;
@@ -147,6 +148,13 @@ function AskChat() {
             {(sending || !last || last.kind === 'USER') && <ChatFrom />}
             <Bubble side="it" enter wait>확인하고 있어요<Dots /></Bubble>
           </>
+        )}
+        {guide && (
+          <section className="ask-guide" aria-labelledby="ask-guide-title">
+            <h2 id="ask-guide-title">문항이 아직 없나요?</h2>
+            <p>{questionsGuideText(guide.posting)}</p>
+            <Link to={guide.to} className="btn btn--primary ask-go">자소서 화면에서 문항 고르기<ArrowRight size={16} aria-hidden /></Link>
+          </section>
         )}
         {choices.length > 0 && (
           <div className="chat-quick">

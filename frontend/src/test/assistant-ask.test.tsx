@@ -5,7 +5,7 @@ import { createMemoryRouter, Outlet, RouterProvider, useLocation } from 'react-r
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssistantItem, AssistantRun } from '@/api/assistant';
 import { AskPage } from '@/features/assistant/AskPage';
-import { stepLine } from '@/features/assistant/askCopy';
+import { questionsGuide, stepLine } from '@/features/assistant/askCopy';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
 import { connectMockServer } from './profileHarness';
@@ -274,5 +274,53 @@ describe('홈 한 줄 명령 목 서버', () => {
     expect(read(running.id).state).toBe('DONE');
     expect(say()).toMatchObject({ status: 409, error: { code: 'INVALID_STATE' } });
     expect(shape(running.id)).toEqual(['USER', 'STEP:FIND_POSTINGS:true', 'SAY']); // 말이 더해지지 않았다
+  });
+});
+
+describe('문항 안내 카드', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 백엔드 공고에 맞춰서 자소서 써줘' };
+  const posting = (id: string, company: string, title: string) => ({ postingId: id, company, title });
+  const found = { seq: 2, kind: 'STEP', tool: 'FIND_POSTINGS', ok: true, postings: [posting('p/1', '토스', '백엔드'), posting('p2', '다른곳', '서버')] };
+  const matched = { seq: 3, kind: 'STEP', tool: 'MATCH_POSTING', ok: true, posting: posting('p2', '다른곳', '서버') };
+  const ask = (askKind: string) => ({ seq: 9, kind: 'ASK', text: '문항을 알려 주세요', askKind, options: askKind === 'CHOICE' ? ['예', '아니요'] : [] });
+  const open = async (state: string, items: unknown[]) => {
+    const run = rawRun('run_g', state, items);
+    mount('/ask/run_g', connectMockServer((call) => (call.path === '/assistant/runs/run_g' ? json(run) : undefined)));
+    await screen.findByText('문항을 알려 주세요', SEEN);
+  };
+  const GUIDE = '문항이 아직 없나요?';
+
+  it('Q1 기다리는 중이고 마지막이 문항 물음일 때만 안내 카드를 보인다', async () => {
+    await open('WAITING_USER', [user, found, ask('QUESTIONS')]);
+    expect(screen.getByText(GUIDE)).toBeInTheDocument();
+    cleanup();
+    await open('WAITING_USER', [user, found, ask('CHOICE')]);
+    expect(screen.queryByText(GUIDE)).not.toBeInTheDocument();
+    cleanup();
+    await open('WAITING_USER', [user, found, ask('FREE')]);
+    expect(screen.queryByText(GUIDE)).not.toBeInTheDocument();
+    cleanup();
+    await open('DONE', [user, found, ask('QUESTIONS')]);
+    expect(screen.queryByText(GUIDE)).not.toBeInTheDocument();
+    cleanup();
+    await open('RUNNING', [user, found, ask('QUESTIONS')]);
+    expect(screen.queryByText(GUIDE)).not.toBeInTheDocument();
+  });
+
+  it('Q2 버튼은 맞춰 본 공고, 없으면 처음 찾은 공고, 둘 다 없으면 공고 없이 새 자소서 화면으로 간다', async () => {
+    const items = (...list: unknown[]) => list.map((i, n) => ({ ...(i as object), seq: n + 1 })) as AssistantItem[];
+    expect(questionsGuide(items(found, matched)).to).toBe('/cover-letters/new?postingId=p2');
+    expect(questionsGuide(items(found)).to).toBe('/cover-letters/new?postingId=p%2F1');
+    expect(questionsGuide(items({ kind: 'STEP', tool: 'FIND_POSTINGS', ok: true, postings: [] })).to).toBe('/cover-letters/new');
+    await open('WAITING_USER', [user, found, matched, ask('QUESTIONS')]);
+    expect(screen.getByRole('link', { name: '자소서 화면에서 문항 고르기' })).toHaveAttribute('href', '/cover-letters/new?postingId=p2');
+  });
+
+  it('Q3 안내 글은 쓸 공고의 회사와 제목을 말하고, 공고가 없으면 문항 고르기만 말한다', async () => {
+    await open('WAITING_USER', [user, found, matched, ask('QUESTIONS')]);
+    expect(screen.getByText('다른곳 · 서버 공고로, 자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.')).toBeInTheDocument();
+    cleanup();
+    await open('WAITING_USER', [user, ask('QUESTIONS')]);
+    expect(screen.getByText('자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.')).toBeInTheDocument();
   });
 });

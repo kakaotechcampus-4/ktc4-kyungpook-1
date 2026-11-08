@@ -4,6 +4,7 @@ import { Home, FolderGit2, Layers, Github, UserRound, PanelLeft, BriefcaseBusine
 import { matchSupported } from '@/api/matching';
 import { useActiveJobs } from '@/api/queries';
 import { JobWatcher } from '@/lib/jobWatcher';
+import { CoverLetterWatcher } from '@/lib/coverLetterWatcher';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { GithubBanner } from './GithubBanner';
 import { ProfileMenu } from './ProfileMenu';
@@ -95,6 +96,7 @@ export function AppShell() {
         ))}
       </nav>
       <JobWatcher active={active} />
+      <CoverLetterWatcher />
       <ProfileSetupModal />
     </div>
   );

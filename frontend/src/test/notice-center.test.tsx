@@ -9,6 +9,7 @@ import { CoverLetterWatcher } from '@/lib/coverLetterWatcher';
 import { JobWatcher } from '@/lib/jobWatcher';
 import { Toaster } from '@/lib/toast';
 import { ActiveJob, Job } from '@/api/schemas';
+import { keys } from '@/api/keys';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
 import { connectMockServer, jsonError } from './profileHarness';
@@ -73,6 +74,27 @@ describe('진행 표시', () => {
     connectMockServer();
     mount([live()]);
     expect(screen.getByRole('link', { name: /레포 읽는 중/ })).toHaveAttribute('href', '/repos/r_a/run?job=job_1');
+  });
+
+  it('P2 카드 쓰는 중을 누르면 쓰고 있는 첫 카드의 화면으로 가고, 카드 id 를 아직 모르면 그 레포의 카드 폴더로 간다', async () => {
+    const draftJob = (drafts: unknown[]) => Job.parse({
+      jobId: 'job_d', type: 'DRAFT', state: 'RUNNING', partial: false, steps: [], errorCode: null, retryable: null, retryAfterSec: null,
+      startedAt: '2026-11-06T01:00:00Z', updatedAt: '2026-11-06T01:01:00Z', finishedAt: null, result: null, pollAfterMs: 2000, drafts,
+    });
+    const card = (cardId: string) => ({ cardId, title: cardId, state: 'WRITING', slots: [], steps: [] });
+    const serve = (job: Job) => (call: { path: string }) => (call.path === '/jobs/job_d' ? new Response(JSON.stringify({ data: job, error: null }), { status: 200 }) : undefined);
+    const jobs = [live({ jobId: 'job_d', type: 'DRAFT' })];
+    connectMockServer(serve(draftJob([])));
+    mount(jobs);
+    const pill = () => screen.getByRole('link', { name: /카드 쓰는 중/ });
+    await waitFor(() => expect(queryClient.getQueryState(keys.job('job_d'))?.status).toBe('success'));
+    expect(pill()).toHaveAttribute('href', '/cards/repo/r_a');
+    cleanup(); queryClient.clear();
+    connectMockServer(serve(draftJob([card('card_1'), card('card_2')])));
+    mount(jobs);
+    await waitFor(() => expect(pill()).toHaveAttribute('href', '/cards/card_1'));
+    fireEvent.click(pill());
+    expect(where()).toBe('/cards/card_1');
   });
 });
 

@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomePage } from '@/features/home/HomePage';
+import { MatchListPage } from '@/features/match/MatchListPage';
+import { matchingApi } from '@/api/matching';
 import { handle } from '@/mock/router';
 import { resetDb } from '@/mock/store';
 import detailExample from '../../docs/examples/matching/detail.json';
@@ -168,6 +170,16 @@ describe('홈 — 지원할 곳', () => {
     await waitFor(() => expect(started).toBe(1));
   });
 
+  it('H8 카드가 바뀌어 결과가 낡았어도 홈은 다시 맞춰 보지 않고 지난 결과로 지원할 곳을 보인다', async () => {
+    let started = 0;
+    const server = serve({ overall: { ...overall([company('a', 5)]), stale: true }, details: { p_a: detail('p_a') }, intercept: (call) => (call.method === 'POST' && call.path === '/recommendations' ? (started += 1, ok(overall([], 'COMPUTING'))) : undefined) });
+    mount();
+
+    expect(await screen.findByRole('heading', { name: '공고 a' })).toBeInTheDocument();
+    await waitFor(() => expect(server.calls.some((call) => call.path === '/matches/p_a')).toBe(true));
+    expect(started).toBe(0);
+  });
+
   it('H8 맞춰 보다 멈췄으면 고르지 못했어요와 다시 고르기를 보이고 누르면 다시 고른다', async () => {
     let started = 0;
     serve({ overall: overall([], 'FAILED'), intercept: (call) => (call.method === 'POST' && call.path === '/recommendations' ? (started += 1, ok(overall([], 'COMPUTING'))) : undefined) });
@@ -222,5 +234,15 @@ describe('홈 — 지원할 곳', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
     await screen.findByRole('article', { name: /회사 a/ });
     expect(screen.queryByLabelText('지원할 곳을 불러오는 중이에요')).not.toBeInTheDocument();
+  });
+});
+
+describe('공고 매칭 화면으로 옮긴 달력', () => {
+  it('맞는 공고를 읽는 동안 달력은 빈 채로 두지 않고 마감일을 불러오고 있다고 알린다', async () => {
+    serve({});
+    vi.spyOn(matchingApi, 'recommendations').mockReturnValue(new Promise(() => {}));
+    mountApp([page(<MatchListPage />, '/match')], '/match');
+
+    expect(await screen.findByText('공고 마감일을 불러오고 있어요.')).toBeInTheDocument();
   });
 });

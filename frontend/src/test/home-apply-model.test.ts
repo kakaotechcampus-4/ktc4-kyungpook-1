@@ -19,6 +19,10 @@ describe('H1 지원할 곳의 순서', () => {
     expect(ids(picks, ['fresh'], [letter('l1', 'wrote')])).not.toContain('open');
     expect(ids([pick('b', 20), pick('a', null), pick('c', 9)], [], [])).toEqual(['c', 'b', 'a']);
   });
+
+  it('마감일이 지난 공고는 서버가 아직 닫지 않았어도 지원할 곳에서 빼고, 오늘 마감인 공고는 남긴다', () => {
+    expect(ids([pick('past', -1), pick('today', 0), pick('open', null)], ['past'], [])).toEqual(['today', 'open']);
+  });
 });
 
 describe('H4 조건 목록', () => {
@@ -81,6 +85,11 @@ describe('H8 · H9 준비 단계 고르기', () => {
     expect(setupStep({ ...base, cards: [card('d1', 'DRAFT'), card('d2', 'DRAFT')] })).toMatchObject({ current: 1, draftCount: 2, firstDraftId: 'd1' });
     expect(setupStep({ ...base, overallStatus: 'COMPUTING' })).toMatchObject({ current: 2, mode: 'busy' });
     expect(setupStep({ ...base, overallStatus: 'READY' })).toMatchObject({ current: 2, mode: 'zero' });
+  });
+
+  it('레포 없이 직접 만든 카드라도 확정했으면 3단계이고, 레포 없이 작성 중 카드만 있으면 2단계다', () => {
+    expect(setupStep({ ...base, analyzedRepos: 0, cards: [card('m1', 'CONFIRMED')] })).toMatchObject({ current: 2, mode: 'zero' });
+    expect(setupStep({ ...base, analyzedRepos: 0, cards: [card('m2', 'DRAFT')] })).toMatchObject({ current: 1, firstDraftId: 'm2' });
   });
 
   it('확정 카드가 있는데 맞춰 보다 멈췄으면(FAILED) 3단계의 failed 이다', () => {

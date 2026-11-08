@@ -17,9 +17,13 @@ const daysLeftOf = (deadline: string | null, now: number): number | null => {
 const latestLetter = (letters: readonly CoverLetterSummary[], postingId: string) =>
   letters.filter((letter) => letter.posting?.id === postingId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null;
 
-/** 새 공고, 마감 7일 안이면서 자소서가 없는 공고, 쓰던 자소서가 있는 공고, 나머지 순서이고 같은 묶음 안에서는 마감이 가까운 순이다 */
+/**
+ * 새 공고, 마감 7일 안이면서 자소서가 없는 공고, 쓰던 자소서가 있는 공고, 나머지 순서이고 같은 묶음 안에서는 마감이 가까운 순이다
+ * 서버가 아직 닫지 않았어도 마감일이 지난 공고는 지원할 수 없어 뺀다
+ */
 export function orderApplyList(picks: readonly HomePick[], newIds: ReadonlySet<string>, letters: readonly CoverLetterSummary[], now: number = Date.now()): ApplyItem[] {
-  const items = picks.map((pick, index) => {
+  const open = picks.filter((pick) => (daysLeftOf(pick.deadline, now) ?? 0) >= 0);
+  const items = open.map((pick, index) => {
     const daysLeft = daysLeftOf(pick.deadline, now);
     const letter = latestLetter(letters, pick.postingId);
     const isNew = newIds.has(pick.postingId);
@@ -88,13 +92,15 @@ export type SetupView = {
   firstDraftId: string | null;
 };
 
-/** 레포 → 카드 → 공고 순서에서 지금 어느 단계인지 고른다. 매칭이 꺼진 배포는 두 단계가 끝나면 끝(ready)이다 */
+/**
+ * 레포 → 카드 → 공고 순서에서 지금 어느 단계인지 고르며, 레포 없이 직접 만든 카드라도 확정했으면 공고 단계다
+ * 매칭이 꺼진 배포는 두 단계가 끝나면 끝(ready)이다
+ */
 export function setupStep({ analyzedRepos, cards, overallStatus, matching }: SetupInput): SetupView {
   const drafts = cards.filter((card) => card.status === 'DRAFT');
   const confirmed = cards.length - drafts.length;
   const base = { draftCount: drafts.length, firstDraftId: drafts[0]?.id ?? null };
-  if (analyzedRepos === 0) return { ...base, current: 0, mode: 'start' };
-  if (confirmed === 0) return { ...base, current: 1, mode: 'start' };
+  if (confirmed === 0) return { ...base, current: analyzedRepos === 0 && drafts.length === 0 ? 0 : 1, mode: 'start' };
   if (!matching) return { ...base, current: 2, mode: 'ready' };
   if (overallStatus === 'FAILED') return { ...base, current: 2, mode: 'failed' };
   return { ...base, current: 2, mode: overallStatus === 'COMPUTING' || overallStatus === 'NONE' || overallStatus === undefined ? 'busy' : 'zero' };

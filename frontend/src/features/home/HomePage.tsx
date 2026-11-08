@@ -69,9 +69,10 @@ export function HomePage() {
     checkRepoUpdates();
   }, [repos.isSuccess, repos.isPlaceholderData, checkRepoUpdates]);
 
-  // 공고 매칭 화면처럼, 확정 카드가 있는데 한 번도 맞춰 보지 않았거나 카드가 바뀌어 결과가 낡았으면 홈에서도 바로 맞춰 보기를 시작한다
+  // 확정 카드가 있는데 한 번도 맞춰 보지 않았으면 홈에서도 맞춰 보기를 시작한다
+  // 홈은 자주 열려 전체 매칭 호출 한도에 닿기 쉬워, 카드가 바뀌어 낡은 결과는 공고 매칭 화면에서 다시 맞춘다
   const confirmedCount = cardList.filter((card) => card.status === 'CONFIRMED').length;
-  const needsRun = overall.data?.status === 'NONE' || (overall.data?.status === 'READY' && overall.data.stale);
+  const needsRun = overall.data?.status === 'NONE';
   const autoStarted = useRef(false);
   useEffect(() => {
     if (!matching || autoStarted.current || !needsRun || confirmedCount === 0 || startOverall.isPending) return;

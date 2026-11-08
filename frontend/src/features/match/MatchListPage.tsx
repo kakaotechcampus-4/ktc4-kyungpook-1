@@ -39,7 +39,7 @@ export function MatchListPage() {
   const me = useMe();
   const cards = useCards();
   const cardList = useMemo(() => cards.data ?? [], [cards.data]);
-  const { picks } = useHomePicks(cardList);
+  const { picks, overall } = useHomePicks(cardList);
   const pickKey = JSON.stringify(picks);
   // 조회가 돌 때마다 새 배열이 와도 내용이 같으면 달력을 다시 그리지 않게 글자열로 견준다
   const calendarPostings = useMemo<CalendarPosting[]>(() => picks.map((pick) => ({ id: pick.postingId, company: pick.company, role: pick.title, expiresAt: pick.deadline, url: null })), [pickKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -155,7 +155,8 @@ export function MatchListPage() {
           )
         )}
       </section>
-      {me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={calendarPostings} />}
+      {/* 맞는 공고를 못 읽으면 위 결과 상자가 한 줄로 알리고 다시 불러오게 해서, 달력에는 불러오는 중만 넘긴다 */}
+      {me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={calendarPostings} postingsLoading={matchSupported() && overall.isPending} />}
     </main>
   );
 }

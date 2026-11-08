@@ -82,7 +82,7 @@
   .job-calendar__head h2 { font-size: 20px; }
   .calendar-month h3 { font-size: 16px; }
   .calendar-controls button { height: 44px; min-width: 40px; }
-  .calendar-day { min-height: 82px; padding: 2px; }
+  .calendar-day { min-height: 82px; padding: 0; }
   .calendar-event { font-size: 9px; padding: 3px; }
   .calendar-event > span:last-child { display: none; }
   .calendar-agenda { grid-template-columns: 1fr; gap: 20px; }

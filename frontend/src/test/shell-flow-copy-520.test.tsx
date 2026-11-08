@@ -161,7 +161,7 @@ describe('홈 (#520 G-08 · H-01 · H-03)', () => {
   it('홈에는 최근 경험 카드와 카드 검색을 표시하지 않는다', async () => {
     stubApi(() => undefined);
     home();
-    await screen.findByRole('heading', { name: '오늘은 무엇을 할까요?', level: 1 });
+    await screen.findByRole('heading', { name: '지원할 곳', level: 1 });
     expect(screen.queryByRole('textbox', { name: '카드 이름으로 검색' })).not.toBeInTheDocument();
     expect(screen.queryByText('최근 경험 카드')).not.toBeInTheDocument();
     expect(document.querySelector('.home-recent')).toBeNull();

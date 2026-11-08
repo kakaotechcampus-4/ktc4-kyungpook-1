@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches, MatchCategory } from "@/api/matching";
-import { useConfirmedCardCount } from "@/api/queries";
+import { useCards, useConfirmedCardCount, useMe } from "@/api/queries";
 import { Badge, Button, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { SearchField } from "@/components/ui/SearchField";
 import { isDemo } from "@/mock/browser";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { JobCalendar, type CalendarPosting } from "@/features/home/JobCalendar";
+import { useHomePicks } from "@/features/home/useHomePicks";
 import { MatchFailure, MatchUnavailable } from "./shared";
 import { AiWait } from '@/components/ui/AiWait';
 import { Pagination } from "./Pagination";
@@ -33,6 +35,14 @@ export function MatchListPage() {
   const confirmedCards = useConfirmedCardCount();
   // 받은 목록 기준으로 센다(검색·필터로는 다시 세지 않는다)
   const loadedCount = matches.data?.length;
+  // 달력에는 공고 목록 전체(운영 수백 개)가 아니라 '나와 맞는 기업' 으로 뽑힌 공고의 마감일만 자동으로 띄운다
+  const me = useMe();
+  const cards = useCards();
+  const cardList = useMemo(() => cards.data ?? [], [cards.data]);
+  const { picks, overall } = useHomePicks(cardList);
+  const pickKey = JSON.stringify(picks);
+  // 조회가 돌 때마다 새 배열이 와도 내용이 같으면 달력을 다시 그리지 않게 글자열로 견준다
+  const calendarPostings = useMemo<CalendarPosting[]>(() => picks.map((pick) => ({ id: pick.postingId, company: pick.company, role: pick.title, expiresAt: pick.deadline, url: null })), [pickKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (loadedCount !== undefined) track("match_opened", { view: "list", count: loadedCount });
   }, [loadedCount]);
@@ -145,6 +155,8 @@ export function MatchListPage() {
           )
         )}
       </section>
+      {/* 맞는 공고를 못 읽으면 위 결과 상자가 한 줄로 알리고 다시 불러오게 해서, 달력에는 불러오는 중만 넘긴다 */}
+      {me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={calendarPostings} postingsLoading={matchSupported() && overall.isPending} />}
     </main>
   );
 }

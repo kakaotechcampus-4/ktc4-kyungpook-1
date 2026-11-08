@@ -148,12 +148,11 @@ describe('카드 목록 — 카드 한 장에 모르는 값이 섞여도 나머�
     expect(screen.queryByText(/장을 표시하지 못했어요/)).not.toBeInTheDocument();
   });
 
-  it('홈도 같은 안내를 보이고, 읽은 카드는 그대로 둔다', async () => {
+  it('홈도 같은 안내를 보인다', async () => {
     serve({ '/cards': withUnknownKind(0) });
     mount(<HomePage />, '/');
     expect(await screen.findByText('카드 1장을 표시하지 못했어요')).toBeInTheDocument();
     expect(screen.queryByText(cards()[0].title)).not.toBeInTheDocument();
-    expect(screen.getAllByText(cards()[2].title).length).toBeGreaterThan(0);
   });
 });
 

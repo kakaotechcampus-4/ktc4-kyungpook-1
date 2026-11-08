@@ -59,6 +59,18 @@ export function resultLink(items: readonly AssistantItem[]): { label: string; to
   return null;
 }
 
+/** 문항이 없는 사용자를 자소서 새로 쓰기 화면으로 — 맞춰 본 공고, 없으면 처음 찾은 공고를 채워서 보낸다 */
+export function questionsGuide(items: readonly AssistantItem[]): { to: string; posting: AssistantPosting | null } {
+  const reversed = [...items].reverse();
+  const matched = reversed.find((item) => item.tool === 'MATCH_POSTING' && item.ok === true && item.posting)?.posting;
+  const found = reversed.find((item) => item.tool === 'FIND_POSTINGS' && item.ok === true && item.postings.length > 0)?.postings[0];
+  const posting = matched ?? found ?? null;
+  return { to: posting ? `/cover-letters/new?postingId=${encodeURIComponent(posting.postingId)}` : '/cover-letters/new', posting };
+}
+
+export const questionsGuideText = (posting: AssistantPosting | null) =>
+  `${posting ? `${posting.company} · ${posting.title} 공고로, ` : ''}자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.`;
+
 /** 입력 칸의 안내 — 물음의 종류에 따라 무엇을 적으면 되는지 말한다 */
 export function composerHint(state: string, askKind: string | null): string {
   if (state === 'RUNNING') return '하는 중이에요. 끝나면 이어서 적을 수 있어요';

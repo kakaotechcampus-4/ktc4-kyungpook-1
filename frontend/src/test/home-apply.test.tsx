@@ -141,7 +141,7 @@ describe('홈 — 지원할 곳', () => {
     mount();
 
     const lede = await screen.findByText(/내 카드와 맞는 공고를/);
-    expect(lede).toHaveTextContent('새 공고 1곳 · 내 카드와 맞는 공고를 마감이 가까운 순서로 모았어요');
+    expect(lede).toHaveTextContent('새 공고 1곳 · 내 카드와 맞는 공고를 지금 챙길 순서로 모았어요');
     expect(screen.getAllByRole('tab').map((node) => node.textContent)).toEqual(['회사 bD-9', '회사 aD-5']);
     expect(screen.getByRole('img', { name: '새 공고' })).toBeInTheDocument();
     cleanup();
@@ -149,7 +149,7 @@ describe('홈 — 지원할 곳', () => {
     serve({ overall: overall([company('a', 5), company('b', 9)]), notices: [notice(['p_b'], '2026-11-07T01:00:00Z')], details: { p_a: detail('p_a'), p_b: detail('p_b') } });
     mount();
     const plain = await screen.findByText(/내 카드와 맞는 공고를/);
-    expect(plain).toHaveTextContent(/^내 카드와 맞는 공고를 마감이 가까운 순서로 모았어요$/);
+    expect(plain).toHaveTextContent(/^내 카드와 맞는 공고를 지금 챙길 순서로 모았어요$/);
   });
 
   it('H8 맞는 공고가 없고 확정 카드가 있는데 다 계산했으면 아직 맞는 공고가 없어요와 레포 더 정리하기를 보인다', async () => {

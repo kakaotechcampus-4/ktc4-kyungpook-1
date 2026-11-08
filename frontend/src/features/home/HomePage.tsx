@@ -118,7 +118,7 @@ export function HomePage() {
               <div className="page-title"><h1>지원할 곳{items.length > 0 && <span className="home3-n home3-tnum" aria-hidden>{items.length}</span>}</h1></div>
               <p className="home3-lede">
                 {newCount > 0 && <><b>새 공고 {newCount}곳</b> · </>}
-                {items.length === 0 ? '아직 모인 공고가 없어요' : items.length === 1 ? '내 카드와 맞는 공고를 모았어요' : '내 카드와 맞는 공고를 마감이 가까운 순서로 모았어요'}
+                {items.length === 0 ? '아직 모인 공고가 없어요' : items.length === 1 ? '내 카드와 맞는 공고를 모았어요' : '내 카드와 맞는 공고를 지금 챙길 순서로 모았어요'}
               </p>
             </div>
           )}

@@ -19,9 +19,10 @@ export function jobResultLink(job: Job, knownRepoId?: string | null): string | u
   return `/repos/${encodeURIComponent(repoId)}/run?job=${encodeURIComponent(job.jobId)}`;
 }
 
-/** 진행 중인 작업은 시작한 화면에서 이어 본다 — 레포 정리는 4단계 화면, 카드 초안은 만든 카드 id 를 받기 전까지 그 레포의 카드 폴더 */
-export function activeJobLink(job: Pick<ActiveJob, 'jobId' | 'type' | 'userRepositoryId'>): string {
+/** 진행 중인 작업은 시작한 화면에서 이어 본다 — 레포 정리는 4단계 화면, 카드 초안은 쓰고 있는 첫 카드의 화면이고 카드 id 를 받기 전까지만 그 레포의 카드 폴더 */
+export function activeJobLink(job: Pick<ActiveJob, 'jobId' | 'type' | 'userRepositoryId'>, cardIds?: readonly string[]): string {
   const repoId = job.userRepositoryId;
+  if (job.type === 'DRAFT' && cardIds?.length) return `/cards/${encodeURIComponent(cardIds[0])}`;
   if (job.type === 'DRAFT') return repoId ? `/cards/repo/${encodeURIComponent(repoId)}` : '/cards';
   return repoId ? `/repos/${encodeURIComponent(repoId)}/run?job=${encodeURIComponent(job.jobId)}` : '/repos';
 }

@@ -79,7 +79,7 @@ function FolderScreen({ kind, id }: { kind: FolderKind; id?: string }) {
   const next = folderNext({ cards: ordered, justConfirmed, matchOn: matchSupported() });
   const confirmed = folder.cards.filter((card) => card.status === 'CONFIRMED').length;
   const boardLink = kind === 'repo' ? `/repos/${encodeURIComponent(id ?? '')}/candidates` : null;
-  const facts = kind === 'repo' ? `기술 카드 ${techCards.length}장 · 경험 카드 ${experienceCards.length}장 · 확정 ${confirmed}장` : `카드 ${folder.cards.length}장 · 확정 ${confirmed}장`;
+  const facts = kind === 'repo' ? `기술 카드 ${techCards.length}장, 경험 카드 ${experienceCards.length}장, 확정 ${confirmed}장` : `카드 ${folder.cards.length}장, 확정 ${confirmed}장`;
   const experienceHint = kind === 'repo' ? '코드에 남지 않은 이 레포의 경험을 써요' : kind === 'activity' ? '이 활동에서 한 경험을 써요' : '레포·활동 없이 경험을 써요';
 
   return (

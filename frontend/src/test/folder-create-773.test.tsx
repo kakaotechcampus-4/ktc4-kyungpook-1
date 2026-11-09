@@ -66,7 +66,7 @@ describe('#773 폴더 안: 머리와 점선 타일', () => {
     mountApp(routes(), '/cards/direct');
     expect(await addTile('경험 카드 만들기')).toHaveAccessibleDescription('레포·활동 없이 경험을 써요');
     expect(document.querySelector('.folder-head__actions')).toBeNull();
-    expect(screen.getByText('카드 1장 · 확정 0장')).toBeInTheDocument();
+    expect(screen.getByText('카드 1장, 확정 0장')).toBeInTheDocument();
   });
 });
 

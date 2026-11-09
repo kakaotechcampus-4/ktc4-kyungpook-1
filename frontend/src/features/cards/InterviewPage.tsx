@@ -260,7 +260,7 @@ export function InterviewPage() {
                   <span className="w-bold" style={{ fontSize: 15 }}>{ended ? '더 보완하고 싶다면' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
                   <div className="chat-quick">
                     {!ended && <button type="button" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</button>}
-                    {(weakFields.length ? weakFields : askable).map((f) => <button key={f} type="button" onClick={() => askMore(f)}>{starFieldShort[f]} 질문 받기{!card.version[fieldKey[f]] ? ' · 미작성' : card.lowConfidenceFields.some((l) => l.field === f) ? ' · 확인 필요' : ''}</button>)}
+                    {(weakFields.length ? weakFields : askable).map((f) => <button key={f} type="button" onClick={() => askMore(f)}>{starFieldShort[f]} 질문 받기{!card.version[fieldKey[f]] ? ', 미작성' : card.lowConfidenceFields.some((l) => l.field === f) ? ', 확인 필요' : ''}</button>)}
                   </div>
                 </div>
               )}

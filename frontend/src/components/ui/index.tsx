@@ -238,8 +238,9 @@ export const RepoContext = ({ name, note, right }: { name: string; note: string;
     {right}
   </div>
 );
-export const StickyFooter = ({ strong, sub, children }: { strong: string; sub?: string; children: ReactNode }) => (
-  <div className="sticky-footer">
+/** compact: 폰에서 설명 줄을 화면 읽기에만 두고 버튼 한 줄만 보인다(버튼 이름이 할 일을 말하는 화면) */
+export const StickyFooter = ({ strong, sub, children, compact }: { strong: string; sub?: string; children: ReactNode; compact?: boolean }) => (
+  <div className={cx('sticky-footer', compact && 'sticky-footer--compact')}>
     <div className="sticky-footer__text"><strong>{strong}</strong>{sub && <span>{sub}</span>}</div>
     <div className="sticky-footer__actions">{children}</div>
   </div>

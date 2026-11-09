@@ -575,8 +575,9 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+/* 쉼표는 앞 카드 이름에 붙이고 뒤만 띄운다 — 양옆을 띄우면 '재발급 , 팀원과'처럼 떨어져 보인다(#920) */
 .posting-condition__sep {
-  margin: 0 8px;
+  margin: 0 8px 0 0;
   color: var(--text-tertiary);
 }
 

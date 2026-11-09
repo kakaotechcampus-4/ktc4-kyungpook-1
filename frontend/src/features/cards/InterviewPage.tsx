@@ -5,6 +5,7 @@ import { errorView } from '@/api/errorView';
 import { useAnswerInterview, useAskInterview, useCard, useInterview, useSkipInterview } from '@/api/queries';
 import { StarField as StarFieldSchema, isOpenTurn, type EvidenceType, type StarField } from '@/api/schemas';
 import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
+import { scrollChatTo } from '@/components/chat/chatScroll';
 import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldExample, starFieldName, starFieldShort } from '@/lib/labels';
@@ -77,10 +78,10 @@ export function InterviewPage() {
     }
   }, [cardReady, turns.isSuccess, open, field, ask, cardId, capReached, allTurns.length]);
 
-  // 줄이 늘거나 기다림이 바뀌면 대화 영역만 맨 아래로 굴린다 — 좁은 화면에서는 이 영역이 스크롤되지 않아 페이지도 그대로다
+  // 줄이 늘거나 기다림이 바뀌면 대화 영역만 굴린다 — 새 질문이 칸보다 길어도 첫 줄이 보이게 맞춘다(좁은 화면에서는 이 영역이 스크롤되지 않아 페이지도 그대로다)
   useEffect(() => {
     const box = threadRef.current;
-    box?.scrollTo?.({ top: box.scrollHeight, behavior: reduced ? 'auto' : 'smooth' });
+    if (box) scrollChatTo(box, box, { pad: 8, smooth: !reduced });
   }, [q.isSuccess, allTurns.length, open?.turnNo, answer.isPending, ask.isPending, aiDone, q.data?.interviewEndReason, reduced]);
 
   // 답하거나 넘긴 뒤에는 칸을 정하지 않고 묻는다. AI 가 다음 칸을 고르거나, 더 물을 것이 없으면 null 로 끝낸다
@@ -196,7 +197,7 @@ export function InterviewPage() {
 
             {/* AI 판단 — 새 질문의 이유나 끝난 알림이 오면 한 번만 읽어 주는 낭독 영역이 여기 하나다 */}
             <AiLive>
-              {open && judged && <AiJudgement key={open.turnNo} head={judged.head}>{judged.reason}</AiJudgement>}
+              {open && judged && <AiJudgement key={open.turnNo} head={judged.head} lead>{judged.reason}</AiJudgement>}
               {showEnded && (
                 <div className="interview-complete">
                   <div className="interview-complete__summary">

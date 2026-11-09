@@ -6,8 +6,6 @@
 .ask { flex: 1; gap: 0; --main-pb: 0px; padding-bottom: 0; }
 .ask > :not(.sr-only) { width: 100%; max-width: 820px; margin-inline: auto; }
 .ask__thread { flex: 1; padding: 24px 0 32px; gap: 14px; }
-/* 새 줄로 스크롤할 때 아래에 붙은 입력 줄에 가리지 않게 그 높이만큼 띄운다 */
-.ask__end { scroll-margin-bottom: 150px; }
 .ask__dock { position: sticky; bottom: 0; z-index: 5; display: flex; flex-direction: column; gap: 8px; padding: 14px 0 20px; border-top: 1px solid var(--border-default); background: var(--bg-surface); }
 .ask__sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 20px; font-size: 14px; line-height: 20px; color: var(--text-secondary); }
 .ask__count { font-variant-numeric: tabular-nums; }
@@ -72,7 +70,6 @@
   /* 대화가 짧아도 입력 줄이 아래 탭 바로 위에 놓이게, 위 상표 줄과 아래 탭을 뺀 높이를 채운다 */
   .ask { min-height: calc(100svh - 57px - var(--mobile-nav-height) - env(safe-area-inset-bottom)); }
   .ask__thread { padding-top: 12px; }
-  .ask__end { scroll-margin-bottom: 200px; }
   .ask-start__try { margin-top: 28px; }
   .ask__dock { bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom)); padding: 10px 0 12px; background: var(--bg-canvas); }
   .ask-steps, .ask-postings { width: 100%; }

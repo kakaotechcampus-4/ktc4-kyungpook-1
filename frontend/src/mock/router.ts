@@ -10,7 +10,7 @@ import { applyPolish, chooseCards, confirmInference, createCoverLetter, deleteCo
  *
  * "에러가 아닌 것"은 200 으로 내려보낸다 — 후보 0개(verdict) · 부분 결과(partial) · 작업 실패(state).
  */
-import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, skipTurn, nextId, recallFor, resetDb, repoUpdateList, markRepoUpdateSeen, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, settleCard } from './store';
+import { db, viewJob, boardFor, activityView, removeActivity, cardView, cardSummary, createDraftCards, pushVersion, askTurn, answerTurn, replyTurn, skipTurn, nextId, recallFor, resetDb, repoUpdateList, markRepoUpdateSeen, startAnalyze, activeJobs, cancelJob, patchDraft, INTERVIEW_MAX_TURNS, FIELD_KEY, STAR, isCardBlank, captureVersion, restoreVersionMetadata, settleCard } from './store';
 import { now } from './fixtures';
 import { chooseThemes, queueAiThemes } from './store'; // 문항 유형(#564)
 import { CONFIG } from '@/lib/config';
@@ -464,6 +464,18 @@ on('POST', '/cards/:id/interview/:turn/answer', ({ params, body }) => {
   const updated = body.kind === 'SKIP' ? skipTurn(c, Number(params[1]))
     : answerTurn(c, Number(params[1]), String(body.text ?? ''), body.source ?? 'USER_STATED');
   return updated ? ok(cardView(updated)) : fail(404, 'TURN_NOT_FOUND', '질문을 찾을 수 없습니다');
+});
+
+// 답을 AI 가 먼저 읽는다 — 카드에 넣었는지 여부는 응답의 outcome 이 말한다
+on('POST', '/cards/:id/interview/:turn/reply', ({ params, body }) => {
+  const c = findCard(params[0]);
+  if (!c) return fail(404, 'CARD_NOT_FOUND', '카드를 찾을 수 없습니다');
+  const turn = db.interview[c.id]?.find((t: Any) => t.turnNo === Number(params[1]));
+  if (!turn) return fail(404, 'TURN_NOT_FOUND', '질문을 찾을 수 없습니다');
+  const text = String(body.text ?? '').trim();
+  if (!text) return fail(400, 'INVALID_REQUEST', '답을 적어 주세요');
+  if (turn.answer || (turn.outcome && turn.outcome !== 'LATER')) return fail(409, 'INVALID_STATE', '이미 끝난 질문입니다');
+  return ok(replyTurn(c, turn, text, body.source ?? 'USER_STATED'));
 });
 
 /** 한 요청 처리. path 는 /api 접두사를 뗀 것. */

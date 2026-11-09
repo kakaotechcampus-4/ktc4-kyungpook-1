@@ -96,4 +96,7 @@ export const endpoints = {
   /** 글 답은 { text, source }, 넘기기는 { kind: 'SKIP' } — 넘긴 질문은 칸을 바꾸지 않고 다시 묻지 않는다 */
   answerInterview: (cardId: string, turnNo: number, body: { text: string; source: S.EvidenceType } | { kind: 'SKIP' }) =>
     api(S.Card, `/cards/${cardId}/interview/${turnNo}/answer`, { method: 'POST', body }),
+  /** 답을 AI 가 먼저 읽는다. 카드에 넣었는지(outcome)와 넣은 문장이 응답에 실려 온다 */
+  replyInterview: (cardId: string, turnNo: number, body: { text: string; source: S.EvidenceType }) =>
+    api(S.InterviewReply, `/cards/${cardId}/interview/${turnNo}/reply`, { method: 'POST', body }),
 };

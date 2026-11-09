@@ -66,7 +66,7 @@ export function MyPage() {
           ))}
         </div>
       </details>
-      <LegalLinks />
+      <LegalLinks report />
     </main>
   );
 }

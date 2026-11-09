@@ -34,6 +34,12 @@ export const isPublicPath = (path: string) => path.startsWith('/auth/') || path 
 // ───────────────────────────── 인증 ─────────────────────────────
 on('POST', '/__reset', () => { resetDb(); return ok({ ok: true }); }); // 목 전용 (E2E). 실서버엔 없다
 on('POST', '/events', () => ok({ ok: true })); // 지표는 받기만 한다 (api.logger)
+on('POST', '/feedback', ({ body }) => {
+  const message = typeof body.message === 'string' ? body.message.trim() : '';
+  const path = body.path ?? '';
+  if (message.length < 1 || message.length > 1000 || typeof path !== 'string' || path.length > 255) return fail(400, 'INVALID_REQUEST', '신고 내용을 확인해 주세요.');
+  return ok(null);
+});
 on('GET', '/notifications', () => ok(listNotices(db.notifications)));
 on('POST', '/notifications/read-all', () => { readAllNotices(db.notifications); return ok({ ok: true }); });
 on('POST', '/notifications/:id/read', ({ params }) => readNotice(db.notifications, params[0]) ? ok({ ok: true }) : fail(404, 'NOT_FOUND', '알림을 찾을 수 없습니다.'));

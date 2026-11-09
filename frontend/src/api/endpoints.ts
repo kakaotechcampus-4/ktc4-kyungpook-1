@@ -9,6 +9,7 @@ import { reportSkipped } from '@/lib/skippedItems';
 export const endpoints = {
   // 사용자 · 연동
   me: () => api(S.Me, '/me'),
+  sendFeedback: (body: { message: string; path: string }) => api(z.unknown(), '/feedback', { method: 'POST', body, allowNullData: true }),
   logout: () => api(z.object({ ok: z.boolean() }), '/auth/logout', { method: 'POST' }),
   leaveAccount: () => api(z.unknown(), '/me', { method: 'DELETE', allowNullData: true }),
   disconnectGithub: () => api(z.object({ ok: z.boolean() }), '/github/disconnect', { method: 'POST' }),

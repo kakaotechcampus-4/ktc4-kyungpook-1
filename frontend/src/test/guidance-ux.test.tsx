@@ -43,7 +43,7 @@ describe('GitHub 연결 끊김·권한 오류 안내 (#438)', () => {
   });
 
   it('조회 실패가 연결 문제면 GitHub 다시 연결 버튼을 붙인다', () => {
-    render(<QueryFailure error={new ApiError('GITHUB_UNAUTHORIZED', 'x', 403)} retry={() => {}} />);
+    withMe(<QueryFailure error={new ApiError('GITHUB_UNAUTHORIZED', 'x', 403)} retry={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'GitHub 다시 연결' }));
     expect(reconnect).toHaveBeenCalledOnce();
     expect(screen.queryByRole('button', { name: '다시 불러오기' })).not.toBeInTheDocument();

@@ -299,6 +299,7 @@ docker compose restart backend                 # 서비스 하나 재시작
 
 - Session Manager 기본 셸이 `sh` 라서 접속하면 `bash` → `sudo -iu ubuntu` 를 먼저 실행한다.
 - 여러 줄을 붙여넣으면 마지막 줄이 Enter 를 쳐야 실행돼 출력이 잘려 보인다. 블록 끝에 `echo "== 끝"` 을 두면 끝을 알 수 있다.
+- 사용자가 화면에서 보낸 문제 신고는 DB 에만 있고 팀 알림에는 번호만 온다. 최근 것부터 읽는다: `docker compose exec -T db psql -U gitory -d gitory -P pager=off -c "SELECT id, created_at, path, message FROM feedback ORDER BY id DESC LIMIT 20;"`. 알림이 오려면 서버 `deploy/.env` 에 `GITORY_ALERT_WEBHOOK_URL` 이 있어야 한다.
 - 메모리: 4개 합계 약 650MB (backend 약 535MB). 빌드 중에는 더 쓰지만 swap 4GB 가 있다.
 - 인스턴스를 stop/start 해도 EIP 라 주소가 유지된다. 컨테이너는 `restart: unless-stopped` 라 Docker 가 뜨면 같이 뜬다.
 

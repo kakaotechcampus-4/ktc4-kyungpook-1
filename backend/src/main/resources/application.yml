@@ -346,6 +346,9 @@ gitory:
     assistant:
       per-minute: 5
       per-day: 50
+    # 문제 신고. 글을 받아 저장만 하므로 하루 한도만 둔다
+    feedback:
+      per-day: 10
 
 logging:
   level:

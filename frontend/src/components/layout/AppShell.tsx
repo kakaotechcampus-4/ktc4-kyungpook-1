@@ -82,7 +82,7 @@ export function AppShell() {
           </nav>
         ))}
         <div style={{ marginTop: 'auto' }} />
-        <LegalLinks className="sidebar__legal" />
+        <LegalLinks className="sidebar__legal" report />
         <div className="sidebar__profile"><ProfileMenu variant="sidebar" /></div>
       </aside>
       <div id="main" className="shell__main">

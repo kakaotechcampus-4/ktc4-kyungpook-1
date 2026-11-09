@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { errorView } from '@/api/errorView';
 import { useAnswerInterview, useAskInterview, useCard, useInterview, useSkipInterview } from '@/api/queries';
 import { StarField as StarFieldSchema, isOpenTurn, type EvidenceType, type StarField } from '@/api/schemas';
 import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
-import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton } from '@/components/ui';
+import { Badge, Breadcrumb, Button, ButtonLink, EvidenceList, Note, PageTitle, Skeleton } from '@/components/ui';
 import { AiWait } from '@/components/ui/AiWait';
 import { STAR_FIELDS, evidenceTypeLabel, fieldKey, starFieldExample, starFieldName, starFieldShort } from '@/lib/labels';
 import { askJudgement, cleanAiText } from '@/lib/interviewReason';
@@ -119,7 +119,7 @@ export function InterviewPage() {
   };
   const askMore = (f: StarField) => { setAiDone(false); ask.mutate(f, { onSuccess: () => track('interview_asked', { cardId, field: f, followUp: true }) }); };
 
-  if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
+  if ((q.isError && !q.data) || (turns.isError && !turns.data)) return <main className="main"><QueryFailure error={q.error ?? turns.error} retry={() => Promise.all([q.refetch(), turns.refetch()])} pending={q.isFetching || turns.isFetching} /><ButtonLink to="/cards" variant="secondary">경험 카드 목록</ButtonLink></main>;
   if (!card || turns.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={300} /></main>;
   const total = allTurns.length;
   const crumbs = [{ label: '홈', to: '/' }, ...(card.repo ? [{ label: card.repo.name, to: folderPath.repo(card.repo.id) }] : card.activity ? [{ label: card.activity.name, to: folderPath.activity(card.activity.id) }] : []), { label: card.title, to: `/cards/${cardId}`, state: location.state }, { label: '답변하기' }];
@@ -143,7 +143,7 @@ export function InterviewPage() {
         {/* 좌측 캔버스 — 답할수록 채워지는 카드 */}
         <section className={`card iv__canvas ${folded ? 'iv__canvas--folded' : ''}`} aria-label="카드 미리보기">
           <div className="row" style={{ gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border-default)' }}>
-            <span className="w-600" style={{ fontSize: 16 }}>{card.title}</span>
+            <span className="w-bold" style={{ fontSize: 16 }}>{card.title}</span>
             <button type="button" className="iv__fold right" aria-expanded={!folded} onClick={() => setFolded((x) => !x)}>
               {folded ? '지금까지 쓴 카드 보기' : '접기'}
             </button>
@@ -171,7 +171,7 @@ export function InterviewPage() {
           <div className="iv__head">
             <p className="iv__title"><strong>대화</strong><span>답하면 카드에 바로 들어가요</span></p>
             {/* 질문이 없을 때는 아래 "카드로 돌아가기"가 같은 길이라, 여기서는 질문 중(또는 질문을 만드는 중)에만 둔다 */}
-            {(open || ask.isPending) && <Link to={`/cards/${cardId}`} state={location.state} className="btn btn--ghost btn--sm"><ArrowLeft size={14} aria-hidden /> 카드로</Link>}
+            {(open || ask.isPending) && <ButtonLink to={`/cards/${cardId}`} state={location.state} variant="secondary" size="sm"><ArrowLeft size={14} aria-hidden /> 카드로</ButtonLink>}
           </div>
           {answer.isError && <Note strong="답변이 저장되지 않았어요" tone="danger">{errorView(answer.error).message}</Note>}
           {skip.isError && <Note strong="질문을 넘기지 못했어요" tone="danger">{errorView(skip.error).message}</Note>}
@@ -224,7 +224,7 @@ export function InterviewPage() {
                 </details>}
                 {open.options.length > 0 && (
                   <div className="stack" style={{ gap: 6 }}>
-                    <span className="t-12 w-600 c-3" style={{ fontSize: 13 }}>이 중에서 골라도 돼요</span>
+                    <span className="t-12 w-bold c-3" style={{ fontSize: 13 }}>이 중에서 골라도 돼요</span>
                     {open.options.map((o) => <button key={o} type="button" className="chip chip--option" disabled={answer.isPending} aria-pressed={picked === o} onClick={() => { setPicked(o); setText(o); }}>{o}</button>)}
                   </div>
                 )}
@@ -247,7 +247,7 @@ export function InterviewPage() {
                 label="답변" sendLabel="답변 저장" placeholder={starFieldExample[open.field]} maxLength={500} />
               <div className="iv__sub">
                 <span>{text ? `${text.length}/500` : ''}</span>
-                <Button variant="ghost" size="sm" loading={skip.isPending} disabled={answer.isPending} onClick={skipOpen}>건너뛰기</Button>
+                <Button variant="secondary" size="sm" loading={skip.isPending} disabled={answer.isPending} onClick={skipOpen}>건너뛰기</Button>
               </div>
             </div>
           )}
@@ -257,7 +257,7 @@ export function InterviewPage() {
                 <Note strong={`질문 ${maxTurns}개를 다 썼어요`} tone="inset">남은 칸은 직접 고쳐서 채울 수 있어요</Note>
               ) : (
                 <div className="stack" style={{ gap: 8 }}>
-                  <span className="w-600" style={{ fontSize: 15 }}>{ended ? '더 보완하고 싶다면' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
+                  <span className="w-bold" style={{ fontSize: 15 }}>{ended ? '더 보완하고 싶다면' : finished.length ? '이어서 물을까요?' : '어느 칸을 채울까요?'}</span>
                   <div className="chat-quick">
                     {!ended && <button type="button" onClick={() => askNext(allTurns.length)}>AI 가 고르게 하기</button>}
                     {(weakFields.length ? weakFields : askable).map((f) => <button key={f} type="button" onClick={() => askMore(f)}>{starFieldShort[f]} 질문 받기{!card.version[fieldKey[f]] ? ' · 미작성' : card.lowConfidenceFields.some((l) => l.field === f) ? ' · 확인 필요' : ''}</button>)}
@@ -273,9 +273,9 @@ export function InterviewPage() {
                   ? <Button onClick={() => nav(`/cards/${cardId}?confirm=1`, { state: location.state })}>카드 검토하기</Button>
                   : <Button onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드로 돌아가기</Button>}
                 {settledHere
-                  ? <Button variant="outline" onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
+                  ? <Button variant="secondary" onClick={() => nav(`/cards/${cardId}`, { state: location.state })}>카드 보기</Button>
                   : confirmed ? null
-                  : <Button variant="ghost" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정하기</Button>}
+                  : <Button variant="secondary" onClick={() => nav(`/cards/${cardId}?mode=edit`, { state: location.state })}>직접 수정하기</Button>}
               </div>
             </>
           )}

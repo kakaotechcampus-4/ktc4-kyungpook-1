@@ -53,7 +53,7 @@ function SetupDialog({ initial }: { initial: Profile }) {
 
   const actions = (
     <>
-      {step > 0 && <Button variant="outline" disabled={state.saving} onClick={() => go(step - 1)}>이전</Button>}
+      {step > 0 && <Button variant="secondary" disabled={state.saving} onClick={() => go(step - 1)}>이전</Button>}
       {empty && SKIPPABLE.includes(scope as SectionKey)
         ? <Button loading={state.saving} onClick={() => void next()}>{TITLE[scope]} 없음</Button>
         : <Button loading={state.saving} onClick={() => void next()}>{last ? '저장하고 시작하기' : '다음'}</Button>}

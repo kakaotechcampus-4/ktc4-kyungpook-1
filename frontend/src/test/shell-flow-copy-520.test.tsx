@@ -90,7 +90,7 @@ describe('정리 화면 (#520 G-13 · A-04 · A-05 · A-08 · A-09 · A-12)', ()
     const rows = Array.from(document.querySelectorAll('.card--paper.row'));
     expect(rows.length).toBeGreaterThanOrEqual(3);
     for (const row of rows) {
-      const title = row.querySelector('.w-600')!.textContent;
+      const title = row.querySelector('.w-bold')!.textContent;
       const action = row.querySelector('.btn')!.textContent;
       expect(action).not.toBe(title); // A-05: 제목과 같은 말을 버튼에 또 쓰지 않는다
       expect(action).not.toBe('이동'); // A-04: 화면 읽기 이름이 같은 버튼 두 개를 만들지 않는다

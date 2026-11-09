@@ -14,7 +14,7 @@ export function ProfileSettingsRow() {
       : `학력 ${p.educations.length}, 경력 ${p.careers.length}, 어학 ${p.languages.length}, 자격증 ${p.certifications.length}`}`;
   return (
     <Link to="/settings/profile" className="kv" style={{ padding: '14px 0' }}>
-      <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>인적사항</span><span className="t-12 c-2">{summary}</span></div>
+      <div className="stack grow" style={{ gap: 3 }}><span className="w-bold" style={{ fontSize: 14 }}>인적사항</span><span className="t-12 c-2">{summary}</span></div>
       <span className="c-3" style={{ fontSize: 16 }} aria-hidden="true">›</span>
     </Link>
   );

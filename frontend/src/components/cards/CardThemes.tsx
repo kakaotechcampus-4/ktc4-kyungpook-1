@@ -54,7 +54,7 @@ function ThemesSection({ card, themes, editable }: { card: Card; themes: CardThe
           </p>
           <div className="card-themes__foot">
             <SaveStatus status={state} retry={retry} />
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>완료</Button>
+            <Button variant="secondary" size="sm" onClick={() => setOpen(false)}>완료</Button>
           </div>
         </fieldset>
       </div>
@@ -69,7 +69,7 @@ function ThemesSection({ card, themes, editable }: { card: Card; themes: CardThe
           ? <ul className="card-themes__chips" aria-labelledby={labelId}>{selected.map((theme) => <li key={theme}>{themeLabel[theme]}</li>)}</ul>
           : <span className="card-themes__empty">{waiting ? 'AI 가 유형을 고르는 중일 수 있어요' : '정해지지 않았어요'}</span>}
         {canEdit && (
-          <Button variant="ghost" size="sm" aria-label={`자소서 문항 유형 ${verb}`} onClick={() => setOpen(true)}>
+          <Button variant="secondary" size="sm" aria-label={`자소서 문항 유형 ${verb}`} onClick={() => setOpen(true)}>
             <Pencil size={14} aria-hidden />{verb}
           </Button>
         )}

@@ -24,7 +24,7 @@ test('맞춰 보는 동안: 들어오면 스스로 맞춰 보기를 시작하고
   await expect(box.locator('.result-tile')).toHaveCount(0);
   const all = page.getByRole('region', { name: '모든 공고' });
   await expect(all.locator('.match-card')).toHaveCount(5);
-  await expect(all.getByText('5건', { exact: true })).toBeVisible();
+  await expect(all.getByRole('heading', { name: '모든 공고 5' })).toBeVisible();
 });
 
 test('맞춰 본 뒤: 상자에 순위 번호가 붙은 타일 5개가 오르고 타일마다 개수 줄과 이름 줄이 있다', async ({ page }) => {
@@ -33,7 +33,7 @@ test('맞춰 본 뒤: 상자에 순위 번호가 붙은 타일 5개가 오르고
   const box = page.getByRole('region', { name: BOX });
   const tiles = box.locator('.result-tile');
   await expect(tiles).toHaveCount(5);
-  await expect(box.getByRole('heading', { level: 2, name: `${BOX} 5곳` })).toBeVisible();
+  await expect(box.getByRole('heading', { level: 2, name: `${BOX} 5` })).toBeVisible();
   await expect(box).toContainText(/확정 카드 \d+장과 인적사항으로 기술이 겹치는 15곳을 확인했어요/);
   await expect(tiles.locator('.star-key')).toHaveText(['1', '2', '3', '4', '5']);
 
@@ -57,7 +57,7 @@ test('직무 칩을 고르면 모든 공고가 그 직무 공고만 남고 주�
   await expect(chips.getByRole('button', { name: '전체', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await chips.getByRole('button', { name: '데이터', exact: true }).click();
   await expect(chips.getByRole('button', { name: '데이터', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('region', { name: '모든 공고' }).getByText('1건', { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: '모든 공고' }).getByRole('heading', { name: '모든 공고 1' })).toBeVisible();
   await expect(page.locator('.match-card')).toHaveCount(1);
   await expect(page.locator('.match-card')).toContainText('마루데이터');
   await expect.poll(() => new URL(page.url()).searchParams.get('category')).toBe('DATA');
@@ -69,7 +69,7 @@ test('칩이 걸리면 상자는 한 줄 띠로 접히고, 펼치면 타일이 �
   const chips = page.getByRole('group', { name: '직무' });
   const box = page.getByRole('region', { name: BOX });
   await chips.getByRole('button', { name: '데이터', exact: true }).click();
-  await expect(box.getByText(`${BOX} 5곳`)).toBeVisible();
+  await expect(box.locator('strong').first()).toHaveText(`${BOX} 5`);
   await expect(box.locator('.result-tile')).toHaveCount(0);
 
   await box.getByRole('button', { name: '펼치기' }).click();

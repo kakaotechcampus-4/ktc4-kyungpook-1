@@ -27,7 +27,7 @@
 .card-navigation h2 {
   margin: 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: var(--weight-bold);
 }
 .card-navigation__actions {
   display: grid;

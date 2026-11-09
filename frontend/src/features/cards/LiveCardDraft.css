@@ -9,7 +9,7 @@
 .live-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border-default); border-radius: var(--radius-lg); background: var(--bg-surface); overflow: hidden; }
 .live-card__head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 14px 18px; border-bottom: 1px solid var(--border-default); }
 .live-card__title { margin: 0; min-width: 0; font-size: 16px; line-height: 24px; font-weight: var(--heading-weight); overflow-wrap: anywhere; }
-.live-card__state { margin-left: auto; font-size: 12px; line-height: 18px; font-weight: 600; color: var(--text-secondary); }
+.live-card__state { margin-left: auto; font-size: 12px; line-height: 18px; font-weight: var(--weight-bold); color: var(--text-secondary); }
 .live-card[data-state='WRITING'] .live-card__state, .live-card[data-state='READING'] .live-card__state { color: var(--text-accent); }
 .live-card[data-state='FAILED'] .live-card__state { color: var(--state-failed-text); }
 
@@ -19,8 +19,8 @@
 
 .live-slot { position: relative; display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 16px 18px; background: var(--bg-surface); color: var(--text-primary); }
 .live-slot__head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
-.live-slot__name { font-size: 13px; line-height: 20px; font-weight: 700; }
-.live-slot__status { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 18px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+.live-slot__name { font-size: 13px; line-height: 20px; font-weight: var(--weight-bold); }
+.live-slot__status { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 18px; font-weight: var(--weight-bold); color: var(--text-secondary); white-space: nowrap; }
 
 /* 글. 보이지 않는 전체 글(ghost)과 같은 칸에 겹쳐 높이를 미리 잡고, 보이는 글(typed)이 그 위에서 자란다 */
 .live-slot__body { display: grid; margin: 0; min-width: 0; min-height: 52px; font-size: 16px; line-height: 1.75; overflow-wrap: anywhere; }
@@ -35,7 +35,10 @@
 .live-slot[data-phase='WAITING'] { background: var(--bg-paper); }
 .live-slot[data-phase='WAITING'] .live-slot__name, .live-slot[data-phase='WAITING'] .live-slot__status { color: var(--text-tertiary); }
 /* 지금 쓰는 칸은 두꺼운 윤곽으로 강조한다. 바탕은 비워 두어 '다 쓴 칸'의 채움과 겹쳐 보이지 않게 한다 */
-.live-slot[data-phase='NEXT'], .live-slot[data-phase='WRITING'], .live-slot[data-phase='REWRITING'] { background: var(--bg-surface); box-shadow: inset 0 0 0 2px var(--border-selected); z-index: 1; }
+/* 지금 쓰는 칸 — 칸 가장자리에 테두리를 그리면 둥근 상자 모서리, 옆 칸 경계와 겹쳐 잘린다(#918).
+   칸 안쪽으로 6px 들여 둥근 테두리를 따로 그려 어느 폭에서도 네 변과 네 모서리가 다 보이게 한다 */
+.live-slot[data-phase='NEXT'], .live-slot[data-phase='WRITING'], .live-slot[data-phase='REWRITING'] { background: var(--bg-surface); }
+.live-slot[data-phase='NEXT']::after, .live-slot[data-phase='WRITING']::after, .live-slot[data-phase='REWRITING']::after { content: ''; position: absolute; inset: 6px; border: 2px solid var(--border-selected); border-radius: var(--radius-md); pointer-events: none; }
 .live-slot[data-phase='NEXT'] .live-slot__status, .live-slot[data-phase='WRITING'] .live-slot__status, .live-slot[data-phase='REWRITING'] .live-slot__status { color: var(--text-accent); }
 /* 다 쓴 칸은 색을 채운다. 뜻은 '완료' 글자가 말한다. 두꺼운 왼쪽 띠는 두지 않는다: 아래 칸의 두꺼운 윤곽(지금 쓰는 칸)과 이어져 긴 검은 줄처럼 깨져 보였다 */
 .live-slot[data-phase='DONE'] { background: var(--bg-selected); }
@@ -59,20 +62,20 @@
 /* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 '고른 이유' 글자가 따로 말한다 */
 .live-step[data-judged] .live-step__icon { background: var(--accent-point-soft); border-color: var(--border-selected); color: var(--text-accent); }
 .live-step__body { display: flex; flex-direction: column; min-width: 0; }
-.live-step__round { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-tertiary); }
-.live-step__text { font-weight: 500; overflow-wrap: anywhere; }
+.live-step__round { font-size: 12px; line-height: 16px; font-weight: var(--weight-bold); color: var(--text-tertiary); }
+.live-step__text { font-weight: var(--weight-regular); overflow-wrap: anywhere; }
 .live-step__detail { font-size: 12px; line-height: 18px; color: var(--text-secondary); overflow-wrap: anywhere; }
 .live-step__reason { display: flex; flex-direction: column; margin-top: 4px; padding-left: 8px; border-left: 2px solid var(--border-selected); }
-.live-step__reason-label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-accent); }
+.live-step__reason-label { font-size: 12px; line-height: 16px; font-weight: var(--weight-bold); color: var(--text-accent); }
 .live-step__reason q { quotes: '\201C' '\201D'; font-size: 12px; line-height: 18px; color: var(--text-strong); overflow-wrap: anywhere; }
 
 /* 앞서 쓴 카드 — 접어 둔다 */
 .live-finished { display: flex; flex-direction: column; gap: 8px; }
-.live-finished__heading { margin: 0; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--text-secondary); }
+.live-finished__heading { margin: 0; font-size: 13px; line-height: 20px; font-weight: var(--weight-bold); color: var(--text-secondary); }
 .live-finished__item { border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); overflow: hidden; }
 .live-finished__summary { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; min-height: var(--control-touch-size); padding: 8px 14px; cursor: pointer; }
 .live-finished__summary:focus-visible { outline: 2px solid var(--border-selected); outline-offset: -2px; }
-.live-finished__title { min-width: 0; font-size: 14px; line-height: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.live-finished__title { min-width: 0; font-size: 14px; line-height: 22px; font-weight: var(--weight-bold); overflow-wrap: anywhere; }
 .live-finished__state { margin-left: auto; font-size: 12px; line-height: 18px; color: var(--text-secondary); }
 .live-finished__item[data-state='FAILED'] .live-finished__state { color: var(--state-failed-text); }
 .live-finished__body { border-top: 1px solid var(--border-default); }

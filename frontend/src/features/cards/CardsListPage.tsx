@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, FolderGit2, FolderPlus, Layers, PenLine } from 'lucide-react';
 import { useActivities } from '@/api/activities';
 import { useCards, useSavedRepos } from '@/api/queries';
 import type { CardSummary } from '@/api/schemas';
-import { Button, PageTitle, Skeleton } from '@/components/ui';
+import { Button, ButtonLink, PageTitle, Skeleton, TitleCount } from '@/components/ui';
 import { SearchField } from '@/components/ui/SearchField';
 import { CardGridItem } from '@/features/home/HomePage';
 import { buildFolders } from '@/lib/cardFolders';
@@ -71,12 +71,12 @@ export function CardsListPage() {
   return (
     <main className="main cards-list">
       <div className="list-head">
-        <PageTitle>경험 카드 <span className="c-3 t-14">{counts.ALL ?? '—'}</span></PageTitle>
+        <PageTitle>경험 카드<TitleCount n={counts.ALL ?? '—'} /></PageTitle>
         {/* 카드가 하나도 없으면 검색·만들기 버튼은 아래 빈 상태가 한 번만 안내한다(같은 이름의 주 버튼이 둘이 되지 않게) */}
         {!isEmpty && view !== 'folder' && (
           <div className="right">
             <SearchField className="list-search" value={q} onChange={setQ} placeholder="카드 검색" label="카드 이름으로 검색" />
-            <Link to="/cards/new" className="btn btn--primary"><PenLine size={14} /> 경험 카드 만들기</Link>
+            <ButtonLink to="/cards/new" variant="primary"><PenLine size={14} /> 경험 카드 만들기</ButtonLink>
           </div>
         )}
       </div>
@@ -105,12 +105,12 @@ export function CardsListPage() {
           {isEmpty ? (
             <>
               <Button onClick={() => nav('/repos')}><FolderGit2 size={14} /> 레포에서 카드 만들기</Button>
-              <Link to="/cards/new" className="btn btn--text" style={{ whiteSpace: 'normal', textAlign: 'center' }}><PenLine size={14} aria-hidden /> 코드에 없는 경험은 직접 작성해도 돼요</Link>
+              <ButtonLink to="/cards/new" variant="text" style={{ whiteSpace: 'normal', textAlign: 'center' }}><PenLine size={14} aria-hidden /> 코드에 없는 경험은 직접 작성해도 돼요</ButtonLink>
               {activities.data?.length
-                ? <Link to="/activities" className="btn btn--text"><FolderPlus size={14} aria-hidden /> 만들어 둔 활동 {activities.data.length}개 보기</Link>
-                : <Link to="/activities/new" className="btn btn--text" style={{ whiteSpace: 'normal', textAlign: 'center' }}><FolderPlus size={14} aria-hidden /> 동아리나 인턴 같은 경험은 활동으로 묶을 수 있어요</Link>}
+                ? <ButtonLink to="/activities" variant="text"><FolderPlus size={14} aria-hidden /> 만들어 둔 활동 {activities.data.length}개 보기</ButtonLink>
+                : <ButtonLink to="/activities/new" variant="text" style={{ whiteSpace: 'normal', textAlign: 'center' }}><FolderPlus size={14} aria-hidden /> 동아리나 인턴 같은 경험은 활동으로 묶을 수 있어요</ButtonLink>}
             </>
-          ) : <Button variant="outline" onClick={() => { setQ(''); setStatus('ALL'); }}>필터 초기화</Button>}
+          ) : <Button variant="secondary" onClick={() => { setQ(''); setStatus('ALL'); }}>필터 초기화</Button>}
         </div>
       )}
       {foldersPending && <div className="grid-2">{[0, 1].map((i) => <Skeleton key={i} h={128} />)}</div>}

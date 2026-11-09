@@ -122,7 +122,7 @@ describe('공고 매칭 결과 상자', () => {
     expect(within(box()).getByRole('heading', { level: 2, name: '내 카드로 공고 맞춰 보기' })).toBeInTheDocument();
     expect(within(box()).getByText('확정 카드 3장과 인적사항으로, 기술이 겹치는 공고의 필수·우대 조건을 확인해요. 1분쯤 걸려요.')).toBeInTheDocument();
     expect(tiles()).toHaveLength(0);
-    expect(await within(allPostings()).findByText('6건')).toBeInTheDocument();
+    expect(await within(allPostings()).findByRole('heading', { name: '모든 공고 6' })).toBeInTheDocument();
     expect(titles(allPostings())).toHaveLength(6);
   });
 
@@ -156,10 +156,10 @@ describe('공고 매칭 결과 상자', () => {
 
     await waitFor(() => expect(box()).toHaveTextContent('11월 2일 · 확정 카드 3장과 인적사항으로 기술이 겹치는 15곳을 확인했어요'), { timeout: 4000 });
     expect(read.mock.calls.length).toBeGreaterThanOrEqual(2);
-    expect(within(box()).getByRole('heading', { level: 2, name: `${BOX} 4곳` })).toBeInTheDocument();
+    expect(within(box()).getByRole('heading', { level: 2, name: `${BOX} 4` })).toBeInTheDocument();
     const again = screen.getByRole('button', { name: '다시 맞춰 보기' });
     expect(again).toBeEnabled();
-    expect(again).toHaveClass('btn--outline');
+    expect(again).toHaveClass('btn--secondary');
   });
 
   it('맞춰 본 공고는 순위 번호를 붙여 순위대로 상자에 오르고, 목록에 없는 공고는 빠진다', async () => {
@@ -192,7 +192,7 @@ describe('공고 매칭 결과 상자', () => {
     mount();
     await waitFor(() => expect(tiles()).toHaveLength(4));
     expect(titles(allPostings())).toEqual(['공고1', '공고2', '공고3', '공고4', '공고5', '공고6']);
-    expect(within(allPostings()).getByText('6건')).toBeInTheDocument();
+    expect(within(allPostings()).getByRole('heading', { name: '모든 공고 6' })).toBeInTheDocument();
     expect(allPostings().querySelector('.result-tile')).toBeNull();
   });
 
@@ -205,7 +205,7 @@ describe('공고 매칭 결과 상자', () => {
     expect(chip('백엔드')).toHaveAttribute('aria-pressed', 'true');
     expect(router.state.location.search).toBe('?category=BACKEND');
     expect(titles(allPostings())).toEqual(['공고1', '공고2', '공고5']);
-    expect(within(box()).getByText(`${BOX} 4곳`)).toBeInTheDocument();
+    expect(box().querySelector('strong')).toHaveTextContent(`${BOX} 4`);
     expect(within(box()).getByText('11월 2일')).toBeInTheDocument();
     expect(tiles()).toHaveLength(0);
     const open = within(box()).getByRole('button', { name: '펼치기' });
@@ -294,7 +294,7 @@ describe('공고 매칭 결과 상자', () => {
     mount();
     expect(await within(box()).findByText(/맞는 공고를 찾지 못했어요/)).toBeInTheDocument();
     expect(tiles()).toHaveLength(0);
-    expect(await within(allPostings()).findByText('6건')).toBeInTheDocument();
+    expect(await within(allPostings()).findByRole('heading', { name: '모든 공고 6' })).toBeInTheDocument();
   });
 
   it('지난 결과를 못 읽으면 경고 대신 한 줄로 알리고 다시 불러오게 한다 — 공고 목록이 본문이다', async () => {

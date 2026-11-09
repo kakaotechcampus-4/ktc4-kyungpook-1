@@ -4,7 +4,7 @@
  */
 .iv__head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
 .iv__title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 10px; }
-.iv__title strong { font-size: 16px; line-height: 24px; font-weight: 700; color: var(--text-primary); }
+.iv__title strong { font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-primary); }
 .iv__title span { font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
 
 .iv__panel .chat-bub { font-size: 15px; }

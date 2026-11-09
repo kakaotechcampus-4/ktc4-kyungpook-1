@@ -40,7 +40,7 @@ export function CalendarToggle({ posting }: { posting: Posting }) {
     refresh();
   };
   return (
-    <Button variant="outline" onClick={toggle}>
+    <Button variant="secondary" onClick={toggle}>
       {added ? <CalendarMinus size={16} aria-hidden /> : <CalendarPlus size={16} aria-hidden />}
       {added ? "캘린더에서 빼기" : "캘린더에 담기"}
     </Button>

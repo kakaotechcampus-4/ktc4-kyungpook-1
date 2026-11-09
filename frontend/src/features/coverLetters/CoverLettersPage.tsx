@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Briefcase, FileText } from 'lucide-react';
 import { useCoverLetters, type CoverLetterStage } from '@/api/coverLetters';
-import { Badge, Breadcrumb, EmptyState, PageTitle, Skeleton } from '@/components/ui';
+import { Badge, Breadcrumb, ButtonLink, EmptyState, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { postingLine } from '@/lib/coverLetterCopy';
 import { CoverLetterDeleteAction } from './CoverLetterDeleteAction';
@@ -18,7 +18,7 @@ const STAGE_LABEL: Record<CoverLetterStage, string> = {
 export function CoverLettersPage() {
   useDocumentTitle('자소서');
   const list = useCoverLetters();
-  const add = <Link to="/cover-letters/new" className="btn btn--primary">새 자소서</Link>;
+  const add = <ButtonLink to="/cover-letters/new" variant="primary">새 자소서</ButtonLink>;
   return (
     <main className="main main--tight">
       <Breadcrumb items={[{ label: '홈', to: '/' }, { label: '자소서' }]} />
@@ -35,7 +35,7 @@ export function CoverLettersPage() {
                 <li key={l.id} className="cl-list__item">
                   <Link to={`/cover-letters/${encodeURIComponent(l.id)}`} className="cl-list__row">
                     <div className="stack grow" style={{ gap: 4, minWidth: 0 }}>
-                      <span className="w-600">{l.jobRole}</span>
+                      <span className="w-bold">{l.jobRole}</span>
                       {where && <span className="t-12 c-3 cl-list__posting"><Briefcase size={12} aria-hidden />{where}</span>}
                       <span className="t-13 c-2 cl-list__first">{l.firstQuestion ?? ''}{l.questionCount > 1 ? ` 외 ${l.questionCount - 1}문항` : ''}</span>
                     </div>

@@ -3,7 +3,7 @@
 .iconbox--ink { background: var(--bg-ink-solid); color: var(--text-on-ink); }
 .iconbox--paper { background: var(--bg-surface); border: 1px solid var(--border-default); color: var(--text-tertiary); }
 .stardots { display: inline-grid; grid-template-columns: repeat(4, minmax(22px, 1fr)); gap: 4px; min-width: 100px; }
-.stardot { min-width: 0; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--text-tertiary); background: var(--bg-canvas); border: 1px dashed var(--border-strong); }
+.stardot { min-width: 0; height: 24px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: var(--weight-bold); color: var(--text-tertiary); background: var(--bg-canvas); border: 1px dashed var(--border-strong); }
 .stardot--on { background: var(--bg-ink-solid); color: var(--text-on-ink); border: 1px solid var(--bg-ink-solid); }
 .stardot--low { background: var(--field-low-bg); color: var(--field-low-text); border: 1px solid var(--field-low-border); }
 .stardots--labeled { width: min(100%, 240px); min-width: 200px; gap: 6px; }
@@ -12,7 +12,7 @@
 .stardots--labeled .stardot--on .stardot__letter { border-style: solid; border-color: var(--bg-ink-solid); background: var(--bg-ink-solid); color: var(--text-on-ink); }
 .stardots--labeled .stardot--low .stardot__letter { border-style: solid; border-color: var(--field-low-border); background: var(--field-low-bg); color: var(--field-low-text); }
 .stardot__letter { line-height: 1; }
-.stardot__label { font-size: 11px; line-height: 12px; font-weight: 600; color: currentColor; opacity: .72; }
+.stardot__label { font-size: 11px; line-height: 12px; font-weight: var(--weight-bold); color: currentColor; opacity: .72; }
 .chip--static { color: var(--text-tertiary); background: var(--bg-paper); cursor: default; }
 .page-lead { font-size: 14px; line-height: 22px; color: var(--text-secondary); max-width: 720px; }
 .evidence__icon { color: var(--evidence-commit-label); flex: 0 0 auto; }
@@ -20,7 +20,7 @@
 .user-avatar { display: inline-grid; place-items: center; flex: 0 0 auto; overflow: hidden; border-radius: 50%; background: var(--bg-inset); box-shadow: inset 0 0 0 1px var(--border-default); }
 .user-avatar img, .user-avatar__fallback { width: 100%; height: 100%; }
 .user-avatar img { display: block; object-fit: cover; }
-.user-avatar__fallback { display: grid; place-items: center; color: var(--text-secondary); font-size: 42%; font-weight: 800; text-transform: uppercase; }
+.user-avatar__fallback { display: grid; place-items: center; color: var(--text-secondary); font-size: 42%; font-weight: var(--weight-heavy); text-transform: uppercase; }
 
 /* 카드 그리드 · 이어서 하기 · 히어로 */
 .experience-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
@@ -33,7 +33,7 @@
 .experience-item__footer { margin-top: auto; }
 .experience-item .gcard__title { margin: 0; }
 .status-tabs { display: flex; align-items: center; gap: 24px; border-bottom: 1px solid var(--border-default); }
-.status-tab { position: relative; min-height: 44px; padding: 0 2px; color: var(--text-secondary); font-size: 13px; font-weight: 600; }
+.status-tab { position: relative; min-height: 44px; padding: 0 2px; color: var(--text-secondary); font-size: 13px; font-weight: var(--weight-bold); }
 .status-tab[aria-pressed="true"] { color: var(--text-primary); }
 .status-tab[aria-pressed="true"]::after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--bg-ink-solid); }
 .status-tab:hover { color: var(--text-primary); }
@@ -98,11 +98,11 @@
 .repo-row__body { gap: 2px; min-width: 0; text-align: left; }
 .repo-row__title { display: flex; flex-direction: column; min-width: 0; }
 .repo-row__owner { font-size: 12px; line-height: 17px; color: var(--text-tertiary); overflow-wrap: anywhere; }
-.repo-row__name { font-size: 16px; line-height: 22px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+.repo-row__name { font-size: 16px; line-height: 22px; font-weight: var(--weight-bold); color: var(--text-primary); overflow-wrap: anywhere; }
 /* 설명은 폴더 타일의 설명(.folder__desc)과 같은 크기·색이라 두 화면에서 같은 줄로 읽힌다 */
 .repo-row__desc { display: block; font-size: 13px; line-height: 18px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .repo-row__line { display: block; margin-top: 4px; font-size: 14px; line-height: 20px; color: var(--text-strong); overflow-wrap: anywhere; }
-.repo-row__caution { font-weight: 600; color: var(--field-low-text); }
+.repo-row__caution { font-weight: var(--weight-bold); color: var(--field-low-text); }
 .repo-row__hint { color: var(--text-tertiary); }
 .repo-row__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; }
 .repo-row__meta { font-size: 12px; line-height: 17px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }

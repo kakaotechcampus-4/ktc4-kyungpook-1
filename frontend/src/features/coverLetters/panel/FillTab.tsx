@@ -187,7 +187,7 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
     return (
       <>
         <p className="clp-note clp-note--error" role="alert">대화를 불러오지 못했어요</p>
-        <Button variant="outline" onClick={() => void turnsQ.refetch()}>다시 불러오기</Button>
+        <Button variant="secondary" onClick={() => void turnsQ.refetch()}>다시 불러오기</Button>
       </>
     );
   }

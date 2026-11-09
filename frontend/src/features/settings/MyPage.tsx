@@ -26,26 +26,26 @@ export function MyPage() {
         <div className="profile-summary">
           <UserAvatar src={me.data.avatarUrl} login={me.data.login} size={64} />
           <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 20 }}>{me.data.login}</span>
+            <span className="w-bold" style={{ fontSize: 20 }}>{me.data.login}</span>
           </div>
         </div>
       )}
       <section className="settings-section stack" style={{ gap: 14 }}>
-        <div className="row"><span className="w-600" style={{ fontSize: 14 }}>화면 테마</span></div>
+        <div className="row"><span className="w-bold" style={{ fontSize: 14 }}>화면 테마</span></div>
         <div className="row" style={{ gap: 8 }} role="radiogroup" aria-label="테마">
           {(['light', 'dark'] as Theme[]).map((t) => (
-            <Button key={t} variant={theme === t ? 'primary' : 'outline'} size="sm" role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>
+            <Button key={t} variant={theme === t ? 'primary' : 'secondary'} size="sm" role="radio" aria-checked={theme === t} onClick={() => pick(t)}>{t === 'light' ? '라이트' : '다크'}</Button>
           ))}
         </div>
       </section>
       <section className="settings-section settings-links stack">
         <ProfileSettingsRow />
         <Link to="/settings/github" className="kv" style={{ padding: '14px 0' }}>
-          <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>GitHub 연결 관리</span><span className="t-12 c-2">권한 확인, 다시 연결, 연결 해제</span></div>
+          <div className="stack grow" style={{ gap: 3 }}><span className="w-bold" style={{ fontSize: 14 }}>GitHub 연결 관리</span><span className="t-12 c-2">권한 확인, 다시 연결, 연결 해제</span></div>
           <span className="c-3" style={{ fontSize: 16 }}>›</span>
         </Link>
         <Link to="/settings/leave" className="kv" style={{ padding: '14px 0' }}>
-          <div className="stack grow" style={{ gap: 3 }}><span className="w-600" style={{ fontSize: 14 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-2">탈퇴하고 정보 지우기</span></div>
+          <div className="stack grow" style={{ gap: 3 }}><span className="w-bold" style={{ fontSize: 14 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-2">탈퇴하고 정보 지우기</span></div>
           <span className="c-3" style={{ fontSize: 16 }}>›</span>
         </Link>
         <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="text" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
@@ -60,7 +60,7 @@ export function MyPage() {
         <div className="stack" style={{ gap: 12, marginTop: 16 }}>
           {[...COLLECTED, ...COVER_LETTER_COLLECTED, ...(profileSupported() ? PROFILE_COLLECTED : [])].map(([name, why, keep]) => (
             <div key={name} className="kv settings-data-row">
-              <div className="settings-data-copy"><span className="w-500">{name}</span><span className="t-12 c-2">{why}</span></div>
+              <div className="settings-data-copy"><span className="w-regular">{name}</span><span className="t-12 c-2">{why}</span></div>
               <Badge kind={keep === '보관' ? 'NEUTRAL' : 'CAUTION'}>{keep}</Badge>
             </div>
           ))}

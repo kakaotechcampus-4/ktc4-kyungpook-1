@@ -72,7 +72,7 @@ export function LandingPage() {
       {consent && !login.isDemo && (
         <Modal title="GitHub 연결 권한 확인" width={520}
           onClose={() => setSp({})}
-          footer={{ strong: '쓰기 권한은 요청하지 않아요', actions: <><Button variant="outline" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>GitHub으로 이동</Button></> }}>
+          footer={{ strong: '쓰기 권한은 요청하지 않아요', actions: <><Button variant="secondary" onClick={() => setSp({})}>취소</Button><Button loading={login.pending} onClick={() => void login.start()}>GitHub으로 이동</Button></> }}>
           {login.failure && <Note strong="시작하지 못했어요" tone="danger">{login.failure}</Note>}
           <p className="t-14">프로필 정보와 공개 레포만 읽어요.</p>
           <p className="legal-consent">시작하면 <Link to="/terms">이용약관</Link>과 <Link to="/privacy">개인정보처리방침</Link>에 동의하게 돼요.</p>

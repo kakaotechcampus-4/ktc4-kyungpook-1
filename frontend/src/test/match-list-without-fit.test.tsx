@@ -60,7 +60,7 @@ describe('목록의 등급이 전부 비어 있을 때', () => {
     expect(screen.queryByText(EMPTY_CHIP)).not.toBeInTheDocument();
     expect(document.querySelector('.match-fit')).toBeNull();
     expect(document.querySelector('.match-counts')).toBeNull();
-    expect(within(screen.getByRole('region', { name: '모든 공고' })).getByText('5건')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: '모든 공고' })).getByRole('heading', { name: '모든 공고 5' })).toBeInTheDocument();
   });
 
   it('등급이 없으면 서버가 준 순서(마감 임박 먼저, 나머지는 회사마다 돌아가며)를 다시 정렬하지 않고 그대로 보여 준다', async () => {

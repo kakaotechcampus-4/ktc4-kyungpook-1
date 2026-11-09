@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FolderPlus, Layers } from 'lucide-react';
 import { useActivities, type Activity } from '@/api/activities';
-import { Breadcrumb, Button, EmptyState, PageTitle, Skeleton } from '@/components/ui';
+import { Breadcrumb, Button, ButtonLink, EmptyState, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { activityMeta, cardsInActivityLabel } from '@/lib/activityLabels';
 import { folderPath } from '@/lib/cardFolders';
@@ -26,13 +26,13 @@ export function ActivitiesPage() {
         <PageTitle lead="동아리, 인턴, 공모전처럼 레포 밖에서 한 경험을 묶어 두는 곳이에요. 활동 안에서 경험 카드를 만들 수 있어요.">
           활동 <span className="c-3 t-14">{activities.isSuccess ? list.length : '—'}</span>
         </PageTitle>
-        {list.length > 0 && <div className="right"><Link to="/activities/new" className="btn btn--primary"><FolderPlus size={14} aria-hidden />활동 만들기</Link></div>}
+        {list.length > 0 && <div className="right"><ButtonLink to="/activities/new" variant="primary"><FolderPlus size={14} aria-hidden />활동 만들기</ButtonLink></div>}
       </div>
       {activities.isError && <QueryFailure error={activities.error} retry={() => activities.refetch()} pending={activities.isFetching} />}
       {activities.isPending && <div className="stack" style={{ gap: 12 }} aria-busy="true">{[0, 1].map((i) => <Skeleton key={i} h={76} />)}</div>}
       {activities.isSuccess && list.length === 0 && (
         <EmptyState icon={Layers} title="아직 활동이 없어요" desc="동아리, 인턴, 공모전처럼 레포 밖에서 한 경험을 활동으로 묶어 두면 그 안에서 경험 카드를 만들 수 있어요.">
-          <Link to="/activities/new" className="btn btn--primary"><FolderPlus size={14} aria-hidden />활동 만들기</Link>
+          <ButtonLink to="/activities/new" variant="primary"><FolderPlus size={14} aria-hidden />활동 만들기</ButtonLink>
         </EmptyState>
       )}
       {list.length > 0 && (
@@ -45,7 +45,7 @@ export function ActivitiesPage() {
                 <span className="activity-row__meta">{cardsInActivityLabel(activity)}</span>
               </Link>
               <div className="activity-row__actions">
-                <Link to={`/activities/${encodeURIComponent(activity.id)}/edit`} className="btn btn--outline btn--sm" aria-label={`${activity.name} 고치기`}>고치기</Link>
+                <ButtonLink to={`/activities/${encodeURIComponent(activity.id)}/edit`} variant="secondary" size="sm" aria-label={`${activity.name} 고치기`}>고치기</ButtonLink>
                 <Button variant="danger" size="sm" aria-label={`${activity.name} 삭제`} onClick={() => setDeleting(activity)}>삭제</Button>
               </div>
             </li>

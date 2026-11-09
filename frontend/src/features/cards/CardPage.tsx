@@ -10,7 +10,7 @@ import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
 import { CardStatusMark, cardStarStates } from '@/components/cards/CardStatusMark';
 import { useCard, useRegenerateField, useReopen, useRetryDraft } from '@/api/queries';
 import { isTerminal, StarField as StarFieldSchema, type Card, type StarField } from '@/api/schemas';
-import { Badge, Breadcrumb, Button, EvidenceList, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
+import { Badge, Breadcrumb, Button, ButtonLink, EvidenceList, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
 import { STAR_FIELDS, cardKindLabel, candidateRefLabel, fieldKey, starFieldName, starFieldShort, cardContentLabel, interviewActionLabel, historyActionLabel } from '@/lib/labels';
 import { ymd } from '@/lib/format';
 import { evidenceCountLabel } from '@/lib/evidenceCount';
@@ -112,7 +112,7 @@ export function CardPage() {
   }, [showingLive, live.job, draftRepoId, nav]);
 
   if (q.isPending) return <main className="main"><Skeleton h={16} w={300} /><Skeleton h={40} w={360} /><Skeleton h={400} /></main>;
-  if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><Link to="/cards" className="btn btn--outline">경험 카드 목록</Link></main>;
+  if (q.isError && !q.data) return <main className="main"><QueryFailure error={q.error} retry={() => q.refetch()} pending={q.isFetching} /><ButtonLink to="/cards" variant="secondary">경험 카드 목록</ButtonLink></main>;
   const card = q.data!;
   const repoName = card.repo ? `${card.repo.owner} / ${card.repo.name}` : null;
   const srcLabel = card.candidate ? candidateRefLabel(card.candidate.type, card.candidate.ref) : card.kind === 'QUALITATIVE' ? '직접 작성' : '카드';
@@ -146,8 +146,8 @@ export function CardPage() {
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
           <span className="c-2 t-14">끝나면 알려 드릴게요</span>
           <div className="right row" style={{ gap: 8 }}>
-            {card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--outline">후보 보드로</Link>}
-            <Link to="/" className="btn btn--text">홈으로</Link>
+            {card.repo && <ButtonLink to={`/repos/${card.repo.id}/candidates`} variant="secondary">후보 보드로</ButtonLink>}
+            <ButtonLink to="/" variant="text">홈으로</ButtonLink>
           </div>
         </div>
       </main>
@@ -165,18 +165,18 @@ export function CardPage() {
           <div className="card done-card" role="status">
             <span className="done-card__ok" aria-hidden>✓</span>
             <div className="stack grow" style={{ gap: 4 }}>
-              <span className="w-600" style={{ fontSize: 16 }}>카드를 확정했어요</span>
+              <span className="w-bold" style={{ fontSize: 16 }}>카드를 확정했어요</span>
               <span className="t-13 c-2">상황과 행동이 있어서 바로 쓸 수 있어요.</span>
             </div>
-            <Link to={cardFolderPath(card)} state={{ confirmed: card.id }} className="btn btn--primary">폴더로 돌아가기</Link>
+            <ButtonLink to={cardFolderPath(card)} state={{ confirmed: card.id }} variant="primary">폴더로 돌아가기</ButtonLink>
           </div>
         )}
-        <CardHeader card={card} titleAction={metadataAction} right={<Button variant="outline" size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
+        <CardHeader card={card} titleAction={metadataAction} right={<Button variant="secondary" size="sm" onClick={exportMd} title="가린 정보를 적용한 내용을 복사해요">복사</Button>} />
         {/* 과제·결과가 비어도 확정은 그대로이고, 채우고 싶을 때 바로 질문을 받게만 한다 */}
         {gapFields.length > 0 && (
           <div className="card row" style={{ gap: 16, padding: '16px 18px', background: 'var(--bg-inset)', border: 0, flexWrap: 'wrap' }}>
             <span className="grow" style={{ fontSize: 14, lineHeight: '22px' }}>{gapFields.map((f) => starFieldShort[f]).join(', ')} 칸이 비어 있어요. 한두 가지만 알려 주면 채울 수 있어요</span>
-            <Button variant="outline" onClick={() => ask(gapFields[0])}>질문 받기</Button>
+            <Button variant="secondary" onClick={() => ask(gapFields[0])}>질문 받기</Button>
           </div>
         )}
         <div className="two-col two-col--340">
@@ -187,7 +187,7 @@ export function CardPage() {
               const rowClass = [!t && 'star-read__row--gap', f === 'R' && 'star-read__row--result'].filter(Boolean).join(' ');
               return (
                 <StarRow key={f} field={f} label={starFieldShort[f]} action={<button type="button" className="star__pencil" aria-label={`${starFieldShort[f]} ${t ? '수정' : '채우기'}`} title={`${starFieldShort[f]} ${t ? '수정' : '채우기'}`} disabled={reopen.isPending} onClick={() => reopenCard(f)}><Pencil size={16} aria-hidden /></button>} dropped={!t} className={rowClass}>
-                  {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-500" style={{ fontSize: 13 }}>비운 채로 확정했어요</span>}
+                  {t ? <p className="star__text">{masked(t)}</p> : <span className="c-3 w-regular" style={{ fontSize: 13 }}>비운 채로 확정했어요</span>}
                   <EvidenceList items={ev} label={starFieldName[f]} sentence={t ? masked(t) : null} />
                 </StarRow>
               );
@@ -198,7 +198,7 @@ export function CardPage() {
             <DraftProcess card={card} />
             <div className="card stack" style={{ gap: 12, padding: '16px 18px' }}>
               <div className="stack" style={{ gap: 4 }}>
-                <span className="t-12 w-600 c-3">출처</span>
+                <span className="t-12 w-bold c-3">출처</span>
                 <span className="t-12l">
                   {card.activity ? <>활동 <Link className="aside-link" to={folderPath.activity(card.activity.id)}>{card.activity.name}</Link>, </> : null}
                   {card.repo ? <a className="aside-link" href={`https://github.com/${card.repo.owner}/${card.repo.name}`} target="_blank" rel="noreferrer">{repoName}<ExternalLink size={12} aria-hidden /></a> : null}
@@ -209,8 +209,8 @@ export function CardPage() {
                 <span className="t-12 c-2">{evidenceCountLabel(card.evidence, { showZero: true })}{card.maskRules.length ? `, 가린 정보 ${card.maskRules.length}개` : ''}</span>
               </div>
               <div className="card-tools">
-                <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
-                <Button variant="ghost" size="sm" onClick={print} title="면접 직전 복습용 인쇄"><Printer size={15} aria-hidden />인쇄</Button>
+                <Button variant="secondary" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
+                <Button variant="secondary" size="sm" onClick={print} title="면접 직전 복습용 인쇄"><Printer size={15} aria-hidden />인쇄</Button>
               </div>
             </div>
             <CardNavigation cardId={cardId} />
@@ -241,21 +241,21 @@ export function CardPage() {
   return (
     <main className="main main--footer main--tight">
       <Breadcrumb items={crumbs} />
-      <CardHeader card={card} titleAction={metadataAction} right={<>{card.repo && <Link to={`/repos/${card.repo.id}/candidates`} className="btn btn--ghost"><ListChecks size={15} aria-hidden />후보 보드</Link>}</>} />
+      <CardHeader card={card} titleAction={metadataAction} right={<>{card.repo && <ButtonLink to={`/repos/${card.repo.id}/candidates`} variant="secondary"><ListChecks size={15} aria-hidden />후보 보드</ButtonLink>}</>} />
       {partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">일부만 채움</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
-            <span className="w-600" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).map((f) => starFieldShort[f]).join(', ')} 칸은 채웠고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => starFieldShort[d.field]).join(', ')} 칸은 아직이에요</span>
+            <span className="w-bold" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).map((f) => starFieldShort[f]).join(', ')} 칸은 채웠고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => starFieldShort[d.field]).join(', ')} 칸은 아직이에요</span>
             <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈 칸은 답변하거나 직접 작성해 주세요.'}</span>
           </div>
-          {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="outline" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{starFieldShort[d.field]} 칸만 다시 생성</Button>)}
+          {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="secondary" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{starFieldShort[d.field]} 칸만 다시 생성</Button>)}
         </div>
       )}
       {card.draftFailure && card.status === 'DRAFT' && (
         <div className="card row" role="status" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
           <div className="stack grow" style={{ gap: 4 }}>
-            <span className="w-600" style={{ fontSize: 14 }}>AI 초안을 만들지 못했어요</span>
+            <span className="w-bold" style={{ fontSize: 14 }}>AI 초안을 만들지 못했어요</span>
             <span className="t-12l c-2">{card.draftFailure === 'GITHUB_UNAUTHORIZED'
               ? 'GitHub 연결이 끊겼어요. 다시 연결한 뒤 초안을 다시 만들어 주세요.'
               : card.draftFailure === 'AI_UNAVAILABLE'
@@ -263,17 +263,17 @@ export function CardPage() {
               : '초안을 만드는 중에 문제가 났어요. 다시 시도하거나 칸을 직접 채워 주세요.'} 직접 쓴 칸은 그대로 둬요.</span>
           </div>
           {card.draftFailure === 'GITHUB_UNAUTHORIZED' && <Button size="sm" onClick={reconnectGithub}>GitHub 다시 연결</Button>}
-          <Button variant="outline" size="sm" loading={retry.isPending} onClick={retryDraft}>초안 다시 만들기</Button>
+          <Button variant="secondary" size="sm" loading={retry.isPending} onClick={retryDraft}>초안 다시 만들기</Button>
           {retry.isError && <Note strong="다시 시도하지 못했어요" tone="danger">{errorView(retry.error).message}</Note>}
         </div>
       )}
       {e6 && (
         <div className="card row" style={{ gap: 16, padding: '18px 20px', background: 'var(--bg-inset)', border: 0, flexWrap: 'wrap' }}>
           <div className="stack grow" style={{ gap: 5 }}>
-            <span className="w-600" style={{ fontSize: 16 }}>이 후보만으로는 결과 칸을 채울 수 없어요</span>
+            <span className="w-bold" style={{ fontSize: 16 }}>이 후보만으로는 결과 칸을 채울 수 없어요</span>
             <span className="c-2" style={{ fontSize: 13, lineHeight: '21px' }}>{candidateRefLabel(card.candidate!.type, card.candidate!.ref)}에는 결과 수치가 없어요. 지어내지 않고 비워 둬요</span>
           </div>
-          <Link to={`/repos/${card.repo!.id}/candidates`} className="btn btn--outline btn--sm">다른 후보도 보기</Link>
+          <ButtonLink to={`/repos/${card.repo!.id}/candidates`} variant="secondary" size="sm">다른 후보도 보기</ButtonLink>
         </div>
       )}
 
@@ -285,8 +285,8 @@ export function CardPage() {
         <aside className="card-review-aside"><DraftProcess card={card} /><div className="card stack" style={{ gap: 14, padding: '16px 18px' }}>
           <div className="stack" style={{ gap: 6 }}>
             <div className="card-tools">
-              <Button variant="ghost" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
-              <Button variant="ghost" size="sm" onClick={exportMd}><Copy size={15} aria-hidden />복사</Button>
+              <Button variant="secondary" size="sm" onClick={() => setSp({ versions: '1' })}><History size={15} aria-hidden />{historyActionLabel}</Button>
+              <Button variant="secondary" size="sm" onClick={exportMd}><Copy size={15} aria-hidden />복사</Button>
             </div>
           </div>
         </div>
@@ -296,8 +296,8 @@ export function CardPage() {
 
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
       <StickyFooter strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
-        {reviewFields.length === 0 && <Link to={cardFolderPath(card)} className="btn btn--text">나중에</Link>}
-        <Button variant={reviewFields.length ? 'outline' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
+        {reviewFields.length === 0 && <ButtonLink to={cardFolderPath(card)} variant="text">나중에</ButtonLink>}
+        <Button variant={reviewFields.length ? 'secondary' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
         {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변하기</Button>}
       </StickyFooter>
 

@@ -1,8 +1,7 @@
 import '@/styles/profile.css';
-import { Link } from 'react-router-dom';
 import { profileSupported } from '@/api/capabilities';
 import { useProfile } from '@/api/profile';
-import { Breadcrumb, PageTitle, Skeleton } from '@/components/ui';
+import { Breadcrumb, ButtonLink, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { ProfileForm } from './ProfileForm';
@@ -13,7 +12,7 @@ export function ProfileUnavailable() {
     <main className="main">
       <PageTitle>인적사항 입력을 준비 중이에요</PageTitle>
       <p className="c-2">서버 준비가 끝나면 학력, 경력, 어학, 자격증을 입력해 공고 매칭에 쓸 수 있어요.</p>
-      <Link to="/settings" className="btn btn--outline">마이페이지로</Link>
+      <ButtonLink to="/settings" variant="secondary">마이페이지로</ButtonLink>
     </main>
   );
 }

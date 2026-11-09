@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
 import { ArrowRight, Check, ClipboardCheck } from 'lucide-react';
 import type { FolderNext } from '@/lib/folderNext';
+import { ButtonLink } from '@/components/ui';
 
 /**
  * 폴더 맨 위에서 다음에 할 일 하나를 말하는 줄이고, 주 버튼은 하나만 둔다.
@@ -13,8 +13,8 @@ export function NextStep({ next, state, announce }: { next: FolderNext; state?: 
       <span className="next-step__icon" aria-hidden><Icon size={20} /></span>
       <p className="next-step__text"><strong>{next.title}</strong><span>{next.sub}</span></p>
       <div className="next-step__actions">
-        {next.more && <Link to={next.more.to} className="btn btn--text">{next.more.label}</Link>}
-        <Link to={next.action.to} state={state} className="btn btn--primary next-step__go">{next.action.label}<ArrowRight size={16} aria-hidden /></Link>
+        {next.more && <ButtonLink to={next.more.to} variant="text">{next.more.label}</ButtonLink>}
+        <ButtonLink to={next.action.to} state={state} variant="primary" className="next-step__go">{next.action.label}<ArrowRight size={16} aria-hidden /></ButtonLink>
       </div>
     </section>
   );

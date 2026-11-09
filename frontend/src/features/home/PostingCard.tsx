@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Check } from 'lucide-react';
 import { useMatch } from '@/api/matching';
 import { applyAction, conditionRows, deadlineLabel, statusSentence, type ApplyItem } from './homeApply';
+import { ButtonLink } from '@/components/ui';
 
 const detailPath = (postingId: string) => `/match/${encodeURIComponent(postingId)}`;
 
@@ -93,7 +94,7 @@ export function PostingCard({ item, active, readDetail, panelProps }: Props) {
       </div>
       {readDetail ? <Conditions postingId={pick.postingId} /> : <ConditionsSkeleton />}
       <div className="home3-cta">
-        <Link to={action.to} className="btn btn--primary home3-btn">{action.label}<ArrowRight size={18} aria-hidden /></Link>
+        <ButtonLink to={action.to} variant="primary" className="home3-btn">{action.label}<ArrowRight size={18} aria-hidden /></ButtonLink>
         <Link to={detailPath(pick.postingId)} className="home3-tbtn">공고 보기</Link>
       </div>
     </article>

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { matchSupported, useMatches } from "@/api/matching";
 import { AiWait } from "@/components/ui/AiWait";
-import { EmptyState, PageTitle, Skeleton } from "@/components/ui";
+import { ButtonLink, EmptyState, PageTitle, Skeleton } from "@/components/ui";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
 import { CompanyMark } from "./CompanyMark";
 import { PostingCard } from "./PostingCard";
@@ -88,9 +88,9 @@ export function CompanyPage() {
                   <p>
                     검색과 필터가 적용돼 이 기업의 공고 {all.length}건 중 {shown.length}건만 보여요.
                   </p>
-                  <Link to={unfilteredTo} className="btn btn--outline">
+                  <ButtonLink to={unfilteredTo} variant="secondary">
                     이 기업 공고 모두 보기
-                  </Link>
+                  </ButtonLink>
                 </div>
               )}
               <div className="match-grid">
@@ -102,9 +102,9 @@ export function CompanyPage() {
           ) : all.length > 0 ? (
             <div className="match-empty">
               <EmptyState title="조건에 맞는 공고가 없어요" desc="적용된 검색과 필터에 맞는 이 기업의 공고가 없어요." />
-              <Link to={unfilteredTo} className="btn btn--outline">
+              <ButtonLink to={unfilteredTo} variant="secondary">
                 이 기업 공고 모두 보기
-              </Link>
+              </ButtonLink>
             </div>
           ) : (
             <div className="match-empty">
@@ -112,9 +112,9 @@ export function CompanyPage() {
                 title="이 기업의 공고를 찾지 못했어요"
                 desc="목록에 이 기업의 공고가 없어요. 마감됐거나 목록이 새로 바뀌었을 수 있어요."
               />
-              <Link to="/match" className="btn btn--outline">
+              <ButtonLink to="/match" variant="secondary">
                 전체 공고 보기
-              </Link>
+              </ButtonLink>
             </div>
           )}
         </>

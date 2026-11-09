@@ -3,6 +3,7 @@ import { FolderPlus } from 'lucide-react';
 import { techLabels } from '@/lib/cardTags';
 import { deckLayers, folderCounts, folderLabel, folderOwnerLine, folderTitle, reviewCount, type CardFolder } from '@/lib/cardFolders';
 import './CardFolders.css';
+import { ButtonLink, buttonClass } from '@/components/ui';
 
 /**
  * 폴더 앞판(카드 묶음). 맨 위 카드 한 장이 보이고, 그 뒤로 카드가 겹쳐 쌓인 모양이다 — 겹친 수는 장 수를 따른다(deckLayers).
@@ -46,13 +47,13 @@ export function CardFolders({ folders, activitiesFailed, retryActivities }: { fo
       <div className="folders__bar">
         <span className="t-12 c-2">폴더 {folders.length}개</span>
         <div className="right">
-          <Link to="/activities/new" className="btn btn--ghost btn--sm"><FolderPlus size={14} aria-hidden />활동 만들기</Link>
+          <ButtonLink to="/activities/new" variant="secondary" size="sm"><FolderPlus size={14} aria-hidden />활동 만들기</ButtonLink>
         </div>
       </div>
       {activitiesFailed && (
         <p className="folders__notice t-12 c-2">
           <span role="status">활동 목록을 불러오지 못했어요. 카드가 없는 활동은 보이지 않을 수 있어요.</span>
-          {retryActivities && <button type="button" className="btn btn--text btn--sm" onClick={retryActivities}>다시 불러오기</button>}
+          {retryActivities && <button type="button" className={buttonClass('text', 'sm')} onClick={retryActivities}>다시 불러오기</button>}
         </p>
       )}
       <ul className="folder-grid">

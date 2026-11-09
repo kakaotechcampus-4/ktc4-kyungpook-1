@@ -9,6 +9,8 @@
 #   그래서 CI 가 끝난 뒤에 돌고, gate job 이 그 커밋의 CI 가 모두 성공했는지 확인한다.
 #   - 한 커밋이 CI 여러 개를 돌리면 CI 마다 이 워크플로가 깨어난다. 아직 도는 CI 가 있으면 넘기고,
 #     마지막 CI 가 끝났을 때 배포한다.
+#   - 전체 서비스 E2E 시험(e2e.yml)도 CI 와 같이 본다. 운영과 같은 Dockerfile 로 띄운 환경에서
+#     통과한 커밋만 올리려는 것이다. 흔들려서 실패했으면 그 실행을 다시 돌리면 배포가 이어진다.
 #   - deploy/ 만 바뀐 커밋은 CI 가 없어 자동 배포되지 않는다. Actions 에서 수동 실행한다.
 #   - 수동 실행도 CI 를 확인한다. CI 워크플로마다 develop 의 가장 최근 실행이 모두 성공했을 때만 배포한다.
 #
@@ -25,7 +27,7 @@ name: deploy
 on:
   workflow_run:
     # 각 CI 워크플로의 name: 과 같아야 한다
-    workflows: ["backend CI", "AI CI", "frontend"]
+    workflows: ["backend CI", "AI CI", "frontend", "e2e"]
     types: [completed]
     branches: [develop]
   workflow_dispatch:
@@ -68,7 +70,7 @@ jobs:
           # 바로 앞의 CI 실패 커밋을 덮어 함께 올라가므로, CI 워크플로마다 develop 의 가장 최근 실행을 본다.
           # 다시 깨워 줄 CI 가 없으므로 넘기지 않고, 모두 끝나서 성공했을 때만 배포한다.
           if [ "$EVENT" = workflow_dispatch ]; then
-            latest=$(for wf in backend-ci.yml ai-ci.yml frontend-ci.yml; do
+            latest=$(for wf in backend-ci.yml ai-ci.yml frontend-ci.yml e2e.yml; do
               gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$wf/runs?branch=develop&event=push&per_page=1" \
                 --jq '.workflow_runs[] | "\(.name)\t\(.status)\t\(.conclusion)\t\(.head_sha[0:7])"'
             done)
@@ -85,7 +87,7 @@ jobs:
           # CI 워크플로마다 가장 최근 실행(재실행 포함)만 본다
           runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SHA&event=push&per_page=100" \
             --jq '[.workflow_runs[]
-                   | select(.name == "backend CI" or .name == "AI CI" or .name == "frontend")]
+                   | select(.name == "backend CI" or .name == "AI CI" or .name == "frontend" or .name == "e2e")]
                   | group_by(.workflow_id)
                   | map(max_by(.id))
                   | .[] | "\(.name)\t\(.status)\t\(.conclusion)"')

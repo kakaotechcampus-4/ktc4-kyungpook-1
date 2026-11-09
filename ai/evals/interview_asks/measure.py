@@ -199,7 +199,10 @@ def score(row: dict[str, Any], repeats_previous) -> dict[str, Any]:
 def report() -> None:
     from services.interview_llm import repeats_previous
 
-    labels = ["before", "after"]
+    # 고치기 전 코드로 돌린 결과가 없어도 있는 쪽만으로 보고가 나오게 한다
+    labels = [label for label in ("before", "after") if (RUN_DIR / f"{label}.json").exists()]
+    if not labels:
+        raise SystemExit(f"{RUN_DIR} 에 결과가 없습니다. 먼저 `run before` 나 `run after` 를 돌리세요.")
     scored = {label: [(row, score(row, repeats_previous)) for row in load(label)] for label in labels}
     columns = [("빈칸 후보(나감)", "blank_shown"), ("빈칸 후보(모델 첫 답)", "blank_raw"),
                ("되풀이(나간 질문)", "repeat_final"), ("되풀이(모델 첫 답)", "repeat_first"),
@@ -213,7 +216,7 @@ def report() -> None:
             for label in labels:
                 rows = [s for r, s in scored[label] if sample in (None, r["sample"])]
                 cells.append(f"{sum(int(s[key]) for s in rows)}/{len(rows)}")
-            print(f"  {name:<22} before {cells[0]:>6}  after {cells[1]:>6}")
+            print(f"  {name:<22} " + "  ".join(f"{label} {cell:>6}" for label, cell in zip(labels, cells)))
     print()
     for label in labels:
         rows = [s for _, s in scored[label]]

@@ -56,7 +56,7 @@
 /* 바퀴 이름이 첫 줄에 있으면 아이콘은 그 아래 글 줄에 맞춘다 */
 .live-step[data-round] .live-step__icon { margin-top: 16px; }
 .live-step[data-round]:not(:last-child)::before { top: 38px; }
-/* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 'AI 의 판단' 글자가 따로 말한다 */
+/* AI 가 스스로 고르고 이유를 남긴 단계는 아이콘 색으로도 눈에 띄게. 뜻은 아래 '고른 이유' 글자가 따로 말한다 */
 .live-step[data-judged] .live-step__icon { background: var(--accent-point-soft); border-color: var(--border-selected); color: var(--text-accent); }
 .live-step__body { display: flex; flex-direction: column; min-width: 0; }
 .live-step__round { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--text-tertiary); }

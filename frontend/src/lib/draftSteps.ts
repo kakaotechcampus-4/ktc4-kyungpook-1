@@ -19,7 +19,7 @@ export type DraftStepLine = {
   text: string;
   /** 열어 본 자료의 제목처럼 문장 아래에 작게 덧붙이는 값 */
   detail: string | null;
-  /** AI 가 쓴 이유 한 줄. 카드 문장이 아니라 'AI 의 판단' 으로 따로 보인다 */
+  /** AI 가 쓴 이유 한 줄. 카드 문장이 아니라 '고른 이유'로 따로 보인다 */
   reason: string | null;
 };
 /** 같은 바퀴(round)가 이어지는 단계 묶음 */

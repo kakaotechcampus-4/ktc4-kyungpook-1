@@ -23,7 +23,7 @@ export function InferenceTab({ items, confirmingKey, note, onShow, onConfirm, on
           {shown.map((i) => (
             <li key={i.key} className="clp-inf">
               <button type="button" className="clp-inf__go" onClick={() => onShow(i)}>
-                <span className="clp-inf__lab">Q{i.questionSeq}, 짐작해서 쓴 문장이에요</span>
+                <span className="clp-inf__lab">Q{i.questionSeq}, 확인이 필요한 문장이에요</span>
                 <span className="clp-inf__t"><mark>{i.sentence}</mark></span>
               </button>
               <div className="clp-inf__acts" role="group" aria-label={`Q${i.questionSeq} 짐작 문장`}>

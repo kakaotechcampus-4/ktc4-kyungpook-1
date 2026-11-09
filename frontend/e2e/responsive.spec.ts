@@ -125,9 +125,9 @@ test.describe('반응형 레이아웃', () => {
     await loginAsDemo(page);
     await page.goto('/settings');
 
-    await expect(page.locator('.settings-section')).toHaveCount(4);
-    await expect(page.locator('.stat-grid > .card')).toHaveCount(0);
-    const shadows = await page.locator('.settings-section').evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));
+    await expect(page.locator('.set-group')).toHaveCount(4);
+    await expect(page.locator('.set-list')).toHaveCount(3);
+    const shadows = await page.locator('.set-list').evaluateAll((els) => els.map((el) => getComputedStyle(el).boxShadow));
     expect(shadows.every((shadow) => shadow === 'none')).toBe(true);
 
     await page.goto('/repos');

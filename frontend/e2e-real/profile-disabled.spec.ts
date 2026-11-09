@@ -10,7 +10,7 @@ test('unreleased profile is hidden: no home prompt, no MyPage row, a direct rout
   await expect(page.getByRole('region', { name: '매칭에 쓸 인적사항을 입력해 주세요' })).toHaveCount(0);
 
   await page.goto('/settings');
-  await expect(page.getByRole('link', { name: /GitHub 연결 관리/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: /GitHub 연결/ })).toBeVisible();
   await expect(page.getByRole('link', { name: /인적사항/ })).toHaveCount(0);
 
   await page.goto('/settings/profile');

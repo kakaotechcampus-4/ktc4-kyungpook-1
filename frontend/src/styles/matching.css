@@ -888,6 +888,20 @@
   color: var(--text-secondary);
   font-size: 13px;
 }
+/* 레포 폴더: 고르는 중 안내 옆의 '고르는 과정 보기', 목록 아래의 '고른 과정 보기' */
+.overall-match__picking {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.overall-match__picking .overall-match__empty {
+  margin: 0;
+}
+.overall-match__process {
+  align-self: flex-start;
+}
 
 /* 공고 매칭: 맞춰 본 결과 상자 · 접힌 띠 · 결과 타일 · 검색과 직무 칩 · 모든 공고
  * 상자는 회색 바탕에 흰 타일이라 '고른 것' 으로 읽히고, 아래 '모든 공고' 는 흰 바탕에 흰 타일이라 전체 목록으로 읽힌다 */

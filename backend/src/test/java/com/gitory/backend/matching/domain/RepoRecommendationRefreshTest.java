@@ -122,7 +122,22 @@ class RepoRecommendationRefreshTest {
     }
 
     @Test
-    @DisplayName("작성 중 카드의 제목만 바뀌면 추천에 쓰이지 않는 카드라 표시하지 않는다")
+    @DisplayName("작성 중 카드가 지워져도 그 레포에 다시 계산 표시를 남긴다")
+    void marksRepositoryStaleWhenDraftIsDeleted() {
+
+        UUID draft = card(false);
+
+        delete.delete(draft, userId);
+
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM repo_recommendation
+                WHERE user_repository_id = ? AND user_id = ? AND status = 'COMPUTING' AND stale_since IS NOT NULL
+                """, Integer.class, repo, userId)).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("작성 중 카드의 제목만 바뀌면 자동 저장마다 AI 를 다시 부르지 않도록 표시하지 않는다")
     void doesNotMarkWhenOnlyDraftChanges() {
 
         UUID draft = card(false);
@@ -191,7 +206,7 @@ class RepoRecommendationRefreshTest {
         ready(userId, blog);
         ready(otherUser, otherRepo);
 
-        profiles.replace(userId, new ProfileInput(List.of(), List.of(), List.of(), List.of(), List.of("BACKEND")));
+        profiles.replace(userId, new ProfileInput(List.of(), List.of(), List.of(), List.of(), List.of("BACKEND"), null, null));
 
         assertThat(jdbc.queryForList("""
                 SELECT user_repository_id FROM repo_recommendation WHERE status = 'COMPUTING' AND stale_since IS NOT NULL
@@ -210,6 +225,28 @@ class RepoRecommendationRefreshTest {
         new RepoRecommendationWorker(recommendations, service, clock, Runnable::run).drain();
 
         verify(service).compute(userId, repo);
+
+    }
+
+    @Test
+    @DisplayName("서버가 뜬 뒤 첫 차례에 계산하다 끊긴 추천을 다시 예약해 계산하고, 끝난 추천은 건드리지 않는다")
+    void reservesInterruptedRecommendationsWhenServerStarts() {
+
+        Long waiting = fixtures.insertUserRepository(userId, fixtures.insertRepository(11L, "grow22", "blog"));
+        Long finished = fixtures.insertUserRepository(userId, fixtures.insertRepository(12L, "grow22", "shop"));
+        interrupted(repo);
+        stale(waiting, Instant.now(clock).minusSeconds(10));
+        ready(userId, finished);
+        RepoRecommendationService service = mock(RepoRecommendationService.class);
+        RepoRecommendationWorker worker = new RepoRecommendationWorker(recommendations, service, clock, Runnable::run);
+
+        worker.work();
+
+        verify(service).compute(userId, repo);
+        verify(service, never()).compute(userId, waiting);
+        verify(service, never()).compute(userId, finished);
+        assertThat(staleSince(waiting)).isNotNull();
+        assertThat(staleSince(finished)).isNull();
 
     }
 
@@ -234,6 +271,15 @@ class RepoRecommendationRefreshTest {
                 INSERT INTO repo_recommendation (user_id, user_repository_id, status, companies, stale_since)
                 VALUES (?, ?, 'READY', '[]', NULL)
                 """, owner, userRepositoryId);
+
+    }
+
+    private void interrupted(Long userRepositoryId) {
+
+        jdbc.update("""
+                INSERT INTO repo_recommendation (user_id, user_repository_id, status, companies, stale_since)
+                VALUES (?, ?, 'COMPUTING', '[]', NULL)
+                """, userId, userRepositoryId);
 
     }
 

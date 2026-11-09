@@ -62,7 +62,10 @@
 
 /* 처음 입력 창의 빠른 입력 — 학력 타일 두 줄, 어학 타일 + 점수 칸, 자격증 타일 + 직접 입력 */
 .interest-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.interest-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .interest-grid--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* 학력 구분을 고른 뒤 한 줄 더 묻는 세부(4년제, 2~3년제 / 석사, 박사) */
+.quick-sub { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-width: 320px; margin-top: 10px; }
 .quick-group { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .quick-group__label { padding: 0; font-size: 12px; line-height: 18px; font-weight: 600; color: var(--text-secondary); }
 .quick-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
@@ -79,5 +82,18 @@
 .quick-chips button:hover { background: var(--bg-surface); color: var(--text-primary); }
 @media (max-width: 600px) {
   .interest-grid--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* 학력 구분 셋은 한 줄에 둔다 — 좁은 폭에서는 동그라미와 여백을 줄여 '고등학교'가 잘리지 않게 */
+  .interest-grid--3 .interest-tile { gap: 6px; padding-inline: 10px; }
+  .quick-sub { max-width: none; }
   .quick-split { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ───────── 메일 알림 칸 — 글자와 눌리는 곳을 키워 둔다 ───────── */
+.mail-section__why { margin: 0; font-size: 15px; line-height: 24px; color: var(--text-secondary); }
+.mail-section__field { grid-column: auto; }
+.mail-section__field .field__label { font-size: 15px; font-weight: 600; }
+.mail-section__field .input { height: 48px; font-size: 16px; }
+.mail-section__error { font-size: 15px; line-height: 22px; }
+.mail-section__check { display: flex; align-items: center; gap: 12px; min-height: 48px; font-size: 16px; line-height: 24px; font-weight: 600; color: var(--text-strong); cursor: pointer; }
+.mail-section__check input { width: 22px; height: 22px; margin: 0; flex: 0 0 auto; accent-color: var(--accent-point); cursor: pointer; }
+.mail-section__check input:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 2px; }

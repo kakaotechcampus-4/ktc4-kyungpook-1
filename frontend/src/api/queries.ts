@@ -1,4 +1,3 @@
-import { recordCareerActivity } from '@/lib/careerActivity';
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { endpoints } from './endpoints';
@@ -12,13 +11,25 @@ import { cacheCardMetadata } from '@/lib/cacheCardMetadata';
 import { matchKeys } from './matching';
 
 // ───────────────────────────── 조회 ─────────────────────────────
+const meQuery = {
+  queryKey: keys.me,
+  queryFn: () => endpoints.me(),
+  retry: (count: number, err: unknown) => !(err instanceof AuthError) && count < 2,
+  staleTime: 5 * 60_000,
+};
 export function useMe() {
-  return useQuery({
-    queryKey: keys.me,
-    queryFn: endpoints.me,
-    retry: (count, err) => !(err instanceof AuthError) && count < 2,
-    staleTime: 5 * 60_000,
-  });
+  return useQuery(meQuery);
+}
+/**
+ * 확정 카드 수. 서버가 카드를 스스로 확정하므로(자동 확정) 카드 화면을 벗어난 뒤에도 수가 늘 수 있다.
+ * 내 정보는 5분 동안 새로 읽지 않아서, 0 으로 남은 값이 "확정한 카드가 없어요"를 잘못 말했다(새로고침하면 풀림).
+ * 그래서 0 으로 캐시돼 있으면 들어올 때마다 다시 읽고, 첫 요청이 오가는 동안의 0 은 "아직 모름"(undefined)으로 돌려준다.
+ * 요청이 실패해 다시 시도하는 중(failureCount > 0)이면 더 기다리지 않고 캐시된 값을 그대로 쓴다.
+ */
+export function useConfirmedCardCount(): number | undefined {
+  const me = useQuery({ ...meQuery, refetchOnMount: (query) => (query.state.data?.stats.confirmedCards === 0 ? 'always' : true) });
+  const count = me.data?.stats.confirmedCards;
+  return count === 0 && me.isFetching && me.failureCount === 0 ? undefined : count;
 }
 /**
  * 최신 목록(/repos)은 GitHub 동기화를 기다려 1~2초 걸린다. 그동안 저장 목록(/repos/saved, 수십 ms)을 자리표시로 먼저 보여 준다.
@@ -118,6 +129,18 @@ export function useCard(id: string | undefined) {
   useEffect(() => {
     if (done && jobId && id) void qc.invalidateQueries({ queryKey: keys.card(id) });
   }, [done, jobId, id, qc]);
+  // 이 화면에 있는 동안 카드가 확정으로 바뀌거나(서버 자동 확정 포함) 상황·행동이 비어 작성 중으로 돌아가면 확정 카드 수와 공고 매칭이 새 값을 읽게 한다.
+  // 확정 버튼(useConfirm)은 이미 하던 일이라, 자동 확정에서도 같게 맞춘 것이다. 처음 읽어 온 값은 바뀐 것이 아니라서 건너뛴다.
+  const status = card.data?.status;
+  const lastStatus = useRef(status);
+  useEffect(() => {
+    const before = lastStatus.current;
+    lastStatus.current = status;
+    if (!status || !before || before === status) return;
+    void qc.invalidateQueries({ queryKey: keys.me });
+    void qc.invalidateQueries({ queryKey: keys.cards });
+    void qc.resetQueries({ queryKey: matchKeys.all });
+  }, [status, qc]);
   return { card, job };
 }
 
@@ -181,11 +204,7 @@ export function useCreateManualDraft() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ input, idempotencyKey }: { input: Parameters<typeof endpoints.createManualDraft>[0]; idempotencyKey: string }) => endpoints.createManualDraft(input, idempotencyKey),
-    onSuccess: (card) => {
-      const user = qc.getQueryData<{ id: string }>(keys.me);
-      if (user?.id) recordCareerActivity(user.id, 'card', card.id);
-      qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards });
-    },
+    onSuccess: (card) => { qc.setQueryData(keys.card(card.id), card); void qc.invalidateQueries({ queryKey: keys.cards }); },
   });
 }
 
@@ -236,9 +255,7 @@ export function useCreateCards(repoId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (candidateIds: string[]) => endpoints.createCardsFromCandidates(repoId, candidateIds),
-    onSuccess: (result) => {
-      const user = qc.getQueryData<{ id: string }>(keys.me);
-      if (user?.id) result.cardIds.forEach(id => recordCareerActivity(user.id, 'card', id));
+    onSuccess: () => {
       void qc.invalidateQueries({ queryKey: keys.candidates(repoId) });
       void qc.invalidateQueries({ queryKey: keys.cards });
     },

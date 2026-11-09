@@ -159,7 +159,7 @@ $env:UPDATE_OPENAPI=1; ./gradlew test --tests '*OpenApiIntegrationTest'; Remove-
 | 운영, 여러 컨테이너를 함께 | CloudWatch 로그 그룹 `/gitory`, 스트림 `gitory-backend-1` |
 
 - 운영 compose 는 컨테이너 로그를 Docker `awslogs` 드라이버로 CloudWatch 에 보냅니다. backend 는 날짜로 시작하지 않는 줄(예외 스택)을 앞 줄과 한 이벤트로 묶습니다.
-- 알림: CloudWatch 지표 필터가 `ERROR` 줄과 Job 실패 코드(`INTERNAL_ERROR`·`GITHUB_UNAVAILABLE`·`AI_UNAVAILABLE`)를 세고, 경보가 SNS 로 팀 이메일에 보냅니다. 설정 절차는 [DEPLOYMENT.md 7절](../docs/DEPLOYMENT.md#7-운영) 에 있습니다.
+- 알림: CloudWatch 지표 필터가 `ERROR` 줄과 Job 실패 코드(`INTERNAL_ERROR`·`GITHUB_UNAVAILABLE`·`AI_UNAVAILABLE`)를 세고, 경보가 SNS 로 팀 이메일에 보냅니다. 설정 절차는 [DEPLOYMENT.md 로그 보관·에러 경보](../docs/DEPLOYMENT.md#로그-보관에러-경보-cloudwatch-한-번) 에 있습니다.
 - 서버가 뜰 때 `LLM 호출 제한이 켜져 있다/꺼져 있다` 한 줄이 남습니다. 운영에서 스위치가 들어갔는지 이 줄로 봅니다.
 - 로그·오류 응답에 AI 응답 원문, GitHub 토큰을 남기지 않습니다. 어떤 장치가 이를 막는지는 [GUARDRAILS.md 2절](../docs/GUARDRAILS.md#2-spring-쪽-장치) 에 있습니다.
 

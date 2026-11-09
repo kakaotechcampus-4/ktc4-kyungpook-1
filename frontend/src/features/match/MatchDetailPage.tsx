@@ -193,7 +193,7 @@ export function MatchDetailPage() {
     if (openedId) track("match_opened", { view: "detail", matchId: openedId, fit: openedFit });
   }, [openedId, openedFit]);
 
-  // 이 화면에서 맞춰 보기를 눌렀으면 결과를 조건마다 차례로 펼친다(새로고침해 다시 열면 저장된 결과라 바로 다 보인다)
+  // 이 화면에서 맞춰 보기를 시작했으면 결과를 조건마다 차례로 펼친다(새로고침해 다시 열면 저장된 결과라 바로 다 보인다)
   const [revealing, setRevealing] = useState(false);
   // 채우기가 이 화면에서 돌고 있으면 새로 생긴 일만 하나씩 펼친다. 끝난 결과를 열어 본 것이면 바로 다 보인다
   const [gapLive, setGapLive] = useState(false);
@@ -236,6 +236,16 @@ export function MatchDetailPage() {
       onError: () => setRevealing(false),
     });
   };
+
+  // 열자마자 공고마다 한 번만 맞춰 본다 — 맞춰 보기는 AI 호출이라 실패해도 되풀이하지 않고 버튼으로 사람이 다시 누르게 둔다
+  // 진행하기에서 돌아온 공고는 위의 다시 맞춰 보기가 맡는다(returned 는 다음 렌더에야 채워져서 저장된 값을 바로 읽는다)
+  const autoJudged = useRef<string | null>(null);
+  useEffect(() => {
+    if (!detail?.needsJudgement || autoJudged.current === detail.id) return;
+    if (!cards.data?.some((card) => card.status === "CONFIRMED") || readProceeded(matchId)) return;
+    autoJudged.current = detail.id;
+    startJudge();
+  }, [detail, cards.data, matchId]);
 
   // 확정 카드가 0장이면 서버는 기술 조건을 모두 NOT_MET 으로 준다 — 모자란 사람처럼 보이지 않게 원문만 두고 카드 확정을 안내한다. 카드 목록을 아직 못 받았으면 서버 응답대로 그린다
   const noConfirmedCards = cards.data !== undefined && !cards.data.some((card) => card.status === "CONFIRMED");

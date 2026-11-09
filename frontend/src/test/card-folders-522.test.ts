@@ -94,11 +94,11 @@ describe('경험 카드 폴더 묶기 (#522)', () => {
   it('링크 이름에 소유자, 이름, 장 수, 설명, 작은 글, 기술이 모두 들어 있다(보이는 글이 이름에 들어 있어야 한다)', () => {
     const repos = [repoRow('r_auth', { description: 'Spring Boot 인증 서비스', descriptionSource: 'GITHUB' })];
     const folders = Object.fromEntries(buildFolders(cards, activities, repos).map((f) => [f.key, f]));
-    expect(folderLabel(folders['repo:r_auth'])).toBe('레포 hong-dev, auth-service, 카드 2장, Spring Boot 인증 서비스, 기술 1 · 경험 1, 기술 Java, Spring');
-    expect(folderLabel(folders['repo:r_fts'])).toBe('레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 기술 TypeScript');
+    expect(folderLabel(folders['repo:r_auth'])).toBe('레포 hong-dev, auth-service, 카드 2장, 확인할 카드 2장, Spring Boot 인증 서비스, 기술 1 · 경험 1, 기술 Java, Spring');
+    expect(folderLabel(folders['repo:r_fts'])).toBe('레포 TaeHuiKKIM, free-tier-sleep, 카드 1장, 확인할 카드 1장, 기술 TypeScript');
     expect(folderLabel(folders['activity:a_empty'])).toBe('활동, 공모전과 해커톤, 해커톤 참가, 카드 0장, 아직 카드가 없어요 · 열어서 만들기');
-    expect(folderLabel(folders['activity:a_club'])).toBe('활동, 동아리, 교내 개발 동아리, 카드 2장');
-    expect(folderLabel(folders.direct)).toBe('레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장');
+    expect(folderLabel(folders['activity:a_club'])).toBe('활동, 동아리, 교내 개발 동아리, 카드 2장, 확인할 카드 1장');
+    expect(folderLabel(folders.direct)).toBe('레포와 활동 없이 쓴 카드, 직접 쓴 카드, 카드 1장, 확인할 카드 1장');
   });
 });
 

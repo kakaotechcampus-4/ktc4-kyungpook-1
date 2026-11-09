@@ -21,7 +21,7 @@ it('offers one initial save action while STAR remains writable', () => {
   mount(<NewCardPage />, '/?write=1');
   expect(screen.getAllByRole('button', { name: '작성 시작' })).toHaveLength(1);
   expect(screen.queryByRole('button', { name: '저장 후 종료' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: '확정' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '다 썼어요' })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText('상황'), { target: { value: '첫 저장 전 작성' } });
   expect(screen.getByLabelText('상황')).toHaveValue('첫 저장 전 작성');
 });

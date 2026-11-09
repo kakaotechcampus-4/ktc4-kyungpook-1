@@ -45,7 +45,7 @@ public class InterviewMeasuredDraftService {
     private final PlatformTransactionManager transactionManager;
 
     /**
-     * 질문 번호(404), 초안을 만드는 중인 카드·확정된 카드·결과가 정해진 질문(409), R 수치 질문이 아님(400), 글의 모양(400) 순서로 확인한다
+     * 질문 번호(404), 초안을 만드는 중인 카드·결과가 정해진 질문(409), R 수치 질문이 아님(400), 글의 모양(400) 순서로 확인한다
      * 글에 숫자가 없으면 AI 를 부르지 않고 null 을 돌려준다
      */
     public String draft(UUID publicId, Long userId, int turnNo, String text) {
@@ -96,7 +96,6 @@ public class InterviewMeasuredDraftService {
                 .orElseThrow(InterviewTurnNotFoundException::new);
 
         generation.requireNotGenerating(card);
-        card.requireDraft();
         if (turn.isClosed()) {
             throw new InterviewTurnAnsweredException();
         }

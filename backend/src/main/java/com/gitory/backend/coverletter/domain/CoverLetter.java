@@ -97,7 +97,7 @@ public class CoverLetter {
 
     }
 
-    /** 지원 이유가 없는 옛 자소서는 판정할 글이 없어 판정 전으로 둔다 */
+    /** 지원 이유가 없는 자소서는 판정할 글이 없어 판정 전으로 둔다 */
     public void memoJudged(boolean usable) {
 
         if (memo != null) {

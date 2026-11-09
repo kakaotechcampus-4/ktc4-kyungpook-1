@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginAsDemo } from './helpers';
+import { loginAsDemo, runToDraft } from './helpers';
 
 /**
  * #727 초안 옆 패널의 진단·첨삭 — 목 서버가 문항 하나를 결정적으로 첨삭한다(약 1.2초).
@@ -10,21 +10,18 @@ test('초안에서 첨삭을 받아 포인트를 보고 적용하면 종이 글�
   await page.clock.install();
   await page.goto('/cover-letters/new');
   await page.getByPlaceholder('예: 백엔드 개발').fill('백엔드 개발');
-  await page.getByLabel('지원 이유', { exact: true }).fill('결제 서비스의 오류를 줄이는 일을 직접 해 보고 싶어 지원했어요');
   await page.getByLabel('1번 문항', { exact: true }).fill('어려운 문제를 해결한 경험을 적어 주세요');
-  await page.getByRole('button', { name: '카드 고르기', exact: true }).click();
-  await page.clock.runFor(8_000);
-  await page.getByRole('button', { name: '다음: 질문 받기' }).click();
-  await page.clock.runFor(6_000);
-  await page.getByRole('button', { name: '초안 쓰기' }).click();
-  await page.clock.runFor(30_000);
-  await expect(page.getByText('초안이 나왔어요')).toBeVisible();
+  await page.getByRole('button', { name: '초안 쓰기', exact: true }).click();
+  // 카드 고르기 → 재료 확인 → 초안 쓰기를 화면이 멈추지 않고 이어 가므로 누를 것 없이 시간만 흘려 보낸다
+  await runToDraft(page);
 
   const panel = page.getByRole('complementary', { name: '다듬기 패널' });
   const paper = page.getByLabel('1번 문항 초안');
   await expect(panel.getByText('Q1에 적용')).toBeVisible();
-  await expect(panel.getByRole('tab', { name: '진단과 첨삭' })).toHaveAttribute('aria-selected', 'true');
+  await expect(panel.getByRole('tab', { name: '대화' })).toHaveAttribute('aria-selected', 'true');
   for (const tab of await panel.getByRole('tab').all()) expect((await tab.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+  await panel.getByRole('tab', { name: '진단과 첨삭' }).click();
+  await expect(panel.getByRole('tab', { name: '진단과 첨삭' })).toHaveAttribute('aria-selected', 'true');
   const before = await paper.inputValue();
 
   await panel.getByRole('button', { name: '첨삭 받기' }).click();

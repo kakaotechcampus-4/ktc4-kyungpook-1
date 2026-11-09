@@ -4,18 +4,16 @@ import { ChevronRight, FileSearch, X } from 'lucide-react';
 import { useCards } from '@/api/queries';
 import { ApiError } from '@/api/client';
 import { errorView } from '@/api/errorView';
-import { COVER_LETTER_LIMITS as L, useCreateCoverLetter, type NewCoverLetter, type QuestionTheme } from '@/api/coverLetters';
+import { COVER_LETTER_LIMITS as L, useCoverLetter, useCreateCoverLetter, type NewCoverLetter, type QuestionTheme } from '@/api/coverLetters';
 import { matchSupported, useMatch, type MatchTarget } from '@/api/matching';
-import { Breadcrumb, Button, Chip, EmptyState, Field, Input, Note, PageTitle, Skeleton, Textarea } from '@/components/ui';
+import { Breadcrumb, Button, Chip, EmptyState, Field, Input, Note, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { CompanyMark } from '@/features/match/CompanyMark';
 import { companyLabel } from '@/features/match/model';
-import { EXAMPLE_QUESTION, MEMO_EXAMPLE, STRENGTHS, STRENGTH_LIMIT, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
-import { checkReason } from '@/lib/reasonCheck';
+import { EXAMPLE_QUESTION, THEME_LABEL, exampleThemes, prefillJobRole } from '@/lib/coverLetterCopy';
 import { newIdempotencyKey } from '@/lib/uuid';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { Stepper } from './Stepper';
 import './coverLetters.css';
 
 type Row = { text: string; charLimit: string };
@@ -34,27 +32,37 @@ function charLimitOf(raw: string): { value: number | null; error: string | null 
 const postingNotFound = (e: unknown) => e instanceof ApiError && e.status === 404;
 
 /**
- * 자소서 ① 입력(#517). 지원 직무, 지원 이유(필수, #738), 강점(최대 3개), 문항(1~10개, 글자 수)을 받아 만든다.
+ * 자소서 ① 입력(#517). 지원 직무와 문항(1~10개, 글자 수)만 받아 만든다 — 지원 이유와 강점은 받지 않고, 비어 있는 재료는 초안 화면의 채팅이 채운다.
  * 같은 요청 키는 "내용을 바꾸지 않은 재전송"에만 쓴다 — 입력을 고치면 새 키를 만든다(계약: 같은 키는 처음 자소서를 돌려준다).
  * 공고 상세에서 왔으면(`?postingId=`, #637) 그 공고를 보이고 직무를 공고 제목으로 채워 두며, 만들기에 공고 id 를 함께 보낸다.
+ * 자소서 화면의 '문항 고치기'(`?from=`)로 왔으면 그 자소서의 직무·문항·공고를 처음 한 번만 채운다 — 서버에 문항을 고치는 API 가 없어 새 자소서로 만든다.
  */
 export function CoverLetterNewPage() {
   useDocumentTitle('새 자소서');
   const nav = useNavigate();
   const [sp] = useSearchParams();
   // 매칭이 꺼진 빌드에서는 공고를 읽을 길이 없어 공고 없이 시작한 것으로 본다
-  const postingId = matchSupported() ? sp.get('postingId')?.trim() || null : null;
+  const from = sp.get('from')?.trim() || null;
+  const source = useCoverLetter(from ?? undefined);
+  const postingId = matchSupported() ? sp.get('postingId')?.trim() || source.data?.posting?.id || null : null;
   const posting = useMatch(postingId ?? '');
   const cards = useCards();
   const create = useCreateCoverLetter();
   const [jobRole, setJobRole] = useState('');
-  const [memo, setMemo] = useState('');
-  const [strengths, setStrengths] = useState<string[]>([]);
-  const [strengthFull, setStrengthFull] = useState(false);
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
   const [key, setKey] = useState(newIdempotencyKey);
   const [showMore, setShowMore] = useState(false);
   const [tried, setTried] = useState(false);
+
+  // 다시 읽혀도 사용자가 고친 값을 덮지 않도록 처음 받은 한 번만 채운다
+  const filled = useRef(false);
+  useEffect(() => {
+    const letter = source.data;
+    if (!letter || filled.current) return;
+    filled.current = true;
+    setJobRole(letter.jobRole);
+    if (letter.questions.length > 0) setRows(letter.questions.slice(0, L.QUESTIONS).map((q) => ({ text: q.text, charLimit: String(q.charLimit) })));
+  }, [source.data]);
 
   const edit = (fn: () => void) => { fn(); setKey(newIdempotencyKey()); create.reset(); };
   const setRow = (i: number, patch: Partial<Row>) => edit(() => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r))));
@@ -77,21 +85,19 @@ export function CoverLetterNewPage() {
   }));
 
   const jobError = jobRole.trim() === '' ? '지원 직무를 적어 주세요' : jobRole.length > L.JOB_ROLE ? `${L.JOB_ROLE}자까지 적을 수 있어요` : null;
-  // 지원 이유는 서버와 같은 규칙(reasonCheck)을 다 지켜야 시작 버튼이 켜진다
-  const memoError = memo.length > L.MEMO ? `${L.MEMO.toLocaleString()}자까지 적을 수 있어요` : checkReason(memo);
   const rowErrors = rows.map((r) => ({
     text: r.text.trim() === '' ? '문항을 적어 주세요' : r.text.length > L.QUESTION ? `${L.QUESTION}자까지 적을 수 있어요` : null,
     limit: charLimitOf(r.charLimit).error,
   }));
-  const invalid = !!jobError || !!memoError || rowErrors.some((e) => e.text || e.limit);
+  const invalid = !!jobError || rowErrors.some((e) => e.text || e.limit);
 
   const submit = async () => {
     setTried(true);
     if (invalid || noCards || create.isPending) return;
     const input: NewCoverLetter = {
       jobRole: jobRole.trim(),
-      memo: memo.trim(),
-      strengths,
+      memo: null,
+      strengths: [],
       questions: rows.map((r) => ({ text: r.text.trim(), charLimit: charLimitOf(r.charLimit).value })),
       postingId,
     };
@@ -119,26 +125,18 @@ export function CoverLetterNewPage() {
   // 확정 카드 없음은 위 안내가, 없는 공고(404)는 '찾을 수 없음' 화면이 맡는다 — '공고 없이 새 자소서 쓰기' 로 돌아와도 그 실패가 남지 않게
   const failure = create.error && !(create.error instanceof ApiError && create.error.code === 'NO_CONFIRMED_CARDS') && !postingNotFound(create.error) ? errorView(create.error) : null;
   const show = (msg: string | null) => (tried ? msg : null);
-  const memoHint = memo !== '' ? memoError : null; // 아직 아무것도 적지 않았으면 위 안내 문장만 보인다
-  /** 고른 칩을 누르면 빼고, 3개를 다 골랐으면 더 고르지 않고 안내만 한다 */
-  const toggleStrength = (code: string) => {
-    const on = strengths.includes(code);
-    if (!on && strengths.length >= STRENGTH_LIMIT) { setStrengthFull(true); return; }
-    setStrengthFull(false);
-    edit(() => setStrengths((xs) => (on ? xs.filter((x) => x !== code) : [...xs, code])));
-  };
-  const sub = postingId ? '문항을 적으면 이 공고에 맞춰 문항마다 쓸 카드를 골라 드려요.' : '문항을 적으면 문항마다 쓸 카드를 골라 드려요.';
-  const footWarn = memoError ? '지원 이유를 채우면 만들 수 있어요' : invalid && tried ? '빠진 칸을 채워 주세요' : null;
+  const sub = from && !source.isError ? '고친 문항으로 새 자소서를 만들어요. 지금 자소서는 목록에 그대로 남아요.'
+    : postingId ? '문항만 적으면 이 공고에 맞춰 카드를 고르고 초안까지 써 드려요.' : '문항만 적으면 카드를 고르고 초안까지 써 드려요.';
+  const footWarn = invalid && tried ? '빠진 칸을 채워 주세요' : null;
 
   return (
     <main className="main main--tight">
       <Breadcrumb items={crumbs} />
-      <Stepper current={1} />
       <PageTitle sub={sub}>새 자소서</PageTitle>
 
       {noCards && (
         <Note strong="확정한 카드가 없어요" tone="caution">
-          자소서는 확정한 경험 카드로 써요. 네 칸이 모두 차고 확인 필요한 칸이 없으면 카드가 자동으로 확정돼요. 확정된 카드가 하나 이상 생기면 다시 와 주세요. <Link to="/cards" className="cl-inline-link">경험 카드로 가기</Link>
+          자소서는 확정한 경험 카드로 써요. 상황과 행동이 차 있고 확인이 필요한 칸이 없으면 카드가 자동으로 확정돼요. 확정된 카드가 하나 이상 생기면 다시 와 주세요. <Link to="/cards" className="cl-inline-link">경험 카드로 가기</Link>
         </Note>
       )}
 
@@ -154,26 +152,6 @@ export function CoverLetterNewPage() {
           : posting.isError ? <QueryFailure error={posting.error} retry={() => posting.refetch()} pending={posting.isFetching} />
           : <Skeleton h={70} />
         )}
-        <Field label="지원 이유 (필수)" right={`${memo.length.toLocaleString()}/${L.MEMO.toLocaleString()}`} hint="지원 동기 문항에서 '이 회사를 고른 이유'로 써요. 공백을 빼고 20자 이상 적어 주세요.">
-          <Textarea value={memo} rows={3} maxLength={L.MEMO} placeholder={MEMO_EXAMPLE} aria-label="지원 이유" aria-required
-            aria-invalid={!!memoHint} aria-describedby="cl-reason-hint" onChange={(e) => edit(() => setMemo(e.target.value))} />
-          <span id="cl-reason-hint" className="cl-reason-hint" aria-live="polite">{memoHint}</span>
-        </Field>
-
-        <fieldset className="cl-strengths">
-          <legend className="field__label">내 강점 (선택) <span className="cl-strengths__limit">최대 {STRENGTH_LIMIT}개</span></legend>
-          {STRENGTHS.map((g) => (
-            <div key={g.group} className="cl-strengths__group" role="group" aria-label={g.group}>
-              <span className="cl-strengths__label">{g.group}</span>
-              <div className="row cl-strengths__chips">
-                {g.items.map((it) => (
-                  <button key={it.code} type="button" className="chip cl-strength" aria-pressed={strengths.includes(it.code)} onClick={() => toggleStrength(it.code)}>{it.label}</button>
-                ))}
-              </div>
-            </div>
-          ))}
-          <span className="cl-reason-hint" aria-live="polite">{strengthFull ? `${STRENGTH_LIMIT}개까지 고를 수 있어요. 하나를 빼고 골라 주세요` : null}</span>
-        </fieldset>
       </section>
 
       <section className="cl-group" aria-labelledby="cl-group-questions">
@@ -205,11 +183,11 @@ export function CoverLetterNewPage() {
 
       <div className="sticky-footer">
         <div className="sticky-footer__text">
-          <strong>만들면 문항마다 쓸 카드를 골라요</strong>
+          <strong>만들면 카드를 고르고 초안까지 이어서 써요</strong>
           {footWarn && <span className="cl-foot-warn">{footWarn}</span>}
         </div>
         <div className="sticky-footer__actions">
-          <Button onClick={submit} loading={create.isPending} disabled={noCards || !!memoError}>카드 고르기</Button>
+          <Button onClick={submit} loading={create.isPending} disabled={noCards}>초안 쓰기</Button>
         </div>
       </div>
     </main>

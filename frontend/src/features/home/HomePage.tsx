@@ -1,208 +1,145 @@
-import { useId, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowUp, Check, ChevronRight, FolderGit2, Github, GitCommitHorizontal, GitPullRequest, CircleDot, Layers, PenLine, Search } from 'lucide-react';
+import { useEffect, useMemo, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import { useCards, useMe, useRepos } from '@/api/queries';
-import type { CardSummary, StarField } from '@/api/schemas';
-import { IconBox, KindIcon, PageTitle, SectionHead, StarDots } from '@/components/ui';
+import { useCoverLetters } from '@/api/coverLetters';
+import { matchSupported, useStartOverallRecommendation } from '@/api/matching';
+import { knownNotices, useNotices } from '@/api/notifications';
+import { useCheckRepoUpdates, useMarkRepoUpdateSeen, useRepoUpdates } from '@/api/repoUpdates';
+import type { CardSummary } from '@/api/schemas';
+import { KindIcon } from '@/components/ui';
 import { CardStatusMark } from '@/components/cards/CardStatusMark';
 import { cardKindLabel } from '@/lib/labels';
 import { summarySource, summaryDetail } from '@/lib/cardSummaryView';
 import { periodLabel } from '@/lib/format';
-import { track } from '@/lib/track';
-import { COUNTING, isCounting } from '@/lib/repoCounts';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { errorView } from '@/api/errorView';
 import { CardTags } from '@/components/cards/CardTags';
 import { SkippedCardsNotice } from '@/components/cards/SkippedCardsNotice';
 import { CardDeleteAction } from '@/components/cards/CardDeleteAction';
-import { ActiveJobsList } from '@/features/jobs/ActiveJobsList';
-import { JobCalendar, type CalendarPosting } from './JobCalendar';
-import { useOverallRecommendation } from '@/api/matching';
-import { HomeRecommendations } from './HomeRecommendations';
-import { HomeActivity } from './HomeActivity';
-import { matchSupported, useMatchedPostings } from '@/api/matching';
+import { ApplyPanel } from './ApplyPanel';
+import { orderApplyList, setupStep, todayLabel } from './homeApply';
+import { HomeHero, RepoUpdateNotice } from './HomeSections';
+import { SetupSteps } from './SetupSteps';
+import { useHomePicks } from './useHomePicks';
+import './home.css';
 
 const failureText = (error: unknown) => { const view = errorView(error, 'read'); return `${view.title} ${view.message}`; };
 
+function HomeSkeleton() {
+  const line = (width: string, height: number, margin = 0, radius?: string) => <div className="home3-sk home3-pulse" style={{ width, height, marginTop: margin, borderRadius: radius }} />;
+  return (
+    <div className="home3-skeleton" aria-busy="true" aria-label="지원할 곳을 불러오는 중이에요">
+      <div className="home3-skeleton-tabs">{line('110px', 14)}{line('90px', 14)}{line('120px', 14)}</div>
+      <div className="home3-lead">
+        {line('160px', 12)}{line('62%', 26, 12)}{line('46%', 14, 26)}
+        {[0, 1, 2].map((row) => <div key={row} className="home3-sk-row">{line('18px', 18, 0, '50%')}{line('44%', 14)}</div>)}
+        {line('140px', 48, 24, '12px')}
+      </div>
+    </div>
+  );
+}
+
 /**
- * E1 홈 · A3 첫 진입. 레퍼런스(TIO) 구조: 중앙 프롬프트 → 보조 버튼 → 이어서 하기 → 카드.
- * 프롬프트는 "레포 이름을 치면 바로 그 레포의 사전 고지로" — 레포 고르기 페이지를 건너뛰는 빠른 길.
+ * 홈 — 맨 위에 할 일을 맡기는 한 줄, 그 아래 내 카드와 맞는 공고 중 지금 지원할 곳을 한 장씩.
+ * 화면이 답하는 것은 하나다: 지금 어느 공고에 지원하면 되는가. 맞는 공고가 없으면 준비 단계를 보인다.
  */
 export function HomePage() {
   useDocumentTitle('홈');
   const me = useMe();
-  const matched = useMatchedPostings();
-  const [repoSearchOpen, setRepoSearchOpen] = useState(false);
   const cards = useCards();
   const repos = useRepos();
-  const [rq, setRq] = useState('');
-  const [hi, setHi] = useState(0);
-  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
-  const suggestionId = useId();
-  const nav = useNavigate();
-  const overall = useOverallRecommendation();
-  // 캘린더에는 공고 목록 전체(운영 수백 개)가 아니라 '나와 맞는 기업' 으로 추천된 공고의 마감일만 자동으로 띄운다
-  const recommendedPostings = useMemo<CalendarPosting[]>(() => overall.data?.status === 'READY'
-    ? overall.data.companies.filter(c => !c.posting.closed).map(c => ({ id: c.posting.id, company: c.companyName, role: c.posting.title, expiresAt: c.posting.deadline, url: null }))
-    : [], [overall.data]);
+  const letters = useCoverLetters();
+  const notices = useNotices();
+  const cardList = useMemo(() => cards.data ?? [], [cards.data]);
+  const letterList = useMemo(() => letters.data ?? [], [letters.data]);
+  const { picks, overall } = useHomePicks(cardList);
+  const repoUpdates = useRepoUpdates();
+  const { mutate: checkRepoUpdates } = useCheckRepoUpdates();
+  const { mutate: markSeen } = useMarkRepoUpdateSeen();
+  const matching = matchSupported();
+  const startOverall = useStartOverallRecommendation();
 
-  const drafts = (cards.data ?? []).filter((c) => c.status === 'DRAFT').slice(0, 3);
-  // 카드 목록을 아직 모르면(불러오는 중, 실패) 처음 온 사람으로 단정하지 않는다 — 첫 방문 문구가 잠깐 떴다 사라지지 않게
-  const returning = cards.isSuccess ? cards.data.length > 0 : true;
+  // 최신 레포 목록을 읽은 뒤(저장 목록 자리표시가 아니라) 한 번만 새 활동을 확인한다
+  const checked = useRef(false);
+  useEffect(() => {
+    if (!repos.isSuccess || repos.isPlaceholderData || checked.current) return;
+    checked.current = true;
+    checkRepoUpdates();
+  }, [repos.isSuccess, repos.isPlaceholderData, checkRepoUpdates]);
+
+  // 확정 카드가 있는데 한 번도 맞춰 보지 않았으면 홈에서도 맞춰 보기를 시작한다
+  // 홈은 자주 열려 전체 매칭 호출 한도에 닿기 쉬워, 카드가 바뀌어 낡은 결과는 공고 매칭 화면에서 다시 맞춘다
+  const confirmedCount = cardList.filter((card) => card.status === 'CONFIRMED').length;
+  const needsRun = overall.data?.status === 'NONE';
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!matching || autoStarted.current || !needsRun || confirmedCount === 0 || startOverall.isPending) return;
+    autoStarted.current = true;
+    startOverall.mutate();
+  }, [matching, needsRun, confirmedCount, startOverall.isPending, startOverall.mutate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 조회가 돌 때마다 새 배열이 와도 내용이 같으면 목록을 다시 그리지 않게 글자열로 견준다
+  const pickKey = JSON.stringify(picks);
+  const stablePicks = useMemo(() => picks, [pickKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const newIds = useMemo(() => new Set(knownNotices(notices.data)
+    .filter((notice) => notice.kind === 'POSTINGS_MATCHED' && notice.readAt === null)
+    .flatMap((notice) => notice.postings.map((posting) => posting.postingId))), [notices.data]);
+  const items = useMemo(() => orderApplyList(stablePicks, newIds, letterList), [stablePicks, newIds, letterList]);
+  const newCount = items.filter((item) => item.isNew).length;
+
+  // 목록을 아직 모르는 동안은 빈 틀을 보인다 — 실패하면 틀을 치우고 실패 안내가 대신한다
+  const loading = cards.isPending || me.isPending || letters.isPending || notices.isPending || (matching && overall.isPending);
+  const unknown = cards.isError || me.isError || (matching && overall.isError);
   const sameFailure = cards.isError && repos.isError && failureText(cards.error) === failureText(repos.error);
-  const sugg = useMemo(() => {
-    const xs = repos.data ?? [];
-    const t = rq.trim().toLowerCase();
-    if (returning && !t) return [];
-    const pool = t ? xs.filter((r) => `${r.owner}/${r.name}`.toLowerCase().includes(t)) : xs.filter((r) => r.recommended && !r.lastAnalyzedAt);
-    return pool.slice(0, 5);
-  }, [repos.data, rq, returning]);
-  const activeIndex = Math.max(0, Math.min(hi, sugg.length - 1));
-  const showSuggestions = suggestionsOpen && (!!rq.trim() || sugg.length > 0);
-  const optionId = (index: number) => `${suggestionId}-option-${index}`;
-  const go = (id?: string) => {
-    const target = id ?? sugg[activeIndex]?.id;
-    if (!target) { nav('/repos'); return; }
-    track('repo_selected', { repoId: target, via: 'prompt' });
-    nav(`/repos?select=${target}&disclose=1`);
-  };
+  const setup = me.data ? setupStep({ analyzedRepos: me.data.stats.analyzedRepos, cards: cardList, overallStatus: overall.data?.status, matching }) : null;
 
-  // '매칭된 공고' 는 공고 전체 수가 아니라 AI 가 내 확정 카드로 맞춰 본 공고 중 필수 조건이 맞은 공고 수다
-  const confirmedCount = cards.isSuccess ? cards.data.filter((c) => c.status === 'CONFIRMED').length : undefined;
-  const matchedCount = matchSupported() && confirmedCount !== 0 && matched.isSuccess ? matched.data.matchedPostings : undefined;
-  const matchedNote = !matchSupported() || confirmedCount === undefined ? '경험과 연결되는 다음 기회'
-    : confirmedCount === 0 ? '카드가 확정되면 매칭할 수 있어요'
-    : matchedCount === undefined ? '경험과 연결되는 다음 기회'
-    : matchedCount === 0 ? '전체 매칭을 하면 맞는 공고를 찾아요' : 'AI 가 내 카드로 맞춰 본 공고 중 맞는 공고';
   return (
-    <main className={`main home-page ${returning ? 'home-page--returning' : ''}`}>
-      {/* 카드와 레포가 같은 이유로 함께 실패하면 같은 안내가 두 번 나오지 않게 하나로 합친다(#520 G-08) */}
-      {cards.isError && <QueryFailure error={cards.error} retry={() => sameFailure ? Promise.all([cards.refetch(), repos.refetch()]) : cards.refetch()} pending={cards.isFetching || (sameFailure && repos.isFetching)} />}
-      {repos.isError && !sameFailure && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
-      <PageTitle lead="관심 기업의 일정과 나의 준비 현황을 한곳에서 관리하세요.">홈</PageTitle>
-      {cards.isSuccess && <SkippedCardsNotice />}
-      <div className="home-workspace">
-      <div className="home-workspace__content">
-      <section className="home-welcome">
-        <div className="home-welcome__copy"><span className="home-eyebrow">BUILD YOUR NEXT CHAPTER</span><h2>GitHub 활동을<br />나만의 경험으로</h2><p>레포를 연결하면 커밋과 PR에서<br />자소서에 쓸 경험을 찾아드려요.</p><div className="home-welcome__actions"><Link to="/repos" className="btn btn--primary"><Github size={17} /> 레포 연결하기 <ArrowRight size={16} /></Link><button type="button" className="btn btn--outline" aria-expanded={repoSearchOpen} aria-controls="home-repo-search" onClick={() => setRepoSearchOpen(v => !v)}><Search size={17} /> 레포 검색하기</button></div></div>
-        <div className="home-welcome__visual" aria-hidden="true"><div className="activity-float activity-float--commit"><GitCommitHorizontal size={20} /><span>Commit<small>쌓아온 작업 기록</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--pr"><GitPullRequest size={20} /><span>Pull Request<small>함께 해결한 문제</small></span><span className="activity-float__dot" /></div><div className="activity-float activity-float--issue"><CircleDot size={20} /><span>Experience<small>나만의 경험 카드로</small></span><Check size={17} /></div><Github className="home-welcome__github" size={52} strokeWidth={1.4} /></div>
-      </section>
-      <section className="home-overview" aria-label="취업 준비 현황">
-        <div className="overview-tile"><div className="overview-tile__label"><span>작성한 경험 카드</span><Layers size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.length : '—'}<small>개</small></strong><p>나만의 경험이 쌓이고 있어요</p></div>
-        <div className="overview-tile"><div className="overview-tile__label"><span>분석한 레포</span><FolderGit2 size={18} aria-hidden /></div><strong>{me.data?.stats.analyzedRepos ?? '—'}<small>개</small></strong><p>경험으로 연결한 작업 기록</p></div>
-        <div className="overview-tile"><div className="overview-tile__label"><span>완료한 카드</span><Check size={18} aria-hidden /></div><strong>{cards.isSuccess ? cards.data.filter(c => c.status === 'CONFIRMED').length : '—'}<small>개</small></strong><p>자소서와 면접에 꺼내 쓰세요</p></div>
-        <Link to="/match" className="overview-tile overview-tile--link"><div className="overview-tile__label"><span>매칭된 공고</span><Search size={18} aria-hidden /></div><strong>{matchedCount ?? '—'}<small>개</small></strong><p>{matchedNote}</p></Link>
-      </section>
-      <ActiveJobsList />
-      <section className="prompt" id="home-repo-search" hidden={!repoSearchOpen}>
-        {returning ? (
-          <div className="home-start__head">
-            <h2>새 경험 카드 만들기</h2>
-            <p>레포를 검색해 바로 시작하거나, 코드에 남지 않은 경험은 직접 써 보세요.</p>
-          </div>
-        ) : <h1 className="prompt__h">오늘은 어떤 경험을 정리해 볼까요?</h1>}
-        {!returning && <p className="prompt__sub">레포를 고르면 경험 카드를 만들어 드려요.</p>}
-        <div className="home-start__row">
-        <div className="prompt__card" role="search" onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget)) setSuggestionsOpen(false);
-        }}>
-          <div className="prompt__row">
-            <Search size={18} className="prompt__icon" aria-hidden />
-            <input className="prompt__input" value={rq} onChange={(e) => { setRq(e.target.value); setHi(0); setSuggestionsOpen(true); }} placeholder="레포 검색" aria-label="레포 검색"
-              role="combobox" aria-autocomplete="list" aria-expanded={showSuggestions} aria-controls={suggestionId}
-              aria-activedescendant={showSuggestions && sugg.length ? optionId(activeIndex) : undefined}
-              onFocus={() => setSuggestionsOpen(true)}
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
-                if (e.key === 'Escape') { e.preventDefault(); setSuggestionsOpen(false); }
-                if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && sugg.length) {
-                  e.preventDefault(); setSuggestionsOpen(true);
-                  setHi(e.key === 'ArrowDown' ? Math.min(activeIndex + 1, sugg.length - 1) : Math.max(activeIndex - 1, 0));
-                }
-                if (e.key === 'Enter') { e.preventDefault(); void go(); }
-              }} />
-            <button type="button" className="prompt__go" onClick={() => void go()} aria-label="이 레포로 시작" disabled={!sugg.length}><ArrowUp size={18} /></button>
-          </div>
-          {showSuggestions && (
-            <div className="prompt__list">
-              {sugg.length === 0 && <p className="prompt__none" role="status">{repos.isPending ? '레포를 불러오는 중이에요' : repos.isError ? '레포를 불러오지 못했어요' : '그런 이름의 레포가 없어요'}</p>}
-              <ul id={suggestionId} className="prompt__sugg" role="listbox" aria-label="레포 제안">
-                {sugg.map((r, i) => (
-                  <li key={r.id} role="presentation">
-                    <button id={optionId(i)} type="button" role="option" tabIndex={-1} aria-selected={i === activeIndex}
-                      onMouseEnter={() => setHi(i)} onPointerDown={(e) => e.preventDefault()} onClick={() => go(r.id)}>
-                      <FolderGit2 size={15} className="prompt__sugg-icon" />
-                      <span className="prompt__sugg-name">{r.owner} / {r.name}</span>
-                      <span className="prompt__sugg-meta">{isCounting(r) ? `개수 ${COUNTING}` : `내 커밋 ${r.contribution.mine} / 팀 ${r.contribution.team}`}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+    <main className="main home3">
+      <div className="home3-page">
+        {/* 카드와 레포가 같은 이유로 함께 실패하면 같은 안내가 두 번 나오지 않게 하나로 합친다(#520 G-08) */}
+        {cards.isError && <QueryFailure error={cards.error} retry={() => sameFailure ? Promise.all([cards.refetch(), repos.refetch()]) : cards.refetch()} pending={cards.isFetching || (sameFailure && repos.isFetching)} />}
+        {repos.isError && !sameFailure && <QueryFailure error={repos.error} retry={() => repos.refetch()} pending={repos.isFetching} />}
+        {matching && overall.isError && !items.length && <QueryFailure error={overall.error} retry={() => overall.refetch()} pending={overall.isFetching} />}
+        {cards.isSuccess && <SkippedCardsNotice />}
+        <HomeHero />
+        <header className="home3-hd">
+          {loading ? (
+            <div>
+              <h1 className="sr-only">지원할 곳</h1>
+              <div className="home3-sk home3-pulse" style={{ width: 96, height: 12, marginBottom: 12 }} />
+              <div className="home3-sk home3-pulse" style={{ width: 160, height: 32 }} />
+              <div className="home3-sk home3-pulse" style={{ width: 280, maxWidth: '70vw', height: 14, marginTop: 12 }} />
+            </div>
+          ) : (
+            <div>
+              <p className="home3-date">{todayLabel()}</p>
+              <div className="page-title"><h1>지원할 곳{items.length > 0 && <span className="home3-n home3-tnum" aria-hidden>{items.length}</span>}</h1></div>
+              <p className="home3-lede">
+                {newCount > 0 && <><b>새 공고 {newCount}곳</b> · </>}
+                {items.length === 0 ? '아직 모인 공고가 없어요' : items.length === 1 ? '내 카드와 맞는 공고를 모았어요' : '내 카드와 맞는 공고를 마감이 가까운 순서로 모았어요'}
+              </p>
             </div>
           )}
-        </div>
-        <div className="prompt__chips">
-          <Link to="/repos" className="btn btn--outline"><FolderGit2 size={14} /> 모든 레포 보기</Link>
-          <Link to="/cards/new" className="btn btn--outline"><PenLine size={14} /> 직접 작성</Link>
-        </div>
-        </div>
-      </section>
-
-      <div className="home-lower">
-      <aside className="home-insights">
-      <HomeActivity key={me.data?.id} userId={me.data?.id} />
-      {drafts.length > 0 && (
-        <section className="stack home-resume" style={{ gap: 16 }}>
-          <SectionHead label="진행 중인 작업" count={drafts.length} />
-          <div className="resume">
-            {drafts.map((c) => (
-              <Link key={c.id} to={`/cards/${c.id}`} className="resume__item">
-                <KindIcon kind={c.kind} size={30} />
-                <div className="stack grow" style={{ gap: 3, minWidth: 0 }}>
-                  <span className="resume__title">{c.title}</span>
-                  <span className="t-12 c-2">{needsReviewOf(c).length ? '확인 필요' : filledOf(c).length < 4 ? `빈 칸 ${4 - filledOf(c).length}개` : '확정 대기'}</span>
-                </div>
-                <StarDots filled={filledOf(c)} low={needsReviewOf(c)} />
-                <ArrowRight size={16} className="c-3" />
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-      </aside>
-      </div>
-      </div>
-      <aside className="home-workspace__calendar" aria-label="공고 일정">{me.data && <JobCalendar key={me.data.id} userId={me.data.id} postings={recommendedPostings} postingsLoading={matchSupported() && overall.isPending} postingsError={overall.isError} onRetryPostings={() => void overall.refetch()} />}<HomeRecommendations /></aside>
+          {!loading && items.length > 0 && <Link to="/match" className="home3-all">모두 보기<ChevronRight size={18} aria-hidden /></Link>}
+        </header>
+        {loading ? <HomeSkeleton />
+          : items.length > 0 ? <ApplyPanel items={items} />
+          : !unknown && setup && <SetupSteps view={setup} matching={matching} onRetry={() => startOverall.mutate()} retrying={startOverall.isPending} />}
+        <RepoUpdateNotice updates={repoUpdates.data ?? []} onSeen={markSeen} />
       </div>
     </main>
   );
 }
 
-export function SourceRow({ icon, title, desc, onClick }: { icon: typeof FolderGit2; title: string; desc: string; onClick: () => void }) {
-  return (
-    <button type="button" className="source" onClick={onClick}>
-      <IconBox icon={icon} size={44} />
-      <div className="stack" style={{ gap: 4, minWidth: 0 }}>
-        <span className="source__t">{title}</span>
-        <span className="source__d">{desc}</span>
-      </div>
-      <ChevronRight size={18} className="source__chev" />
-    </button>
-  );
-}
-
-/** 서버가 현재 버전 기준으로 판정한 칸 상태를 그대로 쓴다. 추정하지 않는다. */
-const STAR_KEYS: StarField[] = ['S', 'T', 'A', 'R'];
-export const filledOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] !== 'EMPTY');
-export const needsReviewOf = (c: CardSummary): StarField[] => STAR_KEYS.filter((f) => c.star[f] === 'NEEDS_REVIEW');
-
-export function CardGridItem({ c, cardOrder }: { c: CardSummary; cardOrder?: string[] }) {
+export function CardGridItem({ c, cardOrder, just }: { c: CardSummary; cardOrder?: string[]; just?: boolean }) {
   const experience = c.kind === 'QUALITATIVE';
   const origin = experience ? c.activity?.name ?? cardKindLabel.QUALITATIVE : summarySource(c) ?? cardKindLabel.TECH;
   const sub = summaryDetail(c);
   return (
-    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : 'gcard--confirmed'}${experience ? ' gcard--experience' : ''}`}>
+    <div className="experience-item-shell"><Link to={`/cards/${c.id}`} state={cardOrder ? { cardOrder } : undefined} className={`card gcard experience-item ${c.status === 'DRAFT' ? 'gcard--draft' : 'gcard--confirmed'}${experience ? ' gcard--experience' : ''}${just ? ' experience-item--just' : ''}`}>
+      {just && <span className="sr-only">방금 확정한 카드</span>}
       <div className="experience-item__meta">
         <KindIcon kind={c.kind} size={24} />
         <span>{[origin, c.period && periodLabel(c.period)].filter(Boolean).join(' · ')}</span>

@@ -4,6 +4,7 @@ import com.gitory.backend.audit.domain.AuditAction;
 import com.gitory.backend.audit.domain.AuditLog;
 import com.gitory.backend.job.infra.AnalysisJobRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ public class JobCancelService {
     private final AnalysisJobRepository jobs;
     private final AuditLog auditLog;
     private final JobViewFactory views;
+    private final ApplicationEventPublisher events;
 
     @Transactional
     public JobView cancel(UUID publicId, Long userId, String login) {
@@ -25,6 +27,7 @@ public class JobCancelService {
                 .orElseThrow(() -> notFound(publicId, userId));
         job.cancel();
         jobs.flush();
+        events.publishEvent(new JobEnded(job.getId()));
 
         return views.of(job, login);
 

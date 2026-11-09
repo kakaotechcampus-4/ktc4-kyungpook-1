@@ -213,20 +213,22 @@ describe('AI 가 끝낸 이유', () => {
     expect(screen.queryByText('지난 이유')).not.toBeInTheDocument();
   });
 
-  it('확정된 카드의 확정 안내도 낭독 영역 안에 있고, 끝낸 이유가 있을 때만 AI 판단을 붙인다', () => {
+  it('처음부터 확정이던 카드도 이어서 묻기를 보이고, 끝낸 이유가 있을 때만 끝난 알림과 AI 판단을 붙인다', () => {
     const turns = [answered(aiTurn('T', 1, null, { askedBy: 'USER_REQUEST' }))];
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue(turns);
     const confirmedCard = { ...card, status: 'CONFIRMED', confirmedAt: '2026-11-01T00:00:00Z' } as Card;
     mount(turns, { card: { ...confirmedCard, interviewEndReason: null } });
-    expect(liveRegions()[0]).toContainElement(screen.getByText('경험 카드가 확정됐어요'));
-    expect(screen.queryByText('AI 판단')).not.toBeInTheDocument(); // 답으로 확정된 카드는 AI 가 끝낸 것이 아니다
+    expect(screen.getByText('이어서 물을까요?')).toBeInTheDocument();
+    expect(screen.queryByText('카드를 확정했어요')).not.toBeInTheDocument(); // 이 화면에서 확정한 것이 아니라서 확정 안내는 없다
+    expect(screen.queryByText('AI 판단')).not.toBeInTheDocument();
     cleanup();
 
     mount(turns, { card: { ...confirmedCard, interviewEndReason: '네 칸이 모두 채워져서 질문을 마칠게요' } });
     expect(liveRegions()[0]).toContainElement(screen.getByText('네 칸이 모두 채워져서 질문을 마칠게요'));
     expect(screen.getByText('AI 판단')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 보기' })).toBeInTheDocument();
-    expect(screen.queryByText('추가 질문을 마쳤어요')).not.toBeInTheDocument();
+    expect(screen.getByText('추가 질문을 마쳤어요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '카드로 돌아가기' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '직접 수정하기' })).not.toBeInTheDocument();
   });
 });
 

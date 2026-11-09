@@ -92,6 +92,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.params.provider.Arguments.argumentSet;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -109,7 +110,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
         ActivityStoreService.class, GroupingMaterialService.class, CandidateStoreService.class,
         StoredActivityService.class, UserLoginService.class, JobViewFactory.class, JobActivityLog.class, CardDraftLiveLog.class, CandidateEmptyReasons.class,
         CollectionStatsService.class, GeneratedCardQueryService.class, CandidateDraftSourceService.class,
-        CommitSummaryService.class, RepositoryReadmeService.class, RepoSummaryFiller.class})
+        CommitSummaryService.class, RepositoryReadmeService.class, RepoSummaryFiller.class, JobFailureAlert.class})
 @EnableConfigurationProperties(AiClientProperties.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @ExtendWith(OutputCaptureExtension.class)
@@ -158,6 +159,9 @@ class CardDraftRunnerTest {
 
     @MockitoBean
     CardThemePort themes;
+
+    @MockitoBean
+    JobAlertSender alerts;
 
     private TestFixtures fixtures;
     private CandidateCardFixtures cardFixtures;
@@ -363,6 +367,29 @@ class CardDraftRunnerTest {
                 SELECT count(*) FROM repo_recommendation
                 WHERE user_repository_id = ? AND status = 'COMPUTING' AND stale_since <= now() - interval '50 seconds'
                 """, Integer.class, userRepositoryId)).isEqualTo(1);
+
+    }
+
+    @Test
+    @DisplayName("스스로 다시 읽기가 만든 카드 초안 Job 이 끝날 때는 레포 추천을 바로 다시 계산하게 표시하지 않는다")
+    void doesNotRequestRepoRecommendationForSelfRefreshDraft() {
+
+        Long candidateId = cardFixtures.insertCandidate(userRepositoryId, "MANUAL", null, "MANUAL", "후보", "USED");
+        cardFixtures.insertCandidateCommit(candidateId, commit(SHA_A, 10, 0), false);
+        cardFixtures.insertCandidateCard(userId, userRepositoryId, candidateId, jobId, false);
+        Long analysisJobId = jdbc.queryForObject(
+                "INSERT INTO analysis_job (user_id, user_repository_id, idempotency_key, type, state) VALUES (?, ?, ?, 'ANALYZE', 'SUCCEEDED') RETURNING id",
+                Long.class, userId, userRepositoryId, UUID.randomUUID().toString());
+        jdbc.update("""
+                INSERT INTO repo_refresh (user_id, user_repository_id, analysis_job_id, draft_job_id,
+                    previous_analyzed_at, card_count, state, created_at)
+                VALUES (?, ?, ?, ?, now(), 1, 'DRAFTING', now())
+                """, userId, userRepositoryId, analysisJobId, job().getId());
+
+        runNext();
+
+        assertThat(job().getState()).isEqualTo(JobState.SUCCEEDED);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM repo_recommendation", Integer.class)).isZero();
 
     }
 
@@ -769,12 +796,16 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("AI 초안의 네 칸이 확인 필요 없이 모두 차면 사용자가 확정을 누르지 않아도 카드를 확정한다")
-    void completeDraftConfirmsCard() {
+    @DisplayName("AI 초안의 상황·행동이 확인 필요 없이 차 있으면 과제·결과가 비어 있어도 사용자가 확정을 누르지 않아도 카드를 확정한다")
+    void draftWithSituationAndActionConfirmsCard() {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
         given(activities.diffEvidence(any())).willReturn(evidenceOf(SHA_A));
-        given(star.draft(any(), any())).willReturn(allSlots(SHA_A));
+        given(star.draft(any(), any())).willReturn(draftOf(Map.of(
+                StarSlot.S, filled(SHA_A, "상황", StarConfidence.HIGH),
+                StarSlot.T, empty(StarEmptyReason.NO_EVIDENCE),
+                StarSlot.A, filled(SHA_A, "행동", StarConfidence.HIGH),
+                StarSlot.R, empty(StarEmptyReason.NO_EVIDENCE))));
 
         runNext();
 
@@ -784,7 +815,7 @@ class CardDraftRunnerTest {
     }
 
     @Test
-    @DisplayName("시간이 모자라 비운 칸이 있으면 카드를 일부만 만든 카드로 표시하고 Job 은 시간 초과 부분 완료다")
+    @DisplayName("시간이 모자라 비운 칸이 있으면 카드를 일부만 만든 카드로 표시해 확정하지 않고 Job 은 시간 초과 부분 완료다")
     void timeoutMarksCardPartial() {
 
         Long cardId = cardWithCommits(commit(SHA_A, 10, 0));
@@ -799,6 +830,7 @@ class CardDraftRunnerTest {
 
         assertThat(generationPartialOf(cardId)).isTrue();
         assertThat(notesOf(cardId)).containsExactly(new NoteRow("R", "TIMEOUT", null));
+        assertThat(statusOf(cardId)).isEqualTo("DRAFT");
         assertThat(job().isPartial()).isTrue();
         assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.DRAFT_TIMEOUT);
 
@@ -845,6 +877,22 @@ class CardDraftRunnerTest {
         assertThat(generationFailureOf(second)).isEqualTo("AI_UNAVAILABLE");
         assertThat(job().getState()).isEqualTo(JobState.FAILED);
         assertThat(job().getErrorCode()).isEqualTo(JobErrorCode.AI_UNAVAILABLE);
+
+    }
+
+    @Test
+    @DisplayName("모든 카드의 AI 가 실패해 실패로 끝난 카드 초안 Job 도 한 번 알린다")
+    void alertsOnceWhenEveryCardFails() {
+
+        cardWithCommits(commit(SHA_A, 10, 0));
+        cardWithCommits(commit(SHA_B, 10, 0));
+        given(activities.diffEvidence(any())).willAnswer(invocation -> evidenceOf(SHA_A, SHA_B));
+        given(star.draft(any(), any())).willThrow(new AgentUnavailableException("AI STAR 초안 실패", true, false, null));
+
+        runNext();
+
+        String draftJob = "카드 초안 Job " + job().getId() + " ";
+        verify(alerts, times(1)).send(argThat(text -> text.contains(draftJob) && text.contains("AI_UNAVAILABLE")));
 
     }
 

@@ -7,12 +7,14 @@ import { endpoints } from '@/api/endpoints';
 import { keys } from '@/api/keys';
 import { Card, ConfirmResult } from '@/api/schemas';
 import { CardPage } from '@/features/cards/CardPage';
+import { RepoFolderPage } from '@/features/cards/FolderPage';
 import { MatchDetailPage } from '@/features/match/MatchDetailPage';
 import { MatchListPage } from '@/features/match/MatchListPage';
 import { track } from '@/lib/track';
 import { handle } from '@/mock/router';
 import { cardKindLabel } from '@/lib/labels';
-import { resetDb } from '@/mock/store';
+import { db, resetDb } from '@/mock/store';
+import { connectMockServer } from './profileHarness';
 import sampleList from '../../docs/examples/matching/list.json';
 import sampleDetail from '../../docs/examples/matching/detail.json';
 
@@ -20,7 +22,7 @@ vi.mock('@/lib/track', () => ({ track: vi.fn() }));
 vi.mock('@/lib/jobWatcher', () => ({ releaseJobToast: vi.fn(), suppressJobToast: vi.fn() }));
 
 beforeEach(resetDb);
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.mocked(track).mockClear(); vi.unstubAllEnvs(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.mocked(track).mockClear(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 function mount(path: string, seed?: (client: QueryClient) => void) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -28,6 +30,7 @@ function mount(path: string, seed?: (client: QueryClient) => void) {
   const router = createMemoryRouter([
     { path: '/match', element: <MatchListPage /> },
     { path: '/match/:matchId', element: <MatchDetailPage /> },
+    { path: '/cards/repo/:repoId', element: <RepoFolderPage /> },
     { path: '/cards/:cardId', element: <CardPage /> },
   ], { initialEntries: [path] });
   render(<QueryClientProvider client={client}><RouterProvider router={router} /></QueryClientProvider>);
@@ -65,26 +68,33 @@ it('shows each evidence card kind on the match detail', async () => {
   expect(within(link).getByText(cardKindLabel[firstMet.cardKind])).toBeInTheDocument();
 });
 
+/** 확정 창에서 확정하면 카드의 폴더로 간다. 폴더의 다른 카드는 이미 확정이라 이 카드가 마지막 초안이다 */
 async function confirmCard() {
   const card = Card.parse(handle('GET', '/cards/card_01', new URLSearchParams(), {}, true).data);
   const result = ConfirmResult.parse(handle('POST', '/cards/card_01/confirm', new URLSearchParams(), { edited: false, maskedFields: [] }, true).data);
+  db.cards.forEach((stored) => { if (stored.repo?.id === 'r_auth') stored.status = 'CONFIRMED'; });
+  connectMockServer();
   vi.spyOn(endpoints, 'confirm').mockResolvedValue(result);
   const detail = vi.spyOn(endpoints, 'card').mockResolvedValue(card);
   mount(`/cards/${card.id}?confirm=1`, (client) => client.setQueryData(keys.card(card.id), card));
   detail.mockResolvedValue({ ...card, status: 'CONFIRMED', confirmedAt: '2026-10-25T00:00:00Z' });
   fireEvent.click(await screen.findByRole('button', { name: '확정하기' }));
-  // 확정 직후 배너가 떠야 다음 행동을 고를 수 있다
-  await waitFor(() => expect(document.querySelector('.done-card')).not.toBeNull());
+  return screen.findByLabelText('다음에 할 일');
 }
 
-it('offers matching postings right after confirming when matching is on', async () => {
+it('offers matching postings in the folder right after confirming when matching is on', async () => {
   vi.stubEnv('VITE_API_MOCK', 'false'); vi.stubEnv('VITE_MATCH_ENABLED', 'true');
-  await confirmCard();
-  expect(screen.getByRole('link', { name: '이 경험과 맞는 공고 보기' })).toHaveAttribute('href', '/match');
+  const next = await confirmCard();
+  // 확정 직후 주 버튼은 공고 보기 하나, 자소서 쓰기는 보조 버튼
+  expect(within(next).getByRole('link', { name: '맞는 공고 보기' })).toHaveAttribute('href', '/match');
+  expect(within(next).getByRole('link', { name: '맞는 공고 보기' })).toHaveClass('btn--primary');
+  expect(within(next).getByRole('link', { name: '자소서 쓰기' })).toHaveAttribute('href', '/cover-letters/new');
+  expect(within(next).getByRole('link', { name: '자소서 쓰기' })).toHaveClass('btn--text');
 });
 
-it('does not offer matching postings after confirming when matching is off', async () => {
+it('does not offer matching postings in the folder after confirming when matching is off', async () => {
   vi.stubEnv('VITE_API_MOCK', 'false'); vi.stubEnv('VITE_MATCH_ENABLED', 'false');
-  await confirmCard();
-  expect(screen.queryByRole('link', { name: '이 경험과 맞는 공고 보기' })).not.toBeInTheDocument();
+  const next = await confirmCard();
+  expect(within(next).queryByRole('link', { name: '맞는 공고 보기' })).not.toBeInTheDocument();
+  expect(within(next).getByRole('link', { name: '자소서 쓰기' })).toHaveClass('btn--primary');
 });

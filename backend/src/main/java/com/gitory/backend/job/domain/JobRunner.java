@@ -25,6 +25,7 @@ import com.gitory.backend.recommend.domain.LockedSources;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -72,6 +73,7 @@ public class JobRunner {
     private final JobActivityLog activity;
     private final RepositoryReadmeService readmes;
     private final RepoSummaryFiller summaryFiller;
+    private final ApplicationEventPublisher events;
 
     /** 꺼낸 Job 은 RUNNING 을 커밋한 뒤에 돌려주고, 꺼낼 Job 이 없으면 빈 값을 돌려준다 */
     public Optional<AnalysisJob> claimNext() {
@@ -111,6 +113,7 @@ public class JobRunner {
         log.warn("{} Job {} 을 {}{}초 동안 진행이 없어 {} 로 끝낸다",
                 kindOf(job), job.getId(), runningStepOf(job), secondsSince(job.getUpdatedAt()), errorCode);
         job.fail(errorCode);
+        events.publishEvent(JobFailed.of(job));
 
     }
 
@@ -170,6 +173,7 @@ public class JobRunner {
             log.warn("분석 Job {} 을 {} 로 끝낸다", job.getId(), errorCode, failure);
             transaction.executeWithoutResult(status -> fail(job.getId(), errorCode));
         }
+        events.publishEvent(new AnalysisFinished(job.getId()));
 
     }
 
@@ -197,6 +201,7 @@ public class JobRunner {
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() == JobState.RUNNING) {
             job.completeDraftWithoutWriting();
+            events.publishEvent(new JobEnded(jobId));
         }
 
     }
@@ -307,6 +312,7 @@ public class JobRunner {
         AnalysisJob job = jobs.findWithLockById(jobId).orElseThrow();
         if (job.getState() == JobState.RUNNING) {
             job.fail(errorCode);
+            events.publishEvent(JobFailed.of(job));
         }
 
     }

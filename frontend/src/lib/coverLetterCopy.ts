@@ -19,26 +19,6 @@ export const ITEM_LABEL: Record<MaterialItem, string> = {
   SITUATION: '상황', ACTION: '행동', RESULT: '결과', LEARNING: '배운 점', TRIGGER: '계기',
   JOB_LINK: '지원 직무와 이어지는 점', REASON: '지원 이유',
 };
-/** ④ 답 칸에 흐리게 보이는 예시 — 무엇을 쓰면 되는지만 보이고, 값으로 보내지 않는다 */
-export const ITEM_EXAMPLE: Record<MaterialItem, string> = {
-  SITUATION: '예: 배포가 늦어져 팀이 수정 사항을 몰아서 올리던 때였어요',
-  ACTION: '예: 로그를 보고 바뀐 모듈만 다시 빌드하게 설정을 고쳤어요',
-  RESULT: '예: 배포가 12분으로 줄어 하루 다섯 번 올릴 수 있게 됐어요',
-  LEARNING: '예: 느린 걸 참지 말고 어디서 시간이 드는지 먼저 재야 한다는 걸 배웠어요',
-  TRIGGER: '예: 팀 배포 담당을 맡으면서 시작했어요',
-  JOB_LINK: '예: 이 경험이 결제 시스템의 중복 처리 문제와 바로 이어져요',
-  REASON: '예: 실패해도 데이터가 어긋나지 않는 서비스를 만들고 싶어 지원했어요',
-};
-/** ① 지원 동기 메모 예시 */
-export const MEMO_EXAMPLE = '예: 매일 쓰는 서비스라 사용자가 겪는 불편을 직접 고쳐 보고 싶었어요';
-
-/** 답 하나가 초안에 보태는 글자 수 어림 — AI 가 몇 개를 물을지 셀 때 쓰는 값(cover_letter_asker.py ANSWER_CHARS)과 같게 둔다 */
-export const ANSWER_GOOD_CHARS = 100;
-/** ④ 답 칸 글자 수 옆 안내 — 저장을 막지 않는다 */
-export const answerLengthHint = (length: number) => (length >= ANSWER_GOOD_CHARS ? '충분해요' : `${ANSWER_GOOD_CHARS}자쯤 쓰면 글이 좋아져요`);
-
-/** ③ 재료 점검에 보이는 항목 — 카드와 지난 답으로 채울 수 있는 다섯 가지. 직무 연결과 지원 이유는 회사마다 달라 ④에서 묻는다 */
-export const CHECK_ITEMS: MaterialItem[] = ['SITUATION', 'ACTION', 'RESULT', 'LEARNING', 'TRIGGER'];
 
 /** ① 예시 문항 문장. 모두에게 같다(계약 표 그대로) */
 export const EXAMPLE_QUESTION: Record<QuestionTheme, string> = {
@@ -67,15 +47,6 @@ export function exampleThemes(cardThemes: readonly (readonly string[] | null | u
   return { top, more: ranked.slice(3) };
 }
 
-/** ③ 중심 카드 자리의 상태 — 카드가 있음, 지움, 고르기 실패, 맞는 카드 없음 */
-export type PrimaryState = 'picked' | 'deleted' | 'failed' | 'no-fit';
-export function primaryState(q: Pick<CoverLetterQuestion, 'primaryCard' | 'primaryCardDeleted' | 'assignedBy'>): PrimaryState {
-  if (q.primaryCard) return 'picked';
-  if (q.primaryCardDeleted) return 'deleted';
-  if (q.assignedBy === 'FAILED') return 'failed';
-  return 'no-fit';
-}
-
 /**
  * ② AI 가 한 일 — `steps.assign` 한 줄을 문장으로. 서버는 값만 주고 문장은 화면이 만든다.
  * 모르는 actor·kind 는 null(그 줄을 건너뛴다). 카드 이름이 없으면(지운 카드) 이름 없이 말한다.
@@ -101,10 +72,7 @@ export function assignLine(step: AssignStep, questions: Pick<CoverLetterQuestion
 /** 실패한 단계 이름 */
 export const FAILED_STEP_LABEL: Record<string, string> = { ASSIGN: '카드 고르기', ASK: '질문 만들기', DRAFT: '초안 쓰기' };
 
-// ───────────────────────────── ④ 질문 · ⑤ 쓰기 · ⑥ 초안 ─────────────────────────────
-
-/** 지난번 답으로 미리 채운 줄(question 이 null)의 제목 */
-export const reusedTitle = (item: MaterialItem) => `${ITEM_LABEL[item]} (지난번에 답한 내용)`;
+// ───────────────────────────── ⑤ 쓰기 · ⑥ 초안 ─────────────────────────────
 
 const quoted = (v: string | null) => (v ? `'${v}'` : null);
 /** 검사에 걸린 이유 — `marks[].code` 와 `steps.draft` 의 CHECK_FAILED 가 같은 말을 쓴다. 따옴표 값 뒤에는 받침에 따라 바뀌는 조사를 붙이지 않는다 */
@@ -170,8 +138,8 @@ export const POLISH_CATEGORY_LABEL: Record<PolishCategory, string> = {
 };
 export const POLISH_KIND_LABEL: Record<PolishKind, string> = { WEAK: '아쉬운 점', GOOD: '잘한 점' };
 
-// ───────────────────────────── ① 강점 칩(#738) ─────────────────────────────
-/** 강점 칩 — API 는 코드만 주고받고 한국어 이름은 여기에만 둔다 */
+// ───────────────────────────── 강점 코드(#738) ─────────────────────────────
+/** 서버가 받는 강점 코드 — 화면은 더 고르게 하지 않고 목 서버만 이 코드로 요청을 검사한다 */
 export const STRENGTHS: { group: string; items: { code: string; label: string }[] }[] = [
   { group: '일하는 방식', items: [
     { code: 'METICULOUS', label: '꼼꼼함' }, { code: 'PERSISTENT', label: '끈기' }, { code: 'PROACTIVE', label: '주도성' },
@@ -184,32 +152,18 @@ export const STRENGTHS: { group: string; items: { code: string; label: string }[
 ];
 export const STRENGTH_LIMIT = 3;
 
-// ───────────────────────────── 단계 표시줄 · 재료 한 줄(#745) ─────────────────────────────
-export const FLOW_STEPS = ['문항', '카드', '질문', '초안'] as const;
+// ───────────────────────────── 단계 표시줄(#745) ─────────────────────────────
+export const FLOW_STEPS = ['문항', '카드 고르기', '재료 확인', '초안'] as const;
 export type FlowStep = 1 | 2 | 3 | 4;
-/** 자소서가 흐름의 몇 번째 단계에 있는지 — 실패는 실패한 단계에 머문다. 모르는 실패 단계는 처음 AI 단계(카드)로 본다 */
+/**
+ * 자소서가 흐름의 몇 번째 단계에 있는지 — 실패는 실패한 단계에 머문다. 모르는 실패 단계는 처음 AI 단계(카드 고르기)로 본다.
+ * ASSIGNED·ASKED 는 사용자가 멈추지 않고 다음 단계의 기다림 화면을 보므로 그 단계로 센다.
+ */
 export function flowStep(stage: CoverLetterStage, failedStep: string | null): FlowStep {
   switch (stage) {
-    case 'ASKING': case 'ASKED': return 3;
-    case 'DRAFTING': case 'DRAFTED': return 4;
+    case 'ASSIGNED': case 'ASKING': return 3;
+    case 'ASKED': case 'DRAFTING': case 'DRAFTED': return 4;
     case 'FAILED': return failedStep === 'DRAFT' ? 4 : failedStep === 'ASK' ? 3 : 2;
     default: return 2;
   }
-}
-
-/** 낱말 끝 글자에 받침이 있으면 '은', 없으면 '는' */
-const topic = (word: string) => {
-  const code = word.charCodeAt(word.length - 1) - 0xac00;
-  return code >= 0 && code < 11172 && code % 28 !== 0 ? '은' : '는';
-};
-/** ③ 재료 한 줄 '재료 3/5 · 배운 점, 계기는 다음에 물어요' — 빠진 이름(missing)은 화면이 호박색으로 칠하고, rest 는 그 뒤에 붙는 말이다 */
-export function materialLine(materials: readonly MaterialItem[]): { have: number; total: number; missing: string[]; rest: string } {
-  const have = new Set(materials);
-  const missing = CHECK_ITEMS.filter((i) => !have.has(i)).map((i) => ITEM_LABEL[i]);
-  return {
-    have: CHECK_ITEMS.length - missing.length,
-    total: CHECK_ITEMS.length,
-    missing,
-    rest: missing.length ? `${topic(missing[missing.length - 1])} 다음에 물어요` : '다 있어요',
-  };
 }

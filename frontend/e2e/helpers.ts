@@ -18,11 +18,6 @@ const SEED = (login: boolean) => {
 };
 
 /** 데모 모드 로그인 — 실서버에서는 Spring 이 OAuth 콜백에서 세션 쿠키를 세우는 자리. */
-/** 홈의 레포 검색칸은 '레포 검색하기' 를 눌러야 열린다 */
-export async function openRepoSearch(page: Page) {
-  await page.getByRole('button', { name: '레포 검색하기', exact: true }).click();
-}
-
 export async function loginAsDemo(page: Page) {
   await page.addInitScript(SEED, true);
 }
@@ -40,4 +35,14 @@ export async function showCardTiles(page: Page) {
   const recent = page.getByRole('radio', { name: '최근순', exact: true });
   await recent.click();
   await expect(recent).toHaveAttribute('aria-checked', 'true');
+}
+
+/**
+ * 문항만 적은 자소서가 카드 고르기, 재료 확인, 초안 쓰기를 스스로 이어 가는 동안 목 서버의 가짜 시계를 흘려 보낸다.
+ * 단계마다 화면이 다음 요청을 보내야 이어지므로 한 번에 넘기지 않고 5초씩 나눠 흘리며, 그 사이에 화면이 따라올 틈을 준다.
+ */
+export async function runToDraft(page: Page) {
+  const done = page.getByText('초안이 나왔어요');
+  for (let i = 0; i < 16 && !(await done.isVisible()); i += 1) await page.clock.runFor(5_000);
+  await expect(done).toBeVisible();
 }

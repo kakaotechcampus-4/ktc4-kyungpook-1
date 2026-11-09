@@ -42,9 +42,15 @@ export type CardFolder = {
 
 export const folderPath = {
   repo: (repoId: string) => `/cards/repo/${encodeURIComponent(repoId)}`,
+  /** 그 레포의 카드로 맞는 기업을 고르는 화면 */
+  repoMatch: (repoId: string) => `/cards/repo/${encodeURIComponent(repoId)}/match`,
   activity: (activityId: string) => `/cards/activity/${encodeURIComponent(activityId)}`,
   direct: '/cards/direct',
 } as const;
+
+/** 카드가 들어 있는 폴더 화면 주소이고, 레포 · 활동 · 직접 쓴 카드 순서는 buildFolders 와 같아야 한다 */
+export const cardFolderPath = (card: { repo?: { id: string } | null; activity?: { id: string } | null }): string =>
+  card.repo ? folderPath.repo(card.repo.id) : card.activity ? folderPath.activity(card.activity.id) : folderPath.direct;
 
 const byRecent = (a: CardSummary, b: CardSummary) => b.updatedAt.localeCompare(a.updatedAt);
 
@@ -112,6 +118,9 @@ export function folderCounts(folder: Pick<CardFolder, 'cards' | 'techCount' | 'e
   return folder.techCount > 0 && folder.experienceCount > 0 ? `기술 ${folder.techCount} · 경험 ${folder.experienceCount}` : null;
 }
 
+/** 폴더에서 아직 확정하지 않은(확인할) 카드 수 */
+export const reviewCount = (folder: Pick<CardFolder, 'cards'>) => folder.cards.filter((card) => card.status === 'DRAFT').length;
+
 /** 폴더의 화면용 이름. 이름 없는 활동(모르는 값)이 빈 글로 보이지 않게 한다 */
 export const folderTitle = (folder: Pick<CardFolder, 'kind' | 'name'>) => folder.name || (folder.kind === 'activity' ? '이름 없는 활동' : '이름 없는 폴더');
 
@@ -123,6 +132,8 @@ export const folderOwnerLine = (folder: Pick<CardFolder, 'owner'>) => folder.own
 export function folderLabel(folder: CardFolder): string {
   const kind = folder.kind === 'repo' ? '레포 ' : '';
   const parts = [`${kind}${folderOwnerLine(folder)}`, folderTitle(folder), `카드 ${folder.cards.length}장`];
+  const review = reviewCount(folder);
+  if (review) parts.push(`확인할 카드 ${review}장`);
   if (folder.description) parts.push(folder.description);
   const counts = folderCounts(folder);
   if (counts) parts.push(counts);

@@ -313,7 +313,8 @@ public class CoverLetterService {
     private static void checkInput(String jobRole, String memo, List<NewQuestion> newQuestions) {
 
         requireText(jobRole, "지원 직무 칸", JOB_ROLE_MAX_LENGTH);
-        String memoProblem = ReasonCheck.problem(memo);
+        // 지원 이유는 선택이라 비어 있으면 검사하지 않으며, 필요한 문항은 초안의 빈칸과 대화가 묻는다
+        String memoProblem = memo == null || memo.isBlank() ? null : ReasonCheck.problem(memo);
         if (memoProblem != null) {
             throw new InvalidCoverLetterInputException(memoProblem);
         }

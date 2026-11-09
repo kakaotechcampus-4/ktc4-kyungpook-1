@@ -1,6 +1,6 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useActiveJobs, useJob, useMe, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
+import { useActiveJobs, useCandidates, useCards, useCreateCards, useJob, useMe, useRepo, useStartAnalysis, useCancelJob } from '@/api/queries';
 import { isGithubUnauthorized, reconnectGithub, reconnectGithubTo } from '@/lib/githubReconnect';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { Badge, Breadcrumb, Button, PageTitle, RepoContext, Skeleton } from '@/components/ui';
@@ -13,10 +13,16 @@ import { jobErrorHint, jobErrorTitle, jobStepLabel, jobStepUnit } from '@/lib/la
 import { isTerminal, type Job, type JobStep } from '@/api/schemas';
 import { releaseJobToast, suppressJobToast } from '@/lib/jobWatcher';
 import { timelineView, type TimelineView } from '@/lib/jobView';
+import { afterAnalysis } from '@/lib/autoDraft';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { jobRetryState, useJobRetry, requiresRetryRefresh } from '@/lib/useJobRetry';
 import './AnalyzePage.css';
+
+/** 다 읽은 모습을 보고 나서 넘어가도록 잠깐 머무는 시간 */
+const FINISHED_VIEW_MS = 600;
+/** 끝난 지 이보다 오래된 정리를 다시 열면(알림 링크·뒤로 가기) 카드를 만들지 않는다 — 일부러 비워 둔 레포에 고르지 않은 카드가 생기지 않게 */
+const AUTO_DRAFT_WITHIN_MS = 10 * 60_000;
 
 /** B3 분석 진행 · B4 수집 실패 · B5 부분 결과(SUCCEEDED + partial) — 셋 다 같은 타임라인 위에 어디까지 왔는지 그린다(#789) */
 export function AnalyzePage() {
@@ -41,6 +47,8 @@ export function AnalyzePage() {
     : `${subject}정리 중`);
   const { waitSec, canRetry } = useJobRetry(j);
   const feed = useActivityFeed(j);
+  const autoCards = j?.state === 'SUCCEEDED' && !j.partial;
+  const [plan, setPlan] = useState<'draft' | 'folder' | null>(null);
 
   // 새로고침으로 ?job= 을 잃어도 서버가 진행 중인 작업을 안다 — 그걸 다시 붙인다
   useEffect(() => {
@@ -56,17 +64,11 @@ export function AnalyzePage() {
     return () => releaseJobToast(jobId);
   }, [jobId]);
 
-  // 다 읽었고 부분도 아니면 후보 보드로. 후보 0개(verdict EMPTY)도 보드가 판정을 보여준다.
-  // AI 가 고른 이유가 아직 차례로 나오는 중이면 다 보여 준 뒤에 넘어간다
+  // 다 읽은 정리가 갈 곳은 AutoDraft 가 정한다
   useEffect(() => {
     if (!j || !jobId || !isTerminal(j.state)) return;
-    if (j.state === 'SUCCEEDED' && !j.partial) {
-      if (!feed.drained) return;
-      const t = setTimeout(() => nav(`/repos/${repoId}/candidates`, { replace: true }), 600);
-      return () => clearTimeout(t);
-    }
     if (j.state === 'CANCELED') nav('/repos', { replace: true });
-  }, [j, jobId, nav, repoId, feed.drained]);
+  }, [j, jobId, nav]);
 
 
   const name = repo.data ? `${repo.data.owner} / ${repo.data.name}` : '…';
@@ -228,26 +230,79 @@ export function AnalyzePage() {
           <Timeline job={j} lines={feed.lines} />
         </>
       )}
+      {autoCards && feed.drained && <AutoDraft key={`${repoId}:${jobId}`} repoId={repoId} finishedAt={j.finishedAt} onPlan={setPlan} />}
       <div className="run-foot">
-        {finished ? (
+        {autoCards ? (
           <>
-            <span>고른 이유를 다 보여 드리면 후보 보드로 가요</span>
-            <div className="run-foot__right">
-              <Link to={`/repos/${repoId}/candidates`} replace className="btn btn--primary">후보 보드로 바로 가기</Link>
-            </div>
+            <span>{plan === 'draft' ? '카드를 쓰기 시작했어요' : plan === 'folder' ? '만들어 둔 카드가 있어서 카드 폴더로 가요' : '추천 경험으로 카드까지 이어서 써요'}</span>
+            {!plan && (
+              <div className="run-foot__right">
+                <Link to={`/repos/${repoId}/candidates`} replace className="btn btn--outline">후보 직접 고르기</Link>
+              </div>
+            )}
           </>
         ) : (
           <>
             <span>끝나면 알려 드릴게요</span>
             <div className="run-foot__right">
-              <Link to="/" className="btn btn--outline">다른 일 하러 가기</Link>
-              <Button variant="ghost" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>
+              {/* 기다리는 동안 보통 누를 것은 다른 일 하러 가기(주 버튼). 되돌릴 수 없는 취소는 위험 버튼으로 낮춰 왼쪽에 둔다 */}
+              <Button variant="danger" loading={cancel.isPending} onClick={() => jobId && cancel.mutate(jobId)}>정리 취소</Button>
+              <Link to="/" className="btn btn--primary">다른 일 하러 가기</Link>
             </div>
           </>
         )}
       </div>
     </main>
   );
+}
+
+/**
+ * 다 읽은 정리가 끝나면 이 레포의 추천 후보로 카드 초안을 만들고 쓰는 화면으로 보낸다 — 후보 보드에서 고르고 누르는 단계를 없앤다.
+ * 카드가 이미 있으면 만들지 않고 카드 폴더로 보내고, 만들 후보가 없거나 읽기가 실패하면 후보 보드로 보낸다.
+ * 만들기가 실패해도 다시 시도하지 않고 후보 보드로 보낸다(실패 알림은 공통 오류 알림이 띄운다)
+ */
+function AutoDraft({ repoId, finishedAt, onPlan }: { repoId: string; finishedAt: string | null; onPlan: (plan: 'draft' | 'folder') => void }) {
+  const nav = useNavigate();
+  const board = useCandidates(repoId);
+  const cards = useCards();
+  const create = useCreateCards(repoId);
+  const started = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    const toBoard = () => nav(`/repos/${repoId}/candidates`, { replace: true });
+    const lingered = new Promise<void>((done) => setTimeout(done, FINISHED_VIEW_MS));
+    void (async () => {
+      // 보드나 카드 목록을 본 적이 있으면 캐시에 정리 전 모습이 남아 있다 — 끝난 지금 다시 읽고, 마운트가 이미 읽는 중이면 그 읽기에 붙는다
+      const [read, list] = await Promise.all([board.refetch({ cancelRefetch: false }), cards.refetch({ cancelRefetch: false })]);
+      const next = read.isError || list.isError ? { kind: 'board' as const } : afterAnalysis({ candidates: read.data?.candidates ?? [], cards: list.data ?? [], repoId });
+      const recent = finishedAt !== null && Date.now() - Date.parse(finishedAt) < AUTO_DRAFT_WITHIN_MS;
+      if (next.kind !== 'draft' || !recent) {
+        if (next.kind === 'folder' && mounted.current) onPlan('folder');
+        await lingered;
+        if (!mounted.current) return;
+        if (next.kind === 'folder') nav(`/cards/repo/${encodeURIComponent(repoId)}`, { replace: true });
+        else toBoard();
+        return;
+      }
+      const picks = next.ids;
+      if (!mounted.current) return;
+      onPlan('draft');
+      const made = await create.mutateAsync(picks).catch(() => null);
+      if (!mounted.current) return;
+      if (!made) {
+        toBoard();
+        return;
+      }
+      // 후보 보드에서 고른 것과 같은 지표로 남기되, 화면이 대신 고른 것임을 표시한다
+      track('candidates_confirmed', { repoId, count: picks.length, jobId: made.jobId, auto: true });
+      nav(`/cards/${encodeURIComponent(made.cardIds[0])}`, { replace: true, state: { cardOrder: made.cardIds } });
+    })();
+  }, []);
+  return null;
 }
 
 /** 제목 아래 한 줄 — 레포 이름 뒤에 경과(진행 중) 또는 걸린 시간(끝난 뒤)이 붙는다 */

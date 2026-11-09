@@ -31,15 +31,15 @@ for (const width of [1440, 390]) for (const theme of ['light', 'dark'] as const)
   });
 }
 
-test('다 읽으면 네 점이 모두 검정이 되고 고른 이유가 메모로 남은 뒤 후보 보드로 간다', async ({ page }) => {
+test('다 읽으면 네 점이 모두 검정이 되고 고른 이유가 메모로 남은 뒤 카드 폴더로 간다', async ({ page }) => {
   await loginAsDemo(page);
   await startAnalysis(page, 'r_auth');
   await expect(page.getByRole('heading', { name: '레포를 다 읽었어요' })).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('.tl__item--done')).toHaveCount(4);
   await expect(page.locator('.tl-note').first()).toBeVisible();
-  await expect(page.getByRole('link', { name: '후보 보드로 바로 가기' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '후보 직접 고르기' })).toBeVisible(); // 카드까지 이어 쓰는 흐름의 링크다 — r_auth 는 카드가 이미 있어 카드 폴더로 간다
   await page.screenshot({ path: `${SHOTS}/finished-1440-light.png`, fullPage: true, animations: 'disabled' });
-  await expect(page).toHaveURL(/\/repos\/r_auth\/candidates/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/cards\/repo\/r_auth/, { timeout: 30_000 });
 });
 
 test('읽다가 멈추면 같은 타임라인에서 읽던 단계가 빨간 점이 되고 할 수 있는 일이 아래에 남는다', async ({ page }) => {

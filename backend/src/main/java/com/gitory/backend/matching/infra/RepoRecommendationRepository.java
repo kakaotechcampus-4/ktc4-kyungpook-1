@@ -44,6 +44,15 @@ public interface RepoRecommendationRepository extends JpaRepository<RepoRecommen
             """, nativeQuery = true)
     void markStaleOfUser(@Param("userId") Long userId, @Param("staleSince") Instant staleSince);
 
+    // 서버가 계산하다 꺼지면 COMPUTING 인데 표시가 없는 줄이 남아 카드가 바뀔 때까지 계산되지 않으므로 표시를 다시 남긴다
+    @Transactional
+    @Modifying
+    @Query(value = """
+            UPDATE repo_recommendation SET stale_since = :staleSince
+            WHERE status = 'COMPUTING' AND stale_since IS NULL
+            """, nativeQuery = true)
+    int markStaleOfInterrupted(@Param("staleSince") Instant staleSince);
+
     // 표시를 지운 쪽만 계산해, 같은 레포를 두 번 계산하지 않는다
     @Transactional
     @Modifying

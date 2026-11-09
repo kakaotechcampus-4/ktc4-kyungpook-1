@@ -147,7 +147,7 @@ class GeneratingCardInterviewApiTest {
     }
 
     @Test
-    @DisplayName("초안을 만드는 중인 카드는 확정돼 있어도 CARD_CONFIRMED 가 아니라 INVALID_STATE 이다")
+    @DisplayName("초안을 만드는 중인 카드는 확정돼 있어도 INVALID_STATE 이다")
     void generatingBeatsConfirmedCard() throws Exception {
 
         Long cardId = generatingCard("RUNNING");

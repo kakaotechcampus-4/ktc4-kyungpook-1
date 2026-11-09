@@ -44,14 +44,14 @@ public class CoverLetterController {
 
     @PostMapping("/api/cover-letters")
     @Operation(summary = "자소서 만들기", description = """
-            직무·지원 이유·강점·문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING).
+            직무와 문항으로 자소서를 만들고 카드 고르기를 줄 세웁니다(stage ASSIGNING). 지원 이유와 강점은 선택입니다.
             공고 상세에서 시작하면 postingId 를 보내며, 그때의 공고와 맞춰 본 판단을 자소서에 남겨 카드 고르기·질문·초안이 그 기준으로 AI 를 부릅니다.
             같은 Idempotency-Key 로 다시 요청하면 보낸 내용과 상관없이 그 키로 만든 자소서를 돌려주고 호출 제한도 세지 않습니다.
             화면은 입력을 고치면 새 키를 만듭니다.
             """)
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "새로 만든 자소서 또는 같은 키로 이미 만든 자소서"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 직무가 비었거나 100자를 넘음, 지원 이유가 규칙(공백 뺀 20자 이상·1,000자 이하·한글 포함·5번 이상 같은 글자 반복 없음·URL/이메일 없음·한글/영문/숫자/문장부호만)을 어김, 강점이 3개를 넘거나 겹치거나 모르는 값임, 문항이 0개거나 10개를 넘음, 문항이 비었거나 500자를 넘음, 글자 수가 100~5,000 이 아님, U+0000 이 있음, Idempotency-Key 가 255자를 넘음",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "INVALID_REQUEST: 직무가 비었거나 100자를 넘음, 적은 지원 이유가 규칙(공백 뺀 20자 이상·1,000자 이하·한글 포함·5번 이상 같은 글자 반복 없음·URL/이메일 없음·한글/영문/숫자/문장부호만)을 어김, 강점이 3개를 넘거나 겹치거나 모르는 값임, 문항이 0개거나 10개를 넘음, 문항이 비었거나 500자를 넘음, 글자 수가 100~5,000 이 아님, U+0000 이 있음, Idempotency-Key 가 255자를 넘음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "NOT_FOUND: postingId 가 UUID 가 아니거나 공고 상세에서 열 수 없는 공고",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
@@ -328,7 +328,7 @@ public class CoverLetterController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 20번, 하루 200번을 넘음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI_UNAVAILABLE: AI 가 잠시 응답하지 못함. 아무것도 저장하지 않아 다시 요청해도 된다",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
@@ -356,7 +356,7 @@ public class CoverLetterController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 20번, 하루 200번을 넘음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI_UNAVAILABLE: AI 가 잠시 응답하지 못함. 보낸 말도 저장하지 않아 다시 보내도 된다",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))
@@ -381,7 +381,7 @@ public class CoverLetterController {
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "INVALID_STATE: DRAFTED 가 아님",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 6번, 하루 60번을 넘음",
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "RATE_LIMITED: 이야기 시작·보내기·넘기기를 합쳐 1분 20번, 하루 200번을 넘음",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "AI_UNAVAILABLE: AI 가 잠시 응답하지 못함. 아무것도 저장하지 않아 다시 요청해도 된다",
                     content = @Content(schema = @Schema(implementation = ApiResponse.class)))

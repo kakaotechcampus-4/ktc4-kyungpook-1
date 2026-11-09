@@ -12,13 +12,16 @@ import { PageLoading } from '@/components/ui/PageLoading';
  *  D1~D9·E2·E3 /cards/:id (모드는 쿼리) · D5 /cards/:id/interview · E4 /cards/new · E1 /
  *  F1 /settings/github · F2 /settings · F3 /settings/leave · F4 /settings/profile (인적사항, BE #552 계약)
  *  폴더 /cards/repo/:repoId · /cards/activity/:activityId · /cards/direct (경험 카드 목록에서 폴더를 열면, #522)
+ *  맞는 기업 고르기 /cards/repo/:repoId/match (그 레포의 카드로 기업을 고르는 모습, 카드 초안을 다 쓰면 여기로 온다)
  *  활동 /activities · /activities/new · /activities/:activityId/edit (레포 밖 경험 묶음, BE #477 계약)
+ *  홈 한 줄 명령 /ask · /ask/:runId (서버가 열린 빌드에서만 — VITE_ASSISTANT_ENABLED, 꺼져 있으면 홈으로)
  */
 const L = (f: () => Promise<Record<string, unknown>>, name: string) => lazy(() => f().then((m) => ({ default: m[name] as React.ComponentType })));
 const LandingPage = L(() => import('@/features/auth/LandingPage'), 'LandingPage');
 const PrivacyPage = L(() => import('@/features/legal/PrivacyPage'), 'PrivacyPage');
 const TermsPage = L(() => import('@/features/legal/TermsPage'), 'TermsPage');
 const HomePage = L(() => import('@/features/home/HomePage'), 'HomePage');
+const AskPage = L(() => import('@/features/assistant/AskPage'), 'AskPage');
 const MatchListPage = L(() => import('@/features/match/MatchListPage'), 'MatchListPage');
 const CoverLettersPage = L(() => import('@/features/coverLetters/CoverLettersPage'), 'CoverLettersPage');
 const CoverLetterNewPage = L(() => import('@/features/coverLetters/CoverLetterNewPage'), 'CoverLetterNewPage');
@@ -34,6 +37,7 @@ const CardPage = L(() => import('@/features/cards/CardPage'), 'CardPage');
 const InterviewPage = L(() => import('@/features/cards/InterviewPage'), 'InterviewPage');
 const NewCardPage = L(() => import('@/features/cards/NewCardPage'), 'NewCardPage');
 const RepoFolderPage = L(() => import('@/features/cards/FolderPage'), 'RepoFolderPage');
+const RepoPickPage = L(() => import('@/features/match/RepoPickPage'), 'RepoPickPage');
 const ActivityFolderPage = L(() => import('@/features/cards/FolderPage'), 'ActivityFolderPage');
 const DirectFolderPage = L(() => import('@/features/cards/FolderPage'), 'DirectFolderPage');
 const ActivitiesPage = L(() => import('@/features/activities/ActivitiesPage'), 'ActivitiesPage');
@@ -64,6 +68,8 @@ export const router = createBrowserRouter([
     errorElement: <ErrorBoundary />,
     children: [
       { path: '/', element: <S><HomePage /></S> },
+      { path: '/ask', element: <S><AskPage /></S> },
+      { path: '/ask/:runId', element: <S><AskPage /></S> },
       { path: '/match', element: <S><MatchListPage /></S> },
       { path: '/match/company/:companyId', element: <S><CompanyPage /></S> },
       { path: '/match/:matchId', element: <S><MatchDetailPage /></S> },
@@ -77,6 +83,7 @@ export const router = createBrowserRouter([
       { path: '/cards', element: <S><CardsListPage /></S> },
       { path: '/cards/new', element: <S><NewCardPage /></S> },
       { path: '/cards/repo/:repoId', element: <S><RepoFolderPage /></S> },
+      { path: '/cards/repo/:repoId/match', element: <S><RepoPickPage /></S> },
       { path: '/cards/activity/:activityId', element: <S><ActivityFolderPage /></S> },
       { path: '/cards/direct', element: <S><DirectFolderPage /></S> },
       { path: '/activities', element: <S><ActivitiesPage /></S> },

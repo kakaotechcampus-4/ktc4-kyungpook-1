@@ -50,7 +50,7 @@ class ConfirmedCardChangesTest {
     @DisplayName("작성 중으로 남는 카드는 알리지 않는다")
     void doesNotAnnounceDraftThatStaysDraft() {
 
-        suggester.settle(Card.startManual(USER, REPO, null, "결제 API", null, "a"), slots(true, false));
+        suggester.settle(Card.startManual(USER, REPO, null, "결제 API", null, "a"), slots(false, true));
 
         verify(changes, never()).announce(any());
 
@@ -86,7 +86,7 @@ class ConfirmedCardChangesTest {
 
     }
 
-    // 상황·행동이 차 있으면 확정할 수 있고, 네 칸이 다 차면 작성 중 카드가 확정된다
+    // 상황·행동이 차 있으면 확정할 수 있고, 작성 중 카드도 확인 필요 칸이 없으면 이 둘만으로 확정된다
     private static VersionSlots slots(boolean situationAndAction, boolean taskAndResult) {
 
         Map<StarField, SlotContent> slots = new EnumMap<>(StarField.class);

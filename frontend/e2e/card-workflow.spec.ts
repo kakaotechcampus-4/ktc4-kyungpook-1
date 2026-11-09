@@ -35,8 +35,9 @@ test('active analysis is visible on home and can be reopened after refresh', asy
     return (await response.json()).data.jobId as string;
   });
   await page.reload();
-  const jobs = page.getByRole('region', { name: '진행 중인 작업' }); await expect(jobs).toBeVisible();
-  await jobs.getByRole('link', { name: '진행 상황 보기', exact: true }).click();
+  // 도는 레포 정리는 오른쪽 위 알림 자리에서 다시 열 수 있다
+  const running = page.getByRole('link', { name: /auth-service 레포 읽는 중/ }); await expect(running).toBeVisible();
+  await running.click();
   await expect(page).toHaveURL(new RegExp('/repos/r_auth/run\\?job=' + jobId + '$'));
   await expect(page.getByRole('heading', { name: '레포를 읽고 있어요' })).toBeVisible();
 });

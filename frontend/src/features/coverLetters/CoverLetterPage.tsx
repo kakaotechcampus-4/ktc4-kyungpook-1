@@ -1,24 +1,55 @@
-import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Briefcase } from 'lucide-react';
-import { useCoverLetter, useRetryCoverLetter, useStartAsking, type CoverLetter, type CoverLetterCardRef, type CoverLetterPosting, type CoverLetterQuestion } from '@/api/coverLetters';
-import { Breadcrumb, Button, Note, PageTitle, Skeleton, StickyFooter } from '@/components/ui';
+import { useEffect, useRef } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Briefcase, PenLine } from 'lucide-react';
+import { useCoverLetter, useRetryCoverLetter, useStartAsking, useStartDrafting, type CoverLetter, type CoverLetterPosting } from '@/api/coverLetters';
+import { errorView } from '@/api/errorView';
+import { Breadcrumb, Button, Note, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
-import { FAILED_STEP_LABEL, THEME_LABEL, flowStep, materialLine, primaryState } from '@/lib/coverLetterCopy';
+import { FAILED_STEP_LABEL, flowStep } from '@/lib/coverLetterCopy';
 import { track } from '@/lib/track';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { AnswerQuestions } from './AnswerQuestions';
-import { CardPicker } from './CardPicker';
+import { CoverLetterDeleteAction } from './CoverLetterDeleteAction';
 import { DraftEditor } from './DraftEditor';
 import { DraftPaper } from './paper/DraftPaper';
 import { Stepper } from './Stepper';
 import './coverLetters.css';
 
-/** 자소서 한 편 — 응답의 stage 가 화면을 정한다. #517 은 ② 기다림, ③ 카드 확인, 실패까지 */
+type Failure = { error: unknown; retry: () => void };
+
+/**
+ * 카드 고르기가 끝난(ASSIGNED) 자소서는 재료 확인을, 재료 확인이 끝난(ASKED) 자소서는 초안 쓰기를 열면 스스로 시작한다 — 사용자가 누를 것이 없다.
+ * 같은 자소서·단계에는 한 번만 보내 다시 읽기나 개발 모드의 효과 재실행이 요청을 겹치지 않게 하고, 실패하면 스스로 되풀이하지 않고 retry 로만 다시 보낸다.
+ */
+function useContinue(id: string, letter: CoverLetter | undefined): Failure | null {
+  const asks = useStartAsking(id);
+  const drafts = useStartDrafting(id);
+  const sent = useRef(new Set<string>());
+  const stage = letter?.stage;
+  const send = () => {
+    if (!letter) return;
+    if (stage === 'ASSIGNED') {
+      asks.mutate(undefined, { onSuccess: () => track('cover_letter_asks_started', { coverLetterId: id, questionCount: letter.questions.length, withoutCard: letter.questions.filter((q) => !q.primaryCard).length }) });
+    } else if (stage === 'ASKED') {
+      drafts.mutate(undefined, { onSuccess: () => track('cover_letter_drafts_started', { coverLetterId: id, emptyRequired: letter.questions.reduce((n, q) => n + q.asks.filter((a) => a.required && !a.answer).length, 0) }) });
+    }
+  };
+  useEffect(() => {
+    const key = `${id}:${stage}`;
+    if ((stage !== 'ASSIGNED' && stage !== 'ASKED') || sent.current.has(key)) return;
+    sent.current.add(key);
+    send();
+  }, [id, stage]);
+  const step = stage === 'ASSIGNED' ? asks : stage === 'ASKED' ? drafts : null;
+  return step?.isError ? { error: step.error, retry: send } : null;
+}
+
+/** 자소서 한 편 — 응답의 stage 가 화면을 정한다. 카드 고르기와 재료 확인이 끝난 단계에서도 멈추지 않고 다음 기다림 화면을 보인다 */
 export function CoverLetterPage() {
   const { coverLetterId = '' } = useParams();
+  const nav = useNavigate();
   const letter = useCoverLetter(coverLetterId);
   const l = letter.data;
+  const failure = useContinue(coverLetterId, l);
   useDocumentTitle(l ? `${l.jobRole} 자소서` : '자소서');
   const crumbs = [{ label: '홈', to: '/' }, { label: '자소서', to: '/cover-letters' }, { label: l?.jobRole ?? '…' }];
 
@@ -36,15 +67,19 @@ export function CoverLetterPage() {
 
   return (
     <main className="main main--tight">
-      <Breadcrumb items={crumbs} />
+      <div className="cl-crumbbar">
+        <Breadcrumb items={crumbs} />
+        <div className="row" style={{ gap: 8 }}>
+          <Link to={`/cover-letters/new?from=${encodeURIComponent(l.id)}`} className="btn btn--outline btn--sm cl-edit-trigger"><PenLine size={16} aria-hidden />문항 고치기</Link>
+          <CoverLetterDeleteAction letter={l} label="자소서 삭제" onDeleted={() => nav('/cover-letters', { replace: true })} />
+        </div>
+      </div>
       <Stepper current={flowStep(l.stage, l.failedStep)} />
       {l.posting && <PostingLine posting={l.posting} />}
       {l.stage === 'ASSIGNING' && <AssignWait letter={l} />}
-      {l.stage === 'ASSIGNED' && <AssignReview letter={l} />}
       {l.stage === 'FAILED' && <Failed letter={l} />}
-      {l.stage === 'ASKING' && <AskWait letter={l} />}
-      {l.stage === 'ASKED' && <AnswerQuestions key={l.id} letter={l} />}
-      {l.stage === 'DRAFTING' && <DraftWait letter={l} />}
+      {(l.stage === 'ASSIGNED' || l.stage === 'ASKING') && <AskWait letter={l} failure={failure} />}
+      {(l.stage === 'ASKED' || l.stage === 'DRAFTING') && <DraftWait letter={l} failure={failure} />}
       {l.stage === 'DRAFTED' && <DraftEditor key={l.id} letter={l} />}
     </main>
   );
@@ -62,8 +97,22 @@ function PostingLine({ posting }: { posting: CoverLetterPosting }) {
   );
 }
 
-/** 기다리는 화면 세 곳(②·④·⑤)의 제목 아래 한 줄 — 서버가 진행률을 주지 않아 걸리는 시간만 어림으로 말한다 */
-const WaitNote = () => <span className="cl-wait-note">보통 1~2분 걸리니 떠나도 돼요</span>;
+/**
+ * 기다리는 화면의 제목 아래 한 줄 — 서버가 진행률을 주지 않아 걸리는 시간만 어림으로 말한다.
+ * 다음 단계는 이 화면이 이어 보내므로 떠나도 된다고 하지 않는다(떠나면 다시 열 때 이어 간다)
+ */
+const WaitNote = () => <span className="cl-wait-note">보통 1~2분 걸려요</span>;
+
+/** 넘어가는 요청이 실패했을 때 — 종이는 그대로 두고 안내 하나와 다시 시도 하나만 붙인다 */
+function StepFailure({ error, retry }: Failure) {
+  const view = errorView(error);
+  return (
+    <>
+      <Note strong={view.title} tone="danger">{view.message}</Note>
+      <div className="row"><Button onClick={retry}>다시 시도</Button></div>
+    </>
+  );
+}
 
 /** ② 문항마다 카드를 고르는 동안 — 종이의 문항마다 상태 한 줄, 고른 카드와 이유는 여백 메모로 붙는다(#618) */
 function AssignWait({ letter }: { letter: CoverLetter }) {
@@ -72,119 +121,6 @@ function AssignWait({ letter }: { letter: CoverLetter }) {
       <PageTitle sub={<WaitNote />}>문항마다 쓸 카드를 고르고 있어요</PageTitle>
       <DraftPaper letter={letter} mode="assign" />
     </>
-  );
-}
-
-/** ③ 문항마다 고른 카드 확인과 바꾸기. '다음'은 질문 만들기를 시작한다 */
-function AssignReview({ letter }: { letter: CoverLetter }) {
-  const [picking, setPicking] = useState<CoverLetterQuestion | null>(null);
-  const start = useStartAsking(letter.id);
-  const empty = letter.questions.filter((q) => !q.primaryCard).length;
-  const next = async () => {
-    try {
-      await start.mutateAsync(undefined);
-      track('cover_letter_asks_started', { coverLetterId: letter.id, questionCount: letter.questions.length, withoutCard: empty });
-    } catch { /* 전역 안내 */ }
-  };
-  return (
-    <>
-      <PageTitle sub="고른 카드를 확인해 주세요. 문항마다 바꿀 수 있어요.">문항마다 쓸 카드</PageTitle>
-      <div className="cl-review">
-        {letter.questions.map((q) => <QuestionReview key={q.id} q={q} onPick={() => setPicking(q)} />)}
-      </div>
-      <StickyFooter strong="카드를 확인했으면 질문을 받아요" sub={empty ? `카드가 없는 문항 ${empty}개는 질문으로 재료를 모아요. 질문을 받은 뒤에는 카드를 바꿀 수 없어요.` : '질문을 받은 뒤에는 카드를 바꿀 수 없어요'}>
-        <Button onClick={next} loading={start.isPending}>다음: 질문 받기</Button>
-      </StickyFooter>
-      {picking && <CardPicker letterId={letter.id} question={picking} onClose={() => setPicking(null)} />}
-    </>
-  );
-}
-
-const kindLabel = (kind: string) => (kind === 'TECH' ? '기술' : '경험');
-
-/** 문항 한 줄 — 왼쪽은 문항, 오른쪽은 고른 카드 타일과 고른 이유 한 줄, 재료 한 줄. 좁으면 위아래로 */
-function QuestionReview({ q, onPick }: { q: CoverLetterQuestion; onPick: () => void }) {
-  const state = primaryState(q);
-  const [compared, setCompared] = useState(false);
-  const why = q.pickReason ?? (q.assignedBy === 'USER' ? '직접 고른 카드예요.' : null);
-  const listId = `cl-considered-${q.id}`;
-  return (
-    <section className="cl-ac" aria-labelledby={`q-${q.id}`}>
-      <div className="cl-ac__q">
-        <span className="cl-q__no" aria-hidden>{q.seq}</span>
-        <div className="stack" style={{ gap: 2 }}>
-          <h2 id={`q-${q.id}`} className="cl-q__text">{q.text}</h2>
-          <span className="t-13 c-3">{[q.theme && THEME_LABEL[q.theme], `${q.charLimit.toLocaleString()}자 이내`].filter(Boolean).join(', ')}</span>
-        </div>
-        <Button variant="text" className="cl-ac__change" onClick={onPick} aria-label={`${q.seq}번 문항 카드 바꾸기`}>카드 바꾸기</Button>
-      </div>
-
-      <div className="cl-ac__cards">
-        {state === 'picked' && q.primaryCard && <CardDeck main={q.primaryCard} sub={q.supportingCard} />}
-        {state === 'deleted' && <Note strong="고른 카드가 지워졌어요" tone="caution">다시 골라 주세요. 고르지 않으면 질문으로 재료를 모아요.</Note>}
-        {state === 'failed' && <Note strong="이 문항은 카드를 고르지 못했어요" tone="caution">직접 골라 주세요.</Note>}
-        {state === 'no-fit' && (
-          <Note strong="맞는 카드가 없어요" tone="inset">
-            {q.theme ? `${THEME_LABEL[q.theme]} 경험을 카드로 만들어 두면 다음에 쓸 수 있어요. ` : ''}
-            이번에는 질문으로 재료를 모아 써요. <Link to="/cards/new" className="cl-inline-link">경험 카드 만들기</Link>
-          </Note>
-        )}
-
-        {(why || q.considered.length > 0) && (
-          <p className="cl-ac__why">
-            {why}{why && q.considered.length > 0 && ' '}
-            {q.considered.length > 0 && (
-              <button type="button" className="cl-ac__link" aria-expanded={compared} aria-controls={listId} onClick={() => setCompared((v) => !v)}>견준 카드 {q.considered.length}장</button>
-            )}
-          </p>
-        )}
-        {compared && (
-          <ul className="cl-compared" id={listId}>
-            {q.considered.map((c) => {
-              const chosen = c.cardId === q.primaryCard?.id;
-              return (
-                <li key={c.cardId} className={chosen ? 'cl-compared--picked' : undefined}>
-                  <Link to={`/cards/${encodeURIComponent(c.cardId)}`}>{c.title}</Link>{chosen && <span className="cl-compared__tag"> (고름)</span>}
-                  {c.note && <span className="cl-compared__note">{c.note}</span>}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {state === 'picked' && <MaterialLine q={q} />}
-      </div>
-    </section>
-  );
-}
-
-/** 고른 카드 — 경험 카드 덱 모양 타일. 덧붙일 경험이 있으면 그 아래에 작게 끼우고 뒤에 기운 카드 한 장을 둔다 */
-function CardDeck({ main, sub }: { main: CoverLetterCardRef; sub: CoverLetterCardRef | null }) {
-  return (
-    <div className={`cl-deck${sub ? ' cl-deck--sub' : ''}`}>
-      <div className="cl-deck__main">
-        <article className="cl-tile" aria-label={`이 경험으로 써요: ${main.title}`}>
-          <Link to={`/cards/${encodeURIComponent(main.id)}`} className="cl-tile__title">{main.title}</Link>
-          <span className="cl-kind">{kindLabel(main.kind)}</span>
-        </article>
-      </div>
-      {sub && (
-        <div className="cl-tile cl-tile--sub">
-          <span className="cl-tile__lab">덧붙일 경험</span>
-          <Link to={`/cards/${encodeURIComponent(sub.id)}`} className="cl-tile__subtitle" title={sub.title}>{sub.title}</Link>
-          <span className="cl-kind">{kindLabel(sub.kind)}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** '재료 3/5 · 배운 점, 계기는 다음에 물어요' — 빠진 이름만 호박색 */
-function MaterialLine({ q }: { q: CoverLetterQuestion }) {
-  const m = materialLine(q.materials);
-  return (
-    <p className="cl-ready">
-      재료 {m.have}/{m.total} ({m.missing.length > 0 && <span className="cl-ready__miss">{m.missing.join(', ')}</span>}{m.rest})
-    </p>
   );
 }
 
@@ -211,21 +147,23 @@ function Failed({ letter }: { letter: CoverLetter }) {
   );
 }
 
-/** ④ 질문을 고르는 동안 — ②와 같은 종이에 문항마다 쓰는 카드 한 줄과 상태 한 줄. 진행률은 서버가 주지 않으므로 만들지 않는다 */
-function AskWait({ letter }: { letter: CoverLetter }) {
+/** ④ 카드에 없는 재료를 확인하는 동안(ASSIGNED·ASKING) — ②와 같은 종이에 문항마다 쓰는 카드 한 줄과 상태 한 줄. 진행률은 서버가 주지 않으므로 만들지 않는다 */
+function AskWait({ letter, failure }: { letter: CoverLetter; failure: Failure | null }) {
   return (
     <>
-      <PageTitle sub={<WaitNote />}>더 물어볼 것을 고르고 있어요</PageTitle>
+      <PageTitle sub={<WaitNote />}>카드에 없는 재료를 확인하고 있어요</PageTitle>
+      {failure && <StepFailure {...failure} />}
       <DraftPaper letter={letter} mode="ask" />
     </>
   );
 }
 
-/** ⑤ 문항마다 쓰고 검사하는 동안 — 종이 위에 글이 써지고, 문항마다 상태 한 줄과 여백 메모가 붙는다(#618) */
-function DraftWait({ letter }: { letter: CoverLetter }) {
+/** ⑤ 문항마다 쓰고 검사하는 동안(ASKED·DRAFTING) — 종이 위에 글이 써지고, 문항마다 상태 한 줄과 여백 메모가 붙는다(#618) */
+function DraftWait({ letter, failure }: { letter: CoverLetter; failure: Failure | null }) {
   return (
     <>
       <PageTitle sub={<WaitNote />}>초안을 쓰고 있어요</PageTitle>
+      {failure && <StepFailure {...failure} />}
       <DraftPaper letter={letter} mode="live" />
     </>
   );

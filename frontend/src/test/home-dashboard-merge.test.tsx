@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { HomePage } from '@/features/home/HomePage';
 import { JobCalendar } from '@/features/home/JobCalendar';
+import { MatchListPage } from '@/features/match/MatchListPage';
 import { resetDb } from '@/mock/store';
 import { connectMockServer, mountApp, page } from './profileHarness';
 
@@ -12,17 +13,15 @@ afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals(); vi.res
 // 캘린더는 공고에서 담은 일정을 누르면 그 공고로 가서 라우터 안에서 띄운다
 const calendar = (userId: string) => render(<MemoryRouter><JobCalendar userId={userId} /></MemoryRouter>);
 
-it('keeps the home dashboard whole without the old first-visit band — the first-entry dialog now lives in the app shell (#656)', async () => {
+it('공고 매칭 화면에 캘린더가 있고, 홈에는 캘린더를 두지 않는다 (#864)', async () => {
   connectMockServer();
-  mountApp([page(<HomePage />, '/')], '/');
-  expect(screen.getByRole('heading', { name: '홈', level: 1 })).toBeInTheDocument();
+  mountApp([page(<MatchListPage />, '/match')], '/match');
   expect(await screen.findByRole('heading', { name: '캘린더' })).toBeInTheDocument();
-  expect(screen.queryByRole('region', { name: '매칭에 쓸 인적사항을 입력해 주세요' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: '입력하기' })).not.toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: '추천 공고' })).toBeInTheDocument();
-  expect(screen.queryByRole('combobox', { name: '레포 검색' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
-  expect(screen.getByRole('combobox', { name: '레포 검색' })).toBeInTheDocument();
+  cleanup();
+
+  mountApp([page(<HomePage />, '/')], '/');
+  expect(await screen.findByRole('heading', { name: '지원할 곳', level: 1 })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: '캘린더' })).not.toBeInTheDocument();
 });
 
 it('persists a hiring date for its owner and keeps another account separate', () => {

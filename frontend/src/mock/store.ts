@@ -7,6 +7,7 @@ import { seedActivities, seedCards, seedCandidates, seedInterview, seedRecall, s
 import { draftPlans, draftSchedule, draftStepsOf, draftTexts, liveDraftOf, type DraftPlan } from './draftLive';
 import { Profile, emptyProfile } from '@/api/profile';
 import { resetMatchState } from './matchState';
+import { draftedNotice, failedNotice, pushNotice } from './notifications';
 
 type Any = Record<string, any>;
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -19,9 +20,12 @@ export const db = {
   activities: clone(seedActivities) as Any[], // 활동(#477) — 카드는 activityId 로 가리킨다
   interview: clone(seedInterview) as Record<string, Any[]>,
   coverLetters: [] as Any[], // 자소서(#492 계약) — mock/coverLetters.ts 가 다룬다
+  assistantRuns: [] as Any[], // 홈 한 줄 명령 — mock/assistant.ts 가 다룬다
+  notifications: [] as Any[], // 알림 — mock/notifications.ts 가 다룬다
   cardMaterialAnswers: {} as Record<string, Record<string, string>>, // 카드마다 기억한 자소서 답(#585)
   profile: emptyProfile(), // 인적사항(BE #552 계약) — 사용자당 한 문서. 처음엔 비어 있고 savedAt 이 null 이다
   overall: null as { startedAt: number; computedAt: string | null } | null, // 전체 매칭(#614) — 누른 적이 없으면 null
+  repoUpdates: [] as { repoId: string; repoName: string; cardCount: number; finishedAt: string; seen: boolean }[], // 서버가 스스로 다시 읽은 레포 — 기본은 없다
   jobs: new Map<string, Any>(),
   idem: new Map<string, string>(), // Idempotency-Key → jobId
   manualIdem: new Map<string, string>(), // JSON [userId, key] → cardId (분석 키와 별개)
@@ -68,7 +72,7 @@ export function resetDb() {
   db.user = clone(seedUser); db.repos = clone(seedRepos); db.candidates = clone(seedCandidates);
   db.cards = clone(seedCards); db.interview = clone(seedInterview) as Record<string, Any[]>;
   db.activities = clone(seedActivities);
-  db.profile = emptyProfile(); db.coverLetters = []; db.cardMaterialAnswers = {}; db.overall = null;
+  db.profile = emptyProfile(); db.coverLetters = []; db.assistantRuns = []; db.notifications = []; db.cardMaterialAnswers = {}; db.overall = null; db.repoUpdates = [];
   db.jobs.clear(); db.idem.clear(); db.manualIdem.clear(); db.activityIdem.clear(); db.seq = 100;
   resetMatchState();
   hydrateCards();
@@ -219,7 +223,10 @@ export function viewJob(id: string): Any | null {
       progress = failAt;
       const rateLimited = repo.id === 'r_ratelimit';
       const capped = repo.id === 'r_capped';
-      settle(j, () => { if (rateLimited || capped) materializeCandidates(repo, true); });
+      settle(j, () => {
+        if (rateLimited || capped) materializeCandidates(repo, true);
+        else pushNotice(db.notifications, failedNotice(repo, id, 'GITHUB_UNAVAILABLE'));
+      });
       const steps = analyzeSteps(repo, progress, null);
       // 부분 완료는 별도 상태가 아니다 — SUCCEEDED + partial: true. 이유는 errorCode 로 구분한다
       if (capped) {
@@ -252,7 +259,10 @@ export function viewJob(id: string): Any | null {
   const cardIds: string[] = j.payload.cardIds;
   const timeout = j.payload.timeout === true;
   const done = progress >= 1;
-  if (done) settle(j, () => cardIds.forEach((cid, i) => fillDraft(cid, timeout, plans[i])));
+  if (done) settle(j, () => {
+    cardIds.forEach((cid, i) => fillDraft(cid, timeout, plans[i]));
+    pushNotice(db.notifications, draftedNotice(cardIds.flatMap((cid) => db.cards.find((x) => x.id === cid) ?? [])));
+  });
   const drafts = cardIds.flatMap((cid, i) => {
     const c = db.cards.find((x) => x.id === cid);
     if (!c) return []; // 지워진 카드는 진행에서 빠진다
@@ -361,6 +371,23 @@ export function starStates(c: Any) {
   return out;
 }
 
+/**
+ * 서버의 자동 확정(Card.settle)을 따른다 — 상황·행동이 차 있고 확인 필요 칸이 없으면 과제·결과가 비어도 확정하고,
+ * 시간 초과로 일부만 만든 카드는 사용자가 읽고 확정하게 둔다. 확정 카드가 상황이나 행동을 비우면 작성 중으로 돌린다.
+ */
+export function settleCard(c: Any) {
+  const states = starStates(c);
+  const blank = states.S === 'EMPTY' || states.A === 'EMPTY';
+  if (c.status === 'DRAFT' && !blank && !c.generation?.partial && STAR.every((f) => states[f] !== 'NEEDS_REVIEW')) {
+    c.status = 'CONFIRMED';
+    c.confirmedAt = now();
+    queueAiThemes(c); // 서버가 자동 확정에서도 문항 유형을 붙이므로 확정 버튼과 같게 맞춘다
+  } else if (c.status === 'CONFIRMED' && blank) {
+    c.status = 'DRAFT';
+    c.confirmedAt = null;
+  }
+}
+
 export function cardSummary(c: Any) {
   const v = c.versions[c.versions.length - 1];
   const result = v[FIELD_KEY.R];
@@ -403,6 +430,7 @@ export function patchDraft(c: Any, fields: Any) {
     });
     c.evidence = metadata.evidence; c.lowConfidenceFields = metadata.lowConfidenceFields; c.droppedFields = metadata.droppedFields;
     v.createdAt = now(); c.updatedAt = v.createdAt; captureVersion(c);
+    settleCard(c);
   }
   return { cardId: c.id, versionNo: v.versionNo, situation: v.situation, task: v.task, action: v.action, result: v.result, savedAt: v.createdAt };
 }
@@ -477,6 +505,7 @@ function fillDraft(cardId: string, timeout: boolean, plan: DraftPlan = 'OK') {
   }
   if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; }
   c.updatedAt = v.createdAt; captureVersion(c);
+  settleCard(c);
 }
 
 export function pushVersion(c: Any, source: string, fields: Any) {
@@ -531,11 +560,8 @@ export function answerTurn(c: Any, turnNo: number, text: string, source: string)
   c.interviewTurns = db.interview[c.id].filter((t) => t.answer).length;
   if (c.generation?.partial) c.generation = null;
   captureVersion(c);
-  // 실서버처럼 답으로 네 칸이 확인 필요 없이 모두 차면 확정한다(확정본은 남기지 않는다)
-  if (Object.values(starStates(c)).every((state) => state === 'FILLED')) {
-    c.status = 'CONFIRMED';
-    c.confirmedAt = now();
-  }
+  // 실서버처럼 답으로 상황·행동이 차고 확인 필요 칸이 없으면 확정한다(확정본은 남기지 않는다)
+  settleCard(c);
   return c;
 }
 
@@ -571,7 +597,7 @@ export function seedSetUpProfile() {
 
 export function snapshot(): string {
   return JSON.stringify({
-    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, cardMaterialAnswers: db.cardMaterialAnswers,
+    user: db.user, repos: db.repos, candidates: db.candidates, cards: db.cards, activities: db.activities, interview: db.interview, profile: db.profile, coverLetters: db.coverLetters, assistantRuns: db.assistantRuns, notifications: db.notifications, cardMaterialAnswers: db.cardMaterialAnswers, repoUpdates: db.repoUpdates,
     jobs: [...db.jobs.values()], idem: [...db.idem.entries()], manualIdem: [...db.manualIdem.entries()], activityIdem: [...db.activityIdem.entries()], seq: db.seq,
   });
 }
@@ -583,7 +609,10 @@ export function restore(raw: string): boolean {
     db.cards = s.cards; db.interview = s.interview ?? {}; db.seq = s.seq ?? 100;
     db.activities = Array.isArray(s.activities) ? s.activities : []; // 활동이 생기기 전에 저장된 데모 DB 는 활동 없이 이어진다
     db.coverLetters = Array.isArray(s.coverLetters) ? s.coverLetters : [];
+    db.assistantRuns = Array.isArray(s.assistantRuns) ? s.assistantRuns : [];
+    db.notifications = Array.isArray(s.notifications) ? s.notifications : [];
     db.cardMaterialAnswers = s.cardMaterialAnswers ?? {};
+    db.repoUpdates = Array.isArray(s.repoUpdates) ? s.repoUpdates : [];
     const profile = Profile.safeParse(s.profile); // 인적사항이 생기기 전에 저장된 데모 DB 는 빈 값으로 이어진다
     db.profile = profile.success ? profile.data : emptyProfile();
     db.jobs.clear();
@@ -595,6 +624,19 @@ export function restore(raw: string): boolean {
     settlePending();
     return true;
   } catch { return false; }
+}
+
+/** 아직 보지 않은 레포 알림을 최근 순으로. 본 것은 목록에서 빠진다 */
+export const repoUpdateList = () => db.repoUpdates.filter((u) => !u.seen).sort((a, b) => b.finishedAt.localeCompare(a.finishedAt))
+  .map(({ repoId, repoName, cardCount, finishedAt }) => ({ repoId, repoName, cardCount, finishedAt }));
+export function markRepoUpdateSeen(repoId: string) {
+  db.repoUpdates.filter((u) => u.repoId === repoId).forEach((u) => { u.seen = true; });
+}
+/** 시연 장면(demoScenario=repo-update)에서 서버가 auth-service 를 다시 읽어 카드 3장을 써 둔 상태를 까는 것이고, 본 알림은 목록에 남겨 다시 깔지 않는다 */
+export function seedRepoUpdate() {
+  const repo = db.repos.find((r) => r.id === 'r_auth');
+  if (!repo || db.repoUpdates.some((u) => u.repoId === repo.id)) return;
+  db.repoUpdates.push({ repoId: repo.id, repoName: `${repo.owner}/${repo.name}`, cardCount: 3, finishedAt: new Date().toISOString(), seen: false });
 }
 
 /**

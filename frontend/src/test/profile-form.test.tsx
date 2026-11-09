@@ -253,7 +253,7 @@ describe('profile form — validation (same rules as BE, caught before sending)'
       careers: [{ company: '샘플컴퍼니', role: null, type: 'FULL_TIME', startMonth: '2022-03', endMonth: null }],
       languages: [{ test: 'TOEIC', testName: null, score: '900', acquiredMonth: null }],
       certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: null }],
-      interests: ['BACKEND'],
+      interests: ['BACKEND'], email: '', mailOptIn: false,
     });
   });
 
@@ -390,7 +390,7 @@ describe('profile form — saving', () => {
     fireEvent.click(certTile('정보처리기사'));
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
-    expect(puts(server)[0].body).toEqual({ ...sampleInput(), certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: null }] });
+    expect(puts(server)[0].body).toEqual({ ...sampleInput(), certifications: [{ name: '정보처리기사', issuer: null, acquiredMonth: null }], email: '', mailOptIn: false });
     expect(screen.getByLabelText(edu.school())).toHaveValue('샘플대학교'); // 서버가 돌려준 정리된 값
     expect(screen.getByRole('button', { name: '저장' })).toHaveAttribute('aria-disabled', 'true');
     await waitFor(() => expect(screen.getByRole('button', { name: '저장' })).toHaveFocus());
@@ -407,7 +407,7 @@ describe('profile form — saving', () => {
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
     const body = puts(server)[0].body as Record<string, unknown>;
-    expect(Object.keys(body)).toEqual(['educations', 'careers', 'languages', 'certifications', 'interests']);
+    expect(Object.keys(body)).toEqual(['educations', 'careers', 'languages', 'certifications', 'interests', 'email', 'mailOptIn']);
     expect([body.educations, body.careers, body.languages]).toEqual([[], [], []]);
     expect(body.interests).toEqual(['BACKEND']);
     expect(body.certifications).toEqual([{ name: '정보처리기사', issuer: null, acquiredMonth: null }]);
@@ -493,7 +493,7 @@ describe('profile form — saving', () => {
     expect(status()).toContain('모두 지운 상태예요. 저장하면 입력한 정보가 삭제돼요');
     await save();
     await waitFor(() => expect(status()).toContain('저장했어요'));
-    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS'] });
+    expect(puts(server)[0].body).toEqual({ educations: [], careers: [], languages: [], certifications: [], interests: ['BACKEND', 'DEVOPS'], email: '', mailOptIn: false });
   });
 });
 
@@ -641,5 +641,71 @@ describe('profile form — leaving with unsaved changes', () => {
     await act(async () => { await router.navigate('/elsewhere'); });
     expect(router.state.location.pathname).toBe('/elsewhere');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('profile form — 메일 알림', () => {
+  const OPT_IN = '내 경험에 맞는 공고를 메일로 받을게요';
+  const mailBox = () => screen.getByLabelText('메일 주소');
+  const mailRegion = () => screen.getByRole('region', { name: '메일 알림' });
+
+  it('F1: shows the 메일 알림 section at the very bottom of the form with its notice, address box and checkbox', async () => {
+    connectMockServer();
+    await open();
+    const regions = screen.getAllByRole('region');
+    expect(regions[regions.length - 1]).toBe(mailRegion());
+    expect(within(mailRegion()).getByText('새로 올라온 공고 중 내 카드와 잘 맞는 곳을 찾으면 이 주소로 알려 드려요. 다른 용도로는 쓰지 않고, 언제든 끌 수 있어요.')).toBeInTheDocument();
+    expect(mailBox()).toHaveAttribute('type', 'email');
+    expect(mailBox()).toHaveAttribute('autocomplete', 'email');
+    expect(screen.getByRole('checkbox', { name: OPT_IN })).not.toBeChecked();
+  });
+
+  it('F2: fills in the saved address and checkbox', async () => {
+    putProfile({ ...sampleInput(), email: 'me@example.com', mailOptIn: true });
+    connectMockServer();
+    await open();
+    expect(mailBox()).toHaveValue('me@example.com');
+    expect(screen.getByRole('checkbox', { name: OPT_IN })).toBeChecked();
+  });
+
+  it('F3: refuses to save a checked box with an empty address and says to write one', async () => {
+    const server = connectMockServer();
+    await open();
+    pick('백엔드'); pick(OPT_IN);
+    await save();
+    expect(within(mailRegion()).getByRole('alert')).toHaveTextContent('메일 주소를 적어 주세요');
+    expect(puts(server)).toHaveLength(0);
+  });
+
+  it('F4: refuses to save an address with the wrong shape and says to check it', async () => {
+    const server = connectMockServer();
+    await open();
+    pick('백엔드'); type('메일 주소', 'sunjun@'); pick(OPT_IN);
+    await save();
+    expect(within(mailRegion()).getByRole('alert')).toHaveTextContent('메일 주소를 다시 확인해 주세요');
+    expect(puts(server)).toHaveLength(0);
+  });
+
+  it('F6: the save request carries the typed address and the checkbox, and an empty string once the address is cleared', async () => {
+    const server = connectMockServer();
+    await open();
+    pick('백엔드'); type('메일 주소', ' me@example.com '); pick(OPT_IN);
+    await save();
+    await waitFor(() => expect(status()).toContain('저장했어요'));
+    expect(puts(server)[0].body).toMatchObject({ email: 'me@example.com', mailOptIn: true });
+    pick(OPT_IN); type('메일 주소', '');
+    await save();
+    await waitFor(() => expect(puts(server)).toHaveLength(2));
+    expect(puts(server)[1].body).toMatchObject({ email: '', mailOptIn: false });
+  });
+
+  it('F5: saves with the address and the checkbox both left empty', async () => {
+    const server = connectMockServer();
+    await open();
+    pick('백엔드');
+    await save();
+    await waitFor(() => expect(status()).toContain('저장했어요'));
+    expect(puts(server)).toHaveLength(1);
+    expect(within(mailRegion()).queryByRole('alert')).not.toBeInTheDocument();
   });
 });

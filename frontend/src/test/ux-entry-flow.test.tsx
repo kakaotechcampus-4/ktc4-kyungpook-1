@@ -28,13 +28,6 @@ it('keeps recent card tiles off the home dashboard', () => {
   expect(document.querySelectorAll('.experience-item')).toHaveLength(0);
   expect(screen.queryByRole('link', { name: /모든 카드 보기/ })).not.toBeInTheDocument();
 });
-it('keeps the full card count in the home overview', () => {
-  mount(<HomePage />);
-  const total = (handle('GET', '/cards', new URLSearchParams(), {}, true).data as unknown[]).length;
-  expect(total).toBeGreaterThan(3);
-  const tile = screen.getByText('작성한 경험 카드').closest('.overview-tile')!;
-  expect(tile.querySelector('strong')).toHaveTextContent(String(total));
-});
 it('explains search misses without claiming a private-repository permission problem', () => {
   mount(<ReposPage />, '/repos');
   fireEvent.change(screen.getByRole('textbox', { name: '레포 이름 검색' }), { target: { value: 'no-such-repo' } });

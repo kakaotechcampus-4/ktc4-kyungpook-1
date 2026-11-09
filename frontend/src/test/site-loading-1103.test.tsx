@@ -1,5 +1,5 @@
 // 11/3 배포 사이트 점검(Codex)에서 재현된 것: 확정 카드 인터뷰 진입만으로 질문 POST, 저장소 목록이 GitHub 동기화를 기다려 늦게 뜸
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,13 +28,11 @@ describe('interview auto question', () => {
   }
   const base = () => handle('GET', '/cards/card_01', new URLSearchParams(), {}, true).data as Card;
 
-  it('does not ask a question just because a confirmed card was opened', async () => {
+  it('asks the first question for a confirmed card too', async () => {
     vi.spyOn(endpoints, 'interviewTurns').mockResolvedValue([]);
     const ask = vi.spyOn(endpoints, 'askInterview').mockResolvedValue(null);
     mount({ ...base(), status: 'CONFIRMED' });
-    await screen.findByText(/질문 0/);
-    await new Promise((r) => setTimeout(r, 50));
-    expect(ask).not.toHaveBeenCalled();
+    await waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
   });
 
   it('still asks the first question for a draft card', async () => {

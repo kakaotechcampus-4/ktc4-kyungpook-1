@@ -9,6 +9,8 @@ import { toast } from './toast';
 import { ApiError } from '@/api/client';
 import type { ActiveJobFeed } from './activeJobFeed';
 import { jobResultLink, jobResultState } from './jobLinks';
+import { refreshNotices } from '@/api/notifications';
+import { showBrowserNotice } from './browserNotice';
 
 /**
  * "창을 닫아도 계속 분석됩니다. 끝나면 알려드릴게요."
@@ -54,13 +56,16 @@ export function JobWatcher({ active: shared }: { active?: ActiveJobFeed } = {}) 
           if (repoId) { void qc.invalidateQueries({ queryKey: keys.candidates(repoId) }); void qc.invalidateQueries({ queryKey: keys.repos }); }
           j.result?.cardIds?.forEach((id) => void qc.invalidateQueries({ queryKey: keys.card(id) }));
           void qc.invalidateQueries({ queryKey: keys.cards });
-          // href 는 실패/부분완료 분기에서 ?job= 쿼리를 포함한다 — pathname만 비교하면 절대 못 맞는다.
-          if (suppressed.has(w.jobId) || location.pathname + location.search === href) continue;
+          void refreshNotices(qc);
           const label = w.repoName ?? '정리';
           const text = j.state === 'FAILED' ? `${label} — 끝내지 못했어요`
             : j.state === 'CANCELED' ? `${label} — 취소했어요`
             : j.partial ? `${label} — 읽은 데까지 정리했어요`
             : `${label} — 다 됐어요`;
+          // 탭이 가려져 있으면 그 작업을 보고 있던 화면이어도 화면 안 알림은 소용이 없다
+          showBrowserNotice(text, w.jobId, () => nav(href, { state: jobResultState(j) }));
+          // href 는 실패/부분완료 분기에서 ?job= 쿼리를 포함한다 — pathname만 비교하면 절대 못 맞는다.
+          if (suppressed.has(w.jobId) || location.pathname + location.search === href) continue;
           toast(text, { tone: j.state === 'FAILED' ? 'danger' : 'success', action: { label: '보기', onClick: () => nav(href, { state: jobResultState(j) }) } });
         } catch (error) {
           // Expired/inaccessible jobs cannot be recovered by repeated reads.

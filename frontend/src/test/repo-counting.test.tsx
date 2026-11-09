@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ReactElement } from 'react';
@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { keys } from '@/api/keys';
 import { CandidateBoard, Job, JobErrorCode, RepoDetail, RepoSummary, StartedJob } from '@/api/schemas';
 import { GithubSettingsPage } from '@/features/settings/GithubSettingsPage';
-import { HomePage } from '@/features/home/HomePage';
 import { AnalyzePage } from '@/features/repos/AnalyzePage';
 import { ReposPage } from '@/features/repos/ReposPage';
 import { jobErrorHint, jobErrorTitle } from '@/lib/labels';
@@ -129,31 +128,7 @@ describe('레포 목록 화면', () => {
   });
 });
 
-describe('홈 · 설정 · 분석 화면', () => {
-  it('홈의 레포 제안 줄도 못 센 레포는 "개수 세는 중"이다', () => {
-    mount('/', <HomePage />, '/', (client) => {
-      seedRepos(client);
-      client.setQueryData(keys.me, req('GET', '/me').data);
-      client.setQueryData(keys.cards, []);
-      client.setQueryData(keys.activeJobs, { jobs: [] });
-    });
-    fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
-    fireEvent.change(screen.getByPlaceholderText('레포 검색'), { target: { value: 'side-project' } });
-    const option = screen.getByRole('option', { name: /side-project-new/ });
-    expect(option).toHaveTextContent('개수 세는 중');
-    expect(option).not.toHaveTextContent('내 커밋 0');
-    cleanup();
-    mount('/', <HomePage />, '/', (client) => {
-      seedRepos(client);
-      client.setQueryData(keys.me, req('GET', '/me').data);
-      client.setQueryData(keys.cards, []);
-      client.setQueryData(keys.activeJobs, { jobs: [] });
-    });
-    fireEvent.click(screen.getByRole('button', { name: '레포 검색하기' }));
-    fireEvent.change(screen.getByPlaceholderText('레포 검색'), { target: { value: 'auth-service' } });
-    expect(screen.getByRole('option', { name: /auth-service/ })).toHaveTextContent('내 커밋 214 / 팀 402');
-  });
-
+describe('설정 · 분석 화면', () => {
   it('설정의 수집 이력 줄도 못 센 레포는 숫자를 숨긴다', () => {
     mount('/settings/github', <GithubSettingsPage />, '/settings/github', (client) => {
       const list = repos().map((repo) => repo.id === 'r_counting' ? { ...repo, lastAnalyzedAt: '2026-10-10T00:00:00Z' } : repo);

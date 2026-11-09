@@ -6,7 +6,6 @@
 import { ANSWER_MAX, COVER_LETTER_LIMITS as L, DRAFT_MAX, MATERIAL_ITEMS, type QuestionTheme } from '@/api/coverLetters';
 import { BLANK_TEXT, blanksIn, countableLength } from '@/lib/draftText';
 import { STRENGTHS, STRENGTH_LIMIT } from '@/lib/coverLetterCopy';
-import { checkReason } from '@/lib/reasonCheck';
 import { db, nextId, STAR, FIELD_KEY } from './store';
 import { now } from './fixtures';
 import { mockMatchDetail } from './matching';
@@ -39,9 +38,7 @@ const blank = (s: unknown) => typeof s !== 'string' || s.trim() === '';
 const STRENGTH_CODES: unknown[] = STRENGTHS.flatMap((g) => g.items.map((i) => i.code));
 function checkInput(body: Any): string | null {
   if (blank(body?.jobRole) || body.jobRole.length > L.JOB_ROLE || hasNul(body.jobRole)) return '지원 직무 칸을 확인해 주세요.';
-  if (typeof body?.memo !== 'string' || body.memo.length > L.MEMO) return '지원 이유를 20자 이상 한국어로 적어 주세요.';
-  const reason = checkReason(body.memo);
-  if (reason) return `지원 이유: ${reason}`;
+  if (body?.memo != null && (typeof body.memo !== 'string' || body.memo.length > L.MEMO)) return '지원 이유 칸을 확인해 주세요.';
   const st = body.strengths;
   if (st != null && (!Array.isArray(st) || st.length > STRENGTH_LIMIT || new Set(st).size !== st.length || st.some((c) => !STRENGTH_CODES.includes(c)))) return `강점은 정해진 것 중 ${STRENGTH_LIMIT}개까지 고를 수 있습니다.`;
   const qs = body.questions;
@@ -378,7 +375,7 @@ export function createCoverLetter(body: Any, key: string | undefined): CoverLett
   const at = now();
   const letter: Any = {
     id: nextId('cl'), key: key || null, stage: 'ASSIGNING', failedStep: null, errorCode: null,
-    jobRole: body.jobRole.trim(), memo: body.memo.trim(), strengths: body.strengths ?? [], memoUsable: null, posting, createdAt: at, updatedAt: at, startedAt: Date.now(),
+    jobRole: body.jobRole.trim(), memo: blank(body.memo) ? null : body.memo.trim(), strengths: body.strengths ?? [], memoUsable: null, posting, createdAt: at, updatedAt: at, startedAt: Date.now(),
     questions: body.questions.map((q: Any, i: number) => ({ id: nextId('clq'), seq: i + 1, text: q.text.trim(), charLimit: q.charLimit ?? L.CHAR_DEFAULT })),
     _failAssign: failNextAssign,
   };
@@ -726,7 +723,7 @@ export function openCoverLetterTurn(id: string, questionId: string): CoverLetter
 
 /**
  * 답 하나 — '무시하고'가 든 말은 범위 밖(OFF_TOPIC), 15자 안쪽이면 꼬리 질문 한 번, 아니면 답을 재료로 저장하고 그 빈칸 자리를 다시 쓴다(FILLED).
- * 다시 쓴 뒤 물을 곳이 남았으면 같은 말에 다음 질문을 잇고, 없으면 끝(DONE) 말을 하나 더 붙인다.
+ * 다시 쓴 말(FILLED)에는 다음 질문을 잇지 않는다 — 실제 서버가 그렇고, 남은 빈칸은 화면이 그 문항을 다시 열 때 묻는다.
  * '실패'가 든 답은 다시 쓰기가 실패한 경우를 흉내 낸다 — 말과 답은 남기고 글은 그대로 두며 rewriteFailed 를 준다.
  */
 export function replyCoverLetterTurn(id: string, questionId: string, body: Any): CoverLetterResult {
@@ -753,15 +750,7 @@ export function replyCoverLetterTurn(id: string, questionId: string, body: Any):
     if (!rewriteFailed) fillDraft(q, g, formalSentence(text));
     st.passed.push(g.key);
     st.pending = null;
-    const next = st.asked < TURN_QUESTIONS ? nextGap(q) : null;
-    if (next) {
-      st.asked++;
-      Object.assign(st, { pending: next, followed: false });
-      pushTurn(l, q, 'AI', `알려 준 대로 그 자리를 다시 썼어요.\n${askLines(q, next)}`, next.item, 'FILLED');
-    } else {
-      pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', g.item, 'FILLED');
-      askOrFinish(l, q, null);
-    }
+    pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', g.item, 'FILLED');
   }
   l.updatedAt = now();
   return turnReply(l, q, rewriteFailed);

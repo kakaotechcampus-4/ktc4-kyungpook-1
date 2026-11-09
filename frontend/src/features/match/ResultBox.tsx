@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, ChevronRight } from "lucide-react";
 import { useOverallRecommendation, useStartOverallRecommendation, type MatchTarget, type OverallRecommendation } from "@/api/matching";
@@ -17,8 +17,8 @@ const dayLabel = (iso: string) =>
 
 /**
  * 공고 매칭 맨 위 '내 카드로 맞춰 본 공고' 상자 — 맞춰 보는 버튼·진행·알림 줄과 맞춰 본 공고 타일이 한 자리에 있다.
- * 누를 때만 서버가 배경에서 계산하고 그 밖에는 저장된 결과를 읽으며, 타일은 검색·직무 칩으로 거르지 않는다.
- * 칩이 걸리면 한 줄 띠로 접는다(계산 중에는 진행 표시가 가려지지 않게 접지 않는다).
+ * 들어올 때 맞춰 본 적이 없거나 결과가 낡았으면 한 번 스스로 계산을 시작하고 그 밖에는 저장된 결과를 읽으며, 버튼은 다시 맞춰 볼 때와 시작하지 못했을 때를 위해 남긴다.
+ * 타일은 검색·직무 칩으로 거르지 않고, 칩이 걸리면 한 줄 띠로 접는다(계산 중에는 진행 표시가 가려지지 않게 접지 않는다).
  */
 export function ResultBox({ postings, search, filtered, confirmedCards }: {
   postings: readonly MatchTarget[];
@@ -37,6 +37,14 @@ export function ResultBox({ postings, search, filtered, confirmedCards }: {
   useEffect(() => {
     if (!filtered) setOpen(false);
   }, [filtered]);
+  // FAILED 는 스스로 다시 돌리지 않고 시작이 거절돼도 되풀이하지 않는다 — 알림 줄과 버튼으로 사람이 다시 누르게 둔다
+  const needsRun = data?.status === "NONE" || (data?.status === "READY" && data.stale);
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !needsRun || !confirmedCards || start.isPending) return;
+    autoStarted.current = true;
+    start.mutate();
+  }, [needsRun, confirmedCards, start.isPending, start.mutate]);
   const day = data?.computedAt ? dayLabel(data.computedAt) : null;
 
   if (filtered && !open && tiles.length > 0 && !computing) {

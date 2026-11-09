@@ -18,3 +18,11 @@ export const profileSupported = (env: { VITE_API_MOCK?: string; VITE_PROFILE_ENA
   VITE_API_MOCK: import.meta.env.VITE_API_MOCK, VITE_PROFILE_ENABLED: import.meta.env.VITE_PROFILE_ENABLED,
 }) =>
   env.VITE_API_MOCK !== 'false' || env.VITE_PROFILE_ENABLED === 'true';
+
+/**
+ * 홈의 한 줄 입력(할 일을 적으면 공고 찾기부터 자소서까지 이어서 한다) — 서버가 배포된 뒤 `VITE_ASSISTANT_ENABLED=true` 로 연다.
+ * 목 서버에도 아직 없어서, 다른 기능과 달리 Mock 에서도 기본은 꺼져 있다.
+ */
+export const assistantSupported = (env: { VITE_ASSISTANT_ENABLED?: string } = {
+  VITE_ASSISTANT_ENABLED: import.meta.env.VITE_ASSISTANT_ENABLED,
+}) => env.VITE_ASSISTANT_ENABLED === 'true';

@@ -4,12 +4,13 @@ import { useCoverLetters, type CoverLetterStage } from '@/api/coverLetters';
 import { Badge, Breadcrumb, EmptyState, PageTitle, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { postingLine } from '@/lib/coverLetterCopy';
+import { CoverLetterDeleteAction } from './CoverLetterDeleteAction';
 import { ymd } from '@/lib/format';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import './coverLetters.css';
 
 const STAGE_LABEL: Record<CoverLetterStage, string> = {
-  ASSIGNING: '카드 고르는 중', ASSIGNED: '카드 확인', ASKING: '질문 만드는 중', ASKED: '질문에 답하기',
+  ASSIGNING: '카드 고르는 중', ASSIGNED: '이어서 쓰는 중', ASKING: '질문 만드는 중', ASKED: '이어서 쓰는 중',
   DRAFTING: '초안 쓰는 중', DRAFTED: '초안 완성', FAILED: '멈춤',
 };
 
@@ -31,7 +32,7 @@ export function CoverLettersPage() {
             {list.data.map((l) => {
               const where = postingLine(l.posting, l.jobRole);
               return (
-                <li key={l.id}>
+                <li key={l.id} className="cl-list__item">
                   <Link to={`/cover-letters/${encodeURIComponent(l.id)}`} className="cl-list__row">
                     <div className="stack grow" style={{ gap: 4, minWidth: 0 }}>
                       <span className="w-600">{l.jobRole}</span>
@@ -43,6 +44,8 @@ export function CoverLettersPage() {
                       <span className="t-12 c-3">{ymd(l.updatedAt)}</span>
                     </div>
                   </Link>
+                  {/* 링크 안에 버튼을 넣을 수 없어 링크 옆에 둔다 */}
+                  <div className="cl-list__delete"><CoverLetterDeleteAction letter={l} ariaLabel={`${l.jobRole} 자소서 삭제`} /></div>
                 </li>
               );
             })}

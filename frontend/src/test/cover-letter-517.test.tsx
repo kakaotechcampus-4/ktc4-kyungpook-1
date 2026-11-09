@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +7,7 @@ import { keys } from '@/api/keys';
 import { CardSummary } from '@/api/schemas';
 import { CoverLetterPage } from '@/features/coverLetters/CoverLetterPage';
 import { CoverLetterNewPage } from '@/features/coverLetters/CoverLetterNewPage';
-import { assignLine, exampleThemes, primaryState } from '@/lib/coverLetterCopy';
+import { assignLine, exampleThemes } from '@/lib/coverLetterCopy';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
 
@@ -80,14 +80,6 @@ describe('화면 문장', () => {
     expect(assignLine(step({ actor: 'SUPERVISOR', kind: 'CHECKED', questionId: null }), qs)?.text).toBe('모든 문항을 함께 보고 겹치는 카드를 확인했어요');
     expect(assignLine(step({ actor: 'ROBOT', kind: 'DANCED' }), qs)).toBeNull();
   });
-
-  it('중심 카드 자리 — 카드 있음, 지움, 고르기 실패, 맞는 카드 없음을 가른다', () => {
-    const q = (over: Record<string, unknown>) => letter({ questions: [question(over)] }).questions[0];
-    expect(primaryState(q({}))).toBe('picked');
-    expect(primaryState(q({ primaryCard: null, primaryCardDeleted: true }))).toBe('deleted');
-    expect(primaryState(q({ primaryCard: null, assignedBy: 'FAILED' }))).toBe('failed');
-    expect(primaryState(q({ primaryCard: null }))).toBe('no-fit');
-  });
 });
 
 describe('Mock 서버는 계약대로 동작한다', () => {
@@ -145,30 +137,7 @@ describe('Mock 서버는 계약대로 동작한다', () => {
   });
 });
 
-describe('③ 카드 확인 화면', () => {
-  it('지운 카드, 고르기 실패, 맞는 카드 없음을 서로 다르게 안내한다', () => {
-    mount(letter({ questions: [
-      question({ id: 'a', seq: 1, primaryCard: null, primaryCardDeleted: true }),
-      question({ id: 'b', seq: 2, primaryCard: null, assignedBy: 'FAILED', pickReason: null }),
-      question({ id: 'c', seq: 3, primaryCard: null, assignedBy: 'SUB_AGENT', pickReason: null }),
-    ] }));
-    expect(screen.getByText('고른 카드가 지워졌어요')).toBeInTheDocument();
-    expect(screen.getByText('이 문항은 카드를 고르지 못했어요')).toBeInTheDocument();
-    expect(screen.getByText('맞는 카드가 없어요')).toBeInTheDocument();
-    expect(screen.getByText(/카드가 없는 문항 3개는 질문으로 재료를 모아요/)).toBeInTheDocument();
-  });
-
-  it('고른 카드와 이유, 재료 한 줄을 보이고 카드 바꾸기에서 같은 카드를 보조로 고르지 못하게 한다', async () => {
-    mount(letter());
-    expect(screen.getByRole('link', { name: '팀원과 토큰 저장 위치로 갈린 경험' })).toHaveAttribute('href', '/cards/card_04');
-    expect(screen.getByText('의견을 맞춘 과정이 분명해서')).toBeInTheDocument();
-    expect(document.querySelector('.cl-ready')).toHaveTextContent('재료 2/5 (결과, 배운 점, 계기는 다음에 물어요)');
-    fireEvent.click(screen.getByRole('button', { name: '1번 문항 카드 바꾸기' }));
-    const support = await screen.findByRole('radiogroup', { name: '보조 카드' });
-    expect(within(support).getByRole('radio', { name: /팀원과 토큰 저장 위치로 갈린 경험/ })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '바꾸기' })).toBeDisabled(); // 바꾼 게 없으면 저장하지 않는다
-  });
-
+describe('카드 고르기 실패 화면', () => {
   it('실패는 retryable 이 true 일 때만 다시 시도를 연다', () => {
     mount(letter({ stage: 'FAILED', failedStep: 'ASSIGN', errorCode: 'INTERNAL_ERROR', retryable: false }));
     expect(screen.getByText('카드 고르기를 마치지 못했어요')).toBeInTheDocument();
@@ -182,11 +151,10 @@ describe('③ 카드 확인 화면', () => {
 describe('① 입력 화면', () => {
   it('빈 칸과 글자 수 범위를 그 자리에서 알리고 보내지 않는다', () => {
     mount(null, '/cover-letters/new');
-    fireEvent.change(screen.getByLabelText('지원 이유'), { target: { value: input.memo } });
     fireEvent.click(screen.getByRole('button', { name: /^1번 문항 답 700자 이내/ }));
     fireEvent.change(screen.getByLabelText('1번 문항 글자 수'), { target: { value: '50' } });
     fireEvent.keyDown(screen.getByLabelText('1번 문항 글자 수'), { key: 'Enter' });
-    fireEvent.click(screen.getByRole('button', { name: '카드 고르기' }));
+    fireEvent.click(screen.getByRole('button', { name: '초안 쓰기' }));
     expect(screen.getByText('지원 직무를 적어 주세요')).toBeInTheDocument();
     expect(screen.getByText('문항을 적어 주세요')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('1번 문항'), { target: { value: input.questions[0].text } });
@@ -206,8 +174,8 @@ describe('① 입력 화면', () => {
     db.cards.forEach((c) => { c.status = 'DRAFT'; });
     mount(null, '/cover-letters/new');
     await waitFor(() => expect(screen.getByText('확정한 카드가 없어요')).toBeInTheDocument());
-    // 카드는 네 칸이 모두 차고 확인 필요한 칸이 없으면 서버가 자동으로 확정한다(Card.settle) — 눌러서 확정하라고만 하지 않고 그 규칙을 알린다
-    expect(screen.getByText(/네 칸이 모두 차고 확인 필요한 칸이 없으면 카드가 자동으로 확정돼요/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '카드 고르기' })).toBeDisabled();
+    // 카드는 상황과 행동이 차 있고 확인 필요한 칸이 없으면 서버가 자동으로 확정한다(Card.settle) — 눌러서 확정하라고만 하지 않고 그 규칙을 알린다
+    expect(screen.getByText(/상황과 행동이 차 있고 확인이 필요한 칸이 없으면 카드가 자동으로 확정돼요/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '초안 쓰기' })).toBeDisabled();
   });
 });

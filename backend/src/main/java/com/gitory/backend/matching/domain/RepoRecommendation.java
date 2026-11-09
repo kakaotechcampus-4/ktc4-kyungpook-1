@@ -42,6 +42,9 @@ public class RepoRecommendation {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<RecommendedCompany> companies;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    private List<RecommendedCompany> previousCompanies;
+
     private Instant computedAt;
 
     private Instant staleSince;
@@ -69,8 +72,10 @@ public class RepoRecommendation {
         this.companies = new ArrayList<>();
     }
 
+    /** 바꾸기 전 기업은 previousCompanies 에 남겨, 이번 계산에서 새로 든 기업을 가릴 수 있게 한다 */
     public void refresh(List<RecommendedCompany> companies, Instant now) {
 
+        this.previousCompanies = this.companies;
         this.companies = new ArrayList<>(companies);
         this.computedAt = now;
         this.status = staleSince == null ? RepoRecommendationStatus.READY : RepoRecommendationStatus.COMPUTING;

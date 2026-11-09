@@ -14,8 +14,8 @@ test('분석이 도는 동안 경과 시간과 마지막 확인이 흐르고 지
   await expect.poll(async () => live.innerText(), { timeout: 5000 }).not.toBe(first);   // 1초마다 흐른다
   await expect(page.locator('.tl__item--now')).toHaveCount(1, { timeout: 10_000 });   // 막대 대신 지금 단계만 펼친다(#789)
   await expect(page.getByRole('progressbar')).toHaveCount(0);
-  // 끝나면 활동 표시도 사라진다 — 후보 보드로 넘어간다
-  await expect(page).toHaveURL(/\/repos\/r_auth\/candidates/, { timeout: 30_000 });
+  // 끝나면 활동 표시도 사라진다 — r_auth 는 카드가 있어 카드 폴더로 넘어간다
+  await expect(page).toHaveURL(/\/cards\/repo\/r_auth/, { timeout: 30_000 });
 });
 
 test('후보 보드는 이미 카드로 만든 후보를 고르는 타일에서 빼고, 아래 한 줄 목록의 카드 보기로 그 카드를 연다', async ({ page }) => {

@@ -30,6 +30,17 @@ public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
     @Query("SELECT p.id FROM JobPosting p WHERE p.publicId = :publicId")
     Optional<Long> findIdByPublicId(@Param("publicId") UUID publicId);
 
+    // 조건을 뽑은 시각이 after 뒤인 활성 공고 중 마감 전인 것의 id 로, 새 공고 알림이 어디서부터 볼지 정할 때 쓴다
+    @Query("""
+            SELECT p.id FROM JobPosting p
+            WHERE p.status = com.gitory.backend.matching.domain.JobPostingStatus.ACTIVE
+              AND p.contentStatus = com.gitory.backend.matching.domain.JobPostingContentStatus.READY
+              AND p.extractedAt > :after
+              AND (p.expiresAt IS NULL OR p.expiresAt > :now)
+            ORDER BY p.id
+            """)
+    List<Long> findIdsExtractedAfter(@Param("after") Instant after, @Param("now") Instant now);
+
     // 공고와 등급 조건을 한 쿼리로 읽어야 새벽 조건 뽑기가 커밋되는 사이에 둘이 어긋나지 않는다 — 목록 카드의 기술·학력도 같은 줄에서 읽는다
     // 조건을 뽑은 활성 공고 중 마감 전인 것만, 필수·우대 조건을 한 줄씩 읽고 추천·상세와 같은 공고를 다루도록 색인은 보지 않는다
     @Query("""

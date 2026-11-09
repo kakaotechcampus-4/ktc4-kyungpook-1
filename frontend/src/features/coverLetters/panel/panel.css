@@ -105,32 +105,13 @@
 
 /* 채우기(#733) — 자소서 하나에 대화 하나. AI 는 왼쪽(회색), 내 말은 오른쪽(파랑 바탕), 끝난 말은 가운데 흐린 한 줄 */
 .clp-chat { display: flex; flex-direction: column; gap: 12px; }
-.clp-thread { display: flex; flex-direction: column; gap: 8px; }
-.clp-turn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
-.clp-bub { max-width: 90%; padding: 10px 14px; border-radius: 14px; font-size: 15px; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; white-space: pre-line; }
-.clp-bub p { margin: 0; }
-.clp-bub--ai { align-self: flex-start; background: var(--bg-subtle); border-top-left-radius: 4px; color: var(--text-primary); }
-.clp-bub--me { align-self: flex-end; background: var(--bg-selected); border-top-right-radius: 4px; color: var(--text-primary); }
-.clp-bub--wait { display: inline-flex; align-items: center; gap: 8px; color: var(--text-secondary); }
-.clp-bub__ex { color: var(--text-secondary); }
-.clp-qchip { display: inline-block; margin-bottom: 4px; padding: 0 8px; border: 1px solid var(--border-default); border-radius: var(--radius-full); background: var(--bg-surface); font-size: 11px; line-height: 18px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
-.clp-tline { align-self: center; margin: 2px 0; font-size: 13px; line-height: 20px; color: var(--text-tertiary); text-align: center; white-space: pre-line; }
-.clp-tline--left { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; text-align: left; }
-.clp-placed { display: inline-flex; align-items: center; gap: 2px; margin: 0; font-size: 14px; font-weight: 600; color: var(--text-strong); }
-.clp-placed .clp-link { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.clp-fail { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0 0 0 12px; border-left: 3px solid var(--caution-300); font-size: 14px; color: var(--field-low-text); }
-.clp-fail .clp-link { color: var(--text-primary); font-weight: 600; }
-.clp-bub--enter { animation: clp-enter .2s ease-out; }
-@keyframes clp-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.chat-done .clp-link { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.chat-fail .clp-link { color: var(--text-primary); font-weight: 600; }
 /* 입력 줄은 패널 아래에 붙는다 — 대화가 길어도 보내기가 늘 보인다 */
 .clp-reply { position: sticky; bottom: -8px; z-index: 2; display: flex; flex-direction: column; gap: 4px; padding: 10px 0 8px; background: var(--bg-surface); border-top: 1px solid var(--border-default); }
+/* 패널의 초점 테두리와 겹쳐 두 줄이 되지 않게 글 칸은 테두리 색으로만 알린다 */
+.clp .chat-composer__input:focus-visible { outline: none; }
 .clp-reply__other { align-self: flex-start; font-weight: 600; color: var(--text-primary); }
-.clp-reply__row { display: flex; align-items: flex-end; gap: 8px; }
-.clp-reply__input { flex: 1; min-width: 0; min-height: var(--control-touch-size); max-height: 160px; padding: 10px 14px; border: 1px solid var(--border-strong); border-radius: var(--control-radius); background: var(--bg-surface); font: inherit; font-size: 15px; line-height: 1.5; color: var(--text-primary); resize: none; }
-.clp-reply__input::placeholder { color: var(--text-tertiary); }
-.clp-reply__input:disabled { background: var(--bg-subtle); cursor: default; }
-.clp .clp-reply__input:focus-visible { outline: none; border-color: var(--border-selected); box-shadow: var(--focus); }
-.clp-reply__send { min-height: 48px; padding: 0 18px; font-size: 15px; font-weight: 600; }
 .clp-reply__sub { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-tertiary); }
 .clp-reply__meta { display: inline-flex; align-items: center; gap: 4px; }
 .clp-reply__count { font-variant-numeric: tabular-nums; }
@@ -139,7 +120,7 @@
 .cl-draft .phl--flash { background: var(--pastel-blue); box-shadow: 0 0 0 2px var(--pastel-blue); transition: background .3s; }
 
 .clp-grab, .clp-bar { display: none; }
-@media (prefers-reduced-motion: reduce) { .clp-rs, .clp-pt__chev, .cl-draft .phl--flash { transition: none; } .clp-bub--enter { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .clp-rs, .clp-pt__chev, .cl-draft .phl--flash { transition: none; } }
 
 /* 860px 아래 — 아래 막대 세 칸, 누르면 반 높이 시트. 767px 아래는 앱 메뉴 막대 위에 놓는다 */
 @media (max-width: 859.98px) {

@@ -258,12 +258,12 @@ it('이미 카드로 쓴 후보의 제안은 고를 수 없고, 카드로 만들
   expect(screen.getByRole('checkbox', { name: '후보로 카드 만들기 — 5.12 결제모듈 6커밋' })).toBeInTheDocument();
 });
 
-it('한 레포에서 고른 후보가 서버가 한 번에 받는 8개를 넘으면 나눠 부르고, 같은 후보는 한 번만 넘긴다', () => {
-  const ids = Array.from({ length: 9 }, (_, i) => `c_${i}`);
+it('한 레포에서 고른 후보가 서버가 한 번에 받는 10개를 넘으면 나눠 부르고, 같은 후보는 한 번만 넘긴다', () => {
+  const ids = Array.from({ length: 11 }, (_, i) => `c_${i}`);
   const plan = planProceed([...ids, 'c_0'].map((candidateId) => proposalOf({ candidateId })));
   expect(plan.createCards).toEqual([
-    { repoId: 'r_auth', candidateIds: ids.slice(0, 8) },
-    { repoId: 'r_auth', candidateIds: ['c_8'] },
+    { repoId: 'r_auth', candidateIds: ids.slice(0, 10) },
+    { repoId: 'r_auth', candidateIds: ['c_10'] },
   ]);
 });
 

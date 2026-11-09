@@ -16,6 +16,7 @@ export const SCENARIOS = {
   'github-unauthorized': { label: 'GitHub 토큰 무효(분석 403)', delayMs: 160 },
   'cover-letter-failed': { label: '자소서 카드 고르기 실패', delayMs: 160 },
   'no-profile': { label: '인적사항 미입력(처음 입력 창)', delayMs: 160 },
+  'repo-update': { label: '서버가 다시 읽은 레포 알림', delayMs: 160 },
 } as const;
 export type Scenario = keyof typeof SCENARIOS;
 /** 이 장면으로 새로 연 데모만 관심 분야가 비어 처음 입력 창이 뜬다 */
@@ -62,6 +63,11 @@ export function createScenario(scenario: Scenario) {
         return { ...result, data: { ...me, github: { ...me.github, connected: false, connectedAt: null } } };
       }
       if (scenario === 'empty' && (path === '/cards' || path === '/repos' || path === '/activities')) return { ...result, data: [] };
+      // 목록이 빈 장면에서는 정리한 레포와 확정 카드 수도 0이어야 홈이 처음 온 사람의 준비 단계를 보인다
+      if (scenario === 'empty' && path === '/me' && result.data && typeof result.data === 'object') {
+        const me = result.data as { stats?: object };
+        return { ...result, data: { ...me, stats: { ...me.stats, confirmedCards: 0, analyzedRepos: 0, remainingCandidates: 0 } } };
+      }
       if (scenario === 'minimal-summary' && path === '/cards' && Array.isArray(result.data)) return { ...result, data: result.data.map(({ id, kind, status, title, versionNo, star, updatedAt }) => ({ id, kind, status, title, versionNo, star, updatedAt })) };
       if (scenario !== 'sparse') return result;
       if (path === '/me' && result.data && typeof result.data === 'object') return { ...result, data: { ...result.data, avatarUrl: null } };

@@ -27,6 +27,20 @@
 
 > 날짜가 있는 문서는 해당 작업 시점의 기록입니다. 현재 동작과 설정은 최신 코드·환경변수 및 각 파트의 실행 가이드를 함께 확인하세요.
 
+## 현재 서비스 화면과 기능
+
+[프로젝트 README](../README.md#주요-기능과-화면)는 2026-11-09 운영 화면 기준으로 갱신했습니다.
+구현 당시의 판단과 검증 기록은 아래에서 확인할 수 있습니다. 각 문서의 과거 미구현 표기는 최신 코드와 함께 확인하세요.
+
+| 주제 | 문서 |
+| --- | --- |
+| 운영 화면 7장과 캡처 출처 | [README 화면 캡처](images/readme/README.md) |
+| 시스템 구성과 전체 AI 파이프라인 | [구성도와 확인한 소스](images/architecture/README.md) |
+| 한 문장으로 작업 맡기기 | [홈 한 줄 명령 계약·화면](../frontend/docs/2026-11-05-ASSISTANT.md) |
+| 지원할 공고를 보여 주는 홈 | [홈 화면 구현](../frontend/src/features/home/HomePage.tsx) · [공고 조건·카드 연결](../frontend/src/features/home/ApplyPanel.tsx) |
+| 문항별 자소서 작성·대화 보강·첨삭 | [자소서 초안 화면](../frontend/docs/2026-10-31-COVER_LETTER_DRAFT.md) |
+| 경험 카드를 활동·저장소별로 관리 | [활동과 폴더 보기](../frontend/docs/2026-10-31-ACTIVITIES_AND_FOLDERS.md) |
+
 ## 화면과 사용자 흐름
 
 | 주제 | 문서 |

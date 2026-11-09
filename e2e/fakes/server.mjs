@@ -232,7 +232,11 @@ const server = createServer(async (req, res) => {
     requests.push({ method: req.method, path: url.pathname + url.search, authorization: req.headers.authorization ?? null });
 
     // LLM 은 키가 Authorization 에 실려 오므로 GitHub 토큰 검사 앞에서 가른다
-    if (req.method === 'POST' && url.pathname.endsWith('/chat/completions')) return handleLlm(JSON.parse(raw || '{}'), res);
+    if (req.method === 'POST' && url.pathname.endsWith('/chat/completions')) {
+      const llmFailure = failures.find((f) => f.pattern.test(url.pathname + url.search));
+      if (llmFailure) return send(res, llmFailure.status, { message: 'fake: 시험이 일부러 실패시킨 요청' });
+      return handleLlm(JSON.parse(raw || '{}'), res);
+    }
 
     if (url.pathname.startsWith('/avatars/')) return send(res, 200, PIXEL, { 'Content-Type': 'image/png' });
 

@@ -175,7 +175,8 @@ export class DraftPlayback {
     if (!this.ended || !this.run) return false;
     if (this.instant) return false;
     const run = this.run;
-    return !(this.complete(run) && this.at !== null && run.completedAt !== null && this.at - run.completedAt >= DWELL_MS);
+    // 다 펼친 뒤에 끝났다는 응답이 늦게 오면 '다 썼어요' 를 볼 시간이 없어지므로 늦은 쪽부터 센다
+    return !(this.complete(run) && this.at !== null && run.completedAt !== null && this.at - Math.max(run.completedAt, this.endedAt ?? 0) >= DWELL_MS);
   }
 
   /** 보일 카드가 하나라도 있었는지 */

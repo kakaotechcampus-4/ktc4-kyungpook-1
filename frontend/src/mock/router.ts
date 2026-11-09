@@ -110,6 +110,7 @@ on('DELETE', '/cards/:id', ({ params }) => {
   delete db.interview[card.id];
   return ok({ ok: true });
 });
+on('DELETE', '/me', () => { resetDb(); return ok(null); });
 on('POST', '/auth/logout', () => ok({ ok: true }));
 on('GET', '/me', () => {
   const confirmed = db.cards.filter((c) => c.status === 'CONFIRMED').length;

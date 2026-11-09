@@ -53,6 +53,7 @@ export function LandingPage() {
           {error === 'access_denied' && <p className="landing-notice" role="status">GitHub 연결을 취소했어요. 준비되면 다시 시작해 주세요.</p>}
           {error && error !== 'access_denied' && <p className="landing-notice landing-notice--error" role="alert">GitHub 연결에 실패했어요. 다시 시작해 주세요.</p>}
           {reason === 'expired' && !error && !login.isDemo && <p className="landing-notice" role="status">로그인이 만료됐어요. 다시 시작해 주세요.</p>}
+          {reason === 'left' && !error && <p className="landing-notice" role="status">탈퇴했어요. 정보를 모두 지웠어요.</p>}
           {login.failure && <p className="landing-notice landing-notice--error" role="alert">{login.failure}</p>}
 
           {!login.isDemo && <details className="landing__permissions" aria-label="GitHub 접근 범위 자세히 보기">

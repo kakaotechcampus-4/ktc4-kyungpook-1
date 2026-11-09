@@ -367,6 +367,11 @@ export function useDisconnectGithub() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: endpoints.disconnectGithub, onSuccess: () => void qc.invalidateQueries({ queryKey: keys.me }) });
 }
+/** 탈퇴 실패는 화면이 직접 보여 준다 — 전역 알림으로 또 알리지 않는다 */
+export function useLeaveAccount() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: endpoints.leaveAccount, retry: false, meta: { errorPresentation: 'inline' }, onSuccess: () => qc.clear() });
+}
 export function useLogout() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: endpoints.logout, onSuccess: () => qc.clear() });

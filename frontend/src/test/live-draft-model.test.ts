@@ -360,6 +360,19 @@ describe('#617 Job 이 끝난 뒤', () => {
     expect(pb.holding).toBe(false);
   });
 
+  it('글을 다 펼친 뒤에 Job 이 끝났다는 응답이 늦게 와도 끝난 때부터 DWELL_MS 동안 holding 이다', () => {
+    const pb = player([card('a', 'WRITING', four(40))]);
+    pb.advance(T0 + 4200); // 160자 4초가 지나 다 보임
+    expect(['S', 'T', 'A', 'R'].map((f) => typed(pb, f as StarField))).toEqual([40, 40, 40, 40]);
+    const endedAt = T0 + 4200 + DWELL_MS + 1000;
+    pb.receive([card('a', 'DONE', four(40))], { ended: true, now: endedAt });
+    expect(pb.holding).toBe(true);
+    pb.advance(endedAt + DWELL_MS - 50);
+    expect(pb.holding).toBe(true);
+    pb.advance(endedAt + DWELL_MS + 50);
+    expect(pb.holding).toBe(false);
+  });
+
   it('끝난 지 ENDED_MAX_MS 가 지나면 남은 글을 바로 마친다', () => {
     const pb = player([card('a', 'DONE', [slot('S', ko(3000)), slot('T', ko(3000)), slot('A', ko(3000)), slot('R', ko(3000))])], { ended: true });
     pb.advance(T0 + ENDED_MAX_MS - 1);

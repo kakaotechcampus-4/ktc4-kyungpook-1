@@ -65,6 +65,8 @@
 .ask-guide h2 { margin: 0; font-size: 17px; line-height: 25px; font-weight: 700; color: var(--text-primary); }
 .ask-guide p { margin: 0 0 8px; font-size: 15px; line-height: 23px; color: var(--text-secondary); word-break: keep-all; }
 .ask-go.btn { align-self: flex-start; min-height: 52px; padding-inline: 24px; font-size: 16px; }
+.ask-result__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.ask-result__letter { font-size: 15px; line-height: 23px; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
 
 @media (max-width: 767px) {
   /* 대화가 짧아도 입력 줄이 아래 탭 바로 위에 놓이게, 위 상표 줄과 아래 탭을 뺀 높이를 채운다 */
@@ -78,4 +80,6 @@
   .ask-posting__go { display: none; }
   .ask-guide { width: 100%; padding: 18px 16px; }
   .ask-guide .ask-go.btn { align-self: stretch; justify-content: center; }
+  .ask-result__actions { flex-direction: column; align-items: stretch; width: 100%; }
+  .ask-result__letter { text-align: center; }
 }

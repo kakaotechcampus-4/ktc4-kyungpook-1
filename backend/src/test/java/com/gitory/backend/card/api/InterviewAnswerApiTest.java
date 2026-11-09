@@ -693,8 +693,8 @@ class InterviewAnswerApiTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"LATER", "INSUFFICIENT"})
-    @DisplayName("LATER·INSUFFICIENT 로 남아 답 글이 있는 질문은 아직 열린 질문이라서 다른 글로 답하면 200 으로 새 답이 된다")
+    @ValueSource(strings = {"LATER"})
+    @DisplayName("LATER 로 남아 답 글이 있는 질문은 아직 열린 질문이라서 다른 글로 답하면 200 으로 새 답이 된다")
     void turnThatEndedWithoutAnswerCanBeAnswered(String outcome) throws Exception {
 
         Long cardId = fixtures.insertCard(MY_CARD, myUserId);

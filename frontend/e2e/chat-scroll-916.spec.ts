@@ -21,7 +21,7 @@ test('C3 되묻기에서 새 질문이 오면 질문의 첫 줄이 대화 칸 �
     await expect.poll(startVisible, { message: `질문 ${round} 의 첫 줄`, timeout: 5_000 }).toBe(true);
     if (!answer) break;
     await box.fill(answer);
-    await page.getByRole('button', { name: '답변 저장', exact: true }).click();
+    await page.getByRole('button', { name: '답 보내기', exact: true }).click();
   }
 });
 

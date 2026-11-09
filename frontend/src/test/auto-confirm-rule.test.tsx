@@ -129,7 +129,7 @@ describe('G4 확정된 카드에서 되묻기 화면이 그대로 열린다', ()
 
     expect(await screen.findByRole('heading', { name: /^Q1\. \S/ })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('textbox', { name: '답변' }), { target: { value: '로그인 실패 원인을 알리는 일이었다' } });
-    fireEvent.click(screen.getByRole('button', { name: '답변 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '답 보내기' }));
 
     await waitFor(() => expect(detail(id).version.task).toBe('로그인 실패 원인을 알리는 일이었다'));
     expect(detail(id).status).toBe('CONFIRMED');

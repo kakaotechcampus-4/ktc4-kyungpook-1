@@ -41,3 +41,9 @@
 		file_server
 	}
 }
+
+# 주소를 바꾼 뒤에도 이미 공유한 링크가 열리도록 옛 주소를 새 주소로 넘긴다
+# 옛 주소가 없는 환경에서는 인증서를 공개로 받지 않는 로컬 이름으로 두어 아무 일도 하지 않는다
+{$LEGACY_SITE_ADDRESS:legacy.localhost} {
+	redir https://{$SITE_ADDRESS}{uri} permanent
+}

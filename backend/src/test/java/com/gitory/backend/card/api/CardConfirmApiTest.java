@@ -56,6 +56,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -400,6 +401,41 @@ class CardConfirmApiTest {
     }
 
     @Test
+    @DisplayName("한 번도 고치지 않은 카드의 바뀐 횟수는 0이다")
+    void neverEditedCardHasNoChanges() throws Exception {
+
+        manualCardWithSituationAndAction();
+
+        detail(MY_CARD).andExpect(jsonPath("$.data.changeCount").value(0));
+
+    }
+
+    @Test
+    @DisplayName("확정하며 남긴 사본은 바뀐 횟수에 세지 않는다")
+    void confirmCopyIsNotCountedAsChange() throws Exception {
+
+        manualCardWithSituationAndAction();
+
+        confirm(MY_CARD).andExpect(jsonPath("$.data.versionNo").value(2));
+
+        detail(MY_CARD)
+                .andExpect(jsonPath("$.data.version.versionNo").value(2))
+                .andExpect(jsonPath("$.data.changeCount").value(0));
+
+    }
+
+    @Test
+    @DisplayName("글을 고쳐 새 버전이 생기면 바뀐 횟수가 는다")
+    void editedVersionIsCountedAsChange() throws Exception {
+
+        Long cardId = manualCardWithSituationAndAction();
+        fixtures.insertCardVersion(cardId, 2, "USER_EDIT", false);
+
+        detail(MY_CARD).andExpect(jsonPath("$.data.changeCount").value(1));
+
+    }
+
+    @Test
     @DisplayName("본문 없이 확정을 보내도 200 이고 확정된다")
     void confirmsWithoutBody() throws Exception {
 
@@ -627,6 +663,12 @@ class CardConfirmApiTest {
         OffsetDateTime old = OffsetDateTime.ofInstant(OLD, ZoneOffset.UTC);
         jdbc.update("UPDATE card SET updated_at = ? WHERE id = ?", old, cardId);
         jdbc.update("UPDATE card_version SET updated_at = ? WHERE card_id = ?", old, cardId);
+
+    }
+
+    private ResultActions detail(UUID publicId) throws Exception {
+
+        return mvc.perform(get("/api/cards/{id}", publicId).with(loggedInAs(myUserId)));
 
     }
 

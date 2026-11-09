@@ -40,7 +40,7 @@ export function LeavePage() {
       {blocked && <Note strong="하던 일이 끝나면 탈퇴할 수 있어요" tone="caution" />}
       {leave.isError && !blocked && <p role="alert" className="c-2">{errorView(leave.error).message}</p>}
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-        <Button variant="outline" size="lg" onClick={ask}>탈퇴하기</Button>
+        <Button variant="danger" size="lg" onClick={ask}>탈퇴하기</Button>
         <Link to="/settings" className="btn btn--outline">마이페이지로 돌아가기</Link>
       </div>
       {open && (

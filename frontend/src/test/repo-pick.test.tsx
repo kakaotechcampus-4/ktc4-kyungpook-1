@@ -73,6 +73,7 @@ describe('맞는 기업 고르기 화면', () => {
         candidate(4, { hits: [] }),
       ], { finished: true }),
     }));
+    localStorage.setItem('repo-pick-replayed:r_auth:2026-11-06T00:00:00Z', '1');
     open();
 
     await heading('맞는 기업 3곳을 골랐어요');

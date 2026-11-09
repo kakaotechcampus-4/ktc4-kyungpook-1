@@ -1,0 +1,44 @@
+/* 정책 문서와 정책 링크 줄. 색은 시맨틱 토큰만, 글자 크기는 12·13·14·16·20·28 단계만 쓴다 */
+
+/* 링크 줄 — 개인정보처리방침은 법에 따라 다른 링크보다 눈에 띄게 굵게 */
+.legal-links { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.legal-links a { color: var(--text-secondary); text-decoration: none; }
+.legal-links a:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 2px; }
+.legal-links__strong { font-weight: 700; }
+.legal-links__copy { color: var(--text-tertiary); }
+
+/* 문서 */
+.legal { min-height: 100%; background: var(--bg-canvas); color: var(--text-primary); }
+.legal__top { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 760px; margin: 0 auto; padding: 24px 20px 0; flex-wrap: wrap; }
+.legal__tabs { display: flex; gap: 4px; }
+.legal__tabs a { padding: 6px 12px; border-radius: 10px; font-size: 14px; color: var(--text-secondary); text-decoration: none; }
+.legal__tabs a.active { background: var(--bg-subtle); color: var(--text-primary); font-weight: 600; }
+.legal__body { max-width: 760px; margin: 0 auto; padding: 40px 20px 32px; display: flex; flex-direction: column; gap: 28px; font-size: 14px; line-height: 1.75; }
+.legal__body h1 { margin: 0; font-size: 28px; line-height: 1.3; }
+.legal__meta { margin: -20px 0 0; font-size: 13px; color: var(--text-tertiary); }
+.legal__body section { display: flex; flex-direction: column; gap: 10px; scroll-margin-top: 16px; }
+.legal__toc { margin: 0; padding: 14px 16px 14px 36px; list-style: decimal; border: 1px solid var(--border-default); border-radius: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; font-size: 13px; color: var(--text-secondary); }
+.legal__body .legal__toc a { color: var(--text-secondary); text-decoration: none; }
+.legal__body .legal__toc a:hover { color: var(--text-primary); text-decoration: underline; }
+.legal__body h2 { margin: 0; font-size: 16px; line-height: 1.5; }
+.legal__body p { margin: 0; color: var(--text-strong); }
+.legal__body ul { margin: 0; padding-left: 20px; list-style: disc; display: flex; flex-direction: column; gap: 6px; color: var(--text-strong); }
+.legal__body a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 2px; }
+.legal__table { overflow-x: auto; border: 1px solid var(--border-default); border-radius: 10px; }
+.legal__table table { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 13px; }
+.legal__table th, .legal__table td { padding: 10px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border-default); }
+.legal__table th { background: var(--bg-subtle); color: var(--text-secondary); font-weight: 600; }
+.legal__table tr:last-child td { border-bottom: 0; }
+.legal__foot { max-width: 760px; margin: 0 auto; padding: 24px 20px 48px; border-top: 1px solid var(--border-default); }
+
+/* 앱 안 자리 — 사이드바 맨 아래(프로필 위), 랜딩 맨 아래 */
+.sidebar__legal { padding: 4px 12px 8px; }
+.sidebar__legal a { color: var(--sidebar-text); opacity: .72; }
+.sidebar__legal a:hover { opacity: 1; }
+.sidebar__legal .legal-links__copy { display: none; }
+/* 로그인 버튼 아래 동의 문구 */
+.legal-consent { margin: 0; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
+.legal-consent a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 2px; }
+.shell--rail .sidebar__legal { display: none; }
+.landing__legal { padding: 24px 0 8px; }
+@media (max-width: 640px) { .legal__table table { min-width: 0; } .legal__table th, .legal__table td { padding: 8px; } .legal__toc { grid-template-columns: 1fr; } }

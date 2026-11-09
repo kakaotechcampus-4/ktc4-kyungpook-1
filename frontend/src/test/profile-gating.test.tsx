@@ -90,7 +90,7 @@ describe('mock mode', () => {
     connectMockServer();
     mountApp([page(<MyPage />, '/settings')], '/settings');
     await screen.findByRole('link', { name: /인적사항/ });
-    const line = screen.getByText('인적사항 (학력, 경력, 어학, 자격증)').closest('.settings-data-row')!;
+    const line = screen.getByText('인적사항 (학력, 경력, 어학, 자격증, 관심 분야)').closest('.settings-data-row')!;
     expect(line).toHaveTextContent('공고 매칭의 지원 자격 비교');
     expect(line).toHaveTextContent('자소서 AI 참고');
   });

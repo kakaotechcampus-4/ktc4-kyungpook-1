@@ -203,7 +203,7 @@ fork PR 이 워크플로를 바꿔 `runs-on: self-hosted` 로 실행하면 그 �
 
 ### 자동 배포 (develop 머지)
 
-`develop` 에 머지된 커밋의 CI(backend CI · AI CI · frontend)가 **모두 성공하면** `.github/workflows/deploy.yml` 이 서버에서 돈다(서버 runner 설치는 [처음 배포의 runner 설치](#runner-설치-자동-배포용)). 이미지 빌드는 테스트를 건너뛰므로(`-x test`) CI 가 실패한 커밋은 배포하지 않는다.
+`develop` 에 머지된 커밋의 CI(backend CI · AI CI · frontend)와 전체 서비스 E2E 시험(e2e)이 **모두 성공하면** `.github/workflows/deploy.yml` 이 서버에서 돈다(서버 runner 설치는 [처음 배포의 runner 설치](#runner-설치-자동-배포용)). 이미지 빌드는 테스트를 건너뛰므로(`-x test`) CI 가 실패한 커밋은 배포하지 않는다.
 
 0. gate job 이 그 커밋의 CI 를 모두 확인한다. 아직 도는 CI 가 있으면 넘기고 마지막 CI 가 끝날 때 배포한다. 실패한 CI 가 있으면 배포 워크플로도 실패로 표시된다
 1. 서버의 `~/gitory` 를 그 커밋으로 맞춘다 (`git checkout --force --detach <sha>` — `deploy/.env` 는 gitignore 라 남는다). 바꾸기 전에 지금 돌던 커밋을 적어 둔다. 서버에 이미 같거나 더 새 커밋이 있으면 되돌리지 않고 넘긴다

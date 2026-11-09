@@ -48,7 +48,7 @@ export function MyPage() {
           <div className="stack grow" style={{ gap: 3 }}><span className="w-bold" style={{ fontSize: 14 }}>탈퇴와 데이터 삭제</span><span className="t-12 c-2">탈퇴하고 정보 지우기</span></div>
           <span className="c-3" style={{ fontSize: 16 }}>›</span>
         </Link>
-        <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="text" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
+        <div className="row" style={{ padding: '16px 0 6px' }}><Button variant="secondary" loading={logout.isPending} onClick={async () => { await logout.mutateAsync(); nav('/login'); }}>로그아웃</Button></div>
       </section>
       <section className="settings-section stat-grid">
         {[['확정한 카드', s ? `${s.confirmedCards}장` : '—'], ['정리한 레포', s ? `${s.analyzedRepos}개` : '—'], ['작성한 답변', s ? `${s.interviewTurns}개` : '—'], ['남은 후보', s ? `${s.remainingCandidates}개` : '—']].map(([k, v]) => (

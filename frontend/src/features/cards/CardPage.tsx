@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, History, ListChecks, Pencil, Printer } from 'lucide-react';
+import { Copy, ExternalLink, History, Pencil, Printer } from 'lucide-react';
 import { DraftProgress } from './DraftProgress';
 import { LiveCardDraft } from './LiveCardDraft';
 import { CardNavigation } from './CardNavigation';
@@ -240,13 +240,14 @@ export function CardPage() {
   return (
     <main className="main main--footer main--tight">
       <Breadcrumb items={crumbs} />
-      <CardHeader card={card} titleAction={metadataAction} right={<>{card.repo && <ButtonLink to={`/repos/${card.repo.id}/candidates`} variant="secondary"><ListChecks size={15} aria-hidden />후보 보드</ButtonLink>}</>} />
+      {/* 후보 보드 버튼은 빵부스러기(레포 폴더)와 길이 겹쳐 뺐다(#805) — 후보 보드는 폴더 머리에서 연다 */}
+      <CardHeader card={card} titleAction={metadataAction} />
       {partial && (
         <div className="card row" style={{ gap: 16, padding: '16px 18px', flexWrap: 'wrap' }}>
           <Badge kind="NEUTRAL">일부만 채움</Badge>
           <div className="stack grow" style={{ gap: 4 }}>
             <span className="w-bold" style={{ fontSize: 14 }}>{STAR_FIELDS.filter((f) => card.version[fieldKey[f]]).map((f) => starFieldShort[f]).join(', ')} 칸은 채웠고, {card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => starFieldShort[d.field]).join(', ')} 칸은 아직이에요</span>
-            <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈 칸은 답변하거나 직접 작성해 주세요.'}</span>
+            <span className="t-12l c-2">{canRegenerate ? '칸 단위로 다시 만들 수 있어요' : '빈 칸은 답변하거나 직접 쓸 수 있어요.'}</span>
           </div>
           {canRegenerate && card.droppedFields.filter((d) => d.reason === 'TIMEOUT').map((d) => <Button key={d.field} variant="secondary" size="sm" loading={regen.isPending} onClick={() => regenerate(d.field)}>{starFieldShort[d.field]} 칸만 다시 생성</Button>)}
         </div>
@@ -294,9 +295,9 @@ export function CardPage() {
       </div>
 
       <CardDeleteAction card={card} onDeleted={() => nav('/cards', { replace: true })} />
-      <StickyFooter compact strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸에 답변해 주세요` : canConfirm ? '내용을 확인한 뒤 확정해 주세요' : '상황과 행동을 작성해 주세요'} sub={!reviewFields.length && canConfirm ? '확정한 카드는 공고 매칭에 쓰여요. 나중에 다시 열어 고칠 수 있어요.' : undefined}>
+      <StickyFooter compact strong={reviewFields.length ? `${reviewFields.map((f) => starFieldShort[f]).join(', ')} 칸이 비어 있어요` : canConfirm ? '확정하면 공고 매칭과 자소서에 쓰여요' : '상황과 행동을 쓰면 확정할 수 있어요'} sub={!reviewFields.length && canConfirm ? '나중에 다시 열어 고칠 수 있어요.' : undefined}>
         {reviewFields.length === 0 && <ButtonLink to={cardFolderPath(card)} variant="text">나중에</ButtonLink>}
-        <Button variant={reviewFields.length ? 'secondary' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 작성해 주세요'}>확정</Button>
+        <Button variant={reviewFields.length ? 'secondary' : 'primary'} size="lg" disabled={!canConfirm} onClick={() => setSp({ confirm: '1' })} title={canConfirm ? undefined : '상황과 행동을 쓰면 확정할 수 있어요'}>확정</Button>
         {reviewFields.length > 0 && <Button size="lg" title={interviewActionLabel} onClick={() => ask(reviewFields[0])}>답변하기</Button>}
       </StickyFooter>
 

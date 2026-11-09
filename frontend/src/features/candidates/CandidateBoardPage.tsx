@@ -174,11 +174,12 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         <li className="wstep wstep--now" aria-current="step"><span className="wstep__no">3</span>후보 고르기</li>
       </ol>
       <div className="cand-head">
-        <PageTitle lead="카드로 남길 일을 골라 주세요. 고른 것마다 초안을 써 드려요.">{`${repo.data?.name ?? '…'} 에서 찾은 일`}</PageTitle>
+        <PageTitle lead="고른 일마다 카드 초안을 써 드려요.">{`${repo.data?.name ?? '…'} 에서 찾은 일`}</PageTitle>
         <div className="cand-head__acts">
           <Button variant="text" onClick={() => setSp((current) => { current.set('criteria', '1'); return current; })}>정리 기준</Button>
-          <Button variant="text" disabled={busy} onClick={openAdd}>+ 직접 추가</Button>
-          <ButtonLink to={`/cards/new?repo=${encodeURIComponent(repoId)}`} variant="text">경험 카드 직접 쓰기</ButtonLink>
+          {/* 정리 기준은 부가 정보라 글자 버튼, 후보를 더하거나 카드를 쓰는 일은 보조 버튼(#805) */}
+          <Button variant="secondary" size="sm" disabled={busy} onClick={openAdd}>+ 직접 추가</Button>
+          <ButtonLink to={`/cards/new?repo=${encodeURIComponent(repoId)}`} variant="secondary" size="sm">경험 카드 직접 쓰기</ButtonLink>
           {excluded.length > 0 && <Button variant="text" disabled={busy} onClick={() => void restoreExcluded()}>제외 {excluded.length}개 복원</Button>}
         </div>
       </div>
@@ -196,7 +197,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
 
       <section className="cand-grp" aria-labelledby="cand-grp-open">
         <h2 className="cand-grp__h" id="cand-grp-open"><span className="cand-grp__n" aria-hidden>1</span>먼저 카드로 만들어 볼 경험
-          <span className="cand-grp__meta">{more.length > 0 && !showMore ? `${recommended.length}개 · 전체 ${open.length}개` : `${open.length}개`}</span></h2>
+          <span className="cand-grp__meta">{more.length > 0 && !showMore ? `${recommended.length}개, 전체 ${open.length}개` : `${open.length}개`}</span></h2>
         {open.length > 0
           ? <div className="cand-tiles">{shown.map(tile)}</div>
           : <Note strong="남은 후보가 없어요" tone="inset">후보를 모두 카드로 만들었어요. 아래에서 만든 카드를 볼 수 있어요.</Note>}
@@ -222,7 +223,7 @@ function CandidateBoard({ repoId }: { repoId: string }) {
         </section>
       )}
 
-      <StickyFooter strong={chosen.length ? `${chosen.length}개 골랐어요` : '카드로 남길 일을 골라 주세요'}
+      <StickyFooter strong={chosen.length ? `${chosen.length}개 골랐어요` : '카드로 남길 일을 고르면 초안을 써요'}
         sub={overLimit ? CARD_LIMIT_MESSAGE : chosen.length ? `${MAX_CARDS_PER_REQUEST}개까지 고를 수 있고, 하나에 1~2분쯤 걸려요` : `${MAX_CARDS_PER_REQUEST}개까지 고를 수 있어요`}>
         <Button size="lg" disabled={chosen.length === 0 || overLimit || busy} loading={create.isPending} onClick={makeCards}>카드 만들기</Button>
       </StickyFooter>

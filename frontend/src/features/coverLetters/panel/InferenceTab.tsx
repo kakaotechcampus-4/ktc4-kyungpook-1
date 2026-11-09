@@ -16,7 +16,7 @@ export function InferenceTab({ items, confirmingKey, note, onShow, onConfirm, on
   const shown = more ? items : items.slice(0, 3);
   return (
     <>
-      <p className="clp-sub">확인해 주세요. 안 해도 글은 완성이에요</p>
+      <p className="clp-sub">확인하지 않아도 글은 완성이에요</p>
       {note && <p className="clp-note" role="status">{note}</p>}
       {items.length === 0 ? <p className="clp-muted">확인할 문장이 없어요</p> : (
         <ul className="clp-infs">

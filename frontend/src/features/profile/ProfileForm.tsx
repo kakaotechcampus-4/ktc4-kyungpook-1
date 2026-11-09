@@ -18,9 +18,11 @@ export function ProfileForm({ initial }: { initial: Profile }) {
   const canSave = dirty || Boolean(saveError);
   return (
     <>
-      <Note strong="이렇게 쓰여요" tone="inset">
-        관심 분야는 공고 매칭이 공고를 고를 때 쓰고, 학력, 경력, 어학, 자격증은 지원 자격 조건을 비교할 때 써요. 자소서를 AI 로 쓸 때도 이 정보를 읽을 수 있어요. 경험 카드 문장은 이 정보로 만들지 않아요. 학력이나 경력 같은 개인 정보라 분석 지표와 주소에는 남기지 않아요.{isDemo && ' 샘플 모드라 이 브라우저 탭에만 저장되고, 탭을 닫으면 사라져요.'}
-      </Note>
+      {/* 처음부터 펼쳐 두면 칸보다 설명이 먼저 읽혀, 궁금할 때 여는 줄로 접는다(#805) */}
+      <details className="profile-usage">
+        <summary>이렇게 쓰여요</summary>
+        <p>관심 분야는 공고 매칭이 공고를 고를 때 쓰고, 학력, 경력, 어학, 자격증은 지원 자격 조건을 비교할 때 써요. 자소서를 AI 로 쓸 때도 이 정보를 읽을 수 있어요. 경험 카드 문장은 이 정보로 만들지 않아요. 학력이나 경력 같은 개인 정보라 분석 지표와 주소에는 남기지 않아요.{isDemo && ' 샘플 모드라 이 브라우저 탭에만 저장되고, 탭을 닫으면 사라져요.'}</p>
+      </details>
 
       {errorCount > 0 && <Note strong="입력을 확인해 주세요" tone="danger">{errorCount}곳을 고치면 저장할 수 있어요.</Note>}
       {view && errorCount === 0 && <Note strong={view.title} tone="danger">{view.message}</Note>}

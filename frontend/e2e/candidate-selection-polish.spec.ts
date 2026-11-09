@@ -12,7 +12,7 @@ test('reading and toggling an expanded commit never selects its parent candidate
   const commitCheck = cluster.locator('.commit-row').first().getByRole('checkbox');
   await commitCheck.click(); await expect(commitCheck).toHaveAttribute('aria-checked','false');
   await expect(parent).toHaveAttribute('aria-pressed','false');
-  await expect(page.locator('.sticky-footer__text')).toContainText('카드로 남길 일을 골라 주세요');
+  await expect(page.locator('.sticky-footer__text')).toContainText('카드로 남길 일을 고르면 초안을 써요');
 });
 
 for (const width of [1440, 390, 320]) test(`${width}px candidate tiles and commit controls remain usable`, async ({ page }) => {

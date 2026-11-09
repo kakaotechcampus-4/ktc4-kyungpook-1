@@ -97,3 +97,11 @@
 .mail-section__check { display: flex; align-items: center; gap: 12px; min-height: 48px; font-size: 16px; line-height: 24px; font-weight: var(--weight-bold); color: var(--text-strong); cursor: pointer; }
 .mail-section__check input { width: 22px; height: 22px; margin: 0; flex: 0 0 auto; accent-color: var(--accent-point); cursor: pointer; }
 .mail-section__check input:focus-visible { outline: 2px solid var(--border-selected); outline-offset: 2px; }
+
+/* 인적사항이 어디에 쓰이는지 — 궁금할 때 여는 한 줄(#805) */
+.profile-usage { border-bottom: 1px solid var(--border-default); }
+.profile-usage summary { display: flex; align-items: center; gap: 6px; min-height: var(--control-touch-size); color: var(--text-secondary); font-size: 14px; font-weight: var(--weight-bold); cursor: pointer; list-style: none; }
+.profile-usage summary::-webkit-details-marker { display: none; }
+.profile-usage summary::after { content: '+'; margin-left: auto; color: var(--text-tertiary); }
+.profile-usage[open] summary::after { content: '−'; }
+.profile-usage p { margin: 0 0 14px; color: var(--text-secondary); font-size: 13px; line-height: 20px; }

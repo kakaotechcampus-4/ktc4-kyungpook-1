@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
 import { useMatch } from '@/api/matching';
 import { applyAction, conditionRows, deadlineLabel, statusSentence, type ApplyItem } from './homeApply';
 import { ButtonLink } from '@/components/ui';
@@ -94,7 +93,7 @@ export function PostingCard({ item, active, readDetail, panelProps }: Props) {
       </div>
       {readDetail ? <Conditions postingId={pick.postingId} /> : <ConditionsSkeleton />}
       <div className="home3-cta">
-        <ButtonLink to={action.to} variant="primary" className="home3-btn">{action.label}<ArrowRight size={18} aria-hidden /></ButtonLink>
+        <ButtonLink to={action.to} variant="primary" className="home3-btn">{action.label}</ButtonLink>
         <Link to={detailPath(pick.postingId)} className="home3-tbtn">공고 보기</Link>
       </div>
     </article>

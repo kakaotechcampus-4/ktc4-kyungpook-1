@@ -42,3 +42,17 @@
 .shell--rail .sidebar__legal { display: none; }
 .landing__legal { padding: 24px 0 8px; }
 @media (max-width: 640px) { .legal__table table { min-width: 0; } .legal__table th, .legal__table td { padding: 8px; } .legal__toc { grid-template-columns: 1fr; } }
+
+/* 자주 묻는 질문 — 질문을 누르면 답이 펼쳐진다 */
+.faq { border: 1px solid var(--border-default); border-radius: 10px; overflow: hidden; }
+.faq__item + .faq__item { border-top: 1px solid var(--border-default); }
+.faq__item summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 12px 16px; font-size: 16px; font-weight: 600; line-height: 1.5; cursor: pointer; list-style: none; }
+.faq__item summary::-webkit-details-marker { display: none; }
+.faq__item summary::after { content: ''; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--text-secondary); border-bottom: 2px solid var(--text-secondary); transform: rotate(45deg); transition: transform .15s; }
+.faq__item[open] summary::after { transform: rotate(-135deg); }
+.legal__body .faq__item p { padding: 0 16px 16px; font-size: 15px; line-height: 1.75; }
+.legal-links__report { padding: 0; border: 0; background: none; font: inherit; color: var(--text-secondary); cursor: pointer; }
+.legal-links__report:hover { color: var(--text-primary); text-decoration: underline; text-underline-offset: 2px; }
+.sidebar__legal .legal-links__report { color: var(--sidebar-text); opacity: .72; }
+.sidebar__legal .legal-links__report:hover { opacity: 1; }
+.feedback-count { align-self: flex-end; font-size: 12px; color: var(--text-tertiary); }

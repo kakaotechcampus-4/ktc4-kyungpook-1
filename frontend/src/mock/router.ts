@@ -387,7 +387,7 @@ on('POST', '/cards/:id/confirm', ({ params }) => {
   if (v.situation == null || isCardBlank(v.situation) || v.action == null || isCardBlank(v.action)) return fail(422, 'NOT_CONFIRMABLE', '확정하려면 최소 S · A 가 필요합니다');
   c.status = 'CONFIRMED'; c.confirmedAt = now(); c.updatedAt = c.confirmedAt;
   queueAiThemes(c); // 유형이 빈 경험 카드는 확정을 저장한 뒤 몇 초 안에 AI 가 붙인다(#564)
-  v._confirmed = true; // 현재 버전을 고정한다 — 같은 내용의 가짜 이력을 추가하지 않는다
+  pushVersion(c, v.source, {})._confirmed = true; // 실서버처럼 같은 글의 확정본을 새 버전으로 남긴다 — 바뀐 횟수(changeCount)에는 세지 않는다
   const used = c.candidate ? [c.candidate.id] : [];
   used.forEach((id) => { const cand = db.candidates.find((x) => x.id === id); if (cand) { cand.status = 'USED'; cand.usedByCardId = c.id; } });
   const remaining = c.repo ? db.candidates.filter((x) => x.repoId === c.repo.id && x.status === 'NEW').length : 0;

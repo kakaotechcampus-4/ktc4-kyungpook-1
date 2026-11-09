@@ -60,7 +60,7 @@ describe('#746 오른쪽 만든 과정', () => {
   });
 
   it('확정 카드 오른쪽에 만든 과정 세 줄이 있고, 받을 수 있는 질문 칸과 아래쪽 단계 목록은 없다', () => {
-    mount(load('card_03', { version: { ...load('card_03').version, versionNo: 1 } }));
+    mount(load('card_03', { changeCount: 0, version: { ...load('card_03').version, versionNo: 1 } }));
     expect(within(rail()).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['GitHub 기록으로 초안을 썼어요', '고쳐 쓴 칸은 없어요', '과제, 결과 칸은 검사에서 문제가 남았어요']);
     expect(screen.queryByText('이 카드로 받을 수 있는 질문')).not.toBeInTheDocument();
     expect(screen.queryByText(/AI 가 한 일/)).not.toBeInTheDocument();
@@ -94,17 +94,17 @@ describe('#746 오른쪽 만든 과정', () => {
 });
 
 describe('#909 오른쪽 작성 이력과 출처', () => {
-  const withVersion = (id: string, versionNo: number) => load(id, { version: { ...load(id).version, versionNo } });
+  const withChanges = (id: string, changeCount: number, versionNo = changeCount + 1) => load(id, { changeCount, version: { ...load(id).version, versionNo } });
   const historyButton = () => within(rail()).queryByRole('button', { name: '작성 이력' });
 
-  it('한 번도 바뀌지 않은 카드(버전 1)에는 바뀌었어요 줄과 작성 이력 버튼이 없다', () => {
-    mount(withVersion('card_03', 1));
+  it('한 번도 바뀌지 않은 카드(바뀐 횟수 0)에는 바뀌었어요 줄과 작성 이력 버튼이 없다', () => {
+    mount(withChanges('card_03', 0));
     expect(within(rail()).queryByText(/바뀌었어요/)).not.toBeInTheDocument();
     expect(historyButton()).not.toBeInTheDocument();
   });
 
-  it('바뀐 카드는 처음 내용에서 버전 번호 - 1 번 바뀌었어요 줄과 작성 이력 버튼을 보이고, 누르면 작성 이력 창이 열린다', async () => {
-    const router = mount(withVersion('card_03', 4));
+  it('바뀐 카드는 처음 내용에서 서버가 센 횟수만큼 바뀌었어요 줄과 작성 이력 버튼을 보이고, 누르면 작성 이력 창이 열린다', async () => {
+    const router = mount(withChanges('card_03', 3));
     expect(within(rail()).getByText('처음 내용에서 3번 바뀌었어요')).toBeInTheDocument();
     fireEvent.click(historyButton()!);
     await waitFor(() => expect(router.state.location.search).toBe('?versions=1'));
@@ -112,14 +112,20 @@ describe('#909 오른쪽 작성 이력과 출처', () => {
   });
 
   it('만든 과정 기록이 없는 카드도 바뀐 적이 있으면 작성 이력 버튼을 보인다', () => {
-    mount(withVersion('card_04', 2));
+    mount(withChanges('card_04', 1));
     expect(within(rail()).getByText('처음 내용에서 1번 바뀌었어요')).toBeInTheDocument();
     expect(historyButton()).toBeInTheDocument();
     expect(within(rail()).queryByRole('button', { name: '자세히 보기' })).not.toBeInTheDocument();
   });
 
+  it('확정하며 버전만 늘어난 카드(버전 2, 바뀐 횟수 0)에는 바뀌었어요 줄과 작성 이력 버튼이 없다', () => {
+    mount(withChanges('card_03', 0, 2));
+    expect(within(rail()).queryByText(/바뀌었어요/)).not.toBeInTheDocument();
+    expect(historyButton()).not.toBeInTheDocument();
+  });
+
   it('확정한 카드 화면에는 인쇄 버튼이 없다', () => {
-    mount(withVersion('card_03', 3));
+    mount(load('card_03'));
     expect(screen.queryByRole('button', { name: /인쇄/ })).not.toBeInTheDocument();
   });
 

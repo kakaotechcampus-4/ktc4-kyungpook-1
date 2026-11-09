@@ -20,8 +20,8 @@ export function DraftProcess({ card, onHistory }: { card: Card; onHistory?: () =
   const titleId = useId();
   const [open, setOpen] = useState(false);
   const lines = draftStepSummary(card.draftSteps);
-  // 첫 버전 뒤로 쌓인 버전 수다. 한 번도 바뀌지 않은 카드는 돌아갈 곳이 없어 작성 이력을 보이지 않는다
-  const changes = onHistory ? card.version.versionNo - 1 : 0;
+  // 서버가 센 바뀐 횟수다. 확정하며 버전만 늘어난 카드나 한 번도 바뀌지 않은 카드는 돌아갈 곳이 없어 작성 이력을 보이지 않는다
+  const changes = onHistory ? card.changeCount ?? 0 : 0;
   const all = changes > 0 ? [...lines, `처음 내용에서 ${changes}번 바뀌었어요`] : lines;
   return (
     <section className="card stack draft-process" aria-labelledby={titleId}>

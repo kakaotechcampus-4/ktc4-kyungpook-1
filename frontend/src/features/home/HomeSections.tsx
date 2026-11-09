@@ -30,7 +30,7 @@ export function HomeHero() {
   return (
     <form className="home3-ask" role="search" onSubmit={submit}>
       <Search size={20} aria-hidden className="home3-ask__lens" />
-      <input ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={500} aria-label="할 일" placeholder="예: 토스 백엔드 공고에 맞춰 자소서 써 줘" />
+      <input ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={500} aria-label="할 일" placeholder="예: 토스 백엔드 공고 찾아서 나랑 맞는지 봐 줘" />
       <button type="submit" className="home3-ask__go">맡기기</button>
     </form>
   );

@@ -59,6 +59,15 @@ export function resultLink(items: readonly AssistantItem[]): { label: string; to
   return null;
 }
 
+/** 마지막으로 끝난 걸음이 공고 맞춰 보기일 때 그 공고로 가는 카드 — 그 뒤에 다른 일을 했으면 카드를 띄우지 않는다 */
+export function matchResult(items: readonly AssistantItem[]) {
+  const last = [...items].reverse().find((item) => item.kind === 'STEP' && item.ok === true);
+  if (last?.tool !== 'MATCH_POSTING' || !last.posting) return null;
+  const id = encodeURIComponent(last.posting.postingId);
+  const fit = last.match && last.match.requiredTotal > 0 ? `필수 조건 ${last.match.requiredTotal}개 중 ${last.match.requiredMet}개가 맞아요` : null;
+  return { posting: last.posting, fit, detailTo: `/match/${id}`, letterTo: `/cover-letters/new?postingId=${id}` };
+}
+
 /** 문항이 없는 사용자를 자소서 새로 쓰기 화면으로 — 맞춰 본 공고, 없으면 처음 찾은 공고를 채워서 보낸다 */
 export function questionsGuide(items: readonly AssistantItem[]): { to: string; posting: AssistantPosting | null } {
   const reversed = [...items].reverse();

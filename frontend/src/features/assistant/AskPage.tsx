@@ -12,11 +12,11 @@ import { Bubble, ChatFrom, Composer } from '@/components/chat/Chat';
 import { Breadcrumb, Skeleton } from '@/components/ui';
 import { QueryFailure } from '@/components/ui/QueryFailure';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
-import { composerHint, postingMeta, questionsGuide, questionsGuideText, resultLink, stepLine } from './askCopy';
+import { composerHint, matchResult, postingMeta, questionsGuide, questionsGuideText, resultLink, stepLine } from './askCopy';
 import './ask.css';
 
 const Dots = () => <span className="ai-wait__dots" aria-hidden><i /><i /><i /></span>;
-const START_HINT = '예: 토스 백엔드 공고에 맞춰 자소서 써 줘';
+const START_HINT = '예: 토스 백엔드 공고 찾아서 나랑 맞는지 봐 줘';
 /** 처음 화면의 예시 — 누르면 입력 칸에 그대로 들어가서, 회사 이름만 고쳐 보낼 수 있다 */
 const EXAMPLES = [
   { icon: BriefcaseBusiness, text: '백엔드 신입 공고 찾아 줘', sub: '조건에 맞는 공고를 찾아서 보여 드려요' },
@@ -111,6 +111,7 @@ function AskChat() {
   const choices = state === 'WAITING_USER' && last?.kind === 'ASK' && last.askKind === 'CHOICE' ? last.options : [];
   const guide = state === 'WAITING_USER' && last?.kind === 'ASK' && last.askKind === 'QUESTIONS' ? questionsGuide(items) : null;
   const link = state === 'DONE' ? resultLink(items) : null;
+  const matched = state === 'DONE' && !link ? matchResult(items) : null;
   const failed = start.isError ? errorView(start.error).message : say.isError ? errorView(say.error).message
     : state === 'FAILED' ? '지금은 답을 받지 못했어요. 할 일을 다시 적어 주세요.' : null;
   const spoken = last && last.kind !== 'USER' ? (last.kind === 'STEP' ? stepLine(last) : last.text ?? '') : '';
@@ -161,6 +162,16 @@ function AskChat() {
             {choices.map((option) => <button key={option} type="button" disabled={pending} onClick={() => send(option)}>{option}</button>)}
           </div>
         )}
+        {matched && (
+          <section className="ask-guide" aria-labelledby="ask-result-title">
+            <h2 id="ask-result-title">{matched.posting.company} · {matched.posting.title}</h2>
+            {matched.fit && <p>{matched.fit}</p>}
+            <div className="ask-result__actions">
+              <Link to={matched.detailTo} className="btn btn--primary ask-go">공고 보기<ArrowRight size={16} aria-hidden /></Link>
+              <Link to={matched.letterTo} className="ask-result__letter">이 공고로 자소서 쓰기</Link>
+            </div>
+          </section>
+        )}
         {link && <Link to={link.to} className="btn btn--primary ask-go">{link.label}<ArrowRight size={16} aria-hidden /></Link>}
         {failed && <p className="chat-fail" role="alert">{failed}</p>}
         <div ref={end} className="ask__end" />
@@ -181,8 +192,10 @@ function AskChat() {
 
 /** 이어진 걸음 한 묶음 — 걸음 줄 아래에 마지막으로 찾은 공고와, 맞춰 본 공고에서 모자란 조건을 붙인다 */
 function Steps({ items }: { items: AssistantItem[] }) {
-  const found = [...items].reverse().find((item) => item.tool === 'FIND_POSTINGS' && item.ok === true && item.postings.length > 0);
-  const missing = [...items].reverse().find((item) => item.tool === 'MATCH_POSTING' && item.ok === true)?.match?.missing ?? [];
+  const matchedStep = [...items].reverse().find((item) => item.tool === 'MATCH_POSTING' && item.ok === true);
+  // 맞춰 본 뒤에는 공고 목록이 답을 가리므로 접는다
+  const found = matchedStep?.posting ? undefined : [...items].reverse().find((item) => item.tool === 'FIND_POSTINGS' && item.ok === true && item.postings.length > 0);
+  const missing = matchedStep?.match?.missing ?? [];
   return (
     <>
       <ol className="ask-steps">

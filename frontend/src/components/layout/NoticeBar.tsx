@@ -154,7 +154,7 @@ export function NoticeBar({ jobs }: { jobs: readonly ActiveJob[] | undefined }) 
                   {view.asks.length > 0 && (
                     <div className="notice__asks">
                       <span>이어서 맡길 수 있어요</span>
-                      {view.asks.map((ask) => <button key={ask} type="button" className="notice-chip" onClick={() => go(view, `/ask?q=${encodeURIComponent(ask)}`, false)}>{ask}</button>)}
+                      {view.asks.map((ask) => <button key={ask.text} type="button" className="notice-chip" onClick={() => go(view, ask.to, false)}>{ask.text}</button>)}
                     </div>
                   )}
                 </li>

@@ -1,10 +1,11 @@
 import { StrictMode } from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryRouter, Outlet, RouterProvider, useLocation } from 'react-router-dom';
+import { createMemoryRouter, MemoryRouter, Outlet, RouterProvider, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssistantItem, AssistantRun } from '@/api/assistant';
 import { AskPage } from '@/features/assistant/AskPage';
+import { HomeHero } from '@/features/home/HomeSections';
 import { questionsGuide, stepLine } from '@/features/assistant/askCopy';
 import { handle } from '@/mock/router';
 import { db, resetDb } from '@/mock/store';
@@ -322,5 +323,78 @@ describe('문항 안내 카드', () => {
     cleanup();
     await open('WAITING_USER', [user, ask('QUESTIONS')]);
     expect(screen.getByText('자소서 화면에서 자주 나오는 문항을 골라 바로 시작할 수 있어요.')).toBeInTheDocument();
+  });
+});
+
+describe('맞춰 본 공고 결과', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 백엔드 공고 찾아서 나랑 맞는지 봐 줘' };
+  const tile = (id: string, company: string, title: string) => ({ postingId: id, company, title });
+  const found = { seq: 2, kind: 'STEP', tool: 'FIND_POSTINGS', ok: true, totalFound: 2, postings: [tile('p/1', '토스', '백엔드'), tile('p2', '다른곳', '서버')] };
+  const matched = (over: object = {}) => ({
+    seq: 3, kind: 'STEP', tool: 'MATCH_POSTING', ok: true, posting: tile('p/1', '토스', '백엔드'),
+    match: { requiredMet: 3, requiredTotal: 5, met: [], missing: [] }, ...over,
+  });
+  const answer = { seq: 4, kind: 'SAY', text: '필수 조건 3개가 맞아요' };
+  const open = async (state: string, items: unknown[]) => {
+    const run = rawRun('run_m', state, items);
+    mount('/ask/run_m', connectMockServer((call) => (call.path === '/assistant/runs/run_m' ? json(run) : undefined)));
+    await screen.findByText('필수 조건 3개가 맞아요', SEEN);
+  };
+  const HEADING = '토스 · 백엔드';
+
+  it('M1 끝난 실행의 마지막 걸음이 맞춰 보기면 공고 이름, 맞는 조건 수, 공고 보기와 자소서 쓰기 링크가 있는 카드를 보인다', async () => {
+    await open('DONE', [user, found, matched(), answer]);
+    expect(screen.getByRole('heading', { name: HEADING })).toBeInTheDocument();
+    expect(screen.getByText('필수 조건 5개 중 3개가 맞아요')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '공고 보기' })).toHaveAttribute('href', '/match/p%2F1');
+    expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기' })).toHaveAttribute('href', '/cover-letters/new?postingId=p%2F1');
+  });
+
+  it('M2 실행이 도는 중이거나 답을 기다리는 중에는 카드를 보이지 않는다', async () => {
+    await open('RUNNING', [user, found, matched(), answer]);
+    expect(screen.queryByRole('heading', { name: HEADING })).not.toBeInTheDocument();
+    cleanup();
+    await open('WAITING_USER', [user, found, matched(), answer]);
+    expect(screen.queryByRole('heading', { name: HEADING })).not.toBeInTheDocument();
+  });
+
+  it('M3 이미 자소서를 시작했으면 그 버튼만 보이고 공고 카드는 보이지 않는다', async () => {
+    const started = { seq: 5, kind: 'STEP', tool: 'START_COVER_LETTER', ok: true, coverLetterId: 'cl_1' };
+    await open('DONE', [user, found, started, matched(), answer]);
+    expect(screen.getByRole('link', { name: '자소서 열기' })).toHaveAttribute('href', '/cover-letters/cl_1');
+    expect(screen.queryByRole('heading', { name: HEADING })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '공고 보기' })).not.toBeInTheDocument();
+  });
+
+  it('M4 맞춰 본 공고가 있으면 찾은 공고 목록을 접고, 맞추는 중이거나 실패했으면 목록을 남긴다', async () => {
+    const listed = () => screen.queryByRole('link', { name: /다른곳/ });
+    await open('DONE', [user, found, matched(), answer]);
+    expect(listed()).not.toBeInTheDocument();
+    cleanup();
+    await open('RUNNING', [user, found, matched({ ok: null, match: null }), answer]);
+    expect(listed()).toBeInTheDocument();
+    cleanup();
+    await open('DONE', [user, found, matched({ ok: false, error: 'NOT_FOUND', posting: null, match: null }), answer]);
+    expect(listed()).toBeInTheDocument();
+  });
+
+  it('M5 맞춘 결과가 없거나 필수 조건이 0개면 맞는 정도 줄만 빼고 카드와 링크는 보인다', async () => {
+    await open('DONE', [user, found, matched({ match: null }), answer]);
+    expect(screen.getByRole('heading', { name: HEADING })).toBeInTheDocument();
+    expect(screen.queryByText(/필수 조건 \d+개 중/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '공고 보기' })).toBeInTheDocument();
+    cleanup();
+    await open('DONE', [user, found, matched({ match: { requiredMet: 0, requiredTotal: 0, met: [], missing: [] } }), answer]);
+    expect(screen.queryByText(/필수 조건 \d+개 중/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '이 공고로 자소서 쓰기' })).toBeInTheDocument();
+  });
+
+  it('M6 홈 입력 칸과 대화 첫 화면의 안내 문장이 같다', () => {
+    const hint = '예: 토스 백엔드 공고 찾아서 나랑 맞는지 봐 줘';
+    render(<MemoryRouter><HomeHero /></MemoryRouter>);
+    expect(screen.getByLabelText('할 일')).toHaveAttribute('placeholder', hint);
+    cleanup();
+    mount('/ask');
+    expect(composer()).toHaveAttribute('placeholder', hint);
   });
 });

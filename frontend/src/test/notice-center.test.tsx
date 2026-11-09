@@ -425,6 +425,69 @@ describe('읽음 응답과 새 공고 알림', () => {
   });
 });
 
+describe('이어서 맡길 말 칩', () => {
+  const chips = (panel: HTMLElement) => Array.from(panel.querySelectorAll('.notice-chip')).map((chip) => chip.textContent);
+  const postingNotice = () => ({
+    kind: 'POSTINGS_MATCHED', createdAt: minutesAgo(5),
+    postings: [{ postingId: 'p1', companyName: '한빛페이', title: '서버 개발자', requiredMet: 4, requiredTotal: 5, expiresAt: null }],
+  });
+  beforeEach(() => { vi.stubEnv('VITE_API_MOCK', 'true'); vi.stubEnv('VITE_ASSISTANT_ENABLED', 'true'); });
+
+  it('C1 카드를 다 쓴 알림은 기업 고르기 칩을 앞에 두고 매칭 화면으로 보내며 자소서 칩은 대화로 보낸다', async () => {
+    connectMockServer();
+    seed(drafted({ repoId: 'r/a b' }));
+    mount();
+    const panel = await open();
+    expect(chips(panel)).toEqual(['alpha 카드로 맞는 기업 골라 줘', 'alpha 카드로 자소서 써 줘']);
+    fireEvent.click(within(panel).getByRole('button', { name: 'alpha 카드로 자소서 써 줘' }));
+    expect(where()).toBe(`/ask?q=${encodeURIComponent('alpha 카드로 자소서 써 줘')}`);
+    await open();
+    fireEvent.click(screen.getByRole('button', { name: 'alpha 카드로 맞는 기업 골라 줘' }));
+    expect(where()).toBe(`/cards/repo/${encodeURIComponent('r/a b')}/match`);
+  });
+
+  it('C2 레포를 모르거나 매칭이 꺼져 있으면 자소서 칩만 보인다', async () => {
+    connectMockServer();
+    seed(drafted({ repoId: null }));
+    mount();
+    expect(chips(await open())).toEqual(['alpha 카드로 자소서 써 줘']);
+    cleanup(); queryClient.clear(); resetDb();
+    vi.stubEnv('VITE_API_MOCK', 'false');
+    vi.stubEnv('VITE_MATCH_ENABLED', 'false');
+    seed(drafted());
+    mount();
+    expect(chips(await open())).toEqual(['alpha 카드로 자소서 써 줘']);
+  });
+
+  it('C3 새로 한 일로 카드를 써 둔 알림은 보러 가기 버튼이 매칭 화면으로 가므로 자소서 칩만 보인다', async () => {
+    connectMockServer();
+    seed(refreshed());
+    mount();
+    expect(chips(await open())).toEqual(['bravo 카드로 자소서 써 줘']);
+  });
+
+  it('C4 새 공고 알림의 칩은 그대로 대화로 보낸다', async () => {
+    connectMockServer();
+    seed(postingNotice());
+    mount();
+    const panel = await open();
+    expect(chips(panel)).toEqual(['한빛페이 공고로 자소서 써 줘']);
+    fireEvent.click(within(panel).getByRole('button', { name: '한빛페이 공고로 자소서 써 줘' }));
+    expect(where()).toBe(`/ask?q=${encodeURIComponent('한빛페이 공고로 자소서 써 줘')}`);
+  });
+
+  it('C5 매칭 화면으로 가는 칩을 눌러도 알림을 읽음으로 바꾸지 않는다', async () => {
+    const server = connectMockServer();
+    seed(drafted());
+    mount();
+    fireEvent.click(within(await open()).getByRole('button', { name: 'alpha 카드로 맞는 기업 골라 줘' }));
+    expect(where()).toBe('/cards/repo/r_a/match');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(server.calls.some((call) => call.method === 'POST' && /\/read$/.test(call.path))).toBe(false);
+    expect(db.notifications.every((notice) => !notice.readAt)).toBe(true);
+  });
+});
+
 describe('자소서 진행 표시', () => {
   const FAR = 4_100;
   const row = (stage: string, extra: Record<string, unknown> = {}) => ({

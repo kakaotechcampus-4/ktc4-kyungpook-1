@@ -15,8 +15,8 @@ export type NoticeView = {
   lines: string[];
   time: string;
   action: { label: string; to: string };
-  /** 이어서 맡길 말. 한 줄 명령이 꺼져 있으면 비어 있다 */
-  asks: string[];
+  /** 이어서 맡길 말과 누르면 가는 곳. 한 줄 명령이 꺼져 있으면 비어 있다 */
+  asks: { text: string; to: string }[];
 };
 
 type Env = { matching?: boolean; assistant?: boolean; now?: Date };
@@ -85,14 +85,19 @@ function failureHint(code: string | null): string | null {
 export function noticeView(notice: Notice, env: Env = {}): NoticeView | null {
   if (!isKnownNotice(notice)) return null;
   const title = noticeTitle(notice);
-  const action = noticeAction(notice, env.matching ?? matchSupported());
+  const matching = env.matching ?? matchSupported();
+  const action = noticeAction(notice, matching);
   if (!title || !action) return null;
   const assistant = env.assistant ?? assistantSupported();
   const repo = shortRepoName(notice.repoName ?? '레포');
   const matched = notice.kind === 'POSTINGS_MATCHED';
+  const chat = (text: string) => ({ text, to: `/ask?q=${encodeURIComponent(text)}` });
+  // 맞는 기업 고르기는 대화에 도구가 없어서 공고 하나만 보게 되므로 레포 카드 전체로 고르는 매칭 화면으로 보낸다
+  const pick = notice.kind === 'CARDS_DRAFTED' && notice.repoId && matching
+    ? [{ text: `${repo} 카드로 맞는 기업 골라 줘`, to: `/cards/repo/${encodeURIComponent(notice.repoId)}/match` }] : [];
   const asks = !assistant || notice.kind === 'ANALYSIS_FAILED' ? []
-    : matched ? [...new Set(notice.postings.slice(0, 2).map((p) => p.companyName))].map((company) => `${company} 공고로 자소서 써 줘`)
-    : [`${repo} 카드로 맞는 기업 골라 줘`, `${repo} 카드로 자소서 써 줘`];
+    : matched ? [...new Set(notice.postings.slice(0, 2).map((p) => p.companyName))].map((company) => chat(`${company} 공고로 자소서 써 줘`))
+    : [...pick, chat(`${repo} 카드로 자소서 써 줘`)];
   return {
     id: notice.id,
     unread: notice.readAt === null,

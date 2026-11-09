@@ -224,7 +224,7 @@ body { overflow-x: hidden; }
   .two-col--340,
   .iv,
   .cmp,
-  .found,
+  .found { grid-template-columns: minmax(0, 1fr); }
   .experience-item.gcard { min-height: 0; padding: 22px 18px; }
   .status-tabs { gap: 20px; overflow-x: auto; }
   .settings-page { gap: 28px; }

@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties("gitory.rate-limit")
 public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit interviewAnswer, Limit cardDraft,
                                   Limit coverLetter, Limit coverLetterPolish, Limit coverLetterTurn,
-                                  Limit matchJudgement, Limit matchOverall, Limit matchGapFill, Limit assistant) {
+                                  Limit matchJudgement, Limit matchOverall, Limit matchGapFill, Limit assistant, Limit feedback) {
 
     public RateLimitProperties {
         interviewAsk = interviewAsk == null ? Limit.NONE : interviewAsk;
@@ -18,6 +18,7 @@ public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit int
         matchOverall = matchOverall == null ? Limit.NONE : matchOverall;
         matchGapFill = matchGapFill == null ? Limit.NONE : matchGapFill;
         assistant = assistant == null ? Limit.NONE : assistant;
+        feedback = feedback == null ? Limit.NONE : feedback;
     }
 
     public Limit of(RateLimitedAction action) {
@@ -33,6 +34,7 @@ public record RateLimitProperties(boolean enabled, Limit interviewAsk, Limit int
             case MATCH_OVERALL -> matchOverall;
             case MATCH_GAP_FILL -> matchGapFill;
             case ASSISTANT -> assistant;
+            case FEEDBACK -> feedback;
         };
 
     }

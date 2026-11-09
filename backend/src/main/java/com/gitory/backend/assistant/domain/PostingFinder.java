@@ -6,6 +6,7 @@ import com.gitory.backend.matching.domain.MatchTarget;
 
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -13,7 +14,8 @@ import java.util.Set;
 
 /**
  * 지원할 수 있는 공고에서 회사 이름과 낱말로 걸러 맞은 낱말이 많은 순, 마감이 빠른 순으로 앞의 몇 건을 고른다
- * 회사를 말하면 회사만 거르고 낱말은 순서에만 쓰며, 분야와 경력 낱말은 표의 말과 같을 때만 맞은 것으로 본다
+ * 회사를 말하면 그 회사 공고 중 낱말이 맞은 것만 남기고 하나도 안 맞으면 그 회사 공고를 모두 남기며 앞의 몇 건에는 같은 회사의 같은 제목을 한 번만 담는다
+ * 분야와 경력 낱말은 표의 말과 같을 때만 맞은 것으로 본다
  */
 final class PostingFinder {
 
@@ -60,14 +62,26 @@ final class PostingFinder {
                 .distinct()
                 .toList();
 
-        List<Ranked> ranked = targets.stream()
+        List<Ranked> candidates = targets.stream()
                 .filter(target -> wantedCompany.isEmpty() || normalized(target.company()).contains(wantedCompany))
                 .map(target -> new Ranked(target, matchedWords(target, words)))
-                .filter(candidate -> !wantedCompany.isEmpty() || words.isEmpty() || candidate.matched() > 0)
+                .toList();
+        boolean keepUnmatched = words.isEmpty()
+                || !wantedCompany.isEmpty() && candidates.stream().noneMatch(candidate -> candidate.matched() > 0);
+
+        List<Ranked> ranked = candidates.stream()
+                .filter(candidate -> keepUnmatched || candidate.matched() > 0)
                 .sorted(BEST_FIRST)
                 .toList();
 
-        return new Found(ranked.stream().limit(LIMIT).map(Ranked::target).toList(), ranked.size());
+        Set<String> seen = new HashSet<>();
+        List<MatchTarget> top = ranked.stream()
+                .map(Ranked::target)
+                .filter(target -> seen.add(normalized(target.company()) + "\n" + normalized(target.role())))
+                .limit(LIMIT)
+                .toList();
+
+        return new Found(top, ranked.size());
 
     }
 

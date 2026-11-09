@@ -10,6 +10,7 @@ export const endpoints = {
   // 사용자 · 연동
   me: () => api(S.Me, '/me'),
   logout: () => api(z.object({ ok: z.boolean() }), '/auth/logout', { method: 'POST' }),
+  leaveAccount: () => api(z.unknown(), '/me', { method: 'DELETE', allowNullData: true }),
   disconnectGithub: () => api(z.object({ ok: z.boolean() }), '/github/disconnect', { method: 'POST' }),
   githubStartUrl: () => `${import.meta.env.VITE_API_BASE ?? '/api'}/auth/github/start`,
 

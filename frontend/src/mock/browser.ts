@@ -62,7 +62,7 @@ export function installDemoApi() {
     if (method === 'POST' && /\/questions\/[^/]+\/polish$/.test(path)) await waitForMock(POLISH_DELAY_MS, signal);
     if (method === 'POST' && /\/questions\/[^/]+\/turns(\/open|\/skip)?$/.test(path)) await waitForMock(TURN_DELAY_MS, signal);
 
-    if (path === '/auth/logout') demoLogout();
+    if (path === '/auth/logout' || (method === 'DELETE' && path === '/me')) demoLogout();
     if (path === '/__reset') { ss.del(DB_KEY); }
 
     const before = hasDemoSession() ? scenario.before(method, path) : undefined;

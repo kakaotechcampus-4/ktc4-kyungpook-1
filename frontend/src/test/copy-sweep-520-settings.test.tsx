@@ -24,6 +24,7 @@ vi.mock('@/api/queries', async (importOriginal) => ({
   useRepos: () => ({ data: [], isSuccess: true, isError: false }),
   useDisconnectGithub: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useLogout: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useLeaveAccount: () => ({ mutateAsync: vi.fn(), isPending: false, isError: false, error: null, reset: vi.fn() }),
 }));
 
 beforeEach(() => { resetDb(); mocks.me = undefined; });

@@ -139,10 +139,18 @@ jobs:
           cd "$DEPLOY_DIR/deploy"
           docker compose up -d --build --wait --wait-timeout 300
 
-      # 새 컨테이너가 healthy 가 못 되면 기존 컨테이너는 이미 내려가 있어 사이트가 멈춘 채로 남는다.
+      - name: 사이트가 실제로 열리는지 확인
+        id: verify
+        if: steps.checkout.outputs.skip != 'true'
+        run: |
+          cd "$DEPLOY_DIR/deploy"
+          site="$(grep '^SITE_ADDRESS=' .env | cut -d= -f2- | tr -d '\r"')"
+          bash ./post-deploy-check.sh "$site"
+
+      # 새 컨테이너가 healthy 가 못 되거나 사이트가 열리지 않으면 사용자가 쓸 수 없는 채로 남는다.
       # 코드만 되돌리므로 이미 적용된 새 마이그레이션은 DB 에 남고, 워크플로는 실패로 남는다.
       - name: 실패하면 직전 커밋으로 되돌리기
-        if: failure() && steps.up.outcome == 'failure' && steps.checkout.outputs.prev != ''
+        if: failure() && (steps.up.outcome == 'failure' || steps.verify.outcome == 'failure') && steps.checkout.outputs.prev != ''
         env:
           PREV_SHA: ${{ steps.checkout.outputs.prev }}
         run: |

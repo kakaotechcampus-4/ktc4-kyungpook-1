@@ -7,6 +7,7 @@ import { SearchField } from "@/components/ui/SearchField";
 import { isDemo } from "@/mock/browser";
 import { track } from "@/lib/track";
 import { useDocumentTitle } from "@/lib/useDocumentTitle";
+import { useScrollEdges } from "@/lib/useScrollEdges";
 import { JobCalendar, type CalendarPosting } from "@/features/home/JobCalendar";
 import { useHomePicks } from "@/features/home/useHomePicks";
 import { MatchFailure, MatchUnavailable } from "./shared";
@@ -30,6 +31,7 @@ const NO_POSTINGS: never[] = [];
 
 export function MatchListPage() {
   useDocumentTitle("공고 매칭");
+  const chipRow = useScrollEdges<HTMLDivElement>();
   const matches = useMatches();
   // 확정 카드 수는 목록의 등급이 아니라 내 정보에서 읽는다(등급이 비었다고 카드가 없는 것은 아니다). 아직 모르면 undefined
   const confirmedCards = useConfirmedCardCount();
@@ -102,7 +104,7 @@ export function MatchListPage() {
             placeholder="기업이나 직무 검색"
             className="match-tools__search"
           />
-          <div className="match-chips" role="group" aria-label="직무">
+          <div ref={chipRow} className="match-chips scroll-edges" role="group" aria-label="직무">
             {CATEGORIES.map(([value, label]) => (
               <button
                 key={value}

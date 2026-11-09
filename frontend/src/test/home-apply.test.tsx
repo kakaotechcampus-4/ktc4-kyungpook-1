@@ -104,7 +104,7 @@ describe('홈 — 지원할 곳', () => {
 
     const card = await screen.findByRole('article', { name: /회사 a/ });
     const rows = await within(card).findAllByRole('listitem');
-    expect(rows.map((row) => row.textContent)).toEqual(['조건 a카드 a', '조건 b내 카드에 아직 없어요 · 채울 경험 찾기']);
+    expect(rows.map((row) => row.textContent)).toEqual(['조건 a카드 a', '조건 b채울 경험 찾기']);
     expect(within(rows[1]).getByRole('link', { name: '채울 경험 찾기' })).toHaveAttribute('href', '/match/p_a');
     expect(within(card).getByText('2개 중 1개')).toBeInTheDocument();
   });
@@ -141,7 +141,7 @@ describe('홈 — 지원할 곳', () => {
     mount();
 
     const lede = await screen.findByText(/내 카드와 맞는 공고예요/);
-    expect(lede).toHaveTextContent('새 공고 1곳 · 내 카드와 맞는 공고예요');
+    expect(lede).toHaveTextContent('새 공고 1곳, 내 카드와 맞는 공고예요');
     expect(screen.getAllByRole('tab').map((node) => node.textContent)).toEqual(['회사 bD-9', '회사 aD-5']);
     expect(screen.getByRole('img', { name: '새 공고' })).toBeInTheDocument();
     cleanup();

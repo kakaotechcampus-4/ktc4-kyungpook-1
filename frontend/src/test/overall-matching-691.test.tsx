@@ -87,23 +87,23 @@ describe('결과 타일의 개수 줄(fitSummary)', () => {
   });
 });
 
-describe('결과 타일의 이름 줄(fitNames)', () => {
+describe('결과 타일의 조건 줄(fitNames)', () => {
   it('기술 이름이 있으면 기술 이름으로, 없으면 조건 글로 쓰고 글 끝의 경험은 뗀다', () => {
     const line = fitNames({ requiredMet: 0, requiredTotal: 2, met: [], missing: [cond('Kafka 운영 경험', ['KAFKA', 'RABBITMQ']), cond('메시지 큐 운영 경험')] });
-    expect(line).toEqual({ names: 'Kafka·RabbitMQ, 메시지 큐 운영', tail: ' 경험이 아직 없어요', lacking: true });
+    expect(line).toEqual({ label: '빈 조건', names: ['Kafka / RabbitMQ', '메시지 큐 운영'], more: 0, lacking: true });
   });
 
   it('필수를 다 채웠으면 맞은 조건을, 모자라면 모자란 조건을 쓴다', () => {
     const both = { met: [cond('Java 서버 개발 경험', ['JAVA'])], missing: [cond('Docker 운영 경험', ['DOCKER'])] };
-    expect(fitNames({ requiredMet: 1, requiredTotal: 1, ...both })).toEqual({ names: 'Java', tail: ' 경험이 맞아요', lacking: false });
-    expect(fitNames({ requiredMet: 0, requiredTotal: 1, ...both })).toEqual({ names: 'Docker', tail: ' 경험이 아직 없어요', lacking: true });
+    expect(fitNames({ requiredMet: 1, requiredTotal: 1, ...both })).toEqual({ label: '맞은 조건', names: ['Java'], more: 0, lacking: false });
+    expect(fitNames({ requiredMet: 0, requiredTotal: 1, ...both })).toEqual({ label: '빈 조건', names: ['Docker'], more: 0, lacking: true });
   });
 
-  it('2개까지 쓰고 남으면 서버가 준 이름 개수가 아니라 필수 개수에서 센 등 N개로 줄인다', () => {
+  it('2개까지 쓰고 남으면 서버가 준 이름 개수가 아니라 필수 개수에서 센 외 N개로 줄인다', () => {
     const three = [cond('가 경험', ['JAVA']), cond('나 경험', ['SQL']), cond('다 경험', ['DOCKER'])];
-    expect(fitNames({ requiredMet: 9, requiredTotal: 13, met: [], missing: three })).toEqual({ names: 'Java, SQL', tail: ' 등 4개가 아직 없어요', lacking: true });
-    expect(fitNames({ requiredMet: 3, requiredTotal: 3, met: three, missing: [] })?.tail).toBe(' 등 3개가 맞아요');
-    expect(fitNames({ requiredMet: 2, requiredTotal: 2, met: three.slice(0, 2), missing: [] })?.tail).toBe(' 경험이 맞아요');
+    expect(fitNames({ requiredMet: 9, requiredTotal: 13, met: [], missing: three })).toEqual({ label: '빈 조건', names: ['Java', 'SQL'], more: 2, lacking: true });
+    expect(fitNames({ requiredMet: 3, requiredTotal: 3, met: three, missing: [] })?.more).toBe(1);
+    expect(fitNames({ requiredMet: 2, requiredTotal: 2, met: three.slice(0, 2), missing: [] })?.more).toBe(0);
   });
 
   it('이름을 못 받은 옛 응답과 필수 조건이 없는 공고는 줄이 없다', () => {
@@ -120,7 +120,7 @@ describe('공고 매칭 결과 상자', () => {
     const button = await startButton();
     expect(button).toHaveClass('btn--primary');
     expect(within(box()).getByRole('heading', { level: 2, name: '내 카드로 공고 맞춰 보기' })).toBeInTheDocument();
-    expect(within(box()).getByText('확정 카드 3장과 인적사항으로, 기술이 겹치는 공고의 필수·우대 조건을 확인해요. 1분쯤 걸려요.')).toBeInTheDocument();
+    expect(within(box()).getByText('확정 카드 3장과 인적사항으로, 기술이 겹치는 공고의 필수, 우대 조건을 확인해요. 1분쯤 걸려요.')).toBeInTheDocument();
     expect(tiles()).toHaveLength(0);
     expect(await within(allPostings()).findByRole('heading', { name: '모든 공고 6' })).toBeInTheDocument();
     expect(titles(allPostings())).toHaveLength(6);
@@ -154,7 +154,7 @@ describe('공고 매칭 결과 상자', () => {
     mount();
     expect(await screen.findByText('공고 5곳 중 1곳을 확인했어요')).toBeInTheDocument();
 
-    await waitFor(() => expect(box()).toHaveTextContent('11월 2일 · 확정 카드 3장과 인적사항으로 기술이 겹치는 15곳을 확인했어요'), { timeout: 4000 });
+    await waitFor(() => expect(box()).toHaveTextContent('11월 2일, 확정 카드 3장과 인적사항으로 기술이 겹치는 15곳을 확인했어요'), { timeout: 4000 });
     expect(read.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(within(box()).getByRole('heading', { level: 2, name: `${BOX} 4` })).toBeInTheDocument();
     const again = screen.getByRole('button', { name: '다시 맞춰 보기' });
@@ -178,13 +178,14 @@ describe('공고 매칭 결과 상자', () => {
     vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(ready());
     mount();
     await waitFor(() => expect(tiles()).toHaveLength(4));
-    const lines = (tile: HTMLElement) => [tile.querySelector('.result-tile__count')?.textContent, tile.querySelector('.result-tile__names')?.textContent];
-    expect(lines(tiles()[0])).toEqual(['필수 4개 중 2개 맞아요', 'Kafka, 메시지 큐 운영 경험이 아직 없어요']);
-    expect(lines(tiles()[1])).toEqual(['필수 3개 모두 맞아요 · 우대 1개', 'Java·Kotlin, SQL 등 3개가 맞아요']);
+    const chips = (el: Element | null) => (el ? [...el.children].map((child) => child.textContent).join('|') : undefined);
+    const lines = (tile: HTMLElement) => [tile.querySelector('.result-tile__count')?.textContent, chips(tile.querySelector('.result-tile__names'))];
+    expect(lines(tiles()[0])).toEqual(['필수 4개 중 2개 맞아요', '빈 조건|Kafka|메시지 큐 운영']);
+    expect(lines(tiles()[1])).toEqual(['필수 3개 모두 맞아요, 우대 1개', '맞은 조건|Java / Kotlin|SQL|외 1개']);
     expect(lines(tiles()[2])).toEqual(['기술과 경험 필수 조건이 없어요', undefined]);
     expect(lines(tiles()[3])).toEqual(['필수 2개 중 0개 맞아요', undefined]);
-    expect(tiles()[0].querySelector('.result-tile__names b')).toHaveClass('is-lacking');
-    expect(tiles()[1].querySelector('.result-tile__names b')).not.toHaveClass('is-lacking');
+    expect(tiles()[0].querySelector('.result-tile__names')).toHaveClass('is-lacking');
+    expect(tiles()[1].querySelector('.result-tile__names')).not.toHaveClass('is-lacking');
   });
 
   it('모든 공고는 상자에 오른 공고까지 포함한 전체 목록이다', async () => {
@@ -267,7 +268,7 @@ describe('공고 매칭 결과 상자', () => {
     vi.spyOn(matchingApi, 'recommendations').mockResolvedValue(OverallRecommendation.parse(old));
     mount();
     await waitFor(() => expect(tiles()).toHaveLength(1));
-    expect(box()).toHaveTextContent('11월 2일 · 확정 카드 3장과 인적사항으로 맞춰 봤어요');
+    expect(box()).toHaveTextContent('11월 2일, 확정 카드 3장과 인적사항으로 맞춰 봤어요');
     expect(tiles()[0].querySelector('.result-tile__count')).toHaveTextContent('필수 4개 중 2개 맞아요');
     expect(tiles()[0].querySelector('.result-tile__names')).toBeNull();
   });

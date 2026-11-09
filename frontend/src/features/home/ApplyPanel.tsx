@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { deadlineLabel, type ApplyItem } from './homeApply';
 import { PostingCard } from './PostingCard';
+import { useScrollEdges } from '@/lib/useScrollEdges';
 
 const SWIPE_PX = 48;
 
@@ -18,6 +19,7 @@ export function ApplyPanel({ items }: { items: ApplyItem[] }) {
   const cards = useRef<(HTMLElement | null)[]>([]);
   const [height, setHeight] = useState<number | null>(null);
   const swipeFrom = useRef<{ x: number; y: number } | null>(null);
+  const tabRow = useScrollEdges<HTMLDivElement>();
 
   useEffect(() => {
     if (currentId && !visited.has(currentId)) setVisited((prev) => new Set(prev).add(currentId));
@@ -62,7 +64,7 @@ export function ApplyPanel({ items }: { items: ApplyItem[] }) {
   return (
     <section className="home3-panel" aria-label="지원할 곳">
       {many && (
-        <div className="home3-tabs" role="tablist" aria-label="지원할 곳" onKeyDown={onKeyDown}>
+        <div ref={tabRow} className="home3-tabs scroll-edges" role="tablist" aria-label="지원할 곳" onKeyDown={onKeyDown}>
           {items.map((item, index) => {
             const dead = deadlineLabel(item.daysLeft, item.pick.deadline);
             return (

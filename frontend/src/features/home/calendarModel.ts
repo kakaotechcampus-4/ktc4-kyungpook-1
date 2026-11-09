@@ -1,4 +1,6 @@
 export const scheduleKinds = { deadline: '지원 마감', interview: '면접', result: '결과 발표', other: '기타' } as const;
+/** 날짜 칸 칩과 다가오는 일정 줄에 회사, 날짜와 한 덩어리로 붙는 짧은 이름(#919) */
+export const scheduleShort: Record<keyof typeof scheduleKinds, string> = { deadline: '마감', interview: '면접', result: '발표', other: '일정' };
 export type ScheduleKind = keyof typeof scheduleKinds;
 /** matchId 는 공고 상세에서 담은 일정에만 있다 — 캘린더에서 누르면 고치기 창 대신 그 공고로 간다 */
 export type JobSchedule = { id: string; company: string; role: string; date: string; kind: ScheduleKind; url: string; note: string; matchId?: string };

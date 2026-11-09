@@ -27,9 +27,9 @@
 .calendar-day__number[aria-pressed="true"]::before { background: var(--nav-active-bg); }
 .calendar-day__number--today { font-weight: var(--weight-bold); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .calendar-day--outside .calendar-day__number { color: var(--text-tertiary); opacity: .5; }
-.calendar-event { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; padding: 3px 5px; margin-bottom: 3px; border-radius: 5px; text-align: left; color: var(--text-primary); font-size: 10px; line-height: 15px; }
+.calendar-event { display: flex; align-items: center; justify-content: flex-start; gap: 3px; width: 100%; padding: 3px 5px; margin-bottom: 3px; border-radius: 5px; text-align: left; color: var(--text-primary); font-size: 10px; line-height: 15px; }
 .calendar-event > span:first-child { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: var(--weight-regular); }
-.calendar-event > span:last-child { font-size: 9px; white-space: nowrap; }
+.calendar-event > span:last-child { flex: none; white-space: nowrap; font-weight: var(--weight-bold); }
 /* 일정 종류는 글자로 구분하고 색은 마감(호박)과 나머지(회색) 둘만 쓴다 */
 .calendar-event, .agenda-event__count { background: var(--bg-subtle); }
 .calendar-event--deadline, .agenda-event__count--deadline { background: var(--state-open-bg); color: var(--state-open-text); }
@@ -83,8 +83,11 @@
   .calendar-month h3 { font-size: 16px; }
   .calendar-controls button { height: 44px; min-width: 40px; }
   .calendar-day { min-height: 82px; padding: 0; }
-  .calendar-event { font-size: 9px; padding: 3px; }
-  .calendar-event > span:last-child { display: none; }
+  /* 폰 날짜 칸은 칩이 잘려 안 보인다 — 점으로 표시하고 내용은 칸을 눌러 아래 목록에서 본다(#919) */
+  .calendar-event { display: block; align-self: center; width: 8px; height: 8px; margin: 2px auto 0; padding: 0; border-radius: 50%; font-size: 0; line-height: 0; background: var(--border-strong); }
+  .calendar-event--deadline { background: var(--field-low-border); }
+  .calendar-event > span { display: none; }
+  .calendar-day__more { display: none; }
   .calendar-agenda { grid-template-columns: 1fr; gap: 20px; }
   .calendar-agenda__selected { border-top: 1px solid var(--border-default); padding-top: 18px; }
 }

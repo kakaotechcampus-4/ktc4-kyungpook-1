@@ -106,8 +106,8 @@ function PickScreen({ repoId, name, back, cardCount, crumbs, rec, who, again }: 
   );
   const allPostings = <ButtonLink to="/match" variant="secondary">전체 공고 보기</ButtonLink>;
   const actions: Record<PickPhase, ReactNode> = {
-    queued: <><span className="rp-head__hint">나가도 계속 골라요</span>{folderButton('카드 먼저 보기', false)}</>,
-    running: <><span className="rp-head__hint">나가도 계속 골라요</span>{folderButton('카드 먼저 보기', false)}</>,
+    queued: folderButton('카드 먼저 보기', false),
+    running: folderButton('카드 먼저 보기', false),
     done: <>{allPostings}{folderButton('폴더로 가기', true)}</>,
     none: <>{allPostings}{folderButton('카드 보러 가기', true)}</>,
     failed: folderButton('폴더로 가기', true),

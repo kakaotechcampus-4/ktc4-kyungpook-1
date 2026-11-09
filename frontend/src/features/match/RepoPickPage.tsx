@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import { matchSupported, useRefreshRepoRecommendation, useRepoRecommendation, type RepoRecommendation } from '@/api/matching';
@@ -9,13 +9,14 @@ import { QueryFailure } from '@/components/ui/QueryFailure';
 import { UserAvatar } from '@/components/ui/UserAvatar';
 import { buildFolders, folderPath, folderTitle } from '@/lib/cardFolders';
 import {
-  againOf, fitLabel, liveRows, logLines, orbitTiles, phaseOf, pickHead, pickReason, resultRows, techName,
+  againOf, fitLabel, isReplayed, liveRows, logLines, markReplayed, orbitTiles, phaseOf, pickHead, pickReason, replayHead, resultRows, techName,
   type Again, type LogLine, type PickPhase, type PickRow,
 } from '@/lib/repoPick';
 import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { CompanyMark } from './CompanyMark';
 import { RepoPickOrbit } from './RepoPickOrbit';
 import { deadlineOf } from './model';
+import { useRepoPickReplay } from './useRepoPickReplay';
 import './repoPick.css';
 
 const cx = (...names: (string | false | null | undefined)[]) => names.filter(Boolean).join(' ');
@@ -65,20 +66,36 @@ export function RepoPickPage() {
     return <main className="main"><Breadcrumb items={crumbs('맞는 기업')} /><QueryFailure error={rec.error} retry={() => rec.refetch()} pending={rec.isFetching} /><Link to={back} className="btn btn--outline">폴더로 가기</Link></main>;
   }
   if (!rec.data) return loading;
-  return <PickScreen name={name} back={back} cardCount={folder.cards.length} crumbs={crumbs('맞는 기업')} rec={rec.data} who={who} again={again} />;
+  return <PickScreen repoId={repoId} name={name} back={back} cardCount={folder.cards.length} crumbs={crumbs('맞는 기업')} rec={rec.data} who={who} again={again} />;
 }
 
 type Crumb = { label: string; to?: string };
 /** 원 그림 가운데와 로그의 '내 쪽' 줄에 보일 사용자. 사진이 없으면 로그인 이름 첫 글자다 */
 type Who = { login: string; avatarUrl?: string | null };
 
-function PickScreen({ name, back, cardCount, crumbs, rec, who, again }: { name: string; back: string; cardCount: number; crumbs: Crumb[]; rec: RepoRecommendation; who: Who; again: Again | null }) {
-  const phase = phaseOf(rec);
+function PickScreen({ repoId, name, back, cardCount, crumbs, rec, who, again }: { repoId: string; name: string; back: string; cardCount: number; crumbs: Crumb[]; rec: RepoRecommendation; who: Who; again: Again | null }) {
+  const realPhase = phaseOf(rec);
   // 예약이거나 막 시작한 순간에는 남아 있는 지난 진행을 쓰지 않는다
-  const live = phase === 'queued' ? null : rec.live;
+  const realLive = realPhase === 'queued' ? null : rec.live;
+  const hasProcess = realPhase === 'done' && realLive !== null && realLive.finished && realLive.candidates.length > 0;
+  // 이 화면에서 진행을 직접 본 결과는 다시 보여 주지 않는다
+  const watched = useRef(false);
+  useEffect(() => {
+    if (realPhase === 'queued' || realPhase === 'running') watched.current = true;
+    else if (realPhase === 'done' && watched.current) markReplayed(repoId, rec.computedAt);
+  }, [realPhase, repoId, rec.computedAt]);
+  const reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const auto = hasProcess && !watched.current && !reduceMotion && !isReplayed(repoId, rec.computedAt);
+  const onReplayEnd = useCallback(() => markReplayed(repoId, rec.computedAt), [repoId, rec.computedAt]);
+  const replay = useRepoPickReplay(hasProcess ? realLive : null, auto, reduceMotion, onReplayEnd);
+  const replaying = replay.frame !== null;
+
+  const phase: PickPhase = replaying ? 'running' : realPhase;
+  const live = replay.frame ?? realLive;
+  const view = replaying ? { ...rec, live } : rec;
   const count = live?.cardCount ?? cardCount;
   const rows = phase === 'running' ? (live ? liveRows(live) : []) : phase === 'done' || phase === 'failed' ? resultRows(rec.companies, live) : [];
-  const head = pickHead(phase, { repoName: name, cardCount: count, picked: rec.companies.length, again });
+  const head = replaying ? replayHead(name, count) : pickHead(phase, { repoName: name, cardCount: count, picked: rec.companies.length, again });
   const candidates = live?.candidates ?? [];
   const checked = candidates.filter((candidate) => candidate.state === 'DONE').length;
   const started = candidates.some((candidate) => candidate.state !== 'WAITING');
@@ -97,26 +114,28 @@ function PickScreen({ name, back, cardCount, crumbs, rec, who, again }: { name: 
     idle: folderButton('폴더로 가기', true),
   };
 
+  const replayActions = <><button type="button" className="btn btn--outline" onClick={replay.skip}>결과 바로 보기</button>{folderButton('폴더로 가기', true)}</>;
+
   return (
     <main className="main rp-page">
       <Breadcrumb items={crumbs} />
       <div className="rp-head">
         <PageTitle lead={head.lead}>{head.title}</PageTitle>
-        <div className="rp-head__act">{actions[phase]}</div>
+        <div className="rp-head__act">{replaying ? replayActions : actions[phase]}</div>
       </div>
 
       <div className="rp-grid">
         <section className="card rp-orbit" aria-label="후보 회사">
-          <RepoPickOrbit repoName={name} cardCount={count} tiles={orbitTiles(rec, phase)} spinning={phase === 'running'} login={who.login} avatarUrl={who.avatarUrl} />
+          <RepoPickOrbit repoName={name} cardCount={count} tiles={orbitTiles(view, phase)} spinning={phase === 'running'} login={who.login} avatarUrl={who.avatarUrl} />
           <OrbitFoot phase={phase} live={live !== null} total={candidates.length} checked={checked} finished={live?.finished ?? false}
             dots={candidates.map((candidate) => (candidate.state === 'DONE' ? 'done' : candidate.state === 'CHECKING' ? 'now' : 'wait'))} />
           <p className="rp-legend"><span className="rp-legend__rings" aria-hidden="true"><i /><i /><i /></span>안쪽 고리로 들어올수록 내 카드와 맞는 조건이 많은 회사예요</p>
         </section>
 
         <div className="rp-side">
-          <PicksPanel phase={phase} rows={rows} started={started} />
+          <PicksPanel phase={phase} rows={rows} started={started} replay={replaying} onReplay={hasProcess && !replaying ? replay.start : undefined} />
           {phase === 'queued' && <LogPanel title="지금 하는 일"><p className="rp-wait">곧 시작해요</p></LogPanel>}
-          {live && <LogPanel title={phase === 'running' ? '지금 하는 일' : '한 일'}><LogFeed lines={lines} who={who} /></LogPanel>}
+          {live && <LogPanel title={phase === 'running' && !replaying ? '지금 하는 일' : '한 일'}><LogFeed lines={lines} who={who} /></LogPanel>}
         </div>
       </div>
     </main>
@@ -143,7 +162,7 @@ const dueLabel = (row: PickRow) => {
   return due.kind === 'closed' || due.kind === 'today' ? due.badge : `${due.badge.slice(2)}일 남음`;
 };
 
-function PicksPanel({ phase, rows, started }: { phase: PickPhase; rows: PickRow[]; started: boolean }) {
+function PicksPanel({ phase, rows, started, replay, onReplay }: { phase: PickPhase; rows: PickRow[]; started: boolean; replay: boolean; onReplay?: () => void }) {
   const titleId = useId();
   const running = phase === 'running';
   const slots = running || phase === 'queued';
@@ -152,7 +171,7 @@ function PicksPanel({ phase, rows, started }: { phase: PickPhase; rows: PickRow[
       <h2 id={titleId}>
         {slots ? '지금까지 고른 곳' : '고른 기업'}
         {!slots && rows.length > 0 && <small>{rows.length}곳</small>}
-        {running && <span className="rp-live"><i aria-hidden="true" />고르는 중</span>}
+        {running && !replay && <span className="rp-live"><i aria-hidden="true" />고르는 중</span>}
       </h2>
       {slots ? (
         <ol className="rp-picks">
@@ -163,6 +182,7 @@ function PicksPanel({ phase, rows, started }: { phase: PickPhase; rows: PickRow[
       ) : rows.length > 0 ? (
         <>
           <ol className="rp-picks">{rows.map((row, i) => <PickItem key={row.key} row={row} no={i + 1} final />)}</ol>
+          {onReplay && <button type="button" className="btn btn--outline rp-again" onClick={onReplay}>고른 과정 다시 보기</button>}
           <p className="rp-note">{phase === 'done' ? '확정하지 않은 카드도 함께 봤어요. 카드를 확정하면 공고에서도 같은 조건이 맞는 걸로 보여요.' : '지난번에 고른 기업이에요.'}</p>
         </>
       ) : (

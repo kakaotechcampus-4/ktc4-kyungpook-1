@@ -94,6 +94,7 @@
 .rp-meter i.is-pref { border: 1.5px solid var(--border-strong); background: transparent; }
 .rp-pick__go { display: inline-flex; align-items: center; gap: 2px; flex: none; min-height: 44px; padding: 0 4px 0 10px; font-size: 14px; font-weight: 600; color: var(--text-strong); }
 .rp-pick__go:hover { text-decoration: underline; text-underline-offset: 3px; }
+.rp-again { margin-top: 12px; }
 .rp-note { margin-top: 12px; font-size: 13px; line-height: 20px; color: var(--text-tertiary); }
 .rp-none { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding: 18px; border-radius: 16px; background: var(--bg-subtle); }
 .rp-none strong { font-size: 16px; font-weight: 700; }

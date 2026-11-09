@@ -25,7 +25,7 @@ test('짐작 문장은 노란 형광펜으로 보이고, 짐작 확인 탭에서
 
   await page.getByRole('tab', { name: /짐작 확인/ }).click();
   const row = page.locator('.clp-inf');
-  await expect(row).toContainText('짐작해서 쓴 문장이에요');
+  await expect(row).toContainText('확인이 필요한 문장이에요');
   for (const name of ['확인', '고치기', '빼기']) {
     const box = await row.getByRole('button', { name, exact: true }).boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);

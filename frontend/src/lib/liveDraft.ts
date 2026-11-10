@@ -2,7 +2,8 @@
  * 카드 초안을 쓰는 동안의 화면 모델 (#617).
  *
  * 서버는 1초마다 Job 의 `drafts` 로 카드별 "지금까지 쓴 전체 글"을 준다. AI 는 카드마다 8초쯤 생각한 뒤
- * 네 칸을 2초 안에 몰아 쓰므로 글은 한꺼번에 도착한다. 이 모델은 도착한 글을 초당 40자 일정한 속도로 펼치는 큐다.
+ * 네 칸을 2초 안에 몰아 쓰므로 글은 한꺼번에 도착한다. 이 모델은 도착한 글을 초당 20자 일정한 속도로 펼치는 큐다.
+ * 뒤에 끝난 카드가 둘 이상이면(화면이 서버보다 많이 느림) 초당 30자로 따라잡고, 셋 이상 밀리면 바로 마친다.
  *
  * 규칙
  *  - 시계를 읽지 않는다. 시각(now, ms)은 늘 바깥에서 넣는다 → 가짜 시계로 그대로 시험할 수 있다.
@@ -11,23 +12,30 @@
  *  - 서버는 카드를 두 장씩 동시에 쓰므로 뒤 카드가 먼저 쓰기 시작할 수 있다. 그래도 화면은 한 장씩 차례로 보인다:
  *    보이는 카드는 서버에서 끝났든(DONE·FAILED) 뒤 카드가 시작했든 끝까지 펼친 뒤 DWELL_MS 쉬고 넘어간다.
  *    뒤에 끝난 카드가 CATCH_UP_BACKLOG 장 이상 밀려 있을 때만 남은 글을 바로 마치고 따라잡는다.
- *  - 칸의 round 가 오르거나 글이 앞부분을 이어 쓰지 않고 바뀌면 달라진 곳까지 지우고 새 글을 쓴다.
- *    지우는 데 ERASE_MAX_MS, 지우고 다시 쓰는 데 REWRITE_MAX_MS 를 넘기지 않는다. 이 시간은 칸마다 그 칸의 차례가 온 때부터 센다
+ *  - 칸의 round 가 오르거나 글이 앞부분을 이어 쓰지 않고 바뀌면 거꾸로 지우되 달라지는 곳까지만 지우고, 0.3초 쉬고 다시 쓴다.
+ *    지우는 데 ERASE_MAX_MS, 지우고 쉬고 다시 쓰는 데 REWRITE_MAX_MS 를 넘기지 않는다. 이 시간은 칸마다 그 칸의 차례가 온 때부터 센다
  *    (뒤 칸의 시간이 앞 칸을 쓰는 동안 흘러가 버리면 뒤 칸이 한꺼번에 나타난다). 상한이 가까우면 한꺼번에 보이지 않고 속도를 올려 맞춘다.
  *  - Job 이 끝나면 마지막 카드까지 펼친 뒤에야 holding 이 풀린다. 끝나고 ENDED_MAX_MS 가 지나면 남은 글을 바로 마친다.
  *  - 폴링이 깨져 drafts 가 비거나 줄거나 되돌아가도 이미 받은 것을 유지한다.
  */
 import type { DraftLive, DraftLiveSlot, DraftLiveState, DraftStep, StarField } from '@/api/schemas';
 
-export const TYPING_CPS = 40;
-export const ERASE_CPS = 160;
+/** 한 문장이 타자처럼 보이려면 초당 20자대여야 한다. 40자면 한 줄이 통째로 나타나는 것처럼 읽힌다 */
+export const TYPING_CPS = 20;
+export const CATCH_UP_CPS = 30;
+/** 고쳐 쓴 글의 달라진 뒷부분은 이미 한 번 본 문장이라 조금 빠르게 다시 쓴다 */
+export const REWRITE_CPS = 30;
+/** 고칠 때는 달라지는 곳까지만 거꾸로 지운다. 지우기는 빠르고 상한이 있다 */
+export const ERASE_CPS = 60;
 export const ERASE_MAX_MS = 600;
+/** 다 지운 뒤 커서만 두고 쉰 다음 새 글을 쓴다 */
+export const REWRITE_PAUSE_MS = 300;
 export const REWRITE_MAX_MS = 3_000;
 export const ENDED_MAX_MS = 15_000;
 /** 카드 하나를 다 쓴 뒤 다음 카드로 넘어가기(또는 완료 화면으로 가기) 전에 쉬는 시간 */
 export const DWELL_MS = 1_500;
 /** 보이는 카드 뒤에 끝난 카드가 이만큼 밀려 있으면 펼치기를 끊고 따라잡는다 — 두 장씩 쓰는 서버보다 화면이 느릴 때만 */
-export const CATCH_UP_BACKLOG = 2;
+export const CATCH_UP_BACKLOG = 3;
 
 export const LIVE_FIELDS: readonly StarField[] = ['S', 'T', 'A', 'R'];
 
@@ -42,7 +50,7 @@ const hasStarted = (card: DraftLive) => RANK[card.state] >= 2;
 
 /**
  * 칸의 상태.
- *  WAITING 아직 차례가 아님 · NEXT 쓸 차례(커서만, 글 없음) · WRITING 쓰는 중 · REWRITING 다시 쓴 글을 쓰는 중
+ *  WAITING 아직 차례가 아님 · NEXT 쓸 차례(커서만, 글 없음) · WRITING 쓰는 중 · REWRITING 고친 글의 뒷부분을 다시 쓰는 중
  *  DONE 다 씀 · BLANK AI 가 근거가 없어 비움 · EMPTY 서버가 이 칸을 주지 않고 끝남 · MISSED 카드가 실패해 끝내지 못함
  */
 export type SlotPhase = 'WAITING' | 'NEXT' | 'WRITING' | 'REWRITING' | 'DONE' | 'BLANK' | 'EMPTY' | 'MISSED';
@@ -55,6 +63,8 @@ export type LiveSlot = {
   full: string;
   /** 글 끝 커서. 한 카드에 한 칸뿐이다 */
   cursor: boolean;
+  /** 이 칸이 보인 뒤에 서버가 고쳐 쓴 적이 있다 */
+  rewrote: boolean;
   /** 이 칸에 한 AI 의 과정. 칸을 다 쓴 뒤에만 채워진다 */
   steps: DraftStep[];
 };
@@ -75,11 +85,15 @@ type SlotRun = {
   done: boolean;
   /** 화면에 보이는 글자 수. 소수로 두어 짧은 틱도 쌓인다 */
   pos: number;
-  /** 다시 쓸 때 이 길이까지 지운다 */
+  /** 이 칸이 보인 뒤에 round 가 올랐다 */
+  rewrote: boolean;
+  /** 다시 쓸 때 이 길이까지만 지운다(보이던 글과 새 글의 앞부분이 같은 곳) */
   eraseTo: number | null;
   /** 지우는 동안 화면에 있는 앞 글 */
   erasing: string[] | null;
   eraseDeadline: number | null;
+  /** 지운 뒤 커서만 두고 쉬는 남은 시간(ms) */
+  pauseLeft: number;
   rewriteDeadline: number | null;
   /** 다시 쓰기로 정해졌고 이 칸의 차례를 기다린다. 차례가 오면 그때부터 eraseDeadline 과 rewriteDeadline 을 센다 */
   rewritePending: boolean;
@@ -91,7 +105,7 @@ type SlotRun = {
 };
 type Run = { cardId: string; slots: Record<StarField, SlotRun>; completedAt: number | null };
 
-const emptySlot = (): SlotRun => ({ present: false, chars: [], round: 0, done: false, pos: 0, eraseTo: null, erasing: null, eraseDeadline: null, rewriteDeadline: null, rewritePending: false, finished: false });
+const emptySlot = (): SlotRun => ({ present: false, chars: [], round: 0, done: false, pos: 0, rewrote: false, eraseTo: null, erasing: null, eraseDeadline: null, pauseLeft: 0, rewriteDeadline: null, rewritePending: false, finished: false });
 /** 화면에 보이는 글자들. 지우는 동안은 지워지는 앞 글, 아니면 서버가 준 글 */
 const onScreen = (slot: SlotRun) => slot.eraseTo !== null && slot.erasing ? slot.erasing : slot.chars;
 const stopErasing = (slot: SlotRun) => { slot.eraseTo = null; slot.erasing = null; slot.eraseDeadline = null; };
@@ -139,7 +153,7 @@ export class DraftPlayback {
     this.instant = !!options.instant;
   }
 
-  /** 글을 펼치지 않고 한 번에 보인다(동작 줄이기 설정, 한 번에 보기). 이미 보인 글은 바로 마친다 */
+  /** 글을 펼치지 않고 한 번에 보인다(동작 줄이기 설정). 이미 보인 글은 바로 마친다 */
   setInstant(instant: boolean, now: number) {
     if (this.instant === instant) return;
     this.instant = instant;
@@ -200,14 +214,15 @@ export class DraftPlayback {
       const full = slot.chars.join('');
       // 앞 칸을 다시 쓰느라 차례가 앞으로 돌아가도, 이미 끝난 모습으로 보인 뒤 칸은 대기로 되돌리지 않는다
       const shownBefore = at > reached && reached >= 0 && slot.finished;
-      if ((at > reached || reached < 0) && !shownBefore) return { field, phase: 'WAITING', text: '', full, cursor: false, steps: [] };
+      if ((at > reached || reached < 0) && !shownBefore) return { field, phase: 'WAITING', text: '', full, cursor: false, rewrote: false, steps: [] };
       const text = onScreen(slot).slice(0, Math.floor(slot.pos)).join('');
       if (at < reached || shownBefore) {
         const phase = this.settledPhase(card, slot);
-        return { field, phase, text, full, cursor: false, steps: phase === 'DONE' || phase === 'BLANK' ? card.steps.filter((step) => step.field === field) : [] };
+        return { field, phase, text, full, cursor: false, rewrote: slot.rewrote, steps: phase === 'DONE' || phase === 'BLANK' ? card.steps.filter((step) => step.field === field) : [] };
       }
-      const phase: SlotPhase = !slot.present || slot.chars.length === 0 ? 'NEXT' : slot.round > 0 ? 'REWRITING' : 'WRITING';
-      return { field, phase, text, full, cursor: !done, steps: [] };
+      const rewriting = slot.round > 0 || slot.eraseTo !== null || slot.pauseLeft > 0;
+      const phase: SlotPhase = !slot.present || slot.chars.length === 0 ? 'NEXT' : rewriting ? 'REWRITING' : 'WRITING';
+      return { field, phase, text, full, cursor: !done, rewrote: slot.rewrote, steps: [] };
     });
     return {
       total: this.cards.length,
@@ -254,13 +269,15 @@ export class DraftPlayback {
         }
         continue;
       }
-      // 다시 쓴 글(round 가 오름) 이거나, 앞 글을 이어 쓰지 않고 바뀐 글 — 달라진 곳까지 지우고 새로 쓴다
+      // 다시 쓴 글(round 가 오름) 이거나, 앞 글을 이어 쓰지 않고 바뀐 글 — 달라지는 곳까지만 거꾸로 지우고 잠깐 쉰 뒤 뒷부분을 다시 쓴다
       const shown = Math.floor(slot.pos);
       const visible = onScreen(slot).slice(0, shown);
       const keep = commonPrefix(visible, chars);
+      if (next.round > slot.round) slot.rewrote = true;
       slot.chars = chars;
       slot.round = next.round;
       slot.done = next.done;
+      slot.pauseLeft = 0;
       if (shown > keep) {
         slot.erasing = visible;
         slot.eraseTo = keep;
@@ -292,6 +309,10 @@ export class DraftPlayback {
     if (this.instant) { this.flush(run); return; }
     const card = this.cards.find((c) => c.cardId === run.cardId);
     if (!card) return;
+    // 끝난 카드 하나가 기다리는 것은 두 장씩 쓰는 서버에서 늘 있는 일이라 보통 속도로 두고, 둘부터 조금 빨리 따라잡는다
+    const behind = this.cards.slice(this.shownIndex() + 1).filter(isOver).length;
+    const base = (behind >= CATCH_UP_BACKLOG - 1 ? CATCH_UP_CPS : TYPING_CPS) / 1000;
+    const retype = Math.max(base, REWRITE_CPS / 1000);
     let ms = elapsed;
     for (let guard = 0; guard < 16 && ms > 0; guard += 1) {
       const field = this.activeField(run, card);
@@ -310,14 +331,21 @@ export class DraftPlayback {
         const left = slot.pos - slot.eraseTo;
         const rate = slot.eraseDeadline === null ? ERASE_CPS / 1000 : Math.max(ERASE_CPS / 1000, left / Math.max(1, slot.eraseDeadline - clock));
         const need = left / rate;
-        if (need <= ms) { slot.pos = slot.eraseTo; stopErasing(slot); ms -= need; } else { slot.pos -= ms * rate; ms = 0; }
+        if (need <= ms) { slot.pos = slot.eraseTo; stopErasing(slot); slot.pauseLeft = slot.pos < slot.chars.length ? REWRITE_PAUSE_MS : 0; ms -= need; } else { slot.pos -= ms * rate; ms = 0; }
+        this.version += 1;
+        continue;
+      }
+      if (slot.pauseLeft > 0) {
+        const used = Math.min(ms, slot.pauseLeft);
+        slot.pauseLeft -= used;
+        ms -= used;
         this.version += 1;
         continue;
       }
       if (slot.pos < slot.chars.length) {
-        // 다시 쓰는 칸은 상한 안에 끝나도록 속도를 올린다(기본 초당 40자보다 느려지지는 않는다)
+        // 다시 쓰는 칸은 상한 안에 끝나도록 속도를 올린다(다시 쓰는 속도보다 느려지지는 않는다)
         const left = slot.chars.length - slot.pos;
-        const rate = slot.rewriteDeadline === null ? TYPING_CPS / 1000 : Math.max(TYPING_CPS / 1000, left / Math.max(1, slot.rewriteDeadline - clock));
+        const rate = slot.rewriteDeadline === null ? base : Math.max(retype, left / Math.max(1, slot.rewriteDeadline - clock));
         const need = left / rate;
         if (need <= ms) { slot.pos = slot.chars.length; slot.rewriteDeadline = null; ms -= need; } else { slot.pos += ms * rate; ms = 0; }
         this.version += 1;
@@ -329,6 +357,7 @@ export class DraftPlayback {
       if (slot.eraseTo !== null && slot.eraseDeadline !== null && now >= slot.eraseDeadline) { slot.pos = slot.eraseTo; stopErasing(slot); this.version += 1; }
       if (slot.rewriteDeadline !== null && now >= slot.rewriteDeadline) {
         stopErasing(slot);
+        slot.pauseLeft = 0;
         slot.pos = slot.chars.length;
         slot.rewriteDeadline = null;
         this.version += 1;
@@ -345,6 +374,7 @@ export class DraftPlayback {
       if (slot.present && (slot.pos !== slot.chars.length || slot.eraseTo !== null)) this.version += 1;
       slot.pos = slot.chars.length;
       stopErasing(slot);
+      slot.pauseLeft = 0;
       slot.rewriteDeadline = null;
       slot.rewritePending = false;
     }
@@ -427,7 +457,7 @@ export class DraftPlayback {
     const slot = run.slots[field];
     const closed = this.cardOver(card) || this.laterPresent(run, field);
     if (!slot.present) return closed;
-    return (slot.done || closed) && slot.pos >= slot.chars.length && slot.eraseTo === null;
+    return (slot.done || closed) && slot.pos >= slot.chars.length && slot.eraseTo === null && slot.pauseLeft === 0;
   }
 
   private settledPhase(card: DraftLive, slot: SlotRun): SlotPhase {
@@ -466,7 +496,7 @@ function staticCard(card: DraftLive, index: number): LiveCard {
     else if (!slot.done && card.state === 'FAILED') phase = 'MISSED';
     else phase = full ? 'DONE' : slot.done ? 'BLANK' : 'DONE';
     const revealed = phase === 'DONE' || phase === 'BLANK';
-    return { field, phase, text: full, full, cursor: false, steps: revealed ? card.steps.filter((step) => step.field === field) : [] };
+    return { field, phase, text: full, full, cursor: false, rewrote: false, steps: revealed ? card.steps.filter((step) => step.field === field) : [] };
   });
   return { cardId: card.cardId, title: card.title, index, state: card.state, slots };
 }

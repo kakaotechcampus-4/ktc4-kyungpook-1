@@ -38,7 +38,7 @@ it('T3 shows the band only during the tour', () => {
   expect(container).toBeEmptyDOMElement();
   sessionStorage.setItem(SAMPLE_KEY, '1');
   render(<SampleBand />);
-  expect(screen.getByText('샘플 데이터로 둘러보는 중이에요 · 실제 분석이 아니에요')).toBeInTheDocument();
+  expect(screen.getByText('샘플 데이터로 둘러보는 중이에요. 실제 분석이 아니에요')).toBeInTheDocument();
 });
 
 it('T3 clears the flag, db and session when leaving and lands on /login', () => {

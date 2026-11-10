@@ -49,37 +49,37 @@ Gitory 는 **개발자 취업 준비생이 GitHub 기록에서 자신의 기여�
 홈 입력창에 할 일을 한 문장으로 적으면 AI 가 공고 찾기 · 매칭 · 자소서 시작 같은 도구 7개를 차례로 실행합니다.
 모자란 정보는 되묻고, 끝나면 결과 화면으로 연결합니다.
 
-<p align="center"><img src="./docs/images/readme/gif/home-command.gif?v=20261111c" width="880" alt="홈 입력창에 한 문장을 맡기면 AI 가 도구를 차례로 실행해 결과로 연결하는 화면" /></p>
+<p align="center"><img src="./docs/images/readme/gif/home-command.gif?v=20261111d" width="880" alt="홈 입력창에 한 문장을 맡기면 AI 가 도구를 차례로 실행해 결과로 연결하는 화면" /></p>
 
 ### 2. 저장소 정리
 
 공개 저장소에서 본인의 PR · 리뷰 · 커밋만 읽어 같은 일을 한 경험으로 묶고, 추천 이유를 붙입니다.
 읽는 과정이 화면에 그대로 보이고, 끝나면 추천 후보로 카드 초안을 바로 씁니다.
 
-<p align="center"><img src="./docs/images/readme/gif/analysis-run.gif?v=20261111c" width="880" alt="레포 정리 화면. 읽은 PR 과 커밋 줄이 차례로 나오고 후보로 묶은 뒤 추천 이유를 붙인다" /></p>
+<p align="center"><img src="./docs/images/readme/gif/analysis-run.gif?v=20261111d" width="880" alt="레포 정리 화면. 읽은 PR 과 커밋 줄이 차례로 나오고 후보로 묶은 뒤 추천 이유를 붙인다" /></p>
 
 ### 3. 경험 카드
 
 고른 경험의 코드 변경을 읽어 상황 · 과제 · 행동 · 결과를 근거 커밋과 함께 씁니다. 근거 없는 숫자는 코드가 잡아 다시 씁니다.
 상황과 행동이 차면 스스로 확정되고, 기록만으로 알 수 없는 칸은 AI 가 먼저 묻고 답을 카드 문장으로 다듬어 넣습니다.
 
-<p align="center"><img src="./docs/images/readme/gif/card-draft-live.gif?v=20261111c" width="880" alt="카드 초안 화면. 네 칸이 한 글자씩 써지고, 검사에 걸린 결과 칸을 이슈를 열어 본 뒤 다시 쓴다" /></p>
+<p align="center"><img src="./docs/images/readme/gif/card-draft-live.gif?v=20261111d" width="880" alt="카드 초안 화면. 네 칸이 한 글자씩 써지고, 검사에 걸린 결과 칸을 이슈를 열어 본 뒤 다시 쓴다" /></p>
 
-<p align="center"><img src="./docs/images/readme/gif/interview-chat.gif?v=20261111c" width="880" alt="답변하기 화면. 답을 보내면 AI 가 판단 이유와 함께 카드 문장으로 다듬어 넣고 다음 빈칸을 묻는다" /></p>
+<p align="center"><img src="./docs/images/readme/gif/interview-chat.gif?v=20261111d" width="880" alt="답변하기 화면. 답을 보내면 AI 가 판단 이유와 함께 카드 문장으로 다듬어 넣고 다음 빈칸을 묻는다" /></p>
 
 ### 4. 공고 매칭
 
 수집한 개발 직무 공고를 확정 카드와 견줘 조건마다 **맞음 · 부족 · 직접 확인**을 나누고, 판단의 근거가 된 카드로 연결합니다.
 한 저장소의 카드로 지금 지원할 수 있는 기업을 고르는 과정과 이유도 실시간으로 보여 줍니다.
 
-<p align="center"><img src="./docs/images/readme/gif/repo-match-pick.gif?v=20261111c" width="880" alt="한 저장소의 카드로 맞는 기업을 고르는 화면. 기술이 겹치는 회사를 찾고 조건마다 근거 카드를 댄다" /></p>
+<p align="center"><img src="./docs/images/readme/gif/repo-match-pick.gif?v=20261111d" width="880" alt="한 저장소의 카드로 맞는 기업을 고르는 화면. 기술이 겹치는 회사를 찾고 조건마다 근거 카드를 댄다" /></p>
 
 ### 5. 자소서
 
 공고와 문항을 넣으면 AI 가 문항마다 쓸 카드를 고르고 초안을 씁니다. 빈칸은 대화로 채우고, 진단과 첨삭 · 짐작 확인 · 글자 수까지 한 화면에서 끝냅니다.
 새 카드가 생기면 지금 글은 두고 끼울 문장만 더합니다.
 
-<p align="center"><img src="./docs/images/readme/gif/cover-letter-fill.gif?v=20261111c" width="880" alt="자소서 대화 탭. 한 줄로 알려 주면 종이의 그 자리를 다시 쓴다" /></p>
+<p align="center"><img src="./docs/images/readme/gif/cover-letter-fill.gif?v=20261111d" width="880" alt="자소서 대화 탭. 한 줄로 알려 주면 종이의 그 자리를 다시 쓴다" /></p>
 
 ## 🧠 Agentic AI 설계
 
@@ -108,6 +108,8 @@ AI 는 **고르기만** 합니다. 근거와 수치는 코드가 검사하고, �
 > **AI 규칙 네 가지** — ① 기록에 없는 내용은 쓰지 않고 빈칸으로 둡니다. ② 숫자와 커밋 번호는 코드가 다시 확인합니다. ③ 모르면 사용자에게 묻고, 확인할 칸이 남은 카드는 확정하지 않습니다. ④ 호출 횟수·다시 쓰기 횟수에 상한이 있고, 넘으면 멈추고 알립니다.
 
 판단의 갈래와 상한은 [에이전트 설계](./docs/AGENT_DESIGN.md), 막는 장치와 그 시험은 [가드레일](./docs/GUARDRAILS.md), 잰 숫자는 [AI 품질 평가 결과](./ai/evals/RESULTS.md)에 있습니다.
+
+**에이전트 프레임워크(LangGraph · LangChain)는 일부러 쓰지 않았습니다.** 모델 호출은 OpenAI 호환 API 하나뿐이고, 단계 분기 · 상한 · 되돌리기를 코드 줄로 두면 단위 시험과 변이 확인으로 잡을 수 있기 때문입니다. 홈 한 줄 명령의 도구 호출 루프, STAR 초안의 고쳐 쓰기 루프, 되묻기 루프는 각각 상태와 상한을 가진 보통 함수입니다 — 분기가 더 늘어나면 그때 옮깁니다. 이유와 다른 선택지는 [기술 결정 116번](./docs/tech-decisions.md#116-에이전트-프레임워크--langgraph를-쓸까-직접-짤까-ai-2026-11-11)에 있습니다.
 
 ## 🧱 서비스 구성
 

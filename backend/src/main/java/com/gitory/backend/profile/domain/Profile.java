@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 import static lombok.AccessLevel.PROTECTED;
 
-/** 사용자 한 명의 인적사항 한 벌로, 화면이 네 목록을 통째로 바꾼다 */
+/** 사용자 한 명의 프로필 한 벌로, 관심 분야와 메일 수신 설정을 담는다 */
 @Entity
 @Getter
 @NoArgsConstructor(access = PROTECTED)
@@ -30,18 +30,6 @@ public class Profile {
     private Long id;
 
     private Long userId;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<Education> educations;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<Career> careers;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<LanguageScore> languages;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<Certification> certifications;
 
     // 공고 직무 분류 이름이며, profile 이 matching 을 참조하면 순환이라 이름 글로 둔다
     @JdbcTypeCode(SqlTypes.ARRAY)
@@ -62,14 +50,9 @@ public class Profile {
 
     }
 
-    /** interests 가 null 이면 저장된 관심 분야를 그대로 둔다 — 지금 배포된 화면은 이 칸을 아직 보내지 않는다 */
-    void replace(List<Education> educations, List<Career> careers, List<LanguageScore> languages,
-                 List<Certification> certifications, List<InterestCategory> interests) {
+    /** interests 가 null 이면 저장된 관심 분야를 그대로 둔다 */
+    void replace(List<InterestCategory> interests) {
 
-        this.educations = new ArrayList<>(educations);
-        this.careers = new ArrayList<>(careers);
-        this.languages = new ArrayList<>(languages);
-        this.certifications = new ArrayList<>(certifications);
         if (interests != null) {
             this.interests = interests.stream().map(Enum::name).collect(Collectors.toCollection(ArrayList::new));
         }
@@ -93,8 +76,7 @@ public class Profile {
 
     ProfileView view() {
 
-        return new ProfileView(List.copyOf(educations), List.copyOf(careers), List.copyOf(languages),
-                List.copyOf(certifications), interests.stream().map(InterestCategory::valueOf).toList(), email, mailOptIn, savedAt);
+        return new ProfileView(interests.stream().map(InterestCategory::valueOf).toList(), email, mailOptIn, savedAt);
 
     }
 }

@@ -76,7 +76,7 @@ class OverallRecommendationServiceTest {
     void setUp() {
 
         when(cards.confirmedOf(USER)).thenReturn(List.of(CARD));
-        when(profiles.of(USER)).thenReturn(new ProfileView(List.of(), List.of(), List.of(), List.of(), List.of(), null, false, PROFILE_SAVED));
+        when(profiles.of(USER)).thenReturn(new ProfileView(List.of(), null, false, PROFILE_SAVED));
         when(shortlist.shortlist(eq(USER), any(), anyInt())).thenReturn(companies);
         when(criteria.findByJobPostingIdInOrderByJobPostingIdAscSeqAsc(any())).thenReturn(allCriteria);
         when(judgements.judge(any(), anyList(), anyList()))

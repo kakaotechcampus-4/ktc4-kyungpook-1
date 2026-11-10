@@ -40,7 +40,13 @@ function SlotSteps({ slot }: { slot: LiveSlot }) {
   const groups = draftStepGroups(slot.steps, slot.field);
   const lines = groups.flatMap((group) => group.lines.map((line, at) => ({ line, round: at === 0 ? group.label : null })));
   if (!lines.length) return null;
+  // 과정은 접어 둔다 — 펼쳐 두면 칸이 길어져 다음 칸을 보려면 스크롤해야 한다. 카드 상세의 '만든 과정'에도 같은 내용이 있다
   return (
+    <details className="live-steps-fold">
+      <summary className="live-steps-fold__summary">
+        <span className="live-steps-fold__closed">과정 {lines.length}단계 보기</span>
+        <span className="live-steps-fold__open">과정 접기</span>
+      </summary>
     <ol className="live-steps" aria-label={`${starFieldShort[slot.field]} 칸에서 AI 가 한 일`}>
       {lines.map(({ line, round }) => {
         const Icon = kindIcon[line.kind];
@@ -57,6 +63,7 @@ function SlotSteps({ slot }: { slot: LiveSlot }) {
         );
       })}
     </ol>
+    </details>
   );
 }
 function Slot({ slot }: { slot: LiveSlot }) {

@@ -56,6 +56,13 @@
 .live-slot[data-phase='DONE'], .live-slot[data-phase='BLANK'], .live-slot[data-phase='EMPTY'], .live-slot[data-phase='MISSED'] { transition: background-color .3s; }
 
 /* 칸에 한 AI 의 과정. 카드 상세 '만든 과정'과 같은 세로 모양이다. 왼쪽 선과 아이콘은 장식이고 순서는 목록(ol)이 말한다 */
+/* 과정은 한 줄로 접혀 있다가 누르면 펼쳐진다 — 칸 높이를 글이 아닌 과정이 늘리지 않게 */
+.live-steps-fold { margin-top: 4px; }
+.live-steps-fold__summary { display: inline-flex; align-items: center; min-height: 28px; padding: 0; list-style: none; cursor: pointer; font-size: 12px; line-height: 18px; color: var(--text-tertiary); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.live-steps-fold__summary::-webkit-details-marker { display: none; }
+.live-steps-fold__summary:hover { color: var(--text-secondary); }
+.live-steps-fold__open, .live-steps-fold[open] .live-steps-fold__closed { display: none; }
+.live-steps-fold[open] .live-steps-fold__open { display: inline; }
 .live-steps { display: flex; flex-direction: column; margin: 0; padding: 4px 0 0; list-style: none; }
 .live-step { position: relative; display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 8px; padding-bottom: 6px; min-width: 0; font-size: 12px; line-height: 18px; color: var(--text-tertiary); }
 .live-step:last-child { padding-bottom: 0; }

@@ -61,10 +61,13 @@ test('카드가 차례로 채워지고, 읽는 동안은 커서만, 글은 일�
   await expect(slot(page, 'S')).toHaveAttribute('data-phase', 'DONE');
   await expect(slot(page, 'S').locator('.live-slot__status')).toHaveText('완료');
   await expect(slot(page, 'R')).toHaveAttribute('data-phase', 'DONE', { timeout: 30_000 });
+  // 과정은 '과정 N단계 보기' 로 접혀 있고 누르면 펼쳐진다
+  await slot(page, 'R').locator('.live-steps-fold__summary').click();
   const process = page.getByRole('list', { name: '결과 칸에서 AI 가 한 일' });
   await expect(process).toContainText('근거 없는 숫자(50%)를 찾았어요');
   await expect(process).toContainText('이슈를 열어 봤어요');
   await expect(process).toContainText('다시 썼어요');
+  await slot(page, 'T').locator('.live-steps-fold__summary').click();
   await expect(page.getByRole('list', { name: '과제 칸에서 AI 가 한 일' })).toContainText('그대로 두기로 했어요');
 
   // 첫 카드를 다 쓰면 다음 카드로 넘어가고, 앞 카드는 접힌 목록에 남는다

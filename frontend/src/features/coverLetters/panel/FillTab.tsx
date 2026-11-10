@@ -83,8 +83,8 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
   const questionOf = (id: string) => letter.questions.find((x) => x.id === id);
   const lastAi = [...turns].reverse().find((t) => t.role === 'AI');
   const topic = lastAi ? questionOf(lastAi.questionId) : undefined;
-  // 답을 받을 질문이 열려 있는지 — FILLED 는 답을 받은 말이고 DONE 은 그 문항을 끝낸 말이라 둘 다 열린 질문이 아니다
-  const waiting = !!lastAi && lastAi.status !== 'DONE' && lastAi.status !== 'FILLED';
+  // 답을 받을 질문이 열려 있는지 — DONE 은 그 문항을 끝낸 말이고, FILLED 는 답을 받은 말이지만 item 이 있으면 같은 말에서 다음 항목을 물은 것이라 열린 질문이다
+  const waiting = !!lastAi && lastAi.status !== 'DONE' && (lastAi.status !== 'FILLED' || lastAi.item != null);
   const busy = open.isPending || reply.isPending || skip.isPending || save.isPending;
   const canSend = waiting && !busy && rewriting == null;
   const active = questionOf(activeId) ?? letter.questions[0];
@@ -167,7 +167,8 @@ export function FillTab({ letter, activeId, texts, onText, talk, onTalked, onSho
         setFilled((s) => ({ ...s, [fill.seq]: { questionId: topic.id, sentence: newSentence(before, after) } }));
         setRewriting(null);
         setWaitAbove(null);
-        setMoveOn(topic.id);
+        // 다시 쓴 말이 다음 항목까지 물었으면(item) 이 문항에 머물러 답을 받는다
+        if (fill.item == null) setMoveOn(topic.id);
       };
       reveal.current = place;
       setRewriting(fill.seq);

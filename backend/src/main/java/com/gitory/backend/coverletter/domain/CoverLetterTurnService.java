@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -113,19 +114,51 @@ public class CoverLetterTurnService {
             return saved.talk();
         }
 
-        Optional<CoverLetterFill> rewritten = rewrite(saved.fill());
-        return write.execute(status -> {
-            CoverLetter letter = lockOwned(letterId, userId);
-            CoverLetterQuestion question = questionOf(letter, questionId);
-            // AI 가 다시 쓴 글을 되돌렸거나, 다시 쓰는 동안 사용자가 글을 고쳤으면 그 글을 덮지 않는다
-            boolean applied = rewritten.isPresent() && !rewritten.get().reverted()
-                    && saved.fill().target().currentText().equals(question.getDraftText());
-            if (applied) {
-                question.refill(CoverLetterPolishService.draftOf(rewritten.get().draft()));
-                letter.touch();
+        // 항목마다 앞에서 다시 쓴 글을 바탕으로 다음 빈칸을 채워야 해서, 한 항목씩 AI 를 부르고 저장한다
+        CoverLetterFillRequest fill = saved.fill();
+        for (int done = 1; ; done++) {
+            CoverLetterFillRequest current = fill;
+            int applied = done;
+            Optional<CoverLetterFill> rewritten = rewrite(current);
+            Step step = write.execute(status -> applyFill(letterId, questionId, userId, current, rewritten,
+                    saved.items(), applied));
+            if (step.talk() != null) {
+                return step.talk();
             }
-            return talkOf(letter, question, !applied);
-        });
+            fill = step.next();
+        }
+
+    }
+
+    private Step applyFill(UUID letterId, UUID questionId, Long userId, CoverLetterFillRequest current,
+                           Optional<CoverLetterFill> rewritten, List<MaterialItem> items, int done) {
+
+        CoverLetter letter = lockOwned(letterId, userId);
+        List<CoverLetterQuestion> loaded = questions.findByCoverLetterIdOrderBySeq(letter.getId());
+        CoverLetterQuestion question = targetOf(loaded, questionId);
+        // AI 가 다시 쓴 글을 되돌렸거나, 다시 쓰는 동안 사용자가 글을 고쳤으면 그 글을 덮지 않고 거기서 멈춘다
+        boolean applied = rewritten.isPresent() && !rewritten.get().reverted()
+                && current.target().currentText().equals(question.getDraftText());
+        if (!applied) {
+            return new Step(null, talkOf(letter, question, true));
+        }
+        question.refill(CoverLetterPolishService.draftOf(rewritten.get().draft()));
+        letter.touch();
+        if (done == items.size()) {
+            return new Step(null, talkOf(letter, question, false));
+        }
+
+        return new Step(fillRequest(letter, loaded, question, items.get(done)), null);
+
+    }
+
+    private CoverLetterFillRequest fillRequest(CoverLetter letter, List<CoverLetterQuestion> loaded,
+                                               CoverLetterQuestion target, MaterialItem item) {
+
+        return new CoverLetterFillRequest(letter.getId(), letter.getJobRole(), letter.memoForWriting(),
+                letter.strengthCodes(), CoverLetterPosting.inputOf(letter), CoverLetterPolishService.othersOf(loaded, target),
+                CoverLetterPolishService.targetOf(target, CoverLetterPolishService.cardsOf(cardMaterials, target)),
+                item.name(), blankFor(target.getDraftText(), item));
 
     }
 
@@ -198,17 +231,22 @@ public class CoverLetterTurnService {
                 message.item() == null ? null : MaterialItem.valueOf(message.item()), status));
         letter.touch();
 
-        if (status != TurnStatus.FILLED) {
-            return new Saved(null, talkOf(letter, target, false));
+        if (status != TurnStatus.FILLED || reply.answers().isEmpty()) {
+            return new Saved(null, List.of(), talkOf(letter, target, false));
         }
 
-        MaterialItem item = MaterialItem.valueOf(reply.answer().item());
-        remember(target, item, target.fillAnswer(item, reply.answer().text()));
+        // 빈칸은 항목 순서대로 채워야 앞 항목을 채운 글 위에 다음 항목이 이어진다
+        List<CoverLetterTurnReply.Answer> ordered = reply.answers().stream()
+                .sorted(Comparator.comparing(answer -> MaterialItem.valueOf(answer.item())))
+                .toList();
+        List<MaterialItem> items = new ArrayList<>();
+        for (CoverLetterTurnReply.Answer answer : ordered) {
+            MaterialItem item = MaterialItem.valueOf(answer.item());
+            remember(target, item, target.fillAnswer(item, answer.text()));
+            items.add(item);
+        }
 
-        return new Saved(new CoverLetterFillRequest(letter.getId(), letter.getJobRole(), letter.memoForWriting(),
-                letter.strengthCodes(), CoverLetterPosting.inputOf(letter), CoverLetterPolishService.othersOf(loaded, target),
-                CoverLetterPolishService.targetOf(target, CoverLetterPolishService.cardsOf(cardMaterials, target)),
-                item.name(), blankFor(target.getDraftText(), item)), null);
+        return new Saved(fillRequest(letter, loaded, target, items.getFirst()), List.copyOf(items), null);
 
     }
 
@@ -336,6 +374,9 @@ public class CoverLetterTurnService {
 
     }
 
-    private record Saved(CoverLetterFillRequest fill, CoverLetterTalk talk) {
+    private record Saved(CoverLetterFillRequest fill, List<MaterialItem> items, CoverLetterTalk talk) {
+    }
+
+    private record Step(CoverLetterFillRequest next, CoverLetterTalk talk) {
     }
 }

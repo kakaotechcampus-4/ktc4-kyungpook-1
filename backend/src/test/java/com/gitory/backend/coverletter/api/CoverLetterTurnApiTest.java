@@ -62,6 +62,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -86,10 +87,10 @@ class CoverLetterTurnApiTest {
     private static final String AI_TEXT = "배포를 함께 고쳤다. " + BLANK;
     private static final String NEW_ANSWER = "AI 담당 팀원과 로그를 같이 보며 원인을 좁혔다";
     private static final CoverLetterTurnReply ASKING = new CoverLetterTurnReply(
-            new CoverLetterTurnReply.Message("그때 직접 한 일을 한 줄만 알려 주세요.", 1, "ACTION"), null, "ASKING");
+            new CoverLetterTurnReply.Message("그때 직접 한 일을 한 줄만 알려 주세요.", 1, "ACTION"), List.of(), "ASKING");
     private static final CoverLetterTurnReply FILLED = new CoverLetterTurnReply(
             new CoverLetterTurnReply.Message("로그를 같이 봤군요. 이 답으로 채울게요.", 1, "ACTION"),
-            new CoverLetterTurnReply.Answer("ACTION", NEW_ANSWER, true), "FILLED");
+            List.of(new CoverLetterTurnReply.Answer("ACTION", NEW_ANSWER, true)), "FILLED");
     private static final CoverLetterDrafts.Draft REWRITTEN = new CoverLetterDrafts.Draft(1,
             "배포를 함께 고쳤다. AI 담당 팀원과 로그를 같이 보며 원인을 좁혔다.",
             List.of(new CoverLetterDrafts.Sentence(1, "배포를 함께 고쳤다."),
@@ -205,7 +206,7 @@ class CoverLetterTurnApiTest {
 
         CoverLetter letter = draftedLetter(myUserId);
         when(turnPort.next(any())).thenReturn(new CoverLetterTurnReply(
-                new CoverLetterTurnReply.Message("빈칸은 그대로 둘게요.", 1, null), null, "DONE"));
+                new CoverLetterTurnReply.Message("빈칸은 그대로 둘게요.", 1, null), List.of(), "DONE"));
 
         skip(letter)
                 .andExpect(status().isOk())
@@ -242,19 +243,97 @@ class CoverLetterTurnApiTest {
     }
 
     @Test
+    @DisplayName("한 번의 답에 재료가 여럿 오면 항목 순서대로 한 항목씩 다시 쓰며, 다음 요청은 앞에서 다시 쓴 글을 바탕으로 하고 마지막 글이 지금 글이 된다")
+    void severalAnswersRewriteTheDraftOneItemAtATime() throws Exception {
+
+        CoverLetter letter = draftedLetter(myUserId);
+        when(turnPort.next(any())).thenReturn(threeAnswers());
+        when(turnPort.fill(any())).thenReturn(new CoverLetterFill(rewritten("첫째 글"), false),
+                new CoverLetterFill(rewritten("둘째 글"), false), new CoverLetterFill(rewritten("셋째 글"), false));
+
+        reply(letter, "상황과 행동과 결과를 한 번에 말했어요")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.rewriteFailed").value(false))
+                .andExpect(jsonPath("$.data.question.draft.text").value("셋째 글"));
+
+        ArgumentCaptor<CoverLetterFillRequest> fills = ArgumentCaptor.forClass(CoverLetterFillRequest.class);
+        verify(turnPort, times(3)).fill(fills.capture());
+        assertThat(fills.getAllValues()).extracting(CoverLetterFillRequest::filledItem)
+                .containsExactly("SITUATION", "ACTION", "RESULT");
+        assertThat(fills.getAllValues()).extracting(fill -> fill.target().currentText())
+                .containsExactly(AI_TEXT, "첫째 글", "둘째 글");
+        assertThat(firstQuestion(letter).getAnswers()).extracting(MaterialAnswer::item)
+                .containsExactlyInAnyOrder(MaterialItem.SITUATION, MaterialItem.ACTION, MaterialItem.RESULT);
+        assertThat(firstQuestion(letter).getDraftText()).isEqualTo("셋째 글");
+
+    }
+
+    @Test
+    @DisplayName("재료가 여럿일 때 두 번째 다시 쓰기가 실패하면 답은 모두 남기고 첫 번째로 다시 쓴 글은 적용한 채 rewriteFailed 를 true 로 돌려준다")
+    void laterRewriteFailureKeepsAnswersAndEarlierDrafts() throws Exception {
+
+        CoverLetter letter = draftedLetter(myUserId);
+        when(turnPort.next(any())).thenReturn(threeAnswers());
+        when(turnPort.fill(any()))
+                .thenReturn(new CoverLetterFill(rewritten("첫째 글"), false))
+                .thenThrow(new AgentUnavailableException("AI 자소서 대화 다시 쓰기 실패", true, false, null));
+
+        reply(letter, "상황과 행동과 결과를 한 번에 말했어요")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.rewriteFailed").value(true))
+                .andExpect(jsonPath("$.data.question.draft.text").value("첫째 글"));
+
+        verify(turnPort, times(2)).fill(any());
+        assertThat(firstQuestion(letter).getAnswers()).extracting(MaterialAnswer::item)
+                .containsExactlyInAnyOrder(MaterialItem.SITUATION, MaterialItem.ACTION, MaterialItem.RESULT);
+
+    }
+
+    @Test
+    @DisplayName("재료가 여럿이면 기억할 수 있는 항목마다 중심 카드에 기억한다")
+    void everyRememberedItemIsRemembered() throws Exception {
+
+        CoverLetter letter = draftedLetter(myUserId);
+        when(turnPort.next(any())).thenReturn(threeAnswers());
+        when(turnPort.fill(any())).thenReturn(new CoverLetterFill(rewritten("첫째 글"), false),
+                new CoverLetterFill(rewritten("둘째 글"), false), new CoverLetterFill(rewritten("셋째 글"), false));
+
+        reply(letter, "상황과 행동과 결과를 한 번에 말했어요").andExpect(status().isOk());
+
+        assertThat(jdbc.queryForList("SELECT item FROM card_material_answer WHERE card_id = ?", String.class,
+                firstQuestion(letter).getPrimaryCardId())).containsExactlyInAnyOrder("SITUATION", "ACTION", "RESULT");
+
+    }
+
+    @Test
+    @DisplayName("이야기를 시작하는 열린 질문처럼 항목이 없는 AI 말도 항목 없이 저장하고 오류 없이 ASKING 으로 둔다")
+    void openingQuestionWithoutItemIsStored() throws Exception {
+
+        CoverLetter letter = draftedLetter(myUserId);
+        when(turnPort.next(any())).thenReturn(new CoverLetterTurnReply(
+                new CoverLetterTurnReply.Message("이 경험에서 가장 기억에 남는 순간이 무엇인가요?", 1, null), List.of(), "ASKING"));
+
+        open(letter)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.turns[0].item").value(nullValue()))
+                .andExpect(jsonPath("$.data.turns[0].status").value("ASKING"));
+
+    }
+
+    @Test
     @DisplayName("같은 항목에 같은 답이 다시 오면 덧붙이지 않고, 덧붙인 답이 1,000자를 넘으면 1,000자에서 자른다")
     void sameAnswerIsNotRepeatedAndJoinedAnswerIsCut() throws Exception {
 
         CoverLetter letter = draftedLetter(myUserId);
         when(turnPort.fill(any())).thenReturn(new CoverLetterFill(REWRITTEN, false));
         when(turnPort.next(any())).thenReturn(new CoverLetterTurnReply(FILLED.message(),
-                new CoverLetterTurnReply.Answer("ACTION", "옛 행동 답", true), "FILLED"));
+                List.of(new CoverLetterTurnReply.Answer("ACTION", "옛 행동 답", true)), "FILLED"));
 
         reply(letter, "옛 행동 답이에요").andExpect(status().isOk());
         assertThat(firstQuestion(letter).getAnswers().getFirst().text()).isEqualTo("옛 행동 답");
 
         when(turnPort.next(any())).thenReturn(new CoverLetterTurnReply(FILLED.message(),
-                new CoverLetterTurnReply.Answer("ACTION", "가".repeat(1_000), true), "FILLED"));
+                List.of(new CoverLetterTurnReply.Answer("ACTION", "가".repeat(1_000), true)), "FILLED"));
         reply(letter, "아주 긴 답이에요").andExpect(status().isOk());
         assertThat(firstQuestion(letter).getAnswers().getFirst().text())
                 .hasSize(1_000)
@@ -269,7 +348,7 @@ class CoverLetterTurnApiTest {
         CoverLetter letter = draftedLetter(myUserId);
         when(turnPort.next(any())).thenReturn(new CoverLetterTurnReply(
                 new CoverLetterTurnReply.Message("이 이유로 채울게요.", 1, "REASON"),
-                new CoverLetterTurnReply.Answer("REASON", "결제 시스템을 다뤄 보고 싶다", true), "FILLED"));
+                List.of(new CoverLetterTurnReply.Answer("REASON", "결제 시스템을 다뤄 보고 싶다", true)), "FILLED"));
         when(turnPort.fill(any())).thenReturn(new CoverLetterFill(REWRITTEN, false));
 
         reply(letter, "결제 시스템을 다뤄 보고 싶어요").andExpect(status().isOk());
@@ -484,6 +563,23 @@ class CoverLetterTurnApiTest {
                 .andExpect(jsonPath("$.error.code").value("INTERNAL_ERROR"));
 
         assertThat(turns.count()).isZero();
+
+    }
+
+    // 일부러 항목 순서와 다르게 보내, 서버가 항목 순서로 다시 정렬하는지 확인한다
+    private static CoverLetterTurnReply threeAnswers() {
+
+        return new CoverLetterTurnReply(FILLED.message(), List.of(
+                new CoverLetterTurnReply.Answer("RESULT", "배포가 5분으로 줄었다", true),
+                new CoverLetterTurnReply.Answer("SITUATION", "배포가 30분씩 걸렸다", true),
+                new CoverLetterTurnReply.Answer("ACTION", NEW_ANSWER, true)), "FILLED");
+
+    }
+
+    private static CoverLetterDrafts.Draft rewritten(String text) {
+
+        return new CoverLetterDrafts.Draft(1, text, List.of(new CoverLetterDrafts.Sentence(1, text)), text.length(), 0,
+                List.of(), List.of(), "LLM");
 
     }
 

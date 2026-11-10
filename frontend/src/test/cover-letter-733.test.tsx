@@ -104,7 +104,7 @@ describe('응답 읽기 · 목 서버', () => {
     expect(TurnReply.parse(req('POST', path, { text: '로그 봤어요' }).data).turns.at(-1)!.text).toContain('조금만 더 알려 주세요');
     const filled = TurnReply.parse(req('POST', path, { text: LONG }).data);
     // 실제 서버처럼 채운 말에는 다음 질문이 붙지 않아, 열린 질문이 없는 채로 답을 보내면 409 다
-    expect(filled.turns.at(-1)).toMatchObject({ status: 'FILLED', item: 'ACTION' });
+    expect(filled.turns.at(-1)).toMatchObject({ status: 'FILLED', item: null });
     expect(filled.turns.at(-1)!.text.split('\n')).toHaveLength(1);
     expect(filled.question.draft!.text).toContain(FORMAL);
     expect(filled.question.draft!.text).not.toContain('[더 쓸 거리');
@@ -293,5 +293,47 @@ describe('대화 탭', () => {
     expect(input().value).toBe(LONG);
     expect(panel().querySelector('.chat-bub--me')).toBeNull();
     expect(within(panel()).getByRole('button', { name: '보내기' })).not.toBeDisabled();
+  });
+});
+
+/** 카드가 없는 문항은 답을 받은 같은 말에서 다음 항목을 이어 묻는다(FILLED + item) — 화면은 그 말을 열린 질문으로 본다 */
+describe('답을 받으면서 다음 항목을 묻는 말', () => {
+  function draftedWithoutCard() {
+    const created = CoverLetter.parse(req('POST', '/cover-letters', { jobRole: '백엔드 개발', memo: null, questions: [
+      { text: '의견 차이를 조율해 해결한 경험을 적어 주세요', charLimit: null },
+      { text: '어려운 문제를 해결한 경험을 적어 주세요', charLimit: null },
+    ] }).data);
+    advance(7);
+    req('PUT', `/cover-letters/${created.id}/questions/${created.questions[0].id}/cards`, { primaryCardId: null, supportingCardId: null });
+    req('POST', `/cover-letters/${created.id}/asks`);
+    advance(5);
+    req('POST', `/cover-letters/${created.id}/drafts`);
+    advance(30);
+    return CoverLetter.parse(req('GET', `/cover-letters/${created.id}`).data);
+  }
+
+  it('목: 카드 없는 문항의 답을 받으면 같은 말(FILLED + item)로 다음 항목을 묻고, 그 답도 바로 받는다', () => {
+    const l = draftedWithoutCard();
+    const path = turnsPath(l);
+    expect(TurnReply.parse(req('POST', `${path}/open`).data).turns.at(-1)).toMatchObject({ status: 'ASKING', item: 'SITUATION' });
+    const filled = TurnReply.parse(req('POST', path, { text: '팀원과 일정 순서를 두고 의견이 갈렸는데 두 순서의 시간을 표로 만들어 같이 정했어요' }).data);
+    expect(filled.turns.at(-1)).toMatchObject({ status: 'FILLED', item: 'ACTION' });
+    expect(filled.turns.at(-1)!.text).toContain("'직접 한 일' 빈칸이 있어요");
+    expect(TurnReply.parse(req('POST', path, { text: '제가 두 순서의 걸리는 시간을 표로 만들어 보여 주고 같이 골랐어요' }).data).turns.at(-1)!.status).toBe('FILLED');
+  });
+
+  it('화면: 그 말이 오면 입력 칸이 열려 있고 다음 문항으로 넘어가지 않는다', async () => {
+    const l = draftedWithoutCard();
+    const log: string[] = [];
+    stubFetch(log);
+    mount(l);
+    openFill();
+    await within(panel()).findByText(/'상황' 빈칸이 있어요/, SEEN);
+    say('팀원과 일정 순서를 두고 의견이 갈렸는데 두 순서의 시간을 표로 만들어 같이 정했어요');
+    await within(panel()).findByText(/'직접 한 일' 빈칸이 있어요/, SEEN);
+    await waitFor(() => expect(input()).not.toBeDisabled());
+    expect(input().placeholder).toMatch(/^예: /);
+    expect(within(panel()).queryByText(/Q2 얘기로 갈게요/, SEEN)).toBeNull();
+    expect(log.filter((x) => x.endsWith('/turns/open'))).toHaveLength(1);
   });
 });

@@ -15,7 +15,9 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -95,22 +97,28 @@ public class AiCoverLetterTurnAdapter implements CoverLetterTurnPort {
                 AiCoverLetterDraftsAdapter.text(node, "text"), questionId,
                 item.isNull() || item.isMissingNode() ? null : AiCoverLetterDraftsAdapter.oneOf(node, "item", ITEMS));
 
-        CoverLetterTurnReply.Answer answer = answer(data.path("answer"));
+        List<CoverLetterTurnReply.Answer> answers = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (JsonNode each : AiCoverLetterDraftsAdapter.array(data, "answers")) {
+            CoverLetterTurnReply.Answer answer = answer(each);
+            // 같은 항목이 두 번 오면 어느 답이 맞는지 알 수 없어 이상 응답으로 본다
+            if (!seen.add(answer.item())) {
+                throw AiClientException.invalidResponse();
+            }
+            answers.add(answer);
+        }
         String status = AiCoverLetterDraftsAdapter.oneOf(data, "status", STATUSES);
         boolean replied = USER_REPLY.equals(request.trigger());
-        if ((answer != null && !replied) || ("FILLED".equals(status) && answer == null)) {
+        if ((!answers.isEmpty() && !replied) || ("FILLED".equals(status) && answers.isEmpty())) {
             throw AiClientException.invalidResponse();
         }
 
-        return new CoverLetterTurnReply(message, answer, status);
+        return new CoverLetterTurnReply(message, List.copyOf(answers), status);
 
     }
 
     private static CoverLetterTurnReply.Answer answer(JsonNode node) {
 
-        if (node.isNull() || node.isMissingNode()) {
-            return null;
-        }
         String text = AiCoverLetterDraftsAdapter.text(node, "text");
         if (text.length() > ANSWER_MAX_LENGTH || !node.path("sufficient").isBoolean()) {
             throw AiClientException.invalidResponse();

@@ -1,6 +1,8 @@
 package com.gitory.backend.agent.port;
 
-public record CoverLetterTurnReply(Message message, Answer answer, String status) {
+import java.util.List;
+
+public record CoverLetterTurnReply(Message message, List<Answer> answers, String status) {
 
     public record Message(String text, int questionId, String item) {
     }

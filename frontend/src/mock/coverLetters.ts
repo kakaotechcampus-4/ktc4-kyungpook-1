@@ -723,7 +723,8 @@ export function openCoverLetterTurn(id: string, questionId: string): CoverLetter
 
 /**
  * 답 하나 — '무시하고'가 든 말은 범위 밖(OFF_TOPIC), 15자 안쪽이면 꼬리 질문 한 번, 아니면 답을 재료로 저장하고 그 빈칸 자리를 다시 쓴다(FILLED).
- * 다시 쓴 말(FILLED)에는 다음 질문을 잇지 않는다 — 실제 서버가 그렇고, 남은 빈칸은 화면이 그 문항을 다시 열 때 묻는다.
+ * 카드가 있는 문항의 다시 쓴 말(FILLED)에는 다음 질문을 잇지 않고, 남은 빈칸은 화면이 그 문항을 다시 열 때 묻는다.
+ * 카드가 없는 문항은 실제 서버처럼 답을 받은 같은 말(FILLED + item)에서 다음 항목을 이어 묻는다.
  * '실패'가 든 답은 다시 쓰기가 실패한 경우를 흉내 낸다 — 말과 답은 남기고 글은 그대로 두며 rewriteFailed 를 준다.
  */
 export function replyCoverLetterTurn(id: string, questionId: string, body: Any): CoverLetterResult {
@@ -750,7 +751,18 @@ export function replyCoverLetterTurn(id: string, questionId: string, body: Any):
     if (!rewriteFailed) fillDraft(q, g, formalSentence(text));
     st.passed.push(g.key);
     st.pending = null;
-    pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', g.item, 'FILLED');
+    // 실제 서버는 꼭 있어야 하는 항목 빈칸이 남았을 때만 같은 말에서 이어 묻는다 — 더 쓸 거리나 덧붙일 결과는 다시 열 때 묻는다
+    const left = !q.primaryCardId && st.asked < TURN_QUESTIONS ? nextGap(q) : null;
+    const next = left && left.key.startsWith('item:') ? left : null;
+    if (next) {
+      st.asked++;
+      Object.assign(st, { pending: next, followed: false });
+      pushTurn(l, q, 'AI', `알려 준 대로 그 자리를 다시 썼어요.
+${askLines(q, next)}`, next.item, 'FILLED');
+    } else {
+      // 더 묻지 않는 FILLED 는 실제 서버처럼 item 이 null 이다 — item 이 있으면 화면이 열린 질문으로 본다
+      pushTurn(l, q, 'AI', '알려 준 대로 그 자리를 다시 썼어요.', null, 'FILLED');
+    }
   }
   l.updatedAt = now();
   return turnReply(l, q, rewriteFailed);

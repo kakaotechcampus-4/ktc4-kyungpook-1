@@ -9076,7 +9076,7 @@
                 "type": "null"
               }
             ],
-            "description": "묻거나 받은 항목. DONE 이면 null",
+            "description": "묻거나 받은 항목. DONE 이면 null, 쓸 만한 일을 열어서 묻는 첫 질문이나 여러 항목을 한 번에 받았을 때도 null",
             "title": "Item"
           },
           "question_id": {
@@ -9308,16 +9308,13 @@
       "TurnResult": {
         "description": "`POST /internal/cover-letter-turns` 응답 `data` 모델.",
         "properties": {
-          "answer": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TurnAnswer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "USER_REPLY 에서 받은 답. FILLED 면 Spring 이 저장하고 문항을 다시 쓴다"
+          "answers": {
+            "description": "USER_REPLY 에서 받은 답으로, 한 번의 말에 여러 항목이 들어 있으면 항목마다 하나. FILLED 면 Spring 이 저장하고 문항을 다시 쓴다",
+            "items": {
+              "$ref": "#/components/schemas/TurnAnswer"
+            },
+            "title": "Answers",
+            "type": "array"
           },
           "message": {
             "$ref": "#/components/schemas/TurnMessage"

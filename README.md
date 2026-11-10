@@ -24,13 +24,13 @@ https://github.com/user-attachments/assets/7c769b51-049e-4cbc-aecd-0da89dfcb1f6
 
 ## 목차
 
-- **[한눈에 보기](#한눈에-보기)** — 무엇을 해결하는지, 네 걸음 흐름
-- **[주요 기능과 화면](#주요-기능과-화면)** — 기능 5개와 움직이는 화면
-- **[AI는 어디까지 맡기나](#ai는-어디까지-맡기나)** — AI 가 정하는 곳과 상한, 숫자로 확인한 것
-- **[서비스 구성](#서비스-구성)** — 아키텍처, AI 흐름, 기술 스택
-- **[품질과 자동화](#품질과-자동화)** — 시험 층, CI 와 배포
-- **[직접 실행하기](#직접-실행하기)** — 파트별 실행 · 검증 문서
-- **[팀 소개](#팀-소개)** · **[개발 문서](#개발-문서)**
+- 🧭 **[한눈에 보기](#한눈에-보기)** — 무엇을 해결하는지, 네 걸음 흐름
+- 🖥️ **[주요 기능과 화면](#주요-기능과-화면)** — 기능 5개와 움직이는 화면
+- 🧠 **[AI는 어디까지 맡기나](#ai는-어디까지-맡기나)** — AI 가 정하는 곳과 상한, 숫자로 확인한 것
+- 🏗️ **[서비스 구성](#서비스-구성)** — 아키텍처, AI 흐름, 기술 스택
+- ✅ **[품질과 자동화](#품질과-자동화)** — 시험 층, CI 와 배포
+- 🚀 **[직접 실행하기](#직접-실행하기)** — 파트별 실행 · 검증 문서
+- 👥 **[팀 소개](#팀-소개)** · 📚 **[개발 문서](#개발-문서)**
 
 ## 한눈에 보기
 
@@ -230,8 +230,6 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 
 ## 품질과 자동화
 
-[![backend CI](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/backend-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/backend-ci.yml) [![AI CI](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/ai-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/ai-ci.yml) [![frontend](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/frontend-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/frontend-ci.yml) [![e2e](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/e2e.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/e2e.yml) [![deploy](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/deploy.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/deploy.yml)
-
 | 층 | 무엇을 지키나 | 어디에 |
 | --- | --- | --- |
 | 화면 단위 (약 1,800개) | 화면 규칙과 API 계약(zod), 목 서버 동작 | [frontend/src/test](./frontend/src/test) |
@@ -277,7 +275,7 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/hyukjin0324"><img src="https://github.com/hyukjin0324.png?size=120" width="96" alt="권혁진" /><br /><strong>권혁진</strong></a><br />
-      <sub>AI 리드 · AI</sub><br /><sub><a href="https://github.com/hyukjin0324">@hyukjin0324</a></sub>
+      <sub>AI 리드</sub><br /><sub><a href="https://github.com/hyukjin0324">@hyukjin0324</a></sub>
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/ganggang-0605"><img src="https://github.com/ganggang-0605.png?size=120" width="96" alt="김경무" /><br /><strong>김경무</strong></a><br />
@@ -285,11 +283,11 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/TaeHuiKKIM"><img src="https://github.com/TaeHuiKKIM.png?size=120" width="96" alt="김태희" /><br /><strong>김태희</strong></a><br />
-      <sub>FE 리드 · Frontend</sub><br /><sub><a href="https://github.com/TaeHuiKKIM">@TaeHuiKKIM</a></sub>
+      <sub>FE 리드</sub><br /><sub><a href="https://github.com/TaeHuiKKIM">@TaeHuiKKIM</a></sub>
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/Grow22"><img src="https://github.com/Grow22.png?size=120" width="96" alt="장성준" /><br /><strong>장성준</strong></a><br />
-      <sub>BE 리드 · Backend · AI · 인프라</sub><br /><sub><a href="https://github.com/Grow22">@Grow22</a></sub>
+      <sub>BE 리드</sub><br /><sub><a href="https://github.com/Grow22">@Grow22</a></sub>
     </td>
     <td align="center" width="16%">
       <a href="https://github.com/chxisoei"><img src="https://github.com/chxisoei.png?size=120" width="96" alt="최민서" /><br /><strong>최민서</strong></a><br />

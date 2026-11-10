@@ -25,7 +25,7 @@ test('수집 상한에 걸리면 안내 한 줄로 이유를 말하고, 서버�
   await page.clock.install();
   await login(page);
   await page.goto('/repos?select=r_capped&disclose=1');
-  await page.getByRole('button', { name: '정리 시작' }).click();
+  await page.getByRole('button', { name: /정리 시작|다시 정리/ }).click();
   const heading = page.getByRole('heading', { name: '읽은 데까지 정리했어요' });
   for (let i = 0; i < 150 && !(await heading.isVisible()); i += 1) await page.clock.runFor(200); // 끝난 화면은 1초 남짓이라 잘게 돌린다
   await expect(heading).toBeVisible();

@@ -51,7 +51,7 @@ test('large and short desktop dialogs remain centered with visible actions', asy
     await page.setViewportSize(viewport);
     await page.goto('/repos?select=r_auth&disclose=1');
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('button', { name: '정리 시작' })).toBeEnabled();
+    await expect(dialog.getByRole('button', { name: /정리 시작|다시 정리/ })).toBeEnabled();
     const box = await dialog.boundingBox();
     expect(Math.abs(box!.y + box!.height / 2 - viewport.height / 2)).toBeLessThan(3);
     expect(box!.y + box!.height).toBeLessThan(viewport.height);

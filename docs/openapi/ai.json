@@ -5602,6 +5602,19 @@
             "title": "Card Id",
             "type": "integer"
           },
+          "example_answer": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "그 질문에 맞는 예시 답 한 줄('예:' 로 시작). 없으면 null",
+            "title": "Example Answer"
+          },
           "next_action": {
             "description": "다음 행동. ASK_AGAIN=질문 생성됨 / COMPLETE=더 물을 것 없음",
             "enum": [

@@ -2749,6 +2749,10 @@
             "enum" : [ "USER_REQUEST", "FOLLOW_UP" ],
             "type" : "string"
           },
+          "exampleAnswer" : {
+            "description" : "그 질문에 맞는 예시 답 한 줄('예:' 로 시작)로, 입력칸 안내에 쓰며 AI 가 못 만들었거나 옛 질문이면 null",
+            "type" : [ "string", "null" ]
+          },
           "field" : {
             "description" : "질문이 묻는 칸",
             "enum" : [ "S", "T", "A", "R" ],

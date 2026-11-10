@@ -230,8 +230,6 @@ LLM은 경험 묶기·STAR 초안·되묻기·공고 조건 추출·자소서 �
 
 ## 품질과 자동화
 
-[![backend CI](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/backend-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/backend-ci.yml) [![AI CI](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/ai-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/ai-ci.yml) [![frontend](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/frontend-ci.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/frontend-ci.yml) [![e2e](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/e2e.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/e2e.yml) [![deploy](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/deploy.yml/badge.svg?branch=develop)](https://github.com/kakaotechcampus-4/ktc4-kyungpook-1/actions/workflows/deploy.yml)
-
 | 층 | 무엇을 지키나 | 어디에 |
 | --- | --- | --- |
 | 화면 단위 (약 1,800개) | 화면 규칙과 API 계약(zod), 목 서버 동작 | [frontend/src/test](./frontend/src/test) |

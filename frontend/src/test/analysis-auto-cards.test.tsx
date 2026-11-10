@@ -19,7 +19,8 @@ const navigate = vi.hoisted(() => vi.fn());
 vi.mock('react-router-dom', async (importOriginal) => ({ ...(await importOriginal<typeof import('react-router-dom')>()), useNavigate: () => navigate }));
 
 const BOARD = '/repos/r_auth/candidates';
-const LONG = { timeout: 3000 }; // 부하가 큰 기계에서도 넘어가기까지 기다릴 수 있게
+const LONG = { timeout: 6000 }; // 끝난 모습을 2초 보여 준 뒤 넘어가므로 부하가 큰 기계에서도 기다릴 수 있게
+vi.setConfig({ testTimeout: 15_000 });
 const steps = (state: 'DONE' | 'RUNNING') => ['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON'].map((key) => ({ key, state, done: 4, total: null }));
 const job = (state: 'RUNNING' | 'SUCCEEDED', over: Record<string, unknown> = {}) => Job.parse({
   jobId: 'job', type: 'ANALYZE', state, partial: false, steps: steps(state === 'SUCCEEDED' ? 'DONE' : 'RUNNING'), errorCode: null, retryable: null, retryAfterSec: null,
@@ -90,6 +91,14 @@ describe('정리가 끝나면 카드 초안까지 이어서 쓴다', () => {
     expect(create).toHaveBeenCalledTimes(1);
     expect(create).toHaveBeenCalledWith('r_auth', topIds('s')); // 쓸 만한 후보가 상한보다 많아도 상한까지, 점수 순이다
     expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('정리가 끝나도 2초 동안은 카드 화면으로 가지 않고 안내 줄을 보여 준다', async () => {
+    mount(job('SUCCEEDED'));
+    await screen.findByText(`추천 후보 ${MAX_CARDS_PER_REQUEST}개로 카드 초안을 쓰러 가요`, {}, LONG);
+    await settle(1000);
+    expect(navigate).not.toHaveBeenCalled();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/cards/card_a', { replace: true, state: { cardOrder: ['card_a', 'card_b'] } }), { timeout: 5000 });
   });
 
   it('추천도 낮은 후보만 남았으면 점수 순으로 한 요청 상한까지 카드 초안을 만든다', async () => {

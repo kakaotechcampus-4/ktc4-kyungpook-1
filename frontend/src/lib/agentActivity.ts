@@ -76,8 +76,8 @@ export function foldedJudgeCount(lines: ActivityLine[], step: string, reading: b
   return total - stepLines(lines, step, reading).filter((l) => l.tone === 'judge').length;
 }
 
-/** 판단 줄이 한꺼번에 와도(고른 이유는 8개씩) 차례로 보이게 — 남은 줄이 많으면 빨리, 적으면 천천히 */
-export const revealDelay = (pending: number) => Math.min(600, Math.max(150, Math.round(3000 / Math.max(1, pending))));
+/** 판단 줄을 드러내는 간격 — 앞을 건너뛰고 남은 몇 줄은 밀린 수와 상관없이 이 간격으로 보여 읽을 수 있게 한다 */
+export const REVEAL_MS = 800;
 
 /** 끝난 지 이만큼 지난 작업은 다시 열어도 고른 이유를 차례로 재생하지 않는다(재방문마다 8초씩 기다리던 문제). 방금 끝난 작업은 재생한다 */
 export const REPLAY_WINDOW_MS = 60_000;
@@ -108,17 +108,14 @@ export function useActivityFeed(job: Job | undefined) {
 
   useEffect(() => { setShownJudge(0); }, [jobId]);
   const next = pending[0]?.seq;
-  // 앞을 건너뛴 뒤 남은 몇 줄은 건너뛰기 전의 밀린 수로 속도를 정한다 — 안 그러면 마지막 3줄이 3초 넘게 걸린다
-  const backlog = useRef(0);
   useEffect(() => {
-    if (next == null) { backlog.current = 0; return; }
+    if (next == null) return;
     const sameStep = pending.filter((l) => l.step === pending[0].step);
     if (sameStep.length > JUDGE_LINES) {
-      backlog.current = Math.max(backlog.current, pending.length);
       setShownJudge(sameStep[sameStep.length - JUDGE_LINES - 1].seq);
       return;
     }
-    const t = setTimeout(() => setShownJudge(next), revealDelay(Math.max(pending.length, backlog.current)));
+    const t = setTimeout(() => setShownJudge(next), REVEAL_MS);
     return () => clearTimeout(t);
   }, [next, pending.length]);
 

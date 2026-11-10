@@ -80,7 +80,7 @@ export function resetDb() {
 }
 
 // ───────────────────────────── Job ─────────────────────────────
-const ANALYZE_SEC = 12;
+const ANALYZE_SEC = 9;
 const POLL_MS = 1000;        // Job 상세 — 실서버도 줄을 실시간으로 보여 주려고 1초(#496)
 const ACTIVE_POLL_MS = 2000; // 진행 중 Job 목록은 2초 그대로
 const STEP_KEYS = ['PR_REVIEW', 'COMMITS', 'COMPRESS', 'REASON'] as const;
@@ -138,13 +138,19 @@ export function cancelJob(id: string) {
 const iso = (ms: number) => new Date(ms).toISOString();
 const step = (key: string, state: string, done: number, total: number | null) => ({ key, state, done, total });
 
+// 읽기 줄은 화면이 받는 대로 바로 보여서 목이 읽기 두 단계를 길게 끌 이유가 없다 — 추리기·이유 붙이기에 시간을 더 둔다
+const STEP_SHARE: Record<string, number> = { PR_REVIEW: 1 / 6, COMMITS: 1 / 6, COMPRESS: 1 / 3, REASON: 1 / 3 };
+
 /** 경과 비율에 맞춰 4단계를 채운다. 총량을 모르는 단계는 total: null — 분모를 지어내지 않는다. */
 function analyzeSteps(repo: Any, progress: number, candidates: number | null) {
-  const share = 1 / STEP_KEYS.length;
   const totals: Record<string, number | null> = { COMMITS: repo.contribution.mine, PR_REVIEW: repo.prCount, COMPRESS: null, REASON: null };
-  return STEP_KEYS.map((key, i) => {
-    const local = Math.min(1, Math.max(0, (progress - i * share) / share));
-    if (key === 'PR_REVIEW' && repo.prCount === 0) return step(key, progress > i * share ? 'SKIPPED' : 'QUEUED', 0, 0);
+  let from = 0;
+  return STEP_KEYS.map((key) => {
+    const share = STEP_SHARE[key];
+    const start = from;
+    from += share;
+    const local = Math.min(1, Math.max(0, (progress - start) / share));
+    if (key === 'PR_REVIEW' && repo.prCount === 0) return step(key, progress > start ? 'SKIPPED' : 'QUEUED', 0, 0);
     const total = totals[key];
     const done = total != null ? Math.floor(total * local) : Math.round((candidates ?? 20) * local);
     const state = local >= 1 ? 'DONE' : local > 0 ? 'RUNNING' : 'QUEUED';

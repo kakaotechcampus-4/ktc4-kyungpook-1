@@ -19,8 +19,8 @@ import { useDocumentTitle } from '@/lib/useDocumentTitle';
 import { jobRetryState, useJobRetry, requiresRetryRefresh } from '@/lib/useJobRetry';
 import './AnalyzePage.css';
 
-/** 다 읽은 모습을 보고 나서 넘어가도록 잠깐 머무는 시간 */
-const FINISHED_VIEW_MS = 600;
+/** 끝난 단계 목록과 안내 줄을 읽을 만큼 머무는 시간 */
+const FINISHED_VIEW_MS = 2000;
 /** 끝난 지 이보다 오래된 정리를 다시 열면(알림 링크·뒤로 가기) 카드를 만들지 않는다 — 일부러 비워 둔 레포에 고르지 않은 카드가 생기지 않게 */
 const AUTO_DRAFT_WITHIN_MS = 10 * 60_000;
 
@@ -277,6 +277,7 @@ function AutoDraft({ repoId, finishedAt, onPlan }: { repoId: string; finishedAt:
       if (!mounted.current) return;
       onPlan('draft', picks.length);
       const made = await create.mutateAsync(picks).catch(() => null);
+      await lingered;
       if (!mounted.current) return;
       if (!made) {
         toBoard();

@@ -419,3 +419,91 @@ describe('홈 대화 — 앞 대화', () => {
     expect(screen.queryByText('spring 공고 보여 줘', SEEN)).toBeNull();
   });
 });
+
+describe('새 도구 걸음 — 모자란 조건 채우기 · 카드 빈 칸 질문 · 자소서 첨삭', () => {
+  const user = { seq: 1, kind: 'USER', text: '토스 공고 모자란 조건 채워 줘' };
+  const posting = { postingId: 'p/1', company: '토스', title: '백엔드' };
+  const matched = { seq: 2, kind: 'STEP', tool: 'MATCH_POSTING', ok: true, posting, match: { requiredMet: 3, requiredTotal: 5, met: [], missing: ['Docker 배포 경험', 'Kafka 운영 경험'] } };
+  const filled = (over: object = {}) => ({
+    seq: 3, kind: 'STEP', tool: 'FILL_POSTING_GAPS', ok: true, posting, gapsFilled: 2,
+    match: { requiredMet: 3, requiredTotal: 5, met: [], missing: ['Docker 배포 경험', 'Kafka 운영 경험'] }, ...over,
+  });
+  const asked = (over: object = {}) => ({ seq: 2, kind: 'STEP', tool: 'ASK_CARD_GAP', ok: true, cardId: 'card/3', cardTitle: '토큰 만료 자동 재발급', question: { field: 'R', text: '결과는 어땠나요?' }, ...over });
+  const polished = (over: object = {}) => ({ seq: 2, kind: 'STEP', tool: 'POLISH_COVER_LETTER', ok: true, letterId: 'cl/1', polished: [{ seq: 1, points: 3 }, { seq: 2, points: 2 }], remainingQuestions: 0, ...over });
+  const say = (text: string) => ({ seq: 9, kind: 'SAY', text });
+  const open = async (state: string, items: unknown[], said: string) => {
+    const run = rawRun('run_n', state, [...items, say(said)]);
+    mount('/ask/run_n', connectMockServer((call) => (call.path === '/assistant/runs/run_n' ? json(run) : undefined)));
+    await screen.findByText(said, SEEN);
+  };
+
+  it('F1 세 도구의 걸음은 하는 중, 끝남, 실패를 문장으로 구분해 보인다', () => {
+    const step = (raw: object) => AssistantItem.parse({ seq: 1, kind: 'STEP', ...raw });
+    const lines = (tool: string, input: object, done: object, error: string) => [
+      stepLine(step({ tool, ...input })), stepLine(step({ tool, ok: true, ...input, ...done })), stepLine(step({ tool, ok: false, error, ...input })),
+    ];
+    expect([
+      lines('FILL_POSTING_GAPS', { posting }, { gapsFilled: 2 }, 'NOT_MATCHED'),
+      lines('ASK_CARD_GAP', {}, { cardTitle: '토큰 재발급', question: { field: 'R', text: '결과는?' } }, 'CAP_REACHED'),
+      lines('POLISH_COVER_LETTER', {}, { polished: [{ seq: 1, points: 3 }, { seq: 2, points: 2 }] }, 'NOT_READY'),
+    ]).toEqual([
+      ['모자란 조건을 레포에서 찾고 있어요', '모자란 조건 2개의 근거를 레포에서 찾았어요', '먼저 공고와 맞춰 봐야 해요'],
+      ['카드 빈 칸 질문을 준비하고 있어요', "'토큰 재발급' 카드에 결과 질문을 열었어요", '이 카드는 질문을 다 썼어요'],
+      ['자소서를 첨삭하고 있어요', '문항 2개를 첨삭했어요(포인트 5개)', '초안이 아직 끝나지 않았어요'],
+    ]);
+    // 값이 비어 있는 끝남
+    expect(stepLine(step({ tool: 'FILL_POSTING_GAPS', ok: true, gapsFilled: 0 }))).toBe('레포에서 더 찾은 건 없었어요');
+    expect(stepLine(step({ tool: 'ASK_CARD_GAP', ok: true, cardTitle: '토큰 재발급', question: null }))).toBe("'토큰 재발급' 카드는 더 물을 게 없어요");
+    expect(stepLine(step({ tool: 'POLISH_COVER_LETTER', ok: true, polished: [{ seq: 3, points: 1 }], remainingQuestions: 2 }))).toBe('문항 1개를 첨삭했어요(포인트 1개). 남은 문항 2개');
+  });
+
+  it('F2 모자란 조건의 근거를 찾고 끝나면 그 공고 카드를 보이고, 맞는 조건 수와 모자란 조건 줄은 그대로다(근거는 공고 화면에서 카드로 만든다)', async () => {
+    await open('DONE', [user, matched, filled()], '모자란 조건 두 개의 근거를 찾았어요');
+    expect(screen.getByRole('heading', { name: '토스, 백엔드' })).toBeInTheDocument();
+    expect(screen.getByText('필수 조건 5개 중 3개가 맞아요')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '공고 보기' })).toHaveAttribute('href', '/match/p%2F1');
+    expect(screen.getByText('Docker 배포 경험, Kafka 운영 경험')).toBeInTheDocument();
+  });
+
+  it('F3 카드에 질문을 열었으면 질문에 답하기 버튼이 그 카드의 질문 화면으로 간다. 물을 게 없으면 버튼이 없다', async () => {
+    await open('DONE', [user, asked()], '질문을 열어 뒀어요');
+    expect(screen.getByRole('link', { name: '질문에 답하기' })).toHaveAttribute('href', '/cards/card%2F3/interview');
+    cleanup();
+    await open('DONE', [user, asked({ question: null })], '더 물을 게 없어요');
+    expect(screen.queryByRole('link', { name: '질문에 답하기' })).not.toBeInTheDocument();
+  });
+
+  it('F4 자소서를 첨삭했으면 첨삭 보기 버튼이 그 자소서로 간다', async () => {
+    await open('DONE', [user, polished()], '첨삭했어요');
+    expect(screen.getByRole('link', { name: '첨삭 보기' })).toHaveAttribute('href', '/cover-letters/cl%2F1');
+  });
+
+  it('F5 새 실패 코드는 정해진 문장으로 보이고, 모르는 코드는 끝내지 못했다고만 보인다', async () => {
+    const fail = (tool: string, error: string, seq: number) => ({ seq, kind: 'STEP', tool, ok: false, error });
+    await open('DONE', [
+      user, fail('FILL_POSTING_GAPS', 'NOT_MATCHED', 2), fail('FILL_POSTING_GAPS', 'GITHUB_DISCONNECTED', 3),
+      fail('ASK_CARD_GAP', 'CAP_REACHED', 4), fail('POLISH_COVER_LETTER', 'NOT_READY', 5), fail('POLISH_COVER_LETTER', 'SOMETHING_NEW', 6),
+    ], '하지 못했어요');
+    for (const line of ['먼저 공고와 맞춰 봐야 해요', 'GitHub 연결이 끊겨 있어요', '이 카드는 질문을 다 썼어요', '초안이 아직 끝나지 않았어요', '이 일을 끝내지 못했어요']) {
+      expect(screen.getByText(line, SEEN)).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('link', { name: /질문에 답하기|첨삭 보기/ })).not.toBeInTheDocument();
+  });
+
+  it('F6 목 서버는 채워, 빈 칸, 첨삭이 든 말을 각 도구 대본으로 진행하고 값이 계약에 맞는다', () => {
+    const fill = begin('가온소프트 공고 모자란 조건 채워 줘');
+    advance(10);
+    const filledRun = read(fill.id);
+    expect(filledRun.state).toBe('DONE');
+    expect(shape(fill.id)).toEqual(['USER', 'STEP:FIND_POSTINGS:true', 'STEP:MATCH_POSTING:true', 'STEP:FILL_POSTING_GAPS:true', 'SAY']);
+    expect(filledRun.items.find((i) => i.tool === 'FILL_POSTING_GAPS')).toMatchObject({ gapsFilled: 2, match: { missing: ['Docker 배포 경험', 'Kafka 운영 경험'] } }); // 채우기는 맞는 조건 수를 바꾸지 않는다
+
+    const gap = begin('카드 빈 칸 질문해 줘');
+    advance(10);
+    expect(read(gap.id).items.find((i) => i.tool === 'ASK_CARD_GAP')).toMatchObject({ cardId: expect.any(String), question: { field: 'R', text: '결과는 어땠나요?' } });
+
+    const polish = begin('자소서 첨삭해 줘');
+    advance(10);
+    expect(read(polish.id).items.find((i) => i.tool === 'POLISH_COVER_LETTER')).toMatchObject({ letterId: db.coverLetters[0].id, polished: [{ seq: 1, points: 3 }, { seq: 2, points: 2 }], remainingQuestions: 0 });
+  });
+});

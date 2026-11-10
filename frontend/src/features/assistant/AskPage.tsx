@@ -238,7 +238,8 @@ function EarlierRun({ id }: { id: string }) {
 
 /** 이어진 걸음 한 묶음 — 걸음 줄 아래에 마지막으로 찾은 공고와, 맞춰 본 공고에서 모자란 조건을 붙인다 */
 function Steps({ items }: { items: AssistantItem[] }) {
-  const matchedStep = [...items].reverse().find((item) => item.tool === 'MATCH_POSTING' && item.ok === true);
+  // 모자란 조건을 채운 뒤에는 채운 결과의 맞춰 본 값이 더 새롭다
+  const matchedStep = [...items].reverse().find((item) => (item.tool === 'MATCH_POSTING' || item.tool === 'FILL_POSTING_GAPS') && item.ok === true);
   // 맞춰 본 뒤에는 공고 목록이 답을 가리므로 접는다
   const found = matchedStep?.posting ? undefined : [...items].reverse().find((item) => item.tool === 'FIND_POSTINGS' && item.ok === true && item.postings.length > 0);
   const missing = matchedStep?.match?.missing ?? [];

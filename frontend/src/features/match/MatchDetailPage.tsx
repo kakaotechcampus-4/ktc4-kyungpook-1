@@ -11,8 +11,10 @@ import {
   type GapFillProposal,
   type MatchDetail,
 } from "@/api/matching";
+import { useCoverLetters } from "@/api/coverLetters";
 import { useCards } from "@/api/queries";
 import { Button, ButtonLink, PageTitle, Skeleton, buttonClass } from "@/components/ui";
+import { applyAction, latestLetter } from "@/features/home/homeApply";
 import { isGithubUnauthorized, reconnectGithub } from "@/lib/githubReconnect";
 import { cardKindLabel } from "@/lib/labels";
 import { track } from "@/lib/track";
@@ -185,6 +187,7 @@ export function MatchDetailPage() {
   const gapFill = useGapFill(matchId);
   const proceed = useProceed();
   const cards = useCards();
+  const letters = useCoverLetters();
   const detail = query.data;
   useDocumentTitle(detail ? `${detail.company} - ${detail.role}` : "공고 상세");
   // 다시 불러와도 같은 공고와 등급이면 한 번만 센다
@@ -343,31 +346,31 @@ export function MatchDetailPage() {
     });
   }
 
-  const coverLetter = detail && (
-    <ButtonLink variant="primary" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
-      이 공고로 자소서 쓰기
+  // 자소서 버튼은 맞춰 보는 중에도 늘 맨 위에 둔다 — 이미 쓰던 자소서가 있으면 그 자소서로 잇는다
+  const letterAction = detail && applyAction(detail.id, latestLetter(letters.data ?? [], detail.id));
+  const coverLetter = detail && letterAction && (
+    <ButtonLink variant="primary" to={letterAction.to}>
+      {letterAction.label === "자소서 쓰기" ? "이 공고로 자소서 쓰기" : letterAction.label}
     </ButtonLink>
   );
   // 확정 카드가 없어도 맞춰 보기 버튼은 그대로 두어 이 화면에서 매칭을 한다는 것이 보이게 하고, 누르면 서버를 부르지 않고 카드가 없다고 알린다
   const action = detail && (
     noConfirmedCards ? (
-      <Button onClick={() => setNoCardsTried(true)}>
+      <Button variant="secondary" onClick={() => setNoCardsTried(true)}>
         이 공고와 맞춰 보기
       </Button>
     ) : detail.needsJudgement ? (
       returned && !judge.isError ? null : (
-        <Button loading={judge.isPending} onClick={startJudge}>
+        <Button variant="secondary" loading={judge.isPending} onClick={startJudge}>
           이 공고와 맞춰 보기
         </Button>
       )
     ) : !settled ? null : gapActive ? (
-      // 고르기 전에는 꺼진 검정 버튼이 고장 난 것처럼 보여 보조 버튼으로 둔다(#920)
-      <Button variant={chosen.length > 0 ? "primary" : "secondary"} loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
+      // 자소서 버튼이 늘 진한 버튼이라 제안 버튼은 고른 뒤에도 보조 버튼이다
+      <Button variant="secondary" loading={proceed.isPending} disabled={chosen.length === 0} onClick={onProceed}>
         {chosen.length > 0 ? `고른 ${chosen.length}개 진행하기` : "제안을 골라 진행하기"}
       </Button>
-    ) : (
-      coverLetter
-    )
+    ) : null
   );
   return (
     <main className="main matching-page">
@@ -456,6 +459,7 @@ export function MatchDetailPage() {
                 )
               )}
               <div className="posting-summary__actions">
+                {coverLetter}
                 {action}
                 <a
                   href={detail.source.url}
@@ -469,11 +473,6 @@ export function MatchDetailPage() {
                 </a>
                 <CalendarToggle posting={{ id: detail.id, company: companyLabel(detail.company), role: detail.role, expiresAt: detail.source.expiresAt }} />
               </div>
-              {judged && gapActive && (
-                <Link className="posting-summary__alt" to={`/cover-letters/new?postingId=${encodeURIComponent(detail.id)}`}>
-                  이 공고로 자소서 쓰기
-                </Link>
-              )}
               {judge.isError && <p role="alert" className="posting-summary__error">맞춰 보지 못했어요. 잠시 뒤 다시 눌러 주세요.</p>}
               {proceed.isError && <p role="alert" className="posting-summary__error">제안을 넘기지 못했어요. 다시 눌러 주세요.</p>}
               <p className="posting-summary__collected">수집 {dateLabel(detail.source.collectedAt)}</p>

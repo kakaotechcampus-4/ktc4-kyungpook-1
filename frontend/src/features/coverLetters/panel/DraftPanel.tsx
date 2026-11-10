@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CircleHelp, MessageSquarePlus, PenLine, X } from 'lucide-react';
 import { useApplyPolish, useConfirmInference, usePolish, useSaveDraft, type CoverLetter, type CoverLetterQuestion } from '@/api/coverLetters';
 import { errorView } from '@/api/errorView';
@@ -34,8 +35,11 @@ export function DraftPanel({ letter, texts, onText, activeId, mobile, onLock, on
   talk: { questionId: string } | null; onTalk: (questionId: string) => void; onTalked: () => void;
   onShowFilled: (questionId: string, sentence: string | null) => void;
 }) {
-  const [tab, setTab] = useState<PanelTab>('fill');
-  const [sheet, setSheet] = useState<PanelTab | null>(null);
+  // 한 줄 명령의 '첨삭 보기' 처럼 주소의 tab 으로 들어오면 그 탭에서 시작한다(처음 한 번만 읽는다)
+  const [sp] = useSearchParams();
+  const [first] = useState(() => PANEL_TABS.find((t) => t.key === sp.get('tab'))?.key ?? null);
+  const [tab, setTab] = useState<PanelTab>(first ?? 'fill');
+  const [sheet, setSheet] = useState<PanelTab | null>(mobile ? first : null);
   const [running, setRunning] = useState<string | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [applied, setApplied] = useState<Record<string, boolean>>({});

@@ -24,7 +24,7 @@ export function CalendarToggle({ posting }: { posting: Posting }) {
   const toggle = () => {
     const current = read(key);
     if (!current) {
-      toast("저장된 캘린더 일정을 읽지 못했어요. 홈 캘린더에서 확인해 주세요.", { tone: "danger" });
+      toast("저장된 캘린더 일정을 읽지 못했어요. 공고 매칭의 캘린더에서 확인해 주세요.", { tone: "danger" });
       return;
     }
     const next: JobSchedule[] = added

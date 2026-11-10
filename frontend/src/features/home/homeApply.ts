@@ -14,7 +14,7 @@ const daysLeftOf = (deadline: string | null, now: number): number | null => {
   return seoulDay(Date.parse(deadline)) - seoulDay(now);
 };
 
-const latestLetter = (letters: readonly CoverLetterSummary[], postingId: string) =>
+export const latestLetter = (letters: readonly CoverLetterSummary[], postingId: string) =>
   letters.filter((letter) => letter.posting?.id === postingId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0] ?? null;
 
 /**

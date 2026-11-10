@@ -625,15 +625,6 @@
 .gap-fill__again:hover {
   color: var(--text-primary);
 }
-.posting-summary__alt {
-  margin: -4px 0 0;
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 20px;
-  text-align: center;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 
 /* 모자란 조건 아래 AI 가 한 일 — 조건 원문은 그대로 두고 그 아래 작은 글로만 이어진다 */
 .gap-fill {
